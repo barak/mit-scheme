@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.44 1996/04/25 04:23:33 cph Exp $
+$Id: rtlgen.scm,v 1.45 1996/04/26 17:41:57 adams Exp $
 
 Copyright (c) 1994-96 Massachusetts Institute of Technology
 
@@ -1308,10 +1308,14 @@ MIT in each case. |#
 				      '(VARIABLE-CACHE ASSIGNMENT-CACHE))))
 		       (preserve)
 		       (compute))))
-		((FLOAT->OBJECT CONS-POINTER CONS-NON-POINTER)
+		((FLOAT->OBJECT CONS-POINTER)
 		 ;; This assumes they are proper objects, and therefore
 		 ;; can be preserved on their own
 		 (preserve))
+		((CONS-NON-POINTER)
+		 ;; CONS-NON-POINTER is used to make non-objects like
+		 ;; non-marked vector headers.
+		 (compute))
 		((CONS-CLOSURE)
 		 (if (rtlgen/tagged-entry-points?)
 		     (ignore)
@@ -1340,7 +1344,15 @@ MIT in each case. |#
 		((FIXNUM-2-ARGS FIXNUM-1-ARG FLONUM-2-ARGS FLONUM-1-ARG)
 		 ;;(internal-warning
 		 ;; "rtlgen/preservation-state: arithmetic" value)
+		 ;;Assumption: fixnum arithmetic is not used to generate
+		 ;;illegal objects.
 		 (preserve))
+		((MACHINE-CONSTANT)
+		 ;; In general, machine constants could look like objects that
+		 ;; would crash the garbage collector.  We could change this to
+                 ;; preserve constants which happen to be harmless when treated
+		 ;; as objects (e.g. fixnums etc).
+		 (compute))
 		(else
 		 (internal-warning
 		  "rtlgen/preservation-state: unknown operation" value)
@@ -3694,14 +3706,12 @@ MIT in each case. |#
 		  state
 		  `(CONS-NON-POINTER (MACHINE-CONSTANT ,fixnum-tag)
 				     ,field))))))))
-  ;;(define-fixnumized-selector/tagged 'VECTOR-LENGTH  (machine-tag 'VECTOR) 0)
+  ;; Primitives VECTOR-LENGTH %RECORD-LENGTH STRING-LENGTH BIT-STRING-LENGTH
+  ;; are calls the microcode (i.e. signal errors), so do not appear here.
   (define-fixnumized-selector/tagged %vector-length  (machine-tag 'VECTOR) 0)
-  ;;(define-fixnumized-selector/tagged '%RECORD-LENGTH (machine-tag 'RECORD) 0)
   (define-fixnumized-selector/tagged %%RECORD-LENGTH (machine-tag 'RECORD) 0)
   (define-fixnumized-selector/tagged 'SYSTEM-VECTOR-SIZE false 0)
-  ;;(define-fixnumized-selector 'STRING-LENGTH     (machine-tag 'STRING)    1)
   (define-fixnumized-selector %STRING-LENGTH     (machine-tag 'STRING)    1)
-  ;;(define-fixnumized-selector 'BIT-STRING-LENGTH (machine-tag 'VECTOR-1B) 1)
   (define-fixnumized-selector %BIT-STRING-LENGTH (machine-tag 'VECTOR-1B) 1))
 
 (define-open-coder/value %FLOATING-VECTOR-LENGTH 1 ; 'FLOATING-VECTOR-LENGTH
@@ -3872,11 +3882,11 @@ MIT in each case. |#
 		   `(CONS-NON-POINTER (MACHINE-CONSTANT ,fixnum-tag)
 				      ,masked))))))))
 
-    (define-datum-conversion 'INTEGER->CHAR char-tag)
-    (define-datum-conversion 'ASCII->CHAR char-tag)
+    (define-datum-conversion  'INTEGER->CHAR char-tag)
+    (define-datum-conversion  'ASCII->CHAR   char-tag)
     (define-masked-datum-conversion 'CHAR->ASCII #xff)
-    (define-masked-datum-conversion 'CHAR-CODE #x7f)
-    (define-datum-conversion 'CHAR->INTEGER fixnum-tag)))
+    (define-masked-datum-conversion 'CHAR-CODE   #x7f)
+    (define-datum-conversion  'CHAR->INTEGER fixnum-tag)))
 
 (let* ((off (rtlgen/words->chars 2))
        (define-string-reference
@@ -3916,8 +3926,7 @@ MIT in each case. |#
 		 (rtlgen/value-assignment
 		  state
 		  `(CONS-NON-POINTER (MACHINE-CONSTANT ,tag) ,byte))))))))
-  ;(define-string-reference 'VECTOR-8B-REF (machine-tag 'POSITIVE-FIXNUM))
-  ;(define-string-reference 'STRING-REF    (machine-tag 'CHARACTER))
+  ;; Primitives VECTOR-8B-REF STRING-REF are used to signal errors
   (define-string-reference %VECTOR-8B-REF (machine-tag 'POSITIVE-FIXNUM))
   (define-string-reference %STRING-REF    (machine-tag 'CHARACTER)))
 
@@ -4028,8 +4037,7 @@ MIT in each case. |#
 	      (rtlgen/fixed-mutation rands offset))))))
   (define-fixed-mutator 'SET-CELL-CONTENTS! (machine-tag 'CELL) 0 2)
   (define-fixed-mutator %cell-set! (machine-tag 'CELL) 0 3)
-  ;;(define-fixed-mutator 'SET-CAR!  (machine-tag 'PAIR) 0 2)
-  ;;(define-fixed-mutator 'SET-CDR!  (machine-tag 'PAIR) 1 2)
+  ;; Primitives SET-CAR! and SET-CDR! are used to signal errors
   (define-fixed-mutator %set-car!  (machine-tag 'PAIR) 0 2)
   (define-fixed-mutator %set-cdr!  (machine-tag 'PAIR) 1 2)
   (define-fixed-mutator 'SET-STRING-LENGTH! (machine-tag 'STRING) 1 2))
@@ -4070,9 +4078,8 @@ MIT in each case. |#
 			 (rtlgen/emit!/1
 			  `(ASSIGN (OFFSET ,ptr (MACHINE-CONSTANT ,offset))
 				   ,value)))))))))))
-  ;(define-indexed-mutator 'VECTOR-SET!  (machine-tag 'VECTOR) 1 3)
+  ;; Primitives VECTOR-SET! and %RECORD-SET! used to signal errors
   (define-indexed-mutator %vector-set!  (machine-tag 'VECTOR) 1 3)
-  ;(define-indexed-mutator '%RECORD-SET! (machine-tag 'RECORD) 1 3)
   (define-indexed-mutator %%RECORD-SET! (machine-tag 'RECORD) 1 3)
   (define-indexed-mutator 'PRIMITIVE-OBJECT-SET! false 0 3))
 
@@ -4134,8 +4141,7 @@ MIT in each case. |#
 			  (rtlgen/emit!/1
 			   `(ASSIGN (BYTE-OFFSET ,ptr (MACHINE-CONSTANT ,off))
 				    ,byte)))))))))))
-  ;(define-string-mutation 'VECTOR-8B-SET!)
-  ;(define-string-mutation 'STRING-SET!)
+  ;; Primitives VECTOR-8B-SET! STRING-SET!
   (define-string-mutation %VECTOR-8B-SET!)
   (define-string-mutation %STRING-SET!))
 
