@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: symbol.scm,v 1.6 2001/12/18 18:39:57 cph Exp $
+$Id: symbol.scm,v 1.7 2001/12/18 20:46:36 cph Exp $
 
 Copyright (c) 1992-2001 Massachusetts Institute of Technology
 
@@ -38,13 +38,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define (string->uninterned-symbol string)
   (if (not (string? string))
       (error:wrong-type-argument string "string" 'STRING->UNINTERNED-SYMBOL))
-  ((ucode-primitive system-pair-cons)
-   (ucode-type uninterned-symbol)
-   string
-   ;; Magic: must match microcode and "urtrap".
-   ((ucode-primitive primitive-object-set-type)
-    (ucode-type reference-trap)
-    2)))
+  ((ucode-primitive system-pair-cons) (ucode-type uninterned-symbol)
+				      string
+				      (make-unmapped-unbound-reference-trap)))
 
 (define (string->symbol string)
   ;; Calling STRING-COPY prevents the symbol from being affected if
