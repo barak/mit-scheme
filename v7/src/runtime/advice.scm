@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/advice.scm,v 14.9 1991/03/01 06:45:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/advice.scm,v 14.10 1991/11/26 06:32:14 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -409,10 +409,11 @@ MIT in each case. |#
 (define (break-rep environment message . info)
   (breakpoint (cmdl-message/append
 	       (cmdl-message/active
-		(lambda (cmdl)
-		  cmdl
-		  (apply trace-display info)))
-	       (cmdl-message/standard message))
+		(lambda (port)
+		  (with-output-to-port port
+		    (lambda ()
+		      (apply trace-display info)))))
+	       (cmdl-message/strings message))
 	      environment))
 
 (define (break-entry-advice procedure arguments environment)
