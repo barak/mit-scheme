@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.10 2000/04/13 16:40:11 cph Exp $
+;;; $Id: imail.pkg,v 1.11 2000/04/13 19:47:14 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -24,10 +24,10 @@
 (global-definitions "$bscm/sos/sos")
 (global-definitions "$bscm/edwin/edwinunx")
 
-(define-package (runtime rexp)
+(define-package (edwin imail rexp)
   (files "rexp")
-  (parent ())
-  (export ()
+  (parent (edwin imail))
+  (export (edwin imail)
 	  rexp*
 	  rexp+
 	  rexp->regexp
@@ -52,10 +52,10 @@
 	  rexp-word-start
 	  rexp?))
 
-(define-package (runtime url)
+(define-package (edwin imail url)
   (files "url")
-  (parent ())
-  (export ()
+  (parent (edwin imail))
+  (export (edwin imail)
 	  url:char-set:escaped
 	  url:char-set:extra
 	  url:char-set:national
