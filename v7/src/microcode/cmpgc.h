@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: cmpgc.h,v 1.31 2000/12/05 21:23:43 cph Exp $
+$Id: cmpgc.h,v 1.32 2001/12/16 06:01:32 cph Exp $
 
-Copyright (c) 1989-2000 Massachusetts Institute of Technology
+Copyright (c) 1989-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /*
@@ -290,20 +291,16 @@ MAKE_POINTER_OBJECT ((OBJECT_TYPE (object)),				\
 #define CHAR_TO_SCHEME_OBJECT(chars)					\
 (((chars) + ((sizeof (SCHEME_OBJECT)) - 1)) / (sizeof (SCHEME_OBJECT)))
 
-/* This takes into account the fact that the relocation loop increments
-   by 1 on each major iteration.
-   Note: It also assumes that closures with exactly one entry point
-   are always represented in short format.
- */
+/* This assumes that closures with exactly one entry point
+   are always represented in short format.  */
 
 #ifndef MANIFEST_CLOSURE_END
 #define MANIFEST_CLOSURE_END(start, count)				\
 (((SCHEME_OBJECT *) (start))						\
- + ((CHAR_TO_SCHEME_OBJECT (((count) * COMPILED_CLOSURE_ENTRY_SIZE)	\
-			    + (((count) == 1)				\
-			       ? 0					\
-			       : (2 * sizeof(format_word)))))		\
-    - 1))
+ + (CHAR_TO_SCHEME_OBJECT (((count) * COMPILED_CLOSURE_ENTRY_SIZE)	\
+			   + (((count) == 1)				\
+			      ? 0					\
+			      : (2 * sizeof(format_word))))))
 #endif
 
 /* Linkage sections */

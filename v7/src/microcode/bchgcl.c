@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchgcl.c,v 9.53 2001/08/07 01:25:26 cph Exp $
+$Id: bchgcl.c,v 9.54 2001/12/16 06:01:32 cph Exp $
 
 Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
@@ -629,10 +629,7 @@ DEFUN (gc_loop,
 	      scan = ((SCHEME_OBJECT *) (count_end - delta));
 	    }
 
-	    /* MANIFEST_CLOSURE_END assumes that one will be added to
-	       result, so do that now.  */
-	    closure_end
-	      = ((char *) ((MANIFEST_CLOSURE_END (scan, count)) + 1));
+	    closure_end = ((char *) (MANIFEST_CLOSURE_END (scan, count)));
 
 	    /* The closures are copied sequentially, but extra hair is
 	       required because the code-entry pointers are encoded as

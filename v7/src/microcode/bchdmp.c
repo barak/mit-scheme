@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchdmp.c,v 9.89 2001/08/07 01:25:20 cph Exp $
+$Id: bchdmp.c,v 9.90 2001/12/16 06:01:32 cph Exp $
 
 Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
@@ -1007,10 +1007,7 @@ DEFUN (dump_loop, (scan, free_ptr, new_address_ptr),
 	    if (count > 0)
 	      compiled_code_present_p = true;
 
-	    /* MANIFEST_CLOSURE_END assumes that one will be added to
-	       result, so do that now.  */
-	    closure_end
-	      = ((char *) ((MANIFEST_CLOSURE_END (scan, count)) + 1));
+	    closure_end = ((char *) (MANIFEST_CLOSURE_END (scan, count)));
 
 	    /* The closures are copied sequentially, but extra hair is
 	       required because the code-entry pointers are encoded as

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bintopsb.c,v 9.73 2001/08/07 01:25:37 cph Exp $
+$Id: bintopsb.c,v 9.74 2001/12/16 06:01:32 cph Exp $
 
 Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
@@ -1276,7 +1276,7 @@ DEFUN (Process_Area, (Code, Area, Bound, Obj, FObj),
 	  scan = (i_scan + 1);
 	  count = (MANIFEST_CLOSURE_COUNT (scan));
 	  word_ptr = (FIRST_MANIFEST_CLOSURE_ENTRY (scan));
-	  area_end = (MANIFEST_CLOSURE_END (scan, count));
+	  area_end = ((MANIFEST_CLOSURE_END (scan, count)) - 1);
 
 	  while ((--count) >= 0)
 	  {
@@ -1782,7 +1782,7 @@ DEFUN (print_objects, (from, to),
 
 	nentries = (MANIFEST_CLOSURE_COUNT (from));
 	entry = ((SCHEME_OBJECT *) (FIRST_MANIFEST_CLOSURE_ENTRY (from)));
-	area_end = (MANIFEST_CLOSURE_END (from, nentries));
+	area_end = ((MANIFEST_CLOSURE_END (from, nentries)) - 1);
 	
 	if (entry != (from + 1))
 	  fprintf (portable_file, "%02x %lx %lx\n",

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: purutl.c,v 9.51 2000/12/05 21:23:48 cph Exp $
+$Id: purutl.c,v 9.52 2001/12/16 06:01:33 cph Exp $
 
-Copyright (c) 1987-2000 Massachusetts Institute of Technology
+Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* Pure/Constant space utilities. */
@@ -94,7 +95,7 @@ DEFUN (update, (From, To, Was, Will_Be),
 
 	  From += 1;
 	  count = (MANIFEST_CLOSURE_COUNT (From));
-	  From = (MANIFEST_CLOSURE_END (From, count));
+	  From = ((MANIFEST_CLOSURE_END (From, count)) - 1);
 	  break;
 	}
 

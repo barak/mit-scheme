@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.27 1999/01/02 06:06:43 cph Exp $
+$Id: lapgen.scm,v 1.28 2001/12/16 06:01:31 cph Exp $
 
-Copyright (c) 1992-1999 Massachusetts Institute of Technology
+Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 |#
 
 ;;;; RTL Rules utilities for i386 and family.
@@ -662,7 +663,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     shortcircuit-apply-size-6
     shortcircuit-apply-size-7
     shortcircuit-apply-size-8
-    interrupt-continuation-2))
+    interrupt-continuation-2
+    conditionally-serialize))
 
 ;; Operation tables
 

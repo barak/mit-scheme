@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fasdump.c,v 9.65 2001/08/07 01:25:59 cph Exp $
+$Id: fasdump.c,v 9.66 2001/12/16 06:01:32 cph Exp $
 
 Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
@@ -200,7 +200,7 @@ DEFUN (DumpLoop, (Scan, mode), fast SCHEME_OBJECT * Scan AND int mode)
 	Scan += 1;
 	count = (MANIFEST_CLOSURE_COUNT (Scan));
 	word_ptr = (FIRST_MANIFEST_CLOSURE_ENTRY (Scan));
-	area_end = (MANIFEST_CLOSURE_END (Scan, count));
+	area_end = ((MANIFEST_CLOSURE_END (Scan, count)) - 1);
 
 	while ((--count) >= 0)
 	{

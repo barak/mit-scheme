@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 4.115 2001/11/05 19:46:24 cph Exp $
+$Id: make.scm,v 4.116 2001/12/16 06:01:31 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -34,4 +34,4 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
      (load-option 'HASH-TABLE)
      (load-option 'RB-TREE)
      (load-package-set "compiler")))
-  (add-identification! (string-append "Liar (" architecture-name ")") 4 113))
+  (add-identification! (string-append "Liar (" architecture-name ")") 4 114))

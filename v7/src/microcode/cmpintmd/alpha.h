@@ -1,8 +1,8 @@
 /* -*- C -*-
 
-$Id: alpha.h,v 1.5 1993/06/24 04:02:18 gjr Exp $
+$Id: alpha.h,v 1.6 2001/12/16 06:01:33 cph Exp $
 
-Copyright (c) 1992-1993 Digital Equipment Corporation (D.E.C.)
+Copyright (c) 1992-1993, 2001 Digital Equipment Corporation (D.E.C.)
 
 This software was developed at the Digital Equipment Corporation
 Cambridge Research Laboratory.  Permission to copy this software, to
@@ -273,8 +273,8 @@ do {									\
 /* Override the default definition of MANIFEST_CLOSURE_END in cmpgc.h */
 
 #define MANIFEST_CLOSURE_END(start, count)				\
-(((SCHEME_OBJECT *) (start)) +						\
- ((CHAR_TO_SCHEME_OBJECT (((count) * COMPILED_CLOSURE_ENTRY_SIZE)))-1))
+(((SCHEME_OBJECT *) (start))						\
+ + (CHAR_TO_SCHEME_OBJECT (((count) * COMPILED_CLOSURE_ENTRY_SIZE))))
 
 /* Manifest closure entry destructuring.
 

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: wabbit.c,v 1.8 2000/12/05 21:23:49 cph Exp $
+$Id: wabbit.c,v 1.9 2001/12/16 06:01:33 cph Exp $
 
-Copyright (c) 1994-2000 Massachusetts Institute of Technology
+Copyright (c) 1994-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* 
@@ -505,7 +506,7 @@ repeat_dispatch:
 	scan += 1;
 	count = (MANIFEST_CLOSURE_COUNT (scan));
 	word_ptr = (FIRST_MANIFEST_CLOSURE_ENTRY (scan));
-	area_end = (MANIFEST_CLOSURE_END (scan, count));
+	area_end = ((MANIFEST_CLOSURE_END (scan, count)) - 1);
 
 	while ((--count) >= 0)
 	{

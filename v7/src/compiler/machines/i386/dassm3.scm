@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: dassm3.scm,v 1.6 1999/01/02 06:06:43 cph Exp $
+$Id: dassm3.scm,v 1.7 2001/12/16 06:01:31 cph Exp $
 
-Copyright (c) 1992, 1999 Massachusetts Institute of Technology
+Copyright (c) 1992, 1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 |#
 
 ;;;; Intel i386 Disassembler: Internals
@@ -677,7 +678,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (dispatch-on-low-nibble		; A
 	    (simple-inst '(PUSH FS))
 	    (simple-inst '(POP FS))
-	    unknown-inst
+	    (simple-inst '(CPUID))
 	    (decode-E/G '(BT))
 	    (decode-E/G/I '(SHLD) immediate-byte)
 	    (decode-E/G/I '(SHLD) (lambda () '(R 1)))

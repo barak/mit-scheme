@@ -1,8 +1,8 @@
 ### -*-Midas-*-
 ###
-### $Id: i386.m4,v 1.50 2000/02/07 04:42:14 cph Exp $
+### $Id: i386.m4,v 1.51 2001/12/16 06:01:33 cph Exp $
 ###
-### Copyright (c) 1992-2000 Massachusetts Institute of Technology
+### Copyright (c) 1992-2001 Massachusetts Institute of Technology
 ###
 ### This program is free software; you can redistribute it and/or
 ### modify it under the terms of the GNU General Public License as
@@ -16,15 +16,15 @@
 ###
 ### You should have received a copy of the GNU General Public License
 ### along with this program; if not, write to the Free Software
-### Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-###
+### Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+### 02111-1307, USA.
 
-### Intel i386 assembly language part of the compiled code interface.
+### Intel IA-32 assembly language part of the compiled code interface.
 ### See cmpint.txt, cmpint.c, cmpint-mc68k.h, and cmpgc.h for more
 ### documentation.
 ###
-### This m4 source expands into either Unix (gas) source or DOS
-### (masm) source.
+### This m4 source expands into either Unix (gas) source or PC
+### (masm/wasm) source.
 ###
 ### NOTE:
 ###	Assumptions:
@@ -62,8 +62,6 @@
 ###	C), two word structures are returned by returning in %eax the
 ###	address of a structure allocated statically.  If the Scheme
 ###	system ever becomes reentrant, this will have to change.
-###	Note the assumption below is that all DOS compilers are
-###	compatible with MicroSoft C.
 ###
 ###	6) Floating point registers are not preserved by this
 ###	interface.  The interface is only called from the Scheme
@@ -96,12 +94,8 @@
 ###	Microsoft assembler (MASM) and Watcom assembler (WASM).
 ###	Otherwise, expand to AT&T syntax, used by GAS.
 ###
-### DOS
-###	If defined, expand to run under DOS; implies DASM.
 ### WIN32
 ###	If defined, expand to run under Win32; implies DASM.
-###	Previously, this was defined in conjunction with DOS, but now
-###	DOS must not be defined!
 ### OS2
 ###	If defined, expand to run under OS/2.  This macro does nothing
 ###	more than define SUPPRESS_LEADING_UNDERSCORE and
@@ -109,7 +103,7 @@
 ###	call OS/2 API procedures; note that EMX/GCC doesn't define
 ###	these symbols because it thinks it's running under unix.
 ###
-### If none of { DOS, WIN32, OS2 } is defined, expansion is for unix.
+### If none of { WIN32, OS2 } is defined, expansion is for unix.
 ###
 ### SUPPRESS_LEADING_UNDERSCORE
 ###	If defined, external symbol names are generated as written;
@@ -132,11 +126,6 @@
 ### WCC386R
 ###	Should be defined when using Watcom assembler and generating
 ###	code to use the Watcom register-based argument conventions.
-### HACK_SEGMENT_REGS
-###	If defined, two code/data segments are maintained, one for C
-###	code and one for Scheme code, and the segment registers are
-###	switched between the two automatically.  Currently works only
-###	for Win32s.
 ### LINUX_ELF
 ###	If defined, expand to run under Linux ELF.
 ### TYPE_CODE_LENGTH
@@ -146,14 +135,6 @@
 ###	If defined, do not generate 387 floating-point instructions.
 
 ####	Utility macros and definitions
-
-ifdef(`DOS',
-      `define(IFDOS,`$1')',
-      `define(IFDOS,`')')
-
-ifdef(`DOS',
-      `define(IFNDOS,`')',
-      `define(IFNDOS,`$1')')
 
 ifdef(`WIN32',
       `define(IF_WIN32,`$1')',
@@ -175,7 +156,6 @@ ifdef(`DISABLE_387',
       `define(IFN387,`$1')',
       `define(IFN387,`')')
 
-IFDOS(`define(DASM,1)')
 IF_WIN32(`define(DASM,1)')
 ifdef(`WCC386R',`define(WCC386,1)')
 
@@ -200,6 +180,10 @@ ifdef(`DASM',
       `define(export_label,`	.globl $1')')
 
 IFNDASM(`	.file	"cmpaux-i386.s"')
+
+# GAS doesn't implement pushfd/popfd, for no obvious reason.
+IFNDASM(`define(pushfd,`pushf')')
+IFNDASM(`define(popfd,`popf')')
 
 IFOS2(`define(`SUPPRESS_LEADING_UNDERSCORE',1)')
 IF_LINUX_ELF(`define(`SUPPRESS_LEADING_UNDERSCORE',1)')
@@ -245,11 +229,9 @@ ifdef(`DASM',
       `define(DECLARE_CODE_SEGMENT,`	.code')',
       `define(DECLARE_CODE_SEGMENT,`	.text')')
 
-ifdef(`DOS',
-      `define(declare_alignment,`')',
-`ifdef(`DASM',
+ifdef(`DASM',
       `define(declare_alignment,`	align $1')',
-      `define(declare_alignment,`	.align $1')')')
+      `define(declare_alignment,`	.align $1')')
 
 ifdef(`DASM',
       `define(allocate_word,`EVR($1) dw 0')',
@@ -358,21 +340,19 @@ define(REGBLOCK_SIZE_IN_OBJECTS,
 	    +(COMPILER_REGBLOCK_N_TEMPS*COMPILER_TEMP_SIZE)))
 
 # Define the floating-point processor control word.  Always set
-# round-to-even and double precision.  Under DOS and Win32, mask all
+# round-to-even and double precision.  Under Win32, mask all
 # exceptions.  Under unix and OS/2, mask only the inexact result
 # exception.
-ifdef(`DOS',
+ifdef(`WIN32',
       `define(FP_CONTROL_WORD,HEX(023f))',
-      `ifdef(`WIN32',
-             `define(FP_CONTROL_WORD,HEX(023f))',
-             `define(FP_CONTROL_WORD,HEX(0220))')')
+      `define(FP_CONTROL_WORD,HEX(0220))')
 
 define(regs,REG(esi))
 define(rfree,REG(edi))
 define(rmask,REG(ebp))
 
 IFDASM(`.386p
-.model ifdef(`DOS',`tiny',`flat')')
+.model flat')
 
 DECLARE_DATA_SEGMENT()
 declare_alignment(2)
@@ -383,8 +363,6 @@ use_external_data(EVR(utility_table))
 
 ifdef(`WIN32',`
 use_external_data(EVR(RegistersPtr))
-',`ifdef(`DOS',`
-use_external_data(EVR(Registers))
 ',`
 define_data(Regstart)
 allocate_space(Regstart,128)
@@ -392,9 +370,6 @@ allocate_space(Regstart,128)
 define_data(Registers)
 allocate_space(Registers,eval(REGBLOCK_SIZE_IN_OBJECTS*4))
 ')
-')
-
-ifdef(`HACK_SEGMENT_REGS',`use_external_data(EVR(winnt_address_delta))')
 
 define_data(i387_presence)
 allocate_longword(i387_presence)
@@ -405,50 +380,16 @@ allocate_longword(C_Stack_Pointer)
 define_data(C_Frame_Pointer)
 allocate_longword(C_Frame_Pointer)
 
-ifdef(`HACK_SEGMENT_REGS',`
-
-define_data(Scheme_Transfer_Address)
-allocate_longword(Scheme_Transfer_Address)
-
-define_data(Scheme_Code_Segment_Selector)
-allocate_word(Scheme_Code_Segment_Selector)
-
-define_data(Scheme_Data_Segment_Selector)
-allocate_word(Scheme_Data_Segment_Selector)
-
-define_data(Scheme_Stack_Segment_Selector)
-allocate_word(Scheme_Stack_Segment_Selector)
-
-define_data(C_Code_Segment_Selector)
-allocate_word(C_Code_Segment_Selector)
-
-define_data(C_Data_Segment_Selector)
-allocate_word(C_Data_Segment_Selector)
-
-define_data(C_Extra_Segment_Selector)
-allocate_word(C_Extra_Segment_Selector)
-
-define_data(C_Stack_Segment_Selector)
-allocate_word(C_Stack_Segment_Selector)
-
-IF_WIN32(`define(LRET,`db	0cbh')')
-IF_WIN32(`define(SEGMENT_DELTA,`EVR(winnt_address_delta)')')
-
-',`IFDOS(`
-
-define_data(C_Stack_Segment_Selector)
-allocate_word(C_Stack_Segment_Selector)
-
-define_data(Scheme_Stack_Segment_Selector)
-allocate_word(Scheme_Stack_Segment_Selector)
-
-')')
-
 IFOS2(`define(CALLER_ALLOCS_STRUCT_RETURN,1)')
 IF_LINUX_ELF(`define(CALLER_ALLOCS_STRUCT_RETURN,1)')
 
-IFDOS(`define(`STATIC_STRUCT_RETURN',1)')
 IF_WIN32(`ifdef(`WCC386', `define(`STATIC_STRUCT_RETURN',1)')')
+
+define_data(ia32_cpuid_supported)
+allocate_longword(ia32_cpuid_supported)
+
+define_data(ia32_cpuid_needed)
+allocate_longword(ia32_cpuid_needed)
 
 DECLARE_CODE_SEGMENT()
 declare_alignment(2)
@@ -456,42 +397,6 @@ declare_alignment(2)
 define_c_label(i386_interface_initialize)
 	OP(push,l)	REG(ebp)
 	OP(mov,l)	TW(REG(esp),REG(ebp))
-
-							# Initialize selectors
-ifdef(`HACK_SEGMENT_REGS',`
-	OP(lea,l)	TW(ABS(cross_segment_transfer_point),REG(eax))
-	OP(mov,l)	TW(REG(eax),EVR(Scheme_Transfer_Address))
-	OP(mov,w)	TW(REG(es),EVR(C_Extra_Segment_Selector)) # This assumes it is constant
-
-	OP(mov,w)	TW(REG(cs),EVR(C_Code_Segment_Selector))
-	OP(mov,w)	TW(EVR(Scheme_Code_Segment_Selector),REG(ax))
-	OP(cmp,w)	TW(IMM(0),REG(ax))
-	jne		skip_code_assignment
-	OP(mov,w)	TW(REG(cs),EVR(Scheme_Code_Segment_Selector))
-skip_code_assignment:
-
-	OP(mov,w)	TW(REG(ds),EVR(C_Data_Segment_Selector))
-	OP(mov,w)	TW(EVR(Scheme_Data_Segment_Selector),REG(ax))
-	OP(cmp,w)	TW(IMM(0),REG(ax))
-	jne		skip_data_assignment
-	OP(mov,w)	TW(REG(ds),EVR(Scheme_Data_Segment_Selector))
-skip_data_assignment:
-
-	OP(mov,w)	TW(REG(ss),EVR(C_Stack_Segment_Selector))
-	OP(mov,w)	TW(EVR(Scheme_Stack_Segment_Selector),REG(ax))
-	OP(cmp,w)	TW(IMM(0),REG(ax))
-	jne		skip_stack_assignment
-	OP(mov,w)	TW(REG(ds),EVR(Scheme_Stack_Segment_Selector))
-skip_stack_assignment:
-',`IFDOS(`
-	OP(mov,w)	TW(REG(ss),EVR(C_Stack_Segment_Selector))
-	OP(mov,w)	TW(EVR(Scheme_Stack_Segment_Selector),REG(ax))
-	OP(cmp,w)	TW(IMM(0),REG(ax))
-	jne		skip_stack_assignment
-	OP(mov,w)	TW(REG(ds),EVR(Scheme_Stack_Segment_Selector))
-skip_stack_assignment:
-')
-')
 	OP(xor,l)	TW(REG(eax),REG(eax))		# No 387 available
 
 # Unfortunately, the `movl cr0,ecx' instruction is privileged.
@@ -514,6 +419,102 @@ IF387(`
 i386_initialize_no_fp:
 ')
 	OP(mov,l)	TW(REG(eax),ABS(EVR(i387_presence)))
+
+# Do a bunch of hair to determine if we need to do cache synchronization.
+# First, test to see if the CPUID instruction is supported.
+
+	OP(xor,l)	TW(REG(eax),REG(eax))
+	OP(mov,l)	TW(REG(eax),ABS(EVR(ia32_cpuid_supported)))
+	OP(mov,l)	TW(REG(eax),ABS(EVR(ia32_cpuid_needed)))
+	pushfd
+	OP(pop,l)	REG(eax)
+	OP(mov,l)	TW(REG(eax),REG(ecx))
+	OP(xor,l)	TW(IMM(HEX(00040000)),REG(eax))
+	OP(push,l)	REG(eax)
+	popfd
+	pushfd
+	OP(pop,l)	REG(eax)
+	OP(xor,l)	TW(REG(ecx),REG(eax))
+	jz		no_cpuid_instr
+
+# Restore original EFLAGS.
+
+	OP(push,l)	REG(ecx)
+	popfd
+
+# Now we know that cpuid is supported.
+
+	OP(mov,l)	TW(IMM(HEX(00000001)),ABS(EVR(ia32_cpuid_supported)))
+
+# By default, use CPUID for synchronization.
+# We will disable this for known processors.
+
+	OP(mov,l)	TW(IMM(HEX(00000001)),ABS(EVR(ia32_cpuid_needed)))
+
+# Next, use the CPUID instruction to determine the processor type.
+
+	OP(push,l)	REG(ebx)
+	OP(xor,l)	TW(REG(eax),REG(eax))
+	cpuid
+
+# Check that CPUID accepts argument 1.
+
+	OP(cmp,l)	TW(IMM(HEX(00000001)),REG(eax))
+	jl		done_setting_up_cpuid
+
+# Detect "GenuineIntel".
+
+	OP(cmp,l)	TW(IMM(HEX(756e6547)),REG(ebx))
+	jne		not_intel_cpu
+	OP(cmp,l)	TW(IMM(HEX(49656e69)),REG(edx))
+	jne		not_intel_cpu
+	OP(cmp,l)	TW(IMM(HEX(6c65746e)),REG(ecx))
+	jne		not_intel_cpu
+
+# For CPU families 4 (486), 5 (Pentium), or 6 (Pentium Pro, Pentium
+# II, Pentium III), don't use CPUID synchronization.
+
+	OP(mov,l)	TW(IMM(HEX(01)),REG(eax))
+	cpuid
+	OP(shr,l)	TW(IMM(HEX(08)),REG(eax))
+	OP(and,l)	TW(IMM(HEX(0000000F)),REG(eax))
+	OP(cmp,l)	TW(IMM(HEX(4)),REG(eax))
+	jl		done_setting_up_cpuid
+	OP(cmp,l)	TW(IMM(HEX(6)),REG(eax))
+	jg		done_setting_up_cpuid
+
+	jmp		cpuid_not_needed
+
+not_intel_cpu:
+
+# Detect "AuthenticAMD".
+
+	OP(cmp,l)	TW(IMM(HEX(68747541)),REG(ebx))
+	jne		not_amd_cpu
+	OP(cmp,l)	TW(IMM(HEX(69746e65)),REG(edx))
+	jne		not_amd_cpu
+	OP(cmp,l)	TW(IMM(HEX(444d4163)),REG(ecx))
+	jne		not_amd_cpu
+
+# For CPU families 4 (Am486, Am586) or 5 (K5, K6), don't use CPUID
+# synchronization.
+
+	OP(mov,l)	TW(IMM(HEX(01)),REG(eax))
+	cpuid
+	OP(shr,l)	TW(IMM(HEX(08)),REG(eax))
+	OP(and,l)	TW(IMM(HEX(0000000F)),REG(eax))
+	OP(cmp,l)	TW(IMM(HEX(4)),REG(eax))
+	jl		done_setting_up_cpuid
+	OP(cmp,l)	TW(IMM(HEX(5)),REG(eax))
+	jg		done_setting_up_cpuid
+
+cpuid_not_needed:
+	OP(mov,l)	TW(IMM(HEX(00000000)),ABS(EVR(ia32_cpuid_needed)))
+
+not_amd_cpu:
+done_setting_up_cpuid:
+	OP(pop,l)	REG(ebx)
+no_cpuid_instr:
 	leave
 	ret
 
@@ -534,8 +535,6 @@ define_c_label(C_to_interface)
 ifdef(`WIN32',
 `	OP(mov,l)	TW(ABS(EVR(RegistersPtr)),regs)',
 `	OP(lea,l)	TW(ABS(EVR(Registers)),regs)')
-ifdef(`HACK_SEGMENT_REGS',
-`	OP(sub,l)	TW(SEGMENT_DELTA,regs)')
 	jmp	EPFR(interface_to_scheme)
 
 define_hook_label(trampoline_to_interface)
@@ -564,49 +563,8 @@ IF387(`
 	ffree	ST(7)
 scheme_to_interface_proceed:
 ')
-ifdef(`HACK_SEGMENT_REGS',
-`	OP(push,l)	LOF(36,regs)			# 4th utility arg
-	OP(push,l)	REG(eax)			# Save utility index
-
-	OP(mov,w)	TW(REG(es),REG(ax))		# C ds
-	OP(mov,w)	TW(REG(ax),REG(ds))
-
-	OP(mov,w)	TW(EVR(C_Extra_Segment_Selector),REG(ax)) # C es
-	OP(mov,w)	TW(REG(ax),REG(es))
-
-# Map Free to C data space
-	OP(add,l)	TW(SEGMENT_DELTA,rfree)
+	OP(mov,l)	TW(REG(esp),EVR(Ext_Stack_Pointer))
 	OP(mov,l)	TW(rfree,EVR(Free))
-
-# Map SP to C data space
-	OP(mov,l)	TW(REG(esp),REG(eax))
-	OP(add,l)	TW(SEGMENT_DELTA,REG(eax))
-	OP(mov,l)	TW(REG(eax),EVR(Ext_Stack_Pointer))
-
-# Switch stack segment
-	OP(mov,w)	TW(EVR(C_Stack_Segment_Selector),REG(ss))
-	OP(mov,l)	TW(EVR(C_Stack_Pointer),REG(esp))
-	OP(mov,l)	TW(EVR(C_Frame_Pointer),REG(ebp))
-
-	OP(xor,l)	TW(REG(eax),REG(eax))
-	OP(mov,w)	TW(EVR(C_Code_Segment_Selector),REG(ax))
-	OP(push,l)	REG(eax)
-	OP(push,l)	EVR(Scheme_Transfer_Address)
-	LRET
-
-cross_segment_transfer_point:
-ifdef(`CALLER_ALLOCS_STRUCT_RETURN',`
-	OP(sub,l)	TW(IMM(8),REG(esp))	# alloc space for struct return
-')
-	OP(mov,l)	TW(EVR(Ext_Stack_Pointer),REG(eax))
-	OP(push,l)	LOF(4,REG(eax))			# 4th utility arg
-	OP(add,l)	TW(IMM(8),EVR(Ext_Stack_Pointer))
-	OP(mov,l)	TW(IND(REG(eax)),REG(eax))	# utility index
-',
-`	OP(mov,l)	TW(REG(esp),EVR(Ext_Stack_Pointer))
-	OP(mov,l)	TW(rfree,EVR(Free))
-
-IFDOS(`	OP(mov,w)	TW(EVR(C_Stack_Segment_Selector),REG(ss))')	# Swap stack segments
 
 	OP(mov,l)	TW(EVR(C_Stack_Pointer),REG(esp))
 	OP(mov,l)	TW(EVR(C_Frame_Pointer),REG(ebp))
@@ -615,7 +573,7 @@ ifdef(`CALLER_ALLOCS_STRUCT_RETURN',`
 	OP(sub,l)	TW(IMM(8),REG(esp))	# alloc space for struct return
 ')
 	OP(push,l)	LOF(REGBLOCK_UTILITY_ARG4(),regs) # Utility args
-')
+
 	OP(push,l)	REG(ebx)
 	OP(push,l)	REG(edx)
 	OP(push,l)	REG(ecx)
@@ -663,45 +621,15 @@ IF387(`
 	ffree	ST(7)
 interface_to_scheme_proceed:
 ')
-ifdef(`HACK_SEGMENT_REGS',
-`	OP(mov,l)	TW(EVR(Free),rfree)
-	OP(sub,l)	TW(SEGMENT_DELTA,rfree)
-	OP(mov,l)	TW(IMM(ADDRESS_MASK),rmask)
-
-	OP(mov,l)	TW(EVR(Ext_Stack_Pointer),REG(eax)) # Switch stacks
-	OP(sub,l)	TW(SEGMENT_DELTA,REG(eax))
-	OP(mov,w)	TW(EVR(Scheme_Stack_Segment_Selector),REG(ss))
-	OP(mov,l)	TW(REG(eax),REG(esp))
-
-	OP(sub,l)	TW(SEGMENT_DELTA,REG(edx))	# Entry point to new space
-	OP(xor,l)	TW(REG(ecx),REG(ecx))		# Setup cross-segment jump
-	OP(mov,w)	TW(EVR(Scheme_Code_Segment_Selector),REG(cx))
-
-	OP(mov,w)	TW(REG(ds),REG(ax))		# Store C ds in es,
-	OP(mov,w)	TW(REG(ax),REG(es))		#  unused by Scheme.
-	OP(mov,w)	TW(EVR(Scheme_Data_Segment_Selector),REG(ax)) # Switch data segments
-	OP(mov,w)	TW(REG(ax),REG(ds))
-
-	OP(push,l)	REG(ecx)
-	OP(push,l)	REG(edx)
-
-	OP(mov,l)	TW(LOF(REGBLOCK_VAL(),regs),REG(eax)) # Value/dynamic link
-	OP(mov,l)	TW(REG(eax),REG(ecx))		# Preserve if used
-	OP(and,l)	TW(rmask,REG(ecx))		# Restore potential dynamic link
-	OP(mov,l)	TW(REG(ecx),LOF(REGBLOCK_DLINK(),regs))
-	LRET						# Perform cross-segment jump
-',
-`	OP(mov,l)	TW(EVR(Free),rfree)		# Free pointer = %edi
+	OP(mov,l)	TW(EVR(Free),rfree)		# Free pointer = %edi
 	OP(mov,l)	TW(LOF(REGBLOCK_VAL(),regs),REG(eax)) # Value/dynamic link
 	OP(mov,l)	TW(IMM(ADDRESS_MASK),rmask)	# = %ebp
-
-IFDOS(`	OP(mov,w)	TW(EVR(Scheme_Stack_Segment_Selector),REG(ss))') # Swap stack segments
 
 	OP(mov,l)	TW(EVR(Ext_Stack_Pointer),REG(esp))
 	OP(mov,l)	TW(REG(eax),REG(ecx))		# Preserve if used
 	OP(and,l)	TW(rmask,REG(ecx))		# Restore potential dynamic link
 	OP(mov,l)	TW(REG(ecx),LOF(REGBLOCK_DLINK(),regs))
-	jmp		IJMP(REG(edx))')
+	jmp		IJMP(REG(edx))
 
 IF_WIN32(`
 use_external_code(EFR(WinntExceptionTransferHook))
@@ -729,6 +657,28 @@ interface_to_C_proceed:')
 	OP(pop,l)	REG(esi)			#  registers
 	OP(pop,l)	REG(edi)
 	leave
+	ret
+
+define_c_label(ia32_cache_synchronize)
+	OP(push,l)	REG(ebp)
+	OP(mov,l)	TW(REG(esp),REG(ebp))
+	OP(push,l)	REG(ebx)
+	OP(xor,l)	TW(REG(eax),REG(eax))
+	cpuid
+	OP(pop,l)	REG(ebx)
+	leave
+	ret
+
+### Conditionally run the CPUID instruction for serialization.
+
+define_hook_label(conditionally_serialize)
+	OP(cmp,l)	TW(IMM(0),ABS(EVR(ia32_cpuid_needed)))
+	je	asm_conditionally_serialize_done
+	pusha
+	OP(xor,l)	TW(REG(eax),REG(eax))
+	cpuid
+	popa
+asm_conditionally_serialize_done:
 	ret
 
 ###	Assembly language hooks used to reduce code size.

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.94 2001/08/07 01:25:51 cph Exp $
+$Id: cmpint.c,v 1.95 2001/12/16 06:01:32 cph Exp $
 
 Copyright (c) 1989-2001 Massachusetts Institute of Technology
 
@@ -1014,7 +1014,7 @@ DEFUN (compiler_link_closure_pattern, (distance, block, offset),
     closptr ++;
     count = (MANIFEST_CLOSURE_COUNT (closptr));
     word_ptr = (FIRST_MANIFEST_CLOSURE_ENTRY (closptr));
-    area_end = (MANIFEST_CLOSURE_END (closptr, count));
+    area_end = ((MANIFEST_CLOSURE_END (closptr, count)) - 1);
     while ((--count) >= 0)
     {
       closptr = ((SCHEME_OBJECT *) word_ptr);

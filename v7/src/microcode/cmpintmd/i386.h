@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: i386.h,v 1.32 2000/12/05 21:23:50 cph Exp $
+$Id: i386.h,v 1.33 2001/12/16 06:01:33 cph Exp $
 
-Copyright (c) 1992-2000 Massachusetts Institute of Technology
+Copyright (c) 1992-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /*
@@ -47,6 +48,15 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #    define ASM_ENTRY_POINT(name) name
 #  endif
 #endif
+
+extern void EXFUN (ia32_cache_synchronize, (void));
+extern int ia32_cpuid_needed;
+
+#define IA32_CACHE_SYNCHRONIZE()					\
+{									\
+  if (ia32_cpuid_needed)						\
+    ia32_cache_synchronize ();						\
+}
 
 /*
 
@@ -447,6 +457,7 @@ extern long i386_pc_displacement_relocation;
   *PC++ = 0xff;				/* CALL */			\
   *PC++ = 0x96;				/* /2 disp32(ESI) */		\
   (* ((unsigned long *) PC)) = ESI_TRAMPOLINE_TO_INTERFACE_OFFSET;	\
+  IA32_CACHE_SYNCHRONIZE ();						\
 } while (0)
 
 #define TRAMPOLINE_ENTRY_POINT(tramp_block)				\
@@ -455,6 +466,22 @@ extern long i386_pc_displacement_relocation;
 #define TRAMPOLINE_STORAGE(tramp_entry)					\
   ((((SCHEME_OBJECT *) (tramp_entry)) - TRAMPOLINE_BLOCK_TO_ENTRY) +	\
    (2 + TRAMPOLINE_ENTRY_SIZE)) 
+
+#define FLUSH_I_CACHE() do						\
+{									\
+  IA32_CACHE_SYNCHRONIZE ();						\
+} while (0)
+
+#define FLUSH_I_CACHE_REGION(address, nwords) do			\
+{									\
+  IA32_CACHE_SYNCHRONIZE ();						\
+} while (0)
+
+#define PUSH_D_CACHE_REGION(address, nwords) do				\
+{									\
+  IA32_CACHE_SYNCHRONIZE ();						\
+} while (0)
+
 
 /* These must aggree with cmpaux-i386.m4!
    The register block is actually allocated there.
@@ -604,6 +631,7 @@ DEFUN_VOID (i386_reset_hook)
   SETUP_REGISTER (asm_sc_apply_size_7);			/* -10 */
   SETUP_REGISTER (asm_sc_apply_size_8);			/* -9 */
   SETUP_REGISTER (asm_interrupt_continuation_2);	/* -8 */
+  SETUP_REGISTER (asm_conditionally_serialize);		/* -7 */
 
 #ifdef _MACH_UNIX
   {
