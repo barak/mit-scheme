@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infutl.scm,v 1.51 1993/11/21 00:41:49 gjr Exp $
+$Id: infutl.scm,v 1.52 1993/11/21 01:05:57 gjr Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -228,27 +228,30 @@ MIT in each case. |#
 		   (compiled-code-block/debugging-info block)
 		   com-pathname)))
 	     (set-compiled-code-block/debugging-info! block binf-filename)
-	     binf-filename))))
+	     binf-filename)))
+	(process-subblocks
+	 (lambda (blocks start binf-filename)
+	   (let ((end (vector-length blocks)))
+	     (let loop ((index 1))
+	       (if (< index end)
+		   (begin
+		     (set-car! (compiled-code-block/debugging-info
+				(vector-ref blocks index))
+			       binf-filename)
+		     (loop (1+ index)))))))))
+
     (cond ((compiled-code-address? value)
-	   (process-block (compiled-code-address->block value)))
+	   (let ((binf-filename
+		  (process-block (compiled-code-address->block value)))
+		 (blocks (load/purification-root value)))
+	     (if (vector? blocks)
+		 (process-subblocks blocks 0 binf-filename))))
 	  ((and (comment? value)
 		(dbg-info-vector? (comment-text value)))
 	   (let ((blocks (dbg-info-vector/blocks-vector (comment-text value))))
-	     (let ((binf-filename (process-block (vector-ref blocks 0)))
-		   (end (vector-length blocks)))
-	       (let loop ((index 1))
-		 (if (< index end)
-		     (begin
-		       (set-car! (compiled-code-block/debugging-info
-				  (vector-ref blocks index))
-				 binf-filename)
-		       (loop (1+ index))))))))
-	  ((vector? value)
-	   (for-each-vector-element
-	    value
-	    (lambda (el)
-	      (if (compiled-code-block? el)
-		  (process-block el))))))))
+	     (process-subblocks blocks
+				1
+				(process-block (vector-ref blocks 0))))))))
 
 (define (process-binf-filename binf-filename com-pathname)
   (and binf-filename
