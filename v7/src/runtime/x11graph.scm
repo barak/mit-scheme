@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: x11graph.scm,v 1.33 1993/09/15 04:14:15 adams Exp $
+$Id: x11graph.scm,v 1.34 1993/09/15 20:55:26 adams Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -293,10 +293,11 @@ MIT in each case. |#
 (define (x-graphics/open-display name)
   (let ((name
 	 (cond ((not name)
-		(let ((name (get-environment-variable "DISPLAY")))
-		  (if (not name)
-		      (error "No DISPLAY environment variable."))
-		  name))
+		(or x-graphics-default-display-name
+		    (let ((name (get-environment-variable "DISPLAY")))
+		      (if (not name)
+			  (error "No DISPLAY environment variable."))
+		      name)))
 	       ((string? name)
 		name)
 	       (else
@@ -535,7 +536,8 @@ MIT in each case. |#
 		     "")))
 
 
-(define default-geometry "512x512")
+(define x-graphics-default-geometry "512x512")
+(define x-graphics-default-display-name #f)
 
 (define (x-graphics/open #!optional display geometry suppress-map?)
   (let ((display
@@ -551,7 +553,9 @@ MIT in each case. |#
 	(let ((xw
 	       (x-graphics-open-window
 		 (x-display/xd display)
-		 (if (default-object? geometry) default-geometry geometry)
+		 (if (default-object? geometry) 
+		     x-graphics-default-geometry
+		     geometry)
 		 (vector #f resource class))))
 	  (x-window-set-event-mask xw event-mask:normal)
 	  (let ((window (make-x-window xw display)))
