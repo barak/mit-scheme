@@ -1,5 +1,5 @@
 \input texinfo @c -*-texinfo-*-
-@comment $Id: imail.texinfo,v 1.35 2004/10/16 23:43:06 cph Exp $
+@comment $Id: imail.texinfo,v 1.36 2004/10/17 02:10:39 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename mit-scheme-imail
 @set EDITION 1.8
@@ -17,7 +17,6 @@ manual describes how to use @acronym{IMAIL}, what features it provides
 for viewing and editing email, and how to customize its optional
 behavior.
 
-@noindent
 Copyright @copyright{} 2000,2001,2002,2003 Massachusetts Institute of Technology@*
 Copyright @copyright{} 2004 Massachusetts Institute of Technology
 
