@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: fill.scm,v 1.69 2000/09/06 04:01:05 cph Exp $
+;;; $Id: fill.scm,v 1.70 2000/09/06 15:21:28 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -296,47 +296,58 @@ the distance between the end of the text and `fill-column'."
     (lambda (p-start p-end fill-prefix)
       (fill-region-as-paragraph p-start p-end fill-prefix
 				fill-column justify?))))
-
+
 (define (operate-on-individual-paragraphs start end mail? operator)
-  (let ((start (mark-right-inserting-copy start))
+  (let ((point (mark-left-inserting-copy start))
+	(pend (mark-left-inserting-copy start))
 	(end (mark-left-inserting-copy end))
-	(point (mark-left-inserting-copy start))
-	(pend (mark-left-inserting-copy start)))
+	(paragraph-separate (ref-variable paragraph-separate start))
+	(compute-prefix
+	 (lambda (point)
+	   (let ((ls (line-start point 0)))
+	     (or (and (ref-variable adaptive-fill-mode point)
+		      (fill-context-prefix ls (line-end point 0) ""))
+		 (extract-string ls point))))))
+    (if (and mail? (re-search-forward "^[ \t]*[^ \t\n]*:" point end #f))
+	(move-mark-to! point (or (search-forward "\n\n" point end #f) end)))
     (let loop ()
-      (move-mark-to! point (skip-chars-forward " \t\n" point end))
+      (move-mark-to!
+       point
+       (let skip-separators ((mark point))
+	 (cond ((mark>= mark end) end)
+	       ((let* ((ls (skip-chars-forward " \t" mark end))
+		       (fill-prefix
+			(and (ref-variable adaptive-fill-mode ls)
+			     (fill-context-prefix ls (line-end ls 0) ""))))
+		  (if fill-prefix
+		      (let ((fp (match-forward fill-prefix ls end #f)))
+			(or (not fp)
+			    (re-match-forward paragraph-separate fp end #f)))
+		      (re-match-forward paragraph-separate ls end #f)))
+		(skip-separators (line-start mark 1 'LIMIT)))
+	       (else mark))))
+      (move-mark-to! point (skip-chars-forward " \t" point end))
       (if (mark< point end)
-	  (let ((fill-prefix
-		 (let ((ls (line-start point 0)))
-		   (or (and (ref-variable adaptive-fill-mode point)
-			    (or (let ((le (line-end point 1 #f)))
-				  (and le
-				       (fill-context-prefix ls le "")))
-				(fill-context-prefix ls (line-end point 0)
-						     "")))
-		       (extract-string ls point)))))
-	    (move-mark-to! pend
-			   (or (forward-one-paragraph point end fill-prefix)
-			       end))
-	    (let ((m
-		   (if mail?
-		       (let loop ((m point))
-			 (let ((m*
-				(re-search-forward "^[ \t]*[^ \t\n]*:" m pend
-						   #f)))
-			   (if m*
-			       (let ((m* (line-end m* 0)))
-				 (if (mark< m* pend)
-				     (loop (mark1+ m*))
-				     pend))
-			       m)))
-		       point)))
-	      (if (mark= m point)
+	  (let ((fill-prefix (compute-prefix point)))
+	    (let find-end ((le (line-end point 0 'ERROR)))
+	      (let ((ls
+		     (and (mark< le end)
+			  (skip-chars-forward " \t"
+					      (line-start le 1 'ERROR)
+					      end))))
+		(if (and ls
+			 (mark< ls end)
+			 (let ((m (match-forward fill-prefix ls)))
+			   (and m
+				(not (paragraph-start? m end))))
+			 (string=? (compute-prefix ls) fill-prefix))
+		    (find-end (line-end ls 0 'ERROR))
+		    (move-mark-to! pend le))))
+	    (operator point pend fill-prefix)
+	    (let ((ls (line-start pend 1 #f)))
+	      (if (and ls (mark< ls end))
 		  (begin
-		    (operator point pend fill-prefix)
-		    (move-mark-to! point pend)
-		    (loop))
-		  (begin
-		    (move-mark-to! point m)
+		    (move-mark-to! point ls)
 		    (loop)))))))
     (mark-temporary! pend)
     (mark-temporary! point)

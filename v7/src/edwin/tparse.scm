@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: tparse.scm,v 1.73 2000/09/06 15:15:42 cph Exp $
+;;; $Id: tparse.scm,v 1.74 2000/09/06 15:21:39 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -105,6 +105,10 @@ This is desirable in modes where blank lines are the paragraph delimiters."
   (let ((regexp "[ \t\f]*$"))
     (local-set-variable! paragraph-start regexp buffer)
     (local-set-variable! paragraph-separate regexp buffer)))
+
+(define (paragraph-start? start end)
+  (or (re-match-forward (ref-variable paragraph-start start) start end #f)
+      (re-match-forward (ref-variable paragraph-separate start) start end #f)))
 
 (define (forward-one-paragraph mark #!optional limit fill-prefix)
   (let ((limit
