@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: chrsyn.scm,v 1.1 1999/05/13 03:04:36 cph Exp $
+;;; $Id: chrsyn.scm,v 1.2 2000/11/20 13:25:28 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -51,7 +51,8 @@
     (cond ((char? char)
 	   (vector-set! entries (char->ascii char) entry))
 	  ((char-set? char)
-	   (for-each (lambda (ascii) (vector-set! entries ascii entry))
+	   (for-each (lambda (char)
+		       (vector-set! entries (char->ascii char) entry))
 		     (char-set-members char)))
 	  (else
 	   (error:wrong-type-argument char "character" 'SET-CHAR-SYNTAX!)))))
