@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: hlpcom.scm,v 1.109 1999/01/02 06:11:34 cph Exp $
+;;; $Id: hlpcom.scm,v 1.110 2000/02/23 22:44:50 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -347,52 +347,77 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 	(end (string-length string)))
     (letrec
 	((find-escape
-	  (lambda (start*)
+	  (lambda (start* comtabs)
 	    (let loop ((start start*))
 	      (let ((index (substring-find-next-char string start end #\\)))
 		(if (not index)
 		    (list (substring string start* end))
-		    (let ((next (+ index 1)))
-		      (cond ((= next end)
+		    (let ((next (fix:+ index 1)))
+		      (cond ((fix:= next end)
 			     (list (substring string start* end)))
 			    ((char=? #\[ (string-ref string next))
-			     (cons (substring string start* index)
-				   (subst-key (+ next 1))))
+			     (find-terminator start* index #\]
+					      subst-key comtabs))
+			    ((char=? #\{ (string-ref string next))
+			     (find-terminator start* index #\]
+					      show-bindings comtabs))
+			    ((char=? #\< (string-ref string next))
+			     (find-terminator start* index #\>
+					      new-mode comtabs))
 			    ((char=? #\= (string-ref string next))
 			     (cons (substring string start* index)
-				   (quote-next (+ next 1))))
+				   (quote-next (fix:+ next 1) comtabs)))
 			    (else
 			     (loop next)))))))))
+	 (find-terminator
+	  (lambda (start slash char procedure comtabs)
+	    (cons (substring string start slash)
+		  (let ((start (fix:+ slash 2)))
+		    (let ((terminator
+			   (substring-find-next-char string start end char)))
+		      (if (not terminator)
+			  (error "Missing terminator character:" char))
+		      (procedure (substring string start terminator)
+				 (fix:+ terminator 1)
+				 comtabs))))))
 	 (subst-key
-	  (lambda (start)
-	    (let ((index (substring-find-next-char string start end #\])))
-	      (if (not index)
-		  (error "SUBSTITUTE-COMMAND-KEYS: Missing ]")
-		  (cons (command->key-name
-			 (name->command (substring string start index))
-			 buffer)
-			(find-escape (+ index 1)))))))
+	  (lambda (argument next comtabs)
+	    (cons (let ((command (name->command argument 'ERROR)))
+		    (let ((bindings (comtab-key-bindings comtabs command)))
+		      (if (null? bindings)
+			  (string-append "M-x " (command-name-string command))
+			  (xkey->name (car bindings)))))
+		  (find-escape next comtabs))))
+	 (show-bindings
+	  (lambda (argument next comtabs)
+	    comtabs
+	    (cons (let ((port (make-accumulator-output-port)))
+		    (describe-bindings
+		     (mode-comtabs (name->mode argument 'ERROR))
+		     port)
+		    (newline port)
+		    (get-output-from-accumulator port))
+		  (find-escape next comtabs))))
+	 (new-mode
+	  (lambda (argument next comtabs)
+	    (find-escape next
+			 (mode-comtabs (name->mode arguments 'ERROR)))))
 	 (quote-next
-	  (lambda (start)
-	    (if (= start end)
+	  (lambda (start comtabs)
+	    (if (fix:= start end)
 		(finish start)
-		(let ((next (+ start 1)))
+		(let ((next (fix:+ start 1)))
 		  (if (char=? #\\ (string-ref string start))
-		      (if (= next end)
+		      (if (fix:= next end)
 			  (finish start)
-			  (continue start (+ next 1)))
-		      (continue start next))))))
+			  (continue start (fix:+ next 1) comtabs))
+		      (continue start next comtabs))))))
 	 (continue
-	  (lambda (start end)
+	  (lambda (start end comtabs)
 	    (cons (substring string start end)
-		  (find-escape end))))
+		  (find-escape end comtabs))))
 	 (finish
 	  (lambda (start)
 	    (list (substring string start end)))))
-      (apply string-append (find-escape 0)))))
-
-(define (command->key-name command buffer)
-  (let ((bindings (comtab-key-bindings (buffer-comtabs buffer) command)))
-    (if (null? bindings)
-	(string-append "M-x " (command-name-string command))
-	(xkey->name (car bindings)))))
+      (apply string-append
+	     (find-escape 0 (buffer-comtabs buffer))))))
