@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: floppy.scm,v 1.21 1998/01/22 23:28:54 cph Exp $
+$Id: floppy.scm,v 1.22 1998/01/23 00:04:52 cph Exp $
 
 Copyright (c) 1992-98 Massachusetts Institute of Technology
 
@@ -381,7 +381,7 @@ then answer \"yes\" to the prompt below.")
   (call-with-temporary-buffer " *mediainit-floppy*"
     (lambda (buffer)
       (let ((result
-	     (shell-command false (buffer-start buffer) false false
+	     (shell-command #f (cons (buffer-start buffer) #t) #f #f
 			    mediainit-command))
 	    (lose
 	     (lambda (condition-type)
@@ -422,7 +422,7 @@ then answer \"yes\" to the prompt below.")
   (call-with-temporary-buffer " *make-floppy-fs*"
     (lambda (buffer)
       (if (equal? '(EXITED . 0)
-		  (shell-command false (buffer-start buffer) false false
+		  (shell-command #f (cons (buffer-start buffer) #t) #f #f
 				 make-floppy-fs-command))
 	  (append-string "done")
 	  (error condition-type:floppy-error
@@ -753,7 +753,7 @@ M-x rename-file, or use the `r' command in Dired.")
     (lambda (buffer)
       (let ((result
 	     (apply run-synchronous-process
-		    false (buffer-start buffer) false false
+		    #f (cons (buffer-start buffer) #t) #f #f
 		    program arguments)))
 	(let ((output
 	       (extract-string (buffer-start buffer) (buffer-end buffer))))
