@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: docstr.scm,v 1.4 2000/06/15 00:43:26 cph Exp $
+$Id: docstr.scm,v 1.5 2000/06/15 00:58:53 cph Exp $
 
 Copyright (c) 1993-2000 Massachusetts Institute of Technology
 
@@ -172,3 +172,27 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (add-event-receiver! event:after-restart
 		     (lambda () (set! *doc-string-channel* #f)))
+
+;;;; Abstraction of help descriptions
+
+(define (description? description)
+  (or (string? description)
+      (and (procedure? description)
+	   (procedure-arity-valid? description 0))))
+
+(define (description->string description)
+  (cond ((string? description) description)
+	((procedure? description) (description))
+	(else
+	 (error:wrong-type-argument description "description"
+				    'DESCRIPTION->STRING))))
+
+(define (description-first-line description)
+  (let ((string (description->string description)))
+    (let ((index (string-find-next-char string #\newline)))
+      (if index
+	  (substring string 0 index)
+	  string))))
+
+(define (description-append . descriptions)
+  (lambda () (apply string-append (map description->string descriptions))))

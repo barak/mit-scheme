@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: hlpcom.scm,v 1.119 2000/06/15 00:44:08 cph Exp $
+;;; $Id: hlpcom.scm,v 1.120 2000/06/15 00:58:43 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -324,10 +324,11 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 		       ", "
 		       (loop (cdr xkeys))))))
 
-(define (print-variable-binding variable)
-  (write-string "    which is bound to: ")
-  (write (variable-value variable))
-  (newline))
+(define (print-variable-binding variable #!optional port)
+  (let ((port (if (default-object? port) (current-output-port) port)))
+    (write-string "    which is bound to: " port)
+    (write (variable-value variable) port)
+    (newline port)))
 
 (define (print-short-description prefix description #!optional port)
   (let ((port (if (default-object? port) (current-output-port) port)))
@@ -338,28 +339,6 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 	  (write-string ": " port)))
     (write-description (description-first-line description) port)
     (newline port)))
-
-(define (description-first-line description)
-  (let ((string (description->string description)))
-    (let ((index (string-find-next-char string #\newline)))
-      (if index
-	  (substring string 0 index)
-	  string))))
-
-(define (description? description)
-  (or (string? description)
-      (and (procedure? description)
-	   (procedure-arity-valid? description 0))))
-
-(define (description->string description)
-  (cond ((string? description) description)
-	((procedure? description) (description))
-	(else
-	 (error:wrong-type-argument description "description"
-				    'DESCRIPTION->STRING))))
-
-(define (description-append . descriptions)
-  (lambda () (apply string-append (map description->string descriptions))))
 
 (define (substitute-command-keys description #!optional buffer)
   (let* ((string (description->string description))

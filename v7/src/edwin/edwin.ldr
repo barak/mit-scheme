@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.ldr,v 1.71 2000/06/15 00:36:59 cph Exp $
+$Id: edwin.ldr,v 1.72 2000/06/15 00:58:55 cph Exp $
 
 Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
@@ -129,7 +129,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(load "simple" environment)
 	(load "debuge" environment)
 	(load "modlin" (->environment '(EDWIN MODELINE-STRING)))
-	(load "hlpcom" environment)
 	(load "input" (->environment '(EDWIN KEYBOARD)))
 	(load "prompt" (->environment '(EDWIN PROMPT)))
 	(load "comred" (->environment '(EDWIN COMMAND-READER)))
@@ -219,6 +218,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(load "evlcom" environment)
 	(load "filcom" environment)
 	(load "fill" environment)
+	(load "hlpcom" environment)
 	(load "info" (->environment '(EDWIN INFO)))
 	(load "intmod" (->environment '(EDWIN INFERIOR-REPL)))
 	(load "keymap" (->environment '(EDWIN COMMAND-SUMMARY)))
