@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.15 1994/10/07 19:59:53 adams Exp $
+;;;	$Id: dos.scm,v 1.16 1994/10/07 20:04:59 adams Exp $
 ;;;
-;;;	Copyright (c) 1992-1994 Massachusetts Institute of Technology
+;;;	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -110,9 +110,11 @@ Includes the new backup.  Must be > 0."
   (define (trim-for-duplicate-device string)
     (let ((end (string-length string))
 	  (sep (char-set-union (char-set #\:)
-			       (char-set-union os/expand-char-set
-					       os/directory-char-set))))
-      (let ((colon  (substring-find-previous-char string 0 end #\:)))
+			       (char-set-union
+				os/expand-char-set
+				os/directory-char-set))))
+      (let ((colon
+	     (substring-find-previous-char string 0 end #\:)))
 	(cond ((or (not colon) (zero? colon))
 	       string)
 	      ((and (fix:< (fix:1+ colon) end)
@@ -126,7 +128,7 @@ Includes the new backup.  Must be > 0."
 			      (if (char-set-member? os/expand-char-set
 						    (string-ref string before))
 				  before
-				  (fix:+ before 1)))))
+				  (fix:1+ before)))))
 	      (else
 	       string)))))
 
@@ -137,74 +139,50 @@ Includes the new backup.  Must be > 0."
 
 (define (os/filename->display-string filename)
   (let ((name (string-copy filename)))
-    (let ((end (string-length name)))
-      (let loop ((index 0))
-	(let ((slash (substring-find-next-char name index end #\/)))
-	  (if slash
-	      (begin
-		(string-set! name slash #\\)
-		(loop (1+ slash)))))))
+    (slash->backslash! name)
     name))
-
-(define version-fill-char #\~ )
-(define version-radix 10)
 
-(define (file-name->version name version)
+(define (slash->backslash! name)
+  (let ((end (string-length name)))
+    (let loop ((index 0))
+      (let ((slash (substring-find-next-char name index end #\/)))
+        (if (not slash)
+            '()
+            (begin
+              (string-set! name slash #\\)
+	      (loop (1+ slash))))))))
+
+(define (file-type->version type version)
   (let ((version-string
 	 (and (fix:fixnum? version)
-	      (number->string version version-radix))))
+	      (number->string (fix:remainder version 1000)))))
     (if (not version-string)
 	(error "Illegal version" version)
-	(let* ((digits (string-length version-string))
-	       (version-string
-		(string-append (string version-fill-char) version-string)))
-	  (if (string? name)
-	      (let ((cut-point (min (string-length name) (- 8 digits 1))))
-		(string-append (substring name 0 cut-point)
-			       version-string))
+	(let ((version-string
+	       (string-pad-left version-string 3 #\0)))
+	  (if (string? type)
+	      (if (fix:> (string-length type) 0)
+		  (string-append (substring type 0 1)
+				 (substring version-string 1 3))
+		  version-string)
 	      version-string)))))
 
-(define (filename->version-number-index name) ; string->#F or integer
-  (and (string? name)
-       (let loop ((i (- (string-length name) 1))
-		  (first-digit #F))
-	 (cond ((< i 0)  #F)
-	       ((char->digit (string-ref name i) version-radix)
-		(loop (- i 1) i))
-	       ((and first-digit (char=? (string-ref name i) version-fill-char))
-		first-digit)
-	       (else #F)))))
-
-(define (filename+index->version-number name first-digit)
-  (substring->number name first-digit (string-length name)))
-
 (define (filename->version-number filename)
-  (let ((name (pathname-name filename)))
-    (let ((first-digit (filename->version-number-index name)))
-      (and first-digit
-	   (filename+index->version-number name first-digit)))))
+  (let ((type (pathname-type filename)))
+    (and (string? type)
+	 (fix:= (string-length type) 3)
+	 (or (string->number type)
+	     (string->number (substring type 1 3))))))
 
-(define (plausible-backup? name possible-backup) ; both filename strings
-  ;; "foolish" "foolis76" -> #F
-  ;; "foolish" "fooli~76" -> #T
-  ;; "f"       "f~76"     -> #T
-  ;; "f"       "foo~76"   -> #F
-  (let ((index  (filename->version-number-index possible-backup)))
-    (and index
-	 (let ((end  (min (string-length name) (- index 1))))
-	   (and (substring-ci=? name 0 end possible-backup 0 end)
-		(or (= (string-length possible-backup) 8) ; truncated
-		    (= end (string-length name))))))))    ; or exact match
-
 (define (os/auto-save-pathname pathname buffer)
   buffer
-  (pathname-new-name pathname
-		     (file-name->version (pathname-name pathname) 0)))
+  (pathname-new-type pathname
+		     (file-type->version (pathname-type pathname) 0)))
 
 (define (os/precious-backup-pathname pathname)
   ;; Use the autosave name for the precious backup
-  (pathname-new-name pathname
-		     (file-name->version (pathname-name pathname) 0)))
+  (pathname-new-type pathname
+		     (file-type->version (pathname-type pathname) 0)))
 
 (define (os/backup-buffer? truename)
   (let ((attrs (file-attributes truename)))
@@ -244,69 +222,59 @@ Includes the new backup.  Must be > 0."
 	
 (define (os/buffer-backup-pathname truename)
   (let ((directory (directory-namestring truename))
-	(type      (pathname-type truename))
-	(filename  (pathname-name truename)))
+	(type (pathname-type truename))
+	(filename (pathname-name truename)))
 
     (define (no-versions)
-      (values (version->pathname 0) '()))
+      (values (pathname-new-type truename (file-type->version type 0)) '()))
     (define (version->pathname version)
-      (pathname-new-name truename (file-name->version filename version)))
-
-    (define (find-plausible-backups)
-      ;; all existing files of the form XXXX~NN.YYY where XXXX and YYY match
-      ;; truename
-      (let* ((plen     (min (string-length filename)
-			    (- 8 5))) ; max version is 99999
-	     (pattern  (string-append directory
-				      (string-head filename plen)
-				      "*." type))
-	     (pathnames (directory-read pattern)))
-	(let loop ((pathnames pathnames)
-		   (found '()))
-	  ;; pathnames all have the form XXX*.YYY
-	  (if (null? pathnames)
-	      found
-	      (let* ((pathname  (car pathnames)))
-		(if (plausible-backup? filename (pathname-name pathname))
-		    (loop (cdr pathnames)
-			  (cons (file-namestring pathname) found))
-		    (loop (cdr pathnames) found)))))))
-    
-    (define (files->versions files accum)
+      (pathname-new-type truename (file-type->version type version)))
+    (define (files->versions files)
       (if (or (not files) (null? files))
-	  accum
-	  (let ((number (filename->version-number (car files))))
-	    (if number
-		(files->versions (cdr files) (cons number accum))
-		(files->versions (cdr files) accum)))))
-
+	  '()
+	  (let ((type-number (filename->version-number (car files))))
+	    (if type-number
+		(cons type-number (files->versions (cdr files)))
+		(files->versions (cdr files))))))
+	  
     (if (eq? 'NEVER (ref-variable version-control))
 	(no-versions)
-	(let ((filenames (find-plausible-backups)))
-	  (let ((versions (sort (files->versions filenames '() ) <)))
-	    (let ((high-water-mark (reduce max 0 versions)))
-	      (if (or (ref-variable version-control)
-		      (positive? high-water-mark))
-		  (values
-		   (version->pathname (+ high-water-mark 1))
-		   (let ((start (ref-variable kept-old-versions))
-			 (end (- (length versions)
-				 (1+ (ref-variable kept-new-versions)))))
-		     (if (fix:< start end)
-			 (map version->pathname
-			      (sublist versions start end))
-			 '())))
-		  (no-versions))))))))
+	(let ((search-name (string-append filename ".")))
+	  (let ((filenames
+		 (os/directory-list-completions directory search-name)))
+	    (let ((versions (sort (files->versions filenames) <)))
+	      (let ((high-water-mark (apply max (cons 0 versions))))
+		(if (or (ref-variable version-control)
+			(positive? high-water-mark))
+		    (values
+		     (version->pathname (+ high-water-mark 1))
+		     (let ((start (ref-variable kept-old-versions))
+			   (end (fix:- (length versions)
+				       (fix:-1+
+					(ref-variable kept-new-versions)))))
+		       (if (fix:< start end)
+			   (map version->pathname
+				(sublist versions start end))
+			   '())))
+		    (no-versions)))))))))
 
 (define (os/directory-list-completions directory prefix)
   (define (->directory-namestring s)
     (->namestring (pathname-as-directory (->pathname s))))
 
-  (map file-namestring
-       (directory-read
-	(string-append (->directory-namestring directory) ; "d:\\xxx\\yy\\"
-		       prefix
-		       (if (string-find-next-char prefix #\.) "*" "*.*")))))
+  (define (->directory-wildcard s)
+    (string-append (->directory-namestring s)
+		   "*.*"))
+
+  (let ((plen (string-length prefix)))
+    (let loop ((pathnames (directory-read (->directory-wildcard directory))))
+      (if (null? pathnames)
+	  '()
+	  (let ((filename (file-namestring (car pathnames))))
+	    (if (and (fix:>= (string-length filename) plen)
+		     (string-ci=? prefix (substring filename 0 plen)))
+		(cons filename (loop (cdr pathnames)))
+		(loop (cdr pathnames))))))))
 
 (define (os/directory-list directory)
   (os/directory-list-completions directory ""))
@@ -345,15 +313,18 @@ Includes the new backup.  Must be > 0."
 	 (fix:> version 0))))
 
 (define (os/numeric-backup-filename? filename)
-  (let ((name (pathname-name filename)))
-    (and (string? name)
-	 (let ((index (filename->version-number-index name)))
-	   (and index
-		(cons (->namestring
-		       (pathname-new-name filename
-					  (string-head name (- index 1))))
-		      (filename+index->version-number name index)))))))
-
+  (let ((type (pathname-type filename)))
+    (and (string? type)
+	 (fix:= (string-length type) 3)
+	 (let ((version (string->number type)))
+	   (and version
+		(cons (->namestring (pathname-new-type filename #f))
+		      version)))
+	 (let ((version (substring->number type 1 3)))
+	   (and version
+		(cons (->namestring (pathname-new-type filename
+						       (string-head type 1)))
+		      version))))))
 
 (define (os/auto-save-filename? filename)
   (let ((version (filename->version-number filename)))
@@ -510,15 +481,11 @@ Includes the new backup.  Must be > 0."
 (define (with-real-working-directory-pathname dir thunk)
   (let ((inside dir)
 	(outside false))
-    (without-interrupts
-      (lambda ()
-	(dynamic-wind
-	 (lambda ()
-	   (set! outside (working-directory-pathname))
-	   (set-working-directory-pathname! inside)
-	   ((ucode-primitive set-working-directory-pathname! 1) inside))
-	 thunk
-	 (lambda ()
-	   (set! inside (working-directory-pathname))
-	   ((ucode-primitive set-working-directory-pathname! 1) outside)
-	   (set-working-directory-pathname! outside)))))))
+    (dynamic-wind
+     (lambda ()
+       (set! outside (working-directory-pathname))
+       (set-working-directory-pathname! inside))
+     thunk
+     (lambda ()
+       (set! inside (working-directory-pathname))
+       (set-working-directory-pathname! outside)))))
