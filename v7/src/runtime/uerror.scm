@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.19 1991/02/22 21:03:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.20 1991/02/22 21:15:30 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -64,7 +64,8 @@ MIT in each case. |#
 
 (define (define-error-handler error-name handler)
   (vector-set! error-handler-vector
-	       (microcode-error/name->code error-name)
+	       (or (microcode-error/name->code error-name)
+		   (error "Unknown microcode error name:" error-name))
 	       (lambda (error-code interrupt-enables)
 		 (set-interrupt-enables! interrupt-enables)
 		 (call-with-current-continuation
@@ -689,7 +690,7 @@ MIT in each case. |#
       '()
     false))
 
-(define-fasload-error 'FASL-FILE-COMPILED-MISMATCH
+(define-fasload-error 'FASLOAD-COMPILED-MISMATCH
   condition-type:fasl-file-compiled-mismatch)
 
 (set! condition-type:fasl-file-too-big
