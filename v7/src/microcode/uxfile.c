@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxfile.c,v 1.12 2003/02/14 18:28:24 cph Exp $
+$Id: uxfile.c,v 1.13 2004/12/20 04:37:17 cph Exp $
 
-Copyright (c) 1990-2000 Massachusetts Institute of Technology
+Copyright 1990,1991,1993,1997,2000,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -177,4 +177,14 @@ DEFUN (OS_file_set_position, (channel, position),
      (UX_lseek ((CHANNEL_DESCRIPTOR (channel)), position, SEEK_SET)));
   if (result != position)
     error_external_return ();
+}
+
+void
+DEFUN (OS_file_truncate, (channel, length),
+       Tchannel channel AND
+       off_t length)
+{
+  STD_VOID_SYSTEM_CALL
+    (syscall_ftruncate,
+     (UX_ftruncate ((CHANNEL_DESCRIPTOR (channel)), length)));
 }

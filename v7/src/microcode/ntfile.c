@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntfile.c,v 1.15 2003/02/14 18:28:20 cph Exp $
+$Id: ntfile.c,v 1.16 2004/12/20 04:36:53 cph Exp $
 
-Copyright (c) 1992-1999 Massachusetts Institute of Technology
+Copyright 1993,1996,1997,1998,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -135,4 +135,11 @@ OS_file_set_position (Tchannel channel, off_t position)
     NT_error_api_call ((GetLastError ()), apicall_SetFilePointer);
   if (old_position != ((DWORD) position))
     error_external_return ();
+}
+
+void
+OS_file_truncate (Tchannel channel, off_t length)
+{
+  OS_file_set_position (channel, length);
+  STD_BOOL_API_CALL (SetEndOfFile, (CHANNEL_HANDLE (channel)));
 }

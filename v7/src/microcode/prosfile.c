@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: prosfile.c,v 1.11 2003/02/14 18:28:23 cph Exp $
+$Id: prosfile.c,v 1.12 2004/12/20 04:37:09 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright 1990,1991,1992,1993,1994,1996 Massachusetts Institute of Technology
+Copyright 2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -122,5 +123,14 @@ POSITION must be a non-negative number strictly less than the file's length.")
 {
   PRIMITIVE_HEADER (1);
   OS_file_set_position ((arg_channel (1)), (arg_nonnegative_integer (2)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("FILE-TRUNCATE", Prim_file_truncate, 2, 2,
+  "Set the length of CHANNEL to LENGTH.\n\
+LENGTH must be a non-negative number.")
+{
+  PRIMITIVE_HEADER (1);
+  OS_file_truncate ((arg_channel (1)), (arg_nonnegative_integer (2)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }

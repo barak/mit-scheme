@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: osfile.h,v 1.5 2003/02/14 18:28:22 cph Exp $
+$Id: osfile.h,v 1.6 2004/12/20 04:37:01 cph Exp $
 
-Copyright (c) 1990, 1999 Massachusetts Institute of Technology
+Copyright 1990,1993,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -37,5 +37,6 @@ extern Tchannel EXFUN (OS_open_dump_file, (CONST char * filename));
 extern off_t EXFUN (OS_file_length, (Tchannel channel));
 extern off_t EXFUN (OS_file_position, (Tchannel channel));
 extern void EXFUN (OS_file_set_position, (Tchannel channel, off_t position));
+extern void EXFUN (OS_file_truncate, (Tchannel channel, off_t length));
 
 #endif /* SCM_OSFILE_H */
