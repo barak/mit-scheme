@@ -38,7 +38,7 @@
 ;;;; RTL Common Subexpression Elimination
 ;;;  Based on the GNU C Compiler
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.96 1986/12/20 22:52:56 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.97 1986/12/21 23:44:21 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -111,10 +111,15 @@
 	      (else
 	       (lambda (volatile? insert-source!)
 		 (let ((memory-invalidate!
-			(if (destination-safe? address)
-			    (lambda () 'DONE)
-			    (memory-invalidator
-			     (expression-varies? address)))))
+			(cond ((stack-push/pop? address)
+			       (lambda () 'DONE))
+			      ((heap-allocate? address)
+			       (lambda ()
+				 (register-expression-invalidate!
+				  (rtl:address-register address))))
+			      (else
+			       (memory-invalidator
+				(expression-varies? address))))))
 		   (full-expression-hash address
 		     (lambda (hash volatile?* in-memory?*)
 		       (cond (volatile?* (memory-invalidate!))
@@ -596,15 +601,16 @@
 (define (register-expression-varies? expression)
   (not (= regnum:regs-pointer (rtl:register-number expression))))
 
-(define (destination-safe? expression)
-  ;; Pushing on the stack and consing can't invalidate anything.
-  (and (memq (rtl:expression-type expression) '(PRE-INCREMENT POST-INCREMENT))
-       (or (interpreter-stack-pointer? (rtl:address-register expression))
-	   (interpreter-free-pointer? (rtl:address-register expression)))))
-
 (define (stack-push/pop? expression)
-  (and (memq (rtl:expression-type expression) '(PRE-INCREMENT POST-INCREMENT))
+  (and (pre/post-increment? expression)
        (interpreter-stack-pointer? (rtl:address-register expression))))
+
+(define (heap-allocate? expression)
+  (and (pre/post-increment? expression)
+       (interpreter-free-pointer? (rtl:address-register expression))))
+
+(define-integrable (pre/post-increment? expression)
+  (memq (rtl:expression-type expression) '(PRE-INCREMENT POST-INCREMENT)))
 
 ;;;; Stack References
 
