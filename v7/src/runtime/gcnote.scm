@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gcnote.scm,v 14.3 1988/08/05 20:47:17 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gcnote.scm,v 14.4 1989/08/03 23:05:29 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -49,7 +49,39 @@ MIT in each case. |#
     (lambda ()
       (print-statistic statistic))))
 
-(define (print-gc-statistics)  (for-each print-statistic (gc-statistics)))
+(define (print-gc-statistics)
+  (let ((status ((ucode-primitive gc-space-status))))
+    (let ((granularity (vector-ref status 0))
+	  (write-number
+	   (lambda (n c)
+	     (write-string (string-pad-left (number->string n) c)))))
+      (let ((report-one
+	     (lambda (label low high)
+	       (let ((n-words (quotient (- high low) granularity)))
+		 (newline)
+		 (write-string
+		  (string-pad-right (string-append label ": ") 17))
+		 (write-number n-words 8)
+		 (write-string " words = ")
+		 (write-number (quotient n-words 1024) 5)
+		 (write-string " blocks")
+		 (let ((n-words (remainder n-words 1024)))
+		   (write-string " + ")
+		   (write-number n-words 4)
+		   (write-string " words"))))))
+	(let ((report-two
+	       (lambda (label low free high)
+		 (report-one (string-append label " in use") low free)
+		 (report-one (string-append label " free") free high))))
+	  (report-two "constant"
+		      (vector-ref status 1)
+		      (vector-ref status 2)
+		      (vector-ref status 3))
+	  (report-two "heap"
+		      (vector-ref status 4)
+		      (vector-ref status 5)
+		      (vector-ref status 6))))))
+  (for-each print-statistic (gc-statistics)))
 
 (define (print-statistic statistic)
   (newline)
