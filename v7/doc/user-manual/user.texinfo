@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.67 2000/03/17 17:57:34 cph Exp $
+@comment $Id: user.texinfo,v 1.68 2000/03/17 18:08:35 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -27,7 +27,7 @@ Free Documentation License".
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.67
+@subtitle Edition 1.68
 @subtitle for Scheme Release 7.5
 @subtitle 17 March 2000
 @author by Stephen Adams
@@ -4678,7 +4678,7 @@ state that prevents Edwin from running.
 @node Release Notes, Index, Edwin, Top
 @appendix Release Notes
 
-The last full release of MIT Scheme was version 7.4.7 in 1998.  This
+The previous full release of MIT Scheme was version 7.4.7 in 1998.  This
 section describes major changes that have occurred since that time.  For
 more detailed information, see the @file{RCS.log} files in the source
 code.
@@ -4688,13 +4688,51 @@ Algorithmic Language Scheme}, but not to the @cite{Revised^5 Report on
 the Algorithmic Language Scheme}.
 
 @menu
+* Recent Changes::              
 * Overall Changes::             
 * Base System Changes::         
 * Edwin Changes::               
 * Changes to the Windows Port::  
 @end menu
 
-@node Overall Changes, Base System Changes, Release Notes, Release Notes
+@node Recent Changes, Overall Changes, Release Notes, Release Notes
+@section Recent Changes
+
+These are the changes since release 7.5.0:
+
+@itemize @bullet
+@item
+Release 7.5.5 changes the implementation of @code{sort} (and
+@code{merge-sort}) when applied to lists: previously this procedure was
+recursive to a depth of half the length of the list being sorted; the
+new implementation recurses only to a depth of lg(N).  Additionally,
+this release provides new procedures @code{flo:<=}, @code{flo:>=},
+@code{flo:max} and @code{flo:min}.
+
+@item
+Release 7.5.4 fixes some bugs in the @sc{sos} object instantiation code
+(reported by Joe Marshall).  It also includes several improvements to
+Edwin: implementation of abbrevs; implementation of adaptive fill;
+change incremental search to terminate on @key{RET} rather than
+@key{ESC}; show mode-specific key bindings in @kbd{C-h m}.
+
+@item
+Release 7.5.3 fixes problems in the Windows port that caused errors when
+trying to read gzipped Info files.  This release also fixes a bug that
+prevented the code from compiling properly when using egcs or GCC 2.95.x
+under GNU/Linux.
+
+@item
+Release 7.5.2 adds support for FreeBSD; no other system is affected.
+The code for GNU/Linux has been re-compiled but should otherwise be
+unchanged.
+
+@item
+Release 7.5.1 fixes some bugs in Edwin RMAIL and in how Edwin displays
+characters with codes between @code{#x80} and @code{#xA0}.
+@end itemize
+
+@node Overall Changes, Base System Changes, Recent Changes, Release Notes
 @section Overall Changes
 
 The following changes affect the entire system:
