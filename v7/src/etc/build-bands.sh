@@ -1,8 +1,8 @@
 #!/bin/sh
 #
-# $Id: build-bands.sh,v 1.2 2002/11/20 19:46:05 cph Exp $
+# $Id: build-bands.sh,v 1.3 2003/02/12 19:42:33 cph Exp $
 #
-# Copyright (c) 2000 Massachusetts Institute of Technology
+# Copyright 2000,2003 Massachusetts Institute of Technology
 #
 # This file is part of MIT Scheme.
 #
@@ -23,30 +23,30 @@
 
 (
     cd runtime
-    ../microcode/scheme -library ../lib -fasl make.com <<EOF
+    ../microcode/scheme --library ../lib --fasl make.com <<EOF
 (disk-save "../lib/runtime.com")
 EOF
 )
 
-microcode/scheme -library lib -large <<EOF
+microcode/scheme --library lib --large <<EOF
 (load-option 'SF)
 (load-option 'COMPILER)
 (disk-save "lib/compiler.com")
 EOF
 
-microcode/scheme -library lib -compiler <<EOF
+microcode/scheme --library lib --compiler <<EOF
 (load-option 'EDWIN)
 (disk-save "lib/all.com")
 EOF
 
-microcode/scheme -library lib -large <<EOF
+microcode/scheme --library lib --large <<EOF
 (load-option 'EDWIN)
 (disk-save "lib/edwin.com")
 EOF
 
 (
     cd runtime-check
-    ../microcode/scheme -library ../lib -fasl make.com <<EOF
+    ../microcode/scheme --library ../lib --fasl make.com <<EOF
 (load-option 'EDWIN)
 (load-option 'STUDENT)
 (disk-save "../lib/6001.com")
