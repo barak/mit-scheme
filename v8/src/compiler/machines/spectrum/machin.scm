@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 1.3 1996/07/19 02:28:11 adams Exp $
+$Id: machin.scm,v 1.4 1996/07/24 03:25:54 adams Exp $
 
-Copyright (c) 1988-1994 Massachusetts Institute of Technology
+Copyright (c) 1988-1996 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,8 +34,6 @@ MIT in each case. |#
 
 ;;; Machine Model for Spectrum
 ;;; package: (compiler)
-
-;;! Changes for split fixnum tags makeed with ;;!
 
 (declare (usual-integrations))
 
@@ -495,55 +493,39 @@ MIT in each case. |#
   ;; Is there any reason that all these costs were originally >0 ?
   ;; Making 0 #F and '() all 0 cost prevents any spurious rtl cse.
   ;; *** THIS IS A BAD IDEA - it makes substitutions even though there might
-  ;;     not be rules to handle it!
-  (let ((if-integer
-	 (lambda (value)
-	   (cond ((zero? value) 1)
-		 ((fits-in-5-bits-signed? value) 2)
-		 (else 3)))))
-    (let ((if-synthesized-constant
-	   (lambda (type datum)
-	     (if-integer (make-non-pointer-literal type datum)))))
-      (case (rtl:expression-type expression)
-	((CONSTANT)
-	 (let ((value (rtl:constant-value expression)))
-	   (cond ((eq? value #F)  1)
-		 ((eq? value '()) 1)
-		 ((non-pointer-object? value)
-		  (if-synthesized-constant (object-type value)
-					   (object-datum value)))
-		 (else 3))))
-	((MACHINE-CONSTANT)
-	 (if-integer (rtl:machine-constant-value expression)))
-	((ENTRY:PROCEDURE
-	  ENTRY:CONTINUATION
-	  ASSIGNMENT-CACHE
-	  VARIABLE-CACHE
-	  OFFSET-ADDRESS
-	  BYTE-OFFSET-ADDRESS
-	  FLOAT-OFFSET-ADDRESS)
-	 3)
-	((CONS-POINTER)
-	 (and (rtl:machine-constant? (rtl:cons-pointer-type expression))
-	      (rtl:machine-constant? (rtl:cons-pointer-datum expression))
-	      (if-synthesized-constant
-	       (rtl:machine-constant-value (rtl:cons-pointer-type expression))
-	       (rtl:machine-constant-value
-		(rtl:cons-pointer-datum expression)))))
-	;; This case causes OBJECT->FIXNUM to be combined with
-	;; FIXNUM-PRED-1-ARGs and FIXNUM-PRED-2-ARGS:
-	;((OBJECT->FIXNUM)
-	; (if (rtl:register? (rtl:object->fixnum-expression expression))
-	;     0
-	;     (rtl:expression-cost (rtl:object->fixnum-expression expression))))
-	;;((OBJECT->UNSIGNED-FIXNUM)
-	;; (- (rtl:expression-cost
-	;;     (rtl:object->unsigned-fixnum-expression expression))
-	;;    1))
-	;;((FIXNUM->OBJECT)
-	;; (+ (rtl:expression-cost (rtl:fixnum->object-expression expression))
-	;;    1))
-	(else false)))))
+  ;;     not be rules to handle it! (the way to fix this is better rules).
+
+  ;; A real problem with the current cse algorithm is that the expression
+  ;; costs are independent of context, and this is hard to fix.  The
+  ;; constant `3' in a fixnum-plus is free becaus it fits in the 14
+  ;; bit literal field.  However, the same `3' is more expensive in a
+  ;; multiply instruction.
+
+  (define (if-integer value)
+    (cond ((zero? value) 1)
+	  (else 2)))
+  (define (if-synthesized-constant type datum)
+    (if-integer (make-non-pointer-literal type datum)))
+  (case (rtl:expression-type expression)
+    ((CONSTANT)
+     (let ((value (rtl:constant-value expression)))
+       (cond ((eq? value #F)  1)
+	     ((eq? value '()) 1)
+	     ((non-pointer-object? value)
+	      (if-synthesized-constant (object-type value)
+				       (object-datum value)))
+	     (else 3))))
+    ((MACHINE-CONSTANT)
+     (if-integer (rtl:machine-constant-value expression)))
+    ((ENTRY:PROCEDURE
+      ENTRY:CONTINUATION
+      ASSIGNMENT-CACHE
+      VARIABLE-CACHE
+      OFFSET-ADDRESS
+      BYTE-OFFSET-ADDRESS
+      FLOAT-OFFSET-ADDRESS)
+     3)
+    (else false)))
 
 (define compiler:open-code-floating-point-arithmetic?
   true)
@@ -556,78 +538,6 @@ MIT in each case. |#
 		  ;; SET-INTERRUPT-ENABLES!
 		  ))
 
-(define (generic->inline-data generic-op)
-  (define (generic-additive-test constant)
-    (and (exact-integer? constant)
-	 (< (abs constant) (/ unsigned-fixnum/upper-limit 2))))
-  (define (fixnum? x)
-    (fix:fixnum? x))
-  (define (make-rtl-fixnum-1-arg-coder name)
-    (lambda (operand)
-      (rtl:make-fixnum-1-arg
-       name (rtl:make-object->fixnum operand) true)))
-  (define (make-rtl-fixnum-pred-1-arg-coder name)
-    (lambda (operand)
-      (rtl:make-fixnum-pred-1-arg name (rtl:make-object->fixnum operand))))
-  (define (make-rtl-fixnum-2-arg-coder name)
-    (lambda (operand1 operand2)
-      (rtl:make-fixnum-2-args name
-			      (rtl:make-object->fixnum operand1)
-			      (rtl:make-object->fixnum operand2)
-			      true)))
-  (define (make-rtl-fixnum-pred-2-arg-coder name)
-    (lambda (operand1 operand2)
-      (if (eq? name 'EQUAL-FIXNUM?)
-	  ;; This produces better code.
-	  (rtl:make-eq-test operand1 operand2)
-	  (rtl:make-fixnum-pred-2-args name
-	   (rtl:make-object->fixnum operand1)
-	   (rtl:make-object->fixnum operand2)))))
-  (case generic-op
-    ;; Returns #<pre-test-code-name compile-test-code in-line-coder>
-    ((integer-add &+)
-     (values 'GENERIC-ADDITIVE-TEST generic-additive-test
-	     (make-rtl-fixnum-2-arg-coder 'PLUS-FIXNUM)))
-    ((integer-subtract &-)
-     (values 'GENERIC-ADDITIVE-TEST generic-additive-test
-	     (make-rtl-fixnum-2-arg-coder 'MINUS-FIXNUM)))
-    ((integer-multiply &*)
-     (values 'FIXNUM? fixnum?
-	     (make-rtl-fixnum-2-arg-coder 'MULTIPLY-FIXNUM)))
-    ((integer-quotient quotient)
-     (values 'FIXNUM? fixnum?
-	     (make-rtl-fixnum-2-arg-coder 'FIXNUM-QUOTIENT)))
-    ((integer-remainder remainder)
-     (values 'FIXNUM? fixnum?
-	     (make-rtl-fixnum-2-arg-coder 'FIXNUM-REMAINDER)))
-    ((integer-add-1 1+)
-     (values 'GENERIC-ADDITIVE-TEST generic-additive-test
-	     (make-rtl-fixnum-1-arg-coder 'ONE-PLUS-FIXNUM)))
-    ((integer-subtract-1 -1+)
-     (values 'GENERIC-ADDITIVE-TEST generic-additive-test
-	     (make-rtl-fixnum-1-arg-coder 'MINUS-ONE-PLUS-FIXNUM)))
-    ((integer-negate)
-     (values 'GENERIC-ADDITIVE-TEST generic-additive-test
-	     (make-rtl-fixnum-1-arg-coder 'FIXNUM-NEGATE)))
-    ((integer-less? &<)
-     (values 'FIXNUM? fixnum?
-	     (make-rtl-fixnum-pred-2-arg-coder 'LESS-THAN-FIXNUM?)))
-    ((integer-greater? &>)
-     (values 'FIXNUM? fixnum?
-	     (make-rtl-fixnum-pred-2-arg-coder 'GREATER-THAN-FIXNUM?)))
-    ((integer-equal? &=)
-     (values 'FIXNUM? fixnum?
-	     (make-rtl-fixnum-pred-2-arg-coder 'EQUAL-FIXNUM?)))
-    ((integer-zero? zero?)
-     (values 'FIXNUM? fixnum?
-	     (make-rtl-fixnum-pred-1-arg-coder 'ZERO-FIXNUM?)))
-    ((integer-positive? positive?)
-     (values 'FIXNUM? fixnum?
-	     (make-rtl-fixnum-pred-1-arg-coder 'POSITIVE-FIXNUM?)))
-    ((integer-negative? negative?)
-     (values 'FIXNUM? fixnum?
-	     (make-rtl-fixnum-pred-1-arg-coder 'NEGATIVE-FIXNUM?)))
-    (else (error "Can't find corresponding fixnum op:" generic-op))))
 
 ;(define (target-object-type object)
 ;  ;; This should be fixed for cross-compilation
