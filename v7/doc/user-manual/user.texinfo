@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.41 1996/03/14 02:55:19 adams Exp $
+@comment $Id: user.texinfo,v 1.42 1996/03/21 15:35:39 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -2222,6 +2222,23 @@ routine when @emph{not} running under DPMI or Windows.
 Windows and Windows NT only.
 Boolean option specifying the handling of system command accelerators.
 These options do not actually work.
+
+@item @code{MITSCHEME_FONT} (default: determined by operating system)
+@findex MITSCHEME_FONT
+Windows and Windows NT only.
+A string specifying a font name and characteristics, for example,
+@samp{Courier New 16 bold}.
+Allowed characteristics are @var{integer}, specifiying the font size,
+and the following style modifiers: @samp{bold}, @samp{italic},
+@samp{regular}, @samp{underline} and @samp{strikeout}.
+Note that the size is the total height in pixels, and @strong{not} the
+point size.
+Thus the fonts tend to be 20-50% smaller than you might expect.
+You should specifiy only fixed-width fonts as variable width fonts are
+not drawn correctly.
+
+Once in Edwin, the font can be changed with the @samp{set-font} and
+@samp{set-default-font} commands.
 
 @item @code{MITSCHEME_GEOMETRY} (default: @samp{-1,-1,-1,-1})
 @findex MITSCHEME_GEOMETRY
