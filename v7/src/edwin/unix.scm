@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.50 1995/05/05 22:32:44 cph Exp $
+;;;	$Id: unix.scm,v 1.51 1995/06/28 19:56:43 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -613,35 +613,34 @@ CANNOT contain the 'F' option."
 	  '()))))
 
 (define (os/find-program program default-directory)
-  (->namestring
-   (let ((lose
-	  (lambda () (error "Can't find program:" (->namestring program)))))
-     (cond ((pathname-absolute? program)
-	    (if (not (file-access program 1)) (lose))
-	    program)
-	   ((not default-directory)
-	    (let loop ((path (ref-variable exec-path)))
-	      (if (null? path) (lose))
-	      (or (and (car path)
-		       (pathname-absolute? (car path))
-		       (let ((pathname (merge-pathnames program (car path))))
-			 (and (file-access pathname 1)
-			      pathname)))
-		  (loop (cdr path)))))
-	   (else
-	    (let ((default-directory (merge-pathnames default-directory)))
-	      (let loop ((path (ref-variable exec-path)))
-		(if (null? path) (lose))
-		(let ((pathname
-		       (merge-pathnames
-			program
-			(cond ((not (car path)) default-directory)
-			      ((pathname-absolute? (car path)) (car path))
-			      (else (merge-pathnames (car path)
-						     default-directory))))))
-		  (if (file-access pathname 1)
-		      pathname
-		      (loop (cdr path)))))))))))
+  (or (unix/find-program program (ref-variable exec-path) default-directory)
+      (error "Can't find program:" (->namestring program))))
+
+(define (unix/find-program program exec-path default-directory)
+  (let ((try
+	 (lambda (pathname)
+	   (and (file-access pathname 1)
+		(->namestring pathname)))))
+    (cond ((pathname-absolute? program)
+	   (try program))
+	  ((not default-directory)
+	   (let loop ((path exec-path))
+	     (and (not (null? path))
+		  (or (and (car path)
+			   (pathname-absolute? (car path))
+			   (try (merge-pathnames program (car path))))
+		      (loop (cdr path))))))
+	  (else
+	   (let ((default-directory (merge-pathnames default-directory)))
+	     (let loop ((path exec-path))
+	       (and (not (null? path))
+		    (or (try (merge-pathnames
+			      program
+			      (if (car path)
+				  (merge-pathnames (car path)
+						   default-directory)
+				  default-directory)))
+			(loop (cdr path))))))))))
 
 (define (os/shell-file-name)
   (or (get-environment-variable "SHELL")
@@ -689,7 +688,35 @@ Value is a list of strings."
       "fakemail"))
 
 (define (os/rmail-pop-procedure)
-  #f)
+  (and (unix/find-program "popclient" (ref-variable exec-path) #f)
+       (lambda (server user-name password directory)
+	 (unix/pop-client server user-name password directory))))
+
+(define (unix/pop-client server user-name password directory)
+  (let ((target (->namestring (merge-pathnames ".popmail" directory))))
+    (let ((buffer (temporary-buffer "*popclient*")))
+      (let ((status.reason
+	     (let ((args
+		    (list "-u" user-name "-p" password "-o" target server)))
+	       (apply run-synchronous-process #f (buffer-end buffer) #f #f
+		      "popclient"
+		      "-3"
+		      (if (ref-variable rmail-pop-delete)
+			  args
+			  (cons "-k" args))))))
+	(if (and (eq? 'EXITED (car status.reason))
+		 (memv (cdr status.reason) '(0 1)))
+	    (kill-buffer buffer)
+	    (begin
+	      (pop-up-buffer buffer)
+	      (editor-error "Error getting mail from POP server.")))))
+    target))
+
+(define-variable rmail-pop-delete
+  "If true, messages are deleted from the POP server after being retrieved.
+Otherwise, messages remain on the server and will be re-fetched later."
+  #t
+  boolean?)
 
 (define os/hostname
   (ucode-primitive full-hostname 0))
