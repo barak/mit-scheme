@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 13.46 1987/04/27 17:33:22 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 13.47 1987/06/02 23:44:38 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -109,7 +109,10 @@
 	 (lambda (filename after-dumping after-restoring)
 	   (let ((ie (set-interrupt-enables! interrupt-mask-none)))
 	     ((if (primitive filename)
-		  after-restoring
+		  (lambda (ie)
+		    ((access reset! primitive-io))
+		    ((access reset! working-directory-package))
+		    (after-restoring ie))
 		  after-dumping)
 	      ie))))))
 
@@ -250,4 +253,5 @@
 	   false)
 	  (else (beep) (query prompt)))))
 
+)
 )
