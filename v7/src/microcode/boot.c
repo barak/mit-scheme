@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.34 1987/05/29 02:21:09 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.35 1987/05/31 16:32:57 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -248,10 +248,6 @@ main(argc, argv)
   OB_Array = Make_Pointer(TC_VECTOR, Free);				\
   *Free++ = Make_Non_Pointer(TC_MANIFEST_VECTOR, OBARRAY_SIZE);		\
   for (i=0; i < OBARRAY_SIZE; i++) *Free++ = NIL;			\
-        /* Non Object */						\
-  Bad_Object = Make_Pointer(TC_LIST, Free);				\
-  *Free++ = NIL;							\
-  *Free++ = NIL;							\
         /* Initial empty work queue */					\
   The_Queue = Make_Pointer(TC_LIST, Free);				\
   *Free++ = NIL;							\
@@ -265,7 +261,8 @@ main(argc, argv)
   /* Create the vector with 4 extra slots for expansion and debugging. */ \
   *Free++ = Make_Non_Pointer(TC_MANIFEST_VECTOR, (NFixed_Objects + 4));	\
   for (i=1; i <= (NFixed_Objects + 4); i++) *Free++ = NIL;		\
-  User_Vector_Set(Fixed_Objects, Non_Object, Bad_Object);		\
+  User_Vector_Set(Fixed_Objects, Non_Object,				\
+		  (Make_Non_Pointer (TC_TRUE, 2)));			\
   User_Vector_Set(Fixed_Objects, System_Interrupt_Vector, Int_Vec);	\
   User_Vector_Set(Fixed_Objects, System_Error_Vector, Error);		\
   User_Vector_Set(Fixed_Objects, OBArray, OB_Array);			\
