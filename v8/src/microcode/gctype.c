@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: gctype.c,v 9.32 1992/12/05 03:33:18 cph Exp $
+$Id: gctype.c,v 9.33 1995/07/26 23:29:50 adams Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
@@ -41,78 +41,78 @@ MIT in each case. */
 	    /*********************************/
 
 int GC_Type_Map[MAX_TYPE_CODE + 1] = {
-    GC_Non_Pointer,		/* TC_NULL,etc */
-    GC_Pair,			/* TC_LIST */
-    GC_Non_Pointer,		/* TC_CHARACTER */
-    GC_Pair,		   	/* TC_SCODE_QUOTE */
-    GC_Triple,		        /* TC_PCOMB2 */
-    GC_Pair,			/* TC_UNINTERNED_SYMBOL */
-    GC_Vector,			/* TC_BIG_FLONUM */
-    GC_Pair,			/* TC_COMBINATION_1 */
-    GC_Non_Pointer,		/* TC_TRUE */
-    GC_Pair,			/* TC_EXTENDED_PROCEDURE */
-    GC_Vector,			/* TC_VECTOR */
-    GC_Non_Pointer,		/* TC_RETURN_CODE */
-    GC_Triple,			/* TC_COMBINATION_2 */
-    GC_Special,			/* TC_MANIFEST_CLOSURE */
-    GC_Vector,			/* TC_BIG_FIXNUM */
-    GC_Pair,			/* TC_PROCEDURE */
-    GC_Pair,			/* TC_ENTITY */
-    GC_Pair,			/* TC_DELAY */
-    GC_Vector,			/* TC_ENVIRONMENT */
-    GC_Pair,			/* TC_DELAYED */
-    GC_Triple,			/* TC_EXTENDED_LAMBDA */
-    GC_Pair,			/* TC_COMMENT */
-    GC_Vector,			/* TC_NON_MARKED_VECTOR */
-    GC_Pair,			/* TC_LAMBDA */
-    GC_Non_Pointer,		/* TC_PRIMITIVE */
-    GC_Pair,			/* TC_SEQUENCE_2 */
-    GC_Non_Pointer,		/* TC_FIXNUM */
-    GC_Pair,			/* TC_PCOMB1 */
-    GC_Vector,			/* TC_CONTROL_POINT */
-    GC_Pair,			/* TC_INTERNED_SYMBOL */
-    GC_Vector,			/* TC_CHARACTER_STRING,TC_VECTOR_8B */
-    GC_Pair,			/* TC_ACCESS */
-    GC_Triple,			/* TC_HUNK3_A */
-    GC_Pair,			/* TC_DEFINITION */
-    GC_Special,			/* TC_BROKEN_HEART */
-    GC_Pair,			/* TC_ASSIGNMENT */
-    GC_Triple,			/* TC_HUNK3_B */
-    GC_Pair,			/* TC_IN_PACKAGE */
+/* 00 */  GC_Non_Pointer,		/* TC_FIXNUM */
+/* 01 */  GC_Vector,			/* TC_BIG_FIXNUM */
+/* 02 */  GC_Pair,			/* TC_RATNUM */
+/* 03 */  GC_Pair,			/* TC_COMPLEX */
+/* 04 */  GC_Non_Pointer,		/* TC_RETURN_CODE */
+/* 05 */  GC_Non_Pointer,		/* TC_NULL,etc */
+/* 06 */  GC_Special,			/* TC_MANIFEST_NM_VECTOR */
+/* 07 */  GC_Non_Pointer,		/* TC_CHARACTER */
+/* 08 */  GC_Non_Pointer,		/* TC_TRUE */
+/* 09 */  GC_Non_Pointer,		/* TC_PRIMITIVE */
+/* 0A */  GC_Special,			/* TC_MANIFEST_CLOSURE */
+/* 0B */  GC_Cell,			/* TC_CELL */
+/* 0C */  GC_Pair,			/* TC_LIST */
+/* 0D */  GC_Pair,			/* TC_WEAK_CONS */
+/* 0E */  GC_Pair,			/* TC_UNINTERNED_SYMBOL */
+/* 0F */  GC_Pair,			/* TC_INTERNED_SYMBOL */
+/* 00 */  GC_Compiled,			/* TC_COMPILED_ENTRY */
+/* 11 */  GC_Special,			/* TC_BROKEN_HEART */
+/* 12 */  GC_Triple,			/* TC_HUNK3_A */
+/* 13 */  GC_Triple,			/* TC_HUNK3_B */
+/* 14 */  GC_Quadruple,			/* TC_QUAD */
+/* 15 */  GC_Special,			/* TC_MANIFEST_SPECIAL_NM_VECTOR */
+/* 16 */  GC_Vector,			/* TC_NON_MARKED_VECTOR */
+/* 17 */  GC_Vector,			/* TC_VECTOR */
+/* 18 */  GC_Vector,			/* TC_RECORD */
+/* 19 */  GC_Vector,			/* TC_VECTOR_1B,TC_BIT_STRING */
+/* 1A */  GC_Vector,			/* TC_CHARACTER_STRING,TC_VECTOR_8B */
+/* 1B */  GC_Vector,			/* TC_VECTOR_16B */
+/* 1C */  GC_Special,			/* TC_REFERENCE_TRAP */
+/* 1D */  GC_Vector,			/* TC_COMPILED_CODE_BLOCK */
+/* 1E */  GC_Special,			/* TC_LINKAGE_SECTION */
+/* 1F */  GC_Vector,			/* TC_CONTROL_POINT */
+/* 20 */  GC_Non_Pointer,		/* TC_STACK_ENVIRONMENT */
+/* 21 */  GC_Pair,			/* TC_PROCEDURE */
+/* 22 */  GC_Pair,			/* TC_EXTENDED_PROCEDURE */
+/* 23 */  GC_Pair,			/* TC_LEXPR */
+/* 24 */  GC_Pair,			/* TC_ENTITY */
+/* 25 */  GC_Vector,			/* TC_ENVIRONMENT */
+/* 26 */  GC_Pair,			/* TC_DELAYED */
+/* 27 */  GC_Vector,			/* TC_FUTURE */
+/* 28 */  GC_Pair,			/* TC_IN_PACKAGE */
+/* 29 */  GC_Pair,			/* TC_COMMENT */
+/* 2A */  GC_Pair,		   	/* TC_SCODE_QUOTE */
+/* 2B */  GC_Triple,			/* TC_VARIABLE */
+/* 2C */  GC_Pair,			/* TC_ACCESS */
+/* 2D */  GC_Pair,			/* TC_LAMBDA */
+/* 2E */  GC_Triple,			/* TC_EXTENDED_LAMBDA */
+/* 2F */  GC_Pair,			/* TC_SEQUENCE_2 */
+/* 30 */  GC_Triple,			/* TC_SEQUENCE_3 */
+/* 31 */  GC_Triple,			/* TC_CONDITIONAL */
+/* 32 */  GC_Pair,			/* TC_DISJUNCTION */
+/* 33 */  GC_Vector,			/* TC_COMBINATION */
+/* 34 */  GC_Pair,			/* TC_COMBINATION_1 */
+/* 35 */  GC_Triple,			/* TC_COMBINATION_2 */
+/* 36 */  GC_Non_Pointer,		/* TC_PCOMB0 */
+/* 37 */  GC_Pair,			/* TC_PCOMB1 */
+/* 38 */  GC_Triple,		        /* TC_PCOMB2 */
+/* 39 */  GC_Vector,			/* TC_PCOMB3 */
+/* 3A */  GC_Pair,			/* TC_DELAY */
+/* 3B */  GC_Pair,			/* TC_DEFINITION */
+/* 3C */  GC_Pair,			/* TC_ASSIGNMENT */
+/* 3D */  GC_Non_Pointer,		/* TC_THE_ENVIRONMENT */
+/* 3E */  GC_Vector,			/* TC_BIG_FLONUM */
 
 /* GC_Type_Map continues on next page */
 
 /* GC_Type_Map continued */
 
-    GC_Vector,			/* TC_COMBINATION */
-    GC_Special,			/* TC_MANIFEST_NM_VECTOR */
-    GC_Compiled,		/* TC_COMPILED_ENTRY */
-    GC_Pair,			/* TC_LEXPR */
-    GC_Vector,			/* TC_PCOMB3 */
-    GC_Special,			/* TC_MANIFEST_SPECIAL_NM_VECTOR */
-    GC_Triple,			/* TC_VARIABLE */
-    GC_Non_Pointer,		/* TC_THE_ENVIRONMENT */
-    GC_Vector,			/* TC_FUTURE */
-    GC_Vector,			/* TC_VECTOR_1B,TC_BIT_STRING */
-    GC_Non_Pointer,		/* TC_PCOMB0 */
-    GC_Vector,			/* TC_VECTOR_16B */
-    GC_Special,			/* TC_REFERENCE_TRAP */
-    GC_Triple,			/* TC_SEQUENCE_3 */
-    GC_Triple,			/* TC_CONDITIONAL */
-    GC_Pair,			/* TC_DISJUNCTION */
-    GC_Cell,			/* TC_CELL */
-    GC_Pair,			/* TC_WEAK_CONS */
-    GC_Quadruple,		/* TC_QUAD */
-    GC_Special,			/* TC_LINKAGE_SECTION */
-    GC_Pair,			/* TC_RATNUM */
-    GC_Non_Pointer,		/* TC_STACK_ENVIRONMENT */
-    GC_Pair,			/* TC_COMPLEX */
-    GC_Vector,			/* TC_COMPILED_CODE_BLOCK */
-    GC_Vector,			/* TC_RECORD */
 
 #if (TYPE_CODE_LENGTH == 6)
 
-    GC_Undefined			/* 0x3F */
+/* 3F */    GC_Undefined
 
 #else /* (TYPE_CODE_LENGTH != 6) */
 
