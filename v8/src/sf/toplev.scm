@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/sf/toplev.scm,v 4.5 1989/12/07 05:39:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/sf/toplev.scm,v 4.6 1990/03/26 20:44:52 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -63,7 +63,18 @@ MIT in each case. |#
 Currently only the 68000 implementation needs this."
   (fluid-let ((wrapping-hook wrap-with-control-point))
     (syntax-file input-string bin-string spec-string)))
+
+(define (syntax&integrate s-expression declarations #!optional syntax-table)
+  (fluid-let ((sf:noisy? false))
+    (integrate/sexp s-expression
+		    (if (default-object? syntax-table)
+			(nearest-repl/syntax-table)
+			syntax-table)
+		    declarations
+		    false)))
 
+(define sf:noisy? true)
+
 (define (sf/set-default-syntax-table! syntax-table)
   (set! sf/default-syntax-table syntax-table))
 
@@ -203,13 +214,15 @@ Currently only the 68000 implementation needs this."
 	  (input-filename (pathname->string input-pathname))
 	  (bin-filename (pathname->string bin-pathname))
 	  (spec-filename (and spec-pathname (pathname->string spec-pathname))))
-      (newline)
-      (write-string "Syntax file: ")
-      (write input-filename)
-      (write-string " ")
-      (write bin-filename)
-      (write-string " ")
-      (write spec-filename)
+      (if sf:noisy?
+	  (begin
+	    (newline)
+	    (write-string "Syntax file: ")
+	    (write input-filename)
+	    (write-string " ")
+	    (write bin-filename)
+	    (write-string " ")
+	    (write spec-filename)))
       (with-values
 	  (lambda ()
 	    (integrate/file input-pathname syntax-table declarations
@@ -230,9 +243,11 @@ Currently only the 68000 implementation needs this."
 			       (pathname-type sf/default-externs-pathname))
 			      (set! externs false))
 	  (if spec-pathname
-	      (begin (newline)
-		     (write-string "Writing ")
-		     (write spec-filename)
+	      (begin (if sf:noisy?
+			 (begin
+			   (newline)
+			   (write-string "Writing ")
+			   (write spec-filename)))
 		     (with-output-to-file spec-pathname
 		       (lambda ()
 			 (newline)
@@ -251,7 +266,8 @@ Currently only the 68000 implementation needs this."
 				     (write `(,(car event)
 					      (RUNTIME ,(cdr event)))))
 				   events)))
-		     (write-string " -- done"))))))))
+		     (if sf:noisy?
+			 (write-string " -- done")))))))))
 
 (define (read-externs-file pathname)
   (let ((pathname
@@ -266,6 +282,9 @@ Currently only the 68000 implementation needs this."
 	 (fasdump externs pathname))
 	((file-exists? pathname)
 	 (delete-file pathname))))
+
+#|
+;; This seems unused
 
 (define (print-spec identifier names)
   (newline)
@@ -283,6 +302,7 @@ Currently only the 68000 implementation needs this."
 	       (write (car names))
 	       (loop (cdr names)))))
   (write-string ")"))
+|#
 
 (define (wrapping-hook scode)
   scode)
@@ -384,10 +404,12 @@ Currently only the 68000 implementation needs this."
 
 (define (mark-phase this-name)
   (end-phase)
-  (newline)
-  (write-string "    ")
-  (write-string this-name)
-  (write-string "...")
+  (if sf:noisy?
+      (begin
+	(newline)
+	(write-string "    ")
+	(write-string this-name)
+	(write-string "...")))
   (set! previous-name this-name))
 
 (define (end-phase)
@@ -404,10 +426,12 @@ Currently only the 68000 implementation needs this."
 
 ;; Should match the compiler.  We'll merge the two at some point.
 (define (time-report prefix process-time real-time)
-  (newline)
-  (write-string prefix)
-  (write-string ": ")
-  (write (/ (exact->inexact process-time) 1000))
-  (write-string " (process time); ")
-  (write (/ (exact->inexact real-time) 1000))
-  (write-string " (real time)"))
+  (if sf:noisy?
+      (begin
+	(newline)
+	(write-string prefix)
+	(write-string ": ")
+	(write (/ (exact->inexact process-time) 1000))
+	(write-string " (process time); ")
+	(write (/ (exact->inexact real-time) 1000))
+	(write-string " (real time)"))))
