@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/coerce.scm,v 1.9 1987/07/21 18:34:10 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/coerce.scm,v 1.10 1988/08/31 05:56:37 cph Rel $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -70,7 +70,7 @@ MIT in each case. |#
 
 ;; *** NOTE ***
 ;; If you add coercions here, remember to also add them to
-;; EXPAND-DESCRIPTOR in isnmac.scm .
+;; EXPAND-DESCRIPTOR in "insmac.scm".
 
 (define make-coercion
   (coercion-maker
@@ -82,29 +82,30 @@ MIT in each case. |#
      (BFWIDTH . ,coerce-bit-field-width)
      (SCALE-FACTOR . ,coerce-index-scale))))
 
-(define-coercion 'UNSIGNED 1)
-(define-coercion 'UNSIGNED 2)
-(define-coercion 'UNSIGNED 3)
-(define-coercion 'UNSIGNED 4)
-(define-coercion 'UNSIGNED 5)
-(define-coercion 'UNSIGNED 6)
-(define-coercion 'UNSIGNED 7)
-(define-coercion 'UNSIGNED 8)
-(define-coercion 'UNSIGNED 9)
-(define-coercion 'UNSIGNED 10)
-(define-coercion 'UNSIGNED 11)
-(define-coercion 'UNSIGNED 12)
-(define-coercion 'UNSIGNED 13)
-(define-coercion 'UNSIGNED 14)
-(define-coercion 'UNSIGNED 15)
-(define-coercion 'UNSIGNED 16)
-(define-coercion 'UNSIGNED 32)
+(define coerce-1-bit-unsigned (make-coercion 'UNSIGNED 1))
+(define coerce-2-bit-unsigned (make-coercion 'UNSIGNED 2))
+(define coerce-3-bit-unsigned (make-coercion 'UNSIGNED 3))
+(define coerce-4-bit-unsigned (make-coercion 'UNSIGNED 4))
+(define coerce-5-bit-unsigned (make-coercion 'UNSIGNED 5))
+(define coerce-6-bit-unsigned (make-coercion 'UNSIGNED 6))
+(define coerce-7-bit-unsigned (make-coercion 'UNSIGNED 7))
+(define coerce-8-bit-unsigned (make-coercion 'UNSIGNED 8))
+(define coerce-9-bit-unsigned (make-coercion 'UNSIGNED 9))
+(define coerce-10-bit-unsigned (make-coercion 'UNSIGNED 10))
+(define coerce-11-bit-unsigned (make-coercion 'UNSIGNED 11))
+(define coerce-12-bit-unsigned (make-coercion 'UNSIGNED 12))
+(define coerce-13-bit-unsigned (make-coercion 'UNSIGNED 13))
+(define coerce-14-bit-unsigned (make-coercion 'UNSIGNED 14))
+(define coerce-15-bit-unsigned (make-coercion 'UNSIGNED 15))
+(define coerce-16-bit-unsigned (make-coercion 'UNSIGNED 16))
+(define coerce-32-bit-unsigned (make-coercion 'UNSIGNED 32))
 
-(define-coercion 'SIGNED 8)
-(define-coercion 'SIGNED 16)
-(define-coercion 'SIGNED 32)
+(define coerce-8-bit-signed (make-coercion 'SIGNED 8))
+(define coerce-16-bit-signed (make-coercion 'SIGNED 16))
+(define coerce-32-bit-signed (make-coercion 'SIGNED 32))
 
-(define-coercion 'QUICK 3)
-(define-coercion 'BFWIDTH 5)
-(define-coercion 'SHIFT-NUMBER 3)
-(define-coercion 'SHORT-LABEL 8)
+(define coerce-3-bit-quick (make-coercion 'QUICK 3))
+(define coerce-5-bit-bfwidth (make-coercion 'BFWIDTH 5))
+(define coerce-3-bit-shift-number (make-coercion 'SHIFT-NUMBER 3))
+(define coerce-8-bit-short-label (make-coercion 'SHORT-LABEL 8))
+(define coerce-2-bit-scale-factor (make-coercion 'SCALE-FACTOR 2))
