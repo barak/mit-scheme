@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.5 1995/01/11 22:02:45 ssmith Exp $
+$Id: rules3.scm,v 1.6 1995/01/11 22:09:38 ssmith Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -826,6 +826,20 @@ MIT in each case. |#
   dbg-info				; ignored
   (make-external-label (make-procedure-code-word min max)
 		       label))
+
+(define-rule statement
+  (CLOSURE (? label) (? dbg-info) (MACHINE-CONSTANT (? frame-size)))
+  dbg-info frame-size			; ignored
+  (LAP ,@(make-external-label internal-closure-code-word label)))
+
+(define-rule statement
+  (EXPRESSION (? label) (? dbg-info))
+  #|
+  ;; Prefix takes care of this
+  (LAP ,@(make-external-label expression-code-word label))
+  |#
+  label dbg-info			; ignored
+  (LAP))
 
 (define-rule statement
   (INTERRUPT-CHECK:PROCEDURE (? intrpt) (? heap) (? stack) (? label)
