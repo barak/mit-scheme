@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 14.5 1990/06/22 01:04:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 14.6 1990/09/11 20:44:25 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -117,6 +117,30 @@ MIT in each case. |#
     ("Debug-->" . "[Debugger]")
     ("Where-->" . "[Environment Inspector]")
     ("Which-->" . "[Task Inspector]")))
+
+(define (emacs/debugger-failure message)
+  (beep)
+  (emacs-typeout message))
+
+(define (emacs/debugger-message message)
+  (emacs-typeout message))
+
+(define (emacs/presentation thunk)
+  (newline)
+  (if emacs-presentation-top-justify?
+      (begin
+	(emacs-eval "(setq xscheme-temp-1 (point))")
+	(thunk)
+	(emacs-eval "(set-window-start (selected-window) xscheme-temp-1 nil)"))
+      (thunk)))
+
+(define emacs-presentation-top-justify? false)
+
+(define (emacs-typeout message)
+  (emacs-eval "(message \"%s\" " (write-to-string message) ")"))
+
+(define (emacs-eval . strings)
+  (transmit-signal-with-argument #\E (apply string-append strings)))
 
 (define (emacs/error-decision)
   (transmit-signal-without-gc #\z)
@@ -199,6 +223,8 @@ MIT in each case. |#
 (define normal/prompt-for-expression)
 (define normal/^G-interrupt)
 (define normal/set-working-directory-pathname!)
+(define normal/debugger-failure)
+(define normal/debugger-message)
 (define normal/presentation)
 (define normal/clean-input/flush-typeahead)
 
@@ -218,7 +244,9 @@ MIT in each case. |#
   (set! normal/^G-interrupt hook/^G-interrupt)
   (set! normal/set-working-directory-pathname!
 	hook/set-working-directory-pathname!)
-  ;;(set! normal/presentation hook/presentation)
+  (set! normal/debugger-failure hook/debugger-failure)
+  (set! normal/debugger-message hook/debugger-message)
+  (set! normal/presentation hook/presentation)
   (set! normal/clean-input/flush-typeahead hook/clean-input/flush-typeahead)
   (add-event-receiver! event:after-restore install!)
   (install!))
@@ -244,7 +272,9 @@ MIT in each case. |#
   (set! hook/^G-interrupt emacs/^G-interrupt)
   (set! hook/set-working-directory-pathname!
 	emacs/set-working-directory-pathname!)
-  ;;(set! hook/presentation (lambda (thunk) (thunk)))
+  (set! hook/debugger-failure emacs/debugger-failure)
+  (set! hook/debugger-message emacs/debugger-message)
+  (set! hook/presentation emacs/presentation)
   (set! hook/clean-input/flush-typeahead emacs/clean-input/flush-typeahead)
   unspecific)
 
@@ -264,6 +294,8 @@ MIT in each case. |#
   (set! hook/^G-interrupt normal/^G-interrupt)
   (set! hook/set-working-directory-pathname!
 	normal/set-working-directory-pathname!)
-  ;;(set! hook/presentation normal/presentation)
+  (set! hook/debugger-failure normal/debugger-failure)
+  (set! hook/debugger-message normal/debugger-message)
+  (set! hook/presentation normal/presentation)
   (set! hook/clean-input/flush-typeahead normal/clean-input/flush-typeahead)
   unspecific)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.9 1989/10/26 06:46:43 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.10 1990/09/11 20:44:54 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,7 +36,7 @@ MIT in each case. |#
 ;;; package: (runtime pretty-printer)
 
 (declare (usual-integrations))
-
+
 (define (initialize-package!)
   (set! forced-indentation (special-printer kernel/forced-indentation))
   (set! pressured-indentation (special-printer kernel/pressured-indentation))
@@ -76,12 +76,14 @@ MIT in each case. |#
 	   (or (and (procedure? object) (procedure-lambda object))
 	       object))))))
 
-(define (pretty-print object #!optional port as-code?)
-  (let ((port (if (default-object? port) (current-output-port) port)))
+(define (pretty-print object #!optional port as-code? indentation)
+  (let ((port (if (default-object? port) (current-output-port) port))
+	(indentation (if (default-object? indentation) 0 indentation)))
     (if (scode-constant? object)
 	(pp-top-level object
 		      port
-		      (if (default-object? as-code?) false as-code?))
+		      (if (default-object? as-code?) false as-code?)
+		      indentation)
 	(pp-top-level (let ((sexp (unsyntax object)))
 			(if (and *named-lambda->define?*
 				 (pair? sexp)
@@ -89,17 +91,20 @@ MIT in each case. |#
 			    `(DEFINE ,@(cdr sexp))
 			    sexp))
 		      port
-		      true)))
+		      true
+		      indentation)))
   unspecific)
 
-(define (pp-top-level expression port as-code?)
+(define (pp-top-level expression port as-code? indentation)
   (fluid-let
       ((x-size (get-x-size port))
        (output-port port)
        (operation/write-char (output-port/operation/write-char port))
        (operation/write-string (output-port/operation/write-string port)))
     (let ((node (numerical-walk expression)))
-      ((if as-code? print-node print-non-code-node) node 0 0)
+      (if (positive? indentation)
+	  (*unparse-string (make-string indentation #\Space)))
+      ((if as-code? print-node print-non-code-node) node indentation 0)
       (output-port/flush-output port))))
 
 (define (stepper-pp expression port p-wrapper table nc relink! sc! offset)

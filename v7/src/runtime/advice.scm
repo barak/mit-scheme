@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/advice.scm,v 14.6 1990/09/07 00:46:02 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/advice.scm,v 14.7 1990/09/11 20:43:35 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -434,33 +434,38 @@ MIT in each case. |#
 ;;;; Top Level Wrappers
 
 (define (find-internal-lambda procedure path)
-  (define (find-lambda *lambda path)
-    (define (loop elements)
-      (cond ((null? elements)
-	     (error "Couldn't find internal definition" path))
-	    ((assignment? (car elements))
-	     (assignment-components (car elements)
-	       (lambda (name value)
-		 (if (eq? name (car path))
-		     (if (lambda? value)
-			 (find-lambda value (cdr path))
-			 (error "Internal definition not a procedure" path))
-		     (loop (cdr elements))))))
-	    (else
-	     (loop (cdr elements)))))
-
-    (if (null? path)
-	*lambda
-	(lambda-components *lambda
-	  (lambda (name required optional rest auxiliary declarations body)
-	    name required optional rest declarations
-	    (if (memq (car path) auxiliary)
-		(loop (sequence-actions body))
-		(error "No internal definition by this name" (car path)))))))
-
+  (if (not (compound-procedure? procedure))
+      (error "only compound procedures may be advised" procedure))
   (if (null? path)
       (procedure-lambda procedure)
-      (find-lambda (procedure-lambda procedure) (car path))))
+      (let find-lambda
+	  ((*lambda (procedure-lambda procedure))
+	   (path (car path)))
+	(if (null? path)
+	    *lambda
+	    (let loop
+		((elements
+		  (lambda-components *lambda
+		    (lambda (name required optional rest auxiliary declarations
+				  body)
+		      name required optional rest declarations
+		      (if (not (memq (car path) auxiliary))
+			  (error "no internal definition by this name"
+				 (car path)))
+		      (sequence-actions body)))))
+	      (if (null? elements)
+		  (error "Couldn't find internal definition" path))
+	      (if (assignment? (car elements))
+		  (assignment-components (car elements)
+		    (lambda (name value)
+		      (if (eq? name (car path))
+			  (begin
+			    (if (not (lambda? value))
+				(error "internal definition not a procedure"
+				       path))
+			    (find-lambda value (cdr path)))
+			  (loop (cdr elements)))))
+		  (loop (cdr elements))))))))
 
 ;; The LIST-COPY will prevent any mutation problems.
 (define ((wrap-advice-extractor extractor) procedure . path)

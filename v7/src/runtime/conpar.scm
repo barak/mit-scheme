@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/conpar.scm,v 14.18 1990/08/25 03:08:22 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/conpar.scm,v 14.19 1990/09/11 20:43:44 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -45,7 +45,7 @@ MIT in each case. |#
 				      interrupt-mask history
 				      previous-history-offset
 				      previous-history-control-point
-				      offset %next))
+				      offset previous-type %next))
 		   (conc-name stack-frame/))
   (type false read-only true)
   (elements false read-only true)
@@ -56,6 +56,10 @@ MIT in each case. |#
   (previous-history-offset false read-only true)
   (previous-history-control-point false read-only true)
   (offset false read-only true)
+  ;; PREVIOUS-TYPE is the stack-frame-type of the frame above this one
+  ;; on the stack (closer to the stack's top).  In at least two cases
+  ;; we need to know this information.
+  (previous-type false read-only true)
   ;; %NEXT is either a parser-state object or the next frame.  In the
   ;; former case, the parser-state is used to compute the next frame.
   %next
@@ -73,7 +77,7 @@ MIT in each case. |#
 (define (stack-frame/next stack-frame)
   (let ((next (stack-frame/%next stack-frame)))
     (if (parser-state? next)
-	(let ((next (parse/start next)))
+	(let ((next (parse-one-frame next)))
 	  (set-stack-frame/%next! stack-frame next)
 	  next)
 	next)))
@@ -141,35 +145,39 @@ MIT in each case. |#
   (element-stream false read-only true)
   (n-elements false read-only true)
   (next-control-point false read-only true)
-  (allow-next-extended? false read-only true))
+  (previous-type false read-only true))
 
 (define (continuation->stack-frame continuation)
-  (parse/control-point (continuation/control-point continuation)
+  (parse-control-point (continuation/control-point continuation)
 		       (continuation/dynamic-state continuation)
-		       (continuation/fluid-bindings continuation)))
+		       (continuation/fluid-bindings continuation)
+		       false))
 
-(define (parse/control-point control-point dynamic-state fluid-bindings)
-  (and control-point
-       (parse/start
-	(make-parser-state
-	 dynamic-state
-	 fluid-bindings
-	 (control-point/interrupt-mask control-point)
-	 (history-transform (control-point/history control-point))
-	 (control-point/previous-history-offset control-point)
-	 (control-point/previous-history-control-point control-point)
-	 (control-point/element-stream control-point)
-	 (control-point/n-elements control-point)
-	 (control-point/next-control-point control-point)
-	 false))))
+(define (parse-control-point control-point dynamic-state fluid-bindings type)
+  (parse-one-frame
+   (make-parser-state
+    dynamic-state
+    fluid-bindings
+    (control-point/interrupt-mask control-point)
+    (history-transform (control-point/history control-point))
+    (control-point/previous-history-offset control-point)
+    (control-point/previous-history-control-point control-point)
+    (control-point/element-stream control-point)
+    (control-point/n-elements control-point)
+    (control-point/next-control-point control-point)
+    type)))
 
-(define (parse/start state)
+(define (parse-one-frame state)
   (let ((stream (parser-state/element-stream state)))
     (if (stream-pair? stream)
 	(let ((type
 	       (return-address->stack-frame-type
 		(element-stream/head stream)
-		(parser-state/allow-next-extended? state))))
+		(let ((type (parser-state/previous-type state)))
+		  (and type
+		       (1d-table/get (stack-frame-type/properties type)
+				     allow-extended?-tag
+				     false))))))
 	  (let ((length
 		 (let ((length (stack-frame-type/length type)))
 		   (if (exact-nonnegative-integer? length)
@@ -178,13 +186,22 @@ MIT in each case. |#
 	    ((stack-frame-type/parser type)
 	     type
 	     (list->vector (stream-head stream length))
-	     (parse/next-state state length (stream-tail stream length)
-			       (stack-frame-type/allow-extended? type)))))
-	(parse/control-point (parser-state/next-control-point state)
-			     (parser-state/dynamic-state state)
-			     (parser-state/fluid-bindings state)))))
+	     (make-intermediate-state state
+				      length
+				      (stream-tail stream length)))))
+	(let ((control-point (parser-state/next-control-point state)))
+	  (and control-point
+	       (parse-control-point control-point
+				    (parser-state/dynamic-state state)
+				    (parser-state/fluid-bindings state)
+				    (parser-state/previous-type state)))))))
 
-(define (parse/next-state state length stream allow-extended?)
+;;; `make-intermediate-state' is used to construct an intermediate
+;;; parser state that is passed to the frame parser.  This
+;;; intermediate state is identical to `state' except that it shows
+;;; `length' items having been removed from the stream.
+
+(define (make-intermediate-state state length stream)
   (let ((previous-history-control-point
 	 (parser-state/previous-history-control-point state)))
     (make-parser-state
@@ -194,53 +211,122 @@ MIT in each case. |#
      (parser-state/history state)
      (if previous-history-control-point
 	 (parser-state/previous-history-offset state)
-	 (max (- (parser-state/previous-history-offset state) (-1+ length))
-	      0))
+	 (max 0 (- (parser-state/previous-history-offset state) (-1+ length))))
      previous-history-control-point
      stream
      (- (parser-state/n-elements state) length)
      (parser-state/next-control-point state)
-     allow-extended?)))
+     (parser-state/previous-type state))))
 
-(define (make-frame type elements state element-stream n-elements)
-  (let ((history-subproblem?
+;;; After each frame parser is done, it either tail recurses into the
+;;; parsing loop, or it calls `parser/standard' to produces a new
+;;; output frame.  The argument `state' is usually what was passed to
+;;; the frame parser (i.e. the state that was returned by the previous
+;;; call to `make-intermediate-state').  However, several of the
+;;; parsers change the values of some of the components of `state'
+;;; before calling `parser/standard' -- for example,
+;;; RESTORE-TO-STATE-POINT changes the `dynamic-state' component.
+
+(define (parser/standard type elements state)
+  (let ((n-elements (parser-state/n-elements state))
+	(history-subproblem?
 	 (stack-frame-type/history-subproblem? type))
 	(history (parser-state/history state))
 	(previous-history-offset (parser-state/previous-history-offset state))
 	(previous-history-control-point
 	 (parser-state/previous-history-control-point state)))
-    (make-stack-frame type
-		      elements
-		      (parser-state/dynamic-state state)
+    (make-stack-frame
+     type
+     elements
+     (parser-state/dynamic-state state)
+     (parser-state/fluid-bindings state)
+     (parser-state/interrupt-mask state)
+     (if (and history-subproblem? (stack-frame-type/subproblem? type))
+	 history
+	 undefined-history)
+     previous-history-offset
+     previous-history-control-point
+     (+ (vector-length elements) n-elements)
+     (parser-state/previous-type state)
+     (make-parser-state (parser-state/dynamic-state state)
+			(parser-state/fluid-bindings state)
+			(parser-state/interrupt-mask state)
+			(if history-subproblem?
+			    (history-superproblem history)
+			    history)
+			previous-history-offset
+			previous-history-control-point
+			(parser-state/element-stream state)
+			n-elements
+			(parser-state/next-control-point state)
+			type))))
+
+(define (parser/restore-dynamic-state type elements state)
+  ;; Possible problem: the dynamic state really consists of all of the
+  ;; state spaces in existence.  Probably we should have some
+  ;; mechanism for keeping track of them all.
+  (parser/standard
+   type
+   elements
+   (make-parser-state (let ((dynamic-state (vector-ref elements 1)))
+			(if (eq? system-state-space
+				 (state-point/space dynamic-state))
+			    dynamic-state
+			    (parser-state/dynamic-state state)))
 		      (parser-state/fluid-bindings state)
 		      (parser-state/interrupt-mask state)
-		      (if (and history-subproblem?
-			       (stack-frame-type/subproblem? type))
-			  history
-			  undefined-history)
-		      previous-history-offset
-		      previous-history-control-point
-		      (+ (vector-length elements) n-elements)
-		      (make-parser-state
-		       (parser-state/dynamic-state state)
-		       (parser-state/fluid-bindings state)
-		       (parser-state/interrupt-mask state)
-		       (if history-subproblem?
-			   (history-superproblem history)
-			   history)
-		       previous-history-offset
-		       previous-history-control-point
-		       element-stream
-		       n-elements
-		       (parser-state/next-control-point state)
-		       (stack-frame-type/allow-extended? type)))))
+		      (parser-state/history state)
+		      (parser-state/previous-history-offset state)
+		      (parser-state/previous-history-control-point state)
+		      (parser-state/element-stream state)
+		      (parser-state/n-elements state)
+		      (parser-state/next-control-point state)
+		      (parser-state/previous-type state))))
 
-(define (element-stream/head stream)
-  (if (not (stream-pair? stream)) (error "not a stream-pair" stream))
-  (map-reference-trap (lambda () (stream-car stream))))
+(define (parser/restore-fluid-bindings type elements state)
+  (parser/standard
+   type
+   elements
+   (make-parser-state (parser-state/dynamic-state state)
+		      (vector-ref elements 1)
+		      (parser-state/interrupt-mask state)
+		      (parser-state/history state)
+		      (parser-state/previous-history-offset state)
+		      (parser-state/previous-history-control-point state)
+		      (parser-state/element-stream state)
+		      (parser-state/n-elements state)
+		      (parser-state/next-control-point state)
+		      (parser-state/previous-type state))))
 
-(define-integrable (element-stream/ref stream index)
-  (map-reference-trap (lambda () (stream-ref stream index))))
+(define (parser/restore-interrupt-mask type elements state)
+  (parser/standard
+   type
+   elements
+   (make-parser-state (parser-state/dynamic-state state)
+		      (parser-state/fluid-bindingU state)
+		      (vector-ref elements 1)
+		      (parser-state/history state)
+		      (parser-state/previous-history-offset state)
+		      (parser-state/previous-history-control-point state)
+		      (parser-state/element-stream state)
+		      (parser-state/n-elements state)
+		      (parser-state/next-control-point state)
+		      (parser-state/previous-type state))))
+
+(define (parser/restore-history type elements state)
+  (parser/standard
+   type
+   elements
+   (make-parser-state (parser-state/dynamic-state state)
+		      (parser-state/fluid-bindings state)
+		      (parser-state/interrupt-mask state)
+		      (history-transform (vector-ref elements 1))
+		      (vector-ref elements 2)
+		      (vector-ref elements 3)
+		      (parser-state/element-stream state)
+		      (parser-state/n-elements state)
+		      (parser-state/next-control-point state)
+		      (parser-state/previous-type state))))
 
 ;;;; Unparser
 
@@ -325,9 +411,9 @@ MIT in each case. |#
 (define (verify paranoia-index stream offset)
   (or (zero? paranoia-index)
       (stream-null? stream)
-      (let* ((type (return-address->stack-frame-type
-		    (element-stream/head stream)
-		    false))
+      (let* ((type
+	      (return-address->stack-frame-type (element-stream/head stream)
+						false))
 	     (length
 	      (let ((length (stack-frame-type/length type)))
 		(if (exact-nonnegative-integer? length)
@@ -346,90 +432,20 @@ MIT in each case. |#
 	((stream-pair? stream)
 	 (stream-tail* (stream-cdr stream) (-1+ n)))
 	(else
-	 (error "stream-tail*: not a proper stream" stream))))	   
-
-;;;; Parsers
+	 (error "stream-tail*: not a proper stream" stream))))
 
-(define (parser/standard-next type elements state)
-  (make-frame type
-	      elements
-	      state
-	      (parser-state/element-stream state)
-	      (parser-state/n-elements state)))
+(define (element-stream/head stream)
+  (if (not (stream-pair? stream)) (error "not a stream-pair" stream))
+  (map-reference-trap (lambda () (stream-car stream))))
 
-(define (make-restore-frame type
-			    elements
-			    state
-			    dynamic-state
-			    fluid-bindings
-			    interrupt-mask
-			    history
-			    previous-history-offset
-			    previous-history-control-point)
-  (parser/standard-next
-   type
-   elements
-   (make-parser-state dynamic-state
-		      fluid-bindings
-		      interrupt-mask
-		      history
-		      previous-history-offset
-		      previous-history-control-point
-		      (parser-state/element-stream state)
-		      (parser-state/n-elements state)
-		      (parser-state/next-control-point state)
-		      false)))
-
-(define (parser/restore-dynamic-state type elements state)
-  (make-restore-frame type elements state
-		      ;; Possible problem: the dynamic state really
-		      ;; consists of all of the state spaces in
-		      ;; existence.  Probably we should have some
-		      ;; mechanism for keeping track of them all.
-		      (let ((dynamic-state (vector-ref elements 1)))
-			(if (eq? system-state-space
-				 (state-point/space dynamic-state))
-			    dynamic-state
-			    (parser-state/dynamic-state state)))
-		      (parser-state/fluid-bindings state)
-		      (parser-state/interrupt-mask state)
-		      (parser-state/history state)
-		      (parser-state/previous-history-offset state)
-		      (parser-state/previous-history-control-point state)))
-
-(define (parser/restore-fluid-bindings type elements state)
-  (make-restore-frame type elements state
-		      (parser-state/dynamic-state state)
-		      (vector-ref elements 1)
-		      (parser-state/interrupt-mask state)
-		      (parser-state/history state)
-		      (parser-state/previous-history-offset state)
-		      (parser-state/previous-history-control-point state)))
-
-(define (parser/restore-interrupt-mask type elements state)
-  (make-restore-frame type elements state
-		      (parser-state/dynamic-state state)
-		      (parser-state/fluid-bindings state)
-		      (vector-ref elements 1)
-		      (parser-state/history state)
-		      (parser-state/previous-history-offset state)
-		      (parser-state/previous-history-control-point state)))
-
-(define (parser/restore-history type elements state)
-  (make-restore-frame type elements state
-		      (parser-state/dynamic-state state)
-		      (parser-state/fluid-bindings state)
-		      (parser-state/interrupt-mask state)
-		      (history-transform (vector-ref elements 1))
-		      (vector-ref elements 2)
-		      (vector-ref elements 3)))
+(define-integrable (element-stream/ref stream index)
+  (map-reference-trap (lambda () (stream-ref stream index))))	   
 
 ;;;; Stack Frame Types
 
 (define-structure (stack-frame-type
 		   (constructor make-stack-frame-type
-				(code subproblem?
-				      history-subproblem?
+				(code subproblem? history-subproblem?
 				      length parser))
 		   (conc-name stack-frame-type/))
   (code false read-only true)
@@ -439,19 +455,15 @@ MIT in each case. |#
   (length false read-only true)
   (parser false read-only true))
 
-(define allow-extended-return-addresses?-tag
-  "stack-frame-type/allow-extended")
-
-(define (stack-frame-type/allow-extended? type)
-  (1d-table/get
-   (stack-frame-type/properties type)
-   allow-extended-return-addresses?-tag
-   false))
+(define allow-extended?-tag "stack-frame-type/allow-extended?")
 
 (define (microcode-return/code->type code)
   (if (not (< code (vector-length stack-frame-types)))
       (error "return-code too large" code))
   (vector-ref stack-frame-types code))
+
+(define (microcode-return/name->type name)
+  (microcode-return/code->type (microcode-return name)))
 
 (define (return-address->stack-frame-type return-address allow-extended?)
   (cond ((interpreter-return-address? return-address)
@@ -461,8 +473,7 @@ MIT in each case. |#
 		 (error "return-code has no type" code))
 	     type)))
 	((compiled-return-address? return-address)
-	 (if (compiled-continuation/return-to-interpreter?
-	      return-address)
+	 (if (compiled-continuation/return-to-interpreter? return-address)
 	     stack-frame-type/return-to-interpreter
 	     stack-frame-type/compiled-return-address))
 	((and allow-extended? (compiled-procedure? return-address))
@@ -479,37 +490,28 @@ MIT in each case. |#
 	(make-return-address (microcode-return 'REENTER-COMPILED-CODE)))
   (set! stack-frame-types (make-stack-frame-types))
   (set! stack-frame-type/hardware-trap
-	(vector-ref stack-frame-types (microcode-return 'HARDWARE-TRAP)))
+	(microcode-return/name->type 'HARDWARE-TRAP))
   (set! stack-frame-type/compiled-return-address
-	(make-stack-frame-type false
-			       true
-			       false
+	(make-stack-frame-type false true false
 			       length/compiled-return-address
-			       parser/standard-next))
+			       parser/standard))
   (set! stack-frame-type/return-to-interpreter
-	(make-stack-frame-type false
-			       false
-			       true
+	(make-stack-frame-type false false true
 			       1
-			       parser/standard-next))
+			       parser/standard))
   (set! stack-frame-type/interrupt-compiled-procedure
-	(make-stack-frame-type false
-			       true
-			       false
+	(make-stack-frame-type false true false
 			       length/interrupt-compiled-procedure
-			       parser/standard-next))
+			       parser/standard))
   (set! stack-frame-type/interrupt-compiled-expression
-	(make-stack-frame-type false
-			       true
-			       false
+	(make-stack-frame-type false true false
 			       1
-			       parser/standard-next))
+			       parser/standard))
   
   (set! word-size
 	(let ((initial (system-vector-length (make-bit-string 1 #f))))
 	  (let loop ((size 2))
-	    (if (= (system-vector-length (make-bit-string size #f))
-		   initial)
+	    (if (= (system-vector-length (make-bit-string size #f)) initial)
 		(loop (1+ size))
 		(-1+ size)))))
   unspecific)
@@ -540,7 +542,7 @@ MIT in each case. |#
 			false
 			length
 			(if (default-object? parser)
-			    parser/standard-next
+			    parser/standard
 			    parser)))
 
     (define (standard-subproblem name length)
@@ -548,7 +550,7 @@ MIT in each case. |#
 			true
 			true
 			length
-			parser/standard-next))
+			parser/standard))
 
     (standard-frame 'RESTORE-TO-STATE-POINT 2 parser/restore-dynamic-state)
     (standard-frame 'RESTORE-FLUIDS 2 parser/restore-fluid-bindings)
@@ -592,22 +594,21 @@ MIT in each case. |#
       (standard-subproblem 'COMBINATION-APPLY length)
       (standard-subproblem 'INTERNAL-APPLY length)
       (standard-subproblem 'INTERNAL-APPLY-VAL length))
-
+
     (let ((compiler-frame
 	   (lambda (name length)
-	     (stack-frame-type name false true length parser/standard-next)))
+	     (stack-frame-type name false true length parser/standard)))
 	  (compiler-subproblem
 	   (lambda (name length)
-	     (stack-frame-type name true true length parser/standard-next))))
+	     (stack-frame-type name true true length parser/standard))))
 
       (let ((length (length/application-frame 4 0)))
 	(compiler-subproblem 'COMPILER-LOOKUP-APPLY-TRAP-RESTART length)
 	(compiler-subproblem 'COMPILER-OPERATOR-LOOKUP-TRAP-RESTART length))
 
-      (let ((type
-	     (compiler-frame 'COMPILER-INTERRUPT-RESTART 3)))
+      (let ((type (compiler-frame 'COMPILER-INTERRUPT-RESTART 3)))
 	(1d-table/put! (stack-frame-type/properties type)
-		       allow-extended-return-addresses?-tag
+		       allow-extended?-tag
 		       true))
 
       (compiler-frame 'COMPILER-LINK-CACHES-RESTART 8)
@@ -631,7 +632,7 @@ MIT in each case. |#
 		      true
 		      false
 		      length/hardware-trap
-		      parser/standard-next)
+		      parser/standard)
 
     types))
 
@@ -662,7 +663,8 @@ MIT in each case. |#
 		    (arity (primitive-procedure-arity primitive))
 		    (nargs
 		     (if (negative? arity)
-			 (element-stream/ref stream hardware-trap/pc-info2-index)
+			 (element-stream/ref stream
+					     hardware-trap/pc-info2-index)
 			 arity)))
 	       (if (return-address? (element-stream/ref after-header nargs))
 		   (+ hardware-trap/frame-size nargs)

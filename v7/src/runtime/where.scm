@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/where.scm,v 14.7 1989/08/07 07:37:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/where.scm,v 14.8 1990/09/11 20:46:01 cph Rel $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,45 +38,52 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (where #!optional environment)
-  (let ((environment
-	 (if (default-object? environment)
-	     (nearest-repl/environment)
-	     (->environment environment))))
-    (hook/repl-environment (nearest-repl) environment)
-    (letter-commands command-set
-		     (cmdl-message/standard "Environment Inspector")
-		     "Where-->"
-		     (make-wstate (list environment)))))
+  (let ((wstate
+	 (make-wstate
+	  (list
+	   (if (default-object? environment)
+	       (nearest-repl/environment)
+	       (->environment environment))))))
+    (letter-commands
+     command-set
+     (cmdl-message/active
+      (lambda ()
+	(show-current-frame wstate true)
+	(debugger-message
+	 "You are now in the environment inspector.  Type q to quit, ? for commands.")))
+     "Where-->"
+     wstate)))
 
 (define-structure (wstate
 		   (conc-name wstate/))
   frame-list)
 
 (define (initialize-package!)
-  (set! command-set
-	(make-command-set
-	 'WHERE-COMMANDS
-	 `((#\? ,standard-help-command
-		"Help, list command letters")
-	   (#\Q ,standard-exit-command
-		"Quit (exit from Where)")
-	   (#\C ,show
-		"Display the bindings in the current frame")
-	   (#\A ,show-all
-		"Display the bindings of all the frames in the current chain")
-	   (#\P ,parent
-		"Find the parent frame of the current one")
-	   (#\S ,son
-		"Find the son of the current environment in the current chain")
-	   (#\W ,recursive-where
-		"Eval an expression in the current frame and do WHERE on it")
-	   (#\V ,show-object
-		"Eval expression in current frame")
-	   (#\E ,enter
-		"Create a read-eval-print loop in the current environment")
-	   (#\N ,name
-		"Name of procedure which created current environment")
-	   )))
+  (set!
+   command-set
+   (make-command-set
+    'WHERE-COMMANDS
+    `((#\? ,standard-help-command
+	   "help, list command letters")
+      (#\A ,show-all
+	   "show All bindings in current environment and its ancestors")
+      (#\C ,show
+	   "show bindings of identifiers in the Current environment")
+      (#\E ,enter
+	   "Enter a read-eval-print loop in the current environment")
+      (#\O ,command/print-environment-procedure
+	   "pretty print the procedure that created the current environment")
+      (#\P ,parent
+	   "move to environment that is Parent of current environment")
+      (#\Q ,standard-exit-command
+	   "Quit (exit environment inspector)")
+      (#\S ,son
+	   "move to child of current environment (in current chain)")
+      (#\V ,show-object
+	   "eValuate expression in current environment")
+      (#\W ,recursive-where
+	   "enter environment inspector (Where) on the current environment")
+      )))
   unspecific)
 
 (define command-set)
@@ -97,7 +104,7 @@ MIT in each case. |#
 
 (define (parent wstate)
   (let ((frame-list (wstate/frame-list wstate)))
-    (if (environment-has-parent? (car frame-list))
+    (if (eq? true (environment-has-parent? (car frame-list)))
 	(begin
 	  (set-wstate/frame-list! wstate
 				  (cons (environment-parent (car frame-list))
@@ -114,11 +121,8 @@ MIT in each case. |#
 	  (set-wstate/frame-list! wstate (cdr frames))
 	  (show-current-frame wstate true)))))
 
-(define (name wstate)
-  (presentation
-   (lambda ()
-     (write-string "This frame was created by ")
-     (print-user-friendly-name (car (wstate/frame-list wstate))))))
+(define (command/print-environment-procedure wstate)
+  (show-environment-procedure (car (wstate/frame-list wstate))))
 
 (define (recursive-where wstate)
   (let ((inp (prompt-for-expression "Object to evaluate and examine")))
@@ -127,7 +131,8 @@ MIT in each case. |#
 
 (define (enter wstate)
   (debug/read-eval-print (car (wstate/frame-list wstate))
-			 "You are now in the desired environment"
+			 "the environment inspector"
+			 "the desired environment"
 			 "Eval-in-env-->"))
 
 (define (show-object wstate)

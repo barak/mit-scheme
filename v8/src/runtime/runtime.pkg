@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.73 1990/08/21 04:18:57 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.74 1990/09/11 20:45:03 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -313,6 +313,7 @@ MIT in each case. |#
 	  hardware-trap-frame/print-stack
 	  hardware-trap-frame/code
 	  microcode-return/code->type
+	  microcode-return/name->type
 	  stack-frame->continuation
 	  stack-frame-type/code
 	  stack-frame-type/compiled-return-address
@@ -327,6 +328,7 @@ MIT in each case. |#
 	  stack-frame/next
 	  stack-frame/next-subproblem
 	  stack-frame/offset
+	  stack-frame/previous-type
 	  stack-frame/properties
 	  stack-frame/reductions
 	  stack-frame/ref
@@ -398,10 +400,13 @@ MIT in each case. |#
 	  print-user-friendly-name
 	  show-environment-bindings
 	  show-environment-name
+	  show-environment-procedure
 	  show-frame
 	  show-frames
 	  write-dbg-name)
   (export (runtime emacs-interface)
+	  hook/debugger-failure
+	  hook/debugger-message
 	  hook/presentation)
   (initialization (initialize-package!)))
 
@@ -441,6 +446,41 @@ MIT in each case. |#
   (files "emacs")
   (parent ())
   (initialization (initialize-package!)))
+
+(define-package (runtime procedure)
+  (files "uproc")
+  (parent ())
+  (export ()
+	  apply-hook-extra
+	  apply-hook-procedure
+	  apply-hook?
+	  compiled-closure->entry
+	  compiled-closure/ref
+	  compiled-closure/set!
+	  compiled-closure?
+	  compiled-procedure?
+	  compound-procedure?
+	  entity-extra
+	  entity-procedure
+	  entity?
+	  implemented-primitive-procedure?
+	  make-apply-hook
+	  make-entity
+	  make-primitive-procedure
+	  primitive-procedure-name
+	  primitive-procedure?
+	  procedure-arity
+	  procedure-arity-valid?
+	  procedure-components
+	  procedure-environment
+	  procedure-lambda
+	  procedure?
+	  set-apply-hook-extra!
+	  set-apply-hook-procedure!
+	  set-entity-extra!
+	  set-entity-procedure!)
+  (export (runtime continuation-parser)
+	  compiled-procedure-frame-size))
 
 (define-package (runtime environment)
   (files "uenvir")
@@ -1668,7 +1708,14 @@ MIT in each case. |#
 	  &triple-set-third!
 	  &triple-third
 	  &typed-pair-cons
-	  &typed-triple-cons))
+	  &typed-triple-cons)
+  (export (runtime debugging-info)
+	  &pair-car
+	  &pair-cdr
+	  &triple-first
+	  &triple-second
+	  &triple-third
+	  &vector-ref))
 
 (define-package (runtime scode-scan)
   (files "scan")
@@ -1938,7 +1985,8 @@ MIT in each case. |#
   (parent ())
   (export ()
 	  unsyntax
-	  unsyntax-lambda-list)
+	  unsyntax-lambda-list
+	  unsyntax-with-substitutions)
   (initialization (initialize-package!)))
 
 (define-package (runtime working-directory)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgcmd.scm,v 14.7 1990/06/20 20:28:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgcmd.scm,v 14.8 1990/09/11 20:43:52 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -121,10 +121,15 @@ MIT in each case. |#
 (define (default/leaving-command-loop thunk)
   (input-port/normal-mode (cmdl/input-port (nearest-cmdl)) thunk))
 
-(define (debug/read-eval-print environment message prompt)
+(define (debug/read-eval-print environment from to prompt)
   (leaving-command-loop
    (lambda ()
-     (read-eval-print environment (cmdl-message/standard message) prompt))))
+     (read-eval-print
+      environment
+      (cmdl-message/standard
+       (string-append
+	"You are now in " to ".  Type C-c C-u to return to " from "."))
+      prompt))))
 
 (define (debug/eval expression environment)
   (leaving-command-loop (lambda () (eval expression environment))))

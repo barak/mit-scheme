@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 14.12 1990/07/03 19:47:57 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 14.13 1990/09/11 20:45:14 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -85,8 +85,7 @@ MIT in each case. |#
 		(FLUID-LET ,syntax/fluid-let)
 		(LOCAL-DECLARE ,syntax/local-declare)
 		(NAMED-LAMBDA ,syntax/named-lambda)
-		(SCODE-QUOTE ,syntax/scode-quote)
-		(DYNAMIC-STATE-LET ,syntax/dynamic-state-let)))
+		(SCODE-QUOTE ,syntax/scode-quote)))
     table))
 
 ;;;; Top Level Syntaxers
@@ -127,6 +126,8 @@ MIT in each case. |#
 	       (make-combination (syntax-expression (car expression))
 				 (syntax-expressions (cdr expression))))))
 	((symbol? expression)
+	 (if (syntax-table-ref *syntax-table* expression)
+	     (error "syntactic keyword referenced as variable" expression))
 	 (make-variable expression))
 	(else
 	 expression)))
@@ -285,21 +286,35 @@ MIT in each case. |#
   ((invert-expression (syntax-expression name)) (expand-binding-value rest)))
 
 (define (syntax/define pattern . rest)
-  (cond ((symbol? pattern)
-	 (make-definition pattern
-			  (expand-binding-value
-			   (if (and (= (length rest) 2)
-				    (string? (cadr rest)))
-			       (list (car rest))
-			       rest))))
-	((pair? pattern)
-	 (expand-lambda pattern rest
-	   (lambda (pattern body)
-	     (make-definition (car pattern)
-			      (make-named-lambda (car pattern) (cdr pattern)
-						 body)))))
-	(else
-	 (syntax-error "bad pattern" pattern))))
+  (let ((make-definition
+	 (lambda (name value)
+	   (if (syntax-table-ref *syntax-table* name)
+	       (syntax-error "redefinition of syntactic keyword" name))
+	   (make-definition name value))))
+    (cond ((symbol? pattern)
+	   (make-definition
+	    pattern
+	    (let ((value
+		   (expand-binding-value
+		    (if (and (= (length rest) 2)
+			     (string? (cadr rest)))
+			(list (car rest))
+			rest))))
+	      (if (lambda? value)
+		  (lambda-components* value
+		    (lambda (name required optional rest body)
+		      (if (eq? name lambda-tag:unnamed)
+			  (make-lambda* pattern required optional rest body)
+			  value)))
+		  value))))
+	  ((pair? pattern)
+	   (expand-lambda pattern rest
+	     (lambda (pattern body)
+	       (make-definition (car pattern)
+				(make-named-lambda (car pattern) (cdr pattern)
+						   body)))))
+	  (else
+	   (syntax-error "bad pattern" pattern)))))
 
 (define (syntax/begin . actions)
   (syntax-sequence actions))
@@ -379,6 +394,9 @@ MIT in each case. |#
   (if (symbol? name-or-pattern)
       (syntax-bindings pattern-or-first
 	(lambda (names values)
+	  (if (memq name-or-pattern names)
+	      (syntax-error "name conflicts with binding"
+			    name-or-pattern))
 	  (make-combination
 	   (make-letrec (list name-or-pattern)
 			(list (make-named-lambda name-or-pattern names
@@ -613,17 +631,25 @@ MIT in each case. |#
       (syntax-error "name of lambda expression must be a symbol" name))
   (parse-lambda-list pattern
     (lambda (required optional rest)
+      (for-each guarantee-parameter-not-syntactic-keyword required)
+      (for-each guarantee-parameter-not-syntactic-keyword optional)
+      (if rest (guarantee-parameter-not-syntactic-keyword rest))
       (internal-make-lambda name required optional rest body))))
 
 (define (make-closed-block tag names values body)
-  (make-combination (internal-make-lambda tag names '() '() body)
-		    values))
+  (for-each guarantee-parameter-not-syntactic-keyword names)
+  (make-combination (internal-make-lambda tag names '() false body) values))
 
 (define (make-letrec names values body)
+  (for-each guarantee-parameter-not-syntactic-keyword names)
   (make-closed-block lambda-tag:let '() '()
 		     (make-scode-sequence
 		      (append! (map make-definition names values)
 			       (list body)))))
+
+(define (guarantee-parameter-not-syntactic-keyword name)
+  (if (syntax-table-ref *syntax-table* name)
+      (syntax-error "rebinding syntactic keyword" name)))
 
 (define-integrable lambda-tag:unnamed
   (string->symbol "#[unnamed-procedure]"))
@@ -671,15 +697,22 @@ MIT in each case. |#
 	      (else (bad-lambda-list pattern)))))
 
     (define (finish rest)
-      (receiver (reverse! (car required))
-		(reverse! (car optional))
-		rest))
+      (let ((required (reverse! (car required)))
+	    (optional (reverse! (car optional))))
+	(do ((parameters
+	      (append required optional (if rest (list rest) '()))
+	      (cdr parameters)))
+	    ((null? parameters))
+	  (if (memq (car parameters) (cdr parameters))
+	      (syntax-error "lambda list has duplicate parameters"
+			    lambda-list)))
+	(receiver required optional rest)))
 
     (define (bad-lambda-list pattern)
-      (syntax-error "illegally-formed lambda-list" pattern))
+      (syntax-error "illegally-formed lambda list" pattern))
 
     (parse-parameters required lambda-list)))
-
+
 ;;;; Scan Defines
 
 (define (make-sequence/scan actions)

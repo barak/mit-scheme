@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.15 1989/10/27 07:20:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.16 1990/09/11 20:45:45 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -554,6 +554,8 @@ MIT in each case. |#
       (*unparse-hex ((ucode-primitive primitive-object-datum 1) future)))))
 
 (define (unparse/entity entity)
-  (*unparse-with-brackets (if (continuation? entity) 'CONTINUATION 'ENTITY)
+  (*unparse-with-brackets (cond ((continuation? entity) 'CONTINUATION)
+				((apply-hook? entity) 'APPLY-HOOK)
+				(else 'ENTITY))
 			  entity
 			  false))

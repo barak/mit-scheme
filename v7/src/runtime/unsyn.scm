@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 14.8 1990/06/14 01:27:54 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 14.9 1990/09/11 20:45:54 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -68,11 +68,31 @@ MIT in each case. |#
 (define unsyntaxer:show-comments?
   false)
 
+(define substitutions '())
+
+(define (unsyntax-with-substitutions scode alist)
+  (if (not (alist? alist))
+      (error "substitutions not an alist" alist))
+  (fluid-let ((substitutions alist))
+    (unsyntax scode)))
+
+(define (maybe-substitute object action)
+  (let ((association (has-substitution? object)))
+    (if association
+	(cdr association)
+	(action object))))
+
+(define-integrable (has-substitution? object)
+  (and (not (null? substitutions))
+       (assq object substitutions)))
+
 (define (unsyntax scode)
   (unsyntax-object (if (procedure? scode) (procedure-lambda scode) scode)))
 
 (define (unsyntax-object object)
-  ((scode-walk unsyntaxer/scode-walker object) object))
+  (maybe-substitute
+   object
+   (lambda (object) ((scode-walk unsyntaxer/scode-walker object) object))))
 
 (define unsyntaxer/scode-walker)
 
@@ -108,15 +128,17 @@ MIT in each case. |#
   (variable-name object))
 
 (define (unsyntax-ACCESS-object object)
-  `(ACCESS ,@(unexpand-access object true)))
+  `(ACCESS ,@(unexpand-access object)))
 
-(define (unexpand-access object separate?)
-  (if (and (access? object) separate?)
-      (access-components object
-	(lambda (environment name)
-	  `(,name ,@(unexpand-access environment
-				     (and separate? unsyntaxer:macroize?)))))
-      `(,(unsyntax-object object))))
+(define (unexpand-access object)
+  (let loop ((object object) (separate? true))
+    (if (and separate?
+	     (access? object)
+	     (not (has-substitution? object)))
+	(access-components object
+	  (lambda (environment name)
+	    `(,name ,@(loop environment unsyntaxer:macroize?))))
+	`(,(unsyntax-object object)))))
 
 (define (unsyntax-DEFINITION-object definition)
   (definition-components definition unexpand-definition))
@@ -127,7 +149,9 @@ MIT in each case. |#
       `(SET! ,name ,@(unexpand-binding-value value)))))
 
 (define (unexpand-definition name value)
-  (if (and (lambda? value) unsyntaxer:macroize?)
+  (if (and unsyntaxer:macroize?
+	   (lambda? value)
+	   (not (has-substitution? value)))
       (lambda-components** value
 	(lambda (lambda-name required optional rest body)
 	  (if (eq? lambda-name name)
@@ -155,28 +179,41 @@ MIT in each case. |#
     (lambda (text expression)
       `(LOCAL-DECLARE ,text ,(unsyntax-object expression)))))
 
-(define (unsyntax-SEQUENCE-object sequence)
-  (if unsyntaxer:macroize?
-      `(BEGIN ,@(unsyntax-sequence sequence))
-      (car (unsyntax-sequence sequence))))  
+(define (unsyntax-SEQUENCE-object seq)
+  `(BEGIN ,@(unsyntax-sequence-actions seq)))
 
-(define (unsyntax-sequence sequence)
-  (cond ((not (sequence? sequence))
-	 (list (unsyntax-object sequence)))
-	(unsyntaxer:macroize?
-	 (unsyntax-objects (sequence-actions sequence)))
-	(else
-	 `((BEGIN
-	     ,@(unsyntax-objects (sequence-immediate-actions sequence)))))))
+(define (unsyntax-sequence seq)
+  (if (sequence? seq)
+      (if unsyntaxer:macroize?
+	  (unsyntax-sequence-actions seq)
+	  `((BEGIN ,@(unsyntax-sequence-actions seq))))
+      (list (unsyntax-object seq))))
+
+(define (unsyntax-sequence-actions seq)
+  (let ((actions (sequence-immediate-actions seq)))
+    (let loop ((actions actions))
+      (if (null? actions)
+	  '()
+	  (let ((substitution (has-substitution? (car actions))))
+	    (cond (substitution
+		   (cons (cdr substitution)
+			 (loop (cdr actions))))
+		  ((and unsyntaxer:macroize?
+			(sequence? (car actions)))
+		   (append (unsyntax-sequence-actions (car actions))
+			   (loop (cdr actions))))
+		  (else
+		   (cons (unsyntax-object (car actions))
+			 (loop (cdr actions))))))))))
 
 (define (unsyntax-OPEN-BLOCK-object open-block)
-  (open-block-components open-block
-    (lambda (auxiliary declarations expression)
-      (if unsyntaxer:macroize?
+  (if unsyntaxer:macroize?
+      (open-block-components open-block
+	(lambda (auxiliary declarations expression)
 	  `(OPEN-BLOCK ,auxiliary
 		       ,declarations
-		       ,@(unsyntax-sequence expression))
-	  (unsyntax-SEQUENCE-object open-block)))))
+		       ,@(unsyntax-sequence expression))))
+      (unsyntax-SEQUENCE-object open-block)))
 
 (define (unsyntax-DELAY-object object)
   `(DELAY ,(unsyntax-object (delay-expression object))))
@@ -190,7 +227,7 @@ MIT in each case. |#
 (define (unsyntax-THE-ENVIRONMENT-object object)
   object
   `(THE-ENVIRONMENT))
-
+
 (define (unsyntax-DISJUNCTION-object object)
   `(OR ,@(disjunction-components object
 	   (if unsyntaxer:macroize?
@@ -204,7 +241,7 @@ MIT in each case. |#
     ,@(if (disjunction? alternative)
 	  (disjunction-components alternative unexpand-disjunction)
 	  `(,(unsyntax-object alternative)))))
-
+
 (define (unsyntax-CONDITIONAL-object conditional)
   (conditional-components conditional
     (if unsyntaxer:macroize?
@@ -225,7 +262,8 @@ MIT in each case. |#
 	((eq? consequent undefined-conditional-branch)
 	 `(IF (,not ,(unsyntax-object predicate))
 	      ,(unsyntax-object alternative)))
-	((conditional? alternative)
+	((and (conditional? alternative)
+	      (not (has-substitution? alternative)))
 	 `(COND ,@(unsyntax-cond-conditional predicate
 					     consequent
 					     alternative)))
@@ -241,15 +279,22 @@ MIT in each case. |#
     ,@(unsyntax-cond-alternative alternative)))
 
 (define (unsyntax-cond-alternative alternative)
-  (cond ((eq? alternative undefined-conditional-branch) '())
+  (cond ((eq? alternative undefined-conditional-branch)
+	 '())
+	((has-substitution? alternative)
+	 =>
+	 (lambda (substitution)
+	   `((ELSE ,substitution))))
 	((disjunction? alternative)
 	 (disjunction-components alternative unsyntax-cond-disjunction))
 	((conditional? alternative)
 	 (conditional-components alternative unsyntax-cond-conditional))
-	(else `((ELSE ,@(unsyntax-sequence alternative))))))
+	(else
+	 `((ELSE ,@(unsyntax-sequence alternative))))))
 
 (define (unexpand-conjunction predicate consequent)
-  (if (conditional? consequent)
+  (if (and (conditional? consequent)
+	   (not (has-substitution? consequent)))
       `(,(unsyntax-object predicate)
 	,@(conditional-components consequent
 	    (lambda (predicate consequent alternative)
@@ -320,12 +365,14 @@ MIT in each case. |#
        (let ((ordinary-combination
 	      (lambda ()
 		`(,(unsyntax-object operator) ,@(unsyntax-objects operands)))))
-	 (cond ((not unsyntaxer:macroize?)
+	 (cond ((or (not unsyntaxer:macroize?)
+		    (has-substitution? operator))
 		(ordinary-combination))
 	       ((and (or (eq? operator cons)
 			 (absolute-reference-to? operator 'CONS))
 		     (= (length operands) 2)
-		     (delay? (cadr operands)))
+		     (delay? (cadr operands))
+		     (not (has-substitution? (cadr operands))))
 		`(CONS-STREAM ,(unsyntax-object (car operands))
 			      ,(unsyntax-object
 				(delay-expression (cadr operands)))))
@@ -363,7 +410,7 @@ MIT in each case. |#
 
 (define (unsyntax-let-binding name value)
   `(,name ,@(unexpand-binding-value value)))
-
+
 (define (rewrite-named-let expression)
   (if (and (pair? expression)
 	   (let ((expression (car expression)))
@@ -389,7 +436,7 @@ MIT in each case. |#
 	       (cdr expression))
 	 ,@(cddr (caddr (car expression))))
       expression))
-
+
 (define (unsyntax-ERROR-COMBINATION-object combination)
   (if unsyntaxer:macroize?
       (unsyntax-error-like-form (combination-operands combination) 'ERROR)
@@ -397,10 +444,11 @@ MIT in each case. |#
 
 (define (unsyntax-error-like-form operands name)
   (cons* name
-	 (unsyntax-object (first operands))
+	 (unsyntax-object (car operands))
 	 (unsyntax-objects
 	  (let loop ((irritants (cadr operands)))
 	    (cond ((null? irritants) '())
+		  ((has-substitution? irritants) (list irritants))
 		  ((and (combination? irritants)
 			(absolute-reference-to?
 			 (combination-operator irritants)
@@ -412,21 +460,36 @@ MIT in each case. |#
 		     (cons (car operands)
 			   (loop (cadr operands)))))
 		  (else
-		   ;; Actually, this is an error.  But do something useful
-		   ;; here just in case it actually happens.
+		   ;; Actually, this is an error.  But do
+		   ;; something useful here just in case it
+		   ;; actually happens.
 		   (list irritants)))))))
 
 (define (unsyntax/fluid-let names values body if-malformed)
   (combination-components body
     (lambda (operator operands)
-      (cond ((or (absolute-reference-to? operator 'DYNAMIC-WIND)
-		 (and (variable? operator)
-		      (eq? (variable-name operator) 'DYNAMIC-WIND)))
+      ;; `fluid-let' expressions are complicated.  Rather than scan
+      ;; the entire expresion to find out if it has any substitutable
+      ;; subparts, we just treat it as malformed if there are active
+      ;; substitutions.
+      (cond ((not (null? substitutions))
+	     (if-malformed))
+	    ((and (or (absolute-reference-to? operator 'DYNAMIC-WIND)
+		      (and (variable? operator)
+			   (eq? (variable-name operator) 'DYNAMIC-WIND)))
+		  (pair? operands)
+		  (lambda? (car operands))
+		  (pair? (cdr operands))
+		  (lambda? (cadr operands))
+		  (pair? (cddr operands))
+		  (lambda? (caddr operands))
+		  (null? (cdddr operands)))
 	     (unsyntax/fluid-let/shallow names values operands))
 	    ((and (eq? operator (ucode-primitive with-saved-fluid-bindings 1))
 		  (null? names)
 		  (null? values)
 		  (not (null? operands))
+		  (lambda? (car operands))
 		  (null? (cdr operands)))
 	     (unsyntax/fluid-let/deep (car operands)))
 	    (else
@@ -457,7 +520,7 @@ MIT in each case. |#
 	       (lambda (operator operands)
 		 (cond ((eq? operator lexical-assignment)
 			`(ACCESS ,(cadr operands)
-				 ,@(unexpand-access (car operands) true)))
+				 ,@(unexpand-access (car operands))))
 		       (else
 			(unsyntax-error 'FLUID-LET
 					"Unknown SCODE form"

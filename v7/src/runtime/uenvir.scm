@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uenvir.scm,v 14.19 1990/08/21 04:19:12 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uenvir.scm,v 14.20 1990/09/11 20:45:35 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -246,8 +246,8 @@ MIT in each case. |#
 
 (define (ic-environment->external environment)
   (let ((procedure (select-procedure environment)))
-    (if (internal-lambda? (compound-procedure-lambda procedure))
-	(compound-procedure-environment procedure)
+    (if (internal-lambda? (procedure-lambda procedure))
+	(procedure-environment procedure)
 	environment)))
 
 (define-integrable (select-extension environment)
@@ -260,10 +260,10 @@ MIT in each case. |#
 	object)))
 
 (define (select-parent environment)
-  (compound-procedure-environment (select-procedure environment)))
+  (procedure-environment (select-procedure environment)))
 
 (define (select-lambda environment)
-  (compound-procedure-lambda (select-procedure environment)))
+  (procedure-lambda (select-procedure environment)))
 
 (define (ic-environment/extension environment)
   (select-extension (ic-environment->external environment)))
@@ -339,61 +339,72 @@ MIT in each case. |#
 	   (error "Illegal procedure parent block" parent)))))))
 
 (define (stack-ccenv/has-parent? environment)
-  (dbg-block/parent (stack-ccenv/block environment)))
+  (if (dbg-block/parent (stack-ccenv/block environment))
+      true
+      'SIMULATED))
 
 (define (stack-ccenv/parent environment)
   (let ((block (stack-ccenv/block environment)))
     (let ((parent (dbg-block/parent block)))
-      (case (dbg-block/type parent)
-	((STACK)
-	 (let loop
-	     ((block block)
-	      (frame (stack-ccenv/frame environment))
-	      (index
-	       (+ (stack-ccenv/start-index environment)
-		  (vector-length (dbg-block/layout-vector block)))))
-	   (let ((stack-link (dbg-block/stack-link block)))
-	     (cond ((not stack-link)
-		    (with-values
-			(lambda ()
-			  (stack-frame/resolve-stack-address
-			   frame
-			   (stack-ccenv/static-link environment)))
-		      (lambda (frame index)
-			(let ((block (dbg-block/parent block)))
-			  (if (eq? block parent)
-			      (make-stack-ccenv parent frame index)
-			      (loop block frame index))))))
-		   ((eq? stack-link parent)
-		    (make-stack-ccenv parent frame index))
-		   (else
-		    (loop stack-link
-			  frame
-			  (+ (vector-length
-			      (dbg-block/layout-vector stack-link))
-			     (case (dbg-block/type stack-link)
-			       ((STACK)
-				0)
-			       ((CONTINUATION)
-				(dbg-continuation/offset
-				 (dbg-block/procedure stack-link)))
-			       (else
-				(error "illegal stack-link type" stack-link)))
-			     index)))))))
-	((CLOSURE)
-	 (make-closure-ccenv (dbg-block/original-parent block)
-			     parent
-			     (stack-ccenv/normal-closure environment)))
-	((IC)
-	 (guarantee-ic-environment
-	  (if (dbg-block/static-link-index block)
-	      (stack-ccenv/static-link environment)
-	      (compiled-code-block/environment
-	       (compiled-code-address->block
-		(stack-frame/return-address
-		 (stack-ccenv/frame environment)))))))
-	(else
-	 (error "illegal parent block" parent))))))
+      (if parent
+	  (case (dbg-block/type parent)
+	    ((STACK)
+	     (let loop
+		 ((block block)
+		  (frame (stack-ccenv/frame environment))
+		  (index
+		   (+ (stack-ccenv/start-index environment)
+		      (vector-length (dbg-block/layout-vector block)))))
+	       (let ((stack-link (dbg-block/stack-link block)))
+		 (cond ((not stack-link)
+			(with-values
+			    (lambda ()
+			      (stack-frame/resolve-stack-address
+			       frame
+			       (stack-ccenv/static-link environment)))
+			  (lambda (frame index)
+			    (let ((block (dbg-block/parent block)))
+			      (if (eq? block parent)
+				  (make-stack-ccenv parent frame index)
+				  (loop block frame index))))))
+		       ((eq? stack-link parent)
+			(make-stack-ccenv parent frame index))
+		       (else
+			(loop stack-link
+			      frame
+			      (+ (vector-length
+				  (dbg-block/layout-vector stack-link))
+				 (case (dbg-block/type stack-link)
+				   ((STACK)
+				    0)
+				   ((CONTINUATION)
+				    (dbg-continuation/offset
+				     (dbg-block/procedure stack-link)))
+				   (else
+				    (error "illegal stack-link type" stack-link)))
+				 index)))))))
+	    ((CLOSURE)
+	     (make-closure-ccenv (dbg-block/original-parent block)
+				 parent
+				 (stack-ccenv/normal-closure environment)))
+	    ((IC)
+	     (guarantee-ic-environment
+	      (if (dbg-block/static-link-index block)
+		  (stack-ccenv/static-link environment)
+		  (compiled-code-block/environment
+		   (compiled-code-address->block
+		    (stack-frame/return-address
+		     (stack-ccenv/frame environment)))))))
+	    (else
+	     (error "illegal parent block" parent)))
+	  (let ((environment
+		 (compiled-code-block/environment
+		   (compiled-code-address->block
+		    (stack-frame/return-address
+		     (stack-ccenv/frame environment))))))
+	    (if (ic-environment? environment)
+		environment
+		system-global-environment))))))
 
 (define (stack-ccenv/lambda environment)
   (dbg-block/source-code (stack-ccenv/block environment)))
@@ -543,35 +554,47 @@ MIT in each case. |#
 		       index)))
 
 (define (closure-ccenv/has-parent? environment)
-  (let ((stack-block (closure-ccenv/stack-block environment)))
-    (let ((parent (dbg-block/parent stack-block)))
-      (and parent
-	   (case (dbg-block/type parent)
-	     ((CLOSURE) (dbg-block/original-parent stack-block))
-	     ((STACK IC) true)
-	     (else (error "Illegal parent block" parent)))))))
+  (or (let ((stack-block (closure-ccenv/stack-block environment)))
+	(let ((parent (dbg-block/parent stack-block)))
+	  (and parent
+	       (case (dbg-block/type parent)
+		 ((CLOSURE) (dbg-block/original-parent stack-block))
+		 ((STACK IC) true)
+		 (else (error "Illegal parent block" parent))))))
+      'SIMULATED))
 
 (define (closure-ccenv/parent environment)
   (let ((stack-block (closure-ccenv/stack-block environment))
 	(closure-block (closure-ccenv/closure-block environment))
 	(closure (closure-ccenv/closure environment)))
-    (let ((parent (dbg-block/parent stack-block)))
-      (case (dbg-block/type parent)
-	((STACK)
-	 (make-closure-ccenv parent closure-block closure))
-	((CLOSURE)
-	 (make-closure-ccenv (dbg-block/original-parent stack-block)
-			     closure-block
-			     closure))
-	((IC)
-	 (guarantee-ic-environment
-	  (let ((index (dbg-block/ic-parent-index closure-block)))
-	    (if index
-		(closure/get-value closure closure-block index)
-		(compiled-code-block/environment
-		 (compiled-entry/block closure))))))
-	(else
-	 (error "Illegal parent block" parent))))))
+    (let ((parent (dbg-block/parent stack-block))
+	  (use-simulation
+	   (lambda ()
+	     (let ((environment
+		    (compiled-code-block/environment
+		     (compiled-entry/block closure))))
+	       (if (ic-environment? environment)
+		   environment
+		   system-global-environment)))))
+      (if parent
+	  (case (dbg-block/type parent)
+	    ((STACK)
+	     (make-closure-ccenv parent closure-block closure))
+	    ((CLOSURE)
+	     (let ((parent (dbg-block/original-parent stack-block)))
+	       (if parent
+		   (make-closure-ccenv parent closure-block closure)
+		   (use-simulation))))
+	    ((IC)
+	     (guarantee-ic-environment
+	      (let ((index (dbg-block/ic-parent-index closure-block)))
+		(if index
+		    (closure/get-value closure closure-block index)
+		    (compiled-code-block/environment
+		     (compiled-entry/block closure))))))
+	    (else
+	     (error "Illegal parent block" parent)))
+	  (use-simulation)))))
 
 (define (closure-ccenv/lambda environment)
   (dbg-block/source-code (closure-ccenv/stack-block environment)))

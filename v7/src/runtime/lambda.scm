@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/lambda.scm,v 14.5 1989/04/18 16:29:32 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/lambda.scm,v 14.6 1990/09/11 20:44:43 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -54,7 +54,7 @@ MIT in each case. |#
       (set! clexpr-unwrap-body! unwrap-body!)
       (set! clexpr-unwrapped-body unwrapped-body)
       (set! set-clexpr-unwrapped-body! set-unwrapped-body!)))
-  (lambda-body-procedures &triple-first &triple-set-first!
+  (lambda-body-procedures xlambda/physical-body xlambda/set-physical-body!
     (lambda (wrap-body! wrapper-components unwrap-body!
 			unwrapped-body set-unwrapped-body!)
       (set! xlambda-wrap-body! wrap-body!)
@@ -200,37 +200,31 @@ MIT in each case. |#
   (slambda-components clambda
     (lambda (name required body)
       (receiver name required '() '()
-		(if (combination? body)
-		    (let ((operator (combination-operator body)))
-		      (if (internal-lambda? operator)
-			  (slambda-components operator
-			    (lambda (tag auxiliary body)
-			      tag body
-			      auxiliary))
-			  '()))
-		    '())
+		(lambda-body-auxiliary body)
 		(clambda-unwrapped-body clambda)))))
 
 (define (clambda-bound clambda)
   (slambda-components clambda
     (lambda (name required body)
       name
-      (if (combination? body)
-	  (let ((operator (combination-operator body)))
-	    (if (internal-lambda? operator)
-		(slambda-components operator
-		  (lambda (tag auxiliary body)
-		    tag body
-		    (append required auxiliary)))
-		required))
-	  required))))
+      (append required (lambda-body-auxiliary body)))))
 
 (define (clambda-has-internal-lambda? clambda)
-  (let ((body (slambda-body clambda)))
-    (and (combination? body)
-	 (let ((operator (combination-operator body)))
-	   (and (internal-lambda? operator)
-		operator)))))
+  (lambda-body-has-internal-lambda? (slambda-body clambda)))
+
+(define (lambda-body-auxiliary body)
+  (if (combination? body)
+      (let ((operator (combination-operator body)))
+	(if (internal-lambda? operator)
+	    (slambda-auxiliary operator)
+	    '()))
+      '()))
+
+(define (lambda-body-has-internal-lambda? body)
+  (and (combination? body)
+       (let ((operator (combination-operator body)))
+	 (and (internal-lambda? operator)
+	      operator))))
 
 (define clambda-wrap-body!)
 (define clambda-wrapper-components)
@@ -250,40 +244,46 @@ MIT in each case. |#
   (make-slexpr name
 	       required
 	       (make-combination
-		(make-internal-lexpr (cons rest auxiliary) body)
-		(cons (let ((environment (make-the-environment)))
+		(make-internal-lexpr
+		 (list rest)
+		 (if (null? auxiliary)
+		     body
+		     (make-combination (make-internal-lambda auxiliary body)
+				       (make-unassigned auxiliary))))
+		(list (let ((environment (make-the-environment)))
 			(make-combination
 			 system-subvector->list
 			 (list environment
 			       (+ (length required) 3)
 			       (make-combination system-vector-length
-						 (list environment)))))
-		      (make-unassigned auxiliary)))))
+						 (list environment)))))))))
 
 (define (clexpr-components clexpr receiver)
   (slexpr-components clexpr
     (lambda (name required body)
-      (slambda-components (combination-operator body)
-	(lambda (tag auxiliary body)
-	  tag body
+      (let ((internal (combination-operator body)))
+	(let ((auxiliary (slambda-auxiliary internal)))
 	  (receiver name
 		    required
 		    '()
 		    (car auxiliary)
-		    (cdr auxiliary)
+		    (append (cdr auxiliary)
+			    (lambda-body-auxiliary (slambda-body internal)))
 		    (clexpr-unwrapped-body clexpr)))))))
 
 (define (clexpr-bound clexpr)
   (slexpr-components clexpr
     (lambda (name required body)
       name
-      (slambda-components (combination-operator body)
-	(lambda (tag auxiliary body)
-	  tag body
-	  (append required auxiliary))))))
+      (let ((internal (combination-operator body)))
+	(append required
+		(slambda-auxiliary internal)
+		(lambda-body-auxiliary (slambda-body internal)))))))
 
 (define (clexpr-has-internal-lambda? clexpr)
-  (combination-operator (slexpr-body clexpr)))
+  (let ((internal (combination-operator (slexpr-body clexpr))))
+    (or (lambda-body-has-internal-lambda? (slambda-body internal))
+	internal)))
 
 (define clexpr-wrap-body!)
 (define clexpr-wrapper-components)
@@ -303,19 +303,19 @@ MIT in each case. |#
   (ucode-type extended-lambda))
 
 (define (make-xlambda name required optional rest auxiliary body)
-  (&typed-triple-cons xlambda-type
-		      body
-		      (list->vector
-		       (cons name
-			     (append required
-				     optional
-				     (if (null? rest)
-					 auxiliary
-					 (cons rest auxiliary)))))
-		      (make-non-pointer-object
-		       (+ (length optional)
-			  (* 256
-			     (+ (length required) (if (null? rest) 0 256)))))))
+  (&typed-triple-cons
+   xlambda-type
+   (if (null? auxiliary)
+       body
+       (make-combination (make-internal-lambda auxiliary body)
+			 (make-unassigned auxiliary)))
+   (list->vector
+    (cons name (append required optional (if (null? rest) '() (list rest)))))
+   (make-non-pointer-object
+    (+ (length optional)
+       (* 256
+	  (+ (length required)
+	     (if (null? rest) 0 256)))))))
 
 (define-integrable (xlambda? object)
   (object-type? xlambda-type object))
@@ -333,27 +333,39 @@ MIT in each case. |#
 		      (if (zero? (car qr2))
 			  '()
 			  (vector-ref bound rstart))
-		      (subvector->list bound
-				       astart
-				       (vector-length bound))
+		      (append
+		       (subvector->list bound astart (vector-length bound))
+		       (lambda-body-auxiliary (&triple-first xlambda)))
 		      (xlambda-unwrapped-body xlambda))))))))
 
 (define (xlambda-name xlambda)
   (vector-ref (&triple-second xlambda) 0))
 
 (define (xlambda-bound xlambda)
-  (let ((names (&triple-second xlambda)))
-    (subvector->list names 1 (vector-length names))))
+  (append (let ((names (&triple-second xlambda)))
+	    (subvector->list names 1 (vector-length names)))
+	  (lambda-body-auxiliary (&triple-first xlambda))))
 
 (define (xlambda-has-internal-lambda? xlambda)
-  xlambda
-  false)
+  (lambda-body-has-internal-lambda? (&triple-first xlambda)))
 
 (define xlambda-wrap-body!)
 (define xlambda-wrapper-components)
 (define xlambda-unwrap-body!)
 (define xlambda-unwrapped-body)
 (define set-xlambda-unwrapped-body!)
+
+(define (xlambda/physical-body xlambda)
+  (let ((internal (xlambda-has-internal-lambda? xlambda)))
+    (if internal
+	(slambda-body internal)
+	(&triple-first xlambda))))
+
+(define (xlambda/set-physical-body! xlambda body)
+  (let ((internal (xlambda-has-internal-lambda? xlambda)))
+    (if internal
+	(set-slambda-body! internal body)
+	(&triple-set-first! xlambda body))))
 
 ;;;; Generic Lambda
 
@@ -363,6 +375,13 @@ MIT in each case. |#
       (xlambda? object)))
 
 (define (make-lambda name required optional rest auxiliary declarations body)
+  (if (or (list-has-duplicates? required)
+	  (list-has-duplicates? optional)
+	  (list-has-duplicates? auxiliary)
+	  (there-exists? required (lambda (name) (memq name optional)))
+	  (and rest (or (memq rest required) (memq rest optional))))
+      (error "one or more duplicate parameters"
+	     required optional rest auxiliary))
   (let ((body* (if (null? declarations)
 		   body
 		   (make-sequence (list (make-block-declaration declarations)
@@ -391,6 +410,12 @@ MIT in each case. |#
 		      (block-declaration-text (car actions))
 		      (make-sequence (cdr actions)))
 	    (receiver name required optional rest auxiliary '() body))))))
+
+(define (list-has-duplicates? items)
+  (and (not (null? items))
+       (if (memq (car items) (cdr items))
+	   true
+	   (list-has-duplicates? (cdr items)))))
 
 (define ((dispatch-0 op-name clambda-op clexpr-op xlambda-op) lambda)
   ((cond ((slambda? lambda) clambda-op)
@@ -439,6 +464,10 @@ MIT in each case. |#
 
 (define-integrable (slambda-name slambda)
   (vector-ref (&pair-cdr slambda) 0))
+
+(define (slambda-auxiliary slambda)
+  (let ((bound (&pair-cdr slambda)))
+    (subvector->list bound 1 (vector-length bound))))
 
 (define-integrable (slambda-body slambda)
   (&pair-car slambda))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/udata.scm,v 14.14 1990/08/21 04:19:05 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/udata.scm,v 14.15 1990/09/11 20:45:26 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -83,21 +83,11 @@ MIT in each case. |#
   (and (compiled-code-address? object)
        (eq? (compiled-entry-type object) 'COMPILED-EXPRESSION)))
 
-(define (compiled-procedure? object)
-  (and (compiled-code-address? object)
-       (eq? (compiled-entry-type object) 'COMPILED-PROCEDURE)))
-
 (define (compiled-return-address? object)
   (and (compiled-code-address? object)
        (eq? (compiled-entry-type object) 'COMPILED-RETURN-ADDRESS)))
 
-(define (compiled-closure? object)
-  (and (compiled-procedure? object)
-       (compiled-code-block/manifest-closure?
-	(compiled-code-address->block object))))
-
 (define-primitives
-  (compiled-closure->entry 1)
   (stack-address-offset 1)
   (compiled-code-address->block 1)
   (compiled-code-address->offset 1))
@@ -119,29 +109,6 @@ MIT in each case. |#
     ((1) 'COMPILED-RETURN-ADDRESS)
     ((2) 'COMPILED-EXPRESSION)
     (else 'COMPILED-ENTRY)))
-
-(define (compiled-procedure-arity object)
-  (let ((info ((ucode-primitive compiled-entry-kind 1) object)))
-    (if (not (= (system-hunk3-cxr0 info) 0))
-	(error "COMPILED-PROCEDURE-ARITY: bad compiled procedure" object))
-    ;; max = (-1)^tail? * (1 + req + opt + tail?)
-    ;; min = (1 + req)
-    (cons (-1+ (system-hunk3-cxr1 info))
-	  (let ((max (system-hunk3-cxr2 info)))
-	    (and (not (negative? max))
-		 (-1+ max))))))
-
-(define (compiled-procedure-frame-size procedure)
-  (let ((info ((ucode-primitive compiled-entry-kind 1) procedure)))
-    (if (not (= (system-hunk3-cxr0 info) 0))
-	(error "COMPILED-PROCEDURE-FRAME-SIZE: bad compiled procedure"
-	       procedure))
-    (let ((max (system-hunk3-cxr2 info)))
-      ;; max = (-1)^tail? * (1 + req + opt + tail?)
-      ;; frame = req + opt + tail?
-      (if (negative? max)
-	  (- -1 max)
-	  (-1+ max)))))
 
 (define (compiled-continuation/next-continuation-offset entry)
   (let ((offset
@@ -159,28 +126,6 @@ MIT in each case. |#
     (if (negative? index)
 	(error "Stack address out of range" address start-offset))
     index))
-
-;; In the following two procedures, offset can be #f to support
-;; old-style 68020 closures.  When offset is not #f, it works on all
-;; architectures.
-
-(define (compiled-closure/ref closure index offset)
-  (if (not offset)
-      ((ucode-primitive primitive-object-ref 2) closure (+ 2 index))
-      ((ucode-primitive primitive-object-ref 2)
-       ((ucode-primitive compiled-code-address->block 1)
-	closure)
-       (+ index offset))))
-
-(define-integrable (compiled-closure/set! closure index offset value)
-  (if (not offset)
-      ((ucode-primitive primitive-object-set! 3) closure (+ 2 index) value)
-      ((ucode-primitive primitive-object-set! 3)
-       ((ucode-primitive compiled-code-address->block 1)
-	closure)
-       (+ index offset)
-       value))
-  unspecific)
 
 ;;;; Compiled Code Blocks
 
@@ -282,7 +227,7 @@ that you cannot just vector-ref into.
 	  (else
 	   (cons (car aux-list)
 		 (filter-potentially-dangerous (cdr aux-list)))))))
-
+
 ;;;; Promises
 
 (define-integrable (promise? object)
@@ -312,136 +257,3 @@ that you cannot just vector-ref into.
   (if (promise-non-expression? promise)
       (error "Promise has no environment" promise))
   (system-pair-car promise))
-
-;;;; Procedures
-
-(define-integrable (primitive-procedure? object)
-  (object-type? (ucode-type primitive) object))
-
-(define (guarantee-primitive-procedure object)
-  (if (not (primitive-procedure? object))
-      (error "Not a primitive procedure" object))
-  object)
-
-(define (make-primitive-procedure name #!optional arity)
-  (let ((arity (if (default-object? arity) false arity)))
-    (let ((result ((ucode-primitive get-primitive-address) name arity)))
-      (if (not (or (object-type? (ucode-type primitive) result)
-		   (eq? arity true)))
-	  (if (false? result)
-	      (error "MAKE-PRIMITIVE-PROCEDURE: unknown name" name)
-	      (error "MAKE-PRIMITIVE-PROCEDURE: inconsistent arity" name
-		     (error-irritant/noise " new:") arity
-		     (error-irritant/noise " old:") result)))
-      result)))
-
-(define (implemented-primitive-procedure? object)
-  ((ucode-primitive get-primitive-address) (primitive-procedure-name object)
-					   false))
-
-(define (primitive-procedure-name primitive)
-  (intern
-   ((ucode-primitive get-primitive-name)
-    (guarantee-primitive-procedure primitive))))
-
-(define (compound-procedure? object)
-  (or (object-type? (ucode-type procedure) object)
-      (object-type? (ucode-type extended-procedure) object)))
-
-(define (guarantee-compound-procedure object)
-  (if (not (compound-procedure? object))
-      (error "Not a compound procedure" object))
-  object)
-
-(define-integrable (compound-procedure-lambda procedure)
-  (system-pair-car procedure))
-
-(define-integrable (compound-procedure-environment procedure)
-  (system-pair-cdr procedure))
-
-(define-integrable (make-entity procedure extra)
-  (system-pair-cons (ucode-type entity) procedure extra))
-
-(define-integrable (entity? object)
-  (object-type? (ucode-type entity) object))
-
-(define-integrable (entity-procedure entity)
-  (system-pair-car entity))
-
-(define-integrable (entity-extra entity)
-  (system-pair-cdr entity))
-
-(define-integrable (set-entity-procedure! entity procedure)
-  (system-pair-set-car! entity procedure)
-  unspecific)
-
-(define-integrable (set-entity-extra! entity extra)
-  (system-pair-set-car! entity extra)
-  unspecific)
-
-(define (procedure? object)
-  (or (compound-procedure? object)
-      (primitive-procedure? object)
-      (compiled-procedure? object)
-      (and (entity? object)
-	   (procedure? (entity-procedure object)))))
-
-(define (discriminate-procedure object if-primitive if-compound if-compiled)
-  (let loop ((procedure object))
-    (cond ((primitive-procedure? procedure) (if-primitive procedure))
-	  ((compound-procedure? procedure) (if-compound procedure))
-	  ((compiled-procedure? procedure) (if-compiled procedure))
-	  ((entity? procedure) (loop (entity-procedure procedure)))
-	  (else (error "Not a procedure" object)))))
-
-(define (procedure-lambda object)
-  (discriminate-procedure
-   object
-   (lambda (procedure) procedure false)
-   compound-procedure-lambda
-   compiled-procedure/lambda))
-
-(define (procedure-environment object)
-  (discriminate-procedure
-   object
-   (lambda (procedure)
-     (error "Primitive procedures have no closing environment" procedure))
-   compound-procedure-environment
-   compiled-procedure/environment))
-
-(define (procedure-components object receiver)
-  (discriminate-procedure
-   object
-   (lambda (procedure)
-     (error "Primitive procedures have no components" procedure))
-   (lambda (procedure)
-     (receiver (compound-procedure-lambda procedure)
-	       (compound-procedure-environment procedure)))
-   (lambda (procedure)
-     (receiver (compiled-procedure/lambda procedure)
-	       (compiled-procedure/environment procedure)))))
-
-(define (procedure-arity object)
-  (discriminate-procedure
-   object
-   (lambda (procedure)
-     (let ((arity (primitive-procedure-arity procedure)))
-       (if (negative? arity)
-	   (cons 0 false)
-	   (cons arity arity))))
-   (lambda (procedure)
-     (lambda-components (compound-procedure-lambda procedure)
-       (lambda (name required optional rest auxiliary decl body)
-	 name auxiliary decl body
-	 (let ((r (length required)))
-	   (cons r
-		 (and (not rest)
-		      (+ r (length optional))))))))
-   compiled-procedure-arity))
-
-(define (procedure-arity-valid? procedure n-arguments)
-  (let ((arity (procedure-arity procedure)))
-    (and (<= (car arity) n-arguments)
-	 (if (cdr arity)
-	     (<= n-arguments (cdr arity))
-	     true))))

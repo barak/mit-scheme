@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/dbgutl.scm,v 14.9 1990/02/20 16:15:16 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/dbgutl.scm,v 14.10 1990/09/11 20:43:59 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -45,9 +45,15 @@ MIT in each case. |#
 	      (begin (write-string "a ")
 		     (write-string rename)
 		     (write-string " special form"))
-	      (begin (write-string "the procedure ")
+	      (begin (write-string "the procedure: ")
 		     (write-dbg-name name))))
 	(write-string "an unknown procedure"))))
+
+(define (show-environment-procedure environment)
+  (let ((scode-lambda (environment-lambda environment)))
+    (if scode-lambda
+	(presentation (lambda () (pretty-print scode-lambda)))
+	(debugger-failure "No procedure for this environment."))))
 
 (define (write-dbg-name name)
   (if (string? name) (write-string name) (write name)))
@@ -57,8 +63,8 @@ MIT in each case. |#
 	 (debug/eval (prompt-for-expression "Evaluate expression")
 		     environment)))
     (if (undefined-value? value)
-	(debugger-message "\n" ";No value")
-	(debugger-message "\n" "Value: " value))))
+	(debugger-message "No value")
+	(debugger-message "Value: " value))))
 
 (define (output-to-string length thunk)
   (let ((x (with-output-to-truncated-string length thunk)))
@@ -72,7 +78,7 @@ MIT in each case. |#
      (let loop ((environment environment) (depth depth))
        (write-string "----------------------------------------")
        (show-frame environment depth true)
-       (if (environment-has-parent? environment)
+       (if (eq? true (environment-has-parent? environment))
 	   (begin
 	     (newline)
 	     (newline)
@@ -95,7 +101,7 @@ MIT in each case. |#
   (let ((package (environment->package environment)))
     (if package
 	(begin
-	  (write-string "named ")
+	  (write-string "named: ")
 	  (write (package/name package)))
 	(begin
 	  (write-string "created by ")
@@ -112,16 +118,16 @@ MIT in each case. |#
 					(environment-lookup environment name)))
 		       names))))
       (cond ((zero? n-bindings)
-	     (write-string "Has no bindings"))
+	     (write-string " has no bindings"))
 	    ((and brief? (> n-bindings brief-bindings-limit))
-	     (write-string "Has ")
+	     (write-string " has ")
 	     (write n-bindings)
 	     (write-string " bindings (first ")
 	     (write brief-bindings-limit)
 	     (write-string " shown):")
 	     (finish (list-head names brief-bindings-limit)))
 	    (else
-	     (write-string "Has bindings:")
+	     (write-string " has bindings:")
 	     (finish names))))))
 
 (define brief-bindings-limit
