@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dosfile.scm,v 1.18 1998/08/30 02:06:45 cph Exp $
+;;;	$Id: dosfile.scm,v 1.19 1998/10/20 05:56:37 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-98 Massachusetts Institute of Technology
 ;;;
@@ -567,7 +567,7 @@ Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
   '())
 
 (define (os/default-shell-prompt-pattern)
-  "^\\[[^]]*] *")
+  "^[^]$]*[]>] *")
 
 (define (os/comint-filename-region start point end)
   (let ((chars "]\\\\A-Za-z0-9!#$%&'()+,.:;=@[^_`{}~---"))
