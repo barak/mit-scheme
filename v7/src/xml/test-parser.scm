@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: test-parser.scm,v 1.10 2003/03/01 16:52:10 cph Exp $
+$Id: test-parser.scm,v 1.11 2004/02/23 20:52:49 cph Exp $
 
-Copyright 2001 Massachusetts Institute of Technology
+Copyright 2001,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -50,7 +50,7 @@ USA.
 		 ((condition? v)
 		  (write-condition-report v (current-output-port)))
 		 (else
-		  (let ((s (ignore-errors (lambda () (xml->string v)))))
+		  (let ((s (ignore-errors (lambda () (xml->wide-string v)))))
 		    (if (condition? s)
 			(begin
 			  (write-string "Can't write: ")
