@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpauxmd/hppa.m4,v 1.1 1989/11/23 19:52:04 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpauxmd/hppa.m4,v 1.2 1989/11/27 03:31:40 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1989 Massachusetts Institute of Technology
 ;;;
@@ -70,7 +70,7 @@ changecom(`;');;; -*-Midas-*-
 ;;;;	addresses in registers, but they must be saved somewhere for
 ;;;;	nested calls and recursive procedures.  On HPPA: Passed in a
 ;;;;	register, but a slot on the stack exists, allocated by the
-;;;;	caller.  The return link is in gr2 and immediate saved in
+;;;;	caller.  The return link is in gr2 and immediately saved in
 ;;;;	-20(0,30) if the procedure makes further calls.  The stack
 ;;;;	pointer is in gr30.
 ;;;;
@@ -86,24 +86,28 @@ changecom(`;');;; -*-Midas-*-
 ;;;;	them, they contain garbage.
 ;;;;
 ;;;; Compiled Scheme code uses the following register convention.
-;;;; Note that scheme_to_interface and the register block are preserved
-;;;; by C calls, but the others are not, since they change dynamically.
+;;;; Note that trampoline_to_interface and the register block are
+;;;; preserved by C calls, but the others are not, since they change
+;;;; dynamically.  scheme_to_interface can be reached at a fixed
+;;;; offset from trampoline_to_interface.
 ;;;;	- gr22 contains the Scheme stack pointer.
 ;;;;	- gr21 contains the Scheme free pointer.
 ;;;;	- gr20 contains a cached version of MemTop.
 ;;;;	- gr19 contains the dynamic link when needed.
+;;;;	- gr5 contains the quad mask for machine pointers.
 ;;;;	- gr4 contains a pointer to the Scheme interpreter's
 ;;;;	"register" block.  This block contains the compiler's copy of
 ;;;;	MemTop, the interpreter's registers (val, env, exp, etc),
 ;;;;	temporary locations for compiled code.
-;;;;	- gr3 contains the address of scheme_to_interface.
+;;;;	- gr3 contains the address of trampoline_to_interface.
 ;;;;
 ;;;;	All other registers are available to the compiler.  A
 ;;;;	caller-saves convention is used, so the registers need not be
 ;;;;	preserved by subprocedures.
 
 define(TC_LENGTH, ifdef(`TYPE_CODE_LENGTH', TYPE_CODE_LENGTH, 8))
-define(ADDRESS_LENGTH, eval(32 - TC_LENGTH))
+define(QUAD_MASK, eval(2 ** (TC_LENGTH - 2)))
+define(LOW_TC_BIT, eval(TC_LENGTH - 1))
 
 	.SPACE	$TEXT$
 	.SUBSPA	$CODE$,QUAD=0,ALIGN=8,ACCESS=44,CODE_ONLY
@@ -126,6 +130,7 @@ C_to_interface
 	STW	14,-60(30)
 	ADDIL	L'Registers-$global$,27
 	LDO	R'Registers-$global$(1),4 ; Setup Regs
+	ADDI	QUAD_MASK,0,5
 
 interface_to_scheme
 	LDW	8(0,4),28		; Copy val
@@ -134,21 +139,24 @@ interface_to_scheme
 	LDW	R'Ext_Stack_Pointer-$global$(1),22 ; Setup stack pointer
 	ADDIL	L'Free-$global$,27
 	LDW	R'Free-$global$(1),21	; Setup free
-	ZDEP	28,0,ADDRESS_LENGTH,19	; Setup dlink
+	COPY	28,19
+	DEP	5,LOW_TC_BIT,TC_LENGTH,19	; Setup dlink
 	.CALL	RTNVAL=GR		; out=28
 	BLE	0(5,26)			; Invoke entry point
-	COPY	31,3			; Setup scheme_to_interface
+	COPY	31,3			; Setup trampoline_to_interface
 
+trampoline_to_interface
+	COPY	31,26
 scheme_to_interface
 	ADDIL	L'utility_table-$global$,27
 	LDO	R'utility_table-$global$(1),29
-	LDWX,S	28(0,29),29		; Find handler
+	LDWX,S	28(5,29),29		; Find handler
 	ADDIL	L'Ext_Stack_Pointer-$global$,27
 	STW	22,R'Ext_Stack_Pointer-$global$(1) ; Update stack pointer
 	ADDIL	L'Free-$global$,27
 	STW	21,R'Free-$global$(1)	; Update free
 	.CALL	ARGW0=GR,ARGW1=GR,ARGW2=GR,ARGW3=GR,RTNVAL=GR
-	BLE	0(0,29)			; Call handler
+	BLE	0(4,29)			; Call handler
 	COPY	31,2			; Setup return address
 	BV	0(28)			; Call receiver
 	COPY	29,26			; Setup entry point
@@ -177,5 +185,6 @@ interface_to_C
         .EXPORT C_to_interface,PRIV_LEV=3,ARGW0=GR,RTNVAL=GR
         .EXPORT interface_to_scheme,PRIV_LEV=3
         .EXPORT interface_to_C,PRIV_LEV=3
+        .EXPORT trampoline_to_interface,PRIV_LEV=3
         .EXPORT scheme_to_interface,PRIV_LEV=3
         .END
