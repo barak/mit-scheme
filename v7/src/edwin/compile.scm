@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: compile.scm,v 1.12 1999/05/13 02:08:26 cph Exp $
+;;; $Id: compile.scm,v 1.13 1999/09/14 20:18:23 cph Exp $
 ;;;
 ;;; Copyright (c) 1992-1999 Massachusetts Institute of Technology
 ;;;
@@ -88,9 +88,8 @@ with output going to the buffer *compilation*."
     (disable-group-undo! (buffer-group buffer))
     (set-buffer-default-directory! buffer directory)
     (set-buffer-major-mode! buffer (ref-mode-object fundamental))
-    (define-variable-local-value! buffer
-	(ref-variable-object mode-line-process)
-      '(": %s"))
+    (local-set-variable! mode-line-process '(": %s") buffer)
+    (local-set-variable! process-connection-type #f buffer)
     (let ((mark (mark-left-inserting-copy (buffer-start buffer))))
       (let ((window (get-buffer-window buffer)))
 	(if window
