@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.202 2000/06/29 22:01:51 cph Exp $
+;;; $Id: imail-top.scm,v 1.203 2000/06/30 18:31:31 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -2187,13 +2187,14 @@ Negative argument means search in reverse."
     (mark-temporary! start)))
 
 (define (insert-mime-info-expanded info message mark)
-  (let ((context (mime-info-context info)))
+  (let ((body (mime-info-body info))
+	(context (mime-info-context info)))
     (call-with-auto-wrapped-output-mark
      mark
      (insert-mime-context-left-margin context)
      (lambda (port)
        (call-with-mime-decoding-output-port
-	(mime-part-encoding context (mime-info-body info))
+	(mime-part-encoding context body)
 	port
 	#t
 	(lambda (port)
@@ -2205,7 +2206,7 @@ Negative argument means search in reverse."
 			  (eq? (mime-body-subtype enclosure) 'RFC822))))
 	       `(,@(mime-info-selector info) TEXT)
 	       (mime-info-selector info))
-	   #t
+	   (mime-body-one-part-n-octets body)
 	   port)))))))
 
 (define (insert-mime-info-collapsed info message mark)
