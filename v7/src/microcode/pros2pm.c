@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pros2pm.c,v 1.2 1995/01/06 00:00:35 cph Exp $
+$Id: pros2pm.c,v 1.3 1995/02/08 01:19:57 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -36,6 +36,9 @@ MIT in each case. */
 #include "prims.h"
 #define INCL_WIN
 #include "os2.h"
+
+static PPOINTL coordinate_vector_point_args
+  (unsigned int, unsigned int, unsigned long *);
 
 static qid_t pm_qid;
 
@@ -53,6 +56,15 @@ wid_argument (unsigned int arg_number)
 {
   unsigned long result = (arg_nonnegative_integer (arg_number));
   if (!OS2_wid_validp (result))
+    error_bad_range_arg (arg_number);
+  return (result);
+}
+
+static psid_t
+psid_argument (unsigned int arg_number)
+{
+  unsigned long result = (arg_nonnegative_integer (arg_number));
+  if (!OS2_psid_validp (result))
     error_bad_range_arg (arg_number);
   return (result);
 }
@@ -128,27 +140,6 @@ DEFINE_PRIMITIVE ("OS2WIN-SHOW", Prim_OS2_window_show, 2, 2, 0)
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("OS2WIN-WRITE", Prim_OS2_window_write, 6, 6, 0)
-{
-  PRIMITIVE_HEADER (6);
-  CHECK_ARG (4, STRING_P);
-  {
-    SCHEME_OBJECT string = (ARG_REF (4));
-    unsigned long start = (arg_nonnegative_integer (5));
-    unsigned long end = (arg_nonnegative_integer (6));
-    if (end > (STRING_LENGTH (string)))
-      error_bad_range_arg (6);
-    if (start > end)
-      error_bad_range_arg (5);
-    OS2_window_write ((wid_argument (1)),
-		      (COORDINATE_ARG (2)),
-		      (COORDINATE_ARG (3)),
-		      (STRING_LOC (string, start)),
-		      (end - start));
-  }
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
 DEFINE_PRIMITIVE ("OS2WIN-MOVE-CURSOR", Prim_OS2_window_move_cursor, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
@@ -175,17 +166,6 @@ DEFINE_PRIMITIVE ("OS2WIN-SHOW-CURSOR", Prim_OS2_window_show_cursor, 2, 2, 0)
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("OS2WIN-CLEAR", Prim_OS2_window_clear, 5, 5, 0)
-{
-  PRIMITIVE_HEADER (5);
-  OS2_window_clear ((wid_argument (1)),
-		    (COORDINATE_ARG (2)),
-		    (COORDINATE_ARG (3)),
-		    (COORDINATE_ARG (4)),
-		    (COORDINATE_ARG (5)));
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
 DEFINE_PRIMITIVE ("OS2WIN-SCROLL", Prim_OS2_window_scroll, 7, 7, 0)
 {
   PRIMITIVE_HEADER (7);
@@ -208,25 +188,6 @@ DEFINE_PRIMITIVE ("OS2WIN-INVALIDATE", Prim_OS2_window_invalidate, 5, 5, 0)
 			 (COORDINATE_ARG (4)),
 			 (COORDINATE_ARG (5)));
   PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-DEFINE_PRIMITIVE ("OS2WIN-SET-FONT", Prim_OS2_window_set_font, 3, 3, 0)
-{
-  PRIMITIVE_HEADER (3);
-  {
-    SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, 3, 1));
-    font_metrics_t * m
-      = (OS2_window_set_font ((wid_argument (1)),
-			      (USHORT_ARG (2)),
-			      (STRING_ARG (3))));
-    if (m == 0)
-      PRIMITIVE_RETURN (SHARP_F);
-    VECTOR_SET (result, 0, (long_to_integer (FONT_METRICS_WIDTH (m))));
-    VECTOR_SET (result, 1, (long_to_integer (FONT_METRICS_HEIGHT (m))));
-    VECTOR_SET (result, 2, (long_to_integer (FONT_METRICS_DESCENDER (m))));
-    OS_free (m);
-    PRIMITIVE_RETURN (result);
-  }
 }
 
 DEFINE_PRIMITIVE ("OS2WIN-SET-GRID", Prim_OS2_window_set_grid, 3, 3, 0)
@@ -280,6 +241,20 @@ DEFINE_PRIMITIVE ("OS2WIN-GET-SIZE", Prim_OS2_window_get_size, 1, 1, 0)
   }
 }
 
+DEFINE_PRIMITIVE ("OS2WIN-GET-FRAME-SIZE", Prim_OS2_window_get_frame_size, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  {
+    SCHEME_OBJECT p = (cons (SHARP_F, SHARP_F));
+    unsigned short width;
+    unsigned short height;
+    OS2_window_frame_size ((wid_argument (1)), (& width), (& height));
+    SET_PAIR_CAR (p, (LONG_TO_UNSIGNED_FIXNUM (width)));
+    SET_PAIR_CDR (p, (LONG_TO_UNSIGNED_FIXNUM (height)));
+    PRIMITIVE_RETURN (p);
+  }
+}
+
 DEFINE_PRIMITIVE ("OS2WIN-SET-SIZE", Prim_OS2_window_set_size, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
@@ -302,35 +277,90 @@ DEFINE_PRIMITIVE ("OS2WIN-SET-STATE", Prim_OS2_window_set_state, 2, 2, 0)
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
+DEFINE_PRIMITIVE ("OS2WIN-SET-TITLE", Prim_OS2_window_set_title, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  OS2_window_set_title ((wid_argument (1)), (STRING_ARG (2)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("OS2WIN-WRITE", Prim_OS2_window_write, 6, 6, 0)
+{
+  PRIMITIVE_HEADER (6);
+  CHECK_ARG (4, STRING_P);
+  {
+    SCHEME_OBJECT string = (ARG_REF (4));
+    unsigned long start = (arg_nonnegative_integer (5));
+    unsigned long end = (arg_nonnegative_integer (6));
+    if (end > (STRING_LENGTH (string)))
+      error_bad_range_arg (6);
+    if (start > end)
+      error_bad_range_arg (5);
+    OS2_ps_write ((OS2_window_client_ps (wid_argument (1))),
+		  (COORDINATE_ARG (2)),
+		  (COORDINATE_ARG (3)),
+		  (STRING_LOC (string, start)),
+		  (end - start));
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("OS2WIN-SET-FONT", Prim_OS2_window_set_font, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  {
+    SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, 3, 1));
+    font_metrics_t * m
+      = (OS2_ps_set_font ((OS2_window_client_ps (wid_argument (1))),
+			  (USHORT_ARG (2)),
+			  (STRING_ARG (3))));
+    if (m == 0)
+      PRIMITIVE_RETURN (SHARP_F);
+    VECTOR_SET (result, 0, (long_to_integer (FONT_METRICS_WIDTH (m))));
+    VECTOR_SET (result, 1, (long_to_integer (FONT_METRICS_HEIGHT (m))));
+    VECTOR_SET (result, 2, (long_to_integer (FONT_METRICS_DESCENDER (m))));
+    OS_free (m);
+    PRIMITIVE_RETURN (result);
+  }
+}
+
+DEFINE_PRIMITIVE ("OS2WIN-CLEAR", Prim_OS2_window_clear, 5, 5, 0)
+{
+  PRIMITIVE_HEADER (5);
+  OS2_ps_clear ((OS2_window_client_ps (wid_argument (1))),
+		(COORDINATE_ARG (2)),
+		(COORDINATE_ARG (3)),
+		(COORDINATE_ARG (4)),
+		(COORDINATE_ARG (5)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
 DEFINE_PRIMITIVE ("OS2WIN-SET-COLORS", Prim_OS2_window_set_colors, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
-  OS2_window_set_colors ((wid_argument (1)),
-			 (arg_index_integer (2, 0x1000000)),
-			 (arg_index_integer (3, 0x1000000)));
+  OS2_ps_set_colors ((OS2_window_client_ps (wid_argument (1))),
+		     (arg_index_integer (2, 0x1000000)),
+		     (arg_index_integer (3, 0x1000000)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("OS2WIN-MOVE-GRAPHICS-CURSOR", Prim_OS2_window_move_gcursor, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
-  OS2_window_move_gcursor ((wid_argument (1)),
-			   (COORDINATE_ARG (2)),
-			   (COORDINATE_ARG (3)));
+  OS2_ps_move_gcursor ((OS2_window_client_ps (wid_argument (1))),
+		       (COORDINATE_ARG (2)),
+		       (COORDINATE_ARG (3)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("OS2WIN-LINE", Prim_OS2_window_line, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
-  OS2_window_line ((wid_argument (1)),
-		   (COORDINATE_ARG (2)),
-		   (COORDINATE_ARG (3)));
+  OS2_ps_line ((OS2_window_client_ps (wid_argument (1))),
+	       (COORDINATE_ARG (2)),
+	       (COORDINATE_ARG (3)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
-
-static PPOINTL coordinate_vector_point_args
-  (unsigned int, unsigned int, unsigned long *);
 
 DEFINE_PRIMITIVE ("OS2WIN-POLY-LINE", Prim_OS2_window_poly_line, 3, 3, 0)
 {
@@ -339,7 +369,9 @@ DEFINE_PRIMITIVE ("OS2WIN-POLY-LINE", Prim_OS2_window_poly_line, 3, 3, 0)
     void * position = dstack_position;
     unsigned long npoints;
     PPOINTL points = (coordinate_vector_point_args (2, 3, (& npoints)));
-    OS2_window_poly_line ((wid_argument (1)), npoints, points);
+    OS2_ps_poly_line ((OS2_window_client_ps (wid_argument (1))),
+		      npoints,
+		      points);
     dstack_set_position (position);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
@@ -352,7 +384,210 @@ DEFINE_PRIMITIVE ("OS2WIN-POLY-LINE-DISJOINT", Prim_OS2_window_poly_line_disjoin
     void * position = dstack_position;
     unsigned long npoints;
     PPOINTL points = (coordinate_vector_point_args (2, 3, (& npoints)));
-    OS2_window_poly_line_disjoint ((wid_argument (1)), npoints, points);
+    OS2_ps_poly_line_disjoint ((OS2_window_client_ps (wid_argument (1))),
+			       npoints,
+			       points);
+    dstack_set_position (position);
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("OS2WIN-SET-LINE-TYPE", Prim_OS2_window_set_line_type, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  {
+    long type = (arg_integer (2));
+    if (! (((-1) <= type) && (type <= 9)))
+      error_bad_range_arg (2);
+    OS2_ps_set_line_type ((OS2_window_client_ps (wid_argument (1))), type);
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("OS2WIN-QUERY-CAPABILITIES", Prim_OS2_window_query_caps, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  {
+    LONG count = (arg_nonnegative_integer (3));
+    PLONG values = (OS_malloc (count * (sizeof (LONG))));
+    OS2_ps_query_caps ((OS2_window_client_ps (wid_argument (1))),
+		       (arg_nonnegative_integer (2)),
+		       count,
+		       values);
+    {
+      SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, count, 1));
+      LONG index = 0;
+      while (index < count)
+	{
+	  VECTOR_SET (v, index, (long_to_integer (values [index])));
+	  index += 1;
+	}
+      OS_free (values);
+      PRIMITIVE_RETURN (v);
+    }
+  }
+}
+
+DEFINE_PRIMITIVE ("OS2WIN-QUERY-CAPABILITY", Prim_OS2_window_query_cap, 2, 2, 0)
+{
+  LONG values [1];
+  PRIMITIVE_HEADER (2);
+  OS2_ps_query_caps ((OS2_window_client_ps (wid_argument (1))),
+		     (arg_nonnegative_integer (2)),
+		     1,
+		     values);
+  PRIMITIVE_RETURN (long_to_integer (values [0]));
+}
+
+DEFINE_PRIMITIVE ("OS2WIN-PS", Prim_OS2_window_ps, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN (long_to_integer (OS2_window_client_ps (wid_argument (1))));
+}
+
+DEFINE_PRIMITIVE ("OS2PS-OPEN-BITMAP", Prim_OS2_ps_open_bitmap, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  PRIMITIVE_RETURN
+    (long_to_integer (OS2_open_bitmap_ps (pm_qid,
+					  (USHORT_ARG (1)),
+					  (USHORT_ARG (2)))));
+}
+
+DEFINE_PRIMITIVE ("OS2PS-CLOSE-BITMAP", Prim_OS2_ps_close_bitmap, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  {
+    psid_t psid = (psid_argument (1));
+    if (!OS2_bitmap_ps_p (psid))
+      error_bad_range_arg (1);
+    OS2_close_bitmap_ps (psid);
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("OS2PS-BITBLT", Prim_OS2_ps_bitblt, 6, 6, 0)
+{
+  PRIMITIVE_HEADER (6);
+  {
+    void * position = dstack_position;
+    psid_t target = (psid_argument (1));
+    psid_t source = (psid_argument (2));
+    unsigned long npoints;
+    PPOINTL points = (coordinate_vector_point_args (3, 4, (& npoints)));
+    LONG rop = (arg_index_integer (5, 0x100));
+    ULONG options = (arg_nonnegative_integer (6));
+    if (! ((npoints == 3) || (npoints == 4)))
+      error_bad_range_arg (3);
+    OS2_ps_bitblt (target, source, npoints, points, rop, options);
+    dstack_set_position (position);
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("OS2PS-WRITE", Prim_OS2_ps_write, 6, 6, 0)
+{
+  PRIMITIVE_HEADER (6);
+  CHECK_ARG (4, STRING_P);
+  {
+    SCHEME_OBJECT string = (ARG_REF (4));
+    unsigned long start = (arg_nonnegative_integer (5));
+    unsigned long end = (arg_nonnegative_integer (6));
+    if (end > (STRING_LENGTH (string)))
+      error_bad_range_arg (6);
+    if (start > end)
+      error_bad_range_arg (5);
+    OS2_ps_write ((psid_argument (1)),
+		  (COORDINATE_ARG (2)),
+		  (COORDINATE_ARG (3)),
+		  (STRING_LOC (string, start)),
+		  (end - start));
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("OS2PS-SET-FONT", Prim_OS2_ps_set_font, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  {
+    SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, 3, 1));
+    font_metrics_t * m
+      = (OS2_ps_set_font ((psid_argument (1)),
+			  (USHORT_ARG (2)),
+			  (STRING_ARG (3))));
+    if (m == 0)
+      PRIMITIVE_RETURN (SHARP_F);
+    VECTOR_SET (result, 0, (long_to_integer (FONT_METRICS_WIDTH (m))));
+    VECTOR_SET (result, 1, (long_to_integer (FONT_METRICS_HEIGHT (m))));
+    VECTOR_SET (result, 2, (long_to_integer (FONT_METRICS_DESCENDER (m))));
+    OS_free (m);
+    PRIMITIVE_RETURN (result);
+  }
+}
+
+DEFINE_PRIMITIVE ("OS2PS-CLEAR", Prim_OS2_ps_clear, 5, 5, 0)
+{
+  PRIMITIVE_HEADER (5);
+  OS2_ps_clear ((psid_argument (1)),
+		(COORDINATE_ARG (2)),
+		(COORDINATE_ARG (3)),
+		(COORDINATE_ARG (4)),
+		(COORDINATE_ARG (5)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("OS2PS-SET-COLORS", Prim_OS2_ps_set_colors, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  OS2_ps_set_colors ((psid_argument (1)),
+		     (arg_index_integer (2, 0x1000000)),
+		     (arg_index_integer (3, 0x1000000)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("OS2PS-MOVE-GRAPHICS-CURSOR", Prim_OS2_ps_move_gcursor, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  OS2_ps_move_gcursor ((psid_argument (1)),
+		       (COORDINATE_ARG (2)),
+		       (COORDINATE_ARG (3)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("OS2PS-LINE", Prim_OS2_ps_line, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  OS2_ps_line ((psid_argument (1)),
+	       (COORDINATE_ARG (2)),
+	       (COORDINATE_ARG (3)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("OS2PS-POLY-LINE", Prim_OS2_ps_poly_line, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  {
+    void * position = dstack_position;
+    unsigned long npoints;
+    PPOINTL points = (coordinate_vector_point_args (2, 3, (& npoints)));
+    OS2_ps_poly_line ((psid_argument (1)),
+		      npoints,
+		      points);
+    dstack_set_position (position);
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("OS2PS-POLY-LINE-DISJOINT", Prim_OS2_ps_poly_line_disjoint, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  {
+    void * position = dstack_position;
+    unsigned long npoints;
+    PPOINTL points = (coordinate_vector_point_args (2, 3, (& npoints)));
+    OS2_ps_poly_line_disjoint ((psid_argument (1)),
+			       npoints,
+			       points);
     dstack_set_position (position);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
@@ -396,28 +631,28 @@ coordinate_vector_point_args (unsigned int x_no, unsigned int y_no,
   }
 }
 
-DEFINE_PRIMITIVE ("OS2WIN-SET-LINE-TYPE", Prim_OS2_window_set_line_type, 2, 2, 0)
+DEFINE_PRIMITIVE ("OS2PS-SET-LINE-TYPE", Prim_OS2_ps_set_line_type, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
   {
     long type = (arg_integer (2));
     if (! (((-1) <= type) && (type <= 9)))
       error_bad_range_arg (2);
-    OS2_window_set_line_type ((wid_argument (1)), type);
+    OS2_ps_set_line_type ((psid_argument (1)), type);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("OS2WIN-QUERY-CAPABILITIES", Prim_OS2_window_query_caps, 3, 3, 0)
+DEFINE_PRIMITIVE ("OS2PS-QUERY-CAPABILITIES", Prim_OS2_ps_query_caps, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
   {
     LONG count = (arg_nonnegative_integer (3));
     PLONG values = (OS_malloc (count * (sizeof (LONG))));
-    OS2_window_query_caps ((wid_argument (1)),
-			   (arg_nonnegative_integer (2)),
-			   count,
-			   values);
+    OS2_ps_query_caps ((psid_argument (1)),
+		       (arg_nonnegative_integer (2)),
+		       count,
+		       values);
     {
       SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, count, 1));
       LONG index = 0;
@@ -432,22 +667,15 @@ DEFINE_PRIMITIVE ("OS2WIN-QUERY-CAPABILITIES", Prim_OS2_window_query_caps, 3, 3,
   }
 }
 
-DEFINE_PRIMITIVE ("OS2WIN-QUERY-CAPABILITY", Prim_OS2_window_query_cap, 2, 2, 0)
+DEFINE_PRIMITIVE ("OS2PS-QUERY-CAPABILITY", Prim_OS2_ps_query_cap, 2, 2, 0)
 {
   LONG values [1];
   PRIMITIVE_HEADER (2);
-  OS2_window_query_caps ((wid_argument (1)),
-			 (arg_nonnegative_integer (2)),
-			 1,
-			 values);
+  OS2_ps_query_caps ((psid_argument (1)),
+		     (arg_nonnegative_integer (2)),
+		     1,
+		     values);
   PRIMITIVE_RETURN (long_to_integer (values [0]));
-}
-
-DEFINE_PRIMITIVE ("OS2WIN-SET-TITLE", Prim_OS2_window_set_title, 2, 2, 0)
-{
-  PRIMITIVE_HEADER (2);
-  OS2_window_set_title ((wid_argument (1)), (STRING_ARG (2)));
-  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("OS2WIN-OPEN-EVENT-QID", Prim_OS2_window_open_event_qid, 0, 0, 0)

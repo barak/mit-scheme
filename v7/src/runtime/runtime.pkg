@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.243 1995/01/31 23:00:47 cph Exp $
+$Id: runtime.pkg,v 14.244 1995/02/08 01:20:38 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -2338,6 +2338,11 @@ MIT in each case. |#
     (else))
   (parent ())
   (export (runtime os2-graphics)
+	  bbo_and
+	  bbo_ignore
+	  bbo_no_color_info
+	  bbo_or
+	  bbo_pal_colors
 	  button-event-type:click
 	  button-event-type:double-click
 	  button-event-type:down
@@ -2364,22 +2369,22 @@ MIT in each case. |#
 	  caps_char_height
 	  caps_char_width
 	  caps_clip_fills
-	  caps_colors
 	  caps_color_bitcount
 	  caps_color_cursor_support
 	  caps_color_index
 	  caps_color_planes
 	  caps_color_table_support
+	  caps_colors
 	  caps_coltabl_realize
 	  caps_coltabl_rgb_8
 	  caps_coltabl_rgb_8_plus
 	  caps_coltabl_true_mix
 	  caps_cosmetic_wideline_support
-	  caps_device_fonts
+	  caps_dev_windowing_support
 	  caps_device_font_sim
+	  caps_device_fonts
 	  caps_device_polyset_points
 	  caps_device_windowing
-	  caps_dev_windowing_support
 	  caps_direct_fill
 	  caps_driver_version
 	  caps_enhanced_fontmetrics
@@ -2425,13 +2430,13 @@ MIT in each case. |#
 	  caps_scaled_default_markers
 	  caps_small_char_height
 	  caps_small_char_width
-	  caps_technology
 	  caps_tech_postscript
 	  caps_tech_raster_camera
 	  caps_tech_raster_display
 	  caps_tech_raster_printer
 	  caps_tech_unknown
 	  caps_tech_vector_plotter
+	  caps_technology
 	  caps_transform_support
 	  caps_vdd_ddb_transfer
 	  caps_vertical_font_res
@@ -2503,9 +2508,23 @@ MIT in each case. |#
 	  linetype_shortdash
 	  linetype_solid
 	  number-of-event-types
+	  os2ps-bitblt
+	  os2ps-clear
+	  os2ps-close-bitmap
+	  os2ps-line
+	  os2ps-move-graphics-cursor
+	  os2ps-open-bitmap
+	  os2ps-poly-line
+	  os2ps-poly-line-disjoint
+	  os2ps-query-capabilities
+	  os2ps-query-capability
+	  os2ps-set-colors
+	  os2ps-set-font
+	  os2ps-set-line-type
+	  os2ps-set-mix
+	  os2ps-write
 	  os2win-activate
 	  os2win-beep
-	  os2win-clear
 	  os2win-close
 	  os2win-close-event-qid
 	  os2win-console-wid
@@ -2514,25 +2533,16 @@ MIT in each case. |#
 	  os2win-event-ready?
 	  os2win-focus?
 	  os2win-get-event
+	  os2win-get-frame-size
 	  os2win-get-pos
 	  os2win-get-size
 	  os2win-invalidate
-	  os2win-line
 	  os2win-move-cursor
-	  os2win-move-graphics-cursor
 	  os2win-open
-	  os2win-open-1
 	  os2win-open-event-qid
-	  os2win-poly-line
-	  os2win-poly-line-disjoint
-	  os2win-query-capabilities
-	  os2win-query-capability
+	  os2win-ps
 	  os2win-scroll
-	  os2win-set-colors
-	  os2win-set-font
 	  os2win-set-grid
-	  os2win-set-line-type
-	  os2win-set-mix
 	  os2win-set-pos
 	  os2win-set-size
 	  os2win-set-state
@@ -2540,13 +2550,27 @@ MIT in each case. |#
 	  os2win-shape-cursor
 	  os2win-show
 	  os2win-show-cursor
-	  os2win-write
 	  paint-event/xh
 	  paint-event/xl
 	  paint-event/yh
 	  paint-event/yl
 	  resize-event/height
 	  resize-event/width
+	  rop_dstinvert
+	  rop_mergecopy
+	  rop_mergepaint
+	  rop_notsrccopy
+	  rop_notsrcerase
+	  rop_one
+	  rop_patcopy
+	  rop_patinvert
+	  rop_patpaint
+	  rop_srcand
+	  rop_srccopy
+	  rop_srcerase
+	  rop_srcinvert
+	  rop_srcpaint
+	  rop_zero
 	  virtual-key-supremum
 	  visibility-event/shown?
 	  vk_alt

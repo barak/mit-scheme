@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2graph.scm,v 1.3 1995/01/31 22:04:28 cph Exp $
+$Id: os2graph.scm,v 1.4 1995/02/08 01:20:19 cph Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -118,35 +118,31 @@ MIT in each case. |#
       (let ((descriptor (os2win-open-event-qid)))
 	(set! event-previewer-registration (make-event-previewer descriptor))
 	(set! event-descriptor descriptor)))
-  (let ((wid (os2win-open-1 event-descriptor ws_savebits "Scheme Graphics"))
+  (let ((wid (os2win-open event-descriptor "Scheme Graphics"))
 	(foreground-color #xFFFFFF)
-	(background-color  #x000000))
-    (os2win-set-colors wid foreground-color background-color)
-    (os2win-show-cursor wid #f)
-    (os2win-show wid #t)
-    (os2win-set-state wid window-state:deactivate)
-    (os2win-set-state wid window-state:top)
-    (let ((window
-	   (let ((w.h (os2win-get-size wid)))
-	     (make-os2-window wid
-			      (car w.h)
-			      (cdr w.h)
-			      (set-normal-font! wid "4.System VIO")
-			      foreground-color
-			      background-color))))
-      (compute-window-slopes! window)
-      (add-to-protection-list! window-list window wid)
-      (descriptor->device window))))
+	(background-color #x000000))
+    (let ((psid (os2win-ps wid)))
+      (os2ps-set-colors psid foreground-color background-color)
+      (os2win-show-cursor wid #f)
+      (os2win-show wid #t)
+      (os2win-set-state wid window-state:deactivate)
+      (os2win-set-state wid window-state:top)
+      (let ((window
+	     (let ((w.h (os2win-get-size wid)))
+	       (make-os2-window wid
+				(car w.h)
+				(cdr w.h)
+				(set-normal-font! psid "4.System VIO")
+				foreground-color
+				background-color))))
+	(compute-window-slopes! window)
+	(add-to-protection-list! window-list window wid)
+	(descriptor->device window)))))
 
-(define (set-normal-font! wid font)
-  (let ((metrics (os2win-set-font wid 1 font)))
+(define (set-normal-font! psid font)
+  (let ((metrics (os2ps-set-font psid 1 font)))
     (if (not metrics)
 	(error "Unknown font name:" font))
-    (let ((width (font-metrics/width metrics))
-	  (height (font-metrics/height metrics)))
-      (os2win-set-grid wid width height)
-      (os2win-shape-cursor wid width height
-			   (fix:or CURSOR_SOLID CURSOR_FLASH)))
     metrics))
 
 (define (compute-window-slopes! window)
@@ -225,9 +221,9 @@ MIT in each case. |#
   (clear-window (graphics-device/descriptor device)))
 
 (define (clear-window window)
-  (os2win-clear (os2-window/wid window)
-		0 (os2-window/pel-width window)
-		0 (os2-window/pel-height window)))
+  (os2ps-clear (os2-window/psid window)
+	       0 (os2-window/pel-width window)
+	       0 (os2-window/pel-height window)))
 
 (define (os2-graphics/coordinate-limits device)
   (let ((window (graphics-device/descriptor device)))
@@ -249,9 +245,9 @@ MIT in each case. |#
 (define (os2-graphics/drag-cursor device x y)
   (drawing-operation (os2-graphics-device/segment device)
     (lambda ()
-      (os2win-line (os2-graphics-device/wid device)
-		   (os2-graphics-device/x->device device x)
-		   (os2-graphics-device/y->device device y)))))
+      (os2ps-line (os2-graphics-device/psid device)
+		  (os2-graphics-device/x->device device x)
+		  (os2-graphics-device/y->device device y)))))
 
 (define (os2-graphics/draw-line device x-start y-start x-end y-end)
   (os2-graphics/move-cursor device x-start y-start)
@@ -260,8 +256,8 @@ MIT in each case. |#
 (define (os2-graphics/draw-lines device xv yv)
   (drawing-operation (os2-graphics-device/segment device)
     (lambda ()
-      (os2win-poly-line-disjoint
-       (os2-graphics-device/wid device)
+      (os2ps-poly-line-disjoint
+       (os2-graphics-device/psid device)
        (vector-map xv (lambda (x) (os2-graphics-device/x->device device x)))
        (vector-map yv
 		   (lambda (y) (os2-graphics-device/y->device device y)))))))
@@ -269,30 +265,30 @@ MIT in each case. |#
 (define (os2-graphics/draw-point device x y)
   (drawing-operation (os2-graphics-device/segment device)
     (lambda ()
-      (let ((wid (os2-graphics-device/wid device))
+      (let ((psid (os2-graphics-device/psid device))
 	    (x (os2-graphics-device/x->device device x))
 	    (y (os2-graphics-device/y->device device y))
 	    (type))
 	(dynamic-wind
 	 (lambda ()
 	   (set! type (map-line-style (graphics-device/line-style device)))
-	   (os2win-set-line-type wid LINETYPE_SOLID))
+	   (os2ps-set-line-type psid LINETYPE_SOLID))
 	 (lambda ()
-	   (os2win-move-graphics-cursor wid x y)
-	   (os2win-line wid x y))
+	   (os2ps-move-graphics-cursor psid x y)
+	   (os2ps-line psid x y))
 	 (lambda ()
-	   (os2win-set-line-type wid type)))))))
+	   (os2ps-set-line-type psid type)))))))
 
 (define (os2-graphics/draw-text device x y string)
   (drawing-operation (os2-graphics-device/segment device)
     (lambda ()
-      (os2win-write (os2-graphics-device/wid device)
-		    (os2-graphics-device/x->device device x)
-		    (fix:+ (os2-graphics-device/y->device device y)
-			   (os2-graphics-device/char-descender device))
-		    string
-		    0
-		    (string-length string)))))
+      (os2ps-write (os2-graphics-device/psid device)
+		   (os2-graphics-device/x->device device x)
+		   (fix:+ (os2-graphics-device/y->device device y)
+			  (os2-graphics-device/char-descender device))
+		   string
+		   0
+		   (string-length string)))))
 
 (define (os2-graphics/flush device)
   (flush-segment (os2-graphics-device/segment device)))
@@ -300,9 +296,9 @@ MIT in each case. |#
 (define (os2-graphics/move-cursor device x y)
   (drawing-operation (os2-graphics-device/segment device)
     (lambda ()
-      (os2win-move-graphics-cursor (os2-graphics-device/wid device)
-				   (os2-graphics-device/x->device device x)
-				   (os2-graphics-device/y->device device y)))))
+      (os2ps-move-graphics-cursor (os2-graphics-device/psid device)
+				  (os2-graphics-device/x->device device x)
+				  (os2-graphics-device/y->device device y)))))
 
 (define (os2-graphics/reset-clip-rectangle device)
   device
@@ -326,18 +322,18 @@ MIT in each case. |#
 (define (os2-graphics/set-drawing-mode device mode)
   (drawing-operation (os2-graphics-device/segment device)
     (lambda ()
-      (os2win-set-mix (os2-graphics-device/wid device)
-		      (map-drawing-mode mode)))))
+      (os2ps-set-mix (os2-graphics-device/psid device)
+		     (map-drawing-mode mode)))))
 
 (define (os2-graphics/set-line-style device style)
   (drawing-operation (os2-graphics-device/segment device)
     (lambda ()
-      (os2win-set-line-type (os2-graphics-device/wid device)
-			    (map-line-style style)))))
+      (os2ps-set-line-type (os2-graphics-device/psid device)
+			   (map-line-style style)))))
 
 (define (os2-graphics/color? device)
-  (not (= 0 (os2win-query-capability (os2-graphics-device/wid device)
-				     CAPS_COLOR_TABLE_SUPPORT))))
+  (not (= 0 (os2ps-query-capability (os2-graphics-device/psid device)
+				    CAPS_COLOR_TABLE_SUPPORT))))
 
 (define (os2-graphics/define-color device name color)
   device
@@ -373,9 +369,9 @@ MIT in each case. |#
       (update-colors (graphics-device/descriptor device)))))
 
 (define (update-colors window)
-  (os2win-set-colors (os2-window/wid window)
-		     (os2-window/foreground-color window)
-		     (os2-window/background-color window)))
+  (os2ps-set-colors (os2-window/psid window)
+		    (os2-window/foreground-color window)
+		    (os2-window/background-color window)))
 
 (define (->color specification procedure)
   (cond ((color? specification)
@@ -510,8 +506,14 @@ MIT in each case. |#
   y-slope
   (segment (make-segment) read-only #t))
 
+(define-integrable (os2-window/psid window)
+  (os2win-ps (os2-window/wid window)))
+
 (define-integrable (os2-graphics-device/wid device)
   (os2-window/wid (graphics-device/descriptor device)))
+
+(define-integrable (os2-graphics-device/psid device)
+  (os2-window/psid (graphics-device/descriptor device)))
 
 (define-integrable (os2-graphics-device/pel-width device)
   (os2-window/pel-width (graphics-device/descriptor device)))
@@ -586,7 +588,7 @@ MIT in each case. |#
 (define (os2-graphics/set-font device font)
   (let ((window (graphics-device/descriptor device)))
     (set-os2-window/font-metrics! window
-				  (set-normal-font! (os2-window/wid window)
+				  (set-normal-font! (os2-window/psid window)
 						    font))))
 
 (define (os2-graphics/hide-window device)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2winp.scm,v 1.2 1995/01/06 20:26:55 cph Exp $
+$Id: os2winp.scm,v 1.3 1995/02/08 01:20:28 cph Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -40,42 +40,47 @@ MIT in each case. |#
 (define-primitives
   (os2win-beep 2)
   (os2win-open 2)
-  (os2win-open-1 3)
   (os2win-close 1)
   (os2win-show 2)
-  (os2win-write 6)
   (os2win-move-cursor 3)
   (os2win-shape-cursor 4)
   (os2win-show-cursor 2)
-  (os2win-clear 5)
   (os2win-scroll 7)
   (os2win-invalidate 5)
-  (os2win-set-font 3)
   (os2win-set-grid 3)
   (os2win-activate 1)
   (os2win-get-pos 1)
   (os2win-set-pos 3)
   (os2win-get-size 1)
+  (os2win-get-frame-size 1)
   (os2win-set-size 3)
   (os2win-focus? 1)
   (os2win-set-state 2)
-  (os2win-set-colors 3)
-  (os2win-move-graphics-cursor 3)
-  (os2win-line 3)
-  (os2win-poly-line 3)
-  (os2win-poly-line-disjoint 3)
-  (os2win-set-line-type 2)
-  (os2win-query-capabilities 3)
-  (os2win-query-capability 2)
   (os2win-set-title 2)
-  (os2win-set-mix 2)
   (os2win-open-event-qid 0)
   (os2win-close-event-qid 1)
   (os2win-get-event 2)
   (os2win-event-ready? 2)
   (os2win-console-wid 0)
   (os2win-desktop-width 0)
-  (os2win-desktop-height 0))
+  (os2win-desktop-height 0)
+
+  (os2win-ps 1)
+  (os2ps-open-bitmap 2)
+  (os2ps-close-bitmap 1)
+  (os2ps-bitblt 6)
+  (os2ps-write 6)
+  (os2ps-set-font 3)
+  (os2ps-clear 5)
+  (os2ps-set-colors 3)
+  (os2ps-move-graphics-cursor 3)
+  (os2ps-line 3)
+  (os2ps-poly-line 3)
+  (os2ps-poly-line-disjoint 3)
+  (os2ps-set-line-type 2)
+  (os2ps-query-capabilities 3)
+  (os2ps-query-capability 2)
+  (os2ps-set-mix 2))
 
 (define-integrable (event-type event) (vector-ref event 0))
 (define-integrable (event-wid event) (vector-ref event 1))
@@ -246,7 +251,7 @@ MIT in each case. |#
 (define-integrable WS_MAXIMIZED    #x00800000)
 (define-integrable WS_ANIMATE      #x00400000)
 
-;; codes for OS2WIN-QUERY-CAPABILITIES and OS2WIN-QUERY-CAPABILITY
+;; codes for OS2PS-QUERY-CAPABILITIES and OS2PS-QUERY-CAPABILITY
 (define-integrable CAPS_FAMILY                     0)
 (define-integrable CAPS_IO_CAPS                    1)
 (define-integrable CAPS_TECHNOLOGY                 2)
@@ -359,3 +364,27 @@ MIT in each case. |#
 (define-integrable CAPS_RASTER_SET_PEL        #x0010)
 (define-integrable CAPS_RASTER_FONTS          #x0020)
 (define-integrable CAPS_RASTER_FLOOD_FILL     #x0040)
+
+;; Constants for OS2PS-BITBLT raster-op argument
+(define-integrable ROP_SRCCOPY     #xCC)
+(define-integrable ROP_SRCPAINT    #xEE)
+(define-integrable ROP_SRCAND      #x88)
+(define-integrable ROP_SRCINVERT   #x66)
+(define-integrable ROP_SRCERASE    #x44)
+(define-integrable ROP_NOTSRCCOPY  #x33)
+(define-integrable ROP_NOTSRCERASE #x11)
+(define-integrable ROP_MERGECOPY   #xC0)
+(define-integrable ROP_MERGEPAINT  #xBB)
+(define-integrable ROP_PATCOPY     #xF0)
+(define-integrable ROP_PATPAINT    #xFB)
+(define-integrable ROP_PATINVERT   #x5A)
+(define-integrable ROP_DSTINVERT   #x55)
+(define-integrable ROP_ZERO        #x00)
+(define-integrable ROP_ONE         #xFF)
+   
+;; Constants for OS2PS-BITBLT options argument
+(define-integrable BBO_OR            0)
+(define-integrable BBO_AND           1)
+(define-integrable BBO_IGNORE        2)
+(define-integrable BBO_PAL_COLORS    4)
+(define-integrable BBO_NO_COLOR_INFO 8)

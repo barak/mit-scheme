@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pm.h,v 1.3 1995/01/06 00:00:27 cph Exp $
+$Id: os2pm.h,v 1.4 1995/02/08 01:19:42 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -36,6 +36,7 @@ MIT in each case. */
 #define SCM_OS2PM_H
 
 typedef unsigned short wid_t;
+typedef unsigned short psid_t;
 
 typedef struct
 {
@@ -153,38 +154,51 @@ extern msg_t * OS2_read_pm_tqueue (tqueue_t *, int);
 extern void OS2_write_pm_tqueue (tqueue_t *, msg_t *);
 
 extern int OS2_wid_validp (wid_t);
+extern psid_t OS2_window_client_ps (wid_t);
 extern qid_t OS2_create_pm_qid (tqueue_t *);
 extern wid_t OS2_window_open (qid_t, qid_t, unsigned long, const char *);
 extern void OS2_window_permanent (wid_t);
 extern void OS2_window_close (wid_t);
 extern void OS2_window_show (wid_t, int);
-extern void OS2_window_write
-  (wid_t, short, short, const char *, unsigned short);
 extern void OS2_window_move_cursor (wid_t, short, short);
 extern void OS2_window_shape_cursor
   (wid_t, unsigned short, unsigned short, unsigned short);
 extern void OS2_window_show_cursor (wid_t, int);
-extern void OS2_window_clear (wid_t, short, short, short, short);
 extern void OS2_window_scroll
   (wid_t, short, short, short, short, short, short);
 extern void OS2_window_invalidate (wid_t, short, short, short, short);
-extern font_metrics_t * OS2_window_set_font
-  (wid_t, unsigned short, const char *);
 extern void OS2_window_set_grid (wid_t, unsigned short, unsigned short);
 extern void OS2_window_activate (wid_t);
 extern void OS2_window_pos (wid_t, short *, short *);
 extern void OS2_window_set_pos (wid_t, short, short);
 extern void OS2_window_size (wid_t, unsigned short *, unsigned short *);
+extern void OS2_window_frame_size (wid_t, unsigned short *, unsigned short *);
 extern void OS2_window_set_size (wid_t, unsigned short, unsigned short);
 extern int OS2_window_focusp (wid_t);
 extern void OS2_window_set_state (wid_t, window_state_t);
-extern void OS2_window_set_colors (wid_t, COLOR, COLOR);
-extern void OS2_window_move_gcursor (wid_t, short, short);
-extern void OS2_window_line (wid_t, short, short);
-extern void OS2_window_poly_line (wid_t, unsigned long, PPOINTL);
-extern void OS2_window_poly_line_disjoint (wid_t, unsigned long, PPOINTL);
-extern void OS2_window_set_line_type (wid_t, LONG);
-extern void OS2_window_query_caps (wid_t, LONG, LONG, PLONG);
 extern void OS2_window_set_title (wid_t, const char *);
+
+extern int OS2_psid_validp (psid_t);
+extern psid_t OS2_window_client_ps (wid_t);
+extern psid_t OS2_open_bitmap_ps (qid_t, USHORT, USHORT);
+extern int OS2_bitmap_ps_p (psid_t);
+extern void OS2_close_bitmap_ps (psid_t);
+extern void OS2_ps_bitblt (psid_t, psid_t, LONG, PPOINTL, LONG, ULONG);
+extern void OS2_ps_write (psid_t, short, short, const char *, unsigned short);
+extern font_metrics_t * OS2_ps_set_font (psid_t, unsigned short, const char *);
+extern void OS2_ps_clear (psid_t, short, short, short, short);
+extern void OS2_ps_set_colors (psid_t, COLOR, COLOR);
+extern void OS2_ps_move_gcursor (psid_t, short, short);
+extern void OS2_ps_line (psid_t, short, short);
+extern void OS2_ps_poly_line (psid_t, unsigned long, PPOINTL);
+extern void OS2_ps_poly_line_disjoint (psid_t, unsigned long, PPOINTL);
+extern void OS2_ps_set_line_type (psid_t, LONG);
+extern void OS2_ps_query_caps (psid_t, LONG, LONG, PLONG);
+
+extern void OS2_window_write
+  (wid_t, short, short, const char *, unsigned short);
+extern font_metrics_t * OS2_window_set_font
+  (wid_t, unsigned short, const char *);
+extern void OS2_window_clear (wid_t, short, short, short, short);
 
 #endif /* SCM_OS2PM_H */

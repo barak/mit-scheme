@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2term.scm,v 1.3 1995/01/06 20:39:20 cph Exp $
+;;;	$Id: os2term.scm,v 1.4 1995/02/08 01:21:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -157,11 +157,11 @@
 	screen))))
 
 (define (open-window)
-  (let ((wid (os2win-open-1 event-descriptor 0 "Edwin")))
+  (let ((wid (os2win-open event-descriptor "Edwin")))
     (let ((metrics (set-normal-font! wid current-font)))
-      (os2win-set-colors wid
-			 (face-foreground-color normal-face)
-			 (face-background-color normal-face))
+      (os2ps-set-colors (os2win-ps wid)
+			(face-foreground-color normal-face)
+			(face-background-color normal-face))
       (os2win-show-cursor wid #t)
       (os2win-show wid #t)
       (os2win-activate wid)
@@ -189,11 +189,11 @@
     (substring-fill! (screen-char-map screen) start end #\space)
     (subvector-fill! (screen-face-map screen) start end face)
     (set-screen-face! screen face))
-  (os2win-clear (screen-wid screen)
-		(cxl->xl screen x)
-		(cxh->xh screen first-unused-x)
-		(cyh->yl screen (fix:+ y 1))
-		(cyl->yh screen y)))
+  (os2ps-clear (screen-psid screen)
+	       (cxl->xl screen x)
+	       (cxh->xh screen first-unused-x)
+	       (cyh->yl screen (fix:+ y 1))
+	       (cyl->yh screen y)))
 
 (define (os2-screen/clear-rectangle! screen xl xu yl yu highlight)
   (if (fix:< xl xu)
@@ -209,18 +209,18 @@
 	    (substring-fill! char-map start end #\space)
 	    (subvector-fill! face-map start end face)))
 	(set-screen-face! screen face)
-	(os2win-clear (screen-wid screen)
-		      (cxl->xl screen xl) (cxh->xh screen xu)
-		      (cyh->yl screen yu) (cyl->yh screen yl)))))
+	(os2ps-clear (screen-psid screen)
+		     (cxl->xl screen xl) (cxh->xh screen xu)
+		     (cyh->yl screen yu) (cyl->yh screen yl)))))
 
 (define (os2-screen/clear-screen! screen)
   (let ((face (screen-normal-face screen)))
     (string-fill! (screen-char-map screen) #\space)
     (vector-fill! (screen-face-map screen) face)
     (set-screen-face! screen face))
-  (os2win-clear (screen-wid screen)
-		0 (screen-pel-width screen)
-		0 (screen-pel-height screen)))
+  (os2ps-clear (screen-psid screen)
+	       0 (screen-pel-width screen)
+	       0 (screen-pel-height screen)))
 
 (define (os2-screen/discard! screen)
   (set! screen-list (delq! screen screen-list))
@@ -256,12 +256,12 @@
     (string-set! char-map index char)
     (vector-set! (screen-face-map screen) index face)
     (set-screen-face! screen face)
-    (os2win-write (screen-wid screen)
-		  (cx->x screen x)
-		  (fix:+ (cy->y screen y) (screen-char-descender screen))
-		  char-map
-		  index
-		  (fix:+ index 1))))
+    (os2ps-write (screen-psid screen)
+		 (cx->x screen x)
+		 (fix:+ (cy->y screen y) (screen-char-descender screen))
+		 char-map
+		 index
+		 (fix:+ index 1))))
 
 (define (os2-screen/write-substring! screen x y string start end highlight)
   (let ((start* (screen-char-index screen x y))
@@ -272,10 +272,10 @@
 		     (fix:+ start* (fix:- end start))
 		     face)
     (set-screen-face! screen face)
-    (os2win-write (screen-wid screen)
-		  (cx->x screen x)
-		  (fix:+ (cy->y screen y) (screen-char-descender screen))
-		  string start end)))
+    (os2ps-write (screen-psid screen)
+		 (cx->x screen x)
+		 (fix:+ (cy->y screen y) (screen-char-descender screen))
+		 string start end)))
 
 (define use-scrolling? #t)
 
@@ -353,9 +353,9 @@
 (define (set-screen-face! screen face)
   (if (not (eq? face (screen-current-face screen)))
       (begin
-	(os2win-set-colors (screen-wid screen)
-			   (face-foreground-color face)
-			   (face-background-color face))
+	(os2ps-set-colors (screen-psid screen)
+			  (face-foreground-color face)
+			  (face-background-color face))
 	(set-screen-current-face! screen face))))
 
 (define-structure face
@@ -393,7 +393,7 @@
 	(resize))))
 
 (define (set-normal-font! wid font)
-  (let ((metrics (os2win-set-font wid 1 font)))
+  (let ((metrics (os2ps-set-font (os2win-ps wid) 1 font)))
     (if (not metrics)
 	(error "Unknown font name:" font))
     (let ((width (font-metrics/width metrics))
@@ -407,6 +407,11 @@
   (os2win-set-size (screen-wid screen)
 		   (fix:* x-size (screen-char-width screen))
 		   (fix:* y-size (screen-char-height screen))))
+
+(define (os2-screen/get-frame-size screen)
+  (let ((w.h (os2win-get-frame-size (screen-wid screen))))
+    (values (car w.h)
+	    (cdr w.h))))
 
 (define (os2-screen/get-position screen)
   (let ((x.y (os2win-get-pos (screen-wid screen))))
@@ -567,6 +572,9 @@
 
 (define-integrable (set-screen-current-face! screen face)
   (set-screen-state/current-face! (screen-state screen) face))
+
+(define-integrable (screen-psid screen)
+  (os2win-ps (screen-wid screen)))
 
 (define-integrable (screen-char-width screen)
   (font-metrics/width (screen-font-metrics screen)))
@@ -776,7 +784,7 @@
 	(xh (paint-event/xh event))
 	(yl (paint-event/yl event))
 	(yh (paint-event/yh event)))
-    (os2win-clear wid xl xh yl yh)
+    (os2ps-clear (os2win-ps wid) xl xh yl yh)
     (let ((screen (wid->screen wid)))
       (if screen
 	  (let ((cxl (xl->cxl screen xl))
@@ -805,8 +813,9 @@
 					      (vector-ref face-map index))))
 				(begin
 				  (set-screen-face! screen face)
-				  (os2win-write wid (cx->x screen cxl) y
-						char-map start end)
+				  (os2ps-write (os2win-ps wid)
+					       (cx->x screen cxl) y
+					       char-map start end)
 				  (if (not (fix:= index end))
 				      (outer index
 					     (fix:+ cxl (fix:- index start)))))

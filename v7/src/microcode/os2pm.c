@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pm.c,v 1.4 1995/01/16 20:57:52 cph Exp $
+$Id: os2pm.c,v 1.5 1995/02/08 01:19:32 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -36,11 +36,13 @@ MIT in each case. */
 #define INCL_GPI
 #include "os2.h"
 
+struct _ps_t;
+
 typedef struct
 {
   HWND frame;			/* frame window handle */
   HWND client;			/* client window handle */
-  HPS hps;			/* presentation space for client window */
+  struct _ps_t * client_ps;	/* presentation space for client window */
   unsigned short grid_x;	/* x dimension of resizing grid */
   unsigned short grid_y;	/* y dimension of resizing grid */
   short cursor_x;		/* x coordinate of the cursor */
@@ -50,9 +52,7 @@ typedef struct
   unsigned short cursor_style;	/* style of the cursor */
   qid_t qid;			/* qid to send commands to */
   qid_t event_qid;		/* qid to send input events to */
-  wid_t wid;			/* wid for this window */
-  COLOR foreground_color;
-  COLOR background_color;
+  wid_t id;			/* wid for this window */
   unsigned int cursor_shownp : 1; /* nonzero if cursor is visible */
   unsigned int minimizingp : 1; /* nonzero if window being minimized */
   unsigned int minimizedp : 1;	/* nonzero if window is minimized */
@@ -60,7 +60,7 @@ typedef struct
 } window_t;
 #define WINDOW_FRAME(window) ((window) -> frame)
 #define WINDOW_CLIENT(window) ((window) -> client)
-#define WINDOW_HPS(window) ((window) -> hps)
+#define WINDOW_CLIENT_PS(window) ((window) -> client_ps)
 #define WINDOW_GRID_X(window) ((window) -> grid_x)
 #define WINDOW_GRID_Y(window) ((window) -> grid_y)
 #define WINDOW_CURSOR_X(window) ((window) -> cursor_x)
@@ -70,13 +70,29 @@ typedef struct
 #define WINDOW_CURSOR_STYLE(window) ((window) -> cursor_style)
 #define WINDOW_QID(window) ((window) -> qid)
 #define WINDOW_EVENT_QID(window) ((window) -> event_qid)
-#define WINDOW_WID(window) ((window) -> wid)
-#define WINDOW_FOREGROUND_COLOR(window) ((window) -> foreground_color)
-#define WINDOW_BACKGROUND_COLOR(window) ((window) -> background_color)
+#define WINDOW_ID(window) ((window) -> id)
 #define WINDOW_CURSOR_SHOWNP(window) ((window) -> cursor_shownp)
 #define WINDOW_MINIMIZINGP(window) ((window) -> minimizingp)
 #define WINDOW_MINIMIZEDP(window) ((window) -> minimizedp)
 #define WINDOW_PERMANENTP(window) ((window) -> permanentp)
+
+typedef struct _ps_t
+{
+  psid_t id;			/* psid for this ps */
+  qid_t qid;			/* qid to send commands to */
+  HPS handle;
+  COLOR foreground_color;
+  COLOR background_color;
+  window_t * window;		/* if this is window PS, the window */
+  HBITMAP bitmap;		/* if this is bitmap PS, the bitmap */
+} ps_t;
+#define PS_ID(ps) ((ps) -> id)
+#define PS_QID(ps) ((ps) -> qid)
+#define PS_HANDLE(ps) ((ps) -> handle)
+#define PS_FOREGROUND_COLOR(ps) ((ps) -> foreground_color)
+#define PS_BACKGROUND_COLOR(ps) ((ps) -> background_color)
+#define PS_WINDOW(ps) ((ps) -> window)
+#define PS_BITMAP(ps) ((ps) -> bitmap)
 
 typedef struct
 {
@@ -84,6 +100,14 @@ typedef struct
   HWND hwnd;
 } pm_tqueue_t;
 #define PM_TQUEUE_HWND(q) (((pm_tqueue_t *) (q)) -> hwnd)
+
+typedef struct
+{
+  unsigned int length;
+  void ** pointers;
+} id_table_t;
+#define ID_TABLE_LENGTH(table) ((table) -> length)
+#define ID_TABLE_POINTERS(table) ((table) -> pointers)
 
 typedef struct
 {
@@ -127,21 +151,6 @@ typedef struct
   window_t * window;
   short x;
   short y;
-  unsigned short size;
-  const char data [1];
-} sm_write_t;
-#define SM_WRITE_WINDOW(m) (((sm_write_t *) (m)) -> window)
-#define SM_WRITE_X(m) (((sm_write_t *) (m)) -> x)
-#define SM_WRITE_Y(m) (((sm_write_t *) (m)) -> y)
-#define SM_WRITE_SIZE(m) (((sm_write_t *) (m)) -> size)
-#define SM_WRITE_DATA(m) (((sm_write_t *) (m)) -> data)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  window_t * window;
-  short x;
-  short y;
 } sm_move_cursor_t;
 #define SM_MOVE_CURSOR_WINDOW(m) (((sm_move_cursor_t *) (m)) -> window)
 #define SM_MOVE_CURSOR_X(m) (((sm_move_cursor_t *) (m)) -> x)
@@ -177,21 +186,6 @@ typedef struct
   short xh;
   short yl;
   short yh;
-} sm_clear_t;
-#define SM_CLEAR_WINDOW(m) (((sm_clear_t *) (m)) -> window)
-#define SM_CLEAR_XL(m) (((sm_clear_t *) (m)) -> xl)
-#define SM_CLEAR_XH(m) (((sm_clear_t *) (m)) -> xh)
-#define SM_CLEAR_YL(m) (((sm_clear_t *) (m)) -> yl)
-#define SM_CLEAR_YH(m) (((sm_clear_t *) (m)) -> yh)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  window_t * window;
-  short xl;
-  short xh;
-  short yl;
-  short yh;
   short x_delta;
   short y_delta;
 } sm_scroll_t;
@@ -217,26 +211,6 @@ typedef struct
 #define SM_INVALIDATE_XH(m) (((sm_invalidate_t *) (m)) -> xh)
 #define SM_INVALIDATE_YL(m) (((sm_invalidate_t *) (m)) -> yl)
 #define SM_INVALIDATE_YH(m) (((sm_invalidate_t *) (m)) -> yh)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  window_t * window;
-  unsigned short id;
-  char spec [1];
-} sm_set_font_request_t;
-#define SM_SET_FONT_REQUEST_WINDOW(m)					\
-  (((sm_set_font_request_t *) (m)) -> window)
-#define SM_SET_FONT_REQUEST_ID(m) (((sm_set_font_request_t *) (m)) -> id)
-#define SM_SET_FONT_REQUEST_SPEC(m) (((sm_set_font_request_t *) (m)) -> spec)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  font_metrics_t * metrics;
-} sm_set_font_reply_t;
-#define SM_SET_FONT_REPLY_WINDOW(m) (((sm_set_font_reply_t *) (m)) -> window)
-#define SM_SET_FONT_REPLY_METRICS(m) (((sm_set_font_reply_t *) (m)) -> metrics)
 
 typedef struct
 {
@@ -303,6 +277,25 @@ typedef struct
 {
   DECLARE_MSG_HEADER_FIELDS;
   window_t * window;
+} sm_frame_size_request_t;
+#define SM_FRAME_SIZE_REQUEST_WINDOW(m)					\
+  (((sm_frame_size_request_t *) (m)) -> window)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  unsigned short width;
+  unsigned short height;
+} sm_frame_size_reply_t;
+#define SM_FRAME_SIZE_REPLY_WIDTH(m)					\
+  (((sm_frame_size_reply_t *) (m)) -> width)
+#define SM_FRAME_SIZE_REPLY_HEIGHT(m)					\
+  (((sm_frame_size_reply_t *) (m)) -> height)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  window_t * window;
   unsigned short width;
   unsigned short height;
 } sm_set_size_t;
@@ -337,55 +330,158 @@ typedef struct
 {
   DECLARE_MSG_HEADER_FIELDS;
   window_t * window;
+  char title [1];
+} sm_set_title_t;
+#define SM_SET_TITLE_WINDOW(m) (((sm_set_title_t *) (m)) -> window)
+#define SM_SET_TITLE_TITLE(m) (((sm_set_title_t *) (m)) -> title)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  qid_t qid;
+  USHORT width;
+  USHORT height;
+} sm_bitmap_ps_open_request_t;
+#define SM_BITMAP_PS_OPEN_REQUEST_QID(m)				\
+  (((sm_bitmap_ps_open_request_t *) (m)) -> qid)
+#define SM_BITMAP_PS_OPEN_REQUEST_WIDTH(m)				\
+  (((sm_bitmap_ps_open_request_t *) (m)) -> width)
+#define SM_BITMAP_PS_OPEN_REQUEST_HEIGHT(m)				\
+  (((sm_bitmap_ps_open_request_t *) (m)) -> height)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  psid_t psid;
+} sm_bitmap_ps_open_reply_t;
+#define SM_BITMAP_PS_OPEN_REPLY_PSID(m)					\
+  (((sm_bitmap_ps_open_reply_t *) (m)) -> psid)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  ps_t * ps;
+} sm_bitmap_ps_close_t;
+#define SM_BITMAP_PS_CLOSE_PS(m) (((sm_bitmap_ps_close_t *) (m)) -> ps)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  ps_t * target_ps;
+  ps_t * source_ps;
+  LONG npoints;
+  POINTL points [4];
+  LONG rop;
+  ULONG options;
+} sm_ps_bitblt_t;
+#define SM_PS_BITBLT_TARGET_PS(m) (((sm_ps_bitblt_t *) (m)) -> target_ps)
+#define SM_PS_BITBLT_SOURCE_PS(m) (((sm_ps_bitblt_t *) (m)) -> source_ps)
+#define SM_PS_BITBLT_NPOINTS(m) (((sm_ps_bitblt_t *) (m)) -> npoints)
+#define SM_PS_BITBLT_POINTS(m) (((sm_ps_bitblt_t *) (m)) -> points)
+#define SM_PS_BITBLT_ROP(m) (((sm_ps_bitblt_t *) (m)) -> rop)
+#define SM_PS_BITBLT_OPTIONS(m) (((sm_ps_bitblt_t *) (m)) -> options)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  ps_t * ps;
+  short x;
+  short y;
+  unsigned short size;
+  const char data [1];
+} sm_write_t;
+#define SM_WRITE_PS(m) (((sm_write_t *) (m)) -> ps)
+#define SM_WRITE_X(m) (((sm_write_t *) (m)) -> x)
+#define SM_WRITE_Y(m) (((sm_write_t *) (m)) -> y)
+#define SM_WRITE_SIZE(m) (((sm_write_t *) (m)) -> size)
+#define SM_WRITE_DATA(m) (((sm_write_t *) (m)) -> data)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  ps_t * ps;
+  short xl;
+  short xh;
+  short yl;
+  short yh;
+} sm_clear_t;
+#define SM_CLEAR_PS(m) (((sm_clear_t *) (m)) -> ps)
+#define SM_CLEAR_XL(m) (((sm_clear_t *) (m)) -> xl)
+#define SM_CLEAR_XH(m) (((sm_clear_t *) (m)) -> xh)
+#define SM_CLEAR_YL(m) (((sm_clear_t *) (m)) -> yl)
+#define SM_CLEAR_YH(m) (((sm_clear_t *) (m)) -> yh)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  ps_t * ps;
+  unsigned short id;
+  char spec [1];
+} sm_set_font_request_t;
+#define SM_SET_FONT_REQUEST_PS(m) (((sm_set_font_request_t *) (m)) -> ps)
+#define SM_SET_FONT_REQUEST_ID(m) (((sm_set_font_request_t *) (m)) -> id)
+#define SM_SET_FONT_REQUEST_SPEC(m) (((sm_set_font_request_t *) (m)) -> spec)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  font_metrics_t * metrics;
+} sm_set_font_reply_t;
+#define SM_SET_FONT_REPLY_METRICS(m) (((sm_set_font_reply_t *) (m)) -> metrics)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  ps_t * ps;
   COLOR foreground;
   COLOR background;
 } sm_set_colors_t;
-#define SM_SET_COLORS_WINDOW(m) (((sm_set_colors_t *) (m)) -> window)
+#define SM_SET_COLORS_PS(m) (((sm_set_colors_t *) (m)) -> ps)
 #define SM_SET_COLORS_FOREGROUND(m) (((sm_set_colors_t *) (m)) -> foreground)
 #define SM_SET_COLORS_BACKGROUND(m) (((sm_set_colors_t *) (m)) -> background)
 
 typedef struct
 {
   DECLARE_MSG_HEADER_FIELDS;
-  window_t * window;
+  ps_t * ps;
   short x;
   short y;
 } sm_move_gcursor_t;
-#define SM_MOVE_GCURSOR_WINDOW(m) (((sm_move_gcursor_t *) (m)) -> window)
+#define SM_MOVE_GCURSOR_PS(m) (((sm_move_gcursor_t *) (m)) -> ps)
 #define SM_MOVE_GCURSOR_X(m) (((sm_move_gcursor_t *) (m)) -> x)
 #define SM_MOVE_GCURSOR_Y(m) (((sm_move_gcursor_t *) (m)) -> y)
 
 typedef struct
 {
   DECLARE_MSG_HEADER_FIELDS;
-  window_t * window;
+  ps_t * ps;
   short x;
   short y;
 } sm_line_t;
-#define SM_LINE_WINDOW(m) (((sm_line_t *) (m)) -> window)
+#define SM_LINE_PS(m) (((sm_line_t *) (m)) -> ps)
 #define SM_LINE_X(m) (((sm_line_t *) (m)) -> x)
 #define SM_LINE_Y(m) (((sm_line_t *) (m)) -> y)
 
 typedef struct
 {
   DECLARE_MSG_HEADER_FIELDS;
-  window_t * window;
+  ps_t * ps;
   unsigned long npoints;
   PPOINTL points;
 } sm_poly_line_t;
-#define SM_POLY_LINE_WINDOW(m) (((sm_poly_line_t *) (m)) -> window)
+#define SM_POLY_LINE_PS(m) (((sm_poly_line_t *) (m)) -> ps)
 #define SM_POLY_LINE_NPOINTS(m) (((sm_poly_line_t *) (m)) -> npoints)
 #define SM_POLY_LINE_POINTS(m) (((sm_poly_line_t *) (m)) -> points)
 
 typedef struct
 {
   DECLARE_MSG_HEADER_FIELDS;
-  window_t * window;
+  ps_t * ps;
   unsigned long npoints;
   PPOINTL points;
 } sm_poly_line_disjoint_t;
-#define SM_POLY_LINE_DISJOINT_WINDOW(m)					\
-  (((sm_poly_line_disjoint_t *) (m)) -> window)
+#define SM_POLY_LINE_DISJOINT_PS(m)					\
+  (((sm_poly_line_disjoint_t *) (m)) -> ps)
 #define SM_POLY_LINE_DISJOINT_NPOINTS(m)				\
   (((sm_poly_line_disjoint_t *) (m)) -> npoints)
 #define SM_POLY_LINE_DISJOINT_POINTS(m)					\
@@ -394,33 +490,24 @@ typedef struct
 typedef struct
 {
   DECLARE_MSG_HEADER_FIELDS;
-  window_t * window;
+  ps_t * ps;
   LONG ltype;
 } sm_set_line_type_t;
-#define SM_SET_LINE_TYPE_WINDOW(m) (((sm_set_line_type_t *) (m)) -> window)
+#define SM_SET_LINE_TYPE_PS(m) (((sm_set_line_type_t *) (m)) -> ps)
 #define SM_SET_LINE_TYPE_TYPE(m) (((sm_set_line_type_t *) (m)) -> ltype)
 
 typedef struct
 {
   DECLARE_MSG_HEADER_FIELDS;
-  window_t * window;
+  ps_t * ps;
   LONG start;
   LONG count;
   PLONG values;
 } sm_query_caps_t;
-#define SM_QUERY_CAPS_WINDOW(m) (((sm_query_caps_t *) (m)) -> window)
+#define SM_QUERY_CAPS_PS(m) (((sm_query_caps_t *) (m)) -> ps)
 #define SM_QUERY_CAPS_START(m) (((sm_query_caps_t *) (m)) -> start)
 #define SM_QUERY_CAPS_COUNT(m) (((sm_query_caps_t *) (m)) -> count)
 #define SM_QUERY_CAPS_VALUES(m) (((sm_query_caps_t *) (m)) -> values)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  window_t * window;
-  char title [1];
-} sm_set_title_t;
-#define SM_SET_TITLE_WINDOW(m) (((sm_set_title_t *) (m)) -> window)
-#define SM_SET_TITLE_TITLE(m) (((sm_set_title_t *) (m)) -> title)
 
 static void sync_transaction (qid_t, msg_t *);
 static void sync_reply (qid_t);
@@ -428,10 +515,13 @@ static void sync_reply (qid_t);
 static void pm_thread_procedure (void *);
 static tqueue_t * make_pm_tqueue (HWND);
 
-static void initialize_wid_table (void);
-static wid_t allocate_wid (window_t *);
-static void deallocate_wid (wid_t);
+static void initialize_id_table (id_table_t *);
+static unsigned int allocate_id (id_table_t *, void *);
+static void deallocate_id (id_table_t *, unsigned int);
+static void * id_to_pointer (id_table_t *, unsigned int);
+
 static window_t * wid_to_window (wid_t);
+static ps_t * psid_to_ps (psid_t);
 static void close_all_windows (void);
 
 static MRESULT EXPENTRY object_window_procedure (HWND, ULONG, MPARAM, MPARAM);
@@ -442,8 +532,6 @@ static wid_t open_window (qid_t, qid_t, ULONG, PSZ);
 static window_t * hwnd_to_window (HWND);
 static void close_window (window_t *);
 static void show_window (window_t *, int);
-static void write_window
-  (window_t *, short, short, const char *, unsigned short);
 static void move_cursor (window_t *, short, short);
 static void shape_cursor
   (window_t *, unsigned short, unsigned short, unsigned short);
@@ -451,24 +539,36 @@ static void show_cursor (window_t *, int);
 static void recreate_cursor (window_t *);
 static void activate_cursor (window_t *);
 static void deactivate_cursor (window_t *);
-static void clear_rectangle (window_t *, PRECTL);
 static void scroll_rectangle (window_t *, short, short, PRECTL);
 static void invalidate_rectangle (window_t *, PRECTL);
-static font_metrics_t * set_font (window_t *, unsigned short, const char *);
 static void get_window_pos (window_t *, short *, short *);
 static void set_window_pos (window_t *, short, short);
 static void get_window_size (window_t *, unsigned short *, unsigned short *);
+static void get_window_frame_size
+  (window_t *, unsigned short *, unsigned short *);
 static void set_window_size (window_t *, unsigned short, unsigned short);
 static int window_focusp (window_t *);
 static void set_window_state (window_t *, window_state_t);
-static void set_window_colors (window_t *, COLOR, COLOR);
-static void move_gcursor (window_t *, short, short);
-static void draw_line (window_t *, short, short);
-static void poly_line (window_t *, unsigned long, PPOINTL);
-static void poly_line_disjoint (window_t *, unsigned long, PPOINTL);
-static void set_line_type (window_t *, LONG);
-static void query_caps (window_t *, LONG, LONG, PLONG);
 static void set_window_title (window_t *, PSZ);
+
+static psid_t open_bitmap_ps (qid_t, USHORT, USHORT);
+static HDC get_ps_device (HPS);
+static LONG get_device_capability (HDC, LONG);
+static ps_t * make_ps (HDC, qid_t);
+static void close_ps (ps_t *);
+static void bitblt_ps (ps_t *, ps_t *, LONG, PPOINTL, LONG, ULONG);
+static void write_ps (ps_t *, short, short, const char *, unsigned short);
+static void maybe_activate_cursor (ps_t *);
+static void maybe_deactivate_cursor (ps_t *);
+static void clear_rectangle (ps_t *, PRECTL);
+static void set_ps_colors (ps_t *, COLOR, COLOR);
+static void move_gcursor (ps_t *, short, short);
+static void draw_line (ps_t *, short, short);
+static void poly_line (ps_t *, unsigned long, PPOINTL);
+static void poly_line_disjoint (ps_t *, unsigned long, PPOINTL);
+static void set_line_type (ps_t *, LONG);
+static void query_caps (ps_t *, LONG, LONG, PLONG);
+static font_metrics_t * set_font (ps_t *, unsigned short, const char *);
 
 static msg_t * make_button_event
   (wid_t, unsigned char, unsigned char, unsigned short, unsigned short,
@@ -494,6 +594,8 @@ static msg_t * make_visibility_event (wid_t, int);
 #define MRTRUE MRFROMLONG (TRUE)
 #define MRFALSE MRFROMLONG (FALSE)
 
+static id_table_t wid_table;
+static id_table_t psid_table;
 static qid_t pm_init_qid;
 static TID pm_tid;
 static HAB pm_hab;
@@ -541,15 +643,11 @@ OS2_initialize_pm_thread (void)
   SET_MSG_TYPE_LENGTH (mt_window_open_reply, sm_open_reply_t);
   SET_MSG_TYPE_LENGTH (mt_window_close, sm_close_t);
   SET_MSG_TYPE_LENGTH (mt_window_show, sm_show_t);
-  SET_MSG_TYPE_LENGTH (mt_window_write, sm_write_t);
   SET_MSG_TYPE_LENGTH (mt_window_move_cursor, sm_move_cursor_t);
   SET_MSG_TYPE_LENGTH (mt_window_shape_cursor, sm_shape_cursor_t);
   SET_MSG_TYPE_LENGTH (mt_window_show_cursor, sm_show_cursor_t);
-  SET_MSG_TYPE_LENGTH (mt_window_clear, sm_clear_t);
   SET_MSG_TYPE_LENGTH (mt_window_scroll, sm_scroll_t);
   SET_MSG_TYPE_LENGTH (mt_window_invalidate, sm_invalidate_t);
-  SET_MSG_TYPE_LENGTH (mt_window_set_font_request, sm_set_font_request_t);
-  SET_MSG_TYPE_LENGTH (mt_window_set_font_reply, sm_set_font_reply_t);
   SET_MSG_TYPE_LENGTH (mt_window_set_grid, sm_set_grid_t);
   SET_MSG_TYPE_LENGTH (mt_window_activate, sm_activate_t);
   SET_MSG_TYPE_LENGTH (mt_window_pos_request, sm_pos_request_t);
@@ -557,18 +655,32 @@ OS2_initialize_pm_thread (void)
   SET_MSG_TYPE_LENGTH (mt_window_set_pos, sm_set_pos_t);
   SET_MSG_TYPE_LENGTH (mt_window_size_request, sm_size_request_t);
   SET_MSG_TYPE_LENGTH (mt_window_size_reply, sm_size_reply_t);
+  SET_MSG_TYPE_LENGTH (mt_window_frame_size_request, sm_frame_size_request_t);
+  SET_MSG_TYPE_LENGTH (mt_window_frame_size_reply, sm_frame_size_reply_t);
+  SET_MSG_TYPE_LENGTH (mt_window_frame_size_request, sm_frame_size_request_t);
+  SET_MSG_TYPE_LENGTH (mt_window_frame_size_reply, sm_frame_size_reply_t);
   SET_MSG_TYPE_LENGTH (mt_window_set_size, sm_set_size_t);
   SET_MSG_TYPE_LENGTH (mt_window_focusp_request, sm_focusp_request_t);
   SET_MSG_TYPE_LENGTH (mt_window_focusp_reply, sm_focusp_reply_t);
   SET_MSG_TYPE_LENGTH (mt_window_set_state, sm_set_state_t);
-  SET_MSG_TYPE_LENGTH (mt_window_set_colors, sm_set_colors_t);
-  SET_MSG_TYPE_LENGTH (mt_window_move_gcursor, sm_move_gcursor_t);
-  SET_MSG_TYPE_LENGTH (mt_window_line, sm_line_t);
-  SET_MSG_TYPE_LENGTH (mt_window_poly_line, sm_poly_line_t);
-  SET_MSG_TYPE_LENGTH (mt_window_poly_line_disjoint, sm_poly_line_disjoint_t);
-  SET_MSG_TYPE_LENGTH (mt_window_set_line_type, sm_set_line_type_t);
-  SET_MSG_TYPE_LENGTH (mt_window_query_caps, sm_query_caps_t);
   SET_MSG_TYPE_LENGTH (mt_window_set_title, sm_set_title_t);
+
+  SET_MSG_TYPE_LENGTH (mt_bitmap_ps_open_request, sm_bitmap_ps_open_request_t);
+  SET_MSG_TYPE_LENGTH (mt_bitmap_ps_open_reply, sm_bitmap_ps_open_reply_t);
+  SET_MSG_TYPE_LENGTH (mt_bitmap_ps_close, sm_bitmap_ps_close_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_bitblt, sm_ps_bitblt_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_write, sm_write_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_clear, sm_clear_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_set_font_request, sm_set_font_request_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_set_font_reply, sm_set_font_reply_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_set_colors, sm_set_colors_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_move_gcursor, sm_move_gcursor_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_line, sm_line_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_poly_line, sm_poly_line_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_poly_line_disjoint, sm_poly_line_disjoint_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_set_line_type, sm_set_line_type_t);
+  SET_MSG_TYPE_LENGTH (mt_ps_query_caps, sm_query_caps_t);
+
   SET_MSG_TYPE_LENGTH (mt_button_event, sm_button_event_t);
   SET_MSG_TYPE_LENGTH (mt_close_event, sm_close_event_t);
   SET_MSG_TYPE_LENGTH (mt_focus_event, sm_focus_event_t);
@@ -576,7 +688,9 @@ OS2_initialize_pm_thread (void)
   SET_MSG_TYPE_LENGTH (mt_paint_event, sm_paint_event_t);
   SET_MSG_TYPE_LENGTH (mt_resize_event, sm_resize_event_t);
   SET_MSG_TYPE_LENGTH (mt_visibility_event, sm_visibility_event_t);
-  initialize_wid_table ();
+
+  initialize_id_table (& wid_table);
+  initialize_id_table (& psid_table);
   original_frame_window_procedure = 0;
   {
     qid_t qid;
@@ -698,76 +812,104 @@ OS2_write_pm_tqueue (tqueue_t * tqueue, msg_t * message)
     window_warning (WinPostMsg);
 }
 
-static unsigned int wid_table_length;
-static window_t ** wid_table;
-
 static void
-initialize_wid_table (void)
+initialize_id_table (id_table_t * table)
 {
-  wid_table_length = 16;
-  wid_table = (OS_malloc ((sizeof (window_t *)) * wid_table_length));
+  unsigned int length = 16;
+  void ** pointers = (OS_malloc ((sizeof (void *)) * length));
+  void ** scan = pointers;
+  void ** end = (scan + length);
+  while (scan < end)
+    (*scan++) = 0;
+  (ID_TABLE_LENGTH (table)) = length;
+  (ID_TABLE_POINTERS (table)) = pointers;
+}
+
+static unsigned int
+allocate_id (id_table_t * table, void * pointer)
+{
+  unsigned int length = (ID_TABLE_LENGTH (table));
+  void ** pointers = (ID_TABLE_POINTERS (table));
+  void ** scan = pointers;
+  void ** end = (pointers + length);
+  while (scan < end)
+    if ((*scan++) == 0)
+      {
+	(*--scan) = pointer;
+	return (scan - pointers);
+      }
   {
-    window_t ** scan = wid_table;
-    window_t ** end = (scan + wid_table_length);
+    unsigned int id = length;
+    length *= 2;
+    pointers = (OS_realloc (pointers, ((sizeof (void *)) * length)));
+    scan = (pointers + id + 1);
+    end = (pointers + length);
     while (scan < end)
       (*scan++) = 0;
+    (ID_TABLE_LENGTH (table)) = length;
+    (ID_TABLE_POINTERS (table)) = pointers;
+    (pointers[id]) = pointer;
+    return (id);
   }
 }
 
-static wid_t
-allocate_wid (window_t * window)
-{
-  wid_t wid = 0;
-  while (1)
-    {
-      if (wid == wid_table_length)
-	{
-	  wid_table_length *= 2;
-	  wid_table
-	    = (OS_realloc (wid_table,
-			   ((sizeof (window_t *)) * wid_table_length)));
-	  {
-	    window_t ** scan = (wid_table + wid + 1);
-	    window_t ** end = (wid_table + wid_table_length);
-	    while (scan < end)
-	      (*scan++) = 0;
-	  }
-	  break;
-	}
-      if ((wid_table [wid]) == 0)
-	break;
-      wid += 1;
-    }
-  (wid_table [wid]) = window;
-  (WINDOW_WID (window)) = wid;
-  return (wid);
-}
-
 static void
-deallocate_wid (wid_t wid)
+deallocate_id (id_table_t * table, unsigned int id)
 {
-  (wid_table [wid]) = 0;
+  ((ID_TABLE_POINTERS (table)) [id]) = 0;
 }
 
+static void *
+id_to_pointer (id_table_t * table, unsigned int id)
+{
+  void * pointer = ((ID_TABLE_POINTERS (table)) [id]);
+  if (pointer == 0)
+    OS2_logic_error ("Invalid PM ID.");
+  return (pointer);
+}
+
+static int
+id_validp (id_table_t * table, unsigned int id)
+{
+  return ((id < (ID_TABLE_LENGTH (table)))
+	  && (((ID_TABLE_POINTERS (table)) [id]) != 0));
+}
+
 static window_t *
 wid_to_window (wid_t wid)
 {
-  if ((wid_table [wid]) == 0)
-    OS2_logic_error ("Invalid terminal window ID.");
-  return (wid_table [wid]);
+  return (id_to_pointer ((& wid_table), wid));
+}
+
+static ps_t *
+psid_to_ps (psid_t psid)
+{
+  return (id_to_pointer ((& psid_table), psid));
 }
 
 int
 OS2_wid_validp (wid_t wid)
 {
-  return ((wid < wid_table_length) && ((wid_table [wid]) != 0));
+  return (id_validp ((& wid_table), wid));
+}
+
+int
+OS2_psid_validp (psid_t psid)
+{
+  return (id_validp ((& psid_table), psid));
+}
+
+psid_t
+OS2_window_client_ps (wid_t wid)
+{
+  return (PS_ID (WINDOW_CLIENT_PS (wid_to_window (wid))));
 }
 
 static void
 close_all_windows (void)
 {
-  window_t ** scan = wid_table;
-  window_t ** end = (scan + wid_table_length);
+  window_t ** scan = ((window_t **) (ID_TABLE_POINTERS (& wid_table)));
+  window_t ** end = (scan + (ID_TABLE_LENGTH (& wid_table)));
   while (scan < end)
     {
       window_t * window = (*scan++);
@@ -783,30 +925,35 @@ close_all_windows (void)
 static void handle_window_open_request (msg_t *);
 static void handle_window_close_request (msg_t *);
 static void handle_window_show_request (msg_t *);
-static void handle_window_write_request (msg_t *);
 static void handle_window_move_cursor_request (msg_t *);
 static void handle_window_shape_cursor_request (msg_t *);
 static void handle_window_show_cursor_request (msg_t *);
-static void handle_window_clear_request (msg_t *);
 static void handle_window_scroll_request (msg_t *);
 static void handle_window_invalidate_request (msg_t *);
-static void handle_window_set_font_request (msg_t *);
 static void handle_window_set_grid_request (msg_t *);
 static void handle_window_activate_request (msg_t *);
 static void handle_window_pos_request (msg_t *);
 static void handle_window_set_pos_request (msg_t *);
 static void handle_window_size_request (msg_t *);
+static void handle_window_frame_size_request (msg_t *);
 static void handle_window_set_size_request (msg_t *);
 static void handle_window_focusp_request (msg_t *);
 static void handle_window_set_state_request (msg_t *);
-static void handle_window_set_colors_request (msg_t *);
-static void handle_window_move_gcursor_request (msg_t *);
-static void handle_window_line_request (msg_t *);
-static void handle_window_poly_line_request (msg_t *);
-static void handle_window_poly_line_disjoint_request (msg_t *);
-static void handle_window_set_line_type_request (msg_t *);
-static void handle_window_query_caps_request (msg_t *);
 static void handle_window_set_title_request (msg_t *);
+
+static void handle_bitmap_ps_open_request (msg_t *);
+static void handle_bitmap_ps_close_request (msg_t *);
+static void handle_ps_bitblt_request (msg_t *);
+static void handle_ps_write_request (msg_t *);
+static void handle_ps_set_font_request (msg_t *);
+static void handle_ps_clear_request (msg_t *);
+static void handle_ps_set_colors_request (msg_t *);
+static void handle_ps_move_gcursor_request (msg_t *);
+static void handle_ps_line_request (msg_t *);
+static void handle_ps_poly_line_request (msg_t *);
+static void handle_ps_poly_line_disjoint_request (msg_t *);
+static void handle_ps_set_line_type_request (msg_t *);
+static void handle_ps_query_caps_request (msg_t *);
 
 static MRESULT EXPENTRY
 object_window_procedure (HWND window, ULONG msg, MPARAM mp1, MPARAM mp2)
@@ -825,9 +972,6 @@ object_window_procedure (HWND window, ULONG msg, MPARAM mp1, MPARAM mp2)
 	case mt_window_show:
 	  handle_window_show_request (message);
 	  break;
-	case mt_window_write:
-	  handle_window_write_request (message);
-	  break;
 	case mt_window_move_cursor:
 	  handle_window_move_cursor_request (message);
 	  break;
@@ -837,17 +981,11 @@ object_window_procedure (HWND window, ULONG msg, MPARAM mp1, MPARAM mp2)
 	case mt_window_show_cursor:
 	  handle_window_show_cursor_request (message);
 	  break;
-	case mt_window_clear:
-	  handle_window_clear_request (message);
-	  break;
 	case mt_window_scroll:
 	  handle_window_scroll_request (message);
 	  break;
 	case mt_window_invalidate:
 	  handle_window_invalidate_request (message);
-	  break;
-	case mt_window_set_font_request:
-	  handle_window_set_font_request (message);
 	  break;
 	case mt_window_set_grid:
 	  handle_window_set_grid_request (message);
@@ -864,6 +1002,9 @@ object_window_procedure (HWND window, ULONG msg, MPARAM mp1, MPARAM mp2)
 	case mt_window_size_request:
 	  handle_window_size_request (message);
 	  break;
+	case mt_window_frame_size_request:
+	  handle_window_frame_size_request (message);
+	  break;
 	case mt_window_set_size:
 	  handle_window_set_size_request (message);
 	  break;
@@ -873,30 +1014,50 @@ object_window_procedure (HWND window, ULONG msg, MPARAM mp1, MPARAM mp2)
 	case mt_window_set_state:
 	  handle_window_set_state_request (message);
 	  break;
-	case mt_window_set_colors:
-	  handle_window_set_colors_request (message);
-	  break;
-	case mt_window_move_gcursor:
-	  handle_window_move_gcursor_request (message);
-	  break;
-	case mt_window_line:
-	  handle_window_line_request (message);
-	  break;
-	case mt_window_poly_line:
-	  handle_window_poly_line_request (message);
-	  break;
-	case mt_window_poly_line_disjoint:
-	  handle_window_poly_line_disjoint_request (message);
-	  break;
-	case mt_window_set_line_type:
-	  handle_window_set_line_type_request (message);
-	  break;
-	case mt_window_query_caps:
-	  handle_window_query_caps_request (message);
-	  break;
 	case mt_window_set_title:
 	  handle_window_set_title_request (message);
 	  break;
+
+	case mt_bitmap_ps_open_request:
+	  handle_bitmap_ps_open_request (message);
+	  break;
+	case mt_bitmap_ps_close:
+	  handle_bitmap_ps_close_request (message);
+	  break;
+	case mt_ps_bitblt:
+	  handle_ps_bitblt_request (message);
+	  break;
+	case mt_ps_write:
+	  handle_ps_write_request (message);
+	  break;
+	case mt_ps_set_font_request:
+	  handle_ps_set_font_request (message);
+	  break;
+	case mt_ps_clear:
+	  handle_ps_clear_request (message);
+	  break;
+	case mt_ps_set_colors:
+	  handle_ps_set_colors_request (message);
+	  break;
+	case mt_ps_move_gcursor:
+	  handle_ps_move_gcursor_request (message);
+	  break;
+	case mt_ps_line:
+	  handle_ps_line_request (message);
+	  break;
+	case mt_ps_poly_line:
+	  handle_ps_poly_line_request (message);
+	  break;
+	case mt_ps_poly_line_disjoint:
+	  handle_ps_poly_line_disjoint_request (message);
+	  break;
+	case mt_ps_set_line_type:
+	  handle_ps_set_line_type_request (message);
+	  break;
+	case mt_ps_query_caps:
+	  handle_ps_query_caps_request (message);
+	  break;
+
 	default:
 	  OS2_logic_error ("Unknown message type sent to PM thread.");
 	  break;
@@ -991,33 +1152,6 @@ handle_window_show_request (msg_t * message)
 }
 
 void
-OS2_window_write (wid_t wid, short x, short y,
-		  const char * data, unsigned short size)
-{
-  window_t * window = (wid_to_window (wid));
-  msg_t * message = (OS2_create_message_1 (mt_window_write, (size - 1)));
-  (SM_WRITE_WINDOW (message)) = window;
-  (SM_WRITE_X (message)) = x;
-  (SM_WRITE_Y (message)) = y;
-  (SM_WRITE_SIZE (message)) = size;
-  FASTCOPY (data, ((char *) (SM_WRITE_DATA (message))), size);
-  simple_transaction ((WINDOW_QID (window)), message);
-}
-
-static void
-handle_window_write_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  write_window ((SM_WRITE_WINDOW (message)),
-		(SM_WRITE_X (message)),
-		(SM_WRITE_Y (message)),
-		(SM_WRITE_DATA (message)),
-		(SM_WRITE_SIZE (message)));
-  OS2_destroy_message (message);
-  simple_reply (sender);
-}
-
-void
 OS2_window_move_cursor (wid_t wid, short x, short y)
 {
   window_t * window = (wid_to_window (wid));
@@ -1087,33 +1221,6 @@ handle_window_show_cursor_request (msg_t * message)
 }
 
 void
-OS2_window_clear (wid_t wid, short xl, short xh, short yl, short yh)
-{
-  window_t * window = (wid_to_window (wid));
-  msg_t * message = (OS2_create_message (mt_window_clear));
-  (SM_CLEAR_WINDOW (message)) = window;
-  (SM_CLEAR_XL (message)) = xl;
-  (SM_CLEAR_XH (message)) = xh;
-  (SM_CLEAR_YL (message)) = yl;
-  (SM_CLEAR_YH (message)) = yh;
-  simple_transaction ((WINDOW_QID (window)), message);
-}
-
-static void
-handle_window_clear_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  RECTL rectl;
-  (rectl . xLeft)   = (SM_CLEAR_XL (message));
-  (rectl . xRight)  = (SM_CLEAR_XH (message));
-  (rectl . yBottom) = (SM_CLEAR_YL (message));
-  (rectl . yTop)    = (SM_CLEAR_YH (message));
-  clear_rectangle ((SM_CLEAR_WINDOW (message)), (& rectl));
-  OS2_destroy_message (message);
-  simple_reply (sender);
-}
-
-void
 OS2_window_scroll (wid_t wid, short xl, short xh, short yl, short yh,
 		   short x_delta, short y_delta)
 {
@@ -1171,37 +1278,6 @@ handle_window_invalidate_request (msg_t * message)
   invalidate_rectangle ((SM_INVALIDATE_WINDOW (message)), (& rectl));
   OS2_destroy_message (message);
   simple_reply (sender);
-}
-
-font_metrics_t *
-OS2_window_set_font (wid_t wid, unsigned short id, const char * name)
-{
-  window_t * window = (wid_to_window (wid));
-  msg_t * message
-    = (OS2_create_message_1 (mt_window_set_font_request, (strlen (name))));
-  font_metrics_t * metrics;
-  (SM_SET_FONT_REQUEST_WINDOW (message)) = window;
-  (SM_SET_FONT_REQUEST_ID (message)) = id;
-  strcpy ((SM_SET_FONT_REQUEST_SPEC (message)), name);
-  message
-    = (OS2_message_transaction
-       ((WINDOW_QID (window)), message, mt_window_set_font_reply));
-  metrics = (SM_SET_FONT_REPLY_METRICS (message));
-  OS2_destroy_message (message);
-  return (metrics);
-}
-
-static void
-handle_window_set_font_request (msg_t * request)
-{
-  qid_t sender = (MSG_SENDER (request));
-  msg_t * reply = (OS2_create_message (mt_window_set_font_reply));
-  (SM_SET_FONT_REPLY_METRICS (reply))
-    = (set_font ((SM_SET_FONT_REQUEST_WINDOW (request)),
-		 (SM_SET_FONT_REQUEST_ID (request)),
-		 (SM_SET_FONT_REQUEST_SPEC (request))));
-  OS2_destroy_message (request);
-  OS2_send_message (sender, reply);
 }
 
 void
@@ -1323,6 +1399,34 @@ handle_window_size_request (msg_t * request)
 }
 
 void
+OS2_window_frame_size (wid_t wid,
+		       unsigned short * width, unsigned short * height)
+{
+  window_t * window = (wid_to_window (wid));
+  msg_t * message = (OS2_create_message (mt_window_frame_size_request));
+  (SM_FRAME_SIZE_REQUEST_WINDOW (message)) = window;
+  message
+    = (OS2_message_transaction ((WINDOW_QID (window)),
+				message,
+				mt_window_frame_size_reply));
+  (* width) = (SM_FRAME_SIZE_REPLY_WIDTH (message));
+  (* height) = (SM_FRAME_SIZE_REPLY_HEIGHT (message));
+  OS2_destroy_message (message);
+}
+
+static void
+handle_window_frame_size_request (msg_t * request)
+{
+  qid_t sender = (MSG_SENDER (request));
+  msg_t * reply = (OS2_create_message (mt_window_frame_size_reply));
+  get_window_frame_size ((SM_FRAME_SIZE_REQUEST_WINDOW (request)),
+			 (& (SM_FRAME_SIZE_REPLY_WIDTH (reply))),
+			 (& (SM_FRAME_SIZE_REPLY_HEIGHT (reply))));
+  OS2_destroy_message (request);
+  OS2_send_message (sender, reply);
+}
+
+void
 OS2_window_set_size (wid_t wid, unsigned short width, unsigned short height)
 {
   window_t * window = (wid_to_window (wid));
@@ -1393,160 +1497,6 @@ handle_window_set_state_request (msg_t * message)
 }
 
 void
-OS2_window_set_colors (wid_t wid, COLOR foreground, COLOR background)
-{
-  window_t * window = (wid_to_window (wid));
-  msg_t * message = (OS2_create_message (mt_window_set_colors));
-  (SM_SET_COLORS_WINDOW (message)) = window;
-  (SM_SET_COLORS_FOREGROUND (message)) = foreground;
-  (SM_SET_COLORS_BACKGROUND (message)) = background;
-  simple_transaction ((WINDOW_QID (window)), message);
-}
-
-static void
-handle_window_set_colors_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  set_window_colors ((SM_SET_COLORS_WINDOW (message)),
-		     (SM_SET_COLORS_FOREGROUND (message)),
-		     (SM_SET_COLORS_BACKGROUND (message)));
-  OS2_destroy_message (message);
-  simple_reply (sender);
-}
-
-void
-OS2_window_move_gcursor (wid_t wid, short x, short y)
-{
-  window_t * window = (wid_to_window (wid));
-  msg_t * message = (OS2_create_message (mt_window_move_gcursor));
-  (SM_MOVE_GCURSOR_WINDOW (message)) = window;
-  (SM_MOVE_GCURSOR_X (message)) = x;
-  (SM_MOVE_GCURSOR_Y (message)) = y;
-  simple_transaction ((WINDOW_QID (window)), message);
-}
-
-static void
-handle_window_move_gcursor_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  move_gcursor ((SM_MOVE_GCURSOR_WINDOW (message)),
-		(SM_MOVE_GCURSOR_X (message)),
-		(SM_MOVE_GCURSOR_Y (message)));
-  OS2_destroy_message (message);
-  simple_reply (sender);
-}
-
-void
-OS2_window_line (wid_t wid, short x, short y)
-{
-  window_t * window = (wid_to_window (wid));
-  msg_t * message = (OS2_create_message (mt_window_line));
-  (SM_LINE_WINDOW (message)) = window;
-  (SM_LINE_X (message)) = x;
-  (SM_LINE_Y (message)) = y;
-  simple_transaction ((WINDOW_QID (window)), message);
-}
-
-static void
-handle_window_line_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  draw_line ((SM_LINE_WINDOW (message)),
-	     (SM_LINE_X (message)),
-	     (SM_LINE_Y (message)));
-  OS2_destroy_message (message);
-  simple_reply (sender);
-}
-
-void
-OS2_window_poly_line (wid_t wid, unsigned long npoints, PPOINTL points)
-{
-  window_t * window = (wid_to_window (wid));
-  msg_t * message = (OS2_create_message (mt_window_poly_line));
-  (SM_POLY_LINE_WINDOW (message)) = window;
-  (SM_POLY_LINE_NPOINTS (message)) = npoints;
-  (SM_POLY_LINE_POINTS (message)) = points;
-  sync_transaction ((WINDOW_QID (window)), message);
-}
-
-static void
-handle_window_poly_line_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  poly_line ((SM_POLY_LINE_WINDOW (message)),
-	     (SM_POLY_LINE_NPOINTS (message)),
-	     (SM_POLY_LINE_POINTS (message)));
-  OS2_destroy_message (message);
-  sync_reply (sender);
-}
-
-void
-OS2_window_poly_line_disjoint (wid_t wid, unsigned long npoints, PPOINTL points)
-{
-  window_t * window = (wid_to_window (wid));
-  msg_t * message = (OS2_create_message (mt_window_poly_line_disjoint));
-  (SM_POLY_LINE_DISJOINT_WINDOW (message)) = window;
-  (SM_POLY_LINE_DISJOINT_NPOINTS (message)) = npoints;
-  (SM_POLY_LINE_DISJOINT_POINTS (message)) = points;
-  sync_transaction ((WINDOW_QID (window)), message);
-}
-
-static void
-handle_window_poly_line_disjoint_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  poly_line_disjoint ((SM_POLY_LINE_DISJOINT_WINDOW (message)),
-		      (SM_POLY_LINE_DISJOINT_NPOINTS (message)),
-		      (SM_POLY_LINE_DISJOINT_POINTS (message)));
-  OS2_destroy_message (message);
-  sync_reply (sender);
-}
-
-void
-OS2_window_set_line_type (wid_t wid, LONG type)
-{
-  window_t * window = (wid_to_window (wid));
-  msg_t * message = (OS2_create_message (mt_window_set_line_type));
-  (SM_SET_LINE_TYPE_WINDOW (message)) = window;
-  (SM_SET_LINE_TYPE_TYPE (message)) = type;
-  simple_transaction ((WINDOW_QID (window)), message);
-}
-
-static void
-handle_window_set_line_type_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  set_line_type ((SM_SET_LINE_TYPE_WINDOW (message)),
-		 (SM_SET_LINE_TYPE_TYPE (message)));
-  OS2_destroy_message (message);
-  simple_reply (sender);
-}
-
-void
-OS2_window_query_caps (wid_t wid, LONG start, LONG count, PLONG values)
-{
-  window_t * window = (wid_to_window (wid));
-  msg_t * message = (OS2_create_message (mt_window_query_caps));
-  (SM_QUERY_CAPS_WINDOW (message)) = window;
-  (SM_QUERY_CAPS_START (message)) = start;
-  (SM_QUERY_CAPS_COUNT (message)) = count;
-  (SM_QUERY_CAPS_VALUES (message)) = values;
-  sync_transaction ((WINDOW_QID (window)), message);
-}
-
-static void
-handle_window_query_caps_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  query_caps ((SM_QUERY_CAPS_WINDOW (message)),
-	      (SM_QUERY_CAPS_START (message)),
-	      (SM_QUERY_CAPS_COUNT (message)),
-	      (SM_QUERY_CAPS_VALUES (message)));
-  OS2_destroy_message (message);
-  sync_reply (sender);
-}
-
-void
 OS2_window_set_title (wid_t wid, const char * title)
 {
   window_t * window = (wid_to_window (wid));
@@ -1565,6 +1515,345 @@ handle_window_set_title_request (msg_t * message)
 		    (SM_SET_TITLE_TITLE (message)));
   OS2_destroy_message (message);
   simple_reply (sender);
+}
+
+psid_t
+OS2_open_bitmap_ps (qid_t qid, USHORT width, USHORT height)
+{
+  msg_t * message = (OS2_create_message (mt_bitmap_ps_open_request));
+  psid_t psid;
+  (SM_BITMAP_PS_OPEN_REQUEST_QID (message)) = qid;
+  (SM_BITMAP_PS_OPEN_REQUEST_WIDTH (message)) = width;
+  (SM_BITMAP_PS_OPEN_REQUEST_HEIGHT (message)) = height;
+  message  = (OS2_message_transaction (qid, message, mt_bitmap_ps_open_reply));
+  psid = (SM_BITMAP_PS_OPEN_REPLY_PSID (message));
+  OS2_destroy_message (message);
+  return (psid);
+}
+
+static void
+handle_bitmap_ps_open_request (msg_t * request)
+{
+  qid_t sender = (MSG_SENDER (request));
+  msg_t * reply = (OS2_create_message (mt_bitmap_ps_open_reply));
+  (SM_BITMAP_PS_OPEN_REPLY_PSID (reply))
+    = (open_bitmap_ps ((SM_BITMAP_PS_OPEN_REQUEST_QID (request)),
+		       (SM_BITMAP_PS_OPEN_REQUEST_WIDTH (request)),
+		       (SM_BITMAP_PS_OPEN_REQUEST_HEIGHT (request))));
+  OS2_destroy_message (request);
+  OS2_send_message (sender, reply);
+}
+
+int
+OS2_bitmap_ps_p (psid_t psid)
+{
+  return ((PS_BITMAP (psid_to_ps (psid))) != NULLHANDLE);
+}
+
+void
+OS2_close_bitmap_ps (psid_t psid)
+{
+  ps_t * ps = (psid_to_ps (psid));
+  msg_t * message = (OS2_create_message (mt_bitmap_ps_close));
+  (SM_BITMAP_PS_CLOSE_PS (message)) = ps;
+  simple_transaction ((PS_QID (ps)), message);
+}
+
+static void
+handle_bitmap_ps_close_request (msg_t * message)
+{
+  qid_t sender = (MSG_SENDER (message));
+  close_ps (SM_BITMAP_PS_CLOSE_PS (message));
+  OS2_destroy_message (message);
+  simple_reply (sender);
+}
+
+void
+OS2_ps_bitblt (psid_t target, psid_t source, LONG npoints, PPOINTL points,
+	       LONG rop, ULONG options)
+{
+  ps_t * target_ps = (psid_to_ps (target));
+  msg_t * message = (OS2_create_message (mt_ps_bitblt));
+  (SM_PS_BITBLT_TARGET_PS (message)) = target_ps;
+  (SM_PS_BITBLT_SOURCE_PS (message)) = (psid_to_ps (source));
+  (SM_PS_BITBLT_NPOINTS (message)) = npoints;
+  memcpy ((SM_PS_BITBLT_POINTS (message)),
+	  points,
+	  ((sizeof (POINTL)) * npoints));
+  (SM_PS_BITBLT_ROP (message)) = rop;
+  (SM_PS_BITBLT_OPTIONS (message)) = options;
+  simple_transaction ((PS_QID (target_ps)), message);
+}
+
+static void
+handle_ps_bitblt_request (msg_t * message)
+{
+  qid_t sender = (MSG_SENDER (message));
+  bitblt_ps ((SM_PS_BITBLT_TARGET_PS (message)),
+	     (SM_PS_BITBLT_SOURCE_PS (message)),
+	     (SM_PS_BITBLT_NPOINTS (message)),
+	     (& ((SM_PS_BITBLT_POINTS (message)) [0])),
+	     (SM_PS_BITBLT_ROP (message)),
+	     (SM_PS_BITBLT_OPTIONS (message)));
+  OS2_destroy_message (message);
+  simple_reply (sender);
+}
+
+void
+OS2_ps_write (psid_t psid, short x, short y,
+	      const char * data, unsigned short size)
+{
+  ps_t * ps = (psid_to_ps (psid));
+  msg_t * message = (OS2_create_message_1 (mt_ps_write, (size - 1)));
+  (SM_WRITE_PS (message)) = ps;
+  (SM_WRITE_X (message)) = x;
+  (SM_WRITE_Y (message)) = y;
+  (SM_WRITE_SIZE (message)) = size;
+  FASTCOPY (data, ((char *) (SM_WRITE_DATA (message))), size);
+  simple_transaction ((PS_QID (ps)), message);
+}
+
+static void
+handle_ps_write_request (msg_t * message)
+{
+  qid_t sender = (MSG_SENDER (message));
+  write_ps ((SM_WRITE_PS (message)),
+	    (SM_WRITE_X (message)),
+	    (SM_WRITE_Y (message)),
+	    (SM_WRITE_DATA (message)),
+	    (SM_WRITE_SIZE (message)));
+  OS2_destroy_message (message);
+  simple_reply (sender);
+}
+
+font_metrics_t *
+OS2_ps_set_font (psid_t psid, unsigned short id, const char * name)
+{
+  ps_t * ps = (psid_to_ps (psid));
+  msg_t * message
+    = (OS2_create_message_1 (mt_ps_set_font_request, (strlen (name))));
+  font_metrics_t * metrics;
+  (SM_SET_FONT_REQUEST_PS (message)) = ps;
+  (SM_SET_FONT_REQUEST_ID (message)) = id;
+  strcpy ((SM_SET_FONT_REQUEST_SPEC (message)), name);
+  message
+    = (OS2_message_transaction ((PS_QID (ps)), message, mt_ps_set_font_reply));
+  metrics = (SM_SET_FONT_REPLY_METRICS (message));
+  OS2_destroy_message (message);
+  return (metrics);
+}
+
+static void
+handle_ps_set_font_request (msg_t * request)
+{
+  qid_t sender = (MSG_SENDER (request));
+  msg_t * reply = (OS2_create_message (mt_ps_set_font_reply));
+  (SM_SET_FONT_REPLY_METRICS (reply))
+    = (set_font ((SM_SET_FONT_REQUEST_PS (request)),
+		 (SM_SET_FONT_REQUEST_ID (request)),
+		 (SM_SET_FONT_REQUEST_SPEC (request))));
+  OS2_destroy_message (request);
+  OS2_send_message (sender, reply);
+}
+
+void
+OS2_ps_clear (psid_t psid, short xl, short xh, short yl, short yh)
+{
+  ps_t * ps = (psid_to_ps (psid));
+  msg_t * message = (OS2_create_message (mt_ps_clear));
+  (SM_CLEAR_PS (message)) = ps;
+  (SM_CLEAR_XL (message)) = xl;
+  (SM_CLEAR_XH (message)) = xh;
+  (SM_CLEAR_YL (message)) = yl;
+  (SM_CLEAR_YH (message)) = yh;
+  simple_transaction ((PS_QID (ps)), message);
+}
+
+static void
+handle_ps_clear_request (msg_t * message)
+{
+  qid_t sender = (MSG_SENDER (message));
+  RECTL rectl;
+  (rectl . xLeft)   = (SM_CLEAR_XL (message));
+  (rectl . xRight)  = (SM_CLEAR_XH (message));
+  (rectl . yBottom) = (SM_CLEAR_YL (message));
+  (rectl . yTop)    = (SM_CLEAR_YH (message));
+  clear_rectangle ((SM_CLEAR_PS (message)), (& rectl));
+  OS2_destroy_message (message);
+  simple_reply (sender);
+}
+
+void
+OS2_ps_set_colors (psid_t psid, COLOR foreground, COLOR background)
+{
+  ps_t * ps = (psid_to_ps (psid));
+  msg_t * message = (OS2_create_message (mt_ps_set_colors));
+  (SM_SET_COLORS_PS (message)) = ps;
+  (SM_SET_COLORS_FOREGROUND (message)) = foreground;
+  (SM_SET_COLORS_BACKGROUND (message)) = background;
+  simple_transaction ((PS_QID (ps)), message);
+}
+
+static void
+handle_ps_set_colors_request (msg_t * message)
+{
+  qid_t sender = (MSG_SENDER (message));
+  set_ps_colors ((SM_SET_COLORS_PS (message)),
+		 (SM_SET_COLORS_FOREGROUND (message)),
+		 (SM_SET_COLORS_BACKGROUND (message)));
+  OS2_destroy_message (message);
+  simple_reply (sender);
+}
+
+void
+OS2_ps_move_gcursor (psid_t psid, short x, short y)
+{
+  ps_t * ps = (psid_to_ps (psid));
+  msg_t * message = (OS2_create_message (mt_ps_move_gcursor));
+  (SM_MOVE_GCURSOR_PS (message)) = ps;
+  (SM_MOVE_GCURSOR_X (message)) = x;
+  (SM_MOVE_GCURSOR_Y (message)) = y;
+  simple_transaction ((PS_QID (ps)), message);
+}
+
+static void
+handle_ps_move_gcursor_request (msg_t * message)
+{
+  qid_t sender = (MSG_SENDER (message));
+  move_gcursor ((SM_MOVE_GCURSOR_PS (message)),
+		(SM_MOVE_GCURSOR_X (message)),
+		(SM_MOVE_GCURSOR_Y (message)));
+  OS2_destroy_message (message);
+  simple_reply (sender);
+}
+
+void
+OS2_ps_line (psid_t psid, short x, short y)
+{
+  ps_t * ps = (psid_to_ps (psid));
+  msg_t * message = (OS2_create_message (mt_ps_line));
+  (SM_LINE_PS (message)) = ps;
+  (SM_LINE_X (message)) = x;
+  (SM_LINE_Y (message)) = y;
+  simple_transaction ((PS_QID (ps)), message);
+}
+
+static void
+handle_ps_line_request (msg_t * message)
+{
+  qid_t sender = (MSG_SENDER (message));
+  draw_line ((SM_LINE_PS (message)),
+	     (SM_LINE_X (message)),
+	     (SM_LINE_Y (message)));
+  OS2_destroy_message (message);
+  simple_reply (sender);
+}
+
+void
+OS2_ps_poly_line (psid_t psid, unsigned long npoints, PPOINTL points)
+{
+  ps_t * ps = (psid_to_ps (psid));
+  msg_t * message = (OS2_create_message (mt_ps_poly_line));
+  (SM_POLY_LINE_PS (message)) = ps;
+  (SM_POLY_LINE_NPOINTS (message)) = npoints;
+  (SM_POLY_LINE_POINTS (message)) = points;
+  sync_transaction ((PS_QID (ps)), message);
+}
+
+static void
+handle_ps_poly_line_request (msg_t * message)
+{
+  qid_t sender = (MSG_SENDER (message));
+  poly_line ((SM_POLY_LINE_PS (message)),
+	     (SM_POLY_LINE_NPOINTS (message)),
+	     (SM_POLY_LINE_POINTS (message)));
+  OS2_destroy_message (message);
+  sync_reply (sender);
+}
+
+void
+OS2_ps_poly_line_disjoint (psid_t psid, unsigned long npoints, PPOINTL points)
+{
+  ps_t * ps = (psid_to_ps (psid));
+  msg_t * message = (OS2_create_message (mt_ps_poly_line_disjoint));
+  (SM_POLY_LINE_DISJOINT_PS (message)) = ps;
+  (SM_POLY_LINE_DISJOINT_NPOINTS (message)) = npoints;
+  (SM_POLY_LINE_DISJOINT_POINTS (message)) = points;
+  sync_transaction ((PS_QID (ps)), message);
+}
+
+static void
+handle_ps_poly_line_disjoint_request (msg_t * message)
+{
+  qid_t sender = (MSG_SENDER (message));
+  poly_line_disjoint ((SM_POLY_LINE_DISJOINT_PS (message)),
+		      (SM_POLY_LINE_DISJOINT_NPOINTS (message)),
+		      (SM_POLY_LINE_DISJOINT_POINTS (message)));
+  OS2_destroy_message (message);
+  sync_reply (sender);
+}
+
+void
+OS2_ps_set_line_type (psid_t psid, LONG type)
+{
+  ps_t * ps = (psid_to_ps (psid));
+  msg_t * message = (OS2_create_message (mt_ps_set_line_type));
+  (SM_SET_LINE_TYPE_PS (message)) = ps;
+  (SM_SET_LINE_TYPE_TYPE (message)) = type;
+  simple_transaction ((PS_QID (ps)), message);
+}
+
+static void
+handle_ps_set_line_type_request (msg_t * message)
+{
+  qid_t sender = (MSG_SENDER (message));
+  set_line_type ((SM_SET_LINE_TYPE_PS (message)),
+		 (SM_SET_LINE_TYPE_TYPE (message)));
+  OS2_destroy_message (message);
+  simple_reply (sender);
+}
+
+void
+OS2_ps_query_caps (psid_t psid, LONG start, LONG count, PLONG values)
+{
+  ps_t * ps = (psid_to_ps (psid));
+  msg_t * message = (OS2_create_message (mt_ps_query_caps));
+  (SM_QUERY_CAPS_PS (message)) = ps;
+  (SM_QUERY_CAPS_START (message)) = start;
+  (SM_QUERY_CAPS_COUNT (message)) = count;
+  (SM_QUERY_CAPS_VALUES (message)) = values;
+  sync_transaction ((PS_QID (ps)), message);
+}
+
+static void
+handle_ps_query_caps_request (msg_t * message)
+{
+  qid_t sender = (MSG_SENDER (message));
+  query_caps ((SM_QUERY_CAPS_PS (message)),
+	      (SM_QUERY_CAPS_START (message)),
+	      (SM_QUERY_CAPS_COUNT (message)),
+	      (SM_QUERY_CAPS_VALUES (message)));
+  OS2_destroy_message (message);
+  sync_reply (sender);
+}
+
+void
+OS2_window_write (wid_t wid, short x, short y,
+		  const char * data, unsigned short size)
+{
+  OS2_ps_write ((OS2_window_client_ps (wid)), x, y, data, size);
+}
+
+font_metrics_t *
+OS2_window_set_font (wid_t wid, unsigned short id, const char * name)
+{
+  return (OS2_ps_set_font ((OS2_window_client_ps (wid)), id, name));
+}
+
+void
+OS2_window_clear (wid_t wid, short xl, short xh, short yl, short yh)
+{
+  OS2_ps_clear ((OS2_window_client_ps (wid)), xl, xh, yl, yh);
 }
 
 static window_t * make_window (qid_t, qid_t);
@@ -1618,7 +1907,7 @@ open_window (qid_t qid, qid_t event_qid, ULONG style, PSZ title)
 			0))
       == NULLHANDLE)
     window_error (WinCreateWindow);
-  return (allocate_wid (window));
+  return (WINDOW_ID (window));
 }
 
 static window_t *
@@ -1626,8 +1915,9 @@ make_window (qid_t qid, qid_t event_qid)
 {
   window_t * window = (OS_malloc (sizeof (window_t)));
   (WINDOW_FRAME (window)) = NULLHANDLE;
+  (WINDOW_ID (window)) = (allocate_id ((& wid_table), window));
   (WINDOW_CLIENT (window)) = NULLHANDLE;
-  (WINDOW_HPS (window)) = NULLHANDLE;
+  (WINDOW_CLIENT_PS (window)) = 0;
   (WINDOW_CURSOR_X (window)) = 0;
   (WINDOW_CURSOR_Y (window)) = 0;
   (WINDOW_CURSOR_WIDTH (window)) = 0;
@@ -1647,7 +1937,7 @@ close_window (window_t * window)
 {
   if (!WinDestroyWindow (WINDOW_FRAME (window)))
     window_warning (WinDestroyWindow);
-  deallocate_wid (WINDOW_WID (window));
+  deallocate_id ((& wid_table), (WINDOW_ID (window)));
   OS_free (window);
 }
 
@@ -1656,31 +1946,6 @@ show_window (window_t * window, int showp)
 {
   if (!WinShowWindow ((WINDOW_FRAME (window)), showp))
     window_warning (WinShowWindow);
-}
-
-static void
-write_window (window_t * window, short x, short y,
-	      const char * data, unsigned short size)
-{
-  POINTL ptl;
-  (ptl . x) = x;
-  (ptl . y) = y;
-  deactivate_cursor (window);
-  if (size <= 512)
-    GpiCharStringAt ((WINDOW_HPS (window)), (& ptl), size, ((char *) data));
-  else
-    {
-      const char * scan = data;
-      GpiMove ((WINDOW_HPS (window)), (& ptl));
-      while (size > 0)
-	{
-	  unsigned short n = ((size > 512) ? 512 : size);
-	  GpiCharString ((WINDOW_HPS (window)), n, ((char *) scan));
-	  size -= n;
-	  scan += n;
-	}
-    }
-  activate_cursor (window);
 }
 
 static void
@@ -1699,7 +1964,8 @@ shape_cursor (window_t * window, unsigned short width, unsigned short height,
   (WINDOW_CURSOR_WIDTH (window)) = width;
   (WINDOW_CURSOR_HEIGHT (window)) = height;
   (WINDOW_CURSOR_STYLE (window)) = style;
-  recreate_cursor (window);
+  if (window_focusp (window))
+    recreate_cursor (window);
 }
 
 static void
@@ -1716,20 +1982,17 @@ show_cursor (window_t * window, int showp)
 static void
 recreate_cursor (window_t * window)
 {
-  if (window_focusp (window))
-    {
-      if (!WinCreateCursor ((WINDOW_CLIENT (window)),
-			    (WINDOW_CURSOR_X (window)),
-			    (WINDOW_CURSOR_Y (window)),
-			    (WINDOW_CURSOR_WIDTH (window)),
-			    (WINDOW_CURSOR_HEIGHT (window)),
-			    (WINDOW_CURSOR_STYLE (window)),
-			    0))
-	window_warning (WinCreateCursor);
-      if (WINDOW_CURSOR_SHOWNP (window))
-	if (!WinShowCursor ((WINDOW_CLIENT (window)), TRUE))
-	  window_warning (WinShowCursor);
-    }
+  if (!WinCreateCursor ((WINDOW_CLIENT (window)),
+			(WINDOW_CURSOR_X (window)),
+			(WINDOW_CURSOR_Y (window)),
+			(WINDOW_CURSOR_WIDTH (window)),
+			(WINDOW_CURSOR_HEIGHT (window)),
+			(WINDOW_CURSOR_STYLE (window)),
+			0))
+    window_warning (WinCreateCursor);
+  if (WINDOW_CURSOR_SHOWNP (window))
+    if (!WinShowCursor ((WINDOW_CLIENT (window)), TRUE))
+      window_warning (WinShowCursor);
 }
 
 static void
@@ -1746,17 +2009,6 @@ deactivate_cursor (window_t * window)
   if ((WINDOW_CURSOR_SHOWNP (window)) && (window_focusp (window)))
     if (!WinShowCursor ((WINDOW_CLIENT (window)), FALSE))
       window_warning (WinShowCursor);
-}
-
-static void
-clear_rectangle (window_t * window, PRECTL rectl)
-{
-  deactivate_cursor (window);
-  if (!WinFillRect ((WINDOW_HPS (window)),
-		    rectl,
-		    (WINDOW_BACKGROUND_COLOR (window))))
-    window_warning (WinFillRect);
-  activate_cursor (window);
 }
 
 static void
@@ -1778,18 +2030,372 @@ invalidate_rectangle (window_t * window, PRECTL rectl)
     window_warning (WinInvalidateRect);
 }
 
+static void
+get_window_pos (window_t * window, short * x, short * y)
+{
+  SWP swp;
+  if (!WinQueryWindowPos ((WINDOW_FRAME (window)), (& swp)))
+    window_error (WinQueryWindowPos);
+  (* x) = (swp . x);
+  (* y) = (swp . y);
+}
+
+static void
+set_window_pos (window_t * window, short x, short y)
+{
+  if (!WinSetWindowPos ((WINDOW_FRAME (window)), NULLHANDLE, x, y,
+			0, 0, SWP_MOVE))
+    window_warning (WinSetWindowPos);
+}
+
+static void
+get_window_size (window_t * window,
+		 unsigned short * width, unsigned short * height)
+{
+  SWP swp;
+  if (!WinQueryWindowPos ((WINDOW_CLIENT (window)), (& swp)))
+    window_error (WinQueryWindowPos);
+  (* width) = (swp . cx);
+  (* height) = (swp . cy);
+}
+
+static void
+get_window_frame_size (window_t * window,
+		       unsigned short * width, unsigned short * height)
+{
+  SWP swp;
+  if (!WinQueryWindowPos ((WINDOW_FRAME (window)), (& swp)))
+    window_error (WinQueryWindowPos);
+  (* width) = (swp . cx);
+  (* height) = (swp . cy);
+}
+
+static void
+set_window_size (window_t * window,
+		 unsigned short width, unsigned short height)
+{
+  SWP swp;
+  POINTL ptl;
+  RECTL rcl;
+  if (!WinQueryWindowPos ((WINDOW_CLIENT (window)), (& swp)))
+    window_error (WinQueryWindowPos);
+  (ptl . x) = (swp . x);
+  (ptl . y) = (swp . y);
+  if (!WinMapWindowPoints ((WINDOW_FRAME (window)), HWND_DESKTOP, (& ptl), 1))
+    window_error (WinMapWindowPoints);
+  (rcl . xLeft) = (ptl . x);
+  (rcl . xRight) = ((ptl . x) + width);
+  (rcl . yBottom) = (ptl . y);
+  (rcl . yTop) = ((ptl . y) + height);
+  if (!WinCalcFrameRect ((WINDOW_FRAME (window)), (& rcl), FALSE))
+    window_error (WinCalcFrameRect);
+  if (!WinSetWindowPos ((WINDOW_FRAME (window)),
+			NULLHANDLE, 0, 0,
+			((rcl . xRight) - (rcl . xLeft)),
+			((rcl . yTop) - (rcl . yBottom)),
+			SWP_SIZE))
+    window_warning (WinSetWindowPos);
+}
+
+static int
+window_focusp (window_t * window)
+{
+  return ((WINDOW_CLIENT (window)) == (WinQueryFocus (HWND_DESKTOP)));
+}
+
+static void
+set_window_state (window_t * window, window_state_t state)
+{
+  ULONG op = 0;
+  HWND behind = NULLHANDLE;
+  switch (state)
+    {
+    case state_top:
+      op = SWP_ZORDER;
+      behind = HWND_TOP;
+      break;
+    case state_bottom:
+      op = SWP_ZORDER;
+      behind = HWND_BOTTOM;
+      break;
+    case state_show:
+      op = SWP_SHOW;
+      break;
+    case state_hide:
+      op = SWP_HIDE;
+      break;
+    case state_activate:
+      op = SWP_ACTIVATE;
+      break;
+    case state_deactivate:
+      op = SWP_DEACTIVATE;
+      break;
+    case state_minimize:
+      op = SWP_MINIMIZE;
+      break;
+    case state_maximize:
+      op = SWP_MAXIMIZE;
+      break;
+    case state_restore:
+      op = SWP_RESTORE;
+      break;
+    }
+  if (!WinSetWindowPos ((WINDOW_FRAME (window)), behind, 0, 0, 0, 0, op))
+    window_warning (WinSetWindowPos);
+}
+
+static void
+set_window_title (window_t * window, PSZ title)
+{
+  if (!WinSetWindowText ((WINDOW_FRAME (window)), title))
+    window_warning (WinSetWindowText);
+}
+
+static HDC create_memory_device (void);
+static HBITMAP create_bitmap (HPS, ULONG, ULONG);
+
+static psid_t
+open_bitmap_ps (qid_t qid, USHORT width, USHORT height)
+{
+  ps_t * ps = (make_ps ((create_memory_device ()), qid));
+  HBITMAP hbm = (create_bitmap ((PS_HANDLE (ps)), width, height));
+  if ((GpiSetBitmap ((PS_HANDLE (ps)), hbm)) == HBM_ERROR)
+    window_error (GpiSetBitmap);
+  (PS_BITMAP (ps)) = hbm;
+  return (PS_ID (ps));
+}
+
+static HDC
+create_memory_device (void)
+{
+  HDC hdc = (DevOpenDC (pm_hab, OD_MEMORY, "*", 0, 0, NULLHANDLE));
+  if (hdc == DEV_ERROR)
+    window_error (DevOpenDC);
+  return (hdc);
+}
+
+static HBITMAP
+create_bitmap (HPS hps, ULONG width, ULONG height)
+{
+  HDC hdc = (get_ps_device (hps));
+  BITMAPINFOHEADER2 header;
+  memset ((& header), 0, (sizeof (header)));
+  (header . cbFix) = (sizeof (header));
+  (header . cx) = width;
+  (header . cy) = height;
+  (header . cPlanes) = (get_device_capability (hdc, CAPS_COLOR_PLANES));
+  (header . cBitCount) = (get_device_capability (hdc, CAPS_COLOR_BITCOUNT));
+  {
+    HBITMAP hbm = (GpiCreateBitmap (hps, (& header), 0, 0, 0));
+    if (hbm == GPI_ERROR)
+      window_error (GpiCreateBitmap);
+    return (hbm);
+  }
+}
+
+static HDC
+get_ps_device (HPS hps)
+{
+  HDC hdc = (GpiQueryDevice (hps));
+  if (hdc == HDC_ERROR)
+    window_error (GpiQueryDevice);
+  return (hdc);
+}
+
+static LONG
+get_device_capability (HDC hdc, LONG index)
+{
+  LONG result;
+  if (!DevQueryCaps (hdc, index, 1, (& result)))
+    window_error (DevQueryCaps);
+  return (result);
+}
+
+static ps_t *
+make_ps (HDC hdc, qid_t qid)
+{
+  ps_t * ps = (OS_malloc (sizeof (ps_t)));
+  SIZEL sizel;
+  HPS hps;
+  (sizel . cx) = 0;
+  (sizel . cy) = 0;
+  hps = (GpiCreatePS (pm_hab, hdc, (& sizel),
+		      (PU_PELS | GPIF_DEFAULT | GPIT_MICRO | GPIA_ASSOC)));
+  if (hps == 0)
+    window_error (GpiCreatePS);
+  if (!GpiSetBackMix (hps, BM_OVERPAINT))
+    window_warning (GpiSetBackMix);
+  /* Put color table in RGB mode so we can specify colors
+     directly in RGB values rather than as indices.  */
+  if (!GpiCreateLogColorTable (hps, LCOL_PURECOLOR, LCOLF_RGB, 0, 0, 0))
+    window_warning (GpiCreateLogColorTable);
+  (PS_HANDLE (ps)) = hps;
+  (PS_ID (ps)) = (allocate_id ((& psid_table), ps));
+  (PS_QID (ps)) = qid;
+  (PS_FOREGROUND_COLOR (ps)) = (GpiQueryColor (hps));
+  (PS_BACKGROUND_COLOR (ps)) = (GpiQueryBackColor (hps));
+  (PS_WINDOW (ps)) = 0;
+  (PS_BITMAP (ps)) = NULLHANDLE;
+  return (ps);
+}
+
+static void
+close_ps (ps_t * ps)
+{
+  HPS hps = (PS_HANDLE (ps));
+  HDC hdc = (get_ps_device (hps));
+  HBITMAP hbm = (PS_BITMAP (ps));
+  if (!GpiDestroyPS (hps))
+    window_warning (GpiDestroyPS);
+  if (hbm != 0)
+    {
+      if ((hdc != NULLHANDLE) && ((DevCloseDC (hdc)) == DEV_ERROR))
+	window_warning (DevCloseDC);
+      if (!GpiDeleteBitmap (hbm))
+	window_warning (GpiDeleteBitmap);
+    }
+  deallocate_id ((& psid_table), (PS_ID (ps)));
+  OS_free (ps);
+}
+
+static void
+bitblt_ps (ps_t * target, ps_t * source, LONG npoints, PPOINTL points,
+	   LONG rop, ULONG options)
+{
+  if ((GpiBitBlt ((PS_HANDLE (target)), (PS_HANDLE (source)), npoints, points,
+		  rop, options))
+      == GPI_ERROR)
+    window_warning (GpiBitBlt);
+}
+
+static void
+write_ps (ps_t * ps, short x, short y, const char * data, unsigned short size)
+{
+  POINTL ptl;
+  (ptl . x) = x;
+  (ptl . y) = y;
+  maybe_deactivate_cursor (ps);
+  if (size <= 512)
+    GpiCharStringAt ((PS_HANDLE (ps)), (& ptl), size, ((char *) data));
+  else
+    {
+      const char * scan = data;
+      GpiMove ((PS_HANDLE (ps)), (& ptl));
+      while (size > 0)
+	{
+	  unsigned short n = ((size > 512) ? 512 : size);
+	  GpiCharString ((PS_HANDLE (ps)), n, ((char *) scan));
+	  size -= n;
+	  scan += n;
+	}
+    }
+  maybe_activate_cursor (ps);
+}
+
+static void
+maybe_activate_cursor (ps_t * ps)
+{
+  window_t * window = (PS_WINDOW (ps));
+  if (window != 0)
+    activate_cursor (window);
+}
+
+static void
+maybe_deactivate_cursor (ps_t * ps)
+{
+  window_t * window = (PS_WINDOW (ps));
+  if (window != 0)
+    deactivate_cursor (window);
+}
+
+static void
+clear_rectangle (ps_t * ps, PRECTL rectl)
+{
+  maybe_deactivate_cursor (ps);
+  if (!WinFillRect ((PS_HANDLE (ps)), rectl, (PS_BACKGROUND_COLOR (ps))))
+    window_warning (WinFillRect);
+  maybe_activate_cursor (ps);
+}
+
+static void
+set_ps_colors (ps_t * ps, COLOR foreground, COLOR background)
+{
+  if (!GpiSetColor ((PS_HANDLE (ps)), foreground))
+    window_warning (GpiSetColor);
+  if (!GpiSetMix ((PS_HANDLE (ps)), FM_OVERPAINT))
+    window_warning (GpiSetMix);
+  if (!GpiSetBackColor ((PS_HANDLE (ps)), background))
+    window_warning (GpiSetBackColor);
+  if (!GpiSetBackMix ((PS_HANDLE (ps)), BM_OVERPAINT))
+    window_warning (GpiSetBackMix);
+  (PS_FOREGROUND_COLOR (ps)) = foreground;
+  (PS_BACKGROUND_COLOR (ps)) = background;
+}
+
+static void
+move_gcursor (ps_t * ps, short x, short y)
+{
+  POINTL ptl;
+  (ptl . x) = x;
+  (ptl . y) = y;
+  if (!GpiMove ((PS_HANDLE (ps)), (& ptl)))
+    window_warning (GpiMove);
+}
+
+static void
+draw_line (ps_t * ps, short x, short y)
+{
+  POINTL ptl;
+  (ptl . x) = x;
+  (ptl . y) = y;
+  if ((GpiLine ((PS_HANDLE (ps)), (& ptl))) == GPI_ERROR)
+    window_warning (GpiLine);
+}
+
+static void
+poly_line (ps_t * ps, unsigned long npoints, PPOINTL points)
+{
+  if ((GpiPolyLine ((PS_HANDLE (ps)), npoints, points)) == GPI_ERROR)
+    window_warning (GpiPolyLine);
+}
+
+static void
+poly_line_disjoint (ps_t * ps, unsigned long npoints, PPOINTL points)
+{
+  if ((GpiPolyLineDisjoint ((PS_HANDLE (ps)), npoints, points))
+      == GPI_ERROR)
+    window_warning (GpiPolyLineDisjoint);
+}
+
+static void
+set_line_type (ps_t * ps, LONG type)
+{
+  if (!GpiSetLineType ((PS_HANDLE (ps)), type))
+    window_warning (GpiSetLineType);
+}
+
+static void
+query_caps (ps_t * ps, LONG start, LONG count, PLONG values)
+{
+  HDC hdc = (get_ps_device (PS_HANDLE (ps)));
+  if (hdc == NULLHANDLE)
+    window_error (GpiQueryDevice);
+  if (!DevQueryCaps (hdc, start, count, values))
+    window_error (DevQueryCaps);
+}
+
 static int parse_font_spec (const char *, PSZ *, LONG *, USHORT *);
 static int set_font_1 (HPS, PSZ, LONG, USHORT, LONG);
 
 static font_metrics_t *
-set_font (window_t * window, unsigned short id, const char * spec)
+set_font (ps_t * ps, unsigned short id, const char * spec)
 {
   PSZ name = 0;
   LONG size;
   USHORT selection;
   if (!parse_font_spec (spec, (& name), (& size), (& selection)))
     return (0);
-  if (!set_font_1 ((WINDOW_HPS (window)), name, size, selection, id))
+  if (!set_font_1 ((PS_HANDLE (ps)), name, size, selection, id))
     {
       OS_free (name);
       return (0);
@@ -1797,8 +2403,7 @@ set_font (window_t * window, unsigned short id, const char * spec)
   {
     font_metrics_t * metrics = (OS_malloc (sizeof (font_metrics_t)));
     FONTMETRICS fm;
-    if (!GpiQueryFontMetrics
-	((WINDOW_HPS (window)), (sizeof (fm)), (& fm)))
+    if (!GpiQueryFontMetrics ((PS_HANDLE (ps)), (sizeof (fm)), (& fm)))
       window_error (GpiQueryFontMetrics);
     (FONT_METRICS_WIDTH (metrics)) = (fm . lMaxCharInc);
     (FONT_METRICS_HEIGHT (metrics)) = (fm . lMaxBaselineExt);
@@ -1904,185 +2509,6 @@ create_font (HPS hps, LONG font_id, PFONTMETRICS pfm, USHORT selection)
   (font_attrs . fsFontUse) = 0;
   return ((GpiCreateLogFont (hps, 0, font_id, (& font_attrs))) == FONT_MATCH);
 }
-
-static void
-get_window_pos (window_t * window, short * x, short * y)
-{
-  SWP swp;
-  if (!WinQueryWindowPos ((WINDOW_FRAME (window)), (& swp)))
-    window_error (WinQueryWindowPos);
-  (* x) = (swp . x);
-  (* y) = (swp . y);
-}
-
-static void
-set_window_pos (window_t * window, short x, short y)
-{
-  if (!WinSetWindowPos ((WINDOW_FRAME (window)), NULLHANDLE, x, y,
-			0, 0, SWP_MOVE))
-    window_warning (WinSetWindowPos);
-}
-
-static void
-get_window_size (window_t * window,
-		 unsigned short * width, unsigned short * height)
-{
-  SWP swp;
-  if (!WinQueryWindowPos ((WINDOW_CLIENT (window)), (& swp)))
-    window_error (WinQueryWindowPos);
-  (* width) = (swp . cx);
-  (* height) = (swp . cy);
-}
-
-static void
-set_window_size (window_t * window,
-		 unsigned short width, unsigned short height)
-{
-  SWP swp;
-  POINTL ptl;
-  RECTL rcl;
-  if (!WinQueryWindowPos ((WINDOW_CLIENT (window)), (& swp)))
-    window_error (WinQueryWindowPos);
-  (ptl . x) = (swp . x);
-  (ptl . y) = (swp . y);
-  if (!WinMapWindowPoints ((WINDOW_FRAME (window)), HWND_DESKTOP, (& ptl), 1))
-    window_error (WinMapWindowPoints);
-  (rcl . xLeft) = (ptl . x);
-  (rcl . xRight) = ((ptl . x) + width);
-  (rcl . yBottom) = (ptl . y);
-  (rcl . yTop) = ((ptl . y) + height);
-  if (!WinCalcFrameRect ((WINDOW_FRAME (window)), (& rcl), FALSE))
-    window_error (WinCalcFrameRect);
-  deactivate_cursor (window);
-  if (!WinSetWindowPos ((WINDOW_FRAME (window)),
-			NULLHANDLE, 0, 0,
-			((rcl . xRight) - (rcl . xLeft)),
-			((rcl . yTop) - (rcl . yBottom)),
-			SWP_SIZE))
-    window_warning (WinSetWindowPos);
-  activate_cursor (window);
-}
-
-static int
-window_focusp (window_t * window)
-{
-  return ((WINDOW_CLIENT (window)) == (WinQueryFocus (HWND_DESKTOP)));
-}
-
-static void
-set_window_state (window_t * window, window_state_t state)
-{
-  ULONG op = 0;
-  HWND behind = NULLHANDLE;
-  switch (state)
-    {
-    case state_top:
-      op = SWP_ZORDER;
-      behind = HWND_TOP;
-      break;
-    case state_bottom:
-      op = SWP_ZORDER;
-      behind = HWND_BOTTOM;
-      break;
-    case state_show:
-      op = SWP_SHOW;
-      break;
-    case state_hide:
-      op = SWP_HIDE;
-      break;
-    case state_activate:
-      op = SWP_ACTIVATE;
-      break;
-    case state_deactivate:
-      op = SWP_DEACTIVATE;
-      break;
-    case state_minimize:
-      op = SWP_MINIMIZE;
-      break;
-    case state_maximize:
-      op = SWP_MAXIMIZE;
-      break;
-    case state_restore:
-      op = SWP_RESTORE;
-      break;
-    }
-  if (!WinSetWindowPos ((WINDOW_FRAME (window)), behind, 0, 0, 0, 0, op))
-    window_warning (WinSetWindowPos);
-}
-
-static void
-set_window_colors (window_t * window, COLOR foreground, COLOR background)
-{
-  if (!GpiSetColor ((WINDOW_HPS (window)), foreground))
-    window_warning (GpiSetColor);
-  if (!GpiSetMix ((WINDOW_HPS (window)), FM_OVERPAINT))
-    window_warning (GpiSetMix);
-  if (!GpiSetBackColor ((WINDOW_HPS (window)), background))
-    window_warning (GpiSetBackColor);
-  if (!GpiSetBackMix ((WINDOW_HPS (window)), BM_OVERPAINT))
-    window_warning (GpiSetBackMix);
-  (WINDOW_FOREGROUND_COLOR (window)) = foreground;
-  (WINDOW_BACKGROUND_COLOR (window)) = background;
-}
-
-static void
-move_gcursor (window_t * window, short x, short y)
-{
-  POINTL ptl;
-  (ptl . x) = x;
-  (ptl . y) = y;
-  if (!GpiMove ((WINDOW_HPS (window)), (& ptl)))
-    window_warning (GpiMove);
-}
-
-static void
-draw_line (window_t * window, short x, short y)
-{
-  POINTL ptl;
-  (ptl . x) = x;
-  (ptl . y) = y;
-  if ((GpiLine ((WINDOW_HPS (window)), (& ptl))) == GPI_ERROR)
-    window_warning (GpiLine);
-}
-
-static void
-poly_line (window_t * window, unsigned long npoints, PPOINTL points)
-{
-  if ((GpiPolyLine ((WINDOW_HPS (window)), npoints, points)) == GPI_ERROR)
-    window_warning (GpiPolyLine);
-}
-
-static void
-poly_line_disjoint (window_t * window, unsigned long npoints, PPOINTL points)
-{
-  if ((GpiPolyLineDisjoint ((WINDOW_HPS (window)), npoints, points))
-      == GPI_ERROR)
-    window_warning (GpiPolyLineDisjoint);
-}
-
-static void
-set_line_type (window_t * window, LONG type)
-{
-  if (!GpiSetLineType ((WINDOW_HPS (window)), type))
-    window_warning (GpiSetLineType);
-}
-
-static void
-query_caps (window_t * window, LONG start, LONG count, PLONG values)
-{
-  HDC hdc = (GpiQueryDevice (WINDOW_HPS (window)));
-  if ((hdc == HDC_ERROR) || (hdc == NULLHANDLE))
-    window_error (GpiQueryDevice);
-  if (!DevQueryCaps (hdc, start, count, values))
-    window_error (DevQueryCaps);
-}
-
-static void
-set_window_title (window_t * window, PSZ title)
-{
-  if (!WinSetWindowText ((WINDOW_FRAME (window)), title))
-    window_warning (WinSetWindowText);
-}
 
 static MRESULT EXPENTRY
 frame_window_procedure (HWND hwnd, ULONG msg, MPARAM mp1, MPARAM mp2)
@@ -2132,10 +2558,10 @@ frame_window_procedure (HWND hwnd, ULONG msg, MPARAM mp1, MPARAM mp2)
   return ((* original_frame_window_procedure) (hwnd, msg, mp1, mp2));
 }
 
-static int process_button (HWND, MPARAM, MPARAM, unsigned char, unsigned char);
 static int process_keychar
   (window_t *, unsigned short, unsigned char, unsigned char, unsigned short,
    unsigned short);
+static int process_button (HWND, MPARAM, MPARAM, unsigned char, unsigned char);
 
 static MRESULT EXPENTRY
 window_procedure (HWND hwnd, ULONG msg, MPARAM mp1, MPARAM mp2)
@@ -2145,31 +2571,12 @@ window_procedure (HWND hwnd, ULONG msg, MPARAM mp1, MPARAM mp2)
     case WM_CREATE:
       {
 	window_t * window = (PVOIDFROMMP (mp1));
-	SIZEL sizel;
-	(WINDOW_CLIENT (window)) = hwnd;
 	if (!WinSetWindowPtr (hwnd, QWP_WINDOW, window))
 	  window_error (WinSetWindowPtr);
-	(sizel . cx) = 0;
-	(sizel . cy) = 0;
-	(WINDOW_HPS (window))
-	  = (GpiCreatePS (pm_hab,
-			  (WinOpenWindowDC (WINDOW_CLIENT (window))),
-			  (& sizel),
-			  (PU_PELS | GPIF_DEFAULT | GPIT_MICRO
-			   | GPIA_ASSOC)));
-	if ((WINDOW_HPS (window)) == 0)
-	  window_error (GpiCreatePS);
-	if (!GpiSetBackMix ((WINDOW_HPS (window)), BM_OVERPAINT))
-	  window_warning (GpiSetBackMix);
-	/* Put color table in RGB mode so we can specify colors
-	   directly in RGB values rather than as indices.  */
-	if (!GpiCreateLogColorTable ((WINDOW_HPS (window)), LCOL_PURECOLOR,
-				     LCOLF_RGB, 0, 0, 0))
-	  window_warning (GpiCreateLogColorTable);
-	(WINDOW_FOREGROUND_COLOR (window))
-	  = (GpiQueryColor (WINDOW_HPS (window)));
-	(WINDOW_BACKGROUND_COLOR (window))
-	  = (GpiQueryBackColor (WINDOW_HPS (window)));
+	(WINDOW_CLIENT (window)) = hwnd;
+	(WINDOW_CLIENT_PS (window))
+	  = (make_ps ((WinOpenWindowDC (hwnd)), (WINDOW_QID (window))));
+	(PS_WINDOW (WINDOW_CLIENT_PS (window))) = window;
 	return (MRFALSE);
       }
     case WM_PAINT:
@@ -2180,16 +2587,15 @@ window_procedure (HWND hwnd, ULONG msg, MPARAM mp1, MPARAM mp2)
 	    != 0)
 	  break;
 	{
+	  HPS hps = (PS_HANDLE (WINDOW_CLIENT_PS (window)));
 	  RECTL rectl;
-	  if ((WinBeginPaint ((WINDOW_CLIENT (window)),
-			      (WINDOW_HPS (window)),
-			      (& rectl)))
+	  if ((WinBeginPaint ((WINDOW_CLIENT (window)), hps, (& rectl)))
 	      == NULLHANDLE)
 	    window_error (WinBeginPaint);
-	  if (!WinEndPaint (WINDOW_HPS (window)))
+	  if (!WinEndPaint (hps))
 	    window_error (WinEndPaint);
 	  SEND_EVENT (window,
-		      (make_paint_event ((WINDOW_WID (window)),
+		      (make_paint_event ((WINDOW_ID (window)),
 					 (rectl . xLeft),
 					 (rectl . xRight),
 					 (rectl . yBottom),
@@ -2208,7 +2614,7 @@ window_procedure (HWND hwnd, ULONG msg, MPARAM mp1, MPARAM mp2)
 	      window_warning (WinDestroyCursor);
 	  }
 	SEND_EVENT (window,
-		    (make_focus_event ((WINDOW_WID (window)),
+		    (make_focus_event ((WINDOW_ID (window)),
 				       (SHORT1FROMMP (mp2)))));
 	return (MRVOID);
       }
@@ -2264,13 +2670,16 @@ window_procedure (HWND hwnd, ULONG msg, MPARAM mp1, MPARAM mp2)
     case WM_CLOSE:
       {
 	window_t * window = (hwnd_to_window (hwnd));
-	SEND_EVENT (window, (make_close_event (WINDOW_WID (window))));
+	SEND_EVENT (window, (make_close_event (WINDOW_ID (window))));
 	return (MRVOID);
       }
     case WM_DESTROY:
-      if (!GpiDestroyPS (WINDOW_HPS (hwnd_to_window (hwnd))))
-	window_warning (GpiDestroyPS);
-      return (MRVOID);
+      {
+	window_t * window = (hwnd_to_window (hwnd));
+	close_ps (WINDOW_CLIENT_PS (window));
+	(WINDOW_CLIENT_PS (window)) = 0;
+	return (MRVOID);
+      }
     case WM_SIZE:
       {
 	window_t * window = (hwnd_to_window (hwnd));
@@ -2281,8 +2690,16 @@ window_procedure (HWND hwnd, ULONG msg, MPARAM mp1, MPARAM mp2)
 	    (WINDOW_MINIMIZEDP (window)) = 1;
 	    break;
 	  }
+	if (window_focusp (window))
+	  {
+	    if (!WinDestroyCursor (WINDOW_CLIENT (window)))
+	      window_warning (WinDestroyCursor);
+	    (WINDOW_CURSOR_X (window)) = 0;
+	    (WINDOW_CURSOR_Y (window)) = 0;
+	    recreate_cursor (window);
+	  }
 	SEND_EVENT (window,
-		    (make_resize_event ((WINDOW_WID (window)),
+		    (make_resize_event ((WINDOW_ID (window)),
 					(SHORT1FROMMP (mp2)),
 					(SHORT2FROMMP (mp2)))));
 	return (MRVOID);
@@ -2291,7 +2708,7 @@ window_procedure (HWND hwnd, ULONG msg, MPARAM mp1, MPARAM mp2)
       {
 	window_t * window = (hwnd_to_window (hwnd));
 	SEND_EVENT (window,
-		    (make_visibility_event ((WINDOW_WID (window)),
+		    (make_visibility_event ((WINDOW_ID (window)),
 					    (SHORT1FROMMP (mp1)))));
 	return (MRVOID);
       }
@@ -2375,7 +2792,7 @@ process_keychar (window_t * window, unsigned short flags,
     return (0);
   SEND_EVENT
     (window,
-     (make_key_event ((WINDOW_WID (window)), code, flags, repeat)));
+     (make_key_event ((WINDOW_ID (window)), code, flags, repeat)));
 }
 
 static int
@@ -2384,7 +2801,7 @@ process_button (HWND hwnd, MPARAM mp1, MPARAM mp2,
 {
   window_t * window = (hwnd_to_window (hwnd));
   SEND_EVENT (window,
-	      (make_button_event ((WINDOW_WID (window)),
+	      (make_button_event ((WINDOW_ID (window)),
 				  number,
 				  type,
 				  (SHORT1FROMMP (mp1)),
