@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.105 1991/08/06 15:38:47 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.106 1991/10/04 06:14:14 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -388,9 +388,12 @@ except for \\[info-cease-edit] to return to Info."
   (lambda ()
     (let ((menu (find-menu)))
       (if (not menu)
-	  (editor-error "No menu in this node")
-	  (goto-node (prompt-for-alist-value "Menu item"
-					     (collect-menu-items menu)))))))
+	  (editor-error "No menu in this node"))
+      (goto-node
+       (menu-item-name
+	(make-mark
+	 (mark-group menu)
+	 (prompt-for-alist-value "Menu item" (collect-menu-items menu))))))))
 
 (define (nth-menu-item n)
   (lambda ()
@@ -435,26 +438,28 @@ except for \\[info-cease-edit] to return to Info."
 		    (buffer-end buffer)
 		    true)))
 
+(define menu-item-regexp
+  "\n\\* [ \t]*\\([^:\t\n]*\\)[ \t]*:")
+
 (define (collect-menu-items mark)
-  (let ((item (next-menu-item mark)))
-    (if (not item)
-	'()
-	(cons (cons (menu-item-keyword item)
-		    (menu-item-name item))
-	      (collect-menu-items item)))))
+  (let ((pattern (re-compile-pattern menu-item-regexp false))
+	(group (mark-group mark)))
+    (let ((end (group-end-index group)))
+      (let loop ((start (mark-index mark)))
+	(if (re-search-buffer-forward pattern false false
+				      group start end)
+	    (let ((item (re-match-start-index 1)))
+	      (let ((keyword
+		     (group-extract-string group
+					   item
+					   (re-match-end-index 1))))
+		(cons (cons keyword item)
+		      (loop item))))
+	    '())))))
 
 (define (next-menu-item mark)
-  (and (re-search-forward "\n\\*[ \t]+\\([^:\t\n]*\\):"
-			  mark
-			  (group-end mark)
-			  false)
+  (and (re-search-forward menu-item-regexp mark (group-end mark) false)
        (re-match-start 1)))
-
-(define (menu-item-keyword item)
-  (let ((end (char-search-forward #\: item (line-end item 0) false)))
-    (if (not end)
-	(error "Menu item missing colon"))
-    (extract-string item (skip-chars-backward " \t" (mark-1+ end)))))
 
 (define (menu-item-name item)
   (let ((colon (char-search-forward #\: item (line-end item 0) false)))
