@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.23 2003/09/11 18:38:21 cph Exp $
+$Id: xml-struct.scm,v 1.24 2003/09/17 03:20:45 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -114,10 +114,13 @@ USA.
 (define universal-names
   (make-eq-hash-table))
 
+(define (xml-name-simple name)
+  (cond ((xml-nmtoken? name) name)
+	((combo-name? name) (combo-name-simple name))
+	(else (error:not-xml-name name 'XML-NAME-simple))))
+
 (define (xml-name-string name)
-  (cond ((xml-nmtoken? name) (symbol-name name))
-	((combo-name? name) (symbol-name (combo-name-simple name)))
-	(else (error:not-xml-name name 'XML-NAME-STRING))))
+  (symbol-name (xml-name-simple name)))
 
 (define (xml-name-uri name)
   (cond ((xml-nmtoken? name) #f)
@@ -577,16 +580,20 @@ USA.
 			  PORT))))))
 	 (ill-formed-syntax form)))))
 
-(define-xml-printer element xml-element-name)
 (define-xml-printer processing-instructions xml-processing-instructions-name)
 (define-xml-printer dtd xml-dtd-root)
-(define-xml-printer external-id
-  (lambda (dtd)
-    (or (xml-external-id-id dtd)
-	(xml-external-id-uri dtd))))
 (define-xml-printer !element xml-!element-name)
 (define-xml-printer !attlist xml-!attlist-name)
 (define-xml-printer !entity xml-!entity-name)
 (define-xml-printer unparsed-!entity xml-unparsed-!entity-name)
 (define-xml-printer parameter-!entity xml-parameter-!entity-name)
 (define-xml-printer !notation xml-!notation-name)
+
+(define-xml-printer element
+  (lambda (elt)
+    (xml-name-simple (xml-element-name elt))))
+
+(define-xml-printer external-id
+  (lambda (dtd)
+    (or (xml-external-id-id dtd)
+	(xml-external-id-uri dtd))))
