@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/const.h,v 9.21 1987/01/22 14:22:44 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/const.h,v 9.22 1987/02/04 17:49:56 jinx Exp $
  *
  * Named constants used throughout the interpreter
  *
@@ -92,9 +92,13 @@ MIT in each case. */
 #endif
 
 #define OBARRAY_SIZE		3001	/* Interning hash table */
+
+#ifndef STACK_GUARD_SIZE
 #define STACK_GUARD_SIZE	4096	/* Cells between constant and
 					   stack before overflow
 					   occurs */
+#endif
+
 #define FILE_CHANNELS		15
 #define MAX_LIST_PRINT		10
 
