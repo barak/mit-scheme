@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.sf,v 14.9 1994/01/08 21:03:38 gjr Exp $
+$Id: runtime.sf,v 14.10 1994/12/06 17:39:15 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -35,9 +35,13 @@ MIT in each case. |#
 (fluid-let ((sf/default-syntax-table syntax-table/system-internal))
   (sf-directory "."))
 
-;; Guarantee that the package modeller is loaded.
-(if (not (name->package '(CROSS-REFERENCE)))
-    (with-working-directory-pathname "../cref" (lambda () (load "make"))))
+;; Guarantee that the package modeller is loaded.  load-option ensures
+;; that when cross-syntaxing the cref `native' to the running system
+;; is loaded.
+(load-option 'CREF)
+;;Was:
+;;(if (not (name->package '(CROSS-REFERENCE)))
+;;    (with-working-directory-pathname "../cref" (lambda () (load "make"))))
 
 (cref/generate-constructors "runtime")
 (sf "runtime.con" "runtime.bcon")
