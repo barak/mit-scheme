@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fakeprim.scm,v 1.1 1994/11/19 02:04:29 adams Exp $
+$Id: fakeprim.scm,v 1.2 1994/11/25 22:57:50 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -728,6 +728,14 @@ MIT in each case. |#
   (make-operator/simple "#[small-fixnum?]" '(PROPER-PREDICATE)))
 
 (cookie-call %small-fixnum? '#F value 'precision-bits)
+
+
+(define %profile-data
+  ;; (CALL ',%profile-data '#F '<data>)
+  (make-operator/simple* "#[profile-data]" '(UNSPECIFIC-RESULT)))
+
+(cookie-call %profile-data '#F 'data)
+
 
 (define (make-operator/out-of-line name . more)
   (apply make-operator name
