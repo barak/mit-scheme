@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: unsyn.scm,v 14.14 1994/01/29 21:23:20 adams Exp $
+$Id: unsyn.scm,v 14.15 1994/03/22 21:31:01 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,7 +38,6 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (set! lambda-auxiliary-tag (intern "#!aux"))
   (set! unsyntaxer/scode-walker
 	(make-scode-walker unsyntax-constant
 			   `((ACCESS ,unsyntax-ACCESS-object)
@@ -334,8 +333,6 @@ MIT in each case. |#
     (lambda (name required optional rest body)
       name body
       (lambda-list required optional rest '()))))
-
-(define lambda-auxiliary-tag)
 
 (define (lambda-list required optional rest auxiliary)
   (let ((optional (if (null? optional)
