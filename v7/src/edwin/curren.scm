@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.81 1989/04/15 00:48:10 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.82 1989/04/23 23:19:56 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -266,8 +266,7 @@
 	(ring-ref ring 0))))
 
 (define (set-current-mark! mark)
-  (guarantee-mark mark 'SET-CURRENT-MARK!)
-  (set-buffer-mark! (current-buffer) mark))
+  (set-buffer-mark! (current-buffer) (guarantee-mark mark)))
 
 (define-integrable (set-buffer-mark! buffer mark)
   (ring-set! (buffer-mark-ring buffer) 0 (mark-right-inserting mark)))
@@ -277,8 +276,7 @@
   "Mark Set")
 
 (define (push-current-mark! mark)
-  (guarantee-mark mark 'PUSH-CURRENT-MARK!)
-  (push-buffer-mark! (current-buffer) mark)
+  (push-buffer-mark! (current-buffer) (guarantee-mark mark))
   (let ((notification (ref-variable auto-push-point-notification)))
     (if (and notification
 	     (not *executing-keyboard-macro?*)
