@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.164 2000/06/16 17:56:12 cph Exp $
+;;; $Id: imail-top.scm,v 1.165 2000/06/16 17:57:35 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1219,8 +1219,6 @@ If it doesn't exist, it is created first."
 		     (if (= n 1) "" "s")
 		     " copied to "
 		     (url->string to))))))))
-
-(define (copy-folder folder to))
 
 ;;;; Miscellany
 
