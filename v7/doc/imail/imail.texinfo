@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: imail.texinfo,v 1.22 2001/02/23 17:46:50 cph Exp $
+@comment $Id: imail.texinfo,v 1.23 2001/07/17 02:47:54 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename imail.info
 @settitle IMAIL User's Manual
@@ -20,7 +20,7 @@
 @ifinfo
 This file documents the use of MIT Scheme.
 
-Copyright @copyright{} 2000 Massachusetts Institute of Technology
+Copyright @copyright{} 2000, 2001 Massachusetts Institute of Technology
 
 Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version 1.1 or
@@ -32,13 +32,13 @@ Free Documentation License".
 
 @titlepage
 @title{IMAIL User's Manual}
-@subtitle Edition 1.4 for IMAIL Version 1.8
-@subtitle 28 December 2000
+@subtitle Edition 1.5 for IMAIL Version 1.11
+@subtitle 16 July 2001
 @author by Chris Hanson
 
 @page
 @vskip 0pt plus 1filll
-Copyright @copyright{} 2000 Massachusetts Institute of Technology
+Copyright @copyright{} 2000, 2001 Massachusetts Institute of Technology
 
 Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version 1.1 or
@@ -344,17 +344,15 @@ generally true.
 @node File URLs,  , IMAP URLs, URLs
 @subsection File URLs
 
-There are two other @acronym{URL} types supported by @acronym{IMAIL}:
-Rmail @acronym{URL}s and unix mailbox @acronym{URL}s.  Both of these use
-the same syntax, which is exactly the same as the @samp{file:}
-@acronym{URL} syntax,@footnote{File @acronym{URL}s are defined in
+There is one other @acronym{URL} type supported by @acronym{IMAIL}: file
+@acronym{URL}s.  This uses the @samp{file:} @acronym{URL}
+syntax,@footnote{File @acronym{URL}s are defined in
 @uref{http://www.ietf.org/rfc/rfc1738.txt, , @acronym{RFC} 1738}.} as
 follows:
 
 @example
 @group
-rmail://@var{hostname}/@var{pathname}
-umail://@var{hostname}/@var{pathname}
+file://@var{hostname}/@var{pathname}
 @end group
 @end example
 
@@ -365,21 +363,15 @@ system, @var{hostname} must be @samp{localhost}; it may also be omitted,
 as in
 
 @example
-rmail:///@var{pathname}
+file:///@var{pathname}
 @end example
 
 @noindent
 @acronym{IMAIL} also supports a non-standard abbreviation:
 
 @example
-rmail:/@var{pathname}
+file:/@var{pathname}
 @end example
-
-The prefixes @samp{rmail:} and @samp{umail:} specify the type of file
-folder being referred to, respectively an Rmail file or a unix mailbox
-file.  (In the future, this design may be changed to use the
-@samp{file:} prefix for both types, and determine the file's type from
-its content.)
 
 As specified by the @acronym{URL} standard, @var{pathname} is a
 slash-separated sequence of path components, where unusual characters
@@ -410,7 +402,7 @@ C:\My Documents\Mail\My Mail.rmail
 becomes the @acronym{URL}
 
 @example
-rmail://localhost/C:/My%20Documents/Mail/My%20Mail.rmail
+file://localhost/C:/My%20Documents/Mail/My%20Mail.rmail
 @end example
 
 @ifset dontsetme
@@ -1007,7 +999,7 @@ Save a @acronym{MIME} attachment to a file
 Save an arbitrary @acronym{MIME} entity (message part) to a file
 (@code{imail-save-mime-entity}).
 
-@item C-t
+@item C-c C-t C-e
 Toggle a @acronym{MIME} entity between its formatted and raw forms
 (@code{imail-toggle-mime-entity}).
 @end table
@@ -1050,12 +1042,12 @@ with the mouse and click the right button
 @code{imail-save-mime-entity} except that the entity is selected by the
 mouse instead of point.
 
-@kindex C-t
+@kindex C-c C-t C-e
 @findex imail-toggle-mime-entity
-The command @kbd{C-t} (@code{imail-toggle-mime-entity}) is similar to
-@code{imail-save-mime-entity}, except that instead of saving the entity
-to a file, it toggles whether the entity is shown in-line or in
-abbreviated form.  A common situation in which this is useful is when
+The command @kbd{C-c C-t C-e} (@code{imail-toggle-mime-entity}) is
+similar to @code{imail-save-mime-entity}, except that instead of saving
+the entity to a file, it toggles whether the entity is shown in-line or
+in abbreviated form.  A common situation in which this is useful is when
 the text of a message is in an unknown character set.  In this case,
 @acronym{IMAIL} by default shows the text in abbreviated form; use
 @kbd{C-t} to expand it in place.
@@ -1350,13 +1342,13 @@ the @kbd{t} command (@code{imail-toggle-header}).  If filtered headers
 are shown, this command replaces them with unfiltered headers, and vice
 versa.
 
-@kindex C-c C-t
+@kindex C-c C-t C-m
 @findex imail-toggle-message
 As you can see, @acronym{IMAIL} performs extensive transformation of a
 mail message before presenting it to you: @acronym{MIME} formatting,
 line wrapping, and header filtering.  Sometimes, it's desirable to see
 the original message, exactly as it was received, without any formatting
-at all.  The command @kbd{C-c C-t} toggles the entire message between
+at all.  The command @kbd{C-c C-t C-m} toggles the entire message between
 a formatted view and a raw view.  This should be used with care, as a
 message with a large attachment might not fit in memory in its raw form.
 
