@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: fill.scm,v 1.68 2000/09/06 03:47:55 cph Exp $
+;;; $Id: fill.scm,v 1.69 2000/09/06 04:01:05 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -308,9 +308,11 @@ the distance between the end of the text and `fill-column'."
 	  (let ((fill-prefix
 		 (let ((ls (line-start point 0)))
 		   (or (and (ref-variable adaptive-fill-mode point)
-			    (fill-context-prefix ls
-						 (line-end point 1 'LIMIT)
-						 ""))
+			    (or (let ((le (line-end point 1 #f)))
+				  (and le
+				       (fill-context-prefix ls le "")))
+				(fill-context-prefix ls (line-end point 0)
+						     "")))
 		       (extract-string ls point)))))
 	    (move-mark-to! pend
 			   (or (forward-one-paragraph point end fill-prefix)
