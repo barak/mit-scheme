@@ -181,9 +181,10 @@ Installation information for DOS version goes here
 @node Running Scheme, REPL, Top, Top
 @chapter Running Scheme
 
-This chapter describes how to run MIT Scheme on a unix system.  It also
-describes the command-line options and environment variables that affect
-how Scheme runs.
+This chapter describes how to run MIT Scheme on a unix system or a PC
+running DOS, Microsoft Windows or Windows NT.
+It also describes how you can customize the behaviour of MIT Scheme
+using command-line options and environment variables.
 
 @menu
 * Basics of Starting Scheme::   Basics of Starting Scheme
@@ -202,14 +203,16 @@ scheme
 @end example
 
 @noindent
-at your operating system's command interpreter.  Scheme will load
-itself, clear the screen, and print something like this:
+at your operating system's command interpreter@footnote{Under Microsoft
+Windows this is not possible.  Scheme must be run from the graphical
+environment.}.  Scheme will load itself, clear the screen, and print
+something like this:
 
 @example
 Scheme saved on Monday December 10, 1990 at 9:55:37 PM
-  Release 7.1.0 (beta)
-  Microcode 11.59
-  Runtime 14.104
+  Release 7.3.0 (beta)
+  Microcode 11.146
+  Runtime 14.164
 @end example
 
 @noindent
@@ -235,15 +238,16 @@ the part of the system that is written in Scheme.
 
 @cindex subsystem versions
 @cindex SF, version
+@cindex CREF, version
 @cindex compiler, version
 @cindex Edwin, version
 @cindex student package, version
 @cindex compatibility package, version
 Following this there may be additional version numbers for specific
 subsystems.  @samp{SF} refers to the scode optimization program
-@code{sf}, @samp{Liar} is the native-code compiler, @samp{Edwin} is the
-Emacs-like text editor, and @samp{Student} is the S&ICP compatibility
-package.
+@code{sf}, @samp{Liar} is the native-code compiler, @samp{CREF} is the
+cross-reference generator, @samp{Edwin} is the Emacs-like text editor,
+and @samp{Student} is the S&ICP compatibility package.
 
 @cindex compiler, starting
 If the compiler is supported for your machine, you can invoke it by
@@ -257,22 +261,137 @@ scheme -compiler
 This option causes Scheme to use a larger constant space and heap, and
 to load the world image containing the compiler.
 
+
+@node
+@section Customizing Scheme
+
+You can customize your setup by using a variety of tools:
+
+@itemize @bullet
+@item
+@cindex command line options
+@dfn{Command-line options}.
+Many parameters, like memory usage and the location of libraries, may be
+varied by command line options.
+
+@item
+@dfn{Command scripts or batch files}.
+@cindex command scripts
+You might like to write scripts that invoke Scheme with your favourite
+command line options.  For example, under DOS you might not have enough
+memory to run edwin or the compiler with its default memory parameters
+(it will print something like ``Not enough memory for this
+configuration'' and halt when started), you can write a shell script
+(unix) or a @file{.bat} file (PC) that will invoke Scheme with the
+appropriate "@code{-heap}" and other parameters.
+
+@item
 @cindex init file
-Scheme supports @dfn{init files}: if the file @file{~/.scheme.init}
-exists, it is loaded immediately after the identification banner, and
-before the input prompt is printed.  The @code{-no-init-file} command
-line option causes Scheme to ignore the @file{~/.scheme.init} file (see
+Scheme supports @dfn{init files}: if the file @file{.scheme.init} exists
+in your home directory, it is loaded immediately after the
+identification banner, and before the input prompt is printed.
+In addition, when it starts up, edwin loads the file @file{.edwin} from
+your home directory into the edwin environment. You can use both of
+these files to define new procedures, commands, or change defaults in
+the system.
+
+The @code{-no-init-file} command
+line option causes Scheme to ignore the @file{.scheme.init} file (see
 @xref{Command-Line Options}).
+
+On PC systems these initialization files are called @file{scheme.ini}
+and @file{edwin.ini} respectively and are searched for in the directory
+identified by the @code{HOME} environment variable.
+
+@item
+@dfn{Environment variables}. Most microcode parameters, and some runtime
+system and Edwin parameters, can be specified by means of
+environment variables.
+See @xref{Environment Variables}.
+
+@item
+@dfn{Icons}.
+@cindex icons
+Under Microsoft Windows and Windows NT it is possible to create icons in
+the Program Manager that invoke Scheme with different parameters.
+@end itemize
+
+
+One of the important parameters that can be customized is how much
+memory Scheme uses and how that memory is used.  Scheme uses four kinds
+of memory:
+@cindex memory
+@cindex heap space
+@cindex stack space
+@cindex constant space
+
+@itemize @bullet
+@item
+A @dfn{stack} which is used for recursive procedure calls,
+@item
+A @dfn{heap} which is used for dynamically allocated objects, like @samp{cons}
+cells and strings.
+Storage used for objects in the heap which become unreferenced is
+eventually reclaimed by @dfn{garbage collection}.
+@item
+A @dfn{constant space}, which is used for allocated objects, like the
+heap.
+Unlike the heap, storage used for objects in constant space is not
+reclaimed by garbage collection.
+Constant space is used for objects that are essentially permanent, like
+procedures from the runtime system.
+@item
+An amount of extra storage which is used by the Microcode (the part
+of the system that is implemented in C).
+@end itemize
+
+@findex bchscheme
+All aspects except the last may be controlled both by command-line
+options and by environment variables.  MIT Scheme uses a two-space
+copying garbage collector for reclaiming storage in the heap.  There are
+two version of Scheme which handle garbage collection differently.
+Ordinary @code{scheme} has two heaps, one for each `space'.
+@code{bchscheme} has one heap and uses a disk file for the other
+`space', thus trading memory usage against garbage collection speed.
+
+The total storage required by @code{scheme} is:
+
+@example
+@var{stack} + (@var{constant} + 2*@var{heap}) + @var{extra}
+@end example
+
+@noindent
+where @var{stack}, @var{constant} and @var{heap} are parameters that may
+be selected when @samp{scheme} starts.
+For @code{bchscheme}, which has only one heap in memory, the equation is
+
+@example
+@var{stack} + (@var{constant} + @var{heap}) + @var{extra}
+@end example
+
+Once the storage is allocated for the constant space and the heap,
+Scheme will dynamically adjust the proportion of the total that is used
+for constant space.
+The stack and the extra microcode storage is not included in this adjustment.
+The dynamic adjustment of the heap and constant space avoids the problem
+with previous versions of MIT Scheme of having to know the amount of
+constant space that is required when loading your own bands with the
+@code{-band} option.  Now all that is required is that the total space
+is sufficient.
+The Scheme procedure @code{(print-gc-statistics)} shows how much heap
+and constant space is available.
+
 
 @node Command-Line Options, Environment Variables, Basics of Starting Scheme, Running Scheme
 @section Command-Line Options
 
-Scheme accepts the following command-line options.  The options may
-appear in any order, but they must all appear before any other
-arguments on the command line.  (At present, any arguments other than
-these options will generate a warning message when Scheme starts.  In
-the future, there will be an advertised mechanism by which the extra
-arguments can be handled by user code.)
+Scheme accepts the command-line options detailed in the following
+sections.  The options may appear in any order, but they must all appear
+before any other arguments on the command line.  (At present, any
+arguments other than these options will generate a warning message when
+Scheme starts.  In the future, there will be an advertised mechanism by
+which the extra arguments can be handled by user code.)
+
 
 @table @code
 
@@ -387,7 +506,8 @@ and other subsystems.
 @item -stack @var{blocks}
 @findex -stack
 Specifies the size of the stack in 1024-word blocks.  Overrides any
-default.  This is Scheme's stack, NOT the unix stack used by C programs.
+default.  This is Scheme's stack, @emph{not} the unix stack used by C
+programs.
 
 @item -option-summary
 @findex -option-summary
@@ -418,12 +538,15 @@ out:
 scheme < /usr/cph/foo.in >& /usr/cph/foo.out &
 @end example
 
+This option only makes sense under unix.
+
 @item -nocore
 @findex -nocore
 Specifies that Scheme should not generate a core dump under any
-circumstances.  If this option is not given, and Scheme terminates
-abnormally, you will be prompted to decide whether a core dump should be
-generated.
+circumstances.  Under unix, if this option is not given, and Scheme
+terminates abnormally, you will be prompted to decide whether a core
+dump should be generated.
+This option is ignored on PC versions.
 
 @item -library @var{path}
 @findex -library
@@ -432,8 +555,8 @@ Sets the library search path to @var{path}.  This is a colon-separated
 list of directories that is searched to find various library files, such
 as bands.  If this option is not given, the value of the environment
 variable @code{MITSCHEME_LIBRARY_PATH} is used; if that isn't defined,
-the default (@file{/usr/local/lib/mit-scheme} on Unix, @file{c:\scheme}
-on PCs) is used.
+the default is used (@file{/usr/local/lib/mit-scheme} on Unix, @file{c:\scheme}
+on PCs).
 
 @item -utabmd @var{filename}
 @item -utab @var{filename}
@@ -460,6 +583,14 @@ given, a normal load is performed instead.  This option may not be used
 together with the @code{-band} option.  This option is useful only for
 maintainance and development of the MIT Scheme runtime system.
 
+@end table
+
+@noindent
+In addition to the above, @code{bchscheme} recognises the following
+command line options, all of which specify parameters affecting how
+@code{bchscheme} uses disk storage to do garbage collection:
+
+@table @code
 @item -gc-directory @var{directory}
 @findex -gc-directory
 @findex MITSCHEME_GC_DIRECTORY
@@ -468,15 +599,6 @@ garbage collection.  This option is recognized only by @code{bchscheme}.
 If the option is not given, the value of environment variable
 @code{MITSCHEME_GC_DIRECTORY} is used instead, and if that is not
 defined, @file{/tmp} is used.
-
-@item -gc-drone @var{program}
-@findex -gc-drone
-@findex MITSCHEME_GC_DRONE
-Specifies that @var{program} should be used as the drone program for
-overlapped I/O during garbage collection.  This option is recognized
-only by @code{bchscheme}.  If the option is not given, the value of
-environment variable @code{MITSCHEME_GC_DRONE} is used instead, and if
-that is not defined, @file{gcdrone} is used.
 
 @item -gc-end-position @var{number}
 @findex -gc-end-position
@@ -490,8 +612,9 @@ is not defined, it is computed from the start position (as provided with
 locked if possible) is the region between @code{-gc-start-position} and
 @code{-gc-end-position}.
 
+
 @item -gc-file @var{filename}
-@item -gcfile
+@itemx -gcfile @var{filename}
 @findex -gc-file
 @findex -gcfile
 @findex MITSCHEME_GC_FILE
@@ -504,21 +627,13 @@ directory specified with @code{-gc-directory}.
 @code{-gcfile} is an alias for @code{-gc-file}.  At most one of these
 options should be specified.
 
+
 @item -gc-keep
 @findex -gc-keep
 Specifies that the gc file used for garbage collection should not be
 deleted when scheme terminates.  This option is recognized only by
 @code{bchscheme}.  The gc file is deleted only if the file was created
 by this invocation of scheme, and this option is not set.
-
-@item -gc-read-overlap @var{N}
-@findex -gc-read-overlap
-@findex MITSCHEME_GC_READ_OVERLAP
-Specifies that scheme should delegate at most @var{N} simultaneous disk
-read operations during garbage collection.  This option is recognized
-only by @code{bchscheme}.  If the option is not given, the value of
-environment variable @code{MITSCHEME_GC_READ_OVERLAP} is used instead,
-and if that is not defined, 0 is used, disabling overlapped reads.
 
 @item -gc-start-position @var{number}
 @findex -gc-start-position
@@ -539,6 +654,31 @@ collection.  This option is recognized only by @code{bchscheme}.
 If this option is not given, the value of environment variable
 @code{MITSCHEME_GC_WINDOW_SIZE} is used instead, and if that is not
 defined, the value 16 is used.
+@end table
+
+@noindent
+The following command line options are only used by an experimental
+version of @code{bchscheme} that runs on Unix System V using shared
+memory, and only then if the gcdrone is installed:
+
+@table @code
+@item -gc-drone @var{program}
+@findex -gc-drone
+@findex MITSCHEME_GC_DRONE
+Specifies that @var{program} should be used as the drone program for
+overlapped I/O during garbage collection.  This option is recognized
+only by @code{bchscheme}.  If the option is not given, the value of
+environment variable @code{MITSCHEME_GC_DRONE} is used instead, and if
+that is not defined, @file{gcdrone} is used.
+
+@item -gc-read-overlap @var{N}
+@findex -gc-read-overlap
+@findex MITSCHEME_GC_READ_OVERLAP
+Specifies that scheme should delegate at most @var{N} simultaneous disk
+read operations during garbage collection.  This option is recognized
+only by @code{bchscheme}.  If the option is not given, the value of
+environment variable @code{MITSCHEME_GC_READ_OVERLAP} is used instead,
+and if that is not defined, 0 is used, disabling overlapped reads.
 
 @item -gc-write-overlap @var{N}
 @findex -gc-write-overlap
@@ -553,8 +693,19 @@ and if that is not defined, 0 is used, disabling overlapped writes.
 @node Environment Variables, Leaving Scheme, Command-Line Options, Running Scheme
 @section Environment Variables
 
-This is a summary of the environment variables that are specific to MIT
-Scheme.
+
+There are many environment variables that Scheme (and Edwin, etc.) look
+for.  Some must be defined before you start Scheme, but others can be
+defined or overwritten within Scheme by using the
+@code{set-environment-variable!} procedure, e.g.
+
+@example
+  (set-environment-variable! "EDWIN_FOREGROUND" "32")
+@end example
+
+The rest of this section is a summary of the environment variables that
+are specific to MIT Scheme.  The environment variables are organised
+according to the parts of MIT Scheme that they affect.
 
 @node
 @subsection General Environment Variables
@@ -647,15 +798,6 @@ and @code{-utab}.  It is only necessary when re-building
 @findex MITSCHEME_GC_DIRECTORY
 The directory where to write gc files.  Overriden by @code{-gc-directory}.
 
-@item @code{MITSCHEME_GC_DRONE} (default: @file{gcdrone})
-@findex MITSCHEME_GC_DRONE
-The program to use as the I/O drone during garbage collection.
-Overriden by @code{-gc-drone}.
-@end table
-
-***** Are the following unix specific or should they be flushed completely?
-
-@table @asis
 @item @code{MITSCHEME_GC_END_POSITION} (default: start-position + heap-size)
 @findex MITSCHEME_GC_END_POSITION
 The last position in the gc file to use.  Overriden by
@@ -667,11 +809,6 @@ The name of the file to use for garbage collection.  If it ends in 6 Xs,
 the Xs are replaced by a letter and process id of the scheme process,
 thus generating a unique name.  Overriden by @code{-gc-file}.
 
-@item @code{MITSCHEME_GC_READ_OVERLAP} (default: 0)
-@findex MITSCHEME_GC_READ_OVERLAP
-The maximum number of simultaneous read operations.  Overriden by
-@code{-gc-read-overlap}.
-
 @item @code{MITSCHEME_GC_START_POSITION} (default: 0)
 @findex MITSCHEME_GC_START_POSITION
 The first position in the gc file to use.  Overriden by
@@ -681,6 +818,23 @@ The first position in the gc file to use.  Overriden by
 @findex MITSCHEME_GC_WINDOW_SIZE
 The size in blocks of windows into new space (in the gc file).
 Overriden by @code{-gc-window-size}.
+@end table
+
+@noindent
+The following environment variables are only used by an experimental
+version of Bchscheme that runs on Unix System V using shared memory, and
+only then if the gcdrone is installed:
+
+@table @asis
+@item @code{MITSCHEME_GC_DRONE} (default: @file{gcdrone})
+@findex MITSCHEME_GC_DRONE
+The program to use as the I/O drone during garbage collection.
+Overriden by @code{-gc-drone}.
+
+@item @code{MITSCHEME_GC_READ_OVERLAP} (default: 0)
+@findex MITSCHEME_GC_READ_OVERLAP
+The maximum number of simultaneous read operations.  Overriden by
+@code{-gc-read-overlap}.
 
 @item @code{MITSCHEME_GC_WRITE_OVERLAP} (default: 0)
 @findex MITSCHEME_GC_WRITE_OVERLAP
@@ -733,8 +887,8 @@ text color.  The color is specified as hex blue, green and red values
 
 @item @code{MITSCHEME_BACKGROUND} (default: according to desktop color scheme)
 @findex MITSCHEME_BACKGROUND
-Microsoft Windows and Windows NT only.
-A value value specifying the window background color.  See above.
+Microsoft Windows and Windows NT only.  A value specifying the window
+background color.  See @code{MITSCHEME_FOREGROUND}.
 
 @end table
 
@@ -772,18 +926,18 @@ subsystem.
 
 @item @code{EDWIN_ETC_DIRECTORY} (default: @file{edwin/etc} on the library path)
 @findex EDWIN_ETC_DIRECTORY
-Directory where edwin expects to find utility programs.  Currently not
-supported under DOS or Windows.
+Directory where edwin expects to find utility programs and documentation
+strings.
 
 @item @code{EDWIN_FOREGROUND} (default: none (white))
 @findex EDWIN_FOREGROUND
-DOS only?
+DOS version only.
 ANSI foreground color specifier. Must be a two-digit sequence in the range
 30-37.  E.g. 32 (green).
 
 @item @code{EDWIN_BACKGROUND} (default: none (black))
 @findex EDWIN_BACKGROUND
-DOS only?
+DOS version only.
 ANSI background color specifier. Must be a two-digit sequence in the range
 40-47. E.g. 40 (black).
 
@@ -793,17 +947,84 @@ Terminal type.
 For DOS, should be @samp{ansi.sys} or @samp{ibm_pc_bios}.
 For Windows and Windows NT it should be @samp{ansi.sys}.
 
-@item @code{LINES} (default: auto-sense or 25)
+@item @code{LINES} (default: auto-sense)
 @findex LINES
-Number of text lines on the screen, depending on the terminal type (Unix) or
-the video adapter and support software (DOS).  E.g. 43.
+Unix only.
+Number of text lines on the screen, depending on the terminal type.
 
-@item @code{COLUMNS} (default: auto-sense, or 80)
+@item @code{MITSCHEME_LINES} (default: auto-sense or 25)
+@findex MITSCHEME_LINES
+DOS only.  Number of text lines on the screen, depending on the video
+adapter and support software.  E.g. 43.
+
+@item @code{COLUMNS} (default: auto-sense)
 @findex COLUMNS
+Unix only.
 Number of text columns on the screen, depending on the terminal type (Unix) or
 video adapter and support software (DOS).  E.g. 132.
 
+@item @code{MITSCHEME_COLUMNS} (default: auto-sense, or 80)
+@findex MITSCHEME_COLUMNS
+DOS only.  Number of text columns on the screen, depending on the video
+adapter and support software.  E.g. 132.
+
 @end table
+
+
+@node
+@section Starting Scheme from Microsoft Windows 3.1/NT
+
+There are two distinct versions of MIT Scheme that run on IBM
+`compatible' PCs: the MS-DOS version is a character-mode only
+implementation.  It may also be run under Windows as a DOS application.
+The Windows version runs as graphics based application under Microsoft
+Windows 3.1 or Microsoft Windows NT@footnote{The Windows 3.1 and NT
+versions are identical except for a minor installation difference}.
+
+Under Microsoft Windows, Scheme must be run from the Program Manager or
+the File Manager.  Scheme cannot be run from the command line, because
+only MS-DOS programs can be run from the command line.  Windows NT
+overcomes this restriction, but it is still useful to know how to run
+Scheme from the Program Manager.
+
+Once an icon is set up to run Scheme with some particular cmmand line
+options, Scheme is run by double-clicking that icon.
+The rest of this section gives some tips on how to set up icons in the
+Program Manager that run Scheme.  If you are unfamiliar with this
+concept you should read about it under the help topic of the Program
+Manager.
+
+Under Windows NT program manager groups can be @emph{common} or
+@emph{personal}.  When setting up icons in a common group it is
+important to make the icons independent of the vagaries of the
+environment of which user is running them.  It is often worthwhile doing
+this under Windows 3.1 and for personal groups too:
+
+@itemize @bullet
+@item
+Give the icon an accurate @var{Description}.
+@item
+Include absolute pathnames to @code{scheme.exe} and @code{bchscheme.exe}
+in the icon @var{Command line} if these executables are not in a
+directory on the @code{PATH}.
+@item
+Set the icon's @var{Working Directory} to: @code{%HOMEPATH%}
+@item
+There are several icons available --- choose one that best represents
+the options given on the command line.
+@item
+Specifying a band that contains Edwin is not sufficient to invoke the
+editor.  You also have to put
+
+@example
+-eval (edit)
+@end example
+
+at the end of the command line.
+@end itemize
+
+
+
 
 
 @node Leaving Scheme,  , Environment Variables, Running Scheme
@@ -824,9 +1045,10 @@ be done lightly.
 The second way to leave Scheme is to suspend it; when this is done you
 may later restart where you left off.  Unfortunately this is not
 possible in all operating systems --- currently it is known to work on
-BSD Unix, Ultrix, SunOS, HP-UX (version 6.5 or later).  It does NOT work
-on AT&T Unix.  (Specifically, for unix or POSIX systems, suspension is
-available if the system supports job control.)
+BSD Unix, Ultrix, SunOS, HP-UX (version 6.5 or later).  It does
+@emph{not} work on AT&T Unix or on PC platforms.  (Specifically, for
+unix or POSIX systems, suspension is available if the system supports
+job control.)
 
 Scheme is suspended by evaluating
 
@@ -841,6 +1063,7 @@ you will be returned to the operating system's command interpreter.
 Scheme remains stopped, and can be continued using the job-control
 commands of your command interpreter.  If your system doesn't support
 suspension, this procedure does nothing.
+
 
 @node REPL, Debugging, Running Scheme, Top
 @chapter The Read-Eval-Print Loop
