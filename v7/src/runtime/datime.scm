@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.9 1995/04/22 23:42:10 cph Exp $
+$Id: datime.scm,v 14.10 1995/04/23 03:19:48 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -48,30 +48,36 @@ MIT in each case. |#
 		   (type vector)
 		   (named decoded-time-structure-tag)
 		   (conc-name decoded-time/)
-		   (constructor %make-decoded-time
-				(second minute hour day month year))
+		   (constructor %make-decoded-time)
 		   (constructor allocate-decoded-time ()))
-  (second false read-only true)
-  (minute false read-only true)
-  (hour false read-only true)
-  (day false read-only true)
-  (month false read-only true)
-  (year false read-only true)
-  (day-of-week false read-only true))
+  (second #f read-only #t)
+  (minute #f read-only #t)
+  (hour #f read-only #t)
+  (day #f read-only #t)
+  (month #f read-only #t)
+  (year #f read-only #t)
+  (day-of-week #f read-only #t)
+  (daylight-savings-time #f read-only #t))
 
 (define (make-decoded-time second minute hour day month year)
-  (let ((limit
-	 (lambda (low number high)
-	   (cond ((< number low) low)
-		 ((> number high) high)
-		 (else number)))))
-    (let ((month (limit 1 month 12)))
-      (%make-decoded-time (limit 0 second 59)
-			  (limit 0 minute 59)
-			  (limit 0 hour 23)
-			  (limit 1 day (month/max-days month))
-			  month
-			  (if (< year 0) 0 year)))))
+  (let ((dt
+	 (let ((limit
+		(lambda (low number high)
+		  (cond ((< number low) low)
+			((> number high) high)
+			(else number)))))
+	   (let ((month (limit 1 month 12)))
+	     (%make-decoded-time (limit 0 second 59)
+				 (limit 0 minute 59)
+				 (limit 0 hour 23)
+				 (limit 1 day (month/max-days month))
+				 month
+				 (if (< year 0) 0 year)
+				 0
+				 -1)))))
+    ;; These calls fill in the other fields of the structure.
+    ((ucode-primitive decode-time 2) dt ((ucode-primitive encode-time 1) dt))
+    dt))
 
 (define (month/max-days month)
   (guarantee-month month 'MONTH/MAX-DAYS)
@@ -157,17 +163,4 @@ MIT in each case. |#
 		     (d2 (integer-divide-remainder qr))))))
 
 (define (decoded-time/daylight-savings-time? dt)
-  ;; In current implementation, DAY-OF-WEEK field might be missing, so
-  ;; there this will return wrong answer near the changeovers.
-  (let ((month (decoded-time/month dt)))
-    (cond ((= 4 month)
-	   (or (> (decoded-time/day dt) 7)
-	       (not (eqv? (decoded-time/day-of-week dt) 6))
-	       (> (decode-time/hour dt) 1)))
-	  ((= 10 month)
-	   (or (< (decoded-time/day dt) 25)
-	       (not (eqv? (decoded-time/day-of-week dt) 6))
-	       ;; Since DT is a local time, it's impossible to
-	       ;; tell whether we're in the overlapped hour.
-	       (< (decode-time/hour dt) 3)))
-	  (else (<= 5 month 9)))))
+  (> (decoded-time/daylight-savings-time dt) 0))
