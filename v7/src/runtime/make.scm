@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.20 1990/02/08 00:05:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.21 1990/02/27 19:44:26 markf Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -316,6 +316,9 @@ MIT in each case. |#
    (RUNTIME TRUNCATED-STRING-OUTPUT)
    (RUNTIME INPUT-PORT)
    (RUNTIME OUTPUT-PORT)
+   (RUNTIME SUBPROCESSES)
+   (RUNTIME SUBPROCESSES INPUT)
+   (RUNTIME SUBPROCESSES OUTPUT)
    (RUNTIME WORKING-DIRECTORY)
    (RUNTIME DIRECTORY)
    (RUNTIME LOAD)
