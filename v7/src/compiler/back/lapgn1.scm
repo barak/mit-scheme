@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 4.9 1990/01/18 22:41:58 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 4.10 1991/05/02 06:10:03 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; LAP Generator: top level
+;;; package: (compiler lap-syntaxer)
 
 (declare (usual-integrations))
 
@@ -58,22 +59,20 @@ MIT in each case. |#
        (or process-constants-block
 	   (lambda (constants-code environment-label free-ref-label n-sections)
 	     (LAP ,@constants-code
-		  ,@(if free-ref-label
-			(generate/quotation-header environment-label
-						   free-ref-label
-						   n-sections)
-			(LAP))
+		  ,@(generate/quotation-header environment-label
+					       (or free-ref-label
+						   environment-label)
+					       n-sections)
 		  ,@(let loop ((remote-links remote-links))
 		      (if (null? remote-links)
 			  (LAP)
 			  (LAP ,@(let ((remote-link (car remote-links)))
-				   (if (vector-ref remote-link 2)
-				       (generate/remote-link
-					(vector-ref remote-link 0)
-					(vector-ref remote-link 1)
-					(vector-ref remote-link 2)
-					(vector-ref remote-link 3))
-				       (LAP)))
+				   (generate/remote-link
+				    (vector-ref remote-link 0)
+				    (vector-ref remote-link 1)
+				    (or (vector-ref remote-link 2)
+					(vector-ref remote-link 1))
+				    (vector-ref remote-link 3)))
 			       ,@(loop (cdr remote-links))))))))))))
 
 (define (cgen-rgraph rgraph)
