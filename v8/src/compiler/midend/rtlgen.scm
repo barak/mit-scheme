@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.50 1996/07/30 19:25:12 adams Exp $
+$Id: rtlgen.scm,v 1.51 1996/07/30 19:52:55 adams Exp $
 
 Copyright (c) 1994-96 Massachusetts Institute of Technology
 
@@ -4577,8 +4577,8 @@ MIT in each case. |#
 	  %COMPILED-CODE-SUPPORT:NONRESTARTABLE-CONTINUATION
 	  COERCE-TO-COMPILED-PROCEDURE
 	  ERROR:BAD-RANGE-ARGUMENT
-	  ERROR:WRONG-NUMBER-OF-ARGUMENTS
-	  ERROR:DATUM-OUT-OF-RANGE)))
+	  ERROR:WRONG-TYPE-ARGUMENT
+	  ERROR:WRONG-TYPE-DATUM)))
 
 (define *rtlgen/omit-internal-interrupt-checks?* #T)
 
