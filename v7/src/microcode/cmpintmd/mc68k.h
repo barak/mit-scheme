@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mc68k.h,v 1.25 1991/03/28 20:07:53 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mc68k.h,v 1.26 1991/05/06 18:09:55 jinx Exp $
 
 Copyright (c) 1989-1991 Massachusetts Institute of Technology
 
@@ -578,6 +578,14 @@ DEFUN_VOID (mc68k_reset_hook)
   SETUP_REGISTER (asm_generic_quotient);		/* 38 */
   SETUP_REGISTER (asm_generic_remainder);		/* 39 */
 #if 0
+  /* We are out of hook space! */
+
+  SETUP_REGISTER (asm_generic_modulo);			/* 40 */
+#endif
+
+  FLUSH_CACHE_INITIALIZE ();
+  FLUSH_I_CACHE_REGION (&Registers[COMPILER_REGBLOCK_N_FIXED],
+			(COMPILER_REGBLOCK_N_HOOKS * COMPILER_HOOK_SIZE));
 
   interface_initialize ();
   return;
@@ -590,12 +598,14 @@ static long closure_chunk = (1024 * CLOSURE_ENTRY_WORDS);
 static long last_chunk_size;
 
 SCHEME_OBJECT *
+DEFUN (allocate_closure, (size), long size)
 {
   long space;
-DEFUN (allocate_closure,
-       (nentries, size),
-       long nentries AND long size)
+  SCHEME_OBJECT *result;
 
+#if (COMPILER_PROCESSOR_TYPE != COMPILER_MC68040_TYPE)
+
+  fprintf (stderr, "\nallocate_closure should not be invoked!\n");
   Microcode_Termination (TERM_COMPILER_DEATH);
 
 #else /* (COMPILER_PROCESSOR_TYPE == COMPILER_MC68040_TYPE) */
@@ -603,69 +613,79 @@ DEFUN (allocate_closure,
   space = ((long) (Registers[REGBLOCK_CLOSURE_SPACE]));
   result = ((SCHEME_OBJECT *) (Registers[REGBLOCK_CLOSURE_FREE]));
 
-  long compare, delta, space;
-  SCHEME_OBJECT *result;
-
-  compare = (size + ((nentries * CLOSURE_ENTRY_WORDS) - 1));
-  delta = (CLOSURE_ENTRY_WORDS
-	   * ((nentries + 1)
-	      + ((size + 1) / CLOSURE_ENTRY_WORDS)));
-
   if (size > space)
   {
     SCHEME_OBJECT *start, *ptr, *eptr;
-  if (compare > space)
+
     /* Clear remaining words from last chunk so that the heap can be scanned
        forward.
        Do not clear if there was no last chunk (ie. CLOSURE_FREE was NULL).
-    if ((compare <= (closure_chunk - 3)) && (!GC_Check (closure_chunk)))
+     */
+
+    if (result != (((SCHEME_OBJECT *) NULL) + space))
+    {
+      start = result;
+      if (space < 0)
+	start -= size;
+      eptr = (result + space);
+      for (ptr = start; ptr < eptr; ptr++)
+	*ptr = SHARP_F;
+
+      /* We can reformat the closures here using last_chunk_size.
+	 The start of the area is (eptr - last_chunk_size), and all
+	 closures are contiguous and have appropriate headers.
+       */
+    }
+
+    if ((size <= closure_chunk) && (!(GC_Check (closure_chunk))))
+    {
+      start = Free;
+      eptr = (start + closure_chunk);
     }
     else
     {
       if (GC_Check (size))
       {
 	if ((Heap_Top - Free) < size)
-      if (GC_Check (compare + 3))
+	{
 	  /* No way to back out -- die. */
-	if ((Heap_Top - Free) < (compare + 3))
+
 	  fprintf (stderr, "\nC_allocate_closure (%d): No space.\n", size);
 	  Microcode_Termination (TERM_NO_SPACE);
-	  fprintf (stderr, "\nC_allocate_closure (%d, %d): No space.\n",
-		   nentries, size);
+	  /* NOTREACHED */
+	}
 	Request_GC (0);
       }
       else if (size <= closure_chunk)
       {
 	Request_GC (0);
-      else if (compare <= (closure_chunk - 3))
+      }
       start = Free;
       eptr = (start + size);
     }
 
-      eptr = ((start + 3) + compare);
+    Free = eptr;
     result = start;
     space = (eptr - start);
     last_chunk_size = space;	/* To be used next time, maybe. */
-    result = (start + 3);
-    space = (eptr - result);
+
+    for (ptr = start; ptr < eptr; ptr++)
+    {
       unsigned short *wptr;
 
-      *ptr = SHARP_F;		/* Allow forward scanning of heap. */
-
-    for (ptr = result; ptr < eptr; ptr += CLOSURE_ENTRY_WORDS)
       wptr = ((unsigned short *) ptr);
       *wptr++ = 0x4eae;			/* JSR n(a6) */
       *wptr = A6_CLOSURE_HOOK_OFFSET;	/* n */
     }
 
-      *wptr++ = A6_CLOSURE_HOOK_OFFSET;	/* n */
+    PUSH_D_CACHE_REGION (start, space);
   }
 
-    PUSH_D_CACHE_REGION (result, space);
+  Registers[REGBLOCK_CLOSURE_FREE] = ((SCHEME_OBJECT) (result + size));
   Registers[REGBLOCK_CLOSURE_SPACE] = ((SCHEME_OBJECT) (space - size));
   return (result);
-  Registers[REGBLOCK_CLOSURE_FREE] = ((SCHEME_OBJECT) (result + delta));
-  Registers[REGBLOCK_CLOSURE_SPACE] = ((SCHEME_OBJECT) (space - delta));
+
+#endif /* (COMPILER_PROCESSOR_TYPE == COMPILER_MC68040_TYPE) */
 }
 
 #endif /* IN_CMPINT_C */

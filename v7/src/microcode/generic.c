@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/generic.c,v 9.35 1991/01/18 01:12:48 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/generic.c,v 9.36 1991/05/06 18:10:38 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -129,3 +129,9 @@ DEFINE_PRIMITIVE ("&*", Prim_multiply, 2, 2, 0)
      INDIRECT_2 (GENERIC_TRAMPOLINE_MULTIPLY)
 DEFINE_PRIMITIVE ("&/", Prim_divide, 2, 2, 0)
      INDIRECT_2 (GENERIC_TRAMPOLINE_DIVIDE)
+DEFINE_PRIMITIVE ("QUOTIENT", Prim_quotient, 2, 2, 0)
+     INDIRECT_2 (GENERIC_TRAMPOLINE_QUOTIENT)
+DEFINE_PRIMITIVE ("REMAINDER", Prim_remainder, 2, 2, 0)
+     INDIRECT_2 (GENERIC_TRAMPOLINE_REMAINDER)
+DEFINE_PRIMITIVE ("MODULO", Prim_modulo, 2, 2, 0)
+     INDIRECT_2 (GENERIC_TRAMPOLINE_MODULO)
