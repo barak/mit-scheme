@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/vector.scm,v 14.4 1989/06/07 19:15:00 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/vector.scm,v 14.5 1989/08/12 08:18:37 cph Rel $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -127,6 +127,17 @@ MIT in each case. |#
 
 (define-integrable (vector-find-previous-element vector item)
   (subvector-find-previous-element vector 0 (vector-length vector) item))
+
+(define (vector-binary-search vector key<? unwrap-key key)
+  (let loop ((start 0) (end (vector-length vector)))
+    (and (< start end)
+	 (let ((midpoint (quotient (+ start end) 2)))
+	   (let ((item (vector-ref vector midpoint)))
+	     (let ((key* (unwrap-key item)))
+	       (cond ((key<? key key*) (loop start midpoint))
+		     ((key<? key* key) (loop (1+ midpoint) end))
+		     (else item))))))))
+
 (define-integrable (vector-first vector) (vector-ref vector 0))
 (define-integrable (vector-second vector) (vector-ref vector 1))
 (define-integrable (vector-third vector) (vector-ref vector 2))
