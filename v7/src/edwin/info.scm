@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: info.scm,v 1.119 1994/10/09 21:59:13 cph Exp $
+;;;	$Id: info.scm,v 1.120 1995/09/28 16:17:13 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -73,10 +73,17 @@ The Scheme code is executed when the node is selected."
   "Specifies a key or button that is used to select Info nodes.
 The value of this variable is either #F, a key, or a mouse button.
 If it is a key or button, menu items and adjacent node names are
-highlighted, and within these highlighted regions the key/button
-is bound to a command that selects the appropriate node."
+highlighted (but see info-selections-highlighted), and within these
+regions the key/button is bound to a command that selects the
+appropriate node."
   #f
   (lambda (object) (or (not object) (comtab-key? object))))
+
+(define-variable info-selections-highlighted
+  "If true, menu and node-name selection regions are highlighted.
+Such selection regions are active only when info-selection-key is set."
+  #t
+  boolean?)
 
 (define-variable info-directory
   "If not false, default directory for Info documentation files.
@@ -690,41 +697,41 @@ The name may be an abbreviation of the reference name."
   (parse-node-name name find-node))
 
 (define (find-node filename nodename)
-  (let ((pathname
-	 (and filename
-	      (let ((pathname
-		     (let ((pathname (->pathname filename)))
-		       (merge-pathnames
-			pathname
-			;; Use Info's default directory,
-			;; unless filename is explicitly self-relative.
-			(if (let ((directory (pathname-directory pathname)))
-			      (and (pair? directory)
-				   (eq? (car directory) 'RELATIVE)
-				   (pair? (cdr directory))
-				   (equal? (cadr directory) ".")))
-			    (buffer-default-directory (current-buffer))
-			    (or (ref-variable info-directory)
-				(edwin-info-directory)))))))
-		(if (file-exists? pathname)
-		    pathname
-		    (let ((pathname*
-			   (pathname-new-name
-			    pathname
-			    (string-downcase (pathname-name pathname)))))
-		      (if (file-exists? pathname*)
-			  pathname*
-			  (editor-error "Info file does not exist: "
-					pathname))))))))
-    (let ((buffer (find-or-create-buffer info-buffer-name)))
+  (let ((buffer (find-or-create-buffer info-buffer-name)))
+    (let ((pathname
+	   (and filename
+		(let ((pathname
+		       (let ((pathname (->pathname filename)))
+			 (merge-pathnames
+			  pathname
+			  ;; Use Info's default directory,
+			  ;; unless filename is explicitly self-relative.
+			  (if (let ((directory (pathname-directory pathname)))
+				(and (pair? directory)
+				     (eq? (car directory) 'RELATIVE)
+				     (pair? (cdr directory))
+				     (equal? (cadr directory) ".")))
+			      (buffer-default-directory (current-buffer))
+			      (or (ref-variable info-directory buffer)
+				  (edwin-info-directory))))))
+		      (group (buffer-group buffer)))
+		  (or (get-pathname-or-alternate group pathname #f)
+		      (let ((s (->namestring pathname)))
+			(or (and (not (string-suffix? ".info" s))
+				 (get-pathname-or-alternate
+				  group
+				  (string-append s ".info")
+				  #f))
+			    (editor-error "Can't find Info file: "
+					  filename))))))))
       (select-buffer buffer)
-      (if (ref-variable info-current-file)
-	  (record-node (ref-variable info-current-file)
-		       (ref-variable info-current-node)
+      (if (ref-variable info-current-file buffer)
+	  (record-node (ref-variable info-current-file buffer)
+		       (ref-variable info-current-node buffer)
 		       (mark-index (current-point))))
       ;; Switch files if necessary.
       (if (and pathname
-	       (not (equal? pathname (ref-variable info-current-file))))
+	       (not (equal? pathname (ref-variable info-current-file buffer))))
 	  (begin
 	    (read-buffer buffer pathname true)
 	    (if (not (eq? (buffer-major-mode buffer) (ref-mode-object info)))
@@ -786,10 +793,13 @@ The name may be an abbreviation of the reference name."
     (set-current-point! point)
     (let ((key (ref-variable info-selection-key point)))
       (if key
-	  (info-enable-selections node key))))
+	  (info-enable-selections node
+				  key
+				  (ref-variable info-selections-highlighted
+						point)))))
   (buffer-not-modified! (mark-buffer point)))
 
-(define (info-enable-selections node key)
+(define (info-enable-selections node key highlight?)
   (let ((comtab
 	 (lambda (command)
 	   (let ((comtab (make-comtab)))
@@ -800,7 +810,7 @@ The name may be an abbreviation of the reference name."
 	     (let ((region (locator node)))
 	       (if region
 		   (begin
-		     (highlight-region region #t)
+		     (if highlight? (highlight-region region #t))
 		     (set-region-local-comtabs! region (comtab command))))))))
       (do-button locate-node-up (ref-command-object info-up))
       (do-button locate-node-previous (ref-command-object info-previous))
@@ -811,7 +821,7 @@ The name may be an abbreviation of the reference name."
 	    (let ((comtabs
 		   (comtab (ref-command-object info-current-menu-item))))
 	      (lambda (group start end)
-		(highlight-subgroup group start end #t)
+		(if highlight? (highlight-subgroup group start end #t))
 		(set-subgroup-local-comtabs! group start end comtabs))))))))
 
 (define (record-node file node point)
