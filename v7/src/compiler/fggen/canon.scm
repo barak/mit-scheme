@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/canon.scm,v 1.6 1989/08/21 19:33:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/canon.scm,v 1.7 1989/09/13 20:44:17 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -455,8 +455,9 @@ ARBITRARY:	The expression may be executed more than once.  It
       (ucode-primitive SCODE-EVAL)
       (list (let ((nexp
 		   (scode/make-directive
+		    (scode/make-quotation exp)
 		    '(COMPILE)
-		    (scode/make-quotation exp)		    original-expression)))
+		    original-expression)))
 	      (if arbitrary?
 		  (scode/make-combination
 		   (scode/make-absolute-reference 'COPY-PROGRAM)

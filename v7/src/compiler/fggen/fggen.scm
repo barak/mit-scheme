@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.19 1989/08/21 19:34:01 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.20 1989/09/13 20:44:32 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -717,9 +717,11 @@ MIT in each case. |#
 	    (if (not (scode/quotation? expression))
 		(error "Bad compile directive" comment))
 	    (continue/rvalue-constant block continuation
-	     (make-constant
-	      (compile-recursively
-	       (scode/quotation-expression expression false)))))	   ((COMPILE-PROCEDURE)
+				      (make-constant
+				       (compile-recursively
+					(scode/quotation-expression expression)
+					false))))
+	   ((COMPILE-PROCEDURE)
 	    (if (not (scode/lambda? expression))
 		(error "Bad compile-procedure directive" comment))
 	    (continue/rvalue-constant block continuation
