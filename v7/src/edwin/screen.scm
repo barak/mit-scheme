@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: screen.scm,v 1.111 1996/05/14 23:46:07 cph Exp $
+;;;	$Id: screen.scm,v 1.112 1996/05/15 00:04:34 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -293,7 +293,12 @@
       ((screen-debug-trace screen) 'screen screen 'move-cursor x y))
   (let ((new-matrix (screen-new-matrix screen)))
     (set-matrix-cursor-x! new-matrix x)
-    (set-matrix-cursor-y! new-matrix y)))
+    (set-matrix-cursor-y! new-matrix y))
+  ;; Kludge: forget current position of cursor in order to force it to
+  ;; move.  Works around side-effects in terminal that move cursor.
+  (let ((current-matrix (screen-current-matrix screen)))
+    (set-matrix-cursor-x! current-matrix #f)
+    (set-matrix-cursor-y! current-matrix #f)))
 
 (define (screen-direct-output-move-cursor screen x y)
   (if (screen-debug-trace screen)
