@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.20 1989/12/05 20:15:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.21 1989/12/05 21:01:21 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -139,7 +139,7 @@ MIT in each case. |#
 				,reg:lexpr-primitive-arity)
 			   (MOV L (@PCR ,(constant->label primitive)) (D 1))
 			   ,@(invoke-interface
-			      code:compiler-primitive-lexr-apply)))
+			      code:compiler-primitive-lexpr-apply)))
 		     (else
 		      ;; Unknown primitive arity.  Go through apply.
 		      (LAP ,(load-dnl frame-size 2)
