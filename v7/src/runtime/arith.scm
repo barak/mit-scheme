@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.33 1995/11/03 22:44:19 adams Exp $
+$Id: arith.scm,v 1.34 1996/04/24 03:03:16 cph Exp $
 
-Copyright (c) 1989-94 Massachusetts Institute of Technology
+Copyright (c) 1989-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -51,9 +51,6 @@ MIT in each case. |#
 
 (define-integrable (int:bignum? object)
   (object-type? (ucode-type big-fixnum) object))
-
-(define-integrable (int:->flonum n)
-  (integer->flonum n #b10))
 
 (define-integrable (make-ratnum n d)
   (system-pair-cons (ucode-type ratnum) n d))

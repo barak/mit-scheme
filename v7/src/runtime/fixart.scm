@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: fixart.scm,v 1.1 1994/12/09 02:55:41 adams Exp $
+$Id: fixart.scm,v 1.2 1996/04/24 03:03:00 cph Exp $
 
-Copyright (c) 1988-1994 Massachusetts Institute of Technology
+Copyright (c) 1988-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -129,3 +129,6 @@ MIT in each case. |#
 
 (define-integrable (int:>= x y)
   (not (int:< x y)))
+
+(define-integrable (int:->flonum n)
+  ((ucode-primitive integer->flonum 2) n #b10))
