@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.71 1993/09/12 04:40:42 gjr Exp $
+$Id: cmpint.c,v 1.72 1993/09/12 05:18:38 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -758,7 +758,7 @@ DEFUN (comutil_return_to_interpreter,
 
 #if (COMPILER_PROCESSOR_TYPE != COMPILER_I386_TYPE)
 
-#define RETURN_FROM_PRIMITIVE()					\
+#define INVOKE_RETURN_ADDRESS()					\
   RETURN_TO_SCHEME (OBJECT_ADDRESS (STACK_POP ()))
 
 #else /* i386 */
@@ -766,7 +766,7 @@ DEFUN (comutil_return_to_interpreter,
 static utility_result
   EXFUN (compiler_interrupt_common, (SCHEME_ADDR, SCHEME_OBJECT));
 
-#define RETURN_FROM_PRIMITIVE() do					\
+#define INVOKE_RETURN_ADDRESS() do					\
 {									\
   if (((long) Free) >= ((long) (Registers[REGBLOCK_MEMTOP])))		\
     return (compiler_interrupt_common (0, Val));			\
@@ -795,7 +795,7 @@ DEFUN (comutil_primitive_apply,
 { 
   PRIMITIVE_APPLY (Val, primitive);
   POP_PRIMITIVE_FRAME (PRIMITIVE_ARITY (primitive));
-  RETURN_FROM_PRIMITIVE ();
+  INVOKE_RETURN_ADDRESS ();
 }
 
 /*
@@ -814,7 +814,7 @@ DEFUN (comutil_primitive_lexpr_apply,
 {
   PRIMITIVE_APPLY (Val, primitive);
   POP_PRIMITIVE_FRAME (((long) Regs[REGBLOCK_LEXPR_ACTUALS]));
-  RETURN_FROM_PRIMITIVE ();
+  INVOKE_RETURN_ADDRESS ();
 }
 
 /*
@@ -2928,14 +2928,14 @@ DEFUN (comutil_reflect_to_interface,
     case REFLECT_CODE_RESTORE_INTERRUPT_MASK:
     {
       SET_INTERRUPT_MASK (OBJECT_DATUM (STACK_POP ()));
-      RETURN_TO_SCHEME (OBJECT_ADDRESS (STACK_POP ()));
+      INVOKE_RETURN_ADDRESS ();
     }
 
     case REFLECT_CODE_STACK_MARKER:
     {
       STACK_POP ();		/* marker1 */
       STACK_POP ();		/* marker2 */
-      RETURN_TO_SCHEME (OBJECT_ADDRESS (STACK_POP ()));
+      INVOKE_RETURN_ADDRESS ();
     }
 
     case REFLECT_CODE_CC_BKPT:
