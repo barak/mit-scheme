@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.4 1995/01/11 21:58:54 ssmith Exp $
+$Id: rules3.scm,v 1.5 1995/01/11 22:02:45 ssmith Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -1001,12 +1001,11 @@ MIT in each case. |#
 				     addr)))
 	   (CMP B (@RO B ,addr -3) 0)
 	   ;; This is ugly - oh well
-	   (JNE (@PCR ,label)
+	   (JNE (@PCR ,label))
 	   (JMP (@R ,addr))
 	   (LABEL ,label)
 	   ,@(copy obj* regnum:first-arg)
 	   ,@(%invocation:apply frame-size)))))
-
 
 
 ;;; Local Variables: ***
