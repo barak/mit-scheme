@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.139 1992/04/22 21:10:19 mhwu Exp $
+;;;	$Id: modefs.scm,v 1.140 1992/09/30 17:49:54 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -63,12 +63,6 @@ Most other major modes are defined by comparison to this one.")
 
 (define initial-buffer-name
   "*scheme*")
-
-(define-variable file-type-to-major-mode
-  "Specifies the major mode for new buffers based on file type.
-This is an alist, the cars of which are pathname types,
-and the cdrs of which are major modes."
-  (os/file-type-to-major-mode))
 
 (define-key 'fundamental char-set:graphic 'self-insert-command)
 (define-key 'fundamental char-set:numeric 'auto-digit-argument)

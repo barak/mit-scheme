@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.108 1992/04/17 03:45:28 jinx Exp $
+;;;	$Id: fileio.scm,v 1.109 1992/09/30 17:50:04 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1992 Massachusetts Institute of Technology
 ;;;
@@ -159,36 +159,19 @@ Each procedure is called with three arguments:
   (initialize-buffer-modes! buffer)
   (initialize-buffer-local-variables! buffer find-file?))
 
-(define initialize-buffer-modes!)
-(let ()
-
-(set! initialize-buffer-modes!
-(named-lambda (initialize-buffer-modes! buffer)
-  (let ((mode
-	 (or (let ((mode-name (parse-buffer-mode-header buffer)))
-	       (and mode-name
-		    (let ((mode (string-table-get editor-modes mode-name)))
-		      (and mode
-			   (mode-major? mode)
-			   mode))))
-	     (filename-default-mode buffer))))
-    (set-buffer-major-mode! buffer
-			    (or mode (ref-variable editor-default-mode))))))
-
-(define (filename-default-mode buffer)
-  (let ((entry
-	 (let ((pathname (buffer-pathname buffer)))
-	   (and pathname
-		(let ((type (os/pathname-type-for-mode pathname)))
-		  (and (string? type)
-		       (assoc-string-ci
-			type
-			(ref-variable file-type-to-major-mode))))))))
-    (and entry
-	 (->mode (cdr entry)))))
-
-(define assoc-string-ci
-  (association-procedure string-ci=? car))
+(define (initialize-buffer-modes! buffer)
+  (set-buffer-major-mode!
+   buffer
+   (or (let ((mode-name (parse-buffer-mode-header buffer)))
+	 (and mode-name
+	      (let ((mode (string-table-get editor-modes mode-name)))
+		(and mode
+		     (mode-major? mode)
+		     mode))))
+       (let ((pathname (buffer-pathname buffer)))
+	 (and pathname
+	      (pathname-default-mode pathname buffer)))
+       (ref-variable editor-default-mode buffer))))
 
 (define (parse-buffer-mode-header buffer)
   (let ((start (buffer-start buffer)))
@@ -207,7 +190,46 @@ Each procedure is called with three arguments:
 			       (re-match-start 0)
 			       end)))))))))))
 
-)
+(define (pathname-default-mode pathname buffer)
+  (or (let ((filename (->namestring pathname)))
+	(let loop ((types (ref-variable auto-mode-alist buffer)))
+	  (and (not (null? types))
+	       (if (re-match-string-forward (caar types) false false filename)
+		   (->mode (cdar types))
+		   (loop (cdr types))))))
+      (let ((type (os/pathname-type-for-mode pathname)))
+	(and (string? type)
+	     (let loop ((types (ref-variable file-type-to-major-mode buffer)))
+	       (and (not (null? types))
+		    (if (string-ci=? type (caar types))
+			(->mode (cdar types))
+			(loop (cdr types)))))))))
+
+(define (string->mode-alist? object)
+  (and (alist? object)
+       (for-all? object
+	 (lambda (association)
+	   (and (string? (car association))
+		(->mode? (cdr association)))))))
+
+(define (->mode? object)
+  (or (mode? object)
+      (symbol? object)
+      (string? object)))
+
+(define-variable auto-mode-alist
+  "Alist of filename patterns vs corresponding major modes.
+Each element looks like (REGEXP . MODE).
+Visiting a file whose name matches REGEXP causes MODE to be used."
+  '()
+  string->mode-alist?)
+
+(define-variable file-type-to-major-mode
+  "Specifies the major mode for new buffers based on file type.
+This is an alist, the cars of which are pathname types,
+and the cdrs of which are major modes."
+  (os/file-type-to-major-mode)
+  string->mode-alist?)
 
 ;;;; Local Variable Initialization
 
