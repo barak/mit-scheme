@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sicp/graphics.scm,v 1.3 1991/04/12 00:12:11 arthur Exp $
+$Id: graphics.scm,v 1.4 1997/12/11 02:51:42 adams Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-1997 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,7 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Student graphics Interface
-;;;; implemented for X Windows
+;;;; implemented for X Windows/ Win32 / OS2
 
 (declare (usual-integrations))
 
@@ -78,7 +78,9 @@ MIT in each case. |#
 
     (set! graphics-available?
 	  (lambda ()
-	    (graphics-type-available? x-graphics-device-type)))
+	    (or (graphics-type-available? 'X)
+		(graphics-type-available? 'WIN32)
+		(graphics-type-available? 'OS/2))))
 
     (set! graphics-text
 	  (lambda (text x y)
@@ -88,10 +90,15 @@ MIT in each case. |#
 
     (set! init-graphics
 	  (lambda ()
-	    (let ((display (x-open-display #f)))
-	      (set! graphics-device
-		    (make-graphics-device x-graphics-device-type
-					  display "512x388" #f)))
+	    (set! graphics-device
+		  (cond ((graphics-type-available? 'X)
+			 (make-graphics-device 'X #F "512x388"))
+			((graphics-type-available? 'WIN32)
+			 (make-graphics-device 'WIN32 512 388))
+			((graphics-type-available? 'OS/2)
+			 (make-graphics-device 'OS/2 512 388))
+			(else
+			 (error "Graphics is not available"))))
 	    (graphics-set-coordinate-limits graphics-device -256 -195 255 194)
 	    (graphics-move-cursor graphics-device 0 0)))
 
