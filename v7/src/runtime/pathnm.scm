@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: pathnm.scm,v 14.30 1995/01/31 19:34:47 cph Exp $
+$Id: pathnm.scm,v 14.31 1996/02/29 22:14:18 cph Exp $
 
-Copyright (c) 1988-95 Massachusetts Institute of Technology
+Copyright (c) 1988-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -381,7 +381,7 @@ these rules:
 	 (if (default-object? default-version)
 	     'NEWEST
 	     default-version)))))
-
+
 (define (enough-pathname pathname #!optional defaults)
   (let* ((defaults
 	   (if (and (not (default-object? defaults)) defaults)
@@ -408,7 +408,16 @@ these rules:
 	     (default (%pathname-directory defaults)))
 	 (if (or (not directory)
 		 (symbol? directory)
-		 (not (eq? (car directory) (car default))))
+		 (not (eq? (car directory) (car default)))
+		 ;; Detect the case where directory starts with "//"
+		 ;; and default does not, or vice versa.  This is a
+		 ;; kludge to make network devices work properly in
+		 ;; DOS-like pathnames.
+		 (and (eq? (car directory) 'ABSOLUTE)
+		      (not (boolean=? (and (pair? (cdr directory))
+					   (equal? (cadr directory) ""))
+				      (and (pair? (cdr default))
+					   (equal? (cadr default) ""))))))
 	     directory
 	     (let loop
 		 ((components (cdr directory)) (components* (cdr default)))
