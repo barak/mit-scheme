@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.6 1987/03/19 00:47:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.7 1987/03/20 05:25:58 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -111,36 +111,86 @@ MIT in each case. |#
 		    (setup-stack-frame procedure)))
 
 (define (setup-stack-frame procedure)
-  (define (loop variables pushes)
-    (if (null? variables)
-	(scfg*->scfg! pushes)
-	(loop (cdr variables)
-	      (cons (rtl:make-push
-		     (if (variable-assigned? (car variables))
-			 (rtl:make-cell-cons (rtl:make-unassigned))
-			 (rtl:make-unassigned)))
-		    pushes))))
+  (let ((block (procedure-block procedure)))
+    (define (cellify-variables variables)
+      (scfg*->scfg! (map cellify-variable variables)))
 
-  (define (cellify-variables variables)
-    (scfg*->scfg! (map cellify-variable variables)))
+    (define (cellify-variable variable)
+      (if (variable-in-cell? variable)
+	  (let ((locative
+		 (stack-locative-offset register:stack-pointer
+					(variable-offset block variable))))
+	    (rtl:make-assignment
+	     locative
+	     (rtl:make-cell-cons (rtl:make-fetch locative))))
+	  (make-null-cfg)))
 
-  (define (cellify-variable variable)
-    (if (variable-assigned? variable)
-	(let ((locative
-	       (stack-locative-offset
-		register:stack-pointer
-		(variable-offset (procedure-block procedure) variable))))
-	  (rtl:make-assignment locative
-			       (rtl:make-cell-cons (rtl:make-fetch locative))))
-	(make-null-cfg)))
+    (define (close-letrec-procedures names values)
+      (scfg*->scfg!
+       (map (lambda (name value)
+	      (if (and (procedure? value)
+		       (closure-procedure? value))
+		  (letrec-close block name value)
+		  (make-null-cfg)))
+	    names values)))
 
-  (scfg-append! (loop (procedure-auxiliary procedure) '())
-		(cellify-variables (procedure-required procedure))
-		(cellify-variables (procedure-optional procedure))
-		(let ((rest (procedure-rest procedure)))
-		  (if rest
-		      (cellify-variable rest)
-		      (make-null-cfg)))))
+    (let ((names (procedure-names procedure))
+	  (values (procedure-values procedure)))
+      (scfg-append! (setup-bindings names values '())
+		    (setup-auxiliary (procedure-auxiliary procedure) '())
+		    (cellify-variables (procedure-required procedure))
+		    (cellify-variables (procedure-optional procedure))
+		    (let ((rest (procedure-rest procedure)))
+		      (if rest
+			  (cellify-variable rest)
+			  (make-null-cfg)))
+		    (close-letrec-procedures names values)))))
+
+(define (setup-bindings names values pushes)
+  (if (null? names)
+      (scfg*->scfg! pushes)
+      (setup-bindings (cdr names)
+		      (cdr values)
+		      (cons (make-auxiliary-push (car names)
+						 (letrec-value (car values)))
+			    pushes))))
+
+(define (letrec-value value)
+  (cond ((constant? value)
+	 (rtl:make-constant (constant-value value)))
+	((procedure? value)
+	 (cond ((closure-procedure? value)
+		(make-closure-cons value (rtl:make-constant '())))
+	       ((ic-procedure? value)
+		(make-ic-cons value))
+	       (else
+		(error "Bad letrec procedure value" value))))
+	(else
+	 (error "Unknown letrec binding value" value))))
+
+(define (letrec-close block variable value)
+  (make-closure-environment value 0 scfg*scfg->scfg!
+    (lambda (environment)
+      (rtl:make-assignment
+       (closure-procedure-environment-locative
+	(find-variable block variable 0
+	  (lambda (locative) locative)
+	  (lambda (nearest-ic-locative name)
+	    (error "Missing closure variable" variable))))
+       environment))))
+
+(define (setup-auxiliary variables pushes)
+  (if (null? variables)
+      (scfg*->scfg! pushes)
+      (setup-auxiliary (cdr variables)
+		       (cons (make-auxiliary-push (car variables)
+						  (rtl:make-unassigned))
+			     pushes))))
+
+(define (make-auxiliary-push variable value)
+  (rtl:make-push (if (variable-in-cell? variable)
+		     (rtl:make-cell-cons value)
+		     value)))
 
 ;;;; Statements
 
@@ -303,8 +353,7 @@ MIT in each case. |#
 (define (constant->expression constant offset scfg-append! receiver)
   (receiver (rtl:make-constant (constant-value constant))))
 
-(define-rvalue->expression constant-tag
-  constant->expression)
+(define-rvalue->expression constant-tag constant->expression)
 
 (define-rvalue->expression block-tag
   (lambda (block offset scfg-append! receiver)
@@ -330,19 +379,17 @@ MIT in each case. |#
 			 environment
 			 (intern-scode-variable! block name))
 			(receiver (rtl:interpreter-call-result:lookup)))))))
-
+
 (define-rvalue->expression temporary-tag
   (lambda (temporary offset scfg-append! receiver)
     (if (vnode-known-constant? temporary)
 	(constant->expression (vnode-known-value temporary) offset scfg-append!
 			      receiver)
 	(let ((type (temporary-type temporary)))
-	  (cond ((not type)
-		 (receiver (rtl:make-fetch temporary)))
-		((eq? type 'VALUE)
-		 (receiver (rtl:make-fetch register:value)))
+	  (cond ((not type) (receiver (rtl:make-fetch temporary)))
+		((eq? type 'VALUE) (receiver (rtl:make-fetch register:value)))
 		(else (error "Illegal temporary reference" type)))))))
-
+
 (define-rvalue->expression access-tag
   (lambda (*access offset scfg-append! receiver)
     (rvalue->expression (access-environment *access) offset scfg-append!
@@ -353,16 +400,16 @@ MIT in each case. |#
 
 (define-rvalue->expression procedure-tag
   (lambda (procedure offset scfg-append! receiver)
-    ((cond ((ic-procedure? procedure) rvalue->expression:ic-procedure)
-	   ((closure-procedure? procedure)
-	    rvalue->expression:closure-procedure)
-	   ((stack-procedure? procedure)
-	    (error "RVALUE->EXPRESSION: Stack procedure reference" procedure))
-	   (else (error "Unknown procedure type" procedure)))
-     procedure offset scfg-append! receiver)))
+    (cond ((ic-procedure? procedure) (receiver (make-ic-cons procedure)))
+	  ((closure-procedure? procedure)
+	   (make-closure-environment procedure offset scfg-append!
+	     (lambda (environment)
+	       (receiver (make-closure-cons procedure environment)))))
+	  ((stack-procedure? procedure)
+	   (error "RVALUE->EXPRESSION: Stack procedure reference" procedure))
+	  (else (error "Unknown procedure type" procedure)))))
 
-(define (rvalue->expression:ic-procedure procedure offset scfg-append!
-					 receiver)
+(define (make-ic-cons procedure)
   ;; IC procedures have their entry points linked into their headers
   ;; at load time by the linker.
   (let ((header
@@ -371,45 +418,37 @@ MIT in each case. |#
 			    (map variable-name (procedure-optional procedure))
 			    (let ((rest (procedure-rest procedure)))
 			      (and rest (variable-name rest)))
-			    (map variable-name (procedure-auxiliary procedure))
+			    (map variable-name
+				 (append (procedure-auxiliary procedure)
+					 (procedure-names procedure)))
 			    '()
 			    false)))
     (set! *ic-procedure-headers*
 	  (cons (cons procedure header)
 		*ic-procedure-headers*))
-    (receiver (rtl:make-typed-cons:pair
-	       (rtl:make-constant (scode/procedure-type-code header))
-	       (rtl:make-constant header)
-	       (rtl:make-fetch register:environment)))))
+    (rtl:make-typed-cons:pair
+     (rtl:make-constant (scode/procedure-type-code header))
+     (rtl:make-constant header)
+     ;; Is this right if the procedure is being closed
+     ;; inside another IC procedure?
+     (rtl:make-fetch register:environment))))
 
-(define (rvalue->expression:closure-procedure procedure offset scfg-append!
-					      receiver)
+(define (make-closure-environment procedure offset scfg-append! receiver)
   (let ((block (block-parent (procedure-block procedure))))
-
-    (define (finish environment)
-      (receiver (rtl:make-typed-cons:pair
-		 (rtl:make-constant type-code:compiled-procedure)
-		 (rtl:make-entry:procedure procedure)
-		 environment)))
-
-    (define (ic-locative closure-block block)
+    (define (ic-locative closure-block block offset)
       (let ((loser
 	     (lambda (locative)
 	       (error "Closure parent not IC block"))))
-	(find-block closure-block block offset
-	  loser
-	  loser
-	  (lambda (locative nearest-ic-locative)
-	    locative))))
-
+	(find-block closure-block block offset loser loser
+	  (lambda (locative nearest-ic-locative) locative))))
     (cond ((not block)
-	   (finish (rtl:make-constant false)))
+	   (receiver (rtl:make-constant false)))
 	  ((ic-block? block)
-	   (finish
+	   (receiver
 	    (let ((closure-block (procedure-closure-block procedure)))
 	      (if (ic-block? closure-block)
 		  (rtl:make-fetch register:environment)
-		  (ic-locative closure-block block)))))
+		  (ic-locative closure-block block offset)))))
 	  ((closure-block? block)
 	   (let ((closure-block (procedure-closure-block procedure)))
 	     (define (loop variables n receiver)
@@ -430,7 +469,7 @@ MIT in each case. |#
 			      (reverse!
 			       (cons (rtl:make-interpreter-call:enclose n)
 				     pushes)))
-			     (finish (rtl:interpreter-call-result:enclose))))
+			     (receiver (rtl:interpreter-call-result:enclose))))
 
 	     (loop (block-bound-variables block) 0
 	       (lambda (offset n pushes)
@@ -438,7 +477,13 @@ MIT in each case. |#
 		   (if parent
 		       (make-frame (1+ n)
 				   (cons (rtl:make-push
-					  (ic-locative closure-block parent))
+					  (ic-locative closure-block parent
+						       offset))
 					 pushes))
 		       (make-frame n pushes)))))))
+	  (else (error "Unknown block type" block)))))
+
+(define (make-closure-cons procedure environment)
+  (rtl:make-typed-cons:pair (rtl:make-constant type-code:compiled-procedure)
+			    (rtl:make-entry:procedure procedure)
   "node rtl arguments")
