@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: oscond.h,v 1.12 1992/09/24 01:30:06 cph Exp $
+$Id: oscond.h,v 1.13 1993/02/11 02:29:29 adams Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
@@ -110,7 +110,7 @@ MIT in each case. */
 
 #endif /* __hpux */
 #endif /* _HPUX */
-  
+
 #ifdef _IRIX4
 #define _POSIX
 #define _SYSV3
@@ -163,15 +163,28 @@ MIT in each case. */
 
 #if defined(_BSD) || defined(_SYSV) || defined(_PIXEL)
 #  define _UNIX
-#  ifndef unix
-#    define unix
-#  endif
 #else
 #  ifdef _DOS386
 #    define _DOS
 #  else
-#    include "error: unknown unix system -- you must add customizations"
+#    if defined(WINNT) && defined(i386)
+#      define _NT386
+#      define _NT386_VERSION 0
+#      ifdef CL386
+#        define NT386CL
+#      endif
+#    else
+#      include "error: unknown unix system -- you must add customizations"
+#    endif /* NT386 */
 #  endif /* _DOS386 */
 #endif /* _BSD || _SYSV || _PIXEL */
+
+/* SRA:  WinNT macros.  (one day there will be MIPS and Alpha versions?)
+  WINNT: any windows NT system
+  i386:  i386 processor
+  CL386: using Microsoft's compiler (done from makefile)
+  _NT386: WINNT && i386
+  NT386CL: _NT386 && CL386
+*/
 
 #endif /* SCM_OSCOND_H */
