@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.1 2000/12/21 18:12:15 cph Exp $
+# $Id: Makefile.in,v 1.2 2000/12/25 05:35:49 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -84,8 +84,10 @@ install:
 	@for FN in $(EDOPTS); do \
 	    echo "$(INSTALL_DATA) $${FN}.com $(DESTDIR)$(EODIR)/.";\
 	    $(INSTALL_DATA) $${FN}.com $(DESTDIR)$(EODIR)/.;\
-	    echo "( cd $(DESTDIR)$(EODIR); $(LN_S) ../../SRC/edwin/$${FN}.bci . )";\
-	    ( cd $(DESTDIR)$(EODIR); $(LN_S) ../../SRC/edwin/$${FN}.bci . );\
+	done
+	@for FN in $(EDOPTS); do \
+	    echo "( cd $(DESTDIR)$(EODIR); rm -f $${FN}.bci; $(LN_S) ../../SRC/edwin/$${FN}.bci . )";\
+	    ( cd $(DESTDIR)$(EODIR); rm -f $${FN}.bci; $(LN_S) ../../SRC/edwin/$${FN}.bci . );\
 	done
 
 .PHONY: all mostlyclean clean distclean maintainer-clean tags TAGS install
