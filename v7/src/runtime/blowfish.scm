@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: blowfish.scm,v 1.16 1999/08/14 03:40:26 cph Exp $
+$Id: blowfish.scm,v 1.17 1999/08/14 03:41:01 cph Exp $
 
 Copyright (c) 1997, 1999 Massachusetts Institute of Technology
 
@@ -124,13 +124,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
        (string-fill! input-buffer #\NUL)
        (string-fill! output-buffer #\NUL)))))
 
-(define (write-blowfish-file-header port)
-  (write-string blowfish-file-header-v2 port)
-  (newline port)
-  (let ((init-vector (compute-blowfish-init-vector)))
-    (write-string init-vector port)
-    init-vector))
-
 (define (compute-blowfish-init-vector)
   ;; This init vector includes a timestamp with a resolution of
   ;; milliseconds, plus 20 random bits.  This should make it very
@@ -145,6 +138,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	((fix:= 8 i))
       (vector-8b-set! iv i (remainder t #x100)))
     iv))
+
+(define (write-blowfish-file-header port)
+  (write-string blowfish-file-header-v2 port)
+  (newline port)
+  (let ((init-vector (compute-blowfish-init-vector)))
+    (write-string init-vector port)
+    init-vector))
 
 (define (read-blowfish-file-header port)
   (let ((line (read-line port)))
