@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Id: i386.m4,v 1.29 1993/06/24 08:05:20 gjr Exp $
+###	$Id: i386.m4,v 1.30 1993/08/21 04:57:15 gjr Exp $
 ###
 ###	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ###
@@ -296,20 +296,6 @@ use_external_data(Free)
 use_external_data(Ext_Stack_Pointer)
 use_external_data(utility_table)
 
-IFDOS(`define_data(C_Stack_Segment_Selector)
-allocate_word(C_Stack_Segment_Selector)
-define_data(Scheme_Stack_Segment_Selector)
-allocate_word(Scheme_Stack_Segment_Selector)')
-
-define_data(C_Stack_Pointer)
-allocate_longword(C_Stack_Pointer)
-
-define_data(C_Frame_Pointer)
-allocate_longword(C_Frame_Pointer)
-
-define_data(i387_presence)
-allocate_longword(i387_presence)
-
 ifdef(`WINNT',
 `	extrn _RegistersPtr:dword',
 `ifdef(`DOS',
@@ -318,6 +304,40 @@ ifdef(`WINNT',
 allocate_space(Regstart,128)
 define_data(Registers)
 allocate_space(Registers,eval(REGBLOCK_SIZE_IN_OBJECTS*4))')')
+
+ifdef(`WINNT',
+`	extrn _winnt_address_delta:dword')
+
+define_data(i387_presence)
+allocate_longword(i387_presence)
+
+define_data(C_Stack_Pointer)
+allocate_longword(C_Stack_Pointer)
+
+define_data(C_Frame_Pointer)
+allocate_longword(C_Frame_Pointer)
+
+ifdef(`WINNT',`define_data(Scheme_Transfer_Address)
+allocate_longword(Scheme_Transfer_Address)')
+
+ifdef(`WINNT',`define_data(Scheme_Code_Segment_Selector)
+allocate_word(Scheme_Code_Segment_Selector)
+define_data(Scheme_Data_Segment_Selector)
+allocate_word(Scheme_Data_Segment_Selector)
+define_data(Scheme_Stack_Segment_Selector)
+allocate_word(Scheme_Stack_Segment_Selector)
+define_data(C_Code_Segment_Selector)
+allocate_word(C_Code_Segment_Selector)
+define_data(C_Data_Segment_Selector)
+allocate_word(C_Data_Segment_Selector)
+define_data(C_Extra_Segment_Selector)
+allocate_word(C_Extra_Segment_Selector)
+define_data(C_Stack_Segment_Selector)
+allocate_word(C_Stack_Segment_Selector)',
+`IFDOS(`define_data(C_Stack_Segment_Selector)
+allocate_word(C_Stack_Segment_Selector)
+define_data(Scheme_Stack_Segment_Selector)
+allocate_word(Scheme_Stack_Segment_Selector)')')
 
 DECLARE_CODE_SEGMENT()
 declare_alignment(2)
@@ -326,14 +346,31 @@ define_c_label(i386_interface_initialize)
 	OP(push,l)	REG(ebp)
 	OP(mov,l)	TW(REG(esp),REG(ebp))
 
-							# Initialize stack
-							# selectors
+							# Initialize selectors
+ifdef(`WINNT',
+`	lea	eax,cross_segment_transfer_point
+	mov	_Scheme_Transfer_Address,eax
+
+	mov	_C_Code_Segment_Selector,cs
+	mov	ax,_Scheme_Code_Segment_Selector
+	cmp	ax,0
+	jne	skip_code_assignment
+	mov	_Scheme_Code_Segment_Selector,cs
+skip_code_assignment:
+
+	mov	_C_Data_Segment_Selector,ds
+	mov	ax,_Scheme_Data_Segment_Selector
+	cmp	ax,0
+	jne	skip_data_assignment
+	mov	_Scheme_Data_Segment_Selector,ds
+skip_data_assignment:')
+
 IFDOS(`	OP(mov,w)	TW(REG(ss),EDR(C_Stack_Segment_Selector))
 	OP(mov,w)	TW(EDR(Scheme_Stack_Segment_Selector),REG(ax))
 	OP(cmp,w)	TW(IMM(0),REG(ax))
-	jne		skip_assignment
+	jne		skip_stack_assignment
 	OP(mov,w)	TW(REG(ds),EDR(Scheme_Stack_Segment_Selector))
-skip_assignment:')
+skip_stack_assignment:')
 
 	OP(xor,l)	TW(REG(eax),REG(eax))		# No 387 available
 
@@ -378,9 +415,11 @@ define_c_label(C_to_interface)
 							# Preserve stack ptr
 	OP(mov,l)	TW(REG(esp),EDR(C_Stack_Pointer))
 							# Register block = %esi
+							# Scheme offset in NT
 
 	ifdef(`WINNT',
-	`mov	esi,dword ptr _RegistersPtr',	
+	`mov	esi,dword ptr _RegistersPtr
+	sub	esi,_winnt_address_delta',	
 	`OP(lea,l)	TW(ABS(EDR(Registers)),regs)')
 	jmp	external_code_reference(interface_to_scheme)
 
@@ -397,7 +436,41 @@ define_debugging_label(scheme_to_interface_call)
 
 define_c_label(asm_scheme_to_interface)
 define_debugging_label(scheme_to_interface)
-	OP(mov,l)	TW(REG(esp),EDR(Ext_Stack_Pointer))
+ifdef(`WINNT',
+`	push	dword ptr 36[esi]			; 4th utility arg
+	push	eax					; Save utility index
+
+	mov	ax,es					; C ds
+	mov	ds,ax
+
+	mov	ax,_C_Extra_Segment_Selector		; C es
+	mov	es,ax
+	add	edi,_winnt_address_delta		; Map Free to C data space
+	mov	_Free,edi
+
+	mov	eax,esp					; Map SP to C data space
+	add	eax,_winnt_address_delta
+	mov	_Ext_Stack_Pointer,eax
+
+	mov	ss,_C_Stack_Segment_Selector		; Switch stack segment
+	mov	esp,_C_Stack_Pointer
+	mov	ebp,_C_Frame_Pointer
+
+	xor	eax,eax
+	mov	ax,_C_Code_Segment_Selector
+	push	eax
+	push	_Scheme_Transfer_Address
+	db	0cbh					; retf
+
+cross_segment_transfer_point:
+
+	mov	eax,_Ext_Stack_Pointer
+	push	dword ptr 4[eax]			; 4th utility arg
+	add	_Ext_Stack_Pointer,8
+	mov	eax, dword ptr [eax]			; utility index
+',
+
+`	OP(mov,l)	TW(REG(esp),EDR(Ext_Stack_Pointer))
 	OP(mov,l)	TW(rfree,EDR(Free))
 
 IFDOS(`	OP(mov,w)	TW(EDR(C_Stack_Segment_Selector),REG(ss))')	# Swap stack segments
@@ -405,6 +478,7 @@ IFDOS(`	OP(mov,w)	TW(EDR(C_Stack_Segment_Selector),REG(ss))')	# Swap stack segme
 	OP(mov,l)	TW(EDR(C_Stack_Pointer),REG(esp))
 	OP(mov,l)	TW(EDR(C_Frame_Pointer),REG(ebp))
 	OP(push,l)	LOF(REGBLOCK_UTILITY_ARG4(),regs) # Utility args
+')
 	OP(push,l)	REG(ebx)
 	OP(push,l)	REG(edx)
 	OP(push,l)	REG(ecx)
@@ -424,7 +498,40 @@ define_debugging_label(scheme_to_interface_return)
 	jmp	IJMP(REG(eax))				# Invoke handler
 
 define_c_label(interface_to_scheme)
-	OP(mov,l)	TW(EDR(Free),rfree)		# Free pointer = %edi
+ifdef(`WINNT',
+`	mov	edi,_Free				; Free pointer = %edi
+	sub	edi,_winnt_address_delta		; as a scheme offset
+
+	mov	ebp,67108863				; pointer mask #x03ffffff
+
+	mov	eax,_Ext_Stack_Pointer			; Switch stacks
+	sub	eax,_winnt_address_delta
+	mov	ss,_Scheme_Stack_Segment_Selector
+	mov	esp,eax
+				
+	sub	edx,_winnt_address_delta		; Entry point to new space
+	xor	ecx,ecx					; Setup cross-segment jump
+	mov	cx,_Scheme_Code_Segment_Selector
+
+	mov	ax,es					; Store old es
+	mov	_C_Extra_Segment_Selector,ax
+
+	mov	ax,ds					; Store C ds in es,
+	mov	es,ax					;  unused by Scheme.
+	mov	ax,_Scheme_Data_Segment_Selector	; Switch data segments
+	mov	ds,ax
+							
+	push	ecx
+	push	edx
+
+	mov	eax,dword ptr 8[esi]			; Value/dynamic link
+	mov	ecx,eax					; Preserve if used
+	and	ecx,ebp					; Restore potential
+							;  dynamic link
+	mov	dword ptr 16[esi],ecx
+	db	0cbh					; retf
+',
+`	OP(mov,l)	TW(EDR(Free),rfree)		# Free pointer = %edi
 							# Value/dynamic link
 	OP(mov,l)	TW(LOF(REGBLOCK_VAL(),regs),REG(eax))
 	OP(mov,l)	TW(IMM(ADDRESS_MASK),rmask)	# = %ebp
@@ -437,7 +544,15 @@ IFDOS(`	OP(mov,w)	TW(EDR(Scheme_Stack_Segment_Selector),REG(ss))')
 	OP(and,l)	TW(rmask,REG(ecx))		# Restore potential
 							#  dynamic link
 	OP(mov,l)	TW(REG(ecx),LOF(REGBLOCK_DLINK(),regs))
-	jmp	IJMP(REG(edx))
+	jmp	IJMP(REG(edx))')
+
+ifdef(`WINNT',
+`	extrn	_WinntExceptionTransferHook:near
+
+	public	_callWinntExceptionTransferHook
+_callWinntExceptionTransferHook:
+	call	_WinntExceptionTransferHook
+	mov	edx,eax')
 
 define_c_label(interface_to_C)
 IF387(`
@@ -901,5 +1016,9 @@ define_jump_indirection(nofp_zero,2d)
 define_jump_indirection(nofp_quotient,37)
 define_jump_indirection(nofp_remainder,38)
 define_jump_indirection(nofp_modulo,39)
-
+
 IFDOS(`end')
+
+### Edwin Variables:
+### comment-column: 56
+### End:
