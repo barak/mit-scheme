@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.3 2000/12/06 02:42:53 cph Exp $
+# $Id: Makefile,v 1.4 2000/12/06 03:00:15 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -33,10 +33,16 @@ setup:
 	done
 	(cd microcode && ./Setup.sh)
 
-tags TAGS mostlyclean clean distclean maintainer-clean:
+tags TAGS:
 	@for SUBDIR in $(SUBDIRS); do \
 	    echo "making $@ in $${SUBDIR}"; \
 	    (cd $${SUBDIR} && $(MAKE) $@) || exit 1; \
+	done
+
+mostlyclean clean distclean maintainer-clean:
+	@for SUBDIR in $(SUBDIRS); do \
+	    echo "making $@ in $${SUBDIR}"; \
+	    (cd $${SUBDIR} && $(MAKE) $@); \
 	done
 
 .PHONY: all setup tags TAGS mostlyclean clean distclean maintainer-clean
