@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.6 1992/02/15 14:16:41 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.7 1992/02/15 17:27:02 jinx Exp $
 ###
 ###	Copyright (c) 1992 Massachusetts Institute of Technology
 ###
@@ -204,15 +204,16 @@ define_c_label(interface_to_scheme)
 	movl	REGBLOCK_VAL()(regs),%eax		# Value/dynamic link
 	movl	IMMEDIATE(ADDRESS_MASK),rmask 		# = %ebp
 	movl	external_reference(Ext_Stack_Pointer),%esp
-#	Apparently gas does not understand the following instruction
-#	mov	%ds,*rfree				# Make a long pointer
-	.word	0x1f8e
+#	.word	0x1f8c		# if the assembler does not understand the
+				# following instruction.	
+	movw	%ds,(rfree)
 	movl	%edx,2(rfree)				#  out of entry point
 	movl	%eax,%ecx				# Copy if used
 	andl	rmask,%ecx				# Restore potential
 	movl	%ecx,REGBLOCK_DLINK()(regs)		#  dynamic link
 #	Apparently gas does not understand the following instruction
-#	ljmp	*rfree					# invoke entry point
+#	even though gdb disassembles the word into that format.
+#	ljmp	*(rfree)
 	.word	0x2fff
 
 define_c_label(interface_to_C)
