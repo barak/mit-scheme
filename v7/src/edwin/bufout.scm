@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufout.scm,v 1.8 1992/04/16 22:28:44 cph Exp $
+;;;	$Id: bufout.scm,v 1.9 1993/08/12 06:03:21 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -64,6 +64,9 @@
 			  (if (default-object? buffer)
 			      false
 			      buffer))))
+
+(define (output-port->mark port)
+  (mark-temporary-copy (port/mark port)))
 
 (define-integrable (port/mark port)
   (car (port/state port)))
