@@ -1,9 +1,10 @@
 Emacs: Please use -*- Text -*- mode.  Thank you.
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.7 1991/02/24 02:09:38 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.8 1991/02/26 03:35:50 jinx Exp $
 
 
-		LIAR PORTING GUIDE
+			LIAR PORTING GUIDE
+			     *DRAFT*
 
 
 Notes: 
@@ -362,7 +363,7 @@ Vax or the Motorola 68020 ports.  The Vax port was written by starting
 from the 68020 port.  This is probably the best solution for some
 architectures like the NS32000, and perhaps even the IBM 370.
 
-- If you have an "enlarged" RISC processor, with some complex
+- If you have an ``enlarged'' RISC processor, with some complex
 addressing modes, and bit-field instructions, you may want to start by
 looking at the Spectrum (HP Precision Architecture) port.  This is
 probably a good starting point for the Motorola 88000 and for the IBM
@@ -453,7 +454,7 @@ Besides assignments and tests, the RTL has some higher level
 statements that correspond to procedure headers, continuation (return
 address) headers, etc.  Thus an RTL program is made mostly of register
 to register operation statements, a few conditional tests, and a few
-higher-level "glue" statements.
+higher-level ``glue'' statements.
 
 Once a program has been translated to RTL, the RTL code is optimized
 in a machine-independent way by minimizing the number of RTL
@@ -1240,7 +1241,7 @@ the microcode sources be compiled with HAS_COMPILER_SUPPORT defined.
 - Remove (or save elsewhere) all the .o files and scheme, the linked
 scheme microcode.
 
-- Do "make scheme" or "make xmakefile;make -f xmakefile scheme" to
+- Do ``make scheme'' or ``make xmakefile;make -f xmakefile scheme'' to
 generate a new linked microcode.
 
 Once you have a new linked microcode, you need to regenerate the
@@ -1248,7 +1249,7 @@ runtime system image files even if you have not changed the length of
 the type tags.  This is done as follows:
 
 - Re-generate a runtime.com (actually runtime.bin) image file by
-invoking scheme with the options "-large -fasl make.bin" while
+invoking scheme with the options ``-large -fasl make.bin'' while
 connected to the runtime directory, and then typing
   (disk-save "<lib directory pathname>/runtime.com")
 at the Scheme prompt.
@@ -1261,14 +1262,14 @@ at the Scheme prompt.
 at the Scheme prompt.
 
 You also need to have a working version of cref.  This can be done by
-invoking scheme with the options "-band runtime+sf.com", and then
+invoking scheme with the options ``-band runtime+sf.com'', and then
 typing
   (begin
      (cd "<cref directory pathname>")
      (load "cref.sf"))
 at the Scheme prompt.
 
-If this errors because of the lack of a "runtim.glob" file, try it
+If this errors because of the lack of a ``runtim.glob'' file, try it
 again after executing
   (begin
      (cd "<runtime directory pathname>")
@@ -1282,7 +1283,11 @@ cref, you can pre-process the compiler as follows:
 - Copy (or link) comp.pkg, comp.sf, and comp.cbf from the
 compiler/machines/port directory to the compiler directory.
 
-- Invoke scheme with the "-band runtime+sf.com" option, and then execute
+- For convenience, make a link from compiler/machines/port to
+compiler/port .
+
+- Invoke scheme with the ``-band runtime+sf.com'' option, and then
+execute
   (begin
      (cd "<compiler directory pathname>")
      (load "comp.sf"))
@@ -1295,25 +1300,165 @@ comp.bcon, comp.bldr, comp.glob, comp.free, comp.cref).
 It is a good idea to look at the comp.cref file.  This is a
 cross-reference of the compiler and may lead you to find typos or
 other small mistakes.  The first section of the cref file (labeled
-"Free References:") lists all variables that are not defined in the
+``Free References:'') lists all variables that are not defined in the
 compiler or the runtime system.  The only variables that should be in
-this list are SF, and SF/PATHNAME-DEFAULTING.  The "Undefined
-Bindings:" section lists those variables defined in the runtime system
-and referenced freely by the compiler sources.  The remainder of the
-cref file lists the compiler packages and the cross reference of the
-procedures defined by it.
+this list are SF, and SF/PATHNAME-DEFAULTING.  The ``Undefined
+Bindings:'' section lists those variables defined in the runtime
+system and referenced freely by the compiler sources.  The remainder
+of the cref file lists the compiler packages and the cross reference
+of the procedures defined by it.
+
+- Load up the compiler.  Invoke scheme with the options 
+``-compiler -band runtime+sf.com'', and then type
+  (begin
+     (cd "<compiler directory pathname>")
+     (load "port/make")
+     (disk-save "<lib directory pathname>/compiler.com"))
+
+You should then be able to invoke the compiler by giving scheme the
+``-compiler'' option, and use it by invoking CF.
+
+	6.3 Testing the compiler
+
+There is no comprehensive test suite for the compiler.  There is,
+however, a small test suite that is likely to catch gross errors.  The
+files for the test suite are in compiler/tests/port.  Each file
+contains a short description of how it can be used.
+
+A good order to try them is
+
+	expr.scm
+	pred.scm
+	close.scm
+	blast.scm
+	reverse.scm
+	arith.scm
+	bitwse.scm
+	fib.scm
+	vector.scm
+	reptd.scm
+	lexpr.scm
+	klexpr.scm
+	tail.scm
+
+	close2.scm
+	prim.scm
+	free.scm
+	uvuuo.scm
+	link.scm
+	uuo.scm
+	unv.scm
+
+	tail.scm
+	sort/*.scm
+
+The programs in the first list test various aspects of code generation.
+The programs in the first list test the handling of various dynamic
+conditions (ie. error recovery).
+The programs in the third list are somewhat larger, and register
+allocation bugs, etc., are more likely to show up in them.
+
+A good idea at the beginning is to turn COMPILER:GENERATE-RTL-FILES?
+and COMPILER:GENERATE-LAP-FILES? on and compare them for plausibility.
+If you've ported the disassembler as well, you should try
+disassembling some files and comparing them to then input LAP.  They
+won't be identical, but they should be similar.
+
+Various runtime system files make good tests as well.  You may want to
+try list.scm, vector.scm, and arith.scm.  Note that to test procedures
+from arith.scm, you must execute
+    (initialize-microcode-dependencies!)
+after loading the file.
+
+*** Mention how to test the assembler by using LAP->CODE?
+
+	6.4 Compiling the compiler
+
+The real test of the compiler comes when it is used to compile itself
+and the runtime system.  Recompiling the system is a slow process,
+that can take a few hours even with a compiled compiler on a fast
+machine.  Compiling the compiler with an interpreted compiler would
+probably take days.
+
+There are two ways to speed up the process:
+
+* Cross-compiling:
+
+If you can access some machines on which the compiler already runs,
+you can cross-compile the sources using a compiled compiler.  This
+method is somewhat involved because you will need binaries for both
+machines, since neither can load or dump the other's .bin files.
+
+Say that you have a Vax, and you are porting to a Sparc.  You will
+need to pre-process and compile the Sparc's compiler on the Vax to use
+it as a cross-compiler.  This can be done by following the same
+pattern that you used to generate the interpreted compiler on the
+Sparc, but running everything on the Vax, and then compiling the
+cross-compiler on the Vax by running scheme with the ``-compiler''
+option, and typing
+    (begin
+	(cd "<sparc compiler directory>")
+	(load "comp.cbf"))
+before loading and dumping the compiler.
+
+Once you have the cross-compiler, you can use CROSS-COMPILE-BIN-FILE
+to generate .moc files.  The .moc files can be translated to .psb
+files on the Vax.  These .psb files can in turn be translated to .moc
+files on the Sparc, and you can generate the final .com files by using
+CROSS-COMPILE-BIN-FILE-END define in compiler/base/crsend.  Note that
+compiler/base/crsend can be loaded on a plain runtime system (ie.
+without SF or a compiler).  You will probably find the following
+idioms useful:
+    (for-each cross-compile-bin-file (directory-read "<some dir>/*.bin"))
+    (for-each cross-compile-bin-file-end (directory-read "<some dir>/*.moc")).
+
+To translate the original .moc files to .psb files, you should use
+microcode/Bintopsb on the Vax as follows:
+    Bintopsb upgrade_cc ci_version=?? ci_processor=?? <foo.moc >foo.psb
+where the value of ci_version should be the value of
+COMPILER_INTERFACE_VERSION in microcode/cmpint.c, and the value of
+ci_processor should be the value of COMPILER_PROCESSOR_TYPE defined in
+microcode/cmpint-port.h.
+==> This is redundant.  If ci_processor or ci_version are supplied,
+Bintopsb should assume upgrade_cc.  Furthermore, it should not be
+necessary to supply ci_version when it is not changing.
+
+You can then generate the target .moc files by using
+microcode/Psbtobin on the Sparc as follows:
+    Psbtobin allow_cc <foo.psb >foo.moc
+
+* Distributing the task over several machines:
+
+You can use more than one machine to compile the sources.  If the
+machines do not share a file system, you will have to pre-partition
+the job and generate a script for each machine.  If the machines share
+a (network) file system, you can try to use compiler/etc/xcbfdir.
+This file defines two procedures, COMPILE-DIRECTORY, and
+CROSS-COMPILE-DIRECTORY, that use a simple-minded protocol based on
+creating .tch files to reserve files to compile, and can therefore be
+run on many machines simultaneously without uselessly repeating work
+or getting in each other's way.
+
+These two methods are not exclusive.  We typically bring up the
+compiler on a new machine by distributing the cross-compilation job.
+
+Note that the compiler (and the cross-compiler) use a lot of memory
+while running, and that virtual memory is really no substitute for
+physical memory.  You may want to increase your physical memory limit
+on those systems where this can be controlled (eg. under BSD use the
+``limit'' command).  If your machines don't have much physical memory,
+or it is too painful to increase your limit (ie. you have to recompile
+or relink the kernel), you may want to use microcode/bchscheme instead
+of microcode/scheme.  Bchscheme uses a disk file for the spare heap,
+rather than a region of memory, putting the available memory to use at
+all times.
+
+	6.5 Compiler convergence test
+
 
 *** Here ***
 
-*** Notes: ***
-
-Include my upgraded test suite in the compiler directory, and perhaps
-some scripts that do the testing.
-Cross compiling.
-Spreading the computation over a bunch of machines.
 Testing for convergence by doing stages and comparing binaries.
 Common bugs.  interrupts, dlinks, register allocation bus, and bugs
 in the interface.
-
-*** Should I mention how to test the assembler by using LAP->CODE?
 
