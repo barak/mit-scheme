@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.11 1990/10/16 20:53:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.12 1990/11/01 04:33:27 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -103,7 +103,6 @@ extern void EXFUN (error_system_call, (int code, CONST char * name));
 #include <sys/wait.h>
 
 #define HAVE_APPEND
-#define HAVE_BSD_JOB_CONTROL
 #define HAVE_BSD_SIGNALS
 #define HAVE_BSD_TTY_DRIVER
 #define HAVE_DIR
@@ -181,11 +180,6 @@ extern void EXFUN (error_system_call, (int code, CONST char * name));
 
 #endif /* _HPUX_VERSION */
 
-#if (_HPUX_VERSION >= 65) || defined(hp9000s800)
-#include <bsdtty.h>
-#define HAVE_BSD_JOB_CONTROL
-#endif
-
 #endif /* _HPUX */
 #endif /* _SYSV3 */
 #else /* not _SYSV */
@@ -208,6 +202,7 @@ extern void EXFUN (error_system_call, (int code, CONST char * name));
 
 #ifdef _BSD
 
+#define HAVE_BSD_JOB_CONTROL
 #define HAVE_FIONREAD
 #define HAVE_GETTIMEOFDAY
 #define HAVE_ITIMER
@@ -267,6 +262,11 @@ extern void EXFUN (error_system_call, (int code, CONST char * name));
 #if (_HPUX_VERSION >= 65)
 /* Is this right for 800-series machines? */
 #define HAVE_UNIX_SOCKETS
+#endif
+
+#if (_HPUX_VERSION >= 65) || defined(hp9000s800)
+#include <bsdtty.h>
+#define HAVE_BSD_JOB_CONTROL
 #endif
 
 #if (_HPUX_VERSION >= 70) || defined(hp9000s800)
@@ -536,7 +536,14 @@ extern void EXFUN (UX_prim_check_errno, (CONST char * name));
 
 #ifdef HAVE_TERMIOS
 
-typedef struct termios Ttty_state;
+typedef struct
+{
+  struct termios tio;
+#ifdef HAVE_BSD_JOB_CONTROL
+  struct ltchars ltc;
+#endif
+} Ttty_state;
+
 #define UX_tcflush tcflush
 #define UX_tcdrain tcdrain
 #define UX_tcgetattr tcgetattr

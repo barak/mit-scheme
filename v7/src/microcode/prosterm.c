@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosterm.c,v 1.2 1990/10/16 20:53:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosterm.c,v 1.3 1990/11/01 04:33:11 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -102,6 +102,29 @@ DEFINE_PRIMITIVE ("BAUD-RATE->INDEX", Prim_baud_rate_to_index, 1, 1, 0)
   }
 }
 
+DEFINE_PRIMITIVE ("TERMINAL-GET-STATE", Prim_terminal_get_state, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  {
+    SCHEME_OBJECT result = (allocate_string (OS_terminal_state_size ()));
+    OS_terminal_get_state ((arg_terminal (1)), (STRING_LOC (result, 0)));
+    PRIMITIVE_RETURN (result);
+  }
+}
+
+DEFINE_PRIMITIVE ("TERMINAL-SET-STATE", Prim_terminal_set_state, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  CHECK_ARG (2, STRING_P);
+  {
+    SCHEME_OBJECT state = (ARG_REF (2));
+    if ((STRING_LENGTH (state)) != (OS_terminal_state_size ()))
+      error_bad_range_arg (2);
+    OS_terminal_get_state ((arg_terminal (1)), (STRING_LOC (state, 0)));
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
 DEFINE_PRIMITIVE ("TERMINAL-COOKED-OUTPUT?", Prim_terminal_cooked_output_p, 1, 1,
   "Return #F iff TERMINAL is not in cooked output mode.")
 {
@@ -125,7 +148,7 @@ DEFINE_PRIMITIVE ("TERMINAL-COOKED-OUTPUT", Prim_terminal_cooked_output, 1, 1,
   OS_terminal_cooked_output (arg_terminal (1));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
-
+
 DEFINE_PRIMITIVE ("TERMINAL-BUFFERED?", Prim_terminal_buffered_p, 1, 1,
   "Return #F iff TERMINAL is not in buffered mode.")
 {

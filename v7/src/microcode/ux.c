@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.c,v 1.3 1990/10/16 20:53:43 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.c,v 1.4 1990/11/01 04:33:22 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -42,55 +42,29 @@ DEFUN (UX_prim_check_errno, (name), CONST char * name)
   deliver_pending_interrupts ();
 }
 
-#ifndef HAVE_TERMIOS
-#ifdef HAVE_TERMIO
 
-int
-DEFUN (UX_tcdrain, (fd), int fd)
-{
-  return (UX_ioctl (fd, TCSBRK, 1));
-}
-
-int
-DEFUN (UX_tcflush, (fd, queue_selector), int fd AND int queue_selector)
-{
-  return (UX_ioctl (fd, TCFLSH, queue_selector));
-}
-
-#else /* not HAVE_TERMIO */
-#ifdef HAVE_BSD_TTY_DRIVER
-
-int
-DEFUN (UX_tcdrain, (fd), int fd)
-{
-  /* BSD provides no such feature -- pretend it worked. */
-  return (0);
-}
-
-int
-DEFUN (UX_tcflush, (fd, queue_selector), int fd AND int queue_selector)
-{
-  /* Losing BSD always flushes input and output together. */
-  int zero = 0;
-  return (UX_ioctl (fd, TIOCFLUSH, (&zero)));
-}
-
-#endif /* HAVE_BSD_TTY_DRIVER */
-#endif /* HAVE_TERMIO */
-#endif /* HAVE_TERMIOS */
-
 #ifdef HAVE_TERMIOS
 
 int
 DEFUN (UX_terminal_get_state, (fd, s), int fd AND Ttty_state * s)
 {
-  return (tcgetattr (fd, s));
+  return
+    ((((tcgetattr (fd, (& (s -> tio)))) < 0)
+#ifdef HAVE_BSD_JOB_CONTROL
+      || ((UX_ioctl (fd, TIOCGLTC, (& (s -> ltc)))) < 0)
+#endif
+      ) ? (-1) : 0);
 }
 
 int
 DEFUN (UX_terminal_set_state, (fd, s), int fd AND Ttty_state * s)
 {
-  return (tcsetattr (fd, TCSANOW, s));
+  return
+    ((((tcsetattr (fd, TCSANOW, (& (s -> tio)))) < 0)
+#ifdef HAVE_BSD_JOB_CONTROL
+      || ((UX_ioctl (fd, TIOCSLTC, (& (s -> ltc)))) < 0)
+#endif
+      ) ? (-1) : 0);
 }
 
 #else /* not HAVE_TERMIOS */
@@ -118,7 +92,20 @@ DEFUN (UX_terminal_set_state, (fd, s), int fd AND Ttty_state * s)
       ) ? (-1) : 0);
 }
 
+int
+DEFUN (UX_tcdrain, (fd), int fd)
+{
+  return (UX_ioctl (fd, TCSBRK, 1));
+}
+
+int
+DEFUN (UX_tcflush, (fd, queue_selector), int fd AND int queue_selector)
+{
+  return (UX_ioctl (fd, TCFLSH, queue_selector));
+}
+
 #else /* not HAVE_TERMIO */
+
 #ifdef HAVE_BSD_TTY_DRIVER
 
 int
@@ -145,6 +132,21 @@ DEFUN (UX_terminal_set_state, (fd, s), int fd AND Ttty_state * s)
 #endif
       || ((UX_ioctl (fd, TIOCLSET, (& (s -> lmode)))) < 0))
      ? (-1) : 0);
+}
+
+int
+DEFUN (UX_tcdrain, (fd), int fd)
+{
+  /* BSD provides no such feature -- pretend it worked. */
+  return (0);
+}
+
+int
+DEFUN (UX_tcflush, (fd, queue_selector), int fd AND int queue_selector)
+{
+  /* Losing BSD always flushes input and output together. */
+  int zero = 0;
+  return (UX_ioctl (fd, TIOCFLUSH, (&zero)));
 }
 
 #endif /* HAVE_BSD_TTY_DRIVER */

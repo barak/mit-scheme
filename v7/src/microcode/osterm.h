@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osterm.h,v 1.2 1990/10/16 20:53:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osterm.h,v 1.3 1990/11/01 04:33:05 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -44,6 +44,9 @@ extern unsigned int EXFUN (OS_terminal_get_ospeed, (Tchannel channel));
 extern unsigned int EXFUN (arg_baud_index, (unsigned int argument));
 extern unsigned int EXFUN (OS_baud_index_to_rate, (unsigned int index));
 extern int EXFUN (OS_baud_rate_to_index, (unsigned int rate));
+extern unsigned int EXFUN (OS_terminal_state_size, (void));
+extern void EXFUN (OS_terminal_get_state, (Tchannel channel, PTR statep));
+extern void EXFUN (OS_terminal_set_state, (Tchannel channel, PTR statep));
 extern int EXFUN (OS_terminal_cooked_output_p, (Tchannel channel));
 extern void EXFUN (OS_terminal_raw_output, (Tchannel channel));
 extern void EXFUN (OS_terminal_cooked_output, (Tchannel channel));

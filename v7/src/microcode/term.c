@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/term.c,v 1.2 1990/09/08 00:10:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/term.c,v 1.3 1990/11/01 04:33:17 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. */
 
 #include "scheme.h"
+#include "ostop.h"
 
 extern long death_blow;
 extern char * Term_Messages [];
@@ -86,6 +87,7 @@ static void
 DEFUN (termination_prefix, (code), int code)
 {
   attempt_termination_backout (code);
+  OS_restore_external_state ();
   putc ('\n', stdout);
   if ((code < 0) || (code > MAX_TERMINATION))
     fprintf (stdout, "Unknown termination code 0x%x", code);
