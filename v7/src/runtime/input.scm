@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 13.51 1988/04/26 19:41:49 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 13.52 1988/05/06 12:40:26 cph Exp $
 ;;;
 ;;;	Copyright (c) 1988 Massachusetts Institute of Technology
 ;;;
@@ -444,7 +444,7 @@
        (read-char port)))
 
 (define load/default-types '("bin" "scm"))
-(define load-noisily? true)
+(define load-noisily? false)
 
 (define (load-noisily filename #!optional environment)
   (let ((environment
