@@ -1,9 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: dsyn.scm,v 1.8 1999/01/02 06:06:43 cph Exp $
-This file has no counterpart in the MC68020 compiler
+$Id: dsyn.scm,v 1.9 2001/12/19 21:39:30 cph Exp $
 
-Copyright (c) 1987, 1989, 1999 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989, 1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -27,18 +26,18 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;;;; Instruction decoding
 
 (define (initialize-package!)
-  (syntax-table-define disassembler-syntax-table
-      'DEFINE-INSTRUCTION
+  (set-environment-syntax-table!
+   (->environment '(COMPILER DISASSEMBLER))
+   (make-syntax-table (->environment '(COMPILER))))
+  (syntax-table/define (->environment '(COMPILER DISASSEMBLER))
+		       'DEFINE-INSTRUCTION
     transform/define-instruction))
 
 (define instructions-disassembled-specially
   '(BYTE WORD LONG BUG B BR BSB))
 
-(define disassembler-syntax-table
-  (make-syntax-table system-global-syntax-table))
-
 (define transform/define-instruction
-  (macro (name . patterns)
+  (lambda (name . patterns)
     (if (memq name instructions-disassembled-specially)
 	''()
 	`(begin ,@(map (lambda (pattern)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: macros.scm,v 4.16 1999/01/02 06:06:43 cph Exp $
+$Id: macros.scm,v 4.17 2001/12/19 21:39:29 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Compiler Macros
@@ -25,46 +26,40 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (for-each (lambda (entry)
-	      (syntax-table-define compiler-syntax-table (car entry)
-		(cadr entry)))
-	    `((CFG-NODE-CASE ,transform/cfg-node-case)
-	      (DEFINE-ENUMERATION ,transform/define-enumeration)
-	      (DEFINE-EXPORT ,transform/define-export)
-	      (DEFINE-LVALUE ,transform/define-lvalue)
-	      (DEFINE-PNODE ,transform/define-pnode)
-	      (DEFINE-ROOT-TYPE ,transform/define-root-type)
-	      (DEFINE-RTL-EXPRESSION ,transform/define-rtl-expression)
-	      (DEFINE-RTL-PREDICATE ,transform/define-rtl-predicate)
-	      (DEFINE-RTL-STATEMENT ,transform/define-rtl-statement)
-	      (DEFINE-RULE ,transform/define-rule)
-	      (DEFINE-RVALUE ,transform/define-rvalue)
-	      (DEFINE-SNODE ,transform/define-snode)
-	      (DEFINE-VECTOR-SLOTS ,transform/define-vector-slots)
-	      (DESCRIPTOR-LIST ,transform/descriptor-list)
-	      (ENUMERATION-CASE ,transform/enumeration-case)
-	      (INST-EA ,transform/inst-ea)
-	      (LAP ,transform/lap)
-	      (LAST-REFERENCE ,transform/last-reference)
-	      (MAKE-LVALUE ,transform/make-lvalue)
-	      (MAKE-PNODE ,transform/make-pnode)
-	      (MAKE-RVALUE ,transform/make-rvalue)
-	      (MAKE-SNODE ,transform/make-snode)
-	      (PACKAGE ,transform/package)))
-  (syntax-table-define lap-generator-syntax-table 'DEFINE-RULE
-    transform/define-rule))
-
-(define compiler-syntax-table
-  (make-syntax-table syntax-table/system-internal))
-
-(define lap-generator-syntax-table
-  (make-syntax-table compiler-syntax-table))
-
-(define assembler-syntax-table
-  (make-syntax-table compiler-syntax-table))
-
-(define early-syntax-table
-  (make-syntax-table compiler-syntax-table))
+  (let ((compiler-env (->environment '(COMPILER)))
+	(lap-syntaxer-env (->environment '(COMPILER LAP-SYNTAXER))))
+    (set-environment-syntax-table! compiler-env
+				   (make-syntax-table (->environment '())))
+    (for-each (lambda (entry)
+		(syntax-table/define compiler-env (car entry) (cadr entry)))
+	      `((CFG-NODE-CASE ,transform/cfg-node-case)
+		(DEFINE-ENUMERATION ,transform/define-enumeration)
+		(DEFINE-EXPORT ,transform/define-export)
+		(DEFINE-LVALUE ,transform/define-lvalue)
+		(DEFINE-PNODE ,transform/define-pnode)
+		(DEFINE-ROOT-TYPE ,transform/define-root-type)
+		(DEFINE-RTL-EXPRESSION ,transform/define-rtl-expression)
+		(DEFINE-RTL-PREDICATE ,transform/define-rtl-predicate)
+		(DEFINE-RTL-STATEMENT ,transform/define-rtl-statement)
+		(DEFINE-RULE ,transform/define-rule)
+		(DEFINE-RVALUE ,transform/define-rvalue)
+		(DEFINE-SNODE ,transform/define-snode)
+		(DEFINE-VECTOR-SLOTS ,transform/define-vector-slots)
+		(DESCRIPTOR-LIST ,transform/descriptor-list)
+		(ENUMERATION-CASE ,transform/enumeration-case)
+		(INST-EA ,transform/inst-ea)
+		(LAP ,transform/lap)
+		(LAST-REFERENCE ,transform/last-reference)
+		(MAKE-LVALUE ,transform/make-lvalue)
+		(MAKE-PNODE ,transform/make-pnode)
+		(MAKE-RVALUE ,transform/make-rvalue)
+		(MAKE-SNODE ,transform/make-snode)
+		(PACKAGE ,transform/package)))
+    (set-environment-syntax-table! lap-syntaxer-env
+				   (make-syntax-table compiler-env))
+    (syntax-table/define lap-syntaxer-env
+			 'DEFINE-RULE
+			 transform/define-rule)))
 
 (define transform/last-reference
   (macro (name)

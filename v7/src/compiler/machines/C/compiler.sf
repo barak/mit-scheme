@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.sf,v 1.8 2001/12/17 17:40:58 cph Exp $
+$Id: compiler.sf,v 1.9 2001/12/19 21:39:29 cph Exp $
 
 Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
 
@@ -55,9 +55,7 @@ USA.
       (sf-and-load '("base/pmlook") '(COMPILER PATTERN-MATCHER/LOOKUP))
       (sf-and-load '("base/pmpars") '(COMPILER PATTERN-MATCHER/PARSER))
       (sf-and-load '("rtlbase/valclass") '(COMPILER))
-      (fluid-let ((sf/default-syntax-table
-		   (access compiler-syntax-table
-			   (->environment '(COMPILER MACROS)))))
+      (fluid-let ((sf/default-syntax-table (->environment '(COMPILER))))
 	(sf-and-load '("machines/C/machin") '(COMPILER)))
       (set! (access endianness (->environment '(COMPILER))) 'BIG)
       (sf-and-load '("back/syntax") '(COMPILER LAP-SYNTAXER))

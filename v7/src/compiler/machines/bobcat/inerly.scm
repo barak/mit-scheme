@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: inerly.scm,v 1.8 1999/01/02 06:06:43 cph Exp $
+$Id: inerly.scm,v 1.9 2001/12/19 21:39:30 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; 68000 Instruction Set Macros.  Early version
@@ -53,23 +54,27 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (and (memq (car s1) s2)
 	   (eq-subset? (cdr s1) s2))))
 
-(syntax-table-define early-syntax-table 'DEFINE-EA-TRANSFORMER
-  (macro (name . restrictions)
+(syntax-table/define (->environment '(COMPILER))
+		     'DEFINE-EA-TRANSFORMER
+  (lambda (name . restrictions)
     `(DEFINE-EARLY-TRANSFORMER ',name
        (APPLY MAKE-EA-TRANSFORMER ',restrictions))))
 
-(syntax-table-define early-syntax-table 'DEFINE-SYMBOL-TRANSFORMER
-  (macro (name . assoc)
+(syntax-table/define (->environment '(COMPILER))
+		     'DEFINE-SYMBOL-TRANSFORMER
+  (lambda (name . assoc)
     `(DEFINE-EARLY-TRANSFORMER ',name (MAKE-SYMBOL-TRANSFORMER ',assoc))))
 
-(syntax-table-define early-syntax-table 'DEFINE-REG-LIST-TRANSFORMER
-  (macro (name . assoc)
+(syntax-table/define (->environment '(COMPILER))
+		     'DEFINE-REG-LIST-TRANSFORMER
+  (lambda (name . assoc)
     `(DEFINE-EARLY-TRANSFORMER ',name (MAKE-BIT-MASK-TRANSFORMER 16 ',assoc))))
 
 ;;;; Instruction and addressing mode macros
 
-(syntax-table-define early-syntax-table 'DEFINE-INSTRUCTION
-  (macro (opcode . patterns)
+(syntax-table/define (->environment '(COMPILER))
+		     'DEFINE-INSTRUCTION
+  (lambda (opcode . patterns)
     `(SET! EARLY-INSTRUCTIONS
 	   (CONS
 	    (LIST ',opcode
@@ -88,8 +93,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			 patterns))
 		 EARLY-INSTRUCTIONS))))
 
-(syntax-table-define early-syntax-table 'EXTENSION-WORD
-  (macro descriptors
+(syntax-table/define (->environment '(COMPILER))
+		     'EXTENSION-WORD
+  (lambda descriptors
     (expand-descriptors descriptors
       (lambda (instruction size source destination)
 	(if (or source destination)
@@ -98,8 +104,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (error "EXTENSION-WORD: Extensions must be 16 bit multiples" size))
 	(optimize-group-syntax instruction true)))))
 
-(syntax-table-define early-syntax-table 'VARIABLE-EXTENSION
-  (macro (binding . clauses)
+(syntax-table/define (->environment '(COMPILER))
+		     'VARIABLE-EXTENSION
+  (lambda (binding . clauses)
     (variable-width-expression-syntaxer
      (car binding)
      (cadr binding)
@@ -113,8 +120,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;; *** NOTE: If this format changes, insutl.scm must also be changed! ***
 
-(syntax-table-define early-syntax-table 'DEFINE-EA-DATABASE
-  (macro rules
+(syntax-table/define (->environment '(COMPILER))
+		     'DEFINE-EA-DATABASE
+  (lambda rules
     `(SET! EARLY-EA-DATABASE
 	   (LIST
 	    ,@(map (lambda (rule)

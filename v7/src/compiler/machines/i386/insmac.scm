@@ -1,9 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: insmac.scm,v 1.11 1999/01/02 06:06:43 cph Exp $
-$Vax-Header: insmac.scm,v 1.12 89/05/17 20:29:15 GMT jinx Exp $
+$Id: insmac.scm,v 1.12 2001/12/19 21:39:30 cph Exp $
 
-Copyright (c) 1992, 1999 Massachusetts Institute of Technology
+Copyright (c) 1992, 1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Intel 386 Instruction Set Macros
@@ -29,8 +29,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define ea-database-name
   'EA-DATABASE)
 
-(syntax-table-define assembler-syntax-table 'DEFINE-EA-DATABASE
-  (macro rules
+(syntax-table/define (->environment '(COMPILER LAP-SYNTAXER))
+		     'DEFINE-EA-DATABASE
+  (lambda rules
     `(DEFINE ,ea-database-name
        ,(compile-database rules
 			  (lambda (pattern actions)
@@ -54,8 +55,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;; This one is necessary to distinguish between r/mW mW, etc.
 
-(syntax-table-define assembler-syntax-table 'DEFINE-EA-TRANSFORMER
-  (macro (name #!optional restriction)
+(syntax-table/define (->environment '(COMPILER LAP-SYNTAXER))
+		     'DEFINE-EA-TRANSFORMER
+  (lambda (name #!optional restriction)
     (if (default-object? restriction)
 	`(define (,name expression)
 	   (let ((match-result (pattern-lookup ,ea-database-name expression)))

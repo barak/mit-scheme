@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.6 1999/01/02 06:48:57 cph Exp $
+$Id: decls.scm,v 1.7 2001/12/19 21:39:29 cph Exp $
 
-Copyright (c) 1992-1999 Massachusetts Institute of Technology
+Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,8 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Compiler File Dependencies
@@ -347,16 +347,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			      "ralloc" "rcompr" "rcse1" "rcse2" "rcseep"
 			      "rcseht" "rcserq" "rcsesr" "rdebug" "rdflow"
 			      "rerite" "rinvex" "rlife" "rtlcsm"))
-     compiler-syntax-table)
+     (->environment '(COMPILER)))
     (file-dependency/syntax/join
      (filename/append "machines/alpha"
 		      "lapgen"
 		      "rules1" "rules2" "rules3" "rules4" "rulfix" "rulflo"
-		      )
-     lap-generator-syntax-table)
-    (file-dependency/syntax/join
-     (filename/append "machines/alpha" "instr1" "instr2" "instr3")
-     assembler-syntax-table)))
+		      "instr1" "instr2" "instr3")
+     (->environment '(COMPILER LAP-SYNTAXER)))))
 
 ;;;; Integration Dependencies
 

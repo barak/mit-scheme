@@ -1,9 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: insmac.scm,v 1.13 1999/01/02 06:06:43 cph Exp $
-$MC68020-Header: insmac.scm,v 1.124 88/06/14 08:47:02 GMT cph Exp $
+$Id: insmac.scm,v 1.14 2001/12/19 21:39:30 cph Exp $
 
-Copyright (c) 1987, 1989, 1999 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989, 1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; VAX Instruction Set Macros
@@ -29,8 +29,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define ea-database-name
   'EA-DATABASE)
 
-(syntax-table-define assembler-syntax-table 'DEFINE-EA-DATABASE
-  (macro rules
+(syntax-table/define (->environment '(COMPILER LAP-SYNTAXER))
+		     'DEFINE-EA-DATABASE
+  (lambda rules
     `(DEFINE ,ea-database-name
        ,(compile-database rules
 	 (lambda (pattern actions)
@@ -43,16 +44,18 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	       ',categories
 	       ,(process-fields value false))))))))
 
-(syntax-table-define assembler-syntax-table 'DEFINE-EA-TRANSFORMER
-  (macro (name category type)
+(syntax-table/define (->environment '(COMPILER LAP-SYNTAXER))
+		     'DEFINE-EA-TRANSFORMER
+  (lambda (name category type)
     `(define (,name expression)
        (let ((ea (process-ea expression ',type)))
 	 (and ea
 	      (memq ',category (ea-categories ea))
 	      ea)))))
 
-(syntax-table-define assembler-syntax-table 'DEFINE-SYMBOL-TRANSFORMER
-  (macro (name . alist)
+(syntax-table/define (->environment '(COMPILER LAP-SYNTAXER))
+		     'DEFINE-SYMBOL-TRANSFORMER
+  (lambda (name . alist)
     `(begin
        (declare (integrate-operator ,name))
        (define (,name symbol)
@@ -62,8 +65,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	       #F
 	       (cdr place)))))))
 
-(syntax-table-define assembler-syntax-table 'DEFINE-TRANSFORMER
-  (macro (name value)
+(syntax-table/define (->environment '(COMPILER LAP-SYNTAXER))
+		     'DEFINE-TRANSFORMER
+  (lambda (name value)
     `(define ,name ,value)))
 
 (define (parse-instruction opcode tail early?)

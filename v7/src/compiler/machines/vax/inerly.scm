@@ -1,9 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: inerly.scm,v 1.7 1999/01/02 06:06:43 cph Exp $
-$MC68020-Header: inerly.scm,v 1.6 88/08/31 06:00:59 GMT cph Exp $
+$Id: inerly.scm,v 1.8 2001/12/19 21:39:30 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; VAX Instruction Set Macros.  Early version
@@ -30,8 +30,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define early-transformers '())
 (define early-ea-database '())
 
-(syntax-table-define early-syntax-table 'DEFINE-INSTRUCTION
-  (macro (opcode . patterns)
+(syntax-table/define (->environment '(COMPILER))
+		     'DEFINE-INSTRUCTION
+  (lambda (opcode . patterns)
     `(SET! EARLY-INSTRUCTIONS
 	   (CONS
 	    (LIST ',opcode
@@ -57,18 +58,21 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(cons (cons name transformer)
 	      early-transformers)))
 
-(syntax-table-define early-syntax-table 'DEFINE-SYMBOL-TRANSFORMER
-  (macro (name . assoc)
+(syntax-table/define (->environment '(COMPILER))
+		     'DEFINE-SYMBOL-TRANSFORMER
+  (lambda (name . assoc)
     `(DEFINE-EARLY-TRANSFORMER ',name (MAKE-SYMBOL-TRANSFORMER ',assoc))))
 
 ;; *** Is this right? ***
 
-(syntax-table-define early-syntax-table 'DEFINE-TRANSFORMER
-  (macro (name value)
+(syntax-table/define (->environment '(COMPILER))
+		     'DEFINE-TRANSFORMER
+  (lambda (name value)
     `(DEFINE-EARLY-TRANSFORMER ',name ,value)))
 
-(syntax-table-define early-syntax-table 'DEFINE-EA-TRANSFORMER
-  (macro (name category type)
+(syntax-table/define (->environment '(COMPILER))
+		     'DEFINE-EA-TRANSFORMER
+  (lambda (name category type)
     `(DEFINE-EARLY-TRANSFORMER ',name
        (MAKE-EA-TRANSFORMER ',category ',type))))
 
@@ -88,8 +92,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;; *** NOTE: If this format changes, insutl.scm must also be changed! ***
 
-(syntax-table-define early-syntax-table 'DEFINE-EA-DATABASE
-  (macro rules
+(syntax-table/define (->environment '(COMPILER))
+		     'DEFINE-EA-DATABASE
+  (lambda rules
     `(SET! EARLY-EA-DATABASE
        (LIST
 	,@(map (lambda (rule)

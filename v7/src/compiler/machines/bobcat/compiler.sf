@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.sf,v 1.20 2001/12/17 17:40:58 cph Exp $
+$Id: compiler.sf,v 1.21 2001/12/19 21:39:30 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -54,9 +54,7 @@ USA.
 	((access initialize-package! environment)))
       (sf-and-load '("base/pmlook") '(COMPILER PATTERN-MATCHER/LOOKUP))
       (sf-and-load '("base/pmpars") '(COMPILER PATTERN-MATCHER/PARSER))
-      (fluid-let ((sf/default-syntax-table
-		   (access compiler-syntax-table
-			   (->environment '(COMPILER MACROS)))))
+      (fluid-let ((sf/default-syntax-table (->environment '(COMPILER))))
 	(sf-and-load '("machines/bobcat/machin") '(COMPILER)))
       (fluid-let ((sf/default-declarations
 		   '((integrate-external "insseq")
@@ -85,8 +83,7 @@ USA.
 	(newline)
 	(for-each (lambda (name)
 		    (load (string-append "machines/bobcat/" name ".scm")
-			  '(COMPILER LAP-SYNTAXER)
-			  early-syntax-table))
+			  '(COMPILER LAP-SYNTAXER)))
 		  '("instr1" "instr2" "instr3" "instr4"
 			     "flinstr1" "flinstr2")))))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.9 2000/01/10 03:54:25 cph Exp $
+$Id: decls.scm,v 1.10 2001/12/19 21:39:30 cph Exp $
 
 Copyright (c) 1992-2000 Massachusetts Institute of Technology
 
@@ -363,15 +363,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			      "ralloc" "rcompr" "rcse1" "rcse2" "rcseep"
 			      "rcseht" "rcserq" "rcsesr" "rdebug" "rdflow"
 			      "rerite" "rinvex" "rlife" "rtlcsm"))
-     compiler-syntax-table)
+     (->environment '(COMPILER)))
     (file-dependency/syntax/join
      (filename/append "machines/i386"
 		      "lapgen"
-		      "rules1" "rules2" "rules3" "rules4" "rulfix" "rulflo")
-     lap-generator-syntax-table)
-    (file-dependency/syntax/join
-     (filename/append "machines/i386" "insutl" "instr1" "instr2" "instrf")
-     assembler-syntax-table)))
+		      "rules1" "rules2" "rules3" "rules4" "rulfix" "rulflo"
+		      "insutl" "instr1" "instr2" "instrf")
+     (->environment '(COMPILER LAP-SYNTAXER)))))
 
 ;;;; Integration Dependencies
 

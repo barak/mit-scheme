@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.sf-little,v 1.10 2001/12/17 17:40:58 cph Exp $
+$Id: compiler.sf-little,v 1.11 2001/12/19 21:39:30 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -55,9 +55,7 @@ USA.
       (sf-and-load '("base/pmlook") '(COMPILER PATTERN-MATCHER/LOOKUP))
       (sf-and-load '("base/pmpars") '(COMPILER PATTERN-MATCHER/PARSER))
       (sf-and-load '("rtlbase/valclass") '(COMPILER))
-      (fluid-let ((sf/default-syntax-table
-		   (access compiler-syntax-table
-			   (->environment '(COMPILER MACROS)))))
+      (fluid-let ((sf/default-syntax-table (->environment '(COMPILER))))
 	(sf-and-load '("machines/mips/machin") '(COMPILER)))
       (set! (access endianness (->environment '(COMPILER))) 'LITTLE)
       (fluid-let ((sf/default-declarations
@@ -87,8 +85,7 @@ USA.
 	(newline)
 	(for-each (lambda (name)
 		    (load (string-append "machines/mips/" name ".scm")
-			  '(COMPILER LAP-SYNTAXER)
-			  early-syntax-table))
+			  '(COMPILER LAP-SYNTAXER)))
 		  '("instr1" "instr2a" "instr2b" "instr3")))))
 
 ;; Resyntax any files that need it.

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.10 1999/01/02 06:06:43 cph Exp $
+$Id: compiler.pkg,v 1.11 2001/12/19 21:39:29 cph Exp $
 
 Copyright (c) 1992-1999 Massachusetts Institute of Technology
 
@@ -109,11 +109,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define-package (compiler macros)
   (files "base/macros")
   (parent ())
-  (export (compiler)
-	  assembler-syntax-table
-	  compiler-syntax-table
-	  early-syntax-table
-	  lap-generator-syntax-table)
   (import (runtime macros)
 	  parse-define-syntax)
   (initialization (initialize-package!)))

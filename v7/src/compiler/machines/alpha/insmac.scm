@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: insmac.scm,v 1.2 1999/01/02 06:48:57 cph Exp $
+$Id: insmac.scm,v 1.3 2001/12/19 21:39:29 cph Exp $
 
-Copyright (c) 1992-1999 Massachusetts Institute of Technology
+Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,8 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Alpha Instruction Set Macros
@@ -27,8 +27,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;;; Definition macros
 
-(syntax-table-define assembler-syntax-table 'DEFINE-SYMBOL-TRANSFORMER
-  (macro (name . alist)
+(syntax-table/define (->environment '(COMPILER LAP-SYNTAXER))
+		     'DEFINE-SYMBOL-TRANSFORMER
+  (lambda (name . alist)
     `(BEGIN
        (DECLARE (INTEGRATE-OPERATOR ,name))
        (DEFINE (,name SYMBOL)
@@ -38,8 +39,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	       #F
 	       (CDR PLACE)))))))
 
-(syntax-table-define assembler-syntax-table 'DEFINE-TRANSFORMER
-  (macro (name value)
+(syntax-table/define (->environment '(COMPILER LAP-SYNTAXER))
+		     'DEFINE-TRANSFORMER
+  (lambda (name value)
     `(DEFINE ,name ,value)))
 
 ;;;; Fixed width instruction parsing

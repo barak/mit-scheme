@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: insmac.scm,v 1.127 1999/01/02 06:06:43 cph Exp $
+$Id: insmac.scm,v 1.128 2001/12/19 21:39:30 cph Exp $
 
-Copyright (c) 1988, 1990, 1999 Massachusetts Institute of Technology
+Copyright (c) 1988, 1990, 1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; 68000 Instruction Set Macros
@@ -28,8 +29,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define ea-database-name
   'EA-DATABASE)
 
-(syntax-table-define assembler-syntax-table 'DEFINE-EA-DATABASE
-  (macro rules
+(syntax-table/define (->environment '(COMPILER LAP-SYNTAXER))
+		     'DEFINE-EA-DATABASE
+  (lambda rules
     `(DEFINE ,ea-database-name
        ,(compile-database rules
 	 (lambda (pattern actions)
@@ -37,8 +39,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	       (make-position-dependent pattern actions)
 	       (make-position-independent pattern actions)))))))
 
-(syntax-table-define assembler-syntax-table 'EXTENSION-WORD
-  (macro descriptors
+(syntax-table/define (->environment '(COMPILER LAP-SYNTAXER))
+		     'EXTENSION-WORD
+  (lambda descriptors
     (expand-descriptors descriptors
       (lambda (instruction size source destination)
 	(if (or source destination)
@@ -48,8 +51,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		(error "EXTENSION-WORD: Extensions must be 16 bit multiples"
 		       size)))))))
 
-(syntax-table-define assembler-syntax-table 'VARIABLE-EXTENSION
-  (macro (binding . clauses)
+(syntax-table/define (->environment '(COMPILER LAP-SYNTAXER))
+		     'VARIABLE-EXTENSION
+  (lambda (binding . clauses)
     (variable-width-expression-syntaxer
      (car binding)
      (cadr binding)
@@ -114,8 +118,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;;; Transformers
 
-(syntax-table-define assembler-syntax-table 'DEFINE-EA-TRANSFORMER
-  (macro (name #!optional categories keywords)
+(syntax-table/define (->environment '(COMPILER LAP-SYNTAXER))
+		     'DEFINE-EA-TRANSFORMER
+  (lambda (name #!optional categories keywords)
     (define (filter special generator extraction)
       (define (multiple rem)
 	(if (null? rem)
@@ -148,8 +153,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 					  `(ea-keyword ea)))
 			    ea))))))))
 
-(syntax-table-define assembler-syntax-table 'DEFINE-SYMBOL-TRANSFORMER
-  (macro (name . alist)
+(syntax-table/define (->environment '(COMPILER LAP-SYNTAXER))
+		     'DEFINE-SYMBOL-TRANSFORMER
+  (lambda (name . alist)
     `(begin
        (declare (integrate-operator ,name))
        (define (,name symbol)
@@ -159,8 +165,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	       #F
 	       (cdr place)))))))
 
-(syntax-table-define assembler-syntax-table 'DEFINE-REG-LIST-TRANSFORMER
-  (macro (name . alist)
+(syntax-table/define (->environment '(COMPILER LAP-SYNTAXER))
+		     'DEFINE-REG-LIST-TRANSFORMER
+  (lambda (name . alist)
     `(begin
        (declare (integrate-operator ,name))
        (define (,name reg-list)

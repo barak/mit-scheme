@@ -1,9 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: inerly.scm,v 1.3 1999/01/02 06:06:43 cph Exp $
-$MC68020-Header: inerly.scm,v 1.6 88/08/31 06:00:59 GMT cph Exp $
+$Id: inerly.scm,v 1.4 2001/12/19 21:39:30 cph Exp $
 
-Copyright (c) 1992, 1999 Massachusetts Institute of Technology
+Copyright (c) 1992, 1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,14 +16,15 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;; i386 Instruction Set Macros.  Early version
 ;;; NOPs for now.
 
 (declare (usual-integrations))
-
+
 ;;;; Transformers and utilities
 
 (define early-instructions '())
@@ -42,8 +42,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;; Instruction and addressing mode macros
 
-(syntax-table-define early-syntax-table 'DEFINE-INSTRUCTION
-  (macro (opcode . patterns)
+(syntax-table/define (->environment '(COMPILER LAP-SYNTAXER))
+		     'DEFINE-INSTRUCTION
+  (lambda (opcode . patterns)
     `(SET! EARLY-INSTRUCTIONS
 	   (CONS
 	    (LIST ',opcode
