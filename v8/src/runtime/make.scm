@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/make.scm,v 14.13 1989/06/22 23:50:49 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/make.scm,v 14.14 1989/08/03 23:07:40 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -360,6 +360,8 @@ MIT in each case. |#
    (RUNTIME DEFSTRUCT)
    (RUNTIME UNSYNTAXER)
    (RUNTIME PRETTY-PRINTER)
+   (RUNTIME EXTENDED-SCODE-EVAL)
+
    ;; REP Loops
    (RUNTIME ERROR-HANDLER)
    (RUNTIME MICROCODE-ERRORS)
