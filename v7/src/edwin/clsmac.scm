@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;$Id: clsmac.scm,v 1.4 2001/12/18 21:34:54 cph Exp $
+;;;$Id: clsmac.scm,v 1.5 2001/12/19 01:41:36 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989, 1999, 2001 Massachusetts Institute of Technology
 ;;;
@@ -121,8 +121,8 @@
      (syntax* expression))))
 
 (define (make-method-definition class operation expression)
-  (make-comb (make-variable 'CLASS-METHOD-DEFINE)
-	     (make-variable class)
+  (make-comb (make-scode-variable 'CLASS-METHOD-DEFINE)
+	     (make-scode-variable class)
 	     operation
 	     expression))
 
