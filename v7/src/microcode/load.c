@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: load.c,v 9.33 1993/11/04 04:02:56 gjr Exp $
+$Id: load.c,v 9.34 1993/11/04 19:33:21 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -184,7 +184,7 @@ DEFUN (initialize_variables_from_fasl_header, (buffer),
   else
   {
     C_Code_Table_Length = (OBJECT_DATUM (buffer[FASL_Offset_C_Length]));
-    C_Code_Table_Size = (OBJECT_DATUM (buffer[FASL_Offset_C_Length]));
+    C_Code_Table_Size = (OBJECT_DATUM (buffer[FASL_Offset_C_Size]));
   }
 
 #ifndef INHIBIT_FASL_VERSION_CHECK

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.76 1993/11/04 04:03:35 gjr Exp $
+$Id: cmpint.c,v 1.77 1993/11/04 19:34:46 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -3523,7 +3523,7 @@ Boolean
 DEFUN (install_c_code_table, (table, length),
        SCHEME_OBJECT * table AND long length)
 {
-  return (true);
+  return (length == 0);
 }
 
 #endif /* NATIVE_CODE_IS_C */
@@ -3662,7 +3662,7 @@ Boolean
 DEFUN (install_c_code_table, (table, length),
        SCHEME_OBJECT * table AND long length)
 {
-  return (true);
+  return (length == 0);
 }
 
 /* Bad entry points. */

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dump.c,v 9.37 1993/11/04 04:03:02 gjr Exp $
+$Id: dump.c,v 9.38 1993/11/04 19:33:13 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -47,7 +47,8 @@ void
 DEFUN (prepare_dump_header, (Buffer, Dumped_Object,
 			     Heap_Count, Heap_Relocation,
 			     Constant_Count, Constant_Relocation,
-			     table_length, table_size,
+			     prim_table_length, prim_table_size,
+			     c_table_length, c_table_size,
 			     cc_code_p, band_p),
        SCHEME_OBJECT * Buffer
        AND SCHEME_OBJECT * Dumped_Object
@@ -118,14 +119,14 @@ DEFUN (prepare_dump_header, (Buffer, Dumped_Object,
        flag it as if dumped without compiler support, so
        it can be loaded anywhere.
      */
-    Buffer[FASL_Offset_Ci_Version] = MAKE_CI_VERSION(band_p, 0, 0);
+    Buffer[FASL_Offset_Ci_Version] = (MAKE_CI_VERSION (band_p, 0, 0));
     Buffer[FASL_Offset_Ut_Base] = SHARP_F;
   }
 
   Buffer[FASL_Offset_C_Length] =
-    MAKE_OBJECT (TC_BROKEN_HEART, prim_table_length);
+    MAKE_OBJECT (TC_BROKEN_HEART, c_table_length);
   Buffer[FASL_Offset_C_Size] =
-    MAKE_OBJECT (TC_BROKEN_HEART, prim_table_size);
+    MAKE_OBJECT (TC_BROKEN_HEART, c_table_size);
 
   Buffer[FASL_Offset_Check_Sum] = SHARP_F;
   for (i = FASL_Offset_First_Free; i < FASL_HEADER_LENGTH; i++)
