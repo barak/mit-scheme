@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dassm1.scm,v 4.2 1989/05/17 20:28:09 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dassm1.scm,v 4.3 1989/05/24 05:09:32 jinx Exp $
 $MC68020-Header: dassm1.scm,v 4.10 88/12/30 07:05:04 GMT cph Exp $
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
@@ -112,7 +112,7 @@ MIT in each case. |#
   (write-string "]"))
 
 (define (disassembler/write-compiled-code-block block info #!optional page?)
-  (let ((symbol-table (dbg-info/labels info)))
+  (let ((symbol-table (and info (dbg-info/labels info))))
     (if (or (default-object? page?) page?)
 	(begin
 	  (write-char #\page)
