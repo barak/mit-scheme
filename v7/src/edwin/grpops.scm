@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: grpops.scm,v 1.19 1993/08/09 19:19:27 jawilson Exp $
+;;;	$Id: grpops.scm,v 1.20 1993/08/10 23:36:03 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -44,14 +44,14 @@
 
 ;;;; Group Operations
 
-(declare (usual-integrations string-allocate))
-
 ;;; These high-performance ops deal directly with groups and indices
 ;;; for speed and the least consing.  Since indices are not in general
 ;;; valid across modifications to the group, they can only be used in
 ;;; limited ways.  To save an index across a modification, it must be
 ;;; consed into a permanent mark.
 
+(declare (usual-integrations string-allocate))
+
 ;;;; Extractions
 
 (define (group-extract-string group start end)
@@ -131,10 +131,10 @@
 
 (define (prepare-gap-for-insert! group new-start n)
   (if (or (group-read-only? group)
-	  (text-not-insertable? group new-start))
+	  (and (group-text-properties group)
+	       (text-not-insertable? group new-start)))
       (barf-if-read-only))
-  (if (not (group-modified? group))
-      (check-first-group-modification group))
+  (if (not (group-modified? group)) (check-first-group-modification group))
   (cond ((fix:< (group-gap-length group) n)
 	 (grow-group! group new-start n))
 	((fix:< new-start (group-gap-start group))
@@ -181,10 +181,11 @@
 			 (fix:+ (mark-index (system-pair-car marks)) n))))
   (vector-set! group group-index:modified-tick
 	       (fix:+ (group-modified-tick group) 1))
-  ;; The MODIFIED? bit must be set *after* the undo recording.
   (undo-record-insertion! group index (fix:+ index n))
+  ;; The MODIFIED? bit must be set *after* the undo recording.
   (set-group-modified! group true)
-  (update-intervals-for-insertion! group index n))
+  (if (group-text-properties group)
+      (update-intervals-for-insertion! group index n)))
 
 ;;;; Deletions
 
@@ -200,7 +201,8 @@
 	(let ((text (group-text group))
 	      (gap-length (group-gap-length group)))
 	  (if (or (group-read-only? group)
-		  (text-not-deleteable? group start end))
+		  (and (group-text-properties group)
+		       (text-not-deleteable? group start end)))
 	      (barf-if-read-only))
 	  (if (not (group-modified? group))
 	      (check-first-group-modification group))
@@ -257,7 +259,8 @@
 		     (fix:+ (group-modified-tick group) 1))
 	;; The MODIFIED? bit must be set *after* the undo recording.
 	(set-group-modified! group true)
-	(update-intervals-for-deletion! group start end)
+	(if (group-text-properties group)
+	    (update-intervals-for-deletion! group start end))
 	(set-interrupt-enables! interrupt-mask)
 	unspecific)))
 
