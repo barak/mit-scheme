@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.15 1989/08/07 07:36:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.16 1989/08/11 02:59:18 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -170,7 +170,7 @@ MIT in each case. |#
 
 (define (implemented-primitive-procedure? primitive)
   (get-primitive-address (intern (get-primitive-name (object-datum primitive)))
-			 false))
+			 #f))
 
 (define map-filename
   (if (implemented-primitive-procedure? file-exists?)
@@ -210,7 +210,7 @@ MIT in each case. |#
 
 ;; Construct the package structure.
 ;; Lotta hair here to load the package code before its package is built.
-(eval (cold-load/purify (fasload (map-filename "packag") true))
+(eval (cold-load/purify (fasload (map-filename "packag") #t))
       environment-for-package)
 ((access initialize-package! environment-for-package))
 (let loop ((names
@@ -233,8 +233,8 @@ MIT in each case. |#
 				    (car names))
 	     (loop (cdr names)))))
 (package/add-child! system-global-package 'PACKAGE environment-for-package)
-(eval (fasload "runtim.bcon" false)
-      ;; (cold-load/purify (fasload "runtim.bcon" false))
+(eval (fasload "runtim.bcon" #f)
+      ;; (cold-load/purify (fasload "runtim.bcon" #f))
       system-global-environment)
 
 ;; Global databases.  Load, then initialize.
@@ -251,7 +251,7 @@ MIT in each case. |#
   (if (not (null? files))
       (begin
 	(eval (cold-load/purify
-	       (fasload (map-filename (car (car files))) true))
+	       (fasload (map-filename (car (car files))) #t))
 	      (package-reference (cdr (car files))))
 	(loop (cdr files)))))
 (package-initialize '(RUNTIME GC-DAEMONS) 'INITIALIZE-PACKAGE!)
@@ -269,7 +269,7 @@ MIT in each case. |#
 		    constant-space/base)
 
 ;; Load everything else.
-((eval (fasload "runtim.bldr" false) system-global-environment)
+((eval (fasload "runtim.bldr" #f) system-global-environment)
  (lambda (filename environment)
    (if (not (or (string=? filename "packag")
 		(string=? filename "gcdemn")
@@ -280,7 +280,7 @@ MIT in each case. |#
 		(string=? filename "boot")
 		(string=? filename "queue")
 		(string=? filename "gc")))
-       (eval (purify (fasload (map-filename filename) true)) environment)))
+       (eval (purify (fasload (map-filename filename) #t)) environment)))
  `((SORT-TYPE . MERGE-SORT)
    (OS-TYPE . ,(intern os-name-string))
    (OPTIONS . NO-LOAD)))
@@ -364,7 +364,7 @@ MIT in each case. |#
 
 (let ((filename (map-filename "site")))
   (if (file-exists? filename)
-      (eval (purify (fasload filename true)) system-global-environment)))
+      (eval (purify (fasload filename #t)) system-global-environment)))
 
 (let ((fasload/update-debugging-info!
        (access fasload/update-debugging-info!
@@ -377,4 +377,4 @@ MIT in each case. |#
 
 )
 
-(package/add-child! system-global-package 'USER user-initial-environment)(initial-top-level-repl)
+(package/add-child! system-global-package 'USER user-initial-environment)(flush-purification-queue!)(initial-top-level-repl)

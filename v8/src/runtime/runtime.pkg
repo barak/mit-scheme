@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.46 1989/08/10 08:18:17 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.47 1989/08/11 02:59:26 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -550,7 +550,9 @@ MIT in each case. |#
   (files "gc")
   (parent ())
   (export ()
-	  constant-space/in-use	  gc-flip
+	  constant-space/in-use
+	  flush-purification-queue!
+	  gc-flip
 	  purify
 	  set-gc-safety-margin!)
   (export (runtime gc-statistics)

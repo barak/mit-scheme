@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/packag.scm,v 14.8 1989/08/07 07:36:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/packag.scm,v 14.9 1989/08/11 02:59:22 cph Rel $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -131,7 +131,11 @@ MIT in each case. |#
 	     (lambda (filename environment)
 	       (load filename environment syntax-table true))
 	     options))))))
-  unspecific)
+  ;; Make sure that everything we just loaded is purified.  If the
+  ;; program runs before it gets purified, some of its run-time state
+  ;; can end up being purified also.
+  (flush-purification-queue!))
+
 (define-integrable (package/reference package name)
   (lexical-reference (package/environment package) name))
 

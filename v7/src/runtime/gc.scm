@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gc.scm,v 14.2 1989/03/29 02:45:39 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gc.scm,v 14.3 1989/08/11 02:59:14 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -108,12 +108,13 @@ MIT in each case. |#
 	    (pure-space?
 	     (with-absolutely-no-interrupts
 	      (lambda ()
-		(set! pure-space-queue (cons item pure-space-queue)))))
+		(set! pure-space-queue (cons item pure-space-queue))
+		unspecific)))
 	    (else
 	     (with-absolutely-no-interrupts
 	      (lambda ()
-		(set! constant-space-queue
-		      (cons item constant-space-queue))))))))
+		(set! constant-space-queue (cons item constant-space-queue))
+		unspecific))))))
 
 (define (default/stack-overflow)
   (abort "maximum recursion depth exceeded"))
@@ -172,6 +173,14 @@ MIT in each case. |#
      (hook/gc-flip (if (default-object? safety-margin)
 		       default-safety-margin
 		       safety-margin)))))
+
+(define (flush-purification-queue!)
+  (if (or (not (null? pure-space-queue))
+	  (not (null? constant-space-queue)))
+      (begin
+	(gc-flip)
+	(flush-purification-queue!))))
+
 (define (purify item #!optional pure-space? queue?)
   ;; Purify an item -- move it into pure space and clean everything by
   ;; doing a gc-flip.
