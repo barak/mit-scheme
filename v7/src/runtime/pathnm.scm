@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.4 1989/04/20 01:28:01 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.5 1989/08/03 23:06:22 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -360,3 +360,7 @@ See the files unkpth.scm, vmspth.scm, or unxpth.scm for examples.|#
 	      (merge-pathnames pathname (working-directory-pathname)))
 	     (pathname->input-truename
 	      (merge-pathnames pathname (home-directory-pathname)))))))
+
+(define (system-library-directory-pathname)
+  (pathname-directory-path
+   (string->pathname ((ucode-primitive microcode-tables-filename 0)))))

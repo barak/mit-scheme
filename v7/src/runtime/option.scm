@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/option.scm,v 14.4 1989/06/22 23:50:53 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/option.scm,v 14.5 1989/08/03 23:06:31 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -40,11 +40,10 @@ MIT in each case. |#
 (define (load-option name)
   (let ((entry (assq name options))
 	(pathname
-	 (merge-pathnames (make-pathname false false '("options")
-					 false false false)
-			  (pathname-directory-path
-			   (string->pathname
-			    ((ucode-primitive microcode-tables-filename)))))))    (if (not entry)
+	 (pathname-as-directory
+	  (merge-pathnames (string->pathname "options")
+			   (system-library-directory-pathname)))))
+    (if (not entry)
 	(error "Unknown option name" name))
     (for-each
      (lambda (descriptor)
