@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxdir.scm,v 14.3 1988/10/21 22:21:28 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxdir.scm,v 14.4 1989/08/04 02:14:09 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -72,14 +72,20 @@ MIT in each case. |#
 					  (pathname-type instance))))))))))))
 
 (define (generate-directory-pathnames pathname)
-  (let loop
-      ((name ((ucode-primitive open-directory) (pathname->string pathname)))
-       (result '()))
-    (if name
-	(loop ((ucode-primitive directory-read))
-	      (cons (merge-pathnames pathname (string->pathname name))
-		    result))
-	(reverse! result))))
+  (dynamic-wind
+   (lambda () unspecific)
+   (lambda ()
+     (let loop
+	 ((name
+	   ((ucode-primitive open-directory 1) (pathname->string pathname)))
+	  (result '()))
+       (if name
+	   (loop ((ucode-primitive directory-read 0))
+		 (cons (merge-pathnames (string->pathname name) pathname)
+		       result))
+	   result)))
+   (ucode-primitive directory-close 0)))
+
 (define (extract-greatest-versions pathnames)
   (let ((name-alist '()))
     (for-each (lambda (pathname)
