@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: wttree.scm,v 1.1 1993/11/02 20:10:55 adams Exp $
+$Id: wttree.scm,v 1.2 1993/11/03 03:46:30 adams Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -595,6 +595,10 @@ MIT in each case. |#
 (define (wt-tree/delete-min tree)
   (guarantee-tree tree 'wt-tree/delete-min)
   (%make-wt-tree (tree/type tree) (node/delmin (tree/root tree))))
+
+(define (wt-tree/delete-min! tree)
+  (guarantee-tree tree 'wt-tree/delete-min!)
+  (set-tree/root! tree (node/delmin (tree/root tree))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
