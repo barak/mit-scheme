@@ -1,0 +1,234 @@
+-*-Text-*-
+
+Task list for compiler.  The list is seperated into classes of
+decreasing priority.  Add new entries at the end of the appropriate
+class.
+
+Each entry should start with an open/close bracket.  "Claim" a
+particular task by putting your uname in the brackets.  When the task
+is done, put DONE in the brackets.
+
+
+---- Class 1 (required for release) ----
+
+[DONE] Fix keyword bug in pattern matcher.
+
+[DONE] Open code computed vector operations.
+
+[DONE] Open code computed string, and bit-string operations.  (1-2
+days)
+
+[DONE] Open code generic arithmetic.  (1 week)
+
+[DONE] Open code flonum arithmetic.  (6 weeks)
+
+[Partly done] Fix dataflow analyzer explosion on takr.
+Handled by compiling by procedures.  Not really taken care of, but
+solves the problem in practice.
+
+[] Stack overflow checks.  
+This can be done accurately or heuristically:
+To do it accurately we must compute the maximum number of pushes for a
+procedure (not transitively) and (if not zero) check at entry whether
+that much space is available.
+To do it heuristically we only need to find those procedures that can
+call themselves (indirectly) in subproblem position and check whether
+we've exceeded the buffer at entry.  The other procedures will push an
+arbitrarily large, but finite amount.  Given a sufficiently large
+overpush buffer, the heuristic test should be sufficient.
+
+[] New closure/trampoline implementation to alleviate cacheing
+problems:
+  Closures can be pre-allocated in chunks at HeapTop and growing
+towards Free.  The closures have fixed instructions to jump to a
+simple assembly language routine that grabs the real entry point from
+the closure and invokes it through a register.  In this way the
+instructions are never modified and the cache need only be flushed
+rarely.  For example, the pre-allocated closures at the top of memory
+would look like
+
+<header>
+jsr n(a6)
+<entry point of code>
+<pointer to closure's variable area>
+
+and n(a6) would be
+
+mov.l	(sp),a0
+subq.l	&4,(sp)		; bump back to closure
+ori.b	&tc_compiled_entry,(sp)
+mov.l	(a0),a0		; get real entry point
+jmp	(a0)		; go to closure
+
+
+---- Class 2 (highly desirable or good cost/payoff ratio) ----
+
+[DONE] Reorder arguments in tail recursive calls and push the minimum
+number of temporaries.  (3 weeks)
+
+[] Reduce the number of interrupt checks and move them to continuation
+invocation rather than continuation entry.  The call graph is already
+computed.  There is no need for an entry gc check if the procedure
+does not call itself.  There is no need for a continuation check if
+the continuation cannot ultimately return to itself.  We may want to
+add gc checks anyway if we are consing more than a small fixed amount.
+A different problem is determining when to gc check in the middle of a
+basic block.  AAB's code probably generates humongous basic blocks
+which may require interruptability. (3 weeks)
+
+[DONE] Self consistent closing.  This includes dropping parent frame
+for open externals (and maybe static links) when the procedure does
+not need them.  Effective closures.  (3 weeks)
+
+[Partly done] Open code compiler apply.  (3 days)
+The 68K version has quick handlers for common arities.
+
+[] Open code or provide special handlers for common "unsafe"
+primitives such as apply, force, eval, with-interrupt-mask, etc.  (3
+days)
+
+[DONE] Teach the uuo linker about entities so it can do a direct jump. (3
+days).
+
+[] Speed up some bit string operations.  (3 days?)
+
+[] Cache compatible compiled versions of procedures in loops, and
+invoke them cheaply, using a computed jump.  (Use declarations, 1
+week.)
+
+[] Optimize I/O procedures (e.g. read, write) by supplying correct
+default port argument.  Perhaps call lower-level operation which does
+no defaulting.  (3 days)
+
+
+---- Class 3 (less desirable but cheap) ----
+
+[] Better linearization in loops.  (3-4 days)
+
+[OBSOLETE] Make top level (constant) definitions be handled by the
+linker to eliminate code space.  (2 weeks?)  Compilation by procedures
+obsoletes this.  The top level code, which performs the definitions,
+is not purified, so it is GCd.
+
+[] Assignments should do better.  No need to cellify if the variable
+is never closed over either by a procedure or by a continuation.
+Currently we can easily tell the procedure story, but can't tell the
+continuation story since the closing analysis is asymmetric.  Maybe do
+the analysis on continuations as well only for this job.  Lvalues
+already have a field to determine whether they are "closed over".  We
+may need a notion of a continuation "ultimately exported".  (10 days)
+
+[] Add an fg optimization phase that reduces the strength of the
+continuation types: After simapp and outer previously unknown-type
+continuations may have known types and some of the work can be avoided
+if the type is effect or predicate.  (2 weeks)
+
+[] Better code generation for many cases of computed jump: Many of
+them turn into
+	<test>
+	pea	entry
+	move.b	&tc_entry,(sp)
+	bra	merge
+	...  merge
+	clr.b	(sp)
+	rts
+
+which can obviously be improved to
+	
+	<test>
+	bra	entry
+
+and merge may not be necessary at all.  (1 week)
+
+[DONE] Teach the UUO linker about primitives.  In this way, users who
+don't know about declarations may get a little better performance when
+their code references CAR (etc) freely.  This requires making "unsafe"
+primitives back out correctly when invoked from compiled code.  1 week.
+
+
+---- Class 4 (expensive or long term) ----
+
+[] Register variables in tight loops.  (summer)
+
+[] Loop unrolling in tight loops.  (2 weeks)
+
+[] Remove type codes from continuation via microcode stack parser.  A
+different possibility is to have a hybrid high/low tag approach where
+fixnums and compiled entries differ only in the low tags.  Through
+alignment constraints the code could always be tagged automatically.
+(summer)
+
+[] Redo the variable cache stuff to avoid or simplify trap tests.
+Right now the main obstacle to this is "unassigned".  Assignments
+could become expensive (because unassigning a variable would be
+expensive), or we could make assignment never be able to unassign a
+variable.  (3 weeks)
+
+[DONE] Improve optional arguments by bypassing apply in some cases where
+the frame needs to be reformatted by inserting optionals.  (3 days)
+
+[DONE] Rewrite the back end.  Currently it behaves quadratically on the
+length of the input.  It should be linear!  (4 weeks)
+It was a bug in the symbol table stuff by which many labels hashed to
+the same bucket and searches became linear rather than constant time.
+
+[DONE] Multi closing: Divide closures into non-overlapping sets which can
+share the structure of the closure.  In many cases, procedures are
+closed by contagion, and their free variables could be added to the
+closure who caused them to be closed.  Many of these don't even need
+code pointers.  (6 weeks)
+
+[] Write a recognizer for downward funargs and for cps-like code to
+avoid closing non passed-out procedures passed as arguments.  This
+would make cps-style multiple values generate pretty good code.  (6
+weeks)
+
+[] Improve the closure analyzer to close less often for compatibility:
+if all the possible operators have their closing limits in a linear
+chain, we can always leave all the stuff around that the innermost
+possible operator needs, and dynamically pop the appropriate amount of
+stuff if the operator is not the innermost one.  (4 weeks)
+
+
+---- Class 5 (very long term) ----
+
+[DONE] Side effect analysis.  Remove extraneous calls.
+
+[DONE] Value analysis.  Remove busy noops (cdr-loops, etc).
+
+[] Make a triviality analyzer that tells the code generator to inline
+code simple procedures even if used in more than one place.  As a
+special case of this, add a piece of code that decides when eta
+conversion is beneficial and propagates the results through the value
+graph.  This is important for some versions of the Y operator.  { A
+very simple version of this already done in the value analysis. }
+
+[] Reverse the order of arguments on the stack.  In this way
+listifying and defaulting optionals becomes much simpler since there
+is never a need to open a gap.
+
+[OBSOLETE] Write a static linker which when given multiple code
+objects to be loaded in the same environment, produces a new code
+object to be loaded in that environment but in which all
+cross-references have been linked.  This needs definitions to be
+written in a "parseable" format.  If an option that would produce code
+for creation of the environment and initialization of the program was
+provided, and the runtime system was restructured into a library from
+which the linker could selectively link, the compiler would become
+stand-alone.  (summer) 
+	There is a better way to get a stand-alone compiler, with no
+changes to the compiler!  A modified fasload can be written that
+`nulls' the environment object from compiled code blocks and the cache
+lists kept around for incremental definition.  The dumped code will
+only have those procedures needed (or modules needed if not compiled
+by procedures), and will not share environment structure with the
+load-time environment.  The primitives referenced by the code will be
+the only ones needed for the stand-alone version.
+
+
+---- Class 6 (idle thoughts) ----
+
+[] When handling disjunctions in the front end, if the predicate
+expression is something known to return a boolean value (such as
+`eq?'), then there is no need to generate a variable to hold the
+value.

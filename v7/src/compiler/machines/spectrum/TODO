@@ -1,0 +1,105 @@
+Optimizations:
+
+A:	- Done
+
+5510	    (ldi () #x32 8)
+5514	    (ldi () 0 9)
+5518	    (dep () 8 5 6 9)
+
+Could be done with a single ldil instruction.
+
+It comes from the sequence
+
+(assign (register #x30) (machine-constant #x32))
+(assign (register #x31) (machine-constant 0))
+(assign (register #x32) (cons-pointer (register #x30) (register #x31)))
+
+B:	- Done
+
+	(ldi () #x28 7)
+	(bl () 1 (@pco 0))
+	(dep () 0 #x1F 2 1)
+	(ldo () (offset (- continuation-695 *pc*) 0 1) 6)
+	(dep () 7 5 6 6)
+
+No need for ldi/dep, can be done with depi.
+
+It comes from sequence
+
+(assign (register #x33) (machine-constant #x28))
+(assign (register #x34) (entry:continuation #[uninterned-symbol 482 continuation-695]))
+(assign (register #x35) (cons-pointer (register #x33) (register #x34)))
+
+C:
+
+	(bl () 1 (@pco 0))
+	(dep () 0 #x1F 2 1)
+	(ldo () (offset (- continuation-695 *pc*) 0 1) 6)
+
+can become
+
+	(bl () 1 (@pco 0))
+	(ldo () (offset (- (- continuation-695 (+ *pc* 4)) privilege-bits) 0 1) 6)
+
+assuming that privilege bits are constant.
+
+D:	- Done
+
+	(ldi () #x28 #xA)
+	(stw () #x1F (offset #xC8 0 4))
+	(ldil () #x68000 8)
+	(ldo () (offset #x18 0 8) 8)
+	(stwm () 8 (offset 4 0 #x15))
+	(ldil () #x2020 8)
+	(ldo () (offset 4 0 8) 8)
+	(stwm () 8 (offset 4 0 #x15))
+	(bl () 1 (@pco 0))
+	(dep () 0 #x1F 2 1)
+	(ldo () (offset (- lambda-1814 *pc*) 0 1) 1)
+	(ble () (offset #x64 4 3))
+
+[Closure consing code]
+
+This can be shortened, and the ldi/dep can become a depi.
+
+E:
+
+4DC4	    (ldi () #x36 8)
+4DC8	    (copy () #x15 9)
+4DCC	    (dep () 8 5 6 9)
+
+No need for ldi/dep.  Can be done with depi. (as long as free).
+
+F:
+
+(flo:- 0.0 x)
+uses a scheme object for 0.0
+fpr0 (the status register) reads as 0.0 (except for stores), a rule
+should use this.
+
+G:	- Done
+
+Introduce new macro instructions
+COMIBTN
+COMIBFN
+COMBN
+
+which work like the versions without N except that they always nullify
+the following instruction.  The branch tensioner knows the sign of the
+displacement and can therfore insert the NOP when necessary.
+
+H:
+
+Hooks are invoked by the following sequence:
+
+	BLE n(4,scheme_to_interface_ble_reg)
+	NOP
+
+Why?  The NOP should go away, and the hooks should use -4(4,31)
+
+No.  The sequence must be uniform, and the NOP allows for further
+optimization.  If the sequence were BLE,n, there would be no way
+to improve it.
+
+Note that hooks that don't return (e.g. +) can use BE,n .
+

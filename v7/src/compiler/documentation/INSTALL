@@ -1,0 +1,366 @@
+-*-Text-*-
+
+	       Installation Notes for Liar version 4.9
+
+
+Liar, the CScheme compiler, is available for the following computers:
+
+	Sun 3
+	HP 9000 series 300 (except model 310)
+
+These are 68020 based machines.  Ports for 68000/68010 machines and
+the Vax will be available in the future.
+
+For bug reports send computer mail to
+
+    BUG-LIAR@ZURICH.AI.MIT.EDU (on the Arpanet/Internet)
+
+or US Snail to
+
+    Scheme Team
+    c/o Prof. Hal Abelson
+    545 Technology Sq. rm 410
+    Cambridge MA 02139
+
+* The compiler is distributed as four compressed tar files, as
+follows:
+
+** "dist6.2.1-tar.Z" is release 6.2.1 of CScheme.  This is required
+for using the compiler.  It is installed in the usual way except for
+one small change to the microcode needed to support compiled code.
+This tar file contains about 5.1 Mbyte of data when unloaded.
+
+** "liar4.9b-tar.Z" contains the binary files for the compiler.  This
+includes a ".bin" file (SCode binary, for the interpreter) and a
+".com" file (native code compiler output) for each source file in the
+compiler.  It also contains a few other files used to construct the
+compiler from the binary files.  This tar file contains about 3 Mbyte
+of data when unloaded.
+
+** "liar4.9s-tar.Z" contains the source files for the compiler.  It
+also includes a TAGS table.  This tar file contains about 1.2 Mbyte of
+data when unloaded.
+
+** "liar4.9d-tar.Z" contains some debugging files.  There is one
+".binf" file corresponding to each ".com" file in the compiler.  Given
+both of these files, the compiler can generate a symbolic assembly
+language listing of the compiled code.  In future releases, these
+debugging files will also support debugging tools for parsing the
+stack and examining compiled code environment structures.  This tar
+file contains about 4.5 Mbyte of data when unloaded.
+
+* Installation of the compiler.  Installation requires about 17-20
+Mbyte of disk space.  This is conservative and could be reduced with
+some knowledge of what is needed and what is not.
+
+** The first step in installation is building CScheme.  Follow the
+instructions included in the release, except that the file
+"makefiles/sun" or "makefiles/hp200" (as appropriate) must be edited
+as follows.  Look for the following lines in that file:
+
+    # Compiled code interface files.
+    # These defaults are just stubs.
+
+    CSRC  = compiler.c
+    CFILE = compiler.oo
+    D_CFILE = compiler.do
+    F_CFILE = compiler.fo
+    CFLAG =
+    GC_HEAD_FILES= gccode.h
+
+edit these lines to read as follows:
+
+    # Compiled code interface files.
+
+    CSRC  = cmp68020.s
+    CFILE = cmp68020.o
+    D_CFILE = cmp68020.o
+    F_CFILE = cmp68020.o
+    CFLAG = -DCMPGCFILE=\"cmp68kgc.h\"
+    GC_HEAD_FILES= gccode.h cmp68kgc.h
+
+    .s.o: ; as -o $*.o $*.s
+
+After this is done, connect to the microcode subdirectory and execute
+the following
+
+    cp cmp68020.s-<sys> cmp68020.s
+
+where <sys> is "sun" if you are running on a Sun 3, or "hp" if you are
+running on an HP 9000 series 300.  NOTE: the file "cmp68020.s-src" is
+the source file from which the other two were built.  It was processed
+by m4 on an HP machine to create "cmp68020.s-hp", then that file was
+processed by a custom conversion program (courtesy of the
+butterfly-lisp hackers at BBN) to produce "cmp68020.s-sun".
+
+Once these changes have been made, finish the installation process in
+the normal way.
+
+**** Note that on Sun workstations, assembling "cmp68020.s" will
+produce the following harmless warning messages:
+
+as: error (cmp68020.s:1432): Unqualified forward reference
+as: error (cmp68020.s:1435): Unqualified forward reference
+as: error (cmp68020.s:1444): Unqualified forward reference
+
+Also, on older versions of Sun software (before release 3.4) you may
+not be able to assemble this file at all.  For that case, we have
+included the file "cmp68020.o-sun" which is the output of the
+assembler on a 3.4 system.  Copy that file to "cmp68020.o" and touch
+it to make sure it is newer than the source file.
+
+** The next step in installation is unloading the Liar tar files.  The
+tar files may be unloaded wherever you like.  When unloaded, they will
+create a directory "liar4.9" under the directory to which you are
+connected.
+
+Note that only "liar4.9b-tar.Z" need be unloaded in order to perform
+the rest of the installation.
+
+In what follows, let $LIAR stand for the name of the directory in
+which the compiler is loaded, and let $SCHEME stand for the name of
+the directory in which the interpreter is loaded.
+
+** After having unloaded the files, and after CScheme has been built
+and installed, do the following:
+
+    cd $SCHEME
+    mv $LIAR/runtime/* runtime
+    mv $LIAR/sf/* sf
+    cd runtime
+    scheme -fasl cmp-runmd.bin < $LIAR/etc/mkrun.scm
+
+This transfers a number of compiled files to the Scheme runtime system
+directory, and constructs a new version of the runtime system, named
+"scheme.com", which is partially compiled.  After this has been done,
+you may discard all of the ".com" files in the runtime system
+directory.  If you want the new runtime system to be the default,
+rename it to "scheme.bin".
+
+**** Note: because this is a beta release, the compiled runtime system
+"scheme.com" is likely to have bugs.  If you intend to use it by
+default, we suggest you retain the original (interpreted) runtime
+system "scheme.bin" by renaming it to something else.
+
+** Next, do the following:
+
+    scheme -constant 510 -heap 500 -band $SCHEME/runtime/scheme.com
+
+This starts up the scheme interpreter with a large constant space and
+heap, using the partially compiled runtime system.  After the
+interpreter has started, type the following expression at it:
+
+    (begin (%cd "$LIAR")
+	   (load "machines/bobcat/make" system-global-environment)
+	   (disk-save "$SCHEME/runtime/compiler.com"))
+
+it will load two files, then ask the question "Load compiled?".  Type
+Y, which means to build the compiler using compiled code.  If you type
+N, the compiler will be run interpretively, which is about a factor of
+10 slower than the compiled version.
+
+After you answer the question, it will load and evaluate approximately
+100 files.  This will take several minutes.  When it is done, you are
+returned to the interpreter.  At this point, a new band will have been
+created, called "$SCHEME/runtime/compiler.com", which contains the
+compiler.  All the other files in the $LIAR directory may be
+discarded, if you wish, since only "compiler.com" is needed to run the
+compiler.
+
+* Using the compiler.
+
+** Loading.  The compiler band, "compiler.com", is used by starting
+Scheme and specifying that file using the "-band" option.  You must
+also use the "-constant" option to specify that the constant space is
+at least 510, and it is recommended that the "-heap" be specified at
+least 500.  For medium to large compilations, a heap size of 700 or
+more may be needed; at MIT we typically use 1000 to be safe.
+
+Alternatively, the switch "-compiler" specifies constant 510, heap
+500, and the compiler band.
+
+** Memory usage.  Note that the total memory used by Scheme in this
+configuration is substantial!  With a heap of 1000 and a constant
+space of 510, the memory used is (* 4 (+ 510 (* 2 1000))), or about 10
+Mbyte.  For many computers this is a ridiculous figure, and Scheme
+will die a slow death due to paging.  Using a heap of 500 reduces this
+to about 6 Mbytes, but that is still quite alot.
+
+For machines with small memories, using the `bchscheme' version of the
+microcode will be helpful.  This program, which is made by connecting
+to "$SCHEME/microcode" and typing "make bchscheme", does its garbage
+collection to a disk file, thus requiring only one heap in the virtual
+address space.  This reduces the overall memory requirements for the
+above examples to 6 Mbyte and 4 Mbyte, respectively.  The savings of 4
+and 2 Mbytes (respective) will be allocated in the file system rather
+than in virtual memory.
+
+This may seem like a complicated way of doing virtual memory
+management, but in fact it performs significantly better than paging
+on machines with small amounts of RAM.  This is because the GC
+algorithm uses the disk much more efficiently than the paging system
+will be able to.
+
+** Compilation.  The following global definitions are available for
+calling the compiler:
+
+
+(COMPILE-BIN-FILE FILENAME #!OPTIONAL OUTPUT-FILENAME)
+
+Compiles a binary SCode file, producing a native code file.  FILENAME
+should refer to a file which is the output of the SF program (see
+"$SCHEME/documentation/user.txt" for a description of SF).  The type
+of the input file defaults to ".bin".
+
+OUTPUT-FILENAME, if given, is where to put the output file.  If no
+output filename is given, the output filename defaults to the input
+filename, except with type ".com".  If it is a directory specification
+(on unix, this means if it has a trailing "/"), then the output
+filename defaults as usual, except that it goes in that directory.
+
+This is similar to the operation of SF.  Also, like SF, the input
+filename may be a list of filenames, in which case they are all
+compiled in order.
+
+
+(COMPILE-PROCEDURE PROCEDURE)
+
+Compiles a compound procedure, given as its argument, and returns a
+new procedure which is the compiled form.  This does not perform side
+effects on the environment, so if one wished to compile MAP, for
+example, and install the compiled form, it would be necessary to say
+
+    (set! map (compile-procedure map))
+
+
+(COMPILER:WRITE-LAP-FILE FILENAME)
+
+This procedure generates a "LAP" disassembly file (LAP stands for Lisp
+Assembly Program, a traditional name for assembly language written in
+a list notation) from the output of COMPILE-BIN-FILE.  If filename is
+"foo", then it looks for "foo.com" and disassembles that, producing a
+file "foo.lap".  If, in addition, the file "foo.binf" exists, it will
+use that information to produce a disassembly which contains symbolic
+names for all of the labels.  This second form is extremely useful for
+debugging.
+
+
+(COMPILE-DIRECTORY DIRECTORY #!OPTIONAL OUTPUT-DIRECTORY FORCE?)
+
+Finds all of the ".bin" files in DIRECTORY whose corresponding ".com"
+files either do not exist or are older, and recompiles them.
+OUTPUT-DIRECTORY, if given, specifies a different directory to look in
+for the ".com" files.  FORCE?, if given and not #F, means recompile
+even if the output files appear up to date.
+
+* Debugging compiled code.  At present the debugging tools are
+practically nonexistent.  What follows is a description of the lowest
+level support, which is clumsy to use but which is adequate if you
+have a moderate understanding of the compiled code.  This is one of
+the prices of beta test!  Before release we will have user-level
+debugging tools.
+
+There are two basic kinds of errors: fatal and non-fatal.  Fatal
+errors are things like segmentation violations and bus errors, and
+when these occur the only method of debugging is to use an assembly
+language debugger such as `adb' or `gdb'.  Debugging these errors is
+complicated and will not be described here.
+
+** Non-fatal errors can be debugged from Scheme.  Here is the method:
+the file "$LIAR/etc/stackp.bin" contains a simple stack parser that
+will allow you to display the Scheme stack, and refer to any of the
+items in the stack by offset number.  Loading this file (into the
+global environment, for example), defines two useful procedures:
+
+(RCD FILENAME) writes a file containing a description of the current
+stack.  When an error has occurred, the current stack contains the
+continuation of the error, which is the information you want to see.
+Each line of the file contains an offset number and the printed
+representation of an object (the latter is truncated to fit on one
+line).
+
+(RCR OFFSET) returns the object corresponding to OFFSET from the
+current stack.  Thus, after using RCD to see the stack, RCR will get
+you pointers to any of the objects.
+
+Given these procedures, you can look at the compiled code stack
+frames, and possibly (with some skill) figure out what is happening.
+
+** Compiled code objects manipulators.  Another set of useful
+procedures, built into the runtime system and defined in the file
+"$SCHEME/runtime/ustruc.scm", will allow you to manipulate various
+compiled code objects:
+
+(COMPILED-PROCEDURE-ENTRY PROCEDURE) returns the entry point of the
+compiled procedure PROCEDURE.  This entry point is an object whose
+type is COMPILED-EXPRESSION.
+
+(COMPILED-CODE-ADDRESS? OBJECT) is true of both COMPILED-EXPRESSION
+objects as well as COMPILER-RETURN-ADDRESS objects.
+
+(COMPILED-CODE-ADDRESS->BLOCK COMPILED-CODE-ADDRESS) returns the
+compiled code block to which that address refers.  The procedure
+COMPILED-CODE-BLOCK/DEBUGGING-INFO will tell you the name of the
+".binf" file corresponding to that compiled code block, if the
+compiled code was generated by COMPILE-BIN-FILE.
+
+(COMPILED-CODE-ADDRESS->OFFSET COMPILED-CODE-ADDRESS) returns the
+offset, in bytes, of that address from the beginning of the compiled
+code block.  NOTE: this offset is the SAME offset as that shown in the
+disassembly listing!  Thus, given any compiled code address, you can
+figure out both what file it corresponds to, plus what label in the
+disassembly file it points at.  This is the basic information you need
+to understand the stack.
+
+There are several other procedures defined for manipulating these
+objects -- see the source code for details.  What follows is a brief
+description of the object formats to aid debugging.
+
+** Compiled Code Blocks.  Compiled code blocks are "partially marked"
+vectors.  The first part of a compiled code block is "non-marked",
+which means that the GC copies it but does not look through it for
+pointers.  This part is used to hold the compiled code.  The second
+part is "marked", and contains constants that are referred to by the
+compiled code.  These constants are ordinary Scheme objects and must
+be traced by the GC in the usual way.
+
+The disassembly listing shows the compiled code block in the same
+format that it is laid out in memory, with offsets in bytes from the
+beginning of the block.  The header of the block is 8 bytes, so the
+disassembly listing starts at offset 8.  The code and constants
+sections are displayed separately, in slightly different formats.
+
+** Procedure Entry Points.  The entry point of a procedure can be
+found in the LAP file by looking for a label with the same name as the
+procedure, concatenated with some positive integer.  Unnamed lambda
+expressions will be lambda-<n> for some <n>.  Closed procedures (i.e.
+those procedures which have an external representation) have two entry
+points, whose labels differ only in the concatenated integer.  The
+first entry point is responsible for checking the number of arguments,
+and transfers control to the second entry point if that is correct.
+
+** Stack Frames.  The normal stack frame for a closed procedure is
+constructed by pushing the return address, then all the arguments
+right to left, then the procedure.  If the procedure has internal
+definitions, then these are pushed on the stack on top of that in some
+unspecified order.  Internal procedures, when invoked, may either
+extend the closure's frame or create new frames.  The rules for this
+are complicated and far beyond the scope of this document.  However,
+two special types of stack pointers may be used when the closure's
+frame is extended.
+
+The first of these is a "static link".  This is a pointer into the
+stack which is used when a sub-frame needs to refer to bindings in
+some parent frame, but the compiler was unable to determine where that
+parent frame was at compile time.  The other type is a "dynamic link",
+which points to where the return address for the current procedure is
+located in the stack.  Because of tail recursion considerations, the
+compiler cannot always determine this at compile time, and in those
+cases dynamic links are used.  The dynamic link is normally kept in
+register A4, and pushed and popped off the stack at appropriate times.
+
+Note that internal procedures evaluate and push their arguments in a
+completely unspecified order.  Thus if your program depends on the
+fact that the interpreter evaluates arguments from right to left, you
+might be screwed, since the compiler chooses whatever order seems most
+efficient or convenient.
