@@ -1,6 +1,6 @@
 \input texinfo @c -*-texinfo-*-
-@comment $Id: imail.texinfo,v 1.37 2004/10/17 02:44:36 cph Exp $
-@comment %**start of header (This is for running Texinfo on a region.)
+@comment $Id: imail.texinfo,v 1.38 2004/10/17 02:44:56 cph Exp $
+@comment %**start of header
 @setfilename mit-scheme-imail
 @set EDITION 1.8
 @set VERSION 1.19
@@ -8,7 +8,7 @@
 @settitle IMAIL @value{VERSION}
 @syncodeindex pg cp
 @syncodeindex tp cp
-@comment %**end of header (This is for running Texinfo on a region.)
+@comment %**end of header
 @finalout
 
 @copying
