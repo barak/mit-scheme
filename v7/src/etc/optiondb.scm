@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: optiondb.scm,v 1.4 2000/12/23 06:01:15 cph Exp $
+$Id: optiondb.scm,v 1.5 2000/12/23 06:22:37 cph Exp $
 
 Copyright (c) 2000 Massachusetts Institute of Technology
 
@@ -57,12 +57,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		      (dir-loop (cdr dirs))))
 		(error "Unable to find package directory:" place)))))))
 
-(define-load-option 'SF
-  (guarded-system-loader '(scode-optimizer) "sf"))
-
-(define-load-option 'CREF
-  (guarded-system-loader '(cross-reference) "cref"))
-
 (define-load-option 'EDWIN
   (guarded-system-loader '(edwin) "edwin"))
 
@@ -70,14 +64,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (lambda () (load-option 'SF))
   (guarded-system-loader '(compiler) "compiler"))
 
-(define-load-option 'STUDENT
-  (guarded-system-loader '(student) "6001"))
-
-(define-load-option 'SOS
-  (guarded-system-loader '(runtime object-system) "sos"))
-
-(define-load-option 'RCS
-  (guarded-system-loader '(rcs) "rcs"))
+(define-load-option 'CREF
+  (guarded-system-loader '(cross-reference) "cref"))
 
 (define-load-option 'IMAIL
   (guarded-system-loader '(edwin imail) "imail"))
@@ -85,7 +73,22 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define-load-option 'PC-SAMPLE
   (guarded-system-loader '(pc-sample) "pcsample"))
 
+(define-load-option 'RCS
+  (guarded-system-loader '(rcs) "rcs"))
+
+(define-load-option 'SF
+  (guarded-system-loader '(scode-optimizer) "sf"))
+
+(define-load-option 'SOS
+  (guarded-system-loader '(runtime object-system) "sos"))
+
+(define-load-option 'STUDENT
+  (guarded-system-loader '(student) "6001"))
+
 (define-load-option 'SWAT
   (guarded-system-loader '(swat) "swat"))
+
+(define-load-option 'WIN32
+  (guarded-system-loader '(win32) "win32"))
 
 (further-load-options standard-load-options)
