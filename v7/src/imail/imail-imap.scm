@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.153 2001/05/17 04:37:39 cph Exp $
+;;; $Id: imail-imap.scm,v 1.154 2001/05/18 20:03:09 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -310,7 +310,12 @@
 ;;;; URL->server delimiter conversion
 
 (define (imap-url-server-mailbox url)
-  (imap-mailbox/url->server url (imap-url-mailbox url)))
+  (imap-mailbox/url->server
+   url
+   (let ((mailbox (imap-url-mailbox url)))
+     (if (string-suffix? "/" mailbox)
+	 (string-head mailbox (fix:- (string-length mailbox) 1))
+	 mailbox))))
 
 (define (imap-mailbox/url->server url mailbox)
   (let ((delimiter (imap-mailbox-delimiter url mailbox)))
@@ -1239,7 +1244,7 @@
       (error "Unable to perform rename between different IMAP accounts:"
 	     url new-url)))
 
-(define-method %append-message ((message <message>) (url <imap-url>))
+(define-method %append-message ((message <message>) (url <imap-folder-url>))
   (let ((folder (message-folder message))
 	(maybe-create
 	 (lambda (connection thunk)
