@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: utils.c,v 9.63 1993/08/23 04:47:15 gjr Exp $
+$Id: utils.c,v 9.64 1993/09/15 01:05:28 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -386,7 +386,7 @@ void
 DEFUN (error_system_call, (code, name),
        int code AND enum syscall_names name)
 {
-  error_in_system_call ((OS_error_code_to_syserr, (code)),
+  error_in_system_call ((OS_error_code_to_syserr (code)),
 			name);
   /*NOTREACHED*/
 }
