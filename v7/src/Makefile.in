@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.11 2000/12/08 19:23:39 cph Exp $
+# $Id: Makefile.in,v 1.12 2000/12/08 19:25:23 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -109,7 +109,7 @@ install: all
 	done
 
 	@for FN in $(EDOPTS); do \
-	    echo "installing edwin option $${FN}";\
+	    echo "$(INSTALL_DATA) edwin/$${FN}.com $(DESTDIR)$(EODIR)/.";\
 	    $(INSTALL_DATA) edwin/$${FN}.com $(DESTDIR)$(EODIR)/.;\
 	    echo "cd $(DESTDIR)$(EODIR); $(LN_S) ../SRC/edwin/$${FN}.bci .";\
 	    ( cd $(DESTDIR)$(EODIR); $(LN_S) ../SRC/edwin/$${FN}.bci . );\
