@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/oscond.h,v 1.8 1992/05/04 20:44:20 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/oscond.h,v 1.9 1992/06/11 12:43:55 jinx Exp $
 
-Copyright (c) 1990-92 Massachusetts Institute of Technology
+Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -40,6 +40,11 @@ MIT in each case. */
 
 /* _POSIX is assumed to be independent of all operating-system and
    machine specification macros.  */
+
+#if defined(_OSF)
+#  define _POSIX
+#  define _BSD4_3
+#endif
 
 #if defined(__hpux) && !defined(hpux)
 #define hpux

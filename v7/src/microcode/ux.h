@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.31 1992/06/05 20:01:42 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.32 1992/06/11 12:44:52 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -174,6 +174,11 @@ extern void EXFUN (error_system_call, (int code, enum syscall_names name));
 /* Conditionalizations that are overridden by _POSIX. */
 
 #ifdef _POSIX
+
+#ifdef _OSF
+#  include <sys/time.h>
+#  include <sys/ioctl.h>
+#endif
 
 #ifdef sonyrisc
 /* <limits.h> will redefine these. */
