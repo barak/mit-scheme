@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: stream.scm,v 14.8 1995/03/06 23:29:41 cph Exp $
+$Id: stream.scm,v 14.9 1995/03/07 02:19:20 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -220,7 +220,7 @@ MIT in each case. |#
 	  (begin
 	    (write-char leader port)
 	    (write (car stream*) port)
-	    (loop (force (cdr stream*))))
+	    (loop (force (cdr stream*)) #\space))
 	  (begin
 	    (if (not (null? stream*))
 		(error:wrong-type-argument stream "stream" 'STREAM-WRITE))
