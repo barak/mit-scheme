@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.16 2003/07/25 17:23:42 cph Exp $
+$Id: xml-struct.scm,v 1.17 2003/07/25 20:38:28 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -213,13 +213,38 @@ USA.
 (define (canonicalize-attributes attributes)
   (map (lambda (a)
 	 (cons (car a)
-	       (canonicalize-content (cdr a))))
+	       (canonicalize-attribute-value (cdr a))))
        attributes))
 
+(define (canonicalize-attribute-value v)
+  (canonicalize-content v))
+
+(define (canonicalize-entity-value v)
+  (if (xml-external-id? v)
+      v
+      (canonicalize-attribute-value v)))
+
 (define (canonicalize-content content)
-  (coalesce-adjacent-strings
-   (map (lambda (item) (canonicalize-char-data item #f))
-	content)))
+  (letrec
+      ((search
+	(lambda (items)
+	  (if (pair? items)
+	      (let ((item (canonicalize-char-data (car items)))
+		    (items (cdr items)))
+		(if (string? item)
+		    (join item items)
+		    (cons item (search items))))
+	      '())))
+       (join
+	(lambda (s items)
+	  (if (pair? items)
+	      (let ((item (canonicalize-char-data (car items)))
+		    (items (cdr items)))
+		(if (string? item)
+		    (join (string-append s item) items)
+		    (cons* s item (search items))))
+	      (list s)))))
+    (search content)))
 
 (define (canonicalize-char-data object)
   (cond ((wide-char? object)
@@ -228,24 +253,6 @@ USA.
 	     (write-utf8-char object port))))
 	((wide-string? object) (wide-string->utf8-string object))
 	(else object)))
-
-(define (coalesce-adjacent-strings items)
-  (letrec
-      ((search
-	(lambda (items)
-	  (if (pair? items)
-	      (if (string? (car items))
-		  (append (car items) (cdr items))
-		  (cons (car items) (search (cdr items))))
-	      '())))
-       (append
-	(lambda (string items)
-	  (if (pair? items)
-	      (if (string? (car items))
-		  (append (string-append string (car items)) (cdr items))
-		  (cons* string (car items) (search (cdr items))))
-	      '()))))
-    (search items)))
 
 (define-xml-type dtd
   (root xml-name?)
@@ -267,14 +274,13 @@ USA.
 	     (xml-parameter-entity-ref? object)))))))
 
 (define-xml-type external-id
-  (id
-   (lambda (object)
-     (or (not object)
-	 (public-id? object))))
-  (uri
-   (lambda (object)
-     (or (not object)
-	 (xml-char-data? object)))))
+  (id (lambda (object)
+	(or (not object)
+	    (public-id? object))))
+  (uri (lambda (object)
+	 (or (not object)
+	     (xml-char-data? object)))
+       canonicalize-char-data))
 
 (define (public-id? object)
   (string-composed-of? object char-set:xml-public-id))
@@ -329,7 +335,16 @@ USA.
 	       (!attlist-type? (cadr item))
 	       (pair? (cddr item))
 	       (!attlist-default? (caddr item))
-	       (null? (cdddr item))))))))
+	       (null? (cdddr item))))))
+    (lambda (object)
+      (map (lambda (item)
+	     (let ((d (caddr item)))
+	       (if (pair? d)
+		   (list (car item)
+			 (cadr item)
+			 (cons (car d) (canonicalize-attribute-value (cdr d))))
+		   item)))
+	   object))))
 
 (define (!attlist-type? object)
   (or (eq? object 'CDATA)
@@ -359,7 +374,7 @@ USA.
 
 (define-xml-type !entity
   (name xml-name?)
-  (value entity-value?))
+  (value entity-value? canonicalize-entity-value))
 
 (define-xml-type unparsed-!entity
   (name xml-name?)
@@ -368,11 +383,7 @@ USA.
 
 (define-xml-type parameter-!entity
   (name xml-name?)
-  (value entity-value?
-	 (lambda (v)
-	   (if (pair? v)
-	       (canonicalize-content v)
-	       v))))
+  (value entity-value? canonicalize-entity-value))
 
 (define (entity-value? object)
   (or (and (pair? object)
