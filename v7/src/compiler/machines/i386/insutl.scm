@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/insutl.scm,v 1.3 1992/02/11 14:47:21 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/insutl.scm,v 1.4 1992/02/11 17:31:24 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -97,7 +97,7 @@ MIT in each case. |#
    (MEMORY)
    #b10 r
    (IMMEDIATE offset ADDRESS UNSIGNED))
-
+
   ((@RO W 4 (? offset))			; ESP
    (MEMORY)
    #b10 #b100
@@ -166,6 +166,20 @@ MIT in each case. |#
    #b00 #b101
    (IMMEDIATE value ADDRESS)))
 
+(define-ea-transformer r/mW)
+(define-ea-transformer mW (MEMORY))
+(define-ea-transformer r/mB)
+(define-ea-transformer mB (MEMORY))
+
+(define-structure (effective-address
+		   (conc-name ea/)
+		   (constructor make-effective-address))
+  (keyword false read-only true)
+  (categories false read-only true)
+  (mode false read-only true)
+  (register false read-only true)
+  (extra '() read-only true))
+
 (define-integrable (fits-in-signed-byte? value)
   (and (>= value -128) (< value 128)))
 
