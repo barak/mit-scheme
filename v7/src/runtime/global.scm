@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.69 2004/10/30 03:56:14 cph Exp $
+$Id: global.scm,v 14.70 2004/10/30 03:58:54 cph Exp $
 
 Copyright 1988,1989,1991,1992,1993,1995 Massachusetts Institute of Technology
 Copyright 1998,2000,2001,2003,2004 Massachusetts Institute of Technology
@@ -425,6 +425,10 @@ USA.
 			(set-hook-list-hooks! hook-list (cdr alist)))
 		    prev)
 		  alist)))))
+
+(define (hook-in-list? hook-list key)
+  (guarantee-hook-list hook-list 'HOOK-IN-LIST?)
+  (if (assq key (hook-list-hooks hook-list)) #t #f))
 
 (define (run-hooks-in-list hook-list . arguments)
   (guarantee-hook-list hook-list 'RUN-HOOKS-IN-LIST)

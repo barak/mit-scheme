@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.505 2004/10/30 03:56:39 cph Exp $
+$Id: runtime.pkg,v 14.506 2004/10/30 03:59:06 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -293,6 +293,7 @@ USA.
 	  get-fixed-objects-vector
 	  get-interrupt-enables
 	  guarantee-hook-list
+	  hook-in-list?
 	  hook-list?
 	  hook/exit
 	  hook/quit
