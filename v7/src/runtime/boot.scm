@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/boot.scm,v 13.42 1987/02/11 02:21:11 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/boot.scm,v 13.43 1987/04/17 00:58:33 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -50,9 +50,9 @@
 (let-syntax ((define-global-primitives
 	      (macro names
 		`(BEGIN
-		  ,@(mapcar (lambda (name)
-			      `(DEFINE ,name ,(make-primitive-procedure name)))
-			    names)))))
+		  ,@(map (lambda (name)
+			   `(DEFINE ,name ,(make-primitive-procedure name)))
+			 names)))))
   (define-global-primitives
    SCODE-EVAL FORCE WITH-THREADED-CONTINUATION
    SET-INTERRUPT-ENABLES! WITH-INTERRUPTS-REDUCED
@@ -139,5 +139,4 @@
 
 (define (boolean? object)
   (or (eq? object #F)
-      (eq? object #T)))
       (eq? object #T)))
