@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.4 1993/08/02 23:54:19 cph Exp $
+;;;	$Id: debug.scm,v 1.5 1993/08/12 08:34:58 jbank Exp $
 ;;;
 ;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
 ;;;
@@ -47,6 +47,87 @@
 
 (declare (usual-integrations))
 
+
+;;;;;;;;Text prop setup stuff
+
+(define (port/buffer port)
+  (mark-buffer (port/mark port)))
+
+(define (with-output-props props thunk port)
+  (let ((start (mark-index (port/mark port))))
+    (thunk)
+    (let ((end (mark-index (port/mark port))))
+      (add-text-properties (buffer-group (port/buffer port))
+			   (min start end)
+			   (max start end)
+			   props))))
+
+(define (readable-between start end)
+  (remove-text-properties  (buffer-group (mark-buffer start))
+			   (mark-index start)
+			   (mark-index end)
+			   (list (list 'READ-ONLY))))
+
+(define (dehigh-between start end)
+  (remove-text-properties (buffer-group (mark-buffer start))
+		       (mark-index start)
+		       (mark-index end)
+		       '((highlighted))))
+
+(define (read-only-between start end)
+  (add-text-properties (buffer-group (mark-buffer start))
+		       (mark-index start)
+		       (mark-index end)
+		       (list (list 'READ-ONLY (generate-uninterned-symbol)))))
+
+(define (debugger-pp-highlight-subexpression expression subexpression
+ 					     indentation port)
+  (let ((start-mark #f)
+ 	(end-mark #f))
+    (fluid-let ((*pp-no-highlights?* #f))
+      (debugger-pp
+       (unsyntax-with-substitutions
+ 	expression
+ 	(list (cons subexpression
+ 		    (make-pretty-printer-highlight
+ 		     (unsyntax subexpression)
+ 		     (lambda (port)
+ 		       (set! start-mark
+ 			     (mark-right-inserting-copy
+ 			      (output-port->mark port)))
+ 		       unspecific)
+ 		     (lambda (port)
+ 		       (set! end-mark
+ 			     (mark-right-inserting-copy
+ 			      (output-port->mark port)))
+ 		       unspecific)))))
+       indentation
+       port))
+    (if (and start-mark end-mark)
+ 	(highlight-region-excluding-indentation start-mark end-mark))
+    (if start-mark (mark-temporary! start-mark))
+    (if end-mark (mark-temporary! end-mark))))
+ 
+(define (highlight-region-excluding-indentation start end)
+  (let loop ((start start))
+    (let ((lend (line-end start 0)))
+      (if (mark<= lend end)
+ 	  (begin
+ 	    (highlight-region (horizontal-space-end start)
+ 			      (horizontal-space-start lend))
+ 	    (loop (mark1+ lend)))
+ 	  (highlight-region (horizontal-space-end start)
+ 			    (horizontal-space-start end))))))
+ 
+(define (highlight-region start end)
+  (group-highlight (mark-group start) (mark-index start) (mark-index end)))
+ 
+(define (group-highlight group start end)
+  (add-text-properties group start end '((HIGHLIGHTED . #T))))
+
+;;;;;;End of text setup stuff.
+
+
 ;;;; Browsers
 
 (define browser-rtd
@@ -105,10 +186,18 @@
 	  (buffer-put! buffer 'BROWSER browser)
 	  browser)))))
 
+;;; Delete the screen if :  it is the debugger, not the env browser
+;;;                        there is more than one active screen
+;;;                        there is only one debugger buffer
+
 (define (kill-browser-buffer buffer)
   (let ((browser (buffer-get buffer 'BROWSER)))
     (if browser
-	(for-each kill-buffer (browser/buffers browser)))))
+	(for-each kill-buffer (browser/buffers browser)))
+    (if (and (equal? (browser/name browser) "*debug*")
+	     (> (length (screen-list)) 1)
+	     (= (length (find-debugger-buffers)) 1))
+	(delete-screen! (selected-screen)))))
 
 (define (buffer-browser buffer)
   (let ((browser (buffer-get buffer 'BROWSER)))
@@ -168,6 +257,16 @@
       (if (not bline)
 	  (editor-error "Nothing to select on this line."))
       (select-bline bline))))
+
+;;; If the mouse clicks on a bline, select it.
+(define-command debugger-mouse-select-bline
+  "Select a bline when mouse clicked there."
+  ()
+  (lambda ()
+    ((ref-command x-mouse-set-point))
+    (let ((bline (mark->bline (current-point))))
+      (if bline
+	  (select-bline bline)))))
 
 (define-command browser-next-line
   "Move down to the next line."
@@ -230,19 +329,33 @@
   (let ((bline
 	 (if (bline/continuation? bline)
 	     (replace-continuation-bline bline)
-	     bline)))
+	     bline))
+	(ind (if (reduction? (bline/object bline)) 6 3)))
     (let ((browser (bline/browser bline)))
       (unselect-bline browser)
       (let ((mark (bline/start-mark bline)))
 	(with-buffer-open mark
 	  (lambda ()
 	    (insert-char #\> (mark1+ mark))
-	    (delete-right-char mark)))
+	    (delete-right-char mark)
+	    (highlight-the-number mark)))
 	(set-browser/selected-line! browser bline)
-	(set-buffer-point! (mark-buffer mark) mark)))
+	(set-buffer-point! (mark-buffer mark) mark)
+	(if (not (current-message))
+	    (if (environment? (bline/object bline))
+		(where-command-line-help!)
+		(debug-command-line-help! (buffer-get 
+					   (browser/buffer browser)
+					   'THREAD))))))
     (let ((buffer (bline/description-buffer bline)))
       (if buffer
 	  (pop-up-buffer buffer false)))))
+
+(define (highlight-the-number mark)
+  (let ((end (re-search-forward "[RSE][0-9]+ " mark (line-end mark 0))))
+    (highlight-region mark (if (mark? end)
+				      (mark- end 1) 
+				      (line-end mark 0)))))
 
 (define (unselect-bline browser)
   (let ((bline (browser/selected-line browser)))
@@ -250,12 +363,22 @@
 	(let ((mark (bline/start-mark bline)))
 	  (with-buffer-open mark
 	    (lambda ()
+	      (dehigh-between mark (line-end mark 0))
 	      (insert-char #\space (mark1+ mark))
 	      (delete-right-char mark)))))))
 
+;;;For any frame with an environment (excluding the mark frame)
+;;;an inferior repl is started below the other descriptions.
 (define (bline/description-buffer bline)
-  (let ((buffer
-	 (1d-table/get (bline/properties bline) 'DESCRIPTION-BUFFER false)))
+  (let ((system? 
+	 (and (subproblem? (bline/object bline))
+	      (system-frame? (subproblem/stack-frame (bline/object bline)))))
+	(buffer
+	 (1d-table/get (bline/properties bline) 'DESCRIPTION-BUFFER false))
+	(get-environment 
+	 (1d-table/get (bline-type/properties (bline/type bline))
+		       'GET-ENVIRONMENT
+		       false)))
     (if (and buffer (buffer-alive? buffer))
 	buffer
 	(let ((write-description
@@ -263,15 +386,28 @@
 	  (and write-description
 	       (let ((buffer (browser/new-buffer (bline/browser bline) false)))
 		 (call-with-output-mark (buffer-start buffer)
-		   (lambda (port)
-		     (write-description bline port)))
+					(lambda (port)
+					  (write-description bline port)))
 		 (set-buffer-point! buffer (buffer-start buffer))
 		 (1d-table/put! (bline/properties bline)
 				'DESCRIPTION-BUFFER
 				buffer)
+		 (read-only-between (buffer-start buffer) (buffer-end buffer))	 
 		 (buffer-not-modified! buffer)
-		 (set-buffer-read-only! buffer)
+		 (if (and get-environment (not system?))
+		     (let ((environment (get-environment bline)))
+		       (if (environment? environment)
+			   (start-inferior-repl!
+			    buffer
+			    environment
+			    (evaluation-syntax-table buffer environment)
+			    (cmdl-message/strings
+			     "EVALUATION may occur below in the environment of the selected frame.")))))
 		 buffer))))))
+
+
+;;;Main addition deals with possibility that the debugger was
+;;;called by a break procure, makes sure to restart the thread
 
 (define-command browser-quit
   "Exit the current browser, deleting its buffer."
@@ -292,7 +428,23 @@
 	    (let ((buffer (current-buffer)))
 	      (if (maybe-select-browser (buffer-get buffer 'BROWSER))
 		  (maybe-select-browser
-		   (buffer-get buffer 'ASSOCIATED-WITH-BROWSER)))))))))
+		   (buffer-get buffer 'ASSOCIATED-WITH-BROWSER))))))
+      (clear-current-message!)
+      (let ((cont (maybe-get-continuation buffer))
+	    (thread (buffer-get buffer 'THREAD)))
+	(if (and thread cont)
+	    (if (eq? thread editor-thread)
+		(signal-thread-event editor-thread
+				     (lambda () (cont unspecific)))
+		(restart-thread thread #f #f)))))))
+
+;;;Just gets the current browser continuation if it exists
+(define (maybe-get-continuation buffer)
+  (let* ((browser (buffer-get buffer 'BROWSER))
+	 (object (browser/object browser)))
+    (if (continuation? object)
+	object
+	#f)))
 
 (define (maybe-select-browser browser)
   (if (and (browser? browser)
@@ -302,38 +454,100 @@
 	((ref-command browser-select-line))
 	false)
       true))
-
-;;;; Evaluators
 
-(define-command browser-evaluator
-  "Select an evaluation buffer for this line's environment."
+;;;addition for when debugger is called from a break
+;;;should quit the debugger, and give the continuation
+;;;a value to proceed with (restarting that thread)
+;;;if in a normal error debug it will envoke the standard
+;;;restarts
+(define-command quit-with-restart-value
+  "Quit the breakpoint, exiting with a specified value."
   ()
   (lambda ()
-    (select-buffer (bline/evaluation-buffer (current-selected-line)))))
+    (let* ((buffer (current-buffer))
+	   (thread (buffer-get buffer 'THREAD)))
+      (if (thread? thread)
+	  (let ((value (prompt-for-expression-value 
+			"Please enter a value to continue with:  "))
+		(cont (maybe-get-continuation buffer)))
+	    (buffer-put! buffer 'THREAD #f)
+	    ((ref-command browser-quit))
+	    (cond ((eq? thread editor-thread)
+		   (signal-thread-event editor-thread (lambda ()
+							(cont value))))
+		  (else
+		   (set! value? #t)
+		   (restart-thread thread #t (lambda ()
+					       (cont value))))))
+	  (invoke-restarts #f)))))
 
-(define (bline/evaluation-buffer bline)
-  (let ((environment (bline/evaluation-environment bline)))
-    (bline/attached-buffer bline 'EVALUATION-BUFFER
-      (lambda ()
-	(or (list-search-positive (buffer-list)
-	      (lambda (buffer)
-		(and (eq? 'EVALUATION-BUFFER
-			  (buffer-get buffer 'BROWSER-BUFFER/TYPE))
-		     (let ((cmdl (buffer/inferior-cmdl buffer)))
-		       (and cmdl
-			    (let ((cmdl (cmdl/base cmdl)))
-			      (and (repl? cmdl)
-				   (eq? environment
-					(repl/environment cmdl)))))))))
-	    (let ((buffer (new-buffer "*eval*")))
-	      (start-inferior-repl!
-	       buffer
-	       environment
-	       (evaluation-syntax-table buffer environment)
-	       (cmdl-message/strings
-		"You are now in the environment for the selected line"))
-	      (buffer-put! buffer 'BROWSER-BUFFER/TYPE 'EVALUATION-BUFFER)
-	      buffer))))))
+;;;Method for invoking the standard restarts from within the
+;;;debugger.
+(define (invoke-restarts avoid-deletion?)
+    (let* ((mark (current-point))
+	   (bline (mark->bline mark))
+	   (browser (bline/browser bline))
+	   (buffer
+	    (1d-table/get (bline/properties bline) 'DESCRIPTION-BUFFER false))
+	   (condition
+	    (browser/object browser)))
+      (if (condition? condition)
+	  (fluid-let ((prompt-for-confirmation
+		       (lambda (prompt #!optional port)
+			 (call-with-interface-port
+			  (buffer-end buffer)
+			  (lambda (port)
+			    (prompt-for-yes-or-no? prompt)))))
+		      (prompt-for-evaluated-expression
+		       (lambda (prompt #!optional environment port)
+			 (call-with-interface-port 
+			  (buffer-end buffer) 
+			  (lambda (port)
+			    (hook/repl-eval (prompt-for-expression prompt)
+					    (if (unassigned? environment)
+						(nearest-repl/environment)
+						environment)
+					    (nearest-repl/syntax-table))))))
+		      (hook/invoke-restart
+		       (lambda (continuation arguments)
+			 (invoke-continuation continuation
+					      arguments
+					      avoid-deletion?))))
+	    (call-with-interface-port 
+	     (let ((buff (new-buffer " *debug*-RESTARTS")))
+	       (add-browser-buffer! browser buff)
+	       (pop-up-buffer buff)
+	       (buffer-start buff))
+	     (lambda (port)
+	       (write-string "  " port)
+	       (write-condition-report condition port)
+	       (newline port)
+	       (command/condition-restart 
+		(make-initial-dstate condition)
+		port))))
+	  (message "No condition to restart from."))))
+
+;;;
+;;;Sort of a kludge, borrowed from arthur's debugger, 
+;;;this makes sure that the interface port that the restart
+;;;stuff gets called with uses the minibuffer for prompts
+(define (call-with-interface-port mark receiver)
+  (let ((mark (mark-left-inserting-copy mark)))
+    (let ((value (receiver (port/copy interface-port-template mark))))
+      (mark-temporary! mark)
+      value)))
+
+;;;Another thing borrowed from arthur, calls the cont
+;;;and exits the debugger
+(define (invoke-continuation continuation arguments avoid-deletion?)
+  (let ((buffer (current-buffer)))
+    (if (and (not avoid-deletion?)
+	     (ref-variable debugger-quit-on-return?))
+	((ref-command browser-quit)))
+    ((or (buffer-get buffer 'INVOKE-CONTINUATION) apply)
+     continuation arguments)))
+
+;;;; Where
 
 (define-command browser-where
   "Select an environment browser for this line's environment."
@@ -687,66 +901,341 @@ Quitting the debugger kills the debugger buffer and any associated buffers."
 Quitting the debugger kills the debugger buffer and any associated buffers."
   true
   boolean?)
-
-(define-variable environment-browser-package-limit
+ 
+;;;Limited this bc the bindings are now pretty-printed
+(define-variable environment-package-limit
   "Packages with more than this number of bindings will be abbreviated.
 Set this variable to #F to disable this abbreviation."
-  50
+  10
   (lambda (object)
     (or (not object)
 	(exact-nonnegative-integer? object))))
+
+(define-variable debugger-show-help-message?
+  "True means show the help message, false means don't."
+  #T
+  boolean?)
+
+(define-variable debugger-start-new-screen?
+  "#T means start a new-screen whenever the debugger is invoked.  
+#F means continue in same screen.  
+'ASK means ask user whether to start new-screen."
+  #T
+  boolean-or-ask?)
+
+(define-variable debugger-prompt-geometry?
+  "#T means always prompt for screen geometry.
+#F means use default screen geometry"
+  #F
+  boolean?)
+
+(define-variable debugger-sticky-prompt
+  "#T means don't change variable debugger-prompt-geometry?.
+#F means change debugger-prompt-geometry? if true after the first time."
+  #F
+  boolean?)
+
+(define-variable debugger-hide-system-code?
+  "True means don't show subproblems created by the runtime system."
+  #T
+  boolean?)
+
+(define-variable new-screen-geometry
+  "Geometry string for screens created by the debugger.
+False means use default."
+  "80x75-0+0"
+  (lambda (object)
+    (or (not object)
+	(string? object))))
+
+(define-variable debugger-debug-evaluations?
+  "True means evaluation errors in a debugger buffer start new debuggers."
+  #F
+  boolean?); *not currently used
+
+(define-variable debugger-quit-on-restart?
+  "True means quit debugger when executing a \"restart\" command."
+  #T
+  boolean?)
+
+(define-variable subexpression-start-marker
+  "Subexpressions are preceeded by this value."
+  "#"
+  string?)
+
+(define-variable subexpression-end-marker
+  "Subexpressions are followed by this value."
+  "#"
+  string?)
+
+(define-variable debugger-show-frames?
+  "If true show the environment frames in the description buffer. 
+If false show the bindings without frames."
+  #T
+  boolean?)
 
+;;;; Pred's
+
+;;;Used to check if the debugger has been started from
+;;;within the debugger, a bit of a kludge
+(define (debugger-evaluation-buffer? buffer-name)
+  (let ((debug-pattern
+	 " \\*debug\\*-[0-9]+")
+	(where-pattern
+	 " \\*where\\*-[0-9]+"))
+    (or (re-match-string-forward 
+	 (re-compile-pattern debug-pattern false) false false buffer-name)
+	(re-match-string-forward 
+	 (re-compile-pattern where-pattern false) false false buffer-name))))
+
+;;;Makes sure that the prompted geometry is legal
+(define (geometry? geometry)
+  (let ((geometry-pattern
+	 "[0-9]+x[0-9]+\\(-[0-9]+\\|+[0-9]+\\|\\)\\(-[0-9]+\\|+[0-9]+\\|\\)"))
+    (re-match-string-forward  (re-compile-pattern geometry-pattern false) 
+			      false 
+			      false
+			      geometry)))
+
+;;;****** SYSTEM CODE STUFF
+
+;;WARNING
+;;!!!!!!!!!If you remove this eval it will not work when compiled!!!!!!!!!!!
+(define saved-mark-stack-hook default/repl-eval)
+
+(eval
+  (let ((mark-procedure-symbol-name
+	 (generate-uninterned-symbol 'STACK-MARK)))
+    `(begin       
+       (define mark-name
+	 ',mark-procedure-symbol-name)
+       (define ,mark-procedure-symbol-name
+	 (lambda (ignore value)
+	   value))
+       (define (mark-stack/repl-eval s-expression environment syntax-table)
+	 (,mark-procedure-symbol-name
+	  'the-turd
+	  (saved-mark-stack-hook
+	   s-expression environment syntax-table)))))
+  (the-environment))
+
+(set! hook/repl-eval mark-stack/repl-eval)
+
+;;End of the system code stuff.
+
+
+;;;Determines if a frame is marked
+(define (system-frame? stack-frame)
+  (and (ref-variable debugger-hide-system-code?)
+       (with-values (lambda () (stack-frame/debugging-info stack-frame))
+	 (lambda (expression environment subexpression)
+	   (and (not (or (invalid-expression? expression)
+			 (debugging-info/noise? expression)))
+		(combination? expression)
+		(let ((operator (combination-operator expression)))
+		  (and (scode-variable? operator)
+		       (eq? (scode-variable-name operator)
+			    mark-name))))))))
+
+(define scode-variable? (access variable? system-global-environment))
+
+(define scode-variable-name (access variable-name system-global-environment))
+
+;;;Bad implementation to determine for breaks
+;;;if a value to proceed with is desired
+(define value? #f)			     
+
+(define (invalid-subexpression? subexpression)
+  (or (debugging-info/undefined-expression? subexpression)
+      (debugging-info/unknown-expression? subexpression)))
+
+(define (invalid-expression? expression)
+  (or (debugging-info/undefined-expression? expression)
+      (debugging-info/compiled-code? expression)))
+
+;;;; Help Messages
+
+;;;The help messages for the debugger and for breaks
+(define (debug-command-line-help! break-thread)
+  (if break-thread
+      (set-current-message! 
+       "COMMANDS: ?-Help  q-Continue e-Environment browser p-proceed with value")
+      (set-current-message!
+       "COMMANDS: ?-Help  q-Quit Debugger  e-Environment browser p-invoke restarts")))
+
+(define (where-command-line-help!)
+  (message 
+   "COMMANDS: ?-More Help  q-Quit Environment browser"))
+
+(define debugger-help-message
+  "This is a debugger buffer:
+
+Lines identify stack frames, most recent first.
+
+   Sx means frame is in subproblem number x
+   Ry means frame is reduction number y
+
+The buffer below describes the current subproblem or reduction.
+-----------")
+
 ;;;; Debugger Entry
 
-(define (continuation-browser-buffer object)
-  (let ((buffers (find-debugger-buffers)))
-    (if (and (not (null? buffers))
-	     (null? (cdr buffers))
-	     (if (eq? 'ASK (ref-variable debugger-one-at-a-time?))
-		 (prompt-for-confirmation?
-		  "Another debugger buffer exists.  Delete it")
-		 (ref-variable debugger-one-at-a-time?)))
-	(kill-buffer (car buffers))))
-  (let ((browser
-	 (make-browser "*debug*"
-		       (ref-mode-object continuation-browser)
-		       object))
-	(blines
-	 (continuation->blines
-	  (cond ((continuation? object)
-		 object)
-		((condition? object)
-		 (condition/continuation object))
-		(else
-		 (error:wrong-type-argument object
-					    "condition or continuation"
-					    continuation-browser-buffer)))
-	  (ref-variable debugger-max-subproblems))))
-    (let ((buffer (browser/buffer browser)))
-      (if (condition? object)
+;;;many changes
+;;;see comments after each change
+(define (continuation-browser-buffer object #!optional thread)
+  ;;**NOTE: if a thread is passed that means it is being called by a breakpoint
+  (let ((in-debugger? 
+	 (debugger-evaluation-buffer? (buffer-name (current-buffer))))
+	(break-thread 
+	 (if (default-object? thread)
+	     #f
+	     thread)))
+    ;;the above sets the break-thread
+    (set! value? #f)
+    (let ((buffers (find-debugger-buffers)))
+      (if (and (not (null? buffers))
+	       (null? (cdr buffers))
+	       (if (eq? 'ASK (ref-variable debugger-one-at-a-time?))
+		   (prompt-for-confirmation?
+		    "Another debugger buffer exists.  Delete it")
+		   (ref-variable debugger-one-at-a-time?)))
+	  (fluid-let ((find-debugger-buffers (lambda () '()))); kludge, works
+	    ;;otherwise, killing the buffer will delete the screen also
+	    (kill-buffer (car buffers)))))
+    (let ((debug-screen (if in-debugger?
+			    (selected-screen)
+			    (make-debug-screen))))
+      ;;sets up the debug screen
+      (let ((browser
+	     (make-browser "*debug*"
+			   (ref-mode-object continuation-browser)
+			   object))
+	    (blines
+	     (continuation->blines
+	      (cond ((continuation? object)
+		     object)
+		    ((condition? object)
+		     (condition/continuation object))
+		    (else
+		     (error:wrong-type-argument object
+						"condition or continuation"
+						continuation-browser-buffer)))
+	      (ref-variable debugger-max-subproblems))))
+	(let ((buffer (browser/buffer browser)))
 	  (let ((mark (buffer-end buffer)))
 	    (with-buffer-open mark
 	      (lambda ()
-		(call-with-output-mark mark
-		  (lambda (port)
-		    (write-string "The error that started the debugger is:"
-				  port)
-		    (newline port)
-		    (write-string "  " port)
-		    (write-condition-report object port)
-		    (newline port)
-		    (newline port)))))))
-      (insert-blines browser 0 blines)
-      (if (null? blines)
-	  (set-buffer-point! buffer (buffer-end buffer))
-	  (select-bline (car blines)))
-      buffer)))
+		(call-with-output-mark
+		 mark
+		 (lambda (port)
+		   (if (ref-variable debugger-show-help-message?)
+		       (write-string debugger-help-message port))
+		   (newline port)
+		   (if (condition? object)
+		       (begin 
+			 (write-string 
+			  "The *ERROR* that started the debugger is:"
+			  port)
+			 (newline port)
+			 (newline port)
+			 (write-string "  " port)
+			 (with-output-props '((highlighted))
+			   (lambda () (write-condition-report object port))
+			   port)
+			 (newline port)))
+		   (newline port))))))
+	  (insert-blines browser 0 blines)
+	  (buffer-put! buffer 'THREAD break-thread) ;  adds thread
+	  (wait-processor-time 100)   ;  lose because the synch of new
+	                              ; screen stuff is off
+	  (select-screen debug-screen)
+	  (select-window (screen-window0 debug-screen))
+	  (if (null? blines)
+	      (set-buffer-point! buffer (buffer-end buffer))
+	      (select-bline (car blines)))
+	  (debug-command-line-help! break-thread) ;  puts help up
+	  buffer)))))
+
+;;;kludge to deal with the screen synch 
+(define (wait-processor-time ticks)
+  (let ((end (+ (process-time-clock) ticks)))
+    (let wait-loop ()
+      (if (< (process-time-clock) end)
+	  (wait-loop)))))
 
 (define (find-debugger-buffers)
   (list-transform-positive (buffer-list)
     (let ((debugger-mode (ref-mode-object continuation-browser)))
       (lambda (buffer)
 	(eq? (buffer-major-mode buffer) debugger-mode)))))
+
+;;;Determines if necessary to make a new screen and if so makes it
+(define (make-debug-screen)
+  (cond ((> (length (screen-list)) 1) 
+	 (screen1+ (selected-screen)))
+	((and (multiple-screens?)
+	      (if (eq? (ref-variable debugger-start-new-screen?) 'ASK)
+		  (prompt-for-confirmation? "Start new Xwindow?")
+		  (ref-variable debugger-start-new-screen?)))
+	 (let* ((def-geometry (ref-variable new-screen-geometry))
+		(geometry 
+		 (if (ref-variable debugger-prompt-geometry?)
+		     (let ((prompted-geometry 
+			    (prompt-for-string 
+			     "Please enter a geometry" def-geometry)))
+		       (if (geometry? prompted-geometry)
+			   (begin
+			     (if (not (ref-variable debugger-sticky-prompt))
+				 (set-variable! debugger-prompt-geometry? #f))
+			     (set-variable! new-screen-geometry 
+					    prompted-geometry)
+			     prompted-geometry)
+			   (begin
+			     (message "Invalid geometry! Using default")
+			     def-geometry)))
+		     def-geometry)))
+	   (make-screen (current-buffer) geometry)))
+	(else (selected-screen))))
+
+;;;Procedure that actually calls the cont-browser with the continuation
+;;;and stops the thread when a break-pt is called
+(define (break-to-debugger #!optional pred-thunk)
+  (let ((pred 
+	 (if (default-object? pred-thunk)
+	     (prompt-for-yes-or-no?
+	      "Enter the continuation browser at breakpoint")
+	     (pred-thunk))))
+    (if pred
+	(with-simple-restart 'CONTINUE "Return from BKPT."
+	  (lambda ()
+	    (let ((thread (current-thread)))
+	      (call-with-current-continuation 
+	       (lambda (cont)
+		 (select-buffer 
+		  (continuation-browser-buffer cont thread))
+		 (if (eq? thread editor-thread)
+		     (abort-current-command)
+		     (stop-current-thread))
+		 (if value?
+		     (abort-current-command))))))))))
+
+;;;Calls the break pt thing with a pred thunk and a thunk to do
+(define (with-break-on pred-thunk val-thunk)
+  (let ((val value?)
+	(bkvalue (break-to-debugger pred-thunk)))
+    (set! value? #f)
+    (if val
+	bkvalue 
+	(val-thunk))))
+
+;;;Calls the break pt thing with a pred-thunk a proc and args
+(define (call-with-break pred-thunk proc . args)
+  (let ((val  value?)
+	(bkvalue (break-to-debugger pred-thunk)))
+    (set! value? #f)
+    (if val
+	bkvalue 
+	(apply proc args))))
 
 (define (select-continuation-browser-buffer object)
   (select-buffer (continuation-browser-buffer object)))
@@ -768,42 +1257,109 @@ Set this variable to #F to disable this abbreviation."
 	      (fluid-let ((starting-debugger? true))
 		(select-continuation-browser-buffer condition))
 	      (message error-type-name " error")))
-	(return-to-command-loop #f))))
+	(abort-current-command))))
 
 (define starting-debugger? false)
 
 ;;;; Continuation Browser Mode
 
 (define-major-mode continuation-browser read-only "Debug"
-  "This buffer is a Scheme debugger.
-Each line beginning with `S' represents a subproblem, or stack frame.
-A subproblem line may be followed by one or more indented lines beginning
-with `R'; these lines represent reductions associated with that subproblem.
-Every subproblem or reduction line has an associated index number,
-with the indexes starting at zero for the nearest one.
-To see a more complete description of a given subproblem or reduction,
-move the cursor to that line using \\[browser-next-line] and \\[browser-previous-line];
-when the line you are interested in has been selected, it will be described
-more fully in another window.
+  "                     ********Debugger Help********
 
-Type \\[browser-evaluator] to get an evaluation buffer for the selected line.
-Type \\[browser-quit] to quit the browser, killing its buffer.
+Commands:
 
-The debugger creates other buffers at various times, to show you descriptions
-of subproblems and reductions.  These buffers are given names beginning with a
-space so that they do not appear in the buffer list; these auxiliary buffers
-are also automatically deleted when you quit the debugger.  If you wish to keep
-one of these buffers, just give it another name using \\[rename-buffer]: once
-it has been renamed it will not be automatically deleted."
+`mouse-button-1'
+     Select a subproblem or reduction and display information in the
+     description buffer.
+
+`C-n'
+`down-arrow'
+     Move the cursor down the list of subproblems and reductions and
+     display info in the description buffer.
+
+`C-p'
+`up-arrow'
+     Move the cursor up the list of subproblems and reductions and
+     display info in the description buffer.
+
+`e'
+     Show the environment structure.
+
+`q'
+     Quit the debugger, destroying its window.
+
+`p'
+     Invoke the standard restarts.
+
+`SPC'
+     Display info on current item in the description buffer.
+
+`?'
+     Display help information.
+
+   Each line beginning with `S' represents either a subproblem or stack
+frame.  A subproblem line may be followed by one or more indented lines
+(beginning with the letter `R') which represent reductions associated
+with that subproblem.  The subproblems are indexed with the natural
+numbers.  To obtain a more complete description of a subproblem or
+reduction, click the mouse on the desired line or move the cursor to the
+line using the arrow keys (or `C-n' and `C-p').  The description buffer
+will display the additional information.
+
+   The description buffer contains three major regions.  The first
+region contains a pretty printed version of the current expression. The
+current subproblem within the expression is highlighted.  The second
+region contains a representation of the frames of the environment of the
+current expression.  The bindings of each frame are listed below the
+frame header.  If there are no bindings in the frame, none will be
+listed.  The frame of the current expression is preceeded with ==>.
+
+   The bottom of the description buffer contains a region for evaluating
+expressions in the environment of the selected subproblem or reduction.
+This is the only portion of the buffer where editing is possible.  This
+region can be used to find the values of variables in different
+environments; you cannot, however, use mutators (set!, etc.) on compiled
+code.
+
+   Typing  `e' creates a new buffer in which you may browse through the
+current environment.  In this new buffer, you can use the mouse, the
+arrows, or `C-n' and `C-p' to select lines and view different
+environments.  The environments listed are the same as those in the
+description buffer.  If the selected environment structure is too large
+to display (if there are more than `environment-package-limit' items in
+the environment) an appropriate message is displayed.  To display the
+environment in this case, set the `environment-package-limit' variable
+to  `#f'.  This process is initiated by the command `M-x set-variable'.
+ You can not use `set!' to set the variable because it is an editor
+variable and does not exist in the current scheme environment.  At the
+bottom of the new buffer is a region for evaluating expressions similar
+to that of the description buffer.
+
+   Type `q' to quit the debugger, killing its primary buffer and any
+others that it has created.
+
+   NOTE: The debugger creates discription buffers in which debugging
+information is presented.  These buffers are given names beginning with
+spaces so that they do not appear in the buffer list; they are
+automatically deleted when you quit the debugger.  If you wish to keep
+one of these buffers, simply rename it using `M-x rename-buffer': once
+it has been renamed, it will not be deleted automatically."
   )
 
+
+(define-key 'continuation-browser #\p 'quit-with-restart-value)
+
+(define-key 'continuation-browser down 'browser-next-line)
+
+(define-key 'continuation-browser up 'browser-previous-line)
+
+(define-key 'continuation-browser x-button1-down 'debugger-mouse-select-bline)
 (define-key 'continuation-browser #\c-n 'browser-next-line)
 (define-key 'continuation-browser #\c-p 'browser-previous-line)
 (define-key 'continuation-browser #\? 'describe-mode)
 (define-key 'continuation-browser #\q 'browser-quit)
 (define-key 'continuation-browser #\space 'browser-select-line)
 (define-key 'continuation-browser #\e 'browser-where)
-(define-key 'continuation-browser #\v 'browser-evaluator)
 
 ;;;; Subproblems
 
@@ -815,62 +1371,68 @@ it has been renamed it will not be automatically deleted."
 ;; of bindings.  Subproblems, reductions, and environment frames are
 ;; ordered; bindings are not.
 
+;;;Stops from displaying subproblems past marked frame by default
 (define (continuation->blines continuation limit)
-  (let loop
-      ((frame (continuation/first-subproblem continuation))
-       (prev false)
-       (n 0))
-    (if (not frame)
-	'()
-	(let* ((next-subproblem
-		(lambda (bline)
-		  (loop (stack-frame/next-subproblem frame)
-			bline
-			(+ n 1))))
-	       (walk-reductions
-		(lambda (bline reductions)
-		  (cons bline
-			(let loop ((reductions reductions) (prev false))
-			  (if (null? reductions)
-			      (next-subproblem bline)
-			      (let ((bline
-				     (make-bline (car reductions)
-						 bline-type:reduction
-						 bline
-						 prev)))
-				(cons bline
-				      (loop (cdr reductions) bline))))))))
-	       (continue
-		(lambda ()
-		  (let* ((subproblem (stack-frame->subproblem frame n)))
-		    (if debugger:student-walk?
-			(let ((reductions (subproblem/reductions subproblem)))
-			  (if (null? reductions)
-			      (let ((bline
-				     (make-bline subproblem
-						 bline-type:subproblem
-						 false
-						 prev)))
-				(cons bline
-				      (next-subproblem bline)))
-			      (let ((bline
-				     (make-bline (car reductions)
-						 bline-type:reduction
-						 false
-						 prev)))
-				(walk-reductions bline
-						 (if (> n 0)
-						     '()
-						     (cdr reductions))))))
-			(walk-reductions
-			 (make-bline subproblem
-				     bline-type:subproblem
-				     false
-				     prev)
-			 (subproblem/reductions subproblem)))))))
-	  (if (and limit (>= n limit))
-	      (list (make-continuation-bline continue false prev))
-	      (continue))))))
+  (let ((beyond-system-code #f))
+    (let loop ((frame (continuation/first-subproblem continuation))
+	       (prev false)
+	       (n 0))
+      (if (not frame)
+	  '()
+	  (let* ((next-subproblem 
+		  (lambda (bline)
+		    (loop (stack-frame/next-subproblem frame)
+			  bline
+			  (+ n 1))))
+		 (walk-reductions	
+		  (lambda (bline reductions)
+		    (cons bline
+			  (let loop ((reductions reductions) (prev false))
+			    (if (null? reductions)
+				(next-subproblem bline)
+				(let ((bline
+				       (make-bline (car reductions)
+						   bline-type:reduction
+						   bline
+						   prev)))
+				  (cons bline
+					(loop (cdr reductions) bline))))))))
+		 (continue
+		  (lambda ()
+		    (let* ((subproblem (stack-frame->subproblem frame n)))
+		      (if debugger:student-walk?
+			  (let ((reductions 
+				 (subproblem/reductions subproblem)))
+			    (if (null? reductions)
+				(let ((bline
+				       (make-bline subproblem
+						   bline-type:subproblem
+						   false
+						   prev)))
+				  (cons bline
+					(next-subproblem bline)))
+				(let ((bline
+				       (make-bline (car reductions)
+						   bline-type:reduction
+						   false
+						   prev)))
+				  (walk-reductions bline
+						   (if (> n 0)
+						       '()
+						       (cdr reductions))))))
+			  (walk-reductions
+			   (make-bline subproblem
+				       bline-type:subproblem
+				       false
+				       prev)
+			   (subproblem/reductions subproblem)))))))
+	    (if (or (and limit (>= n limit))
+		    (if (system-frame? frame)
+			(begin (set! beyond-system-code #t) #t)
+			#f)
+		    beyond-system-code)
+		(list (make-continuation-bline continue false prev))
+		(continue)))))))
 
 (define subproblem-rtd
   (make-record-type
@@ -919,74 +1481,105 @@ it has been renamed it will not be automatically deleted."
 		(loop (cdr reductions) (+ n 1)))
 	  '()))))
 
+
 (define (subproblem/write-summary bline port)
-  (let ((subproblem (bline/object bline)))
-    (write-string "S" port)
-    (write-string (bline/offset-string (subproblem/number subproblem)) port)
-    (write-string " " port)
-    (let ((expression (subproblem/expression subproblem)))
-      (cond ((debugging-info/compiled-code? expression)
-	     (write-string ";unknown compiled code" port))
-	    ((not (debugging-info/undefined-expression? expression))
-	     (fluid-let ((*unparse-primitives-by-name?* true))
-	       (write (unsyntax expression) port)))
-	    ((debugging-info/noise? expression)
-	     (write-string ";" port)
-	     (write-string ((debugging-info/noise expression) false) port))
-	    (else
-	     (write-string ";undefined expression" port))))))
+  (let* ((subproblem (bline/object bline))
+	 (frame (subproblem/stack-frame subproblem)))
+    (if (system-frame? frame)
+	(write-string "***************Internal System Code Follows***********" 
+		      port)
+	(begin
+	  (write-string "S" port)
+	  (write-string (bline/offset-string (subproblem/number subproblem))
+			port)
+	  (write-string " " port)
+	  (let ((expression (subproblem/expression subproblem))
+		(subexpression (subproblem/subexpression subproblem)))
+	    (cond ((debugging-info/compiled-code? expression)
+		   (write-string ";unknown compiled code" port))
+		  ((not (debugging-info/undefined-expression? expression))
+		   (print-with-subexpression expression subexpression))
+		  ((debugging-info/noise? expression)
+		   (write-string ";" port)
+		   (write-string ((debugging-info/noise expression) false) 
+				 port))
+		  (else
+		   (write-string ";undefined expression" port))))))))
+
+;;;also marks the subexpression with # #
+(define (print-with-subexpression expression subexpression)
+  (fluid-let ((*unparse-primitives-by-name?* true))
+    (if (invalid-subexpression? subexpression)
+	(write (unsyntax expression))
+	(let ((sub (write-to-string (unsyntax subexpression))))
+	  (write (unsyntax-with-substitutions
+		  expression
+		  (list
+		   (cons subexpression
+			 (unparser-literal/make
+			  (string-append
+			   (ref-variable subexpression-start-marker)
+			   sub
+			   (ref-variable subexpression-end-marker)))))))))))
+
+(define-structure (unparser-literal
+		   (conc-name unparser-literal/)
+		   (print-procedure
+		    (lambda (state instance)
+		      (unparse-string state
+				      (unparser-literal/string instance))))
+		   (constructor unparser-literal/make))
+  string)
 
 (define (subproblem/write-description bline port)
-  (let ((subproblem (bline/object bline)))
-    (write-string "Subproblem level: " port)
-    (write (subproblem/number subproblem) port)
-    (newline port)
-    (let ((expression (subproblem/expression subproblem))
-	  (frame (subproblem/stack-frame subproblem)))
-      (cond ((not (invalid-expression? expression))
-	     (write-string (if (stack-frame/compiled-code? frame)
-			       "Compiled expression"
-			       "Expression")
-			   port)
-	     (write-string " (from stack):" port)
-	     (newline port)
-	     (let ((subexpression (subproblem/subexpression subproblem)))
-	       (if (or (debugging-info/undefined-expression? subexpression)
-		       (debugging-info/unknown-expression? subexpression))
-		   (debugger-pp expression expression-indentation port)
-		   (begin
-		     (debugger-pp
-		      (unsyntax-with-substitutions
-		       expression
-		       (list (cons subexpression subexpression-marker)))
-		      expression-indentation
-		      port)
-		     (newline port)
-		     (write-string " subproblem being executed (marked by "
-				   port)
-		     (write subexpression-marker port)
-		     (write-string "):" port)
-		     (newline port)
-		     (debugger-pp subexpression
-				  expression-indentation
-				  port)))))
-	    ((debugging-info/noise? expression)
-	     (write-string ((debugging-info/noise expression) true) port))
-	    (else
-	     (write-string (if (stack-frame/compiled-code? frame)
-			       "Compiled expression unknown"
-			       "Expression unknown")
-			   port)
-	     (newline port)
-	     (write (stack-frame/return-address frame) port))))
-    (let ((environment (subproblem/environment subproblem)))
-      (if (not (debugging-info/undefined-environment? environment))
-	  (begin
-	    (newline port)
-	    (show-environment-name environment port))))))
+  (let* ((subproblem (bline/object bline))
+	 (frame (subproblem/stack-frame subproblem)))
+    (cond ((system-frame? frame)
+	   (write-string "The subproblems which follow are part of the " port)
 
-(define subexpression-marker
-  (string->symbol "###"))
+	   (write-string "internal system workings." port))
+	  (else
+	   (write-string "                         SUBPROBLEM LEVEL: " port)
+	   (write (subproblem/number subproblem) port)
+	   (newline port)
+	   (newline port)
+	   (let ((expression (subproblem/expression subproblem))
+		 (frame (subproblem/stack-frame subproblem)))
+	     (cond ((not (invalid-expression? expression))
+		    (write-string (if (stack-frame/compiled-code? frame)
+				      "COMPILED expression"
+				      "Expression")
+				  port)
+		    (write-string " (from stack):" port)
+		    (newline port)
+		    (write-string 
+		     " Subproblem being executed highlighted.\n"
+		     port)
+		    (newline port)
+		    (let ((subexpression 
+			   (subproblem/subexpression subproblem)))
+		      (if (invalid-subexpression? subexpression)
+			  (debugger-pp expression expression-indentation port)
+			  (debugger-pp-highlight-subexpression expression
+							       subexpression
+							       expression-indentation
+							       port))))
+		   ((debugging-info/noise? expression)
+		    (write-string ((debugging-info/noise expression) true)
+				  port))
+		   (else
+		    (write-string (if (stack-frame/compiled-code? frame)
+				      "Compiled expression unknown"
+				      "Expression unknown")
+				  port)
+		    (newline port)
+		    (write (stack-frame/return-address frame) port))))
+	   (let ((environment (subproblem/environment subproblem)))
+	     (if (not (debugging-info/undefined-environment? environment))
+		 (begin
+		   (newline port)
+		   (newline port)
+		   (desc-show-environment-name-and-bindings environment port))))))))
 
 (define bline-type:subproblem
   (make-bline-type subproblem/write-summary
@@ -1019,16 +1612,20 @@ it has been renamed it will not be automatically deleted."
 
 (define (reduction/write-description bline port)
   (let ((reduction (bline/object bline)))
-    (write-string "Subproblem level: " port)
+    (write-string "              SUBPROBLEM LEVEL: " port)
     (write (subproblem/number (reduction/subproblem reduction)) port)
-    (write-string "  Reduction number: " port)
+    (write-string "  REDUCTION NUMBER: " port)
     (write (reduction/number reduction) port)
+    (newline port)
     (newline port)
     (write-string "Expression (from execution history):" port)
     (newline port)
+    (newline port)
     (debugger-pp (reduction/expression reduction) expression-indentation port)
     (newline port)
-    (show-environment-name (reduction/environment reduction) port)))
+    (newline port)
+    (desc-show-environment-name-and-bindings (reduction/environment reduction) 
+					port)))
 
 (define bline-type:reduction
   (make-bline-type reduction/write-summary
@@ -1048,6 +1645,7 @@ it has been renamed it will not be automatically deleted."
   (lambda (environment)
     (select-buffer (environment-browser-buffer environment))))
 
+;;;adds a help line
 (define (environment-browser-buffer object)
   (let ((environment (->environment object)))
     (let ((browser
@@ -1060,6 +1658,7 @@ it has been renamed it will not be automatically deleted."
 	(if (null? blines)
 	    (set-buffer-point! buffer (buffer-end buffer))
 	    (select-bline (car blines)))
+	(where-command-line-help!)
 	buffer))))
 
 (define (environment->blines environment)
@@ -1071,31 +1670,74 @@ it has been renamed it will not be automatically deleted."
 		'())))))
 
 (define-major-mode environment-browser read-only "Environment Browser"
-  "This buffer is a Scheme environment browser.
-Each line describes one frame in the environment being browsed.
-The frames are numbered starting at zero for the innermost frame.
-To see a more complete description of a given frame, move the cursor to that
-frame's line using \\[browser-next-line] and \\[browser-previous-line];
-when the line you are interested in has been selected, it will be described
-more fully in another window.
+  "             ********Environment Browser Help********
 
-Type \\[browser-evaluator] to get an evaluation buffer for the selected frame.
-Type \\[browser-quit] to quit the browser, killing its buffer.
+Commands:
 
-The environment browser creates other buffers at various times, to
-show you descriptions of environment frames.  These buffers are given
-names beginning with a space so that they do not appear in the buffer
-list; these auxiliary buffers are also automatically deleted when you
-quit the debugger.  If you wish to keep one of these buffers, just
-give it another name using \\[rename-buffer]: once it has been
-renamed it will not be automatically deleted.")
+`mouse-button-1'
+     Select a subproblem or reduction and display information in the
+     description buffer.
 
+`C-n'
+`down-arrow'
+     Move the cursor down the list of subproblems and reductions and
+     display info in the description buffer.
+
+`C-p'
+`up-arrow'
+     Move the cursor up the list of subproblems and reductions and
+     display info in the description buffer.
+
+`q'
+     Quit the environment browser, destroying its window.
+
+`SPC'
+     Display info on current item in the description buffer.
+
+`?'
+     Display help information.
+
+   In this buffer, you can use the mouse, the arrows, or `C-n' and
+`C-p' to select lines and view different environments.
+If the selected environment structure is too large to display (if
+there are more than `environment-package-limit' items in the
+environment) an appropriate message is displayed.  To display the
+environment in this case, set the `environment-package-limit' variable
+to  `#f'.  This process is initiated by the command `M-x
+set-variable'. You can not use `set!' to set the variable because it
+is an editor variable and does not exist in the current scheme
+environment. 
+
+   The bottom of the description buffer contains a region for evaluating
+expressions in the environment of the selected subproblem or reduction.
+This is the only portion of the buffer where editing is possible.  This
+region can be used to find the values of variables in different
+environments; you cannot, however, use mutators (set!, etc.) on
+compiled code. 
+
+   Type `q' to quit the environment browser, killing its primary buffer
+and any others that it has created.
+
+NOTE: The environment browser creates discription buffers in which
+debugging information is presented.  These buffers are given names 
+beginning with spaces so that they do not appear in the buffer list; 
+they are automatically deleted when you quit the debugger.  If you wish
+to keep one of these buffers, simply rename it using `M-x rename-buffer': 
+once it has been renamed, it will not be deleted automatically.")
+
+
+
+(define-key 'environment-browser down 'browser-next-line)
+
+(define-key 'environment-browser up 'browser-previous-line)
+
+(define-key 'environment-browser x-button1-down 'debugger-mouse-select-bline)
 (define-key 'environment-browser #\c-n 'browser-next-line)
 (define-key 'environment-browser #\c-p 'browser-previous-line)
 (define-key 'environment-browser #\? 'describe-mode)
 (define-key 'environment-browser #\q 'browser-quit)
 (define-key 'environment-browser #\space 'browser-select-line)
-(define-key 'environment-browser #\v 'browser-evaluator)
+
 
 (define (environment/write-summary bline port)
   (write-string "E" port)
@@ -1105,45 +1747,78 @@ renamed it will not be automatically deleted.")
 
 (define (environment/write-description bline port)
   (let ((environment (bline/object bline)))
-    (show-environment-name environment port)
-    (newline port)
-    (write-string "Depth (relative to initial environment): " port)
-    (write (bline/offset bline) port)
-    (newline port)
-    (temporary-message "Computing environment bindings...")
-    (let ((names (environment-bound-names environment))
-	  (package (environment->package environment)))
-      (cond ((null? names)
-	     (write-string " has no bindings" port))
-	    ((and package
-		  (let ((limit
-			 (ref-variable
-			  environment-browser-package-limit
-			  (browser/buffer (bline/browser bline)))))
-		    (and limit
-			 (let ((n (length names)))
-			   (and (>= n limit)
-				(begin
-				  (write-string " has " port)
-				  (write n port)
-				  (write-string
-				   " bindings (see editor variable environment-browser-package-limit)."
-				   port)
-				  true)))))))
-	    (else
-	     (write-string " has bindings:" port)
-	     (newline port)
-	     (for-each (lambda (name)
-			 (print-binding name
-					(environment-lookup environment name)
-					port))
-		       (if package
-			   (sort names
-				 (lambda (x y)
-				   (string<? (symbol->string x)
-					     (symbol->string y))))
-			   names)))))
-    (append-message "done")))
+    (show-environment-name-and-bindings environment port)))
+
+(define (show-environment-name-and-bindings environment port)
+  (show-environment-name environment port)
+  (newline port)
+  (newline port)
+  (let ((names (environment-bound-names environment))
+	(package (environment->package environment))
+	(finish (lambda (names) 
+		  (newline port)
+		  (for-each (lambda (name)
+			      (myprint-binding name
+					       (environment-lookup environment name)
+					       environment
+					       port))
+			    names))))
+    (cond ((null? names)
+	   (write-string " has no bindings" port))
+	  ((and package
+		(let ((limit 
+		       (ref-variable
+			environment-package-limit)))
+		  (and limit
+		       (let ((n (length names)))
+			 (and (>= n limit)
+			      (begin
+				(write-string " has " port)
+				(write n port)
+				(write-string " bindings (first" port)
+				(write limit port)
+				(write-string " shown):" port)
+				(finish (list-head names limit))
+				true)))))))
+	  (else
+	   (write-string "  BINDINGS:" port)
+	   (finish
+	    (if package
+		(sort names
+		      (lambda (x y)
+			(string<? (symbol->string x)
+				  (symbol->string y))))
+		names)))))
+  (newline port)
+  (newline port)
+  (write-string 
+   "---------------------------------------------------------------------"
+   port))
+
+;;;This does some stuff who's end product is to pp the bindings
+(define (myprint-binding name value environment port)
+    (let ((x-size (output-port/x-size port)))
+      (newline port)
+      (write-string
+       (let ((name1
+	      (output-to-string 
+	       (quotient x-size 2)
+	       (lambda ()
+		 (write-dbg-name name (current-output-port))))))
+	 (if (unassigned-reference-trap? value)
+	     (string-append name1 " is unassigned")
+	     (let* ((s (string-append name1 " = "))
+		    (length (string-length s))
+		    (pret 
+		     (with-output-to-string 
+		       (lambda ()
+			 (eval `(pp ,name (current-output-port) #t ,length) 
+			       environment)))))
+	       (string-append 
+		s
+		(string-tail pret (+ length 1))))))
+       port)
+      (newline port)))
 
 (define bline-type:environment
   (make-bline-type environment/write-summary
@@ -1167,3 +1842,169 @@ renamed it will not be automatically deleted.")
 (define (with-buffer-open mark thunk)
   (with-read-only-defeated mark thunk)
   (buffer-not-modified! (mark-buffer mark)))
+
+(define (desc-show-environment-name-and-bindings environment port)
+  (write-string "---------------------------------------------------------------------"
+	      port)  
+  (if (ref-variable debugger-show-frames?)
+      (show-frames-and-bindings environment port)
+      (print-the-local-bindings environment port))
+  (newline port)
+  (write-string "---------------------------------------------------------------------"
+		port))
+
+
+			 
+(define (show-frames-and-bindings environment port)
+  (define (envs environment)
+    (if  (eq? true (environment-has-parent? environment))
+	 (cons environment (envs (environment-parent environment))) ;
+	 '()))
+  (let ((env-list (envs environment))
+	(depth 0))
+    (map (lambda (env) 
+	   (let ((ind (make-string (* 2 depth) #\space)))
+	     (newline port)
+	     (if (eq? env environment)
+		 (write-string (if (< 2 (string-length ind))
+				   (string-append 
+				    (string-tail ind 2) "==> ")
+				   "==> ")
+			       port)
+		 (write-string ind port))
+	     (show-environment-name env port)
+	     (newline port)
+	     (set! depth (1+ depth))
+	     (show-environmend-bindings-with-ind env ind port)))
+	 env-list)))
+
+
+(define (print-the-local-bindings environment port)
+  (let ((names (get-all-local-bindings environment)))
+    (let ((n-bindings (length names))
+	  (finish
+	   (lambda (names)
+	     (for-each (lambda (name)
+			 (let loop ((env environment))
+			   (if (environment-bound? env name)
+			       (print-binding-with-ind name
+						       (environment-lookup env name)
+						       "  "
+						       port)
+			       (loop (environment-parent env)))))
+		       names))))
+      (newline port)
+      (show-environment-name environment port)
+      (cond ((zero? n-bindings)
+	     (write-string "\n    has no bindings\n" port))
+	    ((> n-bindings (ref-variable environment-package-limit)))
+	    (else
+	     (write-string "\n\n  Local Bindings:\n" port)
+	     (finish names))))))
+
+(define (show-environment-name environment port)
+  (write-string "ENVIRONMENT " port)
+  (let ((package (environment->package environment)))
+    (if package
+	(begin
+	  (write-string "named: " port)
+	  (write (package/name package) port))
+	(begin
+	  (write-string "created by " port)
+	  (print-user-friendly-name environment port)))))
+
+(define (get-all-local-bindings environment)
+  (define (envs environment)
+    (if  (eq? true (environment-has-parent? environment))
+	 (cons environment (envs (environment-parent environment))) ;
+	 '()))
+  (let* ((env-list (envs environment))
+	 (names1 (map (lambda (envir)
+			(let ((names (environment-bound-names envir)))
+			  (if (< (length names) 
+				 (ref-variable environment-package-limit))
+			      names
+			      '())))
+		      env-list))
+	 (names2 (reduce append '() names1))
+	 (names3 (let loop ((l names2))
+		     (if (null? l)
+			 l
+			 (cons (car l) (loop (delete (car l) l))))))
+	 (names4 (sort names3
+		       (lambda (x y)
+			 (string<? (symbol->string x)
+				   (symbol->string y))))))
+    names4))
+
+
+(define (show-environmend-bindings-with-ind environment ind port)
+  (let ((names (environment-bound-names environment)))
+    (let ((n-bindings (length names))
+	  (finish
+	   (lambda (names)
+	     (newline port)
+	     (for-each (lambda (name)
+			 (print-binding-with-ind name
+						 (environment-lookup environment name)
+						 ind
+						 port))
+		       names))))
+      (cond ((zero? n-bindings)
+	     #|(write-string (string-append ind "   has no bindings") port)
+	     (newline port)|#)
+	    ((> n-bindings (ref-variable environment-package-limit))
+	     (write-string (string-append ind "   has ") port)
+	     (write n-bindings port)
+	     (write-string 
+	      " bindings (see editor variable environment-package-limit) " port)
+	     (newline port))
+	    (else
+	     (finish names))))))
+      
+(define (print-binding-with-ind name value ind port)
+  (let ((x-size (- (output-port/x-size port) (string-length ind) 4)))
+    (write-string (string-append ind "    ")
+		  port)
+    (write-string
+     (let ((name
+	    (output-to-string (quotient x-size 2)
+	      (lambda ()
+		(write-dbg-name name (current-output-port))))))
+       (if (unassigned-reference-trap? value)
+	   (string-append name " is unassigned")
+	   (let ((s (string-append name " = ")))
+	     (string-append
+	      s
+	      (output-to-string (max (- x-size (string-length s)) 0)
+		(lambda ()
+		  (write value)))))))
+     port)
+    (newline port)))
+
+
+;;;; Interface Port
+
+(define (operation/write-char port char)
+  (region-insert-char! (port/state port) char))
+
+(define (operation/prompt-for-confirmation port prompt)
+  port
+  (prompt-for-confirmation prompt))
+
+(define (operation/prompt-for-expression port prompt)
+  port
+  (prompt-for-expression prompt))
+
+(define interface-port-template
+  (make-output-port
+   `((WRITE-CHAR ,operation/write-char)
+     (PROMPT-FOR-CONFIRMATION ,operation/prompt-for-confirmation)
+     (PROMPT-FOR-EXPRESSION ,operation/prompt-for-expression))
+   false))
+
+
+;; Edwin Variables:
+;; scheme-environment: '(edwin debugger)
+;; scheme-syntax-table: (access edwin-syntax-table (->environment '(edwin)))
+;; End:

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.124 1993/08/10 06:35:49 cph Exp $
+$Id: edwin.pkg,v 1.125 1993/08/12 08:35:48 jbank Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -518,6 +518,7 @@ MIT in each case. |#
   (export (edwin)
 	  call-with-output-mark
 	  mark->output-port
+	  output-port->mark
 	  with-output-to-mark))
 
 (define-package (edwin window-output-port)
@@ -750,6 +751,9 @@ MIT in each case. |#
 (define-package (edwin debugger)
   (files "debug")
   (parent (edwin))
+  (export ()
+	  with-break-on
+	  call-with-break)
   (export (edwin)
 	  continuation-browser-buffer
 	  debug-scheme-error
@@ -813,9 +817,16 @@ MIT in each case. |#
 	  write-restarts)
   (import (runtime debugger-utilities)
 	  print-binding
-	  show-environment-name)
+	  show-environment-name
+	  output-to-string
+	  write-dbg-name
+	  print-user-friendly-name)
   (import (runtime error-handler)
-	  hook/invoke-restart))
+	  hook/invoke-restart)
+  (import (edwin buffer-output-port)
+	  port/mark)
+  (import (runtime rep)
+	  default/repl-eval))
 
 ;;;; This is the variant used under DOS
 
