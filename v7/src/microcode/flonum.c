@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: flonum.c,v 9.40 1993/06/24 07:08:34 gjr Exp $
+$Id: flonum.c,v 9.41 1993/12/06 21:35:01 cph Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
@@ -51,17 +51,19 @@ DEFUN (arg_flonum, (arg_number), int arg_number)
 #define FLONUM_RESULT(x) PRIMITIVE_RETURN (double_to_flonum (x))
 #define BOOLEAN_RESULT(x) PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (x))
 
-#define FLONUM_SIZE ((BYTES_TO_WORDS (sizeof (double))) + 1)
-
 SCHEME_OBJECT
 DEFUN (double_to_flonum, (value), double value)
 {
   ALIGN_FLOAT (Free);
-  Primitive_GC_If_Needed (FLONUM_SIZE);
-  (*Free++) = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, (FLONUM_SIZE - 1)));
-  (*((double *) Free)) = value;
-  Free += (BYTES_TO_WORDS (sizeof (double)));
-  return (MAKE_POINTER_OBJECT (TC_BIG_FLONUM, (Free - FLONUM_SIZE)));
+  Primitive_GC_If_Needed (FLONUM_SIZE + 1);
+  {
+    SCHEME_OBJECT result =
+      (MAKE_POINTER_OBJECT (TC_BIG_FLONUM, (Free - (FLONUM_SIZE + 1))));
+    (*Free++) = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, FLONUM_SIZE));
+    (*((double *) Free)) = value;
+    Free += FLONUM_SIZE;
+    return (result);
+  }
 }
 
 #define FLONUM_BINARY_OPERATION(operator)				\
