@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 4.9 1988/08/24 16:29:46 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 4.10 1988/09/01 19:18:58 markf Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -69,10 +69,11 @@ MIT in each case. |#
 (define-rtl-expression char->ascii rtl: expression)
 (define-rtl-expression byte-offset rtl: register number)
 (define-rtl-expression register % number)
-(define-rtl-expression object->address rtl: register)
+(define-rtl-expression object->address rtl: expression)
 (define-rtl-expression object->datum rtl: expression)
-(define-rtl-expression object->type rtl: register)
+(define-rtl-expression object->type rtl: expression)
 (define-rtl-expression object->fixnum rtl: expression)
+(define-rtl-expression object->unsigned-fixnum rtl: expression)
 (define-rtl-expression fixnum->object rtl: expression)
 (define-rtl-expression offset rtl: register number)
 (define-rtl-expression pre-increment rtl: register number)
