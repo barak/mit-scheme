@@ -1,6 +1,6 @@
 /* -*- C -*-
 
-$Id: bchdrn.c,v 1.8 2000/01/18 02:54:18 cph Exp $
+$Id: bchdrn.c,v 1.9 2000/01/18 03:04:40 cph Exp $
 
 Copyright (c) 1991-2000 Massachusetts Institute of Technology
 
@@ -539,12 +539,13 @@ DEFUN (main, (argc, argv), int argc AND char ** argv)
 
 #ifndef MAIN
 
-void
+int
 DEFUN (main, (argc, argv), int argc AND char ** argv)
 {
   fprintf (stderr, "%s: Not implemented.\n", (argv[0]));
   fflush (stderr);
   exit (1);
+  return (1);
 }
 
 #endif /* MAIN */
