@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 1.5 1995/08/18 18:17:37 adams Exp $
+$Id: usiexp.scm,v 1.6 1995/08/29 14:56:39 adams Exp $
 
 Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
@@ -599,7 +599,14 @@ MIT in each case. |#
 		(global-ref/make name)
 		operands))
 	      (if-not-expanded))))))
-	    
+
+  (define (make-global-operator spec)
+    (if (symbol? spec)
+	(let ((arity
+	       (procedure-arity
+		(environment-lookup system-global-environment spec))))
+	  `(,spec . ,(global-operator spec (car arity) (cdr arity))))
+	`(,(car spec) . ,(apply global-operator spec))))
 
   (define usual-integrations/expansion-alist
     `((%record?           . ,%record?-expansion)
@@ -652,7 +659,6 @@ MIT in each case. |#
       (eighth             . ,eighth-expansion)
       (exact-integer?     . ,exact-integer?-expansion)
       (exact-rational?    . ,exact-rational?-expansion)
-      (expt               . ,(global-operator 'EXPT 2))
       (fifth              . ,fifth-expansion)
       (first              . ,first-expansion)
       (fix:<=             . ,fix:<=-expansion)
@@ -666,7 +672,6 @@ MIT in each case. |#
       (int:integer?       . ,exact-integer?-expansion)
       (list               . ,list-expansion)
       (make-string        . ,make-string-expansion)
-      (memq               . ,(global-operator 'MEMQ 2))
       ;;(modulo           . ,modulo-expansion)
       (negative?          . ,negative?-expansion)
       (complex?           . ,complex?-expansion)
@@ -676,7 +681,6 @@ MIT in each case. |#
       (second             . ,second-expansion)
       (seventh            . ,seventh-expansion)
       (sixth              . ,sixth-expansion)
-      (sqrt               . ,(global-operator 'SQRT 1))
       (string->symbol     . ,string->symbol-expansion)
       (symbol?            . ,symbol?-expansion)
       (third              . ,third-expansion)
@@ -685,6 +689,7 @@ MIT in each case. |#
       (weak-pair?         . ,weak-pair?-expansion)
       (with-values        . ,call-with-values-expansion)
       (zero?              . ,zero?-expansion)
+      ,@(map make-global-operator usual-integrations/global-operators)
       ))
 
   usual-integrations/expansion-alist)
@@ -695,6 +700,24 @@ MIT in each case. |#
   (set! usual-integrations/expansion-alist
 	(usual-integrations/make-expansion-alist))
   unspecific)
+
+(define usual-integrations/global-operators
+  '(;; <name>: use binding in system-global-environment to obtain arity
+    ;; (<name> #!optional min-arity max-arity): as specified (for use for
+    ;; names that might not be bound when SF is loaded)
+    ACOS
+    ASIN
+    ATAN
+    COS
+    EXP
+    EXPT
+    FOR-EACH
+    LOG
+    MEMQ
+    SIN
+    SQRT
+    TAN
+    ))
 
 ;;;;  Hooks and utilities for user defined reductions and expanders
 
