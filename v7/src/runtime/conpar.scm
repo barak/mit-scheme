@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: conpar.scm,v 14.43 2004/10/01 02:40:39 cph Exp $
+$Id: conpar.scm,v 14.44 2005/02/08 01:11:03 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
-Copyright 1994,1999,2001,2003,2004 Massachusetts Institute of Technology
+Copyright 1994,1999,2001,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -222,7 +222,7 @@ USA.
 	(handle-ordinary the-stream)
 	(let ((control-point (parser-state/next-control-point state)))
 	  (and control-point
-	       (if (not (zero? (parser-state/n-elements state)))
+	       (if (> (parser-state/n-elements state) 0)
 		   ;; Construct invisible join-stacklets frame.
 		   (handle-ordinary
 		    (stream return-address/join-stacklets control-point))
@@ -508,7 +508,7 @@ USA.
 	       (let loop ((index 0))
 		 (if (< index length)
 		     (cons-stream (vector-ref elements index)
-				  (loop (1+ index)))
+				  (loop (+ index 1)))
 		     element-stream))))
 	   next-control-point)))))
 
@@ -529,8 +529,19 @@ USA.
   (let ((entry (element-stream/head stream)))
     (let ((frame-size (compiled-continuation/next-continuation-offset entry)))
       (if frame-size
-	  (1+ frame-size)
-	  (stack-address->index (element-stream/ref stream 1) offset)))))
+	  (+ frame-size 1)
+	  (stack-address->index
+	   ;; Search for the dynamic link.  This heuristic compensates
+	   ;; for the compiler omitting its location in the object
+	   ;; code.
+	   (let loop ((s (stream-cdr stream)))
+	     (if (not (stream-pair? s))
+		 (error "Unable to find dynamic link:" stream))
+	     (let ((item (element-stream/head s)))
+	       (if (stack-address? item)
+		   item
+		   (loop (stream-cdr s)))))
+	   offset)))))
 
 (define (length/special-compiled stream offset)
   ;; return address is reflect-to-interface
@@ -582,7 +593,7 @@ USA.
 
 (define (length/interrupt-compiled-procedure stream offset)
   offset				; ignored
-  (1+ (compiled-procedure-frame-size (element-stream/head stream))))
+  (+ (compiled-procedure-frame-size (element-stream/head stream)) 1))
 
 (define (compiled-code-address/frame-size cc-address)
   (cond ((not (compiled-code-address? cc-address))
@@ -600,7 +611,7 @@ USA.
 		cc-address))))
 
 (define (verify paranoia-index stream offset)
-  (or (zero? paranoia-index)
+  (or (= paranoia-index 0)
       (stream-null? stream)
       (let* ((type
 	      (return-address->stack-frame-type (element-stream/head stream)
@@ -613,20 +624,19 @@ USA.
 	     (ltail (stream-tail* stream length)))
 	(and ltail
 	     (return-address? (element-stream/head ltail))
-	     (verify (-1+ paranoia-index)
+	     (verify (- paranoia-index 1)
 		     ltail
 		     (+ offset length))))))
 
 (define (stream-tail* stream n)
-  (cond ((or (zero? n) (stream-null? stream))
+  (cond ((or (= n 0) (stream-null? stream))
 	 stream)
 	((stream-pair? stream)
-	 (stream-tail* (stream-cdr stream) (-1+ n)))
+	 (stream-tail* (stream-cdr stream) (- n 1)))
 	(else
 	 (error "stream-tail*: not a proper stream" stream))))
 
 (define (element-stream/head stream)
-  (if (not (stream-pair? stream)) (error "not a stream-pair" stream))
   (map-reference-trap (lambda () (stream-car stream))))
 
 (define-integrable (element-stream/ref stream index)
@@ -865,7 +875,7 @@ USA.
 		     (element-stream/ref stream hardware-trap/pc-info1-index))
 		    (arity (primitive-procedure-arity primitive))
 		    (nargs
-		     (if (negative? arity)
+		     (if (< arity 0)
 			 (element-stream/ref stream
 					     hardware-trap/pc-info2-index)
 			 arity)))
@@ -886,7 +896,7 @@ USA.
 	  (and (return-address? (element-stream/head stream))
 	       (verify 2 stream offset)))
       offset
-      (heuristic (stream-cdr stream) (1+ offset))))
+      (heuristic (stream-cdr stream) (+ offset 1))))
 
 (define (hardware-trap-frame? frame)
   (and (stack-frame? frame)
@@ -918,12 +928,12 @@ USA.
 				  (+ 2 i)
 				  (string-append "register "
 						 (number->string i)))
-		  (loop (1+ i)))))))))
+		  (loop (+ i 1)))))))))
 
 (define (print-register block index name)
   (let ((value
 	 (let ((bit-string (bit-string-allocate word-size)))
-	   (read-bits! block (* word-size (1+ index)) bit-string)
+	   (read-bits! block (* word-size (+ index 1)) bit-string)
 	   (bit-string->unsigned-integer bit-string))))
     (newline)
     (write-string "  ")
