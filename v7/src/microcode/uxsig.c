@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxsig.c,v 1.24 1993/02/06 05:43:53 gjr Exp $
+$Id: uxsig.c,v 1.25 1993/02/21 00:00:58 gjr Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -621,11 +621,16 @@ DEFUN (bind_handler, (signo, handler),
        int signo AND
        Tsignal_handler handler)
 {
-  if ((signo != 0)
+  Tsignal_handler
+    old_handler = ((signo == 0) ? SIG_DFL : (current_handler (signo)));
+
+  if ((signo != 0) 
+      && ((old_handler == SIG_DFL)
+	  || ((old_handler == SIG_IGN) && (signo == SIGCHLD)))
       && ((handler != ((Tsignal_handler) sighnd_stop))
-	  || (UX_SC_JOB_CONTROL ()))
-      && ((current_handler (signo)) == SIG_DFL))
+	  || (UX_SC_JOB_CONTROL ())))
     INSTALL_HANDLER (signo, handler);
+  return;
 }
 
 void
