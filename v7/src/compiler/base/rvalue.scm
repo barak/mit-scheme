@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/rvalue.scm,v 4.4 1988/12/12 21:51:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/rvalue.scm,v 4.5 1988/12/16 13:36:35 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -169,7 +169,8 @@ MIT in each case. |#
   block
   continuation
   entry-edge
-  label)
+  label
+  debugging-info)
 
 (define *expressions*)
 
@@ -177,7 +178,7 @@ MIT in each case. |#
   (let ((expression
 	 (make-rvalue expression-tag block continuation
 		      (node->edge (cfg-entry-node scfg))
-		      (generate-label 'EXPRESSION))))
+		      (generate-label 'EXPRESSION) false)))
     (set! *expressions* (cons expression *expressions*))
     (set-block-procedure! block expression)
     expression))

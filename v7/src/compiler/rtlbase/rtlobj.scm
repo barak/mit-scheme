@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlobj.scm,v 4.3 1988/06/14 08:37:16 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlobj.scm,v 4.4 1988/12/16 13:36:19 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -38,30 +38,26 @@ MIT in each case. |#
 
 (define-structure (rtl-expr
 		   (conc-name rtl-expr/)
-		   (constructor make-rtl-expr (rgraph label entry-edge))
+		   (constructor make-rtl-expr
+				(rgraph label entry-edge debugging-info))
 		   (print-procedure
 		    (standard-unparser "RTL-EXPR"
 		      (lambda (state expression)
 			(unparse-object state (rtl-expr/label expression))))))
   (rgraph false read-only true)
   (label false read-only true)
-  (entry-edge false read-only true))
-
-(set-type-object-description!
- rtl-expr
- (lambda (expression)
-   `((RTL-EXPR/RGRAPH ,(rtl-expr/rgraph expression))
-     (RTL-EXPR/LABEL ,(rtl-expr/label expression))
-     (RTL-EXPR/ENTRY-EDGE ,(rtl-expr/entry-edge expression)))))
+  (entry-edge false read-only true)
+  (debugging-info false read-only true))
 
 (define-integrable (rtl-expr/entry-node expression)
   (edge-right-node (rtl-expr/entry-edge expression)))
-
+
 (define-structure (rtl-procedure
 		   (conc-name rtl-procedure/)
 		   (constructor make-rtl-procedure
 				(rgraph label entry-edge name n-required
-					n-optional rest? closure? type))
+					n-optional rest? closure? type
+					debugging-info))
 		   (print-procedure
 		    (standard-unparser "RTL-PROCEDURE"
 		      (lambda (state procedure)
@@ -76,23 +72,8 @@ MIT in each case. |#
   (rest? false read-only true)
   (closure? false read-only true)
   (type false read-only true)
-  (%external-label false))
-
-(set-type-object-description!
- rtl-procedure
- (lambda (procedure)
-   `((RTL-PROCEDURE/RGRAPH ,(rtl-procedure/rgraph procedure))
-     (RTL-PROCEDURE/LABEL ,(rtl-procedure/label procedure))
-     (RTL-PROCEDURE/ENTRY-EDGE ,(rtl-procedure/entry-edge procedure))
-     (RTL-PROCEDURE/NAME ,(rtl-procedure/name procedure))
-     (RTL-PROCEDURE/N-REQUIRED ,(rtl-procedure/n-required procedure))
-     (RTL-PROCEDURE/N-OPTIONAL ,(rtl-procedure/n-optional procedure))
-     (RTL-PROCEDURE/REST? ,(rtl-procedure/rest? procedure))
-     (RTL-PROCEDURE/CLOSURE? ,(rtl-procedure/closure? procedure))
-     (RTL-PROCEDURE/TYPE ,(rtl-procedure/type procedure))
-     (RTL-PROCEDURE/%EXTERNAL-LABEL
-      ,(rtl-procedure/%external-label procedure)))))
-
+  (%external-label false)
+  (debugging-info false read-only true))
 (define-integrable (rtl-procedure/entry-node procedure)
   (edge-right-node (rtl-procedure/entry-edge procedure)))
 
@@ -101,11 +82,11 @@ MIT in each case. |#
       (let ((label (generate-label (rtl-procedure/name procedure))))
 	(set-rtl-procedure/%external-label! procedure label)
 	label)))
-
+
 (define-structure (rtl-continuation
 		   (conc-name rtl-continuation/)
 		   (constructor make-rtl-continuation
-				(rgraph label entry-edge))
+				(rgraph label entry-edge debugging-info))
 		   (print-procedure
 		    (standard-unparser "RTL-CONTINUATION"		      (lambda (state continuation)
 			(unparse-object
@@ -113,15 +94,8 @@ MIT in each case. |#
 			 (rtl-continuation/label continuation))))))
   (rgraph false read-only true)
   (label false read-only true)
-  (entry-edge false read-only true))
-
-(set-type-object-description!
- rtl-continuation
- (lambda (continuation)
-   `((RTL-CONTINUATION/RGRAPH ,(rtl-continuation/rgraph continuation))
-     (RTL-CONTINUATION/LABEL ,(rtl-continuation/label continuation))
-     (RTL-CONTINUATION/ENTRY-EDGE
-      ,(rtl-continuation/entry-edge continuation)))))
+  (entry-edge false read-only true)
+  (debugging-info false read-only true))
 
 (define-integrable (rtl-continuation/entry-node continuation)
   (edge-right-node (rtl-continuation/entry-edge continuation)))

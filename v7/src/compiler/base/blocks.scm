@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/blocks.scm,v 4.8 1988/12/15 17:17:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/blocks.scm,v 4.9 1988/12/16 13:35:15 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -83,7 +83,7 @@ from the continuation, and then "glued" into place afterwards.
   applications		;list of applications lexically within this block
   interned-variables	;alist of interned SCode variable objects
   closure-offsets	;for closure block, alist of bound variable offsets
-  frame			;debugging information (???)
+  debugging-info	;dbg-block, if used
   stack-link		;for stack block, adjacent block on stack
   popping-limits	;for stack block (see continuation analysis)
   popping-limit		;for stack block (see continuation analysis)

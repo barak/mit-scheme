@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.13 1988/12/15 17:26:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.14 1988/12/16 13:37:12 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -82,20 +82,22 @@ MIT in each case. |#
 	      (cons continuation *queued-continuations*)))))
 
 (define (generate/expression expression)
-  (transmit-values
-      (generate/rgraph (expression-entry-node expression) generate/node)
+  (with-values
+      (lambda ()
+	(generate/rgraph (expression-entry-node expression) generate/node))
     (lambda (rgraph entry-edge)
-      (make-rtl-expr rgraph (expression-label expression) entry-edge))))
+      (make-rtl-expr rgraph
+		     (expression-label expression)
+		     entry-edge
+		     (expression-debugging-info expression)))))
 
 (define (generate/procedure procedure)
-  (transmit-values
-      (generate/rgraph
-       (procedure-entry-node procedure)
-       (lambda (node)
-	 (generate/procedure-header
-	  procedure
-	  (generate/node node)
-	  false)))
+  (with-values
+      (lambda ()
+	(generate/rgraph
+	 (procedure-entry-node procedure)
+	 (lambda (node)
+	   (generate/procedure-header procedure (generate/node node) false))))
     (lambda (rgraph entry-edge)
       (make-rtl-procedure
        rgraph
@@ -106,7 +108,8 @@ MIT in each case. |#
        (length (procedure-original-optional procedure))
        (and (procedure-original-rest procedure) true)
        (and (procedure/closure? procedure) true)
-       (procedure/type procedure)))))
+       (procedure/type procedure)
+       (procedure-debugging-info procedure)))))
 
 (define (generate/procedure-entry/inline procedure)
   (generate/procedure-header procedure
@@ -129,34 +132,38 @@ MIT in each case. |#
 
 (define (generate/continuation continuation)
   (let ((label (continuation/label continuation)))
-    (transmit-values
-	(generate/rgraph
-	 (continuation/entry-node continuation)
-	 (lambda (node)
-	   (scfg-append!
-	    (if (continuation/avoid-check? continuation)
-		(rtl:make-continuation-entry label)
-		(rtl:make-continuation-header label))
-	    (generate/continuation-entry/pop-extra continuation)
-	    (enumeration-case continuation-type
-		(continuation/type continuation)
-	      ((PUSH)
-	       (rtl:make-push (rtl:make-fetch register:value)))
-	      ((REGISTER)
-	       (rtl:make-assignment (continuation/register continuation)
-				    (rtl:make-fetch register:value)))
-	      ((VALUE PREDICATE)
-	       (if (continuation/ever-known-operator? continuation)
-		   (rtl:make-assignment (continuation/register continuation)
-					(rtl:make-fetch register:value))
-		   (make-null-cfg)))
-	      ((EFFECT)
-	       (make-null-cfg))
-	      (else
-	       (error "Illegal continuation type" continuation)))
-	    (generate/node node))))
+    (with-values
+	(lambda ()
+	  (generate/rgraph
+	   (continuation/entry-node continuation)
+	   (lambda (node)
+	     (scfg-append!
+	      (if (continuation/avoid-check? continuation)
+		  (rtl:make-continuation-entry label)
+		  (rtl:make-continuation-header label))
+	      (generate/continuation-entry/pop-extra continuation)
+	      (enumeration-case continuation-type
+		  (continuation/type continuation)
+		((PUSH)
+		 (rtl:make-push (rtl:make-fetch register:value)))
+		((REGISTER)
+		 (rtl:make-assignment (continuation/register continuation)
+				      (rtl:make-fetch register:value)))
+		((VALUE PREDICATE)
+		 (if (continuation/ever-known-operator? continuation)
+		     (rtl:make-assignment (continuation/register continuation)
+					  (rtl:make-fetch register:value))
+		     (make-null-cfg)))
+		((EFFECT)
+		 (make-null-cfg))
+		(else
+		 (error "Illegal continuation type" continuation)))
+	      (generate/node node)))))
       (lambda (rgraph entry-edge)
-	(make-rtl-continuation rgraph label entry-edge)))))
+	(make-rtl-continuation rgraph
+			       label
+			       entry-edge
+			       (continuation/debugging-info continuation))))))
 
 (define (generate/continuation-entry/pop-extra continuation)
   (let ((block (continuation/closing-block continuation)))
@@ -222,7 +229,7 @@ MIT in each case. |#
 	     (fluid-let ((*current-rgraph* rgraph))
 	       (with-new-node-marks (lambda () (generator node))))))))
       (add-rgraph-entry-edge! rgraph entry-edge)
-      (return-2 rgraph entry-edge))))
+      (values rgraph entry-edge))))
 
 (define (node->rgraph node)
   (let ((color

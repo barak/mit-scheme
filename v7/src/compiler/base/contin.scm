@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/contin.scm,v 4.6 1988/12/12 21:51:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/contin.scm,v 4.7 1988/12/16 13:36:57 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -74,6 +74,9 @@ MIT in each case. |#
 (define-integrable set-continuation/offset! set-procedure-closure-offset!)
 (define-integrable continuation/passed-out? procedure-passed-out?)
 (define-integrable set-continuation/passed-out?! set-procedure-passed-out?!)
+(define-integrable continuation/debugging-info procedure-debugging-info)
+(define-integrable set-continuation/debugging-info!
+  set-procedure-debugging-info!)
 
 (define (continuation/register continuation)
   (or (procedure-register continuation)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/proced.scm,v 4.9 1988/12/15 17:19:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/proced.scm,v 4.10 1988/12/16 13:35:34 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -68,6 +68,7 @@ MIT in each case. |#
   (variables		;variables which may be bound to this procedure (1)
    side-effects)	;classes of side-effects performed by this procedure
   properties		;random bits of information [assq list]
+  debugging-info	;[dbg-procedure or dbg-continuation]
   )
 
 ;; (1) The first meaning is used during closure analysis.
@@ -84,7 +85,7 @@ MIT in each case. |#
 		      (node->edge (cfg-entry-node scfg))
 		      (list-copy required) (list-copy optional) rest
 		      (generate-label name) false false false false false
-		      false false false false false false '() '() false)))
+		      false false false false false false '() '() '() false)))
     (set! *procedures* (cons procedure *procedures*))
     (set-block-procedure! block procedure)
     procedure))
