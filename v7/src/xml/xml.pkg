@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.47 2004/07/19 17:36:35 cph Exp $
+$Id: xml.pkg,v 1.48 2004/07/24 02:12:20 cph Exp $
 
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -301,15 +301,19 @@ USA.
   (files "xhtml")
   (parent (runtime xml))
   (export ()
+	  (html-dtd html-1.0-dtd)
+	  (html-external-dtd html-1.0-external-dtd)
 	  guarantee-html-element
 	  guarantee-html-element-name
-	  html-dtd
-	  html-element?
+	  html-1.0-dtd
+	  html-1.0-external-dtd
+	  html-1.1-dtd
+	  html-1.1-external-dtd
 	  html-element-context
-	  html-element-name?
 	  html-element-name-context
+	  html-element-name?
 	  html-element-names
-	  html-external-dtd
+	  html-element?
 	  html-iri
 	  html:a
 	  html:a?
@@ -427,7 +431,19 @@ USA.
 	  html:pre?
 	  html:q
 	  html:q?
+	  html:rb
+	  html:rb?
+	  html:rbc
+	  html:rbc?
 	  html:rel-link
+	  html:rp
+	  html:rp?
+	  html:rt
+	  html:rt?
+	  html:rtc
+	  html:rtc?
+	  html:ruby
+	  html:ruby?
 	  html:samp
 	  html:samp?
 	  html:script

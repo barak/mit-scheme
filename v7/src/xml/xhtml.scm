@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xhtml.scm,v 1.7 2004/07/19 17:36:28 cph Exp $
+$Id: xhtml.scm,v 1.8 2004/07/24 02:12:14 cph Exp $
 
 Copyright 2002,2003,2004 Massachusetts Institute of Technology
 
@@ -27,12 +27,19 @@ USA.
 
 (declare (usual-integrations))
 
-(define html-external-dtd
+(define html-1.0-external-dtd
   (make-xml-external-id "-//W3C//DTD XHTML 1.0 Strict//EN"
 			"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"))
 
-(define html-dtd
-  (make-xml-dtd 'html html-external-dtd '()))
+(define html-1.0-dtd
+  (make-xml-dtd 'html html-1.0-external-dtd '()))
+
+(define html-1.1-external-dtd
+  (make-xml-external-id "-//W3C//DTD XHTML 1.1//EN"
+			"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd"))
+
+(define html-1.1-dtd
+  (make-xml-dtd 'html html-1.1-external-dtd '()))
 
 (define html-iri
   (make-xml-namespace-iri "http://www.w3.org/1999/xhtml"))
@@ -145,6 +152,12 @@ USA.
 (define-html-element param	object empty)
 (define-html-element pre	block)
 (define-html-element q		inline)
+(define-html-element rb		ruby)
+(define-html-element rbc	ruby)
+(define-html-element rp		ruby)
+(define-html-element rt		ruby)
+(define-html-element rtc	ruby)
+(define-html-element ruby	inline)
 (define-html-element samp	inline)
 (define-html-element script	hybrid)
 (define-html-element select	inline)
