@@ -1,6 +1,6 @@
 #!/bin/csh -f
 
-# $Id: rebuild-8.0,v 1.1 1995/07/27 23:19:50 adams Exp $
+# $Id: rebuild-8.0,v 1.2 1995/07/31 19:26:22 adams Exp $
 
 # Arguments: runtimeversion compilerversion edwinversion 6001version
 
@@ -245,7 +245,7 @@ if (("$edwin" != "") || ("$complr" != "")) then
   cd $root/edwin
   rm -f ../tmp/c+e.com
   echo "### $scheme -constant 2000 -heap 2000 -compiler $cbandarg -no-init-file"
-  scheme -constant 2000 -heap 2000 -compiler $cbandarg -no-init-file <<*END*
+  $scheme -constant 2000 -heap 2000 -compiler $cbandarg -no-init-file <<*END*
 (begin
   (load "make.com")
   (disk-save "../tmp/c+e.com")
