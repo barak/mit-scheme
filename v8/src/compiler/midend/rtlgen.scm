@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.4 1994/11/23 21:31:58 adams Exp $
+$Id: rtlgen.scm,v 1.5 1994/11/23 23:15:26 gjr Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -885,6 +885,17 @@ MIT in each case. |#
 			       arg-regs))))
 |#
 #|
+;; If the incoming raw-continuation register is made available,
+;; other code below that implicitly assumes that it is preserved
+;; must be changed.  See rtlgen.scm.contin (part of the way there).
+
+(define (rtlgen/available-registers available)
+  (let ((arg-regs (rtlgen/argument-registers)))
+    ;; Order is important!
+    (append arg-regs
+	    (eq-set-difference available
+			       arg-regs))))
+|#
 (define (rtlgen/available-registers available)
   (let ((arg-regs (rtlgen/argument-registers)))
     ;; Order is important!
@@ -894,13 +905,6 @@ MIT in each case. |#
 				   (delq (rtl:register-number
 					  (rtlgen/reference-to-cont))
 					 available))
-			       arg-regs))))
-|#
-(define (rtlgen/available-registers available)
-  (let ((arg-regs (rtlgen/argument-registers)))
-    ;; Order is important!
-    (append arg-regs
-	    (eq-set-difference available
 			       arg-regs))))
 
 (define (rtlgen/number-of-argument-registers)
