@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.225 2000/12/21 04:28:10 cph Exp $
+;;; $Id: imail-top.scm,v 1.226 2000/12/21 04:36:45 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1513,7 +1513,7 @@ Negative argument means search in reverse."
   (let ((primary-folder (ref-variable imail-primary-folder #f)))
     (if primary-folder
 	(imail-parse-partial-url primary-folder)
-	(imail-get-default-url #f))))
+	(imail-get-default-url protocol))))
 
 (define (imail-parse-partial-url string)
   (parse-url-string string imail-get-default-url))
