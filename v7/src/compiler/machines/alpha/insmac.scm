@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: insmac.scm,v 1.4 2001/12/23 17:20:57 cph Exp $
+$Id: insmac.scm,v 1.5 2002/02/13 05:56:24 cph Exp $
 
-Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1992-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -28,18 +28,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;;; Definition macros
 
 (define-syntax define-symbol-transformer
-  (non-hygienic-macro-transformer
-   (lambda (name . alist)
-     `(DEFINE-INTEGRABLE (,name SYMBOL)
-	(LET ((PLACE (ASSQ SYMBOL ',alist)))
+  (sc-macro-transformer
+   (lambda (form environment)
+     environment
+     `(DEFINE-INTEGRABLE (,(cadr form) SYMBOL)
+	(LET ((PLACE (ASSQ SYMBOL ',(cddr form))))
 	  (IF (PAIR? PLACE)
 	      (CDR PLACE)
 	      #F))))))
 
 (define-syntax define-transformer
-  (non-hygienic-macro-transformer
-   (lambda (name value)
-     `(DEFINE ,name ,value))))
+  (sc-macro-transformer
+   (lambda (form environment)
+     `(DEFINE ,(cadr form) ,(close-syntax (caddr form) environment)))))
 
 ;;;; Fixed width instruction parsing
 
