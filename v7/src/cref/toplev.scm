@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/toplev.scm,v 1.1 1988/06/13 12:38:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/toplev.scm,v 1.2 1988/08/05 21:14:19 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -74,7 +74,7 @@ MIT in each case. |#
 	(newline)
 	(write-string ";;; program to make package structure")
 	(for-each (lambda (expression)
-		    (pp expression 'AS-CODE))
+		    (pp expression (current-output-port) true))
 		  constructor)))))
 
 (define (write-loader pathname pmodel)
@@ -85,7 +85,7 @@ MIT in each case. |#
 	(newline)
 	(write-string ";;; program to load package contents")
 	(for-each (lambda (expression)
-		    (pp expression 'AS-CODE))
+		    (pp expression (current-output-port) true))
 		  loader)))))
 
 (define (write-cref pathname pmodel)
