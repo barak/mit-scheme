@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 4.13 1989/11/21 22:21:34 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 4.14 1989/12/05 20:17:13 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -268,11 +268,24 @@ MIT in each case. |#
 	(invocation-prefix/reuse-adjustment context overwritten-block)
 	(let ((adjustment (combination/frame-adjustment combination)))
 	  (and adjustment
-	       ((if (eq? (car adjustment) 'KNOWN)
-		    invocation-prefix/move-frame-up
-		    invocation-prefix/dynamic-link)
-		context
-		(cdr adjustment)))))))
+	       (let ((block (cdr adjustment)))
+		 (cond ((eq? (car adjustment) 'KNOWN)
+			(invocation-prefix/move-frame-up context block))
+		       ((block/external? block)
+			;; If the adjustment is external, it says to
+			;; try and pop all of the stack frames for
+			;; this procedure.  We need not compare the
+			;; dynamic link to the adjustment pointer
+			;; because the dynamic link will always be
+			;; less than or equal to the adjustment
+			;; pointer.
+			(lambda (frame-size extra)
+			  (make-move-frame-up
+			   frame-size
+			   (stack-locative-offset (interpreter-dynamic-link)
+						  extra))))
+		       (else
+			(invocation-prefix/dynamic-link context block)))))))))
 
 (define (invocation-prefix/reuse-adjustment context block)
   (lambda (frame-size extra)
