@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rexp.scm,v 1.3 2000/04/13 15:55:56 cph Exp $
+;;; $Id: rexp.scm,v 1.4 2000/04/13 16:14:40 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -81,18 +81,12 @@
 	  ((char-set? rexp)
 	   (char-set->regexp rexp))
 	  ((and (pair? rexp) (list? (cdr rexp)))
-	   (let ((n-args
-		  (lambda ()
-		    (map rexp->regexp (cdr rexp))))
-		 (one-arg
+	   (let ((one-arg
 		  (lambda ()
 		    (if (not (fix:= 1 (length (cdr rexp))))
 			(lose))
 		    (cadr rexp))))
-	     (let ((alternatives
-		    (lambda ()
-		      (separated-append (n-args) "\\|")))
-		   (group-arg
+	     (let ((repeat-arg
 		    (lambda ()
 		      (rexp->regexp (rexp-groupify (one-arg)))))
 		   (syntax-type
@@ -102,12 +96,22 @@
 			    (cdr entry)
 			    (lose))))))
 	       (case (car rexp)
-		 ((ALTERNATIVES) (alternatives))
-		 ((SEQUENCE) (apply string-append (n-args)))
-		 ((GROUP) (group-arg))
-		 ((?) (string-append (group-arg) "?"))
-		 ((*) (string-append (group-arg) "*"))
-		 ((+) (string-append (group-arg) "+"))
+		 ((ALTERNATIVES)
+		  (separated-append (map rexp->regexp (cdr rexp)) "\\|"))
+		 ((SEQUENCE)
+		  (apply string-append
+			 (map (lambda (rexp)
+				(rexp->regexp
+				 (if (and (pair? rexp)
+					  (eq? (car rexp) 'ALTERNATIVES))
+				     (rexp-group rexp)
+				     rexp)))
+			      (cdr rexp))))
+		 ((GROUP)
+		  (string-append "\\(" (rexp->regexp (one-arg)) "\\)"))
+		 ((?) (string-append (repeat-arg) "?"))
+		 ((*) (string-append (repeat-arg) "*"))
+		 ((+) (string-append (repeat-arg) "+"))
 		 ((ANY-CHAR) ".")
 		 ((LINE-START) "^")
 		 ((LINE-END) "$")
