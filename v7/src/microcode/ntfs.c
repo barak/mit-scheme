@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntfs.c,v 1.5 1993/07/30 06:23:56 gjr Exp $
+$Id: ntfs.c,v 1.6 1993/08/21 03:21:47 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -38,12 +38,12 @@ MIT in each case. */
 #include "outf.h"
 
 int
-DEFUN (DOS_read_file_status, (name, s),
+DEFUN (NT_read_file_status, (name, s),
        CONST char * name AND
        struct stat * s)
 { char filename[128];
 
-  dos_pathname_as_filename(name, filename);
+  nt_pathname_as_filename (name, filename);
 
   while ((stat (filename, s)) < 0)
     {
@@ -62,10 +62,10 @@ DEFUN (OS_file_existence_test, (name), char * name)
   struct stat s;
   char filename[128];
 
-  dos_pathname_as_filename(name, filename);
+  nt_pathname_as_filename(name, filename);
 
   return
-    (((DOS_stat (filename, (&s))) < 0)
+    (((NT_stat (filename, (&s))) < 0)
      ? file_doesnt_exist : file_does_exist);
 }
 
@@ -74,8 +74,8 @@ DEFUN (OS_file_access, (name, mode), CONST char * name AND unsigned int mode)
 {
   char filename[128];
 
-  dos_pathname_as_filename(name, filename);
-  return ((DOS_access (filename, mode)) == 0);
+  nt_pathname_as_filename (name, filename);
+  return ((NT_access (filename, mode)) == 0);
 }
 
 int
@@ -84,8 +84,8 @@ DEFUN (OS_file_directory_p, (name), char * name)
   struct stat s;
   char filename[128];
 
-  dos_pathname_as_filename(name, filename);
-  return (((DOS_stat (filename, (&s))) == 0) &&
+  nt_pathname_as_filename(name, filename);
+  return (((NT_stat (filename, (&s))) == 0) &&
 	  (((s . st_mode) & S_IFMT) == S_IFDIR));
 }
 
@@ -98,16 +98,16 @@ DEFUN (OS_file_soft_link_p, (name), CONST char * name)
 void
 DEFUN (OS_file_remove, (name), CONST char * name)
 {
-  STD_VOID_SYSTEM_CALL (syscall_unlink, (DOS_unlink (name)));
+  STD_VOID_SYSTEM_CALL (syscall_unlink, (NT_unlink (name)));
 }
 
 void
 DEFUN (OS_file_remove_link, (name), CONST char * name)
 {
   struct stat s;
-  if ( (DOS_stat (name, (&s)) == 0) &&
+  if ( (NT_stat (name, (&s)) == 0) &&
        (((s . st_mode) & S_IFMT) == S_IFREG) )
-   DOS_unlink (name);
+   NT_unlink (name);
   return;
 }
 
@@ -132,20 +132,20 @@ DEFUN (OS_file_rename, (from_name, to_name),
        CONST char * from_name AND
        CONST char * to_name)
 {
-  if ((rename (from_name, to_name)) != 0)
+  if ((NT_rename (from_name, to_name)) != 0)
     error_system_call (errno, syscall_rename);
 }
 
 void
 DEFUN (OS_directory_make, (name), CONST char * name)
 {
-  STD_VOID_SYSTEM_CALL (syscall_mkdir, (DOS_mkdir (name)));
+  STD_VOID_SYSTEM_CALL (syscall_mkdir, (NT_mkdir (name)));
 }
 
 void
 DEFUN (OS_directory_delete, (name), CONST char * name)
 {
-  STD_VOID_SYSTEM_CALL (syscall_rmdir, (RemoveDirectory (name)));
+  STD_VOID_SYSTEM_CALL (syscall_rmdir, (NT_rmdir (name)));
 }
 
 #define DIR_UNALLOCATED (-1L)
@@ -170,7 +170,7 @@ static DIR ** directory_pointers;
 static unsigned int n_directory_pointers;
 
 void
-DEFUN_VOID (DOS_initialize_directory_reader)
+DEFUN_VOID (NT_initialize_directory_reader)
 {
   directory_pointers = 0;
   n_directory_pointers = 0;
@@ -182,7 +182,7 @@ DEFUN (allocate_directory_pointer, (pointer), DIR * pointer)
 {
   if (n_directory_pointers == 0)
     {
-      DIR ** pointers = ((DIR **) (DOS_malloc ((sizeof (DIR *)) * 4)));
+      DIR ** pointers = ((DIR **) (NT_malloc ((sizeof (DIR *)) * 4)));
       if (pointers == 0)
 	error_system_call (ENOMEM, syscall_malloc);
       directory_pointers = pointers;
@@ -211,7 +211,7 @@ DEFUN (allocate_directory_pointer, (pointer), DIR * pointer)
     unsigned int n_pointers = (2 * n_directory_pointers);
     DIR ** pointers =
       ((DIR **)
-       (DOS_realloc (((PTR) directory_pointers),
+       (NT_realloc (((PTR) directory_pointers),
 		    ((sizeof (DIR *)) * n_pointers))));
     if (pointers == 0)
       error_system_call (ENOMEM, syscall_realloc);
@@ -249,7 +249,7 @@ DEFUN (OS_directory_open, (name), CONST char * name)
   if (dir == 0)
     error_system_call (ENOMEM, syscall_malloc);
 
-  if (dos_pathname_as_filename (name, filename))
+  if (nt_pathname_as_filename (name, filename))
     sprintf (searchname, "%s*.*", filename);
   else
     sprintf (searchname, "%s\\*.*", filename);

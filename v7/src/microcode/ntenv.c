@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntenv.c,v 1.5 1993/07/27 21:27:42 gjr Exp $
+$Id: ntenv.c,v 1.6 1993/08/21 03:21:19 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -44,7 +44,7 @@ time_t
 DEFUN_VOID (OS_encoded_time)
 {
   time_t t;
-  STD_UINT_SYSTEM_CALL (syscall_time, t, (DOS_time (0)));
+  STD_UINT_SYSTEM_CALL (syscall_time, t, (NT_time (0)));
   return (t);
 }
 
@@ -52,7 +52,7 @@ void
 DEFUN (OS_decode_time, (t, buffer), time_t t AND struct time_structure * buffer)
 {
   struct tm * ts;
-  STD_PTR_SYSTEM_CALL (syscall_localtime, ts, (DOS_localtime (&t)));
+  STD_PTR_SYSTEM_CALL (syscall_localtime, ts, (NT_localtime (&t)));
   (buffer -> year) = ((ts -> tm_year) + 1900);
   (buffer -> month) = ((ts -> tm_mon) + 1);
   (buffer -> day) = (ts -> tm_mday);
@@ -83,7 +83,7 @@ DEFUN (OS_encode_time ,(buffer), struct time_structure * buffer)
     int wday = (buffer -> day_of_week);
     (ts -> tm_wday) = ((wday == 6) ? 0 : (wday + 1));
   }
-  STD_UINT_SYSTEM_CALL (syscall_mktime, t, (DOS_mktime (ts)));
+  STD_UINT_SYSTEM_CALL (syscall_mktime, t, (NT_mktime (ts)));
   return (t);
 }
 
@@ -101,31 +101,10 @@ DEFUN_VOID (OS_real_time_clock)
   return ((((double) (clock ())) * 1000.0) / ((double) CLOCKS_PER_SEC));
 }
 
-/* Timer adjustments */
-#define PC_TIMER_TICKS_PER_SECOND	(18.2)
-/* This should work out to about 55 */
-#define PC_MILLISECONDS_PER_TIMER_TICK  \
-  ((long) ((1000.0/PC_TIMER_TICKS_PER_SECOND)+0.5))
-
-static unsigned long
-DEFUN (ms_to_ticks, (clocks), clock_t clocks)
-{ ldiv_t ticks;
-  unsigned long result;
-
-  ticks = ldiv((long) clocks, PC_MILLISECONDS_PER_TIMER_TICK);
-
-  result = ((ticks.rem >= (PC_MILLISECONDS_PER_TIMER_TICK/2)) ?
-   	    (ticks.quot + 1) : (ticks.quot));
-  return (result == 0) ? 1 : result;
-}
-
 void
 DEFUN (OS_process_timer_set, (first, interval),
-       clock_t first AND
-       clock_t interval)
+       clock_t first AND clock_t interval)
 {
-  /* Convert granularity to 1/18.2 seconds */
-
   return;
 }
 
@@ -137,22 +116,16 @@ DEFUN_VOID (OS_process_timer_clear)
 
 void
 DEFUN (OS_real_timer_set, (first, interval),
-       clock_t first AND
-       clock_t interval)
+       clock_t first AND clock_t interval)
 {
   OS_process_timer_set (first, interval);
+  return;
 }
 
 void
 DEFUN_VOID (OS_real_timer_clear)
 {
   OS_process_timer_clear();
-  return;
-}
-
-void
-DEFUN_VOID (DOS_initialize_environment)
-{
   return;
 }
 
@@ -167,14 +140,14 @@ DEFUN_VOID (OS_working_dir_pathname)
   }
   if (current_dir_path_size == 0)
     {
-      current_dir_path = (DOS_malloc (1024));
+      current_dir_path = (NT_malloc (1024));
       if (current_dir_path == 0)
 	error_system_call (ENOMEM, syscall_malloc);
       current_dir_path_size = 1024;
     }
   while (1)
     {
-      if ((DOS_getcwd (current_dir_path, current_dir_path_size)) != 0)
+      if ((NT_getcwd (current_dir_path, current_dir_path_size)) != 0)
       { strlwr(current_dir_path);
 	return (current_dir_path);
       }
@@ -185,7 +158,7 @@ DEFUN_VOID (OS_working_dir_pathname)
       current_dir_path_size *= 2;
       {
 	char * new_current_dir_path =
-	  (DOS_realloc (current_dir_path, current_dir_path_size));
+	  (NT_realloc (current_dir_path, current_dir_path_size));
 	if (new_current_dir_path == 0)
 	  /* ANSI C requires `path' to be unchanged -- we may have to
 	     discard it for systems that don't behave thus. */
@@ -198,21 +171,22 @@ DEFUN_VOID (OS_working_dir_pathname)
 void
 DEFUN (OS_set_working_dir_pathname, (name), char * name)
 {
-  /*SRA*/
-  size_t name_size = strlen(name);
-  char *filename = name;
+  size_t name_size = (strlen (name));
+  char * filename = name;
 
   STD_BOOL_SYSTEM_CALL (syscall_chdir, (SetCurrentDirectory (filename)));
 
-  while (1) {
-    if (name_size < current_dir_path_size) {
+  while (1)
+  {
+    if (name_size < current_dir_path_size)
+    {
       strcpy(current_dir_path, name);
       return;
     }
     current_dir_path_size *= 2;
     {
       char * new_current_dir_path =
-	(DOS_realloc (current_dir_path, current_dir_path_size));
+	(NT_realloc (current_dir_path, current_dir_path_size));
       if (new_current_dir_path == 0)
 	error_system_call (ENOMEM, syscall_realloc);
       current_dir_path = new_current_dir_path;
