@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: assconv.scm,v 1.7 1995/04/03 06:08:41 adams Exp $
+$Id: assconv.scm,v 1.8 1995/04/10 15:30:31 adams Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,7 +38,8 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (assconv/top-level program)
-  (assconv/expr '() program))
+  (fluid-let ((*assconv/effect-only-forms* (make-eq-hash-table)))
+    (assconv/expr '() program)))
 
 ;;(define-macro (define-assignment-converter keyword bindings . body)
 ;;  (let ((proc-name (symbol-append 'ASSCONV/ keyword)))
@@ -168,7 +169,13 @@ MIT in each case. |#
 	 ,@(assconv/expr* env rands)))
 
 (define-assignment-converter BEGIN (env #!rest actions)
-  `(BEGIN ,@(assconv/expr* env actions)))
+  (let  ((actions*   (assconv/expr* env actions)))
+    (let loop ((actions actions*))
+      (cond ((or (null? actions) (null? (cdr actions))))
+	    (else
+	     (assconv/form/set-effect-only! (car actions))
+	     (loop (cdr actions)))))
+    `(BEGIN ,@actions*)))
 
 (define-assignment-converter IF (env pred conseq alt)
   `(IF ,(assconv/expr env pred)
@@ -210,6 +217,15 @@ MIT in each case. |#
 
 (define (assconv/new-cell-name prefix)
   (new-variable (string-append (symbol-name prefix) "-cell")))
+
+
+(define *assconv/effect-only-forms*)
+
+(define (assconv/form/set-effect-only! form)
+  (hash-table/put! *assconv/effect-only-forms* form #T))
+
+(define (assconv/form/effect-only? form)
+  (hash-table/get *assconv/effect-only-forms* form #F))
 
 
 (define (assconv/get-dbg-info env expr)
@@ -366,11 +382,11 @@ MIT in each case. |#
 	 (LOOKUP ,(assconv/binding/cell-name binding))
 	 (QUOTE ,(assconv/binding/name binding))))
 
-(define (assconv/cell-assignment binding value)
+(define (assconv/cell-assignment binding value assignment-form)
   (let* ((cell-name  (assconv/binding/cell-name binding))
 	 (value-name (assconv/binding/name binding))
 	 (local-name (assconv/rename value-name)))
-    #|
+    #|					;
     ;; This returns the new value
     (bind local-name value
 	  `(BEGIN
@@ -381,19 +397,25 @@ MIT in each case. |#
 		   (QUOTE ,value-name))
 	     (LOOKUP ,local-name)))
     |#
-    ;; This returns the old value
-    (bind local-name
-	  `(CALL (QUOTE ,%cell-ref)
-		 (QUOTE #F)
-		 (LOOKUP ,cell-name)
-		 (QUOTE ,value-name))
-	  `(BEGIN
-	     (CALL (QUOTE ,%cell-set!)
-		   (QUOTE #F)
-		   (LOOKUP ,cell-name)
-		   ,value
-		   (QUOTE ,value-name))
-	     (LOOKUP ,local-name)))))
+    ;; This returns the old value, if needed
+    (if (assconv/form/effect-only? assignment-form)
+	`(CALL (QUOTE ,%cell-set!)
+	       (QUOTE #F)
+	       (LOOKUP ,cell-name)
+	       ,value
+	       (QUOTE ,value-name))
+	(bind local-name
+	      `(CALL (QUOTE ,%cell-ref)
+		     (QUOTE #F)
+		     (LOOKUP ,cell-name)
+		     (QUOTE ,value-name))
+	      `(BEGIN
+		 (CALL (QUOTE ,%cell-set!)
+		       (QUOTE #F)
+		       (LOOKUP ,cell-name)
+		       ,value
+		       (QUOTE ,value-name))
+		 (LOOKUP ,local-name))))))
 
 (define (assconv/cellify! binding)
   (let ((cell-name (assconv/new-cell-name (assconv/binding/name binding))))
@@ -406,7 +428,7 @@ MIT in each case. |#
     (for-each (lambda (ass)
 		(form/rewrite!
 		 ass
-		 (assconv/cell-assignment binding (set!/expr ass))))
+		 (assconv/cell-assignment binding (set!/expr ass) ass)))
 	      (assconv/binding/assignments binding))
     (for-each (lambda (ref)
 		(form/rewrite!
