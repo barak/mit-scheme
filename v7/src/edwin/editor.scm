@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: editor.scm,v 1.233 1993/10/27 23:29:05 cph Exp $
+;;;	$Id: editor.scm,v 1.234 1993/11/18 15:11:36 gjr Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -276,7 +276,8 @@ with the contents of the startup message."
 	    ((null? buffers))
 	  (clean-group-marks! (buffer-group (car buffers)))))))
 
-(add-gc-daemon! editor-gc-daemon)
+(add-gc-daemon!/no-restore editor-gc-daemon)
+(add-event-receiver! event:after-restore editor-gc-daemon)
 
 (define (internal-error-handler condition)
   (cond ((and (eq? condition-type:primitive-procedure-error

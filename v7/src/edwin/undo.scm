@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: undo.scm,v 1.56 1993/10/05 23:05:35 cph Exp $
+;;;	$Id: undo.scm,v 1.57 1993/11/18 15:11:42 gjr Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -201,7 +201,8 @@ which includes both the saved text and other data."
 	     (words->bytes (ref-variable undo-limit buffer))
 	     (words->bytes (ref-variable undo-strong-limit buffer)))))))))
 
-(add-gc-daemon! truncate-buffer-undo-lists!)
+(add-gc-daemon!/no-restore truncate-buffer-undo-lists!)
+(add-event-receiver! event:after-restore truncate-buffer-undo-lists!)
 
 (define (truncate-undo-data! undo-data min-size max-size)
   (letrec
