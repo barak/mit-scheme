@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: sendmail.scm,v 1.35 1997/01/03 04:07:00 cph Exp $
+;;;	$Id: sendmail.scm,v 1.36 1997/10/31 01:23:02 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-97 Massachusetts Institute of Technology
 ;;;
@@ -65,6 +65,15 @@ If set to the null string, From: field contains only the email address."
   ""
   string?)
 
+(define-variable mail-from-style
+  "Specifies how \"From:\" fields look.
+One of the following values:
+'PARENS	king@grassland.com (Elvis Parsley)
+'ANGLES	Elvis Parsley <king@grassland.com>
+#F	king@grassland.com"
+  'ANGLES
+  (lambda (object) (memq object '(PARENS ANGLES #F))))
+
 (define-variable mail-organization
   "The name of your organization.
 Appears in the Organization: field of mail and news messages.
@@ -97,7 +106,7 @@ so you can remove or alter the BCC field to override the default."
   "Name of file to write all outgoing messages in, or false for none."
   false
   string-or-false?)
-
+
 (define-variable mail-yank-ignored-headers
   "Delete these headers from old message when it's inserted in a reply."
   (reduce (lambda (x y) (string-append x "\\|" y))
@@ -122,7 +131,7 @@ so you can remove or alter the BCC field to override the default."
 False means let mailer mail back a message to report errors."
   false
   boolean?)
-
+
 (define-variable mail-header-separator
   "Line used to separate headers from text in messages being composed."
   "--text follows this line--"
@@ -325,15 +334,37 @@ is inserted."
 	      (add-unique "X-Mailer" (mailer-version-string buffer))))))
 
 (define (mail-from-string buffer)
-  (string-append (or (ref-variable user-mail-address buffer)
-		     (string-append (current-user-name)
-				   "@"
-				   (or (ref-variable mail-host-address buffer)
-				       (os/hostname))))
-		 (let ((full-name (ref-variable mail-full-name buffer)))
-		   (if (string-null? full-name)
-		       ""
-		       (string-append " (" full-name ")")))))
+  (let ((address
+	 (or (ref-variable user-mail-address buffer)
+	     (string-append (current-user-name)
+			    "@"
+			    (or (ref-variable mail-host-address buffer)
+				(os/hostname)))))
+	(full-name (ref-variable mail-full-name buffer)))
+    (if (string-null? full-name)
+	address
+	(case (ref-variable mail-from-style buffer)
+	  ((PARENS) (string-append address " (" full-name ")"))
+	  ((ANGLES) (string-append (rfc822-quote full-name) " <" address ">"))
+	  (else address)))))
+
+(define (rfc822-quote string)
+  (if (string-find-next-char-in-set string char-set:rfc822-quoted)
+      (let loop ((chars (string->list string)) (result (list #\")))
+	(if (null? chars)
+	    (list->string (reverse! (cons #\" result)))
+	    (loop (cdr chars)
+		  (cons (car chars)
+			(if (or (char=? #\\ (car chars))
+				(char=? #\" (car chars)))
+			    (cons #\\ result)
+			    result)))))
+      string))
+
+(define char-set:rfc822-quoted
+  (char-set-invert
+   (char-set-union char-set:alphanumeric
+		   (apply char-set (string->list " !#$%&'*+-/=?^_`{|}~")))))
 
 (define (mail-organization-string buffer)
   (let ((organization (ref-variable mail-organization buffer)))

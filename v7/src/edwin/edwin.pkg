@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.212 1997/10/22 05:10:46 cph Exp $
+$Id: edwin.pkg,v 1.213 1997/10/31 01:24:24 cph Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -1452,6 +1452,7 @@ MIT in each case. |#
   (files "sendmail")
   (parent (edwin))
   (export (edwin)
+	  char-set:rfc822-quoted
 	  edwin-command$mail
 	  edwin-command$mail-bcc
 	  edwin-command$mail-cc
@@ -1466,6 +1467,7 @@ MIT in each case. |#
 	  edwin-mode$mail
 	  edwin-variable$mail-archive-file-name
 	  edwin-variable$mail-default-reply-to
+	  edwin-variable$mail-from-style
 	  edwin-variable$mail-full-name
 	  edwin-variable$mail-header-function
 	  edwin-variable$mail-header-separator
@@ -1496,6 +1498,7 @@ MIT in each case. |#
 	  mailer-version-string
 	  make-mail-buffer
 	  prepare-mail-buffer-for-sending
+	  rfc822-quote
 	  send-mail-buffer)
   (import (runtime system)
 	  known-systems))
