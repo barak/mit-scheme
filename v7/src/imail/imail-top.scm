@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.199 2000/06/27 17:25:40 cph Exp $
+;;; $Id: imail-top.scm,v 1.200 2000/06/29 17:52:18 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1091,7 +1091,7 @@ With negative argument, forward the message with all headers;
 	   (select-buffer mail-buffer)
 	   (select-buffer-other-window mail-buffer))
        (message-forwarded message)))))
-
+
 (define-command imail-resend
   "Resend current message to ADDRESSES.
 ADDRESSES is a string consisting of several addresses separated by commas."
