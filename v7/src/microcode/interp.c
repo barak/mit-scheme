@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: interp.c,v 9.98 2003/02/14 18:28:19 cph Exp $
+$Id: interp.c,v 9.99 2003/03/06 04:57:52 cph Exp $
 
-Copyright (c) 1988-2002 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
+Copyright 1992,2000,2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -1245,28 +1246,6 @@ DEFUN (Interpret, (pop_return_p), int pop_return_p)
 		 interrupts are disabled.  */
 	      Stack_Check (sp_register);
 	      goto internal_apply;
-	    }
-
-	  case TC_RECORD:
-	    {
-	      SCHEME_OBJECT record_type = (VECTOR_REF (Function, 0));
-	      if ((RECORD_P (record_type))
-		  && ((OBJECT_TYPE (FAST_MEMORY_REF (record_type, 0)))
-		      == TC_CONSTANT)
-		  && ((VECTOR_LENGTH (record_type)) >= 2)
-		  && ((VECTOR_REF (record_type, 1)) != SHARP_F)
-		  && ((VECTOR_REF (record_type, 1)) != Function))
-		{
-		  SCHEME_OBJECT nargs_object = (STACK_POP ());
-		  STACK_PUSH (VECTOR_REF (record_type, 1));
-		  STACK_PUSH
-		    (MAKE_OBJECT ((OBJECT_TYPE (nargs_object)),
-				  ((OBJECT_DATUM (nargs_object)) + 1)));
-		  Stack_Check (sp_register);
-		  goto internal_apply;
-		}
-	      else
-		goto internal_apply_inapplicable;
 	    }
 
 	  case TC_PROCEDURE:
