@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: evlcom.scm,v 1.52 1997/05/18 07:51:53 cph Exp $
+;;;	$Id: evlcom.scm,v 1.53 1997/06/10 05:58:13 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
 ;;;
@@ -399,11 +399,14 @@ may be available.  The following commands are special to this mode:
 	      (cons expression (loop))))))))
 
 (define (evaluation-environment buffer)
-  (let ((environment
-	 (ref-variable scheme-environment (or buffer (current-buffer)))))
-    (if (eq? 'DEFAULT environment)
-	(nearest-repl/environment)
-	environment)))
+  (let* ((buffer (or buffer (current-buffer)))
+	 (environment (ref-variable scheme-environment buffer)))
+    (cond ((not (eq? 'DEFAULT environment))
+	   environment)
+	  ((ref-variable evaluate-in-inferior-repl buffer)
+	   (ref-variable scheme-environment (current-repl-buffer buffer)))
+	  (else
+	   (nearest-repl/environment)))))
 
 (define (evaluation-syntax-table buffer environment)
   (let ((syntax-table (ref-variable scheme-syntax-table buffer)))
