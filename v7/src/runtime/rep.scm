@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.27 1992/04/06 05:49:12 cph Exp $
+$Id: rep.scm,v 14.28 1992/09/14 23:53:03 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -42,6 +42,7 @@ MIT in each case. |#
 
 (define (initialize-package!)
   (set! *nearest-cmdl* false)
+  (set! hook/repl-prompt default/repl-prompt)
   (set! hook/repl-eval default/repl-eval)
   (set! hook/repl-write default/repl-write)
   (set! hook/set-default-environment default/set-default-environment)
@@ -348,7 +349,7 @@ MIT in each case. |#
 	 (let ((value
 		(hook/repl-eval
 		 (let ((s-expression
-			(prompt-for-command-expression
+			(hook/repl-prompt
 			 (string-append (number->string (cmdl/level repl))
 					" "
 					(repl/prompt repl))
@@ -359,6 +360,10 @@ MIT in each case. |#
 		 (repl/syntax-table repl))))
 	   (repl-history/record! printer-history value)
 	   value))))))
+
+(define hook/repl-prompt)
+(define (default/repl-prompt prompt port)
+  (prompt-for-command-expression prompt port))
 
 (define hook/repl-eval)
 (define (default/repl-eval s-expression environment syntax-table)
