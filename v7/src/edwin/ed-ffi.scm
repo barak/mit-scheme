@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ed-ffi.scm,v 1.33 1994/03/08 20:33:02 cph Exp $
+$Id: ed-ffi.scm,v 1.34 1994/10/12 00:30:59 cph Exp $
 
 Copyright (c) 1990-94 Massachusetts Institute of Technology
 
@@ -126,6 +126,8 @@ of that license should have been included along with this file.
     ("edtstr"  (edwin)
 	       edwin-syntax-table)
     ("evlcom"  (edwin)
+	       edwin-syntax-table)
+    ("eystep"  (edwin stepper)
 	       edwin-syntax-table)
     ("filcom"  (edwin)
 	       edwin-syntax-table)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.151 1994/10/11 23:10:21 cph Exp $
+$Id: edwin.pkg,v 1.152 1994/10/12 00:30:50 cph Exp $
 
 Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
@@ -1318,3 +1318,39 @@ MIT in each case. |#
 	  show-environment-bindings)
   (initialization (initialize-bochser-mode!)))
 |#
+
+(define-package (edwin stepper)
+  (files "eystep")
+  (parent (edwin))
+  (export (edwin)
+	  edwin-command$step-defun
+	  edwin-command$step-expression
+	  edwin-command$step-last-sexp
+	  edwin-command$stepper-contract
+	  edwin-command$stepper-expand
+	  edwin-command$stepper-run
+	  edwin-command$stepper-step
+	  edwin-command$stepper-step-over
+	  edwin-command$stepper-step-until
+	  edwin-command$stepper-step-until-visibly
+	  edwin-command$stepper-summary
+	  edwin-mode$stepper)
+  (import (runtime debugger)
+	  debugger-pp)
+  (import (runtime stepper)
+	  step-output
+	  step-output-final-result
+	  step-output-initialize
+	  stepper-last-event
+	  stepper-root-node
+	  ynode-children
+	  ynode-contract!
+	  ynode-doesnt-need-redisplay!
+	  ynode-exp
+	  ynode-expand!
+	  ynode-hidden-children?
+	  ynode-needs-redisplay?
+	  ynode-result
+	  ynode-type
+	  ynode-value-node)
+  (initialization (initialize-package!)))

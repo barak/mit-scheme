@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: schmod.scm,v 1.36 1993/12/17 00:09:14 cph Exp $
+;;;	$Id: schmod.scm,v 1.37 1994/10/12 00:30:25 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -117,6 +117,7 @@ The following commands evaluate Scheme expressions:
 (define-key 'scheme #\m-g 'undefined)
 (define-key 'scheme #\m-o 'eval-current-buffer)
 (define-key 'scheme #\m-q 'undefined)
+(define-key 'scheme #\m-s 'step-defun)
 (define-key 'scheme #\m-z 'eval-defun)
 (define-key 'scheme #\c-m-q 'indent-sexp)
 (define-key 'scheme #\c-m-z 'eval-region)

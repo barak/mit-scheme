@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: loadef.scm,v 1.25 1993/09/30 19:22:54 bal Exp $
+;;;	$Id: loadef.scm,v 1.26 1994/10/12 00:30:42 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -205,6 +205,18 @@ variable's value is #F, the text is printed using LPR-COMMAND."
 
 (define-autoload-command 'sort-columns 'SORT
   "Sort lines by the text in a range of columns.")
+
+(define-library 'STEPPER
+  '("eystep" (EDWIN STEPPER)))
+
+(define-autoload-command 'step-expression 'STEPPER
+  "Single-step an expression.")
+
+(define-autoload-command 'step-last-sexp 'STEPPER
+  "Single-step the expression preceding point.")
+
+(define-autoload-command 'step-defun 'STEPPER
+  "Single-step the definition that the point is in or before.")
 
 ;;;; DOS-specific commands
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.50 1994/03/08 20:32:54 cph Exp $
+$Id: decls.scm,v 1.51 1994/10/12 00:31:13 cph Exp $
 
 Copyright (c) 1989-94 Massachusetts Institute of Technology
 
@@ -145,6 +145,7 @@ MIT in each case. |#
 		"ed-ffi"
 		"editor"
 		"evlcom"
+		"eystep"
 		"filcom"
 		"fileio"
 		"fill"
