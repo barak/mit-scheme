@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: notify.scm,v 1.12 1993/10/27 23:29:18 cph Exp $
+;;;	$Id: notify.scm,v 1.13 1993/11/17 22:23:14 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
 ;;;
@@ -182,7 +182,8 @@ which can show various things including time, load average, and mail status."
 	    editor-thread-root-continuation
 	    (lambda ()
 	      (do () (#f)
-		(inferior-thread-output! notifier-thread-registration)
+		(if notifier-thread-registration
+		    (inferior-thread-output! notifier-thread-registration))
 		(sleep-current-thread
 		 (* 1000 (ref-variable notify-interval))))))))
       (detach-thread thread)
