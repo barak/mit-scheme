@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxsock.c,v 1.4 1991/10/29 22:55:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxsock.c,v 1.5 1992/02/03 23:36:26 jinx Exp $
 
-Copyright (c) 1990-1991 Massachusetts Institute of Technology
+Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -124,7 +124,7 @@ DEFINE_PRIMITIVE ("OPEN-TCP-SERVER-SOCKET", Prim_open_tcp_server_socket, 1, 1,
 {
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN
-    (long_to_integer (OS_open_server_socket (arg_nonnegative_integer (1))));
+    (long_to_integer (OS_open_server_socket ((arg_nonnegative_integer (1)), 1)));
 }
 
 static Tchannel
