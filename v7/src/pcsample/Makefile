@@ -22,3 +22,9 @@ install: pcsdld.sl $(SCHEME_OBJECTS) pcs.bco pcs.bld
 	-mkdir $(INSTALL_DIRECTORY)
 	cp -p pcsdld.sl $(INSTALL_DIRECTORY)
 	cp -p pcs.bco pcs.bld *.com *.bci $(INSTALL_DIRECTORY)
+
+tags: TAGS
+TAGS:
+	etags *.scm *.c
+
+.PHONY: tags TAGS install
