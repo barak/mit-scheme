@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.24 1988/12/30 23:30:13 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.25 1988/12/30 23:42:18 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -689,7 +689,7 @@ MIT in each case. |#
 	  internal-lambda?)
   (export (runtime syntaxer)
 	  make-block-declaration)
-  (export (runtime debugger-utilities)
+  (export (runtime compiler-info)
 	  lambda-tag:internal-lambda
 	  lambda-tag:internal-lexpr)
   (initialization (initialize-package!)))
