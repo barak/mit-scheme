@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.31 2000/09/11 21:45:15 cph Exp $
+$Id: datime.scm,v 14.32 2000/09/11 21:50:03 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -244,7 +244,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		      (list (car tokens)
 			    (cadr tokens)
 			    (caddr tokens)
-			    (string-append (car tokens*) ":00")
+			    (car tokens*)
 			    (cadr tokens*))
 		      (lose))))
 	       ((5) tokens)
@@ -257,9 +257,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		    (lose)))
 	       (else (lose))))))
       (let ((time (burst-string (list-ref tokens 3) #\: #f)))
-	(if (not (fix:= 3 (length time)))
+	(if (not (memv (length time) '(2 3)))
 	    (error "Ill-formed RFC-822 time string:" string))
-	(make-decoded-time (string->number (caddr time))
+	(make-decoded-time (if (pair? (cddr time))
+			       (string->number (caddr time))
+			       0)
 			   (string->number (cadr time))
 			   (string->number (car time))
 			   (string->number (list-ref tokens 0))
