@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.45 1993/12/23 08:03:22 cph Exp $
+$Id: error.scm,v 14.46 1995/09/11 19:05:26 cph Exp $
 
-Copyright (c) 1988-93 Massachusetts Institute of Technology
+Copyright (c) 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -684,6 +684,7 @@ MIT in each case. |#
 (define condition-type:floating-point-overflow)
 (define condition-type:floating-point-underflow)
 (define condition-type:illegal-datum)
+(define condition-type:illegal-pathname-component)
 (define condition-type:no-such-restart)
 (define condition-type:port-error)
 (define condition-type:serious-condition)
@@ -710,6 +711,7 @@ MIT in each case. |#
 (define error:derived-file)
 (define error:derived-port)
 (define error:derived-thread)
+(define error:illegal-pathname-component)
 (define error:wrong-number-of-arguments)
 (define error:wrong-type-argument)
 (define error:wrong-type-datum)
@@ -884,6 +886,16 @@ MIT in each case. |#
 		       (write (cdr arity) port)
 		       (write-string " arguments" port))))
 	      (write-char #\. port)))))
+
+  (set! condition-type:illegal-pathname-component
+	(make-condition-type 'ILLEGAL-PATHNAME-COMPONENT
+	    condition-type:wrong-type-datum
+	  (lambda (condition port)
+	    (write-string "The object " port)
+	    (write (access-condition condition 'DATUM) port)
+	    (write-string " is not a valid pathname " port)
+	    (write (access-condition condition 'TYPE) port)
+	    (write-string "." port))))
 
   (set! condition-type:control-error
 	(make-condition-type 'CONTROL-ERROR condition-type:error '()
@@ -1111,6 +1123,10 @@ MIT in each case. |#
   (set! error:wrong-number-of-arguments
 	(condition-signaller condition-type:wrong-number-of-arguments
 			     '(DATUM TYPE OPERANDS)
+			     standard-error-handler))
+  (set! error:illegal-pathname-component
+	(condition-signaller condition-type:illegal-pathname-component
+			     '(DATUM TYPE)
 			     standard-error-handler))
   (set! error:divide-by-zero
 	(condition-signaller condition-type:divide-by-zero

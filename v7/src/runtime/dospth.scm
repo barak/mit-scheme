@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dospth.scm,v 1.27 1995/07/11 22:31:03 cph Exp $
+$Id: dospth.scm,v 1.28 1995/09/11 19:07:10 cph Exp $
 
 Copyright (c) 1992-95 Massachusetts Institute of Technology
 
@@ -200,12 +200,13 @@ MIT in each case. |#
 			       sub-directory-delimiter-string
 			       (loop (cdr directory)))))))
 	(else
-	 (error "Illegal pathname directory:" directory))))
+	 (error:illegal-pathname-component directory "directory"))))
 
 (define (unparse-directory-component component)
   (cond ((eq? component 'UP) "..")
 	((string? component) component)
-	(else (error "Illegal pathname directory component:" component))))
+	(else
+	 (error:illegal-pathname-component component "directory component"))))
 
 (define (unparse-name name type)
   (let ((name (or (unparse-component name) ""))
@@ -217,7 +218,7 @@ MIT in each case. |#
 (define (unparse-component component)
   (cond ((or (not component) (string? component)) component)
 	((eq? component 'WILD) "*")
-	(else (error "Illegal pathname component:" component))))
+	(else (error:illegal-pathname-component component "component"))))
 
 ;;;; Pathname Constructors
 
@@ -226,8 +227,7 @@ MIT in each case. |#
    host
    (cond ((string? device) device)
 	 ((memq device '(#F UNSPECIFIC)) device)
-	 (else
-	  (error:wrong-type-argument device "pathname device" 'MAKE-PATHNAME)))
+	 (else (error:illegal-pathname-component device "device")))
    (cond ((or (not directory) (eq? directory 'UNSPECIFIC))
 	  directory)
 	 ((and (list? directory)
@@ -242,19 +242,18 @@ MIT in each case. |#
 		       (eq? element 'UP)))))
 	  (simplify-directory directory))
 	 (else
-	  (error:wrong-type-argument directory "pathname directory"
-				     'MAKE-PATHNAME)))
+	  (error:illegal-pathname-component directory "directory")))
    (if (or (memq name '(#F WILD))
 	   (and (string? name) (not (string-null? name))))
        name
-       (error:wrong-type-argument name "pathname name" 'MAKE-PATHNAME))
+       (error:illegal-pathname-component name "name"))
    (if (or (memq type '(#F WILD))
 	   (and (string? type) (not (string-null? type))))
        type
-       (error:wrong-type-argument type "pathname type" 'MAKE-PATHNAME))
+       (error:illegal-pathname-component type "type"))
    (if (memq version '(#F UNSPECIFIC WILD NEWEST))
        'UNSPECIFIC
-       (error:wrong-type-argument version "pathname version" 'MAKE-PATHNAME))))
+       (error:illegal-pathname-component version "version"))))
 
 (define (%%make-pathname host device directory name type version)
   ;; This is a kludge to make the \\foo\bar notation work correctly.

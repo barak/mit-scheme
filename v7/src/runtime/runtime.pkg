@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.261 1995/08/08 15:30:04 adams Exp $
+$Id: runtime.pkg,v 14.262 1995/09/11 19:06:33 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -585,6 +585,7 @@ MIT in each case. |#
 	  condition-type:floating-point-overflow
 	  condition-type:floating-point-underflow
 	  condition-type:illegal-datum
+	  condition-type:illegal-pathname-component
 	  condition-type:no-such-restart
 	  condition-type:port-error
 	  condition-type:serious-condition
@@ -622,6 +623,7 @@ MIT in each case. |#
 	  error:derived-thread
 	  error:divide-by-zero
 	  error:file-operation
+	  error:illegal-pathname-component
 	  error:no-such-restart
 	  error:wrong-number-of-arguments
 	  error:wrong-type-argument
