@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.25 1990/04/12 22:46:26 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.26 1990/04/21 17:18:08 jmiller Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -1418,6 +1418,7 @@ comutil_interrupt_dlink (entry_point, dlink, ignore_3, ignore_4)
 {
   return
     (compiler_interrupt_common(entry_point,
+			       ENTRY_SKIPPED_CHECK_OFFSET,
 			       MAKE_POINTER_OBJECT(TC_STACK_ENVIRONMENT,
 						   dlink)));
 }
