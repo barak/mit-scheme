@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.42 1992/02/12 15:48:40 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.43 1992/02/18 17:28:19 jinx Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -934,7 +934,8 @@ DEFUN (link_cc_block,
 
   while ((--sections) >= 0)
   {
-    header = (block_address[last_header_offset]);
+    SCHEME_OBJECT * scan = &(block_address[last_header_offset]);
+    header = (*scan);
 
     kind = (READ_LINKAGE_KIND (header));
     switch (kind)
@@ -945,6 +946,7 @@ DEFUN (link_cc_block,
       handle_operator:
         execute_p = true;
 	entry_size = EXECUTE_CACHE_ENTRY_SIZE;
+	START_OPERATOR_RELOCATION (scan);
 	count = (READ_OPERATOR_LINKAGE_COUNT (header));
 	break;
 
@@ -984,6 +986,8 @@ DEFUN (link_cc_block,
     else
     {
       total_count = count;
+      if (execute_p)
+	offset += (FIRST_OPERATOR_LINKAGE_OFFSET - 1);
     }
 
     block_address[last_header_offset] =
@@ -993,15 +997,11 @@ DEFUN (link_cc_block,
       SCHEME_OBJECT name;
 
       if (!execute_p)
-      {
 	name = (block_address[offset]);
-      }
       else
-      {
 	EXTRACT_EXECUTE_CACHE_SYMBOL(name, &(block_address[offset]));
-      }
-      result = ((*cache_handler)(name, block, offset));
 
+      result = ((*cache_handler)(name, block, offset));
       if (result != PRIM_DONE)
       {
         /* Save enough state to continue.
@@ -1014,6 +1014,8 @@ DEFUN (link_cc_block,
 	 */
 
   back_out:
+	if (execute_p)
+	  END_OPERATOR_RELOCATION (&(block_address[offset]));
         STACK_PUSH (ENTRY_TO_OBJECT (ret_add));
         STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (sections + 1));
         STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (last_header_offset));
@@ -1035,6 +1037,8 @@ DEFUN (link_cc_block,
 	goto exit_proc;
       }
     }
+    if (execute_p)
+      END_OPERATOR_RELOCATION (&(block_address[offset - 1]));
     last_header_offset = offset;
   }
 
