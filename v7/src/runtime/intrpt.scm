@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 14.11 1992/08/18 02:56:20 cph Exp $
+$Id: intrpt.scm,v 14.12 1992/09/02 05:32:05 jinx Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -69,6 +69,7 @@ MIT in each case. |#
   (real-timer-clear 0))
 
 (define-integrable stack-overflow-slot 0)
+(define-integrable global-gc-slot 1)
 (define-integrable gc-slot 2)
 (define-integrable character-slot 4)
 (define-integrable timer-slot 6)
@@ -181,6 +182,8 @@ MIT in each case. |#
 	    (vector-ref (get-fixed-objects-vector) index:termination-vector)))
        (let ((previous-gc-interrupt
 	      (vector-ref old-system-interrupt-vector gc-slot))
+	     (previous-global-gc-interrupt
+	      (vector-ref old-system-interrupt-vector global-gc-slot))
 	     (previous-stack-interrupt
 	      (vector-ref old-system-interrupt-vector stack-overflow-slot))
 	     (system-interrupt-vector
@@ -195,6 +198,8 @@ MIT in each case. |#
 		    (make-vector length false)))))
 
 	 (vector-set! system-interrupt-vector gc-slot previous-gc-interrupt)
+	 (vector-set! system-interrupt-vector global-gc-slot
+		      previous-global-gc-interrupt)
 	 (vector-set! system-interrupt-vector stack-overflow-slot
 		      previous-stack-interrupt)
 	 (vector-set! system-interrupt-vector character-slot
