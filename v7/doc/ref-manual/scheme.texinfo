@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.67 1999/03/31 02:59:58 cph Exp $
+@comment $Id: scheme.texinfo,v 1.68 1999/04/29 22:21:30 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -95,9 +95,9 @@ by the Massachusetts Institute of Technology.
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.67
+@subtitle Edition 1.68
 @subtitle for Scheme Release 7.5
-@subtitle 30 March 1999
+@subtitle 29 April 1999
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -14626,29 +14626,46 @@ is supported only in the file part of @var{directory}.
 @section Time
 
 MIT Scheme provides a simple set of procedures for manipulating date
-and time information.  There are three time representations, each of
+and time information.  There are four time representations, each of
 which serves a different purpose.  Each representation may be
 converted to any of the others.
 
+@cindex universal time
+@cindex time, universal
 The primary time representation, @dfn{universal time}, is an exact
 non-negative integer counting the number of seconds that have elapsed
-since midnight January 1, 1900 UTC.  This format is produced by
-@code{get-universal-time} and @code{encode-universal-time}.
+since midnight January 1, 1900 UTC.  (UTC stands for @dfn{Coordinated
+Universal Time}, and is the modern name for Greenwich Mean Time.)  This
+format is produced by @code{get-universal-time} and
+@code{decoded-time->universal-time}.
 
-The second representation, @dfn{decoded time}, is a record structure
-in which the time is broken down into components, such as month,
-minute, etc.  This format is produced by @code{decode-universal-time}
-and @code{get-decoded-time}.
+@cindex decoded time
+@cindex time, decoded
+The second representation, @dfn{decoded time}, is a record structure in
+which the time is broken down into components, such as month, minute,
+etc.  Decoded time is always relative to a particular time zone, which
+is a component of the structure.  This format is produced by
+@code{global-decoded-time} and @code{local-decoded-time}.
 
-The final representation, @dfn{file time}, is an exact non-negative
+@cindex file time
+@cindex time, file
+The third representation, @dfn{file time}, is an exact non-negative
 integer that is larger for increasing time.  Unlike universal time,
 this representation is operating-system dependent.  This format is
 produced by all of the file-attribute procedures, for example
 @code{file-modification-time} and @code{file-attributes}.
 
+@cindex time, string
+The fourth representation, the @dfn{time string}, is an external
+representation for time.  This format is defined by RFC-822,
+@cite{Standard for the format of ARPA Internet text messages}, with the
+modification that years are represented as four-digit numbers rather
+than two-digit numbers.  This format is the standard format for Internet
+email and numerous other network protocols.
+
 Within this section, argument variables named @var{universal-time},
-@var{decoded-time}, and @var{file-time} are respectively required to be
-of the corresponding format.
+@var{decoded-time}, @var{file-time}, and @var{time-string} are
+respectively required to be of the corresponding format.
 
 @menu
 * Universal Time::              
@@ -14689,35 +14706,62 @@ months between @code{1} and @code{12}; years are represented in
 ``four-digit'' form, in which 1999 is represented as @code{1999} ---
 @emph{not} @code{99}.
 
-@deffn {procedure+} get-decoded-time
-Return the current time in decoded format.
+@deffn {procedure+} local-decoded-time
+Return the current time in decoded format.  The decoded time is
+represented in the local time zone.
 
 @example
 @group
-(pp (get-decoded-time))
-#[decoded-time 14]
-(second 30)
-(minute 4)
+(pp (local-decoded-time))
+#[decoded-time 76]
+(second 2)
+(minute 12)
 (hour 11)
-(day 26)
-(month 3)
+(day 27)
+(month 4)
 (year 1999)
-(day-of-week 4)
-(daylight-savings-time 0)
+(day-of-week 1)
+(daylight-savings-time 1)
 (zone 5)
 @end group
 @end example
 @end deffn
 
-@deffn {procedure+} make-decoded-time second minute hour day month year
-Return a new decoded-time object representing the given time in the
-local time zone.  The arguments must be valid components according to
-the above rules, and must form a valid date.
+@deffn {procedure+} global-decoded-time
+Return the current time in decoded format.  The decoded time is
+represented in UTC.
+
+@example
+@group
+(pp (global-decoded-time))
+#[decoded-time 77]
+(second 8)
+(minute 12)
+(hour 15)
+(day 27)
+(month 4)
+(year 1999)
+(day-of-week 1)
+(daylight-savings-time 0)
+(zone 0)
+@end group
+@end example
+@end deffn
+
+@deffn {procedure+} make-decoded-time second minute hour day month year [zone]
+Return a new decoded-time object representing the given time.  The
+arguments must be valid components according to the above rules, and
+must form a valid date.
+
+If @var{zone} is not supplied or is @code{#f}, the resulting decoded
+time will be represented in the local time zone.  Otherwise, @var{zone}
+must be a valid time zone, and the result will be represented in that
+zone.
 
 @strong{Warning}: because this procedure depends on the operating
 system's runtime library, it is not capable of representing all dates.
 In particular, on most unix systems, it is not possible to encode dates
-that occur prior to midnight, January 1, 1970 GMT.  Attempting to do
+that occur prior to midnight, January 1, 1970 UTC.  Attempting to do
 this will signal an error.
 
 @example
@@ -14734,6 +14778,20 @@ this will signal an error.
 (daylight-savings-time 0)
 (zone 5)
 @end group
+
+@group
+(pp (make-decoded-time 0 9 11 26 3 1999 3))
+#[decoded-time 80]
+(second 0)
+(minute 9)
+(hour 11)
+(day 26)
+(month 3)
+(year 1999)
+(day-of-week 4)
+(daylight-savings-time 0)
+(zone 3)
+@end group
 @end example
 @end deffn
 
@@ -14747,9 +14805,9 @@ Return the corresponding component of @var{decoded-time}.
 
 @example
 @group
-(decoded-time/second (get-decoded-time)) @result{} 17
-(decoded-time/year (get-decoded-time)) @result{} 1999
-(decoded-time/day (get-decoded-time)) @result{} 26
+(decoded-time/second (local-decoded-time)) @result{} 17
+(decoded-time/year (local-decoded-time)) @result{} 1999
+(decoded-time/day (local-decoded-time)) @result{} 26
 @end group
 @end example
 @end deffn
@@ -14760,7 +14818,7 @@ as an exact integer between @code{0} (Monday) and @code{6} (Sunday),
 inclusive.
 
 @example
-(decoded-time/day-of-week (get-decoded-time)) @result{} 4
+(decoded-time/day-of-week (local-decoded-time)) @result{} 4
 @end example
 @end deffn
 
@@ -14769,7 +14827,7 @@ Return @code{#t} if @var{decoded-time} is represented using daylight
 savings time.  Otherwise return @code{#f}.
 
 @example
-(decoded-time/daylight-savings-time? (get-decoded-time))
+(decoded-time/daylight-savings-time? (local-decoded-time))
                   @result{} #f
 @end example
 @end deffn
@@ -14778,10 +14836,10 @@ savings time.  Otherwise return @code{#f}.
 Return the time zone in which @var{decoded-time} is represented.  This
 is an exact rational number between @code{-24} and @code{+24} inclusive,
 that when multiplied by @code{3600} is an integer.  The value is the
-number of hours west of GMT.
+number of hours west of UTC.
 
 @example
-(decoded-time/zone (get-decoded-time)) @result{} 5
+(decoded-time/zone (local-decoded-time)) @result{} 5
 @end example
 @end deffn
 
@@ -14873,60 +14931,220 @@ file-time format.
 The procedures described in this section convert times from one format
 to another.
 
-@deffn {procedure+} decode-universal-time universal-time
+@deffn {procedure+} universal-time->local-decoded-time universal-time
+@deffnx {procedure+} universal-time->global-decoded-time universal-time
 Converts an argument in universal-time format to decoded-time format.
-@end deffn
+The result is in the local time zone or UTC, respectively.
 
-@deffn {procedure+} encode-universal-time decoded-time
-Converts an argument in decoded-time format to universal-time format.
-@end deffn
+@example
+@group
+(pp (universal-time->local-decoded-time (get-universal-time)))
+#[decoded-time 21]
+(second 23)
+(minute 57)
+(hour 17)
+(day 29)
+(month 4)
+(year 1999)
+(day-of-week 3)
+(daylight-savings-time 1)
+(zone 5)
+@end group
 
-@deffn {procedure+} decode-file-time file-time
-Converts an argument in file-time format to decoded-time format.
-@end deffn
-
-@deffn {procedure+} encode-file-time decoded-time
-Converts an argument in decoded-time format to file-time format.
-@end deffn
-
-@deffn {procedure+} file-time->universal-time file-time
-Converts an argument in universal-time format to file-time format.
+@group
+(pp (universal-time->global-decoded-time (get-universal-time)))
+#[decoded-time 22]
+(second 27)
+(minute 57)
+(hour 21)
+(day 29)
+(month 4)
+(year 1999)
+(day-of-week 3)
+(daylight-savings-time 0)
+(zone 0)
+@end group
+@end example
 @end deffn
 
 @deffn {procedure+} universal-time->file-time universal-time
 Converts an argument in file-time format to universal-time format.
+
+@example
+@group
+(universal-time->file-time (get-universal-time))
+    @result{} 925422988
+@end group
+@end example
+@end deffn
+
+@deffn {procedure+} universal-time->local-time-string universal-time
+@deffnx {procedure+} universal-time->global-time-string universal-time
+Converts an argument in universal-time format to a time string.  The
+result is in the local time zone or UTC, respectively.
+
+@example
+@group
+(universal-time->local-time-string (get-universal-time))
+    @result{} "Thu, 29 Apr 1999 17:55:31 -0400"
+(universal-time->global-time-string (get-universal-time))
+    @result{} "Thu, 29 Apr 1999 21:55:51 +0000"
+@end group
+@end example
+@end deffn
+
+@deffn {procedure+} decoded-time->universal-time decoded-time
+Converts an argument in decoded-time format to universal-time format.
+
+@example
+@group
+(decoded-time->universal-time (local-decoded-time))
+    @result{} 3134411942
+(decoded-time->universal-time (global-decoded-time))
+    @result{} 3134408347
+@end group
+@end example
+@end deffn
+
+@deffn {procedure+} decoded-time->file-time decoded-time
+Converts an argument in decoded-time format to file-time format.
+
+@example
+@group
+(decoded-time->file-time (local-decoded-time))
+    @result{} 925423191
+(decoded-time->file-time (global-decoded-time))
+    @result{} 925419595
+@end group
+@end example
+@end deffn
+
+@deffn {procedure+} decoded-time->string decoded-time
+Convert an argument in decoded-time format to a time string.
+
+@example
+@group
+(decoded-time->string (local-decoded-time))
+    @result{} "Thu, 29 Apr 1999 18:00:43 -0400"
+(decoded-time->string (global-decoded-time))
+    @result{} "Thu, 29 Apr 1999 22:00:46 +0000"
+@end group
+@end example
+@end deffn
+
+@deffn {procedure+} file-time->universal-time file-time
+Converts an argument in universal-time format to file-time format.
+
+@example
+@group
+(file-time->universal-time (file-modification-time "/"))
+    @result{} 3133891907
+@end group
+@end example
+@end deffn
+
+@deffn {procedure+} file-time->local-decoded-time file-time
+@deffnx {procedure+} file-time->global-decoded-time file-time
+Converts an argument in file-time format to decoded-time format.  The
+result is in the local time zone or UTC, respectively.
+
+@example
+@group
+(pp (file-time->local-decoded-time (file-modification-time "/")))
+#[decoded-time 26]
+(second 47)
+(minute 31)
+(hour 17)
+(day 23)
+(month 4)
+(year 1999)
+(day-of-week 4)
+(daylight-savings-time 1)
+(zone 5)
+@end group
+
+@group
+(pp (file-time->global-decoded-time (file-modification-time "/")))
+#[decoded-time 27]
+(second 47)
+(minute 31)
+(hour 21)
+(day 23)
+(month 4)
+(year 1999)
+(day-of-week 4)
+(daylight-savings-time 0)
+(zone 0)
+@end group
+@end example
+@end deffn
+
+@deffn {procedure+} file-time->local-time-string file-time
+@deffnx {procedure+} file-time->global-time-string file-time
+Converts an argument in file-time format to a time string.  The result
+is in the local time zone or UTC, respectively.
+
+@example
+@group
+(file-time->local-time-string (file-modification-time "/"))
+    @result{} "Fri, 23 Apr 1999 17:31:47 -0400"
+(file-time->global-time-string (file-modification-time "/"))
+    @result{} "Fri, 23 Apr 1999 21:31:47 +0000"
+@end group
+@end example
+@end deffn
+
+@deffn {procedure+} string->universal-time time-string
+Converts a time-string argument to universal-time format.
+
+@example
+@group
+(string->universal-time "Fri, 23 Apr 1999 21:31:47 +0000")
+    @result{} 3133888307
+(string->universal-time "Fri, 23 Apr 1999 17:31:47 -0400")
+    @result{} 3133888307
+@end group
+@end example
+@end deffn
+
+@deffn {procedure+} string->decoded-time time-string
+Converts a time-string argument to decoded-time format.
+
+@example
+@group
+(pp (string->decoded-time "Fri, 23 Apr 1999 17:31:47 -0400"))
+#[decoded-time 30]
+(second 47)
+(minute 31)
+(hour 17)
+(day 23)
+(month 4)
+(year 1999)
+(day-of-week 4)
+(daylight-savings-time 0)
+(zone 4)
+@end group
+@end example
+@end deffn
+
+@deffn {procedure+} string->file-time time-string
+Converts a time-string argument to file-time format.
+
+@example
+@group
+(string->file-time "Fri, 23 Apr 1999 17:31:47 -0400")
+    @result{} 924899507
+@end group
+@end example
 @end deffn
 
 @node External Representation of Time,  , Time-Format Conversion, Time
 @subsection External Representation of Time
 
-The procedures in this section generate external representations of
-time.  The most common external representation is that defined in
-RFC-822, @cite{Standard for the format of ARPA Internet text messages}.
-MIT Scheme also supports a more verbose format that is solely intended
-for human readability.
-
-At present, MIT Scheme does not support procedures to convert RFC-822
-times into internal formats.
-
-@deffn {procedure+} universal-time->string universal-time
-@deffnx {procedure+} decoded-time->string decoded-time
-@deffnx {procedure+} file-time->string file-time
-These procedures convert the given time argument into RFC-822 format,
-returning the converted time as a string.  For universal and file time
-formats, the returned value always represents local time.  For decoded
-time format, the returned value represents the time zone of the
-argument.
-
-@example
-@group
-(universal-time->string (get-universal-time))
-    @result{} "Tue, 30 Mar 1999 11:21:04 -0500"
-(file-time->string (file-modification-time "/cdrom"))
-    @result{} "Sun, 24 May 1998 07:46:02 -0400"
-@end group
-@end example
-@end deffn
+The normal external representation for time is the time string, as
+described above.  The procedures in this section generate alternate
+external representations of time which are more verbose and may be more
+suitable for presentation to human readers.
 
 @deffn {procedure+} decoded-time/date-string decoded-time
 @deffnx {procedure+} decoded-time/time-string decoded-time
@@ -14936,9 +15154,9 @@ results are implicitly in local time.
 
 @example
 @group
-(decoded-time/date-string (get-decoded-time))
+(decoded-time/date-string (local-decoded-time))
     @result{} "Tuesday March 30, 1999"
-(decoded-time/time-string (get-decoded-time))
+(decoded-time/time-string (local-decoded-time))
     @result{} "11:22:38 AM"
 @end group
 @end example
