@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.168 1995/04/15 06:48:48 cph Exp $
+$Id: edwin.pkg,v 1.169 1995/04/17 21:46:25 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -183,6 +183,7 @@ MIT in each case. |#
 	  group-extract-and-delete-string!
 	  group-extract-string
 	  group-insert-char!
+	  group-insert-chars!
 	  group-insert-string!
 	  group-insert-substring!
 	  group-left-char
