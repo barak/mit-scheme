@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/object.scm,v 1.2 1988/10/28 07:03:20 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/object.scm,v 1.3 1990/10/04 10:21:24 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -55,7 +55,7 @@ MIT in each case. |#
   (primitive-package false read-only true)
   (packages false read-only true)
   (extra-packages false read-only true)
-  (default-pathname false read-only true))
+  (pathname false read-only true))
 
 (define-structure (package
 		   (named (string->symbol "#[(cross-reference)package]"))
