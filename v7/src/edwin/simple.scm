@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: simple.scm,v 1.49 2000/02/25 17:46:30 cph Exp $
+;;; $Id: simple.scm,v 1.50 2000/04/04 16:50:43 cph Exp $
 ;;;
 ;;; Copyright (c) 1985, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -81,6 +81,10 @@
 	  (editor-error "Attempt to delete past end of buffer")
 	  (group-delete-right-char! group index)))))
 
+(define (insert object #!optional point)
+  (insert-string (write-to-string object)
+		 (if (default-object? point) (current-point) point)))
+
 (define (insert-string string #!optional point)
   (let ((point (if (default-object? point) (current-point) point)))
     (group-insert-string! (mark-group point) (mark-index point) string)))
