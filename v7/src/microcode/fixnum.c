@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fixnum.c,v 9.29 1989/09/28 21:18:59 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fixnum.c,v 9.30 1990/06/25 18:18:20 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -246,4 +246,57 @@ DEFINE_PRIMITIVE ("GCD-FIXNUM", Prim_gcd_fixnum, 2, 2, 0)
       y = (z % y);
     }
   PRIMITIVE_RETURN (LONG_TO_FIXNUM (x));
+}
+
+/* Bitwise operations */
+
+#define FIXNUM_BOOLEAN_BODY(operation)					\
+do									\
+{									\
+  fast unsigned long x, y, z;						\
+									\
+  PRIMITIVE_HEADER (2);							\
+									\
+  x = (arg_fixnum (1));							\
+  y = (arg_fixnum (2));							\
+									\
+  z = (x operation y);							\
+  return (LONG_TO_FIXNUM (z));						\
+} while (0)
+
+
+DEFINE_PRIMITIVE ("FIXNUM-ANDC", Prim_fixnum_andc, 2, 2, 0)
+{
+  FIXNUM_BOOLEAN_BODY(& ~);
+}
+
+
+DEFINE_PRIMITIVE ("FIXNUM-AND", Prim_fixnum_and, 2, 2, 0)
+{
+  FIXNUM_BOOLEAN_BODY(&);
+}
+
+
+DEFINE_PRIMITIVE ("FIXNUM-OR", Prim_fixnum_or, 2, 2, 0)
+{
+  FIXNUM_BOOLEAN_BODY(|);
+}
+
+
+DEFINE_PRIMITIVE ("FIXNUM-XOR", Prim_fixnum_xor, 2, 2, 0)
+{
+  FIXNUM_BOOLEAN_BODY(^);
+}
+
+
+DEFINE_PRIMITIVE ("FIXNUM-NOT", Prim_fixnum_not, 1, 1, 0)
+{
+  fast unsigned long x, z;
+
+  PRIMITIVE_HEADER (1);
+
+  x = (arg_fixnum (1));
+
+  z = (~ (x));
+  return (LONG_TO_FIXNUM (z));
 }
