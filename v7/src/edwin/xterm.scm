@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: xterm.scm,v 1.49 1995/11/19 05:30:48 cph Exp $
+;;;	$Id: xterm.scm,v 1.50 1996/04/04 18:32:09 cph Exp $
 ;;;
-;;;	Copyright (c) 1989-95 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -430,8 +430,8 @@
 	       (lambda (block?)
 		 (let loop ()
 		   (let ((event (read-event queue display block?)))
-		     (cond ((not event)
-			    #f)
+		     (cond ((or (not event) (input-event? event))
+			    event)
 			   ((not (vector? event))
 			    (let ((flag (process-change-event event)))
 			      (if flag
@@ -556,14 +556,21 @@
 		   (loop))))))))
 
 (define (preview-event event)
-  (if (and signal-interrupts?
-	   (vector? event)
-	   (fix:= event-type:key-press (vector-ref event 0))
-	   (string-find-next-char (vector-ref event 2) #\BEL))
-      (begin
-	(clean-event-queue x-display-events)
-	(signal-interrupt!))
-      (enqueue!/unsafe x-display-events event)))
+  (cond ((and signal-interrupts?
+	      (vector? event)
+	      (fix:= event-type:key-press (vector-ref event 0))
+	      (string-find-next-char (vector-ref event 2) #\BEL))
+	 (clean-event-queue x-display-events)
+	 (signal-interrupt!))
+	((and (vector? event)
+	      (or (fix:= event-type:map (vector-ref event 0))
+		  (fix:= event-type:unmap (vector-ref event 0))
+		  (fix:= event-type:visibility (vector-ref event 0))))
+	 (let ((result (process-special-event event)))
+	   (if result
+	       (enqueue!/unsafe x-display-events result))))
+	(else
+	 (enqueue!/unsafe x-display-events event))))
 
 (define (clean-event-queue queue)
   ;; Flush keyboard and mouse events from the input queue.  Other
@@ -676,7 +683,8 @@
     (and (not (screen-deleted? screen))
 	 (begin
 	   (%set-screen-visibility! screen 'VISIBLE)
-	   (make-input-event 'UPDATE update-screen! screen #t)))))
+	   (screen-force-update screen)
+	   (make-input-event 'UPDATE update-screen! screen #f)))))
 
 (define-event-handler event-type:unmap
   (lambda (screen event)
@@ -700,9 +708,11 @@
 	       ((0) (%set-screen-visibility! screen 'VISIBLE))
 	       ((1) (%set-screen-visibility! screen 'PARTIALLY-OBSCURED))
 	       ((2) (%set-screen-visibility! screen 'OBSCURED)))
-	      (and (or (eq? old-visibility 'UNMAPPED)
-		       (eq? old-visibility 'OBSCURED))
-		   (make-input-event 'UPDATE update-screen! screen #t)))))))
+	     (and (or (eq? old-visibility 'UNMAPPED)
+		      (eq? old-visibility 'OBSCURED))
+		  (begin
+		    (screen-force-update screen)
+		    (make-input-event 'UPDATE update-screen! screen #f))))))))
 
 (define-event-handler event-type:take-focus
   (lambda (screen event)
