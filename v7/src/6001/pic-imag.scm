@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/pic-imag.scm,v 1.4 1992/06/08 16:49:57 aragorn Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/pic-imag.scm,v 1.5 1993/11/09 21:19:49 adams Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -184,7 +184,7 @@ MIT in each case. |#
 			 (y-loop (fix:- py 1) 
 				 (fix:+ iy-index rect-index-height)))))))))
     
-    (x-image/fill-from-byte-vector image byte-string)
+    (image/fill-from-byte-vector image byte-string)
     (1d-table/put! (graphics-device/properties window) image #t)
     image))
 
