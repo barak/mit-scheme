@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.47 1988/03/24 07:12:02 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.48 1988/05/04 20:44:33 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -184,12 +184,14 @@ find_image_parameters(file_name, cold_load_p, supplied_p)
      char **file_name;
      Boolean *cold_load_p, *supplied_p;
 {
-  Boolean found_p;
   int position;
+  Boolean found_p;
 
-  *cold_load_p = false;
+  found_p = false;
   *supplied_p = false;
-  *file_name = NULL;
+  *cold_load_p = false;
+  *file_name = DEFAULT_BAND_NAME;
+
   if (!Was_Scheme_Dumped)
   {
     Heap_Size = HEAP_SIZE;
@@ -202,18 +204,32 @@ find_image_parameters(file_name, cold_load_p, supplied_p)
     Saved_Stack_Size = Stack_Size;
     Saved_Constant_Size = Constant_Size;
   }
+
+  /* This does not set found_p because the image spec. can be
+     overridden by the options below.  It just sets different
+     defaults.
+   */
+
+  if ((position = Parse_Option("-compiler", Saved_argc, Saved_argv, true)) !=
+      NOT_THERE)
+  {
+    *supplied_p = true;
+    *file_name = DEFAULT_COMPILER_BAND;
+    Heap_Size = COMPILER_HEAP_SIZE;
+    Stack_Size = COMPILER_STACK_SIZE;
+    Constant_Size = COMPILER_CONSTANT_SIZE;
+  }
 
+  /* Exclusive image specs. */
+
   if ((position = Parse_Option("-band", Saved_argc, Saved_argv, true)) !=
       NOT_THERE)
   {
     if (position == (Saved_argc - 1))
-    {
       usage("-band option requires a file name");
-    }
-    if (*supplied_p)
-    {
+    if (found_p)
       usage("Multiple image parameters specified!");
-    }
+    found_p = true;
     *supplied_p = true;
     *file_name = Saved_argv[position + 1];
   }
@@ -222,37 +238,15 @@ find_image_parameters(file_name, cold_load_p, supplied_p)
       NOT_THERE)
   {
     if (position == (Saved_argc - 1))
-    {
       usage("-fasl option requires a file name");
-    }
-    if (*supplied_p)
-    {
+    if (found_p)
       usage("Multiple image parameters specified!");
-    }
+    found_p = true;
     *supplied_p = true;
     *cold_load_p = true;
     *file_name = Saved_argv[position + 1];
   }
 
-  if ((position = Parse_Option("-compiler", Saved_argc, Saved_argv, true)) !=
-      NOT_THERE)
-  {
-    if (*supplied_p)
-    {
-      usage("Multiple image parameters specified!");
-    }
-    *supplied_p = true;
-    *file_name = DEFAULT_COMPILER_BAND;
-    Heap_Size = COMPILER_HEAP_SIZE;
-    Stack_Size = COMPILER_STACK_SIZE;
-    Constant_Size = COMPILER_CONSTANT_SIZE;
-  }
-
-  if (!*supplied_p)
-  {
-    *file_name = DEFAULT_BAND_NAME;
-  }
-
   Heap_Size =
     Def_Number("-heap", Saved_argc, Saved_argv, Heap_Size);
   Stack_Size =
@@ -272,7 +266,6 @@ find_image_parameters(file_name, cold_load_p, supplied_p)
     Stack_Size = Saved_Stack_Size;
     Constant_Size = Saved_Constant_Size;
   }
-
   return;
 }
 
