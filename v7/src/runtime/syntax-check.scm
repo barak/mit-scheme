@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: syntax-check.scm,v 14.1 2002/02/03 03:38:57 cph Exp $
+;;; $Id: syntax-check.scm,v 14.2 2002/02/08 03:01:54 cph Exp $
 ;;;
-;;; Copyright (c) 1989-1991, 2001 Massachusetts Institute of Technology
+;;; Copyright (c) 1989-1991, 2001, 2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -190,10 +190,10 @@
 	      (cdr parameters)))
 	    ((null? parameters))
 	  (if (memq (car parameters) (cdr parameters))
-	      (syntax-error "lambda list has duplicate parameter:"
-			    (car parameters)
-			    (error-irritant/noise " in")
-			    lambda-list)))
+	      (error "lambda list has duplicate parameter:"
+		     (car parameters)
+		     (error-irritant/noise " in")
+		     lambda-list)))
 	(values required optional rest)))
 
     (define (bad-lambda-list pattern)
