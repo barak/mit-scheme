@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gconst.scm,v 1.2 1995/11/04 11:52:28 adams Exp $
+$Id: gconst.scm,v 1.3 1997/06/27 14:06:10 adams Exp $
 
 Copyright (c) 1987-93 Massachusetts Institute of Technology
 
@@ -130,7 +130,7 @@ MIT in each case. |#
     FLO:COS
     FLO:EXP
     FLO:EXPT
-    FLO:FLONUM
+    FLO:FLONUM?
     FLO:FLOOR
     FLO:FLOOR->EXACT
     FLO:LOG
