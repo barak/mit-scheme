@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufcom.scm,v 1.89 1991/05/14 02:26:52 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufcom.scm,v 1.90 1992/01/13 19:14:33 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -202,14 +202,16 @@ Uses the visited file name, the -*- line, and the local variables spec."
       (write-buffer-interactive buffer false)))
 
 (define (new-buffer name)
-  (create-buffer
-   (if (find-buffer name)
-       (let search-loop ((n 2))
-	 (let ((new-name (string-append name "<" (write-to-string n) ">")))
-	   (if (find-buffer new-name)
-	       (search-loop (1+ n))
-	       new-name)))
-       name)))
+  (create-buffer (new-buffer-name name)))
+
+(define (new-buffer-name name)
+  (if (find-buffer name)
+      (let search-loop ((n 2))
+	(let ((new-name (string-append name "<" (write-to-string n) ">")))
+	  (if (find-buffer new-name)
+	      (search-loop (1+ n))
+	      new-name)))
+      name))
 
 (define (string->temporary-buffer string name)
   (let ((buffer (temporary-buffer name)))
@@ -224,6 +226,18 @@ Uses the visited file name, the -*- line, and the local variables spec."
     (set-buffer-point! buffer (buffer-start buffer))
     (buffer-not-modified! buffer)
     (pop-up-buffer buffer false)))
+
+(define (call-with-temporary-buffer name procedure)
+  (let ((buffer))
+    (dynamic-wind (lambda ()
+		    unspecific)
+		  (lambda ()
+		    (set! buffer (temporary-buffer name))
+		    (procedure buffer))
+		  (lambda ()
+		    (kill-buffer buffer)
+		    (set! buffer)
+		    unspecific))))
 
 (define (temporary-buffer name)
   (let ((buffer (find-or-create-buffer name)))
