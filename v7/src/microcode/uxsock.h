@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsock.h,v 1.3 1992/02/03 23:46:14 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsock.h,v 1.4 1992/06/05 20:07:24 jinx Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -35,7 +35,7 @@ MIT in each case. */
 #ifndef SCM_UXSOCK_H
 #define SCM_UXSOCK_H
 
-#include "os.h"
+#include "osio.h"
 
 extern Tchannel EXFUN (OS_open_tcp_stream_socket, (char * host, int port));
 extern int EXFUN
