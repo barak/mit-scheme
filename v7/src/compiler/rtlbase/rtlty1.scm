@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 4.4 1988/03/14 21:04:51 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 4.5 1988/04/25 21:27:54 markf Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -40,6 +40,7 @@ MIT in each case. |#
 (define-rtl-expression object->address rtl: register)
 (define-rtl-expression object->datum rtl: register)
 (define-rtl-expression object->type rtl: register)
+(define-rtl-expression object->fixnum rtl: expression)
 (define-rtl-expression offset rtl: register number)
 (define-rtl-expression pre-increment rtl: register number)
 (define-rtl-expression post-increment rtl: register number)
@@ -53,6 +54,11 @@ MIT in each case. |#
 (define-rtl-expression offset-address rtl: register number)
 (define-rtl-expression unassigned rtl:)
 
+(define-rtl-expression fixnum-1-arg rtl: operator operand)
+(define-rtl-expression fixnum-2-args rtl: operator operand-1 operand-2)
+
+(define-rtl-predicate fixnum-pred-1-arg % predicate operand)
+(define-rtl-predicate fixnum-pred-2-args % predicate operand-1 operand-2)
 (define-rtl-predicate eq-test % expression-1 expression-2)
 (define-rtl-predicate true-test % expression)
 (define-rtl-predicate type-test % expression type)
