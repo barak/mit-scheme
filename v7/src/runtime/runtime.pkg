@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.152 1992/05/26 17:50:35 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.153 1992/05/26 23:08:05 mhwu Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -223,7 +223,9 @@ MIT in each case. |#
 	  compiled-procedure/name
 	  compiled-procedure/lambda
 	  discard-debugging-info!
-	  load-debugging-info-on-demand?)
+	  load-debugging-info-on-demand?
+	  uncompress-ports
+	  )
   (export (runtime load)
 	  dbg-info-vector/purification-root
 	  dbg-info-vector?
@@ -895,7 +897,8 @@ MIT in each case. |#
   (parent ())
   (export ()
 	  compress
-	  uncompress))
+	  uncompress
+	  compress-ports))
 
 (define-package (runtime port)
   (files "port")
@@ -964,6 +967,7 @@ MIT in each case. |#
   (parent ())
   (export ()
 	  call-with-input-file
+	  call-with-binary-input-file
 	  char-ready?
 	  current-input-port
 	  eof-object?
@@ -982,6 +986,7 @@ MIT in each case. |#
 	  read-string
 	  set-current-input-port!
 	  with-input-from-file
+	  with-input-from-binary-file
 	  with-input-from-port)
   (export (runtime primitive-io)
 	  eof-object))
@@ -992,6 +997,7 @@ MIT in each case. |#
   (export ()
 	  beep
 	  call-with-output-file
+	  call-with-binary-output-file
 	  clear
 	  current-output-port
 	  display
@@ -1009,6 +1015,7 @@ MIT in each case. |#
 	  output-port/y-size
 	  set-current-output-port!
 	  with-output-to-file
+	  with-output-to-binary-file
 	  with-output-to-port
 	  write
 	  write-char

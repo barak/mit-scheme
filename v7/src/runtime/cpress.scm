@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/cpress.scm,v 1.2 1992/05/26 17:51:50 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/cpress.scm,v 1.3 1992/05/26 23:09:18 mhwu Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -92,41 +92,36 @@ MIT in each case. |#
 ;;; This program implements the window data structures required by
 ;;; the algorithms B1, B2, and C2.  The encoder, which appears below,
 ;;; determines the algorithm.
-
+
 (define input-port)
 (define output-port)
 
 (define (compress ifile ofile)
-  (let ((ifile (merge-pathnames ifile))
-	(ofile (merge-pathnames ofile)))
-    (dynamic-wind
-     (lambda ()
-       (set! input-port (open-binary-input-file ifile))
-       (set! output-port (open-binary-output-file ofile)))
-     (lambda ()
-       (if (not (input-port? input-port))
-	   (error "Cannot open input file" ifile input-port))
-       (if (not (output-port? output-port))
-	   (error "Cannot open output file" ofile output-port))
-       (fluid-let ((root-nodes (make-vector 256 false))
-		   (oldest-node false)
-		   (newest-node false)
-		   (window-filled? false)
-		   (compress-continuation)
-		   (byte-buffer (make-byte-buffer))
-		   (current-pointer 0)
-		   (current-bp 0)
-		   (command-bp 0)
-		   (output-buffer (make-output-buffer)))
-	 (write-string "Compressed-B1-1.00" output-port)
-	 (call-with-current-continuation
-	  (lambda (continuation)
-	    (set! compress-continuation continuation)
-	    (idle)))
-	 (flush-output-buffer)))
-     (lambda ()
-       (close-output-port output-port)
-       (close-input-port input-port)))))
+  (call-with-binary-input-file (merge-pathnames ifile)
+    (lambda (input)
+      (call-with-binary-output-file (merge-pathnames ofile)
+        (lambda (output)				      
+	  (write-string "Compressed-B1-1.00" output)
+	  (compress-ports input output))))))
+
+(define (compress-ports input output)
+  (fluid-let ((root-nodes (make-vector 256 false))
+	      (oldest-node false)
+	      (newest-node false)
+	      (window-filled? false)
+	      (compress-continuation)
+	      (byte-buffer (make-byte-buffer))
+	      (current-pointer 0)
+	      (current-bp 0)
+	      (command-bp 0)
+	      (output-buffer (make-output-buffer))
+	      (input-port input)
+	      (output-port output))
+    (call-with-current-continuation
+     (lambda (continuation)
+       (set! compress-continuation continuation)
+       (idle)))
+    (flush-output-buffer)))
 
 (define (idle)
   ;; This is the top of the compression loop.  We've just emitted a
@@ -378,33 +373,6 @@ MIT in each case. |#
 	      (set-node-nb! node true)))
 	  unspecific))))
 
-#|
-(define (delete-child parent child)
-  (let ((previous (node-previous child))
-	(next (node-next child)))
-    (if next
-	(set-node-previous! next previous))
-    (if previous
-	(set-node-next! previous next)
-	(set-node-children! parent next)))
-  (let ((child (node-children parent)))
-    ;; If only one child remains, splice out PARENT.
-    (if (not (node-next child))
-	(begin
-	  (replace-child parent child)
-	  (let ((older (node-older parent))
-		(newer (node-newer parent)))
-	    (if older
-		(set-node-newer! older newer))
-	    (if newer
-		(set-node-older! newer older))
-	    (if (eq? parent oldest-node)
-		(set! oldest-node child))
-	    (if (eq? parent newest-node)
-		(set! newest-node child))
-	    unspecific)))))
-|#
-
 (define (delete-child parent child)
   (let ((previous (node-previous child))
 	(next (node-next child)))
