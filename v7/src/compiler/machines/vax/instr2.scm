@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/instr2.scm,v 1.2 1987/08/18 08:10:44 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/instr2.scm,v 1.3 1987/08/20 18:21:57 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -225,7 +225,7 @@ MIT in each case. |#
    (OPERAND H dst))
 
   ((D F (? src ea-r-d) (? dst ea-w-f))
-   (BYTE (16 #x76))
+   (BYTE (8 #x76))
    (OPERAND D src)
    (OPERAND F dst))
 
