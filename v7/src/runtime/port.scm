@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.8 1994/08/15 19:14:15 cph Exp $
+$Id: port.scm,v 1.9 1997/02/21 05:42:40 cph Exp $
 
-Copyright (c) 1991-94 Massachusetts Institute of Technology
+Copyright (c) 1991-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -50,6 +50,7 @@ MIT in each case. |#
       DISCARD-CHAR
       READ-STRING
       DISCARD-CHARS
+      READ-SUBSTRING
       ;; output operations:
       WRITE-CHAR
       WRITE-STRING
@@ -84,6 +85,9 @@ MIT in each case. |#
 (define input-port/operation/discard-chars
   (record-accessor port-rtd 'DISCARD-CHARS))
 
+(define input-port/operation/read-substring
+  (record-accessor port-rtd 'READ-SUBSTRING))
+
 (define output-port/operation/write-char
   (record-accessor port-rtd 'WRITE-CHAR))
 
@@ -98,7 +102,7 @@ MIT in each case. |#
 
 (define output-port/operation/discretionary-flush
   (record-accessor port-rtd 'DISCRETIONARY-FLUSH-OUTPUT))
-
+
 (set-record-type-unparser-method! port-rtd
   (lambda (state port)
     ((let ((name
@@ -116,7 +120,7 @@ MIT in each case. |#
 	      (standard-unparser-method name #f))))
      state
      port)))
-
+
 (define (port/copy port state)
   (let ((port (record-copy port)))
     (set-port/state! port state)
@@ -285,7 +289,7 @@ MIT in each case. |#
 (define install-input-operations!
   (let ((operation-names
 	 '(CHAR-READY? PEEK-CHAR READ-CHAR
-		       DISCARD-CHAR READ-STRING DISCARD-CHARS)))
+		       DISCARD-CHAR READ-STRING DISCARD-CHARS READ-SUBSTRING)))
     (let ((updaters
 	   (map (lambda (name)
 		  (record-updater port-rtd name))
@@ -309,7 +313,8 @@ MIT in each case. |#
 			      false
 			      (caddr operations)
 			      default-operation/read-string
-			      default-operation/discard-chars)
+			      default-operation/discard-chars
+			      default-operation/read-substring)
 			operation-names)
 	      (set-port/operation-names!
 	       port
@@ -322,7 +327,7 @@ MIT in each case. |#
 	      (for-each (lambda (updater)
 			  (updater port false))
 			updaters)))))))
-
+
 (define (default-operation/char-ready? port interval)
   port interval
   true)
@@ -356,6 +361,22 @@ MIT in each case. |#
 	    (begin
 	      (discard-char port)
 	      (loop)))))))
+
+(define (default-operation/read-substring port string start end)
+  (let ((read-char (input-port/operation/read-char port)))
+    (let loop ((index start))
+      (if (fix:< index end)
+	  (let ((char (read-char port)))
+	    (cond ((not char)
+		   (if (fix:= index start)
+		       #f
+		       (fix:- index start)))
+		  ((eof-object? char)
+		   (fix:- index start))
+		  (else
+		   (string-set! string index char)
+		   (loop (fix:+ index 1)))))
+	  (fix:- index start)))))
 
 ;;;; Output Operations
 

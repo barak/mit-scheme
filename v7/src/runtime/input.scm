@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: input.scm,v 14.16 1993/10/21 11:49:45 cph Exp $
+$Id: input.scm,v 14.17 1997/02/21 05:42:32 cph Exp $
 
-Copyright (c) 1988-93 Massachusetts Institute of Technology
+Copyright (c) 1988-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -56,6 +56,18 @@ MIT in each case. |#
 
 (define (input-port/discard-chars port delimiters)
   ((input-port/operation/discard-chars port) port delimiters))
+
+(define (input-port/read-substring! port string start end)
+  ((input-port/operation/read-substring port) port string start end))
+
+(define (input-port/read-string! port string)
+  (input-port/read-substring! port string 0 (string-length string)))
+
+(define (input-port/read-line port)
+  (let ((line (input-port/read-string port char-set:newline)))
+    ;; Discard delimiter, if any -- this is a no-op at EOF.
+    (input-port/discard-char port)
+    line))
 
 (define eof-object
   "EOF Object")
@@ -125,3 +137,20 @@ MIT in each case. |#
 		(if (default-object? parser-table)
 		    (current-parser-table)
 		    parser-table)))
+
+(define (read-line #!optional port)
+  (input-port/read-line (if (default-object? port)
+			    (current-input-port)
+			    (guarantee-input-port port))))
+
+(define (read-string! string #!optional start end port)
+  (input-port/read-substring! string
+			      (if (default-object? start)
+				  0
+				  start)
+			      (if (default-object? end)
+				  (string-length string)
+				  end)
+			      (if (default-object? port)
+				  (current-input-port)
+				  (guarantee-input-port port))))

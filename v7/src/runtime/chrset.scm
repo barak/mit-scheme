@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: chrset.scm,v 14.4 1995/11/07 04:39:57 adams Exp $
+$Id: chrset.scm,v 14.5 1997/02/21 05:42:22 cph Exp $
 
-Copyright (c) 1988-1995 Massachusetts Institute of Technology
+Copyright (c) 1988-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -41,8 +41,6 @@ MIT in each case. |#
   (and (string? object)
        (= (string-length object) 256)
        (not (string-find-next-char-in-set object char-set:not-01))))
-
-(define char-set:not-01)
 
 (define (char-set . chars)
   (chars->char-set chars))
@@ -123,6 +121,8 @@ MIT in each case. |#
 (define char-set:alphabetic)
 (define char-set:alphanumeric)
 (define char-set:standard)
+(define char-set:not-01)
+(define char-set:newline)
 
 (define (initialize-package!)
   (set! char-set:upper-case (ascii-range->char-set #x41 #x5B))
@@ -139,7 +139,9 @@ MIT in each case. |#
 	(char-set-union char-set:alphabetic char-set:numeric))
   (set! char-set:standard
 	(char-set-union char-set:graphic (char-set char:newline)))
-  (set! char-set:not-01 (ascii-range->char-set #x02 #x100)))
+  (set! char-set:not-01 (ascii-range->char-set #x02 #x100))
+  (set! char-set:newline (char-set char:newline))
+  unspecific)
 
 (define-integrable (char-upper-case? char)
   (char-set-member? char-set:upper-case char))
