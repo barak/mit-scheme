@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.6 1990/11/27 22:12:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.7 1990/11/28 20:32:51 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -36,6 +36,7 @@ MIT in each case. */
 
 #include <stdio.h>
 #include <ctype.h>
+#include <sys/types.h>
 #include <sys/stat.h>
 #include "ansidecl.h"
 #include "obstack.h"
