@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: curren.scm,v 1.130 2000/10/26 02:50:03 cph Exp $
+;;; $Id: curren.scm,v 1.131 2000/10/26 04:21:26 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -421,7 +421,7 @@ The frame is guaranteed to be deselected at that time."
 	(let ((new-buffer (or (other-buffer buffer) last-buffer)))
 	  (and new-buffer
 	       (begin
-		 (select-buffer-in-window new-buffer (car windows) #f)
+		 (select-buffer-no-record new-buffer (car windows))
 		 (loop (cdr windows) new-buffer)))))))
 
 (define (add-kill-buffer-hook buffer hook)
@@ -443,11 +443,19 @@ The frame is guaranteed to be deselected at that time."
 (define (get-buffer-hooks buffer key)
   (or (buffer-get buffer key) '()))
 
-(define (select-buffer buffer)
-  (select-buffer-in-window buffer (selected-window) #t))
+(define (select-buffer buffer #!optional window)
+  (select-buffer-in-window buffer
+			   (if (or (default-object? window) (not window))
+			       (selected-window)
+			       window)
+			   #t))
 
-(define (select-buffer-no-record buffer)
-  (select-buffer-in-window buffer (selected-window) #f))
+(define (select-buffer-no-record buffer #!optional window)
+  (select-buffer-in-window buffer
+			   (if (or (default-object? window) (not window))
+			       (selected-window)
+			       window)
+			   #f))
 
 (define (select-buffer-in-window buffer window record?)
   (without-interrupts
@@ -456,8 +464,9 @@ The frame is guaranteed to be deselected at that time."
      (if (selected-window? window)
 	 (change-selected-buffer window buffer record?
 	   (lambda ()
-	     (maybe-select-buffer-layout window buffer)))
-	 (maybe-select-buffer-layout window buffer)))))
+	     (set-window-buffer! window buffer)))
+	 (set-window-buffer! window buffer))
+     (maybe-select-buffer-layout window buffer))))
 
 (define (change-selected-buffer window buffer record? selection-thunk)
   (change-local-bindings! (selected-buffer) buffer selection-thunk)
@@ -489,7 +498,7 @@ The buffer is guaranteed to be selected at that time."
 		    (let ((window (selected-window)))
 		      (set! old-buffer (window-buffer window))
 		      (if (buffer-alive? buffer)
-			  (select-buffer-in-window buffer window #t)))
+			  (select-buffer buffer window)))
 		    (set! buffer)
 		    unspecific)
 		  thunk
@@ -497,7 +506,7 @@ The buffer is guaranteed to be selected at that time."
 		    (let ((window (selected-window)))
 		      (set! buffer (window-buffer window))
 		      (if (buffer-alive? old-buffer)
-			  (select-buffer-in-window old-buffer window #t)))
+			  (select-buffer old-buffer window)))
 		    (set! old-buffer)
 		    unspecific))))
 
@@ -536,14 +545,15 @@ The buffer is guaranteed to be selected at that time."
 		  (lambda (buffer)
 		    (and buffer
 			 (buffer-alive? buffer))))
-		(begin
-		  (hash-table/put! screen-buffer-layouts screen layout)
-		  (delete-other-windows window)
-		  ((car layout) window buffers))
-		(begin
-		  (delete-buffer-layout buffer)
-		  (set-window-buffer! window buffer))))
-	  (set-window-buffer! window buffer)))))
+		(if (for-all? buffers
+		      (lambda (buffer*)
+			(or (eq? buffer* buffer)
+			    (not (buffer-visible? buffer*)))))
+		    (begin
+		      (hash-table/put! screen-buffer-layouts screen layout)
+		      (delete-other-windows window)
+		      ((car layout) window buffers)))
+		(delete-buffer-layout buffer)))))))
 
 (define (delete-buffer-layout buffer)
   (let ((layout (buffer-get buffer buffer-layout-key #f)))
