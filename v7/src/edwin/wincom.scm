@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: wincom.scm,v 1.122 1999/01/02 06:11:34 cph Exp $
+;;; $Id: wincom.scm,v 1.123 1999/03/17 03:22:45 cph Exp $
 ;;;
 ;;; Copyright (c) 1987, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -43,18 +43,18 @@ Do not set this variable below 1."
 (define-variable use-multiple-frames
   "If true, commands try to use multiple frames rather than multiple windows.
 Has no effect unless multiple-frame support is available."
-  false
+  #f
   boolean?)
 (define edwin-variable$use-multiple-screens edwin-variable$use-multiple-frames)
 
 (define-variable pop-up-windows
   "True enables the use of pop-up windows."
-  true
+  #t
   boolean?)
 
 (define-variable preserve-window-arrangement
   "True means commands that normally change the window arrangement do not."
-  false
+  #f
   boolean?)
 
 (define-variable split-height-threshold
@@ -66,7 +66,7 @@ If there is only one window, it is split regardless of this value."
 (define-command redraw-display
   "Redraws the entire display from scratch."
   ()
-  (lambda () (update-screens! true)))
+  (lambda () (update-screens! #t)))
 
 (define-command recenter
   "Choose new window putting point at center, top or bottom.
@@ -81,7 +81,7 @@ negative args count from the bottom."
 	  (begin
 	    (window-scroll-y-absolute! window (window-y-center window))
 	    (window-redraw! window)
-	    (update-selected-screen! true))
+	    (update-selected-screen! #t))
 	  (window-scroll-y-absolute!
 	   window
 	   (modulo (if (command-argument-multiplier-only? argument)
@@ -360,17 +360,17 @@ or if the window is the only window of its frame."
   (let ((window (current-window))
 	(use-window
 	 (lambda (window)
-	   (select-buffer-in-window buffer window true)
+	   (select-buffer-in-window buffer window #t)
 	   (select-window window))))
     (let loop ((windows (buffer-windows buffer)))
       (cond ((null? windows)
-	     (let ((window* (next-visible-window window false)))
+	     (let ((window* (next-visible-window window #f)))
 	       (cond (window*
 		      (use-window window*))
 		     ((use-multiple-screens?)
 		      (select-buffer-other-screen buffer))
 		     (else
-		      (use-window (window-split-vertically! window false))))))
+		      (use-window (window-split-vertically! window #f))))))
 	    ((and (not (eq? (car windows) window))
 		  (window-visible? (car windows)))
 	     (select-window (car windows)))
@@ -383,24 +383,35 @@ or if the window is the only window of its frame."
 	(if screen
 	    (select-buffer-in-window buffer
 				     (screen-selected-window screen)
-				     true)
+				     #t)
 	    (make-screen buffer)))
       (editor-error "Display doesn't support multiple screens")))
 
 (define (shrink-window-if-larger-than-buffer window)
   (if (not (window-has-no-neighbors? window))
       (let ((buffer (window-buffer window)))
-	(if (and (window-mark-visible? window (buffer-start buffer))
-		 (window-mark-visible? window (buffer-end buffer)))
-	    (let ((min-height
-		   (+ (window-mark->y window (buffer-end buffer)) 1))
-		  (height (window-y-size window)))
-	      (if (< 0 min-height height)
-		  (with-variable-value! (ref-variable-object window-min-height)
-		    1
-		    (lambda ()
-		      (window-grow-vertically! window
-					       (- min-height height))))))))))
+	(let ((current-height (window-y-size window))
+	      (min-height
+	       (+ (- (window-mark->y window (buffer-end buffer))
+		     (window-mark->y window (buffer-start buffer)))
+		  1))
+	      (max-height
+	       (and (eq? window (weak-car *previous-popped-up-window*))
+		    (weak-cdr *previous-popped-up-window*))))
+	  (cond ((< 0 min-height current-height)
+		 (adjust-window-height! window min-height))
+		((and max-height
+		      (> min-height current-height)
+		      (< current-height max-height))
+		 (adjust-window-height! window
+					(min min-height max-height))))))))
+
+(define (adjust-window-height! window new-height)
+  (with-variable-value! (ref-variable-object window-min-height)
+    1
+    (lambda ()
+      (window-grow-vertically! window
+			       (- new-height (window-y-size window))))))
 
 ;;;; Pop-up Buffers
 
@@ -465,19 +476,21 @@ Also kills any pop up window it may have created."
 
 (define (pop-up-buffer buffer #!optional select? not-current-window?)
   ;; If some new window is created by this procedure, it is returned
-  ;; as the value.  Otherwise the value is false.
+  ;; as the value.  Otherwise the value is #f.
   (let ((select? (and (not (default-object? select?)) select?))
 	(current-window-ok?
 	 (not (and (not (default-object? not-current-window?))
 		   not-current-window?))))
 
     (define (pop-up-window window)
-      (let ((window (window-split-vertically! window false)))
+      (let ((window (window-split-vertically! window #f)))
+	(weak-set-car! *previous-popped-up-window* window)
+	(weak-set-cdr! *previous-popped-up-window* (window-y-size window))
 	(pop-into-window window)
 	window))
 
     (define (pop-into-window window)
-      (select-buffer-in-window buffer window true)
+      (select-buffer-in-window buffer window #t)
       (maybe-record-window window))
 
     (define (maybe-record-window window)
@@ -497,47 +510,44 @@ Also kills any pop up window it may have created."
 
     (if (< (ref-variable window-min-height) 2)
 	(set-variable! window-min-height 2))
-    (let ((window
-	   (let ((window (find-visible-window buffer)))
-	     (if window
-		 (begin
-		   (set-window-point! window (buffer-point buffer))
-		   (maybe-record-window window))
-		 (let ((limit (* 2 (ref-variable window-min-height))))
-		   (if (< (ref-variable split-height-threshold) limit)
-		       (set-variable! split-height-threshold limit))
-		   (cond ((and (use-multiple-screens?)
-			       (other-screen (selected-screen) 1 #t))
-			  =>
-			  (lambda (screen)
-			    (pop-into-window (screen-selected-window screen))))
-			 ((ref-variable preserve-window-arrangement)
-			  (pop-into-window (largest-window)))
-			 ((not (ref-variable pop-up-windows))
-			  (pop-into-window (lru-window)))
-			 ((use-multiple-screens?)
-			  (maybe-record-window
-			   (screen-selected-window (make-screen buffer))))
-			 (else
-			  (let ((window (largest-window)))
-			    (if (and (>= (window-y-size window)
-					 (ref-variable split-height-threshold))
-				     (not
-				      (window-has-horizontal-neighbor?
-				       window)))
-				(pop-up-window window)
-				(let ((window (lru-window))
-				      (current (current-window)))
-				  (if (and (or (eq? window current)
-					       (and (typein-window? current)
-						    (eq? window
-							 (window1+ window))))
-					   (>= (window-y-size window) limit))
-				      (pop-up-window window)
-				      (pop-into-window window))))))))))))
-      (weak-set-car! *previous-popped-up-window* window)
-      (weak-set-car! *previous-popped-up-buffer* buffer)
-      window)))
+    (weak-set-car! *previous-popped-up-buffer* buffer)
+    (let ((window (find-visible-window buffer)))
+      (if window
+	  (begin
+	    (set-window-point! window (buffer-point buffer))
+	    (maybe-record-window window))
+	  (let ((limit (* 2 (ref-variable window-min-height))))
+	    (if (< (ref-variable split-height-threshold) limit)
+		(set-variable! split-height-threshold limit))
+	    (cond ((and (use-multiple-screens?)
+			(other-screen (selected-screen) 1 #t))
+		   =>
+		   (lambda (screen)
+		     (pop-into-window (screen-selected-window screen))))
+		  ((ref-variable preserve-window-arrangement)
+		   (pop-into-window (largest-window)))
+		  ((not (ref-variable pop-up-windows))
+		   (pop-into-window (lru-window)))
+		  ((use-multiple-screens?)
+		   (maybe-record-window
+		    (screen-selected-window (make-screen buffer))))
+		  (else
+		   (let ((window (largest-window)))
+		     (if (and (>= (window-y-size window)
+				  (ref-variable split-height-threshold))
+			      (not
+			       (window-has-horizontal-neighbor?
+				window)))
+			 (pop-up-window window)
+			 (let ((window (lru-window))
+			       (current (current-window)))
+			   (if (and (or (eq? window current)
+					(and (typein-window? current)
+					     (eq? window
+						  (window1+ window))))
+				    (>= (window-y-size window) limit))
+			       (pop-up-window window)
+			       (pop-into-window window))))))))))))
 
 (define (get-buffer-window buffer)
   (let loop ((windows (buffer-windows buffer)))
@@ -587,7 +597,7 @@ Also kills any pop up window it may have created."
 		(search-all (window1+ window) window time)
 		(search-all (window1+ window) smallest smallest-time)))))
 
-    (search-full-width (window1+ start) false false)))
+    (search-full-width (window1+ start) #f #f)))
 
 (define (delete-other-windows start)
   (let loop ((window (window1+ start)))
@@ -621,7 +631,7 @@ Otherwise, the argument is the number of columns desired."
 			     (editor-error "restriction too small: " argument))
 			 (min x-size argument)))))
 	      (screen-y-size screen)))
-      (update-screen! screen true))))
+      (update-screen! screen #t))))
 
 (define-command compare-windows
   "Compare text in current window with text in next window.
@@ -634,8 +644,8 @@ moving over text in each one as far as they match."
       (let ((p1 (window-point w1)))
 	(let loop ((s1 p1) (s2 (window-point w2)) (length 1024))
 	  (if (> length 0)
-	      (let ((e1 (mark+ s1 length false))
-		    (e2 (mark+ s2 length false)))
+	      (let ((e1 (mark+ s1 length #f))
+		    (e2 (mark+ s2 length #f)))
 		(if (and e1
 			 e2
 			 (if (= length 1)
