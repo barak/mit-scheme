@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: url.scm,v 1.4 2000/04/13 15:59:26 cph Exp $
+;;; $Id: url.scm,v 1.5 2000/04/13 16:40:17 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -81,7 +81,7 @@
   (url:decode-substring string 0 (string-length string)))
 
 (define url:substring-encoded?
-  (let ((pattern (rexp-compile-pattern url:rexp:xchar #f)))
+  (let ((pattern (rexp-compile url:rexp:xchar)))
     (lambda (string start end)
       (let ((regs (re-substring-match pattern string start end)))
 	(and regs
@@ -123,7 +123,7 @@
 	  encoded))))
 
 (define (url:decode-substring string start end)
-  (let ((patt (rexp-compile url:rexp:escape #f)))
+  (let ((patt (rexp-compile url:rexp:escape)))
     (let ((n-encoded
 	   (let loop ((start start) (n-encoded 0))
 	     (let ((regs (re-substring-search-forward patt string start end)))

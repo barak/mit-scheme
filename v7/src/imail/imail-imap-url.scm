@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap-url.scm,v 1.2 2000/04/12 03:56:33 cph Exp $
+;;; $Id: imail-imap-url.scm,v 1.3 2000/04/13 16:40:23 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -87,8 +87,8 @@
 
 ;;;; Matcher language
 
-(define (regexp-matcher pattern)
-  (let ((pattern (re-compile-pattern pattern #f)))
+(define (rexp-matcher pattern)
+  (let ((pattern (rexp-compile pattern)))
     (lambda (string start end)
       (let ((regs (re-substring-match pattern string start end)))
 	(and regs
@@ -135,21 +135,16 @@
 		       (char-set #\return #\linefeed)))
 
 (define imap:match-atom
-  (regexp-matcher
-   (string-append (char-set->regexp imap:char-set:atom-char)
-		  "+")))
+  (rexp-matcher (rexp+ imap:char-set:atom-char)))
 
 (define imap:match-quoted-string
-  (regexp-matcher
-   (string-append
-    "\""
-    (regexp-group (char-set->regexp
-		   (char-set-difference imap:char-set:text-char
-					imap:char-set:quoted-specials))
-		  (string-append
-		   "\\\\"
-		   (char-set->regexp imap:char-set:quoted-specials)))
-    "*\"")))
+  (rexp-matcher
+   (rexp-sequence "\""
+		  (rexp* (rexp-alternatives
+			  (char-set-difference imap:char-set:text-char
+					       imap:char-set:quoted-specials)
+			  (rexp-sequence "\\" imap:char-set:quoted-specials)))
+		  "\"")))
 
 (define (imap:match-literal string start end)
   (let ((regs (re-substring-match "{\\([0-9]+\\)}\r\n" string start end)))
@@ -170,74 +165,60 @@
   (or (imap:match-quoted-string string start end)
       (imap:match-literal string start end)))
 
-(define imap:char-set:achar
-  (char-set-union url:char-set:unreserved
-		  (string->char-set "&=~")))
+(define imap:rexp:achar+
+  (rexp+ (rexp-alternatives (char-set-union url:char-set:unreserved
+					    (string->char-set "&=~"))
+			    url:rexp:escape)))
 
-(define imap:regexp:achar
-  (regexp-group (char-set->regexp imap:char-set:achar)
-		url:regexp:escape))
+(define imap:rexp:bchar+
+  (rexp+ (rexp-alternatives (char-set-union imap:char-set:achar
+					    (string->char-set ":@/"))
+			    url:rexp:escape)))
 
-(define imap:regexp:achar+
-  (string-append imap:regexp:achar "+"))
+(define imap:rexp:enc-auth-type imap:rexp:achar+)
+(define imap:rexp:enc-list-mailbox imap:rexp:bchar+)
+(define imap:rexp:enc-mailbox imap:rexp:bchar+)
+(define imap:rexp:enc-search imap:rexp:bchar+)
+(define imap:rexp:enc-section imap:rexp:bchar+)
+(define imap:rexp:enc-user imap:rexp:achar+)
 
-(define imap:char-set:bchar
-  (char-set-union imap:char-set:achar
-		  (string->char-set ":@/")))
+(define imap:rexp:iauth
+  (rexp-sequence ";AUTH=" (regexp-alternatives "*" imap:rexp:enc-auth-type)))
 
-(define imap:regexp:bchar
-  (regexp-group (char-set->regexp imap:char-set:bchar)
-		url:regexp:escape))
+(define imap:rexp:iuserauth
+  (rexp-alternatives (rexp-sequence imap:rexp:enc-user
+				    (rexp-optional imap:rexp:iauth))
+		     (rexp-sequence (rexp-optional imap:rexp:enc-user)
+				    imap:rexp:iauth)))
 
-(define imap:regexp:bchar+
-  (string-append imap:regexp:bchar "+"))
+(define imap:rexp:iserver
+  (rexp-sequence (rexp-optional (rexp-sequence imap:rexp:iuserauth "@"))
+		 url:rexp:hostport))
 
-(define imap:regexp:enc-auth-type imap:regexp:achar+)
-(define imap:regexp:enc-list-mailbox imap:regexp:bchar+)
-(define imap:regexp:enc-mailbox imap:regexp:bchar+)
-(define imap:regexp:enc-search imap:regexp:bchar+)
-(define imap:regexp:enc-section imap:regexp:bchar+)
-(define imap:regexp:enc-user imap:regexp:achar+)
-
-(define imap:regexp:iauth
-  (string-append ";AUTH=" (regexp-group "\\*" imap:regexp:enc-auth-type)))
-
-(define (regexp-optional regexp)
-  (string-append (regexp-group regexp) "?"))
-
-(define imap:regexp:iuserauth
-  (regexp-group (string-append imap:regexp:enc-user
-			       (regexp-optional imap:regexp:iauth))
-		(string-append (regexp-optional imap:regexp:enc-user)
-			       imap:regexp:iauth)))
-
-(define imap:regexp:iserver
-  (string-append (regexp-optional (string-append imap:regexp:iuserauth "@"))
-		 url:regexp:hostport))
-
-(define imap:regexp:imailboxlist
-  (string-append (regexp-optional imap:regexp:enc-list-mailbox)
+(define imap:rexp:imailboxlist
+  (rexp-sequence (rexp-optional imap:rexp:enc-list-mailbox)
 		 ";TYPE="
-		 (regexp-group "LIST" "LSUB")))
+		 (rexp-alternatives "LIST" "LSUB")))
 
-(define imap:regexp:nz-number
-  "[1-9][0-9]*")
+(define imap:rexp:nz-number
+  (rexp-sequence (char-set-difference char-set:numeric (char-set #\0))
+		 (rexp* char-set:numeric)))
 
-(define imap:regexp:uidvalidity
-  (string-append ";UIDVALIDITY=" imap:regexp:nz-number))
+(define imap:rexp:uidvalidity
+  (rexp-sequence ";UIDVALIDITY=" imap:rexp:nz-number))
 
-(define imap:regexp:iuid
-  (string-append ";UID=" imap:regexp:nz-number))
+(define imap:rexp:iuid
+  (rexp-sequence ";UID=" imap:rexp:nz-number))
 
-(define imap:regexp:imessagelist
-  (string-append imap:regexp:enc-mailbox
-		 (regexp-optional (string-append "\\?" imap:regexp:enc-search))
-		 (regexp-optional imap:regexp:uidvalidity)))
+(define imap:rexp:imessagelist
+  (rexp-sequence imap:rexp:enc-mailbox
+		 (rexp-optional (rexp-sequence "?" imap:rexp:enc-search))
+		 (rexp-optional imap:rexp:uidvalidity)))
 
-(define imap:regexp:imessagepart
-  (string-append imap:regexp:enc-mailbox
-		 (regexp-optional imap:regexp:uidvalidity)
-		 imap:regexp:iuid
-		 (regexp-optional
-		  (string-append "/;SECTION=" imap:regexp:enc-section))))
+(define imap:rexp:imessagepart
+  (rexp-sequence imap:rexp:enc-mailbox
+		 (rexp-optional imap:rexp:uidvalidity)
+		 imap:rexp:iuid
+		 (rexp-optional
+		  (rexp-sequence "/;SECTION=" imap:rexp:enc-section))))
 		 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rexp.scm,v 1.6 2000/04/13 16:23:50 cph Exp $
+;;; $Id: rexp.scm,v 1.7 2000/04/13 16:40:04 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -24,7 +24,6 @@
 
 (define (rexp? object)
   (or (string? rexp)
-      (char? rexp)
       (char-set? rexp)
       (and (pair? rexp)
 	   (list? (cdr rexp))
@@ -93,13 +92,24 @@
 (define (rexp-syntax-char type) `(SYNTAX-CHAR ,type))
 (define (rexp-not-syntax-char type) `(NOT-SYNTAX-CHAR ,type))
 
+(define (rexp-case-fold rexp)
+  (let ((lose (lambda () (error "Malformed rexp:" rexp))))
+    (cond ((string? rexp)
+	   `(CASE-FOLD rexp))
+	  ((and (pair? rexp)
+		(memq (car rexp) '(ALTERNATIVES SEQUENCE GROUP OPTIONAL * +))
+		(list? (cdr rexp)))
+	   (cons (car rexp)
+		 (map rexp-case-fold (cdr rexp))))
+	  (else rexp))))
+
 (define (rexp-groupify rexp)
   (let ((lose (lambda () (error "Malformed rexp:" rexp))))
     (cond ((string? rexp)
 	   (if (fix:= 1 (string-length rexp))
 	       rexp
 	       (rexp-group rexp)))
-	  ((or (char? rexp) (char-set? rexp))
+	  ((char-set? rexp)
 	   rexp)
 	  ((pair? rexp)
 	   (cond ((memq (car rexp) grouped-rexp-types)
@@ -122,15 +132,13 @@
   '(LINE-START LINE-END STRING-START STRING-END WORD-EDGE NOT-WORD-EDGE
 	       WORD-START WORD-END))
 
-(define (rexp-compile rexp case-fold?)
-  (re-compile-pattern (rexp->regexp rexp) case-fold?))
+(define (rexp-compile rexp)
+  (re-compile-pattern (rexp->regexp rexp) #f))
 
 (define (rexp->regexp rexp)
   (let ((lose (lambda () (error "Malformed rexp:" rexp))))
     (cond ((string? rexp)
 	   (re-quote-string rexp))
-	  ((char? rexp)
-	   (re-quote-string (string rexp)))
 	  ((char-set? rexp)
 	   (char-set->regexp rexp))
 	  ((and (pair? rexp) (list? (cdr rexp)))
@@ -154,6 +162,11 @@
 		 ((OPTIONAL) (string-append (rexp-arg) "?"))
 		 ((*) (string-append (rexp-arg) "*"))
 		 ((+) (string-append (rexp-arg) "+"))
+		 ((CASE-FOLD)
+		  (let ((arg (one-arg)))
+		    (if (string? arg)
+			(case-fold-string arg)
+			(lose))))
 		 ((ANY-CHAR) ".")
 		 ((LINE-START) "^")
 		 ((LINE-END) "$")
@@ -169,6 +182,24 @@
 		 ((NOT-SYNTAX-CHAR) (string-append "\\S" (syntax-type)))
 		 (else (lose))))))
 	  (else (lose)))))
+
+(define (case-fold-string s)
+  (let ((end (string-length s)))
+    (let loop ((start 0) (parts '()))
+      (let ((index
+	     (substring-find-next-char-in-set s start end
+					      char-set:alphabetic)))
+	(if index
+	    (loop (fix:+ index 1)
+		  (cons* (let ((char (string-ref s index)))
+			   (string-append "["
+					  (string (char-upcase char))
+					  (string (char-downcase char))
+					  "]"))
+			 (re-quote-string
+			  (substring s start index))
+			 parts))
+	    (apply string-append (reverse! parts)))))))
 
 (define (separated-append tokens separator)
   (cond ((not (pair? tokens)) "")
