@@ -1,6 +1,6 @@
 -*- Text -*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/safety.txt,v 1.1 1990/09/29 23:00:31 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/safety.txt,v 1.2 1990/10/01 22:17:05 jinx Exp $
 
 		COMPILER SAFETY INFORMATION 
 		Liar versions 4.77 and later
@@ -120,6 +120,15 @@ Some important considerations:
 - Under all possible settings of the switches described below, any
 generated code corresponding to a primitive call, whether open coded
 or not, will operate correctly on correct inputs.
+
+- If the compiler does not know that the operator of a combination is
+a primitive procedure, it will not open code it.  In particular, if
+the compiler does not know that a variable is bound to a particular
+primitive procedure, no combinations with that variable as the
+operator will be open coded.  Usually the compiler is informed of such
+constant bindings by making use of declarations like
+USUAL-INTEGRATIONS.  See the documentation for sf for additional
+information on declarations.
 
 - The compiler will not make an unsafe program safe, ie. safe
 translation does not compensate for unsafe programs.
