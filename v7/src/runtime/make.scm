@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.17 1989/08/17 12:18:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.18 1989/08/18 19:14:46 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -54,7 +54,6 @@ MIT in each case. |#
   get-primitive-name
   lexical-reference
   microcode-identify
-  primitive-purify
   scode-eval
   set-fixed-objects-vector!
   set-interrupt-enables!
@@ -118,20 +117,20 @@ MIT in each case. |#
 
 ;;;; Utilities
 
-(define fasload-saved-values
+(define fasload-purification-queue
   '())
 
-(define (fasload filename save-value?)
+(define (fasload filename purify?)
   (tty-write-char newline-char)
   (tty-write-string filename)
   (tty-flush-output)
   (let ((value (binary-fasload filename)))
     (tty-write-string " loaded")
     (tty-flush-output)
-    (if save-value?
-	(set! fasload-saved-values
+    (if purify?
+	(set! fasload-purification-queue
 	      (cons (cons filename value)
-		    fasload-saved-values)))
+		    fasload-purification-queue)))
     value))
 
 (define (eval object environment)
@@ -140,13 +139,35 @@ MIT in each case. |#
     (tty-flush-output)
     value))
 
-(define (cold-load/purify object)
-  (if (not (car (primitive-purify object #t safety-margin)))
-      (fatal-error "Error! insufficient pure space"))
-  (tty-write-string " purified")
+(define (package-initialize package-name procedure-name)
+  (tty-write-char newline-char)
+  (tty-write-string "initialize: (")
+  (let loop ((name package-name))
+    (if (not (null? name))
+	(begin
+	  (if (not (eq? name package-name))
+	      (tty-write-string " "))
+	  (tty-write-string (system-pair-car (car name)))
+	  (loop (cdr name)))))
+  (tty-write-string ")")
+  (if (not (eq? procedure-name 'INITIALIZE-PACKAGE!))
+      (begin
+	(tty-write-string " [")
+	(tty-write-string (system-pair-car procedure-name))
+	(tty-write-string "]")))
   (tty-flush-output)
-  object)
+  ((lexical-reference (package-reference package-name) procedure-name)))
 
+(define (package-reference name)
+  (package/environment (find-package name)))
+
+(define (package-initialization-sequence packages)
+  (let loop ((packages packages))
+    (if (not (null? packages))
+	(begin
+	  (package-initialize (car packages) 'INITIALIZE-PACKAGE!)
+	  (loop (cdr packages))))))
+
 (define (string-append x y)
   (let ((x-length (string-length x))
 	(y-length (string-length y)))
@@ -183,36 +204,9 @@ MIT in each case. |#
       (lambda (filename)
 	(string-append filename ".bin"))))
 
-(define (package-initialize package-name procedure-name)
-  (tty-write-char newline-char)
-  (tty-write-string "initialize: (")
-  (let loop ((name package-name))
-    (if (not (null? name))
-	(begin (if (not (eq? name package-name))
-		   (tty-write-string " "))
-	       (tty-write-string (system-pair-car (car name)))
-	       (loop (cdr name)))))
-  (tty-write-string ")")
-  (if (not (eq? procedure-name 'INITIALIZE-PACKAGE!))
-      (begin (tty-write-string " [")
-	     (tty-write-string (system-pair-car procedure-name))
-	     (tty-write-string "]")))
-  (tty-flush-output)
-  ((lexical-reference (package-reference package-name) procedure-name)))
-
-(define (package-reference name)
-  (package/environment (find-package name)))
-
-(define (package-initialization-sequence packages)
-  (let loop ((packages packages))
-    (if (not (null? packages))
-	(begin (package-initialize (car packages) 'INITIALIZE-PACKAGE!)
-	       (loop (cdr packages))))))
-
 ;; Construct the package structure.
 ;; Lotta hair here to load the package code before its package is built.
-(eval (cold-load/purify (fasload (map-filename "packag") #t))
-      environment-for-package)
+(eval (fasload (map-filename "packag") #t) environment-for-package)
 ((access initialize-package! environment-for-package))
 (let loop ((names
 	    '(ENVIRONMENT->PACKAGE
@@ -235,9 +229,7 @@ MIT in each case. |#
 			       (car names))
 	(loop (cdr names)))))
 (package/add-child! system-global-package 'PACKAGE environment-for-package)
-(eval (fasload "runtim.bcon" #f)
-      ;; (cold-load/purify (fasload "runtim.bcon" #f))
-      system-global-environment)
+(eval (fasload "runtim.bcon" #f) system-global-environment)
 
 ;; Global databases.  Load, then initialize.
 (let loop
@@ -252,7 +244,7 @@ MIT in each case. |#
 	("gc" . (RUNTIME GARBAGE-COLLECTOR)))))
   (if (not (null? files))
       (begin
-	(eval (cold-load/purify (fasload (map-filename (car (car files))) #t))
+	(eval (fasload (map-filename (car (car files))) #t)
 	      (package-reference (cdr (car files))))
 	(loop (cdr files)))))
 (package-initialize '(RUNTIME GC-DAEMONS) 'INITIALIZE-PACKAGE!)
@@ -281,7 +273,8 @@ MIT in each case. |#
 		(string=? filename "boot")
 		(string=? filename "queue")
 		(string=? filename "gc")))
-       (eval (purify (fasload (map-filename filename) #t)) environment)))
+       (eval (fasload (map-filename filename) #t) environment))
+   unspecific)
  `((SORT-TYPE . MERGE-SORT)
    (OS-TYPE . ,(intern os-name-string))
    (OPTIONS . NO-LOAD)))
@@ -295,7 +288,6 @@ MIT in each case. |#
    (RUNTIME SAVE/RESTORE)
    (RUNTIME STATE-SPACE)
    (RUNTIME SYSTEM-CLOCK)
-
    ;; Basic data structures
    (RUNTIME NUMBER)
    (RUNTIME LIST)
@@ -306,7 +298,6 @@ MIT in each case. |#
    (RUNTIME 2D-PROPERTY)
    (RUNTIME HASH)
    (RUNTIME RANDOM-NUMBER)
-
    ;; Microcode data structures
    (RUNTIME HISTORY)
    (RUNTIME LAMBDA-ABSTRACTION)
@@ -314,7 +305,6 @@ MIT in each case. |#
    (RUNTIME SCODE-COMBINATOR)
    (RUNTIME SCODE-WALKER)
    (RUNTIME CONTINUATION-PARSER)
-
    ;; I/O
    (RUNTIME CONSOLE-INPUT)
    (RUNTIME CONSOLE-OUTPUT)
@@ -328,7 +318,6 @@ MIT in each case. |#
    (RUNTIME WORKING-DIRECTORY)
    (RUNTIME DIRECTORY)
    (RUNTIME LOAD)
-
    ;; Syntax
    (RUNTIME PARSER)
    (RUNTIME NUMBER-UNPARSER)   (RUNTIME UNPARSER)
@@ -339,14 +328,12 @@ MIT in each case. |#
    (RUNTIME UNSYNTAXER)
    (RUNTIME PRETTY-PRINTER)
    (RUNTIME EXTENDED-SCODE-EVAL)
-
    ;; REP Loops
    (RUNTIME ERROR-HANDLER)
    (RUNTIME MICROCODE-ERRORS)
    (RUNTIME INTERRUPT-HANDLER)
    (RUNTIME GC-STATISTICS)
    (RUNTIME REP)
-
    ;; Debugging
    (RUNTIME COMPILER-INFO)
    (RUNTIME ADVICE)
@@ -355,29 +342,45 @@ MIT in each case. |#
    (RUNTIME ENVIRONMENT-INSPECTOR)
    (RUNTIME DEBUGGING-INFO)
    (RUNTIME DEBUGGER)
-
    (RUNTIME)
    (RUNTIME X-GRAPHICS)
    (RUNTIME STARBASE-GRAPHICS)
    ;; Emacs -- last because it grabs the kitchen sink.
-   (RUNTIME EMACS-INTERFACE)
-   ))
+   (RUNTIME EMACS-INTERFACE)))
 
 (let ((filename (map-filename "site")))
   (if (file-exists? filename)
-      (eval (purify (fasload filename #t)) system-global-environment)))
+      (eval (fasload filename #t) system-global-environment)))
 
-(let ((fasload/update-debugging-info!
-       (access fasload/update-debugging-info!
-	       (->environment '(RUNTIME COMPILER-INFO)))))
-  (for-each (lambda (entry)
-	      (fasload/update-debugging-info!
-	       (cdr entry)
-	       (pathname->absolute-pathname (->pathname (car entry)))))
-	    fasload-saved-values))
+(environment-link-name (->environment '(RUNTIME ENVIRONMENT))
+		       (->environment '(PACKAGE))
+		       'PACKAGE-NAME-TAG)
+
+(let ((roots
+       (list->vector
+	(let ((fasload/update-debugging-info!
+	       (access fasload/update-debugging-info!
+		       (->environment '(RUNTIME COMPILER-INFO))))
+	      (load/purification-root
+	       (access load/purification-root
+		       (->environment '(RUNTIME LOAD)))))
+	  (map (lambda (entry)
+		 (let ((object (cdr entry)))
+		   (fasload/update-debugging-info!
+		    object
+		    (pathname->absolute-pathname (->pathname (car entry))))
+		   (load/purification-root object)))
+	       fasload-purification-queue)))))
+  (set! fasload-purification-queue)
+  (newline console-output-port)
+  (write-string "purifying..." console-output-port)
+  ;; First, flush whatever we can.
+  (gc-clean)
+  ;; Then, really purify the rest.
+  (purify roots true false)
+  (write-string "done" console-output-port))
 
 )
 
 (package/add-child! system-global-package 'USER user-initial-environment)
-(environment-link-name '(RUNTIME ENVIRONMENT) '(PACKAGE) 'PACKAGE-NAME-TAG)
-(flush-purification-queue!)(initial-top-level-repl)
+(initial-top-level-repl)
