@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.14 1991/04/27 00:43:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.15 1992/01/20 17:02:58 jinx Exp $
 
-Copyright (c) 1990-91 Massachusetts Institute of Technology
+Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -68,6 +68,8 @@ DEFUN_VOID (UX_channel_close_all)
 void
 DEFUN_VOID (UX_initialize_channels)
 {
+  extern void EXFUN (add_reload_cleanup, (void (*) (void)));
+
   OS_channel_table_size = (UX_SC_OPEN_MAX ());
   channel_table =
     (UX_malloc (OS_channel_table_size * (sizeof (struct channel))));
@@ -241,6 +243,7 @@ DEFUN (OS_channel_write_string, (channel, string),
        Tchannel channel AND
        CONST char * string)
 {
+  extern int EXFUN (strlen, (const char *));
   unsigned long length = (strlen (string));
   if ((OS_channel_write (channel, string, length)) != length)
     error_external_return ();
