@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.23 1991/05/10 05:06:57 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.24 1991/05/18 03:08:17 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -196,20 +196,35 @@ With an argument, prompts for the evaluation environment."
 ;;;; Expression Prompts
 
 (define (prompt-for-expression-value prompt #!optional default)
-  (eval-with-history (if (default-object? default)
-			 (prompt-for-expression prompt)
-			 (prompt-for-expression prompt default))
-		     (evaluation-environment false)))
+  (eval-with-history
+   (if (default-object? default)
+       (prompt-for-expression prompt)
+       (prompt-for-expression prompt
+			      (if (or (symbol? default)
+				      (pair? default)
+				      (vector? default))
+				  `',default
+				  default)))
+   (evaluation-environment false)))
 
 (define (prompt-for-expression prompt #!optional default-object default-type)
-  (read-from-string
-   (prompt-for-string prompt
-		      (and (not (default-object? default-object))
-			   (write-to-string default-object))
-		      (if (default-object? default-type)
-			  'VISIBLE-DEFAULT
-			  default-type)
-		      (ref-mode-object prompt-for-expression))))
+  (let ((default-string
+	  (and (not (default-object? default-object))
+	       (write-to-string default-object)))
+	(default-type
+	  (if (default-object? default-type)
+	      'VISIBLE-DEFAULT
+	      default-type)))
+    (read-from-string
+     (prompt-for-string
+      (prompt-for-string/prompt prompt
+				(and (eq? default-type 'VISIBLE-DEFAULT)
+				     default-string))
+      default-string
+      (if (eq? default-type 'VISIBLE-DEFAULT)
+	  'INVISIBLE-DEFAULT
+	  default-type)
+      (ref-mode-object prompt-for-expression)))))
 
 (define (read-from-string string)
   (bind-condition-handler (list condition-type:error) evaluation-error-handler
@@ -240,7 +255,8 @@ may be available.  The following commands are special to this mode:
   (let ((environment (evaluation-environment argument)))
     (with-input-from-region region
       (lambda ()
-	(bind-condition-handler (list condition-type:error) evaluation-error-handler
+	(bind-condition-handler (list condition-type:error)
+	    evaluation-error-handler
 	  (letrec
 	      ((loop
 		(lambda ()
