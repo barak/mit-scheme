@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: xterm.scm,v 1.41 1993/08/02 03:06:38 cph Exp $
+;;;	$Id: xterm.scm,v 1.42 1993/08/16 08:09:30 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -535,19 +535,20 @@
 
 (define-event-handler event-type:configure
   (lambda (screen event)
-    (let ((xterm (screen-xterm screen))
-	  (x-size (vector-ref event 2))
-	  (y-size (vector-ref event 3)))
-      (xterm-reconfigure xterm x-size y-size)
-      (let ((x-size (xterm-map-x-size xterm x-size))
-	    (y-size (xterm-map-y-size xterm y-size)))
-	(and (not (and (= x-size (screen-x-size screen))
-		       (= y-size (screen-y-size screen))))
-	     (make-input-event 'SET-SCREEN-SIZE
-			       (lambda (screen x-size y-size)
-				 (set-screen-size! screen x-size y-size)
-				 (update-screen! screen #t))
-			       screen x-size y-size))))))
+    (make-input-event 'SET-SCREEN-SIZE
+		      (lambda (screen event)
+			(let ((xterm (screen-xterm screen))
+			      (x-size (vector-ref event 2))
+			      (y-size (vector-ref event 3)))
+			  (xterm-reconfigure xterm x-size y-size)
+			  (let ((x-size (xterm-map-x-size xterm x-size))
+				(y-size (xterm-map-y-size xterm y-size)))
+			    (if (not (and (= x-size (screen-x-size screen))
+					  (= y-size (screen-y-size screen))))
+				(begin
+				  (set-screen-size! screen x-size y-size)
+				  (update-screen! screen #t))))))
+		      screen event)))
 
 (define-event-handler event-type:focus-in
   (lambda (screen event)
