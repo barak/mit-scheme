@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.103 2000/06/03 07:16:33 cph Exp $
+;;; $Id: imail-imap.scm,v 1.104 2000/06/05 17:20:47 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -660,17 +660,24 @@
 					 (flags-delete "\\recent" flags))))))
 
 (define (imap-flag->imail-flag flag)
-  (case flag
-    ((\ANSWERED) "answered")
-    ((\DELETED) "deleted")
-    ((\SEEN) "seen")
-    (else (symbol->string flag))))
+  (let ((entry (assq flag standard-imap-flags)))
+    (if entry
+	(cdr entry)
+	(symbol->string flag))))
 
 (define (imail-flag->imap-flag flag)
-  (cond ((string-ci=? flag "answered") '\ANSWERED)
-	((string-ci=? flag "deleted") '\DELETED)
-	((string-ci=? flag "seen") '\SEEN)
-	(else (intern flag))))
+  (let ((entry
+	 (list-search-positive standard-imap-flags
+	   (lambda (entry)
+	     (string-ci=? flag (cdr entry))))))
+    (if entry
+	(car entry)
+	(intern flag))))
+
+(define standard-imap-flags
+  (map (lambda (s)
+	 (cons s (string-tail (symbol->string s) 1)))
+       '(\SEEN \ANSWERED \FLAGGED \DELETED \DRAFT \RECENT)))
 
 (define-method message-internal-time ((message <imap-message>))
   (with-imap-message-open message
