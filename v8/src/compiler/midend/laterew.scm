@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: laterew.scm,v 1.18 1996/07/24 22:32:30 adams Exp $
+$Id: laterew.scm,v 1.19 1996/07/24 22:56:34 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -562,7 +562,6 @@ MIT in each case. |#
 	   (index      (third rands))
 	   (element    (fourth rands))
 	   (checks     (quote/text (fifth rands))))
-      cont
       (let ((collection* (laterew/new-name 'COLLECTION))
 	    (collection-tag  (vector-ref checks 0))
 	    (length-ref      (vector-ref checks 1))
