@@ -1,4 +1,4 @@
-# $Id: Makefile.std,v 1.5 2000/12/05 22:45:39 cph Exp $
+# $Id: Makefile.std,v 1.6 2000/12/05 22:56:56 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -35,7 +35,16 @@ tags TAGS:
 	etags *.scm
 
 mostlyclean:
-	rm -f *.bin *.ext *.com *.bci
+	rm -f *.bin *.ext *.com *.bci *.bco *.bld *.crf *.fre *.glo
+	@for FN in *.con; do \
+	    test "${FN}" = "triv.con" \
+	    || rm -f "${FN}"; \
+	done
+	@for FN in *.ldr; do \
+	    test "${FN}" = "edwin.ldr" \
+	    || test "${FN}" = "triv.ldr" \
+	    || rm -f "${FN}"; \
+	done
 
 clean: mostlyclean
 
