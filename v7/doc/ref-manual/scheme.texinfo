@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.52 1995/05/30 13:46:58 cph Exp $
+@comment $Id: scheme.texinfo,v 1.53 1995/07/12 21:10:07 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -3048,12 +3048,17 @@ type descriptor and predicate to be defined for the structure (recall
 that the @code{type} option without @code{named} suppresses their
 definition), and also defines a default unparser method for the
 structure instances (which can be overridden by the
-@code{print-procedure} option).  The type descriptor is a unique object,
-@emph{not} a record type, that describes the structure instances and is
-additionally stored in the structure instances to identify them: if the
-representation type is @code{vector}, the type descriptor is stored in
-the zero-th slot of the vector, and if the representation type is
-@code{list}, it is stored as the first element of the list.
+@code{print-procedure} option).  If the default unparser method is not
+wanted then the @code{print-procedure} option should be specified as
+@code{#F}.  This cases the structure to be printed in its native
+representation, as a list or vector, which includes the type descriptor.
+The type descriptor is a unique object, @emph{not} a record type, that
+describes the structure instances and is additionally stored in the
+structure instances to identify them: if the representation type is
+@code{vector}, the type descriptor is stored in the zero-th slot of the
+vector, and if the representation type is @code{list}, it is stored as
+the first element of the list.
+
 
 @example
 (define-structure (foo (type vector) named) a b c)
