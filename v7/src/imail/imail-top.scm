@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.148 2000/06/12 00:57:50 cph Exp $
+;;; $Id: imail-top.scm,v 1.149 2000/06/12 04:04:51 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -137,6 +137,12 @@ If set to 'FILL, the paragraphs are filled rather than wrapped.
 Otherwise, the text is left as is."
   #t
   (lambda (x) (or (boolean? x) (eq? x 'FILL))))
+
+(define-variable imail-forward-all-headers
+  "If true, forwarded email messages will contain all header fields.
+Otherwise, only the header fields normally shown by IMAIL are sent."
+  #f
+  boolean?)
 
 (define-command imail
   "Read and edit incoming mail.
@@ -439,6 +445,7 @@ variable's documentation (using \\[describe-variable]) for details:
     imail-delete-after-output
     imail-dont-reply-to-names
     imail-expunge-confirmation
+    imail-forward-all-headers
     imail-ignored-headers
     imail-kept-headers
     imail-message-filter
@@ -1760,11 +1767,15 @@ see the documentation of `imail-resend'."
 	  "]")))
      #f
      (lambda (mail-buffer)
-       (add-buffer-mime-attachment! mail-buffer
-				    'MESSAGE 'RFC822 '() '(INLINE)
-				    (map header-field->mail-header
-					 (message-header-fields message))
-				    (message-body message))
+       (add-buffer-mime-attachment!
+	mail-buffer
+	'MESSAGE 'RFC822 '() '(INLINE)
+	(map header-field->mail-header
+	     (let ((headers (message-header-fields message)))
+	       (if (ref-variable imail-forward-all-headers mail-buffer)
+		   headers
+		   (maybe-reformat-headers headers mail-buffer))))
+	(message-body message))
        (if (window-has-no-neighbors? (current-window))
 	   (select-buffer mail-buffer)
 	   (select-buffer-other-window mail-buffer))
