@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.15 1993/02/25 02:15:14 gjr Exp $
+$Id: compiler.pkg,v 1.16 1993/07/07 20:44:36 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -508,7 +508,8 @@ MIT in each case. |#
   (files "rtlgen/rgcomb")
   (parent (compiler rtl-generator))
   (export (compiler rtl-generator)
-	  generate/combination)
+	  generate/combination
+	  rtl:bump-closure)
   (export (compiler rtl-generator combination/inline)
 	  generate/invocation-prefix))
 
