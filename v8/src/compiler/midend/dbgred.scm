@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dbgred.scm,v 1.3 1995/02/28 01:46:02 adams Exp $
+$Id: dbgred.scm,v 1.4 1995/04/27 23:22:00 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -146,27 +146,15 @@ MIT in each case. |#
   (if (not (pair? expr))
       (illegal expr))
   (case (car expr)
-    ((QUOTE)
-     (dbg-reduce/quote env expr))
-    ((LOOKUP)
-     (dbg-reduce/lookup env expr))
-    ((LAMBDA)
-     (dbg-reduce/lambda env expr))
-    ((LET)
-     (dbg-reduce/let env expr))
-    ((DECLARE)
-     (dbg-reduce/declare env expr))
-    ((CALL)
-     (dbg-reduce/call env expr))
-    ((BEGIN)
-     (dbg-reduce/begin env expr))
-    ((IF)
-     (dbg-reduce/if env expr))
-    ((LETREC)
-     (dbg-reduce/letrec env expr))
-    ((SET! UNASSIGNED? OR DELAY
-      ACCESS DEFINE IN-PACKAGE THE-ENVIRONMENT)
-     (no-longer-legal expr))
+    ((QUOTE)   (dbg-reduce/quote env expr))
+    ((LOOKUP)  (dbg-reduce/lookup env expr))
+    ((LAMBDA)  (dbg-reduce/lambda env expr))
+    ((LET)     (dbg-reduce/let env expr))
+    ((DECLARE) (dbg-reduce/declare env expr))
+    ((CALL)    (dbg-reduce/call env expr))
+    ((BEGIN)   (dbg-reduce/begin env expr))
+    ((IF)      (dbg-reduce/if env expr))
+    ((LETREC)  (dbg-reduce/letrec env expr))
     (else
      (illegal expr))))
 
@@ -202,58 +190,58 @@ MIT in each case. |#
 	((memq name (dbg-reduce/env/static env)) => name)
 	(else #F)))
 
-(define (dbg-reduce/reduce form env)
-  ;;(hash-table/put! *dbgt* form env)
-  (cond ((code-rewrite/original-form/previous form)
-         => (lambda (dbg-info)
-              (let* ((block     (new-dbg-form/block dbg-info))
-                     (block*    (new-dbg-block/copy-transforming
-                                 (lambda (expr)
-                                   (dbg-reduce/reduce-expression expr env))
-                                 block))
-                     (dbg-info* (new-dbg-form/new-block dbg-info block*)))
-		(hash-table/put! *dbgt* form (vector env dbg-info*))))))
-  unspecific)
-
-(define (dbg-reduce/reduce-expression expr env)
-  (define (heap-closure-ref-slot expr)
-    (let ((e (CALL/%heap-closure-ref/offset expr)))
-      (cond ((QUOTE/? e) (quote/text e))
-	    ((CALL/%vector-index? e)
-	     (vector-index (QUOTE/text (CALL/%vector-index/vector e))
-			   (QUOTE/text (CALL/%vector-index/name e))))
-	    (else (internal-error "Bad DBG %vector-index:" expr)))))
-  (define (transform-expression expr succeed fail)
-    (cond ((LOOKUP/? expr)
-	   (let ((place  (dbg-reduce/env/lookup env (lookup/name expr))))
-	     (cond ((not place)  (fail `(unbound . ,(lookup/name expr))))
-		   ((number? place) (succeed `((stack . ,place))))
-		   (else            (succeed `((label . ,place)))))))
-	  ((QUOTE/? expr)
-	   (succeed expr))
-	  ((CALL/%cell-ref? expr)
-	   (transform-expression (CALL/%cell-ref/cell expr)
-				 (lambda (path)
-				   (succeed (cons 'CELL path)))
-				 fail))
-	  ((CALL/%stack-closure-ref? expr)
-	   (transform-expression `(LOOKUP
-				   ,(QUOTE/text
-				     (CALL/%stack-closure-ref/name expr)))
-				 succeed
-				 fail))
-	  ((CALL/%heap-closure-ref? expr)
-	   (transform-expression (CALL/%heap-closure-ref/closure expr)
-				 (lambda (path)
-				   (succeed
-				    (cons (cons 'HEAP-CLOSURE
-						(heap-closure-ref-slot expr))
-					  path)))
-				 fail))
-	  ((CALL/%make-heap-closure? expr)
-	   (succeed `(CLOSED-PROCEDURE ,(CALL/%make-heap-closure/lambda-expression expr))))
-	  (else
-	   (fail `(UNKNOWN-EXPRESSION ,expr)))))
-  (transform-expression expr
-			(lambda (yes) (vector expr yes))
-			(lambda (no)  (vector expr no))))
+;;(define (dbg-reduce/reduce form env)
+;;  ;;(hash-table/put! *dbgt* form env)
+;;  (cond ((code-rewrite/original-form/previous form)
+;;         => (lambda (dbg-info)
+;;              (let* ((block     (new-dbg-form/block dbg-info))
+;;                     (block*    (new-dbg-block/copy-transforming
+;;                                 (lambda (expr)
+;;                                   (dbg-reduce/reduce-expression expr env))
+;;                                 block))
+;;                     (dbg-info* (new-dbg-form/new-block dbg-info block*)))
+;;		(hash-table/put! *dbgt* form (vector env dbg-info*))))))
+;;  unspecific)
+;;
+;;(define (dbg-reduce/reduce-expression expr env)
+;;  (define (heap-closure-ref-slot expr)
+;;    (let ((e (CALL/%heap-closure-ref/offset expr)))
+;;      (cond ((QUOTE/? e) (quote/text e))
+;;	    ((CALL/%vector-index? e)
+;;	     (vector-index (QUOTE/text (CALL/%vector-index/vector e))
+;;			   (QUOTE/text (CALL/%vector-index/name e))))
+;;	    (else (internal-error "Bad DBG %vector-index:" expr)))))
+;;  (define (transform-expression expr succeed fail)
+;;    (cond ((LOOKUP/? expr)
+;;	   (let ((place  (dbg-reduce/env/lookup env (lookup/name expr))))
+;;	     (cond ((not place)  (fail `(unbound . ,(lookup/name expr))))
+;;		   ((number? place) (succeed `((stack . ,place))))
+;;		   (else            (succeed `((label . ,place)))))))
+;;	  ((QUOTE/? expr)
+;;	   (succeed expr))
+;;	  ((CALL/%cell-ref? expr)
+;;	   (transform-expression (CALL/%cell-ref/cell expr)
+;;				 (lambda (path)
+;;				   (succeed (cons 'CELL path)))
+;;				 fail))
+;;	  ((CALL/%stack-closure-ref? expr)
+;;	   (transform-expression `(LOOKUP
+;;				   ,(QUOTE/text
+;;				     (CALL/%stack-closure-ref/name expr)))
+;;				 succeed
+;;				 fail))
+;;	  ((CALL/%heap-closure-ref? expr)
+;;	   (transform-expression (CALL/%heap-closure-ref/closure expr)
+;;				 (lambda (path)
+;;				   (succeed
+;;				    (cons (cons 'HEAP-CLOSURE
+;;						(heap-closure-ref-slot expr))
+;;					  path)))
+;;				 fail))
+;;	  ((CALL/%make-heap-closure? expr)
+;;	   (succeed `(CLOSED-PROCEDURE ,(CALL/%make-heap-closure/lambda-expression expr))))
+;;	  (else
+;;	   (fail `(UNKNOWN-EXPRESSION ,expr)))))
+;;  (transform-expression expr
+;;			(lambda (yes) (vector expr yes))
+;;			(lambda (no)  (vector expr no))))
