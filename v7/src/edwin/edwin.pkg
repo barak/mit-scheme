@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.104 1992/11/20 18:24:38 cph Exp $
+$Id: edwin.pkg,v 1.105 1992/11/20 19:09:51 cph Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -954,7 +954,9 @@ MIT in each case. |#
 	  x-button4-down
 	  x-button4-up
 	  x-button5-down
-	  x-button5-up))
+	  x-button5-up)
+  (export (edwin screen x-screen)
+	  update-xterm-screen-names!))
 
 (define-package (edwin keys)
   (files "key")

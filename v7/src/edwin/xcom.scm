@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: xcom.scm,v 1.9 1992/11/20 18:24:46 cph Exp $
+;;;	$Id: xcom.scm,v 1.10 1992/11/20 19:10:04 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -147,6 +147,48 @@ Useful only if `x-screen-icon-name-format' is false."
   "sSet X window icon name"
   (lambda (name)
     (xterm-screen/set-icon-name (selected-screen) name)))
+
+(define (update-xterm-screen-names! screen)
+  (let ((window
+	 (if (and (selected-screen? screen) (within-typein-edit?))
+	     (typein-edit-other-window)
+	     (screen-selected-window screen))))
+    (let ((buffer (window-buffer window))
+	  (update-name
+	   (lambda (set-name format length)
+	     (if format
+		 (set-name
+		  screen
+		  (string-trim-right
+		   (format-modeline-string window format length)))))))
+      (update-name xterm-screen/set-name
+		   (ref-variable x-screen-name-format buffer)
+		   (ref-variable x-screen-name-length buffer))
+      (update-name xterm-screen/set-icon-name
+		   (ref-variable x-screen-icon-name-format buffer)
+		   (ref-variable x-screen-icon-name-length buffer)))))
+
+(define-variable x-screen-name-format
+  "If not false, template for displaying X window name.
+Has same format as `mode-line-format'."
+  'mode-line-buffer-identification)
+
+(define-variable x-screen-name-length
+  "Maximum length of X window name.
+Used only if `x-screen-name-format' is non-false."
+  64
+  exact-nonnegative-integer?)
+
+(define-variable x-screen-icon-name-format
+  "If not false, template for displaying X window icon name.
+Has same format as `mode-line-format'."
+  "edwin")
+
+(define-variable x-screen-icon-name-length
+  "Maximum length of X window icon name.
+Used only if `x-screen-icon-name-format' is non-false."
+  32
+  exact-nonnegative-integer?)
 
 (define-command x-raise-screen
   "Raise the editor screen so that it is not obscured by other X windows."
