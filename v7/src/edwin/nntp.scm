@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: nntp.scm,v 1.18 1998/02/23 05:37:47 cph Exp $
+;;;	$Id: nntp.scm,v 1.19 1998/06/21 09:05:17 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-98 Massachusetts Institute of Technology
 ;;;
@@ -361,27 +361,54 @@
 		      (nntp-write-line connection line)
 		      (loop)))))
 	    response)))))
+
+;;;; NNTP Errors
 
-(define (nntp-error response)
-  (error "NNTP error:" response))
+(define condition-type:nntp-error
+  (make-condition-type 'NNTP-ERROR condition-type:error
+      '(RESPONSE)
+    (lambda (condition port)
+      (write-string "NNTP error: " port)
+      (write-string (nntp-error/response condition) port))))
+
+(define nntp-error/response
+  (condition-accessor condition-type:nntp-error 'RESPONSE))
+
+(define nntp-error
+  (condition-signaller condition-type:nntp-error
+		       '(RESPONSE)
+		       standard-error-handler))
+
+(define (nntp-protect connection thunk)
+  (let ((try
+	 (lambda ()
+	   (let ((abort? #t))
+	     (dynamic-wind (lambda ()
+			     (set! abort? #t)
+			     unspecific)
+			   (lambda ()
+			     (if (nntp-connection:closed? connection)
+				 (nntp-connection:reopen connection))
+			     (let ((value (thunk)))
+			       (set! abort? #f)
+			       value))
+			   (lambda ()
+			     (if abort?
+				 (nntp-connection:close-1 connection))))))))
+    (call-with-current-continuation
+     (lambda (k)
+       (bind-condition-handler (list condition-type:nntp-error)
+	   (lambda (condition)
+	     ;; If the server closed the connection, try again.  This
+	     ;; should automatically re-open the connection.
+	     (case (nntp-response-number (nntp-error/response condition))
+	       ((205 503)
+		(within-continuation k try))))
+	 try)))))
 
 ;;;; NNTP I/O
 
 (define nntp-socket-buffer-size 4096)
-
-(define (nntp-protect connection thunk)
-  (let ((abort? #t))
-    (dynamic-wind (lambda ()
-		    (set! abort? #t)
-		    unspecific)
-		  (lambda ()
-		    (if (nntp-connection:closed? connection)
-			(nntp-connection:reopen connection))
-		    (let ((value (thunk)))
-		      (set! abort? #f)
-		      value))
-		  (lambda ()
-		    (if abort? (nntp-connection:close-1 connection))))))
 
 (define (nntp-write-command connection string . strings)
   (let ((port (nntp-connection:port connection)))
