@@ -6,15 +6,15 @@
 @setchapternewpage odd
 @synindex vr fn
 
-@c $Id: sos.texinfo,v 1.5 1993/03/10 22:16:27 cph Exp $
+@c $Id: sos.texinfo,v 1.6 1994/06/01 20:15:23 cph Exp $
 
 @set TITLE The SOS Reference Manual
-@set EDITION 1.5
-@set UPDATED 10 March 1993
-@set UPDATE-MONTH March 1993
+@set EDITION 1.6
+@set UPDATED 1 June 1994
+@set UPDATE-MONTH June 1994
 
 @ifinfo
-Copyright @copyright{} 1993 Massachusetts Institute of Technology
+Copyright @copyright{} 1993-94 Massachusetts Institute of Technology
 
 This is Edition @value{EDITION}, last updated @value{UPDATED}, of
 @cite{@value{TITLE}}.
@@ -63,7 +63,7 @@ literature without prior written consent from MIT in each case.
 @page
 
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1993 Massachusetts Institute of Technology
+Copyright @copyright{} 1993-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and Computer
@@ -585,10 +585,10 @@ Here is an example showing how this is done:
   x
   y)
 
-(define position-x (slot-accessor 'x))
-(define position-y (slot-accessor 'y))
-(define set-position-x! (slot-modifier 'x))
-(define set-position-y! (slot-modifier 'y))
+(define position-x (slot-accessor <position> 'x))
+(define position-y (slot-accessor <position> 'y))
+(define set-position-x! (slot-modifier <position> 'x))
+(define set-position-y! (slot-modifier <position> 'y))
 
 (define-method initialize-instance ((position <position>) x y)
   (set-position-x! position x)
@@ -681,68 +681,68 @@ performance.
 
 @lisp
 @group
-(define (slot-accessor-method slot)
-  (make-method (list (slot-class slot))
-    (let ((accessor (slot-accessor (slot-name slot))))
-      (lambda (call-next-method instance)
-        (accessor instance)))))
+(define (slot-accessor-method class name)
+  (make-leaf-method (list class) (slot-accessor class name)))
 
 (define (slot-value instance name)
   ((slot-accessor name) instance))
 @end group
 @end lisp
 
-@deffn Procedure slot-accessor name
+@deffn Procedure slot-accessor class name
 Returns a procedure of one argument which is an accessor for the slot
-@var{name}; @var{name} may be either a symbol or a slot descriptor.  The
-argument to the returned procedure must be an instance.  When the
-procedure is called, it returns the contents of the slot @var{name} in
-that instance.  If the given instance does not have a slot of that name,
-or if the slot is not initialized, an error is signalled.
+@var{name} in @var{class}; @var{name} may be either a symbol or a slot
+descriptor.  The argument to the returned procedure must be an instance
+of @var{class}.  When the procedure is called, it returns the contents
+of the slot @var{name} in that instance.  If the given instance does not
+have a slot of that name, or if the slot is not initialized, an error is
+signalled.
 @end deffn
 
-@deffn Procedure slot-modifier name
+@deffn Procedure slot-modifier class name
 Returns a procedure of two arguments which is a modifier for the slot
-@var{name}; @var{name} may be either a symbol or a slot descriptor.  The
-first argument to the returned procedure must be an instance, and the
-second argument may be any object.  When the procedure is called, it
-modifies the slot @var{name} in the instance to contain the second
-argument.  If the given instance does not have a slot of that name, an
-error is signalled.
+@var{name} in @var{class}; @var{name} may be either a symbol or a slot
+descriptor.  The first argument to the returned procedure must be an
+instance of @var{class}, and the second argument may be any object.
+When the procedure is called, it modifies the slot @var{name} in the
+instance to contain the second argument.  If the given instance does not
+have a slot of that name, an error is signalled.
 @end deffn
 
-@deffn Procedure slot-initpred name
+@deffn Procedure slot-initpred class name
 Returns a procedure of one argument which is an ``initialized?''@:
-predicate for the slot @var{name}; @var{name} may be either a symbol or
-a slot descriptor.  The argument to the returned procedure must be an
-instance.  When the procedure is called, it returns @code{#t} if the
-slot @var{name} in that instance is initialized, otherwise it returns
-@code{#f}.  If the given instance does not have a slot of that name, an
-error is signalled.
+predicate for the slot @var{name} in @var{class}; @var{name} may be
+either a symbol or a slot descriptor.  The argument to the returned
+procedure must be an instance of @var{class}.  When the procedure is
+called, it returns @code{#t} if the slot @var{name} in that instance is
+initialized, otherwise it returns @code{#f}.  If the given instance does
+not have a slot of that name, an error is signalled.
 @end deffn
 
-@deffn Procedure slot-accessor-method slot
-Returns an accessor method for @var{slot}.  This method has one required
-argument, an instance, and the specializer for that argument is the
-@code{slot-class} of @var{slot}.  When invoked, the method returns the
-contents of the slot specified by @var{slot} in the instance.  However,
-if that slot is not initialized, an error is signalled instead.
+@deffn Procedure slot-accessor-method class name
+Returns an accessor method for the slot @var{name} in @var{class}.  This
+method has one required argument, an instance of @var{class}, and the
+specializer for that argument is @var{class}.  When invoked, the method
+returns the contents of the slot specified by @var{name} in the
+instance.  However, if that slot is not initialized, an error is
+signalled instead.
 @end deffn
 
-@deffn Procedure slot-modifier-method slot
-Returns a modifier method for @var{slot}.  This method has two required
-arguments, an instance and an object.  The specializer for the first
-argument is the @code{slot-class} of @var{slot}; the second argument is
-not specialized.  When invoked, the method stores the second argument in
-the slot specified by @var{slot} in the instance.
+@deffn Procedure slot-modifier-method class name
+Returns a modifier method for slot @var{name} in @var{class}.  This
+method has two required arguments, an instance of @var{class} and an
+object.  The specializer for the first argument is @code{class}; the
+second argument is not specialized.  When invoked, the method stores the
+second argument in the slot specified by @var{name} in the instance.
 @end deffn
 
-@deffn Procedure slot-initpred-method slot
-Returns an ``initialized?''@: predicate method for @var{slot}.  This
-method has one required argument, an instance, and the specializer for
-that argument is the @code{slot-class} of @var{slot}.  When invoked, the
-method returns @code{#t} if the slot specified by @var{slot} is
-initialized in the instance; otherwise it returns @code{#f}.
+@deffn Procedure slot-initpred-method class name
+Returns an ``initialized?''@: predicate method for slot @var{name} in
+@var{class}.  This method has one required argument, an instance of
+@var{class}, and the specializer for that argument is @code{class}.
+When invoked, the method returns @code{#t} if the slot specified by
+@var{name} is initialized in the instance; otherwise it returns
+@code{#f}.
 @end deffn
 
 @deffn Procedure slot-value instance name
@@ -862,6 +862,14 @@ Various mechanisms in @sc{sos} take a method object and invoke its
 method procedure, as is the case when a generic procedure is called.
 When this occurs it is said that the method is invoked or called.
 
+A leaf-method object is a special kind of method object that is faster
+to invoke than a regular method object.  It gains this speed by
+sacrificing the ``call-next-method'' capability of regular methods (see
+below).  Note that the @code{define-method} and @code{method} special
+forms will generate leaf-method objects automatically whenever the
+method body does not contain a free reference to
+@code{call-next-method}.
+
 @deffn Syntax define-method generic-procedure lambda-list body @dots{}
 Defines a method of @var{generic-procedure}.  @var{Lambda-list} is like
 the parameter list of a @code{lambda} special form, except that the
@@ -955,6 +963,14 @@ procedure with no arguments causes the next method to be called with the
 arguments passed to the calling method; in @sc{sos}, this calls the next
 method with no arguments.
 @end quotation
+@end deffn
+
+@deffn Procedure make-leaf-method specializers procedure
+Creates and returns a new leaf method object.  @var{Specializers} must
+be a non-null list of class objects.  @var{Procedure} should accept the
+same number of arguments as the generic procedure to which this method
+will be added; @var{procedure} will not be passed a ``call-next-method''
+procedure argument.
 @end deffn
 
 @node Record Classes,  , Methods, Language
@@ -1084,7 +1100,17 @@ modified.
 @end deffn
 
 @deffn Procedure method-procedure method
-Returns the procedure of @var{method}.
+Returns the procedure of @var{method}.  If this is a regular method, the
+returned procedure is the procedure that was passed to
+@code{make-method} when @var{method} was constructed.  If this is a leaf
+method, the returned procedure is one that was specially constructed
+when @code{make-leaf-method} was called.
+@end deffn
+
+@deffn Procedure leaf-method-procedure leaf-method
+Returns the procedure of @var{leaf-method}.  This is the procedure that
+was passed to @code{make-leaf-method} as an argument when
+@var{leaf-method} was constructed.
 @end deffn
 
 @node Slot Reflectives,  , Method Reflectives, Reflective Operations
