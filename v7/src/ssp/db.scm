@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: db.scm,v 1.2 2003/12/29 07:31:03 uid67408 Exp $
+$Id: db.scm,v 1.3 2004/02/04 05:02:12 cph Exp $
 
-Copyright 2003 Massachusetts Institute of Technology
+Copyright 2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -465,12 +465,12 @@ USA.
 (define (db-clear-submitter user-name number)
   (receive (ps-number submitter) (parse-problem-number number)
     (db-run-cmd "UPDATE saved_inputs"
-		" SET submitter IS NULL"
+		" SET submitter = NULL"
 		" WHERE user_name = " (db-quote user-name)
 		" AND ps_number = " (db-quote ps-number)
 		" AND submitter  = " (db-quote submitter))
     (db-set-output-field user-name ps-number submitter
-			 "submitter IS NULL")))
+			 "submitter = NULL")))
 
 (define (db-clear-late-flag user-name number)
   (receive (ps-number submitter) (parse-problem-number number)
