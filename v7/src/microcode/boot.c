@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.23 1987/02/03 15:59:15 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.24 1987/02/07 15:23:37 jinx Exp $
  *
  * This file contains the code to support startup of
  * the SCHEME interpreter.
@@ -138,7 +138,7 @@ Exit_Scheme_Declarations;
 /* Main program */
 
 forward void Start_Scheme();
-extern void Clear_Memory(), Setup_Memory();
+extern void Clear_Memory(), Setup_Memory(), Reset_Memory();
 
 void
 main(argc, argv)
@@ -512,6 +512,7 @@ long Err, Micro_Error;
   }
   OS_Flush_Output_Buffer();
   OS_Quit();
+  Reset_Memory();
   Exit_Hook();
   Exit_Scheme(value);
 }
