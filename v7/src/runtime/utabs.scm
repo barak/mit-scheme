@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/utabs.scm,v 13.47 1987/11/17 20:12:41 jinx Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/utabs.scm,v 13.48 1988/03/14 16:37:15 jinx Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -135,7 +135,6 @@
     (INTERNED-SYMBOL . SYMBOL)
     (UNINTERNED-SYMBOL . SYMBOL)
     (EXTENDED-PROCEDURE . PROCEDURE)
-    (COMPILED-PROCEDURE . PROCEDURE)
     (PRIMITIVE . PRIMITIVE-PROCEDURE)
     (LEXPR . LAMBDA)
     (EXTENDED-LAMBDA . LAMBDA)
