@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: kilcom.scm,v 1.67 1995/05/02 22:30:32 cph Exp $
+;;;	$Id: kilcom.scm,v 1.68 1995/06/07 18:42:23 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -288,28 +288,28 @@ comes the newest one."
 	      (delete-string point mark)
 	      before?))
 	  set-current-mark!)))
-
+
 (define (yank offset before? set-current-mark!)
-  ((ref-command rotate-yank-pointer) offset)
-  (let* ((start (mark-right-inserting-copy (current-point)))
-	 (end (mark-left-inserting-copy start)))
-    (insert-string (let ((string (car (ref-variable kill-ring-yank-pointer)))
-			 (string*
-			  (and (= offset 0)
-			       (os/interprogram-paste))))
-		     (if (and string*
-			      (not (string-null? string*))
-			      (not (string=? string* string)))
-			 (begin
-			   (kill-ring-save-1 string*)
-			   string*)
-			 string))
-		   start)
-    (mark-temporary! end)
-    (mark-temporary! start)
-    (if before?
-	(begin (set-current-mark! end) (set-current-point! start))
-	(begin (set-current-mark! start) (set-current-point! end))))
+  (let ((start (mark-right-inserting-copy (current-point)))
+	(get-yank
+	 (lambda ()
+	   ((ref-command rotate-yank-pointer) offset)
+	   (car (ref-variable kill-ring-yank-pointer)))))
+    (let ((end (mark-left-inserting-copy start)))
+      (insert-string (let ((paste (and (= offset 0) (os/interprogram-paste))))
+		       (if (and paste (not (string-null? paste)))
+			   (begin
+			     (if (or (null? (ref-variable kill-ring))
+				     (not (string=? paste (get-yank))))
+				 (kill-ring-save-1 paste))
+			     paste)
+			   (get-yank)))
+		     start)
+      (mark-temporary! end)
+      (mark-temporary! start)
+      (if before?
+	  (begin (set-current-mark! end) (set-current-point! start))
+	  (begin (set-current-mark! start) (set-current-point! end)))))
   (set-command-message! un-kill-tag))
 
 (define un-kill-tag
