@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.24 2003/03/02 03:49:46 cph Exp $
+$Id: xml-parser.scm,v 1.25 2003/07/25 20:37:17 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -680,14 +680,15 @@ USA.
     entity))
 
 (define (dereference-parameter-entity name)
-  (let ((elements
+  (let ((value
 	 (and (not (eq? *parameter-entities* 'STOP))
 	      (let ((entity (find-parameter-entity name)))
 		(and entity
 		     (xml-parameter-!entity-value entity))))))
-    (if (and (string? (car elements))
-	     (null? (cdr elements)))
-	(car elements)
+    (if (and (pair? value)
+	     (string? (car value))
+	     (null? (cdr value)))
+	(car value)
 	(begin
 	  (set! *parameter-entities* 'STOP)
 	  (set! *general-entities* 'STOP)
@@ -715,15 +716,22 @@ USA.
 	      (begin
 		(if (xml-unparsed-!entity? entity)
 		    (perror p "Reference to unparsed entity" name))
-		(let ((elements (xml-!entity-value entity)))
-		  (if (and (string? (car elements))
-			   (null? (cdr elements)))
+		(let ((value (xml-!entity-value entity)))
+		  (if (and (pair? value)
+			   (string? (car value))
+			   (null? (cdr value)))
 		      (if expand?
-			  (expand-entity-value-string name (car elements) p)
-			  (vector (car elements)))
+			  (expand-entity-value-string name (car value) p)
+			  (vector (car value)))
 		      (begin
 			(if (or *standalone?* *internal-dtd?*)
-			    (perror p "Reference to partially-defined entity"
+			    (perror p
+				    (string-append
+				     "Reference to "
+				     (if (xml-external-id? value)
+					 "externally"
+					 "partially")
+				     "-defined entity")
 				    name))
 			(vector (make-xml-entity-ref name))))))
 	      (begin
