@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: crypto.scm,v 14.10 2000/04/13 02:59:12 cph Exp $
+$Id: crypto.scm,v 14.11 2001/01/29 19:32:57 cph Exp $
 
-Copyright (c) 2000 Massachusetts Institute of Technology
+Copyright (c) 2000-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -49,7 +49,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (error:wrong-type-argument object "mhash HMAC context" procedure)))
 
 (define (mhash-type-names)
-  (vector->list mhash-algorithm-names))
+  (names-vector->list mhash-algorithm-names))
 
 (define (mhash-get-block-size name)
   ((ucode-primitive mhash_get_block_size 1)
@@ -105,7 +105,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (else (loop (fix:+ i 1)))))))
 
 (define (mhash-keygen-type-names)
-  (vector->list mhash-keygen-names))
+  (names-vector->list mhash-keygen-names))
 
 (define (mhash-keygen-uses-salt? name)
   ((ucode-primitive mhash_keygen_uses_salt 1)
@@ -298,24 +298,35 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (if (mhash-available?)
       (begin
 	(set! mhash-algorithm-names
-	      (let ((n ((ucode-primitive mhash_count 0))))
-		(let ((v (make-vector n)))
-		  (do ((i 0 (fix:+ i 1)))
-		      ((fix:= i n))
-		    (vector-set!
-		     v i (intern ((ucode-primitive mhash_get_hash_name 1) i))))
-		  v)))
+	      (make-names-vector (ucode-primitive mhash_count 0)
+				 (ucode-primitive mhash_get_hash_name 1)))
 	(set! mhash-contexts
 	      (make-gc-finalizer (ucode-primitive mhash_end 1)))
 	(set! mhash-hmac-contexts
 	      (make-gc-finalizer (ucode-primitive mhash_hmac_end 1)))
 	(set! mhash-keygen-names
-	      (let ((n ((ucode-primitive mhash_keygen_count 0))))
-		(let ((v (make-vector n)))
-		  (do ((i 0 (fix:+ i 1)))
-		      ((fix:= i n))
-		    (vector-set!
-		     v i
-		     (intern ((ucode-primitive mhash_get_keygen_name 1) i))))
-		  v)))
+	      (make-names-vector (ucode-primitive mhash_keygen_count 0)
+				 (ucode-primitive mhash_get_keygen_name 1)))
 	unspecific)))
+
+(define (make-names-vector get-count get-name)
+  (let ((n (get-count)))
+    (let ((v (make-vector n)))
+      (do ((i 0 (fix:+ i 1)))
+	  ((fix:= i n))
+	(vector-set! v i
+		     (let ((name (get-name i)))
+		       (and name
+			    (intern name)))))
+      v)))
+
+(define (names-vector->list v)
+  (let ((end (vector-length v)))
+    (let loop ((index 0) (names '()))
+      (if (fix:< index end)
+	  (loop (fix:+ index 1)
+		(let ((name (vector-ref v index)))
+		  (if name
+		      (cons name names)
+		      names)))
+	  names))))
