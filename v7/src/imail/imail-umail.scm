@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.4 2000/01/14 06:41:34 cph Exp $
+;;; $Id: imail-umail.scm,v 1.5 2000/01/14 18:08:08 cph Exp $
 ;;;
-;;; Copyright (c) 1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -59,7 +59,7 @@
 ;;;; Read unix mail file
 
 (define (read-umail-file pathname import?)
-  (call-with-input-file pathname
+  (call-with-binary-input-file pathname
     (lambda (port)
       (read-umail-folder (make-umail-url pathname) port import?))))
 
@@ -128,7 +128,7 @@
 
 (define (write-umail-file folder pathname export?)
   ;; **** Do backup of file here.
-  (call-with-output-file pathname
+  (call-with-binary-output-file pathname
     (lambda (port)
       (write-umail-folder folder port export?))))
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.4 2000/01/14 17:03:57 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.5 2000/01/14 18:07:45 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -95,7 +95,7 @@
 ;;;; Read RMAIL file
 
 (define (read-rmail-file pathname import?)
-  (call-with-input-file pathname
+  (call-with-binary-input-file pathname
     (lambda (port)
       (read-rmail-folder (make-rmail-url pathname) port import?))))
 
@@ -197,7 +197,7 @@
 
 (define (write-rmail-file folder pathname export?)
   ;; **** Do backup of file here.
-  (call-with-output-file pathname
+  (call-with-binary-output-file pathname
     (lambda (port)
       (write-rmail-folder folder port export?))))
 
