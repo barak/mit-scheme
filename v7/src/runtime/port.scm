@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.17 1999/02/24 21:36:37 cph Exp $
+$Id: port.scm,v 1.18 1999/02/25 18:23:06 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -391,17 +391,20 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		      '()))
 	  'MAKE-PORT-TYPE)))
     (let ((operations (port-type/operations type)))
-      (install-operations! type
-			   (assq 'READ-CHAR operations)
-			   input-operation-names
-			   input-operation-modifiers
-			   input-operation-defaults)
-      (install-operations! type
-			   (or (assq 'WRITE-CHAR operations)
-			       (assq 'WRITE-SUBSTRING operations))
-			   output-operation-names
-			   output-operation-modifiers
-			   output-operation-defaults))
+      (let ((input? (assq 'READ-CHAR operations))
+	    (output?
+	     (or (assq 'WRITE-CHAR operations)
+		 (assq 'WRITE-SUBSTRING operations))))
+	(if (not (or input? output?))
+	    (error "No standard operations specified:" operations))
+	(install-operations! type input?
+			     input-operation-names
+			     input-operation-modifiers
+			     input-operation-defaults)
+	(install-operations! type output?
+			     output-operation-names
+			     output-operation-modifiers
+			     output-operation-defaults)))
     type))
 
 (define (parse-operations-list operations procedure)
