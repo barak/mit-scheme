@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insutl.scm,v 1.4 1987/08/20 20:43:25 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insutl.scm,v 1.5 1987/08/22 22:01:26 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -40,9 +40,9 @@ MIT in each case. |#
 
 ;;; NOTE: If this format changes, inerly.scm may also need to be changed!
 
-(define ea-tag "Effective-Address")
+(define ea-tag 'Effective-Address)
 
-(define (make-effective-address keyword categories value)
+(define-integrable (make-effective-address keyword categories value)
   (vector ea-tag keyword categories value))
 
 (define (effective-address? object)
@@ -63,153 +63,152 @@ MIT in each case. |#
 
 ;; Missing: index and immediate modes.
 
-(define ea-database
-  (make-ea-database
-   ((S (? value))
-    (R)
-    (BYTE (6 value)
-	  (2 0)))
+(define-ea-database
+  ((S (? value))
+   (R)
+   (BYTE (6 value)
+	 (2 0)))
 
-   ((R (? n))
-    (R M W V)
-    (BYTE (4 n)
-	  (4 5)))
+  ((R (? n))
+   (R M W V)
+   (BYTE (4 n)
+	 (4 5)))
 
-   ((@R (? n))
-    (R M W A V I)
-    (BYTE (4 n)
-	  (4 6)))
+  ((@R (? n))
+   (R M W A V I)
+   (BYTE (4 n)
+	 (4 6)))
 
-   ((@-R (? n))
-    (R M W A V I)
-    (BYTE (4 n)
-	  (4 7)))
+  ((@-R (? n))
+   (R M W A V I)
+   (BYTE (4 n)
+	 (4 7)))
 
-   ((@R+ (? n))
-    (R M W A V I)
-    (BYTE (4 n)
-	  (4 8)))
+  ((@R+ (? n))
+   (R M W A V I)
+   (BYTE (4 n)
+	 (4 8)))
 
-   ((@@R+ (? n))
-    (R M W A V I)
-    (BYTE (4 n)
-	  (4 9)))
+  ((@@R+ (? n))
+   (R M W A V I)
+   (BYTE (4 n)
+	 (4 9)))
 
-   ((@RO B (? n) (? off))
-    (R M W A V I)
-    (BYTE (4 n)
-	  (4 10))
-    (BYTE (8 off SIGNED)))
+  ((@RO B (? n) (? off))
+   (R M W A V I)
+   (BYTE (4 n)
+	 (4 10))
+   (BYTE (8 off SIGNED)))
 
-   ((@@RO B (? n) (? off))
-    (R M W A V I)
-    (BYTE (4 n)
-	  (4 11))
-    (BYTE (8 off SIGNED)))
+  ((@@RO B (? n) (? off))
+   (R M W A V I)
+   (BYTE (4 n)
+	 (4 11))
+   (BYTE (8 off SIGNED)))
 
-   ((@RO W (? n) (? off))
-    (R M W A V I)
-    (BYTE (4 n)
-	  (4 12))
-    (BYTE (16 off SIGNED)))
+  ((@RO W (? n) (? off))
+   (R M W A V I)
+   (BYTE (4 n)
+	 (4 12))
+   (BYTE (16 off SIGNED)))
 
-   ((@@RO W (? n) (? off))
-    (R M W A V I)
-    (BYTE (4 n)
-	  (4 13))
-    (BYTE (16 off SIGNED)))
+  ((@@RO W (? n) (? off))
+   (R M W A V I)
+   (BYTE (4 n)
+	 (4 13))
+   (BYTE (16 off SIGNED)))
 
-   ((@RO L (? n) (? off))
-    (R M W A V I)
-    (BYTE (4 n)
-	  (4 14))
-    (BYTE (32 off SIGNED)))
+  ((@RO L (? n) (? off))
+   (R M W A V I)
+   (BYTE (4 n)
+	 (4 14))
+   (BYTE (32 off SIGNED)))
 
-   ((@@RO L (? n) (? off))
-    (R M W A V I)
-    (BYTE (4 n)
-	  (4 15))
-    (BYTE (32 off SIGNED)))
+  ((@@RO L (? n) (? off))
+   (R M W A V I)
+   (BYTE (4 n)
+	 (4 15))
+   (BYTE (32 off SIGNED)))
 
-   ((@& (? value))			; Absolute
-    (R M W A V I)
-    (BYTE (4 15)
-	  (4 9))
-    (BYTE (32 value)))
+  ((@& (? value))			; Absolute
+   (R M W A V I)
+   (BYTE (4 15)
+	 (4 9))
+   (BYTE (32 value)))
 
-   ((@PCO B (? off))
-    (R M W A V I)
-    (BYTE (4 15)
-	  (4 10))
-    (BYTE (8 off SIGNED)))
+  ((@PCO B (? off))
+   (R M W A V I)
+   (BYTE (4 15)
+	 (4 10))
+   (BYTE (8 off SIGNED)))
 
-   ((@@PCO B (? off))
-    (R M W A V I)
-    (BYTE (4 15)
-	  (4 11))
-    (BYTE (8 off SIGNED)))
+  ((@@PCO B (? off))
+   (R M W A V I)
+   (BYTE (4 15)
+	 (4 11))
+   (BYTE (8 off SIGNED)))
 
-   ((@PCO W (? off))
-    (R M W A V I)
-    (BYTE (4 15)
-	  (4 12))
-    (BYTE (16 off SIGNED)))
+  ((@PCO W (? off))
+   (R M W A V I)
+   (BYTE (4 15)
+	 (4 12))
+   (BYTE (16 off SIGNED)))
 
-   ((@@PCO W (? off))
-    (R M W A V I)
-    (BYTE (4 15)
-	  (4 13))
-    (BYTE (16 off SIGNED)))
+  ((@@PCO W (? off))
+   (R M W A V I)
+   (BYTE (4 15)
+	 (4 13))
+   (BYTE (16 off SIGNED)))
 
-   ((@PCO L (? off))
-    (R M W A V I)
-    (BYTE (4 15)
-	  (4 14))
-    (BYTE (32 off SIGNED)))
+  ((@PCO L (? off))
+   (R M W A V I)
+   (BYTE (4 15)
+	 (4 14))
+   (BYTE (32 off SIGNED)))
 
-   ((@@PCO L (? off))
-    (R M W A V I)
-    (BYTE (4 15)
-	  (4 15))
-    (BYTE (32 off SIGNED)))
+  ((@@PCO L (? off))
+   (R M W A V I)
+   (BYTE (4 15)
+	 (4 15))
+   (BYTE (32 off SIGNED)))
 
-   ;; Self adjusting modes
+  ;; Self adjusting modes
 
-   ((@PCR (? label))
-    (R M W A V I)
-    (VARIABLE-WIDTH
-     (disp `(- ,label (+ *PC* 2)))
-     ((-128 127)			; (@PCO B label)
-      (BYTE (4 15)
-	    (4 10))
-      (BYTE (8 disp SIGNED)))
-     ;; The following range is correct.  Think about it.
-     ((-32767 32768)			; (@PCO W label)
-      (BYTE (4 15)
-	    (4 12))
-      (BYTE (16 (- disp 1) SIGNED)))
-     ((() ())				; (@PCO L label)
-      (BYTE (4 15)
-	    (4 14))
-      (BYTE (32 (- disp 3) SIGNED)))))
+  ((@PCR (? label))
+   (R M W A V I)
+   (VARIABLE-WIDTH
+    (disp `(- ,label (+ *PC* 2)))
+    ((-128 127)				; (@PCO B label)
+     (BYTE (4 15)
+	   (4 10))
+     (BYTE (8 disp SIGNED)))
+    ;; The following range is correct.  Think about it.
+    ((-32767 32768)			; (@PCO W label)
+     (BYTE (4 15)
+	   (4 12))
+     (BYTE (16 (- disp 1) SIGNED)))
+    ((() ())				; (@PCO L label)
+     (BYTE (4 15)
+	   (4 14))
+     (BYTE (32 (- disp 3) SIGNED)))))
 
-   ((@@PCR (? label))
-    (R M W A V I)
-    (VARIABLE-WIDTH
-     (disp `(- ,label (+ *PC* 2)))
-     ((-128 127)			; (@@PCO B label)
-      (BYTE (4 15)
-	    (4 11))
-      (BYTE (8 disp SIGNED)))
-     ;; The following range is correct.  Think about it.
-     ((-32767 32768)			; (@@PCO W label)
-      (BYTE (4 15)
-	    (4 13))
-      (BYTE (16 (- disp 1) SIGNED)))
-     ((() ())				; (@@PCO L label)
-      (BYTE (4 15)
-	    (4 15))
-      (BYTE (32 (- disp 3) SIGNED)))))))
+  ((@@PCR (? label))
+   (R M W A V I)
+   (VARIABLE-WIDTH
+    (disp `(- ,label (+ *PC* 2)))
+    ((-128 127)				; (@@PCO B label)
+     (BYTE (4 15)
+	   (4 11))
+     (BYTE (8 disp SIGNED)))
+    ;; The following range is correct.  Think about it.
+    ((-32767 32768)			; (@@PCO W label)
+     (BYTE (4 15)
+	   (4 13))
+     (BYTE (16 (- disp 1) SIGNED)))
+    ((() ())				; (@@PCO L label)
+     (BYTE (4 15)
+	   (4 15))
+     (BYTE (32 (- disp 3) SIGNED))))))
 
 ;;;; Effective address processing
 
@@ -241,9 +240,16 @@ MIT in each case. |#
 		   (cons-syntax
 		    (coerce-to-type (cadr expression) type)
 		    '())))
+	    ;; Guarantee idempotency for early processing.
+	    ((effective-address? expression)
+	     expression)
 	    (else #F))))
 	  
-  (cond ((not (pair? expression)) #F)
+  (cond ((not (pair? expression))
+	 ;; Guarantee idempotency for early processing.
+	 (if (effective-address? object)
+	     object
+	     #F))
 	((eq? (car expression) 'X)
 	 (let ((base (kernel (caddr expression))))
 	   (and base
