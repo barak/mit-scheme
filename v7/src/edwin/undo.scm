@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/undo.scm,v 1.47 1991/04/21 00:52:26 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/undo.scm,v 1.48 1991/05/02 01:14:45 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -91,6 +91,13 @@
 
 (define (disable-group-undo! group)
   (set-group-undo-data! group false))
+
+(define (with-group-undo-disabled group thunk)
+  (dynamic-wind (lambda () (disable-group-undo! group))
+		thunk
+		(if (group-undo-data group)
+		    (lambda () (enable-group-undo! group))
+		    (lambda () unspecific))))
 
 (define (new-undo! undo-data type group start length)
   (let ((records (undo-data-records undo-data))

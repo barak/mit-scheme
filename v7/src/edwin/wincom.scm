@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.99 1990/11/02 03:24:57 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.100 1991/05/02 01:14:50 cph Exp $
 ;;;
-;;;	Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1987, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -101,7 +101,8 @@ negative args count from the bottom."
 	    (update-selected-screen! true))
 	  (window-scroll-y-absolute!
 	   window
-	   (modulo argument (window-y-size window)))))))
+	   (modulo (command-argument-value argument)
+		   (window-y-size window)))))))
 
 (define-command move-to-window-line
   "Position point relative to window.
@@ -116,7 +117,8 @@ negative means relative to bottom of window."
 		  window 0
 		  (if (not argument)
 		      (window-y-center window)
-		      (modulo argument (window-y-size window))))
+		      (modulo (command-argument-value argument)
+			      (window-y-size window))))
 		 (window-coordinates->mark
 		  window 0
 		  (window-mark->y window
@@ -197,8 +199,8 @@ means scroll one screenful down."
 	    (- (window-y-size window)
 	       (ref-variable next-screen-context-lines))))
        (cond ((not argument) quantum)
-	     ((command-argument-negative-only?) (- quantum))
-	     (else argument)))))
+	     ((command-argument-negative-only? argument) (- quantum))
+	     (else (command-argument-value argument))))))
 
 (define (multi-scroll-window-argument window argument factor)
   (* factor
@@ -206,8 +208,8 @@ means scroll one screenful down."
 	    (- (window-y-size window)
 	       (ref-variable next-screen-context-lines))))
        (cond ((not argument) quantum)
-	     ((command-argument-negative-only?) (- quantum))
-	     (else (* argument quantum))))))
+	     ((command-argument-negative-only? argument) (- quantum))
+	     (else (* (command-argument-value argument) quantum))))))
 
 (define-command what-cursor-position
   "Print info on cursor position (on screen and within buffer)."
@@ -252,7 +254,8 @@ ARG lines.  No arg means split equally."
   "P"
   (lambda (argument)
     (disallow-typein)
-    (window-split-vertically! (current-window) argument)))
+    (window-split-vertically! (current-window)
+			      (command-argument-value argument))))
 
 (define-command split-window-horizontally
   "Split current window into two windows side by side.
@@ -261,7 +264,8 @@ ARG lines.  No arg means split equally."
   "P"
   (lambda (argument)
     (disallow-typein)
-    (window-split-horizontally! (current-window) argument)))
+    (window-split-horizontally! (current-window)
+				(command-argument-value argument))))
 
 (define-command enlarge-window
   "Makes current window ARG lines bigger."
@@ -310,7 +314,7 @@ ARG lines.  No arg means split equally."
 
 (define-command other-window
   "Select the ARG'th different window."
-  "P"
+  "p"
   (lambda (argument)
     (select-window (other-window-interactive argument))))
 
@@ -543,7 +547,7 @@ Otherwise, the argument is the number of columns desired."
       (let ((window (screen-root-window screen)))
 	(send window ':set-size!
 	      (let ((x-size (screen-x-size screen)))
-		(cond ((command-argument-multiplier-only?)
+		(cond ((command-argument-multiplier-only? argument)
 		       x-size)
 		      ((not argument)
 		       (let ((x-size* (window-x-size window)))
@@ -551,8 +555,9 @@ Otherwise, the argument is the number of columns desired."
 			     x-size
 			     (min 80 x-size))))
 		      (else
-		       (if (< argument 10)
-			   (editor-error "restriction too small: " argument))
-		       (min x-size argument))))
+		       (let ((argument (command-argument-value argument)))
+			 (if (< argument 10)
+			     (editor-error "restriction too small: " argument))
+			 (min x-size argument)))))
 	      (screen-y-size screen)))
       (update-screen! screen true))))

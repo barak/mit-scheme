@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sendmail.scm,v 1.5 1991/04/24 07:26:09 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sendmail.scm,v 1.6 1991/05/02 01:14:23 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -371,10 +371,12 @@ and don't delete any header fields."
 			       start)
 		(if (not (line-end? end))
 		    (insert-newline end))
-		(if (not (command-argument-multiplier-only?))
+		(if (not (command-argument-multiplier-only? argument))
 		    (begin
 		      (mail-yank-clear-headers start end)
-		      (indent-rigidly start end (or argument 3))))
+		      (indent-rigidly start end
+				      (or (command-argument-value argument)
+					  3))))
 		(mark-temporary! start)
 		(mark-temporary! end)
 		(push-current-mark! start)

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/argred.scm,v 1.29 1989/04/28 22:46:49 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/argred.scm,v 1.30 1991/05/02 01:11:56 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -45,223 +45,113 @@
 ;;;; Command Argument Reader
 
 (declare (usual-integrations))
-
-;;; 1.  The reader keeps track of:
-;;;
-;;; [] The MAGNITUDE of the argument.  If there are no digits, the
-;;;    magnitude is false.
-;;; [] The SIGN of the argument.
-;;; [] The MULTIPLIER-EXPONENT, which is the number of C-U's typed.
-;;; [] Whether or not "Autoargument mode" is in effect.  In autoarg
-;;;    mode, ordinary digits are interpreted as part of the argument;
-;;;    normally they are self-inserting.
-;;;
-;;; 2.  From these, it can compute:
-;;;
-;;; [] VALUE = (* MAGNITUDE (EXPT 4 MULTIPLIER-EXPONENT)).
-;;;    If the magnitude is false, then the value is too.
 
-;;;; Commands
-
 (define-command universal-argument
-  "Increments the argument multiplier and enters Autoarg mode.
-In Autoarg mode, - negates the numeric argument, and the
-digits 0, ..., 9 accumulate it."
-  ()
-  (lambda ()
-    (command-argument-increment-multiplier-exponent!)
-    (enter-autoargument-mode!)
-    (update-argument-prompt!)
-    (read-and-dispatch-on-char)))
-
-(define-command digit-argument
-  "Sets the numeric argument for the next command.
-Several such digits typed consecutively accumulate to form
-the argument.  This command should *only* be placed on a character
-which is a digit (modulo control/meta bits)."
-  ()
-  (lambda ()
-    (command-argument-accumulate-digit! (char-base (current-command-char)))
-    (update-argument-prompt!)
-    (read-and-dispatch-on-char)))
-
-(define-command negative-argument
-  "Negates the numeric argument for the next command.
-If no argument has yet been given, the argument defaults to -1."
-  ()
-  (lambda ()
-    (command-argument-negate!)
-    (update-argument-prompt!)
-    (read-and-dispatch-on-char)))
-
-(define (command-argument-self-insert? procedure)
-  (and (or (eq? procedure (ref-command auto-digit-argument))
-	   (and (eq? procedure (ref-command auto-negative-argument))
-		(command-argument-beginning?)))
-       (not *autoargument-mode?*)))
-
-(define-command auto-digit-argument
-  "In Autoargument mode, sets numeric argument to the next command.
-Otherwise, the digit inserts itself.  This just dispatches to either
-\\[digit-argument] or \\[self-insert-command], depending on the mode."
-  ()
-  (lambda ()
-    (dispatch-on-command
-     (if (autoargument-mode?)
-	 (ref-command-object digit-argument)
-	 (ref-command-object self-insert-command)))))
-
-(define-command auto-negative-argument
-  "In Autoargument mode, sets numeric sign to the next command.
-Otherwise, the character inserts itself.  This just dispatches to either
-\\[negative-argument] or \\[insert-self-command], depending on the mode."
-  ()
-  (lambda ()
-    (dispatch-on-command
-     (if (and *autoargument-mode?* (command-argument-beginning?))
-	 (ref-command-object negative-argument)
-	 (ref-command-object self-insert-command)))))
-
-(define-command auto-argument
-  "Used to start a command argument and enter Autoargument mode.
-This should only be placed on digits or -, with or without control
-or meta bits."
+  "Begin a numeric argument for the following command.
+Digits or minus sign following this command make up the numeric argument.
+If no digits or minus sign follow, this command by itself provides 4 as argument.
+Used more than once, this command multiplies the argument by 4 each time."
   "P"
   (lambda (argument)
-    (let ((char (char-base (current-command-char))))
-      (cond ((not (eq? char #\-))
-	     (enter-autoargument-mode!)
-	     (dispatch-on-command (ref-command-object digit-argument)))
-	    ((command-argument-beginning?)
-	     (enter-autoargument-mode!)
-	     (dispatch-on-command (ref-command-object negative-argument)))
-	    (else
-	     (insert-chars char argument))))))
+    (set-command-argument! (list (* (if (pair? argument) (car argument) 1) 4)))
+    (set-command-message! 'AUTO-ARGUMENT (char-name (last-command-char)))))
+
+(define-command digit-argument
+  "Part of the numeric argument for the next command."
+  "P"
+  (lambda (argument)
+    (let ((digit (char->digit (char-base (last-command-char)))))
+      (if digit
+	  (begin
+	    (set-command-argument!
+	     (cond ((eq? '- argument) (- digit))
+		   ((not (number? argument)) digit)
+		   ((negative? argument) (- (* 10 argument) digit))
+		   (else (+ (* 10 argument) digit))))
+	    (set-command-message! 'AUTO-ARGUMENT (auto-argument-mode?)))))))
+
+(define-command negative-argument
+  "Begin a negative numeric argument for the next command."
+  "P"
+  (lambda (argument)
+    (set-command-argument!
+     (cond ((eq? '- argument) false)
+	   ((number? argument) (- argument))
+	   (else '-)))
+    (set-command-message! 'AUTO-ARGUMENT (auto-argument-mode?))))
+
+(define-command auto-digit-argument
+  "When reading a command argument, part of the numeric argument.
+Otherwise, the digit inserts itself."
+  "P"
+  (lambda (argument)
+    (if (auto-argument-mode?)
+	((ref-command digit-argument) argument)
+	((ref-command self-insert-command) argument))))
+
+(define-command auto-negative-argument
+  "When reading a command argument, begin a negative argument.
+Otherwise, the character inserts itself."
+  "P"
+  (lambda (argument)
+    (if (and (auto-argument-mode?)
+	     (not (number? argument)))
+	((ref-command negative-argument) argument)
+	((ref-command self-insert-command) argument))))
+
+(define-command auto-argument
+  "Start a command argument.
+Digits following this command become part of the argument."
+  "P"
+  (lambda (argument)
+    (if (char=? #\- (char-base (last-command-char)))
+	(if (not (number? argument))
+	    ((ref-command negative-argument) argument))
+	((ref-command digit-argument) argument))
+    (if (not argument)
+	(set-command-message! 'AUTO-ARGUMENT true))))
 
-;;;; Primitives
+(define (command-argument-self-insert? command)
+  (and (or (eq? command (ref-command-object auto-digit-argument))
+	   (and (eq? command (ref-command-object auto-negative-argument))
+		(not (number? (command-argument)))))
+       (not (auto-argument-mode?))))
 
-(define (with-command-argument-reader thunk)
-  (fluid-let ((*magnitude*)
-	      (*negative?*)
-	      (*multiplier-exponent*)
-	      (*multiplier-value*)
-	      (*autoargument-mode?*)
-	      (*previous-prompt*))
-    (thunk)))
-
-(define (reset-command-argument-reader!)
-  ;; Call this at the beginning of a command cycle.
-  (set! *magnitude* false)
-  (set! *negative?* false)
-  (set! *multiplier-exponent* 0)
-  (set! *multiplier-value* 1)
-  (set! *autoargument-mode?* false)
-  (set! *previous-prompt* ""))
+(define (auto-argument-mode?)
+  (command-message-receive 'AUTO-ARGUMENT (lambda (x) x) (lambda () false)))
 
 (define (command-argument-prompt)
-  (or *previous-prompt* (%command-argument-prompt)))
+  (let ((arg (command-argument)))
+    (if (not arg)
+	""
+	(let ((mode (auto-argument-mode?)))
+	  (string-append
+	   (if (and (pair? arg) (string? mode))
+	       (let loop ((n (car arg)))
+		 (if (= n 4)
+		     mode
+		     (string-append mode " " (loop (quotient n 4)))))
+	       (string-append
+		(cond ((string? mode) mode)
+		      (mode "Autoarg")
+		      (else "Arg"))
+		" "
+		(if (eq? '- arg)
+		    "-"
+		    (number->string (if (pair? arg) (car arg) arg)))))
+	   " -")))))
 
-(define *previous-prompt*)
+(define (command-argument-multiplier-only? argument)
+  (pair? argument))
 
-(define (update-argument-prompt!)
-  (let ((prompt (%command-argument-prompt)))
-    (set! *previous-prompt* prompt)
-    (set-command-prompt! prompt)))
+(define (command-argument-negative-only? argument)
+  (eq? '- argument))
 
-(define (%command-argument-prompt)
-  (if (and (not *magnitude*)
-	   (if (autoargument-mode?)
-	       (and (not *negative?*)
-		    (= *multiplier-exponent* 1))
-	       *negative?*))
-      (xchar->name (current-command-char))
-      (let ((prefix (if (autoargument-mode?) "Autoarg" "Arg"))
-	    (value (command-argument-value)))
-	(cond (value (string-append-separated prefix (write-to-string value)))
-	      (*negative?* (string-append-separated prefix "-"))
-	      (else "")))))
+(define (command-argument-value argument)
+  (cond ((not argument) false)
+	((eq? '- argument) -1)
+	((pair? argument) (car argument))
+	(else argument)))
 
-;;;; Argument Number
-
-(define *magnitude*)
-(define *negative?*)
-
-(define (command-argument-accumulate-digit! digit-char)
-  (set! *multiplier-exponent* 0)
-  (set! *multiplier-value* 1)
-  (let ((digit (or (char->digit digit-char 10)
-		   (error "Not a valid digit" digit-char))))
-    (set! *magnitude*
-	  (if (not *magnitude*)
-	      digit
-	      (+ digit (* 10 *magnitude*))))))
-
-(define (command-argument-negate!)
-  (set! *multiplier-exponent* 0)
-  (set! *multiplier-value* 1)
-  (set! *negative?* (not *negative?*)))
-
-(define (command-argument-magnitude)
-  *magnitude*)
-
-(define (command-argument-negative?)
-  *negative?*)
-
-;;;; Argument Multiplier
-
-(define *multiplier-exponent*)
-(define *multiplier-value*)
-
-(define (command-argument-increment-multiplier-exponent!)
-  (set! *magnitude* false)
-  (set! *negative?* false)
-  (set! *multiplier-exponent* (1+ *multiplier-exponent*))
-  (set! *multiplier-value* (* 4 *multiplier-value*)))
-
-(define (command-argument-multiplier-exponent)
-  *multiplier-exponent*)
-
-;;;; Autoargument Mode
-
-(define *autoargument-mode?*)
-
-(define (enter-autoargument-mode!)
-  (set! *autoargument-mode?* true))
-
-(define (autoargument-mode?)
-  *autoargument-mode?*)
-
-;;;; Value
-
-(define (command-argument-standard-value?)
-  (or *magnitude*
-      (not (zero? *multiplier-exponent*))
-      *negative?*))
-
-(define (command-argument-standard-value)
-  (or (command-argument-value)
-      (and *negative?* -1)))
-
-(define (command-argument-value)
-  ;; This returns the numeric value of the argument, or false if none.
-  (cond (*magnitude*
-	 (* (if *negative?* (- *magnitude*) *magnitude*)
-	    *multiplier-value*))
-	((not (zero? *multiplier-exponent*))
-	 (if *negative?* (- *multiplier-value*) *multiplier-value*))
-	(else false)))
-
-(define (command-argument-multiplier-only?)
-  (and (not *magnitude*)
-       (not (zero? *multiplier-exponent*))
-       *multiplier-exponent*))
-
-(define (command-argument-negative-only?)
-  (and (not *magnitude*)
-       (zero? *multiplier-exponent*)
-       *negative?*))
-
-(define (command-argument-beginning?)
-  (and (not *magnitude*)
-       (not *negative?*)
-       (< *multiplier-exponent* 2)))
+(define (command-argument-numeric-value argument)
+  (or (command-argument-value argument) 1))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lincom.scm,v 1.109 1991/04/23 06:41:30 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lincom.scm,v 1.110 1991/05/02 01:13:31 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -102,7 +102,10 @@ A page boundary is any string in Page Delimiters, at a line's beginning."
   "Put mark at end of page, point at beginning."
   "P"
   (lambda (argument)
-    (let ((end (forward-page (current-point) (1+ (or argument 0)) 'LIMIT)))
+    (let ((end
+	   (forward-page (current-point)
+			 (1+ (or (command-argument-value argument) 0))
+			 'LIMIT)))
       (set-current-region! (make-region (backward-page end 1 'LIMIT) end)))))
 
 (define-command narrow-to-page
@@ -239,7 +242,7 @@ With no argument, the mode is toggled."
   (lambda (argument)
     (set-variable! indent-tabs-mode
 		   (if argument
-		       (positive? argument)
+		       (positive? (command-argument-value argument))
 		       (not (ref-variable indent-tabs-mode))))))
 
 (define-command insert-tab
@@ -349,21 +352,21 @@ A blank line is one containing only spaces and tabs
 An argument inhibits this."
   "P"
   (lambda (argument)
-    (cond ((not argument)
-	   (if (line-end? (current-point))
-	       (let ((m1 (line-start (current-point) 1)))
-		 (if (and m1
-			  (line-blank? m1)
-			  (let ((m2 (line-start m1 1)))
-			    (and m2
-				 (line-blank? m2))))
-		     (begin
-		       (set-current-point! m1)
-		       (delete-horizontal-space))
-		     (insert-newlines 1)))
-	       (insert-newlines 1)))
+    (cond (argument
+	   (insert-newlines (command-argument-value argument)))
+	  ((not (line-end? (current-point)))
+	   (insert-newline))
 	  (else
-	   (insert-newlines argument)))))
+	   (let ((m1 (line-start (current-point) 1)))
+	     (if (and m1
+		      (line-blank? m1)
+		      (let ((m2 (line-start m1 1)))
+			(and m2
+			     (line-blank? m2))))
+		 (begin
+		   (set-current-point! m1)
+		   (delete-horizontal-space))
+		 (insert-newlines 1)))))))
 
 (define-command split-line
   "Move rest of this line vertically down.

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tagutl.scm,v 1.38 1991/04/26 03:14:31 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tagutl.scm,v 1.39 1991/05/02 01:14:40 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -99,7 +99,7 @@ See documentation of variable tags-file-name."
   false)
 
 (define (find-tag-arguments prompt)
-  (let ((previous-tag? (command-argument-standard-value)))
+  (let ((previous-tag? (command-argument)))
     (if previous-tag?
 	(list false true)
 	(let ((string (prompt-for-string prompt (find-tag-default))))
@@ -166,8 +166,7 @@ See documentation of variable tags-file-name."
 	    (set-buffer-point! buffer (line-end tag 0))
 	    (find-file pathname)
 	    (let* ((buffer (current-buffer))
-		   (group (buffer-group buffer))
-		   (end (group-end-index group)))
+		   (group (buffer-group buffer)))
 	      (buffer-widen! buffer)
 	      (push-current-mark! (current-point))
 	      (let ((mark
@@ -177,11 +176,13 @@ See documentation of variable tags-file-name."
 			     (or (re-search-forward
 				  regexp
 				  (make-mark group index)
-				  (make-mark group (min (+ start offset) end)))
+				  (make-mark group
+					     (min (+ start offset)
+						  (group-end-index group))))
 				 (loop (* 3 offset)))
 			     (re-search-forward regexp
 						(make-mark group 0)
-						end))))))
+						(group-end-mark group)))))))
 		(if (not mark)
 		    (editor-failure regexp
 				    " not found in "
@@ -227,7 +228,7 @@ See documentation of variable tags-file-name."
 	    (prompt-for-string
 	     (string-append "Tags query replace " source " with")
 	     false)
-	    (command-argument-standard-value))))
+	    (command-argument))))
   (lambda (source target delimited)
     (set! tags-loop-continuation
 	  (lambda ()

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.34 1991/04/29 10:42:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.35 1991/05/02 01:12:54 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -190,7 +190,8 @@ MIT in each case. |#
 	  undo-boundary!
 	  undo-done!
 	  undo-record-deletion!
-	  undo-record-insertion!))
+	  undo-record-insertion!
+	  with-group-undo-disabled))
 
 (define-package (edwin display-type)
   (files "display")
@@ -402,6 +403,7 @@ MIT in each case. |#
   (parent (edwin))
   (export (edwin)
 	  abort-current-command
+	  command-argument
 	  command-history-list
 	  command-message-receive
 	  command-reader
@@ -415,7 +417,9 @@ MIT in each case. |#
 	  execute-command-history-entry
 	  initialize-command-reader!
 	  keyboard-chars-read
+	  last-command-char
 	  read-and-dispatch-on-char
+	  set-command-argument!
 	  set-command-message!
 	  top-level-command-reader))
 
@@ -552,18 +556,18 @@ MIT in each case. |#
   (files "argred")
   (parent (edwin))
   (export (edwin)
-	  command-argument-beginning?
-	  command-argument-multiplier-exponent
 	  command-argument-multiplier-only?
 	  command-argument-negative-only?
-	  command-argument-negative?
+	  command-argument-numeric-value
 	  command-argument-prompt
 	  command-argument-self-insert?
-	  command-argument-standard-value
-	  command-argument-standard-value?
 	  command-argument-value
-	  reset-command-argument-reader!
-	  with-command-argument-reader))
+	  edwin-command$auto-argument
+	  edwin-command$auto-digit-argument
+	  edwin-command$auto-negative-argument
+	  edwin-command$digit-argument
+	  edwin-command$negative-argument
+	  edwin-command$universal-argument))
 
 (define-package (edwin buffer-menu)
   (files "bufmnu")

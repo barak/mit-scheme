@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.85 1991/03/16 00:01:28 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.86 1991/05/02 01:12:45 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -49,6 +49,8 @@
 (define *command-continuation*)	;Continuation of current command
 (define *command-char*)		;Character read to find current command
 (define *command*)		;The current command
+(define *command-argument*)	;Argument from last command
+(define *next-argument*)	;Argument to next command
 (define *command-message*)	;Message from last command
 (define *next-message*)		;Message to next command
 (define *non-undo-count*)	;# of self-inserts since last undo boundary
@@ -100,8 +102,9 @@
     (call-with-current-continuation
      (lambda (continuation)
        (fluid-let ((*command-continuation* continuation)
-		   (*command-char*)
+		   (*command-char* false)
 		   (*command*)
+		   (*next-argument* false)
 		   (*next-message* false))
 	 (bind-condition-handler (list condition-type:editor-error)
 	     editor-error-handler
@@ -112,7 +115,11 @@
     (let ((char (with-editor-interrupts-disabled keyboard-read-char)))
       (set! *command-char* char)
       (clear-message)
-      (set-command-prompt! (char-name char))
+      (set-command-prompt!
+       (if (not *command-argument*)
+	   (char-name char)
+	   (string-append-separated (command-argument-prompt)
+				    (char-name char))))
       (let ((window (current-window)))
 	(%dispatch-on-command window
 			      (comtab-entry (buffer-comtabs
@@ -121,22 +128,24 @@
 			      false)))
     (start-next-command))
 
-  (fluid-let ((*command-message*)
+  (fluid-let ((*command-argument*)
+	      (*command-message*)
 	      (*non-undo-count* 0))
-    (with-command-argument-reader
-     (lambda ()
-       (if (and (not (default-object? initialization)) initialization)
-	   (with-command-variables
-	    (lambda ()
-	      (reset-command-state!)
-	      (initialization))))
-       (command-reader-loop)))))
+    (if (and (not (default-object? initialization)) initialization)
+	(with-command-variables
+	 (lambda ()
+	   (reset-command-state!)
+	   (initialization))))
+    (command-reader-loop)))
 
 (define (reset-command-state!)
-  (reset-command-argument-reader!)
-  (reset-command-prompt!)
+  (set! *command-argument* *next-argument*)
+  (set! *next-argument* false)
   (set! *command-message* *next-message*)
   (set! *next-message* false)
+  (if *command-argument*
+      (set-command-prompt! (command-argument-prompt))
+      (reset-command-prompt!))
   (if *defining-keyboard-macro?* (keyboard-macro-finalize-chars)))
 
 ;;; The procedures for executing commands come in two flavors.  The
@@ -175,8 +184,20 @@
 (define-integrable (current-command-char)
   *command-char*)
 
+(define (last-command-char)
+  (if (char? *command-char*)
+      *command-char*
+      (car (last-pair *command-char*))))
+
 (define-integrable (current-command)
   *command*)
+
+(define (set-command-argument! argument)
+  (set! *next-argument* argument)
+  unspecific)
+
+(define-integrable (command-argument)
+  *command-argument*)
 
 (define (set-command-message! tag . arguments)
   (set! *next-message* (cons tag arguments))
@@ -211,29 +232,28 @@
 	     (set! *non-undo-count* 0)
 	     (undo-boundary! point)
 	     (apply procedure (interactive-arguments command record?)))))
-      (cond ((or *executing-keyboard-macro?*
-		 (command-argument-standard-value?))
+      (cond ((or *executing-keyboard-macro?* (command-argument))
 	     (set! *non-undo-count* 0)
 	     (apply procedure (interactive-arguments command record?)))
 	    ((window-needs-redisplay? window)
 	     (normal))
-	    ((eq? procedure (ref-command forward-char))
+	    ((eq? command (ref-command-object forward-char))
 	     (if (and (not (group-end? point))
 		      (char-graphic? (mark-right-char point))
 		      (< point-x (- (window-x-size window) 2)))
 		 (window-direct-output-forward-char! window)
 		 (normal)))
-	    ((eq? procedure (ref-command backward-char))
+	    ((eq? command (ref-command-object backward-char))
 	     (if (and (not (group-start? point))
 		      (char-graphic? (mark-left-char point))
 		      (positive? point-x)
 		      (< point-x (-1+ (window-x-size window))))
 		 (window-direct-output-backward-char! window)
 		 (normal)))
-	    ((or (eq? procedure (ref-command self-insert-command))
-		 (and (eq? procedure (ref-command auto-fill-space))
+	    ((or (eq? command (ref-command-object self-insert-command))
+		 (and (eq? command (ref-command-object auto-fill-space))
 		      (not (auto-fill-break? point)))
-		 (command-argument-self-insert? procedure))
+		 (command-argument-self-insert? command))
 	     (let ((char *command-char*))
 	       (if (let ((buffer (window-buffer window)))
 		     (and (buffer-auto-save-modified? buffer)
@@ -366,13 +386,11 @@
       ((#\n)
        (prompting (prompt-for-number prompt false)))
       ((#\N)
-       (prefix
-	(or (command-argument-standard-value)
-	    (prompt-for-number prompt false))))
+       (prefix (or (command-argument) (prompt-for-number prompt false))))
       ((#\p)
-       (prefix (or (command-argument-standard-value) 1)))
+       (prefix (or (command-argument-value (command-argument)) 1)))
       ((#\P)
-       (prefix (command-argument-standard-value)))
+       (prefix (command-argument)))
       ((#\r)
        (varies (current-region) '(CURRENT-REGION)))
       ((#\s)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.108 1991/04/24 00:36:19 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.109 1991/05/02 01:12:16 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -51,11 +51,12 @@
 With an argument, insert the character that many times."
   "P"
   (lambda (argument)
-    (insert-chars (current-command-char) (or argument 1))))
+    (insert-chars (last-command-char)
+		  (command-argument-numeric-value argument))))
 
 (define-command quoted-insert
   "Reads a character and inserts it."
-  "P"
+  "p"
   (lambda (argument)
     (let ((read-char
 	   (lambda ()
@@ -76,7 +77,7 @@ With an argument, insert the character that many times."
 				 (let ((digit3 (read-digit)))
 				   (+ (* (+ (* digit 8) digit2) 8) digit3))))
 			      char)))
-		      (or argument 1))))))
+		      argument)))))
 
 (define-command open-line
   "Insert a newline after point.
@@ -86,7 +87,7 @@ With an argument, inserts several newlines."
   "P"
   (lambda (argument)
     (let ((m* (mark-right-inserting (current-point))))
-      (insert-newlines (or argument 1))
+      (insert-newlines (or (command-argument-value argument) 1))
       (set-current-point! m*))))
 
 (define-command narrow-to-region
@@ -243,7 +244,7 @@ For a normal exit, you should use \\[exit-recursive-edit], NOT this command."
 With argument, saves visited file first."
   "P"
   (lambda (argument)
-    (if argument ((ref-command save-buffer) false))
+    (if argument (save-buffer (current-buffer) false))
     (set! edwin-finalization
 	  (lambda ()
 	    (set! edwin-finalization false)
@@ -338,31 +339,33 @@ With just minus as arg, kill any comment on this line.
 Otherwise, set the comment column to the argument."
   "P"
   (lambda (argument)
-    (cond ((command-argument-negative-only?)
-	   ((ref-command kill-comment)))
-	  (else
-	   (set-variable! comment-column (or argument (current-column)))
-	   (message "comment-column set to " (ref-variable comment-column))))))
+    (if (command-argument-negative-only? argument)
+	((ref-command kill-comment))
+	(let ((column
+	       (or (command-argument-value argument)
+		   (current-column))))
+	  (set-variable! comment-column column)
+	  (message "comment-column set to " column)))))
 
 (define-command indent-for-comment
   "Indent this line's comment to comment column, or insert an empty comment."
   ()
   (lambda ()
     (if (not (ref-variable comment-locator-hook))
-	(editor-error "No comment syntax defined")
-	(let ((start (line-start (current-point) 0))
-	      (end (line-end (current-point) 0)))
-	  (let ((com ((ref-variable comment-locator-hook) start)))
-	    (set-current-point! (if com (car com) end))
-	    (let ((comment-end (and com (mark-permanent! (cdr com)))))
-	      (let ((indent
-		     ((ref-variable comment-indent-hook) (current-point))))
-		(maybe-change-column indent)
-		(if comment-end
-		    (set-current-point! comment-end)
-		    (begin
-		      (insert-string (ref-variable comment-start))
-		      (insert-comment-end))))))))))
+	(editor-error "No comment syntax defined"))
+    (let ((start (line-start (current-point) 0))
+	  (end (line-end (current-point) 0)))
+      (let ((com ((ref-variable comment-locator-hook) start)))
+	(set-current-point! (if com (car com) end))
+	(let ((comment-end (and com (mark-permanent! (cdr com)))))
+	  (let ((indent
+		 ((ref-variable comment-indent-hook) (current-point))))
+	    (maybe-change-column indent)
+	    (if comment-end
+		(set-current-point! comment-end)
+		(begin
+		  (insert-string (ref-variable comment-start))
+		  (insert-comment-end)))))))))
 
 (define-variable comment-multi-line
   "True means \\[indent-new-comment-line] should continue same comment

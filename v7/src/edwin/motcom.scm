@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/motcom.scm,v 1.39 1989/04/28 22:51:42 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/motcom.scm,v 1.40 1991/05/02 01:13:59 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -83,11 +83,11 @@ down from the beginning.  Just \\[universal-argument] as arg means go to end."
     (push-current-mark! (current-point))
     (cond ((not argument)
 	   (set-current-point! (buffer-start (current-buffer))))
-	  ((command-argument-multiplier-only?)
+	  ((command-argument-multiplier-only? argument)
 	   (set-current-point! (buffer-end (current-buffer))))
-	  ((<= 0 argument 10)
-	   (set-current-point! (region-10ths (buffer-region (current-buffer))
-					     argument))))))
+	  ((and (number? argument) (<= 0 argument 10))
+	   (set-current-point!
+	    (region-10ths (buffer-region (current-buffer)) argument))))))
 
 (define-command end-of-buffer
   "Go to end of buffer (leaving mark behind).
@@ -97,9 +97,10 @@ With arg from 0 to 10, goes up that many tenths of the file from the end."
     (push-current-mark! (current-point))
     (cond ((not argument)
 	   (set-current-point! (buffer-end (current-buffer))))
-	  ((<= 0 argument 10)
-	   (set-current-point! (region-10ths (buffer-region (current-buffer))
-					     (- 10 argument)))))))
+	  ((and (number? argument) (<= 0 argument 10))
+	   (set-current-point!
+	    (region-10ths (buffer-region (current-buffer))
+			  (- 10 argument)))))))
 
 (define (region-10ths region n)
   (mark+ (region-start region)
@@ -162,13 +163,15 @@ Continuation lines are skipped.  If given after the
 last newline in the buffer, makes a new one at the end."
   "P"
   (lambda (argument)
-    (let ((column (current-goal-column)))
+    (let ((argument (command-argument-value argument))
+	  (column (current-goal-column)))
       (cond ((not argument)
 	     (let ((mark (line-start (current-point) 1 false)))
 	       (if mark
 		   (set-current-point! (move-to-column mark column))
-		   (begin (set-current-point! (group-end (current-point)))
-			  (insert-newlines 1)))))
+		   (begin
+		     (set-current-point! (group-end (current-point)))
+		     (insert-newlines 1)))))
 	    ((not (zero? argument))
 	     (set-current-point!
 	      (move-to-column (line-start (current-point) argument 'FAILURE)

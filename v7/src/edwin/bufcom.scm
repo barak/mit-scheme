@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufcom.scm,v 1.86 1990/10/09 16:23:12 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufcom.scm,v 1.87 1991/05/02 01:12:22 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -188,7 +188,7 @@ Just like what happens when the file is first visited."
 	    (string-append "Buffer "
 			   (buffer-name buffer)
 			   " contains changes.  Write them out")))
-      (write-buffer-interactive buffer)))
+      (write-buffer-interactive buffer false)))
 
 (define (new-buffer name)
   (create-buffer

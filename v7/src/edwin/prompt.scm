@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.139 1990/10/06 00:16:12 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.140 1991/05/02 01:14:05 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -121,11 +121,13 @@
 (define-variable enable-recursive-minibuffers
   "If true, allow minibuffers to invoke commands which use
 recursive minibuffers."
-  false)
+  false
+  boolean?)
 
 (define-variable completion-auto-help
-  "*True means automatically provide help for invalid completion input."
-  true)
+  "True means automatically provide help for invalid completion input."
+  true
+  boolean?)
 
 (define (prompt-for-typein prompt-string check-recursion? thunk)
   (if (and check-recursion?
@@ -135,19 +137,19 @@ recursive minibuffers."
   (within-typein-edit
    (lambda ()
      (insert-string prompt-string)
-     (with-narrowed-region! (let ((mark (current-point)))
-			      (make-region (mark-right-inserting mark)
-					   (mark-left-inserting mark)))
-       (lambda ()
-	 (intercept-^G-interrupts
-	  (lambda ()
-	    (cond ((not (eq? (current-window) (typein-window)))
-		   (abort-current-command))
-		  (typein-edit-continuation
-		   (typein-edit-continuation typein-edit-abort-flag))
-		  (else
-		   (error "illegal ^G signaled in typein window"))))
-	  thunk))))))
+     (let ((mark (current-point)))
+       (with-text-clipped (mark-right-inserting mark)
+			  (mark-left-inserting mark)
+	 (lambda ()
+	   (intercept-^G-interrupts
+	    (lambda ()
+	      (cond ((not (eq? (current-window) (typein-window)))
+		     (abort-current-command))
+		    (typein-edit-continuation
+		     (typein-edit-continuation typein-edit-abort-flag))
+		    (else
+		     (error "illegal ^G signaled in typein window"))))
+	    thunk)))))))
 
 (define ((typein-editor-thunk mode))
   (let ((buffer (current-buffer)))

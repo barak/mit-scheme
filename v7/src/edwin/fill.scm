@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fill.scm,v 1.49 1991/04/24 00:40:22 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fill.scm,v 1.50 1991/05/02 01:13:16 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -57,9 +57,11 @@ Automatically becomes local when set in any fashion."
 fill-column's value is separate for each buffer."
   "P"
   (lambda (argument)
-    (let ((column (or argument (current-column))))
+    (let ((column
+	   (or (command-argument-value argument)
+	       (current-column))))
       (set-variable! fill-column column)
-      (message "fill-column set to " (number->string column)))))
+      (message "fill-column set to " column))))
 
 (define-variable-per-buffer fill-prefix
   "String for filling to insert at front of new line, or #f for none.
@@ -336,7 +338,8 @@ Prefix arg means justify as well."
 With argument, turn auto-fill mode on iff argument is positive."
   "P"
   (lambda (argument)
-    (let ((mode (ref-mode-object auto-fill)))
+    (let ((argument (command-argument-value argument))
+	  (mode (ref-mode-object auto-fill)))
       (cond ((and (or (not argument) (positive? argument))
 		  (not (current-minor-mode? mode)))
 	     (enable-current-minor-mode! mode))

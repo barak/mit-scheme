@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.150 1991/04/23 06:32:03 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.151 1991/05/02 01:13:01 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -256,47 +256,6 @@ Argument means don't offer to use auto-save file."
 	    (local-set-variable! scheme-environment (cadr entry))
 	    (local-set-variable! scheme-syntax-table (caddr entry)))))))
 
-(define (save-buffer buffer)
-  (if (buffer-modified? buffer)
-      (let ((exponent (command-argument-multiplier-only?)))
-	(if (buffer-pathname buffer)
-	    (save-buffer-prepare-version buffer)
-	    (set-visited-pathname
-	     buffer
-	     (prompt-for-pathname
-	      (string-append "Write buffer " (buffer-name buffer) " to file")
-	      false false)))
-	(if (memv exponent '(2 3)) (set-buffer-backed-up?! buffer false))
-	(write-buffer-interactive buffer)
-	(if (memv exponent '(1 3)) (set-buffer-backed-up?! buffer false)))
-      (temporary-message "(No changes need to be written)")))
-
-(define (save-some-buffers #!optional no-confirmation?)
-  (let ((buffers
-	 (list-transform-positive (buffer-list)
-	   (lambda (buffer)
-	     (and (buffer-modified? buffer)
-		  (buffer-pathname buffer))))))
-    (if (null? buffers)
-	(temporary-message "(No files need saving)")
-	(for-each (lambda (buffer)
-		    (save-buffer-prepare-version buffer)
-		    (if (or (and (not (default-object? no-confirmation?))
-				 no-confirmation?)
-			    (prompt-for-confirmation?
-			     (string-append
-			      "Save file "
-			      (pathname->string (buffer-pathname buffer)))))
-			(write-buffer-interactive buffer)))
-		  buffers))))
-
-(define (save-buffer-prepare-version buffer)
-  (if pathname-newest
-      (let ((pathname (buffer-pathname buffer)))
-	(if (and pathname (integer? (pathname-version pathname)))
-	    (set-buffer-pathname! buffer
-				  (pathname-new-version pathname 'NEWEST))))))
-
 (define-command save-buffer
   "Save current buffer in visited file if modified.  Versions described below.
 
@@ -320,19 +279,54 @@ We don't want excessive versions piling up, so there are variables
  Defaults are 2 old versions and 2 new.
 If `trim-versions-without-asking' is false, system will query user
  before trimming versions.  Otherwise it does it silently."
-  "P"
+  "p"
   (lambda (argument)
-    (let ((do-it (lambda () (save-buffer (current-buffer)))))
-      (if (eqv? argument 0)
-	  (with-variable-value! (ref-variable-object make-backup-files) false
-	    do-it)
-	  (do-it)))))
+    (save-buffer (current-buffer)
+		 (case argument
+		   ((0) 'NO-BACKUP)
+		   ((4) 'BACKUP-NEXT)
+		   ((16) 'BACKUP-PREVIOUS)
+		   ((64) 'BACKUP-BOTH)
+		   (else false)))))
 
 (define-command save-some-buffers
   "Saves some modified file-visiting buffers.  Asks user about each one.
 With argument, saves all with no questions."
   "P"
-  save-some-buffers)
+  (lambda (no-confirmation?)
+    (save-some-buffers no-confirmation?)))
+
+(define (save-buffer buffer backup-mode)
+  (if (buffer-modified? buffer)
+      (begin
+	(if (not (buffer-pathname buffer))
+	    (set-visited-pathname
+	     buffer
+	     (prompt-for-pathname
+	      (string-append "Write buffer " (buffer-name buffer) " to file")
+	      false false)))
+	(write-buffer-interactive buffer backup-mode))
+      (message "(No changes need to be written)")))
+
+(define (save-some-buffers #!optional no-confirmation?)
+  (let ((buffers
+	 (list-transform-positive (buffer-list)
+	   (lambda (buffer)
+	     (and (buffer-modified? buffer)
+		  (buffer-pathname buffer))))))
+    (if (null? buffers)
+	(temporary-message "(No files need saving)")
+	(for-each (if (and (not (default-object? no-confirmation?))
+			   no-confirmation?)
+		      (lambda (buffer)
+			(write-buffer-interactive buffer false))
+		      (lambda (buffer)
+			(if (prompt-for-confirmation?
+			     (string-append
+			      "Save file "
+			      (pathname->string (buffer-pathname buffer))))
+			    (write-buffer-interactive buffer false))))
+		  buffers))))
 
 (define-command set-visited-file-name
   "Change name of file visited in current buffer.
@@ -375,7 +369,7 @@ Makes buffer visit that file, and marks it not modified."
 	   (not (string-null? filename)))
       (set-visited-pathname buffer (->pathname filename)))
   (buffer-modified! buffer)
-  (save-buffer buffer))
+  (save-buffer buffer false))
 
 (define-command write-region
   "Write current region into specified file."

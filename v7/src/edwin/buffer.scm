@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.144 1991/04/24 00:42:08 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.145 1991/05/02 01:12:28 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -176,7 +176,7 @@ The buffer is guaranteed to be deselected at that time."
 
 (define-integrable (set-buffer-comtabs! buffer comtabs)
   (vector-set! buffer buffer-index:comtabs comtabs))
-
+
 (define (buffer-point buffer)
   (if (current-buffer? buffer)
       (current-point)
@@ -184,7 +184,7 @@ The buffer is guaranteed to be deselected at that time."
 
 (define-integrable (%set-buffer-point! buffer mark)
   (set-group-point! (buffer-group buffer) mark))
-
+
 (define-integrable (minibuffer? buffer)
   (char=? (string-ref (buffer-name buffer) 0) #\Space))
 
@@ -209,6 +209,12 @@ The buffer is guaranteed to be deselected at that time."
 (define-integrable (buffer-end buffer)
   (group-end-mark (buffer-group buffer)))
 
+(define-integrable (buffer-absolute-start buffer)
+  (group-absolute-start (buffer-group buffer)))
+
+(define-integrable (buffer-absolute-end buffer)
+  (group-absolute-end (buffer-group buffer)))
+
 (define (add-buffer-window! buffer window)
   (vector-set! buffer
 	       buffer-index:windows
@@ -221,7 +227,7 @@ The buffer is guaranteed to be deselected at that time."
 
 (define-integrable (set-buffer-display-start! buffer mark)
   (vector-set! buffer buffer-index:display-start mark))
-
+
 (define-integrable (buffer-visible? buffer)
   (not (null? (buffer-windows buffer))))
 

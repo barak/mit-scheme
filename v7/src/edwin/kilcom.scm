@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/kilcom.scm,v 1.61 1991/04/24 00:38:05 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/kilcom.scm,v 1.62 1991/05/02 01:13:23 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -106,7 +106,7 @@
 
 ;;;; Deletion
 
-(define-command backward-delete-char
+(define-command delete-backward-char
   "Delete character before point.
 With argument, kills several characters (saving them).
 Negative args kill characters forward."
@@ -114,7 +114,8 @@ Negative args kill characters forward."
   (lambda (argument)
     (if (not argument)
 	(delete-region (mark-1+ (current-point)))
-	(kill-region (mark- (current-point) argument)))))
+	(kill-region
+	 (mark- (current-point) (command-argument-value argument))))))
 
 (define-command delete-char
   "Delete character after point.
@@ -124,7 +125,8 @@ Negative args kill characters backward."
   (lambda (argument)
     (if (not argument)
 	(delete-region (mark1+ (current-point)))
-	(kill-region (mark+ (current-point) argument)))))
+	(kill-region
+	 (mark+ (current-point) (command-argument-value argument))))))
 
 (define-command kill-line
   "Kill to end of line, or kill an end of line.
@@ -135,7 +137,8 @@ An argument of zero means kill to beginning of line, nothing if at beginning.
 Killed text is pushed onto the kill ring for retrieval."
   "P"
   (lambda (argument)
-    (let ((point (current-point)))
+    (let ((argument (command-argument-value argument))
+	  (point (current-point)))
       (kill-region
        (cond ((not argument)
 	      (let ((end (line-end point 0)))
@@ -180,15 +183,16 @@ appropriate number of spaces and then one space is deleted."
 		(begin
 		  (convert-tab-to-spaces! (mark-1+ tab))
 		  (forth n)))))))
-    (cond ((not argument)
-	   (let ((point (current-point)))
-	     (if (char-match-backward #\Tab point)
-		 (convert-tab-to-spaces! (mark-1+ point))))
-	   (delete-region (mark-1+ (current-point))))
-	  ((positive? argument)
-	   (kill-region (back argument)))
-	  ((negative? argument)
-	   (kill-region (forth (- argument)))))))
+    (let ((argument (command-argument-value argument)))
+      (cond ((not argument)
+	     (let ((point (current-point)))
+	       (if (char-match-backward #\Tab point)
+		   (convert-tab-to-spaces! (mark-1+ point))))
+	     (delete-region (mark-1+ (current-point))))
+	    ((positive? argument)
+	     (kill-region (back argument)))
+	    ((negative? argument)
+	     (kill-region (forth (- argument))))))))
 
 (define (convert-tab-to-spaces! m1)
   (let ((at-point? (mark= m1 (current-point)))
@@ -228,7 +232,7 @@ Puts point after it and the mark before it.
 A positive argument N says un-kill the N'th most recent
 string of killed stuff (1 = most recent).  A null
 argument (just C-U) means leave point before, mark after."
-  "p"
+  "P"
   (lambda (argument)
     (let ((ring (current-kill-ring)))
       (define (pop-loop n)
@@ -236,11 +240,13 @@ argument (just C-U) means leave point before, mark after."
 	    (begin (ring-pop! ring)
 		   (pop-loop (-1+ n)))))
       (if (ring-empty? ring) (editor-error "Nothing to un-kill"))
-      (cond ((command-argument-multiplier-only?)
-	     (unkill (ring-ref ring 0)))
-	    ((positive? argument)
-	     (pop-loop argument)
-	     (unkill-reversed (ring-ref ring 0)))))
+      (if (command-argument-multiplier-only? argument)
+	  (unkill (ring-ref ring 0))
+	  (let ((argument (command-argument-numeric-value argument)))
+	    (if (positive? argument)
+		(begin
+		  (pop-loop argument)
+		  (unkill-reversed (ring-ref ring 0)))))))
     (set-command-message! un-kill-tag)))
 
 (define-command yank-pop
@@ -287,13 +293,13 @@ it later will not affect existing buffers."
 With no \\[universal-argument]'s, pushes point as the mark.
 With one \\[universal-argument], pops the mark into point.
 With two \\[universal-argument]'s, pops the mark and throws it away."
-  ()
-  (lambda ()
-    (let ((n (command-argument-multiplier-exponent)))
-      (cond ((zero? n) (push-current-mark! (current-point)))
-	    ((= n 1) (set-current-point! (pop-current-mark!)))
-	    ((= n 2) (pop-current-mark!))
-	    (else (editor-error))))))
+  "P"
+  (lambda (argument)
+    (case (and (command-argument-multiplier-only? argument)
+	       (command-argument-value argument))
+      ((4) (set-current-point! (pop-current-mark!)))
+      ((16) (pop-current-mark!))
+      (else (push-current-mark! (current-point))))))
 
 (define-command mark-beginning-of-buffer
   "Set mark at beginning of buffer."

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/shell.scm,v 1.2 1991/04/21 00:52:05 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/shell.scm,v 1.3 1991/05/02 01:14:28 cph Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -224,11 +224,13 @@ Otherwise, one argument `-i' is passed to the shell."
   "Turn directory tracking on and off in a shell buffer."
   "P"
   (lambda (argument)
-    (set-variable! shell-dirtrack?
-		   (cond ((not argument) (not (ref-variable shell-dirtrack?)))
-			 ((positive? argument) true)
-			 ((negative? argument) false)
-			 (else (ref-variable shell-dirtrack?))))
+    (set-variable!
+     shell-dirtrack?
+     (let ((argument (command-argument-value argument)))
+       (cond ((not argument) (not (ref-variable shell-dirtrack?)))
+	     ((positive? argument) true)
+	     ((negative? argument) false)
+	     (else (ref-variable shell-dirtrack?)))))
     (message "Directory tracking "
 	     (if (ref-variable shell-dirtrack?) "on" "off")
 	     ".")))

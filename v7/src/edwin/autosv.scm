@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autosv.scm,v 1.25 1991/04/21 00:48:49 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autosv.scm,v 1.26 1991/05/02 01:12:10 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -74,7 +74,8 @@ when the buffer is saved for real."
 With arg, turn auto-saving on if arg is positive, else off."
   "P"
   (lambda (argument)
-    (let ((buffer (current-buffer)))
+    (let ((argument (command-argument-value argument))
+	  (buffer (current-buffer)))
       (if (if argument
 	      (positive? argument)
 	      (not (buffer-auto-save-pathname buffer)))

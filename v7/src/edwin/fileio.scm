@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.97 1991/04/23 06:45:42 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.98 1991/05/02 01:13:09 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -163,24 +163,21 @@
   (association-procedure string-ci=? car))
 
 (define (parse-buffer-mode-header buffer)
-  (with-variable-value! (ref-variable-object case-fold-search) true
-    (lambda ()
-      (let ((start (buffer-start buffer)))
-	(let ((end (line-end start 0)))
-	  (let ((start (re-search-forward "-\\*-[ \t]*" start end)))
-	    (and start
-		 (re-search-forward "[ \t]*-\\*-" start end)
-		 (parse-mode-header start (re-match-start 0)))))))))
-
-(define (parse-mode-header start end)
-  (if (not (char-search-forward #\: start end))
-      (extract-string start end)
-      (let ((mode-mark (re-search-forward "mode:[ \t]*" start end)))
-	(and mode-mark
-	     (extract-string mode-mark
-			     (if (re-search-forward "[ \t]*;" mode-mark end)
-				 (re-match-start 0)
-				 end))))))
+  (let ((start (buffer-start buffer)))
+    (let ((end (line-end start 0)))
+      (let ((start (re-search-forward "-\\*-[ \t]*" start end false)))
+	(and start
+	     (re-search-forward "[ \t]*-\\*-" start end false)
+	     (let ((end (re-match-start 0)))
+	       (if (not (char-search-forward #\: start end false))
+		   (extract-string start end)
+		   (let ((m (re-search-forward "mode:[ \t]*" start end true)))
+		     (and m
+			  (extract-string
+			   m
+			   (if (re-search-forward "[ \t]*;" m end false)
+			       (re-match-start 0)
+			       end)))))))))))
 
 )
 
@@ -198,13 +195,10 @@ at the end of a file."
 (named-lambda (initialize-buffer-local-variables! buffer)
   (let ((end (buffer-end buffer)))
     (let ((start
-	   (with-narrowed-region!
-	    (make-region (mark- end
-				(ref-variable local-variable-search-limit)
-				'LIMIT)
-			 end)
-	    (lambda ()
-	      (backward-one-page end)))))
+	   (with-text-clipped
+	    (mark- end (ref-variable local-variable-search-limit) 'LIMIT)
+	    end
+	    (lambda () (backward-one-page end)))))
       (if start
 	  (if (re-search-forward "Edwin Variables:[ \t]*" start end true)
 	      (parse-local-variables buffer
@@ -323,7 +317,7 @@ See documentation of variable  make-backup-files."
 Otherwise asks confirmation."
   false)
 
-(define (write-buffer-interactive buffer)
+(define (write-buffer-interactive buffer backup-mode)
   (let ((truename (pathname->output-truename (buffer-pathname buffer))))
     (let ((writable? (file-writable? truename)))
       (if (or writable?
@@ -339,9 +333,7 @@ Otherwise asks confirmation."
 			 (prompt-for-yes-or-no?
 			  "Disk file has changed since visited or saved.  Save anyway")))
 		(editor-error "Save not confirmed"))
-	    (let ((modes
-		   (and (not (buffer-backed-up? buffer))
-			(backup-buffer! buffer truename))))
+	    (let ((modes (backup-buffer! buffer truename backup-mode)))
 	      (require-newline buffer)
 	      (if (not (or writable? modes))
 		  (begin
@@ -458,7 +450,7 @@ Otherwise asks confirmation."
 				(fix:+ end gap-length))))))
 
 (define (require-newline buffer)
-  (let ((require-final-newline? (ref-variable require-final-newline)))
+  (let ((require-final-newline? (ref-variable require-final-newline buffer)))
     (if require-final-newline?
 	(without-group-clipped! (buffer-group buffer)
 	  (lambda ()
@@ -473,53 +465,53 @@ Otherwise asks confirmation."
 			       " does not end in newline.  Add one")))))
 		  (insert-newline end))))))))
 
-(define (backup-buffer! buffer truename)
-  (let ((continue-with-false (lambda () false)))
-    (and truename
-	 (ref-variable make-backup-files)
-	 (not (buffer-backed-up? buffer))
-	 (file-exists? truename)
-	 (os/backup-buffer? truename)
-	 (catch-file-errors
-	  continue-with-false
-	  (lambda ()
-	    (with-values (lambda () (os/buffer-backup-pathname truename))
-	      (lambda (backup-pathname targets)
-		(let ((modes
-		       (catch-file-errors
-			(lambda ()
-			  (let ((filename (os/default-backup-filename)))
-			    (temporary-message
-			     "Cannot write backup file; backing up in "
-			     filename)
-			    (copy-file truename
-				       (string->pathname filename))
-			    false))
-			(lambda ()
-			  (if (or (file-symbolic-link? truename)
-				  (ref-variable backup-by-copying)
-				  (os/backup-by-copying? truename))
-			      (begin
-				(copy-file truename backup-pathname)
-				false)
-			      (begin
+(define (backup-buffer! buffer truename backup-mode)
+  (and (ref-variable make-backup-files buffer)
+       (or (memq backup-mode '(BACKUP-PREVIOUS BACKUP-BOTH))
+	   (and (not (eq? backup-mode 'NO-BACKUP))
+		(not (buffer-backed-up? buffer))))
+       truename
+       (file-exists? truename)
+       (os/backup-buffer? truename)
+       (catch-file-errors
+	(lambda () false)
+	(lambda ()
+	  (with-values (lambda () (os/buffer-backup-pathname truename))
+	    (lambda (backup-pathname targets)
+	      (let ((modes
+		     (catch-file-errors
+		      (lambda ()
+			(let ((filename (os/default-backup-filename)))
+			  (temporary-message
+			   "Cannot write backup file; backing up in "
+			   filename)
+			  (copy-file truename (string->pathname filename))
+			  false))
+		      (lambda ()
+			(if (or (file-symbolic-link? truename)
+				(ref-variable backup-by-copying buffer)
+				(os/backup-by-copying? truename))
+			    (begin
+			      (copy-file truename backup-pathname)
+			      false)
+			    (begin
+			      (catch-file-errors
+			       (lambda () unspecific)
+			       (lambda () (delete-file backup-pathname)))
+			      (rename-file truename backup-pathname)
+			      (file-modes backup-pathname)))))))
+		(set-buffer-backed-up?!
+		 buffer
+		 (not (memv backup-mode '(BACKUP-NEXT BACKUP-BOTH))))
+		(if (and (not (null? targets))
+			 (or (ref-variable trim-versions-without-asking buffer)
+			     (prompt-for-confirmation?
+			      (string-append
+			       "Delete excess backup versions of "
+			       (pathname->string (buffer-pathname buffer))))))
+		    (for-each (lambda (target)
 				(catch-file-errors
-				 (lambda () false)
-				 (lambda ()
-				   (delete-file backup-pathname)))
-				(rename-file truename backup-pathname)
-				(file-modes backup-pathname)))))))
-		  (set-buffer-backed-up?! buffer true)
-		  (if (and (not (null? targets))
-			   (or (ref-variable trim-versions-without-asking)
-			       (prompt-for-confirmation?
-				(string-append
-				 "Delete excess backup versions of "
-				 (pathname->string
-				  (buffer-pathname buffer))))))
-		      (for-each (lambda (target)
-				  (catch-file-errors continue-with-false
-						     (lambda ()
-						       (delete-file target))))
-				targets))
-		  modes))))))))
+				 (lambda () unspecific)
+				 (lambda () (delete-file target))))
+			      targets))
+		modes)))))))

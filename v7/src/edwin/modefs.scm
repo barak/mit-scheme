@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.124 1991/04/21 00:51:28 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.125 1991/05/02 01:13:52 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -84,7 +84,7 @@ and the cdrs of which are major modes."
 (define-key 'fundamental char-set:numeric 'auto-digit-argument)
 (define-key 'fundamental #\- 'auto-negative-argument)
 
-(define-key 'fundamental #\rubout 'backward-delete-char)
+(define-key 'fundamental #\rubout 'delete-backward-char)
 
 (define-key 'fundamental #\c-% 'replace-string)
 (define-key 'fundamental #\c-- 'negative-argument)

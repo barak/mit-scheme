@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autold.scm,v 1.49 1991/02/15 18:12:16 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autold.scm,v 1.50 1991/05/02 01:12:03 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -190,13 +190,12 @@ Second arg FORCE? controls what happens if the library is already loaded:
 Second arg is prefix arg when called interactively."
   (lambda ()
     (list
-     (car
-      (prompt-for-alist-value "Load library"
-			      (map (lambda (library)
-				     (cons (symbol->string (car library))
-					   library))
-				   known-libraries)))
-     (command-argument-standard-value)))
+     (car (prompt-for-alist-value "Load library"
+				  (map (lambda (library)
+					 (cons (symbol->string (car library))
+					       library))
+				       known-libraries)))
+     (command-argument)))
   (lambda (name force?)
     (let ((do-it
 	   (let ((library 

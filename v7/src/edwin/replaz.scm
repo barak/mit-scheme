@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/replaz.scm,v 1.68 1991/04/29 11:23:46 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/replaz.scm,v 1.69 1991/05/02 01:14:17 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -55,7 +55,7 @@
   (let ((source (prompt-for-string name false)))
     (list source
 	  (prompt-for-string (string-append name " " source " with") false)
-	  (command-argument-standard-value))))
+	  (command-argument))))
 
  (define-command replace-string
   "Replace occurrences of FROM-STRING with TO-STRING.

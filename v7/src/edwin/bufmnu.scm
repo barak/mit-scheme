@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufmnu.scm,v 1.113 1991/04/21 00:49:05 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufmnu.scm,v 1.114 1991/05/02 01:12:36 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -297,8 +297,8 @@ You can mark buffers with the \\[buffer-menu-mark] command."
   (for-each buffer-menu-kill! (find-buffers-marked 0 #\D)))
 
 (define (buffer-menu-save! lstart)
-  (save-buffer (buffer-menu-buffer lstart))
-  (set-buffer-menu-mark! lstart 1 #\Space))
+  (save-buffer (buffer-menu-buffer lstart) false)
+  (set-buffer-menu-mark! lstart 1 #\space))
 
 (define (buffer-menu-kill! lstart)
   (define (erase-line)

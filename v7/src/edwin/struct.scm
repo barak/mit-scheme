@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/struct.scm,v 1.77 1991/04/21 00:52:14 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/struct.scm,v 1.78 1991/05/02 01:14:34 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -205,11 +205,29 @@
 (define-integrable (set-group-point! group point)
   (vector-set! group group-index:point (mark-left-inserting-copy point)))
 
-(define (with-narrowed-region! region thunk)
-  (with-group-text-clipped! (region-group region)
-			    (region-start-index region)
-			    (region-end-index region)
+(define (group-absolute-start group)
+  (make-temporary-mark group 0 false))
+
+(define (group-absolute-end group)
+  (make-temporary-mark group (group-length group) true))
+
+;;;; Text Clipping
+
+;;; Changes the group's start and end points, but doesn't affect the
+;;; display.
+
+(define (with-text-clipped start end thunk)
+  (if (not (mark<= start end))
+      (error "Marks incorrectly related:" start end))
+  (with-group-text-clipped! (mark-group start)
+			    (mark-index start)
+			    (mark-index end)
 			    thunk))
+
+(define (text-clip start end)
+  (if (not (mark<= start end))
+      (error "Marks incorrectly related:" start end))
+  (group-text-clip (mark-group start) (mark-index start) (mark-index end)))
 
 (define (with-group-text-clipped! group start end thunk)
   (let ((old-text-start)
@@ -227,6 +245,12 @@
 		    (set! new-text-end (group-end-mark group))
 		    (vector-set! group group-index:start-mark old-text-start)
 		    (vector-set! group group-index:end-mark old-text-end)))))
+
+(define (group-text-clip group start end)
+  (let ((start (make-permanent-mark group start false))
+	(end (make-permanent-mark group end true)))
+    (vector-set! group group-index:start-mark start)
+    (vector-set! group group-index:end-mark end)))
 
 (define (invoke-group-daemons! daemons group start end)
   (let loop ((daemons daemons))
@@ -425,6 +449,12 @@
 
 (define (group-display-end? mark)
   (group-display-end-index? (mark-group mark) (mark-index mark)))
+
+(define-integrable (mark-absolute-start mark)
+  (group-absolute-start (mark-group mark)))
+
+(define-integrable (mark-absolute-end mark)
+  (group-absolute-end (mark-group mark)))
 
 ;;; The next few procedures are simple algorithms that are haired up
 ;;; the wazoo for maximum speed.
