@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infnew.scm,v 1.3 1995/01/10 02:46:27 adams Exp $
+$Id: infnew.scm,v 1.4 1995/02/28 01:17:31 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -245,30 +245,30 @@ MIT in each case. |#
 	   (else (error "Illegal variable value" rvalue))))))
 
 (define (info-generation-phase-2 expression procedures continuations)
-  (let ((debug-info
-	 (lambda (selector object)
-	   (or (selector object)
-	       (begin
-		 ;;(warn "Missing debugging info" object)
-		 false)))))
-    (values
-     (and expression (debug-info rtl-expr/debugging-info expression))
-     (list-transform-negative
-	 (map (lambda (procedure)
-		(let ((info
-		       (debug-info rtl-procedure/debugging-info procedure)))
-		  (and info
-		       (set-dbg-procedure/external-label!
-			info
-			(rtl-procedure/%external-label procedure))
-		       info)))
-	      procedures)
-       false?)
-     (list-transform-negative
-	 (map (lambda (continuation)
-		(rtl-continuation/debugging-info continuation))
-	      continuations)
-       false?))))
+  (define (debug-info selector object)
+    (or (selector object)
+	(begin
+	  (if compiler:guru?
+	      (warn "Missing debugging info" object))
+	  false)))
+  (values
+   (and expression (debug-info rtl-expr/debugging-info expression))
+   (list-transform-negative
+       (map (lambda (procedure)
+	      (let ((info
+		     (debug-info rtl-procedure/debugging-info procedure)))
+		(and info
+		     (set-dbg-procedure/external-label!
+		      info
+		      (rtl-procedure/%external-label procedure))
+		     info)))
+	    procedures)
+     false?)
+   (list-transform-negative
+       (map (lambda (continuation)
+	      (rtl-continuation/debugging-info continuation))
+	    continuations)
+     false?)))
 
 (define (info-generation-phase-3 expression procedures continuations
 				 label-bindings external-labels)
