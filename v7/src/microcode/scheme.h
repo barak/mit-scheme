@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1986 Massachusetts Institute of Technology
+Copyright (c) 1987 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* File: scheme.h
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/scheme.h,v 9.21 1987/01/22 14:31:48 jinx Exp $
  *
  * General declarations for the SCode interpreter.  This
  * file is INCLUDED by others and contains declarations only.

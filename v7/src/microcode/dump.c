@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1986 Massachusetts Institute of Technology
+Copyright (c) 1987 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,8 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* File: dump.c
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dump.c,v 9.21 1987/01/22 14:23:24 jinx Exp $
+ *
  * This file contains common code for dumping internal format binary files.
  */
 

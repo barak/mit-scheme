@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1986 Massachusetts Institute of Technology
+Copyright (c) 1987 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,9 +30,9 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* File: translate.h
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbmap.h,v 9.21 1987/01/22 14:33:52 jinx Rel $
  *
- * This header file contains macros and declarations for Bintopsb.c
+ * This file contains macros and declarations for Bintopsb.c
  * and Psbtobin.c
  *
  */
