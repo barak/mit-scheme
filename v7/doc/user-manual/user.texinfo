@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.81 2001/02/23 17:47:07 cph Exp $
+@comment $Id: user.texinfo,v 1.82 2001/02/23 18:01:25 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -22,7 +22,7 @@
 @ifinfo
 This file documents the use of MIT Scheme.
 
-Copyright @copyright{} 1991-2000 Massachusetts Institute of Technology
+Copyright @copyright{} 1991-2001 Massachusetts Institute of Technology
 
 Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version 1.1 or
@@ -34,9 +34,9 @@ Free Documentation License".
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.80
-@subtitle for Scheme Release 7.5.12
-@subtitle 23 December 2000
+@subtitle Edition 1.82
+@subtitle for Scheme Release 7.5.13
+@subtitle 23 February 2001
 @author by Stephen Adams
 @author Chris Hanson
 @author and the MIT Scheme Team
@@ -44,7 +44,7 @@ Free Documentation License".
 @page
 
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1991-2000 Massachusetts Institute of Technology
+Copyright @copyright{} 1991-2001 Massachusetts Institute of Technology
 
 Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version 1.1 or
@@ -169,7 +169,7 @@ To install the software in @file{/usr/local}, do the following
 cd /usr/local
 rm -f bin/scheme bin/bchscheme
 rm -rf lib/mit-scheme
-gzip -cd scheme-7.5.11-ix86-gnu-linux.tar.gz | tar xvf -
+gzip -cd scheme-7.5.13-ix86-gnu-linux.tar.gz | tar xvf -
 @end group
 @end example
 
@@ -187,7 +187,7 @@ First unpack the distribution:
 @example
 mkdir temp
 cd temp
-gzip -cd scheme-7.5.11-ix86-gnu-linux.tar.gz | tar xvf -
+gzip -cd scheme-7.5.13-ix86-gnu-linux.tar.gz | tar xvf -
 @end example
 
 @item
@@ -527,10 +527,10 @@ itself, clear the screen, and print something like this:
 
 @example
 @group
-Scheme saved on Tuesday December 19, 2000 at 3:44:53 PM
-  Release 7.5.12
-  Microcode 14.0
-  Runtime 14.184
+Scheme saved on Monday February 12, 2001 at 11:50:04 PM
+  Release 7.5.13
+  Microcode 14.1
+  Runtime 14.185
 @end group
 @end example
 
@@ -4711,6 +4711,17 @@ the Algorithmic Language Scheme}.
 These are the changes since release 7.5.0:
 
 @itemize @bullet
+@item
+Release 7.5.13 finishes the source-tree reorganization; this software is
+now packaged for Debian.  A fatal bug in the bchscheme garbage collector
+has been fixed.  X graphics procedures now accept any coordinate
+argument that satisfies the REAL? predicate; previously it did not
+accept exact rational numbers of complex numbers with inexact imaginary
+zero.  Quite a few bugs have been fixed in @acronym{IMAIL}, including
+some changes needed to interact properly with UW @acronym{IMAP}.
+@acronym{IMAIL}'s user interface has been tweaked a bit.  Edwin now has
+a debian-changelog mode.
+
 @item
 Release 7.5.12 is a complete reorganization of the source tree to use
 modern configuration techniques based on autoconf.  The purpose of this
