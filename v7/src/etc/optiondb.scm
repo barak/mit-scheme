@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: optiondb.scm,v 1.6 2001/04/30 02:44:35 cph Exp $
+$Id: optiondb.scm,v 1.7 2001/04/30 02:45:59 cph Exp $
 
 Copyright (c) 2000-2001 Massachusetts Institute of Technology
 
@@ -33,8 +33,7 @@ USA.
 		     (list d)
 		     '()))
 	     "/usr/local/scheme/linux"
-	     "/scheme/v7/linux")
-	   (cons here)))
+	     "/scheme/v7/linux")))
 	(files
 	 (if (default-object? filename)
 	     (list "make" "load")
