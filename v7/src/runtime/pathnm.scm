@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pathnm.scm,v 14.32 1999/01/02 06:11:34 cph Exp $
+$Id: pathnm.scm,v 14.33 2000/07/05 18:27:24 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -457,6 +457,9 @@ these rules:
 
 (define (host/type host)
   (vector-ref host-types (host/type-index host)))
+
+(define (host/type-name host)
+  (host-type/name (host/type host)))
 
 (define (host=? x y)
   (and (= (host/type-index x) (host/type-index y))
