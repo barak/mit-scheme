@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.12 1988/03/21 21:15:35 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.13 1988/08/15 20:44:15 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -35,7 +35,7 @@ MIT in each case. */
 /* Compiled Code Utilities */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 
 extern Pointer
   *compiled_entry_to_block_address();
@@ -50,8 +50,7 @@ extern void
 #define COMPILED_CODE_ADDRESS_P(object)			\
    ((OBJECT_TYPE (object)) == TC_COMPILED_ENTRY)
 
-DEFINE_PRIMITIVE ("COMPILED-CODE-ADDRESS->BLOCK",
-		  Prim_comp_code_address_block, 1)
+DEFINE_PRIMITIVE ("COMPILED-CODE-ADDRESS->BLOCK", Prim_comp_code_address_block, 1, 1, 0)
 {
   Pointer *address;
   Primitive_1_Arg ();
@@ -61,8 +60,7 @@ DEFINE_PRIMITIVE ("COMPILED-CODE-ADDRESS->BLOCK",
   PRIMITIVE_RETURN (Make_Pointer (TC_COMPILED_CODE_BLOCK, address));
 }
 
-DEFINE_PRIMITIVE ("COMPILED-CODE-ADDRESS->OFFSET",
-		  Prim_comp_code_address_offset, 1)
+DEFINE_PRIMITIVE ("COMPILED-CODE-ADDRESS->OFFSET", Prim_comp_code_address_offset, 1, 1, 0)
 {
   long offset;
   Primitive_1_Arg ();
@@ -82,14 +80,14 @@ DEFINE_PRIMITIVE ("COMPILED-CODE-ADDRESS->OFFSET",
 
 #define STACK_TOP_TO_DATUM() (((long) Stack_Top) & ADDRESS_MASK)
 
-DEFINE_PRIMITIVE("STACK-TOP-ADDRESS", Prim_Stack_Top_Address, 0)
+DEFINE_PRIMITIVE ("STACK-TOP-ADDRESS", Prim_stack_top_address, 0, 0, 0)
 {
   Primitive_0_Args();
 
   PRIMITIVE_RETURN (MAKE_SIGNED_FIXNUM(STACK_TOP_TO_DATUM()));
 }
 
-DEFINE_PRIMITIVE("COMPILED-ENTRY-KIND", Prim_Compiled_Entry_Type, 1)
+DEFINE_PRIMITIVE ("COMPILED-ENTRY-KIND", Prim_compiled_entry_type, 1, 1, 0)
 {
   fast Pointer *temp;
   Pointer result;
@@ -107,7 +105,7 @@ DEFINE_PRIMITIVE("COMPILED-ENTRY-KIND", Prim_Compiled_Entry_Type, 1)
   PRIMITIVE_RETURN (Make_Pointer(TC_HUNK3, temp));
 }
 
-DEFINE_PRIMITIVE("COERCE-TO-COMPILED-PROCEDURE", Prim_Coerce_To_Closure, 2)
+DEFINE_PRIMITIVE ("COERCE-TO-COMPILED-PROCEDURE", Prim_coerce_to_closure, 2, 2, 0)
 {
   Pointer temp;
   long value, result;

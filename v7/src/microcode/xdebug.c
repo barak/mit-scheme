@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/xdebug.c,v 9.23 1987/11/17 08:21:49 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/xdebug.c,v 9.24 1988/08/15 20:58:44 cph Exp $
  *
  * This file contains primitives to debug the memory management in the
  * Scheme system.
@@ -38,7 +38,7 @@ MIT in each case. */
  */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 
 /* New debugging utilities */
 
@@ -226,59 +226,59 @@ Print_Memory(Where, How_Many)
 
 /* Primitives to give scheme a handle on utilities from DEBUG.C */
 
-Define_Primitive(Prim_Show_Pure, 0, "SHOW-PURE")
+DEFINE_PRIMITIVE ("SHOW-PURE", Prim_show_pure, 0, 0, 0)
 {
   Primitive_0_Args();
 
   printf("\n*** Constant & Pure Space: ***\n");
   Show_Pure();
-  return TRUTH;
+  return SHARP_T;
 }
 
-Define_Primitive(Prim_Show_Env, 1, "SHOW-ENV")
+DEFINE_PRIMITIVE ("SHOW-ENV", Prim_show_env, 1, 1, 0)
 {
   Primitive_1_Arg();
 
   printf("\n*** Environment = 0x%x ***\n", Arg1);
   Show_Env(Arg1);
-  return TRUTH;
+  return SHARP_T;
 }
 
-Define_Primitive(Prim_Stack_Trace, 0, "STACK-TRACE")
+DEFINE_PRIMITIVE ("STACK-TRACE", Prim_stack_trace, 0, 0, 0)
 {
   Primitive_0_Args();
 
   printf("\n*** Back Trace: ***\n");
   Back_Trace(stdout);
-  return TRUTH;
+  return SHARP_T;
 }
 
-Define_Primitive(Prim_Find_Symbol, 1, "FIND-SYMBOL")
+DEFINE_PRIMITIVE ("FIND-SYMBOL", Prim_find_symbol, 1, 1, 0)
 {
   Primitive_1_Arg();
 
   Find_Symbol();
-  return TRUTH;
+  return SHARP_T;
 }
 
 /* Primitives to give scheme a handle on utilities on this file. */
 
-Define_Primitive(Prim_Debug_Flags, 0, "DEBUG-FLAGS")
+DEFINE_PRIMITIVE ("DEBUG-FLAGS", Prim_debug_flags, 0, 0, 0)
 {
   Primitive_0_Args();
 
   Handle_Debug_Flags();
-  return TRUTH;
+  return SHARP_T;
 }
 
-Define_Primitive(Prim_Find_Who_Points, 3, "FIND-WHO-POINTS")
+DEFINE_PRIMITIVE ("FIND-WHO-POINTS", Prim_find_who_points, 3, 3, 0)
 {
   Primitive_3_Args();
 
   return Find_Who_Points(Arg1, Get_Integer(Arg2), Get_Integer(Arg3));
 }
 
-Define_Primitive(Prim_Print_Memory, 2, "PRINT-MEMORY")
+DEFINE_PRIMITIVE ("PRINT-MEMORY", Prim_print_memory, 2, 2, 0)
 {
   Pointer *Base;
   Primitive_2_Args();
@@ -292,5 +292,5 @@ Define_Primitive(Prim_Print_Memory, 2, "PRINT-MEMORY")
     Base = Get_Pointer(Arg1);
   }
   Print_Memory(Base, Get_Integer(Arg2));
-  return TRUTH;
+  return SHARP_T;
 }

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,12 +30,12 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/char.c,v 9.25 1988/04/27 18:26:12 mhwu Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/char.c,v 9.26 1988/08/15 20:43:16 cph Rel $ */
 
 /* Character primitives. */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 #include "char.h"
 #include <ctype.h>
 
@@ -69,7 +69,7 @@ arg_ascii_integer (n)
   return (ascii);
 }
 
-DEFINE_PRIMITIVE ("MAKE-CHAR", Prim_Make_Char, 2)
+DEFINE_PRIMITIVE ("MAKE-CHAR", Prim_make_char, 2, 2, 0)
 {
   long bucky_bits, code;
   PRIMITIVE_HEADER (2);
@@ -79,7 +79,7 @@ DEFINE_PRIMITIVE ("MAKE-CHAR", Prim_Make_Char, 2)
   PRIMITIVE_RETURN (make_char (bucky_bits, code));
 }
 
-DEFINE_PRIMITIVE ("CHAR-BITS", Prim_Char_Bits, 1)
+DEFINE_PRIMITIVE ("CHAR-BITS", Prim_char_bits, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
 
@@ -87,7 +87,7 @@ DEFINE_PRIMITIVE ("CHAR-BITS", Prim_Char_Bits, 1)
   PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM (char_bits (ARG_REF (1))));
 }
 
-DEFINE_PRIMITIVE ("CHAR-CODE", Prim_Char_Code, 1)
+DEFINE_PRIMITIVE ("CHAR-CODE", Prim_char_code, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
 
@@ -95,7 +95,7 @@ DEFINE_PRIMITIVE ("CHAR-CODE", Prim_Char_Code, 1)
   PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM (char_code (ARG_REF (1))));
 }
 
-DEFINE_PRIMITIVE ("CHAR->INTEGER", Prim_Char_To_Integer, 1)
+DEFINE_PRIMITIVE ("CHAR->INTEGER", Prim_char_to_integer, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
 
@@ -103,7 +103,7 @@ DEFINE_PRIMITIVE ("CHAR->INTEGER", Prim_Char_To_Integer, 1)
   PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM ((ARG_REF (1)) & MASK_EXTNDD_CHAR));
 }
 
-DEFINE_PRIMITIVE ("INTEGER->CHAR", Prim_Integer_To_Char, 1)
+DEFINE_PRIMITIVE ("INTEGER->CHAR", Prim_integer_to_char, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
 
@@ -128,7 +128,7 @@ char_upcase (c)
   return ((islower (c)) ? ((c - 'a') + 'A') : c);
 }
 
-DEFINE_PRIMITIVE ("CHAR-DOWNCASE", Prim_Char_Downcase, 1)
+DEFINE_PRIMITIVE ("CHAR-DOWNCASE", Prim_char_downcase, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
 
@@ -138,7 +138,7 @@ DEFINE_PRIMITIVE ("CHAR-DOWNCASE", Prim_Char_Downcase, 1)
 		(char_downcase (char_code (ARG_REF (1))))));
 }
 
-DEFINE_PRIMITIVE ("CHAR-UPCASE", Prim_Char_Upcase, 1)
+DEFINE_PRIMITIVE ("CHAR-UPCASE", Prim_char_upcase, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
 
@@ -148,21 +148,21 @@ DEFINE_PRIMITIVE ("CHAR-UPCASE", Prim_Char_Upcase, 1)
 		(char_upcase (char_code (ARG_REF (1))))));
 }
 
-DEFINE_PRIMITIVE ("ASCII->CHAR", Prim_Ascii_To_Char, 1)
+DEFINE_PRIMITIVE ("ASCII->CHAR", Prim_ascii_to_char, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
 
   PRIMITIVE_RETURN (c_char_to_scheme_char (arg_ascii_integer (1)));
 }
 
-DEFINE_PRIMITIVE ("CHAR->ASCII", Prim_Char_To_Ascii, 1)
+DEFINE_PRIMITIVE ("CHAR->ASCII", Prim_char_to_ascii, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
 
   PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM (arg_ascii_char (1)));
 }
 
-DEFINE_PRIMITIVE ("CHAR-ASCII?", Prim_Char_Ascii_P, 1)
+DEFINE_PRIMITIVE ("CHAR-ASCII?", Prim_char_ascii_p, 1, 1, 0)
 {
   fast Pointer character;
   PRIMITIVE_HEADER (1);

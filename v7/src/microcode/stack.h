@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/stack.h,v 9.25 1987/11/20 08:16:13 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/stack.h,v 9.26 1988/08/15 20:55:15 cph Rel $ */
 
 /* This file contains macros for manipulating stacks and stacklets. */
 
@@ -78,7 +78,7 @@ MIT in each case. */
 
 #define Internal_Terminate_Old_Stacklet()				\
 {									\
-  Current_Stacklet[STACKLET_REUSE_FLAG] = TRUTH;			\
+  Current_Stacklet[STACKLET_REUSE_FLAG] = SHARP_T;			\
   Current_Stacklet[STACKLET_UNUSED_LENGTH] =				\
     Make_Non_Pointer(TC_MANIFEST_NM_VECTOR,				\
 		     (Stack_Pointer - Stack_Guard));			\

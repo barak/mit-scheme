@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/futures.h,v 9.23 1987/12/04 22:16:33 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/futures.h,v 9.24 1988/08/15 20:47:48 cph Exp $
  *
  * This file contains macros useful for dealing with futures
  */
@@ -67,12 +67,12 @@ MIT in each case. */
 	Vector_Ref((P), FUTURE_VALUE)
 
 #define Future_Spliceable(P)					\
-	((Vector_Ref((P), FUTURE_IS_DETERMINED) == TRUTH) &&	\
+	((Vector_Ref((P), FUTURE_IS_DETERMINED) == SHARP_T) &&	\
 	 (Vector_Ref((P), FUTURE_LOCK) == NIL))
 
 #define Future_Is_Keep_Slot(P)  				\
 ((Vector_Ref((P), FUTURE_IS_DETERMINED) != NIL)	&&		\
- (Vector_Ref((P), FUTURE_IS_DETERMINED) != TRUTH))
+ (Vector_Ref((P), FUTURE_IS_DETERMINED) != SHARP_T))
 
 #ifdef COMPILE_FUTURES
 

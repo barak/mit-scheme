@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.34 1988/02/20 19:51:38 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.35 1988/08/15 20:51:50 cph Exp $ */
 
 /* Memory management top level.
 
@@ -45,7 +45,7 @@ MIT in each case. */
  */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 #include "gccode.h"
 
 /* Imports */
@@ -377,7 +377,7 @@ void GC()
    have changed.
 */
 
-DEFINE_PRIMITIVE("GARBAGE-COLLECT", Prim_Garbage_Collect, 1)
+DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
 {
   extern unsigned long gc_counter;
   Pointer GC_Daemon_Proc;

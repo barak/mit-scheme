@@ -30,14 +30,14 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.31 1988/05/10 15:15:10 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.32 1988/08/15 20:49:05 cph Exp $
  *
  * This file contains various hooks and handles which connect the
  * primitives with the main interpreter.
  */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 #include "winder.h"
 #include "history.h"
 
@@ -46,7 +46,7 @@ MIT in each case. */
    LIST-OF-ARGUMENTS. FN must be a primitive procedure, compound
    procedure, or control point. */
 
-DEFINE_PRIMITIVE ("APPLY", Prim_Apply, 2)
+DEFINE_PRIMITIVE ("APPLY", Prim_apply, 2, 2, 0)
 {
   fast Pointer scan_list, *scan_stack;
   fast long number_of_args, i;
@@ -194,7 +194,7 @@ DEFINE_PRIMITIVE ("APPLY", Prim_Apply, 2)
   Free[STACKLET_LENGTH] =						\
     Make_Non_Pointer(TC_MANIFEST_VECTOR,				\
 		     (Stack_Cells + (STACKLET_HEADER_SIZE - 1)));	\
-  Free[STACKLET_REUSE_FLAG] = TRUTH;					\
+  Free[STACKLET_REUSE_FLAG] = SHARP_T;					\
   Free[STACKLET_UNUSED_LENGTH] =					\
     Make_Non_Pointer(TC_MANIFEST_NM_VECTOR, 0);				\
   Free += STACKLET_HEADER_SIZE;						\
@@ -233,7 +233,7 @@ DEFINE_PRIMITIVE ("APPLY", Prim_Apply, 2)
    and clears the appropriate reuse flags for copying.
 */
 
-DEFINE_PRIMITIVE ("CALL-WITH-CURRENT-CONTINUATION", Prim_Catch, 1)
+DEFINE_PRIMITIVE ("CALL-WITH-CURRENT-CONTINUATION", Prim_catch, 1, 1, 0)
 {
   Pointer Control_Point;
   Primitive_1_Arg ();
@@ -244,7 +244,7 @@ DEFINE_PRIMITIVE ("CALL-WITH-CURRENT-CONTINUATION", Prim_Catch, 1)
   /*NOTREACHED*/
 }
 
-DEFINE_PRIMITIVE ("NON-REENTRANT-CALL-WITH-CURRENT-CONTINUATION", Prim_Non_Reentrant_Catch, 1)
+DEFINE_PRIMITIVE ("NON-REENTRANT-CALL-WITH-CURRENT-CONTINUATION", Prim_non_reentrant_catch, 1, 1, 0)
 {
   Pointer Control_Point;
   Primitive_1_Arg ();
@@ -270,7 +270,7 @@ DEFINE_PRIMITIVE ("NON-REENTRANT-CALL-WITH-CURRENT-CONTINUATION", Prim_Non_Reent
    and previous value of interrupts.  Returns the previous value.
    See MASK_INTERRUPT_ENABLES for more information on interrupts.
 */
-DEFINE_PRIMITIVE ("ENABLE-INTERRUPTS!", Prim_Enable_Interrupts, 1)
+DEFINE_PRIMITIVE ("ENABLE-INTERRUPTS!", Prim_enable_interrupts, 1, 1, 0)
 {
   long previous;
   Primitive_1_Arg ();
@@ -285,7 +285,7 @@ DEFINE_PRIMITIVE ("ENABLE-INTERRUPTS!", Prim_Enable_Interrupts, 1)
    Passes its arguments along to the appropriate Scheme error handler
    after turning off history, etc.
 */
-DEFINE_PRIMITIVE ("ERROR-PROCEDURE", Prim_Error_Procedure, 3)
+DEFINE_PRIMITIVE ("ERROR-PROCEDURE", Prim_error_procedure, 3, 3, 0)
 {
   Primitive_3_Args();
 
@@ -315,7 +315,7 @@ DEFINE_PRIMITIVE ("ERROR-PROCEDURE", Prim_Error_Procedure, 3)
    system.  See the file UTABCSCM.SCM in the runtime system for the
    names of the slots in the vector.
 */
-DEFINE_PRIMITIVE ("GET-FIXED-OBJECTS-VECTOR", Prim_Get_Fixed_Objects_Vector, 0)
+DEFINE_PRIMITIVE ("GET-FIXED-OBJECTS-VECTOR", Prim_get_fixed_objects_vector, 0, 0, 0)
 {
   Primitive_0_Args ();
 
@@ -333,7 +333,7 @@ DEFINE_PRIMITIVE ("GET-FIXED-OBJECTS-VECTOR", Prim_Get_Fixed_Objects_Vector, 0)
 
 #define DELAYED_P(object) ((OBJECT_TYPE (object)) == TC_DELAYED)
 
-DEFINE_PRIMITIVE ("FORCE", Prim_Force, 1)
+DEFINE_PRIMITIVE ("FORCE", Prim_force, 1, 1, 0)
 {
   fast Pointer thunk;
   PRIMITIVE_HEADER (1);
@@ -342,7 +342,7 @@ DEFINE_PRIMITIVE ("FORCE", Prim_Force, 1)
   thunk = (ARG_REF (1));
   switch (Vector_Ref (thunk, THUNK_SNAPPED))
     {
-    case TRUTH:
+    case SHARP_T:
       PRIMITIVE_RETURN (Vector_Ref (thunk, THUNK_VALUE));
 
     case FIXNUM_ZERO:
@@ -384,7 +384,7 @@ DEFINE_PRIMITIVE ("FORCE", Prim_Force, 1)
    variable Current_State_Point is used to find the current state
    point and no state space is side-effected as the code runs.
 */
-DEFINE_PRIMITIVE ("EXECUTE-AT-NEW-STATE-POINT", Prim_Execute_At_New_Point, 4)
+DEFINE_PRIMITIVE ("EXECUTE-AT-NEW-STATE-POINT", Prim_execute_at_new_point, 4, 4, 0)
 {
   Pointer New_Point, Old_Point;
   Primitive_4_Args();
@@ -440,7 +440,7 @@ DEFINE_PRIMITIVE ("EXECUTE-AT-NEW-STATE-POINT", Prim_Execute_At_New_Point, 4)
    Otherwise a (actually, THE) immutable space is created and
    the microcode will track motions in this space.
 */
-DEFINE_PRIMITIVE ("MAKE-STATE-SPACE", Prim_Make_State_Space, 1)
+DEFINE_PRIMITIVE ("MAKE-STATE-SPACE", Prim_make_state_space, 1, 1, 0)
 {
   Pointer New_Point;
   Primitive_1_Arg();
@@ -475,7 +475,7 @@ DEFINE_PRIMITIVE ("MAKE-STATE-SPACE", Prim_Make_State_Space, 1)
   }
 }
 
-DEFINE_PRIMITIVE ("CURRENT-DYNAMIC-STATE", Prim_Current_Dynamic_State, 1)
+DEFINE_PRIMITIVE ("CURRENT-DYNAMIC-STATE", Prim_current_dynamic_state, 1, 1, 0)
 {
   Primitive_1_Arg();
 
@@ -493,7 +493,7 @@ DEFINE_PRIMITIVE ("CURRENT-DYNAMIC-STATE", Prim_Current_Dynamic_State, 1)
   PRIMITIVE_RETURN( Vector_Ref(Arg1, STATE_SPACE_NEAREST_POINT));
 }
 
-DEFINE_PRIMITIVE ("SET-CURRENT-DYNAMIC-STATE!", Prim_Set_Dynamic_State, 1)
+DEFINE_PRIMITIVE ("SET-CURRENT-DYNAMIC-STATE!", Prim_set_dynamic_state, 1, 1, 0)
 {
   Pointer State_Space, Result;
   Primitive_1_Arg();
@@ -522,7 +522,7 @@ DEFINE_PRIMITIVE ("SET-CURRENT-DYNAMIC-STATE!", Prim_Set_Dynamic_State, 1)
    ENVIRONMENT. This is like Eval, except that it expects its input
    to be syntaxed into SCode rather than just a list.
 */
-DEFINE_PRIMITIVE ("SCODE-EVAL", Prim_Scode_Eval, 2)
+DEFINE_PRIMITIVE ("SCODE-EVAL", Prim_scode_eval, 2, 2, 0)
 {
   Primitive_2_Args();
 
@@ -538,7 +538,7 @@ DEFINE_PRIMITIVE ("SCODE-EVAL", Prim_Scode_Eval, 2)
 /* (GET-INTERRUPT-ENABLES)
    Returns the current interrupt mask.  */
 
-DEFINE_PRIMITIVE ("GET-INTERRUPT-ENABLES", Prim_get_interrupt_enables, 0)
+DEFINE_PRIMITIVE ("GET-INTERRUPT-ENABLES", Prim_get_interrupt_enables, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
 
@@ -550,7 +550,7 @@ DEFINE_PRIMITIVE ("GET-INTERRUPT-ENABLES", Prim_get_interrupt_enables, 0)
    returns the previous value.  See MASK_INTERRUPT_ENABLES for more
    information on interrupts.  */
 
-DEFINE_PRIMITIVE ("SET-INTERRUPT-ENABLES!", Prim_set_interrupt_enables, 1)
+DEFINE_PRIMITIVE ("SET-INTERRUPT-ENABLES!", Prim_set_interrupt_enables, 1, 1, 0)
 {
   long previous;
   PRIMITIVE_HEADER (1);
@@ -563,7 +563,7 @@ DEFINE_PRIMITIVE ("SET-INTERRUPT-ENABLES!", Prim_set_interrupt_enables, 1)
 /* (GET-FLUID-BINDINGS)
    Gets the microcode fluid-bindings variable.  */
 
-DEFINE_PRIMITIVE ("GET-FLUID-BINDINGS", Prim_get_fluid_bindings, 0)
+DEFINE_PRIMITIVE ("GET-FLUID-BINDINGS", Prim_get_fluid_bindings, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
 
@@ -574,7 +574,7 @@ DEFINE_PRIMITIVE ("GET-FLUID-BINDINGS", Prim_get_fluid_bindings, 0)
    Sets the microcode fluid-bindings variable.
    Returns the previous value.  */
 
-DEFINE_PRIMITIVE ("SET-FLUID-BINDINGS!", Prim_set_fluid_bindings, 1)
+DEFINE_PRIMITIVE ("SET-FLUID-BINDINGS!", Prim_set_fluid_bindings, 1, 1, 0)
 {
   Pointer new_bindings;
   Pointer old_bindings;
@@ -600,7 +600,7 @@ DEFINE_PRIMITIVE ("SET-FLUID-BINDINGS!", Prim_set_fluid_bindings, 1)
 
    The longjmp forces the interpreter to recache.  */
 
-DEFINE_PRIMITIVE ("SET-CURRENT-HISTORY!", Prim_Set_Current_History, 1)
+DEFINE_PRIMITIVE ("SET-CURRENT-HISTORY!", Prim_set_current_history, 1, 1, 0)
 {
   Primitive_1_Arg();
 
@@ -625,7 +625,7 @@ DEFINE_PRIMITIVE ("SET-CURRENT-HISTORY!", Prim_Set_Current_History, 1)
    contains the names of the slots in the vector.  Returns (bad
    style to depend on this) the previous fixed objects vector.
 */
-DEFINE_PRIMITIVE ("SET-FIXED-OBJECTS-VECTOR!", Prim_Set_Fixed_Objects_Vector, 1)
+DEFINE_PRIMITIVE ("SET-FIXED-OBJECTS-VECTOR!", Prim_set_fixed_objects_vector, 1, 1, 0)
 {
   Pointer Result;
   Primitive_1_Arg();
@@ -654,7 +654,7 @@ DEFINE_PRIMITIVE ("SET-FIXED-OBJECTS-VECTOR!", Prim_Set_Fixed_Objects_Vector, 1)
    necessary enter and exit forms to get from the current state to
    the new state as specified by STATE_POINT.
 */
-DEFINE_PRIMITIVE ("TRANSLATE-TO-STATE-POINT", Prim_Translate_To_Point, 1)
+DEFINE_PRIMITIVE ("TRANSLATE-TO-STATE-POINT", Prim_translate_to_point, 1, 1, 0)
 {
   Primitive_1_Arg();
 
@@ -675,7 +675,7 @@ DEFINE_PRIMITIVE ("TRANSLATE-TO-STATE-POINT", Prim_Translate_To_Point, 1)
    restored back and collection resumes.  The net result is that the
    THUNK is called with history collection turned off.
 */
-DEFINE_PRIMITIVE ("WITH-HISTORY-DISABLED", Prim_With_History_Disabled, 1)
+DEFINE_PRIMITIVE ("WITH-HISTORY-DISABLED", Prim_with_history_disabled, 1, 1, 0)
 {
   Pointer *First_Rib, *Rib, *Second_Rib;
   Primitive_1_Arg();
@@ -708,7 +708,7 @@ DEFINE_PRIMITIVE ("WITH-HISTORY-DISABLED", Prim_With_History_Disabled, 1)
 
 /* Called with a mask and a thunk */
 
-DEFINE_PRIMITIVE ("WITH-INTERRUPT-MASK", Prim_With_Interrupt_Mask, 2)
+DEFINE_PRIMITIVE ("WITH-INTERRUPT-MASK", Prim_with_interrupt_mask, 2, 2, 0)
 {
   Pointer mask;
   Primitive_2_Args();
@@ -732,7 +732,7 @@ DEFINE_PRIMITIVE ("WITH-INTERRUPT-MASK", Prim_With_Interrupt_Mask, 2)
 
 /* Called with a mask and a thunk */
 
-DEFINE_PRIMITIVE ("WITH-INTERRUPTS-REDUCED", Prim_With_Interrupts_Reduced, 2)
+DEFINE_PRIMITIVE ("WITH-INTERRUPTS-REDUCED", Prim_with_interrupts_reduced, 2, 2, 0)
 {
   Pointer mask;
   long new_interrupt_mask, old_interrupt_mask;
@@ -770,7 +770,7 @@ DEFINE_PRIMITIVE ("WITH-INTERRUPTS-REDUCED", Prim_With_Interrupts_Reduced, 2)
    arguments.  Restores the state of the machine from the control
    point, and then calls the THUNK in this new state.
 */
-DEFINE_PRIMITIVE ("WITHIN-CONTROL-POINT", Prim_Within_Control_Point, 2)
+DEFINE_PRIMITIVE ("WITHIN-CONTROL-POINT", Prim_within_control_point, 2, 2, 0)
 {
   Primitive_2_Args();
 

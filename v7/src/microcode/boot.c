@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.49 1988/07/21 18:41:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.50 1988/08/15 20:43:04 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -80,7 +80,7 @@ for details.  They are created by defining a macro Command_Line_Args.
 */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 #include "version.h"
 #include "char.h"
 #include "string.h"
@@ -400,7 +400,7 @@ make_fixed_objects_vector()
   User_Vector_Set(fixed_objects_vector, OBArray, OB_Array);
   User_Vector_Set(fixed_objects_vector, Dummy_History,
                   Make_Pointer(UNMARKED_HISTORY_TYPE, Dummy_Hist));
-  User_Vector_Set(fixed_objects_vector, State_Space_Tag, TRUTH);
+  User_Vector_Set(fixed_objects_vector, State_Space_Tag, SHARP_T);
   User_Vector_Set(fixed_objects_vector, Bignum_One,
 		  Fix_To_Big(Make_Unsigned_Fixnum(1)));
   User_Vector_Set(fixed_objects_vector, Me_Myself, fixed_objects_vector);
@@ -703,7 +703,7 @@ gc_death(code, message, scan, free)
 #define STACK_TYPE_STRING "standard"
 #endif
 
-DEFINE_PRIMITIVE ("MICROCODE-IDENTIFY", Prim_Microcode_Identify, 0)
+DEFINE_PRIMITIVE ("MICROCODE-IDENTIFY", Prim_microcode_identify, 0, 0, 0)
 {
   extern Pointer make_vector ();
   fast Pointer Result;
@@ -736,7 +736,7 @@ DEFINE_PRIMITIVE ("MICROCODE-IDENTIFY", Prim_Microcode_Identify, 0)
   PRIMITIVE_RETURN (Result);
 }
 
-DEFINE_PRIMITIVE ("MICROCODE-TABLES-FILENAME", Prim_Microcode_Tables_Filename, 0)
+DEFINE_PRIMITIVE ("MICROCODE-TABLES-FILENAME", Prim_microcode_tables_filename, 0, 0, 0)
 {
   fast char *From, *To;
   char *Prefix, *Suffix;
@@ -781,7 +781,7 @@ DEFINE_PRIMITIVE ("MICROCODE-TABLES-FILENAME", Prim_Microcode_Tables_Filename, 0
   PRIMITIVE_RETURN (Result);
 }
 
-DEFINE_PRIMITIVE ("GET-COMMAND-LINE", Prim_Get_Command_Line, 0)
+DEFINE_PRIMITIVE ("GET-COMMAND-LINE", Prim_get_command_line, 0, 0, 0)
 {
   fast int i;
   fast Pointer result;

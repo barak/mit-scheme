@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.44 1988/05/05 08:42:47 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.45 1988/08/15 20:50:06 cph Exp $
  *
  * This file contains the heart of the Scheme Scode
  * interpreter
@@ -1928,7 +1928,7 @@ Primitive_Internal_Apply:
       GC_Daemon_Proc = Get_Fixed_Obj_Slot(GC_Daemon);
       if (GC_Daemon_Proc == NIL)
 	{
-	  RESULT_OF_PURIFY (TRUTH);
+	  RESULT_OF_PURIFY (SHARP_T);
 	  break;
 	}
       Store_Expression(NIL);
@@ -1942,7 +1942,7 @@ Primitive_Internal_Apply:
     }
 
     case RC_PURIFY_GC_2:
-      RESULT_OF_PURIFY (TRUTH);
+      RESULT_OF_PURIFY (SHARP_T);
       break;
 
     case RC_REPEAT_DISPATCH:
@@ -2086,7 +2086,7 @@ Primitive_Internal_Apply:
 /* Interpret(), continued */
 
     case RC_SNAP_NEED_THUNK:
-      Vector_Set(Fetch_Expression(), THUNK_SNAPPED, TRUTH);
+      Vector_Set(Fetch_Expression(), THUNK_SNAPPED, SHARP_T);
       Vector_Set(Fetch_Expression(), THUNK_VALUE, Val);
       break;
 

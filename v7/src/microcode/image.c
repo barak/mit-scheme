@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,10 +30,10 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/image.c,v 9.26 1988/08/10 05:26:54 pas Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/image.c,v 9.27 1988/08/15 20:49:26 cph Exp $ */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 #include "flonum.h"
 #include "array.h"
 #include <math.h>
@@ -41,7 +41,7 @@ MIT in each case. */
 /* IMAGE PROCESSING...                    */
 /* (much comes from array.c)              */
 
-Define_Primitive(Prim_Read_Image_From_Ascii_File, 1, "READ-IMAGE-FROM-ASCII-FILE")
+DEFINE_PRIMITIVE ("READ-IMAGE-FROM-ASCII-FILE", Prim_read_image_from_ascii_file, 1, 1, 0)
 { long Length, int_pixel_value1, int_pixel_value2, i, j;
   long nrows, ncols, array_index;
   FILE *fopen(), *fp;
@@ -104,7 +104,7 @@ Define_Primitive(Prim_Read_Image_From_Ascii_File, 1, "READ-IMAGE-FROM-ASCII-FILE
   return Result;
 }
 
-Define_Primitive(Prim_Read_Image_From_Cbin_File, 1, "READ-IMAGE-FROM-CBIN-FILE")
+DEFINE_PRIMITIVE ("READ-IMAGE-FROM-CBIN-FILE", Prim_read_image_from_cbin_file, 1, 1, 0)
 { long Length, i,j;
   long nrows, ncols, array_index;
   FILE *fopen(), *fp;
@@ -156,7 +156,7 @@ Define_Primitive(Prim_Read_Image_From_Cbin_File, 1, "READ-IMAGE-FROM-CBIN-FILE")
    We need to use 2bint because on many machines (bobcats included)
    "putw", and "getw" use 4 byte integers (C int) ---> waste lots of space.
    */
-Define_Primitive(Prim_Read_Image_From_2bint_File, 1, "READ-IMAGE-FROM-2BINT-FILE")
+DEFINE_PRIMITIVE ("READ-IMAGE-FROM-2BINT-FILE", Prim_read_image_from_2bint_file, 1, 1, 0)
 { long Length, i,j;
   long nrows, ncols, array_index;
   FILE *fopen(), *fp;
@@ -206,7 +206,7 @@ Define_Primitive(Prim_Read_Image_From_2bint_File, 1, "READ-IMAGE-FROM-2BINT-FILE
   return Result;
 }
 
-Define_Primitive(Prim_Write_Image_2bint, 2, "WRITE-IMAGE-2BINT")
+DEFINE_PRIMITIVE ("WRITE-IMAGE-2BINT", Prim_write_image_2bint, 2, 2, 0)
 { long Length, i,j;
   Pointer Pnrows, Pncols, Prest, Parray;
   REAL *Array;
@@ -244,10 +244,10 @@ Define_Primitive(Prim_Write_Image_2bint, 2, "WRITE-IMAGE-2BINT")
   }
   Close_File(fp);
   /*_________________________________*/
-  PRIMITIVE_RETURN(TRUTH);
+  PRIMITIVE_RETURN(SHARP_T);
 }
 
-Define_Primitive(Prim_Read_Image_From_CTSCAN_File, 1, "READ-IMAGE-FROM-CTSCAN-FILE")
+DEFINE_PRIMITIVE ("READ-IMAGE-FROM-CTSCAN-FILE", Prim_read_image_from_ctscan_file, 1, 1, 0)
 { long Length, i,j;
   long nrows, ncols, array_index;
   FILE *fopen(), *fp;
@@ -339,7 +339,7 @@ Image_Mirror_Upside_Down(Array,nrows,ncols,Temp_Row)
   }
 }
 
-Define_Primitive(Prim_Subimage, 5, "SUBIMAGE")
+DEFINE_PRIMITIVE ("SUBIMAGE", Prim_subimage, 5, 5, 0)
 { long Length, new_Length;
   long i,j;
   Pointer Pnrows, Pncols, Prest, Parray;
@@ -399,7 +399,7 @@ Define_Primitive(Prim_Subimage, 5, "SUBIMAGE")
 
 /* The following does not work properly, to be fixed if need.
  */
-Define_Primitive(Prim_Image_Double_To_Float, 1, "IMAGE-DOUBLE-TO-FLOAT!")
+DEFINE_PRIMITIVE ("IMAGE-DOUBLE-TO-FLOAT!", Prim_image_double_to_float, 1, 1, 0)
 { long Length;
   long i,j;
   long nrows, ncols;
@@ -446,7 +446,7 @@ Define_Primitive(Prim_Image_Double_To_Float, 1, "IMAGE-DOUBLE-TO-FLOAT!")
   return Arg1;
 }
 
-Define_Primitive(Prim_Image_Set_Row, 3, "IMAGE-SET-ROW!")
+DEFINE_PRIMITIVE ("IMAGE-SET-ROW!", Prim_image_set_row, 3, 3, 0)
 { long Length, i,j;
   Pointer Pnrows, Pncols, Prest, Parray;
   long nrows, ncols, row_to_set;
@@ -476,7 +476,7 @@ Define_Primitive(Prim_Image_Set_Row, 3, "IMAGE-SET-ROW!")
   return Arg1;
 }
 
-Define_Primitive(Prim_Image_Set_Column, 3, "IMAGE-SET-COLUMN!")
+DEFINE_PRIMITIVE ("IMAGE-SET-COLUMN!", Prim_image_set_column, 3, 3, 0)
 { long Length, i,j;
   Pointer Pnrows, Pncols, Prest, Parray;
   long nrows, ncols, col_to_set;
@@ -530,7 +530,7 @@ long nrows, ncols, col_to_set;
   }
 }
 
-Define_Primitive(Prim_Image_Laplacian, 1, "IMAGE-LAPLACIAN")
+DEFINE_PRIMITIVE ("IMAGE-LAPLACIAN", Prim_image_laplacian, 1, 1, 0)
 { long nrows, ncols, Length;
   Pointer Pnrows, Pncols, Prest, Parray;
   REAL *Array, *To_Here;
@@ -597,7 +597,7 @@ C_image_laplacian(array, new_array, nrows, ncols)
       array[i*ncols+j] - (.25)*(array[i*ncols+(j-1)] + array[i*ncols+(j+1)] + array[(i-1)*ncols+j] + array[(i+1)*ncols+j]); 
 }
 
-Define_Primitive(Prim_Image_Double_By_Interpolation, 1, "IMAGE-DOUBLE-BY-INTERPOLATION")
+DEFINE_PRIMITIVE ("IMAGE-DOUBLE-BY-INTERPOLATION", Prim_image_double_by_interpolation, 1, 1, 0)
 { long nrows, ncols, Length;
   Pointer Pnrows, Pncols, Prest, Parray;
   REAL *Array, *To_Here;
@@ -681,7 +681,7 @@ C_image_double_by_interpolation(array, new_array, nrows, ncols)
     }
 }
 
-Define_Primitive(Prim_Image_Make_Ring, 4, "IMAGE-MAKE-RING")
+DEFINE_PRIMITIVE ("IMAGE-MAKE-RING", Prim_image_make_ring, 4, 4, 0)
 { long Length, i,j;
   long nrows, ncols;
   long Min_Cycle, Max_Cycle;
@@ -743,7 +743,7 @@ long nrows, ncols, low_cycle, high_cycle;
 
 /* Periodic-shift without side-effects for code-simplicity
  */
-Define_Primitive(Prim_Image_Periodic_Shift, 3, "IMAGE-PERIODIC-SHIFT")
+DEFINE_PRIMITIVE ("IMAGE-PERIODIC-SHIFT", Prim_image_periodic_shift, 3, 3, 0)
 { long Length, i,j;
   Pointer Pnrows, Pncols, Prest, Parray;
   long nrows, ncols;
@@ -815,7 +815,7 @@ C_Image_Periodic_Shift(Array, New_Array, nrows, ncols, ver_shift, hor_shift)
 
 /* Rotations and stuff
  */
-Define_Primitive(Prim_Image_Transpose, 1, "IMAGE-TRANSPOSE!")
+DEFINE_PRIMITIVE ("IMAGE-TRANSPOSE!", Prim_image_transpose, 1, 1, 0)
 { long Length;
   Pointer Pnrows, Pncols, Prest, Parray;
   long nrows, ncols;
@@ -855,7 +855,7 @@ Define_Primitive(Prim_Image_Transpose, 1, "IMAGE-TRANSPOSE!")
   return Arg1;
 }
 
-Define_Primitive(Prim_Image_Rotate_90clw, 1, "IMAGE-ROTATE-90CLW!")
+DEFINE_PRIMITIVE ("IMAGE-ROTATE-90CLW!", Prim_image_rotate_90clw, 1, 1, 0)
 { long Length;
   Pointer Pnrows, Pncols, Prest, Parray;
   long nrows, ncols;
@@ -888,7 +888,7 @@ Define_Primitive(Prim_Image_Rotate_90clw, 1, "IMAGE-ROTATE-90CLW!")
   return Arg1;
 }
 
-Define_Primitive(Prim_Image_Rotate_90cclw, 1, "IMAGE-ROTATE-90CCLW!")
+DEFINE_PRIMITIVE ("IMAGE-ROTATE-90CCLW!", Prim_image_rotate_90cclw, 1, 1, 0)
 { long Length;
   Pointer Pnrows, Pncols, Prest, Parray;
   long nrows, ncols;
@@ -921,7 +921,7 @@ Define_Primitive(Prim_Image_Rotate_90cclw, 1, "IMAGE-ROTATE-90CCLW!")
   return Arg1;
 }
 
-Define_Primitive(Prim_Image_Mirror, 1, "IMAGE-MIRROR!")
+DEFINE_PRIMITIVE ("IMAGE-MIRROR!", Prim_image_mirror, 1, 1, 0)
 { long Length;
   Pointer Pnrows, Pncols, Prest, Parray;
   long nrows, ncols;
@@ -1077,7 +1077,7 @@ C_Rotate_90clw_Mirror_Image(Array, Rotated_Array, nrows, ncols)
 
 /*
 
-Define_Primitive(Prim_Sample_Periodic_2d_Function, 4, "SAMPLE-PERIODIC-2D-FUNCTION")
+DEFINE_PRIMITIVE ("SAMPLE-PERIODIC-2D-FUNCTION", Prim_sample_periodic_2d_function, 4, 4, 0)
 { long N, i, allocated_cells, Function_Number;
   REAL Signal_Frequency, Sampling_Frequency, DT, DTi;
   REAL twopi = 6.28318530717958, twopi_f_dt;
@@ -1149,7 +1149,7 @@ Define_Primitive(Prim_Sample_Periodic_2d_Function, 4, "SAMPLE-PERIODIC-2D-FUNCTI
   (Result)=Sum;                                                                             \
 }
 
-Define_Primitive(Prim_Convolution_Point, 3, "CONVOLUTION-POINT")
+DEFINE_PRIMITIVE ("CONVOLUTION-POINT", Prim_convolution_point, 3, 3, 0)
 { long Length1, Length2, N;
   REAL *Array1, *Array2;
   REAL C_Result;
@@ -1167,7 +1167,7 @@ Define_Primitive(Prim_Convolution_Point, 3, "CONVOLUTION-POINT")
   Reduced_Flonum_Result(C_Result);
 }
 
-Define_Primitive(Prim_Array_Convolution, 2, "ARRAY-CONVOLUTION")
+DEFINE_PRIMITIVE ("ARRAY-CONVOLUTION", Prim_array_convolution, 2, 2, 0)
 { long Endpoint1, Endpoint2, allocated_cells, i;
   / * ASSUME A SIGNAL FROM INDEX 0 TO ENDPOINT=LENGTH-1 * /
   long Resulting_Length;
@@ -1202,7 +1202,7 @@ Define_Primitive(Prim_Array_Convolution, 2, "ARRAY-CONVOLUTION")
 /*  m_pi = 3.14159265358979323846264338327950288419716939937510; */
 
 /* 
-Define_Primitive(Prim_Sample_Periodic_Function, 4, "SAMPLE-PERIODIC-FUNCTION")
+DEFINE_PRIMITIVE ("SAMPLE-PERIODIC-FUNCTION", Prim_sample_periodic_function, 4, 4, 0)
 { long N, i, allocated_cells, Function_Number;
   REAL Signal_Frequency, Sampling_Frequency, DT, DTi;
   REAL twopi = 6.28318530717958, twopi_f_dt;
@@ -1292,7 +1292,7 @@ REAL unit_triangle_wave(t) REAL t;
   else return( (twopi - t_bar) / pi );
 }
 
-Define_Primitive(Prim_Sample_Aperiodic_Function, 3, "SAMPLE-APERIODIC-FUNCTION")
+DEFINE_PRIMITIVE ("SAMPLE-APERIODIC-FUNCTION", Prim_sample_aperiodic_function, 3, 3, 0)
 { long N, i, allocated_cells, Function_Number;
   REAL Sampling_Frequency, DT, DTi;
   REAL twopi = 6.28318530717958;
@@ -1352,7 +1352,7 @@ Define_Primitive(Prim_Sample_Aperiodic_Function, 3, "SAMPLE-APERIODIC-FUNCTION")
   return Result; 
 }
 
-Define_Primitive(Prim_Array_Periodic_Downsample, 2, "ARRAY-PERIODIC-DOWNSAMPLE")
+DEFINE_PRIMITIVE ("ARRAY-PERIODIC-DOWNSAMPLE", Prim_array_periodic_downsample, 2, 2, 0)
 { long Length, Pseudo_Length, Sampling_Ratio;
   REAL *Array, *To_Here;
   Pointer Result;
@@ -1380,7 +1380,7 @@ Define_Primitive(Prim_Array_Periodic_Downsample, 2, "ARRAY-PERIODIC-DOWNSAMPLE")
   return Result;
 }
 
-Define_Primitive(Prim_Array_Periodic_Shift, 2, "ARRAY-PERIODIC-SHIFT")
+DEFINE_PRIMITIVE ("ARRAY-PERIODIC-SHIFT", Prim_array_periodic_shift, 2, 2, 0)
 { long Length, Shift;
   REAL *Array, *To_Here;
   Pointer Result;
@@ -1407,7 +1407,7 @@ Define_Primitive(Prim_Array_Periodic_Shift, 2, "ARRAY-PERIODIC-SHIFT")
 
 / * this should really be done in SCHEME using ARRAY-MAP ! * /
 
-Define_Primitive(Prim_Array_Aperiodic_Downsample, 2, "ARRAY-APERIODIC-DOWNSAMPLE")
+DEFINE_PRIMITIVE ("ARRAY-APERIODIC-DOWNSAMPLE", Prim_array_aperiodic_downsample, 2, 2, 0)
 { long Length, New_Length, Sampling_Ratio;
   REAL *Array, *To_Here;
   Pointer Result;

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,13 +30,13 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/step.c,v 9.24 1987/12/04 22:19:24 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/step.c,v 9.25 1988/08/15 20:55:24 cph Exp $
  *
  * Support for the stepper
  */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 
                  /**********************************/
                  /* Support of stepping primitives */
@@ -81,7 +81,7 @@ Install_Traps(Hunk3, Return_Hook_Too)
    APPLY or return.
 */
 
-DEFINE_PRIMITIVE("PRIMITIVE-EVAL-STEP", Prim_Eval_Step, 3)
+DEFINE_PRIMITIVE ("PRIMITIVE-EVAL-STEP", Prim_eval_step, 3, 3, 0)
 {
   Primitive_3_Args();
 
@@ -103,7 +103,7 @@ DEFINE_PRIMITIVE("PRIMITIVE-EVAL-STEP", Prim_Eval_Step, 3)
    required before actually building a frame
 */
 
-DEFINE_PRIMITIVE("PRIMITIVE-APPLY-STEP", Prim_Apply_Step, 3)
+DEFINE_PRIMITIVE ("PRIMITIVE-APPLY-STEP", Prim_apply_step, 3, 3, 0)
 {
   Pointer Next_From_Slot, *Next_To_Slot;
   long Number_Of_Args, i;
@@ -150,7 +150,7 @@ DEFINE_PRIMITIVE("PRIMITIVE-APPLY-STEP", Prim_Apply_Step, 3)
    this is ever changed, be sure to check for COMPILE_STEPPER flag!
 */
 
-DEFINE_PRIMITIVE("PRIMITIVE-RETURN-STEP", Prim_Return_Step, 2)
+DEFINE_PRIMITIVE ("PRIMITIVE-RETURN-STEP", Prim_return_step, 2, 2, 0)
 {
   Pointer Return_Hook;
   Primitive_2_Args();

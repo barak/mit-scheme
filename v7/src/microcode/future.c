@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,13 +30,13 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/future.c,v 9.25 1987/11/17 08:11:25 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/future.c,v 9.26 1988/08/15 20:47:36 cph Rel $
 
    Support code for futures
 */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 #include "locks.h"
 
 #ifndef COMPILE_FUTURES
@@ -63,7 +63,7 @@ and where <locked> is #!true if someone wants slot kept for a time.
 
 */
 
-Define_Primitive(Prim_Touch, 1, "TOUCH")
+DEFINE_PRIMITIVE ("TOUCH", Prim_touch, 1, 1, 0)
 {
   Pointer Result;
   Primitive_1_Arg();
@@ -72,11 +72,11 @@ Define_Primitive(Prim_Touch, 1, "TOUCH")
   return Result;
 }
 
-Define_Primitive(Prim_Future_P, 1, "FUTURE?")
+DEFINE_PRIMITIVE ("FUTURE?", Prim_future_p, 1, 1, 0)
 {
   Primitive_1_Arg();
 
-  return (Type_Code(Arg1) == TC_FUTURE) ? TRUTH : NIL;
+  return (Type_Code(Arg1) == TC_FUTURE) ? SHARP_T : NIL;
 }
 
 /* Utility setting routine for use by the various test and set if
@@ -120,7 +120,7 @@ Try_Again:
    <Old Value>.  The value returned is either <CONS Cell> (if the modification
    takes place) or '() if it does not.
 */
-Define_Primitive(Prim_Set_Car_If_Eq, 3, "SET-CAR-IF-EQ?!")
+DEFINE_PRIMITIVE ("SET-CAR-IF-EQ?!", Prim_set_car_if_eq, 3, 3, 0)
 {
   Primitive_3_Args();
 
@@ -140,7 +140,7 @@ Define_Primitive(Prim_Set_Car_If_Eq, 3, "SET-CAR-IF-EQ?!")
    <Old Value>.  The value returned is either <CONS Cell> (if the modification
    takes place) or '() if it does not.
 */
-Define_Primitive(Prim_Set_Cdr_If_Eq, 3, "SET-CDR-IF-EQ?!")
+DEFINE_PRIMITIVE ("SET-CDR-IF-EQ?!", Prim_set_cdr_if_eq, 3, 3, 0)
 {
   Primitive_3_Args();
   Arg_1_Type(TC_LIST);
@@ -160,7 +160,7 @@ Define_Primitive(Prim_Set_Cdr_If_Eq, 3, "SET-CDR-IF-EQ?!")
    to contain <Old Value>.  The value returned is either <Vector> (if
    the modification takes place) or '() if it does not.
 */
-Define_Primitive(Prim_Vector_Set_If_Eq, 4, "VECTOR-SET-IF-EQ?!")
+DEFINE_PRIMITIVE ("VECTOR-SET-IF-EQ?!", Prim_vector_set_if_eq, 4, 4, 0)
 {
   long Offset;
   Primitive_4_Args();
@@ -184,7 +184,7 @@ Define_Primitive(Prim_Vector_Set_If_Eq, 4, "VECTOR-SET-IF-EQ?!")
    contain <Old Value>.  The value returned is either <Triple> (if
    the modification takes place) or '() if it does not.
 */
-Define_Primitive(Prim_Set_Cxr_If_Eq, 4, "SET-CXR-IF-EQ?!")
+DEFINE_PRIMITIVE ("SET-CXR-IF-EQ?!", Prim_set_cxr_if_eq, 4, 4, 0)
 {
   Pointer Arg4;
   long Offset;
@@ -209,7 +209,7 @@ Define_Primitive(Prim_Set_Cxr_If_Eq, 4, "SET-CXR-IF-EQ?!")
    the equivalent of SYSTEM-VECTOR-REF but works only on future
    objects and doesn't touch.
 */
-Define_Primitive(Prim_Future_Ref, 2, "FUTURE-REF")
+DEFINE_PRIMITIVE ("FUTURE-REF", Prim_future_ref, 2, 2, 0)
 {
   long Offset;
   Primitive_2_Args();
@@ -226,7 +226,7 @@ Define_Primitive(Prim_Future_Ref, 2, "FUTURE-REF")
    the equivalent of SYSTEM-VECTOR-SET! but works only on future
    objects and doesn't touch.
 */
-Define_Primitive(Prim_Future_Set, 3, "FUTURE-SET!")
+DEFINE_PRIMITIVE ("FUTURE-SET!", Prim_future_set, 3, 3, 0)
 {
   long Offset;
   Pointer Result;
@@ -246,7 +246,7 @@ Define_Primitive(Prim_Future_Set, 3, "FUTURE-SET!")
    the equivalent of SYSTEM-VECTOR-SIZE but works only on future
    objects and doesn't touch.
 */
-Define_Primitive(Prim_Future_Size, 1, "FUTURE-SIZE")
+DEFINE_PRIMITIVE ("FUTURE-SIZE", Prim_future_size, 1, 1, 0)
 {
   Primitive_1_Arg();
 
@@ -263,7 +263,7 @@ Define_Primitive(Prim_Future_Size, 1, "FUTURE-SIZE")
    Opposite of UNLOCK-FUTURE!.
 */
 
-Define_Primitive(Prim_Lock_Future, 1, "LOCK-FUTURE!")
+DEFINE_PRIMITIVE ("LOCK-FUTURE!", Prim_lock_future, 1, 1, 0)
 {
   Primitive_1_Arg();
 
@@ -274,9 +274,9 @@ Define_Primitive(Prim_Lock_Future, 1, "LOCK-FUTURE!")
   while (!(INTERRUPT_PENDING_P(INT_Mask)))
   {
     if (Swap_Pointers(Nth_Vector_Loc(Arg1, FUTURE_LOCK), 
-                      TRUTH) == NIL)
+                      SHARP_T) == NIL)
     {
-      return TRUTH;
+      return SHARP_T;
     }
     else
     {
@@ -290,7 +290,7 @@ Define_Primitive(Prim_Lock_Future, 1, "LOCK-FUTURE!")
    Clears the lock flag on a locked future object, otherwise nothing.
 */
 
-Define_Primitive(Prim_Unlock_Future, 1, "UNLOCK-FUTURE!")
+DEFINE_PRIMITIVE ("UNLOCK-FUTURE!", Prim_unlock_future, 1, 1, 0)
 {
   Primitive_1_Arg();
 
@@ -305,14 +305,14 @@ Define_Primitive(Prim_Unlock_Future, 1, "UNLOCK-FUTURE!")
   else
   {
     Vector_Set(Arg1, FUTURE_LOCK, NIL);
-    return TRUTH;
+    return SHARP_T;
   }
 }
 
 /* (FUTURE->VECTOR <Future>)
    Create a COPY of <future> but with type code vector.
 */
-Define_Primitive(Prim_Future_To_Vector, 1, "FUTURE->VECTOR")
+DEFINE_PRIMITIVE ("FUTURE->VECTOR", Prim_future_to_vector, 1, 1, 0)
 {
   Pointer Result;
   long Size, i;
@@ -332,18 +332,18 @@ Define_Primitive(Prim_Future_To_Vector, 1, "FUTURE->VECTOR")
   return Result;
 }
 
-Define_Primitive(Prim_Future_Eq, 2, "NON-TOUCHING-EQ?")
+DEFINE_PRIMITIVE ("NON-TOUCHING-EQ?", Prim_future_eq, 2, 2, 0)
 {
   Primitive_2_Args();
 
-  return ((Arg1==Arg2) ? TRUTH : NIL);
+  return ((Arg1==Arg2) ? SHARP_T : NIL);
 }
 
 /* MAKE-INITIAL-PROCESS is called to create a small stacklet which
  * will just call the specified thunk and then end the computation
  */
 
-Define_Primitive(Prim_Make_Initial_Process, 1, "MAKE-INITIAL-PROCESS")
+DEFINE_PRIMITIVE ("MAKE-INITIAL-PROCESS", Prim_make_initial_process, 1, 1, 0)
 {
   Pointer Result;
   long Useful_Length;
@@ -371,7 +371,7 @@ Define_Primitive(Prim_Make_Initial_Process, 1, "MAKE-INITIAL-PROCESS")
   Primitive_GC_If_Needed(Allocated_Length + 1);
   Free[STACKLET_LENGTH] =
     Make_Pointer(TC_MANIFEST_VECTOR, Allocated_Length);
-  Free[STACKLET_REUSE_FLAG] = TRUTH;
+  Free[STACKLET_REUSE_FLAG] = SHARP_T;
   Free[STACKLET_UNUSED_LENGTH] =
     Make_Non_Pointer(TC_MANIFEST_NM_VECTOR, Waste_Length);
   Free += (Allocated_Length + 1) - Useful_Length;
@@ -414,7 +414,7 @@ Define_Primitive(Prim_Make_Initial_Process, 1, "MAKE-INITIAL-PROCESS")
 
 */
 
-Define_Primitive(Prim_Make_Cheap_Future, 3, "MAKE-CHEAP-FUTURE")
+DEFINE_PRIMITIVE ("MAKE-CHEAP-FUTURE", Prim_make_cheap_future, 3, 3, 0)
 {
   Pointer The_Future;
   Pointer IO_Vector, IO_Cons, IO_Hunk3, Empty_Queue, IO_String;
@@ -449,7 +449,7 @@ Define_Primitive(Prim_Make_Cheap_Future, 3, "MAKE-CHEAP-FUTURE")
   *Free++ = NIL;			/* Not locked. */
   *Free++ = Empty_Queue;		/* Put the empty queue here. */
   *Free++ = Arg1;			/* The process slot. */
-  *Free++ = TRUTH;			/* Status slot. */
+  *Free++ = SHARP_T;			/* Status slot. */
   *Free++ = Arg2;			/* Original code. */
   *Free++ = IO_Vector;			/* Put the I/O system stuff here. */
   *Free++ = NIL;			/* Waiting on list. */

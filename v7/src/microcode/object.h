@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/object.h,v 9.28 1988/05/10 17:34:41 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/object.h,v 9.29 1988/08/15 20:52:18 cph Exp $ */
 
 /* This file contains definitions pertaining to the C view of 
    Scheme pointers: widths of fields, extraction macros, pre-computed
@@ -92,8 +92,8 @@ MIT in each case. */
 #define pointer_type(P)		(OBJECT_TYPE (P))
 #define pointer_datum(P)	(OBJECT_DATUM (P))
 
-#define Make_Object(TC, D)					\
-((((unsigned) (TC)) << ADDRESS_LENGTH) | (OBJECT_DATUM (D)))
+#define Make_Object(TC, D)						\
+  ((((unsigned) (TC)) << ADDRESS_LENGTH) | (OBJECT_DATUM (D)))
 
 #ifndef Heap_In_Low_Memory	/* Portable version */
 
@@ -104,9 +104,9 @@ extern Pointer *Memory_Base;
 /* The "-1" in the value returned is a guarantee that there is one
    word reserved exclusively for use by the garbage collector. */
 
-#define Allocate_Heap_Space(space)						\
-  (Memory_Base = ((Pointer *) (malloc ((sizeof (Pointer)) * (space)))),		\
-   Heap = Memory_Base,								\
+#define Allocate_Heap_Space(space)					\
+  (Memory_Base = ((Pointer *) (malloc ((sizeof (Pointer)) * (space)))),	\
+   Heap = Memory_Base,							\
    ((Memory_Base + (space)) - 1))
 
 #define Get_Pointer(P) ((Pointer *) (Memory_Base + (OBJECT_DATUM (P))))
@@ -116,8 +116,8 @@ extern Pointer *Memory_Base;
 
 typedef long relocation_type;	/* Used to relocate pointers on fasload */
 
-#define Allocate_Heap_Space(space)				\
-  (Heap = ((Pointer *) (malloc ((sizeof (Pointer)) * (space)))), \
+#define Allocate_Heap_Space(space)					\
+  (Heap = ((Pointer *) (malloc ((sizeof (Pointer)) * (space)))),	\
    ((Heap + (space)) - 1))
 
 #ifdef spectrum
@@ -144,7 +144,7 @@ typedef long relocation_type;	/* Used to relocate pointers on fasload */
 
 #define Store_Type_Code(P, TC)	P = (Make_Object ((TC), (P)))
 
-#define Store_Address(P, A)					\
+#define Store_Address(P, A)						\
   P = (((P) & TYPE_CODE_MASK) | (OBJECT_DATUM ((Pointer) (A))))
 
 #define Address(P) (OBJECT_DATUM (P))
@@ -220,7 +220,7 @@ do									\
     (target) |= (-1 << ADDRESS_LENGTH);					\
 } while (0)
 
-#define BOOLEAN_TO_OBJECT(expression) ((expression) ? TRUTH : NIL)
+#define BOOLEAN_TO_OBJECT(expression) ((expression) ? SHARP_T : SHARP_F)
 
 #define Make_Broken_Heart(N)	(BROKEN_HEART_ZERO + (N))
 #define Make_Unsigned_Fixnum(N)	(FIXNUM_ZERO + (N))
@@ -228,40 +228,40 @@ do									\
 #define Get_Float(P)   (* ((double *) (Nth_Vector_Loc ((P), 1))))
 #define Get_Integer(P) (OBJECT_DATUM (P))
 
-#define Sign_Extend(P, S)					\
-{								\
-  (S) = (Get_Integer (P));					\
-  if (((S) & FIXNUM_SIGN_BIT) != 0)				\
-    (S) |= (-1 << ADDRESS_LENGTH);				\
+#define Sign_Extend(P, S)						\
+{									\
+  (S) = (Get_Integer (P));						\
+  if (((S) & FIXNUM_SIGN_BIT) != 0)					\
+    (S) |= (-1 << ADDRESS_LENGTH);					\
 }
 
-#define Fixnum_Fits(x)						\
-  ((((x) & SIGN_MASK) == 0) ||					\
+#define Fixnum_Fits(x)							\
+  ((((x) & SIGN_MASK) == 0) ||						\
    (((x) & SIGN_MASK) == SIGN_MASK))
 
 #define BYTES_TO_POINTERS(nbytes)					\
   (((nbytes) + ((sizeof (Pointer)) - 1)) / (sizeof (Pointer)))
 
-#define Is_Constant(address) 					\
+#define Is_Constant(address)						\
   (((address) >= Constant_Space) && ((address) < Free_Constant))
 
-#define Is_Pure(address)					\
+#define Is_Pure(address)						\
   ((Is_Constant (address)) && (Pure_Test (address)))
 
-#define Side_Effect_Impurify(Old_Pointer, Will_Contain)		\
-if ((Is_Constant (Get_Pointer (Old_Pointer))) &&		\
-    (GC_Type (Will_Contain) != GC_Non_Pointer) &&		\
-    (! (Is_Constant (Get_Pointer (Will_Contain)))) &&		\
-    (Pure_Test (Get_Pointer (Old_Pointer))))			\
-  Primitive_Error (ERR_WRITE_INTO_PURE_SPACE);
+#define Side_Effect_Impurify(Old_Pointer, Will_Contain)			\
+if ((Is_Constant (Get_Pointer (Old_Pointer))) &&			\
+    (GC_Type (Will_Contain) != GC_Non_Pointer) &&			\
+    (! (Is_Constant (Get_Pointer (Will_Contain)))) &&			\
+    (Pure_Test (Get_Pointer (Old_Pointer))))				\
+  Primitive_Error (ERR_WRITE_INTO_PURE_SPACE);				\
 
 #ifdef FLOATING_ALIGNMENT
 
-#define FLOATING_BUFFER_SPACE		\
-	((FLOATING_ALIGNMENT + 1)/sizeof(Pointer))
+#define FLOATING_BUFFER_SPACE						\
+  ((FLOATING_ALIGNMENT + 1)/sizeof(Pointer))
 
-#define HEAP_BUFFER_SPACE		\
-	(TRAP_MAX_IMMEDIATE + 1 + FLOATING_BUFFER_SPACE)
+#define HEAP_BUFFER_SPACE						\
+  (TRAP_MAX_IMMEDIATE + 1 + FLOATING_BUFFER_SPACE)
 
 /* The space is there, find the correct position. */
 

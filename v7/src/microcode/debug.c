@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,13 +30,13 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.28 1988/02/12 16:50:19 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.29 1988/08/15 20:44:50 cph Exp $
  *
  * Utilities to help with debugging
  */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 #include "trap.h"
 #include "lookup.h"
 
@@ -645,13 +645,12 @@ Debug_Printer(Expr)
       A cheap, built-in printer intended for debugging the
       interpreter.
 */
-Built_In_Primitive(Prim_Temp_Printer, 1, "DEBUGGING-PRINTER", 0xB2)
-Define_Primitive(Prim_Temp_Printer, 1, "DEBUGGING-PRINTER")
+DEFINE_PRIMITIVE ("DEBUGGING-PRINTER", Prim_temp_printer, 1, 1, 0)
 {
   Primitive_1_Arg();
 
   Debug_Printer(Arg1);
-  return TRUTH;
+  return SHARP_T;
 }
 
 /* Code for interactively setting and clearing the interpreter

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.32 1987/12/23 03:44:55 cph Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.33 1988/08/15 20:53:04 cph Exp $ */
 
 /* This file contains some macros for defining primitives,
    for argument type or value checking, and for accessing
@@ -38,20 +38,17 @@ MIT in each case. */
 
 /* Definition of primitives. */
 
-#define Define_Primitive(C_Name, Number_of_args, Scheme_Name)	\
-extern Pointer C_Name();					\
-Pointer C_Name()
+#define DEFINE_PRIMITIVE(scheme_name, fn_name, min_args, max_args, doc_string) \
+extern Pointer fn_name ();						\
+Pointer fn_name ()
 
-#define DEFINE_PRIMITIVE(Scheme_Name, C_Name, Number_of_args)	\
-extern Pointer C_Name();					\
-Pointer C_Name()
+/* Can be used for `max_args' in `DEFINE_PRIMITIVE' to indicate that
+   the primitive has no upper limit on its arity.  */
+#define LEXPR (-1)
 
-/* This is a NOP.
-   Any primitive declared this way must also be declared
-   with Define_Primitive.
- */
-
-#define Built_In_Primitive(C_Name, Number_of_args, Scheme_Name, index)
+/* This form is obsolete.  Use DEFINE_PRIMITIVE instead.  */
+#define Define_Primitive(fn_name, arity, scheme_name)			\
+  DEFINE_PRIMITIVE (scheme_name, fn_name, arity, arity, 0)
 
 #ifdef ENABLE_PRIMITIVE_PROFILING
 #define primitive_entry_hook() record_primitive_entry (Fetch_Expression ())

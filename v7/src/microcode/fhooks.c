@@ -30,14 +30,14 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/fhooks.c,v 9.27 1988/05/10 15:15:43 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/fhooks.c,v 9.28 1988/08/15 20:46:39 cph Exp $
  *
  * This file contains hooks and handles for the new fluid bindings
  * scheme for multiprocessors.
  */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 #include "trap.h"
 #include "lookup.h"
 #include "locks.h"
@@ -46,7 +46,7 @@ MIT in each case. */
    Executes THUNK, then restores the previous fluid bindings.
 */
 
-Define_Primitive(Prim_With_Saved_Fluid_Bindings,1,"WITH-SAVED-FLUID-BINDINGS")
+DEFINE_PRIMITIVE ("WITH-SAVED-FLUID-BINDINGS", Prim_with_saved_fluid_bindings, 1, 1, 0)
 {
   Primitive_1_Arg();
 
@@ -199,7 +199,7 @@ new_fluid_binding_restart:
       value is created in this interpreter's fluid bindings.      
 */
 
-Define_Primitive(Prim_Add_Fluid_Binding, 3, "ADD-FLUID-BINDING!")
+DEFINE_PRIMITIVE ("ADD-FLUID-BINDING!", Prim_add_fluid_binding, 3, 3, 0)
 {
   Pointer *cell;
   Primitive_3_Args();
@@ -238,7 +238,7 @@ Define_Primitive(Prim_Add_Fluid_Binding, 3, "ADD-FLUID-BINDING!")
       binding must be established in the last frame.
 */
 
-Define_Primitive(Prim_Make_Fluid_Binding, 3, "MAKE-FLUID-BINDING!")
+DEFINE_PRIMITIVE ("MAKE-FLUID-BINDING!", Prim_make_fluid_binding, 3, 3, 0)
 {
   extern Pointer *force_definition();
   Pointer *cell;

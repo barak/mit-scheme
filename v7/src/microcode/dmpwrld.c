@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dmpwrld.c,v 9.26 1987/12/04 22:15:25 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dmpwrld.c,v 9.27 1988/08/15 20:45:01 cph Exp $
  *
  * This file contains a primitive to dump an executable version of Scheme.
  * It uses unexec.c from GNU Emacs.
@@ -38,7 +38,7 @@ MIT in each case. */
  */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 
 #ifndef unix
 #include "Error: dumpworld.c does not work on non-unix machines."
@@ -181,7 +181,7 @@ Restore_Input_Buffer(Buflen)
 extern Boolean Was_Scheme_Dumped;
 extern unix_find_pathname();
 
-DEFINE_PRIMITIVE ("DUMP-WORLD", Prim_Dump_World, 1)
+DEFINE_PRIMITIVE ("DUMP-WORLD", Prim_dump_world, 1, 1, 0)
 {
   char *fname, path_buffer[FILE_NAME_LENGTH];
   Boolean Saved_Dumped_Value, Saved_Photo_Open;
@@ -217,7 +217,7 @@ DEFINE_PRIMITIVE ("DUMP-WORLD", Prim_Dump_World, 1)
   Buflen = Save_Input_Buffer();
 
   Was_Scheme_Dumped = true;
-  Val = TRUTH;
+  Val = SHARP_T;
   OS_Quit();
   Pop_Primitive_Frame(1);
 

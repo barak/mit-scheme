@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fixnum.c,v 9.25 1987/11/17 08:11:05 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fixnum.c,v 9.26 1988/08/15 20:46:58 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,7 +38,7 @@ MIT in each case. */
    that will eventually go away. */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 
 #define FIXNUM_PRIMITIVE_1(parameter_1)					\
   fast long parameter_1;						\
@@ -60,47 +60,41 @@ MIT in each case. */
   return (Make_Signed_Fixnum (fixnum));
 
 #define BOOLEAN_RESULT(x)						\
-  return ((x) ? TRUTH : NIL)
+  return ((x) ? SHARP_T : NIL)
 
 /* Predicates */
 
-Built_In_Primitive (Prim_Zero_Fixnum, 1, "ZERO-FIXNUM?", 0x46)
-Define_Primitive (Prim_Zero_Fixnum, 1, "ZERO-FIXNUM?")
+DEFINE_PRIMITIVE ("ZERO-FIXNUM?", Prim_zero_fixnum, 1, 1, 0)
 {
   FIXNUM_PRIMITIVE_1 (x);
   BOOLEAN_RESULT ((Get_Integer (Arg1)) == 0);
 }
 
-Built_In_Primitive (Prim_Negative_Fixnum, 1, "NEGATIVE-FIXNUM?", 0x7F)
-Define_Primitive (Prim_Negative_Fixnum, 1, "NEGATIVE-FIXNUM?")
+DEFINE_PRIMITIVE ("NEGATIVE-FIXNUM?", Prim_negative_fixnum, 1, 1, 0)
 {
   FIXNUM_PRIMITIVE_1 (x);
   BOOLEAN_RESULT (x < 0);
 }
 
-Built_In_Primitive (Prim_Positive_Fixnum, 1, "POSITIVE-FIXNUM?", 0x41)
-Define_Primitive (Prim_Positive_Fixnum, 1, "POSITIVE-FIXNUM?")
+DEFINE_PRIMITIVE ("POSITIVE-FIXNUM?", Prim_positive_fixnum, 1, 1, 0)
 {
   FIXNUM_PRIMITIVE_1 (x);
   BOOLEAN_RESULT (x > 0);
 }
 
-Built_In_Primitive (Prim_Equal_Fixnum, 2, "EQUAL-FIXNUM?", 0x3F)
-Define_Primitive (Prim_Equal_Fixnum, 2, "EQUAL-FIXNUM?")
+DEFINE_PRIMITIVE ("EQUAL-FIXNUM?", Prim_equal_fixnum, 2, 2, 0)
 {
   FIXNUM_PRIMITIVE_2 (x, y);
   BOOLEAN_RESULT (x == y);
 }
 
-Built_In_Primitive (Prim_Less_Fixnum, 2, "LESS-THAN-FIXNUM?", 0x40)
-Define_Primitive (Prim_Less_Fixnum, 2, "LESS-THAN-FIXNUM?")
+DEFINE_PRIMITIVE ("LESS-THAN-FIXNUM?", Prim_less_fixnum, 2, 2, 0)
 {
   FIXNUM_PRIMITIVE_2 (x, y);
   BOOLEAN_RESULT (x < y);
 }
 
-Built_In_Primitive (Prim_Greater_Fixnum, 2, "GREATER-THAN-FIXNUM?", 0x81)
-Define_Primitive (Prim_Greater_Fixnum, 2, "GREATER-THAN-FIXNUM?")
+DEFINE_PRIMITIVE ("GREATER-THAN-FIXNUM?", Prim_greater_fixnum, 2, 2, 0)
 {
   FIXNUM_PRIMITIVE_2 (x, y);
   BOOLEAN_RESULT (x > y);
@@ -108,8 +102,7 @@ Define_Primitive (Prim_Greater_Fixnum, 2, "GREATER-THAN-FIXNUM?")
 
 /* Operators */
 
-Built_In_Primitive (Prim_One_Plus_Fixnum, 1, "ONE-PLUS-FIXNUM", 0x42)
-Define_Primitive (Prim_One_Plus_Fixnum, 1, "ONE-PLUS-FIXNUM")
+DEFINE_PRIMITIVE ("ONE-PLUS-FIXNUM", Prim_one_plus_fixnum, 1, 1, 0)
 {
   fast long result;
   FIXNUM_PRIMITIVE_1 (x);
@@ -117,8 +110,7 @@ Define_Primitive (Prim_One_Plus_Fixnum, 1, "ONE-PLUS-FIXNUM")
   FIXNUM_RESULT (result);
 }
 
-Built_In_Primitive (Prim_M_1_Plus_Fixnum, 1, "MINUS-ONE-PLUS-FIXNUM", 0x43)
-Define_Primitive (Prim_M_1_Plus_Fixnum, 1, "MINUS-ONE-PLUS-FIXNUM")
+DEFINE_PRIMITIVE ("MINUS-ONE-PLUS-FIXNUM", Prim_m_1_plus_fixnum, 1, 1, 0)
 {
   fast long result;
   FIXNUM_PRIMITIVE_1 (x);
@@ -126,8 +118,7 @@ Define_Primitive (Prim_M_1_Plus_Fixnum, 1, "MINUS-ONE-PLUS-FIXNUM")
   FIXNUM_RESULT (result);
 }
 
-Built_In_Primitive (Prim_Plus_Fixnum, 2, "PLUS-FIXNUM", 0x3B)
-Define_Primitive (Prim_Plus_Fixnum, 2, "PLUS-FIXNUM")
+DEFINE_PRIMITIVE ("PLUS-FIXNUM", Prim_plus_fixnum, 2, 2, 0)
 {
   fast long result;
   FIXNUM_PRIMITIVE_2 (x, y);
@@ -135,8 +126,7 @@ Define_Primitive (Prim_Plus_Fixnum, 2, "PLUS-FIXNUM")
   FIXNUM_RESULT (result);
 }
 
-Built_In_Primitive (Prim_Minus_Fixnum, 2, "MINUS-FIXNUM", 0x3C)
-Define_Primitive (Prim_Minus_Fixnum, 2, "MINUS-FIXNUM")
+DEFINE_PRIMITIVE ("MINUS-FIXNUM", Prim_minus_fixnum, 2, 2, 0)
 {
   fast long result;
   FIXNUM_PRIMITIVE_2 (x, y);
@@ -144,8 +134,7 @@ Define_Primitive (Prim_Minus_Fixnum, 2, "MINUS-FIXNUM")
   FIXNUM_RESULT (result);
 }
 
-Built_In_Primitive (Prim_Multiply_Fixnum, 2, "MULTIPLY-FIXNUM", 0x3D)
-Define_Primitive (Prim_Multiply_Fixnum, 2, "MULTIPLY-FIXNUM")
+DEFINE_PRIMITIVE ("MULTIPLY-FIXNUM", Prim_multiply_fixnum, 2, 2, 0)
 {
   /* Mul, which does the multiplication with overflow handling, is
      customized for some machines.  Therefore, it is in os.c */
@@ -161,8 +150,7 @@ Define_Primitive (Prim_Multiply_Fixnum, 2, "MULTIPLY-FIXNUM")
   return (result);
 }
 
-Built_In_Primitive (Prim_Divide_Fixnum, 2, "DIVIDE-FIXNUM", 0x3E)
-Define_Primitive (Prim_Divide_Fixnum, 2, "DIVIDE-FIXNUM")
+DEFINE_PRIMITIVE ("DIVIDE-FIXNUM", Prim_divide_fixnum, 2, 2, 0)
 {
   /* Returns the CONS of quotient and remainder */
   fast long quotient;
@@ -180,8 +168,7 @@ Define_Primitive (Prim_Divide_Fixnum, 2, "DIVIDE-FIXNUM")
   return (Make_Pointer (TC_LIST, (Free - 2)));
 }
 
-Built_In_Primitive (Prim_Gcd_Fixnum, 2, "GCD-FIXNUM", 0x66)
-Define_Primitive (Prim_Gcd_Fixnum, 2, "GCD-FIXNUM")
+DEFINE_PRIMITIVE ("GCD-FIXNUM", Prim_gcd_fixnum, 2, 2, 0)
 {
   fast long z;
   FIXNUM_PRIMITIVE_2 (x, y);

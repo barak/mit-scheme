@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/rgxprim.c,v 1.6 1987/12/09 21:37:43 jrm Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/rgxprim.c,v 1.7 1988/08/15 20:54:28 cph Rel $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -35,7 +35,7 @@ MIT in each case. */
 /* Primitives for regular expression matching and search. */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 #include "string.h"
 #include "char.h"
 #include "edwin.h"
@@ -94,7 +94,7 @@ MIT in each case. */
     error_external_return ();						\
 } while (0)
 
-DEFINE_PRIMITIVE ("RE-CHAR-SET-ADJOIN!", Prim_re_char_set_adjoin, 2)
+DEFINE_PRIMITIVE ("RE-CHAR-SET-ADJOIN!", Prim_re_char_set_adjoin, 2, 2, 0)
 {
   int ascii;
   PRIMITIVE_HEADER (2);
@@ -106,7 +106,7 @@ DEFINE_PRIMITIVE ("RE-CHAR-SET-ADJOIN!", Prim_re_char_set_adjoin, 2)
   PRIMITIVE_RETURN (NIL);
 }
 
-DEFINE_PRIMITIVE ("RE-COMPILE-FASTMAP", Prim_re_compile_fastmap, 4)
+DEFINE_PRIMITIVE ("RE-COMPILE-FASTMAP", Prim_re_compile_fastmap, 4, 4, 0)
 {
   fast Pointer pattern;
   fast int can_be_null;
@@ -178,13 +178,13 @@ DEFINE_PRIMITIVE ("RE-COMPILE-FASTMAP", Prim_re_compile_fastmap, 4)
 		(& (text [match_end]))));				\
   RE_MATCH_RESULTS (result, (ARG_REF (4)))
 
-DEFINE_PRIMITIVE ("RE-MATCH-SUBSTRING", Prim_re_match_substring, 7)
+DEFINE_PRIMITIVE ("RE-MATCH-SUBSTRING", Prim_re_match_substring, 7, 7, 0)
 { RE_SUBSTRING_PRIMITIVE (re_match); }
 
-DEFINE_PRIMITIVE ("RE-SEARCH-SUBSTRING-FORWARD", Prim_re_search_substr_forward, 7)
+DEFINE_PRIMITIVE ("RE-SEARCH-SUBSTRING-FORWARD", Prim_re_search_substr_forward, 7, 7, 0)
 { RE_SUBSTRING_PRIMITIVE (re_search_forward); }
 
-DEFINE_PRIMITIVE ("RE-SEARCH-SUBSTRING-BACKWARD", Prim_re_search_substr_backward, 7)
+DEFINE_PRIMITIVE ("RE-SEARCH-SUBSTRING-BACKWARD", Prim_re_search_substr_backward, 7, 7, 0)
 { RE_SUBSTRING_PRIMITIVE (re_search_backward); }
 
 #define RE_BUFFER_PRIMITIVE(procedure)					\
@@ -235,11 +235,11 @@ DEFINE_PRIMITIVE ("RE-SEARCH-SUBSTRING-BACKWARD", Prim_re_search_substr_backward
 		(& (text [match_end]))));				\
   RE_MATCH_RESULTS (result, (ARG_REF (4)))
 
-DEFINE_PRIMITIVE ("RE-MATCH-BUFFER", Prim_re_match_buffer, 7)
+DEFINE_PRIMITIVE ("RE-MATCH-BUFFER", Prim_re_match_buffer, 7, 7, 0)
 { RE_BUFFER_PRIMITIVE (re_match); }
 
-DEFINE_PRIMITIVE ("RE-SEARCH-BUFFER-FORWARD", Prim_re_search_buffer_forward, 7)
+DEFINE_PRIMITIVE ("RE-SEARCH-BUFFER-FORWARD", Prim_re_search_buffer_forward, 7, 7, 0)
 { RE_BUFFER_PRIMITIVE (re_search_forward); }
 
-DEFINE_PRIMITIVE ("RE-SEARCH-BUFFER-BACKWARD", Prim_re_search_buffer_backward, 7)
+DEFINE_PRIMITIVE ("RE-SEARCH-BUFFER-BACKWARD", Prim_re_search_buffer_backward, 7, 7, 0)
 { RE_BUFFER_PRIMITIVE (re_search_backward); }

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.35 1988/05/12 22:28:29 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.36 1988/08/15 20:53:30 cph Exp $
  *
  * This file contains the code that copies objects into pure
  * and constant space.
@@ -38,7 +38,7 @@ MIT in each case. */
  */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 #include "gccode.h"
 #include "zones.h"
 
@@ -475,7 +475,7 @@ Pointer Info;
   *New_Object = Make_Non_Pointer(PURE_PART, (Recomputed_Length + 5));
   GC();
   Set_Pure_Top();
-  return (TRUTH);
+  return (SHARP_T);
 }
 
 /* (PRIMITIVE-PURIFY OBJECT PURE? SAFETY-MARGIN)
@@ -498,14 +498,14 @@ Pointer Info;
    have changed.
 */
 
-DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_Primitive_Purify, 3)
+DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_primitive_purify, 3, 3, 0)
 {
   long Saved_Zone;
   Pointer Object, Lost_Objects, Purify_Result, Daemon;
   Primitive_3_Args();
 
   Save_Time_Zone(Zone_Purify);
-  if ((Arg2 != TRUTH) && (Arg2 != NIL))
+  if ((Arg2 != SHARP_T) && (Arg2 != NIL))
     Primitive_Error(ERR_ARG_2_WRONG_TYPE);
   Arg_3_Type(TC_FIXNUM);
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,12 +30,12 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/string.c,v 9.30 1988/03/31 21:23:18 jrm Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/string.c,v 9.31 1988/08/15 20:55:43 cph Exp $ */
 
 /* String primitives. */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 #include "char.h"
 #include "string.h"
 
@@ -73,21 +73,21 @@ memory_to_string (nbytes, data)
 /* Currently the strings used in symbols have type codes in the length
    field.  They should be changed to have just longwords there. */
 
-DEFINE_PRIMITIVE ("STRING-ALLOCATE", Prim_String_Allocate, 1)
+DEFINE_PRIMITIVE ("STRING-ALLOCATE", Prim_string_allocate, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
 
   PRIMITIVE_RETURN (allocate_string (arg_nonnegative_integer (1)));
 }
 
-DEFINE_PRIMITIVE ("STRING?", Prim_String_P, 1)
+DEFINE_PRIMITIVE ("STRING?", Prim_string_p, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
 
-  PRIMITIVE_RETURN ((STRING_P (ARG_REF (1))) ? TRUTH : NIL);
+  PRIMITIVE_RETURN ((STRING_P (ARG_REF (1))) ? SHARP_T : NIL);
 }
 
-DEFINE_PRIMITIVE ("STRING-LENGTH", Prim_String_Length, 1)
+DEFINE_PRIMITIVE ("STRING-LENGTH", Prim_string_length, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
 
@@ -95,7 +95,7 @@ DEFINE_PRIMITIVE ("STRING-LENGTH", Prim_String_Length, 1)
   PRIMITIVE_RETURN (Make_Unsigned_Fixnum (string_length (ARG_REF (1))));
 }
 
-DEFINE_PRIMITIVE ("STRING-MAXIMUM-LENGTH", Prim_String_Maximum_Length, 1)
+DEFINE_PRIMITIVE ("STRING-MAXIMUM-LENGTH", Prim_string_maximum_length, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
 
@@ -104,7 +104,7 @@ DEFINE_PRIMITIVE ("STRING-MAXIMUM-LENGTH", Prim_String_Maximum_Length, 1)
     (Make_Unsigned_Fixnum ((maximum_string_length (ARG_REF (1))) - 1));
 }
 
-DEFINE_PRIMITIVE ("SET-STRING-LENGTH!", Prim_Set_String_Length, 2)
+DEFINE_PRIMITIVE ("SET-STRING-LENGTH!", Prim_set_string_length, 2, 2, 0)
 {
   fast Pointer string;
   fast long length;
@@ -144,10 +144,10 @@ substring_length_min (start1, end1, start2, end2)
 									\
   PRIMITIVE_RETURN (process_result (string_ref (string, index)))
 
-DEFINE_PRIMITIVE ("STRING-REF", Prim_String_Ref, 2)
+DEFINE_PRIMITIVE ("STRING-REF", Prim_string_ref, 2, 2, 0)
 { STRING_REF_BODY (c_char_to_scheme_char); }
 
-DEFINE_PRIMITIVE ("VECTOR-8B-REF", Prim_Vec_8b_Ref, 2)
+DEFINE_PRIMITIVE ("VECTOR-8B-REF", Prim_vec_8b_ref, 2, 2, 0)
 { STRING_REF_BODY (Make_Unsigned_Fixnum); }
 
 #define STRING_SET_BODY(get_ascii, process_result)			\
@@ -168,10 +168,10 @@ DEFINE_PRIMITIVE ("VECTOR-8B-REF", Prim_Vec_8b_Ref, 2)
   (*char_pointer) = ascii;						\
   PRIMITIVE_RETURN (process_result (result))
 
-DEFINE_PRIMITIVE ("STRING-SET!", Prim_String_Set, 3)
+DEFINE_PRIMITIVE ("STRING-SET!", Prim_string_set, 3, 3, 0)
 { STRING_SET_BODY (arg_ascii_char, c_char_to_scheme_char); }
 
-DEFINE_PRIMITIVE ("VECTOR-8B-SET!", Prim_Vec_8b_Set, 3)
+DEFINE_PRIMITIVE ("VECTOR-8B-SET!", Prim_vec_8b_set, 3, 3, 0)
 { STRING_SET_BODY (arg_ascii_integer, MAKE_UNSIGNED_FIXNUM); }
 
 #define SUBSTRING_MOVE_PREFIX()						\
@@ -195,7 +195,7 @@ DEFINE_PRIMITIVE ("VECTOR-8B-SET!", Prim_Vec_8b_Set, 3)
   if (end2 > (string_length (ARG_REF (4))))				\
     error_bad_range_arg (3)
 
-DEFINE_PRIMITIVE ("SUBSTRING-MOVE-RIGHT!", Prim_Substring_Move_Right, 5)
+DEFINE_PRIMITIVE ("SUBSTRING-MOVE-RIGHT!", Prim_substring_move_right, 5, 5, 0)
 {
   SUBSTRING_MOVE_PREFIX ();
 
@@ -206,7 +206,7 @@ DEFINE_PRIMITIVE ("SUBSTRING-MOVE-RIGHT!", Prim_Substring_Move_Right, 5)
   PRIMITIVE_RETURN (NIL);
 }
 
-DEFINE_PRIMITIVE ("SUBSTRING-MOVE-LEFT!", Prim_Substring_Move_Left, 5)
+DEFINE_PRIMITIVE ("SUBSTRING-MOVE-LEFT!", Prim_substring_move_left, 5, 5, 0)
 {
   SUBSTRING_MOVE_PREFIX ();
 
@@ -233,7 +233,7 @@ DEFINE_PRIMITIVE ("SUBSTRING-MOVE-LEFT!", Prim_Substring_Move_Left, 5)
   if (start > end)							\
     error_bad_range_arg (2)
 
-DEFINE_PRIMITIVE ("VECTOR-8B-FILL!", Prim_Vec_8b_Fill, 4)
+DEFINE_PRIMITIVE ("VECTOR-8B-FILL!", Prim_vec_8b_fill, 4, 4, 0)
 {
   VECTOR_8B_SUBSTRING_PREFIX ();
 
@@ -244,7 +244,7 @@ DEFINE_PRIMITIVE ("VECTOR-8B-FILL!", Prim_Vec_8b_Fill, 4)
   PRIMITIVE_RETURN (NIL);
 }
 
-DEFINE_PRIMITIVE ("VECTOR-8B-FIND-NEXT-CHAR", Prim_Vec_8b_Find_Next_Char, 4)
+DEFINE_PRIMITIVE ("VECTOR-8B-FIND-NEXT-CHAR", Prim_vec_8b_find_next_char, 4, 4, 0)
 {
   VECTOR_8B_SUBSTRING_PREFIX ();
 
@@ -258,7 +258,7 @@ DEFINE_PRIMITIVE ("VECTOR-8B-FIND-NEXT-CHAR", Prim_Vec_8b_Find_Next_Char, 4)
   PRIMITIVE_RETURN (NIL);
 }
 
-DEFINE_PRIMITIVE ("VECTOR-8B-FIND-PREVIOUS-CHAR", Prim_Vec_8b_Find_Prev_Char, 4)
+DEFINE_PRIMITIVE ("VECTOR-8B-FIND-PREVIOUS-CHAR", Prim_vec_8b_find_prev_char, 4, 4, 0)
 {
   VECTOR_8B_SUBSTRING_PREFIX ();
 
@@ -269,7 +269,7 @@ DEFINE_PRIMITIVE ("VECTOR-8B-FIND-PREVIOUS-CHAR", Prim_Vec_8b_Find_Prev_Char, 4)
   PRIMITIVE_RETURN (NIL);
 }
 
-DEFINE_PRIMITIVE ("VECTOR-8B-FIND-NEXT-CHAR-CI", Prim_Vec_8b_Find_Next_Char_Ci, 4)
+DEFINE_PRIMITIVE ("VECTOR-8B-FIND-NEXT-CHAR-CI", Prim_vec_8b_find_next_char_ci, 4, 4, 0)
 {
   char char1;
   VECTOR_8B_SUBSTRING_PREFIX ();
@@ -285,7 +285,7 @@ DEFINE_PRIMITIVE ("VECTOR-8B-FIND-NEXT-CHAR-CI", Prim_Vec_8b_Find_Next_Char_Ci, 
   PRIMITIVE_RETURN (NIL);
 }
 
-DEFINE_PRIMITIVE ("VECTOR-8B-FIND-PREVIOUS-CHAR-CI", Prim_Vec_8b_Find_Prev_Char_Ci, 4)
+DEFINE_PRIMITIVE ("VECTOR-8B-FIND-PREVIOUS-CHAR-CI", Prim_vec_8b_find_prev_char_ci, 4, 4, 0)
 {
   char char1;
   VECTOR_8B_SUBSTRING_PREFIX ();
@@ -317,7 +317,7 @@ DEFINE_PRIMITIVE ("VECTOR-8B-FIND-PREVIOUS-CHAR-CI", Prim_Vec_8b_Find_Prev_Char_
   if ((string_length (ARG_REF (4))) != MAX_ASCII)			\
     error_bad_range_arg (4)
 
-DEFINE_PRIMITIVE ("SUBSTRING-FIND-NEXT-CHAR-IN-SET", Prim_Find_Next_Char_In_Set, 4)
+DEFINE_PRIMITIVE ("SUBSTRING-FIND-NEXT-CHAR-IN-SET", Prim_find_next_char_in_set, 4, 4, 0)
 {
   SUBSTR_FIND_CHAR_IN_SET_PREFIX ();
 
@@ -332,7 +332,7 @@ DEFINE_PRIMITIVE ("SUBSTRING-FIND-NEXT-CHAR-IN-SET", Prim_Find_Next_Char_In_Set,
   PRIMITIVE_RETURN (NIL);
 }
 
-DEFINE_PRIMITIVE ("SUBSTRING-FIND-PREVIOUS-CHAR-IN-SET", Prim_Find_Prev_Char_In_Set, 4)
+DEFINE_PRIMITIVE ("SUBSTRING-FIND-PREVIOUS-CHAR-IN-SET", Prim_find_prev_char_in_set, 4, 4, 0)
 {
   SUBSTR_FIND_CHAR_IN_SET_PREFIX ();
 
@@ -377,27 +377,27 @@ DEFINE_PRIMITIVE ("SUBSTRING-FIND-PREVIOUS-CHAR-IN-SET", Prim_Find_Prev_Char_In_
   if (length != (end2 - start2))				\
     PRIMITIVE_RETURN (NIL);
 
-DEFINE_PRIMITIVE ("SUBSTRING=?", Prim_Substring_Equal, 6)
+DEFINE_PRIMITIVE ("SUBSTRING=?", Prim_substring_equal, 6, 6, 0)
 {
   SUBSTRING_EQUAL_PREFIX ();
 
   while ((length--) > 0)
     if ((*scan1++) != (*scan2++))
       PRIMITIVE_RETURN (NIL);
-  PRIMITIVE_RETURN (TRUTH);
+  PRIMITIVE_RETURN (SHARP_T);
 }
 
-DEFINE_PRIMITIVE ("SUBSTRING-CI=?", Prim_Substring_Ci_Equal, 6)
+DEFINE_PRIMITIVE ("SUBSTRING-CI=?", Prim_substring_ci_equal, 6, 6, 0)
 {
   SUBSTRING_EQUAL_PREFIX ();
 
   while ((length--) > 0)
     if ((char_upcase (*scan1++)) != (char_upcase (*scan2++)))
       PRIMITIVE_RETURN (NIL);
-  PRIMITIVE_RETURN (TRUTH);
+  PRIMITIVE_RETURN (SHARP_T);
 }
 
-DEFINE_PRIMITIVE ("SUBSTRING<?", Prim_Substring_Less, 6)
+DEFINE_PRIMITIVE ("SUBSTRING<?", Prim_substring_less, 6, 6, 0)
 {
   long length, length1, length2;
   SUBSTRING_COMPARE_PREFIX (start1, start2);
@@ -438,10 +438,10 @@ DEFINE_PRIMITIVE ("SUBSTRING<?", Prim_Substring_Less, 6)
     }									\
   PRIMITIVE_RETURN (NIL)
 
-DEFINE_PRIMITIVE ("SUBSTRING-UPCASE!", Prim_Substring_Upcase, 3)
+DEFINE_PRIMITIVE ("SUBSTRING-UPCASE!", Prim_substring_upcase, 3, 3, 0)
 { SUBSTRING_MODIFIER (char_upcase); }
 
-DEFINE_PRIMITIVE ("SUBSTRING-DOWNCASE!", Prim_Substring_Downcase, 3)
+DEFINE_PRIMITIVE ("SUBSTRING-DOWNCASE!", Prim_substring_downcase, 3, 3, 0)
 { SUBSTRING_MODIFIER (char_downcase); }
 
 #define SUBSTRING_MATCH_PREFIX(index1, index2)			\
@@ -451,7 +451,7 @@ DEFINE_PRIMITIVE ("SUBSTRING-DOWNCASE!", Prim_Substring_Downcase, 3)
   length = (substring_length_min (start1, end1, start2, end2));	\
   unmatched = length;
 
-DEFINE_PRIMITIVE ("SUBSTRING-MATCH-FORWARD", Prim_Match_Forward, 6)
+DEFINE_PRIMITIVE ("SUBSTRING-MATCH-FORWARD", Prim_match_forward, 6, 6, 0)
 {
   SUBSTRING_MATCH_PREFIX (start1, start2);
 
@@ -461,7 +461,7 @@ DEFINE_PRIMITIVE ("SUBSTRING-MATCH-FORWARD", Prim_Match_Forward, 6)
   PRIMITIVE_RETURN (Make_Unsigned_Fixnum (length));
 }
 
-DEFINE_PRIMITIVE ("SUBSTRING-MATCH-FORWARD-CI", Prim_Match_Forward_Ci, 6)
+DEFINE_PRIMITIVE ("SUBSTRING-MATCH-FORWARD-CI", Prim_match_forward_ci, 6, 6, 0)
 {
   SUBSTRING_MATCH_PREFIX (start1, start2);
 
@@ -471,7 +471,7 @@ DEFINE_PRIMITIVE ("SUBSTRING-MATCH-FORWARD-CI", Prim_Match_Forward_Ci, 6)
   PRIMITIVE_RETURN (Make_Unsigned_Fixnum (length));
 }
 
-DEFINE_PRIMITIVE ("SUBSTRING-MATCH-BACKWARD", Prim_Match_Backward, 6)
+DEFINE_PRIMITIVE ("SUBSTRING-MATCH-BACKWARD", Prim_match_backward, 6, 6, 0)
 {
   SUBSTRING_MATCH_PREFIX (end1, end2);
 
@@ -481,7 +481,7 @@ DEFINE_PRIMITIVE ("SUBSTRING-MATCH-BACKWARD", Prim_Match_Backward, 6)
   PRIMITIVE_RETURN (Make_Unsigned_Fixnum (length));
 }
 
-DEFINE_PRIMITIVE ("SUBSTRING-MATCH-BACKWARD-CI", Prim_Match_Backward_Ci, 6)
+DEFINE_PRIMITIVE ("SUBSTRING-MATCH-BACKWARD-CI", Prim_match_backward_ci, 6, 6, 0)
 {
   SUBSTRING_MATCH_PREFIX (end1, end2);
 

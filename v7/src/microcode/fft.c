@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/fft.c,v 9.23 1988/01/07 21:32:15 pas Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/fft.c,v 9.24 1988/08/15 20:46:29 cph Exp $ */
 
 /* Fourier Transforms (pas)
    1. DFT (FFT),
@@ -39,7 +39,7 @@ MIT in each case. */
    */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 #include "flonum.h"
 #include "zones.h" 
 #include <math.h>
@@ -456,7 +456,7 @@ Cube_Space_3D_FFT_In_Scheme_Heap(flag, ndeps, Real_Array, Imag_Array)
    Arg1=1 --> forward FFT, otherwise backward.
    */
 
-Define_Primitive(Prim_Array_FFT, 3, "ARRAY-FFT!")
+DEFINE_PRIMITIVE ("ARRAY-FFT!", Prim_array_fft, 3, 3, 0)
 { long length, power, flag, i;
   Pointer answer;
   REAL *f1,*f2,*g1,*g2,*w1,*w2;
@@ -498,7 +498,7 @@ Define_Primitive(Prim_Array_FFT, 3, "ARRAY-FFT!")
   return answer;
 }
 
-Define_Primitive(Prim_Array_CZT, 5, "ARRAY-CZT")
+DEFINE_PRIMITIVE ("ARRAY-CZT", Prim_array_czt, 5, 5, 0)
 { double phi,rho;
   long N,M,L;
   long log2_L,maxMN,smallest_power_of_2_ge(), allocated_cells;
@@ -559,7 +559,7 @@ Define_Primitive(Prim_Array_CZT, 5, "ARRAY-CZT")
   return answer;
 }
 
-Define_Primitive(Prim_Array_2D_FFT, 5, "ARRAY-2D-FFT!")
+DEFINE_PRIMITIVE ("ARRAY-2D-FFT!", Prim_array_2d_fft, 5, 5, 0)
 { long flag;
   Pointer answer;
   REAL *Real_Array, *Imag_Array;
@@ -593,7 +593,7 @@ Define_Primitive(Prim_Array_2D_FFT, 5, "ARRAY-2D-FFT!")
   return answer;
 }
 
-Define_Primitive(Prim_Array_3D_FFT, 6, "ARRAY-3D-FFT!")
+DEFINE_PRIMITIVE ("ARRAY-3D-FFT!", Prim_array_3d_fft, 6, 6, 0)
 { long flag;
   Pointer answer;
   REAL *Real_Array, *Imag_Array;

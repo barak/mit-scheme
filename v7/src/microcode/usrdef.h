@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/usrdef.h,v 9.36 1987/04/16 02:31:57 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/usrdef.h,v 9.37 1988/08/15 20:57:37 cph Rel $ */
 
 /* Macros and header for usrdef.c and variants. */
 
@@ -38,7 +38,7 @@ MIT in each case. */
 #include "object.h"
 #include "errors.h"
 #include "prim.h"
-#include "primitive.h"
+#include "prims.h"
 
 extern void
   Microcode_Termination(),

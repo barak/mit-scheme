@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/lookup.c,v 9.39 1988/05/03 19:18:47 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/lookup.c,v 9.40 1988/08/15 20:51:32 cph Exp $
  *
  * This file contains symbol lookup and modification routines.  See
  * Hal Abelson for a paper describing and justifying the algorithm.
@@ -1219,7 +1219,7 @@ unassigned_p_transform (reference_result)
   switch (reference_result)
   {
     case ERR_UNASSIGNED_VARIABLE:
-      Val = TRUTH;
+      Val = SHARP_T;
       return (PRIM_DONE);
 
     case ERR_UNBOUND_VARIABLE:
@@ -1261,7 +1261,7 @@ Symbol_Lex_unbound_p( frame, symbol)
 
     case ERR_UNBOUND_VARIABLE:
     {
-      Val = TRUTH;
+      Val = SHARP_T;
       return (PRIM_DONE);
     }
 

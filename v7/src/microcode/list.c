@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,20 +30,19 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/list.c,v 9.25 1987/11/17 08:13:49 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/list.c,v 9.26 1988/08/15 20:50:44 cph Rel $
  *
  * List creation and manipulation primitives.
  */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 
 /* (CONS LEFT RIGHT)
    Creates a pair with left component LEFT and right component
    RIGHT.
 */
-Built_In_Primitive(Prim_Cons, 2, "CONS", 0x20)
-Define_Primitive(Prim_Cons, 2, "CONS")
+DEFINE_PRIMITIVE ("CONS", Prim_cons, 2, 2, 0)
 {
   Primitive_2_Args();
 
@@ -56,8 +55,7 @@ Define_Primitive(Prim_Cons, 2, "CONS")
 /* (CDR PAIR)
    Returns the second element in the pair.
 */
-Built_In_Primitive(Prim_Cdr, 1, "CDR", 0x22)
-Define_Primitive(Prim_Cdr, 1, "CDR")
+DEFINE_PRIMITIVE ("CDR", Prim_cdr, 1, 1, 0)
 {
   Primitive_1_Arg();
 
@@ -68,8 +66,7 @@ Define_Primitive(Prim_Cdr, 1, "CDR")
 /* (CAR PAIR)
    Returns the first element in the pair.
 */
-Built_In_Primitive(Prim_Car, 1, "CAR", 0x21)
-Define_Primitive(Prim_Car, 1, "CAR")
+DEFINE_PRIMITIVE ("CAR", Prim_car, 1, 1, 0)
 {
   Primitive_1_Arg();
 
@@ -85,8 +82,7 @@ Define_Primitive(Prim_Car, 1, "CAR")
      11  = CAR	111 = CAAR
      100 = CDDR	...
 */
-Built_In_Primitive(Prim_General_Car_Cdr, 2, "GENERAL-CAR-CDR", 0x27)
-Define_Primitive(Prim_General_Car_Cdr, 2, "GENERAL-CAR-CDR")
+DEFINE_PRIMITIVE ("GENERAL-CAR-CDR", Prim_general_car_cdr, 2, 2, 0)
 {
   fast long CAR_CDR_Pattern;
   Primitive_2_Args();
@@ -111,8 +107,7 @@ Define_Primitive(Prim_General_Car_Cdr, 2, "GENERAL-CAR-CDR")
    testing equality.  Returns NIL if ITEM is not found, or the tail
    of the list whose CAAR is ITEM.
 */
-Built_In_Primitive(Prim_Assq, 2, "ASSQ", 0x5E)
-Define_Primitive(Prim_Assq, 2, "ASSQ")
+DEFINE_PRIMITIVE ("ASSQ", Prim_assq, 2, 2, 0)
 {
   Pointer This_Assoc_Pair, Key;
   Primitive_2_Args();
@@ -138,8 +133,7 @@ Define_Primitive(Prim_Assq, 2, "ASSQ")
    Returns the number of items in the list.
    LENGTH will loop forever if given a circular structure.
 */
-Built_In_Primitive(Prim_Length, 1, "LENGTH", 0x5D)
-Define_Primitive(Prim_Length, 1, "LENGTH")
+DEFINE_PRIMITIVE ("LENGTH", Prim_length, 1, 1, 0)
 {
   fast long i;
   Primitive_1_Arg();
@@ -160,8 +154,7 @@ Define_Primitive(Prim_Length, 1, "LENGTH")
    Searches LIST for ITEM, using EQ? as a test.  Returns NIL if it
    is not found, or the sublist of LIST whose CAR is ITEM.
 */
-Built_In_Primitive(Prim_Memq, 2, "MEMQ", 0x1C)
-Define_Primitive(Prim_Memq, 2, "MEMQ")
+DEFINE_PRIMITIVE ("MEMQ", Prim_memq, 2, 2, 0)
 {
   fast Pointer Key;
   Primitive_2_Args();
@@ -184,8 +177,7 @@ Define_Primitive(Prim_Memq, 2, "MEMQ")
 /* (SET-CAR! PAIR VALUE)
    Stores VALUE in the CAR of PAIR.  Returns the previous CAR of PAIR.
 */
-Built_In_Primitive(Prim_Set_Car, 2, "SET-CAR!", 0x23)
-Define_Primitive(Prim_Set_Car, 2, "SET-CAR!")
+DEFINE_PRIMITIVE ("SET-CAR!", Prim_set_car, 2, 2, 0)
 {
   Primitive_2_Args();
 
@@ -197,8 +189,7 @@ Define_Primitive(Prim_Set_Car, 2, "SET-CAR!")
 /* (SET-CDR! PAIR VALUE)
    Stores VALUE in the CDR of PAIR.  Returns the previous CDR of PAIR.
 */
-Built_In_Primitive(Prim_Set_Cdr, 2, "SET-CDR!", 0x24)
-Define_Primitive(Prim_Set_Cdr, 2, "SET-CDR!")
+DEFINE_PRIMITIVE ("SET-CDR!", Prim_set_cdr, 2, 2, 0)
 {
   Primitive_2_Args();
 
@@ -211,14 +202,13 @@ Define_Primitive(Prim_Set_Cdr, 2, "SET-CDR!")
    Returns #!TRUE if OBJECT has the type-code LIST (ie if it was
    created by CONS).  Returns NIL otherwise.
 */
-Built_In_Primitive(Prim_Pair, 1, "PAIR?", 0x7E)
-Define_Primitive(Prim_Pair, 1, "PAIR?")
+DEFINE_PRIMITIVE ("PAIR?", Prim_pair, 1, 1, 0)
 {
   Primitive_1_Arg();
 
   Touch_In_Primitive(Arg1, Arg1);
   if (Type_Code(Arg1) == TC_LIST)
-    return TRUTH;
+    return SHARP_T;
   else
     return NIL;
 }
@@ -226,14 +216,13 @@ Define_Primitive(Prim_Pair, 1, "PAIR?")
 /* (SYSTEM-PAIR? OBJECT)
    Returns #!TRUE if the garbage collector type of OBJECT is PAIR.
 */
-Built_In_Primitive(Prim_Sys_Pair, 1, "SYSTEM-PAIR?", 0x85)
-Define_Primitive(Prim_Sys_Pair, 1, "SYSTEM-PAIR?")
+DEFINE_PRIMITIVE ("SYSTEM-PAIR?", Prim_sys_pair, 1, 1, 0)
 {
   Primitive_1_Arg();
 
   Touch_In_Primitive(Arg1, Arg1);
   if (GC_Type_List(Arg1))
-    return TRUTH;
+    return SHARP_T;
   else
     return NIL;
 }
@@ -241,8 +230,7 @@ Define_Primitive(Prim_Sys_Pair, 1, "SYSTEM-PAIR?")
 /* (SYSTEM-PAIR-CAR GC-PAIR)
    Same as CAR, but for anything of GC type PAIR.
 */
-Built_In_Primitive(Prim_Sys_Pair_Car, 1, "SYSTEM-PAIR-CAR", 0x86)
-Define_Primitive(Prim_Sys_Pair_Car, 1, "SYSTEM-PAIR-CAR")
+DEFINE_PRIMITIVE ("SYSTEM-PAIR-CAR", Prim_sys_pair_car, 1, 1, 0)
 {
   Primitive_1_Arg();
 
@@ -253,8 +241,7 @@ Define_Primitive(Prim_Sys_Pair_Car, 1, "SYSTEM-PAIR-CAR")
 /* (SYSTEM-PAIR-CDR GC-PAIR)
    Same as CDR, but for anything of GC type PAIR.
 */
-Built_In_Primitive(Prim_Sys_Pair_Cdr, 1, "SYSTEM-PAIR-CDR", 0x87)
-Define_Primitive(Prim_Sys_Pair_Cdr, 1, "SYSTEM-PAIR-CDR")
+DEFINE_PRIMITIVE ("SYSTEM-PAIR-CDR", Prim_sys_pair_cdr, 1, 1, 0)
 {
   Primitive_1_Arg();
 
@@ -266,8 +253,7 @@ Define_Primitive(Prim_Sys_Pair_Cdr, 1, "SYSTEM-PAIR-CDR")
    Like CONS, but returns an object with the specified type code
    (not limited to type code LIST).
 */
-Built_In_Primitive(Prim_Sys_Pair_Cons, 3, "SYSTEM-PAIR-CONS", 0x84)
-Define_Primitive(Prim_Sys_Pair_Cons, 3, "SYSTEM-PAIR-CONS")
+DEFINE_PRIMITIVE ("SYSTEM-PAIR-CONS", Prim_sys_pair_cons, 3, 3, 0)
 {
   long Type;
   Primitive_3_Args();
@@ -291,8 +277,7 @@ Define_Primitive(Prim_Sys_Pair_Cons, 3, "SYSTEM-PAIR-CONS")
 /* (SYSTEM-PAIR-SET-CAR! GC-PAIR NEW_CAR)
    Same as SET-CAR!, but for anything of GC type PAIR.
 */
-Built_In_Primitive(Prim_Sys_Set_Car, 2, "SYSTEM-PAIR-SET-CAR!", 0x88)
-Define_Primitive(Prim_Sys_Set_Car, 2, "SYSTEM-PAIR-SET-CAR!")
+DEFINE_PRIMITIVE ("SYSTEM-PAIR-SET-CAR!", Prim_sys_set_car, 2, 2, 0)
 {
   Primitive_2_Args();
 
@@ -304,8 +289,7 @@ Define_Primitive(Prim_Sys_Set_Car, 2, "SYSTEM-PAIR-SET-CAR!")
 /* (SYSTEM-PAIR-SET-CDR! GC-PAIR NEW_CDR)
    Same as SET-CDR!, but for anything of GC type PAIR.
 */
-Built_In_Primitive(Prim_Sys_Set_Cdr, 2, "SYSTEM-PAIR-SET-CDR!", 0x89)
-Define_Primitive(Prim_Sys_Set_Cdr, 2, "SYSTEM-PAIR-SET-CDR!")
+DEFINE_PRIMITIVE ("SYSTEM-PAIR-SET-CDR!", Prim_sys_set_cdr, 2, 2, 0)
 {
   Primitive_2_Args();
 

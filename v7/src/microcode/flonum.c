@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,14 +30,14 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/flonum.c,v 9.24 1987/11/17 08:11:14 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/flonum.c,v 9.25 1988/08/15 20:47:15 cph Exp $
  *
  * This file contains support for floating point arithmetic.  Most
  * of these primitives have been superceded by generic arithmetic.
  */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 #include "flonum.h"
 #include "zones.h"
 
@@ -50,8 +50,7 @@ MIT in each case. */
    appropriate result.
 */
 
-Built_In_Primitive(Prim_Plus_Flonum, 2, "PLUS-FLONUM", 0x69)
-Define_Primitive(Prim_Plus_Flonum, 2, "PLUS-FLONUM")
+DEFINE_PRIMITIVE ("PLUS-FLONUM", Prim_plus_flonum, 2, 2, 0)
 {
   Primitive_2_Args();
 
@@ -61,8 +60,7 @@ Define_Primitive(Prim_Plus_Flonum, 2, "PLUS-FLONUM")
   Flonum_Result(Get_Float(Arg1) + Get_Float(Arg2));
 }
 
-Built_In_Primitive(Prim_Minus_Flonum, 2, "MINUS-FLONUM", 0x6A)
-Define_Primitive(Prim_Minus_Flonum, 2, "MINUS-FLONUM")
+DEFINE_PRIMITIVE ("MINUS-FLONUM", Prim_minus_flonum, 2, 2, 0)
 {
   Primitive_2_Args();
 
@@ -72,8 +70,7 @@ Define_Primitive(Prim_Minus_Flonum, 2, "MINUS-FLONUM")
   Flonum_Result(Get_Float(Arg1) - Get_Float(Arg2));
 }
 
-Built_In_Primitive(Prim_Multiply_Flonum, 2, "MULTIPLY-FLONUM", 0x6B)
-Define_Primitive(Prim_Multiply_Flonum, 2, "MULTIPLY-FLONUM")
+DEFINE_PRIMITIVE ("MULTIPLY-FLONUM", Prim_multiply_flonum, 2, 2, 0)
 {
   Primitive_2_Args();
 
@@ -83,8 +80,7 @@ Define_Primitive(Prim_Multiply_Flonum, 2, "MULTIPLY-FLONUM")
   Flonum_Result(Get_Float(Arg1) * Get_Float(Arg2));
 }
 
-Built_In_Primitive(Prim_Divide_Flonum, 2, "DIVIDE-FLONUM", 0x6C)
-Define_Primitive(Prim_Divide_Flonum, 2, "DIVIDE-FLONUM")
+DEFINE_PRIMITIVE ("DIVIDE-FLONUM", Prim_divide_flonum, 2, 2, 0)
 {
   Primitive_2_Args();
 
@@ -105,8 +101,7 @@ Define_Primitive(Prim_Divide_Flonum, 2, "DIVIDE-FLONUM")
    true, or a fixnum 0 if it is false.
 */
 
-Built_In_Primitive(Prim_Equal_Flonum, 2, "EQUAL-FLONUM?", 0x6D)
-Define_Primitive(Prim_Equal_Flonum, 2, "EQUAL-FLONUM?")
+DEFINE_PRIMITIVE ("EQUAL-FLONUM?", Prim_equal_flonum, 2, 2, 0)
 {
   Primitive_2_Args();
 
@@ -117,8 +112,7 @@ Define_Primitive(Prim_Equal_Flonum, 2, "EQUAL-FLONUM?")
     Make_Unsigned_Fixnum(((Get_Float(Arg1)) == (Get_Float(Arg2))) ? 1 : 0);
 }
 
-Built_In_Primitive(Prim_Greater_Flonum, 2, "GREATER-THAN-FLONUM?", 0xAA)
-Define_Primitive(Prim_Greater_Flonum, 2, "GREATER-THAN-FLONUM?")
+DEFINE_PRIMITIVE ("GREATER-THAN-FLONUM?", Prim_greater_flonum, 2, 2, 0)
 {
   Primitive_2_Args();
 
@@ -129,8 +123,7 @@ Define_Primitive(Prim_Greater_Flonum, 2, "GREATER-THAN-FLONUM?")
     Make_Unsigned_Fixnum(((Get_Float(Arg1)) > (Get_Float(Arg2))) ? 1 : 0);
 }
 
-Built_In_Primitive(Prim_Less_Flonum, 2, "LESS-THAN-FLONUM?", 0x6E)
-Define_Primitive(Prim_Less_Flonum, 2, "LESS-THAN-FLONUM?")
+DEFINE_PRIMITIVE ("LESS-THAN-FLONUM?", Prim_less_flonum, 2, 2, 0)
 {
   Primitive_2_Args();
 
@@ -149,8 +142,7 @@ Define_Primitive(Prim_Less_Flonum, 2, "LESS-THAN-FLONUM?")
    not a flonum. Otherwise, they return the appropriate result.
 */
 
-Built_In_Primitive(Prim_Sine_Flonum, 1, "SINE-FLONUM", 0x73)
-Define_Primitive(Prim_Sine_Flonum, 1, "SINE-FLONUM")
+DEFINE_PRIMITIVE ("SINE-FLONUM", Prim_sine_flonum, 1, 1, 0)
 {
   extern double sin();
   Primitive_1_Arg();
@@ -160,8 +152,7 @@ Define_Primitive(Prim_Sine_Flonum, 1, "SINE-FLONUM")
   Flonum_Result(sin(Get_Float(Arg1)));
 }
 
-Built_In_Primitive(Prim_Cosine_Flonum, 1, "COSINE-FLONUM", 0x74)
-Define_Primitive(Prim_Cosine_Flonum, 1, "COSINE-FLONUM")
+DEFINE_PRIMITIVE ("COSINE-FLONUM", Prim_cosine_flonum, 1, 1, 0)
 {
   extern double cos();
   Primitive_1_Arg();
@@ -171,8 +162,7 @@ Define_Primitive(Prim_Cosine_Flonum, 1, "COSINE-FLONUM")
   Flonum_Result(cos(Get_Float(Arg1)));
 }
 
-Built_In_Primitive(Prim_Arctan_Flonum, 1, "ARCTAN-FLONUM", 0x75)
-Define_Primitive(Prim_Arctan_Flonum, 1, "ARCTAN-FLONUM")
+DEFINE_PRIMITIVE ("ARCTAN-FLONUM", Prim_arctan_flonum, 1, 1, 0)
 {
   extern double atan();
   Primitive_1_Arg();
@@ -182,8 +172,7 @@ Define_Primitive(Prim_Arctan_Flonum, 1, "ARCTAN-FLONUM")
   Flonum_Result(atan(Get_Float(Arg1)));
 }
 
-Built_In_Primitive(Prim_Exp_Flonum, 1, "EXP-FLONUM", 0x76)
-Define_Primitive(Prim_Exp_Flonum, 1, "EXP-FLONUM")
+DEFINE_PRIMITIVE ("EXP-FLONUM", Prim_exp_flonum, 1, 1, 0)
 {
   extern double exp();
   Primitive_1_Arg();
@@ -193,8 +182,7 @@ Define_Primitive(Prim_Exp_Flonum, 1, "EXP-FLONUM")
   Flonum_Result(exp(Get_Float(Arg1)));
 }
 
-Built_In_Primitive(Prim_Ln_Flonum, 1, "LN-FLONUM", 0x77)
-Define_Primitive(Prim_Ln_Flonum, 1, "LN-FLONUM")
+DEFINE_PRIMITIVE ("LN-FLONUM", Prim_ln_flonum, 1, 1, 0)
 {
   extern double log();
   Primitive_1_Arg();
@@ -206,8 +194,7 @@ Define_Primitive(Prim_Ln_Flonum, 1, "LN-FLONUM")
   Flonum_Result(log(Get_Float(Arg1)));
 }
 
-Built_In_Primitive(Prim_Sqrt_Flonum, 1, "SQRT-FLONUM", 0x78)
-Define_Primitive(Prim_Sqrt_Flonum, 1, "SQRT-FLONUM")
+DEFINE_PRIMITIVE ("SQRT-FLONUM", Prim_sqrt_flonum, 1, 1, 0)
 {
   extern double sqrt();
   double Arg;
@@ -221,8 +208,7 @@ Define_Primitive(Prim_Sqrt_Flonum, 1, "SQRT-FLONUM")
   Flonum_Result(sqrt(Arg));
 }
 
-Built_In_Primitive(Prim_Zero_Flonum, 1, "ZERO-FLONUM?", 0xA7)
-Define_Primitive(Prim_Zero_Flonum, 1, "ZERO-FLONUM?")
+DEFINE_PRIMITIVE ("ZERO-FLONUM?", Prim_zero_flonum, 1, 1, 0)
 {
   Primitive_1_Arg();
 
@@ -231,8 +217,7 @@ Define_Primitive(Prim_Zero_Flonum, 1, "ZERO-FLONUM?")
   return Make_Unsigned_Fixnum((Get_Float(Arg1) == 0.0) ? 1 : 0);
 }
 
-Built_In_Primitive(Prim_Positive_Flonum, 1, "POSITIVE-FLONUM?", 0xA8)
-Define_Primitive(Prim_Positive_Flonum, 1, "POSITIVE-FLONUM?")
+DEFINE_PRIMITIVE ("POSITIVE-FLONUM?", Prim_positive_flonum, 1, 1, 0)
 {
   Primitive_1_Arg();
 
@@ -241,8 +226,7 @@ Define_Primitive(Prim_Positive_Flonum, 1, "POSITIVE-FLONUM?")
   return Make_Unsigned_Fixnum((Get_Float(Arg1) > 0.0) ? 1 : 0);
 }
 
-Built_In_Primitive(Prim_Negative_Flonum, 1, "NEGATIVE-FLONUM?", 0xA9)
-Define_Primitive(Prim_Negative_Flonum, 1, "NEGATIVE-FLONUM?")
+DEFINE_PRIMITIVE ("NEGATIVE-FLONUM?", Prim_negative_flonum, 1, 1, 0)
 {
   Primitive_1_Arg();
 
@@ -257,8 +241,7 @@ Define_Primitive(Prim_Negative_Flonum, 1, "NEGATIVE-FLONUM?")
       to be converted to floating point, or if the argument isn't of
       the correct type, FIXNUM-OR-BIGNUM is returned unchanged.
 */
-Built_In_Primitive(Prim_Int_To_Float, 1, "COERCE-INTEGER-TO-FLONUM", 0x72)
-Define_Primitive(Prim_Int_To_Float, 1, "COERCE-INTEGER-TO-FLONUM")
+DEFINE_PRIMITIVE ("COERCE-INTEGER-TO-FLONUM", Prim_int_to_float, 1, 1, 0)
 {
   Primitive_1_Arg();
 
@@ -279,8 +262,7 @@ Define_Primitive(Prim_Int_To_Float, 1, "COERCE-INTEGER-TO-FLONUM")
       Returns the integer corresponding to FLONUM when truncated.
       Returns NIL if FLONUM isn't a floating point number
 */
-Built_In_Primitive(Prim_Truncate_Flonum, 1, "TRUNCATE-FLONUM", 0x70)
-Define_Primitive(Prim_Truncate_Flonum, 1, "TRUNCATE-FLONUM")
+DEFINE_PRIMITIVE ("TRUNCATE-FLONUM", Prim_truncate_flonum, 1, 1, 0)
 {
   fast double A;
   long Answer;	/* Faulty VAX/UNIX C optimizer */
@@ -299,8 +281,7 @@ Define_Primitive(Prim_Truncate_Flonum, 1, "TRUNCATE-FLONUM")
       Returns the integer found by rounding off FLONUM (upward), if
       FLONUM is a floating point number.  Otherwise returns FLONUM.
 */
-Built_In_Primitive(Prim_Round_Flonum, 1, "ROUND-FLONUM", 0x71)
-Define_Primitive(Prim_Round_Flonum, 1, "ROUND-FLONUM")
+DEFINE_PRIMITIVE ("ROUND-FLONUM", Prim_round_flonum, 1, 1, 0)
 {
   fast double A;
   long Answer;	/* Faulty VAX/UNIX C optimizer */

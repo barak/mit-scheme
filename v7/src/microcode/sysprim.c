@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,18 +30,18 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sysprim.c,v 9.29 1988/07/08 02:26:36 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sysprim.c,v 9.30 1988/08/15 20:56:21 cph Exp $
  *
  * Random system primitives.  Most are implemented in terms of
  * utilities in os.c
  *
  */
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 
 /* Interrupt primitives */
 
-DEFINE_PRIMITIVE ("CHECK-AND-CLEAN-UP-INPUT-CHANNEL", Prim_Chk_And_Cln_Input_Channel, 2)
+DEFINE_PRIMITIVE ("CHECK-AND-CLEAN-UP-INPUT-CHANNEL", Prim_chk_and_cln_input_channel, 2, 2, 0)
 {
   extern Boolean OS_Clean_Interrupt_Channel();
   PRIMITIVE_HEADER (2);
@@ -49,10 +49,10 @@ DEFINE_PRIMITIVE ("CHECK-AND-CLEAN-UP-INPUT-CHANNEL", Prim_Chk_And_Cln_Input_Cha
   PRIMITIVE_RETURN
     ((OS_Clean_Interrupt_Channel ((arg_nonnegative_integer (1)),
 				  (arg_nonnegative_integer (2))))
-     ? TRUTH : NIL);
+     ? SHARP_T : NIL);
 }
 
-DEFINE_PRIMITIVE ("GET-NEXT-INTERRUPT-CHARACTER", Prim_Get_Next_Interrupt_Char, 0)
+DEFINE_PRIMITIVE ("GET-NEXT-INTERRUPT-CHARACTER", Prim_get_next_interrupt_char, 0, 0, 0)
 {
   int result;
   extern int OS_Get_Next_Interrupt_Character();
@@ -70,21 +70,21 @@ DEFINE_PRIMITIVE ("GET-NEXT-INTERRUPT-CHARACTER", Prim_Get_Next_Interrupt_Char, 
 
 /* Time primitives */
 
-DEFINE_PRIMITIVE ("SYSTEM-CLOCK", Prim_System_Clock, 0)
+DEFINE_PRIMITIVE ("SYSTEM-CLOCK", Prim_system_clock, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
 
   PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (OS_process_clock ()));
 }
 
-DEFINE_PRIMITIVE ("REAL-TIME-CLOCK", Prim_real_time_clock, 0)
+DEFINE_PRIMITIVE ("REAL-TIME-CLOCK", Prim_real_time_clock, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
 
   PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (OS_real_time_clock ()));
 }
 
-DEFINE_PRIMITIVE ("SETUP-TIMER-INTERRUPT", Prim_Setup_Timer_Interrupt, 2)
+DEFINE_PRIMITIVE ("SETUP-TIMER-INTERRUPT", Prim_setup_timer_interrupt, 2, 2, 0)
 {
   extern void Clear_Int_Timer(), Set_Int_Timer();
   Primitive_2_Args();
@@ -115,22 +115,22 @@ DEFINE_PRIMITIVE ("SETUP-TIMER-INTERRUPT", Prim_Setup_Timer_Interrupt, 2)
   result = (OS_Name ());						\
   PRIMITIVE_RETURN ((result == -1) ? NIL : (MAKE_UNSIGNED_FIXNUM (result)))
 
-DEFINE_PRIMITIVE ("CURRENT-YEAR", Prim_current_year, 0)
+DEFINE_PRIMITIVE ("CURRENT-YEAR", Prim_current_year, 0, 0, 0)
 { Date_Primitive (OS_Current_Year); }
 
-DEFINE_PRIMITIVE ("CURRENT-MONTH", Prim_current_month, 0)
+DEFINE_PRIMITIVE ("CURRENT-MONTH", Prim_current_month, 0, 0, 0)
 { Date_Primitive (OS_Current_Month); }
 
-DEFINE_PRIMITIVE ("CURRENT-DAY", Prim_current_day, 0)
+DEFINE_PRIMITIVE ("CURRENT-DAY", Prim_current_day, 0, 0, 0)
 { Date_Primitive (OS_Current_Day); }
 
-DEFINE_PRIMITIVE ("CURRENT-HOUR", Prim_current_hour, 0)
+DEFINE_PRIMITIVE ("CURRENT-HOUR", Prim_current_hour, 0, 0, 0)
 { Date_Primitive (OS_Current_Hour); }
 
-DEFINE_PRIMITIVE ("CURRENT-MINUTE", Prim_current_minute, 0)
+DEFINE_PRIMITIVE ("CURRENT-MINUTE", Prim_current_minute, 0, 0, 0)
 { Date_Primitive (OS_Current_Minute); }
 
-DEFINE_PRIMITIVE ("CURRENT-SECOND", Prim_current_second, 0)
+DEFINE_PRIMITIVE ("CURRENT-SECOND", Prim_current_second, 0, 0, 0)
 { Date_Primitive (OS_Current_Second); }
 
 /* Pretty random primitives */
@@ -138,7 +138,7 @@ DEFINE_PRIMITIVE ("CURRENT-SECOND", Prim_current_second, 0)
 /* (EXIT)
    Halt SCHEME, with no intention of restarting. */
 
-DEFINE_PRIMITIVE ("EXIT", Prim_Non_Restartable_Exit, 0)
+DEFINE_PRIMITIVE ("EXIT", Prim_non_restartable_exit, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
 
@@ -149,12 +149,12 @@ DEFINE_PRIMITIVE ("EXIT", Prim_Non_Restartable_Exit, 0)
    Halt Scheme in such a way that it can be restarted.
    Not all operating systems support this. */
 
-DEFINE_PRIMITIVE ("HALT", Prim_Restartable_Exit, 0)
+DEFINE_PRIMITIVE ("HALT", Prim_restartable_exit, 0, 0, 0)
 {
   extern Boolean Restartable_Exit();
   PRIMITIVE_HEADER (0);
 
-  PRIMITIVE_RETURN (((Restartable_Exit ()) ? TRUTH : NIL));
+  PRIMITIVE_RETURN (((Restartable_Exit ()) ? SHARP_T : NIL));
 }
 
 /* (SET-RUN-LIGHT! OBJECT)
@@ -163,7 +163,7 @@ DEFINE_PRIMITIVE ("HALT", Prim_Restartable_Exit, 0)
    In CScheme, rings the bell.
    Used by various things to indicate the state of the system. */
 
-DEFINE_PRIMITIVE ("SET-RUN-LIGHT!", Prim_Set_Run_Light, 1)
+DEFINE_PRIMITIVE ("SET-RUN-LIGHT!", Prim_set_run_light, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
 
@@ -173,25 +173,25 @@ DEFINE_PRIMITIVE ("SET-RUN-LIGHT!", Prim_Set_Run_Light, 1)
 
     OS_tty_beep();
     OS_Flush_Output_Buffer();
-    PRIMITIVE_RETURN (TRUTH);
+    PRIMITIVE_RETURN (SHARP_T);
   }
 #else
   PRIMITIVE_RETURN (NIL);
 #endif
 }
 
-DEFINE_PRIMITIVE ("UNDER-EMACS?", Prim_under_emacs_p, 0)
+DEFINE_PRIMITIVE ("UNDER-EMACS?", Prim_under_emacs_p, 0, 0, 0)
 {
   extern Boolean OS_Under_Emacs();
   PRIMITIVE_HEADER (0);
 
-  PRIMITIVE_RETURN (((OS_Under_Emacs ()) ? TRUTH : NIL));
+  PRIMITIVE_RETURN (((OS_Under_Emacs ()) ? SHARP_T : NIL));
 }
 
 #define CONVERT_ADDRESS(address)					\
   (C_Integer_To_Scheme_Integer ((long) (C_To_Scheme (address))))
 
-DEFINE_PRIMITIVE ("GC-SPACE-STATUS", Prim_gc_space_status, 0)
+DEFINE_PRIMITIVE ("GC-SPACE-STATUS", Prim_gc_space_status, 0, 0, 0)
 {
   Pointer * constant_low;
   Pointer * constant_free;

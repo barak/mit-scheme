@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.h,v 9.39 1987/12/04 22:18:35 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.h,v 9.40 1988/08/15 20:52:55 cph Rel $ */
 
 /*
    Primitive declarations.
@@ -43,6 +43,7 @@ extern Pointer (*(Primitive_Procedure_Table[]))();
 extern int Primitive_Arity_Table[];
 extern int Primitive_Count_Table[];
 extern char *Primitive_Name_Table[];
+extern char *Primitive_Documentation_Table[];
 extern long MAX_PRIMITIVE;
 
 #define CHUNK_SIZE	20	/* Grow undefined vector by this much */

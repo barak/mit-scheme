@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.8 1987/12/01 16:34:04 jrm Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.9 1988/08/15 20:56:02 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,7 +36,7 @@ MIT in each case. */
    Translated from GNU Emacs. */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 #include "char.h"
 #include "string.h"
 #include "edwin.h"
@@ -87,7 +87,7 @@ char syntax_code_spec[13] =
     ' ', '.', 'w', '_', '(', ')', '\'', '\"', '$', '\\', '/', '<', '>'
   };
 
-DEFINE_PRIMITIVE ("STRING->SYNTAX-ENTRY", Prim_String_To_Syntax_Entry, 1)
+DEFINE_PRIMITIVE ("STRING->SYNTAX-ENTRY", Prim_string_to_syntax_entry, 1, 1, 0)
 {
   long length, c, result;
   char *scan;
@@ -128,7 +128,7 @@ DEFINE_PRIMITIVE ("STRING->SYNTAX-ENTRY", Prim_String_To_Syntax_Entry, 1)
   PRIMITIVE_RETURN (Make_Unsigned_Fixnum (result));
 }
 
-DEFINE_PRIMITIVE ("CHAR->SYNTAX-CODE", Prim_Char_To_Syntax_Code, 2)
+DEFINE_PRIMITIVE ("CHAR->SYNTAX-CODE", Prim_char_to_syntax_code, 2, 2, 0)
 {
   Primitive_2_Args ();
 
@@ -283,18 +283,18 @@ DEFINE_PRIMITIVE ("CHAR->SYNTAX-CODE", Prim_Char_To_Syntax_Code, 2)
 
 /* Quote Parsers */
 
-DEFINE_PRIMITIVE ("QUOTED-CHAR?", Prim_Quoted_Char_P, 4)
+DEFINE_PRIMITIVE ("QUOTED-CHAR?", Prim_quoted_char_p, 4, 4, 0)
 {
   NORMAL_INITIALIZATION_BACKWARD (4);
 
   RIGHT_QUOTED_P (start, quoted);
-  PRIMITIVE_RETURN (quoted ? TRUTH : NIL);
+  PRIMITIVE_RETURN (quoted ? SHARP_T : NIL);
 }
 
 /* This is used in conjunction with `scan-list-backward' to find the
    beginning of an s-expression. */
 
-DEFINE_PRIMITIVE ("SCAN-BACKWARD-PREFIX-CHARS", Prim_Scan_Backward_Prefix_Chars, 4)
+DEFINE_PRIMITIVE ("SCAN-BACKWARD-PREFIX-CHARS", Prim_scan_backward_prefix_chars, 4, 4, 0)
 {
   NORMAL_INITIALIZATION_BACKWARD (4);
 
@@ -310,7 +310,7 @@ DEFINE_PRIMITIVE ("SCAN-BACKWARD-PREFIX-CHARS", Prim_Scan_Backward_Prefix_Chars,
 
 /* Word Parsers */
 
-DEFINE_PRIMITIVE ("SCAN-FORWARD-TO-WORD", Prim_Scan_Forward_To_Word, 4)
+DEFINE_PRIMITIVE ("SCAN-FORWARD-TO-WORD", Prim_scan_forward_to_word, 4, 4, 0)
 {
   NORMAL_INITIALIZATION_FORWARD (4);
 
@@ -322,7 +322,7 @@ DEFINE_PRIMITIVE ("SCAN-FORWARD-TO-WORD", Prim_Scan_Forward_To_Word, 4)
     }
 }
 
-DEFINE_PRIMITIVE ("SCAN-WORD-FORWARD", Prim_Scan_Word_Forward, 4)
+DEFINE_PRIMITIVE ("SCAN-WORD-FORWARD", Prim_scan_word_forward, 4, 4, 0)
 {
   NORMAL_INITIALIZATION_FORWARD (4);
 
@@ -341,7 +341,7 @@ DEFINE_PRIMITIVE ("SCAN-WORD-FORWARD", Prim_Scan_Word_Forward, 4)
     }
 }
 
-DEFINE_PRIMITIVE ("SCAN-WORD-BACKWARD", Prim_Scan_Word_Backward, 4)
+DEFINE_PRIMITIVE ("SCAN-WORD-BACKWARD", Prim_scan_word_backward, 4, 4, 0)
 {
   NORMAL_INITIALIZATION_BACKWARD (4);
 
@@ -362,7 +362,7 @@ DEFINE_PRIMITIVE ("SCAN-WORD-BACKWARD", Prim_Scan_Word_Backward, 4)
 
 /* S-Expression Parsers */
 
-DEFINE_PRIMITIVE ("SCAN-LIST-FORWARD", Prim_Scan_List_Forward, 7)
+DEFINE_PRIMITIVE ("SCAN-LIST-FORWARD", Prim_scan_list_forward, 7, 7, 0)
 {
   SCAN_LIST_INITIALIZATION (NORMAL_INITIALIZATION_FORWARD);
 
@@ -486,7 +486,7 @@ DEFINE_PRIMITIVE ("SCAN-LIST-FORWARD", Prim_Scan_List_Forward, 7)
     }
 }
 
-DEFINE_PRIMITIVE ("SCAN-LIST-BACKWARD", Prim_Scan_List_Backward, 7)
+DEFINE_PRIMITIVE ("SCAN-LIST-BACKWARD", Prim_scan_list_backward, 7, 7, 0)
 {
   SCAN_LIST_INITIALIZATION (NORMAL_INITIALIZATION_BACKWARD);
 
@@ -627,7 +627,7 @@ struct levelstruct { char *last, *previous; };
   (level -> last) = start;						\
 } while (0)
 
-DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_Scan_Sexps_Forward, 7)
+DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
 {
   long target_depth;
   Boolean stop_before;
@@ -873,7 +873,7 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_Scan_Sexps_Forward, 7)
   (User_Vector_Set(result, 2, ((in_comment == 0)
 			       ? NIL
 			       : (Make_Unsigned_Fixnum (in_comment)))));
-  (User_Vector_Set(result, 3, ((quoted == false) ? NIL : TRUTH)));
+  (User_Vector_Set(result, 3, ((quoted == false) ? NIL : SHARP_T)));
   (User_Vector_Set(result, 4, (((level -> previous) == NULL)
 			       ? NIL
 			       : (Make_Unsigned_Fixnum 

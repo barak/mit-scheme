@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.27 1988/03/02 09:00:38 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.28 1988/08/15 20:57:19 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -35,7 +35,7 @@ MIT in each case. */
 /* Simple unix primitives. */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 #include "string.h"
 #include <pwd.h>
 #include <grp.h>
@@ -50,7 +50,7 @@ MIT in each case. */
 /* Looks up in the user's shell environment the value of the 
    variable specified as a string. */
 
-DEFINE_PRIMITIVE ("GET-ENVIRONMENT-VARIABLE", Prim_get_environment_variable, 1)
+DEFINE_PRIMITIVE ("GET-ENVIRONMENT-VARIABLE", Prim_get_environment_variable, 1, 1, 0)
 {
   char *variable_value;
   extern char *getenv ();
@@ -64,7 +64,7 @@ DEFINE_PRIMITIVE ("GET-ENVIRONMENT-VARIABLE", Prim_get_environment_variable, 1)
      : (C_String_To_Scheme_String (variable_value)));
 }
 
-DEFINE_PRIMITIVE ("CURRENT-USER-NAME", Prim_get_user_name, 0)
+DEFINE_PRIMITIVE ("CURRENT-USER-NAME", Prim_get_user_name, 0, 0, 0)
 {
   char *user_name;
   char *getlogin ();
@@ -85,7 +85,7 @@ DEFINE_PRIMITIVE ("CURRENT-USER-NAME", Prim_get_user_name, 0)
   PRIMITIVE_RETURN (C_String_To_Scheme_String (user_name));
 }
 
-DEFINE_PRIMITIVE ("GET-USER-HOME-DIRECTORY", Prim_get_user_home_directory, 1)
+DEFINE_PRIMITIVE ("GET-USER-HOME-DIRECTORY", Prim_get_user_home_directory, 1, 1, 0)
 {
   struct passwd *entry;
   struct passwd *getpwnam ();
@@ -99,14 +99,14 @@ DEFINE_PRIMITIVE ("GET-USER-HOME-DIRECTORY", Prim_get_user_home_directory, 1)
      : (C_String_To_Scheme_String (entry -> pw_dir)));
 }
 
-DEFINE_PRIMITIVE ("CURRENT-FILE-TIME", Prim_current_file_time, 0)
+DEFINE_PRIMITIVE ("CURRENT-FILE-TIME", Prim_current_file_time, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
 
   PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (time ((long *) 0)));
 }
 
-DEFINE_PRIMITIVE ("FILE-TIME->STRING", Prim_file_time_to_string, 1)
+DEFINE_PRIMITIVE ("FILE-TIME->STRING", Prim_file_time_to_string, 1, 1, 0)
 {
   long clock;
   long temp;
@@ -123,7 +123,7 @@ DEFINE_PRIMITIVE ("FILE-TIME->STRING", Prim_file_time_to_string, 1)
   PRIMITIVE_RETURN (C_String_To_Scheme_String (time_string));
 }
 
-DEFINE_PRIMITIVE ("UID->STRING", Prim_uid_to_string, 1)
+DEFINE_PRIMITIVE ("UID->STRING", Prim_uid_to_string, 1, 1, 0)
 {
   struct passwd *getpwuid ();
   void endpwent ();
@@ -138,7 +138,7 @@ DEFINE_PRIMITIVE ("UID->STRING", Prim_uid_to_string, 1)
   PRIMITIVE_RETURN (C_String_To_Scheme_String (entry -> pw_name));
 }
 
-DEFINE_PRIMITIVE ("GID->STRING", Prim_gid_to_string, 1)
+DEFINE_PRIMITIVE ("GID->STRING", Prim_gid_to_string, 1, 1, 0)
 {
   struct group *getgrgid ();
   void endgrent ();
@@ -153,7 +153,7 @@ DEFINE_PRIMITIVE ("GID->STRING", Prim_gid_to_string, 1)
   PRIMITIVE_RETURN (C_String_To_Scheme_String (entry -> gr_name));
 }
 
-DEFINE_PRIMITIVE ("FILE-DIRECTORY?", Prim_file_directory_p, 1)
+DEFINE_PRIMITIVE ("FILE-DIRECTORY?", Prim_file_directory_p, 1, 1, 0)
 {
   struct stat stat_result;
   PRIMITIVE_HEADER (1);
@@ -162,7 +162,7 @@ DEFINE_PRIMITIVE ("FILE-DIRECTORY?", Prim_file_directory_p, 1)
   if ((stat ((Scheme_String_To_C_String (ARG_REF (1))), (& stat_result))) < 0)
     PRIMITIVE_RETURN (NIL);
   PRIMITIVE_RETURN
-    ((((stat_result . st_mode) & S_IFMT) == S_IFDIR) ? TRUTH : NIL);
+    ((((stat_result . st_mode) & S_IFMT) == S_IFDIR) ? SHARP_T : NIL);
 }
 
 /* The following is originally from GNU Emacs. */
@@ -207,7 +207,7 @@ file_symlink_p (filename)
 
 #endif /* S_IFLNK */
 
-DEFINE_PRIMITIVE ("FILE-SYMLINK?", Prim_file_symlink_p, 1)
+DEFINE_PRIMITIVE ("FILE-SYMLINK?", Prim_file_symlink_p, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
 
@@ -236,14 +236,17 @@ DEFINE_PRIMITIVE ("FILE-SYMLINK?", Prim_file_symlink_p, 1)
 
    The filemodestring stuff was gobbled from GNU Emacs. */
 
-DEFINE_PRIMITIVE ("FILE-ATTRIBUTES", Prim_file_attributes, 1)
+static void filemodestring ();
+static void rwx ();
+static void setst ();
+
+DEFINE_PRIMITIVE ("FILE-ATTRIBUTES", Prim_file_attributes, 1, 1, 0)
 {
   struct stat stat_result;
   extern Pointer allocate_marked_vector ();
   Pointer result;
   extern Pointer allocate_string ();
   Pointer modes;
-  static void filemodestring ();
   PRIMITIVE_HEADER (1);
 
   CHECK_ARG (1, STRING_P);
@@ -254,7 +257,7 @@ DEFINE_PRIMITIVE ("FILE-ATTRIBUTES", Prim_file_attributes, 1)
   switch ((stat_result . st_mode) & S_IFMT)
     {
     case S_IFDIR:
-      User_Vector_Set (result, 0, TRUTH);
+      User_Vector_Set (result, 0, SHARP_T);
       break;
 #ifdef S_IFLNK
     case S_IFLNK:
@@ -326,7 +329,6 @@ filemodestring (s, a)
    char *a;
 {
   extern char file_type_letter ();
-  extern void rwx (), setst ();
 
   (a [0]) = (file_type_letter (s));
   /* Aren't there symbolic names for these byte-fields? */

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,10 +30,10 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.c,v 9.25 1987/12/04 22:15:47 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.c,v 9.26 1988/08/15 20:45:38 cph Exp $ */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 
 /* Mapping between the internal and external representations of
    primitives and return addresses.
@@ -48,7 +48,7 @@ MIT in each case. */
    actual address in memory.
 */
 
-DEFINE_PRIMITIVE("MAP-CODE-TO-MACHINE-ADDRESS", Prim_Map_Code_To_Address, 2)
+DEFINE_PRIMITIVE ("MAP-CODE-TO-MACHINE-ADDRESS", Prim_map_code_to_address, 2, 2, 0)
 {
   Pointer result;
   long tc, number;
@@ -95,7 +95,7 @@ DEFINE_PRIMITIVE("MAP-CODE-TO-MACHINE-ADDRESS", Prim_Map_Code_To_Address, 2)
    for the internal address.
 */
 
-DEFINE_PRIMITIVE("MAP-MACHINE-ADDRESS-TO-CODE", Prim_Map_Address_To_Code, 2)
+DEFINE_PRIMITIVE ("MAP-MACHINE-ADDRESS-TO-CODE", Prim_map_address_to_code, 2, 2, 0)
 {
   long tc, number;
   Primitive_2_Args();
@@ -122,13 +122,10 @@ DEFINE_PRIMITIVE("MAP-MACHINE-ADDRESS-TO-CODE", Prim_Map_Address_To_Code, 2)
   PRIMITIVE_RETURN(MAKE_UNSIGNED_FIXNUM(number));
 }
 
-/* (PRIMITIVE-PROCEDURE-ARITY PRIMITIVE)
-   Given the internal representation of a primitive (in CScheme the
-   internal and external representations are the same), return the
-   number of arguments it requires.
-*/
-
-DEFINE_PRIMITIVE("PRIMITIVE-PROCEDURE-ARITY", Prim_Map_Prim_Address_To_Arity, 1)
+DEFINE_PRIMITIVE ("PRIMITIVE-PROCEDURE-ARITY", Prim_map_prim_address_to_arity, 1, 1, 
+  "Given the internal representation of PRIMITIVE (in CScheme the
+internal and external representations are the same), return the
+number of arguments it requires.")
 {
   extern long primitive_to_arity();
   long answer;
@@ -143,6 +140,26 @@ DEFINE_PRIMITIVE("PRIMITIVE-PROCEDURE-ARITY", Prim_Map_Prim_Address_To_Arity, 1)
   answer = primitive_to_arity(Arg1);
   PRIMITIVE_RETURN(MAKE_SIGNED_FIXNUM(answer));
 }
+
+DEFINE_PRIMITIVE ("PRIMITIVE-PROCEDURE-DOCUMENTATION", Prim_map_prim_address_to_documentation, 1, 1, 
+  "Given the internal representation of PRIMITIVE (in CScheme the
+internal and external representations are the same), return the
+number of arguments it requires.")
+{
+  extern char * primitive_to_documentation ();
+  char * answer;
+  Primitive_1_Arg ();
+
+  Arg_1_Type (TC_PRIMITIVE);
+
+  if ((PRIMITIVE_NUMBER (Arg1)) >= (NUMBER_OF_PRIMITIVES ()))
+    error_bad_range_arg (1);
+  answer = (primitive_to_documentation (Arg1));
+  PRIMITIVE_RETURN
+    ((answer == ((char *) 0))
+     ? SHARP_F
+     : (C_String_To_Scheme_String (answer)));
+}
 
 /* (GET-PRIMITIVE-COUNTS)
    Returns a CONS of the number of primitives defined in this
@@ -150,7 +167,7 @@ DEFINE_PRIMITIVE("PRIMITIVE-PROCEDURE-ARITY", Prim_Map_Prim_Address_To_Arity, 1)
    defined.
 */
 
-DEFINE_PRIMITIVE("GET-PRIMITIVE-COUNTS", Prim_Get_Primitive_Counts, 0)
+DEFINE_PRIMITIVE ("GET-PRIMITIVE-COUNTS", Prim_get_primitive_counts, 0, 0, 0)
 {
   Primitive_0_Args();
 
@@ -164,7 +181,7 @@ DEFINE_PRIMITIVE("GET-PRIMITIVE-COUNTS", Prim_Get_Primitive_Counts, 0)
    primitive procedure.  It causes an error if the number is out of range.
 */
 
-DEFINE_PRIMITIVE("GET-PRIMITIVE-NAME", Prim_Get_Primitive_Name, 1)
+DEFINE_PRIMITIVE ("GET-PRIMITIVE-NAME", Prim_get_primitive_name, 1, 1, 0)
 {
   extern Pointer primitive_name();
   long Number, TC;
@@ -193,7 +210,7 @@ DEFINE_PRIMITIVE("GET-PRIMITIVE-NAME", Prim_Get_Primitive_Name, 1)
    whether the corresponding primitive is implemented or not.
 */
 
-DEFINE_PRIMITIVE("GET-PRIMITIVE-ADDRESS", Prim_Get_Primitive_Address, 2)
+DEFINE_PRIMITIVE ("GET-PRIMITIVE-ADDRESS", Prim_get_primitive_address, 2, 2, 0)
 {
   extern Pointer find_primitive();
   Boolean intern_p, allow_p;
@@ -208,7 +225,7 @@ DEFINE_PRIMITIVE("GET-PRIMITIVE-ADDRESS", Prim_Get_Primitive_Address, 2)
     intern_p = false;
     arity = UNKNOWN_PRIMITIVE_ARITY;
   }
-  else if (Arg2 == TRUTH)
+  else if (Arg2 == SHARP_T)
   {
     allow_p = true;
     intern_p = false;

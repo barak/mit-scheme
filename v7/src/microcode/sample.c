@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,59 +30,61 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sample.c,v 9.21 1987/01/22 14:31:00 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sample.c,v 9.22 1988/08/15 20:54:38 cph Rel $ */
 
 /* This file is intended to help you find out how to write primitives.
    Many concepts needed to write primitives can be found by looking
    at actual primitives in the system.  Hence this file will often
-   ask you to look at other files that contain system primitives.
-*/
+   ask you to look at other files that contain system primitives.  */
 
 /* Files that contain primitives must have the following includes
-   near the top of the file.
-*/
+   near the top of the file.  */
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 
 /* Scheme.h supplies useful macros that are used throughout the
-   system, and primitive.h supplies macros that are used in defining
-   primitives.
-*/
+   system, and prims.h supplies macros that are used in defining
+   primitives.  */
 
-/* To make a primitive, you must use the macro Define_Primitive
-   with three arguments, followed by the body of C source code
+/* To make a primitive, you must use the macro DEFINE_PRIMITIVE
+   with six arguments, followed by the body of C source code
    that you want the primitive to execute.
-   The three arguments are:
-   1. The name you want to give to this body of code (a C procedure
-      name).
-   2. The number of arguments that this scheme primitive should
-      receive. Note: currently, this must be a number between
-      0 and 3 inclusive.  Hence primitives can currently take no more
-      than three arguments.
-   3. A string representing the scheme name that you want to identify
+   The six arguments are:
+   1. A string representing the scheme name that you want to identify
       this primitive with.
+   2. The name you want to give to this body of code (a C procedure
+      name).  By convention, all such names begin with `Prim_'.
+   3. The minimum number of arguments that this scheme primitive
+      should receive.  Currently this is not implemented and should be
+      the same as the maximum number of arguments (or 0 if the maximum
+      is the special symbol LEXPR).
+   4. The maximum number of arguments that this scheme primitive
+      should receive.  If this primitive will take any number of
+      arguments, use LEXPR here.
+   5. A documentation string, or 0 meaning no documentation.
 
-   The value returned by the body of code following the Define_Primitive
-   is the value of the scheme primitive.  Note that this must be a
-   scheme Pointer object (with type tag and datum field), and not an
-   arbitrary C object.
+   The value returned by the body of code following the
+   DEFINE_PRIMITIVE is the value of the scheme primitive.  Note that
+   this must be a scheme Pointer object (with type tag and datum
+   field), and not an arbitrary C object.
 
-   As an example, here is a primitive that takes no arguments and always
-   returns NIL (NIL is defined in scheme.h and identical to the scheme
-   object #!FALSE. TRUTH is identical to the scheme object #!TRUE
-*/
+   As an example, here is a primitive that takes no arguments and
+   always returns SHARP_F (SHARP_F is defined in scheme.h and
+   identical to the scheme object #F. SHARP_T is identical to the
+   scheme object #T).  */
 
-Define_Primitive(Prim_Return_Nil, 0, "RETURN-NIL")
-{ Primitive_0_Args();
-  return NIL;
+DEFINE_PRIMITIVE ("RETURN-SHARP-F", Prim_return_sharp_f, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+
+  PRIMITIVE_RETURN (SHARP_F);
 }
 
-/* This will create the primitive return-nil and when a new scheme is
-   made (with the Makefile properly edited to include this file),
-   evaluating (make-primitive-procedure 'return-nil) will return a
+/* This will create the primitive RETURN-SHARP-F and when a new Scheme
+   is made (with the Makefile properly edited to include this file),
+   evaluating (make-primitive-procedure 'return-sharp-f) will return a
    primitive procedure that when called with no arguments, will return
-   #!FALSE.
-*/
+   #F.  */
 
 /* Three macros are available for you to access the arguments to the
    primitives.  Primitive_N_Args(), where N is between 0 and 3
@@ -92,12 +94,13 @@ Define_Primitive(Prim_Return_Nil, 0, "RETURN-NIL")
    code.  An important thing to note is that since Primitive_N_Args
    may allocate variables, its use MUST come before any code in the
    body of the C procedure.  For example, here is a primitive that
-   takes one argument and returns it.
-*/
+   takes one argument and returns it. */
 
-Define_Primitive(Prim_Identity, 1, "IDENTITY")
-{ Primitive_1_Arg();
-  return Arg1;
+DEFINE_PRIMITIVE ("IDENTITY", Prim_identity, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+
+  PRIMITIVE_RETURN (ARG_REF (1));
 }
 
 /* Some primitives may have to allocate space on the heap in order
@@ -124,21 +127,24 @@ Define_Primitive(Prim_Identity, 1, "IDENTITY")
    there for the possible type codes.  The following is the equivalent
    of CONS and takes two arguments and returns the pair which contains
    both arguments. For further examples on heap allocation, see the
-   primitives in list.c, hunk.c and vector.c.
-*/
+   primitives in "list.c", "hunk.c" and "vector.c".  */
 
-Define_Primitive(Prim_New_Cons, 2, "NEW-CONS")
-{ Pointer *Temp;
-  Primitive_2_Args();
+DEFINE_PRIMITIVE ("NEW-CONS", Prim_new_cons, 2, 2, 0)
+{
+  Pointer * Temp;
+  PRIMITIVE_HEADER (2);
+
   /* Check to see if there is room in the heap for the pair */
-  Primitive_GC_If_Needed(2);
+  Primitive_GC_If_Needed (2);
+
   /* Store the values in the heap, updating Free as we go along */
   Temp = Free;
   Free += 2;
-  Temp[CONS_CAR] = Arg1;
-  Temp[CONS_CDR] = Arg2;
+  Temp[CONS_CAR] = (ARG_REF (1));
+  Temp[CONS_CDR] = (ARG_REF (2));
+
   /* Return the pair, which points to the location of the car */
-  return Make_Pointer(TC_LIST, Temp);
+  PRIMITIVE_RETURN (Make_Pointer (TC_LIST, Temp));
 }
 
 /* The following primitive takes three arguments and returns a list
@@ -146,34 +152,40 @@ Define_Primitive(Prim_New_Cons, 2, "NEW-CONS")
    to the next pair.  Also, scheme objects are of type Pointer
    (defined in object.h).  Note that the result returned can be
    held in a temporary variable even before the contents of the
-   object are stored in heap.
-*/
+   object are stored in heap.  */
 
-Define_Primitive(Prim_Utterly_Random, 3, "WHY-SHOULDNT-THE-NAME-BE-RANDOM?")
-{ /* Hold the end result in a temporary variable while we
-     fill in the list.
-  */
-  Pointer *Result;
-  Primitive_3_Args();
+DEFINE_PRIMITIVE ("WHY-SHOULDNT-THE-NAME-BE-RANDOM?", Prim_utterly_random, 3, 3, 0)
+{
+  /* Hold the end result in a temporary variable while we
+     fill in the list.  */
+  Pointer * Result;
+  PRIMITIVE_HEADER (3);
+
   /* Check to see if there is enough space on the heap. */
-  Primitive_GC_If_Needed(6);
+  Primitive_GC_If_Needed (6);
   Result = Free;
-  Free[CONS_CAR] = Arg1;
+  Free[CONS_CAR] = (ARG_REF (1));
+
   /* Make the CDR of the first pair point to the second pair. */
-  Free[CONS_CDR] = Make_Pointer(TC_LIST, Free+2);
+  Free[CONS_CDR] = (Make_Pointer (TC_LIST, (Free + 2)));
+
   /* Bump it over to the second pair */
   Free += 2;
-  Free[CONS_CAR] = Arg2;
+  Free[CONS_CAR] = (ARG_REF (2));
+
   /* Make the CDR of the second pair point to the third pair. */
-  Free[CONS_CDR] = Make_Pointer(TC_LIST, Free+2);
+  Free[CONS_CDR] = (Make_Pointer (TC_LIST, (Free + 2)));
+
   /* Bump it over to the third pair */
   Free += 2;
-  Free[CONS_CAR] = Arg3;
+  Free[CONS_CAR] = (ARG_REF (3));
+
   /* Make the last CDR a () to make a "proper" list */
-  Free[CONS_CDR] = NIL;
+  Free[CONS_CDR] = EMPTY_LIST;
+
   /* Bump Free over to the first available location */
   Free += 2;
-  return Make_Pointer(TC_LIST, Result);
+  PRIMITIVE_RETURN (Make_Pointer (TC_LIST, Result));
 }
 
 /* Several Macros are supplied to do arithmetic with scheme numbers.
@@ -188,28 +200,25 @@ Define_Primitive(Prim_Utterly_Random, 3, "WHY-SHOULDNT-THE-NAME-BE-RANDOM?")
    that long.  Here is a primitive that tries to add 3 to it's
    argument. Note how scheme errors are performed via
    Primitive_Error({error-code}).  See scheme.h and included files for
-   the possible error codes.
-*/
+   the possible error codes.  */
 
-Define_Primitive(Prim_Add_3, 1, "3+")
-{ long value;
+DEFINE_PRIMITIVE ("3+", Prim_add_3, 1, 1, 0)
+{
+  long value;
   int flag;
-  Primitive_1_Arg();
-  flag = Scheme_Integer_To_C_Integer(Arg1, &value);
+  PRIMITIVE_HEADER (1);
+
+  flag = (Scheme_Integer_To_C_Integer ((ARG_REF (1)), (&value)));
   if (flag == PRIM_DONE)
-    return C_Integer_To_Scheme_Integer(value + 3);
+    PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (value + 3));
   /* If flag is not equal to PRIM_DONE, then it is one of two
      errors.  We can signal either error by calling Primitive_Error
-     with that error code
-  */
-  Primitive_Error(flag);
+     with that error code.  */
+  Primitive_Error (flag);
 }
 
-/* See fixnum.c for more fixnum primitive examples.  float.c
-   gives floating point examples and bignum.c gives bignum
-   examples (Warning: the bignum code is not trivial).  generic.c
-   gives examples on arithmetic operations that work for
-   all scheme number types.  For efficiency reasons, they do not
-   always use this convenient interface.
- */
-
+/* See "fixnum.c" for more fixnum primitive examples.  "float.c" gives
+   floating point examples and "bignum.c" gives bignum examples
+   (Warning: the bignum code is not trivial).  "generic.c" gives
+   examples on arithmetic operations that work for all scheme number
+   types.  */

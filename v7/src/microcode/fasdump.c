@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,13 +30,13 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.39 1988/05/10 18:12:45 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.40 1988/08/15 20:45:56 cph Exp $
 
    This file contains code for fasdump and dump-band.
 */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 #define In_Fasdump
 #include "gccode.h"
 #include "trap.h"
@@ -338,7 +338,7 @@ Fasdump_Exit(code)
   }
   if (code == PRIM_DONE)
   {
-    return (TRUTH);
+    return (SHARP_T);
   }
   else if (code == PRIM_INTERRUPT)
   {
@@ -365,7 +365,7 @@ Fasdump_Exit(code)
    The code for dumping pure is severely broken and conditionalized out.
 */
 
-DEFINE_PRIMITIVE("PRIMITIVE-FASDUMP", Prim_Prim_Fasdump, 3)
+DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
 {
   Pointer Object, File_Name, Flag, *New_Object;
   Pointer *table_start, *table_end;
@@ -385,7 +385,7 @@ DEFINE_PRIMITIVE("PRIMITIVE-FASDUMP", Prim_Prim_Fasdump, 3)
     Primitive_Error(ERR_ARG_2_BAD_RANGE);
   }
 #if false
-  if ((Flag != NIL) && (Flag != TRUTH))
+  if ((Flag != NIL) && (Flag != SHARP_T))
 #else
   if (Flag != NIL)
 #endif /* false */
@@ -421,7 +421,7 @@ DEFINE_PRIMITIVE("PRIMITIVE-FASDUMP", Prim_Prim_Fasdump, 3)
      segment.  See fasload.c for further information.
 */
 
-  if (Flag == TRUTH)
+  if (Flag == SHARP_T)
   {
     Pointer *Addr_Of_New_Object;
 
@@ -487,7 +487,7 @@ DEFINE_PRIMITIVE("PRIMITIVE-FASDUMP", Prim_Prim_Fasdump, 3)
    argument of NIL.
 */
 
-DEFINE_PRIMITIVE("DUMP-BAND", Prim_Band_Dump, 2)
+DEFINE_PRIMITIVE ("DUMP-BAND", Prim_band_dump, 2, 2, 0)
 {
   Pointer Combination, *table_start, *table_end, *saved_free;
   long table_length;
@@ -552,5 +552,5 @@ DEFINE_PRIMITIVE("DUMP-BAND", Prim_Band_Dump, 2)
   result = (Close_Dump_File() && result);
   Band_Dump_Exit_Hook();
   Free = saved_free;
-  PRIMITIVE_RETURN(result ? TRUTH : NIL);
+  PRIMITIVE_RETURN(result ? SHARP_T : NIL);
 }

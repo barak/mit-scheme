@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,13 +30,13 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/vector.c,v 9.30 1987/12/23 03:47:41 cph Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/vector.c,v 9.31 1988/08/15 20:57:57 cph Rel $ */
 
 /* This file contains procedures for handling vectors and conversion
    back and forth to lists. */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 
 #define ARG_VECTOR(argument_number)					\
 ((VECTOR_P (ARG_REF (argument_number)))					\
@@ -116,7 +116,7 @@ make_vector (length, contents)
   return (result);
 }
 
-DEFINE_PRIMITIVE ("VECTOR-CONS", Prim_Vector_Cons, 2)
+DEFINE_PRIMITIVE ("VECTOR-CONS", Prim_vector_cons, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
 
@@ -124,7 +124,7 @@ DEFINE_PRIMITIVE ("VECTOR-CONS", Prim_Vector_Cons, 2)
     (make_vector ((arg_nonnegative_integer (1)), (ARG_REF (2))));
 }
 
-DEFINE_PRIMITIVE ("VECTOR", Prim_vector, LEXPR)
+DEFINE_PRIMITIVE ("VECTOR", Prim_vector, 0, LEXPR, 0)
 {
   Pointer result;
   fast Pointer *argument_scan;
@@ -141,14 +141,14 @@ DEFINE_PRIMITIVE ("VECTOR", Prim_vector, LEXPR)
   PRIMITIVE_RETURN (result);
 }
 
-DEFINE_PRIMITIVE ("SYSTEM-VECTOR?", Prim_Sys_Vector, 1)
+DEFINE_PRIMITIVE ("SYSTEM-VECTOR?", Prim_sys_vector, 1, 1, 0)
 {
   fast Pointer object;
   PRIMITIVE_HEADER (1);
 
   object = (ARG_REF (1));
   Touch_In_Primitive (object, object);
-  PRIMITIVE_RETURN ((GC_VECTOR_P (object)) ? TRUTH : NIL);
+  PRIMITIVE_RETURN ((GC_VECTOR_P (object)) ? SHARP_T : NIL);
 }
 
 #define VECTOR_LENGTH_PRIMITIVE(arg_type, arg_touch)			\
@@ -159,10 +159,10 @@ DEFINE_PRIMITIVE ("SYSTEM-VECTOR?", Prim_Sys_Vector, 1)
   arg_touch (vector);							\
   PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM (VECTOR_LENGTH (vector)))
 
-DEFINE_PRIMITIVE ("VECTOR-LENGTH", Prim_Vector_Size, 1)
+DEFINE_PRIMITIVE ("VECTOR-LENGTH", Prim_vector_size, 1, 1, 0)
 { VECTOR_LENGTH_PRIMITIVE (ARG_VECTOR, VECTOR_TOUCH); }
 
-DEFINE_PRIMITIVE ("SYSTEM-VECTOR-SIZE", Prim_Sys_Vec_Size, 1)
+DEFINE_PRIMITIVE ("SYSTEM-VECTOR-SIZE", Prim_sys_vec_size, 1, 1, 0)
 { VECTOR_LENGTH_PRIMITIVE (ARG_GC_VECTOR, GC_VECTOR_TOUCH); }
 
 #define VECTOR_REF_PRIMITIVE(arg_type, arg_touch)			\
@@ -173,10 +173,10 @@ DEFINE_PRIMITIVE ("SYSTEM-VECTOR-SIZE", Prim_Sys_Vec_Size, 1)
   arg_touch (vector);							\
   PRIMITIVE_RETURN (VECTOR_REF (vector, (ARG_VECTOR_INDEX (2, vector))))
 
-DEFINE_PRIMITIVE ("VECTOR-REF", Prim_Vector_Ref, 2)
+DEFINE_PRIMITIVE ("VECTOR-REF", Prim_vector_ref, 2, 2, 0)
 { VECTOR_REF_PRIMITIVE (ARG_VECTOR, VECTOR_TOUCH); }
 
-DEFINE_PRIMITIVE ("SYSTEM-VECTOR-REF", Prim_Sys_Vector_Ref, 2)
+DEFINE_PRIMITIVE ("SYSTEM-VECTOR-REF", Prim_sys_vector_ref, 2, 2, 0)
 { VECTOR_REF_PRIMITIVE (ARG_GC_VECTOR, GC_VECTOR_TOUCH); }
 
 #define VECTOR_SET_PRIMITIVE(arg_type, arg_touch)			\
@@ -192,10 +192,10 @@ DEFINE_PRIMITIVE ("SYSTEM-VECTOR-REF", Prim_Sys_Vector_Ref, 2)
   Side_Effect_Impurify (vector, new_value);				\
   PRIMITIVE_RETURN (Swap_Pointers (locative, new_value))
 
-DEFINE_PRIMITIVE ("VECTOR-SET!", Prim_Vector_Set, 3)
+DEFINE_PRIMITIVE ("VECTOR-SET!", Prim_vector_set, 3, 3, 0)
 { VECTOR_SET_PRIMITIVE (ARG_VECTOR, VECTOR_TOUCH); }
 
-DEFINE_PRIMITIVE ("SYSTEM-VECTOR-SET!", Prim_Sys_Vec_Set, 3)
+DEFINE_PRIMITIVE ("SYSTEM-VECTOR-SET!", Prim_sys_vec_set, 3, 3, 0)
 { VECTOR_SET_PRIMITIVE (ARG_GC_VECTOR, GC_VECTOR_TOUCH); }
 
 #define SUBVECTOR_TO_LIST_PRIMITIVE(arg_type, arg_touch)		\
@@ -244,10 +244,10 @@ subvector_to_list (vector, start, end)
   return (result);
 }
 
-DEFINE_PRIMITIVE ("SUBVECTOR->LIST", Prim_Subvector_To_List, 3)
+DEFINE_PRIMITIVE ("SUBVECTOR->LIST", Prim_subvector_to_list, 3, 3, 0)
 { SUBVECTOR_TO_LIST_PRIMITIVE (ARG_VECTOR, VECTOR_TOUCH); }
 
-DEFINE_PRIMITIVE ("SYSTEM-SUBVECTOR-TO-LIST", Prim_Sys_Subvector_To_List, 3)
+DEFINE_PRIMITIVE ("SYSTEM-SUBVECTOR-TO-LIST", Prim_sys_subvector_to_list, 3, 3, 0)
 { SUBVECTOR_TO_LIST_PRIMITIVE (ARG_GC_VECTOR, GC_VECTOR_TOUCH); }
 
 static Pointer
@@ -276,14 +276,14 @@ list_to_vector (result_type, argument_number)
   return (Make_Pointer (result_type, result));
 }
 
-DEFINE_PRIMITIVE ("LIST->VECTOR", Prim_List_To_Vector, 1)
+DEFINE_PRIMITIVE ("LIST->VECTOR", Prim_list_to_vector, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
 
   PRIMITIVE_RETURN (list_to_vector (TC_VECTOR, 1));
 }
 
-DEFINE_PRIMITIVE ("SYSTEM-LIST-TO-VECTOR", Prim_Sys_List_To_Vector, 2)
+DEFINE_PRIMITIVE ("SYSTEM-LIST-TO-VECTOR", Prim_sys_list_to_vector, 2, 2, 0)
 {
   long type_code;
   PRIMITIVE_HEADER (2);
@@ -324,7 +324,7 @@ DEFINE_PRIMITIVE ("SYSTEM-LIST-TO-VECTOR", Prim_Sys_List_To_Vector, 2)
   if (Is_Pure (Get_Pointer (vector2)))					\
     Primitive_Error (ERR_WRITE_INTO_PURE_SPACE)
 
-DEFINE_PRIMITIVE ("SUBVECTOR-MOVE-RIGHT!", Prim_subvector_move_right, 5)
+DEFINE_PRIMITIVE ("SUBVECTOR-MOVE-RIGHT!", Prim_subvector_move_right, 5, 5, 0)
 {
   subvector_move_prefix ();
 
@@ -335,7 +335,7 @@ DEFINE_PRIMITIVE ("SUBVECTOR-MOVE-RIGHT!", Prim_subvector_move_right, 5)
   PRIMITIVE_RETURN (NIL);
 }
 
-DEFINE_PRIMITIVE ("SUBVECTOR-MOVE-LEFT!", Prim_subvector_move_left, 5)
+DEFINE_PRIMITIVE ("SUBVECTOR-MOVE-LEFT!", Prim_subvector_move_left, 5, 5, 0)
 {
   subvector_move_prefix ();
 
@@ -346,7 +346,7 @@ DEFINE_PRIMITIVE ("SUBVECTOR-MOVE-LEFT!", Prim_subvector_move_left, 5)
   PRIMITIVE_RETURN (NIL);
 }
 
-DEFINE_PRIMITIVE ("SUBVECTOR-FILL!", Prim_vector_fill, 4)
+DEFINE_PRIMITIVE ("SUBVECTOR-FILL!", Prim_vector_fill, 4, 4, 0)
 {
   Pointer vector;
   long start, end;

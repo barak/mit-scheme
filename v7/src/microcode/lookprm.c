@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookprm.c,v 1.1 1988/05/03 21:53:15 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookprm.c,v 1.2 1988/08/15 20:51:21 cph Exp $
  *
  * This file contains environment manipulation primitives.
  * It makes heavy use of procedures in lookup.c
@@ -40,7 +40,7 @@ MIT in each case. */
 #include "locks.h"
 #include "trap.h"
 #include "lookup.h"
-#include "primitive.h"
+#include "prims.h"
 
 /* NOTE:
    Although this code has been parallelized, it has not been
@@ -98,8 +98,7 @@ do									\
    (set! <symbol> <value>) in <environment>.
 */
 
-Built_In_Primitive(Prim_Lexical_Assignment, 3, "LEXICAL-ASSIGNMENT", 0x0)
-DEFINE_PRIMITIVE("LEXICAL-ASSIGNMENT", Prim_Lexical_Assignment, 3)
+DEFINE_PRIMITIVE ("LEXICAL-ASSIGNMENT", Prim_lexical_assignment, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
 
@@ -114,8 +113,7 @@ DEFINE_PRIMITIVE("LEXICAL-ASSIGNMENT", Prim_Lexical_Assignment, 3)
    Indistinguishable from evaluating <symbol> in <environment>.
 */
 
-Built_In_Primitive(Prim_Lexical_Reference, 2, "LEXICAL-REFERENCE", 0x12)
-DEFINE_PRIMITIVE("LEXICAL-REFERENCE", Prim_Lexical_Reference, 2)
+DEFINE_PRIMITIVE ("LEXICAL-REFERENCE", Prim_lexical_reference, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
 
@@ -126,8 +124,7 @@ DEFINE_PRIMITIVE("LEXICAL-REFERENCE", Prim_Lexical_Reference, 2)
    Identical to LEXICAL_REFERENCE, here for histerical reasons.
 */
 
-Built_In_Primitive(Prim_Local_Reference, 2, "LOCAL-REFERENCE", 0x1)
-DEFINE_PRIMITIVE("LOCAL-REFERENCE", Prim_Local_Reference, 2)
+DEFINE_PRIMITIVE ("LOCAL-REFERENCE", Prim_local_reference, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
 
@@ -146,8 +143,7 @@ DEFINE_PRIMITIVE("LOCAL-REFERENCE", Prim_Local_Reference, 2)
    (define <symbol> <value>) in <environment>.
 */
 
-Built_In_Primitive(Prim_Local_Assignment, 3, "LOCAL-ASSIGNMENT", 0x2)
-DEFINE_PRIMITIVE("LOCAL-ASSIGNMENT", Prim_Local_Assignment, 3)
+DEFINE_PRIMITIVE ("LOCAL-ASSIGNMENT", Prim_local_assignment, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
 
@@ -162,8 +158,7 @@ DEFINE_PRIMITIVE("LOCAL-ASSIGNMENT", Prim_Local_Assignment, 3)
    The special form (unassigned? <symbol>) is built on top of this.
 */
 
-Built_In_Primitive(Prim_Unassigned_Test, 2, "LEXICAL-UNASSIGNED?", 0x18)
-DEFINE_PRIMITIVE("LEXICAL-UNASSIGNED?", Prim_Unassigned_Test, 2)
+DEFINE_PRIMITIVE ("LEXICAL-UNASSIGNED?", Prim_unassigned_test, 2, 2, 0)
 {
   extern long Symbol_Lex_unassigned_p();
   PRIMITIVE_HEADER (2);
@@ -178,8 +173,7 @@ DEFINE_PRIMITIVE("LEXICAL-UNASSIGNED?", Prim_Unassigned_Test, 2)
    The special form (unbound? <symbol>) is built on top of this.
 */
 
-Built_In_Primitive(Prim_Unbound_Test, 2, "LEXICAL-UNBOUND?", 0x33)
-DEFINE_PRIMITIVE("LEXICAL-UNBOUND?", Prim_Unbound_Test, 2)
+DEFINE_PRIMITIVE ("LEXICAL-UNBOUND?", Prim_unbound_test, 2, 2, 0)
 {
   extern long Symbol_Lex_unbound_p();
   PRIMITIVE_HEADER (2);
@@ -192,9 +186,7 @@ DEFINE_PRIMITIVE("LEXICAL-UNBOUND?", Prim_Unbound_Test, 2)
    a variable lookup error (unbound or unassigned).
 */
 
-Built_In_Primitive(Prim_Unreferenceable_Test, 2,
-		   "LEXICAL-UNREFERENCEABLE?", 0x13)
-DEFINE_PRIMITIVE("LEXICAL-UNREFERENCEABLE?", Prim_Unreferenceable_Test, 2)
+DEFINE_PRIMITIVE ("LEXICAL-UNREFERENCEABLE?", Prim_unreferenceable_test, 2, 2, 0)
 {
   long Result;
   PRIMITIVE_HEADER (2);
@@ -212,7 +204,7 @@ DEFINE_PRIMITIVE("LEXICAL-UNREFERENCEABLE?", Prim_Unreferenceable_Test, 2)
 
     case ERR_UNASSIGNED_VARIABLE:
     case ERR_UNBOUND_VARIABLE:
-      PRIMITIVE_RETURN(TRUTH);
+      PRIMITIVE_RETURN(SHARP_T);
 
     default:
       signal_error_from_primitive(Result);
@@ -297,7 +289,7 @@ error_bad_environment(arg)
    NOTE: The following code has NOT been parallelized.  It needs thinking.
 */
 
-DEFINE_PRIMITIVE("ENVIRONMENT-LINK-NAME", Prim_environment_link_name, 3)
+DEFINE_PRIMITIVE ("ENVIRONMENT-LINK-NAME", Prim_environment_link_name, 3, 3, 0)
 {
   extern Pointer *scan_frame();
   extern long compiler_uncache();
@@ -351,7 +343,7 @@ DEFINE_PRIMITIVE("ENVIRONMENT-LINK-NAME", Prim_environment_link_name, 3)
 				       TRAP_COMPILER_CACHED_DANGEROUS);
 	trap[1] = cache;
 	Store(cell[0], Make_Pointer(TC_REFERENCE_TRAP, trap));
-	PRIMITIVE_RETURN(TRUTH);
+	PRIMITIVE_RETURN(SHARP_T);
       }
       
       case TRAP_COMPILER_CACHED:
@@ -372,7 +364,7 @@ DEFINE_PRIMITIVE("ENVIRONMENT-LINK-NAME", Prim_environment_link_name, 3)
 	    signal_error_from_primitive(result);
 	}
 	Vector_Set(value, TRAP_EXTRA, cache);
-	PRIMITIVE_RETURN(TRUTH);
+	PRIMITIVE_RETURN(SHARP_T);
       }
 
       case TRAP_DANGEROUS:
@@ -440,6 +432,6 @@ DEFINE_PRIMITIVE("ENVIRONMENT-LINK-NAME", Prim_environment_link_name, 3)
         signal_error_from_primitive(ERR_BAD_FRAME);
     }
     Store(cell[0], Make_Pointer(TC_REFERENCE_TRAP, trap));
-    PRIMITIVE_RETURN(TRUTH);
+    PRIMITIVE_RETURN(SHARP_T);
   }
 }

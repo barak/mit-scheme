@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,14 +30,14 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/intercom.c,v 9.24 1987/12/04 22:16:56 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/intercom.c,v 9.25 1988/08/15 20:49:47 cph Exp $
  *
  * Single-processor simulation of locking, propagating, and
  * communicating stuff.
  */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 #include "locks.h"
 #include "zones.h"
 
@@ -62,7 +62,7 @@ MIT in each case. */
    processors have begun execution of WORK (or TEST returns false).
 */
 
-DEFINE_PRIMITIVE("GLOBAL-INTERRUPT", Prim_Send_Global_Interrupt, 3)
+DEFINE_PRIMITIVE ("GLOBAL-INTERRUPT", Prim_send_global_interrupt, 3, 3, 0)
 {
   long Saved_Zone, Which_Level;
   
@@ -90,7 +90,7 @@ Global_Int_Part_2(Which_Level, Do_It)
   return Do_It;
 }
 
-DEFINE_PRIMITIVE("PUT-WORK", Prim_Put_Work, 1)
+DEFINE_PRIMITIVE ("PUT-WORK", Prim_put_work, 1, 1, 0)
 {
   Pointer The_Queue, Queue_Tail, New_Entry;
   Primitive_1_Arg();
@@ -121,10 +121,10 @@ DEFINE_PRIMITIVE("PUT-WORK", Prim_Put_Work, 1)
   {
     Vector_Set(Queue_Tail, CONS_CDR, New_Entry);
   }
-  PRIMITIVE_RETURN(TRUTH);
+  PRIMITIVE_RETURN(SHARP_T);
 }
 
-DEFINE_PRIMITIVE("PUT-WORK-IN-FRONT", Prim_Put_Work_In_Front, 1)
+DEFINE_PRIMITIVE ("PUT-WORK-IN-FRONT", Prim_put_work_in_front, 1, 1, 0)
 {
   Pointer The_Queue, Queue_Head, New_Entry;
   Primitive_1_Arg();
@@ -151,10 +151,10 @@ DEFINE_PRIMITIVE("PUT-WORK-IN-FRONT", Prim_Put_Work_In_Front, 1)
   {
     Vector_Set(The_Queue, CONS_CDR, New_Entry);
   }
-  PRIMITIVE_RETURN(TRUTH);
+  PRIMITIVE_RETURN(SHARP_T);
 }
 
-DEFINE_PRIMITIVE("DRAIN-WORK-QUEUE!", Prim_Drain_Queue, 0)
+DEFINE_PRIMITIVE ("DRAIN-WORK-QUEUE!", Prim_drain_queue, 0, 0, 0)
 {
   Pointer The_Queue;
   Primitive_0_Args();
@@ -166,7 +166,7 @@ DEFINE_PRIMITIVE("DRAIN-WORK-QUEUE!", Prim_Drain_Queue, 0)
 		   NIL);
 }
 
-DEFINE_PRIMITIVE("PEEK-AT-WORK-QUEUE", Prim_Peek_Queue, 0)
+DEFINE_PRIMITIVE ("PEEK-AT-WORK-QUEUE", Prim_peek_queue, 0, 0, 0)
 {
   Pointer The_Queue, This_Cons, Last_Cons;
   Primitive_0_Args();
@@ -189,7 +189,7 @@ DEFINE_PRIMITIVE("PEEK-AT-WORK-QUEUE", Prim_Peek_Queue, 0)
   PRIMITIVE_RETURN(This_Cons);
 }
 
-DEFINE_PRIMITIVE("GET-WORK", Prim_Get_Work, 1)
+DEFINE_PRIMITIVE ("GET-WORK", Prim_get_work, 1, 1, 0)
 {
   Pointer Get_Work();
   Primitive_1_Arg();
@@ -240,7 +240,7 @@ Pointer Get_Work(Arg1)
   return (Result);
 }
 
-DEFINE_PRIMITIVE("AWAIT-SYNCHRONY", Prim_Await_Sync, 1)
+DEFINE_PRIMITIVE ("AWAIT-SYNCHRONY", Prim_await_sync, 1, 1, 0)
 {
   Primitive_1_Arg();
 
@@ -249,31 +249,31 @@ DEFINE_PRIMITIVE("AWAIT-SYNCHRONY", Prim_Await_Sync, 1)
   {
     Primitive_Error(ERR_ARG_1_BAD_RANGE);
   }
-  PRIMITIVE_RETURN(TRUTH);
+  PRIMITIVE_RETURN(SHARP_T);
 }
 
-DEFINE_PRIMITIVE("N-INTERPRETERS", Prim_N_Interps, 0)
+DEFINE_PRIMITIVE ("N-INTERPRETERS", Prim_n_interps, 0, 0, 0)
 {
   Primitive_0_Args();
 
   PRIMITIVE_RETURN(MAKE_UNSIGNED_FIXNUM(1));
 }
 
-DEFINE_PRIMITIVE("MY-PROCESSOR-NUMBER", Prim_My_Proc, 0)
+DEFINE_PRIMITIVE ("MY-PROCESSOR-NUMBER", Prim_my_proc, 0, 0, 0)
 {
   Primitive_0_Args();
 
   PRIMITIVE_RETURN(MAKE_UNSIGNED_FIXNUM(0));
 }
 
-DEFINE_PRIMITIVE("MY-INTERPRETER-NUMBER", Prim_My_Interp_Number, 0)
+DEFINE_PRIMITIVE ("MY-INTERPRETER-NUMBER", Prim_my_interp_number, 0, 0, 0)
 {
   Primitive_0_Args();
 
   PRIMITIVE_RETURN(MAKE_UNSIGNED_FIXNUM(0));
 }
 
-DEFINE_PRIMITIVE("ZERO-ZONES", Prim_Zero_Zones, 0)
+DEFINE_PRIMITIVE ("ZERO-ZONES", Prim_zero_zones, 0, 0, 0)
 {
   long i;
   Primitive_0_Args();
@@ -286,18 +286,18 @@ DEFINE_PRIMITIVE("ZERO-ZONES", Prim_Zero_Zones, 0)
 
   Old_Time=Sys_Clock();
 #endif
-  PRIMITIVE_RETURN(TRUTH);
+  PRIMITIVE_RETURN(SHARP_T);
 }
 
 /* These are really used by GC on a true parallel machine */
 
-DEFINE_PRIMITIVE("GC-NEEDED?", Prim_GC_Needed, 0)
+DEFINE_PRIMITIVE ("GC-NEEDED?", Prim_gc_needed, 0, 0, 0)
 {
   Primitive_0_Args();
 
   if ((Free + GC_Space_Needed) >= MemTop)
   {
-    PRIMITIVE_RETURN(TRUTH);
+    PRIMITIVE_RETURN(SHARP_T);
   }
   else
   {
@@ -305,25 +305,25 @@ DEFINE_PRIMITIVE("GC-NEEDED?", Prim_GC_Needed, 0)
   }
 }
 
-DEFINE_PRIMITIVE("SLAVE-GC-BEFORE-SYNC", Prim_Slave_Before, 0)
+DEFINE_PRIMITIVE ("SLAVE-GC-BEFORE-SYNC", Prim_slave_before, 0, 0, 0)
 {
   Primitive_0_Args();
 
-  PRIMITIVE_RETURN(TRUTH);
+  PRIMITIVE_RETURN(SHARP_T);
 }
 
-DEFINE_PRIMITIVE("SLAVE-GC-AFTER-SYNC", Prim_Slave_After, 0)
+DEFINE_PRIMITIVE ("SLAVE-GC-AFTER-SYNC", Prim_slave_after, 0, 0, 0)
 {
   Primitive_0_Args();
 
-  PRIMITIVE_RETURN(TRUTH);
+  PRIMITIVE_RETURN(SHARP_T);
 }
 
-DEFINE_PRIMITIVE("MASTER-GC-BEFORE-SYNC", Prim_Master_Before, 0)
+DEFINE_PRIMITIVE ("MASTER-GC-BEFORE-SYNC", Prim_master_before, 0, 0, 0)
 {
   Primitive_0_Args();
 
-  PRIMITIVE_RETURN(TRUTH);
+  PRIMITIVE_RETURN(SHARP_T);
 }
 
 /* This primitive caches the Scheme object for the garbage collector
@@ -331,7 +331,7 @@ DEFINE_PRIMITIVE("MASTER-GC-BEFORE-SYNC", Prim_Master_Before, 0)
    expensive search each time.
 */
 
-DEFINE_PRIMITIVE("MASTER-GC-LOOP", Prim_Master_GC, 1)
+DEFINE_PRIMITIVE ("MASTER-GC-LOOP", Prim_master_gc, 1, 1, 0)
 {
   static Pointer gc_prim = NIL;
   extern Pointer make_primitive();

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.36 1988/03/21 21:16:04 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.37 1988/08/15 20:46:15 cph Exp $
 
    The "fast loader" which reads in and relocates binary files and then
    interns symbols.  It is called with one argument: the (character
@@ -39,7 +39,7 @@ MIT in each case. */
  */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 #include "gccode.h"
 #include "trap.h"
 #include "load.c"
@@ -566,7 +566,7 @@ load_file(from_band_load)
    definitions in some environment.
 */
 
-DEFINE_PRIMITIVE("BINARY-FASLOAD", Prim_Binary_Fasload, 1)
+DEFINE_PRIMITIVE ("BINARY-FASLOAD", Prim_binary_fasload, 1, 1, 0)
 {
   long result;
   Primitive_1_Arg();
@@ -600,7 +600,7 @@ static char *reload_band_name = ((char *) NULL);
    was band loaded (load-band'ed ?), or NIL if the system was fasl'ed.
 */
 
-DEFINE_PRIMITIVE("RELOAD-BAND-NAME", Prim_reload_band_name, 0)
+DEFINE_PRIMITIVE ("RELOAD-BAND-NAME", Prim_reload_band_name, 0, 0, 0)
 {
   Primitive_0_Args();
 
@@ -632,7 +632,7 @@ compiler_reset_error()
    however, be any file which can be loaded with BINARY-FASLOAD.
 */
 
-DEFINE_PRIMITIVE("LOAD-BAND", Prim_Band_Load, 1)
+DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
 {
   extern char *malloc();
   extern strcpy(), free();

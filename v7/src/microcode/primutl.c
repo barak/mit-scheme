@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/primutl.c,v 9.45 1988/03/24 07:13:17 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/primutl.c,v 9.46 1988/08/15 20:53:13 cph Exp $
  *
  * This file contains the support routines for mapping primitive names
  * to numbers within the microcode.  Primitives are written in C
@@ -41,7 +41,7 @@ MIT in each case. */
  */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 
 Pointer Undefined_Primitives = NIL;
 Pointer Undefined_Primitives_Arity = NIL;
@@ -186,6 +186,16 @@ primitive_code_to_arity(number)
     return (arity);
   }
 }
+
+char *
+primitive_code_to_documentation (number)
+     long number;
+{
+  return
+    ((number > MAX_PRIMITIVE)
+     ? ((char *) 0)
+     : (Primitive_Documentation_Table [number]));
+}
 
 /* Externally visible utilities */
 
@@ -222,6 +232,15 @@ primitive_to_arity(primitive)
      Pointer primitive;
 {
   return (primitive_code_to_arity(PRIMITIVE_NUMBER(primitive)));
+}
+
+extern char * primitive_to_documentation ();
+
+char *
+primitive_to_documentation (primitive)
+     Pointer primitive;
+{
+  return (primitive_code_to_documentation (PRIMITIVE_NUMBER (primitive)));
 }
 
 extern long primitive_to_arguments();

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,19 +30,18 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hunk.c,v 9.24 1987/11/17 08:12:44 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hunk.c,v 9.25 1988/08/15 20:49:17 cph Rel $
  *
  * Support for Hunk3s (triples)
  */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 
 /* (HUNK3-CONS FIRST SECOND THIRD)
       Returns a triple consisting of the specified values.
 */
-Built_In_Primitive(Prim_Hunk3_Cons, 3, "HUNK3-CONS", 0x28)
-Define_Primitive(Prim_Hunk3_Cons, 3, "HUNK3-CONS")
+DEFINE_PRIMITIVE ("HUNK3-CONS", Prim_hunk3_cons, 3, 3, 0)
 {
   Primitive_3_Args();
 
@@ -56,8 +55,7 @@ Define_Primitive(Prim_Hunk3_Cons, 3, "HUNK3-CONS")
 /* (HUNK3-CXR TRIPLE N)
       Returns the Nth item from the TRIPLE.  N must be 0, 1, or 2.
 */
-Built_In_Primitive(Prim_Hunk3_Cxr, 2, "HUNK3-CXR", 0x29)
-Define_Primitive(Prim_Hunk3_Cxr, 2, "HUNK3-CXR")
+DEFINE_PRIMITIVE ("HUNK3-CXR", Prim_hunk3_cxr, 2, 2, 0)
 {
   long Offset;
   Primitive_2_Args();
@@ -72,8 +70,7 @@ Define_Primitive(Prim_Hunk3_Cxr, 2, "HUNK3-CXR")
       Stores VALUE in the Nth item of TRIPLE.  N must be 0, 1, or 2.
       Returns the previous contents.
 */
-Built_In_Primitive(Prim_Hunk3_Set_Cxr, 3, "HUNK3-SET-CXR!", 0x2A)
-Define_Primitive(Prim_Hunk3_Set_Cxr, 3, "HUNK3-SET-CXR!")
+DEFINE_PRIMITIVE ("HUNK3-SET-CXR!", Prim_hunk3_set_cxr, 3, 3, 0)
 {
   long Offset;
   Primitive_3_Args();
@@ -90,8 +87,7 @@ Define_Primitive(Prim_Hunk3_Set_Cxr, 3, "HUNK3-SET-CXR!")
       of triple.  For example, this would access the operator slot of
       a COMBINATION_2_OPERAND SCode item.
 */
-Built_In_Primitive(Prim_Sys_H3_0, 1, "SYSTEM-HUNK3-CXR0", 0x8E)
-Define_Primitive(Prim_Sys_H3_0, 1, "SYSTEM-HUNK3-CXR0")
+DEFINE_PRIMITIVE ("SYSTEM-HUNK3-CXR0", Prim_sys_h3_0, 1, 1, 0)
 {
   Primitive_1_Arg();
 
@@ -104,8 +100,7 @@ Define_Primitive(Prim_Sys_H3_0, 1, "SYSTEM-HUNK3-CXR0")
       of triple.  For example, this would access the first operand
       slot of a COMBINATION_2_OPERAND SCode item.
 */
-Built_In_Primitive(Prim_Sys_H3_1, 1, "SYSTEM-HUNK3-CXR1", 0x91)
-Define_Primitive(Prim_Sys_H3_1, 1, "SYSTEM-HUNK3-CXR1")
+DEFINE_PRIMITIVE ("SYSTEM-HUNK3-CXR1", Prim_sys_h3_1, 1, 1, 0)
 {
   Primitive_1_Arg();
 
@@ -118,8 +113,7 @@ Define_Primitive(Prim_Sys_H3_1, 1, "SYSTEM-HUNK3-CXR1")
       of triple.  For example, this would access the second operand
       slot of a COMBINATION_2_OPERAND SCode item.
 */
-Built_In_Primitive(Prim_Sys_H3_2, 1, "SYSTEM-HUNK3-CXR2", 0x94)
-Define_Primitive(Prim_Sys_H3_2, 1, "SYSTEM-HUNK3-CXR2")
+DEFINE_PRIMITIVE ("SYSTEM-HUNK3-CXR2", Prim_sys_h3_2, 1, 1, 0)
 {
   Primitive_1_Arg();
 
@@ -133,8 +127,7 @@ Define_Primitive(Prim_Sys_H3_2, 1, "SYSTEM-HUNK3-CXR2")
       operator slot of a COMBINATION_2_OPERAND SCode item.  Returns
       the previous contents.
 */
-Built_In_Primitive(Prim_SH3_Set_0, 2, "SYSTEM-HUNK3-SET-CXR0!", 0x8F)
-Define_Primitive(Prim_SH3_Set_0, 2, "SYSTEM-HUNK3-SET-CXR0!")
+DEFINE_PRIMITIVE ("SYSTEM-HUNK3-SET-CXR0!", Prim_sh3_set_0, 2, 2, 0)
 {
   Primitive_2_Args();
   Arg_1_GC_Type(GC_Triple);
@@ -149,8 +142,7 @@ Define_Primitive(Prim_SH3_Set_0, 2, "SYSTEM-HUNK3-SET-CXR0!")
       first operand slot of a COMBINATION_2_OPERAND SCode item.
       Returns the previous contents.
 */
-Built_In_Primitive(Prim_SH3_Set_1, 2, "SYSTEM-HUNK3-SET-CXR1!", 0x92)
-Define_Primitive(Prim_SH3_Set_1, 2, "SYSTEM-HUNK3-SET-CXR1!")
+DEFINE_PRIMITIVE ("SYSTEM-HUNK3-SET-CXR1!", Prim_sh3_set_1, 2, 2, 0)
 {
   Primitive_2_Args();
   Arg_1_GC_Type(GC_Triple);
@@ -165,8 +157,7 @@ Define_Primitive(Prim_SH3_Set_1, 2, "SYSTEM-HUNK3-SET-CXR1!")
       second operand slot of a COMBINATION_2_OPERAND SCode item.
       Returns the previous contents.
 */
-Built_In_Primitive(Prim_SH3_Set_2, 2, "SYSTEM-HUNK3-SET-CXR2!", 0x95)
-Define_Primitive(Prim_SH3_Set_2, 2, "SYSTEM-HUNK3-SET-CXR2!")
+DEFINE_PRIMITIVE ("SYSTEM-HUNK3-SET-CXR2!", Prim_sh3_set_2, 2, 2, 0)
 {
   Primitive_2_Args();
   Arg_1_GC_Type(GC_Triple);

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/daemon.c,v 9.25 1987/11/17 08:08:45 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/daemon.c,v 9.26 1988/08/15 20:44:42 cph Rel $
 
    This file contains code for the Garbage Collection daemons.
    There are currently two daemons, one for closing files which
@@ -45,7 +45,7 @@ MIT in each case. */
 */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 
 /* (CLOSE-LOST-OPEN-FILES file-list) 
    file-list is an assq-like list where the associations are weak
@@ -55,15 +55,14 @@ MIT in each case. */
    the runtime system for a longer description.
 */
 
-Built_In_Primitive(Prim_Close_Lost_Open_Files, 1, "CLOSE-LOST-OPEN-FILES", 0xC7)
-Define_Primitive(Prim_Close_Lost_Open_Files, 1, "CLOSE-LOST-OPEN-FILES")
+DEFINE_PRIMITIVE ("CLOSE-LOST-OPEN-FILES", Prim_close_lost_open_files, 1, 1, 0)
 {
   extern Boolean OS_file_close();
   fast Pointer *Smash, Cell, Weak_Cell, Value;
   long channel_number;
   Primitive_1_Arg();
 
-  Value = TRUTH;
+  Value = SHARP_T;
 
   for (Smash = Nth_Vector_Loc(Arg1, CONS_CDR), Cell = *Smash;
        Cell != NIL;
@@ -150,8 +149,7 @@ long table_size;
    See hash.scm in the runtime system for a description.
 */
 
-Built_In_Primitive(Prim_Rehash, 2, "REHASH", 0x5C)
-Define_Primitive(Prim_Rehash, 2, "REHASH")
+DEFINE_PRIMITIVE ("REHASH", Prim_rehash, 2, 2, 0)
 {
   long table_size, counter;
   Pointer *bucket;
@@ -170,11 +168,11 @@ Define_Primitive(Prim_Rehash, 2, "REHASH")
   for (counter = table_size, bucket = Nth_Vector_Loc(Arg1, 1);
        --counter >= 0;
        bucket += 1)
-  { if (Fast_Vector_Ref(*bucket, CONS_CAR) == TRUTH)
+  { if (Fast_Vector_Ref(*bucket, CONS_CAR) == SHARP_T)
       splice_and_rehash_bucket(Nth_Vector_Loc(*bucket, CONS_CDR), Arg2, table_size);
     else
       rehash_bucket(Nth_Vector_Loc(*bucket, CONS_CDR), Arg2, table_size);
   }
 
-  return TRUTH;
+  return SHARP_T;
 }

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/const.h,v 9.28 1988/03/12 16:04:43 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/const.h,v 9.29 1988/08/15 20:44:34 cph Exp $
  *
  * Named constants used throughout the interpreter
  *
@@ -48,18 +48,21 @@ MIT in each case. */
 /* Precomputed typed pointers */
 #ifndef b32			/* Safe version */
 
-#define NIL			Make_Non_Pointer(TC_NULL, 0)
-#define TRUTH			Make_Non_Pointer(TC_TRUE, 0)
+#define SHARP_F			Make_Non_Pointer(TC_NULL, 0)
+#define SHARP_T			Make_Non_Pointer(TC_TRUE, 0)
 #define FIXNUM_ZERO		Make_Non_Pointer(TC_FIXNUM, 0)
 #define BROKEN_HEART_ZERO	Make_Non_Pointer(TC_BROKEN_HEART, 0)
 
 #else				/* 32 bit word */
-#define NIL			0x00000000
-#define TRUTH			0x08000000
+#define SHARP_F			0x00000000
+#define SHARP_T			0x08000000
 #define FIXNUM_ZERO		0x1A000000
 #define BROKEN_HEART_ZERO	0x22000000
 #endif				/* b32 */
 
+#define EMPTY_LIST SHARP_F
+#define NIL SHARP_F
+#define TRUTH SHARP_T
 #define NOT_THERE 		-1	/* Command line parser */
 
 /* Assorted sizes used in various places */

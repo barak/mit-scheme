@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.c,v 9.30 1988/05/11 17:20:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.c,v 9.31 1988/08/15 20:52:46 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -35,14 +35,14 @@ MIT in each case. */
 /* The leftovers ... primitives that don't seem to belong elsewhere. */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 
 /* Low level object manipulation */
 
 /* (PRIMITIVE-OBJECT-TYPE OBJECT)
    Returns the type code of OBJECT as an unsigned integer.  */
 
-DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-TYPE", Prim_prim_obj_type, 1)
+DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-TYPE", Prim_prim_obj_type, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
 
@@ -52,7 +52,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-TYPE", Prim_prim_obj_type, 1)
 /* (PRIMITIVE-OBJECT-GC-TYPE OBJECT)
    Returns an unsigned integer indicating the GC type of the object.  */
 
-DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-GC-TYPE", Prim_prim_obj_gc_type, 1)
+DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-GC-TYPE", Prim_prim_obj_gc_type, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1); 
 
@@ -63,21 +63,21 @@ DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-GC-TYPE", Prim_prim_obj_gc_type, 1)
 /* (PRIMITIVE-OBJECT-TYPE? TYPE-CODE OBJECT)
    Return #T if the type code of OBJECT is TYPE-CODE, else #F.  */
 
-DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-TYPE?", Prim_prim_obj_type_p, 2)
+DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-TYPE?", Prim_prim_obj_type_p, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
 
   PRIMITIVE_RETURN
     (((OBJECT_TYPE (ARG_REF (2))) ==
       (arg_index_integer (1, (MAX_TYPE_CODE + 1))))
-     ? TRUTH
+     ? SHARP_T
      : NIL);
 }
 
 /* (PRIMITIVE-OBJECT-DATUM OBJECT)
    Returns the datum part of OBJECT as an unsigned integer. */
 
-DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-DATUM", Prim_prim_obj_datum, 1)
+DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-DATUM", Prim_prim_obj_datum, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
 
@@ -88,7 +88,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-DATUM", Prim_prim_obj_datum, 1)
    Converts the unsigned integer NUMBER into a fixnum, by creating an
    object whose type is TC_FIXNUM and whose datum is NUMBER.  */
 
-DEFINE_PRIMITIVE ("MAKE-NON-POINTER-OBJECT", Prim_make_non_pointer_object, 1)
+DEFINE_PRIMITIVE ("MAKE-NON-POINTER-OBJECT", Prim_make_non_pointer_object, 1, 1, 0)
 {
   fast long datum;
   PRIMITIVE_HEADER (1);
@@ -104,7 +104,7 @@ DEFINE_PRIMITIVE ("MAKE-NON-POINTER-OBJECT", Prim_make_non_pointer_object, 1)
 /* (PRIMITIVE-OBJECT-SET-TYPE TYPE-CODE OBJECT)
    Returns a new object with TYPE-CODE and the datum part of OBJECT.  */
 
-DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-SET-TYPE", Prim_prim_obj_set_type, 2)
+DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-SET-TYPE", Prim_prim_obj_set_type, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
 
@@ -117,11 +117,11 @@ DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-SET-TYPE", Prim_prim_obj_set_type, 2)
    Returns #T if the two objects have the same type code and datum.
    Returns #F otherwise.  */
 
-DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-EQ?", Prim_prim_obj_eq_p, 2)
+DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-EQ?", Prim_prim_obj_eq_p, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
 
-  PRIMITIVE_RETURN (((ARG_REF (1)) == (ARG_REF (2))) ? TRUTH : NIL);
+  PRIMITIVE_RETURN (((ARG_REF (1)) == (ARG_REF (2))) ? SHARP_T : NIL);
 }
 
 /* Low level memory references.
@@ -135,7 +135,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-EQ?", Prim_prim_obj_eq_p, 2)
    Fetches the index'ed slot in object.
    Performs no type checking on object.  */
 
-DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-REF", Prim_prim_obj_ref, 2)
+DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-REF", Prim_prim_obj_ref, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
 
@@ -146,7 +146,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-REF", Prim_prim_obj_ref, 2)
    Stores value in the index'ed slot in object.
    Performs no type checking on object.  */
 
-DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-SET!", Prim_prim_obj_set, 3)
+DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-SET!", Prim_prim_obj_set, 3, 3, 0)
 {
   fast long index;
   PRIMITIVE_HEADER (3);
@@ -159,7 +159,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-SET!", Prim_prim_obj_set, 3)
 /* Safe versions of the object manipulators.
    These touch their arguments, and provide GC safety tests.  */
 
-DEFINE_PRIMITIVE ("OBJECT-TYPE", Prim_object_type, 1)
+DEFINE_PRIMITIVE ("OBJECT-TYPE", Prim_object_type, 1, 1, 0)
 {
   fast Pointer object;
   PRIMITIVE_HEADER (1);
@@ -168,7 +168,7 @@ DEFINE_PRIMITIVE ("OBJECT-TYPE", Prim_object_type, 1)
   PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM (OBJECT_TYPE (object)));
 }
 
-DEFINE_PRIMITIVE ("OBJECT-GC-TYPE", Prim_object_gc_type, 1)
+DEFINE_PRIMITIVE ("OBJECT-GC-TYPE", Prim_object_gc_type, 1, 1, 0)
 {
   fast Pointer object;
   PRIMITIVE_HEADER (1); 
@@ -177,7 +177,7 @@ DEFINE_PRIMITIVE ("OBJECT-GC-TYPE", Prim_object_gc_type, 1)
   PRIMITIVE_RETURN (MAKE_SIGNED_FIXNUM (GC_Type (object)));
 }
 
-DEFINE_PRIMITIVE ("OBJECT-TYPE?", Prim_object_type_p, 2)
+DEFINE_PRIMITIVE ("OBJECT-TYPE?", Prim_object_type_p, 2, 2, 0)
 {
   fast Pointer object;
   PRIMITIVE_HEADER (2);
@@ -186,11 +186,11 @@ DEFINE_PRIMITIVE ("OBJECT-TYPE?", Prim_object_type_p, 2)
   PRIMITIVE_RETURN
     (((OBJECT_TYPE (object)) ==
       (arg_index_integer (1, (MAX_TYPE_CODE + 1))))
-     ? TRUTH
+     ? SHARP_T
      : NIL);
 }
 
-DEFINE_PRIMITIVE ("OBJECT-DATUM", Prim_object_datum, 1)
+DEFINE_PRIMITIVE ("OBJECT-DATUM", Prim_object_datum, 1, 1, 0)
 {
   fast Pointer object;
   PRIMITIVE_HEADER (1);
@@ -199,7 +199,7 @@ DEFINE_PRIMITIVE ("OBJECT-DATUM", Prim_object_datum, 1)
   PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (OBJECT_DATUM (object)));
 }
 
-DEFINE_PRIMITIVE ("OBJECT-SET-TYPE", Prim_object_set_type, 2)
+DEFINE_PRIMITIVE ("OBJECT-SET-TYPE", Prim_object_set_type, 2, 2, 0)
 {
   fast long type_code;
   fast Pointer object;
@@ -224,7 +224,7 @@ DEFINE_PRIMITIVE ("OBJECT-SET-TYPE", Prim_object_set_type, 2)
    Returns #F otherwise.
    Touches both arguments.  */
 
-DEFINE_PRIMITIVE ("EQ?", Prim_eq, 2)
+DEFINE_PRIMITIVE ("EQ?", Prim_eq, 2, 2, 0)
 {
   fast Pointer object_1;
   fast Pointer object_2;
@@ -232,7 +232,7 @@ DEFINE_PRIMITIVE ("EQ?", Prim_eq, 2)
 
   Touch_In_Primitive ((ARG_REF (1)), object_1);
   Touch_In_Primitive ((ARG_REF (2)), object_2);
-  PRIMITIVE_RETURN ((object_1 == object_2) ? TRUTH : NIL);
+  PRIMITIVE_RETURN ((object_1 == object_2) ? SHARP_T : NIL);
 }
 
 /* (NOT OBJECT)
@@ -240,13 +240,13 @@ DEFINE_PRIMITIVE ("EQ?", Prim_eq, 2)
    the primitive known as NOT, NULL?, and FALSE? in Scheme.
    Touches the argument.  */
 
-DEFINE_PRIMITIVE ("NOT", Prim_not, 1)
+DEFINE_PRIMITIVE ("NOT", Prim_not, 1, 1, 0)
 {
   fast Pointer object;
   PRIMITIVE_HEADER (1);
 
   Touch_In_Primitive ((ARG_REF (1)), object);
-  PRIMITIVE_RETURN ((object == NIL) ? TRUTH : NIL);
+  PRIMITIVE_RETURN ((object == NIL) ? SHARP_T : NIL);
 }
 
 /* Cells */
@@ -254,7 +254,7 @@ DEFINE_PRIMITIVE ("NOT", Prim_not, 1)
 /* (MAKE-CELL CONTENTS)
    Creates a cell with contents CONTENTS. */
 
-DEFINE_PRIMITIVE ("MAKE-CELL", Prim_make_cell, 1)
+DEFINE_PRIMITIVE ("MAKE-CELL", Prim_make_cell, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
 
@@ -266,17 +266,17 @@ DEFINE_PRIMITIVE ("MAKE-CELL", Prim_make_cell, 1)
 /* (CELL? OBJECT)
    Returns #T if OBJECT is a cell, else #F.  */
 
-DEFINE_PRIMITIVE ("CELL?", Prim_cell_p, 1)
+DEFINE_PRIMITIVE ("CELL?", Prim_cell_p, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
 
-  PRIMITIVE_RETURN ((CELL_P (ARG_REF (1))) ? TRUTH : NIL);
+  PRIMITIVE_RETURN ((CELL_P (ARG_REF (1))) ? SHARP_T : NIL);
 }
 
 /* (CELL-CONTENTS CELL)
    Returns the contents of the cell CELL.  */
 
-DEFINE_PRIMITIVE ("CELL-CONTENTS", Prim_cell_contents, 1)
+DEFINE_PRIMITIVE ("CELL-CONTENTS", Prim_cell_contents, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
 
@@ -287,7 +287,7 @@ DEFINE_PRIMITIVE ("CELL-CONTENTS", Prim_cell_contents, 1)
    Stores OBJECT as contents of CELL.
    Returns the previous contents of CELL. */
 
-DEFINE_PRIMITIVE ("SET-CELL-CONTENTS!", Prim_set_cell_contents, 2)
+DEFINE_PRIMITIVE ("SET-CELL-CONTENTS!", Prim_set_cell_contents, 2, 2, 0)
 {
   fast Pointer cell;
   fast Pointer object;

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,12 +30,12 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purutl.c,v 9.33 1988/03/12 16:07:29 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purutl.c,v 9.34 1988/08/15 20:53:42 cph Exp $ */
 
 /* Pure/Constant space utilities. */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 #include "gccode.h"
 #include "zones.h"
 
@@ -202,8 +202,7 @@ Make_Impure(Object)
    Remove an object from pure space so it can be side effected.
    The object is placed in constant space instead.
 */
-Built_In_Primitive(Prim_Impurify, 1, "PRIMITIVE-IMPURIFY", 0xBD)
-Define_Primitive(Prim_Impurify, 1, "PRIMITIVE-IMPURIFY")
+DEFINE_PRIMITIVE ("PRIMITIVE-IMPURIFY", Prim_impurify, 1, 1, 0)
 {
   Pointer Result;
   Primitive_1_Arg();
@@ -246,14 +245,13 @@ Pure_Test(Obj_Address)
    Returns #!TRUE if the object is pure (ie it doesn't point to any
    other object, or it is in a pure section of the constant space).
 */
-Built_In_Primitive(Prim_Pure_P, 1, "PURE?", 0xBB)
-Define_Primitive(Prim_Pure_P, 1, "PURE?")
+DEFINE_PRIMITIVE ("PURE?", Prim_pure_p, 1, 1, 0)
 {
   Primitive_1_Arg();
 
   if ((GC_Type_Non_Pointer(Arg1)) ||
       (GC_Type_Special(Arg1)))
-    return TRUTH;
+    return SHARP_T;
   Touch_In_Primitive(Arg1, Arg1);
   {
     extern Pointer *compiled_entry_to_block_address();
@@ -264,7 +262,7 @@ Define_Primitive(Prim_Pure_P, 1, "PURE?")
        ? (compiled_entry_to_block_address(Arg1))
        : (Get_Pointer(Arg1)));
     if (Is_Pure(Obj_Address))
-      return TRUTH;
+      return SHARP_T;
   }
   return NIL;
 }
@@ -273,8 +271,7 @@ Define_Primitive(Prim_Pure_P, 1, "PURE?")
    Returns #!TRUE if the object is in constant space or isn't a
    pointer.
 */
-Built_In_Primitive(Prim_Constant_P, 1, "CONSTANT?", 0xBA)
-Define_Primitive(Prim_Constant_P, 1, "CONSTANT?")
+DEFINE_PRIMITIVE ("CONSTANT?", Prim_constant_p, 1, 1, 0)
 {
   Primitive_1_Arg();
 
@@ -282,14 +279,13 @@ Define_Primitive(Prim_Constant_P, 1, "CONSTANT?")
   return ((GC_Type_Non_Pointer(Arg1)) ||
 	  (GC_Type_Special(Arg1)) ||
 	  (Is_Constant(Get_Pointer(Arg1)))) ?
-         TRUTH : NIL;
+         SHARP_T : NIL;
 }
 
 /* (GET-NEXT-CONSTANT)
    Returns the next free address in constant space.
 */
-Built_In_Primitive(Prim_Get_Next_Constant, 0, "GET-NEXT-CONSTANT", 0xE4)
-Define_Primitive(Prim_Get_Next_Constant, 0, "GET-NEXT-CONSTANT")
+DEFINE_PRIMITIVE ("GET-NEXT-CONSTANT", Prim_get_next_constant, 0, 0, 0)
 {
   Pointer *Next_Address;
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,12 +30,12 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intern.c,v 9.44 1987/11/23 05:17:30 cph Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intern.c,v 9.45 1988/08/15 20:49:57 cph Exp $ */
 
 /* Utilities for manipulating symbols. */
 
 #include "scheme.h"
-#include "primitive.h"
+#include "prims.h"
 #include "trap.h"
 #include "string.h"
 
@@ -219,7 +219,7 @@ Find_Symbol (scheme_string)
    Similar to INTERN-CHARACTER-LIST, except this one takes a string
    instead of a list of ascii values as argument.  */
 
-DEFINE_PRIMITIVE ("STRING->SYMBOL", Prim_String_To_Symbol, 1)
+DEFINE_PRIMITIVE ("STRING->SYMBOL", Prim_string_to_symbol, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
 
@@ -235,7 +235,7 @@ DEFINE_PRIMITIVE ("STRING->SYMBOL", Prim_String_To_Symbol, 1)
    255.  Thus non-printing, lower-case, and special characters can
    be put into symbols this way.  */
 
-DEFINE_PRIMITIVE ("INTERN-CHARACTER-LIST", Prim_Intern_Character_List, 1)
+DEFINE_PRIMITIVE ("INTERN-CHARACTER-LIST", Prim_intern_character_list, 1, 1, 0)
 {
   extern Pointer list_to_string();
   PRIMITIVE_HEADER (1);
@@ -248,7 +248,7 @@ DEFINE_PRIMITIVE ("INTERN-CHARACTER-LIST", Prim_Intern_Character_List, 1)
    algorithm used for interning symbols.  It is intended for use by
    the reader in creating interned symbols.  */
 
-DEFINE_PRIMITIVE ("STRING-HASH", Prim_String_Hash, 1)
+DEFINE_PRIMITIVE ("STRING-HASH", Prim_string_hash, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
 
@@ -256,7 +256,7 @@ DEFINE_PRIMITIVE ("STRING-HASH", Prim_String_Hash, 1)
   PRIMITIVE_RETURN (Hash (ARG_REF (1)));
 }
 
-DEFINE_PRIMITIVE ("STRING-HASH-MOD", Prim_string_hash_mod, 2)
+DEFINE_PRIMITIVE ("STRING-HASH-MOD", Prim_string_hash_mod, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
 
@@ -273,7 +273,7 @@ DEFINE_PRIMITIVE ("STRING-HASH-MOD", Prim_string_hash_mod, 2)
    symbols in Fasload, and is really intended only for that
    purpose.  */
 
-DEFINE_PRIMITIVE ("CHARACTER-LIST-HASH", Prim_Character_List_Hash, 1)
+DEFINE_PRIMITIVE ("CHARACTER-LIST-HASH", Prim_character_list_hash, 1, 1, 0)
 {
   fast Pointer char_list;
   long Length;
