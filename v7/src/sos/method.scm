@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: method.scm,v 1.5 1997/06/19 20:22:33 cph Exp $
+;;; $Id: method.scm,v 1.6 1997/06/19 21:35:04 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -291,7 +291,12 @@
   (or (eq? s1 s2)
       (and (union-specializer? s1)
 	   (union-specializer? s2)
-	   (union-specializer=? s1 s2))))
+	   (eq-set=? (union-specializer-classes s1)
+		     (union-specializer-classes s2)))))
+
+(define (eq-set=? x y)
+  (and (for-all? x (lambda (x) (memq x y)))
+       (for-all? y (lambda (y) (memq y x)))))
 
 (define (specializer-classes s)
   (cond ((class? s)
@@ -303,25 +308,23 @@
 	(else
 	 (error:wrong-type-argument s "specializer" 'SPECIALIZER-CLASSES))))
 
-(define union-spec-rtd (make-record-type 'UNION-SPECIALIZER '(CLASSES)))
-(define make-union-specializer (record-constructor union-spec-rtd))
-(define union-specializer? (record-predicate union-spec-rtd))
-(define union-specializer-classes (record-accessor union-spec-rtd 'CLASSES))
+(define-structure union-specializer
+  (classes #f read-only #t))
 
 (define (union-specializer . specializers)
   (make-union-specializer
-   (append-map (lambda (specializer)
-		 (if (union-specializer? specializer)
-		     (union-specializer-classes specializer)
-		     (list specializer)))
-	       (guarantee-specializers specializers #f 'UNION-SPECIALIZER))))
+   (eliminate-duplicates
+    (append-map specializer-classes
+		(guarantee-specializers specializers #f 'UNION-SPECIALIZER)))))
 
-(define (union-specializer=? s1 s2)
-  (eq-set=? (union-specializer-classes s1) (union-specializer-classes s2)))
-
-(define (eq-set=? x y)
-  (and (for-all? x (lambda (x) (memq x y)))
-       (for-all? y (lambda (y) (memq y x)))))
+(define (eliminate-duplicates items)
+  (let loop ((items items) (result '()))
+    (if (null? items)
+	(reverse! result)
+	(loop (cdr items)
+	      (if (memq (car items) result)
+		  result
+		  (cons (car items) result))))))
 
 (define (enumerate-union-specializers method)
   (let ((specializers (method-specializers method)))
@@ -332,11 +335,7 @@
 	(map (lambda (specializers)
 	       (new-method-specializers method specializers))
 	     (let loop ((specializers specializers))
-	       (let ((classes
-		      (let ((specializer (car specializers)))
-			(if (union-specializer? specializer)
-			    (union-specializer-classes specializer)
-			    (list specializer)))))
+	       (let ((classes (specializer-classes (car specializers))))
 		 (if (null? (cdr specializers))
 		     (map (lambda (class) (list class)) classes)
 		     (let ((tails (loop (cdr specializers))))
