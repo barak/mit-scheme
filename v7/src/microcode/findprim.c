@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.41 1989/09/20 23:04:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.42 1989/09/25 17:47:41 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -838,10 +838,21 @@ initialize_data_buffer ()
 void
 grow_data_buffer ()
 {
+  char * old_data_buffer = ((char *) data_buffer);
   buffer_length *= 2;
   data_buffer =
     ((struct descriptor (*) [])
      (xrealloc (data_buffer, (buffer_length * (sizeof (struct descriptor))))));
+  {
+    register struct descriptor ** scan = result_buffer;
+    register struct descriptor ** end = (result_buffer + buffer_index);
+    register long offset = (((char *) data_buffer) - old_data_buffer);
+    while (scan < end)
+      {
+	(*scan) = ((struct descriptor *) (((char*) (*scan)) + offset));
+	scan += 1;
+      }
+  }
   result_buffer =
     ((struct descriptor **)
      (xrealloc (result_buffer,
