@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.69 1991/11/26 20:11:34 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.70 1992/01/08 06:26:30 cph Exp $
 
-Copyright (c) 1989-91 Massachusetts Institute of Technology
+Copyright (c) 1989-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -176,7 +176,6 @@ MIT in each case. |#
   (export (edwin)
 	  comtab->alist
 	  comtab-entry
-	  comtab-dispatch-alists
 	  comtab-key-bindings
 	  comtab?
 	  define-default-key
