@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/process.scm,v 1.2 1990/03/16 22:43:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/process.scm,v 1.3 1990/03/24 19:14:13 jinx Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -45,16 +45,19 @@ MIT in each case. |#
        (macro names
 	 `(DEFINE-PRIMITIVES
 	    ,@(map (lambda (name)
-		     (list (symbol-append 'prim- name)
-			   name))
+		     (let ((name (car name))
+			   (arity (cadr name)))
+		       (list (symbol-append 'prim- name)
+			     name
+			     arity)))
 		   names)))))
   (define-special-primitives
-    create-process
-    process-get-pid
-    process-get-input-channel
-    process-get-output-channel
-    process-get-status-flags
-    process-char-ready?))
+    (create-process 1)
+    (process-get-pid 1)
+    (process-get-input-channel 1)
+    (process-get-output-channel 1)
+    (process-get-status-flags 1)
+    (process-char-ready? 2)))
 
 (let-syntax
     ((define-process-primitives
@@ -83,14 +86,14 @@ MIT in each case. |#
   )
 
 (define (create-process command-string)
-  (let* ((prim-process ((ucode-primitive create-process) command-string))
+  (let* ((prim-process ((ucode-primitive create-process 1) command-string))
 	 (process (make-process command-string prim-process)))
     (set-process/to-port! process (open-process-output process))
     (set-process/from-port! process (open-process-input process))
     process))
 
 (define (kill-process process)
-  ((ucode-primitive kill-process) (process/microcode-process process)))
+  ((ucode-primitive kill-process 1) (process/microcode-process process)))
 
 (define (delete-process process)
   (close-output-port (process/to-port process))
