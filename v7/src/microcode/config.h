@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: config.h,v 9.97 1996/12/16 04:53:17 cph Exp $
+$Id: config.h,v 9.98 1998/04/18 05:31:11 cph Exp $
 
-Copyright (c) 1987-96 Massachusetts Institute of Technology
+Copyright (c) 1987-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -444,6 +444,14 @@ typedef unsigned long SCHEME_OBJECT;
 extern void * linux_heap_malloc (unsigned long);
 #define HEAP_MALLOC linux_heap_malloc
 #define HEAP_FREE(address)
+#endif
+
+/* !WINNT_RAW_ADDRESSES  is useful only for Windows 3.1, which we no
+   longer support -- so define it always.  */
+#ifdef WINNT
+#ifndef WINNT_RAW_ADDRESSES
+#define WINNT_RAW_ADDRESSES
+#endif
 #endif
 
 #if defined(WINNT) && !defined(WINNT_RAW_ADDRESSES)

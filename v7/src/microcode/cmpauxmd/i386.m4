@@ -1,8 +1,8 @@
 ### -*-Midas-*-
 ###
-###	$Id: i386.m4,v 1.47 1997/05/05 06:59:35 cph Exp $
+###	$Id: i386.m4,v 1.48 1998/04/18 05:32:48 cph Exp $
 ###
-###	Copyright (c) 1992-97 Massachusetts Institute of Technology
+###	Copyright (c) 1992-98 Massachusetts Institute of Technology
 ###
 ###	This material was developed by the Scheme project at the
 ###	Massachusetts Institute of Technology, Department of
@@ -407,7 +407,7 @@ allocate_space(Registers,eval(REGBLOCK_SIZE_IN_OBJECTS*4))
 ')
 ')
 
-IF_WIN32(`use_external_data(EVR(winnt_address_delta))')
+ifdef(`HACK_SEGMENT_REGS',`use_external_data(EVR(winnt_address_delta))')
 
 define_data(i387_presence)
 allocate_longword(i387_presence)
@@ -417,8 +417,6 @@ allocate_longword(C_Stack_Pointer)
 
 define_data(C_Frame_Pointer)
 allocate_longword(C_Frame_Pointer)
-
-IF_WIN32(`define(HACK_SEGMENT_REGS,1)')
 
 ifdef(`HACK_SEGMENT_REGS',`
 

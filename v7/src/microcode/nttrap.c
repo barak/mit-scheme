@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttrap.c,v 1.15 1998/02/01 05:35:33 cph Exp $
+$Id: nttrap.c,v 1.16 1998/04/18 05:31:50 cph Exp $
 
 Copyright (c) 1992-98 Massachusetts Institute of Technology
 
@@ -50,6 +50,7 @@ extern int EXFUN (TellUserEx, (int, char *, ...));
 extern void EXFUN (NT_initialize_traps, (void));
 extern void EXFUN (NT_restore_traps, (void));
 
+#ifndef WINNT_RAW_ADDRESSES
 extern unsigned short
   Scheme_Code_Segment_Selector,
   Scheme_Data_Segment_Selector,
@@ -58,6 +59,7 @@ extern unsigned short
   C_Data_Segment_Selector,
   C_Extra_Segment_Selector,
   C_Stack_Segment_Selector;
+#endif
 
 extern DWORD
   C_Stack_Pointer,
@@ -394,9 +396,12 @@ DEFUN (display_exception_information, (info, context, flags),
     bufptr += (sprintf (bufptr, "\ncontext->Eip        = 0x%lx.", context->Eip));
     bufptr += (sprintf (bufptr, "\ncontext->Esp        = 0x%lx.", context->Esp));
     bufptr += (sprintf (bufptr, "\nStack_Pointer       = 0x%lx.", Stack_Pointer));
+#ifndef WINNT_RAW_ADDRESSES
     bufptr += (sprintf (bufptr, "\nwinnt_address_delta = 0x%lx.", winnt_address_delta));
+#endif
     bufptr += (sprintf (bufptr, "\nadj (Stack_Pointer) = 0x%lx.",
 			(ADDR_TO_SCHEME_ADDR (Stack_Pointer))));
+#ifndef WINNT_RAW_ADDRESSES
     bufptr += (sprintf (bufptr, "\nCS = 0x%04x;\tC CS = 0x%04x;\tS CS = 0x%04x.",
 			context->SegCs,
 			C_Code_Segment_Selector,
@@ -416,6 +421,7 @@ DEFUN (display_exception_information, (info, context, flags),
 			context->SegSs,
 			C_Stack_Segment_Selector,
 			Scheme_Stack_Segment_Selector));
+#endif
   }
 #endif /* W32_TRAP_DEBUG */
 
@@ -668,12 +674,14 @@ DEFUN (continue_from_trap, (code, context),
 	Stack_Pointer, context->Esp));
     scheme_sp = (context->Esp);
   }
+#ifndef WINNT_RAW_ADDRESSES
   else if (context->SegSs == Scheme_Stack_Segment_Selector)
   {
     IFVERBOSE (TellUserEx (MB_OKCANCEL,
 			   "continue_from_trap: SS = Scheme SS."));
     scheme_sp = ((long) (SCHEME_ADDR_TO_ADDR (context->Esp)));
   }
+#endif
   else
   {
     IFVERBOSE (TellUserEx (MB_OKCANCEL, "continue_from_trap: SS unknown!"));
@@ -685,12 +693,14 @@ DEFUN (continue_from_trap, (code, context),
     IFVERBOSE (TellUserEx (MB_OKCANCEL, "continue_from_trap: CS = C CS."));
     the_pc = (context->Eip & PC_VALUE_MASK);
   }
+#ifndef WINNT_RAW_ADDRESSES
   else if (context->SegCs == Scheme_Code_Segment_Selector)
   {
     IFVERBOSE (TellUserEx (MB_OKCANCEL, "continue_from_trap: CS = Scheme CS"));
     /* Assume in Scheme.  Of course, it could be in a builtin. */
     the_pc = ((long) (SCHEME_ADDR_TO_ADDR (context->Eip & PC_VALUE_MASK)));
   }
+#endif
   else
   {
     IFVERBOSE (TellUserEx (MB_OKCANCEL, "continue_from_trap: CS unknown"));
@@ -879,10 +889,12 @@ pc_in_hyperspace:
 
   if (pc_in_scheme && (! (win32_under_win32s_p ())))
   {
+#ifndef WINNT_RAW_ADDRESSES
     context->SegCs = C_Code_Segment_Selector;
     context->SegDs = C_Data_Segment_Selector;
     context->SegEs = C_Extra_Segment_Selector;
     context->SegSs = C_Stack_Segment_Selector;
+#endif
     context->Esp = C_Stack_Pointer;
     context->Ebp = C_Frame_Pointer;
     if (pc_in_scheme)
