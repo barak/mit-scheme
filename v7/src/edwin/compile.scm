@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: compile.scm,v 1.3 1994/09/09 01:23:34 adams Exp $
+;;;	$Id: compile.scm,v 1.4 1995/01/31 21:35:02 cph Exp $
 ;;;
-;;;	Copyright (c) 1992 Massachusetts Institute of Technology
+;;;	Copyright (c) 1992-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -45,7 +45,7 @@
 ;;;; Compilation Subprocess
 
 (declare (usual-integrations))
-
+
 (define-variable compile-command
   "Last shell command used to do a compilation; default for next compilation."
   "make -k")
@@ -120,12 +120,12 @@ with output going to the buffer *compilation*."
       (insert-newline mark)
       (mark-temporary! mark))
     (let ((process
-	   (start-process "compilation"
-			  buffer
-			  scheme-subprocess-environment
-			  "/bin/sh"
-			  "-c"
-			  (string-append "exec " command))))
+	   (apply start-process
+		  "compilation"
+		  buffer
+		  scheme-subprocess-environment
+		  (ref-variable shell-file-name)
+		  (os/form-shell-command command))))
       (set-process-sentinel! process compilation-process-sentinel)
       (set! compilation-process process))
     (pop-up-buffer buffer false)))
