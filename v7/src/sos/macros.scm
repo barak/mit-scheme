@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: macros.scm,v 1.2 1997/06/04 22:15:31 cph Exp $
+;;; $Id: macros.scm,v 1.3 1997/06/11 07:45:04 cph Exp $
 ;;;
 ;;; Copyright (c) 1993-97 Massachusetts Institute of Technology
 ;;;
@@ -76,56 +76,63 @@
 	     ,@post-definitions))))))
 
 (define (parse-define-class-name name lose)
+  (call-with-values (lambda () (parse-define-class-name-1 name lose))
+    (lambda (class-name alist)
+      (values class-name
+	      (let ((alist
+		     (if (assq 'PREDICATE alist)
+			 alist
+			 (cons '(PREDICATE) alist))))
+		(append-map
+		 (lambda (option)
+		   (case (car option)
+		     ((PREDICATE)
+		      (let ((pn
+			     (cond ((null? (cdr option))
+				    (default-predicate-name class-name))
+				   ((and (pair? (cdr option))
+					 (or (symbol? (cadr option))
+					     (false? (cadr option)))
+					 (null? (cddr option)))
+				    (cadr option))
+				   (else (lose "class option" option)))))
+			(if pn
+			    `((DEFINE ,pn (INSTANCE-PREDICATE ,class-name)))
+			    '())))
+		     ((CONSTRUCTOR)
+		      (cond ((and (pair? (cdr option))
+				  (symbol? (cadr option))
+				  (pair? (cddr option))
+				  (and (list? (caddr option))
+				       (for-all? (caddr option) symbol?))
+				  (null? (cdddr option)))
+			     `((DEFINE ,(cadr option)
+				 (INSTANCE-CONSTRUCTOR ,class-name
+						       ',(caddr option)))))
+			    ((and (pair? (cdr option))
+				  (and (list? (cadr option))
+				       (for-all? (cadr option) symbol?))
+				  (null? (cddr option)))
+			     `((DEFINE ,(default-constructor-name class-name)
+				 (INSTANCE-CONSTRUCTOR ,class-name
+						       ',(cadr option)))))
+			    (else
+			     (lose "class option" option))))
+		     (else (lose "class option" option))))
+		 alist))))))
+
+(define (parse-define-class-name-1 name lose)
   (cond ((symbol? name)
-	 (values name
-		 `((DEFINE ,(default-predicate-name name)
-		     (INSTANCE-PREDICATE ,name)))))
+	 (values name '()))
 	((and (pair? name)
 	      (symbol? (car name))
 	      (list? (cdr name)))
-	 (values
-	  (car name)
-	  (append-map
-	   (lambda (option)
-	     (case (car option)
-	       ((PREDICATE)
-		(let ((pn
-		       (cond ((null? (cdr option))
-			      (default-predicate-name (car name)))
-			     ((and (pair? (cdr option))
-				   (or (symbol? (cadr option))
-				       (false? (cadr option)))
-				   (null? (cddr option)))
-			      (cadr option))
-			     (else (lose "class option" option)))))
-		  (if pn
-		      `((DEFINE ,pn (INSTANCE-PREDICATE ,(car name))))
-		      '())))
-	       ((CONSTRUCTOR)
-		(cond ((and (pair? (cdr option))
-			    (symbol? (cadr option))
-			    (pair? (cddr option))
-			    (and (list? (caddr option))
-				 (for-all? (caddr option) symbol?))
-			    (null? (cdddr option)))
-		       `((DEFINE ,(cadr option)
-			   (INSTANCE-CONSTRUCTOR ,(car name)
-						 ',(caddr option)))))
-		      ((and (pair? (cdr option))
-			    (and (list? (cadr option))
-				 (for-all? (cadr option) symbol?))
-			    (null? (cddr option)))
-		       `((DEFINE ,(default-constructor-name (car name))
-			   (INSTANCE-CONSTRUCTOR ,(car name)
-						 ',(cadr option)))))
-		      (else
-		       (lose "class option" option))))
-	       (else (lose "class option" option))))
-	   (map (lambda (option)
-		  (if (pair? option)
-		      option
-		      (list option)))
-		(cdr name)))))
+	 (values (car name)
+		 (map (lambda (option)
+			(if (pair? option)
+			    option
+			    (list option)))
+		      (cdr name))))
 	(else (lose "class name" name))))
 
 (define (default-predicate-name class-name)
