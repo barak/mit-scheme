@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: mit-syntax.scm,v 14.4 2002/02/19 19:09:12 cph Exp $
+;;; $Id: mit-syntax.scm,v 14.5 2002/03/01 03:09:54 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1991, 2001, 2002 Massachusetts Institute of Technology
 ;;;
@@ -874,33 +874,20 @@
 
 (define (map-declaration-references declarations environment history selector)
   (select-map (lambda (declaration selector)
-		(let ((entry (assq (car declaration) known-declarations)))
-		  (if entry
-		      ((cdr entry) declaration environment history selector)
-		      (begin
-			(warn "Ill-formed declaration:" declaration)
-			declaration))))
+		(process-declaration declaration selector
+		  (lambda (form selector)
+		    (classify/variable-subexpression form
+						     environment
+						     history
+						     selector))
+		  (lambda (declaration selector)
+		    (syntax-error (history/add-subproblem declaration
+							  environment
+							  history
+							  selector)
+				  "Ill-formed declaration:"
+				  declaration))))
 	      declarations
-	      selector))
-
-(define (define-declaration name mapper)
-  (let ((entry (assq name known-declarations)))
-    (if entry
-	(set-cdr! entry mapper)
-	(begin
-	  (set! known-declarations
-		(cons (cons name mapper) known-declarations))
-	  unspecific))))
-
-(define known-declarations '())
-
-(define (classify/variable-subexpressions forms environment history selector)
-  (select-map (lambda (form selector)
-		(classify/variable-subexpression form
-						 environment
-						 history
-						 selector))
-	      forms
 	      selector))
 
 (define (classify/variable-subexpression form environment history selector)
@@ -908,137 +895,3 @@
     (if (not (variable-item? item))
 	(syntax-error history "Variable required in this context:" form))
     (variable-item/name item)))
-
-(let ((ignore
-       (lambda (declaration environment history selector)
-	 environment history selector
-	 declaration)))
-  ;; The names in USUAL-INTEGRATIONS are always global.
-  (define-declaration 'USUAL-INTEGRATIONS ignore)
-  (define-declaration 'AUTOMAGIC-INTEGRATIONS ignore)
-  (define-declaration 'ETA-SUBSTITUTION ignore)
-  (define-declaration 'OPEN-BLOCK-OPTIMIZATIONS ignore)
-  (define-declaration 'NO-AUTOMAGIC-INTEGRATIONS ignore)
-  (define-declaration 'NO-ETA-SUBSTITUTION ignore)
-  (define-declaration 'NO-OPEN-BLOCK-OPTIMIZATIONS ignore))
-
-(let ((tail-identifiers
-       (lambda (declaration environment history selector)
-	 (if (not (syntax-match? '(* IDENTIFIER) (cdr declaration)))
-	     (syntax-error history "Ill-formed declaration:" declaration))
-	 `(,(car declaration)
-	   ,@(classify/variable-subexpressions (cdr declaration)
-					       environment
-					       history
-					       (selector/add-cdr selector))))))
-  (define-declaration 'INTEGRATE tail-identifiers)
-  (define-declaration 'INTEGRATE-OPERATOR tail-identifiers)
-  (define-declaration 'INTEGRATE-SAFELY tail-identifiers)
-  (define-declaration 'IGNORE tail-identifiers))
-
-(define-declaration 'INTEGRATE-EXTERNAL
-  (lambda (declaration environment history selector)
-    environment selector
-    (if (not (list-of-type? (cdr declaration)
-	       (lambda (object)
-		 (or (string? object)
-		     (pathname? object)))))
-	(syntax-error history "Ill-formed declaration:" declaration))
-    declaration))
-
-(let ((varset
-       (lambda (declaration environment history selector)
-	 (if (not (syntax-match? '(DATUM) (cdr declaration)))
-	     (syntax-error history "Ill-formed declaration:" declaration))
-	 `(,(car declaration)
-	   ,(let loop
-		((varset (cadr declaration))
-		 (selector (selector/add-cadr selector)))
-	      (cond ((syntax-match? '('SET * IDENTIFIER) varset)
-		     `(,(car varset)
-		       ,@(classify/variable-subexpressions
-			  (cdr varset)
-			  environment
-			  history
-			  (selector/add-cdr selector))))
-		    ((or (syntax-match? '('UNION * DATUM) varset)
-			 (syntax-match? '('INTERSECTION * DATUM) varset)
-			 (syntax-match? '('DIFFERENCE DATUM DATUM) varset))
-		     `(,(car varset)
-		       ,@(select-map loop
-				     (cdr varset)
-				     (selector/add-cdr selector))))
-		    (else varset)))))))
-  (define-declaration 'CONSTANT varset)
-  (define-declaration 'IGNORE-ASSIGNMENT-TRAPS varset)
-  (define-declaration 'IGNORE-REFERENCE-TRAPS varset)
-  (define-declaration 'PURE-FUNCTION varset)
-  (define-declaration 'SIDE-EFFECT-FREE varset)
-  (define-declaration 'USUAL-DEFINITION varset)
-  (define-declaration 'UUO-LINK varset))
-
-(define-declaration 'REPLACE-OPERATOR
-  (lambda (declaration environment history selector)
-    (if (not (syntax-match? '(* DATUM) (cdr declaration)))
-	(syntax-error history "Ill-formed declaration:" declaration))
-    `(,(car declaration)
-      ,@(select-map
-	 (lambda (rule selector)
-	   (if (not (syntax-match? '(IDENTIFIER * (DATUM DATUM)) rule))
-	       (syntax-error history "Ill-formed declaration:" declaration))
-	   `(,(classify/variable-subexpression (car rule)
-					       environment
-					       history
-					       (selector/add-car selector))
-	     ,@(select-map
-		(lambda (clause selector)
-		  `(,(car clause)
-		    ,(if (identifier? (cadr clause))
-			 (classify/variable-subexpression (cadr clause)
-							  environment
-							  history
-							  (selector/add-cadr
-							   selector))
-			 (cadr clause))))
-		(cdr rule)
-		(selector/add-cdr selector))))
-	 (cdr declaration)
-	 (selector/add-cdr selector)))))
-
-(define-declaration 'REDUCE-OPERATOR
-  (lambda (declaration environment history selector)
-    `(,(car declaration)
-      ,@(select-map
-	 (lambda (rule selector)
-	   (if (not (syntax-match? '(IDENTIFIER DATUM * DATUM) rule))
-	       (syntax-error history "Ill-formed declaration:" declaration))
-	   `(,(classify/variable-subexpression (car rule)
-					       environment
-					       history
-					       (selector/add-car selector))
-	     ,(if (identifier? (cadr rule))
-		  (classify/variable-subexpression (cadr rule)
-						   environment
-						   history
-						   (selector/add-cadr
-						    selector))
-		  (cadr rule))
-	     ,@(select-map
-		(lambda (clause selector)
-		  (if (or (syntax-match? '('NULL-VALUE IDENTIFIER DATUM)
-					 clause)
-			  (syntax-match? '('SINGLETON IDENTIFIER) clause)
-			  (syntax-match? '('WRAPPER IDENTIFIER ? DATUM)
-					 clause))
-		      `(,(car clause)
-			,(classify/variable-subexpression (cadr clause)
-							  environment
-							  history
-							  (selector/add-cadr
-							   selector))
-			,@(cddr clause))
-		      clause))
-		(cddr rule)
-		(selector/add-cddr selector))))
-	 (cdr declaration)
-	 (selector/add-cdr selector)))))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: syntax-output.scm,v 14.1 2002/02/03 03:38:57 cph Exp $
+;;; $Id: syntax-output.scm,v 14.2 2002/03/01 03:09:58 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1991, 2001, 2002 Massachusetts Institute of Technology
 ;;;
@@ -148,3 +148,138 @@
 
 (define lambda-tag:fluid-let
   ((ucode-primitive string->symbol) "#[fluid-let-procedure]"))
+
+;;;; Declarations
+
+(define (define-declaration name pattern mapper)
+  (let ((entry (assq name known-declarations)))
+    (if entry
+	(set-cdr! entry (cons pattern mapper))
+	(begin
+	  (set! known-declarations
+		(cons (cons name (cons pattern mapper))
+		      known-declarations))
+	  unspecific))))
+
+(define (process-declaration declaration
+			     selector
+			     map-identifier
+			     ill-formed-declaration)
+  (if (pair? declaration)
+      (let ((entry (assq (car declaration) known-declarations)))
+	(if (and entry (syntax-match? (cadr entry) (cdr declaration)))
+	    ((cddr entry) declaration selector map-identifier)
+	    (begin
+	      (warn "Unknown declaration:" declaration)
+	      declaration)))
+      (ill-formed-declaration declaration selector)))
+
+(define known-declarations '())
+
+(for-each (lambda (keyword)
+	    (define-declaration keyword '()
+	      (lambda (declaration selector map-identifier)
+		selector map-identifier
+		declaration)))
+	  '(AUTOMAGIC-INTEGRATIONS
+	    NO-AUTOMAGIC-INTEGRATIONS
+	    ETA-SUBSTITUTION
+	    NO-ETA-SUBSTITUTION
+	    OPEN-BLOCK-OPTIMIZATIONS
+	    NO-OPEN-BLOCK-OPTIMIZATIONS))
+
+(for-each (lambda (keyword)
+	    (define-declaration keyword '(* IDENTIFIER)
+	      (lambda (declaration selector map-identifier)
+		(cons (car declaration)
+		      (select-map map-identifier
+				  (cdr declaration)
+				  (selector/add-cdr selector))))))
+	  ;; The names in USUAL-INTEGRATIONS are always global.
+	  '(USUAL-INTEGRATIONS
+	    INTEGRATE
+	    INTEGRATE-OPERATOR
+	    INTEGRATE-SAFELY
+	    IGNORE))
+
+(define-declaration 'INTEGRATE-EXTERNAL
+  `(* ,(lambda (object)
+	 (or (string? object)
+	     (pathname? object))))
+  (lambda (declaration selector map-identifier)
+    selector map-identifier
+    declaration))
+
+(for-each
+ (lambda (keyword)
+   (define-declaration keyword '(DATUM)
+     (lambda (declaration selector map-identifier)
+       (list (car declaration)
+	     (let loop
+		 ((varset (cadr declaration))
+		  (selector (selector/add-cadr selector)))
+	       (cond ((syntax-match? '('SET * IDENTIFIER) varset)
+		      (cons (car varset)
+			    (select-map map-identifier
+					(cdr varset)
+					(selector/add-cdr selector))))
+		     ((or (syntax-match? '('UNION * DATUM) varset)
+			  (syntax-match? '('INTERSECTION * DATUM) varset)
+			  (syntax-match? '('DIFFERENCE DATUM DATUM) varset))
+		      (cons (car varset)
+			    (select-map loop
+					(cdr varset)
+					(selector/add-cdr selector))))
+		     (else varset)))))))
+ '(CONSTANT
+   IGNORE-ASSIGNMENT-TRAPS
+   IGNORE-REFERENCE-TRAPS
+   PURE-FUNCTION
+   SIDE-EFFECT-FREE
+   USUAL-DEFINITION
+   UUO-LINK))
+
+(define-declaration 'REPLACE-OPERATOR '(* (IDENTIFIER * (DATUM DATUM)))
+  (lambda (declaration selector map-identifier)
+    (cons (car declaration)
+	  (select-map
+	   (lambda (rule selector)
+	     (cons (map-identifier (car rule) (selector/add-car selector))
+		   (select-map
+		    (lambda (clause selector)
+		      (list (car clause)
+			    (if (identifier? (cadr clause))
+				(map-identifier (cadr clause)
+						(selector/add-cadr selector))
+				(cadr clause))))
+		    (cdr rule))))
+	   (cdr declaration)
+	   (selector/add-cdr selector)))))
+
+(define-declaration 'REDUCE-OPERATOR '(* (IDENTIFIER DATUM * DATUM))
+  (lambda (declaration selector map-identifier)
+    (cons (car declaration)
+	  (select-map
+	   (lambda (rule selector)
+	     (cons* (map-identifier (car rule) (selector/add-car selector))
+		    (if (identifier? (cadr rule))
+			(map-identifier (cadr rule)
+					(selector/add-cadr selector))
+			(cadr rule))
+		    (select-map
+		     (lambda (clause selector)
+		       (if (or (syntax-match? '('NULL-VALUE IDENTIFIER DATUM)
+					      clause)
+			       (syntax-match? '('SINGLETON IDENTIFIER)
+					      clause)
+			       (syntax-match? '('WRAPPER IDENTIFIER ? DATUM)
+					      clause))
+			   (cons* (car clause)
+				  (map-identifier (cadr clause)
+						  (selector/add-cadr selector))
+				  (cddr clause))
+			   clause))
+		     (cddr rule)
+		     (selector/add-cddr selector))))
+	   (cdr declaration)
+	   (selector/add-cdr selector)))))
