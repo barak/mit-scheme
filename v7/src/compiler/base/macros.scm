@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: macros.scm,v 4.19 2001/12/20 03:48:45 cph Exp $
+$Id: macros.scm,v 4.20 2001/12/20 04:14:49 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -30,6 +30,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(lap-syntaxer-env (->environment '(COMPILER LAP-SYNTAXER))))
     (set-environment-syntax-table! compiler-env
 				   (make-syntax-table (->environment '())))
+    (let ((runtime-env (->environment '(RUNTIME))))
+      (for-each (lambda (name)
+		  (syntax-table/define compiler-env name
+				       (syntax-table/ref runtime-env name)))
+		'(UCODE-PRIMITIVE UCODE-TYPE)))
     (for-each (lambda (entry)
 		(syntax-table/define compiler-env (car entry) (cadr entry)))
 	      `((CFG-NODE-CASE ,transform/cfg-node-case)
