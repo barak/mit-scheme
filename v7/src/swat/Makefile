@@ -1,5 +1,5 @@
 ##
-## $Id: Makefile,v 1.1 1995/08/02 21:19:38 adams Exp $
+## $Id: Makefile,v 1.2 1996/07/31 16:15:36 adams Exp $
 ##
 ## 
 ##
@@ -54,3 +54,6 @@ scheme/compiled:
 	)
 
 clean:
+
+tags:
+	etags scheme/*.scm c/*.c
