@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.87 1987/05/15 19:50:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.88 1987/05/22 00:11:43 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -140,6 +140,7 @@ MIT in each case. |#
   (define-scode-operator combination-components)
   (define-scode-operator combination?)
   (define-scode-operator comment-expression)
+  (define-scode-operator comment-text)
   (define-scode-operator comment?)
   (define-scode-operator conditional-components)
   (define-scode-operator definition-components)
@@ -152,6 +153,7 @@ MIT in each case. |#
   (define-scode-operator make-access)
   (define-scode-operator make-assignment)
   (define-scode-operator make-combination)
+  (define-scode-operator make-comment)
   (define-scode-operator make-conditional)
   (define-scode-operator make-definition)
   (define-scode-operator make-lambda)
