@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.84 1987/04/13 23:59:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.85 1987/04/17 07:38:02 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -221,33 +221,34 @@ MIT in each case. |#
 ;;; Disgusting hack to replace microcode implementation.
 
 (define (primitive-procedure-safe? object)
-  (not (memq object
-	     (let-syntax ((primitives
-			   (macro names
-			     `'(,@(map make-primitive-procedure names)))))
-	       (primitives call-with-current-continuation
-			   non-reentrant-call-with-current-continuation
-			   scode-eval
-			   apply
-			   garbage-collect
-			   primitive-fasdump
-			   set-current-history!
-			   with-history-disabled
-			   force
-			   primitive-purify
-			   complete-garbage-collect
-			   dump-band
-			   primitive-impurify
-			   with-threaded-continuation
-			   within-control-point
-			   with-interrupts-reduced
-			   primitive-eval-step
-			   primitive-apply-step
-			   primitive-return-step
-			   execute-at-new-state-point
-			   translate-to-state-point
-			   with-interrupt-mask
-			   error-procedure)))))
+  (and (primitive-type? (ucode-type primitive) object)
+       (not (memq object
+		  (let-syntax ((primitives
+				(macro names
+				  `'(,@(map make-primitive-procedure names)))))
+		    (primitives call-with-current-continuation
+				non-reentrant-call-with-current-continuation
+				scode-eval
+				apply
+				garbage-collect
+				primitive-fasdump
+				set-current-history!
+				with-history-disabled
+				force
+				primitive-purify
+				complete-garbage-collect
+				dump-band
+				primitive-impurify
+				with-threaded-continuation
+				within-control-point
+				with-interrupts-reduced
+				primitive-eval-step
+				primitive-apply-step
+				primitive-return-step
+				execute-at-new-state-point
+				translate-to-state-point
+				with-interrupt-mask
+				error-procedure))))))
 
 ;;;; Special Compiler Support
 
@@ -263,6 +264,7 @@ MIT in each case. |#
       (primitive-type? (ucode-type fixnum) object)
       (primitive-type? (ucode-type character) object)
       (primitive-type? (ucode-type unassigned) object)
+      (primitive-type? (ucode-type primitive) object)
       (primitive-type? (ucode-type the-environment) object)
       (primitive-type? (ucode-type manifest-nm-vector) object)
       (primitive-type? (ucode-type manifest-special-nm-vector) object)))
