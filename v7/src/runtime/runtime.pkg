@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.421 2003/01/03 01:37:45 cph Exp $
+$Id: runtime.pkg,v 14.422 2003/01/09 19:36:50 cph Exp $
 
 Copyright (c) 1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright (c) 1993,1994,1995,1996,1997 Massachusetts Institute of Technology
@@ -4469,3 +4469,29 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	  utf8-string->code-point
 	  well-formed-code-points-list?
 	  write-utf8-code-point))
+
+(define-package (runtime url)
+  (files "url")
+  (parent (runtime))
+  (export ()
+	  url:char-set:escaped
+	  url:char-set:extra
+	  url:char-set:national
+	  url:char-set:punctuation
+	  url:char-set:reserved
+	  url:char-set:safe
+	  url:char-set:unescaped
+	  url:char-set:unreserved
+	  url:decode-string
+	  url:decode-substring
+	  url:encode-string
+	  url:encode-substring
+	  url:match:escape
+	  url:match:host
+	  url:match:hostname
+	  url:match:hostnumber
+	  url:match:uchar
+	  url:match:xchar
+	  url:parse:hostport
+	  url:string-encoded?
+	  url:substring-encoded?))

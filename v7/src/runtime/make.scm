@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.87 2002/11/20 19:46:21 cph Exp $
+$Id: make.scm,v 14.88 2003/01/09 19:40:16 cph Exp $
 
-Copyright (c) 1988-2002 Massachusetts Institute of Technology
+Copyright (c) 1988,1989,1990,1991,1992 Massachusetts Institute of Technology
+Copyright (c) 1993,1994,1995,1996,1997 Massachusetts Institute of Technology
+Copyright (c) 1998,2000,2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -515,7 +517,8 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
    ;; Emacs -- last because it installs hooks everywhere which must be initted.
    (RUNTIME EMACS-INTERFACE)
    ;; More debugging
-   ((RUNTIME CONTINUATION-PARSER) INITIALIZE-SPECIAL-FRAMES! #f)))
+   ((RUNTIME CONTINUATION-PARSER) INITIALIZE-SPECIAL-FRAMES! #f)
+   (RUNTIME URL)))
 
 (let ((obj (file->object "site" #t #t)))
   (if obj

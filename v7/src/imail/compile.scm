@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: compile.scm,v 1.17 2002/11/20 19:46:05 cph Exp $
+;;; $Id: compile.scm,v 1.18 2003/01/09 19:43:10 cph Exp $
 ;;;
-;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
+;;; Copyright (c) 2000,2001,2003 Massachusetts Institute of Technology
 ;;;
 ;;; This file is part of MIT Scheme.
 ;;;
@@ -28,7 +28,6 @@
 (load-option '*PARSER)
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
-    (compile-file "url" '() (->environment '(RUNTIME)))
     (for-each (lambda (filename)
 		(compile-file filename '() (->environment '(EDWIN))))
 	      '("imail-browser"

@@ -1,8 +1,9 @@
 #| -*- Scheme -*-
 
-$Id: ed-ffi.scm,v 1.33 2002/11/20 19:46:19 cph Exp $
+$Id: ed-ffi.scm,v 1.34 2003/01/09 19:36:43 cph Exp $
 
-Copyright (c) 1988-2002 Massachusetts Institute of Technology
+Copyright (c) 1991,1996,1997,1999,2000 Massachusetts Institute of Technology
+Copyright (c) 2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -164,6 +165,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
     ("unxprm"	(runtime os-primitives))
     ("unxpth"	(runtime pathname unix))
     ("uproc"	(runtime procedure))
+    ("url"	(runtime url))
     ("urtrap"	(runtime reference-trap))
     ("usrint"	(runtime user-interface))
     ("utabs"	(runtime microcode-tables))

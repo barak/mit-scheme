@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: runtime.sf,v 14.18 2002/11/20 19:46:22 cph Exp $
+$Id: runtime.sf,v 14.19 2003/01/09 19:36:56 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright (c) 1988,1989,1990,1991,1992 Massachusetts Institute of Technology
+Copyright (c) 1994,1995,1996,2001,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -22,6 +23,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 |#
 
+(load-option '*PARSER)			;for url.scm
 (fluid-let ((sf/default-syntax-table (->environment '(RUNTIME))))
   (sf-conditionally "char")
   (sf-conditionally "chrset")

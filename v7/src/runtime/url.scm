@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.12 2003/01/09 19:23:54 cph Exp $
+$Id: url.scm,v 1.13 2003/01/09 19:37:03 cph Exp $
 
 Copyright (c) 2000, 2001, 2003 Massachusetts Institute of Technology
 
@@ -26,24 +26,33 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 (declare (usual-integrations))
 
-(define url:char-set:safe (string->char-set "$-_.+"))
-(define url:char-set:extra (string->char-set "!*'(),"))
-(define url:char-set:national (string->char-set "{}|\\^~[]`"))
-(define url:char-set:punctuation (string->char-set "<>#%\""))
-(define url:char-set:reserved (string->char-set ";/?:@&="))
-(define url:char-set:hex (string->char-set "0123456789abcdefABCDEF"))
+(define url:char-set:safe)
+(define url:char-set:extra)
+(define url:char-set:national)
+(define url:char-set:punctuation)
+(define url:char-set:reserved)
+(define url:char-set:hex)
+(define url:char-set:unreserved)
+(define url:char-set:unescaped)
+(define url:char-set:escaped)
 
-(define url:char-set:unreserved
-  (char-set-union char-set:alphanumeric
-		  url:char-set:safe
-		  url:char-set:extra))
-
-(define url:char-set:unescaped
-  (char-set-union url:char-set:unreserved
-		  url:char-set:reserved))
-
-(define url:char-set:escaped
-  (char-set-invert url:char-set:unescaped))
+(define (initialize-package!)
+  (set! url:char-set:safe (string->char-set "$-_.+"))
+  (set! url:char-set:extra (string->char-set "!*'(),"))
+  (set! url:char-set:national (string->char-set "{}|\\^~[]`"))
+  (set! url:char-set:punctuation (string->char-set "<>#%\""))
+  (set! url:char-set:reserved (string->char-set ";/?:@&="))
+  (set! url:char-set:hex (string->char-set "0123456789abcdefABCDEF"))
+  (set! url:char-set:unreserved
+	(char-set-union char-set:alphanumeric
+			url:char-set:safe
+			url:char-set:extra))
+  (set! url:char-set:unescaped
+	(char-set-union url:char-set:unreserved
+			url:char-set:reserved))
+  (set! url:char-set:escaped
+	(char-set-invert url:char-set:unescaped))
+  unspecific)
 
 (define url:match:escape
   (*matcher

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: ed-ffi.scm,v 1.19 2002/11/20 19:46:05 cph Exp $
+;;; $Id: ed-ffi.scm,v 1.20 2003/01/09 19:43:17 cph Exp $
 ;;;
-;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
+;;; Copyright (c) 2000,2001,2003 Massachusetts Institute of Technology
 ;;;
 ;;; This file is part of MIT Scheme.
 ;;;
@@ -34,5 +34,4 @@
     ("imail-umail"	(edwin imail file-folder umail-folder))
     ("imail-util"	(edwin imail))
     ("imap-response"	(edwin imail imap-response))
-    ("imap-syntax"	(edwin imail imap-syntax))
-    ("url"		(runtime url))))
+    ("imap-syntax"	(edwin imail imap-syntax))))
