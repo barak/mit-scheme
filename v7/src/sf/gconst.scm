@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 4.3 1989/08/12 00:18:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 4.4 1989/10/04 02:49:48 cph Exp $
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
@@ -43,8 +43,6 @@ MIT in each case. |#
 (define global-constant-objects
   '(
     *THE-NON-PRINTING-OBJECT*
-    -1+
-    1+
     ASCII->CHAR
     BIT-STRING->UNSIGNED-INTEGER
     BIT-STRING-ALLOCATE
@@ -66,7 +64,6 @@ MIT in each case. |#
     BIT-SUBSTRING-MOVE-RIGHT!
     CAR
     CDR
-    CEILING
     CELL-CONTENTS
     CELL?
     CHAR->ASCII
@@ -101,16 +98,61 @@ MIT in each case. |#
     FIX:GCD
     FIX:NEGATIVE?
     FIX:POSITIVE?
+    FIX:QUOTIENT
+    FIX:REMAINDER
     FIX:ZERO?
-    FLOOR
+    FLO:*
+    FLO:+
+    FLO:-
+    FLO:/
+    FLO:<
+    FLO:=
+    FLO:>
+    FLO:ABS
+    FLO:ACOS
+    FLO:ASIN
+    FLO:ATAN
+    FLO:ATAN2
+    FLO:CEILING
+    FLO:CEILING->EXACT
+    FLO:COS
+    FLO:EXP
+    FLO:EXPT
+    FLO:FLONUM?
+    FLO:FLOOR
+    FLO:FLOOR->EXACT
+    FLO:LOG
+    FLO:NEGATE
+    FLO:NEGATIVE?
+    FLO:POSITIVE?
+    FLO:ROUND
+    FLO:ROUND->EXACT
+    FLO:SIN
+    FLO:SQRT
+    FLO:TAN
+    FLO:TRUNCATE
+    FLO:TRUNCATE->EXACT
+    FLO:ZERO?
     FORCE
     GENERAL-CAR-CDR
     GET-FIXED-OBJECTS-VECTOR
     GET-FLUID-BINDINGS
     GET-NEXT-CONSTANT
     HUNK3-CONS
+    INT:*
+    INT:+
+    INT:-
+    INT:-1+
+    INT:1+
+    INT:<
+    INT:=    INT:DIVIDE
+    INT:INTEGER?    INT:NEGATE
+    INT:NEGATIVE?
+    INT:POSITIVE?
+    INT:QUOTIENT
+    INT:REMAINDER
+    INT:ZERO?
     INTEGER->CHAR
-    INTEGER-DIVIDE
     INTEGER-DIVIDE-QUOTIENT
     INTEGER-DIVIDE-REMAINDER
     INTERRUPT-BIT/GC
@@ -141,7 +183,6 @@ MIT in each case. |#
     MAKE-CELL
     MAKE-CHAR
     MAKE-NON-POINTER-OBJECT
-    NEGATIVE?
     NOT
     NULL?
     OBJECT-CONSTANT?
@@ -152,12 +193,10 @@ MIT in each case. |#
     OBJECT-TYPE
     OBJECT-TYPE?
     PAIR?
-    POSITIVE?
     PRIMITIVE-PROCEDURE-ARITY
     PROCESS-TIME-CLOCK
     READ-BITS!
     REAL-TIME-CLOCK
-    ROUND
     SCODE-EVAL
     SET-CAR!
     SET-CDR!
@@ -214,7 +253,6 @@ MIT in each case. |#
     THE-EMPTY-STREAM
     TRANSLATE-TO-STATE-POINT
     TRUE
-    TRUNCATE
     UNDEFINED-CONDITIONAL-BRANCH
     UNSIGNED-INTEGER->BIT-STRING
     UNSPECIFIC
@@ -232,4 +270,4 @@ MIT in each case. |#
     WITH-HISTORY-DISABLED
     WITH-INTERRUPT-MASK
     WRITE-BITS!
-    ZERO?    ))
+    ))
