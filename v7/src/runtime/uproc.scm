@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uproc.scm,v 1.1 1990/09/11 20:46:19 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uproc.scm,v 1.2 1991/06/10 22:45:37 jinx Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -280,7 +280,7 @@ MIT in each case. |#
   (system-pair-set-car! entity procedure))
 
 (define-integrable (set-entity-extra! entity extra)
-  (system-pair-set-car! entity extra))
+  (system-pair-set-cdr! entity extra))
 
 (define (make-apply-hook procedure extra)
   (make-entity (lambda args (apply procedure (cdr args)))
