@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.27 2005/02/19 04:35:28 cph Exp $
+$Id: mod-lisp.scm,v 1.28 2005/03/31 05:24:39 cph Exp $
 
 Copyright 2003,2004,2005 Massachusetts Institute of Technology
 
@@ -113,7 +113,14 @@ USA.
 	     (set-content-type-header response default-type)
 	     (if handler
 		 (mod-lisp-expander request response pathname handler)
-		 (set-entity response (->pathname pathname))))))
+		 (let ((pathname (->pathname pathname)))
+		   (if (file-regular? pathname)
+		       (set-entity response pathname)
+		       (status-response! response
+					 404
+					 (list "The document "
+					       (http-message-url request)
+					       " can't be found."))))))))
       (receive (handler default-type) (http-message-handler request)
 	(if handler
 	    (expand default-type handler)
