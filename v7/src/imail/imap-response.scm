@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.5 2000/04/25 03:41:01 cph Exp $
+;;; $Id: imap-response.scm,v 1.6 2000/04/25 03:48:24 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -40,7 +40,8 @@
 			(read-tagged-response tag port))
 		       (else
 			(error "Malformed server response:" tag)))))
-	    (discard-known-char #\newline port)
+	    (discard-known-char #\return port)
+	    (discard-known-char #\linefeed port)
 	    response)))))
 
 (define (read-untagged-response port)
@@ -254,16 +255,10 @@
   (discard-known-char #\{ port)
   (let ((n (read-number port)))
     (discard-known-char #\} port)
-    (discard-known-char #\newline port)
+    (discard-known-char #\return port)
+    (discard-known-char #\linefeed port)
     (let ((s (make-string n)))
-      (let loop ((i 0) (j 0))
-	(cond ((fix:< i n)
-	       (let ((char (read-char-no-eof port)))
-		 (string-set! s j char)
-		 (loop (fix:+ i (if (char=? char #\newline) 2 1))
-		       (fix:+ j 1))))
-	      ((fix:< j n)
-	       (set-string-length! s j))))
+      (read-string! string port)
       s)))
 
 (define (read-list port #!optional read-item)
@@ -296,7 +291,7 @@
       (cond ((char=? char #\space)
 	     (read-char port)
 	     (loop (cons (read-item port) items)))
-	    ((char=? char #\newline)
+	    ((char=? char #\return)
 	     (reverse! items))
 	    (else
 	     (error "Illegal list delimiter:" char))))))
@@ -422,7 +417,7 @@
 (define (discard-known-char char port)
   (let ((char* (read-char-no-eof port)))
     (if (not (char=? char char*))
-	(error "Missing newline in literal:" char*))))
+	(error "Wrong character read:" char* char))))
 
 (define (imap:response:bad? response) (eq? (car response) 'BAD))
 (define (imap:response:bye? response) (eq? (car response) 'BYE))
