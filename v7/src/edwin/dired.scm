@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dired.scm,v 1.139 1993/10/26 23:15:17 cph Exp $
+;;;	$Id: dired.scm,v 1.140 1993/10/26 23:23:58 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -479,7 +479,7 @@ negative numeric arg overrides kept-old-versions with minus the arg."
 	      (let ((region (dired-filename-region start)))
 		(if region
 		    (let ((filename (region->string region)))
-		      (let ((root.version (numeric-backup-filename? filename)))
+		      (let ((root.version (os/numeric-backup-filename? filename)))
 			(if root.version
 			    (let ((root (car root.version))
 				  (version.index
