@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/insmac.scm,v 1.8 1992/02/13 19:03:31 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/insmac.scm,v 1.9 1992/02/13 19:55:02 jinx Exp $
 $Vax-Header: insmac.scm,v 1.12 89/05/17 20:29:15 GMT jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -159,14 +159,13 @@ MIT in each case. |#
 			(r/m (caddr field)))
 		    (receiver
 		     `(CONS-SYNTAX
-		       ,(integer-syntaxer `(EA/MODE ,r/m) 'UNSIGNED 2)
+		       (EA/REGISTER ,r/m)
 		       (CONS-SYNTAX
 			,(integer-syntaxer digit-or-reg 'UNSIGNED 3)
 			(CONS-SYNTAX
-			 ,(integer-syntaxer `(EA/REGISTER ,r/m) 'UNSIGNED 3)
-			 (APPEND-SYNTAX
-			  (EA/EXTRA ,r/m)
-			  ,tail))))
+			 (EA/MODE ,r/m)
+			 (APPEND-SYNTAX! (EA/EXTRA ,r/m)
+					 ,tail))))
 		     (+ 8 tail-size))))))
 	   ;; For immediate operands whose size depends on the operand
 	   ;; size for the instruction (halfword vs. longword)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules1.scm,v 1.9 1992/02/13 19:04:16 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules1.scm,v 1.10 1992/02/13 19:54:50 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -278,11 +278,15 @@ MIT in each case. |#
 ;;;; Utilities specific to rules1
 
 (define (load-displaced-register target source n)
-  (if (zero? n)
-      (assign-register->register target source)
-      (let* ((source (source-indirect-reference! source n))
-	     (target (target-register-reference target)))
-	(LAP (LEA ,target ,source)))))
+  (cond ((zero? n)
+	 (assign-register->register target source))
+	((and (= target source)
+	      (= target esp))
+	 (LAP (ADD W (R ,esp) (& ,n))))
+	(else
+	 (let* ((source (indirect-byte-reference! source n))
+		(target (target-register-reference target)))
+	   (LAP (LEA ,target ,source))))))
 
 (define (load-displaced-register/typed target source type n)
   (load-displaced-register target
