@@ -2,7 +2,7 @@
    Copyright (C) 1985, 1986 Free Software Foundation, Inc.
    Copyright (C) 1998-2001 Massachusetts Institute of Technology
 
-$Id: terminfo.c,v 1.6 2001/03/03 02:00:09 cph Exp $
+$Id: terminfo.c,v 1.7 2001/03/03 05:14:10 cph Exp $
 
 This file is part of GNU Emacs.
 
@@ -49,7 +49,7 @@ DEFUN (tparam, (string, outstring, len, arg1, arg2, arg3, arg4, arg5, arg6, arg7
        int arg6 AND
        int arg7 AND
        int arg8 AND
-       int arg9 AND)
+       int arg9)
 {
   char * temp = (tparm (string, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9));
   if (outstring == 0)
