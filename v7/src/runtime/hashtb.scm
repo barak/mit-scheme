@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: hashtb.scm,v 1.9 1993/10/09 08:15:05 cph Exp $
+$Id: hashtb.scm,v 1.10 1993/10/10 10:08:13 cph Exp $
 
 Copyright (c) 1990-93 Massachusetts Institute of Technology
 
@@ -48,9 +48,7 @@ MIT in each case. |#
 				 entry-key
 				 entry-datum
 				 set-entry-datum!
-				 initial-size
-				 rehash-threshold
-				 rehash-size))
+				 initial-size))
 		   (conc-name table-))
   ;; Procedures describing keys and entries.
   (key-hash #f read-only #t)
@@ -61,17 +59,20 @@ MIT in each case. |#
   (entry-datum #f read-only #t)
   (set-entry-datum! #f read-only #t)
   (standard-accessors? (and (eq? eq? key=?)
-			    (or (and (eq? car entry-key)
-				     (eq? cdr entry-datum)
-				     (eq? set-cdr! set-entry-datum!))
-				(and (eq? weak-car entry-key)
-				     (eq? weak-cdr entry-datum)
-				     (eq? weak-set-cdr! set-entry-datum!))))
+			    (or (eq? car entry-key)
+				(eq? strong-car entry-key)
+				(eq? weak-car entry-key))
+			    (or (eq? cdr entry-datum)
+				(eq? strong-cdr entry-datum)
+				(eq? weak-cdr entry-datum))
+			    (or (eq? set-cdr! set-entry-datum!)
+				(eq? strong-set-cdr! set-entry-datum!)
+				(eq? weak-set-cdr! set-entry-datum!)))
 		       read-only #t)
 
   ;; Parameters of the hash table.
-  rehash-threshold
-  rehash-size
+  (rehash-threshold default-rehash-threshold)
+  (rehash-size default-rehash-size)
 
   ;; Internal state variables.
   count
@@ -82,6 +83,17 @@ MIT in each case. |#
   buckets
   primes
   (needs-rehash? #f))
+
+(define-integrable default-size 10)
+(define-integrable minimum-size 4)
+(define-integrable default-rehash-threshold 1)
+(define-integrable default-rehash-size 2.)
+
+(define-integrable (guarantee-hash-table object procedure)
+  (if (not (hash-table? object))
+      (error:wrong-type-argument object "hash table" procedure)))
+
+;;;; Constructors
 
 (define (hash-table/constructor key-hash key=? make-entry entry-valid?
 				entry-key entry-datum set-entry-datum!)
@@ -104,18 +116,34 @@ MIT in each case. |#
 			      entry-key
 			      entry-datum
 			      set-entry-datum!
-			      (max initial-size minimum-size)
-			      default-rehash-threshold
-			      default-rehash-size)))
+			      (max initial-size minimum-size))))
 	(clear-table! table)
 	(if (address-hash? key-hash)
 	    (set! address-hash-tables (weak-cons table address-hash-tables)))
 	table))))
 
-(define default-size 10)
-(define minimum-size 4)
-(define default-rehash-threshold 1)
-(define default-rehash-size 2.)
+(define (hash-table/strong-constructor key-hash key=?)
+  (hash-table/constructor key-hash key=?
+			  strong-cons
+			  #t
+			  strong-car
+			  strong-cdr
+			  strong-set-cdr!))
+
+;; Standard trick because known calls to these primitives compile more
+;; efficiently than unknown calls.
+(define (strong-cons key datum) (cons key datum))
+(define (strong-car entry) (car entry))
+(define (strong-cdr entry) (cdr entry))
+(define (strong-set-cdr! entry datum) (set-cdr! entry datum))
+
+(define (hash-table/weak-constructor key-hash key=?)
+  (hash-table/constructor key-hash key=?
+			  weak-cons
+			  weak-pair/car?
+			  weak-car
+			  weak-cdr
+			  weak-set-cdr!))
 
 ;;;; Accessors
 
@@ -591,37 +619,93 @@ MIT in each case. |#
 
 (define-integrable (address-hash? key-hash)
   (or (eq? eq-hash key-hash)
-      (eq? eqv-hash key-hash)))
+      (eq? eqv-hash key-hash)
+      (eq? equal-hash key-hash)))
 
-(define (eq-hash key modulus)
-  (fix:remainder (let ((n
-			((ucode-primitive primitive-object-set-type)
-			 (ucode-type fixnum)
-			 key)))
-		   (if (fix:< n 0)
-		       (fix:not n)
-		       n))
-		 modulus))
+(define-integrable (eq-hash key modulus)
+  (fix:remainder (%object->fixnum key) modulus))
 
 (define (eqv-hash key modulus)
-  (cond ((object-type? (ucode-type big-fixnum) key)
-	 (modulo key modulus))
-	((object-type? (ucode-type ratnum) key)
-	 (modulo (+ (numerator key) (denominator key)) modulus))
-	((object-type? (ucode-type big-flonum) key)
-	 (modulo (+ (inexact->exact (numerator key))
-		    (inexact->exact (denominator key)))
-		 modulus))
-	((object-type? (ucode-type recnum) key)
-	 (modulo (let ((r (real-part key))
-		       (i (imag-part key)))
-		   (+ (inexact->exact (numerator r))
-		      (inexact->exact (denominator r))
-		      (inexact->exact (numerator i))
-		      (inexact->exact (denominator i))))
-		 modulus))
+  (cond ((%bignum? key)
+	 (int-hash key modulus))
+	((%ratnum? key)
+	 (int-hash (%ratnum->integer key) modulus))
+	((flo:flonum? key)
+	 (int-hash (%flonum->integer key) modulus))
+	((%recnum? key)
+	 (int-hash (%recnum->integer key) modulus))
 	(else
 	 (eq-hash key modulus))))
+
+(define (equal-hash key modulus)
+  (int-hash (let loop ((object key))
+	      (cond ((pair? object)
+		     (int:+ (loop (car object))
+			    (loop (cdr object))))
+		    ((vector? object)
+		     (let ((length (vector-length object)))
+		       (do ((i 0 (fix:+ i 1))
+			    (accum 0
+				   (int:+ accum
+					  (loop (vector-ref object i)))))
+			   ((fix:= i length) accum))))
+		    ((cell? object)
+		     (loop (cell-contents object)))
+		    ((%bignum? object)
+		     object)
+		    ((%ratnum? object)
+		     (%ratnum->integer object))
+		    ((flo:flonum? object)
+		     (%flonum->integer object))
+		    ((%recnum? object)
+		     (%recnum->integer object))
+		    ((string? object)
+		     (string-hash object))
+		    ((bit-string? object)
+		     (bit-string->unsigned-integer object))
+		    ((pathname? object)
+		     (string-hash (->namestring object)))
+		    (else
+		     (%object->fixnum object))))
+	    modulus))
+
+(define-integrable (%object->fixnum object)
+  (let ((n
+	 ((ucode-primitive primitive-object-set-type) (ucode-type fixnum)
+						      object)))
+    (if (fix:< n 0)
+	(fix:not n)
+	n)))
+
+(define-integrable (%bignum? object)
+  (object-type? (ucode-type big-fixnum) object))
+
+(define-integrable (%ratnum? object)
+  (object-type? (ucode-type ratnum) object))
+
+(define-integrable (%recnum? object)
+  (object-type? (ucode-type recnum) object))
+
+(define-integrable (%ratnum->integer ratnum)
+  (int:+ (system-pair-car ratnum) (system-pair-cdr ratnum)))
+
+(define-integrable (%flonum->integer flonum)
+  (flo:truncate->exact
+   ((ucode-primitive flonum-denormalize 2)
+    (car ((ucode-primitive flonum-normalize 1) flonum))
+    microcode-id/floating-mantissa-bits)))
+
+(define-integrable (%recnum->integer recnum)
+  (let ((%real->integer
+	 (lambda (real)
+	   (cond ((%ratnum? real) (%ratnum->integer real))
+		 ((flo:flonum? real) (%flonum->integer real))
+		 (else real)))))
+    (int:+ (%real->integer (system-pair-car recnum))
+	   (%real->integer (system-pair-cdr recnum)))))
+
+(define (int-hash n d)
+  (int:remainder (if (int:negative? n) (int:negate n) n) d))
 
 (define (mark-address-hash-tables!)
   (let loop ((previous #f) (tables address-hash-tables))
@@ -638,39 +722,50 @@ MIT in each case. |#
 
 ;;;; Miscellany
 
+(define address-hash-tables)
 (define make-eq-hash-table)
 (define make-eqv-hash-table)
-(define address-hash-tables)
+(define make-equal-hash-table)
 (define make-string-hash-table)
-
-(define (hash-table/strong-constructor key-hash key=?)
-  (hash-table/constructor key-hash key=? cons #t car cdr set-cdr!))
-
-(define (hash-table/weak-constructor key-hash key=?)
-  (hash-table/constructor
-   key-hash key=?
-   weak-cons weak-pair/car? weak-car weak-cdr weak-set-cdr!))
 
 ;; Define old names for compatibility:
 (define hash-table/entry-value hash-table/entry-datum)
 (define hash-table/set-entry-value! hash-table/set-entry-datum!)
-(define make-object-hash-table)
 (define make-symbol-hash-table)
+(define make-object-hash-table)
 
 (define (initialize-package!)
   (set! address-hash-tables '())
   (add-primitive-gc-daemon! mark-address-hash-tables!)
   (set! make-eq-hash-table (hash-table/weak-constructor eq-hash eq?))
-  (set! make-eqv-hash-table (hash-table/weak-constructor eqv-hash eqv?))
-  (set! make-object-hash-table make-eqv-hash-table)
+  ;; EQV? hash tables are weak except for numbers and #F.  It's
+  ;; important to keep numbers in the table, and handling #F specially
+  ;; makes it easier to deal with weak pairs.
+  (set! make-eqv-hash-table
+	(hash-table/constructor eqv-hash
+				eqv?
+				(lambda (key datum)
+				  (if (or (not key) (number? key))
+				      (cons key datum)
+				      (system-pair-cons (ucode-type weak-cons)
+							key
+							datum)))
+				(lambda (entry)
+				  (or (pair? entry)
+				      (system-pair-car entry)))
+				(lambda (entry)
+				  (system-pair-car entry))
+				(lambda (entry)
+				  (system-pair-cdr entry))
+				(lambda (entry datum)
+				  (system-pair-set-cdr! entry datum))))
+  (set! make-equal-hash-table
+	(hash-table/strong-constructor equal-hash equal?))
   (set! make-symbol-hash-table make-eq-hash-table)
+  (set! make-object-hash-table make-eqv-hash-table)
   (set! make-string-hash-table
 	(hash-table/strong-constructor string-hash-mod string=?))
   unspecific)
-
-(define-integrable (guarantee-hash-table object procedure)
-  (if (not (hash-table? object))
-      (error:wrong-type-argument object "hash table" procedure)))
 
 (define (check-arg object default predicate description procedure)
   (cond ((predicate object) object)

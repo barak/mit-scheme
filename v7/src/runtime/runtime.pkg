@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.201 1993/10/09 08:14:58 cph Exp $
+$Id: runtime.pkg,v 14.202 1993/10/10 10:08:20 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -890,6 +890,7 @@ MIT in each case. |#
 	  hash-table/weak-constructor
 	  hash-table?
 	  make-eq-hash-table
+	  make-equal-hash-table
 	  make-eqv-hash-table
 	  make-object-hash-table
 	  make-string-hash-table
