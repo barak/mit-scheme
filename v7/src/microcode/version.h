@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: version.h,v 11.145 1993/11/08 20:58:27 cph Exp $
+$Id: version.h,v 11.146 1993/11/16 04:53:48 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -37,7 +37,7 @@ MIT in each case. */
 /* Scheme system release version */
 
 #ifndef RELEASE
-#define RELEASE		"7.2.0 (alpha)"
+#define RELEASE		"7.3.0 (beta)"
 #endif
 
 /* Microcode release version */
@@ -46,5 +46,5 @@ MIT in each case. */
 #define VERSION		11
 #endif
 #ifndef SUBVERSION
-#define SUBVERSION	145
+#define SUBVERSION	146
 #endif
