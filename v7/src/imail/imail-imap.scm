@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.168 2001/05/29 17:45:37 cph Exp $
+;;; $Id: imail-imap.scm,v 1.169 2001/05/29 20:26:32 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -45,8 +45,10 @@
   (host accessor imap-url-host)
   (port accessor imap-url-port)
   (mailbox accessor imap-url-mailbox)
-  (is-container? define standard
-		 initial-value 'UNKNOWN))
+  (list-time define standard initial-value #f)
+  (exists? define standard)
+  (selectable? define standard)
+  (corresponding-container define standard))
 
 (define-class <imap-container-url> (<imap-url> <container-url>)
   (corresponding-folder define accessor))
@@ -57,7 +59,8 @@
 	   (generic (imap-container-url-corresponding-folder url))))))
   (reflect-1 imap-url-user-id)
   (reflect-1 imap-url-host)
-  (reflect-1 imap-url-port))
+  (reflect-1 imap-url-port)
+  (reflect-1 url-exists?))
 
 (define-method imap-url-mailbox ((url <container-url>))
   (let ((mailbox
@@ -135,40 +138,45 @@
        (string=? (imap-url-host url1) (imap-url-host url2))
        (= (imap-url-port url1) (imap-url-port url2))))
 
-(define-method url-exists? ((url <imap-url>))
-  (and (imap-url-info url) #t))
+(define-method url-exists? ((url <imap-folder-url>))
+  (guarantee-imap-url-list-info url)
+  (imap-folder-url-exists? url))
 
 (define-method folder-url-is-selectable? ((url <imap-folder-url>))
-  (let ((response (imap-url-info url)))
-    (and response
-	 (not (memq '\NOSELECT (imap:response:list-flags response))))))
+  (guarantee-imap-url-list-info url)
+  (imap-folder-url-selectable? url))
 
 (define-method url-is-container? ((url <imap-folder-url>))
-  (let ((container (imap-folder-url-is-container? url)))
-    (if (eq? container 'UNKNOWN)
-	(let ((response (imap-url-info url)))
-	  (and response
-	       (let ((container
-		      (and (not (memq '\NOINFERIORS
-				      (imap:response:list-flags response)))
-			   (imap-url-new-mailbox
-			    url
-			    (string-append (imap-url-mailbox url) "/")))))
-		 (set-imap-folder-url-is-container?! url container)
-		 container)))
-	container)))
+  (guarantee-imap-url-list-info url)
+  (imap-folder-url-corresponding-container url))
 
-(define (imap-url-info url)
-  (let ((responses
-	 (with-open-imap-connection url
-	   (lambda (connection)
-	     (imap:command:list connection
-				""
-				(imap-url-server-mailbox url))))))
-    (and (pair? responses)
-	 (null? (cdr responses))
-	 (car responses))))
+(define (guarantee-imap-url-list-info url)
+  (let ((t (get-universal-time))
+	(list-time (imap-folder-url-list-time url)))
+    (if (or (not list-time)
+	    (> t (+ list-time imap-list-info-duration)))
+	(if (null? (run-list-command url (imap-url-server-mailbox url)))
+	    (begin
+	      (set-imap-folder-url-list-time! url t)
+	      (set-imap-folder-url-exists?! url #f)
+	      (set-imap-folder-url-selectable?! url #f)
+	      (set-imap-folder-url-corresponding-container! url #f))))))
 
+(define (flush-imap-url-list-info url)
+  (set-imap-folder-url-list-time!
+   (if (imap-container-url? url)
+       (imap-container-url-corresponding-folder url)
+       url)
+   #f))
+
+;; Number of seconds for which LIST command info is assumed valid.
+;; Info is automatically invalidated at times that IMAIL knows to do
+;; so.  But other IMAP clients can invalidate this information without
+;; notifying IMAIL, so we must periodically refresh the info from the
+;; server.  (The protocol really ought to be fixed to provide
+;; asynchronous updates to this information.)
+(define imap-list-info-duration 60)
+
 (define-method url-base-name ((url <imap-folder-url>))
   (let ((mailbox (imap-url-mailbox url)))
     (let ((index (imap-mailbox-container-slash mailbox)))
@@ -274,18 +282,7 @@
 		      prefix)))))))
 
 (define-method container-url-contents ((url <imap-container-url>))
-  (%imap-mailbox-completions (imap-url-mailbox url) url
-    (lambda (mailbox selectable? inferiors? tail)
-      (let ((container
-	     (and inferiors?
-		  (imap-url-new-mailbox url (string-append mailbox "/")))))
-	(cond (selectable?
-	       (let ((url (imap-url-new-mailbox url mailbox)))
-		 (if (eq? (imap-folder-url-is-container? url) 'UNKNOWN)
-		     (set-imap-folder-url-is-container?! url container))
-		 (cons url tail)))
-	      (container (cons container tail))
-	      (else tail))))))
+  (%imap-mailbox-completions (imap-url-mailbox url) url))
 
 ;;;; Completion
 
@@ -337,42 +334,49 @@
 	      (else (if-unique (car responses)))))))
 
 (define (imap-mailbox-completions prefix url)
-  (%imap-mailbox-completions prefix url
-    (lambda (mailbox selectable? inferiors? tail)
-      (cond (selectable? (cons mailbox tail))
-	    (inferiors? (cons (string-append mailbox "/") tail))
-	    (else tail)))))
+  (map imap-url-mailbox (%imap-mailbox-completions prefix url)))
 
-(define (%imap-mailbox-completions prefix url accumulator)
-  (with-open-imap-connection url
-    (lambda (connection)
-      (let loop
-	  ((responses
-	    (imap:command:list
-	     connection
-	     ""
-	     (string-append (imap-mailbox/url->server url prefix) "%")))
-	   (results '()))
-	(if (pair? responses)
-	    (loop (cdr responses)
-		  (let ((flags (imap:response:list-flags (car responses)))
-			(delimiter
-			 (imap:response:list-delimiter (car responses)))
+(define (%imap-mailbox-completions prefix url)
+  (let loop
+      ((urls
+	(run-list-command
+	 url
+	 (string-append (imap-mailbox/url->server url prefix) "%")))
+       (results '()))
+    (if (pair? urls)
+	(loop (cdr urls)
+	      (cond ((imap-folder-url-selectable? (car urls))
+		     (cons (car urls) results))
+		    ((imap-folder-url-corresponding-container (car urls))
+		     => (lambda (url) (cons url results)))
+		    (else results)))
+	(reverse! results))))
+
+(define (run-list-command url mailbox)
+  (let ((t (get-universal-time)))
+    (map (lambda (response)
+	   (let ((mailbox
+		  (let ((delimiter (imap:response:list-delimiter response))
 			(mailbox
 			 (imap:decode-mailbox-name
-			  (imap:response:list-mailbox (car responses)))))
+			  (imap:response:list-mailbox response))))
 		    (if delimiter
-			(accumulator (string-replace mailbox
-						     (string-ref delimiter 0)
-						     #\/)
-				     (not (memq '\NOSELECT flags))
-				     (not (memq '\NOINFERIORS flags))
-				     results)
-			(accumulator mailbox
-				     (not (memq '\NOSELECT flags))
-				     #f
-				     results))))
-	    (reverse! results))))))
+			(string-replace mailbox (string-ref delimiter 0) #\/)
+			mailbox)))
+		 (flags (imap:response:list-flags response)))
+	     (let ((url (imap-url-new-mailbox url mailbox)))
+	       (set-imap-folder-url-list-time! url t)
+	       (set-imap-folder-url-exists?! url #t)
+	       (set-imap-folder-url-selectable?! url
+						 (not (memq '\NOSELECT flags)))
+	       (set-imap-folder-url-corresponding-container!
+		url
+		(and (not (memq '\NOINFERIORS flags))
+		     (imap-url-new-mailbox url (string-append mailbox "/"))))
+	       url)))
+	 (with-open-imap-connection url
+	   (lambda (connection)
+	     (imap:command:list connection "" mailbox))))))
 
 ;;;; URL->server delimiter conversion
 
@@ -1290,14 +1294,18 @@
 ;;;; Server operations
 
 (define-method %create-resource ((url <imap-url>))
-  (with-open-imap-connection url
-    (lambda (connection)
-      (imap:command:create connection (imap-url-server-mailbox url)))))
+  (let ((resource
+	 (with-open-imap-connection url
+	   (lambda (connection)
+	     (imap:command:create connection (imap-url-server-mailbox url))))))
+    (flush-imap-url-list-info url)
+    resource))
 
 (define-method %delete-resource ((url <imap-url>))
   (with-open-imap-connection url
     (lambda (connection)
-      (imap:command:delete connection (imap-url-server-mailbox url)))))
+      (imap:command:delete connection (imap-url-server-mailbox url))))
+  (flush-imap-url-list-info url))
 
 (define-method %rename-resource ((url <imap-url>) (new-url <imap-url>))
   (if (compatible-imap-urls? url new-url)
@@ -1307,7 +1315,9 @@
 			       (imap-url-server-mailbox url)
 			       (imap-url-server-mailbox new-url))))
       (error "Unable to perform rename between different IMAP accounts:"
-	     url new-url)))
+	     url new-url))
+  (flush-imap-url-list-info url)
+  (flush-imap-url-list-info new-url))
 
 (define-method %append-message ((message <message>) (url <imap-folder-url>))
   (let ((folder (message-folder message))
