@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: psbtobin.c,v 9.54 1993/11/11 22:19:06 cph Exp $
+$Id: psbtobin.c,v 9.55 1993/11/16 04:49:56 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -1120,6 +1120,7 @@ DEFUN_VOID (Read_Header_and_Allocate)
      .bin (and .psb) files can contain multiple objects.
    */
 
+  compiler_utilities = SHARP_F;
   READ_HEADER_NO_ERROR ("Portable Version", "%ld", Portable_Version, ok);
   if (! ok)
     return (-1);
@@ -1387,6 +1388,21 @@ DEFUN_VOID (do_it)
 			Primitive_Table_Length));
     DEBUGGING (fprintf (stderr, "Primitive_Table_Size = %ld\n",
 			(primitive_table_end - primitive_table)));
+
+    if (Dumped_Compiler_Utilities != 0)
+    {
+      /* This knows the format of the utilities vector. */ 
+      SCHEME_OBJECT * uv = (Relocate (Dumped_Compiler_Utilities));
+      unsigned long len = uv[0];
+
+      uv[len - 1] = ((SCHEME_OBJECT)
+		     (((unsigned long) uv[len - 1])
+		      * (sizeof (SCHEME_OBJECT))));
+      uv[len - 0] = ((SCHEME_OBJECT)
+		     (((unsigned long) uv[len - 0])
+		      * (sizeof (SCHEME_OBJECT))));
+      compiler_utilities = (MAKE_POINTER_OBJECT (TC_COMPILED_CODE_BLOCK, uv));
+    }
 
     /* Is there a Pure/Constant block? */
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bintopsb.c,v 9.62 1993/11/09 16:47:01 gjr Exp $
+$Id: bintopsb.c,v 9.63 1993/11/16 04:50:02 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -2128,6 +2128,19 @@ DEFUN_VOID (do_it)
     Heap_Objects_Start = (Heap_Start + Heap_Count);
     Mem_Base[(Heap_Start - NROOTS) + 0]
       = dumped_utilities;
+    if (dumped_utilities != SHARP_F)
+    {
+      /* This knows the format of the utilities vector. */ 
+      SCHEME_OBJECT * uv = (relocate (dumped_utilities));
+      unsigned long len = (OBJECT_DATUM (uv[0]));
+
+      uv[len - 1] = ((SCHEME_OBJECT)
+		     (((unsigned long) uv[len - 1])
+		      / (sizeof (SCHEME_OBJECT))));
+      uv[len - 0] = ((SCHEME_OBJECT)
+		     (((unsigned long) uv[len - 0])
+		      / (sizeof (SCHEME_OBJECT))));
+    }
     Mem_Base[(Heap_Start - NROOTS) + 1]
       = (OBJECT_NEW_TYPE (TC_CELL, Dumped_Object));
     Scan = (Heap_Start - NROOTS);
