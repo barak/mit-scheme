@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/schmod.scm,v 1.18 1991/05/20 22:09:19 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/schmod.scm,v 1.19 1991/05/20 22:16:59 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -232,7 +232,8 @@ environment are considered."
 		     (if (not (string=? completion prefix))
 			 (begin
 			   (delete-string start end)
-			   (insert-string completion start)))))
+			   (insert-string completion start))
+			 (message "Sole completion: \"" prefix "\""))))
 		  (else
 		   (let ((completions (map system-pair-car completions)))
 		     (let ((completion
