@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.1 1995/10/28 01:14:05 cph Exp $
+$Id: ntprm.scm,v 1.2 1995/10/28 03:00:09 cph Exp $
 
 Copyright (c) 1992-95 Massachusetts Institute of Technology
 
@@ -238,24 +238,41 @@ MIT in each case. |#
 )				; End LET
 
 (define (current-home-directory)
-  (let ((home (get-environment-variable "HOME")))
-    (if home
-	(pathname-as-directory (merge-pathnames home))
-	(user-home-directory (current-user-name)))))
+  (or (nt/current-home-directory)
+      (user-home-directory (current-user-name))))
 
 (define (current-user-name)
-  (or (get-environment-variable "USER")
+  (or (get-environment-variable "USERNAME")
+      (get-environment-variable "USER")
+      (let ((homedir (nt/current-home-directory)))
+	(and homedir
+	     (pathname-name
+	      (directory-pathname-as-file (directory-pathname homedir)))))
       "nouser"))
 
 (define (user-home-directory user-name)
   (or (and user-name
-	   (let ((directory (get-environment-variable "USERDIR")))
-	     (and directory
-		  (pathname-as-directory
-		   (pathname-new-name
-		    (pathname-as-directory (merge-pathnames directory))
-		    user-name)))))
+	   (let ((try
+		  (lambda (directory)
+		    (pathname-as-directory
+		     (merge-pathnames user-name directory)))))
+	     (cond ((get-environment-variable "USERDIR")
+		    => (lambda (userdir)
+			 (try (pathname-as-directory
+			       (merge-pathnames userdir)))))
+		   ((nt/current-home-directory)
+		    => (lambda (homedir)
+			 (try (directory-pathname-as-file homedir))))
+		   (else #f))))
       (merge-pathnames "\\")))
+
+(define (nt/current-home-directory)
+  (let ((homedrive (get-environment-variable "HOMEDRIVE"))
+	(homepath (get-environment-variable "HOMEPATH"))
+	(home (get-environment-variable "HOME")))
+    (and (or homepath home)
+	 (pathname-as-directory
+	  (merge-pathnames (or homepath home) homedrive)))))
 
 (define file-time->string
   (ucode-primitive file-time->string 1))
