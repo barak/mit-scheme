@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.37 2000/03/25 01:36:49 cph Exp $
+;;; $Id: vc.scm,v 1.38 2000/03/26 01:34:35 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -102,6 +102,95 @@ Otherwise, the mod time of the file is the checkout time."
   #t
   boolean?)
 
+;;;; VC-TYPE datatype
+
+(define-structure (vc-type (constructor %make-vc-type
+					(name display-name header-keyword))
+			   safe-accessors)
+  (name #f read-only #t)		;a symbol
+  (display-name #f read-only #t)	;a string
+  (header-keyword #f read-only #t)	;a string
+  (operations (make-1d-table) read-only #t)
+  (properties (make-1d-table) read-only #t))
+
+(define (vc-type-get type key default)
+  (1d-table/get (vc-type-properties type) key default))
+
+(define (vc-type-put! type key value)
+  (1d-table/put! (vc-type-properties type) key value))
+
+(define (vc-type-remove! type key)
+  (1d-table/remove! (vc-type-properties type) key))
+
+(define (make-vc-type name display-name header-keyword)
+  (let ((type (%make-vc-type name display-name header-keyword)))
+    (let loop ((types vc-types))
+      (if (pair? types)
+	  (if (eq? name (vc-type-name (car types)))
+	      (set-car! types type)
+	      (loop (cdr types)))
+	  (set! vc-types (cons type vc-types))))
+    type))
+
+(define vc-types '())
+
+(define (define-vc-type-operation name type procedure)
+  (1d-table/put! (vc-type-operations type) name procedure))
+
+(define (vc-type-operation type name)
+  (or (1d-table/get (vc-type-operations type) name #f)
+      (error:bad-range-argument name 'VC-TYPE-OPERATION)))
+
+(define (vc-call name master . arguments)
+  (apply (vc-type-operation (vc-master-type master) name) master arguments))
+
+;;;; VC-MASTER datatype
+
+(define-structure (vc-master (constructor make-vc-master
+					  (type pathname workfile))
+			     safe-accessors)
+  (type #f read-only #t)		;a VC-TYPE object
+  (pathname #f read-only #t)		;a PATHNAME object
+  (workfile #f read-only #t)		;a PATHNAME object
+  ;; A boolean indicating whether the workfile is modified.
+  %modified?
+  ;; The modification time of the master and work files when
+  ;; %MODIFIED? was last set.  Can be #F meaning %MODIFIED? doesn't
+  ;; contain valid information.
+  (mod-time #f)
+  (workfile-mod-time #f)
+  (properties (make-1d-table) read-only #t))
+
+(define (vc-master-get master key default)
+  (1d-table/get (vc-master-properties master) key default))
+
+(define (vc-master-put! master key value)
+  (1d-table/put! (vc-master-properties master) key value))
+
+(define (vc-master-remove! master key)
+  (1d-table/remove! (vc-master-properties master) key))
+
+(define (record-modification-state! master modified?)
+  (set-vc-master-%modified?! master modified?)
+  (set-vc-master-mod-time!
+   master
+   (file-modification-time (vc-master-pathname master)))
+  (set-vc-master-workfile-mod-time!
+   master
+   (file-modification-time (vc-master-workfile master)))
+  (vc-mode-line master #f))
+
+(define (vc-master-read-cached-value master key read-value)
+  (let ((pathname (vc-master-pathname master)))
+    (let loop ()
+      (let ((time (file-modification-time pathname)))
+	(or (and (eqv? time (vc-master-get master 'MASTER-TIME #f))
+		 (vc-master-get master key #f))
+	    (begin
+	      (vc-master-put! master 'MASTER-TIME time)
+	      (vc-master-put! master key (read-value))
+	      (loop)))))))
+
 ;;;; Editor Hooks
 
 (add-event-receiver! (ref-variable find-file-hooks)
@@ -128,10 +217,17 @@ Otherwise, the mod time of the file is the checkout time."
 			   (vc-checkout master #f)
 			   #t))))))))))
 
-(define (vc-after-save buffer)
-  (let ((master (buffer-vc-master buffer #f)))
-    (if master
-	(vc-mode-line master buffer))))
+(add-event-receiver! event:after-buffer-save
+  (lambda (buffer)
+    (let ((master (buffer-vc-master buffer #f)))
+      (if master
+	  (vc-mode-line master buffer)))))
+
+(add-event-receiver! event:set-buffer-pathname
+  (lambda (buffer)
+    (buffer-remove! buffer 'VC-MASTER)))
+
+;;;; Mode line
 
 (define (vc-mode-line master buffer)
   (let ((workfile-buffer (vc-workfile-buffer master)))
@@ -175,6 +271,57 @@ Otherwise, the mod time of the file is the checkout time."
 					  (file-modes
 					   (vc-master-workfile master)))))))
 	    (set-buffer-read-only! buffer))))))
+
+;;;; VC-MASTER association
+
+(define (buffer-vc-master buffer error?)
+  (let ((buffer
+	 (let loop ((buffer buffer))
+	   (let ((buffer* (buffer-get buffer 'VC-PARENT-BUFFER #f)))
+	     (if buffer*
+		 (loop buffer*)
+		 buffer)))))
+    (let ((master (buffer-get buffer 'VC-MASTER #f)))
+      (if (and master (vc-backend-master-valid? master))
+	  master
+	  (begin
+	    (buffer-remove! buffer 'VC-MASTER)
+	    (if (vc-dired-buffer? buffer)
+		(let ((file (dired-this-file)))
+		  (if file
+		      (file-vc-master (car file) error?)
+		      (and error? (vc-registration-error #f))))
+		(let ((workfile (buffer-pathname buffer)))
+		  (if workfile
+		      (let ((master (%file-vc-master workfile error?)))
+			(if master (buffer-put! buffer 'VC-MASTER master))
+			master)
+		      (and error? (vc-registration-error buffer))))))))))
+
+(define (file-vc-master workfile error?)
+  (let ((workfile (->pathname workfile)))
+    (let ((buffer (pathname->buffer workfile)))
+      (if buffer
+	  (buffer-vc-master buffer error?)
+	  (%file-vc-master workfile error?)))))
+
+(define (%file-vc-master workfile error?)
+  (let ((workfile (->pathname workfile)))
+    (or (vc-backend-find-master workfile)
+	(and error? (vc-registration-error workfile)))))
+
+(define (guarantee-vc-master-valid master)
+  (if (not (vc-backend-master-valid? master))
+      (error "VC master file disappeared:" (vc-master-pathname master))))
+
+(define (vc-registration-error object)
+  (if (or (buffer? object) (not object))
+      (editor-error "Buffer "
+		    (buffer-name (or object (selected-buffer)))
+		    " is not associated with a file.")
+      (editor-error "File "
+		    (->namestring object)
+		    " is not under version control.")))
 
 ;;;; Primary Commands
 
@@ -258,97 +405,64 @@ merge in the changes into your working copy."
 (define (vc-next-action-on-file workfile from-dired? revision? comment)
   (let ((master (file-vc-master workfile #f)))
     (if master
-	(let* ((type (vc-master-type master))
-	       (cvs? (eq? type vc-type:cvs))
-	       (cvs-status (and cvs? (cvs-status master))))
-	  (cond ((memq cvs-status '(NEEDS-CHECKOUT NEEDS-MERGE))
-		 (vc-next-action-merge master from-dired?))
-		((and cvs?
-		      (not revision?)
-		      (not (vc-workfile-modified? master)))
-		 (if (not from-dired?)
-		     (message (buffer-name (pathname->buffer workfile))
-			      " is up to date.")))
-		((vc-backend-locking-user master #f)
-		 =>
-		 (lambda (owner)
-		   (if (and (not cvs?)
-			    (not (string=? owner (current-user-name))))
-		       (begin
-			 (if (and (eq? type vc-type:rcs)
-				  (not (vc-release? vc-type:rcs "5.6.2")))
-			     ;; Can't steal locks with old RCS
-			     ;; versions.
-			     (editor-error "File is locked by " owner "."))
-			 (vc-steal-lock master revision? comment owner))
-		       (let ((buffer (find-file-noselect workfile #t)))
-			 (if from-dired?
-			     (select-buffer-other-window buffer)
-			     (select-buffer buffer))
-			 ;; If the file on disk is newer, then the
-			 ;; user just said no to rereading it.  So the
-			 ;; user probably wishes to overwrite the file
-			 ;; with the buffer's contents, and check that
-			 ;; in.
-			 (cond ((verify-visited-file-modification-time? buffer)
-				(vc-save-buffer buffer #t))
-			       ((prompt-for-yes-or-no?
-				 "Replace file on disk with buffer contents")
-				(save-buffer buffer #f))
-			       (else
-				(editor-error "Aborted")))
-			 ;; Revert if file is unchanged and buffer is
-			 ;; too.  If buffer is modified, that means
-			 ;; the user just said no to saving it; in
-			 ;; that case, don't revert, because the user
-			 ;; might intend to save after finishing the
-			 ;; log entry.
-			 (if (and (not (buffer-modified? buffer))
-				  (not (vc-workfile-modified? master)))
-			     ;; DO NOT revert the file without asking
-			     ;; the user!
-			     (if (prompt-for-yes-or-no?
-				  "Revert to master version")
-				 (begin
-				   (vc-backend-revert master)
-				   (vc-revert-buffer buffer #f)))
-			     (vc-checkin master revision? comment))))))
-		(else
+	(let ((do-checkin
+	       (lambda ()
+		 (let ((buffer (find-file-noselect workfile #t)))
+		   (if from-dired?
+		       (select-buffer-other-window buffer)
+		       (select-buffer buffer))
+		   ;; If the file on disk is newer, then the user just
+		   ;; said no to rereading it.  So the user probably
+		   ;; wishes to overwrite the file with the buffer's
+		   ;; contents, and check that in.
+		   (cond ((verify-visited-file-modification-time? buffer)
+			  (vc-save-buffer buffer #t))
+			 ((prompt-for-yes-or-no?
+			   "Replace file on disk with buffer contents")
+			  (save-buffer buffer #f))
+			 (else
+			  (editor-error "Aborted")))
+		   ;; Revert if file is unchanged and buffer is too.
+		   ;; If buffer is modified, that means the user just
+		   ;; said no to saving it; in that case, don't
+		   ;; revert, because the user might intend to save
+		   ;; after finishing the log entry.
+		   (cond ((or (buffer-modified? buffer)
+			      (vc-workfile-modified? master))
+			  (vc-checkin master revision? comment))
+			 ;; DO NOT revert the file without asking the
+			 ;; user!
+			 ((prompt-for-yes-or-no? "Revert to master version")
+			  (vc-backend-revert master)
+			  (vc-revert-buffer buffer #f))))))
+	      (do-checkout
+	       (lambda ()
 		 (vc-save-workfile-buffer workfile)
 		 (vc-checkout master revision?))))
+	  (if (eq? (vc-master-type master) vc-type:cvs)
+	      (case (cvs-status master)
+		((UP-TO-DATE)
+		 (let ((buffer (vc-workfile-buffer master)))
+		   (cond ((and buffer (buffer-modified? buffer))
+			  (do-checkin))
+			 (revision?
+			  (do-checkout))
+			 ((not from-dired?)
+			  (message (buffer-name buffer) " is up to date.")))))
+		((NEEDS-CHECKOUT NEEDS-MERGE)
+		 (vc-next-action-merge master from-dired?))
+		((LOCALLY-MODIFIED LOCALLY-ADDED)
+		 (do-checkin))
+		((UNRESOLVED-CONFLICT)
+		 (message (->namestring workfile)
+			  " has an unresolved conflict."))
+		(else
+		 (error "Unable to determine CVS status of file:" workfile)))
+	      (let ((owner (vc-backend-locking-user master #f)))
+		(cond ((not owner) (do-checkout))
+		      ((string=? owner (current-user-name)) (do-checkin))
+		      (else (vc-steal-lock master revision? comment owner))))))
 	(vc-register workfile revision? comment 'LOCK))))
-
-(define (vc-next-action-merge master from-dired?)
-  (let ((buffer (vc-workfile-buffer master)))
-    (if (or from-dired?
-	    (prompt-for-yes-or-no?
-	     (string-append
-	      (buffer-name buffer)
-	      " is not up-to-date.  Merge in changes now")))
-	(begin
-	  (if (and buffer (buffer-modified? buffer))
-	      (begin
-		(if (vc-dired-buffer? (selected-buffer))
-		    (select-buffer-other-window buffer)
-		    (select-buffer buffer))
-		(vc-save-buffer buffer #f)))
-	  (if (and buffer
-		   (buffer-modified? buffer)
-		   (not
-		    (prompt-for-yes-or-no?
-		     (string-append
-		      "Buffer "
-		      (buffer-name buffer)
-		      " modified; merge file on disc anyhow"))))
-	      (editor-error "Merge aborted"))
-	  (let ((conflicts? (cvs-backend-merge-news master)))
-	    (if buffer
-		(vc-revert-buffer buffer #t))
-	    (if (and conflicts?
-		     (prompt-for-confirmation?
-		      "Conflicts detected.  Resolve them now"))
-		(find-file (vc-master-workfile master)))))
-	(editor-error (buffer-name buffer) " needs update."))))
 
 (define (vc-next-action-dired buffer)
   (lambda (comment)
@@ -373,8 +487,7 @@ merge in the changes into your working copy."
 	       (not (file-exists? workfile)))
 	  (buffer-modified! buffer)))
     (vc-save-workfile-buffer workfile)
-    (vc-start-entry workfile
-		    "Enter initial comment."
+    (vc-start-entry workfile "Enter initial comment."
 		    (or comment
 			(if (ref-variable vc-initial-comment buffer)
 			    #f
@@ -400,18 +513,15 @@ merge in the changes into your working copy."
 	    ((cleanup-pop-up-buffers
 	      (lambda ()
 		(vc-backend-diff master #f #f #f)
-		(let ((diff-buffer (get-vc-command-buffer)))
-		  (insert-string
-		   (string-append "Changes to "
-				  (vc-workfile-string master)
-				  " since last lock:\n\n")
-		   (buffer-start diff-buffer))
-		  (set-buffer-point! diff-buffer (buffer-start diff-buffer))
-		  (pop-up-buffer diff-buffer #f)
-		  (editor-beep)
-		  (prompt-for-yes-or-no?
-		   (string-append "File has unlocked changes, "
-				  "claim lock retaining changes")))))
+		(insert-string
+		 (string-append "Changes to "
+				(vc-workfile-string master)
+				" since last lock:\n\n")
+		 (buffer-start (get-vc-diff-buffer #f)))
+		(pop-up-vc-diff-buffer #f)
+		(editor-beep)
+		(prompt-for-yes-or-no?
+		 "File has unlocked changes, claim lock retaining changes")))
 	     (guarantee-vc-master-valid master)
 	     (vc-backend-steal master revision)
 	     (let ((buffer (vc-workfile-buffer master)))
@@ -421,13 +531,11 @@ merge in the changes into your working copy."
 	     (do-it))
 	    (else
 	     (editor-error "Checkout aborted."))))))
-
+
 (define (vc-checkin master revision? comment)
   (let ((revision (vc-get-revision revision? "New version level")))
     (vc-save-workfile-buffer (vc-master-workfile master))
-    (vc-start-entry master
-		    "Enter a change comment."
-		    comment
+    (vc-start-entry master "Enter a change comment." comment
 		    (let ((keep? (vc-keep-workfiles? master)))
 		      (lambda (comment)
 			(vc-backend-checkin master revision
@@ -442,8 +550,12 @@ merge in the changes into your working copy."
 		       (ref-variable vc-checkin-hooks
 				     (vc-workfile-buffer master))
 		       master)))))
-
+
 (define (vc-steal-lock master revision? comment owner)
+  (if (and (eq? vc-type:rcs (vc-master-type master))
+	   (not (vc-release? vc-type:rcs "5.6.2")))
+      ;; Can't steal locks with old RCS versions.
+      (editor-error "File is locked by " owner "."))
   (let ((filename (vc-workfile-string master)))
     (if comment
 	(editor-error "Sorry, you can't steal the lock on "
@@ -479,6 +591,39 @@ merge in the changes into your working copy."
 		((variable-default-value variable)))))))))
   (message "Please explain why you are stealing the lock."
 	   "  Type C-c C-c when done."))
+
+(define (vc-next-action-merge master from-dired?)
+  (let ((buffer (vc-workfile-buffer master)))
+    ;; (NOT FROM-DIRED?) implies (NOT (NOT BUFFER)).
+    (if (or from-dired?
+	    (prompt-for-yes-or-no?
+	     (string-append
+	      (buffer-name buffer)
+	      " is not up-to-date.  Merge in changes now")))
+	(begin
+	  (if (and buffer (buffer-modified? buffer))
+	      (begin
+		(if from-dired?
+		    (select-buffer-other-window buffer)
+		    (select-buffer buffer))
+		(vc-save-buffer buffer #f)))
+	  (if (and buffer
+		   (buffer-modified? buffer)
+		   (not
+		    (prompt-for-yes-or-no?
+		     (string-append
+		      "Buffer "
+		      (buffer-name buffer)
+		      " modified; merge file on disc anyhow"))))
+	      (editor-error "Merge aborted"))
+	  (let ((conflicts? (cvs-backend-merge-news master)))
+	    (if buffer
+		(vc-revert-buffer buffer #t))
+	    (if (and conflicts?
+		     (prompt-for-confirmation?
+		      "Conflicts detected.  Resolve them now"))
+		(find-file (vc-master-workfile master)))))
+	(editor-error (buffer-name buffer) " needs update."))))
 
 ;;;; Auxiliary Commands
 
@@ -492,7 +637,7 @@ and two version designators specifying which versions to compare."
   (lambda (revisions?)
     (if revisions?
 	(dispatch-on-command (ref-command-object vc-version-diff))
-	(vc-diff (current-vc-master #t) #f #f))))
+	(vc-diff (buffer-vc-master (selected-buffer) #t) #f #f))))
 
 (define-command vc-version-diff
   "For FILE, report diffs between two stored versions REV1 and REV2 of it.
@@ -511,7 +656,7 @@ files in or below it."
     (if (and (or rev1 rev2 (vc-workfile-modified? master))
 	     (vc-backend-diff master rev1 rev2 #f))
 	(begin
-	  (pop-up-vc-command-buffer #t)
+	  (pop-up-vc-diff-buffer #t)
 	  #f)
 	(begin
 	  (message "No changes to "
@@ -529,51 +674,45 @@ If the current buffer is named `F', the version is named `F.~REV~'.
 If `F.~REV~' already exists, it is used instead of being re-created."
   "sVersion to visit (default is latest version)"
   (lambda (revision)
-    (let ((master (current-vc-master #t)))
-      (let ((revision
-	     (or (vc-normalize-revision revision)
-		 (vc-backend-default-revision master #t))))
-	(let ((workfile
-	       (string-append (->namestring (vc-master-workfile master))
-			      ".~"
-			      revision
-			      "~")))
-	  (if (not (file-exists? workfile))
-	      (vc-backend-checkout master revision #f workfile))
-	  (find-file-other-window workfile))))))
+    (let ((revision (vc-normalize-revision revision))
+	  (master (buffer-vc-master (selected-buffer) #t)))
+      (if (not revision)
+	  (editor-error "Must specify a revision."))
+      (let ((workfile
+	     (string-append (vc-workfile-string master) ".~" revision "~")))
+	(if (not (file-exists? workfile))
+	    (vc-backend-checkout master revision #f workfile))
+	(find-file-other-window workfile)))))
 
 (define-command vc-insert-headers
   "Insert headers in a file for use with your version-control system.
 Headers are inserted at the start of the buffer."
   ()
   (lambda ()
-    (let ((master (current-vc-master #t)))
-      (let ((buffer
-	     (let ((workfile (vc-master-workfile master)))
-	       (or (pathname->buffer workfile)
-		   (find-file-other-window workfile)))))
-	(without-group-clipped! (buffer-group buffer)
-	  (lambda ()
-	    (if (or (not (vc-backend-check-headers master buffer))
-		    (prompt-for-confirmation?
-		     "Version headers already exist.  Insert another set"))
-		(insert-string
-		 (string-append
-		  (or (ref-variable comment-start buffer) "#")
-		  "\t"
-		  (vc-type-header-keyword (vc-master-type master))
-		  (let ((end (or (ref-variable comment-end buffer) "")))
-		    (if (string-null? end)
-			end
-			(string-append "\t" end)))
-		  "\n")
-		 (buffer-start buffer)))))))))
+    (let* ((buffer (selected-buffer))
+	   (master (buffer-vc-master buffer #t)))
+      (without-group-clipped! (buffer-group buffer)
+	(lambda ()
+	  (if (or (not (vc-backend-check-headers master buffer))
+		  (prompt-for-confirmation?
+		   "Version headers already exist.  Insert another set"))
+	      (insert-string
+	       (string-append
+		(or (ref-variable comment-start buffer) "#")
+		"\t"
+		(vc-type-header-keyword (vc-master-type master))
+		(let ((end (or (ref-variable comment-end buffer) "")))
+		  (if (string-null? end)
+		      end
+		      (string-append "\t" end)))
+		"\n")
+	       (buffer-start buffer))))))))
 
 (define-command vc-print-log
   "List the change log of the current buffer in a window."
   ()
   (lambda ()
-    (vc-backend-print-log (current-vc-master #t))
+    (vc-backend-print-log (buffer-vc-master (selected-buffer) #t))
     (pop-up-vc-command-buffer #f)))
 
 (define-command vc-revert-buffer
@@ -582,17 +721,19 @@ This asks for confirmation if the buffer contents are not identical
 to that version."
   ()
   (lambda ()
-    (let ((buffer (selected-buffer)))
-      (let ((master (buffer-vc-master buffer #t)))
-	(if (cleanup-pop-up-buffers
-	     (lambda ()
-	       (or (not (vc-diff master #f #f))
-		   (ref-variable vc-suppress-confirm)
-		   (prompt-for-yes-or-no? "Discard changes"))))
-	    (begin
-	      (vc-backend-revert master)
-	      (vc-revert-buffer buffer #t))
-	    (editor-error "Revert cancelled."))))))
+    (let* ((buffer (selected-buffer))
+	   (master (buffer-vc-master buffer #t)))
+      (if (and (vc-workfile-modified? master)
+	       (or (ref-variable vc-suppress-confirm)
+		   (cleanup-pop-up-buffers
+		    (lambda ()
+		      (vc-backend-diff master #f #f #f)
+		      (pop-up-vc-diff-buffer #f)
+		      (prompt-for-yes-or-no? "Discard changes")))))
+	  (begin
+	    (vc-backend-revert master)
+	    (vc-revert-buffer buffer #t))
+	  (editor-error "Revert cancelled.")))))
 
 ;;;; VC Dired
 
@@ -603,15 +744,15 @@ Normally shows only locked files; prefix arg says to show all files."
   (lambda (all-files?)
     (let ((directory (buffer-default-directory (selected-buffer))))
       (let ((buffer (vc-dired directory all-files?)))
-	(if (> (buffer-length buffer) 0)
-	    (pop-up-buffer buffer #t)
+	(if (group-end? (line-start (buffer-start buffer) 1 'LIMIT))
 	    (begin
 	      (if (not (buffer-visible? buffer))
 		  (kill-buffer buffer))
 	      (message "No files are currently "
 		       (if all-files? "registered" "locked")
 		       " under "
-		       (->namestring directory))))))))
+		       (->namestring directory)))
+	    (pop-up-buffer buffer #t))))))
 
 (define-command vc-dired
   "Show version-control status of files under a directory.
@@ -667,30 +808,36 @@ Normally shows only locked files; prefix arg says to show all files."
 	(revert-buffer-default buffer dont-use-auto-save? dont-confirm?))))
 
 (define (generate-vc-dired-lines directory all-files? mark)
-  (for-each (lambda (file)
-	      (let ((attr (file-attributes-direct file)))
-		(if (and attr (not (file-attributes/type attr)))
-		    (let ((master (file-vc-master file #f)))
-		      (if master
-			  (let ((locker (vc-backend-locking-user master #f)))
-			    (if (or locker all-files?)
-				(generate-vc-dired-line file
-							attr
-							locker
-							mark))))))))
-	    (directory-read directory)))
+  (for-each
+   (lambda (file)
+     (let ((attr (file-attributes-direct file)))
+       (if (and attr (not (file-attributes/type attr)))
+	   (let ((status
+		  (let ((master (file-vc-master file #f)))
+		    (cond ((not master)
+			   #f)
+			  ((eq? (vc-master-type master) vc-type:cvs)
+			   (and (vc-workfile-modified? master)
+				(case (cvs-status master)
+				  ((LOCALLY-MODIFIED) "modified")
+				  ((LOCALLY-ADDED) "added")
+				  ((NEEDS-CHECKOUT) "patch")
+				  ((NEEDS-MERGE) "merge")
+				  ((UNRESOLVED-CONFLICT) "conflict")
+				  (else #f))))
+			  (else
+			   (vc-backend-locking-user master #f))))))
+	     (if (or status all-files?)
+		 (generate-vc-dired-line file attr status mark))))))
+   (directory-read directory)))
 
-(define (generate-vc-dired-line file attr locker mark)
+(define (generate-vc-dired-line file attr status mark)
   (insert-string
    (string-append
     "  "
     (file-attributes/mode-string attr)
     " "
-    (pad-on-left-to (number->string (file-attributes/n-links attr)) 3)
-    " "
-    (pad-on-right-to (or locker "") 10)
-    " "
-    (pad-on-left-to (number->string (file-attributes/length attr)) 8)
+    (pad-on-right-to (if status (string-append "(" status ")") "") 10)
     " "
     (file-time->ls-string (file-attributes/modification-time attr))
     " "
@@ -713,7 +860,7 @@ Normally shows only locked files; prefix arg says to show all files."
 	  (if buffer
 	      (buffer-put! log-buffer 'VC-PARENT-BUFFER buffer)
 	      (buffer-remove! log-buffer 'VC-PARENT-BUFFER)))
-	(let ((window (current-window)))
+	(let ((window (selected-window)))
 	  (let ((log-window (pop-up-buffer log-buffer #t)))
 	    (buffer-put! log-buffer
 			 'VC-LOG-FINISH-ENTRY
@@ -742,7 +889,6 @@ Normally shows only locked files; prefix arg says to show all files."
     (if (vc-master? master)
 	(begin
 	  (guarantee-vc-master-valid master)
-	  ;; Signal error if log entry too long.
 	  (vc-backend-check-log-entry master log-buffer)))
     (let ((comment (buffer-string log-buffer)))
       ;; Enter the comment in the comment ring.
@@ -793,160 +939,6 @@ the value of vc-log-mode-hook."
 	    (error "No log operation is pending."))
 	(finish-entry buffer)))))
 
-;;;; VC-MASTER association
-
-(define (file-vc-master workfile error?)
-  (let ((workfile (->pathname workfile)))
-    (or (let loop ((masters known-vc-masters) (prev #f))
-	  (and (weak-pair? masters)
-	       (let ((master (weak-car masters))
-		     (masters* (weak-cdr masters)))
-		 (cond ((not master)
-			(if prev
-			    (weak-set-cdr! prev masters*)
-			    (set! known-vc-masters masters*))
-			(loop masters* prev))
-		       ((pathname=? workfile (vc-master-workfile master))
-			(loop masters* masters)	;clean rest of list
-			master)
-		       (else
-			(loop masters* masters))))))
-	(let ((master (vc-backend-find-master workfile)))
-	  (and master
-	       (begin
-		 (set! known-vc-masters (weak-cons master known-vc-masters))
-		 master)))
-	(and error? (vc-registration-error workfile)))))
-
-(define known-vc-masters '())
-
-(define (buffer-vc-master buffer error?)
-  (if (vc-dired-buffer? buffer)
-      (let ((file (dired-this-file)))
-	(if file
-	    (file-vc-master (car file) error?)
-	    (and error? (vc-registration-error #f))))
-      (let ((workfile
-	     (buffer-pathname
-	      (let loop ((buffer buffer))
-		(let ((buffer* (buffer-get buffer 'VC-PARENT-BUFFER #f)))
-		  (if buffer*
-		      (loop buffer*)
-		      buffer))))))
-	(if workfile
-	    (file-vc-master workfile error?)
-	    (and error? (vc-registration-error buffer))))))
-
-(define (current-vc-master error?)
-  (buffer-vc-master (selected-buffer) error?))
-
-(define (guarantee-vc-master-valid master)
-  (if (not (vc-backend-master-valid? master))
-      (error "VC master file disappeared:" (vc-master-pathname master))))
-
-(define (vc-registration-error object)
-  (if (or (buffer? object) (not object))
-      (editor-error "Buffer "
-		    (buffer-name (or object (selected-buffer)))
-		    " is not associated with a file.")
-      (editor-error "File "
-		    (->namestring object)
-		    " is not under version control.")))
-
-;;;; VC-MASTER datatype
-
-(define-structure (vc-master (constructor make-vc-master
-					  (type pathname workfile))
-			     safe-accessors)
-  (type #f read-only #t)		;a VC-TYPE object
-  (pathname #f read-only #t)		;a PATHNAME object
-  (workfile #f read-only #t)		;a PATHNAME object
-  ;; A boolean indicating whether the file is modified.
-  %modified?
-  ;; The modification time of the master and work files when
-  ;; %MODIFIED? was last set.  Can be #F meaning %MODIFIED? doesn't
-  ;; contain valid information.
-  (mod-time #f)
-  (workfile-mod-time #f)
-  (properties (make-1d-table) read-only #t))
-
-(define (vc-master-get master key default)
-  (1d-table/get (vc-master-properties master) key default))
-
-(define (vc-master-put! master key value)
-  (1d-table/put! (vc-master-properties master) key value))
-
-(define (vc-master-remove! master key)
-  (1d-table/remove! (vc-master-properties master) key))
-
-(define (record-modification-state! master modified?)
-  (set-vc-master-%modified?! master modified?)
-  (set-vc-master-mod-time!
-   master
-   (file-modification-time (vc-master-pathname master)))
-  (set-vc-master-workfile-mod-time!
-   master
-   (file-modification-time (vc-master-workfile master)))
-  (vc-mode-line master #f))
-
-(define (vc-master-read-cached-value master key read-value)
-  (let ((pathname (vc-master-pathname master)))
-    (let loop ()
-      (let ((time (file-modification-time pathname)))
-	(or (and (eqv? time (vc-master-get master 'MASTER-TIME #f))
-		 (vc-master-get master key #f))
-	    (begin
-	      (vc-master-put! master 'MASTER-TIME time)
-	      (vc-master-put! master key (read-value))
-	      (loop)))))))
-
-;;;; VC-TYPE datatype
-
-(define-structure (vc-type (constructor %make-vc-type
-					(name display-name header-keyword))
-			   safe-accessors)
-  (name #f read-only #t)		;a symbol
-  (display-name #f read-only #t)	;a string
-  (header-keyword #f read-only #t)	;a string
-  (operations '())			;a list; see below
-  (properties (make-1d-table) read-only #t))
-
-(define (vc-type-get type key default)
-  (1d-table/get (vc-type-properties type) key default))
-
-(define (vc-type-put! type key value)
-  (1d-table/put! (vc-type-properties type) key value))
-
-(define (vc-type-remove! type key)
-  (1d-table/remove! (vc-type-properties type) key))
-
-(define (make-vc-type name display-name header-keyword)
-  (let ((type (%make-vc-type name display-name header-keyword))
-	(entry (assq name vc-types)))
-    (if entry
-	(set-cdr! entry type)
-	(set! vc-types (cons (cons name type) vc-types)))
-    type))
-
-(define vc-types '())
-
-(define (define-vc-type-operation name type procedure)
-  (let ((entry (assq name (vc-type-operations type))))
-    (if entry
-	(set-cdr! entry procedure)
-	(set-vc-type-operations! type
-				 (cons (cons name procedure)
-				       (vc-type-operations type))))))
-
-(define (vc-type-operation type name)
-  (let ((entry (assq name (vc-type-operations type))))
-    (if (not entry)
-	(error:bad-range-argument name 'VC-TYPE-OPERATION))
-    (cdr entry)))
-
-(define (vc-call name master . arguments)
-  (apply (vc-type-operation (vc-master-type master) name) master arguments))
-
 ;;;; Back-End Calls
 
 ;;; In what follows, a "revision string" has the following definition:
@@ -977,7 +969,7 @@ the value of vc-log-mode-hook."
 (define (vc-backend-find-master workfile)
   (let loop ((types vc-types))
     (and (pair? types)
-	 (or ((vc-type-operation (cdar types) 'FIND-MASTER) workfile)
+	 (or ((vc-type-operation (car types) 'FIND-MASTER) workfile)
 	     (loop (cdr types))))))
 
 (define (vc-backend-master-valid? master)
@@ -1020,28 +1012,33 @@ the value of vc-log-mode-hook."
   ((vc-type-operation
     (if (and (pair? vc-types)
 	     (null? (cdr vc-types)))
-	(cdar vc-types)
+	(car vc-types)
 	(let ((likely-types
 	       (list-transform-positive vc-types
-		 (lambda (entry)
-		   ((vc-type-operation (cdr entry) 'LIKELY-CONTROL-TYPE?)
+		 (lambda (type)
+		   ((vc-type-operation type 'LIKELY-CONTROL-TYPE?)
 		    workfile)))))
 	  (if (and (pair? likely-types)
 		   (null? (cdr likely-types)))
-	      (cdar likely-types)
+	      (car likely-types)
 	      (cleanup-pop-up-buffers
 	       (lambda ()
 		 (call-with-output-to-temporary-buffer " *VC-types*"
 						       '(SHRINK-WINDOW)
 		   (lambda (port)
-		     (for-each (lambda (entry)
-				 (write-string (car entry) port)
-				 (newline port))
-			       vc-types)))
-		 (prompt-for-alist-value "Version control type"
-					 vc-types
-					 #f
-					 #f))))))
+		     (for-each
+		      (lambda (type)
+			(write-string (vc-type-display-name type) port)
+			(newline port))
+		      vc-types)))
+		 (prompt-for-alist-value
+		  "Version control type"
+		  (map (lambda (type)
+			 (cons (vc-type-display-name type)
+			       type))
+		       vc-types)
+		  #f
+		  #f))))))
     'REGISTER)
    workfile revision comment keep?))
 
@@ -1102,9 +1099,8 @@ the value of vc-log-mode-hook."
 (define (vc-backend-check-log-entry master log-buffer)
   ;; MASTER is a valid VC-MASTER object.
   ;; LOG-BUFFER is a buffer containing a log message.
-  ;; The buffer's contents is checked for compatibility with the backend.
-  ;;   The contents may be modified by this call.
-  ;;   The contents might also be rejected by signalling an error.
+  ;; The buffer's contents is checked for compatibility with the
+  ;;   backend, and an error is signalled if it is incompatible.
   (vc-call 'CHECK-LOG-ENTRY master log-buffer))
 
 (define (vc-backend-check-headers master buffer)
@@ -1325,7 +1321,7 @@ the value of vc-log-mode-hook."
 	     (vc-run-command
 	      master
 	      `((STATUS ,status)
-		,@(if simple? `((BUFFER " *vc-diff*")) '()))
+		(BUFFER ,(get-vc-diff-buffer simple?)))
 	      "rcsdiff"
 	      (and brief? "--brief")
 	      "-q"
@@ -1437,7 +1433,7 @@ the value of vc-log-mode-hook."
 		    `((DIRECTORY ,(directory-pathname pathname))
 		      (BUFFER " *vc-status*"))
 		    "cvs" "status" (file-pathname pathname)))
-  (let ((m (buffer-start (get-vc-command-buffer))))
+  (let ((m (buffer-start (find-or-create-buffer " *vc-status*"))))
     (let ((status
 	   (if (re-search-forward "^File: [^ \t]+[ \t]+Status: \\(.*\\)" m)
 	       (convert-cvs-status
@@ -1582,7 +1578,7 @@ the value of vc-log-mode-hook."
   (lambda (master rev1 rev2 simple?)
     (let ((options
 	   `((STATUS 1)
-	     ,@(if simple? `((BUFFER " *vc-diff*")) '()))))
+	     (BUFFER ,(get-vc-diff-buffer simple?)))))
       (if (equal? "0" (vc-backend-workfile-revision master))
 	  ;; This file is added but not yet committed; there is no
 	  ;; master file.
@@ -1699,7 +1695,7 @@ the value of vc-log-mode-hook."
 	      (pop-up-vc-command-buffer #f)
 	      (editor-error "Running " command "...FAILED "
 			    (list (car result) (cdr result)))))))))
-
+
 (define (vc-command-arguments arguments)
   (append-map (lambda (argument)
 		(cond ((not argument) '())
@@ -1716,12 +1712,20 @@ the value of vc-log-mode-hook."
 			  (vc-command-arguments (cons command arguments)))))
 
 (define (pop-up-vc-command-buffer select?)
-  (let ((command-buffer (get-vc-command-buffer)))
-    (set-buffer-point! command-buffer (buffer-start command-buffer))
-    (pop-up-buffer command-buffer select?)))
+  (let ((buffer (get-vc-command-buffer)))
+    (set-buffer-point! buffer (buffer-start buffer))
+    (pop-up-buffer buffer select?)))
 
 (define (get-vc-command-buffer)
   (find-or-create-buffer "*vc*"))
+
+(define (pop-up-vc-diff-buffer select?)
+  (let ((buffer (get-vc-diff-buffer #f)))
+    (set-buffer-point! buffer (buffer-start buffer))
+    (pop-up-buffer buffer select?)))
+
+(define (get-vc-diff-buffer simple?)
+  (find-or-create-buffer (if simple? " *vc-diff*" "*vc-diff*")))
 
 (define (with-vc-command-message master operation thunk)
   (let ((msg
