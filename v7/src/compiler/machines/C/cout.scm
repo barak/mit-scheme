@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.16 1993/11/15 05:59:13 gjr Exp $
+$Id: cout.scm,v 1.17 1993/11/16 02:10:31 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -619,53 +619,24 @@ MIT in each case. |#
 			 names
 			 objects)))))))
 
-(define char-set:C-char-quoted
-  (char-set #\\ #\" #\'))
-
-(define char-set:C-string-quoted
-  (char-set #\\ #\" #\Tab #\VT #\BS #\Linefeed #\Return #\Page #\BEL))
-
-(define (C-quotify string)
-  (let ((index (string-find-next-char-in-set string char-set:C-string-quoted)))
-    (if (not index)
-	string
-	(let ((new (write-to-string string)))
-	  (substring new 1 (-1+ (string-length new)))))))
-
-(define (C-quotify-char char)
-  (cond ((not (char-set-member? char-set:graphic char))
-	 (cond ((char=? char #\NUL)
-		"'\\0'")
-	       ((char-set-member? char-set:C-string-quoted char)
-		(string-append
-		 "'"
-		 (let ((s (write-to-string (make-string 1 char))))
-		   (substring s 1 (-1+ (string-length s))))
-		 "'"))
-	       (else
-		(string-append
-		 "'\\"
-		 (let ((s (number->string (char-code char) 8)))
-		   (if (< (string-length s) 3)
-		       (string-append (make-string (- 3 (string-length s)) #\0)
-				      s)
-		       s))
-		 "'"))))
-	((char-set-member? char-set:C-char-quoted char)
-	 (string-append "'\\" (make-string 1 char) "'"))
-	(else
-	 (string-append "'" (make-string 1 char) "'"))))
+(define (string-reverse string)
+  (let* ((len (string-length string))
+	 (res (make-string len)))
+    (do ((i (fix:- len 1) (fix:- i 1))
+	 (j 0 (fix:+ j 1)))
+	((fix:= j len) res)
+      (string-set! res i (string-ref string j)))))
 
 (define (->simple-C-object object)
   (cond ((symbol? object)
 	 (let ((name (symbol->string object)))
 	   (string-append "(C_SYM_INTERN ("
 			  (number->string (string-length name))
-			  "L, \"" (C-quotify name) "\"))")))
+			  "L, \"" (C-quotify-string name) "\"))")))
 	((string? object)
 	 (string-append "(C_STRING_TO_SCHEME_STRING ("
 			(number->string (string-length object))
-			"L, \"" (C-quotify object) "\"))"))
+			"L, \"" (C-quotify-string object) "\"))"))
 	((number? object)
 	 (let process ((number object))
 	   (cond ((flo:flonum? number)
@@ -754,14 +725,62 @@ MIT in each case. |#
 	(else
 	 (error "->simple-C-object: unrecognized-type"
 		object))))
+
+(define char-set:C-char-quoted
+  (char-set-union char-set:not-graphic (char-set #\\ #\')))
 
-(define (string-reverse string)
-  (let* ((len (string-length string))
-	 (res (make-string len)))
-    (do ((i (fix:- len 1) (fix:- i 1))
-	 (j 0 (fix:+ j 1)))
-	((fix:= j len) res)
-      (string-set! res i (string-ref string j)))))
+(define char-set:C-string-quoted
+  (char-set-union char-set:not-graphic (char-set #\\ #\")))
+
+(define char-set:C-named-chars
+  (char-set #\\ #\" #\' #\Tab #\BS
+	    ;; #\VT #\BEL	;; Cannot depend on ANSI C
+	    #\Linefeed #\Return #\Page))
+
+(define (C-quotify-string string)
+  (let ((index (string-find-next-char-in-set string char-set:C-string-quoted)))
+    (if (not index)
+	string
+	(string-append
+	 (substring string 0 index)
+	 (C-quotify-string-char (string-ref string index))
+	 (C-quotify (substring string (1+ index) (string-length string)))))))
+
+(define (C-quotify-string-char char)
+  (cond ((char-set-member? char-set:C-named-chars char)
+	 (let ((result (write-to-string (string char))))
+	   (substring result 1 (-1+ (string-length result)))))
+	((char=? char #\NUL)
+	 "\\0")
+	(else
+	 (string-append
+	  "\\"
+	  (let ((s (number->string (char-code char) 8)))
+	    (if (< (string-length s) 3)
+		(string-append (make-string (- 3 (string-length s)) #\0)
+			       s)
+		s))))))
+
+(define (C-quotify-char char)
+  (cond ((not (char-set-member? char-set:C-char-quoted char))
+	 (string-append "'" (make-string 1 char) "'"))
+	((char-set-member? char-set:C-named-chars char)
+	 (string-append
+	  "'"
+	  (let ((s (write-to-string (make-string 1 char))))
+	    (substring s 1 (-1+ (string-length s))))
+	  "'"))
+	((char=? char #\NUL)
+	 "'\\0'")
+	(else
+	 (string-append
+	  "'\\"
+	  (let ((s (number->string (char-code char) 8)))
+	    (if (< (string-length s) 3)
+		(string-append (make-string (- 3 (string-length s)) #\0)
+			       s)
+		s))
+	  "'"))))
 
 (define (handle-objects n)
   ;; All the reverses produce the correct order in the output block.
