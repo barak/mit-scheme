@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseht.scm,v 4.7 1988/12/16 13:17:18 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseht.scm,v 4.8 1989/08/10 11:39:43 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -54,7 +54,9 @@ MIT in each case. |#
 (define-structure (element
 		   (constructor %make-element)
 		   (constructor make-element (expression))
-		   (print-procedure (standard-unparser "ELEMENT" false)))  (expression false read-only true)
+		   (print-procedure
+		    (standard-unparser (symbol->string 'ELEMENT) false)))
+  (expression false read-only true)
   (cost false)
   (in-memory? false)
   (next-hash false)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlobj.scm,v 4.5 1988/12/23 06:23:16 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlobj.scm,v 4.6 1989/08/10 11:39:55 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -41,7 +41,7 @@ MIT in each case. |#
 		   (constructor make-rtl-expr
 				(rgraph label entry-edge debugging-info))
 		   (print-procedure
-		    (standard-unparser "RTL-EXPR"
+		    (standard-unparser (symbol->string 'RTL-EXPR)
 		      (lambda (state expression)
 			(unparse-object state (rtl-expr/label expression))))))
   (rgraph false read-only true)
@@ -59,7 +59,7 @@ MIT in each case. |#
 					n-optional rest? closure? type
 					debugging-info))
 		   (print-procedure
-		    (standard-unparser "RTL-PROCEDURE"
+		    (standard-unparser (symbol->string 'RTL-PROCEDURE)
 		      (lambda (state procedure)
 			(unparse-object state
 					(rtl-procedure/label procedure))))))
@@ -90,7 +90,8 @@ MIT in each case. |#
 					next-continuation-offset
 					debugging-info))
 		   (print-procedure
-		    (standard-unparser "RTL-CONTINUATION"		      (lambda (state continuation)
+		    (standard-unparser (symbol->string 'RTL-CONTINUATION)
+		      (lambda (state continuation)
 			(unparse-object
 			 state
 			 (rtl-continuation/label continuation))))))

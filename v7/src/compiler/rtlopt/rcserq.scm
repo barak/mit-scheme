@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcserq.scm,v 4.4 1988/12/16 13:18:45 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcserq.scm,v 4.5 1989/08/10 11:39:35 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,7 +39,9 @@ MIT in each case. |#
 
 (define-structure (quantity
 		   (copier quantity-copy)
-		   (print-procedure (standard-unparser "QUANTITY" false)))  (number false read-only true)
+		   (print-procedure
+		    (standard-unparser (symbol->string 'QUANTITY) false)))
+  (number false read-only true)
   (first-register false)
   (last-register false))
 
