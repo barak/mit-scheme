@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rep.scm,v 14.44 1993/11/02 23:32:15 cph Exp $
+$Id: rep.scm,v 14.45 1993/12/06 19:34:06 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -174,8 +174,10 @@ MIT in each case. |#
 			      (error "Non-owner thread can't start CMDL:"
 				     thread)))))
 		   (lambda ()
-		     (unblock-thread-events)
-		     (signaller cmdl thread))))
+		     (with-simple-restart 'CONTINUE "Continue from error."
+		       (lambda ()
+			 (unblock-thread-events)
+			 (signaller cmdl thread))))))
 	       (stop-current-thread))
 	      ((let ((parent (cmdl/parent cmdl)))
 		 (and parent
