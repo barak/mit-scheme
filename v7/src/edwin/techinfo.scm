@@ -1,29 +1,29 @@
 ;;; -*- Scheme -*-
 
 ;; Copyright (c) 1992 Massachusetts Institute of Technology
-;; 
+;;
 ;; This material was developed by the Scheme project at the Massachusetts
 ;; Institute of Technology, Department of Electrical Engineering and
 ;; Computer Science.  Permission to copy this software, to redistribute
 ;; it, and to use it for any purpose is granted, subject to the following
 ;; restrictions and understandings.
-;; 
+;;
 ;; 1. Any copy made of this software must include this copyright notice
 ;; in full.
-;; 
+;;
 ;; 2. Users of this software agree to make their best efforts (a) to
 ;; return to the MIT Scheme project any improvements or extensions that
 ;; they make, so that these may be included in future releases; and (b)
 ;; to inform MIT of noteworthy uses of this software.
-;; 
+;;
 ;; 3. All materials developed as a consequence of the use of this
 ;; software shall duly acknowledge such use, in accordance with the usual
 ;; standards of acknowledging credit in academic research.
-;; 
+;;
 ;; 4. MIT has made no warrantee or representation that the operation of
 ;; this software will be error-free, and MIT is under no obligation to
 ;; provide any services, by way of maintenance, update, or otherwise.
-;; 
+;;
 ;; 5. In conjunction with products arising from the use of this material,
 ;; there shall be no use of the name of the Massachusetts Institute of
 ;; Technology nor of any adaptation thereof in any advertising,
@@ -36,36 +36,38 @@
 ;;;
 ;;; Author: Brian A. LaMacchia -- bal@zurich.ai.mit.edu
 ;;;
-;;; $Id: techinfo.scm,v 1.3 1992/11/12 18:00:43 cph Exp $
+;;; $Id: techinfo.scm,v 1.4 1993/08/10 07:11:47 cph Exp $
 ;;;
 
-(define-variable techinfo-web-buffer 
+(declare (usual-integrations))
+
+(define-variable techinfo-web-buffer
   "Buffer which contains a copy of the TechInfo web file."
   false)
 
-(define-variable techinfo-buffer 
+(define-variable techinfo-buffer
   "Buffer used for displaying TechInfo information."
   false)
 
-(define-variable techinfo-current-node-list 
+(define-variable techinfo-current-node-list
   "Cached list of web file information for the current node."
   false)
 
-(define-variable techinfo-attached-filesystems 
+(define-variable techinfo-attached-filesystems
   "List of filesystems already attached by this run of TechInfo.
 If a filesystem name appears in this list subsequent calls to
 attach will not be made."
   '())
 
-(define-variable techinfo-parent-list 
+(define-variable techinfo-parent-list
   "List of parent nodes from this node to the root node."
   false)
 
-(define-variable techinfo-history-list 
+(define-variable techinfo-history-list
   "List of TechInfo nodes previously visited."
   '("0"))
 
-(define-variable techinfo-need-to-attach-afs 
+(define-variable techinfo-need-to-attach-afs
   "True if AFS is not available by default, and the NFS->AFS
 translator on Atalanta is needed.  At Tech Square this variable
 is set to t.  At Athena it is nil."
@@ -81,9 +83,9 @@ is set to t.  At Athena it is nil."
 	    (buffer-end web-buffer))))
       (extract-string (line-start the-mark 0) (line-end the-mark 0)))))
 
-;;; Takes one arg, STRING, which is a line from the TechInfo web file.  
-;;; Parses the line and returns a list of the information contained.  
-;;; Usually the result of (techinfo-find-line n) is passed directly to 
+;;; Takes one arg, STRING, which is a line from the TechInfo web file.
+;;; Parses the line and returns a list of the information contained.
+;;; Usually the result of (techinfo-find-line n) is passed directly to
 ;;; this function.
 (define (techinfo-parse-line string)
   (define (techinfo-internal-parse string char)
@@ -93,16 +95,18 @@ is set to t.  At Athena it is nil."
       (let ((next-index
 	     (substring-find-next-char string start end char)))
 	(if next-index
-	    (loop (1+ next-index) end (cons (substring string start next-index) the-list))
+	    (loop (1+ next-index)
+		  end
+		  (cons (substring string start next-index) the-list))
 	    (cons (string-tail string start) the-list)))))
   (let ((the-list-1 (techinfo-internal-parse string #\:)))
-    (reverse 
+    (reverse
      (cons
       (reverse (techinfo-internal-parse (car the-list-1) #\,))
       (cons
        (reverse (techinfo-internal-parse (cadr the-list-1) #\,))
        (cddr the-list-1))))))
-
+
 (define (techinfo-line/number techinfo-line)
   (list-ref techinfo-line 0))
 
@@ -142,37 +146,44 @@ is set to t.  At Athena it is nil."
 	(let ((foo (member (cadr (ref-variable techinfo-history-list))
 			   (techinfo-line/children-list node-list))))
 	  (if foo
-	      (techinfo-display-internal-node 
-	       node-list 
-	       (1+ (- (length (techinfo-line/children-list node-list)) (length foo))))
+	      (techinfo-display-internal-node
+	       node-list
+	       (1+ (- (length (techinfo-line/children-list node-list))
+		      (length foo))))
 	      (techinfo-display-internal-node node-list)))
 	(techinfo-display-leaf-node node-list))))
-
+
 (define (techinfo-insert-node-header node-list)
-  (let ((siblings (techinfo-line/children-list 
-		   (techinfo-parse-line (techinfo-find-line 
-					 (car (ref-variable techinfo-parent-list)))))))
-      (let ((rest (member (techinfo-line/number 
-			   (ref-variable techinfo-current-node-list)) siblings)))
+  (let ((siblings
+	 (techinfo-line/children-list
+	  (techinfo-parse-line (techinfo-find-line
+				(car (ref-variable techinfo-parent-list)))))))
+      (let ((rest
+	     (member (techinfo-line/number
+		      (ref-variable techinfo-current-node-list)) siblings)))
 	(if rest
 	    (let* ((num (- (length siblings) (length rest)))
 		   (prev (-1+ num))
 		   (next (1+ num))
 		   (left-string
 		    (if (>= prev 0)
-			(string-append 
-			 "Prev: " 
-			 (techinfo-line/title (techinfo-parse-line 
-					       (techinfo-find-line (list-ref siblings prev)))))
+			(string-append
+			 "Prev: "
+			 (techinfo-line/title
+			  (techinfo-parse-line
+			   (techinfo-find-line (list-ref siblings prev)))))
 			"Prev: (none)"))
 		   (right-string
 		    (if (< next (length siblings))
 			(string-append
-			 "Next: " 
-			 (techinfo-line/title (techinfo-parse-line 
-					       (techinfo-find-line (list-ref siblings next)))))
+			 "Next: "
+			 (techinfo-line/title
+			  (techinfo-parse-line
+			   (techinfo-find-line (list-ref siblings next)))))
 			"Next: (none)")))
-	      (let ((padding (- (ref-variable fill-column) (string-length right-string))))
+	      (let ((padding
+		     (- (ref-variable fill-column)
+			(string-length right-string))))
 		(insert-string
 		 (if (> padding (+ 10 (string-length left-string)))
 		     (string-pad-right left-string padding)
@@ -202,7 +213,8 @@ is set to t.  At Athena it is nil."
 	    (insert-string
 	     (string-append
 	      "  " (string-pad-left (number->string the-index) 5) " "
-	      (techinfo-line/title (techinfo-parse-line (techinfo-find-line this-child)))
+	      (techinfo-line/title
+	       (techinfo-parse-line (techinfo-find-line this-child)))
 	      "\n"))
 	    (if (= the-index placement-index)
 		(set! point (line-start (current-point) -1)))
@@ -210,7 +222,7 @@ is set to t.  At Athena it is nil."
 		(loop (cdr the-children) (1+ the-index) (car the-children))))))
     (set-buffer-read-only! (current-buffer))
     (set-current-point! point)))
-
+
 (define (techinfo-display-leaf-node node-list)
   (set-variable! techinfo-current-node-list node-list)
   (set-buffer-writable! (current-buffer))
@@ -222,21 +234,27 @@ is set to t.  At Athena it is nil."
 	(the-filename (techinfo-line/filename node-list)))
     (if (not (member the-filesys (ref-variable techinfo-attached-filesystems)))
 	(begin
-	  (if (and (string=? the-filesys "afs") (ref-variable techinfo-need-to-attach-afs))
-	      (run-synchronous-process false false (->pathname "/usr/local/bin") false
-				       "attach" "-n" "-m" "/afs" "-e" "atalanta.mit.edu:/afs")
-	      (run-synchronous-process false false (->pathname "/usr/local/bin") false
+	  (if (and (string=? the-filesys "afs")
+		   (ref-variable techinfo-need-to-attach-afs))
+	      (run-synchronous-process false false
+				       (->pathname "/usr/local/bin") false
+				       "attach" "-n" "-m" "/afs" "-e"
+				       "atalanta.mit.edu:/afs")
+	      (run-synchronous-process false false
+				       (->pathname "/usr/local/bin") false
 				       "attach" "-n" the-filesys))
 	  (set-variable! techinfo-attached-filesystems
-			 (cons the-filesys (ref-variable techinfo-attached-filesystems)))))
+			 (cons the-filesys
+			       (ref-variable techinfo-attached-filesystems)))))
     (if (file-exists? the-filename)
 	(insert-file (current-point) the-filename))
     (set-current-point! (buffer-start (current-buffer)))))
 
 (define (techinfo-space-DWIM-internal-node)
   (let ((point (current-point)))
-    (let ((the-match (re-match-forward "[ ]*\\([0-9][0-9]*\\)" 
-				       (line-start point 0) (line-end point 0))))
+    (let ((the-match (re-match-forward "[ ]*\\([0-9][0-9]*\\)"
+				       (line-start point 0)
+				       (line-end point 0))))
       (if the-match
 	  (let ((num (string->number
 		      (extract-string (re-match-start 1) (re-match-end 1)))))
@@ -254,10 +272,11 @@ is set to t.  At Athena it is nil."
 (define (techinfo-initialize)
   (if (not (member "ti_data" (ref-variable techinfo-attached-filesystems)))
       (begin
-	(run-synchronous-process false false (->pathname "/usr/local/bin") false
-				 "attach" "-n" "ti_data")
+	(run-synchronous-process false false (->pathname "/usr/local/bin")
+				 false "attach" "-n" "ti_data")
 	(set-variable! techinfo-attached-filesystems
-		       (cons "ti_data" (ref-variable techinfo-attached-filesystems)))))
+		       (cons "ti_data"
+			     (ref-variable techinfo-attached-filesystems)))))
   (set-variable! techinfo-web-buffer (find-buffer "*techinfo-web*"))
   (if (not (ref-variable techinfo-web-buffer))
       (let ((the-buf (create-buffer "*techinfo-web*")))
@@ -273,7 +292,7 @@ is set to t.  At Athena it is nil."
   (set-current-major-mode! (ref-mode-object techinfo))
   (set-variable! techinfo-parent-list '("0"))
   (techinfo-display-node "0"))
-
+
 (define-major-mode techinfo read-only "TechInfo"
   "Major mode for viewing information in the TechInfo database.
 In an internal node:
@@ -312,12 +331,14 @@ q	Exit TechInfo.")
   (lambda ()
     (techinfo-initialize)))
 
-(define-command techinfo-space 
-  "In an internal node, move to the subnode whose title is on the 
+(define-command techinfo-space
+  "In an internal node, move to the subnode whose title is on the
 same line as point.  In a leaf node, scroll-up."
   '()
   (lambda ()
-    (if (string=? (techinfo-line/filesystem (ref-variable techinfo-current-node-list)) "")
+    (if (string=? (techinfo-line/filesystem
+		   (ref-variable techinfo-current-node-list))
+		  "")
 	(techinfo-space-DWIM-internal-node)
 	(techinfo-space-DWIM-leaf-node))))
 
@@ -326,7 +347,9 @@ same line as point.  In a leaf node, scroll-up."
 In a leaf node, scroll-down."
   '()
   (lambda ()
-    (if (string=? (techinfo-line/filesystem (ref-variable techinfo-current-node-list)) "")
+    (if (string=? (techinfo-line/filesystem
+		   (ref-variable techinfo-current-node-list))
+		  "")
 	(techinfo-delete-DWIM-internal-node)
 	(techinfo-delete-DWIM-leaf-node))))
 
@@ -336,7 +359,7 @@ In a leaf node, scroll-down."
   (lambda ()
     (let ((parent (car (ref-variable techinfo-parent-list))))
       (if (not (null? (cdr (ref-variable techinfo-parent-list))))
-	  (set-variable! techinfo-parent-list 
+	  (set-variable! techinfo-parent-list
 			 (cdr (ref-variable techinfo-parent-list))))
       (techinfo-display-node parent))))
 
@@ -346,21 +369,21 @@ In a leaf node, scroll-down."
   (lambda ()
     (set-variable! techinfo-parent-list '("0"))
     (techinfo-display-node "0")))
-
+
 (define-command techinfo-goto-node
-  "Go to the NTH node listed as a child of the current node.  
+  "Go to the NTH node listed as a child of the current node.
 NTH is an integer between 1 and the number of children of the current node.
 When called interactively, NTH may be provided either as a prefix arg,
 or the user will be prompted for a value."
   "NItem number: "
   (lambda (num)
-    (let ((new-node (list-ref (techinfo-line/children-list 
+    (let ((new-node (list-ref (techinfo-line/children-list
 			       (ref-variable techinfo-current-node-list))
 			      (-1+ num))))
       (if new-node
 	  (begin
 	    (set-variable! techinfo-parent-list
-			   (cons (techinfo-line/number 
+			   (cons (techinfo-line/number
 				  (ref-variable techinfo-current-node-list) )
 				 (ref-variable techinfo-parent-list)))
 	    (techinfo-display-node new-node))))))
@@ -371,11 +394,14 @@ is listed immediately after the current node in the current node's parent.)
 Do nothing if no such sibling exists."
   '()
   (lambda ()
-    (let ((siblings (techinfo-line/children-list 
-		     (techinfo-parse-line (techinfo-find-line 
-					   (car (ref-variable techinfo-parent-list)))))))
-      (let ((rest (member (techinfo-line/number 
-			   (ref-variable techinfo-current-node-list)) siblings)))
+    (let ((siblings
+	   (techinfo-line/children-list
+	    (techinfo-parse-line
+	     (techinfo-find-line
+	      (car (ref-variable techinfo-parent-list)))))))
+      (let ((rest (member (techinfo-line/number
+			   (ref-variable techinfo-current-node-list))
+			  siblings)))
 	(if (and rest (cdr rest))
 	    (techinfo-display-node (car (cdr rest))))))))
 
@@ -385,12 +411,15 @@ is listed immediately before the current node in the current node's parent.)
 Do nothing if no such subling exists."
   '()
   (lambda ()
-    (let ((siblings (techinfo-line/children-list 
-		     (techinfo-parse-line (techinfo-find-line 
-					   (car (ref-variable techinfo-parent-list)))))))
-      (let ((rest (member (techinfo-line/number 
-			   (ref-variable techinfo-current-node-list)) siblings)))
-	(if rest 
+    (let ((siblings
+	   (techinfo-line/children-list
+	    (techinfo-parse-line
+	     (techinfo-find-line
+	      (car (ref-variable techinfo-parent-list)))))))
+      (let ((rest (member (techinfo-line/number
+			   (ref-variable techinfo-current-node-list))
+			  siblings)))
+	(if rest
 	    (let ((num (- (length siblings) (length rest))))
 	      (techinfo-display-node (list-ref siblings (-1+ num)))))))))
 
@@ -402,19 +431,16 @@ Do nothing if no such subling exists."
     (select-buffer (other-buffer (current-buffer)))))
 
 (define-command techinfo-last
-  "Go to the node visited immediately before this node.  
-WARNING: Calling this function causes the parent information to 
+  "Go to the node visited immediately before this node.
+WARNING: Calling this function causes the parent information to
 no longer be valid."
   '()
   (lambda ()
     (if (and (not (null? (ref-variable techinfo-history-list)))
 	     (not (null? (cdr (ref-variable techinfo-history-list)))))
 	(let ((new-node (car (cdr (ref-variable techinfo-history-list)))))
-	  (set-variable! techinfo-history-list (cdr (ref-variable techinfo-history-list)))
+	  (set-variable! techinfo-history-list
+			 (cdr (ref-variable techinfo-history-list)))
 	  (techinfo-display-node new-node)
-	  (set-variable! techinfo-history-list (cdr (ref-variable techinfo-history-list)))))))
-
-;; Edwin Variables:
-;; scheme-environment: '(edwin)
-;; scheme-syntax-table: (access edwin-syntax-table (->environment '(edwin)))
-;; End:
+	  (set-variable! techinfo-history-list
+			 (cdr (ref-variable techinfo-history-list)))))))
