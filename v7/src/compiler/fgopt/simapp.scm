@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: simapp.scm,v 4.7 1993/06/29 08:41:26 gjr Exp $
+$Id: simapp.scm,v 4.8 1994/02/02 04:12:36 adams Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -58,7 +58,7 @@ MIT in each case. |#
   (make-method-table rvalue-types
 		     (lambda (old operator apply-operator)
 		       old apply-operator
-		       (warn "Inapplicable operator" operator)
+		       (warn "Possible inapplicable operator" operator)
 		       operator)))
 
 (let ((processor
@@ -118,14 +118,14 @@ MIT in each case. |#
 			     (procedure-arity-valid? value argument-count))
 			    (else
 			     (if (not (unassigned-reference-trap? value))
-				 (warn "Inapplicable operator" value))
+				 (warn "Possible inapplicable operator" value))
 			     true)))
 		     (warn
 		      "Procedure called with wrong number of arguments"
 		      value
 		      number-supplied))))
 	      (else
-	       (warn "Inapplicable operator" operator)))))))
+	       (warn "Possible inapplicable operator" operator)))))))
 
 (define (initialize-lvalue-cache! lvalue)
   (set-lvalue-values-cache! lvalue (lvalue-values lvalue)))
