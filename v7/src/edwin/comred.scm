@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: comred.scm,v 1.96 1993/01/10 10:46:38 cph Exp $
+;;;	$Id: comred.scm,v 1.97 1993/07/06 20:35:48 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -85,6 +85,7 @@
       (within-continuation *command-continuation*
 	(lambda ()
 	  (cond ((input-event? input)
+		 (reset-command-state!)
 		 (apply-input-event input))
 		((command? input)
 		 (execute-command input))
@@ -104,8 +105,6 @@
 (define (apply-input-event input-event)
   (if (not (input-event? input-event))
       (error:wrong-type-argument input-event "input event" apply-input-event))
-  (clear-message)
-  (reset-command-state!)
   (apply (input-event/operator input-event)
 	 (input-event/operands input-event)))
 
@@ -238,6 +237,8 @@
   (%dispatch-on-command (current-window) command false))
 
 (define (execute-button-command screen button x y)
+  (clear-message)
+  (reset-command-state!)
   (send (screen-root-window screen) ':button-event! button x y))
 
 (define (read-and-dispatch-on-key)
