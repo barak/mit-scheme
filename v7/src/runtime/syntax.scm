@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 14.15 1991/04/15 20:47:52 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 14.16 1991/04/18 22:35:21 markf Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -42,7 +42,8 @@ MIT in each case. |#
   (enable-scan-defines!)
   (set! system-global-syntax-table (make-system-global-syntax-table))
   (set! user-initial-syntax-table
-	(make-syntax-table system-global-syntax-table)))
+	(make-syntax-table system-global-syntax-table))
+  (set! hook/syntax-expression default/syntax-expression))
 
 (define system-global-syntax-table)
 (define user-initial-syntax-table)
@@ -110,27 +111,34 @@ MIT in each case. |#
 	      (*current-keyword* false))
     (syntax-expression expression)))
 
+(define hook/syntax-expression)
+(define (default/syntax-expression expression syntax-table)
+  (cond
+   ((pair? expression)
+    (if (not (list? expression))
+	(error "syntax-expression: not a valid expression" expression))
+    (let ((transform
+	   (syntax-table-ref syntax-table (car expression))))
+      (if transform
+	  (if (primitive-syntaxer? transform)
+	      (transform-apply (primitive-syntaxer/transform transform)
+			       expression)
+	      (let ((result (transform-apply transform expression)))
+		(if (syntax-closure? result)
+		    (syntax-closure/expression result)
+		    (syntax-expression result))))
+	  (make-combination (syntax-expression (car expression))
+			    (syntax-expressions (cdr expression))))))
+   ((symbol? expression)
+    (if (syntax-table-ref syntax-table expression)
+	(error "syntactic keyword referenced as variable"
+	       expression))
+    (make-variable expression))
+   (else
+    expression)))
+
 (define (syntax-expression expression)
-  (cond ((pair? expression)
-	 (if (not (list? expression))
-	     (error "syntax-expression: not a valid expression" expression))
-	 (let ((transform (syntax-table-ref *syntax-table* (car expression))))
-	   (if transform
-	       (if (primitive-syntaxer? transform)
-		   (transform-apply (primitive-syntaxer/transform transform)
-				    expression)
-		   (let ((result (transform-apply transform expression)))
-		     (if (syntax-closure? result)
-			 (syntax-closure/expression result)
-			 (syntax-expression result))))
-	       (make-combination (syntax-expression (car expression))
-				 (syntax-expressions (cdr expression))))))
-	((symbol? expression)
-	 (if (syntax-table-ref *syntax-table* expression)
-	     (error "syntactic keyword referenced as variable" expression))
-	 (make-variable expression))
-	(else
-	 expression)))
+  (hook/syntax-expression expression *syntax-table*))
 
 ;;; Two overlapping kludges here.  This should go away and be replaced
 ;;; by a true syntactic closure mechanism like that described by
