@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/conpar.scm,v 14.17 1990/08/21 04:18:26 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/conpar.scm,v 14.18 1990/08/25 03:08:22 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -336,9 +336,10 @@ MIT in each case. |#
 	     (ltail (stream-tail* stream length)))
 	(and ltail
 	     (return-address? (element-stream/head ltail))
-	     (loop (-1+ paranoia-index)
-		   ltail
-		   (+ offset length))))))
+	     (verify (-1+ paranoia-index)
+		     ltail
+		     (+ offset length))))))
+
 (define (stream-tail* stream n)
   (cond ((or (zero? n) (stream-null? stream))
 	 stream)
