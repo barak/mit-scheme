@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: wttree.scm,v 1.3 1994/01/12 00:18:06 adams Exp $
+$Id: wttree.scm,v 1.4 1994/09/19 20:39:49 adams Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -47,25 +47,24 @@ MIT in each case. |#
   (tree-type
    (conc-name tree-type/)
    (constructor %make-tree-type))
-  key<?
-  alist->tree
-  add
-  insert!
-  delete
-  delete!
-  member?
-  lookup
+  (key<?       #F read-only true)
+  (alist->tree #F read-only true)
+  (add         #F read-only true)
+  (insert!     #F read-only true)
+  (delete      #F read-only true)
+  (delete!     #F read-only true)
+  (member?     #F read-only true)
+  (lookup      #F read-only true)
   ;;;min        ; ?  also delmin, max, delmax, delmin!, delmax!
-  split-lt
-  split-gt
-  union
-  intersection
-  difference
-  subset?
-  rank
+  (split-lt    #F read-only true)
+  (split-gt    #F read-only true)
+  (union       #F read-only true)
+  (intersection #F read-only true)
+  (difference  #F read-only true)
+  (subset?     #F read-only true)
+  (rank        #F read-only true)
 )  
 
-;;;
 ;;;  Tree representation
 ;;;
 ;;;  WT-TREE is a wrapper for trees of nodes
@@ -74,11 +73,11 @@ MIT in each case. |#
   (wt-tree
    (conc-name tree/)
    (constructor %make-wt-tree))
-  type
-  root)
+  (type  #F read-only true)
+  (root  #F read-only false))
 
-;;;
-;;;  Nodes are the real trees - a node is either
+;;;  Nodes are the thing from which the real trees are built.
+
 (define-integrable (make-node k v l r w) (vector w l k r v))
 (define-integrable (node/k node) (vector-ref node 2))
 (define-integrable (node/v node) (vector-ref node 4))
@@ -136,21 +135,21 @@ MIT in each case. |#
 		  (n-join a.k a.v x y1)
 		  (n-join c.k c.v y2 z)))))))
 
-(define-integrable ratio 5)
+(define-integrable wt-tree-ratio 5)
 
 (define (t-join k v l r)
   (define (simple-join) (n-join k v l r))
   (let ((l.n  (node/size l))
 	(r.n  (node/size r)))
     (cond ((fix:< (fix:+ l.n r.n) 2)   (simple-join))
-	  ((fix:> r.n (fix:* ratio l.n))
+	  ((fix:> r.n (fix:* wt-tree-ratio l.n))
 	   ;; right is too big
 	   (let ((r.l.n  (node/size (node/l r)))
 		 (r.r.n  (node/size (node/r r))))
 	     (if (fix:< r.l.n r.r.n)
 		 (single-l k v l r)
 		 (double-l k v l r))))
-	  ((fix:> l.n (fix:* ratio r.n))
+	  ((fix:> l.n (fix:* wt-tree-ratio r.n))
 	   ;; left is too big
 	   (let ((l.l.n  (node/size (node/l l)))
 		 (l.r.n  (node/size (node/r l))))
@@ -242,7 +241,7 @@ MIT in each case. |#
 	    ((key<? k (node/k this))   (loop (node/l this) best))
 	    (else (loop (node/r this) this))))
     (let ((best (loop node #f)))
-      (cond ((null? best)             #f)
+      (cond ((not best)               #f)
 	    ((key<? (node/k best) k)  #f)
 	    (else                     best))))
 
@@ -286,11 +285,11 @@ MIT in each case. |#
 	  (else
 	   (let ((n1  (node/size l))
 		 (n2  (node/size r)))
-	     (cond ((fix:< (fix:* ratio n1) n2)
+	     (cond ((fix:< (fix:* wt-tree-ratio n1) n2)
 		    (with-n-node r
 				 (lambda (k2 v2 l2 r2)
 				   (t-join k2 v2 (node/concat3 k v l l2) r2))))
-		   ((fix:< (fix:* ratio n2) n1)
+		   ((fix:< (fix:* wt-tree-ratio n2) n1)
 		    (with-n-node l
 				 (lambda (k1 v1 l1 r1)
 				   (t-join k1 v1 l1 (node/concat3 k v r1 r)))))
@@ -370,7 +369,7 @@ MIT in each case. |#
 			     (node/subset? r (node/r tree2))))))))))
 
 
-  ;;; Tree interface: stripping of or injecting the tree types
+  ;;; Tree interface: stripping off or injecting the tree types
 
   (define (tree/map-add tree k v)
     (%make-wt-tree (tree/type tree)
@@ -619,3 +618,51 @@ MIT in each case. |#
 ;;;
 ;;;
 ;;;
+
+#|
+
+Test code, using maps from digit strings to the numbers they represent.
+
+(load-option 'wt-tree)
+
+(define (make-map lo hi step)
+  (let loop ((i lo) (map (make-wt-tree string-wt-type)))
+    (if (> i hi)
+	map
+	(loop (+ i step) (wt-tree/add map (number->string i) i)))))
+
+(define t1 (make-map 0 99 2))   ; 0,2,4,...,98
+(define t2 (make-map 1 100 2))  ; 1,3,5,...,99
+(define t3 (make-map 0 100 3))  ; 0,3,6,...,99
+
+(define (wt-tree->alist t)
+  (wt-tree/fold (lambda (k d r) (cons (cons k d) r)) '() t))
+
+(wt-tree->alist t3);
+  => (("0" . 0) ("12" . 12) ("15" . 15) ("18" . 18) ("21" . 21) ("24" . 24) ("27" . 27) ("3" . 3) ("30" . 30) ("33" . 33) ("36" . 36) ("39" . 39) ("42" . 42) ("45" . 45) ("48" . 48) ("51" . 51) ("54" . 54) ("57" . 57) ("6" . 6) ("60" . 60) ("63" . 63) ("66" . 66) ("69" . 69) ("72" . 72) ("75" . 75) ("78" . 78) ("81" . 81) ("84" . 84) ("87" . 87) ("9" . 9) ("90" . 90) ("93" . 93) ("96" . 96) ("99" . 99))
+
+(define (try-all operation trees)
+  (map (lambda (t1)
+	 (map (lambda (t2)
+		(operation t1 t2))
+	      trees))
+       trees))
+
+(try-all (lambda (t1 t2) (wt-tree/size (wt-tree/union t1 t2)))
+	 (list t1 t2 t3))
+  => ((50 100 67) (100 50 67) (67 67 34))
+
+(try-all (lambda (t1 t2) (wt-tree/size (wt-tree/difference t1 t2)))
+	 (list t1 t2 t3))
+  => ((0 50 33) (50 0 33) (17 17 0))
+
+(try-all (lambda (t1 t2) (wt-tree/size (wt-tree/intersection t1 t2)))
+	 (list t1 t2 t3))
+  => ((50 0 17) (0 50 17) (17 17 34))
+
+(try-all (lambda (t1 t2) (wt-tree/set-equal? (wt-tree/difference t1 t2)
+					     (wt-tree/difference t2 t1)))
+	 (list t1 t2 t3))
+  => ((#t #f #f) (#f #t #f) (#f #f #t))
+
+|#
