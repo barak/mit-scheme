@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.206 1997/03/04 06:43:07 cph Exp $
+$Id: edwin.pkg,v 1.207 1997/03/04 06:49:05 cph Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -574,7 +574,6 @@ MIT in each case. |#
   (export (edwin)
 	  compiled-regexp?
 	  compiled-regexp/byte-stream
-	  compiled-regexp/case-fold?
 	  compiled-regexp/translation-table
 	  condition-type:re-compile-pattern
 	  re-compile-char
