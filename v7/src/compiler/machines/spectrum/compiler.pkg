@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/compiler.pkg,v 1.27 1990/01/29 21:30:36 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/compiler.pkg,v 1.28 1990/03/26 23:46:08 jinx Exp $
 $MC68020-Header: comp.pkg,v 1.27 90/01/22 23:45:02 GMT cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
@@ -38,7 +38,7 @@ MIT in each case. |#
 (global-definitions "../runtime/runtim")
 
 (define-package (compiler)
-  (files "machines/spectrum/switch"
+  (files "base/switch"
 	 "base/hashtb"
 	 "base/object"			;tagged object support
 	 "base/enumer"			;enumerations
@@ -90,6 +90,7 @@ MIT in each case. |#
 	  compiler:generate-rtl-files?
 	  compiler:generate-type-checks?
 	  compiler:implicit-self-static?
+	  compiler:noisy?
 	  compiler:open-code-flonum-checks?
 	  compiler:open-code-primitives?
 	  compiler:optimize-environments?
@@ -195,7 +196,9 @@ MIT in each case. |#
 	  show-rtl
 	  write-rtl-instructions)
   (import (runtime pretty-printer)
-	  *pp-primitives-by-name*))
+	  *pp-primitives-by-name*)
+  (import (runtime unparser)
+	  *unparse-uninterned-symbols-by-name?*))
 
 (define-package (compiler pattern-matcher/lookup)
   (files "base/pmlook")
