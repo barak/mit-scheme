@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.8 1991/04/08 22:20:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.9 1991/05/09 03:46:58 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -44,6 +44,7 @@ MIT in each case. |#
   (x-close-all-displays 0)
   (x-close-window 1)
   (x-display-flush 1)
+  (x-display-get-default 3)
   (x-display-process-events 2)
   (x-window-x-size 1)
   (x-window-y-size 1)
@@ -52,7 +53,6 @@ MIT in each case. |#
   (x-window-beep 1)
   (x-window-clear 1)
   (x-window-display 1)
-  (x-window-get-default 3)
   (x-window-set-foreground-color 2)
   (x-window-set-background-color 2)
   (x-window-set-border-color 2)
@@ -188,8 +188,8 @@ MIT in each case. |#
 
 (define (operation/get-default device resource-name class-name)
   (x-graphics-device/process-events! device)
-  (x-window-get-default (x-graphics-device/window device)
-			resource-name class-name))
+  (x-display-get-default (x-graphics-device/display device)
+			 resource-name class-name))
 
 (define (operation/map-window device)
   (x-graphics-device/process-events! device)

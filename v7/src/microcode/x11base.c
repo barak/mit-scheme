@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.20 1991/04/26 18:30:09 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.21 1991/05/09 03:49:05 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -964,13 +964,13 @@ DEFINE_PRIMITIVE ("X-DISPLAY-SYNC", Prim_x_display_sync, 2, 2, 0)
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("X-WINDOW-GET-DEFAULT", Prim_x_window_get_default, 3, 3, 0)
+DEFINE_PRIMITIVE ("X-DISPLAY-GET-DEFAULT", Prim_x_display_get_default, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
   {
     char * result =
       (XGetDefault
-       ((XW_DISPLAY (x_window_arg (1))), (STRING_ARG (2)), (STRING_ARG (3))));
+       ((XD_DISPLAY (x_display_arg (1))), (STRING_ARG (2)), (STRING_ARG (3))));
     PRIMITIVE_RETURN
       ((result == 0) ? SHARP_F : (char_pointer_to_string (result)));
   }
