@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rgxcmp.scm,v 1.114 2001/03/21 05:42:20 cph Exp $
+;;; $Id: rgxcmp.scm,v 1.115 2001/06/15 21:20:48 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -248,13 +248,13 @@
 
 (define (re-compile-char-set pattern negate?)
   (let ((length (string-length pattern))
-	(char-set (string-allocate 256)))
+	(table (string-allocate 256)))
     (let ((kernel
 	   (lambda (start background foreground)
 	     (let ((adjoin!
 		    (lambda (ascii)
-		      (vector-8b-set! char-set ascii foreground))))
-	       (vector-8b-fill! char-set 0 256 background)
+		      (vector-8b-set! table ascii foreground))))
+	       (vector-8b-fill! table 0 256 background)
 	       (let loop
 		   ((pattern (substring->list pattern start length)))
 		 (if (pair? pattern)
@@ -267,7 +267,7 @@
 				 ((index (char->ascii (car pattern))))
 			       (if (fix:<= index end)
 				   (begin
-				     (vector-8b-set! char-set
+				     (vector-8b-set! table
 						     index
 						     foreground)
 				     (loop (fix:+ index 1))))))
@@ -283,7 +283,7 @@
 	  (if negate?
 	      (kernel 0 1 0)
 	      (kernel 0 0 1))))
-    char-set))
+    (make-char-set table)))
 
 ;;;; Translation Tables
 

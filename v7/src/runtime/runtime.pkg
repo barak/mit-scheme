@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.369 2001/06/15 20:38:40 cph Exp $
+$Id: runtime.pkg,v 14.370 2001/06/15 21:20:53 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -347,6 +347,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  string->char-set)
   (export (runtime string)
 	  char-set-table)
+  (export (runtime regular-expression-compiler)
+	  make-char-set)
   (initialization (initialize-package!)))
 
 (define-package (runtime compiler-info)
