@@ -1,9 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules1.scm,v 1.15 1992/02/28 20:23:57 jinx Exp $
-$MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
+$Id: rules1.scm,v 1.16 1993/03/03 16:37:54 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -342,13 +341,9 @@ MIT in each case. |#
 
 (define (load-char-into-register type source target)
   (let ((target (target-register-reference target)))
-    (cond #|
-          ;; According to i486 appendix on optimization, the following
-	  ;; instruction is no faster, and typically slower.
-	  ;; It takes one less byte, however.
-          ((zero? type)
+    (cond ((zero? type)
+	   ;; No faster, but smaller
 	   (LAP (MOVZX ,target ,source)))
-	  |#
 	  (else
 	   (LAP ,@(load-non-pointer target type 0)
 		(MOV B ,target ,source))))))
