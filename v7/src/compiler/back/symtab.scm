@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/symtab.scm,v 1.39 1987/03/19 00:50:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/symtab.scm,v 1.40 1987/05/28 16:46:45 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -38,6 +38,9 @@ MIT in each case. |#
 
 (define (make-symbol-table)
   (cons "Symbol Table" '()))
+
+(define-integrable (symbol-table-bindings table)
+  (cdr table))
 
 (define (symbol-table-define! table key value)
   (let ((entry (assq key (cdr table))))
