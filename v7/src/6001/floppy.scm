@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: floppy.scm,v 1.15 1993/11/02 19:11:49 cph Exp $
+$Id: floppy.scm,v 1.16 1995/02/24 00:37:42 cph Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -32,41 +32,13 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; 6.001: Floppy Commands
+;;;; 6.001: HP-UX Floppy Commands
 
 (declare (usual-integrations))
 
-;;;; Login and Logout
-
-(define (standard-login-initialization)
+(define (run-floppy-login-loop)
   (set! floppy-contents-loaded? false)
-  (let ((homedir (user-homedir-pathname)))
-    (let ((workdir
-	   (let ((workdir (merge-pathnames "work/" homedir)))
-	     (if (file-directory? workdir)
-		 workdir
-		 homedir))))
-      (set! working-directory (->namestring workdir))
-      (set-default-directory workdir)
-      (set-working-directory-pathname! workdir))
-    (standard-configuration 'login login-loop)
-    (let ((buffer (temporary-buffer "*motd*")))
-      (call-with-current-continuation
-       (lambda (k)
-	 (bind-condition-handler (list condition-type:file-error)
-	     (lambda (condition)
-	       condition
-	       (kill-buffer buffer)
-	       (k unspecific))
-	   (lambda ()
-	     (%insert-file (buffer-start buffer)
-			   (merge-pathnames "motd" homedir)
-			   false)))
-	 (set-buffer-point! buffer (buffer-start buffer))
-	 (select-buffer buffer)))))
-  (message "Login completed."))
-
-(define floppy-contents-loaded?)
+  (standard-configuration 'login login-loop))
 
 (define (login-loop)
   (buffer-reset! (current-buffer))
@@ -97,6 +69,7 @@ N	Practice login (without floppy).   Select this option if you
 	ABLE TO SAVE YOUR WORK!
 
 Q	Quit.  Select this option if you do not want to log in.")
+  (show-dialog)
   (let loop ()
     (let ((char
 	   (prompt-for-char
@@ -123,8 +96,9 @@ the instrument room.")
       "
 ----------------------------------------------------------------------
 Please select one of your floppy disks, label it as your \"backup\"
-disk, and insert it into the drive.  When you have done this, type any
-character to continue.")
+disk, and insert it into the drive. When you have done this,
+type any character to continue.")
+     (show-dialog)
      (wait-for-user)
      (if (initialize-floppy)
 	 (begin
@@ -134,8 +108,19 @@ character to continue.")
 Please eject your backup disk from the floppy drive.
 
 Now select your other disk, label it as your \"primary\" disk, and
-insert it into the floppy drive.  When you have done this, type any
-character to continue.")
+insert it into the floppy drive.")
+	   (append-string
+	    (case microcode-id/operating-system
+	      ((DOS NT)
+	       "
+Again, use the File Manager to format the floppy.")
+	      ((OS/2)
+	       "
+Again, use the Drive object to format the floppy.")))
+	   (append-string
+	    "
+When you have done this, type any character to continue.")
+	   (show-dialog)
 	   (wait-for-user)
 	   (if (initialize-floppy)
 	       (begin
@@ -144,6 +129,7 @@ character to continue.")
 ----------------------------------------------------------------------
 Your disks are now initialized.
 Type any character to finish logging in.")
+		 (show-dialog)
 		 (wait-for-user))
 	       (login-loop)))
 	 (login-loop)))))
@@ -163,6 +149,7 @@ computer.  You should make sure that your disk is in the floppy drive.")
 	"
 ----------------------------------------------------------------------
 ")
+       (show-dialog)
        (call-with-current-continuation
 	(lambda (k)
 	  (handle-floppy-errors
@@ -197,52 +184,115 @@ If you have chosen this login option by mistake, please type the
 letter N, which will return you to the login loop.
 
 Otherwise, type Y to continue with the initialization process.")
+  (show-dialog)
   (if (prompt-for-confirmation? "Continue with login")
       (thunk)
       (login-loop)))
 
-(define-command logout
-  "Logout from the 6.001 Scheme system."
-  ()
-  (lambda ()
-    (standard-configuration 'logout
-      (lambda ()
-	(fluid-let ((paranoid-exit? false))
-	  (save-buffers-and-exit false "Scheme"
-	    (lambda ()
-	      (let ((abort
-		     (lambda ()
-		       (append-string
-			"
+(define (run-floppy-logout)
+  (standard-configuration 'logout
+    (lambda ()
+      (fluid-let ((paranoid-exit? false))
+	(save-buffers-and-exit false "Scheme"
+	  (lambda ()
+	    (let ((abort
+		   (lambda ()
+		     (append-string
+		      "
 If you want to log out without saving your files, answer \"yes\" to
 the question below.
 
 Answer \"no\" if you want to return to the editor without logging out.")
-		       (if (prompt-for-yes-or-no?
-			    "Log out without saving files")
-			   (exit-scheme)
-			   (abort-current-command)))))
-		(if (not floppy-contents-loaded?)
-		    (begin
-		      (append-string "You logged in without a floppy disk.\n")
-		      (abort)))
-		(let loop ()
-		  (call-with-current-continuation
-		   (lambda (k)
-		     (handle-floppy-errors
-		      (lambda ()
-			(append-string
-			 "
+		     (show-dialog)
+		     (if (prompt-for-yes-or-no?
+			  "Log out without saving files")
+			 (exit-scheme)
+			 (abort-current-command)))))
+	      (if (not floppy-contents-loaded?)
+		  (begin
+		    (append-string
+		     "You logged in without a floppy disk.\n")
+		    (abort)))
+	      (let loop ()
+		(call-with-current-continuation
+		 (lambda (k)
+		   (handle-floppy-errors
+		    (lambda ()
+		      (append-string
+		       "
 ----------------------------------------------------------------------
 ")
-			(within-continuation k loop))
-		      (lambda ()
-			(append-string
-			 "
+		      (show-dialog)
+		      (within-continuation k loop))
+		    (lambda ()
+		      (append-string
+		       "
 ----------------------------------------------------------------------")
-			(abort))
-		      checkpoint-floppy)))))
-	      (exit-scheme))))))))
+		      (abort))
+		    checkpoint-floppy)))))
+	    (exit-scheme)))))))
+
+(set-command-procedure! (ref-command-object logout) run-floppy-logout)
+
+;; Disable key bindings that exit the editor.
+;; M-x logout is all the students should need.
+(define-key 'fundamental '(#\c-x #\c-c) false)
+(define-key 'fundamental '(#\c-x #\c-z) false)
+(define-key 'fundamental '(#\c-x #\c) false)
+(define-key 'fundamental '(#\c-x #\z) false)
+
+(define (standard-configuration command thunk)
+  (with-editor-interrupts-disabled
+   (lambda ()
+     (let loop ()
+       (call-with-current-continuation
+	(lambda (k)
+	  (with-saved-configuration
+	   (lambda ()
+	     (delete-other-windows (current-window))
+	     (let ((buffer
+		    (temporary-buffer
+		     (string-append
+		      " *"
+		      (symbol->string command)
+		      "-dialog*"))))
+	       (select-buffer buffer)
+	       (handle-floppy-errors (lambda () (within-continuation k loop))
+				     default-floppy-abort-handler
+				     thunk))))))))))
+
+(define (with-saved-configuration thunk)
+  (let ((screen (selected-screen)))
+    (let ((configuration (screen-window-configuration screen)))
+      (fluid-let ((restore-saved-continuation? true))
+	(dynamic-wind
+	 (lambda () unspecific)
+	 thunk
+	 (lambda ()
+	   (if restore-saved-continuation?
+	       (set-screen-window-configuration! screen configuration))))))))
+
+(define (dont-restore-saved-configuration)
+  (set! restore-saved-continuation? false)
+  unspecific)
+
+(define restore-saved-continuation?)
+
+(define (append-string string)
+  (insert-string string (buffer-end (current-buffer))))
+
+(define (show-dialog)
+  (let ((window (selected-window)))
+    (let ((buffer (window-buffer window)))
+      (set-window-point! window (buffer-start buffer))
+      (if (not (window-mark-visible? window (buffer-end buffer)))
+	  (set-window-point! window (buffer-end buffer)))))
+  (update-screens! false)
+  (sit-for 0))
+
+(define (wait-for-user)
+  ;; This should ignore input events (like focus change).
+  (prompt-for-char "Type any character to continue"))
 
 ;;;; Initialize Floppy
 
@@ -408,6 +458,8 @@ then answer \"yes\" to the prompt below.")
   (set! floppy-contents-loaded? true)
   (append-string "\n\nFloppy contents loaded.")
   (wait-for-user))
+
+(define floppy-contents-loaded?)
 
 (define-command checkpoint-floppy
   "Update a floppy disk to contain the same files as the working directory."
@@ -480,7 +532,7 @@ otherwise answer \"no\" to leave these files on your floppy.
 		(make-file-record
 		 (file-namestring pathname)
 		 (* (quotient (file-modification-time pathname) 60) 60)))
-	      (list-transform-negative (directory-read working-directory)
+	      (list-transform-negative (directory-read student-work-directory)
 		file-directory?)))
 	(valid-dos-record?
 	 (lambda (record)
@@ -681,9 +733,8 @@ M-x rename-file, or use the `r' command in Dired.")
   "/dev/rfd:/")
 
 (define (file-record/unix-name record)
-  (string-append working-directory (file-record/name record)))
-
-(define working-directory)
+  (->namestring
+   (merge-pathnames (file-record/name record) student-work-directory)))
 
 (define (file-record/name=? x y)
   (string=? (file-record/name x) (file-record/name y)))
@@ -858,52 +909,179 @@ M-x rename-file, or use the `r' command in Dired.")
 			    both
 			    set*-only)))))))))
 
-(define (standard-configuration command thunk)
-  (with-editor-interrupts-disabled
-   (lambda ()
-     (let loop ()
-       (call-with-current-continuation
-	(lambda (k)
-	  (with-saved-configuration
-	   (lambda ()
-	     (delete-other-windows (current-window))
-	     (let ((buffer
-		    (temporary-buffer
-		     (string-append
-		      " *"
-		      (symbol->string command)
-		      "-dialog*"))))
-	       (select-buffer buffer)
-	       (handle-floppy-errors
-		(lambda () (within-continuation k loop))
-		default-floppy-abort-handler
-		thunk))))))))))
-
-(define (with-saved-configuration thunk)
-  (let ((screen (selected-screen)))
-    (let ((configuration (screen-window-configuration screen)))
-      (fluid-let ((restore-saved-continuation? true))
-	(dynamic-wind
-	 (lambda () unspecific)
-	 thunk
-	 (lambda ()
-	   (if restore-saved-continuation?
-	       (set-screen-window-configuration! screen configuration))))))))
-
-(define (dont-restore-saved-configuration)
-  (set! restore-saved-continuation? false)
-  unspecific)
-
-(define restore-saved-continuation?)
-
-(define (append-string string)
-  (insert-string string)
-  (update-screens! false)
-  (sit-for 0))
-
 (define (buffer->string buffer)
   (extract-string (buffer-start buffer) (buffer-end buffer)))
+
+;;;; DOS Filenames
 
-(define (wait-for-user)
-  ;; This should ignore input events (like focus change).
-  (prompt-for-char "Type any character to continue"))
+(define valid-dos-filename?
+  (let ((invalid-chars
+	 (char-set-invert
+	  (char-set-union
+	   (char-set-union char-set:lower-case char-set:numeric)
+	   (char-set #\_ #\^ #\$ #\! #\# #\% #\& #\-
+		     #\{ #\} #\( #\) #\@ #\' #\`)))))
+    (lambda (filename)
+      (let ((end (string-length filename))
+	    (valid-name?
+	     (lambda (end)
+	       (and (<= 1 end 8)
+		    (not (substring-find-next-char-in-set filename 0 end
+							  invalid-chars))
+		    (not
+		     (there-exists? '("clock$" "con" "aux" "com1" "com2"
+					       "com3" "com4" "lpt1" "lpt2"
+					       "lpt3" "nul" "prn")
+		       (lambda (name)
+			 (substring=? filename 0 end
+				      name 0 (string-length name)))))))))
+	(let ((dot (string-find-next-char filename #\.)))
+	  (if (not dot)
+	      (valid-name? end)
+	      (and (valid-name? dot)
+		   (<= 2 (- end dot) 4)
+		   (not (substring-find-next-char-in-set filename (+ dot 1) end
+							 invalid-chars)))))))))
+
+
+(define dos-filename-description
+  "DOS filenames are between 1 and 8 characters long, inclusive.  They
+may optionally be followed by a period and a suffix of 1 to 3
+characters.
+
+In other words, a valid filename consists of:
+
+* 1 to 8 characters, OR
+
+* 1 to 8 characters, followed by a period, followed by 1 to 3
+  characters.
+
+The characters that may be used in a filename (or a suffix) are:
+
+* The lower case letters: a b c ... z
+
+* The digits: 0 1 2 ... 9
+
+* These special characters: ' ` ! @ # $ % ^ & ( ) - _ { }
+
+The period (.) may appear exactly once as a separator between the
+filename and the suffix.
+
+The following filenames are reserved and may not be used:
+
+	aux	clock$	com1	com2	com3	com4
+	con	lpt1	lpt2	lpt3	nul	prn")
+
+;;;; Overrides of Editor Procedures
+
+(set! os/auto-save-pathname
+      (let ((usual os/auto-save-pathname))
+	(lambda (pathname buffer)
+	  (if pathname
+	      (if (student-directory? pathname)
+		  (pathname-new-type pathname "asv")
+		  (usual pathname buffer))
+	      (let ((directory (buffer-default-directory buffer)))
+		(if (student-directory? directory)
+		    (merge-pathnames
+		     (let ((name
+			    (string-append
+			     (let ((name (buffer-name buffer)))
+			       (let ((index (string-find-next-char name #\.)))
+				 (if (not index)
+				     (if (> (string-length name) 8)
+					 (substring name 0 8)
+					 name)
+				     (substring name 0 (min 8 index)))))
+			     ".asv")))
+		       (if (valid-dos-filename? name)
+			   name
+			   "default.asv"))
+		     directory)
+		    (usual pathname buffer)))))))
+
+(set! os/precious-backup-pathname
+      (let ((usual os/precious-backup-pathname))
+	(lambda (pathname)
+	  (if (student-directory? pathname)
+	      (pathname-new-type pathname "bak")
+	      (usual pathname)))))
+
+(set! os/default-backup-filename
+      (lambda ()
+	(->namestring (merge-pathnames "default.bak" student-work-directory))))
+
+(set! os/buffer-backup-pathname
+      (let ((usual os/buffer-backup-pathname))
+	(lambda (truename)
+	  (if (student-directory? truename)
+	      (values (pathname-new-type truename "bak") '())
+	      (usual truename)))))
+
+;;; These next two depend on the fact that they are only invoked when
+;;; the current buffer is the Dired buffer that is being tested.
+
+(set! os/backup-filename?
+      (let ((usual os/backup-filename?))
+	(lambda (filename)
+	  (if (student-directory? (dired-buffer-directory (current-buffer)))
+	      (equal? "bak" (pathname-type filename))
+	      (usual filename)))))
+
+(set! os/auto-save-filename?
+      (let ((usual os/auto-save-filename?))
+	(lambda (filename)
+	  (if (student-directory? (dired-buffer-directory (current-buffer)))
+	      (equal? "asv" (pathname-type filename))
+	      (usual filename)))))
+
+(define (dired-buffer-directory buffer)
+  ;; Similar to the definition in "dired.scm".  That definition should
+  ;; be exported in order to eliminate this redundant definition.
+  (or (buffer-get buffer 'DIRED-DIRECTORY)
+      (buffer-default-directory buffer)))
+
+(set! prompt-for-pathname*
+      (let ((usual prompt-for-pathname*))
+	(lambda (prompt directory verify-final-value? require-match?)
+	  (let ((pathname
+		 (usual prompt directory verify-final-value? require-match?)))
+	    (if (or (not (student-directory? pathname))
+		    (valid-dos-filename? (file-namestring pathname))
+		    (file-exists? pathname)
+		    (with-saved-configuration
+		     (lambda ()
+		       (delete-other-windows (current-window))
+		       (select-buffer
+			(temporary-buffer " *invalid-filename-dialog*"))
+		       (append-string
+			"The file name you have specified,\n\n\t")
+		       (append-string (file-namestring pathname))
+		       (append-string
+			"
+
+is not a valid name for a DOS disk.  If you create a file with this
+name, you will not be able to save it to your floppy disk.
+
+If you want to use this name anyway, answer \"yes\" to the question
+below.  Otherwise, answer \"no\" to use a different name.
+----------------------------------------------------------------------
+")
+		       (append-string dos-filename-description)
+		       (prompt-for-yes-or-no? "Use this non-DOS name"))))
+		pathname
+		(prompt-for-pathname* prompt directory
+				      verify-final-value? require-match?))))))
+
+(define (student-directory? pathname)
+  (let ((pathname (->pathname pathname))
+	(prefix student-work-directory))
+    (and (host=? (pathname-host pathname) (pathname-host prefix))
+	 (equal? (pathname-device pathname) (pathname-device prefix))
+	 (let loop
+	     ((d1 (pathname-directory pathname))
+	      (d2 (pathname-directory prefix)))
+	   (or (null? d2)
+	       (and (not (null? d1))
+		    (equal? (car d1) (car d2))
+		    (loop (cdr d1) (cdr d2))))))))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: edextra.scm,v 1.19 1993/11/02 23:33:32 cph Exp $
+$Id: edextra.scm,v 1.20 1995/02/24 00:37:35 cph Exp $
 
-Copyright (c) 1992-93 Massachusetts Institute of Technology
+Copyright (c) 1992-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,40 +36,74 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(load-edwin-library 'PRINT)
+(define student-root-directory)
+(define student-work-directory)
+(define pset-directory)
+(define pset-list-file)
 
-#|
-(define-command print-graphics
-  "Print out the last displayed picture."
-  '()
+(set! standard-editor-initialization
+      (let ((usual standard-editor-initialization))
+	(lambda ()
+	  (usual)
+	  (standard-login-initialization))))
+
+(define (standard-login-initialization)
+  (if (not (file-directory? student-root-directory))
+      (set! student-root-directory (user-homedir-pathname)))
+  (set! student-work-directory
+	(merge-pathnames "work/" student-root-directory))
+  (if (not (file-directory? student-work-directory))
+      (set! student-work-directory student-root-directory))
+  (set-default-directory student-work-directory)
+  (set-working-directory-pathname! student-work-directory)
+  (let ((hairy-floppy-stuff? (eq? 'UNIX microcode-id/operating-system)))
+    (if hairy-floppy-stuff?
+	(run-floppy-login-loop))
+    (let ((pathname (merge-pathnames "motd" student-root-directory)))
+      (if (file-exists? pathname)
+	  (let ((buffer (temporary-buffer "*motd*")))
+	    (call-with-current-continuation
+	     (lambda (k)
+	       (bind-condition-handler (list condition-type:file-error)
+		   (lambda (condition)
+		     condition
+		     (kill-buffer buffer)
+		     (k unspecific))
+		 (lambda ()
+		   (%insert-file (buffer-start buffer) pathname false)))
+	       (set-buffer-point! buffer (buffer-start buffer))
+	       (select-buffer buffer))))))
+    (if hairy-floppy-stuff?
+	(message "Login completed."))))
+
+(define-command logout
+  "Logout from the 6.001 Scheme system."
+  ()
   (lambda ()
-    (call-with-last-picture-file
-     (lambda (filename)
-       (if filename
-	   (begin
-	     (message "Spooling...")
-	     (shell-command
-	      false false false false
-	      (string-append "/users/u6001/bin/print-pgm.sh "
-			     filename
-			     " "
-			     (print/assemble-switches "Scheme Picture" '())))
-	     (append-message "done"))
-	   (editor-error "No picture to print!"))))))
-
-(environment-link-name '(edwin)
-		       '(student pictures)
-		       'call-with-last-picture-file)
-|#
-
+    (fluid-let ((paranoid-exit? false))
+      ((ref-command save-buffers-kill-scheme) #f))))
+
 (define (restore-focus-to-editor)
-  (let ((screen (selected-screen)))
-    (if (xterm-screen/grab-focus! screen)
-	(xterm-screen/flush! screen))))
+  (let ((name (graphics-type-name (graphics-type #f))))
+    (case name
+      ((X)
+       (let ((screen (selected-screen)))
+	 (if (xterm-screen/grab-focus! screen)
+	     (xterm-screen/flush! screen))))
+      ((WIN32)
+       ((access set-focus (->environment '(win32)))
+	((access get-handle (->environment '(win32))) 1)))
+      ((OS/2)
+       (os2-screen/activate! (selected-screen)))
+      (else
+       (error "Unsupported graphics type:" name)))))
 
 (environment-link-name '(student pictures)
 		       '(edwin)
 		       'restore-focus-to-editor)
+
+(if (eq? 'UNIX microcode-id/operating-system)
+    (load-edwin-library 'PRINT))
 
 (define-command print-graphics
   "Print out window with graphics."
@@ -86,8 +120,10 @@ MIT in each case. |#
   (message "Spooling...")
   (shell-command
    false false false false
-   (string-append "/users/u6001/bin/print-given-x-window "
-		  "0x"
+   (string-append (->namestring
+		   (merge-pathnames "bin/print-given-x-window"
+				    student-root-directory))
+		  " 0x"
 		  (number->string x-window-id 16)
 		  " "
 		  (print/assemble-switches "Scheme Picture" '())))
@@ -97,16 +133,17 @@ MIT in each case. |#
   (message "Click desired window...")
   (shell-command
    false false false false
-   (string-append "/users/u6001/bin/print-pointed-x-window "
+   (string-append (->namestring
+		   (merge-pathnames "bin/print-pointed-x-window"
+				    student-root-directory))
+		  " "
 		  (print/assemble-switches "Scheme Picture" '())))
   (append-message "done"))
-
 
 #|
 ;;; If using pointer (mouse).
 
 xwd | /usr/local/pbmbin/xwdtopnm | /usr/local/pbmbin/ppmtopgm | /usr/local/pbmbin/pnmscale 4 | /usr/local/pbmbin/pgmtopbm -cluster4 | /usr/local/pbmbin/pbmtolj -resolution 300 | lpr -h
-
 
 ;;; If using *** = x-graphics/window-id
 
@@ -118,11 +155,6 @@ Now, there is formatting stuff to be considered here, in print-pgm.sh.
 ;;;; EDWIN Command "Load Problem Set"
 
 ;;; Wired-in pathnames
-
-;;; We look in the "psn" subdir for problem set n
-(define pset-dir "/users/u6001/psets/")
-(define pset-list-file (merge-pathnames "probsets.scm" pset-dir))
-(define student-dir "/users/u6001/work/")
 
 ;;; The structure "problem-sets" must be loaded from pset-list-file whenever
 ;;; the set of available problem sets changes, or when the default
@@ -224,7 +256,8 @@ Now, there is formatting stuff to be considered here, in print-pgm.sh.
 			    ps
 			    " installed; ask a TA for help.")))
 	   (groups (ps-groups ps error-handler))
-	   (pset-path (merge-pathnames (string-append "ps" ps "/") pset-dir)))
+	   (pset-path
+	    (merge-pathnames (string-append "ps" ps "/") pset-directory)))
       (if (not (files-all-exist? (groups/all-files groups) pset-path))
 	  (error-handler))
       (for-each (lambda (file)
@@ -244,7 +277,7 @@ Now, there is formatting stuff to be considered here, in print-pgm.sh.
 		    (find-file-noselect filename #t)))
 		(groups/files-to-load&reference groups))
       (for-each (lambda (file)
-		  (load-ps-copy-file file pset-path student-dir))
+		  (load-ps-copy-file file pset-path student-work-directory))
 		(groups/files-to-copy groups)))))
 
 (define (load-quietly pathname environment)
@@ -333,225 +366,51 @@ option the file from the problem set will not be installed.
     (set-visited-pathname buffer to-file)
     (write-buffer buffer)))
 
-;;;; DOS Filenames
-
-(define valid-dos-filename?
-  (let ((invalid-chars
-	 (char-set-invert
-	  (char-set-union
-	   (char-set-union char-set:lower-case char-set:numeric)
-	   (char-set #\_ #\^ #\$ #\! #\# #\% #\& #\-
-		     #\{ #\} #\( #\) #\@ #\' #\`)))))
-    (lambda (filename)
-      (let ((end (string-length filename))
-	    (valid-name?
-	     (lambda (end)
-	       (and (<= 1 end 8)
-		    (not (substring-find-next-char-in-set filename 0 end
-							  invalid-chars))
-		    (not
-		     (there-exists? '("clock$" "con" "aux" "com1" "com2"
-					       "com3" "com4" "lpt1" "lpt2"
-					       "lpt3" "nul" "prn")
-		       (lambda (name)
-			 (substring=? filename 0 end
-				      name 0 (string-length name)))))))))
-	(let ((dot (string-find-next-char filename #\.)))
-	  (if (not dot)
-	      (valid-name? end)
-	      (and (valid-name? dot)
-		   (<= 2 (- end dot) 4)
-		   (not (substring-find-next-char-in-set filename (+ dot 1) end
-							 invalid-chars)))))))))
-
-
-(define dos-filename-description
-  "DOS filenames are between 1 and 8 characters long, inclusive.  They
-may optionally be followed by a period and a suffix of 1 to 3
-characters.
-
-In other words, a valid filename consists of:
-
-* 1 to 8 characters, OR
-
-* 1 to 8 characters, followed by a period, followed by 1 to 3
-  characters.
-
-The characters that may be used in a filename (or a suffix) are:
-
-* The lower case letters: a b c ... z
-
-* The digits: 0 1 2 ... 9
-
-* These special characters: ' ` ! @ # $ % ^ & ( ) - _ { }
-
-The period (.) may appear exactly once as a separator between the
-filename and the suffix.
-
-The following filenames are reserved and may not be used:
-
-	aux	clock$	com1	com2	com3	com4
-	con	lpt1	lpt2	lpt3	nul	prn")
-
-;;;; Overrides of Editor Procedures
-
-(set! os/auto-save-pathname
-      (let ((usual os/auto-save-pathname))
-	(lambda (pathname buffer)
-	  (if pathname
-	      (if (student-directory? pathname)
-		  (pathname-new-type pathname "asv")
-		  (usual pathname buffer))
-	      (let ((directory (buffer-default-directory buffer)))
-		(if (student-directory? directory)
-		    (merge-pathnames
-		     (let ((name
-			    (string-append
-			     (let ((name (buffer-name buffer)))
-			       (let ((index (string-find-next-char name #\.)))
-				 (if (not index)
-				     (if (> (string-length name) 8)
-					 (substring name 0 8)
-					 name)
-				     (substring name 0 (min 8 index)))))
-			     ".asv")))
-		       (if (valid-dos-filename? name)
-			   name
-			   "default.asv"))
-		     directory)
-		    (usual pathname buffer)))))))
-
-(set! os/precious-backup-pathname
-      (let ((usual os/precious-backup-pathname))
-	(lambda (pathname)
-	  (if (student-directory? pathname)
-	      (pathname-new-type pathname "bak")
-	      (usual pathname)))))
-
-(set! os/default-backup-filename
-      (lambda () (string-append working-directory "default.bak")))
-
-(set! os/buffer-backup-pathname
-      (let ((usual os/buffer-backup-pathname))
-	(lambda (truename)
-	  (if (student-directory? truename)
-	      (values (pathname-new-type truename "bak") '())
-	      (usual truename)))))
-
-;;; These next two depend on the fact that they are only invoked when
-;;; the current buffer is the Dired buffer that is being tested.
-
-(set! os/backup-filename?
-      (let ((usual os/backup-filename?))
-	(lambda (filename)
-	  (if (student-directory? (dired-buffer-directory (current-buffer)))
-	      (equal? "bak" (pathname-type filename))
-	      (usual filename)))))
-
-(set! os/auto-save-filename?
-      (let ((usual os/auto-save-filename?))
-	(lambda (filename)
-	  (if (student-directory? (dired-buffer-directory (current-buffer)))
-	      (equal? "asv" (pathname-type filename))
-	      (usual filename)))))
-
-(set! default-homedir-pathname
-      (lambda () (->pathname student-dir)))
-
-(define (dired-buffer-directory buffer)
-  ;; Similar to the definition in "dired.scm".  That definition should
-  ;; be exported in order to eliminate this redundant definition.
-  (or (buffer-get buffer 'DIRED-DIRECTORY)
-      (buffer-default-directory buffer)))
-
-(set! standard-editor-initialization
-      (let ((usual standard-editor-initialization))
-	(lambda ()
-	  (usual)
-	  (standard-login-initialization))))
-
-(set! prompt-for-pathname*
-      (let ((usual prompt-for-pathname*))
-	(lambda (prompt directory verify-final-value? require-match?)
-	  (let ((pathname
-		 (usual prompt directory verify-final-value? require-match?)))
-	    (if (or (not (student-directory? pathname))
-		    (valid-dos-filename? (file-namestring pathname))
-		    (file-exists? pathname)
-		    (with-saved-configuration
-		     (lambda ()
-		       (delete-other-windows (current-window))
-		       (select-buffer
-			(temporary-buffer " *invalid-filename-dialog*"))
-		       (append-string
-			"The file name you have specified,\n\n\t")
-		       (append-string (file-namestring pathname))
-		       (append-string
-			"
-
-is not a valid name for a DOS disk.  If you create a file with this
-name, you will not be able to save it to your floppy disk.
-
-If you want to use this name anyway, answer \"yes\" to the question
-below.  Otherwise, answer \"no\" to use a different name.
-----------------------------------------------------------------------
-")
-		       (append-string dos-filename-description)
-		       (prompt-for-yes-or-no? "Use this non-DOS name"))))
-		pathname
-		(prompt-for-pathname* prompt directory
-				      verify-final-value? require-match?))))))
-
-(define (student-directory? pathname)
-  (string-prefix? working-directory (->namestring pathname)))
-
 ;;;; Customization
+
+(set! default-homedir-pathname (lambda () student-work-directory))
 
 (set! editor-can-exit? false)
 (set! scheme-can-quit? false)
 (set! paranoid-exit? true)
-(set! x-screen-auto-raise true)
+(if (eq? 'X (graphics-type-name (graphics-type #f)))
+    (set! x-screen-auto-raise true))
 
 (set-variable! enable-transcript-buffer true)
 (set-variable! evaluate-in-inferior-repl true)
 (set-variable! repl-error-decision true)
 (set-variable! version-control true)
 (set-variable! trim-versions-without-asking true)
-(set-variable! enable-compressed-files false)
-(set-variable! enable-encrypted-files false)
+(let ((variable-bound?
+       (lambda (name)
+	 (string-table-get editor-variables (symbol->string name)))))
+  (if (variable-bound? 'enable-compressed-files)
+      (set-variable! enable-compressed-files false))
+  (if (variable-bound? 'enable-encrypted-files)
+      (set-variable! enable-encrypted-files false)))
 
-(set-variable! completion-ignored-extensions
-	       (append '(".bci" ".bif" ".bin" ".com" ".ext")
-		       (ref-variable completion-ignored-extensions)))
-
-(set-variable!
- mail-header-function
- (let ((default-reply-to false))
-   (lambda (point)
-     (let ((reply-to
-	    (prompt-for-string "Please enter an email address for replies"
-			       default-reply-to
-			       'INSERTED-DEFAULT)))
-       (if (not (string-null? reply-to))
-	   (begin
-	     (set! default-reply-to reply-to)
-	     (insert-string "From: " point)
-	     (insert-string reply-to point)
-	     (insert-newline point)
-	     (insert-string "Reply-to: " point)
-	     (insert-string reply-to point)
-	     (insert-newline point)))))))
+(if (eq? 'UNIX microcode-id/operating-system)
+    (set-variable!
+     mail-header-function
+     (let ((default-reply-to false))
+       (lambda (point)
+	 (let ((reply-to
+		(prompt-for-string "Please enter an email address for replies"
+				   default-reply-to
+				   'INSERTED-DEFAULT)))
+	   (if (not (string-null? reply-to))
+	       (begin
+		 (set! default-reply-to reply-to)
+		 (insert-string "From: " point)
+		 (insert-string reply-to point)
+		 (insert-newline point)
+		 (insert-string "Reply-to: " point)
+		 (insert-string reply-to point)
+		 (insert-newline point))))))))
 
 (set-variable! select-buffer-not-found-hooks
 	       (cons (lambda (name)
-		       (find-file-noselect (merge-pathnames name
-							    working-directory)
-					   true))
+		       (find-file-noselect
+			(merge-pathnames name student-work-directory)
+			true))
 		     (ref-variable select-buffer-not-found-hooks)))
-
-;; Disable key bindings that exit the editor.
-;; M-x logout is all the students should need.
-(define-key 'fundamental '(#\c-x #\c-c) false)
-(define-key 'fundamental '(#\c-x #\c-z) false)
-(define-key 'fundamental '(#\c-x #\c) false)
-(define-key 'fundamental '(#\c-x #\z) false)

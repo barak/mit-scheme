@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 15.21 1993/08/12 07:01:10 cph Exp $
+$Id: make.scm,v 15.22 1995/02/24 00:37:51 cph Exp $
 
-Copyright (c) 1991-93 Massachusetts Institute of Technology
+Copyright (c) 1991-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,7 +37,10 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (package/system-loader "6001" '() 'QUERY)
-(load '("edextra" "floppy") (->environment '(edwin)))
+(let ((edwin (->environment '(edwin))))
+  (load "edextra" edwin)
+  (if (eq? 'UNIX microcode-id/operating-system)
+      (load "floppy" edwin)))
 ((access initialize-package! (->environment '(student scode-rewriting))))
 (add-system! (make-system "6.001" 15 21 '()))
 
@@ -56,7 +59,19 @@ MIT in each case. |#
 (set! hook/quit (lambda () (warn "QUIT has been disabled.")))
 (set! user-initial-environment (->environment '(student)))
 
+(in-package (->environment '(edwin))
+  (set! student-root-directory
+	(merge-pathnames "/users/u6001/" (user-homedir-pathname)))
+  (set! student-work-directory
+	(merge-pathnames "work/" student-root-directory))
+  (set! pset-directory (merge-pathnames "psets/" student-root-directory))
+  (set! pset-list-file (merge-pathnames "probsets.scm" pset-directory)))
+
 (in-package (->environment '(student))
+  (define u6001-dir
+    (let ((homedir (access student-root-directory (->environment '(edwin)))))
+      (lambda (filename)
+	(->namestring (merge-pathnames filename homedir)))))
   (define nil #f))
 
 (ge '(student))
