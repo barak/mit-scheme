@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.25 1989/08/28 18:34:13 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.26 1989/09/25 21:45:23 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -238,6 +238,14 @@ MIT in each case. |#
   (QUALIFIER (and (pseudo-register? target) (pseudo-register? datum)))
   (let ((target (move-to-alias-register! datum 'DATA target)))
     (LAP (OR UL (& ,(make-non-pointer-literal type 0)) ,target))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (UNASSIGNED))
+  (QUALIFIER (pseudo-register? target))
+  (LAP ,(load-non-pointer (ucode-type unassigned)
+			  0
+			  (standard-target-reference target))))
+
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (CONS-POINTER (CONSTANT (? type)) (CONSTANT (? datum))))
