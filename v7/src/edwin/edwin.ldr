@@ -96,6 +96,7 @@
     (load "iserch" (->environment '(EDWIN INCREMENTAL-SEARCH)))
     (load "texcom" environment)
     (load "wincom" environment)
+    (load "xcom" (->environment '(EDWIN X-COMMANDS)))
     (load "modefs" environment)
     (load "rename" environment)
     (load "loadef" environment)
