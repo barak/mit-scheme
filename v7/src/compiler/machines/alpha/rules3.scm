@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.2 1992/10/15 16:44:01 jinx Exp $
+$Id: rules3.scm,v 1.3 1992/10/15 17:04:39 jinx Exp $
 
 Copyright (c) 1992 Digital Equipment Corporation (D.E.C.)
 
@@ -431,8 +431,9 @@ case.
       ,@(make-external-label code-word label)
 	 ,@(interrupt-check label gc-label))))
 
-(define (interrupt-check procedure gc-label)
+(define (interrupt-check procedure-label gc-label)
   ;; Code sequence 2 in cmpint-alpha.h
+  ;; Interrupt/Stack checks always done in line.
   (let ((Interrupt (generate-label))
 	(temp (standard-temporary!)))
     ;; The following trick makes branch prediction work.
@@ -442,7 +443,7 @@ case.
      (lambda ()
        (LAP (LABEL ,Interrupt)
 	      (BR ,regnum:came-from (@PCR ,gc-label)))))
-    (if (not (let ((object (label->object label)))
+    (if (not (let ((object (label->object procedure-label)))
 	       (and (rtl-procedure? object)
 		    (not (rtl-procedure/stack-leaf? object))
 		    compiler:generate-stack-checks?)))
@@ -510,31 +511,74 @@ case.
 	     internal-label))
   (let ((Interrupt (generate-label))
 	(merge (generate-label))
-	(interrupt-boolean (standard-temporary!)))
-    (add-end-of-block-code!
-     (lambda ()
-       (LAP
-	(LABEL ,internal-label)	; Code seq. 4 from cmpint-alpha.h
-	   (CMPLT ,regnum:free ,regnum:memtop ,interrupt-boolean)
-	   (LDQ   ,regnum:memtop ,reg:memtop)
-	   (BNE   ,interrupt-boolean (@PCR ,merge))
-	(LABEL ,Interrupt)		; Code seq. 5 from cmpint-alpha.h
-	   ,@(invoke-interface code:compiler-interrupt-closure))))
-    (let ((rtl-proc (label->object internal-label)))
-      (let ((label (rtl-procedure/external-label rtl-proc))
-	    (reconstructed-closure (standard-temporary!)))
-	(LAP				; Code seq. 3 from cmpint-alpha.h
-	 ,@(make-external-label (internal-procedure-code-word rtl-proc) label)
-	     ; (SUBQ ,regnum:stack-pointer (& 8) ,regnum:stack-pointer)
-	     (SUBQ ,regnum:linkage (& 8) ,reconstructed-closure)
-	     (CMPLT ,regnum:free ,regnum:memtop ,interrupt-boolean)
-	     (LDQ ,regnum:memtop ,reg:memtop)
-	     (BIS ,regnum:compiled-entry-type-bits
-		  ,reconstructed-closure ,reconstructed-closure)
-	     (STQ ,reconstructed-closure (OFFSET 0 ,regnum:stack-pointer))
-	     (BEQ ,interrupt-boolean (@PCR ,Interrupt))
-	  (LABEL ,merge))))))
+	(interrupt-boolean (standard-temporary!))
+	(stack-check?
+	 (let ((object (label->object internal-label)))
+	   (and (rtl-procedure? object)
+		(not (rtl-procedure/stack-leaf? object))
+		compiler:generate-stack-checks?))))
+    (let ((stack-guard (and stack-check? (standard-temporary!))))
+      ;; Interrupt/Stack checks always done in line.
+      (add-end-of-block-code!
+       (if (not stack-check?)
+	   (lambda ()
+	     (LAP
+	      (LABEL ,internal-label)
+	        ;; Code seq. 4 from cmpint-alpha.h
+		(CMPLT ,regnum:free ,regnum:memtop ,interrupt-boolean)
+		(LDQ   ,regnum:memtop ,reg:memtop)
+		(BNE   ,interrupt-boolean (@PCR ,merge))
+	      (LABEL ,Interrupt)
+		;; Code seq. 5 from cmpint-alpha.h
+		,@(invoke-interface code:compiler-interrupt-closure)))
+	   (lambda ()
+	     (LAP
+	      (LABEL ,internal-label)
+		;; Code seq. 4 from cmpint-alpha.h
+	        (LDQ   ,stack-guard ,reg:stack-guard)
+		(CMPLT ,regnum:free ,regnum:memtop ,interrupt-boolean)
+		(LDQ   ,regnum:memtop ,reg:memtop)
+		(BEQ   ,interrupt-boolean (@PCR ,Interrupt))
+		(CMPLE ,regnum:stack-pointer ,stack-guard ,interrupt-boolean)
+		(BEQ   ,interrupt-boolean (@PCR ,merge))
+	      (LABEL ,Interrupt)
+		;; Code seq. 5 from cmpint-alpha.h
+		,@(invoke-interface code:compiler-interrupt-closure)))))
 
+      (let ((rtl-proc (label->object internal-label)))
+	(let ((label (rtl-procedure/external-label rtl-proc))
+	      (reconstructed-closure (standard-temporary!)))
+	  (if (not stack-check?)
+	      (LAP
+	         ;; Code seq. 3 from cmpint-alpha.h
+	       ,@(make-external-label (internal-procedure-code-word rtl-proc)
+				      label)
+		 ;; (SUBQ ,regnum:stack-pointer (& 8) ,regnum:stack-pointer)
+		 (SUBQ ,regnum:linkage (& 8) ,reconstructed-closure)
+		 (CMPLT ,regnum:free ,regnum:memtop ,interrupt-boolean)
+		 (LDQ ,regnum:memtop ,reg:memtop)
+		 (BIS ,regnum:compiled-entry-type-bits
+		      ,reconstructed-closure ,reconstructed-closure)
+		 (STQ ,reconstructed-closure (OFFSET 0 ,regnum:stack-pointer))
+		 (BEQ ,interrupt-boolean (@PCR ,Interrupt))
+	       (LABEL ,merge))
+	      (LAP
+	         ;; Code seq. 3 from cmpint-alpha.h
+	       ,@(make-external-label (internal-procedure-code-word rtl-proc)
+				      label)
+		 ;; (SUBQ ,regnum:stack-pointer (& 8) ,regnum:stack-pointer)
+		 (SUBQ ,regnum:linkage (& 8) ,reconstructed-closure)
+		 (LDQ ,stack-guard ,reg:stack-guard)
+		 (CMPLT ,regnum:free ,regnum:memtop ,interrupt-boolean)
+		 (LDQ ,regnum:memtop ,reg:memtop)
+		 (BIS ,regnum:compiled-entry-type-bits
+		      ,reconstructed-closure ,reconstructed-closure)
+		 (STQ ,reconstructed-closure (OFFSET 0 ,regnum:stack-pointer))
+		 (BEQ ,interrupt-boolean (@PCR ,Interrupt))
+		 (CMPLE ,regnum:stack-pointer ,stack-guard ,interrupt-boolean)
+		 (BNE ,interrupt-boolean (@PCR ,Interrupt))
+	       (LABEL ,merge))))))))
+
 (define (build-gc-offset-word offset code-word)
   (let ((encoded-offset (quotient offset 2)))
     (+ (* encoded-offset #x10000) code-word)))
