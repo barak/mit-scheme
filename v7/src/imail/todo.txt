@@ -1,8 +1,15 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.42 2000/05/23 03:55:57 cph Exp $
+$Id: todo.txt,v 1.43 2000/05/23 14:12:07 cph Exp $
 
 Bug fixes
 ---------
+
+* APPEND-MESSAGE not doing autocreate because TRYCREATE appears in
+  response to continuation request.
+
+* M-x imail-copy-messages re-reads the target folder UIDs for each
+  message that is written, when the target folder is not being
+  visited.
 
 * Implement operations for IMAP: URL-EXISTS?.
 
@@ -38,6 +45,11 @@ Design changes
 
 New features
 ------------
+
+* M-x imail-copy-messages needs prompt that distinguishes itself from
+  M-x imail-output.  Both of these commands should provide feedback
+  for each message that is output, and should announce the total
+  number of messages output when finished.
 
 * Optionally convert quoted-printable messages to 8bit for presentation.
 
