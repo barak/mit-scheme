@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bitstr.c,v 9.50 1992/08/29 13:33:02 jinx Exp $
+$Id: bitstr.c,v 9.51 1992/11/30 03:00:18 gjr Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -42,6 +42,8 @@ MIT in each case. */
 #include "prims.h"
 #include "bitstr.h"
 
+extern SCHEME_OBJECT EXFUN (allocate_bit_string, (long));
+
 SCHEME_OBJECT
 DEFUN (allocate_bit_string, (length), long length)
 {
@@ -88,6 +90,8 @@ DEFUN (fill_bit_string, (bit_string, sense),
        (i > 0); i -= 1)
     (* (DEC_BIT_STRING_PTR (scanner))) = filler;
 }
+
+extern void EXFUN (clear_bit_string, (SCHEME_OBJECT));
 
 void
 DEFUN (clear_bit_string, (bit_string), SCHEME_OBJECT bit_string)
@@ -185,7 +189,7 @@ DEFINE_PRIMITIVE ("BIT-STRING-SET!", Prim_bit_string_set_x, 2, 2, 0)
   REF_INITIALIZATION ();
   if (((BIT_STRING_WORD (ptr)) & mask) != 0)
     PRIMITIVE_RETURN (SHARP_T);
-  ((BIT_STRING_WORD (ptr))) |= mask;
+  (BIT_STRING_WORD (ptr)) |= mask;
   PRIMITIVE_RETURN (SHARP_F);
 }
 
@@ -933,4 +937,22 @@ DEFINE_PRIMITIVE ("BIT-SUBSTRING-FIND-NEXT-SET-BIT", Prim_bitstr_find_next_set_b
   PRIMITIVE_RETURN
     (LONG_TO_UNSIGNED_FIXNUM
      (BIT_STRING_INDEX_PAIR_TO_INDEX (bit_string, word, bit)));
+}
+
+extern void EXFUN (bit_string_set, (SCHEME_OBJECT, long, int));
+
+void
+DEFUN (bit_string_set, (bitstr, index, value),
+       SCHEME_OBJECT bitstr AND long index AND value)
+{
+  unsigned long mask;
+  SCHEME_OBJECT * ptr;
+
+  ptr = (MEMORY_LOC (bitstr, (BIT_STRING_INDEX_TO_WORD (bitstr, index))));
+  mask = (1L << (index % OBJECT_LENGTH));
+  if (value == 0)
+    (BIT_STRING_WORD (ptr)) &= (~mask);
+  else
+    (BIT_STRING_WORD (ptr)) |= mask;
+  return;
 }
