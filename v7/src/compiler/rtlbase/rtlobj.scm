@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlobj.scm,v 4.9 1990/08/21 02:24:08 jinx Rel $
+$Id: rtlobj.scm,v 4.10 1992/09/30 19:22:47 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -59,7 +59,7 @@ MIT in each case. |#
 					n-optional rest? closure?
 					dynamic-link? type
 					debugging-info
-					next-continuation-offset))
+					next-continuation-offset stack-leaf?))
 		   (print-procedure
 		    (standard-unparser (symbol->string 'RTL-PROCEDURE)
 		      (lambda (state procedure)
@@ -77,7 +77,8 @@ MIT in each case. |#
   (type false read-only true)
   (%external-label false)
   (debugging-info false read-only true)
-  (next-continuation-offset false read-only true))
+  (next-continuation-offset false read-only true)
+  (stack-leaf? false read-only true))
 
 (define-integrable (rtl-procedure/entry-node procedure)
   (edge-right-node (rtl-procedure/entry-edge procedure)))

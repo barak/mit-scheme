@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.26 1991/04/03 00:51:09 cph Exp $
+$Id: rtlgen.scm,v 4.27 1992/09/30 19:23:21 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -125,7 +125,14 @@ MIT in each case. |#
 	      true))
        (procedure/type procedure)
        (procedure-debugging-info procedure)
-       (block/next-continuation-offset (procedure-block procedure) 0)))))
+       (block/next-continuation-offset (procedure-block procedure) 0)
+       (let ((block (procedure-block procedure)))
+	 (and (stack-block? block)
+	      (for-all? (block-children block)
+		(lambda (block)
+		  (and (continuation-block? block)
+		       (continuation/always-known-operator?
+			(block-procedure block)))))))))))
 
 (define (generate/procedure-entry/inline procedure)
   (generate/procedure-header procedure
