@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 1.2 1995/10/25 19:54:30 ssmith Exp $
+$Id: make.scm,v 1.3 1995/10/25 20:16:02 ssmith Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -43,6 +43,6 @@ MIT in each case. |#
 	       (env (->environment '(compiler))))
 	   (set! (access compiler:generate-stack-checks? env) false)
 	   (set! (access compiler:compress-top-level? env) true)
-	   val)
+	   value)
 	 (load "midend/load" #F))))
   (loader))
