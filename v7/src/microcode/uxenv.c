@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxenv.c,v 1.4 1991/07/24 01:29:29 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxenv.c,v 1.5 1991/07/31 14:37:20 jinx Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -139,7 +139,11 @@ DEFUN_VOID (OS_real_time_clock)
   clock_t ct = (UX_SC_CLK_TCK ());
   struct tms buffer;
   clock_t t;
-  STD_UINT_SYSTEM_CALL (syscall_times, t, (UX_times (&buffer)));
+  /* Was STD_UINT_SYSTEM_CALL, but at least one version of Ultrix
+     returns negative numbers other than -1 when there are no errors.  */
+  while ((t = (UX_times (&buffer))) == (-1))
+    if (errno != EINTR)
+      error_system_call (errno, syscall_times);
   return ((((t - initial_rtc) * 2000) + ct) / (2 * ct));
 }
 
