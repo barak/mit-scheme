@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.12 1988/11/01 04:55:53 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.13 1988/11/03 06:33:23 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -298,7 +298,12 @@ MIT in each case. |#
 (define-cse-method 'INVOCATION:COMPUTED-LEXPR method/noop)
 (define-cse-method 'INVOCATION:UUO-LINK method/noop)
 (define-cse-method 'INVOCATION:PRIMITIVE method/noop)
-(define-cse-method 'INVOCATION:SPECIAL-PRIMITIVE method/noop)
+
+(define-cse-method 'INVOCATION:SPECIAL-PRIMITIVE
+  (lambda (statement)
+    statement
+    (expression-invalidate! (interpreter-value-register))
+    (expression-invalidate! (interpreter-free-pointer))))
 
 (define-trivial-one-arg-method 'INVOCATION:CACHE-REFERENCE
   rtl:invocation:cache-reference-name rtl:set-invocation:cache-reference-name!)
