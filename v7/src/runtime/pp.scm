@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pp.scm,v 14.39 1999/01/02 06:11:34 cph Exp $
+$Id: pp.scm,v 14.40 1999/12/22 20:29:26 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -69,7 +69,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let ((port (if (default-object? port) (current-output-port) port)))
     (let ((pretty-print
 	   (lambda (object)
-	     (newline port)
+	     (fresh-line port)
 	     (apply pretty-print object port rest))))
       (cond ((pp-description object)
 	     => (lambda (description)
