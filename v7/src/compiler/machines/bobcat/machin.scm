@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.12 1988/11/03 06:31:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.13 1988/11/08 08:23:25 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -80,7 +80,6 @@ MIT in each case. |#
     ((VALUE) 2)
     ((ENVIRONMENT) 3)
     ((TEMPORARY) 4)
-    ((INTERPRETER-CALL-RESULT:ENCLOSE) 5)
     (else false)))
 
 (define (rtl:interpreter-register->offset locative)
@@ -156,9 +155,6 @@ MIT in each case. |#
 
 (define-integrable (interpreter-register:cache-unassigned?)
   (rtl:make-machine-register d0))
-
-(define-integrable (interpreter-register:enclose)
-  (rtl:make-offset (interpreter-regs-pointer) 5))
 
 (define-integrable (interpreter-register:lookup)
   (rtl:make-machine-register d0))

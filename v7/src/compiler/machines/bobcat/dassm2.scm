@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm2.scm,v 4.9 1988/11/04 02:24:53 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm2.scm,v 4.10 1988/11/08 08:24:13 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -326,7 +326,6 @@ MIT in each case. |#
       (8  . (REGISTER VALUE))
       (12 . (REGISTER ENVIRONMENT))
       (16 . (REGISTER TEMPORARY))
-      (20 . (REGISTER INTERPRETER-CALL-RESULT:ENCLOSE))
       ;; Compiler temporaries
       ,@(let loop ((index 40) (i 0))
 	  (if (= i 50)

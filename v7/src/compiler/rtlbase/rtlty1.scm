@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 4.12 1988/11/01 04:53:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 4.13 1988/11/08 08:21:03 cph Rel $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -51,6 +51,7 @@ MIT in each case. |#
 (define-rtl-expression pre-increment rtl: register number)
 (define-rtl-expression post-increment rtl: register number)
 
+(define-rtl-expression cons-closure rtl: procedure min max size)
 (define-rtl-expression cons-pointer rtl: type datum)
 (define-rtl-expression constant % value)
 (define-rtl-expression assignment-cache rtl: name)
@@ -85,8 +86,6 @@ MIT in each case. |#
 (define-rtl-statement open-procedure-header rtl: procedure)
 (define-rtl-statement procedure-header rtl: procedure min max)
 (define-rtl-statement closure-header rtl: procedure)
-
-(define-rtl-statement cons-closure rtl: procedure min max size)
 
 (define-rtl-statement interpreter-call:access % environment name)
 (define-rtl-statement interpreter-call:define % environment name value)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlexp.scm,v 4.9 1988/11/01 04:52:48 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlexp.scm,v 4.10 1988/11/08 08:21:41 cph Exp $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -52,6 +52,7 @@ MIT in each case. |#
 (define-integrable (rtl:trivial-expression? expression)
   (memq (rtl:expression-type expression)
 	'(ASSIGNMENT-CACHE
+	  CONS-CLOSURE
 	  CONSTANT
 	  ENTRY:CONTINUATION
 	  ENTRY:PROCEDURE
@@ -64,6 +65,7 @@ MIT in each case. |#
       (memq (rtl:expression-type expression)
 	    '(ASSIGNMENT-CACHE
 	      CHAR->ASCII
+	      CONS-CLOSURE
 	      FIXNUM-1-ARG
 	      FIXNUM-2-ARGS
 	      OBJECT->ADDRESS
