@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.h,v 9.23 1987/04/16 02:25:05 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.h,v 9.24 1987/07/23 21:48:38 cph Exp $
  *
  * Macros used by the interpreter and some utilities.
  *
@@ -405,3 +405,22 @@ MIT in each case. */
   /* Save_Cont(); */							\
   Compiler_New_Subproblem();						\
 }
+
+#define UNWIND_PROTECT(body_statement, cleanup_statement) do		\
+{									\
+  jmp_buf UNWIND_PROTECT_new_buf, *UNWIND_PROTECT_old_buf;		\
+  int UNWIND_PROTECT_value;						\
+									\
+  UNWIND_PROTECT_old_buf = Back_To_Eval;				\
+  Back_To_Eval = ((jmp_buf *) UNWIND_PROTECT_new_buf);			\
+  UNWIND_PROTECT_value = (setjmp (*Back_To_Eval));			\
+  if (UNWIND_PROTECT_value != 0)					\
+    {									\
+      Back_To_Eval = UNWIND_PROTECT_old_buf;				\
+      cleanup_statement;						\
+      longjmp ((*Back_To_Eval), UNWIND_PROTECT_value);			\
+    }									\
+  body_statement;							\
+  Back_To_Eval = UNWIND_PROTECT_old_buf;				\
+  cleanup_statement;							\
+} while (0)
