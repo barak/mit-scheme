@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dosprm.scm,v 1.12 1992/09/18 16:38:47 jinx Exp $
+$Id: dosprm.scm,v 1.13 1992/10/02 01:43:50 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -48,7 +48,7 @@ MIT in each case. |#
   ((ucode-primitive file-modes 1)
    (->namestring (merge-pathnames filename))))
 
-(define-integrable (set-file-modes! filename modes)
+(define (set-file-modes! filename modes)
   ((ucode-primitive set-file-modes! 2)
    (->namestring (merge-pathnames filename))
    modes))
@@ -176,6 +176,7 @@ MIT in each case. |#
 		(cond ((assoc variable environment-variables) => cdr)
 		      (else ((ucode-primitive get-environment-variable 1)
 			     variable)))))))
+
   (set! set-environment-variable!
 	(lambda (variable value)
 	  (if (string? variable)
@@ -191,30 +192,38 @@ MIT in each case. |#
 	      (error "SET-ENVIRONMENT-VARIABLE!: Variable must be a string"
 		     variable value))
 	  unspecific))
+
   (set! delete-environment-variable!
 	(lambda (variable)
 	  (set-environment-variable! variable *variable-deleted*)))
+
   (set! reset-environment-variables!
 	(lambda () (set! environment-variables '())))
-) ; End LET
+
+  unspecific)				; End LET
 
 (define (dos/user-home-directory user-name)
-  (let ((directory ((ucode-primitive get-user-home-directory 1) user-name)))
+  (let ((directory (get-environment-variable "USERDIR")))
     (if (not directory)
-	(error "Can't find user's home directory:" user-name))
-    directory))
+	(error "environment variable USERDIR has no value"
+	       'DOS/USER-HOME-DIRECTORY))
+    (pathname-new-name
+     (pathname-as-directory (merge-pathnames directory))
+     user-name)))
 
 (define (dos/current-home-directory)
   (or (get-environment-variable "HOME")
       (dos/user-home-directory (dos/current-user-name))))
 
-(define-integrable dos/current-user-name
-  (ucode-primitive current-user-name 0))
+(define (dos/current-user-name)
+  (or (get-environment-variable "USER")
+      (error "environment variable USER has no value"
+	     'DOS/CURRENT-USER-NAME)))
 
-(define-integrable dos/current-file-time
+(define dos/current-file-time
   (ucode-primitive current-file-time 0))
 
-(define-integrable dos/file-time->string
+(define dos/file-time->string
   (ucode-primitive file-time->string 1))
 
 (define (file-touch filename)
