@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dirunx.scm,v 1.5 1994/09/14 20:43:37 cph Exp $
+;;;	$Id: dirunx.scm,v 1.6 1994/09/14 20:50:07 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
 ;;;
@@ -101,7 +101,9 @@ The files are compressed or uncompressed using gzip."
 		      (pathname-new-type
 		       pathname
 		       (and (not decompress?)
-			    (string-append (or type "") ".gz")))
+			    (if (string? type)
+				(string-append type ".gz")
+				"gz")))
 		      lstart))))))))
       (if (positive? n)
 	  (message "Compressed or uncompressed " n " files.")))))
