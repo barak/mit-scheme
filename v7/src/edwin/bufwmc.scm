@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufwmc.scm,v 1.16 1993/01/12 10:50:39 cph Exp $
+;;;	$Id: bufwmc.scm,v 1.17 1994/09/08 20:34:04 adams Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -67,8 +67,9 @@
 (define (buffer-window/index->x window index)
   (let ((start (%window-line-start-index window index))
 	(group (%window-group window))
+	(char-image-strings (%window-char-image-strings window))
 	(tab-width (%window-tab-width window)))
-    (column->x (group-columns group start index 0 tab-width)
+    (column->x (group-columns group start index 0 tab-width char-image-strings)
 	       (window-x-size window)
 	       (%window-truncate-lines? window)
 	       (%window-line-end-index? window index))))
@@ -83,10 +84,12 @@
   (with-values (lambda () (start-point-for-index window index))
     (lambda (start-index start-y line-start-index)
       (let ((group (%window-group window))
+	    (char-image-strings (%window-char-image-strings window))
 	    (tab-width (%window-tab-width window)))
 	(let ((xy
 	       (column->coordinates
-		(group-columns group line-start-index index 0 tab-width)
+		(group-columns group line-start-index index 0 tab-width
+			       char-image-strings)
 		(window-x-size window)
 		(%window-truncate-lines? window)
 		(%window-line-end-index? window index))))
@@ -185,6 +188,7 @@
   (if (fix:= index start)
       y
       (let ((group (%window-group window))
+	    (char-image-strings (%window-char-image-strings window))
 	    (tab-width (%window-tab-width window))
 	    (x-size (window-x-size window))
 	    (truncate-lines? (%window-truncate-lines? window)))
@@ -195,7 +199,8 @@
 		       (start
 			(or (%find-previous-newline group end group-start)
 			    group-start))
-		       (columns (group-columns group start end 0 tab-width))
+		       (columns (group-columns group start end 0 tab-width
+					       char-image-strings))
 		       (y
 			(fix:- y
 			       (column->y-size columns
@@ -205,7 +210,8 @@
 		      (loop start y)
 		      (fix:+ y
 			     (column->y (group-columns group start index
-						       0 tab-width)
+						       0 tab-width
+						       char-image-strings)
 					x-size
 					truncate-lines?
 					(%window-line-end-index? window
@@ -213,7 +219,8 @@
 	    (let ((group-end (%window-group-end-index window)))
 	      (let loop ((start start) (y y))
 		(let ((e&c
-		       (group-line-columns group start group-end 0 tab-width)))
+		       (group-line-columns group start group-end 0 tab-width
+					   char-image-strings)))
 		  (if (fix:> index (car e&c))
 		      (loop (fix:+ (car e&c) 1)
 			    (fix:+ y
@@ -222,7 +229,8 @@
 						   truncate-lines?)))
 		      (fix:+ y
 			     (column->y (group-columns group start index
-						       0 tab-width)
+						       0 tab-width
+						       char-image-strings)
 					x-size
 					truncate-lines?
 					(%window-line-end-index?
@@ -238,6 +246,7 @@
 	   (fix:< y yu)
 	   y)
       (let ((group (%window-group window))
+	    (char-image-strings (%window-char-image-strings window))
 	    (tab-width (%window-tab-width window))
 	    (x-size (window-x-size window))
 	    (truncate-lines? (%window-truncate-lines? window)))
@@ -250,7 +259,8 @@
 			     (or (%find-previous-newline group end group-start)
 				 group-start))
 			    (columns
-			     (group-columns group start end 0 tab-width))
+			     (group-columns group start end 0 tab-width
+					    char-image-strings))
 			    (y
 			     (fix:- y
 				    (column->y-size columns
@@ -265,7 +275,8 @@
 							     start
 							     index
 							     0
-							     tab-width)
+							     tab-width
+							     char-image-strings)
 					      x-size
 					      truncate-lines?
 					      (%window-line-end-index?
@@ -279,7 +290,7 @@
 		(and (fix:< y yu)
 		     (let ((e&c
 			    (group-line-columns group start group-end 0
-						tab-width)))
+						tab-width char-image-strings)))
 		       (if (fix:> index (car e&c))
 			   (loop (fix:+ (car e&c) 1)
 				 (fix:+ y
@@ -293,7 +304,8 @@
 							     start
 							     index
 							     0
-							     tab-width)
+							     tab-width
+							     char-image-strings)
 					      x-size
 					      truncate-lines?
 					      (%window-line-end-index?
@@ -308,13 +320,15 @@
        (let ((x-size (window-x-size window))
 	     (y-size (window-y-size window))
 	     (group (%window-group window))
+	     (char-image-strings (%window-char-image-strings window))
 	     (tab-width (%window-tab-width window))
 	     (truncate-lines? (%window-truncate-lines? window))
 	     (group-end (%window-group-end-index window)))
 	 (let loop ((start start) (y y))
 	   (and (fix:< y y-size)
 		(let ((e&c
-		       (group-line-columns group start group-end 0 tab-width)))
+		       (group-line-columns group start group-end 0 tab-width
+					   char-image-strings)))
 		  (if (fix:> index (car e&c))
 		      (loop (fix:+ (car e&c) 1)
 			    (fix:+ y
@@ -327,7 +341,8 @@
 							      start
 							      index
 							      0
-							      tab-width)
+							      tab-width
+							      char-image-strings)
 					       x-size
 					       truncate-lines?
 					       (%window-line-end-index?
@@ -339,6 +354,7 @@
 (define (predict-index window start y-start x y)
   ;; Assumes that START is a line start.
   (let ((group (%window-group window))
+	(char-image-strings (%window-char-image-strings window))
 	(tab-width (%window-tab-width window))
 	(x-size (window-x-size window))
 	(truncate-lines? (%window-truncate-lines? window)))
@@ -350,7 +366,8 @@
 			(start
 			 (or (%find-previous-newline group end group-start)
 			     group-start))
-			(columns (group-columns group start end 0 tab-width))
+			(columns (group-columns group start end 0 tab-width
+						char-image-strings))
 			(y-start
 			 (fix:- y-start
 				(column->y-size columns
@@ -368,11 +385,13 @@
 			   (if (fix:< column columns)
 			       column
 			       columns))
-			 tab-width)
+			 tab-width
+			 char-image-strings)
 			0))))))
 	(let ((group-end (%window-group-end-index window)))
 	  (let loop ((start start) (y-start y-start))
-	    (let ((e&c (group-line-columns group start group-end 0 tab-width)))
+	    (let ((e&c (group-line-columns group start group-end 0 tab-width
+					   char-image-strings)))
 	      (let ((y-end
 		      (fix:+ y-start
 			     (column->y-size (cdr e&c)
@@ -390,7 +409,8 @@
 				   (if (fix:< column (cdr e&c))
 				       column
 				       (cdr e&c)))
-				 tab-width)
+				 tab-width
+				 char-image-strings)
 				0)))))))))
 
 (define (compute-window-start window index y-index)
@@ -459,6 +479,7 @@
 
 (define (compute-window-start-ntl window index y-index)
   (let ((group (%window-group window))
+	(char-image-strings (%window-char-image-strings window))
 	(tab-width (%window-tab-width window))
 	(x-size (window-x-size window)))
     (let ((group-start (group-display-start-index group))
@@ -473,7 +494,8 @@
 		   group-start))))
 	(let ((y-start
 	       (fix:- y-index
-		      (column->y (group-columns group start index 0 tab-width)
+		      (column->y (group-columns group start index 0 tab-width
+						char-image-strings)
 				 x-size
 				 #f
 				 (%window-line-end-index? window index)))))
@@ -484,7 +506,8 @@
 		   (let* ((column (fix:* (fix:- 0 y-start) x-max))
 			  (icp
 			   (group-column->index group start group-end
-						0 column tab-width)))
+						0 column tab-width
+						char-image-strings)))
 		     (cond ((fix:= (vector-ref icp 1) column)
 			    (vector start
 				    y-start
@@ -513,7 +536,8 @@
 			      (fix:-
 			       y-start
 			       (column->y-size (group-columns group start end
-							      0 tab-width)
+							      0 tab-width
+							      char-image-strings)
 					       x-size
 					       #f))))
 			 (cond ((fix:= y-start 0)
@@ -523,7 +547,7 @@
 				       (group-column->index
 					group start end
 					0 (fix:* (fix:- 0 y-start) x-max)
-					tab-width)))
+					tab-width char-image-strings)))
 				  (vector start
 					  y-start
 					  (vector-ref icp 0)

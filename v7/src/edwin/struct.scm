@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: struct.scm,v 1.89 1993/08/14 02:47:21 jawilson Exp $
+;;;	$Id: struct.scm,v 1.90 1994/09/08 20:34:04 adams Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -335,6 +335,9 @@
 
 (define-integrable (group-tab-width group)
   (group-local-ref group (ref-variable-object tab-width)))
+
+(define-integrable (group-char-image-strings group)
+  (group-local-ref group (ref-variable-object char-image-strings)))
 
 (define-integrable (group-case-fold-search group)
   (group-local-ref group (ref-variable-object case-fold-search)))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/winout.scm,v 1.8 1992/02/13 22:19:34 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/winout.scm,v 1.9 1994/09/08 20:34:04 adams Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -73,7 +73,12 @@
 		      (char=? char #\newline)
 		      (< (1+ (window-point-y window)) (window-y-size window)))
 		 (window-direct-output-insert-newline! window))
-		((and (char-graphic? char)
+		((and (not (char=? char #\newline))
+		      (not (char=? char #\tab))
+		      (let ((image (window-char->image window char)))
+			(and (= (string-length image) 1)
+			     (char=? (string-ref image 0) char)))
+		      ;; above 3 expressions replace (char-graphic? char)
 		      (< (1+ (window-point-x window)) (window-x-size window)))
 		 (window-direct-output-insert-char! window char))
 		(else
@@ -89,7 +94,17 @@
 	       (buffer-auto-save-modified? buffer)
 	       (or (not (window-needs-redisplay? window))
 		   (window-direct-update! window false))
-	       (not (string-find-next-char-in-set string char-set:not-graphic))
+	       (let loop ((i (- (string-length string) 1)))
+		 (or (< i 0)
+		     (let ((char  (string-ref string i)))
+		       (and (not (char=? char #\newline))
+			    (not (char=? char #\tab))
+			    (let ((image (window-char->image window char)))
+			      (and (= (string-length image) 1)
+				   (char=? (string-ref image 0) char)
+				   (loop (- i 1))))))))
+	       ;; above loop expression replaces
+	       ;;(not(string-find-next-char-in-set string char-set:not-graphic))
 	       (< (+ (string-length string) (window-point-x window))
 		  (window-x-size window)))
 	  (window-direct-output-insert-substring! window

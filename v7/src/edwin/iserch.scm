@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: iserch.scm,v 1.19 1993/08/10 06:45:05 cph Exp $
+;;;	$Id: iserch.scm,v 1.20 1994/09/08 20:34:04 adams Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -205,7 +205,8 @@
 	    "I-search"
 	    (if (search-state-forward? state) "" " backward")
 	    ": "
-	    (string-image (search-state-text state) 0 false)
+	    (string-image (search-state-text state) 0 false
+			  default-char-image-strings)
 	    (if invalid-regexp (string-append " [" invalid-regexp "]") ""))))
       (string-set! m 0 (char-upcase (string-ref m 0)))
       m)))

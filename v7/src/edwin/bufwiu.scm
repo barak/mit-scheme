@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufwiu.scm,v 1.28 1994/09/08 01:28:53 cph Exp $
+;;;	$Id: bufwiu.scm,v 1.29 1994/09/08 20:34:04 adams Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -138,9 +138,9 @@
 ;;;; Update
 
 (define (update-outlines! window)
-  (%guarantee-start-mark! window)
   ;; This procedure sets FORCE-REDRAW? if any cached variable has changed.
   (%recache-window-buffer-local-variables! window)
+  (%guarantee-start-mark! window)
   (if (%window-force-redraw? window)
       (begin
 	(%set-window-force-redraw?! window false)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufwin.scm,v 1.302 1994/09/08 01:28:47 cph Exp $
+;;;	$Id: bufwin.scm,v 1.303 1994/09/08 20:34:04 adams Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -66,6 +66,7 @@
    ;; for redisplay.
    truncate-lines?
    tab-width
+   char-image-strings
 
    ;; The point marker in this window.
    point
@@ -217,6 +218,17 @@
 (define-integrable (%set-window-tab-width! window tab-width*)
   (with-instance-variables buffer-window window (tab-width*)
     (set! tab-width tab-width*)))
+
+(define-integrable (%window-char-image-strings window)
+  (with-instance-variables buffer-window window () char-image-strings))
+
+(define-integrable (%set-window-char-image-strings! window char-image-strings*)
+  (with-instance-variables buffer-window window (char-image-strings*)
+    (set! char-image-strings char-image-strings*)))
+
+(define-integrable (%window-char->image window char)
+  (vector-ref (%window-char-image-strings window)
+	      (char->ascii char)))
 
 (define-integrable (%window-point window)
   (with-instance-variables buffer-window window () point))
@@ -767,6 +779,7 @@
       ((%window-debug-trace window) 'window window 'force-redraw!))
   (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
     (%set-window-force-redraw?! window true)
+    (%recache-window-buffer-local-variables! window)
     (%clear-window-incremental-redisplay-state! window)
     (window-needs-redisplay! window)
     (set-interrupt-enables! mask)
@@ -783,7 +796,8 @@
   (%set-window-override-string! window false)
   (%set-window-clip-daemon! window (make-clip-daemon window))
   (%set-window-debug-trace! window false)
-  (%set-window-saved-screen! window false))
+  (%set-window-saved-screen! window false)
+  (%set-window-force-redraw?! window false))
 
 (define (%release-window-outlines! window)
   (%set-window-start-outline! window false)
@@ -830,12 +844,12 @@
 
 (define (%recache-window-buffer-local-variables! window)
   (let ((maybe-recache
-	 (lambda (read write value)
-	   (let ((value* (read window)))
-	     (if (not (eqv? value value*))
+	 (lambda (read write new-value)
+	   (let ((old-value (read window)))
+	     (if (not (eqv? new-value old-value))
 		 (begin
 		   (%set-window-force-redraw?! window #t)
-		   (write window value))))))
+		   (write window new-value))))))
 	(buffer (%window-buffer window)))
     (maybe-recache
      %window-truncate-lines?
@@ -848,7 +862,11 @@
     (maybe-recache
      %window-tab-width
      %set-window-tab-width!
-     (variable-local-value buffer (ref-variable-object tab-width)))))
+     (variable-local-value buffer (ref-variable-object tab-width)))
+    (maybe-recache
+     %window-char-image-strings
+     %set-window-char-image-strings!
+     (variable-local-value buffer (ref-variable-object char-image-strings)))))
 
 ;;;; Buffer and Point
 
@@ -864,6 +882,7 @@
   (if (%window-buffer window)
       (%unset-window-buffer! window))
   (%set-window-buffer! window new-buffer)
+  (%recache-window-buffer-local-variables! window)
   (let ((group (%window-group window)))
     (add-group-clip-daemon! group (%window-clip-daemon window))
     (%set-window-point-index! window (mark-index (group-point group))))
@@ -1151,7 +1170,8 @@ If this is zero, point is always centered after it moves off screen."
 				       false)))
 	  (substring-image! string 0 end
 			    line xl (fix:- xu 1)
-			    false 0 results)
+			    false 0 results
+			    (%window-char-image-strings window))
 	  (if (fix:= (vector-ref results 0) end)
 	      (do ((x (vector-ref results 1) (fix:+ x 1)))
 		  ((fix:= x xu))

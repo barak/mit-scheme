@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: comred.scm,v 1.110 1993/12/17 00:09:21 cph Exp $
+;;;	$Id: comred.scm,v 1.111 1994/09/08 20:34:04 adams Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -272,6 +272,8 @@
 (define (%dispatch-on-command window command record?)
   (set! *command* command)
   (guarantee-command-loaded command)
+  (define (char-image-string ch)
+    (window-char->image window ch))
   (let ((point (window-point window))
 	(point-x (window-point-x window))
 	(procedure (command-procedure command)))
@@ -301,21 +303,33 @@
 			  (and (buffer-auto-save-modified? buffer)
 			       (null? (cdr (buffer-windows buffer)))))
 			(line-end? point)
-			(char-graphic? key)
+			(not (char=? key #\newline))
+			(not (char=? key #\tab))
+			(let ((image (char-image-string key)))
+			  (and (fix:= (string-length image) 1)
+			       (char=? (string-ref image 0) key)))
 			(fix:< point-x (fix:- (window-x-size window) 1)))
 		   (window-direct-output-insert-char! window key)
 		   (region-insert-char! point key))))
 	    ((eq? command (ref-command-object forward-char))
 	     (if (and (not (window-needs-redisplay? window))
 		      (not (group-end? point))
-		      (char-graphic? (mark-right-char point))
+		      (let ((char (mark-right-char point)))
+			(and (not (char=? char #\newline))
+			     (not (char=? char #\tab))
+			     (fix:= (string-length (char-image-string char))
+				    1)))
 		      (fix:< point-x (fix:- (window-x-size window) 2)))
 		 (window-direct-output-forward-char! window)
 		 (normal)))
 	    ((eq? command (ref-command-object backward-char))
 	     (if (and (not (window-needs-redisplay? window))
 		      (not (group-start? point))
-		      (char-graphic? (mark-left-char point))
+		      (let ((char (mark-left-char point)))
+			(and (not (char=? char #\newline))
+			     (not (char=? char #\tab))
+			     (fix:= (string-length (char-image-string char))
+				    1)))
 		      (fix:< 0 point-x)
 		      (fix:< point-x (fix:- (window-x-size window) 1)))
 		 (window-direct-output-backward-char! window)

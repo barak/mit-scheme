@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: modlin.scm,v 1.18 1994/03/08 20:23:18 cph Exp $
+;;;	$Id: modlin.scm,v 1.19 1994/09/08 20:34:04 adams Exp $
 ;;;
 ;;;	Copyright (c) 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -342,7 +342,8 @@ If #F, the normal method is used."
   (let ((results substring-image-results))
     (substring-image! string start end
 		      line column max-end
-		      #f 0 results)
+		      #f 0 results
+		      default-char-image-strings)
     (if (fix:< (vector-ref results 1) min-end)
 	(begin
 	  (do ((x (vector-ref results 1) (fix:+ x 1)))

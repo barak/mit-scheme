@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: buffrm.scm,v 1.49 1994/03/08 20:24:23 cph Exp $
+;;;	$Id: buffrm.scm,v 1.50 1994/09/08 20:34:04 adams Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -241,6 +241,9 @@
 (define-integrable (window-home-cursor! window)
   (buffer-window/home-cursor! (frame-text-inferior window)))
 
+(define-integrable (window-char->image frame char)
+  (%window-char->image (frame-text-inferior frame) char))
+
 (define-integrable (window-direct-output-forward-char! frame)
   (buffer-window/direct-output-forward-char! (frame-text-inferior frame)))
 
@@ -322,13 +325,31 @@ Automatically becomes local when set in any fashion."
   8
   exact-nonnegative-integer?)
 
+(define-variable-per-buffer char-image-strings
+  "A vector of 256 strings mapping ascii bytes to image strings.
+Each image is a short string of at least one character.
+Index 0 might contain \"^@\" so ascii NUL appears as ^@.
+The indices for normal printing characters usually contain a
+string containing just that character, e.g. index 65 usually contains \"A\".
+Automatically becomes local when set in any fashion."
+  default-char-image-strings
+  (lambda (object)
+    (and (vector? object)
+	 (= (vector-length object) 256)
+	 (let loop ((i 0))
+	   (if (= i 256)
+	       #T
+	       (and (string? (vector-ref object i))
+		    (<= 1 (string-length (vector-ref object i)) 255)
+		    (loop (+ i 1))))))))
+	 
 (let ((setup-truncate-lines!
        (lambda (buffer variable)
 	 variable			;ignore
-	 (for-each window-redraw!
-		   (if buffer
-		       (buffer-windows buffer)
-		       (window-list))))))
+	 (for-each window-redraw!	;window-redraw! recaches these variables
+	   (if buffer
+	       (buffer-windows buffer)
+	       (window-list))))))
   (add-variable-assignment-daemon!
    (ref-variable-object truncate-lines)
    setup-truncate-lines!)
@@ -337,6 +358,9 @@ Automatically becomes local when set in any fashion."
    setup-truncate-lines!)
   (add-variable-assignment-daemon!
    (ref-variable-object tab-width)
+   setup-truncate-lines!)
+  (add-variable-assignment-daemon!
+   (ref-variable-object char-image-strings)
    setup-truncate-lines!))
 
 ;;;; Window Configurations

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufwfs.scm,v 1.18 1993/10/05 23:05:51 cph Exp $
+;;;	$Id: bufwfs.scm,v 1.19 1994/09/08 20:34:04 adams Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -49,6 +49,7 @@
 (define (fill-top window start)
   (let ((group (%window-group window))
 	(start-column 0)
+	(char-image-strings (%window-char-image-strings window))
 	(tab-width (%window-tab-width window))
 	(truncate-lines? (%window-truncate-lines? window))
 	(x-size (window-x-size window)))
@@ -65,7 +66,8 @@
 		 (start-index (%window-line-start-index window end-index))
 		 (end-column
 		  (group-columns group start-index end-index
-				 start-column tab-width))
+				 start-column tab-width
+				 char-image-strings))
 		 (y-size (column->y-size end-column x-size truncate-lines?))
 		 (y (fix:- y y-size)))
 	    (draw-region! window
@@ -80,6 +82,7 @@
 (define (fill-middle window top-end bot-start)
   (let ((group (%window-group window))
 	(start-column 0)
+	(char-image-strings (%window-char-image-strings window))
 	(tab-width (%window-tab-width window))
 	(truncate-lines? (%window-truncate-lines? window))
 	(x-size (window-x-size window))
@@ -92,7 +95,8 @@
 	(if (fix:< start-index bot-start-index)
 	    (let ((index&column
 		   (group-line-columns group start-index bot-start-index
-				       start-column tab-width)))
+				       start-column tab-width
+				       char-image-strings)))
 	      (let ((end-index (car index&column))
 		    (end-column (cdr index&column)))
 		(let ((y-size
@@ -119,6 +123,7 @@
 (define (fill-bottom window end)
   (let ((group (%window-group window))
 	(start-column 0)
+	(char-image-strings (%window-char-image-strings window))
 	(tab-width (%window-tab-width window))
 	(truncate-lines? (%window-truncate-lines? window))
 	(x-size (window-x-size window))
@@ -136,7 +141,8 @@
 	  (let ((start-index (fix:+ index 1)))
 	    (let ((index&column
 		   (group-line-columns group start-index group-end
-				       start-column tab-width)))
+				       start-column tab-width
+				       char-image-strings)))
 	      (let ((end-index (car index&column))
 		    (end-column (cdr index&column)))
 		(let ((y-size
@@ -156,6 +162,7 @@
 (define (generate-outlines window start end)
   (let ((group (%window-group window))
 	(start-column 0)
+	(char-image-strings (%window-char-image-strings window))
 	(tab-width (%window-tab-width window))
 	(truncate-lines? (%window-truncate-lines? window))
 	(x-size (window-x-size window))
@@ -164,7 +171,7 @@
     (let loop ((outline false) (start-index (o3-index start)) (y (o3-y start)))
       (let ((index&column
 	     (group-line-columns group start-index group-end
-				 start-column tab-width)))
+				 start-column tab-width char-image-strings)))
 	(let ((end-index (car index&column))
 	      (end-column (cdr index&column)))
 	  (let ((line-y (column->y-size end-column x-size truncate-lines?)))
@@ -200,6 +207,7 @@
 	   (xu (fix:+ (%window-saved-x-start window)
 		      (%window-saved-xu window)))
 	   (y-start (fix:+ (%window-saved-y-start window) y))
+	   (char-image-strings (%window-char-image-strings window))
 	   (truncate-lines? (%window-truncate-lines? window))
 	   (tab-width (%window-tab-width window))
 	   (results substring-image-results))
@@ -237,7 +245,8 @@
 			    (lambda (index xl*)
 			      (group-image! group index end-index*
 					    line xl* xm
-					    tab-width column-offset results)
+					    tab-width column-offset results
+					    char-image-strings)
 			      (cond ((fix:= (vector-ref results 0) end-index)
 				     (let ((xl* (vector-ref results 1)))
 				       (let ((line
@@ -268,7 +277,8 @@
 			     (partial-image! (group-right-char group index)
 					     partial
 					     line xl* xm
-					     tab-width)
+					     tab-width
+					     char-image-strings)
 			     (if (fix:> partial columns)
 				 (begin
 				   (string-set! line xm #\\)
