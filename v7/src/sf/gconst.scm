@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gconst.scm,v 4.30 2004/07/02 01:00:46 cph Exp $
+$Id: gconst.scm,v 4.31 2004/10/01 02:29:35 cph Exp $
 
 Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright 1993,1994,1997,2001,2004 Massachusetts Institute of Technology
@@ -70,7 +70,6 @@ USA.
     COMPILED-CODE-ADDRESS->BLOCK
     COMPILED-CODE-ADDRESS->OFFSET
     CONS
-    ENABLE-INTERRUPTS!
     EQ?
     ERROR-PROCEDURE
     FALSE
@@ -135,6 +134,7 @@ USA.
     FLO:ZERO?
     GENERAL-CAR-CDR
     GET-FIXED-OBJECTS-VECTOR
+    GET-INTERRUPT-ENABLES
     GET-NEXT-CONSTANT
     HUNK3-CONS
     INDEX-FIXNUM?
