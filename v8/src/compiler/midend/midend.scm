@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: midend.scm,v 1.9 1995/02/20 20:48:53 adams Exp $
+$Id: midend.scm,v 1.10 1995/03/13 23:23:16 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -208,6 +208,10 @@ Example:
 	     assconv/top-level		; eliminate SET! and introduce LETREC
 					;  rewriting LOOKUP and SET!
 	     cleanup/top-level/1	; as below
+	     ;;coerce/top-level
+	     ;;simplify/top-level
+	     ;;cleanup/top-level/1.5
+
 	     earlyrew/top-level		; rewrite -1+ into -, etc.
 	     lamlift/top-level/1	; flatten environment structure
 					; splitting lambda nodes if necessary
@@ -362,6 +366,9 @@ Example:
   (simplify/top-level program))
 
 (define (cleanup/top-level/1 program)
+  (cleanup/top-level program))
+
+(define (cleanup/top-level/1.5 program)
   (cleanup/top-level program))
 
 (define (cleanup/top-level/2 program)
