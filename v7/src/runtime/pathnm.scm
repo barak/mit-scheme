@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pathnm.scm,v 14.41 2004/11/26 04:47:24 cph Exp $
+$Id: pathnm.scm,v 14.42 2004/11/26 05:04:27 cph Exp $
 
 Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright 1993,1994,1995,1996,2000,2001 Massachusetts Institute of Technology
@@ -100,8 +100,7 @@ these rules:
 
 (define-structure (pathname
 		   (type vector)
-		   (named ((ucode-primitive string->symbol)
-			   "#[(runtime pathname)pathname]"))
+		   (named '|#[(runtime pathname)pathname]|)
 		   (constructor %make-pathname)
 		   (conc-name %pathname-)
 		   (print-procedure
@@ -115,6 +114,13 @@ these rules:
   (name #f read-only #t)
   (type #f read-only #t)
   (version #f read-only #t))
+
+(define (guarantee-pathname object caller)
+  (if (not (pathname? object))
+      (error:not-pathname object caller)))
+
+(define (error:not-pathname object caller)
+  (error:wrong-type-argument object "pathname" caller))
 
 (define (->pathname object)
   (pathname-arg object #f '->PATHNAME))
