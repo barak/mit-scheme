@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.13 2000/05/19 20:57:17 cph Exp $
+;;; $Id: imail-summary.scm,v 1.14 2000/05/19 21:10:20 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -165,7 +165,9 @@ The recipients are specified as a comma-separated list of names."
 			      (message-flag-markers message)))))
 		       (buffer-not-modified! buffer)))))))
 	  ((SELECT-MESSAGE)
-	   (imail-summary-select-message buffer (car parameters)))
+	   (let ((message (car parameters)))
+	     (if message
+		 (imail-summary-select-message buffer message))))
 	  ((EXPUNGE INCREASE-LENGTH SET-LENGTH)
 	   (maybe-add-command-suffix! rebuild-imail-summary-buffer buffer))))))
 
