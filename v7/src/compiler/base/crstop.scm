@@ -1,7 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/crstop.scm,v 1.7 1991/02/06 02:59:38 jinx Exp $
-$MC68020-Header: toplev.scm,v 4.16 89/04/26 05:09:52 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/crstop.scm,v 1.8 1991/02/14 18:45:55 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990, 1991 Massachusetts Institute of Technology
 
@@ -149,12 +148,11 @@ MIT in each case. |#
    "Cross Linkification"
    (lambda ()
      (set! *result*
-	   (cc-vector/make
-	    (last-reference *code-vector*)
-	    (last-reference *entry-label*)
-	    (last-reference *entry-points*)
-	    (last-reference *label-bindings*)
-	    (last-reference *ic-procedure-headers*)))
+	   (cc-vector/make *code-vector*
+			   (last-reference *entry-label*)
+			   (last-reference *entry-points*)
+			   (last-reference *label-bindings*)
+			   (last-reference *ic-procedure-headers*)))
      unspecific)))
 
 (define (cross-link-end cc-vector)
