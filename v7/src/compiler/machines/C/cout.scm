@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.1 1993/06/08 06:13:32 gjr Exp $
+$Id: cout.scm,v 1.2 1993/06/09 09:28:43 jawilson Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -93,9 +93,10 @@ MIT in each case. |#
 
   (define (choose-proc-name default midfix time-stamp)
     (let ((path (and info-output-pathname
-		     (if (pair? info-output-pathname)
-			 (car info-output-pathname)
-			 info-output-pathname))))
+		     (merge-pathnames
+		      (if (pair? info-output-pathname)
+			  (car info-output-pathname)
+			  info-output-pathname)))))
     
       (cond ((not *C-procedure-name*)
 	     (string-append default suffix time-stamp))
@@ -106,11 +107,14 @@ MIT in each case. |#
 	    ((not path)
 	     (string-append default suffix time-stamp))
 	    (else
-	     (string-append (car (last-pair (pathname-directory path)))
-			    "_"
-			    (pathname-name path)
-			    midfix
-			    suffix)))))
+	     (let ((dir (pathname-directory path)))
+	       (string-append (if (null? dir)
+				  default
+				  (car (last-pair dir)))
+			      "_"
+			      (pathname-name path)
+			      midfix
+			      suffix))))))
 
   (define (subroutine-information-1)
     (cond ((eq? *invoke-interface* 'INFINITY)
