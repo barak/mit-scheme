@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: emacs.scm,v 14.19 1993/10/21 14:52:34 cph Exp $
+$Id: emacs.scm,v 14.20 1993/11/19 22:17:07 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -134,7 +134,9 @@ MIT in each case. |#
 
 (define (emacs/write-result port expression object hash-number)
   expression
-  (cond ((undefined-value? object)
+  (cond ((eq? object emacs/write-result/ignore)
+	 unspecific)
+	((undefined-value? object)
 	 (transmit-signal-with-argument port #\v ""))
 	(hash-number
 	 ;; The #\P command used to do something useful, but now
@@ -148,6 +150,9 @@ MIT in each case. |#
 	  ": %s\" xscheme-prompt))"))
 	(else
 	 (transmit-signal-with-argument port #\v (write-to-string object)))))
+
+(define emacs/write-result/ignore
+  (list 'EMACS/WRITE-RESULT/IGNORE))
 
 (define (emacs/error-decision repl condition)
   repl condition
