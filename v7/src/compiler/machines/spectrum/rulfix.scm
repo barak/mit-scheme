@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulfix.scm,v 4.32 1990/01/25 16:44:44 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulfix.scm,v 4.33 1990/03/24 13:22:42 jinx Exp $
 $MC68020-Header: rules1.scm,v 4.32 90/01/18 22:43:54 GMT cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
@@ -231,7 +231,7 @@ MIT in each case. |#
     (let ((value (* constant fixnum-1)))
       (if overflow?
 	  (cond ((zero? constant)
-		 (LAP (SKIP (TR))))
+		 (LAP (ADD (TR) ,src 0 ,tgt)))
 		((fits-in-11-bits-signed? value)
 		 (LAP (ADDI (NSV) ,value ,src ,tgt)))
 		(else
@@ -246,7 +246,7 @@ MIT in each case. |#
     (let ((value (- (* constant fixnum-1))))
       (if overflow?
 	  (cond ((zero? constant)
-		 (LAP (SKIP (TR))))
+		 (LAP (SUB (TR) ,src 0 ,tgt)))
 		((fits-in-11-bits-signed? value)
 		 (LAP (ADDI (NSV) ,value ,src ,tgt)))
 		(else
