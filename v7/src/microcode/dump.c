@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dump.c,v 9.31 1990/10/05 18:58:04 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dump.c,v 9.32 1990/11/21 07:04:02 jinx Rel $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,18 +38,22 @@ extern SCHEME_OBJECT compiler_utilities;
 extern long compiler_interface_version, compiler_processor_type;
 
 void
-prepare_dump_header (Buffer, Dumped_Object,
-		     Heap_Count, Heap_Relocation,
-		     Constant_Count, Constant_Relocation,
-		     table_length, table_size,
-		     cc_code_p, band_p)
-     SCHEME_OBJECT
-       *Buffer, *Dumped_Object,
-       *Heap_Relocation, *Constant_Relocation;
-     long
-       Heap_Count, Constant_Count,
-       table_length, table_size;
-     Boolean cc_code_p, band_p;
+DEFUN (prepare_dump_header,
+       (Buffer, Dumped_Object,
+	Heap_Count, Heap_Relocation,
+	Constant_Count, Constant_Relocation,
+	table_length, table_size,
+	cc_code_p, band_p),
+       SCHEME_OBJECT *Buffer AND
+       SCHEME_OBJECT *Dumped_Object AND
+       long Heap_Count AND
+       SCHEME_OBJECT *Heap_Relocation AND
+       long Constant_Count AND
+       SCHEME_OBJECT *Constant_Relocation AND
+       long table_length AND
+       long table_size AND
+       Boolean cc_code_p AND
+       Boolean band_p)
 {
   long i;
 
@@ -111,6 +115,7 @@ prepare_dump_header (Buffer, Dumped_Object,
     Buffer[FASL_Offset_Ut_Base] = SHARP_F;
   }
 
+  Buffer[FASL_Offset_Check_Sum] = SHARP_F;
   for (i = FASL_Offset_First_Free; i < FASL_HEADER_LENGTH; i++)
   {
     Buffer[i] = SHARP_F;
@@ -119,18 +124,21 @@ prepare_dump_header (Buffer, Dumped_Object,
 }
 
 Boolean
-Write_File (Dumped_Object, Heap_Count, Heap_Relocation,
-	    Constant_Count, Constant_Relocation,
-	    table_start, table_length, table_size,
-	    cc_code_p, band_p)
-     SCHEME_OBJECT
-       *Dumped_Object,
-       *Heap_Relocation, *Constant_Relocation,
-       *table_start;
-     long
-       Heap_Count, Constant_Count,
-       table_length, table_size;
-     Boolean cc_code_p, band_p;
+DEFUN (Write_File,
+       (Dumped_Object, Heap_Count, Heap_Relocation,
+	Constant_Count, Constant_Relocation,
+	table_start, table_length, table_size,
+	cc_code_p, band_p),
+       SCHEME_OBJECT *Dumped_Object AND
+       long Heap_Count AND
+       SCHEME_OBJECT *Heap_Relocation AND
+       long Constant_Count AND
+       SCHEME_OBJECT *Constant_Relocation AND
+       SCHEME_OBJECT *table_start AND
+       long table_length AND
+       long table_size AND
+       Boolean cc_code_p AND
+       Boolean band_p)
 {
   SCHEME_OBJECT Buffer[FASL_HEADER_LENGTH];
   unsigned long checksum, checksum_area ();
@@ -165,14 +173,14 @@ Write_File (Dumped_Object, Heap_Count, Heap_Relocation,
 			     checksum));
   Buffer[FASL_Offset_Check_Sum] = checksum;
 
-  if (Write_Data (FASL_HEADER_LENGTH, ((char *) Buffer)) !=
+  if ((Write_Data (FASL_HEADER_LENGTH, Buffer)) !=
       FASL_HEADER_LENGTH)
   {
     return (false);
   }
   if (Heap_Count != 0)
   {
-    if (Write_Data(Heap_Count, ((char *) Heap_Relocation)) !=
+    if ((Write_Data (Heap_Count, Heap_Relocation)) !=
 	Heap_Count)
     {
       return (false);
@@ -180,7 +188,7 @@ Write_File (Dumped_Object, Heap_Count, Heap_Relocation,
   }
   if (Constant_Count != 0)
   {
-    if (Write_Data(Constant_Count, ((char *) Constant_Relocation)) !=
+    if ((Write_Data (Constant_Count, Constant_Relocation)) !=
 	Constant_Count)
     {
       return (false);
@@ -188,7 +196,8 @@ Write_File (Dumped_Object, Heap_Count, Heap_Relocation,
   }
   if (table_size != 0)
   {
-    if (Write_Data(table_size, ((char *) table_start)) != table_size)
+    if ((Write_Data (table_size, table_start)) !=
+	table_size)
     {
       return (false);
     }
@@ -199,10 +208,10 @@ Write_File (Dumped_Object, Heap_Count, Heap_Relocation,
 extern unsigned long checksum_area ();
 
 unsigned long
-checksum_area (start, count, initial_value)
-     register unsigned long *start;
-     register long count;
-     unsigned long initial_value;
+DEFUN (checksum_area, (start, count, initial_value),
+       register unsigned long *start AND
+       register long count AND
+       unsigned long initial_value)
 {
   register unsigned long value;
 
@@ -213,4 +222,4 @@ checksum_area (start, count, initial_value)
   }
   return (value);
 }
-     
+

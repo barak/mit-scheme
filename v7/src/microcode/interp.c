@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.58 1990/10/03 18:57:28 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.59 1990/11/21 07:04:25 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -43,6 +43,7 @@ MIT in each case. */
 #include "history.h"
 #include "cmpint.h"
 #include "zones.h"
+#include "prmcon.h"
 
 extern PTR EXFUN (obstack_chunk_alloc, (unsigned int size));
 extern void EXFUN (free, (PTR ptr));
@@ -1969,6 +1970,12 @@ Primitive_Internal_Apply:
     case RC_POP_RETURN_ERROR:
     case RC_RESTORE_VALUE:
       Val = Fetch_Expression();
+      break;
+
+    case RC_PRIMITIVE_CONTINUE:
+      Export_Registers ();
+      Val = (continue_primitive ());
+      Import_Registers ();
       break;
 
 /* Interpret() continues on the next page */

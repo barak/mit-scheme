@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/returns.h,v 9.38 1990/10/03 16:49:32 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/returns.h,v 9.39 1990/11/21 07:04:43 jinx Rel $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -92,7 +92,7 @@ MIT in each case. */
 /* The following are not used in the 68000 implementation */
 #define RC_POP_RETURN_ERROR		0x40
 #define RC_EVAL_ERROR			0x41
-/* formerly #define RC_REPEAT_PRIMITIVE	0x42 */
+/* formerly RC_REPEAT_PRIMITIVE	0x42 */
 #define RC_COMP_INTERRUPT_RESTART	0x43
 /* formerly RC_COMP_RECURSION_GC	0x44 */
 #define RC_RESTORE_INT_MASK		0x45
@@ -121,10 +121,11 @@ MIT in each case. */
 #define RC_HARDWARE_TRAP		0x5C
 #define RC_INTERNAL_APPLY_VAL		0x5D
 #define RC_COMP_ERROR_RESTART		0x5E
+#define RC_PRIMITIVE_CONTINUE		0x5F
 
 /* When adding return codes, add them to the table below as well! */
 
-#define MAX_RETURN_CODE			0x5E
+#define MAX_RETURN_CODE			0x5F
 
 #define RETURN_NAME_TABLE						\
 {									\
@@ -222,5 +223,6 @@ MIT in each case. */
 /* 0x5B */		"COMPILER_LINK_CACHES_RESTART",			\
 /* 0x5C */		"HARDWARE_TRAP",				\
 /* 0x5D */		"INTERNAL_APPLY_VAL",				\
-/* 0x5E */		"COMPILER_ERROR_RESTARRT"			\
+/* 0x5E */		"COMPILER_ERROR_RESTARRT",			\
+/* 0x5F */		"PRIMITIVE_CONTINUE"				\
 }

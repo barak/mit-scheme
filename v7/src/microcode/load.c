@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/load.c,v 9.29 1990/10/05 18:58:18 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/load.c,v 9.30 1990/11/21 07:04:33 jinx Rel $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -82,7 +82,7 @@ static SCHEME_OBJECT
   dumped_utilities;
 
 void
-print_fasl_information ()
+DEFUN_VOID (print_fasl_information)
 {
   printf ("FASL File Information:\n\n");
   printf ("Machine = %ld; Version = %ld; Subversion = %ld\n",
@@ -120,35 +120,30 @@ print_fasl_information ()
 }
 
 long
-Read_Header ()
+DEFUN (initialize_variables_from_fasl_header, (buffer),
+       SCHEME_OBJECT *buffer)
 {
-  SCHEME_OBJECT Buffer[FASL_HEADER_LENGTH];
   SCHEME_OBJECT Pointer_Heap_Base, Pointer_Const_Base;
 
-  if (Load_Data (FASL_HEADER_LENGTH, ((char *) Buffer)) !=
-      FASL_HEADER_LENGTH)
-  {
-    return (FASL_FILE_TOO_SHORT);
-  }
-  if (Buffer[FASL_Offset_Marker] != FASL_FILE_MARKER)
+  if (buffer[FASL_Offset_Marker] != FASL_FILE_MARKER)
   {
     return (FASL_FILE_NOT_FASL);
   }
-  NORMALIZE_HEADER (Buffer,
-		    (sizeof(Buffer) / sizeof(SCHEME_OBJECT)),
-		    Buffer[FASL_Offset_Heap_Base],
-		    Buffer[FASL_Offset_Heap_Count]);
-  Heap_Count = OBJECT_DATUM (Buffer[FASL_Offset_Heap_Count]);
-  Pointer_Heap_Base = Buffer[FASL_Offset_Heap_Base];
+  NORMALIZE_HEADER (buffer,
+		    (sizeof(buffer) / sizeof(SCHEME_OBJECT)),
+		    buffer[FASL_Offset_Heap_Base],
+		    buffer[FASL_Offset_Heap_Count]);
+  Heap_Count = OBJECT_DATUM (buffer[FASL_Offset_Heap_Count]);
+  Pointer_Heap_Base = buffer[FASL_Offset_Heap_Base];
   Heap_Base = OBJECT_DATUM (Pointer_Heap_Base);
-  Dumped_Object = OBJECT_DATUM (Buffer[FASL_Offset_Dumped_Obj]);
-  Const_Count = OBJECT_DATUM (Buffer[FASL_Offset_Const_Count]);
-  Pointer_Const_Base = Buffer[FASL_Offset_Const_Base];
+  Dumped_Object = OBJECT_DATUM (buffer[FASL_Offset_Dumped_Obj]);
+  Const_Count = OBJECT_DATUM (buffer[FASL_Offset_Const_Count]);
+  Pointer_Const_Base = buffer[FASL_Offset_Const_Base];
   Const_Base = OBJECT_DATUM (Pointer_Const_Base);
-  Version = The_Version(Buffer[FASL_Offset_Version]);
-  Sub_Version = The_Sub_Version(Buffer[FASL_Offset_Version]);
-  Machine_Type = The_Machine_Type(Buffer[FASL_Offset_Version]);
-  Dumped_Stack_Top = OBJECT_DATUM (Buffer[FASL_Offset_Stack_Top]);
+  Version = The_Version(buffer[FASL_Offset_Version]);
+  Sub_Version = The_Sub_Version(buffer[FASL_Offset_Version]);
+  Machine_Type = The_Machine_Type(buffer[FASL_Offset_Version]);
+  Dumped_Stack_Top = OBJECT_DATUM (buffer[FASL_Offset_Stack_Top]);
   Dumped_Heap_Top =
     ADDRESS_TO_DATUM (MEMORY_LOC (Pointer_Heap_Base, Heap_Count));
   Dumped_Constant_Top =
@@ -159,12 +154,12 @@ Read_Header ()
     Primitive_Table_Length = 0;
     Primitive_Table_Size = 0;
     Ext_Prim_Vector =
-      (OBJECT_NEW_TYPE (TC_CELL, (Buffer [FASL_Offset_Ext_Loc])));
+      (OBJECT_NEW_TYPE (TC_CELL, (buffer [FASL_Offset_Ext_Loc])));
   }
   else
   {
-    Primitive_Table_Length = OBJECT_DATUM (Buffer[FASL_Offset_Prim_Length]);
-    Primitive_Table_Size = OBJECT_DATUM (Buffer[FASL_Offset_Prim_Size]);
+    Primitive_Table_Length = OBJECT_DATUM (buffer[FASL_Offset_Prim_Length]);
+    Primitive_Table_Size = OBJECT_DATUM (buffer[FASL_Offset_Prim_Size]);
     Ext_Prim_Vector = SHARP_F;
   }
 
@@ -180,12 +175,12 @@ Read_Header ()
   {
     SCHEME_OBJECT temp;
 
-    temp = Buffer[FASL_Offset_Ci_Version];
+    temp = buffer[FASL_Offset_Ci_Version];
 
     band_p = CI_BAND_P(temp);
     dumped_processor_type = CI_PROCESSOR(temp);
     dumped_interface_version = CI_VERSION(temp);
-    dumped_utilities = Buffer[FASL_Offset_Ut_Base];
+    dumped_utilities = buffer[FASL_Offset_Ut_Base];
   }
 
 #ifndef INHIBIT_FASL_VERSION_CHECK
@@ -243,7 +238,7 @@ Read_Header ()
 
 #endif /* INHIBIT_COMPILED_VERSION_CHECK */
 
-  dumped_checksum = (Buffer [FASL_Offset_Check_Sum]);
+  dumped_checksum = (buffer [FASL_Offset_Check_Sum]);
 
 #ifndef INHIBIT_CHECKSUMS
 
@@ -251,7 +246,7 @@ Read_Header ()
     extern unsigned long checksum_area ();
 
     computed_checksum =
-      (checksum_area (((unsigned long *) &Buffer[0]),
+      (checksum_area (((unsigned long *) &buffer[0]),
 		      ((unsigned long) (FASL_HEADER_LENGTH)),
 		      ((unsigned long) 0)));
 
@@ -261,14 +256,30 @@ Read_Header ()
 
   return (FASL_FILE_FINE);
 }
+
+long
+DEFUN_VOID (Read_Header)
+{
+  SCHEME_OBJECT header[FASL_HEADER_LENGTH];
+
+  if ((Load_Data (FASL_HEADER_LENGTH, header)) !=
+      FASL_HEADER_LENGTH)
+  {
+    return (FASL_FILE_TOO_SHORT);
+  }
+  return (initialize_variables_from_fasl_header (&header[0]));
+}
 
 #ifdef BYTE_INVERSION
 
 static Boolean Byte_Invert_Fasl_Files;
 
 void
-Byte_Invert_Header(Header, Headsize, Test1, Test2)
-     long *Header, Headsize, Test1, Test2;
+DEFUN (Byte_Invert_Header, (Header, Headsize, Test1, Test2),
+       long *Header AND
+       long Headsize AND
+       long Test1 AND
+       long Test2)
 {
   Byte_Invert_Fasl_Files = false;
 
@@ -284,8 +295,9 @@ Byte_Invert_Header(Header, Headsize, Test1, Test2)
 }
 
 void
-Byte_Invert_Region(Region, Size)
-     long *Region, Size;
+DEFUN (Byte_Invert_Region, (Region, Size),
+       long *Region AND
+       long Size)
 {
   register long word, size;
 
@@ -302,4 +314,3 @@ Byte_Invert_Region(Region, Size)
 }
 
 #endif /* BYTE_INVERSION */
-

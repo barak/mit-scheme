@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosfs.c,v 1.1 1990/06/20 19:38:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosfs.c,v 1.2 1990/11/21 07:04:38 jinx Rel $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -155,33 +155,63 @@ If third arg HARD? is #F, a soft link is created;\n\
 #define FILE_COPY_BUFFER_LENGTH 8192
 #endif
 
-static void
+extern int EXFUN (OS_channel_copy,
+		  (off_t source_length,
+		   Tchannel source_channel,
+		   Tchannel destination_channel));
+
+int
+DEFUN (OS_channel_copy, (source_length, source_channel, destination_channel),
+       off_t source_length AND
+       Tchannel source_channel AND
+       Tchannel destination_channel)
+{
+  char buffer [FILE_COPY_BUFFER_LENGTH];
+  off_t transfer_length =
+    ((source_length > (sizeof (buffer))) ? (sizeof (buffer)) : source_length);
+
+  while (source_length > 0)
+  {
+    long nread =
+      (OS_channel_read (source_channel, buffer, transfer_length));
+    if (nread <= 0)
+    {
+      return (-1);
+    }
+    if ((OS_channel_write (destination_channel, buffer, nread)) <
+	nread)
+    {
+      return (-1);
+    }
+    source_length -= nread;
+    if (source_length < (sizeof (buffer)))
+      transfer_length = source_length;
+  }
+  return (0);
+}  
+
+void
 DEFUN (OS_file_copy, (from_name, to_name),
        CONST char * from_name AND
        CONST char * to_name)
 {
-  char buffer [FILE_COPY_BUFFER_LENGTH];
+  int result;
   Tchannel source_channel = (OS_open_input_file (from_name));
   Tchannel destination_channel = (OS_open_output_file (to_name));
   off_t source_length = (OS_file_length (source_channel));
-  off_t transfer_length =
-    ((source_length > (sizeof (buffer))) ? (sizeof (buffer)) : source_length);
-  if (source_length > 0)
-    while (1)
-      {
-	long nread =
-	  (OS_channel_read (source_channel, buffer, transfer_length));
-	if (nread == 0)
-	  break;
-	OS_channel_write (destination_channel, buffer, nread);
-	source_length -= nread;
-	if (source_length == 0)
-	  break;
-	if (source_length < (sizeof (buffer)))
-	  transfer_length = source_length;
-      }
+
+  result = (OS_channel_copy (source_length,
+			     source_channel,
+			     destination_channel));
+  
   OS_channel_close (source_channel);
   OS_channel_close (destination_channel);
+
+  if (result < 0)
+  {
+    signal_error_from_primitive (ERR_IO_ERROR);
+  }
+  return;
 }
 
 DEFINE_PRIMITIVE ("FILE-COPY", Prim_file_copy, 2, 2,

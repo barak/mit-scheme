@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/errors.h,v 9.34 1990/10/03 15:12:51 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/errors.h,v 9.35 1990/11/21 07:04:07 jinx Rel $
  *
  * Error and termination code declarations.
  *
@@ -104,13 +104,14 @@ MIT in each case. */
 #define ERR_FASDUMP_ENVIRONMENT			0x38
 #define ERR_FASLOAD_BAND			0x39
 #define ERR_FASLOAD_COMPILED_MISMATCH		0x3A
+#define ERR_UNKNOWN_PRIMITIVE_CONTINUATION	0x3B
 
 /*
   If you add any error codes here, add them to
   the table below and to utabmd.scm as well.
  */
 
-#define MAX_ERROR				0x3A
+#define MAX_ERROR				0x3B
 
 #define ERROR_NAME_TABLE						\
 {									\
@@ -173,7 +174,8 @@ MIT in each case. */
 /* 0x37 */		"IO-ERROR",					\
 /* 0x38 */		"FASDUMP-ENVIRONMENT",				\
 /* 0x39 */		"FASLOAD-BAND",					\
-/* 0x3A */		"FASLOAD-COMPILED-MISMATCH"			\
+/* 0x3A */		"FASLOAD-COMPILED-MISMATCH",			\
+/* 0x3B */		"UNKNOWN-PRIMITIVE-CONTINUATION"		\
 }
 
 /* Termination codes: the interpreter halts on these */

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.58 1990/11/15 23:18:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.59 1990/11/21 07:04:18 jinx Rel $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -39,17 +39,21 @@ MIT in each case. */
 
 #include "scheme.h"
 #include "prims.h"
+#include "osscheme.h"
 #include "osfile.h"
 #include "osio.h"
 #include "gccode.h"
 #include "trap.h"
 #include "option.h"
+#include "prmcon.h"
 
 static Tchannel load_channel;
 
 #define Load_Data(size, buffer)						\
   ((OS_channel_read_load_file						\
-    (load_channel, (buffer), ((size) * (sizeof (SCHEME_OBJECT)))))	\
+    (load_channel,							\
+     ((char *) (buffer)),						\
+     ((size) * (sizeof (SCHEME_OBJECT)))))				\
    / (sizeof (SCHEME_OBJECT)))
 
 #include "load.c"
@@ -69,26 +73,26 @@ extern void compiler_reset ();
 
 static long failed_heap_length = -1;
 
+#define MODE_BAND		0
+#define MODE_CHANNEL		1
+#define MODE_FNAME		2
+
 static void
-DEFUN (read_file_start, (file_name, from_band_load),
-       CONST char * file_name AND
-       Boolean from_band_load)
+DEFUN (read_channel_continue, (header, mode, repeat_p),
+       SCHEME_OBJECT *header AND
+       int mode AND
+       Boolean repeat_p)
 {
   long value, heap_length;
 
-  load_channel = (OS_open_load_file (file_name));
-  if (Per_File)
-  {
-    debug_edit_flags ();
-  }
-  if (load_channel == NO_CHANNEL)
-  {
-    error_bad_range_arg (1);
-  }
-  value = (Read_Header ());
+  value = (initialize_variables_from_fasl_header (header));
+
   if (value != FASL_FILE_FINE)
   {
-    OS_channel_close_noerror (load_channel);
+    if (mode != MODE_CHANNEL)
+    {
+      OS_channel_close_noerror (load_channel);
+    }
     switch (value)
     {
       /* These may want to be separated further. */
@@ -107,61 +111,151 @@ DEFUN (read_file_start, (file_name, from_band_load),
     }
   }
 
-  if (Or2(Reloc_Debug, File_Load_Debug))
+  if (Or2 (Reloc_Debug, File_Load_Debug))
   {
     print_fasl_information();
   }
 
-  if (!Test_Pure_Space_Top(Free_Constant + Const_Count))
+  if (!Test_Pure_Space_Top (Free_Constant + Const_Count))
   {
-    failed_heap_length = 0;
-    OS_channel_close_noerror (load_channel);
+    if (mode != MODE_CHANNEL)
+    {
+      OS_channel_close_noerror (load_channel);
+    }
     signal_error_from_primitive (ERR_FASL_FILE_TOO_BIG);
     /*NOTREACHED*/
   }
 
   heap_length = (Heap_Count + Primitive_Table_Size + Primitive_Table_Length);
-
+
   if (GC_Check (heap_length))
   {
-    if (from_band_load ||
-	(failed_heap_length == heap_length))
+    if (repeat_p ||
+	(heap_length == failed_heap_length) ||
+	(mode == MODE_BAND))
     {
-      /* Heuristic check.  It may fail.
-	 The GC should be modified to do this right.
-       */
-      failed_heap_length = -1;
-      OS_channel_close_noerror (load_channel);
+      if (mode != MODE_CHANNEL)
+      {
+	OS_channel_close_noerror (load_channel);
+      }
       signal_error_from_primitive (ERR_FASL_FILE_TOO_BIG);
+      /*NOTREACHED*/
+    }
+    else if (mode == MODE_CHANNEL)
+    {
+      SCHEME_OBJECT reentry_record[1];
+
+      /* IMPORTANT: This KNOWS that it was called from BINARY-FASLOAD.
+	 If this is ever called from elsewhere with MODE_CHANNEL,
+	 it will have to be parameterized better.
+
+	 This reentry record must match the expectations of
+	 continue_fasload below.
+       */	 
+
+      Request_GC (heap_length);
+
+      /* This assumes that header == (Free + 1) */
+      header = Free;
+      Free += (FASL_HEADER_LENGTH + 1);
+      *header = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, FASL_HEADER_LENGTH));
+
+      reentry_record[0] = (MAKE_POINTER_OBJECT (TC_NON_MARKED_VECTOR, header));
+      
+      suspend_primitive (CONT_FASLOAD,
+			 ((sizeof (reentry_record)) /
+			  (sizeof (SCHEME_OBJECT))),
+			 &reentry_record[0]);
+      immediate_interrupt ();
       /*NOTREACHED*/
     }
     else
     {
       failed_heap_length = heap_length;
       OS_channel_close_noerror (load_channel);
-      Request_GC(heap_length);
+      Request_GC (heap_length);
       signal_interrupt_from_primitive ();
       /*NOTREACHED*/
     }
   }
   failed_heap_length = -1;
 
-  if ((band_p) && (!from_band_load))
+  if ((band_p) && (mode != MODE_BAND))
   {
+    if (mode != MODE_CHANNEL)
+    {
+      OS_channel_close_noerror (load_channel);      
+    }
     signal_error_from_primitive (ERR_FASLOAD_BAND);
   }
   return;
 }
 
+static void
+DEFUN (read_channel_start, (channel, mode),
+       Tchannel channel AND
+       int mode)
+{
+  load_channel = channel;
+
+  if (GC_Check (FASL_HEADER_LENGTH + 1))
+  {
+    if (mode != MODE_CHANNEL)
+    {
+      OS_channel_close_noerror (load_channel);
+    }
+    Request_GC (FASL_HEADER_LENGTH + 1);
+    signal_interrupt_from_primitive ();
+    /* NOTREACHED */
+  }
+
+  if (Load_Data (FASL_HEADER_LENGTH, ((char *) (Free + 1))) !=
+      FASL_HEADER_LENGTH)
+  {
+    if (mode != MODE_CHANNEL)
+    {
+      OS_channel_close_noerror (load_channel);
+    }
+    signal_error_from_primitive (ERR_FASL_FILE_BAD_DATA);
+  }
+
+  read_channel_continue ((Free + 1), mode, false);
+  return;
+}
+
+static void
+DEFUN (read_file_start, (file_name, from_band_load),
+       CONST char * file_name AND
+       Boolean from_band_load)
+{
+  Tchannel channel;
+
+  channel = (OS_open_load_file (file_name));
+  if (Per_File)
+  {
+    debug_edit_flags ();
+  }
+  if (channel == NO_CHANNEL)
+  {
+    error_bad_range_arg (1);
+  }
+  read_channel_start (channel,
+		      (from_band_load ? MODE_BAND : MODE_FNAME));
+  return;
+}
+
 static SCHEME_OBJECT *
-DEFUN_VOID (read_file_end)
+DEFUN (read_file_end, (mode), int mode)
 {
   SCHEME_OBJECT *table;
   extern unsigned long checksum_area ();
 
-  if ((Load_Data(Heap_Count, ((char *) Free))) != Heap_Count)
+  if ((Load_Data (Heap_Count, ((char *) Free))) != Heap_Count)
   {
-    OS_channel_close_noerror (load_channel);
+    if (mode != MODE_CHANNEL)
+    {
+      OS_channel_close_noerror (load_channel);
+    }
     signal_error_from_primitive (ERR_IO_ERROR);
   }
   computed_checksum =
@@ -173,7 +267,10 @@ DEFUN_VOID (read_file_end)
 
   if ((Load_Data(Const_Count, ((char *) Free_Constant))) != Const_Count)
   {
-    OS_channel_close_noerror (load_channel);
+    if (mode != MODE_CHANNEL)
+    {
+      OS_channel_close_noerror (load_channel);
+    }
     signal_error_from_primitive (ERR_IO_ERROR);
   }
   computed_checksum =
@@ -187,7 +284,10 @@ DEFUN_VOID (read_file_end)
   if ((Load_Data(Primitive_Table_Size, ((char *) Free))) !=
       Primitive_Table_Size)
   {
-    OS_channel_close_noerror (load_channel);
+    if (mode != MODE_CHANNEL)
+    {
+      OS_channel_close_noerror (load_channel);
+    }
     signal_error_from_primitive (ERR_IO_ERROR);
   }
   computed_checksum =
@@ -197,7 +297,10 @@ DEFUN_VOID (read_file_end)
   NORMALIZE_REGION(((char *) table), Primitive_Table_Size);
   Free += Primitive_Table_Size;
 
-  OS_channel_close_noerror (load_channel);
+  if (mode != MODE_CHANNEL)
+  {
+    OS_channel_close_noerror (load_channel);
+  }
 
   if ((computed_checksum != ((unsigned long) 0)) &&
       (dumped_checksum != SHARP_F))
@@ -225,8 +328,7 @@ relocation_type
 static Boolean Warned = false;
 
 SCHEME_OBJECT *
-Relocate(P)
-     long P;
+DEFUN (Relocate, (P), long P)
 {
   SCHEME_OBJECT *Result;
 
@@ -244,19 +346,20 @@ Relocate(P)
   }
   else
   {
-    printf("Pointer out of range: 0x%x\n", P, P);
+    printf ("Pointer out of range: 0x%lx\n", P);
     if (!Warned)
     {
-      printf("Heap: %x-%x, Constant: %x-%x, Stack: ?-0x%x\n",
-             Heap_Base, Dumped_Heap_Top,
-             Const_Base, Dumped_Constant_Top, Dumped_Stack_Top);
+      printf ("Heap: %lx-%lx, Constant: %lx-%lx, Stack: ?-0x%lx\n",
+	      ((long) Heap_Base), ((long) Dumped_Heap_Top),
+	      ((long) Const_Base), ((long) Dumped_Constant_Top),
+	      ((long) Dumped_Stack_Top));
       Warned = true;
     }
     Result = ((SCHEME_OBJECT *) 0);
   }
   if (Reloc_Debug)
   {
-    printf("0x%06x -> 0x%06x\n", P, Result);
+    printf ("0x%06lx -> 0x%06lx\n", P, ((long) Result));
   }
   return (Result);
 }
@@ -306,23 +409,24 @@ static SCHEME_OBJECT *Relocate_Temp;
 */
 
 void
-Relocate_Block(Scan, Stop_At)
-     fast SCHEME_OBJECT *Scan, *Stop_At;
+DEFUN (Relocate_Block, (Scan, Stop_At),
+       fast SCHEME_OBJECT *Scan AND
+       fast SCHEME_OBJECT *Stop_At)
 {
-  fast SCHEME_OBJECT Temp;
   fast long address;
+  fast SCHEME_OBJECT Temp;
 
   if (Reloc_Debug)
   {
-    fprintf(stderr,
-	    "\nRelocate_Block: block = 0x%x, length = 0x%x, end = 0x%x.\n",
-	    Scan, ((Stop_At - Scan) - 1), Stop_At);
+    fprintf (stderr,
+	     "\nRelocate_Block: block = 0x%lx, length = 0x%lx, end = 0x%lx.\n",
+	     ((long) Scan), ((long) ((Stop_At - Scan) - 1)), ((long) Stop_At));
   }
 
   while (Scan < Stop_At)
   {
     Temp = *Scan;
-    Switch_by_GC_Type(Temp)
+    Switch_by_GC_Type (Temp)
     {
       case TC_BROKEN_HEART:
       case TC_MANIFEST_SPECIAL_NM_VECTOR:
@@ -362,12 +466,12 @@ Relocate_Block(Scan, Stop_At)
 	  fast long count;
 
 	  Scan++;
-	  for (count = READ_CACHE_LINKAGE_COUNT(Temp);
+	  for (count = (READ_CACHE_LINKAGE_COUNT (Temp));
 	       --count >= 0;
 	       )
 	  {
 	    address = (ADDRESS_TO_DATUM ((SCHEME_OBJECT *) (*Scan)));
-	    *Scan++ = ((SCHEME_OBJECT) Relocate(address));
+	    *Scan++ = ((SCHEME_OBJECT) (Relocate (address)));
 	  }
 	  break;
 	}
@@ -387,7 +491,7 @@ Relocate_Block(Scan, Stop_At)
 	    word_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr));
 	    EXTRACT_OPERATOR_LINKAGE_ADDRESS (address, Scan);
 	    address = (ADDRESS_TO_DATUM ((SCHEME_OBJECT *) address));
-	    address = ((long) (Relocate(address)));
+	    address = ((long) (Relocate (address)));
 	    STORE_OPERATOR_LINKAGE_ADDRESS (address, Scan);
 	  }
 	  Scan = &end_scan[1];
@@ -423,12 +527,12 @@ Relocate_Block(Scan, Stop_At)
 
 #ifdef BYTE_INVERSION
       case TC_CHARACTER_STRING:
-	String_Inversion(Relocate(OBJECT_DATUM (Temp)));
+	String_Inversion (Relocate (OBJECT_DATUM (Temp)));
 	goto normal_pointer;
 #endif
 
       case TC_REFERENCE_TRAP:
-	if (OBJECT_DATUM (Temp) <= TRAP_MAX_IMMEDIATE)
+	if ((OBJECT_DATUM (Temp)) <= TRAP_MAX_IMMEDIATE)
 	{
 	  Scan += 1;
 	  break;
@@ -442,8 +546,9 @@ Relocate_Block(Scan, Stop_At)
 #ifdef BYTE_INVERSION
       normal_pointer:
 #endif
-	address = OBJECT_DATUM (Temp);
-	*Scan++ = MAKE_POINTER_OBJECT (OBJECT_TYPE (Temp), Relocate(address));
+	address = (OBJECT_DATUM (Temp));
+	*Scan++ = (MAKE_POINTER_OBJECT ((OBJECT_TYPE (Temp)),
+					(Relocate (address))));
 	break;
       }
   }
@@ -451,20 +556,24 @@ Relocate_Block(Scan, Stop_At)
 }
 
 Boolean
-check_primitive_numbers(table, length)
-     fast SCHEME_OBJECT *table;
-     fast long length;
+DEFUN (check_primitive_numbers, (table, length),
+       fast SCHEME_OBJECT *table AND
+       fast long length)
 {
   fast long count, top;
 
-  top = NUMBER_OF_DEFINED_PRIMITIVES();
+  top = (NUMBER_OF_DEFINED_PRIMITIVES ());
   if (length < top)
+  {
     top = length;
+  }
 
   for (count = 0; count < top; count += 1)
   {
-    if (table[count] != MAKE_PRIMITIVE_OBJECT(0, count))
+    if (table[count] != (MAKE_PRIMITIVE_OBJECT (0, count)))
+    {
       return (false);
+    }
   }
   /* Is this really correct?  Can't this screw up if there
      were more implemented primitives in the dumping microcode
@@ -472,11 +581,15 @@ check_primitive_numbers(table, length)
      last implemented primitive in the loading microcode?
    */
   if (length == top)
+  {
     return (true);
+  }
   for (count = top; count < length; count += 1)
   {
-    if (table[count] != MAKE_PRIMITIVE_OBJECT(count, top))
+    if (table[count] != (MAKE_PRIMITIVE_OBJECT (count, top)))
+    {
       return (false);
+    }
   }
   return (true);
 }
@@ -492,12 +605,13 @@ DEFUN (get_band_parameters, (heap_size, const_size),
 }
 
 void
-Intern_Block(Next_Pointer, Stop_At)
-     fast SCHEME_OBJECT *Next_Pointer, *Stop_At;
+DEFUN (Intern_Block, (Next_Pointer, Stop_At),
+       fast SCHEME_OBJECT *Next_Pointer AND
+       fast SCHEME_OBJECT *Stop_At)
 {
   if (Reloc_Debug)
   {
-    printf("Interning a block.\n");
+    printf ("Interning a block.\n");
   }
 
   while (Next_Pointer < Stop_At)
@@ -505,11 +619,11 @@ Intern_Block(Next_Pointer, Stop_At)
     switch (OBJECT_TYPE (*Next_Pointer))
     {
       case TC_MANIFEST_NM_VECTOR:
-        Next_Pointer += (1 + OBJECT_DATUM (*Next_Pointer));
+        Next_Pointer += (1 + (OBJECT_DATUM (* Next_Pointer)));
         break;
 
       case TC_INTERNED_SYMBOL:
-	if (OBJECT_TYPE (MEMORY_REF (*Next_Pointer, SYMBOL_GLOBAL_VALUE)) ==
+	if ((OBJECT_TYPE (MEMORY_REF (*Next_Pointer, SYMBOL_GLOBAL_VALUE))) ==
 	    TC_BROKEN_HEART)
 	{
 	  SCHEME_OBJECT old_symbol = (*Next_Pointer);
@@ -526,7 +640,7 @@ Intern_Block(Next_Pointer, Stop_At)
 	      }
 	  }
 	}
-	else if (OBJECT_TYPE (MEMORY_REF (*Next_Pointer, SYMBOL_NAME)) ==
+	else if ((OBJECT_TYPE (MEMORY_REF (*Next_Pointer, SYMBOL_NAME))) ==
 		TC_BROKEN_HEART)
 	{
 	  *Next_Pointer =
@@ -544,7 +658,7 @@ Intern_Block(Next_Pointer, Stop_At)
   }
   if (Reloc_Debug)
   {
-    printf("Done interning block.\n");
+    printf ("Done interning block.\n");
   }
   return;
 }
@@ -556,8 +670,7 @@ Intern_Block(Next_Pointer, Stop_At)
 #endif
 
 SCHEME_OBJECT
-load_file (from_band_load)
-     Boolean from_band_load;
+DEFUN (load_file, (mode), int mode)
 {
   SCHEME_OBJECT
     *Orig_Heap,
@@ -575,7 +688,7 @@ load_file (from_band_load)
   ALIGN_FLOAT (Free);
   Orig_Heap = Free;
   Orig_Constant = Free_Constant;
-  primitive_table = read_file_end();
+  primitive_table = (read_file_end (mode));
   Constant_End = Free_Constant;
   heap_relocation = (COMPUTE_RELOCATION (Orig_Heap, Heap_Base));
 
@@ -617,16 +730,16 @@ load_file (from_band_load)
   stack_relocation = (COMPUTE_RELOCATION (Stack_Top, Dumped_Stack_Top));
 
 #ifdef BYTE_INVERSION
-  Setup_For_String_Inversion();
+  Setup_For_String_Inversion ();
 #endif
 
   /* Setup the primitive table */
 
-  install_primitive_table(primitive_table,
-			  Primitive_Table_Length,
-			  from_band_load);
+  install_primitive_table (primitive_table,
+			   Primitive_Table_Length,
+			   (mode == MODE_BAND));
 
-  if ((!from_band_load)					||
+  if ((mode != MODE_BAND)				||
       (heap_relocation != ((relocation_type) 0))	||
       (const_relocation != ((relocation_type) 0))	||
       (stack_relocation != ((relocation_type) 0))	||
@@ -636,9 +749,9 @@ load_file (from_band_load)
     /* We need to relocate.  Oh well. */
     if (Reloc_Debug)
     {
-      printf("heap_relocation = %d = %x; const_relocation = %d = %x\n",
-	     heap_relocation, heap_relocation,
-	     const_relocation,  const_relocation);
+      printf ("heap_relocation = %ld = %lx; const_relocation = %ld = %lx\n",
+	      ((long) heap_relocation), ((long) heap_relocation),
+	      ((long) const_relocation), ((long) const_relocation));
     }
 
     /*
@@ -648,44 +761,71 @@ load_file (from_band_load)
       there is no need to relocate it.
       */
 
-    Relocate_Block(Orig_Heap, primitive_table);
-    Relocate_Block(Orig_Constant, Free_Constant);
+    Relocate_Block (Orig_Heap, primitive_table);
+    Relocate_Block (Orig_Constant, Free_Constant);
   }
 
 #ifdef BYTE_INVERSION
-  Finish_String_Inversion();
+  Finish_String_Inversion ();
 #endif
 
-  if (!from_band_load)
+  if (mode != MODE_BAND)
   {
     /* Again, there are no symbols in the primitive table. */
 
-    Intern_Block(Orig_Heap, primitive_table);
-    Intern_Block(Orig_Constant, Constant_End);
+    Intern_Block (Orig_Heap, primitive_table);
+    Intern_Block (Orig_Constant, Constant_End);
   }
 
-  Set_Pure_Top();
+  Set_Pure_Top ();
   FASLOAD_RELOCATE_HOOK (Orig_Heap, primitive_table, Orig_Constant, Free_Constant);
-  Relocate_Into(temp, Dumped_Object);
+  Relocate_Into (temp, Dumped_Object);
   return (*temp);
 }
 
-/* (BINARY-FASLOAD FILE-NAME)
-   Load the contents of FILE-NAME into memory.  The file was
-   presumably made by a call to PRIMITIVE-FASDUMP, and may contain
-   data for the heap and/or the pure area.  The value returned is
-   the object which was dumped.  Typically (but not always) this
-   will be a piece of SCode which is then evaluated to perform
-   definitions in some environment.
+/* (BINARY-FASLOAD FILE-NAME-OR-CHANNEL)
+   Load the contents of FILE-NAME-OR-CHANNEL into memory.  The file
+   was presumably made by a call to PRIMITIVE-FASDUMP, and may contain
+   data for the heap and/or the pure area.  The value returned is the
+   object which was dumped.  Typically (but not always) this will be a
+   piece of SCode which is then evaluated to perform definitions in
+   some environment.
+   If a file name is given, the corresponding file is opened before
+   loading and closed after loading.  A channel remains open.
 */
 
 DEFINE_PRIMITIVE ("BINARY-FASLOAD", Prim_binary_fasload, 1, 1, 0)
 {
+  SCHEME_OBJECT arg;
   PRIMITIVE_HEADER (1);
-  read_file_start ((STRING_ARG (1)), false);
-  PRIMITIVE_RETURN (load_file (false));
+  
+  PRIMITIVE_CANONICALIZE_CONTEXT();
+  arg = (ARG_REF (1));
+  if (STRING_P (arg))
+  {
+    read_file_start ((STRING_ARG (1)), false);
+    PRIMITIVE_RETURN (load_file (MODE_FNAME));
+  }
+  else
+  {
+    read_channel_start ((arg_channel (1)), MODE_CHANNEL);
+    PRIMITIVE_RETURN (load_file (MODE_CHANNEL));
+  }
 }
 
+SCHEME_OBJECT
+DEFUN (continue_fasload, (reentry_record), SCHEME_OBJECT *reentry_record)
+{
+  SCHEME_OBJECT header;
+
+  /* The reentry record was prepared by read_channel_continue above. */
+
+  load_channel = (arg_channel (1));
+  header = (reentry_record[0]);
+  read_channel_continue ((VECTOR_LOC (header, 0)), MODE_CHANNEL, true);
+  PRIMITIVE_RETURN (load_file (MODE_CHANNEL));
+}
+
 /* Band loading. */
 
 static char *reload_band_name = 0;
@@ -784,12 +924,12 @@ DEFUN (terminate_band_load, (ap), PTR ap)
   {
     int abort_value = (abort_to_interpreter_argument ());
     if (abort_value > 0)
-      fprintf (stderr, "Error %d (%s)",
-	       abort_value,
+      fprintf (stderr, "Error %ld (%s)",
+	       ((long) abort_value),
 	       (Error_Names [abort_value]));
     else
-      fprintf (stderr, "Abort %d (%s)",
-	       abort_value,
+      fprintf (stderr, "Abort %ld (%s)",
+	       ((long) abort_value),
 	       (Abort_Names [(-abort_value) - 1]));
   }
   fputs (" past the point of no return.\n", stderr);
@@ -842,17 +982,21 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
       long length = ((strlen (file_name)) + 1);
       char * band_name = (malloc (length));
       if (band_name != 0)
+      {
 	strcpy (band_name, file_name);
+      }
       transaction_begin ();
       {
 	char ** ap = (dstack_alloc (sizeof (char *)));
 	(*ap) = band_name;
 	transaction_record_action (tat_abort, terminate_band_load, ap);
       }
-      result = (load_file (true));
+      result = (load_file (MODE_BAND));
       transaction_commit ();
       if (reload_band_name != 0)
+      {
 	free (reload_band_name);
+      }
       reload_band_name = band_name;
     }
   }
@@ -890,7 +1034,7 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
   END_BAND_LOAD (true, false);
   Band_Load_Hook ();
   /* Return in a non-standard way. */
-  PRIMITIVE_ABORT(PRIM_DO_EXPRESSION);
+  PRIMITIVE_ABORT (PRIM_DO_EXPRESSION);
   /*NOTREACHED*/
 }
 
@@ -900,14 +1044,14 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
 
 SCHEME_OBJECT String_Chain, Last_String;
 
-Setup_For_String_Inversion()
+Setup_For_String_Inversion ()
 {
   String_Chain = SHARP_F;
   Last_String = SHARP_F;
   return;
 }
 
-Finish_String_Inversion()
+Finish_String_Inversion ()
 {
   if (Byte_Invert_Fasl_Files)
   {
@@ -917,11 +1061,12 @@ Finish_String_Inversion()
       SCHEME_OBJECT Next;
 
       Count = OBJECT_DATUM (FAST_MEMORY_REF (String_Chain, STRING_HEADER));
-      Count = 4*(Count-2)+OBJECT_TYPE (String_Chain)-MAGIC_OFFSET;
+      Count = 4 * (Count - 2) + (OBJECT_TYPE (String_Chain)) - MAGIC_OFFSET;
       if (Reloc_Debug)
       {
-	printf("String at 0x%x: restoring length of %d.\n",
-	       OBJECT_ADDRESS (String_Chain), Count);
+	printf ("String at 0x%lx: restoring length of %ld.\n",
+		((long) (OBJECT_ADDRESS (String_Chain))),
+		((long) Count));
       }
       Next = (STRING_LENGTH (String_Chain));
       SET_STRING_LENGTH (String_Chain, Count);
@@ -931,10 +1076,10 @@ Finish_String_Inversion()
   return;
 }
 
-#define print_char(C) printf(((C < ' ') || (C > '|')) ?	\
-			     "\\%03o" : "%c", (C && MAX_CHAR));
+#define print_char(C) printf (((C < ' ') || (C > '|')) ?	\
+			      "\\%03o" : "%c", (C && MAX_CHAR));
 
-String_Inversion(Orig_Pointer)
+String_Inversion (Orig_Pointer)
      SCHEME_OBJECT *Orig_Pointer;
 {
   SCHEME_OBJECT *Pointer_Address;
@@ -951,23 +1096,23 @@ String_Inversion(Orig_Pointer)
   {
     long Count, old_size, new_size, i;
 
-    old_size = OBJECT_DATUM (Orig_Pointer[STRING_HEADER]);
+    old_size = (OBJECT_DATUM (Orig_Pointer[STRING_HEADER]));
     new_size =
       2 + (((long) (Orig_Pointer[STRING_LENGTH_INDEX]))) / 4;
 
     if (Reloc_Debug)
     {
-      printf("\nString at 0x%x with %d characters",
-             Orig_Pointer,
-             ((long) (Orig_Pointer[STRING_LENGTH_INDEX])));
+      printf ("\nString at 0x%lx with %ld characters",
+	      ((long) Orig_Pointer),
+	      ((long) (Orig_Pointer[STRING_LENGTH_INDEX])));
     }
 
     if (old_size != new_size)
     {
-      printf("\nWord count changed from %d to %d: ",
-             old_size , new_size);
-      printf("\nWhich, of course, is impossible!!\n");
-      Microcode_Termination(TERM_EXIT);
+      printf ("\nWord count changed from %ld to %ld: ",
+	      ((long) old_size), ((long) new_size));
+      printf ("\nWhich, of course, is impossible!!\n");
+      Microcode_Termination (TERM_EXIT);
     }
 
     Count = ((long) (Orig_Pointer[STRING_LENGTH_INDEX])) % 4;
@@ -983,15 +1128,15 @@ String_Inversion(Orig_Pointer)
     {
       FAST_MEMORY_SET
 	(Last_String, STRING_LENGTH_INDEX,
-	 MAKE_POINTER_OBJECT (Count + MAGIC_OFFSET, Orig_Pointer));
+	 (MAKE_POINTER_OBJECT ((Count + MAGIC_OFFSET), Orig_Pointer)));
     }
 
-    Last_String = MAKE_POINTER_OBJECT (TC_NULL, Orig_Pointer);
+    Last_String = (MAKE_POINTER_OBJECT (TC_NULL, Orig_Pointer));
     Orig_Pointer[STRING_LENGTH_INDEX] = SHARP_F;
-    Count = OBJECT_DATUM (Orig_Pointer[STRING_HEADER]) - 1;
+    Count = (OBJECT_DATUM (Orig_Pointer[STRING_HEADER])) - 1;
     if (Reloc_Debug)
     {
-       printf("\nCell count=%d\n", Count);
+       printf ("\nCell count = %ld\n", ((long) Count));
      }
     Pointer_Address = &(Orig_Pointer[STRING_CHARS]);
     To_Char = (char *) Pointer_Address;
@@ -1018,7 +1163,7 @@ String_Inversion(Orig_Pointer)
   }
   if (Reloc_Debug)
   {
-    printf("\n");
+    printf ("\n");
   }
   return;
 }

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/ppband.c,v 9.40 1990/11/16 21:20:15 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/ppband.c,v 9.41 1990/11/21 07:03:39 jinx Exp $
 
 Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
 
@@ -65,13 +65,16 @@ extern off_t EXFUN (OS2_fwrite, (char *, unsigned int, off_t, FILE *));
 #endif /* OS2 */
 
 long
-DEFUN (Load_Data, (Count, To_Where), long Count AND char *To_Where)
+DEFUN (Load_Data, (Count, To_Where), long Count AND SCHEME_OBJECT *To_Where)
 {
 #ifdef OS2
-  setmode (fileno (stdin), O_BINARY);
+  setmode ((fileno (stdin)), O_BINARY);
 #endif /* OS2 */
 
-  return (fread ((char *) To_Where, (sizeof (SCHEME_OBJECT)), Count, stdin));
+  return (fread (((char *) To_Where),
+		 (sizeof (SCHEME_OBJECT)),
+		 Count,
+		 stdin));
 }
 
 #define INHIBIT_COMPILED_VERSION_CHECK
@@ -80,29 +83,29 @@ DEFUN (Load_Data, (Count, To_Where), long Count AND char *To_Where)
 
 #ifdef HEAP_IN_LOW_MEMORY
 #ifdef hp9000s800
-#define File_To_Pointer(P)						\
-  ((((long) (P)) & DATUM_MASK) / sizeof(SCHEME_OBJECT))
+#  define File_To_Pointer(P)						\
+    ((((long) (P)) & DATUM_MASK) / (sizeof (SCHEME_OBJECT)))
 #else
-#define File_To_Pointer(P) ((P) / sizeof(SCHEME_OBJECT))
+#  define File_To_Pointer(P) ((P) / (sizeof (SCHEME_OBJECT)))
 #endif /* hp9000s800 */
 #else
-#define File_To_Pointer(P) (P)
+#  define File_To_Pointer(P) (P)
 #endif
 
 #ifndef Conditional_Bug
-#define Relocate(P)							\
+#  define Relocate(P)							\
 	(((long) (P) < Const_Base) ?					\
-	 File_To_Pointer(((long) (P)) - Heap_Base) :			\
-	 (Heap_Count + File_To_Pointer(((long) (P)) - Const_Base)))
+	 (File_To_Pointer (((long) (P)) - Heap_Base)) :			\
+	 (Heap_Count + (File_To_Pointer (((long) (P)) - Const_Base))))
 #else
-#define Relocate_Into(What, P)						\
+#  define Relocate_Into(What, P)					\
 if (((long) (P)) < Const_Base)						\
-  (What) = File_To_Pointer(((long) (P)) - Heap_Base);			\
+  (What) = (File_To_Pointer (((long) (P)) - Heap_Base));		\
 else									\
-  (What) = Heap_Count + File_To_Pointer(((long) P) - Const_Base);
+  (What) = Heap_Count + (File_To_Pointer (((long) P) - Const_Base));
 
 static long Relocate_Temp;
-#define Relocate(P)	(Relocate_Into(Relocate_Temp, P), Relocate_Temp)
+#  define Relocate(P)	(Relocate_Into (Relocate_Temp, P), Relocate_Temp)
 #endif
 
 static SCHEME_OBJECT *Data, *end_of_memory;
@@ -122,28 +125,28 @@ DEFUN (scheme_string, (From, Quoted), long From AND Boolean Quoted)
     {
       if (Quoted)
       {
-	putchar('\"');
+	putchar ('\"');
       }
       for (i = 0; i < Count; i++)
       {
-	printf("%c", *Chars++);
+	printf ("%c", *Chars++);
       }
       if (Quoted)
       {
-	putchar('\"');
+	putchar ('\"');
       }
-      putchar('\n');
+      putchar ('\n');
       return (true);
     }
   }
   if (Quoted)
   {
-    printf("String not in memory; datum = %lx\n", From);
+    printf ("String not in memory; datum = %lx\n", From);
   }
   return (false);
 }
 
-#define via(File_Address) Relocate(OBJECT_DATUM (Data[File_Address]))
+#define via(File_Address) Relocate (OBJECT_DATUM (Data[File_Address]))
 
 void
 DEFUN (scheme_symbol, (From), long From)
@@ -152,9 +155,9 @@ DEFUN (scheme_symbol, (From), long From)
 
   symbol = &Data[From+SYMBOL_NAME];
   if ((symbol >= end_of_memory) ||
-      (!(scheme_string(via(From + SYMBOL_NAME), false))))
+      (!(scheme_string (via (From + SYMBOL_NAME), false))))
   {
-    printf("symbol not in memory; datum = %lx\n", From);
+    printf ("symbol not in memory; datum = %lx\n", From);
   }
   return;
 }
@@ -163,7 +166,7 @@ static char string_buffer[10];
 
 #define PRINT_OBJECT(type, datum)					\
 {									\
-  printf("[%s %lx]", type, datum);					\
+  printf ("[%s %lx]", type, datum);					\
 }
 
 #define NON_POINTER(string)						\
@@ -191,23 +194,23 @@ DEFUN (Display, (Location, Type, The_Datum),
   char *the_string;
   long Points_To;
 
-  printf("%5lx: %2lx|%6lx     ", Location, Type, The_Datum);
-  Points_To = Relocate((SCHEME_OBJECT *) The_Datum);
+  printf ("%5lx: %2lx|%6lx     ", Location, Type, The_Datum);
+  Points_To = Relocate ((SCHEME_OBJECT *) The_Datum);
 
   switch (Type)
   { /* "Strange" cases */
     case TC_NULL:
       if (The_Datum == 0)
       {
-	printf("#F\n");
+	printf ("#F\n");
 	return;
       }
-      NON_POINTER("NULL");
+      NON_POINTER ("NULL");
 
     case TC_TRUE:
       if (The_Datum == 0)
       {
-	printf("#T\n");
+	printf ("#T\n");
 	return;
       }
       /* fall through */
@@ -220,40 +223,40 @@ DEFUN (Display, (Location, Type, The_Datum),
     case TC_PCOMB0:
     case TC_MANIFEST_SPECIAL_NM_VECTOR:
     case TC_MANIFEST_NM_VECTOR:
-      NON_POINTER(Type_Names[Type]);
+      NON_POINTER (Type_Names[Type]);
 
     case TC_INTERNED_SYMBOL:
-      PRINT_OBJECT("INTERNED-SYMBOL", Points_To);
-      printf(" = ");
-      scheme_symbol(Points_To);
+      PRINT_OBJECT ("INTERNED-SYMBOL", Points_To);
+      printf (" = ");
+      scheme_symbol (Points_To);
       return;
 
     case TC_UNINTERNED_SYMBOL:
-      PRINT_OBJECT("UNINTERNED-SYMBOL", Points_To);
-      printf(" = ");
-      scheme_symbol(Points_To);
+      PRINT_OBJECT ("UNINTERNED-SYMBOL", Points_To);
+      printf (" = ");
+      scheme_symbol (Points_To);
       return;
 
     case TC_CHARACTER_STRING:
-      PRINT_OBJECT("CHARACTER-STRING", Points_To);
-      printf(" = ");
-      scheme_string(Points_To, true);
+      PRINT_OBJECT ("CHARACTER-STRING", Points_To);
+      printf (" = ");
+      scheme_string (Points_To, true);
       return;
 
     case TC_FIXNUM:
-      PRINT_OBJECT("FIXNUM", The_Datum);
+      PRINT_OBJECT ("FIXNUM", The_Datum);
       Points_To = (FIXNUM_TO_LONG (The_Datum));
-      printf(" = %ld\n", Points_To);
+      printf (" = %ld\n", Points_To);
       return;
 
     case TC_REFERENCE_TRAP:
       if (The_Datum <= TRAP_MAX_IMMEDIATE)
       {
-	NON_POINTER("REFERENCE-TRAP");
+	NON_POINTER ("REFERENCE-TRAP");
       }
       else
       {
-	POINTER("REFERENCE-TRAP");
+	POINTER ("REFERENCE-TRAP");
       }
 
     case TC_BROKEN_HEART:
@@ -264,16 +267,16 @@ DEFUN (Display, (Location, Type, The_Datum),
     default:
       if (Type <= LAST_TYPE_CODE)
       {
-	POINTER(Type_Names[Type]);
+	POINTER (Type_Names[Type]);
       }
       else
       {
-	sprintf(&string_buf[0], "0x%02lx ", Type);
-	POINTER(&string_buf[0]);
+	sprintf (&string_buf[0], "0x%02lx ", Type);
+	POINTER (&string_buf[0]);
       }
   }
-  PRINT_OBJECT(the_string, Points_To);
-  putchar('\n');
+  PRINT_OBJECT (the_string, Points_To);
+  putchar ('\n');
   return;
 }
 
@@ -286,7 +289,7 @@ DEFUN (show_area, (area, start, end, name),
 {
   fast long i;
 
-  printf("\n%s contents:\n\n", name);
+  printf ("\n%s contents:\n\n", name);
   for (i = start; i < end;  area++, i++)
   {
     if ((OBJECT_TYPE (*area) == TC_MANIFEST_NM_VECTOR) ||
@@ -299,118 +302,148 @@ DEFUN (show_area, (area, start, end, name),
 	((OBJECT_TYPE (*area) == TC_LINKAGE_SECTION)
 	 ? (READ_CACHE_LINKAGE_COUNT (*area))
 	 : (OBJECT_DATUM (*area)));
-      Display(i, OBJECT_TYPE (*area), OBJECT_DATUM (*area));
+      Display (i, OBJECT_TYPE (*area), OBJECT_DATUM (*area));
       area += 1;
       for (j = 0; j < count ; j++, area++)
       {
-        printf("          %02lx%06lx\n",
-               (OBJECT_TYPE (*area)), (OBJECT_DATUM (*area)));
+        printf ("          %02lx%06lx\n",
+		(OBJECT_TYPE (*area)), (OBJECT_DATUM (*area)));
       }
       i += count;
       area -= 1;
     }
     else
     {
-      Display(i, (OBJECT_TYPE (*area)), (OBJECT_DATUM (*area)));
+      Display (i, (OBJECT_TYPE (*area)), (OBJECT_DATUM (*area)));
     }
   }
   return (area);
 }
 
-main(argc, argv)
-     int argc;
-     char **argv;
+void
+DEFUN (main, (argc, argv),
+       int argc AND
+       char **argv)
 {
-  fast SCHEME_OBJECT *Next;
-  long total_length, load_length;
+  int counter = 0;
 
-  if (argc == 1)
+  while (1)
   {
-    if (Read_Header() != FASL_FILE_FINE)
+    fast SCHEME_OBJECT *Next;
+    long total_length, load_length;
+
+    if (argc == 1)
     {
-      fprintf(stderr,
-	      "%s: Input does not appear to be in correct FASL format.\n",
-	      argv[0]);
-      exit(1);
+      switch (Read_Header ())
+      {
+	case FASL_FILE_FINE :
+	  if (counter != 0)
+	  {
+	    printf ("\f\n\t*** New object ***\n\n");
+	  }
+          break;
+
+	  /* There should really be a difference between no header
+	     and a short header.
+	   */
+
+	case FASL_FILE_TOO_SHORT:
+	  exit (0);
+
+	default:
+	{
+	  fprintf (stderr,
+		   "%s: Input does not appear to be in correct FASL format.\n",
+		   argv[0]);
+	  exit (1);
+	  /* NOTREACHED */
+	}
+      }
+      print_fasl_information ();
+      printf ("Dumped object (relocated) at 0x%lx\n",
+	      (Relocate (Dumped_Object)));
     }
-    print_fasl_information();
-    printf("Dumped object (relocated) at 0x%lx\n", Relocate(Dumped_Object));
-  }
-  else
-  {
-    Const_Count = 0;
-    Primitive_Table_Size = 0;
-    sscanf(argv[1], "%lx", ((long) &Heap_Base));
-    sscanf(argv[2], "%lx", ((long) &Const_Base));
-    sscanf(argv[3], "%ld", ((long) &Heap_Count));
-    printf("Heap Base = 0x%lx; Constant Base = 0x%lx; Heap Count = %ld\n",
-	   Heap_Base, Const_Base, Heap_Count);
-  }
+    else
+    {
+      Const_Count = 0;
+      Primitive_Table_Size = 0;
+      sscanf (argv[1], "%lx", ((long) &Heap_Base));
+      sscanf (argv[2], "%lx", ((long) &Const_Base));
+      sscanf (argv[3], "%ld", ((long) &Heap_Count));
+      printf ("Heap Base = 0x%lx; Constant Base = 0x%lx; Heap Count = %ld\n",
+	      Heap_Base, Const_Base, Heap_Count);
+    }
 
-  load_length = (Heap_Count + Const_Count + Primitive_Table_Size);
-  Data = ((SCHEME_OBJECT *) malloc(sizeof(SCHEME_OBJECT) * (load_length + 4)));
-  if (Data == NULL)
-  {
-    fprintf(stderr, "Allocation of %ld words failed.\n", (load_length + 4));
-    exit(1);
-  }
-  total_length = Load_Data (load_length, ((char *) Data));
-  end_of_memory = &Data[total_length];
-  if (total_length != load_length)
-  {
-    printf("The FASL file does not have the right length.\n");
-    printf("Expected %ld objects.  Obtained %ld objects.\n\n",
-	   ((long) load_length), ((long) total_length));
-    if (total_length < Heap_Count)
+    load_length = (Heap_Count + Const_Count + Primitive_Table_Size);
+    Data = ((SCHEME_OBJECT *) malloc (sizeof (SCHEME_OBJECT) * (load_length + 4)));
+    if (Data == NULL)
     {
-      Heap_Count = total_length;
+      fprintf (stderr, "Allocation of %ld words failed.\n", (load_length + 4));
+      exit (1);
     }
-    total_length -= Heap_Count;
-    if (total_length < Const_Count)
+    total_length = (Load_Data (load_length, Data));
+    end_of_memory = &Data[total_length];
+    if (total_length != load_length)
     {
-      Const_Count = total_length;
+      printf ("The FASL file does not have the right length.\n");
+      printf ("Expected %ld objects.  Obtained %ld objects.\n\n",
+	      ((long) load_length), ((long) total_length));
+      if (total_length < Heap_Count)
+      {
+	Heap_Count = total_length;
+      }
+      total_length -= Heap_Count;
+      if (total_length < Const_Count)
+      {
+	Const_Count = total_length;
+      }
+      total_length -= Const_Count;
+      if (total_length < Primitive_Table_Size)
+      {
+	Primitive_Table_Size = total_length;
+      }
     }
-    total_length -= Const_Count;
-    if (total_length < Primitive_Table_Size)
-    {
-      Primitive_Table_Size = total_length;
-    }
-  }
 
-  if (Heap_Count > 0)
-  {
-    Next = show_area(Data, 0, Heap_Count, "Heap");
-  }
-  if (Const_Count > 0)
-  {
-    Next = show_area(Next, Heap_Count, Const_Count, "Constant Space");
-  }
-  if ((Primitive_Table_Size > 0) && (Next < end_of_memory))
-  {
-    long arity, size;
-    fast long entries, count;
-
-    /* This is done in case the file is short. */
-    end_of_memory[0] = ((SCHEME_OBJECT) 0);
-    end_of_memory[1] = ((SCHEME_OBJECT) 0);
-    end_of_memory[2] = ((SCHEME_OBJECT) 0);
-    end_of_memory[3] = ((SCHEME_OBJECT) 0);
-
-    entries = Primitive_Table_Length;
-    printf("\nPrimitive table: number of entries = %ld\n\n", entries);
-
-    for (count = 0;
-	 ((count < entries) && (Next < end_of_memory));
-	 count += 1)
+    if (Heap_Count > 0)
     {
-      arity = (FIXNUM_TO_LONG (*Next));
-      Next += 1;
-      size = (OBJECT_DATUM (*Next));
-      printf("Number = %3lx; Arity = %2ld; Name = ", count, arity);
-      scheme_string((Next - Data), true);
-      Next += (1 + size);
+      Next = show_area (Data, 0, Heap_Count, "Heap");
     }
-    printf("\n");
+    if (Const_Count > 0)
+    {
+      Next = show_area (Next, Heap_Count, Const_Count, "Constant Space");
+    }
+    if ((Primitive_Table_Size > 0) && (Next < end_of_memory))
+    {
+      long arity, size;
+      fast long entries, count;
+
+      /* This is done in case the file is short. */
+      end_of_memory[0] = ((SCHEME_OBJECT) 0);
+      end_of_memory[1] = ((SCHEME_OBJECT) 0);
+      end_of_memory[2] = ((SCHEME_OBJECT) 0);
+      end_of_memory[3] = ((SCHEME_OBJECT) 0);
+
+      entries = Primitive_Table_Length;
+      printf ("\nPrimitive table: number of entries = %ld\n\n", entries);
+
+      for (count = 0;
+	   ((count < entries) && (Next < end_of_memory));
+	   count += 1)
+      {
+	arity = (FIXNUM_TO_LONG (*Next));
+	Next += 1;
+	size = (OBJECT_DATUM (*Next));
+	printf ("Number = %3lx; Arity = %2ld; Name = ", count, arity);
+	scheme_string ((Next - Data), true);
+	Next += (1 + size);
+      }
+      printf ("\n");
+    }
+    if (argc != 1)
+    {
+      exit (0);
+    }
+    free ((char *) Data);
+    counter = 1;
   }
-  exit(0);
 }

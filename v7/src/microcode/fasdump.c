@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.48 1990/06/20 17:40:13 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.49 1990/11/21 07:04:12 jinx Rel $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -49,22 +49,24 @@ static Tchannel dump_channel;
 
 #define Write_Data(size, buffer)					\
   ((OS_channel_write_dump_file						\
-    (dump_channel, (buffer), ((size) * (sizeof (SCHEME_OBJECT)))))	\
+    (dump_channel,							\
+     ((char *) (buffer)),						\
+     ((size) * (sizeof (SCHEME_OBJECT)))))				\
    / (sizeof (SCHEME_OBJECT)))
 
 #include "dump.c"
 
 extern SCHEME_OBJECT
-  dump_renumber_primitive(),
-  *initialize_primitive_table(),
-  *cons_primitive_table(),
-  *cons_whole_primitive_table();
+  dump_renumber_primitive (),
+  *initialize_primitive_table (),
+  *cons_primitive_table (),
+  *cons_whole_primitive_table ();
 
 /* Some statics used freely in this file */
 
 static SCHEME_OBJECT *NewFree, *NewMemTop, *Fixup, *Orig_New_Free;
 static Boolean compiled_code_present_p;
-static CONST char * dump_file_name = 0;
+static CONST char * dump_file_name = ((char *) 0);
 
 /* FASDUMP:
 
@@ -82,10 +84,7 @@ static CONST char * dump_file_name = 0;
    Argument 1: Object to dump.
    Argument 2: File name.
    Argument 3: Flag.
-               where the flag is #!true for a dump into constant
-               space at reload time, () for a dump into heap.
-
-   Currently flag is ignored.
+   Currently, flag is ignored.
 */
 
 /*
@@ -96,16 +95,16 @@ static CONST char * dump_file_name = 0;
 */
 
 #define Setup_Pointer_for_Dump(Extra_Code)				\
-Dump_Pointer(Fasdump_Setup_Pointer(Extra_Code, Normal_BH(false, continue)))
+Dump_Pointer (Fasdump_Setup_Pointer (Extra_Code, Normal_BH (false, continue)))
 
 #define Dump_Pointer(Code)						\
-Old = OBJECT_ADDRESS (Temp);						\
-Code
+  Old = (OBJECT_ADDRESS (Temp));					\
+  Code
 
 #define Dump_Compiled_Entry(label)					\
 {									\
-  Dump_Pointer(Fasdump_Setup_Pointer(Transport_Compiled(),		\
-				     Compiled_BH(false, goto label)));	\
+  Dump_Pointer (Fasdump_Setup_Pointer (Transport_Compiled (),		\
+				       Compiled_BH (false, goto label))); \
 }
 
 /* Dump_Mode is currently a fossil.  It should be resurrected. */
@@ -121,9 +120,9 @@ Code
 #define FASDUMP_FIX_BUFFER 10
 
 long
-DumpLoop(Scan, Dump_Mode)
-     fast SCHEME_OBJECT *Scan;
-     int Dump_Mode;
+DEFUN (DumpLoop, (Scan, Dump_Mode),
+       fast SCHEME_OBJECT *Scan AND
+       int Dump_Mode)
 {
   fast SCHEME_OBJECT *To, *Old, Temp, New_Address, *Fixes;
   long result;
@@ -135,7 +134,7 @@ DumpLoop(Scan, Dump_Mode)
   {
     Temp = *Scan;
 
-    Switch_by_GC_Type(Temp)
+    Switch_by_GC_Type (Temp)
     {
       case TC_PRIMITIVE:
       case TC_PCOMB0:
@@ -145,24 +144,24 @@ DumpLoop(Scan, Dump_Mode)
       case TC_BROKEN_HEART:
         if (OBJECT_DATUM (Temp) != 0)
 	{
-	  sprintf(gc_death_message_buffer,
-		  "dumploop: broken heart (0x%lx) in scan",
-		  Temp);
-	  gc_death(TERM_BROKEN_HEART, gc_death_message_buffer, Scan, To);
+	  sprintf (gc_death_message_buffer,
+		   "dumploop: broken heart (0x%lx) in scan",
+		   ((long) Temp));
+	  gc_death (TERM_BROKEN_HEART, gc_death_message_buffer, Scan, To);
 	  /*NOTREACHED*/
 	}
 	break;
 
       case TC_MANIFEST_NM_VECTOR:
       case TC_MANIFEST_SPECIAL_NM_VECTOR:
-	Scan += OBJECT_DATUM (Temp);
+	Scan += (OBJECT_DATUM (Temp));
 	break;
 
       /* Compiled code relocation. */
 
       case_compiled_entry_point:
 	compiled_code_present_p = true;
-	Dump_Compiled_Entry(after_entry);
+	Dump_Compiled_Entry (after_entry);
       after_entry:
 	*Scan = Temp;
 	break;
@@ -195,7 +194,7 @@ DumpLoop(Scan, Dump_Mode)
       case TC_LINKAGE_SECTION:
       {
 	compiled_code_present_p = true;
-	if (READ_LINKAGE_KIND(Temp) != OPERATOR_LINKAGE_KIND)
+	if ((READ_LINKAGE_KIND (Temp)) != OPERATOR_LINKAGE_KIND)
 	{
 	  /* Assumes that all others are objects of type TC_QUAD without
 	     their type codes.
@@ -204,12 +203,12 @@ DumpLoop(Scan, Dump_Mode)
 	  fast long count;
 
 	  Scan++;
-	  for (count = READ_CACHE_LINKAGE_COUNT(Temp);
+	  for (count = (READ_CACHE_LINKAGE_COUNT (Temp));
 	       --count >= 0;
 	       Scan += 1)
 	  {
 	    Temp = *Scan;
-	    Setup_Pointer_for_Dump(Transport_Quadruple());
+	    Setup_Pointer_for_Dump (Transport_Quadruple ());
 	  }
 	  Scan -= 1;
 	  break;
@@ -239,11 +238,11 @@ DumpLoop(Scan, Dump_Mode)
       }
 
       case_Cell:
-	Setup_Pointer_for_Dump(Transport_Cell());
+	Setup_Pointer_for_Dump (Transport_Cell ());
 	break;
 
       case TC_REFERENCE_TRAP:
-	if (OBJECT_DATUM (Temp) <= TRAP_MAX_IMMEDIATE)
+	if ((OBJECT_DATUM (Temp)) <= TRAP_MAX_IMMEDIATE)
 	{
 	  /* It is a non pointer. */
 	  break;
@@ -252,7 +251,7 @@ DumpLoop(Scan, Dump_Mode)
 
       case TC_WEAK_CONS:
       case_Fasdump_Pair:
-	Setup_Pointer_for_Dump(Transport_Pair());
+	Setup_Pointer_for_Dump (Transport_Pair ());
 	break;
 
       case TC_INTERNED_SYMBOL:
@@ -264,26 +263,26 @@ DumpLoop(Scan, Dump_Mode)
 	break;
 
       case_Triple:
-	Setup_Pointer_for_Dump(Transport_Triple());
+	Setup_Pointer_for_Dump (Transport_Triple ());
 	break;
 
       case TC_VARIABLE:
-	Setup_Pointer_for_Dump(Fasdump_Variable());
+	Setup_Pointer_for_Dump (Fasdump_Variable ());
 	break;
 
       case_Quadruple:
-	Setup_Pointer_for_Dump(Transport_Quadruple());
+	Setup_Pointer_for_Dump (Transport_Quadruple ());
 	break;
 
       case TC_BIG_FLONUM:
 	Setup_Pointer_for_Dump({
-	  Transport_Flonum();
+	  Transport_Flonum ();
 	  break;
 	});
 
       case TC_COMPILED_CODE_BLOCK:
       case_Purify_Vector:
-	Setup_Pointer_for_Dump(Transport_Vector());
+	Setup_Pointer_for_Dump (Transport_Vector ());
 	break;
 
       case TC_ENVIRONMENT:
@@ -292,11 +291,11 @@ DumpLoop(Scan, Dump_Mode)
 	goto exit_dumploop;
 
       case TC_FUTURE:
-	Setup_Pointer_for_Dump(Transport_Future());
+	Setup_Pointer_for_Dump (Transport_Future ());
 	break;
 
       default:
-	GC_BAD_TYPE("dumploop");
+	GC_BAD_TYPE ("dumploop");
 	/* Fall Through */
 
       case TC_STACK_ENVIRONMENT:
@@ -316,41 +315,45 @@ exit_dumploop:
 {									\
   long value;								\
 									\
-  value = DumpLoop(obj, code);						\
+  value = (DumpLoop (obj, code));					\
   if (value != PRIM_DONE)						\
   {									\
-    PRIMITIVE_RETURN(Fasdump_Exit(value, false));			\
+    PRIMITIVE_RETURN (Fasdump_Exit (value, false));			\
   }									\
 }
 
 #define FASDUMP_INTERRUPT()						\
 {									\
-  PRIMITIVE_RETURN(Fasdump_Exit(PRIM_INTERRUPT, false));		\
+  PRIMITIVE_RETURN (Fasdump_Exit (PRIM_INTERRUPT, false));		\
 }
 
 SCHEME_OBJECT
-Fasdump_Exit(code, close_p)
-     long code;
-     Boolean close_p;
+DEFUN (Fasdump_Exit, (code, close_p),
+       long code AND
+       Boolean close_p)
 {
   Boolean result;
   fast SCHEME_OBJECT *Fixes;
 
   Fixes = Fixup;
   if (close_p)
+  {
     OS_channel_close_noerror (dump_channel);
+  }
   result = true;
   while (Fixes != NewMemTop)
   {
     fast SCHEME_OBJECT *Fix_Address;
 
-    Fix_Address = OBJECT_ADDRESS (*Fixes++); /* Where it goes. */
+    Fix_Address = (OBJECT_ADDRESS (*Fixes++)); /* Where it goes. */
     *Fix_Address = *Fixes++;             /* Put it there. */
   }
   Fixup = Fixes;
   if ((close_p) && ((!result) || (code != PRIM_DONE)))
+  {
     OS_file_remove (dump_file_name);
-  dump_file_name = 0;
+  }
+  dump_file_name = ((char *) 0);
   Fasdump_Exit_Hook ();
   if (!result)
   {
@@ -372,124 +375,90 @@ Fasdump_Exit(code, close_p)
   }
 }
 
-/* (PRIMITIVE-FASDUMP object-to-dump file-name flag)
-   Dump an object into a file so that it can be loaded using
-   BINARY-FASLOAD.  A spare heap is required for this operation.
-   The first argument is the object to be dumped.  The second is
-   the filename and the third a flag.  The flag, if #T, means
-   that the object is to be dumped for reloading into constant
-   space.  This is currently disabled. If the flag is #F, it means
-   that it will be reloaded into the heap.  The primitive returns
-   #T or #F indicating whether it successfully dumped the
-   object (it can fail on an object that is too large).
+/* (PRIMITIVE-FASDUMP object-to-dump filename-or-channel flag)
 
-   The code for dumping pure is severely broken and conditionalized out.
+   Dump an object into a file so that it can be loaded using
+   BINARY-FASLOAD.  A spare heap is required for this operation.  The
+   first argument is the object to be dumped.  The second is the
+   filename or channel.  The third argument, FLAG, is currently
+   ignored.  The primitive returns #T or #F indicating whether it
+   successfully dumped the object (it can fail on an object that is
+   too large).  It should signal an error rather than return false,
+   but ... some other time.
+
 */
 
 DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
 {
-  SCHEME_OBJECT Object, File_Name, Flag, *New_Object;
+  Tchannel channel;
+  Boolean arg_string_p;
+  SCHEME_OBJECT Object, *New_Object, arg2;
   SCHEME_OBJECT *table_start, *table_end;
   long Length, table_length;
   Boolean result;
   PRIMITIVE_HEADER (3);
-  CHECK_ARG (2, STRING_P);
-  compiled_code_present_p = false;
+
   Object = (ARG_REF (1));
-  File_Name = (ARG_REF (2));
-  Flag = (ARG_REF (3));
-#if false
-  CHECK_ARG (3, BOOLEAN_P);
-#else
-  if (Flag != SHARP_F)
-    error_wrong_type_arg (3);
-#endif
-  table_end = &Free[Space_Before_GC()];
-  table_start = initialize_primitive_table(Free, table_end);
+  arg2 = (ARG_REF (2));
+  arg_string_p = (STRING_P (arg2));
+  if (!arg_string_p)
+  {
+    channel = (arg_channel (2));
+  }
+
+  compiled_code_present_p = false;
+
+  table_end = &Free[(Space_Before_GC ())];
+  table_start = (initialize_primitive_table (Free, table_end));
   if (table_start >= table_end)
   {
     Primitive_GC (table_start - Free);
   }
-  dump_file_name = ((CONST char *) (STRING_LOC (File_Name, 0)));
-  Fasdump_Free_Calc(NewFree, NewMemTop, Orig_New_Free);
+
+  Fasdump_Free_Calc (NewFree, NewMemTop, Orig_New_Free);
   Fixup = NewMemTop;
   ALIGN_FLOAT (NewFree);
   New_Object = NewFree;
   *NewFree++ = Object;
-
-#if false
-  /* NOTE: This is wrong!
 
-     Many things will break, among them:
-
-     Symbols will not be interned correctly in the new system.
-
-     The primitive dumping mechanism will break, since
-     dump_renumber_primitive is not being invoked by
-     either phase.
-
-     The special entry point relocation code depends on the fact that
-     fasdumped files (as opposed to bands) contain no constant space
-     segment.  See fasload.c for further information.
-*/
-
-  if (Flag == SHARP_T)
+  if (arg_string_p)
   {
-    SCHEME_OBJECT *Addr_Of_New_Object;
-
-    *New_Free++ = SHARP_F;
-    DUMPLOOP(New_Object, PURE_COPY);
-    Pure_Length = ((NewFree - New_Object) + 1);
-    *NewFree++ = MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
-    *NewFree++ = MAKE_OBJECT (CONSTANT_PART, Pure_Length);
-    DUMPLOOP(New_Object, CONSTANT_COPY);
-    Length =  ((NewFree - New_Object) + 2);
-    *NewFree++ = MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
-    *NewFree++ = MAKE_OBJECT (END_OF_BLOCK, (Length - 1));
-    Addr_Of_New_Object = OBJECT_ADDRESS (New_Object[0]);
-    New_Object[0] = MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, Pure_Length);
-    New_Object[1] = MAKE_OBJECT (PURE_PART, (Length - 1));
-    table_start = NewFree;
-    table_end = cons_primitive_table(NewFree, Fixup, &table_length);
-    if (table_end >= Fixup)
-    {
-      FASDUMP_INTERRUPT();
-    }
-    dump_channel = (OS_open_dump_file (STRING_LOC (File_Name, 0)));
-    if (dump_channel == NO_CHANNEL)
-      PRIMITIVE_RETURN (Fasdump_Exit (ERR_ARG_2_BAD_RANGE, false));
-    result = Write_File(Addr_Of_New_Object, 0, 0,
-			Length, New_Object,
-			table_start, table_length,
-			((long) (table_end - table_start)),
-			compiled_code_present_p, false);
+    /* This needs to be done before Fasdump_Exit is called.
+       DUMPLOOP may do that.
+       It should not be done if the primitive will not call
+       Fasdump_Exit on its way out (ie. Primitive_GC above).
+     */
+    dump_file_name = ((CONST char *) (STRING_LOC (arg2, 0)));
   }
-  else
-#endif /* Dumping for reload into heap */
-
+
+  DUMPLOOP (New_Object, NORMAL_GC);
+  Length = (NewFree - New_Object);
+  table_start = NewFree;
+  table_end = (cons_primitive_table (NewFree, Fixup, &table_length));
+  if (table_end >= Fixup)
   {
-    DUMPLOOP(New_Object, NORMAL_GC);
-    Length = (NewFree - New_Object);
-    table_start = NewFree;
-    table_end = cons_primitive_table(NewFree, Fixup, &table_length);
-    if (table_end >= Fixup)
+    FASDUMP_INTERRUPT ();
+  }
+
+  if (arg_string_p)
+  {
+    channel = (OS_open_dump_file (dump_file_name));
+    if (channel == NO_CHANNEL)
     {
-      FASDUMP_INTERRUPT();
-    }
-    dump_channel =
-      (OS_open_dump_file ((CONST char *) (STRING_LOC (File_Name, 0))));
-    if (dump_channel == NO_CHANNEL)
       PRIMITIVE_RETURN (Fasdump_Exit (ERR_ARG_2_BAD_RANGE, false));
-    result = Write_File(New_Object,
+    }
+  }
+
+  dump_channel = channel;
+  result = (Write_File (New_Object,
 			Length, New_Object,
 			0, Constant_Space,
 			table_start, table_length,
 			((long) (table_end - table_start)),
-			compiled_code_present_p, false);
-  }
+			compiled_code_present_p, false));
 
   PRIMITIVE_RETURN (Fasdump_Exit ((result ? PRIM_DONE : PRIM_INTERRUPT),
-				  true));
+				  arg_string_p));
 }
 
 /* (DUMP-BAND PROCEDURE FILE-NAME)
