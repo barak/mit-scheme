@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttop.c,v 1.26 1998/10/21 04:43:33 cph Exp $
+$Id: nttop.c,v 1.27 1998/10/21 07:38:10 cph Exp $
 
 Copyright (c) 1993-98 Massachusetts Institute of Technology
 
@@ -167,8 +167,7 @@ OS_initialize (void)
       }
     else if ((info.dwPlatformId) == VER_PLATFORM_WIN32_WINDOWS)
       {
-	sprintf (((char *) OS_Variant),
-		 "Microsoft Windows %s (Build %u",
+	sprintf (p, "Microsoft Windows %s (Build %u",
 		 (((info.dwMinorVersion) == 0)
 		  ? "95"
 		  : ((info.dwMinorVersion) == 10)
@@ -185,8 +184,7 @@ OS_initialize (void)
       }
     else
       {
-	sprintf (((char *) OS_Variant),
-		 "Microsoft Windows %u.%u",
+	sprintf (p, "Microsoft Windows %u.%u",
 		 (info.dwMajorVersion),
 		 (info.dwMinorVersion));
 	NT_windows_type = wintype_31;
