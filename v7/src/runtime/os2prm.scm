@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.5 1995/01/31 22:36:55 cph Exp $
+$Id: os2prm.scm,v 1.6 1995/02/14 00:35:23 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -200,9 +200,9 @@ MIT in each case. |#
 	  (error "Can't find temporary directory.")))))
 
 (define (os2/fs-long-filenames? pathname)
-  (let ((type ((ucode-primitive drive-type 1) (pathname-device pathname))))
-    (or (string-ci=? "hpfs" type)
-	(string-ci=? "nfs" type))))
+  (not (string-ci=? "fat"
+		    ((ucode-primitive drive-type 1)
+		     (pathname-device pathname)))))
 
 (define-integrable os2/current-pid
   (ucode-primitive current-pid 0))
