@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: win32.pkg,v 1.5 1994/10/26 18:42:53 adams Exp $
+$Id: win32.pkg,v 1.6 1995/02/21 23:28:04 cph Exp $
 
-Copyright (c) 1993 Massachusetts Institute of Technology
+Copyright (c) 1993-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -67,7 +67,7 @@ MIT in each case. |#
   (files "graphics")
   (parent (win32))
 ;  (export ()
-;          in32-graphics-device-type)
+;          win32-graphics-device-type)
   (import (win32 dib)
 	  create-dib
 	  open-dib
@@ -80,12 +80,7 @@ MIT in each case. |#
 	  dib-set-pixels-unaligned
 	  delete-dib)
   (import (runtime graphics)
-	  register-graphics-device-type
-	  make-image-type
-	  image/create
-	  image/draw
-	  image/draw-subimage
-	  image/descriptor)
+	  make-image-type)
   (initialization (initialize-package!))
 )
 
