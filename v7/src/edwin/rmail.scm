@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.2 1991/05/14 02:28:01 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.3 1991/05/15 17:51:07 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -926,7 +926,7 @@ original message into it."
 	  (if (not (re-search-forward babyl-eooh-regexp start end false))
 	      (editor-error))
 	  (let ((hstart (re-match-end 0)))
-	    (values hstart (or (search-forward "\n\n" hstart end false) end))))
+	    (values hstart (header-end hstart end))))
 	(values
 	 (let ((start (line-start start 2 'ERROR)))
 	   (if (match-forward "Summary-line:" start end true)
@@ -976,6 +976,9 @@ original message into it."
 
 (define (field-name->regexp field)
   (string-append "^" (re-quote-string field) "[ \t]*:[ \t]*"))
+
+(define (header-end start end)
+  (or (search-forward "\n\n" start end false) end))
 
 (define (strip-quoted-names string)
   (let ((address-list (strip-quoted-names-1 (string->rfc822-tokens string))))
@@ -1247,6 +1250,195 @@ original message into it."
 			     char
 			     (cons 'ILLEGAL char))
 			 (dispatch))))))))))
+
+;;;; Mail output
+
+(define-command rmail-output-to-rmail-file
+  "Append the current message to an Rmail file named FILE-NAME.
+If the file does not exist, ask if it should be created.
+If file is being visited, the message is appended to the
+buffer visiting that file."
+  (lambda ()
+    (list
+     (pathname->string
+      (get-rmail-output-pathname "Output message to Rmail file"
+				 (ref-variable rmail-last-rmail-file)))))
+  (lambda (filename)
+    (let* ((pathname (->pathname filename))
+	   (filename (pathname->string pathname)))
+      (set-variable! rmail-last-rmail-file filename)
+      (let* ((memo (current-msg-memo))
+	     (message
+	      (without-clipping (current-buffer)
+		(lambda ()
+		  (extract-string (msg-memo/start memo)
+				  (msg-memo/end memo))))))
+	(cond ((pathname->buffer pathname)
+	       =>
+	       (lambda (buffer)
+		 (if (current-buffer? buffer)
+		     (editor-error
+		      "Can't output message to same file it's already in"))
+		 (with-buffer-open buffer
+		   (lambda ()
+		     (let ((memo (buffer-msg-memo buffer))
+			   (end (buffer-end buffer)))
+		       (let ((start (mark-right-inserting-copy end))
+			     (end (mark-left-inserting-copy end)))
+			 (if memo
+			     (delete-string (skip-chars-backward " \t\n" end)
+					    end))
+			 (insert-string message end)
+			 (if memo
+			     (begin
+			       (memoize-messages buffer start end)
+			       (select-message buffer memo)))
+			 (mark-temporary! start)
+			 (mark-temporary! end)))))))
+	      ((file-exists? pathname)
+	       (let ((port (open-output-file pathname true)))
+		 (write-string message port)
+		 (close-output-port port)))
+	      ((prompt-for-yes-or-no?
+		(string-append "\"" filename "\" does not exist, create it"))
+	       (call-with-output-file pathname
+		 (lambda (port)
+		   (write-string babyl-initial-header port)
+		   (write-string message port))))
+	      (else
+	       (editor-error "Output file does not exist")))
+	(set-attribute! memo 'FILED)
+	(if (ref-variable rmail-delete-after-output)
+	    ((ref-command rmail-delete-forward) false))))))
+
+(define-command rmail-output
+  "Append this message to Unix mail file named FILE-NAME."
+  (lambda ()
+    (list
+     (pathname->string
+      (get-rmail-output-pathname "Output message to Unix mail file"
+				 (ref-variable rmail-last-file)))))
+  (lambda (filename)
+    (let* ((pathname (->pathname filename)))
+      (set-variable! rmail-last-file (pathname->string pathname))
+      (let ((memo (current-msg-memo)))
+	(let ((buffer (temporary-buffer " rmail output")))
+	  (let ((end (mark-left-inserting-copy (buffer-end buffer))))
+	    (let ((buffer (current-buffer)))
+	      (insert-region (buffer-start buffer) (buffer-end buffer) end))
+	    (insert-newline end)
+	    (let loop ((start (buffer-start buffer)))
+	      (if (re-search-forward "^From " start end true)
+		  (loop (replace-match ">\\&"))))
+	    (mark-temporary! end)
+	    (let ((start (buffer-start buffer)))
+	      (insert-string
+	       (string-append
+		"From "
+		(or (first-address
+		     (fetch-first-field "from" start (header-end start end)))
+		    "unknown")
+		" "
+		(unix/file-time->string (unix/current-file-time))
+		"\n")
+	       start)))
+	  (append-to-file (buffer-region buffer) pathname false)
+	  (kill-buffer buffer))
+	(set-attribute! memo 'FILED)
+	(if (ref-variable rmail-delete-after-output)
+	    ((ref-command rmail-delete-forward) false))))))
+
+(define (get-rmail-output-pathname prompt default)
+  (let ((default (->pathname default)))
+    (let ((name (pathname-name-path default)))
+      (let ((pathname
+	     (prompt-for-pathname
+	      (string-append prompt " (default " (pathname->string name) ")")
+	      (pathname-directory-path default)
+	      false)))
+	(if (file-directory? pathname)
+	    (merge-pathnames name (pathname-as-directory pathname))
+	    pathname)))))
+
+(define (first-address field)
+  (and field
+       (let ((addresses (strip-quoted-names field)))
+	 (and (not (null? addresses))
+	      (car addresses)))))
+
+;;;; Undigestifier
+
+(define-command undigestify-rmail-message
+  "Break up a digest message into its constituent messages.
+Leaves original message, deleted, before the undigestified messages."
+  ()
+  (lambda ()
+    (let ((buffer (current-buffer))
+	  (memo (current-msg-memo)))
+      (let ((temp (temporary-buffer " rmail undigestify")))
+	(let ((start (buffer-start temp))
+	      (end (mark-left-inserting-copy (buffer-end temp))))
+	  (insert-string babyl-initial-message-start end)
+	  (insert-region (buffer-start buffer) (buffer-end buffer) end)
+	  (delete-string (skip-chars-backward " \t\n" end start) end)
+	  (insert-string "\n\037" end)
+	  (let ((digest-name
+		 (first-address
+		  (let ((hend (header-end start end)))
+		    (or (fetch-first-field "Reply-To" start hend)
+			(fetch-first-field "To" start hend)
+			(fetch-first-field "Apparently-To" start hend))))))
+	    (if (not (and digest-name
+			  (let ((m (mark- end 2)))
+			    (re-search-backward digest-end-regexp
+						m
+						(line-start m -10 'LIMIT)
+						true))))
+		(editor-error "Message is not a digest"))
+	    (let ((start
+		   (mark-left-inserting-copy (digest-summary-end start end))))
+	      (if (not (fetch-first-field "To" start (header-end start end)))
+		  (begin
+		    (insert-string "To: " start)
+		    (insert-string digest-name start)
+		    (insert-newline start)))
+	      (let loop ()
+		(let ((m (digest-message-end start end)))
+		  (if m
+		      (begin
+			(move-mark-to! start m)
+			(if (or (match-forward "End " start end true)
+				(not
+				 (fetch-first-field "To"
+						    start
+						    (header-end start end))))
+			    (begin
+			      (insert-string "To: " start)
+			      (insert-string digest-name start)
+			      (insert-string "\n\n" start)))
+			(loop)))))
+	      (mark-temporary! start)))
+	  (mark-temporary! end))
+	(message "Message successfully undigestified")
+	(with-buffer-open buffer
+	  (lambda ()
+	    (insert-region (buffer-start temp)
+			   (buffer-end temp)
+			   (msg-memo/end memo))
+	    (kill-buffer temp)
+	    (set-buffer-msg-memo! buffer false)
+	    (memoize-buffer buffer))))
+      (show-message buffer (msg-memo/number memo))
+      ((ref-command rmail-delete-forward) false))))
+
+(define (digest-summary-end start end)
+  (if (not (re-search-forward digest-summary-separator-regexp start end false))
+      (editor-error "Missing summary separator"))
+  (replace-match digest-separator-replacement))
+
+(define (digest-message-end start end)
+  (and (re-search-forward digest-message-separator-regexp start end false)
+       (replace-match digest-separator-replacement)))
 
 ;;;; Message memoization
 
@@ -1540,8 +1732,7 @@ original message into it."
 	(editor-error))
     (let ((header (extract-and-delete-string start (re-match-start 0))))
       (let ((hstart (line-start start 1)))
-	(delete-string hstart
-		       (or (search-forward "\n\n" hstart end false) end))
+	(delete-string hstart (header-end hstart end))
 	(insert-string header hstart)))))
 
 ;;;; Mail conversion
@@ -1721,3 +1912,15 @@ Note:    it means the file has no messages in it.\n\037")
 
 (define babyl-initial-message-start
   (string-append "\f\n0, unseen,,\n" babyl-eooh-string))
+
+(define-integrable digest-end-regexp
+  "^End of.*Digest.*\n\\*\\*\\*\\*\\*\\*\\*\\*\\**\\(\n------*\\)*")
+
+(define-integrable digest-summary-separator-regexp
+  "\n*\n--------------------------------------------------------*\n*")
+
+(define-integrable digest-message-separator-regexp
+  "\n*\n\n----------------------------*\n*")
+
+(define digest-separator-replacement
+  (string-append "\n\037" babyl-initial-message-start))
