@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2term.scm,v 1.14 1996/05/03 06:56:46 cph Exp $
+;;;	$Id: os2term.scm,v 1.15 1996/05/03 20:00:14 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
 ;;;
@@ -953,7 +953,8 @@
 	 (if (visibility-event/shown? event)
 	     (begin
 	       (set-screen-visibility! screen 'VISIBLE)	;don't really know
-	       (make-input-event 'UPDATE update-screen! screen #t))
+	       (screen-force-update screen)
+	       (make-input-event 'UPDATE update-screen! screen #f))
 	     (begin
 	       (set-screen-visibility! screen 'UNMAPPED)
 	       (and (selected-screen? screen)
