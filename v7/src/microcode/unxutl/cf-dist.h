@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/cf-dist.h,v 1.12 1990/11/14 10:59:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/cf-dist.h,v 1.13 1990/11/27 19:16:21 cph Rel $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -42,6 +42,7 @@ MIT in each case. */
 #define PROC_TYPE_HCX 7		/* Harris HCX */
 #define PROC_TYPE_IBM032 8	/* IBM RT */
 #define PROC_TYPE_SPARC 9
+#define PROC_TYPE_I386 10
 
 /* Define this macro to use a non-standard compiler.
    It must be defined before including the m/ and s/ files because
