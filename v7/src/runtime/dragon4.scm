@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dragon4.scm,v 1.7 1996/06/06 21:07:57 cph Exp $
+$Id: dragon4.scm,v 1.8 1996/06/11 04:29:58 cph Exp $
 
 Copyright (c) 1989-96 Massachusetts Institute of Technology
 
@@ -59,37 +59,13 @@ MIT in each case. |#
 				       '()
 				       (cons (digit->char u radix)
 					     (generate loop)))))))
-			   (let ((k+1 (1+ k)))
-			     (let ((k+1-l (- k+1 (string-length digits)))
-				   (n (flo:significand-digits radix))
-				   (scientific
-				    (lambda ()
-				      (string-append (string-head digits 1)
-						     "."
-						     (string-tail digits 1)
-						     "e"
-						     (int:->string k radix)))))
-			       (cond ((eq? display-mode 'ENGINEERING)
-				      (error "Display mode unimplemented:"
-					     display-mode)
-				      (scientific))
-				     ((or (eq? display-mode 'SCIENTIFIC)
-					  (< k+1-l (- n)))
-				      (scientific))
-				     ((negative? k)
-				      (string-append "."
-						     (make-string (- k+1) #\0)
-						     digits))
-				     ((negative? k+1-l)
-				      (string-append (string-head digits k+1)
-						     "."
-						     (string-tail digits k+1)))
-				     ((<= k n)
-				      (string-append digits
-						     (make-string k+1-l #\0)
-						     "."))
-				     (else
-				      (scientific))))))))))))))))
+			   (case display-mode
+			     ((ENGINEERING)
+			      (scientific-output digits k radix (modulo k 3)))
+			     ((SCIENTIFIC)
+			      (scientific-output digits k radix 0))
+			     (else
+			      (normal-output digits k radix))))))))))))))
     (or (and flonum-unparser-hook
 	     (flonum-unparser-hook x radix))
 	(cond ((flo:positive? x)
@@ -105,6 +81,38 @@ MIT in each case. |#
 	       (string-copy "0."))
 	      (else
 	       (string-copy "#[NaN]"))))))
+
+(define (normal-output digits k radix)
+  (let ((k+1 (+ k 1)))
+    (let ((k+1-l (- k+1 (string-length digits)))
+	  (n (flo:significand-digits radix)))
+      (cond ((< k+1-l (- n))
+	     (scientific-output digits k radix 0))
+	    ((negative? k)
+	     (string-append "." (make-string (- k+1) #\0) digits))
+	    ((negative? k+1-l)
+	     (string-append (string-head digits k+1)
+			    "."
+			    (string-tail digits k+1)))
+	    ((<= k n)
+	     (string-append digits (make-string k+1-l #\0) "."))
+	    (else
+	     (scientific-output digits k radix 0))))))
+
+(define (scientific-output digits k radix kr)
+  (let ((l (string-length digits))
+	(i (+ kr 1))
+	(exponent (int:->string (- k kr) radix)))
+    (cond ((< l i)
+	   (string-append digits (make-string (- i l) #\0) "e" exponent))
+	  ((= l i)
+	   (string-append digits "e" exponent))
+	  (else
+	   (string-append (string-head digits i)
+			  "."
+			  (string-tail digits i)
+			  "e"
+			  exponent)))))
 
 (define (flonum-unparser-cutoff-args)
   (cond ((eq? 'NORMAL flonum-unparser-cutoff)
@@ -140,7 +148,7 @@ MIT in each case. |#
     (lambda (f e-p)
       (values (flo:->integer (flo:denormalize f precision))
 	      (- e-p precision)))))
-
+
 (define (dragon4 f e p radix cutoff-mode cutoff format)
   (with-values
       (lambda ()
