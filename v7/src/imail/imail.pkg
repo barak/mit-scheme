@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.62 2000/06/15 16:20:02 cph Exp $
+;;; $Id: imail.pkg,v 1.63 2000/06/16 17:58:11 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -205,7 +205,6 @@
 	  edwin-command$imail-bury
 	  edwin-command$imail-continue
 	  edwin-command$imail-copy-folder
-	  edwin-command$imail-copy-messages
 	  edwin-command$imail-create-folder
 	  edwin-command$imail-delete-backward
 	  edwin-command$imail-delete-folder

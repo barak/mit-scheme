@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.165 2000/06/16 17:57:35 cph Exp $
+;;; $Id: imail-top.scm,v 1.166 2000/06/16 18:00:18 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1597,7 +1597,7 @@ Negative argument means search in reverse."
 		     selector
 		     (let ((index (message-index selector)))
 		       (if (< index (folder-length folder))
-			   index
+			   (get-message folder index)
 			   (last-message folder)))))
 	       ((not selector)
 		(last-message folder))
