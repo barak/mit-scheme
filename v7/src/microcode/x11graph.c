@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11graph.c,v 1.31 1993/09/08 22:37:01 cph Exp $
+$Id: x11graph.c,v 1.32 1993/12/05 06:09:30 cph Exp $
 
 Copyright (c) 1989-93 Massachusetts Institute of Technology
 
@@ -490,6 +490,99 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-SET-FUNCTION", Prim_x_graphics_set_function, 2, 2,
     unsigned int function = (arg_index_integer (2, 16));
     XSetFunction (display, (XW_NORMAL_GC (xw)), function);
     XSetFunction (display, (XW_REVERSE_GC (xw)), function);
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+static XPoint *
+DEFUN (floating_vector_point_args, (xw, x_index, y_index),
+       struct xwindow * xw AND
+       unsigned int x_index AND
+       unsigned int y_index AND
+       unsigned int * return_n_points)
+{
+  SCHEME_OBJECT x_vector = (ARG_REF (x_index));
+  SCHEME_OBJECT y_vector = (ARG_REF (y_index));
+  unsigned int n_points;
+
+  if (!FLONUM_P (x_vector))
+    error_wrong_type_arg (x_index);
+  if (!FLONUM_P (y_vector))
+    error_wrong_type_arg (y_index);
+  n_points = (FLOATING_VECTOR_LENGTH (x_vector));
+  if (n_points != (FLOATING_VECTOR_LENGTH (y_vector)))
+    error_bad_range_arg (x_index);
+  {
+    XPoint * points = (dstack_alloc (n_points * (sizeof (XPoint))));
+    double * scan_x = (FLOATING_VECTOR_LOC (x_vector, 0));
+    double * end_x = (FLOATING_VECTOR_LOC (x_vector, n_points));
+    double * scan_y = (FLOATING_VECTOR_LOC (y_vector, 0));
+    XPoint * scan_points = points;
+    unsigned int border = (XW_INTERNAL_BORDER_WIDTH (xw));
+    while (scan_x < end_x)
+      {
+	double coord = ((XW_X_SLOPE (xw)) * ((*scan_x++) - (XW_X_LEFT (xw))));
+	(scan_points -> x) = (border + (ROUND_FLOAT (coord)));
+	coord = ((XW_Y_SLOPE (xw)) * ((*scan_y++) - (XW_Y_BOTTOM (xw))));
+	(scan_points -> y) =
+	  (border + ((int) ((XW_Y_SIZE (xw)) - 1)) + (ROUND_FLOAT (coord)));
+	scan_points += 1;
+      }
+    (*return_n_points) = n_points;
+    return (points);
+  }
+}
+
+DEFINE_PRIMITIVE ("X-GRAPHICS-DRAW-POINTS", Prim_x_graphics_draw_points, 3, 3,
+  "(X-GRAPHICS-DRAW-POINTS WINDOW X-VECTOR Y-VECTOR)\n\
+Draw multiple points.")
+{
+  PRIMITIVE_HEADER (3);
+  {
+    PTR position = dstack_position;
+    struct xwindow * xw = (x_window_arg (1));
+    unsigned int n_points;
+    XPoint * points = (floating_vector_point_args (xw, 2, 3, (&n_points)));
+    while (n_points > 0)
+      {
+	unsigned int this_send = ((n_points <= 4093) ? n_points : 4093);
+	n_points -= this_send;
+	XDrawPoints ((XW_DISPLAY (xw)),
+		     (XW_WINDOW (xw)),
+		     (XW_NORMAL_GC (xw)),
+		     points,
+		     this_send,
+		     CoordModeOrigin);
+	points += this_send;
+      }
+    dstack_set_position (position);
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("X-GRAPHICS-DRAW-LINES", Prim_x_graphics_draw_lines, 3, 3,
+  "(X-GRAPHICS-DRAW-LINES WINDOW X-VECTOR Y-VECTOR)\n\
+Draw multiple lines.")
+{
+  PRIMITIVE_HEADER (3);
+  {
+    PTR position = dstack_position;
+    struct xwindow * xw = (x_window_arg (1));
+    unsigned int n_points;
+    XPoint * points = (floating_vector_point_args (xw, 2, 3, (&n_points)));
+    while (n_points > 0)
+      {
+	unsigned int this_send = ((n_points <= 2047) ? n_points : 2047);
+	n_points -= this_send;
+	XDrawLines ((XW_DISPLAY (xw)),
+		    (XW_WINDOW (xw)),
+		    (XW_NORMAL_GC (xw)),
+		    points,
+		    this_send,
+		    CoordModeOrigin);
+	points += (this_send - 1);
+      }
+    dstack_set_position (position);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
