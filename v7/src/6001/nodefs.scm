@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/nodefs.scm,v 1.3 1991/12/06 23:20:06 sasha Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/nodefs.scm,v 1.4 1992/03/26 23:03:23 cph Exp $
 
-Copyright (c) 1991 Massachusetts Institute of Technology
+Copyright (c) 1991-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -54,22 +54,28 @@ MIT in each case. |#
     (make-sequence
      (map (lambda (expression)
 	    (if (definition? expression)
-		(let ((name (definition-name expression)))
+		(let ((name (definition-name expression))
+		      (value (definition-value expression)))
 		  (make-sequence
 		   (list expression
-			 (make-combination write-definition-value
-					   (list name
-						 (make-variable name))))))
+			 (make-combination
+			  write-definition-value
+			  (cons name
+				(if (unassigned-reference-trap? value)
+				    '()
+				    (list (make-variable name))))))))
 		expression))
 	  (sequence-actions expression)))))
 
-(define (write-definition-value name value)
+(define (write-definition-value name #!optional value)
   (let ((port (nearest-cmdl/port)))
     (fresh-line port)
     (write-string ";" port)
     (write name port)
-    (write-string ": " port)
-    (write value port)))
+    (if (not (default-object? value))
+	(begin
+	  (write-string ": " port)
+	  (write value port)))))
 
 (define (check-for-illegal-definitions expression)
   (walk/expression (if (open-block? expression)
