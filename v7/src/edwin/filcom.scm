@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: filcom.scm,v 1.176 1993/09/08 19:50:18 cph Exp $
+;;;	$Id: filcom.scm,v 1.177 1993/10/05 07:40:59 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -476,7 +476,7 @@ if you wish to make buffer not be visiting any file."
 	    pathname)))))
 
 (define (set-visited-pathname buffer pathname)
-  (if (not (pathname-name pathname))
+  (if (and pathname (not (pathname-name pathname)))
       (editor-error "File name cannot be a directory: "
 		    (->namestring pathname)))
   (set-buffer-pathname! buffer pathname)
