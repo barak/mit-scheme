@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.11 1992/02/13 19:03:55 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.12 1992/02/15 07:09:38 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/lapgen.scm,v 4.42 1991/05/28 19:14:26 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -413,11 +413,11 @@ MIT in each case. |#
     quotient remainder modulo))
 
 (define-integrable (invoke-interface code)
-  (LAP (MOV W (R ,eax) (& ,code))
+  (LAP (MOV B (R ,eax) (& ,code))
        (JMP ,entry:compiler-scheme-to-interface)))
 
 (define-integrable (invoke-interface/call code)
-  (LAP (MOV W (R ,eax) (& ,code))
+  (LAP (MOV B (R ,eax) (& ,code))
        (CALL ,entry:compiler-scheme-to-interface/call)))
 
 (let-syntax ((define-entries
