@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: sfile.scm,v 14.10 1993/11/09 04:31:40 cph Exp $
+$Id: sfile.scm,v 14.11 1994/03/04 21:39:59 cph Exp $
 
-Copyright (c) 1988-93 Massachusetts Institute of Technology
+Copyright (c) 1988-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -98,6 +98,10 @@ MIT in each case. |#
        (lambda ()
 	 (if output-channel (channel-close output-channel))
 	 (if input-channel (channel-close input-channel)))))))
+
+(define (file-eq? x y)
+  ((ucode-primitive file-eq?) (->namestring (merge-pathnames x))
+			      (->namestring (merge-pathnames y))))
 
 (define (call-with-temporary-filename receiver)
   (call-with-temporary-file-pathname
