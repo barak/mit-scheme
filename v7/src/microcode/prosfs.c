@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosfs.c,v 1.10 1992/07/07 00:26:17 jinx Exp $
+$Id: prosfs.c,v 1.11 1992/10/21 00:27:22 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -247,74 +247,6 @@ DEFINE_PRIMITIVE ("DIRECTORY-DELETE", Prim_directory_delete, 1, 1,
   PRIMITIVE_HEADER (1);
   OS_directory_delete (STRING_ARG (1));
   PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-DEFINE_PRIMITIVE ("DIRECTORY-OPEN-NOREAD", Prim_directory_open_noread, 1, 1,
-  "Open the directory NAME for reading.")
-{
-  PRIMITIVE_HEADER (1);
-  if (OS_directory_index >= 0)
-    error_external_return ();
-  OS_directory_index = (OS_directory_open (STRING_ARG (1)));
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-DEFINE_PRIMITIVE ("DIRECTORY-CLOSE", Prim_directory_close, 0, 0,
-  "Close the directory opened by `directory-open'.")
-{
-  PRIMITIVE_HEADER (0);
-  if (OS_directory_index >= 0)
-    {
-      OS_directory_close (OS_directory_index);
-      OS_directory_index = (-1);
-    }
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-#define DIRREAD(expr)							\
-{									\
-  CONST char * result = (expr);						\
-  if (result == 0)							\
-    {									\
-      OS_directory_close (OS_directory_index);				\
-      OS_directory_index = (-1);					\
-      PRIMITIVE_RETURN (SHARP_F);					\
-    }									\
-  PRIMITIVE_RETURN							\
-    (char_pointer_to_string ((unsigned char *) result));		\
-}
-
-DEFINE_PRIMITIVE ("DIRECTORY-OPEN", Prim_directory_open, 1, 1,
-  "Open the directory NAME for reading.\n\
-If successful, return the first filename in the directory as a string.\n\
-If there is no such file, #F is returned.")
-{
-  PRIMITIVE_HEADER (1);
-  if (OS_directory_index >= 0)
-    error_external_return ();
-  OS_directory_index = (OS_directory_open (STRING_ARG (1)));
-  DIRREAD (OS_directory_read (OS_directory_index));
-}
-
-DEFINE_PRIMITIVE ("DIRECTORY-READ", Prim_directory_read, 0, 0,
-  "Read and return a filename from the directory opened by `directory-open'.\n\
-Return #F if there are no more files in the directory.")
-{
-  PRIMITIVE_HEADER (0);
-  if (OS_directory_index < 0)
-    error_external_return ();
-  DIRREAD (OS_directory_read (OS_directory_index));
-}
-
-DEFINE_PRIMITIVE ("DIRECTORY-READ-MATCHING", Prim_directory_read_matching, 1, 1,
-  "Read and return a filename from the directory opened by `directory-open'.\n\
-The filename must begin with the argument string.\n\
-Return #F if there are no more matching files in the directory.")
-{
-  PRIMITIVE_HEADER (1);
-  if (OS_directory_index < 0)
-    error_external_return ();
-  DIRREAD (OS_directory_read_matching (OS_directory_index, (STRING_ARG (1))));
 }
 
 DEFINE_PRIMITIVE ("NEW-DIRECTORY-OPEN", Prim_new_directory_open, 1, 1,

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxfs.c,v 1.8 1992/07/06 23:42:07 jinx Exp $
+$Id: uxfs.c,v 1.9 1992/10/21 00:26:46 jinx Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
@@ -186,8 +186,6 @@ DEFUN (OS_directory_delete, (name), CONST char * name)
   STD_VOID_SYSTEM_CALL (syscall_rmdir, (UX_rmdir (name)));
 }
 
-int OS_directory_index;
-
 #if defined(HAVE_DIRENT) || defined(HAVE_DIR)
 
 static DIR ** directory_pointers;
@@ -198,7 +196,7 @@ DEFUN_VOID (UX_initialize_directory_reader)
 {
   directory_pointers = 0;
   n_directory_pointers = 0;
-  OS_directory_index = (-1);
+  return;
 }
 
 static unsigned int
@@ -314,7 +312,7 @@ DEFUN (OS_directory_close, (index), unsigned int index)
 void
 DEFUN_VOID (UX_initialize_directory_reader)
 {
-  OS_directory_index = (-1);
+  return;
 }
 
 int
@@ -327,7 +325,7 @@ unsigned int
 DEFUN (OS_directory_open, (name), CONST char * name)
 {
   error_unimplemented_primitive ();
-  return (0);
+  /*NOTREACHED*/
 }
 
 #ifndef HAVE_DIRENT
@@ -338,7 +336,7 @@ CONST char *
 DEFUN (OS_directory_read, (index), unsigned int index)
 {
   error_unimplemented_primitive ();
-  return (0);
+  /*NOTREACHED*/
 }
 
 CONST char *
@@ -347,13 +345,14 @@ DEFUN (OS_directory_read_matching, (index, prefix),
        CONST char * prefix)
 {
   error_unimplemented_primitive ();
-  return (0);
+  /*NOTREACHED*/
 }
 
 void
 DEFUN (OS_directory_close, (index), unsigned int index)
 {
   error_unimplemented_primitive ();
+  /*NOTREACHED*/
 }
 
 #endif /* HAVE_DIRENT */

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osfs.h,v 1.5 1992/07/06 23:42:03 jinx Exp $
+$Id: osfs.h,v 1.6 1992/10/21 00:27:00 jinx Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
@@ -59,6 +59,5 @@ extern void EXFUN (OS_directory_close, (unsigned int index));
 extern CONST char * EXFUN (OS_directory_read, (unsigned int index));
 extern CONST char * EXFUN
   (OS_directory_read_matching, (unsigned int index, CONST char * prefix));
-extern int OS_directory_index;
 
 #endif /* SCM_OSFS_H */

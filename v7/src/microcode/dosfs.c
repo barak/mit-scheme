@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dosfs.c,v 1.3 1992/09/15 20:35:55 jinx Exp $
+$Id: dosfs.c,v 1.4 1992/10/21 00:27:11 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -79,7 +79,7 @@ DEFUN (OS_file_remove, (name), CONST char * name)
 {
   STD_VOID_SYSTEM_CALL (syscall_unlink, (DOS_unlink (name)));
 }
-
+
 void
 DEFUN (OS_file_remove_link, (name), CONST char * name)
 {
@@ -107,7 +107,7 @@ DEFUN (OS_file_link_soft, (from_name, to_name),
   error_unimplemented_primitive ();
   /*NOTREACHED*/
 }
-
+
 void
 DEFUN (OS_file_rename, (from_name, to_name),
        CONST char * from_name AND
@@ -130,15 +130,15 @@ DEFUN (OS_directory_delete, (name), CONST char * name)
 }
 
 /* This is such that directory open does not return the first file */
+
 typedef struct DIR_struct
-{ struct FIND *entry;
+{
+  struct FIND *entry;
   char pathname[13];
 } DIR;
 
-#define Get_Directory_Entry_Name(entry, pathname)		\
-  (strcpy(pathname, (entry)->name), strlwr(pathname))
-
-int OS_directory_index;
+#define GET_DIRECTORY_ENTRY_NAME(entry, pathname)		\
+  (strcpy (pathname, ((entry)->name)), strlwr (pathname))
 
 static DIR ** directory_pointers;
 static unsigned int n_directory_pointers;
@@ -148,7 +148,7 @@ DEFUN_VOID (DOS_initialize_directory_reader)
 {
   directory_pointers = 0;
   n_directory_pointers = 0;
-  OS_directory_index = (-1);
+  return;
 }
 
 static unsigned int
@@ -219,15 +219,15 @@ DEFUN (OS_directory_open, (name), CONST char * name)
 { 
   char filename[128], searchname[128];
   struct FIND *entry;
-  DIR * pointer = malloc(sizeof(DIR));
+  DIR * pointer = malloc (sizeof(DIR));
   
   if (pointer == 0)
     error_system_call (ENOMEM, syscall_malloc);
 
   if (dos_pathname_as_filename (name, filename))
-    sprintf(searchname, "%s*.*", filename);
+    sprintf (searchname, "%s*.*", filename);
   else
-    sprintf(searchname, "%s\\*.*", filename);
+    sprintf (searchname, "%s\\*.*", filename);
 
   if ((entry = findfirst(searchname, FA_DIREC)) == 0)
     error_system_call (errno, syscall_opendir);
@@ -238,12 +238,13 @@ DEFUN (OS_directory_open, (name), CONST char * name)
 
 CONST char *
 DEFUN (OS_directory_read, (index), unsigned int index)
-{ DIR * pointer = REFERENCE_DIRECTORY (index);
+{
+  DIR * pointer = REFERENCE_DIRECTORY (index);
   if (pointer->entry == 0)
     return 0;
 
-  Get_Directory_Entry_Name(pointer->entry, pointer->pathname);
-  pointer->entry = findnext();
+  GET_DIRECTORY_ENTRY_NAME (pointer->entry, pointer->pathname);
+  pointer->entry = findnext ();
   return (pointer -> pathname);
 }
 
@@ -260,7 +261,7 @@ void
 DEFUN (OS_directory_close, (index), unsigned int index)
 { DIR * pointer = REFERENCE_DIRECTORY (index);
 
-  free(pointer);
+  free (pointer);
   DEALLOCATE_DIRECTORY (index);
 }
 
