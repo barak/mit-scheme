@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: defstr.scm,v 14.23 1993/03/07 20:56:20 cph Exp $
+$Id: defstr.scm,v 14.24 1993/03/17 04:04:25 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -263,13 +263,13 @@ differences:
 	  (named-seen? (assq 'NAMED options-seen)))
       (let ((named? (or (not type-seen?) named-seen?)))
 	(if (not type-seen?)
-	    (begin
-	      (if (and named-seen? (not type-name))
-		  (error "Illegal structure option:" (cdr named-seen?)))
-	      (let ((initial-offset-seen? (assq 'INITIAL-OFFSET options-seen)))
-		(if initial-offset-seen?
-		    (error "Structure option illegal without TYPE option:"
-			   (cdr initial-offset-seen?))))))
+	    (let ((check-option
+		   (lambda (seen?)
+		     (if seen?
+			 (error "Structure option illegal without TYPE option:"
+				(cdr seen?))))))
+	      (check-option (and (not type-name) named-seen?))
+	      (check-option (assq 'INITIAL-OFFSET options-seen))))
 	(if (not named?)
 	    (let ((check
 		   (lambda (option-seen)
