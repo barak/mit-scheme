@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.4 1988/07/15 22:31:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.5 1988/07/16 18:54:39 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -450,9 +450,7 @@ MIT in each case. |#
   ;; middle of the other stuff.
   (let ((unparse-it
 	 (lambda (thunk)
-	   (*unparse-with-brackets (compiled-procedure-type entry)
-				   entry
-				   thunk))))
+	   (*unparse-with-brackets 'COMPILED-PROCEDURE entry thunk))))
     (compiled-entry->name entry
       (lambda (string)
 	(unparse-it
@@ -469,12 +467,6 @@ MIT in each case. |#
 	    (unparse-it
 	     (lambda () 
 	       (*unparse-datum entry)))))))))
-
-(define (compiled-procedure-type entry)
-  (if (compiled-code-block/manifest-closure?
-       (compiled-code-address->block entry))
-      'MANIFEST-CLOSURE
-      'COMPILED-PROCEDURE))
 
 (define (unparse-compiled-entry entry)
   (let ((unparse-it
