@@ -1,7 +1,7 @@
 /* -*-C-*-
    System file for Ultrix
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/ultrix.h,v 1.1 1989/07/18 22:35:28 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/ultrix.h,v 1.2 1989/07/26 03:47:22 cph Rel $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -42,3 +42,6 @@ MIT in each case. */
 
 #define SOURCES_SYSTEM unixprim.c
 #define OBJECTS_SYSTEM unixprim.o
+
+#define M4_RULE .m4.s: ; @ECHO "### Generating $@ because of $?"	@@\
+	$(M4) M4_SWITCH_SYSTEM M4_SWITCH_MACHINE $*.m4 | sed -e 's/@/$$/g' -e 's/^$$//' >$*.s
