@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pmcon.c,v 1.8 1995/05/19 21:04:27 cph Exp $
+$Id: os2pmcon.c,v 1.9 1995/05/19 21:17:09 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -152,7 +152,7 @@ OS2_console_psid (void)
 void
 OS2_console_font_change_hook (font_metrics_t * metrics)
 {
-  font_metrics = metrics;
+  console_metrics = metrics;
 }
 
 static void
