@@ -6,12 +6,12 @@
 @setchapternewpage odd
 @synindex vr fn
 
-@c $Id: sos.texinfo,v 1.4 1993/02/28 23:24:23 cph Exp $
+@c $Id: sos.texinfo,v 1.5 1993/03/10 22:16:27 cph Exp $
 
 @set TITLE The SOS Reference Manual
-@set EDITION 1.4
-@set UPDATED 28 February 1993
-@set UPDATE-MONTH February 1993
+@set EDITION 1.5
+@set UPDATED 10 March 1993
+@set UPDATE-MONTH March 1993
 
 @ifinfo
 Copyright @copyright{} 1993 Massachusetts Institute of Technology
@@ -127,6 +127,7 @@ The Language
 * Slots::                       
 * Generic Procedures::          
 * Methods::                     
+* Record Classes::              
 
 Reflective Operations
 
@@ -209,6 +210,7 @@ even length, the even-numbered elements of which must be symbols.
 * Slots::                       
 * Generic Procedures::          
 * Methods::                     
+* Record Classes::              
 @end menu
 
 @node Classes, Predefined Classes,  , Language
@@ -428,7 +430,8 @@ Returns the class of @var{instance}.
 
 @defvr Class <object>
 This is the class of all Scheme objects.  It has no direct superclasses,
-and all other classes are subclasses of this class.
+and all other classes are subclasses of this class.  This class is an
+instance of the class @code{<primitive-class>}.
 @end defvr
 
 @defvr Class <instance>
@@ -847,7 +850,7 @@ returns @code{#f}.  Note that every generic procedure satisfies the
 predicate @code{procedure?}.
 @end deffn
 
-@node Methods,  , Generic Procedures, Language
+@node Methods, Record Classes, Generic Procedures, Language
 @subsection Methods
 
 A method object contains a method procedure and a sequence of
@@ -908,6 +911,25 @@ corresponding to a non-specialized required parameter is
 @code{<object>}.
 @end deffn
 
+@deffn Syntax method lambda-list body @dots{}
+This special form evaluates to an anonymous method in the same way that
+@code{lambda} evaluates to an anonymous procedure.  @var{Lambda-list}
+and @var{body} have exactly the same syntax and semantics as the
+corresponding parts of @code{define-method}.  Note that the following
+are completely equivalent:
+
+@lisp
+@group
+(define-method @var{generic-procedure} @var{lambda-list}
+  @var{body} @dots{})
+
+(add-method @var{generic-procedure}
+  (method @var{lambda-list}
+    @var{body} @dots{}))
+@end group
+@end lisp
+@end deffn
+
 @deffn Procedure add-method generic-procedure method
 Adds @var{method} to @var{generic-procedure}.  If
 @var{generic-procedure} already has a method with the same specializers
@@ -933,6 +955,50 @@ procedure with no arguments causes the next method to be called with the
 arguments passed to the calling method; in @sc{sos}, this calls the next
 method with no arguments.
 @end quotation
+@end deffn
+
+@node Record Classes,  , Methods, Language
+@subsection Record Classes
+
+In the MIT Scheme implementation, @sc{sos} allows generic procedures to
+discriminate on record types.  This means that a record structure
+defined by means of @code{make-record-type} or @code{define-structure}
+can be passed as an argument to a generic procedure, and the generic
+procedure can use the record's type to determine which method to be
+invoked.@footnote{If the @code{type} option of @code{define-structure}
+is used, the resulting data structure is @emph{not} a record and thus
+cannot be used in this manner.}
+
+In order to support this, @sc{sos} has been extended to accept record
+type descriptors as method specializers.  Additionally, every record
+type descriptor has an associated @sc{sos} class; either the class or
+the record type can be used as a specializer with equivalent results.
+
+When a record type descriptor is created, an @sc{sos} class is
+automatically created and associated with the descriptor.  This class is
+a direct subclass of @code{<record>}, and is an instance of the
+metaclass @code{<record-class>}.  The procedure @code{record-type-class}
+can be used to obtain the class from the record type.
+
+@defvr Class <record-class>
+This is the metaclass of record classes.  It is a direct subclass of
+@code{<primitive-class>}.
+@end defvr
+
+@deffn Procedure record-type-class record-type
+@var{Record-type} must be a record type descriptor (in other words, it
+must satisfy the predicate @code{record-type?}).  Returns the class
+associated with @var{record-type}.
+@end deffn
+
+@deffn Procedure record-class record
+@var{Record} must be a record (in other words, it must satisfy the
+predicate @code{record?}).  Returns the class associated with
+@var{record}.  This is equivalent to
+
+@lisp
+(record-type-class (record-type-descriptor @var{record}))
+@end lisp
 @end deffn
 
 @node Reflective Operations, Meta-Object Protocol, Language, Object System
