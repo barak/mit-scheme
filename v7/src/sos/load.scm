@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: load.scm,v 1.10 2001/12/23 17:21:00 cph Exp $
+;;; $Id: load.scm,v 1.11 2002/02/03 04:40:09 cph Exp $
 ;;;
-;;; Copyright (c) 1995-1999, 2001 Massachusetts Institute of Technology
+;;; Copyright (c) 1995-1999, 2001, 2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -23,4 +23,4 @@
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
     (load-package-set "sos")))
-(add-identification! "SOS" 1 6)
+(add-identification! "SOS" 1 7)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 15.33 2001/12/20 16:13:18 cph Exp $
+$Id: make.scm,v 15.34 2002/02/03 04:34:27 cph Exp $
 
-Copyright (c) 1991-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1991-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@ USA.
        (if (and (eq? 'UNIX microcode-id/operating-system)
 		(string-ci=? "HP-UX" microcode-id/operating-system-variant))
 	   (load "floppy" (->environment '(EDWIN))))))))
-(add-identification! "6.001" 15 30)
+(add-identification! "6.001" 15 31)
 
 ;;; Customize the runtime system:
 (set! repl:allow-restart-notifications? #f)

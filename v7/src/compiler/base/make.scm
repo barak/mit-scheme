@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 4.116 2001/12/16 06:01:31 cph Exp $
+$Id: make.scm,v 4.117 2002/02/03 04:31:03 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -34,4 +34,4 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
      (load-option 'HASH-TABLE)
      (load-option 'RB-TREE)
      (load-package-set "compiler")))
-  (add-identification! (string-append "Liar (" architecture-name ")") 4 114))
+  (add-identification! (string-append "Liar (" architecture-name ")") 4 115))

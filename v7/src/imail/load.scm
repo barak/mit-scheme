@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: load.scm,v 1.37 2001/12/03 18:13:08 cph Exp $
+;;; $Id: load.scm,v 1.38 2002/02/03 04:37:21 cph Exp $
 ;;;
-;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
+;;; Copyright (c) 1999-2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -28,4 +28,4 @@
   (lambda ()
     (fluid-let ((*allow-package-redefinition?* #t))
       (load-package-set "imail"))))
-(add-subsystem-identification! "IMAIL" '(1 17))
+(add-subsystem-identification! "IMAIL" '(1 18))

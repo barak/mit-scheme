@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 3.113 2001/12/17 17:40:58 cph Exp $
+$Id: make.scm,v 3.114 2002/02/03 04:31:55 cph Exp $
 
-Copyright (c) 1989-2001 Massachusetts Institute of Technology
+Copyright (c) 1989-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -36,4 +36,4 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
        (load-package-set "edwin"
 	 `((alternate-package-loader
 	    . ,(load "edwin.bld" system-global-environment))))))))
-(add-identification! "Edwin" 3 111)
+(add-identification! "Edwin" 3 112)

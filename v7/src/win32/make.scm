@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 1.9 2001/12/23 17:21:00 cph Exp $
+$Id: make.scm,v 1.10 2002/02/03 04:41:22 cph Exp $
 
-Copyright (c) 1993-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1993-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -32,4 +32,4 @@ USA.
      (pathname-as-directory "win32")
      (lambda ()
        (load-package-set "win32")))))
-(add-identification! "Win32" 1 5)
+(add-identification! "Win32" 1 6)
