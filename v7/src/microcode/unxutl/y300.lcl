@@ -1,6 +1,6 @@
 /* -*- C -*-
    Switzerland local additions to the makefile
-   $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/y300.lcl,v 1.4 1990/06/12 16:38:29 jinx Exp $
+   $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/y300.lcl,v 1.5 1990/06/12 17:52:24 jinx Exp $
  */
 
 /* These extra files are for 6003.  They assume we're using HP-UX. */
@@ -22,7 +22,7 @@ KIT_SOURCES = $(X_SOURCES) $(CTERM_SOURCES) $(GRAPHICS_SOURCES)\
 KIT_OBJECTS = $(X_OBJECTS) $(CTERM_OBJECTS) $(GRAPHICS_OBJECTS)\
 	OBJECTS_SYSTEM OBJECTS_MACHINE gpio.o usrkit.o
 KIT_LIB =  $(USER_LIBS) $(GRAPHICS_LIBS) $(X_LIB) $(CTERM_LIB)\
-	LIB_MATH LIBS_SYSTEM LIBS_MACHINE LIB_DEBUG LIB_STANDARD
+	LIB_MATH LIBS_SYSTEM LIBS_MACHINE LIB_DEBUG LIB_STANDARD -ldvio
 
 /* Franklyn's personal scheme: 6003-like + Sgraph_xt. */
 
