@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-syntax.scm,v 1.2 2000/04/22 01:53:48 cph Exp $
+;;; $Id: imap-syntax.scm,v 1.3 2000/04/22 05:06:24 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -162,30 +162,41 @@
 					    date-text
 					    (string-matcher "\"")))))
 
-(define imap:match:section-text
-  (alternatives-matcher
-   (ci-string-matcher "header")
-   (sequence-matcher (ci-string-matcher "header.fields")
-		     (optional-matcher (ci-string-matcher ".not"))
-		     (string-matcher " ")
-		     (string-matcher "(")
-		     (+-matcher imap:match:astring)
-		     (string-matcher ")"))
-   (ci-string-matcher "text")))
+(define imap:parse:section-text
+  (alternatives-parser
+   (simple-parser (alternatives-matcher
+		   (ci-string-matcher "header")
+		   (ci-string-matcher "text"))
+		  'KEYWORD)
+   (sequence-parser
+    (simple-parser (sequence-matcher
+		    (ci-string-matcher "header.fields")
+		    (optional-matcher
+		     (ci-string-matcher ".not")))
+		   'KEYWORD)
+    (noise-parser (string-matcher " ("))
+    (list-parser imap:match:astring (string-matcher " ") 'HEADERS)
+    (noise-parser (string-matcher ")")))))
 
-(define imap:match:section
-  (alternatives-matcher
-   imap:match:section-text
-   (sequence-matcher imap:match:nz-number
-		     (*-matcher (string-matcher ".")
-				imap:match:nz-number)
-		     (optional-matcher (string-matcher ".")
-				       (alternatives-matcher
-					imap:match:section-text
-					(ci-string-matcher "mime"))))))
-
-(define (url:decoding-parser match-encoded match-decoded keyword)
-  (decoding-parser match-encoded url:decode-substring match-decoded keyword))
+(define imap:parse:section
+  (encapsulating-parser
+   (alternatives-parser
+    imap:parse:section-text
+    (sequence-parser
+     (list-parser imap:match:nz-number (string-matcher ".") 'NUMBER)
+     (optional-parser
+      (noise-parser (string-matcher "."))
+      (alternatives-parser
+       imap:parse:section-text
+       (simple-parser (ci-string-matcher "mime") 'KEYWORD)))))
+   (lambda (pv)
+     (map* (cons (let ((keyword (parser-token pv 'KEYWORD)))
+		   (and keyword
+			(intern keyword)))
+		 (or (parser-token pv 'HEADERS) '()))
+	   string->number
+	   (or (parser-token pv 'NUMBER) '())))
+   'SECTION))
 
 (define imap:match:set
   (let ((range
@@ -258,6 +269,13 @@
 		     (string-matcher " "))
    imap:match:search-key))
 
+;;;; URL parser
+
+(define (url:decoding-parser match-encoded match-decoded keyword)
+  (decoding-parser match-encoded
+		   url:decode-substring
+		   (simple-parser match-decoded keyword)))
+
 (define imap:parse:server
   (sequence-parser
    (optional-parser
@@ -284,7 +302,7 @@
    (optional-parser
     (noise-parser (string-matcher ":"))
     (simple-parser (rexp-matcher (rexp+ char-set:numeric)) 'PORT))))
-
+
 (define imap:parse:mailboxlist
   (sequence-parser
    (optional-parser
@@ -323,9 +341,9 @@
 		   (simple-parser imap:match:nz-number 'UID)
 		   (optional-parser
 		    (noise-parser (ci-string-matcher "/;section="))
-		    (url:decoding-parser imap:match:bchar+
-					 imap:match:section
-					 'SECTION))))
+		    (decoding-parser imap:match:bchar+
+				     url:decode-substring
+				     imap:parse:section))))
 
 (define imap:parse:simple-message
   (sequence-parser imap:parse:enc-mailbox
