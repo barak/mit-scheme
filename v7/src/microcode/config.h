@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.32 1987/11/04 20:03:59 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.33 1988/01/04 21:50:25 cph Rel $
  *
  * This file contains the configuration information and the information
  * given on the command line on Unix.
@@ -187,14 +187,26 @@ typedef unsigned long Pointer;
    This option is not completely working right now.
 
 */
+
+/* Possible values for FASL_INTERNAL_FORMAT.  For the most part this
+   means the processor type, so for example there are several aliases
+   for 68000 family processors.  This scheme allows sharing of
+   compiled code on machines with the same processor type.  Probably
+   we will have to create a more powerful method of identifying FASL
+   files when we introduce new differences, such as whether or not a
+   68881 coprocessor is installed. */
 
 #define FASL_UNKNOWN		0
 #define FASL_PDP10		1
 #define FASL_VAX		2
-#define FASL_HP_9000_200	3
-#define FASL_NU  		4
+#define FASL_68020		3
+#define FASL_HP_9000_300	FASL_68020
+#define FASL_SUN_3		FASL_68020
+#define FASL_68000  		4
+#define FASL_HP_9000_200	FASL_68000
+#define FASL_SUN_2		FASL_68000
 #define FASL_HP_9000_500	5
-#define FASL_SUN                6
+/* #define FASL_SUN		6 */
 #define FASL_BFLY		7
 #define FASL_CYBER		8
 #define FASL_CELERITY		9
@@ -220,7 +232,7 @@ typedef unsigned long Pointer;
 #define USHORT_SIZE		16
 #define ULONG_SIZE		32
 #define BELL 			'\007'
-#define FASL_INTERNAL_FORMAT	FASL_NU
+#define FASL_INTERNAL_FORMAT	FASL_68000
 #define FLONUM_EXPT_SIZE	7
 #define FLONUM_MANTISSA_BITS	56
 #define MAX_FLONUM_EXPONENT	127
@@ -273,7 +285,7 @@ typedef unsigned long Pointer;
 
 /* This eliminates a spurious warning from the C compiler. */
 #define main_type
-
+
 /* exit(0) produces horrible message on VMS */
 
 #define NORMAL_EXIT 1
@@ -313,7 +325,11 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define USHORT_SIZE		16
 #define ULONG_SIZE		32
 #define BELL 			'\007'
-#define FASL_INTERNAL_FORMAT	FASL_HP_9000_200
+#ifdef MC68020
+#define FASL_INTERNAL_FORMAT	FASL_68020
+#else /* not MC68020 */
+#define FASL_INTERNAL_FORMAT	FASL_68000
+#endif /* MC68020 */
 #define FLONUM_EXPT_SIZE	10
 #define FLONUM_MANTISSA_BITS	53
 #define MAX_FLONUM_EXPONENT	1023
@@ -354,7 +370,12 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define USHORT_SIZE		16
 #define ULONG_SIZE		32
 #define BELL 			'\007'
-#define FASL_INTERNAL_FORMAT	FASL_SUN
+/* Is this correct meaning of this flag? -- CPH */
+#ifdef sun3
+#define FASL_INTERNAL_FORMAT	FASL_68020
+#else /* not sun3 */
+#define FASL_INTERNAL_FORMAT	FASL_68000
+#endif /* sun3 */
 #define FLONUM_EXPT_SIZE	7
 #define FLONUM_MANTISSA_BITS 	56
 #define MAX_FLONUM_EXPONENT	127
@@ -383,7 +404,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define HAS_FREXP
 #define STACK_SIZE		4	/* 4K objects */
 #endif
-
+
 #ifdef cyber180
 /* Word size is 64 bits. */
 #define Heap_In_Low_Memory
@@ -400,7 +421,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
    expressions */
 #define Conditional_Bug
 #endif
-
+
 #ifdef celerity
 #define Heap_In_Low_Memory
 #define UNSIGNED_SHIFT
