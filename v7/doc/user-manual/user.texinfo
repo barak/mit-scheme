@@ -1,13 +1,14 @@
 \input texinfo @c -*-texinfo-*-
-@iftex
-@finalout
-@end iftex
-@comment $Id: user.texinfo,v 1.104 2004/10/16 06:02:55 cph Exp $
-@comment %**start of header (This is for running Texinfo on a region.)
+@comment $Id: user.texinfo,v 1.105 2004/10/17 03:09:07 cph Exp $
+@comment %**start of header
 @setfilename mit-scheme-user
-@settitle MIT/GNU Scheme User's Manual
-@comment %**end of header (This is for running Texinfo on a region.)
+@set EDITION 1.90
+@set VERSION 7.7.91
+@set UPDATED 2004-10-16
+@settitle MIT/GNU Scheme @value{VERSION}
+@comment %**end of header
 @setchapternewpage odd
+@finalout
 
 @comment Environment variables
 @defcodeindex nv
@@ -16,62 +17,56 @@
 @defcodeindex op
 
 @syncodeindex fn vr
-
 @syncodeindex ky cp
 @syncodeindex pg cp
 @syncodeindex tp cp
+
+@copying
+This manual documents the use of MIT/GNU Scheme @value{VERSION}.
+
+Copyright @copyright{} 1991,1993,1999,2000 Massachusetts Institute of Technology@*
+Copyright @copyright{} 2001,2002,2003,2004 Massachusetts Institute of Technology
+
+@quotation
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version 1.2 or
+any later version published by the Free Software Foundation; with no
+Invariant Sections, with the Front-Cover Texts being ``A GNU Manual,''
+and with the Back-Cover Texts as in (a) below.  A copy of the
+license is included in the section entitled ``GNU Free Documentation
+License.''
+
+(a) The FSF's Back-Cover Text is: ``You have freedom to copy and modify
+this GNU Manual, like GNU software.  Copies published by the Free
+Software Foundation raise funds for GNU development.''
+@end quotation
+@end copying
 
 @dircategory Programming Languages
 @direntry
 * MIT/GNU Scheme User: (mit-scheme-user).	MIT/GNU Scheme User's Manual
 @end direntry
 
-@ifinfo
-This file documents the use of MIT/GNU Scheme.
-
-Copyright @copyright{} 1991,1993,1999,2000,2001 Massachusetts Institute of Technology
-Copyright @copyright{} 2002,2003,2004 Massachusetts Institute of Technology
-
-Permission is granted to copy, distribute and/or modify this document
-under the terms of the GNU Free Documentation License, Version
-1.2 or any later version published by the Free Software Foundation; with
-no Invariant Sections, with no Front-Cover Texts, and with no Back-Cover
-Texts.  A copy of the license is included in the section entitled "GNU
-Free Documentation License".
-@end ifinfo
-
 @titlepage
 @title{MIT/GNU Scheme User's Manual}
-@subtitle Edition 1.90
-@subtitle for Scheme Release 7.7.2
-@subtitle 29 December 2002
+@subtitle Edition @value{EDITION} for MIT/GNU Scheme @value{VERSION}
+@subtitle @value{UPDATED}
 @author by Stephen Adams
 @author Chris Hanson
 @author and the MIT Scheme Team
-
 @page
-
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1991,1993,1999,2000,2001 Massachusetts Institute of Technology
-Copyright @copyright{} 2002,2003,2004 Massachusetts Institute of Technology
-
-Permission is granted to copy, distribute and/or modify this document
-under the terms of the GNU Free Documentation License, Version
-1.2 or any later version published by the Free Software Foundation; with
-no Invariant Sections, with no Front-Cover Texts, and with no Back-Cover
-Texts.  A copy of the license is included in the section entitled "GNU
-Free Documentation License".
+@insertcopying
 @end titlepage
+
 @contents
 
+@ifnottex
 @node Top, Introduction, (dir), (dir)
+@top MIT/GNU Scheme
 
-@ifinfo
-Scheme is the UnCommon Lisp.  This Info file is the user's guide for the
-MIT/GNU implementation of Scheme.  It describes how to install and run
-MIT/GNU Scheme, how to execute and compile Scheme programs, and how to
-use Scheme with Edwin and GNU Emacs.
-@end ifinfo
+@insertcopying
+@end ifnottex
 
 @menu
 * Introduction::                
@@ -5219,8 +5214,3 @@ to permit their use in free software.
 @printindex cp
 
 @bye
-
-@c Local Variables:
-@c selective-display: t
-@c truncate-lines: nil
-@c End:
