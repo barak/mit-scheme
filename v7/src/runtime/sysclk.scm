@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/sysclk.scm,v 14.2 1989/11/28 01:28:19 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/sysclk.scm,v 14.3 1995/08/08 15:31:05 adams Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -79,3 +79,19 @@ MIT in each case. |#
 
 (define (internal-time/seconds->ticks seconds)
   (round->exact (* seconds 1000)))
+
+(define (with-timings thunk receiver)
+  (let ((process-start  (process-time-clock))
+	(gc-time-start  non-runtime)
+	(real-start     (real-time-clock)))
+    (let ((value (thunk)))
+      (let ((process-end  (process-time-clock))
+	    (gc-time-end  non-runtime)
+	    (real-end     (real-time-clock)))
+	(let ((process-time (- process-end process-start))
+	      (gc-time      (- gc-time-end gc-time-start))
+	      (real-time    (- real-end real-start)))
+	  (receiver (- process-time gc-time)
+		    gc-time
+		    real-time)
+	  value)))))
