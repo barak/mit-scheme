@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.29 2000/05/20 03:22:46 cph Exp $
+;;; $Id: imail-file.scm,v 1.30 2000/05/20 19:39:14 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -50,13 +50,14 @@
 (define (file-suffix-filter suffix)
   (let ((suffix (string-append "." suffix)))
     (let ((l (string-length suffix)))
-      (lambda (string)
-	(let ((i (string-search-forward suffix string)))
-	  (and i
-	       (fix:> i 0)
-	       (let ((i (fix:+ i l)))
-		 (or (fix:= i (string-length string))
-		     (char=? #\. (string-ref string i))))))))))
+      (lambda (pathname)
+	(let ((string (file-namestring pathname)))
+	  (let ((i (string-search-forward suffix string)))
+	    (and i
+		 (fix:> i 0)
+		 (let ((i (fix:+ i l)))
+		   (or (fix:= i (string-length string))
+		       (char=? #\. (string-ref string i)))))))))))
 
 ;;;; Server operations
 

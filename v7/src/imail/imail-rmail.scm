@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.32 2000/05/20 03:22:48 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.33 2000/05/20 19:39:20 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -28,8 +28,8 @@
 
 (let ((filter
        (let ((suffix-filter (file-suffix-filter "rmail")))
-	 (lambda (string)
-	   (or (string-ci=? string "rmail")
+	 (lambda (pathname)
+	   (or (string-ci=? (file-namestring pathname) "rmail")
 	       (suffix-filter string))))))
   (define-url-protocol "rmail" <rmail-url>
     (lambda (string)
