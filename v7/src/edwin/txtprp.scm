@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: txtprp.scm,v 1.3 1993/08/10 09:44:18 cph Exp $
+;;;	$Id: txtprp.scm,v 1.4 1993/08/13 11:17:59 jawilson Exp $
 ;;;
 ;;;	Copyright (c) 1993 Massachusetts Institute of Technology
 ;;;
@@ -710,8 +710,7 @@
 	  (else
 	   (if new (set-interval-parent! new false))
 	   (set-group-text-properties! group new)))
-    (if new
-	(balance (interval-parent new) group -1))))
+    (balance (interval-parent i) group -1)))
 
 (define (am-left-child? i)
   (let ((p (interval-parent i)))
