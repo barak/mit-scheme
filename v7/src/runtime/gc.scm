@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1986 Massachusetts Institute of Technology
+;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -36,6 +36,8 @@
 ;;;
 
 ;;;; Garbage Collector
+
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gc.scm,v 1.92 1987/01/05 17:25:05 cph Exp $
 
 (declare (usual-integrations)
 	 (compilable-primitive-functions
@@ -90,7 +92,7 @@
 	       (gc-flip Default-Safety-Margin)))
 
 (vector-set! (vector-ref (get-fixed-objects-vector) 1)
-	     1				;Local Stack Overflow Interrupt
+	     0				;Local Stack Overflow Interrupt
 	     (named-lambda (stack-overflow-interrupt interrupt-code
 						     interrupt-enables)
 	       (stack-overflow)
