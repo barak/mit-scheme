@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.35 1993/06/16 15:00:21 gjr Exp $
+$Id: io.scm,v 14.36 1993/08/18 22:52:46 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -235,17 +235,27 @@ MIT in each case. |#
 	(ucode-primitive terminal-set-state 2)))
 
 (define (channel-read channel buffer start end)
-  (if (and have-select? (not (channel-type=file? channel)))
-      (let ((block-events? (block-thread-events)))
-	(let ((result
-	       (and (eq? 'INPUT-AVAILABLE (test-for-input-on-channel channel))
-		    ((ucode-primitive channel-read 4)
-		     (channel-descriptor channel) buffer start end))))
-	  (if (not block-events?)
-	      (unblock-thread-events))
-	  result))
-      ((ucode-primitive channel-read 4) (channel-descriptor channel)
-					buffer start end)))
+  (let ((do-read
+	 (lambda ()
+	   ((ucode-primitive channel-read 4) (channel-descriptor channel)
+					     buffer start end)))
+	(do-test
+	 (lambda ()
+	   (eq? 'INPUT-AVAILABLE (test-for-input-on-channel channel)))))
+    (declare (integrate-operator do-read do-test))
+    (if (and have-select? (not (channel-type=file? channel)))
+	(let ((block-events? (block-thread-events)))
+	  (let ((result
+		 (if (channel-blocking? channel)
+		     (begin
+		       (do () ((do-test)))
+		       (do-read))
+		     (and (do-test)
+			  (do-read)))))
+	    (if (not block-events?)
+		(unblock-thread-events))
+	    result))
+	(do-read))))
 
 (define (channel-read-block channel buffer start end)
   (let loop ()
