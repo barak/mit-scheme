@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: screen.scm,v 1.109 1996/05/14 01:49:49 cph Exp $
+;;;	$Id: screen.scm,v 1.110 1996/05/14 05:41:08 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -255,8 +255,8 @@
   highlight-enable
 
   ;; Cursor position.
-  cursor-x
-  cursor-y)
+  (cursor-x #f)
+  (cursor-y #f))
 
 (define (make-matrix screen)
   (let ((matrix (%make-matrix))
@@ -275,8 +275,6 @@
       (set-matrix-highlight! matrix highlight)
       (set-matrix-enable! matrix enable)
       (set-matrix-highlight-enable! matrix highlight-enable))
-    (set-matrix-cursor-x! matrix 0)
-    (set-matrix-cursor-y! matrix 0)
     matrix))
 
 (define (set-screen-size! screen x-size y-size)
@@ -321,9 +319,11 @@
 	   (initialize-new-line-contents screen y)
 	   (if highlight
 	       (begin
-		 (boolean-vector-set! (matrix-highlight-enable new-matrix) y true)
+		 (boolean-vector-set! (matrix-highlight-enable new-matrix)
+				      y #t)
 		 (initialize-new-line-highlight screen y)
-		 (boolean-vector-set! (vector-ref (matrix-highlight new-matrix) y)
+		 (boolean-vector-set! (vector-ref (matrix-highlight new-matrix)
+						  y)
 				      x highlight))))
 	  ((boolean-vector-ref (matrix-highlight-enable new-matrix) y)
 	   (boolean-vector-set! (vector-ref (matrix-highlight new-matrix) y)
@@ -661,10 +661,12 @@
 	 (set-screen-in-update?! screen old-flag)
 	 finished?)))))
 
-(define-integrable (screen-update-cursor screen)
+(define (screen-update-cursor screen)
   (let ((x (matrix-cursor-x (screen-new-matrix screen)))
 	(y (matrix-cursor-y (screen-new-matrix screen))))
-    (terminal-move-cursor screen x y)
+    (if (not (and (eqv? x (matrix-cursor-x (screen-current-matrix screen)))
+		  (eqv? y (matrix-cursor-y (screen-current-matrix screen)))))
+	(terminal-move-cursor screen x y))
     (set-matrix-cursor-x! (screen-current-matrix screen) x)
     (set-matrix-cursor-y! (screen-current-matrix screen) y)))
 
