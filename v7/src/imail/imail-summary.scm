@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.4 2000/05/18 17:16:28 cph Exp $
+;;; $Id: imail-summary.scm,v 1.5 2000/05/18 20:55:04 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -202,26 +202,32 @@ The recipients are specified as a comma-separated list of names."
 	(set-buffer-point! buffer mark))))
 
 (define (fill-imail-summary-buffer! buffer folder predicate)
-  (let ((messages
-	 (let ((end (folder-length folder)))
+  (let ((end (folder-length folder)))
+    (let ((messages
 	   (let loop ((i 0) (messages '()))
 	     (if (< i end)
 		 (loop (+ i 1) (cons (get-message folder i) messages))
-		 (reverse! messages))))))
-    (let ((mark (mark-left-inserting-copy (buffer-start buffer))))
-      (for-each (lambda (message)
-		  (if (or (not predicate) (predicate message))
-		      (write-imail-summary-line! message mark)))
-		messages)
-      (mark-temporary! mark))))
+		 (reverse! messages))))
+	  (index-digits
+	   (let loop ((n 1) (k 10))
+	     (if (< end k)
+		 n
+		 (loop (+ n 1) (* k 10))))))
+      (let ((mark (mark-left-inserting-copy (buffer-start buffer))))
+	(for-each (lambda (message)
+		    (if (or (not predicate) (predicate message))
+			(write-imail-summary-line! message index-digits mark)))
+		  messages)
+	(mark-temporary! mark)))))
 
-(define (write-imail-summary-line! message mark)
+(define (write-imail-summary-line! message index-digits mark)
   (insert-char (if (message-deleted? message) #\D #\space) mark)
   (insert-string-pad-left (number->string (+ (message-index message) 1))
-			  4 #\space mark)
+			  index-digits #\space mark)
   (insert-string "  " mark)
-  (insert-string-pad-right (message-summary-date-string message)
-			   6 #\space mark)
+  (insert-string (message-summary-length-string message) mark)
+  (insert-string " " mark)
+  (insert-string (message-summary-date-string message) mark)
   (insert-string "  " mark)
   (let ((target-column (+ (mark-column mark) 40)))
     (insert-string (message-summary-subject-string message) mark)
@@ -233,6 +239,9 @@ The recipients are specified as a comma-separated list of names."
   (insert-string (message-summary-from-string message) mark)
   (insert-newline mark))
 
+(define (message-summary-length-string message)
+  (abbreviate-exact-nonnegative-integer (message-length message) 5))
+
 (define (message-summary-date-string message)
   (let ((t (message-time message)))
     (if t
@@ -241,7 +250,7 @@ The recipients are specified as a comma-separated list of names."
 	   (string-pad-left (number->string (decoded-time/day dt)) 2)
 	   " "
 	   (month/short-string (decoded-time/month dt))))
-	"")))
+	(make-string 6 #\space))))
 
 (define (message-summary-from-string message)
   (let* ((s

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.15 2000/05/16 15:15:14 cph Exp $
+;;; $Id: imail-util.scm,v 1.16 2000/05/18 20:55:05 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -211,3 +211,32 @@
 
 (define (edwin-variable-value name)
   (variable-value (name->variable name 'ERROR)))
+
+(define (abbreviate-exact-nonnegative-integer n k)
+  (if (< n (expt 10 (- k 1)))
+      (string-append (string-pad-left (number->string n) (- k 1)) " ")
+      (let ((s
+	     (fluid-let ((flonum-unparser-cutoff `(RELATIVE ,k ENGINEERING)))
+	       (number->string (exact->inexact n)))))
+	(let ((regs (re-string-match "\\([0-9.]+\\)e\\([0-9]+\\)" s)))
+	  (let ((mantissa (re-match-extract s regs 1))
+		(exponent (string->number (re-match-extract s regs 2))))
+	    (if (> exponent 12)
+		(make-string k #\+)
+		(string-append
+		 (let ((l (string-length mantissa))
+		       (k (- k 1)))
+		   (cond ((< l k)
+			  (string-pad-left mantissa k))
+			 ((= l k)
+			  mantissa)
+			 ((char=? #\. (string-ref mantissa (- k 1)))
+			  (string-append " " (string-head mantissa (- k 1))))
+			 (else
+			  (string-head mantissa k))))
+		 (case exponent
+		   ((0) " ")
+		   ((3) "k")
+		   ((6) "M")
+		   ((9) "G")
+		   ((12) "T")))))))))
