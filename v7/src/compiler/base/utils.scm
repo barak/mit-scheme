@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.81 1987/03/19 00:34:49 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.82 1987/03/20 05:26:32 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -109,13 +109,17 @@ MIT in each case. |#
 		    (ACCESS ,name SYSTEM-GLOBAL-ENVIRONMENT)))))
   (define-scode-operator access-components)
   (define-scode-operator access?)
+  (define-scode-operator assignment?)
   (define-scode-operator assignment-components)
+  (define-scode-operator assignment-name)
+  (define-scode-operator assignment-value)
   (define-scode-operator combination-components)
   (define-scode-operator combination?)
   (define-scode-operator comment-expression)
   (define-scode-operator comment?)
   (define-scode-operator conditional-components)
   (define-scode-operator definition-components)
+  (define-scode-operator delay?)
   (define-scode-operator delay-expression)
   (define-scode-operator disjunction-components)
   (define-scode-operator in-package-components)
