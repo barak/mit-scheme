@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.4 1995/01/31 19:34:44 cph Exp $
+$Id: os2prm.scm,v 1.5 1995/01/31 22:36:55 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -160,7 +160,15 @@ MIT in each case. |#
   ((ucode-primitive get-environment-variable 1) name))
 
 (define (temporary-file-pathname)
-  (let ((root (merge-pathnames "_scm_tmp" (temporary-directory-pathname))))
+  (let ((root
+	 (let ((directory (temporary-directory-pathname)))
+	   (merge-pathnames
+	    (if (os2/fs-long-filenames? directory)
+		(string-append
+		 "sch"
+		 (string-pad-left (number->string (os2/current-pid)) 6 #\0))
+		"_scm_tmp")
+	    directory))))
     (let loop ((ext 0))
       (let ((pathname (pathname-new-type root (number->string ext))))
 	(if (allocate-temporary-file pathname)
@@ -190,6 +198,14 @@ MIT in each case. |#
 	  (try-directory ".")
 	  (try-directory "\\")
 	  (error "Can't find temporary directory.")))))
+
+(define (os2/fs-long-filenames? pathname)
+  (let ((type ((ucode-primitive drive-type 1) (pathname-device pathname))))
+    (or (string-ci=? "hpfs" type)
+	(string-ci=? "nfs" type))))
+
+(define-integrable os2/current-pid
+  (ucode-primitive current-pid 0))
 
 (define (os2/current-home-directory)
   (let ((home (get-environment-variable "HOME")))
