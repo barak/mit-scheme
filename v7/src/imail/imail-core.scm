@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.9 2000/01/15 04:59:47 cph Exp $
+;;; $Id: imail-core.scm,v 1.10 2000/01/15 05:24:53 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -429,30 +429,37 @@
 (define message-flags:name "X-IMAIL-FLAGS")
 
 (define (message-deleted? msg) (message-flagged? msg 'DELETED))
+(define (message-undeleted? msg) (not (message-flagged? msg 'DELETED)))
 (define (delete-message msg) (set-message-flag msg 'DELETED))
 (define (undelete-message msg) (clear-message-flag msg 'DELETED))
 
 (define (message-answered? msg) (message-flagged? msg 'ANSWERED))
+(define (message-unanswered? msg) (not (message-flagged? msg 'ANSWERED)))
 (define (message-answered msg) (set-message-flag msg 'ANSWERED))
 (define (message-not-answered msg) (clear-message-flag msg 'ANSWERED))
 
 (define (message-seen? msg) (message-flagged? msg 'SEEN))
+(define (message-unseen? msg) (not (message-flagged? msg 'SEEN)))
 (define (message-seen msg) (set-message-flag msg 'SEEN))
 (define (message-not-seen msg) (clear-message-flag msg 'SEEN))
 
 (define (message-filed? msg) (message-flagged? msg 'FILED))
+(define (message-unfiled? msg) (not (message-flagged? msg 'FILED)))
 (define (message-filed msg) (set-message-flag msg 'FILED))
 (define (message-not-filed msg) (clear-message-flag msg 'FILED))
 
 (define (message-forwarded? msg) (message-flagged? msg 'FORWARDED))
+(define (message-not-forwarded? msg) (not (message-flagged? msg 'FORWARDED)))
 (define (message-forwarded msg) (set-message-flag msg 'FORWARDED))
 (define (message-not-forwarded msg) (clear-message-flag msg 'FORWARDED))
 
 (define (message-edited? msg) (message-flagged? msg 'EDITED))
+(define (message-unedited? msg) (not (message-flagged? msg 'EDITED)))
 (define (message-edited msg) (set-message-flag msg 'EDITED))
 (define (message-not-edited msg) (clear-message-flag msg 'EDITED))
 
 (define (message-resent? msg) (message-flagged? msg 'RESENT))
+(define (message-not-resent? msg) (not (message-flagged? msg 'RESENT)))
 (define (message-resent msg) (set-message-flag msg 'RESENT))
 (define (message-not-resent msg) (clear-message-flag msg 'RESENT))
 
