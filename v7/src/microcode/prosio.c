@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosio.c,v 1.1 1990/06/20 19:38:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosio.c,v 1.2 1990/07/22 06:42:25 jinx Rel $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -209,7 +209,7 @@ DEFINE_PRIMITIVE ("CHANNEL-BLOCKING", Prim_channel_blocking, 1, 1,
 
 DEFINE_PRIMITIVE ("FILE-FILL-INPUT-BUFFER", Prim_file_fill_input_buffer, 2, 2,
   "Read characters from CHANNEL, storing them in STRING.\n\
-Attempt to fill STRING unless end-of-file is reached.
+Attempt to fill STRING unless end-of-file is reached.\n\
 Return the number of characters actually read from CHANNEL.")
 {
   PRIMITIVE_HEADER (2);
