@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.137 2000/06/08 03:16:29 cph Exp $
+;;; $Id: imail-top.scm,v 1.138 2000/06/08 03:24:01 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -524,7 +524,7 @@ variable's documentation (using \\[describe-variable]) for details:
 (define-key 'imail #\i		'imail-input)
 (define-key 'imail #\o		'imail-output)
 (define-key 'imail #\m-o	'imail-copy-messages)
-(define-key 'imail #\m-c	'imail-copy-folder)
+(define-key 'imail #\C		'imail-copy-folder)
 (define-key 'imail #\c-o	'imail-save-attachment)
 (define-key 'imail #\+		'imail-create-folder)
 (define-key 'imail #\-		'imail-delete-folder)
