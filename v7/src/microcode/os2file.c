@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2file.c,v 1.1 1994/11/28 03:42:57 cph Exp $
+$Id: os2file.c,v 1.2 1995/02/14 00:20:06 cph Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,11 +38,12 @@ MIT in each case. */
 static ULONG set_file_pointer (Tchannel, ULONG, LONG);
 
 #define OS2_OPEN_MODE(m)						\
-  ((((m) & CHANNEL_READ) == 0)						\
-   ? (OPEN_ACCESS_WRITEONLY | OPEN_SHARE_DENYWRITE)			\
-   : (((m) & CHANNEL_WRITE) == 0)					\
-   ? (OPEN_ACCESS_READONLY  | OPEN_SHARE_DENYNONE)			\
-   : (OPEN_ACCESS_READWRITE | OPEN_SHARE_DENYWRITE))
+  (((((m) & CHANNEL_READ) == 0)						\
+    ? (OPEN_ACCESS_WRITEONLY | OPEN_SHARE_DENYWRITE)			\
+    : (((m) & CHANNEL_WRITE) == 0)					\
+    ? (OPEN_ACCESS_READONLY  | OPEN_SHARE_DENYNONE)			\
+    : (OPEN_ACCESS_READWRITE | OPEN_SHARE_DENYWRITE))			\
+   | OPEN_FLAGS_NOINHERIT)
 
 static Tchannel
 open_file (const char * filename, ULONG attr, ULONG flags, unsigned int mode)
