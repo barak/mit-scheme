@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.1 1992/08/29 13:51:17 jinx Exp $
+$Id: compiler.pkg,v 1.2 1992/10/19 20:14:24 jinx Exp $
 
 Copyright (c) 1992 Digital Equipment Corporation (D.E.C.)
 
@@ -153,9 +153,11 @@ case.
 
 (define-package (compiler top-level)
   (files "base/toplev"
-	 "base/crstop")
+	 "base/crstop"
+	 "base/asstop")
   (parent (compiler))
   (export ()
+	  cbf
 	  cf
 	  compile-bin-file
 	  compile-procedure
@@ -624,12 +626,13 @@ case.
   (files "back/linear")
   (parent (compiler lap-syntaxer))
   (export (compiler lap-syntaxer)
-	  linearize-lap
+	  add-end-of-block-code!
 	  bblock-linearize-lap
-	  add-end-of-block-code!)
-  (export (compiler top-level)
 	  linearize-lap
-	  initialize-lap-linearizer!))
+	  set-current-branches!)
+  (export (compiler top-level)
+	  *end-of-block-code*
+	  linearize-lap))
 
 (define-package (compiler lap-optimizer)
   (files "machines/alpha/lapopt")

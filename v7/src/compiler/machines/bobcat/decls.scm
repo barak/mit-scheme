@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 4.31 1992/10/19 19:18:23 jinx Exp $
+$Id: decls.scm,v 4.32 1992/10/19 20:13:01 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -45,7 +45,8 @@ MIT in each case. |#
   (set! source-filenames '())
   (set! source-hash)
   (set! source-nodes)
-  (set! source-nodes/by-rank))
+  (set! source-nodes/by-rank)
+  unspecific)
 
 (define (maybe-setup-source-nodes!)
   (if (null? source-filenames)
@@ -153,7 +154,8 @@ MIT in each case. |#
 (define (source-nodes/rank!)
   (compute-dependencies! source-nodes)
   (compute-ranks! source-nodes)
-  (set! source-nodes/by-rank (source-nodes/sort-by-rank source-nodes)))
+  (set! source-nodes/by-rank (source-nodes/sort-by-rank source-nodes))
+  unspecific)
 
 (define (compute-dependencies! nodes)
   (for-each (lambda (node)

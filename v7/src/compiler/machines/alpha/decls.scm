@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.1 1992/08/29 13:51:21 jinx Exp $
+$Id: decls.scm,v 1.2 1992/10/19 20:13:46 jinx Exp $
 
 Copyright (c) 1992 Digital Equipment Corporation (D.E.C.)
 
@@ -47,7 +47,8 @@ case.
   (set! source-filenames '())
   (set! source-hash)
   (set! source-nodes)
-  (set! source-nodes/by-rank))
+  (set! source-nodes/by-rank)
+  unspecific)
 
 (define (maybe-setup-source-nodes!)
   (if (null? source-filenames)
@@ -155,7 +156,8 @@ case.
 (define (source-nodes/rank!)
   (compute-dependencies! source-nodes)
   (compute-ranks! source-nodes)
-  (set! source-nodes/by-rank (source-nodes/sort-by-rank source-nodes)))
+  (set! source-nodes/by-rank (source-nodes/sort-by-rank source-nodes))
+  unspecific)
 
 (define (compute-dependencies! nodes)
   (for-each (lambda (node)
@@ -335,11 +337,12 @@ case.
 		     filenames))))
     (file-dependency/syntax/join
      (append (filename/append "base"
+			      "toplev" "asstop" "crstop"
 			      "blocks" "cfg1" "cfg2" "cfg3" "constr"
-			      "contin" "crstop" "ctypes" "debug" "enumer"
+			      "contin" "ctypes" "debug" "enumer"
 			      "infnew" "lvalue" "object" "pmerly" "proced"
 			      "refctx" "rvalue" "scode" "sets" "subprb"
-			      "switch" "toplev" "utils")
+			      "switch" "utils")
 	     (filename/append "back"
 			      "asmmac" "bittop" "bitutl" "insseq" "lapgn1"
 			      "lapgn2" "lapgn3" "linear" "regmap" "symtab"
@@ -411,7 +414,7 @@ case.
 	 (instruction-base
 	  (filename/append "machines/alpha" "assmd" "machin"))
 	 (lapgen-base
-	  (append (filename/append "back" "lapgn3" "regmap")
+	  (append (filename/append "back" "linear" "regmap")
 		  (filename/append "machines/alpha" "lapgen")))
 	 (assembler-base
 	  (filename/append "back" "symtab"))
@@ -558,7 +561,6 @@ case.
     (define-integration-dependencies "back" "lapgn1" "rtlbase"
       "regset" "rgraph" "rtlcfg")
     (define-integration-dependencies "back" "lapgn2" "rtlbase" "rtlreg")
-    (define-integration-dependencies "back" "lapgn3" "rtlbase" "rtlcfg")
     (define-integration-dependencies "back" "linear" "base" "cfg1" "cfg2")
     (define-integration-dependencies "back" "linear" "rtlbase" "rtlcfg")
     (define-integration-dependencies "back" "mermap" "back" "regmap")
