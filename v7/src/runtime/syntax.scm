@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 14.43 2001/12/20 18:05:34 cph Exp $
+$Id: syntax.scm,v 14.44 2001/12/20 20:38:29 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -78,8 +78,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	      (DECLARE ,syntax/declare)
 	      (FLUID-LET ,syntax/fluid-let)
 	      (LOCAL-DECLARE ,syntax/local-declare)
-	      (NAMED-LAMBDA ,syntax/named-lambda)
-	      (SCODE-QUOTE ,syntax/scode-quote))))
+	      (NAMED-LAMBDA ,syntax/named-lambda))))
 
 ;;;; Top Level Syntaxers
 
@@ -273,10 +272,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
        body)))
 
 ;;;; Basic Syntax
-
-(define (syntax/scode-quote top-level? expression)
-  top-level?
-  (make-quotation (syntax-subexpression expression)))
 
 (define (syntax/quote top-level? expression)
   top-level?
