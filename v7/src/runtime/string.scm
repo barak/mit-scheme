@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.24 1999/06/10 16:27:56 cph Exp $
+$Id: string.scm,v 14.25 1999/06/21 21:05:24 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -625,39 +625,39 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (substring? pattern text)
   (and (string-search-forward text pattern) #t))
 
-(define (string-search-forward text pattern)
-  (guarantee-string text 'STRING-SEARCH-FORWARD)
+(define (string-search-forward pattern text)
   (guarantee-string pattern 'STRING-SEARCH-FORWARD)
+  (guarantee-string text 'STRING-SEARCH-FORWARD)
   (%substring-search-forward text 0 (string-length text)
 			     pattern 0 (string-length pattern)))
 
-(define (substring-search-forward text tstart tend pattern)
-  (guarantee-substring text tstart tend 'SUBSTRING-SEARCH-FORWARD)
+(define (substring-search-forward pattern text tstart tend)
   (guarantee-string pattern 'SUBSTRING-SEARCH-FORWARD)
+  (guarantee-substring text tstart tend 'SUBSTRING-SEARCH-FORWARD)
   (%substring-search-forward text tstart tend
 			     pattern 0 (string-length pattern)))
 
-(define (string-search-backward text pattern)
-  (guarantee-string text 'STRING-SEARCH-BACKWARD)
+(define (string-search-backward pattern text)
   (guarantee-string pattern 'STRING-SEARCH-BACKWARD)
+  (guarantee-string text 'STRING-SEARCH-BACKWARD)
   (%substring-search-backward text 0 (string-length text)
 			      pattern 0 (string-length pattern)))
 
-(define (substring-search-backward text tstart tend pattern)
-  (guarantee-substring text tstart tend 'SUBSTRING-SEARCH-BACKWARD)
+(define (substring-search-backward pattern text tstart tend)
   (guarantee-string pattern 'SUBSTRING-SEARCH-BACKWARD)
+  (guarantee-substring text tstart tend 'SUBSTRING-SEARCH-BACKWARD)
   (%substring-search-backward text tstart tend
 			      pattern 0 (string-length pattern)))
 
-(define (string-search-all text pattern)
-  (guarantee-string text 'STRING-SEARCH-ALL)
+(define (string-search-all pattern text)
   (guarantee-string pattern 'STRING-SEARCH-ALL)
+  (guarantee-string text 'STRING-SEARCH-ALL)
   (%bm-substring-search-all text 0 (string-length text)
 			    pattern 0 (string-length pattern)))
 
-(define (substring-search-all text tstart tend pattern)
-  (guarantee-substring text tstart tend 'SUBSTRING-SEARCH-ALL)
+(define (substring-search-all pattern text tstart tend)
   (guarantee-string pattern 'SUBSTRING-SEARCH-ALL)
+  (guarantee-substring text tstart tend 'SUBSTRING-SEARCH-ALL)
   (%bm-substring-search-all text tstart tend
 			    pattern 0 (string-length pattern)))
 
