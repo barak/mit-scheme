@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2conio.c,v 1.3 1994/12/02 20:42:55 cph Exp $
+$Id: os2conio.c,v 1.4 1994/12/19 22:30:47 cph Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -106,7 +106,7 @@ OS2_initialize_console (void)
   start_pmio ();
 #endif
 #endif
-  console_lock = (OS2_create_mutex_semaphore ());
+  console_lock = (OS2_create_mutex_semaphore (0, 0));
   input_buffered_p = 1;
   output_cooked_p = 1;
   console_context = (OS2_make_channel_context ());

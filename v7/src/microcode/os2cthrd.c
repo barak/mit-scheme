@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2cthrd.c,v 1.2 1994/12/02 20:41:49 cph Exp $
+$Id: os2cthrd.c,v 1.3 1994/12/19 22:30:49 cph Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -86,7 +86,7 @@ OS2_channel_thread_read (Tchannel channel, char * buffer, size_t size)
     {
       if (CHANNEL_NONBLOCKING (channel))
 	{
-	  message = (OS2_receive_message (qid, 0));
+	  message = (OS2_receive_message (qid, 0, 1));
 	  if (message == 0)
 	    {
 	      (CHANNEL_CONTEXT_READAHEAD (context)) = 0;
@@ -94,7 +94,7 @@ OS2_channel_thread_read (Tchannel channel, char * buffer, size_t size)
 	    }
 	}
       else
-	message = (OS2_receive_message (qid, 1));
+	message = (OS2_receive_message (qid, 1, 1));
       /* Acknowledge the message so that the readahead thread will
 	 know that it is safe to start reading some more.  */
       OS2_send_message (qid, (OS2_make_readahead_ack ()));

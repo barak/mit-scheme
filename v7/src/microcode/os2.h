@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2.h,v 1.2 1994/12/02 20:43:13 cph Exp $
+$Id: os2.h,v 1.3 1994/12/19 22:30:20 cph Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -41,6 +41,10 @@ MIT in each case. */
 #include "osscheme.h"
 #include "syscall.h"
 
+/* Defined by "scheme.h" and conflicts with definition in <os2.h>.
+   Scheme's definition not needed in OS/2 files.  */
+#undef END_OF_CHAIN
+
 #define INCL_DOS
 #define INCL_DOSERRORS
 #define INCL_KBD
@@ -66,12 +70,12 @@ MIT in each case. */
 #define FILE_ANY							\
   (FILE_NORMAL | FILE_HIDDEN | FILE_SYSTEM | FILE_DIRECTORY | FILE_ARCHIVED)
 
-extern HMTX OS2_create_mutex_semaphore  (void);
+extern HMTX OS2_create_mutex_semaphore  (PSZ, int);
 extern void OS2_close_mutex_semaphore   (HMTX);
 extern void OS2_request_mutex_semaphore (HMTX);
 extern void OS2_release_mutex_semaphore (HMTX);
 
-extern HEV   OS2_create_event_semaphore (void);
+extern HEV   OS2_create_event_semaphore (PSZ, int);
 extern void  OS2_close_event_semaphore  (HEV);
 extern int   OS2_post_event_semaphore   (HEV);
 extern ULONG OS2_reset_event_semaphore  (HEV);

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2io.c,v 1.1 1994/11/28 03:42:57 cph Exp $
+$Id: os2io.c,v 1.2 1994/12/19 22:31:30 cph Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -43,7 +43,7 @@ static enum channel_type handle_channel_type (LHANDLE);
 size_t OS_channel_table_size;
 struct channel * OS2_channel_table;
 Tchannel * OS2_channel_pointer_table;
-const int OS_have_select_p = 0;
+const int OS_have_select_p = 1;
 
 void
 OS2_initialize_channels (void)

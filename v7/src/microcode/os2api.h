@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2api.h,v 1.1 1994/11/28 03:42:54 cph Exp $
+$Id: os2api.h,v 1.2 1994/12/19 22:30:46 cph Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -80,6 +80,8 @@ extern APIRET dos_post_event_sem (HEV);
 extern APIRET dos_query_current_dir (ULONG, PBYTE, PULONG);
 extern APIRET dos_query_current_disk (PULONG, PULONG);
 extern APIRET dos_query_file_info (HFILE, ULONG, PVOID, ULONG);
+extern APIRET dos_query_fs_attach (PSZ, ULONG, ULONG, PFSQBUFFER2, PULONG);
+extern APIRET dos_query_fs_info (ULONG, ULONG, PVOID, ULONG);
 extern APIRET dos_query_h_type (HFILE, PULONG, PULONG);
 extern APIRET dos_query_n_p_h_state (HPIPE, PULONG);
 extern APIRET dos_query_path_info (PSZ, ULONG, PVOID, ULONG);
@@ -131,6 +133,8 @@ extern APIRET vio_wrt_tty (PCH, USHORT, HVIO);
 #define dos_query_current_dir	DosQueryCurrentDir
 #define dos_query_current_disk	DosQueryCurrentDisk
 #define dos_query_file_info	DosQueryFileInfo
+#define dos_query_fs_attach	DosQueryFSAttach
+#define dos_query_fs_info	DosQueryFSInfo
 #define dos_query_h_type	DosQueryHType
 #define dos_query_n_p_h_state	DosQueryNPHState
 #define dos_query_path_info	DosQueryPathInfo
@@ -180,6 +184,8 @@ extern APIRET vio_wrt_tty (PCH, USHORT, HVIO);
 #define syscall_dos_query_current_dir	syscall_DosQueryCurrentDir
 #define syscall_dos_query_current_disk	syscall_DosQueryCurrentDisk
 #define syscall_dos_query_file_info	syscall_DosQueryFileInfo
+#define syscall_dos_query_fs_attach	syscall_DosQueryFSAttach
+#define syscall_dos_query_fs_info	syscall_DosQueryFSInfo
 #define syscall_dos_query_h_type	syscall_DosQueryHType
 #define syscall_dos_query_n_p_h_state	syscall_DosQueryNPHState
 #define syscall_dos_query_path_info	syscall_DosQueryPathInfo

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2top.c,v 1.3 1994/12/02 20:40:20 cph Exp $
+$Id: os2top.c,v 1.4 1994/12/19 22:31:44 cph Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -41,17 +41,21 @@ extern void OS2_initialize_channel_thread_messages (void);
 extern void OS2_initialize_console (void);
 extern void OS2_initialize_directory_reader (void);
 extern void OS2_initialize_environment (void);
+extern void OS2_initialize_exception_handling (void);
 extern void OS2_initialize_keyboard_interrupts (void);
 extern void OS2_initialize_message_queues (void);
 extern void OS2_initialize_pm_thread (void);
 extern void OS2_initialize_scheme_thread (void);
 extern void OS2_initialize_tty (void);
+extern void OS2_initialize_window_primitives (void);
 
 extern const char * OS_Name;
 extern const char * OS_Variant;
 
 static const char * OS2_version_string (void);
 static void initialize_locks (void);
+static HAB scheme_hab;
+static HMQ scheme_hmq;
 
 int
 OS_under_emacs_p (void)
@@ -63,6 +67,15 @@ void
 OS_initialize (void)
 {
   initialize_locks ();
+  /* Create a PM message queue.  This allows us to use message boxes
+     to report fatal errors.  */
+  scheme_hab = (WinInitialize (0));
+  if (scheme_hab == NULLHANDLE)
+    OS2_logic_error ("Unable to initialize anchor block.");
+  scheme_hmq = (WinCreateMsgQueue (scheme_hab, 0));
+  if (scheme_hmq == NULLHANDLE)
+    OS2_logic_error ("Unable to create PM message queue.");
+  OS2_initialize_exception_handling ();
   OS2_initialize_message_queues ();
   OS2_initialize_scheme_thread ();
   OS2_initialize_pm_thread ();
@@ -73,6 +86,7 @@ OS_initialize (void)
   OS2_initialize_environment ();
   OS2_initialize_directory_reader ();
   OS2_initialize_tty ();
+  OS2_initialize_window_primitives ();
   OS_Name = "OS/2";
   {
     const char * version = (OS2_version_string ());
@@ -175,12 +189,6 @@ OS_restartable_exit (void)
 {
 }
 
-long
-OS_set_trap_state (long arg)
-{
-  return (arg);
-}
-
 #ifdef __IBMC__
 void
 bcopy (const char * from, char * to, unsigned int n)
@@ -194,7 +202,7 @@ static HMTX interrupt_registers_lock;
 static void
 initialize_locks (void)
 {
-  interrupt_registers_lock = (OS2_create_mutex_semaphore ());
+  interrupt_registers_lock = (OS2_create_mutex_semaphore (0, 0));
 }
 
 void
@@ -824,6 +832,621 @@ OS_error_code_to_syserr (int code)
     }
 }
 
+/* Machine-generated procedure, do not edit: */
+static APIRET
+syserr_to_error_code (enum syserr_names syserr)
+{
+  switch (syserr)
+    {
+    case syserr_invalid_function:	return (ERROR_INVALID_FUNCTION);
+    case syserr_file_not_found:	return (ERROR_FILE_NOT_FOUND);
+    case syserr_path_not_found:	return (ERROR_PATH_NOT_FOUND);
+    case syserr_too_many_open_files:	return (ERROR_TOO_MANY_OPEN_FILES);
+    case syserr_access_denied:	return (ERROR_ACCESS_DENIED);
+    case syserr_invalid_handle:	return (ERROR_INVALID_HANDLE);
+    case syserr_arena_trashed:	return (ERROR_ARENA_TRASHED);
+    case syserr_not_enough_memory:	return (ERROR_NOT_ENOUGH_MEMORY);
+    case syserr_invalid_block:	return (ERROR_INVALID_BLOCK);
+    case syserr_bad_environment:	return (ERROR_BAD_ENVIRONMENT);
+    case syserr_bad_format:	return (ERROR_BAD_FORMAT);
+    case syserr_invalid_access:	return (ERROR_INVALID_ACCESS);
+    case syserr_invalid_data:	return (ERROR_INVALID_DATA);
+    case syserr_invalid_drive:	return (ERROR_INVALID_DRIVE);
+    case syserr_current_directory:	return (ERROR_CURRENT_DIRECTORY);
+    case syserr_not_same_device:	return (ERROR_NOT_SAME_DEVICE);
+    case syserr_no_more_files:	return (ERROR_NO_MORE_FILES);
+    case syserr_write_protect:	return (ERROR_WRITE_PROTECT);
+    case syserr_bad_unit:	return (ERROR_BAD_UNIT);
+    case syserr_not_ready:	return (ERROR_NOT_READY);
+    case syserr_bad_command:	return (ERROR_BAD_COMMAND);
+    case syserr_crc:	return (ERROR_CRC);
+    case syserr_bad_length:	return (ERROR_BAD_LENGTH);
+    case syserr_seek:	return (ERROR_SEEK);
+    case syserr_not_dos_disk:	return (ERROR_NOT_DOS_DISK);
+    case syserr_sector_not_found:	return (ERROR_SECTOR_NOT_FOUND);
+    case syserr_out_of_paper:	return (ERROR_OUT_OF_PAPER);
+    case syserr_write_fault:	return (ERROR_WRITE_FAULT);
+    case syserr_read_fault:	return (ERROR_READ_FAULT);
+    case syserr_gen_failure:	return (ERROR_GEN_FAILURE);
+    case syserr_sharing_violation:	return (ERROR_SHARING_VIOLATION);
+    case syserr_lock_violation:	return (ERROR_LOCK_VIOLATION);
+    case syserr_wrong_disk:	return (ERROR_WRONG_DISK);
+    case syserr_fcb_unavailable:	return (ERROR_FCB_UNAVAILABLE);
+    case syserr_sharing_buffer_exceeded:	return (ERROR_SHARING_BUFFER_EXCEEDED);
+    case syserr_code_page_mismatched:	return (ERROR_CODE_PAGE_MISMATCHED);
+    case syserr_handle_eof:	return (ERROR_HANDLE_EOF);
+    case syserr_handle_disk_full:	return (ERROR_HANDLE_DISK_FULL);
+    case syserr_not_supported:	return (ERROR_NOT_SUPPORTED);
+    case syserr_rem_not_list:	return (ERROR_REM_NOT_LIST);
+    case syserr_dup_name:	return (ERROR_DUP_NAME);
+    case syserr_bad_netpath:	return (ERROR_BAD_NETPATH);
+    case syserr_network_busy:	return (ERROR_NETWORK_BUSY);
+    case syserr_dev_not_exist:	return (ERROR_DEV_NOT_EXIST);
+    case syserr_too_many_cmds:	return (ERROR_TOO_MANY_CMDS);
+    case syserr_adap_hdw_err:	return (ERROR_ADAP_HDW_ERR);
+    case syserr_bad_net_resp:	return (ERROR_BAD_NET_RESP);
+    case syserr_unexp_net_err:	return (ERROR_UNEXP_NET_ERR);
+    case syserr_bad_rem_adap:	return (ERROR_BAD_REM_ADAP);
+    case syserr_printq_full:	return (ERROR_PRINTQ_FULL);
+    case syserr_no_spool_space:	return (ERROR_NO_SPOOL_SPACE);
+    case syserr_print_cancelled:	return (ERROR_PRINT_CANCELLED);
+    case syserr_netname_deleted:	return (ERROR_NETNAME_DELETED);
+    case syserr_network_access_denied:	return (ERROR_NETWORK_ACCESS_DENIED);
+    case syserr_bad_dev_type:	return (ERROR_BAD_DEV_TYPE);
+    case syserr_bad_net_name:	return (ERROR_BAD_NET_NAME);
+    case syserr_too_many_names:	return (ERROR_TOO_MANY_NAMES);
+    case syserr_too_many_sess:	return (ERROR_TOO_MANY_SESS);
+    case syserr_sharing_paused:	return (ERROR_SHARING_PAUSED);
+    case syserr_req_not_accep:	return (ERROR_REQ_NOT_ACCEP);
+    case syserr_redir_paused:	return (ERROR_REDIR_PAUSED);
+    case syserr_sbcs_att_write_prot:	return (ERROR_SBCS_ATT_WRITE_PROT);
+    case syserr_sbcs_general_failure:	return (ERROR_SBCS_GENERAL_FAILURE);
+    case syserr_xga_out_memory:	return (ERROR_XGA_OUT_MEMORY);
+    case syserr_file_exists:	return (ERROR_FILE_EXISTS);
+    case syserr_dup_fcb:	return (ERROR_DUP_FCB);
+    case syserr_cannot_make:	return (ERROR_CANNOT_MAKE);
+    case syserr_fail_i24:	return (ERROR_FAIL_I24);
+    case syserr_out_of_structures:	return (ERROR_OUT_OF_STRUCTURES);
+    case syserr_already_assigned:	return (ERROR_ALREADY_ASSIGNED);
+    case syserr_invalid_password:	return (ERROR_INVALID_PASSWORD);
+    case syserr_invalid_parameter:	return (ERROR_INVALID_PARAMETER);
+    case syserr_net_write_fault:	return (ERROR_NET_WRITE_FAULT);
+    case syserr_no_proc_slots:	return (ERROR_NO_PROC_SLOTS);
+    case syserr_not_frozen:	return (ERROR_NOT_FROZEN);
+    case syserr_tstovfl:	return (ERR_TSTOVFL);
+    case syserr_tstdup:	return (ERR_TSTDUP);
+    case syserr_no_items:	return (ERROR_NO_ITEMS);
+    case syserr_interrupt:	return (ERROR_INTERRUPT);
+    case syserr_device_in_use:	return (ERROR_DEVICE_IN_USE);
+    case syserr_too_many_semaphores:	return (ERROR_TOO_MANY_SEMAPHORES);
+    case syserr_excl_sem_already_owned:	return (ERROR_EXCL_SEM_ALREADY_OWNED);
+    case syserr_sem_is_set:	return (ERROR_SEM_IS_SET);
+    case syserr_too_many_sem_requests:	return (ERROR_TOO_MANY_SEM_REQUESTS);
+    case syserr_invalid_at_interrupt_time:	return (ERROR_INVALID_AT_INTERRUPT_TIME);
+    case syserr_sem_owner_died:	return (ERROR_SEM_OWNER_DIED);
+    case syserr_sem_user_limit:	return (ERROR_SEM_USER_LIMIT);
+    case syserr_disk_change:	return (ERROR_DISK_CHANGE);
+    case syserr_drive_locked:	return (ERROR_DRIVE_LOCKED);
+    case syserr_broken_pipe:	return (ERROR_BROKEN_PIPE);
+    case syserr_open_failed:	return (ERROR_OPEN_FAILED);
+    case syserr_buffer_overflow:	return (ERROR_BUFFER_OVERFLOW);
+    case syserr_disk_full:	return (ERROR_DISK_FULL);
+    case syserr_no_more_search_handles:	return (ERROR_NO_MORE_SEARCH_HANDLES);
+    case syserr_invalid_target_handle:	return (ERROR_INVALID_TARGET_HANDLE);
+    case syserr_protection_violation:	return (ERROR_PROTECTION_VIOLATION);
+    case syserr_viokbd_request:	return (ERROR_VIOKBD_REQUEST);
+    case syserr_invalid_category:	return (ERROR_INVALID_CATEGORY);
+    case syserr_invalid_verify_switch:	return (ERROR_INVALID_VERIFY_SWITCH);
+    case syserr_bad_driver_level:	return (ERROR_BAD_DRIVER_LEVEL);
+    case syserr_call_not_implemented:	return (ERROR_CALL_NOT_IMPLEMENTED);
+    case syserr_sem_timeout:	return (ERROR_SEM_TIMEOUT);
+    case syserr_insufficient_buffer:	return (ERROR_INSUFFICIENT_BUFFER);
+    case syserr_invalid_name:	return (ERROR_INVALID_NAME);
+    case syserr_invalid_level:	return (ERROR_INVALID_LEVEL);
+    case syserr_no_volume_label:	return (ERROR_NO_VOLUME_LABEL);
+    case syserr_mod_not_found:	return (ERROR_MOD_NOT_FOUND);
+    case syserr_proc_not_found:	return (ERROR_PROC_NOT_FOUND);
+    case syserr_wait_no_children:	return (ERROR_WAIT_NO_CHILDREN);
+    case syserr_child_not_complete:	return (ERROR_CHILD_NOT_COMPLETE);
+    case syserr_direct_access_handle:	return (ERROR_DIRECT_ACCESS_HANDLE);
+    case syserr_negative_seek:	return (ERROR_NEGATIVE_SEEK);
+    case syserr_seek_on_device:	return (ERROR_SEEK_ON_DEVICE);
+    case syserr_is_join_target:	return (ERROR_IS_JOIN_TARGET);
+    case syserr_is_joined:	return (ERROR_IS_JOINED);
+    case syserr_is_substed:	return (ERROR_IS_SUBSTED);
+    case syserr_not_joined:	return (ERROR_NOT_JOINED);
+    case syserr_not_substed:	return (ERROR_NOT_SUBSTED);
+    case syserr_join_to_join:	return (ERROR_JOIN_TO_JOIN);
+    case syserr_subst_to_subst:	return (ERROR_SUBST_TO_SUBST);
+    case syserr_join_to_subst:	return (ERROR_JOIN_TO_SUBST);
+    case syserr_subst_to_join:	return (ERROR_SUBST_TO_JOIN);
+    case syserr_busy_drive:	return (ERROR_BUSY_DRIVE);
+    case syserr_same_drive:	return (ERROR_SAME_DRIVE);
+    case syserr_dir_not_root:	return (ERROR_DIR_NOT_ROOT);
+    case syserr_dir_not_empty:	return (ERROR_DIR_NOT_EMPTY);
+    case syserr_is_subst_path:	return (ERROR_IS_SUBST_PATH);
+    case syserr_is_join_path:	return (ERROR_IS_JOIN_PATH);
+    case syserr_path_busy:	return (ERROR_PATH_BUSY);
+    case syserr_is_subst_target:	return (ERROR_IS_SUBST_TARGET);
+    case syserr_system_trace:	return (ERROR_SYSTEM_TRACE);
+    case syserr_invalid_event_count:	return (ERROR_INVALID_EVENT_COUNT);
+    case syserr_too_many_muxwaiters:	return (ERROR_TOO_MANY_MUXWAITERS);
+    case syserr_invalid_list_format:	return (ERROR_INVALID_LIST_FORMAT);
+    case syserr_label_too_long:	return (ERROR_LABEL_TOO_LONG);
+    case syserr_too_many_tcbs:	return (ERROR_TOO_MANY_TCBS);
+    case syserr_signal_refused:	return (ERROR_SIGNAL_REFUSED);
+    case syserr_discarded:	return (ERROR_DISCARDED);
+    case syserr_not_locked:	return (ERROR_NOT_LOCKED);
+    case syserr_bad_threadid_addr:	return (ERROR_BAD_THREADID_ADDR);
+    case syserr_bad_arguments:	return (ERROR_BAD_ARGUMENTS);
+    case syserr_bad_pathname:	return (ERROR_BAD_PATHNAME);
+    case syserr_signal_pending:	return (ERROR_SIGNAL_PENDING);
+    case syserr_uncertain_media:	return (ERROR_UNCERTAIN_MEDIA);
+    case syserr_max_thrds_reached:	return (ERROR_MAX_THRDS_REACHED);
+    case syserr_monitors_not_supported:	return (ERROR_MONITORS_NOT_SUPPORTED);
+    case syserr_unc_driver_not_installed:	return (ERROR_UNC_DRIVER_NOT_INSTALLED);
+    case syserr_lock_failed:	return (ERROR_LOCK_FAILED);
+    case syserr_swapio_failed:	return (ERROR_SWAPIO_FAILED);
+    case syserr_swapin_failed:	return (ERROR_SWAPIN_FAILED);
+    case syserr_busy:	return (ERROR_BUSY);
+    case syserr_cancel_violation:	return (ERROR_CANCEL_VIOLATION);
+    case syserr_atomic_lock_not_supported:	return (ERROR_ATOMIC_LOCK_NOT_SUPPORTED);
+    case syserr_read_locks_not_supported:	return (ERROR_READ_LOCKS_NOT_SUPPORTED);
+    case syserr_invalid_segment_number:	return (ERROR_INVALID_SEGMENT_NUMBER);
+    case syserr_invalid_callgate:	return (ERROR_INVALID_CALLGATE);
+    case syserr_invalid_ordinal:	return (ERROR_INVALID_ORDINAL);
+    case syserr_already_exists:	return (ERROR_ALREADY_EXISTS);
+    case syserr_no_child_process:	return (ERROR_NO_CHILD_PROCESS);
+    case syserr_child_alive_nowait:	return (ERROR_CHILD_ALIVE_NOWAIT);
+    case syserr_invalid_flag_number:	return (ERROR_INVALID_FLAG_NUMBER);
+    case syserr_sem_not_found:	return (ERROR_SEM_NOT_FOUND);
+    case syserr_invalid_starting_codeseg:	return (ERROR_INVALID_STARTING_CODESEG);
+    case syserr_invalid_stackseg:	return (ERROR_INVALID_STACKSEG);
+    case syserr_invalid_moduletype:	return (ERROR_INVALID_MODULETYPE);
+    case syserr_invalid_exe_signature:	return (ERROR_INVALID_EXE_SIGNATURE);
+    case syserr_exe_marked_invalid:	return (ERROR_EXE_MARKED_INVALID);
+    case syserr_bad_exe_format:	return (ERROR_BAD_EXE_FORMAT);
+    case syserr_iterated_data_exceeds_64k:	return (ERROR_ITERATED_DATA_EXCEEDS_64k);
+    case syserr_invalid_minallocsize:	return (ERROR_INVALID_MINALLOCSIZE);
+    case syserr_dynlink_from_invalid_ring:	return (ERROR_DYNLINK_FROM_INVALID_RING);
+    case syserr_iopl_not_enabled:	return (ERROR_IOPL_NOT_ENABLED);
+    case syserr_invalid_segdpl:	return (ERROR_INVALID_SEGDPL);
+    case syserr_autodataseg_exceeds_64k:	return (ERROR_AUTODATASEG_EXCEEDS_64k);
+    case syserr_ring2seg_must_be_movable:	return (ERROR_RING2SEG_MUST_BE_MOVABLE);
+    case syserr_reloc_chain_xeeds_seglim:	return (ERROR_RELOC_CHAIN_XEEDS_SEGLIM);
+    case syserr_infloop_in_reloc_chain:	return (ERROR_INFLOOP_IN_RELOC_CHAIN);
+    case syserr_envvar_not_found:	return (ERROR_ENVVAR_NOT_FOUND);
+    case syserr_not_current_ctry:	return (ERROR_NOT_CURRENT_CTRY);
+    case syserr_no_signal_sent:	return (ERROR_NO_SIGNAL_SENT);
+    case syserr_filename_exced_range:	return (ERROR_FILENAME_EXCED_RANGE);
+    case syserr_ring2_stack_in_use:	return (ERROR_RING2_STACK_IN_USE);
+    case syserr_meta_expansion_too_long:	return (ERROR_META_EXPANSION_TOO_LONG);
+    case syserr_invalid_signal_number:	return (ERROR_INVALID_SIGNAL_NUMBER);
+    case syserr_thread_1_inactive:	return (ERROR_THREAD_1_INACTIVE);
+    case syserr_info_not_avail:	return (ERROR_INFO_NOT_AVAIL);
+    case syserr_locked:	return (ERROR_LOCKED);
+    case syserr_bad_dynalink:	return (ERROR_BAD_DYNALINK);
+    case syserr_too_many_modules:	return (ERROR_TOO_MANY_MODULES);
+    case syserr_nesting_not_allowed:	return (ERROR_NESTING_NOT_ALLOWED);
+    case syserr_cannot_shrink:	return (ERROR_CANNOT_SHRINK);
+    case syserr_zombie_process:	return (ERROR_ZOMBIE_PROCESS);
+    case syserr_stack_in_high_memory:	return (ERROR_STACK_IN_HIGH_MEMORY);
+    case syserr_invalid_exitroutine_ring:	return (ERROR_INVALID_EXITROUTINE_RING);
+    case syserr_getbuf_failed:	return (ERROR_GETBUF_FAILED);
+    case syserr_flushbuf_failed:	return (ERROR_FLUSHBUF_FAILED);
+    case syserr_transfer_too_long:	return (ERROR_TRANSFER_TOO_LONG);
+    case syserr_forcenoswap_failed:	return (ERROR_FORCENOSWAP_FAILED);
+    case syserr_smg_no_target_window:	return (ERROR_SMG_NO_TARGET_WINDOW);
+    case syserr_no_children:	return (ERROR_NO_CHILDREN);
+    case syserr_invalid_screen_group:	return (ERROR_INVALID_SCREEN_GROUP);
+    case syserr_bad_pipe:	return (ERROR_BAD_PIPE);
+    case syserr_pipe_busy:	return (ERROR_PIPE_BUSY);
+    case syserr_no_data:	return (ERROR_NO_DATA);
+    case syserr_pipe_not_connected:	return (ERROR_PIPE_NOT_CONNECTED);
+    case syserr_more_data:	return (ERROR_MORE_DATA);
+    case syserr_vc_disconnected:	return (ERROR_VC_DISCONNECTED);
+    case syserr_circularity_requested:	return (ERROR_CIRCULARITY_REQUESTED);
+    case syserr_directory_in_cds:	return (ERROR_DIRECTORY_IN_CDS);
+    case syserr_invalid_fsd_name:	return (ERROR_INVALID_FSD_NAME);
+    case syserr_invalid_path:	return (ERROR_INVALID_PATH);
+    case syserr_invalid_ea_name:	return (ERROR_INVALID_EA_NAME);
+    case syserr_ea_list_inconsistent:	return (ERROR_EA_LIST_INCONSISTENT);
+    case syserr_ea_list_too_long:	return (ERROR_EA_LIST_TOO_LONG);
+    case syserr_no_meta_match:	return (ERROR_NO_META_MATCH);
+    case syserr_findnotify_timeout:	return (ERROR_FINDNOTIFY_TIMEOUT);
+    case syserr_no_more_items:	return (ERROR_NO_MORE_ITEMS);
+    case syserr_search_struc_reused:	return (ERROR_SEARCH_STRUC_REUSED);
+    case syserr_char_not_found:	return (ERROR_CHAR_NOT_FOUND);
+    case syserr_too_much_stack:	return (ERROR_TOO_MUCH_STACK);
+    case syserr_invalid_attr:	return (ERROR_INVALID_ATTR);
+    case syserr_invalid_starting_ring:	return (ERROR_INVALID_STARTING_RING);
+    case syserr_invalid_dll_init_ring:	return (ERROR_INVALID_DLL_INIT_RING);
+    case syserr_cannot_copy:	return (ERROR_CANNOT_COPY);
+    case syserr_directory:	return (ERROR_DIRECTORY);
+    case syserr_oplocked_file:	return (ERROR_OPLOCKED_FILE);
+    case syserr_oplock_thread_exists:	return (ERROR_OPLOCK_THREAD_EXISTS);
+    case syserr_volume_changed:	return (ERROR_VOLUME_CHANGED);
+    case syserr_findnotify_handle_in_use:	return (ERROR_FINDNOTIFY_HANDLE_IN_USE);
+    case syserr_findnotify_handle_closed:	return (ERROR_FINDNOTIFY_HANDLE_CLOSED);
+    case syserr_notify_object_removed:	return (ERROR_NOTIFY_OBJECT_REMOVED);
+    case syserr_already_shutdown:	return (ERROR_ALREADY_SHUTDOWN);
+    case syserr_eas_didnt_fit:	return (ERROR_EAS_DIDNT_FIT);
+    case syserr_ea_file_corrupt:	return (ERROR_EA_FILE_CORRUPT);
+    case syserr_ea_table_full:	return (ERROR_EA_TABLE_FULL);
+    case syserr_invalid_ea_handle:	return (ERROR_INVALID_EA_HANDLE);
+    case syserr_no_cluster:	return (ERROR_NO_CLUSTER);
+    case syserr_create_ea_file:	return (ERROR_CREATE_EA_FILE);
+    case syserr_cannot_open_ea_file:	return (ERROR_CANNOT_OPEN_EA_FILE);
+    case syserr_eas_not_supported:	return (ERROR_EAS_NOT_SUPPORTED);
+    case syserr_need_eas_found:	return (ERROR_NEED_EAS_FOUND);
+    case syserr_duplicate_handle:	return (ERROR_DUPLICATE_HANDLE);
+    case syserr_duplicate_name:	return (ERROR_DUPLICATE_NAME);
+    case syserr_empty_muxwait:	return (ERROR_EMPTY_MUXWAIT);
+    case syserr_mutex_owned:	return (ERROR_MUTEX_OWNED);
+    case syserr_not_owner:	return (ERROR_NOT_OWNER);
+    case syserr_param_too_small:	return (ERROR_PARAM_TOO_SMALL);
+    case syserr_too_many_handles:	return (ERROR_TOO_MANY_HANDLES);
+    case syserr_too_many_opens:	return (ERROR_TOO_MANY_OPENS);
+    case syserr_wrong_type:	return (ERROR_WRONG_TYPE);
+    case syserr_unused_code:	return (ERROR_UNUSED_CODE);
+    case syserr_thread_not_terminated:	return (ERROR_THREAD_NOT_TERMINATED);
+    case syserr_init_routine_failed:	return (ERROR_INIT_ROUTINE_FAILED);
+    case syserr_module_in_use:	return (ERROR_MODULE_IN_USE);
+    case syserr_not_enough_watchpoints:	return (ERROR_NOT_ENOUGH_WATCHPOINTS);
+    case syserr_too_many_posts:	return (ERROR_TOO_MANY_POSTS);
+    case syserr_already_posted:	return (ERROR_ALREADY_POSTED);
+    case syserr_already_reset:	return (ERROR_ALREADY_RESET);
+    case syserr_sem_busy:	return (ERROR_SEM_BUSY);
+    case syserr_invalid_procid:	return (ERROR_INVALID_PROCID);
+    case syserr_invalid_pdelta:	return (ERROR_INVALID_PDELTA);
+    case syserr_not_descendant:	return (ERROR_NOT_DESCENDANT);
+    case syserr_not_session_manager:	return (ERROR_NOT_SESSION_MANAGER);
+    case syserr_invalid_pclass:	return (ERROR_INVALID_PCLASS);
+    case syserr_invalid_scope:	return (ERROR_INVALID_SCOPE);
+    case syserr_invalid_threadid:	return (ERROR_INVALID_THREADID);
+    case syserr_dossub_shrink:	return (ERROR_DOSSUB_SHRINK);
+    case syserr_dossub_nomem:	return (ERROR_DOSSUB_NOMEM);
+    case syserr_dossub_overlap:	return (ERROR_DOSSUB_OVERLAP);
+    case syserr_dossub_badsize:	return (ERROR_DOSSUB_BADSIZE);
+    case syserr_dossub_badflag:	return (ERROR_DOSSUB_BADFLAG);
+    case syserr_dossub_badselector:	return (ERROR_DOSSUB_BADSELECTOR);
+    case syserr_mr_msg_too_long:	return (ERROR_MR_MSG_TOO_LONG);
+    case syserr_mr_mid_not_found:	return (ERROR_MR_MID_NOT_FOUND);
+    case syserr_mr_un_acc_msgf:	return (ERROR_MR_UN_ACC_MSGF);
+    case syserr_mr_inv_msgf_format:	return (ERROR_MR_INV_MSGF_FORMAT);
+    case syserr_mr_inv_ivcount:	return (ERROR_MR_INV_IVCOUNT);
+    case syserr_mr_un_perform:	return (ERROR_MR_UN_PERFORM);
+    case syserr_ts_wakeup:	return (ERROR_TS_WAKEUP);
+    case syserr_ts_semhandle:	return (ERROR_TS_SEMHANDLE);
+    case syserr_ts_notimer:	return (ERROR_TS_NOTIMER);
+    case syserr_ts_handle:	return (ERROR_TS_HANDLE);
+    case syserr_ts_datetime:	return (ERROR_TS_DATETIME);
+    case syserr_sys_internal:	return (ERROR_SYS_INTERNAL);
+    case syserr_que_current_name:	return (ERROR_QUE_CURRENT_NAME);
+    case syserr_que_proc_not_owned:	return (ERROR_QUE_PROC_NOT_OWNED);
+    case syserr_que_proc_owned:	return (ERROR_QUE_PROC_OWNED);
+    case syserr_que_duplicate:	return (ERROR_QUE_DUPLICATE);
+    case syserr_que_element_not_exist:	return (ERROR_QUE_ELEMENT_NOT_EXIST);
+    case syserr_que_no_memory:	return (ERROR_QUE_NO_MEMORY);
+    case syserr_que_invalid_name:	return (ERROR_QUE_INVALID_NAME);
+    case syserr_que_invalid_priority:	return (ERROR_QUE_INVALID_PRIORITY);
+    case syserr_que_invalid_handle:	return (ERROR_QUE_INVALID_HANDLE);
+    case syserr_que_link_not_found:	return (ERROR_QUE_LINK_NOT_FOUND);
+    case syserr_que_memory_error:	return (ERROR_QUE_MEMORY_ERROR);
+    case syserr_que_prev_at_end:	return (ERROR_QUE_PREV_AT_END);
+    case syserr_que_proc_no_access:	return (ERROR_QUE_PROC_NO_ACCESS);
+    case syserr_que_empty:	return (ERROR_QUE_EMPTY);
+    case syserr_que_name_not_exist:	return (ERROR_QUE_NAME_NOT_EXIST);
+    case syserr_que_not_initialized:	return (ERROR_QUE_NOT_INITIALIZED);
+    case syserr_que_unable_to_access:	return (ERROR_QUE_UNABLE_TO_ACCESS);
+    case syserr_que_unable_to_add:	return (ERROR_QUE_UNABLE_TO_ADD);
+    case syserr_que_unable_to_init:	return (ERROR_QUE_UNABLE_TO_INIT);
+    case syserr_vio_invalid_mask:	return (ERROR_VIO_INVALID_MASK);
+    case syserr_vio_ptr:	return (ERROR_VIO_PTR);
+    case syserr_vio_aptr:	return (ERROR_VIO_APTR);
+    case syserr_vio_rptr:	return (ERROR_VIO_RPTR);
+    case syserr_vio_cptr:	return (ERROR_VIO_CPTR);
+    case syserr_vio_lptr:	return (ERROR_VIO_LPTR);
+    case syserr_vio_mode:	return (ERROR_VIO_MODE);
+    case syserr_vio_width:	return (ERROR_VIO_WIDTH);
+    case syserr_vio_attr:	return (ERROR_VIO_ATTR);
+    case syserr_vio_row:	return (ERROR_VIO_ROW);
+    case syserr_vio_col:	return (ERROR_VIO_COL);
+    case syserr_vio_toprow:	return (ERROR_VIO_TOPROW);
+    case syserr_vio_botrow:	return (ERROR_VIO_BOTROW);
+    case syserr_vio_rightcol:	return (ERROR_VIO_RIGHTCOL);
+    case syserr_vio_leftcol:	return (ERROR_VIO_LEFTCOL);
+    case syserr_scs_call:	return (ERROR_SCS_CALL);
+    case syserr_scs_value:	return (ERROR_SCS_VALUE);
+    case syserr_vio_wait_flag:	return (ERROR_VIO_WAIT_FLAG);
+    case syserr_vio_unlock:	return (ERROR_VIO_UNLOCK);
+    case syserr_sgs_not_session_mgr:	return (ERROR_SGS_NOT_SESSION_MGR);
+    case syserr_smg_invalid_session_id:	return (ERROR_SMG_INVALID_SESSION_ID);
+    case syserr_smg_no_sessions:	return (ERROR_SMG_NO_SESSIONS);
+    case syserr_smg_session_not_found:	return (ERROR_SMG_SESSION_NOT_FOUND);
+    case syserr_smg_set_title:	return (ERROR_SMG_SET_TITLE);
+    case syserr_kbd_parameter:	return (ERROR_KBD_PARAMETER);
+    case syserr_kbd_no_device:	return (ERROR_KBD_NO_DEVICE);
+    case syserr_kbd_invalid_iowait:	return (ERROR_KBD_INVALID_IOWAIT);
+    case syserr_kbd_invalid_length:	return (ERROR_KBD_INVALID_LENGTH);
+    case syserr_kbd_invalid_echo_mask:	return (ERROR_KBD_INVALID_ECHO_MASK);
+    case syserr_kbd_invalid_input_mask:	return (ERROR_KBD_INVALID_INPUT_MASK);
+    case syserr_mon_invalid_parms:	return (ERROR_MON_INVALID_PARMS);
+    case syserr_mon_invalid_devname:	return (ERROR_MON_INVALID_DEVNAME);
+    case syserr_mon_invalid_handle:	return (ERROR_MON_INVALID_HANDLE);
+    case syserr_mon_buffer_too_small:	return (ERROR_MON_BUFFER_TOO_SMALL);
+    case syserr_mon_buffer_empty:	return (ERROR_MON_BUFFER_EMPTY);
+    case syserr_mon_data_too_large:	return (ERROR_MON_DATA_TOO_LARGE);
+    case syserr_mouse_no_device:	return (ERROR_MOUSE_NO_DEVICE);
+    case syserr_mouse_inv_handle:	return (ERROR_MOUSE_INV_HANDLE);
+    case syserr_mouse_inv_parms:	return (ERROR_MOUSE_INV_PARMS);
+    case syserr_mouse_cant_reset:	return (ERROR_MOUSE_CANT_RESET);
+    case syserr_mouse_display_parms:	return (ERROR_MOUSE_DISPLAY_PARMS);
+    case syserr_mouse_inv_module:	return (ERROR_MOUSE_INV_MODULE);
+    case syserr_mouse_inv_entry_pt:	return (ERROR_MOUSE_INV_ENTRY_PT);
+    case syserr_mouse_inv_mask:	return (ERROR_MOUSE_INV_MASK);
+    case syserr_mouse_no_data:	return (NO_ERROR_MOUSE_NO_DATA);
+    case syserr_mouse_ptr_drawn:	return (NO_ERROR_MOUSE_PTR_DRAWN);
+    case syserr_invalid_frequency:	return (ERROR_INVALID_FREQUENCY);
+    case syserr_nls_no_country_file:	return (ERROR_NLS_NO_COUNTRY_FILE);
+    case syserr_nls_open_failed:	return (ERROR_NLS_OPEN_FAILED);
+    case syserr_no_country_or_codepage:	return (ERROR_NO_COUNTRY_OR_CODEPAGE);
+    case syserr_nls_table_truncated:	return (ERROR_NLS_TABLE_TRUNCATED);
+    case syserr_nls_bad_type:	return (ERROR_NLS_BAD_TYPE);
+    case syserr_nls_type_not_found:	return (ERROR_NLS_TYPE_NOT_FOUND);
+    case syserr_vio_smg_only:	return (ERROR_VIO_SMG_ONLY);
+    case syserr_vio_invalid_asciiz:	return (ERROR_VIO_INVALID_ASCIIZ);
+    case syserr_vio_deregister:	return (ERROR_VIO_DEREGISTER);
+    case syserr_vio_no_popup:	return (ERROR_VIO_NO_POPUP);
+    case syserr_vio_existing_popup:	return (ERROR_VIO_EXISTING_POPUP);
+    case syserr_kbd_smg_only:	return (ERROR_KBD_SMG_ONLY);
+    case syserr_kbd_invalid_asciiz:	return (ERROR_KBD_INVALID_ASCIIZ);
+    case syserr_kbd_invalid_mask:	return (ERROR_KBD_INVALID_MASK);
+    case syserr_kbd_register:	return (ERROR_KBD_REGISTER);
+    case syserr_kbd_deregister:	return (ERROR_KBD_DEREGISTER);
+    case syserr_mouse_smg_only:	return (ERROR_MOUSE_SMG_ONLY);
+    case syserr_mouse_invalid_asciiz:	return (ERROR_MOUSE_INVALID_ASCIIZ);
+    case syserr_mouse_invalid_mask:	return (ERROR_MOUSE_INVALID_MASK);
+    case syserr_mouse_register:	return (ERROR_MOUSE_REGISTER);
+    case syserr_mouse_deregister:	return (ERROR_MOUSE_DEREGISTER);
+    case syserr_smg_bad_action:	return (ERROR_SMG_BAD_ACTION);
+    case syserr_smg_invalid_call:	return (ERROR_SMG_INVALID_CALL);
+    case syserr_scs_sg_notfound:	return (ERROR_SCS_SG_NOTFOUND);
+    case syserr_scs_not_shell:	return (ERROR_SCS_NOT_SHELL);
+    case syserr_vio_invalid_parms:	return (ERROR_VIO_INVALID_PARMS);
+    case syserr_vio_function_owned:	return (ERROR_VIO_FUNCTION_OWNED);
+    case syserr_vio_return:	return (ERROR_VIO_RETURN);
+    case syserr_scs_invalid_function:	return (ERROR_SCS_INVALID_FUNCTION);
+    case syserr_scs_not_session_mgr:	return (ERROR_SCS_NOT_SESSION_MGR);
+    case syserr_vio_register:	return (ERROR_VIO_REGISTER);
+    case syserr_vio_no_mode_thread:	return (ERROR_VIO_NO_MODE_THREAD);
+    case syserr_vio_no_save_restore_thd:	return (ERROR_VIO_NO_SAVE_RESTORE_THD);
+    case syserr_vio_in_bg:	return (ERROR_VIO_IN_BG);
+    case syserr_vio_illegal_during_popup:	return (ERROR_VIO_ILLEGAL_DURING_POPUP);
+    case syserr_smg_not_baseshell:	return (ERROR_SMG_NOT_BASESHELL);
+    case syserr_smg_bad_statusreq:	return (ERROR_SMG_BAD_STATUSREQ);
+    case syserr_que_invalid_wait:	return (ERROR_QUE_INVALID_WAIT);
+    case syserr_vio_lock:	return (ERROR_VIO_LOCK);
+    case syserr_mouse_invalid_iowait:	return (ERROR_MOUSE_INVALID_IOWAIT);
+    case syserr_vio_invalid_handle:	return (ERROR_VIO_INVALID_HANDLE);
+    case syserr_vio_illegal_during_lock:	return (ERROR_VIO_ILLEGAL_DURING_LOCK);
+    case syserr_vio_invalid_length:	return (ERROR_VIO_INVALID_LENGTH);
+    case syserr_kbd_invalid_handle:	return (ERROR_KBD_INVALID_HANDLE);
+    case syserr_kbd_no_more_handle:	return (ERROR_KBD_NO_MORE_HANDLE);
+    case syserr_kbd_cannot_create_kcb:	return (ERROR_KBD_CANNOT_CREATE_KCB);
+    case syserr_kbd_codepage_load_incompl:	return (ERROR_KBD_CODEPAGE_LOAD_INCOMPL);
+    case syserr_kbd_invalid_codepage_id:	return (ERROR_KBD_INVALID_CODEPAGE_ID);
+    case syserr_kbd_no_codepage_support:	return (ERROR_KBD_NO_CODEPAGE_SUPPORT);
+    case syserr_kbd_focus_required:	return (ERROR_KBD_FOCUS_REQUIRED);
+    case syserr_kbd_focus_already_active:	return (ERROR_KBD_FOCUS_ALREADY_ACTIVE);
+    case syserr_kbd_keyboard_busy:	return (ERROR_KBD_KEYBOARD_BUSY);
+    case syserr_kbd_invalid_codepage:	return (ERROR_KBD_INVALID_CODEPAGE);
+    case syserr_kbd_unable_to_focus:	return (ERROR_KBD_UNABLE_TO_FOCUS);
+    case syserr_smg_session_non_select:	return (ERROR_SMG_SESSION_NON_SELECT);
+    case syserr_smg_session_not_foregrnd:	return (ERROR_SMG_SESSION_NOT_FOREGRND);
+    case syserr_smg_session_not_parent:	return (ERROR_SMG_SESSION_NOT_PARENT);
+    case syserr_smg_invalid_start_mode:	return (ERROR_SMG_INVALID_START_MODE);
+    case syserr_smg_invalid_related_opt:	return (ERROR_SMG_INVALID_RELATED_OPT);
+    case syserr_smg_invalid_bond_option:	return (ERROR_SMG_INVALID_BOND_OPTION);
+    case syserr_smg_invalid_select_opt:	return (ERROR_SMG_INVALID_SELECT_OPT);
+    case syserr_smg_start_in_background:	return (ERROR_SMG_START_IN_BACKGROUND);
+    case syserr_smg_invalid_stop_option:	return (ERROR_SMG_INVALID_STOP_OPTION);
+    case syserr_smg_bad_reserve:	return (ERROR_SMG_BAD_RESERVE);
+    case syserr_smg_process_not_parent:	return (ERROR_SMG_PROCESS_NOT_PARENT);
+    case syserr_smg_invalid_data_length:	return (ERROR_SMG_INVALID_DATA_LENGTH);
+    case syserr_smg_not_bound:	return (ERROR_SMG_NOT_BOUND);
+    case syserr_smg_retry_sub_alloc:	return (ERROR_SMG_RETRY_SUB_ALLOC);
+    case syserr_kbd_detached:	return (ERROR_KBD_DETACHED);
+    case syserr_vio_detached:	return (ERROR_VIO_DETACHED);
+    case syserr_mou_detached:	return (ERROR_MOU_DETACHED);
+    case syserr_vio_font:	return (ERROR_VIO_FONT);
+    case syserr_vio_user_font:	return (ERROR_VIO_USER_FONT);
+    case syserr_vio_bad_cp:	return (ERROR_VIO_BAD_CP);
+    case syserr_vio_no_cp:	return (ERROR_VIO_NO_CP);
+    case syserr_vio_na_cp:	return (ERROR_VIO_NA_CP);
+    case syserr_invalid_code_page:	return (ERROR_INVALID_CODE_PAGE);
+    case syserr_cplist_too_small:	return (ERROR_CPLIST_TOO_SMALL);
+    case syserr_cp_not_moved:	return (ERROR_CP_NOT_MOVED);
+    case syserr_mode_switch_init:	return (ERROR_MODE_SWITCH_INIT);
+    case syserr_code_page_not_found:	return (ERROR_CODE_PAGE_NOT_FOUND);
+    case syserr_unexpected_slot_returned:	return (ERROR_UNEXPECTED_SLOT_RETURNED);
+    case syserr_smg_invalid_trace_option:	return (ERROR_SMG_INVALID_TRACE_OPTION);
+    case syserr_vio_internal_resource:	return (ERROR_VIO_INTERNAL_RESOURCE);
+    case syserr_vio_shell_init:	return (ERROR_VIO_SHELL_INIT);
+    case syserr_smg_no_hard_errors:	return (ERROR_SMG_NO_HARD_ERRORS);
+    case syserr_cp_switch_incomplete:	return (ERROR_CP_SWITCH_INCOMPLETE);
+    case syserr_vio_transparent_popup:	return (ERROR_VIO_TRANSPARENT_POPUP);
+    case syserr_critsec_overflow:	return (ERROR_CRITSEC_OVERFLOW);
+    case syserr_critsec_underflow:	return (ERROR_CRITSEC_UNDERFLOW);
+    case syserr_vio_bad_reserve:	return (ERROR_VIO_BAD_RESERVE);
+    case syserr_invalid_address:	return (ERROR_INVALID_ADDRESS);
+    case syserr_zero_selectors_requested:	return (ERROR_ZERO_SELECTORS_REQUESTED);
+    case syserr_not_enough_selectors_ava:	return (ERROR_NOT_ENOUGH_SELECTORS_AVA);
+    case syserr_invalid_selector:	return (ERROR_INVALID_SELECTOR);
+    case syserr_smg_invalid_program_type:	return (ERROR_SMG_INVALID_PROGRAM_TYPE);
+    case syserr_smg_invalid_pgm_control:	return (ERROR_SMG_INVALID_PGM_CONTROL);
+    case syserr_smg_invalid_inherit_opt:	return (ERROR_SMG_INVALID_INHERIT_OPT);
+    case syserr_vio_extended_sg:	return (ERROR_VIO_EXTENDED_SG);
+    case syserr_vio_not_pres_mgr_sg:	return (ERROR_VIO_NOT_PRES_MGR_SG);
+    case syserr_vio_shield_owned:	return (ERROR_VIO_SHIELD_OWNED);
+    case syserr_vio_no_more_handles:	return (ERROR_VIO_NO_MORE_HANDLES);
+    case syserr_vio_see_error_log:	return (ERROR_VIO_SEE_ERROR_LOG);
+    case syserr_vio_associated_dc:	return (ERROR_VIO_ASSOCIATED_DC);
+    case syserr_kbd_no_console:	return (ERROR_KBD_NO_CONSOLE);
+    case syserr_mouse_no_console:	return (ERROR_MOUSE_NO_CONSOLE);
+    case syserr_mouse_invalid_handle:	return (ERROR_MOUSE_INVALID_HANDLE);
+    case syserr_smg_invalid_debug_parms:	return (ERROR_SMG_INVALID_DEBUG_PARMS);
+    case syserr_kbd_extended_sg:	return (ERROR_KBD_EXTENDED_SG);
+    case syserr_mou_extended_sg:	return (ERROR_MOU_EXTENDED_SG);
+    case syserr_smg_invalid_icon_file:	return (ERROR_SMG_INVALID_ICON_FILE);
+    case syserr_trc_pid_non_existent:	return (ERROR_TRC_PID_NON_EXISTENT);
+    case syserr_trc_count_active:	return (ERROR_TRC_COUNT_ACTIVE);
+    case syserr_trc_suspended_by_count:	return (ERROR_TRC_SUSPENDED_BY_COUNT);
+    case syserr_trc_count_inactive:	return (ERROR_TRC_COUNT_INACTIVE);
+    case syserr_trc_count_reached:	return (ERROR_TRC_COUNT_REACHED);
+    case syserr_no_mc_trace:	return (ERROR_NO_MC_TRACE);
+    case syserr_mc_trace:	return (ERROR_MC_TRACE);
+    case syserr_trc_count_zero:	return (ERROR_TRC_COUNT_ZERO);
+    case syserr_smg_too_many_dds:	return (ERROR_SMG_TOO_MANY_DDS);
+    case syserr_smg_invalid_notification:	return (ERROR_SMG_INVALID_NOTIFICATION);
+    case syserr_lf_invalid_function:	return (ERROR_LF_INVALID_FUNCTION);
+    case syserr_lf_not_avail:	return (ERROR_LF_NOT_AVAIL);
+    case syserr_lf_suspended:	return (ERROR_LF_SUSPENDED);
+    case syserr_lf_buf_too_small:	return (ERROR_LF_BUF_TOO_SMALL);
+    case syserr_lf_buffer_full:	return (ERROR_LF_BUFFER_FULL);
+    case syserr_lf_invalid_record:	return (ERROR_LF_INVALID_RECORD);
+    case syserr_lf_invalid_service:	return (ERROR_LF_INVALID_SERVICE);
+    case syserr_lf_general_failure:	return (ERROR_LF_GENERAL_FAILURE);
+    case syserr_lf_invalid_id:	return (ERROR_LF_INVALID_ID);
+    case syserr_lf_invalid_handle:	return (ERROR_LF_INVALID_HANDLE);
+    case syserr_lf_no_id_avail:	return (ERROR_LF_NO_ID_AVAIL);
+    case syserr_lf_template_area_full:	return (ERROR_LF_TEMPLATE_AREA_FULL);
+    case syserr_lf_id_in_use:	return (ERROR_LF_ID_IN_USE);
+    case syserr_mou_not_initialized:	return (ERROR_MOU_NOT_INITIALIZED);
+    case syserr_mouinitreal_done:	return (ERROR_MOUINITREAL_DONE);
+    case syserr_dossub_corrupted:	return (ERROR_DOSSUB_CORRUPTED);
+    case syserr_mouse_caller_not_subsys:	return (ERROR_MOUSE_CALLER_NOT_SUBSYS);
+    case syserr_arithmetic_overflow:	return (ERROR_ARITHMETIC_OVERFLOW);
+    case syserr_tmr_no_device:	return (ERROR_TMR_NO_DEVICE);
+    case syserr_tmr_invalid_time:	return (ERROR_TMR_INVALID_TIME);
+    case syserr_pvw_invalid_entity:	return (ERROR_PVW_INVALID_ENTITY);
+    case syserr_pvw_invalid_entity_type:	return (ERROR_PVW_INVALID_ENTITY_TYPE);
+    case syserr_pvw_invalid_spec:	return (ERROR_PVW_INVALID_SPEC);
+    case syserr_pvw_invalid_range_type:	return (ERROR_PVW_INVALID_RANGE_TYPE);
+    case syserr_pvw_invalid_counter_blk:	return (ERROR_PVW_INVALID_COUNTER_BLK);
+    case syserr_pvw_invalid_text_blk:	return (ERROR_PVW_INVALID_TEXT_BLK);
+    case syserr_prf_not_initialized:	return (ERROR_PRF_NOT_INITIALIZED);
+    case syserr_prf_already_initialized:	return (ERROR_PRF_ALREADY_INITIALIZED);
+    case syserr_prf_not_started:	return (ERROR_PRF_NOT_STARTED);
+    case syserr_prf_already_started:	return (ERROR_PRF_ALREADY_STARTED);
+    case syserr_prf_timer_out_of_range:	return (ERROR_PRF_TIMER_OUT_OF_RANGE);
+    case syserr_prf_timer_reset:	return (ERROR_PRF_TIMER_RESET);
+    case syserr_vdd_lock_useage_denied:	return (ERROR_VDD_LOCK_USEAGE_DENIED);
+    case syserr_timeout:	return (ERROR_TIMEOUT);
+    case syserr_vdm_down:	return (ERROR_VDM_DOWN);
+    case syserr_vdm_limit:	return (ERROR_VDM_LIMIT);
+    case syserr_vdd_not_found:	return (ERROR_VDD_NOT_FOUND);
+    case syserr_invalid_caller:	return (ERROR_INVALID_CALLER);
+    case syserr_pid_mismatch:	return (ERROR_PID_MISMATCH);
+    case syserr_invalid_vdd_handle:	return (ERROR_INVALID_VDD_HANDLE);
+    case syserr_vlpt_no_spooler:	return (ERROR_VLPT_NO_SPOOLER);
+    case syserr_vcom_device_busy:	return (ERROR_VCOM_DEVICE_BUSY);
+    case syserr_vlpt_device_busy:	return (ERROR_VLPT_DEVICE_BUSY);
+    case syserr_nesting_too_deep:	return (ERROR_NESTING_TOO_DEEP);
+    case syserr_vdd_missing:	return (ERROR_VDD_MISSING);
+    case syserr_bidi_invalid_length:	return (ERROR_BIDI_INVALID_LENGTH);
+    case syserr_bidi_invalid_increment:	return (ERROR_BIDI_INVALID_INCREMENT);
+    case syserr_bidi_invalid_combination:	return (ERROR_BIDI_INVALID_COMBINATION);
+    case syserr_bidi_invalid_reserved:	return (ERROR_BIDI_INVALID_RESERVED);
+    case syserr_bidi_invalid_effect:	return (ERROR_BIDI_INVALID_EFFECT);
+    case syserr_bidi_invalid_csdrec:	return (ERROR_BIDI_INVALID_CSDREC);
+    case syserr_bidi_invalid_csdstate:	return (ERROR_BIDI_INVALID_CSDSTATE);
+    case syserr_bidi_invalid_level:	return (ERROR_BIDI_INVALID_LEVEL);
+    case syserr_bidi_invalid_type_support:	return (ERROR_BIDI_INVALID_TYPE_SUPPORT);
+    case syserr_bidi_invalid_orientation:	return (ERROR_BIDI_INVALID_ORIENTATION);
+    case syserr_bidi_invalid_num_shape:	return (ERROR_BIDI_INVALID_NUM_SHAPE);
+    case syserr_bidi_invalid_csd:	return (ERROR_BIDI_INVALID_CSD);
+    case syserr_bidi_no_support:	return (ERROR_BIDI_NO_SUPPORT);
+    case syserr_bidi_rw_incomplete:	return (NO_ERROR_BIDI_RW_INCOMPLETE);
+    case syserr_imp_invalid_parm:	return (ERROR_IMP_INVALID_PARM);
+    case syserr_imp_invalid_length:	return (ERROR_IMP_INVALID_LENGTH);
+    case syserr_hpfs_disk_error_warn:	return (MSG_HPFS_DISK_ERROR_WARN);
+    case syserr_mon_bad_buffer:	return (ERROR_MON_BAD_BUFFER);
+    case syserr_module_corrupted:	return (ERROR_MODULE_CORRUPTED);
+    case syserr_sm_outof_swapfile:	return (ERROR_SM_OUTOF_SWAPFILE);
+    case syserr_lf_timeout:	return (ERROR_LF_TIMEOUT);
+    case syserr_lf_suspend_success:	return (ERROR_LF_SUSPEND_SUCCESS);
+    case syserr_lf_resume_success:	return (ERROR_LF_RESUME_SUCCESS);
+    case syserr_lf_redirect_success:	return (ERROR_LF_REDIRECT_SUCCESS);
+    case syserr_lf_redirect_failure:	return (ERROR_LF_REDIRECT_FAILURE);
+    case syserr_swapper_not_active:	return (ERROR_SWAPPER_NOT_ACTIVE);
+    case syserr_invalid_swapid:	return (ERROR_INVALID_SWAPID);
+    case syserr_ioerr_swap_file:	return (ERROR_IOERR_SWAP_FILE);
+    case syserr_swap_table_full:	return (ERROR_SWAP_TABLE_FULL);
+    case syserr_swap_file_full:	return (ERROR_SWAP_FILE_FULL);
+    case syserr_cant_init_swapper:	return (ERROR_CANT_INIT_SWAPPER);
+    case syserr_swapper_already_init:	return (ERROR_SWAPPER_ALREADY_INIT);
+    case syserr_pmm_insufficient_memory:	return (ERROR_PMM_INSUFFICIENT_MEMORY);
+    case syserr_pmm_invalid_flags:	return (ERROR_PMM_INVALID_FLAGS);
+    case syserr_pmm_invalid_address:	return (ERROR_PMM_INVALID_ADDRESS);
+    case syserr_pmm_lock_failed:	return (ERROR_PMM_LOCK_FAILED);
+    case syserr_pmm_unlock_failed:	return (ERROR_PMM_UNLOCK_FAILED);
+    case syserr_pmm_move_incomplete:	return (ERROR_PMM_MOVE_INCOMPLETE);
+    case syserr_ucom_drive_renamed:	return (ERROR_UCOM_DRIVE_RENAMED);
+    case syserr_ucom_filename_truncated:	return (ERROR_UCOM_FILENAME_TRUNCATED);
+    case syserr_ucom_buffer_length:	return (ERROR_UCOM_BUFFER_LENGTH);
+    case syserr_mon_chain_handle:	return (ERROR_MON_CHAIN_HANDLE);
+    case syserr_mon_not_registered:	return (ERROR_MON_NOT_REGISTERED);
+    case syserr_smg_already_top:	return (ERROR_SMG_ALREADY_TOP);
+    case syserr_pmm_arena_modified:	return (ERROR_PMM_ARENA_MODIFIED);
+    case syserr_smg_printer_open:	return (ERROR_SMG_PRINTER_OPEN);
+    case syserr_pmm_set_flags_failed:	return (ERROR_PMM_SET_FLAGS_FAILED);
+    case syserr_invalid_dos_dd:	return (ERROR_INVALID_DOS_DD);
+    case syserr_blocked:	return (ERROR_BLOCKED);
+    case syserr_noblock:	return (ERROR_NOBLOCK);
+    case syserr_instance_shared:	return (ERROR_INSTANCE_SHARED);
+    case syserr_no_object:	return (ERROR_NO_OBJECT);
+    case syserr_partial_attach:	return (ERROR_PARTIAL_ATTACH);
+    case syserr_incache:	return (ERROR_INCACHE);
+    case syserr_swap_io_problems:	return (ERROR_SWAP_IO_PROBLEMS);
+    case syserr_crosses_object_boundary:	return (ERROR_CROSSES_OBJECT_BOUNDARY);
+    case syserr_longlock:	return (ERROR_LONGLOCK);
+    case syserr_shortlock:	return (ERROR_SHORTLOCK);
+    case syserr_uvirtlock:	return (ERROR_UVIRTLOCK);
+    case syserr_aliaslock:	return (ERROR_ALIASLOCK);
+    case syserr_alias:	return (ERROR_ALIAS);
+    case syserr_no_more_handles:	return (ERROR_NO_MORE_HANDLES);
+    case syserr_scan_terminated:	return (ERROR_SCAN_TERMINATED);
+    case syserr_terminator_not_found:	return (ERROR_TERMINATOR_NOT_FOUND);
+    case syserr_not_direct_child:	return (ERROR_NOT_DIRECT_CHILD);
+    case syserr_delay_free:	return (ERROR_DELAY_FREE);
+    case syserr_guardpage:	return (ERROR_GUARDPAGE);
+    case syserr_swaperror:	return (ERROR_SWAPERROR);
+    case syserr_ldrerror:	return (ERROR_LDRERROR);
+    case syserr_nomemory:	return (ERROR_NOMEMORY);
+    case syserr_noaccess:	return (ERROR_NOACCESS);
+    case syserr_no_dll_term:	return (ERROR_NO_DLL_TERM);
+    case syserr_cpsio_code_page_invalid:	return (ERROR_CPSIO_CODE_PAGE_INVALID);
+    case syserr_cpsio_no_spooler:	return (ERROR_CPSIO_NO_SPOOLER);
+    case syserr_cpsio_font_id_invalid:	return (ERROR_CPSIO_FONT_ID_INVALID);
+    case syserr_cpsio_internal_error:	return (ERROR_CPSIO_INTERNAL_ERROR);
+    case syserr_cpsio_invalid_ptr_name:	return (ERROR_CPSIO_INVALID_PTR_NAME);
+    case syserr_cpsio_not_active:	return (ERROR_CPSIO_NOT_ACTIVE);
+    case syserr_cpsio_pid_full:	return (ERROR_CPSIO_PID_FULL);
+    case syserr_cpsio_pid_not_found:	return (ERROR_CPSIO_PID_NOT_FOUND);
+    case syserr_cpsio_read_ctl_seq:	return (ERROR_CPSIO_READ_CTL_SEQ);
+    case syserr_cpsio_read_fnt_def:	return (ERROR_CPSIO_READ_FNT_DEF);
+    case syserr_cpsio_write_error:	return (ERROR_CPSIO_WRITE_ERROR);
+    case syserr_cpsio_write_full_error:	return (ERROR_CPSIO_WRITE_FULL_ERROR);
+    case syserr_cpsio_write_handle_bad:	return (ERROR_CPSIO_WRITE_HANDLE_BAD);
+    case syserr_cpsio_swit_load:	return (ERROR_CPSIO_SWIT_LOAD);
+    case syserr_cpsio_inv_command:	return (ERROR_CPSIO_INV_COMMAND);
+    case syserr_cpsio_no_font_swit:	return (ERROR_CPSIO_NO_FONT_SWIT);
+    case syserr_entry_is_callgate:	return (ERROR_ENTRY_IS_CALLGATE);
+    default:	return (NO_ERROR);
+    }
+}
+
 #ifdef __GCC2__
 /* Grumble... stupid linking bug.  */
 #define dos_error_message(rc) 0
@@ -870,9 +1493,12 @@ const char *
 OS_error_code_to_message (unsigned int syserr)
 {
   static const char * last_message = 0;
+  APIRET code = (syserr_to_error_code ((enum syserr_names) syserr));
+  if (code == NO_ERROR)
+    return (0);
   if (last_message != 0)
     free ((void *) last_message);
-  last_message = (dos_error_message (syserr));
+  last_message = (dos_error_message (code));
   return (last_message);
 }
 
@@ -904,6 +1530,8 @@ static char * syscall_names_table [] =
   "dos-query-current-dir",
   "dos-query-current-disk",
   "dos-query-file-info",
+  "dos-query-fs-attach",
+  "dos-query-fs-info",
   "dos-query-h-type",
   "dos-query-n-p-h-state",
   "dos-query-path-info",
@@ -1019,7 +1647,6 @@ static char * syserr_names_table [] =
   "NET-WRITE-FAULT",
   "NO-PROC-SLOTS",
   "NOT-FROZEN",
-  "SYS-COMP-NOT-LOADED",
   "TSTOVFL",
   "TSTDUP",
   "NO-ITEMS",

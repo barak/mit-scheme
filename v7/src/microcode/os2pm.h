@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pm.h,v 1.1 1994/12/02 20:44:35 cph Exp $
+$Id: os2pm.h,v 1.2 1994/12/19 22:31:40 cph Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -35,130 +35,66 @@ MIT in each case. */
 #ifndef SCM_OS2PM_H
 #define SCM_OS2PM_H
 
-typedef unsigned short twid_t;
+typedef unsigned short wid_t;
+
+typedef struct
+{
+  unsigned short width;
+  unsigned short height;
+  unsigned short descender;
+} font_metrics_t;
+#define FONT_METRICS_WIDTH(m) ((m) -> width)
+#define FONT_METRICS_HEIGHT(m) ((m) -> height)
+#define FONT_METRICS_DESCENDER(m) ((m) -> descender)
 
 typedef struct
 {
   DECLARE_MSG_HEADER_FIELDS;
-  qid_t event_qid;
-  const char * title;
-} sm_twindow_open_request_t;
-#define SM_TWINDOW_OPEN_REQUEST_EVENT_QID(m)				\
-  (((sm_twindow_open_request_t *) (m)) -> event_qid)
-#define SM_TWINDOW_OPEN_REQUEST_TITLE(m)				\
-  (((sm_twindow_open_request_t *) (m)) -> title)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  twid_t twid;
-} sm_twindow_open_reply_t;
-#define SM_TWINDOW_OPEN_REPLY_TWID(m)					\
-  (((sm_twindow_open_reply_t *) (m)) -> twid)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  twid_t twid;
-} sm_twindow_close_request_t;
-#define SM_TWINDOW_CLOSE_REQUEST_TWID(m)				\
-  (((sm_twindow_close_request_t *) (m)) -> twid)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  twid_t twid;
+  wid_t wid;
+  unsigned char btype;
   unsigned short x;
   unsigned short y;
-  unsigned short size;
-  const char * data;
-} sm_twindow_write_request_t;
-#define SM_TWINDOW_WRITE_REQUEST_TWID(m)				\
-  (((sm_twindow_write_request_t *) (m)) -> twid)
-#define SM_TWINDOW_WRITE_REQUEST_X(m)					\
-  (((sm_twindow_write_request_t *) (m)) -> x)
-#define SM_TWINDOW_WRITE_REQUEST_Y(m)					\
-  (((sm_twindow_write_request_t *) (m)) -> y)
-#define SM_TWINDOW_WRITE_REQUEST_SIZE(m)				\
-  (((sm_twindow_write_request_t *) (m)) -> size)
-#define SM_TWINDOW_WRITE_REQUEST_DATA(m)				\
-  (((sm_twindow_write_request_t *) (m)) -> data)
+  unsigned short flags;
+} sm_button_event_t;
+#define SM_BUTTON_EVENT_WID(m) (((sm_button_event_t *) (m)) -> wid)
+#define SM_BUTTON_EVENT_TYPE(m) (((sm_button_event_t *) (m)) -> btype)
+#define SM_BUTTON_EVENT_X(m) (((sm_button_event_t *) (m)) -> x)
+#define SM_BUTTON_EVENT_Y(m) (((sm_button_event_t *) (m)) -> y)
+#define SM_BUTTON_EVENT_FLAGS(m) (((sm_button_event_t *) (m)) -> flags)
+
+#define BUTTON_EVENT_DOWN 0
+#define BUTTON_EVENT_UP 1
+#define BUTTON_EVENT_CLICK 2
+#define BUTTON_EVENT_DBLCLK 3
+
+#define BUTTON_TYPE_NUMBER(type) ((type) & 0xf)
+#define BUTTON_TYPE_EVENT(type) (((type) >> 4) & 0xf)
 
 typedef struct
 {
   DECLARE_MSG_HEADER_FIELDS;
-  twid_t twid;
-  unsigned short x;
-  unsigned short y;
-} sm_twindow_move_cursor_request_t;
-#define SM_TWINDOW_MOVE_CURSOR_REQUEST_TWID(m)				\
-  (((sm_twindow_move_cursor_request_t *) (m)) -> twid)
-#define SM_TWINDOW_MOVE_CURSOR_REQUEST_X(m)				\
-  (((sm_twindow_move_cursor_request_t *) (m)) -> x)
-#define SM_TWINDOW_MOVE_CURSOR_REQUEST_Y(m)				\
-  (((sm_twindow_move_cursor_request_t *) (m)) -> y)
+  wid_t wid;
+} sm_close_event_t;
+#define SM_CLOSE_EVENT_WID(m) (((sm_close_event_t *) (m)) -> wid)
 
 typedef struct
 {
   DECLARE_MSG_HEADER_FIELDS;
-  twid_t twid;
-} sm_twindow_clear_request_t;
-#define SM_TWINDOW_CLEAR_REQUEST_TWID(m)				\
-  (((sm_twindow_clear_request_t *) (m)) -> twid)
-#define SM_TWINDOW_CLEAR_REQUEST_X(m)					\
-  (((sm_twindow_clear_request_t *) (m)) -> x)
-#define SM_TWINDOW_CLEAR_REQUEST_Y(m)					\
-  (((sm_twindow_clear_request_t *) (m)) -> y)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  twid_t twid;
-  unsigned short x;
-  unsigned short y;
-} sm_twindow_clear_eol_request_t;
-#define SM_TWINDOW_CLEAR_EOL_REQUEST_TWID(m)				\
-  (((sm_twindow_clear_eol_request_t *) (m)) -> twid)
-#define SM_TWINDOW_CLEAR_EOL_REQUEST_X(m)				\
-  (((sm_twindow_clear_eol_request_t *) (m)) -> x)
-#define SM_TWINDOW_CLEAR_EOL_REQUEST_Y(m)				\
-  (((sm_twindow_clear_eol_request_t *) (m)) -> y)
+  wid_t wid;
+  char gainedp;
+} sm_focus_event_t;
+#define SM_FOCUS_EVENT_WID(m) (((sm_focus_event_t *) (m)) -> wid)
+#define SM_FOCUS_EVENT_GAINEDP(m) (((sm_focus_event_t *) (m)) -> gainedp)
 
 typedef struct
 {
   DECLARE_MSG_HEADER_FIELDS;
-  twid_t twid;
-  unsigned short x_start;
-  unsigned short x_end;
-  unsigned short y_start;
-  unsigned short y_end;
-  short x_delta;
-  short y_delta;
-} sm_twindow_scroll_request_t;
-#define SM_TWINDOW_SCROLL_REQUEST_TWID(m)				\
-  (((sm_twindow_scroll_request_t *) (m)) -> twid)
-#define SM_TWINDOW_SCROLL_REQUEST_X_START(m)				\
-  (((sm_twindow_scroll_request_t *) (m)) -> x_start)
-#define SM_TWINDOW_SCROLL_REQUEST_X_END(m)				\
-  (((sm_twindow_scroll_request_t *) (m)) -> x_end)
-#define SM_TWINDOW_SCROLL_REQUEST_Y_START(m)				\
-  (((sm_twindow_scroll_request_t *) (m)) -> y_start)
-#define SM_TWINDOW_SCROLL_REQUEST_Y_END(m)				\
-  (((sm_twindow_scroll_request_t *) (m)) -> y_end)
-#define SM_TWINDOW_SCROLL_REQUEST_X_DELTA(m)				\
-  (((sm_twindow_scroll_request_t *) (m)) -> x_delta)
-#define SM_TWINDOW_SCROLL_REQUEST_Y_DELTA(m)				\
-  (((sm_twindow_scroll_request_t *) (m)) -> y_delta)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  twid_t twid;
+  wid_t wid;
   unsigned short code;
   unsigned short flags;
   unsigned short repeat;
 } sm_key_event_t;
-#define SM_KEY_EVENT_TWID(m) (((sm_key_event_t *) (m)) -> twid)
+#define SM_KEY_EVENT_WID(m) (((sm_key_event_t *) (m)) -> wid)
 #define SM_KEY_EVENT_CODE(m) (((sm_key_event_t *) (m)) -> code)
 #define SM_KEY_EVENT_FLAGS(m) (((sm_key_event_t *) (m)) -> flags)
 #define SM_KEY_EVENT_REPEAT(m) (((sm_key_event_t *) (m)) -> repeat)
@@ -166,54 +102,85 @@ typedef struct
 typedef struct
 {
   DECLARE_MSG_HEADER_FIELDS;
-  twid_t twid;
-  
-} sm_button_event_t;
-#define SM_BUTTON_EVENT_TWID(m) (((sm_button_event_t *) (m)) -> twid)
+  wid_t wid;
+  unsigned short xl;
+  unsigned short xh;
+  unsigned short yl;
+  unsigned short yh;
+} sm_paint_event_t;
+#define SM_PAINT_EVENT_WID(m) (((sm_paint_event_t *) (m)) -> wid)
+#define SM_PAINT_EVENT_XL(m) (((sm_paint_event_t *) (m)) -> xl)
+#define SM_PAINT_EVENT_XH(m) (((sm_paint_event_t *) (m)) -> xh)
+#define SM_PAINT_EVENT_YL(m) (((sm_paint_event_t *) (m)) -> yl)
+#define SM_PAINT_EVENT_YH(m) (((sm_paint_event_t *) (m)) -> yh)
 
 typedef struct
 {
   DECLARE_MSG_HEADER_FIELDS;
-  twid_t twid;
-} sm_close_event_t;
-#define SM_CLOSE_EVENT_TWID(m) (((sm_close_event_t *) (m)) -> twid)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  twid_t twid;
-  unsigned char state;
-} sm_visibility_event_t;
-#define SM_VISIBILITY_EVENT_TWID(m) (((sm_visibility_event_t *) (m)) -> twid)
-#define SM_VISIBILITY_EVENT_STATE(m) (((sm_visibility_event_t *) (m)) -> state)
-
-#define VISIBILITY_OBSCURED 0
-#define VISIBILITY_PARTIALLY_OBSCURED 1
-#define VISIBILITY_UNOBSCURED 2
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  twid_t twid;
+  wid_t wid;
   unsigned short width;
   unsigned short height;
 } sm_resize_event_t;
-#define SM_RESIZE_EVENT_TWID(m) (((sm_resize_event_t *) (m)) -> twid)
+#define SM_RESIZE_EVENT_WID(m) (((sm_resize_event_t *) (m)) -> wid)
 #define SM_RESIZE_EVENT_WIDTH(m) (((sm_resize_event_t *) (m)) -> width)
 #define SM_RESIZE_EVENT_HEIGHT(m) (((sm_resize_event_t *) (m)) -> height)
 
-extern int OS2_read_pm_tqueue (tqueue_t *, int);
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  wid_t wid;
+  char shownp;
+} sm_visibility_event_t;
+#define SM_VISIBILITY_EVENT_WID(m) (((sm_visibility_event_t *) (m)) -> wid)
+#define SM_VISIBILITY_EVENT_SHOWNP(m)					\
+  (((sm_visibility_event_t *) (m)) -> shownp)
+
+typedef enum
+{
+  state_top,
+  state_bottom,
+  state_show,
+  state_hide,
+  state_activate,
+  state_deactivate,
+  state_minimize,
+  state_maximize,
+  state_restore,
+  state_supremum
+} window_state_t;
+
+extern msg_t * OS2_read_pm_tqueue (tqueue_t *, int);
 extern void OS2_write_pm_tqueue (tqueue_t *, msg_t *);
 
-extern twid_t OS2_twindow_open (qid_t, const char *);
-extern void OS2_twindow_close (twid_t);
-extern void OS2_twindow_write
-  (twid_t, unsigned short, unsigned short, const char *, unsigned short);
-extern void OS2_twindow_move_cursor (twid_t, unsigned short, unsigned short);
-extern void OS2_twindow_clear (twid_t);
-extern void OS2_twindow_clear_eol (twid_t, unsigned short, unsigned short);
-extern void OS2_twindow_scroll
-  (twid_t, unsigned short, unsigned short, unsigned short, unsigned short,
+extern int OS2_wid_validp (wid_t);
+extern qid_t OS2_create_pm_qid (tqueue_t *);
+extern wid_t OS2_window_open (qid_t, qid_t, const char *);
+extern void OS2_window_permanent (wid_t);
+extern void OS2_window_close (wid_t);
+extern void OS2_window_show (wid_t, int);
+extern void OS2_window_write
+  (wid_t, unsigned short, unsigned short, const char *, unsigned short);
+extern void OS2_window_move_cursor (wid_t, unsigned short, unsigned short);
+extern void OS2_window_shape_cursor
+  (wid_t, unsigned short, unsigned short, unsigned short);
+extern void OS2_window_show_cursor (wid_t, int);
+extern void OS2_window_clear
+  (wid_t, unsigned short, unsigned short, unsigned short, unsigned short);
+extern void OS2_window_scroll
+  (wid_t, unsigned short, unsigned short, unsigned short, unsigned short,
    short, short);
+extern void OS2_window_invalidate
+  (wid_t, unsigned short, unsigned short, unsigned short, unsigned short);
+extern font_metrics_t * OS2_window_set_font
+  (wid_t, unsigned short, const char *);
+extern void OS2_window_set_grid (wid_t, unsigned short, unsigned short);
+extern void OS2_window_activate (wid_t);
+extern void OS2_window_pos (wid_t, unsigned short *, unsigned short *);
+extern void OS2_window_set_pos (wid_t, unsigned short, unsigned short);
+extern void OS2_window_size (wid_t, unsigned short *, unsigned short *);
+extern void OS2_window_set_size (wid_t, unsigned short, unsigned short);
+extern int OS2_window_focusp (wid_t);
+extern void OS2_window_set_state (wid_t, window_state_t);
+extern void OS2_window_set_colors (wid_t, COLOR, COLOR);
 
 #endif /* SCM_OS2PM_H */

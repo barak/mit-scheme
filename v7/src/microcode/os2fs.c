@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2fs.c,v 1.1 1994/11/28 03:42:57 cph Exp $
+$Id: os2fs.c,v 1.2 1994/12/19 22:31:28 cph Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -42,19 +42,50 @@ MIT in each case. */
 
 static const char * make_pathname (const char *, const char *);
 static const char * filename_extension (const char *);
+extern char * OS2_drive_type (char);
 extern char * OS2_remove_trailing_backslash (const char *);
 
 FILESTATUS3 *
 OS2_read_file_status (const char * filename)
 {
+  char name [CCHMAXPATH];
   static FILESTATUS3 info;
+  unsigned int flen = (strlen (filename));
+  FASTCOPY (filename, name, flen);
+  /* Strip trailing backslash.  */
+  if ((flen > 0) && ((name [flen - 1]) == '\\'))
+    flen -= 1;
+  (name [flen]) = '\0';
+  /* Canonicalize various forms of reference to root directory.  */
+  if ((flen == 5)
+      && (isalpha (name [0]))
+      && ((name [1]) == ':')
+      && ((name [2]) == '\\')
+      && ((name [3]) == '.')
+      && ((name [4]) == '.'))
+    (name [4]) = '\0';
+  else if ((flen == 2)
+	   && (isalpha (name [0]))
+	   && ((name [1]) == ':'))
+    {
+      (name [2]) = '\\';
+      (name [3]) = '.';
+      (name [4]) = '\0';
+    }
+  else if (flen == 0)
+    {
+      (name [0]) = '\\';
+      (name [1]) = '.';
+      (name [2]) = '\0';
+    }
   XTD_API_CALL
     (dos_query_path_info,
-     ((OS2_remove_trailing_backslash (filename)),
-      FIL_STANDARD, (&info), (sizeof (info))),
+     (name, FIL_STANDARD, (&info), (sizeof (info))),
      {
        if ((rc == ERROR_FILE_NOT_FOUND)
 	   || (rc == ERROR_PATH_NOT_FOUND)
+	   || (rc == ERROR_INVALID_PATH)
+	   || (rc == ERROR_INVALID_FSD_NAME)
 	   /* ERROR_ACCESS_DENIED can occur if the file is a symbolic
 	      link on a unix system mounted via NFS, and if the
 	      symbolic link points to a nonexistent file.  */
@@ -93,18 +124,14 @@ OS_file_access (const char * filename, unsigned int mode)
     return (0);
   if (((mode & W_OK) != 0) && (((info -> attrFile) & FILE_READONLY) != 0))
     return (0);
-  if ((mode & X_OK) != 0)
+  if (((mode & X_OK) != 0) && (((info -> attrFile) & FILE_DIRECTORY) == 0))
     {
-      if (((info -> attrFile) & FILE_DIRECTORY) != 0)
+      const char * extension = (filename_extension (filename));
+      if (! (((stricmp (extension, ".exe")) == 0)
+	     || ((stricmp (extension, ".com")) == 0)
+	     || ((stricmp (extension, ".cmd")) == 0)
+	     || ((stricmp (extension, ".bat")) == 0)))
 	return (0);
-      {
-	const char * extension = (filename_extension (filename));
-	if (! (((stricmp (extension, ".exe")) == 0)
-	       || ((stricmp (extension, ".com")) == 0)
-	       || ((stricmp (extension, ".cmd")) == 0)
-	       || ((stricmp (extension, ".bat")) == 0)))
-	  return (0);
-      }
     }
   return (1);
 }
@@ -112,8 +139,39 @@ OS_file_access (const char * filename, unsigned int mode)
 int
 OS_file_directory_p (const char * filename)
 {
-  FILESTATUS3 * info = (OS2_read_file_status (filename));
-  return ((info == 0) ? 0 : (((info -> attrFile) & FILE_DIRECTORY) != 0));
+  if (((strlen (filename)) == 3)
+      && (isalpha (filename [0]))
+      && ((filename [1]) == ':')
+      && ((filename [2]) == '\\'))
+    return ((OS2_drive_type (filename [0])) != 0);
+  else
+    {
+      FILESTATUS3 * info = (OS2_read_file_status (filename));
+      return ((info == 0) ? 0 : (((info -> attrFile) & FILE_DIRECTORY) != 0));
+    }
+}
+
+char *
+OS2_drive_type (char drive_letter)
+{
+  char name [3];
+  static char cbuf [(sizeof (FSQBUFFER2)) + (3 * CCHMAXPATH)];
+  FSQBUFFER2 * buffer = ((FSQBUFFER2 *) cbuf);
+  ULONG size = (sizeof (cbuf));
+  APIRET rc;
+  (name [0]) = drive_letter;
+  (name [1]) = ':';
+  (name [2]) = '\0';
+  (void) DosError (FERR_DISABLEEXCEPTION | FERR_DISABLEHARDERR);
+  rc = (dos_query_fs_attach (name, 0, FSAIL_QUERYNAME, buffer, (& size)));
+  (void) DosError (FERR_ENABLEEXCEPTION | FERR_ENABLEHARDERR);
+  if (rc != NO_ERROR)
+    OS2_error_system_call (rc, syscall_dos_query_fs_attach);
+  return
+    ((((buffer -> iType) == FSAT_LOCALDRV)
+      || ((buffer -> iType) == FSAT_REMOTEDRV))
+     ? ((buffer -> szName) + (buffer -> cbName) + 1)
+     : 0);
 }
 
 const char *
@@ -180,7 +238,7 @@ OS_directory_delete (const char * directory_name)
 
 typedef struct
 {
-  const char * search_pattern;
+  char allocatedp;
   HDIR handle;
   FILEFINDBUF3 info;
   ULONG count;
@@ -197,7 +255,7 @@ OS2_initialize_directory_reader (void)
 }
 
 static unsigned int
-allocate_dir_search_state (const char * search_pattern)
+allocate_dir_search_state (void)
 {
   if (n_dir_search_states == 0)
     {
@@ -208,9 +266,9 @@ allocate_dir_search_state (const char * search_pattern)
       {
 	dir_search_state * scan = dir_search_states;
 	dir_search_state * end = (scan + n_dir_search_states);
-	((scan++) -> search_pattern) = search_pattern;
+	((scan++) -> allocatedp) = 1;
 	while (scan < end)
-	  ((scan++) -> search_pattern) = 0;
+	  ((scan++) -> allocatedp) = 0;
       }
       return (0);
     }
@@ -218,9 +276,9 @@ allocate_dir_search_state (const char * search_pattern)
     dir_search_state * scan = dir_search_states;
     dir_search_state * end = (scan + n_dir_search_states);
     while (scan < end)
-      if (((scan++) -> search_pattern) == 0)
+      if (! ((scan++) -> allocatedp))
 	{
-	  ((--scan) -> search_pattern) = search_pattern;
+	  ((--scan) -> allocatedp) = 1;
 	  return (scan - dir_search_states);
 	}
   }
@@ -234,9 +292,9 @@ allocate_dir_search_state (const char * search_pattern)
     {
       dir_search_state * scan = (states + result);
       dir_search_state * end = (states + n_states);
-      ((scan++) -> search_pattern) = search_pattern;
+      ((scan++) -> allocatedp) = 1;
       while (scan < end)
-	((scan++) -> search_pattern) = 0;
+	((scan++) -> allocatedp) = 0;
     }
     dir_search_states = states;
     n_dir_search_states = n_states;
@@ -245,14 +303,7 @@ allocate_dir_search_state (const char * search_pattern)
 }
 
 #define REFERENCE_DIR_SEARCH_STATE(index) (& (dir_search_states[(index)]))
-#define DEALLOCATE_DIR_SEARCH_STATE(state)				\
-{									\
-  if ((state -> search_pattern) != 0)					\
-    {									\
-      OS_free ((void *) (state -> search_pattern));			\
-      (state -> search_pattern) = 0;					\
-    }									\
-}
+#define DEALLOCATE_DIR_SEARCH_STATE(state) ((state) -> allocatedp) = 0
 
 int
 OS_directory_valid_p (long index)
@@ -260,20 +311,29 @@ OS_directory_valid_p (long index)
   return
     ((0 <= index)
      && (index < n_dir_search_states)
-     && (((REFERENCE_DIR_SEARCH_STATE (index)) -> search_pattern) != 0));
+     && ((REFERENCE_DIR_SEARCH_STATE (index)) -> allocatedp));
 }
 
 unsigned int
 OS_directory_open (const char * search_pattern)
 {
-  unsigned int index = (allocate_dir_search_state (search_pattern));
+  static char pattern [CCHMAXPATH];
+  unsigned int index = (allocate_dir_search_state ());
   dir_search_state * s = (REFERENCE_DIR_SEARCH_STATE (index));
+  strcpy (pattern, search_pattern);
+  {
+    unsigned int len = (strlen (pattern));
+    if ((len > 0) && ((pattern [len - 1]) == '\\'))
+      strcat (pattern, "*");
+    else if (OS_file_directory_p (pattern))
+      strcat (pattern, "\\*");
+  }
   (s -> handle) = HDIR_CREATE;
   (s -> count) = 1;
   XTD_API_CALL
     (dos_find_first,
-     (((char *) (s -> search_pattern)), (& (s -> handle)), FILE_ANY,
-      (& (s -> info)), (sizeof (s -> info)), (& (s -> count)), FIL_STANDARD),
+     (pattern, (& (s -> handle)), FILE_ANY, (& (s -> info)),
+      (sizeof (s -> info)), (& (s -> count)), FIL_STANDARD),
      {
        if (rc == ERROR_NO_MORE_FILES)
 	 {

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2env.c,v 1.1 1994/11/28 03:42:56 cph Exp $
+$Id: os2env.c,v 1.2 1994/12/19 22:31:27 cph Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -33,7 +33,6 @@ promotional, or sales literature without prior written consent from
 MIT in each case. */
 
 #include "scheme.h"
-#undef END_OF_CHAIN
 #include "os2.h"
 #include "osenv.h"
 #include <time.h>
@@ -158,7 +157,7 @@ static TID timer_tid;
 static void
 initialize_timer (void)
 {
-  timer_event = (OS2_create_event_semaphore ());
+  timer_event = (OS2_create_event_semaphore (0, 1));
   timer_handle_valid = 0;
   timer_tid = (OS2_beginthread (timer_thread, 0, 0));
 }
@@ -195,14 +194,14 @@ OS_real_timer_set (clock_t first, clock_t interval)
   if (interval != 0)
     {
       STD_API_CALL (dos_start_timer, (interval,
-				      ((HSEM) (&timer_event)),
+				      ((HSEM) timer_event),
 				      (&timer_handle)));
       timer_handle_valid = 1;
     }
   else if (first != 0)
     {
       STD_API_CALL (dos_async_timer, (first,
-				      ((HSEM) (&timer_event)),
+				      ((HSEM) timer_event),
 				      (&timer_handle)));
       timer_handle_valid = 1;
     }

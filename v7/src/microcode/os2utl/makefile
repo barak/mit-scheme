@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile,v 1.2 1994/12/02 20:44:01 cph Exp $
+###	$Id: makefile,v 1.3 1994/12/19 22:32:49 cph Exp $
 ###
 ###	Copyright (c) 1994 Massachusetts Institute of Technology
 ###
@@ -233,7 +233,9 @@ prosfs.c \
 prosio.c \
 prosterm.c \
 prostty.c \
-pros2fs.c
+pros2fs.c \
+pros2io.c \
+pros2pm.c
 # prosproc.c
 # prospty.c
 
@@ -244,7 +246,9 @@ prosfs.$(OBJ) \
 prosio.$(OBJ) \
 prosterm.$(OBJ) \
 prostty.$(OBJ) \
-pros2fs.$(OBJ)
+pros2fs.$(OBJ) \
+pros2io.$(OBJ) \
+pros2pm.$(OBJ)
 #prosproc.$(OBJ)
 #prospty.$(OBJ)
 
@@ -265,7 +269,8 @@ os2pmcon.c \
 os2term.c \
 os2thrd.c \
 os2top.c \
-os2tty.c
+os2tty.c \
+os2xcpt.c
 
 OS2_OBJECTS = \
 os2.$(OBJ) \
@@ -284,7 +289,8 @@ os2pmcon.$(OBJ) \
 os2term.$(OBJ) \
 os2thrd.$(OBJ) \
 os2top.$(OBJ) \
-os2tty.$(OBJ)
+os2tty.$(OBJ) \
+os2xcpt.$(OBJ)
 
 HEAD_FILES = scheme.tch prims.h zones.h locks.h bignum.h \
 	$(GC_HEAD_FILES) trap.h lookup.h history.h cmpint.h
@@ -429,12 +435,17 @@ prosterm.$(OBJ) : osterm.h osio.h
 prostty.$(OBJ) : ostty.h osctty.h osfile.h osio.h
 prmcon.$(OBJ) : scheme.tch prims.h prmcon.h
 
-$(OS2_OBJECTS) : dstack.h osscheme.h outf.h os.h ansidecl.h oscond.h \
-	posixtyp.h syscall.h osio.h os2.h os2api.h os2cthrd.h os2ctty.h \
-	os2io.h os2msg.h os2pm.h os2thrd.h
+$(OS2_OBJECTS) pros2fs.$(OBJ) pros2io.$(OBJ) pros2pm.$(OBJ) : \
+	dstack.h osscheme.h outf.h os.h ansidecl.h oscond.h posixtyp.h \
+	syscall.h osio.h os2.h os2api.h os2cthrd.h os2ctty.h os2io.h \
+	os2msg.h os2pm.h os2thrd.h
 os2ctty.$(OBJ) : osctty.h ossig.h
-os2env.$(OBJ) : osenv.h scheme.tch
+os2env.$(OBJ) : scheme.tch osenv.h
 os2file.$(OBJ) : osfile.h
 os2fs.$(OBJ) : osfs.h
 os2top.$(OBJ) : ostop.h option.h
 os2tty.$(OBJ) : ostty.h
+os2xcpt.$(OBJ) : scheme.tch $(GC_HEAD_FILES)
+pros2fs.$(OBJ) : scheme.tch prims.h osfs.h
+pros2io.$(OBJ) : scheme.tch prims.h
+pros2pm.$(OBJ) : scheme.tch prims.h

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2.c,v 1.1 1994/11/28 03:42:53 cph Exp $
+$Id: os2.c,v 1.2 1994/12/19 22:30:05 cph Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -59,10 +59,12 @@ OS_free (void * ptr)
 }
 
 HMTX
-OS2_create_mutex_semaphore (void)
+OS2_create_mutex_semaphore (PSZ name, int sharedp)
 {
   HMTX result;
-  STD_API_CALL (dos_create_mutex_sem, (0, (&result), 0, 0));
+  STD_API_CALL
+    (dos_create_mutex_sem,
+     (name, (&result), (sharedp ? DC_SEM_SHARED : 0), 0));
   return (result);
 }
 
@@ -85,10 +87,12 @@ OS2_release_mutex_semaphore (HMTX s)
 }
 
 HEV
-OS2_create_event_semaphore (void)
+OS2_create_event_semaphore (PSZ name, int sharedp)
 {
   HEV result;
-  STD_API_CALL (dos_create_event_sem, (0, (&result), 0, 0));
+  STD_API_CALL
+    (dos_create_event_sem,
+     (name, (&result), (sharedp ? DC_SEM_SHARED : 0), 0));
   return (result);
 }
 
@@ -194,6 +198,6 @@ OS2_logic_error_1 (const char * description,
 		   unsigned int line)
 {
   outf_fatal ("\nFatal error in file \"%s\", line %d:\n%s\nGet a wizard.\n",
-	      description, file, line);
+	      file, line, description);
   termination_init_error ();
 }
