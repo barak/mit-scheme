@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: unix.scm,v 1.99 1999/09/11 05:06:20 cph Exp $
+;;; $Id: unix.scm,v 1.100 1999/10/07 15:01:49 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -313,6 +313,8 @@ Includes the new backup.  Must be > 0."
      ("h" . c)
      ("java" . java)
      ("pas" . pascal)
+     ("php" . php)
+     ("php3" . php)
      ("s" . scheme)
      ("scm" . scheme)
      ("text" . text)
