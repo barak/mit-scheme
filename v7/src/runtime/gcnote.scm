@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gcnote.scm,v 14.6 1989/10/26 06:46:11 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gcnote.scm,v 14.7 1991/09/07 05:30:43 jinx Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -94,19 +94,30 @@ MIT in each case. |#
   (write-string (gc-statistic->string statistic)))
 
 (define (gc-statistic->string statistic)
-  (let ((delta-time
-	 (- (gc-statistic/this-gc-end statistic)
-	    (gc-statistic/this-gc-start statistic))))
+  (let ((intervals->string
+	 (lambda (start end last-end)
+	   (let ((gc-length (- end start))
+		 (period (- end last-end)))
+	     (string-append
+	      (number->string (internal-time/ticks->seconds gc-length))
+	      " ("
+	      (if (zero? period)
+		  "100"
+		  (number->string
+		   (round->exact (* (/ gc-length period) 100))))
+	      "%)")))))
+	     
     (string-append "GC #"
 		   (number->string (gc-statistic/meter statistic))
-		   " took: "
-		   (number->string (internal-time/ticks->seconds delta-time))
-		   " ("
-		   (number->string
-		    (round->exact
-		     (* (/ delta-time 
-			   (- (gc-statistic/this-gc-end statistic)
-			      (gc-statistic/last-gc-end statistic)))
-			100)))
-		   "%) free: "
+		   ": took: "
+		   (intervals->string
+		    (gc-statistic/this-gc-start statistic)
+		    (gc-statistic/this-gc-end statistic)
+		    (gc-statistic/last-gc-end statistic))
+		   " process time, "
+		   (intervals->string
+		    (gc-statistic/this-gc-start-clock statistic)
+		    (gc-statistic/this-gc-end-clock statistic)
+		    (gc-statistic/last-gc-end-clock statistic))
+		   " real time; free: "
 		   (number->string (gc-statistic/heap-left statistic)))))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gcstat.scm,v 14.3 1990/03/26 19:42:44 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gcstat.scm,v 14.4 1991/09/07 05:30:57 jinx Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -51,17 +51,27 @@ MIT in each case. |#
   (set! hook/gc-finish recorder/gc-finish))
 
 (define (recorder/gc-start)
-  (process-time-clock))
+  (set! this-gc-start-clock (real-time-clock))
+  (set! this-gc-start (process-time-clock))
+  unspecific)
 
-(define (recorder/gc-finish start-time space-remaining)
-  (let ((end-time (process-time-clock)))
-    (increment-non-runtime! (- end-time start-time))
-    (statistics-flip start-time end-time space-remaining)))
+(define (recorder/gc-finish ignored space-remaining)
+  ignored
+  (let* ((end-time (process-time-clock))
+	 (end-time-clock (real-time-clock)))
+    (increment-non-runtime! (- end-time this-gc-start))
+    (statistics-flip this-gc-start end-time
+		     space-remaining
+		     this-gc-start-clock end-time-clock)))
 
 (define timestamp)
 (define total-gc-time)
 (define last-gc-start)
 (define last-gc-end)
+(define this-gc-start)
+(define this-gc-start-clock)
+(define last-gc-start-clock)
+(define last-gc-end-clock)
 
 (define (gc-timestamp)
   timestamp)
@@ -69,6 +79,8 @@ MIT in each case. |#
 (define (statistics-reset!)
   (set! timestamp (cons 1 (1+ (cdr timestamp))))
   (set! total-gc-time 0)
+  (set! last-gc-start-clock false)
+  (set! last-gc-end-clock (real-time-clock))
   (set! last-gc-start false)
   (set! last-gc-end (process-time-clock))
   (reset-recorder! '()))
@@ -79,17 +91,25 @@ MIT in each case. |#
   (this-gc-start false read-only true)
   (this-gc-end false read-only true)
   (last-gc-start false read-only true)
-  (last-gc-end false read-only true))
+  (last-gc-end false read-only true)
+  (this-gc-start-clock false read-only true)
+  (this-gc-end-clock false read-only true)
+  (last-gc-start-clock false read-only true)
+  (last-gc-end-clock false read-only true))
 
-(define (statistics-flip start-time end-time heap-left)
+(define (statistics-flip start-time end-time heap-left start-clock end-clock)
   (let ((statistic
 	 (make-gc-statistic timestamp heap-left
 			    start-time end-time
-			    last-gc-start last-gc-end)))
+			    last-gc-start last-gc-end
+			    start-clock end-clock
+			    last-gc-start-clock last-gc-end-clock)))
     (set! timestamp (cons (1+ (car timestamp)) (cdr timestamp)))
     (set! total-gc-time (+ (- end-time start-time) total-gc-time))
     (set! last-gc-start start-time)
     (set! last-gc-end end-time)
+    (set! last-gc-start-clock start-clock)
+    (set! last-gc-end-clock end-clock)
     (record-statistic! statistic)
     (hook/record-statistic! statistic)))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.120 1991/09/02 03:57:21 sybok Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.121 1991/09/07 05:31:10 jinx Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -737,9 +737,13 @@ MIT in each case. |#
 	  gc-statistic/heap-left
 	  gc-statistic/last-gc-end
 	  gc-statistic/last-gc-start
+	  gc-statistic/last-gc-end-clock
+	  gc-statistic/last-gc-start-clock
 	  gc-statistic/meter
 	  gc-statistic/this-gc-end
 	  gc-statistic/this-gc-start
+	  gc-statistic/this-gc-end-clock
+	  gc-statistic/this-gc-start-clock
 	  gc-statistics
 	  gc-timestamp
 	  gctime)
