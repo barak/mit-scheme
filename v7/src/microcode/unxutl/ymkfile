@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.30 1990/10/16 20:54:17 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.31 1990/11/08 11:14:11 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -631,21 +631,21 @@ uxenv.o : osenv.h
 uxfile.o : osfile.h osio.h uxio.h
 uxfs.o : osfs.h
 uxio.o : osio.h uxio.h
-uxproc.o : osproc.h uxproc.h
-uxsig.o : ossig.h osctty.h uxtrap.h uxutil.h critsec.h
-uxsock.o : uxsock.h
+uxproc.o : osproc.h uxproc.h osio.h uxio.h osterm.h
+uxsig.o : ossig.h osctty.h ostty.h uxtrap.h uxutil.h critsec.h
+uxsock.o : uxsock.h osio.h uxio.h
 uxterm.o : osterm.h uxterm.h osio.h uxio.h
-uxtop.o : ostop.h
+uxtop.o : ostop.h uxtop.h osctty.h uxutil.h errors.h
 uxtrap.o : scheme.touch uxtrap.h uxutil.h $(GC_HEAD_FILES)
-uxtty.o : ostty.h osenv.h osterm.h uxterm.h
+uxtty.o : ostty.h osenv.h osio.h uxio.h osterm.h uxterm.h
 uxutil.o : uxutil.h
 pruxfs.o : osfs.h
-pruxsock.o : uxsock.h
+pruxsock.o : osio.h uxsock.h
 
 $(OS_PRIM_OBJECTS) : scheme.touch prims.h posixtype.h os.h
 prosenv.o : osenv.h
 prosfile.o : osfile.h
-prosfs.o pruxfs.o : osfs.h
+prosfs.o : osfs.h
 prosio.o : osio.h
 prosproc.o : osproc.h
 prosterm.o : osterm.h osio.h
