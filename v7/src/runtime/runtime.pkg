@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.474 2004/01/16 19:43:52 cph Exp $
+$Id: runtime.pkg,v 14.475 2004/01/19 04:30:57 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -2591,13 +2591,11 @@ USA.
 	  input-buffer/char-ready?
 	  input-buffer/chars-remaining
 	  input-buffer/close
-	  input-buffer/discard-until-delimiter
 	  input-buffer/eof?
 	  input-buffer/open?
 	  input-buffer/peek-char
 	  input-buffer/read-char
 	  input-buffer/read-substring
-	  input-buffer/read-until-delimiter
 	  input-buffer/set-size
 	  input-buffer/size
 	  make-input-buffer

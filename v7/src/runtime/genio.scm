@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.20 2004/01/11 07:17:57 cph Exp $
+$Id: genio.scm,v 1.21 2004/01/19 04:30:20 cph Exp $
 
 Copyright 1991,1993,1995,1996,1999,2002 Massachusetts Institute of Technology
 Copyright 2003,2004 Massachusetts Institute of Technology
@@ -36,7 +36,6 @@ USA.
 	   (CHARS-REMAINING ,operation/chars-remaining)
 	   (CLOSE-INPUT ,operation/close-input)
 	   (DISCARD-CHAR ,operation/read-char)
-	   (DISCARD-CHARS ,operation/discard-chars)
 	   (EOF? ,operation/eof?)
 	   (INPUT-BLOCKING-MODE ,operation/input-blocking-mode)
 	   (INPUT-BUFFER-SIZE ,operation/input-buffer-size)
@@ -45,7 +44,6 @@ USA.
 	   (INPUT-TERMINAL-MODE ,operation/input-terminal-mode)
 	   (PEEK-CHAR ,operation/peek-char)
 	   (READ-CHAR ,operation/read-char)
-	   (READ-STRING ,operation/read-string)
 	   (READ-SUBSTRING ,operation/read-substring)
 	   (SET-INPUT-BLOCKING-MODE ,operation/set-input-blocking-mode)
 	   (SET-INPUT-BUFFER-SIZE ,operation/set-input-buffer-size)
@@ -167,9 +165,6 @@ USA.
 (define (operation/chars-remaining port)
   (input-buffer/chars-remaining (port/input-buffer port)))
 
-(define (operation/discard-chars port delimiters)
-  (input-buffer/discard-until-delimiter (port/input-buffer port) delimiters))
-
 (define (operation/eof? port)
   (input-buffer/eof? (port/input-buffer port)))
 
@@ -181,9 +176,6 @@ USA.
 
 (define (operation/read-substring port string start end)
   (input-buffer/read-substring (port/input-buffer port) string start end))
-
-(define (operation/read-string port delimiters)
-  (input-buffer/read-until-delimiter (port/input-buffer port) delimiters))
 
 (define (operation/input-buffer-size port)
   (input-buffer/size (port/input-buffer port)))
