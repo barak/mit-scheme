@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulfix.scm,v 4.35 1990/07/22 18:56:13 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulfix.scm,v 4.36 1990/07/23 14:22:03 jinx Exp $
 $MC68020-Header: rules1.scm,v 4.33 90/05/03 15:17:28 GMT jinx Exp $
 $MC68020-Header: lapgen.scm,v 4.35 90/07/20 15:53:40 GMT jinx Exp $
 
@@ -704,7 +704,7 @@ MIT in each case. |#
   (FIXNUM-PRED-2-ARGS (? predicate)
 		      (REGISTER (? source1))
 		      (REGISTER (? source2)))
-  (compare (fixnum-pred-2->cc predicate)
+  (compare (fixnum-pred->cc predicate)
 	   (standard-source! source1)
 	   (standard-source! source2)))
 
