@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/machin.scm,v 1.4 1991/08/14 20:55:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/machin.scm,v 1.5 1991/10/25 00:13:12 cph Exp $
 $MC68020-Header: machin.scm,v 4.22 90/05/03 15:17:20 GMT jinx Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
@@ -39,16 +39,15 @@ MIT in each case. |#
 
 ;;;; Architecture Parameters
 
+(define use-pre/post-increment? true)
 (define endianness 'LITTLE)
 (define-integrable addressing-granularity 8)
 (define-integrable scheme-object-width 32)
 (define-integrable scheme-type-width 6)	;or 8
+(define-integrable type-scale-factor (expt 2 (- 8 scheme-type-width)))
 
 (define-integrable scheme-datum-width
   (- scheme-object-width scheme-type-width))
-
-(define-integrable type-scale-factor
-  (expt 2 (- 8 scheme-type-width)))
 
 (define-integrable flonum-size 2)
 (define-integrable float-alignment 64)
@@ -372,13 +371,14 @@ MIT in each case. |#
 	  VARIABLE-CACHE
 	  OFFSET-ADDRESS)
 	 3)
-	((CONS-POINTER)
-	 (and (rtl:machine-constant? (rtl:cons-pointer-type expression))
-	      (rtl:machine-constant? (rtl:cons-pointer-datum expression))
+	((CONS-NON-POINTER)
+	 (and (rtl:machine-constant? (rtl:cons-non-pointer-type expression))
+	      (rtl:machine-constant? (rtl:cons-non-pointer-datum expression))
 	      (if-synthesized-constant
-	       (rtl:machine-constant-value (rtl:cons-pointer-type expression))
 	       (rtl:machine-constant-value
-		(rtl:cons-pointer-datum expression)))))
+		(rtl:cons-non-pointer-type expression))
+	       (rtl:machine-constant-value
+		(rtl:cons-non-pointer-datum expression)))))
 	(else false)))))
 
 (define compiler:open-code-floating-point-arithmetic?

@@ -1,9 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rulrew.scm,v 1.1 1990/05/07 04:18:00 jinx Rel $
-$MC68020-Header: rulrew.scm,v 1.1 90/01/18 22:48:52 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rulrew.scm,v 1.2 1991/10/25 00:13:43 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -40,13 +39,11 @@ MIT in each case. |#
 ;;;; Synthesized Data
 
 (define-rule rewriting
-  (CONS-POINTER (REGISTER (? type register-known-value))
-		(REGISTER (? datum register-known-value)))
+  (CONS-NON-POINTER (REGISTER (? type register-known-value))
+		    (REGISTER (? datum register-known-value)))
   (QUALIFIER (and (rtl:machine-constant? type)
 		  (rtl:machine-constant? datum)))
-  (rtl:make-cons-pointer type datum))
-
-;; I've copied these rules from the MC68020. -- Jinx.
+  (rtl:make-cons-non-pointer type datum))
 
 (define-rule rewriting
   (CONS-POINTER (REGISTER (? type register-known-value)) (? datum))
@@ -59,11 +56,31 @@ MIT in each case. |#
    datum))
 
 (define-rule rewriting
-  (CONS-POINTER (? type) (REGISTER (? datum register-known-value)))
+  (CONS-POINTER (REGISTER (? type register-known-value)) (? datum))
+  (QUALIFIER (rtl:machine-constant? type))
+  (rtl:make-cons-pointer type datum))
+
+(define-rule rewriting
+  (CONS-NON-POINTER (REGISTER (? type register-known-value)) (? datum))
+  (QUALIFIER (rtl:machine-constant? type))
+  (rtl:make-cons-non-pointer type datum))
+
+(define-rule rewriting
+  (CONS-NON-POINTER (REGISTER (? type register-known-value)) (? datum))
+  (QUALIFIER
+   (and (rtl:object->type? type)
+	(rtl:constant? (rtl:object->type-expression type))))
+  (rtl:make-cons-non-pointer
+   (rtl:make-machine-constant
+    (object-type (rtl:object->type-expression datum)))
+   datum))
+
+(define-rule rewriting
+  (CONS-NON-POINTER (? type) (REGISTER (? datum register-known-value)))
   (QUALIFIER
    (and (rtl:object->datum? datum)
 	(rtl:constant-non-pointer? (rtl:object->datum-expression datum))))
-  (rtl:make-cons-pointer
+  (rtl:make-cons-non-pointer
    type
    (rtl:make-machine-constant
     (careful-object-datum (rtl:object->datum-expression datum)))))
@@ -111,11 +128,11 @@ MIT in each case. |#
 	   (and (non-pointer-object? value)
 		(zero? (object-type value))
 		(zero? (careful-object-datum value)))))
-	((rtl:cons-pointer? expression)
-	 (and (let ((expression (rtl:cons-pointer-type expression)))
+	((rtl:cons-non-pointer? expression)
+	 (and (let ((expression (rtl:cons-non-pointer-type expression)))
 		(and (rtl:machine-constant? expression)
 		     (zero? (rtl:machine-constant-value expression))))
-	      (let ((expression (rtl:cons-pointer-datum expression)))
+	      (let ((expression (rtl:cons-non-pointer-datum expression)))
 		(and (rtl:machine-constant? expression)
 		     (zero? (rtl:machine-constant-value expression))))))
 	(else false)))

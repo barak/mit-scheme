@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.44 1991/06/14 21:19:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.45 1991/10/25 00:14:57 cph Exp $
 
-Copyright (c) 1988-1991 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -497,20 +497,21 @@ MIT in each case. |#
 			     address-units-per-packed-char)))
 
 (define (rtl:length-fetch locative)
-  (rtl:make-cons-pointer (rtl:make-machine-constant (ucode-type fixnum))
-			 (rtl:make-fetch locative)))
+  (rtl:make-cons-non-pointer (rtl:make-machine-constant (ucode-type fixnum))
+			     (rtl:make-fetch locative)))
 
 (define (rtl:vector-length-fetch locative)
-  (rtl:make-cons-pointer (rtl:make-machine-constant (ucode-type fixnum))
-			 (rtl:make-object->datum (rtl:make-fetch locative))))
+  (rtl:make-cons-non-pointer
+   (rtl:make-machine-constant (ucode-type fixnum))
+   (rtl:make-object->datum (rtl:make-fetch locative))))
 
 (define (rtl:string-fetch locative)
-  (rtl:make-cons-pointer (rtl:make-machine-constant (ucode-type character))
-			 (rtl:make-fetch locative)))
+  (rtl:make-cons-non-pointer (rtl:make-machine-constant (ucode-type character))
+			     (rtl:make-fetch locative)))
 
 (define (rtl:vector-8b-fetch locative)
-  (rtl:make-cons-pointer (rtl:make-machine-constant (ucode-type fixnum))
-			 (rtl:make-fetch locative)))
+  (rtl:make-cons-non-pointer (rtl:make-machine-constant (ucode-type fixnum))
+			     (rtl:make-fetch locative)))
 
 (define (rtl:string-assignment locative value)
   (rtl:make-assignment locative (rtl:make-char->ascii value)))
@@ -765,7 +766,7 @@ MIT in each case. |#
 	combination
 	(list (open-code:type-check char (ucode-type character)))
 	(finish
-	 (rtl:make-cons-pointer
+	 (rtl:make-cons-non-pointer
 	  (rtl:make-machine-constant (ucode-type fixnum))
 	  (rtl:make-object->datum char)))
 	finish
@@ -901,8 +902,7 @@ MIT in each case. |#
 		 (finish (rtl:make-float->object
 			  (rtl:make-flonum-1-arg
 			   flonum-operator
-			   (rtl:make-@address->float
-				     (rtl:make-object->address argument))
+			   (rtl:make-object->float argument)
 			   false)))
 		 finish
 		 flonum-operator
@@ -928,10 +928,8 @@ MIT in each case. |#
 		  (rtl:make-float->object
 		   (rtl:make-flonum-2-args
 		    flonum-operator
-		    (rtl:make-@address->float
-			      (rtl:make-object->address arg1))
-		    (rtl:make-@address->float
-			      (rtl:make-object->address arg2))
+		    (rtl:make-object->float arg1)
+		    (rtl:make-object->float arg2)
 		    false)))
 		 finish
 		 flonum-operator
@@ -952,8 +950,7 @@ MIT in each case. |#
 		 (finish
 		  (rtl:make-flonum-pred-1-arg
 		   flonum-pred
-		   (rtl:make-@address->float
-			     (rtl:make-object->address argument))))
+		   (rtl:make-object->float argument)))
 		 (lambda (expression)
 		   (finish (rtl:make-true-test expression)))
 		 flonum-pred
@@ -975,10 +972,8 @@ MIT in each case. |#
 		       (open-code:type-check arg2 (ucode-type flonum)))
 		 (finish (rtl:make-flonum-pred-2-args
 			  flonum-pred
-			  (rtl:make-@address->float
-				    (rtl:make-object->address arg1))
-			  (rtl:make-@address->float
-				    (rtl:make-object->address arg2))))
+			  (rtl:make-object->float arg1)
+			  (rtl:make-object->float arg2)))
 		 (lambda (expression)
 		   (finish (rtl:make-true-test expression)))
 		 flonum-pred

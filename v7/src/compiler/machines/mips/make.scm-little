@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/make.scm-little,v 4.87 1991/07/25 02:40:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/make.scm-little,v 4.88 1991/10/25 00:13:19 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -36,10 +36,5 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(package/system-loader "comp" '() 'QUERY)
-(for-each (lambda (name)
-	    ((package/reference (find-package name) 'INITIALIZE-PACKAGE!)))
-	  '((COMPILER MACROS)
-	    (COMPILER DECLARATIONS)))
-(set! (access endianness (->environment '(COMPILER))) 'LITTLE)
-(add-system! (make-system "Liar (MIPS)" 4 87 '()))
+((load "base/make") "MIPS")
+(environment-assign! (->environment '(COMPILER)) 'ENDIANNESS 'LITTLE)

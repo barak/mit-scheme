@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcompr.scm,v 1.11 1991/03/21 09:42:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcompr.scm,v 1.12 1991/10/25 00:15:18 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -167,9 +167,17 @@ MIT in each case. |#
 	    ((and (rtl:cons-pointer? expression)
 		  (rtl:machine-constant? (rtl:cons-pointer-type expression)))
 	     (recursion rtl:cons-pointer-datum
-			(lambda (datum)
-			  (rtl:make-cons-pointer (rtl:cons-pointer-type expression)
-						 datum))))
+	       (lambda (datum)
+		 (rtl:make-cons-pointer (rtl:cons-pointer-type expression)
+					datum))))
+	    ((and (rtl:cons-non-pointer? expression)
+		  (rtl:machine-constant?
+		   (rtl:cons-non-pointer-type expression)))
+	     (recursion rtl:cons-non-pointer-datum
+	       (lambda (datum)
+		 (rtl:make-cons-non-pointer
+		  (rtl:cons-non-pointer-type expression)
+		  datum))))
 	    ((rtl:object->address? expression)
 	     (recursion rtl:object->address-expression
 			rtl:make-object->address))

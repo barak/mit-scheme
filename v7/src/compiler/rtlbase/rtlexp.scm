@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlexp.scm,v 4.17 1991/05/06 22:42:58 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlexp.scm,v 4.18 1991/10/25 00:14:21 cph Exp $
 
-Copyright (c) 1987-1991 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -60,12 +60,14 @@ MIT in each case. |#
   (case (rtl:expression-type expression)
     ((REGISTER)
      (register-value-class (rtl:register-number expression)))
-    ((CONS-POINTER CONSTANT FIXNUM->OBJECT FLOAT->OBJECT GENERIC-BINARY
-		   GENERIC-UNARY OFFSET POST-INCREMENT PRE-INCREMENT
-		   ;; This is a lie, but it is the only way in which it is
-		   ;; used now!  It should be moved to value-class=address,
-		   ;; and a cast type introduced to handle current usage.
-		   BYTE-OFFSET-ADDRESS)
+    ((CONS-NON-POINTER CONS-POINTER CONSTANT FIXNUM->OBJECT FLOAT->OBJECT
+		       GENERIC-BINARY GENERIC-UNARY OFFSET POST-INCREMENT
+		       PRE-INCREMENT
+		       ;; This is a lie, but it is the only way that
+		       ;; it is used now!  It should be moved to
+		       ;; value-class=address, and a cast type
+		       ;; introduced to handle current usage.
+		       BYTE-OFFSET-ADDRESS)
      value-class=object)
     ((FIXNUM->ADDRESS OBJECT->ADDRESS
 		      OFFSET-ADDRESS
@@ -84,7 +86,7 @@ MIT in each case. |#
      value-class=fixnum)
     ((OBJECT->TYPE)
      value-class=type)
-    ((@ADDRESS->FLOAT FLONUM-1-ARG FLONUM-2-ARGS)
+    ((OBJECT->FLOAT FLONUM-1-ARG FLONUM-2-ARGS)
      value-class=float)
     (else
      (error "unknown RTL expression type" expression))))
@@ -110,7 +112,7 @@ MIT in each case. |#
 (define (rtl:register-assignment? rtl)
   (and (rtl:assign? rtl)
        (rtl:register? (rtl:assign-address rtl))))
-
+
 (define (rtl:expression-cost expression)
   (if (rtl:register? expression)
       1
@@ -122,7 +124,7 @@ MIT in each case. |#
 		      (if (pair? (car parts))
 			  (+ cost (rtl:expression-cost (car parts)))
 			  cost)))))))
-
+
 (define (rtl:map-subexpressions expression procedure)
   (if (rtl:constant? expression)
       expression
@@ -187,7 +189,7 @@ MIT in each case. |#
 			    (rtl:expression=? (car x) (car y))
 			    (eqv? (car x) (car y)))
 			(loop (cdr x) (cdr y)))))))))
-
+
 (define (rtl:match-subexpressions x y predicate)
   (let ((type (car x)))
     (and (eq? type (car y))
@@ -199,7 +201,7 @@ MIT in each case. |#
 			    (predicate (car x) (car y))
 			    (eqv? (car x) (car y)))
 			(loop (cdr x) (cdr y)))))))))
-
+
 (define (rtl:refers-to-register? rtl register)
   (let loop
       ((expression
@@ -275,6 +277,7 @@ MIT in each case. |#
      true)
     ((BYTE-OFFSET-ADDRESS
       CHAR->ASCII
+      CONS-NON-POINTER
       CONS-POINTER
       FIXNUM-1-ARG
       FIXNUM-2-ARGS

@@ -1,9 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rules2.scm,v 1.1 1990/05/07 04:16:16 jinx Rel $
-$MC68020-Header: rules2.scm,v 4.12 90/01/18 22:44:04 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rules2.scm,v 1.2 1991/10/25 00:13:25 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -57,21 +56,23 @@ MIT in each case. |#
     (if (non-pointer-object? constant)
 	(compare-immediate '= (non-pointer->literal constant) source)
 	(let ((temp (standard-temporary!)))
-	  (LAP ,@(load-constant constant temp #T)
+	  (LAP ,@(load-pc-relative temp
+				   'CONSTANT (constant->label constant)
+				   #T)
 	       ,@(compare '= temp source))))))
 
 (define-rule predicate
   ;; test for register EQ? to synthesized constant
-  (EQ-TEST (CONS-POINTER (MACHINE-CONSTANT (? type))
-			 (MACHINE-CONSTANT (? datum)))
+  (EQ-TEST (CONS-NON-POINTER (MACHINE-CONSTANT (? type))
+			     (MACHINE-CONSTANT (? datum)))
 	   (REGISTER (? register)))
   (eq-test/synthesized-constant*register type datum register))
 
 (define-rule predicate
   ;; test for register EQ? to synthesized constant
   (EQ-TEST (REGISTER (? register))
-	   (CONS-POINTER (MACHINE-CONSTANT (? type))
-			 (MACHINE-CONSTANT (? datum))))
+	   (CONS-NON-POINTER (MACHINE-CONSTANT (? type))
+			     (MACHINE-CONSTANT (? datum))))
   (eq-test/synthesized-constant*register type datum register))
 
 (define (eq-test/synthesized-constant*register type datum source)

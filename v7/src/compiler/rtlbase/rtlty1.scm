@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 4.18 1991/05/06 22:42:42 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 4.19 1991/10/25 00:14:27 cph Exp $
 
-Copyright (c) 1987-1991 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -92,6 +92,7 @@ MIT in each case. |#
 (define-rtl-expression object->datum rtl: expression)
 (define-rtl-expression object->type rtl: expression)
 (define-rtl-expression cons-pointer rtl: type datum)
+(define-rtl-expression cons-non-pointer rtl: type datum)
 
 ;;; Convert a character object to an ASCII machine integer
 (define-rtl-expression char->ascii rtl: expression)
@@ -109,16 +110,16 @@ MIT in each case. |#
 (define-rtl-expression fixnum-1-arg rtl: operator operand overflow?)
 (define-rtl-expression fixnum-2-args rtl: operator operand-1 operand-2
   overflow?)
-
+
 ;;; Conversion between flonums and machine floats
 (define-rtl-expression float->object rtl: expression)
-(define-rtl-expression @address->float rtl: expression)
+(define-rtl-expression object->float rtl: expression)
 
 ;;; Floating-point arithmetic operations
 (define-rtl-expression flonum-1-arg rtl: operator operand overflow?)
 (define-rtl-expression flonum-2-args rtl: operator operand-1 operand-2
   overflow?)
-
+
 (define-rtl-predicate fixnum-pred-1-arg % predicate operand)
 (define-rtl-predicate fixnum-pred-2-args % predicate operand-1 operand-2)
 

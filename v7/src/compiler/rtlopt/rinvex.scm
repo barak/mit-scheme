@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rinvex.scm,v 1.5 1991/05/06 22:44:31 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rinvex.scm,v 1.6 1991/10/25 00:15:37 cph Exp $
 
-Copyright (c) 1989-1991 Massachusetts Institute of Technology
+Copyright (c) 1989-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -113,10 +113,10 @@ MIT in each case. |#
   unspecific)
 
 (define (expression-update! get-expression set-expression! object)
-  ;; Note: The following code may cause pseudo register copies to be
+  ;; Note: The following code may cause pseudo-register copies to be
   ;; generated since it would have to propagate some of the
-  ;; simplifications, and then delete the now-unused registers.
-  ;; This is not worth it since the previous register is likely to be
+  ;; simplifications, and then delete the now unused registers.  This
+  ;; is not worthwhile since the previous register is likely to be
   ;; dead at this point, so the lap-level register allocator will
   ;; reuse the alias achieving the effect of the deletion.  Ultimately
   ;; the expression invertibility code should be integrated into the
@@ -129,36 +129,40 @@ MIT in each case. |#
 	 (optimize-expression (rtl:map-subexpressions expression loop))))))
 
 (define (optimize-expression expression)
-  (define (try-identity identity)
-    (let ((in-domain? (car identity))
-	  (matching-operation (cadr identity)))
-      (let loop ((operations (cddr identity))
-		 (subexpression ((cadr matching-operation) expression)))
-	(if (null? operations)
-	    (and (valid-subexpression? subexpression)
-		 (in-domain? (rtl:expression-value-class subexpression))
-		 subexpression)
-	    (let ((subexpression (canonicalize-subexpression subexpression)))
-	      (and (eq? (caar operations) (rtl:expression-type subexpression))
-		   (loop (cdr operations)
-			 ((cadar operations) subexpression))))))))
-
-  (let loop ((rules (list-transform-positive
-			identities
-		      (let ((type (rtl:expression-type expression)))
-			(lambda (identity)
-			  (eq? type (car (cadr identity))))))))
-
-    (cond ((null? rules) expression)
-	  ((try-identity (car rules)) => optimize-expression)
-	  (else (loop (cdr rules))))))
+  (let loop
+      ((identities
+	(list-transform-positive identities
+	  (let ((type (rtl:expression-type expression)))
+	    (lambda (identity)
+	      (eq? type (car (cadr identity))))))))
+    (cond ((null? identities)
+	   expression)
+	  ((let ((identity (car identities)))
+	     (let ((in-domain? (car identity))
+		   (matching-operation (cadr identity)))
+	       (let loop
+		   ((operations (cddr identity))
+		    (subexpression ((cadr matching-operation) expression)))
+		 (if (null? operations)
+		     (and (valid-subexpression? subexpression)
+			  (in-domain?
+			   (rtl:expression-value-class subexpression))
+			  subexpression)
+		     (let ((subexpression
+			    (canonicalize-subexpression subexpression)))
+		       (and (eq? (caar operations)
+				 (rtl:expression-type subexpression))
+			    (loop (cdr operations)
+				  ((cadar operations) subexpression))))))))
+	   => optimize-expression)
+	  (else
+	   (loop (cdr identities))))))
 
 (define identities
-  ;; Each entry is composed of a value class and a sequence
-  ;; of operations whose composition is the identity for that
-  ;; value class.
-  ;; Each operation is described by the operator and the selector for
-  ;; the relevant operand.
+  ;; Each entry is composed of a value class and a sequence of
+  ;; operations whose composition is the identity for that value
+  ;; class.  Each operation is described by the operator and the
+  ;; selector for the relevant operand.
   `((,value-class=value? (OBJECT->FIXNUM ,rtl:object->fixnum-expression)
 			 (FIXNUM->OBJECT ,rtl:fixnum->object-expression))
     (,value-class=value? (FIXNUM->OBJECT ,rtl:fixnum->object-expression)
@@ -173,25 +177,19 @@ MIT in each case. |#
 			 (ADDRESS->FIXNUM ,rtl:address->fixnum-expression))
     (,value-class=value? (ADDRESS->FIXNUM ,rtl:address->fixnum-expression)
 			 (FIXNUM->ADDRESS ,rtl:fixnum->address-expression))
-    (,value-class=value? (@ADDRESS->FLOAT ,rtl:@address->float-expression)
-			 (OBJECT->ADDRESS ,rtl:object->address-expression)
+    (,value-class=value? (OBJECT->FLOAT ,rtl:object->float-expression)
 			 (FLOAT->OBJECT ,rtl:float->object-expression))
     (,value-class=value? (FLOAT->OBJECT ,rtl:float->object-expression)
-			 (@ADDRESS->FLOAT ,rtl:@address->float-expression)
-			 (OBJECT->ADDRESS ,rtl:object->address-expression))
-    #|
-    ;; This one, although true, is useless.
-    (,value-class=value? (OBJECT->ADDRESS ,rtl:object->address-expression)
-			 (FLOAT->OBJECT ,rtl:float->object-expression)
-			 (@ADDRESS->FLOAT ,rtl:@address->float-expression))
-    |#
+			 (OBJECT->FLOAT ,rtl:object->float-expression))
     (,value-class=address? (OBJECT->ADDRESS ,rtl:object->address-expression)
 			   (CONS-POINTER ,rtl:cons-pointer-datum))
     (,value-class=datum? (OBJECT->DATUM ,rtl:object->datum-expression)
-			 (CONS-POINTER ,rtl:cons-pointer-datum))
+			 (CONS-NON-POINTER ,rtl:cons-non-pointer-datum))
     ;; Perhaps this should be value-class=type
     (,value-class=immediate? (OBJECT->TYPE ,rtl:object->type-expression)
-			     (CONS-POINTER ,rtl:cons-pointer-type))))
+			     (CONS-POINTER ,rtl:cons-pointer-type))
+    (,value-class=immediate? (OBJECT->TYPE ,rtl:object->type-expression)
+			     (CONS-NON-POINTER ,rtl:cons-non-pointer-type))))
 
 (define (valid-subexpression? expression)
   ;; Machine registers not allowed because they are volatile.

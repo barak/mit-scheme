@@ -1,7 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/lapgen.scm,v 1.7 1991/08/17 00:15:34 cph Exp $
-$MC68020-Header: lapgen.scm,v 4.26 90/01/18 22:43:36 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/lapgen.scm,v 1.8 1991/10/25 00:13:08 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -153,20 +152,27 @@ MIT in each case. |#
     ((FLOAT) (fp-store-doubleword offset base source))
     (else (error "unknown register type" source))))
 
-(define (load-constant constant target #!optional delay-slot?)
+(define (load-constant target constant delay-slot? record?)
   ;; Load a Scheme constant into a machine register.
-  (let ((delay-slot? (and (not (default-object? delay-slot?)) delay-slot?)))
-    (if (non-pointer-object? constant)
-	(load-immediate (non-pointer->literal constant) target)
-	(load-pc-relative target
-			  'CONSTANT
-			  (constant->label constant)
-			  delay-slot?))))
+  (if (non-pointer-object? constant)
+      (load-immediate target (non-pointer->literal constant) record?)
+      (load-pc-relative target
+			'CONSTANT
+			(constant->label constant)
+			delay-slot?)))
 
-(define (load-non-pointer type datum target)
-  ;; Load a Scheme non-pointer constant, defined by type and datum,
-  ;; into a machine register.
-  (load-immediate (make-non-pointer-literal type datum) target))
+(define (deposit-type-address type source target)
+  (deposit-type-datum (fix:xor (quotient #x10 type-scale-factor) type)
+		      source
+		      target))
+
+(define (deposit-type-datum type source target)
+  (with-values
+      (lambda ()
+	(immediate->register (make-non-pointer-literal type 0)))
+    (lambda (prefix alias)
+      (LAP ,@prefix
+	   (XOR ,target ,alias ,source)))))
 
 (define (non-pointer->literal constant)
   (make-non-pointer-literal (object-type constant)
@@ -174,18 +180,6 @@ MIT in each case. |#
 
 (define-integrable (make-non-pointer-literal type datum)
   (+ (* type (expt 2 scheme-datum-width)) datum))
-
-(define-integrable (deposit-type type-num target-reg)
-  (if (= target-reg regnum:assembler-temp)
-      (error "deposit-type: into register 1"))
-  (LAP (AND ,target-reg ,target-reg ,regnum:address-mask)
-       ,@(put-type type-num target-reg)))
-
-(define-integrable (put-type type-num target-reg)
-  ; Assumes that target-reg has 0 in type bits
-  (LAP (LUI ,regnum:assembler-temp
-	    ,(* type-scale-factor #x100 type-num))
-       (OR  ,target-reg ,regnum:assembler-temp ,target-reg)))
 
 ;;;; Regularized Machine Instructions
 
@@ -223,23 +217,6 @@ MIT in each case. |#
   (if (= r t)
       (LAP)
       (LAP (ADD ,t 0 ,r))))
-
-(define (add-immediate value source dest)
-  (if (fits-in-16-bits-signed? value)
-      (LAP (ADDIU ,dest ,source ,value))
-      (LAP ,@(load-immediate value regnum:assembler-temp)
-	   (ADDU ,dest ,regnum:assembler-temp ,source))))
-
-(define (load-immediate value dest)
-  (cond ((fits-in-16-bits-signed? value)
-	 (LAP (ADDIU ,dest 0 ,value)))
-	((fits-in-16-bits-unsigned? value)
-	 (LAP (ORI ,dest 0 ,value)))
-	((top-16-bits-only? value)
-	 (LAP (LUI ,dest ,(top-16-bits value))))
-	(else
-	 (LAP (LUI ,dest ,(top-16-bits value))
-	      (ORI ,dest ,dest ,(bottom-16-bits value))))))
 
 (define (fp-copy from to)
   (if (= to from)
@@ -328,10 +305,15 @@ MIT in each case. |#
       (cond ((null? entries*)
 	     ;; If no entries of the given type, use any entry that is
 	     ;; available.
-	     (if (null? entries)
-		 (values false false)
-		 (values (cdaar entries) (cadar entries))))
-	    ((eq? type (caaar entries*))
+	     (let loop ((entries entries))
+	       (cond ((null? entries)
+		      (values false false))
+		     ((pair? (caar entries))
+		      (values (cdaar entries) (cadar entries)))
+		     (else
+		      (loop (cdr entries))))))
+	    ((and (pair? (caar entries*))
+		  (eq? type (caaar entries*)))
 	     (values (cdaar entries*) (cadar entries*)))
 	    (else
 	     (loop (cdr entries*)))))))
@@ -341,47 +323,105 @@ MIT in each case. |#
 	(set-machine-register-label *register-map* alias (cons type label)))
   unspecific)
 
+(define (immediate->register immediate)
+  (let ((register (get-immediate-alias immediate)))
+    (if register
+	(values (LAP) register)
+	(let ((temporary (standard-temporary!)))
+	  (set! *register-map*
+		(set-machine-register-label *register-map*
+					    temporary
+					    immediate))
+	  (values (%load-immediate temporary immediate) temporary)))))
+
+(define (get-immediate-alias immediate)
+  (let loop ((entries (register-map-labels *register-map* 'GENERAL)))
+    (cond ((null? entries)
+	   false)
+	  ((eqv? (caar entries) immediate)
+	   (cadar entries))
+	  (else
+	   (loop (cdr entries))))))
+
+(define (load-immediate target immediate record?)
+  (let ((registers (get-immediate-aliases immediate)))
+    (if (memv target registers)
+	(LAP)
+	(begin
+	  (if record?
+	      (set! *register-map*
+		    (set-machine-register-label *register-map*
+						target
+						immediate)))
+	  (if (not (null? registers))
+	      (LAP (ADD ,target 0 ,(car registers)))
+	      (%load-immediate target immediate))))))
+
+(define (get-immediate-aliases immediate)
+  (let loop ((entries (register-map-labels *register-map* 'GENERAL)))
+    (cond ((null? entries)
+	   '())
+	  ((eqv? (caar entries) immediate)
+	   (append (cdar entries) (loop (cdr entries))))
+	  (else
+	   (loop (cdr entries))))))
+
+(define (%load-immediate target immediate)
+  (cond ((fits-in-16-bits-signed? immediate)
+	 (LAP (ADDIU ,target 0 ,immediate)))
+	((fits-in-16-bits-unsigned? immediate)
+	 (LAP (ORI ,target 0 ,immediate)))
+	((top-16-bits-only? immediate)
+	 (LAP (LUI ,target ,(top-16-bits immediate))))
+	(else
+	 (LAP (LUI ,target ,(top-16-bits immediate))
+	      (ORI ,target ,target ,(bottom-16-bits immediate))))))
+
+(define (add-immediate immediate source target)
+  (if (fits-in-16-bits-signed? immediate)
+      (LAP (ADDIU ,target ,source ,immediate))
+      (with-values (lambda () (immediate->register immediate))
+	(lambda (prefix alias)
+	  (LAP ,@prefix
+	       (ADDU ,target ,source ,alias))))))
+
 ;;;; Comparisons
 
-(define (compare-immediate comp i r2)
-  ; Branch if immediate <comp> r2
+(define (compare-immediate comp immediate source)
+  ; Branch if immediate <comp> source
   (let ((cc (invert-condition-noncommutative comp)))
     ;; This machine does register <op> immediate; you can
     ;; now think of cc in this way
-    (if (zero? i)
+    (if (zero? immediate)
 	(begin
 	  (branch-generator! cc
-	    `(BEQ 0 ,r2) `(BLTZ ,r2) `(BGTZ ,r2)
-	    `(BNE 0 ,r2) `(BGEZ ,r2) `(BLEZ ,r2))
+	    `(BEQ 0 ,source) `(BLTZ ,source) `(BGTZ ,source)
+	    `(BNE 0 ,source) `(BGEZ ,source) `(BLEZ ,source))
 	  (LAP))
-      (let ((temp (standard-temporary!)))
-	(if (fits-in-16-bits-signed?
-	     (if (or (eq? '> cc) (eq? '<= cc))
-		 (+ i 1)
-		 i))
-	    (begin
-	      (branch-generator! cc
-	        `(BEQ ,temp ,r2) `(BNE 0 ,temp) `(BEQ 0 ,temp)
-		`(BNE ,temp ,r2) `(BEQ 0 ,temp) `(BNE 0 ,temp))
-	      (case cc
-		((= <>) (LAP (ADDI ,temp 0 ,i)))
-		((< >=) (LAP (SLTI ,temp ,r2 ,i)))
-		((> <=) (LAP (SLTI ,temp ,r2 ,(+ i 1))))))
-	    (LAP ,@(load-immediate i temp)
-		 ,@(compare comp temp r2)))))))
+	(with-values (lambda () (immediate->register immediate))
+	  (lambda (prefix alias)
+	    (LAP ,@prefix
+		 ,@(compare comp alias source)))))))
 
 (define (compare condition r1 r2)
   ; Branch if r1 <cc> r2
-  (let ((temp (if (memq condition '(< > <= >=))
-		  (standard-temporary!)
-		  '())))
-    (branch-generator! condition
-      `(BEQ ,r1 ,r2) `(BNE ,temp 0) `(BNE ,temp 0)
-      `(BNE ,r1 ,r2) `(BEQ ,temp 0) `(BEQ ,temp 0))
-    (case condition
-      ((= <>) (LAP))
-      ((< >=) (LAP (SLT ,temp ,r1 ,r2)))
-      ((> <=) (LAP (SLT ,temp ,r2 ,r1))))))
+  (if (= r1 r2)
+      (let ((branch
+	     (lambda (label) (LAP (BGEZ 0 (@PCR ,label)) (NOP))))
+	    (dont-branch
+	     (lambda (label) label (LAP))))
+	(if (memq condition '(< > <>))
+	    (set-current-branches! dont-branch branch)
+	    (set-current-branches! branch dont-branch))
+	(LAP))
+      (let ((temp (and (memq condition '(< > <= >=)) (standard-temporary!))))
+	(branch-generator! condition
+	  `(BEQ ,r1 ,r2) `(BNE ,temp 0) `(BNE ,temp 0)
+	  `(BNE ,r1 ,r2) `(BEQ ,temp 0) `(BEQ ,temp 0))
+	(case condition
+	  ((= <>) (LAP))
+	  ((< >=) (LAP (SLT ,temp ,r1 ,r2)))
+	  ((> <=) (LAP (SLT ,temp ,r2 ,r1)))))))
 
 (define (branch-generator! cc = < > <> >= <=)
   (let ((forward
@@ -422,22 +462,18 @@ MIT in each case. |#
 
 ;;;; Miscellaneous
 
-(define-integrable (object->datum src tgt)
-  ; Zero out the type field; don't put in the quad bits
-  (LAP (AND ,tgt ,regnum:address-mask ,src)))
-
-(define-integrable (object->address reg)
-  ; Drop in the segment bits 
-  (LAP (AND ,reg ,regnum:address-mask ,reg)
-       ,@(put-address-bits reg)))
-
-(define-integrable (put-address-bits reg)
-  ; Drop in the segment bits, assuming they are currently 0
-  (LAP (OR ,reg ,reg ,regnum:quad-bits)))
-
-(define-integrable (object->type src tgt)
+(define-integrable (object->type source target)
   ; Type extraction
-  (LAP (SRL ,tgt ,src ,(- 32 scheme-type-width))))
+  (LAP (SRL ,target ,source ,(- 32 scheme-type-width))))
+
+(define-integrable (object->datum source target)
+  ; Zero out the type field; don't put in the quad bits
+  (LAP (AND ,target ,source ,regnum:address-mask)))
+
+(define (object->address source target)
+  ; Drop in the segment bits 
+  (LAP (AND ,target ,source ,regnum:address-mask)
+       (OR ,target ,target ,regnum:quad-bits)))
 
 (define (standard-unary-conversion source target conversion)
   ;; `source' is any register, `target' a pseudo register.
@@ -474,11 +510,11 @@ MIT in each case. |#
        (and (zero? (object-type object))
 	    (zero? (object-datum object))
 	    0)))
-    ((CONS-POINTER)
-     (and (let ((type (rtl:cons-pointer-type expression)))
+    ((CONS-NON-POINTER)
+     (and (let ((type (rtl:cons-non-pointer-type expression)))
 	    (and (rtl:machine-constant? type)
 		 (zero? (rtl:machine-constant-value type))))
-	  (let ((datum (rtl:cons-pointer-datum expression)))
+	  (let ((datum (rtl:cons-non-pointer-datum expression)))
 	    (and (rtl:machine-constant? datum)
 		 (zero? (rtl:machine-constant-value datum))))
 	  0))

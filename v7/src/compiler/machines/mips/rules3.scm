@@ -1,7 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rules3.scm,v 1.9 1991/08/23 09:15:03 cph Exp $
-$MC68020-Header: /scheme/compiler/bobcat/RCS/rules3.scm,v 4.30 1991/05/07 13:45:31 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rules3.scm,v 1.10 1991/10/25 00:13:29 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -48,7 +47,7 @@ MIT in each case. |#
     (LAP ,@(clear-map!)
 	 (LW ,temp (OFFSET 0 ,regnum:stack-pointer))
 	 (ADDI ,regnum:stack-pointer ,regnum:stack-pointer 4)
-	 ,@(object->address temp)
+	 ,@(object->address temp temp)
 	 (JR ,temp)
 	 (NOP))))			; DELAY SLOT
 
@@ -56,7 +55,7 @@ MIT in each case. |#
   (INVOCATION:APPLY (? frame-size) (? continuation))
   continuation				;ignore
   (LAP ,@(clear-map!)
-       ,@(load-immediate frame-size regnum:third-arg)
+       ,@(load-immediate regnum:third-arg frame-size #F)
        (LW ,regnum:second-arg (OFFSET 0 ,regnum:stack-pointer))
        (ADDI ,regnum:stack-pointer ,regnum:stack-pointer 4)
        ,@(invoke-interface code:compiler-apply)))
@@ -83,7 +82,7 @@ MIT in each case. |#
     (LAP ,@clear-second-arg
 	 ,@load-second-arg
 	 ,@(clear-map!)
-	 ,@(load-immediate number-pushed regnum:third-arg)
+	 ,@(load-immediate regnum:third-arg number-pushed #F)
 	 ,@(invoke-interface code:compiler-lexpr-apply))))
 
 (define-rule statement
@@ -93,8 +92,8 @@ MIT in each case. |#
   (LAP ,@(clear-map!)
        (LW ,regnum:second-arg (OFFSET 0 ,regnum:stack-pointer))
        (ADDI ,regnum:stack-pointer ,regnum:stack-pointer 4)
-       ,@(load-immediate number-pushed regnum:third-arg)
-       ,@(object->address regnum:second-arg)
+       ,@(object->address regnum:second-arg regnum:second-arg)
+       ,@(load-immediate regnum:third-arg number-pushed #F)
        ,@(invoke-interface code:compiler-lexpr-apply)))
 
 (define-rule statement
@@ -122,7 +121,7 @@ MIT in each case. |#
     (LAP ,@clear-third-arg
 	 ,@load-third-arg
 	 ,@(load-interface-args! extension false false false)
-	 ,@(load-immediate frame-size regnum:fourth-arg)
+	 ,@(load-immediate regnum:fourth-arg frame-size #F)
 	 ,@(invoke-interface code:compiler-cache-reference-apply))))
 
 (define-rule statement
@@ -132,8 +131,8 @@ MIT in each case. |#
 		     (? name))
   continuation				;ignore
   (LAP ,@(load-interface-args! environment false false false)
-       ,(load-constant name regnum:third-arg)
-       ,(load-immediate frame-size regnum:fourth-arg)
+       ,@(load-constant regnum:third-arg name #F #F)
+       ,@(load-immediate regnum:fourth-arg frame-size #F)
        ,@(invoke-interface code:compiler-lookup-apply)))
 
 (define-rule statement
@@ -141,7 +140,7 @@ MIT in each case. |#
   continuation				;ignore
   (if (eq? primitive compiled-error-procedure)
       (LAP ,@(clear-map!)
-	   ,@(load-immediate frame-size regnum:second-arg)
+	   ,@(load-immediate regnum:second-arg frame-size #F)
 	   ,@(invoke-interface code:compiler-error))
       (let* ((clear-second-arg (clear-registers! regnum:second-arg))
 	     (load-second-arg
@@ -156,16 +155,16 @@ MIT in each case. |#
 		 (cond ((not (negative? arity))
 			(invoke-interface code:compiler-primitive-apply))
 		       ((= arity -1)
-			(LAP ,@(load-immediate (-1+ frame-size)
-					       regnum:assembler-temp)
-
+			(LAP ,@(load-immediate regnum:assembler-temp
+						(-1+ frame-size)
+						#F)
 			     (SW ,regnum:assembler-temp
 				 ,reg:lexpr-primitive-arity)
 			     ,@(invoke-interface
 				code:compiler-primitive-lexpr-apply)))
 		       (else
 			;; Unknown primitive arity.  Go through apply.
-			(LAP ,@(load-immediate frame-size regnum:third-arg)
+			(LAP ,@(load-immediate regnum:third-arg frame-size #F)
 			     ,@(invoke-interface code:compiler-apply)))))))))
 
 (let-syntax
@@ -330,7 +329,7 @@ MIT in each case. |#
 				   (ADDI ,destination ,destination -8)
 				   ,@(loop (- n 2))))))
 			 (let ((label (generate-label)))
-			   (LAP ,@(load-immediate frame-size temp2)
+			   (LAP ,@(load-immediate temp2 frame-size #F)
 				(LABEL ,label)
 				(LW ,temp1 (OFFSET -4 ,from))
 				(ADDI ,from ,from -4)
@@ -476,9 +475,6 @@ MIT in each case. |#
 
 ;; Magic for compiled entries.
 
-(define-integrable (address->entry register)
-  (deposit-type (ucode-type compiled-entry) register))
-
 (define-rule statement
   (CLOSURE-HEADER (? internal-label) (? nentries) (? entry))
   entry			; ignored -- non-RISCs only
@@ -493,10 +489,16 @@ MIT in each case. |#
 	   ,@(make-external-label
 	      (internal-procedure-code-word rtl-proc)
 	      external-label)
-	   ; Code below here corresponds to code and count in cmpint2.h
-	   ,@(address->entry regnum:linkage)
-	   (SW ,regnum:linkage (OFFSET -4 ,regnum:stack-pointer))
+	   ;; Code below here corresponds to code and count in cmpint2.h
+	   ,@(fluid-let ((*register-map* *register-map*))
+	       ;; Don't cache type constant here, because it won't be
+	       ;; in the register if the closure is entered from the
+	       ;; internal label.
+	       (deposit-type-address (ucode-type compiled-entry)
+				     regnum:linkage
+				     regnum:linkage))
 	   (ADDI ,regnum:stack-pointer ,regnum:stack-pointer -4)
+	   (SW ,regnum:linkage (OFFSET 0 ,regnum:stack-pointer))
 	   (LABEL ,internal-label)
 	   ,@(interrupt-check gc-label)))))
 
@@ -525,7 +527,7 @@ MIT in each case. |#
 	   (LI ,regnum:first-arg
 	       (- ,(rtl-procedure/external-label (label->object label))
 		  ,return-label))
-	   ,@(load-immediate (+ size closure-entry-size) 1)
+	   ,@(load-immediate 1 (+ size closure-entry-size) #F)
 	   (LUI 25 ,(quotient gc-offset-word #x10000))
 	   (ADDI ,dest ,regnum:scheme-to-interface -88)
 	   (JALR 31 ,dest)
@@ -548,7 +550,10 @@ MIT in each case. |#
      (let ((dest (standard-target! target))
 	   (temp (standard-temporary!)))
        (LAP (ADD ,dest 0 ,regnum:free)
-	    ,@(load-non-pointer (ucode-type manifest-vector) size temp)
+	    ,@(load-immediate
+	       temp
+	       (make-non-pointer-literal (ucode-type manifest-vector) size)
+	       #T)
 	    (SW ,temp (OFFSET 0 ,regnum:free))
 	    (ADDI ,regnum:free ,regnum:free ,(* 4 (+ size 1))))))
     ((1)
@@ -590,10 +595,20 @@ MIT in each case. |#
 				   (+ (* closure-entry-size 4) offset)))))))
 
     (LAP
-     ,@(load-non-pointer (ucode-type manifest-closure) total-size temp)
-     (SW ,temp (OFFSET 0 ,regnum:free))
-     ,@(load-immediate (build-gc-offset-word 0 nentries) temp)
-     (SW ,temp (OFFSET 4 ,regnum:free))
+     ,@(with-values
+	   (lambda ()
+	     (immediate->register
+	      (make-non-pointer-literal (ucode-type manifest-closure)
+					total-size)))
+	 (lambda (prefix register)
+	   (LAP ,@prefix
+		(SW ,register (OFFSET 0 ,regnum:free)))))
+     ,@(with-values
+	   (lambda ()
+	     (immediate->register (build-gc-offset-word 0 nentries)))
+	 (lambda (prefix register)
+	   (LAP ,@prefix
+		(SW ,register (OFFSET 4 ,regnum:free)))))
      (ADDI ,regnum:free ,regnum:free 8)
      (ADDI ,dest ,regnum:free 4)
      ,@(generate-entries entries 12)
@@ -626,7 +641,7 @@ MIT in each case. |#
 	 ;; (arg1 is return address, supplied by interface)
 	 ,@i2
 	 ,@i3
-	 ,@(load-immediate n-sections regnum:first-arg)
+	 ,@(load-immediate regnum:first-arg n-sections #F)
 	 (SW ,regnum:first-arg (OFFSET 16 ,regnum:C-stack-pointer))
 	 ,@(link-to-interface code:compiler-link)
 	 ,@(make-external-label (continuation-code-word false)
@@ -643,12 +658,13 @@ MIT in each case. |#
     (lambda ()
       (LAP ,@(load-pc-relative regnum:third-arg 'CODE code-block-label false)
 	   (LW ,regnum:fourth-arg ,reg:environment)
-	   ,@(object->address regnum:third-arg)
-	   ,@(add-immediate environment-offset regnum:third-arg
+	   ,@(object->address regnum:third-arg regnum:third-arg)
+	   ,@(add-immediate environment-offset
+			    regnum:third-arg
 			    regnum:second-arg)
 	   (SW ,regnum:fourth-arg (OFFSET 0 ,regnum:second-arg))
 	   ,@(add-immediate free-ref-offset regnum:third-arg regnum:fourth-arg)
-	   ,@(load-immediate n-sections regnum:first-arg)
+	   ,@(load-immediate regnum:first-arg n-sections #F)
 	   (SW ,regnum:first-arg (OFFSET 16 ,regnum:C-stack-pointer))
 	   ,@(link-to-interface code:compiler-link)
 	   ,@(make-external-label (continuation-code-word false)

@@ -1,7 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rulflo.scm,v 1.5 1991/07/25 02:46:19 cph Exp $
-$MC68020-Header: rules1.scm,v 4.33 90/05/03 15:17:28 GMT jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rulflo.scm,v 1.6 1991/10/25 00:13:40 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -47,38 +46,33 @@ MIT in each case. |#
 (define (flonum-temporary!)
   (float-register->fpr (allocate-temporary-register! 'FLOAT)))
 
-(define (store-flonum offset base source)
-  (fp-store-doubleword offset base
-		       (fpr->float-register source)))
-
-(define (load-flonum offset base target)
-  (fp-load-doubleword offset base
-		      (fpr->float-register target)
-		      #t))		; Output NOP
-
 (define-rule statement
   ;; convert a floating-point number to a flonum object
   (ASSIGN (REGISTER (? target))
 	  (FLOAT->OBJECT (REGISTER (? source))))
-  (let ((source (flonum-source! source)))
+  (let ((source (fpr->float-register (flonum-source! source))))
     (let ((target (standard-target! target)))
       (LAP
        ; (SW 0 (OFFSET 0 ,regnum:free))	; make heap parsable forwards
        (ORI ,regnum:free ,regnum:free #b100) ; Align to odd quad byte
-       (ADD ,target 0 ,regnum:free)	; Result is this address
-       ,@(deposit-type (ucode-type flonum) target)
-       ,@(load-non-pointer
-	  (ucode-type manifest-nm-vector) 2 regnum:assembler-temp) 
-       (SW ,regnum:assembler-temp (OFFSET 0 ,regnum:free))
-       ,@(store-flonum 4 regnum:free source)
+       ,@(deposit-type-address (ucode-type flonum) regnum:free target)
+       ,@(with-values
+	     (lambda ()
+	       (immediate->register
+		(make-non-pointer-literal (ucode-type manifest-nm-vector) 2)))
+	   (lambda (prefix alias)
+	     (LAP ,@prefix
+		  (SW ,alias (OFFSET 0 ,regnum:free)))))
+       ,@(fp-store-doubleword 4 regnum:free source)
        (ADDI ,regnum:free ,regnum:free 12)))))
 
 (define-rule statement
-  ;; convert a flonum object address to a floating-point number
-  (ASSIGN (REGISTER (? target)) (@ADDRESS->FLOAT (REGISTER (? source))))
-  (let ((source (standard-source! source)))
-    (let ((target (flonum-target! target)))
-      (load-flonum 4 source target))))
+  ;; convert a flonum object to a floating-point number
+  (ASSIGN (REGISTER (? target)) (OBJECT->FLOAT (REGISTER (? source))))
+  (let ((source (standard-move-to-temporary! source)))
+    (let ((target (fpr->float-register (flonum-target! target))))
+      (LAP ,@(object->address source source)
+	   ,@(fp-load-doubleword 4 source target #T)))))
 
 ;;;; Flonum Arithmetic
 

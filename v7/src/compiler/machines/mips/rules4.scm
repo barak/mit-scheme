@@ -1,9 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rules4.scm,v 1.1 1990/05/07 04:16:57 jinx Rel $
-$MC68020-Header: rules4.scm,v 4.11 90/01/20 07:26:13 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rules4.scm,v 1.2 1991/10/25 00:13:33 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -61,7 +60,7 @@ MIT in each case. |#
 
 (define (lookup-call code environment name)
   (LAP ,@(load-interface-args! false environment false false)
-       ,@(load-constant name regnum:third-arg)
+       ,@(load-constant regnum:third-arg name #F #F)
        ,@(link-to-interface code)))
 
 (define-rule statement
@@ -78,7 +77,7 @@ MIT in each case. |#
 
 (define (assignment-call code environment name value)
   (LAP ,@(load-interface-args! false environment false value)
-       ,@(load-constant name regnum:third-arg)
+       ,@(load-constant regnum:third-arg name #F #F)
        ,@(link-to-interface code)))
 
 (define-rule statement

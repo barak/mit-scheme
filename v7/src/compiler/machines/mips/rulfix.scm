@@ -1,7 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rulfix.scm,v 1.3 1991/08/18 14:47:31 jinx Exp $
-$MC68020-Header: rules1.scm,v 4.32 90/01/18 22:43:54 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rulfix.scm,v 1.4 1991/10/25 00:13:36 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -47,7 +46,7 @@ MIT in each case. |#
 (define-rule statement
   ;; load a fixnum constant as a "fixnum integer"
   (ASSIGN (REGISTER (? target)) (OBJECT->FIXNUM (CONSTANT (? constant))))
-  (load-fixnum-constant constant (standard-target! target)))
+  (load-immediate (standard-target! target) (* constant fixnum-1) #T))
 
 (define-rule statement
   ;; convert a memory address to a "fixnum integer"
@@ -128,15 +127,12 @@ MIT in each case. |#
 (define-integrable (fixnum->object src tgt)
   ; Move right by type code width and put on fixnum type code
   (LAP (SRL ,tgt ,src ,scheme-type-width)
-       ,@(put-type (ucode-type fixnum) tgt)))
+       ,@(deposit-type-datum (ucode-type fixnum) tgt tgt)))
 
 (define (fixnum->address src tgt)
   ; Move right by type code width and put in address bits
   (LAP (SRL ,tgt ,src ,scheme-type-width)
-       ,@(put-address-bits tgt)))
-
-(define (load-fixnum-constant constant target)
-  (load-immediate (* constant fixnum-1) target))
+       (OR ,tgt ,tgt ,regnum:quad-bits)))
 
 (define-integrable fixnum-1
   (expt 2 scheme-type-width))
@@ -198,14 +194,16 @@ MIT in each case. |#
 	  (else
 	   (let ((bcc (if (> constant 0) 'BLEZ 'BGEZ)))
 	     (let ((prefix
-		    (lambda (label)
-		      (if (fits-in-16-bits-signed? constant)
+		    (if (fits-in-16-bits-signed? constant)
+			(lambda (label)
 			  (LAP (,bcc ,src (@PCR ,label))
-			       (ADDIU ,tgt ,src ,constant))
-			  (let ((temp (if (= src tgt) regnum:first-arg tgt)))
-			    (LAP ,@(load-immediate constant temp)
-				 (,bcc ,src (@PCR ,label))
-				 (ADDU ,tgt ,src ,temp)))))))
+			       (ADDIU ,tgt ,src ,constant)))
+			(with-values (lambda () (immediate->register constant))
+			  (lambda (prefix alias)
+			    (lambda (label)
+			      (LAP ,@prefix
+				   (,bcc ,src (@PCR ,label))
+				   (ADDU ,tgt ,src ,alias))))))))
 	       (if (> constant 0)
 		   (set-current-branches!
 		    (lambda (if-overflow)
@@ -443,9 +441,10 @@ MIT in each case. |#
 		 (do-left-shift-overflow tgt src power-of-two)
 		 (LAP (SLL ,tgt ,src ,power-of-two)))))
 	  (else
-	   (let ((temp (standard-temporary!)))
-	     (LAP ,@(load-fixnum-constant constant temp)
-		  ,@(do-multiply tgt src temp overflow?)))))))
+	   (with-values (lambda () (immediate->register (* constant fixnum-1)))
+	     (lambda (prefix alias)
+	       (LAP ,@prefix
+		    ,@(do-multiply tgt src alias overflow?))))))))
 
 (define (do-left-shift-overflow tgt src power-of-two)
   (if (= tgt src)
@@ -477,11 +476,12 @@ MIT in each case. |#
   fixnum-methods/2-args/constant*register
   (lambda (tgt constant src overflow?)
     (guarantee-signed-fixnum constant)
-    (let ((temp (standard-temporary!)))
-      (LAP ,@(load-fixnum-constant constant temp)
-	   ,@(if overflow?
-		 (do-overflow-subtraction tgt temp src)
-		 (LAP (SUB ,tgt ,temp ,src)))))))
+    (with-values (lambda () (immediate->register (* constant fixnum-1)))
+      (lambda (prefix alias)
+	(LAP ,@prefix
+	     ,@(if overflow?
+		   (do-overflow-subtraction tgt alias src)
+		   (LAP (SUB ,tgt ,alias ,src))))))))
 
 ;;;; Predicates
 

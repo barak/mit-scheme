@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 4.21 1990/05/03 15:10:19 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 4.22 1991/10/25 00:14:14 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -91,8 +91,9 @@ MIT in each case. |#
 (define (rtl:make-unassigned-test expression)
   (rtl:make-eq-test
    expression
-   (rtl:make-cons-pointer (rtl:make-machine-constant (ucode-type unassigned))
-			  (rtl:make-machine-constant 0))))
+   (rtl:make-cons-non-pointer
+    (rtl:make-machine-constant (ucode-type unassigned))
+    (rtl:make-machine-constant 0))))
 
 (define (rtl:make-fixnum-pred-1-arg predicate operand)
   (expression-simplify-for-predicate operand
@@ -141,7 +142,7 @@ MIT in each case. |#
 
 (define (rtl:make-constant value)
   (if (unassigned-reference-trap? value)
-      (rtl:make-cons-pointer
+      (rtl:make-cons-non-pointer
        (rtl:make-machine-constant type-code:unassigned)
        (rtl:make-machine-constant 0))
       (%make-constant value)))
@@ -253,6 +254,15 @@ MIT in each case. |#
 		   scfg-append!
 		   (cdr expression))
 	    (assign-to-temporary expression scfg-append! receiver)))))
+
+(define (simplify-expressions expressions scfg-append! generator)
+  (let loop ((expressions* expressions) (simplified-expressions '()))
+    (if (null? expressions*)
+	(generator (reverse! simplified-expressions))
+	(expression-simplify (car expressions*) scfg-append!
+	  (lambda (expression)
+	    (loop (cdr expressions*)
+		  (cons expression simplified-expressions)))))))
 
 (define (assign-to-temporary expression scfg-append! receiver)
   (let ((pseudo (rtl:make-pseudo-register)))
@@ -399,6 +409,14 @@ MIT in each case. |#
 	(expression-simplify datum scfg-append!
 	  (lambda (datum)
 	    (receiver (rtl:make-cons-pointer type datum))))))))
+
+(define-expression-method 'CONS-NON-POINTER
+  (lambda (receiver scfg-append! type datum)
+    (expression-simplify type scfg-append!
+      (lambda (type)
+	(expression-simplify datum scfg-append!
+	  (lambda (datum)
+	    (receiver (rtl:make-cons-non-pointer type datum))))))))
 
 (define-expression-method 'CELL-CONS
   (lambda (receiver scfg-append! expression)
@@ -410,60 +428,103 @@ MIT in each case. |#
 				  free)
 	   scfg-append!
 	   (lambda (temporary)
-	     (scfg-append!
-	      (rtl:make-assignment-internal (rtl:make-post-increment free 1)
-					    expression)
-	      (receiver temporary)))))))))
+	     (if use-pre/post-increment?
+		 (scfg-append!
+		  (rtl:make-assignment-internal
+		   (rtl:make-post-increment free 1)
+		   expression)
+		  (receiver temporary))
+		 (scfg-append!
+		  (rtl:make-assignment-internal (rtl:make-offset free 0)
+						expression)
+		  (scfg-append!
+		   (rtl:make-assignment-internal
+		    free
+		    (rtl:make-offset-address free 1))
+		   (receiver temporary)))))))))))
 
 (define-expression-method 'TYPED-CONS:PAIR
   (lambda (receiver scfg-append! type car cdr)
     (let ((free (interpreter-free-pointer)))
-      (let ((target (rtl:make-post-increment free 1)))
-	(expression-simplify type scfg-append!
-	  (lambda (type)
-	    (expression-simplify car scfg-append!
-	      (lambda (car)
-		 (expression-simplify cdr scfg-append!
-		   (lambda (cdr)
-		     (assign-to-temporary (rtl:make-cons-pointer type free)
-					  scfg-append!
-		       (lambda (temporary)
-			 (scfg-append!
-			  (rtl:make-assignment-internal target car)
-			  (scfg-append!
-			   (rtl:make-assignment-internal target cdr)
-			   (receiver temporary)))))))))))))))
-
-(define-expression-method 'TYPED-CONS:VECTOR
-  (lambda (receiver scfg-append! type . elements)
-    (let* ((free (interpreter-free-pointer))
-	   (target (rtl:make-post-increment free 1)))
       (expression-simplify type scfg-append!
 	(lambda (type)
-	  (let loop ((elements* elements) (simplified-elements '()))
-	    (if (null? elements*)
-		(assign-to-temporary (rtl:make-cons-pointer type free)
-				     scfg-append!
-		  (lambda (temporary)
-		    (expression-simplify
-		     (rtl:make-cons-pointer
-		      (rtl:make-machine-constant (ucode-type manifest-vector))
-		      (rtl:make-machine-constant (length elements)))
-		     scfg-append!
-		     (lambda (header)
-		       (scfg-append!
-			(rtl:make-assignment-internal target header)
-			(let loop ((elements (reverse! simplified-elements)))
-			  (if (null? elements)
-			      (receiver temporary)
-			      (scfg-append!
-			       (rtl:make-assignment-internal target
-							     (car elements))
-			       (loop (cdr elements))))))))))
-		(expression-simplify (car elements*) scfg-append!
-		  (lambda (element)
-		    (loop (cdr elements*)
-			  (cons element simplified-elements)))))))))))
+	  (expression-simplify car scfg-append!
+	    (lambda (car)
+	       (expression-simplify cdr scfg-append!
+		 (lambda (cdr)
+		   (assign-to-temporary (rtl:make-cons-pointer type free)
+					scfg-append!
+		     (lambda (temporary)
+		       (if use-pre/post-increment?
+			   (scfg-append!
+			    (rtl:make-assignment-internal
+			     (rtl:make-post-increment free 1)
+			     car)
+			    (scfg-append!
+			     (rtl:make-assignment-internal
+			      (rtl:make-post-increment free 1)
+			      cdr)
+			     (receiver temporary)))
+			   (scfg-append!
+			    (rtl:make-assignment-internal
+			     (rtl:make-offset free 0)
+			     car)
+			    (scfg-append!
+			     (rtl:make-assignment-internal
+			      (rtl:make-offset free 1)
+			      cdr)
+			     (scfg-append!
+			      (rtl:make-assignment-internal
+			       free
+			       (rtl:make-offset-address free 2))
+			      (receiver temporary))))))))))))))))
+
+(define-expression-method 'TYPED-CONS:VECTOR
+  (lambda (receiver scfg-append! type . elements)
+    (let* ((free (interpreter-free-pointer)))
+      (expression-simplify type scfg-append!
+	(lambda (type)
+	  (simplify-expressions elements scfg-append!
+	    (lambda (elements)
+	      (assign-to-temporary (rtl:make-cons-pointer type free)
+				   scfg-append!
+		(lambda (temporary)
+		  (expression-simplify
+		   (rtl:make-cons-non-pointer
+		    (rtl:make-machine-constant (ucode-type manifest-vector))
+		    (rtl:make-machine-constant (length elements)))
+		   scfg-append!
+		   (lambda (header)
+		     (if use-pre/post-increment?
+			 (scfg-append!
+			  (rtl:make-assignment-internal
+			   (rtl:make-post-increment free 1)
+			   header)
+			  (let loop ((elements elements))
+			    (if (null? elements)
+				(receiver temporary)
+				(scfg-append!
+				 (rtl:make-assignment-internal
+				  (rtl:make-post-increment free 1)
+				  (car elements))
+				 (loop (cdr elements))))))
+			 (scfg-append!
+			  (rtl:make-assignment-internal
+			   (rtl:make-offset free 0)
+			   header)
+			  (let loop ((elements elements) (offset 1))
+			    (if (null? elements)
+				(scfg-append!
+				 (rtl:make-assignment-internal
+				  free
+				  (rtl:make-offset-address free offset))
+				 (receiver temporary))
+				(scfg-append!
+				 (rtl:make-assignment-internal
+				  (rtl:make-offset free offset)
+				  (car elements))
+				 (loop (cdr elements)
+				       (+ offset 1))))))))))))))))))
 
 (define-expression-method 'TYPED-CONS:PROCEDURE
   (lambda (receiver scfg-append! entry)
@@ -536,8 +597,8 @@ MIT in each case. |#
 (define-expression-method 'FLOAT->OBJECT
   (object-selector rtl:make-float->object))
 
-(define-expression-method '@ADDRESS->FLOAT
-  (object-selector rtl:make-@address->float))
+(define-expression-method 'OBJECT->FLOAT
+  (object-selector rtl:make-object->float))
 
 (define-expression-method 'FIXNUM-2-ARGS
   (lambda (receiver scfg-append! operator operand1 operand2 overflow?)

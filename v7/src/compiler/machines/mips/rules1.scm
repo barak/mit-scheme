@@ -1,7 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rules1.scm,v 1.4 1991/07/25 02:46:10 cph Exp $
-$MC68020-Header: rules1.scm,v 4.33 90/05/03 15:17:28 GMT jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rules1.scm,v 1.5 1991/10/25 00:13:22 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -52,7 +51,6 @@ MIT in each case. |#
   (LAP))
 
 (define-rule statement
-  ;; tag the contents of a register
   (ASSIGN (REGISTER (? target))
 	  (CONS-POINTER (REGISTER (? type)) (REGISTER (? datum))))
   (let* ((type (standard-move-to-temporary! type))
@@ -62,30 +60,40 @@ MIT in each case. |#
 	 (OR ,target ,type ,target))))
 
 (define-rule statement
-  ;; tag the contents of a register
   (ASSIGN (REGISTER (? target))
-	  (CONS-POINTER (MACHINE-CONSTANT (? type)) (REGISTER (? source))))
-  (let ((target (standard-move-to-target! source target)))
-    (deposit-type type target)))
+	  (CONS-NON-POINTER (REGISTER (? type)) (REGISTER (? datum))))
+  (let* ((type (standard-move-to-temporary! type))
+	 (target (standard-move-to-target! datum target)))
+    (LAP (SLL ,type ,type ,(- 32 scheme-type-width))
+	 (OR ,target ,type ,target))))
 
 (define-rule statement
-  ;; extract the type part of a register's contents
+  (ASSIGN (REGISTER (? target))
+	  (CONS-POINTER (MACHINE-CONSTANT (? type)) (REGISTER (? source))))
+  (standard-unary-conversion source target
+    (lambda (source target)
+      (deposit-type-address type source target))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (CONS-NON-POINTER (MACHINE-CONSTANT (? type)) (REGISTER (? source))))
+  (standard-unary-conversion source target
+    (lambda (source target)
+      (deposit-type-datum type source target))))
+
+(define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->TYPE (REGISTER (? source))))
   (standard-unary-conversion source target object->type))
 
 (define-rule statement
-  ;; extract the datum part of a register's contents
   (ASSIGN (REGISTER (? target)) (OBJECT->DATUM (REGISTER (? source))))
   (standard-unary-conversion source target object->datum))
 
 (define-rule statement
-  ;; convert the contents of a register to an address
   (ASSIGN (REGISTER (? target)) (OBJECT->ADDRESS (REGISTER (? source))))
-  (let ((target (standard-move-to-target! source target)))
-    (object->address target)))
+  (standard-unary-conversion source target object->address))
 
 (define-rule statement
-  ;; add a distance (in longwords) to a register's contents
   (ASSIGN (REGISTER (? target))
 	  (OFFSET-ADDRESS (REGISTER (? source)) (? offset)))
   (standard-unary-conversion source target
@@ -93,71 +101,62 @@ MIT in each case. |#
       (add-immediate (* 4 offset) source target))))
 
 (define-rule statement
-  ;; add a distance (in bytes) to a register's contents
   (ASSIGN (REGISTER (? target))
 	  (BYTE-OFFSET-ADDRESS (REGISTER (? source)) (? offset)))
   (standard-unary-conversion source target
     (lambda (source target)
       (add-immediate offset source target))))
-
-(define-rule statement
-  ;; read an object from memory
-  (ASSIGN (REGISTER (? target)) (OFFSET (REGISTER (? address)) (? offset)))
-  (standard-unary-conversion address target
-    (lambda (address target)
-      (LAP (LW ,target (OFFSET ,(* 4 offset) ,address))
-	   (NOP)))))
-
-(define-rule statement
-  ;; pop an object off the stack
-  (ASSIGN (REGISTER (? target)) (POST-INCREMENT (REGISTER 3) 1))
-  (LAP (LW ,(standard-target! target) (OFFSET 0 ,regnum:stack-pointer))
-       (ADDI ,regnum:stack-pointer ,regnum:stack-pointer 4)))
 
 ;;;; Loading of Constants
 
 (define-rule statement
   ;; load a machine constant
   (ASSIGN (REGISTER (? target)) (MACHINE-CONSTANT (? source)))
-  (load-immediate source (standard-target! target)))
+  (load-immediate (standard-target! target) source #T))
 
 (define-rule statement
   ;; load a Scheme constant
   (ASSIGN (REGISTER (? target)) (CONSTANT (? source)))
-  (load-constant source (standard-target! target) #T))
+  (load-constant (standard-target! target) source #T #T))
 
 (define-rule statement
   ;; load the type part of a Scheme constant
   (ASSIGN (REGISTER (? target)) (OBJECT->TYPE (CONSTANT (? constant))))
-  (load-non-pointer 0 (object-type constant) (standard-target! target)))
+  (load-immediate (standard-target! target)
+		  (make-non-pointer-literal 0 (object-type constant))
+		  #T))
 
 (define-rule statement
   ;; load the datum part of a Scheme constant
   (ASSIGN (REGISTER (? target)) (OBJECT->DATUM (CONSTANT (? constant))))
   (QUALIFIER (non-pointer-object? constant))
-  (load-non-pointer 0
-		    (careful-object-datum constant)
-		    (standard-target! target)))
+  (load-immediate (standard-target! target)
+		  (make-non-pointer-literal 0 (careful-object-datum constant))
+		  #T))
 
 (define-rule statement
   ;; load a synthesized constant
   (ASSIGN (REGISTER (? target))
-	  (CONS-POINTER (MACHINE-CONSTANT (? type))
-			(MACHINE-CONSTANT (? datum))))
-  (load-non-pointer type datum (standard-target! target)))
-
+	  (CONS-NON-POINTER (MACHINE-CONSTANT (? type))
+			    (MACHINE-CONSTANT (? datum))))
+  (load-immediate (standard-target! target)
+		  (make-non-pointer-literal type datum)
+		  #T))
+
 (define-rule statement
   ;; load the address of a variable reference cache
   (ASSIGN (REGISTER (? target)) (VARIABLE-CACHE (? name)))
   (load-pc-relative (standard-target! target)
-		    'CONSTANT (free-reference-label name)
+		    'CONSTANT
+		    (free-reference-label name)
 		    true))
 
 (define-rule statement
   ;; load the address of an assignment cache
   (ASSIGN (REGISTER (? target)) (ASSIGNMENT-CACHE (? name)))
   (load-pc-relative (standard-target! target)
-		    'CONSTANT (free-assignment-label name)
+		    'CONSTANT
+		    (free-assignment-label name)
 		    true))
 
 (define-rule statement
@@ -190,11 +189,24 @@ MIT in each case. |#
     ;; Loading the address into a temporary makes it more useful,
     ;; because it can be reused later.
     (LAP ,@(load-pc-relative-address temporary 'CODE label)
-	 (AND ,target ,temporary ,regnum:address-mask)
-	 ,@(put-type type target))))
+	 ,@(deposit-type-address type temporary target))))
 
-;;;; Transfers to Memory
-		    
+;;;; Transfers from memory
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (OFFSET (REGISTER (? address)) (? offset)))
+  (standard-unary-conversion address target
+    (lambda (address target)
+      (LAP (LW ,target (OFFSET ,(* 4 offset) ,address))
+	   (NOP)))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (POST-INCREMENT (REGISTER 3) 1))
+  (LAP (LW ,(standard-target! target) (OFFSET 0 ,regnum:stack-pointer))
+       (ADDI ,regnum:stack-pointer ,regnum:stack-pointer 4)))
+
+;;;; Transfers to memory
+
 (define-rule statement
   ;; store an object in memory
   (ASSIGN (OFFSET (REGISTER (? address)) (? offset))
