@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: load.scm,v 1.3 2001/11/05 20:19:05 cph Exp $
+;;; $Id: load.scm,v 1.4 2001/11/11 06:06:10 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -19,7 +19,6 @@
 ;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;; 02111-1307, USA.
 
-(load-option '*PARSER)
 (load-option 'REGULAR-EXPRESSION)
 (load-option 'SOS)
 (with-working-directory-pathname (directory-pathname (current-load-pathname))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: load.scm,v 1.35 2001/11/05 21:32:44 cph Exp $
+;;; $Id: load.scm,v 1.36 2001/11/11 06:05:54 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -24,7 +24,6 @@
 (load-option 'HASH-TABLE)
 (load-option 'REGULAR-EXPRESSION)
 (load-option 'SOS)
-(load-option '*PARSER)
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
     (fluid-let ((*allow-package-redefinition?* #t))
