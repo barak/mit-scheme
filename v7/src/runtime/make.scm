@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.65 2000/04/10 19:01:30 cph Exp $
+$Id: make.scm,v 14.66 2001/01/04 22:25:42 cph Exp $
 
-Copyright (c) 1988-2000 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -484,6 +484,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    (RUNTIME STARBASE-GRAPHICS)
    (RUNTIME X-GRAPHICS)
    (RUNTIME OS2-GRAPHICS)
+   (RUNTIME STRING)
    ;; Emacs -- last because it installs hooks everywhere which must be initted.
    (RUNTIME EMACS-INTERFACE)
    ;; More debugging

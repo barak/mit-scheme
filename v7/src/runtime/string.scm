@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.35 2000/05/16 14:43:39 cph Exp $
+$Id: string.scm,v 14.36 2001/01/04 22:25:49 cph Exp $
 
-Copyright (c) 1988-2000 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -965,6 +965,32 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (vector-set! pi q k)
 	    (outer k (fix:+ q 1)))))
     pi))
+
+;;;; External Strings
+
+(define external-strings)
+(define (initialize-package!)
+  (set! external-strings
+	(make-gc-finalizer (ucode-primitive deallocate-external-string)))
+  unspecific)
+
+(define-structure external-string
+  (descriptor #f read-only #t))
+
+(define (allocate-external-string n-bytes)
+  (without-interrupts
+   (lambda ()
+     (let ((descriptor ((ucode-primitive allocate-external-string) n-bytes)))
+       (let ((xstring (make-external-string descriptor)))
+	 (add-to-gc-finalizer! external-strings xstring descriptor)
+	 xstring)))))
+
+(define (external-string-length xstring)
+  (if (not (external-string? xstring))
+      (error:wrong-type-argument xstring "external string"
+				 'EXTERNAL-STRING-LENGTH))
+  ((ucode-primitive extended-string-length)
+   (external-string-descriptor xstring)))
 
 ;;;; Guarantors
 ;;
