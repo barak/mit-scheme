@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: edextra.scm,v 1.15 1992/09/30 18:30:03 cph Exp $
+$Id: edextra.scm,v 1.16 1993/01/12 21:13:22 cph Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -214,7 +214,7 @@ MIT in each case. |#
 		   (if buffer (kill-buffer buffer)))
 		 (find-file source-file)
 		 (let ((buffer (current-buffer)))
-		   (set-buffer-writeable! buffer)
+		   (set-buffer-writable! buffer)
 		   (set-visited-pathname buffer dest-file)
 		   (write-buffer buffer))
 		 (append-message " -- done")
