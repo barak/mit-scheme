@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.100 2000/05/23 18:36:39 cph Exp $
+;;; $Id: imail-top.scm,v 1.101 2000/05/23 19:27:27 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -752,10 +752,9 @@ With prefix argument N moves backward N messages with these flags."
     (and folder
 	 (let ((status (folder-connection-status folder)))
 	   (string-append
-	    (case status
-	      ((ONLINE) " online")
-	      ((OFFLINE) " offline")
-	      (else ""))
+	    (if (eq? status 'NO-SERVER)
+		""
+		(string-append " " (symbol->string status)))
 	    (if (and message (message-attached? message folder))
 		(let ((index (message-index message)))
 		  (if index
@@ -924,37 +923,39 @@ With prefix argument N, undeletes backward N messages,
   "Actually erase all deleted messages in the folder."
   ()
   (lambda ()
-    (let ((folder (selected-folder))
-	  (message
-	   (let ((message (selected-message)))
-	     (if (message-deleted? message)
-		 (or (next-message message message-undeleted?)
-		     (previous-message message message-undeleted?)
-		     (next-message message)
-		     (previous-message message))
-		 message))))
-      (if (let ((confirmation (ref-variable imail-expunge-confirmation)))
-	    (or (eq? confirmation 'NONE)
-		(let ((n (count-messages folder message-deleted?)))
-		  (and (> n 0)
-		       (let ((prompt
-			      (string-append "Expunge "
-					     (number->string n)
-					     " message"
-					     (if (> n 1) "s" "")
-					     " marked for deletion")))
-			 (case (ref-variable imail-expunge-confirmation)
-			   ((BRIEF) (prompt-for-confirmation? prompt))
-			   ((VERBOSE) (prompt-for-yes-or-no? prompt))
-			   ((COMPLETE)
-			    (cleanup-pop-up-buffers
-			     (lambda ()
-			       (imail-expunge-pop-up-messages folder)
-			       (prompt-for-yes-or-no? prompt))))
-			   (else #t)))))))
-	  (begin
-	    (expunge-deleted-messages folder)
-	    (select-message folder message))))))
+    (let ((folder (selected-folder)))
+      (let ((n (count-messages folder message-deleted?)))
+	(cond ((= n 0)
+	       (message "No messages to expunge"))
+	      ((let ((confirmation (ref-variable imail-expunge-confirmation)))
+		 (or (eq? confirmation 'NONE)
+		     (let ((prompt
+			    (string-append "Expunge "
+					   (number->string n)
+					   " message"
+					   (if (> n 1) "s" "")
+					   " marked for deletion")))
+		       (case (ref-variable imail-expunge-confirmation)
+			 ((BRIEF) (prompt-for-confirmation? prompt))
+			 ((VERBOSE) (prompt-for-yes-or-no? prompt))
+			 ((COMPLETE)
+			  (cleanup-pop-up-buffers
+			   (lambda ()
+			     (imail-expunge-pop-up-messages folder)
+			     (prompt-for-yes-or-no? prompt))))
+			 (else #t)))))
+	       (let ((message
+		      (let ((message (selected-message)))
+			(if (message-deleted? message)
+			    (or (next-message message message-undeleted?)
+				(previous-message message message-undeleted?)
+				(next-message message)
+				(previous-message message))
+			    message))))
+		 (expunge-deleted-messages folder)
+		 (select-message folder message)))
+	      (else
+	       (message "Messages not expunged")))))))
 
 (define (count-messages folder predicate)
   (let ((n (folder-length folder)))
@@ -1023,7 +1024,9 @@ An error if signalled if the folder already exists."
     (list (prompt-for-imail-url-string "Create folder"
 				       'HISTORY 'IMAIL-CREATE-FOLDER)))
   (lambda (url-string)
-    (create-folder (imail-parse-partial-url url-string))))
+    (let ((url (imail-parse-partial-url url-string)))
+      (create-folder url)
+      (message "Created folder " (url->string url)))))
 
 (define-command imail-delete-folder
   "Delete a specified folder."
@@ -1031,7 +1034,13 @@ An error if signalled if the folder already exists."
     (list (prompt-for-imail-url-string "Delete folder"
 				       'HISTORY 'IMAIL-DELETE-FOLDER)))
   (lambda (url-string)
-    (delete-folder (imail-parse-partial-url url-string))))
+    (let ((url (imail-parse-partial-url url-string)))
+      (if (prompt-for-yes-or-no?
+	   (string-append "Delete folder " (url->string url)))
+	  (begin
+	    (delete-folder url)
+	    (message "Deleted folder " (url->string url)))
+	  (message "Folder not deleted")))))
 
 (define-command imail-input
   "Append messages to this folder from a specified folder."
@@ -1040,17 +1049,26 @@ An error if signalled if the folder already exists."
 				       'HISTORY 'IMAIL-INPUT
 				       'HISTORY-INDEX 0)))
   (lambda (url-string)
-    (let ((folder (selected-folder)))
-      (let ((folder (open-folder (imail-parse-partial-url url-string)))
+    (let ((url (imail-parse-partial-url url-string))
+	  (folder (selected-folder)))
+      (let ((from (open-folder url))
 	    (to (folder-url folder)))
-	(let ((n (folder-length folder)))
+	(let ((n (folder-length from)))
 	  (do ((i 0 (+ i 1)))
 	      ((= i n))
-	    (append-message (get-message folder i) to))))
-      (select-message folder
-		      (or (selected-message #f)
-			  (navigator/first-unseen-message folder))))))
-
+	    ((message-wrapper #f
+			      "Copying message "
+			      (number->string (+ i 1))
+			      "/"
+			      (number->string n))
+	     (lambda () (append-message (get-message from i) to))))
+	  ((ref-command imail-get-new-mail))
+	  (message (number->string n)
+		   " message"
+		   (if (= n 1) "" "s")
+		   " copied from "
+		   (url->string url)))))))
+
 (define-command imail-output
   "Append this message to a specified folder."
   (lambda ()
@@ -1059,12 +1077,19 @@ An error if signalled if the folder already exists."
 				       'HISTORY-INDEX 0)
 	  (command-argument)))
   (lambda (url-string argument)
-    (let ((delete? (ref-variable imail-delete-after-output)))
+    (let ((url (imail-parse-partial-url url-string))
+	  (delete? (ref-variable imail-delete-after-output)))
       (move-relative-undeleted (or argument (and delete? 1))
 	(lambda (message)
-	  (append-message message (imail-parse-partial-url url-string))
+	  (append-message message url)
 	  (message-filed message)
-	  (if delete? (delete-message message)))))))
+	  (if delete? (delete-message message))))
+      (let ((n (if argument (command-argument-numeric-value argument) 1)))
+	(message (number->string n)
+		 " message"
+		 (if (= n 1) "" "s")
+		 " written to "
+		 (url->string url))))))
 
 (define-command imail-copy-messages
   "Append all messages from this folder to a specified folder.
@@ -1073,7 +1098,7 @@ The messages are NOT deleted even if imail-delete-after-output is true.
 This command is meant to be used to move the contents of a folder
  either to or from an IMAP server."
   (lambda ()
-    (list (prompt-for-imail-url-string "Output to folder"
+    (list (prompt-for-imail-url-string "Copy all messages to folder"
 				       'HISTORY 'IMAIL-OUTPUT
 				       'HISTORY-INDEX 0)))
   (lambda (url-string)
@@ -1084,7 +1109,17 @@ This command is meant to be used to move the contents of a folder
 	  (let ((n (folder-length folder)))
 	    (do ((i 0 (+ i 1)))
 		((= i n))
-	      (append-message (get-message folder i) to))))))))
+	      ((message-wrapper #f
+				"Copying message "
+				(number->string (+ i 1))
+				"/"
+				(number->string n))
+	       (lambda () (append-message (get-message folder i) to))))
+	    (message (number->string n)
+		     " message"
+		     (if (= n 1) "" "s")
+		     " copied to "
+		     (url->string to))))))))
 
 ;;;; Sending mail
 
