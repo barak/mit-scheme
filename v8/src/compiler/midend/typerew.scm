@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typerew.scm,v 1.25 1997/07/09 02:25:53 adams Exp $
+$Id: typerew.scm,v 1.26 1997/07/09 06:44:01 adams Exp $
 
 Copyright (c) 1994-1996 Massachusetts Institute of Technology
 
@@ -1175,6 +1175,17 @@ and we dont do much with that.
 	  (test    `(LOOKUP ,obj) `(LOOKUP ,idx) `(LOOKUP ,elt))
 	  (good-op `(LOOKUP ,obj) `(LOOKUP ,idx) `(LOOKUP ,elt))
 	  (bad-op  `(LOOKUP ,obj) `(LOOKUP ,idx) `(LOOKUP ,elt))))))))
+
+(define (typerew/%1 op)			; (mumble x y z) => (op x)
+  (lambda (form)
+    (define (make args)
+      (sample/1 '(typerew/left-constant-replacements histogram) op)
+      `(CALL (QUOTE ,op)
+	     '#F
+	     ,(first args)))
+    (if (eq? (quote/text (call/operator form)) %invoke-remote-cache)
+	(make (cddr (cddddr form)))
+	(make (cdddr form)))))
 
 (define (typerew-binary-variants-type-method
 	 rator
@@ -1414,6 +1425,24 @@ and we dont do much with that.
   (def  'ROUND     FLO:ROUND)
   (def  'TRUNCATE  FLO:TRUNCATE))
 
+(let ((INTEGER->FLONUM (ucode-primitive INTEGER->FLONUM 2))
+      (type:false/flonum (type:or type:false type:flonum))
+      (type:0/1          (type:or type:exact-zero type:exact-one)))
+  (define-typerew-binary-variants-type-method INTEGER->FLONUM
+    type:exact-integer  type:unsigned-byte        type:false/flonum
+    effect:none
+    type:fixnum         type:exact-zero           type:flonum
+    type:fixnum         type:exact-one            type:flonum         ; [1]
+    type:fixnum         type:exact-one            type:false/flonum   ; [2]
+    type:fixnum         type:small-fixnum:2..255  type:flonum
+    type:exact-integer  type:0/1                  type:false/flonum
+    type:exact-integer  type:small-fixnum:2..255  type:flonum)
+  
+  ;; [1] if fixnums guaranteed to fit in a flonum (e.g. 32 bit machine)
+  ;; [2] if fixnums may not fix in a flonum (e.g. 64 bit machine).
+
+  (define-typerew-binary-variants-replacement-method INTEGER->FLONUM
+    type:fixnum        type:any      type:flonum (typerew/%1 %fixnum->flonum)))
 
 (define-typerew-unary-variants-type-method 'COS
   type:number     type:number       effect:none
@@ -1512,7 +1541,7 @@ and we dont do much with that.
   (typerew/rewrite/coerced-arguments flo:op identity-procedure
 				     typerew/coerce/fixnum->flonum))
 
-(define (typerew/%lc op left-constant)
+(define (typerew/%lc op left-constant)	; (mumble x y z) => (op x y z 'c)
   (lambda (form)
     (define (make args)
       (sample/1 '(typerew/left-constant-replacements histogram) op)
@@ -1523,7 +1552,6 @@ and we dont do much with that.
     (if (eq? (quote/text (call/operator form)) %invoke-remote-cache)
 	(make (cddr (cddddr form)))
 	(make (cdddr form)))))
-
 
 (let ((&+ (make-primitive-procedure '&+))
       (type:not-fixnum (type:not type:fixnum)))
