@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.27 1991/01/28 23:11:05 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.28 1991/02/12 04:48:14 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -373,14 +373,6 @@ MIT in each case. |#
 	 (CMP L ,reg:compiled-memtop (A 5))
 	 (B GE B (@PCR ,gc-label)))))
 
-(define-integrable (dlink-procedure-header code-word label)
-  (let ((gc-label (generate-label)))    
-    (LAP (LABEL ,gc-label)
-	 (JSR ,entry:compiler-interrupt-dlink)
-	 ,@(make-external-label code-word label)
-	 (CMP L ,reg:compiled-memtop (A 5))
-	 (B GE B (@PCR ,gc-label)))))
-
 (define-rule statement
   (CONTINUATION-ENTRY (? internal-label))
   (make-external-label (continuation-code-word internal-label)
@@ -408,15 +400,12 @@ MIT in each case. |#
 (define-rule statement
   (OPEN-PROCEDURE-HEADER (? internal-label))
   (let ((rtl-proc (label->object internal-label)))
-    (LAP
-     (EQUATE ,(rtl-procedure/external-label rtl-proc) ,internal-label)
-     ,@((if (rtl-procedure/dynamic-link? rtl-proc)
-	    dlink-procedure-header 
-	    (lambda (code-word label)
-	      (simple-procedure-header code-word label
-				       entry:compiler-interrupt-procedure)))
-	(internal-procedure-code-word rtl-proc)
-	internal-label))))
+    (LAP (EQUATE ,(rtl-procedure/external-label rtl-proc) ,internal-label)
+	 ,@(simple-procedure-header (internal-procedure-code-word rtl-proc)
+				    internal-label
+				    (if (rtl-procedure/dynamic-link? rtl-proc)
+					entry:compiler-interrupt-dlink
+					entry:compiler-interrupt-procedure)))))
 
 (define-rule statement
   (PROCEDURE-HEADER (? internal-label) (? min) (? max))
