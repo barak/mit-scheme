@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dataflow.scm,v 1.12 1995/04/08 21:00:17 adams Exp $
+$Id: dataflow.scm,v 1.13 1995/04/30 17:22:37 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -715,9 +715,9 @@ MIT in each case. |#
      (illegal expr))))
 
 (define (dataflow/expr* env graph exprs)
-  (lmap (lambda (expr)
-          (dataflow/expr env graph expr))
-        exprs))
+  (map (lambda (expr)
+	 (dataflow/expr env graph expr))
+       exprs))
 
 (define (dataflow/remember new old)
   old                                   ; ignored for now
@@ -2108,42 +2108,86 @@ MIT in each case. |#
 	  (setter! structure (initial-vector item)))))
 
   (add! to from node/links-in set-node/links-in!)
-  (add! from to node/links-out set-node/links-out!))
+  (add! from to node/links-out set-node/links-out!)
+
+  (if (fix:>= (vector-length (node/links-in to)) 75)
+      (if (node/connectivity to)
+	  (bit-vector-set! (node/connectivity to) (node/number from))
+	  (let ((bs       (make-bit-vector *node-count* #F))
+		(links-in (node/links-in to)))
+	    (let loop ((i (vector-ref links-in 0)))
+	      (cond ((fix:> i 0)
+		     (bit-vector-set! bs (node/number (vector-ref links-in i)))
+		     (loop (fix:- i 1)))))
+	    (set-node/connectivity! to bs))))
+)
+
+;;(define (nodes-linked? from to)
+;;  (or (eq? from to)
+;;      (let ((set  (node/links-in to)))
+;;	(and set
+;;	     (let loop ((i  (vector-ref set 0)))
+;;	       (and (fix:> i 0)
+;;		    ;; Loop unrolled 1 time is safe because the zero slot
+;;		    ;; contains a fixnum that will never match a node
+;;		    (or (eq? from (vector-ref set i))
+;;			(eq? from (vector-ref set (fix:- i 1)))
+;;			(loop (fix:- i 2)))))))))
 
 (define (nodes-linked? from to)
   (or (eq? from to)
-      (let ((set  (node/links-in to)))
-	(and set
-	     (let loop ((i  (vector-ref set 0)))
-	       (and (fix:> i 0)
-		    ;; Loop unrolled 1 time is safe because the zero slot
-		    ;; contains a fixnum that will never match a node
-		    (or (eq? from (vector-ref set i))
-			(eq? from (vector-ref set (fix:- i 1)))
-			(loop (fix:- i 2)))))))))
+      (if (node/connectivity to)
+	  (bit-vector-ref (node/connectivity to) (node/number from))
+	  (let ((set  (node/links-in to)))
+	    (and set
+		 (let unrolled-loop ((i  (vector-ref set 0)))
+		   (if (fix:>= i 8)
+		       (or (eq? from (vector-ref set i))
+			   (eq? from (vector-ref set (fix:- i 1)))
+			   (eq? from (vector-ref set (fix:- i 2)))
+			   (eq? from (vector-ref set (fix:- i 3)))
+			   (eq? from (vector-ref set (fix:- i 4)))
+			   (eq? from (vector-ref set (fix:- i 5)))
+			   (eq? from (vector-ref set (fix:- i 6)))
+			   (eq? from (vector-ref set (fix:- i 7)))
+			   (unrolled-loop (fix:- i 8)))
+		       (let end-loop ((i i))
+			 (and (fix:> i 0)
+			      ;; Loop unrolled 1 time is safe because the zero slot
+			      ;; contains a fixnum that will never match a node
+			      (or (eq? from (vector-ref set i))
+				  (eq? from (vector-ref set (fix:- i 1)))
+				  (end-loop (fix:- i 2))))))))))))
 
-(define (nodes-linked? from to)
-  (or (eq? from to)
-      (let ((set  (node/links-in to)))
-	(and set
-	     (let unrolled-loop ((i  (vector-ref set 0)))
-	       (if (fix:>= i 8)
-		   (or (eq? from (vector-ref set i))
-		       (eq? from (vector-ref set (fix:- i 1)))
-		       (eq? from (vector-ref set (fix:- i 2)))
-		       (eq? from (vector-ref set (fix:- i 3)))
-		       (eq? from (vector-ref set (fix:- i 4)))
-		       (eq? from (vector-ref set (fix:- i 5)))
-		       (eq? from (vector-ref set (fix:- i 6)))
-		       (eq? from (vector-ref set (fix:- i 7)))
-		       (unrolled-loop (fix:- i 8)))
-		   (let end-loop ((i i))
-		     (and (fix:> i 0)
-			  ;; Loop unrolled 1 time is safe because the zero slot
-			  ;; contains a fixnum that will never match a node
-			  (or (eq? from (vector-ref set i))
-			      (eq? from (vector-ref set (fix:- i 1)))
-			      (end-loop (fix:- i 2)))))))))))
+
+;; BIT vectors as strings:
+
+(define-integrable (bv-index->byte-index n)
+  (fix:lsh n -3))
+
+(define-integrable (bv-index->mask n)
+  (vector-8b-ref "\001\002\004\010\020\040\100\200" (fix:and n 7)))
+
+(define (make-bit-vector n init)
+  (define-integrable (bv-bits->bytes n)
+    (fix:lsh (fix:+ n 7) -3))
+  (make-string (bv-bits->bytes n)
+	       (if init
+		   (integer->char 255)
+		   (integer->char 0))))
+
+(define-integrable (bit-vector-ref bv n)
+  (fix:= (fix:and (vector-8b-ref bv (bv-index->byte-index n))
+		  (bv-index->mask n))
+	 (bv-index->mask n)))
+
+(define (bit-vector-set! bv n)
+  (vector-8b-set! bv
+		  (bv-index->byte-index n)
+		  (fix:or (vector-8b-ref bv (bv-index->byte-index n))
+			  (bv-index->mask n))))
+
+
 
 
 (define (make-empty-node-set)
