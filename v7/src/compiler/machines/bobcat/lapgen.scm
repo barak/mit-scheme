@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.178 1987/06/08 14:50:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.179 1987/06/10 19:48:46 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -695,7 +695,9 @@ MIT in each case. |#
 	(else (error "GENERATE-INVOCATION-PREFIX: bad prefix type" prefix)))))
 
 (define (generate-invocation-prefix:move-frame-up frame-size how-far)
-  (cond ((or (zero? frame-size) (zero? how-far)) '())
+  (cond ((zero? how-far) '())
+	((zero? frame-size)
+	 (increment-anl 7 how-far))
 	((= frame-size 1)
 	 `((MOVE L (@A+ 7) ,(offset-reference a7 (-1+ how-far)))
 	   ,@(increment-anl 7 (-1+ how-far))))
