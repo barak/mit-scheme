@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pm.c,v 1.26 1995/11/04 02:40:23 cph Exp $
+$Id: os2pm.c,v 1.27 1995/11/06 10:06:24 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -1966,7 +1966,7 @@ menu_destroy (qid_t qid, HWND menu)
 
 static USHORT
 menu_insert_item (qid_t qid, HWND menu, USHORT position, USHORT style,
-		  USHORT attributes, USHORT id, HWND submenu, PSZ text)
+		  USHORT attributes, USHORT id, HWND submenu, char * text)
 {
   MENUITEM item;
   (item . iPosition) = position;
