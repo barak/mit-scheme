@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.153 1991/05/14 02:27:13 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.154 1991/05/15 01:11:28 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -567,7 +567,7 @@ If a file with the new name already exists, confirmation is requested first."
 			      verify-final-value? require-match?)
   (let ((directory
 	 (if directory
-	     (pathname-directory-path directory)
+	     (pathname-directory-path (->pathname directory))
 	     (buffer-default-directory (current-buffer)))))
     (prompt-string->pathname
      (prompt-for-completed-string
