@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 14.11 1990/10/10 06:15:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 14.12 1990/10/10 06:30:35 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -434,13 +434,16 @@ MIT in each case. |#
 			   (loop)))))))
 
 (define (octal->char c1 c2 c3)
-  (let ((sum
-	 (+ (* #o100 (char->digit c1 8))
-	    (* #o10 (char->digit c2 8))
-	    (char->digit c3 8))))
-    (if (>= sum 256)
-	(error "Octal string escape exceeds ASCII range:" (string c1 c2 c3)))
-    (ascii->char sum)))
+  (let ((d1 (char->digit c1 8))
+	(d2 (char->digit c2 8))
+	(d3 (char->digit c3 8)))
+    (if (not (and d1 d2 d3))
+	(error "Badly formed octal string escape:" (string #\\ c1 c2 c3)))
+    (let ((sum (+ (* #o100 d1) (* #o10 d2) d3)))
+      (if (>= sum 256)
+	  (error "Octal string escape exceeds ASCII range:"
+		 (string #\\ c1 c2 c3)))
+      (ascii->char sum))))
 
 (define (parse-object/char-quote)
   (discard-char)
