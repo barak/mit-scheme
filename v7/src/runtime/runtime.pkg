@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.424 2003/02/06 19:48:32 cph Exp $
+$Id: runtime.pkg,v 14.425 2003/02/10 01:54:05 cph Exp $
 
 Copyright (c) 1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright (c) 1993,1994,1995,1996,1997 Massachusetts Institute of Technology
@@ -1277,6 +1277,10 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	  entity-extra
 	  entity-procedure
 	  entity?
+	  guarantee-compiled-procedure
+	  guarantee-compound-procedure
+	  guarantee-primitive-procedure
+	  guarantee-procedure
 	  implemented-primitive-procedure?
 	  make-apply-hook
 	  make-arity-dispatched-procedure
