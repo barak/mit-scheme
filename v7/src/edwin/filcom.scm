@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.144 1991/02/15 18:13:29 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.145 1991/03/16 00:02:10 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -94,13 +94,12 @@ May create a window, or reuse one."
   find-file-other-window)
 
 (define-command find-alternate-file
-  "Find a file in its own buffer, killing the current buffer.
-Like \\[kill-buffer] followed by \\[find-file]."
+  "Find file FILENAME, select its buffer, kill previous buffer.
+If the current buffer now contains an empty file that you just visited
+\(presumably by mistake), use this command to visit the file you really want."
   "FFind alternate file"
   (lambda (filename)
     (let ((buffer (current-buffer)))
-      (if (not (buffer-pathname buffer))
-	  (editor-error "Buffer not visiting any file"))
       (let ((do-it
 	     (lambda ()
 	       (kill-buffer-interactive buffer)
@@ -228,12 +227,11 @@ Argument means don't offer to use auto-save file."
       (let ((exponent (command-argument-multiplier-only?)))
 	(if (buffer-pathname buffer)
 	    (save-buffer-prepare-version buffer)
-	    (set-visited-pathname buffer
-				  (prompt-for-pathname
-				   (string-append "Write buffer "
-						  (buffer-name buffer)
-						  " to file")
-				   false)))
+	    (set-visited-pathname
+	     buffer
+	     (prompt-for-pathname
+	      (string-append "Write buffer " (buffer-name buffer) " to file")
+	      false false)))
 	(if (memv exponent '(2 3)) (set-buffer-backed-up?! buffer false))
 	(write-buffer-interactive buffer)
 	(if (memv exponent '(1 3)) (set-buffer-backed-up?! buffer false)))
@@ -259,9 +257,11 @@ Argument means don't offer to use auto-save file."
 		  buffers))))
 
 (define (save-buffer-prepare-version buffer)
-  (let ((pathname (buffer-pathname buffer)))
-    (if (and pathname (integer? (pathname-version pathname)))
-	(set-buffer-pathname! buffer (newest-pathname pathname)))))
+  (if pathname-newest
+      (let ((pathname (buffer-pathname buffer)))
+	(if (and pathname (integer? (pathname-version pathname)))
+	    (set-buffer-pathname! buffer
+				  (pathname-new-version pathname 'NEWEST))))))
 
 (define-command save-buffer
   "Save current buffer in visited file if modified.  Versions described below.
@@ -309,7 +309,7 @@ if you wish to make buffer not be visiting any file."
   (lambda (filename)
     (set-visited-pathname (current-buffer)
 			  (and (not (string-null? filename))
-			       (prompt-string->pathname filename)))))
+			       (string->pathname filename)))))
 
 (define (set-visited-pathname buffer pathname)
   (set-buffer-pathname! buffer pathname)
@@ -346,13 +346,42 @@ Leaves point at the beginning, mark at the end."
   "FInsert file"
   (lambda (filename)
     (set-current-region! (insert-file (current-point) filename))))
+
+(define (pathname->buffer-name pathname)
+  (let ((name (pathname-name pathname)))
+    (if name
+	(pathname->string
+	 (make-pathname false false false
+			name (pathname-type pathname) false))
+	(let ((name
+	       (let ((directory (pathname-directory pathname)))
+		 (and (pair? directory)
+		      (car (last-pair directory))))))
+	  (if (string? name) name "*random*")))))
+
+(define (pathname->buffer pathname)
+  (or (list-search-positive (buffer-list)
+	(lambda (buffer)
+	  (let ((pathname* (buffer-pathname buffer)))
+	    (and pathname*
+		 (pathname=? pathname pathname*)))))
+      (let ((truename (pathname->input-truename pathname)))
+	(and truename
+	     (list-search-positive (buffer-list)
+	       (lambda (buffer)
+		 (let ((pathname* (buffer-pathname buffer)))
+		   (and pathname*
+			(or (pathname=? pathname pathname*)
+			    (pathname=? truename pathname*)
+			    (let ((truename* (buffer-truename buffer)))
+			      (and truename*
+				   (pathname=? truename truename*))))))))))))
 
 (define-command copy-file
   "Copy a file; the old and new names are read in the typein window.
 If a file with the new name already exists, confirmation is requested first."
   (lambda ()
-    (let ((old
-	   (prompt-for-input-truename "Copy file" (current-default-pathname))))
+    (let ((old (prompt-for-input-truename "Copy file" false)))
       (list old (prompt-for-output-truename "Copy to" old))))
   (lambda (old new)
     (if (or (not (file-exists? new))
@@ -368,9 +397,7 @@ If a file with the new name already exists, confirmation is requested first."
   "Rename a file; the old and new names are read in the typein window.
 If a file with the new name already exists, confirmation is requested first."
   (lambda ()
-    (let ((old
-	   (prompt-for-input-truename "Rename file"
-				      (current-default-pathname))))
+    (let ((old (prompt-for-input-truename "Rename file" false)))
       (list old (prompt-for-output-truename "Rename to" old))))
   (lambda (old new)
     (let ((do-it
@@ -391,10 +418,33 @@ If a file with the new name already exists, confirmation is requested first."
   "fDelete File"
   delete-file)
 
+(define-command pwd
+  "Show the current default directory."
+  ()
+  (lambda ()
+    (message "Directory "
+	     (pathname->string (buffer-default-directory (current-buffer))))))
+
 (define-command cd
-  "Make DIR become Scheme's default directory."
+  "Make DIR become the current buffer's default directory."
   "DChange default directory"
-  cd)
+  (lambda (directory)
+    (set-default-directory directory)
+    ((ref-command pwd))))
+
+(define (set-default-directory directory)
+  (let ((buffer (current-buffer)))
+    (let ((directory
+	   (pathname-as-directory
+	    (merge-pathnames (->pathname directory)
+			     (buffer-default-directory buffer)))))
+      (if (not (file-directory? directory))
+	  (editor-error (pathname->string directory) " is not a directory"))
+      (if (not (unix/file-access directory 1))
+	  (editor-error "Cannot cd to "
+			(pathname->string directory)
+			": Permission denied"))
+      (set-buffer-default-directory! buffer directory))))
 
 ;;;; Printer Support
 
@@ -444,84 +494,111 @@ If a file with the new name already exists, confirmation is requested first."
 
 ;;;; Prompting
 
-(define (prompt-for-filename prompt default require-match?)
-  (let ((default
-	  (if default
-	      (pathname-directory-path default)
-	      (working-directory-pathname))))
-    (prompt-for-completed-string
-     prompt
-     (os/pathname->display-string default)
-     'INSERTED-DEFAULT
-     (lambda (string if-unique if-not-unique if-not-found)
-       (define (loop directory filenames)
-	 (let ((unique-case
-		(lambda (filenames)
-		  (let ((filename
-			 (os/make-filename directory (car filenames))))
-		    (if (os/file-directory? filename)
-			(let ((directory (os/filename-as-directory filename)))
-			  (let ((filenames (os/directory-list directory)))
-			    (if (null? filenames)
-				(if-unique directory)
-				(loop directory filenames))))
-			(if-unique filename)))))
-	       (non-unique-case
-		(lambda (filenames*)
-		  (let ((string (string-greatest-common-prefix filenames*)))
-		    (if-not-unique
-		     (os/make-filename directory string)
-		     (lambda ()
-		       (canonicalize-filename-completions
-			directory
-			(list-transform-positive filenames
-			  (lambda (filename)
-			    (string-prefix? string filename))))))))))
-	   (if (null? (cdr filenames))
-	       (unique-case filenames)
-	       (let ((filtered-filenames
-		      (list-transform-negative filenames
-			(lambda (filename)
-			  (completion-ignore-filename?
-			   (os/make-filename directory filename))))))
-		 (cond ((null? filtered-filenames)
-			(non-unique-case filenames))
-		       ((null? (cdr filtered-filenames))
-			(unique-case filtered-filenames))
-		       (else
-			(non-unique-case filtered-filenames)))))))
-       (let ((pathname
-	      (merge-pathnames (prompt-string->pathname string) default)))
-	 (let ((directory (pathname-directory-string pathname))
-	       (prefix (pathname-name-string pathname)))
-	   (cond ((not (os/file-directory? directory))
-		  (if-not-found))
-		 ((string-null? prefix)
-		  ;; This optimization assumes that all directories
-		  ;; contain at least one file.
-		  (if-not-unique directory
-				 (lambda ()
-				   (canonicalize-filename-completions
-				    directory
-				    (os/directory-list directory)))))
-		 (else
-		  (let ((filenames
-			 (os/directory-list-completions directory prefix)))
-		    (if (null? filenames)
-			(if-not-found)
-			(loop directory filenames))))))))
-     (lambda (string)
-       (let ((pathname
-	      (merge-pathnames (prompt-string->pathname string) default)))
-	 (let ((directory (pathname-directory-string pathname)))
-	   (canonicalize-filename-completions
-	    directory
-	    (os/directory-list-completions
-	     directory
-	     (pathname-name-string pathname))))))
-     file-exists?
-     require-match?)))
+(define (prompt-for-input-truename prompt default)
+  (pathname->input-truename (prompt-for-pathname prompt default true)))
+
+(define (prompt-for-output-truename prompt default)
+  (pathname->output-truename (prompt-for-pathname prompt default false)))
+
+(define (prompt-for-directory prompt default require-match?)
+  (let ((directory
+	 (prompt-for-pathname* prompt default file-directory? require-match?)))
+    (if (file-directory? directory)
+	(pathname-as-directory directory)
+	directory)))
+
+(define-integrable (prompt-for-pathname prompt default require-match?)
+  (prompt-for-pathname* prompt default file-exists? require-match?))
+
+(define (prompt-for-pathname* prompt directory
+			      verify-final-value? require-match?)
+  (let ((directory
+	 (if directory
+	     (pathname-directory-path directory)
+	     (buffer-default-directory (current-buffer)))))
+    (prompt-string->pathname
+     (prompt-for-completed-string
+      prompt
+      (os/pathname->display-string directory)
+      'INSERTED-DEFAULT
+      (lambda (string if-unique if-not-unique if-not-found)
+	(filename-complete-string (prompt-string->pathname string directory)
+				  if-unique if-not-unique if-not-found))
+      (lambda (string)
+	(filename-completions-list
+	 (prompt-string->pathname string directory)))
+      verify-final-value?
+      require-match?)
+     directory)))
 
+;;;; Filename Completion
+
+(define (filename-complete-string pathname
+				  if-unique if-not-unique if-not-found)
+  (define (loop directory filenames)
+    (let ((unique-case
+	   (lambda (filenames)
+	     (let ((filename (os/make-filename directory (car filenames))))
+	       (if (os/file-directory? filename)
+		   (let ((directory (os/filename-as-directory filename)))
+		     (let ((filenames (os/directory-list directory)))
+		       (if (null? filenames)
+			   (if-unique directory)
+			   (loop directory filenames))))
+		   (if-unique filename)))))
+	  (non-unique-case
+	   (lambda (filenames*)
+	     (let ((string (string-greatest-common-prefix filenames*)))
+	       (if-not-unique (os/make-filename directory string)
+			      (lambda ()
+				(canonicalize-filename-completions
+				 directory
+				 (list-transform-positive filenames
+				   (lambda (filename)
+				     (string-prefix? string filename))))))))))
+      (if (null? (cdr filenames))
+	  (unique-case filenames)
+	  (let ((filtered-filenames
+		 (list-transform-negative filenames
+		   (lambda (filename)
+		     (completion-ignore-filename?
+		      (os/make-filename directory filename))))))
+	    (cond ((null? filtered-filenames)
+		   (non-unique-case filenames))
+		  ((null? (cdr filtered-filenames))
+		   (unique-case filtered-filenames))
+		  (else
+		   (non-unique-case filtered-filenames)))))))
+  (let ((directory (pathname-directory-string pathname))
+	(prefix (pathname-name-string pathname)))
+    (cond ((not (os/file-directory? directory))
+	   (if-not-found))
+	  ((string-null? prefix)
+	   ;; This optimization assumes that all directories
+	   ;; contain at least one file.
+	   (if-not-unique directory
+			  (lambda ()
+			    (canonicalize-filename-completions
+			     directory
+			     (os/directory-list directory)))))
+	  (else
+	   (let ((filenames
+		  (os/directory-list-completions directory prefix)))
+	     (if (null? filenames)
+		 (if-not-found)
+		 (loop directory filenames)))))))
+
+(define (filename-completions-list pathname)
+  (let ((directory (pathname-directory-string pathname)))
+    (canonicalize-filename-completions
+     directory
+     (os/directory-list-completions directory
+				    (pathname-name-string pathname)))))
+
+(define-integrable (prompt-string->pathname string directory)
+  (merge-pathnames (string->pathname (os/trim-pathname-string string))
+		   directory))
+
 (define (canonicalize-filename-completions directory filenames)
   (map (lambda (filename)
 	 (if (os/file-directory? (os/make-filename directory filename))
@@ -533,68 +610,14 @@ If a file with the new name already exists, confirmation is requested first."
   (and (not (os/file-directory? filename))
        (there-exists? (ref-variable completion-ignored-extensions)
 	 (lambda (extension)
-	   (and (string? extension)
-		(string-suffix? extension filename))))))
+	   (string-suffix? extension filename)))))
 
 (define-variable completion-ignored-extensions
-  "*Completion ignores filenames ending in any string in this list."
-  (os/completion-ignored-extensions))
-
-(define (prompt-for-input-truename prompt default)
-  (pathname->input-truename
-   (prompt-string->pathname (prompt-for-filename prompt default true))))
-
-(define (prompt-for-output-truename prompt default)
-  (pathname->output-truename (prompt-for-pathname prompt default)))
-
-(define (prompt-for-pathname prompt default)
-  (prompt-string->pathname (prompt-for-filename prompt default false)))
-
-(define (prompt-for-directory prompt default-pathname)
-  (let ((pathname (prompt-for-pathname prompt default-pathname)))
-    (if (file-directory? pathname)
-	(pathname-as-directory pathname)
-	pathname)))
-
-(define (current-default-pathname)
-  (newest-pathname
-   (let ((buffer (current-buffer)))
-     (or (buffer-pathname buffer)
-	 (buffer-truename buffer)))))
-
-(define (newest-pathname pathname)
-  (pathname-new-version (or pathname (working-directory-pathname))
-			(and pathname-newest 'NEWEST)))
-
-(define-integrable (prompt-string->pathname string)
-  (string->pathname (os/trim-pathname-string string)))
-
-(define (pathname->buffer-name pathname)
-  (let ((name (pathname-name pathname)))
-    (if name
-	(pathname->string
-	 (make-pathname false false false
-			name (pathname-type pathname) false))
-	(let ((name
-	       (let ((directory (pathname-directory pathname)))
-		 (and (pair? directory)
-		      (car (last-pair directory))))))
-	  (if (string? name) name "*random*")))))
-
-(define (pathname->buffer pathname)
-  (or (list-search-positive (buffer-list)
-	(lambda (buffer)
-	  (let ((pathname* (buffer-pathname buffer)))
-	    (and pathname*
-		 (pathname=? pathname pathname*)))))
-      (let ((truename (pathname->input-truename pathname)))
-	(and truename
-	     (list-search-positive (buffer-list)
-	       (lambda (buffer)
-		 (let ((pathname* (buffer-pathname buffer)))
-		   (and pathname*
-			(or (pathname=? pathname pathname*)
-			    (pathname=? truename pathname*)
-			    (let ((truename* (buffer-truename buffer)))
-			      (and truename*
-				   (pathname=? truename truename*))))))))))))
+  "Completion ignores filenames ending in any string in this list."
+  (os/completion-ignored-extensions)
+  (lambda (extensions)
+    (and (list? extensions)
+	 (for-all? extensions
+	   (lambda (extension)
+	     (and (string? extension)
+		  (not (string-null? extension))))))))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.200 1991/02/15 18:13:08 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.201 1991/03/16 00:01:46 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -47,12 +47,10 @@
 (declare (usual-integrations))
 
 (define (edit)
-  (if (not edwin-editor)
-      (create-editor))
+  (if (not edwin-editor) (create-editor))
   (call-with-current-continuation
    (lambda (continuation)
      (fluid-let ((editor-abort continuation)
-		 (*auto-save-keystroke-count* 0)
 		 (current-editor edwin-editor)
 		 (recursive-edit-continuation false)
 		 (recursive-edit-level 0))
@@ -72,9 +70,6 @@
 		  (editor-spawn-child-cmdl with-editor-ungrabbed))))))))))
   (if edwin-finalization (edwin-finalization))
   unspecific)
-
-(define (edwin)
-  (edit))
 
 (define (editor-grab-display editor receiver)
   (display-type/with-display-grabbed (editor-display-type editor)
@@ -113,8 +108,8 @@
 		  message
 		  spawn-child)))))
 
-(define (within-editor?)
-  (not (unassigned? current-editor)))
+(define (edwin) (edit))
+(define (within-editor?) (not (unassigned? current-editor)))
 
 (define editor-abort)
 (define edwin-editor false)
@@ -145,6 +140,7 @@
     (initialize-typeout!)
     (initialize-syntax-table!)
     (initialize-command-reader!)
+    (initialize-processes!)
     (set! edwin-editor
 	  (make-editor "Edwin"
 		       (let ((name (car args)))
@@ -261,22 +257,26 @@ with the contents of the startup message."
 (define recursive-edit-level)
 
 (define (internal-error-handler condition)
-  (cond ((ref-variable debug-on-internal-error)
+  (cond (debug-internal-errors?
+	 (exit-editor-and-signal-error condition))
+	((ref-variable debug-on-internal-error)
 	 (debug-scheme-error condition)
 	 (message "Scheme error")
 	 (%editor-error))
-	(debug-internal-errors?
-	 (error condition))
 	(else
-	 (exit-editor-and-signal-error condition))))
+	 (message
+	  "Internal error: "
+	  (with-string-output-port
+	   (lambda (port)
+	     (write-condition-report condition port))))
+	 (%editor-error))))
 
 (define-variable debug-on-internal-error
   "True means enter debugger if error is signalled while the editor is running.
 This does not affect editor errors or evaluation errors."
   false)
 
-(define debug-internal-errors?
-  false)
+(define debug-internal-errors? false)
 
 (define (exit-editor-and-signal-error condition)
   (within-continuation editor-abort
@@ -287,9 +287,8 @@ This does not affect editor errors or evaluation errors."
   (make-condition-type 'EDITOR-ERROR condition-type:error '(STRINGS)
     (lambda (condition port)
       (write-string "Editor error: " port)
-      (write-string
-       (message-args->string (access-condition condition 'STRINGS))
-       port))))
+      (write-string (message-args->string (editor-error-strings condition))
+		    port))))
 
 (define editor-error
   (let ((signaller
@@ -299,12 +298,15 @@ This does not affect editor errors or evaluation errors."
     (lambda strings
       (signaller strings))))
 
+(define editor-error-strings
+  (condition-accessor condition-type:editor-error 'STRINGS))
+
 (define (editor-error-handler condition)
   (if (ref-variable debug-on-editor-error)
       (debug-scheme-error condition)
-      (let ((strings (access-condition condition 'STRINGS)))
+      (let ((strings (editor-error-strings condition)))
 	(if (not (null? strings))
-	    (apply temporary-message strings))))
+	    (apply message strings))))
   (%editor-error))
 
 (define-variable debug-on-editor-error
@@ -314,7 +316,7 @@ This does not affect editor errors or evaluation errors."
 (define (%editor-error)
   (editor-beep)
   (abort-current-command))
-
+
 (define (^G-signal)
   (let ((continuations *^G-interrupt-continuations*))
     (if (not (pair? continuations))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.14 1991/03/11 01:15:02 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.15 1991/03/16 00:03:18 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -230,66 +230,74 @@
 	(start 0)
 	(end 0)
 	(pending-event false))
-    (let ((process-events!
-	   (lambda (limit)
-	     (letrec
-		 ((loop
-		   (lambda ()
-		     (let ((event (x-display-process-events display limit)))
-		       (cond ((not event)
-			      (if (not limit)
-				  (error "Blocking read returned #F."))
-			      false)
-			     ((eq? event true)
-			      ;; Handle subprocess output here.
-			      (loop))
-			     ((= (vector-ref event 0) event-type:key-press)
-			      (set! string (vector-ref event 2))
-			      (set! start 0)
-			      (set! end (string-length string))
-			      (if signal-interrupts?
-				  (let ((^g-index
-					 (string-find-previous-char string
-								    #\BEL)))
-				    (if ^g-index
-					(begin
-					  (set! start (fix:+ ^g-index 1))
-					  (signal-interrupt!)))))
-			      true)
-			     (else
-			      (process-special-event event))))))
-		  (process-special-event
-		   (lambda (event)
-		     (let ((handler
-			    (vector-ref event-handlers (vector-ref event 0)))
-			   (screen (xterm->screen (vector-ref event 1))))
-		       (if (and handler screen)
-			   (begin
-			     (let ((continuation (screen-in-update? screen)))
-			       (if continuation
-				   (begin
-				     (set! pending-event event)
-				     (continuation false))))
-			     (handler screen event))))
-		     (loop))))
-	       (if (not pending-event)
-		   (loop)
-		   (let ((event pending-event))
-		     (set! pending-event false)
-		     (process-special-event event)))))))
-      (values
-       (lambda ()			;char-ready?
-	 (if (fix:< start end)
-	     true
-	     (process-events! 0)))
-       (lambda ()			;peek-char
-	 (if (not (fix:< start end)) (process-events! false))
-	 (string-ref string start))
-       (lambda ()			;read-char
-	 (if (not (fix:< start end)) (process-events! false))
-	 (let ((char (string-ref string start)))
-	   (set! start (fix:+ start 1))
-	   char))))))
+    (let ((get-next-event
+	   (lambda (time-limit)
+	     (if pending-event
+		 (let ((event pending-event))
+		   (set! pending-event false)
+		   event)
+		 (x-display-process-events display time-limit))))
+	  (process-key-press-event
+	   (lambda (event)
+	     (set! string (vector-ref event 2))
+	     (set! start 0)
+	     (set! end (string-length string))
+	     (if signal-interrupts?
+		 (let ((i (string-find-previous-char string #\BEL)))
+		   (if i
+		       (begin
+			 (set! start (fix:+ i 1))
+			 (signal-interrupt!)))))))
+	  (process-special-event
+	   (lambda (event)
+	     (let ((handler (vector-ref event-handlers (vector-ref event 0)))
+		   (screen (xterm->screen (vector-ref event 1))))
+	       (if (and handler screen)
+		   (handler screen event))))))
+      (let ((guarantee-input
+	     (lambda ()
+	       (let loop ()
+		 (let ((event (get-next-event false)))
+		   (cond ((not event)
+			  (error "#F returned from blocking read"))
+			 ((eq? true event)
+			  false)
+			 ((eq? event-type:key-press (vector-ref event 0))
+			  (process-key-press-event event)
+			  (if (fix:< start end) true (loop)))
+			 (else
+			  (process-special-event event)
+			  (loop))))))))
+	(values
+	 (lambda ()			;halt-update?
+	   (if (or (fix:< start end) pending-event)
+	       true
+	       (let ((event (get-next-event 0)))
+		 (and event
+		      (begin
+			(set! pending-event event)
+			true)))))
+	 (lambda ()			;char-ready?
+	   (if (fix:< start end)
+	       true
+	       (let loop ()
+		 (let ((event (get-next-event 0)))
+		   (cond ((or (not event) (eq? true event))
+			  false)
+			 ((eq? event-type:key-press (vector-ref event 0))
+			  (process-key-press-event event)
+			  (if (fix:< start end) true (loop)))
+			 (else
+			  (process-special-event event)
+			  (loop)))))))
+	 (lambda ()			;peek-char
+	   (and (or (fix:< start end) (guarantee-input))
+		(string-ref string start)))
+	 (lambda ()			;read-char
+	   (and (or (fix:< start end) (guarantee-input))
+		(let ((char (string-ref string start)))
+		  (set! start (fix:+ start 1))
+		  char))))))))
 
 ;;; The values of these flags must be equal to the corresponding event
 ;;; types in "microcode/x11base.c"

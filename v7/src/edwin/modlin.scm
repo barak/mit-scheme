@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modlin.scm,v 1.5 1990/11/02 03:24:31 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modlin.scm,v 1.6 1991/03/16 00:02:41 cph Exp $
 ;;;
-;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -264,7 +264,10 @@ If #F, the normal method is used."
 	     ((buffer-modified? buffer) "*")
 	     (else "-")))
       ((#\s)
-       "no processes")
+       (let ((process (get-buffer-process buffer)))
+	 (if process
+	     (symbol->string (process-status process))
+	     "no process")))
       ((#\p)
        (if (let ((end (buffer-end buffer)))
 	     (or (window-mark-visible? window end)

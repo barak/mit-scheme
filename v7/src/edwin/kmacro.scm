@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/kmacro.scm,v 1.32 1990/11/02 03:09:52 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/kmacro.scm,v 1.33 1991/03/16 00:02:29 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -214,7 +214,8 @@ With argument, also record the keys it is bound to."
 	     (prompt-for-pathname (string-append "Write keyboard macro "
 						 name
 						 " to file")
-				  (current-default-pathname)))
+				  false
+				  false))
 	    (buffer (temporary-buffer "*Write-Keyboard-Macro-temp*")))
 	(with-output-to-mark (buffer-point buffer)
 	  (lambda ()

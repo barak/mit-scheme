@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.4 1991/03/11 01:14:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.5 1991/03/16 00:03:03 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -141,30 +141,37 @@ MIT in each case. |#
 	       (if block?
 		   (channel-blocking channel)
 		   (channel-nonblocking channel))
-	       (let ((n (channel-read channel string 0 input-buffer-size)))
-		 (cond (n
-			(if (fix:= n 0) (eof))
-			(set! start 0)
-			(set! end n)
-			(if transcript-port
-			    (write-string (substring string 0 n)
-					  transcript-port)))
-		       (block? (error "Blocking read returned #F.")))
-		 n)))))
+	       (let ((n
+		      (channel-select-then-read channel
+						string 0 input-buffer-size)))
+		 (if (or (not n) (eq? true n))
+		     n
+		     (begin
+		       (if (fix:= n 0) (eof))
+		       (set! start 0)
+		       (set! end n)
+		       (if transcript-port
+			   (write-string (substring string 0 n)
+					 transcript-port))
+		       'CHAR)))))))
       (values
-       (lambda ()			;char-ready?
+       (lambda ()			;halt-update?
 	 (if (fix:< start end)
 	     true
 	     (fill-buffer false)))
+       (lambda ()			;char-ready?
+	 (if (fix:< start end)
+	     true
+	     (eq? 'CHAR (fill-buffer false))))
        (lambda ()			;peek-char
-	 (if (not (fix:< start end)) (fill-buffer true))
-	 (string-ref string start))
+	 (and (or (fix:< start end) (eq? 'CHAR (fill-buffer true)))
+	      (string-ref string start)))
        (lambda ()			;read-char
-	 (if (not (fix:< start end)) (fill-buffer true))
-	 (let ((char (string-ref string start)))
-	   (set! start (fix:+ start 1))
-	   char))))))
-
+	 (and (or (fix:< start end) (eq? 'CHAR (fill-buffer true)))
+	      (let ((char (string-ref string start)))
+		(set! start (fix:+ start 1))
+		char)))))))
+
 (define (signal-interrupt! interrupt-enables)
   interrupt-enables			; ignored
   ;; (editor-beep)			; kbd beeps by itself

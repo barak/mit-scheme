@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/input.scm,v 1.87 1991/03/11 01:14:20 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/input.scm,v 1.88 1991/03/16 00:02:18 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -104,12 +104,14 @@ B 3BAB8C
 (define command-prompt-displayed?)
 (define message-string)
 (define message-should-be-erased?)
+(define auto-save-keystroke-count)
 
 (define (initialize-typeout!)
   (set! command-prompt-string false)
   (set! command-prompt-displayed? false)
   (set! message-string false)
   (set! message-should-be-erased? false)
+  (set! auto-save-keystroke-count 0)
   unspecific)
 
 (define (reset-command-prompt!)
@@ -121,7 +123,8 @@ B 3BAB8C
       ;; timeout instead of right away.
       (begin
 	(set! command-prompt-displayed? false)
-	(set! message-should-be-erased? true))))
+	(set! message-should-be-erased? true)))
+  unspecific)
 
 (define-integrable (command-prompt)
   (or command-prompt-string ""))
@@ -182,7 +185,7 @@ B 3BAB8C
   (if *executing-keyboard-macro?*
       (keyboard-macro-read-char)
       (let ((char (keyboard-read-char-1 (editor-read-char current-editor))))
-	(set! *auto-save-keystroke-count* (1+ *auto-save-keystroke-count*))
+	(set! auto-save-keystroke-count (1+ auto-save-keystroke-count))
 	(ring-push! (current-char-history) char)
 	(if *defining-keyboard-macro?* (keyboard-macro-write-char char))
 	char)))
@@ -191,44 +194,52 @@ B 3BAB8C
 (define read-char-timeout/slow 2000)
 
 (define (keyboard-read-char-1 read-char)
-  (let ((char-ready? (editor-char-ready? current-editor)))
-    ;; Perform redisplay if needed.
-    (if (not (char-ready?))
-	(begin
-	  (update-screens! false)
-	  (if (let ((interval (ref-variable auto-save-interval))
-		    (count *auto-save-keystroke-count*))
-		(and (positive? interval)
-		     (> count interval)
-		     (> count 20)))
-	      (begin
-		(do-auto-save)
-		(set! *auto-save-keystroke-count* 0)))))
-    ;; Perform the appropriate juggling of the minibuffer message.
-    (cond ((within-typein-edit?)
-	   (if message-string
+  (remap-alias-char
+   (let ((char-ready? (editor-char-ready? current-editor))
+	 (halt-update? (editor-halt-update? current-editor)))
+     (if (not (char-ready?))
+	 (begin
+	   (accept-process-output)
+	   (notify-process-status-changes)
+	   (update-screens! false)
+	   (if (let ((interval (ref-variable auto-save-interval))
+		     (count auto-save-keystroke-count))
+		 (and (positive? interval)
+		      (> count interval)
+		      (> count 20)))
 	       (begin
-		 (let ((t (+ (real-time-clock) read-char-timeout/slow)))
-		   (let loop ()
-		     (if (and (not (char-ready?))
-			      (< (real-time-clock) t))
-			 (loop))))
-		 (set! message-string false)
-		 (set! message-should-be-erased? false)
-		 (clear-current-message!))))
-	  ((and (or message-should-be-erased?
-		    (and command-prompt-string
-			 (not command-prompt-displayed?)))
-		(let ((t (+ (real-time-clock) read-char-timeout/fast)))
-		  (let loop ()
-		    (cond ((char-ready?) false)
-			  ((< (real-time-clock) t) (loop))
-			  (else true)))))
-	   (set! message-string false)
-	   (set! message-should-be-erased? false)
-	   (if command-prompt-string
-	       (begin
-		 (set! command-prompt-displayed? true)
-		 (set-current-message! command-prompt-string))
-	       (clear-current-message!)))))
-  (remap-alias-char (read-char)))
+		 (do-auto-save)
+		 (set! auto-save-keystroke-count 0)))))
+     (let ((wait
+	    (lambda (timeout)
+	      (let ((t (+ (real-time-clock) timeout)))
+		(let loop ()
+		  (cond ((char-ready?) false)
+			((>= (real-time-clock) t) true)
+			(else (loop))))))))
+       ;; Perform the appropriate juggling of the minibuffer message.
+       (cond ((within-typein-edit?)
+	      (if message-string
+		  (begin
+		    (wait read-char-timeout/slow)
+		    (set! message-string false)
+		    (set! message-should-be-erased? false)
+		    (clear-current-message!))))
+	     ((and (or message-should-be-erased?
+		       (and command-prompt-string
+			    (not command-prompt-displayed?)))
+		   (wait read-char-timeout/fast))
+	      (set! message-string false)
+	      (set! message-should-be-erased? false)
+	      (if command-prompt-string
+		  (begin
+		    (set! command-prompt-displayed? true)
+		    (set-current-message! command-prompt-string))
+		  (clear-current-message!)))))
+     (let loop ()
+       (or (read-char)
+	   (begin
+	     (accept-process-output)
+	     (notify-process-status-changes)
+	     (update-screens! false)
+	     (loop)))))))

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufset.scm,v 1.7 1989/04/28 22:47:45 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufset.scm,v 1.8 1991/03/16 00:01:24 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -92,7 +92,12 @@
 (define (bufferset-create-buffer bufferset name)
   (if (bufferset-find-buffer bufferset name)
       (error "Attempt to re-create buffer" name))
-  (let ((buffer (make-buffer name)))
+  (let ((buffer
+	 (make-buffer name
+		      (ref-variable editor-default-mode)
+		      (if (within-editor?)
+			  (buffer-default-directory (current-buffer))
+			  (working-directory-pathname)))))
     (string-table-put! (bufferset-names bufferset) name buffer)
     (vector-set! bufferset
 		 bufferset-index:buffer-list

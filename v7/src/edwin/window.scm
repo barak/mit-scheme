@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/window.scm,v 1.153 1991/03/11 01:14:53 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/window.scm,v 1.154 1991/03/16 00:03:11 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -209,9 +209,9 @@
 				display-style)
   (update-inferiors! (window-inferiors window) screen x-start y-start
 		     xl xu yl yu display-style
-    (let ((char-ready? (editor-char-ready? current-editor)))
+    (let ((halt-update? (editor-halt-update? current-editor)))
       (lambda (window screen x-start y-start xl xu yl yu display-style)
-	(and (or display-style (not (char-ready?)))
+	(and (or display-style (not (halt-update?)))
 	     (=> window :update-display! screen x-start y-start xl xu yl yu
 		 display-style))))))
 

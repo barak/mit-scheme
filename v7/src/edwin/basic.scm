@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.106 1991/02/15 18:12:24 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.107 1991/03/16 00:01:14 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -281,11 +281,27 @@ With prefix arg, silently save all file-visiting buffers, then kill."
   "P"
   (lambda (no-confirmation?)
     (save-some-buffers no-confirmation?)
-    (set! edwin-finalization
-	  (lambda ()
-	    (set! edwin-finalization false)
-	    (reset-editor)))
-    ((ref-command suspend-edwin))))
+    (if (and (or (not (there-exists? (buffer-list)
+			(lambda (buffer)
+			  (and (buffer-modified? buffer)
+			       (buffer-pathname buffer)))))
+		 (prompt-for-yes-or-no?
+		  "Modified buffers exist; exit anyway"))
+	     (or (not (there-exists? (process-list)
+			(lambda (process)
+			  (and (not (process-kill-without-query process))
+			       (process-runnable? process)))))
+		 (and (prompt-for-yes-or-no?
+		       "Active processes exist; kill them and exit anyway")
+		      (begin
+			(for-each delete-process (process-list))
+			true))))
+	(begin
+	  (set! edwin-finalization
+		(lambda ()
+		  (set! edwin-finalization false)
+		  (reset-editor)))
+	  ((ref-command suspend-edwin))))))
 
 ;;;; Comment Commands
 

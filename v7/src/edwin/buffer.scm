@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.138 1990/11/02 03:22:26 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.139 1991/03/16 00:01:19 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -54,6 +54,7 @@
   comtabs
   windows
   display-start
+  default-directory
   pathname
   truename
   alist
@@ -78,43 +79,40 @@ The new buffer is passed as its argument.
 The buffer is guaranteed to be deselected at that time."
   (make-event-distributor))
 
-(define (make-buffer name #!optional mode)
-  (let ((mode
-	 (if (default-object? mode)
-	     (ref-variable editor-default-mode)
-	     mode)))
-    (let ((group (region-group (string->region ""))))
-      (let ((buffer (%make-buffer)))
-	(vector-set! buffer buffer-index:name name)
-	(vector-set! buffer buffer-index:group group)
-	(let ((daemon (buffer-modification-daemon buffer)))
-	  (add-group-insert-daemon! group daemon)
-	  (add-group-delete-daemon! group daemon))
-	(add-group-clip-daemon! group (buffer-clip-daemon buffer))
-	(if (not (minibuffer? buffer))
-	    (enable-group-undo! group))
-	(vector-set! buffer
-		     buffer-index:mark-ring
-		     (make-ring (ref-variable mark-ring-maximum)))
-	(ring-push! (buffer-mark-ring buffer) (group-start-mark group))
-	(vector-set! buffer buffer-index:modes (list mode))
-	(vector-set! buffer buffer-index:comtabs (mode-comtabs mode))
-	(vector-set! buffer buffer-index:windows '())
-	(vector-set! buffer buffer-index:display-start false)
-	(vector-set! buffer buffer-index:pathname false)
-	(vector-set! buffer buffer-index:truename false)
-	(vector-set! buffer buffer-index:alist '())
-	(vector-set! buffer buffer-index:local-bindings '())
-	(vector-set! buffer
-		     buffer-index:initializations
-		     (list (mode-initialization mode)))
-	(vector-set! buffer buffer-index:auto-save-pathname false)
-	(vector-set! buffer buffer-index:auto-save-modified? false)
-	(vector-set! buffer buffer-index:save-length 0)
-	(vector-set! buffer buffer-index:backed-up? false)
-	(vector-set! buffer buffer-index:modification-time false)
-	(event-distributor/invoke! (ref-variable buffer-creation-hook) buffer)
-	buffer))))
+(define (make-buffer name mode directory)
+  (let ((group (region-group (string->region ""))))
+    (let ((buffer (%make-buffer)))
+      (vector-set! buffer buffer-index:name name)
+      (vector-set! buffer buffer-index:group group)
+      (let ((daemon (buffer-modification-daemon buffer)))
+	(add-group-insert-daemon! group daemon)
+	(add-group-delete-daemon! group daemon))
+      (add-group-clip-daemon! group (buffer-clip-daemon buffer))
+      (if (not (minibuffer? buffer))
+	  (enable-group-undo! group))
+      (vector-set! buffer
+		   buffer-index:mark-ring
+		   (make-ring (ref-variable mark-ring-maximum)))
+      (ring-push! (buffer-mark-ring buffer) (group-start-mark group))
+      (vector-set! buffer buffer-index:modes (list mode))
+      (vector-set! buffer buffer-index:comtabs (mode-comtabs mode))
+      (vector-set! buffer buffer-index:windows '())
+      (vector-set! buffer buffer-index:display-start false)
+      (vector-set! buffer buffer-index:default-directory directory)
+      (vector-set! buffer buffer-index:pathname false)
+      (vector-set! buffer buffer-index:truename false)
+      (vector-set! buffer buffer-index:alist '())
+      (vector-set! buffer buffer-index:local-bindings '())
+      (vector-set! buffer
+		   buffer-index:initializations
+		   (list (mode-initialization mode)))
+      (vector-set! buffer buffer-index:auto-save-pathname false)
+      (vector-set! buffer buffer-index:auto-save-modified? false)
+      (vector-set! buffer buffer-index:save-length 0)
+      (vector-set! buffer buffer-index:backed-up? false)
+      (vector-set! buffer buffer-index:modification-time false)
+      (event-distributor/invoke! (ref-variable buffer-creation-hook) buffer)
+      buffer)))
 
 (define (buffer-modeline-event! buffer type)
   (let loop ((windows (buffer-windows buffer)))
@@ -145,8 +143,12 @@ The buffer is guaranteed to be deselected at that time."
   (vector-set! buffer buffer-index:name name)
   (buffer-modeline-event! buffer 'BUFFER-NAME))
 
+(define (set-buffer-default-directory! buffer directory)
+  (vector-set! buffer buffer-index:default-directory directory))
+
 (define (set-buffer-pathname! buffer pathname)
   (vector-set! buffer buffer-index:pathname pathname)
+  (set-buffer-default-directory! buffer (pathname-directory-path pathname))
   (buffer-modeline-event! buffer 'BUFFER-PATHNAME))
 
 (define (set-buffer-truename! buffer truename)
@@ -322,17 +324,17 @@ The buffer is guaranteed to be deselected at that time."
 (define (make-local-binding! variable new-value)
   (without-interrupts
    (lambda ()
-     (let ((buffer (current-buffer))
-	   (old-value (variable-value variable)))
-       (check-variable-value-validity! variable new-value)
-       (%set-variable-value! variable new-value)
-       (invoke-variable-assignment-daemons! variable)
+     (let ((buffer (current-buffer)))
        (let ((bindings (buffer-local-bindings buffer)))
 	 (let ((binding (assq variable bindings)))
 	   (if (not binding)
 	       (vector-set! buffer
 			    buffer-index:local-bindings
-			    (cons (cons variable old-value) bindings)))))))))
+			    (cons (cons variable (variable-value variable))
+				  bindings))))))
+     (check-variable-value-validity! variable new-value)
+     (%set-variable-value! variable new-value)
+     (invoke-variable-assignment-daemons! variable))))
 
 (define (unmake-local-binding! variable)
   (without-interrupts
@@ -343,111 +345,105 @@ The buffer is guaranteed to be deselected at that time."
 	   (if binding
 	       (begin
 		 (%set-variable-value! variable (cdr binding))
-		 (invoke-variable-assignment-daemons! variable)
 		 (vector-set! buffer
 			      buffer-index:local-bindings
-			      (delq! binding bindings))))))))))
+			      (delq! binding bindings))
+		 (invoke-variable-assignment-daemons! variable)))))))))
 
 (define (undo-local-bindings!)
+  ;; Caller guarantees that interrupts are disabled.
   (let ((buffer (current-buffer)))
-    (for-each (lambda (binding)
-		(let ((variable (car binding)))
-		  (%set-variable-value! variable (cdr binding))
-		  (invoke-variable-assignment-daemons! variable)))
-	      (buffer-local-bindings buffer))
-    (vector-set! buffer buffer-index:local-bindings '())))
+    (let ((bindings (buffer-local-bindings buffer)))
+      (do ((bindings bindings (cdr bindings)))
+	  ((null? bindings))
+	(%set-variable-value! (caar bindings) (cdar bindings)))
+      (vector-set! buffer buffer-index:local-bindings '())
+      (do ((bindings bindings (cdr bindings)))
+	  ((null? bindings))
+	(invoke-variable-assignment-daemons! (caar bindings))))))
 
 (define (with-current-local-bindings! thunk)
   (let ((wind-bindings
 	 (lambda (buffer)
-	   (for-each (lambda (binding)
-		       (let ((variable (car binding)))
-			 (let ((old-value (variable-value variable)))
-			   (%set-variable-value! variable (cdr binding))
-			   (set-cdr! binding old-value))))
-		     (buffer-local-bindings buffer)))))
-    (dynamic-wind
-     (lambda ()
-       (let ((buffer (current-buffer)))
-	 (wind-bindings buffer)
-	 (perform-buffer-initializations! buffer)))
-     thunk
-     (lambda ()
-       (wind-bindings (current-buffer))))))
+	   (do ((bindings (buffer-local-bindings buffer) (cdr bindings)))
+	       ((null? bindings))
+	     (let ((old-value (variable-value (caar bindings))))
+	       (%set-variable-value! (caar bindings) (cdar bindings))
+	       (set-cdr! (car bindings) old-value))))))
+    (dynamic-wind (lambda ()
+		    (let ((buffer (current-buffer)))
+		      (wind-bindings buffer)
+		      (perform-buffer-initializations! buffer)))
+		  thunk
+		  (lambda ()
+		    (wind-bindings (current-buffer))))))
 
 (define (change-local-bindings! old-buffer new-buffer select-buffer!)
   ;; Assumes that interrupts are disabled and that OLD-BUFFER is selected.
   (let ((variables '()))
-    (for-each (lambda (binding)
-		(let ((variable (car binding)))
-		  (let ((old-value (variable-value variable)))
-		    (%set-variable-value! variable (cdr binding))
-		    (set-cdr! binding old-value))
-		  (if (not (null? (variable-assignment-daemons variable)))
-		      (begin
-			(set! variables (cons variable variables))
-			unspecific))))
-	      (buffer-local-bindings old-buffer))
+    (do ((bindings (buffer-local-bindings old-buffer) (cdr bindings)))
+	((null? bindings))
+      (let ((old-value (variable-value (caar bindings))))
+	(%set-variable-value! (caar bindings) (cdar bindings))
+	(set-cdr! (car bindings) old-value))
+      (if (not (null? (variable-assignment-daemons (caar bindings))))
+	  (set! variables (cons (caar bindings) variables))))
     (select-buffer!)
-    (for-each (lambda (binding)
-		(let ((variable (car binding)))
-		  (let ((old-value (variable-value variable)))
-		    (%set-variable-value! variable (cdr binding))
-		    (set-cdr! binding old-value))
-		  (if (and (not (null? (variable-assignment-daemons variable)))
-			   (not (memq variable variables)))
-		      (begin
-			(set! variables (cons variable variables))
-			unspecific))))
-	      (buffer-local-bindings new-buffer))
+    (do ((bindings (buffer-local-bindings new-buffer) (cdr bindings)))
+	((null? bindings))
+      (let ((old-value (variable-value (caar bindings))))
+	(%set-variable-value! (caar bindings) (cdar bindings))
+	(set-cdr! (car bindings) old-value))
+      (if (and (not (null? (variable-assignment-daemons (caar bindings))))
+	       (not (let loop ((variables variables))
+		      (and (not (null? variables))
+			   (or (eq? (caar bindings) (car variables))
+			       (loop (cdr variables)))))))
+	  (set! variables (cons (caar bindings) variables))))
     (perform-buffer-initializations! new-buffer)
     (if (not (null? variables))
-	(for-each invoke-variable-assignment-daemons! variables))))
+	(do ((variables variables (cdr variables)))
+	    ((null? variables))
+	  (invoke-variable-assignment-daemons! (car variables))))))
 
-(define (variable-local-value buffer variable)
-  (let ((binding
-	 (and (within-editor?)
-	      (not (current-buffer? buffer))
-	      (or (assq variable (buffer-local-bindings buffer))
-		  (and (variable-buffer-local? variable)
-		       (assq variable
-			     (buffer-local-bindings (current-buffer))))))))
-    (if binding
-	(cdr binding)
-	(variable-value variable))))
-
-(define (set-variable-local-value! buffer variable value)
-  (let ((binding
-	 (and (not (current-buffer? buffer))
-	      (assq variable (buffer-local-bindings buffer)))))
-    (if binding
-	(set-cdr! binding value)
-	(set-variable-value! variable value))))
-
 (define (define-variable-local-value! buffer variable value)
   (if (current-buffer? buffer)
       (make-local-binding! variable value)
       (without-interrupts
        (lambda ()
-	 (let ((bindings (buffer-local-bindings buffer)))
-	   (let ((binding (assq variable bindings)))
-	     (if binding
-		 (set-cdr! binding value)
-		 (vector-set! buffer
-			      buffer-index:local-bindings
-			      (cons (cons variable value) bindings)))))))))
+	 (let ((binding (search-local-bindings buffer variable)))
+	   (if binding
+	       (set-cdr! binding value)
+	       (vector-set! buffer
+			    buffer-index:local-bindings
+			    (cons (cons variable value)
+				  (buffer-local-bindings buffer)))))))))
 
-(define (variable-local-value? buffer variable)
-  (assq variable (buffer-local-bindings buffer)))
+(define (variable-local-value buffer variable)
+  (if (or (not (within-editor?))
+	  (current-buffer? buffer))
+      (variable-value variable)
+      (let ((binding (search-local-bindings buffer variable)))
+	(if binding
+	    (cdr binding)
+	    (variable-default-value variable)))))
+
+(define (set-variable-local-value! buffer variable value)
+  (if (current-buffer? buffer)
+      (set-variable-value! variable value)
+      (let ((binding (search-local-bindings buffer variable)))
+	(if binding
+	    (set-cdr! binding value)
+	    (set-variable-default-value! variable value)))))
 
 (define (variable-default-value variable)
-  (let ((binding (assq variable (buffer-local-bindings (current-buffer)))))
+  (let ((binding (search-local-bindings (current-buffer) variable)))
     (if binding
 	(cdr binding)
 	(variable-value variable))))
 
 (define (set-variable-default-value! variable value)
-  (let ((binding (assq variable (buffer-local-bindings (current-buffer)))))
+  (let ((binding (search-local-bindings (current-buffer) variable)))
     (if binding
 	(set-cdr! binding value)
 	(without-interrupts
@@ -455,6 +451,19 @@ The buffer is guaranteed to be deselected at that time."
 	   (check-variable-value-validity! variable value)
 	   (%set-variable-value! variable value)
 	   (invoke-variable-assignment-daemons! variable))))))
+
+(define (variable-local-value? buffer variable)
+  (let loop ((bindings (buffer-local-bindings buffer)))
+    (and (not (null? bindings))
+	 (or (eq? (caar bindings) variable)
+	     (loop (cdr bindings))))))
+
+(define-integrable (search-local-bindings buffer variable)
+  (let loop ((bindings (buffer-local-bindings buffer)))
+    (and (not (null? bindings))
+	 (if (eq? (caar bindings) variable)
+	     (car bindings)
+	     (loop (cdr bindings))))))
 
 ;;;; Modes
 
@@ -462,7 +471,8 @@ The buffer is guaranteed to be deselected at that time."
   (car (buffer-modes buffer)))
 
 (define (set-buffer-major-mode! buffer mode)
-  (if (not (mode-major? mode)) (error "Not a major mode" mode))
+  (if (not (and (mode? mode) (mode-major? mode)))
+      (error:wrong-type-argument mode "major mode" 'SET-BUFFER-MAJOR-MODE!))
   (without-interrupts
    (lambda ()
      (let ((modes (buffer-modes buffer)))
@@ -479,11 +489,13 @@ The buffer is guaranteed to be deselected at that time."
   (cdr (buffer-modes buffer)))
 
 (define (buffer-minor-mode? buffer mode)
-  (if (mode-major? mode) (error "Not a minor mode" mode))
+  (if (not (and (mode? mode) (not (mode-major? mode))))
+      (error:wrong-type-argument mode "minor mode" 'BUFFER-MINOR-MODE?))
   (memq mode (buffer-minor-modes buffer)))
 
 (define (enable-buffer-minor-mode! buffer mode)
-  (if (mode-major? mode) (error "Not a minor mode" mode))
+  (if (not (and (mode? mode) (not (mode-major? mode))))
+      (error:wrong-type-argument mode "minor mode" 'ENABLE-BUFFER-MINOR-MODE!))
   (without-interrupts
    (lambda ()
      (let ((modes (buffer-modes buffer)))
@@ -497,7 +509,9 @@ The buffer is guaranteed to be deselected at that time."
 	     (buffer-modeline-event! buffer 'BUFFER-MODES)))))))
 
 (define (disable-buffer-minor-mode! buffer mode)
-  (if (mode-major? mode) (error "Not a minor mode" mode))
+  (if (not (and (mode? mode) (not (mode-major? mode))))
+      (error:wrong-type-argument mode "minor mode"
+				 'DISABLE-BUFFER-MINOR-MODE!))
   (without-interrupts
    (lambda ()
      (let ((modes (buffer-modes buffer)))

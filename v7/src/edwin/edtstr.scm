@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtstr.scm,v 1.13 1991/03/11 01:14:10 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtstr.scm,v 1.14 1991/03/16 00:01:51 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -54,6 +54,7 @@
   (bufferset false read-only true)
   (kill-ring false read-only true)
   (char-history false read-only true)
+  (halt-update? false read-only true)
   (char-ready? false read-only true)
   (peek-char false read-only true)
   (read-char false read-only true)
@@ -61,13 +62,16 @@
   (select-time 1))
 
 (define (make-editor name display-type make-screen-args)
-  (let ((initial-buffer (make-buffer initial-buffer-name initial-buffer-mode)))
+  (let ((initial-buffer
+	 (make-buffer initial-buffer-name
+		      initial-buffer-mode
+		      (working-directory-pathname))))
     (let ((bufferset (make-bufferset initial-buffer))
 	  (screen (display-type/make-screen display-type make-screen-args)))
       (initialize-screen-root-window! screen bufferset initial-buffer)
       (with-values
 	  (lambda () (display-type/get-input-operations display-type screen))
-	(lambda (char-ready? peek-char read-char)
+	(lambda (halt-update? char-ready? peek-char read-char)
 	  (%make-editor name
 			display-type
 			(list screen)
@@ -75,6 +79,7 @@
 			bufferset
 			(make-ring 10)
 			(make-ring 100)
+			halt-update?
 			char-ready?
 			peek-char
 			read-char

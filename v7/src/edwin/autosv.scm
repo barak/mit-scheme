@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autosv.scm,v 1.21 1989/04/28 22:47:00 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autosv.scm,v 1.22 1991/03/16 00:01:10 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -47,23 +47,27 @@
 (declare (usual-integrations))
 
 (define-variable auto-save-visited-file-name
-  "*True says auto-save a buffer in the file it is visiting, when practical.
+  "True says auto-save a buffer in the file it is visiting, when practical.
 Normally auto-save files are written under other names."
-  false)
+  false
+  boolean?)
 
 (define-variable auto-save-default
-  "*True says by default do auto-saving of every file-visiting buffer."
-  true)
+  "True says by default do auto-saving of every file-visiting buffer."
+  true
+  boolean?)
 
 (define-variable auto-save-interval
-  "*Number of keyboard input characters between auto-saves.
+  "Number of keyboard input characters between auto-saves.
 Zero means disable autosaving."
-  300)
+  300
+  exact-nonnegative-integer?)
 
 (define-variable delete-auto-save-files
-  "*True means delete a buffer's auto-save file
+  "True means delete a buffer's auto-save file
 when the buffer is saved for real."
-  true)
+  true
+  boolean?)
 
 (define-command auto-save-mode
   "Toggle auto-saving of contents of current buffer.
@@ -90,15 +94,12 @@ With arg, turn auto-saving on if arg is positive, else off."
   (set-buffer-auto-save-pathname!
    buffer
    (let ((pathname (buffer-pathname buffer)))
-     (if (and pathname
-	      (ref-variable auto-save-visited-file-name))
+     (if (and pathname (ref-variable auto-save-visited-file-name))
 	 pathname
 	 (os/auto-save-pathname pathname (buffer-name buffer))))))
 
 (define (disable-buffer-auto-save! buffer)
   (set-buffer-auto-save-pathname! buffer false))
-
-(define *auto-save-keystroke-count*)
 
 (define (do-auto-save)
   (let ((buffers
@@ -109,10 +110,10 @@ With arg, turn auto-saving on if arg is positive, else off."
 		  (<= (* 10 (buffer-save-length buffer))
 		      (* 13 (buffer-length buffer))))))))
     (if (not (null? buffers))
-	(begin (temporary-message "Auto saving...")
-	       (for-each auto-save-buffer buffers)
-	       (clear-message))))
-  (set! *auto-save-keystroke-count* 0))
+	(begin
+	  (temporary-message "Auto saving...")
+	  (for-each auto-save-buffer buffers)
+	  (append-message "done")))))
 
 (define (auto-save-buffer buffer)
   (region->file (buffer-unclipped-region buffer)

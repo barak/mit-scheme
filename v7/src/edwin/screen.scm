@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.87 1991/03/11 01:14:38 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.88 1991/03/16 00:02:48 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -507,23 +507,18 @@
 (define (with-screen-in-update screen display-style thunk)
   (without-interrupts
    (lambda ()
-     (call-with-current-continuation
-      (lambda (continuation)
-	(let ((old-flag))
-	  (dynamic-wind (lambda ()
-			  (set! old-flag (screen-in-update? screen))
-			  (set-screen-in-update?! screen
-						  (or old-flag continuation)))
+     (let ((old-flag))
+       (dynamic-wind (lambda ()
+		       (set! old-flag (screen-in-update? screen))
+		       (set-screen-in-update?! screen true))
+		     (lambda ()
+		       ((screen-operation/wrap-update! screen)
+			screen
 			(lambda ()
-			  ((screen-operation/wrap-update! screen)
-			   screen
-			   (lambda ()
-			     (and (thunk)
-				  (screen-update screen display-style)))))
-			(lambda ()
-			  (set-screen-in-update?! screen old-flag)
-			  (set! old-flag)
-			  unspecific))))))))
+			  (and (thunk)
+			       (screen-update screen display-style)))))
+		     (lambda ()
+		       (set-screen-in-update?! screen old-flag)))))))
 
 (define (screen-update screen force?)
   ;; Update the actual terminal screen based on the data in `new-matrix'.
@@ -534,7 +529,7 @@
   (let ((current-matrix (screen-current-matrix screen))
 	(new-matrix (screen-new-matrix screen))
 	(y-size (screen-y-size screen))
-	(char-ready? (editor-char-ready? current-editor)))
+	(halt-update? (editor-halt-update? current-editor)))
     (let ((enable (matrix-enable new-matrix)))
       (let loop ((y 0))
 	(cond ((fix:= y y-size)
@@ -549,7 +544,7 @@
 		    ;; `terminal-preempt-update?' has side-effects,
 		    ;; and it must be run regardless of `force?'.
 		    (not force?)
-		    (or (char-ready?)
+		    (or (halt-update?)
 			(eq? (screen-debug-preemption-y screen) y)))
 	       (terminal-move-cursor screen
 				     (matrix-cursor-x current-matrix)

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/intmod.scm,v 1.36 1989/08/09 13:17:37 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/intmod.scm,v 1.37 1991/03/16 00:02:24 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -55,20 +55,24 @@
 
 (define-major-mode scheme-interaction scheme "Scheme Interaction"
   "Major mode for evaluating Scheme expressions interactively.
-Same as Scheme mode, except for
+Like Scheme mode, except that a history of evaluated expressions is saved.
+The history may be accessed with the following commands:
 
-\\[scheme-interaction-yank] yanks the most recently evaluated expression.
-\\[scheme-interaction-yank-pop] yanks an earlier expression, replacing a yank."
+\\[comint-previous-input] cycles backwards through the input history;
+\\[comint-next-input] cycles forwards;
+\\[comint-history-search-backward] searches backwards for a matching string;
+\\[comint-history-search-forward] searchs forwards."
   (local-set-variable! enable-transcript-buffer true)
   (local-set-variable! transcript-buffer-name (current-buffer))
   (local-set-variable! transcript-input-recorder
 		       scheme-interaction-input-recorder)
   (local-set-variable! transcript-output-wrapper
 		       scheme-interaction-output-wrapper)
-  (local-set-variable! scheme-interaction-kill-ring (make-ring 32)))
+  (local-set-variable! comint-input-ring
+		       (make-ring (ref-variable comint-input-ring-size))))
 
 (define (scheme-interaction-input-recorder region)
-  (ring-push! (ref-variable scheme-interaction-kill-ring)
+  (ring-push! (ref-variable comint-input-ring)
 	      (region->string region)))
 
 (define (scheme-interaction-output-wrapper thunk)
@@ -83,44 +87,9 @@ Same as Scheme mode, except for
 	(^G-signal))
       thunk))))
 
+(define-key 'scheme-interaction #\M-p 'comint-previous-input)
+(define-key 'scheme-interaction #\M-n 'comint-next-input)
+
 (define-prefix-key 'scheme-interaction #\C-c 'prefix-char)
-(define-key 'scheme-interaction '(#\C-c #\C-y) 'scheme-interaction-yank)
-(define-key 'scheme-interaction '(#\C-c #\C-r) 'scheme-interaction-yank-pop)
-
-(define-variable scheme-interaction-kill-ring
-  "Kill ring used by Interaction mode evaluation commands.")
-
-(define scheme-interaction-mode:yank-command-message "Yank")
-
-(define-command scheme-interaction-yank
-  "Re-insert the last input expression.
-Puts point after it and the mark before it."
-  ()
-  (lambda ()
-    (let ((kill-ring (ref-variable scheme-interaction-kill-ring)))
-      (if (ring-empty? kill-ring)
-	  (editor-error "Nothing to yank"))
-      (push-current-mark! (mark-right-inserting (current-point)))
-      (insert-string (ring-ref kill-ring 0))
-      (set-command-message! scheme-interaction-mode:yank-command-message))))
-
-(define-command scheme-interaction-yank-pop
-  "Correct after \\[scheme-interaction-yank] to use an earlier expression.
-Requires that the region contain the most recent expression,
-as it does immediately after using \\[scheme-interaction-yank].
-It is deleted and replaced with the previous expression,
-which is rotated to the front of the expression ring."
-  ()
-  (lambda ()
-    (let ((kill-ring (ref-variable scheme-interaction-kill-ring)))
-      (if (ring-empty? kill-ring)
-	  (editor-error "Nothing to yank"))
-      (command-message-receive scheme-interaction-mode:yank-command-message
-	(lambda ()
-	  (delete-string (pop-current-mark!) (current-point))
-	  (push-current-mark! (mark-right-inserting (current-point)))
-	  (ring-pop! kill-ring)
-	  (insert-string (ring-ref kill-ring 0))
-	  (set-command-message! scheme-interaction-mode:yank-command-message))
-	(lambda ()
-	  (editor-error "No previous yank to replace"))))))
+(define-key 'scheme-interaction '(#\C-c #\C-r) 'comint-history-search-backward)
+(define-key 'scheme-interaction '(#\C-c #\C-s) 'comint-history-search-forward)

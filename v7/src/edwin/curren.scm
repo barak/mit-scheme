@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.90 1990/10/09 16:23:40 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.91 1991/03/16 00:01:33 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -307,6 +307,10 @@
 		   (error "Buffer to be killed has no replacement" buffer))))
 	  (set-window-buffer! (car windows) new-buffer false)
 	  (loop (cdr windows) new-buffer))))
+  (for-each (lambda (process)
+	      (hangup-process process true)
+	      (set-process-buffer! process false))
+	    (buffer-processes buffer))
   (bufferset-kill-buffer! (current-bufferset) buffer))
 
 (define-integrable (select-buffer buffer)
@@ -357,6 +361,12 @@ The buffer is guaranteed to be selected at that time."
 			  (set-window-buffer! window old-buffer true)))
 		    (set! old-buffer)
 		    unspecific))))
+
+(define (current-process)
+  (let ((process (get-buffer-process (current-buffer))))
+    (if (not process)
+	(editor-error "Current buffer has no process"))
+    process))
 
 ;;;; Point
 
@@ -367,11 +377,12 @@ The buffer is guaranteed to be selected at that time."
   (set-window-point! (current-window) mark))
 
 (define (set-buffer-point! buffer mark)
-  (if (buffer-visible? buffer)
-      (for-each (lambda (window)
-		  (set-window-point! window mark))
-		(buffer-windows buffer))
-      (%set-buffer-point! buffer mark)))
+  (let ((windows (buffer-windows buffer)))
+    (if (null? windows)
+	(%set-buffer-point! buffer mark)
+	(for-each (lambda (window)
+		    (set-window-point! window mark))
+		  windows))))
 
 (define (with-current-point point thunk)
   (let ((old-point))

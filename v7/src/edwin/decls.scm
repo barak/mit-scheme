@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.15 1990/11/02 03:23:33 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.16 1991/03/16 00:01:38 cph Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -111,15 +111,14 @@ MIT in each case. |#
 	      "autosv"
 	      "basic"
 	      "bufcom"
-	      "buffer"
 	      "bufmnu"
 	      "bufset"
 	      "c-mode"
 	      "calias"
 	      "cinden"
+	      "comint"
 	      "comman"
 	      "comred"
-	      "curren"
 	      "debug"
 	      "debuge"
 	      "dired"
@@ -148,7 +147,9 @@ MIT in each case. |#
 	      "modlin"
 	      "motcom"
 	      "pasmod"
+	      "process"
 	      "prompt"
+	      "rcs"
 	      "reccom"
 	      "regcom"
 	      "regexp"
@@ -157,6 +158,7 @@ MIT in each case. |#
 	      "scrcom"
 	      "screen"
 	      "sercom"
+	      "shell"
 	      "struct"
 	      "syntax"
 	      "tags"
@@ -175,6 +177,8 @@ MIT in each case. |#
   (sf-edwin "grpops" "struct")
   (sf-edwin "regops" "struct")
   (sf-edwin "motion" "struct")
+  (sf-edwin "buffer" "comman" "modes")
+  (sf-edwin "curren" "buffer")
   (sf-class "window" "class")
   (sf-class "utlwin" "window" "class")
   (sf-class "bufwin" "window" "class" "buffer" "struct")

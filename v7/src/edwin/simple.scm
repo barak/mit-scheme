@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/simple.scm,v 1.30 1991/03/11 01:14:43 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/simple.scm,v 1.31 1991/03/16 00:02:56 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -190,9 +190,10 @@
   (cond (*executing-keyboard-macro?* unspecific)
 	((not mark) (editor-beep))
 	((window-mark-visible? (current-window) mark)
-	 (with-current-point mark
-	   (lambda ()
-	     (sit-for 500))))
+	 (if (not ((editor-char-ready? current-editor)))
+	     (with-current-point mark
+	       (lambda ()
+		 (sit-for 500)))))
 	(else
 	 (temporary-message
 	  (let ((start (line-start mark 0))
