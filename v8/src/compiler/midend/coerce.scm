@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: coerce.scm,v 1.5 1995/05/19 03:41:26 adams Exp $
+$Id: coerce.scm,v 1.6 1996/07/27 05:13:49 adams Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -195,7 +195,12 @@ wins by about 10%.
 		     (LOOKUP ,name))
 	       '#F)
 	   (LOOKUP ,name)
-	   (CALL ',coerce-to-compiled '#F (LOOKUP ,name) ',len)))))
+	   (CALL ',%invoke-remote-cache
+		 '#F
+		 '(coerce-to-compiled-procedure 2)
+		 'bogus-execute-cell
+		 (LOOKUP ,name)
+		 ',len)))))
 
 (define (coerce/rewrite-call! call arity coerced-operator)
   (form/rewrite! call
