@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.21 1991/07/10 20:06:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.22 1992/01/29 20:25:00 jinx Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -249,6 +249,10 @@ MIT in each case. |#
 	((int:zero? e) 1)
 	(else (error:bad-range-argument e 'EXPT))))
 
+#|
+;; Disabled.  The version below runs much better for large bignums,
+;; and no worse for smaller numbers.
+
 (define (int:->string n radix)
   (if (int:integer? n)
       (list->string
@@ -270,6 +274,136 @@ MIT in each case. |#
 	       ((int:negative? n) (cons #\- (0<n (int:negate n))))
 	       (else (list #\0)))))
       (error:wrong-type-argument n false 'NUMBER->STRING)))
+|#
+
+#|
+(define (listify-bignum value radix)
+  (define (separate leftmost? value stack tail)
+    (if (null? stack)
+	(cons value tail)
+	(let ((split (integer-divide value (car stack)))
+	      (rest (cdr stack)))
+	  (let ((next-left (integer-divide-quotient split)))
+	    (if (and leftmost? (zero? next-left))
+		(separate true
+			  (integer-divide-remainder split)
+			  rest
+			  tail)
+		(separate leftmost?
+			  next-left
+			  rest
+			  (separate false
+				    (integer-divide-remainder split)
+				    rest
+				    tail)))))))
+
+  (define (make-power-stack value quantum stack)
+    (if (> quantum value)
+	stack
+	(make-power-stack value
+			  (* quantum quantum)
+			  (cons quantum stack))))
+  (separate true
+	    value
+	    (make-power-stack value radix '())
+	    '()))
+
+|#
+
+;; This version of int:->string handles bignums in the same way as the
+;; preceding version of listify-bignum, but generates a string
+;; directly.  The decision on which algorithm to use is dependent on
+;; the quality of the current compiler.  Changes in compiler
+;; performance would move the barriers around.
+
+(define (int:->string number radix)
+  (define-integrable (digits->string value digits)
+    (list->string
+     (if (eq? number value)
+	 digits
+	 (cons #\- digits))))
+
+  (define (print-small value)
+    (digits->string
+     value
+     (let loop ((n value) (tail '()))
+       (cond ((not (int:zero? n))
+	      (let ((qr (integer-divide n radix)))
+		(loop (integer-divide-quotient qr)
+		      (cons (digit->char (integer-divide-remainder qr)
+					 radix)
+			    tail))))
+	     ((null? tail)
+	      '(#\0))
+	     (else
+	      tail)))))
+
+  (define (print-medium value)
+    (digits->string value
+		    (map (lambda (digit)
+			   (digit->char digit radix))
+			 ((ucode-primitive listify-bignum 2) value radix))))
+
+  (define (make-power-stack value quantum stack)
+    (if (> quantum value)
+	stack
+	(make-power-stack value
+			  (* quantum quantum)
+			  (cons quantum stack))))
+
+  (define (print-large value)
+    (let ((stack (make-power-stack value radix '())))
+      (let ((string (make-string (fix:1+ (int:expt 2 (length stack)))
+				 #\0))
+	    (index 0))
+	(define-integrable (push-char! char)
+	  (string-set! string index char)
+	  (set! index (1+ index)))
+      
+	(define-integrable (push! value)
+	  (push-char! (digit->char value radix)))
+
+	(define (bash! leftmost? value stack)
+	  (if (null? stack)
+	      (push! value)
+	      (let ((split (integer-divide value (car stack)))
+		    (rest (cdr stack)))
+		(let ((next-left (integer-divide-quotient split)))
+		  (if (and leftmost? (zero? next-left))
+		      (bash! true
+			     (integer-divide-remainder split)
+			     rest)
+		      (begin
+			(bash! leftmost?
+			       next-left
+			       rest)
+			(bash! false
+			       (integer-divide-remainder split)
+			       rest)))))))
+
+	(if (not (eq? value number))
+	    (push-char! #\-))
+	(bash! true value stack)
+	;; set-string-maximum-length! also sets the length.
+	;; (set-string-length! string index)
+	((ucode-primitive set-string-maximun-length! 2) string index)
+	string)))
+
+  (cond ((fix:fixnum? number)
+	 (print-small (if (fix:negative? number)
+			  (- 0 number)	; can't be fix:- because of "-0"
+			  number)))
+	((not (int:integer? number))
+	 (error:wrong-type-argument number false 'NUMBER->STRING))
+	(else
+	 (let ((sl (system-vector-length number))
+	       (value (if (int:negative? number)
+			  (int:negate number)
+			  number)))
+	   ((cond ((< sl 3) print-small)
+		  ((< sl 6) print-medium)
+		  (else print-large))
+	    value)))))
 
 (declare (integrate-operator rat:rational?))
 (define (rat:rational? object)
