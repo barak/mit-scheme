@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.287 1991/02/15 18:12:31 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.288 1991/03/15 23:47:42 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -461,7 +461,7 @@
 	 (group-display-end (mark-group mark)))
 	(else
 	 mark)))
-
+
 ;;;; Utilities
 
 (define-integrable (%window-extract-string window start end)
@@ -469,13 +469,6 @@
 
 (define-integrable (%window-modeline-event! window type)
   (window-modeline-event! (window-superior window) type))
-
-(define-integrable (set-mark-index! mark index)
-  (set-mark-position!
-   mark
-   (group-index->position-integrable (mark-group mark)
-				     index
-				     (mark-left-inserting? mark))))
 
 (define-integrable (fix:max x y)
   (if (fix:> x y) x y))
@@ -776,7 +769,8 @@
   (if (fix:= y-start 0)
       (if (%window-start-line-mark window)
 	  (begin
-	    (set-mark-index! (%window-start-line-mark window) start-line)
+	    (set-mark-index-integrable! (%window-start-line-mark window)
+					start-line)
 	    (if (not (eq? (%window-start-line-mark window)
 			  (%window-start-mark window)))
 		(begin
@@ -792,13 +786,15 @@
       (let ((start (predict-start-index window start-line y-start)))
 	(if (%window-start-line-mark window)
 	    (begin
-	      (set-mark-index! (%window-start-line-mark window) start-line)
+	      (set-mark-index-integrable! (%window-start-line-mark window)
+					  start-line)
 	      (if (eq? (%window-start-line-mark window)
 		       (%window-start-mark window))
 		  (%set-window-start-mark!
 		   window
 		   (%make-permanent-mark (%window-group window) start false))
-		  (set-mark-index! (%window-start-mark window) start)))
+		  (set-mark-index-integrable! (%window-start-mark window)
+					      start)))
 	    (let ((group (%window-group window)))
 	      (%set-window-start-line-mark!
 	       window
@@ -822,40 +818,40 @@
   (without-interrupts (lambda () (%guarantee-start-mark! window))))
 
 (define (%guarantee-start-mark! window)
-  (let ((point-at!
-	 (lambda (y)
-	   (with-values
-	       (lambda ()
-		 (predict-start-line window (%window-point-index window) y))
-	     (lambda (start y-start)
-	       (set-start-mark! window start y-start))))))
-    (let ((recenter! (lambda () (point-at! (buffer-window/y-center window)))))
-      (cond ((not (%window-start-line-mark window))
-	     (recenter!))
-	    ((eq? (%window-point-moved? window) 'SINCE-START-SET)
-	     (let ((y
-		    (predict-y window
-			       (%window-start-line-index window)
-			       (%window-start-line-y window)
-			       (%window-point-index window))))
-	       (cond ((fix:< y 0)
-		      (let ((y (fix:+ y (ref-variable scroll-step))))
-			(if (fix:< y 0)
-			    (recenter!)
-			    (point-at! y))))
-		     ((fix:>= y (window-y-size window))
-		      (let ((y (fix:- y (ref-variable scroll-step))))
-			(if (fix:>= y (window-y-size window))
-			    (recenter!)
-			    (point-at! y)))))))))))
+  (let* ((index-at!
+	  (lambda (index y)
+	    (with-values (lambda () (predict-start-line window index y))
+	      (lambda (start y-start)
+		(set-start-mark! window start y-start)))))
+	 (point-at! (lambda (y) (index-at! (%window-point-index window) y)))
+	 (recenter! (lambda () (point-at! (buffer-window/y-center window)))))
+    (cond ((not (%window-start-line-mark window))
+	   (recenter!))
+	  ((not (%window-line-start-index? window
+					   (%window-start-line-index window)))
+	   (index-at! (%window-start-index window) 0))
+	  ((eq? (%window-point-moved? window) 'SINCE-START-SET)
+	   (let ((y
+		  (predict-y window
+			     (%window-start-line-index window)
+			     (%window-start-line-y window)
+			     (%window-point-index window))))
+	     (cond ((fix:< y 0)
+		    (let ((y (fix:+ y (ref-variable scroll-step))))
+		      (if (fix:< y 0)
+			  (recenter!)
+			  (point-at! y))))
+		   ((fix:>= y (window-y-size window))
+		    (let ((y (fix:- y (ref-variable scroll-step))))
+		      (if (fix:>= y (window-y-size window))
+			  (recenter!)
+			  (point-at! y))))))))))
 
 (define-variable scroll-step
   "*The number of lines to try scrolling a window by when point moves out.
 If that fails to bring point back on screen, point is centered instead.
 If this is zero, point is always centered after it moves off screen."
-  0)
-
-(define-variable-value-validity-test (ref-variable-object scroll-step)
+  0
   (lambda (scroll-step)
     (and (fix:fixnum? scroll-step)
 	 (fix:>= scroll-step 0))))
@@ -872,13 +868,10 @@ If this is zero, point is always centered after it moves off screen."
 (define-variable cursor-centering-point
   "The distance from the top of the window at which to center the point.
 This number is a percentage, where 0 is the window's top and 100 the bottom."
-  50)
-
-(define-variable-value-validity-test
-  (ref-variable-object cursor-centering-point)
-  (lambda (value)
-    (and (real? value)
-	 (<= 0 value 100))))
+  50
+  (lambda (cursor-centering-point)
+    (and (real? cursor-centering-point)
+	 (<= 0 cursor-centering-point 100))))
 
 ;;;; Line Inferiors
 
@@ -969,7 +962,7 @@ This number is a percentage, where 0 is the window's top and 100 the bottom."
       (begin
 	(set-mark-position! (%window-current-start-mark window)
 			    (mark-position (%window-start-line-mark window)))
-	(set-mark-index! (%window-current-end-mark window) end))
+	(set-mark-index-integrable! (%window-current-end-mark window) end))
       (begin
 	(%set-window-current-start-mark!
 	 window

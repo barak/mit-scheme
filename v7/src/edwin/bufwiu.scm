@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwiu.scm,v 1.13 1990/11/02 03:23:02 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwiu.scm,v 1.14 1991/03/15 23:48:02 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -151,7 +151,14 @@
 		 (fix:< end (%window-start-index window))))
 	(begin
 	  (clear-start-mark! window)
-	  (window-needs-redisplay! window)))))
+	  (window-needs-redisplay! window)))
+    (let ((point (%window-point-index window)))
+      (cond ((fix:< point start)
+	     (%set-window-point-index! window start)
+	     (%set-window-point-moved?! window 'SINCE-START-SET))
+	    ((fix:< end point)
+	     (%set-window-point-index! window end)
+	     (%set-window-point-moved?! window 'SINCE-START-SET))))))
 
 ;;;; Update
 
@@ -164,14 +171,12 @@
       (let ((start (%window-current-start-index window))
 	    (end (%window-current-end-index window)))
 	(cond ((and (%window-start-clip-mark window)
-		    (let ((start-clip (%window-start-clip-index window))
-			  (end-clip (%window-end-clip-index window)))
-		      (or (and (fix:<= start start-clip)
-			       (fix:<= (%window-group-start-index window)
-				       end))
-			  (and (fix:<= end-clip end)
-			       (fix:<= start
-				       (%window-group-end-index window))))))
+		    (or (not (and (fix:<= (%window-group-start-index window) start)
+				  (fix:<= end (%window-group-end-index window))))
+			(fix:< (%window-group-start-index window)
+			       (%window-start-clip-index window))
+			(fix:< (%window-end-clip-index window)
+			       (%window-group-end-index window))))
 	       (preserve-nothing! window))
 	      ((%window-start-changes-mark window)
 	       (let ((start-changes
