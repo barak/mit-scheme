@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/uenvir.scm,v 14.12 1989/08/15 13:20:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/uenvir.scm,v 14.13 1989/10/03 22:54:29 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -366,12 +366,16 @@ MIT in each case. |#
 (define (stack-ccenv/arguments environment)
   (let ((procedure (dbg-block/procedure (stack-ccenv/block environment))))
     (if procedure
-	(let ((lookup
-	       (lambda (variable)
-		 (if (eq? (dbg-variable/type variable) 'INTEGRATED)
-		     (dbg-variable/value variable)
-		     (stack-ccenv/lookup environment
-					 (dbg-variable/name variable))))))
+	(letrec ((lookup
+		  (lambda (variable)
+		    (case (dbg-variable/type variable)
+		      ((INTEGRATED)
+		       (dbg-variable/value variable))
+		      ((INDIRECTED)
+		       (lookup (dbg-variable/value variable)))
+		      (else
+		       (stack-ccenv/lookup environment
+					   (dbg-variable/name variable)))))))
 	  (map* (map* (let ((rest (dbg-procedure/rest procedure)))
 			(if rest (lookup rest) '()))
 		      lookup
@@ -524,20 +528,23 @@ MIT in each case. |#
   (dbg-block/source-code (closure-ccenv/stack-block environment)))
 
 (define (lookup-dbg-variable block name get-value)
-  (let ((index (dbg-block/find-name block name)))
-    (let ((variable (vector-ref (dbg-block/layout block) index)))
-      (case (dbg-variable/type variable)
-	((NORMAL)
-	 (get-value index))
-	((CELL)
-	 (let ((value (get-value index)))
-	   (if (not (cell? value))
-	       (error "Value of variable should be in cell" variable value))
-	   (cell-contents value)))
-	((INTEGRATED)
-	 (dbg-variable/value variable))
-	(else
-	 (error "Unknown variable type" variable))))))
+  (let loop ((name name))
+    (let ((index (dbg-block/find-name block name)))
+      (let ((variable (vector-ref (dbg-block/layout block) index)))
+	(case (dbg-variable/type variable)
+	  ((NORMAL)
+	   (get-value index))
+	  ((CELL)
+	   (let ((value (get-value index)))
+	     (if (not (cell? value))
+		 (error "Value of variable should be in cell" variable value))
+	     (cell-contents value)))
+	  ((INTEGRATED)
+	   (dbg-variable/value variable))
+	  ((INDIRECTED)
+	   (loop (dbg-variable/name (dbg-variable/value variable))))
+	  (else
+	   (error "Unknown variable type" variable)))))))
 
 (define (assignable-dbg-variable? block name)
   (eq? 'CELL
@@ -555,7 +562,8 @@ MIT in each case. |#
 	       (error "Value of variable should be in cell" name cell))
 	   (set-cell-contents! cell value)
 	   unspecific))
-	((NORMAL INTEGRATED)	 (error "Variable cannot be side-effected" variable))
+	((NORMAL INTEGRATED INDIRECTED)
+	 (error "Variable cannot be side-effected" variable))
 	(else
 	 (error "Unknown variable type" variable))))))
 
