@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: mit-syntax.scm,v 14.7 2002/06/21 02:04:22 cph Exp $
+;;; $Id: mit-syntax.scm,v 14.8 2002/06/26 03:32:47 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1991, 2001, 2002 Massachusetts Institute of Technology
 ;;;
@@ -287,6 +287,105 @@
 	    (make-binding-item history name item)
 	    (make-null-binding-item history)))
       (make-binding-item history (bind-variable! environment name) item)))
+
+;;;; SRFI features
+
+(define-er-macro-transformer 'COND-EXPAND system-global-environment
+  (lambda (form rename compare)
+    (let ((if-error (lambda () (ill-formed-syntax form))))
+      (if (syntax-match? '(+ (DATUM * FORM)) (cdr form))
+	  (let loop ((clauses (cdr form)))
+	    (let ((req (caar clauses))
+		  (if-true (lambda () `(,(rename 'BEGIN) ,@(cdar clauses)))))
+	      (if (and (identifier? req)
+		       (compare (rename 'ELSE) req))
+		  (if (null? (cdr clauses))
+		      (if-true)
+		      (if-error))
+		  (let req-loop
+		      ((req req)
+		       (if-true if-true)
+		       (if-false
+			(lambda ()
+			  (if (null? (cdr clauses))
+			      (if-error)
+			      (loop (cdr clauses))))))
+		    (cond ((identifier? req)
+			   (if (there-exists? supported-features
+				 (lambda (feature)
+				   (compare (rename feature) req)))
+			       (if-true)
+			       (if-false)))
+			  ((and (syntax-match? '(IDENTIFIER DATUM) req)
+				(compare (rename 'NOT) (car req)))
+			   (req-loop (cadr req)
+				     if-false
+				     if-true))
+			  ((and (syntax-match? '(IDENTIFIER * DATUM) req)
+				(compare (rename 'AND) (car req)))
+			   (let and-loop ((reqs (cdr req)))
+			     (if (pair? reqs)
+				 (req-loop (car reqs)
+					   (lambda () (and-loop (cdr reqs)))
+					   if-false)
+				 (if-true))))
+			  ((and (syntax-match? '(IDENTIFIER * DATUM) req)
+				(compare (rename 'OR) (car req)))
+			   (let or-loop ((reqs (cdr req)))
+			     (if (pair? reqs)
+				 (req-loop (car reqs)
+					   if-true
+					   (lambda () (or-loop (cdr reqs))))
+				 (if-false))))
+			  (else
+			   (if-error)))))))
+	  (if-error)))))
+
+(define supported-features
+  '(SRFI-0
+    SRFI-8
+    SRFI-9
+    SRFI-23
+    SRFI-30))
+
+(define-er-macro-transformer 'RECEIVE system-global-environment
+  (lambda (form rename compare)
+    compare				;ignore
+    (if (syntax-match? '(R4RS-BVL FORM + FORM) (cdr form))
+	`(,(rename 'CALL-WITH-VALUES)
+	  (,(rename 'LAMBDA) () ,(caddr form))
+	  (,(rename 'LAMBDA) ,(cadr form) ,@(cdddr form)))
+	(ill-formed-syntax form))))
+
+(define-er-macro-transformer 'DEFINE-RECORD-TYPE system-global-environment
+  (lambda (form rename compare)
+    compare				;ignore
+    (if (syntax-match? '(IDENTIFIER
+			 (IDENTIFIER * IDENTIFIER)
+			 IDENTIFIER
+			 (* (IDENTIFIER IDENTIFIER ? IDENTIFIER)))
+		       (cdr form))
+	(let ((type (cadr form))
+	      (constructor (car (caddr form)))
+	      (c-tags (cdr (caddr form)))
+	      (predicate (cadddr form))
+	      (fields (cddddr form))
+	      (de (rename 'DEFINE)))
+	  `(,(rename 'BEGIN)
+	    (,de ,type (,(rename 'MAKE-RECORD-TYPE) ',type ',(map car fields)))
+	    (,de ,constructor (,(rename 'RECORD-CONSTRUCTOR) ,type ',c-tags))
+	    (,de ,predicate (,(rename 'RECORD-PREDICATE) ,type))
+	    ,@(append-map
+	       (lambda (field)
+		 (let ((name (car field)))
+		   (cons `(,de ,(cadr field)
+			       (,(rename 'RECORD-ACCESSOR) ,type ',name))
+			 (if (pair? (cddr field))
+			     `((,de ,(caddr field)
+				    (,(rename 'RECORD-MODIFIER) ,type ',name)))
+			     '()))))
+	       fields)))
+	(ill-formed-syntax form))))
 
 ;;;; LET-like
 
