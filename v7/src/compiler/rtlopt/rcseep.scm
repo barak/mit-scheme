@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseep.scm,v 1.2 1987/03/20 05:12:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseep.scm,v 1.3 1987/04/24 14:15:37 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -60,7 +60,7 @@ MIT in each case. |#
   (define (register-equivalent? x y)
     (let ((x (rtl:register-number x))
 	  (y (rtl:register-number y)))
-      (and (eq? (register-quantity x) (register-quantity y))
+      (and (eq? (get-register-quantity x) (get-register-quantity y))
 	   (or (not validate?)
 	       (= (register-in-table y) (register-tick y))))))
 

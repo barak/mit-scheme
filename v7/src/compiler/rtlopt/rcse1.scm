@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.101 1987/04/12 00:22:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.102 1987/04/24 14:13:51 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -335,7 +335,7 @@ MIT in each case. |#
   (cond ((rtl:register? expression)
 	 (or (register-expression
 	      (quantity-first-register
-	       (register-quantity (rtl:register-number expression))))
+	       (get-register-quantity (rtl:register-number expression))))
 	     expression))
 	((stack-reference? expression)
 	 (let ((register
@@ -385,7 +385,7 @@ MIT in each case. |#
 (define (register-invalidate! register)
   (let ((next (register-next-equivalent register))
 	(previous (register-previous-equivalent register))
-	(quantity (register-quantity register)))
+	(quantity (get-register-quantity register)))
     (set-register-tick! register (1+ (register-tick register)))
     (if next
 	(set-register-previous-equivalent! next previous)
@@ -422,7 +422,7 @@ MIT in each case. |#
 	(let ((expression (element-expression class)))
 	  (cond ((rtl:register? expression)
 		 (register-equivalence!
-		  (register-quantity (rtl:register-number expression))))
+		  (get-register-quantity (rtl:register-number expression))))
 		((stack-reference? expression)
 		 (register-equivalence!
 		  (stack-reference-quantity expression))))))
@@ -523,7 +523,7 @@ MIT in each case. |#
 	   (case type
 	     ((REGISTER)
 	      (quantity-number
-	       (register-quantity (rtl:register-number expression))))
+	       (get-register-quantity (rtl:register-number expression))))
 	     ((OFFSET)
 	      ;; Note that stack-references do not get treated as
 	      ;; memory for purposes of invalidation.  This is because

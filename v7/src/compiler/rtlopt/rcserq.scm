@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcserq.scm,v 1.1 1987/03/19 00:49:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcserq.scm,v 1.2 1987/04/24 14:15:53 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -58,6 +58,12 @@ MIT in each case. |#
   (make-quantity (quantity-number quantity)
 		 (quantity-first-register quantity)
 		 (quantity-last-register quantity)))
+
+(define (get-register-quantity register)
+  (or (register-quantity register)
+      (let ((quantity (new-quantity register)))
+	(set-register-quantity! register quantity)
+	quantity)))
 
 (define-register-references quantity)
 (define-register-references next-equivalent)
