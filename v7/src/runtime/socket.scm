@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: socket.scm,v 1.22 2003/06/08 03:36:11 cph Exp $
+$Id: socket.scm,v 1.23 2003/07/09 04:26:50 cph Exp $
 
 Copyright 1996,1997,1998,1999,2001,2002 Massachusetts Institute of Technology
 Copyright 2003 Massachusetts Institute of Technology
@@ -65,20 +65,29 @@ USA.
 	 ((ucode-primitive new-open-unix-stream-socket 2) filename p))))))
 
 (define (open-tcp-server-socket service #!optional host)
+  (let ((server-socket (create-tcp-server-socket)))
+    (bind-tcp-server-socket server-socket
+			    service
+			    (if (or (default-object? host) (not host))
+				((ucode-primitive host-address-any 0))
+				host))
+    (listen-tcp-server-socket server-socket)))
+
+(define (create-tcp-server-socket)
   (open-channel
    (lambda (p)
-     (with-thread-timer-stopped
-       (lambda ()
-	 (let ((channel ((ucode-primitive create-tcp-server-socket 0))))
-	   (system-pair-set-cdr! p channel)
-	   ((ucode-primitive bind-tcp-server-socket 3)
-	    channel
-	    (if (or (default-object? host) (not host))
-		((ucode-primitive host-address-any 0))
-		host)
-	    (tcp-service->port service))
-	   ((ucode-primitive listen-tcp-server-socket 1) channel))
-	 #t)))))
+     (system-pair-set-cdr! p ((ucode-primitive create-tcp-server-socket 0)))
+     #t)))
+
+(define (bind-tcp-server-socket server-socket service host)
+  ((ucode-primitive bind-tcp-server-socket 3)
+   (channel-descriptor server-socket)
+   host
+   (tcp-service->port service)))
+
+(define (listen-tcp-server-socket server-socket)
+  ((ucode-primitive listen-tcp-server-socket 1)
+   (channel-descriptor server-socket)))
 
 (define (tcp-service->port service)
   (if (exact-nonnegative-integer? service)

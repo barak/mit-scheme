@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.447 2003/06/08 05:07:12 cph Exp $
+$Id: runtime.pkg,v 14.448 2003/07/09 04:27:03 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -3029,13 +3029,16 @@ USA.
   (parent (runtime))
   (export ()
 	  allocate-host-address
+	  bind-tcp-server-socket
 	  canonical-host-name
 	  close-tcp-server-socket
+	  create-tcp-server-socket
 	  get-host-by-address
 	  get-host-by-name
 	  get-host-name
 	  host-address-any
 	  host-address-loopback
+	  listen-tcp-server-socket
 	  open-tcp-server-socket
 	  open-tcp-stream-socket
 	  open-tcp-stream-socket-channel
