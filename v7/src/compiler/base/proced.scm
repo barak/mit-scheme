@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/proced.scm,v 4.8 1988/12/13 13:02:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/proced.scm,v 4.9 1988/12/15 17:19:45 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -97,12 +97,15 @@ MIT in each case. |#
        (if (eq? type 'PROCEDURE)
 	   (standard-unparser "PROCEDURE"
 	     (lambda (state procedure)
-	       (unparse-object state (procedure-label procedure))))
+	       (unparse-label state (procedure-label procedure))))
 	   (standard-unparser (symbol->string (procedure-label procedure))
 	     (lambda (state procedure)
 	       procedure
 	       (unparse-object state type)))))
      state procedure)))
+
+(define-integrable (unparse-label state label)
+  (unparse-string state (symbol->string label)))
 
 (define-integrable (rvalue/procedure? rvalue)
   (eq? (tagged-vector/tag rvalue) procedure-tag))
