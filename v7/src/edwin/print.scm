@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/print.scm,v 1.11 1992/09/02 02:04:19 cph Exp $
+;;;	$Id: print.scm,v 1.12 1992/11/05 20:45:41 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -74,34 +74,37 @@ Variable LPR-SWITCHES is a list of extra switches (strings) to pass to lpr."
   (lambda  (region)
     (print-region/internal region true)))
 
-(define (print-region/internal region print-command?)
-  (let ((switches (print-region-switches region print-command?))
-	(source-buffer (mark-buffer (region-start region))))
-    (message "Spooling...")
-    (call-with-temporary-buffer " *spool temp*"
-      (lambda (temp-buffer)
-	(insert-region (region-start region)
-		       (region-end region)
-		       (buffer-point temp-buffer))
-	(let ((width (ref-variable tab-width source-buffer)))
-	  (if (not (= width 8))
-	      (begin
-		(define-variable-local-value! temp-buffer
-		  (ref-variable-object tab-width)
-		  width)
-		(untabify-region (buffer-start temp-buffer)
-				 (buffer-end temp-buffer)))))
-	(shell-command region (buffer-end temp-buffer) false false
-		       (string-append (ref-variable lpr-command source-buffer)
-				      switches))))
-    (append-message "done")))
+(define (print-region/internal region print-headers?)
+  (message "Spooling...")
+  (let ((buffer (mark-buffer (region-start region)))
+	(print-headers? (and print-headers? (not lpr-print-not-special?)))
+	(title (print-region-title-string region)))
+    (let ((call-printer
+	   (lambda (region)
+	     ((or (ref-variable lpr-procedure buffer) print-region/default)
+	      region print-headers? title buffer)))
+	  (width (ref-variable tab-width buffer)))
+      (if (= width 8)
+	  (call-printer region)
+	  (call-with-temporary-buffer " *spool temp*"
+	    (lambda (temp-buffer)
+	      (insert-region (region-start region)
+			     (region-end region)
+			     (buffer-point temp-buffer))
+	      (define-variable-local-value! temp-buffer
+		(ref-variable-object tab-width)
+		width)
+	      (untabify-region (buffer-start temp-buffer)
+			       (buffer-end temp-buffer))
+	      (call-printer (buffer-region temp-buffer)))))))
+  (append-message "done"))
 
-(define (print-region-switches region print-command?)
-  (print/assemble-switches
-   (print-region-title-string region)
-   (if (and print-command? (not lpr-print-not-special?))
-       '("-p")
-       '())))
+(define (print-region/default region print-headers? title buffer)
+  (shell-command region false false false
+		 (string-append
+		  (ref-variable lpr-command buffer)
+		  (print/assemble-switches title
+					   (if print-headers? '("-p") '())))))
 
 (define (print-region-title-string region)
   (let ((buffer-title
@@ -142,14 +145,16 @@ Variable LPR-SWITCHES is a list of extra switches (strings) to pass to lpr."
 		      (car switches)
 		      (loop (cdr switches)))))))
 
-(define (print/job-name)
-  (and lpr-prompt-for-name?
-       (let ((job-name
-	      (prompt-for-string "Name to print on title page"
-				 lpr-most-recent-name
-				 'INSERTED-DEFAULT)))
-	 (if (string-null? job-name)
-	     false
-	     (begin
-	       (set! lpr-most-recent-name job-name)
-	       job-name)))))
+(define print/job-name
+  (let ((most-recent-name false))
+    (lambda ()
+      (and lpr-prompt-for-name?
+	   (let ((job-name
+		  (prompt-for-string "Name to print on title page"
+				     most-recent-name
+				     'INSERTED-DEFAULT)))
+	     (if (string-null? job-name)
+		 false
+		 (begin
+		   (set! most-recent-name job-name)
+		   job-name)))))))

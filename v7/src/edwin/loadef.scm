@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/loadef.scm,v 1.16 1992/08/21 23:52:31 cph Exp $
+;;;	$Id: loadef.scm,v 1.17 1992/11/05 20:45:32 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -119,7 +119,7 @@
   "These keywords cause the lines below them to be indented to the right.
 This must be a regular expression, or #F to disable the option."
   false)
-
+
 (define-library 'TEXINFO-MODE
   '("tximod" (EDWIN)))
 
@@ -154,22 +154,28 @@ Otherwise, a new buffer is created for each topic."
 (define-library 'print
   '("print" (EDWIN)))
 
-(define-variable lpr-switches
-  "List of strings to pass as extra switch args to lpr when it is invoked."
-  '()
-  list-of-strings?)
+(define-variable lpr-procedure
+  "Procedure that spools some text to the printer, or #F for the default.
+Procedure is called with four arguments: a region to be printed, a flag
+indicating that the text should be printed with page headers, a title string
+to appear in the header lines and on the title page, and the buffer in which
+the text was originally stored (for editor variable references).  If this
+variable's value is #F, the text is printed using LPR-COMMAND."
+  false
+  (lambda (object) (or (not object) (procedure? object))))
 
 (define-variable lpr-command
   "Shell command for printing a file"
   "lpr"
   string?)
 
+(define-variable lpr-switches
+  "List of strings to pass as extra switch args to lpr when it is invoked."
+  '()
+  list-of-strings?)
+
 (define lpr-prompt-for-name?
   ;; If true, lpr commands prompt for a name to appear on the title page.
-  false)
-
-(define lpr-most-recent-name
-  ;; If name prompting is enabled, the last name is saved here.
   false)
 
 (define lpr-print-not-special?
