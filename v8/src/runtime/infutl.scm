@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.5 1988/12/30 23:30:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.6 1988/12/31 05:52:51 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -113,7 +113,7 @@ MIT in each case. |#
     (let ((dbg-info
 	   (compiled-code-block/dbg-info block
 					 (if (default-object? demand-load?)
-					     false
+					     true
 					     demand-load?))))
       (and dbg-info
 	   (discriminate-compiled-entry entry
@@ -170,38 +170,79 @@ MIT in each case. |#
 		     ((< key* key) (loop (1+ midpoint) end))
 		     (else item))))))))
 (define (fasload/update-debugging-info! value com-pathname)
-  (let ((process-filename
-	 (lambda (binf-filename)
-	   (let ((binf-pathname (string->pathname binf-filename)))
-	     (if (and (equal? (pathname-name binf-pathname)
-			      (pathname-name com-pathname))
-		      (not (equal? (pathname-type binf-pathname)
-				   (pathname-type com-pathname)))
-		      (equal? (pathname-version binf-pathname)
-			      (pathname-version com-pathname)))
-		 (pathname->string
-		  (pathname-new-type com-pathname
-				     (pathname-type binf-pathname)))
-		 binf-filename)))))
-    (let ((process-entry
-	   (lambda (entry)
-	     (let ((block (compiled-code-address->block entry)))
-	       (let ((info (compiled-code-block/debugging-info block)))
-		 (cond ((string? info)
-			(set-compiled-code-block/debugging-info!
-			 block
-			 (process-filename info)))
-		       ((and (pair? info) (string? (car info)))
-			(set-car! info (process-filename (car info))))))))))
-      (cond ((compiled-code-address? value)
-	     (process-entry value))
-	    ((comment? value)
-	     (let ((text (comment-text value)))
-	       (if (dbg-info-vector? text)
-		   (for-each
-		    process-entry
-		    (vector->list (dbg-info-vector/items text))))))))))
+  (let ((process-entry
+	 (lambda (entry)
+	   (let ((block (compiled-code-address->block entry)))
+	     (let ((info (compiled-code-block/debugging-info block)))
+	       (cond ((string? info)
+		      (set-compiled-code-block/debugging-info!
+		       block
+		       (process-binf-filename info com-pathname)))
+		     ((and (pair? info) (string? (car info)))
+		      (set-car! info
+				(process-binf-filename (car info)
+						       com-pathname)))))))))
+    (cond ((compiled-code-address? value)
+	   (process-entry value))
+	  ((comment? value)
+	   (let ((text (comment-text value)))
+	     (if (dbg-info-vector? text)
+		 (for-each
+		  process-entry
+		  (vector->list (dbg-info-vector/items text)))))))))
+(define (process-binf-filename binf-filename com-pathname)
+  (pathname->string
+   (rewrite-directory
+    (let ((binf-pathname
+	   (pathname->absolute-pathname
+	    (->pathname binf-filename))))
+      (if (and (equal? (pathname-name binf-pathname)
+		       (pathname-name com-pathname))
+	       (not (equal? (pathname-type binf-pathname)
+			    (pathname-type com-pathname)))
+	       (equal? (pathname-version binf-pathname)
+		       (pathname-version com-pathname)))
+	  (pathname-new-type com-pathname
+			     (pathname-type binf-pathname))	  binf-pathname)))))
 
+(define directory-rewriting-rules
+  '())
+
+(define (add-directory-rewriting-rule! match replace)
+  (let ((match (pathname->absolute-pathname (->pathname match)))
+	(replace (pathname->absolute-pathname (->pathname replace))))
+    (let ((rule
+	   (list-search-positive directory-rewriting-rules
+	     (lambda (rule)
+	       (equal? (pathname-directory (car rule))
+		       (pathname-directory match))))))
+      (if rule
+	  (set-cdr! rule replace)
+	  (set! directory-rewriting-rules
+		(cons (cons match replace)
+		      directory-rewriting-rules)))))
+  unspecific)
+
+(define (rewrite-directory pathname)
+  (let ((rule
+	 (list-search-positive directory-rewriting-rules
+	   (lambda (rule)
+	     (directory-prefix? (pathname-directory pathname)
+				(pathname-directory (car rule)))))))
+    (if rule
+	(pathname-new-directory
+	 pathname
+	 (append (pathname-directory (cdr rule))
+		 (list-tail (pathname-directory pathname)
+			    (length (pathname-directory (car rule))))))
+	pathname)))
+
+(define (directory-prefix? x y)
+  (or (null? y)
+      (and (not (null? x))
+	   (equal? (car x) (car y))
+	   (directory-prefix? (cdr x) (cdr y)))))
+
 (define (dbg-block/dynamic-link-index block)
   (vector-find-next-element (dbg-block/layout block)
 			    dbg-block-name/dynamic-link))
