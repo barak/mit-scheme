@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 4.11 1991/05/06 18:46:04 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 4.12 1991/08/14 02:08:29 jinx Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -138,6 +138,10 @@ MIT in each case. |#
     FLO:TAN
     FLO:TRUNCATE
     FLO:TRUNCATE->EXACT
+    FLO:VECTOR-CONS
+    FLO:VECTOR-LENGTH
+    FLO:VECTOR-REF
+    FLO:VECTOR-SET!
     FLO:ZERO?
     FORCE
     GENERAL-CAR-CDR
