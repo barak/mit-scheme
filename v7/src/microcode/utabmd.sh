@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: utabmd.sh,v 1.1 2002/01/29 20:42:57 cph Exp $
+# $Id: utabmd.sh,v 1.2 2002/01/29 20:49:56 cph Exp $
 #
 # Copyright (c) 2002 Massachusetts Institute of Technology
 #
@@ -22,4 +22,4 @@
 if [ -z "${SCHEME_COMPILER}" ]; then
     SCHEME_COMPILER="scheme -compiler"
 fi
-$(SCHEME_COMPILER) -eval '(sf "utabmd")' < /dev/null
+${SCHEME_COMPILER} -eval '(sf "utabmd")' < /dev/null
