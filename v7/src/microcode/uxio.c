@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxio.c,v 1.50 2003/02/14 18:28:24 cph Exp $
+$Id: uxio.c,v 1.51 2003/03/25 01:09:20 cph Exp $
 
 Copyright 1990,1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 Copyright 1996,1997,1998,2000,2001,2003 Massachusetts Institute of Technology
@@ -622,7 +622,7 @@ DEFUN (OS_select_registry_length, (registry),
 }
 
 void
-DEFUN (OS_select_registry_result, (registry, index),
+DEFUN (OS_select_registry_result, (registry, index, fd_r, mode_r),
        select_registry_t registry AND
        unsigned int index AND
        int * fd_r AND
@@ -632,7 +632,7 @@ DEFUN (OS_select_registry_result, (registry, index),
   unsigned int i = 0;
   int fd;
 
-  while (fd = 0; (fd < FD_SETSIZE); fd += 1)
+  for (fd = 0; (fd < FD_SETSIZE); fd += 1)
     {
       if (SR_FD_ISSET (fd, r))
 	{
