@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: macros.scm,v 4.17 2001/12/19 21:39:29 cph Exp $
+$Id: macros.scm,v 4.18 2001/12/20 03:46:57 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -62,7 +62,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			 transform/define-rule)))
 
 (define transform/last-reference
-  (macro (name)
+  (lambda (name)
     (let ((x (generate-uninterned-symbol)))
       `(IF COMPILER:PRESERVE-DATA-STRUCTURES?
 	   ,name
@@ -72,27 +72,26 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define (transform/package names . body)
   (make-syntax-closure
-   (make-sequence
+   (scode/make-sequence
     `(,@(map (lambda (name)
 	       (make-definition name (make-unassigned-reference-trap)))
 	     names)
-      ,(make-combination
+      ,(scode/make-combination
 	(let ((block (syntax* (append body (list unspecific)))))
-	  (if (open-block? block)
-	      (open-block-components block
+	  (if (scode/open-block? block)
+	      (scode/open-block-components block
 		(lambda (names* declarations body)
-		  (make-lambda lambda-tag:let '() '() false
-			       (list-transform-negative names*
-				 (lambda (name)
-				   (memq name names)))
-			       declarations
-			       body)))
-	      (make-lambda lambda-tag:let '() '() false '()
-			   '() block)))
+		  (scode/make-lambda lambda-tag:let '() '() #f
+				     (list-transform-negative names*
+				       (lambda (name)
+					 (memq name names)))
+				     declarations
+				     body)))
+	      (scode/make-lambda lambda-tag:let '() '() #f '() '() block)))
 	'())))))
 
 (define transform/define-export
-  (macro (pattern . body)
+  (lambda (pattern . body)
     (parse-define-syntax pattern body
       (lambda (name body)
 	name
@@ -102,7 +101,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	       (NAMED-LAMBDA ,pattern ,@body))))))
 
 (define transform/define-vector-slots
-  (macro (class index . slots)
+  (lambda (class index . slots)
     (define (loop slots n)
       (if (null? slots)
 	  '()
@@ -124,7 +123,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	`(BEGIN ,@(loop slots index)))))
 
 (define transform/define-root-type
-  (macro (type . slots)
+  (lambda (type . slots)
     (let ((tag-name (symbol-append type '-TAG)))
       `(BEGIN (DEFINE ,tag-name
 		(MAKE-VECTOR-TAG FALSE ',type FALSE))
@@ -137,7 +136,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		 (DESCRIPTOR-LIST ,type ,@slots)))))))
 
 (define transform/descriptor-list
-  (macro (type . slots)
+  (lambda (type . slots)
     (let ((ref-name (lambda (slot) (symbol-append type '- slot))))
       `(LIST ,@(map (lambda (slot)
 		      (if (pair? slot)
@@ -149,10 +148,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
  ((define-type-definition
-    (macro (name reserved enumeration)
+    (lambda (name reserved enumeration)
       (let ((parent (symbol-append name '-TAG)))
 	`(DEFINE ,(symbol-append 'TRANSFORM/DEFINE- name)
-	   (macro (type . slots)
+	   (lambda (type . slots)
 	     (let ((tag-name (symbol-append type '-TAG)))
 	       `(BEGIN (DEFINE ,tag-name
 			 (MAKE-VECTOR-TAG ,',parent ',type ,',enumeration))
@@ -173,22 +172,22 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;; Kludge to make these compile efficiently.
 
 (define transform/make-snode
-  (macro (tag . extra)
+  (lambda (tag . extra)
     `((ACCESS VECTOR ,system-global-environment)
       ,tag FALSE '() '() FALSE ,@extra)))
 
 (define transform/make-pnode
-  (macro (tag . extra)
+  (lambda (tag . extra)
     `((ACCESS VECTOR ,system-global-environment)
       ,tag FALSE '() '() FALSE FALSE ,@extra)))
 
 (define transform/make-rvalue
-  (macro (tag . extra)
+  (lambda (tag . extra)
     `((ACCESS VECTOR ,system-global-environment)
       ,tag FALSE ,@extra)))
 
 (define transform/make-lvalue
-  (macro (tag . extra)
+  (lambda (tag . extra)
     (let ((result (generate-uninterned-symbol)))
       `(let ((,result
 	      ((ACCESS VECTOR ,system-global-environment)
@@ -230,25 +229,25 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 				(* ref-index 2)
 				(* set-index 2))))))))))
   (set! transform/define-rtl-expression
-	(macro (type prefix . components)
+	(lambda (type prefix . components)
 	  (rtl-common type prefix components
 		      identity-procedure
 		      'RTL:EXPRESSION-TYPES)))
 
   (set! transform/define-rtl-statement
-	(macro (type prefix . components)
+	(lambda (type prefix . components)
 	  (rtl-common type prefix components
 		      (lambda (expression) `(STATEMENT->SRTL ,expression))
 		      'RTL:STATEMENT-TYPES)))
 
   (set! transform/define-rtl-predicate
-	(macro (type prefix . components)
+	(lambda (type prefix . components)
 	  (rtl-common type prefix components
 		      (lambda (expression) `(PREDICATE->PRTL ,expression))
 		      'RTL:PREDICATE-TYPES))))
 
 (define transform/define-rule
-  (macro (type pattern . body)
+  (lambda (type pattern . body)
     (parse-rule pattern body
       (lambda (pattern variables qualifier actions)
 	`(,(case type
@@ -263,15 +262,15 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;;; Lap instruction sequences.
 
 (define transform/lap
-  (macro some-instructions
+  (lambda some-instructions
     (list 'QUASIQUOTE some-instructions)))
 
 (define transform/inst-ea
-  (macro (ea)
+  (lambda (ea)
     (list 'QUASIQUOTE ea)))
 
 (define transform/define-enumeration
-  (macro (name elements)
+  (lambda (name elements)
     (let ((enumeration (symbol-append name 'S)))
       `(BEGIN (DEFINE ,enumeration
 		(MAKE-ENUMERATION ',elements))
@@ -307,7 +306,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	    body)))))
 
 (define transform/enumeration-case
-  (macro (name expression . clauses)
+  (lambda (name expression . clauses)
     (macros/case-macro expression
 		       clauses
 		       (lambda (expression element)
@@ -317,7 +316,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			 '()))))
 
 (define transform/cfg-node-case
-  (macro (expression . clauses)
+  (lambda (expression . clauses)
     (macros/case-macro expression
 		       clauses
 		       (lambda (expression element)
