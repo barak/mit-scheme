@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: comred.scm,v 1.100 1993/08/02 23:54:16 cph Exp $
+;;;	$Id: comred.scm,v 1.101 1993/08/09 19:38:13 jawilson Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -117,11 +117,26 @@
 			       (let ((window (current-window)))
 				 (%dispatch-on-command
 				  window
-				  (comtab-entry (buffer-comtabs
-						 (window-buffer window))
-						input)
+				  (let ((txtprp-comtab
+					 (get-property-at
+					  'command-table
+					  (mark-index
+					   (buffer-point (window-buffer window)))
+					  (buffer-group (window-buffer window)))))
+				    (or
+				     (and
+				      txtprp-comtab
+				      (let ((command
+					     (comtab-entry (cadr txtprp-comtab) input)))
+					(if (eq? command
+						 (ref-command-object undefined))
+					    false
+					    command)))
+					(comtab-entry
+					 (buffer-comtabs (window-buffer window))
+					 input)))
 				  false)))))
-		       ((dequeue! command-reader-override-queue)))))))))))))
+			       ((dequeue! command-reader-override-queue)))))))))))))
 
 (define (bind-abort-editor-command thunk)
   (call-with-current-continuation
