@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 4.3 1987/12/31 08:50:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 4.4 1988/01/22 21:57:06 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -104,7 +104,6 @@ MIT in each case. |#
 ;;; Interpreter Calls
 
 (define rtl:make-interpreter-call:access)
-(define rtl:make-interpreter-call:cache-unassigned?)
 (define rtl:make-interpreter-call:unassigned?)
 (define rtl:make-interpreter-call:unbound?)
 (let ((interpreter-lookup-maker
@@ -115,8 +114,6 @@ MIT in each case. |#
 	       (%make environment name)))))))
   (set! rtl:make-interpreter-call:access
 	(interpreter-lookup-maker %make-interpreter-call:access))
-  (set! rtl:make-interpreter-call:cache-unassigned?
-	(interpreter-lookup-maker %make-interpreter-call:cache-unassigned?))
   (set! rtl:make-interpreter-call:unassigned?
 	(interpreter-lookup-maker %make-interpreter-call:unassigned?))
   (set! rtl:make-interpreter-call:unbound?
@@ -153,6 +150,11 @@ MIT in each case. |#
   (expression-simplify-for-statement name
     (lambda (name)
       (%make-interpreter-call:cache-reference name safe?))))
+
+(define (rtl:make-interpreter-call:cache-unassigned? name)
+  (expression-simplify-for-statement name
+    (lambda (name)
+      (%make-interpreter-call:cache-unassigned? name))))
 
 ;;;; Expression Simplification
 
