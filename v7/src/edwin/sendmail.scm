@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sendmail.scm,v 1.61 2000/06/15 20:58:56 cph Exp $
+;;; $Id: sendmail.scm,v 1.62 2000/06/16 17:39:22 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
@@ -1169,8 +1169,8 @@ Commands available in this mode:
   "An event distributor that is invoked when entering MIME Attachments mode."
   (make-event-distributor))
 
-(define-key 'mime-attachments #\+ 'add-mime-file-attachment)
-(define-key 'mime-attachments #\- 'kill-mime-attachment)
+(define-key 'mime-attachments #\a 'add-mime-file-attachment)
+(define-key 'mime-attachments #\k 'kill-mime-attachment)
 (define-key 'mime-attachments #\? 'describe-mode)
 (define-key 'mime-attachments #\q 'mime-attachments-quit)
 
@@ -1200,7 +1200,9 @@ Commands available in this mode:
 		 (lambda () (pathname->mime-type pathname mail-buffer))
 	       (lambda (type subtype parameters)
 		 (add-buffer-mime-attachment!
-		  mail-buffer type subtype parameters
+		  mail-buffer type subtype
+		  `(,@parameters
+		    (NAME ,(pathname-name pathname)))
 		  `(,(if (eq? type 'TEXT)
 			 'INLINE
 			 'ATTACHMENT)
