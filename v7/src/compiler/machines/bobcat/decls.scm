@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 1.16 1987/07/08 21:54:41 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 1.17 1987/07/10 20:33:23 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -48,12 +48,8 @@ MIT in each case. |#
 
 (define (file-dependency/integration/make filename dependencies)
   (if enable-integration-declarations
-      (sf/add-file-declarations!
-       filename
-       `((INTEGRATE-EXTERNAL
-	  ,@(map (lambda (dependency)
-		   (pathname->absolute-pathname (->pathname dependency)))
-		 dependencies))))))
+      (sf/add-file-declarations! filename
+				 `((INTEGRATE-EXTERNAL ,@dependencies)))))
 
 (define (file-dependency/expansion/join filenames expansions)
   (for-each (lambda (filename)
@@ -66,7 +62,8 @@ MIT in each case. |#
 
 (define (filename/append directory . names)
   (map (lambda (name)
-	 (string-append directory "/" name))
+	 (pathname->absolute-pathname
+	  (string->pathname (string-append directory "/" name))))
        names))
 
 (define (file-dependency/syntax/join filenames dependency)
@@ -123,7 +120,8 @@ MIT in each case. |#
   (filename/append "machines/bobcat" "rules1" "rules2" "rules3" "rules4"))
 
 (define filenames/dependency-group/lap-syn4
-  (append filenames/dependency-group/lap-syn2 filenames/dependency-group/lap-syn3))
+  (append filenames/dependency-group/lap-syn2
+	  filenames/dependency-group/lap-syn3))
 
 (file-dependency/integration/join filenames/dependency-group/lap-syn3
 				  filenames/dependency-group/lap-syn2)
@@ -141,47 +139,30 @@ MIT in each case. |#
 					  filenames/dependency-group/lap-syn4)
 				  (filename/append "machines/bobcat" "insutl"))
 
-(file-dependency/expansion/join filenames/dependency-group/lap-syn4
-				'((LAP:SYNTAX-INSTRUCTION
-				   (ACCESS LAP:SYNTAX-INSTRUCTION-EXPANDER
-					   LAP-SYNTAX-PACKAGE
-					   COMPILER-PACKAGE))
-				  (INSTRUCTION->INSTRUCTION-SEQUENCE
-				   (ACCESS INSTRUCTION->INSTRUCTION-SEQUENCE-EXPANDER
-					   LAP-SYNTAX-PACKAGE
-					   COMPILER-PACKAGE))
-				  (SYNTAX-EVALUATION
-				   (ACCESS SYNTAX-EVALUATION-EXPANDER
-					   LAP-SYNTAX-PACKAGE
-					   COMPILER-PACKAGE))
-				  (CONS-SYNTAX
-				   (ACCESS CONS-SYNTAX-EXPANDER
-					   LAP-SYNTAX-PACKAGE
-					   COMPILER-PACKAGE))
-				  (OPTIMIZE-GROUP-EARLY
-				   (ACCESS OPTIMIZE-GROUP-EXPANDER
-					   LAP-SYNTAX-PACKAGE
-					   COMPILER-PACKAGE))
-				  (EA-KEYWORD-EARLY
-				   (ACCESS EA-KEYWORD-EXPANDER
-					   LAP-SYNTAX-PACKAGE
-					   COMPILER-PACKAGE))
-				  (EA-MODE-EARLY
-				   (ACCESS EA-MODE-EXPANDER
-					   LAP-SYNTAX-PACKAGE
-					   COMPILER-PACKAGE))
-				  (EA-REGISTER-EARLY
-				   (ACCESS EA-REGISTER-EXPANDER
-					   LAP-SYNTAX-PACKAGE
-					   COMPILER-PACKAGE))
-				  (EA-EXTENSION-EARLY
-				   (ACCESS EA-EXTENSION-EXPANDER
-					   LAP-SYNTAX-PACKAGE
-					   COMPILER-PACKAGE))
-				  (EA-CATEGORIES-EARLY
-				   (ACCESS EA-CATEGORIES-EXPANDER
-					   LAP-SYNTAX-PACKAGE
-					   COMPILER-PACKAGE))))
+(file-dependency/expansion/join
+ filenames/dependency-group/lap-syn4
+ '((LAP:SYNTAX-INSTRUCTION
+    (ACCESS LAP:SYNTAX-INSTRUCTION-EXPANDER LAP-SYNTAX-PACKAGE
+	    COMPILER-PACKAGE))
+   (INSTRUCTION->INSTRUCTION-SEQUENCE
+    (ACCESS INSTRUCTION->INSTRUCTION-SEQUENCE-EXPANDER LAP-SYNTAX-PACKAGE
+	    COMPILER-PACKAGE))
+   (SYNTAX-EVALUATION
+    (ACCESS SYNTAX-EVALUATION-EXPANDER LAP-SYNTAX-PACKAGE COMPILER-PACKAGE))
+   (CONS-SYNTAX
+    (ACCESS CONS-SYNTAX-EXPANDER LAP-SYNTAX-PACKAGE COMPILER-PACKAGE))
+   (OPTIMIZE-GROUP-EARLY
+    (ACCESS OPTIMIZE-GROUP-EXPANDER LAP-SYNTAX-PACKAGE COMPILER-PACKAGE))
+   (EA-KEYWORD-EARLY
+    (ACCESS EA-KEYWORD-EXPANDER LAP-SYNTAX-PACKAGE COMPILER-PACKAGE))
+   (EA-MODE-EARLY
+    (ACCESS EA-MODE-EXPANDER LAP-SYNTAX-PACKAGE COMPILER-PACKAGE))
+   (EA-REGISTER-EARLY
+    (ACCESS EA-REGISTER-EXPANDER LAP-SYNTAX-PACKAGE COMPILER-PACKAGE))
+   (EA-EXTENSION-EARLY
+    (ACCESS EA-EXTENSION-EXPANDER LAP-SYNTAX-PACKAGE COMPILER-PACKAGE))
+   (EA-CATEGORIES-EARLY
+    (ACCESS EA-CATEGORIES-EXPANDER LAP-SYNTAX-PACKAGE COMPILER-PACKAGE))))
 
 ;;;; Syntax dependencies
 
@@ -210,6 +191,7 @@ MIT in each case. |#
  lap-generator-syntax-table)
 
 (file-dependency/syntax/join
- (append (filename/append "machines/bobcat" "insutl" "instr1" "instr2" "instr3")
+ (append (filename/append "machines/bobcat" "insutl" "instr1" "instr2"
+			  "instr3")
 	 (filename/append "machines/spectrum" "instrs"))
  assembler-syntax-table)
