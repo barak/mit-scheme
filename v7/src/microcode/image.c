@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/image.c,v 9.25 1987/10/21 03:44:33 pas Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/image.c,v 9.26 1988/08/10 05:26:54 pas Exp $ */
 
 #include "scheme.h"
 #include "primitive.h"
@@ -166,7 +166,6 @@ Define_Primitive(Prim_Read_Image_From_2bint_File, 1, "READ-IMAGE-FROM-2BINT-FILE
   int Error_Number;
   long allocated_cells;
   Boolean Open_File();
-  float x_origin, y_origin;
   int foo1,foo2;
 
   Primitive_1_Args();
@@ -205,6 +204,47 @@ Define_Primitive(Prim_Read_Image_From_2bint_File, 1, "READ-IMAGE-FROM-2BINT-FILE
   
   Close_File(fp);
   return Result;
+}
+
+Define_Primitive(Prim_Write_Image_2bint, 2, "WRITE-IMAGE-2BINT")
+{ long Length, i,j;
+  Pointer Pnrows, Pncols, Prest, Parray;
+  REAL *Array;
+  int nrows, ncols, number,foo1,foo2;
+  FILE *fopen(), *fp;
+  char *file_string; int Error_Number; Boolean Open_File();
+  
+  Primitive_2_Args();
+  Arg_1_Type(TC_LIST);             /* image = (nrows ncols array) */
+  Arg_2_Type(TC_CHARACTER_STRING);
+  if (!(Open_File(Arg2, "w", &fp))) Primitive_Error(ERR_ARG_2_BAD_RANGE);
+  
+  Pnrows = Vector_Ref(Arg1, CONS_CAR);
+  Prest = Vector_Ref(Arg1, CONS_CDR);
+  Pncols = Vector_Ref(Prest, CONS_CAR);
+  Prest = Vector_Ref(Prest, CONS_CDR);
+  Parray = Vector_Ref(Prest, CONS_CAR);
+  if (Vector_Ref(Prest, CONS_CDR) != NIL) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
+  if (Type_Code(Parray) != TC_ARRAY) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
+  /* */
+  Range_Check(nrows, Pnrows, 0, 1024, ERR_ARG_1_BAD_RANGE);  /* arbitrary size bound on images */
+  Range_Check(ncols, Pncols, 0, 1024, ERR_ARG_1_BAD_RANGE);
+  Length = nrows * ncols;
+  Array = Scheme_Array_To_C_Array(Parray);
+  
+  /*_________________________________*/
+  putw(nrows, fp);                   /*  putw is 4 bytes on bobcats */
+  putw(ncols, fp);                   /*  so below use putc */
+  for (i=0;i<Length;i++) {
+    number = ((int) Array[i]);
+    foo2 = number;     
+    foo1 = (number>>8);              /* high order byte */
+    putc(foo1, fp);
+    putc(foo2, fp);                  /* low order byte */
+  }
+  Close_File(fp);
+  /*_________________________________*/
+  PRIMITIVE_RETURN(TRUTH);
 }
 
 Define_Primitive(Prim_Read_Image_From_CTSCAN_File, 1, "READ-IMAGE-FROM-CTSCAN-FILE")
@@ -305,7 +345,6 @@ Define_Primitive(Prim_Subimage, 5, "SUBIMAGE")
   Pointer Pnrows, Pncols, Prest, Parray;
   long lrow, hrow, lcol, hcol;
   long nrows, ncols, new_nrows, new_ncols;
-
   REAL *Array, *To_Here;
   Pointer Result, Array_Data_Result, *Orig_Free;
   int Error_Number;
@@ -321,8 +360,8 @@ Define_Primitive(Prim_Subimage, 5, "SUBIMAGE")
   if (Vector_Ref(Prest, CONS_CDR) != NIL) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   if (Type_Code(Parray) != TC_ARRAY) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   
-  Range_Check(nrows, Pnrows, 0, 512, ERR_ARG_1_BAD_RANGE);
-  Range_Check(ncols, Pncols, 0, 512, ERR_ARG_1_BAD_RANGE);
+  Range_Check(nrows, Pnrows, 0, 1024, ERR_ARG_1_BAD_RANGE);
+  Range_Check(ncols, Pncols, 0, 1024, ERR_ARG_1_BAD_RANGE);
 
   Range_Check(lrow, Arg2, 0, nrows, ERR_ARG_2_BAD_RANGE);
   Range_Check(hrow, Arg3, lrow, nrows, ERR_ARG_3_BAD_RANGE);
@@ -423,8 +462,8 @@ Define_Primitive(Prim_Image_Set_Row, 3, "IMAGE-SET-ROW!")
   if (Vector_Ref(Prest, CONS_CDR) != NIL) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   if (Type_Code(Parray) != TC_ARRAY) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   
-  Range_Check(nrows, Pnrows, 0, 512, ERR_ARG_1_BAD_RANGE);
-  Range_Check(ncols, Pncols, 0, 512, ERR_ARG_1_BAD_RANGE);
+  Range_Check(nrows, Pnrows, 0, 1024, ERR_ARG_1_BAD_RANGE);
+  Range_Check(ncols, Pncols, 0, 1024, ERR_ARG_1_BAD_RANGE);
 
   Arg_2_Type(TC_FIXNUM);
   Range_Check(row_to_set, Arg2, 0, (nrows-1), ERR_ARG_2_BAD_RANGE);
@@ -453,8 +492,8 @@ Define_Primitive(Prim_Image_Set_Column, 3, "IMAGE-SET-COLUMN!")
   if (Vector_Ref(Prest, CONS_CDR) != NIL) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   if (Type_Code(Parray) != TC_ARRAY) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   
-  Range_Check(nrows, Pnrows, 0, 512, ERR_ARG_1_BAD_RANGE);
-  Range_Check(ncols, Pncols, 0, 512, ERR_ARG_1_BAD_RANGE);
+  Range_Check(nrows, Pnrows, 0, 1024, ERR_ARG_1_BAD_RANGE);
+  Range_Check(ncols, Pncols, 0, 1024, ERR_ARG_1_BAD_RANGE);
 
   Arg_2_Type(TC_FIXNUM);
   Range_Check(col_to_set, Arg2, 0, (nrows-1), ERR_ARG_2_BAD_RANGE);
@@ -490,7 +529,158 @@ long nrows, ncols, col_to_set;
     To_Here += nrows;
   }
 }
-       
+
+Define_Primitive(Prim_Image_Laplacian, 1, "IMAGE-LAPLACIAN")
+{ long nrows, ncols, Length;
+  Pointer Pnrows, Pncols, Prest, Parray;
+  REAL *Array, *To_Here;
+  Pointer Result, Array_Data_Result, *Orig_Free;
+  long allocated_cells;
+  /* */
+  Primitive_1_Args();
+  Arg_1_Type(TC_LIST);             /* image = (nrows ncols array) */
+  Pnrows = Vector_Ref(Arg1, CONS_CAR);
+  Prest = Vector_Ref(Arg1, CONS_CDR);
+  Pncols = Vector_Ref(Prest, CONS_CAR);
+  Prest = Vector_Ref(Prest, CONS_CDR);
+  Parray = Vector_Ref(Prest, CONS_CAR);
+  if (Vector_Ref(Prest, CONS_CDR) != NIL) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
+  if (Type_Code(Parray) != TC_ARRAY) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
+  /* */
+  Range_Check(nrows, Pnrows, 0, 1024, ERR_ARG_1_BAD_RANGE);
+  Range_Check(ncols, Pncols, 0, 1024, ERR_ARG_1_BAD_RANGE);
+  Length=nrows*ncols;
+  /* */
+  /* ALLOCATE SPACE */
+  Primitive_GC_If_Needed(6);
+  Orig_Free = Free;
+  Free += 6;
+  Result = Make_Pointer(TC_LIST, Orig_Free);
+  *Orig_Free++ = Make_Non_Pointer(TC_FIXNUM, nrows);
+  *Orig_Free = Make_Pointer(TC_LIST, Orig_Free+1);
+  Orig_Free++;
+  *Orig_Free++ = Make_Non_Pointer(TC_FIXNUM, ncols);
+  *Orig_Free = Make_Pointer(TC_LIST, Orig_Free+1);
+  Orig_Free++;
+  Allocate_Array(Array_Data_Result, Length, allocated_cells); 
+  *Orig_Free++ = Array_Data_Result;
+  *Orig_Free = NIL;
+  /* END ALLOCATION */
+  /* */
+  Array = Scheme_Array_To_C_Array(Parray);
+  C_image_laplacian(Array, (Scheme_Array_To_C_Array(Array_Data_Result)), nrows, ncols);
+  PRIMITIVE_RETURN(Result);
+}
+
+/* Laplacian form [4,-1,-1,-1,-1]/4
+        A(i,j) --> Array[i*ncols + j] 
+	With no knowledge outside boundary, assume laplace(edge-point)=0.0 (no wrap-around, no artificial bndry) 
+	*/
+C_image_laplacian(array, new_array, nrows, ncols)         
+     REAL *array, *new_array;
+     long nrows, ncols;
+{ long i,j, nrows1, ncols1;
+  nrows1=nrows-1; ncols1=ncols-1;
+  if ((nrows<2)||(ncols<2)) return(1); /* no need todo anything for 1-point image */
+  /* */
+  i=0;j=0;           new_array[i*ncols+j] = 0.0; /* NE corner */
+  i=0;j=ncols1;      new_array[i*ncols+j] = 0.0; /* NW corner */
+  i=nrows1;j=0;      new_array[i*ncols+j] = 0.0; /* SE corner */
+  i=nrows1;j=ncols1; new_array[i*ncols+j] = 0.0; /* SW corner */
+  i=0; for (j=1;j<ncols1;j++)       new_array[i*ncols+j] = 0.0;	/* NORTH row */
+  i=nrows1; for (j=1;j<ncols1;j++)  new_array[i*ncols+j] = 0.0;	/* SOUTH row */
+  j=0; for (i=1;i<nrows1;i++)       new_array[i*ncols+j] = 0.0;	/* EAST column */
+  j=ncols1; for (i=1;i<nrows1;i++)  new_array[i*ncols+j] = 0.0;	/* WEST column */
+  /* */
+  for (i=1;i<nrows1;i++)
+    for (j=1;j<ncols1;j++) new_array[i*ncols+j] = /* interior of image */
+      array[i*ncols+j] - (.25)*(array[i*ncols+(j-1)] + array[i*ncols+(j+1)] + array[(i-1)*ncols+j] + array[(i+1)*ncols+j]); 
+}
+
+Define_Primitive(Prim_Image_Double_By_Interpolation, 1, "IMAGE-DOUBLE-BY-INTERPOLATION")
+{ long nrows, ncols, Length;
+  Pointer Pnrows, Pncols, Prest, Parray;
+  REAL *Array, *To_Here;
+  Pointer Result, Array_Data_Result, *Orig_Free;
+  long allocated_cells;
+  /* */
+  Primitive_1_Args();
+  Arg_1_Type(TC_LIST);             /* image = (nrows ncols array) */
+  Pnrows = Vector_Ref(Arg1, CONS_CAR);
+  Prest = Vector_Ref(Arg1, CONS_CDR);
+  Pncols = Vector_Ref(Prest, CONS_CAR);
+  Prest = Vector_Ref(Prest, CONS_CDR);
+  Parray = Vector_Ref(Prest, CONS_CAR);
+  if (Vector_Ref(Prest, CONS_CDR) != NIL) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
+  if (Type_Code(Parray) != TC_ARRAY) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
+  /* */
+  Range_Check(nrows, Pnrows, 0, 1024, ERR_ARG_1_BAD_RANGE);
+  Range_Check(ncols, Pncols, 0, 1024, ERR_ARG_1_BAD_RANGE);
+  Length=nrows*ncols;
+  /* */
+  /* ALLOCATE SPACE */
+  Primitive_GC_If_Needed(6);
+  Orig_Free = Free;
+  Free += 6;
+  Result = Make_Pointer(TC_LIST, Orig_Free);
+  *Orig_Free++ = Make_Non_Pointer(TC_FIXNUM, (2*nrows));
+  *Orig_Free = Make_Pointer(TC_LIST, Orig_Free+1);
+  Orig_Free++;
+  *Orig_Free++ = Make_Non_Pointer(TC_FIXNUM, (2*ncols));
+  *Orig_Free = Make_Pointer(TC_LIST, Orig_Free+1);
+  Orig_Free++;
+  Allocate_Array(Array_Data_Result, (4*Length), allocated_cells);   /* NOTICE (4 * LENGTH) */
+  *Orig_Free++ = Array_Data_Result;
+  *Orig_Free = NIL;
+  /* END ALLOCATION */
+  /* */
+  Array = Scheme_Array_To_C_Array(Parray);
+  C_image_double_by_interpolation(Array, (Scheme_Array_To_C_Array(Array_Data_Result)), nrows, ncols);
+  PRIMITIVE_RETURN(Result);
+}
+
+/* double image by linear interpolation.
+   ---new_array must be 4 times as long ---
+        A(i,j) --> Array[i*ncols + j] 
+	magnification in a south-east direction (i.e. replication of pixels in South-East corner)
+	*/
+C_image_double_by_interpolation(array, new_array, nrows, ncols) 
+     REAL *array, *new_array;
+     long nrows, ncols;
+{ long i,j, nrows1, ncols1, nrows2, ncols2;
+  nrows1=nrows-1; ncols1=ncols-1;
+  nrows2=2*nrows; ncols2=2*ncols;
+  if ((nrows<2)||(ncols<2)) return(1); /* no need todo anything for 1-point image */
+  /* */
+  i=nrows1; for (j=0;j<ncols1;j++) 	/* SOUTH row */
+  { new_array[(2*i)*ncols2+(2*j)]      = array[i*ncols+j];
+    new_array[(2*i+1)*ncols2+(2*j)]    = array[i*ncols+j];
+    new_array[(2*i)*ncols2+(2*j)+1]    = .5*(array[i*ncols+j]+array[i*ncols+j+1]);
+    new_array[(2*i+1)*ncols2+(2*j)+1]  = new_array[(2*i)*ncols2+(2*j)+1];
+  }
+  j=ncols1; for (i=0;i<nrows1;i++)  	/* WEST column */
+  { new_array[(2*i)*ncols2+(2*j)]      = array[i*ncols+j];
+    new_array[(2*i)*ncols2+(2*j)+1]    = array[i*ncols+j];
+    new_array[(2*i+1)*ncols2+(2*j)]    = .5*(array[i*ncols+j]+array[(i+1)*ncols+j]);
+    new_array[(2*i+1)*ncols2+(2*j)+1]  = new_array[(2*i+1)*ncols2+(2*j)];
+  }
+  i=nrows1;j=ncols1; {                  /* SW corner */  
+    new_array[(2*i)*ncols2+(2*j)]     =  array[i*ncols+j];                 
+    new_array[(2*i)*ncols2+(2*j)+1]   =  array[i*ncols+j];
+    new_array[(2*i+1)*ncols2+(2*j)]   =  array[i*ncols+j];
+    new_array[(2*i+1)*ncols2+(2*j)+1] =  array[i*ncols+j];
+  }
+  /* */
+  for (i=0;i<nrows1;i++)
+    for (j=0;j<ncols1;j++) {                        /* interior of image */
+      new_array[(2*i)*ncols2+(2*j)]     =  array[i*ncols+j];
+      new_array[(2*i)*ncols2+(2*j)+1]   =  .5*(array[i*ncols+j]+array[i*ncols+j+1]);
+      new_array[(2*i+1)*ncols2+(2*j)]   =  .5*(array[i*ncols+j]+array[(i+1)*ncols+j]);
+      new_array[(2*i+1)*ncols2+(2*j)+1] =  .25*(array[i*ncols+j] + array[i*ncols+j+1] + 
+						array[(i+1)*ncols+j] + array[(i+1)*ncols+j+1]);
+    }
+}
+
 Define_Primitive(Prim_Image_Make_Ring, 4, "IMAGE-MAKE-RING")
 { long Length, i,j;
   long nrows, ncols;
@@ -502,9 +692,9 @@ Define_Primitive(Prim_Image_Make_Ring, 4, "IMAGE-MAKE-RING")
   
   Primitive_4_Args();
   Arg_1_Type(TC_FIXNUM);
-  Range_Check(nrows, Arg1, 0, 512, ERR_ARG_1_BAD_RANGE);
+  Range_Check(nrows, Arg1, 0, 1024, ERR_ARG_1_BAD_RANGE);
   Arg_2_Type(TC_FIXNUM);
-  Range_Check(ncols, Arg2, 0, 512, ERR_ARG_2_BAD_RANGE);
+  Range_Check(ncols, Arg2, 0, 1024, ERR_ARG_2_BAD_RANGE);
   Length = nrows*ncols;
   Min_Cycle=0;
   Max_Cycle=min((nrows/2),(ncols/2));
@@ -572,8 +762,8 @@ Define_Primitive(Prim_Image_Periodic_Shift, 3, "IMAGE-PERIODIC-SHIFT")
   if (Vector_Ref(Prest, CONS_CDR) != NIL) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   if (Type_Code(Parray) != TC_ARRAY) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   
-  Range_Check(nrows, Pnrows, 0, 512, ERR_ARG_1_BAD_RANGE);
-  Range_Check(ncols, Pncols, 0, 512, ERR_ARG_1_BAD_RANGE);
+  Range_Check(nrows, Pnrows, 0, 1024, ERR_ARG_1_BAD_RANGE);
+  Range_Check(ncols, Pncols, 0, 1024, ERR_ARG_1_BAD_RANGE);
   Length = nrows*ncols;
   
   Arg_2_Type(TC_FIXNUM);      
@@ -642,8 +832,8 @@ Define_Primitive(Prim_Image_Transpose, 1, "IMAGE-TRANSPOSE!")
   if (Vector_Ref(Prest, CONS_CDR) != NIL) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   if (Type_Code(Parray) != TC_ARRAY) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   
-  Range_Check(nrows, Pnrows, 0, 512, ERR_ARG_1_BAD_RANGE);
-  Range_Check(ncols, Pncols, 0, 512, ERR_ARG_1_BAD_RANGE);
+  Range_Check(nrows, Pnrows, 0, 1024, ERR_ARG_1_BAD_RANGE);
+  Range_Check(ncols, Pncols, 0, 1024, ERR_ARG_1_BAD_RANGE);
   
   Array = Scheme_Array_To_C_Array(Parray);
 
@@ -682,8 +872,8 @@ Define_Primitive(Prim_Image_Rotate_90clw, 1, "IMAGE-ROTATE-90CLW!")
   if (Vector_Ref(Prest, CONS_CDR) != NIL) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   if (Type_Code(Parray) != TC_ARRAY) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   
-  Range_Check(nrows, Pnrows, 0, 512, ERR_ARG_1_BAD_RANGE);
-  Range_Check(ncols, Pncols, 0, 512, ERR_ARG_1_BAD_RANGE);
+  Range_Check(nrows, Pnrows, 0, 1024, ERR_ARG_1_BAD_RANGE);
+  Range_Check(ncols, Pncols, 0, 1024, ERR_ARG_1_BAD_RANGE);
   Length = nrows*ncols;
   
   Primitive_GC_If_Needed(Length*REAL_SIZE);
@@ -715,8 +905,8 @@ Define_Primitive(Prim_Image_Rotate_90cclw, 1, "IMAGE-ROTATE-90CCLW!")
   if (Vector_Ref(Prest, CONS_CDR) != NIL) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   if (Type_Code(Parray) != TC_ARRAY) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   
-  Range_Check(nrows, Pnrows, 0, 512, ERR_ARG_1_BAD_RANGE);
-  Range_Check(ncols, Pncols, 0, 512, ERR_ARG_1_BAD_RANGE);
+  Range_Check(nrows, Pnrows, 0, 1024, ERR_ARG_1_BAD_RANGE);
+  Range_Check(ncols, Pncols, 0, 1024, ERR_ARG_1_BAD_RANGE);
   Length = nrows*ncols;
   
   Primitive_GC_If_Needed(Length*REAL_SIZE);
@@ -748,8 +938,8 @@ Define_Primitive(Prim_Image_Mirror, 1, "IMAGE-MIRROR!")
   if (Vector_Ref(Prest, CONS_CDR) != NIL) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   if (Type_Code(Parray) != TC_ARRAY) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   
-  Range_Check(nrows, Pnrows, 0, 512, ERR_ARG_1_BAD_RANGE);
-  Range_Check(ncols, Pncols, 0, 512, ERR_ARG_1_BAD_RANGE);
+  Range_Check(nrows, Pnrows, 0, 1024, ERR_ARG_1_BAD_RANGE);
+  Range_Check(ncols, Pncols, 0, 1024, ERR_ARG_1_BAD_RANGE);
   Length = nrows*ncols;
   
   Array = Scheme_Array_To_C_Array(Parray);
