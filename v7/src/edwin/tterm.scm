@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.1 1990/11/02 04:16:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.2 1990/11/29 22:09:44 cph Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -443,7 +443,7 @@ MIT in each case. |#
 		 (delete-lines screen yl yu amount)
 		 (begin
 		   (delete-lines screen yl y-size amount)
-		   (insert-lines screen yu y-size amount))))
+		   (insert-lines screen (fix:- yu amount) y-size amount))))
 	   'CLEARED))))
 
 ;;;; Termcap Commands
