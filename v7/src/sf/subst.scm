@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: subst.scm,v 4.13 1995/07/06 22:07:49 cph Exp $
+$Id: subst.scm,v 4.14 1995/07/06 22:18:08 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -982,7 +982,7 @@ forms are simply removed.
 
 	((and (procedure? operator)
 	      (block/safe? (procedure/block operator))
-	      (null? (declaration-set/declarations
+	      (null? (declarations/original
 		      (block/declarations (procedure/block operator))))
 	      (for-all? (procedure/optional operator)
 		variable/integrated)
