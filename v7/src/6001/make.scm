@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/make.scm,v 15.12 1992/08/21 23:53:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/make.scm,v 15.13 1992/09/01 22:26:17 cph Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -37,6 +37,7 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (package/system-loader "6001" '() 'QUERY)
+(load "edextra" (->environment '(edwin)))
 ((access initialize-package! (->environment '(student scode-rewriting))))
 (add-system! (make-system "6.001" 15 6 '()))
 
