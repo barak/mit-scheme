@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dosproc.scm,v 1.2 1992/09/23 23:04:23 jinx Exp $
+;;;	$Id: dosproc.scm,v 1.3 1993/07/16 06:33:12 gjr Exp $
 ;;;
-;;;	Copyright (c) 1992 Massachusetts Institute of Technology
+;;;	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -72,3 +72,9 @@
 		 `(define ,name (process-operation ',name)))))
 
   (define-process-operation delete-process))
+
+(define (process-status-changes?)
+  false)
+
+(define (process-output-available?)
+  false)
