@@ -61,7 +61,6 @@ prntenv.obj
 prntfs.obj
 
 ntasutl.obj
-ntconio.obj
 ntenv.obj
 ntfile.obj
 ntfs.obj
