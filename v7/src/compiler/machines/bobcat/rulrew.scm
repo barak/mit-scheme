@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rulrew.scm,v 1.4 1991/10/25 06:50:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rulrew.scm,v 1.5 1992/03/31 19:50:01 jinx Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -148,6 +148,7 @@ MIT in each case. |#
    (rtl:constant-fixnum-test operand-1
      (lambda (n)
        (or (zero? n)
+	   (= -1 n)
 	   (integer-log-base-2? n)))))
   (rtl:make-fixnum-2-args 'MULTIPLY-FIXNUM operand-1 operand-2 overflow?))
 
@@ -186,6 +187,14 @@ MIT in each case. |#
 	    (or (= -1 n)
 		(integer-log-base-2? n))))))
   (rtl:make-fixnum-2-args operator operand-1 operand-2 overflow?))
+
+(define-rule rewriting
+  (FIXNUM-2-ARGS FIXNUM-LSH
+		 (? operand-1)
+		 (REGISTER (? operand-2 register-known-value))
+		 (? overflow?))
+  (QUALIFIER (rtl:constant-fixnum-test operand-2 (lambda (n) true)))
+  (rtl:make-fixnum-2-args 'FIXNUM-LSH operand-1 operand-2 overflow?))
 
 (define (rtl:constant-fixnum? expression)
   (and (rtl:constant? expression)
