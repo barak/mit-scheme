@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.83 2000/05/22 13:36:20 cph Exp $
+;;; $Id: imail-top.scm,v 1.84 2000/05/22 14:50:30 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -855,49 +855,6 @@ With prefix argument N, removes FLAG from next N messages,
 
 ;;;; Message I/O
 
-(define-command imail-input
-  "Append messages to this folder from a specified folder."
-  (lambda ()
-    (list (prompt-for-imail-url-string "Input from folder" (imail-default-url)
-				       'DEFAULT-TYPE 'INSERTED-DEFAULT
-				       'HISTORY 'IMAIL-INPUT
-				       'HISTORY-INDEX 0)))
-  (lambda (url-string)
-    (let ((folder (selected-folder)))
-      (%imail-copy-folder (imail-parse-partial-url url-string)
-			  (folder-url folder))
-      (select-message folder
-		      (or (selected-message #f)
-			  (navigator/first-unseen-message folder))))))
-
-(define (imail-copy-folder from to)
-  (%imail-copy-folder (imail-parse-partial-url from)
-		      (imail-parse-partial-url to)))
-
-(define (%imail-copy-folder from to)
-  (let ((folder (open-folder from)))
-    (let ((n (folder-length folder)))
-      (do ((i 0 (+ i 1)))
-	  ((= i n))
-	(append-message (get-message folder i) to)))
-    (close-folder folder)))
-
-(define-command imail-output
-  "Append this message to a specified folder."
-  (lambda ()
-    (list (prompt-for-imail-url-string "Output to folder" (imail-default-url)
-				       'DEFAULT-TYPE 'INSERTED-DEFAULT
-				       'HISTORY 'IMAIL-OUTPUT
-				       'HISTORY-INDEX 0)
-	  (command-argument)))
-  (lambda (url-string argument)
-    (let ((delete? (ref-variable imail-delete-after-output)))
-      (move-relative-undeleted (or argument (and delete? 1))
-	(lambda (message)
-	  (append-message message (imail-parse-partial-url url-string))
-	  (message-filed message)
-	  (if delete? (delete-message message)))))))
-
 (define-command imail-create-folder
   "Create a new folder with the specified name.
 An error if signalled if the folder already exists."
@@ -916,6 +873,60 @@ An error if signalled if the folder already exists."
 				       'HISTORY 'IMAIL-DELETE-FOLDER)))
   (lambda (url-string)
     (delete-folder (imail-parse-partial-url url-string))))
+
+(define-command imail-input
+  "Append messages to this folder from a specified folder."
+  (lambda ()
+    (list (prompt-for-imail-url-string "Input from folder" (imail-default-url)
+				       'DEFAULT-TYPE 'INSERTED-DEFAULT
+				       'HISTORY 'IMAIL-INPUT
+				       'HISTORY-INDEX 0)))
+  (lambda (url-string)
+    (let ((folder (selected-folder)))
+      (let ((folder (open-folder (imail-parse-partial-url url-string)))
+	    (to (folder-url folder)))
+	(let ((n (folder-length folder)))
+	  (do ((i 0 (+ i 1)))
+	      ((= i n))
+	    (append-message (get-message folder i) to))))
+      (select-message folder
+		      (or (selected-message #f)
+			  (navigator/first-unseen-message folder))))))
+
+(define-command imail-output
+  "Append this message to a specified folder."
+  (lambda ()
+    (list (prompt-for-imail-url-string "Output to folder" (imail-default-url)
+				       'DEFAULT-TYPE 'INSERTED-DEFAULT
+				       'HISTORY 'IMAIL-OUTPUT
+				       'HISTORY-INDEX 0)
+	  (command-argument)))
+  (lambda (url-string argument)
+    (let ((delete? (ref-variable imail-delete-after-output)))
+      (move-relative-undeleted (or argument (and delete? 1))
+	(lambda (message)
+	  (append-message message (imail-parse-partial-url url-string))
+	  (message-filed message)
+	  (if delete? (delete-message message)))))))
+
+(define-command imail-copy-messages
+  "Append all messages from this folder to a specified folder.
+The messages are NOT marked as filed.
+The messages are NOT deleted even if imail-delete-after-output is true.
+This command is meant to be used to move the contents of a folder
+ either to or from an IMAP server."
+  (lambda ()
+    (list (prompt-for-imail-url-string "Output to folder" (imail-default-url)
+				       'DEFAULT-TYPE 'INSERTED-DEFAULT
+				       'HISTORY 'IMAIL-OUTPUT
+				       'HISTORY-INDEX 0)))
+  (lambda (url-string)
+    (let ((folder (selected-folder))
+	  (to (imail-parse-partial-url url-string)))
+      (let ((n (folder-length folder)))
+	(do ((i 0 (+ i 1)))
+	    ((= i n))
+	  (append-message (get-message folder i) to))))))
 
 ;;;; Sending mail
 
