@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.63 1990/03/26 19:38:29 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.64 1990/04/10 20:05:18 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -1268,6 +1268,7 @@ MIT in each case. |#
   (export (runtime file-output)
 	  channel-name
 	  close-physical-channel
+	  open-append-channel
 	  open-output-channel)
   (export (runtime subprocesses input)
 	  close-physical-channel

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.4 1990/02/27 19:39:34 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.5 1990/04/10 20:05:13 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,8 +38,6 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (set! open-input-channel (open-channel-wrapper false))
-  (set! open-output-channel (open-channel-wrapper true))
   (set! close-all-open-files (close-files file-close-channel))
   (set! primitive-io/reset! (close-files (lambda (ignore) ignore)))
   (set! open-files-list (list 'OPEN-FILES-LIST))
@@ -80,22 +78,38 @@ MIT in each case. |#
 ;;;; Open/Close Files
 
 ;;;  Direction is one of the following:
-;;;     - true:   output channel
-;;;	- false:  input channel
-;;;	- 0:	  closed channel
+;;;	- #f:		input channel
+;;;     - #t:		output channel
+;;;     - 'append:	append output channel
+;;;	- 0:		closed channel
 
-(define ((open-channel-wrapper direction) filename-or-process)
+(define (open-channel filename-or-process direction)
   (without-interrupts
    (lambda ()
      (let ((channel
-	    (make-physical-channel
-	     (if (process? filename-or-process)
-		 (if direction
-		     (process-get-input-channel filename-or-process)
-		     (process-get-output-channel filename-or-process))
-		 (file-open-channel filename-or-process direction))
-	     filename-or-process
-	     direction)))
+	    (case direction
+	      ((#F)
+	       (make-physical-channel
+		(if (process? filename-or-process)
+		    (process-get-input-channel filename-or-process)
+		    (file-open-channel filename-or-process direction))
+		filename-or-process
+		direction))
+	      ((#T)
+	       (make-physical-channel
+		(if (process? filename-or-process)
+		    (process-get-output-channel filename-or-process)
+		    (file-open-channel filename-or-process direction))
+		filename-or-process
+		direction))
+	      (else
+	       (if (process? filename-or-process)
+		   (error "Can't open process channel for append"
+			  filename-or-process))
+	       (make-physical-channel
+		(file-open-channel filename-or-process 'APPEND)
+		filename-or-process
+		#T)))))
        (with-absolutely-no-interrupts
 	(lambda ()
 	  (set-cdr! open-files-list
@@ -105,8 +119,14 @@ MIT in each case. |#
 			  (cdr open-files-list)))))
        channel))))
 
-(define open-input-channel)
-(define open-output-channel)
+(define (open-input-channel filename-or-process)
+  (open-channel filename-or-process false))
+
+(define (open-output-channel filename-or-process)
+  (open-channel filename-or-process true))
+
+(define (open-append-channel filename)
+  (open-channel filename 'APPEND))
 
 ;;; This is locked from interrupts, but GC can occur since the
 ;;; procedure itself hangs on to the channel until the last moment,
