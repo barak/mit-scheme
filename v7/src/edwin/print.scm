@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/print.scm,v 1.3 1991/10/26 21:08:10 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/print.scm,v 1.4 1991/10/26 22:05:36 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -109,7 +109,7 @@ Variable LPR-SWITCHES is a list of extra switches (strings) to pass to lpr."
 		   (lambda ()
 		     (local-set-variable! tab-width width)))
 		 (untabify-region (region-start region) (region-end region))))
-      (shell-command-region
+      (shell-command
        region (buffer-end buffer) false false
        (string-append (ref-variable lpr-command (current-buffer))
 		      " "
