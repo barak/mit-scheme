@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/uenvir.scm,v 14.21 1991/05/04 20:00:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/uenvir.scm,v 14.22 1991/05/06 02:35:12 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -471,22 +471,21 @@ MIT in each case. |#
     static-link))
 
 (define (stack-ccenv/normal-closure environment)
-  (let ((block (stack-ccenv/block environment)))
-    (let ((closure
-	   (find-stack-element environment
-			       dbg-block/normal-closure-index
-			       "closure")))
-      (if (not (compiled-closure? closure))
-	  (error "Frame missing closure" closure environment))
+  (let ((closure
+	 (find-stack-element environment
+			     dbg-block/normal-closure-index
+			     "closure")))
+    (if (not (compiled-closure? closure))
+	(error "Frame missing closure" closure environment))
 #|
-      ;; Temporarily disable this consistency check until the compiler
-      ;; is modified to provide the correct information for
-      ;; multi-closed procedures.
-      (if (not (eq? (compiled-entry/dbg-object closure)
-		    (dbg-block/procedure block)))
-	  (error "Wrong closure in frame" closure environment))
+    ;; Temporarily disable this consistency check until the compiler
+    ;; is modified to provide the correct information for
+    ;; multi-closed procedures.
+    (if (not (eq? (compiled-entry/dbg-object closure)
+		  (dbg-block/procedure (stack-ccenv/block environment))))
+	(error "Wrong closure in frame" closure environment))
 |#
-      closure)))
+    closure))
 
 (define (find-stack-element environment procedure name)
   (let ((frame (stack-ccenv/frame environment)))
