@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dassm2.scm,v 4.2 1988/01/15 20:13:52 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dassm2.scm,v 4.3 1988/02/11 21:12:27 bal Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -143,6 +143,11 @@ MIT in each case. |#
 
 ;;;; Compiler specific information
 
+(define make-register-offset)
+(define interpreter-register?)
+
+(let ()
+
 (define (register-maker assignments)
   (lambda (mode register)
     (list mode
@@ -161,7 +166,7 @@ MIT in each case. |#
     (7 . 7)
     (8 . 8)
     (9 . 9)
-    (10 . FRAME-POINTER)
+    (10 . DYNAMIC-LINK)
     (11 . REFERENCE-MASK)
     (12 . FREE-POINTER)
     (13 . REGS-POINTER)

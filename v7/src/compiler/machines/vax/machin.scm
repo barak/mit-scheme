@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/machin.scm,v 4.1 1988/01/07 21:14:55 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/machin.scm,v 4.2 1988/02/11 21:11:20 bal Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -35,8 +35,7 @@ MIT in each case. |#
 ;;;; Machine Model for DEC Vax
 
 (declare (usual-integrations))
-
-(define-integrable (stack->memory-offset offset)
+(define-integrable (stack->memory-offset offset)
   offset)
 
 (define ic-block-first-parameter-offset
@@ -94,8 +93,8 @@ MIT in each case. |#
 
 (define (rtl:machine-register? rtl-register)
   (case rtl-register
-    ((FRAME-POINTER) (interpreter-frame-pointer))
     ((STACK-POINTER) (interpreter-stack-pointer))
+    ((DYNAMIC-LINK) (interpreter-dynamic-link))
     ((INTERPRETER-CALL-RESULT:ACCESS) (interpreter-register:access))
     ((INTERPRETER-CALL-RESULT:CACHE-REFERENCE)
      (interpreter-register:cache-reference))
@@ -144,7 +143,7 @@ MIT in each case. |#
 (define initial-address-registers
   (list r10 r12 r13 r14 r15))
 
-(define-integrable regnum:frame-pointer r10)
+(define-integrable regnum:dynamic-link r10)
 (define-integrable regnum:free-pointer r12)
 (define-integrable regnum:regs-pointer r13)
 (define-integrable regnum:stack-pointer r14)
@@ -153,7 +152,7 @@ MIT in each case. |#
   registers)
 
 (define available-machine-registers
-  (list r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10))
+  (list r0 r1 r2 r3 r4 r5 r6 r7 r8 r9))
 
 (define-integrable (pseudo-register=? x y)
   (= (register-renumber x) (register-renumber y)))
@@ -197,11 +196,11 @@ MIT in each case. |#
 (define-integrable (interpreter-register:unbound?)
   (rtl:make-machine-register r0))
 
-(define-integrable (interpreter-frame-pointer)
-  (rtl:make-machine-register regnum:frame-pointer))
+(define-integrable (interpreter-dynamic-link)
+  (rtl:make-machine-register regnum:dynamic-link))
 
-(define-integrable (interpreter-frame-pointer? register)
-  (= (rtl:register-number register) regnum:frame-pointer))
+(define-integrable (interpreter-dynamic-link? register)
+  (= (rtl:register-number register) regnum:dynamic-link))
 
 (define-integrable (interpreter-free-pointer)
   (rtl:make-machine-register regnum:free-pointer))
@@ -226,3 +225,4 @@ MIT in each case. |#
 (define lap:make-label-statement)
 (define lap:make-unconditional-branch)
 (define lap:make-entry-point)
+
