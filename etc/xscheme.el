@@ -21,7 +21,7 @@
 ;;; Requires C-Scheme release 5 or later
 ;;; Changes to Control-G handler require runtime version 13.85 or later
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.10 1987/12/07 09:42:13 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.11 1987/12/07 09:59:01 cph Exp $
 
 (require 'scheme)
 
@@ -63,6 +63,7 @@ Is processed with `substitute-command-keys' first.")
   (define-key keymap "\C-cp" 'xscheme-send-previous-expression))
 
 (defun xscheme-interrupt-commands (keymap)
+  (define-key keymap "\C-c\C-s" 'xscheme-select-process-buffer)
   (define-key keymap "\C-cb" 'xscheme-send-breakpoint-interrupt)
   (define-key keymap "\C-cg" 'xscheme-send-control-g-interrupt)
   (define-key keymap "\C-cu" 'xscheme-send-control-u-interrupt)
@@ -301,6 +302,16 @@ The strings are concatenated and terminated by a newline."
   (interactive)
   (push-mark)
   (insert xscheme-previous-send))
+
+(defun xscheme-select-process-buffer ()
+  "Select the Scheme process buffer and move to its output point."
+  (interactive)
+  (let ((process (get-process "scheme")))
+    (cond (process
+	   (switch-to-buffer (process-buffer process))
+	   (goto-char (process-mark process)))
+	  (t
+	   (error "No scheme process")))))
 
 (defun xscheme-send-region (start end)
   "Send the current region to the Scheme process.
@@ -716,7 +727,7 @@ When called, the current buffer will be the Scheme process-buffer.")
 	xscheme-process-filter:simple-action)
     (?v xscheme-write-value
 	xscheme-process-filter:string-action)
-    (?z xscheme-select-process-buffer
+    (?z xscheme-display-process-buffer
 	xscheme-process-filter:simple-action)
     (?c xscheme-unsolicited-read-char
 	xscheme-process-filter:simple-action))
@@ -777,7 +788,7 @@ the remaining input.")
 (defun xscheme-enable-control-g ()
   (setq xscheme-control-g-disabled-p nil))
 
-(defun xscheme-select-process-buffer ()
+(defun xscheme-display-process-buffer ()
   (let ((window (or (xscheme-process-buffer-window)
 		    (display-buffer (xscheme-process-buffer)))))
     (save-window-excursion
