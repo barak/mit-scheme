@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.138 2001/05/25 18:16:48 cph Exp $
+;;; $Id: imail-core.scm,v 1.139 2001/05/26 02:12:50 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -373,7 +373,7 @@
   (write-instance-helper (resource-type-name r) r port
     (lambda ()
       (write-char #\space port)
-      (write (url-presentation-name (resource-locator r)) port))))
+      (write (url-content-name (resource-locator r)) port))))
 
 (define-generic resource-type-name (resource))
 (define-method resource-type-name ((r <resource>)) r 'RESOURCE)
