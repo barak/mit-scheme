@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: char.scm,v 14.22 2003/07/31 02:49:33 cph Exp $
+$Id: char.scm,v 14.23 2003/08/03 05:52:54 cph Exp $
 
 Copyright 1986,1987,1988,1991,1995,1997 Massachusetts Institute of Technology
 Copyright 1998,2001,2003 Massachusetts Institute of Technology
@@ -352,7 +352,7 @@ USA.
     (#x7F "delete" "del" "rubout")))
 
 (define named-bits
-  '((#x01 "m" "meta")
-    (#x02 "c" "control" "ctrl")
-    (#x04 "s" "super")
-    (#x08 "h" "hyper")))
+  '((#x01 "M" "meta")
+    (#x02 "C" "control" "ctrl")
+    (#x04 "S" "super")
+    (#x08 "H" "hyper")))
