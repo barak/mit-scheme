@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2msg.h,v 1.10 1995/05/16 09:20:22 cph Exp $
+$Id: os2msg.h,v 1.11 1995/05/20 08:07:18 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -125,8 +125,9 @@ typedef enum
   mt_ps_text_width_request,	/* compute pel width of text string */
   mt_ps_text_width_reply,
   mt_ps_clear,			/* clear a PS rectangle */
-  mt_ps_set_font_request,	/* change the text font in a PS */
-  mt_ps_set_font_reply,
+  mt_ps_get_font_metrics_request, /* get metrics for current PS font */
+  mt_ps_get_font_metrics_reply,
+  mt_ps_set_font,		/* change the text font in a PS */
   mt_ps_set_colors,		/* set fg/bg colors of PS */
   mt_ps_move_gcursor,		/* move graphics cursor */
   mt_ps_draw_line,		/* draw line from graphics cursor to point */

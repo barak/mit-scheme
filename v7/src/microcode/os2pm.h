@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pm.h,v 1.8 1995/05/16 09:20:15 cph Exp $
+$Id: os2pm.h,v 1.9 1995/05/20 08:07:34 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -218,6 +218,7 @@ extern bid_t OS2_ps_set_bitmap (psid_t, bid_t);
 extern void OS2_ps_bitblt (psid_t, psid_t, LONG, PPOINTL, LONG, ULONG);
 extern void OS2_ps_draw_text
   (psid_t, short, short, const char *, unsigned short);
+extern font_metrics_t * OS2_ps_get_font_metrics (psid_t);
 extern font_metrics_t * OS2_ps_set_font (psid_t, unsigned short, const char *);
 extern void OS2_ps_clear (psid_t, short, short, short, short);
 extern void OS2_ps_set_colors (psid_t, COLOR, COLOR);
