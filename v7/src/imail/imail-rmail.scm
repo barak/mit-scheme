@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.54 2001/03/18 06:27:44 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.55 2001/03/18 06:47:48 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -177,10 +177,10 @@
 	      (lines->header-fields (read-header-lines port)))
 	     (body
 	      (let ((start (xstring-port/position port)))
-		(discard-to-eom port)
-		(vector (xstring-port/xstring port)
-			start
-			(xstring-port/position port))))
+		(input-port/discard-chars port rmail-message:end-char-set)
+		(let ((end (xstring-port/position port)))
+		  (input-port/discard-char port)
+		  (vector (xstring-port/xstring port) start end))))
 	     (finish
 	      (lambda (headers displayed-headers)
 		(call-with-values
