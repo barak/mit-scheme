@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: dbgutl.scm,v 14.23 2003/02/14 18:28:32 cph Exp $
+$Id: dbgutl.scm,v 14.24 2003/07/31 02:32:02 cph Exp $
 
-Copyright (c) 1988-2002 Massachusetts Institute of Technology
+Copyright 1988,1989,1990,1991,1992,2001 Massachusetts Institute of Technology
+Copyright 2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -51,7 +52,12 @@ USA.
 	(debugger-failure port "No procedure for this environment."))))
 
 (define (write-dbg-name name port)
-  (if (string? name) (write-string name port) (write name port)))
+  (cond ((string? name)
+	 (write-string name port))
+	((interned-symbol? name)
+	 (write-string (symbol-name name) port))
+	(else
+	 (write name port))))
 
 (define (write-dbg-upcase-name name port)
   (cond ((string? name)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.198 2003/02/14 18:28:14 cph Exp $
+$Id: imail-imap.scm,v 1.199 2003/07/31 02:33:46 cph Exp $
 
 Copyright 1999,2000,2001,2003 Massachusetts Institute of Technology
 
@@ -2151,7 +2151,7 @@ USA.
 	  (flush-output imap-trace-port)))
     (imap-transcript-write-string tag port)
     (imap-transcript-write-char #\space port)
-    (imap-transcript-write command port)
+    (imap-transcript-write-string (symbol-name command) port)
     (for-each (lambda (argument)
 		(if argument
 		    (begin
@@ -2166,9 +2166,10 @@ USA.
 (define (imap:send-command-argument connection tag argument)
   (let ((port (imap-connection-port connection)))
     (let loop ((argument argument))
-      (cond ((or (symbol? argument)
-		 (exact-nonnegative-integer? argument))
+      (cond ((exact-nonnegative-integer? argument)
 	     (imap-transcript-write argument port))
+	    ((symbol? argument)
+	     (imap-transcript-write-string (symbol-name argument) port))
 	    ((and (pair? argument)
 		  (eq? (car argument) 'QUOTE)
 		  (pair? (cdr argument))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: hlpcom.scm,v 1.126 2003/02/14 18:28:12 cph Exp $
+$Id: hlpcom.scm,v 1.127 2003/07/31 02:33:01 cph Exp $
 
 Copyright 1986,1989,1990,1991,1993,1998 Massachusetts Institute of Technology
 Copyright 2000,2002,2003 Massachusetts Institute of Technology
@@ -251,7 +251,7 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 
 (define (mode-apropos regexp)
   (for-each (lambda (mode)
-	      (write (mode-name mode))
+	      (write-string (symbol-name (mode-name mode)))
 	      (newline)
 	      (print-short-description "Mode" (mode-description mode)))
 	    (string-table-apropos editor-modes regexp)))
