@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/string.c,v 9.20 1987/01/21 20:27:56 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/string.c,v 9.21 1987/02/04 17:48:52 jinx Exp $ */
 
 /* String primitives. */
 
@@ -401,8 +401,9 @@ Built_In_Primitive (Prim_Substring_Less, 6, "SUBSTRING<?")
 }
 
 #define substring_modification_prefix()				\
-  long start, end, length;					\
-  char *scan;							\
+  long start, end;						\
+  fast long length;						\
+  fast char *scan, temp;					\
   Primitive_3_Args ();						\
 								\
   guarantee_string_arg_1 ();					\
@@ -422,7 +423,9 @@ Built_In_Primitive(Prim_Substring_Upcase, 3, "SUBSTRING-UPCASE!")
   substring_modification_prefix ();
 
   while (length-- > 0)
-    *scan++ = (char_upcase (*scan));
+  { temp = *scan;
+    *scan++ = (char_upcase (temp));
+  }
   return (NIL);
 }
 
@@ -431,7 +434,9 @@ Built_In_Primitive(Prim_Substring_Downcase, 3, "SUBSTRING-DOWNCASE!")
   substring_modification_prefix ();
 
   while (length-- > 0)
-    *scan++ = (char_downcase (*scan));
+  { temp = *scan;
+    *scan++ = (char_downcase (temp));
+  }
   return (NIL);
 }
 

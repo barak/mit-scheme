@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.21 1987/01/22 14:29:24 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.22 1987/02/04 17:47:44 jinx Exp $
 
    Bit string primitives. 
 
@@ -487,11 +487,12 @@ copy_bits( source, source_offset, destination, destination_offset, nbits)
 	      nbits = 0;
 	    }
 	  else
-	    {
+	    { Pointer temp;
 	      long mask;
 
 	      mask = low_mask( head);
-	      *destination++ = ((*source++ & mask) | (*destination & ~mask));
+	      temp = *destination;
+	      *destination++ = ((*source++ & mask) | (temp & ~mask));
 	      nbits -= head;
 	    }
 	}
@@ -529,12 +530,13 @@ copy_bits( source, source_offset, destination, destination_offset, nbits)
 	{
 	  long mask1, mask2;
 
-	  {
+	  { Pointer temp;
 	    long mask;
 
 	    mask = low_mask( head);
+	    temp = *destination;
 	    *destination++ =
-	      (((*source >> offset1) & mask) | (*destination & ~mask));
+	      (((*source >> offset1) & mask) | (temp & ~mask));
 	  }
 	  nbits -= head;
 	  mask1 = low_mask( offset1);
