@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.13 1988/11/03 06:33:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.14 1988/11/05 02:59:48 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -302,6 +302,7 @@ MIT in each case. |#
 (define-cse-method 'INVOCATION:SPECIAL-PRIMITIVE
   (lambda (statement)
     statement
+    (stack-pointer-adjust! (rtl:invocation:special-primitive-pushed statement))
     (expression-invalidate! (interpreter-value-register))
     (expression-invalidate! (interpreter-free-pointer))))
 
