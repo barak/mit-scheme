@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.107 1991/08/23 00:23:45 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.108 1991/10/11 03:33:27 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -598,3 +598,31 @@ Otherwise, the argument is the number of columns desired."
 			 (min x-size argument)))))
 	      (screen-y-size screen)))
       (update-screen! screen true))))
+
+(define-command compare-windows
+  "Compare text in current window with text in next window.
+Compares the text starting at point in each window,
+moving over text in each one as far as they match."
+  ()
+  (lambda ()
+    (let ((w1 (current-window))
+	  (w2 (other-window-interactive 1)))
+      (let ((p1 (window-point w1)))
+	(let loop ((s1 p1) (s2 (window-point w2)) (length 1024))
+	  (if (> length 0)
+	      (let ((e1 (mark+ s1 length false))
+		    (e2 (mark+ s2 length false)))
+		(if (and e1
+			 e2
+			 (if (= length 1)
+			     (char=? (extract-right-char s1)
+				     (extract-right-char s2))
+			     (string=? (extract-string s1 e1)
+				       (extract-string s2 e2))))
+		    (loop e1 e2 length)
+		    (loop s1 s2 (quotient length 2))))
+	      (begin
+		(set-window-point! w1 s1)
+		(set-window-point! w2 s2)
+		(if (mark= s1 p1)
+		    (editor-beep)))))))))
