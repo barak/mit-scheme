@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dataflow.scm,v 1.17 1995/08/10 22:23:05 adams Exp $
+$Id: dataflow.scm,v 1.18 1995/08/19 22:05:29 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -91,6 +91,7 @@ MIT in each case. |#
 		   "Big dataflow graph"
 		   (graph/node-count graph) 'nodes
 		   `(*maximum-node-count* is ,*maximum-node-count*)))
+
 	      (graph/initialize-links! graph)
 	      (graph/dataflow! graph)
 	      (graph/cleanup! graph)
@@ -112,7 +113,7 @@ MIT in each case. |#
    (lambda (continuation)
      (with-restart
       'ABORT
-      "ABORT-R"
+      "Abort Dataflow"
       (lambda (#!optional message)
 	(continuation #F))
       values
@@ -121,15 +122,16 @@ MIT in each case. |#
 (define-macro (define-dataflow-handler keyword bindings . body)
   (let ((proc-name (symbol-append 'DATAFLOW/ keyword)))
     (call-with-values
-     (lambda () (%matchup (cdddr bindings) '(handler env graph form) '(cdr form)))
-     (lambda (names code)
-       `(define ,proc-name
-          (let ((handler (lambda ,(cons* (car bindings) (cadr bindings) 'form names)
-                           ,@body)))
-            (named-lambda (,proc-name env graph form)
-              (let ((result ,code))
-                (graph/associate! graph form result)
-                result))))))))
+	(lambda ()
+	  (%matchup (cdddr bindings) '(handler env graph form) '(cdr form)))
+      (lambda (names code)
+	`(DEFINE ,proc-name
+	   (LET ((HANDLER (LAMBDA ,(cons* (car bindings) (cadr bindings) 'FORM names)
+			    ,@body)))
+	     (NAMED-LAMBDA (,proc-name ENV GRAPH FORM)
+	       (LET ((RESULT ,code))
+		 (GRAPH/ASSOCIATE! GRAPH FORM RESULT)
+		 RESULT))))))))
 
 ;; handler: env x graph! x fields -> node
 
@@ -1463,8 +1465,8 @@ MIT in each case. |#
 (define (graph/dataflow! graph)
   (graph/for-each-node graph
     (lambda (node) (set-node/values! node 'NOT-CACHED)))
-  (graph/for-each-node graph node/initialize-cache!)
-  ;; Trivial cloaures need to
+  (graph/for-each-node graph node/initialize-cache!)))
+  ;; Trivial closures need to
   (graph/initialize-closure-procedures! graph)
   (let ((queue  (queue/make)))
     (queue/enqueue!* queue (graph/applications graph))
@@ -1502,7 +1504,6 @@ MIT in each case. |#
 	 (simulate-special-application application graph queue))
 	(else
 	 (internal-error "Illegal graph application" application))))
-  
 
 (define (simulate-application application graph queue)
 
