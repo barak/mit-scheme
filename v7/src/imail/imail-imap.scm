@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.31 2000/05/12 17:56:24 cph Exp $
+;;; $Id: imail-imap.scm,v 1.32 2000/05/12 18:00:52 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -25,24 +25,19 @@
 ;;;; URL
 
 (define-class (<imap-url>
-	       (constructor %make-imap-url
-			    (user-id auth-type host port mailbox uid)))
+	       (constructor %make-imap-url (user-id host port mailbox)))
     (<url>)
   ;; User name to connect as.
   (user-id define accessor)
-  ;; Type of authentication to use.  Ignored.
-  (auth-type define accessor)
   ;; Name or IP address of host to connect to.
   (host define accessor)
   ;; Port number to connect to.
   (port define accessor)
   ;; Name of mailbox to access.
-  (mailbox define accessor)
-  ;; Unique ID specifying a message.  Ignored.
-  (uid define accessor))
+  (mailbox define accessor))
 
-(define (make-imap-url user-id auth-type host port mailbox uid)
-  (save-url (%make-imap-url user-id auth-type host port mailbox uid)))
+(define (make-imap-url user-id host port mailbox)
+  (save-url (%make-imap-url user-id host port mailbox)))
 
 (define-url-protocol "imap" <imap-url>
   (let ((//server/
@@ -58,35 +53,22 @@
 		 (or (parse-substring mbox string (car pv1) end)
 		     (error:bad-range-argument string 'STRING->URL))))
 	    (%make-imap-url (parser-token pv1 'USER-ID)
-			    (parser-token pv1 'AUTH-TYPE)
 			    (parser-token pv1 'HOST)
 			    (let ((port (parser-token pv1 'PORT)))
 			      (and port
 				   (string->number port)))
-			    (parser-token pv2 'MAILBOX)
-			    (parser-token pv2 'UID))))))))
+			    (parser-token pv2 'MAILBOX))))))))
 
 (define-method url-body ((url <imap-url>))
   (string-append
    (let ((user-id (imap-url-user-id url))
-	 (auth-type (imap-url-auth-type url))
 	 (host (imap-url-host url))
 	 (port (imap-url-port url)))
-     (if (or user-id auth-type host port)
+     (if (or user-id host port)
 	 (string-append
 	  "//"
-	  (if (or user-id auth-type)
-	      (string-append (if user-id
-				 (url:encode-string user-id)
-				 "")
-			     (if auth-type
-				 (string-append
-				  ";auth="
-				  (if (string=? auth-type "*")
-				      auth-type
-				      (url:encode-string auth-type)))
-				 "")
-			     "@")
+	  (if user-id
+	      (string-append (url:encode-string user-id) "@")
 	      "")
 	  host
 	  (if port
@@ -94,11 +76,7 @@
 	      "")
 	  "/")
 	 ""))
-   (url:encode-string (imap-url-mailbox url))
-   (let ((uid (imap-url-uid url)))
-     (if uid
-	 (string-append "/;uid=" uid)
-	 ""))))
+   (url:encode-string (imap-url-mailbox url))))
 
 (define-method url-presentation-name ((url <imap-url>))
   (imap-url-mailbox url))

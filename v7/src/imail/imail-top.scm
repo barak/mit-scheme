@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.41 2000/05/12 17:56:28 cph Exp $
+;;; $Id: imail-top.scm,v 1.42 2000/05/12 18:00:56 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -182,16 +182,12 @@ May be called with an IMAIL folder URL as argument;
 	(let ((url* (imail-default-imap-url)))
 	  (make-imap-url (or (imap-url-user-id url)
 			     (imap-url-user-id url*))
-			 (or (imap-url-auth-type url)
-			     (imap-url-auth-type url*))
 			 (or (imap-url-host url)
 			     (imap-url-host url*))
 			 (or (imap-url-port url)
 			     (imap-url-port url*))
 			 (or (imap-url-mailbox url)
-			     (imap-url-mailbox url*))
-			 (or (imap-url-uid url)
-			     (imap-url-uid url*))))
+			     (imap-url-mailbox url*))))
 	url)))
 
 (define (imail-default-imap-url)
@@ -207,11 +203,9 @@ May be called with an IMAIL folder URL as argument;
     (lambda (host port)
       (make-imap-url (or (ref-variable imail-default-user-id)
 			 (current-user-name))
-		     #f
 		     host
 		     port
-		     (ref-variable imail-default-imap-mailbox)
-		     #f))))
+		     (ref-variable imail-default-imap-mailbox)))))
 
 (define (imail-present-user-alert procedure)
   (call-with-output-to-temporary-buffer " *IMAP alert*"
