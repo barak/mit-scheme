@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/string.c,v 9.21 1987/02/04 17:48:52 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/string.c,v 9.22 1987/04/08 12:25:57 jinx Exp $ */
 
 /* String primitives. */
 
@@ -56,13 +56,13 @@ Built_In_Primitive (Prim_String_Allocate, 1, "STRING-ALLOCATE")
       / (sizeof (Pointer)))
      + 2);
   Primitive_GC_If_Needed (count);
-  result = ((Pointer) Free);
+  result = Make_Pointer (TC_CHARACTER_STRING, Free);
   Free[STRING_HEADER] =
     (Make_Non_Pointer (TC_MANIFEST_NM_VECTOR, (count - 1)));
   Free[STRING_LENGTH] = ((long) length);
   *(string_pointer (result, length)) = '\0';
   Free += count;
-  return (Make_Pointer (TC_CHARACTER_STRING, result));
+  return (result);
 }
 
 Built_In_Primitive (Prim_String_P, 1, "STRING?")
