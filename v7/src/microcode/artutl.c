@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: artutl.c,v 1.12 1995/09/18 22:32:53 cph Exp $
+$Id: artutl.c,v 1.13 1997/04/22 22:42:16 cph Exp $
 
-Copyright (c) 1989-95 Massachusetts Institute of Technology
+Copyright (c) 1989-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,6 +36,7 @@ MIT in each case. */
 
 #include "scheme.h"
 #include <math.h>
+#include "limits.h"
 
 /* Conversions between Scheme types and C types. */
 
@@ -459,4 +460,26 @@ DEFUN (integer_remainder, (n, d), SCHEME_OBJECT n AND SCHEME_OBJECT d)
        ? SHARP_F
        : (bignum_to_integer (result)));
   }
+}
+
+SCHEME_OBJECT
+DEFUN (integer_length_in_bits, (n), SCHEME_OBJECT n)
+{
+  if (FIXNUM_P (n))
+    {
+      long n1 = (FIXNUM_TO_LONG (n));
+      unsigned long n2 = ((n1 < 0) ? (- n1) : n1);
+      unsigned long result = ((sizeof (unsigned long)) * CHAR_BIT);
+      unsigned long m = (1 << (result - 1));
+      while (result > 0)
+	{
+	  if (n2 >= m)
+	    break;
+	  result -= 1;
+	  m >>= 1;
+	}
+      return (LONG_TO_UNSIGNED_FIXNUM (result));
+    }
+  else
+    return (bignum_length_in_bits (n));
 }

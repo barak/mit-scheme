@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: extern.h,v 9.53 1995/09/18 22:32:54 cph Exp $
+$Id: extern.h,v 9.54 1997/04/22 22:42:25 cph Exp $
 
-Copyright (c) 1987-95 Massachusetts Institute of Technology
+Copyright (c) 1987-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -205,6 +205,7 @@ extern Boolean EXFUN (integer_divide,
 		       SCHEME_OBJECT *, SCHEME_OBJECT *));
 extern SCHEME_OBJECT EXFUN (integer_quotient, (SCHEME_OBJECT, SCHEME_OBJECT));
 extern SCHEME_OBJECT EXFUN (integer_remainder, (SCHEME_OBJECT, SCHEME_OBJECT));
+extern SCHEME_OBJECT EXFUN (integer_length_in_bits, (SCHEME_OBJECT));
 
 /* Character utilities */
 extern long EXFUN (char_downcase, (long));

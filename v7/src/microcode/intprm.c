@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: intprm.c,v 1.4 1992/08/29 13:20:43 jinx Exp $
+$Id: intprm.c,v 1.5 1997/04/22 22:42:41 cph Exp $
 
-Copyright (c) 1989-1992 Massachusetts Institute of Technology
+Copyright (c) 1989-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -108,6 +108,8 @@ DEFINE_PRIMITIVE ("INTEGER-ADD-1", Prim_integer_add_1, 1, 1, 0)
      INTEGER_UNARY_OPERATION (integer_add_1)
 DEFINE_PRIMITIVE ("INTEGER-SUBTRACT-1", Prim_integer_subtract_1, 1, 1, 0)
      INTEGER_UNARY_OPERATION (integer_subtract_1)
+DEFINE_PRIMITIVE ("INTEGER-LENGTH-IN-BITS", Prim_integer_length_in_bits, 1, 1, 0)
+     INTEGER_UNARY_OPERATION (integer_length_in_bits)
 
 DEFINE_PRIMITIVE ("INTEGER-DIVIDE", Prim_integer_divide, 2, 2, 0)
 {
