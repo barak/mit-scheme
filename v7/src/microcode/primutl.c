@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: primutl.c,v 9.67 1993/10/26 03:04:12 jawilson Exp $
+$Id: primutl.c,v 9.68 1993/10/27 22:15:59 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -42,6 +42,7 @@ MIT in each case. */
  */
 
 #include "scheme.h"
+#include "os.h"
 #include "prims.h"
 #include "usrdef.h"
 #include "prename.h"
