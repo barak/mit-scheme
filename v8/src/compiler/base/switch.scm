@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: switch.scm,v 1.2 1994/11/26 19:22:32 adams Exp $
+$Id: switch.scm,v 1.3 1994/12/15 02:34:42 adams Exp $
 
 Copyright (c) 1988-1994  Massachusetts Institute of Technology
 
@@ -41,6 +41,7 @@ MIT in each case. |#
 
 (define compiler:enable-integration-declarations? true)
 (define compiler:enable-expansion-declarations? false)
+(define compiler:enable-statistics? true)
 (define compiler:compile-by-procedures? true)
 (define compiler:noisy? true)
 (define compiler:show-time-reports? false)
