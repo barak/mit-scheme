@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.78 2000/05/22 22:40:09 cph Exp $
+;;; $Id: imail-imap.scm,v 1.79 2000/05/23 00:37:57 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -271,25 +271,32 @@
 	 responses)))))
 
 (define (get-imap-connection url for-folder?)
-  (let loop ((connections memoized-imap-connections) (prev #f))
-    (if (weak-pair? connections)
-	(let ((connection (weak-car connections)))
-	  (if connection
-	      (if (let ((url* (imap-connection-url connection)))
-		    (if for-folder?
-			(eq? url* url)
-			(compatible-imap-urls? url* url)))
-		  connection
-		  (loop (weak-cdr connections) connections))
-	      (let ((next (weak-cdr connections)))
-		(if prev
-		    (weak-set-cdr! prev next)
-		    (set! memoized-imap-connections next))
-		(loop next prev))))
-	(let ((connection (make-imap-connection url)))
-	  (set! memoized-imap-connections
-		(weak-cons connection memoized-imap-connections))
-	  connection))))
+  (let loop ((connections memoized-imap-connections) (prev #f) (near #f))
+    (cond ((weak-pair? connections)
+	   (let ((connection (weak-car connections)))
+	     (if connection
+		 (if (let ((url* (imap-connection-url connection)))
+		       (if for-folder?
+			   (eq? url* url)
+			   (compatible-imap-urls? url* url)))
+		     (if (or for-folder?
+			     (test-imap-connection-open connection))
+			 connection
+			 (loop (weak-cdr connections) connections connection))
+		     (loop (weak-cdr connections) connections near))
+		 (let ((next (weak-cdr connections)))
+		   (if prev
+		       (weak-set-cdr! prev next)
+		       (set! memoized-imap-connections next))
+		   (loop next prev near)))))
+	  (near)
+	  (else
+	   (let ((connection (make-imap-connection url)))
+	     (without-interrupts
+	      (lambda ()
+		(set! memoized-imap-connections
+		      (weak-cons connection memoized-imap-connections))))
+	     connection)))))
 
 (define memoized-imap-connections '())
 
@@ -362,6 +369,14 @@
 	  (lambda ()
 	    (let ((port (imap-connection-port connection)))
 	      (set-imap-connection-port! connection #f)
+	      (let loop ((connections memoized-imap-connections) (prev #f))
+		(if (weak-pair? connections)
+		    (let ((next (weak-cdr connections)))
+		      (if (eq? (weak-car connections) connection)
+			  (if prev
+			      (weak-set-cdr! prev next)
+			      (set! memoized-imap-connections next))
+			  (loop next connections)))))
 	      port)))))
     (if port
 	(close-port port)))
