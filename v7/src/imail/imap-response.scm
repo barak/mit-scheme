@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.34 2000/06/10 20:18:06 cph Exp $
+;;; $Id: imap-response.scm,v 1.35 2000/06/15 20:40:27 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -294,7 +294,10 @@
       (if (fix:< i n)
 	  (call-with-values
 	      (lambda ()
-		(read-and-translate port (fix:min 4096 (fix:- n i)) b1 b2))
+		(let ((n-to-read (fix:- n i)))
+		  (if (fix:<= n-to-read 4096)
+		      (read-and-translate port n-to-read #t b1 b2)
+		      (read-and-translate port 4096 #f b1 b2))))
 	    (lambda (n-read n-written)
 	      (if (fix:= 0 n-read)
 		  (error "Premature EOF:" port))
@@ -312,7 +315,7 @@
     (discard-known-char #\linefeed port)
     n))
 
-(define (read-and-translate port n-to-read b1 b2)
+(define (read-and-translate port n-to-read last-segment? b1 b2)
   (let ((n-read (read-substring!-internal b1 0 n-to-read port)))
     (let loop ((i1 0) (i2 0))
       (cond ((fix:= i1 n-read)
@@ -320,7 +323,11 @@
 	    ((char=? #\return (string-ref b1 i1))
 	     (let ((i1 (fix:+ i1 1)))
 	       (if (fix:= i1 n-read)
-		   (values (let ((char (peek-char port)))
+		   (values (let ((char
+				  (if (or (fix:< n-read n-to-read)
+					  (not last-segment?))
+				      (peek-char port)
+				      (make-eof-object port))))
 			     (cond ((eof-object? char)
 				    (string-set! b2 i2 #\return)
 				    i1)
