@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: curren.scm,v 1.135 2000/10/26 05:13:18 cph Exp $
+;;; $Id: curren.scm,v 1.136 2000/10/26 19:22:20 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -465,18 +465,18 @@ The frame is guaranteed to be deselected at that time."
 			   #f))
 
 (define (select-buffer-in-window buffer window record?)
-  (with-interrupt-mask interrupt-mask/gc-ok
-    (lambda (interrupt-mask)
-      (if (not (eq? buffer (window-buffer window)))
-	  (begin
-	    (undo-leave-window! window)
-	    (if (selected-window? window)
-		(change-selected-buffer window buffer record?
-		  (lambda ()
-		    (set-window-buffer! window buffer)))
-		(set-window-buffer! window buffer))
-	    (set-interrupt-enables! interrupt-mask)
-	    (maybe-select-buffer-layout window buffer))))))
+  (if (without-interrupts
+       (lambda ()
+	 (and (not (eq? buffer (window-buffer window)))
+	      (begin
+		(undo-leave-window! window)
+		(if (selected-window? window)
+		    (change-selected-buffer window buffer record?
+		      (lambda ()
+			(set-window-buffer! window buffer)))
+		    (set-window-buffer! window buffer))
+		#t))))
+      (maybe-select-buffer-layout window buffer)))
 
 (define (change-selected-buffer window buffer record? selection-thunk)
   (change-local-bindings! (selected-buffer) buffer selection-thunk)
@@ -541,40 +541,51 @@ The buffer is guaranteed to be selected at that time."
 		 buffers)))))
 
 (define (maybe-select-buffer-layout window buffer)
-  (let ((screen (window-screen window)))
-    (if (let ((layout (hash-table/get screen-buffer-layouts screen #f)))
-	  (and layout
-	       (not (weak-memq buffer (cdr layout)))))
-	(begin
-	  (hash-table/remove! screen-buffer-layouts screen)
-	  (delete-other-windows window)))
-    (let ((layout (buffer-get buffer buffer-layout-key #f)))
-      (if layout
-	  (let ((buffers (weak-list->list (cdr layout))))
-	    (if (for-all? buffers
-		  (lambda (buffer)
-		    (and buffer
-			 (buffer-alive? buffer))))
-		(if (for-all? buffers
-		      (lambda (buffer*)
-			(or (eq? buffer* buffer)
-			    (not (buffer-visible? buffer*)))))
-		    (begin
-		      (hash-table/put! screen-buffer-layouts screen layout)
-		      (delete-other-windows window)
-		      ((car layout) window buffers)))
-		(delete-buffer-layout buffer)))))))
+  (let ((thunk
+	 (and (not (typein-window? window))
+	      (without-interrupts
+	       (lambda ()
+		 (let ((screen (window-screen window)))
+		   (if (let ((layout
+			      (hash-table/get screen-buffer-layouts
+					      screen #f)))
+			 (and layout
+			      (not (weak-memq buffer (cdr layout)))))
+		       (begin
+			 (hash-table/remove! screen-buffer-layouts screen)
+			 (delete-other-windows window)))
+		   (let ((layout (buffer-get buffer buffer-layout-key #f)))
+		     (and layout
+			  (let ((buffers (weak-list->list (cdr layout))))
+			    (if (for-all? buffers
+				  (lambda (buffer)
+				    (and buffer
+					 (buffer-alive? buffer))))
+				(and (for-all? buffers
+				       (lambda (buffer*)
+					 (or (eq? buffer* buffer)
+					     (not (buffer-visible? buffer*)))))
+				     (begin
+				       (hash-table/put! screen-buffer-layouts
+							screen layout)
+				       (delete-other-windows window)
+				       (lambda ()
+					 ((car layout) window buffers))))
+				(begin
+				  (delete-buffer-layout buffer)
+				  #f)))))))))))
+    (if thunk (thunk))))
 
 (define (delete-buffer-layout buffer)
-  (let ((layout (buffer-get buffer buffer-layout-key #f)))
-    (if layout
-	(begin
-	  (hash-table/for-each screen-buffer-layouts
-	    (lambda (screen layout*)
-	      (if (eq? layout layout*)
-		  (hash-table/remove! screen-buffer-layouts screen))))
-	  (without-interrupts
-	   (lambda ()
+  (without-interrupts
+   (lambda ()
+     (let ((layout (buffer-get buffer buffer-layout-key #f)))
+       (if layout
+	   (begin
+	     (hash-table/for-each screen-buffer-layouts
+	       (lambda (screen layout*)
+		 (if (eq? layout layout*)
+		     (hash-table/remove! screen-buffer-layouts screen))))
 	     (do ((buffers (cdr layout) (weak-cdr buffers)))
 		 ((not (weak-pair? buffers)))
 	       (let ((buffer (weak-car buffers)))
