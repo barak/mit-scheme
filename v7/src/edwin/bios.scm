@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: bios.scm,v 1.2 1992/10/17 23:14:22 jinx Exp $
+$Id: bios.scm,v 1.3 1992/10/20 15:34:30 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -116,11 +116,13 @@ MIT in each case. |#
   (bios:initialize!
    (default-attribute "EDWIN_FOREGROUND" 37)	; white foreground
    (default-attribute "EDWIN_BACKGROUND" 40))	; black background
+  (bios:clear-screen!)
+  (bios-move-cursor screen 0 0)
   unspecific)
 
 (define (bios-console-exit! screen)
-  (bios:exit!)
-  (bios-move-cursor screen 0 (fix:-1+ (screen-y-size screen))))
+  (bios-move-cursor screen 0 (fix:-1+ (screen-y-size screen)))
+  (bios:exit!))
 
 (define (bios-console-modeline-event! screen window type)
   screen window type
