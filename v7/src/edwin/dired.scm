@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dired.scm,v 1.186 2001/06/02 16:51:01 cph Exp $
+;;; $Id: dired.scm,v 1.187 2001/06/02 21:50:06 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -534,8 +534,8 @@ With a prefix argument you can edit the current listing switches instead."
   "Copy all marked (or next ARG) files, or copy the current file.
 This normally preserves the last-modified date when copying.
 When operating on just the current file, you specify the new name.
-When operating on multiple or marked files, you specify a directory
-and new copies are made in that directory
+When operating on multiple or marked files, you specify a directory,
+and new copies of these files are made in that directory
 with the same names that the files currently have."
   "P"
   (lambda (argument)
