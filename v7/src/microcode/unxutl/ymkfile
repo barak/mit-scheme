@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.18 1990/01/16 19:57:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.19 1990/02/08 02:50:03 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -443,7 +443,7 @@ scheme.touch os.touch psbmap.touch usrdef.touch :
 scheme.touch : scheme.h config.h bkpt.h object.h scode.h sdata.h \
 	gc.h interp.h stack.h futures.h types.h errors.h returns.h \
 	const.h fixobj.h default.h extern.h prim.h intrpt.h float.h
-os.touch : os.c mul.c unix.c vms.c unknown.c scheme.touch zones.h
+os.touch : os.c unix.c vms.c unknown.c scheme.touch zones.h
 psbmap.touch : config.h object.h bignum.h bignumint.h bitstr.h types.h \
 	sdata.h const.h psbmap.h $(GC_HEAD_FILES) comlin.h comlin.c
 usrdef.touch : usrdef.h config.h object.h prim.h
@@ -469,8 +469,8 @@ hooks.o : scheme.touch prims.h winder.h history.h
 utils.o : scheme.touch prims.h winder.h history.h cmpint.h
 primutl.o : scheme.touch prims.h prename.h
 
-fixnum.o hunk.o list.o step.o vector.o sysprim.o daemon.o prim.o \
-	extern.o : scheme.touch prims.h
+hunk.o list.o step.o vector.o sysprim.o daemon.o prim.o extern.o : \
+	scheme.touch prims.h
 
 lookup.o debug.o intern.o : scheme.touch prims.h lookup.h trap.h locks.h
 
@@ -483,6 +483,7 @@ memmag.o gcloop.o purify.o purutl.o comutl.o : scheme.touch prims.h \
 artutl.o : scheme.touch
 bignum.o : scheme.touch bignumint.h
 bigprm.o flonum.o intprm.o generic.o : scheme.touch prims.h zones.h
+fixnum.o : scheme.touch prims.h mul.c
 
 storage.o : scheme.touch gctype.c
 
