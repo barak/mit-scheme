@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.3 1989/07/26 04:16:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.4 1989/07/26 23:15:23 cph Rel $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -216,8 +216,8 @@ AS = as
 
 LDFLAGS = LD_SWITCH_SYSTEM LD_SWITCH_MACHINE
 
-CFLAGS = C_OPTIMIZE_SWITCH C_SWITCH_MACHINE C_SWITCH_SYSTEM C_SWITCH_FEATURES \
-	$(MACHINE_SWITCHES)
+CFLAGS = C_OPTIMIZE_SWITCH C_DEBUG_SWITCH C_SWITCH_MACHINE C_SWITCH_SYSTEM \
+	C_SWITCH_FEATURES $(MACHINE_SWITCHES)
 
 #ifndef ECHO
 #define ECHO echo
