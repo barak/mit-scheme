@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.140 1991/05/02 01:14:05 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.141 1991/05/16 23:06:17 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -512,7 +512,7 @@ a repetition of this command will exit."
 	 (lambda (new-string)
 	   (let ((end (string-length new-string)))
 	     (let ((index
-		    (and (string-prefix? string new-string)
+		    (and (string-prefix-ci? string new-string)
 			 (substring-find-next-char-not-of-syntax
 			  new-string
 			  (string-length string)
@@ -538,7 +538,8 @@ a repetition of this command will exit."
 				(list-transform-positive completions
 				  (let ((prefix (string-append string suffix)))
 				    (lambda (completion)
-				      (string-prefix? prefix completion))))))
+				      (string-prefix-ci? prefix
+							 completion))))))
 			   (cond ((null? completions)
 				  (if-not-found))
 				 ((null? (cdr completions))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utils.scm,v 1.24 1991/05/10 04:59:10 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utils.scm,v 1.25 1991/05/16 23:06:00 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -71,8 +71,7 @@
     (if (null? strings)
 	(substring string 0 index)
 	(let ((string* (car strings)))
-	  (let ((index*
-		 (string-match-forward string string*)))
+	  (let ((index* (string-match-forward-ci string string*)))
 	    (if (< index* index)
 		(loop (cdr strings) string* index*)
 		(loop (cdr strings) string index)))))))
