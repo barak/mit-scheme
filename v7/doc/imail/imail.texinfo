@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: imail.texinfo,v 1.27 2001/11/26 19:21:37 cph Exp $
+@comment $Id: imail.texinfo,v 1.28 2002/12/29 00:21:23 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename imail.info
 @settitle IMAIL User's Manual
@@ -32,8 +32,8 @@ Free Documentation License".
 
 @titlepage
 @title{IMAIL User's Manual}
-@subtitle Edition 1.6 for IMAIL Version 1.16
-@subtitle 26 November 2001
+@subtitle Edition 1.7 for IMAIL Version 1.16
+@subtitle 28 December 2002
 @author by Chris Hanson
 
 @page
@@ -2037,24 +2037,24 @@ during casual browsing through memory structures, but this does
 the password.
 
 @node GNU Free Documentation License, Key Index, Commands, Top
-@unnumbered GNU Free Documentation License
+@appendix GNU Free Documentation License
 
 @include gfdl.texinfo
 
 @node Key Index, Command Index, GNU Free Documentation License, Top
-@unnumbered Key Index
+@appendix Key Index
 @printindex ky
 
 @node Command Index, Variable Index, Key Index, Top
-@unnumbered Command Index
+@appendix Command Index
 @printindex fn
 
 @node Variable Index, Concept Index, Command Index, Top
-@unnumbered Variable Index
+@appendix Variable Index
 @printindex vr
 
 @node Concept Index,  , Variable Index, Top
-@unnumbered Concept Index
+@appendix Concept Index
 @printindex cp
 
 @contents

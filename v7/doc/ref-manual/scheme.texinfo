@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.117 2002/11/20 18:10:02 cph Exp $
+@comment $Id: scheme.texinfo,v 1.118 2002/12/29 00:22:44 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -49,9 +49,9 @@ Free Documentation License".
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.97
+@subtitle Edition 1.98
 @subtitle for Scheme Release 7.7.2
-@subtitle 20 November 2002
+@subtitle 28 December 2002
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -16611,11 +16611,11 @@ The record's field is modified to have the new value.
 The @code{xml-document} record is the top-level record representing a
 complete @acronym{XML} document.  @var{Declaration} is either an
 @code{xml-declaration} object or @code{#f}.  @var{Dtd} is either an
-@code{xml-dtd} object or @code{#f}.  @var{Root} is an
-@code{xml-element} object.  @var{Misc-1}, @var{misc-2}, and
-@var{misc-3} are lists of miscellaneous items; a miscellaneous item is
-either an @code{xml-processing-instructions} object or a string of
-whitespace.
+@code{xml-dtd} object or @code{#f}.  @var{Root} is an @code{xml-element}
+object.  @var{Misc-1}, @var{misc-2}, and @var{misc-3} are lists of
+miscellaneous items; a miscellaneous item is either an
+@code{xml-comment} object, an @code{xml-processing-instructions} object,
+or a string of whitespace.
 @end deftp
 
 @deftp {record type} xml-declaration version encoding standalone
@@ -23410,15 +23410,15 @@ calling convention.
 @end itemize
 
 @node GNU Free Documentation License, Binding Index, Win32 Package Reference, Top
-@unnumbered GNU Free Documentation License
+@appendix GNU Free Documentation License
 @include gfdl.texinfo
 
 @node Binding Index, Concept Index, GNU Free Documentation License, Top
-@unnumbered Binding Index
+@appendix Binding Index
 @printindex fn
 
 @node Concept Index,  , Binding Index, Top
-@unnumbered Concept Index
+@appendix Concept Index
 @printindex cp
 
 @summarycontents

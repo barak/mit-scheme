@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.94 2002/06/17 18:49:02 cph Exp $
+@comment $Id: user.texinfo,v 1.95 2002/12/29 00:20:34 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -34,9 +34,9 @@ Free Documentation License".
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.89
+@subtitle Edition 1.90
 @subtitle for Scheme Release 7.7.1
-@subtitle 17 June 2002
+@subtitle 28 December 2002
 @author by Stephen Adams
 @author Chris Hanson
 @author and the MIT Scheme Team
@@ -4881,11 +4881,11 @@ a new file folder, it prompts for the type.
 @end itemize
 
 @node GNU Free Documentation License, Index, Release Notes, Top
-@unnumbered GNU Free Documentation License
+@appendix GNU Free Documentation License
 @include gfdl.texinfo
 
 @node Index,  , GNU Free Documentation License, Top
-@unnumbered Index
+@appendix Index
 @printindex cp
 
 @contents
