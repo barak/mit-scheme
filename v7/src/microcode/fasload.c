@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fasload.c,v 9.82 1996/10/02 18:57:31 cph Exp $
+$Id: fasload.c,v 9.83 1997/07/16 02:37:41 adams Exp $
 
 Copyright (c) 1987-96 Massachusetts Institute of Technology
 
@@ -451,8 +451,10 @@ DEFUN (Relocate_Block, (Scan, Stop_At),
       case TC_BROKEN_HEART:
       case TC_MANIFEST_SPECIAL_NM_VECTOR:
       case_Fasload_Non_Pointer:
+#ifdef EMPTY_LIST_VALUE
 	if (Temp == EMPTY_LIST_VALUE)
 	  * Scan = EMPTY_LIST;
+#endif
         Scan += 1;
 	break;
 
