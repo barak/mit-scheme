@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/6001.pkg,v 1.7 1992/09/01 22:25:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/6001.pkg,v 1.8 1993/11/09 21:24:16 adams Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -114,9 +114,9 @@ MIT in each case. |#
 
 (define-package (student pictures)
   (files "picture"
-	 "pic-record"
+	 "pic-reco"
 	 "pic-read"
-	 "pic-image"
+	 "pic-imag"
 	 "pic-ops")
   (parent ())
   (import (runtime x-graphics)
