@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regcom.scm,v 1.20 1991/08/06 15:39:38 arthur Exp $
+;;;	$Id: regcom.scm,v 1.21 1998/03/08 07:10:44 cph Exp $
 ;;;
-;;;	Copyright (c) 1987, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1987-98 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -149,7 +149,7 @@ With prefix arg, delete as well."
     (let ((value (get-register register)))
       (if (not value)
 	  (message "Register " (key-name register) " is empty")
-	  (with-output-to-temporary-buffer "*Output*"
+	  (with-output-to-temporary-buffer "*Output*" '()
 	    (lambda ()
 	      (write-string "Register ")
 	      (write-string (key-name register))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: vc.scm,v 1.28 1998/02/13 19:40:56 cph Exp $
+;;;	$Id: vc.scm,v 1.29 1998/03/08 07:14:11 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-98 Massachusetts Institute of Technology
 ;;;
@@ -911,6 +911,7 @@ the value of vc-log-mode-hook."
 	      (cleanup-pop-up-buffers
 	       (lambda ()
 		 (call-with-output-to-temporary-buffer " *VC-types*"
+						       '(SHRINK-WINDOW)
 		   (lambda (port)
 		     (for-each (lambda (entry)
 				 (write-string (car entry) port)

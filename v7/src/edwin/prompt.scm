@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: prompt.scm,v 1.169 1997/07/21 04:37:33 cph Exp $
+;;;	$Id: prompt.scm,v 1.170 1998/03/08 07:13:11 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -636,22 +636,11 @@ a repetition of this command will exit."
 	   (begin
 	     (editor-beep)
 	     (completion-message "No completions"))
-	   (begin
-	     (pop-up-completions-list completions)
-	     (if (not (typein-window? (current-window)))
-		 (begin
-		   (message "Hit space to flush.")
-		   (reset-command-prompt!)
-		   (let ((char (keyboard-peek)))
-		     (if (and (char? char)
-			      (char=? #\space char))
-			 (begin
-			   (keyboard-read)
-			   (kill-pop-up-buffer false))))
-		   (clear-message)))))))))
+	   (pop-up-completions-list completions))))))
 
 (define (pop-up-completions-list strings)
   (with-output-to-temporary-buffer " *Completions*"
+    '(SHRINK-WINDOW FLUSH-ON-SPACE)
     (lambda ()
       (write-completions-list strings))))
 

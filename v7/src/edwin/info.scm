@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: info.scm,v 1.128 1998/01/23 05:26:51 cph Exp $
+;;;	$Id: info.scm,v 1.129 1998/03/08 07:13:33 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
@@ -689,7 +689,7 @@ The name may be an abbreviation of the reference name."
 (define (report-losers losers)
   (if (null? losers)
       (message "File appears valid")
-      (with-output-to-temporary-buffer " *problems in info file*"
+      (with-output-to-temporary-buffer " *problems in info file*" '()
 	(lambda ()
 	  (for-each (lambda (loser)
 		      (write-string

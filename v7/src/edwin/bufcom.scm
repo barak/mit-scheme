@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufcom.scm,v 1.103 1997/05/18 07:50:30 cph Exp $
+;;;	$Id: bufcom.scm,v 1.104 1998/03/08 07:10:12 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -277,20 +277,20 @@ When locked, the buffer's major mode may not be changed."
 		    (kill-pop-up-buffer #f))))
 	    (clear-message))))))
 
-(define (string->temporary-buffer string name)
-  (pop-up-temporary-buffer name '()
+(define (string->temporary-buffer string name properties)
+  (pop-up-temporary-buffer name properties
     (lambda (buffer window)
       window
       (insert-string string (buffer-point buffer)))))
 
-(define (call-with-output-to-temporary-buffer name procedure)
-  (pop-up-temporary-buffer name '()
+(define (call-with-output-to-temporary-buffer name properties procedure)
+  (pop-up-temporary-buffer name properties
     (lambda (buffer window)
       window
       (call-with-output-mark (buffer-point buffer) procedure))))
 
-(define (with-output-to-temporary-buffer name thunk)
-  (call-with-output-to-temporary-buffer name
+(define (with-output-to-temporary-buffer name properties thunk)
+  (call-with-output-to-temporary-buffer name properties
     (lambda (port)
       (with-output-to-port port thunk))))
 

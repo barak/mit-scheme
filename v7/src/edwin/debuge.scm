@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debuge.scm,v 1.51 1995/09/13 03:57:22 cph Exp $
+;;;	$Id: debuge.scm,v 1.52 1998/03/08 07:13:55 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -116,7 +116,7 @@
   ""
   ()
   (lambda ()
-    (with-output-to-temporary-buffer "*standard-marks*"
+    (with-output-to-temporary-buffer "*standard-marks*" '()
       (lambda ()
 	(let ((buffer-frame (current-window)))
 	  (let ((window (car (instance-ref buffer-frame 'text-inferior)))
