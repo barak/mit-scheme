@@ -1,6 +1,6 @@
 Structure and construction of the MIT Scheme source tree
 
-$Id: README.txt,v 1.1 2000/12/21 21:50:45 cph Exp $
+$Id: README.txt,v 1.2 2001/02/23 16:16:38 cph Exp $
 
 Directories
 ===========
@@ -64,7 +64,7 @@ These are miscellaneous extras:
   directory trees under RCS or CVS control.
 
 These directories are no longer actively in use and the code they
-contain may not work.
+contain may not work:
 
 * "pcsample" contains a profiling extension.
 
