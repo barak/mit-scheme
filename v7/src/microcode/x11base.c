@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.65 1996/10/04 18:48:39 cph Exp $
+$Id: x11base.c,v 1.66 1996/10/08 20:21:14 cph Exp $
 
-Copyright (c) 1989-95 Massachusetts Institute of Technology
+Copyright (c) 1989-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1256,12 +1256,9 @@ DEFUN (update_input_mask, (xw), struct xwindow * xw)
 }
 
 static void
-DEFUN (ping_server, (xd), struct xdisplay * xd)
+DEFUN (ping_server, (xd, arg), struct xdisplay * xd)
 {
-  /* Periodically ping the server connection to see if it has
-     died.  If it has died, this will force an error to be signalled
-     to Scheme; we expect Scheme to handle the error in some
-     reasonable way.  */
+  /* Periodically ping the server connection to see if it has died.  */
   (XD_SERVER_PING_TIMER (xd)) += 1;
   if ((XD_SERVER_PING_TIMER (xd)) >= 100)
     {
@@ -1934,7 +1931,7 @@ DEFINE_PRIMITIVE ("X-WINDOW-SET-INPUT-FOCUS", Prim_x_window_set_input_focus, 2, 
 	   ((Time) (arg_ulong_integer (2))));
 	/* Force the message out now; otherwise the error-catching
 	   code will be ineffective.  */
-	XFlush (display);
+	XSync (display, 0);
       }
     else
       {
