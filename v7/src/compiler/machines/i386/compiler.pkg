@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/compiler.pkg,v 1.2 1992/02/13 03:50:24 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/compiler.pkg,v 1.3 1992/02/13 05:22:33 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/comp.pkg,v 1.32 1991/05/06 23:09:24 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -45,7 +45,7 @@ MIT in each case. |#
 	 "base/sets"			;set abstraction
 	 "base/mvalue"			;multiple-value support
 	 "base/scode"			;SCode abstraction
-	 "machines/i386/machin"	;machine dependent stuff
+	 "machines/i386/machin"		;machine dependent stuff
 	 "base/utils"			;odds and ends
 
 	 "base/cfg1"			;control flow graph
@@ -451,7 +451,7 @@ MIT in each case. |#
   (files "rtlgen/rtlgen"		;RTL generator
 	 "rtlgen/rgstmt"		;statements
 	 "rtlgen/fndvar"		;find variables
-	 "machines/i386/rgspcm"	;special close-coded primitives
+	 "machines/i386/rgspcm"		;special close-coded primitives
 	 "rtlbase/rtline"		;linearizer
 	 )
   (parent (compiler))
