@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.179 2000/06/20 19:27:10 cph Exp $
+;;; $Id: imail-top.scm,v 1.180 2000/06/20 19:32:47 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -895,51 +895,6 @@ With prefix argument, prompt even when point is on an attachment."
    (char-set-difference char-set:graphic
 			char-set:mime-attachment-filename-delimiters)))
 
-(define (call-with-mime-decoding-output-port encoding port text? generator)
-  (case encoding
-    ((QUOTED-PRINTABLE)
-     (call-with-decode-quoted-printable-output-port port text? generator))
-    ((BASE64)
-     (call-with-decode-base64-output-port port text? generator))
-    (else
-     (generator port))))
-
-(define (call-with-decode-quoted-printable-output-port port text? generator)
-  (let ((port
-	 (make-port decode-quoted-printable-port-type
-		    (decode-quoted-printable:initialize port text?))))
-    (let ((v (generator port)))
-      (close-output-port port)
-      v)))
-
-(define decode-quoted-printable-port-type
-  (make-port-type
-   `((WRITE-SUBSTRING
-      ,(lambda (port string start end)
-	 (decode-quoted-printable:update (port/state port) string start end)))
-     (CLOSE-OUTPUT
-      ,(lambda (port)
-	 (decode-quoted-printable:finalize (port/state port)))))
-   #f))
-
-(define (call-with-decode-base64-output-port port text? generator)
-  (let ((port
-	 (make-port decode-base64-port-type
-		    (decode-base64:initialize port text?))))
-    (let ((v (generator port)))
-      (close-output-port port)
-      v)))
-
-(define decode-base64-port-type
-  (make-port-type
-   `((WRITE-SUBSTRING
-      ,(lambda (port string start end)
-	 (decode-base64:update (port/state port) string start end)))
-     (CLOSE-OUTPUT
-      ,(lambda (port)
-	 (decode-base64:finalize (port/state port)))))
-   #f))
-
 ;;;; Sending mail
 
 (define-command imail-mail
@@ -974,13 +929,7 @@ While composing the reply, use \\[mail-yank-original] to yank the
 
 ;; This procedure is invoked by M-x mail-yank-original in Mail mode.
 (define (imail-yank-original buffer left-margin mark)
-  (let ((message (selected-message #t buffer)))
-    (insert-header-fields message #f mark)
-    (if (folder-supports-mime? (selected-folder #t buffer))
-	(insert-mime-message-body message mark #t left-margin)
-	(call-with-auto-wrapped-output-mark mark left-margin
-	  (lambda (port)
-	    (write-message-body message port))))))
+  (insert-message (selected-message #t buffer) #t left-margin mark))
 
 (define-command imail-forward
   "Forward the current message to another user.
@@ -1678,15 +1627,7 @@ Negative argument means search in reverse."
 		(if message
 		    (begin
 		      (store-property! message 'RAW? raw?)
-		      (insert-header-fields message raw? mark)
-		      (cond ((and raw? (not (eq? raw? 'FULL-HEADERS)))
-			     (insert-message-body message mark))
-			    ((folder-supports-mime? folder)
-			     (insert-mime-message-body message mark #f 0))
-			    (else
-			     (call-with-auto-wrapped-output-mark mark 0
-			       (lambda (port)
-				 (write-message-body message port))))))
+		      (insert-message message #f 0 mark))
 		    (insert-string "[This folder has no messages in it.]"
 				   mark))))
 	    (mark-temporary! mark))
@@ -1931,6 +1872,18 @@ Negative argument means search in reverse."
 	     (remove-property! folder 'PROBE-REGISTRATION)))))))
 
 ;;;; Message insertion procedures
+
+(define (insert-message message inline-only? left-margin mark)
+  (let ((raw? (get-property message 'RAW? #f)))
+    (insert-header-fields message raw? mark)
+    (cond ((and raw? (not (eq? raw? 'FULL-HEADERS)))
+	   (insert-message-body message mark))
+	  ((folder-supports-mime? (message-folder message))
+	   (insert-mime-message-body message mark inline-only? left-margin))
+	  (else
+	   (call-with-auto-wrapped-output-mark mark left-margin
+	     (lambda (port)
+	       (write-message-body message port)))))))
 
 (define (insert-header-fields headers raw? mark)
   (for-each (lambda (header)
@@ -2200,6 +2153,51 @@ Negative argument means search in reverse."
 	(if index
 	    (loop (make-mark (mark-group start) index) attachments)
 	    (reverse! attachments))))))
+
+(define (call-with-mime-decoding-output-port encoding port text? generator)
+  (case encoding
+    ((QUOTED-PRINTABLE)
+     (call-with-decode-quoted-printable-output-port port text? generator))
+    ((BASE64)
+     (call-with-decode-base64-output-port port text? generator))
+    (else
+     (generator port))))
+
+(define (call-with-decode-quoted-printable-output-port port text? generator)
+  (let ((port
+	 (make-port decode-quoted-printable-port-type
+		    (decode-quoted-printable:initialize port text?))))
+    (let ((v (generator port)))
+      (close-output-port port)
+      v)))
+
+(define decode-quoted-printable-port-type
+  (make-port-type
+   `((WRITE-SUBSTRING
+      ,(lambda (port string start end)
+	 (decode-quoted-printable:update (port/state port) string start end)))
+     (CLOSE-OUTPUT
+      ,(lambda (port)
+	 (decode-quoted-printable:finalize (port/state port)))))
+   #f))
+
+(define (call-with-decode-base64-output-port port text? generator)
+  (let ((port
+	 (make-port decode-base64-port-type
+		    (decode-base64:initialize port text?))))
+    (let ((v (generator port)))
+      (close-output-port port)
+      v)))
+
+(define decode-base64-port-type
+  (make-port-type
+   `((WRITE-SUBSTRING
+      ,(lambda (port string start end)
+	 (decode-base64:update (port/state port) string start end)))
+     (CLOSE-OUTPUT
+      ,(lambda (port)
+	 (decode-base64:finalize (port/state port)))))
+   #f))
 
 ;;;; Automatic wrap/fill
 
