@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.20 1991/05/06 18:08:24 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.21 1991/07/10 20:06:18 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -789,7 +789,6 @@ MIT in each case. |#
 		    (,rat:op X Y)))))))
   (define-standard-binary real:+ flo:+ (copy rat:+))
   (define-standard-binary real:- flo:- (copy rat:-))
-  (define-standard-binary real:/ flo:/ (copy rat:/))
   (define-standard-binary real:rationalize
     flo:rationalize
     rat:rationalize)
@@ -847,6 +846,11 @@ MIT in each case. |#
 	((rat:zero? x) x)
 	((flonum? y) (flo:* (rat:->flonum x) y))
 	(else ((copy rat:*) x y))))
+
+(define (real:/ x y)
+  (cond ((flonum? x) (flo:/ x (if (flonum? y) y (rat:->flonum y))))
+	((flonum? y) (if (rat:zero? x) x (flo:/ (rat:->flonum x) y)))
+	(else ((copy rat:/) x y))))
 
 (define (real:even? n)
   ((copy int:even?)
