@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap-url.scm,v 1.9 2000/04/18 18:44:31 cph Exp $
+;;; $Id: imail-imap-url.scm,v 1.10 2000/04/18 18:54:50 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -22,93 +22,37 @@
 
 (declare (usual-integrations))
 
-(define-class <imap-url> (<url>)
+(define-class (<imap-url>
+	       (constructor (user-id auth-type host port mailbox uid)))
+    (<url>)
   (user-id define accessor)
   (auth-type define accessor)
   (host define accessor)
-  (port define accessor))
-
-(define-class (<imap-mailbox-url>
-	       (constructor make-imap-mailbox-url
-			    (user-id auth-type host port
-				     mailbox uid-validity uid section)))
-    (<imap-url>)
+  (port define accessor)
   (mailbox define accessor)
-  (uid-validity define accessor)
-  (uid define accessor)
-  (section define accessor))
-
-(define-class (<imap-search-url>
-	       (constructor make-imap-search-url
-			    (user-id auth-type host port
-				     mailbox search-program uid-validity)))
-    (<imap-url>)
-  (mailbox define accessor)
-  (search-program define accessor)
-  (uid-validity define accessor))
-
-(define-class (<imap-list-url>
-	       (constructor make-imap-list-url
-			    (user-id auth-type host port
-				     mailbox-list list-type)))
-    (<imap-url>)
-  (mailbox-list define accessor)
-  (list-type define accessor))
+  (uid define accessor))
 
 (define-url-protocol "imap" <imap-url>
   (lambda (string)
-    (parse-imap-url string)))
-
-(define (parse-imap-url string)
-  (let ((lose (lambda () (error:bad-range-argument string 'PARSE-IMAP-URL))))
-    (if (not (string-prefix? "//" string))
-	(lose))
-    (let ((end (string-length string)))
-      (let ((slash (substring-find-next-char string 2 end)))
-	(if (not slash) (lose))
-	(let ((pv1 (parse-substring imap:parse:server string 0 slash)))
-	  (if (not pv1) (lose))
-	  (let ((start (fix:+ slash 1)))
-	    (cond ((parse-substring imap:parse:messagepart string start end)
-		   =>
-		   (lambda (pv2)
-		     (make-imap-mailbox-url (parser-token pv1 'USER-ID)
-					    (parser-token pv1 'AUTH-TYPE)
-					    (parser-token pv1 'HOST)
-					    (parser-token pv1 'PORT)
-					    (parser-token pv2 'MAILBOX)
-					    (parser-token pv2 'UID-VALIDITY)
-					    (parser-token pv2 'UID)
-					    (parser-token pv2 'SECTION))))
-		  ((parse-substring imap:parse:messagelist string start end)
-		   =>
-		   (lambda (pv2)
-		     (make-imap-search-url (parser-token pv1 'USER-ID)
-					   (parser-token pv1 'AUTH-TYPE)
-					   (parser-token pv1 'HOST)
-					   (parser-token pv1 'PORT)
-					   (parser-token pv2 'MAILBOX)
-					   (parser-token pv2 'SEARCH-PROGRAM)
-					   (parser-token pv2 'UID-VALIDITY))))
-		  ((parse-substring imap:parse:mailboxlist string start end)
-		   =>
-		   (lambda (pv2)
-		     (make-imap-list-url (parser-token pv1 'USER-ID)
-					 (parser-token pv1 'AUTH-TYPE)
-					 (parser-token pv1 'HOST)
-					 (parser-token pv1 'PORT)
-					 (parser-token pv2 'MAILBOX-LIST)
-					 (parser-token pv2 'LIST-TYPE))))
-		  (else (lose)))))))))
-
-(define (parse-string parser string)
-  (parse-substring parser string 0 (string-length string)))
-
-(define (parse-substring parser string start end)
-  (let ((pv (parser string start end)))
-    (and pv
-	 (fix:= (car pv) end)
-	 pv)))
+    (let ((lose (lambda () (error:bad-range-argument string #f))))
+      (if (not (string-prefix? "//" string))
+	  (lose))
+      (let ((end (string-length string)))
+	(let ((slash (substring-find-next-char string 2 end)))
+	  (if (not slash)
+	      (lose))
+	  (let ((pv1 (imap:parse:server string 0 slash)))
+	    (if (not (and pv1 (fix:= (car pv1) slash)))
+		(lose))
+	    (let ((pv2 (imap:parse:simple-message string (fix:+ slash 1) end)))
+	      (if (not (and pv2 (fix:= (car pv2) end)))
+		  (lose))
+	      (make-imap-url (parser-token pv1 'USER-ID)
+			     (parser-token pv1 'AUTH-TYPE)
+			     (parser-token pv1 'HOST)
+			     (parser-token pv1 'PORT)
+			     (parser-token pv2 'MAILBOX)
+			     (parser-token pv2 'UID)))))))))
 
 ;;;; Parser language
 
@@ -499,7 +443,7 @@
   (url:decoding-parser imap:match:bchar+ imap:match:astring 'MAILBOX))
 
 (define imap:parse:uidvalidity
-  (optional-parser (noise-parser (ci-string-matcher ";uidvalidity="))
+  (sequence-parser (noise-parser (ci-string-matcher ";uidvalidity="))
 		   (simple-parser imap:match:nz-number 'UID-VALIDITY)))
 
 (define imap:parse:messagelist
@@ -508,14 +452,20 @@
 		    (url:decoding-parser imap:match:bchar+
 					 imap:match:search-program
 					 'SEARCH-PROGRAM))
-		   imap:parse:uidvalidity))
+		   (optional-parser imap:parse:uidvalidity)))
 
 (define imap:parse:messagepart
   (sequence-parser imap:parse:enc-mailbox
-		   imap:parse:uidvalidity
+		   (optional-parser imap:parse:uidvalidity)
 		   (noise-parser (ci-string-matcher "/;uid="))
 		   (simple-parser imap:match:nz-number 'UID)
-		   (noise-parser (ci-string-matcher "/;section="))
-		   (url:decoding-parser imap:match:bchar+
-					imap:match:section
-					'SECTION)))
+		   (optional-parser
+		    (noise-parser (ci-string-matcher "/;section="))
+		    (url:decoding-parser imap:match:bchar+
+					 imap:match:section
+					 'SECTION))))
+
+(define imap:parse:simple-message
+  (sequence-parser imap:parse:enc-mailbox
+		   (noise-parser (ci-string-matcher "/;uid="))
+		   (simple-parser imap:match:nz-number 'UID)))
