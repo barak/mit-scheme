@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: step.c,v 9.31 1993/06/24 07:09:53 gjr Exp $
+$Id: step.c,v 9.32 1994/06/28 19:03:13 cph Exp $
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -65,7 +65,7 @@ DEFUN (Install_Traps, (Hunk3), SCHEME_OBJECT Hunk3)
 /* (PRIMITIVE-EVAL-STEP EXPRESSION ENV HUNK3)
    Evaluates EXPRESSION in ENV and intalls the eval-trap,
    apply-trap, and return-trap from HUNK3.  If any
-   trap is '(), it is a null trap that does a normal EVAL,
+   trap is #F, it is a null trap that does a normal EVAL,
    APPLY or return.
 */
 
@@ -90,7 +90,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-EVAL-STEP", Prim_eval_step, 3, 3, 0)
 /* (PRIMITIVE-APPLY-STEP OPERATOR OPERANDS HUNK3)
    Applies OPERATOR to OPERANDS and intalls the eval-trap,
    apply-trap, and return-trap from HUNK3.  If any
-   trap is '(), it is a null trap that does a normal EVAL,
+   trap is #F, it is a null trap that does a normal EVAL,
    APPLY or return.
 
    Mostly a copy of Prim_Apply, since this, too, must count the space
@@ -144,7 +144,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-APPLY-STEP", Prim_apply_step, 3, 3, 0)
 
 /* (PRIMITIVE-RETURN-STEP VALUE HUNK3)
    Returns VALUE and intalls the eval-trap, apply-trap, and
-   return-trap from HUNK3.  If any trap is '(), it is a null trap
+   return-trap from HUNK3.  If any trap is #F, it is a null trap
    that does a normal EVAL, APPLY or return.
 */
 
