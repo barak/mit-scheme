@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.14 1990/11/13 08:45:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.15 1990/12/29 20:42:04 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -116,7 +116,7 @@ extern void EXFUN (error_system_call, (int code, CONST char * name));
 /* #define HAVE_WAIT4 */
 #define UNION_WAIT_STATUS
 
-#if defined(_ULTRIX) || defined(_SUNOS4) || defined(sun4)
+#if defined(_ULTRIX) || defined(_SUNOS4) || defined(sun4) || defined(NeXT)
 #define VOID_SIGNAL_HANDLERS
 #endif
 
@@ -216,6 +216,10 @@ extern void EXFUN (error_system_call, (int code, CONST char * name));
 
 #ifdef _ULTRIX
 #define SYSTEM_VARIANT "Ultrix"
+#endif
+
+#ifdef NeXT
+#define SYSTEM_VARIANT "NeXT"
 #endif
 
 #ifdef _SUNOS
