@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.19 1992/05/27 03:24:44 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.20 1992/05/27 03:52:17 jinx Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -1118,6 +1118,7 @@ DEFUN (read_command_line_options, (argc, argv),
 		     scheme_program_name, option_fasl_file);
 	    termination_init_error ();
 	  }
+	option_large_sizes = 1;
 	option_band_specified = 1;
 	option_band_file = 0;
       }
