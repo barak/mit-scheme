@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-rpc.scm,v 1.2 2005/02/24 05:52:07 cph Exp $
+$Id: xml-rpc.scm,v 1.3 2005/03/25 18:43:12 cph Exp $
 
 Copyright 2003,2004,2005 Massachusetts Institute of Technology
 
@@ -187,50 +187,52 @@ USA.
 	     (string? (car items))
 	     (null? (cdr items)))
 	(car items)
-	(let ((elt (single-child elt)))
-	  (case (xml-element-name elt)
-	    ((boolean)
-	     (let ((s (content-string elt)))
-	       (cond ((string=? s "0") #f)
-		     ((string=? s "1") #t)
-		     (else (lose)))))
-	    ((nil)
-	     #!default)
-	    ((|dateTime.iso8601|)
-	     (safe-call iso8601-string->decoded-time (content-string elt)))
-	    ((double)
-	     (let ((x (string->number (content-string elt))))
-	       (require (and x (flo:flonum? x)))
-	       x))
-	    ((i4 int)
-	     (let ((n (string->number (content-string elt))))
-	       (require
-		(and n
+	(let ((object (decode-value-1 (single-child elt))))
+	  (if *xml-rpc:decode-value-handler*
+	      (*xml-rpc:decode-value-handler* object)
+	      object)))))
+
+(define (decode-value-1 elt)
+  (case (xml-element-name elt)
+    ((boolean)
+     (let ((s (content-string elt)))
+       (cond ((string=? s "0") #f)
+	     ((string=? s "1") #t)
+	     (else (lose)))))
+    ((nil)
+     #!default)
+    ((|dateTime.iso8601|)
+     (safe-call iso8601-string->decoded-time (content-string elt)))
+    ((double)
+     (let ((x (string->number (content-string elt))))
+       (require (and x (flo:flonum? x)))
+       x))
+    ((i4 int)
+     (let ((n (string->number (content-string elt))))
+       (require (and n
 		     (exact-integer? n)
 		     (<= #x-80000000 n #x7fffffff)))
-	       n))
-	    ((string)
-	     (content-string elt))
-	    ((base64)
-	     (safe-call (lambda (string)
-			  (call-with-output-string
-			    (lambda (port)
-			      (call-with-decode-base64-output-port port #f
-				(lambda (port)
-				  (write-string string port))))))
-			(content-string elt)))
-	    ((array)
-	     (map (lambda (elt) (decode-value elt))
-		  (named-children 'value
-				  (single-named-child 'data elt)
-				 )))
-	    ((struct)
-	     (map (lambda (elt)
-		    (cons (utf8-string->symbol
-			   (content-string (named-child 'name elt)))
-			  (decode-value (named-child 'value elt))))
-		  (named-children 'member elt)))
-	    (else (lose)))))))
+       n))
+    ((string)
+     (content-string elt))
+    ((base64)
+     (safe-call (lambda (string)
+		  (call-with-output-string
+		    (lambda (port)
+		      (call-with-decode-base64-output-port port #f
+			(lambda (port)
+			  (write-string string port))))))
+		(content-string elt)))
+    ((array)
+     (map (lambda (elt) (decode-value elt))
+	  (named-children 'value (single-named-child 'data elt))))
+    ((struct)
+     (map (lambda (elt)
+	    (cons (utf8-string->symbol
+		   (content-string (named-child 'name elt)))
+		  (decode-value (named-child 'value elt))))
+	  (named-children 'member elt)))
+    (else (lose))))
 
 (define (content-string elt)
   (let ((items (xml-element-contents elt)))
@@ -244,45 +246,51 @@ USA.
   (let ((value (ignore-errors (lambda () (apply procedure arguments)))))
     (require (not (condition? value)))
     value))
+
+(define *xml-rpc:decode-value-handler* #f)
 
 (define (encode-param object)
   (rpc-elt:param (encode-value object)))
 
 (define (encode-value object)
   (rpc-elt:value
-   (cond ((and (exact-integer? object)
-	       (<= #x-80000000 object #x7fffffff))
-	  (rpc-elt:int (number->string object)))
-	 ((flo:flonum? object)
-	  ;; Probably not right -- formatting issues
-	  (rpc-elt:double (number->string object)))
-	 ((boolean? object)
-	  (rpc-elt:boolean (if object "1" "0")))
-	 ((default-object? object)
-	  (rpc-elt:nil))
-	 ((string? object)
-	  (encode-string object))
-	 ((symbol? object)
-	  (encode-string (symbol->utf8-string object)))
-	 ((decoded-time? object)
-	  (rpc-elt:date-time (decoded-time->iso8601-string object)))
-	 ((and (pair? object)
-	       (list-of-type? object
-		 (lambda (item)
-		   (and (pair? item)
-			(symbol? (car item))))))
-	  (rpc-elt:struct
-	   (map (lambda (item)
-		  (rpc-elt:member
-		   (rpc-elt:name (symbol->utf8-string (car item)))
-		   (encode-value (cdr item))))
-		(cdr object))))
-	 ((list? object)
-	  (rpc-elt:array (rpc-elt:data (map encode-value object))))
-	 (else
-	  (error:wrong-type-argument object
-				     "an XML-RPC object"
-				     'encode-value)))))
+   (let ((object
+	  (if *xml-rpc:encode-value-handler*
+	      (*xml-rpc:encode-value-handler* object)
+	      object)))
+     (cond ((and (exact-integer? object)
+		 (<= #x-80000000 object #x7fffffff))
+	    (rpc-elt:int (number->string object)))
+	   ((flo:flonum? object)
+	    ;; Probably not right -- formatting issues
+	    (rpc-elt:double (number->string object)))
+	   ((boolean? object)
+	    (rpc-elt:boolean (if object "1" "0")))
+	   ((default-object? object)
+	    (rpc-elt:nil))
+	   ((string? object)
+	    (encode-string object))
+	   ((symbol? object)
+	    (encode-string (symbol->utf8-string object)))
+	   ((decoded-time? object)
+	    (rpc-elt:date-time (decoded-time->iso8601-string object)))
+	   ((and (pair? object)
+		 (list-of-type? object
+		   (lambda (item)
+		     (and (pair? item)
+			  (symbol? (car item))))))
+	    (rpc-elt:struct
+	     (map (lambda (item)
+		    (rpc-elt:member
+		     (rpc-elt:name (symbol->utf8-string (car item)))
+		     (encode-value (cdr item))))
+		  (cdr object))))
+	   ((list? object)
+	    (rpc-elt:array (rpc-elt:data (map encode-value object))))
+	   (else
+	    (error:wrong-type-argument object
+				       "an XML-RPC object"
+				       'encode-value))))))
 
 (define (encode-string string)
   (if (utf8-string-valid? string)
@@ -293,6 +301,8 @@ USA.
 	    (encode-base64:update context string 0 (string-length string))
 	    (encode-base64:finalize context))))))
 
+(define *xml-rpc:encode-value-handler* #f)
+
 (define (rpc-elt name empty?)
   (let ((make-elt
 	 (standard-xml-element-constructor name
