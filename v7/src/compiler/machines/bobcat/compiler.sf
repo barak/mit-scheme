@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.sf,v 1.8 1989/07/25 13:05:50 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.sf,v 1.9 1989/08/03 23:43:05 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -96,5 +96,6 @@ MIT in each case. |#
 ((access syntax-files! (->environment '(COMPILER))))
 
 ;; Rebuild the package constructors and cref.
-(cref/generate-all "comp")(sf "comp.con" "comp.bcon")
+(cref/generate-constructors "comp")
+(sf "comp.con" "comp.bcon")
 (sf "comp.ldr" "comp.bldr")

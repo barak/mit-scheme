@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/sf.sf,v 4.3 1988/10/29 00:07:01 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/sf.sf,v 4.4 1989/08/03 23:39:59 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -55,5 +55,6 @@ MIT in each case. |#
 (if (not (name->package '(CROSS-REFERENCE)))
     (with-working-directory-pathname "../cref" (lambda () (load "make"))))
 
-(cref/generate-all "sf")(sf "sf.con" "sf.bcon")
+(cref/generate-constructors "sf")
+(sf "sf.con" "sf.bcon")
 (sf "sf.ldr" "sf.bldr")
