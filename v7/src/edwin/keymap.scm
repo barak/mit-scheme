@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;$Id: keymap.scm,v 1.14 2000/02/24 01:22:27 cph Exp $
+;;;$Id: keymap.scm,v 1.15 2000/02/24 01:30:18 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -29,10 +29,10 @@ The list is put in a buffer, which is displayed."
   (lambda ()
     (with-output-to-help-display
      (lambda ()
-       (describe-bindings (current-comtabs) (current-output-port))))))
+       (describe-bindings (current-comtabs) #t (current-output-port))))))
 
-(define (describe-bindings comtabs port)
-  (let ((alists (map sort-by-prefix (comtabs->alists comtabs))))
+(define (describe-bindings comtabs global? port)
+  (let ((alists (map sort-by-prefix (comtabs->alists comtabs global?))))
     (if (pair? alists)
 	(let ((write-element
 	       (lambda (element port)
@@ -70,7 +70,7 @@ Previous contents of that buffer are killed first."
        (make-command-summary (current-comtabs) (current-output-port))))))
 
 (define (make-command-summary comtabs port)
-  (let ((alists (comtabs->alists comtabs)))
+  (let ((alists (comtabs->alists comtabs #t)))
     (if (pair? alists)
 	(begin
 	  (write-summary-keymap (car alists) port)
@@ -130,13 +130,21 @@ Previous contents of that buffer are killed first."
 		    (car items*)
 		    (loop (cdr items) (cdr items*))))))))
 
-(define (comtabs->alists comtabs)
+(define (comtabs->alists comtabs global?)
   (let loop ((comtabs comtabs))
     (cons (sort-and-simplify (comtab->alist (car comtabs)))
-	  (if (and (not (null? (cdr comtabs)))
+	  (if (and (pair? (cdr comtabs))
+		   (not (there-exists? global-modes
+			  (lambda (mode)
+			    (eq? (cdr comtabs) (mode-comtabs mode)))))
 		   (comtab? (cadr comtabs)))
 	      (loop (cdr comtabs))
 	      '()))))
+
+(define global-modes
+  (list (ref-mode-object fundamental)
+	(ref-mode-object read-only)
+	(ref-mode-object read-only-noarg)))
 
 (define (sort-and-simplify elements)
   (map (lambda (element)
