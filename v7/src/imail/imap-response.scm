@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.41 2000/07/03 03:37:27 cph Exp $
+;;; $Id: imap-response.scm,v 1.42 2000/11/26 06:02:28 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -166,7 +166,10 @@
 			  (list (read-resp-text-tail port)))
 			'())))))))
     (discard-known-char #\] port)
-    (discard-known-char #\space port)
+    ;; Work around a bug in Courier-IMAP; the #\space character is
+    ;; required here, but Courier-IMAP doesn't send it.
+    (if (not (char=? #\return (peek-char-no-eof port)))
+	(discard-known-char #\space port))
     code))
 
 (define (read-fetch-response port)
