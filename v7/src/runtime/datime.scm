@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.14 1996/05/04 17:30:08 cph Exp $
+$Id: datime.scm,v 14.15 1996/10/07 18:13:34 cph Exp $
 
 Copyright (c) 1988-96 Massachusetts Institute of Technology
 
@@ -86,21 +86,24 @@ MIT in each case. |#
 
 (define (decode-universal-time time)
   (let ((result (allocate-decoded-time)))
-    ((ucode-primitive decode-time 2) result time)
+    ((ucode-primitive decode-time 2) result (- time epoch))
     (if (decoded-time/zone result)
 	(set-decoded-time/zone! result (/ (decoded-time/zone result) 3600)))
     result))
 
 (define (encode-universal-time dt)
-  ((ucode-primitive encode-time 1)
-   (if (decoded-time/zone dt)
-       (let ((dt* (copy-decoded-time dt)))
-	 (set-decoded-time/zone! dt* (* (decoded-time/zone dt*) 3600))
-	 dt*)
-       dt)))
+  (+ ((ucode-primitive encode-time 1)
+      (if (decoded-time/zone dt)
+	  (let ((dt* (copy-decoded-time dt)))
+	    (set-decoded-time/zone! dt* (* (decoded-time/zone dt*) 3600))
+	    dt*)
+	  dt))
+     epoch))
 
 (define (get-universal-time)
-  ((ucode-primitive encoded-time 0)))
+  (+ epoch ((ucode-primitive encoded-time 0))))
+
+(define epoch 2208988800)
 
 (define (get-decoded-time)
   (decode-universal-time (get-universal-time)))

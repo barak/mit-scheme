@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.7 1996/05/03 07:41:10 cph Exp $
+$Id: ntprm.scm,v 1.8 1996/10/07 18:14:27 cph Exp $
 
 Copyright (c) 1992-96 Massachusetts Institute of Technology
 
@@ -109,12 +109,8 @@ MIT in each case. |#
 (define (file-attributes filename)
   ((ucode-primitive file-attributes 1)
    (->namestring (merge-pathnames filename))))
-
-(define file-attributes-direct
-  file-attributes)
-
-(define file-attributes-indirect
-  file-attributes)
+(define file-attributes-direct file-attributes)
+(define file-attributes-indirect file-attributes)
 
 (define-structure (file-attributes
 		   (type vector)
@@ -131,40 +127,39 @@ MIT in each case. |#
   (mode-string false read-only true)
   (inode-number false read-only true))
 
-(define (file-length filename)
-  (file-attributes/length (file-attributes filename)))
+(define (file-length namestring)
+  (let ((attr (file-attributes namestring)))
+    (and attr
+	 (file-attributes/length attr))))
 
 (define (file-modification-time filename)
   ((ucode-primitive file-mod-time 1)
    (->namestring (merge-pathnames filename))))
+(define file-modification-time-direct file-modification-time)
+(define file-modification-time-indirect file-modification-time)
 
-(define file-modification-time-direct
-  file-modification-time)
-
-(define file-modification-time-indirect
-  file-modification-time)
-
-;; These are obviously incorrect, but there is no alternative.
-;; DOS only keeps track of modification times.
-
-(define file-access-time-direct
-  file-modification-time-direct)
-
-(define file-access-time-indirect
-  file-modification-time-indirect)
-
-(define file-access-time
-  file-modification-time)
+(define (file-access-time namestring)
+  (let ((attr (file-attributes namestring)))
+    (and attr
+	 (file-attributes/access-time attr))))
+(define file-access-time-direct file-modification-time-direct)
+(define file-access-time-indirect file-modification-time-indirect)
 
 (define (set-file-times! filename access-time modification-time)
-  (let ((filename (->namestring (merge-pathnames filename)))
-	(time (or modification-time
-		  access-time
-		  (file-modification-time-direct filename))))
+  (let ((filename (->namestring (merge-pathnames filename))))
     ((ucode-primitive set-file-times! 3)
      filename
-     (or access-time time)
-     (or modification-time time))))
+     (or access-time (file-access-time filename))
+     (or modification-time (file-modification-time filename)))))
+
+(define (decode-file-time time)
+  (decode-universal-time (file-time->universal-time time)))
+
+(define (encode-file-time dt)
+  (universal-time->file-time (encode-universal-time dt)))
+
+(define (file-time->universal-time time) (+ time epoch))
+(define (universal-time->file-time time) (- time epoch))
 
 (define get-environment-variable)
 (define set-environment-variable!)
@@ -273,11 +268,6 @@ MIT in each case. |#
     (and (or homepath home)
 	 (pathname-as-directory
 	  (merge-pathnames (or homepath home) homedrive)))))
-
-(define (decode-file-time time) (decode-universal-time time))
-(define (encode-file-time dt) (encode-universal-time dt))
-(define (file-time->universal-time time) time)
-(define (universal-time->file-time time) time)
 
 (define dos/user-home-directory user-home-directory)
 (define dos/current-user-name current-user-name)
