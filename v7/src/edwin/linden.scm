@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/linden.scm,v 1.121 1991/05/17 18:45:31 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/linden.scm,v 1.122 1991/10/13 01:50:08 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -170,6 +170,11 @@
 			     (<= 3 (string-length name))
 			     (substring-ci=? "DEF" 0 3 name 0 3)))
 		    (lisp-indent-definition state indent-point normal-indent))
+		   ((and (not method)
+			 (<= 5 (string-length name))
+			 (substring-ci=? "WITH-" 0 5 name 0 5))
+		    (lisp-indent-special-form 1 state indent-point
+					      normal-indent))
 		   ((integer? method)
 		    (lisp-indent-special-form method state indent-point
 					      normal-indent))
