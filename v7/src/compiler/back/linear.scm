@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/linear.scm,v 4.10 1990/04/01 22:26:21 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/linear.scm,v 4.11 1990/04/03 23:20:21 jinx Rel $
 
 Copyright (c) 1987, 1988, 1990 Massachusetts Institute of Technology
 
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; LAP linearizer
+;;; package: (compiler lap-syntaxer linearizer)
 
 (declare (usual-integrations))
 
@@ -128,7 +129,10 @@ MIT in each case. |#
 			      ,@consequent
 			      ,(lap:make-label-statement jlabel)
 			      ,@(linearize-next cn))))))))))
-	(cond ((sblock? cn)
+	(cond ((eq? cn an)
+	       (warn "bblock-linearize-lap: Identical branches" pblock)
+	       (unspecial))
+	      ((sblock? cn)
 	       (let ((cnn (find-next (snode-next cn))))
 		 (cond ((eq? cnn an)
 			(consequent-first))
