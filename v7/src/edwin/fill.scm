@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: fill.scm,v 1.62 2000/02/25 14:20:32 cph Exp $
+;;; $Id: fill.scm,v 1.63 2000/03/02 05:37:06 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -28,6 +28,55 @@ Automatically becomes local when set in any fashion."
   70
   exact-nonnegative-integer?)
 
+(define-variable-per-buffer fill-prefix
+  "String for filling to insert at front of new line, or #f for none.
+Setting this variable automatically makes it local to the current buffer."
+  #f
+  string-or-false?)
+
+(define-variable-per-buffer left-margin
+  "Column for the default indent-line-function to indent to.
+Linefeed indents to this column in Fundamental mode.
+Automatically becomes local when set in any fashion."
+  0
+  exact-nonnegative-integer?)
+
+(define-variable adaptive-fill-mode
+  "True means determine a paragraph's fill prefix from its text."
+  #t
+  boolean?)
+
+(define-variable adaptive-fill-regexp
+  "Regexp to match text at start of line that constitutes indentation.
+If Adaptive Fill mode is enabled, a prefix matching this pattern
+on the first and second lines of a paragraph is used as the
+standard indentation for the whole paragraph.
+
+If the paragraph has just one line, the indentation is taken from that
+line, but in that case `adaptive-fill-first-line-regexp' also plays
+a role."
+  "[ \t]*\\([-|#;>*]+ *\\|(?[0-9]+[.)] *\\)*"
+  string?)
+
+(define-variable adaptive-fill-first-line-regexp
+  "Regexp specifying whether to set fill prefix from a one-line paragraph.
+When a paragraph has just one line, then after `adaptive-fill-regexp'
+finds the prefix at the beginning of the line, if it doesn't
+match this regexp, it is replaced with whitespace.
+
+By default, this regexp matches sequences of just spaces and tabs.
+
+However, we never use a prefix from a one-line paragraph
+if it would act as a paragraph-starter on the second line."
+  "\\`[ \t]*\\'"
+  string?)
+
+(define-variable adaptive-fill-procedure
+  "Procedure to call to choose a fill prefix for a paragraph.
+This procedure is used when `adaptive-fill-regexp' does not match."
+  #f
+  (lambda (object) (or (not object) (procedure? object))))
+
 (define-command set-fill-column
   "Set fill-column to current column, or to argument if given.
 fill-column's value is separate for each buffer."
@@ -39,12 +88,6 @@ fill-column's value is separate for each buffer."
       (set-variable! fill-column column)
       (message "fill-column set to " column))))
 
-(define-variable-per-buffer fill-prefix
-  "String for filling to insert at front of new line, or #f for none.
-Setting this variable automatically makes it local to the current buffer."
-  false
-  string-or-false?)
-
 (define-command set-fill-prefix
   "Set the fill-prefix to the current line up to point.
 Filling expects lines to start with the fill prefix
@@ -54,12 +97,12 @@ and reinserts the fill prefix in each resulting line."
     (let ((string (extract-string (line-start point 0) point)))
       (if (string-null? string)
 	  (begin
-	    (set-variable! fill-prefix false)
+	    (set-variable! fill-prefix #f)
 	    (message "fill-prefix cancelled"))
 	  (begin
 	    (set-variable! fill-prefix string)
 	    (message "fill-prefix: \"" string "\""))))))
-
+
 (define-command fill-paragraph
   "Fill paragraph at or after point.
 Prefix arg means justify as well."
@@ -79,8 +122,8 @@ Prefix arg means justify too."
       (fill-region-as-paragraph
        start
        (region-end region)
-       (mark-local-ref start (ref-variable-object fill-prefix))
-       (mark-local-ref start (ref-variable-object fill-column))
+       (ref-variable fill-prefix start)
+       (ref-variable fill-column start)
        justify?))))
 
 (define-command fill-individual-paragraphs
@@ -88,12 +131,11 @@ Prefix arg means justify too."
   "r\nP"
   (lambda (region justify?)
     (let ((start (region-start region)))
-      (fill-individual-paragraphs
-       start
-       (region-end region)
-       (mark-local-ref start (ref-variable-object fill-column))
-       justify?
-       false))))
+      (fill-individual-paragraphs start
+				  (region-end region)
+				  (ref-variable fill-column start)
+				  justify?
+				  #f))))
 
 (define-command fill-region
   "Fill each of the paragraphs in the region.
@@ -103,8 +145,8 @@ Prefix arg means justify as well."
     (let ((start (region-start region)))
       (fill-region start
 		   (region-end region)
-		   (mark-local-ref start (ref-variable-object fill-prefix))
-		   (mark-local-ref start (ref-variable-object fill-column))
+		   (ref-variable fill-prefix start)
+		   (ref-variable fill-column start)
 		   justify?))))
 
 (define-command justify-current-line
@@ -118,13 +160,17 @@ Prefix arg means justify as well."
 (define (fill-region-as-paragraph start end fill-prefix fill-column justify?)
   (let ((start (mark-right-inserting-copy (skip-chars-forward "\n" start end)))
 	(end (mark-left-inserting-copy (skip-chars-backward "\n" end start))))
-    (let ((point (mark-left-inserting-copy start)))
+    (let ((fill-prefix
+	   (or fill-prefix
+	       (and (ref-variable adaptive-fill-mode start)
+		    (fill-context-prefix start end))))
+	  (point (mark-left-inserting-copy start)))
       ;; Delete the fill prefix from every line except the first.
       (if fill-prefix
 	  (begin
 	    (if (>= (string-length fill-prefix) fill-column)
 		(editor-error "fill-prefix too long for specified width"))
-	    (let ((m (match-forward fill-prefix start end false)))
+	    (let ((m (match-forward fill-prefix start end #f)))
 	      (if m
 		  (begin
 		    (move-mark-to! point m)
@@ -134,14 +180,14 @@ Prefix arg means justify as well."
 		(if m
 		    (begin
 		      (move-mark-to! point m)
-		      (let ((m (match-forward fill-prefix point end false)))
+		      (let ((m (match-forward fill-prefix point end #f)))
 			(if m
 			    (delete-string point m)))
 		      (loop)))))
 	    (move-mark-to! point start)))
       ;; Make sure sentences ending at end of line get an extra space.
       (let loop ()
-	(let ((m (re-search-forward "[.?!][])\"']*$" point end false)))
+	(let ((m (re-search-forward "[.?!][])\"']*$" point end #f)))
 	  (if m
 	      (begin
 		(move-mark-to! point m)
@@ -160,7 +206,7 @@ Prefix arg means justify as well."
       ;; Flush excess spaces, except in the paragraph indentation.
       (move-mark-to! point (skip-chars-forward " \t" start end))
       (let loop ()
-	(if (re-search-forward "   *" point end false)
+	(if (re-search-forward "   *" point end #f)
 	    (begin
 	      (move-mark-to! point (delete-match))
 	      (insert-string (if (fill:sentence-end? point start) "  " " ")
@@ -233,7 +279,15 @@ Prefix arg means justify as well."
     (let loop ()
       (move-mark-to! point (skip-chars-forward " \t\n" point end))
       (if (mark< point end)
-	  (let ((fill-prefix (extract-string (line-start point 0) point)))
+	  (let ((fill-prefix
+		 (let ((ls (line-start point 0)))
+		   (or (and (ref-variable adaptive-fill-mode point)
+			    (or (let ((le (line-end point 1 #f)))
+				  (and le
+				       (fill-context-prefix ls le "")))
+				(fill-context-prefix ls (line-end point 0)
+						     "")))
+		       (extract-string ls point)))))
 	    (move-mark-to! pend
 			   (or (forward-one-paragraph point end fill-prefix)
 			       end))
@@ -242,7 +296,7 @@ Prefix arg means justify as well."
 		       (let loop ((m point))
 			 (let ((m*
 				(re-search-forward "^[ \t]*[^ \t\n]*:" m pend
-						   false)))
+						   #f)))
 			   (if m*
 			       (let ((m* (line-end m* 0)))
 				 (if (mark< m* pend)
@@ -270,7 +324,7 @@ Prefix arg means justify as well."
     (lambda (start end)
       (let ((point (mark-left-inserting-copy start)))
 	(let loop ()
-	  (if (re-search-forward "   *" point end false)
+	  (if (re-search-forward "   *" point end #f)
 	      (begin
 		(move-mark-to! point (delete-match))
 		(insert-string (if (fill:sentence-end? point start) "  " " ")
@@ -287,7 +341,7 @@ Prefix arg means justify as well."
 	     " \t"
 	     (let ((start (line-start end 0)))
 	       (or (and fill-prefix
-			(match-forward fill-prefix start end false))
+			(match-forward fill-prefix start end #f))
 		   start))
 	     end))))
       (procedure start end)
@@ -315,6 +369,86 @@ Prefix arg means justify as well."
     (and (not (group-start? m))
 	 (memv (extract-left-char m) '(#\. #\? #\!)))))
 
+(define (fill-context-prefix start end #!optional first-line-regexp)
+  ;; Assume that START is at the start of the first line, and END is at the
+  ;; end of the last line.
+  (let ((first-line-regexp
+	 (if (or (default-object? first-line-regexp) (not first-line-regexp))
+	     (ref-variable adaptive-fill-first-line-regexp start)
+	     first-line-regexp))
+	(test-line
+	 (lambda (start)
+	   (cond ((re-match-forward (ref-variable paragraph-start start) start)
+		  #f)
+		 ((and (ref-variable adaptive-fill-regexp start)
+		       (re-match-forward (ref-variable adaptive-fill-regexp
+						       start)
+					 start))
+		  (extract-string start (re-match-end 0)))
+		 ((ref-variable adaptive-fill-procedure start)
+		  ((ref-variable adaptive-fill-procedure start) start end))
+		 (else #f)))))
+    (let ((first-line-prefix (test-line start))
+	  (multi-line? (mark< (line-end start 0) end)))
+      (and first-line-prefix
+	   (if multi-line?
+	       ;; If we get a fill prefix from the second line, make sure it
+	       ;; or something compatible is on the first line too.
+	       (let ((second-line-prefix (test-line (line-start start 1))))
+		 (cond ((not second-line-prefix)
+			#f)
+		       ((re-string-match
+			 (string-append (re-quote-string second-line-prefix)
+					"\\(\\'\\|[ \t]\\)")
+			 first-line-prefix)
+			;; If the first line has the second line prefix too,
+			;; use it.
+			second-line-prefix)
+		       ((re-string-match "[ \t]+\\'" second-line-prefix)
+			;; If the second line prefix is whitespace, use it.
+			second-line-prefix)
+		       ((re-string-match
+			 (string-append (re-quote-string first-line-prefix)
+					"[ \t]*\\'")
+			 second-line-prefix)
+			;; If the second line has the first line prefix, plus
+			;; whitespace, use the part that the first line shares.
+			first-line-prefix)
+		       (else #f)))
+	       ;; If we get a fill prefix from a one-line paragraph, maybe
+	       ;; change it to whitespace, and check that it isn't a paragraph
+	       ;; starter.
+	       (let ((result
+		      ;; If first-line-prefix comes from the first line, see
+		      ;; if it seems reasonable to use for all lines.  If not,
+		      ;; replace it with whitespace.
+		      (if (or (and first-line-regexp
+				   (re-string-search-forward
+				    first-line-regexp
+				    first-line-prefix))
+			      (fill-prefix-is-comment? first-line-prefix
+						       start))
+			  first-line-prefix
+			  (make-string (string-length first-line-prefix)
+				       #\space))))
+		 ;; But either way, reject it if it indicates the start of a
+		 ;; paragraph when text follows it.
+		 (and (not (re-string-match (ref-variable paragraph-start
+							  start)
+					    (string-append result "a")))
+		      result)))))))
+
+(define (fill-prefix-is-comment? prefix mark)
+  (let ((locator (ref-variable comment-locator-hook mark)))
+    (and locator
+	 (call-with-temporary-buffer " adaptive fill"
+	   (lambda (buffer)
+	     (insert-string prefix (buffer-start buffer))
+	     (let ((com (locator (buffer-start buffer))))
+	       (and com
+		    (within-indentation? (car com))
+		    (group-end? (cdr com)))))))))
+
 ;;;; Auto Fill
 
 (define-command auto-fill-mode
@@ -335,24 +469,41 @@ With argument, turn auto-fill mode on iff argument is positive."
 (define (auto-fill-break)
   (let ((point (current-point)))
     (if (auto-fill-break? point)
-	(if (re-search-backward "[^ \t][ \t]+"
-				(move-to-column
-				 point
-				 (+ (ref-variable fill-column) 1))
-				(line-start point 0))
-	    (with-current-point (re-match-end 0)
-	      (ref-command indent-new-comment-line))))))
+	(let ((prefix
+	       (or (and (not (ref-variable paragraph-ignore-fill-prefix point))
+			(ref-variable fill-prefix point))
+		   (and (ref-variable adaptive-fill-mode point)
+			(fill-context-prefix (or (paragraph-text-start point)
+						 (line-start point 0))
+					     (or (paragraph-text-end point)
+						 (line-end point 0)))))))
+	  (if (re-search-backward "[^ \t][ \t]+"
+				  (move-to-column
+				   point
+				   (+ (ref-variable fill-column) 1))
+				  (line-start point 0))
+	      (let ((break (re-match-end 0)))
+		(if (let ((pe
+			   (and prefix
+				(mark+ (line-start point 0)
+				       (string-length prefix)
+				       #f))))
+		      (or (not pe)
+			  (mark> break pe)))
+		    (with-fill-prefix prefix
+		      (lambda ()
+			(with-current-point break
+			  (ref-command indent-new-comment-line)))))))))))
+
+(define (with-fill-prefix prefix thunk)
+  (with-variable-value! (ref-variable-object paragraph-ignore-fill-prefix) #f
+    (lambda ()
+      (with-variable-value! (ref-variable-object fill-prefix) prefix
+	thunk))))
 
 (define (auto-fill-break? point)
   (> (mark-column point) (ref-variable fill-column)))
 
-(define-variable-per-buffer left-margin
-  "Column for the default indent-line-function to indent to.
-Linefeed indents to this column in Fundamental mode.
-Automatically becomes local when set in any fashion."
-  0
-  exact-nonnegative-integer?)
-
 (define (center-line mark)
   (let ((mark (mark-permanent! mark)))
     (delete-horizontal-space (line-start mark 0))
