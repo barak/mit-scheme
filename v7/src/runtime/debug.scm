@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 13.45 1987/12/09 21:51:55 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 13.46 1987/12/09 22:11:26 jinx Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -481,7 +481,7 @@
       (begin (beep)
 	     (format "~%The compiled code debugger is not present in this system."))))
 
-(define-debug-command #\A debug-command
+(define-debug-command #\A debug-compiled
   "Invoke the compiled code debugger on the current continuation")
 
 ;;;; Reduction and continuation motion low-level
