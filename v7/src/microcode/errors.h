@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/errors.h,v 9.36 1991/01/24 04:32:01 cph Exp $ */
+
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,11 +32,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/errors.h,v 9.35 1990/11/21 07:04:07 jinx Rel $
- *
- * Error and termination code declarations.
- *
- */
+/* Error and termination code declarations. */
 
 /* All error and termination codes must be positive
  * to allow primitives to return either an error code
@@ -45,7 +43,7 @@ MIT in each case. */
 #define ERR_UNBOUND_VARIABLE			0x01
 #define ERR_UNASSIGNED_VARIABLE			0x02
 #define ERR_INAPPLICABLE_OBJECT			0x03
-/* #define ERR_OUT_OF_HASH_NUMBERS		0x04 */
+#define ERR_IN_SYSTEM_CALL			0x04
 /* #define ERR_ENVIRONMENT_CHAIN_TOO_DEEP	0x05 */
 #define ERR_BAD_FRAME				0x06
 #define ERR_BROKEN_COMPILED_VARIABLE		0x07
@@ -157,7 +155,6 @@ MIT in each case. */
 /* 0x27 */		"ARG-9-BAD-RANGE",				\
 /* 0x28 */		"ARG-10-BAD-RANGE",				\
 /* 0x29 */		"ARG-4-WRONG-TYPE",				\
-									\
 /* 0x2A */		"ARG-5-WRONG-TYPE",				\
 /* 0x2B */		"ARG-6-WRONG-TYPE",				\
 /* 0x2C */		"ARG-7-WRONG-TYPE",				\
