@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: list.scm,v 14.44 2004/11/22 06:31:03 cph Exp $
+$Id: list.scm,v 14.45 2004/11/26 04:41:59 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1995,1996,2000 Massachusetts Institute of Technology
@@ -1076,7 +1076,7 @@ USA.
 (define (error:not-restricted-keyword-list object caller)
   (error:wrong-type-argument object "restricted keyword list" caller))
 
-(define (get-keyword-value klist key default)
+(define (get-keyword-value klist key)
   (let ((lose (lambda () (error:not-keyword-list klist 'GET-KEYWORD-VALUE))))
     (let loop ((klist klist))
       (if (pair? klist)
@@ -1089,7 +1089,22 @@ USA.
 	  (begin
 	    (if (not (null? klist))
 		(lose))
-	    default)))))
+	    #!default)))))
+
+(define (keyword-list->alist klist)
+  (let loop ((klist klist))
+    (if (pair? klist)
+	(cons (cons (car klist) (cadr klist))
+	      (loop (cddr klist)))
+	'())))
+
+(define (alist->keyword-list alist)
+  (let loop ((alist alist))
+    (if (pair? alist)
+	(cons (caar alist)
+	      (cons (cdar alist)
+		    (loop (cdr alist))))
+	'())))
 
 ;;;; Lastness and Segments
 
