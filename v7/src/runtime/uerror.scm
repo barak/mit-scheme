@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.10 1989/10/26 06:47:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.11 1989/12/07 05:06:30 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -91,8 +91,8 @@ MIT in each case. |#
 					   (loop (cdr translators)))))))))))
 	     (if translator
 		 (translator error-type frame)
-		 (make-error-condition error-type:missing-handler
-				       (list error-type)
+		 (make-error-condition error-type
+				       '()
 				       repl-environment)))))))))
 
 (define (anomalous-microcode-error error-code interrupt-enables)
@@ -209,7 +209,6 @@ MIT in each case. |#
 (define error-type:fasdump)
 (define error-type:fasload)
 (define error-type:illegal-argument)
-(define error-type:missing-handler)
 (define error-type:file)
 (define error-type:open-file)
 (define error-type:random-internal)
@@ -237,9 +236,7 @@ MIT in each case. |#
   (set! error-type:fasload
 	(make-condition-type (list error-type:file) "Fasload error"))
   (set! error-type:anomalous
-	(make-internal-type "Anomalous microcode error"))
-  (set! error-type:missing-handler
-	(make-internal-type "Missing handler for microcode error")))
+	(make-internal-type "Anomalous microcode error")))
 
 (define (make-base-type message)
   (make-condition-type (list condition-type:error) message))
