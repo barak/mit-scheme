@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2graph.scm,v 1.10 1995/06/28 01:59:24 adams Exp $
+$Id: os2graph.scm,v 1.11 1995/11/04 02:33:56 cph Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -116,6 +116,7 @@ MIT in each case. |#
 (define image-list)
 (define user-event-mask)
 (define user-event-queue)
+(define graphics-window-icon)
 
 ;; This event mask contains just button events.
 (define user-event-mask:default #x0001)
@@ -123,6 +124,8 @@ MIT in each case. |#
 (define (finalize-pm-state!)
   (if event-descriptor
       (begin
+	(os2win-destroy-pointer graphics-window-icon)
+	(set! graphics-window-icon)
 	(do ((windows (protection-list-elements window-list) (cdr windows)))
 	    ((null? windows))
 	  (close-window (car windows)))
@@ -225,13 +228,16 @@ MIT in each case. |#
 	      (permanently-register-input-thread-event
 	       event-descriptor
 	       (current-thread)
-	       read-and-process-event))))
+	       read-and-process-event))
+	(set! graphics-window-icon
+	      (os2win-load-pointer HWND_DESKTOP NULLHANDLE IDI_GRAPHICS))))
   (open-window descriptor->device
 	       (if (default-object? width) 256 width)
 	       (if (default-object? height) 256 height)))
 
 (define (open-window descriptor->device width height)
   (let ((wid (os2win-open event-descriptor "Scheme Graphics")))
+    (os2win-set-icon wid graphics-window-icon)
     (os2win-show-cursor wid #f)
     (os2win-show wid #t)
     (os2win-set-size wid width height)
