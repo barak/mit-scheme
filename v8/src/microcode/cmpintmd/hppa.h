@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hppa.h,v 1.44 1993/08/03 08:28:51 gjr Exp $
+$Id: hppa.h,v 1.45 1993/09/11 02:44:51 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -136,14 +136,14 @@ union ldil_inst
   } fields;
 };
 
-union ble_inst
+union branch_inst
 {
   unsigned long inst;
   struct
   {
     unsigned opcode	: 6;
-    unsigned base	: 5;
-    unsigned w1		: 5;
+    unsigned t_or_b	: 5;
+    unsigned x_or_w1	: 5;
     unsigned s		: 3;
     unsigned w2b	: 10;
     unsigned w2a	: 1;
@@ -166,20 +166,6 @@ union short_pointer
     unsigned pad	: 2;
   } fields;
 };
-
-union bl_offset
-{
-  long value;
-  struct
-  {
-    int sign_pad	: 13;
-    unsigned w0		: 1;
-    unsigned w1		: 5;
-    unsigned w2a	: 1;
-    unsigned w2b	: 10;
-    unsigned pad	: 2;
-  } fields;
-};
 
 /*
    Note: The following does not do a full decoding of the BLE instruction.
@@ -197,7 +183,7 @@ unsigned long
 DEFUN (hppa_extract_absolute_address, (addr), unsigned long * addr)
 {
   union short_pointer result;
-  union ble_inst ble;
+  union branch_inst ble;
   union ldil_inst ldil;
 
   ldil.inst = *addr++;
@@ -223,7 +209,7 @@ DEFUN (hppa_store_absolute_address, (addr, sourcev, nullify_p),
 {
   union short_pointer source;
   union ldil_inst ldil;
-  union ble_inst ble;
+  union branch_inst ble;
 
   source.address = sourcev;
 
@@ -242,8 +228,8 @@ DEFUN (hppa_store_absolute_address, (addr, sourcev, nullify_p),
 
 #if 0
   ble.fields.opcode = 0x39;
-  ble.fields.base = 26;
-  ble.fields.w1 = 0;
+  ble.fields.t_or_b = 26;
+  ble.fields.x_or_w1 = 0;
   ble.fields.s = 3;
   ble.fields.w0 = 0;
 #else
@@ -409,7 +395,7 @@ DEFUN_VOID (flush_i_cache_initialize)
   termination_init_error ();
 }
 
-#endif	/* IN_CMPINT_C */
+#endif /* IN_CMPINT_C */
 
 /* Interrupt/GC polling. */
 
@@ -715,7 +701,7 @@ extern Boolean EXFUN (hppa_grow_primitive_table, (int));
 
 #define UPDATE_PRIMITIVE_TABLE_HOOK hppa_update_primitive_table
 #define GROW_PRIMITIVE_TABLE_HOOK hppa_grow_primitive_table
-
+
 /* This is not completely true.  Some models (eg. 850) have combined caches,
    but we have to assume the worst.
  */
@@ -723,21 +709,61 @@ extern Boolean EXFUN (hppa_grow_primitive_table, (int));
 #define SPLIT_CACHES
 
 #ifdef IN_CMPINT_C
+
+union assemble_17_u
+{
+  long value;
+  struct
+  {
+    int sign_pad	: 13;
+    unsigned w0		: 1;
+    unsigned w1		: 5;
+    unsigned w2a	: 1;
+    unsigned w2b	: 10;
+    unsigned pad	: 2;
+  } fields;
+};
+
+union assemble_12_u
+{
+  long value;
+  struct
+  {
+    int sign_pad	: 18;
+    unsigned w0		: 1;
+    unsigned w2a	: 1;
+    unsigned w2b	: 10;
+    unsigned pad	: 2;
+  } fields;
+};
 
 long
-DEFUN (assemble_17, (inst), union ble_inst inst)
+DEFUN (assemble_17, (inst), union branch_inst inst)
 {
-  union bl_offset off;
+  union assemble_17_u off;
 
   off.fields.pad = 0;
   off.fields.w2b = inst.fields.w2b;
   off.fields.w2a = inst.fields.w2a;
-  off.fields.w1  = inst.fields.w1;
+  off.fields.w1  = inst.fields.x_or_w1;
   off.fields.w0  = inst.fields.w0;
   off.fields.sign_pad = ((inst.fields.w0 == 0) ? 0 : -1);
-  return off.value;
+  return (off.value);
 }
 
+long
+DEFUN (assemble_12, (inst), union branch_inst inst)
+{
+  union assemble_12_u off;
+
+  off.fields.pad = 0;
+  off.fields.w2b = inst.fields.w2b;
+  off.fields.w2a = inst.fields.w2a;
+  off.fields.w0  = inst.fields.w0;
+  off.fields.sign_pad = ((inst.fields.w0 == 0) ? 0 : -1);
+  return (off.value);
+}
+
 static unsigned long hppa_closure_hook = 0;
 
 static unsigned long
@@ -753,11 +779,329 @@ DEFUN (C_closure_entry_point, (closure), unsigned long C_closure)
     char * blp = (* ((char **) (C_closure - 2)));
 
     blp = ((char *) (((unsigned long) blp) & ~3));
-    offset = (assemble_17 (* ((union ble_inst *) blp)));
+    offset = (assemble_17 (* ((union branch_inst *) blp)));
     entry_point = ((unsigned long) ((blp + 8) + offset));
     return ((entry_point < ((unsigned long) &etext))
 	    ? entry_point
 	    : hppa_closure_hook);
+  }
+}
+
+#define HAVE_BKPT_SUPPORT
+
+static unsigned short branch_opcodes[] =
+{
+  0x20, 0x21, 0x22, 0x23, 0x28, 0x29, 0x2a, 0x2b,
+  0x30, 0x31, 0x32, 0x33, 0x38, 0x39, 0x3a
+};
+
+static Boolean
+  branch_opcode_table[64];
+
+static unsigned long
+  bkpt_instruction,
+  closure_bkpt_instruction,
+  * bkpt_normal_proceed_thunk,
+  * bkpt_plus_proceed_thunk,
+  * bkpt_minus_proceed_thunk_start,
+  * bkpt_minus_proceed_thunk,
+  * bkpt_closure_proceed_thunk,
+  * bkpt_closure_proceed_thunk_end;
+
+#define FAHRENHEIT 451
+
+static void
+DEFUN_VOID(bkpt_init)
+{
+  int i;
+  union branch_inst instr;
+  extern void EXFUN (bkpt_normal_proceed, (void));
+  extern void EXFUN (bkpt_plus_proceed, (void));
+  extern void EXFUN (bkpt_minus_proceed_start, (void));
+  extern void EXFUN (bkpt_minus_proceed, (void));
+  extern void EXFUN (bkpt_closure_proceed, (void));
+  extern void EXFUN (bkpt_closure_proceed_end, (void));
+
+  for (i = 0;
+       i < ((sizeof (branch_opcode_table)) / (sizeof (Boolean)));
+       i++)
+    branch_opcode_table[i] = FALSE;
+
+  for (i = 0;
+       i < ((sizeof (branch_opcodes)) / (sizeof (short)));
+       i++)
+    branch_opcode_table[branch_opcodes[i]] = TRUE;
+
+  instr.fields.opcode	= 0x39;	/* BLE opcode */
+  instr.fields.t_or_b	= 03;	/* scheme_to_interface_ble */
+  instr.fields.n      	= 01;	/* nullify */
+  instr.fields.s      	= 01;	/* C code space, rotated illegibly */
+  instr.fields.w0     	= 00;
+  instr.fields.x_or_w1	= 00;
+  instr.fields.w2a	= 00;
+  instr.fields.w2b	= ((FAHRENHEIT + 1) >> 2);
+
+  bkpt_instruction = instr.inst;
+
+  instr.fields.opcode	= 0x38;	/* BE opcode */
+  instr.fields.w2b	= ((FAHRENHEIT + 9) >> 2);
+
+  closure_bkpt_instruction = instr.inst;
+
+  bkpt_normal_proceed_thunk
+    = ((unsigned long *)
+       (C_closure_entry_point ((unsigned long) bkpt_normal_proceed)));
+  bkpt_plus_proceed_thunk
+    = ((unsigned long *)
+       (C_closure_entry_point ((unsigned long) bkpt_plus_proceed)));
+  bkpt_minus_proceed_thunk_start
+    = ((unsigned long *)
+       (C_closure_entry_point ((unsigned long) bkpt_minus_proceed_start)));
+  bkpt_minus_proceed_thunk
+    = ((unsigned long *)
+       (C_closure_entry_point ((unsigned long) bkpt_minus_proceed)));
+  bkpt_closure_proceed_thunk
+    = ((unsigned long *)
+       (C_closure_entry_point ((unsigned long) bkpt_closure_proceed)));
+  bkpt_closure_proceed_thunk_end
+    = ((unsigned long *)
+       (C_closure_entry_point ((unsigned long) bkpt_closure_proceed_end)));
+  return;
+}
+
+#define BKPT_KIND_CLOSURE		0
+#define BKPT_KIND_NORMAL		1
+#define BKPT_KIND_PC_REL_BRANCH		2
+#define BKPT_KIND_BL_INST		3
+#define BKPT_KIND_BLE_INST		4
+
+extern void EXFUN (cache_flush_region, (PTR, long, unsigned int));
+
+static SCHEME_OBJECT
+DEFUN (alloc_bkpt_handle, (kind, first_instr, entry_point),
+       int kind AND unsigned long first_instr AND PTR entry_point)
+{
+  SCHEME_OBJECT * handle;
+  Primitive_GC_If_Needed (5);
+  handle = Free;
+  Free += 5;
+
+  handle[0] = (MAKE_OBJECT (TC_MANIFEST_VECTOR, 4));
+  handle[1] = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, 2));
+  handle[2] = ((SCHEME_OBJECT) (FIXNUM_ZERO + kind));
+  handle[3] = ((SCHEME_OBJECT) first_instr);
+  handle[4] = (ENTRY_TO_OBJECT (entry_point));
+  
+  return (MAKE_POINTER_OBJECT (TC_VECTOR, handle));
+}
+
+SCHEME_OBJECT
+DEFUN (bkpt_install, (entry_point), PTR entry_point)
+{
+  unsigned long kind;
+  SCHEME_OBJECT handle;
+  unsigned long first_instr = (* ((unsigned long *) entry_point));
+  unsigned short opcode = ((first_instr >> 26) & 0x3f);
+
+  if ((! (branch_opcode_table[opcode])) || (opcode == 0x38))
+    kind = BKPT_KIND_NORMAL;	/* BE instr included */
+  else if (opcode == 0x39)
+#if 0
+    kind = BKPT_KIND_BLE_INST;
+#else /* for now */
+    return (SHARP_F);
+#endif
+  else if (opcode != 0x3a)
+  {
+    unsigned long second_instr = (* (((unsigned long *) entry_point) + 1));
+    unsigned long second_opcode = ((second_instr >> 26) & 0x3f);
+
+    /* We can't handle breakpoints to a branch instruction
+       with another branch instruction in its delay slot.
+       This could be nullification sensitive, but not
+       currently worthwhile.
+     */
+
+    if (branch_opcode_table[second_opcode])
+      return (SHARP_F);
+
+    kind = BKPT_KIND_PC_REL_BRANCH;
+  }
+
+  else
+  {
+    union branch_inst finstr;
+
+    finstr.inst = first_instr;
+    switch (finstr.fields.s)	/* minor opcode */
+    {
+      case 0:			/* BL instruction */
+#if 0
+        kind = BKPT_KIND_BL_INST;
+	break;
+#endif /* for now, fall through */
+
+      case 1:			/* GATE instruction */
+      case 2:			/* BLR  instruction */
+      default:			/* ?? */
+	return (SHARP_F);
+
+      case 6:
+	kind = BKPT_KIND_NORMAL;
+	break;
+    }
+  }
+
+  handle = (alloc_bkpt_handle (kind, first_instr, entry_point));
+
+  (* ((unsigned long *) entry_point)) = bkpt_instruction;
+  cache_flush_region (((PTR) entry_point), 1, (D_CACHE | I_CACHE));
+
+  return (handle);
+}
+
+SCHEME_OBJECT
+DEFUN (bkpt_closure_install, (entry_point), PTR entry_point)
+{
+  unsigned long * instrs = ((unsigned long *) entry_point);
+  SCHEME_OBJECT handle;
+
+  handle = (alloc_bkpt_handle (BKPT_KIND_CLOSURE, instrs[2], entry_point));
+  instrs[2] = closure_bkpt_instruction;
+  cache_flush_region (((PTR) &instrs[2]), 1, (D_CACHE | I_CACHE));
+  return (handle);
+}
+
+void
+DEFUN (bkpt_remove, (entry_point, handle),
+       PTR entry_point AND SCHEME_OBJECT handle)
+{
+  int offset;
+  unsigned long * instrs = ((unsigned long *) entry_point);
+
+  if (instrs[0] == bkpt_instruction)
+    offset = 0;
+  else if (instrs[2] == closure_bkpt_instruction)
+    offset = 2;
+  else
+    error_external_return ();
+
+  instrs[offset] = ((unsigned long) (FAST_MEMORY_REF (handle, 3)));
+  cache_flush_region (((PTR) &instrs[offset]), 1, (D_CACHE | I_CACHE));
+  return;
+}
+
+Boolean
+DEFUN (bkpt_p, (entry_point), PTR entry_point)
+{
+  unsigned long * instrs = ((unsigned long *) entry_point);
+
+  return ((instrs[0] == bkpt_instruction)
+	  || (instrs[2] == closure_bkpt_instruction));
+}
+
+Boolean
+DEFUN (do_bkpt_proceed, (value), unsigned long * value)
+{
+  SCHEME_OBJECT ep = (STACK_POP ());
+  SCHEME_OBJECT handle = (STACK_POP ());
+  SCHEME_OBJECT state = (STACK_POP ());
+
+  STACK_POP ();			/* Pop duplicate entry point. */
+
+  switch (OBJECT_DATUM (FAST_MEMORY_REF (handle, 2)))
+  {
+    case BKPT_KIND_CLOSURE:
+    {
+      int i, len;
+      unsigned long * buffer = ((unsigned long *) Constant_Top);
+      unsigned long * clos_entry
+	= (OBJECT_ADDRESS (FAST_MEMORY_REF (handle, 4)));
+      SCHEME_OBJECT real_entry_point;
+
+      EXTRACT_CLOSURE_ENTRY_ADDRESS (real_entry_point, clos_entry);
+      len = (bkpt_closure_proceed_thunk_end - bkpt_closure_proceed_thunk);
+      for (i = 0; i < (len - 2); i++)
+	buffer[i] = bkpt_closure_proceed_thunk[i];
+      cache_flush_region (((PTR) buffer), (len - 2), (D_CACHE | I_CACHE));
+
+      buffer[len - 2] = ((unsigned long) clos_entry);
+      buffer[len - 1] = real_entry_point;
+
+      Val = SHARP_F;
+      * value = ((unsigned long) buffer);
+      return (TRUE);
+    }
+
+    case BKPT_KIND_NORMAL:
+    {
+      int i, len;
+      unsigned long * buffer = ((unsigned long *) Constant_Top);
+
+      len = (bkpt_plus_proceed_thunk - bkpt_normal_proceed_thunk);
+      for (i = 0; i < (len - 2); i++)
+	buffer[i] = bkpt_normal_proceed_thunk[i];
+      buffer[len - 2] = ((unsigned long) (FAST_MEMORY_REF (handle, 3)));
+
+      cache_flush_region (((PTR) buffer), (len - 1), (D_CACHE | I_CACHE));
+      buffer[len - 1] = (((unsigned long) (OBJECT_ADDRESS (ep))) + 4);
+
+      Val = state;
+      * value = ((unsigned long) buffer);
+      return (TRUE);
+    }
+
+    case BKPT_KIND_BL_INST:
+    case BKPT_KIND_BLE_INST:
+    default:
+      STACK_PUSH (ep);
+      * value = ((unsigned long) ERR_EXTERNAL_RETURN);
+      return (FALSE);
+
+    case BKPT_KIND_PC_REL_BRANCH:
+    {
+      long offset;
+      int i, len, clobber;
+      union branch_inst new, old;
+      unsigned long * buffer = ((unsigned long *) Constant_Top);
+      unsigned long * instrs = ((unsigned long *) (OBJECT_ADDRESS (ep)));
+      unsigned long * block;
+
+      old.inst = ((unsigned long) (FAST_MEMORY_REF (handle, 3)));
+      offset = (assemble_12 (old));
+      if (offset >= 0)
+      {
+	block = bkpt_plus_proceed_thunk;
+	len = (bkpt_minus_proceed_thunk_start - block);
+	clobber = 0;
+      }
+      else
+      {
+	block = bkpt_minus_proceed_thunk_start;
+	len = (bkpt_closure_proceed_thunk - block);
+	clobber = (bkpt_minus_proceed_thunk - block);
+      }
+      
+      for (i = 0; i < (len - 2); i++)
+	buffer[i] = block[i];
+
+      new.inst = buffer[clobber];
+      old.inst = ((unsigned long) (FAST_MEMORY_REF (handle, 3)));
+      old.fields.w2b = new.fields.w2b;
+      old.fields.w2a = new.fields.w2a;
+      old.fields.w0 = new.fields.w0;
+      buffer[clobber] = old.inst;
+      buffer[clobber + 1] = instrs[1];
+      cache_flush_region (((PTR) buffer), (len - 2), (D_CACHE | I_CACHE));
+
+      buffer[len - 2] = (((unsigned long) instrs) + 8);
+      buffer[len - 1] = ((((unsigned long) instrs) + 8)
+			 + offset);
+      
+      Val = state;
+      * value = ((unsigned long) &buffer[clobber]);
+      return (TRUE);
+    }
   }
 }
 
@@ -854,6 +1198,7 @@ DEFUN (hppa_reset_hook, (utility_length, utility_table),
 
 #define ASM_RESET_HOOK() do						\
 {									\
+  bkpt_init ();								\
   hppa_reset_hook (((sizeof (utility_table)) / (sizeof (PTR))),		\
 		   ((PTR *) (&utility_table[0])));			\
 } while (0)
@@ -878,6 +1223,29 @@ DEFUN (hppa_grow_primitive_table, (new_size), int new_size)
     hppa_primitive_table = new_table;
   return (new_table != ((PTR *) NULL));
 }
+
+#define DECLARE_CMPINTMD_UTILITIES()					\
+  UTLD(hppa_extract_absolute_address),					\
+  UTLD(hppa_store_absolute_address),					\
+  UTLD(flush_i_cache),							\
+  UTLD(push_d_cache_region),						\
+  UTLD(flush_i_cache_initialize),					\
+  UTLD(assemble_17),							\
+  UTLD(assemble_12),							\
+  UTLD(C_closure_entry_point),						\
+  UTLD(bkpt_init),							\
+  UTLD(alloc_bkpt_handle),						\
+  UTLD(bkpt_install),							\
+  UTLD(bkpt_closure_install),						\
+  UTLD(bkpt_remove),							\
+  UTLD(bkpt_p),								\
+  UTLD(do_bkpt_proceed),						\
+  UTLD(transform_procedure_entries),					\
+  UTLD(transform_procedure_table),					\
+  UTLD(change_vm_protection),						\
+  UTLD(hppa_reset_hook),						\
+  UTLD(hppa_update_primitive_table),					\
+  UTLD(hppa_grow_primitive_table)
 
 #endif /* IN_CMPINT_C */
 

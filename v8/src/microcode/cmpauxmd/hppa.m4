@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Id: hppa.m4,v 1.32 1993/09/01 22:03:52 gjr Exp $
+;;;	$Id: hppa.m4,v 1.33 1993/09/11 02:45:00 gjr Exp $
 ;;;
 ;;;	Copyright (c) 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -410,14 +410,20 @@ flonum_floor_hook
 flonum_atan2_hook
 	B	flonum_atan2+4
 	COPY	22,18
+
+compiled_code_bkpt_hook
+	B	compiled_code_bkpt+4
+	LDO	-8(31),31
+
+compiled_closure_bkpt_hook
+	B	compiled_closure_bkpt+4
+	LDO	-12(31),31
 
 ;;
 ;; Provide dummy trapping hooks in case a newer version of compiled
 ;; code that expects more hooks is run.
 ;;
 no_hook
-	BREAK	0,44
-	NOP
 	BREAK	0,45
 	NOP
 	BREAK	0,46
@@ -1080,6 +1086,17 @@ flonum_atan2
 	BE	0(5,15)
 	LDW	0(0,4),20
 
+compiled_code_bkpt
+	LDO	-4(31),31			; bump back to entry point
+	COPY	19,25				; Preserve Dynamic link
+	B	trampoline_to_interface
+	LDI	0x3c,28
+
+compiled_closure_bkpt
+	LDO	-12(31),31			; bump back to entry point
+	B	trampoline_to_interface
+	LDI	0x3d,28
+
 ;; This label is used by the trap handler
 
 ep_scheme_hooks_high
@@ -1203,6 +1220,8 @@ $1_string
 	builtin(flonum_ceiling)
 	builtin(flonum_floor)
 	builtin(flonum_atan2)
+	builtin(compiled_code_bkpt)
+	builtin(compiled_closure_bkpt)
 	builtin(ep_scheme_hooks_high)
 changequote(",")
 						; Return
@@ -1417,6 +1436,77 @@ L$exit1
 	NOP
 	.PROCEND ;in=25,26;
 
+bkpt_normal_proceed
+	BL	bkpt_normal_cont,1		; Get PC
+	DEP	0,31,2,1
+bkpt_normal_cont
+	LDW	bkpt_normal_ep-bkpt_normal_cont(0,1),1		; entry point
+	BV	0(1)				; Invoke
+	NOP					; Slot for first instruction
+bkpt_normal_ep
+	NOP					; Slot for fall through
+
+bkpt_plus_proceed
+	COMB,=	1,1,bkpt_plus_t			; Slot for first instruction
+	NOP					; Slot for second instruction
+	STWM	1,-4(0,22)			; Preserve 1
+	BL	bkpt_plus_cont_f,1		; Get PC
+	DEP	0,31,2,1
+bkpt_plus_cont_f
+	LDW	bkpt_plus_ep-bkpt_plus_cont_f(0,1),1		; entry point
+	BV	0(1)				; Invoke
+	LDWM	4(0,22),1
+bkpt_plus_t
+	STWM	1,-4(0,22)			; Preserve 1
+	BL	bkpt_plus_cont_t,1		; Get PC
+	DEP	0,31,2,1
+bkpt_plus_cont_t
+	LDW	bkpt_plus_bt-bkpt_plus_cont_t(0,1),1		; entry point
+	BV	0(1)				; Invoke
+	LDWM	4(0,22),1
+bkpt_plus_ep
+	NOP					; Slot for fall through
+bkpt_plus_bt
+	NOP					; Slot for branch target
+
+bkpt_minus_proceed_start
+bkpt_minus_t
+	STWM	1,-4(0,22)			; Preserve 1
+	BL	bkpt_minus_cont_t,1		; Get PC
+	DEP	0,31,2,1
+bkpt_minus_cont_t
+	LDW	bkpt_minus_bt-bkpt_minus_cont_t(0,1),1 ; entry point
+	BV	0(1)				; Invoke
+	LDWM	4(0,22),1
+bkpt_minus_proceed
+	COMB,=	1,1,bkpt_minus_t		; Slot for first instruction
+	NOP					; Slot for second instruction
+	STWM	1,-4(0,22)			; Preserve 1
+	BL	bkpt_minus_cont_f,1		; Get PC
+	DEP	0,31,2,1
+bkpt_minus_cont_f
+	LDW	bkpt_minus_ep-bkpt_minus_cont_f(0,1),1 ; entry point
+	BV	0(1)				; Invoke
+	LDWM	4(0,22),1
+bkpt_minus_ep
+	NOP					; Slot for fall through
+bkpt_minus_bt
+	NOP					; Slot for branch target
+
+bkpt_closure_proceed
+	BL	bkpt_closure_cont,1
+	DEP	0,31,2,1
+bkpt_closure_cont
+	LDW	bkpt_closure_closure-bkpt_closure_cont(0,1),31
+	LDW	bkpt_closure_entry-bkpt_closure_cont(0,1),1
+	BV,N	0(1)	
+bkpt_closure_closure
+	NOP					; Closure object pointer
+bkpt_closure_entry
+	NOP					; Eventual entry point
+bkpt_closure_proceed_end
+	NOP
+
 	.SPACE	$TEXT$
 	.SUBSPA $LIT$,QUAD=0,ALIGN=8,ACCESS=44
 ;	.SUBSPA $CODE$,QUAD=0,ALIGN=8,ACCESS=44,CODE_ONLY
@@ -1474,4 +1564,10 @@ undivert(1)
 	.EXPORT interface_initialize,PRIV_LEV=3
 	.EXPORT cache_flush_region,PRIV_LEV=3
 	.EXPORT cache_flush_all,PRIV_LEV=3
+	.EXPORT bkpt_normal_proceed,PRIV_LEV=3
+	.EXPORT bkpt_plus_proceed,PRIV_LEV=3
+	.EXPORT bkpt_minus_proceed_start,PRIV_LEV=3
+	.EXPORT bkpt_minus_proceed,PRIV_LEV=3
+	.EXPORT bkpt_closure_proceed,PRIV_LEV=3
+	.EXPORT bkpt_closure_proceed_end,PRIV_LEV=3
 	.END
