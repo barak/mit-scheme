@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: load.scm,v 1.4 2000/01/14 18:09:29 cph Exp $
+;;; $Id: load.scm,v 1.5 2000/01/18 20:58:11 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -25,9 +25,5 @@
 (load-option 'SOS)
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
-    (load "imail-util")
-    (load "rfc822")
-    (load "imail-core")
-    (load "imail-file")
-    (load "imail-rmail")
-    (load "imail-umail")))
+    (fluid-let ((*allow-package-redefinition?* #t))
+      (package/system-loader "imail" '() 'QUERY))))
