@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 14.8 1991/11/04 20:30:06 cph Exp $
+$Id: system.scm,v 14.9 1998/02/12 04:31:37 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -54,6 +54,12 @@ MIT in each case. |#
 (define known-systems '())
 
 (define (add-system! system)
+  (let ((system*
+	 (list-search-positive known-systems
+	   (lambda (system*)
+	     (string=? (system/name system) (system/name system*))))))
+    (if system*
+	(set! known-systems (delq! system* known-systems))))
   (set! known-systems (append! known-systems (list system)))
   unspecific)
 
