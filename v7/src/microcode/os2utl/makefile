@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile,v 1.5 1995/03/08 21:39:23 cph Exp $
+###	$Id: makefile,v 1.6 1995/03/13 23:18:16 cph Exp $
 ###
 ###	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ###
@@ -56,6 +56,8 @@
 # assembly language, or even a simple interface library precompiled
 # with icc.
 
+all: scheme.exe
+
 OBJ = obj # obj for IBM C and GCC/2
 
 MACHINE_SOURCES = cmpint.c cmpauxmd.asm
@@ -88,7 +90,7 @@ LDFLAGS = $(DEBUG_LDFLAGS) $(ICC_FLAGS) /B"/PM:pm"
 #.c.obj:
 #	$(CC) $(CFLAGS) -c $<
 
-AS = as
+AS = .\os2utl\as
 ASFLAGS = -I
 
 cmpauxmd.$(OBJ) : cmpauxmd.asm
@@ -96,7 +98,7 @@ cmpauxmd.$(OBJ) : cmpauxmd.asm
 
 SCHEME_SOURCES = $(USER_PRIM_SOURCES) missing.c
 SCHEME_OBJECTS = $(USER_PRIM_OBJECTS) missing.$(OBJ)
-SCHEME_LIB = $(USER_LIBS) d:\local\prog\gcc2\lib\libcrt.lib d:\local\prog\gcc2\lib\gcc.lib # -lpmio -lstdwin -Xlinker -pm
+SCHEME_LIB = $(USER_LIBS) os2utl\libcrt.lib os2utl\gcc.lib # -lpmio -lstdwin -Xlinker -pm
 
 CORE_SOURCES = \
 $(MACHINE_SOURCES) \
