@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: vc.scm,v 1.1 1994/03/08 20:31:51 cph Exp $
+;;;	$Id: vc.scm,v 1.2 1994/03/08 20:59:07 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994 Massachusetts Institute of Technology
 ;;;
@@ -823,7 +823,7 @@ the value of vc-log-mode-hook."
 ;;;; RCS Commands
 
 (define vc-type:rcs
-  (make-vc-type 'RCS "$Id: vc.scm,v 1.1 1994/03/08 20:31:51 cph Exp $"))
+  (make-vc-type 'RCS "$Id: vc.scm,v 1.2 1994/03/08 20:59:07 cph Exp $"))
 
 (define-vc-master-template vc-type:rcs
   (lambda (pathname)
@@ -914,15 +914,15 @@ the value of vc-log-mode-hook."
 	    ;; but the working file.
 	    (begin
 	      (delete-file-no-errors workfile)
-	      (vc-run-command master 0 "/bin/sh"
+	      (vc-run-command master 0 "/bin/sh" "-c"
 			      (reduce string-append-separated
 				      ""
 				      (vc-command-arguments
-				       "co"
-				       (rcs-rev-switch "-p" revision)
-				       (vc-workfile-pathname master)))
-			      ">"
-			      (vc-workfile-pathname workfile))
+				       (list "co"
+					     (rcs-rev-switch "-p" revision)
+					     (vc-workfile-pathname master)
+					     ">"
+					     workfile))))
 	      (set-file-modes! workfile (if lock? #o644 #o444)))
 	    (vc-run-command master 0 "co"
 			    (rcs-rev-switch (if lock? "-l" "-r") revision)
