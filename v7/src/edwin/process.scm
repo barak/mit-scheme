@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: process.scm,v 1.55 1999/02/01 03:56:08 cph Exp $
+;;; $Id: process.scm,v 1.56 1999/02/16 00:39:29 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-1999 Massachusetts Institute of Technology
 ;;;
@@ -249,8 +249,7 @@ Initialized from the SHELL environment variable."
        (let ((port (subprocess-input-port (process-subprocess process)))
 	     (buffer (make-string 512))
 	     (output? #f))
-	 (let ((read-chars (port/operation port 'READ-CHARS))
-	       (close-input
+	 (let ((close-input
 		(lambda ()
 		  (deregister-process-input process)
 		  (close-port port)
@@ -259,7 +258,7 @@ Initialized from the SHELL environment variable."
 		      (set! output? #t)))))
 	   (let loop ()
 	     (if (process-runnable? process)
-		 (let ((n (read-chars port buffer)))
+		 (let ((n (input-port/read-string! port buffer)))
 		   (if n
 		       (if (fix:= n 0)
 			   (close-input)
