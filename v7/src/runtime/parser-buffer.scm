@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parser-buffer.scm,v 1.7 2003/02/14 18:28:33 cph Exp $
+$Id: parser-buffer.scm,v 1.8 2003/02/28 04:40:12 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -180,12 +180,14 @@ USA.
 
 (define (match-utf8-char-in-alphabet buffer alphabet)
   (let ((p (get-parser-buffer-pointer buffer)))
-    (if (let ((n
-	       (read-utf8-code-point-from-source
+    (if (let ((char
+	       (read-utf8-char-from-source
 		(lambda ()
-		  (read-parser-buffer-char buffer)))))
-	  (and n
-	       (code-point-in-alphabet? n alphabet)))
+		  (let ((char (read-parser-buffer-char buffer)))
+		    (and char
+			 (char->integer char)))))))
+	  (and (not (eof-object? char))
+	       (char-in-alphabet? char alphabet)))
 	#t
 	(begin
 	  (set-parser-buffer-pointer! buffer p)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.429 2003/02/24 21:53:39 cph Exp $
+$Id: runtime.pkg,v 14.430 2003/02/28 04:40:19 cph Exp $
 
 Copyright (c) 1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright (c) 1993,1994,1995,1996,1997 Massachusetts Institute of Technology
@@ -243,6 +243,8 @@ USA.
 	  flo:vector-ref
 	  flo:vector-set!
 	  flo:zero?
+	  guarantee-index-fixnum
+	  guarantee-limited-index-fixnum
 	  index-fixnum?
 	  int:*
 	  int:+
@@ -916,9 +918,11 @@ USA.
 	  code->char
 	  digit->char
 	  guarantee-char
+	  guarantee-radix
 	  integer->char
 	  make-char
-	  name->char)
+	  name->char
+	  radix?)
   (export (runtime string)
 	  %char<?
 	  downcase-table
@@ -4464,24 +4468,64 @@ USA.
   (parent (runtime))
   (export ()
 	  8-bit-alphabet?
+	  alphabet
 	  alphabet+
 	  alphabet-
 	  alphabet->char-set
 	  alphabet->code-points
 	  alphabet->string
+	  alphabet-rtd
 	  alphabet?
+	  call-with-wide-output-string
 	  char-in-alphabet?
 	  char-set->alphabet
-	  code-point->utf8-string
-	  code-point-in-alphabet?
 	  code-points->alphabet
-	  read-utf8-code-point
-	  read-utf8-code-point-from-source
+	  guarantee-8-bit-alphabet
+	  guarantee-alphabet
+	  guarantee-unicode-code-point
+	  guarantee-well-formed-code-point-list
+	  guarantee-wide-char
+	  guarantee-wide-string
+	  guarantee-wide-string-index
+	  make-wide-string
+	  open-wide-input-string
+	  open-wide-output-string
+	  read-utf16-be-char
+	  read-utf16-le-char
+	  read-utf32-be-char
+	  read-utf32-le-char
+	  read-utf8-char
 	  string->alphabet
+	  string->wide-string
 	  unicode-code-point?
-	  utf8-string->code-point
-	  well-formed-code-points-list?
-	  write-utf8-code-point))
+	  utf16-be-string->wide-string
+	  utf16-be-string-length
+	  utf16-le-string->wide-string
+	  utf16-le-string-length
+	  utf32-be-string-length
+	  utf32-le-string-length
+	  utf8-string->wide-string
+	  utf8-string-length
+	  well-formed-code-point-list?
+	  wide-char?
+	  wide-string
+	  wide-string->string
+	  wide-string->utf16-be-string
+	  wide-string->utf16-le-string
+	  wide-string->utf8-string
+	  wide-string-index?
+	  wide-string-length
+	  wide-string-ref
+	  wide-string-rtd
+	  wide-string-set!
+	  wide-string?
+	  write-utf16-be-char
+	  write-utf16-le-char
+	  write-utf32-be-char
+	  write-utf32-le-char
+	  write-utf8-char)
+  (export (runtime parser-buffer)
+	  read-utf8-char-from-source))
 
 (define-package (runtime url)
   (files "url")

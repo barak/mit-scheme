@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.89 2003/02/14 18:28:33 cph Exp $
+$Id: make.scm,v 14.90 2003/02/28 04:40:06 cph Exp $
 
 Copyright (c) 1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright (c) 1993,1994,1995,1996,1997 Massachusetts Institute of Technology
@@ -486,6 +486,7 @@ USA.
    (RUNTIME PATHNAME)
    (RUNTIME WORKING-DIRECTORY)
    (RUNTIME LOAD)
+   (RUNTIME UNICODE)
    ;; Syntax
    (RUNTIME NUMBER-PARSER)
    (RUNTIME PARSER)
