@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sfile.scm,v 14.25 2001/05/09 14:18:50 cph Exp $
+$Id: sfile.scm,v 14.26 2001/05/10 03:14:07 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -75,7 +75,8 @@ USA.
   (eq? 'DIRECTORY (file-type-indirect filename)))
 
 (define (file-symbolic-link? filename)
-  (eq? 'UNIX-SYMBOLIC-LINK (file-type-direct filename)))
+  ((ucode-primitive file-symlink? 1)
+   (->namestring (merge-pathnames filename))))
 
 (define (file-access filename amode)
   ((ucode-primitive file-access 2)
