@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.41 1991/02/26 21:33:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.42 1991/03/14 04:23:26 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -626,7 +626,7 @@ dmpwrld.o : scheme.touch prims.h ux.h osfs.h \
 	unexec.c unexhp9k800.c getpagesize.h
 
 x11base.o x11graph.o x11term.o starbasex.o : scheme.touch prims.h x11.h
-x11base.o : ux.h
+x11base.o : ux.h osio.h uxselect.h
 starbase.o : scheme.touch prims.h
 
 Sgraph.o Sgraph_xt.o SgX.o : scheme.touch prims.h Sgraph.h
@@ -652,7 +652,7 @@ uxctty.o : osctty.h
 uxenv.o : osenv.h
 uxfile.o : osfile.h osio.h uxio.h
 uxfs.o : osfs.h
-uxio.o : osio.h uxio.h
+uxio.o : osio.h uxio.h uxselect.h
 uxproc.o : osproc.h uxproc.h osio.h uxio.h osterm.h
 uxsig.o : ossig.h osctty.h ostty.h uxtrap.h uxutil.h critsec.h
 uxsock.o : uxsock.h osio.h uxio.h

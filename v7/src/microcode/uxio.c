@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.10 1991/03/11 23:43:02 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.11 1991/03/14 04:22:59 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -34,6 +34,7 @@ MIT in each case. */
 
 #include "ux.h"
 #include "uxio.h"
+#include "uxselect.h"
 
 size_t OS_channel_table_size;
 struct channel * channel_table;
@@ -123,7 +124,8 @@ DEFUN (OS_channel_close, (channel), Tchannel channel)
 {
   if (! (CHANNEL_INTERNAL (channel)))
     {
-      OS_channel_unregister (channel);
+      if (CHANNEL_REGISTERED (channel))
+	OS_channel_unregister (channel);
       STD_VOID_SYSTEM_CALL
 	(syscall_close, (UX_close (CHANNEL_DESCRIPTOR (channel))));
       MARK_CHANNEL_CLOSED (channel);
@@ -135,7 +137,8 @@ DEFUN (OS_channel_close_noerror, (channel), Tchannel channel)
 {
   if (! (CHANNEL_INTERNAL (channel)))
     {
-      OS_channel_unregister (channel);
+      if (CHANNEL_REGISTERED (channel))
+	OS_channel_unregister (channel);
       UX_close (CHANNEL_DESCRIPTOR (channel));
       MARK_CHANNEL_CLOSED (channel);
     }
@@ -355,21 +358,43 @@ DEFUN (OS_channel_unregister, (channel), Tchannel channel)
       (CHANNEL_REGISTERED (channel)) = 0;
     }
 }
-
-int
+
+enum select_input
 DEFUN (UX_select_input, (fd, blockp), int fd AND int blockp)
 {
 #ifdef HAVE_SELECT
+  extern int EXFUN (UX_process_any_status_change, (void));
+  int status_change_p;
   int nfds;
   SELECT_TYPE readable = input_descriptors;
   FD_SET (fd, (&readable));
-  STD_UINT_SYSTEM_CALL
-    (syscall_select,
-     nfds,
-     (select (FD_SETSIZE, (&readable), 0, 0, (blockp ? 0 : (&zero_timeout)))));
-  return ((nfds > 0) && (! (FD_ISSET (fd, (&readable)))));
+  while (1)
+    {
+      status_change_p = 0;
+      INTERRUPTABLE_EXTENT
+	(nfds,
+	 ((status_change_p = (UX_process_any_status_change ()))
+	  ? ((errno = EINTR), (-1))
+	  : (select (FD_SETSIZE, (&readable), 0, 0,
+		     (blockp ? 0 : (&zero_timeout))))));
+      if (nfds > 0)
+	return
+	  ((FD_ISSET (fd, (&readable)))
+	   ? select_input_argument
+	   : select_input_other);
+      else if (nfds == 0)
+	{
+	  if (!blockp)
+	    return (select_input_none);
+	}
+      else if (errno != EINTR)
+	error_system_call (errno, syscall_select);
+      else if (status_change_p)
+	return (select_input_process_status);
+      deliver_pending_interrupts ();
+    }
 #else
-  return (0);
+  return (select_input_argument);
 #endif
 }
 
@@ -380,10 +405,16 @@ DEFUN (OS_channel_select_then_read, (channel, buffer, nbytes),
        size_t nbytes)
 {
 #ifdef HAVE_SELECT
-  if ((OS_channels_registered > ((CHANNEL_REGISTERED (channel)) ? 1 : 0))
-      && (UX_select_input ((CHANNEL_DESCRIPTOR (channel)),
-			   (CHANNEL_NONBLOCKING (channel)))))
-    return (-2);
+  if (OS_channels_registered > ((CHANNEL_REGISTERED (channel)) ? 1 : 0))
+    switch (UX_select_input ((CHANNEL_DESCRIPTOR (channel)),
+			     (! (CHANNEL_NONBLOCKING (channel)))))
+      {
+      case select_input_none:
+	return (-1);
+      case select_input_other:
+      case select_input_process_status:
+	return (-2);
+      }
 #endif
   return (OS_channel_read (channel, buffer, nbytes));
 }

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.12 1991/03/08 01:41:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.13 1991/03/14 04:23:08 cph Exp $
 
 Copyright (c) 1990-1 Massachusetts Institute of Technology
 
@@ -550,7 +550,7 @@ DEFUN (OS_open_pty_master, (master_fd, master_fname),
   error_external_return ();
   return (0);
 }
-
+
 void
 DEFUN (OS_pty_master_send_signal, (channel, sig), Tchannel channel AND int sig)
 {
@@ -623,4 +623,10 @@ void
 DEFUN (OS_pty_master_quit, (channel), Tchannel channel)
 {
   OS_pty_master_send_signal (channel, SIGQUIT);
+}
+
+void
+DEFUN (OS_pty_master_hangup, (channel), Tchannel channel)
+{
+  OS_pty_master_send_signal (channel, SIGHUP);
 }

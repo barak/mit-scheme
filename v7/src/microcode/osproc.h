@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osproc.h,v 1.4 1991/03/11 23:42:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osproc.h,v 1.5 1991/03/14 04:22:35 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -116,6 +116,7 @@ extern void EXFUN (OS_process_kill, (Tprocess process));
 extern void EXFUN (OS_process_stop, (Tprocess process));
 extern void EXFUN (OS_process_interrupt, (Tprocess process));
 extern void EXFUN (OS_process_quit, (Tprocess process));
+extern void EXFUN (OS_process_hangup, (Tprocess process));
 
 extern void EXFUN (OS_process_continue_background, (Tprocess process));
 extern void EXFUN (OS_process_continue_foreground, (Tprocess process));

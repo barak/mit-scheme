@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosio.c,v 1.5 1991/03/11 23:42:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosio.c,v 1.6 1991/03/14 04:22:45 cph Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -234,7 +234,7 @@ DEFINE_PRIMITIVE ("CHANNEL-UNREGISTER", Prim_channel_unregister, 1, 1,
 DEFINE_PRIMITIVE ("CHANNEL-SELECT-THEN-READ", Prim_channel_select_then_read, 4, 4,
   "Like CHANNEL-READ, but also watches registered input channels.\n\
 If there is no input on CHANNEL, but there is input on some other registered\n\
-channel, this procedure returns #T.")
+channel or some subprocess status changes, this procedure returns #T.")
 {
   PRIMITIVE_HEADER (4);
   CHECK_ARG (2, STRING_P);

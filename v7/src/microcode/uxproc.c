@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxproc.c,v 1.9 1991/03/11 23:43:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxproc.c,v 1.10 1991/03/14 04:23:03 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -422,7 +422,7 @@ DEFUN (OS_make_subprocess,
  kill_child:
   _exit (1);
 }
-
+
 #define DEFUN_PROCESS_ACCESSOR(name, result_type, accessor)		\
 result_type								\
 DEFUN (name, (process), Tprocess process)				\
@@ -435,7 +435,7 @@ DEFUN_PROCESS_ACCESSOR (OS_process_status, enum process_status, PROCESS_STATUS)
 DEFUN_PROCESS_ACCESSOR (OS_process_reason, unsigned short, PROCESS_REASON)
 DEFUN_PROCESS_ACCESSOR
   (OS_process_jc_status, enum process_jc_status, PROCESS_JC_STATUS)
-
+
 int
 DEFUN (OS_process_valid_p, (process), Tprocess process)
 {
@@ -502,6 +502,12 @@ DEFUN_VOID (OS_process_status_sync_all)
     return (result);
   }
 }
+
+int
+DEFUN_VOID (UX_process_any_status_change)
+{
+  return (process_tick != sync_tick);
+}
 
 void
 DEFUN (OS_process_send_signal, (process, sig), Tprocess process AND int sig)
@@ -536,6 +542,12 @@ void
 DEFUN (OS_process_quit, (process), Tprocess process)
 {
   OS_process_send_signal (process, SIGQUIT);
+}
+
+void
+DEFUN (OS_process_hangup, (process), Tprocess process)
+{
+  OS_process_send_signal (process, SIGHUP);
 }
 
 void

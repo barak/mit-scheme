@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.16 1991/03/11 23:43:28 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.17 1991/03/14 04:23:20 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -37,6 +37,8 @@ MIT in each case. */
 #include "scheme.h"
 #include "prims.h"
 #include "ux.h"
+#include "osio.h"
+#include "uxselect.h"
 #include "x11.h"
 
 int x_debug = 0;
@@ -699,8 +701,8 @@ DEFUN (x_event_to_object, (event), XEvent * event)
    entry that reads events -- or else that all other event readers
    cooperate with this strategy.  */
 
-extern unsigned int OS_channels_registered;
-extern int EXFUN (UX_select_input, (int fd, int blockp));
+/* The time_limit argument is currently ignored, because Edwin doesn't
+   use it.  */
 
 static SCHEME_OBJECT
 DEFUN (xd_process_events, (xd, time_limit_p, time_limit),
@@ -708,38 +710,38 @@ DEFUN (xd_process_events, (xd, time_limit_p, time_limit),
        int time_limit_p AND
        unsigned long time_limit)
 {
-  unsigned int events_queued = 0;
   Display * display = (XD_DISPLAY (xd));
+  int do_select = (OS_channels_registered > 0);
+  unsigned int events_queued;
   if (XD_CACHED_EVENT_P (xd))
-    goto restart;
+    {
+      events_queued = (XEventsQueued (display, QueuedAlready));
+      goto restart;
+    }
+  events_queued =
+    (do_select ? (XEventsQueued (display, QueuedAlready))
+     : time_limit_p ? (XEventsQueued (display, QueuedAfterReading))
+     : 0);
   while (1)
     {
-      extern unsigned long EXFUN (OS_real_time_clock, (void));
       XEvent event;
-      if (time_limit_p || (OS_channels_registered > 0))
-	{
-	  if (events_queued > 0)
-	    events_queued -= 1;
-	  else
-	    while (1)
-	      {
-		events_queued = (XEventsQueued (display, QueuedAfterReading));
-		if (events_queued > 0)
-		  {
-		    events_queued -= 1;
-		    break;
-		  }
-		if (time_limit_p && ((OS_real_time_clock ()) >= time_limit))
-		  return (SHARP_F);
-		if (UX_select_input ((ConnectionNumber (display)),
-				     (!time_limit_p)))
-		  /* No input is available from the display, but some
-		     other registered input channel has input.  Return a
-		     special value immediately so that input can be
-		     processed.  */
-		  return (SHARP_T);
-	      }
-	}
+      if (events_queued > 0)
+	events_queued -= 1;
+      else if (do_select)
+	switch (UX_select_input ((ConnectionNumber (display)),
+				 (!time_limit_p)))
+	  {
+	  case select_input_none:
+	    return (SHARP_F);
+	  case select_input_other:
+	  case select_input_process_status:
+	    return (SHARP_T);
+	  case select_input_argument:
+	    events_queued = (XEventsQueued (display, QueuedAfterReading));
+	    continue;
+	  }
+      else if (time_limit_p)
+	return (SHARP_F);
       XNextEvent (display, (&event));
       if ((event . type) == KeymapNotify)
 	continue;

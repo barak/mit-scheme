@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osterm.h,v 1.6 1991/03/08 01:41:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osterm.h,v 1.7 1991/03/14 04:22:41 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -64,5 +64,6 @@ extern void EXFUN (OS_pty_master_stop, (Tchannel channel));
 extern void EXFUN (OS_pty_master_continue, (Tchannel channel));
 extern void EXFUN (OS_pty_master_interrupt, (Tchannel channel));
 extern void EXFUN (OS_pty_master_quit, (Tchannel channel));
+extern void EXFUN (OS_pty_master_hangup, (Tchannel channel));
 
 #endif /* SCM_OSTERM_H */

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosproc.c,v 1.7 1991/03/11 23:42:52 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosproc.c,v 1.8 1991/03/14 04:22:50 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -335,6 +335,10 @@ DEFINE_PRIMITIVE ("PROCESS-INTERRUPT", Prim_process_interrupt, 1, 1,
 DEFINE_PRIMITIVE ("PROCESS-QUIT", Prim_process_quit, 1, 1,
   "Sends the quit signal to process PROCESS-NUMBER (unix SIGQUIT).")
      PROCESS_SIGNALLING_PRIMITIVE (OS_process_quit)
+
+DEFINE_PRIMITIVE ("PROCESS-HANGUP", Prim_process_hangup, 1, 1,
+  "Sends the hangup signal to process PROCESS-NUMBER (unix SIGHUP).")
+     PROCESS_SIGNALLING_PRIMITIVE (OS_process_hangup)
 
 DEFINE_PRIMITIVE ("PROCESS-STOP", Prim_process_stop, 1, 1,
   "Stops process PROCESS-NUMBER (unix SIGTSTP).")

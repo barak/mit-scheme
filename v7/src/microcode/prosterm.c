@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosterm.c,v 1.8 1991/03/08 01:41:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosterm.c,v 1.9 1991/03/14 04:22:54 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -49,6 +49,15 @@ DEFUN (arg_terminal, (argument_number), int argument_number)
   return (channel);
 }
 
+static Tchannel
+DEFUN (arg_pty_master, (arg), unsigned int arg)
+{
+  Tchannel channel = (arg_channel (1));
+  if ((OS_channel_type (channel)) != channel_type_pty_master)
+    error_bad_range_arg (1);
+  return (channel);
+}
+
 DEFINE_PRIMITIVE ("TERMINAL-GET-ISPEED", Prim_terminal_get_ispeed, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
@@ -81,12 +90,6 @@ DEFINE_PRIMITIVE ("BAUD-RATE->INDEX", Prim_baud_rate_to_index, 1, 1, 0)
   }
 }
 
-DEFINE_PRIMITIVE ("OS-JOB-CONTROL?", Prim_os_job_control_p, 0, 0, 0)
-{
-  PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (OS_job_control_p ()));
-}
-
 DEFINE_PRIMITIVE ("TERMINAL-GET-STATE", Prim_terminal_get_state, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
@@ -109,7 +112,7 @@ DEFINE_PRIMITIVE ("TERMINAL-SET-STATE", Prim_terminal_set_state, 2, 2, 0)
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
-
+
 DEFINE_PRIMITIVE ("TERMINAL-COOKED-OUTPUT?", Prim_terminal_cooked_output_p, 1, 1,
   "Return #F iff TERMINAL is not in cooked output mode.")
 {
@@ -133,7 +136,7 @@ DEFINE_PRIMITIVE ("TERMINAL-COOKED-OUTPUT", Prim_terminal_cooked_output, 1, 1,
   OS_terminal_cooked_output (arg_terminal (1));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
-
+
 DEFINE_PRIMITIVE ("TERMINAL-BUFFERED?", Prim_terminal_buffered_p, 1, 1,
   "Return #F iff TERMINAL is not in buffered mode.")
 {
@@ -181,6 +184,12 @@ DEFINE_PRIMITIVE ("TERMINAL-DRAIN-OUTPUT", Prim_terminal_drain_output, 1, 1,
   OS_terminal_drain_output (arg_terminal (1));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
+
+DEFINE_PRIMITIVE ("OS-JOB-CONTROL?", Prim_os_job_control_p, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (OS_job_control_p ()));
+}
 
 DEFINE_PRIMITIVE ("HAVE-PTYS?", Prim_have_ptys_p, 0, 0, 0)
 {
@@ -209,15 +218,6 @@ Returns a vector #(CHANNEL MASTER-NAME SLAVE-NAME).")
       PRIMITIVE_RETURN (vector);
     }
   }
-}
-
-static Tchannel
-DEFUN (arg_pty_master, (arg), unsigned int arg)
-{
-  Tchannel channel = (arg_channel (1));
-  if ((OS_channel_type (channel)) != channel_type_pty_master)
-    error_bad_range_arg (1);
-  return (channel);
 }
 
 DEFINE_PRIMITIVE ("PTY-MASTER-SEND-SIGNAL", Prim_pty_master_send_signal, 2, 2,
@@ -261,5 +261,12 @@ DEFINE_PRIMITIVE ("PTY-MASTER-QUIT", Prim_pty_master_quit, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   OS_pty_master_quit (arg_pty_master (1));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("PTY-MASTER-HANGUP", Prim_pty_master_hangup, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  OS_pty_master_hangup (arg_pty_master (1));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
