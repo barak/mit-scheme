@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/bintopsb.c,v 9.37 1989/05/16 07:16:51 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/bintopsb.c,v 9.38 1989/07/02 05:12:25 cph Exp $
  *
  * This File contains the code to translate internal format binary
  * files to portable format.
@@ -156,18 +156,20 @@ print_a_char(c, name)
     case '\\': OUT("\\\\");
     case '\0': OUT("\\0");
     case ' ' : OUT(" ");
+
     default:
-    if ((isalpha(c)) || (isdigit(c)) || (ispunct(c)))
+    if ((isascii(c)) && ((isalpha(c)) || (isdigit(c)) || (ispunct(c))))
     {
       putc(c, portable_file);
     }
     else
     {
+      unsigned int x = (((int) c) & ((1 << CHAR_SIZE) - 1));
       fprintf(stderr,
 	      "%s: %s: File may not be portable: c = 0x%x\n",
-	      program_name, name, ((int) c));
+	      program_name, name, x);
       /* This does not follow C conventions, but eliminates ambiguity */
-      fprintf(portable_file, "X%x ", ((int) c));
+      fprintf(portable_file, "\\X%d ", x);
     }
   }
   return;
