@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.4 1990/08/10 02:13:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.5 1990/08/16 19:22:41 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -38,6 +38,15 @@ MIT in each case. */
 size_t OS_channel_table_size;
 struct channel * channel_table;
 
+static void
+DEFUN_VOID (UX_channel_close_all)
+{
+  Tchannel channel;
+  for (channel = 0; (channel < OS_channel_table_size); channel += 1)
+    if (CHANNEL_OPEN_P (channel))
+      OS_channel_close (channel);
+}
+
 void
 DEFUN_VOID (UX_initialize_channels)
 {
@@ -55,6 +64,7 @@ DEFUN_VOID (UX_initialize_channels)
     for (channel = 0; (channel < OS_channel_table_size); channel += 1)
       MARK_CHANNEL_CLOSED (channel);
   }
+  add_reload_cleanup (UX_channel_close_all);
 }
 
 void
@@ -63,15 +73,6 @@ DEFUN_VOID (UX_reset_channels)
   UX_free (channel_table);
   channel_table = 0;
   OS_channel_table_size = 0;
-}
-
-void
-DEFUN_VOID (OS_channel_close_all)
-{
-  Tchannel channel;
-  for (channel = 0; (channel < OS_channel_table_size); channel += 1)
-    if (CHANNEL_OPEN_P (channel))
-      OS_channel_close (channel);
 }
 
 Tchannel
@@ -99,7 +100,8 @@ DEFUN (OS_channel_close, (channel), Tchannel channel)
 {
   if (! (CHANNEL_INTERNAL (channel)))
     {
-      STD_VOID_SYSTEM_CALL ("close", (UX_close (CHANNEL_DESCRIPTOR (channel))));
+      STD_VOID_SYSTEM_CALL
+	("close", (UX_close (CHANNEL_DESCRIPTOR (channel))));
       MARK_CHANNEL_CLOSED (channel);
     }
 }
@@ -110,13 +112,13 @@ DEFUN (OS_channel_close_noerror, (channel), Tchannel channel)
   UX_close (CHANNEL_DESCRIPTOR (channel));
   MARK_CHANNEL_CLOSED (channel);
 }
-
+
 enum channel_type
 DEFUN (OS_channel_type, (channel), Tchannel channel)
 {
   return (CHANNEL_TYPE (channel));
 }
-
+
 long
 DEFUN (OS_channel_read, (channel, buffer, nbytes),
        Tchannel channel AND
