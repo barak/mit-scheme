@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/primutl.c,v 9.44 1987/12/04 22:18:58 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/primutl.c,v 9.45 1988/03/24 07:13:17 cph Rel $
  *
  * This file contains the support routines for mapping primitive names
  * to numbers within the microcode.  Primitives are written in C
@@ -48,6 +48,32 @@ Pointer Undefined_Primitives_Arity = NIL;
 
 /* Common utilities. */
 
+struct primitive_alias
+  {
+    char *alias;
+    char *name;
+  };
+
+#include "prename.h"
+
+static char *
+primitive_alias_to_name (alias)
+     char *alias;
+{
+  fast struct primitive_alias *alias_ptr;
+  fast struct primitive_alias *alias_end;
+
+  alias_ptr = aliases;
+  alias_end = (alias_ptr + N_ALIASES);
+  while (alias_ptr < alias_end)
+    {
+      if ((strcmp (alias, (alias_ptr -> alias))) == 0)
+	return (alias_ptr -> name);
+      alias_ptr += 1;
+    }
+  return (alias);
+}
+
 /*
   In primitive_name_to_code, size is really 1 less than size.
   It is really the index of the last valid entry.
@@ -65,6 +91,7 @@ primitive_name_to_code(name, table, size)
 {
   fast int i;
 
+  name = (primitive_alias_to_name (name));
   for (i = size; i >= 0; i -= 1)
   {
     fast char *s1, *s2;
@@ -98,6 +125,7 @@ primitive_name_to_code(name, table, size)
   extern int strcmp();
   fast int low, high, middle, result;
 
+  name = (primitive_alias_to_name (name));
   low = 0;
   high = size;
 

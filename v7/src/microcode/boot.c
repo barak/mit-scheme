@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.46 1988/02/20 19:50:46 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.47 1988/03/24 07:12:02 cph Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -690,17 +690,24 @@ gc_death(code, message, scan, free)
 
 /* Utility primitives. */
 
-#define IDENTITY_LENGTH 	20		/* Plenty of room */
-#define ID_RELEASE		0		/* Scheme system release */
-#define ID_MICRO_VERSION	1		/* Microcode version */
-#define ID_MICRO_MOD		2		/* Microcode modification */
-#define ID_PRINTER_WIDTH	3		/* Width of console (chars) */
-#define ID_PRINTER_LENGTH	4		/* Height of console (chars) */
-#define ID_NEW_LINE_CHARACTER	5		/* #\Newline */
-#define ID_FLONUM_PRECISION	6		/* Flonum mantissa (bits) */
-#define ID_FLONUM_EXPONENT	7		/* Flonum exponent (bits) */
-#define ID_OS_NAME		8		/* OS name (string) */
-#define ID_OS_VARIANT		9		/* OS variant (string) */
+#define IDENTITY_LENGTH 	20	/* Plenty of room */
+#define ID_RELEASE		0	/* System release (string) */
+#define ID_MICRO_VERSION	1	/* Microcode version (fixnum) */
+#define ID_MICRO_MOD		2	/* Microcode modification (fixnum) */
+#define ID_PRINTER_WIDTH	3	/* TTY width (# chars) */
+#define ID_PRINTER_LENGTH	4	/* TTY height (# chars) */
+#define ID_NEW_LINE_CHARACTER	5	/* #\Newline */
+#define ID_FLONUM_PRECISION	6	/* Flonum mantissa (# bits) */
+#define ID_FLONUM_EXPONENT	7	/* Flonum exponent (# bits) */
+#define ID_OS_NAME		8	/* OS name (string) */
+#define ID_OS_VARIANT		9	/* OS variant (string) */
+#define ID_STACK_TYPE		10	/* Scheme stack type (string) */
+
+#ifdef USE_STACKLETS
+#define STACK_TYPE_STRING "stacklets"
+#else
+#define STACK_TYPE_STRING "standard"
+#endif
 
 DEFINE_PRIMITIVE ("MICROCODE-IDENTIFY", Prim_Microcode_Identify, 0)
 {
@@ -730,6 +737,8 @@ DEFINE_PRIMITIVE ("MICROCODE-IDENTIFY", Prim_Microcode_Identify, 0)
     (Result, ID_OS_NAME, (C_String_To_Scheme_String (OS_Name)));
   User_Vector_Set
     (Result, ID_OS_VARIANT, (C_String_To_Scheme_String (OS_Variant)));
+  User_Vector_Set
+    (Result, ID_STACK_TYPE, (C_String_To_Scheme_String (STACK_TYPE_STRING)));
   PRIMITIVE_RETURN (Result);
 }
 

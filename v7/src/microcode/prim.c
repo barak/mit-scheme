@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.c,v 9.29 1988/03/24 07:12:47 cph Rel $
+
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,247 +32,265 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.c,v 9.28 1987/11/17 08:14:49 jinx Rel $
- *
- * The leftovers ... primitives that don't seem to belong elsewhere.
- *
- */
+/* The leftovers ... primitives that don't seem to belong elsewhere. */
 
 #include "scheme.h"
 #include "primitive.h"
 
-/* Random predicates: */
+/* Low level object manipulation */
 
-/* (NULL? OBJECT)
-   Returns #!TRUE if OBJECT is NIL.  Otherwise returns NIL.  This is
-   the primitive known as NOT, NIL?, and NULL? in Scheme.
-*/
-Built_In_Primitive(Prim_Null, 1, "NULL?", 0xC)
-Define_Primitive(Prim_Null, 1, "NULL?")
+/* (PRIMITIVE-OBJECT-TYPE OBJECT)
+   Returns the type code of OBJECT as an unsigned integer.  */
+
+DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-TYPE", Prim_prim_obj_type, 1)
 {
-  Primitive_1_Arg();
+  PRIMITIVE_HEADER (1);
 
-  Touch_In_Primitive(Arg1, Arg1);
-  PRIMITIVE_RETURN((Arg1 == NIL) ? TRUTH : NIL);
+  PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM (OBJECT_TYPE (ARG_REF (1))));
 }
 
-/* (EQ? OBJECT-1 OBJECT-2)
-   Returns #!TRUE if the two objects have the same type code
-   and datum.  Returns NIL otherwise.
-*/
-Built_In_Primitive(Prim_Eq, 2, "EQ?", 0xD)
-Define_Primitive(Prim_Eq, 2, "EQ?")
-{
-  Primitive_2_Args();
+/* (PRIMITIVE-OBJECT-GC-TYPE OBJECT)
+   Returns an unsigned integer indicating the GC type of the object.  */
 
-  if (Arg1 == Arg2)
-    return TRUTH;
-  Touch_In_Primitive(Arg1, Arg1);
-  Touch_In_Primitive(Arg2, Arg2);
-  PRIMITIVE_RETURN((Arg1 == Arg2) ? TRUTH : NIL);
+DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-GC-TYPE", Prim_prim_obj_gc_type, 1)
+{
+  PRIMITIVE_HEADER (1); 
+
+  PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM (GC_Type (ARG_REF (1))));
+}
+
+/* (PRIMITIVE-OBJECT-TYPE? TYPE-CODE OBJECT)
+   Return #T if the type code of OBJECT is TYPE-CODE, else #F.  */
+
+DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-TYPE?", Prim_prim_obj_type_p, 2)
+{
+  PRIMITIVE_HEADER (2);
+
+  PRIMITIVE_RETURN
+    (((OBJECT_TYPE (ARG_REF (2))) ==
+      (arg_index_integer (1, (MAX_TYPE_CODE + 1))))
+     ? TRUTH
+     : NIL);
+}
+
+/* (PRIMITIVE-OBJECT-DATUM OBJECT)
+   Returns the datum part of OBJECT as an unsigned integer. */
+
+DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-DATUM", Prim_prim_obj_datum, 1)
+{
+  PRIMITIVE_HEADER (1);
+
+  PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (OBJECT_DATUM (ARG_REF (1))));
 }
 
-/* Pointer manipulation */
-
 /* (MAKE-NON-POINTER-OBJECT NUMBER)
-   Returns an (extended) fixnum with the same value as NUMBER.  In
-   the CScheme interpreter this is basically a no-op, since fixnums
-   already store 24 bits.
-*/
-Built_In_Primitive(Prim_Make_Non_Pointer, 1,
-		   "MAKE-NON-POINTER-OBJECT", 0xB1)
-Define_Primitive(Prim_Make_Non_Pointer, 1,
-		   "MAKE-NON-POINTER-OBJECT")
-{
-  Primitive_1_Arg();
+   Converts the unsigned integer NUMBER into a fixnum, by creating an
+   object whose type is TC_FIXNUM and whose datum is NUMBER.  */
 
-  Arg_1_Type(TC_FIXNUM);
-  PRIMITIVE_RETURN(Arg1);
+DEFINE_PRIMITIVE ("MAKE-NON-POINTER-OBJECT", Prim_make_non_pointer_object, 1)
+{
+  fast long datum;
+  PRIMITIVE_HEADER (1);
+
+  datum = (object_to_long ((ARG_REF (1)),
+			   ERR_ARG_1_WRONG_TYPE,
+			   ERR_ARG_1_BAD_RANGE));
+  if ((datum < 0) || (datum > ADDRESS_MASK))
+    error_bad_range_arg (1);
+  PRIMITIVE_RETURN (MAKE_FIXNUM (datum));
 }
 
-/* (PRIMITIVE-DATUM OBJECT)
-   Returns the datum part of OBJECT.
-*/
-Built_In_Primitive(Prim_Primitive_Datum, 1, "PRIMITIVE-DATUM", 0xB0)
-Define_Primitive(Prim_Primitive_Datum, 1, "PRIMITIVE-DATUM")
-{
-  Primitive_1_Arg();
+/* (PRIMITIVE-OBJECT-SET-TYPE TYPE-CODE OBJECT)
+   Returns a new object with TYPE-CODE and the datum part of OBJECT.  */
 
-  PRIMITIVE_RETURN(Make_New_Pointer(TC_ADDRESS, Arg1));
+DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-SET-TYPE", Prim_prim_obj_set_type, 2)
+{
+  PRIMITIVE_HEADER (2);
+
+  PRIMITIVE_RETURN
+    (Make_New_Pointer ((arg_index_integer (1, (MAX_TYPE_CODE + 1))),
+		       (ARG_REF (2))));
 }
 
-/* (PRIMITIVE-TYPE OBJECT)
-   Returns the type code of OBJECT as a number.
-   Note: THE OBJECT IS TOUCHED FIRST.
-*/
-Built_In_Primitive(Prim_Prim_Type, 1, "PRIMITIVE-TYPE", 0x10)
-Define_Primitive(Prim_Prim_Type, 1, "PRIMITIVE-TYPE")
+/* (PRIMITIVE-OBJECT-EQ? OBJECT-1 OBJECT-2)
+   Returns #T if the two objects have the same type code and datum.
+   Returns #F otherwise.  */
+
+DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-EQ?", Prim_prim_obj_eq_p, 2)
 {
-  Primitive_1_Arg();
+  PRIMITIVE_HEADER (2);
 
-  Touch_In_Primitive(Arg1, Arg1);
-  PRIMITIVE_RETURN(Make_Unsigned_Fixnum(OBJECT_TYPE(Arg1)));
-}
-
-/* (PRIMITIVE-GC-TYPE OBJECT)
-   Returns a fixnum indicating the GC type of the object.  The object
-   is NOT touched first.
-*/
-
-Built_In_Primitive(Prim_Gc_Type, 1, "PRIMITIVE-GC-TYPE", 0xBC)
-Define_Primitive(Prim_Gc_Type, 1, "PRIMITIVE-GC-TYPE")
-{
-  Primitive_1_Arg(); 
-
-  PRIMITIVE_RETURN(Make_Non_Pointer(TC_FIXNUM, GC_Type(Arg1)));
+  PRIMITIVE_RETURN (((ARG_REF (1)) == (ARG_REF (2))) ? TRUTH : NIL);
 }
 
-/* (PRIMITIVE-TYPE? TYPE-CODE OBJECT)
-   Return #!TRUE if the type code of OBJECT is TYPE-CODE, NIL
-   otherwise.
-   Note: THE OBJECT IS TOUCHED FIRST.
-*/
-Built_In_Primitive(Prim_Prim_Type_QM, 2, "PRIMITIVE-TYPE?", 0xF)
-Define_Primitive(Prim_Prim_Type_QM, 2, "PRIMITIVE-TYPE?")
-{
-  Primitive_2_Args();
+/* Low level memory references.
 
-  Arg_1_Type(TC_FIXNUM);
-  Touch_In_Primitive(Arg2, Arg2);
-  PRIMITIVE_RETURN((Type_Code(Arg2) == Get_Integer(Arg1)) ? TRUTH : NIL);
-}
-
-/* (PRIMITIVE-SET-TYPE TYPE-CODE OBJECT)
-   Returns a new object with TYPE-CODE and the datum part of
-   OBJECT.
-   Note : IT TOUCHES ITS SECOND ARGUMENT (for completeness sake).
-   This is a "gc-safe" (paranoid) operation.
-*/
-
-Built_In_Primitive(Prim_Primitive_Set_Type, 2, "PRIMITIVE-SET-TYPE", 0x11)
-Define_Primitive(Prim_Primitive_Set_Type, 2, "PRIMITIVE-SET-TYPE")
-{
-  long New_GC_Type, New_Type;
-  Primitive_2_Args();
-
-  Arg_1_Type(TC_FIXNUM);
-  Range_Check(New_Type, Arg1, 0, MAX_TYPE_CODE, ERR_ARG_1_BAD_RANGE);
-  Touch_In_Primitive(Arg2, Arg2);
-  New_GC_Type = GC_Type_Code(New_Type);
-  if ((GC_Type(Arg2) == New_GC_Type) ||
-      (New_GC_Type == GC_Non_Pointer))
-  {
-    PRIMITIVE_RETURN(Make_New_Pointer(New_Type, Arg2));
-  }
-  else
-  {
-    Primitive_Error(ERR_ARG_1_BAD_RANGE);
-  }
-  /*NOTREACHED*/
-}
-
-/* Subprimitives.  
    Many primitives can be built out of these, and eventually should be.
    These are extremely unsafe, since there is no consistency checking.
    In particular, they are not gc-safe: You can screw yourself royally
-   by using them.  
-*/
+   by using them.  */
 
-/* (&MAKE-OBJECT TYPE-CODE OBJECT)
-   Makes a Scheme object whose datum field is the datum field of
-   OBJECT, and whose type code is TYPE-CODE.  It does not touch.
-*/
-
-Built_In_Primitive(Prim_And_Make_Object, 2, "&MAKE-OBJECT", 0x8D)
-Define_Primitive(Prim_And_Make_Object, 2, "&MAKE-OBJECT")
-{
-  long New_Type;
-  Primitive_2_Args();
-
-  Arg_1_Type(TC_FIXNUM);
-  Range_Check(New_Type, Arg1, 0, MAX_TYPE_CODE, ERR_ARG_1_BAD_RANGE);
-  PRIMITIVE_RETURN(Make_New_Pointer(New_Type, Arg2));
-}
-
-/* (SYSTEM-MEMORY-REF OBJECT INDEX)
+/* (PRIMITIVE-OBJECT-REF OBJECT INDEX)
    Fetches the index'ed slot in object.
-   Performs no type checking in object.
-*/
+   Performs no type checking on object.  */
 
-Built_In_Primitive(Prim_System_Memory_Ref, 2, "SYSTEM-MEMORY-REF", 0x195)
-Define_Primitive(Prim_System_Memory_Ref, 2, "SYSTEM-MEMORY-REF")
+DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-REF", Prim_prim_obj_ref, 2)
 {
-  Primitive_2_Args();
+  PRIMITIVE_HEADER (2);
 
-  Arg_2_Type(TC_FIXNUM);
-  PRIMITIVE_RETURN(Vector_Ref(Arg1, Get_Integer(Arg2)));
+  PRIMITIVE_RETURN (Vector_Ref ((ARG_REF (1)), (arg_nonnegative_integer (2))));
 }
 
-/* (SYSTEM-MEMORY-SET! OBJECT INDEX VALUE)
+/* (PRIMITIVE-OBJECT-SET! OBJECT INDEX VALUE)
    Stores value in the index'ed slot in object.
-   Performs no type checking in object.
-*/
+   Performs no type checking on object.  */
 
-Built_In_Primitive(Prim_System_Memory_Set, 3, "SYSTEM-MEMORY-SET!", 0x196)
-Define_Primitive(Prim_System_Memory_Set, 3, "SYSTEM-MEMORY-SET!")
+DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-SET!", Prim_prim_obj_set, 3)
 {
-  long index;
-  Primitive_3_Args();
+  fast long index;
+  PRIMITIVE_HEADER (3);
 
-  Arg_2_Type(TC_FIXNUM);
-  index = Get_Integer(Arg2);
-  PRIMITIVE_RETURN(Swap_Pointers(Nth_Vector_Loc(Arg1, index), Arg3));
+  index = (arg_nonnegative_integer (2));
+  PRIMITIVE_RETURN
+    (Swap_Pointers (Nth_Vector_Loc ((ARG_REF (1)), index), (ARG_REF (3))));
+}
+
+/* Safe versions of the object manipulators.
+   These touch their arguments, and provide GC safety tests.  */
+
+DEFINE_PRIMITIVE ("OBJECT-TYPE", Prim_object_type, 1)
+{
+  fast Pointer object;
+  PRIMITIVE_HEADER (1);
+
+  Touch_In_Primitive ((ARG_REF (1)), object);
+  PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM (OBJECT_TYPE (object)));
+}
+
+DEFINE_PRIMITIVE ("OBJECT-GC-TYPE", Prim_object_gc_type, 1)
+{
+  fast Pointer object;
+  PRIMITIVE_HEADER (1); 
+
+  Touch_In_Primitive ((ARG_REF (1)), object);
+  PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM (GC_Type (object)));
+}
+
+DEFINE_PRIMITIVE ("OBJECT-TYPE?", Prim_object_type_p, 2)
+{
+  fast Pointer object;
+  PRIMITIVE_HEADER (2);
+
+  Touch_In_Primitive ((ARG_REF (2)), object);
+  PRIMITIVE_RETURN
+    (((OBJECT_TYPE (object)) ==
+      (arg_index_integer (1, (MAX_TYPE_CODE + 1))))
+     ? TRUTH
+     : NIL);
+}
+
+DEFINE_PRIMITIVE ("OBJECT-DATUM", Prim_object_datum, 1)
+{
+  fast Pointer object;
+  PRIMITIVE_HEADER (1);
+
+  Touch_In_Primitive ((ARG_REF (1)), object);
+  PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (OBJECT_DATUM (object)));
+}
+
+DEFINE_PRIMITIVE ("OBJECT-SET-TYPE", Prim_object_set_type, 2)
+{
+  fast long type_code;
+  fast long gc_type_code;
+  fast Pointer object;
+  PRIMITIVE_HEADER (2);
+
+  type_code = (arg_index_integer (1, (MAX_TYPE_CODE + 1)));
+  gc_type_code = (GC_Type_Code (type_code));
+  Touch_In_Primitive ((ARG_REF (2)), object);
+  if ((gc_type_code != (GC_Type (object))) &&
+      (gc_type_code != GC_Non_Pointer))
+    error_bad_range_arg (1);
+  PRIMITIVE_RETURN (Make_New_Pointer (type_code, object));
+}
+
+/* (EQ? OBJECT-1 OBJECT-2)
+   Returns #T if the two objects have the same type code and datum.
+   Returns #F otherwise.
+   Touches both arguments.  */
+
+DEFINE_PRIMITIVE ("EQ?", Prim_eq, 2)
+{
+  fast Pointer object_1;
+  fast Pointer object_2;
+  PRIMITIVE_HEADER (2);
+
+  Touch_In_Primitive ((ARG_REF (1)), object_1);
+  Touch_In_Primitive ((ARG_REF (2)), object_2);
+  PRIMITIVE_RETURN ((object_1 == object_2) ? TRUTH : NIL);
+}
+
+/* (NOT OBJECT)
+   Returns #T if OBJECT is #F.  Otherwise returns #F.  This is
+   the primitive known as NOT, NULL?, and FALSE? in Scheme.
+   Touches the argument.  */
+
+DEFINE_PRIMITIVE ("NOT", Prim_not, 1)
+{
+  fast Pointer object;
+  PRIMITIVE_HEADER (1);
+
+  Touch_In_Primitive ((ARG_REF (1)), object);
+  PRIMITIVE_RETURN ((object == NIL) ? TRUTH : NIL);
 }
 
 /* Cells */
 
 /* (MAKE-CELL CONTENTS)
-   Creates a cell with contents CONTENTS.
-*/
-Built_In_Primitive(Prim_Make_Cell, 1, "MAKE-CELL", 0x61)
-Define_Primitive(Prim_Make_Cell, 1, "MAKE-CELL")
+   Creates a cell with contents CONTENTS. */
+
+DEFINE_PRIMITIVE ("MAKE-CELL", Prim_make_cell, 1)
 {
-  Primitive_1_Arg();
+  PRIMITIVE_HEADER (1);
 
-  Primitive_GC_If_Needed(1);
-  *Free++ = Arg1;
-  PRIMITIVE_RETURN(Make_Pointer(TC_CELL, (Free - 1)));
-}
-
-/* (CELL-CONTENTS CELL)
-   Returns the contents of the cell CELL.
-*/
-Built_In_Primitive(Prim_Cell_Contents, 1, "CELL-CONTENTS", 0x62)
-Define_Primitive(Prim_Cell_Contents, 1, "CELL-CONTENTS")
-{
-  Primitive_1_Arg();
-
-  Arg_1_Type(TC_CELL);
-  PRIMITIVE_RETURN(Vector_Ref(Arg1, CELL_CONTENTS));
+  Primitive_GC_If_Needed (1);
+  (*Free++) = (ARG_REF (1));
+  PRIMITIVE_RETURN (Make_Pointer (TC_CELL, (Free - 1)));
 }
 
 /* (CELL? OBJECT)
-   Returns #!TRUE if OBJECT has type-code CELL, otherwise returns
-   NIL.
-*/
-Built_In_Primitive(Prim_Cell, 1, "CELL?", 0x63)
-Define_Primitive(Prim_Cell, 1, "CELL?")
-{
-  Primitive_1_Arg();
+   Returns #T if OBJECT is a cell, else #F.  */
 
-  Touch_In_Primitive(Arg1,Arg1);
-  PRIMITIVE_RETURN(((Type_Code(Arg1)) == TC_CELL) ? TRUTH : NIL);
+DEFINE_PRIMITIVE ("CELL?", Prim_cell_p, 1)
+{
+  PRIMITIVE_HEADER (1);
+
+  PRIMITIVE_RETURN ((CELL_P (ARG_REF (1))) ? TRUTH : NIL);
 }
 
-/* (SET-CELL-CONTENTS! CELL VALUE)
-   Stores VALUE as contents of CELL.  Returns the previous contents of CELL.
-*/
-Built_In_Primitive(Prim_Set_Cell_Contents, 2, "SET-CELL-CONTENTS!", 0x8C)
-Define_Primitive(Prim_Set_Cell_Contents, 2, "SET-CELL-CONTENTS!")
-{
-  Primitive_2_Args();
+/* (CELL-CONTENTS CELL)
+   Returns the contents of the cell CELL.  */
 
-  Arg_1_Type(TC_CELL);
-  Side_Effect_Impurify(Arg1, Arg2);
-  PRIMITIVE_RETURN(Swap_Pointers(Nth_Vector_Loc(Arg1, CELL_CONTENTS), Arg2));
+DEFINE_PRIMITIVE ("CELL-CONTENTS", Prim_cell_contents, 1)
+{
+  PRIMITIVE_HEADER (1);
+
+  PRIMITIVE_RETURN (Vector_Ref ((CELL_ARG (1)), CELL_CONTENTS));
+}
+
+/* (SET-CELL-CONTENTS! CELL OBJECT)
+   Stores OBJECT as contents of CELL.
+   Returns the previous contents of CELL. */
+
+DEFINE_PRIMITIVE ("SET-CELL-CONTENTS!", Prim_set_cell_contents, 2)
+{
+  fast Pointer cell;
+  fast Pointer object;
+  PRIMITIVE_HEADER (2);
+
+  cell = (CELL_ARG (1));
+  object = (ARG_REF (2));
+  Side_Effect_Impurify (cell, object);
+  PRIMITIVE_RETURN
+    (Swap_Pointers ((Nth_Vector_Loc (cell, CELL_CONTENTS)), object));
 }

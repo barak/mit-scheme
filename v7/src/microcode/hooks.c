@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.29 1988/01/02 15:02:25 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.30 1988/03/24 07:12:24 cph Rel $
  *
  * This file contains various hooks and handles which connect the
  * primitives with the main interpreter.
@@ -535,20 +535,29 @@ DEFINE_PRIMITIVE ("SCODE-EVAL", Prim_Scode_Eval, 2)
   /*NOTREACHED*/
 }
 
+/* (GET-INTERRUPT-ENABLES)
+   Returns the current interrupt mask.  */
+
+DEFINE_PRIMITIVE ("GET-INTERRUPT-ENABLES", Prim_get_interrupt_enables, 0)
+{
+  PRIMITIVE_HEADER (0);
+
+  PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM (FETCH_INTERRUPT_MASK ()));
+}
+
 /* (SET-INTERRUPT-ENABLES! NEW-INT-ENABLES)
    Changes the enabled interrupt bits to NEW-INT-ENABLES and
    returns the previous value.  See MASK_INTERRUPT_ENABLES for more
-   information on interrupts.
-*/
-DEFINE_PRIMITIVE ("SET-INTERRUPT-ENABLES!", Prim_Set_Interrupt_Enables, 1)
+   information on interrupts.  */
+
+DEFINE_PRIMITIVE ("SET-INTERRUPT-ENABLES!", Prim_set_interrupt_enables, 1)
 {
   long previous;
-  Primitive_1_Arg();
+  PRIMITIVE_HEADER (1);
 
-  Arg_1_Type(TC_FIXNUM);
-  previous = FETCH_INTERRUPT_MASK();
-  SET_INTERRUPT_MASK(Get_Integer(Arg1) & INT_Mask);
-  PRIMITIVE_RETURN( MAKE_SIGNED_FIXNUM(previous));
+  previous = (FETCH_INTERRUPT_MASK ());
+  SET_INTERRUPT_MASK ((FIXNUM_ARG (1)) & INT_Mask);
+  PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM (previous));
 }
 
 /* (SET-CURRENT-HISTORY! TRIPLE)
@@ -748,28 +757,3 @@ DEFINE_PRIMITIVE ("WITHIN-CONTROL-POINT", Prim_Within_Control_Point, 2)
   PRIMITIVE_ABORT( PRIM_APPLY);
   /*NOTREACHED*/
 }
-
-/* (WITH-THREADED-CONTINUATION PROCEDURE THUNK)
-   THUNK must be a procedure or primitive procedure which takes no
-   arguments.  PROCEDURE must expect one argument.  Basically this
-   primitive does (PROCEDURE (THUNK)) ... it calls the THUNK and
-   passes the result on as an argument to PROCEDURE.  However, it
-   leaves a "well-known continuation code" on the stack for use by
-   the continuation parser in the Scheme runtime system.
-*/
-DEFINE_PRIMITIVE ("WITH-THREADED-CONTINUATION", Prim_With_Threaded_Stack, 2)
-{
-  Primitive_2_Args();
-
-  Pop_Primitive_Frame(2);
- Will_Push(CONTINUATION_SIZE + (STACK_ENV_EXTRA_SLOTS+1));
-  Store_Expression(Arg1);	/* Save procedure to call later */
-  Store_Return(RC_INVOKE_STACK_THREAD);
-  Save_Cont();
-  Push(Arg2);	/* Function to call now */
-  Push(STACK_FRAME_HEADER);
- Pushed();
-  PRIMITIVE_ABORT( PRIM_APPLY);
-  /*NOTREACHED*/
-}
-
