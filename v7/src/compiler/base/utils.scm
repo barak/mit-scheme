@@ -37,7 +37,7 @@
 
 ;;;; Compiler Utilities
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.78 1986/12/21 14:52:59 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.79 1986/12/22 23:52:52 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -47,17 +47,23 @@
 (define (make-vector-tag parent name)
   (let ((tag (cons '() (or parent vector-tag:object))))
     (vector-tag-put! tag ':TYPE-NAME name)
-    ((access add-unparser-special-object! unparser-package) tag
-     (lambda (object)
-       (unparse-with-brackets
-	(lambda ()
-	  (write-string "LIAR ")
-	  (fluid-let ((*unparser-radix* 10))
-	    (write (hash object)))
-	  (write-string " ")
-	  (fluid-let ((*unparser-radix* 16))
-	    ((vector-method object ':UNPARSE) object))))))
+    ((access add-unparser-special-object! unparser-package)
+     tag tagged-vector-unparser)
     tag))
+
+(define *tagged-vector-unparser-show-hash*
+  true)
+
+(define (tagged-vector-unparser object)
+  (unparse-with-brackets
+   (lambda ()
+     (write-string "LIAR ")
+     (if *tagged-vector-unparser-show-hash*
+	 (begin (fluid-let ((*unparser-radix* 10))
+		  (write (hash object)))
+		(write-string " ")))
+     (fluid-let ((*unparser-radix* 16))
+       ((vector-method object ':UNPARSE) object)))))
 
 (define (vector-tag-put! tag key value)
   (let ((entry (assq key (car tag))))
@@ -75,12 +81,14 @@
 	     (loop (cdr tag)))))
     (and value (cdr value))))
 
-(define vector-tag:object (list '()))
+(define vector-tag:object
+  (list '()))
+
 (vector-tag-put! vector-tag:object ':TYPE-NAME 'OBJECT)
 
 (define-integrable (vector-tag vector)
   (vector-ref vector 0))
-
+
 (define (define-vector-method tag name method)
   (vector-tag-put! tag name method)
   name)
@@ -97,7 +105,7 @@
 
 (define (define-unparser tag unparser)
   (define-vector-method tag ':UNPARSE unparser))
-
+
 (define-integrable make-tagged-vector
   vector)
 
