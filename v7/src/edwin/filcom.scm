@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.159 1991/09/18 22:47:40 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.160 1991/10/11 03:31:24 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -446,18 +446,15 @@ Leaves point at the beginning, mark at the end."
 	(push-current-mark! mark)))))
 
 (define (pathname->buffer-name pathname)
-  (let ((name (pathname-name pathname)))
-    (if name
-	(pathname->string
-	 (make-pathname false false false
-			name (pathname-type pathname) false))
-	(let ((name
-	       (let ((directory (pathname-directory pathname)))
-		 (and (pair? directory)
-		      (car (last-pair directory))))))
-	  (if (string? name)
-	      name
-	      (pathname->string pathname))))))
+  (if (pathname-name pathname)
+      (pathname-name-string pathname)
+      (let ((name
+	     (let ((directory (pathname-directory pathname)))
+	       (and (pair? directory)
+		    (car (last-pair directory))))))
+	(if (string? name)
+	    name
+	    (pathname->string pathname)))))
 
 (define (pathname->buffer pathname)
   (or (list-search-positive (buffer-list)
