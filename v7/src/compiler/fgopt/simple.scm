@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/simple.scm,v 4.2 1987/12/30 06:45:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/simple.scm,v 4.3 1988/12/12 21:52:08 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -36,95 +36,94 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(package (simplicity-analysis)
-
-(define-export (simplicity-analysis parallels)
+(define (simplicity-analysis parallels)
   (for-each (lambda (parallel)
 	      (for-each (lambda (subproblem)
 			  (set-subproblem-simple?! subproblem 'UNKNOWN))
 			(parallel-subproblems parallel)))
 	    parallels)
   (for-each (lambda (parallel)
-	      (if (let ((application (parallel-application-node parallel)))
-		    (and application
-			 (application/combination? application)
-			 (combination/inline? application)))
-		  (for-each %subproblem-simple?
-			    (parallel-subproblems parallel))))
+	      (for-each walk/subproblem (parallel-subproblems parallel)))
 	    parallels))
 
-(define (%subproblem-simple? subproblem)
-  (let ((simple? (subproblem-simple? subproblem)))
-    (if (eq? simple? 'UNKNOWN)
-	(let ((simple?
-	       (and (rvalue-simple? (subproblem-rvalue subproblem))
-		    (or (not (subproblem-canonical? subproblem))
-			(node-simple? (subproblem-entry-node subproblem)
-				      (subproblem-continuation subproblem))))))
-	  (set-subproblem-simple?! subproblem simple?)
-	  simple?)
-	simple?)))
+(define (walk/subproblem subproblem)
+  (if (eq? (subproblem-simple? subproblem) 'UNKNOWN)
+      (update-subproblem! subproblem))
+  (subproblem-simple? subproblem))
 
-(define (node-simple? node continuation)
-  ((cfg-node-case (tagged-vector/tag node)
-     ((PARALLEL) parallel-simple?)
-     ((APPLICATION)
-      (case (application-type node)
-	((COMBINATION) combination-simple?)
-	((RETURN) return-simple?)
-	(else (error "Unknown application type" node))))
-     ((VIRTUAL-RETURN) virtual-return-simple?)
-     ((ASSIGNMENT) assignment-simple?)
-     ((DEFINITION) definition-simple?)
-     ((TRUE-TEST) true-test-simple?)
-     ((FG-NOOP) fg-noop-simple?))
-   node continuation))
+(define (new-subproblem/compute-simplicity! subproblem)
+  ;; This is currently used only when `subproblem' has no prefix; if
+  ;; other kinds of subproblems are supplied here, we might need to
+  ;; worry about changing the node walker to handle those types of
+  ;; nodes that are introduced later in the optimization process.
+  (update-subproblem! subproblem))
+
+(define (update-subproblem! subproblem)
+  (set-subproblem-simple?!
+   subproblem
+   (if (subproblem-canonical? subproblem)
+       (walk/node (subproblem-entry-node subproblem)
+		  (subproblem-continuation subproblem))
+       (and (walk/rvalue (subproblem-rvalue subproblem))
+	    (let ((prefix (subproblem-prefix subproblem)))
+	      (if (cfg-null? prefix)
+		  true
+		  (walk/node (cfg-entry-node prefix)))))))
+  unspecific)
 
-(define (parallel-simple? parallel continuation)
-  (and (for-all? (parallel-subproblems parallel) %subproblem-simple?)
-       (node-simple? (snode-next parallel) continuation)))
+(define (walk/node node continuation)
+  (cfg-node-case (tagged-vector/tag node)
+    ((PARALLEL)
+     (and (for-all? (parallel-subproblems node) walk/subproblem)
+	  (walk/next (snode-next node) continuation)))
+    ((APPLICATION)
+     (case (application-type node)
+       ((COMBINATION)
+	(if (combination/inline? node)
+	    (walk/return-operator (combination/continuation node) continuation)
+	    (let ((callee (rvalue-known-value (combination/operator node))))
+	      (and callee
+		   (rvalue/procedure? callee)
+		   (procedure-inline-code? callee)
+		   (walk/next (procedure-entry-node callee) continuation)))))
+       ((RETURN)
+	(walk/return-operator (return/operator node) continuation))
+       (else
+	(error "Unknown application type" node))))
+    ((ASSIGNMENT)
+     (and (walk/lvalue (assignment-lvalue node))
+	  (walk/rvalue (assignment-rvalue node))
+	  (walk/next (snode-next node) continuation)))
+    ((DEFINITION)
+     (and (walk/lvalue (definition-lvalue node))
+	  (walk/rvalue (definition-rvalue node))
+	  (walk/next (snode-next node) continuation)))
+    ((TRUE-TEST)
+     (and (walk/rvalue (true-test-rvalue node))
+	  (walk/next (pnode-consequent node) continuation)
+	  (walk/next (pnode-alternative node) continuation)))
+    ((VIRTUAL-RETURN FG-NOOP)
+     (walk/next (snode-next node) continuation))))
 
-(define (combination-simple? combination continuation)
-  (and (combination/inline? combination)
-       (continuation-simple? (combination/continuation combination)
-			     continuation)))
+(define (walk/next node continuation)
+  (if node
+      (walk/node node continuation)
+      (not continuation)))
 
-(define (return-simple? return continuation)
-  (continuation-simple? (return/operator return) continuation))
+(define (walk/return-operator operator continuation)
+  (and (return-operator/subproblem? operator)
+       (if (eq? operator continuation)
+	   true
+	   (walk/next (continuation/entry-node operator) continuation))))
 
-(define (virtual-return-simple? return continuation)
-  (node-simple? (snode-next return) continuation))
-
-(define (continuation-simple? rvalue continuation)
-  (or (eq? rvalue continuation)
-      (and (rvalue/continuation? rvalue)
-	   (node-simple? (continuation/entry-node rvalue) continuation))))
-
-(define (assignment-simple? assignment continuation)
-  (and (lvalue-simple? (assignment-lvalue assignment))
-       (rvalue-simple? (assignment-rvalue assignment))
-       (node-simple? (snode-next assignment) continuation)))
-
-(define (definition-simple? definition continuation)
-  (and (lvalue-simple? (definition-lvalue definition))
-       (rvalue-simple? (definition-rvalue definition))
-       (node-simple? (snode-next definition) continuation)))
-
-(define (true-test-simple? true-test continuation)
-  (and (rvalue-simple? (true-test-rvalue true-test))
-       (node-simple? (pnode-consequent true-test) continuation)
-       (node-simple? (pnode-alternative true-test) continuation)))
-
-(define (fg-noop-simple? fg-noop continuation)
-  (node-simple? (snode-next fg-noop) continuation))
-
-(define (rvalue-simple? rvalue)
-  (or (not (rvalue/reference? rvalue))
+(define (walk/rvalue rvalue)
+  (if (rvalue/reference? rvalue)
       (let ((lvalue (reference-lvalue rvalue)))
-	(or (lvalue-known-value lvalue)
-	    (lvalue-simple? lvalue)))))
+	(if (or (variable/value-variable? lvalue)
+		(lvalue-known-value lvalue))
+	    true
+	    (walk/lvalue lvalue)))
+      true))
 
-(define (lvalue-simple? lvalue)
+(define (walk/lvalue lvalue)
   (not (block-passed-out? (variable-block lvalue))))
-
-)
