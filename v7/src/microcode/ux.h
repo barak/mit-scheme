@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.42 1993/02/18 05:14:28 gjr Exp $
+$Id: ux.h,v 1.43 1993/02/20 07:00:36 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -187,6 +187,7 @@ extern void EXFUN (error_system_call, (int code, enum syscall_names name));
 #ifdef __osf__
 #  include <sys/time.h>
 #  include <sys/ioctl.h>
+#  define NO_BAUD_CONVERSION
 #  define SYSTEM_VARIANT "OSF"
 #endif
 
@@ -195,6 +196,7 @@ extern void EXFUN (error_system_call, (int code, enum syscall_names name));
 #  define EMULATE_FPATHCONF
 #  define EMULATE_SYSCONF
 #  define NO_BAUD_CONVERSION
+#  define SYSTEM_VARIANT "386BSD"
 #endif
 
 #ifdef sonyrisc
