@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/edextra.scm,v 1.7 1992/09/04 21:45:20 nick Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/edextra.scm,v 1.8 1992/09/04 22:05:01 nick Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -80,9 +80,9 @@ MIT in each case. |#
 ;;; Wired-in pathnames
 
 ;;; We look in the "psn" subdir for problem set n
-(define pset-dir "~u6001/psets/")
+(define pset-dir "/users/u6001/psets/")
 (define pset-list-file (merge-pathnames "probsets.scm" pset-dir))
-(define student-dir "~u6001/work/")
+(define student-dir "/users/u6001/work/")
 
 ;;; The structure "problem-sets" must be loaded from pset-list-file whenever
 ;;; the set of available problem sets changes, or when the default
