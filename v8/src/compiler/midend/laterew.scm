@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: laterew.scm,v 1.17 1995/09/05 19:00:21 adams Exp $
+$Id: laterew.scm,v 1.18 1996/07/24 22:32:30 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -91,8 +91,7 @@ MIT in each case. |#
 	 => (lambda (handler)
 	      (handler form (laterew/expr* rands))))
 	(else
-	 `(CALL ,(laterew/expr rator)
-		,@(laterew/expr* rands)))))
+	 (laterew/jump (laterew/expr rator) (laterew/expr* rands) 0))))
 
 
 (define (laterew/expr expr)
@@ -157,9 +156,7 @@ MIT in each case. |#
 		     ((or (LOOKUP/? cont)
 			  (CALL/%stack-closure-ref? cont))
 		      (lambda (expr)
-			`(CALL (QUOTE ,%invoke-continuation)
-			       ,cont
-			       ,expr)))
+			(laterew/invoke-continuation cont (list expr))))
 		     (else
 		      (if compiler:guru?
 			  (internal-warning
@@ -167,15 +164,15 @@ MIT in each case. |#
 		      (lambda (expr)
 			(let ((cont-var (new-continuation-variable)))
 			  `(CALL (LAMBDA (,cont-var)
-				   (CALL (QUOTE ,%invoke-continuation)
-					 (LOOKUP ,cont-var)
-					 ,expr))
+				   ,(laterew/invoke-continuation
+				     `(LOOKUP ,cont-var)
+				     expr))
 				 ,cont)))))))
 	  (cond ((form/number? x)
 		 => (lambda (x-value)
 		      (cond ((form/number? y)
 			     => (lambda (y-value)
-				  `(QUOTE ,(op x-value y-value))))
+				  (%continue `(QUOTE ,(op x-value y-value)))))
 			    (right-sided?
 			     `(CALL (QUOTE ,%genop) ,cont ,x ,y))
 			    (else
@@ -293,6 +290,114 @@ MIT in each case. |#
 	    `(IF ,x (QUOTE #F) (QUOTE #T))
 	    `(CALL (QUOTE ,not-primitive) ,cont ,@rands))))))
 
+;; We transform calls and returns of the form
+;;    (call ... ... predicate ...)
+;;  to
+;;    (if predicate
+;;        (call ... #T ...)
+;;        (call ... #F ...))
+;;
+;; where the calls have a small number of arguments*.
+;;
+;; What this transformation achieves is the removal of the merge point
+;; for the predicate.  There is a chance that we might generate
+;; something with duplicated code, so we avoid conplex continuations
+;; and let-bind non-trivial expressions.  If the RTL has several
+;; instructions, for example, to pop a stack frame, then RTLCSM will
+;; re-merge the code.  Note that at the laterew stage, if we have a
+;; predicate or conditional expression as an argument to a call, then
+;; it must be simple and side effect free.
+;;
+;; Really, this kind of thing should be handled by RTLGEN (by targetting
+;; multiple calls) or by rtl optimization (intra-block instruction
+;; scheduling).  Another possibility is to undo the call-to-call
+;; nature of the output in lapopt, where we have a much better idea of
+;; the benefit.
+;;
+;; * Since we get bad code if we duplicate calls/returns with many
+;; arguments, we restrict this transformation to 2 expressions.
+;;
+;; The main benefit of this transformation is for code that returns an
+;; in-lined predicate.
+
+(define (laterew/invoke-continuation cont rands)
+  (laterew/jump `(QUOTE ,%invoke-continuation) rands 0))
+
+(define-rewrite/late %invoke-continuation
+  (lambda (form rands)
+    (laterew/jump (call/operator form) rands 0)))
+
+(define-rewrite/late %invoke-operator-cache
+  (lambda (form rands)
+    (laterew/jump (call/operator form) rands 2)))
+
+(define-rewrite/late %invoke-remote-cache
+  (lambda (form rands)
+    (laterew/jump (call/operator form) rands 2)))
+
+(define-rewrite/late %internal-apply-unchecked
+  (lambda (form rands)
+    (laterew/jump (call/operator form) rands 2)))
+
+;; %internal-apply is omitted because it tends to be a sequence of
+;; instructions and we dont really want to duplicate the sequence.
+;; This is another reason why RTLGEN/RTLOPT/LAPOPT is a better place
+;; for this code.
+
+(define (laterew/jump rator cont+rands n-extra)
+  (let ((cont (first cont+rands))
+	(all-rands (cdr cont+rands)))
+
+    (define (default)
+      `(CALL ,rator ,cont ,@all-rands))
+
+    (define (split expression test true-value false-value)
+      (let loop ((rands all-rands)
+		 (pos   0)
+		 (rands-t '())
+		 (rands-f '()))
+	(define (next t f)
+	  (loop (cdr rands) (+ pos 1) (cons t rands-t) (cons f rands-f)))
+	(cond ((null? rands)
+	       `(IF ,test
+		    (CALL ,rator ,cont ,@(reverse rands-t))
+		    (CALL ,rator ,cont ,@(reverse rands-f))))
+	      ((eq? (car rands) expression)
+	       (next true-value false-value))
+	      ((or (LOOKUP/? (car rands))
+		   (QUOTE/? (car rands)))
+	       (next (car rands) (car rands)))
+	      (else
+	       (let ((name (compat/new-name 'ARG)))
+		 `(LET ((,name ,(car rands)))
+		    ,(next `(LOOKUP ,name) `(LOOKUP ,name))))))))
+
+    (define (predicate-call? expr)
+      (and (CALL/? expr)
+	   (let ((rator (call/operator expr)))
+	     (and
+	      (QUOTE/? rator)
+	      (operator/satisfies? (quote/text rator) '(PROPER-PREDICATE))))))
+
+    (if (and (or (LOOKUP/? cont)
+		 (call/%stack-closure-ref? cont))
+	     (<= (length all-rands) (+ n-extra 2)))
+	(let search ((rands  (reverse all-rands)))
+	  (cond ((null? rands)
+		 (default))
+		((IF/? (car rands))
+		 (split (car rands)
+			(if/predicate (car rands))
+			(if/consequent (car rands))
+			(if/alternative (car rands))))
+		((predicate-call? (car rands))
+		 (split (car rands)
+			(car rands)
+			`(QUOTE ,#T)
+			`(QUOTE ,#F)))
+		(else (search (cdr rands)))))
+	(default))))
+
 (define-rewrite/late %make-multicell
   (lambda (form rands)
     form				; ignored
@@ -348,8 +453,7 @@ MIT in each case. |#
 	 ((READ)	`(CALL ',%cell-ref '#F ,cell ',name))
 	 ((WRITE)	`(CALL ',%cell-set! '#F ,cell ,value/s ',name))
 	 ((MAKE)	`(CALL ',%make-cell '#F ,@value/s ',name))))
-      ;;((2)
-      ;; (case operation
+      ;;((2) (case operation
       ;;   ((READ))
       ;;   ((WRITE))
       ;;   ((MAKE))))
