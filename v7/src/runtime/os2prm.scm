@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.6 1995/02/14 00:35:23 cph Exp $
+$Id: os2prm.scm,v 1.7 1995/02/21 23:12:47 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -117,7 +117,9 @@ MIT in each case. |#
 	 (year    (quotient  time 16)))
     (string-append (vector-ref '#("Jan" "Feb" "Mar" "Apr" "May" "Jun"
 					"Jul" "Aug" "Sep" "Oct" "Nov" "Dec")
-			       (- month 1))
+			       (if (<= 1 month 12)
+				   (- month 1)
+				   0))
 		   " "
 		   (string-pad-left (number->string day) 2 #\space)
 		   " "
