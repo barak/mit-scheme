@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.29 1991/08/06 22:10:41 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.30 1991/08/28 22:30:31 arthur Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -166,6 +166,8 @@ MIT in each case. |#
 	   "prints a summary (History) of all subproblems")
       (#\I ,command/condition-report
 	   "redisplay the error message Info")
+      (#\J ,command/return-to
+	   "return TO the current subproblem with a value")
       (#\K ,command/condition-restart
 	   "continue the program using a standard restart option")
       (#\L ,command/print-expression
@@ -192,8 +194,8 @@ MIT in each case. |#
 	   "create a read eval print loop in the debugger environment")
       (#\Y ,command/frame
 	   "display the current stack frame")
-      (#\Z ,command/return
-	   "return (continue with) an expression after evaluating it")
+      (#\Z ,command/return-from
+	   "return FROM the current subproblem with a value")
       )))
   (set! hook/debugger-before-return default/debugger-before-return)
   unspecific)
@@ -717,38 +719,44 @@ MIT in each case. |#
 (define (default/debugger-before-return)
   '())
 
-(define (command/return dstate)
+(define (enter-subproblem subproblem dstate)
+  (let ((invalid-expression?
+	 (invalid-expression? (dstate/expression dstate)))
+	(environment (get-evaluation-environment dstate))
+	(return
+	 (lambda (value)
+	   (hook/debugger-before-return)
+	   ((stack-frame->continuation subproblem) value))))
+    (let ((value
+	   (let ((expression
+		  (prompt-for-expression
+		   (string-append
+		    "Expression to EVALUATE and CONTINUE with"
+		    (if invalid-expression?
+			""
+			" ($ to retry)")))))
+	     (if (and (not invalid-expression?)
+		      (eq? expression '$))
+		 (debug/scode-eval (dstate/expression dstate)
+				   environment)
+		 (debug/eval expression environment)))))
+      (if debugger:print-return-values?
+	  (begin
+	    (newline)
+	    (write-string "That evaluates to:")
+	    (newline)
+	    (write value)
+	    (if (prompt-for-confirmation "Confirm") (return value)))
+	  (return value)))))
+
+(define (command/return-from dstate)
   (let ((next (stack-frame/next-subproblem (dstate/subproblem dstate))))
     (if next
-	(let ((invalid-expression?
-	       (invalid-expression? (dstate/expression dstate)))
-	      (environment (get-evaluation-environment dstate))
-	      (return
-	       (lambda (value)
-		 (hook/debugger-before-return)
-		 ((stack-frame->continuation next) value))))
-	  (let ((value
-		 (let ((expression
-			(prompt-for-expression
-			 (string-append
-			  "Expression to EVALUATE and CONTINUE with"
-			  (if invalid-expression?
-			      ""
-			      " ($ to retry)")))))
-		   (if (and (not invalid-expression?)
-			    (eq? expression '$))
-		       (debug/scode-eval (dstate/expression dstate)
-					 environment)
-		       (debug/eval expression environment)))))
-	    (if debugger:print-return-values?
-		(begin
-		  (newline)
-		  (write-string "That evaluates to:")
-		  (newline)
-		  (write value)
-		  (if (prompt-for-confirmation "Confirm") (return value)))
-		(return value))))
+	(enter-subproblem next dstate)
 	(debugger-failure "Can't continue!!!"))))
+
+(define (command/return-to dstate)
+  (enter-subproblem (dstate/subproblem dstate) dstate))
 
 (define *dstate*)
 
