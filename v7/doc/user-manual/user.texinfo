@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.93 2002/03/13 05:56:36 cph Exp $
+@comment $Id: user.texinfo,v 1.94 2002/06/17 18:49:02 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -34,9 +34,9 @@ Free Documentation License".
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.88
-@subtitle for Scheme Release 7.7.0
-@subtitle 13 March 2002
+@subtitle Edition 1.89
+@subtitle for Scheme Release 7.7.1
+@subtitle 17 June 2002
 @author by Stephen Adams
 @author Chris Hanson
 @author and the MIT Scheme Team
@@ -170,7 +170,7 @@ To install the software in @file{/usr/local}, do the following
 cd /usr/local
 rm -f bin/scheme bin/bchscheme
 rm -rf lib/mit-scheme
-gzip -cd scheme-7.7.0-ix86-gnu-linux.tar.gz | tar xvf -
+gzip -cd scheme-7.7.1-ix86-gnu-linux.tar.gz | tar xvf -
 @end group
 @end example
 
@@ -188,7 +188,7 @@ First unpack the distribution:
 @example
 mkdir temp
 cd temp
-gzip -cd scheme-7.7.0-ix86-gnu-linux.tar.gz | tar xvf -
+gzip -cd scheme-7.7.1-ix86-gnu-linux.tar.gz | tar xvf -
 @end example
 
 @item
@@ -520,10 +520,10 @@ Scheme will load itself and print something like this:
 
 @example
 @group
-Scheme saved on Tuesday March 12, 2002 at 3:34:25 PM
-  Release 7.7.0
-  Microcode 14.8
-  Runtime 15.0
+Scheme saved on Monday June 17, 2002 at 12:10:46 PM
+  Release 7.7.1
+  Microcode 14.9
+  Runtime 15.1
 @end group
 @end example
 
@@ -4693,6 +4693,11 @@ The Algorithmic Language Scheme}.
 These are the changes since release 7.6.0:
 
 @itemize @bullet
+@item
+Release 7.7.1 fixes several bugs in @acronym{IMAIL}; fixes a bug that
+prevented the use of server sockets on Windows systems; and fixes a bug
+that caused the debugger to generate errors in common circumstances.
+
 @item
 Release 7.7.0 provides ``hygienic'' macro support, as defined in
 @cite{R^4RS} and @cite{R^5RS}.  This is a complete rewrite of the syntax
