@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/make.scm,v 15.9 1992/08/18 22:36:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/make.scm,v 15.10 1992/08/18 22:43:08 cph Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -65,7 +65,8 @@ MIT in each case. |#
    edwin-variable$mail-default-reply-to
    (lambda ()
      (let ((reply-to
-	    (prompt-for-string "Please enter an email address for replies")))
+	    (prompt-for-string "Please enter an email address for replies"
+			       false)))
        (set-variable-value! edwin-variable$mail-default-reply-to reply-to)
        reply-to))))
 
