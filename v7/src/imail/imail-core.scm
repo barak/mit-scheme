@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.139 2001/05/26 02:12:50 cph Exp $
+;;; $Id: imail-core.scm,v 1.140 2001/05/29 20:36:34 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -135,10 +135,11 @@
 ;; Return #T iff FOLDER-URL both exists and can be opened.
 (define-generic folder-url-is-selectable? (folder-url))
 
-;; If URL both exists and can contain other resources, return a
-;; container URL for the same resource.  Otherwise return #F.
-(define-generic url-is-container? (url))
-(define-method url-is-container? ((url <container-url>)) url)
+;; If URL can potentially contain other resources, return a container
+;; URL for the same resource.  Otherwise return #F.  The result is
+;; undefined if the URL doesn't represent an existing folder.
+(define-generic url-corresponding-container (url))
+(define-method url-corresponding-container ((url <container-url>)) url)
 
 ;; Return a locator for the container of URL.  E.g. the container URL
 ;; of "imap://localhost/inbox/foo" is "imap://localhost/inbox/".

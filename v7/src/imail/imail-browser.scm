@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-browser.scm,v 1.2 2001/05/26 03:02:29 cph Exp $
+;;; $Id: imail-browser.scm,v 1.3 2001/05/29 20:36:53 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -137,7 +137,7 @@ To do:
 	    (+ 1 (loop container*)))))))
 
 (define (make-browser-line-info url)
-  (vector url (url-is-container? url) #f))
+  (vector url (url-corresponding-container url) #f))
 
 (define (browser-line-info-url info)
   (vector-ref info 0))
@@ -317,8 +317,8 @@ Each line summarizes a single mail folder.
   ""
   ()
   (lambda ()
-    (let ((url (selected-url)))
-      (let ((container (url-is-container? url)))
+    (let ((info (browser-line-info)))
+      (let ((container (browser-line-info-container-url info)))
 	(if container
 	    ((ref-command imail-browse-container) (url->string container))
 	    (editor-error "Not a selectable container."))))))

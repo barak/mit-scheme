@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.169 2001/05/29 20:26:32 cph Exp $
+;;; $Id: imail-imap.scm,v 1.170 2001/05/29 20:36:47 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -146,7 +146,7 @@
   (guarantee-imap-url-list-info url)
   (imap-folder-url-selectable? url))
 
-(define-method url-is-container? ((url <imap-folder-url>))
+(define-method url-corresponding-container ((url <imap-folder-url>))
   (guarantee-imap-url-list-info url)
   (imap-folder-url-corresponding-container url))
 

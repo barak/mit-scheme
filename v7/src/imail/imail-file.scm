@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.74 2001/05/25 18:16:51 cph Exp $
+;;; $Id: imail-file.scm,v 1.75 2001/05/29 20:36:40 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -179,7 +179,7 @@
 (define-method folder-url-is-selectable? ((url <file-url>))
   (and (find-pathname-url-constructor (pathname-url-pathname url) #t #f) #t))
 
-(define-method url-is-container? ((url <file-url>))
+(define-method url-corresponding-container ((url <file-url>))
   url
   #f)
 
