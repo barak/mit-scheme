@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.144 1991/05/17 18:38:11 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.145 1991/05/18 03:11:46 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -119,8 +119,7 @@
 	     (car windows)))))
 
 (define-variable enable-recursive-minibuffers
-  "If true, allow minibuffers to invoke commands which use
-recursive minibuffers."
+  "True means allow minibuffers to invoke commands that use recursive minibuffers."
   false
   boolean?)
 
@@ -248,7 +247,7 @@ recursive minibuffers."
 				  (write-to-string *default-string*)))
    true
    (let ((thunk (typein-editor-thunk mode)))
-     (if (eq? *default-type* 'INSERTED-DEFAULT)
+     (if (and (eq? *default-type* 'INSERTED-DEFAULT) *default-string*)
 	 (let ((string *default-string*))
 	   (set! *default-string* false)
 	   (lambda ()
@@ -257,17 +256,19 @@ recursive minibuffers."
 	 thunk))))
 
 (define (prompt-for-string/prompt prompt default-string)
-  (cond ((and (pair? prompt)
-	      (string? (car prompt))
-	      (null? (cdr prompt)))
-	 (car prompt))
-	((string? prompt)
+  (cond ((string? prompt)
 	 (string-append
 	  prompt
 	  (if default-string
 	      (string-append " (default is: " default-string ")")
 	      "")
-	  ": "))
+	  (if (string-suffix? " " prompt)
+	      ""
+	      ": ")))
+	((and (pair? prompt)
+	      (string? (car prompt))
+	      (null? (cdr prompt)))
+	 (car prompt))
 	(else
 	 (error:wrong-type-argument prompt
 				    "prompt string"
@@ -275,10 +276,13 @@ recursive minibuffers."
 
 (define (prompt-for-number prompt default)
   (let ((string
-	 (prompt-for-string prompt
-			    (and default (number->string default)))))
+	 (let ((default (and default (number->string default))))
+	   (prompt-for-string
+	    (prompt-for-string/prompt prompt default)
+	    default
+	    'INVISIBLE-DEFAULT))))
     (or (string->number string)
-	(editor-error "Input string not a number: \"" string "\""))))
+	(editor-error "Input not a number: " string))))
 
 (define (prompt-for-string-table-name prompt
 				      default-string
@@ -604,19 +608,22 @@ a repetition of this command will exit."
 (define (prompt-for-confirmation? prompt)
   (prompt-for-typein (string-append prompt " (y or n)? ") false
     (lambda ()
-      (let loop ()
-	(let ((char (char-upcase (keyboard-read-char))))
-	  (cond ((or (char=? char #\Y)
-		     (char=? char #\Space))
-		 (set-typein-string! "yes" true)
+      (let loop ((lost? false))
+	(let ((char (keyboard-read-char)))
+	  (cond ((or (char-ci=? char #\y)
+		     (char-ci=? char #\space))
+		 (set-typein-string! "y" true)
 		 true)
-		((or (char=? char #\N)
-		     (char=? char #\Rubout))
-		 (set-typein-string! "no" true)
+		((or (char-ci=? char #\n)
+		     (char-ci=? char #\rubout))
+		 (set-typein-string! "n" true)
 		 false)
 		(else
-		 (editor-failure)
-		 (loop))))))))
+		 (editor-beep)
+		 (if (not lost?)
+		     (insert-string "Please answer y or n.  "
+				    (buffer-absolute-start (current-buffer))))
+		 (loop true))))))))
 
 (define (prompt-for-yes-or-no? prompt)
   (string-ci=?
@@ -638,8 +645,11 @@ a repetition of this command will exit."
 	      (string-ci=? "no" string))
 	  (exit-typein-edit)
 	  (begin
-	    (set-typein-string! "" false)
-	    (editor-error "Please enter \"yes\" or \"no\""))))))
+	    (editor-beep)
+	    (message "Please answer yes or no.")
+	    (sit-for 2000)
+	    (clear-message)
+	    (set-typein-string! "" false))))))
 
 ;;;; Command History Prompt
 
