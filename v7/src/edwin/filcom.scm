@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: filcom.scm,v 1.173 1992/11/17 05:48:05 cph Exp $
+;;;	$Id: filcom.scm,v 1.174 1993/01/12 10:45:46 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -184,7 +184,7 @@ invocation."
     (and a
 	 (let ((b (file-modification-time-indirect b)))
 	   (or (not b)
-	       (< a b))))))
+	       (> a b))))))
 
 (define (load-find-file-initialization buffer pathname)
   (let ((pathname
@@ -333,10 +333,12 @@ Argument means don't offer to use auto-save file."
 			    " not current"))
 	  (if (not (call-with-temporary-buffer "*Directory*"
 		     (lambda (buffer)
-		       (read-directory pathname "-l" (buffer-end buffer))
-		       (read-directory auto-save-pathname
-				       "-l"
-				       (buffer-end buffer))
+		       (insert-dired-entry! pathname
+					    (directory-pathname pathname)
+					    (buffer-end buffer))
+		       (insert-dired-entry! auto-save-pathname
+					    (directory-pathname pathname)
+					    (buffer-end buffer))
 		       (set-buffer-point! buffer (buffer-start buffer))
 		       (buffer-not-modified! buffer)
 		       (pop-up-buffer buffer false)
