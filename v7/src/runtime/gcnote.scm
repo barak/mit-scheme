@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gcnote.scm,v 14.13 2000/03/25 03:24:44 cph Exp $
+$Id: gcnote.scm,v 14.14 2000/03/25 03:26:30 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -123,7 +123,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		"%)")
 	       7))))))
 	     
-    (string-append "GC #"
+    (string-append ";GC #"
 		   (number->string (gc-statistic/meter statistic))
 		   ": took: "
 		   (intervals->string
