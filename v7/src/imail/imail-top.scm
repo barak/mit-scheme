@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.25 2000/04/28 18:43:32 cph Exp $
+;;; $Id: imail-top.scm,v 1.26 2000/05/02 21:10:43 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -20,9 +20,8 @@
 
 ;;;; IMAIL mail reader: top level
 
-;;; **** Must be able to handle malformed headers, both in incoming
-;;; mail and in edited messages.  Generating a low-level error in this
-;;; situation is unacceptable.
+;;; **** Must be able to handle malformed headers in incoming mail.
+;;; Generating a low-level error in this situation is unacceptable.
 
 (declare (usual-integrations))
 
@@ -99,11 +98,9 @@ May be called with an IMAIL folder URL as argument;
     (if (not url-string)
 	((ref-command imail-get-new-mail) #f))))
 
-(define (imail-authenticator url user-id receiver)
-  (call-with-pass-phrase (string-append "Password for user "
-					user-id
-					" to access IMAIL folder "
-					(url->string url))
+(define (imail-authenticator host user-id receiver)
+  (call-with-pass-phrase (string-append "Password for user " user-id
+					" on host " host)
 			 receiver))
 
 (define (imail-default-user-id)
@@ -237,6 +234,7 @@ DEL	Scroll to previous screen of this message.
 	  Normally only reduced headers are shown."
   (lambda (buffer)
     (buffer-put! buffer 'REVERT-BUFFER-METHOD imail-revert-buffer)
+    (add-kill-buffer-hook buffer imail-kill-buffer)
     (local-set-variable! mode-line-modified "--- " buffer)
     (set-buffer-read-only! buffer)
     (disable-group-undo! (buffer-group buffer))
@@ -300,6 +298,11 @@ DEL	Scroll to previous screen of this message.
 		 ((and (<= 0 index) (< index (folder-length folder))) index)
 		 (else (first-unseen-message folder)))
 	   (tl-maybe-revert-folder folder))))))
+
+(define (imail-kill-buffer buffer)
+  (let ((folder (selected-folder #f buffer)))
+    (if folder
+	(close-folder folder))))
 
 (define-command imail-quit
   "Quit out of IMAIL."
@@ -449,8 +452,8 @@ With prefix argument N moves backward N messages with these flags."
 		(error:wrong-type-argument selector "message selector"
 					   'SELECT-MESSAGE))))
 	(full-headers? (if (default-object? full-headers?) #f full-headers?)))
-    (if (not (and (not (if (default-object? force?) #f force?))
-		  (eq? message (buffer-get buffer 'IMAIL-MESSAGE #f))))
+    (if (or (if (default-object? force?) #f force?)
+	    (not (eq? message (buffer-get buffer 'IMAIL-MESSAGE 'UNDEFINED))))
 	(begin
 	  (buffer-reset! buffer)
 	  (associate-imail-folder-with-buffer folder buffer)
@@ -674,8 +677,8 @@ see the documentation of `imail-resend'."
 		"["
 		(let ((from (get-first-header-field-value message "from" #f)))
 		  (if from
-		      (rfc822-addresses->string
-		       (string->rfc822-addresses from))
+		      (rfc822:addresses->string
+		       (rfc822:string->addresses from))
 		      ""))
 		": "
 		(message-subject message)
@@ -718,8 +721,8 @@ While composing the reply, use \\[mail-yank-original] to yank the
 	 (get-last-header-field-value message "resent-reply-to" #f))
 	(from (get-first-header-field-value message "from" #f)))
     `(("To"
-       ,(rfc822-addresses->string
-	 (string->rfc822-addresses
+       ,(rfc822:addresses->string
+	 (rfc822:string->addresses
 	  (or resent-reply-to
 	      (get-all-header-field-values message "reply-to")
 	      from))))
@@ -740,9 +743,9 @@ While composing the reply, use \\[mail-yank-original] to yank the
 		 (and cc
 		      (let ((addresses
 			     (imail-dont-reply-to
-			      (string->rfc822-addresses cc))))
+			      (rfc822:string->addresses cc))))
 			(and (not (null? addresses))
-			     (rfc822-addresses->string addresses))))))))
+			     (rfc822:addresses->string addresses))))))))
       ("In-reply-to"
        ,(if resent-reply-to
 	    (make-in-reply-to-field
