@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.22 1993/12/17 22:36:50 cph Exp $
+@comment $Id: user.texinfo,v 1.23 1994/09/09 21:54:50 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -15,7 +15,7 @@
 @ifinfo
 This file documents the use of MIT Scheme.
 
-Copyright @copyright{} 1991-1993 Massachusetts Institute of Technology
+Copyright @copyright{} 1991-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and Computer
@@ -54,9 +54,9 @@ literature without prior written consent from MIT in each case.
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.21 beta
+@subtitle Edition 1.23 beta
 @subtitle for Scheme Release 7.3
-@subtitle 17 December 1993
+@subtitle September 9, 1994
 @author by Stephen Adams
 @author Chris Hanson
 @author and the MIT Scheme Team
@@ -64,7 +64,7 @@ literature without prior written consent from MIT in each case.
 @page
 
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1991-1993 Massachusetts Institute of Technology
+Copyright @copyright{} 1991-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and Computer
@@ -129,6 +129,10 @@ Installation
 
 * Unix::                        
 * PC Operating Systems::        
+
+Unix
+
+* HP-PA Installation::          
 
 PC Operating Systems
 
@@ -229,7 +233,9 @@ Comparison of Edwin 3.82 to Emacs 18.57
 @section Unix
 
 We will use as an example the installation for HP 9000 series 400
-computers.  The installation for other Unix systems is similar.
+computers.  The installation for other Unix systems is similar.  If you
+are installing for an HP 9000 series 700 or 800, see also @ref{HP-PA
+Installation}.
 
 MIT Scheme is distributed as a compressed `tar' file.  The tar file
 contains a single directory, called @file{dist-7.3}, and that directory
@@ -339,6 +345,95 @@ scheme
 @noindent
 at the command line (if you use the C shell, you may have to type
 @samp{rehash} before @samp{scheme} will be recognized).
+@end itemize
+
+@menu
+* HP-PA Installation::          
+@end menu
+
+@node HP-PA Installation,  ,  , Unix
+@subsection HP-PA Installation
+
+
+If you are using an HP 9000 series 700/800 computer (often called an HP
+Precision Architecture machine, or HP-PA for short), read this section.
+
+Scheme has built-in code that flushes the instruction and data caches
+of your machine in certain circumstances.  This code is sensitive to
+your computer's model, because each model has different cache
+hardware.
+
+This distribution contains a database, called @file{hppacach.mod}, that
+describes the cache structure for each model of computer.  As of this
+writing, that database contains entries for the following models:
+
+@example
+705, 710, 715, 720, 730, 735, 750, 755, 834, 835, 850, 867
+@end example
+
+@noindent
+If you have a model that is not in the database, Scheme will not run
+-- instead it will print an error message informing you of this fact,
+and stop.  If this happens, you must add an entry to the database.
+This must be done once, at installation, for each new model.
+
+Here is the procedure for updating the database:
+
+@itemize @bullet
+@item
+Run the program @file{hppacache} that is included in the distribution.
+You must give this program the filename of the database file as an
+argument.  Normally the database file name is
+@file{/usr/local/lib/mit-scheme/hppacach.mod}, but if you install Scheme
+in a non-standard place it will be different.  For example, if you
+install Scheme as @file{/usr/foo/mit-scheme/}, the database file is
+called @file{/usr/foo/mit-scheme/hppacach.mod}.
+
+@item
+Assuming that Scheme is installed in the normal place, update the
+database by becoming the super-user and executing the following
+commands on your machine:
+
+@example
+cd /usr/local/lib/mit-scheme
+./hppacache -update hppacach.mod
+@end example
+
+The reason that you must be super-user is that @file{hppacache} needs to
+read the device @file{/dev/kmem} to get the information that it needs.
+Normally, @file{/dev/kmem} is readable only by the super-user, or by
+users in group @code{sys}.  Thus, becoming super-user is the easiest way
+to read this information.  An alternative method for doing this is to
+change the permissions of the @file{hppacache} program so that it is in
+group @code{sys}, and to turn on its ``set group ID on exec'' permission
+bit, but since this also requires you to be super-user, you might as
+well just execute the program as the super-user.
+
+Please note that you must execute this program on the computer whose
+model you wish to add to the database.  Also, if you wish to add several
+models to the database, you must execute the program once on each model.
+If you have several computers that are all of the same model, you need
+only update the database once from one of the computers; thereafter all
+of the other computers of that model will work.
+
+@item
+If you add a new model to the database, we'd appreciate it if you would
+send us the model information, so that we can update the copy of the
+database that we distribute to others.  This can be done using the
+@file{hppacache} program, as follows:
+
+@example
+cd /usr/local/lib/mit-scheme
+./hppacache -print hppacach.mod > model-7xx
+@end example
+
+(If you have previously updated the database, you do not need to be
+super-user to execute this command.)  The resulting file,
+@file{model-7xx} in this example, is the model information for the
+machine that you executed the command on; it is C code that we can use
+to update our copy of the database.  Send the model information for each
+new model to us by electronic mail at
+@code{bug-cscheme@@zurich.ai.mit.edu}.  Thanks!
 @end itemize
 
 @c NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN
@@ -1511,9 +1606,8 @@ your home directory into the edwin environment. You can use both of
 these files to define new procedures, commands, or change defaults in
 the system.
 
-The @code{-no-init-file} command
-line option causes Scheme to ignore the @file{.scheme.init} file (see
-@xref{Command-Line Options}).
+The @code{-no-init-file} command line option causes Scheme to ignore the
+@file{.scheme.init} file (@pxref{Command-Line Options}).
 
 On PC systems these initialization files are called @file{scheme.ini}
 and @file{edwin.ini} respectively and are searched for in the directory
@@ -1521,9 +1615,8 @@ identified by the @code{HOME} environment variable.
 
 @item
 @dfn{Environment variables}. Most microcode parameters, and some runtime
-system and Edwin parameters, can be specified by means of
-environment variables.
-See @xref{Environment Variables}.
+system and Edwin parameters, can be specified by means of environment
+variables.  @xref{Environment Variables}.
 
 @item
 @dfn{Icons}.
