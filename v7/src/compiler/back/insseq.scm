@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/insseq.scm,v 4.1 1987/12/30 06:51:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/insseq.scm,v 4.2 1988/08/31 06:38:51 cph Rel $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,50 +36,36 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define (instruction-sequence->directives insts)
-  (if (null? insts)
+(define (instruction-sequence->directives instruction-sequence)
+  (if (null? instruction-sequence)
       '()
-      (car insts)))
+      (car instruction-sequence)))
 
-;; instruction->instruction-sequence is expanded.
+(define-integrable empty-instruction-sequence
+  '())
 
-(declare (integrate empty-instruction-sequence)
-	 (integrate-operator directive->instruction-sequence))
-
-(define empty-instruction-sequence '())
-
-(define (directive->instruction-sequence directive)
-  (declare (integrate directive))
+(define-integrable (directive->instruction-sequence directive)
   (let ((pair (cons directive '())))
     (cons pair pair)))
 
-(define (instruction->instruction-sequence inst)
-  (cons inst (last-pair inst)))
+(define (instruction->instruction-sequence directives)
+  ;; This procedure is expanded in the syntaxer.  See "syerly".
+  (cons directives (last-pair directives)))
 
-(define (copy-instruction-sequence seq)
-  (define (with-last-pair l receiver)
-    (if (null? (cdr l))
-	(receiver l l)
-	(with-last-pair (cdr l)
-			(lambda (rest last)
-			  (receiver (cons (car l) rest)
-				    last)))))
-
-  (if (null? seq)
+(define (copy-instruction-sequence instruction-sequence)
+  (if (null? instruction-sequence)
       '()
-      (with-last-pair (car seq) cons)))
+      (let with-last-pair ((l (car instruction-sequence)) (receiver cons))
+	(if (null? (cdr l))
+	    (receiver l l)
+	    (with-last-pair (cdr l)
+	      (lambda (rest last)
+		(receiver (cons (car l) rest) last)))))))
 
-(define (append-instruction-sequences! seq1 seq2)
-  (cond ((null? seq1) seq2)
-	((null? seq2) seq1)
+(define (append-instruction-sequences! x y)
+  (cond ((null? x) y)
+	((null? y) x)
 	(else
-	 (if (and (bit-string? (cadr seq1))
-		  (bit-string? (caar seq2)))
-	     (let ((result (instruction-append (cadr seq1) (caar seq2))))
-	       (set-car! (cdr seq1) result)
-	       (if (not (eq? (car seq2) (cdr seq2)))
-		   (begin (set-cdr! (cdr seq1) (cdr (car seq2)))
-			  (set-cdr! seq1 (cdr seq2)))))
-	     (begin (set-cdr! (cdr seq1) (car seq2))
-		    (set-cdr! seq1 (cdr seq2))))
-	 seq1)))
+	 (set-cdr! (cdr x) (car y))
+	 (set-cdr! x (cdr y))
+	 x)))
