@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 4.26 1993/12/22 14:08:39 adams Exp $
+$Id: usiexp.scm,v 4.27 1993/12/22 14:27:18 adams Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -475,7 +475,8 @@ MIT in each case. |#
 (define ucode-type/record (ucode-type record))
 (define ucode-type/weak-cons (ucode-type weak-cons))
 (define ucode-type/recnum (ucode-type recnum))
-(define ucode-type/ratnum (ucode-type recnum))
+(define ucode-type/ratnum (ucode-type ratnum))
+(define ucode-type/big-fixnum (ucode-type big-fixnum))
 (define ucode-type/fixnum (ucode-type fixnum))
 (define ucode-type/positive-fixnum (ucode-type positive-fixnum))
 (define ucode-type/negative-fixnum (ucode-type negative-fixnum))
