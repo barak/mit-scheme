@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.29 1996/04/24 02:38:48 cph Exp $
+;;;	$Id: os2.scm,v 1.30 1996/05/04 17:38:12 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
 ;;;
@@ -78,7 +78,11 @@
 	      result))))))
 
 (define (os/set-file-modes-writable! pathname)
-  (set-file-modes! pathname (fix:andc (file-modes pathname) #x0001)))
+  (set-file-modes! pathname
+		   (fix:andc (file-modes pathname) os2-file-mode/read-only)))
+
+(define (os/restore-modes-to-updated-file! pathname modes)
+  (set-file-modes! pathname (fix:or modes os2-file-mode/archived)))
 
 (define (os/scheme-can-quit?)
   #f)

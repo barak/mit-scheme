@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.68 1996/04/24 02:38:37 cph Exp $
+;;;	$Id: unix.scm,v 1.69 1996/05/04 17:38:55 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -774,6 +774,9 @@ option, instead taking -P <filename>."
 
 (define (os/set-file-modes-writable! pathname)
   (set-file-modes! pathname #o777))
+
+(define os/restore-modes-to-updated-file!
+  set-file-modes!)
 
 (define (os/sendmail-program)
   (if (file-exists? "/usr/lib/sendmail")

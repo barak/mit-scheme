@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.35 1996/04/24 02:38:58 cph Exp $
+;;;	$Id: dos.scm,v 1.36 1996/05/04 17:38:40 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-96 Massachusetts Institute of Technology
 ;;;
@@ -77,6 +77,12 @@
 
 (define (os/set-file-modes-writable! pathname)
   (set-file-modes! pathname #o777))
+
+(define os/restore-modes-to-updated-file!
+  ;; **** If implementation is changed so that file modes are DOS
+  ;; attributes rather than an emulation of unix modes, this will have
+  ;; to be changed to work like the OS/2 code.  ****
+  set-file-modes!)
 
 (define (os/scheme-can-quit?)
   #t)
