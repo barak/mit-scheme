@@ -134,6 +134,19 @@ struct obstack		/* control current object in current chunk */
   struct _obstack_chunk *(*chunkfun) (); /* User's fcn to allocate a chunk.  */
   void (*freefun) ();		/* User's function to free a chunk.  */
 };
+
+/* Declare the external functions we use; they are in obstack.c.  */
+
+#ifdef __STDC__
+  extern void _obstack_newchunk (struct obstack *, int);
+  extern void _obstack_free (struct obstack *, void *);
+  extern void _obstack_begin (struct obstack *, int, int,
+			      void *(*) (), void (*) ());
+#else
+  extern void _obstack_newchunk ();
+  extern void _obstack_free ();
+  extern void _obstack_begin ();
+#endif
 
 #ifdef __STDC__
 
@@ -271,7 +284,7 @@ int obstack_chunk_size (struct obstack *obstack);
 #define obstack_blank(OBSTACK,length)					\
 ({ struct obstack *__o = (OBSTACK);					\
    int __len = (length);						\
-   ((__o->next_free + __len > __o->chunk_limit)				\
+   ((__o->chunk_limit - __o->next_free < __len)				\
     ? _obstack_newchunk (__o, __len) : 0);				\
    __o->next_free += __len;						\
    (void) 0; })
@@ -341,19 +354,19 @@ int obstack_chunk_size (struct obstack *obstack);
 #define obstack_ptr_grow(h,datum)					\
 ( (((h)->next_free + sizeof (char *) > (h)->chunk_limit)		\
    ? _obstack_newchunk ((h), sizeof (char *)) : 0),			\
-  *((char **)(h)->next_free)++ = ((char *)datum))
+  *((char **)(((h)->next_free+=sizeof(char *))-sizeof(char *))) = ((char *)datum))
 
 #define obstack_int_grow(h,datum)					\
 ( (((h)->next_free + sizeof (int) > (h)->chunk_limit)			\
    ? _obstack_newchunk ((h), sizeof (int)) : 0),			\
-  *((int *)(h)->next_free)++ = ((int)datum))
+  *((int *)(((h)->next_free+=sizeof(int))-sizeof(int))) = ((int)datum))
 
 #define obstack_ptr_grow_fast(h,aptr) (*((char **)(h)->next_free)++ = (char *)aptr)
 #define obstack_int_grow_fast(h,aint) (*((int *)(h)->next_free)++ = (int)aint)
 
 #define obstack_blank(h,length)						\
 ( (h)->temp = (length),							\
-  (((h)->next_free + (h)->temp > (h)->chunk_limit)			\
+  (((h)->chunk_limit - (h)->next_free < (h)->temp)			\
    ? _obstack_newchunk ((h), (h)->temp) : 0),				\
   (h)->next_free += (h)->temp)
 
@@ -383,17 +396,16 @@ int obstack_chunk_size (struct obstack *obstack);
   (((h)->temp >= 0 && (h)->temp < (h)->chunk_limit - (char *) (h)->chunk)\
    ? (int) ((h)->next_free = (h)->object_base				\
 	    = (h)->temp + (char *) (h)->chunk)				\
-   : ((obstack_free) ((h), (h)->temp + (char *) (h)->chunk), 0)))
+   : (((obstack_free) ((h), (h)->temp + (char *) (h)->chunk), 0), 0)))
 #else
 #define obstack_free(h,obj)						\
 ( (h)->temp = (char *)(obj) - (char *) (h)->chunk,			\
   (((h)->temp >= 0 && (h)->temp < (h)->chunk_limit - (char *) (h)->chunk)\
    ? (int) ((h)->next_free = (h)->object_base				\
 	    = (h)->temp + (char *) (h)->chunk)				\
-   : (int) _obstack_free ((h), (h)->temp + (char *) (h)->chunk)))
+   : (_obstack_free ((h), (h)->temp + (char *) (h)->chunk), 0)))
 #endif
 
 #endif /* not __GNUC__ or not __STDC__ */
 
 #endif /* not __OBSTACKS__ */
-

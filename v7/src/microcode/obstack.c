@@ -139,6 +139,14 @@ _obstack_newchunk (h, length)
   for (i = already; i < obj_size; i++)
     new_chunk->contents[i] = h->object_base[i];
 
+  /* If the object just copied was the only data in OLD_CHUNK,
+     free that chunk and remove it from the chain.  */
+  if (h->object_base == old_chunk->contents)
+    {
+      new_chunk->prev = old_chunk->prev;
+      (*h->freefun) (old_chunk);
+    }
+
   h->object_base = new_chunk->contents;
   h->next_free = h->object_base + obj_size;
 }
