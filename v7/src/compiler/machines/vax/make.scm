@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/make.scm,v 4.1 1988/01/05 15:54:46 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/make.scm,v 4.2 1988/02/23 19:39:53 bal Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -48,7 +48,7 @@ MIT in each case. |#
       (define :files)
 
 ;      (parse-rcs-header
-;       "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/make.scm,v 4.1 1988/01/05 15:54:46 bal Exp $"
+;       "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/make.scm,v 4.2 1988/02/23 19:39:53 bal Exp $"
 ;       (lambda (filename version date time zone author state)
 ;	 (set! :version (car version))
 ;	 (set! :modification (cadr version))))
@@ -57,7 +57,7 @@ MIT in each case. |#
 	(list
 	 (cons system-global-environment
 	       '("base/pbs.bin"		;bit-string read/write syntax
-		 "/scheme/rel5/etc/direct.bin" ;directory reader
+		 "etc/direct.bin" ;directory reader
 		 "etc/butils.bin"	;system building utilities
 		 ))
 
@@ -117,6 +117,9 @@ MIT in each case. |#
 	 (cons disassembler-package
 	       '("machines/vax/dassm2.com" ;disassembler
 		 "machines/vax/dassm3.com"
+		 "machines/vax/instr1.dbin" ;disassembler instructions
+		 "machines/vax/instr2.dbin"
+		 "machines/vax/instr3.dbin"
 		 ))
 
 	 (cons fg-generator-package
@@ -191,7 +194,6 @@ MIT in each case. |#
 		 "machines/vax/instr1.com" ;VAX Instructions
 		 "machines/vax/instr2.com" ; "        "
 		 "machines/vax/instr3.com" ; "        "
-		 "machines/vax/instr4.com" ; "        "
 		 ))
 
 	 (cons bit-package
@@ -212,3 +214,4 @@ MIT in each case. |#
 			      (lexical-reference compiler-package name)))
 	  '(COMPILE-BIN-FILE COMPILE-PROCEDURE COMPILER:RESET!))
 (toggle-gc-notification!)
+
