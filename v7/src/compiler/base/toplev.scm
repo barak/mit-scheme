@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.12 1988/12/06 18:54:04 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.13 1988/12/13 13:02:39 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -427,10 +427,11 @@ MIT in each case. |#
       (phase/setup-block-types)      (phase/compute-call-graph)
       (phase/side-effect-analysis)
       (phase/continuation-analysis)
-      (phase/simplicity-analysis)
+      (phase/setup-frame-adjustments)
+      (phase/subproblem-analysis)
+      (phase/design-environment-frames)
       (phase/subproblem-ordering)
       (phase/connectivity-analysis)
-      (phase/design-environment-frames)
       (phase/compute-node-offsets)
       (phase/fg-optimization-cleanup))))
 
@@ -472,7 +473,8 @@ MIT in each case. |#
 (define (phase/setup-block-types)
   (compiler-subphase "Block Type Determination"
     (lambda ()
-      (setup-block-types! *root-block*))))
+      (setup-block-types! *root-block*)
+      (setup-closure-contexts! *root-expression* *procedures*))))
 
 (define (phase/compute-call-graph)
   (compiler-subphase
@@ -491,10 +493,16 @@ MIT in each case. |#
     (lambda ()
       (continuation-analysis *blocks*))))
 
-(define (phase/simplicity-analysis)
-  (compiler-subphase "Simplicity Analysis"
+(define (phase/setup-frame-adjustments)
+  (compiler-subphase "Frame Adjustment Determination"
     (lambda ()
-      (simplicity-analysis *parallels*))))
+      (setup-frame-adjustments *applications*))))
+
+(define (phase/subproblem-analysis)
+  (compiler-subphase "Subproblem Analysis"
+    (lambda ()
+      (simplicity-analysis *parallels*)
+      (compute-subproblem-free-variables *parallels*))))
 
 (define (phase/subproblem-ordering)
   (compiler-subphase "Subproblem Ordering"
