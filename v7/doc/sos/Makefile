@@ -1,5 +1,5 @@
 
-# $Id: Makefile,v 2.5 2000/07/26 03:02:51 cph Exp $
+# $Id: Makefile,v 2.6 2000/12/08 20:14:24 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -17,7 +17,18 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-all:	sos.ps sos.pdf sos.info html/sos_toc.html
+all: sos.info sos.html sos.pdf sos.ps
+
+sos.info: sos.texinfo gfdl.texinfo
+	rm -f sos.info*
+	makeinfo sos.texinfo
+
+sos.html: sos.texinfo gfdl.texinfo
+	rm -f sos*.html
+	texi2html -split_chapter sos.texinfo
+
+sos.pdf: sos.texinfo gfdl.texinfo
+	texi2pdf sos.texinfo
 
 sos.ps: sos.dvi
 	dvips -o $@ $^
@@ -25,24 +36,43 @@ sos.ps: sos.dvi
 sos.dvi: sos.texinfo gfdl.texinfo
 	texi2dvi sos.texinfo
 
-sos.pdf: sos.texinfo gfdl.texinfo
-	texi2pdf sos.texinfo
-
-sos.info: sos.texinfo gfdl.texinfo
-	makeinfo sos.texinfo
-	rm -f /usr/local/lib/mit-scheme/edwin/info/sos.info*
-	cpx sos.info* /usr/local/lib/mit-scheme/edwin/info/.
-	gzip -v /usr/local/lib/mit-scheme/edwin/info/sos.info*
-
-html/sos_toc.html: sos.texinfo gfdl.texinfo
-	(cd html;make)
-
 AUX_SUFFIXES = aux log toc
 INDEX_SUFFIXES = cp fn ky pg tp vr
 
-clean:
-	rm -f sos.ps sos.dvi sos.pdf sos.info*
-	rm -f $(addprefix sos.,$(AUX_SUFFIXES))
-	rm -f $(addprefix sos.,$(INDEX_SUFFIXES))
-	rm -f $(addsuffix s,$(addprefix sos.,$(INDEX_SUFFIXES)))
-	$(MAKE) -C html $@
+mostlyclean:
+	@for S in $(AUX_SUFFIXES); do \
+	    echo "rm -f sos.$${S}";\
+	    rm -f sos.$${S};\
+	done
+	@for S in $(INDEX_SUFFIXES); do \
+	    echo "rm -f sos.$${S}";\
+	    rm -f sos.$${S};\
+	    echo "rm -f sos.$${S}s";\
+	    rm -f sos.$${S}s;\
+	done
+	rm -f sos.dvi
+
+clean: mostlyclean
+	rm -f sos.info* sos*.html sos.pdf sos.ps
+
+distclean: clean
+
+maintainer-clean: distclean
+
+# The install rules depend on macro variables passwd down from the
+# makefile in the top-level documentation directory.
+
+install-info: sos.info
+	$(INSTALL_DATA) sos.info* $(DESTDIR)$(infodir)/.
+
+install-html: sos.html
+	$(INSTALL_DATA) sos*.html $(DESTDIR)$(htmldir)/.
+
+install-pdf: sos.pdf
+	$(INSTALL_DATA) sos.pdf $(DESTDIR)$(pdfdir)/.
+
+install-ps: sos.ps
+	$(INSTALL_DATA) sos.ps $(DESTDIR)$(psdir)/.
+
+.PHONY: all mostlyclean clean distclean maintainer-clean
+.PHONY: install-info install-html install-pdf install-ps

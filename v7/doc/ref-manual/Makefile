@@ -1,5 +1,5 @@
 
-# $Id: Makefile,v 1.4 2000/07/26 03:02:13 cph Exp $
+# $Id: Makefile,v 1.5 2000/12/08 20:14:24 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -17,7 +17,18 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-all:	scheme.ps scheme.pdf scheme.info html/scheme_toc.html
+all: scheme.info scheme.html scheme.pdf scheme.ps
+
+scheme.info: scheme.texinfo gfdl.texinfo
+	rm -f scheme.info*
+	makeinfo scheme.texinfo
+
+scheme.html: scheme.texinfo gfdl.texinfo
+	rm -f scheme*.html
+	texi2html -split_chapter scheme.texinfo
+
+scheme.pdf: scheme.texinfo gfdl.texinfo
+	texi2pdf scheme.texinfo
 
 scheme.ps: scheme.dvi
 	dvips -o $@ $^
@@ -25,24 +36,43 @@ scheme.ps: scheme.dvi
 scheme.dvi: scheme.texinfo gfdl.texinfo
 	texi2dvi scheme.texinfo
 
-scheme.pdf: scheme.texinfo gfdl.texinfo
-	texi2pdf scheme.texinfo
-
-scheme.info: scheme.texinfo gfdl.texinfo
-	makeinfo scheme.texinfo
-	rm -f /usr/local/lib/mit-scheme/edwin/info/scheme.info*
-	cpx scheme.info* /usr/local/lib/mit-scheme/edwin/info/.
-	gzip -v /usr/local/lib/mit-scheme/edwin/info/scheme.info*
-
-html/scheme_toc.html: scheme.texinfo gfdl.texinfo
-	(cd html;make)
-
 AUX_SUFFIXES = aux log toc
 INDEX_SUFFIXES = cp fn ky pg tp vr
 
-clean:
-	rm -f scheme.ps scheme.dvi scheme.pdf scheme.info*
-	rm -f $(addprefix scheme.,$(AUX_SUFFIXES))
-	rm -f $(addprefix scheme.,$(INDEX_SUFFIXES))
-	rm -f $(addsuffix s,$(addprefix scheme.,$(INDEX_SUFFIXES)))
-	$(MAKE) -C html $@
+mostlyclean:
+	@for S in $(AUX_SUFFIXES); do \
+	    echo "rm -f scheme.$${S}";\
+	    rm -f scheme.$${S};\
+	done
+	@for S in $(INDEX_SUFFIXES); do \
+	    echo "rm -f scheme.$${S}";\
+	    rm -f scheme.$${S};\
+	    echo "rm -f scheme.$${S}s";\
+	    rm -f scheme.$${S}s;\
+	done
+	rm -f scheme.dvi
+
+clean: mostlyclean
+	rm -f scheme.info* scheme*.html scheme.pdf scheme.ps
+
+distclean: clean
+
+maintainer-clean: distclean
+
+# The install rules depend on macro variables passwd down from the
+# makefile in the top-level documentation directory.
+
+install-info: scheme.info
+	$(INSTALL_DATA) scheme.info* $(DESTDIR)$(infodir)/.
+
+install-html: scheme.html
+	$(INSTALL_DATA) scheme*.html $(DESTDIR)$(htmldir)/.
+
+install-pdf: scheme.pdf
+	$(INSTALL_DATA) scheme.pdf $(DESTDIR)$(pdfdir)/.
+
+install-ps: scheme.ps
+	$(INSTALL_DATA) scheme.ps $(DESTDIR)$(psdir)/.
+
+.PHONY: all mostlyclean clean distclean maintainer-clean
+.PHONY: install-info install-html install-pdf install-ps
