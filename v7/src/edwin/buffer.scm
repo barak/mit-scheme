@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: buffer.scm,v 1.176 2000/03/23 03:19:02 cph Exp $
+;;; $Id: buffer.scm,v 1.177 2000/03/25 20:34:54 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -124,6 +124,7 @@ The buffer is guaranteed to be deselected at that time."
      (%set-buffer-major-mode!
       buffer
       (variable-default-value (ref-variable-object editor-default-mode)))
+     (event-distributor/invoke! event:set-buffer-pathname buffer)
      (buffer-modeline-event! buffer 'BUFFER-RESET))))
 
 (define (set-buffer-name! buffer name)
@@ -137,7 +138,11 @@ The buffer is guaranteed to be deselected at that time."
   (set-buffer-%pathname! buffer pathname)
   (if pathname
       (set-buffer-default-directory! buffer (directory-pathname pathname)))
+  (event-distributor/invoke! event:set-buffer-pathname buffer)
   (buffer-modeline-event! buffer 'BUFFER-PATHNAME))
+
+(define event:set-buffer-pathname
+  (make-event-distributor))
 
 (define (set-buffer-truename! buffer truename)
   (set-buffer-%truename! buffer truename)
@@ -256,6 +261,17 @@ The buffer is guaranteed to be deselected at that time."
 	   (begin
 	     (set-group-modified?! group #t)
 	     (buffer-modeline-event! buffer 'BUFFER-MODIFIED)))))))
+
+(define (verify-visited-file-modification-time? buffer)
+  (let ((truename (buffer-truename buffer))
+	(buffer-time (buffer-modification-time buffer)))
+    (or (not truename)
+	(not buffer-time)
+	(let ((file-time (file-modification-time truename)))
+	  (and file-time (< (abs (- buffer-time file-time)) 2))))))
+
+(define-integrable (clear-visited-file-modification-time! buffer)
+  (set-buffer-modification-time! buffer #f))
 
 (define (set-buffer-auto-saved! buffer)
   (set-buffer-auto-saved?! buffer #t)
