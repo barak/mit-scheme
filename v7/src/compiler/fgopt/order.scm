@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/order.scm,v 4.7 1988/10/03 21:19:31 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/order.scm,v 4.8 1988/10/04 22:59:20 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -251,47 +251,62 @@ MIT in each case. |#
 	      (set-subproblem-type! subproblem type))
 	    subproblems))
 
-(define (sort-subproblems/out-of-line subproblems callee)
+(define (sort-subproblems/out-of-line all-subproblems callee)
   (transmit-values
       (sort-integrated (cdr (procedure-original-required callee))
-		       subproblems
+		       all-subproblems
 		       '()
 		       '())
     (lambda (required subproblems integrated non-integrated)
-      (if (null? required)
-	  (transmit-values
-	      (sort-integrated (procedure-original-optional callee)
-			       subproblems
-			       integrated
-			       non-integrated)
-	    (lambda (optional subproblems integrated non-integrated)
-	      (let ((rest (procedure-original-rest callee)))
-		(cond ((not (null? optional))
-		       (return-3 (if rest
-				     0
-				     ;; In this case the caller will
-				     ;; make slots for the optionals.
-				     (length optional))
-				 integrated
-				 non-integrated))
-		      ((and (not (null? subproblems)) (not rest))
-		       (error "sort-subproblems/out-of-line: Too many arguments"
-			      callee subproblems))
-		      ((and rest (lvalue-integrated? rest))
-		       (return-3 0
-				 (append! (reverse subproblems) integrated)
-				 non-integrated))
-		      (else
-		       (return-3 0
-				 integrated
-				 (append! (reverse subproblems)
-					  non-integrated)))))))
-	  ;; This is a wrong number of arguments case, so the code
-	  ;; we generate will not be any good.
-	  ;; (return-3 0 integrated non-integrated)
-	  (error "sort-subproblems/out-of-line: Too few arguments"
-		 callee subproblems)))))
-
+      (let ((unassigned-count 0))
+	(if (not (null? required))
+	    (begin
+	      ;; This is a wrong number of arguments case, so the code
+	      ;; we generate will not be any good.
+	      ;; The missing arguments are defaulted.
+	      (error "sort-subproblems/out-of-line: Too few arguments"
+		     callee all-subproblems)
+	      ;; This does not take into account potential integrated
+	      ;; required parameters, but they better not be integrated
+	      ;; if they are not always provided!
+	      (set! unassigned-count (length required))))
+	(transmit-values
+	 (sort-integrated (procedure-original-optional callee)
+			  subproblems
+			  integrated
+			  non-integrated)
+	 (lambda (optional subproblems integrated non-integrated)
+	   (let ((rest (procedure-original-rest callee)))
+	     (cond ((not (null? optional))
+		    (return-3 (if rest
+				  0	; unassigned-count might work too
+				  ;; In this case the caller will
+				  ;; make slots for the optionals.
+				  (+ unassigned-count (length optional)))
+			      integrated
+			      non-integrated))
+		   ((and (not (null? subproblems)) (not rest))
+		    (error "sort-subproblems/out-of-line: Too many arguments"
+			   callee all-subproblems)
+		    ;; This is a wrong number of arguments case, so
+		    ;; the code we generate will not be any good.
+		    ;; The extra arguments are dropped!
+		    ;; Note that in this case unassigned-count should be 0,
+		    ;; since we cannot have both too many and too few arguments
+		    ;; simultaneously.
+		    (return-3 unassigned-count
+			      integrated
+			      non-integrated))
+		   ((and rest (lvalue-integrated? rest))
+		    (return-3 unassigned-count
+			      (append! (reverse subproblems) integrated)
+			      non-integrated))
+		   (else
+		    (return-3 unassigned-count
+			      integrated
+			      (append! (reverse subproblems)
+				       non-integrated)))))))))))
+
 (define (sort-integrated lvalues subproblems integrated non-integrated)
   (cond ((or (null? lvalues) (null? subproblems))
 	 (return-4 lvalues subproblems integrated non-integrated))
@@ -305,7 +320,7 @@ MIT in each case. |#
 			  (cdr subproblems)
 			  integrated
 			  (cons (car subproblems) non-integrated)))))
-
+
 (define (operator-type operator)
   (let ((callee (rvalue-known-value operator)))
     (cond ((not callee)
