@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: object.h,v 9.45 1993/12/05 06:35:45 cph Exp $
+$Id: object.h,v 9.46 1995/07/27 00:06:04 adams Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -54,30 +54,46 @@ MIT in each case. */
 
 #define MAX_TYPE_CODE		0xFF
 #define DATUM_LENGTH		24
-#define FIXNUM_LENGTH		23
-#define FIXNUM_SIGN_BIT		0x00800000
-#define SIGN_MASK		0xFF800000
-#define SMALLEST_FIXNUM		((long) 0xFF800000)
-#define BIGGEST_FIXNUM		((long) 0x007FFFFF)
 #define HALF_DATUM_LENGTH	12
 #define HALF_DATUM_MASK		0x00000FFF
 #define DATUM_MASK		0x00FFFFFF
 #define TYPE_CODE_MASK		0xFF000000
+#if (TC_POSITIVE_FIXNUM == TC_NEGATVE_FIXNUM)
+# define FIXNUM_LENGTH		23
+# define FIXNUM_SIGN_BIT	0x00800000
+# define SIGN_MASK		0xFF800000
+# define SMALLEST_FIXNUM	((long) 0xFF800000)
+# define BIGGEST_FIXNUM		((long) 0x007FFFFF)
+#else
+# define FIXNUM_LENGTH		24
+# define FIXNUM_SIGN_BIT	0x01000000
+# define SIGN_MASK		0xFF000000
+# define SMALLEST_FIXNUM	((long) 0xFF000000)
+# define BIGGEST_FIXNUM		((long) 0x00FFFFFF)
+#endif
 
 #endif /* (TYPE_CODE_LENGTH == 8) */
 #if (TYPE_CODE_LENGTH == 6)
 
 #define MAX_TYPE_CODE		0x3F
 #define DATUM_LENGTH		26
-#define FIXNUM_LENGTH		25
-#define FIXNUM_SIGN_BIT		0x02000000
-#define SIGN_MASK		0xFE000000
-#define SMALLEST_FIXNUM		((long) 0xFE000000)
-#define BIGGEST_FIXNUM		((long) 0x01FFFFFF)
 #define HALF_DATUM_LENGTH	13
 #define HALF_DATUM_MASK		0x00001FFF
 #define DATUM_MASK		0x03FFFFFF
 #define TYPE_CODE_MASK		0XFC000000
+#if (TC_POSITIVE_FIXNUM == TC_NEGATIVE_FIXNUM)
+# define FIXNUM_LENGTH		25
+# define FIXNUM_SIGN_BIT        0x02000000
+# define SIGN_MASK		0xFE000000
+# define SMALLEST_FIXNUM	((long) 0xFE000000)
+# define BIGGEST_FIXNUM		((long) 0x01FFFFFF)
+#else
+# define FIXNUM_LENGTH		26
+# define FIXNUM_SIGN_BIT	0x04000000
+# define SIGN_MASK		0xFC000000
+# define SMALLEST_FIXNUM	((long) 0xFC000000)
+# define BIGGEST_FIXNUM		((long) 0x03FFFFFF)
+#endif
 
 #endif /* (TYPE_CODE_LENGTH == 6) */
 #endif /* b32 */
@@ -85,18 +101,33 @@ MIT in each case. */
 
 #define MAX_TYPE_CODE		((1 << TYPE_CODE_LENGTH) - 1)
 #define DATUM_LENGTH		(OBJECT_LENGTH - TYPE_CODE_LENGTH)
-/* FIXNUM_LENGTH does NOT include the sign bit! */
-#define FIXNUM_LENGTH		(DATUM_LENGTH - 1)
-#define FIXNUM_SIGN_BIT		(1L << FIXNUM_LENGTH)
-#define SIGN_MASK		((long) (-1L << FIXNUM_LENGTH))
-#define SMALLEST_FIXNUM		((long) (-1L << FIXNUM_LENGTH))
-#define BIGGEST_FIXNUM		((1L << FIXNUM_LENGTH) - 1)
 #define HALF_DATUM_LENGTH	(DATUM_LENGTH / 2)
 #define HALF_DATUM_MASK		((1L << HALF_DATUM_LENGTH) - 1)
 #define DATUM_MASK		((1L << DATUM_LENGTH) - 1)
 #define TYPE_CODE_MASK		(~ DATUM_MASK)
-
+/* FIXNUM_LENGTH does NOT include the sign bit! */
+#if (TC_POSITIVE_FIXNUM == TC_NEGATIVE_FIXNUM)
+# define FIXNUM_LENGTH		(DATUM_LENGTH - 1)
+#else
+# define FIXNUM_LENGTH		(DATUM_LENGTH)
+#endif
+#define FIXNUM_SIGN_BIT		(1L << FIXNUM_LENGTH)
+#define SIGN_MASK		((long) (-1L << FIXNUM_LENGTH))
+#define SMALLEST_FIXNUM		((long) (-1L << FIXNUM_LENGTH))
+#define BIGGEST_FIXNUM		((1L << FIXNUM_LENGTH) - 1)
 #endif /* DATUM_LENGTH */
+
+
+/* Several assumtions are made if TC_POSITIVE_FIXNUM != TC_NEGATIVE_FIXNUM.
+   Most important is that they have a sign bit in the LSB of the tag.
+   The following test is more restrictive but it is probably what we want.
+*/
+
+#if (TC_POSITIVE_FIXNUM != TC_NEGATIVE_FIXNUM)
+# if ((TC_POSITIVE_FIXNUM != 0) || (TC_NEGATIVE_FIXNUM != MAX_TYPE_CODE))
+#  include "Error in object.h: If TC_POSITIVE_FIXNUM != TC_NEGATIVE_FIXNUM they must be allocated to 0 and -1"
+# endif
+#endif
 
 /* Basic object structure */
 
@@ -195,7 +226,8 @@ extern SCHEME_OBJECT * memory_base;
 
 /* Lots of type predicates */
 
-#define FIXNUM_P(object) ((OBJECT_TYPE (object)) == TC_FIXNUM)
+#define FIXNUM_P(object) (((OBJECT_TYPE (object)) == TC_POSITIVE_FIXNUM) || \
+                          ((OBJECT_TYPE (object)) == TC_NEGATIVE_FIXNUM))
 #define BIGNUM_P(object) ((OBJECT_TYPE (object)) == TC_BIG_FIXNUM)
 #define FLONUM_P(object) ((OBJECT_TYPE (object)) == TC_BIG_FLONUM)
 #define COMPLEX_P(object) ((OBJECT_TYPE (object)) == TC_COMPLEX)
@@ -236,19 +268,18 @@ extern SCHEME_OBJECT * memory_base;
    ((OBJECT_TYPE (object)) == TC_UNINTERNED_SYMBOL))
 
 #define INTEGER_P(object)						\
-  (((OBJECT_TYPE (object)) == TC_FIXNUM) ||				\
+  ((FIXNUM_P(object)) ||						\
    ((OBJECT_TYPE (object)) == TC_BIG_FIXNUM))
 
 #define REAL_P(object)							\
-  (((OBJECT_TYPE (object)) == TC_FIXNUM) ||				\
-   ((OBJECT_TYPE (object)) == TC_BIG_FIXNUM) ||				\
+  ((INTEGER_P(object)) ||						\
    ((OBJECT_TYPE (object)) == TC_BIG_FLONUM))
 
+#if 0 /* Not used and wrong (should handle RATNUM, too) */
 #define NUMBER_P(object)						\
-  (((OBJECT_TYPE (object)) == TC_FIXNUM) ||				\
-   ((OBJECT_TYPE (object)) == TC_BIG_FIXNUM) ||				\
-   ((OBJECT_TYPE (object)) == TC_BIG_FLONUM)				\
-   ((OBJECT_TYPE (object)) == TC_COMPLEX))
+   ((REAL_P(object)) ||							\
+    ((OBJECT_TYPE (object)) == TC_COMPLEX))
+#endif
 
 #define HUNK3_P(object)							\
   (((OBJECT_TYPE (object)) == TC_HUNK3_A) ||				\
@@ -389,27 +420,52 @@ extern SCHEME_OBJECT * memory_base;
 
 /* Fixnum Operations */
 
-#define FIXNUM_ZERO_P(fixnum) ((OBJECT_DATUM (fixnum)) == 0)
+#define FIXNUM_ZERO_P(fixnum) ((fixnum) == (FIXNUM_ZERO))
 #define FIXNUM_NEGATIVE_P(fixnum) (((fixnum) & FIXNUM_SIGN_BIT) != 0)
 #define UNSIGNED_FIXNUM_P(x) ((FIXNUM_P (x)) && (! (FIXNUM_NEGATIVE_P (x))))
-#define FIXNUM_EQUAL_P(x, y) ((OBJECT_DATUM (x)) == (OBJECT_DATUM (y)))
+#define FIXNUM_EQUAL_P(x, y) ((x)==(y))
 #define FIXNUM_LESS_P(x, y) ((FIXNUM_TO_LONG (x)) < (FIXNUM_TO_LONG (y)))
 
 #define FIXNUM_POSITIVE_P(fixnum)					\
   (! ((FIXNUM_ZERO_P (fixnum)) || (FIXNUM_NEGATIVE_P (fixnum))))
 
-#define UNSIGNED_FIXNUM_TO_LONG(fixnum) ((long) (OBJECT_DATUM (fixnum)))
-#define LONG_TO_UNSIGNED_FIXNUM_P(value) (((value) & SIGN_MASK) == 0)
-#define LONG_TO_UNSIGNED_FIXNUM(value) (FIXNUM_ZERO + (value))
-#define LONG_TO_FIXNUM(value) (OBJECT_NEW_TYPE (TC_FIXNUM, (value)))
+#define UNSIGNED_FIXNUM_TO_LONG(fixnum) 				\
+  ((long) (fixnum & (~ (SIGN_MASK ^ FIXNUM_SIGN_BIT))))
+#define LONG_TO_UNSIGNED_FIXNUM(value)					\
+  (OBJECT_NEW_TYPE(TC_POSITIVE_FIXNUM, (value)))
+#if 0
+#if (TC_POSITIVE_FIXNUM != TC_NEGATIVE_FIXNUM)
+#include "Error in object.h: TC_POSITIVE_FIXNUM can't differ from TC_NEGATIVE_FIXNUM!"
+#endif
+#endif
+
+#if (TC_POSITIVE_FIXNUM == TC_NEGATIVE_FIXNUM)
+# define LONG_TO_FIXNUM(value) (OBJECT_NEW_TYPE (TC_POSITIVE_FIXNUM, (value)))
+#else
+# define LONG_TO_FIXNUM(value) \
+    ( (((value) & (FIXNUM_SIGN_BIT)) == 0) ? \
+      (OBJECT_NEW_TYPE (TC_POSITIVE_FIXNUM, (value))) \
+    : (OBJECT_NEW_TYPE (TC_NEGATIVE_FIXNUM, (value))))
+#endif
 
 #define LONG_TO_FIXNUM_P(value)						\
   ((((value) & SIGN_MASK) == 0) || (((value) & SIGN_MASK) == SIGN_MASK))
 
-#define FIXNUM_TO_LONG(fixnum)						\
-  ((((long) (fixnum)) ^ ((long) FIXNUM_SIGN_BIT))			\
-   - ((long) ((((unsigned long) TC_FIXNUM) << DATUM_LENGTH)		\
-	      | FIXNUM_SIGN_BIT)))
+#if (TC_POSITIVE_FIXNUM == TC_NEGATIVE_FIXNUM)
+# define FIXNUM_TO_LONG(fixnum)						\
+   ((((long) (fixnum)) ^ ((long) FIXNUM_SIGN_BIT))			\
+    - ((long) ((((unsigned long) TC_POSITIVE_FIXNUM) << DATUM_LENGTH)	\
+	       | FIXNUM_SIGN_BIT)))
+#else
+# if ((TC_POSITIVE_FIXNUM==0) && (TC_NEGATIVE_FIXNUM==MAX_TYPE_CODE))
+#  define FIXNUM_TO_LONG(fixnum)	((long)(fixnum))
+# else
+#  define FIXNUM_TO_LONG(fixnum)				        \
+      ((OBJECT_TYPE(fixnum)==TC_POSITIVE_FIXNUM) ?                       \
+         ((fixnum) & ~FIXNUM_SIGN_MASK)                                \
+       : ((fixnum) |  FIXNUM_SIGN_MASK))
+# endif
+#endif
 
 #define FIXNUM_TO_DOUBLE(fixnum) ((double) (FIXNUM_TO_LONG (fixnum)))
 
@@ -501,6 +557,9 @@ extern SCHEME_OBJECT * memory_base;
 
 #define ADDRESS_PURE_P(address)						\
   ((ADDRESS_CONSTANT_P (address)) && (Pure_Test (address)))
+
+#define ADDRESS_HEAP_P(address)						\
+  (((address) >= Heap_Bottom) && ((address) < Heap_Top))
 
 #define SIDE_EFFECT_IMPURIFY(Old_Pointer, Will_Contain)			\
 if ((ADDRESS_CONSTANT_P (OBJECT_ADDRESS (Old_Pointer))) &&		\
