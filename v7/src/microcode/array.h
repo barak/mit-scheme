@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.h,v 9.23 1987/10/19 20:51:06 pas Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.h,v 9.24 1987/12/31 18:51:55 pas Rel $ */
 
 
 #define REAL float
@@ -76,12 +76,15 @@ MIT in each case. */
 /* This is 4 Mbytes for what it's worth... */
 
 /* The following Macros implement useful procs on arrays 
- */
+   Note: The running index "MCRINDX" in the macro loops has been chosen
+   so as to avoid name shadowing other variables when substituted.
+   */
 
 /* Array_Scale
  */
 #define C_Array_Scale(a,scale, len)  \
-{ register long i; for (i=0;i<len;i++) a[i] = a[i] * scale; }
+{ register long mcrindx;             \
+  for (mcrindx=0;mcrindx<len;mcrindx++) a[mcrindx] = a[mcrindx] * scale; }
 
 #define Array_Scale(ar,scale) \
   C_Array_Scale(Scheme_Array_To_C_Array(ar), \
@@ -91,7 +94,8 @@ MIT in each case. */
 /* Array_Copy
  */
 #define C_Array_Copy(ar1,ar2, len) \
-{ register long i; for (i=0; i<len; i++) ar2[i] = ar1[i]; }
+{ register long mcrindx;           \
+  for (mcrindx=0; mcrindx<len; mcrindx++) ar2[mcrindx] = ar1[mcrindx]; }
 
 #define Array_Copy(ar1,ar2) \
   C_Array_Copy(Scheme_Array_To_C_Array(ar1), \
@@ -101,7 +105,8 @@ MIT in each case. */
 /* Array_Add_Into_Second_One
    */
 #define C_Array_Add_Into_Second_One(ar1,ar2,len) \
-{ register long i; for (i=0; i<len; i++) ar2[i] = ar1[i] + ar2[i]; }
+{ register long mcrindx;                         \
+  for (mcrindx=0; mcrindx<len; mcrindx++) ar2[mcrindx] = ar1[mcrindx] + ar2[mcrindx]; }
 
 #define Array_Add_Into_Second_One(ar1,ar2) \
   C_Array_Add_Into_Second_One(Scheme_Array_To_C_Array(ar1), \
