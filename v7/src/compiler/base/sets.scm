@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/sets.scm,v 1.1 1987/03/19 00:44:43 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/sets.scm,v 1.2 1987/06/26 02:22:12 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -119,3 +119,53 @@ MIT in each case. |#
 	  ((memv (car x) y) (loop (cdr x)))
 	  (else (cons (car x) (loop (cdr x))))))
   (loop x))
+
+(define (eq-set-intersection x y)
+  (define (loop x)
+    (cond ((null? x) '())
+	  ((memq (car x) y) (cons (car x) (loop (cdr x))))
+	  (else (loop (cdr x)))))
+  (loop x))
+
+(define (eqv-set-intersection x y)
+  (define (loop x)
+    (cond ((null? x) '())
+	  ((memv (car x) y) (cons (car x) (loop (cdr x))))
+	  (else (loop (cdr x)))))
+  (loop x))
+
+(define (eq-set-disjoint? x y)
+  (define (loop x)
+    (cond ((null? x) true)
+	  ((memq (car x) y) false)
+	  (else (loop (cdr x)))))
+  (loop x))
+
+(define (eqv-set-disjoint? x y)
+  (define (loop x)
+    (cond ((null? x) true)
+	  ((memv (car x) y) false)
+	  (else (loop (cdr x)))))
+  (loop x))
+
+(define (eq-set-subset? x y)
+  (define (loop x)
+    (cond ((null? x) true)
+	  ((memq (car x) y) (loop (cdr x)))
+	  (else false)))
+  (loop x))
+
+(define (eqv-set-subset? x y)
+  (define (loop x)
+    (cond ((null? x) true)
+	  ((memv (car x) y) (loop (cdr x)))
+	  (else false)))
+  (loop x))
+
+(define (eq-set-same-set? x y)
+  (and (eq-set-subset? x y)
+       (eq-set-subset? y x)))
+
+(define (eqv-set-same-set? x y)
+  (and (eqv-set-subset? x y)
+       (eqv-set-subset? y x)))
