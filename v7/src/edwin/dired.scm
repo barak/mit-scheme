@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dired.scm,v 1.157 1995/10/06 21:01:06 cph Exp $
+;;;	$Id: dired.scm,v 1.158 1995/10/18 05:27:16 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -105,6 +105,7 @@ Space and Rubout can be used to move down and up by lines."
     (event-distributor/invoke! (ref-variable dired-mode-hook buffer) buffer)))
 
 (define-key 'dired #\# 'dired-flag-auto-save-files)
+(define-key 'dired #\+ 'dired-create-directory)
 (define-key 'dired #\. 'dired-clean-directory)
 (define-key 'dired #\? 'dired-summary)
 (define-key 'dired #\d 'dired-flag-file-deletion)
@@ -505,6 +506,18 @@ Type \\[help-command] at that time for help."
        result))))
 
 ;;;; File Operation Commands
+
+(define-command dired-create-directory
+  "Create a directory named DIRECTORY."
+  "DCreate directory"
+  (lambda (directory)
+    (make-directory directory)
+    (let ((lstart (mark-right-inserting-copy (line-start (current-point) 0))))
+      (with-read-only-defeated lstart
+	(lambda ()
+	  (insert-dired-entry! directory lstart)))
+      (set-dired-point! lstart)
+      (mark-temporary! lstart))))
 
 (define-command dired-do-copy
   "Copy all marked (or next ARG) files, or copy the current file.
