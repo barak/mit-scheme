@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.60 1997/07/13 07:24:46 cph Exp $
+$Id: make.scm,v 14.61 1998/02/11 05:16:46 cph Exp $
 
-Copyright (c) 1988-97 Massachusetts Institute of Technology
+Copyright (c) 1988-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -310,7 +310,8 @@ MIT in each case. |#
 (eval (file->object "packag" #t #f) environment-for-package)
 ((access initialize-package! environment-for-package))
 (let loop ((names
-	    '(ENVIRONMENT->PACKAGE
+	    '(*ALLOW-PACKAGE-REDEFINITION?*
+	      ENVIRONMENT->PACKAGE
 	      FIND-PACKAGE
 	      NAME->PACKAGE
 	      PACKAGE/ADD-CHILD!

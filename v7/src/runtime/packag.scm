@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.26 1998/02/11 04:50:31 cph Exp $
+$Id: packag.scm,v 14.27 1998/02/11 05:10:59 cph Exp $
 
 Copyright (c) 1988-98 Massachusetts Institute of Technology
 
@@ -134,7 +134,7 @@ MIT in each case. |#
 	'()
 	(cons (car list) (loop (cdr list))))))
 
-(define (package/add-child! package name environment #!optional no-force?)
+(define (package/add-child! package name environment #!optional force?)
   (let ((child (package/child package name))
 	(finish
 	 (lambda (child)
@@ -143,7 +143,9 @@ MIT in each case. |#
 	   child)))
     (if child
 	(begin
-	  (if (and (not (default-object? no-force?)) no-force?)
+	  (if (not (if (default-object? force?)
+		       *allow-package-redefinition?*
+		       force?))
 	      (error "Package already has child of given name:" package name))
 	  (set-package/environment! child environment)
 	  (set-package/children! child '())
@@ -154,6 +156,7 @@ MIT in each case. |#
 	  (finish child)))))
 
 (define system-global-package)
+(define *allow-package-redefinition?*)
 
 (define system-loader/enable-query?
   false)
@@ -226,8 +229,9 @@ MIT in each case. |#
   (lexical-reference (package/environment package) name))
 
 (define (initialize-package!)
-  (set! system-global-package
-	(make-package false false system-global-environment))
+  (set! system-global-package (make-package #f #f system-global-environment))
   (local-assignment system-global-environment
 		    package-name-tag
-		    system-global-package))
+		    system-global-package)
+  (set! *allow-package-redefinition?* #f)
+  unspecific)
