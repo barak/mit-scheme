@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.46 1993/11/11 20:29:35 cph Exp $
+$Id: load.scm,v 14.47 1993/11/21 22:56:50 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -510,65 +510,38 @@ MIT in each case. |#
 ;;;; Loader for packed binaries
 
 (define (load-packed-binaries pathname fname count environment)
-  (define (search-alist path alist predicate?)
-    (let loop ((alist alist))
-      (and (not (null? alist))
-	   (if (predicate? path (cadar alist))
-	       (car alist)
-	       (loop (cdr alist))))))
-
-  (define (find-filename fname alist)
-    (search-alist (->pathname fname) alist
-      (lambda (path1 path2)
-	(and (equal? (pathname-directory path1)
-		     (pathname-directory path2))
-	     (equal? (pathname-name path1)
-		     (pathname-name path2))
-	     (or (equal? (pathname-type path1) (pathname-type path2))
-		 (and (member (pathname-type path1) '(#f "bin" "com"))
-		      (member (pathname-type path2) '(#f "bin" "com"))))))))
-
-  (define (directory-represented? dname alist)
-    (search-alist (pathname-as-directory (->pathname dname)) alist
-      (lambda (path1 path2)
-	(equal? (pathname-directory path1)
-		(pathname-directory path2)))))
-
-  (define (loading-message fname suppress? kind)
-    (if (not suppress?)
-	(let ((port (notification-output-port)))
-	  (fresh-line port)
-	  (write-string kind port)
-	  (write-string (->namestring (->pathname fname)))
-	  (write-string "..."))))
-
   (define (process-bunch alist)
     (let ((real-load load)
 	  (real-fasload fasload)
 	  (real-file-exists? file-exists?)
-	  (real-file-directory? file-directory?))
+	  (real-file-directory? file-directory?)
+	  (to-purify '()))
       (fluid-let
 	  ((load
 	    (lambda (fname #!optional env syntax-table purify?)
-	      (let ((env (if (default-object? env)
-			     environment
-			     env))
-		    (st (if (default-object? syntax-table)
-			    default-object
-			    syntax-table))
-		    (purify? (if (default-object? purify?)
-				 default-object
-				 purify?)))
+	      (let ((env (if (default-object? env) default-object env))
+		    (purify?
+		     (if (default-object? purify?) default-object purify?)))
 		(let ((place (find-filename fname alist)))
 		  (if (not place)
-		      (real-load fname env st purify?)
+		      (real-load fname
+				 env
+				 (if (default-object? syntax-table)
+				     default-object
+				     syntax-table)
+				 purify?)
 		      (let ((scode (caddr place)))
 			(loading-message fname
                                          load/suppress-loading-message?
 					 ";Pseudo-loading ")
-			(if (and purify? (not (eq? purify? default-object)))
-			    (purify (load/purification-root scode)))
-			(extended-scode-eval scode env)))))))
+			(if (and (not (eq? purify? default-object)) purify?)
+			    (set! to-purify
+				  (cons (load/purification-root scode)
+					to-purify)))
+			(extended-scode-eval scode
+					     (if (eq? env default-object)
+						 environment
+						 env))))))))
 	   (fasload
 	    (lambda (filename #!optional suppress-message?)
 	      (let ((suppress-message?
@@ -590,10 +563,43 @@ MIT in each case. |#
 	   (file-directory?
 	    (lambda (dname)
 	      (or (directory-represented? dname alist)
-		  (real-file-directory? dname))))
-	   (flush-purification-queue! (lambda () 'done)))
-        (load (caar alist))))
+		  (real-file-directory? dname)))))
+        (load (caar alist)))
+      (set! alist)
+      (for-each purify (reverse! to-purify)))
     (flush-purification-queue!))
+
+  (define (find-filename fname alist)
+    (search-alist (->pathname fname) alist
+      (lambda (path1 path2)
+	(and (equal? (pathname-directory path1)
+		     (pathname-directory path2))
+	     (equal? (pathname-name path1)
+		     (pathname-name path2))
+	     (or (equal? (pathname-type path1) (pathname-type path2))
+		 (and (member (pathname-type path1) '(#f "bin" "com"))
+		      (member (pathname-type path2) '(#f "bin" "com"))))))))
+
+  (define (directory-represented? dname alist)
+    (search-alist (pathname-as-directory (->pathname dname)) alist
+      (lambda (path1 path2)
+	(equal? (pathname-directory path1)
+		(pathname-directory path2)))))
+
+  (define (search-alist path alist predicate?)
+    (let loop ((alist alist))
+      (and (not (null? alist))
+	   (if (predicate? path (cadar alist))
+	       (car alist)
+	       (loop (cdr alist))))))
+
+  (define (loading-message fname suppress? kind)
+    (if (not suppress?)
+	(let ((port (notification-output-port)))
+	  (fresh-line port)
+	  (write-string kind port)
+	  (write-string (->namestring (->pathname fname)))
+	  (write-string "..."))))
 
   (with-binary-input-file (->truename pathname)
     (lambda (channel)
@@ -606,8 +612,6 @@ MIT in each case. |#
 			     (->pathname (car pair))
 			     (cdr pair)))
 		     ((ucode-primitive binary-fasload) channel))))))
-
-
 	(do ((count count (-1+ count)))
 	    ((= count 1)
 	     (process-next-bunch))
