@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uenvir.scm,v 14.50 2001/12/21 18:22:49 cph Exp $
+$Id: uenvir.scm,v 14.51 2002/01/04 06:05:21 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -30,6 +30,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
       (ic-environment? object)
       (stack-ccenv? object)
       (closure-ccenv? object)))
+
+(define (guarantee-environment object name)
+  (if (not (environment? object))
+      (illegal-environment object name)))
+
+(define (illegal-environment object name)
+  (error:wrong-type-argument object "environment" name))
 
 (define (environment-has-parent? environment)
   (cond ((system-global-environment? environment)
@@ -197,9 +204,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	 (error:bad-range-argument environment 'ENVIRONMENT-DEFINE-MACRO))
 	(else
 	 (illegal-environment environment 'ENVIRONMENT-DEFINE-MACRO))))
-
-(define (illegal-environment object procedure)
-  (error:wrong-type-argument object "environment" procedure))
 
 ;;;; Global environment
 

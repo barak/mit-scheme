@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.403 2001/12/23 17:20:59 cph Exp $
+$Id: runtime.pkg,v 14.404 2002/01/04 06:05:13 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -1336,6 +1336,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  environment-procedure-name
 	  environment?
 	  extend-interpreter-environment
+	  guarantee-environment
 	  ic-environment?
 	  interpreter-environment?
 	  make-null-interpreter-environment
