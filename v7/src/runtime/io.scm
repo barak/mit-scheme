@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.48 1996/05/18 06:15:16 cph Exp $
+$Id: io.scm,v 14.49 1997/01/22 20:44:39 cph Exp $
 
-Copyright (c) 1988-96 Massachusetts Institute of Technology
+Copyright (c) 1988-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1016,8 +1016,13 @@ MIT in each case. |#
   (without-interrupts
    (lambda ()
      (let ((start-index (input-buffer/start-index buffer)))
-       (if (fix:< start-index (input-buffer/end-index buffer))
-	   (set-input-buffer/start-index! buffer (fix:+ start-index 1)))))))
+       (cond ((fix:< start-index (input-buffer/end-index buffer))
+	      (set-input-buffer/start-index! buffer (fix:+ start-index 1)))
+	     ((not (fix:= (input-buffer/real-end buffer) 0))
+	      (if (let ((n (input-buffer/fill buffer)))
+		    (and n
+			 (not (fix:= n 0))))
+		  (set-input-buffer/start-index! buffer 1))))))))
 
 (define (input-buffer/read-substring buffer string start end)
   (define (transfer-input-buffer index)
@@ -1036,7 +1041,9 @@ MIT in each case. |#
 		   (begin
 		     (substring-move-left! bstring bstart bend string index)
 		     (set-input-buffer/start-index! buffer bend)
-		     (fix:+ index available)))))
+		     (if (input-buffer/char-ready? buffer 0)
+			 (transfer-input-buffer (fix:+ index available))
+			 (fix:+ index available))))))
 	    ((or (fix:= (input-buffer/real-end buffer) 0)
 		 (channel-closed? (input-buffer/channel buffer)))
 	     index)
@@ -1044,7 +1051,8 @@ MIT in each case. |#
 	     (read-directly index)))))
 
   (define (read-directly index)
-    (if (not (input-buffer/line-translation buffer))
+    (if (and (not (input-buffer/line-translation buffer))
+	     (fix:>= (fix:- end index) (input-buffer/size buffer)))
 	(let ((n
 	       (channel-read (input-buffer/channel buffer) string index end)))
 	  (if n
