@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: option.scm,v 14.43 2003/02/14 18:28:33 cph Exp $
+$Id: option.scm,v 14.44 2005/03/08 20:43:09 cph Exp $
 
-Copyright (c) 1988-2002 Massachusetts Institute of Technology
+Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
+Copyright 1994,1995,1997,1998,2001,2002 Massachusetts Institute of Technology
+Copyright 2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -74,7 +76,9 @@ USA.
 
 (define (initial-load-options)
   (or *initial-options-file*
-      (get-environment-variable "MITSCHEME_LOAD_OPTIONS")
+      (confirm-pathname
+       (merge-pathnames (get-environment-variable "MITSCHEME_LOAD_OPTIONS")
+			(user-homedir-pathname)))
       (local-load-options)))
 
 (define (local-load-options)
@@ -87,16 +91,16 @@ USA.
       "optiondb"))
 
 (define (library-file? library-internal-path)
-  (let* ((library (library-directory-pathname ""))
-	 (pathname (merge-pathnames library-internal-path library)))
-    (let loop ((file-types load/default-types))
-      (and (not (null? file-types))
-	   (let ((full-pathname
-		  (pathname-new-type pathname (caar file-types))))
-	     (if (file-exists? full-pathname)
-		 ;; not full-pathname to allow load-latest
-		 pathname		
-		 (loop (cdr file-types))))))))
+  (confirm-pathname
+   (merge-pathnames library-internal-path (library-directory-pathname ""))))
+
+(define (confirm-pathname pathname)
+  (let loop ((file-types load/default-types))
+    (and (pair? file-types)
+	 (let ((full-pathname (pathname-new-type pathname (caar file-types))))
+	   (if (file-exists? full-pathname)
+	       pathname			; not FULL-PATHNAME
+	       (loop (cdr file-types)))))))
 
 (define loaded-options '())
 (define *options* '())			; Current options.
