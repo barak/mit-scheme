@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.35 1987/08/10 21:25:07 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.36 1987/08/25 20:37:58 jinx Exp $ */
 
 /* Memory management top level.  Garbage collection to disk.
 
@@ -304,12 +304,15 @@ load_buffer(position, to, nbytes, name)
 {
   long bytes_read;
 
-  if ((current_disk_position != position) &&
-      (lseek(gc_file, position, 0) == -1))
+  if (current_disk_position != position)
   {
-    fprintf(stderr, "\nCould not position GC file to read %s.\n", name);
-    Microcode_Termination(TERM_EXIT);
-    /*NOTREACHED*/
+    if (lseek(gc_file, position, 0) == -1)
+    {
+      fprintf(stderr, "\nCould not position GC file to read %s.\n", name);
+      Microcode_Termination(TERM_EXIT);
+      /*NOTREACHED*/
+    }
+    current_disk_position = position;
   }
   if ((bytes_read = read(gc_file, to, nbytes)) != nbytes)
   {
