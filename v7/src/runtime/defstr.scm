@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 14.5 1989/02/08 22:43:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 14.6 1989/02/28 18:23:55 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -357,18 +357,18 @@ must be defined when the defstruct is evaluated.
 (define (tag->structure tag)
   (if (structure? tag)
       tag
-      (let ((tag (named-structure/get-tag-description tag)))
-	(and tag
-	     (structure? tag)
-	     tag))))
+      (named-structure/get-tag-description tag)))
 
 (define (named-structure? object)
-  (cond ((vector? object)
-	 (and (not (zero? (vector-length object)))
-	      (tag->structure (vector-ref object 0))))
-	((pair? object)
-	 (tag->structure (car object)))
-	(else false)))
+  (let ((object
+	 (cond ((vector? object)
+		(and (not (zero? (vector-length object)))
+		     (tag->structure (vector-ref object 0))))
+	       ((pair? object)
+		(tag->structure (car object)))
+	       (else false))))
+    (or (structure? object)
+	(procedure? object))))
 
 (define (named-structure/description instance)
   (let ((structure
@@ -376,21 +376,25 @@ must be defined when the defstruct is evaluated.
 	  (cond ((vector? instance) (vector-ref instance 0))
 		((pair? instance) (car instance))
 		(else (error "Illegal structure instance" instance))))))
-    (if (not structure)
-	(error "Illegal structure instance" instance))
-    (let ((scheme-type (structure/scheme-type structure)))
-      (if (not (case scheme-type
-		 ((VECTOR) (vector? instance))
-		 ((LIST) (list? instance))
-		 (else (error "Illegal structure type" scheme-type))))
-	  (error "Malformed structure instance" instance))
-      (let ((accessor
-	     (case scheme-type
-	       ((VECTOR) vector-ref)
-	       ((LIST) list-ref))))
-	(map (lambda (slot)
-	       `(,(slot/name slot) ,(accessor instance (slot/index slot))))
-	     (structure/slots structure))))))
+    (cond ((structure? structure)
+	   (let ((scheme-type (structure/scheme-type structure)))
+	     (if (not (case scheme-type
+			((VECTOR) (vector? instance))
+			((LIST) (list? instance))
+			(else (error "Illegal structure type" scheme-type))))
+		 (error "Malformed structure instance" instance))
+	     (let ((accessor
+		    (case scheme-type
+		      ((VECTOR) vector-ref)
+		      ((LIST) list-ref))))
+	       (map (lambda (slot)
+		      `(,(slot/name slot)
+			,(accessor instance (slot/index slot))))
+		    (structure/slots structure)))))
+	  ((procedure? structure)
+	   (structure instance))
+	  (else
+	   (error "Illegal structure instance" instance)))))
 
 ;;;; Code Generation
 
