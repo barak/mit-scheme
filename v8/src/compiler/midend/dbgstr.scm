@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: dbgstr.scm,v 1.11 1995/04/27 23:16:34 adams Exp $
+$Id: dbgstr.scm,v 1.12 1995/05/05 12:58:36 adams Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -241,6 +241,22 @@ MIT in each case. |#
 	 (new-dbg-continuation/new-block object block*))
 	(else (internal-error "Not a dbg expression or procedure" object))))
   
+
+(define-structure
+    (dbg-use
+     (conc-name dbg-use/)
+     (constructor dbg-use/make (name))
+     (print-procedure
+      (standard-unparser-method 'DBG-USE
+	(lambda (u port)
+	  (write-char #\Space port)
+	  (display (dbg-use/name u) port)))))
+  (name #F read-only true)		; e.g. n-15
+  (definitions '() read-only false)	; n-15 -> n-15-43
+					; n-15 -> cell-ref(n-15-cell)
+  ;;(indirect-definitions '() read-only false)
+  (expressions '() read-only false)	; accessor(accessor(n-15))
+  )
 
 (define *dbg-rewrites*)
 
