@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.13 1991/11/04 20:51:36 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.14 1992/01/24 00:32:40 cph Exp $
 ;;;
-;;;	Copyright (c) 1991 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -557,24 +557,26 @@ after the listing is made.)"
 		     (continuation (subprocess-wait process))))
 	     (lambda ()
 	       (receiver
-		(lambda ()
-		  (if (< start-index end-index)
-		      (let ((index (min (+ start-index 512) end-index)))
-			(let ((buffer
-			       (group-extract-string group
-						     start-index
-						     index)))
-			  (let ((n
-				 (channel-write input-channel
-						buffer
-						0
-						(string-length buffer))))
-			    (if n
-				(begin
-				  (set! start-index (+ start-index n))
-				  (if (= start-index end-index)
-				      (channel-close input-channel)))))))
-		      (channel-close input-channel)))))))))
+		(letrec
+		    ((loop
+		      (lambda ()
+			(if (< start-index end-index)
+			    (let ((index (min (+ start-index 512) end-index)))
+			      (let ((buffer
+				     (group-extract-string group
+							   start-index
+							   index)))
+				(let ((n
+				       (channel-write input-channel
+						      buffer
+						      0
+						      (string-length buffer))))
+				  (if n
+				      (begin
+					(set! start-index (+ start-index n))
+					(loop))))))
+			    (channel-close input-channel)))))
+		  loop)))))))
       (begin
 	(channel-close (subprocess-output-channel process))
 	(receiver (lambda () unspecific)))))
