@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prntfs.c,v 1.4 1995/10/27 07:55:05 cph Exp $
+$Id: prntfs.c,v 1.5 1995/10/28 01:03:30 cph Exp $
 
 Copyright (c) 1993-95 Massachusetts Institute of Technology
 
@@ -46,6 +46,7 @@ MIT in each case. */
 
 extern int EXFUN
   (NT_read_file_status, (CONST char * filename, struct stat * s));
+extern void EXFUN (OS_file_copy, (CONST char *, CONST char *));
 
 static SCHEME_OBJECT EXFUN (file_attributes_internal, (struct stat * s));
 static void EXFUN (file_mode_string, (struct stat * s, char * a));
@@ -412,4 +413,37 @@ DEFINE_PRIMITIVE ("NT-GET-VOLUME-INFORMATION", Prim_NT_get_vol_info, 1, 1, 0)
   VECTOR_SET (result, 3, (ulong_to_integer (file_system_flags)));
   VECTOR_SET (result, 4, (char_pointer_to_string (file_system_name)));
   PRIMITIVE_RETURN (result);
+}
+
+DEFINE_PRIMITIVE ("NT-COPY-FILE", Prim_NT_copy_file, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  OS_file_copy ((STRING_ARG (1)), (STRING_ARG (2)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("NT-GET-FILE-ATTRIBUTES", Prim_NT_get_file_attributes, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  {
+    CONST char * filename = (STRING_ARG (1));
+    DWORD attributes = (GetFileAttributes (filename));
+    if (attributes == 0xFFFFFFFF)
+      {
+	DWORD error_code = (GetLastError ());
+	if (error_code != ERROR_FILE_NOT_FOUND)
+	  error_system_call (error_code, syscall_stat);
+	PRIMITIVE_RETURN (SHARP_F);
+      }
+    PRIMITIVE_RETURN (ulong_to_integer (attributes));
+  }
+}
+
+DEFINE_PRIMITIVE ("NT-SET-FILE-ATTRIBUTES", Prim_NT_set_file_attributes, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  STD_BOOL_SYSTEM_CALL
+    (syscall_chmod,
+     (SetFileAttributes ((STRING_ARG (1)), (arg_ulong_integer (2)))));
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }

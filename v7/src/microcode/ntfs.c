@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntfs.c,v 1.8 1995/10/24 04:56:58 cph Exp $
+$Id: ntfs.c,v 1.9 1995/10/28 01:03:40 cph Exp $
 
 Copyright (c) 1992-95 Massachusetts Institute of Technology
 
@@ -95,9 +95,31 @@ DEFUN (OS_file_soft_link_p, (name), CONST char * name)
   return (0);
 }
 
+static void
+DEFUN (guarantee_writable, (name, errorp),
+       CONST char * name AND
+       int errorp)
+{
+  DWORD attributes = (GetFileAttributes (name));
+  if (attributes == 0xFFFFFFFF)
+    {
+      DWORD error_code = (GetLastError ());
+      if ((error_code != ERROR_FILE_NOT_FOUND) && errorp)
+	error_system_call (error_code, syscall_stat);
+    }
+  else if ((attributes & FILE_ATTRIBUTE_READONLY) != 0)
+    {
+      if ((! (SetFileAttributes (name,
+				 (attributes &~ FILE_ATTRIBUTE_READONLY))))
+	  && errorp)
+	error_system_call ((GetLastError ()), syscall_chmod);
+    }
+}
+
 void
 DEFUN (OS_file_remove, (name), CONST char * name)
 {
+  guarantee_writable (name, 1);
   STD_VOID_SYSTEM_CALL (syscall_unlink, (NT_unlink (name)));
 }
 
@@ -105,10 +127,32 @@ void
 DEFUN (OS_file_remove_link, (name), CONST char * name)
 {
   struct stat s;
-  if ( (NT_stat (name, (&s)) == 0) &&
-       (((s . st_mode) & S_IFMT) == S_IFREG) )
-   NT_unlink (name);
-  return;
+  if ((NT_stat (name, (&s)) == 0)
+      && (((s . st_mode) & S_IFMT) == S_IFREG))
+    {
+      guarantee_writable (name, 0);
+      NT_unlink (name);
+    }
+}
+
+void
+DEFUN (OS_file_rename, (from, to),
+       CONST char * from AND
+       CONST char * to)
+{
+  guarantee_writable (name, 1);
+  STD_BOOL_SYSTEM_CALL (syscall_rename, (MoveFile (from, to)));
+}
+
+void
+DEFUN (OS_file_copy, (from, to),
+       CONST char * from AND
+       CONST char * to)
+{
+  guarantee_writable (name, 1);
+  /* This system-call name is wrong, but there's no corresponding unix
+     operation, and I don't feel like customizing this for NT now.  */
+  STD_BOOL_SYSTEM_CALL (syscall_rename, (CopyFile (from, to, FALSE)));
 }
 
 void
@@ -125,15 +169,6 @@ DEFUN (OS_file_link_soft, (from_name, to_name),
        CONST char * to_name)
 {
   error_unimplemented_primitive ();
-}
-
-void
-DEFUN (OS_file_rename, (from_name, to_name),
-       CONST char * from_name AND
-       CONST char * to_name)
-{
-  if ((NT_rename (from_name, to_name)) != 0)
-    error_system_call (errno, syscall_rename);
 }
 
 void
