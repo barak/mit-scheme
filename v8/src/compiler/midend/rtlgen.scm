@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.1 1994/11/19 02:04:29 adams Exp $
+$Id: rtlgen.scm,v 1.2 1994/11/22 21:32:52 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -64,9 +64,12 @@ MIT in each case. |#
 					(reverse! *rtlgen/continuations*))
 			    (reverse! *rtlgen/procedures*)))))))
 
+(define (rtlgen/debugging-info form)
+  (code-rewrite/original-form/previous form))
+
 (define (rtlgen/expression form)
   (let ((label (rtlgen/new-name 'EXPRESSION)))
-    (values (rtlgen/%%procedure label form rtlgen/wrap-expression)
+    (values (rtlgen/%%procedure label form form rtlgen/wrap-expression)
 	    label)))
 
 (define (rtlgen/top-level-procedure form)
@@ -94,7 +97,10 @@ MIT in each case. |#
 		   (fail)
 		   (let* ((label (rtlgen/new-name 'TOP-LEVEL))
 			  (code (rtlgen/%%procedure
-				 label lam-expr rtlgen/wrap-trivial-closure)))
+				 label
+				 form
+				 lam-expr
+				 rtlgen/wrap-trivial-closure)))
 		     (values code label))))))
        ((form/match rtlgen/top-level-heap-closure-pattern body)
 	=> (lambda (result)
@@ -103,10 +109,12 @@ MIT in each case. |#
 		   (fail)
 		   (let* ((label (rtlgen/new-name 'TOP-LEVEL-CLOSURE))
 			  (code
-			   (rtlgen/%%procedure label
-					       `(LAMBDA (,cont-name ,env-name)
-						  ,body)
-					       rtlgen/wrap-trivial-closure)))
+			   (rtlgen/%%procedure
+			    label
+			    form
+			    `(LAMBDA (,cont-name ,env-name)
+			       ,body)
+			    rtlgen/wrap-trivial-closure)))
 		     (set! *procedure-result?* 'CALL-ME)
 		     (values code label))))))
        (else (fail))))))
@@ -141,57 +149,72 @@ MIT in each case. |#
 
 (define (rtlgen/%procedure label lam-expr wrap)
   (set! *rtlgen/procedures*
-	(cons (rtlgen/%%procedure label lam-expr wrap)
+	(cons (rtlgen/%%procedure label lam-expr lam-expr wrap)
 	      *rtlgen/procedures*))
   unspecific)
 
-(define (rtlgen/%%procedure label lam-expr wrap)
+(define (rtlgen/%%procedure label orig-form lam-expr wrap)
   ;; This is called directly for top-level expressions and procedures.
   ;; All other calls are from rtlgen/%procedure which adds the result
   ;; to the list of all procedures (*rtlgen/procedures*)
-  (rtlgen/%body-with-stack-references label lam-expr wrap
+  (rtlgen/%body-with-stack-references label orig-form lam-expr wrap
    (lambda ()
      (let ((lambda-list (lambda/formals lam-expr))
 	   (body        (lambda/body lam-expr)))
        (rtlgen/body
 	body
-	(lambda (body*) (wrap label body* lambda-list 0))
+	(lambda (body*) (wrap label orig-form body* lambda-list 0))
 	(lambda () (rtlgen/initial-state lambda-list false body)))))))
 
-(define (rtlgen/wrap-expression label body lambda-list saved-size)
+(define (rtlgen/wrap-expression label form body lambda-list saved-size)
   lambda-list				; Not used
   saved-size				; only continuations
-  (cons `(EXPRESSION ,label)
+  (cons `(EXPRESSION ,label ,(new-dbg-expression->old-dbg-expression
+			      label
+			      (rtlgen/debugging-info form)))
 	(rtlgen/wrap-with-interrupt-check/expression
 	 body
 	 `(INTERRUPT-CHECK:CONTINUATION ,label (MACHINE-CONSTANT 1)))))
 
-(define (rtlgen/wrap-continuation label body lambda-list saved-size)
+(define (rtlgen/wrap-continuation label form body lambda-list saved-size)
   (let* ((arity (lambda-list/count-names lambda-list))
 	 (frame-size
 	  (+ (- saved-size 1)		; Don't count the return address
 	     (- arity
 		(min arity (rtlgen/number-of-argument-registers))))))
     (cons `(RETURN-ADDRESS ,label
+			   ,(new-dbg-continuation->old-dbg-continuation
+			     label
+			     frame-size
+			     (rtlgen/debugging-info form))
 			   (MACHINE-CONSTANT ,frame-size)
 			   (MACHINE-CONSTANT 1))
 	  (rtlgen/wrap-with-interrupt-check/continuation
 	   body
 	   `(INTERRUPT-CHECK:CONTINUATION ,label (MACHINE-CONSTANT 2))))))
 
-(define (rtlgen/wrap-closure label body lambda-list saved-size)
+(define (rtlgen/wrap-closure label form body lambda-list saved-size)
   saved-size				; only continuations have this
   (let ((frame-size (lambda-list/count-names lambda-list)))
-    (cons `(CLOSURE ,label (MACHINE-CONSTANT ,frame-size))
+    (cons `(CLOSURE ,label
+		    ,(new-dbg-procedure->old-dbg-procedure
+		      label
+		      'CLOSURE
+		      (rtlgen/debugging-info form))
+		    (MACHINE-CONSTANT ,frame-size))
 	  (rtlgen/wrap-with-interrupt-check/procedure
 	   true
 	   body
 	   `(INTERRUPT-CHECK:CLOSURE (MACHINE-CONSTANT ,frame-size))))))
 
-(define (rtlgen/wrap-trivial-closure label body lambda-list saved-size)
+(define (rtlgen/wrap-trivial-closure label form body lambda-list saved-size)
   saved-size				; only continuations have this
   (let ((frame-size (lambda-list/count-names lambda-list)))
     (cons `(TRIVIAL-CLOSURE ,label
+			    ,(new-dbg-procedure->old-dbg-procedure
+			      label
+			      'TRIVIAL-CLOSURE
+			      (rtlgen/debugging-info form))
 			    ,@(map
 			       (lambda (value)
 				 `(MACHINE-CONSTANT ,value))
@@ -199,12 +222,19 @@ MIT in each case. |#
 	  (rtlgen/wrap-with-interrupt-check/procedure
 	   true
 	   body
-	   `(INTERRUPT-CHECK:PROCEDURE ,label (MACHINE-CONSTANT ,frame-size))))))
+	   `(INTERRUPT-CHECK:PROCEDURE
+	     ,label
+	     (MACHINE-CONSTANT ,frame-size))))))
 
-(define (rtlgen/wrap-procedure label body lambda-list saved-size)
+(define (rtlgen/wrap-procedure label form body lambda-list saved-size)
   saved-size				; only continuations have this
   (let ((frame-size (lambda-list/count-names lambda-list)))
-    (cons `(PROCEDURE ,label (MACHINE-CONSTANT ,frame-size))
+    (cons `(PROCEDURE ,label
+		      ,(new-dbg-procedure->old-dbg-procedure
+			label
+			'PROCEDURE
+			(rtlgen/debugging-info form))
+		      (MACHINE-CONSTANT ,frame-size))
 	  (rtlgen/wrap-with-interrupt-check/procedure
 	   false
 	   body
@@ -214,7 +244,7 @@ MIT in each case. |#
 (define (rtlgen/continuation label lam-expr)
   (set! *rtlgen/continuations*
 	(cons (rtlgen/%%continuation
-	       label lam-expr rtlgen/wrap-continuation)
+	       label lam-expr lam-expr rtlgen/wrap-continuation)
 	      *rtlgen/continuations*))
   unspecific)
 
@@ -235,11 +265,15 @@ MIT in each case. |#
 	  (- n i 1)
 	  (loop (cdr lst) (- i 1))))))
 
-(define (rtlgen/%%continuation label lam-expr wrap)
-  (rtlgen/%body-with-stack-references label lam-expr wrap
-   (lambda () (internal-error "continuation without stack frame" lam-expr))))
+(define (rtlgen/%%continuation label orig-form lam-expr wrap)
+  (rtlgen/%body-with-stack-references
+   label orig-form lam-expr wrap
+   (lambda ()
+     (internal-error "continuation without stack frame"
+		     lam-expr))))
 
-(define (rtlgen/%body-with-stack-references label lam-expr wrap no-stack-refs)
+(define (rtlgen/%body-with-stack-references
+	 label orig-form lam-expr wrap no-stack-refs)
   (cond ((form/match rtlgen/continuation-pattern lam-expr)
 	 => (lambda (result)
 	      (let ((lambda-list  (cadr (assq rtlgen/?lambda-list result)))
@@ -255,7 +289,7 @@ MIT in each case. |#
 			      (- frame-size
 				 (rtlgen/->number-of-args-on-stack
 				  lambda-list frame-vector))))
-			 (wrap label body* lambda-list saved-size)))
+			 (wrap label orig-form body* lambda-list saved-size)))
 		     (lambda ()
 		       (rtlgen/initial-state lambda-list
 					     frame-vector body))))))))
@@ -567,6 +601,14 @@ MIT in each case. |#
 
 (define-integrable (rtlgen/emit!/1 inst)
   (queue/enqueue! *rtlgen/statements* inst))
+
+
+(define (rtlgen/emit!/profile name count)
+  (if (and name
+	   compiler:generate-profiling-instructions?)
+      (rtlgen/emit!/1
+       `(PROFILE-DATA (CONSTANT (,name . ,count))))))
+
 
 (define-integrable (rtlgen/declare-allocation! nwords)
   ;; *** NOTE: This does not currently include floats! ***
@@ -1346,6 +1388,8 @@ MIT in each case. |#
   (define (bad-rator)
     (internal-error "Illegal CALL statement operator" rator))
 
+  rands					; ignored
+
   (internal-warning "call-lambda-with-stack-closure" call)
 
   ;; Sanity check: we can only rearrange the stack if all stack references
@@ -1374,7 +1418,7 @@ MIT in each case. |#
 		  (rtlgen/binding/name old-closure-binding)
 		  clos-reg
 		  (rtlgen/binding/home old-closure-binding))))	   
-	   (old-continuation-binding (rtlgen/state/stmt/continuation state))
+	   ;;(old-continuation-binding (rtlgen/state/stmt/continuation state))
 	   (cont-label
 	    (rtlgen/continuation-is-stack-closure state cont bad-rator #F #T))
 	   (cont-adj  (rtlgen/cont-adjustment))
@@ -1441,7 +1485,7 @@ MIT in each case. |#
 	      new-continuation-binding
 	      new-closure-binding
 	      new-size)))
-	(bkpt 'hi)
+	;;(bkpt 'hi)
 	(rtlgen/stmt new-state code-body)))))
 
 
@@ -1799,9 +1843,13 @@ MIT in each case. |#
 	   (let ((label* (rtlgen/new-name 'AFTER-HOOK)))
 	     (codegen label*)
 	     (rtlgen/emit!
-	      (list `(RETURN-ADDRESS ,label*
-				     (MACHINE-CONSTANT 0)
-				     (MACHINE-CONSTANT 1))
+	      (list `(RETURN-ADDRESS
+		      ,label*
+		      #f
+		      (MACHINE-CONSTANT ,(if (not *rtlgen/frame-size*)
+					     0
+					     (-1+ *rtlgen/frame-size*)))
+		      (MACHINE-CONSTANT 1))
 		    `(POP-RETURN)))))))))
 
 (define (rtlgen/invoke/compatible state cont jump-gen)
@@ -2770,6 +2818,7 @@ MIT in each case. |#
 	  (code-gen-1 cont-label)
 	  (rtlgen/emit!/1
 	   `(RETURN-ADDRESS ,cont-label
+			    #f
 			    (MACHINE-CONSTANT ,(if (not *rtlgen/frame-size*)
 						   0
 						   (- *rtlgen/frame-size* 1)))
@@ -3089,20 +3138,22 @@ MIT in each case. |#
 			(MACHINE-CONSTANT ,(- 0 (length rands))))))))
 
 (let ((define-tagged-allocator
-	(lambda (name arity tag)
+	(lambda (name arity tag profile-name)
 	  (define-open-coder/value name arity
 	    (lambda (state rands open-coder)
 	      open-coder		; ignored
+	      (rtlgen/emit!/profile profile-name 1)
 	      (rtlgen/cons state rands `(MACHINE-CONSTANT ,tag)))))))
-  (define-tagged-allocator 'MAKE-CELL 1 (machine-tag 'CELL))
-  (define-tagged-allocator %make-static-binding 1 (machine-tag 'CELL))
-  (define-tagged-allocator 'CONS 2 (machine-tag 'PAIR))
-  (define-tagged-allocator %cons 2 (machine-tag 'PAIR)))
+  (define-tagged-allocator 'MAKE-CELL 1 (machine-tag 'CELL) 'CELL)
+  (define-tagged-allocator %make-static-binding 1 (machine-tag 'CELL) #F)
+  (define-tagged-allocator 'CONS 2 (machine-tag 'PAIR) 'CONS)
+  (define-tagged-allocator %cons 2 (machine-tag 'PAIR) 'CONS))
 
 (define-open-coder/value %make-cell 2
   (let ((tag (machine-tag 'CELL)))
     (lambda (state rands open-coder)
       open-coder			; ignored
+      (rtlgen/emit!/profile 'CELL 1)
       (rtlgen/cons state (list (first rands)) `(MACHINE-CONSTANT ,tag)))))
 
 (define-open-coder/value %make-promise 1
@@ -3128,6 +3179,7 @@ MIT in each case. |#
 (define-open-coder/value 'SYSTEM-PAIR-CONS 3
   (lambda (state rands open-coder)
     open-coder				; ignored
+    (rtlgen/emit!/profile 'SYSTEM-PAIR-CONS 1)
     (rtlgen/cons state
 		 (cdr rands)
 		 (let ((tag (car rands)))
@@ -3699,6 +3751,15 @@ MIT in each case. |#
 	(rtlgen/emit!/1
 	 `(ASSIGN (OFFSET ,cell (MACHINE-CONSTANT 0)) ,value))))))
 
+(define-open-coder/stmt %profile-data 1
+  (lambda (state rands open-coder)
+    state open-coder			; ignored
+    (let ((data  (first rands)))
+      (not (rtlgen/constant? data)
+	   (internal-error "Profile data must be constant" data))
+      (rtlgen/emit!/1
+       `(PROFILE-DATA (CONSTANT ,(rtlgen/constant-value data)))))))
+
 (let ((define-fixed-mutator
 	(lambda (name tag offset arity)
 	  tag				; unused
