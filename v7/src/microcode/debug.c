@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.21 1987/01/22 14:23:06 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.22 1987/03/11 07:37:06 jinx Exp $
  *
  * Utilities to help with debugging
  */
@@ -662,7 +662,7 @@ Boolean All;
   }
 }
 
-extern char OS_tty_tyi();
+extern int OS_tty_tyi();
 
 #define C_STRING_LENGTH 256
 
@@ -678,7 +678,7 @@ void Handle_Debug_Flags()
 
     /* Considerably haired up to go through standard (safe) interface */
 
-    c = OS_tty_tyi(false, &interrupted);
+    c = (char) OS_tty_tyi(false, &interrupted);
     if (interrupted) return;
     for (free = 0; free < C_STRING_LENGTH; free++)
     { input_string[free] = OS_tty_tyi(false, &interrupted);
