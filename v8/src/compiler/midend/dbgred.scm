@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dbgred.scm,v 1.1 1995/01/30 16:17:17 adams Exp $
+$Id: dbgred.scm,v 1.2 1995/01/31 03:53:33 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -40,52 +40,60 @@ MIT in each case. |#
 (define *dbgt*)
 (define (dbg-reduce/top-level program)
   (set! *dbgt* (make-eq-hash-table))
-  (dbg-reduce/expr (dbg-reduce/initial-env) program)
+  (dbg-reduce/expr (dbg-reduce/initial-env)
+		   (if (LAMBDA/? program) ; should be the case
+		       (lambda/body program)
+		       program))
   program)
 
 
 (define-macro (define-dbg-reducer keyword bindings . body)
   (let ((proc-name (symbol-append 'DBG-REDUCE/ keyword)))
     (call-with-values
-	(lambda () (%matchup (cdr bindings) '(handler env) '(cdr form)))
+	(lambda () (%matchup bindings '(handler) '(cdr form)))
       (lambda (names code)
 	`(DEFINE ,proc-name
 	   (NAMED-LAMBDA (,proc-name ENV FORM)
 	     ;; All handlers inherit ENV and FORM from the surrounding scope.
-	     (LET ((HANDLER
-		    (LAMBDA ,(cons* (car bindings) names) ,@body)))
+	     (LET ((HANDLER (LAMBDA ,names ,@body)))
 	       ,code)))))))
 
 (define-dbg-reducer LOOKUP (name)
-  name ; unused
-  (dbg-reduce/reduce form env))
+  name					; unused
+  (dbg-reduce/reduce form env)
+  unspecific)
+
+(define-dbg-reducer QUOTE (object)
+  object				; unused
+  (dbg-reduce/reduce form env)
+  unspecific)
 
 (define-dbg-reducer LAMBDA (lambda-list body)
   ;; redefine dynamic frame
   (define (dbg-reduce/parse-frame)
+    ;; Returns a list of (name . offset) pairs
     ;;(match body
     ;;  ((LET ((_  (CALL ',%fetch-stack-closure _ '(? frame-vector))))) =>
     ;;   deal)
     ;;  (else no-deal))
     (let ((frame-vector
-	    (and (LET/? body)
-		 (pair? (let/bindings body))
-		 (CALL/%fetch-stack-closure?
-		  (second (first (let/bindings body))))
-		 (QUOTE/text 
-		  (CALL/%fetch-stack-closure/vector
-		   (second (first (let/bindings body))))))))
+	   (and (LET/? body)
+		(pair? (let/bindings body))
+		(CALL/%fetch-stack-closure?
+		 (second (first (let/bindings body))))
+		(QUOTE/text 
+		 (CALL/%fetch-stack-closure/vector
+		  (second (first (let/bindings body))))))))
       (let* ((args   (lambda-list->names lambda-list))
-	     (nargs  (length args)))
-	(map* (if frame-vector 
-	'?
-		  '())
-	      (lambda (arg index)
-		(cons arg index))
-	      args
-	      (iota nargs))
-	'())))
-  
+	     (all-args (if frame-vector
+			   (append (cdr args)
+				   (reverse! (vector->list frame-vector)))
+			   (cdr args))))
+	(map (lambda (arg index)
+	       (cons arg index))
+	     all-args
+	     (iota (length all-args))))))
+
   (let ((env* (dbg-reduce/env/new-frame env (dbg-reduce/parse-frame))))
     (dbg-reduce/reduce form env*)
     (dbg-reduce/expr env* body)))
@@ -94,14 +102,23 @@ MIT in each case. |#
   (for-each (lambda (binding)
 	      (dbg-reduce/expr env (cadr binding)))
 	    bindings)
-  (dbg-reduce/expr env body))
+  (let* ((static-names
+	  (map first
+	       (list-transform-positive bindings
+		 (lambda (binding)
+		   (form/static? (cadr binding))))))
+	 (env*
+	  (dbg-reduce/env/extend-static env static-names)))
+    (dbg-reduce/reduce form env)
+    (dbg-reduce/expr env* body)))
 
 (define-dbg-reducer LETREC (bindings body)
   ;; add static bindings
   (let ((env* (dbg-reduce/env/extend-static env (map car bindings))))
     (for-each (lambda (binding)
-		(dbg-reduce/expr env* (cadr bindings)))
+		(dbg-reduce/expr env* (cadr binding)))
 	      bindings)
+    (dbg-reduce/reduce form env*)
     (dbg-reduce/expr env* body)))
 
 (define-dbg-reducer IF (pred conseq alt)
@@ -110,17 +127,14 @@ MIT in each case. |#
   (dbg-reduce/expr env conseq)
   (dbg-reduce/expr env alt))
 
-(define-dbg-reducer QUOTE (object)
-  env object				; unused
-  (dbg-reduce/reduce form env))
-
 (define-dbg-reducer DECLARE (#!rest anything)
   env anything				; unused
-  (dbg-reduce/reduce form env))
+  (dbg-reduce/reduce form env)
+  unspecific)
 
 (define-dbg-reducer BEGIN (#!rest actions)
   (dbg-reduce/reduce form env)
-  (dbg-reduce/expr* actions))
+  (dbg-reduce/expr* env actions))
 
 (define-dbg-reducer CALL (rator cont #!rest rands)
   (dbg-reduce/reduce form env)
@@ -133,23 +147,23 @@ MIT in each case. |#
       (illegal expr))
   (case (car expr)
     ((QUOTE)
-     (dbg-reduce/quote expr))
+     (dbg-reduce/quote env expr))
     ((LOOKUP)
-     (dbg-reduce/lookup expr))
+     (dbg-reduce/lookup env expr))
     ((LAMBDA)
-     (dbg-reduce/lambda expr))
+     (dbg-reduce/lambda env expr))
     ((LET)
-     (dbg-reduce/let expr))
+     (dbg-reduce/let env expr))
     ((DECLARE)
-     (dbg-reduce/declare expr))
+     (dbg-reduce/declare env expr))
     ((CALL)
-     (dbg-reduce/call expr))
+     (dbg-reduce/call env expr))
     ((BEGIN)
-     (dbg-reduce/begin expr))
+     (dbg-reduce/begin env expr))
     ((IF)
-     (dbg-reduce/if expr))
+     (dbg-reduce/if env expr))
     ((LETREC)
-     (dbg-reduce/letrec expr))
+     (dbg-reduce/letrec env expr))
     ((SET! UNASSIGNED? OR DELAY
       ACCESS DEFINE IN-PACKAGE THE-ENVIRONMENT)
      (no-longer-legal expr))
@@ -172,7 +186,7 @@ MIT in each case. |#
   )
 
 (define (dbg-reduce/initial-env)
-  (dbg-reduce/env/%make '() '(())))
+  (dbg-reduce/env/%make '() '()))
 
 (define (dbg-reduce/env/new-frame env frame*)
   (dbg-reduce/env/%make (dbg-reduce/env/static env)
@@ -181,8 +195,70 @@ MIT in each case. |#
 (define (dbg-reduce/env/extend-static env static*)
   (dbg-reduce/env/%make (append static* (dbg-reduce/env/static env))
 			(dbg-reduce/env/frame env)))
+
+(define (dbg-reduce/env/lookup env name)
+  ;; -> #F, stack offset, or ??
+  (cond ((assq name (dbg-reduce/env/frame env))	 => cdr)
+	((memq name (dbg-reduce/env/static env)) => name)
+	(else #F)))
 
 (define (dbg-reduce/reduce form env)
   ;; rewrite the debugging info for FORM
-  (hash-table/put! *dbgt* form env)
   unspecific)
+
+
+(define (dbg-reduce/reduce form env)
+  ;;(hash-table/put! *dbgt* form env)
+  (cond ((code-rewrite/original-form/previous form)
+         => (lambda (dbg-info)
+              (let* ((block     (new-dbg-form/block dbg-info))
+                     (block*    (new-dbg-block/copy-transforming
+                                 (lambda (expr)
+                                   (dbg-reduce/reduce-expression expr env))
+                                 block))
+                     (dbg-info* (new-dbg-form/new-block dbg-info block*)))
+		(hash-table/put! *dbgt* form (vector env dbg-info*))))))
+  unspecific)
+
+(define (dbg-reduce/reduce-expression expr env)
+  (define (heap-closure-ref-slot expr)
+    (let ((e (CALL/%heap-closure-ref/offset expr)))
+      (cond ((QUOTE/? e) (quote/text e))
+	    ((CALL/%vector-index? e)
+	     (vector-index (QUOTE/text (CALL/%vector-index/vector e))
+			   (QUOTE/text (CALL/%vector-index/name e))))
+	    (else (internal-error "Bad DBG %vector-index:" expr)))))
+  (define (transform-expression expr succeed fail)
+    (cond ((LOOKUP/? expr)
+	   (let ((place  (dbg-reduce/env/lookup env (lookup/name expr))))
+	     (cond ((not place)  (fail `(unbound . ,(lookup/name expr))))
+		   ((number? place) (succeed `((stack . ,place))))
+		   (else            (succeed `((label . ,place)))))))
+	  ((QUOTE/? expr)
+	   (succeed expr))
+	  ((CALL/%cell-ref? expr)
+	   (transform-expression (CALL/%cell-ref/cell expr)
+				 (lambda (path)
+				   (succeed (cons 'CELL path)))
+				 fail))
+	  ((CALL/%stack-closure-ref? expr)
+	   (transform-expression `(LOOKUP
+				   ,(QUOTE/text
+				     (CALL/%stack-closure-ref/name expr)))
+				 succeed
+				 fail))
+	  ((CALL/%heap-closure-ref? expr)
+	   (transform-expression (CALL/%heap-closure-ref/closure expr)
+				 (lambda (path)
+				   (succeed
+				    (cons (cons 'HEAP-CLOSURE
+						(heap-closure-ref-slot expr))
+					  path)))
+				 fail))
+	  ((CALL/%make-heap-closure? expr)
+	   (succeed `(CLOSED-PROCEDURE ,(CALL/%make-heap-closure/lambda-expression expr))))
+	  (else
+	   (fail `(UNKNOWN-EXPRESSION ,expr)))))
+  (transform-expression expr
+			(lambda (yes) (vector expr yes))
+			(lambda (no)  (vector expr no))))
