@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pmcon.c,v 1.17 1995/11/03 01:29:57 cph Exp $
+$Id: os2pmcon.c,v 1.18 1995/11/04 00:10:51 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -52,6 +52,8 @@ static void enqueue_pending_event (msg_t *);
 static void initialize_marked_region (short, short);
 static void update_marked_region (short, short);
 static void unmark_marked_region (void);
+static int marked_region_nonempty_p (void);
+static char * extract_marked_region (int);
 static void compute_marked_region
   (short, short, short, short,
    unsigned short *, unsigned short *, unsigned short *, unsigned short *);
@@ -59,7 +61,8 @@ static void highlight_marked_region
   (unsigned short, unsigned short, unsigned short, unsigned short, char);
 static void paint_marked_region_segment
   (unsigned short, unsigned short, unsigned short, unsigned short);
-static char * extract_marked_region (int);
+static void disable_marked_region (void);
+static void enable_menu_copy_items (int);
 static void console_resize (unsigned short, unsigned short);
 static void console_paint
   (unsigned short, unsigned short, unsigned short, unsigned short);
@@ -105,6 +108,7 @@ static psid_t console_psid;
 static int console_tracking_mouse_p;
 static HWND console_tracking_mouse_pointer;
 static int console_marked_region_active_p;
+static HWND console_menu;
 static short console_mark_x;
 static short console_mark_y;
 static short console_point_x;
@@ -143,7 +147,6 @@ OS2_initialize_pm_console (void)
   console_tracking_mouse_p = 0;
   console_tracking_mouse_pointer
     = (WinQuerySysPointer (HWND_DESKTOP, SPTR_TEXT, FALSE));
-  console_marked_region_active_p = 0;
   readahead_repeat = 0;
   readahead_insert = 0;
   pending_events_head = 0;
@@ -188,6 +191,11 @@ OS2_initialize_pm_console (void)
     if (width > max_width)
       OS2_window_set_size (console_wid, max_width, height);
   }
+  console_menu
+    = (OS2_window_handle_from_id (console_pm_qid,
+				  (OS2_window_frame_handle (console_wid)),
+				  FID_MENU));
+  disable_marked_region ();
 }
 
 wid_t
@@ -252,8 +260,8 @@ x2cx (short x, int lowerp)
      cell to its right, unless it falls on leftmost edge of cell.  If
      the argument is inclusive-lower, then the result is also;
      likewise for exclusive-upper.  */
-  short cx = (x / CHAR_WIDTH);
-  if (! (lowerp || ((x % CHAR_WIDTH) == 0)))
+  short cx = (x / ((short) CHAR_WIDTH));
+  if (! (lowerp || ((x % ((short) CHAR_WIDTH)) == 0)))
     cx += 1;
   return ((cx < 0) ? 0 : (cx > console_width) ? console_width : cx);
 }
@@ -267,8 +275,8 @@ y2cy (short y, int lowerp)
      edge of cell, when result is cell below.  If the argument is
      inclusive-lower, then the result is exclusive-upper, and
      vice-versa.  */
-  short cy = (((short) (console_height - 1)) - ((short) (y / CHAR_HEIGHT)));
-  if (lowerp || ((y % CHAR_HEIGHT) == 0))
+  short cy = (((short) (console_height - 1)) - (y / ((short) CHAR_HEIGHT)));
+  if (lowerp || ((y % ((short) CHAR_HEIGHT)) == 0))
     cy += 1;
   return ((cy < 0) ? 0 : (cy > console_height) ? console_height : cy);
 }
@@ -361,6 +369,7 @@ process_events (int blockp)
 					  (SHORT2FROMMP (mp1)));
 		    (void) OS2_window_set_capture (console_wid, 0);
 		    OS2_window_mousetrack (console_wid, 0);
+		    enable_menu_copy_items (marked_region_nonempty_p ());
 		    console_tracking_mouse_p = 0;
 		    release_console_lock ();
 		  }
@@ -470,6 +479,9 @@ update_marked_region (short x, short y)
   unsigned short i12;
   unsigned short i22;
 
+  if (!console_marked_region_active_p)
+    return;
+
   compute_marked_region (console_mark_x, console_mark_y,
 			 console_point_x, console_point_y,
 			 (&cx11), (&cy11), (&cx21), (&cy21));
@@ -495,7 +507,6 @@ update_marked_region (short x, short y)
 
   console_point_x = x;
   console_point_y = y;
-  console_marked_region_active_p = 1;
 }
 
 static void
@@ -512,8 +523,29 @@ unmark_marked_region (void)
 			     (&cx1), (&cy1), (&cx2), (&cy2));
       highlight_marked_region (cx1, cy1, cx2, cy2, '\0');
       paint_marked_region_segment (cx1, cy1, cx2, cy2);
-      console_marked_region_active_p = 0;
+      disable_marked_region ();
     }
+}
+
+static int
+marked_region_nonempty_p (void)
+{
+  if (console_marked_region_active_p)
+    {
+      unsigned short cx1;
+      unsigned short cy1;
+      unsigned short cx2;
+      unsigned short cy2;
+      unsigned short y;
+      compute_marked_region (console_mark_x, console_mark_y,
+			     console_point_x, console_point_y,
+			     (&cx1), (&cy1), (&cx2), (&cy2));
+      return
+	((cy1 < cy2)
+	 || ((cx1 < cx2) && (cx1 < (console_line_lengths[cy1]))));
+    }
+  else
+    return (0);
 }
 
 static char *
@@ -544,6 +576,8 @@ extract_marked_region (int cutp)
 	  if (xl < lx)
 	    length += (((xh < lx) ? xh : lx) - xl);
 	}
+      if (length == 1)
+	return (0);
       result = (OS_malloc (length));
       scan = result;
       for (y = cy1; (y <= cy2); y += 1)
@@ -631,20 +665,33 @@ compute_marked_region (short x1, short y1, short x2, short y2,
   unsigned short cy1a = (y2cy (y1, 0));
   unsigned short cx2a = (x2cx (x2, 1));
   unsigned short cy2a = (y2cy (y2, 0));
-  if (((cy1a * console_width) + cx1a) < ((cy2a * console_width) + cx2a))
+  if (((cy1a * console_width) + cx1a) > ((cy2a * console_width) + cx2a))
     {
-      (*cx1) = cx1a;
-      (*cy1) = cy1a;
-      (*cx2) = cx2a;
-      (*cy2) = cy2a;
+      unsigned short cx = cx1a;
+      unsigned short cy = cy1a;
+      cx1a = cx2a;
+      cy1a = cy2a;
+      cx2a = cx;
+      cy2a = cy;
     }
-  else
+  if (cy1a >= console_height)
     {
-      (*cx1) = cx2a;
-      (*cy1) = cy2a;
-      (*cx2) = cx1a;
-      (*cy2) = cy1a;
+      cx1a = (console_width - 1);
+      cy1a = (console_height - 1);
     }
+  else if (cx1a >= console_width)
+    cx1a = (console_width - 1);
+  if (cy2a >= console_height)
+    {
+      cx2a = 0;
+      cy2a = console_height;
+    }
+  else if (cx2a > console_width)
+    cx2a = console_width;
+  (*cx1) = cx1a;
+  (*cy1) = cy1a;
+  (*cx2) = cx2a;
+  (*cy2) = cy2a;
 }
 
 static void
@@ -668,6 +715,28 @@ paint_marked_region_segment (unsigned short x1, unsigned short y1,
       if ((y1 + 1) < y2)
 	console_paint (0, console_width, (y1 + 1), y2);
       console_paint (0, x2, y2, (y2 + 1));
+    }
+}
+
+static void
+disable_marked_region (void)
+{
+  console_marked_region_active_p = 0;
+  enable_menu_copy_items (0);
+}
+
+static void
+enable_menu_copy_items (int enablep)
+{
+  if (console_menu != NULLHANDLE)
+    {
+      USHORT value = (enablep ? 0 : MIA_DISABLED);
+#if 0
+      (void) OS2_menu_set_item_attributes
+	(console_pm_qid, console_menu, IDM_CUT, TRUE, MIA_DISABLED, value);
+#endif
+      (void) OS2_menu_set_item_attributes
+	(console_pm_qid, console_menu, IDM_COPY, TRUE, MIA_DISABLED, value);
     }
 }
 
