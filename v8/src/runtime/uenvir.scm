@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/uenvir.scm,v 14.13 1989/10/03 22:54:29 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/uenvir.scm,v 14.14 1989/10/10 11:37:35 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -345,7 +345,10 @@ MIT in each case. |#
 		   ((eq? stack-link parent)
 		    (make-stack-ccenv parent frame index))
 		   (else
-		    (loop stack-link frame index))))))	((CLOSURE)
+		    (loop stack-link
+			  frame
+			  (+ (vector-length (dbg-block/layout stack-link))			     index)))))))
+	((CLOSURE)
 	 (make-closure-ccenv (dbg-block/original-parent block)
 			     parent
 			     (stack-ccenv/normal-closure environment)))
