@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.23 1991/03/14 04:26:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.24 1991/03/23 01:17:36 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -434,7 +434,8 @@ MIT in each case. |#
 		    (apply-frame/operator frame))
 	       (signal (apply-frame/operand frame 0)
 		       (apply-frame/operand frame 1))))
-	  ((COMPILER-REFERENCE-TRAP-RESTART)
+	  ((COMPILER-REFERENCE-TRAP-RESTART
+	    COMPILER-OPERATOR-LOOKUP-TRAP-RESTART)
 	   (signal (reference-trap-frame/environment frame)
 		   (reference-trap-frame/name frame))))))))
 
