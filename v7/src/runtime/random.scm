@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: random.scm,v 14.6 1993/02/10 22:29:57 cph Exp $
+$Id: random.scm,v 14.7 1993/10/14 09:44:21 cph Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -104,13 +104,21 @@ MIT in each case. |#
 	(flo:/ element b.)))))
 
 (define (make-random-state #!optional state)
-  (let ((state (if (default-object? state) #f state)))
-    (if (exact-integer? state)
-	(initial-random-state (congruential-rng (+ state 123456789)))
-	(let ((state (guarantee-random-state state 'MAKE-RANDOM-STATE)))
-	  (%make-random-state (random-state-index state)
-			      (random-state-borrow state)
-			      (vector-copy (random-state-vector state)))))))
+  (let ((state (if (default-object? state) #f state))
+	(new-state
+	 (lambda (n)
+	   (initial-random-state (congruential-rng (+ n 123456789))))))
+    (cond ((eq? #t state)
+	   (new-state (real-time-clock)))
+	  ((exact-integer? state)
+	   ;; This case is for upwards compatibility.
+	   (new-state state))
+	  (else
+	   (let ((state (guarantee-random-state state 'MAKE-RANDOM-STATE)))
+	     (%make-random-state
+	      (random-state-index state)
+	      (random-state-borrow state)
+	      (vector-copy (random-state-vector state))))))))
 
 (define (initial-random-state generate-random-seed)
   ;; The numbers returned by GENERATE-RANDOM-SEED are not critical.
