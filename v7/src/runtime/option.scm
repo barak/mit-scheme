@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: option.scm,v 14.33 1995/04/29 14:09:09 adams Exp $
+$Id: option.scm,v 14.34 1997/03/31 19:27:09 cph Exp $
 
-Copyright (c) 1988-1994 Massachusetts Institute of Technology
+Copyright (c) 1988-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -137,6 +137,7 @@ MIT in each case. |#
 			   syntax-table/system-internal
 			   true))))))))
 	files)
+      (flush-purification-queue!)
       (eval init-expression environment))))
 
 (define (library-directory-pathname name)
