@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bignum.c,v 9.47 1999/01/02 06:11:34 cph Exp $
+$Id: bignum.c,v 9.48 2000/01/18 05:07:03 cph Exp $
 
-Copyright (c) 1989-1999 Massachusetts Institute of Technology
+Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -120,8 +120,6 @@ static bignum_type EXFUN (bignum_maybe_new_sign,
 			  (bignum_type, int));
 static void EXFUN (bignum_destructive_copy,
 		   (bignum_type, bignum_type));
-static void EXFUN (bignum_destructive_zero,
-		   (bignum_type));
 
 #define ULONG_LENGTH_IN_BITS(digit, len)		\
 do {							\
@@ -1934,15 +1932,5 @@ DEFUN (bignum_destructive_copy, (source, target),
   fast bignum_digit_type * scan_target = (BIGNUM_START_PTR (target));
   while (scan_source < end_source)
     (*scan_target++) = (*scan_source++);
-  return;
-}
-
-static void
-DEFUN (bignum_destructive_zero, (bignum), fast bignum_type bignum)
-{
-  fast bignum_digit_type * scan = (BIGNUM_START_PTR (bignum));
-  fast bignum_digit_type * end = (scan + (BIGNUM_LENGTH (bignum)));
-  while (scan < end)
-    (*scan++) = 0;
   return;
 }

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: purutl.c,v 9.49 1999/01/02 06:11:34 cph Exp $
+$Id: purutl.c,v 9.50 2000/01/18 05:09:17 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -26,9 +26,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "gccode.h"
 #include "zones.h"
 
-#ifdef WINNT
+#ifdef __STDC__
 #include <stdlib.h>
-#include <malloc.h>
 #endif
 
 static void

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: osenv.h,v 1.8 1999/01/02 06:11:34 cph Exp $
+$Id: osenv.h,v 1.9 2000/01/18 05:08:46 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -38,17 +38,18 @@ struct time_structure
 };
 
 extern time_t EXFUN (OS_encoded_time, ());
-extern void EXFUN (OS_decode_time, (time_t, struct time_structure * ts));
-extern time_t EXFUN (OS_encode_time, (struct time_structure * ts));
+extern void EXFUN (OS_decode_time, (time_t, struct time_structure *));
+extern void EXFUN (OS_decode_utc, (time_t, struct time_structure *));
+extern time_t EXFUN (OS_encode_time, (struct time_structure *));
 extern double EXFUN (OS_process_clock, (void));
 extern double EXFUN (OS_real_time_clock, (void));
-extern void EXFUN (OS_process_timer_set, (clock_t first, clock_t interval));
+extern void EXFUN (OS_process_timer_set, (clock_t, clock_t));
 extern void EXFUN (OS_process_timer_clear, (void));
-extern void EXFUN (OS_profile_timer_set, (clock_t first, clock_t interval));
+extern void EXFUN (OS_profile_timer_set, (clock_t, clock_t));
 extern void EXFUN (OS_profile_timer_clear, (void));
-extern void EXFUN (OS_real_timer_set, (clock_t first, clock_t interval));
+extern void EXFUN (OS_real_timer_set, (clock_t, clock_t));
 extern void EXFUN (OS_real_timer_clear, (void));
 extern CONST char * EXFUN (OS_working_dir_pathname, (void));
-extern void EXFUN (OS_set_working_dir_pathname, (CONST char * name));
+extern void EXFUN (OS_set_working_dir_pathname, (CONST char *));
 
 #endif /* SCM_OSENV_H */

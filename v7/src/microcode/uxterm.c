@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxterm.c,v 1.26 1999/01/02 06:11:34 cph Exp $
+$Id: uxterm.c,v 1.27 2000/01/18 05:10:50 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -23,6 +23,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "uxterm.h"
 #include "uxio.h"
 #include "ospty.h"
+
+extern long EXFUN (arg_nonnegative_integer, (int));
+extern long EXFUN (arg_index_integer, (int, long));
 
 #if defined(HAVE_TERMIOS) || defined(HAVE_TERMIO)
 

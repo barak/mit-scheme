@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxtrap.c,v 1.28 1999/01/02 06:11:34 cph Exp $
+$Id: uxtrap.c,v 1.29 2000/01/18 05:11:09 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "uxtrap.h"
 #include "uxutil.h"
 #include "option.h"
+#include "ostop.h"
 
 extern CONST char * EXFUN (find_signal_name, (int signo));
 extern void EXFUN (UX_dump_core, (void));
@@ -575,8 +576,6 @@ DEFUN (continue_from_trap, (signo, info, scp),
     }
     else
     {
-      long primitive_address =
-	((long) (Primitive_Procedure_Table[OBJECT_DATUM (primitive)]));
       (trinfo . state) = STATE_PRIMITIVE;
       (trinfo . pc_info_1) = primitive;
       (trinfo . pc_info_2) =
@@ -808,7 +807,6 @@ DEFUN (find_ccblock, (the_pc),
   {
     /* In compiled code. */
     SCHEME_OBJECT * block_addr;
-    SCHEME_OBJECT * maybe_free;
     block_addr =
       (pc_in_builtin
        ? ((SCHEME_OBJECT *) NULL)

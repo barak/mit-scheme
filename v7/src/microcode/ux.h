@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.72 1999/04/07 04:01:47 cph Exp $
+$Id: ux.h,v 1.73 2000/01/18 05:09:49 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -41,6 +41,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include <errno.h>
 #include <pwd.h>
 #include <grp.h>
+
+#ifdef __STDC__
+#include <stdlib.h>
+#include <string.h>
+#endif
 
 extern int errno;
 

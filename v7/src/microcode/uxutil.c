@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxutil.c,v 1.6 1999/01/02 06:11:34 cph Exp $
+$Id: uxutil.c,v 1.7 2000/01/18 05:11:28 cph Exp $
 
-Copyright (c) 1990, 1991, 1999 Massachusetts Institute of Technology
+Copyright (c) 1990, 1991, 1999, 2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -22,6 +22,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "ux.h"
 #include "uxutil.h"
 #include <ctype.h>
+
+extern void EXFUN (terminal_state_raw, (Ttty_state *, int));
 
 static CONST char *
 DEFUN (char_description_brief, (c), unsigned char c)

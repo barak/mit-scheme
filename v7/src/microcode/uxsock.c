@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxsock.c,v 1.22 2000/01/18 02:52:40 cph Exp $
+$Id: uxsock.c,v 1.23 2000/01/18 05:10:32 cph Exp $
 
 Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
@@ -38,6 +38,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #if 0
 extern struct servent * EXFUN (getservbyname, (CONST char *, CONST char *));
 extern struct hostent * EXFUN (gethostbyname, (CONST char *));
+extern char * EXFUN (strncpy, (char *, CONST char *, size_t));
 #endif
 
 Tchannel
@@ -162,7 +163,6 @@ DEFUN (OS_open_unix_stream_socket, (filename), CONST char * filename)
 {
 #ifdef HAVE_UNIX_SOCKETS
   int s;
-  extern char * EXFUN (strncpy, (char *, CONST char *, size_t));
   Tchannel channel;
 
   transaction_begin ();

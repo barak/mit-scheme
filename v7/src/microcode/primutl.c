@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: primutl.c,v 9.71 1999/01/02 06:11:34 cph Exp $
+$Id: primutl.c,v 9.72 2000/01/18 05:08:57 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -164,7 +164,6 @@ static Boolean
 DEFUN_VOID (grow_primitive_tables)
 {
   Boolean result;
-  long old_prim_table_size = prim_table_size;
 
   prim_table_size = (MAX_PRIMITIVE + (MAX_PRIMITIVE / 10));
 

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bchmmg.c,v 9.94 2000/01/18 05:06:06 cph Exp $
+$Id: bchmmg.c,v 9.95 2000/01/18 05:06:34 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

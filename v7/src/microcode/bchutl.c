@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bchutl.c,v 1.9 2000/01/18 05:06:14 cph Exp $
+$Id: bchutl.c,v 1.10 2000/01/18 05:06:42 cph Exp $
 
-Copyright (c) 1991-1999 Massachusetts Institute of Technology
+Copyright (c) 1991-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

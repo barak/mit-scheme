@@ -2,7 +2,7 @@
    Copyright (C) 1985, 1986 Free Software Foundation, Inc.
    Copyright (C) 1998 Massachusetts Institute of Technology
 
-$Id: terminfo.c,v 1.2 1998/07/20 04:37:36 cph Exp $
+$Id: terminfo.c,v 1.3 2000/01/18 05:09:25 cph Exp $
 
 This file is part of GNU Emacs.
 
@@ -27,12 +27,14 @@ and this notice must be preserved on all copies.  */
 
 #include "oscond.h"
 
+#ifdef __STDC__
+#include <stdlib.h>
+#endif
+
 #ifndef _IRIX
 char *UP, *BC, PC;
 short ospeed;
 #endif
-
-static buffer[512];
 
 /* Interface to curses/terminfo library.
    Turns out that all of the terminfo-level routines look

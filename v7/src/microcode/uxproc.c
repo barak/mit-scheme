@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxproc.c,v 1.23 1999/01/02 06:11:34 cph Exp $
+$Id: uxproc.c,v 1.24 2000/01/18 05:10:07 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "uxproc.h"
 #include "uxio.h"
 #include "osterm.h"
+#include "ostop.h"
 
 #ifndef HAVE_DUP2
 #include "error: can't hack subprocess I/O without dup2() or equivalent"

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxsig.c,v 1.33 1999/01/02 06:11:34 cph Exp $
+$Id: uxsig.c,v 1.34 2000/01/18 05:10:22 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -24,10 +24,17 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "ossig.h"
 #include "osctty.h"
 #include "ostty.h"
+#include "ostop.h"
 #include "uxtrap.h"
 #include "uxsig.h"
 #include "uxutil.h"
 #include "critsec.h"
+
+extern cc_t EXFUN (OS_ctty_quit_char, (void));
+extern cc_t EXFUN (OS_ctty_int_char, (void));
+extern cc_t EXFUN (OS_ctty_tstp_char, (void));
+extern cc_t EXFUN (OS_ctty_disabled_char, (void));
+extern void EXFUN (tty_set_next_interrupt_char, (cc_t c));
 
 /* Signal Manipulation */
 
@@ -672,6 +679,8 @@ DEFUN_VOID (UX_initialize_signals)
 	      break;
 	    case dfl_stop:
 	      bind_handler ((scan -> signo), sighnd_stop);
+	      break;
+	    case dfl_ignore:
 	      break;
 	    }
 	scan += 1;

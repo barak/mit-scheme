@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxfs.c,v 1.18 1999/12/21 18:48:34 cph Exp $
+$Id: uxfs.c,v 1.19 2000/01/18 05:09:59 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -21,6 +21,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #include "ux.h"
 #include "osfs.h"
+#include "osfile.h"
+#include "osio.h"
 
 #ifdef HAVE_STATFS
 #include <sys/vfs.h>

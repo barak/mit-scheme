@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: psbtobin.c,v 9.57 1999/01/02 06:06:43 cph Exp $
+$Id: psbtobin.c,v 9.58 2000/01/18 05:09:07 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -402,7 +402,7 @@ DEFUN (read_a_bit_string, (To, Slot),
     unsigned long temp;
     fast SCHEME_OBJECT *scan;
     fast long bits_remaining, bits_accumulated;
-    fast SCHEME_OBJECT accumulator, next_word;
+    fast SCHEME_OBJECT accumulator;
 
     accumulator = 0;
     bits_accumulated = 0;
@@ -1506,6 +1506,7 @@ static struct keyword_struct
     END_KEYWORD ()
     };
 
+int
 DEFUN (main, (argc, argv),
        int argc AND
        char **argv)
@@ -1520,4 +1521,5 @@ DEFUN (main, (argc, argv),
   setup_io ("r", "wb");
   do_it ();
   quit (0);
+  return (0);
 }

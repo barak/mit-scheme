@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxtop.c,v 1.22 1999/04/07 04:01:49 cph Exp $
+$Id: uxtop.c,v 1.23 2000/01/18 05:11:00 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -44,6 +44,7 @@ extern void EXFUN (UX_reset_processes, (void));
 extern void EXFUN (UX_reset_terminals, (void));
 extern void EXFUN (execute_reload_cleanups, (void));
 
+extern cc_t EXFUN (OS_ctty_quit_char, (void));
 extern void EXFUN (UX_ctty_save_external_state, (void));
 extern void EXFUN (UX_ctty_save_internal_state, (void));
 extern void EXFUN (UX_ctty_restore_internal_state, (void));

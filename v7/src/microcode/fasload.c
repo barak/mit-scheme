@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: fasload.c,v 9.86 1999/01/02 06:11:34 cph Exp $
+$Id: fasload.c,v 9.87 2000/01/18 05:08:09 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -52,7 +52,11 @@ static Tchannel load_channel;
 extern int EXFUN (strlen, (const char *));
 extern char * EXFUN (strcpy, (char *, const char *));
 #endif
+#ifdef __STDC__
+#include <stdlib.h>
+#else
 extern char * EXFUN (malloc, (int));
+#endif
 
 extern char * Error_Names [];
 extern char * Abort_Names [];

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: x11term.c,v 1.25 1999/01/02 06:11:34 cph Exp $
+$Id: x11term.c,v 1.26 2000/01/18 05:11:46 cph Exp $
 
-Copyright (c) 1989-1999 Massachusetts Institute of Technology
+Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -665,7 +665,7 @@ DEFINE_PRIMITIVE ("XTERM-WRITE-CHAR!", Prim_xterm_write_char, 5, 5, 0)
     char * map_ptr = (XTERM_CHAR_LOC (xw, index));
     (*map_ptr) = c;
     (XTERM_HL (xw, index)) = hl;
-    XTERM_DRAW_CHARS (xw, x, y, map_ptr, 1, (XTERM_HL_GC (xw, (xw, hl))));
+    XTERM_DRAW_CHARS (xw, x, y, map_ptr, 1, (XTERM_HL_GC (xw, hl)));
     if (((XW_CURSOR_X (xw)) == x) && ((XW_CURSOR_Y (xw)) == y))
       {
 	(XW_CURSOR_VISIBLE_P (xw)) = 0;

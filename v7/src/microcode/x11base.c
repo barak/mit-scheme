@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.73 1999/01/02 06:11:34 cph Exp $
+$Id: x11base.c,v 1.74 2000/01/18 05:11:37 cph Exp $
 
-Copyright (c) 1989-1999 Massachusetts Institute of Technology
+Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -256,6 +256,7 @@ DEFUN (x_io_error_handler, (display), Display * display)
 #else
   termination_eof ();
 #endif
+  return (0);
 }
 
 static int
@@ -276,6 +277,7 @@ DEFUN (x_error_handler, (display, error_event),
 #else
   termination_eof ();
 #endif
+  return (0);
 }
 
 typedef int EXFUN ((* x_error_handler_t), (Display *, XErrorEvent *));

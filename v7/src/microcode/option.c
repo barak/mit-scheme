@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: option.c,v 1.52 2000/01/07 02:20:31 cph Exp $
+$Id: option.c,v 1.53 2000/01/18 05:08:35 cph Exp $
 
 Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
@@ -42,18 +42,20 @@ extern int atoi ();
 #include "ntio.h"
 
 #else /* not WINNT */
+
 #ifdef _POSIX
-
 #include <unistd.h>
-#include <string.h>
-extern char * EXFUN (malloc, (int));
-
-#else /* not _POSIX */
-
+#else
 extern int strlen ();
-extern char * EXFUN (malloc, (int));
+#endif
 
-#endif /* not _POSIX */
+#ifdef __STDC__
+#include <stdlib.h>
+#include <string.h>
+#else
+extern char * EXFUN (malloc, (int));
+#endif
+
 #endif /* not WINNT */
 
 #ifndef NULL

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bintopsb.c,v 9.70 2000/01/18 02:52:54 cph Exp $
+$Id: bintopsb.c,v 9.71 2000/01/18 05:07:46 cph Exp $
 
 Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
@@ -1715,7 +1715,7 @@ DEFUN (print_objects, (from, to),
 	  case GLOBAL_OPERATOR_LINKAGE_KIND:
 	  {
 	    char * word_ptr;
-	    long count, address = 0;
+	    long count = 0;
 	    SCHEME_OBJECT This, * area_end, * scan, * i_scan;
 
 	    i_scan = (from - 1);
@@ -1804,7 +1804,6 @@ DEFUN (print_objects, (from, to),
       
       {
 	unsigned long nmv_length;
-	SCHEME_OBJECT * entry;
 
 	nmv_length = (OBJECT_DATUM (compiled_block_table [the_datum + 1]));
 	fprintf (portable_file, "%02x %lx %lx\n",

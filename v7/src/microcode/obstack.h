@@ -248,7 +248,7 @@ int obstack_chunk_size (struct obstack *obstack);
    int __len = (length);						\
    ((__o->next_free + __len > __o->chunk_limit)				\
     ? _obstack_newchunk (__o, __len) : 0);				\
-   bcopy (where, __o->next_free, __len);				\
+   memcpy (__o->next_free, where, __len);				\
    __o->next_free += __len;						\
    (void) 0; })
 
@@ -257,7 +257,7 @@ int obstack_chunk_size (struct obstack *obstack);
    int __len = (length);						\
    ((__o->next_free + __len + 1 > __o->chunk_limit)			\
     ? _obstack_newchunk (__o, __len + 1) : 0),				\
-   bcopy (where, __o->next_free, __len),				\
+   memcpy (__o->next_free, where, __len),				\
    __o->next_free += __len,						\
    *(__o->next_free)++ = 0;						\
    (void) 0; })
@@ -344,14 +344,14 @@ int obstack_chunk_size (struct obstack *obstack);
 ( (h)->temp = (length),							\
   (((h)->next_free + (h)->temp > (h)->chunk_limit)			\
    ? (_obstack_newchunk ((h), (h)->temp), 0) : 0),			\
-  bcopy (where, (h)->next_free, (h)->temp),				\
+  memcpy ((h)->next_free, where, (h)->temp),				\
   (h)->next_free += (h)->temp)
 
 #define obstack_grow0(h,where,length)					\
 ( (h)->temp = (length),							\
   (((h)->next_free + (h)->temp + 1 > (h)->chunk_limit)			\
    ? (_obstack_newchunk ((h), (h)->temp + 1), 0) : 0),			\
-  bcopy (where, (h)->next_free, (h)->temp),				\
+  memcpy ((h)->next_free, where, (h)->temp),				\
   (h)->next_free += (h)->temp,						\
   *((h)->next_free)++ = 0)
 

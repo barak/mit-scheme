@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: transact.c,v 1.3 1999/01/03 05:33:46 cph Exp $
+$Id: transact.c,v 1.4 2000/01/18 05:09:40 cph Exp $
 
-Copyright (C) 1990-1999 Massachusetts Institute of Technology
+Copyright (C) 1990-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -51,8 +51,9 @@ DEFUN (guarantee_current_transaction, (proc), CONST char * proc)
     error (proc, "no transaction");
   switch (current_transaction -> state)
     {
-    case committing: error (proc, "commit in progress");
-    case aborting: error (proc, "abort in progress");
+    case committing: error (proc, "commit in progress"); break;
+    case aborting: error (proc, "abort in progress"); break;
+    case active: break;
     }
 }
 

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bitstr.c,v 9.61 1999/01/02 06:11:34 cph Exp $
+$Id: bitstr.c,v 9.62 2000/01/18 05:08:00 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -485,18 +485,14 @@ DEFUN (copy_bits,
       else
 	{
 	  long mask1 = (LOW_MASK (offset1));
-	  long dest_buffer;
-	  {
-	    long mask = (ANY_MASK (head, offset1));
-	    dest_buffer
-	      = (((head + offset1) < OBJECT_LENGTH)
-		 ? ((BIT_STRING_WORD (destination))
-		    &~ (LOW_MASK (head + offset1)))
-		 : 0);
-	    dest_buffer
-	      |= (((* (DEC_BIT_STRING_PTR (source))) & (LOW_MASK (head)))
-		  << offset1);
-	  }
+	  long dest_buffer
+	    = (((head + offset1) < OBJECT_LENGTH)
+	       ? ((BIT_STRING_WORD (destination))
+		  &~ (LOW_MASK (head + offset1)))
+	       : 0);
+	  dest_buffer
+	    |= (((* (DEC_BIT_STRING_PTR (source))) & (LOW_MASK (head)))
+		<< offset1);
 	  nbits -= head;
 	  while (nbits >= OBJECT_LENGTH)
 	    {

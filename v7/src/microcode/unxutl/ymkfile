@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ymkfile,v 1.95 1999/05/11 03:34:14 cph Exp $
+$Id: ymkfile,v 1.96 2000/01/18 05:14:06 cph Exp $
 
-Copyright (c) 1989-1999 Massachusetts Institute of Technology
+Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -284,7 +284,7 @@ compinit.o : compinit.c liarc.tch compinit.h
    to prevent fgrep from reading stdin.
  */
 compinit.h : $(COMPILED_SOURCES) liarc.tch xmkfile
-	@echo "#*** Generating" $@ "because of" $?
+	/* @echo "#*** Generating" $@ "because of" $? */
 	rm -f $@
 	fgrep DECLARE_COMPILED_CODE liarc.tch $(COMPILED_SOURCES) | \
 	sed -e 's/.*:/  /' -e 's/)/);/' > $@
@@ -293,7 +293,7 @@ compinit.h : $(COMPILED_SOURCES) liarc.tch xmkfile
 
 foo $(COMPILED_OBJECTS) : liarc.tch
 liarc.tch: liarc.h $(LIARC_HEAD_FILES)
-	@echo "#** Generating" $@ because of $?
+	/* @echo "#** Generating" $@ because of $? */
 	rm -f $@
 	echo "touch" > $@
 
@@ -360,23 +360,28 @@ CFLAGS = -DMIT_SCHEME C_OPTIMIZE_SWITCH C_DEBUG_SWITCH C_SWITCH_MACHINE C_SWITCH
 
 .SUFFIXES: .o .cpp .s .m4
 
-.c.o: ; @ECHO "#** Generating" $@ because of $?
+.c.o:
+	/* @ECHO "#** Generating" $@ because of $? */
 	$(CC) $(CFLAGS) -c $*.c
 
-.c.cpp: ; @ECHO "#** Generating" $@
+.c.cpp:
+	/* @ECHO "#** Generating" $@ */
 	make -f xmkfile breakup
 	$(CC) $(CFLAGS) -E $*.c | \
 	RUN(breakup) | \
 	sed -e 's/^#.*//' -e 's/^[ 	]*$$//' -e 's/^$$//' | \
 	sed -n -e '/^..*/p' > $*.cpp
 
-.c.s: ; @ECHO "#** Generating" $@
+.c.s:
+	/* @ECHO "#** Generating" $@ */
 	$(CC) $(CFLAGS) -S $*.c
 
-.m4.s: ; @ECHO "#** Generating" $@ because of $?
+.m4.s:
+	/* @ECHO "#** Generating" $@ because of $? */
 	$(M4) M4_SWITCH_SYSTEM M4_SWITCH_MACHINE $*.m4 > $*.s
 
-.s.o: ; @ECHO "#** Generating" $@ because of $?
+.s.o:
+	/* @ECHO "#** Generating" $@ because of $? */
 	$(AS) AS_SWITCH_SYSTEM AS_SWITCH_MACHINE -o $*.o $*.s
 
 /* Source and object files */
@@ -588,42 +593,42 @@ BCHOBJECTS = $(CORE_OBJECTS) $(BCH_GC_OBJECTS) $(UNIX_OBJECTS) $(OS_PRIM_OBJECTS
 all: bintopsb psbtobin scheme bchscheme bchdrn $(XTRA_TARGETS)
 
 scheme xscheme : $(OBJECTS) $(SCHEME_OBJECTS)
-	@ECHO "#** Re-linking" $@ because of $?
+	/* @ECHO "#** Re-linking" $@ because of $? */
 	rm -f $@
 	$(CC) $(LDFLAGS) -o $@ $(OBJECTS) $(SCHEME_OBJECTS) $(SCHEME_LIB)
 
 bchscheme : $(BCHOBJECTS) $(SCHEME_OBJECTS)
-	@ECHO "#** Re-linking" $@ because of $?
+	/* @ECHO "#** Re-linking" $@ because of $? */
 	rm -f $@
 	$(CC) $(LDFLAGS) -o $@ $(BCHOBJECTS) $(SCHEME_OBJECTS) $(SCHEME_LIB)
 
 bchdrn : bchdrn.o bchutl.o
-	@ECHO "#** Re-linking" $@ because of $?
+	/* @ECHO "#** Re-linking" $@ because of $? */
 	rm -f $@
 	$(CC) $(LDFLAGS) -o $@ bchdrn.o bchutl.o
 
 findprim : findprim.o
-	@ECHO "#** Re-linking" $@ because of $?
+	/* @ECHO "#** Re-linking" $@ because of $? */
 	$(CC) $(LDFLAGS) -o $@ findprim.o
 
 bintopsb : bintopsb.o missing.o
-	@ECHO "#** Re-linking" $@ because of $?
+	/* @ECHO "#** Re-linking" $@ because of $? */
 	$(CC) $(LDFLAGS) -o $@ bintopsb.o missing.o LIB_MATH
 
 psbtobin : psbtobin.o missing.o
-	@ECHO "#** Re-linking" $@ because of $?
+	/* @ECHO "#** Re-linking" $@ because of $? */
 	$(CC) $(LDFLAGS) -o $@ psbtobin.o missing.o LIB_MATH
 
 breakup : breakup.o
-	@ECHO "#** Re-linking" $@ because of $?
+	/* @ECHO "#** Re-linking" $@ because of $? */
 	$(CC) $(LDFLAGS) -o $@ breakup.o
 
 wsize : wsize.o
-	@ECHO "#** Re-linking" $@ because of $?
+	/* @ECHO "#** Re-linking" $@ because of $? */
 	$(CC) $(LDFLAGS) -o $@ wsize.o LIB_MATH LIBS_SYSTEM LIBS_MACHINE LIB_DEBUG LIB_STANDARD
 
 ppband : ppband.o
-	@ECHO "#** Re-linking" $@ because of $?
+	/* @ECHO "#** Re-linking" $@ because of $? */
 	$(CC) $(LDFLAGS) -o $@ ppband.o
 
 install: scheme bchscheme
@@ -646,12 +651,12 @@ vmsusrdef.c :
 	$(CC) $(CFLAGS) -c usrdef.c
 
 usrdef.c : $(SCHEME_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.tch findprim xmkfile
-	@ECHO "#** Re-making" $@ because of $?
+	/* @ECHO "#** Re-making" $@ because of $? */
 	rm -f usrdef.c
 	RUN(findprim) $(SCHEME_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) > usrdef.c
 
 bchdef.c : $(SCHEME_SOURCES) $(BCHSOURCES) $(OS_PRIM_SOURCES) usrdef.tch findprim xmkfile
-	@ECHO "#** Re-making" $@ because of $?
+	/* @ECHO "#** Re-making" $@ because of $? */
 	rm -f bchdef.c
 	RUN(findprim) $(SCHEME_SOURCES) $(BCHSOURCES) $(OS_PRIM_SOURCES) > bchdef.c
 
@@ -659,7 +664,7 @@ primitive_tables :
 	rm -f usrdef.c usrdef.o bchdef.c bchdef.o
 
 scheme.tch psbmap.tch usrdef.tch :
-	@ECHO "#** Resetting" $@ because of $?
+	/* @ECHO "#** Resetting" $@ because of $? */
 	rm -f $@
 	/* Create the file by opening rather than using `touch' program.
 	   Some versions of the `touch' program don't work well when the
@@ -758,7 +763,7 @@ term.o : scheme.tch
 missing.o : config.h
 
 BCHGCC_H = bchgcc.h oscond.h $(GC_HEAD_FILES)
-bchdmp.o : scheme.tch prims.h uxio.h osio.h osfile.h trap.h lookup.h \
+bchdmp.o : scheme.tch prims.h uxio.h osio.h osfile.h osfs.h trap.h lookup.h \
 	$(BCHGCC_H) fasl.h dump.c
 bchdrn.o : ansidecl.h bchdrn.h
 bchmmg.o : scheme.tch prims.h memmag.h ux.h $(BCHGCC_H) option.h bchdrn.h memmag.h
@@ -799,15 +804,15 @@ $(UNIX_OBJECTS) pruxenv.o pruxfs.o pruxio.o pruxsock.o : oscond.h ansidecl.h \
 uxctty.o : osctty.h ossig.h
 uxenv.o : ux.h osenv.h config.h
 uxfile.o : osfile.h osio.h uxio.h
-uxfs.o : osfs.h
+uxfs.o : osfs.h osfile.h osio.h
 uxio.o : osio.h uxio.h uxselect.h
-uxproc.o : osproc.h uxproc.h osio.h uxio.h osterm.h
-uxsig.o : config.h ux.h ossig.h osctty.h ostty.h uxtrap.h uxsig.h \
+uxproc.o : osproc.h uxproc.h osio.h uxio.h osterm.h ostop.h
+uxsig.o : config.h ux.h ossig.h osctty.h ostty.h ostop.h uxtrap.h uxsig.h \
           uxutil.h critsec.h
 uxsock.o : uxsock.h osio.h uxio.h prims.h
 uxterm.o : osterm.h uxterm.h osio.h uxio.h ospty.h
 uxtop.o : ostop.h uxtop.h osctty.h uxutil.h errors.h option.h
-uxtrap.o : scheme.tch uxtrap.h uxutil.h option.h $(GC_HEAD_FILES)
+uxtrap.o : scheme.tch uxtrap.h uxutil.h option.h ostop.h $(GC_HEAD_FILES)
 uxtty.o : ostty.h osenv.h osio.h uxio.h osterm.h uxterm.h
 uxutil.o : uxutil.h
 pruxfs.o : osfs.h
