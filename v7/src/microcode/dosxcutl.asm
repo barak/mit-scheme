@@ -1,6 +1,6 @@
 ;;; -*-Midas-*-
 ;;;
-;;;	$Id: dosxcutl.asm,v 1.5 1992/09/15 21:40:26 jinx Exp $
+;;;	$Id: dosxcutl.asm,v 1.6 1992/09/25 01:21:28 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -535,15 +535,15 @@ _X32_exception_method:
 	lea	ecx,dword ptr _X32_excp_handlers
 	add	ecx,eax			; handler info for this excp.
 
-	mov	eax,cs:[ecx]		; handler ESP
+	mov	eax,[ecx]		; handler ESP
 	cmp	eax,0			; Use trapped stack?
 	jne	X32_set_up_trap_sp
 
-	lss	esp,fword ptr ds:0[edx]	; Restore trapped stack
+	lss	esp,fword ptr [edx]	; Restore trapped stack
 	jmp	X32_set_up_trap_sp_merge
 
 X32_set_up_trap_sp:
-	lss	esp,fword ptr cs:[ecx]	; Use stack specified by handler
+	lss	esp,fword ptr [ecx]	; Use stack specified by handler
 
 X32_set_up_trap_sp_merge:	
 
