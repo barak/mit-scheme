@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scomb.scm,v 14.7 1990/06/28 19:09:25 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scomb.scm,v 14.8 1990/07/19 21:44:33 jinx Exp $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -63,6 +63,7 @@ MIT in each case. |#
 	       EQUAL-FIXNUM?
 	       FIXNUM-AND
 	       FIXNUM-ANDC
+	       FIXNUM-LSH
 	       FIXNUM-NOT
 	       FIXNUM-OR
 	       FIXNUM-QUOTIENT
