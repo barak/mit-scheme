@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-output.scm,v 1.19 2003/07/03 16:47:49 cph Exp $
+$Id: xml-output.scm,v 1.20 2003/07/15 02:33:10 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -317,7 +317,8 @@ USA.
     (write-xml-external-id (xml-!notation-id decl) col ctx)
     (emit-string ">" ctx)))
 
-(define-method %write-xml ((string <string>) ctx)
+(define-method %write-xml
+    ((string (union-specializer <string> <wide-string>)) ctx)
   (write-escaped-string string
 			'((#\< . "&lt;")
 			  (#\& . "&amp;"))
