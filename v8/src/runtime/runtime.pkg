@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.78 1990/09/13 23:30:01 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.79 1990/10/04 02:42:24 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -1413,8 +1413,6 @@ MIT in each case. |#
   (files "record")
   (parent ())
   (export ()
-	  guarantee-record
-	  guarantee-record-type
 	  make-record-type
 	  record-accessor
 	  record-constructor

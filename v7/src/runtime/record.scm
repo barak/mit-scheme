@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/record.scm,v 1.5 1990/10/04 02:25:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/record.scm,v 1.6 1990/10/04 02:41:38 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -153,7 +153,7 @@ MIT in each case. |#
       (named-structure/set-tag-description! tag
 	(lambda (record-type)
 	  (if (not (record-type? record-type))
-	      (error:illegal-datum record-type))
+	      (error:illegal-datum record-type false))
 	  `((PREDICATE ,(vector-ref record-type 1))
 	    (CONSTRUCTOR-CONSTRUCTOR ,(vector-ref record-type 2))
 	    (ACCESSOR-CONSTRUCTOR ,(vector-ref record-type 3))
@@ -183,6 +183,6 @@ MIT in each case. |#
        (record-type? (vector-ref object 0))))
 
 (define (record-type-descriptor record)
-  (if (not (record? object))
-      (error:illegal-datum object 'RECORD-TYPE-DESCRIPTOR))
+  (if (not (record? record))
+      (error:illegal-datum record 'RECORD-TYPE-DESCRIPTOR))
   (vector-ref record 0))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.18 1990/09/19 00:32:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.19 1990/10/04 02:41:11 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -249,7 +249,7 @@ MIT in each case. |#
 		 (cons (car bucket) accumulator))))))))
 
 (define (error:illegal-datum object #!optional operator-name)
-  (if (default-object? operator-name)
+  (if (or (default-object? operator-name) (not operator-name))
       (error error-type:wrong-type-argument object)
       (error error-type:wrong-type-argument object
 	     (error-irritant/noise char:newline)
@@ -257,7 +257,7 @@ MIT in each case. |#
 	     operator-name)))
 
 (define (error:datum-out-of-range object #!optional operator-name)
-  (if (default-object? operator-name)
+  (if (or (default-object? operator-name) (not operator-name))
       (error error-type:bad-range-argument object)
       (error error-type:bad-range-argument object
 	     (error-irritant/noise char:newline)
