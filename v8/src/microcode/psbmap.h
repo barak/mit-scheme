@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbmap.h,v 9.29 1989/09/20 23:10:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbmap.h,v 9.30 1989/09/22 08:45:36 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -52,11 +52,7 @@ MIT in each case. */
 #include "const.h"
 #include "gccode.h"
 
-#ifdef HAS_FREXP
 extern double frexp(), ldexp();
-#else
-#include "missing.c"
-#endif
 
 #define PORTABLE_VERSION	5
 

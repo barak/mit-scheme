@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.10 1989/09/22 08:45:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.11 1989/09/22 08:47:32 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -431,12 +431,13 @@ scheme.touch : scheme.h config.h bkpt.h object.h scode.h sdata.h \
 	const.h fixobj.h default.h extern.h prim.h intrpt.h
 os.touch : os.c mul.c unix.c vms.c unknown.c scheme.touch zones.h
 psbmap.touch : config.h object.h bignum.h bignumint.h bitstr.h types.h \
-	sdata.h const.h missing.c psbmap.h $(GC_HEAD_FILES) \
-	comlin.h comlin.c
+	sdata.h const.h psbmap.h $(GC_HEAD_FILES) comlin.h comlin.c
 usrdef.touch : usrdef.h config.h object.h prim.h
 
 limits.h : hard-params
 	-./hard-params -l > limits.h
+float.h : hard-params
+	-./hard-params -f > float.h
 hard-params : hard-params.c
 	$(CC) -DNO_SC $(LDFLAGS) -o hard-params hard-params.c
 
