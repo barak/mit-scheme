@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 13.47 1987/06/24 03:12:40 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 13.48 1987/06/30 21:42:10 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -456,18 +456,17 @@
 ;;; does `file-exists?' on that file at least three times!!
 
 (define (basic-load filename environment)
-  (define (kernel filename)
+  (define (kernel pathname)
     (let ((pathname
-	   (let ((pathname (->pathname filename)))
-	     (or (pathname->input-truename pathname)
-		 (let ((pathname (merge-pathnames pathname default-pathname)))
-		     (if (pathname-type pathname)
-			 (pathname->input-truename pathname)
-			 (or (pathname->input-truename
-			      (pathname-new-type pathname "bin"))
-			     (pathname->input-truename
-			      (pathname-new-type pathname "scm")))))
-		 (error "No such file" pathname)))))
+	   (or (pathname->input-truename pathname)
+	       (let ((pathname (merge-pathnames pathname default-pathname)))
+		   (if (pathname-type pathname)
+		       (pathname->input-truename pathname)
+		       (or (pathname->input-truename
+			    (pathname-new-type pathname "bin"))
+			   (pathname->input-truename
+			    (pathname-new-type pathname "scm")))))
+	       (error "No such file" pathname))))
       (if (call-with-input-file pathname
 	    (lambda (port)
 	      (= 250 (char->ascii (peek-char port)))))
@@ -489,30 +488,45 @@
   (define (scode-load filename)
     (scode-eval (fasload filename) environment))
 
-  (if (pair? filename)
-      (for-each kernel filename)
-      (kernel filename)))
+  (for-each kernel (stickify-input-filenames filename false)))
 
 (set! load
-(named-lambda (load filename #!optional environment)
-  (if (unassigned? environment) (set! environment (rep-environment)))
-  (basic-load filename environment)))
+  (named-lambda (load filename #!optional environment)
+    (if (unassigned? environment) (set! environment (rep-environment)))
+    (basic-load filename environment)))
 
 (set! load-noisily
-(named-lambda (load-noisily filename #!optional environment)
-  (if (unassigned? environment) (set! environment (rep-environment)))
-  (fluid-let ((load-noisily? true))
-    (basic-load filename environment))))
+  (named-lambda (load-noisily filename #!optional environment)
+    (if (unassigned? environment) (set! environment (rep-environment)))
+    (fluid-let ((load-noisily? true))
+      (basic-load filename environment))))
 
 (set! read-file
-(named-lambda (read-file filename)
-  (let ((name (pathname->input-truename
-	       (merge-pathnames (->pathname filename) default-pathname))))
-    (if name
-	(call-with-input-file name
-	  (access *parse-objects-until-eof parser-package))
-	(error "Read-file: No such file" name)))))
+  (named-lambda (read-file filename)
+    (let ((name (pathname->input-truename
+		 (merge-pathnames (->pathname filename) default-pathname))))
+      (if name
+	  (call-with-input-file name
+	    (access *parse-objects-until-eof parser-package))
+	  (error "Read-file: No such file" name)))))
 )
+
+(define (stickify-input-filenames filename/s default-pathname)
+  (let loop
+      ((filenames 
+	(if (pair? filename/s)
+	    filename/s
+	    (list filename/s)))
+       (default-pathname default-pathname))
+    (let ((pathname (->pathname (car filenames))))
+      (let ((pathname
+	     (if default-pathname
+		 (merge-pathnames pathname default-pathname)
+		 pathname)))
+	(cons pathname
+	      (if (pair? (cdr filenames))
+		  (loop (cdr filenames) pathname)
+		  '()))))))
 
 (define fasload)
 (let ()
