@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcompr.scm,v 1.6 1988/08/29 23:21:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcompr.scm,v 1.7 1988/08/30 02:13:14 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -40,11 +40,10 @@ MIT in each case. |#
 (package (code-compression)
 
 (define-export (code-compression rgraphs)
-  (for-each walk-rgraph rgraphs))
-
-(define (walk-rgraph rgraph)
-  (fluid-let ((*current-rgraph* rgraph))
-    (for-each walk-bblock (rgraph-bblocks rgraph))))
+  (for-each (lambda (rgraph)
+	      (fluid-let ((*current-rgraph* rgraph))
+		(for-each walk-bblock (rgraph-bblocks rgraph))))
+	    rgraphs))
 
 (define (walk-bblock bblock)
   (if (rinst-next (bblock-instructions bblock))
@@ -63,7 +62,7 @@ MIT in each case. |#
 			      (rinst-dead-registers rinst))
 		    (regset-union! live births))))))
 	(bblock-perform-deletions! bblock))))
-
+
 (define (optimize-rtl bblock live rinst rtl)
   ;; Look for assignments whose address is a pseudo register.  If that
   ;; register has exactly one reference which is known to be in this
@@ -81,29 +80,6 @@ MIT in each case. |#
 				    rinst
 				    register
 				    (rtl:assign-expression rtl)))))
-
-(define (find-reference-instruction live rinst register expression)
-  ;; Find the instruction which contains the single reference to
-  ;; `register', and determine if it is possible to fold `expression'
-  ;; into that instruction in `register's place.
-  (let ((next (rinst-next rinst)))
-    (cond ((rinst-dead-register? next register)
-	   (fold-instructions! live rinst next register expression))
-	  ((interpreter-value-register? expression)
-	   (let loop ((next next))
-	     (if (not (let ((rtl (rinst-rtl next)))
-			(and (rtl:assign? rtl)
-			     (interpreter-value-register?
-			      (rtl:assign-address rtl)))))
-		 (let ((next (rinst-next next)))
-		   (if (rinst-dead-register? next register)
-		       (fold-instructions! live rinst next register expression)
-		       (loop next))))))
-	  ((rtl:constant-expression? expression)
-	   (let loop ((next (rinst-next next)))
-	     (if (rinst-dead-register? next register)
-		 (fold-instructions! live rinst next register expression)
-		 (loop (rinst-next next))))))))
 
 (define (fold-instructions! live rinst next register expression)
   ;; Attempt to fold `expression' into the place of `register' in the
@@ -130,5 +106,60 @@ MIT in each case. |#
 		(reset-register-n-deaths! register)
 		(reset-register-live-length! register)
 		(set-register-bblock! register false)))))))
+
+(define (find-reference-instruction live rinst register expression)
+  ;; Find the instruction which contains the single reference to
+  ;; `register', and determine if it is possible to fold `expression'
+  ;; into that instruction in `register's place.
+  (let ((next (rinst-next rinst)))
+    (let ((search-stopping-at
+	   (lambda (predicate)
+	     (let loop ((next next))
+	       (if (not (predicate (rinst-rtl next)))
+		   (let ((next (rinst-next next)))
+		     (if (rinst-dead-register? next register)
+			 (fold-instructions! live rinst next register
+					     expression)
+			 (loop next))))))))
+      (cond ((rinst-dead-register? next register)
+	     (fold-instructions! live rinst next register expression))
+	    ((interpreter-value-register? expression)
+	     (search-stopping-at
+	      (lambda (rtl)
+		(and (rtl:assign? rtl)
+		     (interpreter-value-register? (rtl:assign-address rtl))))))
+	    ((rtl:stack-reference? expression)
+	     (search-stopping-at expression-clobbers-stack-pointer?))
+	    ((rtl:constant-expression? expression)
+	     (let loop ((next (rinst-next next)))
+	       (if (rinst-dead-register? next register)
+		   (fold-instructions! live rinst next register expression)
+		   (loop (rinst-next next)))))))))
+
+(define (rtl:stack-reference? expression)
+  (and (rtl:offset? expression)
+       (interpreter-stack-pointer? (rtl:offset-register expression))))
+
+(define (expression-clobbers-stack-pointer? rtl)
+  (or (and (rtl:assign? rtl)
+	   (rtl:register? (rtl:assign-address rtl))
+	   (interpreter-stack-pointer? (rtl:assign-address rtl)))
+      ;; This should also test for all invocations, and
+      ;; pop-return as well, but those never have a next
+      ;; instruction.
+      (memq (rtl:expression-type rtl)
+	    '(INVOCATION-PREFIX:MOVE-FRAME-UP
+	      INVOCATION-PREFIX:DYNAMIC-LINK))
+      (let loop ((expression rtl))
+	(rtl:any-subexpression? expression
+	  (lambda (expression)
+	    (cond ((rtl:pre-increment? expression)
+		   (interpreter-stack-pointer?
+		    (rtl:pre-increment-register expression)))
+		  ((rtl:post-increment? expression)
+		   (interpreter-stack-pointer?
+		    (rtl:post-increment-register expression)))
+		  (else
+		   (loop expression))))))))
 
 )
