@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: vector.scm,v 14.13 1999/11/08 18:22:52 cph Exp $
+$Id: vector.scm,v 14.14 1999/11/08 18:26:08 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -111,7 +111,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     vector))
 
 (define (vector-map procedure vector)
-  (if (and (vector? procedure) (procedure? vector))
+  (if (vector? procedure)
       ;; KLUDGE: accept arguments in old order.
       (vector-map vector procedure)
       (begin

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdflow.scm,v 1.3 1999/01/02 06:06:43 cph Exp $
+$Id: rdflow.scm,v 1.4 1999/11/08 18:29:19 cph Exp $
 
 Copyright (c) 1990, 1999 Massachusetts Institute of Technology
 
@@ -29,17 +29,17 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	      (let ((rnodes (generate-dataflow-graph rgraph)))
 		(set-rgraph-register-value-classes!
 		 rgraph
-		 (vector-map rnodes
-		   (lambda (rnode)
-		     (and rnode
-			  (rnode/value-class rnode)))))
+		 (vector-map (lambda (rnode)
+			       (and rnode
+				    (rnode/value-class rnode)))
+			     rnodes))
 		(generate-known-values! rnodes)
 		(set-rgraph-register-known-values!
 		 rgraph
-		 (vector-map rnodes
-		   (lambda (rnode)
-		     (and rnode
-			  (rnode/known-value rnode)))))))
+		 (vector-map (lambda (rnode)
+			       (and rnode
+				    (rnode/known-value rnode)))
+			     rnodes))))
 	    rgraphs))
 
 (define (rnode/value-class rnode)

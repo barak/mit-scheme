@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: snr.scm,v 1.53 1999/11/05 05:38:15 cph Exp $
+;;; $Id: snr.scm,v 1.54 1999/11/08 18:28:47 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-1999 Massachusetts Institute of Technology
 ;;;
@@ -990,8 +990,8 @@ This shows News groups that have been created since the last time that
 	 (message msg)
 	 (initialize-news-groups-buffer
 	  buffer
-	  (vector-map group-names
-		      (lambda (name) (name->news-group buffer name))))
+	  (vector-map (lambda (name) (name->news-group buffer name))
+		      group-names))
 	 (message msg "done"))
        (find-first-line buffer ang-buffer:mark-group-name)))))
 

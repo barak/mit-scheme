@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rcserq.scm,v 4.6 1999/01/02 06:06:43 cph Exp $
+$Id: rcserq.scm,v 4.7 1999/11/08 18:29:35 cph Exp $
 
 Copyright (c) 1988, 1989, 1999 Massachusetts Institute of Technology
 
@@ -70,10 +70,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (vector-fill! (vector-ref register-tables 5) -1))
 
 (define (register-tables/copy register-tables)
-  (vector (vector-map (vector-ref register-tables 0)
-		      (lambda (quantity)
+  (vector (vector-map (lambda (quantity)
 			(and quantity
-			     (quantity-copy quantity))))
+			     (quantity-copy quantity)))
+		      (vector-ref register-tables 0))
 	  (vector-copy (vector-ref register-tables 1))
 	  (vector-copy (vector-ref register-tables 2))
 	  (vector-copy (vector-ref register-tables 3))

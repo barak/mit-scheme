@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.59 1999/02/24 21:57:06 cph Exp $
+$Id: io.scm,v 14.60 1999/11/08 18:28:11 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -322,10 +322,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    (lambda ()
      (let ((descriptors ((ucode-primitive channel-table 0))))
        (and descriptors
-	    (vector-map descriptors
-	      (lambda (descriptor)
-		(or (descriptor->channel descriptor)
-		    (make-channel descriptor)))))))))
+	    (vector-map (lambda (descriptor)
+			  (or (descriptor->channel descriptor)
+			      (make-channel descriptor)))
+			descriptors))))))
 
 ;;;; File Primitives
 

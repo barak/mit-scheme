@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pcsdisp.scm,v 1.2 1999/01/02 06:11:34 cph Exp $
+$Id: pcsdisp.scm,v 1.3 1999/11/08 18:29:58 cph Exp $
 
 Copyright (c) 1993, 1999 Massachusetts Institute of Technology
 
@@ -253,8 +253,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	       (display-acated-p&h-lists
 		(map (lambda (table label cable) ; 8 tables: 4 purified + 4 not
 		       (vector->list
-			(vector-map table
-				    (lambda (elt)
+			(vector-map (lambda (elt)
 				      (let* ((coblx (profile-hash-table-car elt))
 					     (datum (profile-hash-table-cdr elt))
 					     (count 
@@ -264,7 +263,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 					(set-cell-contents! cable
 							    (flo:+ count
 								   (cell-contents cable)))
-					`(,count ,label ,coblx ,@name-list))))))
+					`(,count ,label ,coblx ,@name-list)))
+				    table)))
 		     (vector->list
 		      (if *display-acation-status*
 			  (pc-sample/status/code-block-table
@@ -448,17 +448,17 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	       (display-acated-list
 		(vector->list
 		 (vector-map 
-		  (if *display-acation-status*
-		      (pc-sample/status/interp-proc-table
-		       *display-acation-status*)
-		      (pc-sample/interp-proc-table))
 		  (lambda (elt)
 		    (let* ((lambx (profile-hash-table-car elt))
 			   (datum (profile-hash-table-cdr elt))
 			   (count (interp-proc-profile-datum/count datum))
 			   (name  (lambda/name/display-acate       lambx)))
 		      (set! tally (flo:+ count tally))
-		      `(,count INTERP-PROC ,lambx ,name)))))))
+		      `(,count INTERP-PROC ,lambx ,name)))
+		  (if *display-acation-status*
+		      (pc-sample/status/interp-proc-table
+		       *display-acation-status*)
+		      (pc-sample/interp-proc-table))))))
 	  (if (null? display-acated-list)
 	      (string-append "; +++ No Interp-Procs Sampled Yet +++"
 			     BTW-string)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2graph.scm,v 1.15 1999/02/24 21:57:12 cph Exp $
+$Id: os2graph.scm,v 1.16 1999/11/08 18:28:28 cph Exp $
 
 Copyright (c) 1995-1999 Massachusetts Institute of Technology
 
@@ -298,8 +298,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let ((window (graphics-device/descriptor device)))
     (without-interrupts
      (lambda ()
-       (let ((xv (vector-map xv (lambda (x) (window/x->device window x))))
-	     (yv (vector-map yv (lambda (y) (window/y->device window y)))))
+       (let ((xv (vector-map (lambda (x) (window/x->device window x)) xv))
+	     (yv (vector-map (lambda (y) (window/y->device window y)) yv)))
 	 (let ((xl (fix:vector-min xv))
 	       (yl (fix:vector-min yv))
 	       (xh (fix:+ (fix:vector-max xv) 1))
