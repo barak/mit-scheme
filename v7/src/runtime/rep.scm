@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rep.scm,v 14.38 1993/10/20 21:22:23 cph Exp $
+$Id: rep.scm,v 14.39 1993/10/21 04:52:42 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -95,24 +95,24 @@ MIT in each case. |#
     (lambda (parent port driver state operations)
       (if (not (or (false? parent) (cmdl? parent)))
 	  (error:wrong-type-argument parent "cmdl" 'MAKE-CMDL))
+      (if (not (or parent port))
+	  (error:bad-range-argument port 'MAKE-CMDL))
       (constructor (if parent (+ (cmdl/level parent) 1) 1)
 		   parent
-		   port
+		   (or port (cmdl/child-port parent))
 		   driver
 		   state
 		   (parse-operations-list operations 'MAKE-CMDL)
 		   (make-1d-table)))))
 
+(define (cmdl/child-port cmdl)
+  (or (let ((operation (cmdl/local-operation cmdl 'CHILD-PORT)))
+	(and operation
+	     (operation cmdl)))
+      (cmdl/port cmdl)))
+
 (define (push-cmdl driver state operations)
-  (let ((parent (nearest-cmdl)))
-    (make-cmdl parent
-	       (or (let ((operation (cmdl/local-operation parent 'CHILD-PORT)))
-		     (and operation
-			  (operation parent)))
-		   (cmdl/port parent))
-	       driver
-	       state
-	       operations)))
+  (make-cmdl (nearest-cmdl) #f driver state operations))
 
 (define (cmdl/base cmdl)
   (let ((parent (cmdl/parent cmdl)))
@@ -127,35 +127,39 @@ MIT in each case. |#
   (port/set-default-directory (cmdl/port cmdl) pathname))
 
 (define (cmdl/start cmdl message)
-  (let ((port (cmdl/port cmdl))
-	(thunk
-	 (lambda ()
-	   (fluid-let ((*nearest-cmdl* cmdl)
-		       (dynamic-handler-frames '())
-		       (*bound-restarts*
-			(if (cmdl/parent cmdl) *bound-restarts* '()))
-		       (standard-error-hook #f)
-		       (standard-warning-hook #f)
-		       (standard-breakpoint-hook #f)
-		       (*working-directory-pathname*
-			*working-directory-pathname*)
-		       (*default-pathname-defaults*
-			*default-pathname-defaults*))
-	     (let loop ((message message))
-	       (loop
-		(bind-abort-restart cmdl
-		  (lambda ()
-		    (with-interrupt-mask interrupt-mask/all
-		      (lambda (interrupt-mask)
-			interrupt-mask
-			(unblock-thread-events)
-			((->cmdl-message message) cmdl)
-			(call-with-current-continuation
-			 (lambda (continuation)
-			   (with-create-thread-continuation continuation
-			     (lambda ()
-			       ((cmdl/driver cmdl) cmdl)))))))))))))))
-    (let ((mutex (port/thread-mutex port)))
+  (let ((port (cmdl/port cmdl)))
+    (let ((thunk
+	   (lambda ()
+	     (fluid-let ((*nearest-cmdl* cmdl)
+			 (dynamic-handler-frames '())
+			 (*bound-restarts*
+			  (if (cmdl/parent cmdl) *bound-restarts* '()))
+			 (standard-error-hook #f)
+			 (standard-warning-hook #f)
+			 (standard-breakpoint-hook #f)
+			 (*working-directory-pathname*
+			  *working-directory-pathname*)
+			 (*default-pathname-defaults*
+			  *default-pathname-defaults*)
+			 (*current-input-port* port)
+			 (*current-output-port* port))
+	       (let loop ((message message))
+		 (loop
+		  (bind-abort-restart cmdl
+		    (lambda ()
+		      (with-interrupt-mask interrupt-mask/all
+			(lambda (interrupt-mask)
+			  interrupt-mask
+			  (unblock-thread-events)
+			  (with-errors-ignored
+			   (lambda ()
+			     ((->cmdl-message message) cmdl)))
+			  (call-with-current-continuation
+			   (lambda (continuation)
+			     (with-create-thread-continuation continuation
+			       (lambda ()
+				 ((cmdl/driver cmdl) cmdl))))))))))))))
+	  (mutex (port/thread-mutex port)))
       (let ((thread (current-thread))
 	    (owner (thread-mutex-owner mutex)))
 	(cond ((and owner (not (eq? thread owner)))
@@ -176,6 +180,12 @@ MIT in each case. |#
 	       => (lambda (operation) (operation cmdl thunk)))
 	      (else
 	       (with-thread-mutex-locked mutex thunk)))))))
+
+(define (with-errors-ignored thunk)
+  (call-with-current-continuation
+   (lambda (continuation)
+     (bind-condition-handler (list condition-type:error) continuation
+       thunk))))
 
 (define (bind-abort-restart cmdl thunk)
   (call-with-current-continuation
@@ -198,7 +208,7 @@ MIT in each case. |#
 					    (working-directory-pathname))))
 	     (if (default-object? message) "Abort!" message))))
        (lambda (restart)
-	 (restart/put! restart make-cmdl cmdl)
+	 (restart/put! restart cmdl-abort-restart-tag cmdl)
 	 (thunk))))))
 
 (define *nearest-cmdl*)
@@ -354,9 +364,12 @@ MIT in each case. |#
 
 (define (invoke-abort restart message)
   (let ((effector (restart/effector restart)))
-    (if (restart/get restart make-cmdl)
+    (if (restart/get restart cmdl-abort-restart-tag)
 	(effector message)
 	(effector))))
+
+(define cmdl-abort-restart-tag
+  (list 'CMDL-ABORT-RESTART-TAG))
 
 ;;;; REP Loops
 
@@ -398,7 +411,7 @@ MIT in each case. |#
 		   #!optional condition operations prompt)
   (let ((parent (nearest-cmdl)))
     (make-repl parent
-	       (cmdl/port parent)
+	       #f
 	       environment
 	       syntax-table
 	       (if (default-object? condition) false condition)
@@ -589,10 +602,10 @@ MIT in each case. |#
     (if (null? restarts)
 	'()
 	(cons (car restarts)
-	      (if (restart/get (car restarts) make-cmdl)
+	      (if (restart/get (car restarts) cmdl-abort-restart-tag)
 		  (list-transform-positive (cdr restarts)
 		    (lambda (restart)
-		      (restart/get restart make-cmdl)))
+		      (restart/get restart cmdl-abort-restart-tag)))
 		  (loop (cdr restarts)))))))
 
 (define-structure (repl-state
