@@ -1,6 +1,6 @@
 Emacs: Please use -*- Text -*- mode.  Thank you.
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.20 1991/08/14 01:16:19 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.21 1991/09/01 14:51:09 jinx Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -236,10 +236,10 @@ new architecture.
 
 		1. Liar's runtime model.
 
-Liar does not open-code all operations that the code would need to
-execute.  In particular, it leaves error handling and recovery,
-interrupt processing, initialization, and invocation of unknown
-procedures, to a runtime library written in assembly language.
+Liar does not open code (inline) all operations that the code would
+need to execute.  In particular, it leaves error handling and
+recovery, interrupt processing, initialization, and invocation of
+unknown procedures, to a runtime library written in assembly language.
 
 Although this runtime library need not run in the context of the
 CScheme interpreter, currently the only implementation of this library
@@ -251,30 +251,32 @@ to invoke CScheme primitives at runtime, some of which (eval, etc.)
 require the interpreter to be present.  It should be possible,
 however, to provide an alternate runtime library and primitive set
 that would allow code produced by Liar to run without the interpreter
-being present (F1).
+being present. (Foot) We often toy with this idea.
 
 On the other hand, since the only instance of the runtime library is
 that supplied by the interpreter, Liar currently assumes that the
 Scheme object representation is the same as that used by the
 interpreter, but this is relatively well abstracted and should not be
-hard to change (F2).
+hard to change. (Foot) Famous last words.
 
-The runtime library is currently implemented by microcode/cmpaux-md.m4
-and microcode/cmpint.c .
+The runtime library is currently implemented by
+microcode/cmpaux-port.m4 and microcode/cmpint.c .  The files
+cmpaux.txt and cmpint.txt document these files.  The documentation
+files may be found in the microcode or the documentation directories.
 
-microcode/cmpaux-md.m4 is an assembly language port-dependent file
+microcode/cmpaux-port.m4 is an assembly language port-dependent file
 that allows compiled Scheme to call the C-written library routines and
-vice versa.  It is described in microcode/cmpaux.txt .
+vice versa.  It is described in cmpaux.txt.
 
 microcode/cmpint.c defines the library in a machine/port-independent
 way, but requires some information about the port and this is provided
 in microcode/cmpint2.h, a copy (or link) of the appropriate
-microcode/cmpint-md.h file.  The microcode/cmpint-md.h files are
-described in microcode/cmpint.txt .
+microcode/cmpint-port.h file.  The microcode/cmpint-port.h files are
+described in cmpint.txt .
 
-microcode/cmpint.txt also describes a lot of the data structures that
-the compiled code and runtime library manipulate, and defines some of
-the concepts needed to understand the compiler.
+cmpint.txt also describes many of the data structures that the
+compiled code and runtime library manipulate, and defines some of the
+concepts needed to understand the compiler.
 
 The rest of this document assumes that you are using the runtime
 library provided by the CScheme interpreter.  If you wish to use Liar
@@ -282,13 +284,8 @@ as a compiler for stand-alone programs, a lot of work needs to be
 done, and this work is not described here.  Perhaps we will do it in
 the future.
 
-If you have not yet read microcode/cmpaux.txt and
-microcode/cmpint.txt, please do so before reading the rest of this
-document.
-
-(F1) We often toy with this idea.
-
-(F2) Famous last words.
+If you have not yet read cmpaux.txt and cmpint.txt, please do so
+before reading the rest of this document.
 
 		2. Preliminary Observations
 
@@ -297,40 +294,40 @@ document.
 - Liar assumes that the target machine has an address space that is
 flat enough that all Scheme objects can be addressed uniformly.  In
 other words, segmented address spaces with segments necessarily
-smaller than the Scheme runtime heap (ie. Intel 286) will make Liar
+smaller than the Scheme runtime heap (i.e. Intel 286) will make Liar
 very hard or inefficient to port.
 
 - Liar assumes that instructions and data can coexist in the same
 address space, and that new code objects that contain machine
-instructions can be allocated and written on the fly from the memory
-pool (the heap) used to allocate all other Scheme objects.  This
-assumption in Liar conflicts with some current hardware that has
-programmer-visible separate (split) data and instruction caches --
-that is, there are two different caches, one used by the processor for
-instruction references and the other for data references, and storing
-data into memory only updates the data cache, but not the instruction
-cache, and perhaps not even memory.  Most of the problems this causes
-can be resolved if the user is given enough control over the hardware
-caches, ie. some way to flush or synchronize them.  Furthermore, a
-true Harvard architecture, with separate code and data memories, would
-be hard to accommodate without relatively major changes.  At some
-point in the future we may write a C back end for Liar that handles
-this case, since C code space and data space are typically kept
-separate by the operating system.  Whatever technique the C back end
-may use can probably be emulated by architectures with such a strong
-division, although it is likely to be expensive.
+instructions can be allocated from and written to the heap (memory
+pool) used to allocate all other Scheme objects.  This assumption in
+Liar conflicts with some current hardware that has programmer-visible
+separate (split) data and instruction caches -- that is, there are two
+different caches, one used by the processor for instruction references
+and the other for data references, and storing data into memory only
+updates the data cache, but not the instruction cache, and perhaps not
+even memory.  Most of the problems this causes can be resolved if the
+user is given enough control over the hardware caches, i.e. some way to
+flush or synchronize them.  Furthermore, a true Harvard architecture,
+with separate code and data memories, would be hard to accommodate
+without relatively major changes.  At some point in the future we may
+write a C back end for Liar that handles this case, since C code space
+and data space are typically kept separate by the operating system.
+Whatever technique the C back end may use can probably be emulated by
+architectures with such a strong division, although it is likely to be
+expensive.
 
 - Liar assumes that the target machine is a general-register machine.
-I.E. operations are based on processor registers, and there is a
+That is, operations are based on processor registers, and there is a
 moderately large set of general-purpose registers that can be used
-interchangeably.  It would be very hard to port Liar to a stack
-machine, a graph-reduction engine, or a 4-counter machine.  It is
-probably also hard to port Liar to an Intel 386/486 because of the
-small number of registers and the fact that most of them are special
-to some common instructions.
+interchangeably.  It would be hard to port Liar to a stack machine, a
+graph-reduction engine, or a 4-counter machine.  It is probably also
+hard to port Liar to an Intel 386/486 because of the small number of
+registers and the fact that most of them are special to some common
+instructions.
 
 	2.2. Some implementation decisions that may make your job
-harder:
+harder or impair the quality of the output code:
 
 - Liar generates code that passes arguments to procedures on a stack.
 This decision especially affects the performance on load-store
@@ -345,46 +342,48 @@ per block of operations, but instead bumps it once per item.  This is
 expensive on many modern machines where pre-and-post incrementing are
 not supported by the hardware.  This may also change in the
 not-too-far future.
+ [*Jinx: Wasn't this fixed recently for the MIPS?]
 
 - Liar assumes that it is cheap to compute overflow conditions on
 integer arithmetic operations.  Generic arithmetic primitives have the
-frequent fixnum (small integer) case open-coded, and the overflow and
+frequent fixnum (small integer) case open coded, and the overflow and
 non-fixnum cases coded out of line, but this depends on the ability of
 the code to detect and branch on overflow conditions cheaply.  This is
 not true of some modern machines, notably MIPS processors.  If your
 processor does not make branching on such conditions reasonably cheap,
 you may have to use code similar to that used in the MIPS port.  The
 MIPS processor has trapping and non-trapping arithmetic instructions.
-The arithmetic instructions trap on overflow, but the trap recovery
-code is typically so expensive that the code computes the overflow
-conditions explicitly.
+The trapping arithmetic instructions trap on overflow, but the trap
+recovery code is typically so expensive that the generated code
+computes the overflow conditions explicitly.
 
 - Liar assumes that extracting, inserting, and comparing bit-fields is
 relatively cheap.  The current object representation for Liar
-(compatible with the interpreter) consists of using a number (6-8) of
-bits in the most significant bit positions of a word as a type tag,
-and the rest as the datum, usually an encoded address.  Not only
-must extracting, comparing, and inserting these tags be cheap, but
-decoding the address must be cheap as well.  These operations are
-relatively cheap on architectures with bit-field instructions, but
-more expensive if they must be emulated with bitwise boolean
-operations and shifts, as on the MIPS R3000.  Note that decoding the
-address may include inserting segment bits in some of the positions
-where the tag is placed, further increasing the dependency on cheap
-bit-field manipulation.
+(compatible with the interpreter) consists of using a number of bits
+(6) in the most significant bit positions of a word as a type tag, and
+the rest as the datum, usually an encoded address.  Not only must
+extracting, comparing, and inserting these tags be cheap, but decoding
+the address must be cheap as well.  These operations are relatively
+cheap on architectures with bit-field instructions, but more expensive
+if they must be emulated with bitwise boolean operations and shifts,
+as on the R3000.  Decoding a datum into an address may involve
+inserting segment bits in some of the positions where the tag is
+placed, further increasing the dependency on cheap bit-field
+manipulation.
 
 	2.3. Emulating an existing port.
 
 The simplest way to port Liar is to find an architecture to which Liar
-has already been ported that is sufficiently similar to the desired
-architecture that a port can be obtained by small modifications.  In
-particular, if the architectures are really close, there may be no
-need for architecture-specific additional tuning.
+has already been ported that is sufficiently similar to the target
+architecture that most of the code can be written by copying or
+trivially translating existing code.  In particular, if the
+architectures are really close, there may be no need for
+architecture-specific additional tuning.
 
-Note that the compiler is developed on Motorola >=68020 processors, so
-this is the best-tuned version, and the other ports are not very well
-tuned or not tuned at all.  If you improve an existing port, please
-share the improvements by notifying liar-implementors.
+Note that the compiler is primarily developed on Motorola >=68020
+processors, so this is the best-tuned version, and the other ports are
+not very well tuned or not tuned at all.  If you improve an existing
+port, please share the improvements by notifying liar-implementors.
 
 - If you have a Vax-like CISC machine, you can try starting from the
 Vax or the Motorola 68020 ports.  The Vax port was written by starting
@@ -408,7 +407,9 @@ Spectrum port as its model.
 above, you are out of luck and will have to write a port from scratch.
 In particular, a port to an Intel 386/486 would use some of the
 concepts and code from ports to other CISCs, but due to the reduced
-register set, would probably have to re-do all the register allocation.
+register set, would probably have to re-do all the register allocation
+or, alternatively, use memory locations to instantiate pseudo
+registers and avoid hardware register allocation completely.
 
 Of course, no architecture is identical to any other, so you may want
 to mix and match ideas from many of the ports already done, and it is
@@ -430,21 +431,24 @@ The RTL can vary in the following ways:
 - RTL is a language for manipulating the contents of conceptual
 registers.  RTL registers are divided into ``pseudo-registers'' and
 ``machine registers''.  Machine registers represent physical hardware
-registers, some of which have been reserved by the port to hold useful
-quantities (stack pointer, value register, etc.)  while
-pseudo-registers represent quantities that will need physical
-registers or memory locations to hold them in the final translation.
-In order to make the RTL more homogeneous, the registers are not
-distinguished syntactically in the RTL, but are instead distinguished
-by their value range.  Machine registers are represented as the N
-lowest numbered RTL registers (where N is the number of hardware
-registers), and all others are pseudo-registers. Since some RTL
-instructions explicitly mention machine registers and these (and their
-numbers) vary from architecture to architecture, the register numbers
-in an RTL program will vary depending on the back end in use.  Note
-that all pseudo-registers are equivalent, and all can hold arbitrary
-Scheme objects, while machine registers can be further divided into
-separate classes (e.g. address, data, and floating-point registers).
+registers, some of which have been reserved and given fixed meanings
+by the port (stack pointer, value register, etc.)  while
+pseudo-registers represent conceptual locations that contain
+quantities that will need physical registers or memory locations to
+hold them in the final translation.  An RTL pseudo register can be
+mapped to any number of physical registers in the final translation,
+and may "move" between physical registers.  In order to make the RTL
+more homogeneous, the RTL registers are not distinguished
+syntactically in the RTL, but are instead distinguished by their value
+range.  Machine registers are represented as the N lowest numbered RTL
+registers (where N is the number of hardware registers), and all
+others are pseudo-registers. Since some RTL instructions explicitly
+mention machine registers and these (and their numbers) vary from
+architecture to architecture, the register numbers in an RTL program
+will vary depending on the back end in use.  Note that all
+pseudo-registers are equivalent, and all can hold arbitrary Scheme
+objects, while machine registers can be further divided into separate
+classes (e.g. address, data, and floating-point registers).
 
 - RTL assumes only a load-store architecture, but can accommodate
 architectures that allow memory operands and rich addressing modes.
@@ -462,17 +466,18 @@ simplifier that causes the simplifier to leave more complex
 expressions untouched, or to be simplified in different ways,
 depending on the availability of memory operands or richer addressing
 modes.  Since these rules vary from port to port, the final RTL
-differs for the different ports.  The simplification
-process is also controlled by the availability of various rules in the
-port, and ports for richer instruction sets may simplify less since
-they have hardware instructions and addressing modes that encode
-efficiently more complicated RTL patterns.
+differs for the different ports.  The simplification process is also
+controlled by the availability of various rules in the port, and ports
+for richer instruction sets may require less simplification because
+hardware instructions and addressing modes that encode more
+complicated RTL patterns are directly available.
 
-- The open coding of Scheme primitives is port-dependent.  On some
-machines, for example, there is no instruction to multiply integers,
-and it may not be advantageous to open code the multiplication
-primitive.  The RTL for a particular program may reflect the set of
-primitive operations that the back end for the port can open code.
+- The open coding (inlining) of Scheme primitives is port-dependent.
+On some machines, for example, there is no instruction to multiply
+integers, and it may not be advantageous to open code the
+multiplication primitive.  The RTL for a particular program may
+reflect the set of primitive operations that the back end for the port
+can open code.
 
 The resulting RTL program is represented as a control flow-graph where
 each of the nodes has an associated list of RTL statements.  The edges
@@ -491,7 +496,7 @@ higher-level ``glue'' statements.
 Once a program has been translated to RTL, the RTL code is optimized
 in a machine-independent way by minimizing the number of RTL
 pseudo-registers used, removing redundant subexpressions, eliminating
-dead code, and various other techniques.
+dead code, and by using various other techniques.
 
 The RTL program is then translated into a Lisp-format
 assembly-language program (LAP).  Hardware register allocation occurs
@@ -540,7 +545,7 @@ alternative encodings are typically used for PC-relative quantities.
 The machine-independent bit-assembler collects all the bits together
 and keeps track of a virtual program counter used to determine the
 distance between instruction fields.  A relaxation process is used to
-minimize the size of the resulting encoding (to tension branches, i.e.
+reduce the size of the resulting encoding (to tension branches, i.e.
 to choose the smallest encoding that will do the job when there are
 alternatives).
 
@@ -550,7 +555,7 @@ bits translation can be done when the compiler is compiled.  A
 compiler switch, ``compiler:enable-expansion-declarations?'' allows this
 process to take place.  This mechanism has not been used for a while,
 however, because the resulting compiler was, although somewhat faster,
-considerably bigger.
+considerably bigger, so this switch may not currently work.
 
 Several other compiler parameters and switches control various aspects
 of the operation of the back end.  Most parameters and switches are
@@ -567,20 +572,20 @@ writer:
 compiler should compile each top-level lambda expression independently
 or compile the whole input program (or file) as a block.  It is
 usually set to true, but must be set to false for cross-compilation.
-The cross-compiler does this automatically.  (Foot)
-(Foot) The reason for this is that the gc offset words in compiled
-entry points may differ for the source and target machines, and thus
-the source machine's garbage collector may be confused by target
-machine's compiled entry points.  This is circumvented by having the
-cross compiler generate a single compiled code block object,
-manipulated and dumped as a vector object (instead of as an entry
-point).  The final entry points are generated by
-cross-compile-bin-file-end running interpreted on the target machine.
+The cross-compiler does this automatically.  (Foot) The reason for
+this is that the gc offset words in compiled entry points may differ
+for the source and target machines, and thus the source machine's
+garbage collector may be confused by the target machine's compiled
+entry points.  This is circumvented by having the cross compiler
+generate a single compiled code block object, manipulated and dumped
+as a vector object (instead of as an entry point).  The final entry
+points are generated by cross-compile-bin-file-end running interpreted
+on the target machine.
 
 * compiler:open-code-primitives? This switch controls whether Liar
-will open code (inline code) MIT Scheme primitives.  It is usually set
-to true and should probably be left that way.  On the other hand, it
-is possible to do a lot less work in porting the compiler by not
+will open code (inline) MIT Scheme primitives.  It is usually set to
+true and should probably be left that way.  On the other hand, it is
+possible to do a lot less work in porting the compiler by not
 providing the open coding of primitives and turning this switch off.
 Note that some of the primitives are open coded by the
 machine-independent portion of the compiler, since they depend only on
@@ -596,6 +601,11 @@ compiler will issue .rtl and .lap files for every file compiled.  The
 .rtl file will contain the RTL for the program, and the .lap file will
 contain the input to the assembler.  Their usual value is false.
 
+* compiler:intersperse-rtl-in-lap? This is another debugging switch.
+If turned on, and compiler:generate-lap-files? is also on, the lap
+output file includes the RTL statements as comments preceding their
+LAP translations.
+
 * compiler:open-code-floating-point-arithmetic? This switch is
 defined in compiler/machines/port/machin.scm and determines whether
 floating point primitives can and should be open coded by the compiler
@@ -610,8 +620,8 @@ names that the port cannot open code.
 inverted, i.e. compiler:primitives-with-open-codings should replace
 both of the above.  This has the advantage that if the RTL level is
 taught how to deal with additional primitives, but not all ports have
-open codings for them, there is no need to change the various
-machin.scm files.
+open codings for them, there is no need to change all the machin.scm
+files, only those for which the open coding has been provided.
 
 		4. Description of the port-specific files
 
@@ -641,9 +651,6 @@ the originals that would make updating your port easier.
 
 	4.1 Compiler building files:
 
- [*Arthur: Make separate entries for comp.con and comp.ldr in the list
-of files under.]
-
 * comp.pkg:
 	This file describes the Scheme package structure of the
 compiler, the files loaded into each package, and what names are
@@ -671,39 +678,50 @@ The previous three files should be copied or linked to the top-level
 compiler directory.  I.E., compiler/comp.pkg should be a link (symbolic
 preferably) or copy of compiler/machines/port/comp.pkg .
 
+* comp.con, comp.ldr, comp.bcon, and comp.bldr:
+	These files are generated by the CREF subsystem from the
+information in the cref.pkg file.  The .bcon and .bldr files are
+binary versions of the others, which are scheme sources.  The .con
+file contains the "connectivity code", that is, the code to create and
+link the package objects specified in the .pkg file.  The .ldr file
+contains the "loading code", that is, the code to load the source
+files into the appropriate packages and, in theory, to initialize the
+packages.  The CREF subsystem also generates a comp.cref file that
+includes cross-reference information.  It is useful to examine this
+file to find unbound references (often typos).
+
 * make.scm:
 	This file is used to load the compiler on top of a runtime
 system that has the file syntaxer (SF) loaded, and defines the version
 of the compiler.  The list of files does not appear here because the
-comp.pkg already declares them, and when comp.pkg is pre-processed,
-two files, comp.con, and comp.ldr, that generate the package structure
-and load and link the files, are automatically generated.
+comp.pkg already declares them, CREF will build the comp.con and
+comp.ldr files that contain this information and will be loaded by
+make.scm.
 
 * decls.scm:
 	This file defines the pre-processing dependencies between the
 various source files.  There are three kinds of pre-processing
 dependencies:
-- Syntactic: Different files need to be processed in different syntax
+  - Syntactic: Different files need to be processed in different syntax
 tables that define the macros used by the files.
-- Integrations: Different files import integrable (inline) definitions
+  - Integrations: Different files import integrable (inline) definitions
 from other files, and must be processed in the right sequence in order
 to obtain the maximum effect from the integrations (mostly because of
 transitive steps).
-- Expansions: Certain procedures can be expanded at compiler
+  - Expansions: Certain procedures can be expanded at compiler
 pre-processing time into accumulations of simpler calls.  This is how
-the assembly language in the LAPGEN rules can be translated into bits at
-compiler pre-processing time.  The files that define the
+the assembly language in the LAPGEN rules can be translated into bits
+at compiler pre-processing time.  The files that define the
 pre-processing-time expansion functions must be loaded in order to
 process those files that use the procedures that can be expanded.
 decls.scm builds a database of the dependencies.  This database is
-topologically sorted by some of the code in decls.scm itself in
-order to determine the processing sequence.  Since there are
-circularities in the integration dependencies, some of the files are
-processed multiple times, but the mechanism in decls takes care of
-doing this the correct way.
+topologically sorted by some of the code in decls.scm itself in order
+to determine the processing order.  Since there are circularities in
+the integration dependencies, some of the files are processed multiple
+times, but the mechanism in decls takes care of doing this correctly.
 You should be able to edit the version from another port in the
-appropriate way.  Mostly you will need to rename the port (i.e. mips ->
-sparc), and add/delete instruction and rules files as needed.
+appropriate way.  Mostly you will need to rename the port (i.e. mips
+-> sparc), and add/delete instruction and rule files as needed.
 
 ==> decls.scm should probably be split into two sections:  The
 machine-independent dependency management code, and the actual
@@ -732,6 +750,15 @@ inefficiencies are discovered in the output assembly language.  These
 rules manipulate RTL expressions by using the procedures defined in
 compiler/rtlbase/rtlty1.scm and compiler/rtlbase/rtlty2.scm.
 
+* lapopt.scm:
+	This file defines a LAP-level peephole optimizer.  Currently
+only used in the MIPS port to reduce the number of NOPs in the "delay
+slots" of load instructions.  The instructions in each LAP-level basic
+block are passed to optimize-linear-lap, which outputs the new
+sequence of instructions corresponding to the basic block.  Currently
+all ports (except the MIPS port) implement this procedure as the
+identity procedure.
+
 * machin.scm:
 	This file defines architecture and port parameters needed by
 various parts of the compiler.  The following is the current list of
@@ -748,7 +775,7 @@ ported to any machines where the quantum of addressability is not an
 8-bit byte, so the notion may not apply to those.
 
 - addressing-granularity: How many bits are addressed by the
-addressing quantum.  I.E., increasing an address by 1 will bump the
+addressing quantum.  I.e., increasing an address by 1 will bump the
 address to point past this number of bits.  Again, the compiler has
 not been ported to any machine where this value is not 8.
 
@@ -773,7 +800,7 @@ for example, this value should be twice scheme-object-width.
 
 - address-units-per-packed-char: This parameter defines how much to
 increment an address by in order to make it point to the next
-character in a string.  The compiler has not been ported in any
+character in a string.  The compiler has not been ported to any
 configuration where this is not 1, but may be if 16-bit characters are
 used in the future.
 
@@ -786,19 +813,19 @@ constants are tagged by a comment containing ``***''.
 
 - stack->memory-offset: This procedure is provided to accommodate
 stacks that grow in either direction, but we have not tested any port
-in which the stack grows towards larger addresses, especially because
-the CScheme interpreter imposes its own direction of growth.  It
-should probably be copied verbatim.
+in which the stack grows towards larger addresses, because the CScheme
+interpreter imposes its own direction of growth.  It should probably
+be copied verbatim.
 
 - execute-cache-size: This should match EXECUTE_CACHE_ENTRY_SIZE in
-microcode/cmpint-md.h, and is explained in microcode/cmpint.txt .
+microcode/cmpint-port.h, and is explained in cmpint.txt.
 ==> We should probably rename one or the other to be alike.
 
-The following parameters specify to the front-end the format of
+The following parameters describe to the front-end the format of
 closures containing multiple entry points.  Closures are described in
-some detail in microcode/cmpint.txt and in section 5.3.3.  Very
-briefly, a closure is a procedure object that contains a code pointer
-and a set of free variable values or locations.
+some detail in cmpint.txt and in section 5.3.3.  Very briefly, a
+closure is a procedure object that contains a code pointer and a set
+of free variable locations or values.
 	
 - closure-object-first-offset: This procedure takes a single argument,
 the number of entry points in a closure object, and computes the
@@ -819,8 +846,8 @@ boundaries, or the address of the first entry point if they are not.
 points in a closure object, and the indices for two of its entry
 points, and computes the number of bytes that separate the two entry
 points in the closure object.  This distance should be a multiple of
-the parameter COMPILED_CLOSURE_ENTRY_SIZE described in
-microcode/cmpint.txt and defined in microcode/cmpint-md.h.
+the parameter COMPILED_CLOSURE_ENTRY_SIZE described in cmpint.txt and
+defined in microcode/cmpint-port.h.
 
 - closure-environment-adjustment: This procedure takes two parameters,
 the number of entry points in a closure object, and the index of one
@@ -833,7 +860,7 @@ to the first (lowest addressed) entry point.
 The remaining code in machin.scm describes the register set of the
 architecture and defines the register conventions imposed by the port.
 These conventions must match the expectations of
-microcode/cmpaux-md.m4 described in microcode/cmpaux.txt.
+microcode/cmpaux-port.m4 described in cmpaux.txt.
 
 Machine registers are assigned a contiguous range of non-negative
 integers starting from zero.  Typically symbolic names are given to
@@ -847,17 +874,18 @@ i.e. one greater than the number assigned to the last machine register.
 locations used for storing the contents of spilled pseudo-registers.
 
 Liar requires certain fixed locations to hold various implementation
-variables such as the stack pointer, the free memory pointer, the
-pointer to the runtime library and interpreter's ``register'' array, and
-the dynamic link ``register''.  Typically each of these locations is a
-fixed machine register.  In addition, typically a processor register
-is reserved for returning values and another for holding a bit-mask
-used to clear type tags from objects (the pointer or datum mask).  All
-of these registers should be given additional symbolic names.
+quantities such as the stack pointer, the heap (free memory) pointer,
+the pointer to the runtime library and interpreter's ``register''
+array, and the dynamic link ``register''.  Typically each of these
+locations is a fixed machine register.  In addition, a processor
+register is typically reserved for returned values and another for
+holding a bit-mask used to clear type tags from objects (the pointer
+or datum mask).  All of these registers should be given additional
+symbolic names.
 
-==> What the heck is machine-register-known-value used for?  It would
-seem that the datum mask is a known value, but...  Currently all the
-ports seem to have the same definition.
+==> What is machine-register-known-value used for?  It would seem that
+the datum mask is a known value, but...  Currently all the ports seem
+to have the same definition.
 
 The contents of pseudo-registers are divided into various classes to
 allow some consistency checking.  Some machine registers always
@@ -881,7 +909,8 @@ accomplish certain environment operations.  These operations are now
 handled by invoking the appropriate primitives rather than using
 special entry points in the runtime library for them.  Under some
 compiler switch settings the older methods for handling these
-operations can be re-activated.
+operations can be re-activated, but this never worked completely, and
+may no longer work at all.
 
 - rtl:machine-register? should return a machine register for those
 special RTL registers that have been allocated to fixed registers, and
@@ -953,7 +982,7 @@ inherent register types (typically GENERAL and FLOAT).
 whether two registers can hold the same range of values.
 
 - REGISTER-REFERENCE maps RTL register numbers into register
-references, ie. pieces of assembly language used to refer to those
+references, i.e. pieces of assembly language used to refer to those
 registers.
 
 - REGISTER->REGISTER-TRANSFER issues code to copy the contents of one
@@ -992,6 +1021,20 @@ for the entry point.
 The rest of the code in lapgen.scm is a port-specific set of utilities
 for the LAPGEN rules.  Some of the more common procedures are
 described in the section that covers the rules.
+
+Of special interest are the utility procedures for manipulating
+pc-relative addresses and loads on RISC machines.  RISC machines
+typically only have pc-relative branch instructions, but no
+pc-relative loads or pc-relative load-effective-address instructions.
+On the other hand, they usually have a branch-and-link instruction
+that performs a pc-relative branch and stores the return address in
+a processor register.  This instruction can be used (by branching to
+the next instruction) to obtain its own address, and pc-relative
+addresses and loads can use them.  The MIPS back end currently
+implements a simple pc-relative address cacheing scheme that attempts
+to reduce the number of such branches by re-using the values produced
+by previous branches if they are still available.  This code can be
+suitably modified to work on most RISC architectures.
 
 * rules1.scm:
 	This file contains RTL statement rules for simple register assignments
@@ -1045,18 +1088,18 @@ ILLEGAL instruction.  The length of this bit-string should evenly
 divide maximum-padding-length.
 
 - block-offset-width: This should be the size in bits of format_word
-described in microcode/cmpint.txt.  It should be 16 for all
-byte-addressed machines where registers hold 32 bits.
+described in cmpint.txt.  It should be 16 for all byte-addressed
+machines where registers hold 32 bits.
 
 - maximum-block-offset: The maximum byte offset that can be encoded in
 block-offset-width bits.  This depends on the encoding described in
-microcode/cmpint.txt.  The least significant bit is always used to
-indicate whether this block offset points to the start of the object
-or to another block offset, so the range may be smaller than the
-obvious value.  Furthermore, if instruction alignment constraints are
-tighter than byte boundaries, this range may be larger.  For example,
-if instructions always start on even long-word boundaries, the bottom
-two bits (always zero) are encoded implicitly, and the range is
+cmpint.txt.  The least significant bit is always used to indicate
+whether this block offset points to the start of the object or to
+another block offset, so the range may be smaller than the obvious
+value.  Furthermore, if instruction alignment constraints are tighter
+than byte boundaries, this range may be larger.  For example, if
+instructions always start on even long-word boundaries, the bottom two
+bits (always zero) are encoded implicitly, and the range is
 accordingly larger.
 
 - block-offset->bit-string: This procedure is given a byte offset and
@@ -1644,24 +1687,24 @@ number of arguments allowed.
  - MAX may be positive or negative.  If positive, it is one greater
 than the largest number of arguments allowed.  If negative, it
 indicates that the procedure will accept an unbounded number of
-arguments, and the absolute value of MAX minus (MIN + 1) is the number
-of positional optional parameters.  Either way, the absolute value of
-MAX is the size of the procedure's call frame counting the procedure
-itself.
- These two values are encoded into the format word of the resulting
+arguments, and the absolute value of MAX, minus (MIN + 1), is the
+number of positional optional parameters.  Either way, the absolute
+value of MAX is the size of the procedure's call frame counting the
+procedure itself.
+ These two values are encoded in the format word of the resulting
 procedures so that dynamic APPLY can check the number of arguments
-passed and reformat the stack appropriately.
+passed and reformat the stack frame appropriately.
  Non-positive MINs are used to indicate that the compiled entry point
 is not a procedure, but a return address, a compiled expression, or a
 pointer to an internal label.
 
 The CONS-CLOSURE rules will dynamically create some new instructions
 in the runtime heap, and these instructions must be visible to the
-processor's instruction cache.  If the instruction and data caches are
-not automatically kept consistent by the hardware (especially for
-newly addressed memory), the caches must be explicitly synchronized by
-the Scheme system.  On machines where the programmer is given no
-control over the caches, this will be very hard to do.
+processor's instruction fetch unit.  If the instruction and data
+caches are not automatically kept consistent by the hardware
+(especially for newly addressed memory), the caches must be explicitly
+synchronized by the Scheme system.  On machines where the programmer
+is given no control over the caches, this will be very hard to do.
 
 On machines where the control is minimal or flushing is expensive
 (i.e., there is a single instruction or operating-system call to flush
@@ -1697,11 +1740,10 @@ synchronizing the caches involves a supervisor call.
 * (INVOCATION:UUO-LINK (? frame-size) (? continuation) (? name))
   This rule is used to invoke a procedure named by a free variable.
 It is the rule used to generate a branch to an execute cache as
-described in microcode/cmpint.txt.  The rule should allocate a new
-execute cache in the compiled code block by using FREE-UUO-LINK-LABEL,
-and should then branch to the instruction portion of the execute
-cache.  FRAME-SIZE is the number of arguments passed in the call, plus
-one.
+described in cmpint.txt.  The rule should allocate a new execute cache
+in the compiled code block by using FREE-UUO-LINK-LABEL, and should
+then branch to the instruction portion of the execute cache.
+FRAME-SIZE is the number of arguments passed in the call, plus one.
 
 * (INVOCATION-PREFIX:MOVE-FRAME-UP (? frame-size) (? address))
   This rule is used to shift call frames on the stack to maintain
@@ -1757,8 +1799,7 @@ closure with multiple entry points from the ``return address'' and
 push the resulting object on the Scheme stack.  When backing out for
 interrupts, they may have to adjust the canonical closure object to be
 the real closure object if these two are different.  You should read
-the section on closures in microcode/cmpint.txt for a more complete
-explanation.
+the section on closures in cmpint.txt for a more complete explanation.
 
 * (ASSIGN (REGISTER (? target))
 	  (CONS-CLOSURE (ENTRY:PROCEDURE (? procedure-label))
@@ -1770,7 +1811,7 @@ variables.  The free variable storage need not be initialized since it
 will be written immediately by subsequent RTL instructions.  The entry
 point of the resulting closure object should be written to RTL
 register TARGET.  The format of closure objects is described in
-microcode/cmpint.txt.
+cmpint.txt.
 
 * (ASSIGN (REGISTER (? target))
 	  (CONS-MULTICLOSURE (? nentries) (? size) (? entries)))
@@ -1815,7 +1856,7 @@ compiled code block, and
   N-SECTIONS is the number of linker sections in the other compiled
 code block.
 
-* (GENERATE/CONSTANTS-BLOCK consts reads writes execs)
+* (GENERATE/CONSTANTS-BLOCK consts reads writes execs global-execs statics)
   This procedure generates the LAP directives used to generate the
 constants section of a compiled code block.  The constants section
 includes:
@@ -1823,6 +1864,8 @@ includes:
   - The read variable caches used by the code.
   - The write variable caches used by the code.
   - The execute variable caches used by the code.
+  - The global execute variable caches used by the code.
+  - The locations for static variables.
   - A slot for the debugging information generated by the compiler.
   - A slot for the environment where the code is linked.  
 
