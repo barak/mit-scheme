@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.7 1989/11/06 17:37:30 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.8 1989/11/27 01:02:31 jinx Exp $
    $MC68020-Header: cmp68kgc.h,v 9.30 89/03/27 23:14:31 GMT jinx Exp $
 
 Utilities to relocate compiled code in garbage collection-like processes. 
@@ -88,7 +88,7 @@ else
 
 #define Get_Compiled_Block(var, address)				\
 {									\
-  machine_word offset_word;						\
+  long offset_word;							\
 									\
   var = (address);							\
 									\
@@ -179,24 +179,24 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
  */
 
 #define CLOSURE_HEADER_TO_ENTRY						\
-((sizeof (SCHEME_OBJECT)) + (2 * (sizeof (machine_word))))
+((sizeof (SCHEME_OBJECT)) + (2 * (sizeof (format_word))))
 
 #define CLOSURE_HEADER_TO_ENTRY_WORD					\
-((machine_word) (BYTE_OFFSET_TO_OFFSET_WORD (CLOSURE_HEADER_TO_ENTRY)))
+((format_word) (BYTE_OFFSET_TO_OFFSET_WORD (CLOSURE_HEADER_TO_ENTRY)))
 
 #define MANIFEST_CLOSURE_COUNT(scan)					\
-(((((machine_word *) (scan))[1]) ==					\
+(((((format_word *) (scan))[1]) ==					\
   CLOSURE_HEADER_TO_ENTRY_WORD) ?					\
  1 :									\
- ((long) (((machine_word *) (scan))[0])))
+ ((long) (((format_word *) (scan))[0])))
 
 #define FIRST_MANIFEST_CLOSURE_ENTRY(scan)				\
-(((((machine_word *) (scan))[1]) ==   CLOSURE_HEADER_TO_ENTRY_WORD) ?	\
- (((machine_word *) (scan)) + 2) :					\
- (((machine_word *) (scan)) + 4))
+(((((format_word *) (scan))[1]) ==   CLOSURE_HEADER_TO_ENTRY_WORD) ?	\
+ (((char *) (scan)) + (2 * (sizeof (format_word)))) :			\
+ (((char *) (scan)) + (4 * (sizeof (format_word)))))
 
 #define NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr)				\
-  (((machine_word *) (word_ptr)) + (COMPILED_CLOSURE_ENTRY_SIZE))
+  (((char *) (word_ptr)) + (COMPILED_CLOSURE_ENTRY_SIZE))
 
 /* Where this closure entry ends with respect to the entry point.
    Since an entry point is preceded by a format word and a gc offset,
@@ -204,7 +204,11 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
  */
 
 #define CLOSURE_ENTRY_END(word_ptr)					\
-  (((machine_word *) (word_ptr)) + ((COMPILED_CLOSURE_ENTRY_SIZE) - 2))
+  (((char *) (word_ptr)) +						\
+   ((COMPILED_CLOSURE_ENTRY_SIZE) - (2 * (sizeof (format_word)))))
+
+#define CHAR_TO_SCHEME_OBJECT(chars)					\
+(((chars) + ((sizeof (SCHEME_OBJECT)) - 1)) / (sizeof (SCHEME_OBJECT)))
 
 /* This takes into account the fact that the relocation loop increments
    by 1 on each major iteration.
@@ -214,12 +218,11 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
 
 #define MANIFEST_CLOSURE_END(start, count)				\
 (((SCHEME_OBJECT *) (start)) +						\
- (((((sizeof (machine_word)) *						\
-     (((count) * COMPILED_CLOSURE_ENTRY_SIZE) +				\
-      (((count) == 1) ? 0 : 2))) +					\
-    ((sizeof (SCHEME_OBJECT)) - 1)) /					\
-   (sizeof (SCHEME_OBJECT))))						\
- - 1)
+ ((CHAR_TO_SCHEME_OBJECT (((count) * COMPILED_CLOSURE_ENTRY_SIZE) +	\
+			  (((count) == 1) ?				\
+			   0 :						\
+			   (2 * sizeof(format_word)))))			\
+  - 1))
 
 /* Linkage sections */
 
@@ -251,36 +254,34 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
   (((SCHEME_OBJECT *) (scan)) + ((count) * EXECUTE_CACHE_ENTRY_SIZE))
 
 #define FIRST_OPERATOR_LINKAGE_ENTRY(scan)				\
-  ((machine_word *) (((SCHEME_OBJECT *) (scan)) + 1))
+  ((char *) (((SCHEME_OBJECT *) (scan)) + 1))
 
 #define NEXT_LINKAGE_OPERATOR_ENTRY(word_ptr)				\
-  ((machine_word *) (((SCHEME_OBJECT *) (word_ptr)) +			\
-		     EXECUTE_CACHE_ENTRY_SIZE))
+  ((char *) (((SCHEME_OBJECT *) (word_ptr)) +				\
+	     EXECUTE_CACHE_ENTRY_SIZE))
 
 #define EXTRACT_OPERATOR_LINKAGE_ADDRESS(target, source)		\
 {									\
-  EXTRACT_EXECUTE_CACHE_ADDRESS(target, source);			\
+  EXTRACT_EXECUTE_CACHE_ADDRESS (target, source);			\
 }
 
 #define STORE_OPERATOR_LINKAGE_ADDRESS(source, target)			\
 {									\
-  STORE_EXECUTE_CACHE_ADDRESS(target, source);				\
+  STORE_EXECUTE_CACHE_ADDRESS (target, source);				\
 }
 
 /* Heuristic recovery aid.  See unix.c for details. */
 
 #define CC_BLOCK_FIRST_GC_OFFSET					\
-  (CC_BLOCK_FIRST_ENTRY_OFFSET - (sizeof (machine_word)))
+  (CC_BLOCK_FIRST_ENTRY_OFFSET - (sizeof (format_word)))
 
 #define PLAUSIBLE_CC_BLOCK_P(block)					\
-((*((machine_word *)							\
+((*((format_word *)							\
     (((char *) block) + CC_BLOCK_FIRST_GC_OFFSET))) ==			\
    ((BYTE_OFFSET_TO_OFFSET_WORD(CC_BLOCK_FIRST_ENTRY_OFFSET))))
 
 #else /* not HAS_COMPILER_SUPPORT */
 
-typedef unsigned long machine_word;
-
 /* Is there anything else that can be done here? */
 
 #define GC_NO_COMPILER_STMT()						\
@@ -299,16 +300,16 @@ typedef unsigned long machine_word;
 #define Get_Compiled_Block(var, address) (GC_NO_COMPILER_STMT ())
 
 #define FIRST_MANIFEST_CLOSURE_ENTRY(scan)				\
-  (GC_NO_COMPILER_EXPR ((machine_word *)))
+  (GC_NO_COMPILER_EXPR ((char *)))
 
 #define MANIFEST_CLOSURE_COUNT(scan)					\
   (GC_NO_COMPILER_EXPR ((long)))
 
 #define NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr)				\
-  (GC_NO_COMPILER_EXPR ((machine_word *)))
+  (GC_NO_COMPILER_EXPR ((char *)))
 
 #define CLOSURE_ENTRY_END(word_ptr)					\
-  (GC_NO_COMPILER_EXPR ((machinw_word *)))
+  (GC_NO_COMPILER_EXPR ((char *)))
 
 #define MANIFEST_CLOSURE_END(end, start)				\
   (GC_NO_COMPILER_EXPR ((SCHEME_OBJECT *)))
@@ -334,10 +335,10 @@ typedef unsigned long machine_word;
   (GC_NO_COMPILER_EXPR ((SCHEME_OBJECT *)))
 
 #define FIRST_OPERATOR_LINKAGE_ENTRY(scan)				\
-  (GC_NO_COMPILER_EXPR ((machine_word *)))
+  (GC_NO_COMPILER_EXPR ((char *)))
 
 #define NEXT_LINKAGE_OPERATOR_ENTRY(ptr)				\
-  (GC_NO_COMPILER_EXPR ((machine_word *)))
+  (GC_NO_COMPILER_EXPR ((char *)))
 
 #define EXTRACT_OPERATOR_LINKAGE_ADDRESS(target, source)		\
   (GC_NO_COMPILER_STMT ())

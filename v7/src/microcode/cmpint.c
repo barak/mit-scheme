@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.17 1989/11/22 16:29:55 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.18 1989/11/27 01:01:55 jinx Exp $
  *
  * This file corresponds to
  * $COMPILER-Header: compiler.c,v 9.37 89/10/25 14:55:45 GMT jinx Exp $
@@ -103,6 +103,10 @@ MIT in each case. */
 #define C_UTILITY
 #define C_TO_SCHEME
 #define SCHEME_UTILITY
+
+/* For clarity */
+
+typedef char instruction;
 
 /* Structure returned by SCHEME_UTILITYs */
 
@@ -396,9 +400,10 @@ struct utility_result
 C_TO_SCHEME long
 enter_compiled_expression()
 {
-  SCHEME_OBJECT *compiled_entry_address;
+  instruction *compiled_entry_address;
 
-  compiled_entry_address = (OBJECT_ADDRESS (Fetch_Expression ()));
+  compiled_entry_address =
+    ((instruction *) (OBJECT_ADDRESS (Fetch_Expression ())));
   if ((COMPILED_ENTRY_FORMAT_WORD (compiled_entry_address)) !=
       (FORMAT_WORD_EXPR))
   {
@@ -406,7 +411,7 @@ enter_compiled_expression()
     Val = (Fetch_Expression ());
     return (C_to_interface ((instruction *) (OBJECT_ADDRESS (STACK_POP ()))));
   }
-  return (C_to_interface ((instruction *) compiled_entry_address));
+  return (C_to_interface (compiled_entry_address));
 }
 
 C_TO_SCHEME long
@@ -421,7 +426,7 @@ apply_compiled_procedure()
   procedure = (STACK_POP ());
   procedure_entry = ((instruction *) (OBJECT_ADDRESS (procedure)));
   result = setup_compiled_invocation ((OBJECT_DATUM (nactuals)),
-                                      ((machine_word *) procedure_entry));
+                                      procedure_entry);
   if (result == PRIM_DONE)
   {
     /* Go into compiled code. */
@@ -455,7 +460,7 @@ return_to_compiled_code ()
 static long
 setup_compiled_invocation (nactuals, compiled_entry_address)
      long nactuals;
-     machine_word *compiled_entry_address;
+     instruction *compiled_entry_address;
 {
   static long setup_lexpr_invocation();
   static SCHEME_OBJECT *open_gap();
@@ -541,7 +546,7 @@ open_gap (nactuals, delta)
 static long
 setup_lexpr_invocation (nactuals, nmax, entry_address)
      register long nactuals, nmax;
-     machine_word *entry_address;
+     instruction *entry_address;
 {
   register long delta;
 
@@ -726,8 +731,7 @@ comutil_apply (procedure, nactuals, ignore_3, ignore_4)
 
       entry_point = ((instruction *) (OBJECT_ADDRESS (procedure)));
       RETURN_UNLESS_EXCEPTION
-        ((setup_compiled_invocation (nactuals,
-				     ((machine_word *) entry_point))),
+        ((setup_compiled_invocation (nactuals, entry_point)),
          entry_point);
     }
 
@@ -825,7 +829,7 @@ comutil_lexpr_apply (entry_address, nactuals, ignore_3, ignore_4)
     ((setup_lexpr_invocation
       ((nactuals + 1),
        (COMPILED_ENTRY_MAXIMUM_ARITY (entry_address)),
-       ((machine_word *) entry_address))),
+       entry_address)),
      entry_address);
 }
 
@@ -1355,12 +1359,11 @@ comutil_interrupt_closure (ignore_1, ignore_2, ignore_3, ignore_4)
   TEST_GC_NEEDED();
   if ((PENDING_INTERRUPTS()) == 0)
   {
-    SCHEME_OBJECT *entry_point;
+    instruction *entry_point;
 
     EXTRACT_CLOSURE_ENTRY_ADDRESS(entry_point,
 				  (OBJECT_ADDRESS (STACK_REF (0))));
-    RETURN_TO_SCHEME(((instruction *) entry_point) +
-                     CLOSURE_SKIPPED_CHECK_OFFSET);
+    RETURN_TO_SCHEME(entry_point + CLOSURE_SKIPPED_CHECK_OFFSET);
   }
   else
   {
@@ -2182,9 +2185,9 @@ store_uuo_link (entry, cache_address)
 #define TRAMPOLINE_SIZE	(TRAMPOLINE_ENTRY_SIZE + 2)
 
 static long
-make_trampoline (slot, format_word, kind, size, value1, value2, value3)
+make_trampoline (slot, fmt_word, kind, size, value1, value2, value3)
      SCHEME_OBJECT *slot;
-     machine_word format_word;
+     format_word fmt_word;
      long kind, size;
      SCHEME_OBJECT value1, value2, value3;
 {
@@ -2206,7 +2209,7 @@ make_trampoline (slot, format_word, kind, size, value1, value2, value3)
   local_free += TRAMPOLINE_BLOCK_TO_ENTRY;
   entry_point = local_free;
   local_free = (TRAMPOLINE_STORAGE(entry_point));
-  (COMPILED_ENTRY_FORMAT_WORD (entry_point)) = format_word;
+  (COMPILED_ENTRY_FORMAT_WORD (entry_point)) = fmt_word;
   (COMPILED_ENTRY_OFFSET_WORD (entry_point)) =
     (MAKE_OFFSET_WORD (entry_point, block, false));
   STORE_TRAMPOLINE_ENTRY (entry_point, kind);
@@ -2236,7 +2239,7 @@ make_redirection_trampoline (slot, kind, procedure)
      SCHEME_OBJECT procedure;
 {
   return (make_trampoline (slot,
-			   ((machine_word) FORMAT_WORD_CMPINT),
+			   ((format_word) FORMAT_WORD_CMPINT),
 			   kind,
 			   1,
 			   procedure,
@@ -2251,7 +2254,7 @@ make_apply_trampoline (slot, kind, procedure, nactuals)
      SCHEME_OBJECT procedure;
 {
   return (make_trampoline (slot,
-			   ((machine_word) FORMAT_WORD_CMPINT),
+			   ((format_word) FORMAT_WORD_CMPINT),
 			   kind,
 			   2,
 			   procedure,
@@ -2414,7 +2417,7 @@ make_fake_uuo_link (extension, block, offset)
   SCHEME_OBJECT trampoline, *cache_address;
 
   result = (make_trampoline (&trampoline,
-			     ((machine_word) FORMAT_WORD_CMPINT),
+			     ((format_word) FORMAT_WORD_CMPINT),
 			     TRAMPOLINE_K_LOOKUP,
 			     3,
 			     extension,
@@ -2448,7 +2451,7 @@ coerce_to_compiled (procedure, arity, location)
       return (ERR_WRONG_NUMBER_OF_ARGUMENTS);
     }
     return (make_trampoline (location,
-			     ((machine_word)
+			     ((format_word)
 			      (MAKE_FORMAT_WORD (frame_size, frame_size))),
 			     TRAMPOLINE_K_APPLY,
 			     2,
@@ -2553,7 +2556,7 @@ compiler_initialize (fasl_p)
     extern SCHEME_OBJECT *copy_to_constant_space();
 
     code = (make_trampoline (&trampoline,
-			     FORMAT_WORD_RETURN,
+			     ((format_word) FORMAT_WORD_RETURN),
 			     TRAMPOLINE_K_RETURN,
 			     0, SHARP_F, SHARP_F, SHARP_F));
     if (code != PRIM_DONE)
