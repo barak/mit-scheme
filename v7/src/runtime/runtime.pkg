@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.300 1999/01/02 06:06:43 cph Exp $
+$Id: runtime.pkg,v 14.301 1999/01/29 22:46:34 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -2321,6 +2321,20 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (export (runtime primitive-io)
 	  handle-subprocess-status-change)
   (initialization (initialize-package!)))
+
+(define-package (runtime synchronous-subprocess)
+  (file-case options
+    ((load) "syncproc")
+    (else))
+  (parent ())
+  (export ()
+	  condition-type:subprocess-abnormal-termination
+	  condition-type:subprocess-exited
+	  condition-type:subprocess-signalled
+	  condition-type:subprocess-stopped
+	  make-subprocess-context
+	  run-shell-command
+	  run-synchronous-process))
 
 (define-package (runtime graphics)
   (files "graphics")

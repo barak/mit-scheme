@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.25 1999/01/02 06:11:34 cph Exp $
+$Id: ntprm.scm,v 1.26 1999/01/29 22:46:39 cph Exp $
 
 Copyright (c) 1992-1999 Massachusetts Institute of Technology
 
@@ -522,6 +522,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(channel-descriptor-for-select (tty-input-channel)))
   unspecific)
 
+;;;; Subprocess/Shell Support
+
 (define nt/hide-subprocess-windows?)
 (define nt/subprocess-argument-quote-char)
 (define nt/subprocess-argument-escape-char)
@@ -652,3 +654,111 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		  (cdr strings)
 		  (cdr analyses))))
       result)))
+
+(define (os/find-program program default-directory #!optional error? exec-path)
+  (let ((namestring
+	 (let* ((exec-path
+		 (if (default-object? exec-path)
+		     (os/exec-path)
+		     exec-path))
+		(try
+		 (let ((types (os/executable-pathname-types)))
+		   (lambda (pathname)
+		     (let ((type (pathname-type pathname)))
+		       (if type
+			   (and (member type types)
+				(file-exists? pathname)
+				(->namestring pathname))
+			   (let loop ((types types))
+			     (and (not (null? types))
+				  (let ((p
+					 (pathname-new-type pathname
+							    (car types))))
+				    (if (file-exists? p)
+					(->namestring p)
+					(loop (cdr types)))))))))))
+		(try-dir
+		 (lambda (directory)
+		   (try (merge-pathnames program directory)))))
+	   (if (pathname-absolute? program)
+	       (try program)
+	       (or (let ((ns (nt/scheme-executable-pathname)))
+		     (and ns
+			  (try-dir (directory-pathname ns))))
+		   (if (not default-directory)
+		       (let loop ((path exec-path))
+			 (and (not (null? path))
+			      (or (and (pathname-absolute? (car path))
+				       (try-dir (car path)))
+				  (loop (cdr path)))))
+		       (let ((default-directory
+			       (merge-pathnames default-directory)))
+			 (let loop ((path exec-path))
+			   (and (not (null? path))
+				(or (try-dir
+				     (merge-pathnames (car path)
+						      default-directory))
+				    (loop (cdr path))))))))))))
+    (if (and (not namestring)
+	     (if (default-object? error) #t error?))
+	(error "Can't find program:" (->namestring program)))
+    namestring))
+
+(define (os/exec-path)
+  (os/parse-path-string
+   (let ((path (get-environment-variable "PATH")))
+     (if (not path)
+	 (error "Can't find PATH environment variable."))
+     path)))
+
+(define (os/parse-path-string string)
+  (let ((end (string-length string))
+	(substring
+	 (lambda (string start end)
+	   (pathname-as-directory (substring string start end)))))
+    (let loop ((start 0))
+      (if (< start end)
+	  (let ((index (substring-find-next-char string start end #\;)))
+	    (if index
+		(if (= index start)
+		    (loop (+ index 1))
+		    (cons (substring string start index)
+			  (loop (+ index 1))))
+		(list (substring string start end))))
+	  '()))))
+
+(define (nt/scheme-executable-pathname)
+  (let ((env (->environment '(win32))))
+    (let ((handle
+	   ((access get-module-handle env)
+	    (file-namestring
+	     (pathname-default-type
+	      ((make-primitive-procedure 'SCHEME-PROGRAM-NAME))
+	      "exe"))))
+	  (buf (make-string 256)))
+      (substring buf 0 ((access get-module-file-name env) handle buf 256)))))
+
+(define (os/shell-file-name)
+  (or (get-environment-variable "SHELL")
+      (get-environment-variable "COMSPEC")
+      (if (eq? 'WINNT (nt/windows-type))
+	  "cmd.exe"
+	  "command.com")))
+
+(define (nt/windows-type)
+  (cond ((string-prefix? "Microsoft Windows NT"
+			 microcode-id/operating-system-variant)
+	 'WINNT)
+	((string-prefix? "Microsoft Windows 9"
+			 microcode-id/operating-system-variant)
+	 'WIN9X)
+	((string-prefix? "Microsoft Windows"
+			 microcode-id/operating-system-variant)
+	 'WIN3X)
+	(else #f)))
+
+(define (os/form-shell-command command)
+  (list "/c" command))
+
+(define (os/executable-pathname-types)
+  '("exe" "com" "bat" "btm"))

@@ -1,6 +1,6 @@
 #| -*- Scheme -*-
 
-$Id: ed-ffi.scm,v 1.18 1999/01/02 06:11:34 cph Exp $
+$Id: ed-ffi.scm,v 1.19 1999/01/29 22:46:52 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -240,6 +240,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     ("strout"	(runtime string-output)
 		syntax-table/system-internal)
     ("symbol"	()
+		syntax-table/system-internal)
+    ("syncproc"	(runtime synchronous-subprocess)
 		syntax-table/system-internal)
     ("syntab"	(runtime syntax-table)
 		syntax-table/system-internal)

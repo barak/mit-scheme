@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: optiondb.scm,v 1.5 1999/01/02 06:11:34 cph Exp $
+$Id: optiondb.scm,v 1.6 1999/01/29 22:47:08 cph Exp $
 
 Copyright (c) 1994-1999 Massachusetts Institute of Technology
 
@@ -66,6 +66,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    (RB-TREE	(RUNTIME RB-TREE)	#F			"rbtree")
    (STEPPER	(RUNTIME STEPPER)	#F			"ystep")
    (SUBPROCESS	(RUNTIME SUBPROCESS)	(INITIALIZE-PACKAGE!)	"process")
+   (SYNCHRONOUS-SUBPROCESS (RUNTIME SYNCHRONOUS-SUBPROCESS) #F	"syncproc")
    (WT-TREE	(RUNTIME WT-TREE)	#F			"wttree")
    ))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.38 1999/01/02 06:11:34 cph Exp $
+$Id: os2prm.scm,v 1.39 1999/01/29 22:46:46 cph Exp $
 
 Copyright (c) 1994-1999 Massachusetts Institute of Technology
 
@@ -464,6 +464,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define os2/select-result-values
   '#(INPUT-AVAILABLE #F INTERRUPT PROCESS-STATUS-CHANGE))
 
+;;;; Subprocess/Shell Support
+
 (define (os/make-subprocess filename arguments environment working-directory
 			    ctty stdin stdout stderr)
   (if ctty
@@ -514,3 +516,83 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (string-set! result (fix:+ index n) #\NUL)
 	    (loop (cdr strings) (fix:+ (fix:+ index n) 1)))))
     result))
+
+(define (os/find-program program default-directory #!optional error? exec-path)
+  (let ((namestring
+	 (let* ((exec-path
+		 (if (default-object? exec-path)
+		     (os/exec-path)
+		     exec-path))
+		(try
+		 (let ((types (os/executable-pathname-types)))
+		   (lambda (pathname)
+		     (let ((type (pathname-type pathname)))
+		       (if type
+			   (and (member type types)
+				(file-exists? pathname)
+				(->namestring pathname))
+			   (let loop ((types types))
+			     (and (not (null? types))
+				  (let ((p
+					 (pathname-new-type pathname
+							    (car types))))
+				    (if (file-exists? p)
+					(->namestring p)
+					(loop (cdr types)))))))))))
+		(try-dir
+		 (lambda (directory)
+		   (try (merge-pathnames program directory)))))
+	   (cond ((pathname-absolute? program)
+		  (try program))
+		 ((not default-directory)
+		  (let loop ((path exec-path))
+		    (and (not (null? path))
+			 (or (and (pathname-absolute? (car path))
+				  (try-dir (car path)))
+			     (loop (cdr path))))))
+		 (else
+		  (let ((default-directory
+			  (merge-pathnames default-directory)))
+		    (let loop ((path exec-path))
+		      (and (not (null? path))
+			   (or (try-dir
+				(merge-pathnames (car path) default-directory))
+			       (loop (cdr path)))))))))))
+    (if (and (not namestring)
+	     (if (default-object? error) #t error?))
+	(error "Can't find program:" (->namestring program)))
+    namestring))
+
+(define (os/exec-path)
+  (os/parse-path-string
+   (let ((path (get-environment-variable "PATH")))
+     (if (not path)
+	 (error "Can't find PATH environment variable."))
+     path)))
+
+(define (os/parse-path-string string)
+  (let ((end (string-length string))
+	(substring
+	 (lambda (string start end)
+	   (pathname-as-directory (substring string start end)))))
+    (let loop ((start 0))
+      (if (< start end)
+	  (let ((index (substring-find-next-char string start end #\;)))
+	    (if index
+		(if (= index start)
+		    (loop (+ index 1))
+		    (cons (substring string start index)
+			  (loop (+ index 1))))
+		(list (substring string start end))))
+	  '()))))
+
+(define (os/shell-file-name)
+  (or (get-environment-variable "SHELL")
+      (get-environment-variable "COMSPEC")
+      "cmd.exe"))
+
+(define (os/form-shell-command command)
+  (list "/c" command))
+
+(define (os/executable-pathname-types)
+  '("exe" "com" "bat" "btm"))
