@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.30 1987/05/28 16:09:22 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.31 1987/06/11 21:51:44 cph Exp $ */
 
 /* This file contains utilities for interrupts, errors, etc. */
 
@@ -434,21 +434,21 @@ Do_Micro_Error (Err, From_Pop_Return)
     Microcode_Termination(TERM_NO_ERROR_HANDLER, Err);
   }
 
-  if (Err >= Vector_Length(Error_Vector))
-  {
-    if (Vector_Length(Error_Vector) == 0)
+  if ((Err < 0) || (Err >= (Vector_Length (Error_Vector))))
     {
-      fprintf(stderr,
-	      "\nMicrocode Error: code = 0x%x; Empty error handlers vector.\n",
-	      Err);
-      printf("\n**** Stack Trace ****\n\n");
-      Back_Trace();
-      Microcode_Termination(TERM_NO_ERROR_HANDLER, Err);
+      if (Vector_Length(Error_Vector) == 0)
+	{
+	  fprintf(stderr,
+		  "\nMicrocode Error: code = 0x%x; Empty error handlers vector.\n",
+		  Err);
+	  printf("\n**** Stack Trace ****\n\n");
+	  Back_Trace();
+	  Microcode_Termination(TERM_NO_ERROR_HANDLER, Err);
+	}
+      Handler = (User_Vector_Ref (Error_Vector, ERR_BAD_ERROR_CODE));
     }
-    Handler = User_Vector_Ref(Error_Vector, ERR_BAD_ERROR_CODE);
-  }
   else
-    Handler = User_Vector_Ref(Error_Vector, Err);
+    Handler = (User_Vector_Ref (Error_Vector, Err));
 
   /* This can NOT be folded into the Will_Push below since we cannot
      afford to have the Will_Push put down its own continuation.
@@ -482,7 +482,10 @@ Do_Micro_Error (Err, From_Pop_Return)
   Store_Expression(Make_Unsigned_Fixnum(IntEnb));
   Save_Cont();
   Push(Make_Unsigned_Fixnum(IntEnb));	 /* Arg 2:     Int. mask */
-  Push(Make_Unsigned_Fixnum(Err));	 /* Arg 1:     Err. No   */
+  if ((Err >= SMALLEST_FIXNUM) && (Err <= BIGGEST_FIXNUM))
+    Push(Make_Signed_Fixnum(Err));	 /* Arg 1:     Err. No   */
+  else
+    Push (Make_Unsigned_Fixnum (ERR_BAD_ERROR_CODE));
   Push(Handler);			 /* Procedure: Handler   */
   Push(STACK_FRAME_HEADER+2);
  Pushed();
