@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.25 1992/04/22 20:26:41 mhwu Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.26 1992/04/29 21:23:37 bal Exp $
 ;;;
 ;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -458,7 +458,13 @@ filename suffix \".KY\"."
 		(editor-beep)
 		(message "krypt: Checksum error!")
 		x))
-     mark)))
+     mark)
+    ;; Disable auto-save here since we don't want to
+    ;; auto-save the unencrypted contents of the 
+    ;; encrypted file.
+    (define-variable-local-value! (mark-buffer mark)
+      (name->variable 'auto-save-default) #f)
+    ))
 
 (define (maybe-write-encrypted-file region pathname visit?)
   visit?
