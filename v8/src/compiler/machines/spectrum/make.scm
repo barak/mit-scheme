@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 1.1 1994/11/19 02:08:04 adams Exp $
+$Id: make.scm,v 1.2 1995/03/07 22:32:11 adams Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -45,6 +45,7 @@ MIT in each case. |#
 		     (old-purify thing)))))
 
     ;; Original expression
+    (load-option 'SF)
     (let ((value ((load "base/make")
 		  (lambda ()
 		    (string-append
