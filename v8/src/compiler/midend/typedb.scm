@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typedb.scm,v 1.12 1996/07/27 03:29:10 adams Exp $
+$Id: typedb.scm,v 1.13 1996/10/03 14:08:12 adams Exp $
 
 Copyright (c) 1996 Massachusetts Institute of Technology
 
@@ -251,11 +251,12 @@ MIT in each case. |#
 			    'function))
 
 
-;;; MIT Scheme charatcers have a 7 code-bits + 5 bucky-bits encoding,
-;;; hence some results will fit in bytes:
+;;; MIT Scheme characters have a 16 code-bits + 5 bucky-bits encoding,
+;;; hence some results will fit in bytes and others in small
+;;; non-negative fixnums.
 
 (define-operator-type (make-primitive-procedure 'CHAR-CODE)
-  (primitive-procedure-type (list type:character) type:unsigned-byte
+  (primitive-procedure-type (list type:character) type:small-fixnum>=0
 			    'function))
 
 (define-operator-type (make-primitive-procedure 'CHAR-BITS)
@@ -263,7 +264,7 @@ MIT in each case. |#
 			    'function))
 
 (define-operator-type (make-primitive-procedure 'MAKE-CHAR)
-  (primitive-procedure-type (list type:unsigned-byte type:unsigned-byte)
+  (primitive-procedure-type (list type:small-fixnum>=0 type:unsigned-byte)
 			    type:character
 			    'function))
 
