@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.22 1992/04/23 18:27:05 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.23 1992/08/03 21:45:33 cph Exp $
 ;;;
-;;;	Copyright (c) 1991 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -48,7 +48,7 @@
 
 (define-variable rmailsum-rcs-header
   "The RCS header of the rmailsum.scm file."
-  "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.22 1992/04/23 18:27:05 bal Exp $"
+  "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.23 1992/08/03 21:45:33 cph Exp $"
   string?)
 
 (define-variable-per-buffer rmail-buffer
@@ -503,11 +503,9 @@ Entering this mode calls value of hook variable rmail-summary-mode-hook."
 			(mark-delete-right-char! end)
 			(insert-char #\space end)
 			(set-buffer-read-only! (current-buffer))))
-		  (select-buffer-other-window (ref-variable rmail-buffer))
-		  ((command-procedure
-		    (comtab-entry (mode-comtabs (current-major-mode)) #\j))
-		   the-message-number)
-		  (select-buffer-other-window (ref-variable rmail-summary-buffer)))))))))
+		  (let ((rmail-buffer (ref-variable rmail-buffer)))
+		    (show-message rmail-buffer the-message-number)
+		    (pop-up-buffer rmail-buffer false)))))))))
 
 (define-command rmail-summary-next-message
   "Goto ARGth previous message."
