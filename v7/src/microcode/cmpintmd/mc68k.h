@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: mc68k.h,v 1.33 1992/11/18 05:00:41 gjr Exp $
+$Id: mc68k.h,v 1.34 1993/02/19 17:47:36 cph Exp $
 
-Copyright (c) 1989-1992 Massachusetts Institute of Technology
+Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -602,6 +602,7 @@ DEFUN_VOID (mc68k_reset_hook)
   SETUP_REGISTER (asm_stack_and_interrupt_check_18);	/* 43 */
   SETUP_REGISTER (asm_stack_and_interrupt_check_22);	/* 44 */
   SETUP_REGISTER (asm_stack_and_interrupt_check_24);	/* 45 */
+  SETUP_REGISTER (asm_set_interrupt_enables);		/* 46 */
 
   FLUSH_CACHE_INITIALIZE ();
   FLUSH_I_CACHE_REGION (&Registers[COMPILER_REGBLOCK_START_HOOKS],

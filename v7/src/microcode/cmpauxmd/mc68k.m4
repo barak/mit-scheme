@@ -1,8 +1,8 @@
 ### -*-Midas-*-
 ###
-###	$Id: mc68k.m4,v 1.23 1992/09/25 01:19:13 cph Exp $
+###	$Id: mc68k.m4,v 1.24 1993/02/19 17:47:46 cph Exp $
 ###
-###	Copyright (c) 1989-92 Massachusetts Institute of Technology
+###	Copyright (c) 1989-93 Massachusetts Institute of Technology
 ###
 ###	This material was developed by the Scheme project at the
 ###	Massachusetts Institute of Technology, Department of
@@ -697,3 +697,41 @@ stack_and_interrupt_check_2:
 	mov.l	(%sp),%d0
 	addq.l	&8,%sp
 	rts
+
+### Assembly-language implementation of SET-INTERRUPT-ENABLES!
+### primitive.  Argument appears at top of stack, return address below
+### that.
+
+define_c_label(asm_set_interrupt_enables)
+define_debugging_label(set_interrupt_enables)
+	# Return value is previous contents of mask register.
+	mov.l	regblock_int_mask(regs),rval
+	or.l	&TYPE_CODE_TO_OBJECT(tc_fixnum),rval
+	mov.l	(%sp)+,%d0		# get new interrupt mask
+	and.l	rmask,%d0		# strip fixnum type
+	mov.l	%d0,regblock_int_mask(regs) # store it in mask register
+	# Setup compiled memtop register: -1 if pending interrupt,
+	# Memtop if GC enabled, else Heap_Top.
+	movq	&-1,%d1
+	mov.l	regblock_int_code(regs),%d2
+	and.l	%d0,%d2
+	bne.b	set_interrupt_enables_1
+	mov.l	extern_c_label(MemTop),%d1
+	btst	&2,%d0
+	bne.b	set_interrupt_enables_1
+	mov.l	extern_c_label(Heap_Top),%d1
+set_interrupt_enables_1:
+	mov.l	%d1,regblock_memtop(regs)
+	# Setup compiled stack_guard register: Stack_Guard if
+	# stack-overflow enabled, else Absolute_Stack_Base (alias for
+	# Constant_Top).
+	mov.l	extern_c_label(Stack_Guard),%d1
+	btst	&0,%d0
+	bne.b	set_interrupt_enables_2
+	mov.l	extern_c_label(Constant_Top),%d1
+set_interrupt_enables_2:
+	mov.l	%d1,regblock_stack_guard(regs)
+	mov.l	(%sp)+,%d0
+	and.l	rmask,%d0
+	mov.l	%d0,%a0
+	jmp	(%a0)
