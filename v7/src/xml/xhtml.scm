@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xhtml.scm,v 1.14 2004/11/17 05:48:35 cph Exp $
+$Id: xhtml.scm,v 1.15 2004/11/17 05:59:13 cph Exp $
 
 Copyright 2002,2003,2004 Massachusetts Institute of Technology
 
@@ -257,7 +257,7 @@ USA.
 
 (define (html:style-attr . keyword-list)
   (guarantee-keyword-list keyword-list 'HTML:STYLE-ATTR)
-  (if (pair? bindings)
+  (if (pair? keyword-list)
       (let loop ((bindings keyword-list))
 	(string-append (symbol-name (car bindings))
 		       ": "
