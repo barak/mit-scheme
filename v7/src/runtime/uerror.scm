@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.14 1990/06/20 20:30:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.15 1990/07/30 04:01:23 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -607,12 +607,12 @@ MIT in each case. |#
 	(define-error-handler 'EXTERNAL-RETURN return-address
 	  (internal-apply-frame/operator-filter
 	   (ucode-primitive file-length)
-	   (ucode-primitive file-read-char)
+	   ;; (ucode-primitive file-read-char) ; -gone.
 	   (ucode-primitive file-write-char)
 	   (ucode-primitive file-write-string)
-	   (ucode-primitive copy-file)
-	   (ucode-primitive rename-file)
-	   (ucode-primitive remove-file)
+	   (ucode-primitive file-copy)
+	   (ucode-primitive file-rename)
+	   (ucode-primitive file-remove)
 	   (ucode-primitive link-file)
 	   (ucode-primitive set-file-modes! 2))
 	  file-error)))
