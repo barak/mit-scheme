@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/xdebug.c,v 9.24 1988/08/15 20:58:44 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/xdebug.c,v 9.25 1989/06/16 09:40:14 cph Rel $
  *
  * This file contains primitives to debug the memory management in the
  * Scheme system.
@@ -63,7 +63,7 @@ Find_Occurrence(From, To, What, Mode)
       {
 	if (OBJECT_TYPE(*From) == TC_MANIFEST_NM_VECTOR)
 	{
-	  From += Get_Integer(*From); 
+	  From += OBJECT_DATUM(*From); 
 	}
 	else if (*From == Obj)
 	{
@@ -72,7 +72,7 @@ Find_Occurrence(From, To, What, Mode)
       }
      return To;
     }
-
+
     case ADDRESS_EQ:
     {
       Obj = OBJECT_DATUM(What);
@@ -80,7 +80,7 @@ Find_Occurrence(From, To, What, Mode)
       {
 	if (OBJECT_TYPE(*From) == TC_MANIFEST_NM_VECTOR)
 	{
-	  From += Get_Integer(*From); 
+	  From += OBJECT_DATUM(*From); 
 	}
 	else if ((OBJECT_DATUM(*From) == Obj) &&
 		 (!(GC_Type_Non_Pointer(*From))))
@@ -97,7 +97,7 @@ Find_Occurrence(From, To, What, Mode)
       {
 	if (OBJECT_TYPE(*From) == TC_MANIFEST_NM_VECTOR)
 	{
-	  From += Get_Integer(*From); 
+	  From += OBJECT_DATUM(*From); 
 	}
 	else if (OBJECT_DATUM(*From) == Obj)
 	{
@@ -226,71 +226,85 @@ Print_Memory(Where, How_Many)
 
 /* Primitives to give scheme a handle on utilities from DEBUG.C */
 
-DEFINE_PRIMITIVE ("SHOW-PURE", Prim_show_pure, 0, 0, 0)
+DEFINE_PRIMITIVE ("DEBUG-SHOW-PURE", Prim_debug_show_pure, 0, 0, 0)
 {
-  Primitive_0_Args();
+  PRIMITIVE_HEADER (0);
 
-  printf("\n*** Constant & Pure Space: ***\n");
-  Show_Pure();
-  return SHARP_T;
+  printf ("\n*** Constant & Pure Space: ***\n");
+  Show_Pure ();
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("SHOW-ENV", Prim_show_env, 1, 1, 0)
+DEFINE_PRIMITIVE ("DEBUG-SHOW-ENV", Prim_debug_show_env, 1, 1, 0)
 {
-  Primitive_1_Arg();
+  Pointer environment;
+  PRIMITIVE_HEADER (1);
 
-  printf("\n*** Environment = 0x%x ***\n", Arg1);
-  Show_Env(Arg1);
-  return SHARP_T;
+  environment = (ARG_REF (1));
+  printf ("\n*** Environment = 0x%x ***\n", environment);
+  Show_Env (environment);
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("STACK-TRACE", Prim_stack_trace, 0, 0, 0)
+DEFINE_PRIMITIVE ("DEBUG-STACK-TRACE", Prim_debug_stack_trace, 0, 0, 0)
 {
-  Primitive_0_Args();
+  PRIMITIVE_HEADER (0);
 
-  printf("\n*** Back Trace: ***\n");
-  Back_Trace(stdout);
-  return SHARP_T;
+  printf ("\n*** Back Trace: ***\n");
+  Back_Trace (stdout);
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("FIND-SYMBOL", Prim_find_symbol, 1, 1, 0)
+DEFINE_PRIMITIVE ("DEBUG-FIND-SYMBOL", Prim_debug_find_symbol, 1, 1, 0)
 {
-  Primitive_1_Arg();
+  PRIMITIVE_HEADER (1);
 
-  Find_Symbol();
-  return SHARP_T;
+  CHECK_ARG (1, STRING_P);
+  {
+    fast Pointer symbol = (find_symbol (ARG_REF (1)));
+    if (symbol == SHARP_F)
+      printf ("\nNot interned.\n");
+    else
+      {
+	printf ("\nInterned Symbol: 0x%x", symbol);
+	Print_Expression (Vector_Ref (symbol, SYMBOL_GLOBAL_VALUE), "Value");
+	printf ("\n");
+      }
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 /* Primitives to give scheme a handle on utilities on this file. */
 
 DEFINE_PRIMITIVE ("DEBUG-FLAGS", Prim_debug_flags, 0, 0, 0)
 {
-  Primitive_0_Args();
+  PRIMITIVE_HEADER (0);
 
-  Handle_Debug_Flags();
-  return SHARP_T;
+  Handle_Debug_Flags ();
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("FIND-WHO-POINTS", Prim_find_who_points, 3, 3, 0)
+DEFINE_PRIMITIVE ("DEBUG-FIND-WHO-POINTS", Prim_debug_find_who_points, 3, 3, 0)
 {
-  Primitive_3_Args();
+  PRIMITIVE_HEADER (3);
 
-  return Find_Who_Points(Arg1, Get_Integer(Arg2), Get_Integer(Arg3));
+  PRIMITIVE_RETURN
+    (Find_Who_Points
+     ((ARG_REF (1)),
+      (OBJECT_DATUM (ARG_REF (2))),
+      (OBJECT_DATUM (ARG_REF (3)))));
 }
 
-DEFINE_PRIMITIVE ("PRINT-MEMORY", Prim_print_memory, 2, 2, 0)
+DEFINE_PRIMITIVE ("DEBUG-PRINT-MEMORY", Prim_debug_print_memory, 2, 2, 0)
 {
-  Pointer *Base;
-  Primitive_2_Args();
+  Pointer object;
+  PRIMITIVE_HEADER (2);
 
-  if (GC_Type_Non_Pointer(Arg1))
-  {
-    Base = ((Pointer *) Datum(Arg1));
-  }
-  else
-  {
-    Base = Get_Pointer(Arg1);
-  }
-  Print_Memory(Base, Get_Integer(Arg2));
-  return SHARP_T;
+  object = (ARG_REF (1));
+  Print_Memory
+    (((GC_Type_Non_Pointer (object))
+      ? ((Pointer *) (OBJECT_DATUM (object)))
+      : (Get_Pointer (object))),
+     (OBJECT_DATUM (ARG_REF (2))));
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
