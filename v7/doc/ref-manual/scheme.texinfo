@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.101 2001/11/17 05:54:37 cph Exp $
+@comment $Id: scheme.texinfo,v 1.102 2001/11/17 06:01:20 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -188,6 +188,7 @@ Characters
 * Internal Representation of Characters::  
 * ISO-8859-1 Characters::       
 * Character Sets::              
+* Unicode::                     
 
 Strings
 
@@ -4886,6 +4887,7 @@ Scheme to a non-@acronym{ASCII} operating system.}
 * Internal Representation of Characters::  
 * ISO-8859-1 Characters::       
 * Character Sets::              
+* Unicode::                     
 @end menu
 
 @node External Representation of Characters, Comparison of Characters, Characters, Characters
@@ -5341,7 +5343,7 @@ doesn't have an @acronym{ISO-8859-1} representation.
 corresponding to @var{code}.
 @end deffn
 
-@node Character Sets,  , ISO-8859-1 Characters, Characters
+@node Character Sets, Unicode, ISO-8859-1 Characters, Characters
 @section Character Sets
 @cindex character set
 @cindex set, of characters
@@ -5492,6 +5494,11 @@ least one o the @var{char-set}s.
 Returns a character set consisting of the @acronym{ISO-8859-1}
 characters that are not in @var{char-set}.
 @end deffn
+
+@node Unicode,  , Character Sets, Characters
+@section Unicode
+
+[Not yet written.]
 
 @node Strings, Lists, Characters, Top
 @chapter Strings
@@ -13939,12 +13946,12 @@ Return @code{#t} if @var{object} is a parser-buffer pointer, otherwise
 return @code{#f}.
 @end deffn
 
-Characters can be read out of a parser buffer much like they can be
-read out of an input port.  The parser buffer maintains an internal
-pointer indicating its current position in the input stream.
-Additionally, the buffer remembers all characters that were previously
-read, and can look at characters arbitrarily far ahead in the stream.
-It is this buffering capability that facilitates complex matching and
+Characters can be read from a parser buffer much as they can be read
+from an input port.  The parser buffer maintains an internal pointer
+indicating its current position in the input stream.  Additionally,
+the buffer remembers all characters that were previously read, and can
+look at characters arbitrarily far ahead in the stream.  It is this
+buffering capability that facilitates complex matching and
 backtracking.
 
 @deffn {procedure+} read-parser-buffer-char buffer
