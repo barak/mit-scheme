@@ -7,12 +7,12 @@ source=/scheme/v7/src
 destination="${prefix}/src"
 mkdir ${destination}
 
-for file in 6001 COPYING Makefile.std TAGS compiler cref edwin microcode rcs runtime sf sos win32
+for file in 6001 ChangeLog COPYING Makefile.std TAGS compiler cref edwin microcode rcs runtime sf sos win32
 do
   cpx -E ${source}/${file} ${destination}
 done
 
-find ${destination} -type l -name RCS -print | xargs rm
+find ${destination} -type d -name CVS -print | xargs rm -rf
 find ${destination} -type f -print | xargs chmod a-w
 find ${destination} -type d -print | xargs chmod g-w
 
