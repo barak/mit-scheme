@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.31 2003/02/14 18:28:03 cph Exp $
+$Id: compiler.pkg,v 1.32 2004/07/05 03:59:36 cph Exp $
 
-Copyright (c) 1992-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1992,1993,1994,1996,1997,1998 Massachusetts Institute of Technology
+Copyright 2001,2002,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -211,7 +212,8 @@ USA.
 	  make-pnode
 	  make-rvalue
 	  make-snode
-	  package)
+	  package
+	  rule-matcher)
   (import (runtime syntactic-closures)
 	  syntax-match?))
 
@@ -294,6 +296,7 @@ USA.
   (export (compiler)
 	  make-pattern-variable
 	  pattern-lookup
+	  pattern-lookup-1
 	  pattern-variable-name
 	  pattern-variable?
 	  pattern-variables))
@@ -302,10 +305,14 @@ USA.
   (files "base/pmpars")
   (parent (compiler))
   (export (compiler)
+	  make-rule-matcher
 	  parse-rule
+	  rule->matcher
 	  rule-result-expression)
   (export (compiler macros)
+	  make-rule-matcher
 	  parse-rule
+	  rule->matcher
 	  rule-result-expression))
 
 (define-package (compiler pattern-matcher/early)

@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: asmmac.scm,v 1.19 2003/02/14 18:28:00 cph Exp $
+$Id: asmmac.scm,v 1.20 2004/07/05 03:59:36 cph Exp $
 
-Copyright (c) 1988, 1990, 1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1990,2001,2002 Massachusetts Institute of Technology
+Copyright 2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -42,18 +43,19 @@ USA.
 				   environment))))
 	 (ill-formed-syntax form)))))
 
-(define (compile-database cases environment procedure)
+(define (compile-database rules environment procedure)
   `(,(close-syntax 'LIST environment)
     ,@(map (lambda (rule)
-	     (call-with-values (lambda () (parse-rule (car rule) (cdr rule)))
-	       (lambda (pattern variables qualifiers actions)
-		 `(,(close-syntax 'CONS environment)
-		   ',pattern
-		   ,(rule-result-expression variables
-					    qualifiers
-					    (procedure pattern actions)
-					    environment)))))
-	   cases)))
+	     (receive (pattern variables qualifiers actions)
+		 (parse-rule (car rule) (cdr rule))
+	       (make-rule-matcher
+		pattern
+		(rule-result-expression variables
+					qualifiers
+					(procedure pattern actions)
+					environment)
+		environment)))
+	   rules)))
 
 (define (optimize-group-syntax components early? environment)
   (define (find-constant components)

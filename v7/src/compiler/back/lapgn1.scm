@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: lapgn1.scm,v 4.20 2003/02/14 18:28:00 cph Exp $
+$Id: lapgn1.scm,v 4.21 2004/07/05 03:59:36 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
+Copyright 1992,1993,1998,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -204,7 +205,7 @@ USA.
 		 (bblock-register-map (edge-left-node edge))
 		 live-registers)))
 	    edges)))
-      (let ((target-map (merge-register-maps maps false)))
+      (let ((target-map (merge-register-maps maps #f)))
 	(for-each
 	 (lambda (class)
 	   (let ((instructions
@@ -239,25 +240,24 @@ USA.
 (define *assign-rules* '())
 (define *assign-variable-rules* '())
 
-(define (add-statement-rule! pattern result-procedure)
-  (let ((result (cons pattern result-procedure)))
-    (cond ((not (eq? (car pattern) 'ASSIGN))
-	   (let ((entry (assq (car pattern) *cgen-rules*)))
-	     (if entry
-		 (set-cdr! entry (cons result (cdr entry)))
-		 (set! *cgen-rules*
-		       (cons (list (car pattern) result)
-			     *cgen-rules*)))))
-	  ((not (pattern-variable? (cadr pattern)))
-	   (let ((entry (assq (caadr pattern) *assign-rules*)))
-	     (if entry
-		 (set-cdr! entry (cons result (cdr entry)))
-		 (set! *assign-rules*
-		       (cons (list (caadr pattern) result)
-			     *assign-rules*)))))
-	  (else
-	   (set! *assign-variable-rules*
-		 (cons result *assign-variable-rules*)))))
+(define (add-statement-rule! pattern matcher)
+  (cond ((not (eq? (car pattern) 'ASSIGN))
+	 (let ((entry (assq (car pattern) *cgen-rules*)))
+	   (if entry
+	       (set-cdr! entry (cons matcher (cdr entry)))
+	       (set! *cgen-rules*
+		     (cons (list (car pattern) matcher)
+			   *cgen-rules*)))))
+	((not (pattern-variable? (cadr pattern)))
+	 (let ((entry (assq (caadr pattern) *assign-rules*)))
+	   (if entry
+	       (set-cdr! entry (cons matcher (cdr entry)))
+	       (set! *assign-rules*
+		     (cons (list (caadr pattern) matcher)
+			   *assign-rules*)))))
+	(else
+	 (set! *assign-variable-rules*
+	       (cons matcher *assign-variable-rules*))))
   pattern)
 
 (define (lap-generator/match-rtl-instruction rtl)

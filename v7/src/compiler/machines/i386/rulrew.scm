@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rulrew.scm,v 1.16 2003/02/14 18:28:03 cph Exp $
+$Id: rulrew.scm,v 1.17 2004/07/05 03:59:36 cph Exp $
 
-Copyright (c) 1992-1999 Massachusetts Institute of Technology
+Copyright 1992,1993,1998,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -270,7 +270,7 @@ USA.
 
 ;; acos (x) = atan ((sqrt (1 - x^2)) / x)
 
-(define-rule add-pre-cse-rewriting-rule!
+(define-rule pre-cse-rewriting
   (FLONUM-1-ARG FLONUM-ACOS (? operand) #f)
   (rtl:make-flonum-2-args
    'FLONUM-ATAN2
@@ -287,7 +287,7 @@ USA.
 
 ;; asin (x) = atan (x / (sqrt (1 - x^2)))
 
-(define-rule add-pre-cse-rewriting-rule!
+(define-rule pre-cse-rewriting
   (FLONUM-1-ARG FLONUM-ASIN (? operand) #f)
   (rtl:make-flonum-2-args
    'FLONUM-ATAN2
