@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntfs.c,v 1.13 1997/01/01 22:57:24 cph Exp $
+$Id: ntfs.c,v 1.14 1997/01/05 23:38:50 cph Exp $
 
 Copyright (c) 1992-97 Massachusetts Institute of Technology
 
@@ -305,6 +305,17 @@ DEFUN (OS_directory_read_matching, (index, prefix),
       if ((strnicmp (pathname, prefix, n)) == 0)
 	return (pathname);
     }
+}
+
+int
+win32_directory_read (unsigned int index, WIN32_FIND_DATA * info)
+{
+  nt_dir * dir = (REFERENCE_DIRECTORY (index));
+  if ((dir == 0) || (! (dir -> more)))
+    return (0);
+  (*info) = (dir -> entry);
+  (dir -> more) = (FindNextFile ((dir -> handle), (& (dir -> entry))));
+  return (1);
 }
 
 void
