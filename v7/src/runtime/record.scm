@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.13 1992/11/29 14:20:27 gjr Exp $
+$Id: record.scm,v 1.14 1992/12/02 19:43:32 cph Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -39,6 +39,12 @@ MIT in each case. |#
 ;;; conforms to R4RS proposal
 
 (declare (usual-integrations))
+
+(define-primitives
+  (%record -1)
+  (%record-length 1)
+  (%record-ref 2)
+  (%record-set! 3))
 
 (define (initialize-package!)
   (set! record-type-marker

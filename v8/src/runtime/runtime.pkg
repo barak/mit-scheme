@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.163 1992/11/12 03:25:33 gjr Exp $
+$Id: runtime.pkg,v 14.164 1992/12/02 19:44:11 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -1689,6 +1689,10 @@ MIT in each case. |#
   (files "record")
   (parent ())
   (export ()
+	  %record
+	  %record-length
+	  %record-ref
+	  %record-set!
 	  make-record-type
 	  record-accessor
 	  record-constructor
