@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pruxdld.c,v 1.17 2003/02/14 18:28:23 cph Exp $
+$Id: pruxdld.c,v 1.18 2003/05/12 20:02:27 cph Exp $
 
 Copyright (c) 1993-2001 Massachusetts Institute of Technology
 
@@ -31,7 +31,7 @@ USA.
 #include "syscall.h"
 #include "os.h"
 
-#ifdef __linux__
+#ifdef HAVE_DLFCN_H
 
 #include <dlfcn.h>
 
@@ -67,7 +67,7 @@ DEFUN (dld_lookup, (handle, symbol), unsigned long handle AND char * symbol)
   return ((unsigned long) address);
 }
 
-#endif /* __linux__ */
+#endif /* HAVE_DLFCN_H */
 
 DEFINE_PRIMITIVE ("LOAD-OBJECT-FILE", Prim_load_object_file, 1, 1,
 		  "(FILENAME)\n\

@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 
-dnl Copyright (c) 2000, 2002, 2002 Massachusetts Institute of Technology
+dnl Copyright 2000,2002,2003 Massachusetts Institute of Technology
 dnl
 dnl This file is part of MIT/GNU Scheme.
 dnl
@@ -19,7 +19,7 @@ dnl along with MIT/GNU Scheme; if not, write to the Free Software
 dnl Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 dnl 02111-1307, USA.
 
-AC_REVISION([$Id: configure.in,v 11.20 2003/02/14 18:28:18 cph Exp $])
+AC_REVISION([$Id: configure.in,v 11.21 2003/05/12 20:02:24 cph Exp $])
 AC_INIT(boot.c)
 AC_CONFIG_HEADER(config.h)
 
@@ -117,7 +117,7 @@ AC_CHECK_HEADERS(sys/file.h sys/ioctl.h sys/mount.h sys/param.h sys/poll.h)
 AC_CHECK_HEADERS(sys/ptyio.h sys/socket.h sys/time.h sys/un.h sys/vfs.h)
 AC_CHECK_HEADERS(stdbool.h termio.h termios.h unistd.h utime.h)
 AC_CHECK_HEADERS(openssl/blowfish.h openssl/md5.h blowfish.h md5.h)
-AC_CHECK_HEADERS(mhash.h mcrypt.h gdbm.h curses.h term.h)
+AC_CHECK_HEADERS(mhash.h mcrypt.h gdbm.h curses.h term.h dlfcn.h)
 
 dnl Checks for typedefs
 AC_TYPE_MODE_T
@@ -579,8 +579,23 @@ else
 fi
 
 dnl Add OS-dependent customizations.
+DO_GCC_TESTS="no"
 case "$host_os" in
 linux-gnu)
+    DO_GCC_TESTS="yes"
+    ;;
+freebsd*)
+    M4_FLAGS="${M4_FLAGS} -P SUPPRESS_LEADING_UNDERSCORE,1"
+    ;;
+solaris*)
+    if test "${GCC}" = "yes"; then
+	DO_GCC_TESTS="yes"
+	M4_FLAGS="${M4_FLAGS} -P SUPPRESS_LEADING_UNDERSCORE,1"
+    fi
+    ;;
+esac
+
+if test "${DO_GCC_TESTS}" = "yes"; then
     if test "${STATIC_LIBS}" != ""; then
 	STATIC_PREFIX="-Xlinker -Bstatic"
 	STATIC_SUFFIX="-Xlinker -Bdynamic"
@@ -622,11 +637,7 @@ return 1;
 	    M4_FLAGS="${M4_FLAGS} -P CALLEE_POPS_STRUCT_RETURN,1"
 	fi
     fi
-    ;;
-freebsd*)
-    M4_FLAGS="${M4_FLAGS} -P SUPPRESS_LEADING_UNDERSCORE,1"
-    ;;
-esac
+fi
 
 dnl Add architecture-dependent customizations.
 dnl This is mostly support for native-code compilation.
