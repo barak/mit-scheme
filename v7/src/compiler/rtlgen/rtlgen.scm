@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.18 1987/08/07 17:09:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.19 1987/08/08 23:19:11 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -71,6 +71,11 @@ MIT in each case. |#
      rgraph
      (node->edge (cfg-entry-node (with-new-node-marks generator))))
     (set-rgraph-n-registers! rgraph *next-pseudo-number*))
+   (with-new-node-marks
+    (lambda ()
+      (for-each (lambda (edge)
+		  (bblock-compress! (edge-right-node edge)))
+		(rgraph-initial-edges rgraph))))
   (set-rgraph-bblocks!
    rgraph
    (with-new-node-marks
@@ -89,7 +94,6 @@ MIT in each case. |#
 	    '()))
 
       (mapcan (lambda (edge)
-		(bblock-compress! (edge-right-node edge))
 		(loop (edge-right-node edge)))
 	      (rgraph-initial-edges rgraph))))))
 
