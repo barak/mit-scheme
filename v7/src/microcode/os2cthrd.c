@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2cthrd.c,v 1.4 1995/01/05 23:42:42 cph Exp $
+$Id: os2cthrd.c,v 1.5 1995/04/21 00:54:49 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -64,11 +64,12 @@ OS2_channel_thread_close (Tchannel channel)
   channel_context_t * context = (CHANNEL_OPERATOR_CONTEXT (channel));
   /* Closing handle forces input thread to kill itself.  */
   STD_API_CALL (dos_close, (CHANNEL_HANDLE (channel)));
-  /* If the thread hasn't been read from yet, then it is blocked
-     waiting for the readahead_ack message to wake it up.  In this
-     case, send the message -- the thread should immediately notice
-     that the handle is closed, and kill itself.  */
-  start_readahead_thread (context);
+  /* Send a readahead ACK, because the thread might be waiting for
+     one, and otherwise it would hang forever.  We could try to
+     determine if it was necessary to send the ACK, but it does no
+     harm to send the ACK when it isn't needed.  */
+  OS2_send_message ((CHANNEL_CONTEXT_READER_QID (context)),
+		    (OS2_make_readahead_ack ()));
   OS2_close_qid (CHANNEL_CONTEXT_READER_QID (context));
   OS_free (context);
 }
