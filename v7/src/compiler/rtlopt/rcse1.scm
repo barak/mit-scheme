@@ -38,7 +38,7 @@
 ;;;; RTL Common Subexpression Elimination
 ;;;  Based on the GNU C Compiler
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.97 1986/12/21 23:44:21 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.98 1987/02/12 00:41:08 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -170,6 +170,9 @@
 
 (define-trivial-one-arg-method 'TYPE-TEST
   rtl:type-test-expression rtl:set-type-test-expression!)
+
+(define-trivial-one-arg-method 'UNASSIGNED-TEST
+  rtl:type-test-expression rtl:set-unassigned-test-expression!)
 
 (define-cse-method 'RETURN noop)
 (define-cse-method 'PROCEDURE-HEAP-CHECK noop)
