@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.48 1996/03/01 07:31:20 cph Exp $
+;;;	$Id: rmail.scm,v 1.49 1996/03/23 06:26:03 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-96 Massachusetts Institute of Technology
 ;;;
@@ -335,7 +335,7 @@ but does not copy any new mail into the file."
 		      (if (msg-memo? memo)
 			  (msg-memo/number memo)
 			  0))))
-    ((ref-command rmail-get-new-mail) false)))
+    (if (not filename) ((ref-command rmail-get-new-mail) #f))))
 
 (define-command rmail-input
   "Run RMAIL on file FILENAME."
