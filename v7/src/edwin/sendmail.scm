@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: sendmail.scm,v 1.28 1995/05/05 22:53:18 cph Exp $
+;;;	$Id: sendmail.scm,v 1.29 1995/05/05 23:15:47 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
@@ -427,17 +427,18 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
 
 (define (mail-insert-field mark field)
   (let ((mark (mark-left-inserting-copy mark)))
-    (guarantee-newline mark)
+    (if (not (line-start? mark))
+	(let ((ls (line-start mark 1 #f)))
+	  (if ls
+	      (move-mark-to! mark ls)
+	      (begin
+		(move-mark-to! mark (line-end mark 0))
+		(insert-newline mark)))))
     (insert-string field mark)
     (insert-string ": " mark)
-    (if (line-end? mark)
-	(begin
-	  (mark-temporary! mark)
-	  mark)
-	(begin
-	  (insert-newline mark)
-	  (mark-temporary! mark)
-	  (mark-1+ mark)))))
+    (insert-newline mark)
+    (mark-temporary! mark)
+    (mark-1+ mark)))
 
 (define (mail-field-end! header-start header-end field)
   (or (mail-field-end header-start header-end field)
