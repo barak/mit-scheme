@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/things.scm,v 1.82 1991/10/29 13:49:58 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/things.scm,v 1.83 1991/11/21 10:38:40 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -96,19 +96,18 @@
 
 ;;;; Generic Operations
 
-(define (move-thing forward-thing argument)
-  (set-current-point! (forward-thing (current-point) argument 'FAILURE)))
+(define (move-thing forward-thing argument limit?)
+  (set-current-point! (forward-thing (current-point) argument limit?)))
 
-(define (move-thing-saving-point forward-thing argument)
-  (let ((mark (current-point)))
-    (push-current-mark! mark)
-    (set-current-point! (forward-thing mark argument 'FAILURE))))
+(define (move-thing-saving-point forward-thing argument limit?)
+  (push-current-mark! (current-point))
+  (move-thing forward-thing argument limit?))
 
-(define (mark-thing forward-thing n)
-  (push-current-mark! (forward-thing (current-point) n 'ERROR)))
+(define (mark-thing forward-thing n limit?)
+  (push-current-mark! (forward-thing (current-point) n limit?)))
 
-(define (kill-thing forward-thing n)
-  (kill-region (forward-thing (current-point) n 'ERROR)))
+(define (kill-thing forward-thing n limit?)
+  (kill-region (forward-thing (current-point) n limit?)))
 
 (define (transpose-things forward-thing n)
   (define (forward-once i)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/motcom.scm,v 1.44 1991/10/04 06:09:24 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/motcom.scm,v 1.45 1991/11/21 10:37:39 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -50,7 +50,7 @@
   "Move point to beginning of line."
   "p"
   (lambda (argument)
-    (set-current-point! (line-start (current-point) (-1+ argument) 'LIMIT))))
+    (move-thing line-start (- argument 1) 'FAILURE)))
 
 (define-command backward-char
   "Move back one character.
@@ -58,13 +58,13 @@ With argument, move that many characters backward.
 Negative arguments move forward."
   "p"
   (lambda (argument)
-    (move-thing mark- argument)))
+    (move-thing mark- argument 'FAILURE)))
 
 (define-command end-of-line
   "Move point to end of line."
   "p"
   (lambda (argument)
-    (set-current-point! (line-end (current-point) (-1+ argument) 'LIMIT))))
+    (move-thing line-end (- argument 1) 'FAILURE)))
 
 (define-command forward-char
   "Move forward one character.
@@ -72,7 +72,7 @@ With argument, move that many characters forward.
 Negative args move backward."
   "p"
   (lambda (argument)
-    (move-thing mark+ argument)))
+    (move-thing mark+ argument 'FAILURE)))
 
 (define-command beginning-of-buffer
   "Go to beginning of buffer (leaving mark behind).

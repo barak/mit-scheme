@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.15 1991/10/03 19:48:20 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.16 1991/11/21 10:38:08 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -220,7 +220,7 @@ RECIPIENTS is a string of names separated by commas."
 	     (labels
 	      (begin
 		(set-current-point! start)
-		(move-thing mark+ 3)
+		(move-thing mark+ 3 'ERROR)
 		(if (and (search-forward ",," start end)
 			 (line-end? (current-point)))
 		    (let ((point (current-point)))

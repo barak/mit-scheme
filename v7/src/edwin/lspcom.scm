@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lspcom.scm,v 1.155 1991/10/29 13:46:08 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lspcom.scm,v 1.156 1991/11/21 10:37:20 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -53,14 +53,14 @@
 With argument, do this that many times."
   "p"
   (lambda (argument)
-    (move-thing forward-sexp argument)))
+    (move-thing forward-sexp argument 'ERROR)))
 
 (define-command backward-sexp
   "Move backward across one balanced expression.
 With argument, do this that many times."
   "p"
   (lambda (argument)
-    (move-thing backward-sexp argument)))
+    (move-thing backward-sexp argument 'ERROR)))
 
 (define-command flash-sexp
   "Flash the char which ends the expression to the right of point.
@@ -83,14 +83,14 @@ Shows you where \\[backward-sexp] would go."
 With argument, kill that many expressions after (or before) the cursor."
   "p"
   (lambda (argument)
-    (kill-thing forward-sexp argument)))
+    (kill-thing forward-sexp argument 'ERROR)))
 
 (define-command backward-kill-sexp
   "Kill the syntactic expression preceding the cursor.
 With argument, kill that many expressions before (or after) the cursor."
   "p"
   (lambda (argument)
-    (kill-thing backward-sexp argument)))
+    (kill-thing backward-sexp argument 'ERROR)))
 
 (define-command transpose-sexps
   "Transpose the sexps before and after point.
@@ -103,7 +103,7 @@ See \\[transpose-words], reading 'sexp' for 'word'."
   "Mark one or more sexps from point."
   "p"
   (lambda (argument)
-    (mark-thing forward-sexp argument)))
+    (mark-thing forward-sexp argument 'ERROR)))
 
 ;;;; List Commands
 
@@ -112,14 +112,14 @@ See \\[transpose-words], reading 'sexp' for 'word'."
 With argument, do this that many times."
   "p"
   (lambda (argument)
-    (move-thing forward-list argument)))
+    (move-thing forward-list argument 'ERROR)))
 
 (define-command backward-list
   "Move backward across one balanced group of parentheses.
 With argument, do this that many times."
   "p"
   (lambda (argument)
-    (move-thing backward-list argument)))
+    (move-thing backward-list argument 'ERROR)))
 
 (define-command down-list
   "Move forward down one level of parentheses.
@@ -127,7 +127,7 @@ With argument, do this that many times.
 A negative argument means move backward but still go down a level."
   "p"
   (lambda (argument)
-    (move-thing forward-down-list argument)))
+    (move-thing forward-down-list argument 'ERROR)))
 
 (define-command backward-down-list
   "Move backward down one level of parentheses.
@@ -135,7 +135,7 @@ With argument, do this that many times.
 A negative argument means move forward but still go down a level."
   "p"
   (lambda (argument)
-    (move-thing backward-down-list argument)))
+    (move-thing backward-down-list argument 'ERROR)))
 
 (define-command up-list
   "Move forward out one level of parentheses.
@@ -143,7 +143,7 @@ With argument, do this that many times.
 A negative argument means move backward but still to a less deep spot."
   "p"
   (lambda (argument)
-    (move-thing forward-up-list argument)))
+    (move-thing forward-up-list argument 'ERROR)))
 
 (define-command backward-up-list
   "Move backward out one level of parentheses.
@@ -151,7 +151,7 @@ With argument, do this that many times.
 A negative argument means move forward but still to a less deep spot."
   "p"
   (lambda (argument)
-    (move-thing backward-up-list argument)))
+    (move-thing backward-up-list argument 'ERROR)))
 
 ;;;; Definition Commands
 
@@ -160,14 +160,16 @@ A negative argument means move forward but still to a less deep spot."
 With argument, do this that many times."
   "p"
   (lambda (argument)
-    (move-thing backward-definition-start argument)))
+    (move-thing backward-definition-start argument 'ERROR)))
 
 (define-command end-of-defun
   "Move forward to next end of defun.
 An end of a defun is found by moving forward from the beginning of one."
   "p"
   (lambda (argument)
-    (move-thing forward-definition-end (if (zero? argument) 1 argument))))
+    (move-thing forward-definition-end
+		(if (zero? argument) 1 argument)
+		'ERROR)))
 
 (define-command mark-defun
   "Put mark at end of defun, point at beginning."
@@ -225,9 +227,8 @@ rigidly along with this one."
     (lisp-indent-sexp mark)))
 
 (define-command insert-parentheses
-  "Insert a pair of matching parentheses, leaving the point after the
-open parenthesis.  With argument, wrap parentheses around that many
-following sexps.)"
+  "Put parentheses around next ARG sexps.  Leave point after open-paren.
+No argument is equivalent to zero: just insert () and leave point between."
   "P"
   (lambda (argument)
     (if argument
@@ -253,17 +254,14 @@ following sexps.)"
       (set-current-point! mark))))
 
 (define-command move-past-close-and-reindent
-  "Move past next right parenthesis, delete indentation before it, and
-indent after it."
+  "Move past next ), delete indentation before it, then indent after it."
   ()
   (lambda ()
-    (set-current-point! (mark-1+ (forward-up-list (current-point) 1 'limit)))
-    (let delete-more-indentation ((before-parenthesis (current-point)))
-      (if (mark= before-parenthesis
-		 (horizontal-space-end (line-start (current-point) 0)))
-	  (begin ((ref-command delete-indentation) #f)
-		 (delete-more-indentation (current-point)))))
-    (move-thing mark+ 1)
+    ((ref-command up-list) 1)
+    ((ref-command backward-char) 1)
+    (do () ((not (within-indentation? (current-point))))
+      ((ref-command delete-indentation) false))
+    ((ref-command forward-char) 1)
     ((ref-command newline-and-indent))))
 
 ;;;; Motion Covers

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/texcom.scm,v 1.33 1990/10/03 04:56:08 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/texcom.scm,v 1.34 1991/11/21 10:38:27 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -91,31 +91,31 @@
   "Move one or more words forward."
   "p"
   (lambda (argument)
-    (move-thing forward-word argument)))
+    (move-thing forward-word argument 'FAILURE)))
 
 (define-command backward-word
   "Move one or more words backward."
   "p"
   (lambda (argument)
-    (move-thing backward-word argument)))
+    (move-thing backward-word argument 'FAILURE)))
 
 (define-command mark-word
   "Set mark one or more words from point."
   "p"
   (lambda (argument)
-    (mark-thing forward-word argument)))
+    (mark-thing forward-word argument 'FAILURE)))
 
 (define-command kill-word
   "Kill one or more words forward."
   "p"
   (lambda (argument)
-    (kill-thing forward-word argument)))
+    (kill-thing forward-word argument 'FAILURE)))
 
 (define-command backward-kill-word
   "Kill one or more words backward."
   "p"
   (lambda (argument)
-    (kill-thing backward-word argument)))
+    (kill-thing backward-word argument 'FAILURE)))
 
 (define-command transpose-words
   "Transpose the words before and after the cursor.
@@ -194,66 +194,54 @@ treated as a regular expression.  Also, every paragraph boundary
 terminates sentences as well."
   "p"
   (lambda (argument)
-    (move-thing forward-sentence argument)))
+    (move-thing forward-sentence argument 'FAILURE)))
 
 (define-command backward-sentence
   "Move backward to start of sentence.  With arg, do it arg times.
 See \\[forward-sentence] for more information."
   "p"
   (lambda (argument)
-    (move-thing backward-sentence argument)))
-
-(define-command mark-sentence
-  "Put point at beginning and mark at end of sentence.
-If you are between sentences, the following sentence is used
-unless you are at the end of a paragraph."
-  ()
-  (lambda ()
-    (let ((end (forward-sentence (current-point) 1 'ERROR)))
-      (set-current-region!
-       (make-region (backward-sentence end 1 'ERROR) end)))))
+    (move-thing backward-sentence argument 'FAILURE)))
 
 (define-command kill-sentence
-  "Kill forward to end of sentence.
-Accepts numeric argument of either sign."
+  "Kill from point to end of sentence.
+With arg, repeat, or backward if negative arg."
   "p"
   (lambda (argument)
-    (kill-thing forward-sentence argument)))
+    (kill-thing forward-sentence argument 'FAILURE)))
 
 (define-command backward-kill-sentence
-  "Kill backward to end of sentence.
-Accepts numeric argument of either sign."
+  "Kill back from point to start of sentence.
+With arg, repeat, or forward if negative arg."
   "p"
   (lambda (argument)
-    (kill-thing backward-sentence argument)))
+    (kill-thing backward-sentence argument 'FAILURE)))
 
 ;;;; Paragraphs
 
 (define-command forward-paragraph
-  "Move forward to end of paragraph.
-See documentation on \\[backward-paragraph]."
+  "Move forward to end of paragraph.  With arg, do it arg times.
+A line which  paragraph-start  matches either separates paragraphs
+\(if  paragraph-separate  matches it also) or is the first line of a paragraph.
+A paragraph end is the beginning of a line which is not part of the paragraph
+to which the end of the previous line belongs, or the end of the buffer."
   "p"
   (lambda (argument)
-    (move-thing forward-paragraph argument)))
+    (move-thing forward-paragraph argument 'FAILURE)))
 
 (define-command backward-paragraph
-  "Move backward to start of paragraph.
-Paragraphs are delimited by blank lines or by lines which
- start with a delimiter in  paragraph-delimiter  or  page-delimiter .
-If there is a fill prefix, any line that doesn't start with it
- starts a paragraph.
-Lines which start with the any character in text-justifier-escape-chars,
- if that character is matched by  paragraph-delimiter ,
- count as blank lines in that they separate paragraphs and
- are not part of them."
+  "Move backward to start of paragraph.  With arg, do it arg times.
+A paragraph start is the beginning of a line which is a first-line-of-paragraph
+or which is ordinary text and follows a paragraph-separating line; except:
+if the first real line of a paragraph is preceded by a blank line,
+the paragraph starts at that blank line.
+See forward-paragraph for more information."
   "p"
   (lambda (argument)
-    (move-thing backward-paragraph argument)))
+    (move-thing backward-paragraph argument 'FAILURE)))
 
 (define-command mark-paragraph
-  "Put point and mark around this paragraph.
-In between paragraphs, puts it around the next one.
-See \\[backward-paragraph] for paragraph definition."
+  "Put point at beginning of this paragraph, mark at end."
   ()
   (lambda ()
     (let ((end (forward-paragraph (current-point) 1 'ERROR)))
