@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.22 1991/09/03 22:56:52 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.23 1991/10/02 21:22:08 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -60,6 +60,7 @@
   (x-display-sync 2)
   (x-window-beep 1)
   (x-window-display 1)
+  (x-window-set-class-hint 4)
   (x-window-set-event-mask 2)
   (x-window-set-icon-name 2)
   (x-window-set-name 2)
@@ -97,13 +98,15 @@
 
 (define (make-xterm-screen #!optional geometry)
   (let ((screen
-	 (let ((xterm
-		(xterm-open-window (or (get-x-display)
-				       (error "unable to open display"))
-				   (and (not (default-object? geometry))
-					geometry)
-				   false)))
+	 (let* ((display (get-x-display))
+		(xterm
+		 (xterm-open-window (or display
+					(error "unable to open display"))
+				    (and (not (default-object? geometry))
+					 geometry)
+				    false)))
 	   (x-window-set-event-mask xterm event-mask)
+	   (x-window-set-class-hint display xterm "edwin" "Edwin")
 	   (make-screen (make-xterm-screen-state xterm
 						 (x-window-display xterm))
 			xterm-screen/beep
