@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xterm.scm,v 1.68 2002/01/29 04:14:03 cph Exp $
+;;; $Id: xterm.scm,v 1.69 2002/03/06 20:05:44 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-2002 Massachusetts Institute of Technology
 ;;;
@@ -999,10 +999,13 @@
 
 ;;;; Selection Source
 
-(define enable-x-clipboard? #t)
+(define-variable x-cut-to-clipboard
+  "If true, cutting text copies to the clipboard.
+In either case, it is copied to the primary selection."
+  #t
+  boolean?)
 
-(define (os/interprogram-cut string push?)
-  push?
+(define (os/interprogram-cut string context)
   (if (eq? x-display-type (current-display-type))
       (let ((xterm (screen-xterm (selected-screen))))
 	(let ((own-selection
@@ -1013,7 +1016,7 @@
 				last-focus-time
 				string))))
 	  (own-selection 'PRIMARY)
-	  (if enable-x-clipboard?
+	  (if (ref-variable x-cut-to-clipboard context)
 	      (own-selection 'CLIPBOARD))))))
 
 (define (own-selection display selection window time value)
@@ -1175,12 +1178,18 @@
 
 ;;;; Selection Sink
 
-(define (os/interprogram-paste)
-  (and (eq? x-display-type (current-display-type))
-       (xterm/interprogram-paste (screen-xterm (selected-screen)))))
+(define-variable x-paste-from-clipboard
+  "If true, pasting text copies from the clipboard.
+Otherwise, it is copied from the primary selection."
+  #f
+  boolean?)
 
-(define (xterm/interprogram-paste xterm)
-  (or (and enable-x-clipboard?
+(define (os/interprogram-paste context)
+  (and (eq? x-display-type (current-display-type))
+       (xterm/interprogram-paste (screen-xterm (selected-screen)) context)))
+
+(define (xterm/interprogram-paste xterm context)
+  (or (and (ref-variable x-paste-from-clipboard context)
 	   (xterm/interprogram-paste-1 xterm 'CLIPBOARD))
       (xterm/interprogram-paste-1 xterm 'PRIMARY)))
 

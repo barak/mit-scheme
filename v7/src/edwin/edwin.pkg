@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.280 2002/02/03 03:38:54 cph Exp $
+$Id: edwin.pkg,v 1.281 2002/03/06 20:05:22 cph Exp $
 
 Copyright (c) 1989-2002 Massachusetts Institute of Technology
 
@@ -1026,6 +1026,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     (files "xterm")
     (parent (edwin screen))
     (export (edwin)
+	    edwin-variable$x-cut-to-clipboard
+	    edwin-variable$x-paste-from-clipboard
 	    os/interprogram-cut
 	    os/interprogram-paste
 	    x-root-window-size

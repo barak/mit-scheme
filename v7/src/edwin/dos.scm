@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dos.scm,v 1.52 2000/03/23 03:19:08 cph Exp $
+;;; $Id: dos.scm,v 1.53 2002/03/06 20:05:13 cph Exp $
 ;;;
-;;; Copyright (c) 1992-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1992-2000, 2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Win32 Customizations for Edwin
 
@@ -72,15 +73,16 @@
 (define cut-and-paste-active?
   #t)
 
-(define (os/interprogram-cut string push?)
-  push?
+(define (os/interprogram-cut string context)
+  context
   (if cut-and-paste-active?
       (win32-clipboard-write-text
        (let ((string (convert-newline-to-crlf string)))
 	 ;; Some programs can't handle strings over 64k.
 	 (if (fix:< (string-length string) #x10000) string "")))))
 
-(define (os/interprogram-paste)
+(define (os/interprogram-paste context)
+  context
   (if cut-and-paste-active?
       (let ((text (win32-clipboard-read-text)))
 	(and text
