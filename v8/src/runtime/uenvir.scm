@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uenvir.scm,v 14.36 1995/07/27 21:11:41 adams Exp $
+$Id: uenvir.scm,v 14.37 1995/08/04 13:40:31 adams Exp $
 
 Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
@@ -424,8 +424,8 @@ MIT in each case. |#
 		 entry))
       (let ((parent (dbg-block/parent invocation-block)))
 	(cond ((and (eq? parent 'IC)
-		    (equal? (dbg-block/parent-path-prefix invocation-block)
-			    '((TOP-LEVEL-ENVIRONMENT))))
+		    (eq? (dbg-block/parent-path-prefix invocation-block)
+			 'TOP-LEVEL-ENVIRONMENT))
 	       (guarantee-interpreter-environment
 		(compiled-code-block/environment
 		 (compiled-code-address->block entry))))
