@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: widen.scm,v 1.2 1994/11/20 00:47:15 jmiller Exp $
+$Id: widen.scm,v 1.3 1994/11/25 23:08:14 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -58,7 +58,8 @@ MIT in each case. |#
 	(else
 	 (let ((reasons '()))
 	   (define (new-reason! reason)
-	     (set! reasons (cons reason reasons)))
+	     (set! reasons (cons reason reasons))
+	     unspecific)
 	   (do ((nodes (value/nodes closure) (cdr nodes)))
 	       ((null? nodes)
 		(if (null? reasons)
@@ -91,11 +92,14 @@ MIT in each case. |#
   ;; actually choose the ones which will be widened (i.e. converted
   ;; from single objects into a set of the closed-over values).
   (make-dataflow-analyzer
-   (lambda (code graph closures)
+   (lambda (new old) (widen/remember new old))
+   (lambda (original-code graph)
+     original-code			; ignore
      ;;(write-line graph)
-     (rewrite-as-widened graph code
+     (rewrite-as-widened graph
+			 (graph/program graph)
 			 (analyze-widenable-closures
-			  (list-transform-negative closures
+			  (list-transform-negative (graph/closures graph)
 			    reject-reason))))))
 
 (define closure/name
@@ -401,9 +405,11 @@ MIT in each case. |#
    lambda-list
    (graph->parameter-nodes graph LAMBDA-form)
    (lambda (name-map lambda-list)
-     `((LAMBDA ,lambda-list ,(widen->expr graph name-map body))))))
+     (widen/simple-rewrite
+      `(LAMBDA ,lambda-list ,(widen->expr graph name-map body))
+      LAMBDA-form))))
 
-(define (widen/let-like graph name-map let-or-letrec bindings body)
+(define (widen/let-like graph name-map let-or-letrec form bindings body)
   (let ((bound-names (map car bindings))
 	(binding-exprs (map cadr bindings)))
     (widen/rewrite-bindings
@@ -416,16 +422,19 @@ MIT in each case. |#
 	       (widen/flatten-expr* graph which-map binding-exprs)))
 	 (if (not (= (length value-exprs) (length names)))
 	     (internal-error "LET expansion error" (list names value-exprs)))
-	 `((,let-or-letrec ,(map list names value-exprs)
-			   ,(widen->expr graph new-name-map body))))))))
+	 (widen/simple-rewrite
+	  `(,let-or-letrec
+	    ,(map list names value-exprs)
+	    ,(widen->expr graph new-name-map body))
+	  form))))))
 
 (define-widen-handler LET (graph name-map LET-form bindings body)
   (no-widening-allowed graph LET-form)
-  (widen/let-like graph name-map 'LET bindings body))
+  (widen/let-like graph name-map 'LET LET-form bindings body))
 
 (define-widen-handler LETREC (graph name-map LETREC-form bindings body)
   (no-widening-allowed graph LETREC-form)
-  (widen/let-like graph name-map 'LETREC bindings body))
+  (widen/let-like graph name-map 'LETREC LETREC-form bindings body))
 
 ;;; CONTAINERS: When a non-widenable closure is closed over a
 ;;; widenable closure, we choose to pack and unpack the elements of
@@ -510,13 +519,16 @@ MIT in each case. |#
 		 "Representation mismatch of make-heap-closure"
 		 rator rands values)
 		values))
-	  `((CALL ,rator ,cont
+	  (widen/simple-rewrite
+	   `(CALL ,rator ,cont
 		  ,(widen->expr graph name-map (car rands))
 		  ,(cadr rands)
 		  . ,(map containerize
-		       exprs
-		       (map node/unique-value
-			 (vector->list (value/closure/location-nodes closure))))))))))
+			  exprs
+			  (map node/unique-value
+			       (vector->list
+				(value/closure/location-nodes closure)))))
+	   form)))))
 
 (define (widen/handler/%make-heap-closure graph name-map form rator cont rands)
   ;; (CALL ',%make-heap-closure '#F  <lambda-expr> 'VECTOR <value>*)
@@ -531,14 +543,17 @@ MIT in each case. |#
   (no-CONT-allowed cont)
   (widen/handler/make-closure graph name-map form rator cont rands))
 
-(define (widen/handler/%make-trivial-closure graph name-map form rator cont rands)
+(define (widen/handler/%make-trivial-closure
+	 graph name-map form rator cont rands)
   ;; (CALL ',%make-trivial-closure '#F <lambda-expression or LOOKUP>)
   ;;       --------- rator ------- cont ----------- rands ----------
   (no-CONT-allowed cont)
   (let ((the-closure-node (graph/text->node graph form)))
     (if (widen/rewrite? the-closure-node)
 	'()				; Vanishes entirely!
-	`((CALL ,rator ,cont ,(widen->expr graph name-map (car rands)))))))
+	(widen/simple-rewrite
+	 `(CALL ,rator ,cont ,(widen->expr graph name-map (car rands)))
+	 form))))
  
 (define (widen/closure-ref graph name-map form rator cont rands)
   ;; (CALL ',%????-closure-ref '#F <closure> <offset> 'NAME)
@@ -557,7 +572,7 @@ MIT in each case. |#
 			    closure rep-vector name))
 	(map (lambda (name)
 	       (list-ref closure-exprs (vector-index rep-vector name)))
-	  (cdr entry)))))
+	     (cdr entry)))))
   (let ((my-value      (graph/text->node graph form))
 	(closure-node  (graph/text->node graph (car rands)))
 	(closure-exprs (widen/expr graph name-map (car rands))))
@@ -594,10 +609,12 @@ MIT in each case. |#
   form					; Not used
   (let ((widened-operands
 	 (widen/flatten-expr* graph name-map (cddr rands))))
-    `((CALL ,rator ,(widen->expr graph name-map cont)
+    (widen/simple-rewrite
+     `(CALL ,rator ,(widen->expr graph name-map cont)
 	    ',(length widened-operands)
 	    ,(widen->expr graph name-map (second rands))
-	    . ,widened-operands))))
+	    . ,widened-operands)
+     form)))
 
 (define (widen/handler/%fetch-stack-closure
 	 graph name-map form rator cont rands)
@@ -606,8 +623,6 @@ MIT in each case. |#
   (no-widening-allowed graph form)
   (no-CONT-allowed cont)
   (list form))
-
-;;;;;;;;;;;;;;;;;;;;; STEPHEN CHECK TO HERE
 
 (define (widen/handler/%fetch-continuation
 	 graph name-map form rator cont rands)
@@ -623,14 +638,18 @@ MIT in each case. |#
 	 graph name-map form rator cont rands)
   ;; (CALL ',%invoke-continuation <continuation> <value>*)
   form 					; Not used
-  `((CALL ,rator ,(widen->expr graph name-map cont)
-	  . ,(widen/flatten-expr* graph name-map rands))))
+  (widen/simple-rewrite
+   `(CALL ,rator ,(widen->expr graph name-map cont)
+	  . ,(widen/flatten-expr* graph name-map rands))
+   form))
 
 (define (widen/handler/default graph name-map form rator cont rands)
   form					; Not used
-  `((CALL ,(widen->expr graph name-map rator)
+  (widen/simple-rewrite
+   `(CALL ,(widen->expr graph name-map rator)
 	  ,(widen->expr graph name-map cont)
-	  . ,(widen/flatten-expr* graph name-map rands))))
+	  . ,(widen/flatten-expr* graph name-map rands))
+   form))
 
 (define-widen-handler CALL (graph name-map CALL-form rator cont #!rest rands)
   (define (use method)
@@ -661,12 +680,14 @@ MIT in each case. |#
 (define-widen-handler QUOTE (graph name-map QUOTE-form object)
   graph name-map			; ignored
   (no-widening-allowed graph QUOTE-form)
-  `((QUOTE ,object)))
+  (widen/simple-rewrite `(QUOTE ,object)
+			QUOTE-form))
 
 (define-widen-handler DECLARE (graph name-map DECLARE-form #!rest anything)
   graph name-map
   (no-widening-allowed graph DECLARE-form)
-  `((DECLARE ,@anything)))
+  (widen/simple-rewrite `(DECLARE ,@anything)
+			DECLARE-form))
 
 (define-widen-handler BEGIN (graph name-map BEGIN-form #!rest actions)
   (define (separate l cont)
@@ -678,64 +699,88 @@ MIT in each case. |#
 	      (cont (reverse before) after)
 	      (loop (cons (car after) before) (cdr after))))))
   BEGIN-form				; Unused
-  (separate actions
-     (lambda (for-effect value)
-       (let ((for-effect-exprs (widen/flatten-expr* graph name-map for-effect))
-	     (value-exprs (widen/flatten-expr* graph name-map value)))
-	 (if (null? value-exprs)
-	     (if (null? for-effect-exprs)
-		 '()			; Vanishes entirely
-		 (internal-error "BEGIN with effects and vanishing value"))
-	     `((BEGIN ,@for-effect-exprs ,(car value-exprs))
-	       ,@(cdr value-exprs)))))))
+  (separate
+   actions
+   (lambda (for-effect value)
+     (let ((for-effect-exprs (widen/flatten-expr* graph name-map for-effect))
+	   (value-exprs (widen/flatten-expr* graph name-map value)))
+       (cond ((null? value-exprs)
+	      (if (null? for-effect-exprs)
+		  '()			; Vanishes entirely
+		  (internal-error "BEGIN with effects and vanishing value")))
+	     ((not (null? (cdr value-exprs)))
+	      (internal-error "BEGIN with multiple values" BEGIN-form))
+	     (else
+	      (widen/simple-rewrite
+	       `(BEGIN
+		  ,@for-effect-exprs
+		  ,(car value-exprs))
+	       BEGIN-form)))))))
 
 (define-widen-handler IF (graph name-map IF-form pred conseq alt)
   (no-widening-allowed graph IF-form)
-  `((IF ,(widen->expr graph name-map pred)
-	,(widen->expr graph name-map conseq)
-	,(widen->expr graph name-map alt))))
+  (widen/simple-rewrite `(IF ,(widen->expr graph name-map pred)
+			     ,(widen->expr graph name-map conseq)
+			     ,(widen->expr graph name-map alt))
+			IF-form))
 
 (define-widen-handler SET! (graph name-map SET!-form name value)
   (no-widening-allowed graph SET!-form)
   (if (assq name name-map)
       (internal-error "Widening SET! variable" name))
-  `((SET! ,name ,(widen->expr graph name-map value))))
+  (widen/simple-rewrite `(SET! ,name ,(widen->expr graph name-map value))
+			SET!-form))
 
 (define-widen-handler ACCESS (graph name-map ACCESS-form name env-expr)
   (no-widening-allowed graph ACCESS-form)
   (if (assq name name-map)
       (internal-error "Widening ACCESS variable" name))
-  `((ACCESS ,name ,(widen->expr graph name-map env-expr))))
+  (widen/simple-rewrite
+   `(ACCESS ,name ,(widen->expr graph name-map env-expr))
+   ACCESS-form))
 
 (define-widen-handler UNASSIGNED? (graph name-map UNASSIGNED?-form name)
   graph name-map			; ignored
   (no-widening-allowed graph UNASSIGNED?-form)
   (if (assq name name-map)
       (internal-error "Widening UNASSIGNED? variable" name)
-      `((UNASSIGNED? ,name))))
+      (widen/simple-rewrite
+       `(UNASSIGNED? ,name)
+       UNASSIGNED?-form)))
 
 (define-widen-handler OR (graph name-map OR-form pred alt)
   (no-widening-allowed graph OR-form)
-  `((OR ,(widen->expr graph name-map pred)
-	,(widen->expr graph name-map alt))))
+  (widen/simple-rewrite
+   `(OR ,(widen->expr graph name-map pred)
+	,(widen->expr graph name-map alt))
+   OR-form))
 
 (define-widen-handler DELAY (graph name-map DELAY-form expr)
   (no-widening-allowed graph DELAY-form)
-  `((DELAY ,(widen->expr graph name-map expr))))
+  (widen/simple-rewrite
+   `(DELAY ,(widen->expr graph name-map expr))
+   DELAY-form))
 
 (define-widen-handler DEFINE (graph name-map DEFINE-form name value)
   (no-widening-allowed graph DEFINE-form)
-  `((DEFINE ,name ,(widen->expr graph name-map value))))
+  (widen/simple-rewrite
+   `(DEFINE ,name ,(widen->expr graph name-map value))
+   DEFINE-form))
 
-(define-widen-handler IN-PACKAGE (graph name-map IN-PACKAGE-form envexpr bodyexpr)
+(define-widen-handler IN-PACKAGE
+  (graph name-map IN-PACKAGE-form envexpr bodyexpr)
   (no-widening-allowed graph IN-PACKAGE-form)
-  `((IN-PACKAGE ,(widen->expr graph name-map envexpr)
-      ,(widen->expr graph name-map bodyexpr))))
+  (widen/simple-rewrite
+   `(IN-PACKAGE ,(widen->expr graph name-map envexpr)
+      ,(widen->expr graph name-map bodyexpr))
+   IN-PACKAGE-form))
 
 (define-widen-handler THE-ENVIRONMENT (graph name-map THE-ENVIRONMENT-form)
   graph name-map			; Ignored
   (no-widening-allowed graph THE-ENVIRONMENT-form)
-  `((THE-ENVIRONMENT)))
+  (widen/simple-rewrite
+   `(THE-ENVIRONMENT)
+   THE-ENVIRONMENT-form))
 
 (define widen/rewrite! 'LATER)
 (define widen/rewrite? 'LATER)
@@ -743,7 +788,8 @@ MIT in each case. |#
   (set! widen/rewrite!
 	(lambda (node) (set-attribute! node *nodes-to-rewrite* #T)))
   (set! widen/rewrite?
-	(lambda (node) (get-attribute node *nodes-to-rewrite*))))
+	(lambda (node) (get-attribute node *nodes-to-rewrite*)))
+  unspecific)
 
 (define (rewrite-as-widened graph code widenable)
   ;; Rewrite CODE after widening all references to the WIDENABLE closures.  The
@@ -794,3 +840,12 @@ MIT in each case. |#
   (and (pair? x)
        (null? (cdr x))))
 
+(define (widen/remember new old)
+  (code-rewrite/remember new old))
+
+(define (widen/simple-rewrite new old)
+  (list (widen/remember* new old)))
+
+(define (widen/remember* new copy)
+  (code-rewrite/remember* new
+			  (code-rewrite/original-form copy)))
