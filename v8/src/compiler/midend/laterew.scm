@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: laterew.scm,v 1.11 1995/08/19 01:32:59 adams Exp $
+$Id: laterew.scm,v 1.12 1995/08/19 02:02:57 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -233,7 +233,7 @@ MIT in each case. |#
 				   (QUOTE #F)
 				   (LOOKUP ,x-name)
 				   (LOOKUP ,y-name)))
-			  ,(equivelent
+			  ,(equivalent
 			    `(CALL (QUOTE ,%genop)
 				   ,cont
 				   (LOOKUP ,x-name)
