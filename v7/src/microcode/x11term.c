@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11term.c,v 1.26 2000/01/18 05:11:46 cph Exp $
+$Id: x11term.c,v 1.27 2000/10/01 02:14:14 cph Exp $
 
 Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
@@ -319,11 +319,17 @@ DEFUN (xterm_dump_rectangle, (xw, x, y, width, height),
     y -= border;
   if ((y + height) > (XW_Y_SIZE (xw)))
     height = ((XW_Y_SIZE (xw)) - y);
-  xterm_dump_contents (xw,
-		       (x / fwidth),
-		       (((x + width) + (fwidth - 1)) / fwidth),
-		       (y / fheight),
-		       (((y + height) + (fheight - 1)) / fheight));
+  {
+    unsigned int x_start = (x / fwidth);
+    unsigned int x_end = (((x + width) + (fwidth - 1)) / fwidth);
+    unsigned int y_start = (y / fheight);
+    unsigned int y_end = (((y + height) + (fheight - 1)) / fheight);
+    if (x_end > (XW_X_CSIZE (xw)))
+      x_end = (XW_X_CSIZE (xw));
+    if (y_end > (XW_Y_CSIZE (xw)))
+      y_end = (XW_Y_CSIZE (xw));
+    xterm_dump_contents (xw, x_start, x_end, y_start, y_end);
+  }
   XFlush (XW_DISPLAY (xw));
 }
 
@@ -742,15 +748,7 @@ DEFUN (xterm_clear_rectangle, (xw, x_start, x_end, y_start, y_end, hl),
 	  (*scan++) = hl;
       }
     }
-  if (hl == 0)
-    XClearArea ((XW_DISPLAY (xw)),
-		(XW_WINDOW (xw)),
-		(XTERM_X_PIXEL (xw, x_start)),
-		(XTERM_Y_PIXEL (xw, y_start)),
-		(x_length * (FONT_WIDTH (XW_FONT (xw)))),
-		((y_end - y_start) * (FONT_HEIGHT (XW_FONT (xw)))),
-		False);
-  else
+  if (hl != 0)
     {
       GC hl_gc = (XTERM_HL_GC (xw, hl));
       for (y = y_start; (y < y_end); y += 1)
@@ -759,6 +757,19 @@ DEFUN (xterm_clear_rectangle, (xw, x_start, x_end, y_start, y_end, hl),
 	   (XTERM_CHAR_LOC (xw, (XTERM_CHAR_INDEX (xw, x_start, y)))),
 	   x_length, hl_gc);
     }
+  else if ((x_start == 0)
+	   && (y_start == 0)
+	   && (x_end == (XW_X_CSIZE (xw)))
+	   && (y_end == (XW_Y_CSIZE (xw))))
+    XClearWindow ((XW_DISPLAY (xw)), (XW_WINDOW (xw)));
+  else
+    XClearArea ((XW_DISPLAY (xw)),
+		(XW_WINDOW (xw)),
+		(XTERM_X_PIXEL (xw, x_start)),
+		(XTERM_Y_PIXEL (xw, y_start)),
+		(x_length * (FONT_WIDTH (XW_FONT (xw)))),
+		((y_end - y_start) * (FONT_HEIGHT (XW_FONT (xw)))),
+		False);
 }
 
 DEFINE_PRIMITIVE ("XTERM-CLEAR-RECTANGLE!", Prim_xterm_clear_rectangle, 6, 6, 0)
