@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infutl.scm,v 1.47 1993/07/28 03:42:02 cph Exp $
+$Id: infutl.scm,v 1.48 1993/11/09 04:31:38 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -38,8 +38,6 @@ MIT in each case. |#
 (declare (usual-integrations))
 (declare (integrate-external "infstr" "char"))
 
-(define *save-uncompressed-files?* true)
-
 (define (initialize-package!)
   (set! special-form-procedure-names
 	`((,lambda-tag:unnamed . LAMBDA)
@@ -49,7 +47,11 @@ MIT in each case. |#
 	  (,lambda-tag:fluid-let . FLUID-LET)
 	  (,lambda-tag:make-environment . MAKE-ENVIRONMENT)))
   (set! blocks-with-memoized-debugging-info (make-population))
-  (add-secondary-gc-daemon! discard-debugging-info!))
+  (add-secondary-gc-daemon! discard-debugging-info!)
+  (initialize-uncompressed-files!)
+  (add-event-receiver! event:after-restore initialize-uncompressed-files!)
+  (add-event-receiver! event:before-exit delete-uncompressed-files!)
+  (add-gc-daemon! clean-uncompressed-files!))
 
 (define (compiled-code-block/dbg-info block demand-load?)
   (let ((old-info (compiled-code-block/debugging-info block)))
@@ -96,12 +98,23 @@ MIT in each case. |#
   (let ((pathname (merge-pathnames filename)))
     (if (file-exists? pathname)
 	(fasload-loader (->namestring pathname))
-	(find-alternate-file-type
-	 pathname
-	 `(("inf" . ,fasload-loader)
-	   ("bif" . ,fasload-loader)
-	   ("bci" . ,(lambda (pathname)
-		       (compressed-loader pathname "bif"))))))))
+	(find-alternate-file-type pathname
+				  `(("inf" . ,fasload-loader)
+				    ("bif" . ,fasload-loader)
+				    ("bci" . ,(compressed-loader "bif")))))))
+
+(define (find-alternate-file-type base-pathname alist)
+  (let loop ((left alist) (time 0) (file #f) (receiver (lambda (x) x)))
+    (if (null? left)
+	(receiver file)
+	(let ((file* (pathname-new-type base-pathname (caar left)))
+	      (receiver* (cdar left)))
+	  (if (not (file-exists? file*))
+	      (loop (cdr left) time file receiver)
+	      (let ((time* (file-modification-time-direct file*)))
+		(if (> time* time)
+		    (loop (cdr left) time* file* receiver*)
+		    (loop (cdr left) time file receiver))))))))
 
 (define (memoize-debugging-info! block dbg-info)
   (without-interrupts
@@ -404,7 +417,7 @@ MIT in each case. |#
 			    (loop (cdr types))))))))))
     (and pathname
 	 (if (equal? "bcs" (pathname-type pathname))
-	     (compressed-loader pathname "bsm")
+	     ((compressed-loader "bsm") pathname)
 	     (fasload-loader pathname)))))
 
 (define (process-bsym-filename name)
@@ -550,40 +563,6 @@ MIT in each case. |#
 		      (vector-set! cp-table cp bp)
 		      (loop nbp ncp))))))))))
 
-(define (uncompress-internal ifile ofile if-fail)
-  (call-with-binary-input-file (merge-pathnames ifile)
-    (lambda (input)			       
-      (let* ((file-marker "Compressed-B1-1.00")
-	     (marker-size (string-length file-marker))
-	     (actual-marker (make-string marker-size)))
-	;; This may get more hairy as we up versions
-	(if (and (fix:= (uncompress-read-substring
-			 input actual-marker 0 marker-size)
-			marker-size)
-		 (string=? file-marker actual-marker))
-	    (call-with-binary-output-file (merge-pathnames ofile)
-   	      (lambda (output)					  
-		(let ((size (file-attributes/length (file-attributes ifile))))
-		  (uncompress-ports input output (fix:* size 2)))))
-	    (if-fail "Not a recognized compressed file" ifile))))))
-
-(define (find-alternate-file-type base-pathname exts/receivers)
-  (let find-loop ((left exts/receivers)
-		  (time 0)
-		  (file false)
-		  (handler identity-procedure))
-			     
-    (if (null? left)
-	(handler file)
-	(let ((file* (pathname-new-type base-pathname (caar left)))
-	      (handler* (cdar left)))
-	  (if (not (file-exists? file*))
-	      (find-loop (cdr left) time file handler)
-	      (let ((time* (file-modification-time-direct file*)))
-		(if (> time* time)
-		    (find-loop (cdr left) time* file* handler*)
-		    (find-loop (cdr left) time file handler))))))))
-
 (define (fasload-loader filename)
   (call-with-current-continuation
     (lambda (if-fail)
@@ -591,28 +570,129 @@ MIT in each case. |#
         (lambda (condition) condition (if-fail false))
         (lambda () (fasload filename true))))))
 
-(define (compressed-loader compressed-filename uncompressed-type)
-  (let ((core
-	 (lambda (uncompressed-filename)
-	   (call-with-current-continuation
-	    (lambda (if-fail)
-	      (uncompress-internal compressed-filename uncompressed-filename
-				   (lambda (message . irritants)
-				     message irritants
-				     (if-fail false)))
-	      (fasload-loader uncompressed-filename))))))
+(define (compressed-loader uncompressed-type)
+  (lambda (compressed-file)
+    (lookup-uncompressed-file compressed-file fasload-loader
+      (lambda ()
+	(let ((load-compressed
+	       (lambda (temporary-file)
+		 (call-with-current-continuation
+		  (lambda (k)
+		    (uncompress-internal compressed-file
+					 temporary-file
+					 (lambda (message . irritants)
+					   message irritants
+					   (k #f)))
+		    (fasload-loader temporary-file))))))
+	  (case *save-uncompressed-files?*
+	    ((#F)
+	     (call-with-temporary-file-pathname load-compressed))
+	    ((AUTOMATIC)
+	     (call-with-uncompressed-file-pathname compressed-file
+						   load-compressed))
+	    (else
+	     (call-with-temporary-file-pathname
+	      (lambda (temporary-file)
+		(let ((result (load-compressed temporary-file))
+		      (uncompressed-file
+		       (pathname-new-type compressed-file uncompressed-type)))
+		  (delete-file-no-errors uncompressed-file)
+		  (if (call-with-current-continuation
+		       (lambda (k)
+			 (bind-condition-handler
+			     (list condition-type:file-error
+				   condition-type:port-error)
+			     (lambda (condition) condition (k #t))
+			   (lambda ()
+			     (rename-file temporary-file uncompressed-file)
+			     #f))))
+		      (call-with-current-continuation
+		       (lambda (k)
+			 (bind-condition-handler
+			     (list condition-type:file-error
+				   condition-type:port-error)
+			     (lambda (condition) condition (k unspecific))
+			   (lambda ()
+			     (copy-file temporary-file uncompressed-file))))))
+		  result))))))))))
 
-    (call-with-temporary-filename
-     (if (not *save-uncompressed-files?*)
-	 core
-	 (lambda (temp-file)
-	   (let ((result (core temp-file)))
-	     (let ((new-file
-		    (pathname-new-type compressed-filename uncompressed-type))
-		   (dir (directory-pathname-as-file compressed-filename)))
-	       (if (file-writable? dir)
-		   (begin
-		     (if (file-exists? new-file)
-			 (delete-file new-file))
-		     (copy-file temp-file new-file)))
-	       result)))))))
+(define (uncompress-internal ifile ofile if-fail)
+  (call-with-binary-input-file (merge-pathnames ifile)
+    (lambda (input)			       
+      (let* ((file-marker "Compressed-B1-1.00")
+	     (marker-size (string-length file-marker))
+	     (actual-marker (make-string marker-size)))
+	;; This may get more hairy as we up versions
+	(if (and (fix:= (uncompress-read-substring input
+						   actual-marker 0 marker-size)
+			marker-size)
+		 (string=? file-marker actual-marker))
+	    (call-with-binary-output-file (merge-pathnames ofile)
+   	      (lambda (output)					  
+		(let ((size (file-attributes/length (file-attributes ifile))))
+		  (uncompress-ports input output (fix:* size 2)))))
+	    (if-fail "Not a recognized compressed file:" ifile))))))
+
+(define (lookup-uncompressed-file compressed-file if-found if-not-found)
+  (dynamic-wind
+   (lambda ()
+     (set-car! uncompressed-files (+ (car uncompressed-files) 1)))
+   (lambda ()
+     (let loop ((entries (cdr uncompressed-files)))
+       (cond ((null? entries)
+	      (if-not-found))
+	     ((and (pathname=? (caar entries) compressed-file)
+		   (cddar entries))
+	      (dynamic-wind
+	       (lambda () unspecific)
+	       (lambda () (if-found (cadar entries)))
+	       (lambda () (set-cdr! (cdar entries) (real-time-clock)))))
+	     (else
+	      (loop (cdr entries))))))
+   (lambda ()
+     (set-car! uncompressed-files (- (car uncompressed-files) 1)))))
+
+(define (call-with-uncompressed-file-pathname compressed-file receiver)
+  (let ((temporary-file (temporary-file-pathname)))
+    (let ((entry
+	   (cons compressed-file
+		 (cons temporary-file (real-time-clock)))))
+      (dynamic-wind
+       (lambda () unspecific)
+       (lambda ()
+	 (without-interrupts
+	  (lambda ()
+	    (set-cdr! uncompressed-files
+		      (cons entry (cdr uncompressed-files)))))
+	 (receiver temporary-file))
+       (lambda ()
+	 (set-cdr! (cdr entry) (real-time-clock)))))))
+
+(define (delete-uncompressed-files!)
+  (do ((entries (cdr uncompressed-files) (cdr entries)))
+      ((null? entries) unspecific)
+    (deallocate-temporary-file (cadar entries))))
+
+(define (clean-uncompressed-files!)
+  (if (= 0 (car uncompressed-files))
+      (let ((time (real-time-clock)))
+	(let loop
+	    ((entries (cdr uncompressed-files))
+	     (prev uncompressed-files))
+	  (if (not (null? entries))
+	      (if (or (not (cddar entries))
+		      (< (- time (cddar entries))
+			 *uncompressed-file-lifetime*))
+		  (loop (cdr entries) entries)
+		  (begin
+		    (set-cdr! prev (cdr entries))
+		    (deallocate-temporary-file (cadar entries))
+		    (loop (cdr entries) prev))))))))
+
+(define (initialize-uncompressed-files!)
+  (set! uncompressed-files (list 0))
+  unspecific)
+
+(define *save-uncompressed-files?* 'AUTOMATIC)
+(define *uncompressed-file-lifetime* 300000)
+(define uncompressed-files)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sfile.scm,v 14.9 1993/11/06 21:36:53 cph Exp $
+$Id: sfile.scm,v 14.10 1993/11/09 04:31:40 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -98,3 +98,40 @@ MIT in each case. |#
        (lambda ()
 	 (if output-channel (channel-close output-channel))
 	 (if input-channel (channel-close input-channel)))))))
+
+(define (call-with-temporary-filename receiver)
+  (call-with-temporary-file-pathname
+   (lambda (pathname)
+     (receiver (->namestring pathname)))))
+
+(define (call-with-temporary-file-pathname receiver)
+  (let ((pathname (temporary-file-pathname)))
+    (dynamic-wind
+     (lambda () unspecific)
+     (lambda () (receiver pathname))
+     (lambda () (deallocate-temporary-file pathname)))))
+
+(define (allocate-temporary-file pathname)
+  (and (not (file-exists? pathname))
+       (let ((objects (get-fixed-objects-vector))
+	     (slot (fixed-objects-vector-slot 'FILES-TO-DELETE))
+	     (filename (->namestring pathname)))
+	 (without-interrupts
+	  (lambda ()
+	    (and (file-touch pathname)
+		 (begin
+		   (vector-set! objects slot
+				(cons filename (vector-ref objects slot)))
+		   ((ucode-primitive set-fixed-objects-vector! 1) objects)
+		   #t)))))))
+
+(define (deallocate-temporary-file pathname)
+  (delete-file-no-errors pathname)
+  (let ((objects (get-fixed-objects-vector))
+	(slot (fixed-objects-vector-slot 'FILES-TO-DELETE))
+	(filename (->namestring pathname)))
+    (without-interrupts
+     (lambda ()
+       (vector-set! objects slot
+		    (delete! filename (vector-ref objects slot)))
+       ((ucode-primitive set-fixed-objects-vector! 1) objects)))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dosprm.scm,v 1.20 1993/09/07 21:56:27 gjr Exp $
+$Id: dosprm.scm,v 1.21 1993/11/09 04:31:37 cph Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -74,33 +74,37 @@ MIT in each case. |#
 		(directory-namestring pathname)
 		2))))))
 
-(define (call-with-temporary-filename receiver)
-  (let find-eligible-directory
-      ((eligible-directories 
-	(let ((tmp (or (get-environment-variable "TEMP")
-		       (get-environment-variable "TMP")))
-	      (others '("/tmp" "c:/" "." "/")))
-	  (if (not tmp) others (cons tmp others)))))
-    (if (null? eligible-directories)
-	(error "Can't locate directory for temporary file")
-	(let ((dir (->namestring
-		    (pathname-as-directory
-		     (merge-pathnames (car eligible-directories))))))
-	  (if (and (file-directory? dir) (file-writable? dir))
-	      (let ((base-name (string-append dir "_scm_tmp.")))
-		(let unique-file ((ext 0))
-		  (let ((name (string-append base-name (number->string ext))))
-		    (if (or (file-exists? name) (not (file-touch name)))
-			(if (fix:> ext 999) ; don't get rediculous here
-			    (error "Cannot find unique temp file name"
-				   base-name)
-			    (unique-file (fix:+ ext 1)))
-			(dynamic-wind
-			 (lambda () unspecific)
-			 (lambda () (receiver name))
-			 (lambda () (if (file-exists? name)
-					(delete-file name))))))))
-	      (find-eligible-directory (cdr eligible-directories)))))))
+(define (temporary-file-pathname)
+  (let ((root (merge-pathnames "_scm_tmp" (temporary-directory-pathname))))
+    (let loop ((ext 0))
+      (let ((pathname (pathname-new-type root (number->string ext))))
+	(if (allocate-temporary-file pathname)
+	    pathname
+	    (begin
+	      (if (> ext 999)
+		  (error "Can't find unique temporary pathname:" root))
+	      (loop (+ ext 1))))))))
+
+(define (temporary-directory-pathname)
+  (let ((try-directory
+	 (lambda (directory)
+	   (let ((directory
+		  (pathname-as-directory (merge-pathnames directory))))
+	     (and (file-directory? directory)
+		  (file-writable? directory)
+		  directory)))))
+    (let ((try-variable
+	   (lambda (name)
+	     (let ((value (get-environment-variable name)))
+	       (and value
+		    (try-directory value))))))
+      (or (try-variable "TEMP")
+	  (try-variable "TMP")
+	  (try-directory "/tmp")
+	  (try-directory "c:/")
+	  (try-directory ".")
+	  (try-directory "/")
+	  (error "Can't find temporary directory.")))))
 
 (define (file-attributes filename)
   ((ucode-primitive file-attributes 1)
