@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uenvir.scm,v 14.31 1994/01/29 00:51:52 gjr Exp $
+$Id: uenvir.scm,v 14.32 1994/01/29 21:57:32 adams Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -240,8 +240,15 @@ MIT in each case. |#
 (define (ic-environment/remove-parent! environment)
   (ic-environment/set-parent! environment null-environment))
 
+
+;;  This corresponds to the #defines in sdata.h
+
 (define null-environment
-  (object-new-type (ucode-type null) 1))
+  (object-new-type (object-type #F)
+		   (fix:xor (object-datum #F) 1)))
+
+;;(define null-environment
+;;  (object-new-type (ucode-type null) 1))
 
 (define (make-null-interpreter-environment)
   (let ((environment (let () (the-environment))))
@@ -324,9 +331,6 @@ MIT in each case. |#
 	   default))))
 
 (define (compiled-procedure/environment entry)
-  (if (not (compiled-procedure? entry))
-      (error "Not a compiled procedure" entry
-	     'COMPILED-PROCEDURE/ENVIRONMENT))
   (let ((procedure (compiled-entry/dbg-object entry)))
     (if (not procedure)
 	(error "Unable to obtain closing environment" entry))
