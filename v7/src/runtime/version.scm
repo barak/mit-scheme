@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/version.scm,v 14.2 1988/06/13 12:00:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/version.scm,v 14.3 1988/06/13 13:05:41 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -37,8 +37,9 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(add-system! (make-system "Microcode"
-			  microcode-id/version
-			  microcode-id/modification
-			  '()))
-(add-system! (make-system "Runtime" 14 2 '()))
+(define (initialize-package!)
+  (add-system! (make-system "Microcode"
+			    microcode-id/version
+			    microcode-id/modification
+			    '()))
+  (add-system! (make-system "Runtime" 14 2 '())))
