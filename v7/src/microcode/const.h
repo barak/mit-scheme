@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: const.h,v 9.43 1993/09/11 02:45:52 gjr Exp $
+$Id: const.h,v 9.44 1997/07/16 02:39:43 adams Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -66,8 +66,8 @@ MIT in each case. */
 
 #ifndef SHARP_F			/* Safe version */
 #define SHARP_F			MAKE_OBJECT (TC_NULL, 0)
-#define SHARP_T			MAKE_OBJECT (TC_TRUE, 0)
-#define UNSPECIFIC		MAKE_OBJECT (TC_TRUE, 1)
+#define SHARP_T			MAKE_OBJECT (TC_CONSTANT, 0)
+#define UNSPECIFIC		MAKE_OBJECT (TC_CONSTANT, 1)
 #define FIXNUM_ZERO		MAKE_OBJECT (TC_FIXNUM, 0)
 #define BROKEN_HEART_ZERO	MAKE_OBJECT (TC_BROKEN_HEART, 0)
 #endif /* SHARP_F */
@@ -108,7 +108,7 @@ MIT in each case. */
 /* For headers in pure / constant area */
 
 #define END_OF_BLOCK		TC_FIXNUM
-#define CONSTANT_PART		TC_TRUE
+#define CONSTANT_PART		TC_CONSTANT
 #define PURE_PART		TC_FALSE
 
 /* Primitive flow control codes: directs computation after
@@ -151,7 +151,7 @@ MIT in each case. */
 /* VMS preprocessor does not like line continuations in conditionals */
 
 #define Are_The_Constants_Incompatible					\
-((TC_NULL != 0x00) || (TC_TRUE != 0x08) ||				\
+((TC_NULL != 0x00) || (TC_CONSTANT != 0x08) ||				\
  (TC_FIXNUM != 0x1A) || (TC_BROKEN_HEART != 0x22) || 			\
  (TC_CHARACTER_STRING != 0x1E))
 

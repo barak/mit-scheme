@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: gctype.c,v 9.32 1992/12/05 03:33:18 cph Exp $
+$Id: gctype.c,v 9.33 1997/07/16 02:40:39 adams Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
@@ -49,7 +49,7 @@ int GC_Type_Map[MAX_TYPE_CODE + 1] = {
     GC_Pair,			/* TC_UNINTERNED_SYMBOL */
     GC_Vector,			/* TC_BIG_FLONUM */
     GC_Pair,			/* TC_COMBINATION_1 */
-    GC_Non_Pointer,		/* TC_TRUE */
+    GC_Non_Pointer,		/* TC_CONSTANT */
     GC_Pair,			/* TC_EXTENDED_PROCEDURE */
     GC_Vector,			/* TC_VECTOR */
     GC_Non_Pointer,		/* TC_RETURN_CODE */

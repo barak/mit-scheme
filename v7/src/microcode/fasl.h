@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fasl.h,v 9.36 1994/11/19 21:22:47 cph Exp $
+$Id: fasl.h,v 9.37 1997/07/16 02:39:26 adams Exp $
 
 Copyright (c) 1987-94 Massachusetts Institute of Technology
 
@@ -88,10 +88,10 @@ MIT in each case. */
 #define CI_MASK			((ONE << (DATUM_LENGTH / 2)) - 1)
 #define CI_VERSION(P)		(((P) >> (DATUM_LENGTH / 2)) & CI_MASK)
 #define CI_PROCESSOR(P)		((P) & CI_MASK)
-#define CI_BAND_P(P)		((OBJECT_TYPE (P)) == TC_TRUE)
+#define CI_BAND_P(P)		((OBJECT_TYPE (P)) == TC_CONSTANT)
 
 #define MAKE_CI_VERSION(Band_p, Version, Processor_Type)		\
-  MAKE_OBJECT (((Band_p) ? TC_TRUE : TC_NULL),				\
+  MAKE_OBJECT (((Band_p) ? TC_CONSTANT : TC_NULL),				\
 	       ((((unsigned long) (Version)) << (DATUM_LENGTH / 2))	\
 		| (Processor_Type)))
 
