@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.139 1991/03/16 00:01:19 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.140 1991/03/22 00:30:44 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -80,8 +80,8 @@ The buffer is guaranteed to be deselected at that time."
   (make-event-distributor))
 
 (define (make-buffer name mode directory)
-  (let ((group (region-group (string->region ""))))
-    (let ((buffer (%make-buffer)))
+  (let ((buffer (%make-buffer)))
+    (let ((group (make-group (string-copy "") buffer)))
       (vector-set! buffer buffer-index:name name)
       (vector-set! buffer buffer-index:group group)
       (let ((daemon (buffer-modification-daemon buffer)))

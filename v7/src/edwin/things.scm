@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/things.scm,v 1.78 1989/04/28 22:53:57 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/things.scm,v 1.79 1991/03/22 00:33:08 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -118,8 +118,8 @@
       (let ((m2 (mark-permanent! (forward-thing m4 -1 'ERROR))))
 	(let ((m1 (mark-permanent! (forward-thing m2 -1 'ERROR))))
 	  (let ((m3 (forward-thing m1 1 'ERROR)))
-	    (region-insert! m4 (region-extract! (make-region m1 m3)))
-	    (region-insert! m1 (region-extract! (make-region m2 m4))))))))
+	    (insert-string (extract-and-delete-string m1 m3) m4)
+	    (insert-string (extract-and-delete-string m2 m4) m1))))))
 
   (define (backward-once i)
     i					;ignore
@@ -127,8 +127,8 @@
       (let ((m1 (mark-left-inserting (forward-thing m2 -1 'ERROR))))
 	(let ((m3 (forward-thing m1 1 'ERROR))
 	      (m4 (mark-right-inserting (forward-thing m2 1 'ERROR))))
-	    (region-insert! m4 (region-extract! (make-region m1 m3)))
-	    (region-insert! m1 (region-extract! (make-region m2 m4))))
+	    (insert-string (extract-and-delete-string m1 m3) m4)
+	    (insert-string (extract-and-delete-string m2 m4) m1))
 	(set-current-point! m1))))
 
   (define (special)
@@ -150,8 +150,8 @@
 	  (m3 (forward-thing m1 1 'ERROR))
 	  (m2 (mark-permanent! m2))
 	  (m4 (mark-right-inserting (forward-thing m2 1 'ERROR))))
-      (region-insert! m4 (region-extract! (make-region m1 m3)))
-      (region-insert! m1 (region-extract! (make-region m2 m4)))
+      (insert-string (extract-and-delete-string m1 m3) m4)
+      (insert-string (extract-and-delete-string m2 m4) m1)
       (receiver m4 m1)))
 
   (define (normalize m)

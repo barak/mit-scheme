@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regops.scm,v 1.80 1989/04/28 22:52:31 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regops.scm,v 1.81 1991/03/22 00:32:43 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -46,12 +46,6 @@
 
 (declare (usual-integrations))
 
-(define (string->region string)
-  (group-region (make-group (string-copy string))))
-
-(define (substring->region string start end)
-  (group-region (make-group (substring string start end))))
-
 (define (region-insert! mark region)
   (let ((string (region->string region))
 	(group (mark-group mark))
@@ -84,17 +78,6 @@
   (group-delete! (region-group region)
 		 (region-start-index region)
 		 (region-end-index region)))
-
-(define (region-extract! region)
-  (let ((group (region-group region))
-	(start (region-start-index region))
-	(end (region-end-index region)))
-    (let ((string (group-extract-string group start end)))
-      (group-delete! group start end)
-      (group-region (make-group string)))))
-
-(define (region-copy region)
-  (string->region (region->string region)))
 
 (define (mark-left-char mark)
   (if (group-start? mark)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.19 1991/02/15 18:13:22 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.20 1991/03/22 00:31:39 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -302,7 +302,7 @@ may be available.  The following commands are special to this mode:
 	       (lambda (port)
 		 (write-condition-report condition port)))))
 	(if (and (not (string-find-next-char string #\newline))
-		 (< (string-column-length string 18) 80))
+		 (< (string-columns string 18 false) 80))
 	    (message "Evaluation error: " string)
 	    (begin
 	      (string->temporary-buffer string "*Error*")

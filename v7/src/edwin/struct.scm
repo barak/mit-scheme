@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/struct.scm,v 1.73 1991/03/15 23:34:14 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/struct.scm,v 1.74 1991/03/22 00:33:00 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -103,9 +103,10 @@
   undo-data
   modified?
   point
+  buffer
   )
 
-(define (make-group string)
+(define (make-group string buffer)
   (let ((group (%make-group))
 	(n (string-length string)))
     (vector-set! group group-index:text string)
@@ -126,6 +127,7 @@
     (vector-set! group group-index:undo-data false)
     (vector-set! group group-index:modified? false)
     (vector-set! group group-index:point (%make-permanent-mark group 0 true))
+    (vector-set! group group-index:buffer buffer)
     group))
 
 (define (group-length group)
@@ -269,6 +271,9 @@
   (vector-set! group
 	       group-index:clip-daemons
 	       (delq! daemon (vector-ref group group-index:clip-daemons))))
+
+(define-integrable (group-tab-width group)
+  (variable-local-value (group-buffer group) (ref-variable-object tab-width)))
 
 ;;;; Marks
 
@@ -357,6 +362,9 @@
 (define (mark>= mark1 mark2)
   (and (mark~ mark1 mark2)
        (not (fix:< (mark-index mark1) (mark-index mark2)))))
+
+(define-integrable (mark-buffer mark)
+  (group-buffer (mark-group mark)))
 
 (define-integrable (group-start mark)
   (group-start-mark (mark-group mark)))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modlin.scm,v 1.6 1991/03/16 00:02:41 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modlin.scm,v 1.7 1991/03/22 00:32:30 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -309,8 +309,7 @@ If #F, the normal method is used."
 		     line column min-end max-end))
 
 (define (display-substring string start end line column min-end max-end)
-  (let ((representation
-	 (substring-representation string start end column)))
+  (let ((representation (substring-image string start end column false)))
     (let ((size (string-length representation)))
       (let ((end (+ column size)))
 	(if (> end max-end)

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/motion.scm,v 1.82 1990/11/02 03:12:37 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/motion.scm,v 1.83 1991/03/22 00:32:37 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -194,11 +194,17 @@
 	  (if (not i)
 	      n
 	      (loop (fix:1+ i) n))))))
-
+
 ;;;; Motion by Columns
 
 (define (mark-column mark)
-  (group-index->column (mark-group mark) (mark-index mark)))
+  (let ((group (mark-group mark))
+	(index (mark-index mark)))
+    (group-columns group
+		   (line-start-index group index)
+		   index
+		   0
+		   (group-tab-width group))))
 
 (define (move-to-column mark column)
   (let ((group (mark-group mark))
@@ -208,43 +214,5 @@
 				    (line-start-index group index)
 				    (line-end-index group index)
 				    0
-				    column))))
-
-(define (group-index->column group index)
-  (group-column-length group (line-start-index group index) index 0))
-
-(define (group-column-length group start-index end-index start-column)
-  (if (fix:= start-index end-index)
-      0
-      (let ((start (group-index->position-integrable group start-index true))
-	    (end (group-index->position-integrable group end-index false))
-	    (gap-start (group-gap-start group))
-	    (gap-end (group-gap-end group))
-	    (text (group-text group)))
-	(if (and (fix:<= start gap-start)
-		 (fix:<= gap-end end))
-	    (substring-column-length text gap-end end
-	      (substring-column-length text start gap-start start-column))
-	    (substring-column-length text start end start-column)))))
-
-(define (group-column->index group start-index end-index start-column column)
-  (if (fix:= start-index end-index)
-      start-index
-      (let ((start (group-index->position-integrable group start-index true))
-	    (end (group-index->position-integrable group end-index false))
-	    (gap-start (group-gap-start group))
-	    (gap-end (group-gap-end group))
-	    (text (group-text group)))
-	(cond ((fix:<= end gap-start)
-	       (substring-column->index text start end start-column column))
-	      ((fix:>= start gap-end)
-	       (fix:- (substring-column->index text start end
-					       start-column column)
-		      (group-gap-length group)))
-	      (else
-	       (substring-column->index text start gap-start
-					start-column column
-		 (lambda (gap-column)
-		   (fix:- (substring-column->index text gap-end end
-						   gap-column column)
-			  (group-gap-length group)))))))))
+				    column
+				    (group-tab-width group)))))

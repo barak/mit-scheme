@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.92 1991/02/15 18:13:37 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.93 1991/03/22 00:31:46 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -54,12 +54,11 @@
   (let ((truename (pathname->input-truename pathname)))
     (if truename
 	(begin
-	 (let ((region (file->region-interactive truename)))
-	   (region-delete! (buffer-unclipped-region buffer))
-	   (region-insert! (buffer-start buffer) region))
-	 (set-buffer-point! buffer (buffer-start buffer))
-	 (set-buffer-modification-time! buffer
-					(file-modification-time truename))))
+	  (region-delete! (buffer-unclipped-region buffer))
+	  (%insert-file (buffer-start buffer) truename)
+	  (set-buffer-point! buffer (buffer-start buffer))
+	  (set-buffer-modification-time! buffer
+					 (file-modification-time truename))))
     (set-buffer-truename! buffer truename))
   (set-buffer-save-length! buffer)
   (buffer-not-modified! buffer)
@@ -74,32 +73,49 @@
   (let ((pathname (->pathname filename)))
     (let ((truename (pathname->input-truename pathname)))
       (if truename
-	  (region-insert! mark (file->region-interactive truename))
+	  (%insert-file mark truename)
 	  (editor-error "File " (pathname->string pathname) " not found")))))
 
 (define-variable read-file-message
   "If true, messages are displayed when files are read into the editor."
   false)
 
-(define (file->region-interactive truename)
-  (if (ref-variable read-file-message)
-      (let ((filename (pathname->string truename)))
-	(temporary-message "Reading file \"" filename "\"")
-	(let ((region (file->region truename)))
-	  (append-message " -- done")
-	  region))
-      (file->region truename)))
+(define (%insert-file mark truename)
+  (let ((doit
+	 (lambda ()
+	   (group-insert-file! (mark-group mark) (mark-index mark) truename))))
+    (if (ref-variable read-file-message)
+	(begin
+	  (temporary-message "Reading file \""
+			     (pathname->string truename)
+			     "\"")
+	  (doit)
+	  (append-message " -- done"))
+	(doit))))
 
-(define (file->region pathname)
-  (call-with-input-file pathname port->region))
-
-(define (port->region port)
-  (group-region
-   (make-group
-    (let ((rest->string (input-port/operation port 'REST->STRING)))
-      (if rest->string
-	  (rest->string port)
-	  (read-string char-set:null port))))))
+(define (group-insert-file! group index truename)
+  (let ((channel (file-open-input-channel (pathname->string truename))))
+    (let ((length (file-length channel)))
+      (without-interrupts
+       (lambda ()
+	 (move-gap-to! group index)
+	 (guarantee-gap-length! group length)))
+      (let ((n
+	     (channel-read channel
+			   (group-text group)
+			   index
+			   (+ index length))))
+	(without-interrupts
+	 (lambda ()
+	   (vector-set! group
+			group-index:gap-length
+			(fix:- (group-gap-length group) n))
+	   (let ((gap-start* (fix:+ index n)))
+	     (vector-set! group group-index:gap-start gap-start*)
+	     (undo-record-insertion! group index gap-start*)
+	     (record-insertion! group index gap-start*))))
+	(channel-close channel)
+	n))))
 
 ;;;; Buffer Mode Initialization
 

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lincom.scm,v 1.105 1990/11/16 11:38:07 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lincom.scm,v 1.106 1991/03/22 00:32:14 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -75,11 +75,10 @@ transposed."
     (cond ((and (= argument 1) (group-end? (current-point)))
 	   (if (not (line-start? (current-point)))
 	       (insert-newlines 1))
-	   (let ((region
-		  (region-extract!
-		   (make-region (forward-line (current-point) -2 'ERROR)
-				(forward-line (current-point) -1 'ERROR)))))
-	     (region-insert! (current-point) region)))
+	   (insert-string (extract-and-delete-string
+			   (forward-line (current-point) -2 'ERROR)
+			   (forward-line (current-point) -1 'ERROR))
+			  (current-point)))
 	  (else
 	   (transpose-things forward-line argument)))))
 
@@ -341,11 +340,6 @@ moves down one line first (killing newline after current line)."
   "\\[delete-indentation] won't insert a space to the left of these."
   (char-set #\)))
 
-(define-variable-per-buffer tab-width
-  "Distance between tab stops (for display of tab characters), in columns.
-Automatically becomes local when set in any fashion."
-  8)
-
 (define-variable indent-tabs-mode
   "If false, do not use tabs for indentation or horizontal spacing."
   true)

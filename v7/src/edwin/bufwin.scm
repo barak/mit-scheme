@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.289 1991/03/16 08:11:28 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.290 1991/03/22 00:31:01 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -64,14 +64,13 @@
    ;; The buffer being displayed in this window.
    buffer
 
+   ;; Caches for the values of buffer-local variables that are needed
+   ;; for redisplay.
+   truncate-lines?
+   tab-width
+
    ;; The point marker in this window.
    point
-
-   ;; If this flag is false, text lines that are too long to fit on
-   ;; a single window line are displayed with multiple window lines.
-   ;; If the flag is true, such text lines are truncated to single
-   ;; window lines.
-   truncate-lines?
 
    ;; This is the inferior window (of class CURSOR-WINDOW) that
    ;; displays the cursor for this window.
@@ -87,10 +86,10 @@
    ;; This is normally #F.  However, when the normal display of the
    ;; buffer is overridden by a one-line message, as is commonly done
    ;; for the typein window, this variable contains the inferior
-   ;; window (of class LINE-WINDOW) that displays the message.
+   ;; window (of class STRING-BASE) that displays the message.
    override-inferior
 
-   ;; A list of the inferior windows (of class LINE-WINDOW) that are
+   ;; A list of the inferior windows (of class STRING-BASE) that are
    ;; currently displaying the portion of the buffer that is visible
    ;; in this window.
    line-inferiors
@@ -175,6 +174,20 @@
   (with-instance-variables buffer-window window (buffer*)
     (set! buffer buffer*)))
 
+(define-integrable (%window-truncate-lines? window)
+  (with-instance-variables buffer-window window () truncate-lines?))
+
+(define-integrable (%set-window-truncate-lines?! window truncate-lines?*)
+  (with-instance-variables buffer-window window (truncate-lines?*)
+    (set! truncate-lines? truncate-lines?*)))
+
+(define-integrable (%window-tab-width window)
+  (with-instance-variables buffer-window window () tab-width))
+
+(define-integrable (%set-window-tab-width! window tab-width*)
+  (with-instance-variables buffer-window window (tab-width*)
+    (set! tab-width tab-width*)))
+
 (define-integrable (%window-point window)
   (with-instance-variables buffer-window window () point))
 
@@ -190,13 +203,6 @@
 		      (%make-permanent-mark (%window-group window)
 					    index
 					    true)))
-
-(define-integrable (%window-truncate-lines? window)
-  (with-instance-variables buffer-window window () truncate-lines?))
-
-(define-integrable (%set-window-truncate-lines?! window truncate-lines?*)
-  (with-instance-variables buffer-window window (truncate-lines?*)
-    (set! truncate-lines? truncate-lines?*)))
 
 (define-integrable (%window-cursor-inferior window)
   (with-instance-variables buffer-window window () cursor-inferior))
@@ -609,7 +615,6 @@
 (define (%clear-window-buffer-state! window)
   (%set-window-buffer! window false)
   (%set-window-point! window false)
-  (%set-window-truncate-lines?! window false)
   (if (%window-start-line-mark window)
       (clear-start-mark! window))
   (%set-window-point-moved?! window false)
@@ -646,6 +651,19 @@
 	(mark-temporary! (%window-end-clip-mark window))
 	(%set-window-start-clip-mark! window false)
 	(%set-window-end-clip-mark! window false))))
+
+(define (%recache-window-buffer-local-variables! window)
+  (let ((buffer (%window-buffer window)))
+    (%set-window-truncate-lines?!
+     window
+     (or (variable-local-value buffer (ref-variable-object truncate-lines))
+	 (and (variable-local-value
+	       buffer
+	       (ref-variable-object truncate-partial-width-windows))
+	      (window-has-horizontal-neighbor? (window-superior window)))))
+    (%set-window-tab-width!
+     window
+     (variable-local-value buffer (ref-variable-object tab-width)))))
 
 ;;;; Buffer and Point
 
@@ -893,50 +911,32 @@ This number is a percentage, where 0 is the window's top and 100 the bottom."
 
 ;;;; Line Inferiors
 
-(define-class line-window string-base
-  ())
-
-(define-integrable (make-line-inferior window start end)
-  (%make-line-inferior window (%window-extract-string window start end)))
-
-(define (%make-line-inferior window string)
-  (let ((window* (make-object line-window))
+(define (make-line-inferior window string image)
+  (let ((window* (make-object string-base))
 	(flags (cons false (window-redisplay-flags window))))
     (let ((inferior (%make-inferior window* false false flags)))
       (set-window-inferiors! window (cons inferior (window-inferiors window)))
       (%set-window-superior! window* window)
       (set-window-inferiors! window* '())
       (%set-window-redisplay-flags! window* flags)
-      (%set-window-x-size! window* (window-x-size window))
-      (let ((*image (string->image string 0)))
-	(%set-window-y-size! window*
-			     (column->y-size (image-column-size *image)
-					     (window-x-size window)
-					     (%window-truncate-lines? window)))
-	(with-instance-variables line-window window*
-				 (*image %window-truncate-lines? window)
-	  (set! image *image)
-	  (set! truncate-lines? (%window-truncate-lines? window))))
-      (string-base:refresh! window*)
+      (string-base:initialize! window*
+			       string
+			       image
+			       (window-x-size window)
+			       (%window-truncate-lines? window)
+			       (%window-tab-width window))
       (%set-inferior-x-start! inferior 0)
       inferior)))
 
-(define-integrable (line-window-image window)
-  (with-instance-variables line-window window () image))
-
-(define-integrable (line-window-string window)
-  (image-string (line-window-image window)))
-
-(define-integrable (line-window-length window)
-  (string-length (line-window-string window)))
-
 (define-integrable (line-inferior-length inferior)
-  (fix:+ (line-window-length (inferior-window inferior)) 1))
+  (fix:+ (string-base:string-length (inferior-window inferior)) 1))
 
 (define (buffer-window/override-message window)
   (let ((inferior (%window-override-inferior window)))
     (and inferior
-	 (line-window-string (inferior-window inferior)))))
+	 (let ((window (inferior-window inferior)))
+	   (string-head (string-base:string window)
+			(string-base:string-length window))))))
 
 (define (buffer-window/set-override-message! window message)
   (if (%window-debug-trace window)
@@ -944,7 +944,10 @@ This number is a percentage, where 0 is the window's top and 100 the bottom."
 				    message))
   (without-interrupts
    (lambda ()
-     (let ((inferior (%make-line-inferior window message)))
+     (let ((inferior
+	    (make-line-inferior window
+				message
+				(string-image message 0 false))))
        (%set-window-override-inferior! window inferior)
        (set-inferior-start! inferior 0 0)
        (set-inferior-position!

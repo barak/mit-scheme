@@ -17,8 +17,6 @@
 	       syntax-table/system-internal)
     ("bufmnu"  (edwin buffer-menu)
 	       edwin-syntax-table)
-    ("bufott"  (edwin buffer-output-port-truncating)
-	       syntax-table/system-internal)
     ("bufout"  (edwin buffer-output-port)
 	       syntax-table/system-internal)
     ("bufset"  (edwin)

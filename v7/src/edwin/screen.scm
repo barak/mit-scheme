@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.89 1991/03/16 08:13:04 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.90 1991/03/22 00:32:50 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -233,6 +233,10 @@
   ;; mean anything.
   enable
 
+  ;; Boolean-vector indicating, for each line, whether there is any
+  ;; highlighting on the line.
+  highlight-enable
+
   ;; Cursor position.
   cursor-x
   cursor-y)
@@ -243,7 +247,8 @@
 	(y-size (screen-y-size screen)))
     (let ((contents (make-vector y-size))
 	  (highlight (make-vector y-size))
-	  (enable (make-boolean-vector y-size)))
+	  (enable (make-boolean-vector y-size))
+	  (highlight-enable (make-boolean-vector y-size)))
       (do ((i 0 (fix:1+ i)))
 	  ((fix:= i y-size))
 	(vector-set! contents i (make-string x-size))
@@ -251,7 +256,8 @@
       (boolean-vector-fill! enable false)
       (set-matrix-contents! matrix contents)
       (set-matrix-highlight! matrix highlight)
-      (set-matrix-enable! matrix enable))
+      (set-matrix-enable! matrix enable)
+      (set-matrix-highlight-enable! matrix highlight-enable))
     (set-matrix-cursor-x! matrix false)
     (set-matrix-cursor-y! matrix false)
     matrix))
@@ -296,12 +302,124 @@
 	(begin
 	  (boolean-vector-set! (matrix-enable new-matrix) y true)
 	  (set-screen-needs-update?! screen true)
-	  (guarantee-display-line screen y)))
+	  (initialize-new-line-contents screen y)))
     (string-set! (vector-ref (matrix-contents new-matrix) y) x char)
-    (boolean-vector-set! (vector-ref (matrix-highlight new-matrix) y)
-			 x
-			 highlight)))
+    (cond ((boolean-vector-ref (matrix-highlight-enable new-matrix) y)
+	   (boolean-vector-set! (vector-ref (matrix-highlight new-matrix) y)
+				x highlight))
+	  (highlight
+	   (boolean-vector-set! (matrix-highlight-enable new-matrix) y true)
+	   (initialize-new-line-highlight screen y)
+	   (boolean-vector-set! (vector-ref (matrix-highlight new-matrix) y)
+				x highlight)))))
 
+(define (screen-output-substring screen x y string start end highlight)
+  (if (screen-debug-trace screen)
+      ((screen-debug-trace screen) 'screen screen 'output-substring
+				   x y (string-copy string) start end
+				   highlight))
+  (let ((new-matrix (screen-new-matrix screen))
+	(xu (fix:+ x (fix:- end start))))
+    (let ((full-line? (and (fix:= x 0) (fix:= xu (screen-x-size screen)))))
+      (if (not (boolean-vector-ref (matrix-enable new-matrix) y))
+	  (begin
+	    (boolean-vector-set! (matrix-enable new-matrix) y true)
+	    (set-screen-needs-update?! screen true)
+	    (if (not full-line?) (initialize-new-line-contents screen y))))
+      (substring-move-left! string start end
+			    (vector-ref (matrix-contents new-matrix) y) x)
+      (cond ((boolean-vector-ref (matrix-highlight-enable new-matrix) y)
+	     (if (and full-line? (not highlight))
+		 (boolean-vector-set! (matrix-highlight-enable new-matrix)
+				      y false)
+		 (boolean-subvector-fill!
+		  (vector-ref (matrix-highlight new-matrix) y)
+		  x xu highlight)))
+	    (highlight
+	     (boolean-vector-set! (matrix-highlight-enable new-matrix) y true)
+	     (if (not full-line?) (initialize-new-line-highlight screen y))
+	     (boolean-subvector-fill!
+	      (vector-ref (matrix-highlight new-matrix) y)
+	      x xu highlight))))))
+
+(define-integrable (initialize-new-line-contents screen y)
+  (if (boolean-vector-ref (matrix-enable (screen-current-matrix screen)) y)
+      (string-move!
+       (vector-ref (matrix-contents (screen-current-matrix screen)) y)
+       (vector-ref (matrix-contents (screen-new-matrix screen)) y))
+      (string-fill!
+       (vector-ref (matrix-contents (screen-new-matrix screen)) y)
+       #\space)))
+
+(define-integrable (initialize-new-line-highlight screen y)
+  (if (boolean-vector-ref
+       (matrix-highlight-enable (screen-current-matrix screen))
+       y)
+      (boolean-vector-move!
+       (vector-ref (matrix-highlight (screen-current-matrix screen)) y)
+       (vector-ref (matrix-highlight (screen-new-matrix screen)) y))
+      (boolean-vector-fill!
+       (vector-ref (matrix-highlight (screen-new-matrix screen)) y)
+       false)))
+
+(define (screen-clear-rectangle screen xl xu yl yu highlight)
+  (if (screen-debug-trace screen)
+      ((screen-debug-trace screen) 'screen screen 'clear-rectangle
+				   xl xu yl yu highlight))
+  (let ((new-matrix (screen-new-matrix screen)))
+    (let ((new-contents (matrix-contents new-matrix))
+	  (new-hl (matrix-highlight new-matrix))
+	  (new-enable (matrix-enable new-matrix))
+	  (new-hl-enable (matrix-highlight-enable new-matrix)))
+      (cond ((not (and (fix:= xl 0) (fix:= xu (screen-x-size screen))))
+	     (let ((current-matrix (screen-current-matrix screen)))
+	       (let ((current-contents (matrix-contents current-matrix))
+		     (current-hl (matrix-highlight current-matrix))
+		     (current-enable (matrix-enable current-matrix))
+		     (current-hl-enable
+		      (matrix-highlight-enable current-matrix)))
+		 (do ((y yl (fix:1+ y)))
+		     ((fix:= y yu))
+		   (if (not (boolean-vector-ref new-enable y))
+		       (begin
+			 (boolean-vector-set! new-enable y true)
+			 (if (boolean-vector-ref current-enable y)
+			     (begin
+			       (string-move! (vector-ref current-contents y)
+					     (vector-ref new-contents y))
+			       (substring-fill! (vector-ref new-contents y)
+						xl xu #\space))
+			     (string-fill! (vector-ref new-contents y)
+					   #\space)))
+		       (substring-fill! (vector-ref new-contents y)
+					xl xu #\space))
+		   (cond ((boolean-vector-ref new-hl-enable y)
+			  (boolean-subvector-fill! (vector-ref new-hl y)
+						   xl xu highlight))
+			 (highlight
+			  (boolean-vector-set! new-hl-enable y true)
+			  (if (boolean-vector-ref current-hl-enable y)
+			      (boolean-vector-move! current-hl
+						    (vector-ref new-hl y))
+			      (boolean-vector-fill! (vector-ref new-hl y)
+						    false))
+			  (boolean-subvector-fill! (vector-ref new-hl y)
+						   xl xu highlight)))))))
+	    (highlight
+	     (do ((y yl (fix:1+ y)))
+		 ((fix:= y yu))
+	       (string-fill! (vector-ref new-contents y) #\space)
+	       (boolean-vector-fill! (vector-ref new-hl y) true)
+	       (boolean-vector-set! new-enable y true)
+	       (boolean-vector-set! new-hl-enable y true)))
+	    (else
+	     (do ((y yl (fix:1+ y)))
+		 ((fix:= y yu))
+	       (string-fill! (vector-ref new-contents y) #\space)
+	       (boolean-vector-set! new-enable y true)
+	       (boolean-vector-set! new-hl-enable y false))))))
+  (set-screen-needs-update?! screen true))
+
 (define (screen-direct-output-char screen x y char highlight)
   (if (screen-debug-trace screen)
       ((screen-debug-trace screen) 'screen screen 'direct-output-char
@@ -312,27 +430,18 @@
     (terminal-move-cursor screen cursor-x y)
     (terminal-flush screen)
     (string-set! (vector-ref (matrix-contents current-matrix) y) x char)
-    (boolean-vector-set! (vector-ref (matrix-highlight current-matrix) y)
-			 x
-			 highlight)
+    (cond ((boolean-vector-ref (matrix-highlight-enable current-matrix) y)
+	   (boolean-vector-set! (vector-ref (matrix-highlight current-matrix)
+					    y)
+				x highlight))
+	  (highlight
+	   (boolean-vector-set! (matrix-highlight-enable current-matrix)
+				y true)
+	   (boolean-vector-set! (vector-ref (matrix-highlight current-matrix)
+					    y)
+				x highlight)))
     (set-matrix-cursor-x! current-matrix cursor-x)
     (set-matrix-cursor-x! (screen-new-matrix screen) cursor-x)))
-
-(define (screen-output-substring screen x y string start end highlight)
-  (if (screen-debug-trace screen)
-      ((screen-debug-trace screen) 'screen screen 'output-substring
-				   x y (string-copy string) start end
-				   highlight))
-  (let ((new-matrix (screen-new-matrix screen)))
-    (if (not (boolean-vector-ref (matrix-enable new-matrix) y))
-	(begin
-	  (boolean-vector-set! (matrix-enable new-matrix) y true)
-	  (set-screen-needs-update?! screen true)
-	  (guarantee-display-line screen y)))
-    (substring-move-left! string start end
-			  (vector-ref (matrix-contents new-matrix) y) x)
-    (boolean-subvector-fill! (vector-ref (matrix-highlight new-matrix) y)
-			     x (fix:+ x (fix:- end start)) highlight)))
 
 (define (screen-direct-output-substring screen x y string start end highlight)
   (if (screen-debug-trace screen)
@@ -346,97 +455,33 @@
     (terminal-flush screen)
     (substring-move-left! string start end
 			  (vector-ref (matrix-contents current-matrix) y) x)
-    (boolean-subvector-fill! (vector-ref (matrix-highlight current-matrix) y)
-			     x cursor-x highlight)
+    (cond ((boolean-vector-ref (matrix-highlight-enable current-matrix) y)
+	   (boolean-subvector-fill!
+	    (vector-ref (matrix-highlight current-matrix) y)
+	    x cursor-x highlight))
+	  (highlight
+	   (boolean-vector-set! (matrix-highlight-enable current-matrix)
+				y true)
+	   (boolean-subvector-fill!
+	    (vector-ref (matrix-highlight current-matrix) y)
+	    x cursor-x highlight)))
     (set-matrix-cursor-x! current-matrix cursor-x)
     (set-matrix-cursor-x! (screen-new-matrix screen) cursor-x)))
-
-(define (guarantee-display-line screen y)
-  (let ((current-matrix (screen-current-matrix screen))
-	(new-matrix (screen-new-matrix screen)))
-    (if (boolean-vector-ref (matrix-enable current-matrix) y)
-	(begin
-	  (string-move! (vector-ref (matrix-contents current-matrix) y)
-			(vector-ref (matrix-contents new-matrix) y))
-	  (boolean-vector-move!
-	   (vector-ref (matrix-highlight current-matrix) y)
-	   (vector-ref (matrix-highlight new-matrix) y)))
-	(begin
-	  (string-fill! (vector-ref (matrix-contents new-matrix) y) #\space)
-	  (boolean-vector-fill! (vector-ref (matrix-highlight new-matrix) y)
-				false)))))
-
-(define (screen-clear-rectangle screen xl xu yl yu highlight)
-  (if (screen-debug-trace screen)
-      ((screen-debug-trace screen) 'screen screen 'clear-rectangle
-				   xl xu yl yu highlight))
-  (let ((current-matrix (screen-current-matrix screen))
-	(new-matrix (screen-new-matrix screen)))
-    (let ((current-contents (matrix-contents current-matrix))
-	  (current-highlight (matrix-highlight current-matrix))
-	  (current-enable (matrix-enable current-matrix))
-	  (new-contents (matrix-contents new-matrix))
-	  (new-highlight (matrix-highlight new-matrix))
-	  (new-enable (matrix-enable new-matrix)))
-      (if (and (fix:= xl 0) (fix:= xu (screen-x-size screen)))
-	  (do ((y yl (fix:1+ y)))
-	      ((fix:= y yu))
-	    (string-fill! (vector-ref new-contents y) #\space)
-	    (boolean-vector-fill! (vector-ref new-highlight y) highlight)
-	    (boolean-vector-set! new-enable y true))
-	  (do ((y yl (fix:1+ y)))
-	      ((fix:= y yu))
-	    (let ((nl (vector-ref new-contents y))
-		  (nh (vector-ref new-highlight y)))
-	      (if (boolean-vector-ref new-enable y)
-		  (begin
-		    (substring-fill! nl xl xu #\space)
-		    (boolean-subvector-fill! nh xl xu highlight))
-		  (begin
-		    (boolean-vector-set! new-enable y true)
-		    (set-screen-needs-update?! screen true)
-		    (if (boolean-vector-ref current-enable y)
-			(begin
-			  (string-move! (vector-ref current-contents y) nl)
-			  (boolean-vector-move!
-			   (vector-ref current-highlight y)
-			   nh)
-			  (substring-fill! nl xl xu #\space)
-			  (boolean-subvector-fill! nh xl xu highlight))
-			(begin
-			  (string-fill! nl #\space)
-			  (boolean-vector-fill! nh false)
-			  (if highlight
-			      (boolean-subvector-fill! nh xl xu
-						       highlight))))))))))))
 
 (define (screen-force-update screen)
   (if (screen-debug-trace screen)
       ((screen-debug-trace screen) 'screen screen 'force-update))
   (let ((y-size (screen-y-size screen))
-	(current-matrix (screen-current-matrix screen))
-	(new-matrix (screen-new-matrix screen)))
+	(current-matrix (screen-current-matrix screen)))
     (terminal-clear-screen screen)
     (let ((current-contents (matrix-contents current-matrix))
-	  (current-highlight (matrix-highlight current-matrix))
 	  (current-enable (matrix-enable current-matrix))
-	  (new-contents (matrix-contents new-matrix))
-	  (new-highlight (matrix-highlight new-matrix))
-	  (new-enable (matrix-enable new-matrix)))
+	  (current-hl-enable (matrix-highlight-enable current-matrix)))
       (do ((y 0 (fix:1+ y)))
 	  ((fix:= y y-size))
-	(if (boolean-vector-ref current-enable y)
-	    (begin
-	      (boolean-vector-set! current-enable y false)
-	      (if (not (boolean-vector-ref new-enable y))
-		  (begin
-		    (string-move! (vector-ref current-contents y)
-				  (vector-ref new-contents y))
-		    (boolean-vector-move! (vector-ref current-highlight y)
-					  (vector-ref new-highlight y))))))
 	(string-fill! (vector-ref current-contents y) #\space)
-	(boolean-vector-fill! (vector-ref current-highlight y) false))
-      (boolean-vector-fill! current-enable true)))
+	(boolean-vector-set! current-enable y true)
+	(boolean-vector-set! current-hl-enable y false))))
   (set-screen-needs-update?! screen true))
 
 (define (screen-scroll-lines-down screen xl xu yl yu amount)
@@ -452,21 +497,39 @@
 	   (and scrolled?
 		(begin
 		  (let ((contents (matrix-contents current-matrix))
-			(highlight (matrix-highlight current-matrix)))
+			(hl (matrix-highlight current-matrix))
+			(hl-enable (matrix-highlight-enable current-matrix)))
 		    (do ((y (fix:-1+ (fix:- yu amount)) (fix:-1+ y))
 			 (y* (fix:-1+ yu) (fix:-1+ y*)))
 			((fix:< y yl))
 		      (substring-move-left! (vector-ref contents y) xl xu
 					    (vector-ref contents y*) xl)
-		      (boolean-subvector-move-left!
-		       (vector-ref highlight y) xl xu
-		       (vector-ref highlight y*) xl)))
-		  (if (eq? scrolled? 'CLEARED)
-		      (matrix-clear-rectangle current-matrix
-					      xl xu yl (fix:+ yl amount)
-					      false))
+		      (cond ((boolean-vector-ref hl-enable y)
+			     (boolean-vector-set! hl-enable y* true)
+			     (boolean-subvector-move-left!
+			      (vector-ref hl y) xl xu
+			      (vector-ref hl y*) xl))
+			    ((boolean-vector-ref hl-enable y*)
+			     (boolean-subvector-fill! (vector-ref hl y*) xl xu
+						      false))))
+		    (if (eq? scrolled? 'CLEARED)
+			(let ((yu (fix:+ yl amount)))
+			  (if (and (fix:= xl 0)
+				   (fix:= xu (screen-x-size screen)))
+			      (do ((y yl (fix:1+ y)))
+				  ((fix:= y yu))
+				(substring-fill! (vector-ref contents y) xl xu
+						 #\space)
+				(boolean-vector-set! hl-enable y false))
+			      (do ((y yl (fix:1+ y)))
+				  ((fix:= y yu))
+				(substring-fill! (vector-ref contents y) xl xu
+						 #\space)
+				(if (boolean-vector-ref hl-enable y)
+				    (boolean-subvector-fill! (vector-ref hl y)
+							     xl xu false)))))))
 		  scrolled?))))))
-
+
 (define (screen-scroll-lines-up screen xl xu yl yu amount)
   (if (screen-debug-trace screen)
       ((screen-debug-trace screen) 'screen screen 'scroll-lines-up
@@ -480,28 +543,37 @@
 	   (and scrolled?
 		(begin
 		  (let ((contents (matrix-contents current-matrix))
-			(highlight (matrix-highlight current-matrix)))
+			(hl (matrix-highlight current-matrix))
+			(hl-enable (matrix-highlight-enable current-matrix)))
 		    (do ((y yl (fix:1+ y))
 			 (y* (fix:+ yl amount) (fix:1+ y*)))
 			((fix:= y* yu))
 		      (substring-move-left! (vector-ref contents y*) xl xu
 					    (vector-ref contents y) xl)
-		      (boolean-subvector-move-left!
-		       (vector-ref highlight y*) xl xu
-		       (vector-ref highlight y) xl)))
-		  (if (eq? scrolled? 'CLEARED)
-		      (matrix-clear-rectangle current-matrix
-					      xl xu (fix:- yu amount) yu
-					      false))
+		      (cond ((boolean-vector-ref hl-enable y*)
+			     (boolean-vector-set! hl-enable y true)
+			     (boolean-subvector-move-left!
+			      (vector-ref hl y*) xl xu
+			      (vector-ref hl y) xl))
+			    ((boolean-vector-ref hl-enable y)
+			     (boolean-subvector-fill! (vector-ref hl y) xl xu
+						      false))))
+		    (if (eq? scrolled? 'CLEARED)
+			(if (and (fix:= xl 0)
+				 (fix:= xu (screen-x-size screen)))
+			    (do ((y (fix:- yu amount) (fix:1+ y)))
+				((fix:= y yu))
+			      (substring-fill! (vector-ref contents y) xl xu
+					       #\space)
+			      (boolean-vector-set! hl-enable y false))
+			    (do ((y (fix:- yu amount) (fix:1+ y)))
+				((fix:= y yu))
+			      (substring-fill! (vector-ref contents y) xl xu
+					       #\space)
+			      (if (boolean-vector-ref hl-enable y)
+				  (boolean-subvector-fill! (vector-ref hl y)
+							   xl xu false))))))
 		  scrolled?))))))
-
-(define (matrix-clear-rectangle matrix xl xu yl yu hl)
-  (let ((contents (matrix-contents matrix))
-	(highlight (matrix-highlight matrix)))
-    (do ((y yl (fix:1+ y)))
-	((fix:= y yu))
-      (substring-fill! (vector-ref contents y) xl xu #\space)
-      (boolean-subvector-fill! (vector-ref highlight y) xl xu hl))))
 
 (define (with-screen-in-update screen display-style thunk)
   (without-interrupts
@@ -564,67 +636,89 @@
   (let ((current-matrix (screen-current-matrix screen))
 	(new-matrix (screen-new-matrix screen))
 	(x-size (screen-x-size screen)))
-    (let ((current-contents (vector-ref (matrix-contents current-matrix) y))
-	  (current-highlight (vector-ref (matrix-highlight current-matrix) y))
-	  (new-contents (vector-ref (matrix-contents new-matrix) y))
-	  (new-highlight (vector-ref (matrix-highlight new-matrix) y)))
-      (cond ((not (and (boolean-vector-ref (matrix-enable current-matrix) y)
-		       (boolean-vector=? current-highlight new-highlight)))
-	     (update-line-ignore-current screen y
-					 new-contents new-highlight x-size))
-	    ((string=? current-contents new-contents)
-	     unspecific)
-	    ((boolean-vector-all-elements? new-highlight false)
-	     (update-line-no-highlight screen y current-contents new-contents))
-	    (else
-	     (update-line-ignore-current screen y
-					 new-contents new-highlight x-size)))
-      ;; Update current-matrix to contain the new line.
-      (vector-set! (matrix-contents current-matrix) y new-contents)
-      (vector-set! (matrix-highlight current-matrix) y new-highlight)
-      (boolean-vector-set! (matrix-enable current-matrix) y true)
-      ;; Move the old line to new-matrix so that it can be reused.
-      (vector-set! (matrix-contents new-matrix) y current-contents)
-      (vector-set! (matrix-highlight new-matrix) y current-highlight)
-      (boolean-vector-set! (matrix-enable new-matrix) y false))))
-
+    (let ((current-contents (matrix-contents current-matrix))
+	  (current-hl (matrix-highlight current-matrix))
+	  (current-enable (matrix-enable current-matrix))
+	  (current-hl-enable (matrix-highlight-enable current-matrix))
+	  (new-contents (matrix-contents new-matrix))
+	  (new-hl (matrix-highlight new-matrix))
+	  (new-hl-enable (matrix-highlight-enable new-matrix)))
+      (let ((ccy (vector-ref current-contents y))
+	    (chy (vector-ref current-hl y))
+	    (ncy (vector-ref new-contents y))
+	    (nhy (vector-ref new-hl y))
+	    (nhey (boolean-vector-ref new-hl-enable y)))
+	(cond (nhey
+	       (update-line-ignore-current screen y ncy nhy x-size))
+	      ((and (boolean-vector-ref current-enable y)
+		    (not (boolean-vector-ref current-hl-enable y)))
+	       (update-line-no-highlight screen y ccy ncy))
+	      (else
+	       (update-line-trivial screen y ncy x-size)))
+	(vector-set! current-contents y ncy)
+	(boolean-vector-set! current-enable y true)
+	(vector-set! new-contents y ccy)
+	(boolean-vector-set! (matrix-enable new-matrix) y false)
+	(if nhey
+	    (begin
+	      (vector-set! current-hl y nhy)
+	      (boolean-vector-set! current-hl-enable y true)
+	      (vector-set! new-hl y chy)
+	      (boolean-vector-set! new-hl-enable y false))
+	    (boolean-vector-set! current-hl-enable y false))))))
+
 (define (update-line-no-highlight screen y oline nline)
   (let ((x-size (screen-x-size screen)))
     (let ((olen (substring-non-space-end oline 0 x-size))
 	  (nlen (substring-non-space-end nline 0 x-size)))
       (let ((len (fix:min olen nlen)))
-	(let loop ((x 0))
-	  (let ((x
-		 (fix:+ x (substring-match-forward oline x len nline x len))))
-	    (if (fix:= x len)
-		(if (fix:< x nlen)
-		    (terminal-output-substring screen x y
-					       nline x nlen false))
-		(let find-match ((x* (fix:1+ x)))
-		  (cond ((fix:= x* len)
-			 (if (fix:< x nlen)
-			     (terminal-output-substring screen x y
-							nline x nlen false)))
-			((fix:= (vector-8b-ref oline x*)
-				(vector-8b-ref nline x*))
-			 (let ((n
-				(substring-match-forward oline x* len
-							 nline x* len)))
-			   ;; Ignore matches of 4 characters or less.  The
-			   ;; overhead of moving the cursor and drawing
-			   ;; the characters is too much except for very
-			   ;; slow terminals.
-			   (if (fix:< n 5)
-			       (find-match (fix:+ x* n))
-			       (begin
-				 (terminal-output-substring screen x y
-							    nline x x* false)
-				 (loop (fix:+ x* n))))))
-			(else
-			 (find-match (fix:1+ x*)))))))))
+	(let find-mismatch ((x 0))
+	  (cond ((fix:= x len)
+		 (if (fix:< x nlen)
+		     (terminal-output-substring screen x y
+						nline x nlen false)))
+		((fix:= (vector-8b-ref oline x)
+			(vector-8b-ref nline x))
+		 (find-mismatch (fix:+ x 1)))
+		(else
+		 (let find-match ((x* (fix:+ x 1)))
+		   (cond ((fix:= x* len)
+			  (terminal-output-substring screen x y
+						     nline x nlen false))
+			 ((not (fix:= (vector-8b-ref oline x*)
+				      (vector-8b-ref nline x*)))
+			  (find-match (fix:+ x* 1)))
+			 (else
+			  ;; Ignore matches of 4 characters or less.
+			  ;; The overhead of moving the cursor and
+			  ;; drawing the characters is too much except
+			  ;; for very slow terminals.
+			  (let find-end-match ((x** (fix:+ x* 1)))
+			    (cond ((fix:= x** len)
+				   (if (fix:< (fix:- x** x*) 5)
+				       (terminal-output-substring screen x y
+								  nline x nlen
+								  false)
+				       (begin
+					 (terminal-output-substring screen x y
+								    nline x x*
+								    false)
+					 (if (fix:< x** nlen)
+					     (terminal-output-substring
+					      screen x** y
+					      nline x** nlen false)))))
+				  ((fix:= (vector-8b-ref oline x**)
+					  (vector-8b-ref nline x**))
+				   (find-end-match (fix:+ x** 1)))
+				  ((fix:< (fix:- x** x*) 5)
+				   (find-match x**))
+				  (else
+				   (terminal-output-substring screen x y
+							      nline x x* false)
+				   (find-mismatch x**)))))))))))
       (if (fix:< nlen olen)
 	  (terminal-clear-line screen nlen y olen)))))
-
+
 (define (update-line-ignore-current screen y nline highlight x-size)
   (cond ((not (boolean-subvector-uniform? highlight 0 x-size))
 	 (let loop ((x 0))
@@ -641,28 +735,24 @@
 	((boolean-vector-ref highlight 0)
 	 (terminal-output-substring screen 0 y nline 0 x-size true))
 	(else
-	 (let ((xe (substring-non-space-end nline 0 x-size)))
-	   (if (fix:< 0 xe)
-	       (terminal-output-substring screen 0 y nline 0 xe false))
-	   (if (fix:< xe x-size)
-	       (terminal-clear-line screen xe y x-size))))))
+	 (update-line-trivial screen y nline x-size))))
+
+(define (update-line-trivial screen y nline x-size)
+  (let ((xe (substring-non-space-end nline 0 x-size)))
+    (if (fix:< 0 xe)
+	(terminal-output-substring screen 0 y nline 0 xe false))
+    (if (fix:< xe x-size)
+	(terminal-clear-line screen xe y x-size))))
 
 (define-integrable (fix:min x y) (if (fix:< x y) x y))
 (define-integrable (fix:max x y) (if (fix:> x y) x y))
 
-(define (substring-non-space-end string start end)
-  (let ((index
-	 (substring-find-previous-char-in-set string start end
-					      char-set/not-space)))
-    (if index
-	(fix:1+ index)
-	start)))
-
-(define-integrable (substring-blank? string start end)
-  (not (substring-find-next-char-in-set string start end char-set/not-space)))
-
-(define char-set/not-space
-  (char-set-invert (char-set #\space)))
+(define-integrable (substring-non-space-end string start end)
+  (do ((index end (fix:- index 1)))
+      ((or (fix:= start index)
+	   (not (fix:= (vector-8b-ref string (fix:- index 1))
+		       (char->integer #\space))))
+       index)))
 
 (define (string-move! x y)
   (substring-move-left! x 0 (string-length x) y 0))

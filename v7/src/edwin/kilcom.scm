@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/kilcom.scm,v 1.58 1989/04/28 22:50:41 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/kilcom.scm,v 1.59 1991/03/22 00:32:08 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -345,18 +345,20 @@ are transposed."
 	  (else
 	   (let ((m1 (mark-right-inserting (current-point)))
 		 (m2 (mark-right-inserting (current-mark))))
-	     (let ((r1 (region-extract!
-			(make-region (current-point)
-				     (mark1+ (current-point) 'ERROR))))
-		   (r2 (region-extract!
-			(make-region (current-mark)
-				     (mark1+ (current-mark) 'ERROR)))))
-	       (region-insert! m1 r2)
-	       (region-insert! m2 r1))
-	     (set-current-point! m1)
-	     (set-current-mark! m2))))))
+	     (if (not (mark= m1 m2))
+		 (begin
+		   (let ((c1 (extract-right-char m1))
+			 (c2 (extract-right-char m2)))
+		     (delete-right-char m1)
+		     (delete-right-char m2)
+		     (insert-char c2 m1)
+		     (insert-char c1 m2))
+		   (set-current-point! m1)
+		   (set-current-mark! m2))))))))
 
 (define (twiddle-characters m1 m2)
   (let ((m* (mark-left-inserting m2)))
-    (region-insert! m* (region-extract! (make-region (mark-1+ m1 'ERROR) m1)))
+    (let ((char (extract-left-char m1)))
+      (delete-left-char m1)
+      (insert-char char m*))
     (set-current-point! m*)))

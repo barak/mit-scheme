@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwmc.scm,v 1.9 1991/03/16 08:10:55 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwmc.scm,v 1.10 1991/03/22 00:31:13 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -45,7 +45,7 @@
 ;;;; Buffer Windows: Mark <-> Coordinate Maps
 
 (declare (usual-integrations))
-
+
 (define-integrable (buffer-window/mark->x window mark)
   (buffer-window/index->x window (mark-index mark)))
 
@@ -63,7 +63,7 @@
 
 (define-integrable (buffer-window/point-coordinates window)
   (buffer-window/index->coordinates window (%window-point-index window)))
-
+
 (define (buffer-window/index->x window index)
   (if (and (line-inferiors-valid? window)
 	   (line-inferiors-contain-index? window index))
@@ -72,10 +72,15 @@
 	  (fix:+ (inferior-x-start inferior)
 		 (string-base:index->x (inferior-window inferior)
 				       (fix:- index start)))))
-      (let ((start (%window-line-start-index window index)))
-	(%window-column->x window
-			   (%window-line-columns window start index)
-			   (%window-column-length window start index 0)))))
+      (let ((start (%window-line-start-index window index))
+	    (group (%window-group window))
+	    (tab-width (%window-tab-width window)))
+	(column->x (cdr (group-line-columns group start
+					    (%window-group-end-index window)
+					    0 tab-width))
+		   (window-x-size window)
+		   (%window-truncate-lines? window)
+		   (group-columns group start index 0 tab-width)))))
 
 (define (buffer-window/index->y window index)
   (if (and (line-inferiors-valid? window)
@@ -104,12 +109,17 @@
 		  (fix:+ (cdr xy) (inferior-y-start inferior))))))
       (begin
 	(guarantee-start-mark! window)
-	(let ((start (%window-line-start-index window index)))
+	(let ((start (%window-line-start-index window index))
+	      (group (%window-group window))
+	      (tab-width (%window-tab-width window)))
 	  (let ((xy
-		 (%window-column->coordinates
-		  window
-		  (%window-line-columns window start index)
-		  (%window-column-length window start index 0))))
+		 (column->coordinates
+		  (cdr (group-line-columns group start
+					   (%window-group-end-index window)
+					   0 tab-width))
+		  (window-x-size window)
+		  (%window-truncate-lines? window)
+		  (group-columns group start index 0 tab-width))))
 	    (cons (car xy)
 		  (fix:+ (cdr xy)
 			 (predict-y window
@@ -208,151 +218,284 @@
   ;; Assuming that the character at index START appears at coordinate
   ;; Y, return the coordinate for the character at INDEX.  START is
   ;; assumed to be a line start.
-  (cond ((fix:= index start)
-	 y)
-	((fix:< index start)
-	 (let loop ((start start) (y y))
-	   (let* ((end (fix:- start 1))
-		  (start (%window-line-start-index window end))
-		  (columns (%window-column-length window start end 0))
-		  (y (fix:- y (%window-column->y-size window columns))))
-	     (if (fix:< index start)
-		 (loop start y)
-		 (fix:+ y (%window-line-y window columns start index))))))
-	(else
-	 (let loop ((start start) (y y))
-	   (let* ((end (%window-line-end-index window start))
-		  (columns (%window-column-length window start end 0)))
-	     (if (fix:> index end)
-		 (loop (fix:+ end 1)
-		       (fix:+ y (%window-column->y-size window columns)))
-		 (fix:+ y (%window-line-y window columns start index))))))))
-
+  (if (fix:= index start)
+      y
+      (let ((group (%window-group window))
+	    (tab-width (%window-tab-width window))
+	    (x-size (window-x-size window))
+	    (truncate-lines? (%window-truncate-lines? window)))
+	(if (fix:< index start)
+	    (let ((group-start (%window-group-start-index window)))
+	      (let loop ((start start) (y y))
+		(let* ((end (fix:- start 1))
+		       (start
+			(or (%find-previous-newline group end group-start)
+			    group-start))
+		       (columns (group-columns group start end 0 tab-width))
+		       (y
+			(fix:- y
+			       (column->y-size columns
+					       x-size
+					       truncate-lines?))))
+		  (if (fix:< index start)
+		      (loop start y)
+		      (fix:+ y
+			     (column->y columns x-size truncate-lines?
+					(group-columns group start index
+						       0 tab-width)))))))
+	    (let ((group-end (%window-group-end-index window)))
+	      (let loop ((start start) (y y))
+		(let ((e&c
+		       (group-line-columns group start group-end 0 tab-width)))
+		  (if (fix:> index (car e&c))
+		      (loop (fix:+ (car e&c) 1)
+			    (fix:+ y
+				   (column->y-size (cdr e&c)
+						   x-size
+						   truncate-lines?)))
+		      (fix:+ y
+			     (column->y (cdr e&c)
+					x-size
+					truncate-lines?
+					(group-columns group start index
+						       0 tab-width)))))))))))
+
 (define (predict-y-limited window start y index yl yu)
   ;; Like PREDICT-Y, except returns #F if the result is not in the
   ;; range specified by YL and YU.  Prevents long search to find INDEX
   ;; when it is far away from the window.
-  (cond ((fix:= index start)
-	 (and (fix:<= yl y)
-	      (fix:< y yu)
-	      y))
-	((fix:< index start)
-	 (let loop ((start start) (y y))
-	   (and (fix:<= yl y)
-		(let* ((end (fix:- start 1))
-		       (start (%window-line-start-index window end))
-		       (columns (%window-column-length window start end 0))
-		       (y (fix:- y (%window-column->y-size window columns))))
-		  (if (fix:< index start)
-		      (loop start y)
-		      (let ((y
-			     (fix:+ y
-				    (%window-line-y window columns start
-						    index))))
-			(and (fix:<= yl y)
-			     (fix:< y yu)
-			     y)))))))
-	(else
-	 (let loop ((start start) (y y))
-	   (and (fix:< y yu)
-		(let* ((end (%window-line-end-index window start))
-		       (columns (%window-column-length window start end 0)))
-		  (if (fix:> index end)
-		      (loop (fix:+ end 1)
-			    (fix:+ y (%window-column->y-size window columns)))
-		      (let ((y
-			     (fix:+ y
-				    (%window-line-y window columns start
-						    index))))
-			(and (fix:<= yl y)
-			     (fix:< y yu)
-			     y)))))))))
+  (if (fix:= index start)
+      (and (fix:<= yl y)
+	   (fix:< y yu)
+	   y)
+      (let ((group (%window-group window))
+	    (tab-width (%window-tab-width window))
+	    (x-size (window-x-size window))
+	    (truncate-lines? (%window-truncate-lines? window)))
+	(if (fix:< index start)
+	    (let ((group-start (%window-group-start-index window)))
+	      (let loop ((start start) (y y))
+		(and (fix:<= yl y)
+		     (let* ((end (fix:- start 1))
+			    (start
+			     (or (%find-previous-newline group end group-start)
+				 group-start))
+			    (columns
+			     (group-columns group start end 0 tab-width))
+			    (y
+			     (fix:- y
+				    (column->y-size columns
+						    x-size
+						    truncate-lines?))))
+		       (if (fix:< index start)
+			   (loop start y)
+			   (let ((y
+				  (fix:+
+				   y
+				   (column->y columns
+					      x-size
+					      truncate-lines?
+					      (group-columns group
+							     start
+							     index
+							     0
+							     tab-width)))))
+			     (and (fix:<= yl y)
+				  (fix:< y yu)
+				  y)))))))
+	    (let ((group-end (%window-group-end-index window)))
+	      (let loop ((start start) (y y))
+		(and (fix:< y yu)
+		     (let ((e&c
+			    (group-line-columns group start group-end 0
+						tab-width)))
+		       (if (fix:> index (car e&c))
+			   (loop (fix:+ (car e&c) 1)
+				 (fix:+ y
+					(column->y-size (cdr e&c)
+							x-size
+							truncate-lines?)))
+			   (let ((y
+				  (fix:+
+				   y
+				   (column->y (cdr e&c)
+					      x-size
+					      truncate-lines?
+					      (group-columns group
+							     start
+							     index
+							     0
+							     tab-width)))))
+			     (and (fix:<= yl y)
+				  (fix:< y yu)
+				  y)))))))))))
 
 (define (predict-index-visible? window start y index)
   (and (fix:>= index start)
-       (let ((y-size (window-y-size window)))
+       (let ((x-size (window-x-size window))
+	     (y-size (window-y-size window))
+	     (group (%window-group window))
+	     (tab-width (%window-tab-width window))
+	     (truncate-lines? (%window-truncate-lines? window))
+	     (group-end (%window-group-end-index window)))
 	 (let loop ((start start) (y y))
 	   (and (fix:< y y-size)
-		(let* ((end (%window-line-end-index window start))
-		       (columns (%window-column-length window start end 0)))
-		  (if (fix:> index end)
-		      (loop (fix:+ end 1)
-			    (fix:+ y (%window-column->y-size window columns)))
+		(let ((e&c
+		       (group-line-columns group start group-end 0 tab-width)))
+		  (if (fix:> index (car e&c))
+		      (loop (fix:+ (car e&c) 1)
+			    (fix:+ y
+				   (column->y-size (cdr e&c)
+						   x-size
+						   truncate-lines?)))
 		      (let ((y
-			     (fix:+
-			      y
-			      (%window-line-y window columns start index))))
-			(and (fix:<= 0 y) (fix:< y y-size))))))))))
-
+			     (fix:+ y
+				    (column->y (cdr e&c)
+					       x-size
+					       truncate-lines?
+					       (group-columns group
+							      start
+							      index
+							      0
+							      tab-width)))))
+			(and (fix:<= 0 y)
+			     (fix:< y y-size))))))))))
+
 (define (predict-index window start y-start x y)
   ;; Assumes that START is a line start.
-  (if (fix:< y y-start)
-      (let loop ((start start) (y-start y-start))
-	(and (not (%window-group-start-index? window start))
-	     (let* ((end (fix:- start 1))
-		    (start (%window-line-start-index window end))
-		    (columns (%window-column-length window start end 0))
-		    (y-start
-		     (fix:- y-start (%window-column->y-size window columns))))
-	       (if (fix:< y y-start)
-		   (loop start y-start)
-		   (%window-coordinates->index window start end columns
-					       x (fix:- y y-start))))))
-      (let loop ((start start) (y-start y-start))
-	(let* ((end (%window-line-end-index window start))
-	       (columns (%window-column-length window start end 0))
-	       (y-end
-		(fix:+ y-start (%window-column->y-size window columns))))
-	  (if (fix:>= y y-end)
-	      (and (not (%window-group-end-index? window end))
-		   (loop (fix:+ end 1) y-end))
-	      (%window-coordinates->index window start end columns
-					  x (fix:- y y-start)))))))
+  (let ((group (%window-group window))
+	(tab-width (%window-tab-width window))
+	(x-size (window-x-size window))
+	(truncate-lines? (%window-truncate-lines? window)))
+    (if (fix:< y y-start)
+	(let ((group-start (%window-group-start-index window)))
+	  (let loop ((start start) (y-start y-start))
+	    (and (fix:< group-start start)
+		 (let* ((end (fix:- start 1))
+			(start
+			 (or (%find-previous-newline group end group-start)
+			     group-start))
+			(columns (group-columns group start end 0 tab-width))
+			(y-start
+			 (fix:- y-start
+				(column->y-size columns
+						x-size
+						truncate-lines?))))
+		   (if (fix:< y y-start)
+		       (loop start y-start)
+		       (group-column->index
+			group start end 0
+			(let ((column
+			       (coordinates->column x
+						    (fix:- y y-start)
+						    x-size)))
+			  (if (fix:< column columns)
+			      column
+			      columns))
+			tab-width))))))
+	(let ((group-end (%window-group-end-index window)))
+	  (let loop ((start start) (y-start y-start))
+	    (let ((e&c (group-line-columns group start group-end 0 tab-width)))
+	      (let ((y-end
+		      (fix:+ y-start
+			     (column->y-size (cdr e&c)
+					     x-size
+					     truncate-lines?))))
+		(if (fix:>= y y-end)
+		    (and (fix:< (car e&c) group-end)
+			 (loop (fix:+ (car e&c) 1) y-end))
+		    (group-column->index
+		     group start (car e&c) 0
+		     (let ((column
+			    (coordinates->column x
+						 (fix:- y y-start)
+						 x-size)))
+		       (if (fix:< column (cdr e&c))
+			   column
+			   (cdr e&c)))
+		     tab-width)))))))))
 
 (define (predict-start-line window index y)
-  (let ((start (%window-line-start-index window index)))
+  (let ((start (%window-line-start-index window index))
+	(group (%window-group window))
+	(tab-width (%window-tab-width window))
+	(x-size (window-x-size window))
+	(truncate-lines? (%window-truncate-lines? window)))
     (let ((y
 	   (fix:- y
-		  (%window-line-y window
-				  (%window-line-columns window start index)
-				  start
-				  index))))
+		  (column->y (cdr (group-line-columns group
+						      start
+						      group-end
+						      0
+						      tab-width))
+			     x-size
+			     truncate-lines?
+			     (group-columns group start index 0 tab-width)))))
       (cond ((fix:= y 0)
 	     (values start y))
 	    ((fix:< y 0)
-	     (let loop ((start start) (y y))
-	       (let* ((end (%window-line-end-index window start))
-		      (columns (%window-column-length window start end 0))
-		      (y-end
-		       (fix:+ y (%window-column->y-size window columns))))
-		 (if (and (fix:<= y-end 0)
-			  (not (%window-group-end-index? window end)))
-		     (loop (fix:+ end 1) y-end)
-		     (values start y)))))
+	     (let ((group-end (%window-group-end-index window)))
+	       (let loop ((start start) (y y))
+		 (let ((e&c
+			(group-line-columns group start group-end
+					    0 tab-width)))
+		   (let ((y-end
+			  (fix:+ y
+				 (column->y-size (cdr e&c)
+						 x-size
+						 truncate-lines?))))
+		     (if (and (fix:<= y-end 0)
+			      (fix:< (car e&c) group-end))
+			 (loop (fix:+ (car e&c) 1) y-end)
+			 (values start y)))))))
 	    (else
-	     (let loop ((start start) (y y))
-	       (if (%window-group-start-index? window start)
-		   (values start 0)
-		   (let* ((end (fix:- start 1))
-			  (start (%window-line-start-index window end))
-			  (columns (%window-column-length window start end 0))
-			  (y-start
-			   (fix:- y (%window-column->y-size window columns))))
-		     (if (fix:<= y-start 0)
-			 (values start y-start)
-			 (loop start y-start))))))))))
-
+	     (let ((group-start (%window-group-start-index window)))
+	       (let loop ((start start) (y y))
+		 (if (fix:<= start group-start)
+		     (values start 0)
+		     (let* ((end (fix:- start 1))
+			    (start
+			     (or (%find-previous-newline group end group-start)
+				 group-start))
+			    (columns
+			     (group-columns group start end 0 tab-width))
+			    (y-start
+			     (fix:- y
+				    (column->y-size columns
+						    x-size
+						    truncate-lines?))))
+		       (if (fix:<= y-start 0)
+			   (values start y-start)
+			   (loop start y-start)))))))))))
+
 (define (predict-start-index window start y-start)
   ;; Assumes (AND (%WINDOW-LINE-START-INDEX? WINDOW START) (<= Y-START 0))
   (if (fix:= 0 y-start)
       start
-      (let ((end (%window-line-end-index window start))
-	    (y (fix:- 0 y-start)))
-	(let ((length (%window-column-length window start end 0)))
+      (let ((group (%window-group window))
+	    (tab-width (%window-tab-width window))
+	    (x-size (window-x-size window)))
+	(let ((e&c
+	       (group-line-columns group
+				   start
+				   (%window-group-end-index window)
+				   0
+				   tab-width))
+	      (y (fix:- 0 y-start)))
 	  (let ((index
-		 (%window-coordinates->index window start end length 0 y)))
+		 (group-column->index group start (car e&c) 0
+				      (let ((column
+					     (coordinates->column 0 y x-size)))
+					(if (fix:< column (cdr e&c))
+					    column
+					    (cdr e&c)))
+				      tab-width)))
 	    (if (let ((xy
-		       (%window-index->coordinates window start length index)))
+		       (column->coordinates (cdr e&c)
+					    x-size
+					    (%window-truncate-lines? window)
+					    (group-columns group start index
+							   0 tab-width))))
 		  (and (fix:= (car xy) 0)
 		       (fix:= (cdr xy) y)))
 		index
@@ -370,54 +513,3 @@
 		       (fix:= (cdr xy) y)))
 		(fix:+ start index)
 		(fix:+ (fix:+ start index) 1)))))))
-
-(define-integrable (%window-column-length window start end column)
-  (group-column-length (%window-group window) start end column))
-
-(define-integrable (%window-column->index window start end column-start column)
-  (group-column->index (%window-group window) start end column-start column))
-
-(define-integrable (%window-line-columns window start index)
-  (%window-column-length window start (%window-line-end-index window index) 0))
-
-(define-integrable (%window-line-y window columns start index)
-  (%window-column->y window
-		     columns
-		     (%window-column-length window start index 0)))
-
-(define-integrable (%window-column->y-size window column-size)
-  (column->y-size column-size
-		  (window-x-size window)
-		  (%window-truncate-lines? window)))
-
-(define-integrable (%window-column->x window column-size column)
-  (column->x column-size
-	     (window-x-size window)
-	     (%window-truncate-lines? window)
-	     column))
-
-(define-integrable (%window-column->y window column-size column)
-  (column->y column-size
-	     (window-x-size window)
-	     (%window-truncate-lines? window)
-	     column))
-
-(define-integrable (%window-column->coordinates window column-size column)
-  (column->coordinates column-size
-		       (window-x-size window)
-		       (%window-truncate-lines? window)
-		       column))
-
-(define (%window-coordinates->index window start end column-length x y)
-  (%window-column->index
-   window start end 0
-   (let ((column (coordinates->column x y (window-x-size window))))
-     (if (fix:< column column-length)
-	 column
-	 column-length))))
-
-(define-integrable (%window-index->coordinates window start column-length
-					       index)
-  (%window-column->coordinates window
-			       column-length
-			       (%window-column-length window start index 0)))

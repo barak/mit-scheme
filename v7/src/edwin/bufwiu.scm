@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwiu.scm,v 1.15 1991/03/16 08:11:11 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwiu.scm,v 1.16 1991/03/22 00:31:07 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -167,6 +167,7 @@
   (if (%window-force-redraw? window)
       (begin
 	(%set-window-force-redraw?! window false)
+	(%recache-window-buffer-local-variables! window)
 	(preserve-nothing! window))
       (let ((start (%window-current-start-index window))
 	    (end (%window-current-end-index window)))
@@ -515,7 +516,7 @@
 			  #\newline)
      (let ((y-start
 	    (fix:+ (inferior-y-start (%window-cursor-inferior window)) 1)))
-       (let ((inferior (make-inferior window line-window)))
+       (let ((inferior (make-inferior window string-base)))
 	 (%set-inferior-x-start! inferior 0)
 	 (%set-inferior-y-start! inferior y-start)
 	 (%set-window-x-size! (inferior-window inferior)

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffrm.scm,v 1.38 1991/01/15 00:13:44 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffrm.scm,v 1.39 1991/03/22 00:30:50 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989, 1990, 1991 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -141,9 +141,7 @@
 	  (set-inferior-y-size! border-inferior y))
 	(set-inferior-start! border-inferior false false))
     (set-inferior-start! text-inferior 0 0)
-    (set-inferior-size! text-inferior x y))
-  (if (window-buffer window)
-      (window-setup-truncate-lines! window)))
+    (set-inferior-size! text-inferior x y)))
 
 (define-method buffer-frame (:minimum-x-size window)
   (if (window-has-right-neighbor? window)
@@ -205,8 +203,7 @@
      (if (window-buffer frame)
 	 (remove-buffer-window! (window-buffer frame) frame))
      (buffer-window/set-buffer! (frame-text-inferior frame) buffer)
-     (add-buffer-window! buffer frame)
-     (window-setup-truncate-lines! frame))))
+     (add-buffer-window! buffer frame))))
 
 (define-integrable (window-point frame)
   (buffer-window/point (frame-text-inferior frame)))
@@ -297,43 +294,38 @@
 (define-integrable (set-window-debug-trace! frame debug-trace)
   (%set-window-debug-trace! (frame-text-inferior frame) debug-trace))
 
-(define (window-setup-truncate-lines! frame)
-  (let ((window (frame-text-inferior frame))
-	(truncate-lines?
-	 (let ((buffer (window-buffer frame)))
-	   (or (and (variable-local-value
-		     buffer
-		     (ref-variable-object truncate-partial-width-windows))
-		    (window-has-horizontal-neighbor? frame))
-	       (variable-local-value buffer
-				     (ref-variable-object truncate-lines))))))
-    (if (not (boolean=? (%window-truncate-lines? window) truncate-lines?))
-	(without-interrupts
-	 (lambda ()
-	   (%set-window-truncate-lines?! window truncate-lines?)
-	   (buffer-window/redraw! window))))))
-
 (define-variable-per-buffer truncate-lines
-  "*True means do not display continuation lines;
+  "True means do not display continuation lines;
 give each line of text one screen line.
 Automatically becomes local when set in any fashion.
 
 Note that this is overridden by the variable
 truncate-partial-width-windows if that variable is true
 and this buffer is not full-screen width."
-  false)
+  false
+  boolean?)
 
 (define-variable truncate-partial-width-windows
-  "*True means truncate lines in all windows less than full screen wide."
-  true)
+  "True means truncate lines in all windows less than full screen wide."
+  true
+  boolean?)
+
+(define-variable-per-buffer tab-width
+  "Distance between tab stops (for display of tab characters), in columns.
+Automatically becomes local when set in any fashion."
+  8
+  exact-nonnegative-integer?)
 
 (let ((setup-truncate-lines!
        (lambda (variable)
 	 variable			;ignore
-	 (for-each window-setup-truncate-lines! (window-list)))))
+	 (for-each window-redraw! (window-list)))))
   (add-variable-assignment-daemon!
    (ref-variable-object truncate-lines)
    setup-truncate-lines!)
   (add-variable-assignment-daemon!
    (ref-variable-object truncate-partial-width-windows)
+   setup-truncate-lines!)
+  (add-variable-assignment-daemon!
+   (ref-variable-object tab-width)
    setup-truncate-lines!))

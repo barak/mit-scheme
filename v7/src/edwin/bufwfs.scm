@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwfs.scm,v 1.9 1990/11/02 03:22:42 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwfs.scm,v 1.10 1991/03/22 00:30:55 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -56,7 +56,12 @@
 	inferiors
 	(let* ((end (fix:- start 1))
 	       (start (%window-line-start-index window end))
-	       (inferior (make-line-inferior window start end))
+	       (inferior
+		(let ((string (%window-extract-string window start end)))
+		  (make-line-inferior
+		   window
+		   string
+		   (string-image string 0 (%window-tab-width window)))))
 	       (y-start (fix:- y-start (inferior-y-size inferior))))
 	  (%set-inferior-y-start! inferior y-start)
 	  (loop (cons inferior inferiors) start y-start)))))
@@ -65,31 +70,42 @@
 		      top-inferiors top-start
 		      bottom-inferiors bottom-start)
   ;; Assumes non-null TOP-INFERIORS and BOTTOM-INFERIORS.
-  (let loop ((inferiors top-inferiors) (start top-start))
-    (let ((start (fix:+ start (line-inferior-length (car inferiors)))))
-      (if (not (null? (cdr inferiors)))
-	  (loop (cdr inferiors) start)
-	  (set-cdr!
-	   inferiors
-	   (let loop
-	       ((start start) (y-start (%inferior-y-end (car inferiors))))
-	     (if (fix:= start bottom-start)
-		 bottom-inferiors
-		 (let ((end (%window-line-end-index window start)))
-		   (let ((inferior (make-line-inferior window start end)))
-		     (%set-inferior-y-start! inferior y-start)
-		     (cons inferior
-			   (loop (fix:+ end 1)
-				 (fix:+ y-start
-					(inferior-y-size inferior))))))))))))
+  (let ((group (%window-group window))
+	(end (%window-group-end-index window))
+	(tab-width (%window-tab-width window)))
+    (let loop ((inferiors top-inferiors) (start top-start))
+      (let ((start (fix:+ start (line-inferior-length (car inferiors)))))
+	(if (not (null? (cdr inferiors)))
+	    (loop (cdr inferiors) start)
+	    (set-cdr!
+	     inferiors
+	     (let loop
+		 ((start start) (y-start (%inferior-y-end (car inferiors))))
+	       (if (fix:= start bottom-start)
+		   bottom-inferiors
+		   (let ((image&index
+			  (group-line-image group start end 0 tab-width)))
+		     (let ((inferior
+			    (make-line-inferior
+			     window
+			     (group-extract-string group
+						   start
+						   (cdr image&index))
+			     (car image&index))))
+		       (%set-inferior-y-start! inferior y-start)
+		       (cons
+			inferior
+			(loop (fix:+ (cdr image&index) 1)
+			      (fix:+ y-start
+				     (inferior-y-size inferior)))))))))))))
   top-inferiors)
-
+
 (define (fill-bottom! window inferiors start)
   ;; Assumes non-null INFERIORS.
   (let loop ((inferiors inferiors) (start start))
     (let ((end
 	   (fix:+ start
-		  (line-window-length
+		  (string-base:string-length
 		   (inferior-window (car inferiors))))))
       (if (not (null? (cdr inferiors)))
 	  (loop (cdr inferiors) (fix:+ end 1))
@@ -105,19 +121,27 @@
 
 (define (generate-line-inferiors window start y-start)
   ;; Assumes (FIX:< Y-START (WINDOW-Y-SIZE WINDOW))
-  (let ((y-size (window-y-size window)))
+  (let ((y-size (window-y-size window))
+	(group (%window-group window))
+	(end (%window-group-end-index window))
+	(tab-width (%window-tab-width window)))
     (let loop ((y-start y-start) (start start))
-      (let ((end (%window-line-end-index window start)))
-	(let ((inferior (make-line-inferior window start end)))
+      (let ((image&index (group-line-image group start end 0 tab-width)))
+	(let ((inferior
+	       (make-line-inferior window
+				   (group-extract-string group
+							 start
+							 (cdr image&index))
+				   (car image&index))))
 	  (%set-inferior-y-start! inferior y-start)
 	  (cons inferior
 		(let ((y-start (fix:+ y-start (inferior-y-size inferior))))
-		  (if (or (%window-group-end-index? window end)
-			  (fix:>= y-start y-size))
+		  (if (and (fix:< (cdr image&index) end)
+			   (fix:< y-start y-size))
+		      (loop y-start (fix:+ (cdr image&index) 1))
 		      (begin
-			(set-current-end-index! window end)
-			'())
-		      (loop y-start (fix:+ end 1))))))))))
+			(set-current-end-index! window (cdr image&index))
+			'())))))))))
 
 (define (scroll-lines! window inferiors start y-start)
   (cond ((or (null? inferiors)
