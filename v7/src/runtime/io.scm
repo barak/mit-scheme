@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.60 1999/11/08 18:28:11 cph Exp $
+$Id: io.scm,v 14.61 2000/04/10 18:32:34 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -25,14 +25,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (declare (usual-integrations))
 
 (define open-channels-list)
-(define open-directories-list)
+(define open-directories)
 (define have-select?)
 
 (define (initialize-package!)
   (set! open-channels-list (list 'OPEN-CHANNELS-LIST))
   (add-gc-daemon! close-lost-open-files-daemon)
-  (set! open-directories-list (make-protection-list))
-  (add-gc-daemon! close-lost-open-directories-daemon)
+  (set! open-directories
+	(make-gc-finalizer (ucode-primitive new-directory-close 1)))
   (set! have-select? ((ucode-primitive have-select? 0)))
   (add-event-receiver! event:after-restore primitive-io/reset!))
 
@@ -152,7 +152,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   ;; This is invoked after disk-restoring.
   ;; It "cleans" the new runtime system.
   (close-all-open-channels-internal (lambda (ignore) ignore))
-  (drop-all-protected-objects open-directories-list)
   (set! have-select? ((ucode-primitive have-select? 0)))
   unspecific)
 
@@ -472,22 +471,16 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    (lambda ()
      (let ((descriptor ((ucode-primitive new-directory-open 1) name)))
        (let ((channel (make-directory-channel descriptor)))
-	 (add-to-protection-list! open-directories-list channel descriptor)
+	 (add-to-gc-finalizer! open-directories channel descriptor)
 	 channel)))))
 
 (define (directory-channel-close channel)
   (without-interrupts
    (lambda ()
-     (let ((descriptor (directory-channel/descriptor channel)))
-       (if descriptor
-	   (begin
-	     ((ucode-primitive new-directory-close 1) descriptor)
-	     (set-directory-channel/descriptor! channel #f)
-	     (remove-from-protection-list! open-directories-list channel)))))))
-
-(define (close-lost-open-directories-daemon)
-  (clean-lost-protected-objects open-directories-list
-				(ucode-primitive new-directory-close 1)))
+     (if (directory-channel/descriptor channel)
+	 (begin
+	   (remove-from-gc-finalizer! open-directories channel)
+	   (set-directory-channel/descriptor! channel #f))))))
 
 (define (directory-channel-read channel)
   ((ucode-primitive new-directory-read 1)
@@ -497,71 +490,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   ((ucode-primitive new-directory-read-matching 2)
    (directory-channel/descriptor channel)
    prefix))
-
-;;;; Protection lists
-
-;;; These will cause problems on interpreted systems, due to the
-;;; consing of the interpreter.  For now we'll only run this compiled.
-
-(define (make-protection-list)
-  (list 'PROTECTION-LIST))
-
-;; This is used after a disk-restore, to remove invalid information.
-
-(define (drop-all-protected-objects list)
-  (set-cdr! list '()))
-
-(define (add-to-protection-list! list scheme-object microcode-object)
-  (without-interrupts
-   (lambda ()
-     (set-cdr! list
-	       (cons (weak-cons scheme-object microcode-object)
-		     (cdr list))))))
-
-(define (remove-from-protection-list! list scheme-object)
-  (without-interrupts
-   (lambda ()
-     (let loop ((associations (cdr list)) (previous list))
-       (if (not (null? associations))
-	   (if (eq? scheme-object (weak-pair/car? (car associations)))
-	       (set-cdr! previous (cdr associations))
-	       (loop (cdr associations) associations)))))))
-
-(define (clean-lost-protected-objects list cleaner)
-  ;; This assumes that interrupts are disabled.  This will normally be
-  ;; true because this should be called from a GC daemon.
-  (let loop ((associations (cdr list)) (previous list))
-    (if (not (null? associations))
-	(if (weak-pair/car? (car associations))
-	    (loop (cdr associations) associations)
-	    (begin
-	      (cleaner (weak-cdr (car associations)))
-	      (let ((next (cdr associations)))
-		(set-cdr! previous next)
-		(loop next previous)))))))
-
-(define (search-protection-list list predicate)
-  (without-interrupts
-   (lambda ()
-     (let loop ((associations (cdr list)))
-       (and (not (null? associations))
-	    (let ((scheme-object (weak-car (car associations))))
-	      (if (and scheme-object (predicate scheme-object))
-		  scheme-object
-		  (loop (cdr associations)))))))))
-
-(define (protection-list-elements list)
-  (without-interrupts
-   (lambda ()
-     (let loop ((associations (cdr list)))
-       (cond ((null? associations)
-	      '())
-	     ((weak-car (car associations))
-	      => (lambda (scheme-object)
-		   (cons scheme-object
-			 (loop (cdr associations)))))
-	     (else
-	      (loop (cdr associations))))))))
 
 ;;;; Buffered Output
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.340 2000/04/10 03:34:03 cph Exp $
+$Id: runtime.pkg,v 14.341 2000/04/10 18:32:38 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -917,6 +917,19 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  trigger-gc-daemons!)
   (initialization (initialize-package!)))
 
+(define-package (runtime gc-finalizer)
+  (files "gcfinal")
+  (parent ())
+  (export ()
+	  add-to-gc-finalizer!
+	  gc-finalizer-elements
+	  gc-finalizer?
+	  make-gc-finalizer
+	  remove-all-from-gc-finalizer!
+	  remove-from-gc-finalizer!
+	  search-gc-finalizer)
+  (initialization (initialize-package!)))
+
 (define-package (runtime gc-notification)
   (files "gcnote")
   (parent ())
@@ -1783,7 +1796,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (files "io") 
   (parent ())
   (export ()
-	  add-to-protection-list!
 	  all-open-channels
 	  channel-blocking
 	  channel-blocking?
@@ -1809,7 +1821,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  channel-write-char-block
 	  channel-write-string-block
 	  channel?
-	  clean-lost-protected-objects
 	  close-all-open-channels
 	  close-all-open-files
 	  directory-channel-close
@@ -1817,15 +1828,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  directory-channel-read
 	  directory-channel-read-matching
 	  directory-channel?
-	  drop-all-protected-objects
 	  file-open-append-channel
 	  file-open-input-channel
 	  file-open-io-channel
 	  file-open-output-channel
 	  make-pipe
-	  make-protection-list
 	  open-pty-master
-	  protection-list-elements
 	  pty-master-continue
 	  pty-master-hangup
 	  pty-master-interrupt
@@ -1833,8 +1841,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  pty-master-quit
 	  pty-master-send-signal
 	  pty-master-stop
-	  remove-from-protection-list!
-	  search-protection-list
 	  set-terminal-input-baud-rate!
 	  set-terminal-output-baud-rate!
 	  terminal-cooked-input

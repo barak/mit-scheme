@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: x11graph.scm,v 1.49 1999/02/24 21:57:17 cph Exp $
+$Id: x11graph.scm,v 1.50 2000/04/10 18:32:39 cph Exp $
 
-Copyright (c) 1989-1999 Massachusetts Institute of Technology
+Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -197,9 +197,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (starbase-filename ,x-graphics/starbase-filename)
 	   (visual-info ,x-graphics/visual-info)
 	   (withdraw-window ,x-graphics/withdraw-window))))
-  (set! display-list (make-protection-list))
-  (add-gc-daemon! close-lost-displays-daemon)
-  (add-event-receiver! event:after-restore drop-all-displays)
+  (set! display-finalizer (make-gc-finalizer x-close-display))
   (initialize-image-datatype)
   (initialize-colormap-datatype))
 
@@ -210,7 +208,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;;; Open/Close Displays
 
-(define display-list)
+(define display-finalizer)
 
 (define-structure (x-display
 		   (conc-name x-display/)
@@ -220,11 +218,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		      (lambda (display port)
 			(write-char #\space port)
 			(write (x-display/name display) port)))))
-  (name false read-only true)
+  (name #f read-only #t)
   xd
-  (window-list (make-protection-list) read-only true)
+  (window-finalizer (make-gc-finalizer x-close-window) read-only #t)
   (event-queue (make-queue))
-  (properties (make-1d-table) read-only true))
+  (properties (make-1d-table) read-only #t))
 
 (define (x-graphics/open-display name)
   (let ((name
@@ -240,14 +238,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		(error:wrong-type-argument name
 					   "string or #f"
 					   x-graphics/open-display)))))
-    (or (search-protection-list display-list
+    (or (search-gc-finalizer display-finalizer
 	  (lambda (display)
 	    (string=? (x-display/name display) name)))
 	(let ((xd (x-open-display name)))
 	  (if (not xd)
 	      (error "Unable to open display:" name))
 	  (let ((display (make-x-display name xd)))
-	    (add-to-protection-list! display-list display xd)
+	    (add-to-gc-finalizer! display-finalizer display xd)
 	    (make-event-previewer display)
 	    display)))))
 
@@ -256,25 +254,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    (lambda ()
      (if (x-display/xd display)
 	 (begin
-	   (do ((windows
-		 (protection-list-elements (x-display/window-list display))
-		 (cdr windows)))
-	       ((null? windows))
-	     (close-x-window (car windows)))
-	   (x-close-display (x-display/xd display))
-	   (set-x-display/xd! display false)
-	   (remove-from-protection-list! display-list display))))))
-
-(define (close-lost-displays-daemon)
-  (clean-lost-protected-objects display-list x-close-display)
-  (do ((associations (cdr display-list) (cdr associations)))
-      ((null? associations))
-    (clean-lost-protected-objects
-     (x-display/window-list (weak-car (car associations)))
-     x-close-window)))
-
-(define (drop-all-displays)
-  (drop-all-protected-objects display-list))
+	   (remove-all-from-gc-finalizer! (x-display/window-finalizer display))
+	   (remove-from-gc-finalizer! display-finalizer display)
+	   (set-x-display/xd! display #f))))))
 
 (define (make-event-previewer display)
   (let ((registration))
@@ -343,7 +325,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (without-interrupts
    (lambda ()
      (let ((window
-	    (search-protection-list (x-display/window-list display)
+	    (search-gc-finalizer (x-display/window-finalizer display)
 	      (let ((xw (vector-ref event 1)))
 		(lambda (window)
 		  (eq? (x-window/xw window) xw))))))
@@ -364,7 +346,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				    event)))))))))
 
 (define event-handlers
-  (make-vector number-of-event-types false))
+  (make-vector number-of-event-types #f))
 
 (define-integrable (define-event-handler event-type handler)
   (vector-set! event-handlers event-type handler))
@@ -417,14 +399,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;;; Standard Operations
 
-(define x-graphics:auto-raise? false)
+(define x-graphics:auto-raise? #f)
 
 (define-structure (x-window (conc-name x-window/)
 			    (constructor make-x-window (xw display)))
   xw
-  (display false read-only true)
+  (display #f read-only #t)
   (mapped? 'NEVER)
-  (visibility false)
+  (visibility #f)
   (user-event-mask user-event-mask:default))
 
 (define-integrable (x-graphics-device/xw device)
@@ -450,11 +432,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (close-x-window window)
   (if (x-window/xw window)
       (begin
-	(x-close-window (x-window/xw window))
-	(set-x-window/xw! window false)
-	(remove-from-protection-list!
-	 (x-display/window-list (x-window/display window))
-	 window))))
+	(remove-from-gc-finalizer!
+	 (x-display/window-finalizer (x-window/display window))
+	 window)
+	(set-x-window/xw! window #f))))
 
 (define (x-geometry-string x y width height)
   (string-append (if (and width height)
@@ -496,7 +477,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		 (vector #f resource class))))
 	  (x-window-set-event-mask xw event-mask:normal)
 	  (let ((window (make-x-window xw display)))
-	    (add-to-protection-list! (x-display/window-list display) window xw)
+	    (add-to-gc-finalizer! (x-display/window-finalizer display)
+				  window xw)
 	    (if map? (map-window window))
 	    (descriptor->device window)))))))
 
@@ -738,24 +720,24 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define-structure (x-font-structure (conc-name x-font-structure/)
 				    (type vector))
-  (name false read-only true)
-  (direction false read-only true)
-  (all-chars-exist? false read-only true)
-  (default-char false read-only true)
-  (min-bounds false read-only true)
-  (max-bounds false read-only true)
-  (start-index false read-only true)
-  (character-bounds false read-only true)
-  (max-ascent false read-only true)
-  (max-descent false read-only true))
+  (name #f read-only #t)
+  (direction #f read-only #t)
+  (all-chars-exist? #f read-only #t)
+  (default-char #f read-only #t)
+  (min-bounds #f read-only #t)
+  (max-bounds #f read-only #t)
+  (start-index #f read-only #t)
+  (character-bounds #f read-only #t)
+  (max-ascent #f read-only #t)
+  (max-descent #f read-only #t))
 
 (define-structure (x-character-bounds (conc-name x-character-bounds/)
 				      (type vector))
-  (lbearing false read-only true)
-  (rbearing false read-only true)
-  (width false read-only true)
-  (ascent false read-only true)
-  (descent false read-only true))
+  (lbearing #f read-only #t)
+  (rbearing #f read-only #t)
+  (width #f read-only #t)
+  (ascent #f read-only #t)
+  (descent #f read-only #t))
 
 ;;;; Window Management Operations
 
@@ -810,22 +792,18 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (draw     ,x-graphics-image/draw)
       (draw-subimage  ,x-graphics-image/draw-subimage)
       (fill-from-byte-vector  ,x-graphics-image/fill-from-byte-vector))))
-  (set! image-list (make-protection-list))
-  (add-gc-daemon! destroy-lost-images-daemon))
+  (set! image-list (make-gc-finalizer x-destroy-image))
+  unspecific)
 
 (define (create-x-image device width height)
   (let ((window (x-graphics-device/xw device)))
     (let ((descriptor (x-create-image window width height)))
       (let ((image (make-x-image descriptor window width height)))
-	(add-to-protection-list! image-list image descriptor)
+	(add-to-gc-finalizer! image-list image descriptor)
 	image))))
 
-(define (destroy-lost-images-daemon)
-  (clean-lost-protected-objects image-list x-destroy-image))
-
 (define (x-image/destroy image)
-  (x-destroy-image (x-image/descriptor image))
-  (remove-from-protection-list! image-list image))
+  (remove-from-gc-finalizer! image-list image))
 
 (define (x-image/get-pixel image x y)
   (x-get-pixel-from-image (x-image/descriptor image) x y))
@@ -891,12 +869,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (set! x-colormap? (record-predicate rtd))
     (set! %make-colormap (record-constructor rtd))
     (set! colormap/descriptor (record-accessor rtd 'DESCRIPTOR)))
-  (set! colormap-list (make-protection-list))
-  (add-gc-daemon! destroy-lost-colormaps-daemon))
+  (set! colormap-list (make-gc-finalizer x-free-colormap)))
 
 (define (make-colormap descriptor)
   (let ((colormap (%make-colormap descriptor)))
-    (add-to-protection-list! colormap-list colormap descriptor)
+    (add-to-gc-finalizer! colormap-list colormap descriptor)
     colormap))
 
 (define (x-graphics/get-colormap device)
@@ -913,12 +890,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(x-visual-deallocate visual)
 	(make-colormap descriptor)))))
 
-(define (destroy-lost-colormaps-daemon)
-  (clean-lost-protected-objects colormap-list x-free-colormap))
-
 (define (x-colormap/free colormap)
-  (x-free-colormap (colormap/descriptor colormap))
-  (remove-from-protection-list! colormap-list colormap))
+  (remove-from-gc-finalizer! colormap-list colormap))
 
 (define (x-colormap/allocate-color colormap r g b)
   (x-allocate-color (colormap/descriptor colormap) r g b))

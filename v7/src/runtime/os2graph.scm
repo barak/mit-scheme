@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: os2graph.scm,v 1.16 1999/11/08 18:28:28 cph Exp $
+$Id: os2graph.scm,v 1.17 2000/04/10 18:32:36 cph Exp $
 
-Copyright (c) 1995-1999 Massachusetts Institute of Technology
+Copyright (c) 1995-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -89,19 +89,18 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (fill-from-byte-vector ,os2-image/fill-from-byte-vector))))
   (set! event-descriptor #f)
   (set! event-previewer-registration #f)
-  (set! window-list (make-protection-list))
-  (set! image-list (make-protection-list))
+  (set! window-finalizer (make-gc-finalizer os2win-close))
+  (set! image-finalizer (make-gc-finalizer destroy-memory-ps))
   (set! user-event-mask user-event-mask:default)
   (set! user-event-queue (make-queue))
   (initialize-color-table)
-  (add-event-receiver! event:before-exit finalize-pm-state!)
-  (add-gc-daemon! close-lost-objects-daemon))
+  (add-event-receiver! event:before-exit finalize-pm-state!))
 
 (define os2-graphics-device-type)
 (define event-descriptor)
 (define event-previewer-registration)
-(define window-list)
-(define image-list)
+(define window-finalizer)
+(define image-finalizer)
 (define user-event-mask)
 (define user-event-queue)
 (define graphics-window-icon)
@@ -114,12 +113,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (begin
 	(os2win-destroy-pointer graphics-window-icon)
 	(set! graphics-window-icon)
-	(do ((windows (protection-list-elements window-list) (cdr windows)))
-	    ((null? windows))
-	  (close-window (car windows)))
-	(do ((images (protection-list-elements image-list) (cdr images)))
-	    ((null? images))
-	  (destroy-image (car images)))
+	(remove-all-from-gc-finalizer! window-finalizer)
+	(remove-all-from-gc-finalizer! image-finalizer)
 	(deregister-input-thread-event event-previewer-registration)
 	(set! event-previewer-registration #f)
 	(set! user-event-mask user-event-mask:default)
@@ -127,10 +122,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(os2win-close-event-qid event-descriptor)
 	(set! event-descriptor #f)
 	unspecific)))
-
-(define (close-lost-objects-daemon)
-  (clean-lost-protected-objects window-list os2win-close)
-  (clean-lost-protected-objects image-list destroy-memory-ps))
 
 ;;;; Window Abstraction
 
@@ -159,16 +150,15 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (make-window wid width height)
   (let ((window (%make-window wid width height)))
     (set-window/backing-image! window (create-image width height))
-    (add-to-protection-list! window-list window wid)
+    (add-to-gc-finalizer! window-finalizer window wid)
     window))
 
 (define (close-window window)
   (if (window/wid window)
       (begin
 	(destroy-image (window/backing-image window))
-	(os2win-close (window/wid window))
-	(set-window/wid! window #f)
-	(remove-from-protection-list! window-list window))))
+	(remove-from-gc-finalizer! window-finalizer window)
+	(set-window/wid! window #f))))
 
 (define-integrable (os2-graphics-device/wid device)
   (window/wid (graphics-device/descriptor device)))
@@ -766,7 +756,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (without-interrupts
    (lambda ()
      (let ((window
-	    (search-protection-list window-list
+	    (search-gc-finalizer window-finalizer
 	      (let ((wid (event-wid event)))
 		(lambda (window)
 		  (eq? (window/wid window) wid))))))
@@ -922,7 +912,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let ((ps (os2ps-create-memory-ps)))
     (os2ps-set-bitmap ps (os2ps-create-bitmap ps width height))
     (let ((image (make-image ps width height #f)))
-      (add-to-protection-list! image-list image ps)
+      (add-to-gc-finalizer! image-finalizer image ps)
       image)))
 
 (define (os2-image/set-colormap image colormap)
@@ -939,9 +929,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (destroy-image image)
   (if (image/ps image)
       (begin
-	(destroy-memory-ps (image/ps image))
-	(set-image/ps! image #f)
-	(remove-from-protection-list! image-list image))))
+	(remove-from-gc-finalizer! image-finalizer image)
+	(set-image/ps! image #f))))
 
 (define (destroy-memory-ps ps)
   (let ((bitmap (os2ps-set-bitmap ps #f)))

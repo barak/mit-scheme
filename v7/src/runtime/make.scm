@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.63 1999/01/02 06:06:43 cph Exp $
+$Id: make.scm,v 14.64 2000/04/10 18:32:35 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -200,7 +200,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(let ((spec (car specs)))
 	  (if (or (not (pair? spec))
 		  (symbol? (car spec)))
-	      (package-initialize spec 'INITIALIZE-PACKAGE! false)
+	      (package-initialize spec 'INITIALIZE-PACKAGE! #f)
 	      (package-initialize (car spec) (cadr spec) (caddr spec)))
 	  (loop (cdr specs))))))
 
@@ -240,7 +240,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  ((not optional?)
 	   (fatal-error (string-append "Could not find " filename)))
 	  (else
-	   false))))
+	   #f))))
 
 (define (eval object environment)
   (let ((value (scode-eval object environment)))
@@ -282,7 +282,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	prim
 	(lambda (name)
 	  name				; ignored
-	  false))))
+	  #f))))
 
 (define os-name
   (intern os-name-string))
@@ -339,7 +339,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (files2
        '(("prop1d" . (RUNTIME 1D-PROPERTY))
 	 ("events" . (RUNTIME EVENT-DISTRIBUTOR))
-	 ("gdatab" . (RUNTIME GLOBAL-DATABASE))))
+	 ("gdatab" . (RUNTIME GLOBAL-DATABASE))
+	 ("gcfinal" . (RUNTIME GC-FINALIZER))))
       (load-files
        (lambda (files)
 	 (do ((files files (cdr files)))
@@ -347,24 +348,25 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (eval (file->object (car (car files)) #t #f)
 		 (package-reference (cdr (car files))))))))
   (load-files files1)
-  (package-initialize '(RUNTIME GC-DAEMONS) 'INITIALIZE-PACKAGE! true)
-  (package-initialize '(RUNTIME GARBAGE-COLLECTOR) 'INITIALIZE-PACKAGE! true)
+  (package-initialize '(RUNTIME GC-DAEMONS) 'INITIALIZE-PACKAGE! #t)
+  (package-initialize '(RUNTIME GARBAGE-COLLECTOR) 'INITIALIZE-PACKAGE! #t)
   (lexical-assignment (package-reference '(RUNTIME GARBAGE-COLLECTOR))
 		      'CONSTANT-SPACE/BASE
 		      constant-space/base)
-  (package-initialize '(RUNTIME LIST) 'INITIALIZE-PACKAGE! true)
+  (package-initialize '(RUNTIME LIST) 'INITIALIZE-PACKAGE! #t)
   (package-initialize '(RUNTIME RANDOM-NUMBER) 'INITIALIZE-PACKAGE! #t)
   (package-initialize '(RUNTIME GENERIC-PROCEDURE) 'INITIALIZE-TAG-CONSTANTS!
 		      #t)
-  (package-initialize '(RUNTIME POPULATION) 'INITIALIZE-PACKAGE! true)
+  (package-initialize '(RUNTIME POPULATION) 'INITIALIZE-PACKAGE! #t)
   (package-initialize '(RUNTIME RECORD) 'INITIALIZE-RECORD-TYPE-TYPE! #t)
   (package-initialize '(RUNTIME DEFSTRUCT) 'INITIALIZE-STRUCTURE-TYPES! #t)
   (load-files files2)
-  (package-initialize '(RUNTIME 1D-PROPERTY) 'INITIALIZE-PACKAGE! true)
-  (package-initialize '(RUNTIME EVENT-DISTRIBUTOR) 'INITIALIZE-PACKAGE! true)
-  (package-initialize '(RUNTIME GLOBAL-DATABASE) 'INITIALIZE-PACKAGE! true)
-  (package-initialize '(RUNTIME POPULATION) 'INITIALIZE-UNPARSER! true)
-  (package-initialize '(RUNTIME 1D-PROPERTY) 'INITIALIZE-UNPARSER! true)
+  (package-initialize '(RUNTIME 1D-PROPERTY) 'INITIALIZE-PACKAGE! #t)
+  (package-initialize '(RUNTIME EVENT-DISTRIBUTOR) 'INITIALIZE-PACKAGE! #t)
+  (package-initialize '(RUNTIME GLOBAL-DATABASE) 'INITIALIZE-PACKAGE! #t)
+  (package-initialize '(RUNTIME POPULATION) 'INITIALIZE-UNPARSER! #t)
+  (package-initialize '(RUNTIME 1D-PROPERTY) 'INITIALIZE-UNPARSER! #t)
+  (package-initialize '(RUNTIME GC-FINALIZER) 'INITIALIZE-PACKAGE! #t)
 
 ;; Load everything else.
 ;; Note: The following code needs MAP* and MEMBER-PROCEDURE
@@ -398,6 +400,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    (RUNTIME PRIMITIVE-IO)
    (RUNTIME SAVE/RESTORE)
    (RUNTIME SYSTEM-CLOCK)
+   ((RUNTIME GC-FINALIZER) INITIALIZE-EVENTS! #t)
    ;; Basic data structures
    (RUNTIME NUMBER)
    (RUNTIME CHARACTER)
@@ -512,14 +515,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		      (load/purification-root object)))
 		  fasload-purification-queue)))))))
   (set! (access gc-boot-loading? (->environment '(RUNTIME GARBAGE-COLLECTOR)))
-	false)
+	#f)
   (set! fasload-purification-queue)
   (newline console-output-port)
   (write-string "purifying..." console-output-port)
   ;; First, flush whatever we can.
   (gc-clean)
   ;; Then, really purify the rest.
-  (purify roots true false)
+  (purify roots #t #f)
   (write-string "done" console-output-port))
 
 )

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: gdbm.scm,v 1.2 1999/01/02 06:11:34 cph Exp $
+$Id: gdbm.scm,v 1.3 2000/04/10 18:32:32 cph Exp $
 
-Copyright (c) 1996, 1999 Massachusetts Institute of Technology
+Copyright (c) 1996, 1999, 2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -43,18 +43,17 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	      (gdbm-error ((ucode-primitive gdbm-open 4)
 			   filename block-size flags mode))))
 	 (let ((gdbf (make-gdbf descriptor filename)))
-	   (add-to-protection-list! gdbf-list gdbf descriptor)
+	   (add-to-gc-finalizer! gdbf-finalizer gdbf descriptor)
 	   gdbf))))))
 
 (define (gdbm-close gdbf)
   (if (not (gdbf? gdbf))
       (error:wrong-type-argument gdbf "gdbm handle" 'GDBM-CLOSE))
-  (let ((descriptor (gdbf-descriptor gdbf)))
-    (if descriptor
-	(without-interrupts
-	 (lambda ()
-	   ((ucode-primitive gdbm-close 1) descriptor)
-	   (remove-from-protection-list! gdbf-list gdbf)
+  (without-interrupts
+   (lambda ()
+     (if (gdbf-descriptor gdbf)
+	 (begin
+	   (remove-from-gc-finalizer! gdbf-finalizer gdbf)
 	   (set-gdbf-descriptor! gdbf #f))))))
 
 ;; Parameters to gdbm_store for simple insertion or replacement in the
@@ -120,11 +119,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (if (string? object) (error "gdbm error:" object))
   object)
 
-(define gdbf-list)
+(define gdbf-finalizer)
 (define (initialize-package!)
-  (set! gdbf-list (make-protection-list))
-  (add-gc-daemon!
-   (lambda ()
-     (clean-lost-protected-objects gdbf-list (ucode-primitive gdbm-close 1))))
-  (add-event-receiver! event:after-restore
-		       (lambda () (drop-all-protected-objects gdbf-list))))
+  (set! gdbf-finalizer (make-gc-finalizer (ucode-primitive gdbm-close 1)))
+  unspecific)
