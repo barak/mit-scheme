@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.pkg,v 1.4 2001/06/30 03:23:38 cph Exp $
+;;; $Id: parser.pkg,v 1.5 2001/07/02 18:20:47 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -66,5 +66,5 @@
   (files "synchk" "shared" "matcher" "parser")
   (parent ())
   (export ()
-	  define-*matcher-macro*
-	  define-*parser-macro*))
+	  define-*matcher-expander
+	  define-*parser-expander))

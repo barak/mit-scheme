@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: matcher.scm,v 1.9 2001/07/02 12:14:29 cph Exp $
+;;; $Id: matcher.scm,v 1.10 2001/07/02 18:20:08 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -21,8 +21,6 @@
 
 ;;;; Pattern-matcher language
 
-(declare (usual-integrations))
-
 ;;; A matcher is a procedure of one argument, a parser buffer.
 ;;; It performs a match against the contents of the buffer, starting
 ;;; at the location of the buffer pointer.  If the match is
@@ -30,8 +28,145 @@
 ;;; matched segment, and #T is returned.  If the match fails, the
 ;;; buffer pointer is unchanged, and #F is returned.
 
-;;; The *MATCHER macro provides a concise way to define a broad class
-;;; of matchers using a BNF-like syntax.
+(declare (usual-integrations))
+
+;;;; Preprocessor
+
+(define (preprocess-matcher-expression expression
+				       external-bindings
+				       internal-bindings)
+  (cond ((and (pair? expression)
+	      (symbol? (car expression))
+	      (list? (cdr expression)))
+	 (let ((preprocessor (matcher-preprocessor (car expression))))
+	   (if preprocessor
+	       (preprocessor expression external-bindings internal-bindings)
+	       (error "Unknown matcher expression:" expression))))
+	((symbol? expression)
+	 (let ((preprocessor (matcher-preprocessor expression)))
+	   (if preprocessor
+	       (preprocessor expression external-bindings internal-bindings)
+	       expression)))
+	(else
+	 (error "Unknown matcher expression:" expression))))
+
+(define (preprocess-matcher-expressions expressions
+					external-bindings
+					internal-bindings)
+  (map (lambda (expression)
+	 (preprocess-matcher-expression expression
+					external-bindings
+					internal-bindings))
+       expressions))
+
+(define (define-matcher-preprocessor name procedure)
+  (if (pair? name)
+      (for-each (lambda (name) (define-matcher-preprocessor name procedure))
+		name)
+      (hash-table/put! matcher-preprocessors name procedure))
+  name)
+
+(define (matcher-preprocessor name)
+  (hash-table/get matcher-preprocessors name #f))
+
+(define matcher-preprocessors
+  (make-eq-hash-table))
+
+(syntax-table/define system-global-syntax-table 'DEFINE-*MATCHER-MACRO
+  (lambda (bvl expression)
+    (cond ((symbol? bvl)
+	   `(DEFINE-*MATCHER-EXPANDER ',bvl
+	      (LAMBDA ()
+		,expression)))
+	  ((named-lambda-bvl? bvl)
+	   `(DEFINE-*MATCHER-EXPANDER ',(car bvl)
+	      (LAMBDA ,(cdr bvl)
+		,expression)))
+	  (else
+	   (error "Malformed bound-variable list:" bvl)))))
+
+(define (define-*matcher-expander name procedure)
+  (define-matcher-preprocessor name
+    (lambda (expression external-bindings internal-bindings)
+      (preprocess-matcher-expression (if (pair? expression)
+					 (apply procedure (cdr expression))
+					 (procedure))
+				     external-bindings
+				     internal-bindings))))
+
+(define-*matcher-expander '+
+  (lambda (expression)
+    `(SEQ ,expression (* ,expression))))
+
+(define-*matcher-expander '?
+  (lambda (expression)
+    `(ALT ,expression (SEQ))))
+
+(define-matcher-preprocessor '(ALT SEQ)
+  (lambda (expression external-bindings internal-bindings)
+    `(,(car expression)
+      ,@(flatten-expressions (preprocess-matcher-expressions (cdr expression)
+							     external-bindings
+							     internal-bindings)
+			     (car expression)))))
+
+(define-matcher-preprocessor '*
+  (lambda (expression external-bindings internal-bindings)
+    `(,(car expression)
+      ,(preprocess-matcher-expression (check-1-arg expression)
+				      external-bindings
+				      internal-bindings))))
+
+(define-matcher-preprocessor '(CHAR CHAR-CI NOT-CHAR NOT-CHAR-CI)
+  (lambda (expression external-bindings internal-bindings)
+    external-bindings
+    `(,(car expression)
+      ,(handle-complex-expression (check-1-arg expression)
+				  internal-bindings))))
+
+(define-matcher-preprocessor 'STRING
+  (lambda (expression external-bindings internal-bindings)
+    external-bindings
+    (let ((string (check-1-arg expression)))
+      (if (and (string? string) (fix:= (string-length string) 1))
+	  `(CHAR ,(string-ref string 0))
+	  `(STRING ,(handle-complex-expression string internal-bindings))))))
+
+(define-matcher-preprocessor 'STRING-CI
+  (lambda (expression external-bindings internal-bindings)
+    external-bindings
+    (let ((string (check-1-arg expression)))
+      (if (and (string? string) (fix:= (string-length string) 1))
+	  `(CHAR-CI ,(string-ref string 0))
+	  `(STRING-CI
+	    ,(handle-complex-expression string internal-bindings))))))
+
+(define-matcher-preprocessor 'ALPHABET
+  (lambda (expression external-bindings internal-bindings)
+    `(,(car expression)
+      ,(let ((arg (check-1-arg expression)))
+	 (if (string? arg)
+	     (handle-complex-expression
+	      (if (string-prefix? "^" arg)
+		  `(RE-COMPILE-CHAR-SET ,(string-tail arg 1) #T)
+		  `(RE-COMPILE-CHAR-SET ,arg #F))
+	      external-bindings)
+	     (handle-complex-expression arg internal-bindings))))))
+
+(define-matcher-preprocessor 'WITH-POINTER
+  (lambda (expression external-bindings internal-bindings)
+    (check-2-args expression (lambda (expression) (symbol? (cadr expression))))
+    `(,(car expression) ,(cadr expression)
+			,(preprocess-matcher-expression (caddr expression)
+							external-bindings
+							internal-bindings))))
+
+(define-matcher-preprocessor 'SEXP
+  (lambda (expression external-bindings internal-bindings)
+    external-bindings
+    (handle-complex-expression (check-1-arg expression) internal-bindings)))
+
+;;;; Compiler
 
 (syntax-table/define system-global-syntax-table '*MATCHER
   (lambda (expression)
@@ -41,9 +176,9 @@
   (let ((external-bindings (list 'BINDINGS))
 	(internal-bindings (list 'BINDINGS)))
     (let ((expression
-	   (canonicalize-matcher-expression expression
-					    external-bindings
-					    internal-bindings)))
+	   (preprocess-matcher-expression expression
+					  external-bindings
+					  internal-bindings)))
       (maybe-make-let (map (lambda (b) (list (cdr b) (car b)))
 			   (cdr external-bindings))
 	(with-buffer-name
@@ -52,9 +187,13 @@
 				 (cdr internal-bindings))
 	      (call-with-unknown-pointer
 	       (lambda (pointer)
-		 (compile-matcher-expression expression pointer
-		   (simple-backtracking-continuation `#T)
-		   (simple-backtracking-continuation `#F)))))))))))
+		 (compile-isolated-matcher-expression expression
+						      pointer))))))))))
+
+(define (compile-isolated-matcher-expression expression pointer)
+  (compile-matcher-expression expression pointer
+    (simple-backtracking-continuation `#T)
+    (simple-backtracking-continuation `#F)))
 
 (define (compile-matcher-expression expression pointer if-succeed if-fail)
   (cond ((and (pair? expression)
@@ -78,105 +217,6 @@
 		  ,(if-fail pointer)))))
 	(else
 	 (error "Malformed matcher:" expression))))
-
-(syntax-table/define system-global-syntax-table 'DEFINE-*MATCHER-MACRO
-  (lambda (bvl expression)
-    (cond ((symbol? bvl)
-	   `(DEFINE-*MATCHER-MACRO* ',bvl
-	      (LAMBDA ()
-		,expression)))
-	  ((named-lambda-bvl? bvl)
-	   `(DEFINE-*MATCHER-MACRO* ',(car bvl)
-	      (LAMBDA ,(cdr bvl)
-		,expression)))
-	  (else
-	   (error "Malformed bound-variable list:" bvl)))))
-
-(define (define-*matcher-macro* name procedure)
-  (hash-table/put! *matcher-macros name procedure)
-  name)
-
-(define (*matcher-expander name)
-  (hash-table/get *matcher-macros name #f))
-
-(define *matcher-macros
-  (make-eq-hash-table))
-
-;;;; Canonicalization
-
-(define (canonicalize-matcher-expression expression
-					 external-bindings internal-bindings)
-  (define (do-expression expression)
-    (cond ((and (pair? expression)
-		(symbol? (car expression))
-		(list? (cdr expression)))
-	   (case (car expression)
-	     ((ALT SEQ)
-	      `(,(car expression)
-		,@(flatten-expressions (map do-expression (cdr expression))
-				       (car expression))))
-	     ((*)
-	      `(,(car expression)
-		,(do-expression (check-1-arg expression))))
-	     ((+)
-	      (do-expression
-	       (let ((expression (check-1-arg expression)))
-		 `(SEQ ,expression (* ,expression)))))
-	     ((?)
-	      (do-expression
-	       `(ALT ,(check-1-arg expression) (SEQ))))
-	     ((CHAR CHAR-CI NOT-CHAR NOT-CHAR-CI)
-	      `(,(car expression)
-		,(handle-complex-expression (check-1-arg expression)
-					    internal-bindings)))
-	     ((STRING)
-	      (let ((string (check-1-arg expression)))
-		(if (and (string? string) (fix:= (string-length string) 1))
-		    `(CHAR ,(string-ref string 0))
-		    `(STRING
-		      ,(handle-complex-expression string
-						  internal-bindings)))))
-	     ((STRING-CI)
-	      (let ((string (check-1-arg expression)))
-		(if (and (string? string) (fix:= (string-length string) 1))
-		    `(CHAR-CI ,(string-ref string 0))
-		    `(STRING-CI
-		      ,(handle-complex-expression string
-						  internal-bindings)))))
-	     ((ALPHABET)
-	      `(,(car expression)
-		,(let ((arg (check-1-arg expression)))
-		   (if (string? arg)
-		       (handle-complex-expression
-			(if (string-prefix? "^" arg)
-			    `(RE-COMPILE-CHAR-SET ,(string-tail arg 1) #T)
-			    `(RE-COMPILE-CHAR-SET ,arg #F))
-			external-bindings)
-		       (handle-complex-expression arg internal-bindings)))))
-	     ((WITH-POINTER)
-	      (check-2-args expression
-			    (lambda (expression) (symbol? (cadr expression))))
-	      `(,(car expression)
-		,(cadr expression)
-		,(do-expression (caddr expression))))
-	     ((SEXP)
-	      (handle-complex-expression (check-1-arg expression)
-					 internal-bindings))
-	     (else
-	      (let ((expander (*matcher-expander (car expression))))
-		(if expander
-		    (do-expression (apply expander (cdr expression)))
-		    (error "Unknown matcher expression:" expression))))))
-	  ((symbol? expression)
-	   (let ((expander (*matcher-expander expression)))
-	     (if expander
-		 (do-expression (expander))
-		 expression)))
-	  (else
-	   (error "Unknown matcher expression:" expression))))
-  (do-expression expression))
-
-;;;; Matchers
 
 (define-macro (define-matcher form . compiler-body)
   (let ((name (car form))
@@ -203,7 +243,7 @@
 	 `(IF ,,test-expression
 	      ,(CALL-WITH-UNKNOWN-POINTER IF-SUCCEED)
 	      ,(IF-FAIL POINTER))))))
-
+
 (define-atomic-matcher (char char)
   `(MATCH-PARSER-BUFFER-CHAR ,*buffer-name* ,char))
 
@@ -228,21 +268,21 @@
 (define-matcher (with-pointer identifier expression)
   `(LET ((,identifier ,(pointer-reference pointer)))
      ,(compile-matcher-expression expression pointer if-succeed if-fail)))
-
+
 (define-matcher (* expression)
   if-fail
   (handle-pending-backtracking pointer
     (lambda (pointer)
       pointer
-      (call-with-unknown-pointer
-       (lambda (pointer)
-	 (let ((v (generate-uninterned-symbol)))
-	   `(BEGIN
-	      (LET ,v ()
-		,(compile-matcher-expression expression pointer
+      (let ((v (generate-uninterned-symbol)))
+	`(BEGIN
+	   (LET ,v ()
+	     ,(call-with-unknown-pointer
+	       (lambda (pointer)
+		 (compile-matcher-expression expression pointer
 		   (simple-backtracking-continuation `(,v))
-		   (simple-backtracking-continuation `UNSPECIFIC)))
-	      ,(if-succeed pointer))))))))
+		   (simple-backtracking-continuation `UNSPECIFIC)))))
+	   ,(call-with-unknown-pointer if-succeed))))))
 
 (define-matcher (seq . expressions)
   (let loop ((expressions expressions) (pointer* pointer))
@@ -255,21 +295,20 @@
 	(if-succeed pointer*))))
 
 (define-matcher (alt . expressions)
-  (cond ((not (pair? expressions))
-	 (if-fail pointer))
-	((not (pair? (cdr expressions)))
-	 (compile-matcher-expression expression pointer if-succeed if-fail))
-	(else
-	 (handle-pending-backtracking pointer
-	   (lambda (pointer)
-	     `(IF (OR ,@(map (let ((s (simple-backtracking-continuation '#T))
-				   (f (simple-backtracking-continuation '#F)))
-			       (lambda (expression)
-				 (compile-matcher-expression expression pointer
-				   s f)))
-			     expressions))
-		  ,(call-with-unknown-pointer if-succeed)
-		  ,(if-fail pointer)))))))
+  (if (pair? expressions)
+      (if (pair? (cdr expressions))
+	  (handle-pending-backtracking pointer
+	    (lambda (pointer)
+	      `(IF (OR ,@(map (lambda (expression)
+				(compile-isolated-matcher-expression expression
+								     pointer))
+			      expressions))
+		   ,(call-with-unknown-pointer if-succeed)
+		   ,(if-fail pointer))))
+	  (compile-matcher-expression (car expressions) pointer
+	    if-succeed
+	    if-fail))
+      (if-fail pointer)))
 
 ;;; Edwin Variables:
 ;;; Eval: (scheme-indent-method 'handle-pending-backtracking 1)
