@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.82 1999/11/08 18:23:57 cph Exp $
+@comment $Id: scheme.texinfo,v 1.83 1999/12/20 23:21:58 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -95,9 +95,9 @@ by the Massachusetts Institute of Technology.
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.82
+@subtitle Edition 1.83
 @subtitle for Scheme Release 7.5
-@subtitle 8 November 1999
+@subtitle 20 December 1999
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -12596,7 +12596,7 @@ unspecified value.
 
 @deffn {procedure+} write-line object [output-port]
 Like @code{write}, except that it writes an end-of-line to
-@var{output-port} before writing @var{object}'s representation.  This
+@var{output-port} after writing @var{object}'s representation.  This
 procedure performs discretionary output flushing and returns an
 unspecified value.
 @end deffn
