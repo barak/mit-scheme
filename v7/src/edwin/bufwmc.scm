@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwmc.scm,v 1.5 1989/08/08 10:05:36 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwmc.scm,v 1.6 1989/08/09 12:55:39 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -78,7 +78,9 @@
       (define (search-upwards end y-end)
 	(let ((start (line-start-index group end)))
 	  (let ((columns (group-column-length group start end 0)))
-	    (let ((y-start (- y-end (column->y-size columns x-size))))	      (if (<= start index)
+	    (let ((y-start
+		   (- y-end (column->y-size columns x-size truncate-lines?))))
+	      (if (<= start index)
 		  (done start columns y-start)
 		  (search-upwards (-1+ start) y-start))))))
 
