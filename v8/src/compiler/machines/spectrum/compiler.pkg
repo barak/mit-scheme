@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.14 1995/09/05 18:46:39 adams Exp $
+$Id: compiler.pkg,v 1.15 1996/03/14 18:51:42 adams Exp $
 
 Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
@@ -401,6 +401,11 @@ MIT in each case. |#
   (files "rtlopt/rcompr")
   (parent (compiler rtl-optimizer))
   (export (compiler top-level) code-compression))
+
+(define-package (compiler rtl-optimizer instruction-scheduling)
+  (files "rtlopt/rsched")
+  (parent (compiler rtl-optimizer))
+  (export (compiler top-level) rtl-instruction-scheduling))
 
 (define-package (compiler rtl-optimizer register-allocation)
   (files "rtlopt/ralloc")
