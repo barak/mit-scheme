@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.26 1987/07/22 21:54:35 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.27 1987/08/16 15:48:31 jinx Exp $
  *
  * This file contains the macros for use in code which does GC-like
  * loops over memory.  It is only included in a few files, unlike
@@ -339,7 +339,12 @@ Pointer_End()
 /* Compiled Code Relocation Utilities */
 
 #ifdef CMPGCFILE
+/* Bug in bsd cpp */
+#ifdef vax
+#include "cmpvaxgc.h"
+#else
 #include CMPGCFILE
+#endif
 #else
 
 /* Is there anything else that can be done here? */
