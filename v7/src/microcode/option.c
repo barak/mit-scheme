@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: option.c,v 1.33 1993/06/24 06:07:24 gjr Exp $
+$Id: option.c,v 1.34 1993/08/07 00:13:57 adams Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -352,7 +352,7 @@ The following options are only meaningful to bchscheme:
 /* 386 code is large too! */
 
 #ifndef DEFAULT_SMALL_CONSTANT
-#define DEFAULT_SMALL_CONSTANT 435
+#define DEFAULT_SMALL_CONSTANT 500
 #endif
 
 #ifndef DEFAULT_LARGE_CONSTANT
@@ -1282,3 +1282,4 @@ DEFUN (read_command_line_options, (argc, argv),
   if (option_summary)
     describe_options ();
 }
+
