@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.26 1993/10/16 05:31:51 jawilson Exp $
+@comment $Id: scheme.texinfo,v 1.27 1993/10/16 08:48:11 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -106,9 +106,9 @@ literature without prior written consent from MIT in each case.
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.25 alpha
+@subtitle Edition 1.27 alpha
 @subtitle for Scheme Release 7.2
-@subtitle 14 October 1993
+@subtitle 16 October 1993
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -254,6 +254,7 @@ Numbers
 * Numerical operations::        
 * Numerical input and output::  
 * Fixnum and Flonum Operations::  
+* Random Numbers::              
 
 Fixnum and Flonum Operations
 
@@ -359,6 +360,7 @@ Input/Output
 * Output Procedures::           
 * Format::                      
 * Custom Output::               
+* Prompting::                   
 * Port Primitives::             
 
 Port Primitives
@@ -6687,9 +6689,7 @@ false.  @var{Predicate} must be a procedure of one argument.
 
 @example
 @group
-
 (list-transform-positive '(1 2 3 4 5) odd?) @result{} (1 3 5)
-
 (list-transform-negative '(1 2 3 4 5) odd?) @result{} (2 4)
 @end group
 @end example
@@ -10274,6 +10274,7 @@ custom ports and high-performance @sc{i/o}.
 * Output Procedures::           
 * Format::                      
 * Custom Output::               
+* Prompting::                   
 * Port Primitives::             
 @end menu
 
@@ -11093,7 +11094,7 @@ the control string are suppressed because each is preceded by a tilde.
 
 @comment **** end CLTL ****
 
-@node Custom Output, Port Primitives, Format, Input/Output
+@node Custom Output, Prompting, Format, Input/Output
 @section Custom Output
 
 MIT Scheme provides hooks for specifying that certain kinds of objects
@@ -11233,7 +11234,111 @@ generated either as if by @code{display} or as if by @code{write},
 depending on other components of @var{unparser-state}.
 @end deffn
 
-@node Port Primitives,  , Custom Output, Input/Output
+@node Prompting, Port Primitives, Custom Output, Input/Output
+@section Prompting
+@cindex prompting
+
+This section describes procedures that prompt the user for input.  Why
+should the programmer use these procedures when it is possible to do
+prompting using ordinary input and output procedures?  One reason is
+that the prompting procedures are more succinct.  However, a second and
+better reason is that the prompting procedures can be separately
+customized for each user interface, providing more natural interaction.
+The interfaces for Edwin and for GNU Emacs have already been customized
+in this fashion; because Edwin and Emacs are very similar editors, their
+customizations provide very similar behavior.
+
+@findex nearest-cmdl/port
+Each of these procedure accepts an optional argument called @var{port},
+which must be an @sc{i/o} port if given.  If not given, this port
+defaults to the value of @code{(nearest-cmdl/port)}, the @sc{i/o} port
+of the @sc{rep} loop; this is usually the console @sc{i/o} port.
+
+The required argument @var{prompt} must be a string.
+
+@deffn {procedure+} prompt-for-command-expression prompt [port]
+Prompts the user for an expression that is to be executed as a command.
+This is the procedure called by the @sc{rep} loop to read the user's
+expressions.
+
+The prompt string is formed by appending a space to @var{prompt}, unless
+@var{prompt} already ends in a space.
+
+The default behavior of this procedure is to print the prompt string
+preceded by two newlines, flush the output buffer, then read an object
+and return it.
+
+Under Edwin and Emacs, before the object is read, the interaction buffer
+is put into a mode that allows expressions to be edited and submitted
+for input using specific editor commands.  The first expression that is
+submitted is returned as the value of this procedure.
+@end deffn
+
+@deffn {procedure+} prompt-for-command-char prompt [port]
+@findex char-graphic?
+Prompts the user for a single character that is to be executed as a
+command; the returned character is guaranteed to satisfy
+@code{char-graphic?}.  If at all possible, the character is read from
+the user interface using a mode that reads the character as a single
+keystroke; in other words, it should not be necessary for the user to
+follow the character with a carriage return or similar rubbish.
+
+@findex debug
+@findex where
+This is the procedure called by @code{debug} and @code{where} to read
+the user's commands.
+
+The prompt string is formed by appending a space to @var{prompt}, unless
+@var{prompt} already ends in a space.
+
+The default behavior of this procedure is to print the prompt string
+preceded by two newlines, flush the output buffer, read a character in
+@dfn{raw} mode, echo that character, and return it.
+
+Under Edwin and Emacs, instead of reading a character, the interaction
+buffer is put into a mode in which graphic characters submit themselves
+as input.  After this mode change, the first such character submitted is
+returned as the value of this procedure.
+@end deffn
+
+@deffn {procedure+} prompt-for-expression prompt [port]
+Prompts the user for an expression.
+
+The prompt string is formed by appending a colon and a space to
+@var{prompt}, unless @var{prompt} already ends in a space.
+
+The default behavior of this procedure is to print the prompt string
+preceded by two newlines, flush the output buffer, then read an object
+and return it.
+
+Under Edwin and Emacs, the expression is read in the minibuffer.
+@end deffn
+
+@deffn {procedure+} prompt-for-evaluated-expression prompt [environment [port]]
+Prompts the user for an evaluated expression.  Calls
+@code{prompt-for-expression} to read an expression, then evaluates the
+expression using @var{environment}; if @var{environment} is not given,
+the @sc{rep} loop environment is used.
+@end deffn
+
+@deffn {procedure+} prompt-for-confirmation prompt [port]
+Prompts the user for confirmation.  The result yielded by this procedure
+is a boolean.
+
+The prompt string is formed by appending the string @code{" (y or n)? "}
+to @var{prompt}, unless @var{prompt} already ends in a space.
+
+The default behavior of this procedure is to print the prompt string
+preceded by two newlines, flush the output buffer, then read a
+character.  If the character is @code{#\y}, @code{#\Y}, or
+@code{#\space}, the procedure returns @code{#t}; If the character is
+@code{#\n}, @code{#\N}, or @code{#\rubout}, the procedure returns
+@code{#f}.  Otherwise the prompt is repeated.
+
+Under Edwin or Emacs, the confirmation is read in the minibuffer.
+@end deffn
+
+@node Port Primitives,  , Prompting, Input/Output
 @section Port Primitives
 @cindex port primitives
 
