@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cleanup.scm,v 1.18 1995/05/11 05:39:59 adams Exp $
+$Id: cleanup.scm,v 1.19 1995/06/15 17:59:59 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -481,6 +481,11 @@ MIT in each case. |#
 			   (car binding)
 			   (cleanup/expr env (cadr binding))))
 			bindings)))
+    (define (dbg-track! bindings)
+      (for-each (lambda (binding)
+		  (dbg-info/remember (cleanup/binding/name binding)
+				     (form/copy (cleanup/binding/value binding))))
+	bindings))
     (call-with-values
      (lambda ()
        (list-split bindings*
@@ -516,6 +521,8 @@ MIT in each case. |#
 			    (car triplet)
 			    `(LOOKUP ,(cadr triplet))))
 			 complex-triplets))))
+	    (dbg-track! trivial)
+	    (dbg-track! easy)
 	    (let ((body* (cleanup/expr env* body)))
 	      (if (null? complex-triplets)
 		  body*
@@ -605,13 +612,14 @@ MIT in each case. |#
   (map (lambda (name)
 	 (let ((value (cleanup/env/lookup name env)))
 	   ;; Do not rename if the shadowed binding is disappearing
-	   (if (or (not value)
-		   (QUOTE/? value))
-	       (cleanup/binding/make name `(LOOKUP ,name))
-	       (let ((renamed-form
-		      `(LOOKUP ,(variable/rename name))))
-		 (dbg-info/remember name renamed-form)
-		 (cleanup/binding/make name renamed-form)))))
+	   (cond ((or (not value)
+		      (QUOTE/? value))
+		  (cleanup/binding/make name `(LOOKUP ,name)))
+		 (else
+		  (let ((renamed-form
+			 `(LOOKUP ,(variable/rename name))))
+		    (dbg-info/remember name renamed-form)
+		    (cleanup/binding/make name renamed-form))))))
        names))
 
 ;; Environment is a list of frames.  Frames are a list of bindings.
