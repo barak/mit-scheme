@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dossig.c,v 1.12 1992/10/07 06:23:32 jinx Exp $
+$Id: dossig.c,v 1.13 1992/11/23 04:15:07 gjr Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -445,10 +445,10 @@ static unsigned char
 DEFUN_VOID (console_read_character)
 {
   unsigned char c;
-  extern int EXFUN (dos_read, (int, PTR, size_t, int, int));
+  extern int EXFUN (dos_read, (int, PTR, size_t, int, int, int));
 
-  /* non-buffered, non-blocking read. */
-  (void) dos_read ((fileno (stdin)), &c, 1, 0, 0);
+  /* non-buffered, blocking, non-interrupting read. */
+  (void) dos_read ((fileno (stdin)), &c, 1, 0, 1, 0);
   return (c);
 }
 
@@ -1106,16 +1106,32 @@ DEFUN (DOS_restore_keyboard, (intno), unsigned intno)
   return (DOS_SUCCESS);
 }     
 
+/* This defaults to true. */
+
 static dos_boolean
-DEFUN_VOID (enable_DPMI_exceptions_p)
+DEFUN (feature_enabled_p, (symbol), char * symbol)
 {
   extern int strcmp_ci (char *, char *);
-  char * envvar = (DOS_getenv ("MITSCHEME_DPMI_EXCEPTIONS"));
+  char * envvar = (DOS_getenv (symbol));
 
-  if ((envvar == NULL) || ((strcmp_ci (envvar, "true")) == 0))
+  if ((envvar == NULL)
+      || ((strcmp_ci (envvar, "true")) == 0)
+      || ((strcmp_ci (envvar, "yes")) == 0))
     return (dos_true);
   else
     return (dos_false);
+}
+
+static dos_boolean
+DEFUN_VOID (enable_DPMI_exceptions_p)
+{
+  return (feature_enabled_p ("MITSCHEME_DPMI_EXCEPTIONS"));
+}
+
+static dos_boolean
+DEFUN_VOID (enable_X32_exceptions_p)
+{
+  return (feature_enabled_p ("MITSCHEME_X32_EXCEPTIONS"));
 }
 
 static void
@@ -1125,7 +1141,7 @@ DEFUN_VOID (DOS_install_interrupts)
   dos_boolean x32_p = (under_X32_p ());
   dos_boolean dpmi_p = (under_DPMI_p ());
   
-  if (x32_p)
+  if (x32_p && (featured_enabled_p ("MITSCHEME_X32_INTERRUPTS")))
   {
     extern void EXFUN (X32_asm_initialize, (void));
     extern int EXFUN (X32_lock_scheme_microcode, (void));
@@ -1180,7 +1196,7 @@ DEFUN_VOID (DOS_install_interrupts)
     }
   }
 
-  else
+  else if (featured_enabled_p ("MITSCHEME_DOSX_INTERRUPTS"))
   {
     scm_int_intercept (DOS_INTVECT_USER_TIMER_TICK, 
 		       bios_timer_handler, 
@@ -1214,7 +1230,7 @@ DEFUN_VOID (DOS_install_interrupts)
     install_exception_handlers (DPMI_get_exception_vector,
 				DPMI_set_exception_handler,
 				DPMI_restore_handler);
-  else if (x32_p)
+  else if (x32_p && (enable_X32_exceptions_p ()))
     install_exception_handlers (X32_get_exception_vector,
 				X32_set_exception_handler,
 				X32_restore_handler);
