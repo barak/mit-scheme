@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bittop.scm,v 1.7 1988/02/17 19:12:25 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bittop.scm,v 1.8 1988/02/19 20:57:27 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -68,27 +68,20 @@ MIT in each case. |#
 	(lambda ()
 	  (initial-phase (instruction-sequence->directives input)))
 	(lambda (directives vars)
-	  (relax! directives vars)
-	  (let ((code-block (final-phase directives)))
-	    (values code-block
+	  (let* ((count (relax! directives vars))
+		 (code-block (final-phase directives)))
+	    (values count
+		    code-block
 		    (queue->list *entry-points*)
 		    (symbol-table->assq-list *the-symbol-table*)
 		    (queue->list *linkage-info*)))))))
    linker))
 
 (define (relax! directives vars)
-  (define (tension-message count)
-    (newline)
-    (display "assemble: Branch tensioning done in ")
-    (write (1+ count))
-    (if (zero? count)
-	(display " iteration.")
-	(display " iterations.")))
-
   (define (loop vars count)
     (finish-symbol-table!)
     (if (null? vars)
-	(tension-message count)
+	count
 	(with-values (lambda () (phase-2 vars))
 	 (lambda (any-modified? number-of-vars)
 	   (if any-modified?
@@ -96,7 +89,7 @@ MIT in each case. |#
 		 (clear-symbol-table!)
 		 (initialize-symbol-table!)
 		 (loop (phase-1 directives) (1+ count)))
-	       (tension-message count))))))
+	       count)))))
   (loop vars 0))
 
 ;;;; Output block generation

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.2 1987/12/31 08:51:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.3 1988/02/19 20:57:55 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -58,6 +58,11 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (REGISTER 12) (OFFSET-ADDRESS (REGISTER 15) (? offset)))
   (LAP (LEA (@AO 7 ,(* 4 offset)) (A 4))))
+
+(define-rule statement
+  (ASSIGN (REGISTER 12) (OFFSET-ADDRESS (REGISTER (? source)) (? offset)))
+  (QUALIFIER (pseudo-register? source))
+  (LAP (LEA ,(indirect-reference! source offset) (A 4))))
 
 ;;; The following rule always occurs immediately after an instruction
 ;;; of the form
@@ -243,6 +248,12 @@ MIT in each case. |#
 	      ,temporary)
 	 (MOV L ,temporary (@A+ 5))
 	 (MOV B (& ,(ucode-type compiled-expression)) (@AO 5 -4)))))
+
+;; This pops the top of stack into the heap
+
+(define-rule statement
+  (ASSIGN (POST-INCREMENT (REGISTER 13) 1) (POST-INCREMENT (REGISTER 15) 1))
+  (LAP (MOV L (@A+ 7) (@A+ 5))))
 
 ;;;; Pushes
 

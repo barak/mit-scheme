@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.3 1987/12/30 09:09:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.4 1988/02/19 20:56:49 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -130,6 +130,26 @@ MIT in each case. |#
 			    compiler:real-time)
       value)))
 
+;;;; The file compiler, its usual mode.
+
+(define (cf input #!optional output)
+  (let ((kernel
+	 (lambda (source-file)
+	     (let ((scode-file
+		    (merge-pathnames
+		     (make-pathname false false false "bin" false)
+		     (->pathname source-file))))
+	       ;; Maybe this should be done only if scode-file
+	       ;; does not exist or is older than source-file.
+	       (sf source-file scode-file)
+	       (newline)
+	       (if (unassigned? output)
+		   (compile-bin-file scode-file)
+		   (compile-bin-file scode-file output))))))
+    (if (pair? input)
+	(for-each kernel input)
+	(kernel input))))
+
 (define (compile-bin-file input-string #!optional output-string)
   (compiler-pathnames input-string
 		      (and (not (unassigned? output-string)) output-string)
@@ -140,6 +160,43 @@ MIT in each case. |#
 			  (pathname-new-type output-pathname "brtl"))
 		     (pathname-new-type output-pathname "binf")))))
 
+(define (compiler:batch-compile input #!optional output)
+  (fluid-let (((access *error-hook* error-system)
+	       (lambda (env mesg irr subst?)
+		 (newline)
+		 (display "*** Error: ")
+		 (display mesg)
+		 (display " ***")
+		 (newline)
+		 (display "Irritant: ")
+		 (write irr)
+		 (compiler:abort false))))
+    (if (unassigned? output)
+	(compile-bin-file input)
+	(compile-bin-file input output))))
+
+;;; Utilities for compiling in batch mode
+
+(define compiler:abort-handled? false)
+(define compiler:abort-continuation)
+
+(define (compiler:abort value)
+  (if compiler:abort-handled?
+      (begin
+	(newline)
+	(newline)
+	(display "    Aborting...")
+	(compiler:abort-continuation value))
+      (error "compiler:abort: Not set up to abort" value)))
+
+(define (compiler-process transform input-pathname output-pathname)
+  (call-with-current-continuation
+   (lambda (abort-compilation)
+     (fluid-let ((compiler:abort-continuation abort-compilation)
+		 (compiler:abort-handled? true))
+       (fasdump (transform input-pathname output-pathname)
+		output-pathname)))))
+
 (define (compiler-pathnames input-string output-string default transform)
   (let ((kernel
 	 (lambda (input-string)
@@ -160,8 +217,7 @@ MIT in each case. |#
 	       (write (pathname->string input-pathname))
 	       (write-string " => ")
 	       (write (pathname->string output-pathname))
-	       (fasdump (transform input-pathname output-pathname)
-			output-pathname))))))
+	       (compiler-process transform input-pathname output-pathname))))))
     (if (pair? input-string)
 	(for-each kernel input-string)
 	(kernel input-string))))
@@ -236,7 +292,10 @@ MIT in each case. |#
       (compiler-phase/invisible thunk)))
 
 (define (compiler-phase/visible name thunk)
-  (write-line name)
+  (newline)
+  (display "    ")
+  (display name)
+  (display "...")
   (let ((process-start (process-time-clock))
 	(real-start (real-time-clock)))
     (thunk)
@@ -244,7 +303,7 @@ MIT in each case. |#
 	  (real-delta (- (real-time-clock) real-start)))
       (set! compiler:process-time (+ process-delta compiler:process-time))
       (set! compiler:real-time (+ real-delta compiler:real-time))
-      (compiler-time-report "Time taken" process-delta real-delta))))
+      (compiler-time-report "      Time taken" process-delta real-delta))))
 
 (define (compiler-phase/invisible thunk)
   (if compiler:phase-wrapper
@@ -266,7 +325,7 @@ MIT in each case. |#
        (SET! ,name)))
 
 (define (phase/fg-generation)
-  (compiler-phase 'FG-GENERATION
+  (compiler-phase "Generating the Flow Graph"
     (lambda ()
       (set! *current-label-number* 0)
       (set! *constants* '())
@@ -289,7 +348,7 @@ MIT in each case. |#
       (set! *expressions*))))
 
 (define (phase/fg-optimization)
-  (compiler-superphase 'FG-OPTIMIZATION
+  (compiler-superphase "Optimizing the Flow Graph"
     (lambda ()
       (phase/simulate-application)
       (phase/outer-analysis)
@@ -306,14 +365,14 @@ MIT in each case. |#
       (phase/fg-optimization-cleanup))))
 
 (define (phase/simulate-application)
-  (compiler-subphase 'SIMULATE-APPLICATION
+  (compiler-subphase "Simulating Applications"
     (lambda ()
       ((access simulate-application fg-optimizer-package)
        *lvalues*
        *applications*))))
 
 (define (phase/outer-analysis)
-  (compiler-subphase 'OUTER-ANALYSIS
+  (compiler-subphase "Outer Analysis"
     (lambda ()
       ((access outer-analysis fg-optimizer-package)
        *root-expression*
@@ -321,27 +380,27 @@ MIT in each case. |#
        *applications*))))
 
 (define (phase/fold-constants)
-  (compiler-subphase 'FOLD-CONSTANTS
+  (compiler-subphase "Constant Folding"
     (lambda ()
       ((access fold-constants fg-optimizer-package)
        *lvalues*
        *applications*))))
 
 (define (phase/open-coding-analysis)
-  (compiler-subphase 'OPEN-CODING-ANALYSIS
+  (compiler-subphase "Open Coding Analysis"
     (lambda ()
       ((access open-coding-analysis rtl-generator-package)
        *applications*))))
 
 (define (phase/operator-analysis)
-  (compiler-subphase 'OPERATOR-ANALYSIS
+  (compiler-subphase "Operator Analysis"
     (lambda ()
       ((access operator-analysis fg-optimizer-package)
        *procedures*
        *applications*))))
 
 (define (phase/identify-closure-limits)
-  (compiler-subphase 'IDENTIFY-CLOSURE-LIMITS
+  (compiler-subphase "Identifying Closure Limits"
     (lambda ()
       ((access identify-closure-limits! fg-optimizer-package)
        *procedures*
@@ -349,50 +408,50 @@ MIT in each case. |#
        *assignments*))))
 
 (define (phase/setup-block-types)
-  (compiler-subphase 'SETUP-BLOCK-TYPES
+  (compiler-subphase "Setting Up Block Types"
     (lambda ()
       ((access setup-block-types! fg-optimizer-package)
        *root-block*))))
 
 (define (phase/continuation-analysis)
-  (compiler-subphase 'CONTINUATION-ANALYSIS
+  (compiler-subphase "Continuation Analysis"
     (lambda ()
       ((access continuation-analysis fg-optimizer-package)
        *blocks*))))
 
 (define (phase/simplicity-analysis)
-  (compiler-subphase 'SIMPLICITY-ANALYSIS
+  (compiler-subphase "Simplicity Analysis"
     (lambda ()
       ((access simplicity-analysis fg-optimizer-package)
        *parallels*))))
 
 (define (phase/subproblem-ordering)
-  (compiler-subphase 'SUBPROBLEM-ORDERING
+  (compiler-subphase "Ordering Subproblems"
     (lambda ()
       ((access subproblem-ordering fg-optimizer-package)
        *parallels*))))
 
 (define (phase/connectivity-analysis)
-  (compiler-subphase 'CONNECTIVITY-ANALYSIS
+  (compiler-subphase "Connectivity Analysis"
     (lambda ()
       ((access connectivity-analysis fg-optimizer-package)
        *root-expression*
        *procedures*))))
 
 (define (phase/design-environment-frames)
-  (compiler-subphase 'DESIGN-ENVIRONMENT-FRAMES
+  (compiler-subphase "Designing Environment Frames"
     (lambda ()
       ((access design-environment-frames! fg-optimizer-package)
        *blocks*))))
 
 (define (phase/compute-node-offsets)
-  (compiler-subphase 'COMPUTE-NODE-OFFSETS
+  (compiler-subphase "Computing Node Offsets"
     (lambda ()
       ((access compute-node-offsets fg-optimizer-package)
        *root-expression*))))
 
 (define (phase/fg-optimization-cleanup)
-  (compiler-subphase 'FG-OPTIMIZATION-CLEANUP
+  (compiler-subphase "Cleaning Up After Flow Graph Optimization"
     (lambda ()
       (if (not compiler:preserve-data-structures?)
 	  (begin (set! *constants*)
@@ -405,7 +464,7 @@ MIT in each case. |#
 		 (set! *root-block*))))))
 
 (define (phase/rtl-generation)
-  (compiler-phase 'RTL-GENERATION
+  (compiler-phase "Generating RTL"
     (lambda ()
       (set! *rtl-procedures* '())
       (set! *rtl-continuations* '())
@@ -431,7 +490,7 @@ MIT in each case. |#
 		       number-of-machine-registers))
 		  *rtl-graphs*)))
 	(newline)
-	(write-string "Registers used: ")
+	(write-string "      Registers used: ")
 	(write (apply max n-registers))
 	(write-string " max, ")
 	(write (apply min n-registers))
@@ -440,7 +499,7 @@ MIT in each case. |#
 	(write-string " mean")))))
 
 (define (phase/rtl-optimization)
-  (compiler-superphase 'RTL-OPTIMIZATION
+  (compiler-superphase "Optimizing RTL"
     (lambda ()
       (if compiler:cse?
 	  (phase/common-subexpression-elimination))
@@ -451,28 +510,28 @@ MIT in each case. |#
       (phase/rtl-optimization-cleanup))))
 
 (define (phase/common-subexpression-elimination)
-  (compiler-subphase 'COMMON-SUBEXPRESSION-ELIMINATION
+  (compiler-subphase "Eliminating Common Subexpressions"
     (lambda ()
       ((access common-subexpression-elimination rtl-cse-package)
        *rtl-graphs*))))
 (define (phase/lifetime-analysis)
-  (compiler-subphase 'LIFETIME-ANALYSIS
+  (compiler-subphase "Lifetime Analysis"
     (lambda ()
       ((access lifetime-analysis rtl-optimizer-package) *rtl-graphs*))))
 
 (define (phase/code-compression)
-  (compiler-subphase 'CODE-COMPRESSION
+  (compiler-subphase "Code Compression"
     (lambda ()
       ((access code-compression rtl-optimizer-package) *rtl-graphs*))))
 
 (define (phase/rtl-file-output pathname)
-  (compiler-phase 'RTL-FILE-OUTPUT
+  (compiler-phase "RTL File Output"
     (lambda ()
       (fasdump ((access linearize-rtl rtl-generator-package) *rtl-graphs*)
 	       pathname))))
 
 (define (phase/register-allocation)
-  (compiler-subphase 'REGISTER-ALLOCATION
+  (compiler-subphase "Allocating Registers"
     (lambda ()
       ((access register-allocation rtl-optimizer-package) *rtl-graphs*))))
 
@@ -488,7 +547,7 @@ MIT in each case. |#
 		*rtl-graphs*)))
 
 (define (phase/bit-generation)
-  (compiler-phase 'BIT-GENERATION
+  (compiler-phase "Generating BITs"
     (lambda ()
       (set! compiler:external-labels '())
       ((access generate-bits lap-syntax-package)
@@ -505,7 +564,7 @@ MIT in each case. |#
 		 (set! *rtl-continuations*))))))
 
 (define (phase/bit-linearization)
-  (compiler-phase 'BIT-LINEARIZATION
+  (compiler-phase "Linearizing BITs"
     (lambda ()
       (set! compiler:bits
 	    (LAP ,@(lap:make-entry-point compiler:entry-label
@@ -516,7 +575,7 @@ MIT in each case. |#
 			(set! *rtl-graphs*))))))))
 
 (define (phase/assemble)
-  (compiler-phase 'ASSEMBLE
+  (compiler-phase "Assembling"
     (lambda ()
       (if compiler:preserve-data-structures?
 	  ((access assemble bit-package)
@@ -528,13 +587,19 @@ MIT in each case. |#
 	   (set! compiler:bits)
 	   phase/assemble-finish)))))
 
-(define (phase/assemble-finish code-vector labels bindings linkage-info)
+(define (phase/assemble-finish count code-vector labels bindings linkage-info)
   (set! compiler:code-vector code-vector)
   (set! compiler:entry-points labels)
-  (set! compiler:label-bindings bindings))
+  (set! compiler:label-bindings bindings)
+  (newline)
+  (display "      Branch tensioning done in ")
+  (write (1+ count))
+  (if (zero? count)
+      (display " iteration.")
+      (display " iterations.")))
 
 (define (phase/info-generation-2 pathname)
-  (compiler-phase 'DEBUGGING-INFO-GENERATION-2
+  (compiler-phase "Generating Debugging Information (pass 2)"
     (lambda ()
       (fasdump ((access generation-phase2 debugging-information-package)
 		compiler:label-bindings
@@ -546,7 +611,7 @@ MIT in each case. |#
 					       (pathname->string pathname)))))
 
 (define (phase/link)
-  (compiler-phase 'LINK
+  (compiler-phase "Linking"
     (lambda ()
       ;; This has sections locked against GC since the code may not be
       ;; purified.

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/contan.scm,v 4.3 1988/01/04 13:13:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/contan.scm,v 4.4 1988/02/19 20:58:57 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -36,25 +36,59 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(package (continuation-analysis)
+;;;; Continuation Analysis
 
-;;; Determine when static or dynamic links are to be used.  For static
-;;; links, we compute the `block-stack-link' which is the set of
-;;; blocks which might be immediately adjacent (away from the top of
-;;; the stack) to the given block on the stack.  If it is possible to
-;;; find the parent in a consistent way with any one of these adjacent
-;;; blocks, we do not need a static link.  Otherwise, we set
+;;; Determine when static or dynamic links are to be used.  
+
+;;;   Static links:
+
+;;; We compute the `block-stack-link' which is the set of blocks which
+;;; might be immediately adjacent (away from the top of the stack) to
+;;; the given block on the stack.  If it is possible to find the
+;;; parent in a consistent way with any one of these adjacent blocks,
+;;; we do not need a static link.  Otherwise, we set
 ;;; `block-stack-link' to the empty list and use a static link.
+;;; Static links are currently avoided in only two cases:
 
-;;; For dynamic links, we compute the popping limit of a procedure's
-;;; continuation variable, which is the farthest ancestor of the
-;;; procedure's block that is to be popped when invoking the
-;;; continuation.  If we cannot compute the limit statically (value is
-;;; #F), we must use a dynamic link.
+;;; - The procedure is always invoked with a continuation which
+;;; does not have the procedure's parent as an ancestor.
+;;; The only way for this to be the case and for the procedure's block
+;;; to be a stack block is if the procedure's parent has (eventually)
+;;; tail recursed into the procedure, and thus the block adjacent
+;;; on the stack is the parent's frame.  Note that this includes the
+;;; case where the continuation is always externally supplied (passed
+;;; in).
+
+;;; - The procedure is always invoked with a particular continuation
+;;; which has the procedure's parent as an ancestor.  The parent frame
+;;; can then be found from the continuation's frame.  The adjacent
+;;; block is the continuation's block.
+
+;;; Remarks:
+
+;;; This analysis can be improved in the following way: Multiple
+;;; continuations as in the second case above are fine as long as the
+;;; parent can be obtained from all of them by the same access path.
+
+;;; If the procedure is invoked with a particular continuation which
+;;; does not have the procedure's parent as an ancestor, we are in the
+;;; presence of the first case above, namely, the parent block is
+;;; adjacent on the stack.
+
+;;;   Dynamic links:
+
+;;; We compute the popping limit of a procedure's continuation
+;;; variable, which is the farthest ancestor of the procedure's block
+;;; that is to be popped when invoking the continuation.  If we cannot
+;;; compute the limit statically (value is #F), we must use a dynamic
+;;; link.
 
 ;;; This code takes advantage of the fact that the continuation
 ;;; variable is not referenced in blocks other than the procedure's
-;;; block.  This may change if call/cc is handled specially.
+;;; block.  This may change if call-with-current-continuation is
+;;; handled specially.
+
+(package (continuation-analysis)
 
 (define-export (continuation-analysis blocks)
   (for-each (lambda (block)
@@ -71,59 +105,7 @@ MIT in each case. |#
 			 lvalue
 			 (analyze-continuation block lvalue))))))
 	    blocks))
-
-(define (analyze-continuation block lvalue)
-  (if (stack-parent? block)
-      (let ((parent (block-parent block))
-	    (external (stack-block/external-ancestor block))
-	    (blocks (map continuation/block (lvalue-values lvalue))))
-	(let ((closing-blocks (map->eq-set block-parent blocks))
-	      (closed-under-parent?
-	       (lambda (join-block)
-		 (or (eq? join-block block)
-		     (eq? join-block parent)))))
-	  (let ((join-blocks
-		 (continuation-join-blocks block
-					   lvalue
-					   external
-					   closing-blocks)))
-	    (set-block-stack-link!
-	     block
-	     (if (null? (lvalue-initial-values lvalue))
-		 ;; In this case, the procedure is always invoked
-		 ;; as a reduction.  Use a static link unless one of
-		 ;; the places we reduce from is invoked with a
-		 ;; subproblem that is closed under the parent.
-		 (and (not (there-exists? join-blocks closed-under-parent?))
-		      parent)
-		 #|(assert
-		  (implies (not (null? (lvalue-initial-values lvalue)))
-			   (and (not (null? blocks))
-				(not (null? closing-blocks))
-				(not (null? join-blocks))))
-		  (implies (null? (cdr join-blocks))
-			   (and (null? (cdr blocks))
-				(null? (cdr closing-blocks)))))|#
-		 (and (null? (cdr join-blocks))
-		      (closed-under-parent? (car join-blocks))
-		      ;; The procedure is always invoked as a
-		      ;; subproblem, and there is only a single
-		      ;; continuation.  We could do better, but it's
-		      ;; not simple -- see the notes.
-		      (car blocks))))
-	    (let ((popping-limits
-		   (map->eq-set
-		    (lambda (join)
-		      (cond ((not join) external)
-			    ((eq? join block) block)
-			    (else
-			     (block-farthest-uncommon-ancestor block join))))
-		    join-blocks)))
-	      (and (not (null? popping-limits))
-		   (null? (cdr popping-limits))
-		   (car popping-limits))))))
-      block))
-
+
 (define (continuation-join-blocks block lvalue external closing-blocks)
   (let ((ancestry (memq external (block-ancestry block '()))))
     (let ((join-blocks
@@ -144,5 +126,46 @@ MIT in each case. |#
       (if (lvalue-passed-in? lvalue)
 	  (eq-set-adjoin false join-blocks)
 	  join-blocks))))
+
+(define (analyze-continuation block lvalue)
+  (if (not (stack-parent? block))
+      block
+      (let ((parent (block-parent block))
+	    (blocks (map continuation/block (lvalue-values lvalue))))
+	(set-block-stack-link!
+	 block
+	 (cond ((not (there-exists? blocks
+				    (lambda (cont-block)
+				      (block-ancestor-or-self? cont-block
+							       parent))))
+		;; Must have tail recursed through the parent.
+		parent)
+	       ((and (not (null? blocks))
+		     (null? (cdr blocks))
+		     (not (lvalue-passed-in? lvalue)))
+		;; Note that the there-exists? clause above
+		;; implies (block-ancestor-or-self? (car blocks) parent)
+		;; and therefore the parent can be found from the
+		;; continuation.
+		(car blocks))
+	       (else false)))
+	(let* ((external (stack-block/external-ancestor block))
+	       (closing-blocks (map->eq-set block-parent blocks))
+	       (join-blocks
+		(continuation-join-blocks block
+					  lvalue
+					  external
+					  closing-blocks))
+	       (popping-limits
+		(map->eq-set
+		 (lambda (join)
+		   (cond ((not join) external)
+			 ((eq? join block) block)
+			 (else
+			  (block-farthest-uncommon-ancestor block join))))
+		 join-blocks)))
+	  (and (not (null? popping-limits))
+	       (null? (cdr popping-limits))
+	       (car popping-limits))))))
 
-)
+) ;; End of package

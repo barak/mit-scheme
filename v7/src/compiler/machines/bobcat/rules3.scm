@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.3 1988/02/17 19:11:22 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.4 1988/02/19 20:58:21 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -162,11 +162,11 @@ MIT in each case. |#
 	   (if (= how-far 1)
 	       (LAP (MOV L (@AO 7 4) (@AO 7 8))
 		    (MOV L (@A+ 7) (@A 7)))
-	       (let ((i (lambda (dis)
+	       (let ((i (lambda ()
 			  (INST (MOV L (@A+ 7)
-				     ,(offset-reference a7 dis))))))
-		 (LAP ,(i (-1+ how-far))
-		      ,(i (-1+ how-far))
+				     ,(offset-reference a7 (-1+ how-far)))))))
+		 (LAP ,(i)
+		      ,(i)
 		      ,@(increment-anl 7 (- how-far 2))))))
 	  (else
 	   (generate/move-frame-up frame-size (offset-reference a7 offset))))))
