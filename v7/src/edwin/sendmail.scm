@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: sendmail.scm,v 1.39 1997/11/06 07:41:56 cph Exp $
+;;;	$Id: sendmail.scm,v 1.40 1997/11/06 07:43:46 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-97 Massachusetts Institute of Technology
 ;;;
@@ -882,7 +882,7 @@ the user from the mailer."
 	(if fs
 	    (let ((ls (line-start fs 0)))
 	      (delete-string ls
-			     (let ((fe (%mail-field-end fs end)))
+			     (let ((fe (%mail-field-end fs header-end)))
 			       (if (mark< fe header-end) (mark1+ fe) fe)))
 	      (loop ls)))))))
 
