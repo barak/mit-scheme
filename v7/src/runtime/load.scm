@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.14 1990/04/12 22:50:28 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.15 1990/06/04 20:45:55 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -244,17 +244,21 @@ MIT in each case. |#
 
 (define (eval-stream stream environment syntax-table)
   (stream-map stream
-	      (lambda (s-expression)
-		(let ((repl (nearest-repl)))
-		  (hook/repl-eval repl
-				  s-expression
-				  (if (eq? environment default-object)
-				      (repl/environment repl)
-				      environment)
-				  (make-syntax-table
-				   (if (eq? syntax-table default-object)
-				       (repl/syntax-table repl)
-				       syntax-table)))))))
+	      (let ((repl (nearest-repl)))
+		(let ((environment
+		       (if (eq? environment default-object)
+			   (repl/environment repl)
+			   environment))
+		      (syntax-table
+		       (make-syntax-table
+			(if (eq? syntax-table default-object)
+			    (repl/syntax-table repl)
+			    syntax-table))))
+		  (lambda (s-expression)
+		    (hook/repl-eval repl
+				    s-expression
+				    environment
+				    syntax-table))))))
 
 (define (write-stream stream write)
   (if (stream-pair? stream)
