@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.11 1989/03/29 02:45:22 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.12 1989/05/21 04:31:33 jinx Rel $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -312,12 +312,11 @@ MIT in each case. |#
 	 ((not (debugging-info/undefined-expression? expression))
 	  (output-to-string 50
 			    (lambda () (write-sexp (unsyntax expression)))))
-	 ((debugging-info/noise current-expression)
+	 ((debugging-info/noise expression)
 	  (output-to-string
 	   50
 	   (lambda ()
-	     (write-string ((debugging-info/noise current-expression)
-			    false)))))
+	     (write-string ((debugging-info/noise expression) false)))))
 	 (else
 	  ";undefined expression"))))
 
