@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: macros.scm,v 1.2 1995/04/24 22:15:33 adams Exp $
+$Id: macros.scm,v 1.3 1995/07/27 14:17:36 adams Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -114,10 +114,14 @@ MIT in each case. |#
     (parse-define-syntax pattern body
       (lambda (name body)
 	name
-	`(SET! ,pattern ,@body))
+	`(BEGIN
+	   (SET! ,name ,@body)
+	   (QUOTE ,name)))
       (lambda (pattern body)
-	`(SET! ,(car pattern)
-	       (NAMED-LAMBDA ,pattern ,@body))))))
+	`(BEGIN
+	   (SET! ,(car pattern)
+		  (NAMED-LAMBDA ,pattern ,@body))
+	   (QUOTE ,(car pattern)))))))
 
 (define transform/define-vector-slots
   (macro (class index . slots)
