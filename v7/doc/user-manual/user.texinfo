@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.18 1993/12/07 00:19:56 adams Exp $
+@comment $Id: user.texinfo,v 1.19 1993/12/16 00:04:04 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -130,7 +130,7 @@ Installation
 * Unix::                        
 * PC Operating Systems::        
 
-DOS, Windows, and Windows NT installation
+PC Operating Systems
 
 * System requirements::         
 * Manifest::                    
@@ -139,9 +139,8 @@ DOS, Windows, and Windows NT installation
 Release Notes
 
 * News::                        
-* Unix Release Notes::          
 * C Back-End Release Notes::    
-* DOS::                         
+* PC Release Notes::            
 
 News
 
@@ -153,7 +152,7 @@ C Back-End Release Notes
 * Notes on C Back-End::         
 * Problems with C Back-End::    
 
-DOS, Windows 3.1, and Windows NT Release Notes
+PC Release Notes
 
 * Known Problems::              
 
@@ -231,13 +230,126 @@ Comparison of Edwin 3.82 to Emacs 18.57
 @node Unix, PC Operating Systems,  , Installation
 @section Unix
 
-Installation information for Unix versions goes here.
-(perhaps several, a multitude of unices?)
+
+We will use as an example the installation for HP 9000 series 400
+computers.  The installation for other Unix systems is similar.
+
+MIT Scheme is distributed as a compressed `tar' file.  The tar file
+contains a single directory, called @file{dist-7.3}, and that directory
+contains subdirectories @file{bin}, @file{etc}, and @file{lib}.  The
+@file{bin} subdirectory contains two executable files, @samp{scheme} and
+@samp{bchscheme}.  The @file{etc} subdirectory contains several files
+that are used during the installation process.  The @file{lib}
+subdirectory contains several files and subdirectories that Scheme uses
+while it is executing.
+
+The goal of the installation is to put the executable files in a
+directory where they will be executed as commands, and to put the
+library files in some convenient place where Scheme can find them.
+
+@itemize @bullet
+
+@item
+First unpack the distribution:
+
+@example
+     gzip -cd hp400.tar.gz | tar xvf -
+@end example
+
+If you do not have the `gzip' program: we have built executables of
+this program for each of the machines that we support.  Either use
+the executable that we have already built, or else get the gzip
+sources (from us or from numerous other sources) and build it
+yourself.
+
+@item
+Next, go to the directory that you just unpacked:
+
+@example
+     cd dist-7.3
+@end example
+
+The easiest way to install the files is to use the "install.sh" shell
+script that we've provided in the distribution.  You will need to edit
+that script to tell it where and how you want Scheme installed.  If
+you want to do something more complicated, or if the script can't
+easily be made to work for your system, use the script as a guide to
+installation.
+
+@item
+The script assumes there is no pre-existing installation of MIT Scheme
+on your system.  If there is, you may need to edit the script, or delete
+the existing version (particularly the contents of
+@file{/usr/local/lib/mit-scheme}, see the later note on editing
+@samp{libdir}).  If you have trouble deleting the binary because it is in
+use, try renaming it to @file{scheme.busy} and deleting it later.
+
+@item
+The installation script normally uses the command @samp{cp -pr} to copy
+the files from the distribution directory to their final locations.  You
+can change this by editing the definition of the @samp{install} variable
+in the @file{install.sh} shell script.  Some versions of @samp{cp} do
+not support the @samp{p} option; using simply @samp{cp -r} in this case
+is acceptable.  Note that most versions of @samp{mv} require the source
+and destination to be on the same physical device.
+
+@item
+The installation script may try to make some symbolic links during
+the installation.  This is normally done using the command @samp{ln -s}.
+If your system doesn't support symbolic links, or if you prefer to
+copy or hard-link files, change the definition of the @samp{link}
+variable in the shell script.
+
+@item
+For many systems, a standard place to put executable files is the
+directory @file{/usr/local/bin}.  If this is true for your system, we
+suggest installing the executables there.  Otherwise, you probably
+have some other directory that serves the same purpose; edit
+@file{install.sh} and change the definition of the shell variable
+@samp{bindir} to be this other directory.
+
+@item
+Normally, MIT Scheme's auxiliary files are stored in the directory
+@file{/usr/local/lib/mit-scheme/}.  If you can, we suggest that you
+create such a directory and install these files there.  Otherwise,
+create a directory somewhere else and edit the installation script
+to change the value of the variable @samp{libdir} to be this directory.
+
+@item
+If you have GNU Emacs installed on your system, uncomment the
+definitions of the variables @samp{infodir}, @samp{emacslisp}, and
+@samp{movemail} in the installation script.  You will also need to edit
+these definitions so that they correctly indicate where the GNU Emacs
+files are located.
+
+@item
+Once you are satisfied that the @file{install.sh} script is correct,
+execute it:
+
+@example
+     ./install.sh
+@end example
+
+@item
+After @file{install.sh} finishes, you can delete the @file{dist-7.3}
+directory that you unpacked earlier.
+
+You should now be able to run MIT Scheme by typing
+
+@example
+     scheme
+@end example
+
+@noindent
+at the command line (if you use the C shell, you may have to type
+@samp{rehash} before @samp{scheme} will be recognized).
+
+@end itemize
 
 
 @c NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN
 @node PC Operating Systems,  , Unix, Installation
-@section DOS, Windows, and Windows NT installation
+@section PC Operating Systems
 
 This section describes how to install MIT Scheme on DOS, Windows 3.1, and
 Windows NT.  We would prefer that the Windows version be used,
@@ -269,7 +381,9 @@ installation without source code occupies 36Mb of disk.
 @node Manifest, PC Installation, System requirements, PC Operating Systems
 @subsection Manifest
 
-The installation comprises the following files:
+The installation is split into several files according to functional
+units and the size constraints of a 1.4M high density 3.5" floppy disk.
+The following files are distributed:
 
 @example
 BIN.ZIP         @r{Scheme binaries for Windows 3.1/Windows NT}
@@ -301,7 +415,7 @@ UNZIP.EXE       @r{Program to unpack the @file{.zip} files}
 
 
 @node PC Installation,  , Manifest, PC Operating Systems
-@subsection Installation
+@subsection PC Installation
 
 These installation instructions describe how to install MIT Scheme on
 one or more of DOS, Windows 3.1, and Windows NT.  If you are
@@ -636,6 +750,10 @@ total space required for all of the debugging information is 7.5Mb.
 The most useful is the runtime debugging info which is in
 @file{bcirun1.zip} through @file{bcirun3.zip} [3.6Mb installed].
 
+If you have installed the DOS version for machines without hardware
+floating point support then @file{bcinoflo.zip} should be uncompressed
+also.  This must be done @emph{after} the @file{bcirun*.zip} files.
+
 Debugging information files can be installed in the Scheme root
 directory or in another directory.  If another directory is chosen then
 set the @code{MITSCHEME_INF_DIRECTORY} environment variable to this
@@ -655,12 +773,11 @@ release.
 
 @menu
 * News::                        
-* Unix Release Notes::          
 * C Back-End Release Notes::    
-* DOS::                         
+* PC Release Notes::            
 @end menu
 
-@node News, Unix Release Notes,  , Release Notes
+@node News, C Back-End Release Notes,  , Release Notes
 @section News
 
 The last full release of the MIT Scheme system was version 7.1.3 in
@@ -947,7 +1064,7 @@ used by the operating system.
 Parsing rules for unix filenames changed: the file type is the part of
 the name after the last dot, if any.  If the dot occurs at the beginning
 or end of the filename, then it doesn't count -- in that case there is
-no type.  Thus, names like @file{"."} and @file{".."} have no type.
+no type.  Thus, names like @file{.} and @file{..} have no type.
 @end itemize
 
 @item
@@ -973,10 +1090,10 @@ Time, load, and mail notification in mode line
 @end display
 @end itemize
 
-@node Unix Release Notes, C Back-End Release Notes, News, Release Notes
-@section Unix Release Notes
+@c @node Unix Release Notes, C Back-End Release Notes, News, Release Notes
+@c @section Unix Release Notes
 
-@node C Back-End Release Notes, DOS, Unix Release Notes, Release Notes
+@node C Back-End Release Notes, PC Release Notes, News, Release Notes
 @section C Back-End Release Notes
 
 This release introduces an important new feature: the compiler can
@@ -1168,14 +1285,14 @@ The mechanism for accreting object files into large dynamically-loadable
 libraries is currently ad-hoc.
 @end itemize
 
-@node DOS,  , C Back-End Release Notes, Release Notes
-@section DOS, Windows 3.1, and Windows NT Release Notes
+@node PC Release Notes,  , C Back-End Release Notes, Release Notes
+@section PC Release Notes
 
 @menu
 * Known Problems::              
 @end menu
 
-@node Known Problems,  ,  , DOS
+@node Known Problems,  ,  , PC Release Notes
 @subsection Known Problems in this Beta Release
 
 @itemize @bullet
@@ -1234,7 +1351,23 @@ directory, for example, by putting
 
 @noindent
 in your @file{edwin.ini} file.
+
+@item
+DOS version 6.  Although we have not tested the DOS version under
+anythig other than MS-DOS 5.0, we have the following anecdotal evidence:
+
+@itemize @bullet
+@item
+On DOS 6.2 with @code{emm386} you may have to put the following in
+@file{config.sys}:
+
+@example
+device=emm386 noems novcpi
+@end example
+
 @end itemize
+@end itemize
+
 
 @c @node
 @c @subsection NT build
@@ -2500,6 +2633,9 @@ that.
 
 @node Debugging, Loading Files, REPL, Top
 @chapter Debugging
+
+@strong{This chapter is out of date and currently under revision}.
+
 
 This chapter is adapted from @cite{Don't Panic: A 6.001 User's Guide to
 the Chipmunk System}, by Arthur A. Gleckler.
