@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: x11graph.c,v 1.38 1997/05/15 00:10:06 cph Exp $
+$Id: x11graph.c,v 1.39 1998/01/05 06:22:47 cph Exp $
 
-Copyright (c) 1989-97 Massachusetts Institute of Technology
+Copyright (c) 1989-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -880,6 +880,33 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-FILL-POLYGON", Prim_x_graphics_fill_polygon, 2, 2,
   }
 }
 
+static int
+find_pixmap_format (Display * dpy, int depth, XPixmapFormatValues * format)
+{
+  XPixmapFormatValues * pixmap_formats;
+  int n_pixmap_formats;
+  XPixmapFormatValues * scan_pixmap_formats;
+  XPixmapFormatValues * end_pixmap_formats;
+
+  pixmap_formats = (XListPixmapFormats (dpy, (&n_pixmap_formats)));
+  if (pixmap_formats == 0)
+    return (0);
+  scan_pixmap_formats = pixmap_formats;
+  end_pixmap_formats = (pixmap_formats + n_pixmap_formats);
+  while (1)
+    {
+      if (scan_pixmap_formats >= end_pixmap_formats)
+	return (0);
+      if ((scan_pixmap_formats -> depth) == depth)
+	{
+	  (*format) = (*scan_pixmap_formats);
+	  XFree (pixmap_formats);
+	  return (1);
+	}
+      scan_pixmap_formats += 1;
+    }
+}
+
 DEFINE_PRIMITIVE ("X-CREATE-IMAGE", Prim_x_create_image, 3, 3,
   "(window width height)\n\
 Creates and returns an XImage object, of dimensions WIDTH by HEIGHT.\n\
@@ -893,19 +920,20 @@ The image is created by calling XCreateImage.")
     Display * dpy = (XW_DISPLAY (xw));
     unsigned int width = (arg_ulong_integer (2));
     unsigned int height = (arg_ulong_integer (3));
-    unsigned int bytes_per_pixel;
-    unsigned int bitmap_pad;
-    unsigned int byte_pad;
-    unsigned int bytes_per_line;
     XWindowAttributes attrs;
+    XPixmapFormatValues pixmap_format;
+    unsigned int bits_per_line;
+    unsigned int bitmap_pad;
+    unsigned int bytes_per_line;
 
     XGetWindowAttributes (dpy, window, (&attrs));
-    /* This is a total kludge.  I don't understand how to do this right. */
-    bytes_per_pixel = (((attrs . depth) + (CHAR_BIT - 1)) / CHAR_BIT);
-    bitmap_pad = (BitmapPad (dpy));
-    byte_pad = (bitmap_pad / CHAR_BIT);
-    bytes_per_line
-      = ((((width * bytes_per_pixel) + (byte_pad - 1)) / byte_pad) * byte_pad);
+    if (!find_pixmap_format (dpy, (attrs . depth), (&pixmap_format)))
+      error_external_return ();
+    bits_per_line = ((pixmap_format . bits_per_pixel) * width);
+    bitmap_pad = (pixmap_format . scanline_pad);
+    if ((bits_per_line % bitmap_pad) != 0)
+      bits_per_line += (bitmap_pad - (bits_per_line % bitmap_pad));
+    bytes_per_line = ((bits_per_line + (CHAR_BIT - 1)) / CHAR_BIT);
     PRIMITIVE_RETURN
       (X_IMAGE_TO_OBJECT
        (XCreateImage
