@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.92 2000/05/25 22:34:05 cph Exp $
+;;; $Id: imail-imap.scm,v 1.93 2000/05/26 17:27:15 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -642,10 +642,14 @@
 
 (define-class (<imap-message> (constructor (folder index))) (<message>)
   (uid)
-  (length))
+  (length)
+  (envelope)
+  (bodystructure))
 
 (define-generic imap-message-uid (message))
 (define-generic imap-message-length (message))
+(define-generic imap-message-envelope (message))
+(define-generic imap-message-bodystructure (message))
 
 (define-method set-message-flags! ((message <imap-message>) flags)
   (with-imap-message-open message
@@ -759,13 +763,22 @@
   (reflector message-flags 'FLAGS guarantee-headers-initialized))
 
 (let ((reflector
-       (lambda (generic-procedure slot-name)
+       (lambda (generic-procedure slot-name guarantee)
 	 (let ((accessor (slot-accessor <imap-message> slot-name))
 	       (initpred (slot-initpred <imap-message> slot-name)))
 	   (define-method generic-procedure ((message <imap-message>))
-	     (guarantee-headers-initialized message initpred)
+	     (guarantee message initpred)
 	     (accessor message))))))
-  (reflector imap-message-length 'LENGTH))
+  (reflector imap-message-length 'LENGTH
+	     guarantee-headers-initialized)
+  (reflector imap-message-envelope 'ENVELOPE
+	     (lambda (message initpred)
+	       (guarantee-slot-initialized message initpred "envelope"
+					   '(ENVELOPE))))
+  (reflector imap-message-bodystructure 'BODYSTRUCTURE
+	     (lambda (message initpred)
+	       (guarantee-slot-initialized message initpred "bodystructure"
+					   '(BODYSTRUCTURE)))))
 
 ;;;; Server operations
 
@@ -937,10 +950,9 @@
   (imap:command:multiple-response
    imap:response:fetch? connection
    'FETCH
-   (cons 'ATOM
-	 (string-append (number->string (+ start 1))
-			":"
-			(if end (number->string end) "*")))
+   `',(string-append (number->string (+ start 1))
+		     ":"
+		     (if end (number->string end) "*"))
    items))
 
 (define (imap:command:uid-store-flags connection uid flags)
@@ -1086,9 +1098,11 @@
 		 (exact-nonnegative-integer? argument))
 	     (imap-transcript-write argument port))
 	    ((and (pair? argument)
-		  (eq? (car argument) 'ATOM)
-		  (string? (cdr argument)))
-	     (imap-transcript-write-string (cdr argument) port))
+		  (eq? (car argument) 'QUOTE)
+		  (pair? (cdr argument))
+		  (string? (cadr argument))
+		  (null? (cddr argument)))
+	     (imap-transcript-write-string (cadr argument) port))
 	    ((and (pair? argument)
 		  (eq? (car argument) 'LITERAL)
 		  (string? (cdr argument)))
@@ -1301,6 +1315,12 @@
 
 (define (process-fetch-attribute message keyword datum)
   (case keyword
+    ((BODYSTRUCTURE)
+     (%set-imap-message-bodystructure! message datum)
+     #t)
+    ((ENVELOPE)
+     (%set-imap-message-envelope! message datum)
+     #t)
     ((FLAGS)
      (%set-message-flags! message (map imap-flag->imail-flag datum))
      #t)
@@ -1338,3 +1358,9 @@
 
 (define %set-imap-message-length!
   (slot-modifier <imap-message> 'LENGTH))
+
+(define %set-imap-message-envelope!
+  (slot-modifier <imap-message> 'ENVELOPE))
+
+(define %set-imap-message-bodystructure!
+  (slot-modifier <imap-message> 'BODYSTRUCTURE))
