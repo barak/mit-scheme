@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.179 1987/06/10 19:48:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.180 1987/06/11 20:48:14 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -604,7 +604,7 @@ MIT in each case. |#
 (define-rule statement
   (INVOCATION:APPLY (? number-pushed) (? prefix) (? continuation))
   (disable-frame-pointer-offset!
-   `(,@(generate-invocation-prefix prefix)
+   `(,@(generate-invocation-prefix prefix '())
      ,(load-dnw number-pushed 0)
      (JMP ,entry:compiler-apply))))
 
@@ -629,14 +629,14 @@ MIT in each case. |#
   (INVOCATION:JUMP (? number-pushed) (? prefix) (? continuation) (? label))
   (QUALIFIER (not (memq (car prefix) '(APPLY-CLOSURE APPLY-STACK))))
   (disable-frame-pointer-offset!
-   `(,@(generate-invocation-prefix prefix)
+   `(,@(generate-invocation-prefix prefix '())
      (BRA L (@PCR ,label)))))
 
 (define-rule statement
   (INVOCATION:LEXPR (? number-pushed) (? prefix) (? continuation)
 		    (? label))
   (disable-frame-pointer-offset!
-   `(,@(generate-invocation-prefix prefix)
+   `(,@(generate-invocation-prefix prefix '())
      ,(load-dnw number-pushed 0)
      (BRA L (@PCR ,label)))))
 
@@ -647,7 +647,7 @@ MIT in each case. |#
    (let ((set-extension (expression->machine-register! extension a3)))
      (delete-dead-registers!)
      `(,@set-extension
-       ,@(generate-invocation-prefix prefix)
+       ,@(generate-invocation-prefix prefix (list a3))
        ,(load-dnw frame-size 0)
        (LEA (@PCR ,*block-start-label*) (A 1))
        (JMP ,entry:compiler-cache-reference-apply)))))
@@ -659,7 +659,7 @@ MIT in each case. |#
    (let ((set-environment (expression->machine-register! environment d4)))
      (delete-dead-registers!)
      `(,@set-environment
-       ,@(generate-invocation-prefix prefix)
+       ,@(generate-invocation-prefix prefix (list d4))
        ,(load-constant name '(D 5))
        ,(load-dnw frame-size 0)
        (JMP ,entry:compiler-lookup-apply)))))
@@ -668,7 +668,7 @@ MIT in each case. |#
   (INVOCATION:PRIMITIVE (? number-pushed) (? prefix) (? continuation)
 			(? primitive))
   (disable-frame-pointer-offset!
-   `(,@(generate-invocation-prefix prefix)
+   `(,@(generate-invocation-prefix prefix '())
      ,@(if (eq? primitive compiled-error-procedure)
 	   `(,(load-dnw (1+ number-pushed) 0)
 	     (JMP ,entry:compiler-error))
@@ -682,17 +682,20 @@ MIT in each case. |#
      (CLR B (@A 7))
      (RTS))))
 
-(define (generate-invocation-prefix prefix)
-  `(,@(clear-map!)
-    ,@(case (car prefix)
-	((NULL) '())
-	((MOVE-FRAME-UP)
-	 (apply generate-invocation-prefix:move-frame-up (cdr prefix)))
-	((APPLY-CLOSURE)
-	 (apply generate-invocation-prefix:apply-closure (cdr prefix)))
-	((APPLY-STACK)
-	 (apply generate-invocation-prefix:apply-stack (cdr prefix)))
-	(else (error "GENERATE-INVOCATION-PREFIX: bad prefix type" prefix)))))
+(define (generate-invocation-prefix prefix needed-registers)
+  (let ((clear-map (clear-map!)))
+    (need-registers! needed-registers)
+    `(,@clear-map
+      ,@(case (car prefix)
+	  ((NULL) '())
+	  ((MOVE-FRAME-UP)
+	   (apply generate-invocation-prefix:move-frame-up (cdr prefix)))
+	  ((APPLY-CLOSURE)
+	   (apply generate-invocation-prefix:apply-closure (cdr prefix)))
+	  ((APPLY-STACK)
+	   (apply generate-invocation-prefix:apply-stack (cdr prefix)))
+	  (else
+	   (error "bad prefix type" prefix))))))
 
 (define (generate-invocation-prefix:move-frame-up frame-size how-far)
   (cond ((zero? how-far) '())
