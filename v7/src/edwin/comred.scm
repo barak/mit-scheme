@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.72 1989/04/15 00:47:54 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.73 1989/04/23 23:19:11 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -98,7 +98,8 @@
 	(%dispatch-on-command window
 			      (comtab-entry (buffer-comtabs
 					     (window-buffer window))
-					    char))))
+					    char)
+			      false)))
     (start-next-command))
 
   (fluid-let ((*command-message*)
@@ -124,7 +125,7 @@
 
 (define-integrable (execute-command command)
   (reset-command-state!)
-  (dispatch-on-command command))
+  (%dispatch-on-command (current-window) command false))
 
 (define-integrable (read-and-dispatch-on-char)  (dispatch-on-char (current-comtabs)
 		    (with-editor-interrupts-disabled keyboard-read-char)))
@@ -132,12 +133,13 @@
 (define (dispatch-on-char comtab char)
   (set! *command-char* char)
   (set-command-prompt!
-   (string-append-separated (command-argument-prompt)
-			    (xchar->name char)))
-  (dispatch-on-command (comtab-entry comtab char)))
+   (string-append-separated (command-argument-prompt) (xchar->name char)))
+  (%dispatch-on-command (current-window) (comtab-entry comtab char) false))
 
-(define-integrable (dispatch-on-command command)
-  (%dispatch-on-command (current-window) command))
+(define (dispatch-on-command command #!optional record?)
+  (%dispatch-on-command (current-window)
+			command
+			(if (default-object? record?) false record?)))
 
 (define (abort-current-command #!optional value)
   (keyboard-macro-disable)
@@ -158,13 +160,13 @@
 	   (eq? (car *command-message*) tag))
       (apply if-received (cdr *command-message*))
       (if-not-received)))
-(define (%dispatch-on-command window command)
+(define (%dispatch-on-command window command record?)
   (set! *command* command)
   (guarantee-command-loaded command)
   (let ((procedure (command-procedure command)))
     (let ((normal
 	   (lambda ()
-	     (apply procedure (interactive-arguments command false)))))
+	     (apply procedure (interactive-arguments command record?)))))
       (if (or *executing-keyboard-macro?*
 	      (window-needs-redisplay? window)
 	      (command-argument-standard-value?))
