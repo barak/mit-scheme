@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.160 2001/05/24 17:46:47 cph Exp $
+;;; $Id: imail-imap.scm,v 1.161 2001/05/24 19:03:52 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -219,24 +219,8 @@
 		      prefix)))))))
 
 (define-method container-url-contents ((url <imap-container-url>))
-  (with-open-imap-connection url
-    (lambda (connection)
-      (map (lambda (response)
-	     (imap-url-new-mailbox
-	      url
-	      (let ((delimiter (imap:response:list-delimiter response))
-		    (mailbox
-		     (imap:decode-mailbox-name
-		      (imap:response:list-mailbox response))))
-		(if delimiter
-		    (string-replace mailbox (string-ref delimiter 0) #\/)
-		    mailbox))))
-	   (imap:command:list
-	    connection
-	    ""
-	    (string-append (imap-mailbox/url->server url
-						     (imap-url-mailbox url))
-			   "%"))))))
+  (map (lambda (mailbox) (imap-url-new-mailbox url mailbox))
+       (imap-mailbox-completions (imap-url-mailbox url) url)))
 
 ;;;; Completion
 
@@ -296,15 +280,16 @@
 		   (mailbox
 		    (imap:decode-mailbox-name
 		     (imap:response:list-mailbox response))))
-	       (let ((mailbox
-		      (if delimiter
-			  (string-replace mailbox (string-ref delimiter 0) #\/)
-			  mailbox)))
-		 (if (and delimiter
-			  (memq '\NOSELECT flags)
-			  (not (memq '\NOINFERIORS flags)))
-		     (string-append mailbox "/")
-		     mailbox))))
+	       (if delimiter
+		   (let ((mailbox
+			  (string-replace mailbox
+					  (string-ref delimiter 0)
+					  #\/)))
+		     (if (and (memq '\NOSELECT flags)
+			      (not (memq '\NOINFERIORS flags)))
+			 (string-append mailbox "/")
+			 mailbox))
+		   mailbox)))
 	   (imap:command:list
 	    connection
 	    ""
