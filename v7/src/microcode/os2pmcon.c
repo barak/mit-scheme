@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pmcon.c,v 1.12 1995/05/19 22:38:13 cph Exp $
+$Id: os2pmcon.c,v 1.13 1995/05/20 02:40:20 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -39,6 +39,10 @@ MIT in each case. */
 
 static void grab_console_lock (void);
 static void release_console_lock (void);
+static unsigned short cx2x (unsigned short);
+static unsigned short cy2y (unsigned short, int);
+static unsigned short x2cx (unsigned short, int);
+static unsigned short y2cy (unsigned short, int);
 static void process_events (int);
 static void console_resize (unsigned short, unsigned short);
 static void console_paint
@@ -157,9 +161,19 @@ OS2_console_psid (void)
 void
 OS2_console_font_change_hook (font_metrics_t * metrics)
 {
+  font_metrics_t * copy = (OS_malloc (sizeof (font_metrics_t)));
+  FASTCOPY (metrics, copy, (sizeof (font_metrics_t)));
   grab_console_lock ();
-  console_metrics = metrics;
+  OS_free (console_metrics);
+  console_metrics = copy;
   console_resize (console_pel_width, console_pel_height);
+  OS2_window_set_grid (console_wid, CHAR_WIDTH, CHAR_HEIGHT);
+  OS2_window_shape_cursor
+    (console_wid, CHAR_WIDTH, CHAR_HEIGHT, (CURSOR_SOLID | CURSOR_FLASH));
+  OS2_window_move_cursor (console_wid, (cx2x (point_x)), (cy2y (point_y, 1)));
+  OS2_window_invalidate (console_wid,
+			 0, console_pel_width,
+			 0, console_pel_height);
   release_console_lock ();
 }
 
@@ -299,23 +313,31 @@ console_resize (unsigned short new_pel_width, unsigned short new_pel_height)
   unsigned short new_height = (new_pel_height / CHAR_HEIGHT);
   char * new_chars = (OS_malloc (new_width * new_height));
   FASTFILL (new_chars, (new_width * new_height), ' ');
-  if (console_chars != 0)
+  if ((point_x < new_width) && (point_y < new_height))
     {
-      unsigned short xlim
-	= ((new_width < console_width) ? new_width : console_width);
-      unsigned short ylim
-	= ((new_height < console_height) ? new_height : console_height);
-      char * from = console_chars;
-      char * to = new_chars;
-      unsigned short y = 0;
-      while (y < ylim)
+      if (console_chars != 0)
 	{
-	  FASTCOPY (from, to, xlim);
-	  from += console_width;
-	  to += new_width;
-	  y += 1;
+	  unsigned short xlim
+	    = ((new_width < console_width) ? new_width : console_width);
+	  unsigned short ylim
+	    = ((new_height < console_height) ? new_height : console_height);
+	  char * from = console_chars;
+	  char * to = new_chars;
+	  unsigned short y = 0;
+	  while (y < ylim)
+	    {
+	      FASTCOPY (from, to, xlim);
+	      from += console_width;
+	      to += new_width;
+	      y += 1;
+	    }
+	  OS_free (console_chars);
 	}
-      OS_free (console_chars);
+    }
+  else
+    {
+      point_x = 0;
+      point_y = 0;
     }
   console_pel_width = new_pel_width;
   console_pel_height = new_pel_height;
