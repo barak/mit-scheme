@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 13.46 1987/11/22 22:16:08 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 13.47 1987/12/14 00:13:58 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -65,10 +65,17 @@
 
 ;;;; Soft interrupts
 
-;;; Timer interrupts
-
 (define (timer-interrupt-handler interrupt-code interrupt-enables)
   (timer-interrupt))
+
+(define (suspend-interrupt-handler interrupt-code interrupt-enables)
+  (fluid-let (((access *error-hook* error-system)
+	       (lambda (environment message irritant substitute-environment?)
+		 (%exit))))
+    (disk-save (merge-pathnames (string->pathname "scheme_suspend")
+				(home-directory-pathname))
+	       true))
+  (%exit))
 
 ;;; Keyboard Interrupts
 
@@ -180,7 +187,8 @@
 (define gc-slot 2)
 (define character-slot 4)
 (define timer-slot 6)
-(define illegal-interrupt-slot 8)
+(define suspend-slot 8)
+(define illegal-interrupt-slot 9)
 
 (define (illegal-interrupt-handler interrupt-code interrupt-enables)
   (error "Illegal interrupt" interrupt-code interrupt-enables))
@@ -218,6 +226,8 @@
 		      external-interrupt-handler)
 	 (vector-set! system-interrupt-vector timer-slot
 		      timer-interrupt-handler)
+	 (vector-set! system-interrupt-vector suspend-slot
+		      suspend-interrupt-handler)
 	 (vector-set! system-interrupt-vector illegal-interrupt-slot
 		      illegal-interrupt-handler)
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/sysclk.scm,v 13.41 1987/01/23 00:21:27 jinx Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/sysclk.scm,v 13.42 1987/12/14 00:15:38 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -41,54 +41,57 @@
 
 (declare (usual-integrations))
 
+(define process-time-clock
+  (make-primitive-procedure 'SYSTEM-CLOCK 0))
+
+(define real-time-clock
+  (make-primitive-procedure 'REAL-TIME-CLOCK 0))
+
 (define system-clock)
 (define runtime)
 (define measure-interval)
 (define wait-interval)
-
-(let ((primitive-clock (make-primitive-procedure 'SYSTEM-CLOCK))
-      (offset-time)
-      (non-runtime))
+(let ((offset-time) (non-runtime))
 
 (define (clock)
-  (- (primitive-clock) offset-time))
+  (- (process-time-clock) offset-time))
 
 (define (ticks->seconds ticks)
-  (/ ticks 100))
+  (/ ticks 1000))
 
 (define (seconds->ticks seconds)
-  (* seconds 100))
+  (* seconds 1000))
 
 (define (reset-system-clock!)
-  (set! offset-time (primitive-clock))
+  (set! offset-time (process-time-clock))
   (set! non-runtime 0))
 
 (reset-system-clock!)
 (add-event-receiver! event:after-restore reset-system-clock!)
 
 (set! system-clock
-      (named-lambda (system-clock)
-	(ticks->seconds (clock))))
+  (named-lambda (system-clock)
+    (ticks->seconds (clock))))
 
 (set! runtime
-       (named-lambda (runtime)
-	 (ticks->seconds (- (clock) non-runtime))))
+  (named-lambda (runtime)
+    (ticks->seconds (- (clock) non-runtime))))
 
 (set! measure-interval
-      (named-lambda (measure-interval runtime? thunk)
-	(let ((start (clock)))
-	  (let ((receiver (thunk (ticks->seconds start))))
-	    (let ((end (clock)))
-	      (if (not runtime?) 
-		  (set! non-runtime (+ (- end start) non-runtime)))
-	      (receiver (ticks->seconds end)))))))
+  (named-lambda (measure-interval runtime? thunk)
+    (let ((start (clock)))
+      (let ((receiver (thunk (ticks->seconds start))))
+	(let ((end (clock)))
+	  (if (not runtime?) 
+	      (set! non-runtime (+ (- end start) non-runtime)))
+	  (receiver (ticks->seconds end)))))))
 
 (set! wait-interval
-      (named-lambda (wait-interval number-of-seconds)
-	(let ((end (+ (clock) (seconds->ticks number-of-seconds))))
-	  (let wait-loop ()
-	    (if (< (clock) end)
-		(wait-loop))))))
+  (named-lambda (wait-interval number-of-seconds)
+    (let ((end (+ (clock) (seconds->ticks number-of-seconds))))
+      (let wait-loop ()
+	(if (< (clock) end)
+	    (wait-loop))))))
 
 ;;; end LET.
 )
