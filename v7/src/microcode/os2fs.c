@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2fs.c,v 1.2 1994/12/19 22:31:28 cph Exp $
+$Id: os2fs.c,v 1.3 1995/01/06 21:58:40 cph Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -314,12 +314,20 @@ OS_directory_valid_p (long index)
      && ((REFERENCE_DIR_SEARCH_STATE (index)) -> allocatedp));
 }
 
+static void
+dir_open_deallocate (void * arg)
+{
+  DEALLOCATE_DIR_SEARCH_STATE ((dir_search_state *) arg);
+}
+
 unsigned int
 OS_directory_open (const char * search_pattern)
 {
   static char pattern [CCHMAXPATH];
   unsigned int index = (allocate_dir_search_state ());
   dir_search_state * s = (REFERENCE_DIR_SEARCH_STATE (index));
+  transaction_begin ();
+  transaction_record_action (tat_abort, dir_open_deallocate, s);
   strcpy (pattern, search_pattern);
   {
     unsigned int len = (strlen (pattern));
@@ -330,18 +338,11 @@ OS_directory_open (const char * search_pattern)
   }
   (s -> handle) = HDIR_CREATE;
   (s -> count) = 1;
-  XTD_API_CALL
+  STD_API_CALL
     (dos_find_first,
      (pattern, (& (s -> handle)), FILE_ANY, (& (s -> info)),
-      (sizeof (s -> info)), (& (s -> count)), FIL_STANDARD),
-     {
-       if (rc == ERROR_NO_MORE_FILES)
-	 {
-	   (s -> count) = 0;
-	   goto done;
-	 }
-     });
- done:
+      (sizeof (s -> info)), (& (s -> count)), FIL_STANDARD));
+  transaction_commit ();
   return (index);
 }
 
