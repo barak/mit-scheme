@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.21 1992/08/05 21:34:38 jinx Exp $
+$Id: lapgen.scm,v 1.22 1993/02/23 17:34:10 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -83,7 +83,7 @@ MIT in each case. |#
   (machine->machine-register source target))
 
 (define (reference->register-transfer source target)
-  (if (equal? (INST-EA ,target) source)
+  (if (equal? (INST-EA (R ,target)) source)
       (LAP)
       (memory->machine-register source target)))
 
