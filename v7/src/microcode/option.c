@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: option.c,v 1.53 2000/01/18 05:08:35 cph Exp $
+$Id: option.c,v 1.54 2000/10/16 17:22:12 cph Exp $
 
 Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
@@ -1200,6 +1200,35 @@ DEFUN (read_command_line_options, (argc, argv),
   {
     CONST char * band_variable = BAND_VARIABLE;
     CONST char * default_band = DEFAULT_BAND;
+
+    /* If the default band doesn't exist, look for alternates.  */
+    if (!search_for_library_file (DEFAULT_BAND))
+      {
+	CONST char * alternate_bands [] =
+	  {
+	    ALL_DEFAULT_BAND,
+	    COMPILER_DEFAULT_BAND,
+	    EDWIN_DEFAULT_BAND,
+	    "6001.com",
+	    "mechanics.com",
+	    0
+	  };
+	unsigned int i = 0;
+	while (1)
+	  {
+	    CONST char * band = (alternate_bands[i]);
+	    if (band == 0)
+	      break;
+	    if (search_for_library_file (band))
+	      {
+		default_band = band;
+		option_large_sizes = 1;
+		break;
+	      }
+	    i += 1;
+	  }
+      }
+
     option_band_specified = 0;
     if (option_band_file != 0)
       xfree (option_band_file);
