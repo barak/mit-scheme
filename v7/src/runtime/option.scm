@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: option.scm,v 14.18 1993/02/25 02:48:54 gjr Exp $
+$Id: option.scm,v 14.19 1993/02/25 09:14:09 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -71,7 +71,7 @@ MIT in each case. |#
 (define options
   '((ARITHMETIC-INTERFACE ((RUNTIME NUMBER INTERFACE) #F "numint"))
     (COMPRESS ((RUNTIME COMPRESS) #F "cpress"))
-    (DOSPROCESS ((RUNTIME) #F "dosproc"))
+    (DOSPROCESS (() #F "dosproc"))
     (FORMAT ((RUNTIME FORMAT) (INITIALIZE-PACKAGE!) "format"))
     (HASH-TABLE ((RUNTIME HASH-TABLE) (INITIALIZE-PACKAGE!) "hashtb"))
     (KRYPT ((RUNTIME KRYPT) #F "krypt"))
