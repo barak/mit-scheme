@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: simple.scm,v 1.52 2000/06/26 18:59:53 cph Exp $
+;;; $Id: simple.scm,v 1.53 2001/01/24 04:28:21 cph Exp $
 ;;;
-;;; Copyright (c) 1985, 1989-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1985, 1989-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -249,14 +249,15 @@
   (let ((point (if (default-object? point) (current-point) point)))
     (group-widen! (mark-group point))))
 
-(define (region-put! start end key datum)
+(define (region-put! start end key datum #!optional no-overwrite?)
   (if (not (mark<= start end))
       (error "Marks incorrectly related:" start end))
   (add-text-property (mark-group start)
 		     (mark-index start)
 		     (mark-index end)
 		     key
-		     datum))
+		     datum
+		     (if (default-object? no-overwrite?) #f no-overwrite?)))
 
 (define (region-remove! start end key)
   (if (not (mark<= start end))
