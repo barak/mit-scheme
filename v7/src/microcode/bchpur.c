@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.57 1992/05/04 18:31:55 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.58 1992/06/03 21:54:53 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -409,11 +409,12 @@ DEFUN (purify, (object, flag),
   SCHEME_OBJECT
     * result, * free_buffer_ptr,
     * old_free, * block_start,
-    * scan_start;
+    * scan_start, * new_free;
 
   initialize_weak_pair_transport (Constant_Top);
   free_buffer_ptr = (initialize_free_buffer ());
   old_free = Free_Constant;
+  new_free = old_free;
   block_start = ((SCHEME_OBJECT *) (ALIGN_DOWN_TO_IO_PAGE (old_free)));
   delta = (old_free - block_start);
   if (delta != 0)
@@ -424,7 +425,7 @@ DEFUN (purify, (object, flag),
       *free_buffer_ptr++ = *ptr++;
   }
 
-  Free_Constant += 2;
+  new_free += 2;
   *free_buffer_ptr++ = SHARP_F;	/* Pure block header. */
   *free_buffer_ptr++ = object;
   if (free_buffer_ptr >= free_buffer_top)
@@ -435,7 +436,7 @@ DEFUN (purify, (object, flag),
   {
     scan_start = ((initialize_scan_buffer (block_start)) + delta);
     result = (purifyloop (scan_start, &free_buffer_ptr,
-			  &Free_Constant, PURE_COPY));
+			  &new_free, PURE_COPY));
     if (result != free_buffer_ptr)
     {
       gc_death (TERM_BROKEN_HEART,
@@ -443,12 +444,12 @@ DEFUN (purify, (object, flag),
 		result, free_buffer_ptr);
       /*NOTREACHED*/
     }
-    pure_length = ((Free_Constant - old_free) + 1);
+    pure_length = ((new_free - old_free) + 1);
   }
   else
     pure_length = 3;
 
-  Free_Constant += 2;
+  new_free += 2;
   *free_buffer_ptr++ = (MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1));
   *free_buffer_ptr++ = (MAKE_OBJECT (CONSTANT_PART, pure_length));
   if (free_buffer_ptr >= free_buffer_top)
@@ -457,9 +458,9 @@ DEFUN (purify, (object, flag),
   scan_start = ((initialize_scan_buffer (block_start)) + delta);
   if (flag == SHARP_T)
     result = (purifyloop (scan_start, &free_buffer_ptr,
-			  &Free_Constant, CONSTANT_COPY));
+			  &new_free, CONSTANT_COPY));
   else
-    result = (GCLoop (scan_start, &free_buffer_ptr, &Free_Constant));
+    result = (GCLoop (scan_start, &free_buffer_ptr, &new_free));
 
   if (result != free_buffer_ptr)
   {
@@ -468,26 +469,27 @@ DEFUN (purify, (object, flag),
     /*NOTREACHED*/
   }
 
-  Free_Constant += 2;
-  length = (Free_Constant - old_free);
+  new_free += 2;
+  length = (new_free - old_free);
   *free_buffer_ptr++ = (MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1));
   *free_buffer_ptr++ = (MAKE_OBJECT (END_OF_BLOCK, (length - 1)));
   if (free_buffer_ptr >= free_buffer_top)
     free_buffer_ptr = (purify_header_overflow (free_buffer_ptr));
   end_transport (NULL);
 
-  if (!(TEST_CONSTANT_TOP (Free_Constant)))
+  if (!(TEST_CONSTANT_TOP (new_free)))
   {
     gc_death (TERM_NO_SPACE, "purify: object too large", NULL, NULL);
     /*NOTREACHED*/
   }
 
   final_reload (block_start,
-		(Free_Constant - block_start),
+		(new_free - block_start),
 		"the new constant space block");
 
   *old_free++ = (MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, pure_length));
   *old_free = (MAKE_OBJECT (PURE_PART, (length - 1)));
+  Free_Constant = new_free;
   SET_CONSTANT_TOP ();
 
   GC (1);
