@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.160 2000/06/15 16:19:53 cph Exp $
+;;; $Id: imail-top.scm,v 1.161 2000/06/15 16:34:35 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1198,7 +1198,9 @@ With prefix argument N moves backward N messages with these flags."
     (if (and (or (not enclosure)
 		 (let ((subtype (mime-body-subtype body)))
 		   (or (eq? subtype 'PLAIN)
-		       (memq subtype imail-inline-mime-text-subtypes))))
+		       (memq subtype
+			     (ref-variable imail-inline-mime-text-subtypes
+					   mark)))))
 	     (known-mime-encoding? encoding)
 	     (re-string-match
 	      (string-append "\\`"
