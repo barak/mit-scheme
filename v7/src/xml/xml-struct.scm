@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.10 2003/03/01 16:53:39 cph Exp $
+$Id: xml-struct.scm,v 1.11 2003/03/02 03:48:47 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -203,8 +203,7 @@ USA.
    (lambda (object)
      (list-of-type? object
        (lambda (object)
-	 (or (xml-whitespace-string? object)
-	     (xml-comment? object)
+	 (or (xml-comment? object)
 	     (xml-!element? object)
 	     (xml-!attlist? object)
 	     (xml-!entity? object)
