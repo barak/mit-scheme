@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: option.scm,v 14.44 2005/03/08 20:43:09 cph Exp $
+$Id: option.scm,v 14.45 2005/03/08 20:45:24 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1997,1998,2001,2002 Massachusetts Institute of Technology
@@ -76,9 +76,9 @@ USA.
 
 (define (initial-load-options)
   (or *initial-options-file*
-      (confirm-pathname
-       (merge-pathnames (get-environment-variable "MITSCHEME_LOAD_OPTIONS")
-			(user-homedir-pathname)))
+      (let ((s (get-environment-variable "MITSCHEME_LOAD_OPTIONS")))
+	(and s
+	     (confirm-pathname (merge-pathnames s (user-homedir-pathname)))))
       (local-load-options)))
 
 (define (local-load-options)
