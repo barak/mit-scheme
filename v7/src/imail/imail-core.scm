@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.13 2000/01/19 05:54:39 cph Exp $
+;;; $Id: imail-core.scm,v 1.14 2000/01/19 20:14:39 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -461,6 +461,15 @@
 
 (define (clear-message-flag message flag)
   (set-message-flags! message (delete flag (message-flags message))))
+
+(define (folder-flags folder)
+  (let ((n (count-messages folder)))
+    (let loop ((index 0) (flags '()))
+      (if (< index n)
+	  (loop (+ index 1)
+		(union-of-lists (message-flags (get-message folder index))
+				flags))
+	  flags))))
 
 (define (message-flag? object)
   (or (memq object standard-message-flags)
