@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/motcom.scm,v 1.40 1991/05/02 01:13:59 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/motcom.scm,v 1.41 1991/05/10 05:12:13 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -105,33 +105,13 @@ With arg from 0 to 10, goes up that many tenths of the file from the end."
 (define (region-10ths region n)
   (mark+ (region-start region)
 	 (quotient (* n (region-count-chars region)) 10)))
-
+
 (define-command goto-char
-  "Goto the Nth character from the start of the buffer."
-  "p"
-  (lambda (argument)
-    (let ((mark (mark+ (buffer-start (current-buffer)) (-1+ argument))))
-      (if mark
-	  (set-current-point! mark)
-	  (editor-error)))))
-
-(define-command goto-line
-  "Goto the Nth line from the start of the buffer."
-  "p"
-  (lambda (argument)
-    (let ((mark (line-start (buffer-start (current-buffer)) (-1+ argument))))
-      (if mark
-	  (set-current-point! mark)
-	  (editor-error)))))
-
-(define-command goto-page
-  "Goto the Nth page from the start of the buffer."
-  "p"
-  (lambda (argument)
-    (let ((mark (forward-page (buffer-start (current-buffer)) (-1+ argument))))
-      (if mark
-	  (set-current-point! mark)
-	  (editor-error)))))
+  "Goto line ARG, counting from char 1 at beginning of buffer."
+  "NGoto char"
+  (lambda (n)
+    (set-current-point!
+     (mark+ (buffer-start (current-buffer)) (- n 1) 'ERROR))))
 
 (define-variable goal-column
   "Semipermanent goal column for vertical motion,
