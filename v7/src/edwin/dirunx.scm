@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dirunx.scm,v 1.12 1999/02/01 03:47:22 cph Exp $
+;;; $Id: dirunx.scm,v 1.13 2001/06/02 22:28:49 cph Exp $
 ;;;
 ;;; Copyright (c) 1992-1999 Massachusetts Institute of Technology
 ;;;
@@ -81,3 +81,25 @@ The files are compressed or uncompressed using gzip."
 		      lstart))))))))
       (if (positive? n)
 	  (message "Compressed or uncompressed " n " files.")))))
+
+#|
+(define-command dired-do-symlink
+  "Make symbolic links to current file or all marked (or next ARG) files.
+When operating on just the current file, you specify the new name.
+When operating on multiple or marked files, you specify a directory
+and new symbolic links are made in that directory
+with the same names that the files currently have."
+  "P"
+  (lambda (argument)
+    ))
+
+(define-command dired-do-hardlink
+  "Add names (hard links) current file or all marked (or next ARG) files.
+When operating on just the current file, you specify the new name.
+When operating on multiple or marked files, you specify a directory
+and new hard links are made in that directory
+with the same names that the files currently have."
+  "P"
+  (lambda (argument)
+    ))
+|#
