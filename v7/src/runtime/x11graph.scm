@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.23 1992/07/20 20:12:21 arthur Exp $
+$Id: x11graph.scm,v 1.24 1992/09/18 19:05:15 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -366,6 +366,19 @@ MIT in each case. |#
 	       (dequeue! queue)))))
      (lambda ()
        (unlock-thread-mutex mutex)))))
+
+(define (discard-events display)
+  (let ((mutex (x-display/mutex display)))
+    (dynamic-wind
+     (lambda ()
+       (lock-thread-mutex mutex))
+     (lambda ()
+       (let ((queue (x-display/event-queue display)))
+	 (let loop ()
+	   (if (not (queue-empty? queue))
+	       (dequeue! queue)))))
+     (lambda ()
+       (unlock-thread-mutex mutex)))))
 
 (define (process-event display event)
   (let ((handler (vector-ref event-handlers (vector-ref event 0))))
@@ -624,6 +637,9 @@ MIT in each case. |#
       (values (x-graphics-map-x-coordinate window (vector-ref event 2))
 	      (x-graphics-map-y-coordinate window (vector-ref event 3))
 	      (vector-ref event 4)))))
+
+(define (x-graphics/discard-events device)
+  (discard-events (x-graphics/display device)))
 
 (define (x-graphics/starbase-filename device)
   (x-window-starbase-filename (x-graphics-device/xw device)))
