@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.113 2000/05/30 20:21:33 cph Exp $
+;;; $Id: imail-top.scm,v 1.114 2000/05/30 21:01:33 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -257,7 +257,7 @@ regardless of the folder type."
 	  v)))))
 
 (define (imail-progress-meter current total)
-  (if (and *imail-message-wrapper-prefix* (<= 0 current total))
+  (if (and *imail-message-wrapper-prefix* (< 0 current total))
       (message *imail-message-wrapper-prefix*
 	       (string-pad-left
 		(number->string (round->exact (* (/ current total) 100)))
