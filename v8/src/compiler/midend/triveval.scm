@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: triveval.scm,v 1.2 1994/11/25 23:01:17 jmiller Exp $
+$Id: triveval.scm,v 1.3 1994/11/26 16:55:36 gjr Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -47,17 +47,34 @@ MIT in each case. |#
 (define (call operator cont . operands)
   (if (eq? operator %invoke-continuation)
       (apply cont operands)
-      (let ((rator (operator->procedure operator)))
-	(cond ((cps-proc? rator)
-	       (cps-proc/apply rator cont operands))
-	      ((not cont)
-	       (apply rator operands))
-	      ((continuation? cont)
-	       (within-continuation cont
-				    (lambda ()
-				      (apply rator operands))))
-	      (else
-	       (cont (apply rator operands)))))))
+      (call-with-values
+       (lambda ()
+	 (collect-operands cont operands))
+       (lambda (cont operands)
+	 (let ((rator (operator->procedure operator)))
+	   (cond ((cps-proc? rator)
+		  (cps-proc/apply rator cont operands))
+		 ((not cont)
+		  (apply rator operands))
+		 ((continuation? cont)
+		  (within-continuation cont
+		    (lambda ()
+		      (apply rator operands))))
+		 (else
+		  (cont (apply rator operands)))))))))
+
+(define (collect-operands cont operands)
+  ;; (values cont operands)
+  (if (not (stack-closure? cont))
+      (values cont operands)
+      (let ((proc (stack-closure/proc cont)))
+	(if (or (compound-procedure? proc)
+		(not proc))
+	    (values cont operands)
+	    (values proc
+		    (append operands
+			    (vector->list
+			     (stack-closure/values cont))))))))
 
 (define-structure (cps-proc
 		   (conc-name cps-proc/)
@@ -87,6 +104,7 @@ MIT in each case. |#
 
 (define (execute expr env)
   (set! *last-env* env)
+  (set! *stack-closure* false)
   (eval (cond ((cps-program1? expr)
 	       (cps-rewrite (caddr expr)))
               ((cps-program2? expr)
@@ -104,32 +122,36 @@ MIT in each case. |#
      ,(form/replace expr '((LAMBDA NON-CPS-LAMBDA)))))
 
 (define triveval/?cont-variable (->pattern-variable 'CONT-VARIABLE))
+(define triveval/?env-variable (->pattern-variable 'ENV-VARIABLE))
 (define triveval/?body (->pattern-variable 'BODY))
 (define triveval/?ignore (->pattern-variable 'IGNORE))
 (define triveval/?frame (->pattern-variable 'FRAME))
 (define triveval/?frame-vector (->pattern-variable 'FRAME-VECTOR))
 
 (define triveval/compatible-expr-pattern
-  `(LAMBDA (,triveval/?ignore)
-     (LET ((,triveval/?frame
-	    (CALL (QUOTE ,%fetch-stack-closure)
-		  (QUOTE #F)
-		  (QUOTE ,triveval/?frame-vector))))
-       ,triveval/?body)))
+  `(LAMBDA (,triveval/?cont-variable ,triveval/?env-variable)
+     ,triveval/?body))
 
 (define (compatible-program? expr)
-  (form/match triveval/compatible-expr-pattern expr))
+  (let ((result (form/match triveval/compatible-expr-pattern expr)))
+    (and result
+	 (let ((cont (cadr (assq triveval/?cont-variable result)))
+	       (env  (cadr (assq triveval/?env-variable result))))
+	   (and (continuation-variable? cont)
+		(environment-variable? env))))))
 
 (define (compatible-rewrite expr)
   (let ((expr* (%cps-rewrite (caddr expr)))
-	(name (generate-uninterned-symbol 'CONT)))
+	(cont-name (car (cadr expr)))
+	(env-name (cadr (cadr expr))))
     `(call-with-current-continuation
-      (lambda (,name)
-	(set! *stack-closure* (make-stack-closure false '() ,name))
-	,expr*))))
+      (lambda (,cont-name)
+	(let ((,env-name *last-env*))
+	  ,expr*)))))
 
-;;this no longer appears to be the only correct pattern, a (letrec () appears
-;;before this let, so I just make two tests, and do the appropriate thing
+;;this no longer appears to be the only correct pattern, a (letrec () ...)
+;;appears before this let, so I just make two tests, and do the
+;;appropriate thing
 ;;JBANK
 
 (define triveval/cps-expr-pattern1
@@ -162,8 +184,36 @@ MIT in each case. |#
 (define (%cps-rewrite expr)
   `(let-syntax ((cps-lambda
 		 (macro (param-list body)
-		   (list '%cps-proc/make%
-			 (list 'LAMBDA param-list body)))))
+		   (call-with-values
+		    (lambda ()
+		      ((access lambda-list/parse
+			       (->environment '(compiler midend)))
+		       (cdr param-list)))
+		    (lambda (required optional rest aux)
+		      aux		; ignored
+		      (let ((max-reg
+			     ((access rtlgen/number-of-argument-registers
+				      (->environment '(compiler midend)))))
+			    (names
+			     (append required optional (if rest
+							   (list rest)
+							   '()))))
+
+			(list
+			 '%cps-proc/make%
+			 (list 'LAMBDA
+			       param-list
+			       (if (<= (length names) max-reg)
+				   body
+				   (let ((stack-names
+					  (list-tail names max-reg)))
+				     `(begin
+					(set! *stack-closure*
+					      (make-stack-closure
+					       #f
+					       '#(,@stack-names)
+					       ,@stack-names))
+					,body)))))))))))
      ,(form/replace expr '((LAMBDA CPS-LAMBDA)))))
 
 (define (cps-rewrite expr)
@@ -258,24 +308,43 @@ MIT in each case. |#
   name					; ignored
   (vector-set! (entity-extra closure) index value))
 
-(define *stack-closure*)
+(define *stack-closure* false)
+
+(define-structure (%stack-closure
+		   (conc-name %stack-closure/)
+		   (constructor %stack-closure/make))
+  proc
+  names
+  values)
 
 (define (fetch-stack-closure names)
   names					; ignored
   (let ((closure *stack-closure*))
-    (set! *stack-closure*)		; clear for gc
+    (set! *stack-closure* false)	; clear for gc
     closure))
 
 (define (make-stack-closure proc names . values)
-  names					; ignored
   (make-entity (lambda (closure . args)
 		 (set! *stack-closure* closure)
 		 (apply proc args))
-	       (list->vector values)))
+	       (%stack-closure/make
+		proc
+		names
+		(list->vector values))))
 
 (define (stack-closure-ref closure index name)
   name					; ignored
-  (vector-ref (entity-extra closure) index))
+  (vector-ref (%stack-closure/values (entity-extra closure)) index))
+
+(define (stack-closure? object)
+  (and (entity? object)
+       (%stack-closure? (entity-extra object))))
+
+(define (stack-closure/proc object)
+  (%stack-closure/proc (entity-extra object)))
+
+(define (stack-closure/values object)
+  (%stack-closure/values (entity-extra object)))
 
 (define (projection/2/0 x y)
   y					; ignored
@@ -285,67 +354,13 @@ MIT in each case. |#
   all					; ignored
   (error "Unknown operator"))
 
-;; *** These two do not currently work for #!optional or #!rest! ***
-
-(define (make-closure/compatible proc names . values)
-  (let ((proc (cps-proc/handler proc)))
-    (apply make-closure
-	   (lambda (closure . args)
-	     (call-with-current-continuation
-	      (lambda (cont)
-		(set! *stack-closure*
-		      (apply make-stack-closure
-			     false
-			     '()
-			     (cons cont
-				   (append (reverse args)
-					   (list closure)))))
-		(apply proc (cons* cont closure args)))))
-	   names
-	   values)))
-
-(define *trivial-closures*		; to preserve eq-ness
-  (make-eq-hash-table))
-
-(define (make-trivial-closure/compatible proc)
-  (let ((proc (cps-proc/handler proc)))
-    (or (hash-table/get *trivial-closures* proc false)
-	(let ((new
-	       (lambda args
-		 (call-with-current-continuation
-		  (lambda (cont)
-		    (set! *stack-closure*
-			  (apply make-stack-closure
-				 false
-				 '()
-				 (cons cont (reverse args))))
-		    (apply proc (cons cont args)))))))
-	  (hash-table/put! *trivial-closures* proc new)
-	  new))))
-
 (define internal-apply/compatible
   (%cps-proc/make%
    (lambda (stack-closure nargs operator)
      nargs				; ignored
-     (let ((elements (vector->list (entity-extra stack-closure))))
+     (let ((elements (vector->list (stack-closure/values stack-closure))))
        (apply call
 	      operator
-	      (car elements)
-	      (reverse (cdr elements)))))))
-
-(define invoke-operator-cache/compatible
-  (%cps-proc/make%
-   (lambda (stack-closure desc cache)
-     (let ((elements (vector->list (entity-extra stack-closure))))
-       (apply call
-	      (let ((cache
-		     (or cache
-			 (make-remote-operator-variable-cache
-			  '()
-			  (car desc)
-			  (cadr desc)))))
-		(lexical-reference (operator-cache/env cache)
-				   (operator-cache/name cache)))
 	      (car elements)
 	      (reverse (cdr elements)))))))
 
