@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.12 1992/10/19 20:14:15 jinx Exp $
+$Id: compiler.pkg,v 1.13 1992/11/14 17:23:19 gjr Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -166,6 +166,8 @@ MIT in each case. |#
 	  cross-compile-bin-file
 	  cross-compile-bin-file-end
 	  lap->code)
+  (export (compiler)
+	  canonicalize-label-name)
   (export (compiler fg-generator)
 	  compile-recursively)
   (export (compiler rtl-generator)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: asstop.scm,v 1.2 1992/10/24 16:00:56 jinx Exp $
+$Id: asstop.scm,v 1.3 1992/11/14 17:20:27 gjr Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -361,3 +361,7 @@ MIT in each case. |#
      (phase/assemble)
      (phase/link)
      *result*)))
+
+(define (canonicalize-label-name name)
+  ;; The Scheme assembler allows any Scheme symbol as a label
+  name)

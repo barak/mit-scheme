@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 4.17 1992/10/24 21:30:18 jinx Exp $
+$Id: utils.scm,v 4.18 1992/11/14 17:20:17 gjr Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -67,20 +67,19 @@ MIT in each case. |#
 	  (else
 	   (loop (cdr items) passed (cons (car items) failed))))))
 
-(define *label-separator* "-")		; Not integrable!!!
-
 (define (generate-label #!optional prefix)
   (if (default-object? prefix) (set! prefix 'LABEL))
   (string->uninterned-symbol
-   (string-append
-    (symbol->string
-     (cond ((eq? prefix lambda-tag:unnamed) 'LAMBDA)
-	   ((eq? prefix lambda-tag:let) 'LET)
-	   ((eq? prefix lambda-tag:make-environment) 'MAKE-ENVIRONMENT)
-	   ((eq? prefix lambda-tag:fluid-let) 'FLUID-LET)
-	   (else prefix)))
-    *label-separator*
-    (number->string (generate-label-number)))))
+   (canonicalize-label-name
+    (string-append
+     (symbol->string
+      (cond ((eq? prefix lambda-tag:unnamed) 'LAMBDA)
+	    ((eq? prefix lambda-tag:let) 'LET)
+	    ((eq? prefix lambda-tag:make-environment) 'MAKE-ENVIRONMENT)
+	    ((eq? prefix lambda-tag:fluid-let) 'FLUID-LET)
+	    (else prefix)))
+     "-"
+     (number->string (generate-label-number))))))
 
 (define *current-label-number*)
 
