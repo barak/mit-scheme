@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.31 1995/01/13 22:17:16 adams Exp $
+$Id: arith.scm,v 1.32 1995/05/10 03:33:08 adams Exp $
 
 Copyright (c) 1989-94 Massachusetts Institute of Technology
 
@@ -138,12 +138,13 @@ MIT in each case. |#
 		    SELF		; ignored
 		    (REDUCE ,generic-binary ,identity ZS))
 		  (VECTOR (FIXED-OBJECTS-ITEM 'arity-dispatcher-tag)
-			  (LAMBDA () ,identity)
-			  (LAMBDA (Z)
+			  (NAMED-LAMBDA (,(symbol-append 'NULLARY- name))
+			    ,identity)
+			  (NAMED-LAMBDA (,(symbol-append 'UNARY- name) Z)
 			    (IF (NOT (COMPLEX:COMPLEX? Z))
 				(ERROR:WRONG-TYPE-ARGUMENT Z FALSE ',name))
 			    Z)
-			  (LAMBDA (Z1 Z2)
+			  (NAMED-LAMBDA (,(symbol-append 'BINARY- name) Z1 Z2)
 			    ((UCODE-PRIMITIVE ,primitive-binary) Z1 Z2))))))))
     (commutative + complex:+ 0 &+)
     (commutative * complex:* 1 &*))
@@ -162,7 +163,7 @@ MIT in each case. |#
 		  (VECTOR (FIXED-OBJECTS-ITEM 'arity-dispatcher-tag)
 			  #F
 			  ,generic-unary
-			  (LAMBDA (Z1 Z2)
+			  (NAMED-LAMBDA (,(symbol-append 'BINARY- name) Z1 Z2)
 			    ((UCODE-PRIMITIVE ,primitive-binary) Z1 Z2))))))))
     (non-commutative -  complex:negate  complex:-  complex:+  0  &-)
     (non-commutative /  complex:invert  complex:/  complex:*  1  &/))
@@ -177,15 +178,15 @@ MIT in each case. |#
 		    (REDUCE-COMPARATOR ,generic-binary ZS ',name))
 		  (VECTOR 
 		   (FIXED-OBJECTS-ITEM 'arity-dispatcher-tag)
-		   (LAMBDA () #T)
-		   (LAMBDA (Z)
+		   (NAMED-LAMBDA (,(symbol-append 'NULLARY- name)) #T)
+		   (NAMED-LAMBDA (,(symbol-append 'UNARY- name) Z)
 		     (IF (NOT (,correct-type? Z))
 			 (ERROR:WRONG-TYPE-ARGUMENT Z FALSE ',name))
 		     #T)
 		   ,(if negated?
-			`(LAMBDA (Z1 Z2)
+			`(NAMED-LAMBDA (,(symbol-append 'BINARY- name) Z1 Z2)
 			   (NOT ((UCODE-PRIMITIVE ,primitive-binary) Z1 Z2)))
-			`(LAMBDA (Z1 Z2)
+			`(NAMED-LAMBDA (,(symbol-append 'BINARY- name) Z1 Z2)
 			   ((UCODE-PRIMITIVE ,primitive-binary) Z1 Z2)))))))))
 	  
     (relational  =  complex:=  &=  complex:complex? #F)
@@ -205,7 +206,7 @@ MIT in each case. |#
 		  (VECTOR 
 		   (FIXED-OBJECTS-ITEM 'arity-dispatcher-tag)
 		   #F
-		   (LAMBDA (X)
+		   (NAMED-LAMBDA (,(symbol-append 'UNARY- name) X)
 		     (IF (NOT (COMPLEX:REAL? X))
 			 (ERROR:WRONG-TYPE-ARGUMENT X FALSE ',name))
 		     X)
