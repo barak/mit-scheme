@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn3.scm,v 4.3 1989/04/15 18:04:19 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn3.scm,v 4.4 1989/07/24 17:46:33 cph Rel $
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
@@ -46,7 +46,8 @@ MIT in each case. |#
 
 (define (allocate-constant-label)
   (let ((label
-	 (intern	  (string-append "constant-" (number->string *next-constant*)))))
+	 (string->uninterned-symbol
+	  (string-append "constant-" (number->string *next-constant*)))))
     (set! *next-constant* (1+ *next-constant*))
     label))
 
