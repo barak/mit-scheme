@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.6 1994/12/16 20:16:41 adams Exp $
+$Id: rules3.scm,v 1.7 1995/02/28 01:40:38 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -115,13 +115,6 @@ MIT in each case. |#
        ,@(object->address regnum:first-arg)
        ,@(invoke-interface code:compiler-lexpr-apply)))
 
-#|
-  (define-rule statement
-    (INVOCATION:UUO-LINK (? frame-size) (? continuation) (? name))
-    continuation			;ignore
-    (LAP ,@(clear-map!)
-	 (B (N) (@PCR ,(free-uuo-link-label name frame-size)))))
-|#
 (define-rule statement
   (INVOCATION:UUO-LINK (? frame-size) (? continuation) (? name))
   (invocation:some-uuo-link frame-size continuation name free-uuo-link-label))
@@ -712,147 +705,6 @@ MIT in each case. |#
 	(else
 	 (error "Unable to encode continuation offset" offset))))
 
-;;;; Procedure headers
-
-;;; The following calls MUST appear as the first thing at the entry
-;;; point of a procedure.  They assume that the register map is clear
-;;; and that no register contains anything of value.
-;;;
-;;; The only reason that this is true is that no register is live
-;;; across calls.  If that were not true, then we would have to save
-;;; any such registers on the stack so that they would be GC'ed
-;;; appropriately.
-;;;
-;;; The only exception is the dynamic link register, handled
-;;; specially.  Procedures that require a dynamic link use a different
-;;; interrupt handler that saves and restores the dynamic link
-;;; register.
-
-#|
-(define (simple-procedure-header code-word label code)
-  (let ((gc-label (generate-label)))    
-    (LAP (LABEL ,gc-label)
-	 ,@(invoke-interface-ble code)
-	 ,@(make-external-label code-word label)
-	 ,@(interrupt-check label gc-label))))
-|#
-
-#|
-(define (dlink-procedure-header code-word label)
-  (let ((gc-label (generate-label)))    
-    (LAP (LABEL ,gc-label)
-	 (COPY () ,regnum:dynamic-link ,regnum:second-arg)
-	 ,@(invoke-interface-ble code:compiler-interrupt-dlink)
-	 ,@(make-external-label code-word label)
-	 ,@(interrupt-check label gc-label))))
-|#
-
-#|
-(define (interrupt-check label gc-label)
-  (case (let ((object (label->object label)))
-	  (and (rtl-procedure? object)
-	       (not (rtl-procedure/stack-leaf? object))
-	       compiler:generate-stack-checks?))
-    ((#F)
-     (LAP (COMB (>=) ,regnum:free-pointer ,regnum:memtop-pointer
-		(@PCR ,gc-label))
-	  (LDW () ,reg:memtop ,regnum:memtop-pointer)))
-    ((OUT-OF-LINE)
-     (let ((label (generate-label)))
-       (LAP (BLE ()
-		 (OFFSET ,hook:compiler-stack-and-interrupt-check
-			 4
-			 ,regnum:scheme-to-interface-ble))
-	    ;; Assumes that (<= #x-2000 (- ,gc-label ,label) #x1fff)
-	    ;; otherwise this assembles to two instructions, and it
-	    ;; won't fit in the branch-delay slot.
-	    (LDI () (- ,gc-label ,label) ,regnum:first-arg)
-	    (LABEL ,label))))
-    (else
-     (LAP (LDW () ,reg:stack-guard ,regnum:first-arg)
-	  (COMB (>=) ,regnum:free-pointer ,regnum:memtop-pointer
-		(@PCR ,gc-label))
-	  (COMB (<=) ,regnum:stack-pointer ,regnum:first-arg (@PCR ,gc-label))
-	  (LDW () ,reg:memtop ,regnum:memtop-pointer)))))
-|#
-
-(define-rule statement
-  (CONTINUATION-ENTRY (? internal-label))
-  (make-external-label (continuation-code-word internal-label)
-		       internal-label))
-
-(define-rule statement
-  (CONTINUATION-HEADER (? internal-label))
-  (simple-procedure-header (continuation-code-word internal-label)
-			   internal-label
-			   code:compiler-interrupt-continuation))
-
-(define-rule statement
-  (IC-PROCEDURE-HEADER (? internal-label))
-  (let ((procedure (label->object internal-label)))
-    (let ((external-label (rtl-procedure/external-label procedure)))
-    (LAP (ENTRY-POINT ,external-label)
-	 (EQUATE ,external-label ,internal-label)
-	 ,@(simple-procedure-header expression-code-word
-				    internal-label
-				    code:compiler-interrupt-ic-procedure)))))
-
-(define-rule statement
-  (OPEN-PROCEDURE-HEADER (? internal-label))
-  (let ((rtl-proc (label->object internal-label)))
-    (LAP (EQUATE ,(rtl-procedure/external-label rtl-proc) ,internal-label)
-	 ,@((if (rtl-procedure/dynamic-link? rtl-proc)
-		dlink-procedure-header 
-		(lambda (code-word label)
-		  (simple-procedure-header code-word label
-					   code:compiler-interrupt-procedure)))
-	    (internal-procedure-code-word rtl-proc)
-	    internal-label))))
-
-(define-rule statement
-  (PROCEDURE-HEADER (? internal-label) (? min) (? max))
-  (LAP (EQUATE ,(rtl-procedure/external-label (label->object internal-label))
-	       ,internal-label)
-       ,@(simple-procedure-header (make-procedure-code-word min max)
-				  internal-label
-				  code:compiler-interrupt-procedure)))
-
-;;;; Closures.  These two statements are intertwined:
-
-(define-rule statement
-  ;; This depends on the following facts:
-  ;; 1- TC_COMPILED_ENTRY is a multiple of two.
-  ;; 2- all the top 6 bits in a data address are 0 except the quad bit
-  ;; 3- type codes are 6 bits long.
-  (CLOSURE-HEADER (? internal-label) (? nentries) (? entry))
-  entry				; Used only if entries may not be word-aligned.
-  (if (zero? nentries)
-      (error "Closure header for closure with no entries!"
-	     internal-label))
-
-  ;; Closures used to use (internal-procedure-code-word rtl-proc)
-  ;; instead of internal-closure-code-word.
-  ;; This confused the bkpt utilties and was unnecessary because
-  ;; these entry points cannot properly be used as return addresses.
-
-  (let* ((rtl-proc (label->object internal-label))
-	 (external-label (rtl-procedure/external-label rtl-proc)))
-    (let ((suffix
-	   (lambda (gc-label)
-	     (LAP ,@(make-external-label internal-closure-code-word
-					 external-label)
-		  ,@(address->entry g25)
-		  (STWM () ,g25 (OFFSET -4 0 ,regnum:stack-pointer))
-		  (LABEL ,internal-label)
-		  ,@(interrupt-check internal-label gc-label)))))
-      (share-instruction-sequence!
-       'CLOSURE-GC-STUB
-       suffix
-       (lambda (gc-label)
-	 (LAP (LABEL ,gc-label)
-	      ,@(invoke-interface code:compiler-interrupt-closure)
-	      ,@(suffix gc-label)))))))
-
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (CONS-CLOSURE (ENTRY:PROCEDURE (? procedure-label))
