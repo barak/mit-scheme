@@ -1,5 +1,5 @@
 
-# $Id: Makefile,v 1.3 2000/07/10 22:08:50 cph Exp $
+# $Id: Makefile,v 1.4 2000/07/10 22:09:31 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -17,13 +17,16 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-all:	imail.ps imail.info html/imail_toc.html
+all:	imail.ps imail.pdf imail.info html/imail_toc.html
 
 imail.ps: imail.dvi
 	dvips -o $@ $^
 
 imail.dvi: imail.texinfo
 	texi2dvi $^
+
+imail.pdf: imail.texinfo
+	texi2pdf $^
 
 imail.info: imail.texinfo
 	makeinfo $^
@@ -38,7 +41,7 @@ AUX_SUFFIXES = aux log toc
 INDEX_SUFFIXES = cp fn ky pg tp vr
 
 clean:
-	rm -f imail.ps imail.dvi imail.info*
+	rm -f imail.ps imail.dvi imail.pdf imail.info*
 	rm -f $(addprefix imail.,$(AUX_SUFFIXES))
 	rm -f $(addprefix imail.,$(INDEX_SUFFIXES))
 	rm -f $(addsuffix s,$(addprefix imail.,$(INDEX_SUFFIXES)))

@@ -1,5 +1,5 @@
 
-# $Id: Makefile,v 1.4 2000/07/10 22:07:31 cph Exp $
+# $Id: Makefile,v 1.5 2000/07/10 22:12:34 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -17,7 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-all:	user.ps user.info html/user_toc.html
+all:	user.ps user.pdf user.info html/user_toc.html
 
 user.ps: user.dvi
 	dvips -o $@ $^
