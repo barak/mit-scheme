@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: boot.scm,v 14.7 1993/08/30 19:41:46 ziggy Exp $
+$Id: boot.scm,v 14.8 1993/08/31 00:37:50 ziggy Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -71,12 +71,8 @@ MIT in each case. |#
 (define-integrable interrupt-bit/timer      	#x0040)
 (define-integrable interrupt-bit/global-3   	#x0080)
 (define-integrable interrupt-bit/suspend    	#x0100)
-(define-integrable interrupt-bit/IPPB-flush	#x0200) ; pc-sample
-(define-integrable interrupt-bit/IPPB-extend 	#x0400) ; pc-sample
-(define-integrable interrupt-bit/PCBPB-flush	#x0800) ; pc-sample
-(define-integrable interrupt-bit/PCBPB-extend 	#x1000) ; pc-sample
-(define-integrable interrupt-bit/HCBPB-flush	#x2000) ; pc-sample
-(define-integrable interrupt-bit/HCBPB-extend 	#x4000) ; pc-sample
+;; Interrupt bits #x0200 through #x4000 inclusive are reserved
+;; for the Descartes PC sampler.
 
 ;; GC & stack overflow only
 (define-integrable interrupt-mask/gc-ok     	#x0007)
