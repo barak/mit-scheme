@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.1 1988/06/13 11:50:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.2 1988/07/06 20:34:20 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -97,18 +97,18 @@ MIT in each case. |#
 		     state)))
     (let loop ((message message))
       (loop
-       (call-with-current-continuation
-	(lambda (continuation)
-	  (set-cmdl/continuation! cmdl continuation)
-	  (fluid-let
-	      ((*nearest-cmdl* cmdl)
-	       (cmdl-interrupt/abort-nearest default/abort-nearest)
-	       (cmdl-interrupt/abort-previous default/abort-previous)
-	       (cmdl-interrupt/abort-top-level default/abort-top-level)
-	       (cmdl-interrupt/breakpoint default/breakpoint))
-	    (with-interrupt-mask interrupt-mask/all
-	      (lambda (interrupt-mask)
-		interrupt-mask
+       (fluid-let
+	   ((*nearest-cmdl* cmdl)
+	    (cmdl-interrupt/abort-nearest default/abort-nearest)
+	    (cmdl-interrupt/abort-previous default/abort-previous)
+	    (cmdl-interrupt/abort-top-level default/abort-top-level)
+	    (cmdl-interrupt/breakpoint default/breakpoint))
+	 (with-interrupt-mask interrupt-mask/all
+	   (lambda (interrupt-mask)
+	     interrupt-mask
+	     (call-with-current-continuation
+	      (lambda (continuation)
+		(set-cmdl/continuation! cmdl continuation)
 		(message cmdl)
 		(driver cmdl))))))))))
 
