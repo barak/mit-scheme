@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.97 1991/03/15 23:39:31 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.98 1991/04/12 23:28:31 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -641,7 +641,7 @@ The name may be an abbreviation of the reference name."
 	       (let ((pathname* (ref-variable info-current-file)))
 		 (not (and pathname* (pathname=? pathname pathname*)))))
 	  (begin
-	    (read-buffer buffer pathname)
+	    (read-buffer buffer pathname true)
 	    (if (not (eq? (buffer-major-mode buffer) (ref-mode-object info)))
 		(set-buffer-major-mode! buffer (ref-mode-object info)))
 	    (find-tag-table buffer)
@@ -869,7 +869,7 @@ The name may be an abbreviation of the reference name."
     (if (or (not subfile)
 	    (not (pathname=? subfile pathname)))
 	(begin
-	  (read-buffer (current-buffer) pathname)
+	  (read-buffer (current-buffer) pathname true)
 	  (set-variable! info-current-subfile pathname)))))
 
 (define-integrable subfile-filename car)

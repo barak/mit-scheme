@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.94 1991/04/02 19:55:39 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.95 1991/04/12 23:28:01 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -48,22 +48,26 @@
 
 ;;;; Input
 
-(define (read-buffer buffer pathname)
+(define (read-buffer buffer pathname visit?)
   (set-buffer-writeable! buffer)
-  (set-buffer-pathname! buffer pathname)
   (let ((truename (pathname->input-truename pathname)))
     (if truename
 	(begin
 	  (region-delete! (buffer-unclipped-region buffer))
 	  (%insert-file (buffer-start buffer) truename)
-	  (set-buffer-point! buffer (buffer-start buffer))
-	  (set-buffer-modification-time! buffer
-					 (file-modification-time truename))))
-    (set-buffer-truename! buffer truename))
-  (set-buffer-save-length! buffer)
-  (buffer-not-modified! buffer)
-  (undo-done! (buffer-point buffer))
-  (buffer-truename buffer))
+	  (set-buffer-point! buffer (buffer-start buffer))))
+    (if visit?
+	(begin
+	  (if truename
+	      (set-buffer-modification-time!
+	       buffer
+	       (file-modification-time truename)))
+	  (set-buffer-pathname! buffer pathname)
+	  (set-buffer-truename! buffer truename)
+	  (set-buffer-save-length! buffer)
+	  (buffer-not-modified! buffer)
+	  (undo-done! (buffer-point buffer))))
+    truename))
 
 (define (initialize-buffer! buffer)
   (initialize-buffer-modes! buffer)
@@ -107,19 +111,19 @@
 			   (+ index length))))
 	(without-interrupts
 	 (lambda ()
-	   (for-each-mark group
-	     (lambda (mark)
-	       (let ((index* (mark-index mark)))
-		 (if (or (fix:> index* index)
-			 (and (fix:= index* index)
-			      (mark-left-inserting? mark)))
-		     (set-mark-index! mark (fix:+ index* n))))))
-	   (vector-set! group
-			group-index:gap-length
-			(fix:- (group-gap-length group) n))
 	   (let ((gap-start* (fix:+ index n)))
-	     (vector-set! group group-index:gap-start gap-start*)
 	     (undo-record-insertion! group index gap-start*)
+	     (vector-set! group
+			  group-index:gap-length
+			  (fix:- (group-gap-length group) n))
+	     (vector-set! group group-index:gap-start gap-start*)
+	     (for-each-mark group
+	       (lambda (mark)
+		 (let ((index* (mark-index mark)))
+		   (if (or (fix:> index* index)
+			   (and (fix:= index* index)
+				(mark-left-inserting? mark)))
+		       (set-mark-index! mark (fix:+ index* n))))))
 	     (record-insertion! group index gap-start*))))
 	(channel-close channel)
 	n))))
@@ -359,6 +363,9 @@ Otherwise asks confirmation."
 	(let ((file-time (file-modification-time truename)))
 	  (and file-time
 	       (< (abs (- buffer-time file-time)) 2))))))
+
+(define (clear-visited-file-modification-time! buffer)
+  (set-buffer-modification-time! buffer false))
 
 (define (write-buffer buffer)
   (let ((truename
