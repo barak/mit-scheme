@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.154 2000/06/15 01:11:22 cph Exp $
+;;; $Id: imail-top.scm,v 1.155 2000/06/15 01:37:50 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -408,15 +408,22 @@ regardless of the folder type."
 	(newline port)
 	(newline port)
 	(for-each
-	 (lambda (variable)
-	   (write-string (variable-name-string variable) port)
-	   (newline port)
-	   (write-string "  " port)
-	   (write-description
-	    (description-first-line (variable-description variable))
-	    port)
-	   (newline port)
-	   (newline port))
+	 (let ((buffer (selected-buffer)))
+	   (lambda (variable)
+	     (let ((name (variable-name-string variable)))
+	       (if (not (string-prefix-ci? "imail-summary-" name))
+		   (begin
+		     (write-string name port)
+		     (newline port)
+		     (write-string "  " port)
+		     (write-description
+		      (description-first-line (variable-description variable))
+		      port)
+		     (newline port)
+		     (write-string "  Value: " port)
+		     (write (variable-local-value buffer variable) port)
+		     (newline port)
+		     (newline port))))))
 	 (string-table-apropos editor-variables "^imail-"))
 	(write-string (make-string 70 #\-) port)
 	(newline port)
