@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ymkfile,v 1.58 1992/09/14 20:51:31 cph Exp $
+$Id: ymkfile,v 1.59 1992/09/26 02:48:34 cph Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -166,7 +166,7 @@ GRAPHICS_LIBS =
 
 #if (PROC_TYPE == PROC_TYPE_68020)
 #define PROC_TYPE_KNOWN
-MACHINE_SWITCHES = -DHAS_COMPILER_SUPPORT
+MACHINE_SWITCHES =
 MACHINE_SOURCES = cmpint.c cmpaux-mc68k.m4
 MACHINE_OBJECTS = cmpint.o cmpaux-mc68k.o
 GC_HEAD_FILES = gccode.h cmpgc.h cmpint-mc68k.h
@@ -186,7 +186,7 @@ GC_HEAD_FILES = gccode.h cmpgc.h
 
 #if (PROC_TYPE == PROC_TYPE_VAX)
 #define PROC_TYPE_KNOWN
-MACHINE_SWITCHES = -DHAS_COMPILER_SUPPORT
+MACHINE_SWITCHES =
 MACHINE_SOURCES = cmpint.c cmpaux-vax.m4
 MACHINE_OBJECTS = cmpint.o cmpaux-vax.o
 GC_HEAD_FILES = gccode.h cmpgc.h cmpint-vax.h
@@ -199,7 +199,7 @@ cmpaux-vax.s : cmpaux-vax.m4 xmakefile
 #if (PROC_TYPE == PROC_TYPE_HPPA)
 #define PROC_TYPE_KNOWN
 #undef hppa
-MACHINE_SWITCHES = -DHAS_COMPILER_SUPPORT
+MACHINE_SWITCHES =
 MACHINE_SOURCES = cmpint.c cmpaux-hppa.m4
 MACHINE_OBJECTS = cmpint.o cmpaux-hppa.o
 GC_HEAD_FILES = gccode.h cmpgc.h cmpint-hppa.h hppacache.h
@@ -213,7 +213,7 @@ cmpaux-hppa.s : cmpaux-hppa.m4 xmakefile
 #if (PROC_TYPE == PROC_TYPE_MIPS)
 #define PROC_TYPE_KNOWN
 #undef mips
-MACHINE_SWITCHES = -DHAS_COMPILER_SUPPORT
+MACHINE_SWITCHES =
 MACHINE_SOURCES = cmpint.c cmpaux-mips.m4
 MACHINE_OBJECTS = cmpint.o cmpaux-mips.o
 GC_HEAD_FILES = gccode.h cmpgc.h cmpint-mips.h
@@ -226,7 +226,7 @@ cmpaux-mips.s : cmpaux-mips.m4 xmakefile
 #if (PROC_TYPE == PROC_TYPE_I386)
 #define PROC_TYPE_KNOWN
 #undef i386
-MACHINE_SWITCHES = -DHAS_COMPILER_SUPPORT
+MACHINE_SWITCHES =
 MACHINE_SOURCES = cmpint.c cmpaux-i386.m4
 MACHINE_OBJECTS = cmpint.o cmpaux-i386.o
 GC_HEAD_FILES = gccode.h cmpgc.h cmpint-i386.h
@@ -238,7 +238,7 @@ cmpaux-i386.s : cmpaux-i386.m4 xmakefile
 
 #if (PROC_TYPE == PROC_TYPE_ALPHA)
 #define PROC_TYPE_KNOWN
-MACHINE_SWITCHES = -DHAS_COMPILER_SUPPORT
+MACHINE_SWITCHES =
 MACHINE_SOURCES = cmpint.c cmpaux-alpha.m4
 MACHINE_OBJECTS = cmpint.o cmpaux-alpha.o
 GC_HEAD_FILES = gccode.h cmpgc.h cmpint-alpha.h
@@ -661,12 +661,14 @@ gcloop.o : scheme.touch $(GC_HEAD_FILES)
 purify.o : scheme.touch prims.h $(GC_HEAD_FILES) zones.h
 purutl.o : scheme.touch prims.h $(GC_HEAD_FILES) zones.h
 comutl.o : scheme.touch prims.h
+gctype.o : config.h
 
 artutl.o : scheme.touch
 bignum.o : scheme.touch bignumint.h limits.h
 bigprm.o flonum.o intprm.o : scheme.touch prims.h zones.h
 generic.o : scheme.touch prims.h
 fixnum.o : scheme.touch prims.h mul.c
+mul.o : config.h
 
 storage.o : scheme.touch gctype.c
 
@@ -674,7 +676,7 @@ char.o string.o dfloat.o : scheme.touch prims.h
 tterm.o : scheme.touch prims.h osterm.h
 
 boot.o : scheme.touch prims.h version.h option.h ostop.h
-option.o : ansidecl.h option.h
+option.o : ansidecl.h obstack.h config.h osenv.h
 term.o : scheme.touch
 missing.o : config.h
 
@@ -696,6 +698,7 @@ Bintopsb.o : psbmap.touch trap.h limits.h fasl.h load.c bltdef.h
 Psbtobin.o : psbmap.touch float.h fasl.h dump.c
 Ppband.o : ansidecl.h config.h errors.h types.h const.h object.h \
         $(GC_HEAD_FILES) sdata.h load.c fasl.h
+Wsize.o : config.h
 
 dmpwrld.o : scheme.touch prims.h ux.h osfs.h \
 	unexec.c unexhp9k800.c getpagesize.h

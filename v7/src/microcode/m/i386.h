@@ -1,7 +1,7 @@
 /* -*-C-*-
    Machine file for Intel i386 computers
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/i386.h,v 1.3 1992/08/27 09:06:10 jinx Exp $
+$Id: i386.h,v 1.4 1992/09/26 02:46:54 cph Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
@@ -42,4 +42,4 @@ MIT in each case. */
 #define M4_SWITCH_MACHINE -P "define(TYPE_CODE_LENGTH,6)"
 #endif
 
-#define C_SWITCH_MACHINE -DTYPE_CODE_LENGTH=6
+#define C_SWITCH_MACHINE

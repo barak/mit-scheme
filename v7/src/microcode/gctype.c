@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+$Id: gctype.c,v 9.31 1992/09/26 02:47:42 cph Exp $
+
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,12 +32,9 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/gctype.c,v 9.30 1989/08/28 18:28:51 cph Rel $
- *
- * This file contains the table which maps between Types and
- * GC Types.
- *
- */
+/* This file contains the table which maps between Types and GC Types.  */
+
+#include "config.h"		/* for definition of TYPE_CODE_LENGTH */
 
 	    /*********************************/
 	    /* Mapping GC_Type to Type_Codes */

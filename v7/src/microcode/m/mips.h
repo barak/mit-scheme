@@ -1,7 +1,7 @@
 /* -*-C-*-
    Machine file for MIPS computers.
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/mips.h,v 1.5 1992/03/13 11:01:32 cph Exp $
+$Id: mips.h,v 1.6 1992/09/26 02:46:54 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -43,7 +43,7 @@ MIT in each case. */
    than the built-in optimization limit.  The "-w" switch says not to
    report warnings -- there are many of them, all harmless, that would
    not be reported if this were an ANSI compiler. */
-#define C_SWITCH_MACHINE -Olimit 2000 -w -DTYPE_CODE_LENGTH=6
+#define C_SWITCH_MACHINE -Olimit 2000 -w
 #else
-#define C_SWITCH_MACHINE -DTYPE_CODE_LENGTH=6
+#define C_SWITCH_MACHINE
 #endif

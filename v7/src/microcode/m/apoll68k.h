@@ -1,9 +1,9 @@
 /* -*-C-*-
    Machine file for Apollo 68k
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/apoll68k.h,v 1.1 1991/08/24 02:30:54 cph Exp $
+$Id: apoll68k.h,v 1.2 1992/09/26 02:46:51 cph Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-92 Massachusetts Institute of Technology
 Copyright (c) 1991 Michael K. Gschwind
 
 This material was developed by the Scheme project at the Massachusetts
@@ -38,12 +38,12 @@ MIT in each case. */
 
 #ifndef ALTERNATE_CC
 
-#define C_SWITCH_MACHINE -Dapollo -A nansi -DTYPE_CODE_LENGTH=6
+#define C_SWITCH_MACHINE -Dapollo -A nansi
 #define LD_SWITCH_MACHINE -L/usr/lib/X11
 
 #else /* ALTERNATE_CC */
 
-#define C_SWITCH_MACHINE -Dapollo -DTYPE_CODE_LENGTH=6
+#define C_SWITCH_MACHINE -Dapollo
 #define LD_SWITCH_MACHINE -L/usr/lib/X11
 
 #endif

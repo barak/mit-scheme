@@ -1,7 +1,7 @@
 /* -*-C-*-
    Machine file for HP9000 series  600, 700, 800.
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/hp9k800.h,v 1.8 1992/03/26 04:02:34 cph Exp $
+$Id: hp9k800.h,v 1.9 1992/09/26 02:46:53 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -46,10 +46,10 @@ MIT in each case. */
    /* Assume HPC */
    /* Instead of "-Aa -D_HPUX_SOURCE" you can use "-Wp,-H512000" to
       get the traditional C compiler. */
-#  define C_SWITCH_MACHINE -Aa -D_HPUX_SOURCE -DTYPE_CODE_LENGTH=6
+#  define C_SWITCH_MACHINE -Aa -D_HPUX_SOURCE
 #  define M4_SWITCH_MACHINE -DTYPE_CODE_LENGTH=6 -DHPC
 #else
    /* Assume GCC */
-#  define C_SWITCH_MACHINE -DTYPE_CODE_LENGTH=6
+#  define C_SWITCH_MACHINE
 #  define M4_SWITCH_MACHINE -DTYPE_CODE_LENGTH=6 -DGCC
 #endif

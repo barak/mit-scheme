@@ -1,7 +1,7 @@
 /* -*-C-*-
    Machine file for DEC Alpha computers.
 
-$Id: alpha.h,v 1.1 1992/08/29 12:20:45 jinx Exp $
+$Id: alpha.h,v 1.2 1992/09/26 02:46:49 cph Exp $
 
 Copyright (c) 1992 Digital Equipment Corporation
 
@@ -15,4 +15,4 @@ Copyright (c) 1992 Digital Equipment Corporation
 
 #define LIB_DEBUG
 
-#define C_SWITCH_MACHINE -Dalpha -DTYPE_CODE_LENGTH=8
+#define C_SWITCH_MACHINE -Dalpha

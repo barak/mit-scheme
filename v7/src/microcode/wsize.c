@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/wsize.c,v 9.31 1992/01/20 22:05:11 jinx Exp $
+$Id: wsize.c,v 9.32 1992/09/26 02:47:35 cph Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -36,6 +36,7 @@ MIT in each case. */
 #include <math.h>
 #include <errno.h>
 #include <signal.h>
+#include "config.h"
 
 #ifndef TYPE_CODE_LENGTH
 /* This MUST match object.h */

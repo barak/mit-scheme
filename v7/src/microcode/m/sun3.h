@@ -1,9 +1,9 @@
 /* -*-C-*-
    Machine file for Sun 3
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/sun3.h,v 1.4 1991/10/15 22:53:36 cph Exp $
+$Id: sun3.h,v 1.5 1992/09/26 02:46:56 cph Exp $
 
-Copyright (c) 1989-91 Massachusetts Institute of Technology
+Copyright (c) 1989-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,11 +39,11 @@ MIT in each case. */
 
 /* If your machine doesn't have a 68881 coprocessor, remove
    "-f68881" from this line and the LD_SWITCH_MACHINE line. */
-#define C_SWITCH_MACHINE -Dsun3 -DTYPE_CODE_LENGTH=6 -DCOMPILER_PROCESSOR_TYPE=COMPILER_MC68040_TYPE -f68881
+#define C_SWITCH_MACHINE -Dsun3 -f68881
 #define LD_SWITCH_MACHINE -f68881
 
 #else /* ALTERNATE_CC */
 
-#define C_SWITCH_MACHINE -Dsun3 -DTYPE_CODE_LENGTH=6 -DCOMPILER_PROCESSOR_TYPE=COMPILER_MC68040_TYPE
+#define C_SWITCH_MACHINE -Dsun3
 
 #endif

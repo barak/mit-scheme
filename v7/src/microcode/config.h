@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.74 1992/08/05 02:49:29 jinx Exp $
+$Id: config.h,v 9.75 1992/09/26 02:48:56 cph Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -195,6 +195,8 @@ typedef unsigned long SCHEME_OBJECT;
 
 #define MACHINE_TYPE		"vax"
 #define FASL_INTERNAL_FORMAT	FASL_VAX
+#define HAS_COMPILER_SUPPORT
+#define TYPE_CODE_LENGTH	6
 #define VAX_BYTE_ORDER
 #define b32
 #define HEAP_IN_LOW_MEMORY
@@ -267,9 +269,11 @@ typedef unsigned long SCHEME_OBJECT;
 #define FASL_INTERNAL_FORMAT	FASL_68000
 #else
 #define FASL_INTERNAL_FORMAT	FASL_68020
+#define HAS_COMPILER_SUPPORT
 #endif
 #define b32
 #define HEAP_IN_LOW_MEMORY
+#define TYPE_CODE_LENGTH	6
 #endif /* hp9000s300 */
 
 #if defined(hp9000s800) || defined(__hp9000s800)
@@ -279,6 +283,8 @@ typedef unsigned long SCHEME_OBJECT;
 #define MACHINE_TYPE		"hp9000s800"
 #endif
 #define FASL_INTERNAL_FORMAT	FASL_HP_SPECTRUM
+#define HAS_COMPILER_SUPPORT
+#define TYPE_CODE_LENGTH	6
 #define FLOATING_ALIGNMENT	0x7
 #define b32
 
@@ -338,6 +344,8 @@ typedef unsigned long SCHEME_OBJECT;
 #ifdef sun3
 #define MACHINE_TYPE		"sun3"
 #define FASL_INTERNAL_FORMAT	FASL_68020
+#define HAS_COMPILER_SUPPORT
+#define TYPE_CODE_LENGTH	6
 #define b32
 #define HEAP_IN_LOW_MEMORY
 #define HAS_FLOOR
@@ -360,6 +368,8 @@ typedef unsigned long SCHEME_OBJECT;
 #ifdef NeXT
 #define MACHINE_TYPE		"next"
 #define FASL_INTERNAL_FORMAT	FASL_68020
+#define HAS_COMPILER_SUPPORT
+#define TYPE_CODE_LENGTH	6
 #define b32
 #define HEAP_IN_LOW_MEMORY
 #define HAS_FLOOR
@@ -370,6 +380,8 @@ typedef unsigned long SCHEME_OBJECT;
 #ifdef i386
 
 #define FASL_INTERNAL_FORMAT	FASL_I386
+#define HAS_COMPILER_SUPPORT
+#define TYPE_CODE_LENGTH	6
 #define VAX_BYTE_ORDER
 #define b32
 
@@ -405,6 +417,8 @@ typedef unsigned long SCHEME_OBJECT;
 
 #define MACHINE_TYPE		"mips"
 #define FASL_INTERNAL_FORMAT	FASL_MIPS
+#define HAS_COMPILER_SUPPORT
+#define TYPE_CODE_LENGTH	6
 #define FLOATING_ALIGNMENT   	0x7
 #define b32
 
@@ -453,6 +467,8 @@ typedef unsigned long SCHEME_OBJECT;
 #ifdef __alpha
 #define MACHINE_TYPE           "Alpha"
 #define FASL_INTERNAL_FORMAT   FASL_ALPHA
+#define HAS_COMPILER_SUPPORT
+#define TYPE_CODE_LENGTH       8
 
 /* The ASCII character set is used. */
 #define HEAP_IN_LOW_MEMORY     1
@@ -555,6 +571,7 @@ extern void * alpha_heap_malloc (long);
 #if _ISP__M68K
 #define MACHINE_TYPE          "Apollo 68k"
 #define FASL_INTERNAL_FORMAT  FASL_APOLLO_68K
+#define TYPE_CODE_LENGTH	6
 #else
 #define MACHINE_TYPE          "Apollo Prism"
 #define FASL_INTERNAL_FORMAT  FASL_APOLLO_PRISM
@@ -576,6 +593,10 @@ extern void * alpha_heap_malloc (long);
    explicitly specify this value unless it is different.  */
 #ifndef CHAR_BIT
 #define CHAR_BIT 8
+#endif
+
+#ifndef TYPE_CODE_LENGTH
+#define TYPE_CODE_LENGTH 8
 #endif
 
 /* The GNU C compiler does not have any of these bugs. */

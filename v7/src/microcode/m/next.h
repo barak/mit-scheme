@@ -1,9 +1,9 @@
 /* -*-C-*-
    Machine file for NeXT
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/next.h,v 1.3 1991/03/24 05:12:26 jinx Exp $
+$Id: next.h,v 1.4 1992/09/26 02:46:55 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,5 +34,5 @@ promotional, or sales literature without prior written consent from
 MIT in each case. */
 
 #define PROC_TYPE PROC_TYPE_68020
-#define C_SWITCH_MACHINE -DNeXT -DTYPE_CODE_LENGTH=6 -DCOMPILER_PROCESSOR_TYPE=COMPILER_MC68040_TYPE
+#define C_SWITCH_MACHINE -DNeXT
 #define LD_SWITCH_MACHINE

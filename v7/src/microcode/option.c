@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.28 1992/07/30 18:06:22 cph Exp $
+$Id: option.c,v 1.29 1992/09/26 02:48:50 cph Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -38,6 +38,7 @@ MIT in each case. */
 #include <ctype.h>
 #include "ansidecl.h"
 #include "obstack.h"
+#include "config.h"
 #include "osenv.h"
 #include <sys/stat.h>
 

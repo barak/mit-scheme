@@ -1,9 +1,9 @@
 /* -*-C-*-
    Machine file for DEC Vax computers
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/vax.h,v 1.3 1991/02/15 00:48:28 jinx Exp $
+$Id: vax.h,v 1.4 1992/09/26 02:46:57 cph Exp $
 
-Copyright (c) 1989, 1991 Massachusetts Institute of Technology
+Copyright (c) 1989-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -52,4 +52,4 @@ MIT in each case. */
 #define M4_SWITCH_MACHINE -P "define(TYPE_CODE_LENGTH,6)" -P "define(GCC,1)"
 #endif
 
-#define C_SWITCH_MACHINE -DTYPE_CODE_LENGTH=6
+#define C_SWITCH_MACHINE
