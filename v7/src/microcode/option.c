@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.20 1992/05/27 03:52:17 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.21 1992/05/27 17:31:46 jinx Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -349,6 +349,10 @@ The following options are only meaningful to bchscheme:
 #define DEFAULT_LARGE_CONSTANT 1010
 #endif
 
+#ifndef DEFAULT_EDWIN_CONSTANT
+#define DEFAULT_EDWIN_CONSTANT 845
+#endif
+
 #endif /* i386 */
 
 #endif /* HAS_COMPILER_SUPPORT */
@@ -382,11 +386,15 @@ The following options are only meaningful to bchscheme:
 #endif
 
 #ifndef LARGE_HEAP_VARIABLE
-#define LARGE_HEAP_VARIABLE "MITSCHEME_LARGE_HEAP"
+#define LARGE_HEAP_VARIABLE "MITSCHEME_LARGE_HEAP"			\
 #endif
 
 #ifndef DEFAULT_LARGE_CONSTANT
 #define DEFAULT_LARGE_CONSTANT 1000
+#endif
+
+#ifndef DEFAULT_EDWIN_CONSTANT
+#define DEFAULT_EDWIN_CONSTANT DEFAULT_LARGE_CONSTANT
 #endif
 
 #ifndef LARGE_CONSTANT_VARIABLE
@@ -1145,7 +1153,10 @@ DEFUN (read_command_line_options, (argc, argv),
 	(standard_numeric_option ("-constant",
 				  option_raw_constant,
 				  LARGE_CONSTANT_VARIABLE,
-				  DEFAULT_LARGE_CONSTANT));
+				  (option_edwin_defaults
+				   ? DEFAULT_EDWIN_CONSTANT
+				   : DEFAULT_LARGE_CONSTANT)));
+
       option_stack_size =
 	(standard_numeric_option ("-stack",
 				  option_raw_stack,
