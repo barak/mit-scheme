@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: edwin.h,v 1.7 1993/08/23 22:28:40 cph Exp $
+$Id: edwin.h,v 1.8 1996/04/23 20:59:29 cph Exp $
 
-Copyright (c) 1987-93 Massachusetts Institute of Technology
+Copyright (c) 1987-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -51,6 +51,7 @@ MIT in each case. */
 #define GROUP_END_MARK(group) (VECTOR_REF ((group), 7))
 #define GROUP_MODIFIED_P(group) (VECTOR_REF ((group), 16))
 
+#define MARK_P RECORD_P
 #define MARK_GROUP(mark) (VECTOR_REF ((mark), 1))
 #define MARK_INDEX(mark) (UNSIGNED_FIXNUM_TO_LONG (VECTOR_REF ((mark), 2)))
 #define MARK_LEFT_INSERTING(mark) ((VECTOR_REF ((mark), 3)) != SHARP_F)
