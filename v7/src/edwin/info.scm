@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: info.scm,v 1.136 2001/02/28 14:56:28 cph Exp $
+;;; $Id: info.scm,v 1.137 2002/02/21 18:57:07 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Info Mode
 ;;; Shamelessly copied from GNU Emacs.
@@ -764,7 +765,7 @@ The name may be an abbreviation of the reference name."
 (define (find-dir-node-files buffer)
   (let loop ((directories (buffer-directory-list buffer)) (pathnames '()))
     (if (null? directories)
-	pathnames
+	(reverse! pathnames)
 	(loop (cdr directories)
 	      (let ((pathname
 		     (find-node-2 buffer
