@@ -1,5 +1,5 @@
 @c This file is part of the MIT/GNU Scheme Reference Manual.
-@c $Id: misc-datatypes.texi,v 1.1 2003/04/15 03:29:53 cph Exp $
+@c $Id: misc-datatypes.texi,v 1.2 2003/04/25 20:49:33 cph Exp $
 
 @c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 @c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
@@ -483,6 +483,22 @@ the call to @code{make-record-type} that created the type represented by
 @var{record-type}; if the @var{field-names} argument is provided, it is
 an error if it contains any duplicates or any symbols not in the default
 list.
+@end deffn
+
+@deffn procedure record-keyword-constructor record-type
+Returns a procedure for constructing new members of the type represented
+by @var{record-type}.  The returned procedure accepts arguments in a
+@dfn{keyword list}, which is an alternating sequence of names and
+values.  In other words, the number of arguments must be a multiple of
+two, and every other argument, starting with the first argument, must be
+a symbol that is one of the field names for @var{record-type}.
+
+The returned procedure may be called with a keyword list that contains
+multiple instances of the same keyword.  In this case, the leftmost
+instance is used and the other instances are ignored.  This allows
+keyword lists to be accumulated using @code{cons} or @code{cons*}, and
+new bindings added to the front of the list override old bindings at the
+end.
 @end deffn
 
 @deffn procedure record-predicate record-type
