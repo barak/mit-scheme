@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.10 1995/04/23 03:19:48 cph Exp $
+$Id: datime.scm,v 14.11 1995/04/23 05:43:43 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -79,6 +79,63 @@ MIT in each case. |#
     ((ucode-primitive decode-time 2) dt ((ucode-primitive encode-time 1) dt))
     dt))
 
+(define (decode-universal-time time)
+  (let ((result (allocate-decoded-time)))
+    ((ucode-primitive decode-time 2) result time)
+    result))
+
+(define (encode-universal-time dt)
+  ((ucode-primitive encode-time 1) dt))
+
+(define (get-universal-time)
+  ((ucode-primitive encoded-time 0)))
+
+(define (get-decoded-time)
+  (decode-universal-time (get-universal-time)))
+
+(define (time-zone? object)
+  (and (number? object)
+       (exact? object)
+       (<= -24 object 24)
+       (integer? (* 3600 object))))
+
+(define (decoded-time/daylight-savings-time? dt)
+  (> (decoded-time/daylight-savings-time dt) 0))
+
+(define (decoded-time/date-string time)
+  (string-append (weekday/long-string (decoded-time/day-of-week time))
+		 " "
+		 (month/long-string (decoded-time/month time))
+		 " "
+		 (number->string (decoded-time/day time))
+		 ", "
+		 (number->string (decoded-time/year time))))
+
+(define (decoded-time/time-string time)
+  (let ((second (decoded-time/second time))
+	(minute (decoded-time/minute time))
+	(hour (decoded-time/hour time)))
+    (string-append (number->string
+		    (cond ((zero? hour) 12)
+			  ((< hour 13) hour)
+			  (else (- hour 12))))
+		   (if (< minute 10) ":0" ":")
+		   (number->string minute)
+		   (if (< second 10) ":0" ":")
+		   (number->string second)
+		   " "
+		   (if (< hour 12) "AM" "PM"))))
+
+(define (time-zone->string tz)
+  (if (not (time-zone? tz))
+      (error:wrong-type-argument tz "time zone" 'TIME-ZONE->STRING))
+  (let ((minutes (round (* 60 (- tz)))))
+    (let ((qr (integer-divide (abs minutes) 60))
+	  (d2 (lambda (n) (string-pad-left (number->string n) 2 #\0))))
+      (string-append (if (< minutes 0) "-" "+")
+		     (d2 (integer-divide-quotient qr))
+		     (d2 (integer-divide-remainder qr))))))
+
 (define (month/max-days month)
   (guarantee-month month 'MONTH/MAX-DAYS)
   (vector-ref '#(31 29 31 30 31 30 31 31 30 31 30 31) (- month 1)))
@@ -101,66 +158,19 @@ MIT in each case. |#
       (error:wrong-type-argument month "month integer" name))
   (if (not (<= 1 month 12))
       (error:bad-range-argument month name)))
-
-(define (decode-universal-time time)
-  (let ((result (allocate-decoded-time)))
-    ((ucode-primitive decode-time 2) result time)
-    result))
 
-(define (encode-universal-time dt)
-  ((ucode-primitive encode-time 1) dt))
+(define (day-of-week/short-string day)
+  (guarantee-day-of-week day 'DAY-OF-WEEK/SHORT-STRING)
+  (vector-ref '#("Mon" "Tue" "Wed" "Thu" "Fri" "Sat" "Sun") day-of-week))
 
-(define (get-universal-time)
-  ((ucode-primitive encoded-time 0)))
+(define (day-of-week/long-string day)
+  (guarantee-day-of-week day 'DAY-OF-WEEK/LONG-STRING)
+  (vector-ref '#("Monday" "Tuesday" "Wednesday" "Thursday" "Friday"
+			  "Saturday" "Sunday")
+	      day-of-week))
 
-(define (get-decoded-time)
-  (decode-universal-time (get-universal-time)))
-
-(define (decoded-time/date-string time)
-  (string-append
-   (if (decoded-time/day-of-week time)
-       (string-append
-	(vector-ref '#("Monday" "Tuesday" "Wednesday" "Thursday" "Friday"
-				"Saturday" "Sunday")
-		    (decoded-time/day-of-week time))
-	" ")
-       "")
-   (month/long-string (decoded-time/month time))
-   " "
-   (number->string (decoded-time/day time))
-   ", "
-   (number->string (decoded-time/year time))))
-
-(define (decoded-time/time-string time)
-  (let ((second (decoded-time/second time))
-	(minute (decoded-time/minute time))
-	(hour (decoded-time/hour time)))
-    (string-append (number->string
-		    (cond ((zero? hour) 12)
-			  ((< hour 13) hour)
-			  (else (- hour 12))))
-		   (if (< minute 10) ":0" ":")
-		   (number->string minute)
-		   (if (< second 10) ":0" ":")
-		   (number->string second)
-		   " "
-		   (if (< hour 12) "AM" "PM"))))
-
-(define (time-zone? object)
-  (and (number? object)
-       (exact? object)
-       (<= -24 object 24)
-       (integer? (* 3600 object))))
-
-(define (time-zone->string tz)
-  (if (not (time-zone? tz))
-      (error:wrong-type-argument tz "time zone" 'TIME-ZONE->STRING))
-  (let ((minutes (round (* 60 (- tz)))))
-    (let ((qr (integer-divide (abs minutes) 60))
-	  (d2 (lambda (n) (string-pad-left (number->string n) 2 #\0))))
-      (string-append (if (< minutes 0) "-" "+")
-		     (d2 (integer-divide-quotient qr))
-		     (d2 (integer-divide-remainder qr))))))
-
-(define (decoded-time/daylight-savings-time? dt)
-  (> (decoded-time/daylight-savings-time dt) 0))
+(define (guarantee-day-of-week day name)
+  (if (not (exact-integer? day))
+      (error:wrong-type-argument day "day-of-week integer" name))
+  (if (not (<= 0 day 6))
+      (error:bad-range-argument day name)))

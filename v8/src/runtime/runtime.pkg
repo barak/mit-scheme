@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.253 1995/04/22 23:37:23 cph Exp $
+$Id: runtime.pkg,v 14.254 1995/04/23 05:43:50 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -371,6 +371,8 @@ MIT in each case. |#
   (files "datime")
   (parent ())
   (export ()
+	  day-of-week/long-string
+	  day-of-week/short-string
 	  decode-universal-time
 	  decoded-time/date-string
 	  decoded-time/day
