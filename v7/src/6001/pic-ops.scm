@@ -31,8 +31,8 @@
 ;; place pic2 in its proper place on the resulting picture
     (let y-loop ((y 0))
       (if (fix:< y hgt2)
-	  (let* ((p2-yth-row (floating-vector-ref p2-data y))
-		 (new-yth-row (floating-vector-ref new-data (fix:- y dn)))) 
+	  (let* ((p2-yth-row (vector-ref p2-data y))
+		 (new-yth-row (vector-ref new-data (fix:- y dn)))) 
 	    (let x-loop ((x 0))
 	      (if (fix:< x wid2)
 		  (begin  
@@ -44,8 +44,8 @@
     ;; overlay pic1 in its proper location in the result
     (let y-loop ((y 0))
       (if (fix:< y hgt1)
-	  (let* ((p1-yth-row (floating-vector-ref p1-data y))
-		 (new-yth-row (floating-vector-ref new-data
+	  (let* ((p1-yth-row (vector-ref p1-data y))
+		 (new-yth-row (vector-ref new-data
 						   (fix:+ y p1y-offset)))) 
 	    (let x-loop ((x 0))
 	      (if (fix:< x wid1)
@@ -70,8 +70,8 @@
       (if (and (fix:<= (fix:+ u wid1) wid2) (fix:<= (fix:+ v hgt1) hgt2))
 	  (let y-loop ((y 0))
 	    (if (fix:< y hgt1)
-		(let ((p1-yth-row (floating-vector-ref p1-data y))
-		      (p2-yth-row (floating-vector-ref p2-data (fix:+ y v))))
+		(let ((p1-yth-row (vector-ref p1-data y))
+		      (p2-yth-row (vector-ref p2-data (fix:+ y v))))
 		  (let x-loop ((x 0))
 		    (if (fix:< x wid1)
 			(begin
@@ -101,8 +101,8 @@
 	(error:bad-range-argument cut-hgt 'PICTURE-CUT))
     (let y-loop ((y 0))
       (if (fix:< y cut-hgt)
-	  (let ((new-yth-row (floating-vector-ref new-data y))
-		(old-yth-row (floating-vector-ref data (fix:+ v y))))
+	  (let ((new-yth-row (vector-ref new-data y))
+		(old-yth-row (vector-ref data (fix:+ v y))))
 	    (let x-loop ((x 0))
 	      (if (fix:< x cut-wid)
 		  (begin
@@ -131,9 +131,9 @@
 	    (if (fix:= y-index old-y-index)  ; don't recompute the row
 		(floating-vector-set! new-data ny
 			     (floating-vector-copy
-			      (floating-vector-ref new-data (fix:- ny 1))))
-		(let ((yth-row (floating-vector-ref data y-index))
-		      (new-yth-row (floating-vector-ref new-data ny)))
+			      (vector-ref new-data (fix:- ny 1))))
+		(let ((yth-row (vector-ref data y-index))
+		      (new-yth-row (vector-ref new-data ny)))
 		  (let x-loop ((nx 0))
 		    (if (fix:< nx wid)
 			(begin
@@ -190,19 +190,19 @@
 			   new-hgt
 			   (lambda (n)
 			     (floating-vector-copy
-			      (floating-vector-ref data n))))))
+			      (vector-ref data n))))))
 
 	  ((and (close-enough? (xcor ur) lx)   ; check for 
 		(close-enough? (ycor ur) uy))  ; 90 degrees anti-clockwise
 	   (let y-loop ((ny 0))
 	     (if (fix:< ny new-hgt)
-		 (let ((yth-row (floating-vector-ref new-data ny)))
+		 (let ((yth-row (vector-ref new-data ny)))
 		   (let x-loop ((nx 0))
 		     (if (fix:< nx new-wid)
 			 (begin
 			   (floating-vector-set! yth-row nx
 					(floating-vector-ref 
-					 (floating-vector-ref
+					 (vector-ref
 					  data (fix:- nx-max nx))
 					 ny))
 			   (x-loop (fix:+ nx 1)))
@@ -212,13 +212,13 @@
 		(close-enough? (ycor ur) ly))  ; 90 degrees clockwise
 	   (let y-loop ((ny 0))
 	     (if (fix:< ny new-hgt)
-		 (let ((yth-row (floating-vector-ref new-data ny)))
+		 (let ((yth-row (vector-ref new-data ny)))
 		   (let x-loop ((nx 0))
 		     (if (fix:< nx new-wid)
 			 (begin
 			   (floating-vector-set! yth-row nx
 					(floating-vector-ref 
-					 (floating-vector-ref data nx) 
+					 (vector-ref data nx) 
 					 (fix:- ny-max ny)))
 			   (x-loop (fix:+ nx 1)))
 			 (y-loop (fix:+ ny 1))))))))
@@ -232,7 +232,7 @@
 				(list->vector
 				 (reverse 
 				  (vector->list 
-				   (floating-vector-ref data
+				   (vector-ref data
 							(fix:- ny-max ny))))))
 		   (y-loop (fix:+ ny 1))))))
 
@@ -246,7 +246,7 @@
 		  (s (sin angle))) 
 	     (let y-loop ((ny 0) (outer-x x-start) (outer-y y-start))
 	       (if (fix:< ny new-hgt)
-		   (let ((nyth-row (floating-vector-ref new-data ny)))
+		   (let ((nyth-row (vector-ref new-data ny)))
 		     (let x-loop ((nx 0) (inner-x outer-x) (inner-y outer-y))
 		       (if (fix:< nx new-wid)
 			   (let ((x (round->exact inner-x))
@@ -254,7 +254,7 @@
 			     (floating-vector-set! nyth-row nx
 					  (if (in-rect? x y wid hgt)
 					      (floating-vector-ref
-					       (floating-vector-ref data y) x)
+					       (vector-ref data y) x)
 					      pic-min))
 			     (x-loop (fix:+ nx 1) 
 				     (flo:+ inner-x c) (flo:- inner-y s)))
@@ -276,7 +276,7 @@
 	  (begin
 	    (floating-vector-set! new-data y 
 			 (floating-vector-copy
-			  (floating-vector-ref data (fix:- y-max y))))
+			  (vector-ref data (fix:- y-max y))))
 	    (y-loop (fix:+ y 1)))))
     (picture-set-data! new-pic new-data)
     new-pic))
@@ -293,7 +293,7 @@
 	    (floating-vector-set! new-data y
 			 (list->vector 
 			  (reverse 
-			   (vector->list (floating-vector-ref data y)))))
+			   (vector->list (vector-ref data y)))))
 	    (y-loop (fix:+ y 1)))))
     (picture-set-data! new-pic new-data)
     new-pic))
