@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 14.12 1992/02/08 15:08:42 cph Exp $
+$Id: unsyn.scm,v 14.13 1992/11/03 22:41:50 jinx Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -102,8 +102,8 @@ MIT in each case. |#
 
 (define (unsyntax-error keyword message . irritants)
   (apply error
-	 (string-append "UNSYNTAX: " (symbol->string keyword) ": " message)
-	 irritants))
+	 (cons (string-append "UNSYNTAX: " (symbol->string keyword) ": " message)
+	       irritants)))
 
 ;;;; Unsyntax Quanta
 

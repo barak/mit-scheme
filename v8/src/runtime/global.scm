@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.42 1992/09/14 23:11:54 cph Exp $
+$Id: global.scm,v 14.43 1992/11/03 22:41:00 jinx Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -86,16 +86,9 @@ MIT in each case. |#
 (define (false-procedure . args) args false)
 (define (true-procedure . args) args true)
 
-(define (apply f . args)
-  ((ucode-primitive apply)
-   f
-   (if (null? args)
-       '()
-       (let loop ((first-element (car args)) (rest-elements (cdr args)))
-	 (if (null? rest-elements)
-	     first-element
-	     (cons first-element
-		   (loop (car rest-elements) (cdr rest-elements))))))))
+;; This definition is replaced when the 
+;; later in the boot sequence.
+(define apply (ucode-primitive apply 2))
 
 (define (eval expression environment)
   (extended-scode-eval (syntax expression system-global-syntax-table)

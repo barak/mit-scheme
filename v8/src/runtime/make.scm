@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.37 1992/10/17 22:23:18 jinx Exp $
+$Id: make.scm,v 14.38 1992/11/03 22:41:13 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -33,10 +33,16 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Make Runtime System
+;;; package: ()
 
 (declare (usual-integrations))
 
 ((ucode-primitive set-interrupt-enables!) 0)
+
+;; This definition is replaced when the 
+;; later in the boot sequence.
+(define apply (ucode-primitive apply 2))
+
 (define system-global-environment (the-environment))
 
 (let ((environment-for-package (let () (the-environment))))
@@ -318,6 +324,7 @@ MIT in each case. |#
    ((RUNTIME MICROCODE-TABLES) READ-MICROCODE-TABLES! #t)
    (RUNTIME STATE-SPACE)
    (RUNTIME MICROCODE-TABLES)
+   (RUNTIME APPLY)
    (RUNTIME PRIMITIVE-IO)
    (RUNTIME SAVE/RESTORE)
    (RUNTIME SYSTEM-CLOCK)

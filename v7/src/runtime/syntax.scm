@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 14.17 1992/02/08 15:08:39 cph Exp $
+$Id: syntax.scm,v 14.18 1992/11/03 22:41:38 jinx Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -179,13 +179,14 @@ MIT in each case. |#
 
 (define (syntax-error message . irritants)
   (apply error
-	 (string-append "SYNTAX: "
-			(if *current-keyword*
-			    (string-append (symbol->string *current-keyword*)
-					   ": "
-					   message)
-			    message))
-	 irritants))
+	 (cons
+	  (string-append "SYNTAX: "
+			 (if *current-keyword*
+			     (string-append (symbol->string *current-keyword*)
+					    ": "
+					    message)
+			     message))
+	  irritants)))
 
 (define (syntax-expressions expressions)
   (if (null? expressions)
@@ -446,7 +447,7 @@ MIT in each case. |#
 (define (syntax/define-macro pattern . body)
   (let ((keyword (car pattern)))
     (syntax-table-define *syntax-table* keyword
-      (syntax-eval (apply syntax/named-lambda pattern body)))
+      (syntax-eval (apply syntax/named-lambda (cons pattern body))))
     keyword))
 
 (define-integrable (syntax-eval scode)

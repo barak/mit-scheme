@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uerror.scm,v 14.33 1992/10/21 00:17:23 jinx Exp $
+$Id: uerror.scm,v 14.34 1992/11/03 22:41:45 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -86,9 +86,9 @@ MIT in each case. |#
   (let ((make-condition (condition-constructor type field-names)))
     (lambda (continuation . field-values)
       (error (apply make-condition
-		    continuation
-		    'BOUND-RESTARTS
-		    field-values)))))
+		    (cons* continuation
+			   'BOUND-RESTARTS
+			   field-values))))))
 
 ;;;; Restart Bindings
 
@@ -424,7 +424,7 @@ MIT in each case. |#
 	       (fixed-objects-vector-slot 'ERROR-PROCEDURE)
 	       (lambda (datum arguments environment)
 		 environment
-		 (apply error datum arguments)))
+		 (apply error (cons* datum arguments))))
   (vector-set! fixed-objects
 	       (fixed-objects-vector-slot 'COMPILER-ERROR-PROCEDURE)
 	       error)

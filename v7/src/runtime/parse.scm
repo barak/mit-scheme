@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 14.18 1992/07/21 04:24:43 cph Exp $
+$Id: parse.scm,v 14.19 1992/11/03 22:41:30 jinx Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -94,7 +94,8 @@ MIT in each case. |#
 			    parse-object/special-undefined
 			    collect-list/special-undefined)))
     (for-each (lambda (entry)
-		(apply parser-table/set-entry! table entry))
+		(apply parser-table/set-entry!
+		       (cons table entry)))
 	      `(("#" ,parse-object/special ,collect-list/special)
 		(,char-set/symbol-leaders ,parse-object/symbol)
 		(("#b" "#B") ,parse-object/numeric-prefix)

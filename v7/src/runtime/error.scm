@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.31 1992/04/06 05:49:26 cph Exp $
+$Id: error.scm,v 14.32 1992/11/03 22:41:24 jinx Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -544,9 +544,9 @@ MIT in each case. |#
        (lambda (continuation)
 	 (let ((condition
 		(apply make-condition
-		       continuation
-		       'BOUND-RESTARTS
-		       field-values)))
+		       (cons* continuation
+			      'BOUND-RESTARTS
+			      field-values))))
 	   (signal-condition condition)
 	   (default-handler condition)))))))
 
@@ -574,9 +574,9 @@ MIT in each case. |#
 	     (lambda (continuation)
 	       (let ((condition
 		      (apply make-condition
-			     continuation
-			     'BOUND-RESTARTS
-			     field-values)))
+			     (cons* continuation
+				    'BOUND-RESTARTS
+				    field-values))))
 		 (bind-restart 'USE-VALUE
 		     (if (string? use-value-message)
 			 use-value-message
@@ -662,7 +662,10 @@ MIT in each case. |#
 
 (define (initialize-package!)
   (set! hook/invoke-condition-handler default/invoke-condition-handler)
-  (set! hook/invoke-restart apply)
+  ;; No eta conversion for bootstrapping and efficiency reasons.
+  (set! hook/invoke-restart
+	(lambda (effector arguments)
+	  (apply effector arguments)))
   (set! condition-type:serious-condition
 	(make-condition-type 'SERIOUS-CONDITION false '() false))
   (set! condition-type:warning
