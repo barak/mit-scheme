@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: buffer.scm,v 1.178 2000/10/27 03:13:09 cph Exp $
+;;; $Id: buffer.scm,v 1.179 2001/01/25 00:16:39 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -344,13 +344,22 @@ The buffer is guaranteed to be deselected at that time."
 	     (invoke-variable-assignment-daemons! buffer variable)))))))
 
 (define (variable-local-value buffer variable)
-  (let ((binding
-	 (and buffer
-	      (search-local-bindings (->buffer buffer) variable))))
-    (if binding
-	(cdr binding)
-	(variable-default-value variable))))
-
+  (let ((not-mark-local
+	 (lambda ()
+	   (let ((binding
+		  (and buffer
+		       (search-local-bindings (->buffer buffer) variable))))
+	     (if binding
+		 (cdr binding)
+		 (variable-default-value variable))))))
+    (if (mark? buffer)
+	(let ((no-datum (list 'NO-DATUM)))
+	  (let ((value (region-get buffer variable no-datum)))
+	    (if (eq? value no-datum)
+		(not-mark-local)
+		value)))
+	(not-mark-local))))
+
 (define (variable-local-value? buffer variable)
   (or (not buffer)
       (search-local-bindings buffer variable)))
