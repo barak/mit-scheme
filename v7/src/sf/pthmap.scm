@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/pthmap.scm,v 4.1 1988/06/13 12:30:05 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/pthmap.scm,v 4.2 1995/04/28 12:35:59 adams Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -43,16 +43,8 @@ MIT in each case. |#
 (define pathname-map?)
 (define pathname-map/lookup)
 (define pathname-map/insert!)
+
 (let ()
-
-(set! pathname-map/make
-  (named-lambda (pathname-map/make)
-    (cons pathname-map/tag (node/make))))
-
-(set! pathname-map?
-  (named-lambda (pathname-map? object)
-    (and (pair? object)
-	 (eq? (car object) pathname-map/tag))))
 
 (define pathname-map/tag "pathname-map")
 (define pathname-map/root-node cdr)
@@ -92,24 +84,6 @@ MIT in each case. |#
       (cons item rest)
       rest))
 
-(set! pathname-map/lookup
-  (named-lambda (pathname-map/lookup map pathname if-found if-not)
-    (let ((node
-	   (find-node (pathname-map/root-node map)
-		      (make-node-list pathname))))
-      (if node
-	  (let ((value (node/value node)))
-	    (if (eq? value unbound-value)
-		(if-not)
-		(if-found value)))
-	  (if-not)))))
-
-(set! pathname-map/insert!
-  (named-lambda (pathname-map/insert! map pathname value)
-    (set-node/value! (find-or-create-node (pathname-map/root-node map)
-					  (make-node-list pathname))
-		     value)))
-
 (define (find-node node node-list)
   (if (null? node-list)
       node
@@ -133,5 +107,32 @@ MIT in each case. |#
     (if (null? (cdr node-list))
 	next
 	(create-node next (cdr node-list)))))
+
+(set! pathname-map/make
+  (named-lambda (pathname-map/make)
+    (cons pathname-map/tag (node/make))))
+
+(set! pathname-map?
+  (named-lambda (pathname-map? object)
+    (and (pair? object)
+	 (eq? (car object) pathname-map/tag))))
+
+(set! pathname-map/lookup
+  (named-lambda (pathname-map/lookup map pathname if-found if-not)
+    (let ((node
+	   (find-node (pathname-map/root-node map)
+		      (make-node-list pathname))))
+      (if node
+	  (let ((value (node/value node)))
+	    (if (eq? value unbound-value)
+		(if-not)
+		(if-found value)))
+	  (if-not)))))
+
+(set! pathname-map/insert!
+  (named-lambda (pathname-map/insert! map pathname value)
+    (set-node/value! (find-or-create-node (pathname-map/root-node map)
+					  (make-node-list pathname))
+		     value)))
 
 )
