@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntgui.c,v 1.13 1994/10/25 14:41:34 adams Exp $
+$Id: ntgui.c,v 1.14 1994/11/02 20:35:27 adams Exp $
 
 Copyright (c) 1993-1994 Massachusetts Institute of Technology
 
@@ -423,7 +423,7 @@ failed_foreign_function (void)
 }
 
 DEFINE_PRIMITIVE ("GET-HANDLE", Prim_get_handle, 1, 1,
-"(GET-HANDLE id)\n"
+"(id)\n"
 "Returns an otherwise hard to get global C variable\n"
 "id	entity\n"
 "0	instance handle\n"
@@ -521,8 +521,8 @@ DEFINE_PRIMITIVE ("WIN:DEF-WINDOW-PROC", Prim_def_window_proc, 4, 4, "")
 
 
 DEFINE_PRIMITIVE ("REGISTER-CLASS",
-                  Prim__register_class, 10, 10,
-"(REGISTER-CLASS style wndproc clsExtra wndExtra hInstance hIcon hCursor\n"
+     Prim__register_class, 10, 10,
+"(style wndproc clsExtra wndExtra hInstance hIcon hCursor\n"
 "                hBackground menu-name class-name)\n\n"
 
 "cursor     = 32512(arrow), 32513(ibeam), 32514(hourglass) 32515(cross), 32516(uparrow)\n"
@@ -569,7 +569,7 @@ DEFINE_PRIMITIVE ("APPLY_1", Prim_apply_1_xyz, 2, 2, "")
 
 
 DEFINE_PRIMITIVE ("NT:GET-MODULE-HANDLE", Prim_get_module_handle, 1, 1,
-"(GET-MODULE-HANDLE string) -> handle")
+"(string) -> handle")
 {
     HANDLE it;
 
@@ -581,7 +581,7 @@ DEFINE_PRIMITIVE ("NT:GET-MODULE-HANDLE", Prim_get_module_handle, 1, 1,
 }
 
 DEFINE_PRIMITIVE ("NT:LOAD-LIBRARY", Prim_nt_load_library, 1, 1,
-"(LOAD-LIBRARY string) -> handle")
+"(string) -> handle")
 {
     HANDLE it;
 
@@ -593,7 +593,7 @@ DEFINE_PRIMITIVE ("NT:LOAD-LIBRARY", Prim_nt_load_library, 1, 1,
 }
 
 DEFINE_PRIMITIVE ("NT:FREE-LIBRARY", Prim_nt_free_library, 1, 1,
-"(FREE-LIBRARY library-module-handle) -> bool")
+"(library-module-handle) -> bool")
 {
     HANDLE handle;
     BOOL   result;
@@ -606,7 +606,7 @@ DEFINE_PRIMITIVE ("NT:FREE-LIBRARY", Prim_nt_free_library, 1, 1,
 }
 
 DEFINE_PRIMITIVE ("NT:GET-PROC-ADDRESS", Prim_nt_get_proc_address, 2, 2,
-"(GET-PROC-ADDRESS handle string/integer) -> address")
+"(handle string/integer) -> address")
 {
     HMODULE  module;
     LPSTR    function_name;
@@ -628,7 +628,7 @@ DEFINE_PRIMITIVE ("NT:GET-PROC-ADDRESS", Prim_nt_get_proc_address, 2, 2,
 }
 
 DEFINE_PRIMITIVE ("NT:SEND-MESSAGE", Prim_send_message, 4, 4,
-"(SEND-MESSAGE  handle  message  wparam  lparam)")
+"(handle message wparam lparam)")
 {
     HWND    hwnd;
     UINT    message;
@@ -786,7 +786,7 @@ DEFINE_PRIMITIVE ("CALL-FF", Prim_call_ff, 0, LEXPR, 0)
 //
 
 DEFINE_PRIMITIVE ("INT32-OFFSET-REF", Prim_int32_offset_ref, 2, 2,
-"(long-offset-ref mem-addr byte-offset)\n"
+"(mem-addr byte-offset)\n"
 "Fetch 32 bit signed long from memory (a string)"
 )
 {
@@ -802,7 +802,7 @@ DEFINE_PRIMITIVE ("INT32-OFFSET-REF", Prim_int32_offset_ref, 2, 2,
 }
 
 DEFINE_PRIMITIVE ("INT32-OFFSET-SET!", Prim_int32_offset_set, 3, 3,
-"(long-offset-sef mem-addr byte-offset 32-bit-value)\n"
+"(mem-addr byte-offset 32-bit-value)\n"
 "Set 32 bit signed long from memory (integer address or vector data)"
 )
 {
@@ -822,7 +822,7 @@ DEFINE_PRIMITIVE ("INT32-OFFSET-SET!", Prim_int32_offset_set, 3, 3,
 
 
 DEFINE_PRIMITIVE ("UINT32-OFFSET-REF", Prim_uint32_offset_ref, 2, 2,
-"(uint32-offset-ref mem-addr byte-offset)\n"
+"(mem-addr byte-offset)\n"
 "Fetch 32 bit unsigned long from memory (a string)"
 )
 {
@@ -838,7 +838,7 @@ DEFINE_PRIMITIVE ("UINT32-OFFSET-REF", Prim_uint32_offset_ref, 2, 2,
 }
 
 DEFINE_PRIMITIVE ("UINT32-OFFSET-SET!", Prim_uint32_offset_set, 3, 3,
-"(unit32-offset-sef mem-addr byte-offset 32-bit-value)\n"
+"(mem-addr byte-offset 32-bit-value)\n"
 "Set 32 bit unsigned long at offset from memory"
 )
 {
@@ -1031,8 +1031,8 @@ parse_event (SCREEN_EVENT *event)
 }
 
 
-DEFINE_PRIMITIVE ("NT-GET-EVENT", Prim_NT_get_event, 1, 1,
-		  "(nt-get-event handle)")
+DEFINE_PRIMITIVE ("WIN32-SCREEN-GET-EVENT", Prim_win32_screen_get_event, 1, 1,
+		  "(handle)")
 {
   PRIMITIVE_HEADER (1);
   {
@@ -1048,39 +1048,29 @@ DEFINE_PRIMITIVE ("NT-GET-EVENT", Prim_NT_get_event, 1, 1,
   }
 }
 
-DEFINE_PRIMITIVE ("NT-PEEK-EVENT", Prim_NT_peek_event, 1, 1,
-		  "(nt-peek-event handle)")
-{
-  PRIMITIVE_HEADER (1);
-  {
-    SCREEN_EVENT event;
-
-    Primitive_GC_If_Needed (MAX_EVENT_STORAGE);
-
-    if (!(Screen_PeekEvent ((HWND) arg_integer (1), &event)))
-      PRIMITIVE_RETURN (SHARP_F);
-    
-    PRIMITIVE_RETURN (parse_event (&event));
-  }
-}
+//DEFINE_PRIMITIVE ("NT-PEEK-EVENT", Prim_NT_peek_event, 1, 1,
+//		  "(nt-peek-event handle)")
+//{
+//  PRIMITIVE_HEADER (1);
+//  {
+//    SCREEN_EVENT event;
+//
+//    Primitive_GC_If_Needed (MAX_EVENT_STORAGE);
+//
+//    if (!(Screen_PeekEvent ((HWND) arg_integer (1), &event)))
+//      PRIMITIVE_RETURN (SHARP_F);
+//    
+//    PRIMITIVE_RETURN (parse_event (&event));
+//  }
+//}
 
 
 //Primitives for Edwin Screens
 #define GETSCREEN( x ) ((SCREEN) GetWindowLong( x, 0 ))
 
-//DEFINE_PRIMITIVE ("PRIM-WIN32-SCREEN/BEEP", Prim_Win32_Screen_Beep, 0, 0,
-//		  "(prim-win32-screen/beep)")
-//{
-//  PRIMITIVE_HEADER (0);
-//  {
-//    MessageBeep (0);
-//    PRIMITIVE_RETURN (UNSPECIFIC);
-//  }
-//}
-
-DEFINE_PRIMITIVE ("PRIM-WIN32-SCREEN/CLEAR-RECTANGLE",
-		  Prim_Win32_Screen_ClearRectangle, 6, 6, 
- "hwnd xl xh yl yh attribute")
+DEFINE_PRIMITIVE ("WIN32-SCREEN-CLEAR-RECTANGLE!",
+		  Prim_win32_screen_clear_rectangle, 6, 6, 
+ "(hwnd xl xh yl yh attribute)")
 {
   PRIMITIVE_HEADER (6);
   {
@@ -1096,20 +1086,8 @@ DEFINE_PRIMITIVE ("PRIM-WIN32-SCREEN/CLEAR-RECTANGLE",
 }
 
 
-//DEFINE_PRIMITIVE ("PRIM-WIN32-SCREEN/DISCARD", Prim_Win32_Screen_Discard,
-//		  1, 1, 0)
-//{
-//
-//  PRIMITIVE_HEADER (1);
-//  {
-//    DestroyWindow ((HWND) arg_integer (1));
-//    
-//    PRIMITIVE_RETURN(UNSPECIFIC);
-//  }
-//}
-
-DEFINE_PRIMITIVE ("PRIM-WIN32-SCREEN/INVALIDATE-RECT",
-		  Prim_Win32_Screen_Invalidate_Rect, 5, 5, 0)
+DEFINE_PRIMITIVE ("WIN32-SCREEN-INVALIDATE-RECT!",
+		  Prim_win32_screen_invalidate_rect, 5, 5, 0)
 {
   PRIMITIVE_HEADER (5);
   {
@@ -1125,9 +1103,9 @@ DEFINE_PRIMITIVE ("PRIM-WIN32-SCREEN/INVALIDATE-RECT",
   }
 }
 
-DEFINE_PRIMITIVE ("PRIM-WIN32-SCREEN/VERTICAL-SCROLL",
-		  Prim_Win32_Screen_Vertical_Scroll, 6, 6,
-		  "(prim-win32-screen/vertical-scroll handle xl xu yl yu amount)")
+DEFINE_PRIMITIVE ("WIN32-SCREEN-VERTICAL-SCROLL!",
+  Prim_win32_screen_vertical_scroll, 6, 6,
+  "(handle xl xu yl yu amount)")
 {
   PRIMITIVE_HEADER (6);
   {
@@ -1142,9 +1120,9 @@ DEFINE_PRIMITIVE ("PRIM-WIN32-SCREEN/VERTICAL-SCROLL",
 }
 
 
-DEFINE_PRIMITIVE ("PRIM-WIN32-SCREEN/SCREEN-WRITECHAR",
-		  Prim_Win32_Screen_Screen_WriteChar, 5, 5,
-  "(prim-win32-screen/screen-write handle x y char attribute)")
+DEFINE_PRIMITIVE ("WIN32-SCREEN-WRITE-CHAR!",
+		  Prim_win32_screen_write_char, 5, 5,
+  "(handle x y char attribute)")
 {
   PRIMITIVE_HEADER (5);
   {
@@ -1161,20 +1139,23 @@ DEFINE_PRIMITIVE ("PRIM-WIN32-SCREEN/SCREEN-WRITECHAR",
 }
 
 
-
-DEFINE_PRIMITIVE ("PRIM-WIN32-SCREEN/WRITE-SUBSTRING",
-		  Prim_Win32_Screen_Write_String, 7, 7,
- "(prim-win32-screen/write-string handle x y string start end attribute)")
+DEFINE_PRIMITIVE ("WIN32-SCREEN-WRITE-SUBSTRING!",
+		  Prim_win32_screen_write_substring, 7, 7,
+ "(handle x y string start end attribute)")
 {
   PRIMITIVE_HEADER (7);
   {
     SCREEN screen = GETSCREEN ((HWND) arg_integer (1));
-    int  start = arg_integer (5);
-    int  end   = arg_integer (6);
+    int  start = arg_nonnegative_integer (5);
+    int  end   = arg_nonnegative_integer (6);
 
     if (!screen)
       error_bad_range_arg (1);
-
+    CHECK_ARG (4, STRING_P);
+    if (start > STRING_LENGTH (ARG_REF (4)))
+      error_bad_range_arg (5);
+    if (end > STRING_LENGTH (ARG_REF (4)))
+      error_bad_range_arg (6);
     Screen_SetAttributeDirect (screen, (SCREEN_ATTRIBUTE) arg_integer (7));
     WriteScreenBlock_NoInvalidRect (screen,
 				    arg_integer (3), arg_integer (2),
@@ -1185,9 +1166,9 @@ DEFINE_PRIMITIVE ("PRIM-WIN32-SCREEN/WRITE-SUBSTRING",
 }
 
 
-DEFINE_PRIMITIVE ("PRIM-WIN32-SCREEN/SCREEN-MOVE-CURSOR",
-		  Prim_Win32_Screen_Screen_Move_Cursor, 3, 3,
-		  "(prim-win32-screen/screen-move-cursor handle x y)")
+DEFINE_PRIMITIVE ("WIN32-SCREEN-MOVE-CURSOR!",
+		  Prim_win32_screen_move_cursor, 3, 3,
+		  "(handle x y)")
 {
   PRIMITIVE_HEADER (3);
   {
@@ -1200,79 +1181,43 @@ DEFINE_PRIMITIVE ("PRIM-WIN32-SCREEN/SCREEN-MOVE-CURSOR",
 }
 
 
-DEFINE_PRIMITIVE ("PRIM-WIN32-SCREEN/SCREEN-X-SIZE",
-		  Prim_Win32_Screen_Screen_X_Size, 1, 1,
-		  "(prim-win32-screen/screen-x-size handle)")
+DEFINE_PRIMITIVE ("WIN32-SCREEN-SIZE",  Prim_win32_screen_size, 1, 1,
+  "(handle)\n\
+   Returns pair (width . height)")
 {
   PRIMITIVE_HEADER (1);
   {
-    SCREEN screen = GETSCREEN ((HWND) arg_integer (1));
+    HWND handle = (HWND) arg_integer (1);
+    int width=0, height=0;
+    Screen_GetSize (handle, &height, &width);
 
-    PRIMITIVE_RETURN (long_to_integer (Screen_Width (screen)));
-  }
-}
-
-DEFINE_PRIMITIVE ("PRIM-WIN32-SCREEN/SCREEN-Y-SIZE",
-		  Prim_Win32_Screen_Screen_Y_Size, 1, 1,
-		  "(prim-win32-screen/screen-y-size handle)")
-{
-  PRIMITIVE_HEADER (1);
-  {
-    SCREEN screen = GETSCREEN ((HWND) arg_integer (1));
-
-    PRIMITIVE_RETURN (long_to_integer (Screen_Height (screen)));
+    PRIMITIVE_RETURN (cons (long_to_integer (width), long_to_integer (height)));
   }
 }
 
 
-DEFINE_PRIMITIVE ("PRIM-WIN32-SCREEN/CREATE-SCREEN",
-		  Prim_Win32_Screen_Create, 3, 3,
-  "(prim-win32-screen/create-screen parent-handle modes minimize)")
+DEFINE_PRIMITIVE ("WIN32-SCREEN-CREATE!",
+		  Prim_win32_screen_create, 2, 2,
+  "(parent-handle modes)")
 {
-  PRIMITIVE_HEADER (3);
+  PRIMITIVE_HEADER (2);
   {
     HWND hwnd = Screen_Create ((HANDLE) arg_integer (1),
 			       "Scheme Screen",
-			       (int) SW_SHOW);
+			       (int) SW_SHOWNA);
 
-    HWND hwndmin = (HANDLE) arg_integer (3);
-
-    if (hwnd == 0)
-      SendMessage ((HWND) NULL, SCREEN_SETMODES,
-		   (WPARAM) arg_integer (2), (LPARAM) 0);
-    else
+    if (hwnd != 0)
       SendMessage (hwnd, SCREEN_SETMODES,
 		   (WPARAM) arg_integer (2), (LPARAM) 0);
 
-    if (hwndmin != 0)
-      {
-	WINDOWPLACEMENT plwndpl;
-	GetWindowPlacement (hwndmin, &plwndpl);
-	plwndpl.showCmd = SW_MINIMIZE;
-	SetWindowPlacement (hwndmin, &plwndpl);
-      }
-
-    PRIMITIVE_RETURN (long_to_integer (hwnd));
+    PRIMITIVE_RETURN (hwnd ? long_to_integer (hwnd) : SHARP_F);
   }
 }
 
 
-//DEFINE_PRIMITIVE ("PRIM-WIN32-SCREEN/SET-WRITE-ATTRIBUTE",
-//		  Prim_Win32_Screen_Set_Write_Attribute, 2, 2,
-//		  "(prim-win32-screen/set-write-attribute handle attrib)")
-//{
-//  PRIMITIVE_HEADER (2);
-//  {
-//    Screen_SetAttribute_NoMessage ((HANDLE) arg_integer (1),
-//				   (SCREEN_ATTRIBUTE) arg_integer (2));
-//    PRIMITIVE_RETURN (UNSPECIFIC);
-//  }
-//}
-
-
-DEFINE_PRIMITIVE ("PRIM-WIN32-SCREEN/SHOW-CURSOR",
-		  Prim_Win32_Screen_Show_Cursor, 2, 2,
-		  "(prim-win32-screen/show-cursor handle show?)")
+DEFINE_PRIMITIVE ("WIN32-SCREEN-SHOW-CURSOR!",
+		  Prim_win32_screen_show_cursor, 2, 2,
+		  "(handle show?)")
 {
   PRIMITIVE_HEADER (2);
   {
@@ -1283,36 +1228,26 @@ DEFINE_PRIMITIVE ("PRIM-WIN32-SCREEN/SHOW-CURSOR",
 }
 
 
-//DEFINE_PRINITIVE ("WIN32-SET-FONT-ADVICE", Prim_win32_set_font_advice, 1, 1,
-//
-//		  "\
-//(WIN32-SET-FONT-ADVICE variable-width-fonts-allowed?)\n\
-//\n\
-//The argument is #F then only fixed-pitch fonts are available for the\n\
-//Edwin screen.  Otherwise the argument must be a float, which\n\
-//determines the size box allocated for characters of teh variable with\n\
-//font. 0.0 is the average width, 1.0 is the maximum width, and any\n\
-//other number is interpolated linearly."  Takes effect when the next\n\
-//font is selected."
-//{
-//  PRIMITIVE_HEADER (1);
-//  {
-//    SCHEME_OBJECT  arg = ARG_REF (1);
-//    SCHEME_OBJECT  probe =
-//      (allow_variable_width_fonts
-//       ? FLOAT_TO_FLONUM (variable_width_font_width_factor)
-//       : SHARP_F);
-//    
-//    if (arg == SHARP_F)
-//      allow_variable_width_fonts = FALSE;
-//    else if (arg == SHARP_T)
-//      allow_variable_width_fonts = TRUE;
-//    else if (FLONUM_P(arg)) {
-//      allow_variable_width_fonts = TRUE;
-//      variable_width_font_width_factor = FLONUM_TO_DOUBLE (arg);
-//    }
-//    else error_wrong_type_arg (1);
-//
-//    PRIMITIVE_RETURN (probe);
-//  }
-//}
+DEFINE_PRIMITIVE ("WIN32-SCREEN-SET-ICON!",
+		  Prim_win32_screen_set_icon, 2, 2,
+		  "(screen-handle icon-handle)")
+{
+  PRIMITIVE_HEADER (2);
+  {
+    SCREEN screen = GETSCREEN ((HWND) arg_integer (1));
+    HICON  result = ScreenSetIcon (screen, (HICON) arg_integer (2));
+    PRIMITIVE_RETURN (ulong_to_integer((unsigned long) result));
+  }
+}
+
+
+
+DEFINE_PRIMITIVE ("WIN32-SCREEN-CURRENT-FOCUS",
+		  Prim_win32_screen_current_focus, 0, 0,
+		  "() -> hwnd")
+{
+  PRIMITIVE_HEADER (0);
+  {
+    PRIMITIVE_RETURN (ulong_to_integer((unsigned long) ScreenCurrentFocus()));
+  }
+}
