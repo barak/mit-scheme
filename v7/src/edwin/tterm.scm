@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: tterm.scm,v 1.25 1994/11/01 23:02:14 adams Exp $
+$Id: tterm.scm,v 1.26 1994/11/03 04:25:45 adams Exp $
 
-Copyright (c) 1990-1993 Massachusetts Institute of Technology
+Copyright (c) 1990-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -187,6 +187,7 @@ MIT in each case. |#
         ((parse-key			; -> #F or a char? or a special-key?
 	  (lambda ()
 	    (and (fix:< start end)
+		 terminal-state
 		 (let ((n-chars  (fix:- end start)))
 		   (let find ((key-pairs (terminal-state/key-table terminal-state))
 			      (possible-pending? #F))

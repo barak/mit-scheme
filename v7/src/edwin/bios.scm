@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: bios.scm,v 1.3 1992/10/20 15:34:30 jinx Exp $
+$Id: bios.scm,v 1.4 1994/11/03 04:24:54 adams Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -33,7 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; IBM-PC BIOS Screen Implementation
-;;; package: (edwin console-screen)
+;;; package: (edwin screen console-screen)
 
 (declare (usual-integrations))
 
@@ -80,7 +80,7 @@ MIT in each case. |#
 			   make-bios-screen
 			   (lambda (screen)
 			     screen
-			     (get-console-input-operations))
+			     (get-console-input-operations #F))
 			   with-console-grabbed
 			   with-console-interrupts-enabled
 			   with-console-interrupts-disabled))
