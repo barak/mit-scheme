@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2cthrd.h,v 1.2 1994/12/02 20:41:38 cph Exp $
+$Id: os2cthrd.h,v 1.3 1995/01/05 23:42:50 cph Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -41,28 +41,29 @@ MIT in each case. */
 
 typedef struct
 {
+  TID tid;
   qid_t reader_qid;
   qid_t writer_qid;
-  msg_t * readahead;
-  unsigned int readahead_index;
-  char eofp;
+  unsigned int eofp : 1;
+  unsigned int first_read_p : 1;
 } channel_context_t;
+#define CHANNEL_CONTEXT_TID(c) ((c) -> tid)
 #define CHANNEL_CONTEXT_READER_QID(c) ((c) -> reader_qid)
 #define CHANNEL_CONTEXT_WRITER_QID(c) ((c) -> writer_qid)
-#define CHANNEL_CONTEXT_READAHEAD(c) ((c) -> readahead)
-#define CHANNEL_CONTEXT_READAHEAD_INDEX(c) ((c) -> readahead_index)
 #define CHANNEL_CONTEXT_EOFP(c) ((c) -> eofp)
+#define CHANNEL_CONTEXT_FIRST_READ_P(c) ((c) -> first_read_p)
 
-typedef struct sm_readahead_s
+typedef struct
 {
   DECLARE_MSG_HEADER_FIELDS;
-  ULONG size;
+  unsigned short size;
+  unsigned short index;
   char data [SM_READAHEAD_MAX];
 } sm_readahead_t;
 #define SM_READAHEAD_SIZE(m) (((sm_readahead_t *) (m)) -> size)
+#define SM_READAHEAD_INDEX(m) (((sm_readahead_t *) (m)) -> index)
 #define SM_READAHEAD_DATA(m) (((sm_readahead_t *) (m)) -> data)
 
-#define OS2_make_readahead() OS2_create_message (mt_readahead)
 #define OS2_make_readahead_ack() OS2_create_message (mt_readahead_ack)
 
 typedef msg_t sm_readahead_ack_t;
@@ -82,6 +83,7 @@ extern readahead_buffer_t * OS2_make_readahead_buffer (void);
 extern int OS2_readahead_buffer_emptyp (readahead_buffer_t *);
 extern void OS2_readahead_buffer_insert (readahead_buffer_t *, char);
 extern char OS2_readahead_buffer_rubout (readahead_buffer_t *);
+extern msg_t * OS2_make_readahead (void);
 extern msg_t * OS2_readahead_buffer_read (readahead_buffer_t *);
 extern msg_list_t * OS2_readahead_buffer_read_all (readahead_buffer_t *);
 

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2pipe.c,v 1.2 1994/12/02 20:41:57 cph Exp $
+$Id: os2pipe.c,v 1.3 1995/01/05 23:43:32 cph Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -53,7 +53,7 @@ OS_make_pipe (Tchannel * readerp, Tchannel * writerp)
   (*writerp) = (OS2_make_channel (hwrite, CHANNEL_WRITE));
   transaction_commit ();
 }
-
+
 void
 OS2_initialize_pipe_channel (Tchannel channel)
 {
@@ -62,12 +62,16 @@ OS2_initialize_pipe_channel (Tchannel channel)
       channel_context_t * context = (OS2_make_channel_context ());
       (CHANNEL_OPERATOR_CONTEXT (channel)) = context;
       OS2_open_qid ((CHANNEL_CONTEXT_READER_QID (context)), OS2_scheme_tqueue);
-      (void) OS2_beginthread
-	(input_pipe_thread, (CHANNEL_POINTER (channel)), 0);
+      OS2_open_qid
+	((CHANNEL_CONTEXT_WRITER_QID (context)), (OS2_make_std_tqueue ()));
+      (CHANNEL_CONTEXT_TID (context))
+	= (OS2_beginthread (input_pipe_thread,
+			    (CHANNEL_POINTER (channel)),
+			    0));
       (CHANNEL_OPERATOR (channel)) = input_pipe_operator;
     }
 }
-
+
 static void
 input_pipe_operator (Tchannel channel, chop_t operation,
 		     choparg_t arg1, choparg_t arg2, choparg_t arg3)
@@ -95,19 +99,24 @@ input_pipe_thread (void * arg)
   LHANDLE handle = (CHANNEL_HANDLE (channel));
   channel_context_t * context = (CHANNEL_OPERATOR_CONTEXT (channel));
   qid_t qid = (CHANNEL_CONTEXT_WRITER_QID (context));
-  OS2_open_qid (qid, (OS2_make_std_tqueue ()));
   (void) OS2_thread_initialize (qid);
+  /* Wait for first read request before doing anything.  */
+  OS2_wait_for_readahead_ack (qid);
   while (1)
     {
       msg_t * message = (OS2_make_readahead ());
+      ULONG nread;
       APIRET rc
 	= (dos_read (handle,
 		     (SM_READAHEAD_DATA (message)),
 		     (sizeof (SM_READAHEAD_DATA (message))),
-		     (& (SM_READAHEAD_SIZE (message)))));
+		     (& nread)));
       int eofp;
       if (rc == NO_ERROR)
-	eofp = ((SM_READAHEAD_SIZE (message)) == 0);
+	{
+	  (SM_READAHEAD_SIZE (message)) = nread;
+	  eofp = (nread == 0);
+	}
       else
 	{
 	  OS2_destroy_message (message);
