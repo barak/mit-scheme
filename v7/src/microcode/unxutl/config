@@ -1,6 +1,6 @@
 #!/bin/sh
 # Configuration script for MIT Scheme
-# $Id: config,v 1.22 1993/10/26 23:08:54 gjr Exp $
+# $Id: config,v 1.23 1993/10/26 23:12:54 gjr Exp $
 # Modelled on the configuration script for GNU CC
 # The section between lines is the copyright prefix from the GNU CC config.
 #----------------------------------------------------------------------
@@ -180,7 +180,7 @@ perform()
 		fi
 
 		$remove -f $link
-		rm -f config.out
+		$remove -f config.out
 		# Make a symlink if possible, otherwise try a hard link
 		$symbolic_link $file $link 2>/dev/null || $hard_link $file $link
 
@@ -209,7 +209,7 @@ perform()
 		fi
 
 		$remove -f $target
-		rm -f config.out
+		$remove -f config.out
 		# Make a symlink if possible, otherwise try a hard link
 		$copy $file $target
 
@@ -331,7 +331,7 @@ case $# in
 		perform $*
 		$move cf.h cf-orig.h
 		$edit 's/C_BACK_END 0/C_BACK_END 1/' <cf-orig.h >cf.h
-		$remove cf-orig.h
+		$remove -f cf-orig.h
 		exit 0
 		;;
 
