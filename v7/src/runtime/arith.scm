@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.34 1996/04/24 03:03:16 cph Exp $
+$Id: arith.scm,v 1.35 1997/04/23 07:26:06 cph Exp $
 
-Copyright (c) 1989-96 Massachusetts Institute of Technology
+Copyright (c) 1989-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -47,7 +47,9 @@ MIT in each case. |#
 (define-primitives
   (listify-bignum 2)
   (integer->flonum 2)
-  (flo:denormalize flonum-denormalize 2))
+  (flo:denormalize flonum-denormalize 2)
+  (integer-length-in-bits 1)
+  (integer-shift-left 2))
 
 (define-integrable (int:bignum? object)
   (object-type? (ucode-type big-fixnum) object))
@@ -292,11 +294,13 @@ MIT in each case. |#
 (define (int:round n d)
   (let ((positive-case
 	 (lambda (n d)
-	   (let ((c (int:divide (int:+ (int:* 2 n) d) (int:* 2 d))))
-	     (let ((q (integer-divide-quotient c)))
-	       (if (and (int:zero? (integer-divide-remainder c))
-			(not (int:zero? (int:remainder q 2))))
-		   (int:-1+ q)
+	   (let ((qr (int:divide n d)))
+	     (let ((q (integer-divide-quotient qr))
+		   (2r (int:* 2 (integer-divide-remainder qr))))
+	       (if (or (int:> 2r d)
+		       (and (int:= 2r d)
+			    (fix:zero? (int:remainder q 2))))
+		   (int:1+ q)
 		   q))))))
     (if (int:negative? n)
 	(if (int:negative? d)
@@ -308,21 +312,24 @@ MIT in each case. |#
 
 (define (int:expt b e)
   (cond ((int:positive? e)
-	 (if (or (int:= 1 e)
-		 (int:zero? b)
-		 (int:= 1 b))
-	     b
-	     (let loop ((b b) (e e) (answer 1))
-	       (let ((qr (int:divide e 2)))
-		 (let ((b (int:* b b))
-		       (e (integer-divide-quotient qr))
-		       (answer
-			(if (int:zero? (integer-divide-remainder qr))
-			    answer
-			    (int:* answer b))))
-		   (if (int:= 1 e)
-		       (int:* answer b)
-		       (loop b e answer)))))))
+	 (cond ((or (int:= 1 e)
+		    (int:zero? b)
+		    (int:= 1 b))
+		b)
+	       ((int:= 2 b)
+		(integer-shift-left 1 e))
+	       (else
+		(let loop ((b b) (e e) (answer 1))
+		  (let ((qr (int:divide e 2)))
+		    (let ((b (int:* b b))
+			  (e (integer-divide-quotient qr))
+			  (answer
+			   (if (fix:= 0 (integer-divide-remainder qr))
+			       answer
+			       (int:* answer b))))
+		      (if (int:= 1 e)
+			  (int:* answer b)
+			  (loop b e answer))))))))
 	((int:zero? e) 1)
 	(else (error:bad-range-argument e 'EXPT))))
 
@@ -803,56 +810,34 @@ MIT in each case. |#
 (define (ratnum->flonum q)
   (let ((q>0
 	 (lambda (n d)
-	   (let ((u int:flonum-integer-limit))
-	     (let ((g (int:gcd n u)))
-	       (let ((n (int:quotient n g))
-		     (d (int:* d (int:quotient u g)))
-		     (finish
-		      (lambda (n d e)
-			(let ((c
-			       (lambda (n e)
-				 (flo:denormalize (integer->flonum n #b11) e)))
-			      (n
-			       (let ((g (int:gcd d u)))
-				 (int:round
-				  (int:* n (int:quotient u g))
-				  (int:quotient d g)))))
-			  (if (int:= n u)
-			      (c (int:quotient n 2) (int:1+ e))
-			      (c n e))))))
-		 (if (int:< n d)
-		     (let scale-up ((n n) (e 0))
-		       (let ((n*2 (int:* n 2)))
-			 (if (int:< n*2 d)
-			     (let loop
-				 ((n n*2) (n*r (int:* n*2 2)) (r 4) (m 1))
-			       (if (int:< n*r d)
-				   (loop n*r
-					 (int:* n*r r)
-					 (int:* r r)
-					 (int:* 2 m))
-				   (scale-up n (int:- e m))))
-			     (finish n d e))))
-		     (let scale-down ((d d) (e 0))
-		       (let ((d (int:* d 2)))
-			 (cond ((int:> n d)
-				(let loop ((d d) (d*r (int:* d 2)) (r 4) (m 1))
-				  (cond ((int:> n d*r)
-					 (loop d*r
-					       (int:* d*r r)
-					       (int:* r r)
-					       (int:* 2 m)))
-					((int:< n d*r)
-					 (scale-down d (int:+ e m)))
-					(else
-					 (finish
-					  n
-					  (int:* d*r 2)
-					  (int:1+ (int:+ e (int:* 2 m))))))))
-			       ((int:< n d)
-				(finish n d (int:1+ e)))
-			       (else
-				(finish n (int:* d 2) (int:+ e 2)))))))))))))
+	   (let ((k
+		  (int:- (integer-length-in-bits n)
+			 (integer-length-in-bits d)))
+		 (p flo:significand-digits-base-2))
+	     (letrec
+		 ((step1
+		   (lambda (n d)
+		     ;; (assert (< (expt 2 (- k 1)) (/ n d) (expt 2 (+ k 1))))
+		     (if (int:< k 0)
+			 (step2 (integer-shift-left n (int:- 0 k)) d)
+			 (step2 n (integer-shift-left d k)))))
+		  (step2
+		   (lambda (n d)
+		     ;; (assert (< 1/2 (/ n d) 2))
+		     (if (int:< n d)
+			 (step3 n d (int:- k p))
+			 (step3 n (int:* 2 d) (int:- (int:+ k 1) p)))))
+		  (step3
+		   (lambda (n d e)
+		     ;; (assert (and (<= 1/2 (/ n d)) (< (/ n d) 1)))
+		     (let ((n (int:round (integer-shift-left n p) d)))
+		       (if (int:= n int:flonum-integer-limit)
+			   (step4 (int:quotient n 2) (int:1+ e))
+			   (step4 n e)))))
+		  (step4
+		   (lambda (n e)
+		     (flo:denormalize (integer->flonum n #b11) e))))
+	       (step1 n d))))))
     (let ((n (ratnum-numerator q))
 	  (d (ratnum-denominator q)))
       (cond ((int:positive? n) (q>0 n d))
