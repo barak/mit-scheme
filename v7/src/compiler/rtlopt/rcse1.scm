@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.2 1987/12/30 07:13:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.3 1987/12/31 05:49:33 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -193,18 +193,18 @@ MIT in each case. |#
 				      (hash-table-lookup hash address))
 				     (hash-table-delete-class!
 				      element-address-varies?))))))
-		       (cond (volatile?* (memory-invalidate!))
-			     ((not volatile?)
-			      (let ((address
-				     (find-cheapest-expression address hash
-							       false)))
-				(let ((element (insert-source!)))
-				  (memory-invalidate!)
-				  (insert-memory-destination!
-				   address
-				   element
-				   (modulo (+ (symbol-hash 'ASSIGN) hash)
-					   (hash-table-size))))))))))
+		       (if (or volatile? volatile?*)
+			   (memory-invalidate!)
+			   (let ((address
+				  (find-cheapest-expression address hash
+							    false)))
+			     (let ((element (insert-source!)))
+			       (memory-invalidate!)
+			       (insert-memory-destination!
+				address
+				element
+				(modulo (+ (symbol-hash 'ASSIGN) hash)
+					(hash-table-size)))))))))
 		 ;; **** Kludge.  Works only because stack-pointer
 		 ;; gets used in very fixed way by code generator.
 		 (if (stack-push/pop? address)
