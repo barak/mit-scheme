@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules1.scm,v 1.3 1992/01/24 04:40:42 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules1.scm,v 1.4 1992/01/28 21:23:13 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -105,7 +105,7 @@ MIT in each case. |#
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (CONSTANT (? source)))
-  (load-constant source (target-register-reference target)))
+  (load-constant (target-register-reference target) source))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (MACHINE-CONSTANT (? n)))
@@ -115,7 +115,7 @@ MIT in each case. |#
   (ASSIGN (REGISTER (? target))
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
 			(MACHINE-CONSTANT (? datum))))
-  (load-non-pointer type datum (target-register-reference target)))
+  (load-non-pointer (target-register-reference target) type datum))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (ENTRY:PROCEDURE (? label)))
@@ -272,8 +272,8 @@ MIT in each case. |#
   (let ((target (target-register-reference target)))
     (if (non-pointer-object? constant)
 	;; Is this correct if conversion is object->address ?
-	(load-non-pointer 0 (careful-object-datum constant) target)
-	(LAP ,@(load-constant constant target)
+	(load-non-pointer target 0 (careful-object-datum constant))
+	(LAP ,@(load-constant target constant)
 	     ,@(conversion target)))))
 
 (define (load-displaced-register target source n)
@@ -289,6 +289,11 @@ MIT in each case. |#
 			   (if (zero? type)
 			       n
 			       (+ (make-non-pointer-literal type 0) n))))
+
+(define (load-constant target obj)
+  (if (non-pointer-object? obj)
+      (load-non-pointer target (object-type obj) (careful-object-datum obj))
+      (load-pc-relative target (free-constant-label obj))))
 
 (define (load-pc-relative target label)
   (with-pc-relative-address
@@ -320,5 +325,5 @@ MIT in each case. |#
 	   (LAP (MOVZX ,target ,source)))
 	  |#
 	  (else
-	   (LAP ,@(load-non-pointer type 0 target)
+	   (LAP ,@(load-non-pointer target type 0)
 		(MOV B ,target ,source))))))
