@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: closconv.scm,v 1.9 1995/08/04 19:47:20 adams Exp $
+$Id: closconv.scm,v 1.10 1995/08/06 19:50:08 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -557,10 +557,7 @@ MIT in each case. |#
 	     `(CALL (QUOTE ,%closure-ref)
 		    (QUOTE #F)
 		    (LOOKUP ,closure-name)
-		    (CALL (QUOTE ,%vector-index)
-			  (QUOTE #F)
-			  (QUOTE ,closed-over-names)
-			  (QUOTE ,name))
+		    (QUOTE ,closed-over-names)
 		    (QUOTE ,name)))
 	   (define (dbg-reference-expression)
 	     (dbg/make-closure-ref %closure-ref
@@ -678,10 +675,7 @@ MIT in each case. |#
 				(list
 				 (closconv/closure/make-set!
 				  name
-				  `(CALL (QUOTE ,%vector-index)
-					 (QUOTE #F)
-					 (QUOTE ,captured-names)
-					 (QUOTE ,name*))
+				  `(QUOTE ,captured-names)
 				  name*)))))
 			circular)))
 		   closed circ-results circular)))))
