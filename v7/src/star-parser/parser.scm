@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.scm,v 1.21 2001/10/16 16:41:10 cph Exp $
+;;; $Id: parser.scm,v 1.22 2001/10/16 17:52:31 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -181,11 +181,11 @@
   (generate-external-procedure expression
 			       preprocess-parser-expression
 			       (lambda (expression)
-				 `(,(compile-parser-expression expression)
+				 `(,(compile-parser-expression expression #f)
 				   (LAMBDA (V KF) KF V)
 				   (LAMBDA () #F)))))
 
-(define (compile-parser-expression expression)
+(define (compile-parser-expression expression pointer)
   (cond ((and (pair? expression)
 	      (symbol? (car expression))
 	      (list? (cdr expression))
@@ -195,7 +195,7 @@
 		    (compiler (cdr entry)))
 		(if (and arity (not (= (length (cdr expression)) arity)))
 		    (error "Incorrect arity for parser:" expression))
-		(apply compiler (cdr expression)))))
+		(apply compiler pointer (cdr expression)))))
 	((or (symbol? expression)
 	     (and (pair? expression) (eq? (car expression) 'SEXP)))
 	 (wrap-external-parser
@@ -209,7 +209,7 @@
 	(parameters (cdr form)))
     `(DEFINE-PARSER-COMPILER ',name
        ,(if (symbol? parameters) `#F (length parameters))
-       (LAMBDA ,parameters
+       (LAMBDA (POINTER . ,parameters)
 	 ,@compiler-body))))
 
 (define (define-parser-compiler keyword arity compiler)
@@ -222,48 +222,49 @@
 (define-parser (match expression)
   (wrap-parser
    (lambda (ks kf)
-     (call-with-pointer
-      (lambda (p)
-	`(,(compile-matcher-expression expression)
-	  ,(let ((kf2 (make-kf-identifier)))
-	     `(LAMBDA (,kf2)
-		(,ks (VECTOR (GET-PARSER-BUFFER-TAIL ,*buffer-name* ,p))
-		     ,kf2)))
-	  ,kf))))))
+     (call-with-pointer pointer
+       (lambda (p)
+	 `(,(compile-matcher-expression expression p)
+	   ,(let ((kf2 (make-kf-identifier)))
+	      `(LAMBDA (,kf2)
+		 (,ks (VECTOR (GET-PARSER-BUFFER-TAIL ,*buffer-name* ,p))
+		      ,kf2)))
+	   ,kf))))))
 
 (define-parser (noise expression)
   (wrap-parser
    (lambda (ks kf)
-     `(,(compile-matcher-expression expression)
+     `(,(compile-matcher-expression expression pointer)
        ,(let ((kf2 (make-kf-identifier)))
 	  `(LAMBDA (,kf2)
 	     (,ks '#() ,kf2)))
        ,kf))))
 
 (define-parser (values . expressions)
+  pointer
   (wrap-parser
    (lambda (ks kf)
      `(,ks (VECTOR ,@expressions) ,kf))))
 
 (define-parser (transform transform expression)
-  (post-processed-parser expression
+  (post-processed-parser expression pointer
     (lambda (ks v kf)
       (handle-parser-value `(,transform ,v) ks kf))))
 
 (define-parser (map transform expression)
-  (post-processed-parser expression
+  (post-processed-parser expression pointer
     (lambda (ks v kf)
       `(,ks (VECTOR-MAP ,transform ,v) ,kf))))
 
 (define-parser (encapsulate transform expression)
-  (post-processed-parser expression
+  (post-processed-parser expression pointer
     (lambda (ks v kf)
       `(,ks (VECTOR (,transform ,v)) ,kf))))
 
-(define (post-processed-parser expression procedure)
+(define (post-processed-parser expression pointer procedure)
   (wrap-parser
    (lambda (ks kf)
-     `(,(compile-parser-expression expression)
+     `(,(compile-parser-expression expression pointer)
        ,(let ((v (make-value-identifier))
 	      (kf2 (make-kf-identifier)))
 	  `(LAMBDA (,v ,kf2)
@@ -271,10 +272,11 @@
        ,kf))))
 
 (define-parser (with-pointer identifier expression)
-  `(LET ((,identifier ,(fetch-pointer)))
-     ,(compile-parser-expression expression)))
+  `(LET ((,identifier ,(or pointer (fetch-pointer))))
+     ,(compile-parser-expression expression (or pointer identifier))))
 
 (define-parser (discard-matched)
+  pointer
   (wrap-parser
    (lambda (ks kf)
      `(BEGIN
@@ -286,17 +288,21 @@
       (if (pair? (cdr expressions))
 	  (wrap-parser
 	   (lambda (ks kf)
-	     (let loop ((expressions expressions) (vs '()) (kf2 kf))
-	       `(,(compile-parser-expression (car expressions))
+	     (let loop
+		 ((expressions expressions)
+		  (pointer pointer)
+		  (vs '())
+		  (kf2 kf))
+	       `(,(compile-parser-expression (car expressions) pointer)
 		 ,(let ((v (make-value-identifier))
 			(kf3 (make-kf-identifier)))
 		    `(LAMBDA (,v ,kf3)
 		       ,(let ((vs (cons v vs)))
 			  (if (pair? (cdr expressions))
-			      (loop (cdr expressions) vs kf3)
+			      (loop (cdr expressions) #f vs kf3)
 			      `(,ks (VECTOR-APPEND ,@(reverse vs)) ,kf3)))))
 		 ,kf2))))
-	  (compile-parser-expression (car expressions)))
+	  (compile-parser-expression (car expressions) pointer))
       (wrap-parser (lambda (ks kf) `(,ks '#() ,kf)))))
 
 (define-parser (alt . expressions)
@@ -304,25 +310,31 @@
       (if (pair? (cdr expressions))
 	  (wrap-parser
 	   (lambda (ks kf)
-	     (let loop ((expressions expressions))
-	       `(,(compile-parser-expression (car expressions))
+	     (let loop ((expressions expressions) (pointer pointer))
+	       `(,(compile-parser-expression (car expressions) pointer)
 		 ,ks
 		 ,(if (pair? (cdr expressions))
-		      (backtracking-kf (loop (cdr expressions)))
+		      (backtracking-kf pointer
+			(lambda (pointer)
+			  (loop (cdr expressions) pointer)))
 		      kf)))))
 	  (compile-parser-expression (car expressions)))
       (wrap-parser (lambda (ks kf) ks `(,kf)))))
 
 (define-parser (* expression)
+  pointer
   (wrap-parser
    (lambda (ks kf)
      (let ((ks2 (make-ks-identifier))
 	   (v (make-value-identifier))
 	   (kf2 (make-kf-identifier)))
        `(LET ,ks2 ((,v '#()) (,kf2 ,kf))
-	  (,(compile-parser-expression expression)
+	  (,(compile-parser-expression expression #f)
 	   ,(let ((v2 (make-value-identifier))
 		  (kf3 (make-kf-identifier)))
 	      `(LAMBDA (,v2 ,kf3)
 		 (,ks2 (VECTOR-APPEND ,v ,v2) ,kf3)))
-	   ,(backtracking-kf `(,ks ,v ,kf2))))))))
+	   ,(backtracking-kf #f
+	      (lambda (pointer)
+		pointer
+		`(,ks ,v ,kf2)))))))))

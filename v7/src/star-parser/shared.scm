@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: shared.scm,v 1.12 2001/10/16 16:41:13 cph Exp $
+;;; $Id: shared.scm,v 1.13 2001/10/16 17:52:33 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -78,20 +78,22 @@
     `(LET ((,v ,expression))
        ,(generator v))))
 
-(define (call-with-pointer procedure)
-  (let ((p (make-ptr-identifier)))
-    `(LET ((,p ,(fetch-pointer)))
-       ,(procedure p))))
+(define (call-with-pointer pointer procedure)
+  (if pointer
+      (procedure pointer)
+      (let ((p (make-ptr-identifier)))
+	`(LET ((,p ,(fetch-pointer)))
+	   ,(procedure p)))))
 
 (define (fetch-pointer)
   `(GET-PARSER-BUFFER-POINTER ,*buffer-name*))
 
-(define (backtracking-kf body)
-  (call-with-pointer
-   (lambda (p)
-     `(LAMBDA ()
-	(SET-PARSER-BUFFER-POINTER! ,*buffer-name* ,p)
-	,body))))
+(define (backtracking-kf pointer generate-body)
+  (call-with-pointer pointer
+    (lambda (p)
+      `(LAMBDA ()
+	 (SET-PARSER-BUFFER-POINTER! ,*buffer-name* ,p)
+	 ,(generate-body p)))))
 
 (define (make-kf-identifier)
   (generate-identifier 'KF))

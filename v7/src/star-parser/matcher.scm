@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: matcher.scm,v 1.18 2001/10/16 16:41:08 cph Exp $
+;;; $Id: matcher.scm,v 1.19 2001/10/16 17:52:28 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -192,11 +192,11 @@
   (generate-external-procedure expression
 			       preprocess-matcher-expression
 			       (lambda (expression)
-				 `(,(compile-matcher-expression expression)
+				 `(,(compile-matcher-expression expression #f)
 				   (LAMBDA (KF) KF #T)
 				   (LAMBDA () #F)))))
 
-(define (compile-matcher-expression expression)
+(define (compile-matcher-expression expression pointer)
   (cond ((and (pair? expression)
 	      (symbol? (car expression))
 	      (list? (cdr expression))
@@ -206,7 +206,7 @@
 		    (compiler (cdr entry)))
 		(if (and arity (not (= (length (cdr expression)) arity)))
 		    (error "Incorrect arity for matcher:" expression))
-		(apply compiler (cdr expression)))))
+		(apply compiler pointer (cdr expression)))))
 	((or (symbol? expression)
 	     (and (pair? expression) (eq? (car expression) 'SEXP)))
 	 (wrap-external-matcher
@@ -220,7 +220,7 @@
 	(parameters (cdr form)))
     `(DEFINE-MATCHER-COMPILER ',name
        ,(if (symbol? parameters) `#F (length parameters))
-       (LAMBDA ,parameters
+       (LAMBDA (POINTER . ,parameters)
 	 ,@compiler-body))))
 
 (define (define-matcher-compiler keyword arity compiler)
@@ -232,6 +232,7 @@
 
 (define-macro (define-atomic-matcher form test-expression)
   `(DEFINE-MATCHER ,form
+     POINTER
      (WRAP-EXTERNAL-MATCHER ,test-expression)))
 
 (define-atomic-matcher (char char)
@@ -262,6 +263,7 @@
   `(NOT (PEEK-PARSER-BUFFER-CHAR ,*BUFFER-NAME*)))
 
 (define-matcher (discard-matched)
+  pointer
   (wrap-matcher
    (lambda (ks kf)
      `(BEGIN
@@ -269,23 +271,23 @@
 	(,ks ,kf)))))
 
 (define-matcher (with-pointer identifier expression)
-  `(LET ((,identifier ,(fetch-pointer)))
-     ,(compile-matcher-expression expression)))
+  `(LET ((,identifier ,(or pointer (fetch-pointer))))
+     ,(compile-matcher-expression expression (or pointer identifier))))
 
 (define-matcher (seq . expressions)
   (if (pair? expressions)
       (if (pair? (cdr expressions))
 	  (wrap-matcher
 	   (lambda (ks kf)
-	     (let loop ((expressions expressions) (kf2 kf))
-	       `(,(compile-matcher-expression (car expressions))
+	     (let loop ((expressions expressions) (pointer pointer) (kf2 kf))
+	       `(,(compile-matcher-expression (car expressions) pointer)
 		 ,(if (pair? (cdr expressions))
 		      (let ((kf3 (make-kf-identifier)))
 			`(LAMBDA (,kf3)
-			   ,(loop (cdr expressions) kf3)))
+			   ,(loop (cdr expressions) #f kf3)))
 		      ks)
 		 ,kf2))))
-	  (compile-matcher-expression (car expressions)))
+	  (compile-matcher-expression (car expressions) pointer))
       (wrap-matcher (lambda (ks kf) `(,ks ,kf)))))
 
 (define-matcher (alt . expressions)
@@ -293,21 +295,27 @@
       (if (pair? (cdr expressions))
 	  (wrap-matcher
 	   (lambda (ks kf)
-	     (let loop ((expressions expressions))
-	       `(,(compile-matcher-expression (car expressions))
+	     (let loop ((expressions expressions) (pointer pointer))
+	       `(,(compile-matcher-expression (car expressions) pointer)
 		 ,ks
 		 ,(if (pair? (cdr expressions))
-		      (backtracking-kf (loop (cdr expressions)))
+		      (backtracking-kf pointer
+			(lambda (pointer)
+			  (loop (cdr expressions) pointer)))
 		      kf)))))
-	  (compile-matcher-expression (car expressions)))
+	  (compile-matcher-expression (car expressions) pointer))
       (wrap-matcher (lambda (ks kf) `(BEGIN ,ks (,kf))))))
 
 (define-matcher (* expression)
+  pointer
   (wrap-matcher
    (lambda (ks kf)
      (let ((ks2 (make-ks-identifier))
 	   (kf2 (make-kf-identifier)))
        `(LET ,ks2 ((,kf2 ,kf))
-	  (,(compile-matcher-expression expression)
+	  (,(compile-matcher-expression expression #f)
 	   ,ks2
-	   ,(backtracking-kf `(,ks ,kf2))))))))
+	   ,(backtracking-kf #f
+	      (lambda (pointer)
+		pointer
+		`(,ks ,kf2)))))))))
