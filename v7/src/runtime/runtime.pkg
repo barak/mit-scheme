@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.179 1993/06/10 06:04:40 gjr Exp $
+$Id: runtime.pkg,v 14.180 1993/06/10 06:07:45 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -1208,13 +1208,11 @@ MIT in each case. |#
 	  load/loading?
 	  load/default-types
 	  load/default-find-pathname-with-type
+	  load/purification-root
 	  load/push-hook!
 	  load/suppress-loading-message?
 	  read-file
 	  set-command-line-parser!)
-  (export (package)
-	  suppress-loading-message?
-	  load/purification-root)
   (initialization (initialize-package!)))
 
 (define-package (runtime macros)
