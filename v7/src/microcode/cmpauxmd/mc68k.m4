@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.2 1989/11/06 17:35:29 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.3 1989/11/20 23:19:36 jinx Exp $
 ###
 ###	Copyright (c) 1989 Massachusetts Institute of Technology
 ###
@@ -73,10 +73,10 @@
 
 ####	Utility macros and definitions
 
-define(reference_external,
-	`')		# Declare desire to reference an external
-define(extern_c_label,`_$1')
-			# The actual reference
+define(KEEP_HISTORY,0)			# Debugging switch
+
+define(reference_external,`')		# Declare desire to use an external
+define(extern_c_label,`_$1')		# The actual reference
 
 define(define_c_label,
 `	global	extern_c_label($1)
@@ -86,11 +86,11 @@ define(define_debugging_label,
 `	global	$1
 $1:')
 
-define(dlink, %a4)	# Dynamic link register (contains a pointer to
-			# a return address) 
-define(rfree, %a5)	# Free pointer
-define(regs, %a6)	# Pointer to Registers[0]
-define(rmask, %d7)	# Mask to clear type code
+define(dlink, %a4)			# Dynamic link register (contains a
+					# pointer to a return address) 
+define(rfree, %a5)			# Free pointer
+define(regs, %a6)			# Pointer to Registers[0]
+define(rmask, %d7)			# Mask to clear type code
 
 # Implementation constants -- Must match object.h
 
@@ -129,7 +129,24 @@ define(switch_to_C_registers,
 
 define_debugging_label(c_save_stack)
 	space	4
-
+ifelse(KEEP_HISTORY, 1,
+`define_debugging_label(ring_pointer)
+	long	ring_block_1
+define_debugging_label(ring_block_1)
+	long	ring_block_2
+	space	28
+define_debugging_label(ring_block_2)
+	long	ring_block_3
+	space	28
+define_debugging_label(ring_block_3)
+	long	ring_block_4
+	space	28
+define_debugging_label(ring_block_4)
+	long	ring_block_5
+	space	28
+define_debugging_label(ring_block_5)
+	long	ring_block_1
+	space	28')
 	text
 
 ### Callable by C conventions.  Swaps to Scheme register set and jumps
@@ -140,6 +157,16 @@ define_c_label(C_to_interface)
 	movm.l	%d2-%d7/%a2-%a5,4(%sp)
 	mov.l	8(%a6),%a0		# Argument: entry point
 	bra.b	interface_to_scheme_internal
+
+### Called by Scheme through a jump instruction in the register block.
+### It is a special version of scheme_to_interface below, used when
+### a return address is stored in the Scheme stack.
+
+define_debugging_label(comentry_scheme_to_interface_jsr)
+define_debugging_label(scheme_to_interface_jsr)
+	mov.l	(%sp)+,%d1              # Return addr -> d1
+	addq.l	&4,%d1			# Skip format info.
+	bra.b	scheme_to_interface
 
 ### Called by linker-generated trampolines to invoke the appropriate
 ### C-written handler.  The return address on the stack is the address
@@ -158,6 +185,21 @@ reference_external(utility_table)
 
 define_debugging_label(comentry_scheme_to_interface)
 define_debugging_label(scheme_to_interface)
+	ifelse(KEEP_HISTORY, 1,
+	`lea	ring_pointer,%a1
+	mov.l	(%a1),%a0
+	mov.l	(%a0),(%a1)
+	mov.l	%sp,4(%a0)
+	mov.l	%a5,8(%a0)
+	mov.l	%d0,12(%a0)
+	mov.l	%d1,16(%a0)
+	mov.l	%d2,20(%a0)
+	mov.l	%d3,24(%a0)
+	mov.l	%d4,28(%a0)
+	cmp.l	%sp,%a5
+	bgt.b	scheme_to_interface_proceed
+	nop
+define_debugging_label(scheme_to_interface_proceed)')
 	switch_to_C_registers()
 	mov.l	%d4,-(%sp)		# Push arguments to scheme utility
 	mov.l	%d3,-(%sp)
@@ -199,6 +241,7 @@ define_debugging_label(interface_to_scheme_internal)
 
 define_c_label(interface_to_C)
 	mov.l	%d1,%d0			# C return value location
+	movm.l	4(%sp),%d2-%d7/%a2-%a5
 	unlk	%a6
 	rts	
 
@@ -324,6 +367,7 @@ define_debugging_label(comentry_lexpr_apply)
 	mov.l	%a0,%d1
 	mov.w	%d0,%d2
 	ext.l	%d2
+	mov.l	dlink,regblock_val(regs)
 	call_utility(lexpr_apply)
 
 ### comentry_primitive_apply
@@ -611,6 +655,7 @@ define_c_label(asm_reset_hook)
 	setup_register(negative)			# 22	1f8
 	setup_register(scheme_to_interface)		# 23	1fe
 	setup_register(trampoline_to_interface)		# 24	204
+	setup_register(scheme_to_interface_jsr)		# 25	20a
 							# free to 31 incl.
 
 	unlk	%a6
