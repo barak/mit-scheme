@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: lookup.c,v 9.64 2001/08/07 01:26:29 cph Exp $
+$Id: lookup.c,v 9.65 2001/08/14 01:15:05 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -549,6 +549,9 @@ link_variables (SCHEME_OBJECT target_environment, SCHEME_OBJECT target_symbol,
       if (source_kind == TRAP_COMPILER_CACHED)
 	{
 	  SCHEME_OBJECT source_cache = (GET_TRAP_CACHE (*source_cell));
+	  if (source_cache == target_cache)
+	    /* Already linked.  */
+	    return (PRIM_DONE);
 	  GC_CHECK
 	    (((count_references (GET_CACHE_OPERATOR_REFERENCES (target_cache)))
 	      * SPACE_PER_UUO_LINK)
