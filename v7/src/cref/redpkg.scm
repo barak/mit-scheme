@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: redpkg.scm,v 1.19 2001/09/28 00:38:05 cph Exp $
+$Id: redpkg.scm,v 1.20 2001/10/01 20:40:07 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -588,9 +588,10 @@ USA.
 (define (bind! package name expression new?)
   (let ((value-cell (binding/value-cell (intern-binding! package name new?))))
     (set-expression/value-cell! expression value-cell)
-    (set-value-cell/expressions!
-     value-cell
-     (cons expression (value-cell/expressions value-cell)))))
+    (let ((expressions (value-cell/expressions value-cell)))
+      (if (not (memq expression expressions))
+	  (set-value-cell/expressions! value-cell
+				       (cons expression expressions))))))
 
 (define (link! source-package source-name
 	       destination-package destination-name
