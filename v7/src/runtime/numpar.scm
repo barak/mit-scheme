@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: numpar.scm,v 14.15 1997/10/07 04:19:46 adams Exp $
+$Id: numpar.scm,v 14.16 1997/10/07 19:29:13 adams Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -187,7 +187,7 @@ MIT in each case. |#
       (lambda (start* integer exactness sharp?)
 	sharp?
 	(and (> start* start) ; >0 denominator digits 
-	     (parse-complex string start end
+	     (parse-complex string start* end
 			    (finish integer exactness sign)
 			    exactness radix sign))))))
 
