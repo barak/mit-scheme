@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufcom.scm,v 1.91 1992/02/04 04:01:20 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufcom.scm,v 1.92 1992/03/13 09:47:34 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -57,10 +57,15 @@
   ()
   (lambda ()
     (let ((buffer (current-buffer)))
-      ((if (buffer-writeable? buffer)
-	   set-buffer-read-only!
-	   set-buffer-writeable!)
-       buffer))))
+      (if (buffer-writeable? buffer)
+	  (set-buffer-read-only! buffer)
+	  (set-buffer-writeable! buffer)))))
+
+(define-command no-toggle-read-only
+  "Display warning indicating that this buffer may not be modified."
+  ()
+  (lambda ()
+    (editor-failure "This buffer may not be modified.")))
 
 (define-variable select-buffer-create
   "If true, buffer selection commands may create new buffers."
@@ -70,11 +75,10 @@
   (lambda ()
     (list
      (buffer-name
-      ((if (ref-variable select-buffer-create)
-	   prompt-for-buffer
-	   prompt-for-existing-buffer)
-       prompt
-       (previous-buffer))))))
+      (let ((buffer (previous-buffer)))
+	(if (ref-variable select-buffer-create)
+	    (prompt-for-buffer prompt buffer)
+	    (prompt-for-existing-buffer prompt buffer)))))))
 
 (define-command switch-to-buffer
   "Select buffer with specified name.

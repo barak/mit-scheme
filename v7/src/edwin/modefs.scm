@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.137 1992/01/09 17:53:59 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.138 1992/03/13 09:47:46 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -62,7 +62,7 @@ Most other major modes are defined by comparison to this one.")
   (ref-mode-object fundamental))
 
 (define initial-buffer-name
-  "*repl*")
+  "*scheme*")
 
 (define-variable file-type-to-major-mode
   "Specifies the major mode for new buffers based on file type.
@@ -83,12 +83,14 @@ Digits and - are bound to prefix argument commands.")
 (define-key 'read-only char-set:graphic 'undefined)
 (define-key 'read-only char-set:numeric 'digit-argument)
 (define-key 'read-only #\- 'negative-argument)
+(define-key 'read-only '(#\c-x #\c-q) 'no-toggle-read-only)
 
 (define-major-mode read-only-noarg fundamental "Read-only-noarg"
   "Major mode for read-only buffers.
 Like Fundamental mode, but no self-inserting characters.")
 
 (define-key 'read-only-noarg char-set:graphic 'undefined)
+(define-key 'read-only-noarg '(#\c-x #\c-q) 'no-toggle-read-only)
 
 (define-key 'fundamental #\c-% 'replace-string)
 (define-key 'fundamental #\c-- 'negative-argument)
