@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxtrap.c,v 1.20 1992/08/29 13:11:27 jinx Exp $
+$Id: uxtrap.c,v 1.21 1993/03/16 21:36:10 gjr Exp $
 
-Copyright (c) 1990-1992 Massachusetts Institute of Technology
+Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -490,6 +490,7 @@ DEFUN (continue_from_trap, (signo, info, scp),
        SIGINFO_T info AND
        struct FULL_SIGCONTEXT * scp)
 {
+  int pc_in_hook;
   int pc_in_C;
   int pc_in_heap;
   int pc_in_constant_space;
@@ -509,10 +510,17 @@ DEFUN (continue_from_trap, (signo, info, scp),
   fprintf (stderr, "\tCsp = 0x%08lx\n", C_sp);
   fprintf (stderr, "\tssp = 0x%08lx\n", scheme_sp);
   fprintf (stderr, "\tesp = 0x%08lx\n", Ext_Stack_Pointer);
+#ifdef hp9000s800
+  {
+    fprintf (stderr, "\tscheme_hooks_low = 0x%08lx\n", scheme_hooks_low);
+    fprintf (stderr, "\tscheme_hooks_high = 0x%08lx\n", scheme_hooks_high);
+  }
+#endif
 #endif
 
   if ((the_pc & PC_ALIGNMENT_MASK) != 0)
   {
+    pc_in_hook = 0;
     pc_in_C = 0;
     pc_in_heap = 0;
     pc_in_constant_space = 0;
@@ -521,13 +529,14 @@ DEFUN (continue_from_trap, (signo, info, scp),
   }
   else
   {
-    pc_in_C = (the_pc <= ((long) (get_etext ())));
+    pc_in_hook = (PC_HOOK_P (the_pc));
+    pc_in_C = ((the_pc <= ((long) (get_etext ()))) && (!pc_in_hook));
     pc_in_heap =
       ((the_pc < ((long) Heap_Top)) && (the_pc >= ((long) Heap_Bottom)));
     pc_in_constant_space =
       ((the_pc < ((long) Constant_Top)) &&
        (the_pc >= ((long) Constant_Space)));
-    pc_in_scheme = (pc_in_heap || pc_in_constant_space);
+    pc_in_scheme = (pc_in_heap || pc_in_constant_space || pc_in_hook);
     pc_in_hyper_space = ((!pc_in_C) && (!pc_in_scheme));
   }
 
@@ -565,17 +574,15 @@ DEFUN (continue_from_trap, (signo, info, scp),
     SCHEME_OBJECT * block_addr;
     SCHEME_OBJECT * maybe_free;
     block_addr =
-      (find_block_address (((PTR) the_pc),
-			   (pc_in_heap ? Heap_Bottom : Constant_Space)));
-    if (block_addr == 0)
+      (pc_in_hook
+       ? ((SCHEME_OBJECT *) NULL)
+       : (find_block_address (((PTR) the_pc),
+			      (pc_in_heap ? Heap_Bottom : Constant_Space))));
+    if (block_addr == ((SCHEME_OBJECT *) NULL))
     {
       (trinfo . state) = STATE_PROBABLY_COMPILED;
       (trinfo . pc_info_1) = (LONG_TO_UNSIGNED_FIXNUM (the_pc));
       (trinfo . pc_info_2) = SHARP_F;
-      if ((Free < MemTop) ||
-	  (Free >= Heap_Top) ||
-	  ((((unsigned long) Free) & SCHEME_ALIGNMENT_MASK) != 0))
-	Free = MemTop;
     }
     else
     {
@@ -584,6 +591,17 @@ DEFUN (continue_from_trap, (signo, info, scp),
 	(MAKE_POINTER_OBJECT (TC_COMPILED_CODE_BLOCK, block_addr));
       (trinfo . pc_info_2) =
 	(LONG_TO_UNSIGNED_FIXNUM (the_pc - ((long) block_addr)));
+    }
+    if ((block_addr == ((SCHEME_OBJECT *) NULL))
+	&& (! pc_in_hook))
+    {
+      if ((Free < MemTop) ||
+	  (Free >= Heap_Top) ||
+	  ((((unsigned long) Free) & SCHEME_ALIGNMENT_MASK) != 0))
+	Free = MemTop;
+    }
+    else
+    {
 #ifdef HAVE_FULL_SIGCONTEXT
       maybe_free = ((SCHEME_OBJECT *) (FULL_SIGCONTEXT_RFREE (scp)));
       if (((((unsigned long) maybe_free) & SCHEME_ALIGNMENT_MASK) == 0)
@@ -596,9 +614,7 @@ DEFUN (continue_from_trap, (signo, info, scp),
       {
 	if ((Free < MemTop) || (Free >= Heap_Top)
 	    || ((((unsigned long) Free) & SCHEME_ALIGNMENT_MASK) != 0))
-	{
 	  Free = MemTop;
-	}
       }
     }
   }
