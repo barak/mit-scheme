@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: grpops.scm,v 1.22 1995/04/17 21:46:10 cph Exp $
+;;;	$Id: grpops.scm,v 1.23 1996/03/23 06:20:57 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -113,6 +113,8 @@
   (group-insert-chars! group index char 1))
 
 (define (group-insert-chars! group index char n)
+  (if (fix:< n 0)
+      (error:bad-range-argument n 'GROUP-INSERT-CHARS!))
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
     (prepare-gap-for-insert! group index n)
     (let ((text (group-text group))
