@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxio.c,v 1.30 1993/09/01 20:21:58 gjr Exp $
+$Id: uxio.c,v 1.31 1993/09/09 23:03:19 cph Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -431,13 +431,12 @@ DEFUN (UX_select_registry_test, (input_fds, blockp, output_fds, output_nfds),
   while (1)
     {
       SELECT_TYPE readable;
-      int status_change_p = 0;
       int nfds;
   
       readable = (* ((SELECT_TYPE *) input_fds));
       INTERRUPTABLE_EXTENT
 	(nfds,
-	 ((status_change_p = (UX_process_any_status_change ()))
+	 ((UX_process_any_status_change ())
 	  ? ((errno = EINTR), (-1))
 	  : (UX_select (FD_SETSIZE,
 			(&readable),
@@ -471,7 +470,7 @@ DEFUN (UX_select_registry_test, (input_fds, blockp, output_fds, output_nfds),
 	}
       else if (errno != EINTR)
 	error_system_call (errno, syscall_select);
-      else if (status_change_p)
+      else if (UX_process_any_status_change ())
 	return (select_input_process_status);
       if (pending_interrupts_p ())
 	return (select_input_interrupt);
