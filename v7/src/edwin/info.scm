@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.108 1991/11/04 20:51:14 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.109 1991/11/06 19:56:45 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -671,7 +671,7 @@ The name may be an abbreviation of the reference name."
 		       (ref-variable info-current-node)
 		       (mark-index (current-point))))
       ;; Switch files if necessary.
-      (if (and pathname (equal? pathname (ref-variable info-current-file)))
+      (if (and pathname (not (equal? pathname (ref-variable info-current-file))))
 	  (begin
 	    (read-buffer buffer pathname true)
 	    (if (not (eq? (buffer-major-mode buffer) (ref-mode-object info)))
