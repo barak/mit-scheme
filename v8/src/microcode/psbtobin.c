@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbtobin.c,v 9.23 1987/04/16 02:06:10 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbtobin.c,v 9.24 1987/04/17 15:56:08 jinx Exp $
  *
  * This File contains the code to translate portable format binary
  * files to internal format.
@@ -56,27 +56,49 @@ static Pointer *Pure_Base, *Pure_Table, *Pure_Object_Base, *Free_Pure;
 static Pointer *Stack_Top;
 
 Write_Data(Count, From_Where)
-long Count;
-Pointer *From_Where;
-{ fwrite(((char *) From_Where), sizeof(Pointer), Count, Internal_File);
+     long Count;
+     Pointer *From_Where;
+{
+  fwrite(((char *) From_Where), sizeof(Pointer), Count, Internal_File);
 }
 
 #include "dump.c"
 
+inconsistency()
+{
+  /* Provide some context (2 lines). */
+  char yow[100];
+
+  fgets(&yow[0], 100, Portable_File);
+  fprintf(stderr, "%s\n", &yow[0]);
+  fgets(&yow[0], 100, Portable_File);
+  fprintf(stderr, "%s\n", &yow[0]);
+
+  exit(1);
+}
+
 #define OUT(c)	return ((long) ((c) & MAX_CHAR))
 
-long read_a_char()
-{ fast char C = getc(Portable_File);
-  if (C != '\\') OUT(C);
+long
+read_a_char()
+{
+  fast char C;
+
+  C = getc(Portable_File);
+  if (C != '\\')
+    OUT(C);
   C = getc(Portable_File);
   switch(C)
-  { case 'n':  OUT('\n');
+  {
+    case 'n':  OUT('\n');
     case 't':  OUT('\n');
     case 'r':  OUT('\r');
     case 'f':  OUT('\f');
     case '0':  OUT('\0');
     case 'X':
-    { long Code;
+    {
+      long Code;
+
       fprintf(stderr,
 	      "%s: File is not Portable.  Character Code Found.\n",
 	      Program_Name);
@@ -88,11 +110,15 @@ long read_a_char()
     default  : OUT(C);
   }
 }
-
-Pointer *read_a_string(To, Slot)
-Pointer *To, *Slot;
-{ long maxlen, len, Pointer_Count;
-  fast char *string = ((char *) (&To[STRING_CHARS]));
+
+Pointer *
+read_a_string(To, Slot)
+     Pointer *To, *Slot;
+{
+  long maxlen, len, Pointer_Count;
+  fast char *string;
+
+  string = ((char *) (&To[STRING_CHARS]));
   *Slot = Make_Pointer(TC_CHARACTER_STRING, To);
   fscanf(Portable_File, "%ld %ld", &maxlen, &len);
   maxlen += 1;					/* Null terminated */
@@ -101,16 +127,60 @@ Pointer *To, *Slot;
     Make_Non_Pointer(TC_MANIFEST_NM_VECTOR, (Pointer_Count - 1));
   To[STRING_LENGTH] = Make_Non_Pointer(TC_FIXNUM, len);
   getc(Portable_File);				/* Space */
-  while (--len >= 0) *string++ = ((char) read_a_char());
+  while (--len >= 0)
+    *string++ = ((char) read_a_char());
   *string = '\0';
   return (To + Pointer_Count);
 }
 
-Pointer *read_an_integer(The_Type, To, Slot)
-int The_Type;
-Pointer *To;
-Pointer *Slot;
-{ Boolean negative;
+/*
+   The following two lines appears by courtesy of your friendly
+   VMS C compiler and runtime library.
+
+   Bug in version 4 VMS scanf.
+ */
+
+#ifndef vms
+
+#define VMS_BUG(stmt)
+
+#define read_hex_digit(var)						\
+{									\
+  fscanf(Portable_File, "%1lx", &var);					\
+}
+
+#else
+
+#define VMS_BUG(stmt)			stmt
+
+#define read_hex_digit(var)						\
+{									\
+  var = read_hex_digit_procedure();					\
+}
+
+long
+read_hex_digit_procedure()
+{
+  long digit;
+  int c;
+
+  while ((c = fgetc(Portable_File)) == ' ') ;
+  digit = ((c >= 'a') ? (c - 'a' + 10)
+	   : ((c >= 'A') ? (c - 'A' + 10)
+	      : ((c >= '0') ? (c - '0')
+	         : fprintf(stderr, "Losing big: %d\n", c))));
+  return digit;
+}
+
+#endif
+
+Pointer *
+read_an_integer(The_Type, To, Slot)
+     int The_Type;
+     Pointer *To;
+     Pointer *Slot;
+{
+  Boolean negative;
   long size_in_bits;
 
   getc(Portable_File);				/* Space */
@@ -118,33 +188,43 @@ Pointer *Slot;
   fscanf(Portable_File, "%ld", &size_in_bits);
   if ((size_in_bits <= fixnum_to_bits) &&
       (The_Type == TC_FIXNUM))
-  { fast long Value = 0;
+  {
+    fast long Value = 0;
     fast int Normalization;
     fast long ndigits;
     long digit;
+
     if (size_in_bits != 0)
+    {
       for(Normalization = 0,
 	  ndigits = hex_digits(size_in_bits);
 	  --ndigits >= 0;
 	  Normalization += 4)
-      { fscanf(Portable_File, "%1lx", &digit);
+      {
+	read_hex_digit(digit);
 	Value += (digit << Normalization);
       }
-    if (negative) Value = -Value;
+    }
+    if (negative)
+      Value = -Value;
     *Slot = Make_Non_Pointer(TC_FIXNUM, Value);
     return To;
   }
   else if (size_in_bits == 0)
-  { bigdigit *REG = BIGNUM(To);
+  {
+    bigdigit *REG = BIGNUM(To);
+
     Prepare_Header(REG, 0, POSITIVE);
     *Slot = Make_Pointer(TC_BIG_FIXNUM, To);
     return (To + Align(0));
   }
   else
-  { fast bigdigit *The_Bignum;
+  {
+    fast bigdigit *The_Bignum;
     fast long size, nbits, ndigits;
     fast unsigned long Temp;
     long Length;
+
     if ((The_Type == TC_FIXNUM) && (!Compact_P))
       fprintf(stderr,
 	      "%s: Fixnum too large, coercing to bignum.\n",
@@ -157,11 +237,14 @@ Pointer *Slot;
     for (The_Bignum = Bignum_Bottom(The_Bignum), nbits = 0, Temp = 0;
 	 --size >= 0;
 	 )
-    { for ( ;
+    {
+      for ( ;
 	   (nbits < SHIFT) && (ndigits > 0);
 	   ndigits -= 1, nbits += 4)
-      { long digit;
-	fscanf(Portable_File, "%1lx", &digit);
+      {
+	long digit;
+
+	read_hex_digit(digit);
 	Temp |= (((unsigned long) digit) << nbits);
       }
       *The_Bignum++ = Rem_Radix(Temp);
@@ -182,9 +265,13 @@ static double the_max = 0.0;
 #define dflmin()	0.0	/* Cop out */
 #define dflmax()	((the_max == 0.0) ? compute_max() : the_max)
 
-double compute_max()
-{ fast double Result = 0.0;
+double 
+compute_max()
+{
+  fast double Result;
   fast int expt;
+
+  Result = 0.0;
   for (expt = MAX_FLONUM_EXPONENT;
        expt != 0;
        expt >>= 1)
@@ -193,19 +280,26 @@ double compute_max()
   return Result;
 }
 
-double read_a_flonum()
-{ Boolean negative;
+double 
+read_a_flonum()
+{
+  Boolean negative;
   long size_in_bits, exponent;
   fast double Result;
 
   getc(Portable_File);				/* Space */
   negative = ((getc(Portable_File)) == '-');
+  VMS_BUG(exponent = 0);
+  VMS_BUG(size_in_bits = 0);
   fscanf(Portable_File, "%ld %ld", &exponent, &size_in_bits);
-  if (size_in_bits == 0) Result = 0.0;
+  if (size_in_bits == 0)
+    Result = 0.0;
   else if ((exponent > MAX_FLONUM_EXPONENT) ||
 	   (exponent < -MAX_FLONUM_EXPONENT))
-  { /* Skip over mantissa */
-    while (getc(Portable_File) != '\n') ;
+  {
+
+    /* Skip over mantissa */
+    while (getc(Portable_File) != '\n') { };
     fprintf(stderr,
 	    "%s: Floating point exponent too %s!\n",
 	    Program_Name,
@@ -213,9 +307,11 @@ double read_a_flonum()
     Result = ((exponent < 0) ? dflmin() : dflmax());
   }
   else
-  { fast long ndigits;
+  {
+    fast long ndigits;
     fast double Normalization;
     long digit;
+
     if (size_in_bits > FLONUM_MANTISSA_BITS)
       fprintf(stderr,
 	      "%s: Some precision may be lost.",
@@ -227,12 +323,13 @@ double read_a_flonum()
 	 --ndigits >= 0;
 	 Normalization /= 16.0)
     {
-      fscanf(Portable_File, "%1lx", &digit);
+      read_hex_digit(digit);
       Result += (((double ) digit) * Normalization);
     }
     Result = ldexp(Result, ((int) exponent));
   }
-  if (negative) Result = -Result;
+  if (negative)
+    Result = -Result;
   return Result;
 }
 
@@ -252,19 +349,23 @@ Read_External(N, Table, To)
 	case TC_CHARACTER_STRING:
 	  To = read_a_string(To, Table++);
 	  continue;
+
 	case TC_FIXNUM:
 	case TC_BIG_FIXNUM:
 	  To = read_an_integer(The_Type, To, Table++);
 	  continue;
+
 	case TC_CHARACTER:
 	  {
 	    long the_char_code;
 
 	    getc(Portable_File);	/* Space */
+	    VMS_BUG(the_char_code = 0);
 	    fscanf( Portable_File, "%3x", &the_char_code);
 	    *Table++ = Make_Non_Pointer( TC_CHARACTER, the_char_code);
 	    continue;
 	  }
+
 	case TC_BIG_FLONUM:
 	  {
 	    double The_Flonum = read_a_flonum();
@@ -280,27 +381,37 @@ Read_External(N, Table, To)
 	  fprintf(stderr,
 		  "%s: Unknown external object found; Type = 0x%02x\n",
 		  Program_Name, The_Type);
-	  exit(1);
+	  inconsistency();
+	  /*NOTREACHED*/
 	}
   }
   return To;
 }
 
 #if false
+
 Move_Memory(From, N, To)
-fast Pointer *From, *To;
-long N;
-{ fast Pointer *Until = &From[N];
-  while (From < Until) *To++ = *From++;
+     fast Pointer *From, *To;
+     long N;
+{
+  fast Pointer *Until;
+
+  Until = &From[N];
+  while (From < Until)
+    *To++ = *From++;
   return;
 }
+
 #endif
 
 Relocate_Objects(From, N, disp)
-fast Pointer *From;
-long N;
-fast long disp;
-{ fast Pointer *Until = &From[N];
+     fast Pointer *From;
+     long N;
+     fast long disp;
+{
+  fast Pointer *Until;
+
+  Until = &From[N];
   while (From < Until)
   { switch(Type_Code(*From))
     { case TC_FIXNUM:
@@ -317,6 +428,7 @@ fast long disp;
 		"%s: Unknown External Object Reference with Type 0x%02x",
 		Program_Name,
 		Type_Code(*From));
+	inconsistency();
     }
   }
 }
@@ -326,31 +438,41 @@ if ((Addr) < Dumped_Pure_Base)					\
   (Where) = &Heap_Object_Base[(Addr) - Dumped_Heap_Base];	\
 else if ((Addr) < Dumped_Constant_Base)				\
   (Where) = &Pure_Base[(Addr) - Dumped_Pure_Base];		\
-else (Where) = &Constant_Base[(Addr) - Dumped_Constant_Base];
+else								\
+  (Where) = &Constant_Base[(Addr) - Dumped_Constant_Base]
 
 #ifndef Conditional_Bug
 
-#define Relocate(Addr)					\
-(((Addr) < Dumped_Pure_Base) ?				\
- &Heap_Object_Base[(Addr) - Dumped_Heap_Base] :		\
- (((Addr) < Dumped_Constant_Base) ?			\
-  &Pure_Base[(Addr) - Dumped_Pure_Base] :		\
+#define Relocate(Addr)						\
+(((Addr) < Dumped_Pure_Base) ?					\
+ &Heap_Object_Base[(Addr) - Dumped_Heap_Base] :			\
+ (((Addr) < Dumped_Constant_Base) ?				\
+  &Pure_Base[(Addr) - Dumped_Pure_Base] :			\
   &Constant_Base[(Addr) - Dumped_Constant_Base]))
 
 #else
+
 static Pointer *Relocate_Temp;
+
 #define Relocate(Addr)					\
   (Relocate_Into(Relocate_Temp, Addr), Relocate_Temp)
-#endif
 
-Pointer *Read_Pointers_and_Relocate(N, To)
-fast long N;
-fast Pointer *To;
-{ int The_Type;
+#endif
+
+Pointer *
+Read_Pointers_and_Relocate(N, To)
+     fast long N;
+     fast Pointer *To;
+{
+  int The_Type;
   long The_Datum;
-/*  Align_Float(To); */
+
+  /* Align_Float(To); */
   while (--N >= 0)
-  { fscanf(Portable_File, "%2x %lx", &The_Type, &The_Datum);
+  {
+    VMS_BUG(The_Type = 0);
+    VMS_BUG(The_Datum = 0);
+    fscanf(Portable_File, "%2x %lx", &The_Type, &The_Datum);
     switch(The_Type)
     { case CONSTANT_CODE:
 	*To++ = Constant_Table[The_Datum];
@@ -362,22 +484,30 @@ fast Pointer *To;
 	
       case TC_MANIFEST_NM_VECTOR:
 	if (!(Null_NMV)) /* Unknown object! */
-	  fprintf(stderr, "%s: File is not portable: NMH found\n",
+	  fprintf(stderr,
+		  "%s: File is not portable: NMH found\n",
 		  Program_Name);
 	*To++ = Make_Non_Pointer(The_Type, The_Datum);
-        { fast long count = The_Datum;
+        {
+	  fast long count;
+	  
+	  count = The_Datum;
 	  N -= count;
 	  while (--count >= 0)
-	  { fscanf(Portable_File, "%2x %lx", &The_Type, &The_Datum);
+	  {
+	    VMS_BUG(The_Type = 0);
+	    VMS_BUG(The_Datum = 0);
+	    fscanf(Portable_File, "%2x %lx", &The_Type, &The_Datum);
 	    *To++ = Make_Non_Pointer(The_Type, The_Datum);
 	  }
 	}
 	continue;
-
+
       case TC_BROKEN_HEART:
 	if (The_Datum != 0)
-	{ fprintf(stderr, "%s: Broken Heart Found\n", Program_Name);
-	  exit(1);
+	{
+	  fprintf(stderr, "%s: Broken Heart Found\n", Program_Name);
+	  inconsistency();
 	}
 	/* Fall Through */
       case TC_PRIMITIVE_EXTERNAL:
@@ -399,16 +529,18 @@ fast Pointer *To;
 	continue;
     }
   }
-/*  Align_Float(To); */
+  /* Align_Float(To); */
   return To;
 }
 
 #ifdef DEBUG
+
 Print_External_Objects(area_name, Table, N)
-char *area_name;
-fast Pointer *Table;
-fast long N;
-{ fast Pointer *Table_End = &Table[N];
+     char *area_name;
+     fast Pointer *Table;
+     fast long N;
+{
+  fast Pointer *Table_End = &Table[N];
 
   fprintf(stderr, "%s External Objects:\n", area_name);
   fprintf(stderr, "Table = 0x%x; N = %d\n", Table, N);
@@ -417,54 +549,56 @@ fast long N;
     switch (Type_Code(*Table))
     { case TC_FIXNUM:
       { long The_Number;
+
 	Sign_Extend(*Table, The_Number);
         fprintf(stderr,
 		"Table[%6d] = Fixnum %d\n",
-		(N-(Table_End-Table)),
+		(N - (Table_End - Table)),
 		The_Number);
 	break;
       }
       case TC_CHARACTER:
         fprintf(stderr,
 		"Table[%6d] = Character %c = 0x%02x\n",
-		(N-(Table_End-Table)),
+		(N - (Table_End - Table)),
 		Get_Integer(*Table),
 		Get_Integer(*Table));
 	break;
 
-/* Print_External_Objects continues on the next page */
-
-/* Print_External_Objects, continued */
-
       case TC_CHARACTER_STRING:
         fprintf(stderr,
 		"Table[%6d] = string \"%s\"\n",
-		(N-(Table_End-Table)),
+		(N - (Table_End - Table)),
 		((char *) Nth_Vector_Loc(*Table, STRING_CHARS)));
 	break;
+
       case TC_BIG_FIXNUM:
 	fprintf(stderr,
 		"Table[%6d] = Bignum\n",
-		(N-(Table_End-Table)));
+		(N - (Table_End - Table)));
 	break;
+
       case TC_BIG_FLONUM:
 	fprintf(stderr,
 		"Table[%6d] = Flonum %lf\n",
-		(N-(Table_End-Table)),
+		(N - (Table_End - Table)),
 		(* ((double *) Nth_Vector_Loc(*Table, 1))));
 	break;
+
       default:
         fprintf(stderr,
 		"Table[%6d] = Unknown External Object 0x%8x\n",
-		(N-(Table_End-Table)),
+		(N - (Table_End - Table)),
 		*Table);
 	break;
       }
 }
 #endif
 
-long Read_Header_and_Allocate()
-{ long Portable_Version, Flags, Version, Sub_Version;
+long
+Read_Header_and_Allocate()
+{
+  long Portable_Version, Flags, Version, Sub_Version;
   long NFlonums, NIntegers, NStrings, NBits, NChars;
   long Size;
 
@@ -486,7 +620,8 @@ long Read_Header_and_Allocate()
   if ((Portable_Version != PORTABLE_VERSION)	||
       (Version != FASL_FORMAT_VERSION)		||
       (Sub_Version != FASL_SUBVERSION))
-  { fprintf(stderr,
+  {
+    fprintf(stderr,
 	    "FASL File Version %4d Subversion %4d Portable Version %4d\n",
 	    Version, Sub_Version , Portable_Version);
     fprintf(stderr,
@@ -509,7 +644,8 @@ long Read_Header_and_Allocate()
 	  
   Allocate_Heap_Space(Size);
   if (Heap == NULL)
-  { fprintf(stderr,
+  {
+    fprintf(stderr,
 	    "%s: Memory Allocation Failed.  Size = %ld Scheme Pointers\n",
 	    Program_Name, Size);
     exit(1);
@@ -520,10 +656,11 @@ long Read_Header_and_Allocate()
 }
 
 do_it()
-{ long Size;
+{
+  long Size;
+
   Size = Read_Header_and_Allocate();
   Stack_Top = &Heap[Size];
-
   Heap_Table = &Heap[0];
   Heap_Base = &Heap_Table[Heap_Objects];
   Heap_Object_Base =
@@ -556,7 +693,9 @@ do_it()
 
   /* Dump the objects */
 
-  { Pointer *Dumped_Object, *Dumped_Ext_Prim;
+  {
+    Pointer *Dumped_Object, *Dumped_Ext_Prim;
+
     Relocate_Into(Dumped_Object, Dumped_Object_Addr);
     Relocate_Into(Dumped_Ext_Prim, Dumped_Ext_Prim_Addr);
 
@@ -586,8 +725,11 @@ do_it()
       Write_File((Free - Heap_Base), Heap_Base, Dumped_Object,
 		 0, &Heap[Size], Dumped_Ext_Prim);
     else
-    { long Pure_Length = (Constant_Base - Pure_Base) + 1;
-      long Total_Length = (Free_Constant - Pure_Base) + 4;
+    {
+      long Pure_Length, Total_Length;
+
+      Pure_Length = (Constant_Base - Pure_Base) + 1;
+      Total_Length = (Free_Constant - Pure_Base) + 4;
       Pure_Base[-2] =
 	Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR, (Pure_Length - 1));
       Pure_Base[-1] =
@@ -615,8 +757,9 @@ static int Noptions = 0;
 static struct Option_Struct Options[] = {{"dummy", true, NULL}};
 
 main(argc, argv)
-int argc;
-char *argv[];
-{ Setup_Program(argc, argv, Noptions, Options);
+     int argc;
+     char *argv[];
+{
+  Setup_Program(argc, argv, Noptions, Options);
   return;
 }
