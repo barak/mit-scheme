@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.43 2003/03/14 01:09:07 cph Exp $
+$Id: record.scm,v 1.44 2003/03/14 20:06:02 cph Exp $
 
 Copyright 1989,1990,1991,1993,1994,1996 Massachusetts Institute of Technology
 Copyright 1997,2002,2003 Massachusetts Institute of Technology
@@ -197,14 +197,22 @@ USA.
     (%set-record-type-default-inits! record-type default-inits caller)))
 
 (define (%set-record-type-default-inits! record-type default-inits caller)
-  (if (not (fix:= (guarantee-list->length default-inits caller)
-		  (%record-type-n-fields record-type)))
-      (error:bad-range-argument default-inits caller))
-  (let ((v (%record-type-default-inits record-type)))
+  (let ((v (%record-type-default-inits record-type))
+	(lose (lambda () (error:bad-range-argument default-inits caller))))
+    (if (not (fix:= (guarantee-list->length default-inits caller)
+		    (vector-length v)))
+	(lose))
     (do ((values default-inits (cdr values))
 	 (i 0 (fix:+ i 1)))
 	((not (pair? values)))
-      (vector-set! v i (car values)))))
+      (vector-set! v i
+		   (let ((init (car values)))
+		     (if init
+			 (begin
+			   (if (not (thunk? init))
+			       (lose))
+			   init)
+			 (lambda () #f)))))))
 
 (define (record-type-default-value record-type field-name)
   ((vector-ref (%record-type-default-inits record-type)
@@ -485,14 +493,27 @@ USA.
 	(let ((constructor (record-constructor rtd:structure-type)))
 	  (lambda (physical-type name field-names field-indexes default-inits
 				 unparser-method tag length)
-	    (constructor physical-type
-			 name
-			 (list->vector field-names)
-			 (list->vector field-indexes)
-			 (list->vector default-inits)
-			 unparser-method
-			 tag
-			 length))))
+	    (let ((inits
+		   (if (vector? default-inits)
+		       (vector-copy default-inits)
+		       (list->vector default-inits))))
+	      (let ((n (vector-length inits)))
+		(do ((i 0 (fix:+ i 1)))
+		    ((not (fix:< i n)))
+		  (if (not (vector-ref inits i))
+		      (vector-set! inits i (lambda () #f)))))
+	      (constructor physical-type
+			   name
+			   (if (vector? field-names)
+			       field-names
+			       (list->vector field-names))
+			   (if (vector? field-indexes)
+			       field-indexes
+			       (list->vector field-indexes))
+			   inits
+			   unparser-method
+			   tag
+			   length)))))
   (set! structure-type?
 	(record-predicate rtd:structure-type))
   (set! structure-type/physical-type
