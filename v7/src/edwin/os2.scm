@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.6 1995/01/31 22:06:04 cph Exp $
+;;;	$Id: os2.scm,v 1.7 1995/02/14 00:29:13 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -64,14 +64,23 @@ Includes the new backup.  Must be > 0."
   2
   (lambda (n) (and (exact-integer? n) (> n 0))))
 
+(define os2/encoding-pathname-types
+  '("gz" #|"ky"|#))
+
+(define os2/backup-suffixes
+  (cons "~"
+	(map (lambda (type) (string-append "~." type))
+	     os2/encoding-pathname-types)))
+
 (define-variable completion-ignored-extensions
   "Completion ignores filenames ending in any string in this list."
-  (list ".bin" ".com" ".ext"
-	".inf" ".bif" ".bsm" ".bci" ".bcs"
-	".psb" ".moc" ".fni"
-	".bco" ".bld" ".bad" ".glo" ".fre"
-	".obj" ".exe" ".pif" ".grp"
-	".dvi" ".toc" ".log" ".aux")
+  (append (list ".bin" ".com" ".ext"
+		".inf" ".bif" ".bsm" ".bci" ".bcs"
+		".psb" ".moc" ".fni"
+		".bco" ".bld" ".bad" ".glo" ".fre"
+		".obj" ".exe" ".pif" ".grp"
+		".dvi" ".toc" ".log" ".aux")
+	  (list-copy os2/backup-suffixes))
   (lambda (extensions)
     (and (list? extensions)
 	 (for-all? extensions
@@ -116,53 +125,64 @@ Includes the new backup.  Must be > 0."
 ;;;; Backup and Auto-Save Filenames
 
 (define (os/buffer-backup-pathname truename)
-  (if (eq? 'NEVER (ref-variable version-control))
-      (values (os2/make-backup-pathname truename #f) '())
-      (let ((prefix
-	     (if (os2/fs-long-filenames? truename)
-		 (string-append (file-namestring truename) ".~")
-		 (string-append (pathname-name truename) "."))))
-	(let ((versions
-	       (let loop
-		   ((filenames
-		     (os/directory-list-completions
-		      (directory-namestring truename)
-		      prefix))
-		    (versions '()))
-		 (if (null? filenames)
-		     (sort versions <)
-		     (loop (cdr filenames)
-			   (let ((root.version
-				  (os/numeric-backup-filename?
-				   (car filenames))))
-			     (if root.version
-				 (cons (cdr root.version) versions)
-				 versions)))))))
-	  (if (null? versions)
-	      (values (os2/make-backup-pathname
-		       truename
-		       (and (ref-variable version-control)
-			    1))
-		      '())
-	      (values (os2/make-backup-pathname truename
-						(+ (apply max versions) 1))
-		      (let ((start (ref-variable kept-old-versions))
-			    (end
-			     (- (length versions)
-				(- (ref-variable kept-new-versions) 1))))
-			(if (< start end)
-			    (map (lambda (version)
-				   (os2/make-backup-pathname truename
-							     version))
-				 (sublist versions start end))
-			    '()))))))))
+  (call-with-values
+      (lambda ()
+	(if (os2/fs-long-filenames? truename)
+	    (let ((type (pathname-type truename)))
+	      (if (member type os2/encoding-pathname-types)
+		  (values (pathname-new-type truename #f)
+			  (string-append "~." type))
+		  (values truename "~")))
+	    (values truename "")))
+    (lambda (truename suffix)
+      (if (eq? 'NEVER (ref-variable version-control))
+	  (values (os2/make-backup-pathname truename #f suffix) '())
+	  (let ((prefix
+		 (if (os2/fs-long-filenames? truename)
+		     (string-append (file-namestring truename) ".~")
+		     (string-append (pathname-name truename) "."))))
+	    (let ((backups
+		   (let loop
+		       ((filenames
+			 (os/directory-list-completions
+			  (directory-namestring truename)
+			  prefix))
+			(backups '()))
+		     (if (null? filenames)
+			 (sort backups (lambda (x y) (< (cdr x) (cdr y))))
+			 (loop (cdr filenames)
+			       (let ((root.version
+				      (os/numeric-backup-filename?
+				       (car filenames))))
+				 (if root.version
+				     (cons (cons (car filenames)
+						 (cdr root.version))
+					   backups)
+				     backups)))))))
+	      (if (null? backups)
+		  (values (os2/make-backup-pathname
+			   truename
+			   (and (ref-variable version-control) 1)
+			   suffix)
+			  '())
+		  (values (os2/make-backup-pathname
+			   truename
+			   (+ (apply max (map cdr backups)) 1)
+			   suffix)
+			  (let ((start (ref-variable kept-old-versions))
+				(end
+				 (- (length backups)
+				    (- (ref-variable kept-new-versions) 1))))
+			    (if (< start end)
+				(map car (sublist backups start end))
+				'()))))))))))
 
-(define (os2/make-backup-pathname pathname version)
+(define (os2/make-backup-pathname pathname version suffix)
   (if (os2/fs-long-filenames? pathname)
       (string-append (->namestring pathname)
 		     (if version
-			 (string-append ".~" (number->string version) "~")
-			 "~"))
+			 (string-append ".~" (number->string version) suffix)
+			 suffix))
       (pathname-new-type pathname
 			 (if (and version (< version 1000))
 			     (let ((type (pathname-type pathname))
@@ -179,7 +199,9 @@ Includes the new backup.  Must be > 0."
   "$TMP\\edwin.bak")
 
 (define (os/backup-filename? filename)
-  (or (string-suffix? "~" filename)
+  (or (there-exists? os2/backup-suffixes
+	(lambda (suffix)
+	  (string-suffix? suffix filename)))
       (let ((type (pathname-type filename)))
 	(and (string? type)
 	     (or (string-ci=? "bak" type)
@@ -195,9 +217,13 @@ Includes the new backup.  Must be > 0."
 					  #f
 					  #f
 					  filename))))
-	 (or (try "^\\(.+\\)\\.~\\([0-9]+\\)~$")
-	     (try "^\\([^.]+\\)\\.\\([0-9][0-9][0-9]\\)$")
-	     (try "^\\([^.]+\\.[^.]\\)\\([0-9][0-9]\\)$")))
+	 (or (try "^\\([^.]+\\)\\.\\([0-9][0-9][0-9]\\)$")
+	     (try "^\\([^.]+\\.[^.]\\)\\([0-9][0-9]\\)$")
+	     (there-exists? os2/backup-suffixes
+	       (lambda (suffix)
+		 (try (string-append "^\\(.+\\)\\.~\\([0-9]+\\)"
+				     (re-quote-string suffix)
+				     "$"))))))
        (let ((root-start (re-match-start-index 1))
 	     (root-end (re-match-end-index 1))
 	     (version-start (re-match-start-index 2))
@@ -254,8 +280,11 @@ Includes the new backup.  Must be > 0."
   truename buffer
   #f)
 
-(define os/pathname-type-for-mode
-  pathname-type)
+(define (os/pathname-type-for-mode pathname)
+  (let ((type (pathname-type pathname)))
+    (if (member type os2/encoding-pathname-types)
+	(pathname-type (->namestring (pathname-new-type pathname false)))
+	type)))
 
 (define (os/completion-ignore-filename? filename)
   (or (os/backup-filename? filename)
@@ -296,10 +325,6 @@ Includes the new backup.  Must be > 0."
 	(and (file-exists? pathname)
 	     pathname))))
 
-(define (os/read-file-methods) '())
-
-(define (os/write-file-methods) '())
-
 (define (os/scheme-can-quit?)
   #f)
 
@@ -329,57 +354,58 @@ Includes the new backup.  Must be > 0."
 
 (define (insert-directory! file switches mark type)
   ;; Insert directory listing for FILE at MARK.
-  ;; TYPE can have one of three values:
-  ;;   'WILDCARD means treat FILE as shell wildcard.
-  ;;   'DIRECTORY means FILE is a directory and a full listing is expected.
-  ;;   'FILE means FILE itself should be listed, and not its contents.
   ;; SWITCHES are examined for the presence of "t".
-  (for-each
-   (let ((nmonths
-	  (lambda (time)
-	    (let ((time (quotient time #x200000)))
-	      (+ (* (quotient time 16) 12) (remainder time 16))))))
-     (let ((now (nmonths (os2/current-file-time))))
-       (lambda (entry)
-	 (let ((string
-		(let ((name (car entry))
-		      (attr (cdr entry)))
-		  (let ((time (file-attributes/modification-time attr)))
-		    (let ((time-string (os2/file-time->string time)))
-		      (string-append
-		       (file-attributes/mode-string attr)
-		       " "
-		       (string-pad-left (number->string
-					 (file-attributes/length attr))
-					10 #\Space)
-		       " "
-		       (substring time-string 0 6) ;month/day
-		       " "
-		       (if (<= -6 (- (nmonths time) now) 0)
-			   (substring time-string 7 12)	;hour/minute
-			   (substring time-string 15 20)) ;year
-		       " "
-		       name))))))
-	   (let ((mark (mark-left-inserting-copy mark)))
-	     (insert-string string mark)
+  type
+  (let ((mark (mark-left-inserting-copy mark)))
+    (call-with-current-continuation
+     (lambda (k)
+       (bind-condition-handler (list condition-type:file-error)
+	   (lambda (condition)
+	     (insert-string (condition/report-string condition) mark)
 	     (insert-newline mark)
-	     (mark-temporary! mark))))))
-   (let ((pathname
-	  (if (eq? 'DIRECTORY type) (pathname-as-directory file) file))
-	 (read
-	  (lambda (pathname sort?)
-	    (list-transform-positive
-		(map (lambda (pathname)
-		       (cons (file-namestring pathname)
-			     (file-attributes pathname)))
-		     (directory-read pathname sort?))
-	      cdr))))
-     (if (string-find-next-char switches #\t)
-	 (sort (read pathname #f)
-	       (lambda (x y)
-		 (> (file-attributes/modification-time (cdr x))
-		    (file-attributes/modification-time (cdr y)))))
-	 (read pathname #t)))))
+	     (k unspecific))
+	 (lambda ()
+	   (for-each
+	    (let ((nmonths
+		   (lambda (time)
+		     (let ((time (quotient time #x200000)))
+		       (+ (* (quotient time 16) 12) (remainder time 16))))))
+	      (let ((now (nmonths (os2/current-file-time))))
+		(lambda (entry)
+		  (insert-string
+		   (let ((name (car entry))
+			 (attr (cdr entry)))
+		     (let ((time (file-attributes/modification-time attr)))
+		       (let ((time-string (os2/file-time->string time)))
+			 (string-append
+			  (file-attributes/mode-string attr)
+			  " "
+			  (string-pad-left (number->string
+					    (file-attributes/length attr))
+					   10 #\Space)
+			  " "
+			  (substring time-string 0 6) ;month/day
+			  " "
+			  (if (<= -6 (- (nmonths time) now) 0)
+			      (substring time-string 7 12) ;hour/minute
+			      (substring time-string 15 20)) ;year
+			  " "
+			  name))))
+		   mark)
+		  (insert-newline mark))))
+	    (sort (list-transform-positive
+		      (map (lambda (pathname)
+			     (cons (file-namestring pathname)
+				   (file-attributes pathname)))
+			   (directory-read file #f))
+		    cdr)
+		  (if (string-find-next-char switches #\t)
+		      (lambda (x y)
+			(> (file-attributes/modification-time (cdr x))
+			   (file-attributes/modification-time (cdr y))))
+		      (lambda (x y)
+			(string-ci<? (car x) (car y))))))))))
+    (mark-temporary! mark)))
 
 ;;;; Subprocess/Shell Support
 
@@ -456,6 +482,78 @@ Includes the new backup.  Must be > 0."
   (let ((chars "]\\\\A-Za-z0-9!#$%&'()+,.:;=@[^_`{}~---"))
     (let ((start (skip-chars-backward chars point start)))
       (make-region start (skip-chars-forward chars start end)))))
+
+;;;; Compressed Files
+
+(define (os/read-file-methods) (list maybe-read-compressed-file))
+
+(define (os/write-file-methods) (list maybe-write-compressed-file))
+
+(define-variable enable-compressed-files
+  "If true, compressed files are automatically uncompressed when read,
+and recompressed when written.  A compressed file is identified by the
+filename suffix \".gz\"."
+  #t
+  boolean?)
+
+(define (maybe-read-compressed-file pathname mark visit?)
+  visit?
+  (and (ref-variable enable-compressed-files mark)
+       (equal? "gz" (pathname-type pathname))
+       (begin
+	 (read-compressed-file "gzip -d" pathname mark)
+	 #t)))
+
+(define (read-compressed-file program pathname mark)
+  (let ((do-it
+	 (lambda ()
+	   (if (not (equal? '(EXITED . 0)
+			    (shell-command #f
+					   mark
+					   (directory-pathname pathname)
+					   #f
+					   (string-append
+					    program
+					    " < "
+					    (file-namestring pathname)))))
+	       (error:file-operation pathname
+				     program
+				     "file"
+				     "[unknown]"
+				     read-compressed-file
+				     (list pathname mark))))))
+    (if (ref-variable read-file-message mark)
+	(do-it)
+	(begin
+	  (temporary-message "Uncompressing file "
+			     (->namestring pathname)
+			     "...")
+	  (do-it)
+	  (append-message "done")))))
+
+(define (maybe-write-compressed-file region pathname visit?)
+  visit?
+  (and (ref-variable enable-compressed-files (region-start region))
+       (equal? "gz" (pathname-type pathname))
+       (begin
+	 (write-compressed-file "gzip" region pathname)
+	 #t)))
+
+(define (write-compressed-file program region pathname)
+  (if (not (equal? '(EXITED . 0)
+		   (shell-command region
+				  #f
+				  (directory-pathname pathname)
+				  #f
+				  (string-append program
+						 " > "
+						 (file-namestring pathname)))))
+      (error:file-operation pathname
+			    program
+			    "file"
+			    "[unknown]"
+			    write-compressed-file
+			    (list region pathname))))
 
 ;;;; Generic Stuff
 ;;; These definitions are OS-independent and references to them should
