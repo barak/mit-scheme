@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dassm2.scm,v 4.7 1989/05/19 12:14:30 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dassm2.scm,v 4.8 1989/05/24 05:10:26 jinx Exp $
 $MC68020-Header: dassm2.scm,v 4.12 88/12/30 07:05:13 GMT cph Exp $
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
@@ -126,6 +126,10 @@ MIT in each case. |#
 (define *valid?)
 
 (define (disassemble-one-instruction block offset symbol-table state receiver)
+  (define (instruction-end instruction state)
+    (let ((next-state (disassembler/next-state instruction state)))
+      (receiver *current-offset instruction next-state)))
+
   (fluid-let ((*block block)
 	      (*current-offset offset)
 	      (*symbol-table symbol-table)
@@ -134,43 +138,61 @@ MIT in each case. |#
 	   (start-offset *current-offset))
       ;; External label markers come in two parts:
       ;; An entry type descriptor, and a gc offset.
-      (if (or (eq? state 'EXTERNAL-LABEL-OFFSET)
+      (if (or (eq? state 'EXTERNAL-LABEL)
+	      (eq? state 'EXTERNAL-LABEL-OFFSET)
 	      (external-label-marker? symbol-table offset state))
-	  (let ((instruction (make-data-deposit byte 'W)))
-	    (receiver *current-offset
-		      instruction
-		      (if (eq? state 'EXTERNAL-LABEL-OFFSET)
-			  'INSTRUCTION
-			  'EXTERNAL-LABEL-OFFSET)))
+	  (instruction-end (make-data-deposit byte 'W)
+			   (if (eq? state 'EXTERNAL-LABEL-OFFSET)
+			       state
+			       'EXTERNAL-LABEL))
 	  (let ((instruction
 		 ((vector-ref
 		   opcode-dispatch
 		   (bit-string->unsigned-integer byte)))))
 	    (if *valid?
-		(receiver *current-offset
-			  instruction
-			  (disassembler/next-state instruction state))
+		(instruction-end instruction state)
 		(begin
 		  (set! *current-offset start-offset)
-		  (let ((instruction (make-data-deposit byte 'B)))
-		    (receiver *current-offset
-			      instruction
-			      (disassembler/next-state instruction state))))))))))
+		  (instruction-end
+		   (make-data-deposit
+		    byte
+		    (if disassembler/compiled-code-heuristics?
+			'W
+			'B))
+		   'UNKNOWN))))))))
 
 (define (disassembler/initial-state)
-  'INSTRUCTION-NEXT)
+  'INSTRUCTION)
 
 (define (disassembler/next-state instruction state)
-  state					; ignored
-  (if (and disassembler/compiled-code-heuristics?
-	   (or (memq (car instruction) '(BR JMP RSB))
-	       (and (eq? (car instruction) 'JSB)
-		    (let ((entry
-			   (interpreter-register? (cadr instruction))))
-		      (and entry
-			   (eq? (car entry) 'ENTRY))))))
-      'EXTERNAL-LABEL
-      'INSTRUCTION))
+  (define (check delta state get-word)
+    (let ((offset *current-offset))
+      (let* ((next (bit-string->unsigned-integer (get-word)))
+	     (result
+	      (if (= (+ offset delta) (/ next 2))
+		  state
+		  'INSTRUCTION)))
+	(set! *current-offset offset)
+	result)))
+
+  (cond ((or (not disassembler/compiled-code-heuristics?)
+	     (eq? state 'EXTERNAL-LABEL-OFFSET))
+	 'INSTRUCTION)
+	((and (eq? state 'INSTRUCTION)
+	      (or (memq (car instruction) '(BR JMP RSB))
+		  (and (eq? (car instruction) 'JSB)
+		       (let ((entry
+			      (interpreter-register?
+			       (cadr instruction))))
+			 (and entry
+			      (eq? (car entry) 'ENTRY))))))
+	 (check 4 'EXTERNAL-LABEL (lambda () (get-word) (get-word))))
+	((eq? state 'EXTERNAL-LABEL)
+	 'EXTERNAL-LABEL-OFFSET)
+	((eq? state 'UNKNOWN)
+	 (check 2 'EXTERNAL-LABEL-OFFSET get-word))
+	(else
+	 'INSTRUCTION)))
 
 (set! disassembler/lookup-symbol
   (lambda (symbol-table offset)
@@ -178,7 +200,7 @@ MIT in each case. |#
 	 (let ((label (dbg-labels/find-offset symbol-table offset)))
 	   (and label 
 		(dbg-label/name label))))))
-
+
 (define (external-label-marker? symbol-table offset state)
   (if symbol-table
       (let ((label (dbg-labels/find-offset symbol-table (+ offset 4))))
