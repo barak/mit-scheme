@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/cpress.scm,v 1.3 1992/05/26 23:09:18 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/cpress.scm,v 1.4 1992/05/27 17:23:14 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -299,7 +299,7 @@ MIT in each case. |#
 	(set! oldest-node node))
     (set! newest-node node)
     node))
-
+
 (define (update-node-pointer node)
   (set-node-pointer! node current-pointer)
   (set-node-bp! node current-bp)
@@ -326,7 +326,7 @@ MIT in each case. |#
 	(if sibling (set-node-previous! sibling child))
 	(set-node-children! parent child))
       (vector-set! root-nodes byte child)))
-
+
 (define (replace-child child child*)
   (let ((parent (node-parent child))
 	(byte (node-byte child)))
@@ -369,10 +369,10 @@ MIT in each case. |#
 	      (cond ((not parent)
 		     (vector-set! root-nodes (node-byte node) false))
 		    ((node-nb parent)
-		     (delete-child parent node)))
-	      (set-node-nb! node true)))
+		     (delete-child parent node))))
+	    (set-node-nb! node true))
 	  unspecific))))
-
+
 (define (delete-child parent child)
   (let ((previous (node-previous child))
 	(next (node-next child)))
@@ -727,5 +727,4 @@ MIT in each case. |#
 (define (uncompress ifile ofile)
   (uncompress-internal ifile ofile
     (lambda (message . irritants)
-      (error message irritants)))
-  unspecific)
+      (error message irritants))))
