@@ -1,10 +1,13 @@
 Emacs: Please use -*- Text -*- mode.  Thank you.
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.11 1991/02/27 21:31:43 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.12 1991/02/27 23:34:02 jinx Exp $
+
+Copyright (c) 1991 Massachusetts Institute of Technology
 
 
 			LIAR PORTING GUIDE
 			     *DRAFT*
+
 
 
 Notes: 
@@ -1327,9 +1330,19 @@ Should it be flushed?
 
 	5.3 Writing statement rules.
 
-*** MISSING:
+*** Here ***
 
-Get CPH to help with the LAPGEN rules.
+- Use of LAP, INST, and INST-EA.
+
+- delete-dead-registers! must be invoked before allocating an alias
+for a target pseudo-register.  Define a utility that does the common
+case.
+- all source registers aliases need to be need-register!d, before
+allocating the target register.  This is done by the usual utilities.
+- describe the common utilities for reusing and 2/3 operand opcodes.
+
+*** Get CPH to examine this carefully.
+
 - Closures, multi closures, uuo-link calls, and block-linking.  Other
 hairy stuff in rules3.  Rules4 and part of rules3 should go away, they
 are fossils.  On the other hand, they are easy to take care of because
@@ -1337,26 +1350,146 @@ of the portable runtime library.
 - You need multiplication by 4 rules in order to get variable-offset
 vector-ref and vector-set! to work, even if there are no other
 multiplication rules.
-
-- Important rules when writing RTL:
-  - delete-dead-registers! must be invoked before allocating an alias
-for a target pseudo-register.  Define a utility that does the common
-case.
-  - all source registers aliases need to be need-register!d, before
-allocating the target register.  This is done by the usual utilities.
-  - describe the common utilities for reusing and 2/3 operand opcodes.
-
 - How to interface to the runtime library.  How to write
 special-purpose optimized entries.
 
 	5.4 Writing predicate rules.
 
-*** MISSING: Branches, condition codes, set-current-branches!, etc.
+Predicate rules are used to generate code to discriminate between
+alternatives at runtime.  The code generated depends on the
+conditional branch facilities of the hardware at hand.  There are two
+main ways in which architectures provide conditional branching
+facilities:
+
+* condition codes.  Arithmetic instructions compute condition codes
+that are stored in hardware registers.  These hardware registers may
+be targetted explicitly by the programmer or implicitly by the
+hardware.  Conditional branch instructions determine whether to branch
+or not depending on the contents of the condition registers at the
+the branch instruction is executed.  These condition registers may be
+named explicitly by the instructions, or assumed implicitly.
+
+* compare-and-branch instructions.  The instruction set includes
+instructions that compare two values (or a value against 0) and branch
+depending on the comparison.  The results of the comparison are not
+stored in special or explicit registers, since they are used
+immediately, byt the instruction itself, to branch to the desired
+target.
+
+Liar accomodates both models for branching instructions.
+Predicate rules generate code that precede the actual branches, and
+then invoke the procedure SET-CURRENT-BRANCHES! informing it of the
+code to generate to branch to the target.
+Depending on the model, the prefix code may be empty, and all the code
+may appear in the arguments to SET-CURRENT-BRANCHES!
+
+SET-CURRENT-BRANCHES! expects two procedures as arguments.  Each of
+them receives a label as an argument, and is supposed to generate code
+that branches to the label if the predicate condition is true (first
+argument) or false (second argument).  Both options are provided
+because linearization of the control-flow graph occurs after LAP
+generation, and it is therefore not known when the predicate rule is
+fired which of the two possible linearizations will be chosen.
+
+Thus on an architecture with condition codes, the rule will return the
+code that performs the comparison, targetting the appropriate
+condition-code registers (if they are not implicit), and the arguments
+to SET-CURRENT-BRANCHES! will just generate the conditional-branch
+instructions that use the generated condition codes.
+
+On an architecture with compare-and-branch instructions, the code
+returned by the rule body will perform any work needed before the
+compare-and-branch instrucions, and the arguments to
+SET-CURRENT-BRANCHES! will generate the compare-and-branch
+instructions.
+
+For example, on the Vax, a machine with implicit condition codes,
+where compare (and most) instructions set the hidden condition-code
+register, a predicate rule could be as follows:
+    (define-rule predicate
+      (EQ-TEST (REGISTER (? register-1)) (REGISTER (? register-2)))
+      (set-current-branches!
+       (lambda (label)
+	 (LAP (B EQL (@PCR ,label))))
+       (lambda (label)
+	 (LAP (B NEQ (@PCR ,label)))))
+      (LAP (CMP L ,(any-register-reference register-1)
+		,(any-register-reference register-2))))
+The prefix code performs the comparison.  The arguments to
+SET-CURRENT-BRANCHES! branch depending on the result.
+
+On the HP Precision Architecture (Spectrum), a machine with
+compare-and-branch instructions, the same rule would be written as
+follows:
+    (define-rule predicate
+      ;; test for two registers EQ?
+      (EQ-TEST (REGISTER (? source1)) (REGISTER (? source2)))
+      (let* ((r1 (standard-source! source1))
+	     (r2 (standard-source! source2)))
+	(set-current-branches!
+	 (lambda (label)
+	   (LAP (COMB (EQ) ,r1 ,r2 (@PCR ,label))
+		(NOP ())))			; handle delay slot
+	 (lambda (label)
+	   (LAP (COMB (LTGT) ,r1 ,r2 (@PCR ,label))
+		(NOP ()))))			; handle delay slot
+	(LAP)))
+There is no prefix code, and the arguments to SET-CURRENT-BRANCHES!
+perform the comparison and branch.
+
+The (OVERFLOW-TEST) predicate condition does not fit this model
+neatly.  The current compiler issues overflow tests when open-coding
+generic arithmetic.  Fixnum overflow implies that bignums should be
+used for the result, and this predicate is used to conditionally
+invoke out-of-line utilities.
+
+The problem is that the decomposition of the code assumes that the
+result of the overflow test is stored implicitly by the code that
+generates the arithmetic instructions, and that this condition can be
+later used for branching by the code generated for (OVERFLOW-TEST).
+The code for the test will be adjacent to the code for the
+corresponding arithmetic operation, but the compiler assumes that the
+condition can be passed implicitly between these adjacent
+instructions.  This decomposition only matches hardware with condition
+codes.
+
+Hardware with compare-and-branch instructions can be handled by
+explicitly computing conditions into a hardware register reserved for
+this purpose, and the code generated by the predicate rule can then
+branch according to the contents of this register.  On these machines,
+the arithmetic operator will not only generate the desired result, but
+will set or clear a fixed register according to whether the
+computation overflowed or not.  The predicate code will then branch
+when the fixed register contains a non-zero value for the first
+linearization choice, or zero for the other possibility.
+
+This problem is particularly acute on MIPS processors.  The MIPS
+architecture does not detect overflow conditions, so the overflow
+condition must be computed by examining the inputs and outputs of the
+arithmetic instructions.  There are conditional branches used just to
+store the correct overflow condition in a register, and the code
+generated for the overflow test will then branch again depending on
+the value stored.  This makes the code generated by the open-coding of
+generic arithmetic contain multiple branches and quite large.
+
+The Spectrum port solves this problem a little differently.  On the
+Spectrum, arithmetic instructions can conditionally cause the
+following instruction to be skipped.  Since the code generated by
+(OVERFLOW-TEST) is guaranteed to follow the code generated by the
+arithmetic operation, the last instruction generated by the arithmetic
+operations conditionally skips if there is no overflow.  The
+(OVERFLOW-TEST) code generates an unconditional branch for the first
+linearization choice, and an unconditional skip and an unconditional
+branch for the alternative linearization.
+
+==> Overflow tests should be done differently in the compiler to avoid
+this problem.
 
 	5.5 Writing rewriting rules.
 
-*** MISSING: Describe the RTL rewriter and what it does.
-In particular, describe the primitives on top of which it is written.
+*** MISSING: Describe the RTL rewriter and what it does (already done,
+sort of).
+Describe the (rtl) primitives on top of which it is written.
 Suggest looking at the 68000 and the Spectrum versions.
 
 	5.6 Writing assembler rules.
