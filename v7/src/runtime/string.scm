@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.22 1999/05/08 02:23:23 cph Exp $
+$Id: string.scm,v 14.23 1999/05/08 02:31:50 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -722,7 +722,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(pstart-1 (fix:- pstart 1))
 	(pend-1 (fix:- pend 1))
 	(lambda* (compute-last-occurrence-function pattern pstart pend))
-	(gamma (compute-good-suffix-function pattern pstart pend)))
+	(gamma
+	 (compute-good-suffix-function pattern pstart pend
+				       (compute-gamma0 pattern pstart pend))))
     (let ((tend-m (fix:- tend m))
 	  (m-1 (fix:- m 1)))
       (let outer ((s tstart))
@@ -744,7 +746,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(rpattern (reverse-substring pattern pstart pend)))
     (let ((tstart+m (fix:+ tstart m))
 	  (lambda* (compute-last-occurrence-function rpattern 0 m))
-	  (gamma (compute-good-suffix-function rpattern 0 m)))
+	  (gamma
+	   (compute-good-suffix-function rpattern 0 m
+					 (compute-gamma0 rpattern 0 m))))
       (let outer ((s tend))
 	(and (fix:>= s tstart+m)
 	     (let inner ((pj pstart) (tj (fix:- s m)))
@@ -793,12 +797,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (lambda (symbol)
       (vector-ref lam symbol))))
 
-(define (compute-good-suffix-function pattern pstart pend)
+(define (compute-good-suffix-function pattern pstart pend gamma0)
   (let ((m (fix:- pend pstart)))
     (let ((pi
 	   (compute-prefix-function (reverse-substring pattern pstart pend)
 				    0 m))
-	  (gamma (make-vector m (compute-gamma0 pattern pstart pend)))
+	  (gamma (make-vector m gamma0))
 	  (m-1 (fix:- m 1)))
       (do ((l 0 (fix:+ l 1)))
 	  ((fix:= l m))
