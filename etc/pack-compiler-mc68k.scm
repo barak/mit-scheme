@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: pack-compiler-mc68k.scm,v 1.2 1993/11/23 20:59:58 cph Exp $
+$Id: pack-compiler-mc68k.scm,v 1.3 1994/05/03 04:50:32 cph Exp $
 
-Copyright (c) 1993 Massachusetts Institute of Technology
+Copyright (c) 1993-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,7 +39,7 @@ MIT in each case. |#
 	  '(RUNTIME LOAD)))
 
 (define (pack-compiler output)
-  (pack-binaries output
+  (pack-binaries (if (default-object? output) "lib/compdel.com" output)
 		 '(("sf"
 		    "make.com"
 		    "sf.bcon"

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: pack-edwin-unix.scm,v 1.2 1993/11/23 21:01:10 cph Exp $
+$Id: pack-edwin-unix.scm,v 1.3 1994/05/03 04:50:35 cph Exp $
 
-Copyright (c) 1993 Massachusetts Institute of Technology
+Copyright (c) 1993-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,8 +38,8 @@ MIT in each case. |#
     (load (merge-pathnames "pack" (directory-pathname (current-load-pathname)))
 	  '(RUNTIME LOAD)))
 
-(define (pack-edwin output)
-  (pack-binaries output
+(define (pack-edwin #!optional output)
+  (pack-binaries (if (default-object? output) "lib/eddel.com" output)
 		 '(("edwin"
 		    "make.com"
 		    "edwin.bcon"
