@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.106 1987/05/31 22:56:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.107 1987/06/01 16:04:25 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -180,11 +180,8 @@ MIT in each case. |#
 (define-cse-method 'CONTINUATION-HEAP-CHECK method/noop)
 (define-cse-method 'INVOCATION:APPLY method/noop)
 (define-cse-method 'INVOCATION:JUMP method/noop)
-(define-cse-method 'INVOCATION:CACHE-REFERENCE method/noop)
 (define-cse-method 'INVOCATION:LEXPR method/noop)
 (define-cse-method 'INVOCATION:PRIMITIVE method/noop)
-(define-cse-method 'INTERPRETER-CALL:CACHE-REFERENCE method/noop)
-(define-cse-method 'INTERPRETER-CALL:CACHE-UNASSIGNED? method/noop)
 
 (define (method/invalidate-stack statement)
   (stack-pointer-invalidate!))
@@ -200,22 +197,19 @@ MIT in each case. |#
     (stack-pointer-invalidate!)
     (expression-invalidate! (interpreter-register:enclose))))
 
+(define-cse-method 'INVOCATION:CACHE-REFERENCE
+  (lambda (statement)
+    (expression-replace! rtl:invocation:cache-reference-name
+			 rtl:set-invocation:cache-reference-name!
+			 statement
+			 trivial-action)))
+
 (define-cse-method 'INVOCATION:LOOKUP
   (lambda (statement)
     (expression-replace! rtl:invocation:lookup-environment
 			 rtl:set-invocation:lookup-environment!
 			 statement
 			 trivial-action)))
-
-(define-cse-method 'INTERPRETER-CALL:CACHE-ASSIGNMENT
-  (lambda (statement)
-    (expression-replace! rtl:interpreter-call:cache-assignment-value
-			 rtl:set-interpreter-call:cache-assignment-value!
-			 statement
-      (lambda (volatile? insert-source!)
-	(hash-table-delete-class! element-address-varies?)
-	(non-object-invalidate!)
-	(if (not volatile?) (insert-source!))))))
 
 (define (define-lookup-method type get-environment set-environment! register)
   (define-cse-method type
@@ -231,6 +225,16 @@ MIT in each case. |#
   rtl:set-interpreter-call:access-environment!
   interpreter-register:access)
 
+(define-lookup-method 'INTERPRETER-CALL:CACHE-REFERENCE
+  rtl:interpreter-call:cache-reference-name
+  rtl:set-interpreter-call:cache-reference-name!
+  interpreter-register:cache-reference)
+
+(define-lookup-method 'INTERPRETER-CALL:CACHE-UNASSIGNED?
+  rtl:interpreter-call:cache-unassigned?-name
+  rtl:set-interpreter-call:cache-unassigned?-name!
+  interpreter-register:cache-unassigned?)
+
 (define-lookup-method 'INTERPRETER-CALL:LOOKUP
   rtl:interpreter-call:lookup-environment
   rtl:set-interpreter-call:lookup-environment!
@@ -245,7 +249,7 @@ MIT in each case. |#
   rtl:interpreter-call:unbound?-environment
   rtl:set-interpreter-call:unbound?-environment!
   interpreter-register:unbound?)
-
+
 (define (define-assignment-method type
 	  get-environment set-environment!
 	  get-value set-value!)
@@ -257,6 +261,12 @@ MIT in each case. |#
 	  (hash-table-delete-class! element-address-varies?)
 	  (non-object-invalidate!)
 	  (if (not volatile?) (insert-source!)))))))
+
+(define-assignment-method 'INTERPRETER-CALL:CACHE-ASSIGNMENT
+  rtl:interpreter-call:cache-assignment-name
+  rtl:set-interpreter-call:cache-assignment-name!
+  rtl:interpreter-call:cache-assignment-value
+  rtl:set-interpreter-call:cache-assignment-value!)
 
 (define-assignment-method 'INTERPRETER-CALL:DEFINE
   rtl:interpreter-call:define-environment
