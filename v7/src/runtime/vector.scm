@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/vector.scm,v 13.43 1987/04/25 20:19:20 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/vector.scm,v 13.44 1987/06/21 14:51:56 allen Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -43,16 +43,17 @@
 
 ;;; Standard Procedures
 
-(in-package system-global-environment
 (let-syntax ()
   (define-macro (define-primitives . names)
     `(BEGIN ,@(map (lambda (name)
-		     `(DEFINE ,name ,(make-primitive-procedure name)))
+		     `(LOCAL-ASSIGNMENT
+		       system-global-environment
+		       ',name ,(make-primitive-procedure name)))
 		   names)))
   (define-primitives
    vector-length vector-ref vector-set!
    list->vector vector-cons subvector->list
-   subvector-move-right! subvector-move-left! subvector-fill!)))
+   subvector-move-right! subvector-move-left! subvector-fill!))
 
 (let-syntax ()
   (define-macro (define-type-predicate name type-name)
