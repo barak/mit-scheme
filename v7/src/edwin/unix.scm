@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.79 1997/06/09 08:12:28 cph Exp $
+;;;	$Id: unix.scm,v 1.80 1997/11/01 07:33:37 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-97 Massachusetts Institute of Technology
 ;;;
@@ -818,10 +818,6 @@ option, instead taking -P <filename>."
 	  '("/usr/lib/sendmail" "/usr/sbin/sendmail" "/usr/ucblib/sendmail")
 	file-executable?)
       "fakemail"))
-
-(define (os/hostname)
-  (or ((ucode-primitive full-hostname 0))
-      ((ucode-primitive hostname 0))))
 
 (define (os/newsrc-file-name server)
   (let ((homedir (user-homedir-pathname)))

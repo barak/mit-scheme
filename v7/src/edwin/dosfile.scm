@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dosfile.scm,v 1.12 1997/10/26 01:35:35 cph Exp $
+;;;	$Id: dosfile.scm,v 1.13 1997/11/01 07:33:44 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-97 Massachusetts Institute of Technology
 ;;;
@@ -539,26 +539,6 @@ Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
   (let ((chars "]\\\\A-Za-z0-9!#$%&'()+,.:;=@[^_`{}~---"))
     (let ((start (skip-chars-backward chars point start)))
       (make-region start (skip-chars-forward chars start end)))))
-
-(define (os/hostname)
-  (if (not dos/cached-hostname)
-      (let ((buffer (temporary-buffer "*hostname*")))
-	(let ((status.reason
-	       (run-synchronous-process #f (buffer-end buffer) #f #f
-					"hostname")))
-	  (if (not (equal? status.reason '(EXITED . 0)))
-	      (begin
-		(pop-up-buffer buffer)
-		(error "Error running HOSTNAME program:" status.reason))))
-	(set! dos/cached-hostname (string-trim (buffer-string buffer)))
-	(kill-buffer buffer)))
-  dos/cached-hostname)
-
-(define dos/cached-hostname #f)
-(add-event-receiver! event:after-restore
-  (lambda ()
-    (set! dos/cached-hostname #f)
-    unspecific))
 
 ;;;; File-Encoding Methods
 
