@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntio.c,v 1.29 2003/04/07 19:49:26 cph Exp $
+$Id: ntio.c,v 1.30 2003/04/08 01:11:54 cph Exp $
 
 Copyright 1993,1997,1998,2000,2001,2003 Massachusetts Institute of Technology
 
@@ -722,7 +722,7 @@ OS_deallocate_select_registry (select_registry_t registry)
 }
 
 static void
-resize_select_registry (select_registry_s * r, int growp)
+resize_select_registry (struct select_registry_s * r, int growp)
 {
   if (growp)
     (r -> length) *= 2;
