@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.7 2000/04/06 04:23:01 cph Exp $
+;;; $Id: imail-util.scm,v 1.8 2000/04/07 19:08:18 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -237,3 +237,6 @@
     (if (eof-object? line)
 	(error "Premature end of file:" port))
     line))
+
+(define (edwin-variable-value name)
+  (variable-value (name->variable name 'ERROR)))
