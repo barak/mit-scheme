@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dirunx.scm,v 1.3 1993/07/22 19:45:42 cph Exp $
+;;;	$Id: dirunx.scm,v 1.4 1994/08/04 08:49:16 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
 ;;;
@@ -47,66 +47,81 @@
 
 (declare (usual-integrations))
 
+(define (dired-change-inode name program)
+  (lambda (attribute argument)
+    (dired-change-files (string-append "change" attribute "of") argument
+      (let ((program (find-program program #f))
+	    (directory (buffer-default-directory (current-buffer))))
+	(lambda (pathname lstart)
+	  (run-synchronous-process #f #f directory #f
+				   program attribute (->namestring pathname))
+	  (dired-redisplay pathname lstart))))))
+
 (define-command dired-chmod
   "Change mode of this file."
-  "sChange to Mode"
-  (lambda (mode) (dired-change-line "chmod" mode)))
+  "sChange to Mode\nP"
+  (dired-change-inode "mode" "chmod"))
 
 (define-command dired-chgrp
   "Change group of this file."
-  "sChange to Group"
-  (lambda (group) (dired-change-line "chgrp" group)))
+  "sChange to Group\nP"
+  (dired-change-inode "group" "chgrp"))
 
 (define-command dired-chown
   "Change owner of this file."
-  "sChange to Owner"
-  (lambda (owner) (dired-change-line "chown" owner)))
+  "sChange to Owner\nP"
+  (dired-change-inode "owner" "chown"))
 
-(define-command dired-compress
-  "Compress a file using gzip."
-  '()
-  (lambda ()
-    (let ((pathname (dired-current-pathname)))
-      (let ((directory (directory-pathname pathname)))
-	(run-synchronous-process false false directory false
-				 (find-program "gzip" directory)
-				 ""
-				 (->namestring pathname)))
-      (dired-redisplay
-       (pathname-new-type 
-	pathname
-	(let ((old-type (pathname-type pathname)))
-	  (cond ((not old-type)
-		 "gz")
-		((string=? old-type "gz")
-		 old-type)
-		(else
-		 (string-append old-type ".gz")))))))))
+(define-command dired-do-compress
+  "Compress or uncompress marked (or next ARG) files.
+The files are compressed or uncompressed using gzip."
+  "P"
+  (lambda (argument)
+    (let ((n
+	   (dired-change-files "compress" argument
+	     (let ((gzip (find-program "gzip" #f))
+		   (directory (buffer-default-directory (current-buffer))))
+	       (lambda (pathname lstart)
+		 (let ((type (pathname-type pathname))
+		       (namestring (->namestring pathname)))
+		   (let ((decompress?
+			  (or (string=? "gz" type)
+			      (string=? "z" type)
+			      (string=? "Z" type))))
+		     (message (if decompress? "Unc" "C")
+			      "ompressing file `"
+			      namestring
+			      "'...")
+		     (run-synchronous-process #f #f directory #f
+					      gzip
+					      (if decompress? "-d" "")
+					      namestring)
+		     (dired-redisplay
+		      (pathname-new-type
+		       pathname
+		       (and (not decompress?)
+			    (string-append (or type "") ".gz")))
+		      lstart))))))))
+      (if (positive? n)
+	  (message "Compressed or uncompressed " n " files.")))))
 
-(define-command dired-uncompress
-  "Uncompress a file using gunzip."
-  '()
-  (lambda ()
-    (let ((pathname (dired-current-pathname)))
-      (let ((directory (directory-pathname pathname)))
-	(run-synchronous-process false false directory false
-				 (find-program "gunzip" directory)
-				 ""
-				 (->namestring pathname)))
-      (dired-redisplay
-       (if (let ((type (pathname-type pathname)))
-	     (and type
-		  (or (string=? "gz" type)
-		      (string=? "z" type)
-		      (string=? "Z" type))))
-	   (pathname-new-type pathname false)
-	   pathname)))))
-
-(define (dired-change-line program argument)
-  (let ((pathname (dired-current-pathname)))
-    (let ((directory (directory-pathname pathname)))
-      (run-synchronous-process false false directory false
-			       (find-program program directory)
-			       argument
-			       (->namestring pathname)))
-    (dired-redisplay pathname)))
+(define (dired-change-files verb argument procedure)
+  (let ((filenames
+	 (if argument
+	     (dired-next-files (command-argument-value argument))
+	     (let ((files (dired-marked-files)))
+	       (if (null? files)
+		   (dired-next-files 1)
+		   files)))))
+    (if (null? filenames)
+	(message "No files to " verb ".")
+	(begin
+	  (for-each (lambda (filename)
+		      (set-cdr! filename
+				(mark-right-inserting-copy (cdr filename))))
+		    filenames)
+	  (for-each (lambda (filename)
+		      (procedure (car filename) (cdr filename))
+		      (mark-temporary! (cdr filename)))
+		    filenames)))
+    (length filenames)))
