@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 1.1 1995/03/07 22:19:00 adams Exp $
+$Id: usiexp.scm,v 1.2 1995/04/29 13:18:05 adams Exp $
 
-Copyright (c) 1988-1993 Massachusetts Institute of Technology
+Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -524,14 +524,19 @@ MIT in each case. |#
     (disjunction-type-test-expansion
      (append fixnum-ucode-types (list (cross-sf/ucode-type 'big-fixnum)
 				      (cross-sf/ucode-type 'ratnum)))))
-
+
   (define complex?-expansion
     (disjunction-type-test-expansion 
      (append fixnum-ucode-types (list (cross-sf/ucode-type 'big-fixnum) 
 				      (cross-sf/ucode-type 'ratnum)
 				      (cross-sf/ucode-type 'big-flonum)
 				      (cross-sf/ucode-type 'recnum)))))
-
+
+  (define symbol?-expansion
+    (disjunction-type-test-expansion
+     (list (cross-sf/ucode-type 'interned-symbol)
+	   (cross-sf/ucode-type 'uninterned-symbol))))
+
   (define (make-disjunction expr  clauses)
     (let loop ((clauses clauses))
       (if (null? (cdr clauses))
@@ -641,6 +646,7 @@ MIT in each case. |#
       (seventh            . ,seventh-expansion)
       (sixth              . ,sixth-expansion)
       (string->symbol     . ,string->symbol-expansion)
+      (symbol?            . ,symbol?-expansion)
       (third              . ,third-expansion)
       (values             . ,values-expansion)
       (vector?            . ,vector?-expansion)
