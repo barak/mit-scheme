@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.89 1994/10/04 22:01:13 cph Exp $
+$Id: boot.c,v 9.90 1994/10/04 22:02:19 cph Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -365,8 +365,6 @@ DEFUN_VOID (initialize_fixed_objects_vector)
     NT_initialize_fov (fixed_objects_vector);
   }
 #endif /* WINNT */
-
-  return (fixed_objects_vector);
 }
 
 /* Boot Scheme */
