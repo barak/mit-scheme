@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: buffrm.scm,v 1.55 2000/01/10 03:23:41 cph Exp $
+;;; $Id: buffrm.scm,v 1.56 2000/01/10 03:59:32 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -313,7 +313,9 @@ Index 0 might contain \"^@\" so ascii NUL appears as ^@.
 The indices for normal printing characters usually contain a
 string containing just that character, e.g. index 65 usually contains \"A\".
 Automatically becomes local when set in any fashion."
-  (os/default-char-image-strings)
+  (if (eq? 'NT microcode-id/operating-system)
+      default-char-image-strings/ansi
+      default-char-image-strings)
   (lambda (object)
     (and (vector? object)
 	 (= (vector-length object) 256)
@@ -327,7 +329,7 @@ Automatically becomes local when set in any fashion."
 (let ((setup-truncate-lines!
        (lambda (buffer variable)
 	 variable			;ignore
-	 (for-each window-redraw!	;window-redraw! recaches these variables
+	 (for-each window-redraw!	;recaches these variables
 	   (if buffer
 	       (buffer-windows buffer)
 	       (window-list))))))
