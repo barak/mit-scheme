@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.118 2000/06/14 02:51:25 cph Exp $
+;;; $Id: imail-imap.scm,v 1.119 2000/06/15 20:04:54 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -493,7 +493,8 @@
   (if (= (imap-connection-reference-count connection)
 	 (if (imap-connection-folder connection) 0 1))
       (begin
-	(imap:command:logout connection)
+	(if (imap-connection-port connection)
+	    (imap:command:logout connection))
 	(close-imap-connection connection))))
 
 ;;;; Folder datatype
