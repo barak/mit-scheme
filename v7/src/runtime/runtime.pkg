@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.428 2003/02/24 20:48:38 cph Exp $
+$Id: runtime.pkg,v 14.429 2003/02/24 21:53:39 cph Exp $
 
 Copyright (c) 1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright (c) 1993,1994,1995,1996,1997 Massachusetts Institute of Technology
@@ -697,7 +697,6 @@ USA.
 	  decorated-string-append
 	  external-string-length
 	  external-string?
-	  guarantee-char-set
 	  guarantee-string
 	  guarantee-string-index
 	  guarantee-substring
