@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dospth.scm,v 1.24 1995/04/09 22:32:25 cph Exp $
+$Id: dospth.scm,v 1.25 1995/05/21 01:36:23 cph Exp $
 
 Copyright (c) 1992-95 Massachusetts Institute of Technology
 
@@ -75,10 +75,11 @@ MIT in each case. |#
 (define (dos/parse-namestring string host)
   (call-with-values
       (lambda ()
-	(parse-device-and-path
-	 (expand-directory-prefixes
-	  (string-components (string-downcase string)
-			     sub-directory-delimiters))))
+	(let ((components
+	       (expand-directory-prefixes
+		(string-components string sub-directory-delimiters))))
+	  (for-each string-downcase! components)
+	  (parse-device-and-path components)))
     (lambda (device components)
       (call-with-values (lambda () (parse-name (car (last-pair components))))
 	(lambda (name type)
@@ -149,22 +150,22 @@ MIT in each case. |#
     (let ((index
 	   (substring-find-next-char-in-set string start end delimiters)))
       (if index
-	  (cons (substring string start index) (loop (+ index 1)))
+	  (cons (substring string start index) (loop (fix:+ index 1)))
 	  (list (substring string start end))))))
 
 (define (parse-name string)
   (let ((dot (string-find-previous-char string #\.))
 	(end (string-length string)))
     (if (or (not dot)
-	    (= dot 0)
-	    (= dot (- end 1))
-	    (char=? #\. (string-ref string (- dot 1))))
-	(values (cond ((= end 0) #f)
+	    (fix:= dot 0)
+	    (fix:= dot (fix:- end 1))
+	    (char=? #\. (string-ref string (fix:- dot 1))))
+	(values (cond ((fix:= end 0) #f)
 		      ((string=? "*" string) 'WILD)
 		      (else string))
 		#f)
 	(values (extract string 0 dot)
-		(extract string (+ dot 1) end)))))
+		(extract string (fix:+ dot 1) end)))))
 
 (define (extract string start end)
   (if (substring=? string start end "*" 0 1)
