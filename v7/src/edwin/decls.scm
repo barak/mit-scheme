@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.23 1991/08/06 22:41:24 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.24 1991/08/28 14:54:51 jinx Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -164,6 +164,7 @@ MIT in each case. |#
 	      "struct"
 	      "syntax"
 	      "tags"
+	      "telnet"
 	      "texcom"
 	      "things"
 	      "tparse"
