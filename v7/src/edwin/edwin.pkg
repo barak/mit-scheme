@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.244 2000/02/28 22:51:15 cph Exp $
+$Id: edwin.pkg,v 1.245 2000/03/23 06:31:16 cph Exp $
 
 Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
@@ -867,12 +867,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  previous-property-change
 	  previous-specific-property-change
 	  region-read-only
-	  region-writable
+	  region-writeable
 	  remove-text-property
 	  set-region-local-comtabs!
 	  set-subgroup-local-comtabs!
 	  subgroup-read-only
-	  subgroup-writable)
+	  subgroup-writeable)
   (export (edwin group-operations)
 	  text-not-deleteable?
 	  text-not-insertable?
