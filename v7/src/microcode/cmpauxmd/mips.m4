@@ -1,6 +1,6 @@
 /* #define DEBUG_INTERFACE */ /* -*-Midas-*- */
  ###
- ###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mips.m4,v 1.7 1992/08/20 01:21:12 jinx Exp $
+ ###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mips.m4,v 1.8 1992/08/24 13:24:25 jinx Exp $
  ###
  ###	Copyright (c) 1989-1992 Massachusetts Institute of Technology
  ###
@@ -56,7 +56,7 @@
  ####	  4-7 are argument registers,
  ####	  2 and 3 are return registers.
  ####	- preserved registers saved by the callee if they are written.
- ####	On MIPS: 16-23.
+ ####	On MIPS: 16-23, and 30.
  ####
  ####	3) Arguments, if passed on a stack, are popped by the caller
  ####	or by the procedure return instruction (as on the VAX).  Thus
@@ -87,7 +87,7 @@
  ####	fr4-fr11 and fr16-fr19 are caller-saves registers.  fr0-3 are
  ####	return result registers.  Only the even numbered registers are
  ####	used (odd registers contain second 32 bits of 64 bit values).
- ####
+
  #### Compiled Scheme code uses the following register convention.
  #### Note that scheme_to_interface and the register block are
  #### preserved by C calls, but the others are not, since they change
@@ -97,7 +97,7 @@
  ####	- gr1  is the assembler temporary.
  ####   - gr2  is the returned value register.
  ####	- gr3  contains the Scheme stack pointer.
- ####   - gr4 - gr7 are used by C for arguments.
+ ####   - gr4 - gr7 are used by C for passing arguments.
  ####	- gr8  contains a cached version of MemTop.
  ####	- gr9  contains the Scheme free pointer.
  ####	- gr10 contains the address of scheme_to_interface.
@@ -119,7 +119,9 @@
  ####   - gr26 and 27 are reserved for the OS.
  ####   - gr28 contains the pointer to C static variables.
  ####   - gr29 contains the C stack pointer.
+ ####   <CALLEE SAVES REGISTERS BELOW HERE>
  ####   - gr30 has no special use.
+ ####   <CALLEE SAVES REGISTERS ABOVE HERE>
  ####	- gr31 is used for linkage (JALR, JAL, BGEZAL, and BLTZAL write it).
  ####
  ####	All other registers are available to the compiler.  A
@@ -159,10 +161,11 @@ define(tramp_index, 25)
 	.globl	C_to_interface
 	.ent	C_to_interface
 C_to_interface:
-	addi	$sp,$sp,-112
-	.frame	$sp,112,$0
+	addi	$sp,$sp,-116
+	.frame	$sp,116,$0
 	.mask	0x80ff0000,0
-	sw	$31,108($sp)		# Save return address
+	sw	$31,112($sp)		# Save return address
+	sw	$30,108($sp)
 	sw	$23,104($sp)
 	sw	$22,100($sp)
 	sw	$21,96($sp)
@@ -419,55 +422,54 @@ invoke_allocate_closure:
  # $at contains in its datum the minimum size to allocate.
  # $7  contains the "return address" for cons_closure or cons_multi.
  # $31 contains the return address for invoke_allocate_closure.
-	addi	$sp,$sp,-80
+	addi	$sp,$sp,-76
  # 1 is at, a temp
-	sw	$2,80-4($sp)
-	sw	$3,80-8($sp)
+	sw	$2,76-4($sp)
+	sw	$3,76-8($sp)
 	and	$4,$at,$addr_mask	# total size (- 1)
-	sw	$5,80-12($sp)
-	sw	$6,80-16($sp)
-	sw	$7,80-20($sp)		# Original value of r31
+	sw	$5,76-12($sp)
+	sw	$6,76-16($sp)
+	sw	$7,76-20($sp)		# Original value of r31
  #	sw	$8,0($registers)	# memtop is read-only
 	la	$7,Free
 	sw	$9,0($7)
-	sw	$10,80-24($sp)
-	sw	$11,80-28($sp)
-	sw	$12,80-32($sp)
-	sw	$13,80-36($sp)
-	sw	$14,80-40($sp)
-	sw	$15,80-44($sp)
- # 16-23 are callee saves
-	sw	$24,80-48($sp)
-	sw	$25,80-52($sp)
- # 26-29 are taken up by the OS and the C calling convention
-	sw	$30,80-56($sp)
-	sw	$31,80-60($sp)		# return address
+	sw	$10,76-24($sp)
+	sw	$11,76-28($sp)
+	sw	$12,76-32($sp)
+	sw	$13,76-36($sp)
+	sw	$14,76-40($sp)
+	sw	$15,76-44($sp)
+ # 16-23 are callee-saves registers.
+	sw	$24,76-48($sp)
+	sw	$25,76-52($sp)
+ # 26-29 are taken up by the OS and the C calling convention.
+ # 30 is a callee-saves register.
+	sw	$31,76-60($sp)		# return address
 	jal	allocate_closure
 	sw	$closure_free,36($registers) # uncache
 
 	lw	$closure_free,36($registers)
-	lw	$31,80-20($sp)		# original value of r31
-	lw	$30,80-56($sp)
-	lw	$25,80-52($sp)
-	lw	$24,80-48($sp)
-	lw	$15,80-44($sp)
-	lw	$14,80-40($sp)
-	lw	$13,80-36($sp)
-	lw	$12,80-32($sp)
-	lw	$11,80-28($sp)
-	lw	$10,80-24($sp)
+	lw	$31,76-20($sp)		# original value of r31
+	lw	$25,76-52($sp)
+	lw	$24,76-48($sp)
+	lw	$15,76-44($sp)
+	lw	$14,76-40($sp)
+	lw	$13,76-36($sp)
+	lw	$12,76-32($sp)
+	lw	$11,76-28($sp)
+	lw	$10,76-24($sp)
 	lw	$9,Free
 	lw	$8,0($registers)
-	lw	$7,80-60($sp)		# return address for invoke...
-	lw	$6,80-16($sp)
-	lw	$5,80-12($sp)
-	lw	$3,80-8($sp)
-	lw	$2,80-4($sp)
+	lw	$7,76-60($sp)		# return address for invoke...
+	lw	$6,76-16($sp)
+	lw	$5,76-12($sp)
+	lw	$3,76-8($sp)
+	lw	$2,76-4($sp)
 	lw	$at,0($31)		# manifest closure header
 	or	$4,$closure_free,$0	# setup result
 
 	j	$7
-	addi	$sp,$sp,80
+	addi	$sp,$sp,76
 
  # Argument 1 (in $C_arg1) is the returned value
 	.globl interface_to_C
@@ -486,8 +488,9 @@ interface_to_C:
 	lw	$21,96($sp)
 	lw	$22,100($sp)
 	lw	$23,104($sp)
-	lw	$31,108($sp)
-	addi	$sp,$sp,112		# Pop stack back
+	lw	$30,108($sp)
+	lw	$31,112($sp)
+	addi	$sp,$sp,116		# Pop stack back
 	j	$31			# Return
 	add	$2,$0,$C_arg1		# Return value to C
 	.end	C_to_interface
