@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.85 2000/05/22 19:48:23 cph Exp $
+;;; $Id: imail-top.scm,v 1.86 2000/05/22 20:22:46 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -128,13 +128,6 @@ May be called with an IMAIL folder URL as argument;
 			 #t)
 	 buffer)))))
 
-(define (imail-call-with-pass-phrase url receiver)
-  (call-with-pass-phrase (string-append "Password for user "
-					(imap-url-user-id url)
-					" on host "
-					(imap-url-host url))
-			 receiver))
-
 (define (prompt-for-imail-url-string prompt default . options)
   (apply prompt-for-completed-string
 	 prompt
@@ -218,6 +211,52 @@ May be called with an IMAIL folder URL as argument;
 	       ")")))
 
 (define *imail-message-wrapper-prefix* #f)
+
+(define (imail-call-with-pass-phrase url receiver)
+  (let ((key (url-pass-phrase-key url)))
+    (let ((obscured (hash-table/get imail-memoized-pass-phrases key #f)))
+      (if obscured
+	  (call-with-unobscured-pass-phrase obscured receiver)
+	  (call-with-pass-phrase
+	   (string-append "Pass phrase for " (url->string url))
+	   (lambda (pass-phrase)
+	     (hash-table/put! imail-memoized-pass-phrases key
+			      (obscure-pass-phrase pass-phrase))
+	     (receiver pass-phrase)))))))
+
+(define imail-memoized-pass-phrases
+  (make-string-hash-table))
+
+(define (obscure-pass-phrase clear-text)
+  (let ((n (string-length clear-text)))
+    (let ((noise (random-byte-vector n)))
+      (let ((obscured-text (make-string (* 2 n))))
+	(string-move! noise obscured-text 0)
+	(do ((i 0 (fix:+ i 1)))
+	    ((fix:= i n))
+	  (vector-8b-set! obscured-text (fix:+ i n)
+			  (fix:xor (vector-8b-ref clear-text i)
+				   (vector-8b-ref noise i))))
+	obscured-text))))
+
+(define (call-with-unobscured-pass-phrase obscured-text receiver)
+  (let ((n (quotient (string-length obscured-text) 2))
+	(clear-text))
+    (dynamic-wind
+     (lambda ()
+       (set! clear-text (make-string n))
+       unspecific)
+     (lambda ()
+       (do ((i 0 (fix:+ i 1)))
+	   ((fix:= i n))
+	 (vector-8b-set! clear-text i
+			 (fix:xor (vector-8b-ref obscured-text i)
+				  (vector-8b-ref obscured-text (fix:+ i n)))))
+       (receiver clear-text))
+     (lambda ()
+       (string-fill! clear-text #\NUL)
+       (set! clear-text)
+       unspecific))))
 
 (define-major-mode imail read-only "IMAIL"
   "IMAIL mode is used by \\[imail] for editing IMAIL files.

@@ -1,11 +1,8 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.37 2000/05/22 19:50:34 cph Exp $
+$Id: todo.txt,v 1.38 2000/05/22 20:22:52 cph Exp $
 
 Bug fixes
 ---------
-
-* Password should be cached s.t. it can be shared between connections
-  with compatible URLs.  Right now it is per-connection.
 
 * Login messages interfere with modeline when doing completion on IMAP
   URLs.
@@ -73,10 +70,7 @@ New features
   message ID can be used.  (Or perhaps no cache is required for
   non-IMAP folders.)
 
-* Password memoization should be controllable from the editor.  Should
-  this be moved into "imail-top"?  Then instead of storing the
-  password in the connection object, we could store it in a hash
-  table, or in a buffer property.
+* Password memoization should be controllable from the editor.
 
 * Implement file backup when writing file folders.
 

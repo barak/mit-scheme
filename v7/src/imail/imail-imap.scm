@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.74 2000/05/22 19:49:57 cph Exp $
+;;; $Id: imail-imap.scm,v 1.75 2000/05/22 20:22:39 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -90,6 +90,12 @@
   (and (string=? (imap-url-user-id url1) (imap-url-user-id url2))
        (string=? (imap-url-host url1) (imap-url-host url2))
        (= (imap-url-port url1) (imap-url-port url2))))
+
+(define-method url-pass-phrase-key ((url <imap-url>))
+  (make-imap-url-string (imap-url-user-id url)
+			(imap-url-host url)
+			(imap-url-port url)
+			""))
 
 (define-method parse-url-body (string default-url)
   (call-with-values (lambda () (parse-imap-url-body string default-url))
@@ -191,7 +197,6 @@
 
 (define-class (<imap-connection> (constructor (url))) ()
   (url             define accessor)
-  (passphrase      define standard initial-value #f)
   (port            define standard initial-value #f)
   (greeting        define standard initial-value #f)
   (sequence-number define standard initial-value 0)
@@ -306,11 +311,11 @@
 		(close-imap-connection connection)
 		(error "Server doesn't support IMAP4rev1:" url)))
 	  (let ((response
-		 (call-with-memoized-passphrase connection
-		   (lambda (passphrase)
+		 (imail-call-with-pass-phrase (imap-connection-url connection)
+		   (lambda (pass-phrase)
 		     (imap:command:login connection
 					 (imap-url-user-id url)
-					 passphrase)))))
+					 pass-phrase)))))
 	    (if (imap:response:no? response)
 		(begin
 		  (close-imap-connection connection)
@@ -387,47 +392,6 @@
   (if (= (imap-connection-reference-count connection)
 	 (if (imap-connection-folder connection) 0 1))
       (close-imap-connection connection)))
-
-(define (call-with-memoized-passphrase connection receiver)
-  (let ((passphrase (imap-connection-passphrase connection)))
-    (if passphrase
-	(call-with-unobscured-passphrase passphrase receiver)
-	(imail-call-with-pass-phrase (imap-connection-url connection)
-	  (lambda (passphrase)
-	    (set-imap-connection-passphrase! connection
-					     (obscure-passphrase passphrase))
-	    (receiver passphrase))))))
-
-(define (obscure-passphrase clear-text)
-  (let ((n (string-length clear-text)))
-    (let ((noise (random-byte-vector n)))
-      (let ((obscured-text (make-string (* 2 n))))
-	(string-move! noise obscured-text 0)
-	(do ((i 0 (fix:+ i 1)))
-	    ((fix:= i n))
-	  (vector-8b-set! obscured-text (fix:+ i n)
-			  (fix:xor (vector-8b-ref clear-text i)
-				   (vector-8b-ref noise i))))
-	obscured-text))))
-
-(define (call-with-unobscured-passphrase obscured-text receiver)
-  (let ((n (quotient (string-length obscured-text) 2))
-	(clear-text))
-    (dynamic-wind
-     (lambda ()
-       (set! clear-text (make-string n))
-       unspecific)
-     (lambda ()
-       (do ((i 0 (fix:+ i 1)))
-	   ((fix:= i n))
-	 (vector-8b-set! clear-text i
-			 (fix:xor (vector-8b-ref obscured-text i)
-				  (vector-8b-ref obscured-text (fix:+ i n)))))
-       (receiver clear-text))
-     (lambda ()
-       (string-fill! clear-text #\NUL)
-       (set! clear-text)
-       unspecific))))
 
 ;;;; Folder datatype
 
@@ -897,10 +861,10 @@
    (imap:command:single-response imap:response:capability? connection
 				 'CAPABILITY)))
 
-(define (imap:command:login connection user-id passphrase)
+(define (imap:command:login connection user-id pass-phrase)
   ((imail-message-wrapper "Logging in as " user-id)
    (lambda ()
-     (imap:command:no-response-1 connection 'LOGIN user-id passphrase))))
+     (imap:command:no-response-1 connection 'LOGIN user-id pass-phrase))))
 
 (define (imap:command:select connection mailbox)
   ((imail-message-wrapper "Select mailbox " mailbox)

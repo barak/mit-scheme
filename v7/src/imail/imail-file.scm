@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.35 2000/05/22 19:49:55 cph Exp $
+;;; $Id: imail-file.scm,v 1.36 2000/05/22 20:22:37 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -38,6 +38,11 @@
 
 (define-method url-exists? ((url <file-url>))
   (file-exists? (file-url-pathname url)))
+
+(define-method url-pass-phrase-key ((url <file-url>))
+  ;; Unused
+  url
+  "")
 
 (define (define-file-url-completers class filter)
   (define-method %url-complete-string
