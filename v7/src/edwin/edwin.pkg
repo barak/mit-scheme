@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.165 1995/04/10 20:24:17 cph Exp $
+$Id: edwin.pkg,v 1.166 1995/04/13 23:28:20 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -1002,8 +1002,7 @@ MIT in each case. |#
     (files "key-x11")
     (parent (edwin))
     (export (edwin screen x-screen)
-	    x-make-special-key)
-    (initialization (initialize-package!)))
+	    x-make-special-key))
 
   (define-package (edwin x-commands)
     (files "xcom")

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: key-x11.scm,v 1.2 1995/04/13 23:28:07 cph Exp $
+;;;	$Id: key-x11.scm,v 1.3 1995/04/13 23:28:37 cph Exp $
 ;;;
-;;;	Copyright (c) 1991-1992 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
