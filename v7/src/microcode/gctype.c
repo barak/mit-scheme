@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/gctype.c,v 9.22 1987/04/03 00:14:08 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/gctype.c,v 9.23 1987/06/05 20:56:37 cph Rel $
  *
  * This file contains the table which maps between Types and
  * GC Types.
@@ -108,7 +108,7 @@ int GC_Type_Map[MAX_SAFE_TYPE + 1] = {
     GC_Pair,			/* TC_COMPILER_LINK */
     GC_Non_Pointer,		/* TC_STACK_ENVIRONMENT */
     GC_Pair,			/* TC_COMPLEX */
-    GC_Undefined,			/* 0x3D */
+    GC_Vector,			/* TC_COMPILED_CODE_BLOCK */
     GC_Undefined,			/* 0x3E */
     GC_Undefined,			/* 0x3F */
     GC_Undefined,			/* 0x40 */
