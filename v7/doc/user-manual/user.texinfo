@@ -2,10 +2,10 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.101 2002/12/30 06:08:30 cph Exp $
+@comment $Id: user.texinfo,v 1.102 2003/02/14 19:22:43 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
-@settitle MIT Scheme User's Manual
+@settitle MIT/GNU Scheme User's Manual
 @comment %**end of header (This is for running Texinfo on a region.)
 @setchapternewpage odd
 
@@ -23,13 +23,14 @@
 
 @dircategory Programming Languages
 @direntry
-* MIT Scheme User: (mit-scheme-user).	MIT Scheme User's Manual
+* MIT/GNU Scheme User: (mit-scheme-user).	MIT/GNU Scheme User's Manual
 @end direntry
 
 @ifinfo
-This file documents the use of MIT Scheme.
+This file documents the use of MIT/GNU Scheme.
 
-Copyright @copyright{} 1991-2002 Massachusetts Institute of Technology
+Copyright @copyright{} 1991,1993,1999,2000,2001,2002 Massachusetts Institute of Technology
+Copyright @copyright{} 2003 Massachusetts Institute of Technology
 
 Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version
@@ -40,7 +41,7 @@ Free Documentation License".
 @end ifinfo
 
 @titlepage
-@title{MIT Scheme User's Manual}
+@title{MIT/GNU Scheme User's Manual}
 @subtitle Edition 1.90
 @subtitle for Scheme Release 7.7.2
 @subtitle 29 December 2002
@@ -51,7 +52,8 @@ Free Documentation License".
 @page
 
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1991-2002 Massachusetts Institute of Technology
+Copyright @copyright{} 1991,1993,1999,2000,2001,2002 Massachusetts Institute of Technology
+Copyright @copyright{} 2003 Massachusetts Institute of Technology
 
 Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version
@@ -66,9 +68,9 @@ Free Documentation License".
 
 @ifinfo
 Scheme is the UnCommon Lisp.  This Info file is the user's guide for the
-MIT implementation of Scheme.  It describes how to install and
-run MIT Scheme, how to execute and compile Scheme programs,
-and how to use Scheme with Edwin and GNU Emacs.
+MIT/GNU implementation of Scheme.  It describes how to install and run
+MIT/GNU Scheme, how to execute and compile Scheme programs, and how to
+use Scheme with Edwin and GNU Emacs.
 @end ifinfo
 
 @menu
@@ -91,7 +93,7 @@ and how to use Scheme with Edwin and GNU Emacs.
 @node Introduction, Installation, Top, Top
 @unnumbered Introduction
 
-This document describes how to install and use MIT Scheme, the
+This document describes how to install and use MIT/GNU Scheme, the
 UnCommon Lisp.  It gives installation instructions for all of the
 platforms that we support; complete documentation of the command-line
 options and environment variables that control how Scheme works; and
@@ -104,7 +106,7 @@ as an appendix.
 @cindex Windows
 @cindex PC
 This document discusses many operating-system specific features of the
-MIT Scheme implementation.  In order to simplify the discussion, we use
+MIT/GNU Scheme implementation.  In order to simplify the discussion, we use
 abbreviations to refer to some operating systems.  When the text uses
 the term @dfn{unix}, this means any of the unix systems that we support,
 including GNU/Linux, *BSD, HP-UX, Ultrix, NeXT, and SunOS.  The term
@@ -121,7 +123,7 @@ directory separators, drive letters, @sc{cr-lf} line termination, and
 The primary distribution site for this software is
 
 @example
-@uref{http://www.nongnu.org/mit-scheme/}
+@uref{http://www.gnu.org/mit-scheme/}
 @end example
 
 @noindent
@@ -134,7 +136,7 @@ available at our site.
 To report bugs, use the bug-reporting tool at
 
 @example
-@uref{http://savannah.nongnu.org/projects/mit-scheme/}
+@uref{http://savannah.gnu.org/projects/mit-scheme/}
 @end example
 
 @noindent
@@ -145,7 +147,7 @@ system you are using.
 @node Installation, Running Scheme, Introduction, Top
 @chapter Installation
 
-This chapter describes how to install MIT Scheme release 7.7.
+This chapter describes how to install MIT/GNU Scheme release 7.7.
 The release is supported under several different operating systems:
 unix, OS/2, and Windows.  Read the section detailing the installation
 for the operating system that you are using.
@@ -163,7 +165,7 @@ for the operating system that you are using.
 We will use as an example the installation for GNU/Linux.  The
 installation for other unix systems is similar.
 
-MIT Scheme is distributed as a compressed `tar' file.  The tar
+MIT/GNU Scheme is distributed as a compressed `tar' file.  The tar
 file contains two directories, called @file{bin} and @file{lib}.  The
 @file{bin} directory contains two executable files, @command{scheme} and
 @command{bchscheme}.  The @file{lib} directory contains one
@@ -250,33 +252,33 @@ scheme --library ~/mit-scheme
 @end example
 
 @item
-You should now be able to run MIT Scheme.  @xref{Running
+You should now be able to run MIT/GNU Scheme.  @xref{Running
 Scheme}, for more information.
 @end itemize
 
 @node Windows Installation, OS/2 Installation, Unix Installation, Installation
 @section Windows Installation
 
-This section describes how to install MIT Scheme on Windows
+This section describes how to install MIT/GNU Scheme on Windows
 95, Windows 98, Windows Me, Windows NT 4.0, Windows 2000, or Windows XP.
 The software should also work on older versions of Windows NT, but we
 haven't tested it there.
 
-MIT Scheme is distributed as a self-installing executable.
+MIT/GNU Scheme is distributed as a self-installing executable.
 Installation of the software is straightforward.  Simply execute the
 downloaded file and answer the installer's questions.  The installer
-will allow you to choose the directory in which MIT Scheme is
+will allow you to choose the directory in which MIT/GNU Scheme is
 to be installed, and the name of the folder in which the shortcuts are
 to be placed.
 
 To uninstall the software, open up the @samp{Control Panel}, run
-@samp{Add/Remove Programs}, and double-click on @samp{MIT Scheme 7.7}.
+@samp{Add/Remove Programs}, and double-click on @samp{MIT/GNU Scheme 7.7}.
 
 @node OS/2 Installation, Optional Configuration, Windows Installation, Installation
 @section OS/2 Installation
 
-This section describes how to install MIT Scheme on a machine
-running OS/2 2.1 or later.  This release of MIT Scheme has
+This section describes how to install MIT/GNU Scheme on a machine
+running OS/2 2.1 or later.  This release of MIT/GNU Scheme has
 been tested only on OS/2 Warp 4.0.  It was compiled using IBM Visual Age
 C++ version 3.0 and the OS/2 Toolkit version 4.0.
 
@@ -508,8 +510,8 @@ to install more @acronym{RAM}.
 @node Running Scheme, Using Scheme, Installation, Top
 @chapter Running Scheme
 
-This chapter describes how to run MIT Scheme.  It also
-describes how you can customize the behavior of MIT Scheme
+This chapter describes how to run MIT/GNU Scheme.  It also
+describes how you can customize the behavior of MIT/GNU Scheme
 using command-line options and environment variables.
 
 @menu
@@ -526,7 +528,7 @@ using command-line options and environment variables.
 @node Basics of Starting Scheme, Customizing Scheme, Running Scheme, Running Scheme
 @section Basics of Starting Scheme
 
-Under unix and OS/2, MIT Scheme is invoked by typing
+Under unix and OS/2, MIT/GNU Scheme is invoked by typing
 
 @example
 scheme
@@ -534,7 +536,7 @@ scheme
 
 @noindent
 at your operating system's command interpreter.  Under Windows,
-MIT Scheme is invoked by double-clicking on a shortcut.  In
+MIT/GNU Scheme is invoked by double-clicking on a shortcut.  In
 either case, Scheme will load itself and print something like this:
 
 @example
@@ -689,7 +691,7 @@ command-line options or by environment variables.
 
 @pindex scheme
 @pindex bchscheme
-MIT Scheme uses a two-space copying garbage collector for
+MIT/GNU Scheme uses a two-space copying garbage collector for
 reclaiming storage in the heap.  There are two versions of Scheme which
 handle garbage collection differently.  The standard Scheme, called
 @command{scheme} under unix and @command{scheme.exe} on the PC, has two
@@ -717,7 +719,7 @@ has only one heap in memory, the equation is
 Once the storage is allocated for the constant space and the heap,
 Scheme will dynamically adjust the proportion of the total that is used
 for constant space; the stack and extra microcode storage is not
-included in this adjustment.  Previous versions of MIT Scheme
+included in this adjustment.  Previous versions of MIT/GNU Scheme
 needed to be told the amount of constant space that was required when
 loading bands with the @option{--band} option.  Dynamic adjustment of
 the heap and constant space avoids this problem.
@@ -743,7 +745,7 @@ command line.  Any arguments other than these options will generate a
 warning message when Scheme starts.  If you want to define your own
 command-line options, see @ref{Custom Command-line Options}.
 
-Note that MIT Scheme supports only @dfn{long} options, that
+Note that MIT/GNU Scheme supports only @dfn{long} options, that
 is, options specified by verbose names, as opposed to @dfn{short}
 options, which are specified by single characters.  As of release 7.7.2,
 all options start with two hyphens, for compatibility with GNU
@@ -942,7 +944,7 @@ Specifies that a @dfn{cold load} should be performed, using
 given, a normal load is performed instead.  This option may not be used
 together with the @option{--compiler}, @option{--edwin}, or
 @option{--band} options.  This option is useful only for maintenance and
-development of the MIT Scheme runtime system.
+development of the MIT/GNU Scheme runtime system.
 @end table
 
 @noindent
@@ -1097,7 +1099,7 @@ This option causes Edwin to start immediately when Scheme is started.
 @node Custom Command-line Options, Environment Variables, Command-Line Options, Running Scheme
 @section Custom Command-line Options
 
-MIT Scheme provides a mechanism for you to define your own
+MIT/GNU Scheme provides a mechanism for you to define your own
 command-line options.  This is done by registering handlers to identify
 particular named options and to process them when Scheme starts.
 Unfortunately, because of the way this mechanism is implemented, you
@@ -1146,7 +1148,7 @@ implement the behavior of the option.
 
 Scheme refers to many environment variables.  This section lists these
 variables and describes how each is used.  The environment variables are
-organized according to the parts of MIT Scheme that they
+organized according to the parts of MIT/GNU Scheme that they
 affect.
 
 Environment variables that affect the microcode must be defined before
@@ -1433,7 +1435,7 @@ Once in Edwin, the font can be changed with the @code{set-font} and
 @nvindex MITSCHEME_GEOMETRY
 @cindex window position
 Four integers separated by commas or spaces that specify the placement
-and size of the MIT Scheme window as a
+and size of the MIT/GNU Scheme window as a
 @var{left},@var{top},@var{width},@var{height} quadruple.  The units are
 screen pixels, and @samp{-1} means allow the system to choose this
 parameter.  E.g.@: @samp{-1,-1,500,300} places a 500 by 300 pixel window
@@ -1514,7 +1516,7 @@ this to determine the user's shell if the environment variable
 @node Starting Scheme from Microsoft Windows, Leaving Scheme, Environment Variables, Running Scheme
 @section Starting Scheme from Microsoft Windows
 
-The Microsoft Windows version of MIT Scheme runs as a
+The Microsoft Windows version of MIT/GNU Scheme runs as a
 graphics-based application.  Scheme is normally started using shortcuts;
 the installer automatically generates several different predefined
 shortcuts for your convenience.
@@ -1962,7 +1964,7 @@ source code have a pathname type of @code{"scm"}, and files of binary
 SCode have pathname type @code{"bin"}.  Native-code binaries have
 pathname type @code{"com"}.  (See the description of
 @code{pathname-type} in @ref{Components of Pathnames, Pathname Type,
-Components of Pathnames, scheme, MIT Scheme Reference Manual}.)
+Components of Pathnames, scheme, MIT/GNU Scheme Reference Manual}.)
 @end deffn
 
 @defvr {variable+} load-noisily?
@@ -1996,7 +1998,7 @@ failing to find the other pathname types.
 All pathnames are interpreted relative to a working directory, which is
 initialized when Scheme is started.  The working directory can be
 obtained by calling the procedure @code{pwd} or modified by calling the
-procedure @code{cd}; @pxref{Working Directory, , , scheme, MIT
+procedure @code{cd}; @pxref{Working Directory, , , scheme, MIT/GNU
 Scheme Reference Manual}.  Files may be loaded when Scheme first starts;
 see the @option{--load} command-line option for details.
 
@@ -2015,7 +2017,7 @@ file @file{runtime/cpress.scm}.  Used by the runtime system for
 compression of compiled-code debugging information.
 
 @item format
-The @code{format} procedure.  @xref{Format, , , scheme, MIT Scheme
+The @code{format} procedure.  @xref{Format, , , scheme, MIT/GNU Scheme
 Reference Manual}.
 
 @item gdbm
@@ -2023,7 +2025,7 @@ Support to access @code{gdbm} databases.  Undocumented; see the source
 files @file{runtime/gdbm.scm} and @file{microcode/prgdbm.c}.
 
 @item hash-table
-The hash-table data type.  @xref{Hash Tables, , , scheme, MIT Scheme
+The hash-table data type.  @xref{Hash Tables, , , scheme, MIT/GNU Scheme
 Reference Manual}.
 
 @item ordered-vector
@@ -2031,12 +2033,12 @@ Support to search and do completion on vectors of ordered elements.
 Undocumented; see the source file @file{runtime/ordvec.scm}.
 
 @item rb-tree
-The red-black tree data type.  @xref{Red-Black Trees, , , scheme, MIT
-Scheme Reference Manual}.
+The red-black tree data type.  @xref{Red-Black Trees, , , scheme,
+MIT/GNU Scheme Reference Manual}.
 
 @item regular-expression
 Support to search and match strings for regular expressions.
-@xref{Regular Expressions, , , scheme, MIT Scheme Reference Manual}.
+@xref{Regular Expressions, , , scheme, MIT/GNU Scheme Reference Manual}.
 
 @item stepper
 Support to step through the evaluation of Scheme expressions.
@@ -2050,11 +2052,11 @@ extensively by Edwin.
 
 @item synchronous-subprocess
 Support to run synchronous subprocesses.  @xref{Subprocesses, , ,
-scheme, MIT Scheme Reference Manual}.
+scheme, MIT/GNU Scheme Reference Manual}.
 
 @item wt-tree
 The weight-balanced tree data type.  @xref{Weight-Balanced Trees, , ,
-scheme, MIT Scheme Reference Manual}.
+scheme, MIT/GNU Scheme Reference Manual}.
 @end table
 @end deffn
 
@@ -2125,7 +2127,7 @@ defaults to the filename from which the current world was last restored.
 @section Garbage Collection
 
 This section describes procedures that control garbage collection.
-@xref{Memory Usage}, for a discussion of how MIT Scheme uses
+@xref{Memory Usage}, for a discussion of how MIT/GNU Scheme uses
 memory.
 
 @deffn {procedure+} gc-flip [safety-margin]
@@ -3192,7 +3194,7 @@ For example, to ignore reference traps on all the variables except
 @c
 @c Note: The scoping of @code{ignore-reference-traps} and
 @c @code{ignore-assignment-traps} differs between version of the
-@c compiler.  MIT Scheme version 8.0 (Liar version 5.0) has
+@c compiler.  MIT/GNU Scheme version 8.0 (Liar version 5.0) has
 @c true block scoping, thus the declaration takes effect only within the
 @c procedure or @code{let} in which the declaration occurs.  This makes
 @c it possible to control individual variable references, for example:
@@ -3218,7 +3220,7 @@ kinds of number.
 
 @cindex fixnum (defn)
 A @dfn{fixnum} is an exact integer that is small enough to fit in a
-machine word.  In MIT Scheme, fixnums are 26 bits on 32-bit
+machine word.  In MIT/GNU Scheme, fixnums are 26 bits on 32-bit
 machines, and 56 bits on 64-bit machines; it is reasonable to assume
 that fixnums are at least 24 bits.  Fixnums are signed; they are encoded
 using 2's complement.
@@ -3235,7 +3237,7 @@ the equivalent fixnum operation for the generic operation.  However,
 care should be exercised: if used improperly, these operations can
 return incorrect answers, or even malformed objects that confuse the
 garbage collector.  For a listing of all fixnum operations, see
-@ref{Fixnum Operations, , , scheme, MIT Scheme Reference Manual}.
+@ref{Fixnum Operations, , , scheme, MIT/GNU Scheme Reference Manual}.
 
 A fruitful area for inserting fixnum operations is in the index
 operations in tight loops.
@@ -3254,7 +3256,7 @@ than getting efficient fixnum arithmetic.
 One of the main disadvantages of generic arithmetic is that not all
 kinds of number fit in a machine register.  Flonums have to be
 @dfn{boxed} because a 64-bit @acronym{IEEE} floating-point number (the
-representation that MIT Scheme uses) does not fit in a regular
+representation that MIT/GNU Scheme uses) does not fit in a regular
 machine word.  This is true even on 64-bit architectures because some
 extra bits are needed to distinguish floating-point numbers from other
 objects like pairs and strings.  Values are boxed by storing them in a
@@ -3320,7 +3322,7 @@ or calls to procedures then the values tend to get boxed anyway.
 @c @end group
 @c @end example
 @c 
-@c This approach is effective only for MIT Scheme version 8.0
+@c This approach is effective only for MIT/GNU Scheme version 8.0
 @c and later.  Earlier versions do not do this kind of type analysis.
 
 @subsubheading Flonum vectors
@@ -3571,7 +3573,7 @@ debugging tools, especially @code{debug}.
 @cindex continuation Browser
 @cindex browser, Continuation
 @findex debug
-There are two debuggers available with MIT Scheme.  One of
+There are two debuggers available with MIT/GNU Scheme.  One of
 them runs under Edwin, and is described in that section of this document
 (@pxref{Edwin Debugger}).  The other is command-line oriented, does not
 require Edwin, and is described here.
@@ -3766,7 +3768,7 @@ command followed by the @kbd{j} command.
 @cindex Debugger command x
 @cindex Debugger command y
 The @kbd{m}, @kbd{x}, and @kbd{y} commands are for Scheme wizards.  They
-are used to debug the MIT Scheme implementation.  If you want
+are used to debug the MIT/GNU Scheme implementation.  If you want
 to find out what they do, read the source code.
 
 @item Miscellaneous commands
@@ -3822,7 +3824,7 @@ bar
 
 @deffn {procedure+} pp object [output-port [as-code?]]
 The @code{pp} procedure is described in @ref{Output Procedures, , ,
-scheme, MIT Scheme Reference Manual}.  However, since this is a very
+scheme, MIT/GNU Scheme Reference Manual}.  However, since this is a very
 useful debugging tool, we also mention it here.  @code{pp} provides two
 very useful functions:
 
@@ -4156,10 +4158,10 @@ combination of @code{unadvise-entry} and @code{unadvise-exit}.  If
 @chapter GNU Emacs Interface
 
 There is an interface library, called @file{xscheme}, distributed with
-MIT Scheme and GNU Emacs, which facilitates running
+MIT/GNU Scheme and GNU Emacs, which facilitates running
 Scheme as a subprocess of Emacs.  If you wish to use this interface,
 please install the version of @file{xscheme.el} that comes with
-MIT Scheme, as it is guaranteed to be correct for your version
+MIT/GNU Scheme, as it is guaranteed to be correct for your version
 of Scheme.
 
 This interface works under unix only, because it requires unix signals
@@ -4297,11 +4299,11 @@ Like evaluating @samp{(continue)}.  (@code{xscheme-send-proceed})
 @node Edwin, Release Notes, GNU Emacs Interface, Top
 @chapter Edwin
 
-This chapter describes how to start Edwin, the MIT Scheme text
+This chapter describes how to start Edwin, the MIT/GNU Scheme text
 editor.  Edwin is very similar to GNU Emacs---you should refer
 to the GNU Emacs manual for information about Edwin's commands
 and key bindings---except that Edwin's extension language is
-MIT Scheme, while GNU Emacs extensions are written
+MIT/GNU Scheme, while GNU Emacs extensions are written
 in Emacs Lisp.  This manual does not discuss customization of Edwin.
 
 @menu
@@ -4454,7 +4456,7 @@ Emacs.
 
 As you might expect, Edwin has special support for editing and
 evaluating Scheme code.  This section describes @dfn{Scheme Mode}, the
-appropriate mode for editing MIT Scheme programs.
+appropriate mode for editing MIT/GNU Scheme programs.
 
 Scheme mode is normally entered automatically by visiting a file whose
 file name ends in @samp{.scm}.  You can also mark a file as Scheme code
@@ -4685,24 +4687,16 @@ state that prevents Edwin from running.
 @node Release Notes, GNU Free Documentation License, Edwin, Top
 @appendix Release Notes
 
-The previous full release of MIT Scheme was version 7.5.17.
+The previous full release of MIT/GNU Scheme was version 7.6.1.
 This section describes changes that have occurred since that time.  For
 more detailed information, see the @file{ChangeLog} files in the source
 code.
 
-Note that MIT Scheme still conforms to the @cite{Revised^4
+Note that MIT/GNU Scheme still conforms to the @cite{Revised^4
 Report on the Algorithmic Language Scheme}, but not to the
 @cite{Revised^5 Report on The Algorithmic Language Scheme}.
 
-@menu
-* Recent Changes::              
-* Older Changes::               
-@end menu
-
-@node Recent Changes, Older Changes, Release Notes, Release Notes
-@appendixsec Recent Changes
-
-These are the changes since release 7.6.0:
+These are the changes since release 7.7.0:
 
 @itemize @bullet
 @item
@@ -4759,138 +4753,6 @@ The hash-table abstraction is now always loaded.  It's not necessary to
 call @code{load-option} prior to use of hash tables.  For upwards
 compatibility, calling @samp{(load-option 'hash-table)} is still
 permitted but does nothing.
-
-@item
-Release 7.6.1 provides a workaround for a bug on some @acronym{AMD}
-Athlon processors (specifically, models 1, 3, and 4).  This bug causes
-those processors to incorrectly execute certain kinds of self-modifying
-code, including that used by MIT Scheme.
-
-Release 7.6.1 also fixes a problem that caused the *PARSER and
-@acronym{XML} subsystems not to load correctly on Windows and OS/2
-systems.
-@end itemize
-
-@node Older Changes,  , Recent Changes, Release Notes
-@appendixsec Older Changes
-
-These are the changes that occurred between releases 7.6.0 and 7.5.17:
-
-@itemize @bullet
-@item
-The variable-reference machinery has been completely redesigned.  The
-new design provides two new features: (1) a procedure
-@code{link-variables} that can link two variable bindings with
-different names (previously @code{environment-link-name} could only
-link bindings with the same name); (2) a new procedure
-@code{unbind-variable} that can remove a variable binding.  Both of
-these operations work only on ``top-level'' environments; they don't
-work on environments created by invoking compiled procedures.
-
-@strong{This is an incompatible change to the compiled-code
-representation.  All programs must be recompiled.}
-
-@item
-The ``packaging'' subsystem has been redesigned to make it more
-flexible.  The new design takes advantage of the improved
-variable-linking mechanism to allow packages to export bindings using
-names different from their internal names.  Also, each package now
-maintains an in-memory data structure that should (in principal) allow
-it to be uninstalled or reinstalled.  This subsystem is still
-evolving; expect further changes in the future.
-
-This subsystem is now included in the released binaries; it can be
-loaded by @samp{(load-option 'cref)}.
-
-@item
-Compiled-code debugging information is now keyed to prevent using the
-wrong debugging info when examining compiled code.  This means that
-in-memory data structures have an identifying key that is matched
-against a corresponding key in the debugging-info file.  The debugging
-info is used only when the keys match.
-
-@item
-MIT Scheme now has a non-validating @acronym{XML} parser that
-is mostly conformant (except that it doesn't support @acronym{UTF-16}).
-
-@item
-There is very limited support for @acronym{UTF-8}.  At present this is
-only used by the @acronym{XML} parser.
-
-@item
-All string and character procedures now operate on
-@acronym{ISO-8859-1} rather than @acronym{US-ASCII} as the base
-character set.  This isn't real internationalization support, but at
-least it broadens the character support slightly.  This involved
-changing a number of procedures that were formerly written in C and
-are now written in Scheme, which may have a performance impact on some
-uses.
-
-@item
-The procedure @code{length} now detects circularities in its argument
-and signals an error.
-
-@item
-A new @code{rexp} facility provides a more readable syntax for
-specifying regular expressions.  This syntax can be compiled into the
-usual syntax.
-
-@item
-There is a new @dfn{parser buffer} abstraction that supports the
-building of parsers with backtracking.  An associated high-level
-parser description language allows parsers to be described in a
-@acronym{BNF}-like language that is compiled into efficient Scheme
-code.
-
-@item
-A new procedure @code{flo:finite?} returns @samp{#f} for infinite or
-@samp{NaN} flonums and @samp{#t} for all others.
-
-@item
-The signal-handling code for GNU/Linux systems has been
-changed to take advantage of additional information identifying the
-types of arithmetic exceptions.  This allows more accurate error
-messages to be generated.
-
-@item
-The following procedure names were changed:
-
-@multitable @columnfractions .5 .5
-@item Old name
-@tab New name
-@item @code{list-transform-positive}
-@tab @code{keep-matching-items}
-@item @code{list-transform-negative}
-@tab @code{delete-matching-items}
-@item @code{list-search-positive}
-@tab @code{find-matching-item}
-@end multitable
-
-@noindent
-and the following new procedures were implemented:
-@code{keep-matching-items!} and @code{delete-matching-items!}.
-
-@item
-@acronym{IMAIL} now supports commands to sort folders according to
-various criteria.  The design is similar to that of Rmail.
-
-@item
-@acronym{IMAIL} has been re-engineered to improve performance on very
-large folders.  There is now a disk cache for each @acronym{IMAP}
-folder, to eliminate unnecessary network delays.  Also, the summary
-buffer previously used a quadratic algorithm to associate lines in the
-summary with messages in the folder; it now uses a linear algorithm.
-
-@item
-A new @acronym{IMAIL} command @code{imail-file-message} appends the
-text of a message to a file more or less as it appears in the buffer.
-This is intended to allow collecting messages into a file in a
-human-readable format.
-
-@item
-@acronym{IMAIL} used to determine the type of file folders by their
-file names; now it examines the file contents instead.  When creating
-a new file folder, it prompts for the type.
 @end itemize
 
 @node GNU Free Documentation License, Environment-variable Index, Release Notes, Top

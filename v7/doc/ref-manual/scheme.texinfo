@@ -2,10 +2,10 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.119 2002/12/30 03:36:42 cph Exp $
+@comment $Id: scheme.texinfo,v 1.120 2003/02/14 19:22:43 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
-@settitle MIT Scheme Reference
+@settitle MIT/GNU Scheme Reference
 @comment %**end of header (This is for running Texinfo on a region.)
 @setchapternewpage odd
 @syncodeindex vr fn
@@ -21,7 +21,7 @@
 
 @dircategory Programming Languages
 @direntry
-* MIT Scheme Ref: (mit-scheme-ref).	MIT Scheme Reference Manual
+* MIT/GNU Scheme Ref: (mit-scheme-ref).	MIT/GNU Scheme Reference Manual
 @end direntry
 
 @tex
@@ -35,7 +35,7 @@
 @end tex
 
 @ifinfo
-This file documents the MIT Scheme system.
+This file documents the MIT/GNU Scheme system.
 
 Copyright @copyright{} 1988-2002 Massachusetts Institute of Technology
 
@@ -48,10 +48,10 @@ Free Documentation License".
 @end ifinfo
 
 @titlepage
-@title{MIT Scheme Reference Manual}
+@title{MIT/GNU Scheme Reference Manual}
 @subtitle Edition 1.98
 @subtitle for Scheme Release 7.7.2
-@subtitle 28 December 2002
+@subtitle 14 February 2003
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -73,8 +73,8 @@ Free Documentation License".
 
 @ifinfo
 Scheme is the UnCommon Lisp.  This Info file is the programmer reference
-document for the MIT implementation of Scheme.  It describes the
-facilities available for developing programs in MIT Scheme, and the
+document for the MIT/GNU implementation of Scheme.  It describes the
+facilities available for developing programs in MIT/GNU Scheme, and the
 ``public'' parts of the implementation.
 @end ifinfo
 
@@ -472,13 +472,13 @@ Department of Defense and by the National Science Foundation.
 @chapter Overview
 
 @cindex runtime system
-This manual is a detailed description of the MIT Scheme runtime system.
+This manual is a detailed description of the MIT/GNU Scheme runtime system.
 It is intended to be a reference document for programmers.  It does not
 describe how to run Scheme or how to interact with it --- that is the
-subject of the @cite{MIT Scheme User's Manual}.
+subject of the @cite{MIT/GNU Scheme User's Manual}.
 
 This chapter summarizes the semantics of Scheme, briefly describes the
-MIT Scheme programming environment, and explains the syntactic and
+MIT/GNU Scheme programming environment, and explains the syntactic and
 lexical conventions of the language.  Subsequent chapters describe
 special forms, numerous data abstractions, and facilities for input and
 output.
@@ -492,7 +492,7 @@ Throughout this manual, we will make frequent references to
 Clinger, Jonathan Rees, et al.@:, or by @sc{ieee} Std.@: 1178-1990,
 @cite{IEEE Standard for the Scheme Programming Language} (in fact,
 several parts of this document are copied from the @cite{Revised
-Report}).  MIT Scheme is an extension of standard Scheme.
+Report}).  MIT/GNU Scheme is an extension of standard Scheme.
 
 These are the significant semantic characteristics of the Scheme
 language:
@@ -666,7 +666,7 @@ on the value in any way.
 @cindex entry format
 @cindex format, entry
 
-Each description of an MIT Scheme variable, special form, or
+Each description of an MIT/GNU Scheme variable, special form, or
 procedure begins with one or more header lines in this format:
 
 @deffn @var{category} @var{template}
@@ -879,7 +879,7 @@ Definitions}) may add a binding to an existing environment.
 
 @cindex initial environment (defn)
 @cindex environment, initial (defn)
-MIT Scheme provides an @dfn{initial environment} that contains all
+MIT/GNU Scheme provides an @dfn{initial environment} that contains all
 of the variable bindings described in this manual.  Most environments
 are ultimately extensions of this initial environment.  In Scheme, the
 environment in which your programs execute is actually a child
@@ -986,9 +986,9 @@ word @dfn{false} to refer to any Scheme value that counts as false.  In
 conditional tests, all values count as true except for @code{#f}, which
 counts as false (@pxref{Conditionals}).
 
-Implementation note: In MIT Scheme, @code{#f} and the empty list are the
+Implementation note: In MIT/GNU Scheme, @code{#f} and the empty list are the
 same object, and the printed representation of @code{#f} is always
-@samp{()}.  As this contradicts the Scheme standard, MIT Scheme will be
+@samp{()}.  As this contradicts the Scheme standard, MIT/GNU Scheme will be
 changed to make @code{#f} and the empty list different objects.
 
 @node External Representations, Disjointness of Types, True and False, Scheme Concepts
@@ -1097,7 +1097,7 @@ immutable.  The constants and the strings returned by
 @code{symbol->string} are then the immutable objects, while all objects
 created by other procedures are mutable.  It is an error to attempt to
 store a new value into a location that is denoted by an immutable
-object.  Note that the MIT Scheme compiler takes advantage of this
+object.  Note that the MIT/GNU Scheme compiler takes advantage of this
 property to share constants, but that these constants are not immutable.
 Instead, two constants that are @code{equal?} may be @code{eq?} in
 compiled code.
@@ -1178,10 +1178,10 @@ a symbol.
 @end itemize
 
 Scheme accepts most of the identifiers that other programming languages
-allow.  MIT Scheme allows all of the identifiers that standard
+allow.  MIT/GNU Scheme allows all of the identifiers that standard
 Scheme does, plus many more.
 
-MIT Scheme defines a potential identifier to be a sequence of
+MIT/GNU Scheme defines a potential identifier to be a sequence of
 non-delimiter characters that does not begin with either of the
 characters @samp{#} or @samp{,}.  Any such sequence of characters that
 is not a syntactically valid number (@pxref{Numbers}) is considered to
@@ -1250,7 +1250,7 @@ whitespace.
 @cindex #| as external representation
 An alternative form of comment (sometimes called an @dfn{extended
 comment}) begins with the characters @samp{#|} and ends with the
-characters @samp{|#}.  This alternative form is an MIT Scheme extension.
+characters @samp{|#}.  This alternative form is an MIT/GNU Scheme extension.
 As with ordinary comments, all of the characters in an extended comment,
 including the leading @samp{#|} and trailing @samp{|#}, are treated as
 whitespace.  Comments of this form may extend over multiple lines, and
@@ -1346,7 +1346,7 @@ These character sequences are used in the notation for numbers
 
 @item #|
 This character sequence introduces an extended comment.  The comment is
-terminated by the sequence @samp{|#}.  This notation is an MIT Scheme
+terminated by the sequence @samp{|#}.  This notation is an MIT/GNU Scheme
 extension.
 
 @item #!
@@ -1354,31 +1354,31 @@ This character sequence is used to denote a small set of named
 constants.  Currently there are only two of these, @code{#!optional} and
 @code{#!rest}, both of which are used in the @code{lambda} special form
 to mark certain parameters as being ``optional'' or ``rest'' parameters.
-This notation is an MIT Scheme extension.
+This notation is an MIT/GNU Scheme extension.
 @findex #!optional
 @findex #!rest
 @findex lambda
 
 @item #*
 This character sequence introduces a bit string (@pxref{Bit Strings}).
-This notation is an MIT Scheme extension.
+This notation is an MIT/GNU Scheme extension.
 
 @item #[
 This character sequence is used to denote objects that do not have a
 readable external representation (@pxref{Custom Output}).  A close
 bracket, @samp{]}, terminates the object's notation.  This notation is
-an MIT Scheme extension.
+an MIT/GNU Scheme extension.
 
 @item #@@
 This character sequence is a convenient shorthand used to refer to
 objects by their hash number (@pxref{Custom Output}).  This notation is
-an MIT Scheme extension.
+an MIT/GNU Scheme extension.
 
 @item #=
 @itemx ##
 These character sequences introduce a notation used to show circular
 structures in printed output, or to denote them in input.  The notation
-works much like that in Common Lisp, and is an MIT Scheme extension.
+works much like that in Common Lisp, and is an MIT/GNU Scheme extension.
 @end table
 
 @node Expressions,  , Lexical Conventions, Overview
@@ -1462,7 +1462,7 @@ namespace.  A local variable binding may shadow a syntactic keyword, and
 a local syntactic-keyword definition may shadow a variable binding.
 
 The following list contains all of the syntactic keywords that are
-defined when MIT Scheme is initialized:
+defined when MIT/GNU Scheme is initialized:
 
 @multitable @columnfractions .33 .33 .33
 @item access
@@ -1666,7 +1666,7 @@ extent and may be modified without affecting the procedure's caller.
 Specially recognized keywords divide the @var{formals} parameters into
 these three classes.  The keywords used here are @samp{#!optional},
 @samp{.}, and @samp{#!rest}.  Note that only @samp{.} is defined by
-standard Scheme --- the other keywords are MIT Scheme extensions.
+standard Scheme --- the other keywords are MIT/GNU Scheme extensions.
 @samp{#!rest} has the same meaning as @samp{.} in @var{formals}.
 
 The use of these keywords is best explained by means of examples.  The
@@ -1728,7 +1728,7 @@ that the first ``required parameter'' in @var{formals} is not a
 parameter but the @dfn{name} of the resulting procedure; thus
 @var{formals} must have at least one required parameter.  This name has
 no semantic meaning, but is included in the external representation of
-the procedure, making it useful for debugging.  In MIT Scheme,
+the procedure, making it useful for debugging.  In MIT/GNU Scheme,
 @code{lambda} is implemented as @code{named-lambda}, with a special name
 that means ``unnamed''.
 
@@ -1766,7 +1766,7 @@ the extended environment, and the value of the last @var{expression} is
 returned.  Each binding of a @var{variable} has the @var{expression}s as
 its region.
 
-MIT Scheme allows any of the @var{init}s to be omitted, in which
+MIT/GNU Scheme allows any of the @var{init}s to be omitted, in which
 case the corresponding @var{variable}s are unassigned.
 
 @cindex lambda, implicit in let
@@ -1854,7 +1854,7 @@ sequentially in the extended environment, and the value of the last
 entire @code{letrec} expression as its region, making it possible to
 define mutually recursive procedures.
 
-MIT Scheme allows any of the @var{init}s to be omitted, in which
+MIT/GNU Scheme allows any of the @var{init}s to be omitted, in which
 case the corresponding @var{variable}s are unassigned.
 
 @example
@@ -1907,7 +1907,7 @@ The syntax of this special form is similar to that of @code{let}, but
 by the rules of lexical scoping) of its corresponding @var{variable}.
 
 @cindex unassigned variable, and dynamic bindings
-MIT Scheme allows any of the @var{init}s to be omitted, in which
+MIT/GNU Scheme allows any of the @var{init}s to be omitted, in which
 case the corresponding @var{variable}s are temporarily unassigned.
 
 An error of type @code{condition-type:unbound-variable} is signalled if
@@ -2658,7 +2658,7 @@ simply use appropriately written ``recursive'' procedure calls.
 
 @deffn {special form} let name ((@var{variable} @var{init}) @dots{}) expression expression @dots{}
 @cindex named let (defn)
-MIT Scheme permits a variant on the syntax of @code{let} called
+MIT/GNU Scheme permits a variant on the syntax of @code{let} called
 ``named @code{let}'' which provides a more general looping construct
 than @code{do}, and may also be used to express recursions.
 
@@ -2670,7 +2670,7 @@ body is the @var{expression}s.  Thus the execution of the
 @var{name}.
 
 @cindex unassigned variable, and named let
-MIT Scheme allows any of the @var{init}s to be omitted, in which
+MIT/GNU Scheme allows any of the @var{init}s to be omitted, in which
 case the corresponding @var{variable}s are unassigned.
 
 Note: the following expressions are equivalent:
@@ -2737,7 +2737,7 @@ If @var{test} evaluates to a true value, then the @var{expression}s are
 evaluated from left to right and the value of the last @var{expression}
 is returned as the value of the @code{do} expression.  If no
 @var{expression}s are present, then the value of the @code{do}
-expression is unspecified in standard Scheme; in MIT Scheme, the
+expression is unspecified in standard Scheme; in MIT/GNU Scheme, the
 value of @var{test} is returned.
 
 @cindex region of variable binding, do
@@ -2772,7 +2772,7 @@ instead of @code{(@var{variable} @var{init})}.
 @section Structure Definitions
 
 This section provides examples and describes the options and syntax of
-@code{define-structure}, an MIT Scheme macro that is very similar to
+@code{define-structure}, an MIT/GNU Scheme macro that is very similar to
 @code{defstruct} in Common Lisp.  The differences between them are
 summarized at the end of this section.  For more information, see
 Steele's Common Lisp book.
@@ -3144,7 +3144,7 @@ regular slots.
 @end example
 @end deffn
 
-The essential differences between MIT Scheme's @code{define-structure}
+The essential differences between MIT/GNU Scheme's @code{define-structure}
 and Common Lisp's @code{defstruct} are:
 
 @itemize @bullet
@@ -3183,7 +3183,7 @@ structure instance) rather than three as in Common Lisp.
 By default, named structures are tagged with a unique object of some
 kind.  In Common Lisp, the structures are tagged with symbols.  This
 depends on the Common Lisp package system to help generate unique tags;
-MIT Scheme has no such way to generate unique symbols.
+MIT/GNU Scheme has no such way to generate unique symbols.
 
 @item
 The @code{named} option may optionally take an argument, which is
@@ -3233,8 +3233,8 @@ rules that specifies how a use of a macro is transcribed into a more
 primitive expression is called the @dfn{transformer} of the macro.
 
 @cindex anonymous syntactic keyword
-MIT Scheme also supports @dfn{anonymous syntactic keywords}.  This means
-that it's not necessary to binding a macro transformer to a syntactic
+MIT/GNU Scheme also supports @dfn{anonymous syntactic keywords}.  This means
+that it's not necessary to bind a macro transformer to a syntactic
 keyword before it is used.  Instead, any macro-transformer expression
 can appear as the first element of a form, and the form will be expanded
 by the transformer.
@@ -3405,7 +3405,7 @@ The region of the binding introduced by @code{define-syntax} is the
 entire block in which it appears.  However, the @var{keyword} may only
 be used after it has been defined.
 
-MIT Scheme permits @code{define-syntax} to appear both at top level and
+MIT/GNU Scheme permits @code{define-syntax} to appear both at top level and
 within @code{lambda} bodies.  The Revised^4 Report permits only
 top-level uses of @code{define-syntax}.
 
@@ -3444,7 +3444,7 @@ that follow the group.  For example, the following are errors:
 @node Pattern Language, Syntactic Closures, Syntactic Binding Constructs, Macros
 @subsection Pattern Language
 
-MIT Scheme supports a high-level pattern language for specifying macro
+MIT/GNU Scheme supports a high-level pattern language for specifying macro
 transformers.  This pattern language is defined by the Revised^4 Report
 and is portable to other conforming Scheme implementations.  To use the
 pattern language, specify a @var{transformer-spec} as a
@@ -3606,7 +3606,7 @@ which would result in an invalid procedure call.
 @subsection Syntactic Closures
 
 @cindex syntactic closures
-MIT Scheme's syntax-transformation engine is an implementation of
+MIT/GNU Scheme's syntax-transformation engine is an implementation of
 @dfn{syntactic closures}, a mechanism invented by Alan Bawden and
 Jonathan Rees.  The main feature of the syntactic-closures mechanism is
 its simplicity and its close relationship to the environment models
@@ -4124,7 +4124,7 @@ special empty environment.
 
 @cindex explicit renaming
 @dfn{Explicit renaming} is an alternative facility for defining macro
-transformers.  In the MIT Scheme implementation, explicit-renaming
+transformers.  In the MIT/GNU Scheme implementation, explicit-renaming
 transformers are implemented as an abstraction layer on top of syntactic
 closures.  An explicit-renaming macro transformer is defined by an
 instance of the @code{er-macro-transformer} keyword:
@@ -4290,7 +4290,7 @@ must be written using the @code{er-macro-transformer} syntax:
 @cindex SRFI syntax
 Several special forms have been introduced to support some of the
 @uref{http://srfi.schemers.org/,Scheme Requests for Implementation}
-(@acronym{SRFI}).  Note that MIT Scheme has for some time supported
+(@acronym{SRFI}).  Note that MIT/GNU Scheme has for some time supported
 @uref{http://srfi.schemers.org/srfi-23/srfi-23.html,@acronym{SRFI} 23}
 (error-reporting mechanism) and
 @uref{http://srfi.schemers.org/srfi-30/srfi-30.html,@acronym{SRFI} 30}
@@ -4371,7 +4371,7 @@ feature which gives access to command line arguments.  Note that an
 error will be signaled at macro-expansion time if this feature is not
 present.
 
-Note that MIT Scheme allows @code{cond-expand} in any context where a
+Note that MIT/GNU Scheme allows @code{cond-expand} in any context where a
 special form is allowed.  This is an extension of the semantics defined
 by @acronym{SRFI 0}, which only allows @code{cond-expand} at top level.
 @end deffn
@@ -4996,7 +4996,7 @@ Implementations of Scheme are not required to implement the whole tower
 of subtypes (@pxref{Numerical types}), but they must implement a
 coherent subset consistent with both the purposes of the implementation
 and the spirit of the Scheme language.  For example, an implementation
-in which all numbers are real may still be quite useful.@footnote{MIT
+in which all numbers are real may still be quite useful.@footnote{MIT/GNU
 Scheme implements the whole tower of numerical types.  It has
 unlimited-precision exact integers and exact rationals.  Flonums are
 used to implement all inexact reals; on machines that support @sc{ieee}
@@ -5080,7 +5080,7 @@ in some other way then the representation must have at least as much
 precision as the most precise flonum format available.
 
 Although Scheme allows a variety of written notations for numbers, any
-particular implementation may support only some of them.@footnote{MIT
+particular implementation may support only some of them.@footnote{MIT/GNU
 Scheme implements all of the written notations for numbers.} For
 example, an implementation in which all numbers are real need not
 support the rectangular and polar notations for complex numbers.  If an
@@ -5185,7 +5185,7 @@ named type, and otherwise they return @code{#f}.  In general, if a type
 predicate is true of a number then all higher type predicates are also
 true of that number.  Consequently, if a type predicate is false of a
 number, then all lower type predicates are also false of that
-number.@footnote{In MIT Scheme the @code{rational?} procedure is the
+number.@footnote{In MIT/GNU Scheme the @code{rational?} procedure is the
 same as @code{real?}, and the @code{complex?} procedure is the same as
 @code{number?}.}
 
@@ -5289,7 +5289,7 @@ implementations).  If @code{min} or @code{max} is used to compare
 numbers of mixed exactness, and the numerical value of the result cannot
 be represented as an inexact number without loss of accuracy, then the
 procedure may report a violation of an implementation
-restriction.@footnote{MIT Scheme signals an error of type
+restriction.@footnote{MIT/GNU Scheme signals an error of type
 @code{condition-type:bad-range-argument} in this case.}
 @findex condition-type:bad-range-argument
 @end deffn
@@ -5735,7 +5735,7 @@ minus @var{pi} (exclusive) to @var{pi} (inclusive).
 value returned is the inexact number that is numerically closest to the
 argument.  If an exact argument has no reasonably close inexact
 equivalent, then a violation of an implementation restriction may be
-reported; MIT Scheme signals an error of type
+reported; MIT/GNU Scheme signals an error of type
 @code{condition-type:bad-range-argument} in this case.
 @findex condition-type:bad-range-argument
 
@@ -5743,7 +5743,7 @@ reported; MIT Scheme signals an error of type
 value returned is the exact number that is numerically closest to the
 argument.  If an inexact argument has no reasonably close exact
 equivalent, then a violation of an implementation restriction may be
-reported; in MIT Scheme this case does not occur because all inexact
+reported; in MIT/GNU Scheme this case does not occur because all inexact
 numbers are representable as exact numbers.
 
 These procedures implement the natural one-to-one correspondence between
@@ -5947,7 +5947,7 @@ malformed objects that confuse the garbage collector.
 
 @cindex fixnum (defn)
 A @dfn{fixnum} is an exact integer that is small enough to fit in a
-machine word.  In MIT Scheme, fixnums are typically 24 or 26 bits,
+machine word.  In MIT/GNU Scheme, fixnums are typically 24 or 26 bits,
 depending on the machine; it is reasonable to assume that fixnums are at
 least 24 bits.  Fixnums are signed; they are encoded using 2's
 complement.
@@ -6119,7 +6119,7 @@ not check the types of its arguments, nor the validity of its result.
 
 @cindex flonum (defn)
 A @dfn{flonum} is an inexact real number that is implemented as a
-floating-point number.  In MIT Scheme, all inexact real numbers are
+floating-point number.  In MIT/GNU Scheme, all inexact real numbers are
 flonums.  For this reason, constants such as @code{0.} and @code{2.3}
 are guaranteed to be flonums.
 
@@ -6206,7 +6206,7 @@ compiled, it does not check the types of its arguments.
 @cindex pseudo-random number
 @cindex number, pseudo-random
 
-MIT Scheme provides a facility for generating pseudo-random numbers.
+MIT/GNU Scheme provides a facility for generating pseudo-random numbers.
 The current implementation is a ``subtract-with-carry'' random-number
 generator, based on the algorithm from @cite{A New Class of Random
 Number Generators}, George Marsaglia and Arif Zaman, @cite{The Annals of
@@ -6294,7 +6294,7 @@ returns @code{#f}.
 Characters are objects that represent printed characters, such as
 letters and digits.@footnote{Some of the details in this section depend
 on the fact that the underlying operating system uses the
-@acronym{ASCII} character set.  This may change when someone ports MIT
+@acronym{ASCII} character set.  This may change when someone ports MIT/GNU
 Scheme to a non-@acronym{ASCII} operating system.}
 
 @menu
@@ -6507,7 +6507,7 @@ The lowercase characters are in order; for example, @code{(char<? #\a
 @cindex standard character
 @cindex character, standard
 @findex char-standard?
-In addition, MIT Scheme orders those characters that satisfy
+In addition, MIT/GNU Scheme orders those characters that satisfy
 @code{char-standard?} the same way that @acronym{ISO-8859-1} does.
 
 Characters are ordered by first comparing their bucky bits part and then
@@ -6581,18 +6581,18 @@ returns @code{#f}.
 @cindex code, of character (defn)
 @cindex bucky bit, of character (defn)
 @cindex ASCII character
-An MIT Scheme character consists of a @dfn{code} part and a @dfn{bucky
-bits} part.  The MIT Scheme set of characters can represent more
+An MIT/GNU Scheme character consists of a @dfn{code} part and a @dfn{bucky
+bits} part.  The MIT/GNU Scheme set of characters can represent more
 characters than @acronym{ASCII} can; it includes characters with Super,
 Hyper, and Top bucky bits, as well as Control and Meta.  Every
-@acronym{ASCII} character corresponds to some MIT Scheme character, but not
+@acronym{ASCII} character corresponds to some MIT/GNU Scheme character, but not
 vice versa.@footnote{Note that the Control bucky bit is different from
 the @acronym{ASCII} control key.  This means that @code{#\SOH} (@acronym{ASCII}
 ctrl-A) is different from @code{#\C-A}.  In fact, the Control bucky bit
 is completely orthogonal to the @acronym{ASCII} control key, making possible
 such characters as @code{#\C-SOH}.}
 
-MIT Scheme uses a 16-bit character code with 5 bucky bits.  Normally,
+MIT/GNU Scheme uses a 16-bit character code with 5 bucky bits.  Normally,
 Scheme uses the least significant 8 bits of the character code to
 contain the @acronym{ISO-8859-1} representation for the character.  The
 representation is expanded in order to allow for the use of
@@ -6673,7 +6673,7 @@ code representation is @var{k}.
 
 @findex char-ascii?
 @findex char->ascii
-In MIT Scheme, if @code{(char-ascii? @var{char})} is true, then
+In MIT/GNU Scheme, if @code{(char-ascii? @var{char})} is true, then
 
 @example
 (eqv? (char->ascii @var{char}) (char->integer @var{char}))
@@ -6720,7 +6720,7 @@ non-negative integers that are less than the value of this variable
 @node ISO-8859-1 Characters, Character Sets, Internal Representation of Characters, Characters
 @section ISO-8859-1 Characters
 
-MIT Scheme internally uses @acronym{ISO-8859-1} codes for
+MIT/GNU Scheme internally uses @acronym{ISO-8859-1} codes for
 @acronym{I/O}, and stores character objects in a fashion that makes it
 convenient to convert between @acronym{ISO-8859-1} codes and
 characters.  Also, character strings are implemented as byte vectors
@@ -6766,7 +6766,7 @@ corresponding to @var{code}.
 @cindex character set
 @cindex set, of characters
 
-MIT Scheme's character-set abstraction is used to represent groups of
+MIT/GNU Scheme's character-set abstraction is used to represent groups of
 characters, such as the letters or digits.  Character sets may contain
 only @acronym{ISO-8859-1} characters; in the future this may be changed
 to allow the full range of characters.
@@ -6917,8 +6917,8 @@ characters that are not in @var{char-set}.
 @section Unicode
 
 @cindex Unicode
-MIT Scheme provides rudimentary support for Unicode characters.  In an
-ideal world, Unicode would be the base character set for MIT Scheme,
+MIT/GNU Scheme provides rudimentary support for Unicode characters.  In an
+ideal world, Unicode would be the base character set for MIT/GNU Scheme,
 but this implementation predates the invention of Unicode.  And
 converting an application of this size is a considerable undertaking.
 So for the time being, the base character set is @acronym{ISO-8859-1}
@@ -7078,8 +7078,8 @@ member of @var{alphabet1} and is not a member of @var{alphabet2}.
 @cindex string, character (defn)
 @findex char-ascii?
 A @dfn{string} is a mutable sequence of characters.  In the current
-implementation of MIT Scheme, the elements of a string must all
-satisfy the predicate @code{char-ascii?}; if someone ports MIT
+implementation of MIT/GNU Scheme, the elements of a string must all
+satisfy the predicate @code{char-ascii?}; if someone ports MIT/GNU
 Scheme to a non-@acronym{ASCII} operating system this requirement will
 change.
 
@@ -7128,7 +7128,7 @@ Use #\Control-q to quit.
 @findex #\newline
 @findex #\page
 The effect of a backslash that doesn't precede a double quote or
-backslash is unspecified in standard Scheme, but MIT Scheme specifies
+backslash is unspecified in standard Scheme, but MIT/GNU Scheme specifies
 the effect for three other characters: @code{\t}, @code{\n}, and
 @code{\f}.  These escape sequences are respectively translated into the
 following characters: @code{#\tab}, @code{#\newline}, and @code{#\page}.
@@ -7875,12 +7875,12 @@ procedures don't distinguish uppercase and lowercase letters.
 @node Regular Expressions, Modification of Strings, Matching Strings, Strings
 @section Regular Expressions
 
-MIT Scheme provides support for using regular expressions to search and
+MIT/GNU Scheme provides support for using regular expressions to search and
 match strings.  This manual does not define regular expressions; instead
 see @ref{Regexps, , Syntax of Regular Expressions, emacs, The Emacs
 Editor}.
 
-In addition to providing standard regular-expression support, MIT
+In addition to providing standard regular-expression support, MIT/GNU
 Scheme also provides the @acronym{REXP} abstraction.  This is an
 alternative way to write regular expressions that is easier to read
 and understand than the standard notation.  Regular expressions
@@ -8019,7 +8019,7 @@ combined by a grouping operator.  For example:
 @subsection REXP abstraction
 
 @cindex REXP abstraction
-In addition to providing standard regular-expression support, MIT
+In addition to providing standard regular-expression support, MIT/GNU
 Scheme also provides the @acronym{REXP} abstraction.  This is an
 alternative way to write regular expressions that is easier to read
 and understand than the standard notation.  Regular expressions
@@ -8303,7 +8303,7 @@ modify their argument strings and return an unspecified value.
 
 @cindex length, of string
 @cindex maximum length, of string (defn)
-MIT Scheme allows the length of a string to be dynamically adjusted in a
+MIT/GNU Scheme allows the length of a string to be dynamically adjusted in a
 limited way.  When a new string is allocated, by whatever method, it has
 a specific length.  At the time of allocation, it is also given a
 @dfn{maximum length}, which is guaranteed to be at least as large as the
@@ -8342,7 +8342,7 @@ maximum length of @var{string}.
 @cindex vector, byte
 
 @findex string-ref
-MIT Scheme implements strings as packed vectors of 8-bit
+MIT/GNU Scheme implements strings as packed vectors of 8-bit
 @acronym{ISO-8859-1} bytes.  Most of the string operations, such as
 @code{string-ref}, coerce these 8-bit codes into character objects.
 However, some lower-level operations are made available for use.
@@ -9847,7 +9847,7 @@ index).
 
 Note that the external representation of bit strings uses a bit ordering
 that is the reverse of the representation for bit strings in Common
-Lisp.  It is likely that MIT Scheme's representation will be
+Lisp.  It is likely that MIT/GNU Scheme's representation will be
 changed in the future, to be compatible with Common Lisp.  For the time
 being this representation should be considered a convenience for viewing
 bit strings rather than a means of entering them as data.
@@ -9861,7 +9861,7 @@ bit strings rather than a means of entering them as data.
 @end group
 @end example
 
-All of the bit-string procedures are MIT Scheme extensions.
+All of the bit-string procedures are MIT/GNU Scheme extensions.
 
 @menu
 * Construction of Bit Strings::  
@@ -10231,7 +10231,7 @@ Otherwise it returns @code{#t}.
 @cindex property list, of symbol
 @cindex disembodied property list
 @findex read
-MIT Scheme provides two types of symbols: @dfn{interned} and
+MIT/GNU Scheme provides two types of symbols: @dfn{interned} and
 @dfn{uninterned}.  Interned symbols are far more common than uninterned
 symbols, and there are more ways to create them.  Interned symbols have
 an external representation that is recognized by the procedure
@@ -10242,10 +10242,10 @@ cells (and sometimes, function cells), these structures contained
 @dfn{property lists}.  Because of this, uninterned symbols were often
 used merely for their property lists --- sometimes an uninterned symbol
 used this way was referred to as a @dfn{disembodied property list}.  In
-MIT Scheme, symbols do not have property lists, or any other components
+MIT/GNU Scheme, symbols do not have property lists, or any other components
 besides their names.  There is a different data structure similar to
 disembodied property lists: one-dimensional tables (@pxref{1D Tables}).
-For these reasons, uninterned symbols are not very useful in MIT Scheme.
+For these reasons, uninterned symbols are not very useful in MIT/GNU Scheme.
 In fact, their primary purpose is to simplify the generation of unique
 variable names in programs that generate Scheme code.}
 
@@ -10261,7 +10261,7 @@ accomplished.  Uninterned symbols do not share this property.
 @cindex alphabetic case, of interned symbol
 @findex write
 The names of interned symbols are not distinguished by their alphabetic
-case.  Because of this, MIT Scheme converts all alphabetic
+case.  Because of this, MIT/GNU Scheme converts all alphabetic
 characters in the name of an interned symbol to a specific case (lower
 case) when the symbol is created.  When the name of an interned symbol
 is referenced (using @code{symbol->string}) or written (using
@@ -10285,7 +10285,7 @@ previously written out produces the same symbol.  An exception are
 symbols created by the procedures @code{string->symbol} and
 @code{intern}; they can create symbols for which this write/read
 invariance may not hold because the symbols' names contain special
-characters or letters in the non-standard case.@footnote{MIT Scheme
+characters or letters in the non-standard case.@footnote{MIT/GNU Scheme
 reserves a specific set of interned symbols for its own use.  If you use
 these reserved symbols it is possible that you could break specific
 pieces of software that depend on them.  The reserved symbols all have
@@ -10550,7 +10550,7 @@ continuations are used (@pxref{Dynamic Binding}).
 @node Records, Promises, Cells, Miscellaneous Datatypes
 @section Records
 
-MIT Scheme provides a @dfn{record} abstraction, which is a simple and
+MIT/GNU Scheme provides a @dfn{record} abstraction, which is a simple and
 flexible mechanism for building structures with named components.
 Records can be defined and accessed using the procedures defined in this
 section.  A less flexible but more concise way to manipulate records is
@@ -10650,7 +10650,7 @@ Returns a list of the symbols naming the fields in members of the type
 represented by @var{record-type}.  The returned value is @code{equal?}
 to the @var{field-names} argument given in the call to
 @code{make-record-type} that created the type represented by
-@var{record-type}.@footnote{In MIT Scheme, the returned list is always
+@var{record-type}.@footnote{In MIT/GNU Scheme, the returned list is always
 newly allocated.}
 @end deffn
 
@@ -10799,7 +10799,7 @@ Promises are implemented here as procedures of no arguments, and
 
 Various extensions to this semantics of @code{delay} and @code{force}
 are supported in some implementations (none of these are currently
-supported in MIT Scheme):
+supported in MIT/GNU Scheme):
 
 @itemize @bullet
 @item
@@ -10833,7 +10833,7 @@ value of a promise is forced by primitive procedures like @code{car} and
 @section Streams
 
 @cindex stream (defn)
-In addition to promises, MIT Scheme supports a higher-level abstraction
+In addition to promises, MIT/GNU Scheme supports a higher-level abstraction
 called @dfn{streams}.  Streams are similar to lists, except that the
 tail of a stream is not computed until it is referred to.
 This allows streams to be used to represent infinitely long lists.
@@ -11037,7 +11037,7 @@ unspecified result.
 @node Associations, Procedures, Miscellaneous Datatypes, Top
 @chapter Associations
 
-MIT Scheme provides several mechanisms for associating objects with
+MIT/GNU Scheme provides several mechanisms for associating objects with
 one another.  Each of these mechanisms creates a link between one or
 more objects, called @dfn{keys}, and some other object, called a
 @dfn{datum}.  Beyond this common idea, however, each of the mechanisms
@@ -11060,7 +11060,7 @@ tables aren't as flexible.
 
 @item
 @cindex property list
-@dfn{The association table} is MIT Scheme's equivalent to the
+@dfn{The association table} is MIT/GNU Scheme's equivalent to the
 @dfn{property lists} of Lisp.  It has the advantages that the keys may
 be any type of object and that it does not prevent the keys from being
 reclaimed by the garbage collector.  However, two linear-time lookups
@@ -11346,7 +11346,7 @@ information as @var{1d-table}.
 @cindex table, association (defn)
 @cindex property list
 @findex eq?
-MIT Scheme provides a generalization of the property-list mechanism
+MIT/GNU Scheme provides a generalization of the property-list mechanism
 found in most other implementations of Lisp: a global two-dimensional
 @dfn{association table}.  This table is indexed by two keys, called
 @var{x-key} and @var{y-key} in the following procedure descriptions.
@@ -11407,7 +11407,7 @@ entries for @var{y-key} exist.
 
 @cindex hash table
 Hash tables are a fast, powerful mechanism for storing large numbers of
-associations.  MIT Scheme's hash tables feature automatic resizing,
+associations.  MIT/GNU Scheme's hash tables feature automatic resizing,
 customizable growth parameters, and customizable hash procedures.
 
 The average times for the insertion, deletion, and lookup operations on
@@ -11985,7 +11985,7 @@ Equivalent to
 
 @cindex object hashing
 @cindex hashing, of object
-The MIT Scheme object-hashing facility provides a mechanism for
+The MIT/GNU Scheme object-hashing facility provides a mechanism for
 generating a unique hash number for an arbitrary object.  This hash
 number, unlike an object's address, is unchanged by garbage collection.
 The object-hashing facility is useful in conjunction with hash tables,
@@ -12113,7 +12113,7 @@ converted to alists before comparison can be done, and alist comparison
 is quadratic unless the alists are sorted.
 @end itemize
 
-MIT Scheme provides an implementation of @dfn{red-black} trees.  The
+MIT/GNU Scheme provides an implementation of @dfn{red-black} trees.  The
 red-black tree-balancing algorithm provides generally good performance
 because it doesn't try to keep the tree very closely balanced.  At any
 given node in the tree, one side of the node can be twice as high as the
@@ -12332,7 +12332,7 @@ that they simultaneously delete that key.
 @cindex weight-balanced binary trees
 Balanced binary trees are a useful data structure for maintaining large
 sets of ordered objects or sets of associations whose keys are ordered.
-MIT Scheme has a comprehensive implementation of weight-balanced binary
+MIT/GNU Scheme has a comprehensive implementation of weight-balanced binary
 trees which has several advantages over the other data structures for
 large aggregates:
 
@@ -12910,7 +12910,7 @@ or may be implicit as in a ``procedure @code{define}''
 (@pxref{Definitions}).  Also there are special built-in procedures,
 called @dfn{primitive procedures}, such as @code{car}; these procedures
 are not written in Scheme but in the language used to implement the
-Scheme system.  MIT Scheme also provides @dfn{application hooks}, which
+Scheme system.  MIT/GNU Scheme also provides @dfn{application hooks}, which
 support the construction of data structures that act like procedures.
 
 @cindex procedure, type
@@ -12922,7 +12922,7 @@ support the construction of data structures that act like procedures.
 @cindex interpreted, procedure type
 @cindex compiled, procedure type
 @cindex external representation, for procedure
-In MIT Scheme, the written representation of a procedure tells you
+In MIT/GNU Scheme, the written representation of a procedure tells you
 the type of the procedure (compiled, interpreted, or primitive):
 
 @example
@@ -13388,7 +13388,7 @@ an unspecified value.
 @node Environment Operations, Environment Variables, Environments, Environments
 @section Environment Operations
 
-Environments are first-class objects in MIT Scheme.  An environment
+Environments are first-class objects in MIT/GNU Scheme.  An environment
 consists of some bindings and possibly a parent environment, from which
 other bindings are inherited.  The operations in this section reveal the
 frame-like structure of environments by permitting you to examine the
@@ -13597,7 +13597,7 @@ the @acronym{REP} loop, definitions that are typed at, or loaded by, the
 is partly a safety measure: if you enter a definition that happens to
 have the same name as a critical system procedure, your definition will
 be visible only to the procedures you define in the
-@code{user-initial-environment}; the MIT Scheme system procedures, which
+@code{user-initial-environment}; the MIT/GNU Scheme system procedures, which
 are defined in @code{system-global-environment}, will continue to see
 the original definition.
 @end defvr
@@ -13951,7 +13951,7 @@ If the file cannot be opened, an error of type
 @findex condition-type:file-operation-error
 
 @cindex appending, to output file
-The optional argument @var{append?} is an MIT Scheme extension.  If
+The optional argument @var{append?} is an MIT/GNU Scheme extension.  If
 @var{append?} is given and not @code{#f}, the file is opened in
 @dfn{append} mode.  In this mode, the contents of the file are not
 overwritten; instead any characters written to the file are appended to
@@ -14026,7 +14026,7 @@ the port is closed and the previous default is restored.
 @code{with-input-from-file} and @code{with-output-to-file} return the
 value yielded by @var{thunk}.  If an escape procedure is used to escape
 from the continuation of these procedures, their behavior is
-implementation-dependent; in that situation MIT Scheme leaves the files
+implementation-dependent; in that situation MIT/GNU Scheme leaves the files
 open.
 @end deffn
 
@@ -14198,7 +14198,7 @@ Returns the next character available from @var{input-port}, updating
 @var{input-port} to point to the following character.  If no more
 characters are available, an end-of-file object is returned.
 
-In MIT Scheme, if @var{input-port} is an interactive input port and no
+In MIT/GNU Scheme, if @var{input-port} is an interactive input port and no
 characters are immediately available, @code{read-char} will hang waiting
 for input, even if the port is in non-blocking mode.
 @end deffn
@@ -14216,7 +14216,7 @@ next call to @code{read-char} or @code{peek-char} on that
 interactive port will hang waiting for input whenever a call to
 @code{read-char} would have hung.}
 
-In MIT Scheme, if @var{input-port} is an interactive input port and no
+In MIT/GNU Scheme, if @var{input-port} is an interactive input port and no
 characters are immediately available, @code{peek-char} will hang waiting
 for input, even if the port is in non-blocking mode.
 @end deffn
@@ -14630,7 +14630,7 @@ these hash numbers are different for each invocation of Scheme.
 @comment **** begin CLTL ****
 
 The procedure @code{format} is very useful for producing nicely
-formatted text, producing good-looking messages, and so on.  MIT
+formatted text, producing good-looking messages, and so on.  MIT/GNU
 Scheme's implementation of @code{format} is similar to that of Common
 Lisp, except that Common Lisp defines many more
 directives.@footnote{This description of @code{format} is adapted from
@@ -14764,7 +14764,7 @@ the control string are suppressed because each is preceded by a tilde.
 @node Custom Output, Prompting, Format, Input/Output
 @section Custom Output
 
-MIT Scheme provides hooks for specifying that certain kinds of objects
+MIT/GNU Scheme provides hooks for specifying that certain kinds of objects
 have special written representations.  There are no restrictions on the
 written representations, but only a few kinds of objects may have custom
 representation specified for them, specifically: records
@@ -16472,7 +16472,7 @@ procedure.  @var{Table} must satisfy @code{parser-macros?}, and
 
 @cindex XML parser
 @cindex parser, XML
-MIT Scheme provides a simple non-validating @acronym{XML} parser.
+MIT/GNU Scheme provides a simple non-validating @acronym{XML} parser.
 This parser is mostly conformant, with the exception that it doesn't
 support @acronym{UTF-16}.  The parser also does not support external
 document type declarations (@acronym{DTD}s).  The output of the parser
@@ -16865,7 +16865,7 @@ the context.  Each is represented as a string.
 @cindex Operating-System Interface
 
 The Scheme standard provides a simple mechanism for reading and writing
-files: file ports.  MIT Scheme provides additional tools for
+files: file ports.  MIT/GNU Scheme provides additional tools for
 dealing with other aspects of the operating system:
 
 @itemize @bullet
@@ -16917,7 +16917,7 @@ A means to determine the operating system Scheme is running under.
 
 @comment **** begin CLTL ****
 @cindex file name
-MIT Scheme programs need to use names to designate files.  The main
+MIT/GNU Scheme programs need to use names to designate files.  The main
 difficulty in dealing with names of files is that different file systems
 have different naming formats for files.  For example, here is a table
 of several file systems (actually, operating systems that provide file
@@ -16943,7 +16943,7 @@ DOS             C:\USR\LISPIO\FORMAT.FAS
 It would be impossible for each program that deals with file names to
 know about each different file name format that exists; a new operating
 system to which Scheme was ported might use a format different from any
-of its predecessors.  Therefore, MIT Scheme provides @emph{two} ways to
+of its predecessors.  Therefore, MIT/GNU Scheme provides @emph{two} ways to
 represent file names: @dfn{filenames} (also called @dfn{namestrings}),
 which are strings in the implementation-dependent form customary for the
 file system, and @dfn{pathnames}, which are special abstract data
@@ -16953,7 +16953,7 @@ and all manipulations of files can be expressed in machine-independent
 terms by using pathnames.
 
 @cindex host, in filename
-In order to allow MIT Scheme programs to operate in a network
+In order to allow MIT/GNU Scheme programs to operate in a network
 environment that may have more than one kind of file system, the
 pathname facility allows a file name to specify which file system is to
 be used.  In this context, each file system is called a @dfn{host}, in
@@ -16977,7 +16977,7 @@ external representations.
 @subsection Filenames and Pathnames
 
 Pathname objects are usually created by parsing filenames (character
-strings) into component parts.  MIT Scheme provides operations that
+strings) into component parts.  MIT/GNU Scheme provides operations that
 convert filenames into pathnames and vice versa.
 
 @deffn procedure ->pathname object
@@ -17010,7 +17010,7 @@ This procedure @emph{does not} do defaulting of pathname components.
 
 The optional arguments are used to determine what syntax should be used
 for parsing the string.  In general this is only really useful if your
-implementation of MIT Scheme supports more than one file system,
+implementation of MIT/GNU Scheme supports more than one file system,
 otherwise you would use @code{->pathname}.  If given, @var{host} must be
 a host object or @code{#f}, and @var{defaults} must be a pathname.
 @var{Host} specifies the syntax used to parse the string.  If @var{host}
@@ -17189,7 +17189,7 @@ the previous one.  @code{up} corresponds to the file @file{..} in unix
 and PC file systems.
 
 (The following note does not refer to any file system currently
-supported by MIT Scheme, but is included for completeness.)  In file
+supported by MIT/GNU Scheme, but is included for completeness.)  In file
 systems that do not have ``hierarchical'' structure, a specified
 directory component will always be a list whose first element is
 @code{absolute}.  If the system does not support directories other than
@@ -17612,7 +17612,7 @@ directory.
 
 @deffn procedure system-library-pathname pathname
 @cindex library, system pathname
-Locates @var{pathname} in MIT Scheme's system library directory.  An
+Locates @var{pathname} in MIT/GNU Scheme's system library directory.  An
 error of type @code{condition-type:file-operation-error} is signalled if
 @var{pathname} cannot be located on the library search path.
 @findex condition-type:file-operation-error
@@ -17627,7 +17627,7 @@ error of type @code{condition-type:file-operation-error} is signalled if
 
 @deffn procedure system-library-directory-pathname pathname
 @cindex library, system pathname
-Locates the pathname of an MIT Scheme system library directory.  An
+Locates the pathname of an MIT/GNU Scheme system library directory.  An
 error of type @code{condition-type:file-operation-error} is signalled if
 @var{pathname} cannot be located on the library search path.
 
@@ -17649,7 +17649,7 @@ error of type @code{condition-type:file-operation-error} is signalled if
 @cindex directory, current working (defn)
 @cindex current working directory (defn)
 @cindex working directory (see current working directory)
-When MIT Scheme is started, the @dfn{current working directory} (or
+When MIT/GNU Scheme is started, the @dfn{current working directory} (or
 simply, @dfn{working directory}) is initialized in an operating-system
 dependent manner; usually, it is the directory in which Scheme was
 invoked.  The working directory can be determined from within Scheme by
@@ -18198,7 +18198,7 @@ is supported only in the file part of @var{directory}.
 @node Date and Time, Machine Time, Directory Reader, Operating-System Interface
 @section Date and Time
 
-MIT Scheme provides a simple set of procedures for manipulating date
+MIT/GNU Scheme provides a simple set of procedures for manipulating date
 and time information.  There are four time representations, each of
 which serves a different purpose.  Each representation may be
 converted to any of the others.
@@ -18929,7 +18929,7 @@ overhead.
 
 @cindex subprocess
 @cindex synchronous subprocess
-MIT Scheme provides the ability to run and control subprocesses.  This
+MIT/GNU Scheme provides the ability to run and control subprocesses.  This
 support is divided into two parts: a low-level set of primitives that
 maps onto the underlying operating system's process-control primitives,
 and a high-level set of procedures for starting a subprocess and running
@@ -19286,7 +19286,7 @@ found by searching the path.
 @section TCP Sockets
 
 @cindex socket
-MIT Scheme provides access to @dfn{sockets}, which are a mechanism for
+MIT/GNU Scheme provides access to @dfn{sockets}, which are a mechanism for
 inter-process communication.  @sc{tcp} stream sockets are supported,
 which communicate between computers over a @sc{tcp/ip} network.
 @sc{tcp} sockets are supported on all operating systems.
@@ -19461,7 +19461,7 @@ prefix will be constant for a particular version of Windows.
 The next few procedures provide access to the @dfn{domain name service}
 (@acronym{DNS}), which maintains associations between internet host
 names such as @code{"www.swiss.ai.mit.edu"} and @acronym{IP} addresses,
-such as @code{18.23.0.16}.  In MIT Scheme, we represent an internet host
+such as @code{18.23.0.16}.  In MIT/GNU Scheme, we represent an internet host
 name as a string, and an @acronym{IP} address as a byte vector of length
 4 (byte vectors are just character strings that are accessed using
 @code{vector-8b-ref} rather than @code{string-ref}).  The bytes in an
@@ -19511,7 +19511,7 @@ alias for another computer named @code{"swissnet"}.
 @end deffn
 
 @deffn procedure get-host-name
-Returns the string that identifies the computer that MIT Scheme is
+Returns the string that identifies the computer that MIT/GNU Scheme is
 running on.  Usually this is an unqualified internet host name, i.e.@:
 the host name without the domain suffix:
 
@@ -19521,7 +19521,7 @@ the host name without the domain suffix:
 @end deffn
 
 @deffn procedure os/hostname
-Returns the canonical internet host name of the computer that MIT Scheme
+Returns the canonical internet host name of the computer that MIT/GNU Scheme
 is running on.  So, in contrast to the example for @code{get-host-name}:
 
 @example
@@ -19568,7 +19568,7 @@ passed as the @var{address} argument to @code{open-tcp-server-socket}.
 @chapter Error System
 
 @findex error
-The MIT Scheme error system provides a uniform mechanism for the
+The MIT/GNU Scheme error system provides a uniform mechanism for the
 signalling of errors and other exceptional conditions.  The simplest and
 most generally useful procedures in the error system are:
 
@@ -19809,7 +19809,7 @@ applicable handlers return, then the applicable handlers established by
 first.  Finally, if no handlers apply (or all return in a normal
 manner), @code{signal-condition} returns an unspecified value.
 
-@emph{Note:} unlike many other systems, the MIT Scheme runtime library
+@emph{Note:} unlike many other systems, the MIT/GNU Scheme runtime library
 does @emph{not} establish handlers of any kind.  (However, the Edwin
 text editor uses condition handlers extensively.)  Thus, calls to
 @code{signal-condition} will return to the caller unless there are user
@@ -20746,7 +20746,7 @@ Returns @code{#f} if and only if @var{object} is not a condition type.
 @node Taxonomy,  , Condition Types, Error System
 @section Condition-Type Taxonomy
 
-The MIT Scheme error system provides a rich set of predefined condition
+The MIT/GNU Scheme error system provides a rich set of predefined condition
 types.  These are organized into a forest through taxonomic links
 providing the relationships for ``specializes'' and ``generalizes''.
 The chart appearing below shows these relationships by indenting all the
@@ -21273,7 +21273,7 @@ contents of its fields are beyond the scope of this document.
 @chapter Graphics
 @cindex graphics
 
-MIT Scheme has a simple two-dimensional line-graphics interface
+MIT/GNU Scheme has a simple two-dimensional line-graphics interface
 that is suitable for many graphics applications.  In particular it is
 often used for plotting data points from experiments.  The interface is
 generic in that it can support different types of graphics devices in a
@@ -21783,7 +21783,7 @@ from left to right.  There must be at least @code{(* (image/height
 @cindex X graphics
 
 @cindex X window system
-MIT Scheme supports graphics in the X window system (version 11).
+MIT/GNU Scheme supports graphics in the X window system (version 11).
 Arbitrary numbers of displays may be opened, and arbitrary numbers of
 graphics windows may be created for each display.  A variety of
 operations is available to manipulate various aspects of the windows, to
@@ -22104,7 +22104,7 @@ in documentation of the@* @code{XLoadQueryFont} Xlib call.
 @section Win32 Graphics
 @cindex Win32 graphics
 
-MIT Scheme supports graphics on Microsoft Windows 95, Windows 98, and
+MIT/GNU Scheme supports graphics on Microsoft Windows 95, Windows 98, and
 Windows NT.  In addition to the usual operations, there are operations
 to control the size, position and colors of a graphics window.  Win32
 devices support images, which are implemented as device independent
@@ -22332,7 +22332,7 @@ to the rectangle of the same dimensions at @var{destination-x-left} and
 @section OS/2 Graphics
 @cindex OS/2 graphics
 
-MIT Scheme supports graphics under the OS/2 Presentation Manager in
+MIT/GNU Scheme supports graphics under the OS/2 Presentation Manager in
 OS/2 version 2.1 and later.  The OS/2 graphics device type is
 implemented as a top level window.  In addition to the usual operations,
 there are operations to control the size, position, and colors of a
@@ -22723,7 +22723,7 @@ equivalent:
 
 @ifinfo
 The Win32 implementation is still in a state of development.  It is
-expected that changes will be necessary when MIT Scheme is ported to
+expected that changes will be necessary when MIT/GNU Scheme is ported to
 Windows NT on the DEC Alpha architecture.  In particular, the
 current system is not arranged in a way that adequately distinguishes 
 between issues that are a consequence of the NT operating system and
@@ -22742,7 +22742,7 @@ those which are a consequence of the Intel x86 architecture.
 
 
 The Win32 implementation is still in a state of development.  It is
-expected that changes will be necessary when MIT Scheme is ported to
+expected that changes will be necessary when MIT/GNU Scheme is ported to
 Windows NT on the DEC Alpha architecture.  In particular, the
 current system is not arranged in a way that adequately distinguishes
 between issues that are a consequence of the NT operating system and

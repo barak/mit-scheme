@@ -12,15 +12,15 @@
 @syncodeindex pg fn
 @syncodeindex tp fn
 
-@c $Id: sos.texinfo,v 2.13 2002/12/30 03:36:02 cph Exp $
+@c $Id: sos.texinfo,v 2.14 2003/02/14 19:22:43 cph Exp $
 
 @set TITLE The SOS Reference Manual
-@set EDITION 2.10
-@set UPDATED 29 December 2002
+@set EDITION 2.11
+@set UPDATED 14 February 2003
 
 @dircategory Programming Languages
 @direntry
-* SOS: (mit-scheme-sos).		MIT Scheme Object System
+* SOS: (mit-scheme-sos).		MIT/GNU Scheme Object System
 @end direntry
 
 @ifinfo
