@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.78 2001/06/07 17:44:21 cph Exp $
+;;; $Id: vc.scm,v 1.79 2001/06/07 17:48:19 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2001 Massachusetts Institute of Technology
 ;;;
@@ -373,7 +373,9 @@ Otherwise, the mod time of the file is the checkout time."
 	  (begin
 	    (buffer-remove! buffer 'VC-MASTER)
 	    (if (vc-dired-buffer? buffer)
-		(file-vc-master (dired-this-file buffer error?) error?)
+		(let ((workfile (dired-this-file buffer error?)))
+		  (and workfile
+		       (file-vc-master workfile error?)))
 		(let ((workfile (buffer-pathname buffer)))
 		  (if workfile
 		      (let ((master (%file-vc-master workfile error?)))
