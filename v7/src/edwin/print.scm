@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: print.scm,v 1.15 1998/01/08 18:13:07 cph Exp $
+;;;	$Id: print.scm,v 1.16 1998/01/08 18:13:23 cph Exp $
 ;;;
-;;;	Copyright (c) 1991-97 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-98 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
