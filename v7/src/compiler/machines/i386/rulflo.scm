@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulflo.scm,v 1.13 1992/02/18 22:05:20 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulflo.scm,v 1.14 1992/02/19 04:56:56 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -89,7 +89,7 @@ MIT in each case. |#
   (ASSIGN (REGISTER (? target)) (OBJECT->FLOAT (REGISTER (? source))))
   (let* ((source (move-to-temporary-register! source 'GENERAL))
 	 (target (flonum-target! target)))
-    (LAP ,@(object->address source)
+    (LAP ,@(object->address (register-reference source))
 	 (FLD D (@RO B ,source 4))
 	 (FSTP (ST ,(1+ target))))))
 
@@ -141,7 +141,7 @@ MIT in each case. |#
   (define-flonum-operation flonum-sin FSIN)
   (define-flonum-operation flonum-cos FCOS)
   (define-flonum-operation flonum-sqrt FSQRT)
-  (define-flonum-operation flonum-round FRND))
+  (define-flonum-operation flonum-round FRNDINT))
 
 (define-arithmetic-method 'flonum-truncate flonum-methods/1-arg
   (flonum-unary-operation/general
@@ -165,18 +165,26 @@ MIT in each case. |#
 ;; the remainder unary operations.
 
 (define ((flonum-unary-operation/stack-top operate) target source)
-  ;; Perhaps this can be improved?
-  (let ((source->top (load-machine-register! source fr0)))
+  (define (finish source->top)
+    ;; Perhaps this can be improved?
     (rtl-target:=machine-register! target fr0)
     (LAP ,@source->top
-	 ,@(operate 0 0))))
+	 ,@(operate 0 0)))
+
+  (if (or (machine-register? source)
+	  (not (is-alias-for-register? fr0 source))
+	  (not (dead-register? source)))
+      (finish (load-machine-register! source fr0))
+      (begin
+	(delete-dead-registers!)
+	(finish (LAP)))))
 
 (define-arithmetic-method 'flonum-log flonum-methods/1-arg
   (flonum-unary-operation/stack-top
    (lambda (target source)
      (if (and (zero? target) (zero? source))
 	 (LAP (FLDLN2)
-	      (FXCH (ST 1))
+	      (FXCH (ST 0) (ST 1))
 	      (FYL2X))
 	 (LAP (FLDLN2)
 	      (FLD (ST ,(1+ source)))
@@ -247,7 +255,7 @@ MIT in each case. |#
 	  (FSUBP (ST 1) (ST 0))
 	  (FSQRT)
 	  (FLD (ST ,(1+ source)))
-	  (FXCH (ST 1))
+	  (FXCH (ST 0) (ST 1))
 	  (FPATAN)
 	  (FSTP (ST ,(1+ target)))))))
 |#
@@ -372,12 +380,22 @@ MIT in each case. |#
 
 (define-arithmetic-method 'flonum-atan2 flonum-methods/2-args
   (lambda (target source1 source2)
-    (let* ((source1->top (load-machine-register! source1 fr0))
-	   (source2 (flonum-source! source2)))
-      (rtl-target:=machine-register! target fr0)
-      (LAP ,@source1->top
-	   (FLD (ST ,source2))
-	   (FPATAN)))))
+    (if (or (machine-register? source1)
+	    (not (is-alias-for-register? fr0 source1))
+	    (not (dead-register? source1)))
+	(let* ((source1->top (load-machine-register! source1 fr0))
+	       (source2 (if (= source2 source1)
+			    fr0
+			    (flonum-source! source2))))
+	  (rtl-target:=machine-register! target fr0)
+	  (LAP ,@source1->top
+	       (FLD (ST ,source2))
+	       (FPATAN)))
+	(let ((source2 (flonum-source! source2)))
+	  (delete-dead-registers!)
+	  (rtl-target:=machine-register! target fr0)
+	  (LAP (FLD (ST ,source2))
+	       (FPATAN))))))
 
 (define-arithmetic-method 'flonum-remainder flonum-methods/2-args
   (flonum-binary-operation
@@ -398,13 +416,13 @@ MIT in each case. |#
 	      (FSTP (ST ,(+ target 2)))
 	      (FSTP (ST 0)))		; FPOP
 	 |#
-	 (LAP (FXCH (ST ,source2))
+	 (LAP (FXCH (ST 0) (ST ,source2))
 	      (FLD (ST ,(if (zero? source1) source2 source1)))
 	      (FPREM1)
 	      (FSTP (ST ,(1+ (if (= target source2)
 				 0
 				 target))))
-	      (FXCH (ST ,source2)))))))
+	      (FXCH (ST 0) (ST ,source2)))))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -458,14 +476,14 @@ MIT in each case. |#
 	 (st2 (flonum-source! source2)))
     (cond ((zero? st1)
 	   (flonum-branch! predicate
-			   (LAP (FCOM (ST ,st2)))))
+			   (LAP (FCOM (ST 0) (ST ,st2)))))
 	  ((zero? st2)
 	   (flonum-branch! (commute-flonum-predicate predicate)
-			   (LAP (FCOM (ST ,st1)))))
+			   (LAP (FCOM (ST 0) (ST ,st1)))))
 	  (else
 	   (flonum-branch! predicate
 			   (LAP (FLD (ST ,st1))
-				(FCOMP (ST ,(1+ st2)))))))))
+				(FCOMP (ST 0) (ST ,(1+ st2)))))))))
 
 (define-rule predicate
   (FLONUM-PRED-2-ARGS (? predicate)
@@ -498,13 +516,13 @@ MIT in each case. |#
 			(LAP (FTST)))
 	(flonum-branch! (commute-flonum-predicate predicate)
 			(LAP (FLDZ)
-			     (FCOMP (ST ,(1+ sti))))))))
+			     (FCOMP (ST 0) (ST ,(1+ sti))))))))
 
 (define (flonum-compare-one predicate source)
   (let ((sti (flonum-source! source)))
     (flonum-branch! (commute-flonum-predicate predicate)
 		    (LAP (FLD1)
-			 (FCOMP (ST ,(1+ sti)))))))
+			 (FCOMP (ST 0) (ST ,(1+ sti)))))))
 
 (define (commute-flonum-predicate pred)
   (case pred
