@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/object.h,v 9.36 1990/11/27 19:13:28 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/object.h,v 9.37 1992/02/10 13:05:22 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -111,7 +111,7 @@ MIT in each case. */
 #define OBJECT_ADDRESS(object) (DATUM_TO_ADDRESS ((object) & DATUM_MASK))
 
 #define MAKE_OBJECT(type, datum)					\
-  ((((unsigned int) (type)) << DATUM_LENGTH) | (datum))
+  ((((unsigned long) (type)) << DATUM_LENGTH) | (datum))
 
 #define OBJECT_NEW_DATUM(type_object, datum)				\
   (((type_object) & TYPE_CODE_MASK) | (datum))
