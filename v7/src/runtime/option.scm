@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/option.scm,v 14.12 1991/11/04 20:29:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/option.scm,v 14.13 1992/02/28 23:06:16 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,7 +39,7 @@ MIT in each case. |#
 
 (define (load-option name)
   (let ((entry (assq name options))
-	(directory (system-library-directory-pathname "options")))
+	(directory (library-directory-pathname "options")))
     (if (not entry)
 	(error "Unknown option name" name))
     (if (not (memq name loaded-options))
@@ -58,6 +58,16 @@ MIT in each case. |#
 	   (cdr entry))
 	  (set! loaded-options (cons name loaded-options))))
     name))
+
+(define (library-directory-pathname name)
+  (or (system-library-directory-pathname name)
+      (library-directory-pathname
+       (error:file-operation name
+			     "find"
+			     "directory"
+			     "no such directory in system library path"
+			     library-directory-pathname
+			     (list name)))))
 
 (define options
   '((ARITHMETIC-INTERFACE ((RUNTIME NUMBER INTERFACE) #F "numint"))
