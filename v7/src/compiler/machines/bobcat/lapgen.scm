@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.177 1987/06/04 15:56:01 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.178 1987/06/08 14:50:15 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -887,7 +887,7 @@ MIT in each case. |#
 		      `((LEA (@PCR ,(cdar references)) (A 1))
 			,@(if (null? (cdr references))
 			      `((JSR ,entry:compiler-cache-variable))
-			      `(,@(load-dnw (length references) 1)
+			      `(,(load-dnw (length references) 1)
 				(JSR ,entry:compiler-cache-variable-multiple)))
 			,@(make-external-label (generate-label))))
 		,@(if (null? uuo-links)
@@ -895,7 +895,7 @@ MIT in each case. |#
 		      `((LEA (@PCR ,(cdar uuo-links)) (A 1))
 			,@(if (null? (cdr uuo-links))
 			      `((JSR ,entry:compiler-uuo-link))
-			      `(,@(load-dnw (length uuo-links) 1)
+			      `(,(load-dnw (length uuo-links) 1)
 				(JSR ,entry:compiler-uuo-link-multiple)))
 			,@(make-external-label (generate-label)))))
 	      '())))))
