@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.67 2000/05/22 03:43:39 cph Exp $
+;;; $Id: imail-imap.scm,v 1.68 2000/05/22 13:30:18 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -40,24 +40,36 @@
   (let ((constructor
 	 (instance-constructor <imap-url> '(USER-ID HOST PORT MAILBOX))))
     (lambda (user-id host port mailbox)
-      (intern-url (constructor user-id host port mailbox)))))
+      (intern-url (constructor user-id
+			       (string-downcase host)
+			       port
+			       (canonicalize-imap-mailbox mailbox))))))
+
+(define (make-imap-url-string user-id host port mailbox)
+  (string-append "//"
+		 (url:encode-string user-id)
+		 "@"
+		 (string-downcase host)
+		 (if (= port 143)
+		     ""
+		     (string-append ":" (number->string port)))
+		 "/"
+		 (url:encode-string (canonicalize-imap-mailbox mailbox))))
+
+(define (canonicalize-imap-mailbox mailbox)
+  (cond ((string-ci=? mailbox "inbox") "inbox")
+	((and (string-prefix-ci? "inbox." mailbox)
+	      (not (string-prefix? "inbox." mailbox)))
+	 (let ((mailbox (string-copy mailbox)))
+	   (substring-downcase! mailbox 0 6)
+	   mailbox))
+	(else mailbox)))
 
 (define-method url-body ((url <imap-url>))
   (make-imap-url-string (imap-url-user-id url)
 			(imap-url-host url)
 			(imap-url-port url)
 			(imap-url-mailbox url)))
-
-(define (make-imap-url-string user-id host port mailbox)
-  (string-append "//"
-		 (url:encode-string user-id)
-		 "@"
-		 host
-		 (if (= port 143)
-		     ""
-		     (string-append ":" (number->string port)))
-		 "/"
-		 (url:encode-string mailbox)))
 
 (define-method url-presentation-name ((url <imap-url>))
   (imap-url-mailbox url))
@@ -76,7 +88,7 @@
   ;; Can URL1 and URL2 both be accessed from the same IMAP session?
   ;; E.g. can the IMAP COPY command work between them?
   (and (string=? (imap-url-user-id url1) (imap-url-user-id url2))
-       (string-ci=? (imap-url-host url1) (imap-url-host url2))
+       (string=? (imap-url-host url1) (imap-url-host url2))
        (= (imap-url-port url1) (imap-url-port url2))))
 
 (define-method parse-url-body (string default-url)
