@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.c,v 1.6 1990/12/30 02:00:19 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.c,v 1.7 1991/01/16 00:34:33 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990, 1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -414,7 +414,7 @@ DEFUN (continue_from_trap, (signo, code, scp),
 static SCHEME_OBJECT * EXFUN
   (find_block_address, (char * pc_value, SCHEME_OBJECT * area_start));
 
-#ifndef NeXT
+#if !(defined (_NEXTOS) && (_NEXTOS_VERSION >= 20))
 extern long etext;
 #define get_etext() (&etext)
 #endif

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/oscond.h,v 1.3 1990/08/10 02:02:25 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/oscond.h,v 1.4 1991/01/16 00:34:45 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990, 1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -83,6 +83,19 @@ MIT in each case. */
 #ifdef _SYSV3
 #define _SYSV
 #endif
+
+#if defined(_NEXTOS)
+
+#define _BSD4_3
+
+#include <sys/port.h>
+#ifdef PORT_BACKLOG_DEFAULT
+#define _NEXTOS_VERSION 20
+#else
+#define _NEXTOS_VERSION 10
+#endif
+
+#endif /* _NEXTOS */
 
 #if defined(_ULTRIX)
 #define _POSIX
