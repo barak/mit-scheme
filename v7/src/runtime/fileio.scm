@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.6 1993/10/21 11:49:43 cph Exp $
+$Id: fileio.scm,v 1.7 1993/10/21 14:52:36 cph Exp $
 
 Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
@@ -75,7 +75,7 @@ MIT in each case. |#
 	(other-operations
 	 `((CLOSE ,operation/close)
 	   (PATHNAME ,operation/pathname)
-	   (PRINT-SELF ,operation/print-self)
+	   (WRITE-SELF ,operation/write-self)
 	   (TRUENAME ,operation/truename))))
     (set! input-file-template
 	  (make-input-port (append input-operations
@@ -269,9 +269,9 @@ MIT in each case. |#
   ;; determine the truename.
   operation/pathname)
 
-(define (operation/print-self unparser-state port)
-  (unparse-string unparser-state "for file: ")
-  (unparse-object unparser-state (operation/truename port)))
+(define (operation/write-self port output-port)
+  (write-string " for file: " output-port)
+  (write (operation/truename port) output-port))
 
 (define (operation/rest->string port)
   ;; This operation's intended purpose is to snarf an entire file in

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: emacs.scm,v 14.18 1993/10/18 22:50:03 cph Exp $
+$Id: emacs.scm,v 14.19 1993/10/21 14:52:34 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -169,10 +169,6 @@ MIT in each case. |#
 (define (emacs/read-finish port)
   (port/read-finish the-console-port)
   (transmit-signal port #\f))
-
-(define (emacs/print-self state port)
-  port
-  (unparse-string state "for emacs"))
 
 ;;;; Protocol Encoding
 

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/prop1d.scm,v 14.4 1989/09/15 17:16:35 jinx Rel $
+$Id: prop1d.scm,v 14.5 1993/10/21 14:52:41 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -43,7 +43,7 @@ MIT in each case. |#
 
 (define (initialize-unparser!)
   (unparser/set-tagged-pair-method! 1d-table-tag
-				    (unparser/standard-method '1D-TABLE)))
+				    (standard-unparser-method '1D-TABLE #f)))
 
 (define population-of-1d-tables)
 

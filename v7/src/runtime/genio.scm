@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/genio.scm,v 1.2 1991/11/26 07:06:12 cph Exp $
+$Id: genio.scm,v 1.3 1993/10/21 14:52:37 cph Exp $
 
-Copyright (c) 1991 Massachusetts Institute of Technology
+Copyright (c) 1991-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -72,7 +72,7 @@ MIT in each case. |#
 	   (WRITE-SUBSTRING ,operation/write-substring)))
 	(other-operations
 	 `((CLOSE ,operation/close)
-	   (PRINT-SELF ,operation/print-self))))
+	   (WRITE-SELF ,operation/write-self))))
     (set! generic-input-template
 	  (make-input-port (append input-operations
 				   other-operations)
@@ -122,20 +122,20 @@ MIT in each case. |#
 (define-integrable (port/output-buffer port)
   (vector-ref (port/state port) 1))
 
-(define (operation/print-self unparser-state port)
+(define (operation/write-self port output-port)
   (cond ((i/o-port? port)
-	 (unparse-string unparser-state "for channels: ")
-	 (unparse-object unparser-state (operation/input-channel port))
-	 (unparse-string unparser-state " ")
-	 (unparse-object unparser-state (operation/output-channel port)))
+	 (write-string " for channels: " output-port)
+	 (write (operation/input-channel port) output-port)
+	 (write-string " " output-port)
+	 (write (operation/output-channel port) output-port))
 	((input-port? port)
-	 (unparse-string unparser-state "for channel: ")
-	 (unparse-object unparser-state (operation/input-channel port)))
+	 (write-string " for channel: " output-port)
+	 (write (operation/input-channel port) output-port))
 	((output-port? port)
-	 (unparse-string unparser-state "for channel: ")
-	 (unparse-object unparser-state (operation/output-channel port)))
+	 (write-string " for channel: " output-port)
+	 (write (operation/output-channel port) output-port))
 	(else
-	 (unparse-string unparser-state "for channel"))))
+	 (write-string " for channel" output-port))))
 
 (define (operation/char-ready? port interval)
   (input-buffer/char-ready? (port/input-buffer port) interval))

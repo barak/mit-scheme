@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: defstr.scm,v 14.24 1993/03/17 04:04:25 cph Exp $
+$Id: defstr.scm,v 14.25 1993/10/21 14:52:32 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -299,8 +299,9 @@ differences:
 				   ((eq? type 'RECORD)
 				    false)
 				   (else
-				    `(,(absolute 'UNPARSER/STANDARD-METHOD)
-				      ',name))))
+				    `(,(absolute 'STANDARD-UNPARSER-METHOD)
+				      ',name
+				      #F))))
 			type
 			named?
 			(and named? type-name)

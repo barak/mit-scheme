@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/ttyio.scm,v 1.3 1993/08/16 09:50:12 jawilson Exp $
+$Id: ttyio.scm,v 1.4 1993/10/21 14:52:43 cph Exp $
 
 Copyright (c) 1991-93 Massachusetts Institute of Technology
 
@@ -64,7 +64,7 @@ MIT in each case. |#
 	     (OUTPUT-CHANNEL ,operation/output-channel)
 	     (OUTPUT-TERMINAL-MODE ,operation/output-terminal-mode)
 	     (PEEK-CHAR ,(lambda (port) (hook/peek-char port)))
-	     (PRINT-SELF ,operation/print-self)
+	     (WRITE-SELF ,operation/write-self)
 	     (READ-CHAR ,(lambda (port) (hook/read-char port)))
 	     (READ-FINISH ,operation/read-finish)
 	     (SET-INPUT-BLOCKING-MODE ,operation/set-input-blocking-mode)
@@ -214,6 +214,6 @@ MIT in each case. |#
   port
   ((ucode-primitive tty-y-size 0)))
 
-(define (operation/print-self state port)
+(define (operation/write-self port output-port)
   port
-  (unparse-string state "for console"))
+  (write-string " for console" output-port))

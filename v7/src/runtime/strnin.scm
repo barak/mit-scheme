@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/strnin.scm,v 14.3 1990/11/09 08:44:34 cph Rel $
+$Id: strnin.scm,v 14.4 1993/10/21 14:52:41 cph Exp $
 
-Copyright (c) 1988, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -43,7 +43,7 @@ MIT in each case. |#
 			   (DISCARD-CHAR ,operation/discard-char)
 			   (DISCARD-CHARS ,operation/discard-chars)
 			   (PEEK-CHAR ,operation/peek-char)
-			   (PRINT-SELF ,operation/print-self)
+			   (WRITE-SELF ,operation/write-self)
 			   (READ-CHAR ,operation/read-char)
 			   (READ-STRING ,operation/read-string))
 			 false)))
@@ -52,11 +52,24 @@ MIT in each case. |#
   (with-input-from-port (string->input-port string) thunk))
 
 (define (string->input-port string #!optional start end)
-  (input-port/copy input-string-template
-		   (make-input-string-state
-		    string
-		    (if (default-object? start) 0 start)
-		    (if (default-object? end) (string-length string) end))))
+  (let ((end
+	 (if (default-object? end)
+	     (string-length string)
+	     (check-index end (string-length string) 'STRING->INPUT-PORT))))
+    (input-port/copy
+     input-string-template
+     (make-input-string-state string
+			      (if (default-object? start)
+				  0
+				  (check-index start end 'STRING->INPUT-PORT))
+			      end))))
+
+(define (check-index index limit procedure)
+  (if (not (exact-nonnegative-integer? index))
+      (error:wrong-type-argument index "exact non-negative integer" procedure))
+  (if (not (<= index limit))
+      (error:bad-range-argument index procedure))
+  index)
 
 (define input-string-template)
 
@@ -80,28 +93,28 @@ MIT in each case. |#
 
 (define (operation/char-ready? port interval)
   interval
-  (< (input-port/start port) (input-port/end port)))
+  (fix:< (input-port/start port) (input-port/end port)))
 
 (define (operation/peek-char port)
-  (if (< (input-port/start port) (input-port/end port))
+  (if (fix:< (input-port/start port) (input-port/end port))
       (string-ref (input-port/string port) (input-port/start port))
       (make-eof-object port)))
 
 (define (operation/discard-char port)
-  (set-input-port/start! port (1+ (input-port/start port))))
+  (set-input-port/start! port (fix:+ (input-port/start port) 1)))
 
 (define (operation/read-char port)
   (let ((start (input-port/start port)))
-    (if (< start (input-port/end port))
+    (if (fix:< start (input-port/end port))
 	(begin
-	  (set-input-port/start! port (1+ start))
+	  (set-input-port/start! port (fix:+ start 1))
 	  (string-ref (input-port/string port) start))
 	(make-eof-object port))))
 
 (define (operation/read-string port delimiters)
   (let ((start (input-port/start port))
 	(end (input-port/end port)))
-    (if (< start end)
+    (if (fix:< start end)
 	(let ((string (input-port/string port)))
 	  (let ((index
 		 (or (substring-find-next-char-in-set string
@@ -116,7 +129,7 @@ MIT in each case. |#
 (define (operation/discard-chars port delimiters)
   (let ((start (input-port/start port))
 	(end (input-port/end port)))
-    (if (< start end)
+    (if (fix:< start end)
 	(set-input-port/start!
 	 port
 	 (or (substring-find-next-char-in-set (input-port/string port)
@@ -125,6 +138,6 @@ MIT in each case. |#
 					      delimiters)
 	     end)))))
 
-(define (operation/print-self state port)
+(define (operation/write-self port output-port)
   port
-  (unparse-string state "from string"))
+  (write-string " from string" output-port))

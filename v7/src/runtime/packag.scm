@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.17 1993/10/21 11:49:48 cph Exp $
+$Id: packag.scm,v 14.18 1993/10/21 14:52:37 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -77,9 +77,10 @@ MIT in each case. |#
       (for-each loop (package/children package)))
     (set-record-type-unparser-method!
      rtd
-     (unparser/standard-method 'PACKAGE
-       (lambda (state package)
-	 (unparse-object state (package/name package)))))))
+     (standard-unparser-method 'PACKAGE
+       (lambda (package port)
+	 (write-char #\space port)
+	 (write (package/name package) port))))))
 
 (define (package/child package name)
   (let loop ((children (package/children package)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: x11graph.scm,v 1.34 1993/09/15 20:55:26 adams Exp $
+$Id: x11graph.scm,v 1.35 1993/10/21 14:52:45 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -39,7 +39,6 @@ MIT in each case. |#
 (declare (integrate-external "graphics"))
 
 (define-primitives
-  (x-debug 1)
   (x-open-display 1)
   (x-close-display 1)
   (x-close-all-displays 0)
@@ -52,6 +51,7 @@ MIT in each case. |#
 
   (x-window-beep 1)
   (x-window-clear 1)
+  (x-window-colormap 1)
   (x-window-event-mask 1)
   (x-window-flush 1)
   (x-window-iconify 1)
@@ -76,6 +76,7 @@ MIT in each case. |#
   (x-window-set-position 3)
   (x-window-set-size 3)
   (x-window-starbase-filename 1)
+  (x-window-visual 1)
   (x-window-withdraw 1)
   (x-window-x-size 1)
   (x-window-y-size 1)
@@ -85,6 +86,7 @@ MIT in each case. |#
   (x-graphics-draw-line 5)
   (x-graphics-draw-point 3)
   (x-graphics-draw-string 4)
+  (x-graphics-fill-polygon 2)
   (x-graphics-map-x-coordinate 2)
   (x-graphics-map-y-coordinate 2)
   (x-graphics-move-cursor 3)
@@ -98,8 +100,6 @@ MIT in each case. |#
   (x-graphics-set-line-style 2)
   (x-graphics-set-vdc-extent 5)
   (x-graphics-vdc-extent 1)
-
-  (x-graphics-fill-polygon 2)
 
   (x-bytes-into-image 2)
   (x-create-image 3)
@@ -115,11 +115,8 @@ MIT in each case. |#
   (x-set-window-colormap 2)
   (x-store-color 5)
   (x-store-colors 2)
-  (x-window-colormap 1)
-
-  (x-window-visual 1)
   (x-visual-deallocate 1))
-
+
 ;; These constants must match "microcode/x11base.c"
 (define-integrable event-type:button-down 0)
 (define-integrable event-type:button-up 1)
@@ -281,9 +278,10 @@ MIT in each case. |#
 		   (conc-name x-display/)
 		   (constructor make-x-display (name xd))
 		   (print-procedure
-		    (unparser/standard-method 'X-DISPLAY
-		      (lambda (state display)
-			(unparse-object state (x-display/name display))))))
+		    (standard-unparser-method 'X-DISPLAY
+		      (lambda (display port)
+			(write-char #\space port)
+			(write (x-display/name display) port)))))
   (name false read-only true)
   xd
   (window-list (make-protection-list) read-only true)
@@ -886,7 +884,7 @@ MIT in each case. |#
 
 (define (x-image/fill-from-byte-vector image byte-vector)
   (x-bytes-into-image byte-vector (x-image/descriptor image)))
-
+
 ;; Abstraction layer for generic images
 
 (define (x-graphics/create-image device width height)

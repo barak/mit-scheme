@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pathnm.scm,v 14.26 1993/01/29 00:07:22 adams Exp $
+$Id: pathnm.scm,v 14.27 1993/10/21 14:52:38 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -112,9 +112,10 @@ these rules:
 		   (constructor %make-pathname)
 		   (conc-name %pathname-)
 		   (print-procedure
-		    (unparser/standard-method 'PATHNAME
-		      (lambda (state pathname)
-			(unparse-object state (->namestring pathname))))))
+		    (standard-unparser-method 'PATHNAME
+		      (lambda (pathname port)
+			(write-char #\space port)
+			(write (->namestring pathname) port)))))
   (host false read-only true)
   (device false read-only true)
   (directory false read-only true)
@@ -167,7 +168,7 @@ these rules:
   (let ((pathname (->pathname pathname)))
     ((host-operation/end-of-file-marker/output (%pathname-host pathname))
      pathname)))
-
+
 (define (pathname=? x y)
   (let ((x (->pathname x))
 	(y (->pathname y)))
@@ -190,7 +191,7 @@ these rules:
 (define (pathname-simplify pathname)
   (let ((pathname (->pathname pathname)))
     ((host-operation/pathname-simplify (%pathname-host pathname)) pathname)))
-
+
 (define (directory-pathname pathname)
   (let ((pathname (->pathname pathname)))
     (%make-pathname (%pathname-host pathname)
@@ -218,7 +219,7 @@ these rules:
   (let ((pathname (->pathname pathname)))
     ((host-operation/directory-pathname-as-file (%pathname-host pathname))
      pathname)))
-
+
 (define (pathname-new-device pathname device)
   (let ((pathname (->pathname pathname)))
     (%make-pathname (%pathname-host pathname)
@@ -484,7 +485,7 @@ these rules:
 (define (guarantee-host host operation)
   (if (not (host? host)) (error:wrong-type-argument host "host" operation))
   host)
-
+
 (define (host-operation/parse-namestring host)
   (host-type/operation/parse-namestring (host/type host)))
 

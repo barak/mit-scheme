@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: strout.scm,v 14.7 1993/01/19 05:33:49 cph Exp $
+$Id: strout.scm,v 14.8 1993/10/21 14:52:43 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -39,7 +39,7 @@ MIT in each case. |#
 
 (define (initialize-package!)
   (set! output-string-template
-	(make-output-port `((PRINT-SELF ,operation/print-self)
+	(make-output-port `((WRITE-SELF ,operation/write-self)
 			    (WRITE-CHAR ,operation/write-char)
 			    (WRITE-SUBSTRING ,operation/write-substring))
 			  false))
@@ -101,6 +101,6 @@ MIT in each case. |#
 			     (output-string-state/accumulator state) n)
        (set-output-string-state/counter! state n*)))))
 
-(define (operation/print-self state port)
+(define (operation/write-self port output-port)
   port
-  (unparse-string state "to string"))
+  (write-string " to string" output-port))

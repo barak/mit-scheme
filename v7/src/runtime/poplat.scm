@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/poplat.scm,v 14.2 1988/06/13 11:49:48 cph Rel $
+$Id: poplat.scm,v 14.3 1993/10/21 14:52:39 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -47,7 +47,7 @@ MIT in each case. |#
 
 (define (initialize-unparser!)
   (unparser/set-tagged-pair-method! population-tag
-				    (unparser/standard-method 'POPULATION)))
+				    (standard-unparser-method 'POPULATION #f)))
 
 (define bogus-false '(BOGUS-FALSE))
 (define population-tag '(POPULATION))

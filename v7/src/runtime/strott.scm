@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/strott.scm,v 14.3 1988/10/15 17:19:21 cph Rel $
+$Id: strott.scm,v 14.4 1993/10/21 14:52:42 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,7 +39,7 @@ MIT in each case. |#
 
 (define (initialize-package!)
   (set! output-string-template
-	(make-output-port `((PRINT-SELF ,operation/print-self)
+	(make-output-port `((WRITE-SELF ,operation/write-self)
 			    (WRITE-CHAR ,operation/write-char)
 			    (WRITE-STRING ,operation/write-string))
 			  false)))
@@ -94,6 +94,6 @@ MIT in each case. |#
 	    (set-output-string-state/accumulator! state accumulator)
 	    (set-output-string-state/counter! state counter))))))
 
-(define (operation/print-self state port)
+(define (operation/write-self port output-port)
   port
-  (unparse-string state "to string (truncating)"))
+  (write-string " to string (truncating)" output-port))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.37 1993/10/21 12:14:16 cph Exp $
+$Id: error.scm,v 14.38 1993/10/21 14:52:34 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -44,9 +44,10 @@ MIT in each case. |#
 		   (constructor %make-condition-type
 				(name field-indexes number-of-fields reporter))
 		   (print-procedure
-		    (unparser/standard-method 'CONDITION-TYPE
-		      (lambda (state type)
-			(unparse-string state (%condition-type/name type))))))
+		    (standard-unparser-method 'CONDITION-TYPE
+		      (lambda (type port)
+			(write-char #\space port)
+			(write-string (%condition-type/name type) port)))))
   (name false read-only true)
   generalizations
   (field-indexes false read-only true)
@@ -152,11 +153,12 @@ MIT in each case. |#
 		   (conc-name %condition/)
 		   (constructor %make-condition (type continuation restarts))
 		   (print-procedure
-		    (unparser/standard-method 'CONDITION
-		      (lambda (state condition)
-			(unparse-string state
-					(%condition-type/name
-					 (%condition/type condition)))))))
+		    (standard-unparser-method 'CONDITION
+		      (lambda (condition port)
+			(write-char #\space port)
+			(write-string
+			 (%condition-type/name (%condition/type condition))
+			 port)))))
   (type false read-only true)
   (continuation false read-only true)
   (restarts false read-only true)
@@ -290,12 +292,13 @@ MIT in each case. |#
 		   (conc-name %restart/)
 		   (constructor %make-restart (name reporter effector))
 		   (print-procedure
-		    (unparser/standard-method 'RESTART
-		      (lambda (state restart)
+		    (standard-unparser-method 'RESTART
+		      (lambda (restart port)
+			(write-char #\space port)
 			(let ((name (%restart/name restart)))
 			  (if name
-			      (unparse-object state name)
-			      (unparse-string state "(anonymous)")))))))
+			      (write name port)
+			      (write-string "(anonymous)" port)))))))
   (name false read-only true)
   (reporter false read-only true)
   (effector false read-only true)

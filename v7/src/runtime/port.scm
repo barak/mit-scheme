@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.6 1993/10/21 12:14:18 cph Exp $
+$Id: port.scm,v 1.7 1993/10/21 14:52:40 cph Exp $
 
 Copyright (c) 1991-93 Massachusetts Institute of Technology
 
@@ -101,12 +101,19 @@ MIT in each case. |#
 
 (set-record-type-unparser-method! port-rtd
   (lambda (state port)
-    ((unparser/standard-method
-      (cond ((i/o-port? port) 'I/O-PORT)
-	    ((input-port? port) 'INPUT-PORT)
-	    ((output-port? port) 'OUTPUT-PORT)
-	    (else 'PORT))
-      (port/operation port 'PRINT-SELF))
+    ((let ((name
+	    (cond ((i/o-port? port) 'I/O-PORT)
+		  ((input-port? port) 'INPUT-PORT)
+		  ((output-port? port) 'OUTPUT-PORT)
+		  (else 'PORT))))
+       (cond ((port/operation port 'WRITE-SELF)
+	      => (lambda (operation)
+		   (standard-unparser-method name operation)))
+	     ((port/operation port 'PRINT-SELF)
+	      => (lambda (operation)
+		   (unparser/standard-method name operation)))
+	     (else
+	      (standard-unparser-method name #f))))
      state
      port)))
 

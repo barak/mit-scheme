@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/urtrap.scm,v 14.2 1988/06/13 11:59:56 cph Rel $
+$Id: urtrap.scm,v 14.3 1993/10/21 14:52:44 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,9 +39,10 @@ MIT in each case. |#
 
 (define-structure (reference-trap
 		   (print-procedure
-		    (unparser/standard-method 'REFERENCE-TRAP
-		      (lambda (state trap)
-			(unparse-object state (reference-trap-kind trap))))))
+		    (standard-unparser-method 'REFERENCE-TRAP
+		      (lambda (trap port)
+			(write-char #\space port)
+			(write (reference-trap-kind trap) port)))))
   (kind false read-only true)
   (extra false read-only true))
 
