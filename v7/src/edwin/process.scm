@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: process.scm,v 1.36 1995/01/30 20:04:30 cph Exp $
+;;;	$Id: process.scm,v 1.37 1995/04/10 16:50:04 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
@@ -543,7 +543,7 @@ after the listing is made.)"
       (lambda ()
 	(set! process
 	      (start-subprocess
-	       program
+	       (os/find-program program directory)
 	       (list->vector (cons (file-namestring program) arguments))
 	       (if directory
 		   (cons false (->namestring directory))
