@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/hash.scm,v 13.45 1987/02/15 15:43:06 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/hash.scm,v 13.46 1987/05/26 13:29:58 jinx Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -131,6 +131,20 @@
     (if (< n size)
 	(begin (vector-set! unhash-table n (cons true '()))
 	       (initialize (1+ n))))))
+
+;; Primitive-datum may return negative fixnums.  Until fixed...
+
+(define safe-primitive-datum
+  (let ((smallest-positive-bignum
+	 (let loop ((x 1) (y 2))
+	   (if (primitive-type? (primitive-type x) y)
+	       (loop y (* y 2))
+	       (* y 2)))))
+    (named-lambda (safe-primitive-datum object)
+      (let ((n (primitive-datum object)))
+	(if (not (negative? n))
+	    n
+	    (+ smallest-positive-bignum n))))))	
 
 ;;; This is not dangerous because assq is a primitive and does not
 ;;; cause consing.  The rest of the consing (including that by the
@@ -140,7 +154,7 @@
 (named-lambda (object-hash object)
   (with-interrupt-mask interrupt-mask-none
    (lambda (ignore)
-     (let* ((hash-index (1+ (modulo (primitive-datum object) hash-table-size)))
+     (let* ((hash-index (1+ (modulo (safe-primitive-datum object) hash-table-size)))
 	    (bucket (vector-ref hash-table hash-index))
 	    (association (assq object bucket)))
        (if association
@@ -196,7 +210,7 @@
 
 #|
 (define (rehash weak-pair)
-  (let ((index (1+ (modulo (primitive-datum (system-pair-car weak-pair))
+  (let ((index (1+ (modulo (safe-primitive-datum (system-pair-car weak-pair))
 			   hash-table-size))))
     (vector-set! hash-table
 		 index
