@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: logmer.scm,v 1.23 2000/03/30 23:01:37 cph Exp $
+$Id: logmer.scm,v 1.24 2000/03/31 14:37:47 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -37,45 +37,44 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				(if changelog? "ChangeLog" "RCS.log")
 				output-file)
 			    (pathname-as-directory directory))))
-      (fluid-let ((*date-rounds-to-day?* changelog?))
-	(write-string "regenerating log for directory: " port)
-	(write (->namestring directory))
-	(write-string "..." port)
-	(let ((pathnames (rcs-directory-read directory)))
-	  (if (let ((time (file-modification-time-indirect output-file)))
-		(or (not time)
-		    (there-exists? pathnames
-		      (lambda (w.r)
-			(> (file-modification-time-indirect (cdr w.r))
-			   time)))))
-	      (begin
+      (write-string "regenerating log for directory: " port)
+      (write (->namestring directory))
+      (write-string "..." port)
+      (let ((pathnames (rcs-directory-read directory)))
+	(if (let ((time (file-modification-time-indirect output-file)))
+	      (or (not time)
+		  (there-exists? pathnames
+		    (lambda (w.r)
+		      (> (file-modification-time-indirect (cdr w.r))
+			 time)))))
+	    (begin
+	      (newline port)
+	      (write-string "total files: " port)
+	      (write (length pathnames) port)
+	      (newline port)
+	      (let ((entries (read-entries pathnames port)))
+		(write-string "total entries: " port)
+		(write (length entries) port)
 		(newline port)
-		(write-string "total files: " port)
-		(write (length pathnames) port)
-		(newline port)
-		(let ((entries (read-entries pathnames port)))
-		  (write-string "total entries: " port)
-		  (write (length entries) port)
+		(let ((entries
+		       (if changelog?
+			   (sort-entries-for-changelog entries)
+			   (sort-entries-for-rcs.log entries))))
+		  (write-string "sorting finished" port)
 		  (newline port)
-		  (let ((entries
-			 (if changelog?
-			     (sort-entries-for-changelog entries)
-			     (sort-entries-for-rcs.log entries))))
-		    (write-string "sorting finished" port)
-		    (newline port)
-		    (call-with-output-file output-file
-		      (lambda (port)
-			(if changelog?
-			    (format-changelog entries
-					      (if (pair? changelog?)
-						  changelog?
-						  '())
-					      changelog-map
-					      port)
-			    (format-rcs.log entries port)))))))
-	      (begin
-		(write-string " log is up to date" port)
-		(newline port))))))))
+		  (call-with-output-file output-file
+		    (lambda (port)
+		      (if changelog?
+			  (format-changelog entries
+					    (if (pair? changelog?)
+						changelog?
+						'())
+					    changelog-map
+					    port)
+			  (format-rcs.log entries port)))))))
+	    (begin
+	      (write-string " log is up to date" port)
+	      (newline port)))))))
 
 ;;;; RCS.log format
 
@@ -117,7 +116,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (format-changelog entries options changelog-map port)
   (let ((groups
-	 (group-entries-by-author&date
+	 (group-entries-by-author&day
 	  (list-transform-negative entries
 	    (lambda (entry)
 	      (string-prefix? "#" (delta/log (car entry)))))))
@@ -151,7 +150,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 					       "["
 					       (delta/number (car entry))
 					       "]"))
-			      (sort-changelog-entries-by-revision entries))
+			      (sort-group-by-name&date entries))
 			 (remove-duplicate-strings
 			  (sort (map cdr entries) string<?)))))
 		(write-string (car filenames) port)
@@ -179,7 +178,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	      (write-string ":" port)
 	      (newline port)
 	      (format-log-for-changelog (delta/log (caar entries)) port))
-	    (sort-changelog-groups-by-date (group-entries-by-log entries))))))
+	    (sort-groups-by-date (group-entries-by-log entries))))))
     (if (pair? groups)
 	(begin
 	  (format-group (car groups))
@@ -191,16 +190,21 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (sort-entries-for-changelog entries)
   (sort entries
     (lambda (x y)
-      (or (> (date/universal (delta/date (car x)))
-	     (date/universal (delta/date (car y))))
-	  (and (= (date/universal (delta/date (car x)))
-		  (date/universal (delta/date (car y))))
+      (or (day>? (delta/date (car x)) (delta/date (car y)))
+	  (and (day=? (delta/date (car x)) (delta/date (car y)))
 	       (or (string<? (delta/author (car x))
 			     (delta/author (car y)))
 		   (and (string=? (delta/author (car x))
 				  (delta/author (car y)))
 			(string<? (delta/log (car x))
 				  (delta/log (car y))))))))))
+
+(define (sort-group-by-name&date entries)
+  (sort entries
+    (lambda (x y)
+      (or (string<? (cdr x) (cdr y))
+	  (and (string=? (cdr x) (cdr y))
+	       (date>? (delta/date (car x)) (delta/date (car y))))))))
 
 (define (format-date-for-changelog date)
   (let ((dt (date/decoded date)))
@@ -226,7 +230,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (begin
 	      (write-substring log start end port)
 	      (newline port)))))))
-
+
 (define (remove-duplicate-strings strings)
   ;; Assumes that STRINGS is sorted.
   (let loop ((strings strings) (result '()))
@@ -238,63 +242,40 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		  (cons (car strings) result)))
 	(reverse! result))))
 
-(define (sort-changelog-groups-by-date groups)
-  (sort groups
-    (let ((find-oldest
-	   (lambda (entries)
-	     (let loop
-		 ((entries (cdr entries))
-		  (winner
-		   (decoded-time->universal-time
-		    (date/decoded (delta/date (caar entries))))))
-	       (if (pair? entries)
-		   (loop (cdr entries)
-			 (let ((this
-				(decoded-time->universal-time
-				 (date/decoded (delta/date (caar entries))))))
-			   (if (< this winner)
-			       this
-			       winner)))
-		   winner)))))
-      (lambda (g1 g2)
-	(> (find-oldest g1) (find-oldest g2))))))
-
-(define (sort-changelog-entries-by-revision entries)
-  (sort entries
-    (lambda (x y)
-      (or (string<? (cdr x) (cdr y))
-	  (and (string=? (cdr x) (cdr y))
-	       (revision<? (delta/number (car y))
-			   (delta/number (car x))))))))
+(define (sort-groups-by-date groups)
+  (sort-groups groups
+	       (lambda (entries)
+		 (let loop
+		     ((entries (cdr entries))
+		      (winner (caar entries)))
+		   (if (pair? entries)
+		       (loop (cdr entries)
+			     (if (date<? (delta/date (caar entries))
+					 (delta/date winner))
+				 (caar entries)
+				 winner))
+		       winner)))
+	       (lambda (x y)
+		 (date>? (delta/date x) (delta/date y)))))
 
-(define (revision<? x y)
-  (let loop ((x (string->revision x)) (y (string->revision y)))
-    (if (pair? x)
-	(and (pair? y)
-	     (or (< (car x) (car y))
-		 (and (= (car x) (car y))
-		      (loop (cdr x) (cdr y)))))
-	(pair? y))))
+(define (sort-groups groups choose-representative predicate)
+  (map cdr
+       (sort (map (lambda (group)
+		    (cons (choose-representative group) group))
+		  groups)
+	 (lambda (x y)
+	   (predicate (car x) (car y))))))
 
-(define (string->revision x)
-  (map (lambda (s)
-	 (or (string->number s)
-	     (error "Malformed revision string:" x)))
-       (burst-string x #\. #f)))
-
-(define (group-entries-by-author&date entries)
+(define (group-entries-by-author&day entries)
   (group-entries entries
     (lambda (x y)
-      (and (string=? (delta/author (car x))
-		     (delta/author (car y)))
-	   (= (date/universal (delta/date (car x)))
-	      (date/universal (delta/date (car y))))))))
+      (and (string=? (delta/author (car x)) (delta/author (car y)))
+	   (day=? (delta/date (car x)) (delta/date (car y)))))))
 
 (define (group-entries-by-log entries)
   (group-entries entries
     (lambda (x y)
-      (string=? (delta/log (car x))
-		(delta/log (car y))))))
+      (string=? (delta/log (car x)) (delta/log (car y))))))
 
 (define (group-entries entries predicate)
   (let outer ((entries entries) (groups '()))
@@ -306,7 +287,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		(inner (cdr entries) (cons (car entries) group))
 		(outer entries (cons (reverse! group) groups)))))
 	(reverse! groups))))
-
+
 (define (read-entries pairs notification-port)
   (let ((prefix (greatest-common-prefix (map car pairs))))
     (append-map!
