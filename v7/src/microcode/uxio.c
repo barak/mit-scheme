@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxio.c,v 1.34 1994/11/14 00:53:27 cph Exp $
+$Id: uxio.c,v 1.35 1995/11/09 06:53:59 adams Exp $
 
 Copyright (c) 1990-94 Massachusetts Institute of Technology
 
@@ -242,16 +242,46 @@ size_t
 DEFUN (OS_channel_read_load_file, (channel, buffer, nbytes),
        Tchannel channel AND PTR buffer AND size_t nbytes)
 {
-  int scr = (UX_read ((CHANNEL_DESCRIPTOR (channel)), buffer, nbytes));
-  return ((scr < 0) ? 0 : scr);
+  int scr;
+  size_t total = 0;
+ try_again:
+  scr = (UX_read ((CHANNEL_DESCRIPTOR (channel)), buffer, nbytes));
+  if (scr < 0) {
+      printf("\nRead error %d", errno);
+      fflush(stdout);
+      return  0;
+  }
+  total += scr;
+  /* If the channel is a stream socket then data is delivered in dribs
+     and drabs so we have to keep trying until be get the data or an error.
+     */
+  if (scr < nbytes && scr > 0)
+    {
+	buffer += scr;
+	nbytes -= scr;
+	goto try_again;
+    }
+  return total;
 }
 
 size_t
 DEFUN (OS_channel_write_dump_file, (channel, buffer, nbytes),
        Tchannel channel AND CONST PTR buffer AND size_t nbytes)
 {
-  int scr = (UX_write ((CHANNEL_DESCRIPTOR (channel)), buffer, nbytes));
-  return ((scr < 0) ? 0 : scr);
+    int scr;
+    size_t total = 0;
+  try_again:
+    scr = (UX_write ((CHANNEL_DESCRIPTOR (channel)), buffer, nbytes));
+    if (scr < 0)
+      return  0;
+    total += scr;
+    if (scr < nbytes && scr > 0)
+      {
+	  buffer += scr;
+	  nbytes -= scr;
+	  goto try_again;
+      }
+    return  total;
 }
 
 extern int EXFUN (strlen, (CONST char *));
