@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.138 1992/03/13 09:47:46 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.139 1992/04/22 21:10:19 mhwu Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -314,21 +314,35 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental '(#\c-x #\}) 'enlarge-window-horizontally)
 (define-key 'fundamental '(#\c-x #\rubout) 'backward-kill-sentence)
 
-(define-key 'fundamental left 'backward-char)
-(define-key 'fundamental deletechar 'delete-char)
-(define-key 'fundamental right 'forward-char)
-(define-key 'fundamental deleteline 'kill-line)
-(define-key 'fundamental down 'next-line)
-(define-key 'fundamental insertline 'open-line)
-(define-key 'fundamental up 'previous-line)
-(define-key 'fundamental next 'scroll-up)
-(define-key 'fundamental home 'home-cursor)
-(define-key 'fundamental prior 'scroll-down)
-(define-key 'fundamental (make-special-key 'next 1) 'scroll-other-window)
-(define-key 'fundamental (make-special-key 'prior 1) 'scroll-other-window-down)
+(let-syntax ((define-function-key
+               (macro (mode key command)
+                 (let ((token (if (pair? key) (car key) key)))
+                   `(if (not (lexical-unreferenceable? (the-environment)
+                                                       ',token))
+                        (define-key ,mode ,key ,command))))))
+
+  (define-function-key 'fundamental left 'backward-char)
+  (define-function-key 'fundamental deletechar 'delete-char)
+  (define-function-key 'fundamental right 'forward-char)
+  (define-function-key 'fundamental deleteline 'kill-line)
+  (define-function-key 'fundamental down 'next-line)
+  (define-function-key 'fundamental insertline 'open-line)
+  (define-function-key 'fundamental up 'previous-line)
+  (define-function-key 'fundamental next 'scroll-up)
+  (define-function-key 'fundamental home 'home-cursor)
+  (define-function-key 'fundamental prior 'scroll-down)
+  (define-function-key 'fundamental (make-special-key 'next 1)
+    'scroll-other-window)
+  (define-function-key 'fundamental (make-special-key 'prior 1) 
+    'scroll-other-window-down)
+
 ;;; Jokes
-(define-key 'fundamental #\h-space 'hyper-space)
-(define-key 'fundamental (make-special-key 'malesymbol 4) 'super-man)
-(define-key 'fundamental (make-special-key 'menu 4) 'super-menu)
-(define-key 'fundamental #\t-$ 'top-dollar)
-(define-key 'fundamental #\t-^ 'top-hat)
+
+  (define-key 'fundamental #\h-space 'hyper-space)
+  (define-function-key 'fundamental (make-special-key 'malesymbol 4) 
+    'super-man)
+  (define-function-key 'fundamental (make-special-key 'menu 4) 'super-menu)
+  (define-key 'fundamental #\t-$ 'top-dollar)
+  (define-key 'fundamental #\t-^ 'top-hat)
+
+) ;; End of let-syntax
