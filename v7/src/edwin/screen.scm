@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.96 1992/02/08 15:23:40 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.97 1992/03/13 10:47:39 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -99,9 +99,6 @@
   ;; Description of desired screen contents.
   new-matrix
 
-  ;; Set this variable in the debugger to force a display preemption.
-  (debug-preemption-y false)
-
   ;; Set this variable in the debugger to trace interesting events.
   (debug-trace false))
 
@@ -170,16 +167,16 @@
   (eq? 'DELETED (screen-visibility screen)))
 
 (define (update-screen! screen display-style)
-  (if (screen-visible? screen)
-      (begin
-	(if display-style (screen-force-update screen))
-	(with-screen-in-update screen display-style
-	  (lambda ()
-	    (editor-frame-update-display! (screen-root-window screen)
-					  display-style))))
-      (begin
-	(set-screen-needs-update?! screen false)
-	true)))
+  (and (or (not (screen-visible? screen))
+	   (begin
+	     (if display-style (screen-force-update screen))
+	     (with-screen-in-update screen display-style
+	       (lambda ()
+		 (editor-frame-update-display! (screen-root-window screen)
+					       display-style)))))
+       (begin
+	 (set-screen-needs-update?! screen false)
+	 true)))
 
 ;;; Interface from update optimizer to terminal:
 
@@ -520,7 +517,7 @@
 	      (boolean-vector-set! new-enable y true)
 	      (if (boolean-vector-ref current-hl-enable y)
 		  (begin
-		    (let ((h (vector-ref current-hl y)))
+		    (let ((h (vector-ref new-hl y)))
 		      (vector-set! new-hl y (vector-ref current-hl y))
 		      (vector-set! current-hl y h))
 		    (boolean-vector-set! new-hl-enable y true)))))
@@ -623,18 +620,30 @@
 (define (with-screen-in-update screen display-style thunk)
   (without-interrupts
    (lambda ()
-     (let ((old-flag))
-       (unwind-protect (lambda ()
-			 (set! old-flag (screen-in-update? screen))
-			 (set-screen-in-update?! screen true))
-		       (lambda ()
-			 ((screen-operation/wrap-update! screen)
-			  screen
-			  (lambda ()
-			    (and (thunk)
-				 (screen-update screen display-style)))))
-		       (lambda ()
-			 (set-screen-in-update?! screen old-flag)))))))
+     (let ((old-flag (screen-in-update? screen)))
+       (set-screen-in-update?! screen true)
+       (let ((finished?
+	      ((screen-operation/wrap-update! screen)
+	       screen
+	       (lambda ()
+		 (and (thunk)
+		      (or (not (screen-needs-update? screen))
+			  (screen-update screen display-style))
+		      (begin
+			(screen-update-cursor screen)
+			true))))))
+	 (set-screen-in-update?! screen old-flag)
+	 finished?)))))
+
+(define-integrable (screen-update-cursor screen)
+  (let ((x (matrix-cursor-x (screen-new-matrix screen)))
+	(y (matrix-cursor-y (screen-new-matrix screen))))
+    (if (not (and (fix:= x (matrix-cursor-x (screen-current-matrix screen)))
+		  (fix:= y (matrix-cursor-y (screen-current-matrix screen)))))
+	(begin
+	  (terminal-move-cursor screen x y)
+	  (set-matrix-cursor-x! (screen-current-matrix screen) x)
+	  (set-matrix-cursor-y! (screen-current-matrix screen) y)))))
 
 (define (screen-update screen force?)
   ;; Update the actual terminal screen based on the data in `new-matrix'.
@@ -649,33 +658,24 @@
 	(discretionary-flush (screen-operation/discretionary-flush screen))
 	(halt-update? (editor-halt-update? current-editor)))
     (let ((enable (matrix-enable new-matrix)))
-      (let loop ((y 0))
+      (let loop ((y 0) (m 0))
 	(cond ((fix:= y y-size)
-	       (let ((x (matrix-cursor-x new-matrix))
-		     (y (matrix-cursor-y new-matrix)))
-		 (terminal-move-cursor screen x y)
-		 (set-matrix-cursor-x! current-matrix x)
-		 (set-matrix-cursor-y! current-matrix y))
-	       (set-screen-needs-update?! screen false)
 	       true)
-	      ((and (fix:= 0 (fix:remainder y preemption-modulus))
-		    (begin
-		      (if discretionary-flush (discretionary-flush screen))
-		      true)
-		    (not force?)
-		    (or (halt-update?)
-			(eq? (screen-debug-preemption-y screen) y)))
-	       (terminal-move-cursor screen
-				     (matrix-cursor-x current-matrix)
-				     (matrix-cursor-y current-matrix))
+	      ((not (boolean-vector-ref enable y))
+	       (loop (fix:+ y 1) m))
+	      ((not (fix:= 0 m))
+	       (update-line screen y)
+	       (loop (fix:+ y 1) (fix:- m 1)))
+	      ((begin
+		 (if discretionary-flush (discretionary-flush screen))
+		 (and (not force?) (halt-update?)))
 	       (if (screen-debug-trace screen)
 		   ((screen-debug-trace screen) 'screen screen
 						'update-preemption y))
 	       false)
 	      (else
-	       (if (boolean-vector-ref enable y)
-		   (update-line screen y))
-	       (loop (fix:1+ y))))))))
+	       (update-line screen y)
+	       (loop (fix:+ y 1) preemption-modulus)))))))
 
 (define (update-line screen y)
   (let ((current-matrix (screen-current-matrix screen))
@@ -815,17 +815,29 @@
 	      (let find-match ((x* (fix:+ x 1)))
 		(cond ((fix:= x* x-size)
 		       (terminal-output-substring screen x y nline x x* hl))
-		      ((or (not (eq? hl (boolean-vector-ref nhl x*)))
-			   (and (eq? hl (boolean-vector-ref ohl x*))
-				(fix:= (vector-8b-ref oline x*)
-				       (vector-8b-ref nline x*))))
-		       ;; Either found a match, or the highlight
-		       ;; changed.  In either case, output the current
-		       ;; segment and continue from the top.
+		      ((not (eq? hl (boolean-vector-ref nhl x*)))
 		       (terminal-output-substring screen x y nline x x* hl)
 		       (find-mismatch x*))
+		      ((not (and (eq? hl (boolean-vector-ref ohl x*))
+				 (fix:= (vector-8b-ref oline x*)
+					(vector-8b-ref nline x*))))
+		       (find-match (fix:+ x* 1)))
 		      (else
-		       (find-match (fix:+ x* 1))))))))))
+		       (let find-end-match ((x** (fix:+ x* 1)))
+			 (cond ((fix:= x** x-size)
+				(terminal-output-substring
+				 screen x y nline x x* hl))
+			       ((and (eq? hl (boolean-vector-ref ohl x**))
+				     (fix:= (vector-8b-ref oline x**)
+					    (vector-8b-ref nline x**)))
+				(find-end-match (fix:+ x** 1)))
+			       ((fix:< (fix:- x** x*) 5)
+				;; Ignore matches of 4 chars or less.
+				(find-match x**))
+			       (else
+				(terminal-output-substring
+				 screen x y nline x x* hl)
+				(find-mismatch x**))))))))))))
 
 (define-integrable (fix:min x y) (if (fix:< x y) x y))
 (define-integrable (fix:max x y) (if (fix:> x y) x y))
