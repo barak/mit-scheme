@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Id: i386.m4,v 1.46 1997/05/01 01:26:16 cph Exp $
+###	$Id: i386.m4,v 1.47 1997/05/05 06:59:35 cph Exp $
 ###
 ###	Copyright (c) 1992-97 Massachusetts Institute of Technology
 ###
@@ -566,6 +566,19 @@ define_debugging_label(scheme_to_interface_call)
 
 define_hook_label(scheme_to_interface)
 define_debugging_label(scheme_to_interface)
+IF387(`
+	OP(cmp,l)	TW(IMM(0),ABS(EVR(i387_presence)))
+	je	scheme_to_interface_proceed
+	ffree	ST(0)					# Free floating "regs"
+	ffree	ST(1)
+	ffree	ST(2)
+	ffree	ST(3)
+	ffree	ST(4)
+	ffree	ST(5)
+	ffree	ST(6)
+	ffree	ST(7)
+scheme_to_interface_proceed:
+')
 ifdef(`HACK_SEGMENT_REGS',
 `	OP(push,l)	LOF(36,regs)			# 4th utility arg
 	OP(push,l)	REG(eax)			# Save utility index
