@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/iserch.scm,v 1.4 1989/04/23 23:23:59 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/iserch.scm,v 1.5 1989/04/28 03:52:53 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -51,10 +51,10 @@
 	      (lambda ()
 		(isearch-loop
 		 (initial-search-state false forward? regexp? point))))))
+	(clear-message)
 	(cond ((eq? result 'ABORT)
 	       (set-window-point! window point)
-	       (window-scroll-y-absolute! window y-point)
-	       (clear-message))
+	       (window-scroll-y-absolute! window y-point))
 	      ((command? result)
 	       (dispatch-on-command result))
 	      (else
