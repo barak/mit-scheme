@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bintopsb.c,v 9.38 1989/07/02 05:12:25 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bintopsb.c,v 9.39 1989/07/25 08:46:06 cph Rel $
  *
  * This File contains the code to translate internal format binary
  * files to portable format.
@@ -231,6 +231,7 @@ print_a_char(c, name)
   NFlonums += 1;							\
   *Old_Address++ = Make_Non_Pointer(TC_BROKEN_HEART, (Obj));		\
   (Obj) += 1;								\
+  Align_Float(FObj);							\
   *(FObj)++ = Make_Non_Pointer(TC_BIG_FLONUM, 0);			\
   *((double *) (FObj)) = *((double *) Old_Address);			\
   (FObj) += float_to_pointer;						\
@@ -690,6 +691,8 @@ print_a_flonum(val)
   }									\
 }
 
+#ifdef CMPGCFILE
+
 #define Do_Compiled_Entry(Code, Rel, Fre, Scn, Obj, FObj)		\
 {									\
   long offset;								\
@@ -722,6 +725,18 @@ print_a_flonum(val)
     Copy_Vector(Scn, Fre);						\
   }									\
 }
+
+#else /* no CMPGCFILE */
+
+#define Do_Compiled_Entry(Code, Rel, Fre, Scn, Obj, FObj)		\
+{									\
+  fprintf(stderr,							\
+	  "%s: Invoking Do_Compiled_Entry with no compiler support!\n",	\
+	  program_name);						\
+  quit(1);								\
+}
+
+#endif /* CMPGCFILE */
 
 /* Common Pointer Code */
 
@@ -1197,6 +1212,19 @@ print_external_objects(from, count)
 		TC_CHARACTER, (*from & MASK_EXTNDD_CHAR));
 	from += 1;
 	break;
+
+#ifdef FLOATING_ALIGNMENT
+
+      case TC_MANIFEST_NM_VECTOR:
+        if ((OBJECT_DATUM(*from)) == 0)
+	{
+	  from += 1;
+	  count += 1;
+	  break;
+	}
+        /* fall through */
+
+#endif /* FLOATING_ALIGNMENT */
 
       default:
 	fprintf(stderr,

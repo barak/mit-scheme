@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.41 1989/06/16 09:41:53 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.42 1989/07/25 08:45:49 cph Rel $
 
    The "fast loader" which reads in and relocates binary files and then
    interns symbols.  It is called with one argument: the (character
@@ -115,12 +115,6 @@ read_file_end()
 {
   Pointer *table;
 
-#if false
-  /* Aligning Free here confuses the counters. */
-
-  Align_Float(Free);
-#endif
-
   if ((Load_Data(Heap_Count, ((char *) Free))) != Heap_Count)
   {
     Close_Dump_File();
@@ -146,12 +140,6 @@ read_file_end()
   }
   NORMALIZE_REGION(((char *) table), Primitive_Table_Size);
   Free += Primitive_Table_Size;
-
-#if false
-  /* Same */
-  
-  Align_Float(Free);
-#endif
 
   if (Close_Dump_File())
   {
@@ -513,6 +501,7 @@ load_file(from_band_load)
 
   load_renumber_table = Free;
   Free += Primitive_Table_Length;
+  Align_Float(Free);
   Orig_Heap = Free;
   Orig_Constant = Free_Constant;
   primitive_table = read_file_end();
