@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purutl.c,v 9.41 1991/05/05 00:46:07 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purutl.c,v 9.42 1991/08/06 15:13:54 arthur Exp $
 
 Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
@@ -180,6 +180,15 @@ DEFUN (Make_Impure,
 #endif /* BAD_TYPES_LETHAL */
   }
 
+#ifdef FLOATING_ALIGNMENT
+
+  /* Undo ALIGN_FLOAT(Free_Constant) in SET_CONSTANT_TOP (). */
+
+  while ((*(Free_Constant - 1)) == (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, 0)))
+    Free_Constant -= 1;
+
+#endif
+
   /* Add a copy of the object to the last constant block in memory.
    */
 
@@ -259,6 +268,20 @@ DEFUN (find_constant_space_block,
 
   while (where >= low_constant)
   {
+#if 0
+    /* Skip backwards over turds left over by ALIGN_FLOAT */
+
+    /* This should be #ifdef FLOATING_ALIGNMENT, but
+       works by serendipity since the padding turds have a
+       datum of 0 and are correctly skipped over.
+     */
+
+    if (*where = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, 0)))
+    {
+      where -= 1;
+      continue;
+    }
+#endif
     where -= (1 + OBJECT_DATUM (*where));
     if (where < obj_address)
     {
