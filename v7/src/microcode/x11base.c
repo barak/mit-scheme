@@ -1,8 +1,10 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.79 2003/02/14 18:28:24 cph Exp $
+$Id: x11base.c,v 1.80 2003/04/25 03:08:04 cph Exp $
 
-Copyright (c) 1989-2001 Massachusetts Institute of Technology
+Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
+Copyright 1995,1996,1997,1998,2000,2001 Massachusetts Institute of Technology
+Copyright 2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -952,18 +954,17 @@ DEFUN (convert_bucky_bits, (state, allp), unsigned int state AND int allp)
   if (state & ControlMask) bucky |= 0x0002; /* control */
   if (state & Mod2Mask)    bucky |= 0x0004; /* super */
   if (state & Mod3Mask)    bucky |= 0x0008; /* hyper */
-  if (state & Mod4Mask)    bucky |= 0x0010; /* top */
   if (allp)
     {
-      if (state & ShiftMask)   bucky |= 0x0020;
-      if (state & LockMask)    bucky |= 0x0040;
-      if (state & Mod2Mask)    bucky |= 0x0080;
-      if (state & Mod5Mask)    bucky |= 0x0100;
-      if (state & Button1Mask) bucky |= 0x0200;
-      if (state & Button2Mask) bucky |= 0x0400;
-      if (state & Button3Mask) bucky |= 0x0800;
-      if (state & Button4Mask) bucky |= 0x1000;
-      if (state & Button5Mask) bucky |= 0x2000;
+      if (state & ShiftMask)   bucky |= 0x0010;
+      if (state & LockMask)    bucky |= 0x0020;
+      if (state & Mod4Mask)    bucky |= 0x0040;
+      if (state & Mod5Mask)    bucky |= 0x0080;
+      if (state & Button1Mask) bucky |= 0x0100;
+      if (state & Button2Mask) bucky |= 0x0200;
+      if (state & Button3Mask) bucky |= 0x0400;
+      if (state & Button4Mask) bucky |= 0x0800;
+      if (state & Button5Mask) bucky |= 0x1000;
     }
   return (LONG_TO_UNSIGNED_FIXNUM (bucky));
 }
