@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: sendmail.scm,v 1.24 1995/04/30 06:54:22 cph Exp $
+;;;	$Id: sendmail.scm,v 1.25 1995/05/05 06:53:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
@@ -179,41 +179,47 @@ is inserted."
 			  'KEEP-PREVIOUS-MAIL
 			  'QUERY-DISCARD-PREVIOUS-MAIL))))
 
-(define (make-mail-buffer headers reply-buffer select-buffer
-			  #!optional previous-mail-handling buffer-name mode)
-  (let ((buffer-name
-	 (or (and (not (default-object? buffer-name))
-		  buffer-name)
-	     "*mail*")))
+(define (make-mail-buffer headers reply-buffer #!optional
+			  selector handle-previous buffer-name mode)
+  (let ((selector (if (default-object? selector) #f selector))
+	(handle-previous
+	 (if (default-object? handle-previous)
+	     'QUERY-DISCARD-PREVIOUS-MAIL
+	     handle-previous))
+	(buffer-name
+	 (if (or (default-object? buffer-name) (not buffer-name))
+	     "*mail*"
+	     buffer-name))
+	(mode (if (default-object? mode) #f mode)))
     (let ((buffer (find-buffer buffer-name))
 	  (continue
 	   (lambda (select?)
 	     (let ((buffer (find-or-create-buffer buffer-name)))
-	       (if select? (select-buffer buffer))
 	       (buffer-reset! buffer)
 	       (set-buffer-default-directory! buffer
 					      (default-homedir-pathname))
 	       (setup-buffer-auto-save! buffer)
-	       (mail-setup buffer headers reply-buffer
-			   (and (not (default-object? mode)) mode))))))
-      (if buffer
-	  (case (if (default-object? previous-mail-handling)
-		    'QUERY-DISCARD-PREVIOUS-MAIL
-		    previous-mail-handling)
-	    ((KEEP-PREVIOUS-MAIL)
-	     (select-buffer buffer))
-	    ((DISCARD-PREVIOUS-MAIL)
+	       (mail-setup buffer headers reply-buffer mode)
+	       (if (and select? selector) (selector buffer))
+	       buffer))))
+      (cond ((or (not buffer)
+		 (not (buffer-modified? buffer))
+		 (eq? handle-previous 'DISCARD-PREVIOUS-MAIL))
 	     (continue #t))
-	    ((QUERY-DISCARD-PREVIOUS-MAIL)
-	     (select-buffer buffer)
-	     (if (or (not (buffer-modified? buffer))
-		     (prompt-for-confirmation?
-		      "Unsent message being composed; erase it"))
-		 (continue #f)))
+	    ((eq? handle-previous 'QUERY-DISCARD-PREVIOUS-MAIL)
+	     (if selector (selector buffer))
+	     (if (cleanup-pop-up-buffers
+		  (lambda ()
+		    (if (not selector) (pop-up-buffer buffer))
+		    (prompt-for-confirmation?
+		     "Unsent message being composed; erase it")))
+		 (continue #f)
+		 #f))
+	    ((eq? handle-previous 'KEEP-PREVIOUS-MAIL)
+	     (if selector (selector buffer))
+	     #f)
 	    (else
-	     (error:bad-range-argument previous-mail-handling
-				       'MAKE-MAIL-BUFFER)))
-	  (continue #t)))))
+	     (error:bad-range-argument handle-previous 'MAKE-MAIL-BUFFER))))))
 
 (define (mail-setup buffer headers reply-buffer #!optional mode)
   (guarantee-mail-aliases)
@@ -291,12 +297,13 @@ is inserted."
 		 (given-header? "subject")
 		 (given-header? "in-reply-to")))
 	(buffer-not-modified! buffer)))
-  (event-distributor/invoke! (ref-variable mail-setup-hook buffer)))
-
-(define-variable mail-setup-hook
-  "An event distributor invoked immediately after a mail buffer is initialized."
-  (make-event-distributor))
+  (event-distributor/invoke! (ref-variable mail-setup-hook buffer) buffer))
 
+(define-variable mail-setup-hook
+  "An event distributor invoked immediately after a mail buffer is initialized.
+The mail buffer is passed as an argument; it is not necessarily selected."
+  (make-event-distributor))
+
 (define-major-mode mail text "Mail"
   "Major mode for editing mail to be sent.
 Separate names of recipients (in To: and CC: fields) with commas.
