@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntgui.c,v 1.25 1999/01/02 06:11:34 cph Exp $
+$Id: ntgui.c,v 1.26 1999/03/03 05:25:10 cph Exp $
 
 Copyright (c) 1993-1999 Massachusetts Institute of Technology
 
@@ -34,6 +34,8 @@ extern void scheme_main (int argc, const char ** argv);
 extern void NT_preallocate_heap (void);
 BOOL InitApplication(HANDLE);
 BOOL InitInstance(HANDLE, int);
+
+static SCHEME_OBJECT parse_event (SCREEN_EVENT *);
 
 void *xmalloc(int);
 void xfree(void*);
@@ -125,28 +127,28 @@ WinMain (HANDLE hInst, HANDLE hPrevInst, LPSTR lpCmdLine, int nCmdShow)
 BOOL
 DEFUN (InitApplication, (hInstance), HANDLE hInstance)
 {
-    // WNDCLASS wc;
     static BOOL done = FALSE;
-
-    if (done) return  TRUE;
+    if (done) return (TRUE);
     done = TRUE;
 
-    //wc.style         = CS_HREDRAW | CS_VREDRAW;
-    //wc.lpfnWndProc   = TranscriptWndProc;
-    //wc.cbClsExtra    = 0;
-    //wc.cbWndExtra    = sizeof (Transcript*);
-    //wc.hInstance     = hInstance;
-    //wc.hIcon         = NULL;
-    //wc.hCursor       = LoadCursor (NULL, IDC_ARROW);
-    //wc.hbrBackground = GetStockObject (WHITE_BRUSH);
-    //wc.lpszMenuName  = transcript_class_name;
-    //wc.lpszClassName = transcript_class_name;
+#if 0
+    {
+      WNDCLASS wc;
+      (wc . style) = (CS_HREDRAW | CS_VREDRAW);
+      (wc . lpfnWndProc) = TranscriptWndProc;
+      (wc . cbClsExtra) = 0;
+      (wc . cbWndExtra) = (sizeof (Transcript *));
+      (wc . hInstance) = hInstance;
+      (wc . hIcon) = 0;
+      (wc . hCursor) = (LoadCursor (NULL, IDC_ARROW));
+      (wc . hbrBackground) = (GetStockObject (WHITE_BRUSH));
+      (wc . lpszMenuName) = transcript_class_name;
+      (wc . lpszClassName) = transcript_class_name;
+      return (RegisterClass (&wc));
+    }
+#endif
 
-    //if (!RegisterClass(&wc))
-    //  return  FALSE;
-
-    return  Screen_InitApplication (hInstance);
-    //return  TRUE;
+    return (Screen_InitApplication (hInstance));
 }
 
 static BOOL instance_initialized = FALSE;
@@ -155,54 +157,65 @@ BOOL
 DEFUN (InitInstance, (hInstance, nCmdShow), HANDLE hInstance AND int nCmdShow)
 {
     instance_initialized = TRUE;
-
-    return  Screen_InitInstance (hInstance, nCmdShow);
-    //return  TRUE;
+#if 0
+    return (TRUE);
+#endif
+    return (Screen_InitInstance (hInstance, nCmdShow));
 }
 
-//void
-//DEFUN_VOID (nt_gui_default_poll)
-//{
-//   static int n = 0;
-//#ifdef GUI
-//   DWORD pending_types;
-//   int events_processed = 0;
-//
-//   outf_console("\001");  outf_flush_console();
-//   while (events_processed < 5 &&
-//          (pending_types = GetQueueStatus(QS_INPUT)) >> 16) {
-//     MSG msg;
-//     //outf_console("GetQueueStatus() = 0x%08x\n", pending_types);
-//     //outf_console("GetMessage()\n");
-//   outf_console("\360");  outf_flush_console();
-//     GetMessage (&msg, 0, 0, 0);
-//     TranslateMessage(&msg);
-//     DispatchMessage(&msg);
-//   outf_console("\361");  outf_flush_console();
-//     events_processed ++;
-//   }
-//   //outf_console("events_processed = %d\n", events_processed);
-//   outf_console("\002");  outf_flush_console();
-//#endif
-//}
+#if 0
+void
+DEFUN_VOID (nt_gui_default_poll)
+{
+  static int n = 0;
+#ifdef GUI
+  DWORD pending_types;
+  int events_processed = 0;
 
-//extern BOOL MIT_TranslateMessage (CONST MSG *);
+  outf_console("\001");  outf_flush_console();
+  while ((events_processed < 5)
+	 && ((pending_types = GetQueueStatus(QS_INPUT)) >> 16))
+    {
+      MSG msg;
+      outf_console("GetQueueStatus() = 0x%08x\n", pending_types);
+      outf_console("GetMessage()\n");
+      outf_console("\360");  outf_flush_console();
+      GetMessage (&msg, 0, 0, 0);
+      TranslateMessage(&msg);
+      DispatchMessage(&msg);
+      outf_console("\361");  outf_flush_console();
+      events_processed ++;
+    }
+  outf_console("events_processed = %d\n", events_processed);
+  outf_console("\002");  outf_flush_console();
+#endif /* end GUI */
+}
+#endif /* end 0 */
+
+#if 0
+extern BOOL MIT_TranslateMessage (CONST MSG *);
+#endif
 
 void
 DEFUN_VOID (nt_gui_default_poll)
 {
 #ifdef GUI
-   MSG  msg;
-   int events_processed = 0;
+  MSG  msg;
+  int events_processed = 0;
 
-   while (//events_processed < 5 &&
-          PeekMessage (&msg, 0, 0, 0, PM_REMOVE))
-   {
-     //MIT_TranslateMessage(&msg);
-     TranslateMessage(&msg);
-     DispatchMessage(&msg);
-     events_processed ++;
-   }
+  while (
+#if 0
+	 (events_processed < 5) &&
+#endif
+	 (PeekMessage (&msg, 0, 0, 0, PM_REMOVE)))
+    {
+#if 0
+      MIT_TranslateMessage (&msg);
+#endif
+      TranslateMessage (&msg);
+      DispatchMessage (&msg);
+      events_processed += 1;
+    }
 #endif
 }
 
@@ -247,11 +260,13 @@ nt_gui_high_priority_poll (void)
   if (PeekMessage (&close_msg, master_tty_window,
 		   WM_CATATONIC, (WM_CATATONIC + 1),
 		   PM_REMOVE))
-  {
-    //MIT_TranslateMessage (&close_msg);
-    TranslateMessage (&close_msg);
-    DispatchMessage (&close_msg);
-  }
+    {
+#if 0
+      MIT_TranslateMessage (&close_msg);
+#endif
+      TranslateMessage (&close_msg);
+      DispatchMessage (&close_msg);
+    }
   return;
 }
 
@@ -497,7 +512,6 @@ DEFINE_PRIMITIVE ("WIN:CREATE-WINDOW", Prim_create_window, 10, 10,
     int    x, y, w, h;
     HWND   hWndParent;
     HMENU  hMenu;
-    //HANDLE hInst;
     LPVOID lpvParam;
     HWND   result;
 
@@ -522,7 +536,9 @@ DEFINE_PRIMITIVE ("WIN:CREATE-WINDOW", Prim_create_window, 10, 10,
 
 DEFINE_PRIMITIVE ("WIN:DEF-WINDOW-PROC", Prim_def_window_proc, 4, 4, 0)
 {
-    //outf_console ("\001");
+#if 0
+    outf_console ("\001");
+#endif
     return
       long_to_integer
 	(DefWindowProc
@@ -540,7 +556,7 @@ DEFINE_PRIMITIVE ("REGISTER-CLASS", Prim__register_class, 10, 10,
   "             32515(cross), 32516(uparrow)\n"
   "background = 0 (white_brush)\n")
 {
-    // should lift background and cursor
+    /* should lift background and cursor */
     WNDCLASS wc;
     BOOL  rc;
     PRIMITIVE_HEADER (10);
@@ -728,10 +744,8 @@ call_ff_really (void)
   return (long_to_integer (result));
 }
 
-//
-// Primitives for hacking strings:
-// to fetch and set signed and unsigned 32 and 16 bit values at byte offsets
-//
+/* Primitives for hacking strings, to fetch and set signed and
+   unsigned 32 and 16 bit values at byte offsets.  */
 
 DEFINE_PRIMITIVE ("INT32-OFFSET-REF", Prim_int32_offset_ref, 2, 2,
   "(mem-addr byte-offset)\n"
@@ -919,102 +933,100 @@ DEFUN (AskUser, (buf, len), char * buf AND int len)
 }
 
 #endif /* W32_TRAP_DEBUG */
+
+/* Events */
 
-//Events
+/* Worst case consing for longs.
+   This should really be available elsewhere.  */
+#define LONG_TO_INTEGER_WORDS (4)
+#define MAX_EVENT_STORAGE ((9 * (LONG_TO_INTEGER_WORDS + 1)) + 1)
 
-// worst case consing for longs.  This should really be available elsewhere
-#define LONG_TO_INTEGER_WORDS   (4)
-#define MAX_EVENT_STORAGE  (8 * LONG_TO_INTEGER_WORDS  + (8 + 1))
-
-static SCHEME_OBJECT
-parse_event (SCREEN_EVENT *event)
+DEFINE_PRIMITIVE ("WIN32-READ-EVENT", Prim_win32_read_event, 0, 0,
+  "()\n\
+Returns the next event from the event queue.\n\
+The event is deleted from the queue.\n\
+Returns #f if there are no events in the queue.")
 {
-  SCHEME_OBJECT result;
-
-  switch (event->type)
+  PRIMITIVE_HEADER (0);
+  /* Ensure that the primitive is not restarted due to GC: */
+  Primitive_GC_If_Needed (MAX_EVENT_STORAGE);
   {
-    case SCREEN_EVENT_TYPE_RESIZE:
-      result = allocate_marked_vector (TC_VECTOR, 3, 1);
-      VECTOR_SET (result, 0, long_to_integer (SCREEN_EVENT_TYPE_RESIZE));
-      VECTOR_SET (result, 1, long_to_integer (event->event.resize.rows));
-      VECTOR_SET (result, 2, long_to_integer (event->event.resize.columns));
-      return  result;
-
-    case SCREEN_EVENT_TYPE_KEY:
-      result = allocate_marked_vector (TC_VECTOR, 7, 1);
-      VECTOR_SET (result, 0, long_to_integer (SCREEN_EVENT_TYPE_KEY));
-      VECTOR_SET (result, 1, long_to_integer (event->event.key.repeat_count));
-      VECTOR_SET (result, 2,
-		  long_to_integer (event->event.key.virtual_keycode));
-      VECTOR_SET (result, 3,
-		  long_to_integer (event->event.key.virtual_scancode));
-      VECTOR_SET (result, 4,
-		  long_to_integer (event->event.key.control_key_state));
-      VECTOR_SET (result, 5, long_to_integer ((int) event->event.key.ch));
-      VECTOR_SET (result, 6, long_to_integer (event->event.key.key_down));
-      return  result;
-
-    case SCREEN_EVENT_TYPE_MOUSE:
-      result = allocate_marked_vector (TC_VECTOR, 8, 1);
-      VECTOR_SET (result, 0, long_to_integer (SCREEN_EVENT_TYPE_MOUSE));
-      VECTOR_SET (result, 1, long_to_integer (event->event.mouse.row));
-      VECTOR_SET (result, 2, long_to_integer (event->event.mouse.column));
-      VECTOR_SET (result, 3,
-		  long_to_integer (event->event.mouse.control_key_state));
-      VECTOR_SET (result, 4,
-		  long_to_integer (event->event.mouse.button_state));
-      VECTOR_SET (result, 5, long_to_integer ((int) event->event.mouse.up));
-      VECTOR_SET (result, 6,
-		  long_to_integer ((int) event->event.mouse.mouse_moved));
-      VECTOR_SET (result, 7,
-		  long_to_integer (event->event.mouse.double_click));
-      return  result;
-
-    case SCREEN_EVENT_TYPE_CLOSE:
-      result = allocate_marked_vector (TC_VECTOR, 1, 1);
-      VECTOR_SET (result, 0, long_to_integer (SCREEN_EVENT_TYPE_CLOSE));
-      return  result;
-
-    default:
-      return  SHARP_F;
-    }
-}
-
-DEFINE_PRIMITIVE ("WIN32-SCREEN-GET-EVENT", Prim_win32_screen_get_event, 1, 1,
-  "(handle)")
-{
-  PRIMITIVE_HEADER (1);
-  {
-    SCREEN_EVENT  event;
-
-    // ensure that the primitive is not restarted due to GC:
-    Primitive_GC_If_Needed (MAX_EVENT_STORAGE);
-
-    if(!(Screen_GetEvent ((HWND) arg_integer (1), &event)))
-      PRIMITIVE_RETURN (SHARP_F);
-
-    PRIMITIVE_RETURN (parse_event (&event));
+    SCREEN_EVENT event;
+    SCHEME_OBJECT sevent;
+    while (1)
+      {
+	if (!Screen_read_event (&event))
+	  PRIMITIVE_RETURN (SHARP_F);
+	sevent = (parse_event (&event));
+	if (sevent != SHARP_F)
+	  PRIMITIVE_RETURN (sevent);
+      }
   }
 }
 
-//DEFINE_PRIMITIVE ("NT-PEEK-EVENT", Prim_NT_peek_event, 1, 1,
-//  "(nt-peek-event handle)")
-//{
-//  PRIMITIVE_HEADER (1);
-//  {
-//    SCREEN_EVENT event;
-//
-//    Primitive_GC_If_Needed (MAX_EVENT_STORAGE);
-//
-//    if (!(Screen_PeekEvent ((HWND) arg_integer (1), &event)))
-//      PRIMITIVE_RETURN (SHARP_F);
-//    
-//    PRIMITIVE_RETURN (parse_event (&event));
-//  }
-//}
+#define INIT_RESULT(n)							\
+{									\
+  result = (allocate_marked_vector (TC_VECTOR, ((n) + 2), 1));		\
+  WRITE_UNSIGNED (event -> type);					\
+  WRITE_UNSIGNED ((unsigned long) (event -> handle));			\
+}
 
-//Primitives for Edwin Screens
-#define GETSCREEN( x ) ((SCREEN) GetWindowLong( x, 0 ))
+#define WRITE_RESULT(object) VECTOR_SET (result, (index++), (object))
+#define WRITE_UNSIGNED(n) WRITE_RESULT (ulong_to_integer (n))
+#define WRITE_SIGNED(n) WRITE_RESULT (long_to_integer (n))
+#define WRITE_FLAG(n) WRITE_RESULT (((n) == 0) ? SHARP_F : SHARP_T)
+
+static SCHEME_OBJECT
+parse_event (SCREEN_EVENT * event)
+{
+  unsigned int index = 0;
+  SCHEME_OBJECT result;
+  switch (event -> type)
+    {
+    case SCREEN_EVENT_TYPE_RESIZE:
+      INIT_RESULT (2);
+      WRITE_UNSIGNED (event->event.resize.rows);
+      WRITE_UNSIGNED (event->event.resize.columns);
+      break;
+    case SCREEN_EVENT_TYPE_KEY:
+      INIT_RESULT (6);
+      WRITE_UNSIGNED (event->event.key.repeat_count);
+      WRITE_SIGNED   (event->event.key.virtual_keycode);
+      WRITE_UNSIGNED (event->event.key.virtual_scancode);
+      WRITE_UNSIGNED (event->event.key.control_key_state);
+      WRITE_SIGNED   (event->event.key.ch);
+      WRITE_FLAG     (event->event.key.key_down);
+      break;
+    case SCREEN_EVENT_TYPE_MOUSE:
+      INIT_RESULT (7);
+      WRITE_UNSIGNED (event->event.mouse.row);
+      WRITE_UNSIGNED (event->event.mouse.column);
+      WRITE_UNSIGNED (event->event.mouse.control_key_state);
+      WRITE_UNSIGNED (event->event.mouse.button_state);
+      WRITE_FLAG     (event->event.mouse.up);
+      WRITE_FLAG     (event->event.mouse.mouse_moved);
+      WRITE_FLAG     (event->event.mouse.double_click);
+      break;
+    case SCREEN_EVENT_TYPE_CLOSE:
+      INIT_RESULT (0);
+      break;
+    case SCREEN_EVENT_TYPE_FOCUS:
+      INIT_RESULT (1);
+      WRITE_FLAG     (event->event.focus.gained_p);
+      break;
+    case SCREEN_EVENT_TYPE_VISIBILITY:
+      INIT_RESULT (1);
+      WRITE_FLAG     (event->event.visibility.show_p);
+      break;
+    default:
+      result = SHARP_F;
+      break;
+    }
+  return (result);
+}
+
+/* Primitives for Edwin Screens */
+#define GETSCREEN(x) ((SCREEN) (GetWindowLong (x, 0)))
 
 DEFINE_PRIMITIVE ("WIN32-SCREEN-CLEAR-RECTANGLE!", Prim_win32_screen_clear_rectangle, 6, 6,
   "(hwnd xl xh yl yh attribute)")
