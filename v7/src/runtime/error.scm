@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.38 1993/10/21 14:52:34 cph Exp $
+$Id: error.scm,v 14.39 1993/12/16 23:28:51 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -484,9 +484,10 @@ MIT in each case. |#
       (if (let ((types break-on-signals-types))
 	    (and (not (null? types))
 		 (intersect-generalizations? types)))
-	  (breakpoint-procedure 'INHERIT
-				"BKPT entered because of BREAK-ON-SIGNALS:"
-				condition))
+	  (fluid-let ((break-on-signals-types '()))
+	    (breakpoint-procedure 'INHERIT
+				  "BKPT entered because of BREAK-ON-SIGNALS:"
+				  condition)))
       (do ((frames dynamic-handler-frames (cdr frames)))
 	  ((null? frames))
 	(if (let ((types (caar frames)))
@@ -501,7 +502,8 @@ MIT in each case. |#
 		  (intersect-generalizations? types)))
 	    (fluid-let ((static-handler-frames (cdr frames))
 			(dynamic-handler-frames '()))
-	      (hook/invoke-condition-handler (cdar frames) condition)))))))
+	      (hook/invoke-condition-handler (cdar frames) condition))))
+      unspecific)))
 
 ;;;; Standard Condition Signallers
 
