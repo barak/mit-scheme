@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dragon4.scm,v 1.9 1997/02/12 08:00:19 cph Exp $
+$Id: dragon4.scm,v 1.10 1997/07/03 21:55:23 adams Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -34,6 +34,22 @@ MIT in each case. |#
 
 ;;;; Floating Point Number Unparser
 ;;; package: (runtime number)
+
+#|
+
+The Dragon4 algorithm is described in "How to print floating point
+numbers accurately" by Guy L Steele Jr and Jon L White in ACM SIGPLAN
+Conference on Programming Language Design and Implementation 1990
+(PLDI '90).
+
+Burger & Dybvig ("Printing Floating-Point Numbers Quickly and
+Accurately" by Robert G Burger and R Kent Dybvig, PLDI '96) describe a
+variant of the Dragon4 algorithm that addresses some of the efficiency
+issues.  It is much faster for very large or very small numbers, but
+not much different to numbers within a few orders of magnitude of 1.
+
+|#
+
 
 (declare (usual-integrations))
 
@@ -153,32 +169,32 @@ MIT in each case. |#
   (with-values
       (lambda ()
 	(cond ((positive? e)
-	       (let ((shift (expt 2 e)))
-		 (dragon4-fixup f p radix cutoff-mode cutoff
-				(* f shift) 1 shift)))
+	       (let ((shift (int:expt 2 e)))
+		 (dragon4-fixup f e p radix cutoff-mode cutoff
+				(int:* f shift) 1 shift)))
 	      ((negative? e)
-	       (dragon4-fixup f p radix cutoff-mode cutoff
-			      f (expt 2 (- e)) 1))
+	       (dragon4-fixup f e p radix cutoff-mode cutoff
+			      f (int:expt 2 (- e)) 1))
 	      (else
-	       (dragon4-fixup f p radix cutoff-mode cutoff f 1 1))))
+	       (dragon4-fixup f e p radix cutoff-mode cutoff f 1 1))))
     (lambda (k r s m- m+ cutoff round-up?)
-      (let ((2s (* 2 s)))
+      (let ((2s (int:* 2 s)))
 	(let loop ((r r) (m- m-) (m+ m+) (k k) (format format))
-	  (let ((qr (integer-divide (* r radix) s)))
-	    (let ((k (-1+ k))
+	  (let ((qr (integer-divide (int:* r radix) s)))
+	    (let ((k (- k 1))
 		  (u (integer-divide-quotient qr))
 		  (r (integer-divide-remainder qr))
-		  (m- (* m- radix))
-		  (m+ (* m+ radix)))
-	      (let ((2r (* 2 r)))
+		  (m- (int:* m- radix))
+		  (m+ (int:* m+ radix)))
+	      (let ((2r (int:* 2 r)))
 		(let ((high?
 		       (if round-up?
-			   (>= 2r (- 2s m+))
-			   (> 2r (- 2s m+))))
+			   (int:>= 2r (int:- 2s m+))
+			   (int:> 2r (int:- 2s m+))))
 		      (round
 		       (lambda ()
-			 (dragon4-done format (if (<= 2r s) u (1+ u)) k))))
-		  (cond ((< 2r m-)
+			 (dragon4-done format (if (int:<= 2r s) u (1+ u)) k))))
+		  (cond ((int:< 2r m-)
 			 (if high? (round) (dragon4-done format u k)))
 			(high?
 			 (dragon4-done format (1+ u) k))
@@ -186,8 +202,8 @@ MIT in each case. |#
 			 (round))
 			(else
 			 (format u k
-			   (lambda (format)
-			     (loop r m- m+ k format))))))))))))))
+				 (lambda (format)
+				   (loop r m- m+ k format))))))))))))))
 
 (define (dragon4-done format u k)
   (format u k
@@ -197,45 +213,59 @@ MIT in each case. |#
 		  (format -1 k (fill (-1+ k)))))))
       (fill (-1+ k)))))
 
-(define (dragon4-fixup f p radix cutoff-mode cutoff r s m-)
-  (with-values
-      (lambda ()
-	(if (= f (expt 2 (-1+ p)))
-	    (values (* 2 r) (* 2 s) (* 2 m-))
-	    (values r s m-)))
-    (lambda (r s m+)
-      (with-values
-	  (lambda ()
-	    (let ((s/radix (integer-ceiling s radix)))
-	      (let loop ((k 0) (r r) (m- m-) (m+ m+))
-		(if (< r s/radix)
-		    (loop (-1+ k) (* r radix) (* m- radix) (* m+ radix))
-		    (values k r m- m+)))))
-	(lambda (k r m- m+)
-	  (let ((2r (* 2 r)))
-	    (let loop ((k k) (s s) (m- m-) (m+ m+) (round-up? #f))
-	      (with-values
-		  (lambda ()
-		    (let ((2r+m+ (+ 2r m+)))
-		      (let loop ((s s) (k k))
-			(if (<= (* 2 s) 2r+m+)
-			    (loop (* s radix) (1+ k))
-			    (values s k)))))
-		(lambda (s k)
-		  (let ((cutoff-adjust
-			 (lambda (cutoff)
-			   (let ((a (- cutoff k)))
-			     (let ((y (ceiling (* s (expt radix a)))))
-			       (let ((m- (max y m-))
-				     (m+ (max y m+)))
-				 (let ((round-up? (or (= m+ y) round-up?)))
-				   (if (<= (* 2 s) (+ 2r m+))
-				       (loop k s m- m+ round-up?)
-				       (values k r s m- m+ cutoff
-					       round-up?)))))))))
-		    (case cutoff-mode
-		      ((normal) (values k r s m- m+ k round-up?))
-		      ((absolute) (cutoff-adjust cutoff))
-		      ((relative) (cutoff-adjust (+ k cutoff)))
-		      (else
-		       (error:wrong-type-datum cutoff-mode false)))))))))))))
+(define (dragon4-fixup f e p radix cutoff-mode cutoff r s m-)
+
+  (define (adjust k r s m- m+)
+    (let ((2r (int:* 2 r)))
+      (let loop ((k k) (s s) (m- m-) (m+ m+) (round-up? #f))
+
+	(define (adjust-for-mode s k)
+	  (define (cutoff-adjust cutoff)
+	    (let ((a (- cutoff k)))
+	      (let ((y (ceiling (* s (expt-radix radix a)))))
+		(let ((m- (int:max y m-))
+		      (m+ (int:max y m+)))
+		  (let ((round-up? (or (int:= m+ y) round-up?)))
+		    (if (int:<= (int:* 2 s) (int:+ 2r m+))
+			(loop k s m- m+ round-up?)
+			(values k r s m- m+ cutoff round-up?)))))))
+	  (case cutoff-mode
+	    ((NORMAL)   (values k r s m- m+ k round-up?))
+	    ((ABSOLUTE) (cutoff-adjust cutoff))
+	    ((RELATIVE) (cutoff-adjust (+ k cutoff)))
+	    (else
+	     (error:wrong-type-datum cutoff-mode false))))
+
+	(let ((2r+m+ (int:+ 2r m+)))
+	  (let loop ((s s) (k k))
+	    (if (int:<= (int:* 2 s) 2r+m+)
+		(loop (int:* s radix) (1+ k))
+		(adjust-for-mode s k)))))))
+
+  (define (scale r s m+)
+    (let ((est-k
+	   (ceiling->exact (- (* (+ e p -1) (/ (flo:log 2.) (log radix)))
+			      1e-9))))	; fudge factor ensures K bever too big
+      (if (< est-k 0)
+	  (let ((factor (expt-radix radix (- est-k))))
+	    (let loop ((k est-k)
+		       (r (int:* r factor))
+		       (m- (int:* m- factor)) (m+ (int:* m+ factor)))
+	      (if (int:< (int:* r radix) s)
+		  (loop (- k 1) (int:* r radix) (int:* m- radix) (int:* m+ radix))
+		  (adjust k r s m- m+))))
+	  (adjust est-k r (int:* s (expt-radix radix est-k)) m- m+))))
+
+  (if (int:= f (int:expt 2 (- p 1)))
+      (scale (int:* 2 r) (int:* 2 s) (int:* 2 m-))
+      (scale r s m-)))
+
+
+(define expt-radix
+  (let ((v (make-initialized-vector 310 (lambda (i) (expt 10 i)))))
+    (lambda (base exponent)
+      (if (and (= base 10)
+	       (>= exponent 0)
+	       (< exponent (vector-length v)))
+	  (vector-ref v exponent)
+	  (rat:expt base exponent)))))
