@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: loadef.scm,v 1.36 1999/01/14 21:37:46 cph Exp $
+;;; $Id: loadef.scm,v 1.37 1999/01/14 21:40:56 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -324,10 +324,10 @@ This is usually 103 or 2627."
   'PASSWORD-EDIT
   "Major mode specialized for viewing password files.")
 
-(define-autoload-command toggle-pw-form 'PASSWORD-EDIT
+(define-autoload-command 'toggle-pw-form 'PASSWORD-EDIT
   "Toggle the body of the password form under point.")
 
-(define-autoload-command mouse-toggle-pw-form 'PASSWORD-EDIT
+(define-autoload-command 'mouse-toggle-pw-form 'PASSWORD-EDIT
   "Toggle the body of the password form under mouse.")
 
 ;;;; DOS-specific commands

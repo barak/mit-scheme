@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: pwedit.scm,v 1.2 1999/01/14 21:35:05 cph Exp $
+;;; $Id: pwedit.scm,v 1.3 1999/01/14 21:40:35 cph Exp $
 ;;;
 ;;; Copyright (c) 1999 Massachusetts Institute of Technology
 ;;;
@@ -118,8 +118,7 @@
     (lambda ()
       (let ((form
 	     (or (get-pw-form point)
-		 (error:bad-range-argument point 'INSERT-PW-BODY)))
-	    (le (line-end point 0)))
+		 (error:bad-range-argument point 'INSERT-PW-BODY))))
 	(if (eq? 'SHORT (car form))
 	    (let ((region (short-pw-body-region point)))
 	      (if region
