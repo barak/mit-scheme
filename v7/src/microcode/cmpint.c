@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.56 1992/11/20 03:11:14 gjr Exp $
+$Id: cmpint.c,v 1.57 1993/06/24 21:55:37 gjr Exp $
 
-Copyright (c) 1989-1992 Massachusetts Institute of Technology
+Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -79,6 +79,7 @@ MIT in each case. */
 #include "ansidecl.h"	/* Macros to support ANSI declarations */
 #include "dstack.h"	/* Dynamic-stack support */
 #include "config.h"     /* SCHEME_OBJECT type and machine dependencies */
+#include "outf.h"	/* error reporting */
 #include "types.h"      /* Needed by const.h */
 #include "const.h"      /* REGBLOCK_MINIMUM_LENGTH and PRIM_... codes */
 #include "object.h"     /* Making and destructuring Scheme objects */
@@ -245,7 +246,6 @@ extern long
   compiler_processor_type;
 
 extern SCHEME_OBJECT
-  Registers[],
   compiler_utilities,
   return_to_interpreter;
 
@@ -2872,8 +2872,7 @@ DEFUN (compiler_initialize, (fasl_p), long fasl_p)
     len = ((2 * TRAMPOLINE_ENTRY_SIZE) + 3);
     if (GC_Check (len))
     {
-      fprintf (stderr,
-	       "compiler_initialize: Not enough space!\n");
+      outf_fatal ("compiler_initialize: Not enough space!\n");
       Microcode_Termination (TERM_NO_SPACE);
     }
 
@@ -2928,7 +2927,6 @@ extern long
   compiler_processor_type;
 
 extern SCHEME_OBJECT
-  Registers[],
   compiler_utilities,
   return_to_interpreter;
 
