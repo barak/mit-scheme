@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: prim.c,v 9.41 2003/02/14 18:28:22 cph Exp $
+$Id: prim.c,v 9.42 2004/07/04 05:23:43 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1992,1993 Massachusetts Institute of Technology
+Copyright 1996,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -131,6 +132,14 @@ DEFINE_PRIMITIVE ("OBJECT-GC-TYPE", Prim_object_gc_type, 1, 1, 0)
   PRIMITIVE_HEADER (1);
   TOUCH_IN_PRIMITIVE ((ARG_REF (1)), object);
   PRIMITIVE_RETURN (LONG_TO_FIXNUM (GC_Type (object)));
+}
+
+DEFINE_PRIMITIVE ("TYPE->GC-TYPE", Prim_type_to_gc_type, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN
+    (LONG_TO_FIXNUM
+     (GC_Type_Map [arg_ulong_index_integer (1, (MAX_TYPE_CODE + 1))]));
 }
 
 DEFINE_PRIMITIVE ("OBJECT-TYPE?", Prim_object_type_p, 2, 2, 0)
