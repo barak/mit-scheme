@@ -1,7 +1,7 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/decls.scm,v 4.3 1989/05/17 20:28:32 jinx Exp $
-$MC68020-Header: decls.scm,v 4.21 89/04/26 05:09:22 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/decls.scm,v 4.4 1989/05/21 17:56:33 jinx Rel $
+$MC68020-Header: decls.scm,v 4.21.1.1 89/05/21 14:50:15 GMT jinx Exp $
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 

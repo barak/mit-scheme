@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/make.scm,v 4.5 1989/05/21 17:52:47 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/make.scm,v 4.44 1989/05/21 17:58:19 jinx Rel $
 $MC68020-Header: make.scm,v 4.44 89/05/21 14:52:30 GMT jinx Exp $
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
