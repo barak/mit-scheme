@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.12 1988/12/12 21:53:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.13 1988/12/15 17:26:09 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -240,26 +240,44 @@ MIT in each case. |#
      (for-each (lambda (edge)
 		 (bblock-compress! (edge-right-node edge)))
 	       (rgraph-initial-edges rgraph))))
-  (set-rgraph-bblocks! rgraph (collect-rgraph-bblocks rgraph)))
+  ;; This code attempts to remove backwards edges to pieces of the
+  ;; graph which were generated and then not used.  It does this by
+  ;; walking forward through the graph, and looking backward at each
+  ;; node to find edges that have not been walked over.
+  (with-new-node-marks
+   (lambda ()
+     (let ((initial-bblocks
+	    (map->eq-set edge-right-node (rgraph-initial-edges rgraph))))
+       (let ((result '()))
+	 (define (loop bblock)
+	   (if (sblock? bblock)
+	       (next (snode-next bblock))
+	       (begin
+		 (next (pnode-consequent bblock))
+		 (next (pnode-alternative bblock)))))
 
-(define collect-rgraph-bblocks
-  (let ()
-    (define (loop bblock)
-      (node-mark! bblock)
-      (cons bblock
-	    (if (sblock? bblock)
-		(next (snode-next bblock))
-		(append! (next (pnode-consequent bblock))
-			 (next (pnode-alternative bblock))))))
+	 (define (next bblock)
+	   (if (and bblock (not (node-marked? bblock)))
+	       (begin
+		 (node-mark! bblock)
+		 (set! result (cons bblock result))
+		 (loop bblock))))
 
-    (define (next bblock)
-      (if (and bblock (not (node-marked? bblock)))
-	  (loop bblock)
-	  '()))
+	 (define (delete-block-edges! disallow-entries?)
+	   (let ((delete-edges!
+		  (list-deletor!
+		   (lambda (edge)
+		     (let ((bblock (edge-left-node edge)))
+		       (if bblock
+			   (not (node-marked? bblock))
+			   disallow-entries?))))))
+	     (lambda (bblock)
+	       (set-node-previous-edges!
+		bblock
+		(delete-edges! (node-previous-edges bblock))))))
 
-    (lambda (rgraph)
-      (with-new-node-marks
-       (lambda ()
-	 (mapcan (lambda (edge)
-		   (loop (edge-right-node edge)))
-		 (rgraph-initial-edges rgraph)))))))
+	 (for-each node-mark! initial-bblocks)
+	 (for-each loop initial-bblocks)
+	 (for-each (delete-block-edges! false) initial-bblocks)
+	 (for-each (delete-block-edges! true) result)
+	 (set-rgraph-bblocks! rgraph (append! initial-bblocks result)))))))
