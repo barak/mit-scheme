@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.scm,v 1.19 2001/10/15 17:01:07 cph Exp $
+;;; $Id: parser.scm,v 1.20 2001/10/16 04:59:21 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -178,23 +178,12 @@
     (optimize-expression (generate-parser-code expression))))
 
 (define (generate-parser-code expression)
-  (let ((external-bindings (list 'BINDINGS))
-	(internal-bindings (list 'BINDINGS)))
-    (let ((expression
-	   (preprocess-parser-expression expression
-					 external-bindings
-					 internal-bindings)))
-      (maybe-make-let (map (lambda (b) (list (cdr b) (car b)))
-			   (cdr external-bindings))
-	(with-buffer-name
-	  (lambda ()
-	    (maybe-make-let (map (lambda (b) (list (cdr b) (car b)))
-				 (cdr internal-bindings))
-			    (call-with-pointer
-			     (lambda (p)
-			       `(,(compile-parser-expression expression)
-				 (LAMBDA (V KF) KF V)
-				 ,(make-kf p #f)))))))))))
+  (generate-external-procedure expression
+			       preprocess-parser-expression
+			       (lambda (expression)
+				 `(,(compile-parser-expression expression)
+				   (LAMBDA (V KF) KF V)
+				   (LAMBDA () #F)))))
 
 (define (compile-parser-expression expression)
   (cond ((and (pair? expression)
@@ -297,21 +286,27 @@
       (if (pair? (cdr expressions))
 	  (wrap-parser
 	   (lambda (ks kf)
-	     (call-with-pointer
-	      (lambda (p)
-		(let loop
-		    ((expressions expressions)
-		     (vs '())
-		     (kf2 (make-kf p `(,kf))))
-		  `(,(compile-parser-expression (car expressions))
-		    ,(let ((v (make-value-identifier))
-			   (kf3 (make-kf-identifier)))
-		       `(LAMBDA (,v ,kf3)
-			  ,(let ((vs (cons v vs)))
-			     (if (pair? (cdr expressions))
-				 (loop (cdr expressions) vs kf3)
-				 `(,ks (VECTOR-APPEND ,@(reverse vs)) ,kf3)))))
-		    ,kf2))))))
+	     (let loop ((expressions expressions) (vs '()) (kf2 kf))
+	       (if (pair? (cdr expressions))
+		   (call-with-pointer
+		    (lambda (p)
+		      `(,(compile-parser-expression (car expressions))
+			,(let ((v (make-value-identifier))
+			       (kf3 (make-kf-identifier)))
+			   `(LAMBDA (,v ,kf3)
+			      ,(loop (cdr expressions)
+				     (cons v vs)
+				     `(LAMBDA ()
+					,(backtrack-to p)
+					(,kf3)))))
+			,kf2)))
+		   `(,(compile-parser-expression (car expressions))
+		     ,(let ((v (make-value-identifier))
+			    (kf3 (make-kf-identifier)))
+			`(LAMBDA (,v ,kf3)
+			   (,ks (VECTOR-APPEND ,@(reverse (cons v vs)))
+				,kf3)))
+		     ,kf2)))))
 	  (compile-parser-expression (car expressions)))
       (wrap-parser (lambda (ks kf) `(,ks '#() ,kf)))))
 
@@ -322,12 +317,24 @@
 	   (lambda (ks kf)
 	     (call-with-pointer
 	      (lambda (p)
-		(let loop ((expressions expressions))
-		  `(,(compile-parser-expression (car expressions))
-		    ,ks
-		    ,(if (pair? (cdr expressions))
-			 (make-kf p (loop (cdr expressions)))
-			 kf)))))))
+		(let ((ks2 (make-ks-identifier))
+		      (v (make-value-identifier))
+		      (kf2 (make-kf-identifier)))
+		  `(LET ((,ks2
+			  (LAMBDA (,v ,kf2)
+			    (,ks ,v
+				 (LAMBDA ()
+				   ,(backtrack-to p)
+				   (,kf2))))))
+		     ,(let loop ((expressions expressions))
+			(if (pair? (cdr expressions))
+			    `(,(compile-parser-expression (car expressions))
+			      ,ks2
+			      (LAMBDA ()
+				,(loop (cdr expressions))))
+			    `(,(compile-parser-expression (car expressions))
+			      ,ks
+			      ,kf)))))))))
 	  (compile-parser-expression (car expressions)))
       (wrap-parser (lambda (ks kf) ks `(,kf)))))
 
@@ -335,21 +342,18 @@
   (wrap-parser
    (lambda (ks kf)
      (let ((ks2 (make-ks-identifier))
-	   (kf2 (make-kf-identifier))
-	   (v (make-value-identifier)))
-       (call-with-pointer
-	(lambda (p)
-	  `(LET ,ks2 ((,v '#()) (,kf2 ,(make-kf p `(,ks '#() ,kf))))
-	     ,(call-with-pointer
-	       (lambda (p)
-		 `(,(compile-parser-expression expression)
-		   ,(let ((v2 (make-value-identifier))
-			  (kf3 (make-kf-identifier)))
-		      `(LAMBDA (,v2 ,kf3)
-			 (,ks2 (VECTOR-APPEND ,v ,v2)
-			       ,(make-kf p `(,ks ,v ,kf3)))))
-		   ,(make-kf p `(,ks ,v ,kf2))))))))))))
-
-;;; Edwin Variables:
-;;; Eval: (scheme-indent-method 'with-buffer-name 0)
-;;; End:
+	   (v (make-value-identifier))
+	   (kf2 (make-kf-identifier)))
+       `(LET ,ks2 ((,v '#()) (,kf2 ,kf))
+	  ,(call-with-pointer
+	    (lambda (p)
+	      `(,(compile-parser-expression expression)
+		,(let ((v2 (make-value-identifier))
+		       (kf3 (make-kf-identifier)))
+		   `(LAMBDA (,v2 ,kf3)
+		      (,ks2 (VECTOR-APPEND ,v ,v2)
+			    (LAMBDA ()
+			      ,(backtrack-to p)
+			      (,ks ,v ,kf3)))))
+		(LAMBDA ()
+		  (,ks ,v ,kf2))))))))))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: matcher.scm,v 1.16 2001/10/15 17:01:05 cph Exp $
+;;; $Id: matcher.scm,v 1.17 2001/10/16 04:59:18 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -189,23 +189,12 @@
     (optimize-expression (generate-matcher-code expression))))
 
 (define (generate-matcher-code expression)
-  (let ((external-bindings (list 'BINDINGS))
-	(internal-bindings (list 'BINDINGS)))
-    (let ((expression
-	   (preprocess-matcher-expression expression
-					  external-bindings
-					  internal-bindings)))
-      (maybe-make-let (map (lambda (b) (list (cdr b) (car b)))
-			   (cdr external-bindings))
-	(with-buffer-name
-	  (lambda ()
-	    (maybe-make-let (map (lambda (b) (list (cdr b) (car b)))
-				 (cdr internal-bindings))
-			    (call-with-pointer
-			     (lambda (p)
-			       `(,(compile-matcher-expression expression)
-				 (LAMBDA (KF) KF #T)
-				 ,(make-kf p #F)))))))))))
+  (generate-external-procedure expression
+			       preprocess-matcher-expression
+			       (lambda (expression)
+				 `(,(compile-matcher-expression expression)
+				   (LAMBDA (KF) KF #T)
+				   (LAMBDA () #F)))))
 
 (define (compile-matcher-expression expression)
   (cond ((and (pair? expression)
@@ -288,18 +277,21 @@
       (if (pair? (cdr expressions))
 	  (wrap-matcher
 	   (lambda (ks kf)
-	     (call-with-pointer
-	      (lambda (p)
-		(let loop
-		    ((expressions expressions)
-		     (kf2 (make-kf p `(,kf))))
-		  `(,(compile-matcher-expression (car expressions))
-		    ,(if (pair? (cdr expressions))
-			 (let ((kf3 (make-kf-identifier)))
+	     (let loop ((expressions expressions) (kf2 kf))
+	       (if (pair? (cdr expressions))
+		   (call-with-pointer
+		    (lambda (p)
+		      `(,(compile-matcher-expression (car expressions))
+			,(let ((kf3 (make-kf-identifier)))
 			   `(LAMBDA (,kf3)
-			      ,(loop (cdr expressions) kf3)))
-			 ks)
-		    ,kf2))))))
+			      ,(loop (cdr expressions)
+				     `(LAMBDA ()
+					,(backtrack-to p)
+					(,kf3)))))
+			,kf2)))
+		   `(,(compile-matcher-expression (car expressions))
+		     ,ks
+		     ,kf2)))))
 	  (compile-matcher-expression (car expressions)))
       (wrap-matcher (lambda (ks kf) `(,ks ,kf)))))
 
@@ -310,32 +302,40 @@
 	   (lambda (ks kf)
 	     (call-with-pointer
 	      (lambda (p)
-		(let loop ((expressions expressions))
-		  `(,(compile-matcher-expression (car expressions))
-		    ,ks
-		    ,(if (pair? (cdr expressions))
-			 (make-kf p (loop (cdr expressions)))
-			 kf)))))))
+		(let ((ks2 (make-ks-identifier))
+		      (kf2 (make-kf-identifier)))
+		  `(LET ((,ks2
+			  (LAMBDA (,kf2)
+			    (,ks
+			     (LAMBDA ()
+			       ,(backtrack-to p)
+			       (,kf2))))))
+		     ,(let loop ((expressions expressions))
+			(if (pair? (cdr expressions))
+			    `(,(compile-matcher-expression (car expressions))
+			      ,ks2
+			      (LAMBDA ()
+				,(loop (cdr expressions))))
+			    `(,(compile-matcher-expression (car expressions))
+			      ,ks
+			      ,kf)))))))))
 	  (compile-matcher-expression (car expressions)))
-      (wrap-matcher (lambda (ks kf) ks `(,kf)))))
+      (wrap-matcher (lambda (ks kf) `(BEGIN ,ks (,kf))))))
 
 (define-matcher (* expression)
   (wrap-matcher
    (lambda (ks kf)
-     (call-with-pointer
-      (lambda (p)
-	(let ((ks2 (make-ks-identifier))
-	      (kf2 (make-kf-identifier)))
-	  `(LET ,ks2 ((,kf2 ,(make-kf p `(,ks ,kf))))
-	     ,(call-with-pointer
-	       (lambda (p2)
-		 `(,(compile-matcher-expression expression)
-		   ,(let ((kf3 (make-kf-identifier)))
-		      `(LAMBDA (,kf3)
-			 (,ks2 ,(make-kf p2 `(,ks ,kf3)))))
-		   ,(make-kf p2 `(,ks ,kf2))))))))))))
-
-;;; Edwin Variables:
-;;; Eval: (scheme-indent-method 'define-matcher-optimizer 2)
-;;; Eval: (scheme-indent-method 'with-buffer-name 0)
-;;; End:
+     (let ((ks2 (make-ks-identifier))
+	   (kf2 (make-kf-identifier)))
+       `(LET ,ks2 ((,kf2 ,kf))
+	  ,(call-with-pointer
+	    (lambda (p)
+	      `(,(compile-matcher-expression expression)
+		,(let ((kf3 (make-kf-identifier)))
+		   `(LAMBDA (,kf3)
+		      (,ks2
+		       (LAMBDA ()
+			 ,(backtrack-to p)
+			 (,ks ,kf3)))))
+		(LAMBDA ()
+		  (,ks ,kf2))))))))))

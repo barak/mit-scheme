@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: shared.scm,v 1.10 2001/10/15 17:01:10 cph Exp $
+;;; $Id: shared.scm,v 1.11 2001/10/16 04:59:25 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -23,24 +23,23 @@
 
 (declare (usual-integrations))
 
-(define (with-buffer-name thunk)
-  (let ((v (generate-uninterned-symbol)))
-    `(LAMBDA (,v)
-       ,(fluid-let ((*buffer-name* v)
-		    (*id-counters* '()))
-	  (thunk)))))
+(define (generate-external-procedure expression preprocessor generator)
+  (fluid-let ((*id-counters* '()))
+    (let ((external-bindings (list 'BINDINGS))
+	  (internal-bindings (list 'BINDINGS))
+	  (b (generate-identifier 'B)))
+      (let ((expression
+	     (preprocessor expression external-bindings internal-bindings)))
+	(maybe-make-let (map (lambda (b) (list (cdr b) (car b)))
+			     (cdr external-bindings))
+			`(LAMBDA (,b)
+			   ,(fluid-let ((*buffer-name* b))
+			      (maybe-make-let (map (lambda (b)
+						     (list (cdr b) (car b)))
+						   (cdr internal-bindings))
+					      (generator expression)))))))))
 
 (define *buffer-name*)
-
-(define (with-variable-bindings expressions receiver)
-  (let ((variables
-	 (map (lambda (x) x (generate-uninterned-symbol))
-	      expressions)))
-    (maybe-make-let (map list variables expressions)
-		    (apply receiver variables))))
-
-(define (with-variable-binding expression receiver)
-  (with-variable-bindings (list expression) receiver))
 
 (define (maybe-make-let bindings body)
   (if (pair? bindings)
@@ -87,10 +86,8 @@
 (define (fetch-pointer)
   `(GET-PARSER-BUFFER-POINTER ,*buffer-name*))
 
-(define (make-kf p body)
-  `(LAMBDA ()
-     (SET-PARSER-BUFFER-POINTER! ,*buffer-name* ,p)
-     ,body))
+(define (backtrack-to p)
+  `(SET-PARSER-BUFFER-POINTER! ,*buffer-name* ,p))
 
 (define (make-kf-identifier)
   (generate-identifier 'KF))
