@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: fileio.scm,v 1.151 2000/03/23 22:48:58 cph Exp $
+;;; $Id: fileio.scm,v 1.152 2000/03/25 20:32:40 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -104,14 +104,14 @@ of the predicates is satisfied, the file is written in the usual way."
 
 (define (read-file-method group pathname)
   (let loop ((methods (ref-variable read-file-methods group)))
-    (and (not (null? methods))
+    (and (pair? methods)
 	 (if ((caar methods) group pathname)
 	     (cdar methods)
 	     (loop (cdr methods))))))
 
 (define (write-file-method group pathname)
   (let loop ((methods (ref-variable write-file-methods group)))
-    (and (not (null? methods))
+    (and (pair? methods)
 	 (if ((caar methods) group pathname)
 	     (cdar methods)
 	     (loop (cdr methods))))))
@@ -120,12 +120,11 @@ of the predicates is satisfied, the file is written in the usual way."
   (if (file-exists? pathname)
       pathname
       (let loop ((alternates (os/alternate-pathnames group pathname)))
-	(cond ((null? alternates)
-	       (and default? pathname))
-	      ((file-exists? (car alternates))
-	       (car alternates))
-	      (else
-	       (loop (cdr alternates)))))))
+	(if (pair? alternates)
+	    (if (file-exists? (car alternates))
+		(car alternates)
+		(loop (cdr alternates)))
+	    (and default? pathname)))))
 
 ;;;; Input
 
@@ -291,7 +290,7 @@ of the predicates is satisfied, the file is written in the usual way."
 	     pathname)))
     (or (let ((filename (->namestring pathname)))
 	  (let loop ((types (ref-variable auto-mode-alist buffer)))
-	    (and (not (null? types))
+	    (and (pair? types)
 		 (if (re-string-match (caar types) filename)
 		     (->mode (cdar types))
 		     (loop (cdr types))))))
@@ -299,7 +298,7 @@ of the predicates is satisfied, the file is written in the usual way."
 	  (and (string? type)
 	       (let loop
 		   ((types (ref-variable file-type-to-major-mode buffer)))
-		 (and (not (null? types))
+		 (and (pair? types)
 		      (if (string-ci=? type (caar types))
 			  (->mode (cdar types))
 			  (loop (cdr types))))))))))
@@ -520,7 +519,7 @@ Otherwise, a message is written both before and after long file writes."
 	    (let ((modes (backup-buffer! buffer pathname backup-mode)))
 	      (require-newline buffer)
 	      (cond ((let loop ((hooks (ref-variable write-file-hooks buffer)))
-		       (and (not (null? hooks))
+		       (and (pair? hooks)
 			    (or ((car hooks) buffer)
 				(loop (cdr hooks)))))
 		     unspecific)
@@ -567,20 +566,11 @@ Otherwise, a message is written both before and after long file writes."
 		  (catch-file-errors
 		   (lambda () unspecific)
 		   (lambda ()
-		     (os/restore-modes-to-updated-file! pathname
-							modes))))
-	      (vc-after-save buffer)))))))
+		     (os/restore-modes-to-updated-file! pathname modes))))
+	      (event-distributor/invoke! event:after-buffer-save buffer)))))))
 
-(define (verify-visited-file-modification-time? buffer)
-  (let ((truename (buffer-truename buffer))
-	(buffer-time (buffer-modification-time buffer)))
-    (or (not truename)
-	(not buffer-time)
-	(let ((file-time (file-modification-time truename)))
-	  (and file-time (< (abs (- buffer-time file-time)) 2))))))
-
-(define-integrable (clear-visited-file-modification-time! buffer)
-  (set-buffer-modification-time! buffer #f))
+(define event:after-buffer-save
+  (make-event-distributor))
 
 (define (write-buffer buffer)
   (let ((truename
@@ -753,7 +743,7 @@ Otherwise, a message is written both before and after long file writes."
 		  (set-buffer-backed-up?!
 		   buffer
 		   (not (memv backup-mode '(BACKUP-NEXT BACKUP-BOTH))))
-		  (if (and (not (null? targets))
+		  (if (and (pair? targets)
 			   (or (ref-variable trim-versions-without-asking
 					     buffer)
 			       (prompt-for-confirmation?
