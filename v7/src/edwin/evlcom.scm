@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: evlcom.scm,v 1.44 1993/10/15 05:35:13 cph Exp $
+;;;	$Id: evlcom.scm,v 1.45 1993/10/15 12:49:57 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -79,7 +79,8 @@ If #F, use the default (REP loop) syntax-table."
 	(syntax-table (ref-variable-object scheme-syntax-table))
 	(evaluate-inferior (ref-variable-object evaluate-in-inferior-repl))
 	(run-light (ref-variable-object run-light)))
-    (if (and (not (variable-local-value? buffer evaluate-inferior))
+    (if (and (not (repl-buffer? buffer))
+	     (not (variable-local-value? buffer evaluate-inferior))
 	     (or (and (variable-local-value? buffer environment)
 		      (not (eq? 'DEFAULT
 				(variable-local-value buffer environment))))
@@ -196,7 +197,7 @@ With an argument, prompts for the evaluation environment."
       (cond ((ref-variable disable-evaluation-commands buffer)
 	     (editor-error "Evaluation commands disabled in this buffer."))
 	    ((ref-variable evaluate-in-inferior-repl buffer)
-	     (inferior-repl-eval-region (current-repl-buffer) region))
+	     (inferior-repl-eval-region (current-repl-buffer buffer) region))
 	    (else
 	     (evaluate-region region (evaluation-environment buffer)))))))
 
@@ -213,8 +214,10 @@ The values are printed in the typein window."
     (let ((buffer (current-buffer)))
       (cond ((ref-variable disable-evaluation-commands buffer)
 	     (editor-error "Evaluation commands disabled in this buffer."))
-	    ((ref-variable evaluate-in-inferior-repl buffer)
-	     (inferior-repl-eval-expression (current-repl-buffer) expression))
+	    ((and (ref-variable evaluate-in-inferior-repl buffer)
+		  (current-repl-buffer* buffer))
+	     => (lambda (buffer)
+		  (inferior-repl-eval-expression buffer expression)))
 	    (else
 	     (if (ref-variable enable-transcript-buffer buffer)
 		 (call-with-transcript-buffer

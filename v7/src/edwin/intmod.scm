@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.64 1993/09/02 18:45:38 cph Exp $
+;;;	$Id: intmod.scm,v 1.65 1993/10/15 12:50:04 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -140,19 +140,24 @@ REPL uses current evaluation environment."
 (define (inferior-repl/quit)
   unspecific)
 
-(define (current-repl-buffer)
-  (let ((buffer (current-repl-buffer*)))
+(define (current-repl-buffer buffer)
+  (let ((buffer (current-repl-buffer* buffer)))
     (if (not buffer)
 	(error "No REPL to evaluate in."))
     buffer))
 
-(define (current-repl-buffer*)
-  (let ((buffer (current-buffer)))
-    (if (buffer-interface-port buffer)
-	buffer
-	(let ((buffers repl-buffers))
-	  (and (not (null? buffers))
-	       (car buffers))))))
+(define (current-repl-buffer* buffer)
+  (if (and buffer (repl-buffer? buffer))
+      buffer
+      (let ((buffer (current-buffer)))
+	(if (buffer-interface-port buffer)
+	    buffer
+	    (let ((buffers repl-buffers))
+	      (and (not (null? buffers))
+		   (car buffers)))))))
+
+(define (repl-buffer? buffer)
+  (buffer-interface-port buffer))
 
 (define repl-buffers)
 
@@ -224,7 +229,7 @@ REPL uses current evaluation environment."
   (let ((variable (ref-variable-object run-light))
 	(value (if run? "eval" "listen")))
     (if (and (ref-variable evaluate-in-inferior-repl buffer)
-	     (eq? buffer (current-repl-buffer*)))
+	     (eq? buffer (current-repl-buffer* #f)))
 	(begin
 	  (undefine-variable-local-value! buffer variable)
 	  (set-variable-default-value! variable value)
@@ -251,14 +256,14 @@ REPL uses current evaluation environment."
 	(evaluate-in-inferior-repl
 	 (ref-variable evaluate-in-inferior-repl buffer)))
     (if (and evaluate-in-inferior-repl
-	     (eq? buffer (current-repl-buffer*)))
+	     (eq? buffer (current-repl-buffer* #f)))
 	(begin
 	  (set-variable-default-value! run-light false)
 	  (global-window-modeline-event!)))
     (set! repl-buffers (delq! buffer repl-buffers))
     (let ((buffer
 	   (and evaluate-in-inferior-repl
-		(current-repl-buffer*))))
+		(current-repl-buffer* #f))))
       (if buffer
 	  (let ((value (variable-local-value buffer run-light)))
 	    (undefine-variable-local-value! buffer run-light)
@@ -391,7 +396,7 @@ Additionally, these commands abort the command loop:
 (define (interrupt-command interrupt)
   (lambda ()
     (signal-thread-event
-	(port/thread (buffer-interface-port (current-repl-buffer)))
+	(port/thread (buffer-interface-port (current-repl-buffer #f)))
       interrupt)))
 
 (define-command inferior-cmdl-breakpoint
@@ -691,6 +696,16 @@ If this is an error, the debugger examines the error condition."
 	 (let ((windows (buffer-windows buffer)))
 	   (and (not (null? windows))
 		(apply min (map window-x-size windows)))))))
+
+(define (operation/write-result port expression value hash-number)
+  (let ((buffer (port/buffer port)))
+    (case (operation/current-expression-context port expression)
+      ((EXPRESSION OTHER-BUFFER)
+       (transcript-write value
+			 (and (ref-variable enable-transcript-buffer buffer)
+			      (transcript-buffer))))
+      (else
+       (default/write-result port expression value hash-number)))))
 
 (define (enqueue-output-string! port string)
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
@@ -954,5 +969,6 @@ If this is an error, the debugger examines the error condition."
      (PEEK-CHAR ,operation/peek-char)
      (READ-CHAR ,operation/read-char)
      (READ ,operation/read)
-     (CURRENT-EXPRESSION-CONTEXT ,operation/current-expression-context))
+     (CURRENT-EXPRESSION-CONTEXT ,operation/current-expression-context)
+     (WRITE-RESULT ,operation/write-result))
    false))

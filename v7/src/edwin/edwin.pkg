@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.139 1993/10/11 11:39:37 cph Exp $
+$Id: edwin.pkg,v 1.140 1993/10/15 12:50:15 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -649,6 +649,7 @@ MIT in each case. |#
   (export (edwin)
 	  buffer/inferior-cmdl
 	  current-repl-buffer
+	  current-repl-buffer*
 	  edwin-command$inferior-cmdl-abort-nearest
 	  edwin-command$inferior-cmdl-abort-previous
 	  edwin-command$inferior-cmdl-abort-top-level
@@ -665,7 +666,10 @@ MIT in each case. |#
 	  inferior-repl-eval-expression
 	  inferior-repl-eval-region
 	  initialize-inferior-repls!
-	  start-inferior-repl!))
+	  repl-buffer?
+	  start-inferior-repl!)
+  (import (runtime user-interface)
+	  default/write-result))
 
 (define-package (edwin dired)
   (files "dired")
