@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.224 1994/03/22 21:31:09 cph Exp $
+$Id: runtime.pkg,v 14.225 1994/03/24 18:28:18 gjr Exp $
 
-Copyright (c) 1988-94 Massachusetts Institute of Technology
+Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1459,17 +1459,21 @@ MIT in each case. |#
   (export (runtime character)
 	  char-set/atom-delimiters)
   (export (runtime syntaxer)
+	  lambda-auxiliary-tag
 	  lambda-optional-tag
 	  lambda-rest-tag)
   (export (runtime unparser)
+	  lambda-auxiliary-tag
 	  lambda-optional-tag
 	  lambda-rest-tag)
   (export (runtime macros)
-	  lambda-optional-tag)
-  (export (runtime unsyntaxer)
+	  lambda-auxiliary-tag
 	  lambda-optional-tag
-	  lambda-rest-tag
-	  lambda-aux-tag)
+	  lambda-rest-tag)
+  (export (runtime unsyntaxer)
+	  lambda-auxiliary-tag
+	  lambda-optional-tag
+	  lambda-rest-tag)
   (export (runtime parser-table)
 	  collect-list-wrapper)
   (initialization (initialize-package!)))
