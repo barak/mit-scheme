@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/bintopsb.c,v 9.31 1987/11/23 05:11:12 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/bintopsb.c,v 9.32 1988/01/04 18:58:17 cph Rel $
  *
  * This File contains the code to translate internal format binary
  * files to portable format.
@@ -892,6 +892,7 @@ Process_Area(Code, Area, Bound, Obj, FObj)
 	break;
 
       case_compiled_entry_point:
+	compiled_p = true;
 	if (!allow_compiled_p)
 	{
 	  fprintf(stderr,
