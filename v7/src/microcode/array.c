@@ -30,20 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.35 1989/03/29 04:34:06 pas Exp $ */
-
-/* ARRAY = 
-   sequence of REAL(float or double numbers) with a tag on the front */
-/*___________________________________________________________________*/
-/* contents
-   Scheme_Array datatype                 
-   constructors, selectors, operators 
-   procedures for converting between C_Array, and Scheme_Vector      
-   basic and advanced array primitive operations (see manual.scm) */
-/*___________________________________________________________________*/
-
-/* See array.h for definition using NM_VECTOR,                       
-   and for many useful EXTERN                                        */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.36 1989/06/22 21:50:18 pas Exp $ */
 
 
 #include "scheme.h"
@@ -53,10 +40,21 @@ MIT in each case. */
 #include <math.h>
 #include <values.h>
 /* <values.h> contains some math constants */
-/*__________________________________________________________*/
+
+/* .
+   ARRAY (as a scheme object)
+   is a usual array (in C) containing REAL numbers (float/double)
+   and tagged as a NM_VECTOR
+   
+   Basic contents:
+   constructors, selectors, arithmetic operations, 
+   conversion routines between C_Array, and Scheme_Vector      
+   
+   see array.h for macros, NM_VECTOR, and extern 
+   */
 
 
-/* First some utilities */
+/* first some utilities */
 
 int Scheme_Number_To_REAL(Arg, Cell) Pointer Arg; REAL *Cell;
 /* 0 means conversion ok, 1 means too big, 2 means not a number */
@@ -86,7 +84,7 @@ int Scheme_Number_To_REAL(Arg, Cell) Pointer Arg; REAL *Cell;
   }
   return (0);
 }
-
+
 int Scheme_Number_To_Double(Arg, Cell) Pointer Arg; double *Cell;
 /* 0 means conversion ok, 1 means too big, 2 means not a number */
 { long Value;
@@ -116,15 +114,15 @@ int Scheme_Number_To_Double(Arg, Cell) Pointer Arg; double *Cell;
   return (0);
 }
 
-/*__________________begin__________________*/
+/* c */
 
-/*   I think this is not needed, can be done at s-code ...
-DEFINE_PRIMITIVE ("ARRAY?", Prim_array_predicate, 1, 1, 0)
-{ Primitive_1_Args();
-  if (Type_Code(Arg1)==TC_ARRAY) return SHARP_F;
-  else return SHARP_F;
-}
-*/
+/*   I think this is not needed, it can be done in scheme
+     DEFINE_PRIMITIVE ("ARRAY?", Prim_array_predicate, 1, 1, 0)
+     { Primitive_1_Args();
+     if (Type_Code(Arg1)==TC_ARRAY) return SHARP_F;
+     else return SHARP_F;
+     }
+     */
 
 DEFINE_PRIMITIVE ("VECTOR->ARRAY", Prim_vector_to_array, 1, 1, 0)
 { Pointer Scheme_Vector_To_Scheme_Array();
@@ -140,39 +138,41 @@ DEFINE_PRIMITIVE ("ARRAY->VECTOR", Prim_array_to_vector, 1, 1, 0)
   return Scheme_Array_To_Scheme_Vector(Arg1);
 }
 
-DEFINE_PRIMITIVE ("ARRAY-CONS", Prim_array_cons, 2, 2, 0)
-{ long Length, i, allocated_cells;
-  REAL Init_Value, *Next;
-  int Error_Number;
+/* array-cons = (array-allocate followed by array-initialize!)
+   The two are separated because all too often, we only need 
+   array memory space. Even though the initialization is fast, it 
+   happens so often that we get savings.
+   Also array-initialize!  occurs via subarray-offset-scale!. 
+   
+   */
+DEFINE_PRIMITIVE ("ARRAY-ALLOCATE", Prim_array_allocate, 1,1, 0)
+{ long n,allocated_cells;
   Pointer Result;
-  Primitive_2_Args();
-  Arg_1_Type(TC_FIXNUM);
-  Range_Check(Length, Arg1, 0, ARRAY_MAX_LENGTH, ERR_ARG_1_BAD_RANGE);
+  PRIMITIVE_HEADER (1);
+  CHECK_ARG (1, FIXNUM_P);
 
-  Error_Number = Scheme_Number_To_REAL(Arg2, &Init_Value);
-  if (Error_Number == 1) Primitive_Error(ERR_ARG_2_BAD_RANGE);
-  if (Error_Number == 2) Primitive_Error(ERR_ARG_2_WRONG_TYPE);
+  n = arg_nonnegative_integer(1); /* length of array to allocate */
+  if (n > ARRAY_MAX_LENGTH) error_bad_range_arg(1); /* avoid memory overflow */
   
-  Allocate_Array(Result,Length,allocated_cells);
-  Next = Scheme_Array_To_C_Array(Result);
-  for (i=0; i<Length; i++) *Next++ = Init_Value;
-  return Result; 
+  Allocate_Array(Result,n,allocated_cells);
+  PRIMITIVE_RETURN (Result);
 }
+
 
 DEFINE_PRIMITIVE ("ARRAY-CONS-REALS", Prim_array_cons_reals, 3, 3, 0)
 { long i, Length, allocated_cells;
   REAL *a;
   double from, dt;
   Pointer Result;
-  int Error_Number;
+  int errcode;
   Primitive_3_Args();
   
-  Error_Number = Scheme_Number_To_Double(Arg1, &from); /*         starting time */
-  if (Error_Number == 1) Primitive_Error(ERR_ARG_1_BAD_RANGE);
-  if (Error_Number == 2) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
-  Error_Number = Scheme_Number_To_Double(Arg2, &dt); /*           dt interval */
-  if (Error_Number == 1) Primitive_Error(ERR_ARG_2_BAD_RANGE);
-  if (Error_Number == 2) Primitive_Error(ERR_ARG_2_WRONG_TYPE);
+  errcode = Scheme_Number_To_Double(Arg1, &from); /*         starting time */
+  if (errcode == 1) Primitive_Error(ERR_ARG_1_BAD_RANGE);
+  if (errcode == 2) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
+  errcode = Scheme_Number_To_Double(Arg2, &dt); /*           dt interval */
+  if (errcode == 1) Primitive_Error(ERR_ARG_2_BAD_RANGE);
+  if (errcode == 2) Primitive_Error(ERR_ARG_2_WRONG_TYPE);
   Length = Get_Integer(Arg3);	/* number of points */
   
   Allocate_Array(Result,Length,allocated_cells);
@@ -204,7 +204,7 @@ DEFINE_PRIMITIVE ("ARRAY-REF", Prim_array_ref, 2, 2, 0)
 DEFINE_PRIMITIVE ("ARRAY-SET!", Prim_array_set, 3, 3, 0)
 { long Index;
   REAL *Array, Old_Value;
-  int Error_Number;
+  int errcode;
 
   Primitive_3_Args();
   Arg_1_Type(TC_ARRAY);
@@ -213,30 +213,27 @@ DEFINE_PRIMITIVE ("ARRAY-SET!", Prim_array_set, 3, 3, 0)
   Array = Scheme_Array_To_C_Array(Arg1);
   Old_Value = Array[Index];
 
-  Error_Number = Scheme_Number_To_REAL(Arg3, &Array[Index]);
-  if (Error_Number == 1) Primitive_Error(ERR_ARG_3_BAD_RANGE);
-  if (Error_Number == 2) Primitive_Error(ERR_ARG_3_WRONG_TYPE);
+  errcode = Scheme_Number_To_REAL(Arg3, &Array[Index]);
+  if (errcode == 1) Primitive_Error(ERR_ARG_3_BAD_RANGE);
+  if (errcode == 2) Primitive_Error(ERR_ARG_3_WRONG_TYPE);
 
   Reduced_Flonum_Result((double) Old_Value);
 }
 
-DEFINE_PRIMITIVE ("ARRAY-COPY", Prim_array_copy, 1, 1, 0)
-{ long Length, i, allocated_cells;
-  REAL *To_Array, *From_Array;
-  SCHEME_ARRAY Result;
-  
-  Primitive_1_Args();
-  Arg_1_Type(TC_ARRAY);
-  Length = Array_Length(Arg1);
-
-  Allocate_Array(Result, Length, allocated_cells);
-  Array_Copy(Arg1, Result);
-  return Result;
-}
-
-/*____________________data file readers___________
+/*____________________ file readers ___________
   ascii and 2bint formats 
-  ________________________________________________*/
+  ______________________________________________*/
+
+/* Reading data from files 
+   ATTENTION: for reading REAL numbers, use "lf" for double, "%f" for float 
+   */
+#if (REAL_IS_DEFINED_DOUBLE == 1)
+#define REALREAD  "%lf"
+#define REALREAD2 "%lf %lf"
+#else
+#define REALREAD  "%f"
+#define REALREAD2 "%f %f"
+#endif
 
 DEFINE_PRIMITIVE ("ARRAY-READ-ASCII-FILE", Prim_array_read_ascii_file, 2, 2, 0)
 { FILE *fp;
@@ -259,7 +256,7 @@ C_Array_Read_Ascii_File(a,N,fp)           /* 16 ascii decimal digits */
      REAL *a; long N; FILE *fp;
 { long i;
   for (i=0; i<N; i++) {
-    if ( (fscanf(fp, "%lf", &(a[i]))) != 1)
+    if ( (fscanf(fp, REALREAD, &(a[i]))) != 1)
     { printf("Not enough values read ---\n Last Point was %d with value % .16e \n", i, a[i-1]);
       return SHARP_F; }}
   Close_File(fp);
@@ -324,85 +321,41 @@ C_Array_Read_2bint_File(a,N,fp)
   Close_File(fp);
 }
 /* C_Array_Write_2bint_File  
-   is not implemented yet, don't have the time to to it now. */
+   is not implemented yet, I do not have the time to do it now. */
+
+/* ----- Read data from files --- end*/
+
 
 
-DEFINE_PRIMITIVE ("SUBARRAY", Prim_subarray, 3, 3, 0)
-{ long Length, i, allocated_cells, Start, End, New_Length;
-  REAL *To_Here, *From_Here;
-  Pointer Result;
-
-  Primitive_3_Args();
-  Arg_1_Type(TC_ARRAY);
-  Arg_2_Type(TC_FIXNUM);
-  Arg_3_Type(TC_FIXNUM);
-  Length = Array_Length(Arg1);
-  Range_Check(Start, Arg2, 0, Array_Length(Arg1)-1, ERR_ARG_2_BAD_RANGE);
-  Range_Check(End,   Arg3, 0, Array_Length(Arg1)-1, ERR_ARG_3_BAD_RANGE);
-  if (Start>End) Primitive_Error(ERR_ARG_3_BAD_RANGE);
-
-  New_Length = (End - Start) + 1;
-  Allocate_Array(Result, New_Length, allocated_cells);
-  From_Here = Nth_Array_Loc(Arg1, Start);
-  To_Here = Scheme_Array_To_C_Array(Result);
+/* ARRAY-COPY!    a very powerful primitive
+   See array.scm for its many applications.
+   Be Careful when source and destination are the same array.
+   */
+DEFINE_PRIMITIVE ("SUBARRAY-COPY!", Prim_subarray_copy, 5, 5, 0)
+{ long i, i1,  i2;
+  long m, at1, at2;
+  REAL *a,*b;
   
-  C_Array_Copy(From_Here, To_Here, New_Length);
-  return Result; 
+  PRIMITIVE_HEADER (5);
+  CHECK_ARG (1, ARRAY_P);	/*         source      array a   */
+  CHECK_ARG (2, ARRAY_P);	/*         destination array b   */
+  
+  a = Scheme_Array_To_C_Array(ARG_REF(1));
+  b = Scheme_Array_To_C_Array(ARG_REF(2));
+  at1 = arg_nonnegative_integer(3); /*     at1 = starting index in source array */
+  at2 = arg_nonnegative_integer(4); /*     at2 = starting index in destination array */
+  m   = arg_nonnegative_integer(5); /*     m   = number of points to copy */
+
+  if ((at1 + m) > (Array_Length(ARG_REF(1)))) error_bad_range_arg(3); 
+  if ((at2 + m) > (Array_Length(ARG_REF(2)))) error_bad_range_arg(4);
+  /* These 2 checks cover all cases */
+  
+  for (i=0,i1=at1,i2=at2;   i<m;   i++,i1++,i2++)
+    b[i2] = a[i1];
+  
+  PRIMITIVE_RETURN (NIL);
 }
 
-DEFINE_PRIMITIVE ("ARRAY-SET-SUBARRAY!", Prim_array_set_subarray, 4, 4, 0)
-{ long Length, i, Start, End, New_Length;
-  REAL *To_Here, *From_Here;
-  Pointer Result;
-
-  Primitive_4_Args();
-  Arg_1_Type(TC_ARRAY);
-  Arg_2_Type(TC_FIXNUM);
-  Arg_3_Type(TC_FIXNUM);
-  Arg_4_Type(TC_ARRAY);
-  Length = Array_Length(Arg1);
-  Range_Check(Start, Arg2, 0, Array_Length(Arg1)-1, ERR_ARG_2_BAD_RANGE);
-  Range_Check(End,   Arg3, 0, Array_Length(Arg1)-1, ERR_ARG_3_BAD_RANGE);
-  if (Start>End) Primitive_Error(ERR_ARG_3_BAD_RANGE);
-
-  New_Length = (End - Start) + 1;
-  if (New_Length!=Array_Length(Arg4)) Primitive_Error(ERR_ARG_4_BAD_RANGE);
-  From_Here = Scheme_Array_To_C_Array(Arg4);
-  To_Here = Nth_Array_Loc(Arg1, Start);
-  
-  C_Array_Copy(From_Here, To_Here, New_Length);
-  return Arg1;
-}
-
-DEFINE_PRIMITIVE ("ARRAY-APPEND", Prim_array_append, 2, 2, 0)
-{ long Length, Length1, Length2, i, allocated_cells;
-  REAL *To_Here, *From_Here;
-  Pointer Result;
-
-  Primitive_2_Args();
-  Arg_1_Type(TC_ARRAY);
-  Arg_2_Type(TC_ARRAY);
-  Length1 = Array_Length(Arg1);
-  Length2 = Array_Length(Arg2);
-  Length = Length1 + Length2;
-
-  Allocate_Array(Result, Length, allocated_cells);
-  To_Here = Scheme_Array_To_C_Array(Result);
-  From_Here = Scheme_Array_To_C_Array(Arg1);
-
-  for (i=0; i < Length1; i++) {
-    *To_Here++ = *From_Here;
-    From_Here++ ;
-  }
-  
-  From_Here = Scheme_Array_To_C_Array(Arg2);
-  for (i=0; i < Length2; i++) {
-    *To_Here++ = *From_Here;
-    From_Here++ ;
-  }
-  
-  return Result; 
-}
 
 DEFINE_PRIMITIVE ("ARRAY-REVERSE!", Prim_array_reverse, 1, 1, 0)
 { long Length, i,j, Half_Length;
@@ -421,37 +374,299 @@ DEFINE_PRIMITIVE ("ARRAY-REVERSE!", Prim_array_reverse, 1, 1, 0)
   return Arg1;
 }
 
-DEFINE_PRIMITIVE ("ARRAY-SCALE!", Prim_array_scale, 2, 2, 0)
-{ long Length, i;
-  REAL *To_Here, *From_Here, Scale;
-  Pointer Result;
-  int Error_Number;
-
-  Primitive_2_Args();
-  Arg_1_Type(TC_ARRAY);
-  Length = Array_Length(Arg1);
-  Error_Number = Scheme_Number_To_REAL(Arg2, &Scale);
-  if (Error_Number == 1) Primitive_Error(ERR_ARG_2_BAD_RANGE);
-  if (Error_Number == 2) Primitive_Error(ERR_ARG_2_WRONG_TYPE);
-
-  Result = Arg1;
-  From_Here = Scheme_Array_To_C_Array(Arg1);
-  To_Here = Scheme_Array_To_C_Array(Result);
-
-  for (i=0; i < Length; i++) {
-    *To_Here++ = (Scale * (*From_Here));
-    From_Here++ ;
-  }
-  return Result; 
+DEFINE_PRIMITIVE ("ARRAY-TIME-REVERSE!",
+		  Prim_array_time_reverse, 1, 1, 0)
+{ long i, n;
+  REAL *a;
+  void C_Array_Time_Reverse();
+  PRIMITIVE_HEADER (1);
+  CHECK_ARG (1, ARRAY_P);
+  a = Scheme_Array_To_C_Array(ARG_REF(1));
+  n = Array_Length(ARG_REF(1));
+  
+  C_Array_Time_Reverse(a,n);
+  
+  PRIMITIVE_RETURN (NIL);
 }
 
-/* ARRAY-UNARY-FUNCTION!
-   applies a unary function on each element of an array.
-   The name of this proc comes from "(array-unary-function! array function)"
+/* time-reverse
+   x[0] remains fixed. (time=0)
+   x[i] swapped with x[n-i]. (mirror image around x[0])
    */
+void C_Array_Time_Reverse(x,n)
+     REAL *x;
+     long n;
+{ long i, ni, n2;
+  REAL xt;
+  if ((n % 2) == 0)		/* even length */
+  { n2 = (n/2);			
+    for (i=1; i<n2; i++)	/* i=1,2,..,n/2-1 */
+    {  ni = n-i;
+       xt    = x[i];
+       x[i]  = x[ni];
+       x[ni] = xt; }}
+  else				/* odd length */
+  { n2 = (n+1)/2;		/* (n+1)/2 = (n-1)/2 + 1 */
+    for (i=1; i<n2; i++)	/* i=1,2,..,(n-1)/2 */
+    {  ni = n-i;
+       xt   = x[i];
+       x[i] = x[ni];
+       x[ni] = xt; }}
+}
 
-/* available functions
- */
+/* The following is smart 
+   and avoids computation   when offset or scale are degenerate 0,1 
+   */
+DEFINE_PRIMITIVE ("SUBARRAY-OFFSET-SCALE!",
+		  Prim_subarray_offset_scale, 5, 5, 0)
+{ long i, at, m,mplus;
+  REAL *a, offset,scale;
+  int errcode;
+  
+  PRIMITIVE_HEADER (5);
+  CHECK_ARG (1, ARRAY_P);
+  CHECK_ARG (2, FIXNUM_P);
+  CHECK_ARG (3, FIXNUM_P);
+  a = Scheme_Array_To_C_Array(ARG_REF(1));
+  at = arg_nonnegative_integer(2); /*       at = starting index             */
+  m  = arg_nonnegative_integer(3); /*       m  = number of points to change */
+  
+  mplus = at + m;
+  if (mplus > (Array_Length(ARG_REF(1)))) error_bad_range_arg(3);
+
+  errcode = Scheme_Number_To_REAL(ARG_REF(4), &offset);
+  if (errcode==1) error_bad_range_arg(4); if (errcode==2) error_wrong_type_arg(4); 
+  errcode = Scheme_Number_To_REAL(ARG_REF(5), &scale);
+  if (errcode==1) error_bad_range_arg(5); if (errcode==2) error_wrong_type_arg(5); 
+  
+  if ((offset == 0.0) && (scale == 1.0))
+    ;				/* be smart */
+  else if (scale == 0.0)
+    for (i=at; i<mplus; i++)  a[i] = offset;
+  else if (offset == 0.0)
+    for (i=at; i<mplus; i++)  a[i] = scale * a[i];
+  else if (scale == 1.0)
+    for (i=at; i<mplus; i++)  a[i] = offset + a[i];
+  else
+    for (i=at; i<mplus; i++)  a[i] = offset + scale * a[i];
+  
+  PRIMITIVE_RETURN (NIL);
+}
+
+
+DEFINE_PRIMITIVE ("COMPLEX-SUBARRAY-COMPLEX-SCALE!",
+		  Prim_complex_subarray_complex_scale, 6,6, 0)
+{ long i, at,m,mplus;
+  REAL *a,*b;			/* (a,b) = (real,imag) arrays */
+  double temp, minus_y,  x, y;	/* (x,y) = (real,imag) scale */
+  int errcode;
+  
+  PRIMITIVE_HEADER (6);
+  CHECK_ARG (1, ARRAY_P);
+  CHECK_ARG (2, ARRAY_P);
+  CHECK_ARG (3, FIXNUM_P);
+  CHECK_ARG (4, FIXNUM_P);
+  
+  at = arg_nonnegative_integer(3); /*       at = starting index             */
+  m  = arg_nonnegative_integer(4); /*       m  = number of points to change */
+  mplus = at + m;
+  if (mplus > (Array_Length(ARG_REF(1)))) error_bad_range_arg(4);
+  
+  errcode = Scheme_Number_To_Double(ARG_REF(5), &x);
+  if (errcode==1) error_bad_range_arg(5); if (errcode==2) error_wrong_type_arg(5); 
+  errcode = Scheme_Number_To_Double(ARG_REF(6), &y);
+  if (errcode==1) error_bad_range_arg(6); if (errcode==2) error_wrong_type_arg(6); 
+  
+  a = Scheme_Array_To_C_Array(ARG_REF(1));
+  b = Scheme_Array_To_C_Array(ARG_REF(2));
+  if ((Array_Length(ARG_REF(1))) != (Array_Length(ARG_REF(2)))) error_bad_range_arg(2);
+  
+  if (x==0.0)			/* imaginary only */
+    if       (y==0.0)
+      for (i=at; i<mplus; i++)
+      { a[i] = 0.0;
+	b[i] = 0.0; }
+    else if  (y==1.0)
+      for (i=at; i<mplus; i++)
+      { temp = b[i];
+	b[i] = a[i];
+	a[i] = (-temp); }
+    else if  (y==-1.0)
+      for (i=at; i<mplus; i++)
+      { temp = b[i];
+	b[i] = (-a[i]);
+	a[i] = temp; }
+    else
+    { minus_y = (-y);
+      for (i=at; i<mplus; i++)
+      { temp =               y * ((double) a[i]);
+	a[i] = (REAL) (minus_y * ((double) b[i]));
+	b[i] = (REAL) temp; }}
+  else if (y==0.0)		/* real only */
+    if (x==1.0) ;
+    else for (i=at; i<mplus; i++)
+    { a[i] = (REAL) (x * ((double) a[i]));
+      b[i] = (REAL) (x * ((double) b[i])); }
+  else				/* full complex scale */
+    for (i=at; i<mplus; i++)
+    { temp =         ((double) a[i])*x - ((double) b[i])*y;
+      b[i] = (REAL) (((double) b[i])*x + ((double) a[i])*y);
+      a[i] = (REAL) temp; }
+  
+  PRIMITIVE_RETURN (NIL);
+}
+
+
+DEFINE_PRIMITIVE ("CS-ARRAY-TO-COMPLEX-ARRAY!",
+		  Prim_cs_array_to_complex_array, 3, 3, 0)
+{ long n,n2,n2_1, i;
+  REAL *a, *b,*c;
+  
+  PRIMITIVE_HEADER (3);
+  CHECK_ARG (1, ARRAY_P);
+  CHECK_ARG (2, ARRAY_P);
+  CHECK_ARG (3, ARRAY_P);
+  
+  a = Scheme_Array_To_C_Array(ARG_REF(1));
+  n = Array_Length(ARG_REF(1));
+  b = Scheme_Array_To_C_Array(ARG_REF(2));
+  c = Scheme_Array_To_C_Array(ARG_REF(3));
+  if (n!=(Array_Length(ARG_REF(2)))) error_bad_range_arg(2);
+  if (n!=(Array_Length(ARG_REF(3)))) error_bad_range_arg(3);
+  
+  b[0]   = a[0];   c[0]   = 0.0; 
+  
+  n2   = n/2;			/* integer division truncates down */
+  n2_1 = n2+1;
+  
+  if (2*n2 == n)		/* even length, n2 is only real */
+  { b[n2]  = a[n2];  c[n2]  = 0.0; }
+  else				/* odd length, make the loop include the n2 index */
+  { n2   = n2+1;
+    n2_1 = n2; }
+  
+  for (i=1; i<n2; i++)   { b[i] = a[i];
+			   c[i] = a[n-i]; }
+  for (i=n2_1; i<n; i++) { b[i] =  a[n-i];
+			   c[i] = (-a[i]); }
+  
+  PRIMITIVE_RETURN (NIL);
+}
+
+DEFINE_PRIMITIVE ("CS-ARRAY-MULTIPLY-INTO-SECOND-ONE!",
+		  Prim_cs_array_multiply_into_second_one, 2, 2, 0)
+{ long n,n2;
+  REAL *a, *b;
+  void cs_array_multiply_into_second_one();
+  PRIMITIVE_HEADER (2);
+  CHECK_ARG (1, ARRAY_P);
+  CHECK_ARG (2, ARRAY_P);
+  
+  a = Scheme_Array_To_C_Array(ARG_REF(1));
+  n = Array_Length(ARG_REF(1));
+  b = Scheme_Array_To_C_Array(ARG_REF(2));
+  if (n!=(Array_Length(ARG_REF(2)))) error_bad_range_arg(2);
+  n2 = n/2;			/* integer division truncates down */
+  cs_array_multiply_into_second_one(a,b, n,n2);
+  PRIMITIVE_RETURN (NIL);
+}
+
+void cs_array_multiply_into_second_one(a,b, n,n2)
+     REAL *a, *b; long n,n2;
+{ REAL temp;
+  long i,ni;
+  b[0]   = a[0]  * b[0];
+  
+  if (2*n2 == n)		/* even length, n2 is only real */
+    b[n2]  = a[n2] * b[n2];
+  else				
+    n2 = n2+1;			/* odd length, make the loop include the n2 index */
+  
+  for (i=1; i<n2; i++)
+  { ni = n-i;
+    temp   = a[i]*b[i]   -  a[ni]*b[ni]; /* real part */
+    b[ni]  = a[i]*b[ni]  +  a[ni]*b[i];	/*  imag part */
+    b[i]   = temp; }
+}
+
+DEFINE_PRIMITIVE ("CS-ARRAY-DIVIDE-INTO-XXX!",
+		  Prim_cs_array_divide_into_xxx, 4, 4, 0)
+{ long n,n2, one_or_two;
+  REAL *a, *b, inf;
+  int errcode;
+  void cs_array_divide_into_z();
+
+  PRIMITIVE_HEADER (4);
+  CHECK_ARG (1, ARRAY_P);
+  CHECK_ARG (2, ARRAY_P);
+  errcode = Scheme_Number_To_REAL(ARG_REF(3), &inf);
+  if (errcode==1) error_bad_range_arg(3); if (errcode==2) error_wrong_type_arg(3); 
+  CHECK_ARG (4, FIXNUM_P);
+  one_or_two = arg_nonnegative_integer(4); /* where to store result of division */
+  
+  a = Scheme_Array_To_C_Array(ARG_REF(1));
+  b = Scheme_Array_To_C_Array(ARG_REF(2));
+  n = Array_Length(ARG_REF(1));
+  if (n!=(Array_Length(ARG_REF(2)))) error_bad_range_arg(2);
+  n2 = n/2;			/* integer division truncates down */
+  
+  if (one_or_two == 1)
+    cs_array_divide_into_z(a,b, a,  n,n2, inf);
+  else if (one_or_two == 2)
+    cs_array_divide_into_z(a,b, b,  n,n2, inf);
+  else
+    error_bad_range_arg(4);
+  PRIMITIVE_RETURN (NIL);
+}
+
+void cs_array_divide_into_second_one(a,b, n,n2,inf)   /* used in image.c */
+     REAL *a,*b, inf; long n,n2;
+{ void cs_array_divide_into_z();
+  cs_array_divide_into_z(a,b, b, n,n2,inf);
+}
+
+void cs_array_divide_into_z(a,b, z, n,n2, inf)          /* z can be either a or b */
+     REAL *a,*b,*z, inf; long n,n2;             
+{ long i,ni;
+  REAL temp, radius;
+  
+  if (b[0] == 0.0)
+    if (a[0] == 0.0) z[0] = 1.0;
+    else             z[0] = a[0] * inf;
+  else               z[0] = a[0] / b[0];
+  
+  if (2*n2 == n)		/* even length, n2 is only real */
+    if (b[n2] == 0.0)
+      if (a[n2] == 0.0) z[n2] = 1.0;
+      else              z[n2] = a[n2] * inf;
+    else                z[n2] = a[n2] / b[n2];
+  else				
+    n2 = n2+1;			/* odd length, make the loop include the n2 index */
+  
+  for (i=1; i<n2; i++)
+  { ni = n-i;
+    radius  = b[i]*b[i]   +  b[ni]*b[ni]; /* b^2 denominator = real^2 + imag^2 */
+    
+    if (radius == 0.0) {
+      if (a[i]  == 0.0) z[i]  = 1.0;
+      else              z[i]  = a[i] * inf;
+      if (a[ni] == 0.0) z[ni] = 1.0;
+      else              z[ni] = a[ni] * inf; }
+    else {
+      temp  = a[i]*b[i]    +  a[ni]*b[ni];
+      z[ni] = (a[ni]*b[i]  -  a[i]*b[ni]) / radius; /* imag part */
+      z[i]  = temp                        / radius; /* real part */
+    }}
+}
+
+
+
+
+/* ARRAY-UNARY-FUNCTION!
+   apply unary-function elementwise on array 
+   
+   Available functions :
+   */
 
 void REALabs(a,b) REAL *a,*b;
 { (*b) = ( (REAL) fabs( (double) (*a)) );
@@ -475,7 +690,8 @@ void REALtruncate(a,b) REAL *a,*b;      /* towards zero */
 }
 void REALround(a,b) REAL *a,*b;      /* towards nearest integer */
 { double integral_part, modf();
-  if ((*a) >= 0.0)		/* It may be faster to look at the sign of mantissa and dispatch */
+  if ((*a) >= 0.0)		/* It may be faster to look at the sign 
+				   of mantissa, and dispatch */
     modf( ((double) ((*a)+0.5)), &integral_part); 
   else
     modf( ((double) ((*a)-0.5)), &integral_part);
@@ -541,8 +757,9 @@ void REALbessel2(order,a,b) long order; REAL *a,*b;  /* Bessel of second kind */
     (*b) = ( (REAL) yn(((int) order), ((double) (*a))) );
 }
 
-/* Table to store the available functions for transforming arrays.
-   It also stores the corresponding numofargs (whether unary or binary function).
+/* Table to store the available unary-functions.
+   Also some binary functions at the end -- not available right now.
+   The (1 and 2)s denote the numofargs (1 for unary 2 for binary)
    */
 
 struct array_func_table {
@@ -597,31 +814,38 @@ DEFINE_PRIMITIVE ("ARRAY-UNARY-FUNCTION!", Prim_array_unary_function, 2, 2, 0)
   return Result; 
 }
 
-/* The following is accumulate of + and * 
-   code numbers are               0     1
+
+/* Accumulate
+   using combinators              +  or  * 
+   corresponding type codes       0      1
    */
-DEFINE_PRIMITIVE ("ARRAY-ACCUMULATE", Prim_array_accumulate, 2, 2, 0)
-{ long Length, i;
-  REAL *a, result;
-  long functc;
+DEFINE_PRIMITIVE ("SUBARRAY-ACCUMULATE", Prim_subarray_accumulate, 4,4, 0)
+{ long at,m,mplus, tc, i;
+  REAL *a;
+  double result;
   
-  Primitive_2_Args();
-  Arg_1_Type(TC_ARRAY);
-  Arg_2_Type(TC_FIXNUM);
-  Length = Array_Length(Arg1);
-  Range_Check(functc, Arg2, 0, 1, ERR_ARG_2_BAD_RANGE);
-  a = Scheme_Array_To_C_Array(Arg1);
+  PRIMITIVE_HEADER (4);
+  CHECK_ARG (1, ARRAY_P);	/*           a = input array                 */
+  a  = Scheme_Array_To_C_Array(ARG_REF(1));
+  tc = arg_nonnegative_integer(2); /*       tc = type code 0 or 1            */
+  at = arg_nonnegative_integer(3); /*       at = starting index              */
+  m  = arg_nonnegative_integer(4); /*       m  = number of points to process */
   
-  if (functc==0)
+  mplus = at + m;
+  if (mplus > (Array_Length(ARG_REF(1)))) error_bad_range_arg(4);
+  
+  if (tc==0)
   { result = 0.0;
-    for (i=0;i<Length;i++) result = result + a[i];
-  }
-  else if (functc==1)
+    for (i=at;i<mplus;i++) result = result + ((double) a[i]); }
+  else if (tc==1)
   { result = 1.0;
-    for (i=0;i<Length;i++) result = result * a[i];
-  }
-  Reduced_Flonum_Result((double) result);
+    for (i=at;i<mplus;i++) result = result * ((double) a[i]); }
+  else
+    error_bad_range_arg(2);
+  
+  Reduced_Flonum_Result(result);
 }
+
 
 /* The following searches for value within tolerance
    starting from index=from in array.
@@ -631,17 +855,17 @@ DEFINE_PRIMITIVE ("ARRAY-SEARCH-VALUE-TOLERANCE-FROM", Prim_array_search_value_t
 { long Length, from, i;
   REAL *a, value;		/* value to search for */ 
   double tolerance;		/* tolerance allowed */
-  int Error_Number;
+  int errcode;
   Primitive_4_Args();
   Arg_1_Type(TC_ARRAY);
   a = Scheme_Array_To_C_Array(Arg1);  Length = Array_Length(Arg1);
   
-  Error_Number = Scheme_Number_To_REAL(Arg2, &value);
-  if (Error_Number == 1) Primitive_Error(ERR_ARG_2_BAD_RANGE);
-  if (Error_Number == 2) Primitive_Error(ERR_ARG_2_WRONG_TYPE);
-  Error_Number = Scheme_Number_To_Double(Arg3, &tolerance);
-  if (Error_Number == 1) Primitive_Error(ERR_ARG_3_BAD_RANGE);
-  if (Error_Number == 2) Primitive_Error(ERR_ARG_3_WRONG_TYPE);
+  errcode = Scheme_Number_To_REAL(Arg2, &value);
+  if (errcode == 1) Primitive_Error(ERR_ARG_2_BAD_RANGE);
+  if (errcode == 2) Primitive_Error(ERR_ARG_2_WRONG_TYPE);
+  errcode = Scheme_Number_To_Double(Arg3, &tolerance);
+  if (errcode == 1) Primitive_Error(ERR_ARG_3_BAD_RANGE);
+  if (errcode == 2) Primitive_Error(ERR_ARG_3_WRONG_TYPE);
   Arg_4_Type(TC_FIXNUM);
   Range_Check(from, Arg4, 0, Length-1, ERR_ARG_4_BAD_RANGE);
   
@@ -655,16 +879,25 @@ DEFINE_PRIMITIVE ("ARRAY-SEARCH-VALUE-TOLERANCE-FROM", Prim_array_search_value_t
     return SHARP_F;
 }
 
-DEFINE_PRIMITIVE ("ARRAY-MIN-MAX-INDEX", Prim_array_min_max_index, 1, 1, 0)
-{ long Length, nmin, nmax;
+DEFINE_PRIMITIVE ("SUBARRAY-MIN-MAX-INDEX", Prim_subarray_min_max_index, 3,3, 0)
+{ long at,m,mplus;
+  long nmin, nmax;
   Pointer Result, *Orig_Free;
-  REAL *Array;
-
-  Primitive_1_Args();
-  Arg_1_Type(TC_ARRAY);
-  Array= Scheme_Array_To_C_Array(Arg1);
-  Length = Array_Length(Arg1);
-  C_Array_Find_Min_Max(Array, Length, &nmin, &nmax);
+  REAL *a;
+  
+  PRIMITIVE_HEADER (3);
+  CHECK_ARG (1, ARRAY_P);
+  a = Scheme_Array_To_C_Array(ARG_REF(1));
+  at = arg_nonnegative_integer(2); /*       at = starting index              */
+  m  = arg_nonnegative_integer(3); /*       m  = number of points to process */
+  
+  mplus = at + m;
+  if (mplus > (Array_Length(ARG_REF(1)))) error_bad_range_arg(3);
+  
+  C_Array_Find_Min_Max ( &(a[at]), m, &nmin, &nmax);
+  nmin = nmin + at;		/* offset appropriately */
+  nmax = nmax + at;
+  
   Primitive_GC_If_Needed(4);
   Result = Make_Pointer(TC_LIST, Free);
   Orig_Free = Free;
@@ -673,8 +906,10 @@ DEFINE_PRIMITIVE ("ARRAY-MIN-MAX-INDEX", Prim_array_min_max_index, 1, 1, 0)
   *Orig_Free++ = Make_Pointer(TC_LIST, Orig_Free+1);
   *Orig_Free++ = Make_Non_Pointer(TC_FIXNUM, nmax);
   *Orig_Free=EMPTY_LIST;
-  return Result; 
+  
+  PRIMITIVE_RETURN (Result); 
 }
+
 void C_Array_Find_Min_Max(x, n, nmin, nmax) REAL *x; long n, *nmax, *nmin;
 { REAL *xold = x;
   register REAL xmin, xmax;
@@ -705,11 +940,14 @@ void C_Array_Find_Min_Max(x, n, nmin, nmax) REAL *x; long n, *nmax, *nmin;
 }
 
 
-/* The following becomes obsolete.
-   Done using array-reduce + divide by array-length 
+/* array-average
+   can be done with (array-reduce +) and division by array-length.
+   But there is also this C primitive. Keep it around, may be useful someday.
    */
+
 DEFINE_PRIMITIVE ("ARRAY-AVERAGE", Prim_array_find_average, 1, 1, 0)
 { long Length; REAL average;
+  void C_Array_Find_Average();
   Primitive_1_Args();
   Arg_1_Type(TC_ARRAY);
   Length = Array_Length(Arg1);
@@ -717,10 +955,12 @@ DEFINE_PRIMITIVE ("ARRAY-AVERAGE", Prim_array_find_average, 1, 1, 0)
   C_Array_Find_Average( Scheme_Array_To_C_Array(Arg1), Length, &average);
   Reduced_Flonum_Result((double) average);
 }
+
 /* Computes the average in pieces, so as to reduce 
    roundoff smearing in cumulative sum.
    example= first huge positive numbers, then small nums, then huge negative numbers.
    */
+
 void C_Array_Find_Average(Array, Length, pAverage)
      long Length; REAL *Array, *pAverage;
 { long i;
@@ -772,23 +1012,22 @@ void C_Array_Make_Histogram(Array, Length, Histogram, npoints)
 }
 
 DEFINE_PRIMITIVE ("ARRAY-CLIP-MIN-MAX!", Prim_array_clip_min_max, 3, 3, 0)
-{ long Length, i; /* , allocated_cells; */
+{ long Length, i;
   REAL *To_Here, *From_Here, xmin, xmax;
-  Pointer Result;
-  int Error_Number;
+  int errcode;
 
   Primitive_3_Args();
   Arg_1_Type(TC_ARRAY);
-  Error_Number=Scheme_Number_To_REAL(Arg2, &xmin);
-  if (Error_Number == 1) Primitive_Error(ERR_ARG_2_BAD_RANGE);
-  if (Error_Number == 2) Primitive_Error(ERR_ARG_2_WRONG_TYPE);
-  Error_Number=Scheme_Number_To_REAL(Arg3, &xmax);
-  if (Error_Number == 1) Primitive_Error(ERR_ARG_3_BAD_RANGE);
-  if (Error_Number == 2) Primitive_Error(ERR_ARG_3_WRONG_TYPE);
+  errcode=Scheme_Number_To_REAL(Arg2, &xmin);
+  if (errcode == 1) Primitive_Error(ERR_ARG_2_BAD_RANGE);
+  if (errcode == 2) Primitive_Error(ERR_ARG_2_WRONG_TYPE);
+  errcode=Scheme_Number_To_REAL(Arg3, &xmax);
+  if (errcode == 1) Primitive_Error(ERR_ARG_3_BAD_RANGE);
+  if (errcode == 2) Primitive_Error(ERR_ARG_3_WRONG_TYPE);
   Length = Array_Length(Arg1);
-  Result = Arg1;
+
   From_Here = Scheme_Array_To_C_Array(Arg1);
-  To_Here = Scheme_Array_To_C_Array(Result);
+  To_Here   = Scheme_Array_To_C_Array(Arg1);
   
   if (xmin>xmax) Primitive_Error(ERR_ARG_3_BAD_RANGE);
   for (i=0; i < Length; i++) {
@@ -796,15 +1035,16 @@ DEFINE_PRIMITIVE ("ARRAY-CLIP-MIN-MAX!", Prim_array_clip_min_max, 3, 3, 0)
     else if ((*From_Here)>xmax) *To_Here++ = xmax;
     else *To_Here++ = *From_Here;
     From_Here++ ; }
-  return Result; 
+  return SHARP_F;
 }
 
-DEFINE_PRIMITIVE ("ARRAY-MAKE-POLAR!", Prim_array_make_polar, 2, 2, 0)
+DEFINE_PRIMITIVE ("COMPLEX-ARRAY-TO-POLAR!",
+		  Prim_complex_array_to_polar, 2, 2, 0)
 { long Length, i;
   REAL *To_Here_Mag, *To_Here_Phase;
   REAL *From_Here_Real, *From_Here_Imag;
-  Pointer Result_Mag, Result_Phase, answer;
-    
+  Pointer Result_Mag, Result_Phase;
+  
   Primitive_2_Args();
   Arg_1_Type(TC_ARRAY);
   Arg_2_Type(TC_ARRAY);
@@ -820,48 +1060,163 @@ DEFINE_PRIMITIVE ("ARRAY-MAKE-POLAR!", Prim_array_make_polar, 2, 2, 0)
   To_Here_Phase = Scheme_Array_To_C_Array(Result_Phase);
 
   for (i=0; i < Length; i++) 
-  {
-    C_Make_Polar(*From_Here_Real, *From_Here_Imag, *To_Here_Mag, *To_Here_Phase);
+  { C_Make_Polar(*From_Here_Real, *From_Here_Imag, *To_Here_Mag, *To_Here_Phase);
     From_Here_Real++ ;  From_Here_Imag++ ;
-    To_Here_Mag++ ;     To_Here_Phase++ ;
-  }
+    To_Here_Mag++ ;     To_Here_Phase++ ; }
   
-  Primitive_GC_If_Needed(4);
-  answer = Make_Pointer(TC_LIST, Free);
-  *Free++ = Result_Mag;
-  *Free = Make_Pointer(TC_LIST, Free+1);
-  Free += 1;
-  *Free++ = Result_Phase;
-  *Free++ = EMPTY_LIST;
-  return answer;
+  return SHARP_F;
 }
 
-DEFINE_PRIMITIVE ("ARRAY-FIND-MAGNITUDE", Prim_array_find_magnitude, 2, 2, 0)
-{ long Length, i, allocated_cells;
-  REAL *From_Here_Real, *From_Here_Imag, *To_Here;
-  Pointer Result;
+DEFINE_PRIMITIVE ("COMPLEX-ARRAY-MAGNITUDE!", Prim_complex_array_magnitude, 3, 3, 0)
+{ long n, i;
+  REAL *a, *b, *mg;
   
-  Primitive_2_Args();
-  Arg_1_Type(TC_ARRAY);
-  Arg_2_Type(TC_ARRAY);
-  Length = Array_Length(Arg1);
-  if (Length != Array_Length(Arg2)) Primitive_Error(ERR_ARG_1_BAD_RANGE);
-
-  Allocate_Array(Result, Length, allocated_cells);
-  To_Here = Scheme_Array_To_C_Array(Result);
-  From_Here_Real = Scheme_Array_To_C_Array(Arg1);
-  From_Here_Imag = Scheme_Array_To_C_Array(Arg2);
-  for (i=0; i<Length; i++) {
-    C_Find_Magnitude(*From_Here_Real, *From_Here_Imag, *To_Here);
-    From_Here_Real++ ;
-    From_Here_Imag++ ;
-    To_Here++ ; 
-  }
-  return Result;
+  PRIMITIVE_HEADER (3);
+  CHECK_ARG (1, ARRAY_P);	/* input array -- n      real part         */
+  CHECK_ARG (2, ARRAY_P);	/* input array -- n      imag part         */
+  CHECK_ARG (3, ARRAY_P);	/* ouput array -- n      magnitude         */
+  
+  n = Array_Length(ARG_REF(1));
+  if (n != Array_Length(ARG_REF(2))) error_bad_range_arg(2);
+  if (n != Array_Length(ARG_REF(3))) error_bad_range_arg(3);
+  
+  a  = Scheme_Array_To_C_Array(ARG_REF(1)); /*  real part */
+  b  = Scheme_Array_To_C_Array(ARG_REF(2)); /*  imag part */
+  mg = Scheme_Array_To_C_Array(ARG_REF(3)); /*  magnitude */
+  
+  for (i=0; i<n; i++)
+    mg[i] = (REAL) sqrt( (double) a[i]*a[i] + b[i]*b[i] );
+  
+  PRIMITIVE_RETURN (NIL);
 }
 
-/* ATTENTION: To1,To2 SHOULD BE Length1-1, and Length2-2 RESPECTIVELY ! */
+DEFINE_PRIMITIVE ("CS-ARRAY-MAGNITUDE!", Prim_cs_array_magnitude, 1, 1, 0)
+{ long n, i;
+  REAL *a;
+  void cs_array_magnitude();
+  PRIMITIVE_HEADER (1);
+  CHECK_ARG (1, ARRAY_P);
+  a = Scheme_Array_To_C_Array(ARG_REF(1)); /* input cs-array                      */
+  n = Array_Length(ARG_REF(1));	/*            becomes a standard array on return  */  
+  
+  cs_array_magnitude(a,n);
+  PRIMITIVE_RETURN (NIL);
+}
 
+/* result is a standard array     (even signal, real data)
+ */
+void cs_array_magnitude(a,n)
+     REAL *a; long n;
+{ long i, n2, ni;
+  n2 = n/2;			/* integer division truncates down */
+  
+  a[0]  = (REAL) fabs((double) a[0]); /*   imag=0 */
+  
+  if (2*n2 == n)		/* even length, n2 is only real */
+    a[n2] = (REAL) fabs((double) a[n2]); /*  imag=0 */
+  else				
+    n2 = n2+1;			/* odd length, make the loop include the n2 index */
+  
+  for (i=1; i<n2; i++)
+  { ni = n-i;
+    a[i]   = (REAL)  sqrt( (double) a[i]*a[i] + (double) a[ni]*a[ni] ); 
+    a[ni]  = a[i];		/* even signal */
+  }
+}
+
+
+/* Rectangular and Polar             cs-arrays
+   
+   cs-arrays have      Even magnitude and (almost) Odd angle
+   hence     we store the magnitude into the real part of cs-array
+   and                the angle     into the imag part of cs-array 
+   
+   Except for   index 0 and index n2(when n even)     are only real
+   Hence               the angle can be either 0 or pi
+   ---> information is lost  when going from rect to polar (compromise to save space)
+   
+   To invert from polar to rect, assume the signal is a continuous curve
+   and choose sign (from angle 0 or pi)   at index i=0 same sign as i=1, 
+   and                                            i=n2 same sign as i=n2+1
+   */
+
+DEFINE_PRIMITIVE ("CS-ARRAY-TO-POLAR!", Prim_cs_array_to_polar, 1,1, 0)
+{ long n, i;
+  REAL *a;
+  void cs_array_to_polar();
+  
+  PRIMITIVE_HEADER (1);
+  CHECK_ARG (1, ARRAY_P);	/* input and output array   -- both cs-arrays */
+  a  = Scheme_Array_To_C_Array(ARG_REF(1)); 
+  n = Array_Length(ARG_REF(1));
+
+  cs_array_to_polar(a,n);
+  PRIMITIVE_RETURN (NIL);
+}
+
+void cs_array_to_polar(a,n)
+     REAL *a; long n;
+{ long i, n2;
+  double real, imag;		/* temporary variables */
+  n2 = n/2;			/* integer division truncates down */
+  
+  a[0]  = (REAL) fabs((double) a[0]); /*   implicitly angle = 0, but it could be pi */
+  if (2*n2 == n)		/* even length, n2 is only real */
+    a[n2] = (REAL) fabs((double) a[n2]); /*  implicitly angle = 0, but it could be pi */
+  else				
+    n2 = n2+1;			/* odd length, make the loop include the n2 index */
+  
+  for (i=1; i<n2; i++)
+  { real = (double) a[i];
+    imag = (double) a[n-i];
+    a[i]   = (REAL)  sqrt( real*real + imag*imag );
+    if (a[i] == 0.0) 
+      a[n-i] = 0.0;
+    else
+      a[n-i] = (REAL) atan2( imag, real ); }
+}  
+
+DEFINE_PRIMITIVE ("CS-ARRAY-TO-RECTANGULAR!",
+		  Prim_cs_array_to_rectangular, 1,1, 0)
+{ long n,n2, i;
+  double magn,angl;		/* temporary variables */
+  REAL *a;
+  
+  PRIMITIVE_HEADER (1);
+  CHECK_ARG (1, ARRAY_P);	/* input and output array   -- both cs-arrays */
+  a  = Scheme_Array_To_C_Array(ARG_REF(1)); 
+  n = Array_Length(ARG_REF(1));
+  n2 = n/2;			/* integer division truncates down */
+  
+  if (a[1] > 0.0) 
+    a[0]   =      a[0];		/* assume  angle = 0 */
+  else 
+    a[0]   =   (-a[0]);		/* assume  angle = pi */
+  
+  if (2*n2 == n)		/* even length, n2 is real only */
+    if (a[n2+1] > 0.0)
+      a[n2]  =      a[n2];	/* assume  angle = 0 */
+    else
+      a[n2]  =   (-a[n2]);	/* assume  angle = pi */
+  else
+    n2 = n2+1;			/* odd length, make the loop include the n2 index */
+  
+  for (i=1; i<n2; i++)
+  { magn = (double) a[i];
+    angl = (double) a[n-i];
+    a[i]   = (REAL)  magn * cos(angl);
+    a[n-i] = (REAL)  magn * sin(angl); }
+  
+  PRIMITIVE_RETURN (NIL);
+}
+
+
+/* Convolution in the Time-Domain  
+ */
+   
+/* In the following macro
+   To1 and To2 should be (Length1-1) and (Length2-1) respectively.
+   */
 #define C_Convolution_Point_Macro(X, Y, To1, To2, N, Result)                                \
 { long Min_of_N_To1=min((N),(To1));                                                         \
   long mi, N_minus_mi;                                                                      \
@@ -888,38 +1243,33 @@ DEFINE_PRIMITIVE ("CONVOLUTION-POINT", Prim_convolution_point, 3, 3, 0)
   Reduced_Flonum_Result(C_Result);
 }
 
-DEFINE_PRIMITIVE ("ARRAY-CONVOLUTION", Prim_array_convolution, 2, 2, 0)
-{ long Endpoint1, Endpoint2, allocated_cells, i;
-  /* ASSUME A SIGNAL FROM INDEX 0 TO ENDPOINT=LENGTH-1 */
-  long Resulting_Length;
-  REAL *Array1, *Array2, *To_Here;
-  Pointer Result;
+DEFINE_PRIMITIVE ("ARRAY-CONVOLUTION-IN-TIME!",
+		  Prim_array_convolution_in_time, 3, 3, 0)
+{ long n,m,l, n_1,m_1, i;
+  REAL *a,*b,*c;
   
-  Primitive_2_Args();
-  Arg_1_Type(TC_ARRAY);
-  Arg_2_Type(TC_ARRAY);
-  Endpoint1 = Array_Length(Arg1) - 1;
-  Endpoint2 = Array_Length(Arg2) - 1;
-  Resulting_Length = Endpoint1 + Endpoint2 + 1;
-  Array1 = Scheme_Array_To_C_Array(Arg1);
-  Array2 = Scheme_Array_To_C_Array(Arg2);
-
-  allocated_cells = (Resulting_Length * REAL_SIZE) + ARRAY_HEADER_SIZE;
-  Primitive_GC_If_Needed(allocated_cells);
-  Result = Make_Pointer(TC_ARRAY, Free);
-  Free[ARRAY_HEADER] = Make_Non_Pointer(TC_MANIFEST_ARRAY, allocated_cells-1);
-  Free[ARRAY_LENGTH] = Resulting_Length;
-  Free += allocated_cells;
-  To_Here = Scheme_Array_To_C_Array(Result);
+  PRIMITIVE_HEADER (3);
+  CHECK_ARG (1, ARRAY_P);	/* input array a -- length n                     */
+  CHECK_ARG (2, ARRAY_P);	/* input array b -- length m                     */
+  CHECK_ARG (3, ARRAY_P);	/* ouput array c -- length l = (n + m - 1)       */
+  a = Scheme_Array_To_C_Array(ARG_REF(1));
+  b = Scheme_Array_To_C_Array(ARG_REF(2));
+  c = Scheme_Array_To_C_Array(ARG_REF(3));
   
-  for (i=0; i<Resulting_Length; i++)  {
-    C_Convolution_Point_Macro(Array1, Array2, Endpoint1, Endpoint2, i, *To_Here);
-    To_Here++;
-  }
-  return Result;
+  n = Array_Length(ARG_REF(1));
+  m = Array_Length(ARG_REF(2));
+  l = n+m-1;			/* resulting length */
+  if (l != Array_Length(ARG_REF(3))) error_bad_range_arg(3);
+  
+  n_1 = n-1; m_1 = m-1;
+  for (i=0; i<l; i++)
+  { C_Convolution_Point_Macro(a, b, n_1, m_1, i, c[i]); }
+  
+  PRIMITIVE_RETURN (NIL);
 }
 
-DEFINE_PRIMITIVE ("ARRAY-MULTIPLICATION-INTO-SECOND-ONE!", Prim_array_multiplication_into_second_one, 2, 2, 0)
+DEFINE_PRIMITIVE ("ARRAY-MULTIPLY-INTO-SECOND-ONE!",
+		  Prim_array_multiply_into_second_one, 2, 2, 0)
 { long Length, i;
   REAL *To_Here;
   REAL *From_Here_1, *From_Here_2;
@@ -945,7 +1295,8 @@ DEFINE_PRIMITIVE ("ARRAY-MULTIPLICATION-INTO-SECOND-ONE!", Prim_array_multiplica
   return Result;
 }
 
-DEFINE_PRIMITIVE ("ARRAY-COMPLEX-MULTIPLICATION-INTO-SECOND-ONE!", Prim_array_complex_multiplication_into_second_one, 4, 4, 0)
+DEFINE_PRIMITIVE ("COMPLEX-ARRAY-MULTIPLY-INTO-SECOND-ONE!",
+		  Prim_complex_array_multiply_into_second_one, 4, 4, 0)
 { long Length, i;
   REAL *To_Here_1, *To_Here_2;
   REAL *From_Here_1, *From_Here_2, *From_Here_3, *From_Here_4;
@@ -983,7 +1334,8 @@ DEFINE_PRIMITIVE ("ARRAY-COMPLEX-MULTIPLICATION-INTO-SECOND-ONE!", Prim_array_co
   }
   return SHARP_F;
 }
-void C_Array_Complex_Multiply_Into_First_One(a,b,c,d, length)
+
+void C_Array_Complex_Multiply_Into_First_One(a,b,c,d, length) /* used in fft.c */
      REAL *a,*b,*c,*d; long length;
 { long i;
   REAL temp;
@@ -995,141 +1347,121 @@ void C_Array_Complex_Multiply_Into_First_One(a,b,c,d, length)
 }
 
 
-DEFINE_PRIMITIVE ("ARRAY-DIVISION-INTO-FIRST-ONE!", Prim_array_division_into_first_one, 3, 3, 0)
-{ long Length, i;
-  SCHEME_ARRAY scheme_result;
-  REAL *x,*y,*result;
-  REAL infinity;
-  int Error_Number;
+DEFINE_PRIMITIVE ("ARRAY-DIVIDE-INTO-XXX!",
+		  Prim_array_divide_into_xxx, 4,4, 0)
+{ long n, i, one_or_two;
+  REAL *x,*y,*z, inf;
+  int errcode;
+  void array_divide_into_z();
   
-  Primitive_3_Args();
-  Arg_1_Type(TC_ARRAY);
-  Arg_2_Type(TC_ARRAY);
-  Length = Array_Length(Arg1);
-  if (Length != Array_Length(Arg2)) Primitive_Error(ERR_ARG_2_BAD_RANGE);
-  Error_Number = Scheme_Number_To_REAL(Arg3, &infinity); /* User-Provided Infinity */
-  if (Error_Number == 1) Primitive_Error(ERR_ARG_3_BAD_RANGE);
-  if (Error_Number == 2) Primitive_Error(ERR_ARG_3_WRONG_TYPE);
+  PRIMITIVE_HEADER (4);
+  CHECK_ARG (1, ARRAY_P);
+  CHECK_ARG (2, ARRAY_P);
+  errcode = Scheme_Number_To_REAL(ARG_REF(3), &inf);
+  if (errcode==1) error_bad_range_arg(3); if (errcode==2) error_wrong_type_arg(3); 
+  CHECK_ARG (4, FIXNUM_P);
+  one_or_two = arg_nonnegative_integer(4); /* where to store result of division */
   
-  scheme_result = Arg1;
-  result = Scheme_Array_To_C_Array(scheme_result);
-  x = Scheme_Array_To_C_Array(Arg1);
-  y = Scheme_Array_To_C_Array(Arg2);
+  x = Scheme_Array_To_C_Array(ARG_REF(1));
+  y = Scheme_Array_To_C_Array(ARG_REF(2));
+  n = Array_Length(ARG_REF(1));
+  if (n!=(Array_Length(ARG_REF(2)))) error_bad_range_arg(2);
   
-  for (i=0; i < Length; i++) {
-    if (y[i] == 0.0) {
-      if (x[i] == 0.0)		/* zero/zero */
-	result[i] = 1.0;
-      else
-	result[i] = infinity * x[i];
-    }
-    else
-      result[i] = x[i] / y[i];      
-  }
-  return scheme_result;
+  if (one_or_two == 1)
+    array_divide_into_z( x,y, x,  n, inf);
+  else if (one_or_two == 2)
+    array_divide_into_z( x,y, y,  n, inf);
+  else
+    error_bad_range_arg(4);
+  PRIMITIVE_RETURN (NIL);
 }
 
-DEFINE_PRIMITIVE ("ARRAY-DIVISION-INTO-SECOND-ONE!", Prim_array_division_into_second_one, 3, 3, 0)
-{ long Length, i;
-  SCHEME_ARRAY scheme_result;
-  REAL *x,*y,*result;
-  REAL infinity;
-  int Error_Number;
-  
-  Primitive_3_Args();
-  Arg_1_Type(TC_ARRAY);
-  Arg_2_Type(TC_ARRAY);
-  Length = Array_Length(Arg1);
-  if (Length != Array_Length(Arg2)) Primitive_Error(ERR_ARG_2_BAD_RANGE);
-  Error_Number = Scheme_Number_To_REAL(Arg3, &infinity); /* User-Provided Infinity */
-  if (Error_Number == 1) Primitive_Error(ERR_ARG_3_BAD_RANGE);
-  if (Error_Number == 2) Primitive_Error(ERR_ARG_3_WRONG_TYPE);
-  
-  scheme_result = Arg2;
-  result = Scheme_Array_To_C_Array(scheme_result);
-  x = Scheme_Array_To_C_Array(Arg1);
-  y = Scheme_Array_To_C_Array(Arg2);
-    
-  for (i=0; i < Length; i++) {
+void array_divide_into_z( x,y, z, n, inf) /* z can either x or y */
+     REAL *x,*y,*z, inf;  long n;
+{ long i;
+  for (i=0; i<n; i++) {
     if (y[i] == 0.0) {
-      if (x[i] == 0.0)		/* zero/zero */
-	result[i] = 1.0;
-      else
-	result[i] = infinity * x[i];
-    }
-    else
-      result[i] = x[i] / y[i];      
+      if (x[i] == 0.0)   z[i] = 1.0;
+      else               z[i] = inf  * x[i]; }
+    else                 z[i] = x[i] / y[i]; 
   }
-  return scheme_result;
 }
 
-DEFINE_PRIMITIVE ("ARRAY-COMPLEX-DIVISION-INTO-FIRST-ONE!", Prim_array_complex_multiplication_into_first_one, 5, 5, 0)
-{ long Length, i;
-  SCHEME_ARRAY scheme_result_r, scheme_result_i;
-  REAL *x_r,*x_i, *y_r,*y_i, *result_r,*result_i;
-  register REAL Temp, radius;
-  REAL infinity;
-  int Error_Number;
+DEFINE_PRIMITIVE ("COMPLEX-ARRAY-DIVIDE-INTO-XXX!",
+		  Prim_complex_array_divide_into_xxx, 6,6, 0)
+{ long n, i, one_or_two;
+  REAL inf, *xr,*xi, *yr,*yi;
+  void complex_array_divide_into_z();
+  int errcode;
   
-  Primitive_5_Args();
-  Arg_1_Type(TC_ARRAY);
-  Arg_2_Type(TC_ARRAY);
-  Arg_3_Type(TC_ARRAY);
-  Arg_4_Type(TC_ARRAY);
-  Length = Array_Length(Arg1);
-  if (Length != Array_Length(Arg2)) Primitive_Error(ERR_ARG_2_BAD_RANGE);
-  if (Length != Array_Length(Arg3)) Primitive_Error(ERR_ARG_3_BAD_RANGE);
-  if (Length != Array_Length(Arg4)) Primitive_Error(ERR_ARG_4_BAD_RANGE);
-  Error_Number = Scheme_Number_To_REAL(Arg5, &infinity); /* User-Provided Infinity */
-  if (Error_Number == 1) Primitive_Error(ERR_ARG_5_BAD_RANGE);
-  if (Error_Number == 2) Primitive_Error(ERR_ARG_5_WRONG_TYPE);
+  PRIMITIVE_HEADER (6);
+  CHECK_ARG (1, ARRAY_P);       /* real numerator */
+  CHECK_ARG (2, ARRAY_P);	/* imag numerator */
+  CHECK_ARG (3, ARRAY_P);	/* real denominator */
+  CHECK_ARG (4, ARRAY_P);	/* imag denominator */
+  CHECK_ARG (6, FIXNUM_P);	/* one_or_two = where to store the result */
+  n = Array_Length(ARG_REF(1));
+  if (n != Array_Length(ARG_REF(2))) error_bad_range_arg(2);
+  if (n != Array_Length(ARG_REF(3))) error_bad_range_arg(3);
+  if (n != Array_Length(ARG_REF(4))) error_bad_range_arg(4);
+  errcode = Scheme_Number_To_REAL(ARG_REF(5), &inf); /* User-Provided Infinity */
+  if (errcode==1) error_bad_range_arg(5); if (errcode==2) error_wrong_type_arg(5);
   
-  scheme_result_r = Arg1;
-  scheme_result_i = Arg2;
-  result_r = Scheme_Array_To_C_Array(scheme_result_r);
-  result_i = Scheme_Array_To_C_Array(scheme_result_i);
-  x_r = Scheme_Array_To_C_Array(Arg1);
-  x_i = Scheme_Array_To_C_Array(Arg2);
-  y_r = Scheme_Array_To_C_Array(Arg3);
-  y_i = Scheme_Array_To_C_Array(Arg4);
+  one_or_two = arg_nonnegative_integer(6); 
+  xr = Scheme_Array_To_C_Array(ARG_REF(1));
+  xi = Scheme_Array_To_C_Array(ARG_REF(2));
+  yr = Scheme_Array_To_C_Array(ARG_REF(3));
+  yi = Scheme_Array_To_C_Array(ARG_REF(4));
   
-  for (i=0; i < Length; i++) {
-    Temp        = (x_r[i] * y_r[i]) + (x_i[i] * y_i[i]);
-    radius      = (y_r[i] * y_r[i]) + (y_i[i] * y_i[i]);
-    
+  if (one_or_two == 1)
+    complex_array_divide_into_z(xr,xi, yr,yi, xr,xi,  n, inf);
+  else if (one_or_two == 2)
+    complex_array_divide_into_z(xr,xi, yr,yi, yr,yi,  n, inf);
+  else
+    error_bad_range_arg(6);
+  PRIMITIVE_RETURN (NIL);
+}
+
+void complex_array_divide_into_z(xr,xi, yr,yi, zr,zi, n, inf)   /* z can be either x or y */
+     REAL *xr,*xi, *yr,*yi, *zr,*zi, inf;   long n;
+{ long i;
+  register REAL temp, radius;
+  
+  for (i=0; i<n; i++)
+  { radius = (yr[i] * yr[i]) + (yi[i] * yi[i]); /* denominator */
     if (radius == 0.0) {
-      if (x_r[i] == 0.0) result_r[i] = 1.0;
-      else result_r[i] = infinity * x_r[i];
-      if (x_i[i] == 0.0) result_i[i] = 1.0;
-      else result_i[i] = infinity * x_i[i];
-    }
+      if (xr[i] == 0.0) zr[i] = 1.0;
+      else              zr[i] = inf * xr[i];
+      if (xi[i] == 0.0) zi[i] = 1.0;
+      else              zi[i] = inf * xi[i]; }
     else {
-      result_i[i] = ( (x_i[i] * y_r[i]) - (x_r[i] * y_i[i]) ) / radius;
-      result_r[i] = Temp / radius;
-    }
-  }
-  return SHARP_F;
+      temp        =  xr[i] * yr[i]  +  xi[i] * yi[i];
+      zi[i] = (xi[i] * yr[i]  -  xr[i] * yi[i]) / radius;
+      zr[i] = temp                              / radius; 
+    }}
 }
 
-DEFINE_PRIMITIVE ("ARRAY-LINEAR-SUPERPOSITION-INTO-SECOND-ONE!", Prim_array_linear_superposition_into_second_one, 4, 4, 0)
-{ long Length, i;
+
+DEFINE_PRIMITIVE ("ARRAY-LINEAR-SUPERPOSITION-INTO-SECOND-ONE!",
+		  Prim_array_linear_superposition_into_second_one, 4, 4, 0)
+{ long n, i;
   REAL *To_Here, Coeff1, Coeff2;
   REAL *From_Here_1, *From_Here_2;
   Pointer Result;
-  int Error_Number;
+  int errcode;
 
   Primitive_4_Args();
-  Error_Number = Scheme_Number_To_REAL(Arg1, &Coeff1);
-  if (Error_Number == 1) Primitive_Error(ERR_ARG_1_BAD_RANGE);
-  if (Error_Number == 2) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
+  errcode = Scheme_Number_To_REAL(Arg1, &Coeff1);
+  if (errcode == 1) Primitive_Error(ERR_ARG_1_BAD_RANGE);
+  if (errcode == 2) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   Arg_2_Type(TC_ARRAY);
-  Error_Number = Scheme_Number_To_REAL(Arg3, &Coeff2);
-  if (Error_Number == 1) Primitive_Error(ERR_ARG_3_BAD_RANGE);
-  if (Error_Number == 2) Primitive_Error(ERR_ARG_3_WRONG_TYPE);
+  errcode = Scheme_Number_To_REAL(Arg3, &Coeff2);
+  if (errcode == 1) Primitive_Error(ERR_ARG_3_BAD_RANGE);
+  if (errcode == 2) Primitive_Error(ERR_ARG_3_WRONG_TYPE);
   Arg_4_Type(TC_ARRAY);
 
-  Length = Array_Length(Arg2);
-  if (Length != Array_Length(Arg4)) Primitive_Error(ERR_ARG_4_BAD_RANGE);
+  n = Array_Length(Arg2);
+  if (n != Array_Length(Arg4)) Primitive_Error(ERR_ARG_4_BAD_RANGE);
   
   Result = Arg4;
   
@@ -1137,7 +1469,7 @@ DEFINE_PRIMITIVE ("ARRAY-LINEAR-SUPERPOSITION-INTO-SECOND-ONE!", Prim_array_line
   From_Here_2 = Scheme_Array_To_C_Array(Arg4);
   To_Here = Scheme_Array_To_C_Array(Result);
 
-  for (i=0; i < Length; i++) {
+  for (i=0; i < n; i++) {
     *To_Here++ = (Coeff1 * (*From_Here_1)) + (Coeff2 * (*From_Here_2));
     From_Here_1++ ;
     From_Here_2++ ;
@@ -1154,7 +1486,7 @@ DEFINE_PRIMITIVE ("SAMPLE-PERIODIC-FUNCTION", Prim_sample_periodic_function, 4, 
   double twopi = 6.28318530717958;
   Pointer Result, Pfunction_number, Psignal_frequency; 
   Pointer Pfunction_Number;
-  int Error_Number;
+  int errcode;
   REAL *To_Here;
   double unit_square_wave(), unit_triangle_wave();
   
@@ -1163,14 +1495,14 @@ DEFINE_PRIMITIVE ("SAMPLE-PERIODIC-FUNCTION", Prim_sample_periodic_function, 4, 
   Arg_4_Type(TC_FIXNUM);
   Range_Check(Function_Number, Arg1, 0, 10, ERR_ARG_1_BAD_RANGE); /* fix this */
   
-  Error_Number = Scheme_Number_To_Double(Arg2, &Signal_Frequency);
-  if (Error_Number == 1) Primitive_Error(ERR_ARG_2_BAD_RANGE);
-  if (Error_Number == 2) Primitive_Error(ERR_ARG_2_WRONG_TYPE);
+  errcode = Scheme_Number_To_Double(Arg2, &Signal_Frequency);
+  if (errcode == 1) Primitive_Error(ERR_ARG_2_BAD_RANGE);
+  if (errcode == 2) Primitive_Error(ERR_ARG_2_WRONG_TYPE);
   if (Signal_Frequency == 0) Primitive_Error(ERR_ARG_2_BAD_RANGE);
   
-  Error_Number = Scheme_Number_To_Double(Arg3, &Sampling_Frequency);
-  if (Error_Number == 1) Primitive_Error(ERR_ARG_3_BAD_RANGE);
-  if (Error_Number == 2) Primitive_Error(ERR_ARG_3_WRONG_TYPE);
+  errcode = Scheme_Number_To_Double(Arg3, &Sampling_Frequency);
+  if (errcode == 1) Primitive_Error(ERR_ARG_3_BAD_RANGE);
+  if (errcode == 2) Primitive_Error(ERR_ARG_3_WRONG_TYPE);
   if (Sampling_Frequency == 0) Primitive_Error(ERR_ARG_3_BAD_RANGE);
   
   Range_Check(N, Arg4, 0, ARRAY_MAX_LENGTH, ERR_ARG_4_BAD_RANGE);
@@ -1282,7 +1614,7 @@ DEFINE_PRIMITIVE ("SAMPLE-APERIODIC-FUNCTION", Prim_sample_aperiodic_function, 3
   double Sampling_Frequency, DT, DTi;
   double twopi = 6.28318530717958;
   Pointer Result;
-  int Error_Number;
+  int errcode;
   REAL *To_Here, twopi_dt;
 
   Primitive_3_Args();
@@ -1290,9 +1622,9 @@ DEFINE_PRIMITIVE ("SAMPLE-APERIODIC-FUNCTION", Prim_sample_aperiodic_function, 3
   Arg_3_Type(TC_FIXNUM);
   Range_Check(Function_Number, Arg1, 0, 6, ERR_ARG_1_BAD_RANGE);
   
-  Error_Number = Scheme_Number_To_Double(Arg2, &Sampling_Frequency);
-  if (Error_Number == 1) Primitive_Error(ERR_ARG_2_BAD_RANGE);
-  if (Error_Number == 2) Primitive_Error(ERR_ARG_2_WRONG_TYPE);
+  errcode = Scheme_Number_To_Double(Arg2, &Sampling_Frequency);
+  if (errcode == 1) Primitive_Error(ERR_ARG_2_BAD_RANGE);
+  if (errcode == 2) Primitive_Error(ERR_ARG_2_WRONG_TYPE);
   if (Sampling_Frequency == 0) Primitive_Error(ERR_ARG_2_BAD_RANGE);
 
   Range_Check(N, Arg3, 0, ARRAY_MAX_LENGTH, ERR_ARG_3_BAD_RANGE);
@@ -1469,15 +1801,15 @@ void Scheme_Vector_To_C_Array(Scheme_Vector, Array)
 { Pointer *From_Here;
   REAL *To_Here;
   long Length, i;
-  int Error_Number;
+  int errcode;
 
   From_Here = Nth_Vector_Loc(Scheme_Vector, VECTOR_DATA);
   To_Here = Array;
   Length = Vector_Length(Scheme_Vector);
   for (i=0; i < Length; i++, From_Here++) {
-    Error_Number = Scheme_Number_To_REAL(*From_Here, To_Here);
-    if (Error_Number == 1) Primitive_Error(ERR_ARG_1_BAD_RANGE);
-    if (Error_Number == 2) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
+    errcode = Scheme_Number_To_REAL(*From_Here, To_Here);
+    if (errcode == 1) Primitive_Error(ERR_ARG_1_BAD_RANGE);
+    if (errcode == 2) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
 
     To_Here++;            /* this gets incremented by REAL_SIZE ! */
   }

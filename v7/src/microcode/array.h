@@ -30,17 +30,24 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.h,v 9.29 1989/02/19 17:51:28 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.h,v 9.30 1989/06/22 21:51:57 pas Rel $ */
 
 
 #define REAL float
-#define REAL_SIZE ((sizeof(Pointer)+sizeof(REAL)-1)/ sizeof(Pointer))
-/* REAL should be either double or float.
- */
+#define REAL_IS_DEFINED_DOUBLE 0
+/* 
+  When REAL is float,  set = 0
+  When REAL is double, set = 1
+  This is used by #ifdef in some places like "fscanf" 
+  */
 
-/* Scheme_Arrays are implemented as NON_MARKED_VECTOR's.
-   Do not forget to include object.h
-   */
+#define REAL_SIZE ((sizeof(Pointer)+sizeof(REAL)-1)/ sizeof(Pointer))
+
+/* Scheme_Arrays are implemented as NON_MARKED_VECTOR
+   Do not forget to include object.h */
+
+#define ARRAY_P   NON_MARKED_VECTOR_P
+/* This is used in places like "CHECK_ARG(1, ARRAY_P)" */
 
 #define TC_ARRAY TC_NON_MARKED_VECTOR
 #define TC_MANIFEST_ARRAY TC_MANIFEST_NM_VECTOR
@@ -154,21 +161,16 @@ MIT in each case. */
 
 #define Linear_Map(slope,offset,From,To) { (To) = (((slope)*(From))+offset); }
 
-#define C_Find_Magnitude(Real, Imag, Mag_Cell)                                 \
-{ double double_Real=((double) Real), double_Imag=((double) Imag);             \
-  Mag_Cell = (REAL) sqrt((double_Real*double_Real)+(double_Imag*double_Imag)); \
-}
-
 #define mabs(x)		(((x)<0) ? -(x) : (x))
 #define max(x,y)	(((x)<(y)) ? (y) : (x))
 #define min(x,y)	(((x)<(y)) ? (x) : (y))
 
-/* FROM ARRAY.C */
+/* From array.c 
+ */
 extern int    Scheme_Number_To_REAL();
 extern int    Scheme_Number_To_Double();
 
-extern void   C_Array_Find_Min_Max();   /* Find the index of the minimum (*nmin), maximum (*nmax). */
-extern void   C_Array_Find_Average();
+extern void   C_Array_Find_Min_Max(); 
 extern void   C_Array_Make_Histogram();  /* REAL *Array,*Histogram; long Length,npoints */
 extern void   C_Array_Complex_Multiply_Into_First_One(); 
 
@@ -187,7 +189,7 @@ extern void    Scheme_Vector_To_C_Array();
 /* Pointer Scheme_Vector; REAL *Array; 
  */
 
-/* FROM BOB-XT.C */
+/* From bob-xt.c */
 extern void Find_Offset_Scale_For_Linear_Map();
 /* REAL Min,Max, New_Min,New_Max, *Offset,*Scale;
  */

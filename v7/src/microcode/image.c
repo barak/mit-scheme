@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/image.c,v 9.27 1988/08/15 20:49:26 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/image.c,v 9.28 1989/06/22 21:52:26 pas Rel $ */
 
 #include "scheme.h"
 #include "prims.h"
@@ -339,65 +339,8 @@ Image_Mirror_Upside_Down(Array,nrows,ncols,Temp_Row)
   }
 }
 
-DEFINE_PRIMITIVE ("SUBIMAGE", Prim_subimage, 5, 5, 0)
-{ long Length, new_Length;
-  long i,j;
-  Pointer Pnrows, Pncols, Prest, Parray;
-  long lrow, hrow, lcol, hcol;
-  long nrows, ncols, new_nrows, new_ncols;
-  REAL *Array, *To_Here;
-  Pointer Result, Array_Data_Result, *Orig_Free;
-  int Error_Number;
-  long allocated_cells;
 
-  Primitive_5_Args();
-  Arg_1_Type(TC_LIST);             /* image = (nrows ncols array) */
-  Pnrows = Vector_Ref(Arg1, CONS_CAR);
-  Prest = Vector_Ref(Arg1, CONS_CDR);
-  Pncols = Vector_Ref(Prest, CONS_CAR);
-  Prest = Vector_Ref(Prest, CONS_CDR);
-  Parray = Vector_Ref(Prest, CONS_CAR);
-  if (Vector_Ref(Prest, CONS_CDR) != NIL) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
-  if (Type_Code(Parray) != TC_ARRAY) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
-  
-  Range_Check(nrows, Pnrows, 0, 1024, ERR_ARG_1_BAD_RANGE);
-  Range_Check(ncols, Pncols, 0, 1024, ERR_ARG_1_BAD_RANGE);
-
-  Range_Check(lrow, Arg2, 0, nrows, ERR_ARG_2_BAD_RANGE);
-  Range_Check(hrow, Arg3, lrow, nrows, ERR_ARG_3_BAD_RANGE);
-  Range_Check(lcol, Arg4, 0, ncols, ERR_ARG_4_BAD_RANGE);
-  Range_Check(hcol, Arg5, lcol, ncols, ERR_ARG_5_BAD_RANGE);
-  new_nrows = hrow - lrow +1;
-  new_ncols = hcol - lcol +1;
-  new_Length = new_nrows * new_ncols;
-
-  /* ALLOCATE SPACE */
-  Primitive_GC_If_Needed(6);
-  Orig_Free = Free;
-  Free += 6;
-  Result = Make_Pointer(TC_LIST, Orig_Free);
-  *Orig_Free++ = Make_Non_Pointer(TC_FIXNUM, new_nrows);
-  *Orig_Free = Make_Pointer(TC_LIST, Orig_Free+1);
-  Orig_Free++;
-  *Orig_Free++ = Make_Non_Pointer(TC_FIXNUM, new_ncols);
-  *Orig_Free = Make_Pointer(TC_LIST, Orig_Free+1);
-  Orig_Free++;
-  Allocate_Array(Array_Data_Result, new_Length, allocated_cells); 
-  *Orig_Free++ = Array_Data_Result;
-  *Orig_Free = NIL;
-  /* END ALLOCATION */
-  
-  Array = Scheme_Array_To_C_Array(Parray);
-  To_Here = Scheme_Array_To_C_Array(Array_Data_Result);
-  for (i=lrow; i<=hrow; i++) {
-    for (j=lcol; j<=hcol; j++) {
-      *To_Here++ = Array[i*ncols+j];                              /*  A(i,j)--->Array[i*ncols+j]  */
-    }}
-  
-  return Result;
-}
-
-/* The following does not work properly, to be fixed if need.
+/* The following does not work, to be fixed.
  */
 DEFINE_PRIMITIVE ("IMAGE-DOUBLE-TO-FLOAT!", Prim_image_double_to_float, 1, 1, 0)
 { long Length;
@@ -434,7 +377,6 @@ DEFINE_PRIMITIVE ("IMAGE-DOUBLE-TO-FLOAT!", Prim_image_double_to_float, 1, 1, 0)
     *To_Here = ((float) temp_value_cell);
     To_Here++;
   }
-  
   /* and now SIDE-EFFECT the ARRAY_HEADER */
   allocated_cells = (Length * 
 		     ((sizeof(Pointer)+sizeof(float)-1) / sizeof(Pointer)) +
@@ -446,156 +388,136 @@ DEFINE_PRIMITIVE ("IMAGE-DOUBLE-TO-FLOAT!", Prim_image_double_to_float, 1, 1, 0)
   return Arg1;
 }
 
-DEFINE_PRIMITIVE ("IMAGE-SET-ROW!", Prim_image_set_row, 3, 3, 0)
-{ long Length, i,j;
-  Pointer Pnrows, Pncols, Prest, Parray;
-  long nrows, ncols, row_to_set;
-  REAL *Array, *Row_Array;
-  
-  Primitive_3_Args();
-  Arg_1_Type(TC_LIST);             /* image = (nrows ncols array) */
-  Pnrows = Vector_Ref(Arg1, CONS_CAR);
-  Prest = Vector_Ref(Arg1, CONS_CDR);
-  Pncols = Vector_Ref(Prest, CONS_CAR);
-  Prest = Vector_Ref(Prest, CONS_CDR);
-  Parray = Vector_Ref(Prest, CONS_CAR);
-  if (Vector_Ref(Prest, CONS_CDR) != NIL) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
-  if (Type_Code(Parray) != TC_ARRAY) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
-  
-  Range_Check(nrows, Pnrows, 0, 1024, ERR_ARG_1_BAD_RANGE);
-  Range_Check(ncols, Pncols, 0, 1024, ERR_ARG_1_BAD_RANGE);
 
-  Arg_2_Type(TC_FIXNUM);
-  Range_Check(row_to_set, Arg2, 0, (nrows-1), ERR_ARG_2_BAD_RANGE);
-  Arg_3_Type(TC_ARRAY);
-  Row_Array = Scheme_Array_To_C_Array(Arg3);
-  if (Array_Length(Arg3)>ncols) Primitive_Error(ERR_ARG_3_BAD_RANGE);
+
+
+DEFINE_PRIMITIVE ("SUBIMAGE-COPY!",
+		  Prim_subimage_copy, 12,12, 0)
+{ long r1,c1, r2,c2, at1r,at1c,at2r,at2c, mr,mc;
+  long nn;
+  REAL *x,*y;
+  void subimage_copy();
+  PRIMITIVE_HEADER (12);
+  CHECK_ARG (1, FIXNUM_P);	/* rows 1 */
+  CHECK_ARG (2, FIXNUM_P);	/* cols 1 */
+  CHECK_ARG (3, ARRAY_P);	/* image array 1 =    source array */
+  CHECK_ARG (4, FIXNUM_P);	/* rows 2 */
+  CHECK_ARG (5, FIXNUM_P);	/* cols 2 */
+  CHECK_ARG (6, ARRAY_P);	/* image array 2 =    destination array */
   
-  Array = Scheme_Array_To_C_Array(Parray);
-  C_Image_Set_Row(Array, row_to_set, Row_Array, nrows, ncols);
-  return Arg1;
+  CHECK_ARG (7, FIXNUM_P);	/* at1 row */
+  CHECK_ARG (8, FIXNUM_P);	/* at1 col */
+  CHECK_ARG (9, FIXNUM_P);	/* at2 row */
+  CHECK_ARG (10, FIXNUM_P);	/* at2 col */
+  CHECK_ARG (11, FIXNUM_P);	/* m row */
+  CHECK_ARG (12, FIXNUM_P);	/* m col */
+  
+  x = Scheme_Array_To_C_Array(ARG_REF(3));
+  y = Scheme_Array_To_C_Array(ARG_REF(6));
+  r1 = arg_nonnegative_integer(1);
+  c1 = arg_nonnegative_integer(2);
+  r2 = arg_nonnegative_integer(4);
+  c2 = arg_nonnegative_integer(5);
+  
+  nn = r1*c1;
+  if (nn != Array_Length(ARG_REF(3)))   error_bad_range_arg(3);
+  nn = r2*c2;
+  if (nn != Array_Length(ARG_REF(6)))   error_bad_range_arg(6);
+  
+  at1r = arg_nonnegative_integer(7);
+  at1c = arg_nonnegative_integer(8);
+  at2r = arg_nonnegative_integer(9);
+  at2c = arg_nonnegative_integer(10);
+  mr = arg_nonnegative_integer(11);
+  mc = arg_nonnegative_integer(12);
+  
+  if (((at1r+mr)>r1) || ((at1c+mc)>c1)) error_bad_range_arg(7);
+  if (((at2r+mr)>r2) || ((at2c+mc)>c2)) error_bad_range_arg(9);
+  
+  subimage_copy(x,y, r1,c1,r2,c2, at1r,at1c,at2r,at2c, mr,mc);
+  
+  PRIMITIVE_RETURN (NIL);
 }
 
-DEFINE_PRIMITIVE ("IMAGE-SET-COLUMN!", Prim_image_set_column, 3, 3, 0)
-{ long Length, i,j;
-  Pointer Pnrows, Pncols, Prest, Parray;
-  long nrows, ncols, col_to_set;
-  REAL *Array, *Col_Array;
+void subimage_copy(x,y, r1,c1,r2,c2, at1r,at1c,at2r,at2c, mr,mc)
+     REAL *x,*y; long r1,c1,r2,c2, at1r,at1c,at2r,at2c, mr,mc;
+{ long i,j;
+  REAL *xrow,*yrow;
+
+  xrow = x + at1r*c1   + at1c;
+  yrow = y + at2r*c2   + at2c;	/*  A(i,j)--->Array[i*ncols+j]  */
   
-  Primitive_3_Args();
-  Arg_1_Type(TC_LIST);             /* image = (nrows ncols array) */
-  Pnrows = Vector_Ref(Arg1, CONS_CAR);
-  Prest = Vector_Ref(Arg1, CONS_CDR);
-  Pncols = Vector_Ref(Prest, CONS_CAR);
-  Prest = Vector_Ref(Prest, CONS_CDR);
-  Parray = Vector_Ref(Prest, CONS_CAR);
-  if (Vector_Ref(Prest, CONS_CDR) != NIL) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
-  if (Type_Code(Parray) != TC_ARRAY) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
-  
-  Range_Check(nrows, Pnrows, 0, 1024, ERR_ARG_1_BAD_RANGE);
-  Range_Check(ncols, Pncols, 0, 1024, ERR_ARG_1_BAD_RANGE);
-
-  Arg_2_Type(TC_FIXNUM);
-  Range_Check(col_to_set, Arg2, 0, (nrows-1), ERR_ARG_2_BAD_RANGE);
-  Arg_3_Type(TC_ARRAY);
-  Col_Array = Scheme_Array_To_C_Array(Arg3);
-  if (Array_Length(Arg3)>ncols) Primitive_Error(ERR_ARG_3_BAD_RANGE);
-  
-  Array = Scheme_Array_To_C_Array(Parray);
-  C_Image_Set_Col(Array, col_to_set, Col_Array, nrows, ncols);
-  return Arg1;
-}
-
-C_Image_Set_Row(Image_Array, row_to_set, Row_Array, nrows, ncols) REAL *Image_Array, *Row_Array; 
-long nrows, ncols, row_to_set;
-{ long j;
-  REAL *From_Here, *To_Here;
-
-  To_Here   = &Image_Array[row_to_set*ncols];
-  From_Here = Row_Array;
-  for (j=0;j<ncols;j++) 
-    *To_Here++ = *From_Here++;
-}
-
-C_Image_Set_Col(Image_Array, col_to_set, Col_Array, nrows, ncols) REAL *Image_Array, *Col_Array; 
-long nrows, ncols, col_to_set;
-{ long i;
-  REAL *From_Here, *To_Here;
-
-  To_Here   = &Image_Array[col_to_set];
-  From_Here = Col_Array;
-  for (i=0;i<nrows;i++) {
-    *To_Here = *From_Here++;
-    To_Here += nrows;
+  for (i=0; i<mr; i++) {
+    for (j=0; j<mc; j++)    yrow[j] = xrow[j];
+    xrow = xrow + c1;
+    yrow = yrow + c2;
   }
 }
 
-DEFINE_PRIMITIVE ("IMAGE-LAPLACIAN", Prim_image_laplacian, 1, 1, 0)
-{ long nrows, ncols, Length;
-  Pointer Pnrows, Pncols, Prest, Parray;
-  REAL *Array, *To_Here;
-  Pointer Result, Array_Data_Result, *Orig_Free;
-  long allocated_cells;
-  /* */
-  Primitive_1_Args();
-  Arg_1_Type(TC_LIST);             /* image = (nrows ncols array) */
-  Pnrows = Vector_Ref(Arg1, CONS_CAR);
-  Prest = Vector_Ref(Arg1, CONS_CDR);
-  Pncols = Vector_Ref(Prest, CONS_CAR);
-  Prest = Vector_Ref(Prest, CONS_CDR);
-  Parray = Vector_Ref(Prest, CONS_CAR);
-  if (Vector_Ref(Prest, CONS_CDR) != NIL) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
-  if (Type_Code(Parray) != TC_ARRAY) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
-  /* */
-  Range_Check(nrows, Pnrows, 0, 1024, ERR_ARG_1_BAD_RANGE);
-  Range_Check(ncols, Pncols, 0, 1024, ERR_ARG_1_BAD_RANGE);
-  Length=nrows*ncols;
-  /* */
-  /* ALLOCATE SPACE */
-  Primitive_GC_If_Needed(6);
-  Orig_Free = Free;
-  Free += 6;
-  Result = Make_Pointer(TC_LIST, Orig_Free);
-  *Orig_Free++ = Make_Non_Pointer(TC_FIXNUM, nrows);
-  *Orig_Free = Make_Pointer(TC_LIST, Orig_Free+1);
-  Orig_Free++;
-  *Orig_Free++ = Make_Non_Pointer(TC_FIXNUM, ncols);
-  *Orig_Free = Make_Pointer(TC_LIST, Orig_Free+1);
-  Orig_Free++;
-  Allocate_Array(Array_Data_Result, Length, allocated_cells); 
-  *Orig_Free++ = Array_Data_Result;
-  *Orig_Free = NIL;
-  /* END ALLOCATION */
-  /* */
-  Array = Scheme_Array_To_C_Array(Parray);
-  C_image_laplacian(Array, (Scheme_Array_To_C_Array(Array_Data_Result)), nrows, ncols);
-  PRIMITIVE_RETURN(Result);
+
+
+/* image-operation-2
+   groups together procedures     that use 2 image-arrays 
+   (usually side-effecting the 2nd image, but not necessarily)
+   */
+
+DEFINE_PRIMITIVE ("IMAGE-OPERATION-2!",
+		  Prim_image_operation_2, 5,5, 0)
+{ long rows, cols, nn, opcode;
+  REAL *x,*y;
+  void image_laplacian();
+  PRIMITIVE_HEADER (5);
+  CHECK_ARG (1, FIXNUM_P);	/* operation opcode */
+  CHECK_ARG (2, FIXNUM_P);	/* rows */
+  CHECK_ARG (3, FIXNUM_P);	/* cols */
+  CHECK_ARG (4, ARRAY_P);	/* image array 1 */
+  CHECK_ARG (5, ARRAY_P);	/* image array 2 */
+  
+  x = Scheme_Array_To_C_Array(ARG_REF(4));
+  y = Scheme_Array_To_C_Array(ARG_REF(5));
+  rows = arg_nonnegative_integer(2);
+  cols = arg_nonnegative_integer(3);
+  nn = rows*cols;
+  if (nn != Array_Length(ARG_REF(4)))   error_bad_range_arg(4);
+  if (nn != Array_Length(ARG_REF(5)))   error_bad_range_arg(5);
+  
+  opcode = arg_nonnegative_integer(1);
+  
+  if (opcode==1)
+    image_laplacian(x,y,rows,cols); /* result in y */
+  else if (opcode==2)
+    error_bad_range_arg(1);	/* illegal opcode */
+  else
+    error_bad_range_arg(1);	/* illegal opcode */
+  
+  PRIMITIVE_RETURN (NIL);
 }
 
 /* Laplacian form [4,-1,-1,-1,-1]/4
         A(i,j) --> Array[i*ncols + j] 
 	With no knowledge outside boundary, assume laplace(edge-point)=0.0 (no wrap-around, no artificial bndry) 
 	*/
-C_image_laplacian(array, new_array, nrows, ncols)         
-     REAL *array, *new_array;
+void image_laplacian(x,y, nrows,ncols)
+     REAL *x, *y;
      long nrows, ncols;
 { long i,j, nrows1, ncols1;
   nrows1=nrows-1; ncols1=ncols-1;
-  if ((nrows<2)||(ncols<2)) return(1); /* no need todo anything for 1-point image */
+  if ((nrows<2)||(ncols<2)) return; /* no need todo anything for 1-point image */
   /* */
-  i=0;j=0;           new_array[i*ncols+j] = 0.0; /* NE corner */
-  i=0;j=ncols1;      new_array[i*ncols+j] = 0.0; /* NW corner */
-  i=nrows1;j=0;      new_array[i*ncols+j] = 0.0; /* SE corner */
-  i=nrows1;j=ncols1; new_array[i*ncols+j] = 0.0; /* SW corner */
-  i=0; for (j=1;j<ncols1;j++)       new_array[i*ncols+j] = 0.0;	/* NORTH row */
-  i=nrows1; for (j=1;j<ncols1;j++)  new_array[i*ncols+j] = 0.0;	/* SOUTH row */
-  j=0; for (i=1;i<nrows1;i++)       new_array[i*ncols+j] = 0.0;	/* EAST column */
-  j=ncols1; for (i=1;i<nrows1;i++)  new_array[i*ncols+j] = 0.0;	/* WEST column */
+  i=0;j=0;           y[i*ncols+j] = 0.0; /* NE corner */
+  i=0;j=ncols1;      y[i*ncols+j] = 0.0; /* NW corner */
+  i=nrows1;j=0;      y[i*ncols+j] = 0.0; /* SE corner */
+  i=nrows1;j=ncols1; y[i*ncols+j] = 0.0; /* SW corner */
+  i=0; for (j=1;j<ncols1;j++)       y[i*ncols+j] = 0.0;	/* NORTH row */
+  i=nrows1; for (j=1;j<ncols1;j++)  y[i*ncols+j] = 0.0;	/* SOUTH row */
+  j=0; for (i=1;i<nrows1;i++)       y[i*ncols+j] = 0.0;	/* EAST column */
+  j=ncols1; for (i=1;i<nrows1;i++)  y[i*ncols+j] = 0.0;	/* WEST column */
   /* */
   for (i=1;i<nrows1;i++)
-    for (j=1;j<ncols1;j++) new_array[i*ncols+j] = /* interior of image */
-      array[i*ncols+j] - (.25)*(array[i*ncols+(j-1)] + array[i*ncols+(j+1)] + array[(i-1)*ncols+j] + array[(i+1)*ncols+j]); 
+    for (j=1;j<ncols1;j++) y[i*ncols+j] = /* interior of image */
+      x[i*ncols+j] - (.25)*(x[i*ncols+(j-1)] + x[i*ncols+(j+1)] + x[(i-1)*ncols+j] + x[(i+1)*ncols+j]); 
 }
+
 
 DEFINE_PRIMITIVE ("IMAGE-DOUBLE-BY-INTERPOLATION", Prim_image_double_by_interpolation, 1, 1, 0)
 { long nrows, ncols, Length;
@@ -854,7 +776,7 @@ DEFINE_PRIMITIVE ("IMAGE-TRANSPOSE!", Prim_image_transpose, 1, 1, 0)
   Vector_Set(Prest, CONS_CAR, Make_Pointer(TC_FIXNUM, nrows) );
   return Arg1;
 }
-
+
 DEFINE_PRIMITIVE ("IMAGE-ROTATE-90CLW!", Prim_image_rotate_90clw, 1, 1, 0)
 { long Length;
   Pointer Pnrows, Pncols, Prest, Parray;
@@ -887,7 +809,7 @@ DEFINE_PRIMITIVE ("IMAGE-ROTATE-90CLW!", Prim_image_rotate_90clw, 1, 1, 0)
   Vector_Set(Prest, CONS_CAR, Make_Pointer(TC_FIXNUM, nrows) );
   return Arg1;
 }
-
+
 DEFINE_PRIMITIVE ("IMAGE-ROTATE-90CCLW!", Prim_image_rotate_90cclw, 1, 1, 0)
 { long Length;
   Pointer Pnrows, Pncols, Prest, Parray;
@@ -920,7 +842,7 @@ DEFINE_PRIMITIVE ("IMAGE-ROTATE-90CCLW!", Prim_image_rotate_90cclw, 1, 1, 0)
   Vector_Set(Prest, CONS_CAR, Make_Pointer(TC_FIXNUM, nrows) );
   return Arg1;
 }
-
+
 DEFINE_PRIMITIVE ("IMAGE-MIRROR!", Prim_image_mirror, 1, 1, 0)
 { long Length;
   Pointer Pnrows, Pncols, Prest, Parray;
@@ -947,9 +869,9 @@ DEFINE_PRIMITIVE ("IMAGE-MIRROR!", Prim_image_mirror, 1, 1, 0)
   
   return Arg1;
 }
-
 
-/* THE C ROUTINES THAT DO THE REAL WORK */
+
+/* C routines   referred to above  */
 
 /*
   IMAGE_FAST_TRANSPOSE
@@ -971,7 +893,7 @@ Image_Fast_Transpose(Array, nrows)       /* for square images */
       Array[to]   = temp;
     }}
 }
-
+
 /*
   IMAGE_TRANSPOSE
   A(i,j) -> B(j,i) .
@@ -986,7 +908,7 @@ Image_Transpose(Array, New_Array, nrows, ncols)
       New_Array[j*nrows + i] = Array[i*ncols + j];        /* (columns transposed-image) = nrows */
     }}
 }
-
+
 /*
   IMAGE_ROTATE_90CLW 
   A(i,j) <-> A(j, (nrows-1)-i) .
@@ -1002,7 +924,7 @@ Image_Rotate_90clw(Array, Rotated_Array, nrows, ncols)
       Rotated_Array[(j*nrows) + ((nrows-1)-i)] = Array[i*ncols+j];    /* (columns rotated_image) =nrows */
     }}
 }
-
+
 /*
   ROTATION 90degrees COUNTER-CLOCK-WISE:
   A(i,j) <-> A((nrows-1)-j, i) . (minus 1 because we start from 0).
@@ -1021,7 +943,7 @@ Image_Rotate_90cclw(Array, Rotated_Array, nrows, ncols)
       Rotated_Array[to_index] = Array[from_index];
     }}
 }
-
+
 /*
   IMAGE_MIRROR:
   A(i,j) <-> A(i, (ncols-1)-j)  [ The -1 is there because we count from 0] .
@@ -1043,8 +965,6 @@ C_Mirror_Image(Array, nrows, ncols)  REAL *Array; long nrows, ncols;
     }}
 }
 
-
-
 /*
   IMAGE_ROTATE_90CLW_MIRROR:
   A(i,j) <-> A(j, i)     this should be identical to image_transpose (see above).
@@ -1063,384 +983,456 @@ C_Rotate_90clw_Mirror_Image(Array, Rotated_Array, nrows, ncols)
       Rotated_Array[to] = Array[from];
     }}
 }
+
+
+/* More Image Manipulation -----------------------
+ */
+
+DEFINE_PRIMITIVE ("SQUARE-IMAGE-TIME-REVERSE!",
+		  Prim_square_image_time_reverse, 2,2, 0)
+{ long i, rows;
+  REAL *a;
+  void square_image_time_reverse();
+  PRIMITIVE_HEADER (2);
+  CHECK_ARG (1, ARRAY_P);
+  CHECK_ARG (2, FIXNUM_P);
+  a = Scheme_Array_To_C_Array(ARG_REF(1));
+  rows = arg_nonnegative_integer(2);
+  if ((rows*rows) != Array_Length(ARG_REF(1)))     error_bad_range_arg(1);
+  square_image_time_reverse(a,rows);
+  
+  PRIMITIVE_RETURN (NIL);
+}
+
+/* Square Image Time reverse 
+   is combination of one-dimensional time-reverse
+   row-wise and column-wise.
+   It   can be done slightly more efficiently than below.
+   */
+void square_image_time_reverse(x,rows)
+     REAL *x;
+     long rows;
+{ long i,cols;
+  REAL *xrow, *yrow;
+  void C_Array_Time_Reverse();
+  cols = rows;			/* square image */
+  
+  xrow = x;
+  for (i=0; i<rows; i++)	/* row-wise */
+  { C_Array_Time_Reverse(xrow,cols);
+    xrow = xrow + cols; }
+  
+  Image_Fast_Transpose(x, rows);
+  
+  xrow = x;
+  for (i=0; i<rows; i++)	/* column-wise */
+  { C_Array_Time_Reverse(xrow,cols);
+    xrow = xrow + cols; }
+  
+  Image_Fast_Transpose(x, rows);
+}
+
+
 
+/*      cs-images   
+ */
 
+/* operation-1 
+   groups together procedures     that operate on 1 cs-image-array 
+   (side-effecting the image)
+   */
 
-
-
-/* END */
-
-
-
-
-
-
-/*
-
-DEFINE_PRIMITIVE ("SAMPLE-PERIODIC-2D-FUNCTION", Prim_sample_periodic_2d_function, 4, 4, 0)
-{ long N, i, allocated_cells, Function_Number;
-  REAL Signal_Frequency, Sampling_Frequency, DT, DTi;
-  REAL twopi = 6.28318530717958, twopi_f_dt;
-  Pointer Result, Pfunction_number, Psignal_frequency; 
-  Pointer Pfunction_Number;
-  int Error_Number;
-  REAL *To_Here, unit_square_wave(), unit_triangle_wave();
+DEFINE_PRIMITIVE ("CS-IMAGE-OPERATION-1!",
+		  Prim_cs_image_operation_1, 3,3, 0)
+{ long rows, opcode;
+  REAL *a;
+  void cs_image_magnitude(), cs_image_real_part(), cs_image_imag_part();
+  PRIMITIVE_HEADER (3);
+  CHECK_ARG (1, FIXNUM_P);	/* operation opcode */
+  CHECK_ARG (2, FIXNUM_P);	/* rows */
+  CHECK_ARG (3, ARRAY_P);	/* input and output image array */
   
-  Primitive_4_Args();
-  Arg_1_Type(TC_FIXNUM);
-  Arg_4_Type(TC_FIXNUM);
-  Range_Check(Function_Number, Arg1, 0, 10, ERR_ARG_1_BAD_RANGE); / * fix this * /
+  a = Scheme_Array_To_C_Array(ARG_REF(3));
+  rows = arg_nonnegative_integer(2); /*          square images only */
+  if ((rows*rows) != Array_Length(ARG_REF(3)))   error_bad_range_arg(1);
+  opcode = arg_nonnegative_integer(1);
   
-  Error_Number = Scheme_Number_To_REAL(Arg2, &Signal_Frequency);
-  if (Error_Number == 1) Primitive_Error(ERR_ARG_2_BAD_RANGE);
-  if (Error_Number == 2) Primitive_Error(ERR_ARG_2_WRONG_TYPE);
-  if (Signal_Frequency == 0) Primitive_Error(ERR_ARG_2_BAD_RANGE);
-  
-  Error_Number = Scheme_Number_To_REAL(Arg3, &Sampling_Frequency);
-  if (Error_Number == 1) Primitive_Error(ERR_ARG_3_BAD_RANGE);
-  if (Error_Number == 2) Primitive_Error(ERR_ARG_3_WRONG_TYPE);
-  if (Sampling_Frequency == 0) Primitive_Error(ERR_ARG_3_BAD_RANGE);
-  DT = (1 / Sampling_Frequency);
-  twopi_f_dt = twopi * Signal_Frequency * DT;
-  
-  Range_Check(N, Arg4, 0, ARRAY_MAX_LENGTH, ERR_ARG_4_BAD_RANGE); 
-  
-  allocated_cells = (N*REAL_SIZE) + ARRAY_HEADER_SIZE;
-  Primitive_GC_If_Needed(allocated_cells);
-  
-  Result = Make_Pointer(TC_ARRAY, Free);
-  Free[ARRAY_HEADER] = Make_Non_Pointer(TC_MANIFEST_ARRAY, allocated_cells-1);
-  Free[ARRAY_LENGTH] = N;
-  To_Here = Scheme_Array_To_C_Array(Result);
-  Free = Free+allocated_cells;
-  
-  DT = twopi_f_dt;
-  if (Function_Number == 0) 
-    for (i=0, DTi=0.0; i < N; i++, DTi += DT)
-      *To_Here++ = cos(DTi);
-  else if (Function_Number == 1)
-    for (i=0, DTi=0.0; i < N; i++, DTi += DT)
-      *To_Here++ = sin(DTi);
-  else if (Function_Number == 2)
-    for (i=0, DTi=0.0; i < N; i++, DTi += DT)
-      *To_Here++ = unit_square_wave(DTi);
-  else if (Function_Number == 3) 
-    for (i=0, DTi=0.0; i < N; i++, DTi += DT)
-      *To_Here++ = unit_triangle_wave(DTi);
+  if (opcode==1)
+    cs_image_magnitude(a,rows);
+  else if (opcode==2)
+    cs_image_real_part(a,rows);
+  else if (opcode==3)
+    cs_image_imag_part(a,rows);
   else
-    Primitive_Error(ERR_ARG_1_BAD_RANGE);
+    error_bad_range_arg(3);	/* illegal opcode */
   
-  return Result; 
+  PRIMITIVE_RETURN (NIL);
 }
 
-*/
-/* END IMAGE PROCESSING */
 
-
-
-/* Note for the macro: To1 and To2 must BE Length1-1, and Length2-2 RESPECTIVELY ! */
-/*
-#define C_Convolution_Point_Macro(X, Y, To1, To2, N, Result)                                \
-{ long Min_of_N_To1=min((N),(To1));                                                         \
-  long mi, N_minus_mi;                                                                      \
-  REAL Sum=0.0;                                                                           \
-  for (mi=max(0,(N)-(To2)), N_minus_mi=(N)-mi; mi <= Min_of_N_To1; mi++, N_minus_mi--)      \
-    Sum += (X[mi] * Y[N_minus_mi]);                                                         \
-  (Result)=Sum;                                                                             \
+void cs_array_real_part(a,n)
+     REAL *a; long n;
+{ long i,n2;			/* works both for even and odd length */
+  n2 = n/2;
+  for (i=n2+1;i<n;i++) a[i] = a[n-i]; /* copy real values into place */
+  /*                                     even signal */
 }
-
-DEFINE_PRIMITIVE ("CONVOLUTION-POINT", Prim_convolution_point, 3, 3, 0)
-{ long Length1, Length2, N;
-  REAL *Array1, *Array2;
-  REAL C_Result;
-  
-  Primitive_3_Args();
-  Arg_1_Type(TC_ARRAY);
-  Arg_2_Type(TC_ARRAY);
-  Arg_3_Type(TC_FIXNUM);
-  Length1 = Array_Length(Arg1);
-  Length2 = Array_Length(Arg2);
-  N = Get_Integer(Arg3);
-  Array1 = Scheme_Array_To_C_Array(Arg1);
-  Array2 = Scheme_Array_To_C_Array(Arg2);
-  C_Convolution_Point_Macro(Array1, Array2, Length1-1, Length2-1, N, C_Result);
-  Reduced_Flonum_Result(C_Result);
-}
-
-DEFINE_PRIMITIVE ("ARRAY-CONVOLUTION", Prim_array_convolution, 2, 2, 0)
-{ long Endpoint1, Endpoint2, allocated_cells, i;
-  / * ASSUME A SIGNAL FROM INDEX 0 TO ENDPOINT=LENGTH-1 * /
-  long Resulting_Length;
-  REAL *Array1, *Array2, *To_Here;
-  Pointer Result;
-  
-  Primitive_2_Args();
-  Arg_1_Type(TC_ARRAY);
-  Arg_2_Type(TC_ARRAY);
-  Endpoint1 = Array_Length(Arg1) - 1;
-  Endpoint2 = Array_Length(Arg2) - 1;
-  Resulting_Length = Endpoint1 + Endpoint2 + 1;
-  Array1 = Scheme_Array_To_C_Array(Arg1);
-  Array2 = Scheme_Array_To_C_Array(Arg2);
 
-  allocated_cells = (Resulting_Length * REAL_SIZE) + ARRAY_HEADER_SIZE;
-  Primitive_GC_If_Needed(allocated_cells);
-  Result = Make_Pointer(TC_ARRAY, Free);
-  Free[ARRAY_HEADER] = Make_Non_Pointer(TC_MANIFEST_ARRAY, allocated_cells-1);
-  Free[ARRAY_LENGTH] = Resulting_Length;
-  Free += allocated_cells;
-  To_Here = Scheme_Array_To_C_Array(Result);
+void cs_array_imag_part(a,n)
+     REAL *a; long n;
+{ long i,n2;
+  n2 = n/2;			/* integer division truncates down */
+  for (i=n2+1; i<n; i++)	/* works both for even and odd length */
+  { a[n-i] = a[i];		/* copy imaginary values into place */
+    a[i]   = (-a[i]); }		/* odd signal */
+  a[0]     = 0.0;
+  if (2*n2 == n)		/* even length, n2 is real only */
+    a[n2]    = 0.0;
+}
+
+
+
+/* From now on (below), assume that cs-images   (rows=cols) have always EVEN LENGTH
+   which is true when they come from FFTs
+   */
+
+
+
+/*  In the following 3   time-reverse the bottom half rows        
+    is done to match  the frequencies of complex-images   
+    coming from cft2d.                       
+    Also transpose is needed to match frequencies identically
+    
+    #|
+    ;; Scrabling of frequencies in  cs-images
+    
+    ;; start from real image  4x4
+    
+    ;; rft2d    is a cs-image
+    (3.5 .375 -2.75 1.875    -.25 0. 0. -.25    -.25 -.125 0. .125    .25 .25 0. 0.)
+    
+    ;; cft2d   transposed 
+    ;; real
+    3.5 .375 -2.75 .375   
+    -.25  0.  0.  -.25  ; same as cs-image
+    -.25 -.125 0. -.125
+    -.25 -.25  0.   0.  ; row3 = copy 1 + time-reverse
+    ;; imag
+    0. 1.875 0. -1.875
+    .25 .25 0. 0.       ; same as cs-image
+    0. .125 0. -.125
+    -.25 0. 0. -.25     ; row 3 = copy 1 + negate + time-reverse
+    |#
+    
+    */
+
+void cs_image_magnitude(x,rows)
+     REAL *x;
+     long rows;
+{ long i,j, cols, n,n2, nj; /*     result = real ordinary image */
+  REAL *xrow, *yrow;
+  cols = rows;			/* input cs-image   is square */
+  n = rows;
+  n2 = n/2;
   
-  for (i=0; i<Resulting_Length; i++)  {
-    C_Convolution_Point_Macro(Array1, Array2, Endpoint1, Endpoint2, i, *To_Here);
-    To_Here++;
+  xrow = x;
+  cs_array_magnitude(xrow, n);  /* row 0 is cs-array */
+  xrow = x + n2*cols;
+  cs_array_magnitude(xrow, n);  /* row n2 is cs-array */
+  
+  xrow = x + cols;		/* real part */
+  yrow = x + (rows-1)*cols;	/* imag part */
+  for (i=1; i<n2; i++) {
+    xrow[ 0] = (REAL) sqrt((double) xrow[ 0]*xrow[ 0] + yrow[ 0]*yrow[ 0]); 
+    xrow[n2] = (REAL) sqrt((double) xrow[n2]*xrow[n2] + yrow[n2]*yrow[n2]); 
+    yrow[ 0] = xrow[ 0];
+    yrow[n2] = xrow[n2];
+    for (j=1; j<n2; j++) {
+      nj = n-j;
+      xrow[ j] = (REAL) sqrt((double) xrow[ j]*xrow[ j] + yrow[ j]*yrow[ j]); 
+      xrow[nj] = (REAL) sqrt((double) xrow[nj]*xrow[nj] + yrow[nj]*yrow[nj]); 
+      yrow[j]  = xrow[nj];
+      yrow[nj] = xrow[ j];      /* Bottom rows:    copy (even) and time-reverse      */
+    }
+    xrow = xrow + cols;
+    yrow = yrow - cols; }
+  Image_Fast_Transpose(x, n);
+}
+
+
+void cs_image_real_part(x,rows)
+     REAL *x;
+     long rows;
+{ long i,j,cols, n,n2;
+  REAL *xrow, *yrow;
+  void cs_array_real_part();
+  cols = rows;			/* square image */
+  n = rows;
+  n2 = n/2;
+  
+  xrow = x;
+  cs_array_real_part(xrow, n);  /* row 0 is cs-array */
+  xrow = x + n2*cols;
+  cs_array_real_part(xrow, n);  /* row n2 is cs-array */
+  
+  xrow = x + cols;		/* real part */
+  yrow = x + (rows-1)*cols;	/* imag part */
+  for (i=1; i<n2; i++) {
+    yrow[0]  = xrow[0];		/* copy real part into imaginary's place  (even)    */
+    for (j=1; j<n; j++)
+      yrow[j] = xrow[n-j];	/* Bottom rows:  copy and time-reverse              */
+    xrow = xrow + cols;
+    yrow = yrow - cols; }	
+  Image_Fast_Transpose(x, n);
+}
+
+void cs_image_imag_part(x,rows)
+     REAL *x;
+     long rows;
+{ long i,j,cols, n,n2, nj;
+  REAL *xrow, *yrow;
+  void cs_array_imag_part();
+  cols = rows;			/* square image */
+  n = rows;
+  n2 = n/2;
+  
+  xrow = x;
+  cs_array_imag_part(xrow, n);  /* row 0 is cs-array */
+  xrow = x + n2*cols;
+  cs_array_imag_part(xrow, n);  /* row n2 is cs-array */
+  
+  xrow = x + cols;		/* real part */
+  yrow = x + (rows-1)*cols;	/* imag part */
+  for (i=1; i<n2; i++) {
+    xrow[0]  = yrow[0];		/* copy the imaginary part into real's place       */
+    xrow[n2] = yrow[n2];
+    yrow[0]  = (-yrow[0]);      /* negate (odd)                                    */
+    yrow[n2] = (-yrow[n2]);
+    for (j=1;j<n2; j++) {
+      nj = n-j;
+      xrow[j]  = yrow[j]; 	/* copy the imaginary part into real's place       */
+      xrow[nj] = yrow[nj];
+      yrow[j]  = (-xrow[nj]);	/* Bottom rows: negate (odd) and time-reverse      */
+      yrow[nj] = (-xrow[j]); }
+    xrow = xrow + cols;
+    yrow = yrow - cols; }
+  Image_Fast_Transpose(x, n);
+}
+
+
+/* cs-image-operation-2
+   groups together procedures     that use 2 cs-image-arrays 
+   (usually side-effecting the 2nd image, but not necessarily)
+   */
+
+DEFINE_PRIMITIVE ("CS-IMAGE-OPERATION-2!",
+		  Prim_cs_image_operation_2, 4,4, 0)
+{ long rows, nn, opcode;
+  REAL *x,*y;
+  void cs_image_multiply_into_second_one();
+  PRIMITIVE_HEADER (4);
+  CHECK_ARG (1, FIXNUM_P);	/* operation opcode */
+  CHECK_ARG (2, FIXNUM_P);	/* rows */
+  CHECK_ARG (3, ARRAY_P);	/* image array 1 */
+  CHECK_ARG (4, ARRAY_P);	/* image array 2 */
+  
+  x = Scheme_Array_To_C_Array(ARG_REF(3));
+  y = Scheme_Array_To_C_Array(ARG_REF(4));
+  rows = arg_nonnegative_integer(2); /*          square images only */
+  nn = rows*rows;
+  if (nn != Array_Length(ARG_REF(3)))   error_bad_range_arg(3);
+  if (nn != Array_Length(ARG_REF(4)))   error_bad_range_arg(4);
+  
+  opcode = arg_nonnegative_integer(1);
+  
+  if (opcode==1)
+    cs_image_multiply_into_second_one(x,y,rows); /* result in y */
+  else if (opcode==2)
+    error_bad_range_arg(1);	/* illegal opcode */
+  else
+    error_bad_range_arg(1);	/* illegal opcode */
+  
+  PRIMITIVE_RETURN (NIL);
+}
+
+
+void cs_image_multiply_into_second_one(x,y, rows) 
+     REAL *x,*y;
+     long rows;
+{ long i,j,cols, n,n2;
+  REAL *xrow,*yrow,  *xrow_r, *xrow_i, *yrow_r, *yrow_i, temp;
+  cols = rows;			/* square image */
+  n = rows;
+  n2 = n/2;
+  
+  xrow= x; yrow= y;
+  cs_array_multiply_into_second_one(xrow,yrow, n,n2); /*         row 0 */
+  
+  xrow= x+n2*cols; yrow= y+n2*cols;
+  cs_array_multiply_into_second_one(xrow,yrow, n,n2); /*         row n2 */
+  
+  xrow_r= x+cols;           yrow_r= y+cols;   
+  xrow_i= x+(n-1)*cols;     yrow_i= y+(n-1)*cols;
+  for (i=1; i<n2; i++) {
+    for (j=0; j<n; j++) {
+      temp      = xrow_r[j]*yrow_r[j]  -  xrow_i[j]*yrow_i[j]; /* real part */
+      yrow_i[j] = xrow_r[j]*yrow_i[j]  +  xrow_i[j]*yrow_r[j]; /* imag part */
+      yrow_r[j] = temp; }
+    xrow_r= xrow_r+cols;   yrow_r= yrow_r+cols;
+    xrow_i= xrow_i-cols;   yrow_i= yrow_i-cols;
   }
-  return Result;
 }
-*/
-
-/*  m_pi = 3.14159265358979323846264338327950288419716939937510; */
 
 /* 
-DEFINE_PRIMITIVE ("SAMPLE-PERIODIC-FUNCTION", Prim_sample_periodic_function, 4, 4, 0)
-{ long N, i, allocated_cells, Function_Number;
-  REAL Signal_Frequency, Sampling_Frequency, DT, DTi;
-  REAL twopi = 6.28318530717958, twopi_f_dt;
-  Pointer Result, Pfunction_number, Psignal_frequency; 
-  Pointer Pfunction_Number;
-  int Error_Number;
-  REAL *To_Here, unit_square_wave(), unit_triangle_wave();
+  cs-image-operation-2x!     is just like     cs-image-operation-2!
+  but takes an additional flonum argument.
+  */
+
+DEFINE_PRIMITIVE ("CS-IMAGE-OPERATION-2x!",
+		  Prim_cs_image_operation_2x, 5,5, 0)
+{ long rows, nn, opcode;
+  REAL *x,*y, flonum_arg;
+  int errcode;
+  void cs_image_divide_into_z();
+  PRIMITIVE_HEADER (5);
+  CHECK_ARG (1, FIXNUM_P);	/* operation opcode */
+  CHECK_ARG (2, FIXNUM_P);	/* rows */
+  CHECK_ARG (3, ARRAY_P);	/* image array 1 */
+  CHECK_ARG (4, ARRAY_P);	/* image array 2 */
   
-  Primitive_4_Args();
-  Arg_1_Type(TC_FIXNUM);
-  Arg_4_Type(TC_FIXNUM);
-  Range_Check(Function_Number, Arg1, 0, 10, ERR_ARG_1_BAD_RANGE); / * fix this * /
+  errcode = Scheme_Number_To_REAL(ARG_REF(5), &flonum_arg); /*        extra argument */
+  if (errcode==1) error_bad_range_arg(5); if (errcode==2) error_wrong_type_arg(5); 
   
-  Error_Number = Scheme_Number_To_REAL(Arg2, &Signal_Frequency);
-  if (Error_Number == 1) Primitive_Error(ERR_ARG_2_BAD_RANGE);
-  if (Error_Number == 2) Primitive_Error(ERR_ARG_2_WRONG_TYPE);
-  if (Signal_Frequency == 0) Primitive_Error(ERR_ARG_2_BAD_RANGE);
+  x = Scheme_Array_To_C_Array(ARG_REF(3));
+  y = Scheme_Array_To_C_Array(ARG_REF(4));
+  rows = arg_nonnegative_integer(2); /*          square images only */
+  nn = rows*rows;
+  if (nn != Array_Length(ARG_REF(3)))   error_bad_range_arg(3);
+  if (nn != Array_Length(ARG_REF(4)))   error_bad_range_arg(4);
   
-  Error_Number = Scheme_Number_To_REAL(Arg3, &Sampling_Frequency);
-  if (Error_Number == 1) Primitive_Error(ERR_ARG_3_BAD_RANGE);
-  if (Error_Number == 2) Primitive_Error(ERR_ARG_3_WRONG_TYPE);
-  if (Sampling_Frequency == 0) Primitive_Error(ERR_ARG_3_BAD_RANGE);
-  DT = (1 / Sampling_Frequency);
-  twopi_f_dt = twopi * Signal_Frequency * DT;
+  opcode = arg_nonnegative_integer(1);
   
-  Range_Check(N, Arg4, 0, ARRAY_MAX_LENGTH, ERR_ARG_4_BAD_RANGE); 
-  
-  allocated_cells = (N*REAL_SIZE) + ARRAY_HEADER_SIZE;
-  Primitive_GC_If_Needed(allocated_cells);
-  
-  Result = Make_Pointer(TC_ARRAY, Free);
-  Free[ARRAY_HEADER] = Make_Non_Pointer(TC_MANIFEST_ARRAY, allocated_cells-1);
-  Free[ARRAY_LENGTH] = N;
-  To_Here = Scheme_Array_To_C_Array(Result);
-  Free = Free+allocated_cells;
-  
-  DT = twopi_f_dt;
-  if (Function_Number == 0) 
-    for (i=0, DTi=0.0; i < N; i++, DTi += DT)
-      *To_Here++ = cos(DTi);
-  else if (Function_Number == 1)
-    for (i=0, DTi=0.0; i < N; i++, DTi += DT)
-      *To_Here++ = sin(DTi);
-  else if (Function_Number == 2)
-    for (i=0, DTi=0.0; i < N; i++, DTi += DT)
-      *To_Here++ = unit_square_wave(DTi);
-  else if (Function_Number == 3) 
-    for (i=0, DTi=0.0; i < N; i++, DTi += DT)
-      *To_Here++ = unit_triangle_wave(DTi);
+  if (opcode==1)
+    cs_image_divide_into_z( x,y, x, rows, flonum_arg); /* result in x */
+  else if (opcode==2)
+    cs_image_divide_into_z( x,y, y, rows, flonum_arg); /* result in y */
   else
-    Primitive_Error(ERR_ARG_1_BAD_RANGE);
+    error_bad_range_arg(1);	/* illegal opcode */
   
-  return Result; 
+  PRIMITIVE_RETURN (NIL);
 }
-
-REAL hamming(t, length) REAL t, length;
-{ REAL twopi = 6.28318530717958;
-  REAL pi = twopi/2.;
-  REAL t_bar = cos(twopi * (t / length));
-  if ((t<length) && (t>0.0)) return(.08 + .46 * (1 - t_bar));
-  else return (0);
-}
-
-REAL hanning(t, length) REAL t, length;
-{ REAL twopi = 6.28318530717958;
-  REAL pi = twopi/2.;
-  REAL t_bar = cos(twopi * (t / length));
-  if ((t<length) && (t>0.0)) 
-    return(.5 * (1 - t_bar));
-  else return (0);
-}
-
-REAL unit_square_wave(t) REAL t;
-{ REAL twopi = 6.28318530717958;
-  REAL fmod(), fabs();
-  REAL pi = twopi/2.;
-  REAL t_bar = fabs(fmod(t, twopi));
-  if (t_bar < pi) return(1);
-  else return(0);
-}
-
-REAL unit_triangle_wave(t) REAL t;
-{ REAL twopi = 6.28318530717958;
-  REAL pi = twopi/2.;
-  REAL t_bar = fabs(fmod(t, twopi));
-  if (t_bar < pi) return( t_bar / pi );
-  else return( (twopi - t_bar) / pi );
-}
-
-DEFINE_PRIMITIVE ("SAMPLE-APERIODIC-FUNCTION", Prim_sample_aperiodic_function, 3, 3, 0)
-{ long N, i, allocated_cells, Function_Number;
-  REAL Sampling_Frequency, DT, DTi;
-  REAL twopi = 6.28318530717958;
-  Pointer Result;
-  int Error_Number;
-  REAL *To_Here, twopi_dt;
 
-  Primitive_3_Args();
-  Arg_1_Type(TC_FIXNUM);
-  Arg_3_Type(TC_FIXNUM);
-  Range_Check(Function_Number, Arg1, 0, 6, ERR_ARG_1_BAD_RANGE);
-  
-  Error_Number = Scheme_Number_To_REAL(Arg2, &Sampling_Frequency);
-  if (Error_Number == 1) Primitive_Error(ERR_ARG_2_BAD_RANGE);
-  if (Error_Number == 2) Primitive_Error(ERR_ARG_2_WRONG_TYPE);
-  if (Sampling_Frequency == 0) Primitive_Error(ERR_ARG_2_BAD_RANGE);
-  DT = (1 / Sampling_Frequency);
-  twopi_dt = twopi * DT;
 
-  Range_Check(N, Arg3, 0, ARRAY_MAX_LENGTH, ERR_ARG_3_BAD_RANGE);
+/* The convention for inf values    in division 1/0  
+   is just like in arrays 
+   */
 
-  allocated_cells = (N*REAL_SIZE) + ARRAY_HEADER_SIZE;
-  Primitive_GC_If_Needed(allocated_cells);
+void cs_image_divide_into_z(x,y, z, rows, inf)    /* z can be either x or y */
+     REAL *x,*y,*z, inf;
+     long rows;
+{ long i,j,cols, n,n2;
+  REAL temp, radius;
+  REAL  *ar_,*ai_, *br_,*bi_, *zr_,*zi_; /*   Letters a,b  correspond to  x,y  */
+  REAL *xrow,*yrow,*zrow;
+  cols = rows;			/* square image */
+  n = rows;
+  n2 = n/2;
   
-  Result = Make_Pointer(TC_ARRAY, Free);
-  Free[ARRAY_HEADER] = Make_Non_Pointer(TC_MANIFEST_ARRAY, allocated_cells-1);
-  Free[ARRAY_LENGTH] = N;
-  To_Here = Scheme_Array_To_C_Array(Result);
-  Free = Free+allocated_cells;
+  xrow= x; yrow= y; zrow= z;
+  cs_array_divide_into_z( xrow,yrow, zrow, n,n2, inf); /*         row 0 */
   
-  DT = twopi_dt;
-  if      (Function_Number == 0)
-    for (i=0, DTi=0.0; i < N; i++, DTi += DT)
-      *To_Here++ = rand();
-  else if (Function_Number == 1) 
-  { REAL length=DT*N;
-    for (i=0, DTi=0.0; i < N; i++, DTi += DT)
-      *To_Here++ = hanning(DTi, length);
+  xrow= x+n2*cols; yrow= y+n2*cols; zrow= z+n2*cols; 
+  cs_array_divide_into_z( xrow,yrow, zrow, n,n2, inf); /*         row n2 */
+  
+  ar_= x+cols;           br_= y+cols;            zr_= z+cols;
+  ai_= x+(n-1)*cols;     bi_= y+(n-1)*cols;      zi_= z+(n-1)*cols;
+  for (i=1; i<n2; i++) {
+    for (j=0; j<n; j++) {
+      radius    = br_[j]*br_[j]  + bi_[j]*bi_[j]; /* b^2 denominator = real^2 + imag^2 */
+      
+      if (radius == 0.0) {
+	if (ar_[j] == 0.0)  zr_[j]  = 1.0;
+	else                zr_[j]  = ar_[j] * inf;
+	if (ai_[j] == 0.0)  zi_[j]  = 1.0;
+	else                zi_[j]  = ai_[j] * inf; }
+      else {
+	temp    =  ar_[j]*br_[j]   +  ai_[j]*bi_[j];
+	zi_[j]  = (ai_[j]*br_[j]   -  ar_[j]*bi_[j]) / radius; /* imag part */
+	zr_[j]  = temp                               / radius; /* real part */ 
+      }}
+    ar_= ar_+cols;   br_= br_+cols;    zr_= zr_+cols;
+    ai_= ai_-cols;   bi_= bi_-cols;    zi_= zi_-cols;
   }
-  else if (Function_Number == 2) 
-  { REAL length=DT*N;
-    for (i=0, DTi=0.0; i < N; i++, DTi += DT)
-      *To_Here++ = hamming(DTi, length);
-  }
-  else if (Function_Number == 3)
-    for (i=0, DTi=0.0; i < N; i++, DTi += DT)
-      *To_Here++ = sqrt(DTi);
-  else if (Function_Number == 4)
-    for (i=0, DTi=0.0; i < N; i++, DTi += DT)
-      *To_Here++ = log(DTi);
-  else if (Function_Number == 5)
-    for (i=0, DTi=0.0; i < N; i++, DTi += DT)
-      *To_Here++ = exp(DTi);
+}
+
+
+
+/* operation-3
+   groups together procedures     that use 3 cs-image-arrays 
+   (usually side-effecting the 3rd image, but not necessarily)
+   */
+
+DEFINE_PRIMITIVE ("CS-IMAGE-OPERATION-3!",
+		  Prim_cs_image_operation_3, 5,5, 0)
+{ long rows, nn, opcode;
+  REAL *x,*y,*z;
+  void tr_complex_image_to_cs_image();
+  PRIMITIVE_HEADER (5);
+  CHECK_ARG (1, FIXNUM_P);	/* operation opcode */
+  CHECK_ARG (2, FIXNUM_P);	/* rows */
+  CHECK_ARG (3, ARRAY_P);	/* image array 1 */
+  CHECK_ARG (4, ARRAY_P);	/* image array 2 */
+  CHECK_ARG (5, ARRAY_P);	/* image array 3 */
+  
+  x = Scheme_Array_To_C_Array(ARG_REF(3));
+  y = Scheme_Array_To_C_Array(ARG_REF(4));
+  z = Scheme_Array_To_C_Array(ARG_REF(5));
+  rows = arg_nonnegative_integer(2); /*          square images only */
+  nn = rows*rows;
+  if (nn != Array_Length(ARG_REF(3)))   error_bad_range_arg(3);
+  if (nn != Array_Length(ARG_REF(4)))   error_bad_range_arg(4);
+  if (nn != Array_Length(ARG_REF(5)))   error_bad_range_arg(5);
+  
+  opcode = arg_nonnegative_integer(1);
+  
+  if (opcode==1)
+    tr_complex_image_to_cs_image(x,y, z,rows); /* result in z */
+  else if (opcode==2)
+    error_bad_range_arg(1);	/* illegal opcode */
   else
-    Primitive_Error(ERR_ARG_1_BAD_RANGE);
+    error_bad_range_arg(1);	/* illegal opcode */
   
-  return Result; 
-}
-
-DEFINE_PRIMITIVE ("ARRAY-PERIODIC-DOWNSAMPLE", Prim_array_periodic_downsample, 2, 2, 0)
-{ long Length, Pseudo_Length, Sampling_Ratio;
-  REAL *Array, *To_Here;
-  Pointer Result;
-  long allocated_cells, i, array_index;
-
-  Primitive_2_Args();
-  Arg_1_Type(TC_ARRAY);
-  Arg_2_Type(TC_FIXNUM);
-  Length = Array_Length(Arg1);
-
-  Sign_Extend(Arg2, Sampling_Ratio);               / * Sampling_Ratio = integer ratio of sampling_frequencies * /
-  Sampling_Ratio = Sampling_Ratio % Length;                                  / * periodicity * /
-  if (Sampling_Ratio < 1)  Primitive_Error(ERR_ARG_2_BAD_RANGE);
-  
-  Array = Scheme_Array_To_C_Array(Arg1);
-  Allocate_Array(Result, Length, allocated_cells);
-  To_Here = Scheme_Array_To_C_Array(Result);
-  
-  Pseudo_Length = Length * Sampling_Ratio;
-  for (i=0; i<Pseudo_Length; i += Sampling_Ratio) {       / * new Array has the same Length by assuming periodicity * /
-    array_index = i % Length;
-    *To_Here++ = Array[array_index];
-  }
-  
-  return Result;
-}
-
-DEFINE_PRIMITIVE ("ARRAY-PERIODIC-SHIFT", Prim_array_periodic_shift, 2, 2, 0)
-{ long Length, Shift;
-  REAL *Array, *To_Here;
-  Pointer Result;
-  long allocated_cells, i, array_index;
-
-  Primitive_2_Args();
-  Arg_1_Type(TC_ARRAY);
-  Arg_2_Type(TC_FIXNUM);
-  Length = Array_Length(Arg1);
-  Sign_Extend(Arg2, Shift);
-  Shift = Shift % Length;                                  / * periodic waveform, same sign as dividend * /
-  Array = Scheme_Array_To_C_Array(Arg1);
-  Allocate_Array(Result, Length, allocated_cells);
-  To_Here = Scheme_Array_To_C_Array(Result);
-  
-  for (i=0; i<Length; i++) {                       / * new Array has the same Length by assuming periodicity * /
-    array_index = (i+Shift) % Length;
-    if (array_index<0) array_index = Length + array_index;                / * wrap around * /
-    *To_Here++ = Array[array_index];
-  }
-  
-  return Result;
-}
-
-/ * this should really be done in SCHEME using ARRAY-MAP ! * /
-
-DEFINE_PRIMITIVE ("ARRAY-APERIODIC-DOWNSAMPLE", Prim_array_aperiodic_downsample, 2, 2, 0)
-{ long Length, New_Length, Sampling_Ratio;
-  REAL *Array, *To_Here;
-  Pointer Result;
-  long allocated_cells, i, array_index;
-
-  Primitive_2_Args();
-  Arg_1_Type(TC_ARRAY);
-  Arg_2_Type(TC_FIXNUM);
-  Length = Array_Length(Arg1);
-  Range_Check(Sampling_Ratio, Arg2, 1, Length, ERR_ARG_2_BAD_RANGE);
-  
-  Array = Scheme_Array_To_C_Array(Arg1);
-  New_Length = Length / Sampling_Ratio;      
-  / * greater than zero * /
-  Allocate_Array(Result, New_Length, allocated_cells);
-  To_Here = Scheme_Array_To_C_Array(Result);
-  
-  for (i=0; i<Length; i += Sampling_Ratio) {
-    *To_Here++ = Array[i];
-  }
-  
-  return Result;
+  PRIMITIVE_RETURN (NIL);
 }
 
-
-/ * ARRAY-APERIODIC-SHIFT can be done in scheme using subarray, and array-append * /
+/* x and y     must be ALREADY TRANSPOSED real and imaginary parts
+ */
+void tr_complex_image_to_cs_image(x,y, z,rows) 
+     REAL *x,*y,*z;
+     long rows;
+{ long i,j,cols, n,n2, n2_1_n;
+  REAL *xrow, *yrow, *zrow;
+  cols = rows;			/* square image */
+  n = rows;
+  n2 = n/2;
+  
+  xrow= x; yrow= y; zrow= z; 
+  for (j=0; j<=n2; j++)     zrow[j] = xrow[j]; /*        real part of row 0 (cs-array) */
+  for (j=n2+1; j<n; j++)    zrow[j] = yrow[n-j]; /*      imag part of row 0            */
+  
+  xrow= x+n2*cols; yrow= y+n2*cols; zrow= z+n2*cols;
+  for (j=0; j<=n2; j++)     zrow[j] = xrow[j]; /*        real part of row n2 (cs-array) */
+  for (j=n2+1; j<n; j++)    zrow[j] = yrow[n-j]; /*      imag part of row n2            */
+  
+  xrow= x+cols;   zrow= z+cols;   n2_1_n = (n2-1)*cols;
+  for (j=0; j<n2_1_n; j++)   zrow[j] = xrow[j];	/*       real rows 1,2,..,n2-1          */
+  
+  yrow= y+(n2-1)*cols;  zrow= z+(n2+1)*cols; /*          imag rows n2+1,n2+2,...        */
+  for (i=1; i<n2; i++) {
+    for (j=0; j<n; j++)   zrow[j] = yrow[j];
+    zrow = zrow + cols;
+    yrow = yrow - cols;
+  }  
+}
 
-
-for UPSAMPLING
-if ((Length % Sampling_Ratio) != 0) Primitive_Error(ERR_ARG_2_BAD_RANGE);
-UNIMPLEMENTED YET
-
-*/
-
-/* END OF FILE */  
 
