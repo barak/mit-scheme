@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.7 1988/10/21 22:18:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.8 1988/11/02 21:43:53 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -207,12 +207,15 @@ MIT in each case. |#
 ;;;; Unparser Methods
 
 (define (unparse/default object)
-  (let ((type (user-object-type object)))
-    (if (zero? (object-gc-type object))
-	(*unparse-with-brackets type false
-	  (lambda ()
-	    (*unparse-datum object)))
-	(*unparse-with-brackets type object false))))
+  (let ((type (user-object-type object))
+	(gc-type ((ucode-primitive primitive-object-gc-type 1) object)))
+    (case gc-type
+      ((1 2 3 4 -3 -4)			; cell pair triple quad vector compiled
+       (*unparse-with-brackets type object false))
+      (else				; non pointer, gc special, undefined
+       (*unparse-with-brackets type false
+			       (lambda ()
+				 (*unparse-datum object)))))))
 
 (define (user-object-type object)
   (let ((type-code (object-type object)))
