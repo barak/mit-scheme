@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.39 1992/05/21 22:11:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.40 1992/05/21 22:13:20 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -39,6 +39,10 @@ MIT in each case. */
 #include "ux.h"
 #include "uxselect.h"
 #include "x11.h"
+
+#ifndef X_DEFAULT_FONT
+#define X_DEFAULT_FONT "fixed"
+#endif
 
 int x_debug = 0;
 static int initialization_done = 0;
@@ -387,7 +391,7 @@ DEFUN (x_default_attributes,
      (display,
       (x_get_default
        (display, resource_name, resource_class,
-	"font", "Font", "9x15"))));
+	"font", "Font", X_DEFAULT_FONT))));
   if ((attributes -> font) == 0)
     error_external_return ();
   {
