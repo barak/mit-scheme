@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntgui.c,v 1.19 1997/03/18 04:06:32 cph Exp $
+$Id: ntgui.c,v 1.20 1997/06/26 06:59:20 cph Exp $
 
-Copyright (c) 1993-96 Massachusetts Institute of Technology
+Copyright (c) 1993-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -97,7 +97,7 @@ WinMain (HANDLE hInst, HANDLE hPrevInst, LPSTR lpCmdLine, int nCmdShow)
     if (!InitInstance(ghInstance, nCmdShow))
       return  FALSE;
 
-    scheme_main (argc, argv);
+    scheme_main (argc, ((const char **) argv));
     return (0);
 }
 #endif

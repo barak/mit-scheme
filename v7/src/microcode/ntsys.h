@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntsys.h,v 1.6 1996/04/09 20:16:08 adams Exp $
+$Id: ntsys.h,v 1.7 1997/06/26 06:58:54 cph Exp $
 
-Copyright (c) 1992-1996 Massachusetts Institute of Technology
+Copyright (c) 1992-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,6 +39,6 @@ MIT in each case. */
 
 extern BOOL win32_under_win32s_p ();
 extern int  nt_console_write (void * vbuffer, size_t nsize);
-extern BOOL nt_pathname_as_filename (char * name, char * buffer);
+extern BOOL nt_pathname_as_filename (const char * name, char * buffer);
 
 #endif /* SCM_NTSYS_H */

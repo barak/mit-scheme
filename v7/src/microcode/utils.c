@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: utils.c,v 9.71 1997/01/02 05:21:41 cph Exp $
+$Id: utils.c,v 9.72 1997/06/26 06:58:07 cph Exp $
 
 Copyright (c) 1987-97 Massachusetts Institute of Technology
 
@@ -161,8 +161,10 @@ DEFUN (Setup_Interrupt, (masked_interrupts), long masked_interrupts)
   Global_Interrupt_Hook ();
   interrupt_handler = (VECTOR_REF (interrupt_handlers, interrupt_number));
 
+#if 0
   /* This label may be used in Global_Interrupt_Hook: */
  passed_checks:
+#endif
   Stop_History ();
   preserve_interrupt_mask ();
  Will_Push (STACK_ENV_EXTRA_SLOTS + 3);

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: lookup.c,v 9.55 1996/10/02 19:01:34 cph Exp $
+$Id: lookup.c,v 9.56 1997/06/26 06:57:41 cph Exp $
 
 Copyright (c) 1988-96 Massachusetts Institute of Technology
 
@@ -1606,7 +1606,9 @@ DEFUN (compiler_cache,
   store_extension = SHARP_F;
   trap_kind = TRAP_COMPILER_CACHED;
 
+#if 0
 compiler_cache_retry:
+#endif
 
   setup_lock (set_serializer, cell);
   compiler_cache_consistency_check ();

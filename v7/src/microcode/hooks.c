@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hooks.c,v 9.56 1997/01/02 05:21:37 cph Exp $
+$Id: hooks.c,v 9.57 1997/06/26 06:59:54 cph Exp $
 
 Copyright (c) 1988-97 Massachusetts Institute of Technology
 
@@ -480,6 +480,7 @@ memoized yet.")
      Pushed ();
       PRIMITIVE_ABORT (PRIM_APPLY);
       /*NOTREACHED*/
+      PRIMITIVE_RETURN (UNSPECIFIC);
     }
     else
     {
@@ -495,7 +496,7 @@ memoized yet.")
       Store_Expression (FAST_MEMORY_REF (thunk, THUNK_PROCEDURE));
       PRIMITIVE_ABORT (PRIM_DO_EXPRESSION);
       /*NOTREACHED*/
-      return (0);
+      PRIMITIVE_RETURN (UNSPECIFIC);
     }
   }
 }

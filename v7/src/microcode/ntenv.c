@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntenv.c,v 1.15 1997/01/01 22:57:20 cph Exp $
+$Id: ntenv.c,v 1.16 1997/06/26 06:59:40 cph Exp $
 
 Copyright (c) 1992-97 Massachusetts Institute of Technology
 
@@ -433,10 +433,10 @@ DEFUN_VOID (OS_working_dir_pathname)
 }
 
 void
-DEFUN (OS_set_working_dir_pathname, (name), char * name)
+DEFUN (OS_set_working_dir_pathname, (name), CONST char * name)
 {
   size_t name_size = (strlen (name));
-  char * filename = name;
+  CONST char * filename = name;
 
   STD_BOOL_API_CALL (SetCurrentDirectory, (filename));
 

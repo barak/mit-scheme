@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntfs.c,v 1.14 1997/01/05 23:38:50 cph Exp $
+$Id: ntfs.c,v 1.15 1997/06/26 06:59:31 cph Exp $
 
 Copyright (c) 1992-97 Massachusetts Institute of Technology
 
@@ -57,7 +57,7 @@ DEFUN (NT_read_file_status, (name, s),
 }
 
 enum file_existence
-DEFUN (OS_file_existence_test, (name), char * name)
+DEFUN (OS_file_existence_test, (name), CONST char * name)
 {
   struct stat s;
   char filename[128];
@@ -76,7 +76,7 @@ DEFUN (OS_file_access, (name, mode), CONST char * name AND unsigned int mode)
 }
 
 int
-DEFUN (OS_file_directory_p, (name), char * name)
+DEFUN (OS_file_directory_p, (name), CONST char * name)
 {
   struct stat s;
   char filename[128];

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bintopsb.c,v 9.66 1997/01/02 05:23:15 cph Exp $
+$Id: bintopsb.c,v 9.67 1997/06/26 06:57:56 cph Exp $
 
 Copyright (c) 1987-97 Massachusetts Institute of Technology
 
@@ -1425,7 +1425,6 @@ DEFUN (Process_Area, (Code, Area, Bound, Obj, FObj),
 	/* Fall Through */
 
       case TC_CHARACTER:
-      Process_Character:
         Mem_Base[*Area] = (MAKE_OBJECT (Code, *Obj));
         *Obj += 1;
         **FObj = This;
@@ -1522,7 +1521,6 @@ DEFUN (Process_Area, (Code, Area, Bound, Obj, FObj),
 	break;
 
       default:
-      Bad_Type:
 	fprintf (stderr, "%s: Unknown Type Code 0x%x found.\n",
 		 program_name, (OBJECT_TYPE (This)));
 	quit (1);
