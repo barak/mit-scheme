@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.77 2000/05/19 21:25:31 cph Exp $
+;;; $Id: imail-top.scm,v 1.78 2000/05/22 02:17:50 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -104,10 +104,10 @@ May be called with an IMAIL folder URL as argument;
  but does not copy any new mail into the folder."
   (lambda ()
     (list (and (command-argument)
-	       (prompt-for-string "Run IMAIL on folder" #f
-				  'DEFAULT-TYPE 'VISIBLE-DEFAULT
-				  'HISTORY 'IMAIL
-				  'HISTORY-INDEX 0))))
+	       (prompt-for-imail-url-string "Run IMAIL on folder" #f
+					    'DEFAULT-TYPE 'VISIBLE-DEFAULT
+					    'HISTORY 'IMAIL
+					    'HISTORY-INDEX 0))))
   (lambda (url-string)
     (let ((folder
 	   (open-folder
@@ -134,36 +134,56 @@ May be called with an IMAIL folder URL as argument;
 					" on host "
 					(imap-url-host url))
 			 receiver))
+
+(define (prompt-for-imail-url-string prompt default . options)
+  (apply prompt-for-completed-string
+	 prompt
+	 default
+	 (lambda (string if-unique if-not-unique if-not-found)
+	   (url-complete-string string imail-get-default-url
+				if-unique if-not-unique if-not-found))
+	 (lambda (string)
+	   (url-string-completions string imail-get-default-url))
+	 (lambda (string) string #t)
+	 options))
 
 (define (imail-default-url)
   (let ((primary-folder (ref-variable imail-primary-folder)))
     (if primary-folder
 	(imail-parse-partial-url primary-folder)
-	(imail-default-imap-url))))
+	(imail-get-default-url "imap"))))
 
 (define (imail-parse-partial-url string)
-  (->url
-   (let ((colon (string-find-next-char string #\:)))
-     (if colon
-	 string
-	 (string-append "imap:" string)))))
+  (parse-url-string string imail-get-default-url))
 
-(define (imail-default-imap-url)
-  (call-with-values
-      (lambda ()
-	(let ((server (ref-variable imail-default-imap-server)))
-	  (let ((colon (string-find-next-char server #\:)))
-	    (if colon
-		(values (string-head server colon)
-			(or (string->number (string-tail server (+ colon 1)))
-			    (error "Invalid port specification:" server)))
-		(values server 143)))))
-    (lambda (host port)
-      (make-imap-url (or (ref-variable imail-default-user-id)
-			 (current-user-name))
-		     host
-		     port
-		     (ref-variable imail-default-imap-mailbox)))))
+(define (imail-get-default-url protocol)
+  (let ((do-imap
+	 (lambda ()
+	   (call-with-values
+	       (lambda ()
+		 (let ((server (ref-variable imail-default-imap-server)))
+		   (let ((colon (string-find-next-char server #\:)))
+		     (if colon
+			 (values
+			  (string-head server colon)
+			  (or (string->number (string-tail server (+ colon 1)))
+			      (error "Invalid port specification:" server)))
+			 (values server 143)))))
+	     (lambda (host port)
+	       (make-imap-url (or (ref-variable imail-default-user-id)
+				  (current-user-name))
+			      host
+			      port
+			      (ref-variable imail-default-imap-mailbox)))))))
+    (cond ((not protocol)
+	   (let ((folder (selected-folder #f)))
+	     (if folder
+		 (folder-url folder)
+		 (do-imap))))
+	  ((string-ci=? protocol "imap") (do-imap))
+	  ((string-ci=? protocol "rmail") (make-rmail-url "~/RMAIL"))
+	  ((string-ci=? protocol "umail") (make-umail-url "~/inbox.mail"))
+	  (else (error:bad-range-argument protocol)))))
 
 (define (imail-present-user-alert procedure)
   (call-with-output-to-temporary-buffer " *IMAP alert*"
@@ -408,10 +428,9 @@ With prefix argument N moves forward N messages with these flags."
 			 (lambda (flag)
 			   (message-flagged? message flag))))
 		     (string-append "message with flag"
-				    (if (fix:= 1 (length flags)) "" "s")
+				    (if (= 1 (length flags)) "" "s")
 				    " "
-				    (decorated-string-append "" ", " ""
-							     flags))
+				    (decorated-string-append "" ", " "" flags))
 		     #f))))
 
 (define-command imail-previous-flagged-message
@@ -828,7 +847,11 @@ With prefix argument N, removes FLAG from next N messages,
 
 (define-command imail-input
   "Append messages to this folder from a specified folder."
-  "sInput from folder"
+  (lambda ()
+    (list (prompt-for-imail-url-string "Input from folder" #f
+				       'DEFAULT-TYPE 'INSERTED-DEFAULT
+				       'HISTORY 'IMAIL-INPUT
+				       'HISTORY-INDEX 0)))
   (lambda (url-string)
     (let ((folder (selected-folder)))
       (let ((folder* (open-folder (imail-parse-partial-url url-string)))
@@ -845,10 +868,10 @@ With prefix argument N, removes FLAG from next N messages,
 (define-command imail-output
   "Append this message to a specified folder."
   (lambda ()
-    (list (prompt-for-string "Output to folder" #f
-			     'DEFAULT-TYPE 'INSERTED-DEFAULT
-			     'HISTORY 'IMAIL-OUTPUT
-			     'HISTORY-INDEX 0)
+    (list (prompt-for-imail-url-string "Output to folder" #f
+				       'DEFAULT-TYPE 'INSERTED-DEFAULT
+				       'HISTORY 'IMAIL-OUTPUT
+				       'HISTORY-INDEX 0)
 	  (command-argument)))
   (lambda (url-string argument)
     (let ((delete? (ref-variable imail-delete-after-output)))
@@ -866,13 +889,21 @@ With prefix argument N, removes FLAG from next N messages,
 (define-command imail-create-folder
   "Create a new folder with the specified name.
 An error if signalled if the folder already exists."
-  "sCreate folder"
+  (lambda ()
+    (list (prompt-for-imail-url-string "Create folder" #f
+				       'DEFAULT-TYPE 'INSERTED-DEFAULT
+				       'HISTORY 'IMAIL-CREATE-FOLDER
+				       'HISTORY-INDEX 0)))
   (lambda (url-string)
     (create-folder (imail-parse-partial-url url-string))))
 
 (define-command imail-delete-folder
   "Delete a specified folder."
-  "sDelete folder"
+  (lambda ()
+    (list (prompt-for-imail-url-string "Delete folder" #f
+				       'DEFAULT-TYPE 'INSERTED-DEFAULT
+				       'HISTORY 'IMAIL-DELETE-FOLDER
+				       'HISTORY-INDEX 0)))
   (lambda (url-string)
     (delete-folder (imail-parse-partial-url url-string))))
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.33 2000/05/20 19:39:20 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.34 2000/05/22 02:17:47 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -25,25 +25,21 @@
 ;;;; URL
 
 (define-class <rmail-url> (<file-url>))
+(define-url-protocol "rmail" <rmail-url>)
 
-(let ((filter
-       (let ((suffix-filter (file-suffix-filter "rmail")))
-	 (lambda (pathname)
-	   (or (string-ci=? (file-namestring pathname) "rmail")
-	       (suffix-filter string))))))
-  (define-url-protocol "rmail" <rmail-url>
-    (lambda (string)
-      (%make-rmail-url (short-name->pathname string)))
-    (file-url-completer filter)
-    (file-url-completions filter)))
-
-(define (make-rmail-url pathname)
-  (save-url (%make-rmail-url pathname)))
-
-(define %make-rmail-url
+(define make-rmail-url
   (let ((constructor (instance-constructor <rmail-url> '(PATHNAME))))
     (lambda (pathname)
-      (constructor (merge-pathnames pathname)))))
+      (intern-url (constructor (merge-pathnames pathname))))))
+
+(define-method %parse-url-string ((string <string>) (default-url <rmail-url>))
+  (make-rmail-url (merge-pathnames string (file-url-pathname default-url))))
+
+(define-file-url-completers <rmail-url>
+  (let ((type-filter (file-type-filter "rmail")))
+    (lambda (pathname)
+      (or (string-ci=? (file-namestring pathname) "rmail")
+	  (type-filter string)))))
 
 ;;;; Server operations
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.30 2000/05/20 19:39:14 cph Exp $
+;;; $Id: imail-file.scm,v 1.31 2000/05/22 02:17:39 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -28,36 +28,35 @@
   (pathname define accessor))
 
 (define-method url-body ((url <file-url>))
-  (pathname->short-name (file-url-pathname url)))
+  (->namestring (file-url-pathname url)))
 
 (define-method url-presentation-name ((url <file-url>))
   (file-namestring (file-url-pathname url)))
 
-(define ((file-url-completer filter)
-	 string if-unique if-not-unique if-not-found)
-  (pathname-complete-string (short-name->pathname string) filter
-    (lambda (string)
-      (if-unique (pathname->short-name string)))
-    (lambda (prefix get-completions)
-      (if-not-unique (pathname->short-name prefix)
-		     (lambda () (map pathname->short-name (get-completions)))))
-    if-not-found))
+(define (define-file-url-completers class filter)
+  (define-method %url-complete-string
+      ((string <string>) (default-url class)
+			 if-unique if-not-unique if-not-found)
+    (pathname-complete-string
+     (merge-pathnames string (file-url-pathname default-url))
+     filter
+     (lambda (string)
+       (if-unique (->namestring string)))
+     (lambda (prefix get-completions)
+       (if-not-unique (->namestring prefix)
+		      (lambda () (map ->namestring (get-completions)))))
+     if-not-found))
+  (define-method %url-string-completions
+      ((string <string>) (default-url class))
+    (map ->namestring
+	 (pathname-completions-list
+	  (merge-pathnames string (file-url-pathname default-url))
+	  filter))))
 
-(define ((file-url-completions filter) string)
-  (map pathname->short-name
-       (pathname-completions-list (short-name->pathname string) filter)))
-
-(define (file-suffix-filter suffix)
-  (let ((suffix (string-append "." suffix)))
-    (let ((l (string-length suffix)))
-      (lambda (pathname)
-	(let ((string (file-namestring pathname)))
-	  (let ((i (string-search-forward suffix string)))
-	    (and i
-		 (fix:> i 0)
-		 (let ((i (fix:+ i l)))
-		   (or (fix:= i (string-length string))
-		       (char=? #\. (string-ref string i)))))))))))
+(define ((file-type-filter type) pathname)
+  (let ((type* (pathname-type pathname)))
+    (and type*
+	 (string=? type* type))))
 
 ;;;; Server operations
 

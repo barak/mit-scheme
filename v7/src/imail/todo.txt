@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.31 2000/05/20 03:23:32 cph Exp $
+$Id: todo.txt,v 1.32 2000/05/22 02:17:58 cph Exp $
 
 Bug fixes
 ---------
@@ -28,9 +28,6 @@ Design changes
 
 * Repackage the code so that each file now in the core is in a
   separate package.
-
-* Do URL defaulting by merging a partially specified URL with the URL
-  of the selected folder.
 
 * Reimplement UID synchronization.  Take advantage of monotonic UID
   numbers to discover largest prefix range that hasn't changed.
@@ -64,8 +61,6 @@ New features
 * Add command to copy a folder from one URL to another.  This
   basically creates the target, opens the source, and copies all of
   the messages.
-
-* Implement URL completion.
 
 * Write M-x imail-resend.
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.78 2000/05/20 19:37:03 cph Exp $
+;;; $Id: imail-core.scm,v 1.79 2000/05/22 02:17:35 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -43,15 +43,18 @@
 
 (define-class <url> (<imail-object>))
 
+(define (guarantee-url url procedure)
+  (if (not (url? url))
+      (error:wrong-type-argument url "IMAIL URL" procedure)))
+
 ;; Return the canonical name of URL's protocol as a string.
 (define-generic url-protocol (url))
 
 ;; Return the body of URL as a string.
 (define-generic url-body (url))
 
-(define (guarantee-url url procedure)
-  (if (not (url? url))
-      (error:wrong-type-argument url "IMAIL URL" procedure)))
+(define (url->string url)
+  (string-append (url-protocol url) ":" (url-body url)))
 
 (define-method write-instance ((url <url>) port)
   (write-instance-helper 'URL url port
@@ -59,59 +62,49 @@
       (write-char #\space port)
       (write (url->string url) port))))
 
-(define (make-url protocol body)
-  (string->url (string-append protocol ":" body)))
-
-(define-generic ->url (object))
-(define-method ->url ((url <url>)) url)
-(define-method ->url ((string <string>)) (string->url string))
-
-(define (string->url string)
-  (or (hash-table/get saved-urls string #f)
-      (let ((url
-	     (let ((colon (string-find-next-char string #\:)))
-	       (if (not colon)
-		   (error:bad-range-argument string 'STRING->URL))
-	       ((or (get-url-protocol-parser (string-head string colon))
-		    (error:bad-range-argument string 'STRING->URL))
-		(string-tail string (fix:+ colon 1))))))
-	(hash-table/put! saved-urls string url)
-	url)))
-
-(define (save-url url)
-  (let ((string (url->string url)))
-    (or (hash-table/get saved-urls string #f)
-	(begin
-	  (hash-table/put! saved-urls string url)
-	  url))))
-
-(define saved-urls
-  (make-string-hash-table))
-
-(define (url->string url)
-  (string-append (url-protocol url) ":" (url-body url)))
-
-(define (define-url-protocol name class parser completer completions)
-  (define-method url-protocol ((url class)) url name)
-  (hash-table/put! url-protocols
-		   (string-downcase name)
-		   (vector parser completer completions)))
-
-(define (get-url-protocol-parser name) (get-url-protocol-item name 0))
-(define (get-url-protocol-completer name) (get-url-protocol-item name 1))
-(define (get-url-protocol-completions name) (get-url-protocol-item name 2))
-
-(define (get-url-protocol-item name index)
-  (let ((v (hash-table/get url-protocols (string-downcase name) #f)))
-    (and v
-	 (vector-ref v index))))
-
-(define url-protocols
-  (make-string-hash-table))
-
 ;; Return a string that concisely identifies URL, for use in the
 ;; presentation layer.
 (define-generic url-presentation-name (url))
+
+;; Convert STRING to a URL.  GET-DEFAULT-URL is a procedure of one
+;; argument that returns a URL that is used to fill in defaults if
+;; STRING is a specification for a partial URL.  GET-DEFAULT-URL is
+;; called with #F as its first argument to return a default URL to be
+;; used if STRING doesn't explicitly specify a protocol.  Otherwise,
+;; it is called with a protocol name as its first argument to return a
+;; protocol-specific default.
+(define (parse-url-string string get-default-url)
+  (let ((colon (string-find-next-char string #\:)))
+    (if colon
+	(%parse-url-string (string-tail string (fix:+ colon 1))
+			   (get-default-url (string-head string colon)))
+	(%parse-url-string string (get-default-url #f)))))
+
+;; Protocol-specific parsing.  Dispatch on the class of DEFAULT-URL.
+;; Each method is responsible for calling INTERN-URL on the result of
+;; the parse, and returning the interned URL.  Illegal syntax in
+;; STRING must cause an error to be signalled.
+(define-generic %parse-url-string (string default-url))
+
+(define (intern-url url)
+  (let ((string (url->string url)))
+    (or (hash-table/get interned-urls string #f)
+	(begin
+	  (hash-table/put! interned-urls string url)
+	  url))))
+
+(define interned-urls
+  (make-string-hash-table))
+
+(define (define-url-protocol name class)
+  (define-method url-protocol ((url class)) url name)
+  (hash-table/put! url-protocols (string-downcase name) class))
+
+(define (url-protocol-name? name)
+  (hash-table/get url-protocols (string-downcase name) #f))
+
+(define url-protocols
+  (make-string-hash-table))
 
 ;; Do completion on URL-STRING, which is a partially-specified URL.
 ;; Tail-recursively calls one of the three procedure arguments, as
@@ -123,29 +116,31 @@
 ;; completions.  If URL-STRING has no completions, IF-NOT-FOUND is
 ;; called with no arguments.
 
-(define (url-complete-string url-string if-unique if-not-unique if-not-found)
-  (let ((colon (string-find-next-char url-string #\:)))
+;; See PARSE-URL-STRING for a description of GET-DEFAULT-URL.
+
+(define (url-complete-string string get-default-url
+			     if-unique if-not-unique if-not-found)
+  (let ((colon (string-find-next-char string #\:)))
     (if colon
-	(let ((prepend
-	       (let ((prefix (string-head url-string (fix:+ colon 1))))
-		 (lambda (string)
-		   (string-append prefix string)))))
-	  (let ((completer
-		 (get-url-protocol-completer (string-head url-string colon))))
-	    (if completer
-		(completer (string-tail url-string (fix:+ colon 1))
-			   (lambda (string)
-			     (if-unique (prepend string)))
-			   (lambda (prefix get-completions)
-			     (if-not-unique
-			      (prepend prefix)
-			      (lambda () (map prepend (get-completions)))))
-			   if-not-found)
-		(if-not-found))))
+	(let ((name (string-head string colon)))
+	  (if (url-protocol-name? name)
+	      (let ((prepend
+		     (lambda (string) (string-append name ":" string))))
+		(%url-complete-string (string-tail string (fix:+ colon 1))
+				      (get-default-url name)
+				      (lambda (string)
+					(if-unique (prepend string)))
+				      (lambda (prefix get-completions)
+					(if-not-unique
+					 (prepend prefix)
+					 (lambda ()
+					   (map prepend (get-completions)))))
+				      if-not-found))
+	      (if-not-found)))
 	(let ((colonify (lambda (name) (string-append name ":"))))
 	  ((ordered-string-vector-completer
 	    (hash-table/ordered-key-vector url-protocols string<?))
-	   url-string
+	   string
 	   (lambda (name)
 	     (if-unique (colonify name)))
 	   (lambda (prefix get-completions)
@@ -153,24 +148,29 @@
 			    (lambda () (map colonify (get-completions)))))
 	   if-not-found)))))
 
-;; Return a list of the completions for URL-STRING.
+(define-generic %url-complete-string
+    (string default-url if-unique if-not-unique if-not-found))
 
-(define (url-string-completions url-string)
-  (let ((colon (string-find-next-char url-string #\:)))
+;; Return a list of the completions for STRING.
+;; See PARSE-URL-STRING for a description of GET-DEFAULT-URL.
+
+(define (url-string-completions string get-default-url)
+  (let ((colon (string-find-next-char string #\:)))
     (if colon
-	(let ((get-completions
-	       (get-url-protocol-completions (string-head url-string colon))))
-	  (if get-completions
-	      (map (let ((prefix (string-head url-string (fix:+ colon 1))))
-		     (lambda (string)
-		       (string-append prefix string)))
-		   (get-completions (string-tail url-string (fix:+ colon 1))))
+	(let ((name (string-head string colon)))
+	  (if (url-protocol-name? name)
+	      (map (lambda (string) (string-append name ":" string))
+		   (%url-string-completions
+		    (string-tail string (fix:+ colon 1))
+		    (get-default-url name)))
 	      '()))
 	(map (lambda (name) (string-append name ":"))
 	     (vector->list
 	      ((ordered-string-vector-matches
 		(hash-table/ordered-key-vector url-protocols string<?))
-	       url-string))))))
+	       string))))))
+
+(define-generic %url-string-completions (string default-url))
 
 ;;;; Server operations
 
@@ -179,7 +179,7 @@
 ;; already exists or can't be created.
 
 (define (create-folder url)
-  (%create-folder (->url url)))
+  (%create-folder url))
 
 (define-generic %create-folder (url))
 
@@ -188,12 +188,11 @@
 ;; exist or if it can't be deleted.
 
 (define (delete-folder url)
-  (let ((url (->url url)))
-    (let ((folder (get-memoized-folder url)))
-      (if folder
-	  (close-folder folder)))
-    (unmemoize-folder url)
-    (%delete-folder url)))
+  (let ((folder (get-memoized-folder url)))
+    (if folder
+	(close-folder folder)))
+  (unmemoize-folder url)
+  (%delete-folder url))
 
 (define-generic %delete-folder (url))
 
@@ -205,13 +204,11 @@
 ;; another.  It only allows changing the name of an existing folder.
 
 (define (rename-folder url new-url)
-  (let ((url (->url url))
-	(new-url (->url new-url)))
-    (let ((folder (get-memoized-folder url)))
-      (if folder
-	  (close-folder folder)))
-    (unmemoize-folder url)
-    (%rename-folder url new-url)))
+  (let ((folder (get-memoized-folder url)))
+    (if folder
+	(close-folder folder)))
+  (unmemoize-folder url)
+  (%rename-folder url new-url))
 
 (define-generic %rename-folder (url new-url))
 
@@ -220,7 +217,7 @@
 ;; messages.  Unspecified result.
 
 (define (append-message message url)
-  (%append-message message (->url url)))
+  (%append-message message url))
 
 (define-generic %append-message (message url))
 
@@ -248,9 +245,6 @@
 (define (guarantee-folder folder procedure)
   (if (not (folder? folder))
       (error:wrong-type-argument folder "IMAIL folder" procedure)))
-
-(define-method ->url ((folder <folder>))
-  (folder-url folder))
 
 (define (folder-modified! folder type . parameters)
   (without-interrupts
@@ -292,9 +286,8 @@
 ;; Open the folder named URL.
 
 (define (open-folder url)
-  (let ((url (->url url)))
-    (or (get-memoized-folder url)
-	(memoize-folder (%open-folder url)))))
+  (or (get-memoized-folder url)
+      (memoize-folder (%open-folder url))))
 
 (define-generic %open-folder (url))
 

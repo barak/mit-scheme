@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.62 2000/05/20 19:09:49 cph Exp $
+;;; $Id: imail-imap.scm,v 1.63 2000/05/22 02:17:41 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -34,54 +34,29 @@
   ;; Name of mailbox to access.
   (mailbox define accessor))
 
-(define (make-imap-url user-id host port mailbox)
-  (save-url (%make-imap-url user-id host port mailbox)))
+(define-url-protocol "imap" <imap-url>)
 
-(define-url-protocol "imap" <imap-url>
-  (lambda (string)
-    (let ((pv
-	   (or (parse-string imap:parse:imail-url string)
-	       (error:bad-range-argument string 'STRING->URL))))
-      (%make-imap-url (parser-token pv 'USER-ID)
-		      (parser-token pv 'HOST)
-		      (let ((port (parser-token pv 'PORT)))
-			(and port
-			     (string->number port)))
-		      (parser-token pv 'MAILBOX)))))
-
-(define %make-imap-url
+(define make-imap-url
   (let ((constructor
 	 (instance-constructor <imap-url> '(USER-ID HOST PORT MAILBOX))))
     (lambda (user-id host port mailbox)
-      (if (and user-id host port mailbox)
-	  (constructor user-id host port mailbox)
-	  (let ((default (imail-default-imap-url)))
-	    (constructor (or user-id (imap-url-user-id default))
-			 (or host (imap-url-host default))
-			 (or port (imap-url-port default))
-			 (or mailbox (imap-url-mailbox default))))))))
-
-(define imap:parse:imail-url
-  (let ((//server
-	 (sequence-parser (noise-parser (string-matcher "//"))
-			  (imap:server-parser #f)))
-	(/mbox
-	 (sequence-parser (noise-parser (string-matcher "/"))
-			  (optional-parser imap:parse:enc-mailbox))))
-    (alternatives-parser
-     (sequence-parser //server (optional-parser /mbox))
-     /mbox
-     imap:parse:enc-mailbox)))
+      (intern-url (constructor user-id host port mailbox)))))
 
 (define-method url-body ((url <imap-url>))
+  (make-imap-url-string (imap-url-user-id url)
+			(imap-url-host url)
+			(imap-url-port url)
+			(imap-url-mailbox url)))
+
+(define (make-imap-url-string user-id host port mailbox)
   (string-append "//"
-		 (url:encode-string (imap-url-user-id url))
+		 (url:encode-string user-id)
 		 "@"
-		 (imap-url-host url)
+		 host
 		 ":"
-		 (number->string (imap-url-port url))
+		 (number->string port)
 		 "/"
-		 (url:encode-string (imap-url-mailbox url))))
+		 (url:encode-string mailbox)))
 
 (define-method url-presentation-name ((url <imap-url>))
   (imap-url-mailbox url))
@@ -92,6 +67,98 @@
   (and (string=? (imap-url-user-id url1) (imap-url-user-id url2))
        (string-ci=? (imap-url-host url1) (imap-url-host url2))
        (= (imap-url-port url1) (imap-url-port url2))))
+
+(define-method %parse-url-string (string default-url)
+  (or (parse-imap-url-string string default-url)
+      (error:bad-range-argument string 'PARSE-URL-STRING)))
+
+(define parse-imap-url-string
+  (let ((parser
+	 (let ((//server
+		(sequence-parser (noise-parser (string-matcher "//"))
+				 (imap:server-parser #f)))
+	       (/mbox
+		(sequence-parser (noise-parser (string-matcher "/"))
+				 (optional-parser imap:parse:enc-mailbox))))
+	   (alternatives-parser
+	    (sequence-parser //server (optional-parser /mbox))
+	    /mbox
+	    imap:parse:enc-mailbox))))
+    (lambda (string default-url)
+      (let ((pv (parse-string parser string)))
+	(and pv
+	     (make-imap-url (or (parser-token pv 'USER-ID)
+				(imap-url-user-id default-url))
+			    (or (parser-token pv 'HOST)
+				(imap-url-host default-url))
+			    (cond ((parser-token pv 'PORT) => string->number)
+				  ((parser-token pv 'HOST) 143)
+				  (else (imap-url-port default-url)))
+			    (or (parser-token pv 'MAILBOX)
+				(imap-url-mailbox default-url))))))))
+
+(define-method %url-complete-string
+    ((string <string>) (default-url <imap-url>)
+		       if-unique if-not-unique if-not-found)
+  (call-with-values
+      (lambda () (parse-imap-completion-url-string string default-url))
+    (lambda (mailbox url)
+      (if mailbox
+	  (let ((convert
+		 (lambda (mailbox)
+		   (url-body (parse-imap-url-string mailbox url)))))
+	    (complete-imap-mailbox mailbox url
+	      (lambda (mailbox)
+		(if-unique (convert mailbox)))
+	      (lambda (prefix get-mailboxes)
+		(if-not-unique (if (string-null? prefix)
+				   (make-imap-url-string (imap-url-user-id url)
+							 (imap-url-host url)
+							 (imap-url-port url)
+							 "")
+				   (convert prefix))
+			       (lambda () (map convert (get-mailboxes)))))
+	      if-not-found))
+	  (if-not-found)))))
+
+(define-method %url-string-completions
+    ((string <string>) (default-url <imap-url>))
+  (call-with-values
+      (lambda () (parse-imap-completion-url-string string default-url))
+    (lambda (mailbox url)
+      (if mailbox
+	  (map (lambda (mailbox)
+		 (url-body (parse-imap-url-string mailbox url)))
+	       (imap-mailbox-completions mailbox url))
+	  '()))))
+
+(define (parse-imap-completion-url-string string default-url)
+  (cond ((string-null? string)
+	 (values string default-url))
+	((parse-imap-url-string string default-url)
+	 => (lambda (url) (values (imap-url-mailbox url) url)))
+	(else
+	 (values #f #f))))
+
+(define (complete-imap-mailbox mailbox url
+			       if-unique if-not-unique if-not-found)
+  (if (string-null? mailbox)
+      (if-not-unique mailbox
+		     (lambda () (imap-mailbox-completions mailbox url)))
+      (let ((responses (imap-mailbox-completions mailbox url)))
+	(cond ((not (pair? responses))
+	       (if-not-found))
+	      ((pair? (cdr responses))
+	       (if-not-unique (string-greatest-common-prefix responses)
+			      (lambda () responses)))
+	      (else
+	       (if-unique (car responses)))))))
+
+(define (imap-mailbox-completions mailbox url)
+  (map imap:response:list-mailbox
+       (with-open-imap-connection url
+	 (lambda (connection)
+	   (imap:command:list connection "" (string-append mailbox "*"))))))
 
 ;;;; Server connection
 
@@ -734,8 +801,8 @@
 
 (define (imap:command:capability connection)
   (imap:response:capabilities
-   (imap:command:single-response imap:response:capability?
-				 connection 'CAPABILITY)))
+   (imap:command:single-response imap:response:capability? connection
+				 'CAPABILITY)))
 
 (define (imap:command:login connection user-id passphrase)
   ((imail-message-wrapper "Logging in as " user-id)
@@ -746,34 +813,29 @@
   ((imail-message-wrapper "Select mailbox " mailbox)
    (lambda ()
      (imap:response:ok?
-      (imap:command:no-response-1 connection 'SELECT
-				  (adjust-mailbox-name connection mailbox))))))
+      (imap:command:no-response-1 connection 'SELECT mailbox)))))
 
 (define (imap:command:fetch connection index items)
-  (imap:command:single-response imap:response:fetch?
-				connection 'FETCH (+ index 1) items))
+  (imap:command:single-response imap:response:fetch? connection
+				'FETCH (+ index 1) items))
 
 (define (imap:command:uid-fetch connection uid items)
-  (imap:command:single-response imap:response:fetch?
-				connection 'UID 'FETCH uid items))
+  (imap:command:single-response imap:response:fetch? connection
+				'UID 'FETCH uid items))
 
 (define (imap:command:fetch-all connection items)
-  (imap:command:multiple-response imap:response:fetch?
-				  connection 'FETCH
-				  (cons 'ATOM "1:*")
-				  items))
+  (imap:command:multiple-response imap:response:fetch? connection
+				  'FETCH (cons 'ATOM "1:*") items))
 
 (define (imap:command:fetch-range connection start end items)
-  (imap:command:multiple-response imap:response:fetch?
-				  connection 'FETCH
-				  (cons 'ATOM
-					(string-append
-					 (number->string (+ start 1))
-					 ":"
-					 (if end
-					     (number->string end)
-					     "*")))
-				  items))
+  (imap:command:multiple-response
+   imap:response:fetch? connection
+   'FETCH
+   (cons 'ATOM
+	 (string-append (number->string (+ start 1))
+			":"
+			(if end (number->string end) "*")))
+   items))
 
 (define (imap:command:uid-store-flags connection uid flags)
   (imap:command:no-response connection 'UID 'STORE uid 'FLAGS flags))
@@ -782,48 +844,35 @@
   ((imail-message-wrapper "Expunging messages")
    (lambda ()
      (imap:command:no-response connection 'EXPUNGE))))
-
+
 (define (imap:command:noop connection)
   (imap:command:no-response connection 'NOOP))
 
 (define (imap:command:create connection mailbox)
-  (imap:command:no-response connection 'CREATE
-			    (adjust-mailbox-name connection mailbox)))
+  (imap:command:no-response connection 'CREATE mailbox))
 
 (define (imap:command:delete connection mailbox)
-  (imap:command:no-response connection 'DELETE
-			    (adjust-mailbox-name connection mailbox)))
+  (imap:command:no-response connection 'DELETE mailbox))
 
 (define (imap:command:rename connection from to)
-  (imap:command:no-response connection 'RENAME
-			    (adjust-mailbox-name connection from)
-			    (adjust-mailbox-name connection to)))
+  (imap:command:no-response connection 'RENAME from to))
 
 (define (imap:command:copy connection index mailbox)
-  (imap:command:no-response connection 'COPY (+ index 1)
-			    (adjust-mailbox-name connection mailbox)))
+  (imap:command:no-response connection 'COPY (+ index 1) mailbox))
 
 (define (imap:command:append connection mailbox flags time text)
-  (imap:command:no-response connection
-			    'APPEND
-			    (adjust-mailbox-name connection mailbox)
+  (imap:command:no-response connection 'APPEND mailbox
 			    (and (pair? flags) flags)
 			    (imap:universal-time->date-time time)
 			    (cons 'LITERAL text)))
 
 (define (imap:command:search connection . key-plist)
-  (apply imap:command:single-response imap:response:search?
-	 connection 'SEARCH key-plist))
+  (apply imap:command:single-response imap:response:search? connection
+	 'SEARCH key-plist))
 
-(define (adjust-mailbox-name connection mailbox)
-  (case (imap-connection-server-type connection)
-    ((CYRUS)
-     (if (or (string-ci=? "inbox" mailbox)
-	     (string-prefix-ci? "inbox." mailbox)
-	     (string-prefix-ci? "user." mailbox))
-	 mailbox
-	 (string-append "inbox." mailbox)))
-    (else mailbox)))
+(define (imap:command:list connection reference pattern)
+  (imap:command:multiple-response imap:response:list? connection
+				  'LIST reference pattern))
 
 (define (imap:command:no-response connection command . arguments)
   (let ((response
