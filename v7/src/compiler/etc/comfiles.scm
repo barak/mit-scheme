@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: comfiles.scm,v 1.4 1993/07/16 19:59:07 gjr Exp $
+$Id: comfiles.scm,v 1.5 1993/11/13 01:39:06 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -37,10 +37,10 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define compiler-directories
-  '("back" "base" "fggen" "fgopt" "rtlbase" "rtlgen" "rtlopt"
-	   (if (equal? microcode-id/operating-system-name "unix")
-	       "machine"
-	       "machines/i386")))	   
+  `("back" "base" "fggen" "fgopt" "rtlbase" "rtlgen" "rtlopt"
+	   ,(if (equal? microcode-id/operating-system-name "unix")
+		"machine"
+		"machines/i386")))	   
 
 (define runtime-directories
   '("runtime" "sf" "cref"))
