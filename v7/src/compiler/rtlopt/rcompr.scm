@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcompr.scm,v 1.5 1988/06/14 08:44:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcompr.scm,v 1.6 1988/08/29 23:21:32 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -55,7 +55,7 @@ MIT in each case. |#
 	    (lambda (rinst)
 	      (if (rinst-next rinst)
 		  (let ((rtl (rinst-rtl rinst)))
-		    (optimize-rtl live rinst rtl)
+		    (optimize-rtl bblock live rinst rtl)
 		    (regset-clear! births)
 		    (mark-set-registers! live births rtl false)
 		    (for-each (lambda (register)
@@ -64,52 +64,71 @@ MIT in each case. |#
 		    (regset-union! live births))))))
 	(bblock-perform-deletions! bblock))))
 
-(define (optimize-rtl live rinst rtl)
-  (if (rtl:assign? rtl)
-      ;;; In order to avoid a combinatorial explosion in the number of
-      ;;; rules required in the lapgen phase we create a class of
-      ;;; expression types which we don't want optimized. We will
-      ;;; explicitly assign these expression types to registers during
-      ;;; rtl generation and then we need only create rules for how to
-      ;;; generate assignments to registers. Some day we will have
-      ;;; some facility for subrule hierarchies which may avoid the
-      ;;; combinatorial explosion. When that happens the next test may
-      ;;; be removed.
-      (if (rtl:optimizable? (rtl:assign-expression rtl))
-	  (let ((address (rtl:assign-address rtl)))
-	    (if (rtl:register? address)
-		(let ((register (rtl:register-number address))
-		      (next (rinst-next rinst)))
-		  (if (and (pseudo-register? register)
-			   (= 2 (register-n-refs register))
-			   (rinst-dead-register? next register)
-			   (rtl:any-subexpression?
-			    (rinst-rtl next)
-			    (lambda (expression)
-			      (and (rtl:register? expression)
-				   (= (rtl:register-number expression)
-				      register)))))
-		      (begin
-			(let ((dead (rinst-dead-registers rinst)))
-			  (for-each increment-register-live-length! dead)
-			  (set-rinst-dead-registers!
-			   next
-			   (eqv-set-union
-			    dead
-			    (delv! register (rinst-dead-registers next)))))
-			(for-each-regset-member live 
-			  decrement-register-live-length!)
-			(rtl:modify-subexpressions
-			 (rinst-rtl next)
-			 (lambda (expression set-expression!)
-			   (if (and (rtl:register? expression)
-				    (= (rtl:register-number expression)
-				       register))
-			       (set-expression! (rtl:assign-expression rtl)))))
-			(set-rinst-rtl! rinst false)
-			(reset-register-n-refs! register)
-			(reset-register-n-deaths! register)
-			(reset-register-live-length! register)
-			(set-register-bblock! register false)))))))))
+(define (optimize-rtl bblock live rinst rtl)
+  ;; Look for assignments whose address is a pseudo register.  If that
+  ;; register has exactly one reference which is known to be in this
+  ;; basic block, it is a candidate for expression folding.
+  (let ((register
+	 (and (rtl:assign? rtl)
+	      (let ((address (rtl:assign-address rtl)))
+		(and (rtl:register? address)
+		     (rtl:register-number address))))))
+    (if (and register
+	     (pseudo-register? register)
+	     (eq? (register-bblock register) bblock)
+	     (= 2 (register-n-refs register)))
+	(find-reference-instruction live
+				    rinst
+				    register
+				    (rtl:assign-expression rtl)))))
+
+(define (find-reference-instruction live rinst register expression)
+  ;; Find the instruction which contains the single reference to
+  ;; `register', and determine if it is possible to fold `expression'
+  ;; into that instruction in `register's place.
+  (let ((next (rinst-next rinst)))
+    (cond ((rinst-dead-register? next register)
+	   (fold-instructions! live rinst next register expression))
+	  ((interpreter-value-register? expression)
+	   (let loop ((next next))
+	     (if (not (let ((rtl (rinst-rtl next)))
+			(and (rtl:assign? rtl)
+			     (interpreter-value-register?
+			      (rtl:assign-address rtl)))))
+		 (let ((next (rinst-next next)))
+		   (if (rinst-dead-register? next register)
+		       (fold-instructions! live rinst next register expression)
+		       (loop next))))))
+	  ((rtl:constant-expression? expression)
+	   (let loop ((next (rinst-next next)))
+	     (if (rinst-dead-register? next register)
+		 (fold-instructions! live rinst next register expression)
+		 (loop (rinst-next next))))))))
+
+(define (fold-instructions! live rinst next register expression)
+  ;; Attempt to fold `expression' into the place of `register' in the
+  ;; RTL instruction `next'.  If the resulting instruction is
+  ;; reasonable (i.e. if the LAP generator informs us that it has a
+  ;; pattern for generating that instruction), the folding is
+  ;; performed.
+  (let ((rtl (rinst-rtl next)))
+    (if (rtl:refers-to-register? rtl register)
+	(let ((rtl (rtl:subst-register rtl register expression)))
+	  (if (lap-generator/match-rtl-instruction rtl)
+	      (begin
+		(set-rinst-rtl! rinst false)
+		(set-rinst-rtl! next rtl)
+		(let ((dead (rinst-dead-registers rinst)))
+		  (for-each increment-register-live-length! dead)
+		  (set-rinst-dead-registers!
+		   next
+		   (eqv-set-union dead
+				  (delv! register
+					 (rinst-dead-registers next)))))
+		(for-each-regset-member live decrement-register-live-length!)
+		(reset-register-n-refs! register)
+		(reset-register-n-deaths! register)
+		(reset-register-live-length! register)
+		(set-register-bblock! register false)))))))
 
 )
