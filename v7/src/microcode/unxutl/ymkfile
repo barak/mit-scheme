@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ymkfile,v 1.83 1993/10/31 19:24:09 gjr Exp $
+$Id: ymkfile,v 1.84 1993/11/05 00:45:25 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -275,7 +275,7 @@ const.h \
 interp.h \
 prim.h \
 $(GC_HEAD_FILES)
-cmpauxmd.o : cmpauxmd.c liarc.tch prims.h bignum.h bitstr.h
+cmpauxmd.o : cmpauxmd.c liarc.tch prims.h bignum.h bitstr.h avltree.h
 compinit.o : compinit.c liarc.tch compinit.h
 /* The following includes liarc.tch in case COMPILED_SOURCES is empty,
    to prevent fgrep from reading stdin.
@@ -385,6 +385,7 @@ SCHEME_LIB = $(USER_LIBS) $(GRAPHICS_LIBS) $(X_LIB) $(TERMCAP_LIBS) LIB_MATH LIB
 CORE_SOURCES = \
 $(MACHINE_SOURCES) \
 artutl.c \
+avltree.c \
 bignum.c \
 bigprm.c \
 bitstr.c \
@@ -481,6 +482,7 @@ HEAD_FILES = scheme.tch prims.h zones.h locks.h bignum.h \
 CORE_OBJECTS = \
 $(MACHINE_OBJECTS) \
 artutl.o \
+avltree.o \
 bignum.o \
 bigprm.o \
 bitstr.o \
@@ -696,7 +698,8 @@ foo $(USER_PRIM_OBJECTS) : $(HEAD_FILES)
 interp.o : scheme.tch locks.h trap.h lookup.h history.h cmpint.h zones.h prmcon.h
 hooks.o : scheme.tch prims.h winder.h history.h
 utils.o : scheme.tch prims.h winder.h history.h cmpint.h syscall.h
-primutl.o : scheme.tch prims.h prename.h $(GC_HEAD_FILES) syscall.h
+primutl.o : scheme.tch os.h prims.h usrdef.h prename.h syscall.h \
+	avltree.h $(GC_HEAD_FILES)
 
 hunk.o list.o step.o vector.o sysprim.o daemon.o prim.o extern.o : \
 	scheme.tch prims.h
@@ -716,6 +719,7 @@ comutl.o : scheme.tch prims.h
 gctype.o : config.h
 
 artutl.o : scheme.tch
+avltree.o : ansidecl.h avltree.h
 bignum.o : scheme.tch bignmint.h limits.h
 bigprm.o flonum.o intprm.o : scheme.tch prims.h zones.h
 generic.o : scheme.tch prims.h

@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile,v 1.9 1993/08/23 01:42:02 gjr Exp $
+###	$Id: makefile,v 1.10 1993/11/05 00:46:57 gjr Exp $
 ###
 ###	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ###
@@ -75,6 +75,7 @@ SCHEME_LIB = $(USER_LIBS) $(GRAPHICS_LIBS) $(TERMCAP_LIBS) -lm
 CORE_SOURCES = \
 $(MACHINE_SOURCES) \
 artutl.c \
+avltree.c \
 bignum.c \
 bigprm.c \
 bitstr.c \
@@ -190,6 +191,7 @@ HEAD_FILES = scheme.tch prims.h zones.h locks.h bignum.h \
 CORE_OBJECTS = \
 $(MACHINE_OBJECTS) \
 artutl.obj \
+avltree.obj \
 bignum.obj \
 bigprm.obj \
 bitstr.obj \
@@ -328,7 +330,8 @@ foo $(USER_PRIM_OBJECTS) : $(HEAD_FILES)
 interp.obj : scheme.tch locks.h trap.h lookup.h history.h cmpint.h zones.h prmcon.h
 hooks.obj : scheme.tch prims.h winder.h history.h
 utils.obj : scheme.tch prims.h winder.h history.h cmpint.h syscall.h
-primutl.obj : scheme.tch prims.h prename.h syscall.h
+primutl.obj : scheme.tch os.h prims.h usrdef.h prename.h syscall.h \
+	avltree.h $(GC_HEAD_FILES)
 hunk.obj list.obj step.obj vector.obj sysprim.obj daemon.obj prim.obj extern.obj : \
 	scheme.tch prims.h
 lookup.obj debug.obj intern.obj : scheme.tch prims.h lookup.h trap.h locks.h
@@ -342,6 +345,7 @@ purify.obj : scheme.tch prims.h $(GC_HEAD_FILES) zones.h
 purutl.obj : scheme.tch prims.h $(GC_HEAD_FILES) zones.h
 comutl.obj : scheme.tch prims.h
 artutl.obj : scheme.tch
+avltree.obj : ansidecl.h avltree.h
 bignum.obj : scheme.tch bignmint.h limits.h
 bigprm.obj flonum.obj intprm.obj : scheme.tch prims.h zones.h
 generic.obj : scheme.tch prims.h

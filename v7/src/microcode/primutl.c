@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: primutl.c,v 9.68 1993/10/27 22:15:59 gjr Exp $
+$Id: primutl.c,v 9.69 1993/11/05 00:44:57 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -47,6 +47,7 @@ MIT in each case. */
 #include "usrdef.h"
 #include "prename.h"
 #include "syscall.h"
+#include "avltree.h"
 #include "cmpgc.h"
 #include <ctype.h>
 
@@ -140,210 +141,6 @@ DEFUN_VOID (Prim_unimplemented)
   signal_error_from_primitive (ERR_UNIMPLEMENTED_PRIMITIVE);
   /*NOTREACHED*/
 }
-
-static char * tree_error_message = ((char *) NULL);
-static char * tree_error_noise   = ((char *) NULL);
-
-static void
-DEFUN (tree_error, (message, noise), char * message AND char * noise)
-{
-  tree_error_message = message;
-  tree_error_noise   = noise;
-  return;
-}
-
-/* AVL trees.  o(log n) lookup, insert (and delete, not implemented here).
-   AVL condition: for every node
-     abs (height (node.left) - height (node.right)) < 2
-   This guarantees that the least-balanced AVL tree has Fibonacci-sized
-   branches, and therefore the height is at most the log base phi of the
-   number of nodes, where phi is the golden ratio.
-   With random insertion (or when created as below),
-   they are better, approaching log base 2.
-
-   This version does not allow duplicate entries.
- */   
-
-typedef struct node_s * node;
-
-struct node_s
-{
-  int height;
-  node left;
-  node rite;
-  char * name;
-  int value;
-};
-
-#define BRANCH_HEIGHT(tree) (((tree) == ((node) NULL)) ? 0 : (tree)->height)
-
-#ifndef MAX
-#  define MAX(a,b) (((a) >= (b)) ? (a) : (b))
-#endif
-
-static void
-DEFUN (update_height, (tree), node tree)
-{
-  tree->height = (1 + (MAX ((BRANCH_HEIGHT (tree->left)),
-			    (BRANCH_HEIGHT (tree->rite)))));
-  return;
-}
-
-static node
-DEFUN (leaf_make, (name, value),
-       char * name AND int value)
-{
-  node leaf = ((node) (malloc (sizeof (struct node_s))));
-  if (leaf == ((node) NULL))
-  {
-    tree_error ("leaf_make: malloc failed.\n", NULL);
-    return (leaf);
-  }
-  leaf->name = name;
-  leaf->value = value;
-  leaf->height = 1;
-  leaf->left = ((node) NULL);
-  leaf->rite = ((node) NULL);
-  return (leaf);
-}
-
-static node
-DEFUN (rotate_left, (tree), node tree)
-{
-  node rite = tree->rite;
-  node beta = rite->left;
-  tree->rite = beta;
-  rite->left = tree;
-  update_height (tree);
-  update_height (rite);
-  return (rite);
-}
-
-static node
-DEFUN (rotate_rite, (tree), node tree)
-{
-  node left = tree->left;
-  node beta = left->rite;
-  tree->left = beta;
-  left->rite = tree;
-  update_height (tree);
-  update_height (left);
-  return (left);
-}
-
-static node
-DEFUN (rebalance_left, (tree), node tree)
-{
-  if ((1 + (BRANCH_HEIGHT (tree->rite))) >= (BRANCH_HEIGHT (tree->left)))
-  {
-    update_height (tree);
-    return (tree);
-  }
-  else
-  {
-    node q = tree->left;
-    if ((BRANCH_HEIGHT (q->rite)) > (BRANCH_HEIGHT (q->left)))
-      tree->left = (rotate_left (q));
-    return (rotate_rite (tree));
-  }
-}
-
-static node
-DEFUN (rebalance_rite, (tree), node tree)
-{
-  if ((1 + (BRANCH_HEIGHT (tree->left))) >= (BRANCH_HEIGHT (tree->rite)))
-  {
-    update_height (tree);
-    return (tree);
-  }
-  else
-  {
-    node q = tree->rite;
-    if ((BRANCH_HEIGHT (q->left)) > (BRANCH_HEIGHT (q->rite)))
-      tree->rite = (rotate_rite (q));
-    return (rotate_left (tree));
-  }
-}
-
-static node
-DEFUN (tree_insert, (tree, name, value),
-       node tree
-       AND char * name
-       AND int value)
-{
-  if (tree == ((node) NULL))
-    return (leaf_make (name, value));
-  switch (strcmp_ci (name, tree->name))
-  {
-    case 0:
-      tree_error ("tree_insert: Duplicate entry %s.\n", name);
-      return (tree);
-      
-    case -1:
-    {
-      /* To the left */
-      tree->left = (tree_insert (tree->left, name, value));
-      return (rebalance_left (tree));
-    }
-
-    case 1:
-    {
-      /* To the right */
-      tree->rite = (tree_insert (tree->rite, name, value));
-      return (rebalance_rite (tree));
-    }
-  }
-}
-
-static node
-DEFUN (tree_lookup, (tree, name), node tree AND char * name)
-{
-  while (tree != ((node) NULL))
-    switch (strcmp_ci (name, tree->name))
-    {
-      case 0:
-	return (tree);
-
-      case -1:
-	tree = tree->left;
-	break;
-
-      case 1:
-	tree = tree->rite;
-	break;
-    }
-  return (tree);
-}
-
-static node
-DEFUN (tree_build, (high, names, value),
-       int high AND char ** names AND int value)
-{
-  static int bias = 0;
-
-  if (high > 1)
-  {
-    node tree;
-    int middle = (high / 2);
-    int next;
-
-    if ((high & 1) == 0)
-    {
-      middle -= bias;
-      bias = (1 - bias);
-    }
-    next = (middle + 1);
-    tree = (leaf_make (names[middle], (value + middle)));
-    tree->left = (tree_build (middle, names, value));
-    tree->rite = (tree_build ((high - next), &names[next], (value + next)));
-    update_height (tree);
-    return (tree);
-  }
-  else if (high == 1)
-    return (leaf_make (* names, value));
-  else
-    return ((node) NULL);
-}
 
 static void
 DEFUN (initialization_error, (reason, item), char * reason AND char * item)
@@ -406,12 +203,12 @@ DEFUN_VOID (grow_primitive_tables)
   return (result);
 }
 
-static node prim_procedure_tree = ((node) NULL);
+static tree_node prim_procedure_tree = ((tree_node) NULL);
 
 void
 DEFUN_VOID (initialize_primitives)
 {
-  int counter;
+  unsigned long counter;
 
   /* MAX_STATIC_PRIMITIVE is the index of the last primitive */
 
@@ -429,12 +226,14 @@ DEFUN_VOID (initialize_primitives)
 
   for (counter = 0; counter < N_PRIMITIVE_ALIASES; counter++)
   {
-    int index;
-    node new;
-    node orig = (tree_lookup (prim_procedure_tree,
-			      primitive_aliases[counter].name));
+    unsigned long index;
+    tree_node new;
+    tree_node orig = (tree_lookup (prim_procedure_tree,
+				   primitive_aliases[counter].name));
 
-    if (orig == ((node) NULL))
+    if (orig != ((tree_node) NULL))
+      index = orig->value;
+    else
     {
       SCHEME_OBJECT old = (make_primitive (primitive_aliases[counter].name,
 					   UNKNOWN_PRIMITIVE_ARITY));
@@ -447,8 +246,6 @@ DEFUN_VOID (initialize_primitives)
       }
       index = (PRIMITIVE_NUMBER (old));
     }
-    else
-      index = orig->value;
 
     new = (tree_insert (prim_procedure_tree,
 			primitive_aliases[counter].alias,
@@ -474,12 +271,12 @@ DEFUN (declare_primitive_internal,
        AND char * docstr)
 /* nargs_lo ignored, for now */
 {
-  int index;
+  unsigned long index;
   SCHEME_OBJECT primitive;
   char * ndocstr = docstr;
-  node prim = (tree_lookup (prim_procedure_tree, name));
+  tree_node prim = (tree_lookup (prim_procedure_tree, name));
 
-  if (prim != ((node) NULL))
+  if (prim != ((tree_node) NULL))
   {
     index = prim->value;
     primitive = (MAKE_PRIMITIVE_OBJECT (prim->value));
@@ -591,10 +388,10 @@ DEFUN (find_primitive, (sname, intern_p, allow_p, arity),
        SCHEME_OBJECT sname AND Boolean intern_p
        AND Boolean allow_p AND int arity)
 {
-  node prim = (tree_lookup (prim_procedure_tree,
-			    ((char *) (STRING_LOC (sname, 0)))));
+  tree_node prim = (tree_lookup (prim_procedure_tree,
+				 ((char *) (STRING_LOC (sname, 0)))));
 
-  if (prim != ((node) NULL))
+  if (prim != ((tree_node) NULL))
   {
     SCHEME_OBJECT primitive = (MAKE_PRIMITIVE_OBJECT (prim->value));
 
