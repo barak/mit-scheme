@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: make-dist-files,v 1.15 2001/03/09 17:40:37 cph Exp $
+# $Id: make-dist-files,v 1.16 2001/03/10 02:34:20 cph Exp $
 #
 # Copyright (c) 2000-2001 Massachusetts Institute of Technology
 #
@@ -39,13 +39,15 @@ esac
 . /scheme/v7/dist/release-prefix
 
 TL_DIR="$(pwd)"
-BUILD_DIR="${TL_DIR}/$(get_release_prefix)"
-IMAGE_DIR="${BUILD_DIR}-image"
-BINDIR="${IMAGE_DIR}/usr/local/bin"
-AUXDIR="${IMAGE_DIR}/usr/local/lib/mit-scheme"
+BUILD_DIR_REL="$(get_release_prefix)"
+BUILD_DIR="${TL_DIR}/${BUILD_DIR_REL}"
 SRC_FILE="${BUILD_DIR}-src.tar.gz"
 STAMP_BUILD="${TL_DIR}/stamp-build"
 STAMP_IMAGE="${TL_DIR}/stamp-image"
+
+IMAGE_DIR="${BUILD_DIR}-image"
+BINDIR="${IMAGE_DIR}/usr/local/bin"
+AUXDIR="${IMAGE_DIR}/usr/local/lib/mit-scheme"
 
 if [ ! -f "${SRC_FILE}" ]; then
     echo "No source file: ${SRC_FILE}."
@@ -65,7 +67,8 @@ if [ ! -f "${STAMP_BUILD}" ];then
     tar xzf "${SRC_FILE}"
 
     cd "${BUILD_DIR}/src"
-    ./configure --enable-static-libs=yes --with-mcrypt=no
+    ./configure --enable-static-libs=yes --enable-dynamic-crypto=no \
+	--with-mcrypt=no
     make
 
     cd "${BUILD_DIR}/doc"
@@ -178,7 +181,6 @@ if [ ! -f "${STAMP_IMAGE}" ]; then
     touch "${STAMP_IMAGE}"
 fi
 
-
 make_tarfile ()
 {
     TARFILE="${TL_DIR}/${1}.tar.gz"
@@ -196,4 +198,30 @@ else
   make_tarfile "${DESTINATION}"
 fi
 
-rm -rf "${STAMP_BUILD}" "${BUILD_DIR}" "${STAMP_IMAGE}" "${IMAGE_DIR}"
+rm -rf "${STAMP_IMAGE}" "${IMAGE_DIR}"
+
+make_doc_file ()
+{
+    DOCFILE="${BUILD_DIR}-${2}.${3}"
+    rm -f "${DOCFILE}"
+    (cd "${TL_DIR}"; ${1} "${DOCFILE}" "${BUILD_DIR_REL}/${2}")
+    chmod a-w "${DOCFILE}"
+}
+
+for TYPE in html info pdf ps; do
+    IMAGE_ROOT="doc-${TYPE}"
+    IMAGE_DIR="${BUILD_DIR}/${IMAGE_ROOT}"
+    rm -rf "${IMAGE_DIR}"
+    mkdir "${IMAGE_DIR}"
+    (cd "${BUILD_DIR}/doc"; make "install-${TYPE}" "${TYPE}dir=${IMAGE_DIR}")
+    make_doc_file "tar cvzf" "${IMAGE_ROOT}" "tar.gz"
+    make_doc_file "zip -r" "${IMAGE_ROOT}" "zip"
+    case "${TYPE}" in
+    html | pdf)
+	rm -rf "${IMAGE_ROOT}"
+	mv -f "${IMAGE_DIR}" .
+	;;
+    esac
+done
+
+rm -rf "${STAMP_BUILD}" "${BUILD_DIR}"
