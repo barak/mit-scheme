@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infnew.scm,v 1.1 1994/11/19 02:02:36 adams Exp $
+$Id: infnew.scm,v 1.2 1994/11/23 02:28:44 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -248,19 +248,27 @@ MIT in each case. |#
   (let ((debug-info
 	 (lambda (selector object)
 	   (or (selector object)
-	       (error "Missing debugging info" object)))))
+	       (begin
+		 (warn "Missing debugging info" object)
+		 false)))))
     (values
      (and expression (debug-info rtl-expr/debugging-info expression))
-     (map (lambda (procedure)
-	    (let ((info (debug-info rtl-procedure/debugging-info procedure)))
-	      (set-dbg-procedure/external-label!
-	       info
-	       (rtl-procedure/%external-label procedure))
-	      info))
-	  procedures)
-     (map (lambda (continuation)
-	    (debug-info rtl-continuation/debugging-info continuation))
-	  continuations))))
+     (list-transform-negative
+	 (map (lambda (procedure)
+		(let ((info
+		       (debug-info rtl-procedure/debugging-info procedure)))
+		  (and info
+		       (set-dbg-procedure/external-label!
+			info
+			(rtl-procedure/%external-label procedure))
+		       info)))
+	      procedures)
+       false?)
+     (list-transform-negative
+	 (map (lambda (continuation)
+		(rtl-continuation/debugging-info continuation))
+	      continuations)
+       false?))))
 
 (define (info-generation-phase-3 expression procedures continuations
 				 label-bindings external-labels)
