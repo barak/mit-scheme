@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm1.scm,v 4.11 1989/06/07 02:13:54 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm1.scm,v 4.12 1989/08/11 02:29:41 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -111,7 +111,8 @@ MIT in each case. |#
   (write-string "]"))
 
 (define (disassembler/write-compiled-code-block block info #!optional page?)
-  (let ((symbol-table (dbg-info/labels info)))    (if (or (default-object? page?) page?)
+  (let ((symbol-table (and info (dbg-info/labels info))))
+    (if (or (default-object? page?) page?)
 	(begin
 	  (write-char #\page)
 	  (newline)))
