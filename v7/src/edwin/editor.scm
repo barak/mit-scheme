@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.185 1989/04/15 00:48:32 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.186 1989/04/26 18:53:20 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -41,9 +41,12 @@
 
 (declare (usual-integrations))
 
+(define edwin-reset-args
+  '())
+
 (define (edwin)
   (if (not edwin-editor)
-      (edwin-reset))
+      (apply edwin-reset edwin-reset-args))
   (call-with-current-continuation
    (lambda (continuation)
      (bind-condition-handler

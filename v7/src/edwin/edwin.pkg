@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.3 1989/04/15 00:48:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.4 1989/04/26 18:53:34 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -98,7 +98,9 @@ MIT in each case. |#
 	 "tximod")
   (parent ())
   (export (edwin class-macros)
-	  class-instance-transforms))
+	  class-instance-transforms)
+  (export ()
+	  edwin-reset-args))
 
 (define-package (edwin class-macros)
   (files "clsmac")
