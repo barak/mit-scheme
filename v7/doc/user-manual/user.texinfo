@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.33 1995/10/31 02:18:02 adams Exp $
+@comment $Id: user.texinfo,v 1.34 1995/10/31 02:21:50 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -4233,7 +4233,8 @@ operations the compiler replaces.
 Getting efficient flonum arithmetic is much more complicated and harder
 than getting efficient fixnum arithmetic.
 
-@subsubheading{Flonum consing}
+@subsubheading Flonum consing
+
 @cindex flonum consing
 One of the main disadvantages of generic arithmetic is that not all
 kinds of number fit in a machine register.
@@ -4275,7 +4276,7 @@ single arithmetic expression.  If the expression contains conditionals
 or calls to procedures then the values tend to get boxed anyway.
 
 
-@subsubheading{Flonum vectors}
+@subsubheading Flonum vectors
 
 Flonum vectors are vectors which contain only floating point values, in
 much the same way as a string is a `vector' containing only character
@@ -4326,7 +4327,7 @@ changed then an ordinary vector might be more efficient.
 
 
 
-@subsubheading{Common pitfalls}
+@subsubheading Common pitfalls
 
 Pitfall 1:
 Make sure that your literals are floating point constants:
