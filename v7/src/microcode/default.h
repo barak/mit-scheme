@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.29 1988/04/24 10:04:59 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.30 1988/08/09 19:27:45 cph Exp $
  *
  * This file contains default definitions for some hooks which 
  * various machines require.  These machines define these hooks
@@ -289,7 +289,7 @@ Loc = Apply_Primitive(N)
 #endif
 
 #ifndef DOWNWARD_COERCE_FLONUM_P
-#define DOWNWARD_COERCE_FLONUM_P(number) ((floor (number)) != (number))
+#define DOWNWARD_COERCE_FLONUM_P(number) 0
 #endif
 
 #ifndef FASLOAD_RELOCATE_HOOK
