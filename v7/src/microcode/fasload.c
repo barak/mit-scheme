@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.23 1987/04/03 00:12:33 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.24 1987/04/11 15:16:37 jinx Exp $
 
    The "fast loader" which reads in and relocates binary files and then
    interns symbols.  It is called with one argument: the (character
@@ -71,7 +71,7 @@ long String_Length;
     C = String_Ptr;
     for (i=0; i < String_Length; i++, C++)
       print_char(*C);
-    printf(" => 0x%x\n", Value);
+    printf(" -> 0x%x\n", Value);
   }
   return Value;
 }
@@ -312,7 +312,7 @@ long P;
     }
     Result = (Pointer *) 0;
   }
-  if (Reloc_Debug) printf("0x%06x => 0x%06x\n", P, Result);
+  if (Reloc_Debug) printf("0x%06x -> 0x%06x\n", P, Result);
   return Result;
 }
 

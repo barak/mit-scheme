@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.h,v 9.22 1987/04/06 12:49:05 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.h,v 9.23 1987/04/11 15:17:09 jinx Rel $
 
    Head file for bignums.  This is shared by bignum.c and generic.c. 
 */
@@ -39,7 +39,7 @@ MIT in each case. */
 #define Debug_Test(Res)						\
 { Pointer R = Make_Pointer(TC_BIG_FIXNUM, Res);			\
   if (Nth_Vector_Loc(R, Vector_Length(R)) != (Free-1))		\
-  { printf("\nResult=%x => %x %x %x, Length=%d, Free=%x\n",	\
+  { printf("\nResult=%x -> %x %x %x, Length=%d, Free=%x\n",	\
            R, Fast_Vector_Ref(R, 0),				\
            Fast_Vector_Ref(R, 1), Fast_Vector_Ref(R, 2),	\
            Vector_Length(R), Free);				\
