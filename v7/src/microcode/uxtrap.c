@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.c,v 1.17 1992/02/03 23:48:02 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.c,v 1.18 1992/03/26 03:39:31 cph Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -478,7 +478,9 @@ static SCHEME_OBJECT * EXFUN
   (find_block_address, (char * pc_value, SCHEME_OBJECT * area_start));
 
 #if !(defined (_NEXTOS) && (_NEXTOS_VERSION >= 20))
+#if !(defined (_HPUX) && (_HPUX_VERSION >= 80))
 extern long etext;
+#endif
 #define get_etext() (&etext)
 #endif
 
