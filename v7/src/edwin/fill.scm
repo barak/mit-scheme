@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fill.scm,v 1.50 1991/05/02 01:13:16 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fill.scm,v 1.51 1991/10/03 20:48:44 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -205,7 +205,7 @@ Prefix arg means justify as well."
 		(if (mark< point end)
 		    (begin
 		      (delete-horizontal-space point)
-		      (insert-newline point)
+		      (if (mark< point end) (insert-newline point))
 		      (if justify?
 			  (fill:call-with-line-marks (mark-1+ point)
 						     fill-prefix
