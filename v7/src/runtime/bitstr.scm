@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/bitstr.scm,v 13.42 1987/04/25 20:18:51 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/bitstr.scm,v 13.43 1987/05/26 13:24:56 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -73,10 +73,11 @@
     result))
 
 (define (signed-integer->bit-string nbits number)
-  (unsigned-integer->bit-string nbits
-				(if (negative? number)
-				    (+ number (expt 2 nbits))
-				    number)))
+  (unsigned-integer->bit-string
+   nbits
+   (cond ((negative? number) (+ number (expt 2 nbits)))
+	 ((< number (expt 2 (-1+ nbits))) number)
+	 (else (error "Integer too large to be encoded" number)))))
 
 (define (bit-string->signed-integer bit-string)
   (let ((unsigned-result (bit-string->unsigned-integer bit-string))

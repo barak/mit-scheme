@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syntax.scm,v 1.13 1987/03/19 00:50:43 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syntax.scm,v 1.14 1987/05/26 13:24:04 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -186,12 +186,14 @@ MIT in each case. |#
   (unsigned-integer->bit-string nbits n))
 
 (define (coerce-signed-integer nbits)
-  (let ((offset (expt 2 nbits)))
+  (let* ((limit (expt 2 (-1+ nbits)))
+	 (offset (+ limit limit)))
     (lambda (n)
-      (unsigned-integer->bit-string nbits
-				    (if (negative? n)
-					(+ n offset)
-					n)))))
+      (unsigned-integer->bit-string
+       nbits
+       (cond ((negative? n) (+ n offset))
+	     ((< n limit) n)
+	     (else (error "Integer too large to be encoded" n)))))))
 
 (define (standard-coercion kernel)
   (lambda (nbits)
