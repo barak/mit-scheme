@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: os2dir.scm,v 1.1 1994/11/28 05:45:36 cph Exp $
+$Id: os2dir.scm,v 1.2 1994/11/28 05:46:16 cph Exp $
 
-Copyright (c) 1994 Institute of Technology
+Copyright (c) 1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
