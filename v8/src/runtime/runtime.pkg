@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.113 1991/07/25 01:07:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.114 1991/08/16 01:19:40 jinx Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -1463,6 +1463,14 @@ MIT in each case. |#
   (files "pp")
   (parent ())
   (export ()
+	  *pp-named-lambda->define?*
+	  *pp-primitives-by-name*
+	  *pp-uninterned-symbols-by-name*
+	  *pp-no-highlights?*
+	  *pp-really-pretty?*
+	  *pp-lists-as-tables?*
+	  *pp-forced-x-size*
+	  make-pretty-printer-highlight
 	  pp
 	  pretty-print)
   (initialization (initialize-package!)))
