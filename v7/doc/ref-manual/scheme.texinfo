@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.111 2002/02/05 05:28:55 cph Exp $
+@comment $Id: scheme.texinfo,v 1.112 2002/02/05 18:12:03 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -3224,6 +3224,13 @@ Each instance of a macro is called a @dfn{use} of the macro.  The set of
 rules that specifies how a use of a macro is transcribed into a more
 primitive expression is called the @dfn{transformer} of the macro.
 
+@cindex anonymous syntactic keyword
+MIT Scheme also supports @dfn{anonymous syntactic keywords}.  This means
+that it's not necessary to binding a macro transformer to a syntactic
+keyword before it is used.  Instead, any macro-transformer expression
+can appear as the first element of a form, and the form will be expanded
+by the transformer.
+
 The macro definition facility consists of these parts:
 
 @itemize @bullet
@@ -3393,6 +3400,12 @@ be used after it has been defined.
 MIT Scheme permits @code{define-syntax} to appear both at top level and
 within @code{lambda} bodies.  The Revised^4 Report permits only
 top-level uses of @code{define-syntax}.
+
+When compiling a program, a top-level instance of @code{define-syntax}
+both defines the syntactic keyword and generates code that will redefine
+the keyword when the program is loaded.  This means that the same syntax
+can be used for defining macros that will be used during compilation
+and for defining macros to be used at run time.
 
 Although macros may expand into definitions and syntax definitions in
 any context that permits them, it is an error for a definition or syntax
@@ -3673,8 +3686,6 @@ macro transformers, and the associated procedures for manipulating
 syntactic closures and syntactic environments.
 
 @deffn {special form} sc-macro-transformer expression
-It is an error if this syntax occurs except as a @var{transformer-spec}.
-
 The @var{expression} is expanded in the syntactic environment of the
 @code{sc-macro-transformer} expression, and the expanded expression is
 evaluated in the transformer environment to yield a macro transformer as
@@ -4111,8 +4122,6 @@ closures.  An explicit-renaming macro transformer is defined by an
 instance of the @code{er-macro-transformer} keyword:
 
 @deffn {special form} er-macro-transformer expression
-It is an error if this syntax occurs except as a @var{transformer-spec}.
-
 The @var{expression} is expanded in the syntactic environment of the
 @code{er-macro-transformer} expression, and the expanded expression is
 evaluated in the transformer environment to yield a macro transformer as
