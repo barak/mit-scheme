@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.44 1995/10/12 22:44:27 cph Exp $
+;;;	$Id: rmail.scm,v 1.45 1995/10/12 22:54:32 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
@@ -643,8 +643,7 @@ This variable is ignored if rmail-pop-procedure is #F."
     (if entry
 	(let ((user-name (cadr entry))
 	      (password (caddr entry)))
-	  (cond ((or (string? password)
-		     (and (pair? password) (eq? 'FILE (car password))))
+	  (cond ((string? password)
 		 (values user-name password #f))
 		((eq? 'PROMPT-ONCE password)
 		 (let ((password
@@ -656,6 +655,12 @@ This variable is ignored if rmail-pop-procedure is #F."
 			       #t))))
 		((eq? 'PROMPT-ALWAYS password)
 		 (values user-name (prompt-for-pop-server-password server) #f))
+		((and (pair? password) (eq? 'FILE (car password)))
+		 (values user-name
+			 (list 'FILE
+			       (->namestring
+				(merge-pathnames (cadr password)
+						 (user-homedir-pathname))))))
 		(else
 		 (error "Illegal password value in rmail-pop-accounts entry:"
 			password))))

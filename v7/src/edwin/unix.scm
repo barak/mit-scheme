@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.58 1995/10/12 22:45:41 cph Exp $
+;;;	$Id: unix.scm,v 1.59 1995/10/12 22:54:47 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -730,8 +730,7 @@ option, instead taking -P <filename>."
 		    (newline port)))
 		(receiver (list "-P" filename)))))
 	    ((and (pair? password) (eq? 'FILE (car password)))
-	     (receiver
-	      (list "-P" (->namestring (merge-pathnames (cadr password))))))
+	     (receiver (list "-P" (cadr password))))
 	    (else
 	     (error "Illegal password:" password)))
       (cond ((string? password)
