@@ -42,7 +42,7 @@ rm -f $tempfile
 # Clean up any unwanted files that might be around.
 cd $source
 foreach i (documentation etc makefiles libs)
-  find $destination/$i \( -name '.*~*' -o -name '#*' -o -name '*~*' -o -name '*.bin' -o -name '*.ext' -o -name '*.com' -o -name '*.elc' \) -exec rm -f {} \;
+  find $destination/$i \( -name '.*~*' -o -name '#*' -o -name '*~*' -o -name '*.bin' -o -name '*.ext' -o -name '*.com' -o -name '*.elc' -o -name 'RCS' -o -name 'RCS.remote' \) -exec rm -f {} \;
 end
 
 # Copy the primary source code by checking out reference copies from RCS.
