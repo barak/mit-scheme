@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mc68k.h,v 1.14 1990/06/20 17:38:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mc68k.h,v 1.15 1990/06/28 18:15:30 jinx Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -82,6 +82,12 @@ procedures and continuations differ from closures) */
 #define ENTRY_SKIPPED_CHECK_OFFSET 	4
 #define CLOSURE_SKIPPED_CHECK_OFFSET 	10
 
+extern unsigned long hppa_extract_absolute_address ();
+extern void hppa_store_absolute_address ();
+ */
+
+#ifdef _NEXTOS
+   to the first entry point is what's needed on the top of the stack.
    Note that it is needed for environment only, not for code.
    The closure code does an
    ADDI.L	&magic-constant,(SP)
