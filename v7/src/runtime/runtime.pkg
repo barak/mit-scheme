@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.13 1988/07/15 08:44:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.14 1988/07/15 22:28:53 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -191,6 +191,7 @@ MIT in each case. |#
 	  char-set:alphanumeric
 	  char-set:graphic
 	  char-set:lower-case
+	  char-set:not-graphic
 	  char-set:not-whitespace
 	  char-set:numeric
 	  char-set:standard
@@ -1546,7 +1547,6 @@ MIT in each case. |#
 	  syntax*
 	  syntax-closure/expression
 	  syntax-closure?
-	  syntaxer/cond-=>-helper
 	  system-global-syntax-table
 	  user-initial-syntax-table)
   (export (runtime defstruct)
