@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2term.scm,v 1.18 1996/09/26 23:20:08 cph Exp $
+;;;	$Id: os2term.scm,v 1.19 1996/09/28 03:51:26 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
 ;;;
@@ -336,7 +336,7 @@
 			(cyl->yh screen yl)
 			0
 			(fix:- 0 (fix:* amount (screen-char-height screen))))
-	 'UNCHANGED)))
+	 'CLOBBERED-CURSOR)))
 
 (define (os2-screen/scroll-lines-up! screen xl xu yl yu amount)
   (and use-scrolling?
@@ -369,7 +369,7 @@
 			(cyl->yh screen (fix:+ yl amount))
 			0
 			(fix:* amount (screen-char-height screen)))
-	 'UNCHANGED)))
+	 'CLOBBERED-CURSOR)))
 
 (define-integrable (screen-face screen highlight)
   (if highlight
