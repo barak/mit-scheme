@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rulflo.scm,v 1.1 1993/06/08 06:13:32 gjr Exp $
+$Id: rulflo.scm,v 1.2 1993/10/26 03:02:40 jawilson Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,8 +37,6 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-;;;; Flonum Arithmetic
-
 (define-rule statement
   ;; convert a floating-point number to a flonum object
   (ASSIGN (REGISTER (? target))
@@ -53,6 +51,92 @@ MIT in each case. |#
   (let ((source (standard-source! source 'SCHEME_OBJECT)))
     (let ((target (standard-target! target 'double)))
       (LAP ,target " = (FLONUM_TO_DOUBLE (" ,source "));\n\t"))))
+
+;;;; Floating-point vector support
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FLOAT-OFFSET (REGISTER (? base))
+			(MACHINE-CONSTANT (? offset))))
+  (standard-unary-conversion
+   base 'DOUBLE*
+   target 'DOUBLE
+   (lambda (target base)
+     (LAP ,target " = " ,base "[" ,offset "];\n\t"))))
+  
+(define-rule statement
+  (ASSIGN (FLOAT-OFFSET (REGISTER (? base))
+			(MACHINE-CONSTANT (? offset)))
+	  (REGISTER (? source)))
+  (let ((base (standard-source! base 'DOUBLE*))
+	(source (standard-source! source 'DOUBLE)))
+    (LAP ,base "[" ,offset "] = " ,source ";\n\t")))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FLOAT-OFFSET (REGISTER (? base)) (REGISTER (? index))))
+  (standard-binary-conversion
+   base 'DOUBLE*
+   index 'LONG
+   target 'DOUBLE*
+   (lambda (base index target)
+     (LAP ,target " = " ,base "[" ,index "];\n\t"))))
+
+(define-rule statement
+  (ASSIGN (FLOAT-OFFSET (REGISTER (? base)) (REGISTER (? index)))
+	  (REGISTER (? source)))
+  (let ((base (standard-source! base 'DOUBLE*))
+	(source (standard-source! source 'DOUBLE))
+	(index (standard-source! index 'LONG)))
+    (LAP ,base "[" ,index "] = " ,source ";\n\t")))
+
+; this can't possibly be right
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FLOAT-OFFSET (OFFSET-ADDRESS (REGISTER (? base))
+					(MACHINE-CONSTANT (? w-offset)))
+			(MACHINE-CONSTANT (? f-offset))))
+  (let* ((base (standard-source! base 'SCHEME_OBJECT*))
+	 (target (standard-target! target 'DOUBLE)))
+    (LAP ,target
+	 " = &((double *) & (" ,base "[" ,w-offset "]))[" ,f-offset "];\n\t")))
+
+; this can't possibly be right
+(define-rule statement
+  (ASSIGN (FLOAT-OFFSET (OFFSET-ADDRESS (REGISTER (? base))
+					(MACHINE-CONSTANT (? w-offset)))
+			(MACHINE-CONSTANT (? f-offset)))
+	  (REGISTER (? source)))
+  (let ((base (standard-source! base 'SCHEME_OBJECT*))
+	(source (standard-source! source 'DOUBLE)))
+    (LAP "((double *) & (" ,base "[" ,w-offset "]))[" ,f-offset "]"
+	 " = " ,source ";\n\t")))
+
+; this can't possibly be right
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FLOAT-OFFSET (OFFSET-ADDRESS (REGISTER (? base))
+					(MACHINE-CONSTANT (? w-offset)))
+			(REGISTER (? index))))
+  (let* ((base (standard-source! base 'SCHEME_OBJECT*))
+	 (index (standard-source! index 'LONG))
+	 (target (standard-target! target 'DOUBLE)))
+    (LAP ,target
+	 " = &((double *) & (" ,base "[" ,w-offset "]))[" ,index "];\n\t")))
+
+; this can't possibly be right
+(define-rule statement
+  (ASSIGN (FLOAT-OFFSET (OFFSET-ADDRESS (REGISTER (? base))
+					(MACHINE-CONSTANT (? w-offset)))
+			(REGISTER (? index)))
+	  (REGISTER (? source)))
+  (let* ((base (standard-source! base 'SCHEME_OBJECT*))
+	 (index (standard-source! index 'LONG))
+	 (source (standard-source! source 'DOUBLE)))
+    (LAP "((double *) & (" ,base "[" ,w-offset "]))[" ,index "]"
+	 " = " ,source ";\n\t")))
+
+;;;; Flonum Arithmetic
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -77,6 +161,25 @@ MIT in each case. |#
 (define-arithmetic-method 'FLONUM-NEGATE flonum-methods/1-arg
   (lambda (target source)
     (LAP ,target " = (- " ,source ");\n\t")))
+
+(let ((define-use-function
+	(lambda (name function)
+	  (define-arithmetic-method name flonum-methods/1-arg
+	    (lambda (target source)
+	      (LAP ,target " = (" ,function " (" ,source "));\n\t"))))))
+  (define-use-function 'FLONUM-ACOS "DOUBLE_ACOS")
+  (define-use-function 'FLONUM-ASIN "DOUBLE_ASIN")
+  (define-use-function 'FLONUM-ATAN "DOUBLE_ATAN")
+  (define-use-function 'FLONUM-CEILING "DOUBLE_CEILING")
+  (define-use-function 'FLONUM-COS "DOUBLE_COS")
+  (define-use-function 'FLONUM-EXP "DOUBLE_EXP")
+  (define-use-function 'FLONUM-FLOOR "DOUBLE_FLOOR")
+  (define-use-function 'FLONUM-LOG "DOUBLE_LOG")
+  (define-use-function 'FLONUM-ROUND "DOUBLE_ROUND")
+  (define-use-function 'FLONUM-SIN "DOUBLE_SIN")
+  (define-use-function 'FLONUM-SQRT "DOUBLE_SQRT")
+  (define-use-function 'FLONUM-TAN "DOUBLE_TAN")
+  (define-use-function 'FLONUM-TRUNCATE "DOUBLE_TRUNCATE"))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -109,6 +212,11 @@ MIT in each case. |#
   (define-flonum-operation flonum-subtract " - ")
   (define-flonum-operation flonum-multiply " * ")
   (define-flonum-operation flonum-divide " / "))
+
+(define-arithmetic-method 'FLONUM-ATAN2 flonum-methods/2-args
+  (lambda (target source1 source2)
+    (LAP ,target " = (DOUBLE_ATAN2 (" ,source1 ", " ,source2
+	 "));\n\t")))
 
 ;;;; Flonum Predicates
 

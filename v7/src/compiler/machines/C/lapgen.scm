@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.4 1993/06/10 18:07:39 gjr Exp $
+$Id: lapgen.scm,v 1.5 1993/10/26 03:02:38 jawilson Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -64,6 +64,8 @@ MIT in each case. |#
      "unsigned long")
     ((DOUBLE)
      "double")
+    ((DOUBLE*)
+     "double *")
     (else
      (comp-internal-error "Unknown type" 'TYPE->NAME type))))
 
@@ -81,6 +83,8 @@ MIT in each case. |#
      (string-append "uLng" (number->string reg)))
     ((DOUBLE)
      (string-append "Dbl" (number->string reg)))
+    ((DOUBLE*)
+     (string-append "pDbl" (number->string reg)))
     (else
      (comp-internal-error "Unknown type" 'REG*TYPE->NAME type))))
 
@@ -544,6 +548,9 @@ MIT in each case. |#
 	 'FLOAT)
 	(else
 	 (error "unable to determine register type" reg))))
+
+(define-integrable (word-register? reg)
+  (eq? (register-type reg) 'WORD))
 
 (define (register-types-compatible? type1 type2)
   (boolean=? (eq? type1 'FLOAT) (eq? type2 'FLOAT)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules1.scm,v 1.1 1993/06/08 06:13:32 gjr Exp $
+$Id: rules1.scm,v 1.2 1993/10/26 03:02:39 jawilson Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -117,9 +117,23 @@ MIT in each case. |#
   (standard-unary-conversion source 'SCHEME_OBJECT target 'SCHEME_OBJECT*
 			     object->address))
 
+
+;; long the right type here???
 (define-rule statement
   (ASSIGN (REGISTER (? target))
-	  (OFFSET-ADDRESS (REGISTER (? source)) (? offset)))
+	  (OFFSET-ADDRESS (REGISTER (? base))
+			  (REGISTER (? index))))
+  (standard-binary-conversion
+   base 'SCHEME_OBJECT*
+   index 'LONG
+   target 'SCHEME_OBJECT*
+   (lambda (base index target)
+     (LAP ,target " = &" ,base "[" ,index "];\n\t"))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (OFFSET-ADDRESS (REGISTER (? source))
+			  (MACHINE-CONSTANT (? offset))))
   (standard-unary-conversion
    source 'SCHEME_OBJECT* target 'SCHEME_OBJECT*
    (lambda (source target)
@@ -127,9 +141,41 @@ MIT in each case. |#
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
-	  (BYTE-OFFSET-ADDRESS (REGISTER (? source)) (? offset)))
+	  (BYTE-OFFSET-ADDRESS (REGISTER (? base))
+			       (REGISTER (? index))))
+  (standard-binary-conversion
+   base 'CHAR*
+   index 'LONG
+   target 'CHAR*
+   (lambda (base index target)
+     (LAP ,target " = &" ,base "[" ,index "];\n\t"))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (BYTE-OFFSET-ADDRESS (REGISTER (? source))
+			       (MACHINE-CONSTANT (? offset))))
   (standard-unary-conversion
    source 'CHAR* target 'CHAR*
+   (lambda (source target)
+     (LAP ,target " = &" ,source "[" ,offset "];\n\t"))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FLOAT-OFFSET-ADDRESS (REGISTER (? base))
+				(REGISTER (? index))))
+  (standard-binary-conversion
+   base 'DOUBLE*
+   index 'LONG
+   target 'DOUBLE*
+   (lambda (base index target)
+     (LAP ,target " = &" ,base "[" ,index "];\n\t"))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FLOAT-OFFSET-ADDRESS (REGISTER (? source))
+				(MACHINE-CONSTANT (? offset))))
+  (standard-unary-conversion
+   source 'DOUBLE* target 'DOUBLE*
    (lambda (source target)
      (LAP ,target " = &" ,source "[" ,offset "];\n\t"))))
 
@@ -217,10 +263,12 @@ MIT in each case. |#
 ;;;; Transfers from memory
 
 (define-rule statement
-  (ASSIGN (REGISTER (? target)) (OFFSET (REGISTER (? address)) (? offset)))
-  (standard-unary-conversion address 'SCHEME_OBJECT* target 'SCHEME_OBJECT
-    (lambda (address target)
-      (LAP ,target " = " ,address "[" ,offset "];\n\t"))))
+  (ASSIGN (REGISTER (? target))
+	  (OFFSET (REGISTER (? address)) (MACHINE-CONSTANT (? offset))))
+  (standard-unary-conversion
+   address 'SCHEME_OBJECT* target 'SCHEME_OBJECT
+   (lambda (address target)
+     (LAP ,target " = " ,address "[" ,offset "];\n\t"))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (POST-INCREMENT (REGISTER (? rsp)) 1))
@@ -232,8 +280,9 @@ MIT in each case. |#
 
 (define-rule statement
   ;; store an object in memory
-  (ASSIGN (OFFSET (REGISTER (? address)) (? offset))
+  (ASSIGN (OFFSET (REGISTER (? address)) (MACHINE-CONSTANT (? offset)))
 	  (REGISTER (? source)))
+  (QUALIFIER (word-register? source))
   (let* ((source (standard-source! source 'SCHEME_OBJECT))
 	 (address (standard-source! address 'SCHEME_OBJECT*)))
     (LAP ,address "[" ,offset "] = " ,source ";\n\t")))
@@ -242,7 +291,8 @@ MIT in each case. |#
   ;; Push an object register on the heap
   (ASSIGN (POST-INCREMENT (REGISTER (? rfree)) 1)
 	  (REGISTER (? source)))
-  (QUALIFIER (= rfree regnum:free))
+  (QUALIFIER (and (word-register? source)
+		  (= rfree regnum:free)))
   (let ((source (standard-source! source 'SCHEME_OBJECT)))
     (LAP "*free_pointer++ = " ,source ";\n\t")))
 
@@ -250,14 +300,15 @@ MIT in each case. |#
   ;; Push an object register on the stack
   (ASSIGN (PRE-INCREMENT (REGISTER (? rsp)) -1)
 	  (REGISTER (? source)))
-  (QUALIFIER (= rsp regnum:stack-pointer))
+  (QUALIFIER (and (word-register? source)
+		  (= rsp regnum:stack-pointer)))
   (let ((source (standard-source! source 'SCHEME_OBJECT)))
     (LAP "*--stack_pointer = " ,source ";\n\t")))
 
 ;; Cheaper, common patterns.
 
 (define-rule statement
-  (ASSIGN (OFFSET (REGISTER (? address)) (? offset))
+  (ASSIGN (OFFSET (REGISTER (? address)) (MACHINE-CONSTANT (? offset)))
 	  (MACHINE-CONSTANT 0))
   (let ((address (standard-source! address 'SCHEME_OBJECT*)))
     (LAP ,address "[" ,offset "] = ((SCHEME_OBJECT) 0);\n\t")))
@@ -269,7 +320,7 @@ MIT in each case. |#
   (LAP "*free_pointer++ = ((SCHEME_OBJECT) 0);\n\t"))
 
 (define-rule statement
-  ;; Push an object register on the stack
+  ;; Push 0 on the stack
   (ASSIGN (PRE-INCREMENT (REGISTER (? rsp)) -1)
 	  (MACHINE-CONSTANT (? const)))
   (QUALIFIER (= rsp regnum:stack-pointer))
@@ -280,20 +331,24 @@ MIT in each case. |#
 (define-rule statement
   ;; load char object from memory and convert to ASCII byte
   (ASSIGN (REGISTER (? target))
-	  (CHAR->ASCII (OFFSET (REGISTER (? address)) (? offset))))
-  (standard-unary-conversion address 'SCHEME_OBJECT* target 'ULONG
-    (lambda (address target)
-      (LAP ,target " = (CHAR_TO_ASCII (" ,address "[" ,offset "]));\n\t"))))
+	  (CHAR->ASCII (OFFSET (REGISTER (? address))
+			       (MACHINE-CONSTANT (? offset)))))
+  (standard-unary-conversion
+   address 'SCHEME_OBJECT* target 'ULONG
+   (lambda (address target)
+     (LAP ,target " = (CHAR_TO_ASCII (" ,address "[" ,offset "]));\n\t"))))
 
 (define-rule statement
   ;; load ASCII byte from memory
   (ASSIGN (REGISTER (? target))
-	  (BYTE-OFFSET (REGISTER (? address)) (? offset)))
+	  (BYTE-OFFSET (REGISTER (? address))
+		       (MACHINE-CONSTANT (? offset))))
   (standard-unary-conversion address 'CHAR* target 'ULONG
     (lambda (address target)
       (LAP ,target " = ((ulong) (((unsigned char *) " ,address ")["
 	   ,offset "]));\n\t"))))
 
+;*
 (define-rule statement
   ;; convert char object to ASCII byte
   (ASSIGN (REGISTER (? target))
@@ -302,16 +357,19 @@ MIT in each case. |#
     (lambda (source target)
       (LAP ,target " = (CHAR_TO_ASCII (" ,source "));\n\t"))))
 
+;; is this constant correct???
 (define-rule statement
   ;; store null byte in memory
-  (ASSIGN (BYTE-OFFSET (REGISTER (? address)) (? offset))
+  (ASSIGN (BYTE-OFFSET (REGISTER (? address))
+		       (MACHINE-CONSTANT (? offset)))
 	  (CHAR->ASCII (CONSTANT #\N\TUL)))
   (let ((address (standard-source! address 'CHAR*)))
     (LAP ,address "[" ,offset "] = '\\0';\n\t")))
 
 (define-rule statement
   ;; store ASCII byte in memory
-  (ASSIGN (BYTE-OFFSET (REGISTER (? address)) (? offset))
+  (ASSIGN (BYTE-OFFSET (REGISTER (? address))
+		       (MACHINE-CONSTANT (? offset)))
 	  (REGISTER (? source)))
   (let ((address (standard-source! address 'CHAR*))
 	(source (standard-source! source 'ULONG)))
@@ -320,7 +378,8 @@ MIT in each case. |#
 (define-rule statement
   ;; convert char object to ASCII byte and store it in memory
   ;; register + byte offset <- contents of register (clear top bits)
-  (ASSIGN (BYTE-OFFSET (REGISTER (? address)) (? offset))
+  (ASSIGN (BYTE-OFFSET (REGISTER (? address))
+		       (MACHINE-CONSTANT (? offset)))
 	  (CHAR->ASCII (REGISTER (? source))))
   (let ((address (standard-source! address 'CHAR*))
 	(source (standard-source! source 'SCHEME_OBJECT)))

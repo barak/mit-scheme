@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.4 1993/06/10 01:06:19 jawilson Exp $
+$Id: cout.scm,v 1.5 1993/10/26 03:02:37 jawilson Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -112,7 +112,9 @@ MIT in each case. |#
 				  default
 				  (car (last-pair dir)))
 			      "_"
-			      (pathname-name path)
+			      (string-replace (pathname-name path) ; kludge
+					      #\-
+					      #\_)
 			      midfix
 			      suffix))))))
 
