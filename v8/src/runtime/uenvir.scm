@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uenvir.scm,v 14.38 1995/08/19 01:15:44 adams Exp $
+$Id: uenvir.scm,v 14.39 1995/08/23 14:21:58 adams Exp $
 
 Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
@@ -438,7 +438,9 @@ MIT in each case. |#
 	      ((compiled-closure? entry)
 	       (make-ccenv parent entry))
 	      (else
-	       (error "Illegal procedure parent block" parent)))))))
+	       (make-ccenv parent entry)
+	       ;;(error "Illegal procedure parent block" parent)
+	       ))))))
 
 (define (lookup-path initial-path root leave-last-instruction?)
 
@@ -475,6 +477,8 @@ MIT in each case. |#
 	      ((vector? cell)
 	       (vector-ref cell index))
 	      (else (path-error "Not a cell"))))
+      (define (flonum-cell-ref cell index)
+	(flo:vector-ref cell index))
       (define (constant-block-ref place index)
 	(let ((block (->compiled-code-block place)))
 	  (if (and (<= (compiled-code-block/constants-start block) index)
@@ -524,6 +528,7 @@ MIT in each case. |#
 		;; replace root:
 		(vector-set! stack sp (make-unassigned-reference-trap)))
 	       ((CELL)           (binary-operation cell-ref))
+	       ((FLONUM-CELL)    (binary-operation flonum-cell-ref))
 	       ((CONSTANT-BLOCK) (binary-operation constant-block-ref))
 	       ((TOP-LEVEL-ENVIRONMENT)
 		(unary-operation top-level-environment))
@@ -564,7 +569,8 @@ MIT in each case. |#
 	(else #F)))
 
 (define (assignable-path? path)
-  (define (cell-op? thing) (and (pair? thing) (eq? (car thing) 'CELL)))
+  (define (cell-op? thing)
+    (and (pair? thing) (memq (car thing) '(CELL FLONUM-CELL))))
   (cell-op? (path/last-element path)))
 
 (define (interrupt-frame-path? path)
@@ -589,6 +595,15 @@ MIT in each case. |#
 		    (vector-set! place index value))
 		   (else (error "Value of variable should be in cell/vector"
 				name place path))))
+	   unspecific)
+	  ((and (pair? element) (eq? (car element) 'FLONUM-CELL))
+	   (let ((index  (cdr element)))
+	     (cond ((not (flo:flonum? value))
+		    (error "Cant assign" name
+			   (error-irritant/noise ". Value must be a flonum ")
+			   value))
+		   (else
+		    (flo:vector-set! place index value))))
 	   unspecific)
 	  (else
 	   (error "Unassignable variable:" name)))))
