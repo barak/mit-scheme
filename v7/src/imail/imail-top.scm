@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.245 2001/05/23 23:23:45 cph Exp $
+;;; $Id: imail-top.scm,v 1.246 2001/05/24 00:20:07 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -1608,6 +1608,12 @@ Negative argument means search in reverse."
 (define (imail-default-url protocol)
   (cond ((not protocol)
 	 (or (imail-selected-url #f)
+	     (let ((folder
+		    (buffer-get (chase-imail-buffer (selected-buffer))
+				'IMAIL-FOLDER
+				#f)))
+	       (and folder
+		    (resource-locator folder)))
 	     (imail-default-url "imap")))
 	((string-ci=? protocol "imap")
 	 (call-with-values
@@ -1630,21 +1636,22 @@ Negative argument means search in reverse."
 	((string-ci=? protocol "file") (make-rmail-url "~/RMAIL"))
 	(else (error:bad-range-argument protocol))))
 
+(define (imail-selected-url-string #!optional error? mark)
+  (let ((url
+	 (imail-selected-url (if (default-object? error?) #t error?)
+			     (if (default-object? mark) #f mark))))
+    (and url
+	 (url->string url))))
+
 (define (imail-selected-url #!optional error? mark)
   (let ((mark
 	 (if (or (default-object? mark) (not mark))
 	     (current-point)
 	     mark)))
-    (or (let ((buffer (mark-buffer mark)))
-	  (let ((selector (buffer-get buffer 'IMAIL-URL-SELECTOR #f)))
-	    (if selector
-		(selector mark)
-		(let ((folder
-		       (buffer-get (chase-imail-buffer buffer)
-				   'IMAIL-FOLDER
-				   #f)))
-		  (and folder
-		       (resource-locator folder))))))
+    (or (let ((selector
+	       (buffer-get (mark-buffer mark) 'IMAIL-URL-SELECTOR #f)))
+	  (and selector
+	      (selector mark)))
 	(and (if (default-object? error?) #t error?)
 	     (error "No selected URL:" mark)))))
 
@@ -1653,7 +1660,7 @@ Negative argument means search in reverse."
 
 (define (imail-default-container)
   (or (imail-browser-url #f)
-      (imail-default-url #f)))
+      (container-url (imail-default-url #f))))
 
 (define (imail-browser-url #!optional error? buffer)
   (let ((buffer
@@ -1668,15 +1675,15 @@ Negative argument means search in reverse."
   (buffer-put! buffer 'IMAIL-BROWSER-URL url))
 
 (define (maybe-prompt-for-folder prompt . options)
-  (or (imail-selected-url #f)
+  (or (imail-selected-url-string #f)
       (apply prompt-for-folder prompt #f options)))
 
 (define (maybe-prompt-for-selectable-folder prompt . options)
-  (or (imail-selected-url #f)
+  (or (imail-selected-url-string #f)
       (apply prompt-for-selectable-folder prompt #f options)))
 
 (define (maybe-prompt-for-container prompt . options)
-  (or (imail-selected-url #f)
+  (or (imail-selected-url-string #f)
       (apply prompt-for-container prompt #f options)))
 
 (define (prompt-for-folder prompt default . options)
