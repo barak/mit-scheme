@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseht.scm,v 4.11 1990/01/23 22:44:12 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseht.scm,v 4.12 1992/02/17 21:10:22 jinx Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,6 +34,7 @@ MIT in each case. |#
 
 ;;;; RTL Common Subexpression Elimination: Hash Table Abstraction
 ;;;  Based on the GNU C Compiler
+;;; package: (compiler rtl-cse)
 
 (declare (usual-integrations))
 
@@ -86,7 +87,10 @@ MIT in each case. |#
 	  (hash-table-set! hash element)))
     (cond ((not class)
 	   (set-element-first-value! element element))
-	  ((< cost (element-cost class))
+	  ((or (< cost (element-cost class))
+	       (and (= cost (element-cost class))
+		    (rtl:register? expression)
+		    (not (rtl:register? (element-expression class)))))
 	   (set-element-next-value! element class)
 	   (set-element-previous-value! class element)
 	   (let loop ((x element))
@@ -101,7 +105,11 @@ MIT in each case. |#
 		    (set-element-next-value! element false)
 		    (set-element-next-value! previous element)
 		    (set-element-previous-value! element previous))
-		   ((<= cost (element-cost next))
+		   ((or (< cost (element-cost next))
+			(and (= cost (element-cost next))
+			     (or (rtl:register? expression)
+				 (not (rtl:register?
+				       (element-expression next))))))
 		    (set-element-next-value! element next)
 		    (set-element-previous-value! next element)
 		    (set-element-next-value! previous element)
