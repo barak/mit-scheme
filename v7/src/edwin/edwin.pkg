@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.125 1993/08/12 08:35:48 jbank Exp $
+$Id: edwin.pkg,v 1.126 1993/08/22 04:48:17 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -39,7 +39,7 @@ MIT in each case. |#
 (define-package (edwin)
   (file-case os-type
     ((unix) "unix")
-    ((dos)  "dos"))
+    ((dos nt)  "dos"))
   (files "utils"
 	 "nvector"
 	 "ring"
@@ -282,7 +282,7 @@ MIT in each case. |#
 (define-package (edwin screen console-screen)
   (files "termcap" "tterm")
   (file-case os-type
-    ((dos) "ansi" "bios"))
+    ((dos nt) "ansi" "bios"))
   (parent (edwin screen))
   (import (runtime primitive-io)
 	  channel-type=terminal?
@@ -827,13 +827,40 @@ MIT in each case. |#
 	  port/mark)
   (import (runtime rep)
 	  default/repl-eval))
+
+(define-package (edwin text-properties)
+  (files "txtprp")
+  (parent (edwin))
+  (export (edwin)
+	  add-text-properties
+	  get-property
+	  get-property-at
+	  group-extract-properties
+	  group-reinsert-properties!
+	  local-comtabs
+	  next-property-change
+	  next-specific-property-change
+	  prev-specific-property-change
+	  previous-property-change
+	  remove-text-properties
+	  set-text-properties
+	  text-not-deleteable?
+	  text-not-insertable?
+	  text-properties-at
+	  update-intervals-for-deletion!
+	  update-intervals-for-insertion!)
+  (export (edwin window)
+	  find-interval
+	  interval-end
+	  interval-property
+	  next-interval))
 
-;;;; This is the variant used under DOS
+;;;; This is the variant used under DOS and NT (for now)
 
 #|
 (define-package (edwin process)
   (file-case os-type
-    ((dos)  "dosproc"))
+    ((dos nt)  "dosproc"))
   (parent (edwin))
   (export (edwin)
 	  buffer-processes			; always present
@@ -841,6 +868,8 @@ MIT in each case. |#
 	  get-buffer-process			; always present
 	  initialize-processes!			; always present
 	  process-list				; always present
+	  process-output-available?		; always present
+	  process-status-changes?		; always present
 	  subprocesses-available?))		; always present
 
 (define-package (edwin dosjob)
@@ -854,7 +883,7 @@ MIT in each case. |#
 (define-package (edwin process)
   (file-case os-type
     ((unix) "process")
-    ((dos)  "dosproc"))
+    ((dos nt)  "dosproc"))
   (parent (edwin))
   (export (edwin)
 	  accept-process-output
@@ -887,7 +916,7 @@ MIT in each case. |#
 	  process-list				; always present
 	  process-mark
 	  process-name
-	  process-output-available?
+	  process-output-available?		; always present
 	  process-runnable?
 	  process-send-char
 	  process-send-eof
@@ -895,7 +924,7 @@ MIT in each case. |#
 	  process-send-substring
 	  process-sentinel
 	  process-status
-	  process-status-changes?
+	  process-status-changes?		; always present
 	  process-status-message
 	  quit-process
 	  set-process-buffer!
@@ -907,7 +936,7 @@ MIT in each case. |#
 	  stop-process
 	  subprocesses-available?		; always present
 	  run-synchronous-process))
-
+
 (define-package (edwin screen x-screen)
   (files "xterm")
   (parent (edwin screen))
@@ -964,7 +993,7 @@ MIT in each case. |#
 	  x-button5-up)
   (export (edwin screen x-screen)
 	  update-xterm-screen-names!))
-
+
 (define-package (edwin keys)
   (files "key")
   (parent (edwin))
@@ -1017,7 +1046,7 @@ MIT in each case. |#
 	  edwin-variable$rcs-co-default-switches
 	  edwin-variable$rcs-diff-default-switches
 	  edwin-variable$rcs-log-default-switches))
-
+
 (define-package (edwin sendmail)
   (files "sendmail")
   (parent (edwin))
@@ -1059,7 +1088,7 @@ MIT in each case. |#
 	  define-mail-alias
 	  expand-mail-aliases
 	  guarantee-mail-aliases))
-
+
 (define-package (edwin rmail)
   (files "rmail"
 	 "rmailsrt"
@@ -1129,33 +1158,7 @@ MIT in each case. |#
 	  edwin-variable$rmail-primary-inbox-list
 	  edwin-variable$rmail-reply-with-re
 	  rmail-spool-directory))
-
-(define-package (edwin text-properties)
-  (files "txtprp")
-  (parent (edwin))
-  (export (edwin)
-	  add-text-properties
-	  get-property
-	  get-property-at
-	  group-extract-properties
-	  group-reinsert-properties!
-	  local-comtabs
-	  next-property-change
-	  next-specific-property-change
-	  prev-specific-property-change
-	  previous-property-change
-	  remove-text-properties
-	  set-text-properties
-	  text-not-deleteable?
-	  text-not-insertable?
-	  text-properties-at
-	  update-intervals-for-deletion!
-	  update-intervals-for-insertion!)
-  (export (edwin window)
-	  find-interval
-	  interval-end
-	  interval-property
-	  next-interval))
+
 #|
 (define-package (edwin bochser)
   (files "bochser"

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: edwin.ldr,v 1.41 1993/08/12 08:33:36 jawilson Exp $
+$Id: edwin.ldr,v 1.42 1993/08/22 04:48:26 gjr Exp $
 
-Copyright (c) 1989-93 Massachusetts Institute of Technology
+Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -133,7 +133,7 @@ MIT in each case. |#
 
 	(let ((env (->environment '(EDWIN SCREEN CONSOLE-SCREEN))))
 	  (load-set-and-initialize! '("termcap" "tterm") env)
-	  (if (eq? (lookup 'os-type) 'dos)
+	  (if (memq (lookup 'os-type) '(dos nt))
 	      (begin
 		(load "ansi" env)
 		(if (load "bios" env)
@@ -158,11 +158,14 @@ MIT in each case. |#
 	(load "rgxcmp" (->environment '(EDWIN REGULAR-EXPRESSION-COMPILER)))
 	(load "linden" (->environment '(EDWIN LISP-INDENTATION)))
 
-	(load-case 'os-type '((unix . "unix") (dos . "dos")) environment)
+	(load-case 'os-type '((unix . "unix") (dos . "dos") (nt . "dos"))
+		   environment)
 
 	(load "fileio" environment)
 
-	(load-case 'os-type '((unix . "process") (dos . "dosproc"))
+	(load-case 'os-type '((unix . "process")
+			      (dos . "dosproc")
+			      (nt . "dosproc"))
 		   (->environment '(EDWIN PROCESS)))
 
 	(load "argred" (->environment '(EDWIN COMMAND-ARGUMENT)))
@@ -177,7 +180,7 @@ MIT in each case. |#
 	(load "comint" environment)
 	(load "compile" environment)
 	(load "dabbrev" environment)
-	
+
 	(load "xcom" (->environment '(EDWIN X-COMMANDS)))
 	;; debug depends on x-button1-down defined in xcom
 	(load "debug" (->environment '(EDWIN DEBUGGER)))
