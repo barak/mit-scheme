@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.16 2000/05/23 05:31:58 cph Exp $
+;;; $Id: imail-summary.scm,v 1.17 2000/06/11 04:01:38 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -391,12 +391,38 @@ with some additions to make navigation more natural.
 (define-key 'imail-summary #\m-<	'imail-first-message)
 (define-key 'imail-summary #\m->	'imail-last-message)
 
+(define-key 'imail-summary (make-special-key 'down 0) '(imail-summary . #\c-n))
+(define-key 'imail-summary (make-special-key 'up 0) '(imail-summary . #\c-p))
+
+(define-key 'imail-summary button1-down 'imail-summary-mouse-select-message)
+(define-key 'imail-summary button4-down '(imail-summary . #\c-p))
+(define-key 'imail-summary button5-down '(imail-summary . #\c-n))
+
 (define-command imail-summary-select-message
   "Select the message that point is on and show it in another window."
   ()
   (lambda ()
-    (select-message (selected-folder) (selected-message) #t)
+    (select-message (selected-folder)
+		    (or (selected-message #f)
+			(editor-error "No message on this line."))
+		    #t)
     (imail-summary-pop-up-message-buffer (selected-buffer))))
+
+(define-command imail-summary-mouse-select-message
+  "Select the message that mouse is on and show it in another window."
+  ()
+  (lambda ()
+    (let ((button-event (current-button-event)))
+      (let ((window (button-event/window button-event)))
+	(select-window window)
+	(set-current-point!
+	 (line-start (or (window-coordinates->mark
+			  window
+			  (button-event/x button-event)
+			  (button-event/y button-event))
+			 (buffer-end (window-buffer window)))
+		     0))))
+    ((ref-command imail-summary-select-message))))
 
 (define-command imail-summary-quit
   "Quit out of IMAIL."
@@ -474,11 +500,20 @@ with some additions to make navigation more natural.
 			     (loop (line-start m delta #f)))))))))))
 
 (define (imail-summary-navigator/selected-message buffer)
-  (let ((index (imail-summary-selected-message-index (buffer-point buffer))))
-    (and index
-	 (let ((folder (imail-summary-buffer->folder buffer #t)))
-	   (and (< index (folder-length folder))
-		(get-message folder index))))))
+  (or (let ((index
+	     (let ((point (buffer-point buffer)))
+	       (let loop ((offset 0))
+		 (let ((next (line-start point offset #f))
+		       (prev (line-start point (- offset) #f)))
+		   (or (and next (imail-summary-selected-message-index next))
+		       (and prev (imail-summary-selected-message-index prev))
+		       (and (or next prev)
+			    (loop (+ offset 1)))))))))
+	(and index
+	     (let ((folder (imail-summary-buffer->folder buffer #t)))
+	       (and (< index (folder-length folder))
+		    (get-message folder index)))))
+      (selected-message #f (buffer-get buffer 'IMAIL-FOLDER-BUFFER #f))))
 
 (define (imail-summary-selected-message-index mark)
   (let ((regs
@@ -513,7 +548,7 @@ with some additions to make navigation more natural.
 
 (define (sync-imail-summary-buffer buffer)
   (let ((message
-	 (selected-message #f (buffer-get buffer 'IMAIL-FOLDER-BUFFER))))
+	 (selected-message #f (buffer-get buffer 'IMAIL-FOLDER-BUFFER #f))))
     (if message
 	(imail-summary-select-message buffer message))))
 
