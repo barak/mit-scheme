@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile,v 1.11 1994/03/25 01:12:07 gjr Exp $
+###	$Id: makefile,v 1.12 1994/03/25 01:12:46 gjr Exp $
 ###
 ###	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ###
@@ -347,7 +347,7 @@ fasdump.obj : scheme.tch prims.h osio.h osfile.h osfs.h $(GC_HEAD_FILES) \
 memmag.obj : scheme.tch prims.h $(GC_HEAD_FILES) memmag.h
 gcloop.obj : scheme.tch $(GC_HEAD_FILES)
 purify.obj : scheme.tch prims.h $(GC_HEAD_FILES) zones.h
-wabbit.obj : scheme.tch $(GC_HEAD_FILES) zones.h
+wabbit.obj : scheme.tch $(GC_HEAD_FILES)
 purutl.obj : scheme.tch prims.h $(GC_HEAD_FILES) zones.h
 comutl.obj : scheme.tch prims.h
 artutl.obj : scheme.tch

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ymkfile,v 1.88 1994/03/25 01:10:08 gjr Exp $
+$Id: ymkfile,v 1.89 1994/03/25 01:12:35 gjr Exp $
 
 Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
@@ -722,6 +722,7 @@ fasdump.o : scheme.tch prims.h osio.h osfile.h osfs.h $(GC_HEAD_FILES) \
 memmag.o : scheme.tch prims.h memmag.h $(GC_HEAD_FILES) memmag.h
 gcloop.o : scheme.tch $(GC_HEAD_FILES)
 purify.o : scheme.tch prims.h $(GC_HEAD_FILES) zones.h
+wabbit.o : scheme.tch $(GC_HEAD_FILES)
 purutl.o : scheme.tch prims.h $(GC_HEAD_FILES) zones.h
 comutl.o : scheme.tch prims.h
 gctype.o : config.h
