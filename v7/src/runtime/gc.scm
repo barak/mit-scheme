@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gc.scm,v 14.6 1991/02/15 18:05:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gc.scm,v 14.7 1991/11/26 07:06:03 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -53,13 +53,6 @@ MIT in each case. |#
       (vector-set! interrupt-vector 2 condition-handler/gc))
     (vector-set! fixed-objects #x0C condition-handler/hardware-trap)
     ((ucode-primitive set-fixed-objects-vector!) fixed-objects)))
-
-(define (reset-gc-after-restore!)
-  ;; This will be overridden by the Emacs-interface installation code
-  ;; after the rest of the runtime system is restored.
-  (set! hook/gc-start default/gc-start)
-  (set! hook/gc-finish default/gc-finish)
-  unspecific)
 
 (define (condition-handler/gc interrupt-code interrupt-enables)
   interrupt-code interrupt-enables
@@ -163,11 +156,11 @@ MIT in each case. |#
   (if (< space-remaining 4096)
       (abort->nearest
        (cmdl-message/append
-	(cmdl-message/standard "Aborting!: out of memory")
+	(cmdl-message/strings "Aborting!: out of memory")
 	;; Clean up whatever possible to avoid a reoccurrence.
 	(cmdl-message/active
-	 (lambda (cmdl)
-	   cmdl
+	 (lambda (port)
+	   port
 	   (with-gc-notification! true gc-clean)))))))
 
 ;;;; User Primitives

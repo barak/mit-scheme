@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/load.scm,v 14.30 1991/11/04 20:29:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/load.scm,v 14.31 1991/11/26 07:06:29 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -93,9 +93,9 @@ MIT in each case. |#
 (define (loading-message suppress-loading-message? pathname do-it)
   (if suppress-loading-message?
       (do-it)
-      (let ((port (cmdl/output-port (nearest-cmdl))))
-	(newline port)
-	(write-string "Loading " port)
+      (let ((port (nearest-cmdl/port)))
+	(fresh-line port)
+	(write-string ";Loading " port)
 	(write (enough-namestring pathname) port)
 	(let ((value (do-it)))
 	  (write-string " -- done" port)
@@ -264,8 +264,7 @@ MIT in each case. |#
 			    (repl/syntax-table repl)
 			    syntax-table))))
 		  (lambda (s-expression)
-		    (hook/repl-eval repl
-				    s-expression
+		    (hook/repl-eval s-expression
 				    environment
 				    syntax-table))))))
 

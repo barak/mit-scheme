@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.22 1991/11/04 20:29:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.23 1991/11/26 07:07:07 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -69,14 +69,13 @@ MIT in each case. |#
 	 (if (string? identify) unspecific false))
        (lambda ()
 	 (set! time-world-saved time)
-	 (reset-gc-after-restore!)
 	 (event-distributor/invoke! event:after-restore)
 	 (cond ((string? identify)
 		(set! world-identification identify)
 		(clear console-output-port)
 		(abort->top-level
 		 (lambda (cmdl)
-		   (identify-world (cmdl/output-port cmdl))
+		   (identify-world (cmdl/port cmdl))
 		   (event-distributor/invoke! event:after-restart))))
 	       ((not identify)
 		true)
@@ -147,7 +146,7 @@ MIT in each case. |#
 	 (if (default-object? port)
 	     (current-output-port)
 	     (guarantee-output-port port))))
-    (newline port)
+    (fresh-line port)
     (write-string world-identification port)
     (if time-world-saved
 	(begin

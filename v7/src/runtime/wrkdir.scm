@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/wrkdir.scm,v 14.4 1991/11/05 20:37:28 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/wrkdir.scm,v 14.5 1991/11/26 07:07:31 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -48,8 +48,6 @@ MIT in each case. |#
 	   ((ucode-primitive working-directory-pathname))))))
     (set! *working-directory-pathname* pathname)
     (set! *default-pathname-defaults* pathname))
-  (set! hook/set-working-directory-pathname!
-	default/set-working-directory-pathname!)
   unspecific)
 
 (define *working-directory-pathname*)
@@ -57,7 +55,7 @@ MIT in each case. |#
 (define (working-directory-pathname)
   *working-directory-pathname*)
 
-(define (set-working-directory-pathname! name)
+(define (%set-working-directory-pathname! name)
   (let ((pathname
 	 (pathname-as-directory
 	  (merge-pathnames name *working-directory-pathname*))))
@@ -69,20 +67,19 @@ MIT in each case. |#
       (set! *working-directory-pathname* pathname)
       ((ucode-primitive set-working-directory-pathname! 1)
        (->namestring pathname))
-      (hook/set-working-directory-pathname! pathname)
       pathname)))
 
-(define hook/set-working-directory-pathname!)
-(define (default/set-working-directory-pathname! pathname)
-  pathname
-  false)
+(define (set-working-directory-pathname! name)
+  (let ((pathname (%set-working-directory-pathname! name)))
+    (port/set-default-directory (nearest-cmdl/port) pathname)
+    pathname))
 
 (define (with-working-directory-pathname name thunk)
   (let ((old-pathname))
     (dynamic-wind (lambda ()
 		    (set! old-pathname (working-directory-pathname))
-		    (set-working-directory-pathname! name))
+		    (%set-working-directory-pathname! name))
 		  thunk
 		  (lambda ()
 		    (set! name (working-directory-pathname))
-		    (set-working-directory-pathname! old-pathname)))))
+		    (%set-working-directory-pathname! old-pathname)))))

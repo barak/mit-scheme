@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/where.scm,v 14.9 1991/02/15 18:07:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/where.scm,v 14.10 1991/11/26 07:07:26 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -49,12 +49,12 @@ MIT in each case. |#
 	(letter-commands
 	 command-set
 	 (cmdl-message/active
-	  (lambda (cmdl)
-	    cmdl
-	    (show-current-frame wstate true)
+	  (lambda (port)
+	    (show-current-frame wstate true port)
 	    (debugger-message
+	     port
 	     "You are now in the environment inspector.  Type q to quit, ? for commands.")))
-	 "Where-->"
+	 "where>"
 	 wstate)))))
 
 (define-structure (wstate
@@ -91,52 +91,54 @@ MIT in each case. |#
 
 (define command-set)
 
-(define (show wstate)
-  (show-current-frame wstate false))
+(define (show wstate port)
+  (show-current-frame wstate false port))
 
-(define (show-current-frame wstate brief?)
-  (presentation
-   (lambda ()
-     (let ((frame-list (wstate/frame-list wstate)))
-       (show-frame (car frame-list)
-		   (length (cdr frame-list))
-		   brief?)))))
+(define (show-current-frame wstate brief? port)
+  (debugger-presentation port
+    (lambda ()
+      (let ((frame-list (wstate/frame-list wstate)))
+	(show-frame (car frame-list)
+		    (length (cdr frame-list))
+		    brief?
+		    port)))))
 
-(define (show-all wstate)
-  (show-frames (car (last-pair (wstate/frame-list wstate))) 0))
+(define (show-all wstate port)
+  (show-frames (car (last-pair (wstate/frame-list wstate))) 0 port))
 
-(define (parent wstate)
+(define (parent wstate port)
   (let ((frame-list (wstate/frame-list wstate)))
     (if (eq? true (environment-has-parent? (car frame-list)))
 	(begin
 	  (set-wstate/frame-list! wstate
 				  (cons (environment-parent (car frame-list))
 					frame-list))
-	  (show-current-frame wstate true))
-	(debugger-failure "The current frame has no parent"))))
+	  (show-current-frame wstate true port))
+	(debugger-failure port "The current frame has no parent"))))
 
-(define (son wstate)
+(define (son wstate port)
   (let ((frames (wstate/frame-list wstate)))
     (if (null? (cdr frames))
 	(debugger-failure
+	 port
 	 "This is the original frame; its children cannot be found")
 	(begin
 	  (set-wstate/frame-list! wstate (cdr frames))
-	  (show-current-frame wstate true)))))
+	  (show-current-frame wstate true port)))))
 
-(define (command/print-environment-procedure wstate)
-  (show-environment-procedure (car (wstate/frame-list wstate))))
+(define (command/print-environment-procedure wstate port)
+  (show-environment-procedure (car (wstate/frame-list wstate)) port))
 
-(define (recursive-where wstate)
-  (let ((inp (prompt-for-expression "Object to evaluate and examine")))
-    (debugger-message "New where!")
+(define (recursive-where wstate port)
+  (let ((inp (prompt-for-expression "Object to evaluate and examine" port)))
+    (debugger-message port "New where!")
     (debug/where (debug/eval inp (car (wstate/frame-list wstate))))))
 
-(define (enter wstate)
+(define (enter wstate port)
+  port
   (debug/read-eval-print (car (wstate/frame-list wstate))
 			 "the environment inspector"
-			 "the desired environment"
-			 "Eval-in-env-->"))
+			 "the environment for this frame"))
 
-(define (show-object wstate)
-  (debug/read-eval-print-1 (car (wstate/frame-list wstate))))
+(define (show-object wstate port)
+  (debug/read-eval-print-1 (car (wstate/frame-list wstate)) port))

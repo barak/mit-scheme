@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.22 1991/10/30 19:47:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.23 1991/11/26 07:06:47 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -131,7 +131,7 @@ MIT in each case. |#
       (if as-code?
 	  (print-node node indentation list-depth)
 	  (print-non-code-node node indentation list-depth))
-      (output-port/flush-output port))))
+      (output-port/discretionary-flush port))))
 
 (define x-size)
 (define output-port)

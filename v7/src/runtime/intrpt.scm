@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 14.7 1991/11/04 20:29:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 14.8 1991/11/26 07:06:25 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -42,6 +42,12 @@ MIT in each case. |#
 	(fixed-objects-vector-slot 'SYSTEM-INTERRUPT-VECTOR))
   (set! index:termination-vector
 	(fixed-objects-vector-slot 'MICROCODE-TERMINATIONS-PROCEDURES))
+  (set! hook/clean-input/flush-typeahead false)
+  (set! hook/clean-input/keep-typeahead false)
+  (set! hook/^B-interrupt false)
+  (set! hook/^G-interrupt false)
+  (set! hook/^U-interrupt false)
+  (set! hook/^X-interrupt false)
   (set! timer-interrupt default/timer-interrupt)
   (set! external-interrupt default/external-interrupt)
   (set! keyboard-interrupts
@@ -53,22 +59,8 @@ MIT in each case. |#
 		    `((#\B ,(keep-typeahead ^B-interrupt-handler))
 		      (#\G ,(flush-typeahead ^G-interrupt-handler))
 		      (#\U ,(flush-typeahead ^U-interrupt-handler))
-		      (#\X ,(flush-typeahead ^X-interrupt-handler))
-		      #| (#\S ,(keep-typeahead ^S-interrupt-handler)) |#
-		      #| (#\Q ,(keep-typeahead ^Q-interrupt-handler)) |#
-		      #| (#\P ,(flush-typeahead ^P-interrupt-handler)) |#
-		      #| (#\Z ,(flush-typeahead ^Z-interrupt-handler)) |#))
+		      (#\X ,(flush-typeahead ^X-interrupt-handler))))
 	  table))
-  (set! hook/clean-input/flush-typeahead default/clean-input)
-  (set! hook/clean-input/keep-typeahead default/clean-input)
-  (set! hook/^B-interrupt default/^B-interrupt)
-  (set! hook/^G-interrupt default/^G-interrupt)
-  (set! hook/^U-interrupt default/^U-interrupt)
-  (set! hook/^X-interrupt default/^X-interrupt)
-  #| (set! hook/^S-interrupt default/^S-interrupt) |#
-  #| (set! hook/^Q-interrupt default/^Q-interrupt) |#
-  #| (set! hook/^P-interrupt default/^P-interrupt) |#
-  #| (set! hook/^Z-interrupt default/^Z-interrupt) |#
   (install))
 
 (define-primitives
@@ -150,104 +142,46 @@ MIT in each case. |#
 
 (define keyboard-interrupts)
 
-(define ((flush-typeahead kernel) character interrupt-enables)
-  (if (hook/clean-input/flush-typeahead character)
-      (kernel character interrupt-enables)))
-
-(define ((keep-typeahead kernel) character interrupt-enables)
-  (if (hook/clean-input/keep-typeahead character)
-      (kernel character interrupt-enables)))
-
 (define hook/clean-input/flush-typeahead)
 (define hook/clean-input/keep-typeahead)
-(define (default/clean-input character) character true)
-
-(define (^B-interrupt-handler character interrupt-enables)
-  character
-  (hook/^B-interrupt interrupt-enables))
-
-(define (^G-interrupt-handler character interrupt-enables)
-  character
-  (hook/^G-interrupt interrupt-enables))
-
-(define (^U-interrupt-handler character interrupt-enables)
-  character
-  (hook/^U-interrupt interrupt-enables))
-
-(define (^X-interrupt-handler character interrupt-enables)
-  character
-  (hook/^X-interrupt interrupt-enables))
-
-#|
-(define (^S-interrupt-handler character interrupt-enables)
-  character
-  (hook/^S-interrupt interrupt-enables))
-
-(define (^Q-interrupt-handler character interrupt-enables)
-  character
-  (hook/^Q-interrupt interrupt-enables))
-
-(define (^P-interrupt-handler character interrupt-enables)
-  character
-  (hook/^P-interrupt interrupt-enables))
-
-(define (^Z-interrupt-handler character interrupt-enables)
-  character
-  (hook/^Z-interrupt interrupt-enables))
-|#
-
 (define hook/^B-interrupt)
 (define hook/^G-interrupt)
 (define hook/^U-interrupt)
 (define hook/^X-interrupt)
-#| (define hook/^S-interrupt) |#
-#| (define hook/^Q-interrupt) |#
-#| (define hook/^P-interrupt) |#
-#| (define hook/^Z-interrupt) |#
-
-(define (default/^B-interrupt interrupt-enables)
-  interrupt-enables
+
+(define ((flush-typeahead kernel) char interrupt-enables)
+  (if (or (not hook/clean-input/flush-typeahead)
+	  (hook/clean-input/flush-typeahead char))
+      (kernel char interrupt-enables)))
+
+(define ((keep-typeahead kernel) char interrupt-enables)
+  (if (or (not hook/clean-input/keep-typeahead)
+	  (hook/clean-input/keep-typeahead char))
+      (kernel char interrupt-enables)))
+
+(define (^B-interrupt-handler char interrupt-mask)
+  char
+  (if hook/^B-interrupt
+      (hook/^B-interrupt interrupt-mask))
   (cmdl-interrupt/breakpoint))
 
-(define (default/^G-interrupt interrupt-enables)
-  interrupt-enables
+(define (^G-interrupt-handler char interrupt-mask)
+  char
+  (if hook/^G-interrupt
+      (hook/^G-interrupt interrupt-mask))
   (cmdl-interrupt/abort-top-level))
 
-(define (default/^U-interrupt interrupt-enables)
-  interrupt-enables
+(define (^U-interrupt-handler char interrupt-mask)
+  char
+  (if hook/^U-interrupt
+      (hook/^U-interrupt interrupt-mask))
   (cmdl-interrupt/abort-previous))
 
-(define (default/^X-interrupt interrupt-enables)
-  interrupt-enables
+(define (^X-interrupt-handler char interrupt-mask)
+  char
+  (if hook/^X-interrupt
+      (hook/^X-interrupt interrupt-mask))
   (cmdl-interrupt/abort-nearest))
-
-#|
-(define (default/^S-interrupt interrupt-enables)
-  (if (not busy-wait-continuation)
-      (begin
-	(set-interrupt-enables! interrupt-enables)
-	(beep console-output-port)
-	(call-with-current-continuation
-	 (lambda (continuation)
-	   (fluid-let ((busy-wait-continuation continuation))
-	     (let busy-wait () (busy-wait))))))))
-
-(define (default/^Q-interrupt interrupt-enables)
-  (if busy-wait-continuation
-      (begin (set-interrupt-enables! interrupt-enables)
-	     (busy-wait-continuation false))))
-
-(define busy-wait-continuation
-  false)
-
-(define (default/^P-interrupt interrupt-enables)
-  (set-interrupt-enables! interrupt-enables)
-  (proceed))
-
-(define (default/^Z-interrupt interrupt-enables)
-  (set-interrupt-enables! interrupt-enables)
-  (edit))
-|#
 
 (define (install)
   (without-interrupts

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/format.scm,v 14.4 1988/08/05 20:47:10 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/format.scm,v 14.5 1991/11/26 07:05:57 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -58,7 +58,7 @@ MIT in each case. |#
 ;;; where <c> may be:
 ;;; A meaning the argument is printed using `display'.
 ;;; S meaning the argument is printed using `write'.
-
+
 ;;;; Top Level
 
 (define (format destination format-string . arguments)
@@ -67,8 +67,7 @@ MIT in each case. |#
   (let ((start
 	 (lambda (port)
 	   (format-loop port format-string arguments)
-	   (output-port/flush-output port)
-	   unspecific)))
+	   (output-port/discretionary-flush port))))
     (cond ((not destination)
 	   (with-output-to-string (lambda () (start (current-output-port)))))
 	  ((eq? destination true)
@@ -77,7 +76,7 @@ MIT in each case. |#
 	   (start destination))
 	  (else
 	   (error "FORMAT: illegal destination" destination)))))
-
+
 (define (format-loop port string arguments)
   (let ((index (string-find-next-char string #\~)))
     (cond (index

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/port.scm,v 1.1 1991/11/15 05:19:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/port.scm,v 1.2 1991/11/26 07:06:43 cph Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -53,25 +53,15 @@ MIT in each case. |#
       WRITE-CHAR
       WRITE-STRING
       WRITE-SUBSTRING
-      FLUSH-OUTPUT)))
+      FLUSH-OUTPUT
+      DISCRETIONARY-FLUSH-OUTPUT)))
 
-(define port?
-  (record-predicate port-rtd))
-
-(define port/state
-  (record-accessor port-rtd 'STATE))
-
-(define set-port/state!
-  (record-updater port-rtd 'STATE))
-
-(define port/operation-names
-  (record-accessor port-rtd 'OPERATION-NAMES))
-
-(define set-port/operation-names!
-  (record-updater port-rtd 'OPERATION-NAMES))
-
-(define port/custom-operations
-  (record-accessor port-rtd 'CUSTOM-OPERATIONS))
+(define port? (record-predicate port-rtd))
+(define port/state (record-accessor port-rtd 'STATE))
+(define set-port/state! (record-updater port-rtd 'STATE))
+(define port/operation-names (record-accessor port-rtd 'OPERATION-NAMES))
+(define set-port/operation-names! (record-updater port-rtd 'OPERATION-NAMES))
+(define port/custom-operations (record-accessor port-rtd 'CUSTOM-OPERATIONS))
 
 (define input-port/operation/char-ready?
   (record-accessor port-rtd 'CHAR-READY?))
@@ -102,6 +92,9 @@ MIT in each case. |#
 
 (define output-port/operation/flush-output
   (record-accessor port-rtd 'FLUSH-OUTPUT))
+
+(define output-port/operation/discretionary-flush
+  (record-accessor port-rtd 'DISCRETIONARY-FLUSH-OUTPUT))
 
 (set-record-type-unparser-method! port-rtd
   (lambda (state port)
@@ -136,6 +129,8 @@ MIT in each case. |#
 	  ((WRITE-STRING) (output-port/operation/write-string port))
 	  ((WRITE-SUBSTRING) (output-port/operation/write-substring port))
 	  ((FLUSH-OUTPUT) (output-port/operation/flush-output port))
+	  ((DISCRETIONARY-FLUSH-OUTPUT)
+	   (output-port/operation/discretionary-flush port))
 	  (else false)))))
 
 (define (close-port port)
@@ -190,6 +185,8 @@ MIT in each case. |#
 (define input-port/custom-operation input-port/operation)
 (define output-port/custom-operation output-port/operation)
 
+;;;; Constructors
+
 (define (input-port? object)
   (and (port? object)
        (input-port/operation/read-char object)
@@ -255,6 +252,8 @@ MIT in each case. |#
 		 (updater port (delq! operation operations))
 		 (cdr operation))))))))
 
+;;;; Input Operations
+
 (define install-input-operations!
   (let ((operation-names
 	 '(CHAR-READY? PEEK-CHAR READ-CHAR
@@ -277,7 +276,7 @@ MIT in each case. |#
 			       (error "Must specify operation:" name))))
 			updaters
 			operations
-			(list false
+			(list default-operation/char-ready?
 			      false
 			      false
 			      (caddr operations)
@@ -295,6 +294,10 @@ MIT in each case. |#
 	      (for-each (lambda (updater)
 			  (updater port false))
 			updaters)))))))
+
+(define (default-operation/char-ready? port interval)
+  port interval
+  true)
 
 (define (default-operation/read-string port delimiters)
   (let ((peek-char (input-port/operation/peek-char port))
@@ -326,8 +329,10 @@ MIT in each case. |#
 	      (discard-char port)
 	      (loop)))))))
 
+;;;; Output Operations
+
 (define (default-operation/write-char port char)
-  ((output-port/operation/write-substring port) port (char->string char) 0 1))
+  ((output-port/operation/write-substring port) port (string char) 0 1))
 
 (define (default-operation/write-string port string)
   ((output-port/operation/write-substring port)
@@ -348,11 +353,13 @@ MIT in each case. |#
 
 (define install-output-operations!
   (let ((operation-names
-	 '(WRITE-CHAR WRITE-SUBSTRING WRITE-STRING FLUSH-OUTPUT))
+	 '(WRITE-CHAR WRITE-SUBSTRING WRITE-STRING
+		      FLUSH-OUTPUT DISCRETIONARY-FLUSH-OUTPUT))
 	(operation-defaults
 	 (list default-operation/write-char
 	       default-operation/write-substring
 	       default-operation/write-string
+	       default-operation/flush-output
 	       default-operation/flush-output)))
     (let ((updaters
 	   (map (lambda (name)
@@ -383,3 +390,75 @@ MIT in each case. |#
 	      (for-each (lambda (updater)
 			  (updater port false))
 			updaters)))))))
+
+;;;; Special Operations
+
+(define (port/input-blocking-mode port)
+  (let ((operation (port/operation port 'INPUT-BLOCKING-MODE)))
+    (if operation
+	(operation port)
+	false)))
+
+(define (port/set-input-blocking-mode port mode)
+  (let ((operation (port/operation port 'SET-INPUT-BLOCKING-MODE)))
+    (if operation
+	(operation port mode))))
+
+(define (port/with-input-blocking-mode port mode thunk)
+  (bind-mode port 'INPUT-BLOCKING-MODE 'SET-INPUT-BLOCKING-MODE mode thunk))
+
+(define (port/output-blocking-mode port)
+  (let ((operation (port/operation port 'OUTPUT-BLOCKING-MODE)))
+    (if operation
+	(operation port)
+	false)))
+
+(define (port/set-output-blocking-mode port mode)
+  (let ((operation (port/operation port 'SET-OUTPUT-BLOCKING-MODE)))
+    (if operation
+	(operation port mode))))
+
+(define (port/with-output-blocking-mode port mode thunk)
+  (bind-mode port 'OUTPUT-BLOCKING-MODE 'SET-OUTPUT-BLOCKING-MODE mode thunk))
+
+(define (port/input-terminal-mode port)
+  (let ((operation (port/operation port 'INPUT-TERMINAL-MODE)))
+    (if operation
+	(operation port)
+	false)))
+
+(define (port/set-input-terminal-mode port mode)
+  (let ((operation (port/operation port 'SET-INPUT-TERMINAL-MODE)))
+    (if operation
+	(operation port mode))))
+
+(define (port/with-input-terminal-mode port mode thunk)
+  (bind-mode port 'INPUT-TERMINAL-MODE 'SET-INPUT-TERMINAL-MODE mode thunk))
+
+(define (port/output-terminal-mode port)
+  (let ((operation (port/operation port 'OUTPUT-TERMINAL-MODE)))
+    (if operation
+	(operation port)
+	false)))
+
+(define (port/set-output-terminal-mode port mode)
+  (let ((operation (port/operation port 'SET-OUTPUT-TERMINAL-MODE)))
+    (if operation
+	(operation port mode))))
+
+(define (port/with-output-terminal-mode port mode thunk)
+  (bind-mode port 'OUTPUT-TERMINAL-MODE 'SET-OUTPUT-TERMINAL-MODE mode thunk))
+
+(define (bind-mode port read-mode write-mode mode thunk)
+  (let ((read-mode (port/operation port read-mode))
+	(write-mode (port/operation port write-mode)))
+    (if (and read-mode write-mode (read-mode port))
+	(let ((outside-mode))
+	  (dynamic-wind (lambda ()
+			  (set! outside-mode (read-mode port))
+			  (write-mode port mode))
+			thunk
+			(lambda ()
+			  (set! mode (read-mode port))
+			  (write-mode port outside-mode))))
+	(thunk))))

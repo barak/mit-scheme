@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgutl.scm,v 14.13 1991/07/15 23:40:42 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgutl.scm,v 14.14 1991/11/26 07:05:11 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -37,41 +37,45 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define (print-user-friendly-name environment)
+(define (print-user-friendly-name environment port)
   (let ((name (environment-procedure-name environment)))
     (if name
 	(let ((rename (special-form-procedure-name? name)))
 	  (if rename
-	      (begin (write-string "a ")
-		     (write-string (string-upcase rename))
-		     (write-string " special form"))
-	      (begin (write-string "the procedure: ")
-		     (write-dbg-upcase-name name))))
-	(write-string "an unknown procedure"))))
+	      (begin
+		(write-string "a " port)
+		(write-string (string-upcase rename) port)
+		(write-string " special form") port)
+	      (begin
+		(write-string "the procedure: " port)
+		(write-dbg-upcase-name name port))))
+	(write-string "an unknown procedure" port))))
 
-(define (show-environment-procedure environment)
+(define (show-environment-procedure environment port)
   (let ((scode-lambda (environment-lambda environment)))
     (if scode-lambda
-	(presentation (lambda () (pretty-print scode-lambda)))
-	(debugger-failure "No procedure for this environment."))))
+	(debugger-presentation port
+	  (lambda ()
+	    (pretty-print scode-lambda port)))
+	(debugger-failure port "No procedure for this environment."))))
 
-(define (write-dbg-name name)
-  (if (string? name) (write-string name) (write name)))
+(define (write-dbg-name name port)
+  (if (string? name) (write-string name port) (write name port)))
 
-(define (write-dbg-upcase-name name)
+(define (write-dbg-upcase-name name port)
   (let ((string
 	 (if (string? name)
 	     name
 	     (with-output-to-string (lambda () (write name))))))
-    (write-string (string-upcase string))))
+    (write-string (string-upcase string) port)))
 
-(define (debug/read-eval-print-1 environment)
+(define (debug/read-eval-print-1 environment port)
   (let ((value
-	 (debug/eval (prompt-for-expression "Evaluate expression")
+	 (debug/eval (prompt-for-expression "Evaluate expression" port)
 		     environment)))
     (if (undefined-value? value)
-	(debugger-message "No value")
-	(debugger-message "Value: " value))))
+	(debugger-message port "No value")
+	(debugger-message port "Value: " value))))
 
 (define (output-to-string length thunk)
   (let ((x (with-output-to-truncated-string length thunk)))
@@ -79,75 +83,77 @@ MIT in each case. |#
 	(substring-move-right! " ..." 0 4 (cdr x) (- length 4)))
     (cdr x)))
 
-(define (show-frames environment depth)
-  (presentation
-   (lambda ()
-     (let loop ((environment environment) (depth depth))
-       (write-string "----------------------------------------")
-       (newline)
-       (show-frame environment depth true)
-       (if (eq? true (environment-has-parent? environment))
-	   (begin
-	     (newline)
-	     (newline)
-	     (loop (environment-parent environment) (1+ depth))))))))
+(define (show-frames environment depth port)
+  (debugger-presentation port
+    (lambda ()
+      (let loop ((environment environment) (depth depth))
+	(write-string "----------------------------------------" port)
+	(newline port)
+	(show-frame environment depth true port)
+	(if (eq? true (environment-has-parent? environment))
+	    (begin
+	      (newline port)
+	      (newline port)
+	      (loop (environment-parent environment) (1+ depth))))))))
 
-(define (show-frame environment depth brief?)
-  (show-environment-name environment)
+(define (show-frame environment depth brief? port)
+  (show-environment-name environment port)
   (if (not (negative? depth))
-      (begin (newline)
-	     (write-string "Depth (relative to initial environment): ")
-	     (write depth)))
+      (begin
+	(newline port)
+	(write-string "Depth (relative to initial environment): " port)
+	(write depth port)))
   (if (not (and (environment->package environment) brief?))
       (begin
-	(newline)
-	(show-environment-bindings environment brief?))))
+	(newline port)
+	(show-environment-bindings environment brief? port))))
 
-(define (show-environment-name environment)
-  (write-string "Environment ")
+(define (show-environment-name environment port)
+  (write-string "Environment " port)
   (let ((package (environment->package environment)))
     (if package
 	(begin
-	  (write-string "named: ")
-	  (write (package/name package)))
+	  (write-string "named: " port)
+	  (write (package/name package) port))
 	(begin
-	  (write-string "created by ")
-	  (print-user-friendly-name environment)))))
+	  (write-string "created by " port)
+	  (print-user-friendly-name environment port)))))
 
-(define (show-environment-bindings environment brief?)
+(define (show-environment-bindings environment brief? port)
   (let ((names (environment-bound-names environment)))
     (let ((n-bindings (length names))
 	  (finish
 	   (lambda (names)
-	     (newline)
+	     (newline port)
 	     (for-each (lambda (name)
 			 (print-binding name
-					(environment-lookup environment name)))
+					(environment-lookup environment name)
+					port))
 		       names))))
       (cond ((zero? n-bindings)
-	     (write-string " has no bindings"))
+	     (write-string " has no bindings" port))
 	    ((and brief? (> n-bindings brief-bindings-limit))
-	     (write-string " has ")
-	     (write n-bindings)
-	     (write-string " bindings (first ")
-	     (write brief-bindings-limit)
-	     (write-string " shown):")
+	     (write-string " has " port)
+	     (write n-bindings port)
+	     (write-string " bindings (first " port)
+	     (write brief-bindings-limit port)
+	     (write-string " shown):" port)
 	     (finish (list-head names brief-bindings-limit)))
 	    (else
-	     (write-string " has bindings:")
+	     (write-string " has bindings:" port)
 	     (finish names))))))
 
 (define brief-bindings-limit
   16)
 
-(define (print-binding name value)
-  (let ((x-size (output-port/x-size (current-output-port))))
-    (newline)
+(define (print-binding name value port)
+  (let ((x-size (output-port/x-size port)))
+    (newline port)
     (write-string
      (let ((name
 	    (output-to-string (quotient x-size 2)
 	      (lambda ()
-		(write-dbg-name name)))))
+		(write-dbg-name name (current-output-port))))))
        (if (unassigned-reference-trap? value)
 	   (string-append name " is unassigned")
 	   (let ((s (string-append name " = ")))
@@ -155,40 +161,19 @@ MIT in each case. |#
 	      s
 	      (output-to-string (max (- x-size (string-length s)) 0)
 		(lambda ()
-		  (write value))))))))))
-
-(define hook/debugger-failure)
-(define hook/debugger-message)
-(define hook/presentation)
+		  (write value)))))))
+     port)))
 
-(define (initialize-package!)
-  (set! hook/debugger-failure default/debugger-failure)
-  (set! hook/debugger-message default/debugger-message)
-  (set! hook/presentation default/presentation)
-  unspecific)
+(define (debugger-failure port . objects)
+  (port/debugger-failure port (message-arguments->string objects)))
 
-(define (debugger-failure . objects)
-  (hook/debugger-failure (message-arguments->string objects)))
-
-(define (default/debugger-failure message)
-  (beep)
-  (default/debugger-message message))
-
-(define (debugger-message . objects)
-  (hook/debugger-message (message-arguments->string objects)))
-
-(define (default/debugger-message message)
-  (newline)
-  (write-string message))
+(define (debugger-message port . objects)
+  (port/debugger-message port (message-arguments->string objects)))
 
 (define (message-arguments->string objects)
   (apply string-append
 	 (map (lambda (x) (if (string? x) x (write-to-string x)))
 	      objects)))
 
-(define (presentation thunk)
-  (hook/presentation thunk))
-
-(define (default/presentation thunk)
-  (newline)
-  (thunk))
+(define (debugger-presentation port thunk)
+  (port/debugger-presentation port thunk))

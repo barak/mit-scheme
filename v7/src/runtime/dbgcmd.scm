@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgcmd.scm,v 14.12 1991/05/15 22:03:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgcmd.scm,v 14.13 1991/11/26 07:05:04 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -62,68 +62,70 @@ MIT in each case. |#
 	      (loop (cdr command-set)))))))
 
 (define (letter-commands command-set message prompt state)
-  (push-cmdl letter-commands/driver
-	     (vector command-set prompt state)
-	     message
-	     make-cmdl))
+  (cmdl/start (push-cmdl letter-commands/driver
+			 (vector command-set prompt state)
+			 '())
+	      message))
 
 (define (letter-commands/driver cmdl)
   (call-with-current-continuation
    (lambda (continuation)
-     (bind-condition-handler (list condition-type:error)
-	 (lambda (condition)
-	   (let ((port (cmdl/output-port cmdl)))
+     (let ((port (cmdl/port cmdl)))
+       (bind-condition-handler (list condition-type:error)
+	   (lambda (condition)
 	     (beep port)
+	     (fresh-line port)
 	     (write-string ";Ignoring error:\n;" port)
-	     (write-condition-report condition port))
-	   (continuation unspecific))
-       (lambda ()
-	 (let ((command-set (vector-ref (cmdl/state cmdl) 0))
-	       (prompt (vector-ref (cmdl/state cmdl) 1))
-	       (state (vector-ref (cmdl/state cmdl) 2)))
-	   (let loop ()
-	     (let ((char (char-upcase (prompt-for-command-char prompt cmdl))))
-	       (with-output-to-port (cmdl/output-port cmdl)
-		 (lambda ()
-		   (let ((entry (assv char (cdr command-set))))
-		     (if entry
-			 ((cadr entry) state)
-			 (begin
-			   (beep)
-			   (newline)
-			   (write-string "Unknown command char: ")
-			   (write char)
-			   (loop)))))))))))))
+	     (write-condition-report condition port)
+	     (continuation unspecific))
+	 (lambda ()
+	   (let ((command-set (vector-ref (cmdl/state cmdl) 0))
+		 (prompt
+		  (string-append (number->string (cmdl/level cmdl))
+				 " "
+				 (vector-ref (cmdl/state cmdl) 1)))
+		 (state (vector-ref (cmdl/state cmdl) 2)))
+	     (let loop ()
+	       (let ((entry
+		      (assv (char-upcase (prompt-for-command-char prompt port))
+			    (cdr command-set))))
+		 (if entry
+		     ((cadr entry) state port)
+		     (begin
+		       (beep port)
+		       (newline port)
+		       (write-string "Unknown command character" port)
+		       (loop)))))))))))
   (cmdl-message/null))
 
-(define ((standard-help-command command-set) state)
+(define ((standard-help-command command-set) state port)
   state					;ignore
   (for-each (lambda (entry)
-	      (newline)
-	      (write-string "   ")
-	      (write-char (car entry))
-	      (write-string "   ")
-	      (write-string (caddr entry)))
+	      (newline port)
+	      (write-string "   " port)
+	      (write-char (car entry) port)
+	      (write-string "   " port)
+	      (write-string (caddr entry) port))
 	    (cdr command-set))
   unspecific)
 
-(define (standard-exit-command state)
+(define (standard-exit-command state port)
   state					;ignore
   (continue)
-  (debugger-failure "Can't exit; use a restart command instead."))
+  (debugger-failure port "Can't exit; use a restart command instead."))
 
 (define (initialize-package!)
-  (set! hook/leaving-command-loop default/leaving-command-loop))
-
-(define hook/leaving-command-loop)
+  (set! hook/leaving-command-loop default/leaving-command-loop)
+  unspecific)
 
 (define (leaving-command-loop thunk)
   (hook/leaving-command-loop thunk))
 
+(define hook/leaving-command-loop)
 (define (default/leaving-command-loop thunk)
   (thunk))
 
-(define (debug/read-eval-print environment from to prompt)
+(define (debug/read-eval-print environment from to)
   (leaving-command-loop
    (lambda ()
      (with-simple-restart 'CONTINUE
@@ -134,10 +136,10 @@ MIT in each case. |#
        (lambda ()
 	 (read-eval-print
 	  environment
-	  (cmdl-message/standard
-	   (string-append
-	    "You are now in " to ".  Type C-c C-u to return to " from "."))
-	  prompt))))))
+	  (cmdl-message/strings
+	   (string-append "You are now in " to ".")
+	   (string-append "Type C-c C-u to return to " from "."))
+	  user-initial-prompt))))))
 
 (define (debug/eval expression environment)
   (leaving-command-loop

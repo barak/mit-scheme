@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/genio.scm,v 1.1 1991/11/15 05:17:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/genio.scm,v 1.2 1991/11/26 07:06:12 cph Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -45,20 +45,28 @@ MIT in each case. |#
 	   (DISCARD-CHAR ,operation/discard-char)
 	   (DISCARD-CHARS ,operation/discard-chars)
 	   (EOF? ,operation/eof?)
+	   (INPUT-BLOCKING-MODE ,operation/input-blocking-mode)
 	   (INPUT-BUFFER-SIZE ,operation/input-buffer-size)
 	   (INPUT-CHANNEL ,operation/input-channel)
+	   (INPUT-TERMINAL-MODE ,operation/input-terminal-mode)
 	   (PEEK-CHAR ,operation/peek-char)
 	   (READ-CHAR ,operation/read-char)
 	   (READ-CHARS ,operation/read-chars)
 	   (READ-STRING ,operation/read-string)
 	   (READ-SUBSTRING ,operation/read-substring)
-	   (SET-INPUT-BUFFER-SIZE ,operation/set-input-buffer-size)))
+	   (SET-INPUT-BLOCKING-MODE ,operation/set-input-blocking-mode)
+	   (SET-INPUT-BUFFER-SIZE ,operation/set-input-buffer-size)
+	   (SET-INPUT-TERMINAL-MODE ,operation/set-input-terminal-mode)))
 	(output-operations
 	 `((BUFFERED-OUTPUT-CHARS ,operation/buffered-output-chars)
 	   (FLUSH-OUTPUT ,operation/flush-output)
+	   (OUTPUT-BLOCKING-MODE ,operation/output-blocking-mode)
 	   (OUTPUT-BUFFER-SIZE ,operation/output-buffer-size)
 	   (OUTPUT-CHANNEL ,operation/output-channel)
+	   (OUTPUT-TERMINAL-MODE ,operation/output-terminal-mode)
+	   (SET-OUTPUT-BLOCKING-MODE ,operation/set-output-blocking-mode)
 	   (SET-OUTPUT-BUFFER-SIZE ,operation/set-output-buffer-size)
+	   (SET-OUTPUT-TERMINAL-MODE ,operation/set-output-terminal-mode)
 	   (WRITE-CHAR ,operation/write-char)
 	   (WRITE-STRING ,operation/write-string)
 	   (WRITE-SUBSTRING ,operation/write-substring)))
@@ -174,6 +182,30 @@ MIT in each case. |#
 (define (operation/input-channel port)
   (input-buffer/channel (port/input-buffer port)))
 
+(define (operation/input-blocking-mode port)
+  (if (channel-blocking? (operation/input-channel port))
+      'BLOCKING
+      'NONBLOCKING))
+
+(define (operation/set-input-blocking-mode port mode)
+  (case mode
+    ((BLOCKING) (channel-blocking (operation/input-channel port)))
+    ((NONBLOCKING) (channel-nonblocking (operation/input-channel port)))
+    (else (error:wrong-type-datum mode "blocking mode"))))
+
+(define (operation/input-terminal-mode port)
+  (let ((channel (operation/input-channel port)))
+    (cond ((not (channel-type=terminal? channel)) false)
+	  ((terminal-cooked-input? channel) 'COOKED)
+	  (else 'RAW))))
+
+(define (operation/set-input-terminal-mode port mode)
+  (case mode
+    ((COOKED) (terminal-cooked-input (operation/input-channel port)))
+    ((RAW) (terminal-raw-input (operation/input-channel port)))
+    ((#F) unspecific)
+    (else (error:wrong-type-datum mode "terminal mode"))))
+
 (define (operation/flush-output port)
   (output-buffer/drain-block (port/output-buffer port)))
 
@@ -198,6 +230,30 @@ MIT in each case. |#
 
 (define (operation/output-channel port)
   (output-buffer/channel (port/output-buffer port)))
+
+(define (operation/output-blocking-mode port)
+  (if (channel-blocking? (operation/output-channel port))
+      'BLOCKING
+      'NONBLOCKING))
+
+(define (operation/set-output-blocking-mode port mode)
+  (case mode
+    ((BLOCKING) (channel-blocking (operation/output-channel port)))
+    ((NONBLOCKING) (channel-nonblocking (operation/output-channel port)))
+    (else (error:wrong-type-datum mode "blocking mode"))))
+
+(define (operation/output-terminal-mode port)
+  (let ((channel (operation/output-channel port)))
+    (cond ((not (channel-type=terminal? channel)) false)
+	  ((terminal-cooked-output? channel) 'COOKED)
+	  (else 'RAW))))
+
+(define (operation/set-output-terminal-mode port mode)
+  (case mode
+    ((COOKED) (terminal-cooked-output (operation/output-channel port)))
+    ((RAW) (terminal-raw-output (operation/output-channel port)))
+    ((#F) unspecific)
+    (else (error:wrong-type-datum mode "terminal mode"))))
 
 (define (operation/close port)
   (let ((input-buffer (port/input-buffer port)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.28 1991/11/04 20:28:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.29 1991/11/26 07:05:41 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -328,25 +328,19 @@ MIT in each case. |#
 
 (define (invoke-restart restart . arguments)
   (guarantee-restart restart 'INVOKE-RESTART)
-  (apply (%restart/effector restart) arguments))
-
-(define hook/before-restart)
-
-(define (default/before-restart)
-  '())
+  (hook/invoke-restart (%restart/effector restart) arguments))
 
 (define (invoke-restart-interactively restart)
   (guarantee-restart restart 'INVOKE-RESTART-INTERACTIVELY)
-  (let ((effector (%restart/effector restart))
-	(interactive
+  (hook/invoke-restart
+   (%restart/effector restart)
+   (let ((interactive
 	 (1d-table/get (%restart/properties restart) 'INTERACTIVE false)))
-    (if (not interactive)
-	(begin (hook/before-restart)
-	       (effector))
-	(with-values interactive
-	  (lambda vals
-	    (hook/before-restart)
-	    (apply effector vals))))))
+     (if (not interactive)
+	 '()
+	 (with-values interactive list)))))
+
+(define hook/invoke-restart)
 
 (define (bound-restarts)
   (let loop ((restarts *bound-restarts*))
@@ -516,16 +510,16 @@ MIT in each case. |#
     (if hook
 	(fluid-let ((standard-error-hook false))
 	  (hook condition))))
-  (push-repl false condition "Error->"))
+  (repl/start (push-repl 'INHERIT 'INHERIT condition '() "error>")))
 
 (define (standard-warning-handler condition)
   (let ((hook standard-warning-hook))
     (if hook
 	(fluid-let ((standard-warning-hook false))
 	  (hook condition))
-	(let ((port (nearest-cmdl/output-port)))
-	  (newline port)
-	  (write-string "Warning: " port)
+	(let ((port (nearest-cmdl/port)))
+	  (fresh-line port)
+	  (write-string ";Warning: " port)
 	  (write-condition-report condition port)))))
 
 (define standard-error-hook false)
@@ -654,7 +648,7 @@ MIT in each case. |#
 
 (define (initialize-package!)
   (set! hook/invoke-condition-handler default/invoke-condition-handler)
-  (set! hook/before-restart default/before-restart)
+  (set! hook/invoke-restart apply)
   (set! condition-type:serious-condition
 	(make-condition-type 'SERIOUS-CONDITION false '() false))
   (set! condition-type:warning

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.127 1991/11/15 05:15:17 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.128 1991/11/26 07:07:00 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -274,10 +274,10 @@ MIT in each case. |#
   (export ()
 	  console-i/o-port
 	  console-input-port
-	  console-output-port)
+	  console-output-port
+	  set-console-i/o-port!)
   (export (runtime emacs-interface)
-	  hook/read-finish
-	  hook/read-start)
+	  the-console-port)
   (initialization (initialize-package!)))
 
 (define-package (runtime continuation)
@@ -397,8 +397,8 @@ MIT in each case. |#
 	  debug/read-eval-print-1
 	  debugger-failure
 	  debugger-message
+	  debugger-presentation
 	  output-to-string
-	  presentation
 	  print-user-friendly-name
 	  show-environment-bindings
 	  show-environment-name
@@ -406,10 +406,6 @@ MIT in each case. |#
 	  show-frame
 	  show-frames
 	  write-dbg-name)
-  (export (runtime emacs-interface)
-	  hook/debugger-failure
-	  hook/debugger-message
-	  hook/presentation)
   (initialization (initialize-package!)))
 
 (define-package (runtime debugging-info)
@@ -620,6 +616,7 @@ MIT in each case. |#
   (export (runtime microcode-errors)
 	  write-operator)
   (export (runtime rep)
+	  *bound-restarts*
 	  dynamic-handler-frames)
   (initialization (initialize-package!)))
 
@@ -682,13 +679,8 @@ MIT in each case. |#
   (export (runtime gc-statistics)
 	  hook/gc-finish
 	  hook/gc-start)
-  (export (runtime emacs-interface)
-	  hook/gc-finish
-	  hook/gc-start)
   (export (runtime error-handler)
 	  hook/hardware-trap)
-  (export (runtime save/restore)
-	  reset-gc-after-restore!)
   (initialization (initialize-package!)))
 
 (define-package (runtime gc-daemons)
@@ -744,12 +736,20 @@ MIT in each case. |#
 	  operation/buffered-input-chars
 	  operation/buffered-output-chars
 	  operation/char-ready?
+	  operation/input-blocking-mode
 	  operation/input-buffer-size
 	  operation/input-channel
+	  operation/input-terminal-mode
+	  operation/output-blocking-mode
 	  operation/output-buffer-size
 	  operation/output-channel
+	  operation/output-terminal-mode
+	  operation/set-input-blocking-mode
 	  operation/set-input-buffer-size
-	  operation/set-output-buffer-size)
+	  operation/set-input-terminal-mode
+	  operation/set-output-blocking-mode
+	  operation/set-output-buffer-size
+	  operation/set-output-terminal-mode)
   (export (runtime file-i/o-port)
 	  operation/buffered-input-chars
 	  operation/buffered-output-chars
@@ -760,17 +760,25 @@ MIT in each case. |#
 	  operation/discard-chars
 	  operation/eof?
 	  operation/flush-output
+	  operation/input-blocking-mode
 	  operation/input-buffer-size
 	  operation/input-channel
+	  operation/input-terminal-mode
+	  operation/output-blocking-mode
 	  operation/output-buffer-size
 	  operation/output-channel
+	  operation/output-terminal-mode
 	  operation/peek-char
 	  operation/read-char
 	  operation/read-chars
 	  operation/read-string
 	  operation/read-substring
+	  operation/set-input-blocking-mode
 	  operation/set-input-buffer-size
+	  operation/set-input-terminal-mode
+	  operation/set-output-blocking-mode
 	  operation/set-output-buffer-size
+	  operation/set-output-terminal-mode
 	  operation/write-char
 	  operation/write-string
 	  operation/write-substring)
@@ -889,6 +897,7 @@ MIT in each case. |#
 	  output-port/custom-operation
 	  output-port/operation
 	  output-port/operation-names
+	  output-port/operation/discretionary-flush
 	  output-port/operation/flush-output
 	  output-port/operation/write-char
 	  output-port/operation/write-string
@@ -896,11 +905,23 @@ MIT in each case. |#
 	  output-port/state
 	  output-port?
 	  port/copy
+	  port/input-blocking-mode
 	  port/input-channel
-	  port/output-channel
+	  port/input-terminal-mode
 	  port/operation
 	  port/operation-names
+	  port/output-blocking-mode
+	  port/output-channel
+	  port/output-terminal-mode
+	  port/set-input-blocking-mode
+	  port/set-input-terminal-mode
+	  port/set-output-blocking-mode
+	  port/set-output-terminal-mode
 	  port/state
+	  port/with-input-blocking-mode
+	  port/with-input-terminal-mode
+	  port/with-output-blocking-mode
+	  port/with-output-terminal-mode
 	  port?
 	  set-input-port/state!
 	  set-output-port/state!
@@ -942,9 +963,11 @@ MIT in each case. |#
 	  clear
 	  current-output-port
 	  display
+	  flush-output
 	  fresh-line
 	  guarantee-output-port
 	  newline
+	  output-port/discretionary-flush
 	  output-port/flush-output
 	  output-port/write-char
 	  output-port/write-object
@@ -967,7 +990,7 @@ MIT in each case. |#
 	  timer-interrupt
 	  with-external-interrupts-handler)
   (export (runtime emacs-interface)
-	  hook/^g-interrupt
+	  hook/^G-interrupt
 	  hook/clean-input/flush-typeahead)
   (initialization (initialize-package!)))
 
@@ -1333,8 +1356,6 @@ MIT in each case. |#
 	  system-global-parser-table)
   (export (runtime character)
 	  char-set/atom-delimiters)
-  (export (runtime input-port)
-	  parse-object/internal)
   (export (runtime syntaxer)
 	  lambda-optional-tag
 	  lambda-rest-tag)
@@ -1580,6 +1601,7 @@ MIT in each case. |#
 	  output-buffer/size
 	  output-buffer/write-char-block
 	  output-buffer/write-string-block
+	  output-buffer/write-substring-block
 	  set-channel-port!)
   (export (runtime microcode-errors)
 	  port-error-test)
@@ -1608,6 +1630,7 @@ MIT in each case. |#
 	  record-accessor
 	  record-constructor
 	  record-copy
+	  record-modifier
 	  record-predicate
 	  record-type-descriptor
 	  record-type-field-names
@@ -1650,15 +1673,15 @@ MIT in each case. |#
 	  cmdl-message/active
 	  cmdl-message/append
 	  cmdl-message/null
-	  cmdl-message/standard
 	  cmdl-message/strings
-	  cmdl-message/value
 	  cmdl/base
 	  cmdl/driver
-	  cmdl/input-port
+	  cmdl/operation
+	  cmdl/operation-names
+	  cmdl/port
 	  cmdl/level
-	  cmdl/output-port
 	  cmdl/parent
+	  cmdl/start
 	  cmdl/state
 	  cmdl?
 	  ge
@@ -1666,9 +1689,11 @@ MIT in each case. |#
 	  in
 	  initial-top-level-repl
 	  make-cmdl
+	  make-repl
+	  make-repl-message
 	  nearest-cmdl
-	  nearest-cmdl/input-port
-	  nearest-cmdl/output-port
+	  nearest-cmdl/level
+	  nearest-cmdl/port
 	  nearest-repl
 	  nearest-repl/condition
 	  nearest-repl/environment
@@ -1676,10 +1701,6 @@ MIT in each case. |#
 	  out
 	  pe
 	  proceed
-	  prompt-for-command-char
-	  prompt-for-confirmation
-	  prompt-for-expression
-	  prompt-for-evaluated-expression
 	  push-cmdl
 	  push-repl
 	  re
@@ -1688,42 +1709,32 @@ MIT in each case. |#
 	  repl-history/record!
 	  repl-history/size
 	  repl/base
+	  repl/condition
 	  repl/environment
 	  repl/parent
 	  repl/printer-history
 	  repl/prompt
 	  repl/reader-history
+	  repl/start
 	  repl/syntax-table
 	  repl:allow-restart-notifications?
 	  repl?
 	  restart
-	  set-cmdl/input-port!
-	  set-cmdl/output-port!
 	  set-cmdl/state!
 	  set-repl/environment!
 	  set-repl/printer-history!
 	  set-repl/prompt!
 	  set-repl/reader-history!
 	  set-repl/syntax-table!
-	  ve
-	  with-cmdl/input-port
-	  with-cmdl/output-port)
+	  ve)
   (export (runtime load)
 	  hook/repl-eval
 	  hook/repl-write)
   (export (runtime emacs-interface)
-	  hook/cmdl-message
-	  hook/cmdl-prompt
 	  hook/error-decision
-	  hook/prompt-for-confirmation
-	  hook/prompt-for-expression
-	  hook/read-command-char
-	  hook/repl-environment
-	  hook/repl-read
-	  hook/repl-write
-	  repl-write/show-hash?)
-  (export (runtime debugger-command-loop)
-	  hook/repl-environment)
+	  set-cmdl/port!)
+  (export (runtime user-interface)
+	  hook/repl-eval)
   (export (runtime debugger)
 	  write-restarts)
   (initialization (initialize-package!)))
@@ -2237,6 +2248,30 @@ MIT in each case. |#
 	  set-working-directory-pathname!
 	  with-working-directory-pathname
 	  working-directory-pathname)
-  (export (runtime emacs-interface)
-	  hook/set-working-directory-pathname!)
   (initialization (initialize-package!)))
+
+(define-package (runtime user-interface)
+  (files "usrint")
+  (parent ())
+  (export ()
+	  prompt-for-command-char
+	  prompt-for-command-expression
+	  prompt-for-confirmation
+	  prompt-for-evaluated-expression
+	  prompt-for-expression)
+  (export (runtime rep)
+	  port/set-default-environment
+	  port/set-default-syntax-table
+	  port/write-result)
+  (export (runtime working-directory)
+	  port/set-default-directory)
+  (export (runtime debugger-command-loop)
+	  port/debugger-failure
+	  port/debugger-message
+	  port/debugger-presentation)
+  (export (runtime gc-statistics)
+	  port/gc-finish
+	  port/gc-start)
+  (export (runtime emacs-interface)
+	  port/read-finish
+	  port/read-start))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gcstat.scm,v 14.4 1991/09/07 05:30:57 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gcstat.scm,v 14.5 1991/11/26 07:06:07 cph Exp $
 
 Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
@@ -36,7 +36,7 @@ MIT in each case. |#
 ;;; package: (runtime gc-statistics)
 
 (declare (usual-integrations))
-
+
 (define (initialize-package!)
   (set! hook/record-statistic! default/record-statistic!)
   (set! history-modes
@@ -48,9 +48,11 @@ MIT in each case. |#
   (statistics-reset!)
   (add-event-receiver! event:after-restore statistics-reset!)
   (set! hook/gc-start recorder/gc-start)
-  (set! hook/gc-finish recorder/gc-finish))
+  (set! hook/gc-finish recorder/gc-finish)
+  unspecific)
 
 (define (recorder/gc-start)
+  (port/gc-start (nearest-cmdl/port))
   (set! this-gc-start-clock (real-time-clock))
   (set! this-gc-start (process-time-clock))
   unspecific)
@@ -62,7 +64,8 @@ MIT in each case. |#
     (increment-non-runtime! (- end-time this-gc-start))
     (statistics-flip this-gc-start end-time
 		     space-remaining
-		     this-gc-start-clock end-time-clock)))
+		     this-gc-start-clock end-time-clock))
+  (port/gc-finish (nearest-cmdl/port)))
 
 (define timestamp)
 (define total-gc-time)

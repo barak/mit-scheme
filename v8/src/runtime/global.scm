@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/global.scm,v 14.33 1991/11/04 20:29:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/global.scm,v 14.34 1991/11/26 07:06:16 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -218,9 +218,9 @@ MIT in each case. |#
 
 (define (fasdump object filename)
   (let ((filename (->namestring (merge-pathnames filename)))
-	(port (cmdl/output-port (nearest-cmdl))))
-    (newline port)
-    (write-string "Dumping " port)
+	(port (nearest-cmdl/port)))
+    (fresh-line port)
+    (write-string ";Dumping " port)
     (write (enough-namestring filename) port)
     (if (not ((ucode-primitive primitive-fasdump) object filename false))
 	(error "FASDUMP: Object is too large to be dumped:" object))

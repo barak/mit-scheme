@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/ttyio.scm,v 1.1 1991/11/15 05:17:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/ttyio.scm,v 1.2 1991/11/26 07:07:11 cph Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -38,75 +38,103 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (set! hook/read-start default/read-start)
-  (set! hook/read-finish default/read-finish)
-  (set! console-i/o-port
-	(make-i/o-port
-	 `((BEEP ,operation/beep)
-	   (BUFFERED-INPUT-CHARS ,operation/buffered-input-chars)
-	   (BUFFERED-OUTPUT-CHARS ,operation/buffered-output-chars)
-	   (CHAR-READY? ,operation/char-ready?)
-	   (CLEAR ,operation/clear)
-	   (DISCARD-CHAR ,operation/read-char)
-	   (FLUSH-OUTPUT ,operation/flush-output)
-	   (INPUT-BUFFER-SIZE ,operation/input-buffer-size)
-	   (INPUT-CHANNEL ,operation/input-channel)
-	   (OUTPUT-BUFFER-SIZE ,operation/output-buffer-size)
-	   (OUTPUT-CHANNEL ,operation/output-channel)
-	   (PEEK-CHAR ,operation/peek-char)
-	   (PRINT-SELF ,operation/print-self)
-	   (READ-CHAR ,operation/read-char)
-	   (READ-FINISH! ,operation/read-finish!)
-	   (READ-START! ,operation/read-start!)
-	   (SET-INPUT-BUFFER-SIZE ,operation/set-input-buffer-size)
-	   (SET-OUTPUT-BUFFER-SIZE ,operation/set-output-buffer-size)
-	   (WRITE-CHAR ,operation/write-char)
-	   (WRITE-STRING ,operation/write-string)
-	   (X-SIZE ,operation/x-size)
-	   (Y-SIZE ,operation/y-size))
-	 false))
-  (set! console-input-port console-i/o-port)
-  (set! console-output-port console-i/o-port)
-  (reset-console)
-  (add-event-receiver! event:after-restore reset-console)
+  (let ((input-channel (tty-input-channel))
+	(output-channel (tty-output-channel)))
+    (set! the-console-port
+	  (make-i/o-port
+	   `((BEEP ,operation/beep)
+	     (BUFFERED-INPUT-CHARS ,operation/buffered-input-chars)
+	     (BUFFERED-OUTPUT-CHARS ,operation/buffered-output-chars)
+	     (CHAR-READY? ,operation/char-ready?)
+	     (CLEAR ,operation/clear)
+	     (DISCARD-CHAR ,operation/read-char)
+	     (DISCRETIONARY-FLUSH-OUTPUT ,operation/discretionary-flush-output)
+	     (FLUSH-OUTPUT ,operation/flush-output)
+	     (INPUT-BLOCKING-MODE ,operation/input-blocking-mode)
+	     (INPUT-BUFFER-SIZE ,operation/input-buffer-size)
+	     (INPUT-CHANNEL ,operation/input-channel)
+	     (INPUT-TERMINAL-MODE ,operation/input-terminal-mode)
+	     (OUTPUT-BLOCKING-MODE ,operation/output-blocking-mode)
+	     (OUTPUT-BUFFER-SIZE ,operation/output-buffer-size)
+	     (OUTPUT-CHANNEL ,operation/output-channel)
+	     (OUTPUT-TERMINAL-MODE ,operation/output-terminal-mode)
+	     (PEEK-CHAR ,operation/peek-char)
+	     (PRINT-SELF ,operation/print-self)
+	     (READ-CHAR ,operation/read-char)
+	     (READ-FINISH ,operation/read-finish)
+	     (SET-INPUT-BLOCKING-MODE ,operation/set-input-blocking-mode)
+	     (SET-INPUT-BUFFER-SIZE ,operation/set-input-buffer-size)
+	     (SET-INPUT-TERMINAL-MODE ,operation/set-input-terminal-mode)
+	     (SET-OUTPUT-BLOCKING-MODE ,operation/set-output-blocking-mode)
+	     (SET-OUTPUT-BUFFER-SIZE ,operation/set-output-buffer-size)
+	     (SET-OUTPUT-TERMINAL-MODE ,operation/set-output-terminal-mode)
+	     (WRITE-CHAR ,operation/write-char)
+	     (WRITE-SUBSTRING ,operation/write-substring)
+	     (X-SIZE ,operation/x-size)
+	     (Y-SIZE ,operation/y-size))
+	   (make-console-port-state
+	    (make-input-buffer input-channel input-buffer-size)
+	    (make-output-buffer output-channel output-buffer-size)
+	    (channel-type=file? input-channel))))
+    (set-channel-port! input-channel the-console-port)
+    (set-channel-port! output-channel the-console-port))
   (add-event-receiver! event:before-exit save-console-input)
-  (set-current-input-port! console-i/o-port)
-  (set-current-output-port! console-i/o-port))
+  (add-event-receiver! event:after-restore reset-console)
+  (set-console-i/o-port! the-console-port)
+  (set-current-input-port! the-console-port)
+  (set-current-output-port! the-console-port))
 
-(define console-i/o-port)
-(define console-input-port)
-(define console-output-port)
-
+(define the-console-port)
+(define input-buffer-size 512)
+(define output-buffer-size 512)
+
 (define (save-console-input)
   ((ucode-primitive reload-save-string 1)
    (input-buffer/buffer-contents (port/input-buffer console-input-port))))
 
 (define (reset-console)
-  (set-port/state!
-   console-i/o-port
-   (let ((input-channel (tty-input-channel))
-	 (output-channel (tty-output-channel)))
-     (set-channel-port! input-channel console-i/o-port)
-     (set-channel-port! output-channel console-i/o-port)
-     (make-console-port-state
-      (let ((buffer (make-input-buffer input-channel input-buffer-size)))
-	(let ((contents ((ucode-primitive reload-retrieve-string 0))))
-	  (if contents
-	      (input-buffer/set-buffer-contents buffer contents)))
-	buffer)
-      (make-output-buffer output-channel output-buffer-size)
-      (channel-type=file? input-channel)))))
+  (let ((input-channel (tty-input-channel))
+	(output-channel (tty-output-channel))
+	(state (port/state the-console-port)))
+    (set-channel-port! input-channel the-console-port)
+    (set-channel-port! output-channel the-console-port)
+    (set-console-port-state/input-buffer!
+     state
+     (let ((buffer
+	    (make-input-buffer
+	     input-channel
+	     (input-buffer/size (console-port-state/input-buffer state)))))
+       (let ((contents ((ucode-primitive reload-retrieve-string 0))))
+	 (if contents
+	     (input-buffer/set-buffer-contents buffer contents)))
+       buffer))
+    (set-console-port-state/output-buffer!
+     state
+     (make-output-buffer
+      output-channel
+      (output-buffer/size (console-port-state/output-buffer state))))
+    (set-console-port-state/echo-input?! state
+					 (channel-type=file? input-channel))))
 
-(define input-buffer-size 512)
-(define output-buffer-size 512)
+(define (set-console-i/o-port! port)
+  (if (not (i/o-port? port))
+      (error:wrong-type-argument port "I/O port" 'SET-CONSOLE-I/O-PORT!))
+  (set! console-i/o-port port)
+  (set! console-input-port port)
+  (set! console-output-port port)
+  unspecific)
+
+(define console-i/o-port)
+(define console-input-port)
+(define console-output-port)
 
 (define-structure (console-port-state (type vector)
 				      (conc-name console-port-state/))
   ;; First two elements of this vector are required by the generic
   ;; I/O port operations.
-  (input-buffer false read-only true)
-  (output-buffer false read-only true)
-  (echo-input? false read-only true))
+  input-buffer
+  output-buffer
+  echo-input?)
 
 (define-integrable (port/input-buffer port)
   (console-port-state/input-buffer (port/state port)))
@@ -117,34 +145,27 @@ MIT in each case. |#
 (define (operation/peek-char port)
   (let ((char (input-buffer/peek-char (port/input-buffer port))))
     (if (eof-object? char)
-	(signal-end-of-input))
+	(signal-end-of-input port))
     char))
 
 (define (operation/read-char port)
   (let ((char (input-buffer/read-char (port/input-buffer port))))
     (if (eof-object? char)
-	(signal-end-of-input))
+	(signal-end-of-input port))
     (if char
 	(cond ((console-port-state/echo-input? (port/state port))
-	       (output-port/write-char console-output-port char)
-	       (output-port/flush-output console-output-port))
+	       (output-port/write-char port char))
 	      (transcript-port
 	       (output-port/write-char transcript-port char)
-	       (output-port/flush-output transcript-port))))
+	       (output-port/discretionary-flush transcript-port))))
     char))
 
-(define (signal-end-of-input)
-  (write-string "\nEnd of input stream reached" console-output-port)
+(define (signal-end-of-input port)
+  (fresh-line port)
+  (write-string "End of input stream reached" port)
   (%exit))
 
-(define (operation/read-start! port)
-  port
-  (hook/read-start))
-
-(define hook/read-start)
-(define (default/read-start) false)
-
-(define (operation/read-finish! port)
+(define (operation/read-finish port)
   (let ((buffer (port/input-buffer port)))
     (let loop ()
       (if (input-buffer/char-ready? buffer 0)
@@ -153,28 +174,32 @@ MIT in each case. |#
 		(begin
 		  (operation/read-char port)
 		  (loop)))))))
-  (hook/read-finish))
-
-(define hook/read-finish)
-(define (default/read-finish) false)
+  (output-port/discretionary-flush port))
 
 (define (operation/write-char port char)
   (output-buffer/write-char-block (port/output-buffer port) char)
   (if transcript-port (output-port/write-char transcript-port char)))
 
-(define (operation/write-string port string)
-  (output-buffer/write-string-block (port/output-buffer port) string)
-  (if transcript-port (output-port/write-string transcript-port string)))
+(define (operation/write-substring port string start end)
+  (output-buffer/write-substring-block (port/output-buffer port)
+				       string start end)
+  (if transcript-port
+      (output-port/write-substring transcript-port string start end)))
 
 (define (operation/flush-output port)
   (output-buffer/drain-block (port/output-buffer port))
   (if transcript-port (output-port/flush-output transcript-port)))
 
+(define (operation/discretionary-flush-output port)
+  (output-buffer/drain-block (port/output-buffer port))
+  (if transcript-port
+      (output-port/discretionary-flush transcript-port)))
+
 (define (operation/clear port)
-  (operation/write-string port ((ucode-primitive tty-command-clear 0))))
+  (output-port/write-string port ((ucode-primitive tty-command-clear 0))))
 
 (define (operation/beep port)
-  (operation/write-string port ((ucode-primitive tty-command-beep 0))))
+  (output-port/write-string port ((ucode-primitive tty-command-beep 0))))
 
 (define (operation/x-size port)
   port

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 14.16 1991/09/18 20:00:17 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 14.17 1991/11/26 07:06:39 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -133,26 +133,30 @@ MIT in each case. |#
 ;;;; Top Level
 
 (define (parse-object port parser-table)
-  (if (not (parser-table? parser-table))
-      (error "Not a valid parser table" parser-table))
-  (parse-object/internal port parser-table))
+  ((parsing-operation port) port parser-table))
 
 (define (parse-objects port parser-table last-object?)
-  (if (not (parser-table? parser-table))
-      (error "Not a valid parser table" parser-table))
-  (parse-objects/internal port parser-table last-object?))
+  (let ((operation (parsing-operation port)))
+    (let loop ()
+      (let ((object (operation port parser-table)))
+	(if (last-object? object)
+	    '()
+	    (cons-stream object (loop)))))))
 
-(define (parse-object/internal port parser-table)
-  (within-parser port parser-table parse-object/dispatch))
-
-(define (parse-objects/internal port parser-table last-object?)
-  (let loop ()
-    (let ((object (parse-object/internal port parser-table)))
-      (if (last-object? object)
-	  '()
-	  (cons-stream object (loop))))))
+(define (parsing-operation port)
+  (or (port/operation port 'READ)
+      (let ((read-start (port/operation port 'READ-START))
+	    (read-finish (port/operation port 'READ-FINISH)))
+	(lambda (port parser-table)
+	  (if read-start (read-start port))
+	  (let ((object
+		 (within-parser port parser-table parse-object/dispatch)))
+	    (if read-finish (read-finish port))
+	    object)))))
 
 (define (within-parser port parser-table thunk)
+  (if (not (parser-table? parser-table))
+      (error:wrong-type-argument parser-table "parser table" 'WITHIN-PARSER))
   (fluid-let
       ((*parser-input-port* port)
        (*parser-parse-object-table* (parser-table/parse-object parser-table))

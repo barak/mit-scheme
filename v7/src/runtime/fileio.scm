@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/fileio.scm,v 1.1 1991/11/15 05:17:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/fileio.scm,v 1.2 1991/11/26 07:05:49 cph Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -45,8 +45,10 @@ MIT in each case. |#
 	   (DISCARD-CHAR ,operation/discard-char)
 	   (DISCARD-CHARS ,operation/discard-chars)
 	   (EOF? ,operation/eof?)
+	   (INPUT-BLOCKING-MODE ,operation/input-blocking-mode)
 	   (INPUT-BUFFER-SIZE ,operation/input-buffer-size)
 	   (INPUT-CHANNEL ,operation/input-channel)
+	   (INPUT-TERMINAL-MODE ,operation/input-terminal-mode)
 	   (LENGTH ,operation/length)
 	   (PEEK-CHAR ,operation/peek-char)
 	   (READ-CHAR ,operation/read-char)
@@ -54,13 +56,19 @@ MIT in each case. |#
 	   (READ-STRING ,operation/read-string)
 	   (READ-SUBSTRING ,operation/read-substring)
 	   (REST->STRING ,operation/rest->string)
-	   (SET-INPUT-BUFFER-SIZE ,operation/set-input-buffer-size)))
+	   (SET-INPUT-BLOCKING-MODE ,operation/set-input-blocking-mode)
+	   (SET-INPUT-BUFFER-SIZE ,operation/set-input-buffer-size)
+	   (SET-INPUT-TERMINAL-MODE ,operation/set-input-terminal-mode)))
 	(output-operations
 	 `((BUFFERED-OUTPUT-CHARS ,operation/buffered-output-chars)
 	   (FLUSH-OUTPUT ,operation/flush-output)
+	   (OUTPUT-BLOCKING-MODE ,operation/output-blocking-mode)
 	   (OUTPUT-BUFFER-SIZE ,operation/output-buffer-size)
 	   (OUTPUT-CHANNEL ,operation/output-channel)
+	   (OUTPUT-TERMINAL-MODE ,operation/output-terminal-mode)
+	   (SET-OUTPUT-BLOCKING-MODE ,operation/set-output-blocking-mode)
 	   (SET-OUTPUT-BUFFER-SIZE ,operation/set-output-buffer-size)
+	   (SET-OUTPUT-TERMINAL-MODE ,operation/set-output-terminal-mode)
 	   (WRITE-CHAR ,operation/write-char)
 	   (WRITE-STRING ,operation/write-string)
 	   (WRITE-SUBSTRING ,operation/write-substring)))

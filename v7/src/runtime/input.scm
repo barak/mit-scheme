@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 14.13 1991/11/15 05:14:52 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 14.14 1991/11/26 07:06:21 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -150,19 +150,9 @@ MIT in each case. |#
 			  delimiters))
 
 (define (read #!optional port parser-table)
-  (let ((port
-	 (if (default-object? port)
-	     (current-input-port)
-	     (guarantee-input-port port)))
-	(parser-table
-	 (if (default-object? parser-table)
-	     (current-parser-table)
-	     (guarantee-parser-table parser-table))))
-    (let ((read-start! (port/operation port 'READ-START!)))
-      (if read-start!
-	  (read-start! port)))
-    (let ((object (parse-object/internal port parser-table)))
-      (let ((read-finish! (port/operation port 'READ-FINISH!)))
-	(if read-finish!
-	    (read-finish! port)))
-      object)))
+  (parse-object (if (default-object? port)
+		    (current-input-port)
+		    (guarantee-input-port port))
+		(if (default-object? parser-table)
+		    (current-parser-table)
+		    parser-table)))
