@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/outer.scm,v 1.1 1987/06/09 19:53:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/outer.scm,v 1.2 1987/10/05 20:44:28 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -72,9 +72,9 @@ MIT in each case. |#
 (define (analyze-block block)
   (if (ic-block? block)
       (begin (if (block-outer? block)
-		 (for-each make-vnode-externally-visible!
+		 (for-each make-vnode-externally-assignable!
 			   (block-free-variables block)))
-	     (for-each make-vnode-externally-visible!
+	     (for-each make-vnode-externally-accessible!
 		       (block-bound-variables block)))))
 
 (define (prepare-combination combination)
@@ -105,12 +105,19 @@ MIT in each case. |#
     (set-combination-procedures! combination '())
     (for-each make-procedure-externally-visible! procedures)))
 
+(define (make-vnode-externally-assignable! vnode)
+  (make-vnode-unknowable! vnode)
+  (make-vnode-externally-visible! vnode))
+
+(define (make-vnode-externally-accessible! vnode)
+  (cond ((not (memq 'CONSTANT (variable-declarations vnode)))
+	 (make-vnode-externally-assignable! vnode))
+	((not (vnode-externally-visible? vnode))
+	 (make-vnode-externally-visible! vnode))))
+
 (define (make-vnode-externally-visible! vnode)
   (if (not (vnode-externally-visible? vnode))
-      (begin (set! more-unknowable-vnodes? true)
-	     (vnode-externally-visible! vnode)
-	     (vnode-unknowable! vnode)
-	     (make-vnode-forward-links-unknowable! vnode)
+      (begin (vnode-externally-visible! vnode)
 	     (for-each make-procedure-externally-visible!
 		       (vnode-procedures vnode)))))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.41 1987/08/07 17:10:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.42 1987/10/05 20:39:46 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -48,6 +48,7 @@ MIT in each case. |#
      (fluid-let ((*next-constant* 0)
 		 (*interned-constants* '())
 		 (*interned-variables* '())
+		 (*interned-assignments* '())
 		 (*interned-uuo-links* '())
 		 (*block-start-label* (generate-label)))
        (for-each cgen-rgraph rgraphs)
@@ -55,6 +56,7 @@ MIT in each case. |#
 		 (generate/quotation-header *block-start-label*
 					    *interned-constants*
 					    *interned-variables*
+					    *interned-assignments*
 					    *interned-uuo-links*))))))
 
 (define (cgen-rgraph rgraph)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/declar.scm,v 1.1 1987/07/03 18:54:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/declar.scm,v 1.2 1987/10/05 20:44:08 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -36,6 +36,14 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+(define (process-top-level-declarations! block declarations)
+  (process-declarations!
+   block
+   ;; Kludge!
+   (if (assq 'UUO-LINK declarations)
+       declarations
+       (cons '(UUO-LINK ALL) declarations))))
+
 (define (process-declarations! block declarations)
   (for-each (lambda (declaration)
 	      (process-declaration! block declaration))
@@ -75,6 +83,10 @@ MIT in each case. |#
   (let loop ((specification specification))
     (cond ((eq? specification 'BOUND) (block-bound-variables block))
 	  ((eq? specification 'FREE) (block-free-variables block))
+	  ((eq? specification 'NONE) '())
+	  ((eq? specification 'ALL)
+	   (append (block-bound-variables block)
+		   (block-free-variables block)))
 	  ((and (pair? specification)
 		(assq (car specification) binary-operators)
 		(pair? (cdr specification))

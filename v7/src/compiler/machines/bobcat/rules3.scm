@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 1.14 1987/09/03 05:14:52 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 1.15 1987/10/05 20:38:51 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -234,38 +234,45 @@ MIT in each case. |#
 		   ,@(inner (cdr constants))))))
       (inner constants))
 
-    (lambda (block-label constants references uuo-links)
+    (define (declare-references references entry:single entry:multiple)
+      (if (null? references)
+	  (LAP)
+	  (LAP (LEA (@PCR ,(cdar references)) (A 1))
+	       ,@(if (null? (cdr references))
+		     (LAP (JSR ,entry:single))
+		     (LAP ,(load-dnw (length references) 1)
+			  (JSR ,entry:multiple)))
+	       ,@(make-external-label (generate-label)))))
+
+    (lambda (block-label constants references assignments uuo-links)
       (declare-constants references
-       (declare-constants uuo-links
-	(declare-constants constants
-	 (LAP
-	  ;; Place holder for the debugging info filename
-	  ,@(let ((debugging-information-label (allocate-constant-label)))
-	      (LAP (SCHEME-OBJECT ,debugging-information-label DEBUGGING-INFO)))
-	  ,@(let ((environment-label (allocate-constant-label)))
-	      (LAP (SCHEME-OBJECT ,environment-label ENVIRONMENT)
-		   (LEA (@PCR ,environment-label) (A 0))))
-	  ,@(if (or (not (null? references))
-		    (not (null? uuo-links)))
-		(LAP (MOV L ,reg:environment (@A 0))
-		     (LEA (@PCR ,block-label) (A 0))
-		     ,@(if (null? references)
-			   (LAP)
-			   (LAP (LEA (@PCR ,(cdar references)) (A 1))
-				,@(if (null? (cdr references))
-				      (LAP (JSR ,entry:compiler-cache-variable))
-				      (LAP ,(load-dnw (length references) 1)
-					   (JSR ,entry:compiler-cache-variable-multiple)))
-				,@(make-external-label (generate-label))))
-		     ,@(if (null? uuo-links)
-			   (LAP)
-			   (LAP (LEA (@PCR ,(cdar uuo-links)) (A 1))
-				,@(if (null? (cdr uuo-links))
-				      (LAP (JSR ,entry:compiler-uuo-link))
-				      (LAP ,(load-dnw (length uuo-links) 1)
-					   (JSR ,entry:compiler-uuo-link-multiple)))
-				,@(make-external-label (generate-label)))))
-		(LAP ,(load-constant 0 '(@A 0)))))))))))
+       (declare-constants assignments
+	(declare-constants uuo-links
+	 (declare-constants
+	  constants
+	  (let ((debugging-information-label (allocate-constant-label))
+		(environment-label (allocate-constant-label)))
+	    (LAP
+	     ;; Place holder for the debugging info filename
+	     (SCHEME-OBJECT ,debugging-information-label DEBUGGING-INFO)
+	     (SCHEME-OBJECT ,environment-label ENVIRONMENT)
+	     (LEA (@PCR ,environment-label) (A 0))
+	     ,@(if (and (null? references) (null? assignments) (null? uuo-links))
+		   (LAP ,(load-constant 0 '(@A 0)))
+		   (LAP (MOV L ,reg:environment (@A 0))
+			(LEA (@PCR ,block-label) (A 0))
+			,@(declare-references
+			   references
+			   entry:compiler-cache-variable
+			   entry:compiler-cache-variable-multiple)
+			,@(declare-references
+			   assignments
+			   entry:compiler-cache-assignment
+			   entry:compiler-cache-assignment-multiple)
+			,@(declare-references
+			   uuo-links
+			   entry:compiler-uuo-link
+			   entry:compiler-uuo-link-multiple))))))))))))
 
 ;;;; Procedure/Continuation Entries
 

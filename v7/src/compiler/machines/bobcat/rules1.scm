@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 1.6 1987/07/08 22:08:21 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 1.7 1987/10/05 20:35:54 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -75,6 +75,13 @@ MIT in each case. |#
   (QUALIFIER (pseudo-register? target))
   (LAP (MOV L
 	    (@PCR ,(free-reference-label name))
+	    ,(reference-assignment-alias! target 'DATA))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (ASSIGNMENT-CACHE (? name)))
+  (QUALIFIER (pseudo-register? target))
+  (LAP (MOV L
+	    (@PCR ,(free-assignment-label name))
 	    ,(reference-assignment-alias! target 'DATA))))
 
 (define-rule statement

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn3.scm,v 1.3 1987/08/07 17:11:10 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn3.scm,v 1.4 1987/10/05 20:41:28 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -41,6 +41,7 @@ MIT in each case. |#
 (define *next-constant*)
 (define *interned-constants*)
 (define *interned-variables*)
+(define *interned-assignments*)
 (define *interned-uuo-links*)
 
 (define (allocate-constant-label)
@@ -68,6 +69,16 @@ MIT in each case. |#
 	  (set! *interned-variables*
 		(cons (cons name label)
 		      *interned-variables*))
+	  label))))
+
+(define (free-assignment-label name)
+  (let ((entry (assq name *interned-assignments*)))
+    (if entry
+	(cdr entry)
+	(let ((label (allocate-constant-label)))
+	  (set! *interned-assignments*
+		(cons (cons name label)
+		      *interned-assignments*))
 	  label))))
 
 (define (free-uuo-link-label name)

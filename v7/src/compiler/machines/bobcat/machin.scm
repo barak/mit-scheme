@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 1.50 1987/07/08 22:09:50 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 1.51 1987/10/05 20:35:26 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -83,6 +83,7 @@ MIT in each case. |#
     ((REGISTER) 4)			;move.l reg,reg
     ((UNASSIGNED) 12)			;move.l #data,reg
     ((VARIABLE-CACHE) 16)		;move.l d(pc),reg
+    ((ASSIGNMENT-CACHE) 16)		;move.l d(pc),reg
     (else (error "Unknown expression type" expression))))
 
 (define (rtl:machine-register? rtl-register)

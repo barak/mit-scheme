@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/folcon.scm,v 1.1 1987/06/09 19:53:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/folcon.scm,v 1.2 1987/10/05 20:45:00 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -59,7 +59,9 @@ MIT in each case. |#
 			   ;; should be a noop if there is only one
 			   ;; value.
 			   (and (variable? vnode)
-				(variable-assigned? vnode))))
+				(variable-assigned? vnode)
+				(not (memq 'CONSTANT
+					   (variable-declarations vnode))))))
 		  (let ((procedures (vnode-procedures vnode))
 			(values (vnode-values vnode)))
 		    (if (null? values)
