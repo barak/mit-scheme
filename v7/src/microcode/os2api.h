@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2api.h,v 1.6 1995/04/09 22:34:36 cph Exp $
+$Id: os2api.h,v 1.7 1995/10/27 23:55:12 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -45,6 +45,7 @@ enum syscall_names
   syscall_dos_close_event_sem,
   syscall_dos_close_mutex_sem,
   syscall_dos_close_queue,
+  syscall_dos_copy,
   syscall_dos_create_dir,
   syscall_dos_create_event_sem,
   syscall_dos_create_mutex_sem,
@@ -767,6 +768,7 @@ enum syserr_names
 #define dos_close_event_sem	DosCloseEventSem
 #define dos_close_mutex_sem	DosCloseMutexSem
 #define dos_close_queue		DosCloseQueue
+#define dos_copy		DosCopy
 #define dos_create_dir		DosCreateDir
 #define dos_create_event_sem	DosCreateEventSem
 #define dos_create_mutex_sem	DosCreateMutexSem
@@ -837,6 +839,7 @@ static char * syscall_names_table [] =
   "dos-close-event-sem",
   "dos-close-mutex-sem",
   "dos-close-queue",
+  "dos-copy",
   "dos-create-dir",
   "dos-create-event-sem",
   "dos-create-mutex-sem",
