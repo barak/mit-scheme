@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.25 1996/12/25 06:50:07 cph Exp $
+;;;	$Id: snr.scm,v 1.26 1996/12/25 07:20:15 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-96 Massachusetts Institute of Technology
 ;;;
@@ -4012,62 +4012,6 @@ With prefix arg, replaces the file with the list information."
     (set-news-group:ranges-deleted! group ranges)
     ranges))
 
-(define ((range-predicate group-ranges) header)
-  (member-of-ranges? (group-ranges (news-header:group header))
-		     (news-header:number header)))
-
-(define news-header:article-deleted?
-  (range-predicate news-group:ranges-deleted))
-
-(define news-header:article-marked?
-  (range-predicate news-group:ranges-marked))
-
-(define (news-group:article-browsed? group number)
-  (member-of-ranges? (news-group:ranges-browsed group) number))
-
-(define (ranges-marker group-ranges set-group-ranges! handle-xrefs? procedure)
-  (news-group:adjust-article-status! handle-xrefs?
-    (lambda (group number)
-      (set-group-ranges! group (procedure (group-ranges group) number)))))
-
-(define (ranges-deleted-marker procedure)
-  (let ((marker
-	 (ranges-marker news-group:ranges-deleted
-			set-news-group:ranges-deleted!
-			#t
-			procedure)))
-    (lambda (header buffer)
-      (news-group:article-unmarked! header buffer)
-      (marker header buffer))))
-
-(define news-group:article-deleted!
-  (ranges-deleted-marker add-to-ranges!))
-
-(define news-group:article-not-deleted!
-  (ranges-deleted-marker remove-from-ranges!))
-
-(define news-group:article-marked!
-  (let ((marker
-	 (ranges-marker news-group:ranges-marked
-			set-news-group:ranges-marked!
-			#t
-			add-to-ranges!)))
-    (lambda (header buffer)
-      (news-group:article-not-deleted! header buffer)
-      (marker header buffer))))
-
-(define news-group:article-unmarked!
-  (ranges-marker news-group:ranges-marked
-		 set-news-group:ranges-marked!
-		 #t
-		 remove-from-ranges!))
-
-(define news-group:article-browsed!
-  (ranges-marker news-group:ranges-browsed
-		 set-news-group:ranges-browsed!
-		 #f
-		 add-to-ranges!))
-
 (define ((news-group:adjust-article-status! handle-xrefs? procedure)
 	 header buffer)
   (let ((do-it
@@ -4126,6 +4070,62 @@ With prefix arg, replaces the file with the list information."
   (cond ((news-group:< t1 t2) 'LESS)
 	((news-group:< t2 t1) 'GREATER)
 	(else 'EQUAL)))
+
+(define ((range-predicate group-ranges) header)
+  (member-of-ranges? (group-ranges (news-header:group header))
+		     (news-header:number header)))
+
+(define news-header:article-deleted?
+  (range-predicate news-group:ranges-deleted))
+
+(define news-header:article-marked?
+  (range-predicate news-group:ranges-marked))
+
+(define (news-group:article-browsed? group number)
+  (member-of-ranges? (news-group:ranges-browsed group) number))
+
+(define (ranges-marker group-ranges set-group-ranges! handle-xrefs? procedure)
+  (news-group:adjust-article-status! handle-xrefs?
+    (lambda (group number)
+      (set-group-ranges! group (procedure (group-ranges group) number)))))
+
+(define (ranges-deleted-marker procedure)
+  (let ((marker
+	 (ranges-marker news-group:ranges-deleted
+			set-news-group:ranges-deleted!
+			#t
+			procedure)))
+    (lambda (header buffer)
+      (news-group:article-unmarked! header buffer)
+      (marker header buffer))))
+
+(define news-group:article-deleted!
+  (ranges-deleted-marker add-to-ranges!))
+
+(define news-group:article-not-deleted!
+  (ranges-deleted-marker remove-from-ranges!))
+
+(define news-group:article-marked!
+  (let ((marker
+	 (ranges-marker news-group:ranges-marked
+			set-news-group:ranges-marked!
+			#t
+			add-to-ranges!)))
+    (lambda (header buffer)
+      (news-group:article-not-deleted! header buffer)
+      (marker header buffer))))
+
+(define news-group:article-unmarked!
+  (ranges-marker news-group:ranges-marked
+		 set-news-group:ranges-marked!
+		 #t
+		 remove-from-ranges!))
+
+(define news-group:article-browsed!
+  (ranges-marker news-group:ranges-browsed
+		 set-news-group:ranges-browsed!
+		 #f
+		 add-to-ranges!))
 
 ;;;; Ignored-Subjects Database
 
