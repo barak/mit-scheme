@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.60 1996/04/07 18:32:21 cph Exp $
+@comment $Id: scheme.texinfo,v 1.61 1996/04/15 21:43:58 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -16708,6 +16708,7 @@ The foreground color affects the drawing of text, points, lines,
 ellipses and filled polygons.
 
 Colors are specified in one of three ways:
+
 @table @asis
 @item An integer
 This is the Win32 internal RGB value.
@@ -16716,7 +16717,6 @@ This is the Win32 internal RGB value.
 A limited number of names are understood by the system.
 Names are strings, e.g.@: @code{"red"}, @code{"blue"}, @code{"black"}.
 More names can be registered with the @code{define-color} operation.
-
 
 @item RGB (Red-Green-Blue) triples
 A triple is either a vector or list of three integers in the range
@@ -16736,6 +16736,11 @@ Define the string @var{name} to be the color specified by @var{spec}.
 @var{Spec} may be any acceptable color specification.  Note that the
 color names defined this way are available to any Win32 graphics device,
 and the names do @emph{not} have to be defined for each device.
+
+
+Color names defined by this interface may also be used when setting the
+colors of the Scheme console window, or the colors of Edwin editor
+windows.
 @end defop
 
 @defop {operation+} win32-graphics-device find-color name
@@ -18082,6 +18087,8 @@ at a lowercase to uppercase transition.
 Predicates beginning with @code{Is} finally have a
 question-mark appended.
 @end itemize
+
+@noindent
 Example: applying these rules to @code{IsWindow} yields
 @code{is-window?}, and @code{GetDC} is translated into @code{get-dc}.
 
