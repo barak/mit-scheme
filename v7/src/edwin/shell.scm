@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: shell.scm,v 1.15 1998/08/30 02:06:37 cph Exp $
+$Id: shell.scm,v 1.16 1998/08/30 02:43:59 cph Exp $
 
 Copyright (c) 1991-98 Massachusetts Institute of Technology
 
@@ -396,19 +396,15 @@ those that effect file completion."
 		(mark= (region-start r) m)))
 	 (begin
 	   (message "Completing command name...")
-	   (let ((completed? #f))
-	     (standard-completion (region->string r)
-	       (lambda (filename if-unique if-not-unique if-not-found)
-		 (shell-complete-command
-		  (parse-namestring filename)
-		  (ref-variable shell-completion-execonly (region-start r))
-		  if-unique if-not-unique if-not-found))
-	       (lambda (filename)
-		 (region-delete! r)
-		 (insert-string filename (region-start r))
-		 (set! completed? #t)
-		 unspecific))
-	     completed?)))))
+	   (standard-completion (region->string r)
+	     (lambda (filename if-unique if-not-unique if-not-found)
+	       (shell-complete-command
+		(parse-namestring filename)
+		(ref-variable shell-completion-execonly (region-start r))
+		if-unique if-not-unique if-not-found))
+	     (lambda (filename)
+	       (region-delete! r)
+	       (insert-string filename (region-start r))))))))
 
 (define (shell-complete-command command exec-only?
 				if-unique if-not-unique if-not-found)
@@ -429,17 +425,21 @@ those that effect file completion."
      (lambda (directory)
        (filename-complete-string (merge-pathnames command directory)
 	 maybe-add-filename!
-	 (lambda (directory get-completions)
-	   (for-each
-	    (lambda (filename)
-	      (maybe-add-filename! (merge-pathnames directory filename)))
-	    (get-completions)))
+	 (lambda (common get-completions)
+	   (let ((directory (directory-pathname common)))
+	     (for-each
+	      (lambda (filename)
+		(maybe-add-filename! (merge-pathnames directory filename)))
+	      (get-completions))))
 	 (lambda () unspecific)))
      (os/parse-path-string (get-environment-variable "PATH")))
-    (cond ((null? results) (if-not-found))
-	  ((null? (cdr results)) (if-unique (car results)))
+    (cond ((null? results)
+	   (if-not-found))
+	  ((null? (cdr results))
+	   (if-unique (car results)))
 	  (else
-	   (if-not-unique (compute-max-prefix results) (lambda () results))))))
+	   (if-not-unique (compute-max-prefix results) (lambda () results))))
+    (not (null? results))))
 
 (define (compute-max-prefix strings)
   (let loop ((prefix (car strings)) (strings (cdr strings)))
