@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.26 1990/04/21 17:18:08 jmiller Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.27 1990/04/23 02:35:00 jinx Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -291,8 +291,7 @@ extern SCHEME_UTILITY struct utility_result
   comutil_unbound_p(),
   comutil_assignment(),
   comutil_definition(),
-  comutil_lookup_apply(),
-  comutil_interrupt_multiclosure();
+  comutil_lookup_apply();
 
 extern struct utility_result
   (*(utility_table[]))();
@@ -362,8 +361,7 @@ struct utility_result
   comutil_unbound_p,				/* 0x32 */
   comutil_assignment,				/* 0x33 */
   comutil_definition,				/* 0x34 */
-  comutil_lookup_apply,				/* 0x35 */
-  comutil_interrupt_multiclosure		/* 0x36 */
+  comutil_lookup_apply				/* 0x35 */
   };
 
 /* These definitions reflect the indices into the table above. */
@@ -1353,8 +1351,7 @@ comutil_operator_4_0_trap (tramp_data, ignore_2, ignore_3, ignore_4)
 }
 
 /* Called with no arguments, closure at top of (Scheme) stack.
-   This has been superseded by comutil_interrupt_multiclosure (below).
-   It's provided for compatibility with old code.
+   If the interrupt is disabled, the closure is re-invoked.
  */
 
 SCHEME_UTILITY struct utility_result
@@ -1366,10 +1363,11 @@ comutil_interrupt_closure (ignore_1, ignore_2, ignore_3, ignore_4)
   {
     SCHEME_OBJECT entry_point;
 
-    EXTRACT_CLOSURE_ENTRY_ADDRESS(entry_point,
-				  (OBJECT_ADDRESS (STACK_REF (0))));
-    RETURN_TO_SCHEME(((instruction *) entry_point) +
-		     CLOSURE_SKIPPED_CHECK_OFFSET);
+    EXTRACT_CLOSURE_ENTRY_ADDRESS (entry_point,
+				   (OBJECT_ADDRESS (STACK_REF (0))));
+    ADJUST_CLOSURE_AT_CALL (entry_point, (STACK_REF (0)));
+    RETURN_TO_SCHEME (((instruction *) entry_point) +
+		      CLOSURE_SKIPPED_CHECK_OFFSET);
   }
   else
   {
@@ -1455,16 +1453,6 @@ comutil_interrupt_ic_procedure (entry_point, ignore_2, ignore_3, ignore_4)
   return (compiler_interrupt_common (entry_point,
 				     ENTRY_SKIPPED_CHECK_OFFSET,
 				     (Fetch_Env())));
-}
-
-SCHEME_UTILITY struct utility_result
-comutil_interrupt_multiclosure (entry_point, ignore_2, ignore_3, ignore_4)
-     instruction *entry_point;
-     long ignore_2, ignore_3, ignore_4;
-{
-  return (compiler_interrupt_common (entry_point,
-				     CLOSURE_SKIPPED_CHECK_OFFSET,
-				     SHARP_F));
 }
 
 C_TO_SCHEME long
