@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/image.c,v 9.22 1987/08/10 20:06:33 pas Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/image.c,v 9.23 1987/08/10 20:27:42 pas Exp $ */
 
 #include "scheme.h"
 #include "primitive.h"
@@ -167,6 +167,7 @@ Define_Primitive(Prim_Read_Image_From_2bint_File, 1, "READ-IMAGE-FROM-2BINT-FILE
   long allocated_cells;
   Boolean Open_File();
   float x_origin, y_origin;
+  int foo1,foo2;
 
   Primitive_1_Args();
   Arg_1_Type(TC_CHARACTER_STRING);
