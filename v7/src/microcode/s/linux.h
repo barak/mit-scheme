@@ -1,7 +1,7 @@
 /* -*-C-*-
    System file for Linux
 
-$Id: linux.h,v 1.7 1996/03/04 20:38:54 cph Exp $
+$Id: linux.h,v 1.8 1996/11/08 18:30:05 adams Exp $
 
 Copyright (c) 1995-96 Massachusetts Institute of Technology
 
@@ -55,10 +55,15 @@ MIT in each case. */
 
 #ifdef __ELF__
 #define M4_SWITCH_SYSTEM -P "define(LINUX_ELF,1)"
-#define LD_SWITCH_SYSTEM -T s/linuxelf.lds
+#define LD_SWITCH_SYSTEM -rdynamic -T s/linuxelf.lds
 #define LIBS_TERMCAP -lncurses
 #else
 #define M4_SWITCH_SYSTEM
 #define LD_SWITCH_SYSTEM
 #define LIBS_TERMCAP -ltermcap
 #endif
+
+/* These definitions configure the microcode to support dynamic loading. */
+#define SOURCES_SYSTEM pruxdld.c
+#define OBJECTS_SYSTEM pruxdld.o
+#define LIBS_SYSTEM -ldl
