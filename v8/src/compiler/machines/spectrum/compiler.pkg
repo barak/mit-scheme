@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.8 1995/01/17 23:01:57 adams Exp $
+$Id: compiler.pkg,v 1.9 1995/01/30 17:56:51 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -518,6 +518,7 @@ MIT in each case. |#
 	 "midend/utils"
 	 "midend/fakeprim"
 	 "midend/dbgstr"
+	 "midend/dbgred"
 	 "midend/inlate"
 	 "midend/envconv"
 	 "midend/alpha"
