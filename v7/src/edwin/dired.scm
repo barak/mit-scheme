@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.107 1991/04/21 00:49:47 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.108 1991/04/21 01:48:46 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -163,13 +163,18 @@ CANNOT contain the 'F' option."
   (let ((directory (pathname-directory-path pathname)))
     (with-working-directory-pathname directory
       (lambda ()
-	(run-synchronous-process false
-				 (buffer-point buffer)
-				 (find-program "ls" directory)
-				 (ref-variable dired-listing-switches)
-				 (if (file-directory? pathname)
-				     (pathname->string pathname)
-				     (pathname-name-path pathname))))))
+	(if (file-directory? pathname)
+	    (run-synchronous-process false
+				     (buffer-point buffer)
+				     (find-program "ls" directory)
+				     (ref-variable dired-listing-switches)
+				     (pathname->string pathname))
+	    (shell-command
+	     (string-append "ls "
+			    (ref-variable dired-listing-switches)
+			    " "
+			    (pathname-name-string pathname))
+	     (buffer-point buffer))))))
   (append-message "done")
   (let ((point (mark-left-inserting-copy (buffer-point buffer)))
 	(group (buffer-group buffer)))
