@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: info.scm,v 1.126 1998/01/03 05:02:13 cph Exp $
+;;;	$Id: info.scm,v 1.127 1998/01/03 05:53:51 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
@@ -889,22 +889,22 @@ The name may be an abbreviation of the reference name."
 	 (let ((directories (variable-local-value buffer variable)))
 	   (if (null? directories)
 	       (let ((directories
-		      (cond ((ref-variable info-directory buffer)
-			     => (lambda (directory)
-				  (list (->namestring directory))))
-			    ((get-environment-variable "INFOPATH")
-			     => os/parse-path-string)
-			    (else
-			     (let ((dirs
+		      (let ((directories
+			     (cond ((ref-variable info-directory buffer)
+				    => list)
+				   ((get-environment-variable "INFOPATH")
+				    => os/parse-path-string)
+				   (else
 				    (ref-variable info-default-directory-list
-						  buffer))
-				   (info-dir (edwin-info-directory)))
-			       (map ->namestring
-				    (if (there-exists? dirs
-					  (lambda (dir)
-					    (pathname=? info-dir dir)))
-					dirs
-					(append dirs (list info-dir)))))))))
+						  buffer))))
+			    (info-dir (edwin-info-directory)))
+			(map ->namestring
+			     (if (and (file-directory? info-dir)
+				      (not (there-exists? directories
+					     (lambda (dir)
+					       (pathname=? info-dir dir)))))
+				 (append directories (list info-dir))
+				 directories)))))
 		 (set-variable-local-value! buffer variable directories)
 		 directories)
 	       directories)))))
