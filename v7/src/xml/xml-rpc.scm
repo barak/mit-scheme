@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-rpc.scm,v 1.1 2005/02/19 04:34:32 cph Exp $
+$Id: xml-rpc.scm,v 1.2 2005/02/24 05:52:07 cph Exp $
 
 Copyright 2003,2004,2005 Massachusetts Institute of Technology
 
@@ -84,7 +84,7 @@ USA.
 		 (let ((p1 (or (assq '|faultCode| alist) (lose)))
 		       (p2 (or (assq '|faultString| alist) (lose))))
 		   (require (exact-integer? (cdr p1)))
-		   (require (string? p2))
+		   (require (string? (cdr p2)))
 		   (error:xml-rpc-fault (cdr p1) (cdr p2)))))
 	      (else (lose)))))))
 
