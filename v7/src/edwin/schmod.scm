@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: schmod.scm,v 1.67 2003/08/01 19:23:23 cph Exp $
+$Id: schmod.scm,v 1.68 2004/01/16 19:26:06 cph Exp $
 
 Copyright 1986,1989,1990,1991,1992,1998 Massachusetts Institute of Technology
-Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -99,33 +99,45 @@ The following commands evaluate Scheme expressions:
 
 (define scheme-mode:syntax-table (make-char-syntax-table))
 
-(modify-syntax-entries! scheme-mode:syntax-table #\nul #\/ "_")
-(modify-syntax-entries! scheme-mode:syntax-table #\: #\@ "_")
-(modify-syntax-entries! scheme-mode:syntax-table #\[ #\` "_")
-(modify-syntax-entries! scheme-mode:syntax-table #\{ #\rubout "_")
-
-(set-char-syntax! scheme-mode:syntax-table #\space " ")
 (set-char-syntax! scheme-mode:syntax-table #\tab " ")
-(set-char-syntax! scheme-mode:syntax-table #\page " ")
-(set-char-syntax! scheme-mode:syntax-table #\[ "(]")
-(set-char-syntax! scheme-mode:syntax-table #\] ")[")
-(set-char-syntax! scheme-mode:syntax-table #\{ "(}")
-(set-char-syntax! scheme-mode:syntax-table #\} "){")
-(set-char-syntax! scheme-mode:syntax-table #\| "\" 23")
-
-(set-char-syntax! scheme-mode:syntax-table #\; "< ")
 (set-char-syntax! scheme-mode:syntax-table #\newline "> ")
+(set-char-syntax! scheme-mode:syntax-table #\page " ")
+(set-char-syntax! scheme-mode:syntax-table #\space " ")
 
-(set-char-syntax! scheme-mode:syntax-table #\' "  p")
-(set-char-syntax! scheme-mode:syntax-table #\` "  p")
-(set-char-syntax! scheme-mode:syntax-table #\, "_ p")
-(set-char-syntax! scheme-mode:syntax-table #\@ "_ p")
-(set-char-syntax! scheme-mode:syntax-table #\# "_ p14")
-
+(set-char-syntax! scheme-mode:syntax-table #\! "_")
 (set-char-syntax! scheme-mode:syntax-table #\" "\" ")
-(set-char-syntax! scheme-mode:syntax-table #\\ "\\ ")
+(set-char-syntax! scheme-mode:syntax-table #\# "_ p14")
+(set-char-syntax! scheme-mode:syntax-table #\$ "_")
+(set-char-syntax! scheme-mode:syntax-table #\% "_")
+(set-char-syntax! scheme-mode:syntax-table #\& "_")
+(set-char-syntax! scheme-mode:syntax-table #\' "  p")
 (set-char-syntax! scheme-mode:syntax-table #\( "()")
 (set-char-syntax! scheme-mode:syntax-table #\) ")(")
+(set-char-syntax! scheme-mode:syntax-table #\* "_")
+(set-char-syntax! scheme-mode:syntax-table #\+ "_")
+(set-char-syntax! scheme-mode:syntax-table #\, "  p")
+(set-char-syntax! scheme-mode:syntax-table #\- "_")
+(set-char-syntax! scheme-mode:syntax-table #\. "_")
+(set-char-syntax! scheme-mode:syntax-table #\/ "_")
+(set-char-syntax! scheme-mode:syntax-table #\@ "_ p")
+
+(set-char-syntax! scheme-mode:syntax-table #\: "_")
+(set-char-syntax! scheme-mode:syntax-table #\; "< ")
+(set-char-syntax! scheme-mode:syntax-table #\< "_")
+(set-char-syntax! scheme-mode:syntax-table #\= "_")
+(set-char-syntax! scheme-mode:syntax-table #\> "_")
+(set-char-syntax! scheme-mode:syntax-table #\? "_")
+
+(set-char-syntax! scheme-mode:syntax-table #\[ "(]")
+(set-char-syntax! scheme-mode:syntax-table #\\ "\\ ")
+(set-char-syntax! scheme-mode:syntax-table #\] ")[")
+(set-char-syntax! scheme-mode:syntax-table #\^ "_")
+(set-char-syntax! scheme-mode:syntax-table #\_ "_")
+(set-char-syntax! scheme-mode:syntax-table #\` "  p")
+(set-char-syntax! scheme-mode:syntax-table #\{ "(}")
+(set-char-syntax! scheme-mode:syntax-table #\| "\" 23")
+(set-char-syntax! scheme-mode:syntax-table #\} "){")
+(set-char-syntax! scheme-mode:syntax-table #\? "_")
 
 ;;;; Indentation
 
