@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: strout.scm,v 14.6 1993/01/18 16:50:09 gjr Exp $
+$Id: strout.scm,v 14.7 1993/01/19 05:33:49 cph Exp $
 
-Copyright (c) 1988-1993 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -66,14 +66,15 @@ MIT in each case. |#
   accumulator
   counter)
 
-(define (grow-accumulator! state min-n*)
+(define (grow-accumulator! state min-size)
   (let* ((old (output-string-state/accumulator state))
 	 (n (string-length old))
-	 (n* (+ n n))
-	 (new (make-string
-	       (if (< n* min-n*)
-		   min-n*
-		   n*))))
+	 (new
+	  (make-string
+	   (let loop ((n (fix:+ n n)))
+	     (if (fix:>= n min-size)
+		 n
+		 (loop (fix:+ n n)))))))
     (substring-move-left! old 0 n new 0)
     (set-output-string-state/accumulator! state new)))
 
