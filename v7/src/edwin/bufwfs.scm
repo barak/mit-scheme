@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwfs.scm,v 1.13 1991/04/02 00:01:37 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwfs.scm,v 1.14 1991/04/03 03:59:52 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -267,7 +267,7 @@
       (let ((start-outline (o3-outline start))
 	    (amount (fix:- (o3-y start) new-start-y)))
 	(if (or (fix:<= (fix:- (o3-y end) amount) 0)
-		(and (fix:>= (o3-y end) (window-y-size window))
+		(and (fix:> (o3-y end) (window-y-size window))
 		     (eq? start-outline (o3-outline end))))
 	    (begin
 	      (deallocate-outlines! window start-outline (o3-outline end))
@@ -275,7 +275,7 @@
 	      (deallocate-o3! window end)
 	      false)
 	    (begin
-	      (if (fix:>= (o3-y end) (window-y-size window))
+	      (if (fix:> (o3-y end) (window-y-size window))
 		  (let ((outline (o3-outline end)))
 		    (set-o3-outline! end (outline-previous outline))
 		    (set-o3-index!
