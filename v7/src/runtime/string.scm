@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.33 2000/04/14 01:30:10 cph Exp $
+$Id: string.scm,v 14.34 2000/04/14 01:31:04 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -261,19 +261,19 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (string-move! string1 string2 start2)
   (guarantee-string string1 'STRING-MOVE!)
-  (guarantee-string string2 procedure)
-  (guarantee-index/string start2 procedure)
+  (guarantee-string string2 'STRING-MOVE!)
+  (guarantee-index/string start2 'STRING-MOVE!)
   (let ((end1 (string-length string1)))
     (if (not (fix:<= (fix:+ start2 end1) (string-length string2)))
-	(error:bad-range-argument start2 procedure))
+	(error:bad-range-argument start2 'STRING-MOVE!))
     (%substring-move! string1 0 end1 string2 start2)))
 
 (define (substring-move! string1 start1 end1 string2 start2)
   (guarantee-substring string1 start1 end1 'SUBSTRING-MOVE!)
-  (guarantee-string string2 procedure)
-  (guarantee-index/string start2 procedure)
+  (guarantee-string string2 'SUBSTRING-MOVE!)
+  (guarantee-index/string start2 'SUBSTRING-MOVE!)
   (if (not (fix:<= (fix:+ start2 (fix:- end1 start1)) (string-length string2)))
-      (error:bad-range-argument start2 procedure))
+      (error:bad-range-argument start2 'SUBSTRING-MOVE!))
   (%substring-move! string1 start1 end1 string2 start2))
 
 (define (%substring-move! string1 start1 end1 string2 start2)
