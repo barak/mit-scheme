@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/i386.h,v 1.6 1992/02/05 16:56:12 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/i386.h,v 1.7 1992/02/12 15:29:26 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -54,6 +54,7 @@ MIT in each case. */
 #define COMPILER_RS6000_TYPE			7
 #define COMPILER_MC88K_TYPE			8
 #define COMPILER_I386_TYPE			9
+#define COMPILER_ALPHA_TYPE			10
 
 /*
 
@@ -295,7 +296,7 @@ extern long pc_displacement_relocation;
 } while (0)
 
 #define TRAMPOLINE_ENTRY_SIZE			3
-#define TRAMPOLINE_BLOCK_TO_ENTRY		3
+#define TRAMPOLINE_BLOCK_TO_ENTRY		3 /* MNV to MOV instr. */
 
 #define STORE_TRAMPOLINE_ENTRY(entry_address, index) do			\
 {									\
@@ -308,9 +309,12 @@ extern long pc_displacement_relocation;
   (* ((unsigned long *) PC)) = ESI_TRAMPOLINE_TO_INTERFACE_OFFSET;	\
 } while (0)
 
-#define TRAMPOLINE_STORAGE(tramp)					\
-((((SCHEME_OBJECT *) tramp) - TRAMPOLINE_BLOCK_TO_ENTRY) +		\
- (2 + TRAMPOLINE_ENTRY_SIZE)) 
+#define TRAMPOLINE_ENTRY_POINT(tramp_block)				\
+  (((SCHEME_OBJECT *) (tramp_block)) + TRAMPOLINE_BLOCK_TO_ENTRY)
+
+#define TRAMPOLINE_STORAGE(tramp_entry)					\
+  ((((SCHEME_OBJECT *) (tramp_entry)) - TRAMPOLINE_BLOCK_TO_ENTRY) +	\
+   (2 + TRAMPOLINE_ENTRY_SIZE)) 
 
 #define COMPILER_REGBLOCK_N_FIXED		16
 
