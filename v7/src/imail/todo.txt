@@ -1,8 +1,12 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.23 2000/05/19 04:16:47 cph Exp $
+$Id: todo.txt,v 1.24 2000/05/19 05:04:43 cph Exp $
 
 Bug fixes
 ---------
+
+* Summary buffers don't navigate correctly unless they are showing all
+  of the messages.  Partial summaries manipulate index numbers that
+  are the line numbers of the buffer rather than the message indexes.
 
 * Password should be cached s.t. it can be shared between connections
   with compatible URLs.  Right now it is per-connection.
@@ -43,6 +47,10 @@ Design changes
 
 New features
 ------------
+
+* M-x imail-output should create the folder if necessary.  This means
+  the %APPEND-MESSAGE method must check for [TRYCREATE] and do the
+  create if it is present.
 
 * Add command to rename folders.  Add command to append all of the
   messages from one folder to another.
