@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.217 1993/11/20 07:09:15 cph Exp $
+$Id: runtime.pkg,v 14.218 1993/11/20 08:07:30 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -2604,37 +2604,43 @@ MIT in each case. |#
     (else))
   (parent ())
   (export ()
-          make-wt-tree-type
 	  number-wt-type
 	  string-wt-type
-          make-wt-tree
-          singleton-wt-tree
-          alist->wt-tree
-          wt-tree?
 	  wt-tree/empty?
-          wt-tree/size
+          alist->wt-tree
+          make-wt-tree
+          make-wt-tree-type
+          singleton-wt-tree
           wt-tree/add
           wt-tree/add!
-          wt-tree/member?
-          wt-tree/lookup
           wt-tree/delete
           wt-tree/delete!
-          wt-tree/split<
-          wt-tree/split>
-          wt-tree/union
-          wt-tree/intersection
+          wt-tree/delete-min
+          wt-tree/delete-min!
           wt-tree/difference
-          wt-tree/subset?
-          wt-tree/set-equal?
           wt-tree/fold
           wt-tree/for-each
           wt-tree/index
           wt-tree/index-datum
           wt-tree/index-pair
-          wt-tree/rank
+          wt-tree/intersection
+          wt-tree/lookup
+          wt-tree/member?
           wt-tree/min
           wt-tree/min-datum
           wt-tree/min-pair
-          wt-tree/delete-min
-          wt-tree/delete-min!
-	  ))
+          wt-tree/rank
+          wt-tree/set-equal?
+          wt-tree/size
+          wt-tree/split<
+          wt-tree/split>
+          wt-tree/subset?
+          wt-tree/union
+          wt-tree?))
+
+(define-package (runtime apropos)
+  (files "apropos")
+  (parent ())
+  (export ()
+	  apropos
+	  apropos-list))
