@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: fileio.scm,v 1.154 2001/05/10 18:22:31 cph Exp $
+;;; $Id: fileio.scm,v 1.155 2001/07/06 21:14:38 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -503,7 +503,8 @@ Otherwise, a message is written both before and after long file writes."
 
 (define (write-buffer-interactive buffer backup-mode)
   (let ((pathname (buffer-pathname buffer)))
-    (let ((writeable? (file-writeable? pathname)))
+    (let ((writeable? (file-writeable? pathname))
+	  (exists? (file-exists? pathname)))
       (if (or writeable?
 	      (prompt-for-yes-or-no?
 	       (string-append "File "
@@ -513,9 +514,11 @@ Otherwise, a message is written both before and after long file writes."
 	       "Attempt to save to a file which you aren't allowed to write"))
 	  (begin
 	    (if (not (or (verify-visited-file-modification-time? buffer)
-			 (not (file-exists? pathname))
+			 (not exists?)
 			 (prompt-for-yes-or-no?
-			  "Disk file has changed since visited or saved.  Save anyway")))
+			  (string-append
+			   "Disk file has changed since visited or saved."
+			   "  Save anyway"))))
 		(editor-error "Save not confirmed"))
 	    (let ((modes (backup-buffer! buffer pathname backup-mode)))
 	      (require-newline buffer)
@@ -564,6 +567,9 @@ Otherwise, a message is written both before and after long file writes."
 			       (os/set-file-modes-writeable! pathname)
 			       (set! modes m)))))
 		     (write-buffer buffer)))
+	      (if (and (not exists?)
+		       (file-exists? pathname))
+		  (set-buffer-backed-up?! buffer #t))
 	      (if modes
 		  (catch-file-errors
 		   (lambda (condition) condition unspecific)
