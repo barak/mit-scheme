@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.96 1989/04/15 00:46:39 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.97 1989/04/23 23:16:54 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -190,7 +190,7 @@ function is called.  Completion is done as the function name is typed
 For more information type the HELP key while entering the name."
   ()
   (lambda ()
-    (dispatch-on-command (prompt-for-command "Extended Command"))))
+    (dispatch-on-command (prompt-for-command "Extended Command") true)))
 
 (define-command suspend-scheme
   "Go back to Scheme's superior job.
@@ -299,14 +299,15 @@ Otherwise, set the comment column to the argument."
 	      (end (line-end (current-point) 0)))
 	  (let ((com ((ref-variable comment-locator-hook) start)))
 	    (set-current-point! (if com (car com) end))
-	    (if com (mark-permanent! (cdr com)))
-	    (let ((indent
-		   ((ref-variable comment-indent-hook) (current-point))))
-	      (maybe-change-column indent)
-	      (if com
-		  (set-current-point! (cdr com))
-		  (begin (insert-string (ref-variable comment-start))
-			 (insert-comment-end)))))))))
+	    (let ((comment-end (and com (mark-permanent! (cdr com)))))
+	      (let ((indent
+		     ((ref-variable comment-indent-hook) (current-point))))
+		(maybe-change-column indent)
+		(if comment-end
+		    (set-current-point! comment-end)
+		    (begin
+		      (insert-string (ref-variable comment-start))
+		      (insert-comment-end))))))))))
 
 (define-variable comment-multi-line
   "If true, means \\[indent-new-comment-line] should continue same comment
