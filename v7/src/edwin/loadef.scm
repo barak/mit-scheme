@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: loadef.scm,v 1.37 1999/01/14 21:40:56 cph Exp $
+;;; $Id: loadef.scm,v 1.38 1999/05/04 17:19:10 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -319,6 +319,15 @@ This is usually 103 or 2627."
 
 (define-autoload-command 'view-password-file 'PASSWORD-EDIT
   "Read in a password file and show it in password-view mode.")
+
+(define-variable password-file
+  "Name of file containing passwords, or #F meaning prompt for name.
+See \\[view-password-file]."
+  #f
+  (lambda (object)
+    (or (not object)
+	(string? object)
+	(pathname? object))))
 
 (define-autoload-major-mode 'password-view 'read-only "Password-View"
   'PASSWORD-EDIT
