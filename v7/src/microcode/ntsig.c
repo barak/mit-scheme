@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntsig.c,v 1.12 1993/09/08 04:44:06 gjr Exp $
+$Id: ntsig.c,v 1.13 1993/09/11 02:45:57 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -412,21 +412,29 @@ DEFUN_VOID (OS_restartable_exit)
 #define ASYNC_TIMER_PERIOD	50	/* msec */
 
 static void * timer_state = ((void *) NULL);
+extern unsigned long * winnt_catatonia_block;
 
 static char *
 DEFUN_VOID (install_timer)
 {
-  Registers[REGBLOCK_CATATONIA_COUNTER] = 0;
-  Registers[REGBLOCK_CATATONIA_LIMIT]
+  /* This presumes that the catatonia block is allocated near
+     the register block and locked in physical memory with it.
+   */
+
+  long catatonia_offset
+    = (((SCHEME_OBJECT *) &winnt_catatonia_block[0]) - (&Registers[0]));
+
+  winnt_catatonia_block[CATATONIA_BLOCK_COUNTER] = 0;
+  winnt_catatonia_block[CATATONIA_BLOCK_LIMIT]
     = (CATATONIA_PERIOD / ASYNC_TIMER_PERIOD);
-  Registers[REGBLOCK_CATATONIA_FLAG] = 0;
+  winnt_catatonia_block[CATATONIA_BLOCK_FLAG] = 0;
   switch (win32_install_async_timer (&timer_state,
 				     &Registers[0],
 				     REGBLOCK_MEMTOP,
 				     REGBLOCK_INT_CODE,
 				     REGBLOCK_INT_MASK,
 				     (INT_Global_GC | INT_Global_1),
-				     REGBLOCK_CATATONIA_COUNTER,
+				     catatonia_offset,
 				     WM_CATATONIC,
 				     master_tty_window))
   {

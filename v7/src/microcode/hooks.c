@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hooks.c,v 9.51 1993/06/04 00:15:34 cph Exp $
+$Id: hooks.c,v 9.52 1993/09/11 02:45:54 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -40,10 +40,9 @@ MIT in each case. */
 #include "winder.h"
 #include "history.h"
 
-#define APPLY_AVOID_CANONICALIZATION
-
 DEFINE_PRIMITIVE ("APPLY", Prim_apply, 2, 2,
-  "Invoke first argument on the arguments contained in the second argument.")
+		  "(PROCEDURE LIST-OF-ARGS)\n\
+Invoke PROCEDURE on the arguments contained in list-of-ARGS.")
 {
   SCHEME_OBJECT procedure;
   SCHEME_OBJECT argument_list;
@@ -52,7 +51,6 @@ DEFINE_PRIMITIVE ("APPLY", Prim_apply, 2, 2,
 
   procedure = (ARG_REF (1));
   argument_list = (ARG_REF (2));
-#ifndef APPLY_AVOID_CANONICALIZATION
   /* Since this primitive must pop its own frame off and push a new
      frame on the stack, it has to be careful.  Its own stack frame is
      needed if an error or GC is required.  So these checks are done
@@ -66,8 +64,6 @@ DEFINE_PRIMITIVE ("APPLY", Prim_apply, 2, 2,
      overhead of maintaining this other form (e.g. PRIMITIVE_GC_If_Needed)
      is sufficiently high that it probably makes up for the time saved.
    */
-  PRIMITIVE_CANONICALIZE_CONTEXT ();
-#endif /* APPLY_AVOID_CANONICALIZATION */
   {
     fast SCHEME_OBJECT scan_list, scan_list_trail;
     TOUCH_IN_PRIMITIVE (argument_list, scan_list);
@@ -150,13 +146,11 @@ DEFINE_PRIMITIVE ("APPLY", Prim_apply, 2, 2,
  Pushed ();
 #endif
 
-#ifdef APPLY_AVOID_CANONICALIZATION
   if (COMPILED_CODE_ADDRESS_P (STACK_REF (number_of_args + 2)))
   {
     extern SCHEME_OBJECT EXFUN (apply_compiled_from_primitive, (int));
     PRIMITIVE_RETURN (apply_compiled_from_primitive (2));
   }
-#endif /* APPLY_AVOID_CANONICALIZATION */
 
   PRIMITIVE_ABORT (PRIM_APPLY);
   /*NOTREACHED*/
@@ -343,7 +337,8 @@ DEFUN (CWCC, (return_code, reuse_flag, receiver),
 */
 
 DEFINE_PRIMITIVE ("CALL-WITH-CURRENT-CONTINUATION", Prim_catch, 1, 1,
-  "Invoke argument with a reentrant copy of the current control stack.")
+		  "(RECEIVER)\n\
+Invoke RECEIVER with a reentrant copy of the current control stack.")
 {
   PRIMITIVE_HEADER (1);
   PRIMITIVE_CANONICALIZE_CONTEXT ();
@@ -353,7 +348,8 @@ DEFINE_PRIMITIVE ("CALL-WITH-CURRENT-CONTINUATION", Prim_catch, 1, 1,
 
 DEFINE_PRIMITIVE ("NON-REENTRANT-CALL-WITH-CURRENT-CONTINUATION",
 		  Prim_non_reentrant_catch, 1, 1,
-  "Invoke argument with a non-reentrant copy of the current control stack.")
+		  "(RECEIVER)\n\
+Invoke RECEIVER with a non-reentrant copy of the current control stack.")
 {
   PRIMITIVE_HEADER (1);
   PRIMITIVE_CANONICALIZE_CONTEXT();
@@ -374,7 +370,8 @@ DEFINE_PRIMITIVE ("NON-REENTRANT-CALL-WITH-CURRENT-CONTINUATION",
  */   
 
 DEFINE_PRIMITIVE ("WITHIN-CONTROL-POINT", Prim_within_control_point, 2, 2,
-  "Invoke second argument with the first argument as its control stack.")
+		  "(CONTROL-POINT THUNK)\n\
+Invoke THUNK with CONTROL-POINT as its control stack.")
 {
   SCHEME_OBJECT control_point, thunk;
   PRIMITIVE_HEADER (2);
@@ -406,7 +403,8 @@ DEFINE_PRIMITIVE ("WITHIN-CONTROL-POINT", Prim_within_control_point, 2, 2,
   /*NOTREACHED*/
 }
 
-DEFINE_PRIMITIVE ("ERROR-PROCEDURE", Prim_error_procedure, 3, 3, 0)
+DEFINE_PRIMITIVE ("ERROR-PROCEDURE", Prim_error_procedure, 3, 3,
+		  "(MESSAGE IRRITANTS ENVIRONMENT)\nSignal an error.")
 {
   PRIMITIVE_HEADER (3);
   PRIMITIVE_CANONICALIZE_CONTEXT ();
@@ -432,7 +430,9 @@ DEFINE_PRIMITIVE ("ERROR-PROCEDURE", Prim_error_procedure, 3, 3, 0)
   }
 }
 
-DEFINE_PRIMITIVE ("SCODE-EVAL", Prim_scode_eval, 2, 2, 0)
+DEFINE_PRIMITIVE ("SCODE-EVAL", Prim_scode_eval, 2, 2,
+		  "(SCODE-EXPRESSION ENVIRONMENT)\n\
+Evaluate SCODE-EXPRESSION in ENVIRONMENT.")
 {
   PRIMITIVE_HEADER (2);
   PRIMITIVE_CANONICALIZE_CONTEXT ();
@@ -448,7 +448,10 @@ DEFINE_PRIMITIVE ("SCODE-EVAL", Prim_scode_eval, 2, 2, 0)
   /*NOTREACHED*/
 }
 
-DEFINE_PRIMITIVE ("FORCE", Prim_force, 1, 1, 0)
+DEFINE_PRIMITIVE ("FORCE", Prim_force, 1, 1,
+		  "(PROMISE)\n\
+Return the value memoized in PROMISE, computing it if it has not been\n\
+memoized yet.")
 {
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, PROMISE_P);
@@ -492,7 +495,13 @@ DEFINE_PRIMITIVE ("FORCE", Prim_force, 1, 1, 0)
 
 /* State Space Implementation */
 
-DEFINE_PRIMITIVE ("EXECUTE-AT-NEW-STATE-POINT", Prim_execute_at_new_point, 4, 4, 0)
+DEFINE_PRIMITIVE ("EXECUTE-AT-NEW-STATE-POINT",
+		  Prim_execute_at_new_point, 4, 4,
+		  "(OLD-STATE-POINT BEFORE-THUNK DURING-THUNK AFTER-THUNK)\n\
+Invoke DURING-THUNK in a new state point defined by the transition\n\
+<BEFORE-THUNK, AFTER-THUNK> from OLD-STATE-POINT.\n\
+If OLD-STATE-POINT is #F, the current state point in the global state\n\
+space is used as the starting point.")
 {
   PRIMITIVE_HEADER (4);
 
@@ -544,7 +553,8 @@ DEFINE_PRIMITIVE ("EXECUTE-AT-NEW-STATE-POINT", Prim_execute_at_new_point, 4, 4,
   }
 }
 
-DEFINE_PRIMITIVE ("TRANSLATE-TO-STATE-POINT", Prim_translate_to_point, 1, 1, 0)
+DEFINE_PRIMITIVE ("TRANSLATE-TO-STATE-POINT", Prim_translate_to_point, 1, 1,
+		  "(STATE-POINT)\nRestore the dynamic state to STATE-POINT.")
 {
   PRIMITIVE_HEADER (1);
   PRIMITIVE_CANONICALIZE_CONTEXT ();
@@ -558,7 +568,8 @@ DEFINE_PRIMITIVE ("TRANSLATE-TO-STATE-POINT", Prim_translate_to_point, 1, 1, 0)
 }
 
 DEFINE_PRIMITIVE ("MAKE-STATE-SPACE", Prim_make_state_space, 1, 1,
-  "Return a newly-allocated state-space.\n\
+		  "(MUTABLE?)\n\
+Return a newly-allocated state-space.\n\
 Argument MUTABLE?, if not #F, means return a mutable state-space.\n\
 Otherwise, -the- immutable state-space is saved internally.")
 {
@@ -591,7 +602,10 @@ Otherwise, -the- immutable state-space is saved internally.")
   }
 }
 
-DEFINE_PRIMITIVE ("CURRENT-DYNAMIC-STATE", Prim_current_dynamic_state, 1, 1, 0)
+DEFINE_PRIMITIVE ("CURRENT-DYNAMIC-STATE", Prim_current_dynamic_state, 1, 1,
+		  "(STATE-SPACE)\n\
+Return the current state point in STATE-SPACE. If STATE-SPACE is #F,\n\
+return the current state point in the global state space.")
 {
   PRIMITIVE_HEADER (1);
 
@@ -602,7 +616,9 @@ DEFINE_PRIMITIVE ("CURRENT-DYNAMIC-STATE", Prim_current_dynamic_state, 1, 1, 0)
   PRIMITIVE_RETURN (MEMORY_REF ((ARG_REF (1)), STATE_SPACE_NEAREST_POINT));
 }
 
-DEFINE_PRIMITIVE ("SET-CURRENT-DYNAMIC-STATE!", Prim_set_dynamic_state, 1, 1, 0)
+DEFINE_PRIMITIVE ("SET-CURRENT-DYNAMIC-STATE!", Prim_set_dynamic_state, 1, 1,
+		  "(STATE-POINT)\n\
+Set the current dynamic state point to STATE-POINT.")
 {
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, STATE_POINT_P);
@@ -628,7 +644,7 @@ DEFINE_PRIMITIVE ("SET-CURRENT-DYNAMIC-STATE!", Prim_set_dynamic_state, 1, 1, 0)
 /* Interrupts */
 
 DEFINE_PRIMITIVE ("GET-INTERRUPT-ENABLES", Prim_get_interrupt_enables, 0, 0,
-  "(get-interrupt-enables)\n\
+		  "()\n\
 Returns the current interrupt mask.\n\
 There are two interrupt bit masks:\n\
 - The interrupt mask has a one bit for every enabled interrupt.\n\
@@ -646,8 +662,8 @@ should clear the corresponding interrupt bit.")
 }
 
 DEFINE_PRIMITIVE ("SET-INTERRUPT-ENABLES!", Prim_set_interrupt_enables, 1, 1,
-  "(set-interrupt-enables! interrupt-mask)\n\
-Sets the interrupt mask to NEW-INT-ENABLES; returns previous mask value.\n\
+		  "(INTERRUPT-MASK)\n\
+Sets the interrupt mask to INTERRUPT-MASK; returns previous mask value.\n\
 See `get-interrupt-enables' for more information on interrupts.")
 {
   PRIMITIVE_HEADER (1);
@@ -659,8 +675,8 @@ See `get-interrupt-enables' for more information on interrupts.")
 }
 
 DEFINE_PRIMITIVE ("CLEAR-INTERRUPTS!", Prim_clear_interrupts, 1, 1,
-  "(clear-interrupts! interrupt-mask)\n\
-Clears the interrupt bits in interrupt-mask by clearing the\n\
+		  "(INTERRUPT-MASK)\n\
+Clears the interrupt bits in INTERRUPT-MASK by clearing the\n\
 corresponding bits in the interrupt code.\n\
 See `get-interrupt-enables' for more information on interrupts.")
 {
@@ -670,8 +686,8 @@ See `get-interrupt-enables' for more information on interrupts.")
 }
 
 DEFINE_PRIMITIVE ("DISABLE-INTERRUPTS!", Prim_disable_interrupts, 1, 1, 
-  "(disable-interrupts! interrupt-mask)\n\
-Disables the interrupts specified in interrupt-mask by clearing the\n\
+		  "(INTERRUPT-MASK)\n\
+Disables the interrupts specified in INTERRUPT-MASK by clearing the\n\
 corresponding bits in the interrupt mask. Returns previous mask value.\n\
 See `get-interrupt-enables' for more information on interrupts.")
 {
@@ -684,8 +700,8 @@ See `get-interrupt-enables' for more information on interrupts.")
 }
 
 DEFINE_PRIMITIVE ("ENABLE-INTERRUPTS!", Prim_enable_interrupts, 1, 1,
-  "(enable-interrupts! interrupt-mask)\n\
-Enables the interrupts specified in interrupt-mask by setting the\n\
+		  "(INTERRUPT-MASK)\n\
+Enables the interrupts specified in INTERRUPT-MASK by setting the\n\
 corresponding bits in the interrupt mask. Returns previous mask value.\n\
 See `get-interrupt-enables' for more information on interrupts.")
 {
@@ -698,8 +714,8 @@ See `get-interrupt-enables' for more information on interrupts.")
 }
 
 DEFINE_PRIMITIVE ("REQUEST-INTERRUPTS!", Prim_request_interrupts, 1, 1,
-  "(request-interrupts! interrupt-mask)\n\
-Requests the interrupt bits in interrupt-mask by setting the\n\
+		  "(INTERRUPT-MASK)\n\
+Requests the interrupt bits in INTERRUPT-MASK by setting the\n\
 corresponding bits in the interrupt code.\n\
 See `get-interrupt-enables' for more information on interrupts.")
 {
@@ -708,9 +724,11 @@ See `get-interrupt-enables' for more information on interrupts.")
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("RETURN-TO-APPLICATION", Prim_return_to_application, 2, LEXPR,
-  "Invokes first argument THUNK with no arguments and a special return address.\n\
-The return address calls the second argument on the remaining arguments.\n\
+DEFINE_PRIMITIVE ("RETURN-TO-APPLICATION",
+		  Prim_return_to_application, 2, LEXPR,
+  "(THUNK PROCEDURE . ARGS)\n\
+Invokes THUNK with no arguments and a special return address.\n\
+The return address calls PROCEDURE on ARGS.\n\
 This is used by the runtime system to create stack frames that can be\n\
 identified by the continuation parser.")
 {
@@ -736,41 +754,72 @@ identified by the continuation parser.")
   PRIMITIVE_ABORT (PRIM_APPLY);
   /*NOTREACHED*/
 }
-
+
 DEFINE_PRIMITIVE ("WITH-STACK-MARKER", Prim_with_stack_marker, 3, 3,
-  "Call first argument THUNK with a continuation that has a special marker.\n\
+		  "(THUNK MARKER1 MARKER2)\n\
+Call THUNK with a continuation that has a special marker.\n\
 When THUNK returns, the marker is discarded.\n\
 The value of THUNK is returned to the continuation of this primitive.\n\
-The marker consists of the second and third arguments.\n\
-By convention, the second argument is a tag identifying the kind of marker,\n\
-and the third argument is data identifying the marker instance.")
+The marker consists of MARKER1 and MARKER2.\n\
+By convention, MARKER1 is a tag identifying the kind of marker,\n\
+and MARKER2 is data identifying the marker instance.")
 {
+  SCHEME_OBJECT thunk;
   PRIMITIVE_HEADER (3);
-  PRIMITIVE_CANONICALIZE_CONTEXT ();
+
+  thunk = (ARG_REF (1));
+
+  if ((COMPILED_CODE_ADDRESS_P (STACK_REF (2)))
+      && (COMPILED_CODE_ADDRESS_P (thunk)))
   {
-    SCHEME_OBJECT thunk = (STACK_POP ());
+    extern SCHEME_OBJECT EXFUN (compiled_with_stack_marker, (SCHEME_OBJECT));
+
+    STACK_POP ();
+    return (compiled_with_stack_marker (thunk));
+  }
+  else
+  {
+    PRIMITIVE_CANONICALIZE_CONTEXT ();
+
+    STACK_POP ();
     STACK_PUSH (MAKE_OBJECT (TC_RETURN_CODE, RC_STACK_MARKER));
-  Will_Push (STACK_ENV_EXTRA_SLOTS + 1);
+   Will_Push (STACK_ENV_EXTRA_SLOTS + 1);
     STACK_PUSH (thunk);
     STACK_PUSH (STACK_FRAME_HEADER);
-  Pushed ();
+   Pushed ();
+    PRIMITIVE_ABORT (PRIM_APPLY);
+    /*NOTREACHED*/
   }
-  PRIMITIVE_ABORT (PRIM_APPLY);
-  /*NOTREACHED*/
 }
-
-DEFINE_PRIMITIVE ("WITH-INTERRUPT-MASK", Prim_with_interrupt_mask, 2, 2, 0)
+
+static SCHEME_OBJECT 
+DEFUN (with_new_interrupt_mask, (new_mask), unsigned long new_mask)
 {
-  PRIMITIVE_HEADER (2);
-  PRIMITIVE_CANONICALIZE_CONTEXT ();
+  SCHEME_OBJECT receiver = (ARG_REF (2));
+
+  if ((COMPILED_CODE_ADDRESS_P (STACK_REF (2)))
+      && (COMPILED_CODE_ADDRESS_P (receiver)))
   {
-    long new_mask = (INT_Mask & (arg_integer (1)));
-    SCHEME_OBJECT thunk = (ARG_REF (2));
+    extern SCHEME_OBJECT
+      EXFUN (compiled_with_interrupt_mask, (unsigned long,
+					    SCHEME_OBJECT,
+					    unsigned long));
+    unsigned long current_mask = (FETCH_INTERRUPT_MASK ());
+
+    POP_PRIMITIVE_FRAME (2);
+    SET_INTERRUPT_MASK (new_mask);
+
+    PRIMITIVE_RETURN
+      (compiled_with_interrupt_mask (current_mask, receiver, new_mask));
+  }
+  else
+  {
+    PRIMITIVE_CANONICALIZE_CONTEXT ();
     POP_PRIMITIVE_FRAME (2);
     preserve_interrupt_mask ();
   Will_Push (STACK_ENV_EXTRA_SLOTS + 2);
     STACK_PUSH (LONG_TO_FIXNUM (FETCH_INTERRUPT_MASK ()));
-    STACK_PUSH (thunk);
+    STACK_PUSH (receiver);
     STACK_PUSH (STACK_FRAME_HEADER + 1);
   Pushed ();
     SET_INTERRUPT_MASK (new_mask);
@@ -779,26 +828,28 @@ DEFINE_PRIMITIVE ("WITH-INTERRUPT-MASK", Prim_with_interrupt_mask, 2, 2, 0)
   }
 }
 
-DEFINE_PRIMITIVE ("WITH-INTERRUPTS-REDUCED", Prim_with_interrupts_reduced, 2, 2, 0)
+DEFINE_PRIMITIVE ("WITH-INTERRUPT-MASK", Prim_with_interrupt_mask, 2, 2,
+		  "(MASK RECEIVER)\n\
+Set the interrupt mask to MASK for the duration of the call to RECEIVER.\n\
+RECEIVER is passed the old interrupt mask as its argument.")
 {
   PRIMITIVE_HEADER (2);
-  PRIMITIVE_CANONICALIZE_CONTEXT();
-  {
-    long new_mask = (INT_Mask & (arg_integer (1)));
-    long old_mask = (FETCH_INTERRUPT_MASK ());
-    SCHEME_OBJECT thunk = (ARG_REF (2));
-    POP_PRIMITIVE_FRAME (2);
-    preserve_interrupt_mask ();
-  Will_Push (STACK_ENV_EXTRA_SLOTS + 2);
-    STACK_PUSH (LONG_TO_FIXNUM (old_mask));
-    STACK_PUSH (thunk);
-    STACK_PUSH (STACK_FRAME_HEADER + 1);
-  Pushed ();
-    SET_INTERRUPT_MASK
-      ((new_mask > old_mask) ? new_mask : (new_mask & old_mask));
-    PRIMITIVE_ABORT (PRIM_APPLY);
-    /*NOTREACHED*/
-  }
+  PRIMITIVE_RETURN (with_new_interrupt_mask (INT_Mask & (arg_integer (1))));
+}
+
+DEFINE_PRIMITIVE ("WITH-INTERRUPTS-REDUCED",
+		  Prim_with_interrupts_reduced, 2, 2,
+		  "(MASK RECEIVER)\n\
+Like `with-interrupt-mask', but only disables interrupts.")
+{
+  unsigned long old_mask, new_mask;
+  PRIMITIVE_HEADER (2);
+
+  old_mask = (FETCH_INTERRUPT_MASK ());
+  new_mask = (INT_Mask & (arg_integer (1)));
+  PRIMITIVE_RETURN (with_new_interrupt_mask ((new_mask > old_mask) ?
+					     new_mask :
+					     (new_mask & old_mask)));
 }
 
 /* History */
@@ -812,7 +863,9 @@ initialize_history ()
     (MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, (Make_Dummy_History ())));
 }
 
-DEFINE_PRIMITIVE ("SET-CURRENT-HISTORY!", Prim_set_current_history, 1, 1, 0)
+DEFINE_PRIMITIVE ("SET-CURRENT-HISTORY!", Prim_set_current_history, 1, 1,
+		  "(HISTORY)\n\
+Set the interpreter's history object to HISTORY.")
 {
   PRIMITIVE_HEADER (1);
   PRIMITIVE_CANONICALIZE_CONTEXT ();
@@ -828,7 +881,8 @@ DEFINE_PRIMITIVE ("SET-CURRENT-HISTORY!", Prim_set_current_history, 1, 1, 0)
   /*NOTREACHED*/
 }
 
-DEFINE_PRIMITIVE ("WITH-HISTORY-DISABLED", Prim_with_history_disabled, 1, 1, 0)
+DEFINE_PRIMITIVE ("WITH-HISTORY-DISABLED", Prim_with_history_disabled, 1, 1,
+		  "(THUNK)\nExecute THUNK with the interpreter's history OFF.")
 {
   PRIMITIVE_HEADER (1);
   PRIMITIVE_CANONICALIZE_CONTEXT ();
@@ -870,13 +924,16 @@ DEFINE_PRIMITIVE ("WITH-HISTORY-DISABLED", Prim_with_history_disabled, 1, 1, 0)
 
 /* Miscellaneous State */
 
-DEFINE_PRIMITIVE ("GET-FLUID-BINDINGS", Prim_get_fluid_bindings, 0, 0, 0)
+DEFINE_PRIMITIVE ("GET-FLUID-BINDINGS", Prim_get_fluid_bindings, 0, 0,
+		  "()\nReturn the current deep fluid bindings.")
 {
   PRIMITIVE_HEADER (0);
   PRIMITIVE_RETURN (Fluid_Bindings);
 }
 
-DEFINE_PRIMITIVE ("SET-FLUID-BINDINGS!", Prim_set_fluid_bindings, 1, 1, 0)
+DEFINE_PRIMITIVE ("SET-FLUID-BINDINGS!", Prim_set_fluid_bindings, 1, 1,
+		  "(FLUID-BINDINGS-ALIST)\n\
+Set the current deep fluid bindings alist to FLUID-BINDINGS-ALIST.")
 {
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, APPARENT_LIST_P);
@@ -887,7 +944,9 @@ DEFINE_PRIMITIVE ("SET-FLUID-BINDINGS!", Prim_set_fluid_bindings, 1, 1, 0)
   }
 }
 
-DEFINE_PRIMITIVE ("GET-FIXED-OBJECTS-VECTOR", Prim_get_fixed_objects_vector, 0, 0, 0)
+DEFINE_PRIMITIVE ("GET-FIXED-OBJECTS-VECTOR",
+		  Prim_get_fixed_objects_vector, 0, 0,
+		  "()\nReturn the fixed objects vector (TM).") 
 {
   PRIMITIVE_HEADER (0);
   if (Valid_Fixed_Obj_Vector ())
@@ -896,10 +955,12 @@ DEFINE_PRIMITIVE ("GET-FIXED-OBJECTS-VECTOR", Prim_get_fixed_objects_vector, 0, 
 }
 
 #ifndef SET_FIXED_OBJ_HOOK
-#define SET_FIXED_OBJ_HOOK(vector) Fixed_Objects = (vector)
+# define SET_FIXED_OBJ_HOOK(vector) Fixed_Objects = (vector)
 #endif
 
-DEFINE_PRIMITIVE ("SET-FIXED-OBJECTS-VECTOR!", Prim_set_fixed_objects_vector, 1, 1, 0)
+DEFINE_PRIMITIVE ("SET-FIXED-OBJECTS-VECTOR!",
+		  Prim_set_fixed_objects_vector, 1, 1,
+		  "(NEW-FOV)\nSet the fixed objects vector (TM) to NEW-FOV.")
 {
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, VECTOR_P);

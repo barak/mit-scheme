@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fixobj.h,v 9.34 1993/08/28 22:46:36 gjr Exp $
+$Id: fixobj.h,v 9.35 1993/09/11 02:45:53 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -124,6 +124,6 @@ MIT in each case. */
 #define PC_Sample_Prob_Comp_Table	0x3D /* Sure looked compiled ?! */
 #define PC_Sample_UFO_Table		0x3E /* Invalid ENV at sample time  */
 
+#define COMPILED_CODE_BKPT_HANDLER	0x3F
 
-
-#define NFixed_Objects			0x3F
+#define NFixed_Objects			0x40

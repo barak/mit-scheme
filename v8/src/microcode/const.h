@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: const.h,v 9.42 1993/06/09 20:28:27 jawilson Exp $
+$Id: const.h,v 9.43 1993/09/11 02:45:52 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -178,7 +178,9 @@ MIT in each case. */
 #define REGBLOCK_CLOSURE_SPACE		10	/* For use by compiler */
 #define REGBLOCK_STACK_GUARD		11
 #define REGBLOCK_INT_CODE		12
-#define REGBLOCK_MINIMUM_LENGTH		13
+#define REGBLOCK_REFLECT_TO_INTERFACE	13	/* For use by compiler */
+
+#define REGBLOCK_MINIMUM_LENGTH		14
 
 /* Codes specifying how to start scheme at boot time. */
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: utabmd.scm,v 9.70 1993/08/28 21:17:23 gjr Exp $
+;;; $Id: utabmd.scm,v 9.71 1993/09/11 02:45:59 gjr Exp $
 ;;;
 ;;;	Copyright (c) 1987-1993 Massachusetts Institute of Technology
 ;;;
@@ -120,6 +120,7 @@
 	       PC-Sample/Interp-Proc-Buffer		;3C
 	       PC-Sample/Prob-Comp-Table		;3D
 	       PC-Sample/UFO-Table			;3E
+	       COMPILED-CODE-BKPT-HANDLER		;3F
 	       ))
 
 ;;; [] Types
@@ -714,4 +715,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Id: utabmd.scm,v 9.70 1993/08/28 21:17:23 gjr Exp $"
+"$Id: utabmd.scm,v 9.71 1993/09/11 02:45:59 gjr Exp $"

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: comutl.c,v 1.25 1993/09/01 22:09:26 gjr Exp $
+$Id: comutl.c,v 1.26 1993/09/11 02:45:51 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -200,4 +200,76 @@ DEFINE_PRIMITIVE ("DECLARE-COMPILED-CODE-BLOCK",
     error_wrong_type_arg (1);
   declare_compiled_code (new_cc_block);
   PRIMITIVE_RETURN (SHARP_T);
+}
+
+extern SCHEME_OBJECT EXFUN (bkpt_install, (PTR));
+extern SCHEME_OBJECT EXFUN (bkpt_closure_install, (PTR));
+extern Boolean EXFUN (bkpt_p, (PTR));
+extern SCHEME_OBJECT EXFUN (bkpt_proceed, (PTR, SCHEME_OBJECT, SCHEME_OBJECT));
+extern void EXFUN (bkpt_remove, (PTR, SCHEME_OBJECT));
+
+DEFINE_PRIMITIVE ("BKPT/INSTALL", Prim_install_bkpt, 1, 1,
+		  "(compiled-entry-object)\n\
+Install a breakpoint trap in a compiled code object.\n\
+Returns false or a handled needed by REMOVE-BKPT and ONE-STEP-PROCEED.")
+{
+  PRIMITIVE_HEADER (1);
+  CHECK_ARG (1, COMPILED_CODE_ADDRESS_P);
+
+  {
+    SCHEME_OBJECT * entry = (OBJECT_ADDRESS (ARG_REF (1)));
+    SCHEME_OBJECT * block;
+
+    if (bkpt_p ((PTR) entry))
+      error_bad_range_arg (1);
+
+    block = (compiled_entry_to_block_address (ARG_REF (1)));
+    if ((OBJECT_TYPE (block[0])) == TC_MANIFEST_CLOSURE)
+      PRIMITIVE_RETURN (bkpt_closure_install ((PTR) entry));
+    else
+      PRIMITIVE_RETURN (bkpt_install ((PTR) entry));
+  }
+}
+
+DEFINE_PRIMITIVE ("BKPT/REMOVE", Prim_remove_bkpt, 2, 2,
+		  "(compiled-entry-object handle)\n\
+Remove a breakpoint trap installed by INSTALL-BKPT.")
+{
+  PRIMITIVE_HEADER (2);
+  CHECK_ARG (1, COMPILED_CODE_ADDRESS_P);
+  CHECK_ARG (2, VECTOR_P);
+
+  {
+    SCHEME_OBJECT * entry = (OBJECT_ADDRESS (ARG_REF (1)));
+    SCHEME_OBJECT handle = (ARG_REF (2));
+
+    if (! (bkpt_p ((PTR) entry)))
+      error_bad_range_arg (1);
+    bkpt_remove (((PTR) entry), handle);
+    PRIMITIVE_RETURN (UNSPECIFIC);
+  }
+}
+
+DEFINE_PRIMITIVE ("BKPT?", Prim_bkpt_p, 1, 1,
+		  "(compiled-entry-object)\n\
+True if there is a breakpoint trap in compiled-entry-object.")
+{
+  PRIMITIVE_HEADER (1);
+  CHECK_ARG (1, COMPILED_CODE_ADDRESS_P);
+
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT
+		    (bkpt_p ((PTR) (OBJECT_ADDRESS (ARG_REF (1))))));
+}
+
+DEFINE_PRIMITIVE ("BKPT/PROCEED", Prim_bkpt_proceed, 3, 3,
+		  "(compiled-entry-object handle state)\n\
+Proceed the computation from the current breakpoint.")
+{
+  PRIMITIVE_HEADER (3);
+  CHECK_ARG (1, COMPILED_CODE_ADDRESS_P);
+  CHECK_ARG (2, VECTOR_P);
+
+  PRIMITIVE_RETURN (bkpt_proceed (((PTR) (OBJECT_ADDRESS (ARG_REF (1)))),
+				  (ARG_REF (2)),
+				  (ARG_REF (3))));
 }

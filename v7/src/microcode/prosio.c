@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prosio.c,v 1.8 1993/04/06 22:18:09 cph Exp $
+$Id: prosio.c,v 1.9 1993/09/11 02:45:58 gjr Exp $
 
 Copyright (c) 1987-93 Massachusetts Institute of Technology
 
@@ -235,26 +235,4 @@ DEFINE_PRIMITIVE ("CHANNEL-UNREGISTER", Prim_channel_unregister, 1, 1,
   PRIMITIVE_HEADER (1);
   OS_channel_unregister (arg_channel (1));
   PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-DEFINE_PRIMITIVE ("CHANNEL-SELECT-THEN-READ", Prim_channel_select_then_read, 4, 4,
-  "Like CHANNEL-READ, but also watches registered input channels.\n\
-If there is no input on CHANNEL, returns #F.\n\
-If there is input on some other registered channel, returns -2.\n\
-If the status of some subprocess changes, returns -3.\n\
-If an interrupt occurs during the read, returns -4.")
-{
-  PRIMITIVE_HEADER (4);
-  CHECK_ARG (2, STRING_P);
-  {
-    SCHEME_OBJECT buffer = (ARG_REF (2));
-    long length = (STRING_LENGTH (buffer));
-    long end = (arg_index_integer (4, (length + 1)));
-    long start = (arg_index_integer (3, (end + 1)));
-    long nread =
-      (OS_channel_select_then_read ((arg_channel (1)),
-				    (STRING_LOC (buffer, start)),
-				    (end - start)));
-    PRIMITIVE_RETURN ((nread == (-1)) ? SHARP_F : (long_to_integer (nread)));
-  }
 }

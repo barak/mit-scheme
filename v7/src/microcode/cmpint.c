@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.67 1993/09/07 21:45:53 gjr Exp $
+$Id: cmpint.c,v 1.68 1993/09/11 02:45:46 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -97,6 +97,10 @@ MIT in each case. */
 #include "trap.h"       /* UNASSIGNED_OBJECT, TRAP_EXTENSION_TYPE */
 #include "prims.h"      /* LEXPR */
 #include "prim.h"	/* Primitive_Procedure_Table, etc. */
+
+#define ENTRY_TO_OBJECT(entry)						\
+  (MAKE_POINTER_OBJECT (TC_COMPILED_ENTRY, ((SCHEME_OBJECT *) (entry))))
+
 #define IN_CMPINT_C
 #include "cmpgc.h"      /* Compiled code object relocation */
 
@@ -226,9 +230,6 @@ typedef utility_result EXFUN
   }                                                                     \
 }
 
-#define ENTRY_TO_OBJECT(entry)						\
-  (MAKE_POINTER_OBJECT (TC_COMPILED_ENTRY, ((SCHEME_OBJECT *) (entry))))
-
 #define MAKE_CC_BLOCK(block_addr)					\
   (MAKE_POINTER_OBJECT (TC_COMPILED_CODE_BLOCK, block_addr))
 
@@ -271,7 +272,11 @@ extern C_UTILITY SCHEME_OBJECT
   EXFUN (compiled_closure_to_entry, (SCHEME_OBJECT entry)),
   * EXFUN (compiled_entry_to_block_address, (SCHEME_OBJECT entry)),
   EXFUN (compiled_entry_to_block, (SCHEME_OBJECT entry)),
-  EXFUN (apply_compiled_from_primitive, (int));
+  EXFUN (apply_compiled_from_primitive, (int)),
+  EXFUN (compiled_with_interrupt_mask, (unsigned long,
+					SCHEME_OBJECT,
+					unsigned long)),
+  EXFUN (compiled_with_stack_marker, (SCHEME_OBJECT));
 
 extern C_UTILITY void
   EXFUN (compiler_initialize, (long fasl_p)),
@@ -305,7 +310,15 @@ extern C_TO_SCHEME long
 
 extern utility_table_entry utility_table[];
 
-static SCHEME_OBJECT apply_in_interpreter;
+static SCHEME_OBJECT reflect_to_interface;
+
+/* Breakpoint stuff. */
+
+extern C_UTILITY SCHEME_OBJECT EXFUN (bkpt_install, (PTR));
+extern C_UTILITY SCHEME_OBJECT EXFUN (bkpt_closure_install, (PTR));
+extern C_UTILITY Boolean EXFUN (bkpt_p, (PTR));
+extern C_UTILITY SCHEME_OBJECT EXFUN (bkpt_proceed, (PTR, SCHEME_OBJECT, SCHEME_OBJECT));
+extern C_UTILITY void EXFUN (bkpt_remove, (PTR, SCHEME_OBJECT));
 
 /* These definitions reflect the indices into the table above. */
 
@@ -327,10 +340,15 @@ static SCHEME_OBJECT apply_in_interpreter;
 #define TRAMPOLINE_K_4_2			0xf
 #define TRAMPOLINE_K_4_1			0x10
 #define TRAMPOLINE_K_4_0			0x11
-#define TRAMPOLINE_K_APPLY_IN_INTERPRETER	0x3a
+#define TRAMPOLINE_K_REFLECT_TO_INTERFACE	0x3a
 
 #define TRAMPOLINE_K_OTHER			TRAMPOLINE_K_INTERPRETED
 
+#define REFLECT_CODE_INTERNAL_APPLY		0
+#define REFLECT_CODE_RESTORE_INTERRUPT_MASK	1
+#define REFLECT_CODE_STACK_MARKER		2
+#define REFLECT_CODE_CC_BKPT			3
+
 /* Utilities for application of compiled procedures. */
 
 /* NOTE: In this file, the number of arguments (or minimum
@@ -535,9 +553,6 @@ DEFUN (setup_compiled_invocation,
   return (setup_lexpr_invocation (nactuals, nmax, compiled_entry_address));
 }
 
-
-
-
 /* Main compiled code entry points.
 
    These are the primary entry points that the interpreter
@@ -659,8 +674,62 @@ defer_application:
       break;
   }
 
-  STACK_PUSH (apply_in_interpreter);
+  STACK_PUSH (FIXNUM_ZERO + REFLECT_CODE_INTERNAL_APPLY);
+  STACK_PUSH (reflect_to_interface);
   Stack_Pointer = (STACK_LOC (- arity));
+  return (SHARP_F);
+}
+
+C_UTILITY SCHEME_OBJECT
+DEFUN (compiled_with_interrupt_mask, (old_mask, receiver, new_mask),
+       unsigned long old_mask
+       AND SCHEME_OBJECT receiver
+       AND unsigned long new_mask)
+{
+  long result;
+
+  STACK_PUSH (LONG_TO_FIXNUM (old_mask));
+  STACK_PUSH (FIXNUM_ZERO + REFLECT_CODE_RESTORE_INTERRUPT_MASK);
+  STACK_PUSH (reflect_to_interface);
+
+  STACK_PUSH (LONG_TO_FIXNUM (new_mask));
+  result = (setup_compiled_invocation (2,
+				       ((instruction *)
+					(OBJECT_ADDRESS (receiver)))));
+  STACK_PUSH (receiver);
+
+  if (result != PRIM_DONE)
+  {
+    STACK_PUSH (STACK_FRAME_HEADER + 1);
+    STACK_PUSH (FIXNUM_ZERO + REFLECT_CODE_INTERNAL_APPLY);
+    STACK_PUSH (reflect_to_interface);
+  }
+
+  Stack_Pointer = (STACK_LOC (- 2));
+  return (SHARP_F);
+}
+
+C_UTILITY SCHEME_OBJECT
+DEFUN (compiled_with_stack_marker, (thunk), SCHEME_OBJECT thunk)
+{
+  long result;
+
+  STACK_PUSH (FIXNUM_ZERO + REFLECT_CODE_STACK_MARKER);
+  STACK_PUSH (reflect_to_interface);
+
+  result = (setup_compiled_invocation (1,
+				       ((instruction *)
+					(OBJECT_ADDRESS (thunk)))));
+  STACK_PUSH (thunk);
+
+  if (result != PRIM_DONE)
+  {
+    STACK_PUSH (STACK_FRAME_HEADER);
+    STACK_PUSH (FIXNUM_ZERO + REFLECT_CODE_INTERNAL_APPLY);
+    STACK_PUSH (reflect_to_interface);
+  }
+
+  Stack_Pointer = (STACK_LOC (- 3));
   return (SHARP_F);
 }
 
@@ -685,22 +754,6 @@ DEFUN (comutil_return_to_interpreter,
        AND long ignore_2 AND long ignore_3 AND long ignore_4)
 {
   RETURN_TO_C (PRIM_DONE);
-}
-
-/*
-  This is an alternate way for code to return to the
-  Scheme interpreter.
-  It is invoked by a trampoline, which passes the address of the
-  trampoline storage block (empty) to it.
- */
-
-SCHEME_UTILITY utility_result
-DEFUN (comutil_apply_in_interpreter,
-       (tramp_data_raw, ignore_2, ignore_3, ignore_4),
-       SCHEME_ADDR tramp_data_raw
-       AND long ignore_2 AND long ignore_3 AND long ignore_4)
-{
-  RETURN_TO_C (PRIM_APPLY);
 }
 
 #if (COMPILER_PROCESSOR_TYPE != COMPILER_I386_TYPE)
@@ -2299,13 +2352,9 @@ DEFUN (compiled_entry_type,
   field1 = min_arity;
   field2 = max_arity;
   if (min_arity >= 0)
-  {
     kind = KIND_PROCEDURE;
-  }
   else if (max_arity >= 0)
-  {
     kind = KIND_ILLEGAL;
-  }
   else if ((((unsigned long) max_arity) & 0xff) < 0xe0)
   {
     /* Field2 is the offset to the next continuation */
@@ -2736,6 +2785,174 @@ DEFUN (coerce_to_compiled,
   return (PRIM_DONE);
 }
 
+#ifndef HAVE_BKPT_SUPPORT
+
+C_UTILITY SCHEME_OBJECT
+DEFUN (bkpt_install, (ep), PTR ep)
+{
+  return (SHARP_F);
+}
+
+C_UTILITY SCHEME_OBJECT
+DEFUN (bkpt_closure_install, (ep), PTR ep)
+{
+  return (SHARP_F);
+}
+
+C_UTILITY void
+DEFUN (bkpt_remove, (ep, handle), PTR ep AND SCHEME_OBJECT handle)
+{
+  error_external_return ();
+}
+
+C_UTILITY Boolean
+DEFUN (bkpt_p, (ep), PTR ep)
+{
+  return (SHARP_F);
+}
+
+C_UTILITY SCHEME_OBJECT
+DEFUN (bkpt_proceed, (ep, handle, state),
+       PTR ep AND SCHEME_OBJECT handle AND SCHEME_OBJECT state)
+{
+  error_external_return ();
+}
+
+C_UTILITY PTR
+DEFUN_VOID (do_bkpt_proceed)
+{
+  error_external_return ();
+}
+
+#else /* HAVE_BKPT_SUPPORT */
+
+#define BKPT_PROCEED_FRAME_SIZE	3
+
+C_UTILITY SCHEME_OBJECT
+DEFUN (bkpt_proceed, (ep, handle, state),
+       PTR ep AND SCHEME_OBJECT handle AND SCHEME_OBJECT state)
+{
+  if ((! (COMPILED_CODE_ADDRESS_P (STACK_REF (BKPT_PROCEED_FRAME_SIZE))))
+      || ((OBJECT_ADDRESS (STACK_REF (BKPT_PROCEED_FRAME_SIZE)))
+	  != ((SCHEME_OBJECT *) ep)))
+    error_external_return ();
+
+  STACK_PUSH (FIXNUM_ZERO + REFLECT_CODE_CC_BKPT);
+  STACK_PUSH (reflect_to_interface);
+  Stack_Pointer = (STACK_LOC (- BKPT_PROCEED_FRAME_SIZE));
+  return (SHARP_F);
+}
+#endif /* HAVE_BKPT_SUPPORT */
+
+SCHEME_UTILITY utility_result
+DEFUN (comutil_compiled_code_bkpt,
+       (entry_point_raw, dlink_raw, ignore_3, ignore_4),
+       SCHEME_ADDR entry_point_raw AND SCHEME_ADDR dlink_raw
+       AND long ignore_3 AND long ignore_4)
+{
+  long type_info[3];
+  instruction * entry_point_a
+    = ((instruction *) (SCHEME_ADDR_TO_ADDR (entry_point_raw)));
+  SCHEME_OBJECT entry_point = (ENTRY_TO_OBJECT (entry_point_a));
+  SCHEME_OBJECT state;
+  SCHEME_OBJECT stack_ptr;
+
+  STACK_PUSH (entry_point);	/* return address */
+
+  /* Potential bug: This does not preserve the environment for
+     IC procedures.  There is no way to tell that we have
+     an IC procedure in our hands.  It is not safe to preserve
+     it in general because the contents of the register may
+     be stale (predate the last GC).
+     However, the compiler no longer generates IC procedures, and
+     will probably never do it again.
+   */
+
+  compiled_entry_type (entry_point, &type_info[0]);
+  if (type_info[0] != KIND_CONTINUATION)
+    state = SHARP_F;
+  else if (type_info[1] == CONTINUATION_DYNAMIC_LINK)
+    state = (MAKE_POINTER_OBJECT
+	     (TC_STACK_ENVIRONMENT, (SCHEME_ADDR_TO_ADDR (dlink_raw))));
+  else
+    state = Val;
+
+  stack_ptr = (MAKE_POINTER_OBJECT (TC_STACK_ENVIRONMENT, Stack_Pointer));
+  STACK_PUSH (state);		/* state to preserve */
+  STACK_PUSH (stack_ptr);	/* "Environment" pointer */
+  STACK_PUSH (entry_point);	/* argument to handler */
+  return (comutil_apply ((Get_Fixed_Obj_Slot (COMPILED_CODE_BKPT_HANDLER)),
+			 4, ignore_3, ignore_4));
+}
+
+SCHEME_UTILITY utility_result
+DEFUN (comutil_compiled_closure_bkpt,
+       (entry_point_raw, ignore_2, ignore_3, ignore_4),
+       SCHEME_ADDR entry_point_raw
+       AND long ignore_2 AND long ignore_3 AND long ignore_4)
+{
+  instruction * entry_point_a
+    = ((instruction *) (SCHEME_ADDR_TO_ADDR (entry_point_raw)));
+  SCHEME_OBJECT entry_point = (ENTRY_TO_OBJECT (entry_point_a));
+  SCHEME_OBJECT stack_ptr;
+
+  STACK_PUSH (entry_point);	/* return address */
+
+  stack_ptr = (MAKE_POINTER_OBJECT (TC_STACK_ENVIRONMENT, Stack_Pointer));
+  STACK_PUSH (SHARP_F);		/* state to preserve */
+  STACK_PUSH (stack_ptr);	/* "Environment" pointer */
+  STACK_PUSH (entry_point);	/* argument to handler */
+  return (comutil_apply ((Get_Fixed_Obj_Slot (COMPILED_CODE_BKPT_HANDLER)),
+			 4, ignore_3, ignore_4));
+}
+
+SCHEME_UTILITY utility_result
+DEFUN (comutil_reflect_to_interface,
+       (tramp_data_raw, ignore_2, ignore_3, ignore_4),
+       SCHEME_ADDR tramp_data_raw
+       AND long ignore_2 AND long ignore_3 AND long ignore_4)
+{
+  SCHEME_OBJECT code = (STACK_POP ());
+
+  switch (OBJECT_DATUM (code))
+  {
+    case REFLECT_CODE_INTERNAL_APPLY:
+    {
+      long frame_size = (OBJECT_DATUM (STACK_POP ()));
+      SCHEME_OBJECT procedure = (STACK_POP ());
+      
+      return (comutil_apply (procedure, frame_size, ignore_3, ignore_4));
+    }
+
+    case REFLECT_CODE_CC_BKPT:
+    {
+      unsigned long value;
+
+      if (do_bkpt_proceed (& value))
+	RETURN_TO_SCHEME (value);
+      else
+	RETURN_TO_C (value);
+    }
+
+    case REFLECT_CODE_RESTORE_INTERRUPT_MASK:
+    {
+      SET_INTERRUPT_MASK (OBJECT_DATUM (STACK_POP ()));
+      RETURN_TO_SCHEME (OBJECT_ADDRESS (STACK_POP ()));
+    }
+
+    case REFLECT_CODE_STACK_MARKER:
+    {
+      STACK_POP ();		/* marker1 */
+      STACK_POP ();		/* marker2 */
+      RETURN_TO_SCHEME (OBJECT_ADDRESS (STACK_POP ()));
+    }
+
+    default:
+      STACK_PUSH (code);
+      RETURN_TO_C (ERR_EXTERNAL_RETURN);
+  }
+}
+
 /*
   Utility table used by the assembly language interface to invoke
   the SCHEME_UTILITY procedures that appear in this file.
@@ -2809,8 +3026,10 @@ utility_table_entry utility_table[] =
   UTE(comutil_quotient),			/* 0x37 */
   UTE(comutil_remainder),			/* 0x38 */
   UTE(comutil_modulo),				/* 0x39 */
-  UTE(comutil_apply_in_interpreter),		/* 0x3a */
-  UTE(comutil_interrupt_continuation_2)		/* 0x3b */
+  UTE(comutil_reflect_to_interface),		/* 0x3a */
+  UTE(comutil_interrupt_continuation_2),	/* 0x3b */
+  UTE(comutil_compiled_code_bkpt),		/* 0x3c */
+  UTE(comutil_compiled_closure_bkpt)		/* 0x3d */
   };
 
 /* Support for trap handling. */
@@ -2837,6 +3056,9 @@ struct util_descriptor_s
 static
 struct util_descriptor_s utility_descriptor_table[] =
 {
+#ifdef DECLARE_CMPINTMD_UTILITIES
+  DECLARE_CMPINTMD_UTILITIES(),
+#endif /* DECLARE_CMPINTMD_UTILITIES */
   UTLD(C_to_interface),
   UTLD(open_gap),
   UTLD(setup_lexpr_invocation),
@@ -2845,8 +3067,9 @@ struct util_descriptor_s utility_descriptor_table[] =
   UTLD(apply_compiled_procedure),
   UTLD(return_to_compiled_code),
   UTLD(apply_compiled_from_primitive),
+  UTLD(compiled_with_interrupt_mask),
+  UTLD(compiled_with_stack_marker),
   UTLD(comutil_return_to_interpreter),
-  UTLD(comutil_apply_in_interpreter),
   UTLD(comutil_primitive_apply),
   UTLD(comutil_primitive_lexpr_apply),
   UTLD(comutil_apply),
@@ -2948,6 +3171,17 @@ struct util_descriptor_s utility_descriptor_table[] =
   UTLD(make_uuo_link),
   UTLD(make_fake_uuo_link),
   UTLD(coerce_to_compiled),
+#ifndef HAVE_BKPT_SUPPORT
+  UTLD(bkpt_install),
+  UTLD(bkpt_closure_install),
+  UTLD(bkpt_remove),
+  UTLD(bkpt_p),
+  UTLD(do_bkpt_proceed),
+#endif 
+  UTLD(bkpt_proceed),
+  UTLD(comutil_compiled_code_bkpt),
+  UTLD(comutil_compiled_closure_bkpt),
+  UTLD(comutil_reflect_to_interface),
   UTLD(end_of_utils)
 };
 
@@ -3144,24 +3378,31 @@ DEFUN_VOID (compiler_reset_internal)
 {
   long len;
   SCHEME_OBJECT * block;
+
   /* Other stuff can be placed here. */
-
-  Registers[REGBLOCK_CLOSURE_FREE] = ((SCHEME_OBJECT) NULL);
-  Registers[REGBLOCK_CLOSURE_SPACE] = ((SCHEME_OBJECT) 0);
-
-  ASM_RESET_HOOK();
 
   block = (OBJECT_ADDRESS (compiler_utilities));
   len = (OBJECT_DATUM (block[0]));
+
   return_to_interpreter =
     (ENTRY_TO_OBJECT (((char *) block)
 		      + ((unsigned long) (block [len - 1]))));
-  apply_in_interpreter = 
+
+  reflect_to_interface =
     (ENTRY_TO_OBJECT (((char *) block)
 		      + ((unsigned long) (block [len]))));
+
+  Registers[REGBLOCK_CLOSURE_FREE] = ((SCHEME_OBJECT) NULL);
+  Registers[REGBLOCK_CLOSURE_SPACE] = ((SCHEME_OBJECT) 0);
+  Registers[REGBLOCK_REFLECT_TO_INTERFACE] = reflect_to_interface;
+
+  ASM_RESET_HOOK();
+
   return;
 }
 
+#define COMPILER_UTILITIES_LENGTH ((2 * (TRAMPOLINE_ENTRY_SIZE + 1)) + 1)
+
 C_UTILITY void
 DEFUN (compiler_reset,
        (new_block),
@@ -3170,7 +3411,8 @@ DEFUN (compiler_reset,
   /* Called after a disk restore */
 
   if (((OBJECT_TYPE (new_block)) != TC_COMPILED_CODE_BLOCK)
-      || ((OBJECT_TYPE (MEMORY_REF (new_block, 0))) != TC_MANIFEST_NM_VECTOR))
+      || ((OBJECT_TYPE (MEMORY_REF (new_block, 0))) != TC_MANIFEST_NM_VECTOR)
+      || ((VECTOR_LENGTH (new_block)) != (COMPILER_UTILITIES_LENGTH - 1)))
   {
     extern void EXFUN (compiler_reset_error, (void));
 
@@ -3199,7 +3441,7 @@ DEFUN (compiler_initialize, (fasl_p), long fasl_p)
     extern SCHEME_OBJECT * EXFUN (copy_to_constant_space,
 				  (SCHEME_OBJECT *, long));
 
-    len = ((2 * TRAMPOLINE_ENTRY_SIZE) + 3);
+    len = COMPILER_UTILITIES_LENGTH;
     if (GC_Check (len))
     {
       outf_fatal ("compiler_initialize: Not enough space!\n");
@@ -3209,18 +3451,21 @@ DEFUN (compiler_initialize, (fasl_p), long fasl_p)
     block = Free;
     Free += len;
     block[0] = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, (len - 1)));
+
     tramp1 = ((instruction *) (TRAMPOLINE_ENTRY_POINT (block - 1)));
-    tramp2 = ((instruction *)
-	      (((char *) tramp1)
-	       + (TRAMPOLINE_ENTRY_SIZE * (sizeof (SCHEME_OBJECT)))));
     fill_trampoline (block, tramp1,
 		     ((format_word) FORMAT_WORD_RETURN),
 		     TRAMPOLINE_K_RETURN);
+    block[len - 2] = (((char *) tramp1) - ((char *) block));
+
+    tramp2 = ((instruction *)
+	      (((char *) tramp1)
+	       + (TRAMPOLINE_ENTRY_SIZE * (sizeof (SCHEME_OBJECT)))));
     fill_trampoline (block, tramp2,
 		     ((format_word) FORMAT_WORD_RETURN),
-		     TRAMPOLINE_K_APPLY_IN_INTERPRETER);
-    block[len - 2] = (((char *) tramp1) - ((char *) block));
+		     TRAMPOLINE_K_REFLECT_TO_INTERFACE);
     block[len - 1] = (((char *) tramp2) - ((char *) block));
+
     block = (copy_to_constant_space (block, len));
     compiler_utilities = (MAKE_CC_BLOCK (block));
     compiler_reset_internal ();
@@ -3284,7 +3529,11 @@ extern SCHEME_OBJECT
   EXFUN (compiled_closure_to_entry, (SCHEME_OBJECT entry)),
   * EXFUN (compiled_entry_to_block_address, (SCHEME_OBJECT entry)),
   EXFUN (compiled_entry_to_block, (SCHEME_OBJECT entry)),
-  EXFUN (apply_compiled_from_primitive, (int));
+  EXFUN (apply_compiled_from_primitive, (int)),
+  EXFUN (compiled_with_interrupt_mask, (unsigned long,
+					SCHEME_OBJECT,
+					unsigned long)),
+  EXFUN (compiled_with_stack_marker, (SCHEME_OBJECT));
 
 extern void
   EXFUN (compiler_reset, (SCHEME_OBJECT new_block)),
@@ -3293,6 +3542,14 @@ extern void
 	 (SCHEME_OBJECT extension, SCHEME_OBJECT block, long offset)),
   EXFUN (compiled_entry_type, (SCHEME_OBJECT entry, long *buffer)),
   EXFUN (declare_compiled_code, (SCHEME_OBJECT block));
+
+/* Breakpoint stuff. */
+
+extern SCHEME_OBJECT EXFUN (bkpt_install, (PTR));
+extern SCHEME_OBJECT EXFUN (bkpt_closure_install, (PTR));
+extern Boolean EXFUN (bkpt_p, (PTR));
+extern SCHEME_OBJECT EXFUN (bkpt_proceed, (PTR, SCHEME_OBJECT, SCHEME_OBJECT));
+extern void EXFUN (bkpt_remove, (PTR, SCHEME_OBJECT));
 
 SCHEME_OBJECT
 #ifndef WINNT
@@ -3330,6 +3587,23 @@ DEFUN (apply_compiled_from_primitive, (arity), int arity)
   /*NOTREACHED*/
 }
 
+SCHEME_OBJECT
+DEFUN (compiled_with_interrupt_mask, (old_mask, receiver, new_mask),
+       unsigned long old_mask
+       AND SCHEME_OBJECT receiver
+       AND unsigned long new_mask)
+{
+  signal_error_from_primitive (ERR_INAPPLICABLE_CONTINUATION);
+  /*NOTREACHED*/
+}
+
+SCHEME_OBJECT
+DEFUN (compiled_with_stack_marker, (thunk), SCHEME_OBJECT thunk)
+{
+  signal_error_from_primitive (ERR_INAPPLICABLE_CONTINUATION);
+  /*NOTREACHED*/
+}
+
 /* Bad entry points. */
 
 long
@@ -3360,7 +3634,7 @@ DEFUN (extract_uuo_link,
   Microcode_Termination (TERM_COMPILER_DEATH);
   /*NOTREACHED*/
 }
-
+
 void
 DEFUN (store_variable_cache,
        (extension, block, offset),
@@ -3380,7 +3654,7 @@ DEFUN (extract_variable_cache,
   Microcode_Termination (TERM_COMPILER_DEATH);
   /*NOTREACHED*/
 }
-
+
 SCHEME_OBJECT
 DEFUN (compiled_block_debugging_info,
        (block),
@@ -3560,11 +3834,44 @@ DEFUN (pc_to_builtin_index, (pc), unsigned long pc)
 {
   return (-1);
 }
+
+SCHEME_OBJECT
+DEFUN (bkpt_install, (ep), PTR ep)
+{
+  return (SHARP_F);
+}
+
+SCHEME_OBJECT
+DEFUN (bkpt_closure_install, (ep), PTR ep)
+{
+  return (SHARP_F);
+}
+
+void
+DEFUN (bkpt_remove, (ep, handle), PTR ep AND SCHEME_OBJECT handle)
+{
+  error_external_return ();
+}
+
+Boolean
+DEFUN (bkpt_p, (ep), PTR ep)
+{
+  return (SHARP_F);
+}
+
+SCHEME_OBJECT
+DEFUN (bkpt_proceed, (ep, handle, state), 
+       PTR ep AND SCHEME_OBJECT handle AND SCHEME_OBJECT state)
+{
+  error_external_return ();
+}
+
 #endif	/* HAS_COMPILER_SUPPORT */
 
 #ifdef WINNT
 #include "ntscmlib.h"
 
+extern unsigned long * winnt_catatonia_block;
 extern void EXFUN (winnt_allocate_registers, (void));
 extern void EXFUN (winnt_allocate_registers, (void));
 
@@ -3574,14 +3881,16 @@ extern void EXFUN (winnt_allocate_registers, (void));
 
 typedef struct register_storage
 {
-  /* The following two must be allocated consecutively */
+  /* The following must be allocated consecutively */
+  unsigned long catatonia_block[3];
 #if (COMPILER_PROCESSOR_TYPE == COMPILER_I386_TYPE)
   void * Regstart[32];	/* Negative byte offsets from &Registers[0] */
 #endif
   SCHEME_OBJECT Registers [REGBLOCK_LENGTH];
 } REGMEM;
 
-SCHEME_OBJECT * RegistersPtr = 0;
+SCHEME_OBJECT * RegistersPtr = ((SCHEME_OBJECT *) NULL);
+unsigned long * winnt_catatonia_block = ((unsigned long *) NULL);
 static REGMEM regmem;
 
 void
@@ -3589,6 +3898,7 @@ DEFUN_VOID (winnt_allocate_registers)
 {
   REGMEM * mem = & regmem;
 
+  winnt_catatonia_block = ((unsigned long *) &mem->catatonia_block[0]);
   RegistersPtr = mem->Registers;
   if (! (win32_lock_memory_area (mem, (sizeof (REGMEM)))))
   {
