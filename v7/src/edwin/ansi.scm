@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/ansi.scm,v 1.3 1992/05/28 18:40:37 jinx Exp $
+$Id: ansi.scm,v 1.4 1993/07/29 00:01:20 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -32,7 +32,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; Hard-coded ANSI terminal type for lack of termcap on DOS
+;;;; Hard-coded ANSI terminal type for lack of termcap on DOS/NT
 
 (declare (usual-integrations))
 
@@ -62,7 +62,8 @@ MIT in each case. |#
 
   (let ((foregnd (get-numstring "FOREGROUND"))
 	(backgnd (get-numstring "BACKGROUND")))
-    (let ((normal
+    (let ((full? (not (eq? (intern microcode-id/operating-system-name) "dos")))
+	  (normal
 	   (string-append "\033[0"
 			  (make-mode foregnd)
 			  (make-mode backgnd)
@@ -82,8 +83,8 @@ MIT in each case. |#
        "ansi.sys"		        ; terminal-type-name
        false				; delete-is-insert-mode?
        false				; enter/exit-standout-mode-same?
-       false ;"\033[P"			; insert/delete-char-ok?
-       false ;"\033[M"			; insert/delete-line-ok?
+       (and full? "\033[P")		; insert/delete-char-ok?
+       (and full? "\033[M")		; insert/delete-line-ok?
        false				; scroll-region-ok?
        #t				; tf-automatic-wrap
        false				; tf-cursor-backwards-wrap
@@ -109,7 +110,7 @@ MIT in each case. |#
        false				; tn-standout-marker-width
        columns				; tn-x-size
        lines				; tn-y-size
-       "\a"					; ts-audible-bell
+       "\a"				; ts-audible-bell
        "\033[K"				; ts-clear-line
        false				; ts-clear-multi-char
        "\033[H\033[J"			; ts-clear-screen
@@ -123,14 +124,14 @@ MIT in each case. |#
        "\033[%i%d;%dH"			; ts-cursor-move
        false				; ts-cursor-move-x
        "\033[C"				; ts-cursor-right
-       false				; ts-cursor-right-multi
+       (and full? "\033[%dC")		; ts-cursor-right-multi
        "\033[A"				; ts-cursor-up
-       false				; ts-cursor-up-multi
+       (and full? "\033[%dA")		; ts-cursor-up-multi
        "\033[H"				; ts-cursor-upper-left
-       false ;"\033[P"			; ts-delete-char
-       false ;"\033[M"			; ts-delete-line
-       false				; ts-delete-multi-char
-       false				; ts-delete-multi-line
+       (and full? "\033[P")		; ts-delete-char
+       (and full? "\033[M")		; ts-delete-line
+       (and full? "\033[%dP")		; ts-delete-multi-char
+       (and full? "\033[%dM")		; ts-delete-multi-line
        false				; ts-enhance-cursor
        false				; ts-enter-delete-mode
        false ;"\033[4h"			; ts-enter-insert-mode
@@ -140,12 +141,12 @@ MIT in each case. |#
        false ;"\033[4l"			; ts-exit-insert-mode
        normal;"\033[0m"			; ts-exit-standout-mode
        false				; ts-exit-termcap-mode
-       "\n"					; ts-forward-scroll
+       "\n"				; ts-forward-scroll
        false				; ts-forward-scroll-multi
-       false ;"\033[@"			; ts-insert-char
-       false ;"\033[L"			; ts-insert-line
-       false ;"\033[%d@"			; ts-insert-multi-char
-       false				; ts-insert-multi-line
+       (and full? "\033[@")		; ts-insert-char
+       (and full? "\033[L")		; ts-insert-line
+       (and full? "\033[%d@")		; ts-insert-multi-char
+       (and full? "\033[%dL")		; ts-insert-multi-line
        false				; ts-invisible-cursor
        false				; ts-normal-cursor
        false				; ts-pad-char
@@ -157,5 +158,3 @@ MIT in each case. |#
        false				; ts-set-window
        false				; ts-visible-bell
        ))))
-
-
