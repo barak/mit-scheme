@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: intmod.scm,v 1.107 1999/12/20 23:18:28 cph Exp $
+;;; $Id: intmod.scm,v 1.108 1999/12/22 20:33:07 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -625,7 +625,8 @@ If this is an error, the debugger examines the error condition."
   (lambda ()
     (let ((start
 	   (let ((start (ref-variable comint-last-input-end)))
-	     (if (eqv? #\newline (extract-right-char start))
+	     (if (and (not (line-start? start))
+		      (eqv? #\newline (extract-right-char start)))
 		 (mark1+ start)
 		 start)))
 	  (end (port/mark (buffer-interface-port (selected-buffer) #t))))
