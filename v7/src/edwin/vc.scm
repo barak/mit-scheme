@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.32 2000/03/10 20:52:25 cph Exp $
+;;; $Id: vc.scm,v 1.33 2000/03/10 22:23:26 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -299,6 +299,7 @@ lock steals will raise an error.
 	     (do-it))
 	    ((cleanup-pop-up-buffers
 	      (lambda ()
+		(vc-backend-diff master #f #f #f)
 		(let ((diff-buffer (get-vc-command-buffer)))
 		  (insert-string
 		   (string-append "Changes to "
@@ -422,7 +423,7 @@ files in or below it."
 	(rev2 (vc-normalize-version rev2)))
     (let ((rev1 (if (or rev1 rev2) rev1 (vc-workfile-version master))))
       (if (and (or rev1 rev2 (not (vc-workfile-modified? master)))
-	       (= 0 (vc-backend-diff master rev1 rev2 #f)))
+	       (= 0 (vc-backend-diff master rev1 rev2 #t)))
 	  (begin
 	    (message "No changes to "
 		     (vc-workfile-string master)
@@ -433,6 +434,7 @@ files in or below it."
 		     ".")
 	    #t)
 	  (begin
+	    (vc-backend-diff master rev1 rev2 #f)
 	    (pop-up-vc-command-buffer #t)
 	    #f)))))
 
