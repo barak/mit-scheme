@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: urtrap.scm,v 14.10 2001/12/22 03:17:25 cph Exp $
+$Id: urtrap.scm,v 14.11 2002/01/07 04:26:29 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		    (standard-unparser-method 'REFERENCE-TRAP
 		      (lambda (trap port)
 			(write-char #\space port)
-			(write (reference-trap-kind trap) port)))))
+			(write (reference-trap-kind-name trap) port)))))
   (kind #f read-only #t)
   (extra #f read-only #t))
 
