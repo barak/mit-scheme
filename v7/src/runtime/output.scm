@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 13.45 1987/06/17 21:01:17 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 13.46 1987/06/17 21:03:20 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -327,8 +327,8 @@
        (if (and (not (future? object))
 		(string? object))
 	   ((access :write-string port) object)
-	   ((access unparse-object unparser-package) object port false)
-	   ((access :flush-output port))))))
+	   ((access unparse-object unparser-package) object port false))
+       ((access :flush-output port)))))
   (set! write
     (make-unparser
      (lambda (object port)
