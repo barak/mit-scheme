@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/utabs.scm,v 13.45 1987/04/15 05:07:31 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/utabs.scm,v 13.46 1987/04/29 15:41:59 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -63,6 +63,8 @@
 (define microcode-termination)
 (define microcode-termination-name)
 
+(define number-of-internal-primitive-procedures)
+(define number-of-external-primitive-procedures)
 (define make-primitive-procedure)
 (define primitive-procedure?)
 (define primitive-procedure-name)
@@ -322,6 +324,10 @@
   (set! primitives-slot
 	(fixed-objects-vector-slot 'MICROCODE-PRIMITIVES-VECTOR))
   (set! primitive-type-code (microcode-type 'PRIMITIVE))
+  (set! number-of-internal-primitive-procedures
+	(vector-length (vector-ref fixed-objects primitives-slot)))
+  (set! number-of-external-primitive-procedures
+	(car (get-external-counts)))
 
   (set! external-type-code (microcode-type 'PRIMITIVE-EXTERNAL))
 
