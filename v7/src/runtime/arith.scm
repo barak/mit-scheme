@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.6 1989/10/31 03:35:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.7 1989/10/31 05:06:08 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -144,19 +144,12 @@ MIT in each case. |#
       (set-trampoline! 'GENERIC-TRAMPOLINE-MULTIPLY complex:*)
       (set-trampoline! 'GENERIC-TRAMPOLINE-DIVIDE complex:/))))
 
-(define flo:epsilon)
-(define flo:1+epsilon)
-(define flo:1-epsilon)
 (define flo:significand-digits-base-2)
 (define flo:significand-digits-base-10)
 (define int:flonum-integer-limit)
 
 (define (initialize-microcode-dependencies!)
-  (let ((p microcode-id/floating-mantissa-bits)
-	(e microcode-id/floating-epsilon))
-    (set! flo:epsilon e)
-    (set! flo:1+epsilon (flo:+ flo:1 e))
-    (set! flo:1-epsilon (flo:- flo:1 e))
+  (let ((p microcode-id/floating-mantissa-bits))
     (set! flo:significand-digits-base-2 p)
     ;; Add two here because first and last digits may be
     ;; "partial" in the sense that each represents less than the
@@ -665,6 +658,9 @@ MIT in each case. |#
 (define (flo:integer? x)
   (flo:= x (flo:round x)))
 
+(define (flo:rationalize x e)
+  (flo:simplest-rational (flo:- x e) (flo:+ x e)))
+
 (define (flo:simplest-rational x y)
   ;; See comments at `rat:simplest-rational'.
   (let ((x<y
@@ -687,6 +683,9 @@ MIT in each case. |#
 	  ((flo:< y x) (x<y y x))
 	  (else x))))
 
+(define (flo:rationalize->exact x e)
+  (flo:simplest-exact-rational (flo:- x e) (flo:+ x e)))
+
 (define (flo:simplest-exact-rational x y)
   ;; See comments at `rat:simplest-rational'.
   (let ((x<y
@@ -708,18 +707,15 @@ MIT in each case. |#
 		 (else 0)))))
     (cond ((flo:< x y) (x<y x y))
 	  ((flo:< y x) (x<y y x))
-	  ((flo:integer? x) (flo:->integer x))
 	  (else (flo:->rational x)))))
 
 (define (flo:->rational x)
-  (flo:simplest-exact-rational (flo:* x flo:1-epsilon)
-			       (flo:* x flo:1+epsilon)))
-
-(define (flo:rationalize x e)
-  (flo:simplest-rational (flo:- x e) (flo:+ x e)))
-
-(define (flo:rationalize->exact x e)
-  (flo:simplest-exact-rational (flo:- x e) (flo:+ x e)))
+  (with-values (lambda () (flo:normalize x))
+    (lambda (f e-p)
+      (let ((p flo:significand-digits-base-2))
+	(rat:* (flo:->integer (flo:denormalize f p))
+	       (rat:expt 2 (int:- e-p p)))))))
+
 (define (real:real? object)
   (or (flonum? object)
       (rat:rational? object)))
