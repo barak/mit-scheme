@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infnew.scm,v 1.6 1995/07/27 14:15:46 adams Exp $
+$Id: infnew.scm,v 1.7 1995/07/28 15:56:55 adams Exp $
 
 Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
@@ -177,8 +177,8 @@ MIT in each case. |#
 	 (test eq? new-dbg-block/procedure)))
   (define (merge-blocks block)
     (let loop ((b block) (depth 0))
-      (cond ((> depth 100)
-	     (bkpt ";; Blocks too deep"))
+      (cond ((> depth 1000)
+	     (internal-error "Block structure too deep" b depth))
 	    ((new-dbg-block? b)
 	     (loop (new-dbg-block/parent b) (+ 1 depth)))
 	    (else 'ok)))
