@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: char.c,v 9.30 1993/06/24 07:07:11 gjr Exp $
+$Id: char.c,v 9.31 1997/10/15 01:17:07 adams Exp $
 
 Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
@@ -54,6 +54,12 @@ long
 DEFUN (arg_ascii_integer, (n), int n)
 {
   return (arg_index_integer (n, MAX_ASCII));
+}
+
+DEFINE_PRIMITIVE ("CHAR?", Prim_char_p, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (CHARACTER_P (arg_ref (1))));
 }
 
 DEFINE_PRIMITIVE ("MAKE-CHAR", Prim_make_char, 2, 2, 0)
