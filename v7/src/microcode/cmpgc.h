@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpgc.h,v 1.25 1993/11/09 08:31:11 gjr Exp $
+$Id: cmpgc.h,v 1.26 1993/11/22 00:33:04 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -415,9 +415,13 @@ typedef unsigned short format_word;
   ((GC_NO_COMPILER_STMT ()), (value_type 0))
 
 #define RELOCATE_COMPILED(obj, nb, ob) (GC_NO_COMPILER_EXPR ((SCHEME_OBJECT)))
+#define RELOCATE_COMPILED_RAW_ADDRESS(ad,nb,ob)				\
+  (GC_NO_COMPILER_EXPR ((SCHEME_OBJECT)))
 
 #define Transport_Compiled() (GC_NO_COMPILER_STMT ())
+#define TRANSPORT_RAW_COMPILED() (GC_NO_COMPILER_STMT ())
 #define Compiled_BH(flag, then_what) (GC_NO_COMPILER_STMT ())
+#define RAW_COMPILED_BH(flag, then_what) (GC_NO_COMPILER_STMT ())
 #define Get_Compiled_Block(var, address) (GC_NO_COMPILER_STMT ())
 
 #define FIRST_MANIFEST_CLOSURE_ENTRY(scan)				\
