@@ -1,6 +1,6 @@
-# $Id: Makefile.in.in,v 1.22 2003/02/14 18:28:31 cph Exp $
+# $Id: Makefile.in.in,v 1.23 2003/07/21 03:52:08 cph Exp $
 #
-# Copyright (c) 2000-2002 Massachusetts Institute of Technology
+# Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -244,6 +244,12 @@ prmhash.so: prmhash.o
 prmcrypt.so: prmcrypt.o
 	$(LINK_MODULE) $^ -lmcrypt -lltdl $(MODULE_LIBS)
 
+prgdbm.so: prgdbm.o
+	$(LINK_MODULE) $^ -lgdbm $(MODULE_LIBS)
+
+prpgsql.so: prpgsql.o
+	$(LINK_MODULE) $^ -lpq $(MODULE_LIBS)
+
 @MODULE_RULES@
 
 tags: TAGS
@@ -261,6 +267,7 @@ distclean: clean
 
 maintainer-clean: distclean
 	-rm -f $(MAINTAINER_CLEAN_FILES)
+	-rm -rf autom4te.cache
 	( cd cmpauxmd && $(MAKE) $@ )
 
 install: install-binPROGRAMS install-auxPROGRAMS install-auxLIBS \
