@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.20 1989/09/13 20:44:32 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.21 1989/09/15 17:05:22 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -716,16 +716,23 @@ MIT in each case. |#
 	   ((COMPILE)
 	    (if (not (scode/quotation? expression))
 		(error "Bad compile directive" comment))
-	    (continue/rvalue-constant block continuation
-				      (make-constant
-				       (compile-recursively
-					(scode/quotation-expression expression)
-					false))))
-	   ((COMPILE-PROCEDURE)
+	    (continue/rvalue-constant
+	     block continuation
+	     (make-constant
+	      ;; This is a temporary kludge to fix a problem with the
+	      ;; next case.
+	      (fluid-let ((compiler:compile-by-procedures? false))
+		(compile-recursively
+		 (scode/quotation-expression expression)
+		 false)))))	   ((COMPILE-PROCEDURE)
 	    (if (not (scode/lambda? expression))
 		(error "Bad compile-procedure directive" comment))
-	    (continue/rvalue-constant block continuation
-	     (make-constant (compile-recursively expression true))))	   ((ENCLOSE)
+	    (if compiler:compile-by-procedures?
+		(continue/rvalue-constant
+		 block continuation
+		 (make-constant (compile-recursively expression true)))
+		(generate/expression block continuation expression)))
+	   ((ENCLOSE)
 	    (generate/enclose block continuation expression))
 	   (else
 	    (warn "generate/comment: Unknown directive" (cadr text) comment)
