@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ymkfile,v 1.94 1999/01/02 06:11:34 cph Exp $
+$Id: ymkfile,v 1.95 1999/05/11 03:34:14 cph Exp $
 
 Copyright (c) 1989-1999 Massachusetts Institute of Technology
 
@@ -753,7 +753,7 @@ char.o string.o dfloat.o : scheme.tch prims.h
 tterm.o : scheme.tch prims.h osterm.h
 
 boot.o : scheme.tch prims.h version.h option.h ostop.h os.h
-option.o : ansidecl.h obstack.h config.h osenv.h
+option.o : scheme.tch fasl.h osenv.h osfs.h
 term.o : scheme.tch
 missing.o : config.h
 

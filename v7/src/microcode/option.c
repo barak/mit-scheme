@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: option.c,v 1.48 1999/01/02 06:11:34 cph Exp $
+$Id: option.c,v 1.49 1999/05/11 03:34:08 cph Exp $
 
 Copyright (c) 1990-1999 Massachusetts Institute of Technology
 
@@ -22,10 +22,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 /* Command-line option processing */
 
 #include <ctype.h>
-#include "ansidecl.h"
-#include "obstack.h"
-#include "outf.h"
-#include "config.h"
+#include "scheme.h"
+#include "fasl.h"
 #include "osenv.h"
 #include "osfs.h"
 #include <sys/stat.h>
@@ -319,6 +317,14 @@ The following options are only meaningful to bchscheme:
 #define EDWIN_DEFAULT_BAND "edwin.com"
 #endif
 
+#ifndef ALL_BAND_VARIABLE
+#define ALL_BAND_VARIABLE "MITSCHEME_ALL_BAND"
+#endif
+
+#ifndef ALL_DEFAULT_BAND
+#define ALL_DEFAULT_BAND "all.com"
+#endif
+
 #ifndef UTABMD_FILE_VARIABLE
 #define UTABMD_FILE_VARIABLE "MITSCHEME_UTABMD_FILE"
 #endif
@@ -359,15 +365,11 @@ The following options are only meaningful to bchscheme:
 /* 386 code is large too! */
 
 #ifndef DEFAULT_SMALL_CONSTANT
-#define DEFAULT_SMALL_CONSTANT 500
+#define DEFAULT_SMALL_CONSTANT 600
 #endif
 
 #ifndef DEFAULT_LARGE_CONSTANT
-#define DEFAULT_LARGE_CONSTANT 1100
-#endif
-
-#ifndef DEFAULT_EDWIN_CONSTANT
-#define DEFAULT_EDWIN_CONSTANT 855
+#define DEFAULT_LARGE_CONSTANT 1200
 #endif
 
 #endif /* i386 */
@@ -408,10 +410,6 @@ The following options are only meaningful to bchscheme:
 
 #ifndef DEFAULT_LARGE_CONSTANT
 #define DEFAULT_LARGE_CONSTANT 1000
-#endif
-
-#ifndef DEFAULT_EDWIN_CONSTANT
-#define DEFAULT_EDWIN_CONSTANT DEFAULT_LARGE_CONSTANT
 #endif
 
 #ifndef LARGE_CONSTANT_VARIABLE
@@ -1012,6 +1010,34 @@ DEFUN (conflicting_options, (option1, option2),
   termination_init_error ();
 }
 
+#define SCHEME_WORDS_TO_BLOCKS(n) (((n) + 1023) / 1024)
+
+static int
+DEFUN (read_band_sizes, (filename, constant_size, heap_size),
+       CONST char * filename AND
+       unsigned long * constant_size AND
+       unsigned long * heap_size)
+{
+  SCHEME_OBJECT header [FASL_HEADER_LENGTH];
+  FILE * stream = (fopen (filename, "r"));
+  if (stream == 0)
+    return (0);
+  if ((fread ((&header), (sizeof (SCHEME_OBJECT)), FASL_HEADER_LENGTH, stream))
+      != FASL_HEADER_LENGTH)
+    {
+      fclose (stream);
+      return (0);
+    }
+  fclose (stream);
+  (*constant_size)
+    = (SCHEME_WORDS_TO_BLOCKS
+       (OBJECT_DATUM (header [FASL_Offset_Const_Count])));
+  (*heap_size)
+    = (SCHEME_WORDS_TO_BLOCKS
+       (OBJECT_DATUM (header [FASL_Offset_Heap_Count])));
+  return (1);
+}
+
 static void
 DEFUN (describe_boolean_option, (name, value),
        CONST char * name AND
@@ -1118,6 +1144,10 @@ DEFUN (read_command_line_options, (argc, argv),
        int argc AND
        CONST char ** argv)
 {
+  int band_sizes_valid = 0;
+  unsigned long band_constant_size;
+  unsigned long band_heap_size;
+
   parse_standard_options (argc, argv);
   if (option_library_path != 0)
     free_parsed_path (option_library_path);
@@ -1134,21 +1164,28 @@ DEFUN (read_command_line_options, (argc, argv),
       xfree (option_band_file);
 #ifdef HAS_COMPILER_SUPPORT
     if (option_compiler_defaults)
-      {
-	if (option_edwin_defaults)
-	  conflicting_options ("-compiler", "-edwin");
-	option_large_sizes = 1;
-	option_band_specified = 1;
-	band_variable = COMPILER_BAND_VARIABLE;
-	default_band = COMPILER_DEFAULT_BAND;
-      }
-    else if (option_edwin_defaults)
-      {
-	option_large_sizes = 1;
-	option_band_specified = 1;
-	band_variable = EDWIN_BAND_VARIABLE;
-	default_band = EDWIN_DEFAULT_BAND;
-      }
+      if (option_edwin_defaults)
+	{
+	  option_large_sizes = 1;
+	  option_band_specified = 1;
+	  band_variable = ALL_BAND_VARIABLE;
+	  default_band = ALL_DEFAULT_BAND;
+	}
+      else
+	{
+	  option_large_sizes = 1;
+	  option_band_specified = 1;
+	  band_variable = COMPILER_BAND_VARIABLE;
+	  default_band = COMPILER_DEFAULT_BAND;
+	}
+    else
+      if (option_edwin_defaults)
+	{
+	  option_large_sizes = 1;
+	  option_band_specified = 1;
+	  band_variable = EDWIN_BAND_VARIABLE;
+	  default_band = EDWIN_DEFAULT_BAND;
+	}
 #endif
     if (option_fasl_file != 0)
       {
@@ -1178,50 +1215,41 @@ DEFUN (read_command_line_options, (argc, argv),
 				     1));
       }
   }
-  if (option_large_sizes)
-    {
-      option_heap_size =
-	(standard_numeric_option ("-heap",
-				  option_raw_heap,
-				  LARGE_HEAP_VARIABLE,
-				  DEFAULT_LARGE_HEAP));
-      option_constant_size =
-	(standard_numeric_option ("-constant",
-				  option_raw_constant,
-				  LARGE_CONSTANT_VARIABLE,
-#ifdef HAS_COMPILER_SUPPORT
-				  (option_edwin_defaults
-				   ? DEFAULT_EDWIN_CONSTANT
-				   : DEFAULT_LARGE_CONSTANT)
-#else
-				  DEFAULT_LARGE_CONSTANT
-#endif
-				  ));
-
-      option_stack_size =
-	(standard_numeric_option ("-stack",
-				  option_raw_stack,
-				  LARGE_STACK_VARIABLE,
-				  DEFAULT_LARGE_STACK));
-    }
-  else
-    {
-      option_heap_size =
-	(standard_numeric_option ("-heap",
-				  option_raw_heap,
-				  SMALL_HEAP_VARIABLE,
-				  DEFAULT_SMALL_HEAP));
-      option_constant_size =
-	(standard_numeric_option ("-constant",
-				  option_raw_constant,
-				  SMALL_CONSTANT_VARIABLE,
-				  DEFAULT_SMALL_CONSTANT));
-      option_stack_size =
-	(standard_numeric_option ("-stack",
-				  option_raw_stack,
-				  SMALL_STACK_VARIABLE,
-				  DEFAULT_SMALL_STACK));
-    }
+  if (option_band_file != 0)
+    band_sizes_valid
+      = (read_band_sizes (option_band_file,
+			  (&band_constant_size),
+			  (&band_heap_size)));
+  option_heap_size
+    = ((standard_numeric_option ("-heap",
+				 option_raw_heap,
+				 (option_large_sizes
+				  ? LARGE_HEAP_VARIABLE
+				  : SMALL_HEAP_VARIABLE),
+				 (option_large_sizes
+				  ? DEFAULT_LARGE_HEAP
+				  : DEFAULT_SMALL_HEAP)))
+       + (band_sizes_valid ? band_heap_size : 0));
+  option_constant_size
+    = (standard_numeric_option ("-constant",
+				option_raw_constant,
+				(option_large_sizes
+				 ? LARGE_CONSTANT_VARIABLE
+				 : SMALL_CONSTANT_VARIABLE),
+				(band_sizes_valid
+				 ? band_constant_size
+				 : option_large_sizes
+				 ? DEFAULT_LARGE_CONSTANT
+				 : DEFAULT_SMALL_CONSTANT)));
+  option_stack_size
+    = (standard_numeric_option ("-stack",
+				option_raw_stack,
+				(option_large_sizes
+				 ? LARGE_STACK_VARIABLE
+				 : SMALL_STACK_VARIABLE),
+				(option_large_sizes
+				 ? DEFAULT_LARGE_STACK
+				 : DEFAULT_SMALL_STACK)));
   if (option_utabmd_file != 0)
     xfree (option_utabmd_file);
   if (option_raw_utabmd != 0)
@@ -1253,15 +1281,31 @@ DEFUN (read_command_line_options, (argc, argv),
       option_gc_file = option_raw_gc_file;
   }
 
-  option_gc_directory =
-    (string_option
-     (option_gc_directory,
-      environment_default
-      (GC_DIRECTORY_VARIABLE,
-       environment_default ("TEMP",
-			    environment_default ("TMP",
-						 DEFAULT_GC_DIRECTORY)))));
-
+  {
+    CONST char * dir = (environment_default (GC_DIRECTORY_VARIABLE, 0));
+    if ((dir == 0) || (!OS_file_directory_p (dir)))
+      dir = (environment_default ("TMPDIR", 0));
+    if ((dir == 0) || (!OS_file_directory_p (dir)))
+      dir = (environment_default ("TEMP", 0));
+    if ((dir == 0) || (!OS_file_directory_p (dir)))
+      dir = (environment_default ("TMP", 0));
+    if ((dir == 0) || (!OS_file_directory_p (dir)))
+      dir = (environment_default ("TMP", 0));
+#ifdef _UNIX
+    if ((dir == 0) || (!OS_file_directory_p (dir)))
+      {
+	if (OS_file_directory_p ("/var/tmp"))
+	  dir = "/var/tmp";
+	if (OS_file_directory_p ("/usr/tmp"))
+	  dir = "/usr/tmp";
+	if (OS_file_directory_p ("/tmp"))
+	  dir = "/tmp";
+      }
+#endif /* _UNIX */
+    if ((dir == 0) || (!OS_file_directory_p (dir)))
+      dir = DEFAULT_GC_DIRECTORY;
+    option_gc_directory = (string_option (option_gc_directory, dir));
+  }
   option_gc_drone =
     (standard_filename_option ("-gc-drone",
 			       option_gc_drone,
