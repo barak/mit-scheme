@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpintmd/hppa.h,v 1.13 1990/08/08 20:20:40 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpintmd/hppa.h,v 1.14 1990/08/08 20:28:21 jinx Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -261,7 +261,7 @@ flush_i_cache_initialize ()
 
   if ((uname (&sysinfo)) < 0)
   {
-    fprintf (stderr, "\n: flush_i_cache: uname failed.\n");
+    fprintf (stderr, "\nflush_i_cache: uname failed.\n");
     return (-1);
   }
     
@@ -274,7 +274,7 @@ flush_i_cache_initialize ()
   fd = (open ((&filename[0]), O_RDONLY));
   if (fd < 0)
   {
-    fprintf (stderr, "\n: flush_i_cache: open (%s) failed.\n",
+    fprintf (stderr, "\nflush_i_cache: open (%s) failed.\n",
 	     (&filename[0]));
     return (-1);
   }
@@ -286,7 +286,7 @@ flush_i_cache_initialize ()
 
   if (read_result != (sizeof (struct pdc_cache_dump)))
   {
-    fprintf (stderr, "\n: flush_i_cache: read (%s) failed.\n",
+    fprintf (stderr, "\nflush_i_cache: read (%s) failed.\n",
 	     (&filename[0]));
     return (-1);
   }
@@ -294,7 +294,7 @@ flush_i_cache_initialize ()
   if ((strcmp (sysinfo.machine, cache_info.hardware)) != 0)
   {
     fprintf (stderr,
-	     "\n: flush_i_cache: information in %s does not match hardware.\n",
+	     "\nflush_i_cache: information in %s does not match hardware.\n",
 	     (&filename[0]));
     return (-1);
   }
