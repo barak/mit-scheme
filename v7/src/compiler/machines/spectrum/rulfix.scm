@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulfix.scm,v 4.40 1992/08/05 15:24:36 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulfix.scm,v 4.41 1992/08/19 13:25:46 jinx Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -656,7 +656,7 @@ MIT in each case. |#
   fixnum-methods/2-args/register*constant
   (lambda (constant ovflw?)
     ovflw?				; ignored
-    (integer-log-base-2? factor))
+    (integer-log-base-2? (abs constant)))
   (lambda (tgt src constant ovflw?)
     (guarantee-signed-fixnum constant)
     (case constant
@@ -703,8 +703,10 @@ MIT in each case. |#
 			     (LAP (SUB () 0 ,tgt ,tgt))
 			     (LAP))
 		       ,@(if ovflw?
-			     (DEP (TR) 0 31 ,scheme-type-width ,tgt)
-			     (DEP () 0 31 ,scheme-type-width ,tgt)))))))))))
+			     (LAP
+			      (DEP (TR) 0 31 ,scheme-type-width ,tgt))
+			     (LAP
+			      (DEP () 0 31 ,scheme-type-width ,tgt))))))))))))
 
 (define-arithconst-method 'FIXNUM-REMAINDER
   fixnum-methods/2-args/register*constant
