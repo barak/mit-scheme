@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sendmail.scm,v 1.50 2000/06/08 20:56:46 cph Exp $
+;;; $Id: sendmail.scm,v 1.51 2000/06/08 20:57:13 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
@@ -536,7 +536,7 @@ Here are commands that move to a header field (and create it if there isn't):
 	(mail-insert-field header-end field))))
 
 (define (mail-insert-field-value! header-start header-end field value)
-  (insert-string value (mail-new-field! start header-end field)))
+  (insert-string value (mail-new-field! header-start header-end field)))
 
 (define-command mail-signature
   "Sign letter with contents of ~/.signature file."
