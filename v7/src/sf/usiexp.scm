@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 4.30 1993/12/22 14:50:37 adams Exp $
+$Id: usiexp.scm,v 4.31 1993/12/22 14:59:09 adams Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -39,6 +39,7 @@ MIT in each case. |#
 	 (integrate-external "object"))
 
 ;;;; Fixed-arity arithmetic primitives
+
 
 (define (make-combination expression block primitive operands)
   (combination/make (and expression
