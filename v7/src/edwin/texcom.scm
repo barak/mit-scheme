@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: texcom.scm,v 1.44 2000/02/29 03:59:11 cph Exp $
+;;; $Id: texcom.scm,v 1.45 2000/03/02 05:31:10 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -26,6 +26,7 @@
   "Major mode for editing english text."
   (lambda (buffer)
     (local-set-variable! syntax-table text-mode:syntax-table buffer)
+    (standard-alternate-paragraph-style! buffer)
     (local-set-variable! local-abbrev-table
 			 (ref-variable text-mode-abbrev-table buffer)
 			 buffer)

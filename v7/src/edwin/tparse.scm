@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: tparse.scm,v 1.71 1999/01/02 06:11:34 cph Exp $
+;;; $Id: tparse.scm,v 1.72 2000/03/02 05:32:01 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -87,7 +87,7 @@ If you change this, you may have to change paragraph-start also."
 (define-variable paragraph-ignore-fill-prefix
   "True means the paragraph commands are not affected by fill-prefix.
 This is desirable in modes where blank lines are the paragraph delimiters."
-  false
+  #f
   boolean?)
 
 (define-integrable (mark/paragraph-start mark)
@@ -98,8 +98,14 @@ This is desirable in modes where blank lines are the paragraph delimiters."
 
 (define (mark/paragraph-fill-prefix mark)
   (if (mark-local-ref mark (ref-variable-object paragraph-ignore-fill-prefix))
-      false
+      #f
       (mark-local-ref mark (ref-variable-object fill-prefix))))
+
+(define (standard-alternate-paragraph-style! buffer)
+  (let ((regexp
+	 (string-append "^[ \t]*$\\|" (ref-variable page-delimiter buffer))))
+    (local-set-variable! paragraph-start regexp buffer)
+    (local-set-variable! paragraph-separate regexp buffer)))
 
 (define (forward-one-paragraph mark #!optional limit fill-prefix)
   (let ((limit
@@ -126,16 +132,16 @@ This is desirable in modes where blank lines are the paragraph delimiters."
 	   (let ((separator?
 		  (if fill-prefix
 		      (lambda (ls)
-			(let ((fp (match-forward fill-prefix ls end false)))
+			(let ((fp (match-forward fill-prefix ls end #f)))
 			  (if fp
-			      (re-match-forward "[ \t]*$" fp end false)
-			      true)))
+			      (re-match-forward "[ \t]*$" fp end #f)
+			      #t)))
 		      (lambda (ls)
-			(re-match-forward para-separate ls end false)))))
+			(re-match-forward para-separate ls end #f)))))
 	     (letrec
 		 ((skip-separators
 		   (lambda (ls)
-		     (cond ((mark= ls limit) false)
+		     (cond ((mark= ls limit) #f)
 			   ((separator? ls) (skip-separators (next-ls ls)))
 			   (else (skip-body ls)))))
 		  (skip-body
@@ -149,8 +155,7 @@ This is desirable in modes where blank lines are the paragraph delimiters."
 		       (lambda (ls)
 			 (let ((le (line-end ls 0)))
 			   (if (and (mark< le limit)
-				    (re-search-forward para-start le limit
-						       false))
+				    (re-search-forward para-start le limit #f))
 			       (re-match-start 0)
 			       limit))))))
 	       (if (separator? (line-start mark 0))
@@ -181,12 +186,12 @@ This is desirable in modes where blank lines are the paragraph delimiters."
       (let ((separator?
 	     (if fill-prefix
 		 (lambda (ls)
-		   (let ((fp (match-forward fill-prefix ls end false)))
+		   (let ((fp (match-forward fill-prefix ls end #f)))
 		     (if fp
-			 (re-match-forward "[ \t]*$" fp end false)
-			 true)))
+			 (re-match-forward "[ \t]*$" fp end #f)
+			 #t)))
 		 (lambda (ls)
-		   (re-match-forward para-separate ls end false)))))
+		   (re-match-forward para-separate ls end #f)))))
 	(letrec ((skip-separators
 		  (lambda (ls)
 		    (and (mark< limit ls)
@@ -206,7 +211,7 @@ This is desirable in modes where blank lines are the paragraph delimiters."
 			       (re-search-backward para-start
 						   (line-end ls 0)
 						   limit
-						   false)))
+						   #f)))
 			  (cond ((not ps)
 				 limit)
 				((separator? ps)
@@ -253,12 +258,12 @@ This is desirable in modes where blank lines are the paragraph delimiters."
       (let ((separator?
 	     (if fill-prefix
 		 (lambda (ls)
-		   (let ((fp (match-forward fill-prefix ls end false)))
+		   (let ((fp (match-forward fill-prefix ls end #f)))
 		     (if fp
-			 (re-match-forward "[ \t]*$" fp end false)
-			 true)))
+			 (re-match-forward "[ \t]*$" fp end #f)
+			 #t)))
 		 (lambda (ls)
-		   (re-match-forward para-separate ls end false)))))
+		   (re-match-forward para-separate ls end #f)))))
 	(letrec ((skip-separators
 		  (lambda (ls)
 		    (cond ((not (separator? ls)) (skip-body ls))
@@ -278,7 +283,7 @@ This is desirable in modes where blank lines are the paragraph delimiters."
 			       (re-search-backward para-start
 						   (line-end ls 0)
 						   start
-						   false)))
+						   #f)))
 			  (cond ((not ps) start)
 				((separator? ps) (line-start ps 1))
 				(else ps)))))))
@@ -298,21 +303,18 @@ This is desirable in modes where blank lines are the paragraph delimiters."
       (let ((separator?
 	     (if fill-prefix
 		 (lambda (ls)
-		   (let ((fp (match-forward fill-prefix ls end false)))
+		   (let ((fp (match-forward fill-prefix ls end #f)))
 		     (if fp
-			 (re-match-forward "[ \t]*$" fp end false)
-			 true)))
+			 (re-match-forward "[ \t]*$" fp end #f)
+			 #t)))
 		 (lambda (ls)
-		   (re-match-forward para-separate ls end false)))))
+		   (re-match-forward para-separate ls end #f)))))
 	(letrec
 	    ((skip-separators
 	      (lambda (ls)
-		(cond ((mark= ls end)
-		       false)
-		      ((separator? ls)
-		       (skip-separators (next-ls ls)))
-		      (else
-		       (skip-body ls)))))
+		(cond ((mark= ls end) #f)
+		      ((separator? ls) (skip-separators (next-ls ls)))
+		      (else (skip-body ls)))))
 	     (skip-body
 	      (if fill-prefix
 		  (lambda (ls)
@@ -326,8 +328,7 @@ This is desirable in modes where blank lines are the paragraph delimiters."
 		    (finish
 		     (let ((le (line-end ls 0)))
 		       (if (and (mark< le end)
-				(re-search-forward para-start le end
-						   false))
+				(re-search-forward para-start le end #f))
 			   (re-match-start 0)
 			   end))))))
 	     (finish
@@ -363,7 +364,7 @@ All paragraph boundaries also end sentences, regardless."
 			      mark
 			      (or para-end (group-end mark)))))
       (if mark
-	  (skip-chars-backward " \t\n" mark (re-match-start 0) false)
+	  (skip-chars-backward " \t\n" mark (re-match-start 0) #f)
 	  para-end))))
 
 (define (backward-one-sentence mark)

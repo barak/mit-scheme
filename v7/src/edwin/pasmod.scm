@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: pasmod.scm,v 1.49 2000/02/29 02:47:51 cph Exp $
+;;; $Id: pasmod.scm,v 1.50 2000/03/02 05:31:51 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -43,9 +43,7 @@
     (local-set-variable! comment-indent-hook pascal-comment-indentation buffer)
     (local-set-variable! comment-start "(* " buffer)
     (local-set-variable! comment-end " *)" buffer)
-    (let ((paragraph-start "^$"))
-      (local-set-variable! paragraph-start paragraph-start buffer)
-      (local-set-variable! paragraph-separate paragraph-start buffer))
+    (standard-alternate-paragraph-style! buffer)
     (local-set-variable! local-abbrev-table
 			 (ref-variable pascal-mode-abbrev-table buffer)
 			 buffer)

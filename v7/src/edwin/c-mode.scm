@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: c-mode.scm,v 1.58 2000/02/29 03:59:38 cph Exp $
+;;; $Id: c-mode.scm,v 1.59 2000/03/02 05:31:58 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -68,10 +68,7 @@ Settings for K&R and BSD indentation styles are
   (lambda (buffer)
     (local-set-variable! syntax-table c-syntax-table buffer)
     (local-set-variable! syntax-ignore-comments-backwards #t buffer)
-    (let ((paragraph-start
-	   (string-append "^$\\|" (ref-variable page-delimiter buffer))))
-      (local-set-variable! paragraph-start paragraph-start buffer)
-      (local-set-variable! paragraph-separate paragraph-start buffer))
+    (standard-alternate-paragraph-style! buffer)
     (local-set-variable! paragraph-ignore-fill-prefix #t buffer)
     (local-set-variable! indent-line-procedure (ref-command c-indent-command)
 			 buffer)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vhdl.scm,v 1.7 2000/02/29 02:47:01 cph Exp $
+;;; $Id: vhdl.scm,v 1.8 2000/03/02 05:31:35 cph Exp $
 ;;;
 ;;; Copyright (c) 1997-2000 Massachusetts Institute of Technology
 ;;;
@@ -39,10 +39,7 @@
     (local-set-variable! comment-indent-hook vhdl-comment-indentation buffer)
     (local-set-variable! comment-start "-- " buffer)
     (local-set-variable! comment-end "" buffer)
-    (let ((paragraph-start
-	   (string-append "^$\\|" (ref-variable page-delimiter buffer))))
-      (local-set-variable! paragraph-start paragraph-start buffer)
-      (local-set-variable! paragraph-separate paragraph-start buffer))
+    (standard-alternate-paragraph-style! buffer)
     (local-set-variable! indent-line-procedure
 			 (ref-command keyparser-indent-line)
 			 buffer)

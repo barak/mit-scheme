@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: verilog.scm,v 1.7 2000/02/29 02:47:56 cph Exp $
+;;; $Id: verilog.scm,v 1.8 2000/03/02 05:31:39 cph Exp $
 ;;;
 ;;; Copyright (c) 1996-2000 Massachusetts Institute of Technology
 ;;;
@@ -40,10 +40,7 @@
 			 buffer)
     (local-set-variable! comment-start "// " buffer)
     (local-set-variable! comment-end "" buffer)
-    (let ((paragraph-start
-	   (string-append "^$\\|" (ref-variable page-delimiter buffer))))
-      (local-set-variable! paragraph-start paragraph-start buffer)
-      (local-set-variable! paragraph-separate paragraph-start buffer))
+    (standard-alternate-paragraph-style! buffer)
     (local-set-variable! indent-line-procedure
 			 (ref-command keyparser-indent-line)
 			 buffer)

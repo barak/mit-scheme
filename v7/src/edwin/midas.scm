@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: midas.scm,v 1.20 2000/02/29 02:47:44 cph Exp $
+;;; $Id: midas.scm,v 1.21 2000/03/02 05:31:48 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -21,7 +21,7 @@
 ;;;; Midas Mode
 
 (declare (usual-integrations))
-
+
 (define-command midas-mode
   "Enter Midas mode."
   ()
@@ -36,9 +36,7 @@
     (local-set-variable! comment-indent-hook midas-comment-indentation buffer)
     (local-set-variable! comment-start ";" buffer)
     (local-set-variable! comment-end "" buffer)
-    (let ((paragraph-start "^$"))
-      (local-set-variable! paragraph-start paragraph-start buffer)
-      (local-set-variable! paragraph-separate paragraph-start buffer))
+    (standard-alternate-paragraph-style! buffer)
     (local-set-variable! indent-line-procedure (ref-command insert-tab) buffer)
     (local-set-variable! local-abbrev-table
 			 (ref-variable midas-mode-abbrev-table buffer)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: schmod.scm,v 1.46 2000/02/29 03:59:20 cph Exp $
+;;; $Id: schmod.scm,v 1.47 2000/03/02 05:31:55 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -54,10 +54,7 @@ The following commands evaluate Scheme expressions:
     (local-set-variable! comment-indent-hook lisp-comment-indentation buffer)
     (local-set-variable! comment-start ";" buffer)
     (local-set-variable! comment-end "" buffer)
-    (let ((separate
-	   (string-append "^$\\|" (ref-variable page-delimiter buffer))))
-      (local-set-variable! paragraph-start separate buffer)
-      (local-set-variable! paragraph-separate separate buffer))
+    (standard-alternate-paragraph-style! buffer)
     (local-set-variable! paragraph-ignore-fill-prefix #t buffer)
     (local-set-variable! indent-line-procedure
 			 (ref-command lisp-indent-line)
