@@ -1,0 +1,658 @@
+#| -*-Scheme-*-
+
+$Id: types.scm,v 1.1 1995/09/01 18:53:32 adams Exp $
+
+Copyright (c) 1995-1995 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. |#
+
+;;;; Types
+;;; package: (compiler midend)
+
+(declare (usual-integrations))
+
+;; Types denote a set of values.
+
+(define-structure
+    (type
+     (named (string->symbol "#[liar:type]"))
+     (type vector)
+     (conc-name type/)
+     (constructor type:%make ())
+     (constructor type:%make/bits (bits-0 bits-1 bits-2))
+     (print-procedure
+      (standard-unparser-method 'TYPE
+	(lambda (type port)
+	  (write-char #\space port)
+	  (write (type:description type) port)))))
+
+  (bits-0 0)
+  (bits-1 0)
+  (bits-2 0))
+
+;; Primitive types.  Primitive types are disjoint.  Any particular value
+;; may belong to only one primitive type.
+
+(define-integrable type:*max-number-of-primitive-types* 48)
+
+(define type:primitive-types
+  (make-vector type:*max-number-of-primitive-types* #F))
+(define type:number-of-primitive-types 0)
+(define type:primitive-type-characteristic-predicates
+  (make-vector type:*max-number-of-primitive-types* #F))
+(define type:*names* '())
+
+(define (define-type-name type name)
+  (set! type:*names* (cons (cons type name) type:*names*)))
+
+(define (type:description type)
+  (let loop ((type type) (pairs type:*names*) (description '()))
+    (cond ((null? pairs)
+	   (cond ((null? description) 'type:empty)
+		 ((null? (cdr description)) (car description))
+		 (else (cons 'or (reverse description)))))
+	  ((type:subset? (caar pairs) type)
+	   (loop (type:except type (caar pairs)) (cdr pairs)
+		 (cons (cdar pairs) description)))
+	  (else
+	   (loop type (cdr pairs) description)))))
+
+(define type:empty (type:%make))
+
+(define (make-primitive-type)
+  (let ((bit type:number-of-primitive-types))
+    (if (>= bit type:*max-number-of-primitive-types*)
+	(internal-error "Not enough type bits"))
+    (let ((type (type:%make)))
+      (vector-set! type (fix:+ 1 (fix:lsh bit -4))
+		   (fix:lsh 1 (fix:and bit #xF)))
+      (vector-set! type:primitive-types bit type)
+      (set! type:number-of-primitive-types (+ bit 1))
+      type)))
+
+
+(define-integrable (type:bitwise op receiver)
+  (lambda (t1 t2)
+    (receiver (op (type/bits-0 t1) (type/bits-0 t2))
+	      (op (type/bits-1 t1) (type/bits-1 t2))
+	      (op (type/bits-2 t1) (type/bits-2 t2)))))
+		   
+(define type:or     (type:bitwise fix:or   type:%make/bits))
+(define type:and    (type:bitwise fix:and  type:%make/bits))
+(define type:except (type:bitwise fix:andc type:%make/bits))
+
+(define (type:not t) (type:except type:any t))
+
+(define type:subset?
+  (type:bitwise (lambda (b1 b2) (fix:= (fix:or b1 b2) b2))
+		(lambda (r1 r2 r3)
+		  (and r1 r2 r3))))
+
+(define type:disjoint?
+  (type:bitwise (lambda (b1 b2) (fix:zero? (fix:and b1 b2)))
+		(lambda (r1 r2 r3)
+		  (and r1 r2 r3))))
+		
+(define (type:or* . types)
+  (reduce type:or type:empty types))
+
+(define (type:for-each-primitive-type type procedure)
+  (define (try-bits offset bits)
+    (let loop ((bits bits) (offset offset))
+      (cond ((fix:= 0 bits))
+	    ((fix:= 0 (fix:and bits 1)) 
+	     (loop (fix:lsh bits -1) (fix:+ offset 1)))
+	    (else
+	     (procedure (vector-ref type:primitive-types offset))
+	     (loop (fix:lsh bits -1) (fix:+ offset 1))))))
+  (try-bits  0 (type/bits-0 type))
+  (try-bits 16 (type/bits-1 type))
+  (try-bits 32 (type/bits-2 type)))
+
+
+(let-syntax ((primitive-types
+	      (macro names
+		(define (def name)
+		  `(BEGIN
+		     (DEFINE ,name (MAKE-PRIMITIVE-TYPE))
+		     (DEFINE-TYPE-NAME ,name ',name)))
+		`(BEGIN
+		   ,@(map def names)))))
+
+  (primitive-types type:exact-zero	; special numbers
+		   type:exact-one
+		   type:exact-minus-one
+		   type:small-fixnum:2..255
+		   type:small-fixnum>255; numbers which will not overflow 
+		   type:small-fixnum<-1 ;   when added or subtracted
+		   type:big-fixnum+ve	; other fixnums
+		   type:big-fixnum-ve	; other fixnums
+		   type:bignum<0
+		   type:bignum>0
+		   type:ratnum
+		   type:flonum
+		   type:exact-recnum
+		   type:inexact-recnum
+
+		   type:interned-symbol
+		   type:uninterned-symbol
+		   type:pair
+		   type:vector
+		   type:%record
+		   type:string
+		   type:character
+		   type:cell
+		   type:bit-string
+
+		   type:true		; special values
+		   type:false
+		   type:empty-list
+		   type:unspecific
+		   type:other-constant
+
+		   type:primitive-procedure
+		   type:compiled-procedure
+		   type:other-compiled-entry
+
+		   type:entity
+		   type:compiled-code-block
+
+		   type:other		; anything else
+		   ))
+
+;; For more readable reporting
+(set! type:*names* (reverse type:*names*))
+
+(define type:any
+  (let loop ((i 0) (type type:empty))
+    (if (= i type:number-of-primitive-types)
+	type
+	(loop (+ i 1) (type:or type (vector-ref type:primitive-types i))))))
+
+(define type:not-false (type:except type:any type:false))
+
+(let-syntax ((alias
+	      (macro (name . parts)
+		`(BEGIN
+		   (DEFINE ,name (TYPE:OR* ,@parts)))))
+	     (alias*
+	      (macro (name . parts)
+		`(BEGIN
+		   (DEFINE ,name (TYPE:OR* ,@parts))
+		   (DEFINE-TYPE-NAME ,name ',name)))))
+
+  (alias  type:small-fixnum>1   type:small-fixnum:2..255 type:small-fixnum>255)
+  (alias  type:unsigned-byte
+	  type:exact-zero type:exact-one type:small-fixnum>1)
+  (alias  type:small-fixnum+ve  type:exact-one type:small-fixnum>1)
+  (alias  type:small-fixnum-ve  type:exact-minus-one type:small-fixnum<-1)
+  (alias  type:small-fixnum
+	  type:exact-zero type:small-fixnum-ve type:small-fixnum+ve)
+
+  (alias  type:big-fixnum       type:big-fixnum-ve type:big-fixnum+ve)
+
+  (alias  type:small-fixnum>=0  type:exact-zero type:small-fixnum+ve)
+  (alias* type:fixnum>=0        type:small-fixnum>=0 type:big-fixnum+ve)
+
+  (alias  type:fixnum+ve        type:small-fixnum+ve type:big-fixnum+ve)
+  (alias  type:fixnum-ve        type:small-fixnum-ve type:big-fixnum-ve)
+
+  (alias* type:fixnum           type:small-fixnum type:big-fixnum)
+  (alias* type:bignum           type:bignum<0 type:bignum>0)
+  (alias* type:exact-non-negative-integer  type:bignum>0 type:fixnum>=0)
+  (alias* type:exact-integer    type:fixnum type:bignum)
+  (alias  type:exact-real       type:fixnum type:bignum type:ratnum)
+  (alias  type:inexact-real     type:flonum)
+  (alias  type:real             type:exact-real type:inexact-real)
+  (alias  type:recnum           type:exact-recnum type:inexact-recnum)
+  (alias* type:exact-number     type:exact-recnum type:exact-real)
+  (alias* type:inexact-number   type:inexact-recnum type:inexact-real)
+  (alias* type:number           type:exact-number type:inexact-number)
+
+  (alias* type:symbol           type:interned-symbol type:uninterned-symbol)
+  (alias  type:boolean          type:true type:false)
+  (alias  type:vector-length    type:small-fixnum>=0)
+  (alias  type:string-length    type:fixnum>=0)
+
+  (alias  type:list             type:empty-list type:pair)
+
+  (alias  type:tc-constant type:true type:false type:empty-list type:unspecific
+	  type:other-constant)
+
+  (alias* type:compiled-entry
+	  type:compiled-procedure type:other-compiled-entry)
+
+  (alias  type:procedure
+	  type:compiled-procedure type:entity type:primitive-procedure)
+  )
+
+;; Note: these are processed in last-to-first order to construct a description.
+
+(define-type-name type:boolean        'BOOLEAN)
+(define-type-name (type:except type:fixnum type:fixnum>=0) 'NEGATIVE-FIXNUM)
+(define-type-name type:fixnum         'FIXNUM?)
+(define-type-name type:exact-integer  'EXACT-INTEGER)
+(define-type-name type:exact-number   'EXACT-NUMBER)
+(define-type-name type:inexact-number 'INEXACT-NUMBER)
+(define-type-name type:number         'NUMBER)
+
+(define-type-name type:any    'type:ANY)
+
+
+;;;; Correspondence between tyepcodes and primitive types
+;;
+
+;; The tag is `covered' by this type.
+(define type:tag->covering-type (make-vector 64 #F))
+
+(define (type:typecode->type typecode)
+  (vector-ref type:tag->covering-type typecode))
+
+;; This primitive type is `covered' by these tags.
+(define type:primitive-type->covering-tags
+  (make-vector type:number-of-primitive-types '()))
+
+(let ()
+  (define (define-tag tag-name type)
+    (let ((tag (machine-tag tag-name)))
+      (if (vector-ref type:tag->covering-type tag)
+	  (internal-error "TYPECODE <-> type: configuarion error"))
+      (vector-set! type:tag->covering-type tag type)))
+
+  (define-tag 'POSITIVE-FIXNUM     type:fixnum>=0)
+  (define-tag 'NEGATIVE-FIXNUM     (type:except type:fixnum type:fixnum>=0))
+  (define-tag 'BIGNUM              type:bignum)
+  (define-tag 'RATNUM              type:ratnum)
+  (define-tag 'RECNUM              type:recnum)
+  (define-tag 'FLONUM              type:flonum)
+  (define-tag 'PAIR                type:pair)
+  (define-tag 'VECTOR              type:vector)
+  (define-tag 'RECORD              type:%record)
+  (define-tag 'VECTOR-1B           type:bit-string)
+  (define-tag 'VECTOR-8B           type:string)
+  (define-tag 'CONSTANT            type:tc-constant)
+  (define-tag 'PRIMITIVE           type:primitive-procedure)
+  (define-tag 'ENTITY              type:entity)
+  (define-tag 'COMPILED-ENTRY      type:compiled-entry)
+  (define-tag 'CELL                type:cell)
+  (define-tag 'COMPILED-CODE-BLOCK type:compiled-code-block)
+  (define-tag 'UNINTERNED-SYMBOL   type:uninterned-symbol)
+  (define-tag 'INTERNED-SYMBOL     type:interned-symbol)
+  (define-tag 'CHARACTER           type:character)
+
+  (let ((unallocated-types
+	 (do ((i 0 (+ i 1))  
+	      (t type:empty
+		 (type:or t (or (vector-ref type:tag->covering-type i) type:empty))))
+	     ((= i 64) (type:not t)))))
+    (type:for-each-primitive-type
+     (type:except unallocated-types type:other)
+     (lambda (t)
+       (internal-warning "Type has not been allocated to typecode(s)" t)))
+				  
+    (do ((i 0 (+ i 1)))
+	((= i 64))
+      (if (not (vector-ref type:tag->covering-type i))
+	  (vector-set! type:tag->covering-type i unallocated-types)))))
+
+(define type:of-object
+  (let* ((max-fixnum        (object-new-type 0 -1))
+	 (max-small-fixnum  (quotient max-fixnum 2))
+	 (min-small-fixnum  (- -1 max-small-fixnum)))
+    (lambda (x)
+      ;; This should do lots of magic with typecodes
+      (cond ((fixnum? x)
+	     (cond ((eqv? x 0)                  type:exact-zero)
+		   ((eqv? x 1)                  type:exact-one)
+		   ((eqv? x -1)                 type:exact-minus-one)
+		   ((<= 2 x 255)                type:small-fixnum:2..255)
+		   ((<= 256 x max-small-fixnum) type:small-fixnum>255)
+		   ((> x max-small-fixnum)      type:big-fixnum+ve)
+		   ((<= min-small-fixnum x -2)  type:small-fixnum<-1)
+		   ((< x min-small-fixnum)      type:big-fixnum-ve)
+		   (else (internal-error "Unclassified FIXNUM" x))))
+	    ((object-type? (object-type #F) x)
+	     (cond ((eq? x #F)  type:false)
+		   ((eq? x #T)  type:true)
+		   ((eq? x unspecific)  type:unspecific)
+		   ((eq? x '()) type:empty-list)
+		   (else type:other-constant)))
+	    (else
+	     ;; The returned value might not be unitary.
+	     (type:typecode->type (object-type x)))))))
+
+;;(define (type:->covering-tags type)
+;;  "Return a list of tags that cover TYPE")
+;;
+;;(define (type:->predicate-tags type)
+;;  "Return a list of tags that exactly match TYPE, or return #F")
+
+;; Known simple predicates
+;;
+;; *OPERATOR-PREDICATE-TEST-TYPES* holds pairs of types. The CAR is the
+;; potentially positive cases, CDR for potentially negative cases.
+;; They may overlap and *must* union to all types.
+
+(define *operator-predicate-test-types* (make-monotonic-strong-eq-hash-table))
+
+(define (operator-predicate-test-type op)
+  (monotonic-strong-eq-hash-table/get *operator-predicate-test-types* op #F))
+
+(let ()
+  (define (define-predicate-test-types op type1 #!optional type2)
+    (monotonic-strong-eq-hash-table/put!
+     *operator-predicate-test-types* op
+     (cons type1 
+	   (if (default-object? type2)
+	       (type:not type1)
+	       type2))))
+
+  (define (def-prim name . types)
+    (apply define-predicate-test-types (make-primitive-procedure name) types))
+
+  (def-prim 'BIT-STRING?    type:bit-string)
+  (def-prim 'CELL?          type:cell)
+  (def-prim 'FIXNUM?        type:fixnum)
+  (def-prim 'FLONUM?        type:flonum)
+  (def-prim 'INDEX-FIXNUM?  type:fixnum>=0)
+  (def-prim 'NOT            type:false)
+  (def-prim 'NULL?          type:empty-list)
+  (def-prim 'PAIR?          type:pair)
+  (def-prim 'STRING?        type:string)
+  (def-prim 'INTEGER?       type:exact-integer)
+  (define-predicate-test-types %compiled-entry? type:compiled-entry)
+  )
+
+
+
+;;______________________________________________________________________
+;;
+;;
+#|
+(define-structure
+    (procedure-type
+     (conc-name procedure-type/))
+  argument-types			; can be called on these types
+  argument-assertions			; returning guarantees these types
+  result-type
+  effects-performed
+  effects-observed
+  (implementation-type))
+
+;; Note[1] The RESULT-TYPE should be TYPE:ANY for an operator without a
+;; specified return value.  TYPE:NONE means that there is no value
+;; (divergence) and TYPE:UNSPECIFIC means exactly the `unspecific'
+;; object.
+
+(define (procedure-type/new-argument-types base new)
+  (make-procedure-type new
+		       (procedure-type/argument-assertions base)
+		       (procedure-type/result-type base)
+		       (procedure-type/effects-performed base)
+		       (procedure-type/effects-observed base)
+		       (procedure-type/implementation-type base)))
+
+(define (procedure-type/new-argument-assertions base new)
+  (make-procedure-type (procedure-type/argument-types base)
+		       new
+		       (procedure-type/result-type base)
+		       (procedure-type/effects-performed base)
+		       (procedure-type/effects-observed base)
+		       (procedure-type/implementation-type base)))
+
+(define (procedure-type/new-result-type base new)
+  (make-procedure-type (procedure-type/argument-types base)
+		       (procedure-type/argument-assertions base)
+		       new
+		       (procedure-type/effects-performed base)
+		       (procedure-type/effects-observed base)
+		       (procedure-type/implementation-type base)))
+
+(define (procedure-type/new-effects-performed base new)
+  (make-procedure-type (procedure-type/argument-types base)
+		       (procedure-type/argument-assertions base)
+		       (procedure-type/result-type base)
+		       new
+		       (procedure-type/effects-observed base)
+		       (procedure-type/implementation-type base)))
+
+(define (procedure-type/new-effects-observed base new)
+  (make-procedure-type (procedure-type/argument-types base)
+		       (procedure-type/argument-assertions base)
+		       (procedure-type/result-type base)
+		       (procedure-type/effects-performed base)
+		       new
+		       (procedure-type/implementation-type base)))
+
+(define (procedure-type/new-implementation-type base new)
+  (make-procedure-type (procedure-type/argument-types base)
+		       (procedure-type/argument-assertions base)
+		       (procedure-type/result-type base)
+		       (procedure-type/effects-performed base)
+		       (procedure-type/effects-observed base)
+		       new))
+
+
+(define (make-primitive-procedure-type result-type . argument-types)
+  (make-procedure-type result-type argument-types type:primitive-procedure))
+
+
+(define *operator-types* (make-monotonic-strong-eq-hash-table))
+(define *operator-variants* (make-monotonic-strong-eq-hash-table))
+
+
+(define (operator-variants op)
+  (monotonic-strong-eq-hash-table/get *operator-variants* op '()))
+
+(define (operator-type op)
+  (monotonic-strong-eq-hash-table/get *operator-types* op #F))
+
+(define (operator-sensitive-effects op)
+  (cond ((operator-type op)
+	 => procedure-type/effects-observed)
+	(else effect:unknown)))
+
+
+(let ()
+  ;; The basic type from which most variants are derived is the
+  ;; non-restartable primitive type whcih checks its arguments.
+  (define (type eff1 eff2 result-type . argument-types)
+    (make-procedure-type (make-list (length argument-types) type:any)
+			 argument-types
+			 result-type 
+			 eff1 eff2
+			 type:primitive-procedure))
+
+  (define -> '->)
+  (define (signature . sig)
+    (let* ((t* (reverse sig))
+	   (result-type (car t*))
+	   (argument-types (reverse (cddr t*))))
+      (if (not (eq? (cadr t*) ->))
+	  (internal-error "Illegal signature" sig))
+      (make-procedure-type (make-list (length argument-types) type:any)
+			   argument-types
+			   result-type 
+			   effect:unknown effect:unknown
+			   type:primitive-procedure)))
+
+  (define (def operator type)
+    (monotonic-strong-eq-hash-table/put! *operator-types* operator type))
+
+  (define (prim . spec) (apply make-primitive-procedure spec))
+
+  (define (restartable base)
+    (procedure-type/new-argument-assertions
+     base
+     (procedure-type/argument-types base)))
+
+  (define ((sub-range result-type) base)
+    (procedure-type/new-result-type base result-type))
+
+  (define ((sub-domain . argument-types) base)
+    (procedure-type/new-argument-types base argument-types))
+
+  (define (unchecked base)
+    ;; unchecked version: enforces nothing but only works on enforced
+    ;; sub-domain of base
+    (let ((assertions (procedure-type/argument-assertions base)))
+      (procedure-type/new-argument-types
+       (procedure-type/new-argument-assertions
+	base
+	(make-list (length assertions) type:any))
+       assertions)))
+
+  (define (inlined base)
+    (procedure-type/new-implementation-type base type:empty))
+
+  (define ((effects do! see) base)
+    (procedure-type/new-effects-observed
+     (procedure-type/new-effects-performed base do!) see))
+
+  (define ((sensitive . effects) base)
+    (procedure-type/new-effects-observed base (apply effect:union* effects)))
+
+  (define (effect-free base)
+    (procedure-type/new-effects-performed base effect:none))
+
+  (define (variant base . modifiers)
+    (let loop ((m modifiers) (base base))
+      (if (null? m)
+	  base
+	  (loop (cdr m) ((car m) base)))))
+
+  (define (def-variant var-op base-op . modifiers)
+    (let ((base
+	   (monotonic-strong-eq-hash-table/get *operator-types* base-op #F)))
+      (if (not base)
+	  (internal-error "Base op does not have defined type" base-op))
+	  
+      (def var-op (apply variant base modifiers))
+      (monotonic-strong-eq-hash-table/put! *operator-variants* base-op
+					   (append (operator-variants base-op)
+						   (list var-op)))))
+
+  (define (def-global name base)
+    (def name (procedure-type/new-implementation-type base type:procedure)))
+
+  (define effect-insensitive (sensitive effect:none))
+  (define function  (effects effect:none effect:none))
+  (define allocates (effects effect:allocation effect:none))
+
+  (define binary-generic-arithmetic
+    (variant (signature  type:number type:number -> type:number)
+	     effect-insensitive
+	     allocates))
+  
+  (define simple-predicate
+    (variant (signature  type:any -> type:boolean)
+	     effect-insensitive
+	     effect-free))
+
+  (define binary-generic-predicate
+    (variant (signature  type:number type:number -> type:boolean)
+	     effect-insensitive
+	     effect-free))
+  
+  (def (prim 'CONS)
+       (variant (signature type:any type:any -> type:pair)
+		effect-insensitive
+		allocates))
+ 
+  (def (prim 'CAR)
+       (variant (signature type:pair -> type:any)
+		effect-free
+		(sensitive effect:set-car!)))
+  (def-variant %car   (prim 'CAR) inlined unchecked)
+  (def-variant "#CAR" (prim 'CAR) restartable)
+  
+  (def (prim 'CDR)
+       (variant (signature type:pair -> type:any)
+		effect-free
+		(sensitive effect:set-cdr!)))
+  (def-variant %cdr   (prim 'CDR) inlined unchecked)
+  (def-variant "#CDR" (prim 'CDR) restartable)
+  
+  (def (prim 'SET-CAR!)
+       (variant (signature type:pair type:any -> type:any)
+		(effects effect:set-car! effect:none)))
+  (def-variant %set-car!   (prim 'SET-CAR!) inlined unchecked)
+  (def-variant "#SET-CAR!" (prim 'SET-CAR!) restartable)
+  
+  (def (prim 'SET-CDR!)
+       (variant (signature type:pair type:any -> type:any)
+		(effects effect:set-cdr! effect:none)))
+  (def-variant %set-cdr!   (prim 'SET-CDR!) inlined unchecked)
+  (def-variant "#SET-CDR!" (prim 'SET-CDR!) restartable)
+  
+
+  (define (add-like gen:op fix:op flo:op out-of-line:op)
+    (def gen:op binary-generic-arithmetic)
+    (def-variant fix:op gen:op
+      inlined unchecked function
+      (sub-domain type:small-fixnum type:small-fixnum)
+      (sub-range type:fixnum))
+    (def-variant flo:op gen:op
+      inlined unchecked allocates
+      (sub-domain type:flonum type:flonum)
+      (sub-range type:flonum))
+    (def-variant out-of-line:op gen:op inlined))
+
+  (add-like (prim '&+) fix:+ flo:+ %+)
+  (add-like (prim '&-) fix:- flo:- "#-")
+
+  (define (arith-pred gen:op fix:op flo:op out-of-line:op)
+    (def gen:op binary-generic-predicate)
+    (def-variant fix:op gen:op
+      inlined unchecked (sub-domain type:fixnum type:fixnum))
+    (def-variant flo:op gen:op
+      inlined unchecked (sub-domain type:flonum type:flonum))
+    (def-variant out-of-line:op gen:op inlined))
+
+  (arith-pred (prim '&<) fix:< flo:< "#<")
+  (arith-pred (prim '&=) fix:= flo:= "#=")
+  (arith-pred (prim '&>) fix:> flo:> "#>")
+
+  (def fixnum? simple-predicate)
+  (def pair?   simple-predicate)
+
+  (def (prim 'VECTOR-LENGTH)
+       (variant (signature type:vector -> type:vector-length)
+		function))
+  (def-variant %vector-length  (prim 'VECTOR-LENGTH) inlined unchecked)
+
+  (def-global 'SUBSTRING?
+    (variant (signature type:string type:string -> type:boolean)
+	     function))
+
+  (def-global 'ERROR:WRONG-TYPE-ARGUMENT
+    (variant (signature type:any type:any -> type:empty)
+	     function))
+  unspecific)
+|#
