@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 1.11 2003/09/26 03:56:41 cph Exp $
+$Id: load.scm,v 1.12 2004/02/26 18:31:41 cph Exp $
 
-Copyright 2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,4 +28,4 @@ USA.
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
     (package/system-loader "xml" '() 'QUERY)))
-(add-subsystem-identification! "XML" '(0 4))
+(add-subsystem-identification! "XML" '(0 5))
