@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: triv.pkg,v 1.4 2001/08/16 20:59:56 cph Exp $
+$Id: triv.pkg,v 1.5 2001/08/18 04:49:06 cph Exp $
 
 Copyright (c) 2001 Massachusetts Institute of Technology
 
@@ -24,7 +24,8 @@ USA.
 
 (let ((v
        (let ((package
-	      (lambda (package-name ancestors files exported-names)
+	      (lambda (package-name ancestors files
+				    exported-names imported-names)
 		(vector package-name
 			ancestors
 			(list (cons #f files))
@@ -35,7 +36,11 @@ USA.
 			 (map (lambda (name)
 				(vector name (cons (car ancestors) name)))
 			      exported-names))
-			'#()))))
+			(list->vector
+			 (map (lambda (n.p)
+				(vector (car n.p) (cdr n.p)))
+			      imported-names))
+			#f))))
 	 (vector (package '(cross-reference)
 			  '(())
 			  '("mset" "object" "toplev")
@@ -43,26 +48,29 @@ USA.
 			    cref/generate-constructors
 			    cref/generate-cref
 			    cref/generate-cref-unusual
-			    cref/generate-trivial-constructor))
+			    cref/generate-trivial-constructor)
+			  '())
 		 (package '(cross-reference analyze-file)
 			  '((cross-reference) ())
 			  '("anfile")
-			  '(analyze-file))
+			  '(analyze-file)
+			  '())
 		 (package '(cross-reference constructor)
 			  '((cross-reference) ())
 			  '("conpkg")
-			  '(construct-external-descriptions))
-
+			  '(construct-external-descriptions)
+			  '())
 		 (package '(cross-reference formatter)
 			  '((cross-reference) ())
 			  '("forpkg")
 			  '(format-packages
-			    format-packages-unusual))
-
+			    format-packages-unusual)
+			  '())
 		 (package '(cross-reference reader)
 			  '((cross-reference) ())
 			  '("redpkg")
 			  '(read-file-analyses!
 			    read-package-model
-			    resolve-references!))))))
+			    resolve-references!)
+			  '((package-file? . (package))))))))
   (vector 'PACKAGE-DESCRIPTIONS 2 v v))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: win32.pkg,v 1.12 2000/04/13 03:13:46 cph Exp $
+$Id: win32.pkg,v 1.13 2001/08/18 04:52:11 cph Exp $
 
-Copyright (c) 1993-2000 Massachusetts Institute of Technology
+Copyright (c) 1993-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,19 +16,13 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 |#
 
 ;;;; WIN32 Packaging
 
 (global-definitions "../runtime/runtime")
-
-;(define-package (win32)
-;  (parent ())
-;  (file-case os-type
-;   ((nt) "winuser" "wingdi" "win_ffi")
-;   (else))
-;  (initialization (initialize-package!)))
 
 (define-package (win32)
   (parent ())
@@ -51,15 +45,17 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  win32-clipboard-write-text
 	  win32-screen-height
 	  win32-screen-width)
-  (initialization (initialize-package!))
-)
+  (initialization
+   (begin
+     (initialize-protection-list-package!)
+     (initialize-module-package!)
+     (initialize-package!)
+     (init-wf_user!))))
 
 
 (define-package (win32 scheme-graphics)
   (files "graphics")
   (parent (win32))
-;  (export ()
-;          win32-graphics-device-type)
   (export ()
 	  win32/define-color
 	  win32/find-color)
@@ -77,9 +73,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (import (runtime graphics)
 	  graphics-device/buffer?
 	  make-image-type)
-  (initialization (initialize-package!))
-)
+  (initialization (initialize-package!)))
 
 (define-package (win32 dib)
   (files "dib")
-  (parent (win32)))
+  (parent (win32))
+  (initialization (initialize-package!)))

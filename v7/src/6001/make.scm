@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 15.31 2001/08/17 13:00:29 cph Exp $
+$Id: make.scm,v 15.32 2001/08/18 04:50:22 cph Exp $
 
 Copyright (c) 1991-1999, 2001 Massachusetts Institute of Technology
 
@@ -32,12 +32,9 @@ USA.
      (pathname-as-directory "6001")
      (lambda ()
        (load-package-set "6001")
-       (let ((edwin (->environment '(edwin))))
-	 (load "edextra" edwin)
-	 (if (and (eq? 'UNIX microcode-id/operating-system)
-		  (string-ci=? "HP-UX" microcode-id/operating-system-variant))
-	     (load "floppy" edwin)))))))
-((access initialize-package! (->environment '(student scode-rewriting))))
+       (if (and (eq? 'UNIX microcode-id/operating-system)
+		(string-ci=? "HP-UX" microcode-id/operating-system-variant))
+	   (load "floppy" (->environment '(edwin))))))))
 (add-identification! "6.001" 15 30)
 
 ;;; Customize the runtime system:

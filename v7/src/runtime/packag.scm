@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.31 2001/08/17 12:50:15 cph Exp $
+$Id: packag.scm,v 14.32 2001/08/18 04:47:26 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -199,7 +199,9 @@ USA.
 			     (load component environment syntax-table #t)))))))
 	      (if alternate-loader
 		  (alternate-loader load-component options)
-		  (load-packages-from-file file options load-component))))))))
+		  (begin
+		    (load-packages-from-file file options load-component)
+		    (initialize-packages-from-file file)))))))))
   ;; Make sure that everything we just loaded is purified.  If the
   ;; program runs before it gets purified, some of its run-time state
   ;; can end up being purified also.
@@ -248,7 +250,8 @@ USA.
   (finalization #f read-only #t)
   (internal-names #f read-only #t)
   (internal-bindings #f read-only #t)
-  (external-bindings #f read-only #t))
+  (external-bindings #f read-only #t)
+  (extension? #f read-only #t))
 
 (define (package-file? object)
   (and (vector? object)
@@ -269,7 +272,7 @@ USA.
 
 (define (package-description? object)
   (and (vector? object)
-       (fix:= (vector-length object) 8)
+       (fix:= (vector-length object) 9)
        (package-name? (package-description/name object))
        (list-of-type? (package-description/ancestors object) package-name?)
        (list-of-type? (package-description/file-cases object)
@@ -306,8 +309,12 @@ USA.
 		(symbol? (vector-ref binding 0))
 		(package-name? (vector-ref binding 1))
 		(or (fix:= (vector-length binding) 2)
-		    (symbol? (vector-ref binding 2))))))))
+		    (symbol? (vector-ref binding 2))))))
+       (boolean? (package-description/extension? object))))
 
+;; CONSTRUCT-PACKAGES-FROM-FILE is called from the cold load and must
+;; only use procedures that are inline-coded by the compiler.
+
 (define (construct-packages-from-file file)
   (let ((descriptions (package-file/sorted-descriptions file))
 	(skip-package?
@@ -332,6 +339,7 @@ USA.
 
 (define (construct-normal-package-from-description description)
   (let ((name (package-description/name description))
+	(extension? (package-description/extension? description))
 	(environment
 	 (extend-package-environment
 	  (let ((ancestors (package-description/ancestors description)))
@@ -350,7 +358,8 @@ USA.
 		(or (package/child package (car path))
 		    (error "Unable to find package:"
 			   (list-difference name (cdr path)))))
-	  (package/add-child! package (car path) environment)))))
+	  (if (not (and extension? (package/child package (car path))))
+	      (package/add-child! package (car path) environment))))))
 
 (define (create-links-from-description description)
   (let ((environment
@@ -425,6 +434,9 @@ USA.
 (define-primitives
   link-variables)
 
+;; LOAD-PACKAGES-FROM-FILE is called from the cold load and must only
+;; use procedures that are inline-coded by the compiler.
+
 (define (load-packages-from-file file options file-loader)
   (let ((descriptions (package-file/descriptions file)))
     (let ((n (vector-length descriptions)))
@@ -468,3 +480,25 @@ USA.
 	 (if (eq? (car (car options)) key)
 	     (cdr (car options))
 	     (loop (cdr options))))))
+
+(define (initialize-packages-from-file file)
+  (initialize/finalize file package-description/initialization "Initializing"))
+
+(define (finalize-packages-from-file file)
+  (initialize/finalize file package-description/finalization "Finalizing"))
+
+(define (initialize/finalize file selector verb)
+  (for-each-vector-element (package-file/descriptions file)
+    (lambda (description)
+      (let ((expression (selector description)))
+	(if expression
+	    (let ((name (package-description/name description))
+		  (port (notification-output-port)))
+	      (fresh-line port)
+	      (write-string ";" port)
+	      (write-string verb port)
+	      (write-string " package " port)
+	      (write name port)
+	      (eval expression (find-package-environment name))
+	      (write-string " -- done" port)
+	      (newline port)))))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: redpkg.scm,v 1.15 2001/08/16 20:50:26 cph Exp $
+$Id: redpkg.scm,v 1.16 2001/08/18 04:48:59 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -103,15 +103,20 @@ USA.
 	(changes? (list #f)))
     (let ((result
 	   (let ((caches (if (file-exists? pathname) (fasload pathname) '())))
-	     (append-map! (lambda (package)
-			    (map (lambda (pathname)
-				   (cons package
-					 (cache-file-analysis! pmodel
-							       caches
-							       pathname
-							       changes?)))
-				 (package/files package)))
-			  (pmodel/packages pmodel)))))
+	     (let ((cache-packages
+		    (lambda (packages)
+		      (append-map!
+		       (lambda (package)
+			 (map (lambda (pathname)
+				(cons package
+				      (cache-file-analysis! pmodel
+							    caches
+							    pathname
+							    changes?)))
+			      (package/files package)))
+		       packages))))
+	       (append! (cache-packages (pmodel/packages pmodel))
+			(cache-packages (pmodel/extra-packages pmodel)))))))
       (if (car changes?)
 	  (fasdump (map cdr result) pathname))
       (values result (car changes?)))))
@@ -172,7 +177,7 @@ USA.
 		   (else
 		    (error "Illegal reference name" name)))))
 	 (if name
-	     (bind! package name expression)))))
+	     (bind! package name expression #t)))))
    entries))
 
 (define (resolve-references! pmodel)
@@ -424,7 +429,7 @@ USA.
 		 (set-package/children!
 		  parent
 		  (cons package (package/children parent)))))
-	   (process-package-description package description get-package))
+	   (process-package-description package description get-package #t))
 	 packages
 	 descriptions)
 	(for-each
@@ -432,7 +437,8 @@ USA.
 	   (process-package-description
 	    (get-package (package-description/name extension) #f)
 	    extension
-	    get-package))
+	    get-package
+	    #f))
 	 extensions))
       (make-pmodel root-package
 		   (make-package primitive-package-name #f)
@@ -457,24 +463,38 @@ USA.
 	  ;; Unlinked internal names: just bind them.
 	  (for-each-vector-element (vector-ref desc 5)
 	    (lambda (name)
-	      (bind! package name expression)))
-	  ;; Exported bindings: bind the internal and external names.
-	  ;; Perhaps should link them here.
+	      (bind! package name expression #f)))
+	  ;; Exported bindings: bind the name and link it to the
+	  ;; external names.
 	  (for-each-vector-element (vector-ref desc 6)
 	    (lambda (entry)
-	      (bind! package (vector-ref entry 0) expression)
-	      (let ((n (vector-length entry)))
-		(do ((i 1 (fix:+ i 1)))
-		    ((fix:= i n))
-		  (let ((p.n (vector-ref entry i)))
-		    (bind! (get-package (car p.n) #t)
-			   (cdr p.n)
-			   expression))))))
-	  ;; Imported bindings: bind just the internal name.
+	      (let ((name (vector-ref entry 0)))
+		(bind! package name expression #f)
+		(let ((n (vector-length entry)))
+		  (do ((i 1 (fix:+ i 1)))
+		      ((fix:= i n))
+		    (let ((p.n (vector-ref entry i)))
+		      (link! package
+			     name
+			     (get-package (car p.n) #t)
+			     (cdr p.n)
+			     #f)))))))
+	  ;; Imported bindings: bind just the external name and link
+	  ;; it to the internal name.
 	  (for-each-vector-element (vector-ref desc 7)
 	    (lambda (entry)
-	      (bind! package (vector-ref entry 0) expression))))))))
-
+	      (let ((external-package (get-package (vector-ref entry 1) #t))
+		    (external-name 
+		     (if (fix:= (vector-length entry) 2)
+			 (vector-ref entry 0)
+			 (vector-ref entry 2))))
+		(bind! external-package external-name expression #f)
+		(link! external-package
+		       external-name
+		       package
+		       (vector-ref entry 0)
+		       #f)))))))))
+
 (define (package-lookup package name)
   (let package-loop ((package package))
     (or (package/find-binding package name)
@@ -486,7 +506,7 @@ USA.
     (lambda (package)
       (symbol-list=? name (package/name package)))))
 
-(define (process-package-description package description get-package)
+(define (process-package-description package description get-package new?)
   (let ((file-cases (package-description/file-cases description)))
     (set-package/file-cases! package
 			     (append! (package/file-cases package)
@@ -506,14 +526,16 @@ USA.
 	      (let ((destination (get-package (car export) #t)))
 		(for-each (lambda (names)
 			    (link! package (car names)
-				   destination (cdr names)))
+				   destination (cdr names)
+				   new?))
 			  (cdr export))))
 	    (package-description/exports description))
   (for-each (lambda (import)
 	      (let ((source (get-package (car import) #t)))
 		(for-each (lambda (names)
 			    (link! source (cdr names)
-				   package (car names)))
+				   package (car names)
+				   new?))
 			  (cdr import))))
 	    (package-description/imports description)))
 
@@ -522,35 +544,46 @@ USA.
 
 ;;;; Binding and Reference
 
-(define (bind! package name expression)
-  (let ((value-cell (binding/value-cell (intern-binding! package name))))
+(define (bind! package name expression new?)
+  (let ((value-cell (binding/value-cell (intern-binding! package name new?))))
     (set-expression/value-cell! expression value-cell)
     (set-value-cell/expressions!
      value-cell
      (cons expression (value-cell/expressions value-cell)))))
 
-(define (link! source-package source-name destination-package destination-name)
-  (if (package/find-binding destination-package destination-name)
-      (error "Attempt to reinsert binding" destination-name))
-  (let ((source-binding (intern-binding! source-package source-name)))
+(define (link! source-package source-name
+	       destination-package destination-name
+	       new?)
+  (let ((source-binding (intern-binding! source-package source-name new?))
+	(destination-binding
+	 (package/find-binding destination-package destination-name)))
+    (if (and destination-binding
+	     (not (eq? (binding/value-cell destination-binding)
+		       (binding/value-cell source-binding))))
+	(error "Attempt to reinsert binding:" destination-name))
     (let ((destination-binding
 	   (make-binding destination-package
 			 destination-name
-			 (binding/value-cell source-binding))))
+			 (binding/value-cell source-binding)
+			 new?)))
       (rb-tree/insert! (package/bindings destination-package)
 		       destination-name
 		       destination-binding)
-      (make-link source-binding destination-binding))))
+      (make-link source-binding destination-binding new?))))
 
-(define (intern-binding! package name)
-  (or (package/find-binding package name)
-      (let ((binding
-	     (let ((value-cell (make-value-cell)))
-	       (let ((binding (make-binding package name value-cell)))
-		 (set-value-cell/source-binding! value-cell binding)
-		 binding))))
-	(rb-tree/insert! (package/bindings package) name binding)
-	binding)))
+(define (intern-binding! package name new?)
+  (let ((binding (package/find-binding package name)))
+    (if binding
+	(begin
+	  (if new? (set-binding/new?! binding #t))
+	  binding)
+	(let ((binding
+	       (let ((value-cell (make-value-cell)))
+		 (let ((binding (make-binding package name value-cell new?)))
+		   (set-value-cell/source-binding! value-cell binding)
+		   binding))))
+	  (rb-tree/insert! (package/bindings package) name binding)
+	  binding))))
 
 (define (make-reference package name expression)
   (let ((references (package/references package))

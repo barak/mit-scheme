@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: object.scm,v 1.11 2001/08/15 02:59:54 cph Exp $
+$Id: object.scm,v 1.12 2001/08/18 04:48:44 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -44,11 +44,11 @@ USA.
      (type vector)
      (named (string->symbol "#[(cross-reference)pmodel]"))
      (conc-name pmodel/))
-  (root-package false read-only true)
-  (primitive-package false read-only true)
-  (packages false read-only true)
-  (extra-packages false read-only true)
-  (pathname false read-only true))
+  (root-package #f read-only #t)
+  (primitive-package #f read-only #t)
+  (packages #f read-only #t)
+  (extra-packages #f read-only #t)
+  (pathname #f read-only #t))
 
 (define-structure
     (package
@@ -103,7 +103,7 @@ USA.
     (binding
      (type vector)
      (named (string->symbol "#[(cross-reference)binding]"))
-     (constructor %make-binding (package name value-cell))
+     (constructor %make-binding (package name value-cell new?))
      (conc-name binding/)
      (print-procedure
       (standard-unparser-method 'BINDING
@@ -112,14 +112,15 @@ USA.
 	  (write (binding/name binding) port)
 	  (write-char #\space port)
 	  (write (package/name (binding/package binding)) port)))))
-  (package false read-only true)
-  (name false read-only true)
-  (value-cell false read-only true)
+  (package #f read-only #t)
+  (name #f read-only #t)
+  (value-cell #f read-only #t)
+  (new? #f)
   (references '())
   (links '()))
 
-(define (make-binding package name value-cell)
-  (let ((binding (%make-binding package name value-cell)))
+(define (make-binding package name value-cell new?)
+  (let ((binding (%make-binding package name value-cell new?)))
     (set-value-cell/bindings!
      value-cell
      (cons binding (value-cell/bindings value-cell)))
@@ -142,34 +143,35 @@ USA.
      (conc-name value-cell/))
   (bindings '())
   (expressions '())
-  (source-binding false))
+  (source-binding #f))
 
 (define-structure
     (link
      (type vector)
      (named (string->symbol "#[(cross-reference)link]"))
-     (constructor %make-link)
+     (constructor %make-link (source destination new?))
      (conc-name link/))
-  (source false read-only true)
-  (destination false read-only true))
+  (source #f read-only #t)
+  (destination #f read-only #t)
+  (new? #f read-only #t))
 
-(define (make-link source-binding destination-binding)
-  (let ((link (%make-link source-binding destination-binding)))
+(define (make-link source-binding destination-binding new?)
+  (let ((link (%make-link source-binding destination-binding new?)))
     (set-binding/links! source-binding
 			(cons link (binding/links source-binding)))
     link))
-
+
 (define-structure
     (expression
      (type vector)
      (named (string->symbol "#[(cross-reference)expression]"))
      (constructor make-expression (package file type))
      (conc-name expression/))
-  (package false read-only true)
-  (file false read-only true)
-  (type false read-only true)
+  (package #f read-only #t)
+  (file #f read-only #t)
+  (type #f read-only #t)
   (references '())
-  (value-cell false))
+  (value-cell #f))
 
 (define-structure
     (reference
@@ -184,23 +186,22 @@ USA.
 	  (write (reference/name reference) port)
 	  (write-char #\space port)
 	  (write (package/name (reference/package reference)) port)))))
-  (package false read-only true)
-  (name false read-only true)
+  (package #f read-only #t)
+  (name #f read-only #t)
   (expressions '())
-  (binding false))
-
+  (binding #f))
+
 (define (symbol-list=? x y)
-  (if (null? x)
-      (null? y)
-      (and (not (null? y))
+  (if (pair? x)
+      (and (pair? y)
 	   (eq? (car x) (car y))
-	   (symbol-list=? (cdr x) (cdr y)))))
+	   (symbol-list=? (cdr x) (cdr y)))
+      (not (pair? y))))
 
 (define (symbol-list<? x y)
-  (and (not (null? y))
-       (if (or (null? x)
-	       (symbol<? (car x) (car y)))
-	   true
+  (and (pair? y)
+       (or (not (pair? x))
+	   (symbol<? (car x) (car y))
 	   (and (eq? (car x) (car y))
 		(symbol-list<? (cdr x) (cdr y))))))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: conpkg.scm,v 1.10 2001/08/16 20:02:58 cph Exp $
+$Id: conpkg.scm,v 1.11 2001/08/18 04:48:34 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -28,22 +28,31 @@ USA.
 (define (construct-external-descriptions pmodel)
   (let* ((packages (pmodel/packages pmodel))
 	 (alist
-	  (map (lambda (package)
-		 (cons package (construct-external-description package)))
-	       packages)))
+	  (append! (map (lambda (package)
+			  (cons package
+				(construct-external-description package #f)))
+			packages)
+		   (map (lambda (package)
+			  (cons package
+				(construct-external-description package #t)))
+			(list-transform-positive
+			    (pmodel/extra-packages pmodel)
+			  (lambda (package)
+			    (pair? (package/files package))))))))
     (vector 'PACKAGE-DESCRIPTIONS	;tag
 	    2				;version
 	    (list->vector
-	     (map (lambda (package)
-		    (cdr (assq package alist)))
-		  (sort packages package-structure<?)))
+	     (map cdr
+		  (sort alist
+		    (lambda (a b)
+		      (package-structure<? (car a) (car b))))))
 	    (list->vector (map cdr alist)))))
 
-(define (construct-external-description package)
+(define (construct-external-description package extension?)
   (call-with-values
       (lambda ()
 	(split-bindings-list (package/sorted-bindings package)))
-    (lambda (internal external)
+    (lambda (internal exports imports)
       (vector (package/name package)
 	      (let loop ((package package))
 		(let ((parent (package/parent package)))
@@ -66,46 +75,59 @@ USA.
 		   (package/file-cases package))
 	      (package/initialization package)
 	      (package/finalization package)
+	      (list->vector internal)
 	      (list->vector
-	       (map binding/name
-		    (list-transform-negative internal
-		      (lambda (binding)
-			(pair? (binding/links binding))))))
-	      (list->vector
-	       (map (lambda (binding)
+	       (map (lambda (n.l)
 		      (list->vector
-		       (cons (binding/name binding)
+		       (cons (car n.l)
 			     (map (lambda (link)
 				    (let ((dest (link/destination link)))
 				      (cons (package/name
 					     (binding/package dest))
 					    (binding/name dest))))
-				  (binding/links binding)))))
-		    (list-transform-positive internal
-		      (lambda (binding)
-			(pair? (binding/links binding))))))
+				  (cdr n.l)))))
+		    exports))
 	      (list->vector
-	       (map (lambda (binding)
-		      (let ((source (binding/source-binding binding)))
-			(if (eq? (binding/name binding) (binding/name source))
-			    (vector (binding/name binding)
+	       (map (lambda (n.s)
+		      (let ((name (car n.s))
+			    (source (cdr n.s)))
+			(if (eq? name (binding/name source))
+			    (vector name
 				    (package/name (binding/package source)))
-			    (vector (binding/name binding)
+			    (vector name
 				    (package/name (binding/package source))
 				    (binding/name source)))))
-		    external))))))
-
+		    imports))
+	      extension?))))
+
 (define (split-bindings-list bindings)
-  (let loop ((bindings bindings) (internal '()) (external '()))
+  (let loop ((bindings bindings) (internal '()) (exports '()) (imports '()))
     (if (pair? bindings)
-	(if (binding/internal? (car bindings))
-	    (loop (cdr bindings)
-		  (cons (car bindings) internal)
-		  external)
-	    (loop (cdr bindings)
-		  internal
-		  (cons (car bindings) external)))
-	(values (reverse! internal) (reverse! external)))))
+	(let ((binding (car bindings))
+	      (bindings (cdr bindings)))
+	  (let ((name (binding/name binding))
+		(source (binding/source-binding binding))
+		(links
+		 (list-transform-positive (binding/links binding) link/new?)))
+	    (if (and source
+		     (or (binding/new? binding)
+			 (pair? links)))
+		(if (eq? binding source)
+		    (if (pair? links)
+			(loop bindings
+			      internal
+			      (cons (cons name links) exports)
+			      imports)
+			(loop bindings
+			      (cons name internal)
+			      exports
+			      imports))
+		    (loop bindings
+			  internal
+			  exports
+			  (cons (cons name source) imports)))
+		(loop bindings internal exports imports))))
+	(values (reverse! internal) (reverse! exports) (reverse! imports)))))
 
 (define (package-structure<? x y)
   (cond ((package/topological<? x y) true)
