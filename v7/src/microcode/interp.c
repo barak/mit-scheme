@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: interp.c,v 9.83 1994/06/02 19:03:31 cph Exp $
+$Id: interp.c,v 9.84 1994/06/02 19:13:16 cph Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -2242,12 +2242,14 @@ Primitive_Internal_Apply:
     case RC_SNAP_NEED_THUNK:
       /* Don't snap thunk twice; evaluation of the thunk's body might
 	 have snapped it already.  */
-      if ((MEMORY_REF ((Fetch_Expression ()), THUNK_SNAPPED)) == SHARP_F)
+      if ((MEMORY_REF ((Fetch_Expression ()), THUNK_SNAPPED)) == SHARP_T)
+	Val = (MEMORY_REF ((Fetch_Expression ()), THUNK_VALUE));
+      else
 	{
 	  MEMORY_SET ((Fetch_Expression ()), THUNK_SNAPPED, SHARP_T);
 	  MEMORY_SET ((Fetch_Expression ()), THUNK_VALUE, Val);
 	}
-      break;
+     break;
 
     case RC_AFTER_MEMORY_UPDATE:
     case RC_BAD_INTERRUPT_CONTINUE:
