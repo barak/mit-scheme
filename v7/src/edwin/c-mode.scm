@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: c-mode.scm,v 1.53 1995/02/02 21:22:52 cph Exp $
+;;;	$Id: c-mode.scm,v 1.54 1996/03/01 07:43:44 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -296,7 +296,9 @@ The relative indentation among the lines of the expression are preserved."
 				    "#")))
 	    ((or (ref-variable c-tab-always-indent)
 		 (within-indentation? point))
-	     (c-indent-line point))
+	     (c-indent-line point)
+	     (if (within-indentation? point)
+		 (set-current-point! (indentation-end point))))
 	    (else
 	     ((ref-command insert-tab)))))))
 
