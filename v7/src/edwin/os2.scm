@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.35 1996/10/10 10:29:08 cph Exp $
+;;;	$Id: os2.scm,v 1.36 1996/12/06 22:34:02 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
 ;;;
@@ -242,26 +242,41 @@
 (define dired-pathname-wild?
   pathname-wild?)
 
-;;;; Compressed Files
+;;;; File-Encoding Methods
 
 (define (os/read-file-methods)
   `((,read/write-compressed-file?
      . ,(lambda (pathname mark visit?)
 	  visit?
-	  (read-compressed-file "gzip -d" pathname mark)))))
+	  (read-compressed-file "gzip -d" pathname mark)))
+    (,read/write-encrypted-file?
+     . ,(lambda (pathname mark visit?)
+	  visit?
+	  (read-encrypted-file pathname mark)))))
 
 (define (os/write-file-methods)
   `((,read/write-compressed-file?
      . ,(lambda (region pathname visit?)
 	  visit?
-	  (write-compressed-file "gzip" region pathname)))))
+	  (write-compressed-file "gzip" region pathname)))
+    (,read/write-encrypted-file?
+     . ,(lambda (region pathname visit?)
+	  visit?
+	  (write-encrypted-file region pathname)))))
 
 (define (os/alternate-pathnames group pathname)
-  (if (and (ref-variable enable-compressed-files group)
-	   (dos/fs-long-filenames? pathname)
-	   (not (equal? "gz" (pathname-type pathname))))
-      (list (string-append (->namestring pathname) ".gz"))
+  (if (dos/fs-long-filenames? pathname)
+      (append (if (and (ref-variable enable-compressed-files group)
+		       (not (equal? "gz" (pathname-type pathname))))
+		  (list (string-append (->namestring pathname) ".gz"))
+		  '())
+	      (if (and (ref-variable enable-encrypted-files group)
+		       (not (equal? "ky" (pathname-type pathname))))
+		  (list (string-append (->namestring pathname) ".ky"))
+		  '()))
       '()))
+
+;;;; Compressed Files
 
 (define-variable enable-compressed-files
   "If true, compressed files are automatically uncompressed when read,
@@ -319,6 +334,54 @@ filename suffix \".gz\"."
 			    write-compressed-file
 			    (list region pathname)))
   (append-message "done"))
+
+;;;; Encrypted files
+
+(define-variable enable-encrypted-files
+  "If true, encrypted files are automatically decrypted when read,
+and recrypted when written.  An encrypted file is identified by the
+filename suffix \".KY\"."
+  true
+  boolean?)
+
+(define (read/write-encrypted-file? group pathname)
+  (and (ref-variable enable-encrypted-files group)
+       (equal? "ky" (pathname-type pathname))))
+
+(define (read-encrypted-file pathname mark)
+  (let ((password (prompt-for-password "Password: ")))
+    (temporary-message "Decrypting file " (->namestring pathname) "...")
+    (insert-string (let ((the-encrypted-file
+			  (call-with-input-file pathname
+			    (lambda (port)
+			      (read-string (char-set) port)))))
+		     (decrypt the-encrypted-file password
+			      (lambda () 
+				(kill-buffer (mark-buffer mark))
+				(editor-error "krypt: Password error!"))
+			      (lambda (x) 
+				(editor-beep)
+				(message "krypt: Checksum error!")
+				x)))
+		   mark)
+    ;; Disable auto-save here since we don't want to
+    ;; auto-save the unencrypted contents of the 
+    ;; encrypted file.
+    (define-variable-local-value! (mark-buffer mark)
+	(ref-variable-object auto-save-default)
+      #f)
+    (append-message "done")))
+
+(define (write-encrypted-file region pathname)
+  (let ((password (prompt-for-confirmed-password)))
+    (temporary-message "Encrypting file " (->namestring pathname) "...")
+    (let ((the-encrypted-file
+	   (encrypt (extract-string (region-start region) (region-end region))
+		    password)))
+      (call-with-output-file pathname
+	(lambda (port)
+	  (write-string the-encrypted-file port))))
+    (append-message "done")))
 
 ;;;; Mail Customization
 

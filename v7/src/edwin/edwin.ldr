@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: edwin.ldr,v 1.56 1995/10/25 02:19:36 cph Exp $
+$Id: edwin.ldr,v 1.57 1996/12/06 22:34:08 cph Exp $
 
-Copyright (c) 1989-95 Massachusetts Institute of Technology
+Copyright (c) 1989-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -78,11 +78,11 @@ MIT in each case. |#
       (define string-member? (member-procedure string=?))
       (define (boolean-and a b) (and a b))
 
-      (if (eq? (lookup 'OS-TYPE) 'UNIX)
-	  ;; #T means no error if not present.
-	  (load-option 'KRYPT #t))
       (if (memq (lookup 'OS-TYPE) '(UNIX OS/2))
-	  (load-option 'SUBPROCESS))
+	  (begin
+	    ;; #T means no error if not present.
+	    (load-option 'KRYPT #t)
+	    (load-option 'SUBPROCESS)))
       (load-option 'RB-TREE)
       (load-option 'HASH-TABLE)
 
