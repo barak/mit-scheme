@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lambdx.scm,v 14.5 1994/02/19 15:39:30 gjr Exp $
+$Id: lambdx.scm,v 14.6 1994/02/19 16:14:27 gjr Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -46,7 +46,6 @@ MIT in each case. |#
 		    (list-transform-negative auxiliary
 		      (lambda (aux)
 			(memq aux ordinary)))
-		    auxiliary
 		    declarations
 		    body*)))))
 
