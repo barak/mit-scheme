@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: returns.h,v 9.41 1993/06/24 06:20:49 gjr Exp $
+$Id: returns.h,v 9.42 1995/07/26 21:20:23 adams Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -118,10 +118,11 @@ MIT in each case. */
 #define RC_INTERNAL_APPLY_VAL		0x5D
 #define RC_COMP_ERROR_RESTART		0x5E
 #define RC_PRIMITIVE_CONTINUE		0x5F
+#define RC_COMP_LINK_CACHES_CONTINUE	0x60
 
 /* When adding return codes, add them to the table below as well! */
 
-#define MAX_RETURN_CODE			0x5F
+#define MAX_RETURN_CODE			0x60
 
 #define RETURN_NAME_TABLE						\
 {									\
@@ -221,4 +222,5 @@ MIT in each case. */
 /* 0x5D */		"INTERNAL_APPLY_VAL",				\
 /* 0x5E */		"COMPILER_ERROR_RESTARRT",			\
 /* 0x5F */		"PRIMITIVE_CONTINUE"				\
+/* 0x60 */	  	"COMPILER_LINK_CACHES_CONTINUE",		\
 }
