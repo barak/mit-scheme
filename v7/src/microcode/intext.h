@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intext.h,v 1.2 1991/07/05 23:30:34 cph Exp $
+$Id: intext.h,v 1.3 1993/02/10 23:31:23 adams Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
