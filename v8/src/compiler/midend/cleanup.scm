@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cleanup.scm,v 1.10 1995/02/27 16:30:56 adams Exp $
+$Id: cleanup.scm,v 1.11 1995/03/10 14:52:16 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -63,24 +63,24 @@ MIT in each case. |#
 
 (define-cleanup-handler LAMBDA (env lambda-list body)
   (let ((renames (cleanup/renamings env (lambda-list->names lambda-list))))
-    `(LAMBDA ,(lmap (lambda (token)
-		      (cleanup/rename renames token))
-		    lambda-list)
+    `(LAMBDA ,(map (lambda (token)
+		     (cleanup/rename renames token))
+		   lambda-list)
        ,(cleanup/expr (append renames env) body))))
 
 (define-cleanup-handler LETREC (env bindings body)
   (do-letrec-cleanup env bindings body))
 
 (define (do-letrec-cleanup env bindings body)
-  (let* ((renames (cleanup/renamings env (lmap car bindings)))
+  (let* ((renames (cleanup/renamings env (map car bindings)))
 	 (env*  (append renames env))
 	 (body* (cleanup/expr env* body)))
     (if (null? bindings)
 	body*
-	`(LETREC ,(lmap (lambda (binding)
-			  (list (cleanup/rename renames (car binding))
-				(cleanup/expr env* (cadr binding))))
-			bindings)
+	`(LETREC ,(map (lambda (binding)
+			 (list (cleanup/rename renames (car binding))
+			       (cleanup/expr env* (cadr binding))))
+		       bindings)
 	   ,body*))))
 
 (define-cleanup-handler QUOTE (env object)
@@ -145,7 +145,7 @@ MIT in each case. |#
 	     (if (equal? cont* '(QUOTE #F))
 		 result
 		 `(CALL (QUOTE ,%invoke-continuation) ,cont* ,result)))
-	   (with-values
+	   (call-with-values
 	       (lambda ()
 		 (cond ((eq? rator-name %invoke-remote-cache)
 			(let ((descriptor (quote/text (car rands*))))
@@ -171,59 +171,92 @@ MIT in each case. |#
               env
               (cleanup/bindify let-names let-values)
               lambda-body))
-	   #|(define (build-call-lambda/try1 new-cont-var body closure)	;
-	   `(CALL (LAMBDA (,new-cont-var) ,body) ,closure))
-	 |#
-	 (define (build-call-lambda/try2 new-cont-var body closure)
-	   ;; We can further reduce one special case: when the body is an
-	   ;; invoke-continuation and the stack closure is a real
-	   ;; continuation (not just a push)
-	   (if (and (CALL/%invoke-continuation? body)
-		    (LOOKUP/? (CALL/%invoke-continuation/cont body))
-		    (eq? new-cont-var
-			 (LOOKUP/name (CALL/%invoke-continuation/cont body)))
-		    (CALL/%make-stack-closure? closure)
-		    (LAMBDA/?
-		     (CALL/%make-stack-closure/lambda-expression closure)))
-	       `(CALL (QUOTE ,%invoke-continuation)
-		      ,closure
-		      ,@(CALL/%invoke-continuation/values body))
-	       (let ((new-lambda  `(LAMBDA (,new-cont-var) ,body)))
-		 (cleanup/remember new-lambda rator)
-		 `(CALL ,new-lambda ,closure))))
-	 (if (call/%make-stack-closure? cont)
-	     ;; Cannot substitute a make-stack-closure because both pushing
-	     ;; and poping have to be kept in the right order.
-	     (let* ((old-cont-var (car lambda-list))
-		    (new-cont-var (variable/rename old-cont-var))
-		    (new-env `((,old-cont-var (LOOKUP ,new-cont-var))
-			       ,@env)))
-	       (build-call-lambda/try2
-		new-cont-var
-		(generate new-env (cdr lambda-list) rands)
-		(cleanup/expr env cont)))
-	     (generate env lambda-list (cons cont rands)))))
-  ((not *flush-closure-calls?*)
-   (default))
-  (else
-   (let ((call* (default)))
-     (cond ((form/match cleanup/call-closure-pattern call*)
-	    => (lambda (result)
-		 (cleanup/call/maybe-flush-closure call*
-						   env
-						   result)))
-	   ((form/match cleanup/call-trivial-pattern call*)
-	    => (lambda (result)
-		 (let ((lam-expr
-			(cadr (assq cleanup/?lam-expr result)))
-		       (rands
-			(cadr (assq cleanup/?rands result)))
-		       (cont
-			(cadr (assq cleanup/?cont result))))
-		   (cleanup/expr env
-				 `(CALL ,lam-expr ,cont ,@rands)))))
-	   (else
-	    call*))))))
+	   #|				;
+	   (define (build-call-lambda/try1 new-cont-var body closure) ;
+	     `(CALL (LAMBDA (,new-cont-var) ,body) ,closure))
+	   |#
+	   (define (build-call-lambda/try2 new-cont-var body closure)
+	     ;; We can further reduce one special case: when the body is an
+	     ;; invoke-continuation and the stack closure is a real
+	     ;; continuation (not just a push)
+	     (if (and (CALL/%invoke-continuation? body)
+		      (LOOKUP/? (CALL/%invoke-continuation/cont body))
+		      (eq? new-cont-var
+			   (LOOKUP/name (CALL/%invoke-continuation/cont body)))
+		      (CALL/%make-stack-closure? closure)
+		      (LAMBDA/?
+		       (CALL/%make-stack-closure/lambda-expression closure)))
+		 `(CALL (QUOTE ,%invoke-continuation)
+			,closure
+			,@(CALL/%invoke-continuation/values body))
+		 (let ((new-lambda  `(LAMBDA (,new-cont-var) ,body)))
+		   (cleanup/remember new-lambda rator)
+		   `(CALL ,new-lambda ,closure))))
+	   (if (call/%make-stack-closure? cont)
+	       ;; Cannot substitute a make-stack-closure because both pushing
+	       ;; and poping have to be kept in the right order.
+	       (let* ((old-cont-var (car lambda-list))
+		      (new-cont-var (variable/rename old-cont-var))
+		      (new-env `((,old-cont-var (LOOKUP ,new-cont-var))
+				 ,@env)))
+		 (build-call-lambda/try3
+		  rator
+		  new-cont-var
+		  (generate new-env (cdr lambda-list) rands)
+		  (cleanup/expr env cont)))
+	       (generate env lambda-list (cons cont rands)))))
+	((not *flush-closure-calls?*)
+	 (default))
+	(else
+	 (let ((call* (default)))
+	   (cond ((form/match cleanup/call-closure-pattern call*)
+		  => (lambda (result)
+		       (cleanup/call/maybe-flush-closure call*
+							 env
+							 result)))
+		 ((form/match cleanup/call-trivial-pattern call*)
+		  => (lambda (result)
+		       (let ((lam-expr
+			      (cadr (assq cleanup/?lam-expr result)))
+			     (rands
+			      (cadr (assq cleanup/?rands result)))
+			     (cont
+			      (cadr (assq cleanup/?cont result))))
+			 (cleanup/expr env
+				       `(CALL ,lam-expr ,cont ,@rands)))))
+		 (else
+		  call*))))))
+
+
+(define (build-call-lambda/try3 rator new-cont-var body closure)
+  ;; We can further reduce one special case: when the body is an
+  ;; invoke-continuation and the stack closure is a real
+  ;; continuation (not just a push)
+  (cond ((and (CALL/%invoke-continuation? body)
+	      (LOOKUP/? (call/%invoke-continuation/cont body))
+	      (eq? new-cont-var
+		   (lookup/name
+		    (call/%invoke-continuation/cont body)))
+	      (CALL/%make-stack-closure? closure)
+	      (LAMBDA/?
+	       (CALL/%make-stack-closure/lambda-expression closure)))
+	 `(CALL (QUOTE ,%invoke-continuation)
+		,closure
+		,@(CALL/%invoke-continuation/values body)))
+	((and (CALL/? body)
+	      (LOOKUP/? (call/operator body))
+	      (LOOKUP/? (call/continuation body))
+	      (eq? new-cont-var (lookup/name (call/continuation body)))
+	      (CALL/%make-stack-closure? closure)
+	      (LAMBDA/?
+	       (CALL/%make-stack-closure/lambda-expression closure)))
+	 `(CALL ,(call/operator body)
+		,closure
+		,@(call/operands body)))
+	(else
+	 (let ((new-lambda  `(LAMBDA (,new-cont-var) ,body)))
+	   (cleanup/remember new-lambda rator)
+	   `(CALL ,new-lambda ,closure)))))
 
 
 (define *cleanup/rewriters* (make-eq-hash-table))
@@ -346,8 +379,8 @@ MIT in each case. |#
 	       (let ((cont-name (car lambda-list)))
 		 (cleanup/expr
 		  env
-		  (bind* (cons cont-name (lmap car bindings))
-			 (cons cont (lmap cadr bindings))
+		  (bind* (cons cont-name (map car bindings))
+			 (cons cont (map cadr bindings))
 			 `(CALL (LAMBDA ,(cons (car lambda-list)
 					       (cddr lambda-list))
 				  ,lambda-body)
@@ -422,10 +455,10 @@ MIT in each case. |#
   ;; easy expression (e.g. closure references).  We substitute the
   ;; expressions for these names in BODY, but first we look at the
   ;; names in these expressions and rename to avoid name capture.
-  (let ((bindings* (lmap (lambda (binding)
-			   (list (car binding)
-				 (cleanup/expr env (cadr binding))))
-			 bindings)))
+  (let ((bindings* (map (lambda (binding)
+			  (list (car binding)
+				(cleanup/expr env (cadr binding))))
+			bindings)))
     (call-with-values
      (lambda ()
        (list-split bindings*
@@ -439,32 +472,32 @@ MIT in each case. |#
 			(cleanup/easy? (cadr binding*)))))
 	(lambda (easy non-easy)
 	  (let* ((possibly-captured
-		  (lmap (lambda (binding)
-			  (cleanup/easy/name (cadr binding)))
-			easy))
+		  (map (lambda (binding)
+			 (cleanup/easy/name (cadr binding)))
+		       easy))
 		 (complex-triplets
 		  ;; (original-name renamed-version value-expression)
-		  (lmap (lambda (binding)
-			  (let ((name (car binding)))
-			    (list name
-				  (if (memq name possibly-captured)
-				      (variable/rename name)
-				      name)
-				  (cadr binding))))
+		  (map (lambda (binding)
+			 (let ((name (car binding)))
+			   (list name
+				 (if (memq name possibly-captured)
+				     (variable/rename name)
+				     name)
+				 (cadr binding))))
 			non-easy))
 		 (body*
 		  (cleanup/expr
 		   (append trivial
 			   easy
-			   (lmap (lambda (triplet)
-				   (list (car triplet)
-					 `(LOOKUP ,(cadr triplet))))
+			   (map (lambda (triplet)
+				  (list (car triplet)
+					`(LOOKUP ,(cadr triplet))))
 				 complex-triplets)
 			   env)
 		   body)))
 	    (if (null? complex-triplets)
 		body*
-		(letify (lmap cdr complex-triplets)
+		(letify (map cdr complex-triplets)
 			body*)))))))))
 
 (define (cleanup/easy? form)
@@ -544,14 +577,14 @@ MIT in each case. |#
 	(cadr (cadr place)))))
 
 (define (cleanup/renamings env names)
-  (lmap (lambda (name)
-	  (let ((place (assq name env)))
-	    ;; Do not rename if the shadowed binding is disappearing
-	    (if (or (not place)
-		    (QUOTE/? (cadr place)))
-		`(,name (LOOKUP ,name))
-		`(,name (LOOKUP ,(variable/rename name))))))
-	names))
+  (map (lambda (name)
+	 (let ((place (assq name env)))
+	   ;; Do not rename if the shadowed binding is disappearing
+	   (if (or (not place)
+		   (QUOTE/? (cadr place)))
+	       `(,name (LOOKUP ,name))
+	       `(,name (LOOKUP ,(variable/rename name))))))
+       names))
 
 (define (cleanup/expr env expr)
   (if (not (pair? expr))
@@ -570,9 +603,9 @@ MIT in each case. |#
      (illegal expr))))
 
 (define (cleanup/expr* env exprs)
-  (lmap (lambda (expr)
-	  (cleanup/expr env expr))
-	exprs))
+  (map (lambda (expr)
+	 (cleanup/expr env expr))
+       exprs))
 
 (define (cleanup/remember new old)
   (code-rewrite/remember new old))
