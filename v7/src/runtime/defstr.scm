@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 14.16 1991/03/25 22:03:47 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 14.17 1991/04/08 22:26:18 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -95,12 +95,10 @@ must be defined when the defstruct is evaluated.
 			    (parse/slot-descriptions structure
 						     slot-descriptions))
       (if (eq? (structure/scheme-type structure) 'RECORD)
-	  (let ((tag-name (structure/tag-name structure)))
-	    (structure/set-type! structure
-				 (make-record-type
-				  (make-record-type-name structure)
-				  (map slot/name
-				       (structure/slots structure))))))
+	  (structure/set-type! structure
+			       (make-record-type
+				(make-record-type-name structure)
+				(map slot/name (structure/slots structure)))))
       `(BEGIN ,@(type-definitions structure)
 	      ,@(constructor-definitions structure)
 	      ,@(accessor-definitions structure)
