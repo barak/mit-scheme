@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntfs.c,v 1.9 1995/10/28 01:03:40 cph Exp $
+$Id: ntfs.c,v 1.10 1995/10/28 02:10:32 cph Exp $
 
 Copyright (c) 1992-95 Massachusetts Institute of Technology
 
@@ -140,7 +140,7 @@ DEFUN (OS_file_rename, (from, to),
        CONST char * from AND
        CONST char * to)
 {
-  guarantee_writable (name, 1);
+  guarantee_writable (to, 1);
   STD_BOOL_SYSTEM_CALL (syscall_rename, (MoveFile (from, to)));
 }
 
@@ -149,7 +149,7 @@ DEFUN (OS_file_copy, (from, to),
        CONST char * from AND
        CONST char * to)
 {
-  guarantee_writable (name, 1);
+  guarantee_writable (to, 1);
   /* This system-call name is wrong, but there's no corresponding unix
      operation, and I don't feel like customizing this for NT now.  */
   STD_BOOL_SYSTEM_CALL (syscall_rename, (CopyFile (from, to, FALSE)));
