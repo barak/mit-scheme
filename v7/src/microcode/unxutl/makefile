@@ -1,7 +1,7 @@
 #
 # Makefile for MIT CScheme microcode.
 #
-# $Id: makefile,v 1.20 1993/02/22 20:31:31 nick Exp $
+# $Id: makefile,v 1.21 1993/04/15 09:16:10 cph Exp $
 #
 CPP = cc -E
 MAKE = make  # BSD doesn't have it as a default.
@@ -81,6 +81,9 @@ tags:
 
 locked:
 	rlog -L -R RCS/*,v
+	rlog -L -R m/RCS/*,v
+	rlog -L -R s/RCS/*,v
+	rlog -L -R dosutl/RCS/*,v
 
 getpagesize.h : pagesize.h
 	rm -f getpagesize.h
