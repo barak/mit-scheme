@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.85 1994/11/01 23:12:09 adams Exp $
+;;;	$Id: intmod.scm,v 1.86 1995/04/30 07:02:18 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -916,11 +916,11 @@ If this is an error, the debugger examines the error condition."
 (define (when-buffer-selected buffer thunk)
   (if (current-buffer? buffer)
       (thunk)
-      (letrec
-	  ((hook
-	    (lambda (buffer)
-	      (thunk)
-	      (remove-select-buffer-hook buffer hook))))
+      (letrec ((hook (lambda (buffer window)
+		       (if (current-window? window)
+			   (begin
+			     (thunk)
+			     (remove-select-buffer-hook buffer hook))))))
 	(add-select-buffer-hook buffer hook))))
 
 (define (operation/prompt-for-command-expression port prompt level)

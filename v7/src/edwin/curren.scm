@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: curren.scm,v 1.115 1995/04/27 20:33:28 cph Exp $
+;;;	$Id: curren.scm,v 1.116 1995/04/30 07:02:10 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -466,7 +466,7 @@ The screen is guaranteed to be deselected at that time."
   (set-buffer-point! buffer (window-point window))
   (if record?
       (bufferset-select-buffer! (current-bufferset) buffer))
-  (for-each (lambda (hook) (hook buffer))
+  (for-each (lambda (hook) (hook buffer window))
 	    (get-buffer-hooks buffer 'SELECT-BUFFER-HOOKS))
   (if (not (minibuffer? buffer))
       (event-distributor/invoke!
