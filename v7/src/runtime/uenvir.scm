@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uenvir.scm,v 14.53 2002/01/07 05:01:33 cph Exp $
+$Id: uenvir.scm,v 14.54 2002/02/12 15:13:47 cph Exp $
 
 Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -411,23 +411,23 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
    (lambda ()
      (system-vector-ref environment index))))
 
-(define (extend-interpreter-environment environment #!optional names values)
+(define (extend-top-level-environment environment #!optional names values)
   (if (not (interpreter-environment? environment))
-      (illegal-environment environment 'EXTEND-INTERPRETER-ENVIRONMENT))
-  (%extend-interpreter-environment
+      (illegal-environment environment 'EXTEND-TOP-LEVEL-ENVIRONMENT))
+  (%extend-top-level-environment
    environment
    (if (default-object? names) '() names)
    (if (default-object? values) 'DEFAULT values)
-   'EXTEND-INTERPRETER-ENVIRONMENT))
+   'EXTEND-TOP-LEVEL-ENVIRONMENT))
 
-(define (make-null-interpreter-environment #!optional names values)
-  (%extend-interpreter-environment
+(define (make-null-top-level-environment #!optional names values)
+  (%extend-top-level-environment
    (object-new-type (object-type #f) (fix:xor (object-datum #f) 1))
    (if (default-object? names) '() names)
    (if (default-object? values) 'DEFAULT values)
-   'MAKE-NULL-INTERPRETER-ENVIRONMENT))
+   'MAKE-NULL-TOP-LEVEL-ENVIRONMENT))
 
-(define (%extend-interpreter-environment environment names values procedure)
+(define (%extend-top-level-environment environment names values procedure)
   (if (not (list-of-type? names symbol?))
       (error:wrong-type-argument names "list of symbols" procedure))
   (system-list->vector

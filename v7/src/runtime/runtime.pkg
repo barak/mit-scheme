@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.408 2002/02/12 00:30:51 cph Exp $
+$Id: runtime.pkg,v 14.409 2002/02/12 15:14:21 cph Exp $
 
 Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
@@ -1322,13 +1322,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  environment-reference-type
 	  environment-safe-lookup
 	  environment?
-	  (extend-ic-environment extend-interpreter-environment)
-	  extend-interpreter-environment
+	  (extend-ic-environment extend-top-level-environment)
+	  (extend-interpreter-environment extend-top-level-environment)
+	  extend-top-level-environment
 	  guarantee-environment
 	  ic-environment?
 	  interpreter-environment?
-	  make-null-interpreter-environment
-	  system-global-environment?)
+	  (make-null-interpreter-environment make-null-top-level-environment)
+	  make-null-top-level-environment
+	  system-global-environment?
+	  (top-level-environment? interpreter-environment?))
   (export (runtime advice)
 	  ic-environment/arguments
 	  ic-environment/procedure)
