@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.5 1995/04/21 19:58:06 cph Exp $
+$Id: genio.scm,v 1.6 1995/09/13 19:56:13 cph Exp $
 
 Copyright (c) 1991-95 Massachusetts Institute of Technology
 
@@ -118,18 +118,23 @@ MIT in each case. |#
 
 (define (make-generic-i/o-port input-channel output-channel
 			       input-buffer-size output-buffer-size
-			       #!optional line-translation)
-  (let ((line-translation
-	 (if (default-object? line-translation)
+			       #!optional input-line-translation
+			       output-line-translation)
+  (let ((input-line-translation
+	 (if (default-object? input-line-translation)
 	     'DEFAULT
-	     line-translation)))
-    (make-generic-port generic-i/o-template
-		       (make-input-buffer input-channel
-					  input-buffer-size
-					  line-translation)
-		       (make-output-buffer output-channel
-					   output-buffer-size
-					   line-translation))))
+	     input-line-translation)))
+    (let ((output-line-translation
+	   (if (default-object? output-line-translation)
+	       input-line-translation
+	       output-line-translation)))
+      (make-generic-port generic-i/o-template
+			 (make-input-buffer input-channel
+					    input-buffer-size
+					    input-line-translation)
+			 (make-output-buffer output-channel
+					     output-buffer-size
+					     output-line-translation)))))
 
 (define (make-generic-port template input-buffer output-buffer)
   (let ((port (port/copy template (vector input-buffer output-buffer))))
