@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: grpops.scm,v 1.18 1993/01/10 10:54:42 cph Exp $
+;;;	$Id: grpops.scm,v 1.19 1993/08/09 19:19:27 jawilson Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -130,7 +130,8 @@
     unspecific))
 
 (define (prepare-gap-for-insert! group new-start n)
-  (if (group-read-only? group)
+  (if (or (group-read-only? group)
+	  (text-not-insertable? group new-start))
       (barf-if-read-only))
   (if (not (group-modified? group))
       (check-first-group-modification group))
@@ -182,7 +183,8 @@
 	       (fix:+ (group-modified-tick group) 1))
   ;; The MODIFIED? bit must be set *after* the undo recording.
   (undo-record-insertion! group index (fix:+ index n))
-  (set-group-modified! group true))
+  (set-group-modified! group true)
+  (update-intervals-for-insertion! group index n))
 
 ;;;; Deletions
 
@@ -195,12 +197,13 @@
 (define (group-delete! group start end)
   (if (not (fix:= start end))
       (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
-	(if (group-read-only? group)
-	    (barf-if-read-only))
-	(if (not (group-modified? group))
-	    (check-first-group-modification group))
 	(let ((text (group-text group))
 	      (gap-length (group-gap-length group)))
+	  (if (or (group-read-only? group)
+		  (text-not-deleteable? group start end))
+	      (barf-if-read-only))
+	  (if (not (group-modified? group))
+	      (check-first-group-modification group))
 	  ;; Guarantee that the gap is between START and END.  This is
 	  ;; best done before the undo recording.
 	  (cond ((fix:< (group-gap-start group) start)
@@ -254,6 +257,7 @@
 		     (fix:+ (group-modified-tick group) 1))
 	;; The MODIFIED? bit must be set *after* the undo recording.
 	(set-group-modified! group true)
+	(update-intervals-for-deletion! group start end)
 	(set-interrupt-enables! interrupt-mask)
 	unspecific)))
 
