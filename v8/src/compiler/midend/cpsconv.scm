@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cpsconv.scm,v 1.2 1994/11/22 03:48:51 adams Exp $
+$Id: cpsconv.scm,v 1.3 1994/11/22 19:52:24 gjr Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -45,42 +45,34 @@ MIT in each case. |#
 			    program))))
     (cpsconv/remember program* program)))
 
+;; Important: this macro binds the name FORM to the whole form
+;; thus the cps-converters can reference it and it will have the correct
+;; value.  It also binds the names CONT and HANDLER.
+
 (define-macro (define-cps-converter keyword bindings . body)
   (let ((proc-name (symbol-append 'CPSCONV/ keyword)))
     (call-with-values
      (lambda () (%matchup (cdr bindings) '(handler cont) '(cdr form)))
      (lambda (names code)
        `(define ,proc-name
-	  (let ((handler (lambda ,(cons (car bindings) names) ,@body)))
-	    (named-lambda (,proc-name cont form)
+	  (named-lambda (,proc-name cont form)
+	    (let ((handler (lambda ,(cons (car bindings) names) ,@body)))
 	      (cpsconv/remember ,code
 				form))))))))
 
 (define-cps-converter LOOKUP (cont name)
-  (cpsconv/return cont `(LOOKUP ,name)))
+  (cpsconv/return form cont `(LOOKUP ,name)))
 
 (define-cps-converter LAMBDA (cont lambda-list body)
-  (cpsconv/return cont
+  (cpsconv/return form cont
 		  (cpsconv/lambda* lambda-list body)))
 
-#|
 (define-cps-converter LET (cont bindings body)
   (cpsconv/call** (lmap cpsconv/classify-let-binding bindings)
 		  (lambda (names* rands*)
 		    `(LET ,(map list names* rands*)
-		       ,(cpsconv/expr cont body)))))
-|#
-
-(define (cpsconv/let cont form)
-  (cpsconv/remember
-   (let ((bindings (cadr form))
-	 (body (caddr form)))
-       (cpsconv/call** (lmap cpsconv/classify-let-binding bindings)
-		       (lambda (names* rands*)
-			 `(LET ,(map list names* rands*)
-			    ,(cpsconv/expr cont body)))
-		       form))
-   form))
+		       ,(cpsconv/expr cont body)))
+		  form))
 
 (define-cps-converter LETREC (cont bindings body)
   `(LETREC ,(lmap (lambda (binding)
@@ -100,24 +92,11 @@ MIT in each case. |#
 				     (lambda/body lam-expr))
 		    lam-expr))
 
-#|
 (define-cps-converter CALL (cont rator orig-cont #!rest rands)
   (if (not (equal? orig-cont '(QUOTE #F)))
       (internal-error "Already cps-converted?"
 		      `(CALL ,rator ,orig-cont ,@rands)))
-  (cpsconv/call* cont rator rands))
-|#
-
-(define (cpsconv/call cont form)
-  (cpsconv/remember
-   (let ((rator     (call/operator form))
-	 (orig-cont (call/continuation form))
-	 (rands     (call/operands form)))
-     (if (not (equal? orig-cont '(QUOTE #F)))
-	 (internal-error "Already cps-converted?"
-			 `(CALL ,rator ,orig-cont ,@rands)))
-     (cpsconv/call* cont rator rands form))
-   form))     
+  (cpsconv/call* cont rator rands form))
 
 (define (cpsconv/call* cont rator rands form)
   (let* ((do-call
@@ -141,13 +120,13 @@ MIT in each case. |#
 	 (simple
 	  (lambda (expr*)
 	    (cond ((not (simple-operator? (cadr rator)))
-		   (cpsconv/hook-return (cadr rator) cont expr*))
+		   (cpsconv/hook-return form (cadr rator) cont expr*))
 		  ((operator/satisfies? (cadr rator) '(UNSPECIFIC-RESULT))
 		   `(BEGIN
 		      ,expr*
-		      ,(cpsconv/return cont `(QUOTE ,%unspecific))))
+		      ,(cpsconv/return form cont `(QUOTE ,%unspecific))))
 		  (else
-		   (cpsconv/return cont expr*))))))
+		   (cpsconv/return form cont expr*))))))
     (cond ((LAMBDA/? rator)
 	   (if (there-exists? rands
 		 (lambda (rand)
@@ -157,9 +136,10 @@ MIT in each case. |#
 	   (let ((names (lambda/formals rator)))
 	     (do-call rands (cdr names)
 		      (lambda (names* rands*)
-			`(CALL (LAMBDA ,(cons (cpsconv/new-ignored-continuation)
-					      names*)
-				 ,(cpsconv/expr cont (caddr rator)))
+			`(CALL
+			  (LAMBDA ,(cons (cpsconv/new-ignored-continuation)
+					 names*)
+			    ,(cpsconv/expr cont (caddr rator)))
 			       (QUOTE #F)
 			       ,@rands*)))))
 	  ((not (QUOTE/? rator))
@@ -290,16 +270,15 @@ MIT in each case. |#
      form)))  
 
 (define-cps-converter QUOTE (cont object)
-  (cpsconv/return cont `(QUOTE ,object)))
+  (cpsconv/return form cont `(QUOTE ,object)))
 
 (define-cps-converter DECLARE (cont #!rest anything)
-  (cpsconv/return cont `(DECLARE ,@anything)))
+  (cpsconv/return form cont `(DECLARE ,@anything)))
 
-#|
 (define-cps-converter BEGIN (cont #!rest actions)
   (if (null? actions)
       (internal-error "Empty begin")
-      (let walk ((next (car actions))
+      (let walk ((next    (car actions))
 		 (actions (cdr actions)))
 	(if (null? actions)
 	    (cpsconv/expr cont next)
@@ -312,63 +291,22 @@ MIT in each case. |#
 		 ,(cpsconv/expr
 		   (cpsconv/begin-continuation
 		    next-name
-		    (cspconv/dbg-continuation/make 'BEGIN
-						   <>
-						   next))
+		    (cspconv/dbg-continuation/make 'BEGIN form next))
 		   next)))))))
 
 (define-cps-converter IF (cont pred conseq alt)
   ;; This does anchor pointing by default?
   (let ((consname (cpsconv/new-name 'CONS))
-	(altname (cpsconv/new-name 'ALT))
-	(ignore (cpsconv/new-ignored-continuation)))
-    `(LET ((,consname (LAMBDA (,ignore) ,(cpsconv/expr cont conseq)))
-	   (,altname (LAMBDA (,ignore) ,(cpsconv/expr cont alt))))
+	(altname  (cpsconv/new-name 'ALT))
+	(ignore1   (cpsconv/new-ignored-continuation))
+	(ignore2   (cpsconv/new-ignored-continuation)))
+    `(LET ((,consname (LAMBDA (,ignore1) ,(cpsconv/expr cont conseq)))
+	   (,altname  (LAMBDA (,ignore2) ,(cpsconv/expr cont alt))))
        ,(cpsconv/expr
 	 (cpsconv/predicate-continuation
 	  consname altname
-	  (cpsconv/dbg-continuation/make 'PREDICATE <> pred))
+	  (cpsconv/dbg-continuation/make 'PREDICATE form pred))
 	 pred))))
-|#
-
-(define (cpsconv/begin cont form)
-  (cpsconv/remember
-   (let ((actions (cdr form)))
-     (if (null? actions)
-	 (internal-error "Empty begin")
-	 (let walk ((next (car actions))
-		    (actions (cdr actions)))
-	   (if (null? actions)
-	       (cpsconv/expr cont next)
-	       (let ((next-name (cpsconv/new-name 'NEXT))
-		     (ignore (cpsconv/new-ignored-continuation)))
-		 `(LET ((,next-name
-			 (LAMBDA (,ignore)
-			   ,(walk (car actions)
-				  (cdr actions)))))
-		    ,(cpsconv/expr
-		      (cpsconv/begin-continuation
-		       next-name
-		       (cpsconv/dbg-continuation/make 'BEGIN form next))
-		      next)))))))
-   form))
-
-(define (cpsconv/if cont form)
-  (cpsconv/remember
-   (let ((pred   (if/predicate form))
-	 (conseq (if/consequent form))
-	 (alt    (if/alternate form)))
-     (let ((consname (cpsconv/new-name 'CONS))
-	   (altname  (cpsconv/new-name 'ALT))
-	   (ignore1  (cpsconv/new-ignored-continuation))
-	   (ignore2  (cpsconv/new-ignored-continuation)))
-       `(LET ((,consname (LAMBDA (,ignore1) ,(cpsconv/expr cont conseq)))
-	      (,altname  (LAMBDA (,ignore2) ,(cpsconv/expr cont alt))))
-	  ,(cpsconv/expr (cpsconv/predicate-continuation
-			  consname altname
-			  (cpsconv/dbg-continuation/make 'PREDICATE form pred))
-			 pred))))
-   form))
 
 (define (cpsconv/expr cont expr)
   (if (not (pair? expr))
@@ -440,7 +378,8 @@ MIT in each case. |#
 			     (code-rewrite/original-form/previous outer)
 			     (code-rewrite/original-form/previous inner)))
 
-(define (cpsconv/return cont expression)
+(define (cpsconv/return form cont expression)
+  (cpsconv/remember expression form)
   (define (default name)
     `(CALL (LOOKUP ,name)
 	   (QUOTE #F)
@@ -515,25 +454,27 @@ MIT in each case. |#
 	(cpsconv/cont/dbg-cont cont))))
     ((BEGIN)
      (cpsconv/remember*
-      `(LAMBDA (,(cpsconv/new-ignored-continuation) ,(cpsconv/new-name 'IGNORE))
+      `(LAMBDA (,(cpsconv/new-ignored-continuation)
+		,(cpsconv/new-name 'IGNORE))
 	 (CALL (LOOKUP ,(cpsconv/cont/field1 cont))
 	       (QUOTE #F)))
       (cpsconv/cont/dbg-cont cont)))
     (else
      (internal-error "Unknown continuation kind" cont))))
 
-(define (cpsconv/hook-return rator cont expr*)
+(define (cpsconv/hook-return form rator cont expr*)
   (define (default)
+    (cpsconv/remember expr* form)
     (let ((name (cpsconv/new-name 'VALUE)))
       `(LET ((,name ,expr*))
-	 ,(cpsconv/return cont `(LOOKUP ,name)))))
+	 ,(cpsconv/return form cont `(LOOKUP ,name)))))
   (if (not (operator/satisfies? rator '(OUT-OF-LINE-HOOK)))
       (default)
       (case (cpsconv/cont/kind cont)
 	((PREDICATE)
 	 (if (not (operator/satisfies? rator '(OPEN-CODED-PREDICATE)))
 	     (default)
-	     `(IF ,expr*
+	     `(IF ,(cpsconv/remember expr* form)
 		  (CALL (LOOKUP ,(cpsconv/cont/field1 cont))
 			(QUOTE #F))
 		  (CALL (LOOKUP ,(cpsconv/cont/field2 cont))
