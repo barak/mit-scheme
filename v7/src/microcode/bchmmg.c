@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchmmg.c,v 9.83 1993/11/09 18:25:52 gjr Exp $
+$Id: bchmmg.c,v 9.84 1993/11/22 00:32:28 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -2261,6 +2261,8 @@ DEFUN (Setup_Memory, (heap_size, stack_size, constant_space_size),
     /*NOTREACHED*/
   }
 
+  Highest_Allocated_Address -= gc_buffer_allocation;
+
   /* Consistency check 3 */
   test_value =
     (MAKE_POINTER_OBJECT (LAST_TYPE_CODE, Highest_Allocated_Address));
@@ -2283,7 +2285,7 @@ DEFUN (Setup_Memory, (heap_size, stack_size, constant_space_size),
 
   Clear_Memory (heap_size, stack_size, constant_space_size);
   INITIALIZE_GC_BUFFERS (1,
-			 (Highest_Allocated_Address - gc_buffer_allocation),
+			 Highest_Allocated_Address,
 			 (heap_size * (sizeof (SCHEME_OBJECT))),
 			 option_gc_read_overlap,
 			 option_gc_write_overlap,
@@ -3462,7 +3464,7 @@ DEFINE_PRIMITIVE ("BCHSCHEME-PARAMETERS-SET!", Prim_bchscheme_set_params, 1, 1, 
       free ((PTR) drone_file_name);
 
     if ((RE_INITIALIZE_GC_BUFFERS (0,
-				   (Highest_Allocated_Address + 1),
+				   Highest_Allocated_Address,
 				   (saved_heap_size
 				    * (sizeof (SCHEME_OBJECT))),
 				   new_read_overlap,
@@ -3476,7 +3478,7 @@ DEFINE_PRIMITIVE ("BCHSCHEME-PARAMETERS-SET!", Prim_bchscheme_set_params, 1, 1, 
 	free (new_drone_ptr);
 
       if ((RE_INITIALIZE_GC_BUFFERS (0,
-				     (Highest_Allocated_Address + 1),
+				     Highest_Allocated_Address,
 				     (saved_heap_size
 				      * (sizeof (SCHEME_OBJECT))),
 				     0, 0,
