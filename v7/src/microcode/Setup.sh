@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: Setup.sh,v 1.4 2000/12/08 18:08:02 cph Exp $
+# $Id: Setup.sh,v 1.5 2000/12/08 18:09:40 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -29,7 +29,7 @@ if [ ! -x configure ]; then
     echo "autoconf"
     autoconf
 fi
-( cd cmpauxmd && $(MAKE) )
+( cd cmpauxmd && make )
 if [ ! -f Makefile.in ]; then
     makegen/makeinit.sh
 fi

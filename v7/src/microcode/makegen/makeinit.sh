@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: makeinit.sh,v 1.7 2000/12/08 17:53:58 cph Exp $
+# $Id: makeinit.sh,v 1.8 2000/12/08 18:08:02 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -35,6 +35,8 @@ scheme -heap 2000 <<EOF
 		   "Makefile.in")
 EOF
 
-# Generate "Makefile".
-# We assume that caller will run "make distclean".
+# Clean up.
+# We need to generate "Makefile" to run the clean,
+# but "make distclean" will delete it.
 ./config.status
+make distclean

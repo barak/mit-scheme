@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.2 2000/12/08 05:04:37 cph Exp $
+# $Id: Clean.sh,v 1.3 2000/12/08 18:15:46 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -33,14 +33,23 @@ case "${COMMAND}" in
 mostlyclean)
     ;;
 clean | distclean)
+    echo "rm -f lib/*.com"
     rm -f lib/*.com
     ;;
 maintainer-clean)
+    echo "rm -rf lib"
     rm -rf lib
     ;;
 *)
     echo "$0: Unknown command ${COMMAND}"
     exit 1
+    ;;
+esac
+
+case "${COMMAND}" in
+distclean | maintainer-clean)
+    echo "rm -f Makefile config.cache config.log config.status"
+    rm -f Makefile config.cache config.log config.status
     ;;
 esac
 
