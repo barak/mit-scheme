@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.7 1993/10/31 04:04:20 gjr Exp $
+$Id: cout.scm,v 1.8 1993/10/31 18:34:13 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -557,7 +557,7 @@ MIT in each case. |#
 			 "(RCONSM (" (number->string (1+ npairs))
 			 (apply string-append
 				(map (lambda (frob)
-				       (string-append ", "
+				       (string-append ",\n\t\t"
 						      (process frob)))
 				     (cons object frobs)))
 			 "))"))))))
