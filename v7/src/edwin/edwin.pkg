@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.249 2000/03/26 01:27:13 cph Exp $
+$Id: edwin.pkg,v 1.250 2000/03/31 20:09:52 cph Exp $
 
 Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
@@ -657,6 +657,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (parent (edwin))
   (export (edwin)
 	  dired-filename-start
+	  dired-mark-files!
 	  dired-marked-files
 	  dired-next-files
 	  dired-pathname

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dired.scm,v 1.178 2000/03/31 19:51:44 cph Exp $
+;;; $Id: dired.scm,v 1.179 2000/03/31 20:09:50 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -867,10 +867,12 @@ Actions controlled by variables list-directory-brief-switches
 (define dired-marker-char #\*)
 
 (define (dired-mark-files! buffer predicate)
-  (for-each-file-line buffer
-		      (lambda (lstart)
-			(if (predicate (dired-filename-string lstart))
-			    (dired-mark-1 lstart dired-marker-char)))))
+  (let ((directory (buffer-default-directory buffer)))
+    (for-each-file-line buffer
+      (lambda (lstart)
+	(if (predicate
+	     (merge-pathnames (dired-filename-string lstart) directory))
+	    (dired-mark-1 lstart dired-marker-char))))))
 
 (define (dired-marked-files #!optional mark marker-char)
   (let ((mark
