@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.38 1996/10/07 18:21:20 cph Exp $
+;;;	$Id: dos.scm,v 1.39 1996/10/07 18:51:12 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-96 Massachusetts Institute of Technology
 ;;;
@@ -76,13 +76,11 @@
 		(loop (cdr pathnames))))))))
 
 (define (os/set-file-modes-writable! pathname)
-  (set-file-modes! pathname #o777))
+  (set-file-modes! pathname
+		   (fix:andc (file-modes pathname) nt-file-mode/read-only)))
 
-(define os/restore-modes-to-updated-file!
-  ;; **** If implementation is changed so that file modes are DOS
-  ;; attributes rather than an emulation of unix modes, this will have
-  ;; to be changed to work like the OS/2 code.  ****
-  set-file-modes!)
+(define (os/restore-modes-to-updated-file! pathname modes)
+  (set-file-modes! pathname (fix:or modes nt-file-mode/archive)))
 
 (define (os/scheme-can-quit?)
   #t)
