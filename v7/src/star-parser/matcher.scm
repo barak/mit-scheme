@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: matcher.scm,v 1.17 2001/10/16 04:59:18 cph Exp $
+;;; $Id: matcher.scm,v 1.18 2001/10/16 16:41:08 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -278,20 +278,13 @@
 	  (wrap-matcher
 	   (lambda (ks kf)
 	     (let loop ((expressions expressions) (kf2 kf))
-	       (if (pair? (cdr expressions))
-		   (call-with-pointer
-		    (lambda (p)
-		      `(,(compile-matcher-expression (car expressions))
-			,(let ((kf3 (make-kf-identifier)))
-			   `(LAMBDA (,kf3)
-			      ,(loop (cdr expressions)
-				     `(LAMBDA ()
-					,(backtrack-to p)
-					(,kf3)))))
-			,kf2)))
-		   `(,(compile-matcher-expression (car expressions))
-		     ,ks
-		     ,kf2)))))
+	       `(,(compile-matcher-expression (car expressions))
+		 ,(if (pair? (cdr expressions))
+		      (let ((kf3 (make-kf-identifier)))
+			`(LAMBDA (,kf3)
+			   ,(loop (cdr expressions) kf3)))
+		      ks)
+		 ,kf2))))
 	  (compile-matcher-expression (car expressions)))
       (wrap-matcher (lambda (ks kf) `(,ks ,kf)))))
 
@@ -300,25 +293,12 @@
       (if (pair? (cdr expressions))
 	  (wrap-matcher
 	   (lambda (ks kf)
-	     (call-with-pointer
-	      (lambda (p)
-		(let ((ks2 (make-ks-identifier))
-		      (kf2 (make-kf-identifier)))
-		  `(LET ((,ks2
-			  (LAMBDA (,kf2)
-			    (,ks
-			     (LAMBDA ()
-			       ,(backtrack-to p)
-			       (,kf2))))))
-		     ,(let loop ((expressions expressions))
-			(if (pair? (cdr expressions))
-			    `(,(compile-matcher-expression (car expressions))
-			      ,ks2
-			      (LAMBDA ()
-				,(loop (cdr expressions))))
-			    `(,(compile-matcher-expression (car expressions))
-			      ,ks
-			      ,kf)))))))))
+	     (let loop ((expressions expressions))
+	       `(,(compile-matcher-expression (car expressions))
+		 ,ks
+		 ,(if (pair? (cdr expressions))
+		      (backtracking-kf (loop (cdr expressions)))
+		      kf)))))
 	  (compile-matcher-expression (car expressions)))
       (wrap-matcher (lambda (ks kf) `(BEGIN ,ks (,kf))))))
 
@@ -328,14 +308,6 @@
      (let ((ks2 (make-ks-identifier))
 	   (kf2 (make-kf-identifier)))
        `(LET ,ks2 ((,kf2 ,kf))
-	  ,(call-with-pointer
-	    (lambda (p)
-	      `(,(compile-matcher-expression expression)
-		,(let ((kf3 (make-kf-identifier)))
-		   `(LAMBDA (,kf3)
-		      (,ks2
-		       (LAMBDA ()
-			 ,(backtrack-to p)
-			 (,ks ,kf3)))))
-		(LAMBDA ()
-		  (,ks ,kf2))))))))))
+	  (,(compile-matcher-expression expression)
+	   ,ks2
+	   ,(backtracking-kf `(,ks ,kf2))))))))

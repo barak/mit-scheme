@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.scm,v 1.20 2001/10/16 04:59:21 cph Exp $
+;;; $Id: parser.scm,v 1.21 2001/10/16 16:41:10 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -287,26 +287,15 @@
 	  (wrap-parser
 	   (lambda (ks kf)
 	     (let loop ((expressions expressions) (vs '()) (kf2 kf))
-	       (if (pair? (cdr expressions))
-		   (call-with-pointer
-		    (lambda (p)
-		      `(,(compile-parser-expression (car expressions))
-			,(let ((v (make-value-identifier))
-			       (kf3 (make-kf-identifier)))
-			   `(LAMBDA (,v ,kf3)
-			      ,(loop (cdr expressions)
-				     (cons v vs)
-				     `(LAMBDA ()
-					,(backtrack-to p)
-					(,kf3)))))
-			,kf2)))
-		   `(,(compile-parser-expression (car expressions))
-		     ,(let ((v (make-value-identifier))
-			    (kf3 (make-kf-identifier)))
-			`(LAMBDA (,v ,kf3)
-			   (,ks (VECTOR-APPEND ,@(reverse (cons v vs)))
-				,kf3)))
-		     ,kf2)))))
+	       `(,(compile-parser-expression (car expressions))
+		 ,(let ((v (make-value-identifier))
+			(kf3 (make-kf-identifier)))
+		    `(LAMBDA (,v ,kf3)
+		       ,(let ((vs (cons v vs)))
+			  (if (pair? (cdr expressions))
+			      (loop (cdr expressions) vs kf3)
+			      `(,ks (VECTOR-APPEND ,@(reverse vs)) ,kf3)))))
+		 ,kf2))))
 	  (compile-parser-expression (car expressions)))
       (wrap-parser (lambda (ks kf) `(,ks '#() ,kf)))))
 
@@ -315,26 +304,12 @@
       (if (pair? (cdr expressions))
 	  (wrap-parser
 	   (lambda (ks kf)
-	     (call-with-pointer
-	      (lambda (p)
-		(let ((ks2 (make-ks-identifier))
-		      (v (make-value-identifier))
-		      (kf2 (make-kf-identifier)))
-		  `(LET ((,ks2
-			  (LAMBDA (,v ,kf2)
-			    (,ks ,v
-				 (LAMBDA ()
-				   ,(backtrack-to p)
-				   (,kf2))))))
-		     ,(let loop ((expressions expressions))
-			(if (pair? (cdr expressions))
-			    `(,(compile-parser-expression (car expressions))
-			      ,ks2
-			      (LAMBDA ()
-				,(loop (cdr expressions))))
-			    `(,(compile-parser-expression (car expressions))
-			      ,ks
-			      ,kf)))))))))
+	     (let loop ((expressions expressions))
+	       `(,(compile-parser-expression (car expressions))
+		 ,ks
+		 ,(if (pair? (cdr expressions))
+		      (backtracking-kf (loop (cdr expressions)))
+		      kf)))))
 	  (compile-parser-expression (car expressions)))
       (wrap-parser (lambda (ks kf) ks `(,kf)))))
 
@@ -345,15 +320,9 @@
 	   (v (make-value-identifier))
 	   (kf2 (make-kf-identifier)))
        `(LET ,ks2 ((,v '#()) (,kf2 ,kf))
-	  ,(call-with-pointer
-	    (lambda (p)
-	      `(,(compile-parser-expression expression)
-		,(let ((v2 (make-value-identifier))
-		       (kf3 (make-kf-identifier)))
-		   `(LAMBDA (,v2 ,kf3)
-		      (,ks2 (VECTOR-APPEND ,v ,v2)
-			    (LAMBDA ()
-			      ,(backtrack-to p)
-			      (,ks ,v ,kf3)))))
-		(LAMBDA ()
-		  (,ks ,v ,kf2))))))))))
+	  (,(compile-parser-expression expression)
+	   ,(let ((v2 (make-value-identifier))
+		  (kf3 (make-kf-identifier)))
+	      `(LAMBDA (,v2 ,kf3)
+		 (,ks2 (VECTOR-APPEND ,v ,v2) ,kf3)))
+	   ,(backtracking-kf `(,ks ,v ,kf2))))))))

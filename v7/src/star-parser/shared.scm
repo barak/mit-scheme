@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: shared.scm,v 1.11 2001/10/16 04:59:25 cph Exp $
+;;; $Id: shared.scm,v 1.12 2001/10/16 16:41:13 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -86,8 +86,12 @@
 (define (fetch-pointer)
   `(GET-PARSER-BUFFER-POINTER ,*buffer-name*))
 
-(define (backtrack-to p)
-  `(SET-PARSER-BUFFER-POINTER! ,*buffer-name* ,p))
+(define (backtracking-kf body)
+  (call-with-pointer
+   (lambda (p)
+     `(LAMBDA ()
+	(SET-PARSER-BUFFER-POINTER! ,*buffer-name* ,p)
+	,body))))
 
 (define (make-kf-identifier)
   (generate-identifier 'KF))
