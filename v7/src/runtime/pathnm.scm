@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 13.41 1987/01/23 00:17:26 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 13.42 1987/03/12 02:16:14 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -57,10 +57,10 @@
 ;;; special meaning to `merge-pathnames', in which such components are
 ;;; substituted.
 
-;;; A pathname consists of 5 components, as follows:
+;;; A pathname consists of 5 components, not all necessarily
+;;; meaningful, as follows:
 
 ;;; * The DEVICE is usually a physical device, as in the Twenex `ps:'.
-;;; Unix does not use this field.
 
 ;;; * The DIRECTORY is a list of components.  If the first component
 ;;; is the null string, then the directory path is absolute.
@@ -78,15 +78,22 @@
 ;;; the version to 'NEWEST, which means to search the directory for
 ;;; the highest version numbered file.
 
-;;; A note about parsing of filename strings: the standard syntax for
-;;; a filename string is "<name>.<version>.<type>".  Since the Unix
-;;; file system treats "." just like any other character, it is
-;;; possible to give files strange names like "foo.bar.baz.mum".  In
-;;; this case, the resulting name would be "foo.bar.baz", and the
-;;; resulting type would be "mum".  In general, degenerate filenames
-;;; (including names with non-numeric versions) are parsed such that
-;;; the characters following the final "." become the type, while the
-;;; characters preceding the final "." become the name.
+;;; This file requires the following procedures and variables which
+;;; define the conventions for the particular file system in use:
+;;;
+;;; (symbol->pathname symbol)
+;;; (string->pathname string)
+;;; (pathname-unparse device directory name type version)
+;;; (pathname-unparse-name name type version)
+;;; (simplify-directory directory)
+;;; working-directory-package
+;;; (access reset! working-directory-package)
+;;; init-file-pathname
+;;; (home-directory-pathname)
+;;; (working-directory-pathname)
+;;; (set-working-directory-pathname! name)
+;;;
+;;; See the files unkpth.scm, vmspth.scm, or unxpth.scm for examples.
 
 ;;;; Basic Pathnames
 
@@ -186,139 +193,15 @@
     (lambda (device directory name type version)
       (pathname-unparse #F #F name type version))))
 
-;;;; Parse
+;;;; Parse and unparse.
+
+;;; Defined in terms of operating system dependent procedures.
 
 (define (->pathname object)
   (cond ((pathname? object) object)
 	((string? object) (string->pathname object))
-	((symbol? object)
-	 (string->pathname (string-downcase (symbol->string object))))
+	((symbol? object) (symbol->pathname object))
 	(else (error "Unable to coerce into pathname" object))))
-
-(define string->pathname)
-(let ()
-
-(set! string->pathname
-(named-lambda (string->pathname string)
-  (parse-pathname (canonicalize-filename-string string)
-		  make-pathname)))
-
-(define (parse-pathname string receiver)
-  (let ((components (divide-into-components (string-trim string))))
-    (if (null? components)
-	(receiver #F #F #F #F #F)
-	(let ((components
-	       (append (expand-directory-prefixes (car components))
-		       (cdr components))))
-	  (parse-name (car (last-pair components))
-	    (lambda (name type version)
-	      (receiver #F
-			(map (lambda (component)
-			       (if (string=? "*" component)
-				   'WILD
-				   component))
-			     (except-last-pair components))
-			name type version)))))))
-
-(define (divide-into-components string)
-  (let ((end (string-length string)))
-    (define (loop start)
-      (let ((index (substring-find-next-char string start end #\/)))
-	(if index
-	    (cons (substring string start index)
-		  (loop (1+ index)))
-	    (list (substring string start end)))))
-    (loop 0)))
-
-(define (expand-directory-prefixes string)
-  (if (string-null? string)
-      (list string)
-      (case (string-ref string 0)
-	((#\$)
-	 (divide-into-components
-	  (get-environment-variable
-	   (substring string 1 (string-length string)))))
-	((#\~)
-	 (let ((user-name (substring string 1 (string-length string))))
-	   (divide-into-components
-	    (if (string-null? user-name)
-		(get-environment-variable "HOME")
-		(get-user-home-directory user-name)))))
-	(else (list string)))))
-
-(define get-environment-variable
-  (let ((primitive (make-primitive-procedure 'GET-ENVIRONMENT-VARIABLE)))
-    (lambda (name)
-      (or (primitive name)
-	  (error "GET-ENVIRONMENT-VARIABLE: Unbound name" name)))))
-
-(define get-user-home-directory
-  (let ((primitive (make-primitive-procedure 'GET-USER-HOME-DIRECTORY)))
-    (lambda (user-name)
-      (or (primitive user-name)
-	  (error "User has no home directory" user-name)))))
-
-(define (parse-name string receiver)
-  (let ((start 0)
-	(end (string-length string)))
-    (define (find-next-dot start)
-      (substring-find-next-char string start end #\.))
-
-    (define (find-previous-dot start)
-      (substring-find-previous-char string start end #\.))
-
-    (define (parse-version start)
-      (cond ((= start end) 'UNSPECIFIC)
-	    ((substring=? string start end "*" 0 1) 'WILD)
-	    ((substring-find-next-char string start end #\*)
-	     (substring string start end))
-	    (else
-	     (let ((n (digits->number (reverse! (substring->list string start
-								 end))
-				      1 0)))
-	       (if (and n (>= n 0))
-		   (if (= n 0) 'NEWEST n)
-		   (substring string start end))))))
-
-    (if (= start end)
-	(receiver #F #F #F)
-	(let ((index (find-next-dot start)))
-	  (if index
-	      (let ((start* (1+ index))
-		    (name (wildify string start index)))
-		(if (= start* end)
-		    (receiver name 'UNSPECIFIC 'UNSPECIFIC)
-		    (or (let ((index (find-next-dot start*)))
-			  (and index
-			       (let ((version (parse-version (1+ index))))
-				 (and (not (string? version))
-				      (receiver name
-						(wildify string start* index)
-						version)))))
-			(let ((index (find-previous-dot start)))
-			  (receiver (wildify string start index)
-				    (wildify string (1+ index) end)
-				    #F)))))
-	      (receiver (wildify string start end) #F #F))))))
-
-(define (digits->number digits weight accumulator)
-  (if (null? digits)
-      accumulator
-      (let ((value (char->digit (car digits) 10)))
-	(and value
-	     (digits->number (cdr digits)
-			     (* weight 10)
-			     (+ (* weight value) accumulator))))))
-
-(define (wildify string start end)
-  (if (substring=? string start end "*" 0 1)
-      'WILD
-      (substring string start end)))
-
-;;; end LET.
-)
-
-;;;; Unparse
 
 (define (pathname->string pathname)
   (or (access string pathname)
@@ -334,82 +217,10 @@
 			(and (memq 'NAME fields) name)
 			(and (memq 'TYPE fields) type)
 			(and (memq 'VERSION fields) version)))))
-
-(define pathname-unparse)
-(define pathname-unparse-name)
-(let ()
-
-(set! pathname-unparse
-(named-lambda (pathname-unparse device directory name type version)
-  (unparse-device
-   device
-   (unparse-directory directory
-		      (pathname-unparse-name name type version)))))
-
-(define (unparse-device device rest)
-  (let ((device-string (unparse-component device)))
-    (if device-string
-	(string-append device-string ":" rest)
-	rest)))
-
-(define (unparse-directory directory rest)
-  (cond ((null? directory) rest)
-	((pair? directory)
-	 (let loop ((directory directory))
-	   (let ((directory-string (unparse-component (car directory)))
-		 (rest (if (null? (cdr directory))
-			   rest
-			   (loop (cdr directory)))))
-	     (if directory-string
-		 (string-append directory-string "/" rest)
-		 rest))))
-	(else
-	 (error "Unrecognizable directory" directory))))
 
-(set! pathname-unparse-name
-(named-lambda (pathname-unparse-name name type version)
-  (let ((name-string (unparse-component name))
-	(type-string (unparse-component type))
-	(version-string (unparse-version version)))
-    (cond ((not name-string) "")
-	  ((not type-string) name-string)
-	  ((eq? type-string 'UNSPECIFIC) (string-append name-string "."))
-	  ((not version-string) (string-append name-string "." type-string))
-	  ((eq? version-string 'UNSPECIFIC)
-	   (string-append name-string "." type-string "."))
-	  (else
-	   (string-append name-string "." type-string "." version-string))))))
+;;;; Merging pathnames
 
-(define (unparse-version version)
-  (if (eq? version 'NEWEST)
-      "0"
-      (unparse-component version)))
-
-(define (unparse-component component)
-  (cond ((not component) #F)
-	((eq? component 'UNSPECIFIC) component)
-	((eq? component 'WILD) "*")
-	((string? component) component)
-	((and (integer? component) (> component 0))
-	 (list->string (number->digits component '())))
-	(else (error "Unknown component" component))))
-
-(define (number->digits number accumulator)
-  (if (zero? number)
-      accumulator
-      (let ((qr (integer-divide number 10)))
-	(number->digits (integer-divide-quotient qr)
-			(cons (digit->char (integer-divide-remainder qr))
-			      accumulator)))))
-
-;;; end LET.
-)
-
-(define merge-pathnames)
-(let ()
-
-(set! merge-pathnames
-(named-lambda (merge-pathnames pathname default)
+(define (merge-pathnames pathname default)
   (make-pathname (or (pathname-device pathname) (pathname-device default))
 		 (simplify-directory
 		  (let ((directory (pathname-directory pathname)))
@@ -419,20 +230,7 @@
 			   (append (pathname-directory default) directory)))))
 		 (or (pathname-name pathname) (pathname-name default))
 		 (or (pathname-type pathname) (pathname-type default))
-		 (or (pathname-version pathname) (pathname-version default)))))
-
-(define (simplify-directory directory)
-  (cond ((null? directory) directory)
-	((string=? (car directory) ".")
-	 (simplify-directory (cdr directory)))
-	((null? (cdr directory)) directory)
-	((string=? (cadr directory) "..")
-	 (simplify-directory (cddr directory)))
-	(else
-	 (cons (car directory)
-	       (simplify-directory (cdr directory))))))
-
-)
+		 (or (pathname-version pathname) (pathname-version default))))
 
 (define (pathname-as-directory pathname)
   (let ((file (pathname-unparse-name (pathname-name pathname)
@@ -444,3 +242,6 @@
 		       (append (pathname-directory pathname)
 			       (list file))
 		       #F #F #F))))
+
+(define (pathname->absolute-pathname pathname)
+  (merge-pathnames pathname (working-directory-pathname)))
