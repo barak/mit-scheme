@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.96 1991/03/09 21:33:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.97 1991/03/10 22:42:32 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -1463,6 +1463,7 @@ MIT in each case. |#
 	  channel-blocking?
 	  channel-close
 	  channel-nonblocking
+	  channel-port
 	  channel-read
 	  channel-read-block
 	  channel-table
@@ -1518,7 +1519,6 @@ MIT in each case. |#
   (export (runtime subprocess)
 	  channel-descriptor)
   (export (runtime generic-input)
-	  bind-port-for-errors
 	  input-buffer/buffered-chars
 	  input-buffer/channel
 	  input-buffer/char-ready?
@@ -1533,9 +1533,9 @@ MIT in each case. |#
 	  input-buffer/read-until-delimiter
 	  input-buffer/set-size
 	  input-buffer/size
-	  make-input-buffer)
+	  make-input-buffer
+	  set-channel-port!)
   (export (runtime generic-output)
-	  bind-port-for-errors
 	  make-output-buffer
 	  output-buffer/buffered-chars
 	  output-buffer/channel
@@ -1543,16 +1543,18 @@ MIT in each case. |#
 	  output-buffer/drain-block
 	  output-buffer/set-size
 	  output-buffer/size
-	  output-buffer/write-string-block)
+	  output-buffer/write-char-block
+	  output-buffer/write-string-block
+	  set-channel-port!)
   (export (runtime file-input)
-	  bind-port-for-errors
 	  input-buffer/chars-remaining
 	  input-buffer/read-substring
-	  make-input-buffer)
+	  make-input-buffer
+	  set-channel-port!)
   (export (runtime file-output)
-	  make-output-buffer)
+	  make-output-buffer
+	  set-channel-port!)
   (export (runtime console-input)
-	  bind-port-for-errors
 	  input-buffer/buffer-contents
 	  input-buffer/buffered-chars
 	  input-buffer/channel
@@ -1563,16 +1565,20 @@ MIT in each case. |#
 	  input-buffer/set-buffer-contents
 	  input-buffer/set-size
 	  input-buffer/size
-	  make-input-buffer)
+	  make-input-buffer
+	  set-channel-port!)
   (export (runtime console-output)
-	  bind-port-for-errors
 	  make-output-buffer
 	  output-buffer/buffered-chars
 	  output-buffer/channel
 	  output-buffer/drain-block
 	  output-buffer/set-size
 	  output-buffer/size
-	  output-buffer/write-string-block)
+	  output-buffer/write-char-block
+	  output-buffer/write-string-block
+	  set-channel-port!)
+  (export (runtime microcode-errors)
+	  port-error-test)
   (initialization (initialize-package!)))
 
 (define-package (runtime program-copier)

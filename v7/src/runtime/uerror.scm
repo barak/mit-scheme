@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.20 1991/02/22 21:15:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.21 1991/03/10 22:42:53 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -634,23 +634,31 @@ MIT in each case. |#
       (write-string "." port))))
 
 (define-low-level-handler 'SYSTEM-CALL
-  (let ((signal
-	 (condition-signaller condition-type:system-call-error
-			      '(OPERATOR OPERANDS SYSTEM-CALL ERROR-TYPE))))
+  (let ((make-condition
+	 (condition-constructor condition-type:system-call-error
+				'(OPERATOR OPERANDS SYSTEM-CALL ERROR-TYPE))))
     (lambda (continuation error-code)
       (let ((frame (continuation/first-subproblem continuation)))
 	(if (and (apply-frame? frame)
 		 (vector? error-code)
 		 (= 3 (vector-length error-code)))
-	    (signal continuation
-		    (apply-frame/operator frame)
-		    (apply-frame/operands frame)
-		    (let ((system-call (vector-ref error-code 2)))
-		      (or (microcode-system-call/code->name system-call)
-			  system-call))
-		    (let ((error-type (vector-ref error-code 1)))
-		      (or (microcode-system-call-error/code->name error-type)
-			  error-type))))))))
+	    (let ((operator (apply-frame/operator frame))
+		  (operands (apply-frame/operands frame)))
+	      (let ((condition
+		     (make-condition
+		      continuation
+		      operator
+		      operands
+		      (let ((system-call (vector-ref error-code 2)))
+			(or (microcode-system-call/code->name system-call)
+			    system-call))
+		      (let ((error-type (vector-ref error-code 1)))
+			(or (microcode-system-call-error/code->name error-type)
+			    error-type))))
+		    (port (port-error-test operator operands)))
+		(if port
+		    (error:derived-port port condition)
+		    (error condition)))))))))
 
 ;;;; FASLOAD Errors
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.20 1991/03/01 22:12:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.21 1991/03/10 22:42:23 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -52,7 +52,8 @@ MIT in each case. |#
   ;; object in order to determine when all references to it have been
   ;; dropped.  Second, the structure provides a type predicate.
   descriptor
-  (type false read-only true))
+  (type false read-only true)
+  port)
 
 (define (make-channel descriptor)
   ;; Make sure that interrupts are disabled before `descriptor' is
@@ -67,7 +68,8 @@ MIT in each case. |#
 		       TCP-SERVER-SOCKET DIRECTORY CHARACTER-DEVICE
 		       BLOCK-DEVICE)))
 	    (and (< type (vector-length types))
-		 (vector-ref types type))))))
+		 (vector-ref types type)))
+	  false)))
     (with-absolutely-no-interrupts
      (lambda ()
        (set-cdr! open-channels-list
@@ -78,12 +80,11 @@ MIT in each case. |#
     channel))
 
 (define (descriptor->channel descriptor)
-  (or (let loop ((channels (cdr open-channels-list)))
-	(and (not (null? channels))
-	     (if (= descriptor (system-pair-cdr (car channels)))
-		 (system-pair-car (car channels))
-		 (loop (cdr channels)))))
-      (make-channel descriptor)))
+  (let loop ((channels (cdr open-channels-list)))
+    (and (not (null? channels))
+	 (if (fix:= descriptor (system-pair-cdr (car channels)))
+	     (system-pair-car (car channels))
+	     (loop (cdr channels))))))
 
 (define-integrable (channel-type=unknown? channel)
   (false? (channel-type channel)))
@@ -182,6 +183,47 @@ MIT in each case. |#
 
 ;;;; Channel Primitives
 
+(define (port-error-test operator operands)
+  ;; If the performance of this `memq' is a problem, change this to
+  ;; use a string hash table based on the primitive name.
+  (and (memq operator channel-primitives)
+       (not (null? operands))
+       (let ((descriptor (car operands)))
+	 (and (exact-nonnegative-integer? descriptor)
+	      (let ((channel (descriptor->channel descriptor)))
+		(and channel
+		     (channel-port channel)))))))
+
+(define channel-primitives
+  (list (ucode-primitive channel-blocking 1)
+	(ucode-primitive channel-blocking? 1)
+	(ucode-primitive channel-close 1)
+	(ucode-primitive channel-nonblocking 1)
+	(ucode-primitive channel-read 4)
+	(ucode-primitive channel-write 4)
+	(ucode-primitive file-length-new 1)
+	(ucode-primitive file-position 1)
+	(ucode-primitive file-set-position 2)
+	(ucode-primitive pty-master-continue 1)
+	(ucode-primitive pty-master-interrupt 1)
+	(ucode-primitive pty-master-kill 1)
+	(ucode-primitive pty-master-quit 1)
+	(ucode-primitive pty-master-send-signal 2)
+	(ucode-primitive pty-master-stop 1)
+	(ucode-primitive terminal-buffered 1)
+	(ucode-primitive terminal-buffered? 1)
+	(ucode-primitive terminal-cooked-output 1)
+	(ucode-primitive terminal-cooked-output? 1)
+	(ucode-primitive terminal-drain-output 1)
+	(ucode-primitive terminal-flush-input 1)
+	(ucode-primitive terminal-flush-output 1)
+	(ucode-primitive terminal-get-ispeed 1)
+	(ucode-primitive terminal-get-ospeed 1)
+	(ucode-primitive terminal-get-state 1)
+	(ucode-primitive terminal-nonbuffered 1)
+	(ucode-primitive terminal-raw-output 1)
+	(ucode-primitive terminal-set-state 2)))
+
 (define (channel-read channel buffer start end)
   ((ucode-primitive channel-read 4) (channel-descriptor channel)
 				    buffer start end))
@@ -243,12 +285,10 @@ MIT in each case. |#
      (lambda ()
        (let ((descriptors ((ucode-primitive channel-table 0))))
 	 (and descriptors
-	      (vector-map descriptors descriptor->channel)))))))
-
-(define (bind-port-for-errors port thunk)
-  (bind-condition-handler (list condition-type:error)
-      (lambda (condition) (error:derived-port port condition))
-    thunk))
+	      (vector-map descriptors
+		(lambda (descriptor)
+		  (or (descriptor->channel descriptor)
+		      (make-channel descriptor))))))))))
 
 ;;;; File Primitives
 
