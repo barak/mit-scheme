@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.37 2001/01/05 20:06:52 cph Exp $
+$Id: string.scm,v 14.38 2001/01/05 20:15:29 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -1009,10 +1009,17 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (xsubstring-move! xstring1 0 (xstring-length xstring1) xstring2 start2))
 
 (define (xsubstring-move! xstring1 start1 end1 xstring2 start2)
-  (cond ((or (not (eq? xstring2 xstring1)) (< start2 start1))
-	 (substring-move-left! xstring1 start1 end1 xstring2 start2))
-	((> start2 start1)
-	 (substring-move-right! xstring1 0 end1 xstring2 start2))))
+  (let ((deref
+	 (lambda (xstring)
+	   (if (external-string? xstring)
+	       (external-string-descriptor xstring)
+	       xstring))))
+    (cond ((or (not (eq? xstring2 xstring1)) (< start2 start1))
+	   (substring-move-left! (deref xstring1) start1 end1
+				 (deref xstring2) start2))
+	  ((> start2 start1)
+	   (substring-move-right! (deref xstring1) start1 end1
+				  (deref xstring2) start2)))))
 
 ;;;; Guarantors
 ;;
