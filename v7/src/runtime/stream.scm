@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: stream.scm,v 14.17 2003/09/30 04:16:45 cph Exp $
+$Id: stream.scm,v 14.18 2003/09/30 04:22:59 cph Exp $
 
 Copyright 1986,1987,1988,1989,1992,1995 Massachusetts Institute of Technology
 Copyright 1998,2003 Massachusetts Institute of Technology
@@ -89,6 +89,20 @@ USA.
 	      (error:bad-range-argument index 'STREAM-TAIL))
 	  (loop (force (cdr stream)) (- index 1)))
 	stream)))
+
+(define (stream-last-pair stream)
+  (if (not (stream-pair? stream))
+      (if (null? stream)
+	  (error:bad-range-argument stream 'STREAM-LAST-PAIR)
+	  (error:illegal-stream-element stream 'STREAM-LAST-PAIR 0)))
+  (let loop ((stream stream))
+    (let ((next (force (cdr stream))))
+      (if (stream-pair? next)
+	  (loop next)
+	  (begin
+	    (if (not (null? stream))
+		(error:illegal-stream-element stream 'STREAM-LAST-PAIR 0))
+	    stream)))))
 
 (define (stream-map procedure stream . streams)
   (cond ((pair? streams)
