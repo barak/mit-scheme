@@ -1,0 +1,108 @@
+;;; -*-Fundamental-*-
+;;;
+;;;	$Id: bch-p-nt.lst,v 1.1 1993/06/24 07:46:00 gjr Exp $
+;;;
+;;;	Copyright (c) 1993 Massachusetts Institute of Technology
+;;;
+;;;	This material was developed by the Scheme project at the
+;;;	Massachusetts Institute of Technology, Department of
+;;;	Electrical Engineering and Computer Science.  Permission to
+;;;	copy this software, to redistribute it, and to use it for any
+;;;	purpose is granted, subject to the following restrictions and
+;;;	understandings.
+;;;
+;;;	1. Any copy made of this software must include this copyright
+;;;	notice in full.
+;;;
+;;;	2. Users of this software agree to make their best efforts (a)
+;;;	to return to the MIT Scheme project any improvements or
+;;;	extensions that they make, so that these may be included in
+;;;	future releases; and (b) to inform MIT of noteworthy uses of
+;;;	this software.
+;;;
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
+;;;	research.
+;;;
+;;;	4. MIT has made no warrantee or representation that the
+;;;	operation of this software will be error-free, and MIT is
+;;;	under no obligation to provide any services, by way of
+;;;	maintenance, update, or otherwise.
+;;;
+;;;	5. In conjunction with products arising from the use of this
+;;;	material, there shall be no use of the name of the
+;;;	Massachusetts Institute of Technology nor of any adaptation
+;;;	thereof in any advertising, promotional, or sales literature
+;;;	without prior written consent from MIT in each case.
+;;;
+;;;;	Shared files (Unix and DOS)
+artutl.c
+bignum.c
+bigprm.c
+bitstr.c
+boot.c
+char.c
+comutl.c
+daemon.c
+debug.c
+dfloat.c
+error.c
+extern.c
+fasload.c
+fixnum.c
+flonum.c
+generic.c
+hooks.c
+hunk.c
+intern.c
+interp.c
+intprm.c
+list.c
+lookprm.c
+lookup.c
+missing.c
+obstack.c
+option.c
+osscheme.c
+ostty.c
+prim.c
+primutl.c
+prmcon.c
+ptrvec.c
+purutl.c
+regex.c
+rgxprim.c
+step.c
+storage.c
+string.c
+syntax.c
+sysprim.c
+term.c
+transact.c
+utils.c
+vector.c
+wind.c
+;;;;	Generic OS primitive files
+prosenv.c
+prosfile.c
+prosfs.c
+prosio.c
+prosterm.c
+prostty.c
+;;;;	NT OS primitive files
+prntenv.c
+prntfs.c
+;;;;	Bizarre NT primitive files
+ntcmp386.c
+ntconio.c
+ntgui.c
+;dosint10.c
+;dosprm.c
+nttterm.c
+;;;;	GC files
+bchdmp.c
+bchgcl.c
+bchmmg.c
+bchpur.c
+bchutl.c
