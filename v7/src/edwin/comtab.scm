@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comtab.scm,v 1.61 1992/01/09 17:53:26 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comtab.scm,v 1.62 1992/01/14 18:34:34 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -286,14 +286,13 @@
 						"comtab prefix key"
 						'DEFINE-PREFIX-KEY))
 		 key)
-	       (let ((command
-		      (if (default-object? command)
-			  (ref-command-object prefix-key)
-			  (->command command)))
-		     (comtab (make-comtab)))
-		 (if (eq? command (ref-command-object prefix-key))
+	       (let ((comtab (make-comtab)))
+		 (if (default-object? command)
 		     comtab
-		     (cons command comtab)))
+		     (let ((command (->command command)))
+		       (if (eq? command (ref-command-object prefix-key))
+			   comtab
+			   (cons command comtab)))))
 	       'DEFINE-PREFIX-KEY))
 
 (define (%define-key comtab key datum procedure)
@@ -313,22 +312,31 @@
 	(else
 	 (error:wrong-type-argument key "comtab key" procedure)))
   key)
-
-(define (comtab-alist* comtab)
-  (let ((vector (comtab-vector comtab))
-	(alist (comtab-alist comtab)))
-    (if (vector? vector)
-	(let ((end (vector-length vector)))
-	  (let loop ((index 0))
-	    (if (< index end)
-		(let ((datum (vector-ref vector index)))
-		  (if datum
-		      (cons (cons (integer->char index) datum)
-			    (loop (+ index 1)))
-		      (loop (+ index 1))))
-		alist)))
-	alist)))
 
+(define (comtab-alist* comtab)
+  (list-transform-negative
+      (let ((vector (comtab-vector comtab))
+	    (alist (comtab-alist comtab)))
+	(if (vector? vector)
+	    (let ((end (vector-length vector)))
+	      (let loop ((index 0))
+		(if (< index end)
+		    (let ((datum (vector-ref vector index)))
+		      (if datum
+			  (cons (cons (integer->char index) datum)
+				(loop (+ index 1)))
+			  (loop (+ index 1))))
+		    alist)))
+	    alist))
+    (lambda (entry)
+      (let ((key (car entry)))
+	(and (char? key)
+	     (char-upper-case? key)
+	     (let ((datum (cdr entry)))
+	       (and (pair? datum)
+		    (eq? comtab (car datum))
+		    (eqv? (char-downcase key) (cdr datum)))))))))
+
 (define (comtab->alist comtab)
   (let loop ((prefix '()) (comtab comtab))
     (append-map!
@@ -353,7 +361,7 @@
 		       (else
 			(error "Illegal comtab datum:" datum))))))))
      (comtab-alist* comtab))))
-
+
 (define (comtab-key-bindings comtabs command)
   (let ((comtabs (guarantee-comtabs comtabs 'COMTAB-KEY-BINDINGS))
 	(command (->command command)))
