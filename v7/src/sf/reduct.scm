@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/reduct.scm,v 4.1 1988/06/13 12:30:09 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/reduct.scm,v 4.2 1991/07/19 03:45:52 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -276,7 +276,11 @@ Examples:
 	       (cond ((null? l)
 		      (none block))
 		     ((null? (cdr l))
-		      (wrap block (single (car l) binop)))
+		      (wrap block
+			    (single block
+				    (car l)
+				    (lambda (x y)
+				      (binop block x y)))))
 		     (else
 		      (wrap block (binop block (car l)
 					 (group (cdr l)))))))))))))
@@ -326,7 +330,7 @@ Examples:
 
   (check options)
   (apply receiver (collect keywords)))
-
+
 ;;;; Error and indentation utilities
 
 (define (fail name value)
@@ -405,7 +409,7 @@ Examples:
 					single-combiner null))
 			       (else
 				(fail 'NULL-VALUE null-value)))))))))))
-
+
 	  (cond ((not group)
 		 (make-reducer-internal group-right))
 		((not (null? (cdr group)))
