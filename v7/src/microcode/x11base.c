@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.51 1993/08/17 21:25:39 cph Exp $
+$Id: x11base.c,v 1.52 1993/11/22 03:21:08 gjr Exp $
 
 Copyright (c) 1989-93 Massachusetts Institute of Technology
 
@@ -167,7 +167,7 @@ DEFUN (x_window_to_xw, (window), Window window)
   while (scan < end)
     {
       struct xwindow * xw = (*scan++);
-      if ((XW_WINDOW (xw)) == window)
+      if ((xw != 0) && ((XW_WINDOW (xw)) == window))
 	return (xw);
     }
   return (0);
