@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/inerly.scm,v 1.1 1987/08/22 22:51:27 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/inerly.scm,v 1.2 1987/08/23 07:55:56 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -84,24 +84,16 @@ MIT in each case. |#
     `(define-early-transformer ',name
        (make-ea-transformer 'category 'type))))
 
-(define *immediate-type*)
-
 (define (make-ea-transformer category type)
-  (let ((kernel
-	 (make-database-transformer
-	  (mapcan (lambda (rule)
-		    (apply
-		     (lambda (pattern variables categories expression)
-		       (if (memq category categories)
-			   (list (early-make-rule pattern variables expression))
-			   '()))
-		     rule))
-		  early-ea-database))))
-    (if (eq? type '?)
-	kernel
-	(lambda all
-	  (fluid-let ((*immediate-type* type))
-	    (apply kernel all))))))	     
+  (make-database-transformer
+   (mapcan (lambda (rule)
+	     (apply
+	      (lambda (pattern variables categories expression)
+		(if (memq category categories)
+		    (list (early-make-rule pattern variables expression))
+		    '()))
+	      rule))
+	   early-ea-database)))
 
 ;;;; Early effective address assembly.
 
@@ -125,18 +117,22 @@ MIT in each case. |#
 				 (MAKE-EFFECTIVE-ADDRESS
 				  ',keyword
 				  ',categories
-				  ,(process-fields fields))))))))
+				  ,(process-fields fields true))))))))
 		  rule))
 	       rules)))))
+
+;; This is super hairy because of immediate operands!
+;; The index 2 here is the argument number to MAKE-EFFECTIVE-ADDRESS.
 
-(define (make-ea-selector-expander late-name index)
+(define ea-value-expander
   ((access scode->scode-expander package/expansion package/scode-optimizer)
    (lambda (operands if-expanded if-not-expanded)
      (define (default)
-       (if-expanded (scode/make-combination (scode/make-variable late-name)
-					    operands)))
+       (if-expanded (scode/make-combination (scode/make-variable 'EA-VALUE)
+					    (cdr operands))))
 
-     (let ((operand (car operands)))
+     (let ((operand (cadr operands))
+	   (type (car operands)))
        (if (not (scode/combination? operand))
 	   (default)
 	   (scode/combination-components
@@ -146,10 +142,34 @@ MIT in each case. |#
 		      (not (eq? (scode/variable-name operator)
 				'MAKE-EFFECTIVE-ADDRESS)))
 		  (default)
-		  (if-expanded (list-ref operands index))))))))))
+		  (if-expanded
+		   (scode/make-combination
+		    (scode/make-lambda lambda-tag:let
+				       '(*IMMEDIATE-TYPE*)
+				       '()
+				       false
+				       '()
+				       '((INTEGRATE *IMMEDIATE-TYPE*))
+				       (list-ref operands 2))
+		    (list type)))))))))))
 
-;; The indeces here are the argument number to MAKE-EFFECTIVE-ADDRESS.
+(define coerce-to-type-expander
+  ((access scode->scode-expander package/expansion package/scode-optimizer)
+   (lambda (operands if-expanded if-not-expanded)
+     (define (handle coercion name)
+       (if-expanded
+	(if (scode/constant? (car operands))
+	    (scode/make-constant
+	     (coercion (scode/constant-value (car operands))))
+	    (scode/make-combination (scode/make-variable name)
+				    (list (car operands))))))
 
-(define ea-keyword-expander (make-ea-selector-expander 'EA-KEYWORD 0))
-(define ea-categories-expander (make-ea-selector-expander 'EA-CATEGORIES 1))
-(define ea-value-expander (make-ea-selector-expander 'EA-VALUE 2))
+     (if (not (scode/constant? (cadr operands)))
+	 (if-not-expanded)
+	 (case (scode/constant-value (cadr operands))
+	   ((b) (handle coerce-8-bit-signed 'coerce-8-bit-signed))
+	   ((w) (handle coerce-16-bit-signed 'coerce-16-bit-signed))
+	   ((b) (handle coerce-32-bit-signed 'coerce-32-bit-signed))
+	   (else (if-not-expanded)))))))
+
+       

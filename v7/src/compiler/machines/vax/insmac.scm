@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insmac.scm,v 1.8 1987/08/22 22:44:15 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insmac.scm,v 1.9 1987/08/23 07:56:16 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -82,16 +82,15 @@ MIT in each case. |#
 (define (process-fields fields early?)
   (if (and (null? (cdr fields))
 	   (eq? (caar fields) 'VARIABLE-WIDTH))
-      (expand-variable-width (car fields)
-			     (if early? 'EA-VALUE-EARLY 'EA-VALUE))
+      (expand-variable-width (car fields) early?)
       (expand-fields fields
-		     (if early? 'EA-VALUE-EARLY 'EA-VALUE)
+		     early?
 		     (lambda (code size)
 		       (if (not (zero? (remainder size 8)))
 			   (error "process-fields: bad syllable size" size))
 		       code))))
 
-(define (expand-variable-width field ea-value-operator)
+(define (expand-variable-width field early?)
   (let ((binding (cadr field))
 	(clauses (cddr field)))
     `(LIST
@@ -101,17 +100,17 @@ MIT in each case. |#
 	(map (lambda (clause)
 	       (expand-fields
 		(cdr clause)
-		ea-value-operator
+		early?
 		(lambda (code size)
 		  (if (not (zero? (remainder size 8)))
 		      (error "expand-variable-width: bad clause size" size))
 		  `(,code ,size ,@(car clause)))))
 	     clauses)))))
 
-(define (expand-fields fields ea-value-operator receiver)
+(define (expand-fields fields early? receiver)
   (if (null? fields)
       (receiver ''() 0)
-      (expand-fields (cdr fields) ea-value-operator
+      (expand-fields (cdr fields) early?
        (lambda (tail tail-size)
 	 (case (caar fields)
 	   ((BYTE)
@@ -120,9 +119,13 @@ MIT in each case. |#
 			  (lambda (code size)
 			    (receiver code (+ size tail-size)))))
 	   ((OPERAND)
-	    (receiver `(APPEND-SYNTAX! (,ea-value-operator ,(caddar fields))
-				       ,tail)
-		      tail-size))
+	    (receiver
+	     `(APPEND-SYNTAX!
+	       ,(if early?
+		    `(EA-VALUE-EARLY '(cadar fields) ,(caddar fields))
+		    `(EA-VALUE ,(caddar fields)))
+	       ,tail)
+	     tail-size))
 	   ((DISPLACEMENT)
 	    (let ((desc (cadar fields)))
 	      (let ((expression (cadr desc))
