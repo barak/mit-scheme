@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.135 2000/06/08 02:03:07 cph Exp $
+;;; $Id: imail-top.scm,v 1.136 2000/06/08 03:13:49 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -527,6 +527,7 @@ variable's documentation (using \\[describe-variable]) for details:
 (define-key 'imail #\c-o	'imail-save-attachment)
 (define-key 'imail #\+		'imail-create-folder)
 (define-key 'imail #\-		'imail-delete-folder)
+(define-key 'imail #\R		'imail-rename-folder)
 (define-key 'imail #\q		'imail-quit)
 (define-key 'imail #\?		'describe-mode)
 
@@ -1433,6 +1434,24 @@ An error if signalled if the folder already exists."
 	    (message "Deleted folder " (url->string url)))
 	  (message "Folder not deleted")))))
 
+(define-command imail-rename-folder
+  "Delete a specified folder and all its messages."
+  (lambda ()
+    (let ((from
+	   (prompt-for-imail-url-string "Rename folder"
+					'HISTORY 'IMAIL-RENAME-FOLDER-SOURCE
+					'HISTORY-INDEX 0
+					'REQUIRE-MATCH? #t)))
+      (list from
+	    (prompt-for-imail-url-string "Rename folder to"
+					 'HISTORY 'IMAIL-RENAME-FOLDER-TARGET
+					 'HISTORY-INDEX 0))))
+  (lambda (from to)
+    (let ((from (imail-parse-partial-url from))
+	  (to (imail-parse-partial-url to)))
+      (rename-folder from to)
+      (message "Folder renamed to " (url->string to)))))
+
 (define-command imail-input
   "Run IMAIL on a specified folder."
   (lambda ()
