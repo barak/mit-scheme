@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntscreen.h,v 1.9 1994/10/25 14:43:27 adams Exp $
+$Id: ntscreen.h,v 1.10 1994/11/02 20:27:05 adams Exp $
 
-Copyright (c) 1993 Massachusetts Institute of Technology
+Copyright (c) 1993-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -45,13 +45,6 @@ MIT in each case. */
 //---------------------------------------------------------------------------
 
 
-//#undef NO_STRICT    // be bold!
-
-
-//#ifndef WIN32
-//#define WIN31        // this is a Windows 3.1 application
-//#endif
-
 #include <windows.h>
 #include <commdlg.h>
 
@@ -83,6 +76,7 @@ typedef unsigned char SCREEN_ATTRIBUTE;
 #define SCREEN_MODE_EAGER_UPDATE	0x0200
 #define SCREEN_MODE_EDWIN		0x0400
 #define SCREEN_MODE_NEWLINE_CRS		0x0800
+#define SCREEN_MODE_VK_KEYS		0x1000
 
 
 #define SCREEN_EDWIN_RESIZE_COMMAND	0323		/* M-S */
@@ -156,8 +150,8 @@ struct screen_write_char_s
   int col;
 };
 
-extern int Screen_Width (SCREEN screen);
-extern int Screen_Height (SCREEN screen);
+extern HWND ScreenCurrentFocus();
+
 extern BOOL Screen_SetPosition (SCREEN, int, int);
 
 extern VOID _fastcall clear_screen_rectangle (SCREEN, int, int, int, int);
@@ -168,14 +162,12 @@ extern VOID _fastcall
 extern VOID _fastcall Screen_SetAttributeDirect (SCREEN, SCREEN_ATTRIBUTE);
 extern VOID WriteScreenBlock_NoInvalidRect (SCREEN, int, int, LPSTR, int);
 extern void Enable_Cursor (SCREEN, BOOL);
-
+extern HICON ScreenSetIcon (SCREEN, HICON);
 
 
 BOOL Screen_InitApplication (HANDLE hInstance);
 BOOL Screen_InitInstance (HANDLE hInstance, int nCmdShow);
 
-extern BOOL allow_variable_width_fonts;
-extern double variable_width_font_width_factor;
 
 extern HANDLE Screen_Create (HANDLE, LPCSTR, int);
 extern VOID   Screen_Destroy (BOOL, HANDLE);
@@ -188,7 +180,7 @@ void  Screen_SetCursorPosition (HANDLE, int line, int column);
 void  Screen_SetMenu (HANDLE, HMENU);
 void  Screen_SetMode (HANDLE, int);
 int   Screen_GetMode (HANDLE);
-void  Screen_GetSize (HANDLE, int *rows, int *columns);
+VOID  Screen_GetSize (HANDLE, int *rows, int *columns);
 
 // The following return false on no events
 extern BOOL  Screen_GetEvent (HANDLE, SCREEN_EVENT *);

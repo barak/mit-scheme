@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.21 1994/10/25 15:36:18 adams Exp $
+$Id: ntscreen.c,v 1.22 1994/11/02 20:25:40 adams Exp $
 
 Copyright (c) 1993-1994 Massachusetts Institute of Technology
 
@@ -37,40 +37,31 @@ MIT in each case. */
 #include "nt.h"
 #include "ntscreen.h"
 #include "ntgui.h"
-//#include "screen.rh"
-/* Allow conditionalization for underlying OS. */
-extern BOOL win32_under_win32s_p (void);
 
 // constant definitions
 
 #define GWL_SCREEN        0
 #define SCREENEXTRABYTES        (sizeof(LONG))
 
-//#define ATOM_TTYINFO       0x100
-
 #define MAXCOLS 180
 #define MAXROWS 100
 
-// cursor states
-
-#define CS_HIDE         0x00
-#define CS_SHOW         0x01
-
-// Flow control flags
-
 // ascii definitions
 
-#define ASCII_BEL       0x07
-#define ASCII_BS        0x08
-#define ASCII_LF        0x0A
-#define ASCII_FF        0x0C
-#define ASCII_CR        0x0D
-#define ASCII_ESC       0x1B
-#define ASCII_DEL       0x7F
+#define ASCII_BEL       (0x07)
+#define ASCII_BS        (0x08)
+#define ASCII_LF        (0x0A)
+#define ASCII_FF        (0x0C)
+#define ASCII_CR        (0x0D)
+#define ASCII_ESC       (0x1B)
+#define ASCII_DEL       (0x7F)
+
+#define ASCII_CONTROLIFY(ascii) ((ascii) - '@')
+#define ASCII_METAFY(ascii)     ((ascii) | 0200)
 
 // data structures
 
-#define MAX_EVENTS 500
+#define MAX_EVENTS 300
 
 typedef struct tagSCREEN_EVENT_LINK
 {
@@ -91,21 +82,27 @@ typedef struct tagSCREENINFO
    SCREEN  registry_link;
    
    HWND    hWnd;
+   HICON   hIcon;
    
    char              * chars;
    SCREEN_ATTRIBUTE  * attrs;
    WORD              mode_flags;        //events & modes
    SCREEN_ATTRIBUTE  write_attribute;
    
-   WORD    CursorState;
+   BOOL    cursor_visible;
+   BOOL    has_focus;
 
    HFONT   hFont;
    LOGFONT lfFont;
    DWORD   rgbFGColour;
    DWORD   rgbBGColour;
-   int     xSize, ySize, xScroll, yScroll, xOffset, yOffset;
-   int     column, row, xChar, yChar;
-   int     width, height;  //size in characters
+   int     xSize, ySize;
+   int     xScroll, yScroll;
+   int     xOffset, yOffset; // coords of top left corner of client area wrt
+                             // character area 
+   int     column, row;      // caret position
+   int     xChar, yChar;     // size of characters in pixels
+   int     width, height;    // size of text ares in characters
 
    int n_events;
    SCREEN_EVENT_LINK * events;
@@ -160,7 +157,7 @@ VOID DestroyScreenInfo (HWND);
 BOOL ResetScreen (SCREEN);
 BOOL KillScreenFocus (HWND);
 VOID PaintScreen (HWND);
-VOID EraseScreen (HWND, HDC);
+//VOID EraseScreen (HWND, HDC);
 BOOL SetScreenFocus (HWND);
 BOOL ScrollScreenHorz (HWND, WORD, WORD);
 BOOL ScrollScreenVert (HWND, WORD, WORD);
@@ -180,7 +177,6 @@ VOID Screen_Clear (SCREEN,int);
 BOOL SelectScreenFont (SCREEN, HWND);
 BOOL SelectScreenBackColor (SCREEN, HWND);
 
-
 /*Put here for a lack of a better place to put it */
 LONG init_font_height (char * font_size_symbol);
 
@@ -199,6 +195,13 @@ LRESULT FAR PASCAL ScreenWndProc (HWND, UINT, WPARAM, LPARAM);
 
 VOID RegisterScreen (SCREEN);
 VOID UnregisterScreen (SCREEN);
+
+//
+//  FILE GLOBAL VARIABLES
+//
+
+static  HANDLE  ghInstance;
+static  HICON   ghDefaultIcon;
 
 BOOL
 init_color (char *color_symbol, HWND hWnd, DWORD *color)
@@ -274,7 +277,7 @@ init_MIT_Keyboard (VOID)
 #endif /* WINDOWSLOSES */
 
 //---------------------------------------------------------------------------
-//  BOOL Screen_InitApplication (HANDLE hInstance )
+//  BOOL Screen_InitApplication (HANDLE hInstance)
 //
 //  Description:
 //     First time initialization stuff for screen class.
@@ -300,7 +303,7 @@ Screen_InitApplication (HANDLE hInstance)
    wndclass.cbClsExtra =    0;
    wndclass.cbWndExtra =    SCREENEXTRABYTES ;
    wndclass.hInstance =     hInstance ;
-   wndclass.hIcon =         LoadIcon (hInstance, "SHIELD3_ICON");
+   wndclass.hIcon =         NULL;
    wndclass.hCursor =       LoadCursor (NULL, IDC_ARROW);
    wndclass.hbrBackground = NULL;
    wndclass.lpszMenuName =  0;
@@ -324,12 +327,11 @@ Screen_InitApplication (HANDLE hInstance)
 //        How do we show the window?
 //---------------------------------------------------------------------------
 
-static  HANDLE  ghInstance;
-
 BOOL 
 Screen_InitInstance (HANDLE hInstance, int nCmdShow )
 {
   ghInstance = hInstance;
+  ghDefaultIcon = LoadIcon (hInstance, "SHIELD2_ICON");
   return  TRUE;
 }
 
@@ -508,12 +510,14 @@ ScreenWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
       case WM_LBUTTONDOWN:
       case WM_MBUTTONDOWN:
       case WM_RBUTTONDOWN:
+         if (IsIconic (hWnd)) goto use_default;
 	 ProcessMouseButton (hWnd, uMsg, wParam, lParam, FALSE);
 	 break;
       
       case WM_LBUTTONUP:
       case WM_MBUTTONUP:
       case WM_RBUTTONUP:
+         if (IsIconic (hWnd)) goto use_default;
 	 ProcessMouseButton (hWnd, uMsg, wParam, lParam, TRUE);
 	 break;
       
@@ -547,11 +551,16 @@ ScreenWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
       
       case WM_PAINT:
          PaintScreen (hWnd);
-         break ;
+         break;
 
       case WM_ERASEBKGND:
-	 EraseScreen (hWnd, (HDC) wParam);
-	 return (1L);
+         // We now do this in PaintScreen as it reduces flicker aftre resizing
+         //EraseScreen (hWnd, (HDC) wParam);
+	 //return (1L);
+         return  0L;
+
+      case WM_QUERYDRAGICON:
+         return (LRESULT) (screen->hIcon ? screen->hIcon : ghDefaultIcon);
 
       case WM_SIZE:
 	if (wParam!=SIZE_MINIMIZED)
@@ -568,8 +577,9 @@ ScreenWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
       case WM_SYSKEYDOWN:
       case WM_KEYDOWN:
+         if (IsIconic (hWnd)) goto use_default;
          if (Process_KeyDown (hWnd, uMsg, wParam, lParam))
-	   return  DefWindowProc (hWnd, uMsg, wParam, lParam);
+	   goto use_default;
          else
 	   return  0L;
 
@@ -578,11 +588,12 @@ ScreenWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	     || ((wParam == VK_TAB) && MIT_trap_alt_tab))
 	   return (0L);
 	 else
-	   return  DefWindowProc (hWnd, uMsg, wParam, lParam);
+	   goto use_default;
 #endif /* WINDOWSLOSES */
 
       case WM_SYSKEYUP:
       case WM_KEYUP:
+         if (IsIconic (hWnd)) goto use_default;
 #if 1
 	 return (1L);
 #ifdef WINDOWSLOSES
@@ -591,30 +602,32 @@ ScreenWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	   return (0L);
 	 else
 #endif /* WINDOWSLOSES */
-	 return  DefWindowProc (hWnd, uMsg, wParam, lParam);
+	   goto use_default;
 	 
 #endif
 
       case WM_SYSDEADCHAR:
       case WM_DEADCHAR:
+         if (IsIconic (hWnd)) goto use_default;
 #if 1
-	 return  DefWindowProc (hWnd, uMsg, wParam, lParam);
+	 goto use_default;
 #else
 	 return (1L);
 #endif
 	 
       case WM_SYSCHAR:
       case WM_CHAR:
+         if (IsIconic (hWnd)) goto use_default;
 	 ProcessScreenCharacter (hWnd, LOBYTE (LOWORD(wParam)), (DWORD) lParam);
 	 break ;
 
       case WM_SETFOCUS:
-	SetScreenFocus (hWnd);
-	break ;
+ 	 SetScreenFocus (hWnd);
+         goto use_default;
 
       case WM_KILLFOCUS:
 	 KillScreenFocus (hWnd);
-	 break ;
+         goto use_default;
 
       case WM_DESTROY:
 	 DestroyScreenInfo (hWnd);
@@ -731,10 +744,13 @@ CreateScreenInfo (HWND hWnd)
       return  (LRESULT) -1;
 
    screen->hWnd                 = hWnd;
+   screen->hIcon                =
+     LoadIcon ((HINSTANCE) GetWindowLong(hWnd,GWL_HINSTANCE), "SHIELD3_ICON");
    screen->chars                = NULL;
    screen->attrs                = NULL;
    screen->write_attribute      = 0;
-   screen->CursorState          = CS_HIDE ;
+   screen->cursor_visible       = TRUE;
+   screen->has_focus            = TRUE;
    screen->mode_flags           = SCREEN_EVENT_TYPE_KEY
 			    //	| SCREEN_EVENT_TYPE_MOUSE
 			    //  | SCREEN_EVENT_TYPE_RESIZE
@@ -754,7 +770,7 @@ CreateScreenInfo (HWND hWnd)
    screen->yOffset              = 0 ;
    screen->hFont                = NULL;
    if (! (init_color ("MITSCHEME_FOREGROUND", hWnd, &screen->rgbFGColour)))
-     screen->rgbFGColour        = RGB(0,0,0);
+     screen->rgbFGColour        = GetSysColor (COLOR_WINDOWTEXT);
    if (! (init_color ("MITSCHEME_BACKGROUND", hWnd, &screen->rgbBGColour)))
      screen->rgbBGColour        = GetSysColor (COLOR_WINDOW);
    screen->width                = 0;
@@ -842,7 +858,7 @@ DestroyScreenInfo (HWND hWnd)
    if (NULL == screen)
      return;
 
-   KillScreenFocus (hWnd);
+   //KillScreenFocus (hWnd);
    UnregisterScreen (screen);
    DeleteObject (screen->hFont);
 
@@ -1016,8 +1032,8 @@ ResetScreen (SCREEN screen)
    screen->xChar = tm.tmAveCharWidth  ;
    screen->yChar = tm.tmHeight + tm.tmExternalLeading ;
 
-   // a slimy hack to make the caret the correct size, un- and re- focus
-   if (screen->CursorState == CS_SHOW) {
+   // a slimy hack to make the caret the correct size: un- and re- focus
+   if (screen->cursor_visible) {
      KillScreenFocus (hWnd);
      SetScreenFocus (hWnd);
    }
@@ -1054,77 +1070,101 @@ Do_PaintScreen (HWND hWnd, SCREEN screen, HDC hDC, PAINTSTRUCT * ps)
 {
   RECT          rect ;
 
-  if (! (IsIconic (hWnd)))
-  {
-    int         nRow, nCol, nEndRow, nEndCol, nCount;
-    int         nHorzPos, nVertPos, bias;
-    HFONT       hOldFont;
+  int         nRow, nCol, nEndRow, nEndCol, nCount;
+  int         nHorzPos, nVertPos, bias;
+  HFONT       hOldFont;
 
-    hOldFont = SelectObject (hDC, screen->hFont);
-    rect = ps->rcPaint;
+  hOldFont = SelectObject (hDC, screen->hFont);
+  rect = ps->rcPaint;
 
-    nRow =
-      min (screen->height - 1,
-	   max (0, (rect.top + screen->yOffset) / screen->yChar));
-    nEndRow =
-      min (screen->height - 1,
-	   ((rect.bottom + screen->yOffset - 1) / screen->yChar));
-    nCol =
-      min (screen->width - 1,
-	   max (0, (rect.left + screen->xOffset) / screen->xChar));
-    nEndCol =
-      min (screen->width - 1,
-	   ((rect.right + screen->xOffset - 1) / screen->xChar));
-    nCount = ((nEndCol - nCol) + 1);
-    SetBkMode (hDC, OPAQUE);
-    SetTextColor (hDC, screen->rgbFGColour);
-    SetBkColor (hDC, screen->rgbBGColour);
-
-    for (bias = ((nRow * MAXCOLS) + nCol),
-	 nVertPos = ((nRow * screen->yChar) - screen->yOffset);  
-	 nRow <= nEndRow;
-	 nRow++, bias += MAXCOLS, nVertPos += screen->yChar)
-    {
-      int pos = 0;
-      while (pos < nCount)
-      {
-	// find consistent run of attributes
-	SCREEN_ATTRIBUTE  *attribp = &screen->attrs[bias + pos];
-	SCREEN_ATTRIBUTE  attrib   = *attribp;
-	int  nposn = (pos + 1);
-	int  run_length;
-
-	while ((nposn < nCount) && (*++attribp == attrib))
-	  nposn++;
-
-	run_length = (nposn - pos);
-	nHorzPos = (((nCol + pos) * screen->xChar) - screen->xOffset);
-	rect.top    = nVertPos;
-	rect.bottom = (nVertPos + screen->yChar);
-	rect.left   = nHorzPos;
-	rect.right  = (nHorzPos + (screen->xChar * run_length));
-	if (attrib&1)
-	{
-	  SetTextColor (hDC, screen->rgbBGColour);
-	  SetBkColor (hDC, screen->rgbFGColour);
-	}
-	ExtTextOut (hDC, nHorzPos, nVertPos, (ETO_OPAQUE | ETO_CLIPPED),
-		    &rect, &screen->chars[bias + pos],
-		    run_length, NULL);
-	//if (attrib&2)  // Bolden by horizontal 1-pixel smear
-	//  ExtTextOut (hDC, nHorzPos+1, nVertPos, (ETO_CLIPPED),
-	//	      &rect, &screen->chars[bias + pos],
-	//	      run_length, NULL);
-	if (attrib&1)
-	{
-	  SetTextColor (hDC, screen->rgbFGColour);
-	  SetBkColor (hDC, screen->rgbBGColour);
-	}
-	pos = nposn;
-      }
+  { /* paint the background on the area surrounding the character grid */
+    /* left strip */
+    if (rect.left < - screen->xOffset) {
+      RECT r = rect;
+      r.right = -screen->xOffset;
+      FillRect (hDC, &r, screen->bkgnd_brush);
     }
-    SelectObject (hDC, hOldFont);
+    /* right strip */
+    if (rect.right > (screen->width * screen->xChar + screen->xOffset)) {
+      RECT r = rect;
+      r.left = (screen->width * screen->xChar + screen->xOffset);
+      FillRect (hDC, &r, screen->bkgnd_brush);
+    }
+    /* top strip */
+    if (rect.top < - screen->yOffset) {
+      RECT r = rect;
+      r.bottom =  - screen->yOffset;
+      FillRect (hDC, &r, screen->bkgnd_brush);
+    }
+    /* bottom strip */
+    if (rect.bottom > (screen->height * screen->yChar + screen->yOffset)) {
+      RECT r = rect;
+      r.top = (screen->height * screen->yChar + screen->yOffset);
+      FillRect (hDC, &r, screen->bkgnd_brush);
+    }
   }
+
+  nRow =
+    min (screen->height - 1,
+	 max (0, (rect.top + screen->yOffset) / screen->yChar));
+  nEndRow =
+    min (screen->height - 1,
+	 max (0, (rect.bottom + screen->yOffset - 1) / screen->yChar));
+  nCol =
+    min (screen->width - 1,
+	 max (0, (rect.left + screen->xOffset) / screen->xChar));
+  nEndCol =
+    min (screen->width - 1,
+	 max (0, (rect.right + screen->xOffset - 1) / screen->xChar));
+  nCount = ((nEndCol - nCol) + 1);
+  SetBkMode (hDC, OPAQUE);
+  SetTextColor (hDC, screen->rgbFGColour);
+  SetBkColor (hDC, screen->rgbBGColour);
+
+  for (bias = ((nRow * MAXCOLS) + nCol),
+       nVertPos = ((nRow * screen->yChar) - screen->yOffset);  
+       nRow <= nEndRow;
+       nRow++, bias += MAXCOLS, nVertPos += screen->yChar)
+  {
+    int pos = 0;
+    while (pos < nCount)
+    {
+      /* find consistent run of attributes */
+      SCREEN_ATTRIBUTE  *attribp = &screen->attrs[bias + pos];
+      SCREEN_ATTRIBUTE  attrib   = *attribp;
+      int  nposn = (pos + 1);
+      int  run_length;
+
+      while ((nposn < nCount) && (*++attribp == attrib))
+	nposn++;
+      
+      run_length = (nposn - pos);
+      nHorzPos = (((nCol + pos) * screen->xChar) - screen->xOffset);
+      rect.top    = nVertPos;
+      rect.bottom = nVertPos + screen->yChar;
+      rect.left   = nHorzPos;
+      rect.right  = nHorzPos + (screen->xChar * run_length);
+      if (attrib&1)
+      {
+	SetTextColor (hDC, screen->rgbBGColour);
+	SetBkColor (hDC, screen->rgbFGColour);
+      }
+      ExtTextOut (hDC, nHorzPos, nVertPos, (ETO_OPAQUE | ETO_CLIPPED),
+		  &rect, &screen->chars[bias + pos],
+		  run_length, NULL);
+      //if (attrib&2)  // Bolden by horizontal 1-pixel smear
+      //  ExtTextOut (hDC, nHorzPos+1, nVertPos, (ETO_CLIPPED),
+      //	      &rect, &screen->chars[bias + pos],
+      //	      run_length, NULL);
+      if (attrib&1)
+      {
+	SetTextColor (hDC, screen->rgbFGColour);
+	SetBkColor (hDC, screen->rgbBGColour);
+      }
+      pos = nposn;
+    }
+  }
+  SelectObject (hDC, hOldFont);
 }
 
 //---------------------------------------------------------------------------
@@ -1151,7 +1191,12 @@ PaintScreen (HWND hWnd)
     return;
 
   hDC =  BeginPaint (hWnd, &ps);
-  Do_PaintScreen (hWnd, screen, hDC, &ps);
+  if (IsIconic (hWnd)) {
+    DefWindowProc (hWnd, WM_ICONERASEBKGND, (WPARAM) hDC, 0L);
+    DrawIcon (hDC, 0, 0, screen->hIcon ? screen->hIcon : ghDefaultIcon);
+  } else {
+    Do_PaintScreen (hWnd, screen, hDC, &ps);
+  }
   EndPaint (hWnd, &ps);
   MoveScreenCursor (screen);
 } 
@@ -1159,21 +1204,21 @@ PaintScreen (HWND hWnd)
 //---------------------------------------------------------------------------
 //  VOID EraseScreen (HWND hWnd, HDC hDC)
 //---------------------------------------------------------------------------
-
-static VOID
-EraseScreen (HWND hWnd, HDC hDC)
-{
-  SCREEN    screen = GETSCREEN (hWnd);
-  RECT      rect;
-
-  if (NULL == screen)
-    return;
-
-  if (! (IsIconic (hWnd))) {
-    GetClientRect (hWnd, &rect);
-    FillRect (hDC, &rect, screen->bkgnd_brush);
-  }
-}
+//
+//static VOID
+//EraseScreen (HWND hWnd, HDC hDC)
+//{
+//  SCREEN    screen = GETSCREEN (hWnd);
+//  RECT      rect;
+//
+//  if (NULL == screen)
+//    return;
+//
+//  if (! (IsIconic (hWnd))) {
+//    GetClientRect (hWnd, &rect);
+//    FillRect (hDC, &rect, screen->bkgnd_brush);
+//  }
+//}
 
 //---------------------------------------------------------------------------
 //  void SetCells (screen,r,col,count,char,attr)
@@ -1228,7 +1273,6 @@ ScrollScreenBufferUp (SCREEN  screen,  int count)
 static BOOL
 SizeScreen (HWND hWnd, WORD wVertSize, WORD wHorzSize )
 {
-   //int        nScrollAmt ;
    SCREEN     screen = GETSCREEN (hWnd);
    int old_width, old_height;
    int new_width, new_height;
@@ -1239,8 +1283,10 @@ SizeScreen (HWND hWnd, WORD wVertSize, WORD wHorzSize )
 //   if (GetMenu(hWnd)) wVertSize -= GetSystemMetrics(SM_CYMENU);
    old_width  = screen->width;
    old_height = screen->height;
-   new_width  = min (wHorzSize / screen->xChar, MAXCOLS);
-   new_height = min (wVertSize / screen->yChar, MAXROWS);
+   new_width  =
+     max (1, min ((wHorzSize + screen->xOffset) / screen->xChar, MAXCOLS));
+   new_height = 
+     max (1, min ((wVertSize + screen->yOffset) / screen->yChar, MAXROWS));
 
    if (new_width > old_width)
    {
@@ -1329,13 +1375,7 @@ SizeScreen (HWND hWnd, WORD wVertSize, WORD wHorzSize )
    // that is not in a character box.
    // if ((screen->mode_flags & SCREEN_MODE_EDWIN) == 0)
    {
-     /* The SendMessage stuff works fine under NT, but wedges Win 3.1.
-	The only solution I've found is to redraw the whole screen.
-      */
-     //if (win32_under_win32s_p ())
-     //  InvalidateRect (NULL, NULL, TRUE);
-     //else
-       InvalidateRect (hWnd, NULL, TRUE);
+     InvalidateRect (hWnd, NULL, TRUE);
    }
 
    return  TRUE;
@@ -1484,6 +1524,27 @@ ScrollScreenHorz (HWND hWnd, WORD wScrollCmd, WORD wScrollPos)
    return  TRUE;
 }
 
+//----------------------------------------------------------------------
+
+static SCREEN screen_focus = NULL;
+
+HWND  ScreenCurrentFocus()
+{
+  SCREEN *link;
+  HWND   hWnd;
+
+  if (screen_focus)
+    return  screen_focus->hWnd;
+  hWnd = GetFocus();
+  if (NULL == hWnd)
+    return  NULL;
+  link = head_to_registered_screen (hWnd);
+  if (NULL == link)
+    return  NULL;
+  screen_focus = (*link);
+  return  hWnd;
+}
+
 //---------------------------------------------------------------------------
 //  BOOL SetScreenFocus (HWND hWnd )
 //
@@ -1503,12 +1564,11 @@ SetScreenFocus (HWND hWnd)
 
    if (NULL == screen)  return  FALSE;
 
-   //if (screen->CursorState != CS_SHOW)
-   {
-      CreateCaret (hWnd, NULL, max(screen->xChar/4,2), screen->yChar);
+   screen_focus = screen;
+   CreateCaret (hWnd, NULL, max(screen->xChar/4,2), screen->yChar);
+   if (screen->cursor_visible)
       ShowCaret (hWnd);
-      screen->CursorState = CS_SHOW ;
-   }
+
    MoveScreenCursor (screen);
    return  TRUE;
 }
@@ -1532,12 +1592,10 @@ KillScreenFocus (HWND hWnd )
 
    if (NULL == screen)  return  FALSE;
 
-   if (screen->CursorState != CS_HIDE)
-   {
-      HideCaret (hWnd);
-      DestroyCaret ();
-      screen->CursorState = CS_HIDE;
-   }
+   screen_focus = NULL;
+   //if (screen->cursor_visible)
+   //   HideCaret (hWnd);
+   DestroyCaret ();
    return  TRUE;
 }
 
@@ -1551,10 +1609,16 @@ KillScreenFocus (HWND hWnd )
 static VOID 
 MoveScreenCursor (SCREEN screen)
 {
-   if (screen->CursorState & CS_SHOW)
-     SetCaretPos (screen->column * screen->xChar  -  screen->xOffset
-		  // This ensures visiblity at the far left:
-		  + ((screen->column == screen->width) ? -2 : 0),
+   ScreenCurrentFocus();
+   if (screen == screen_focus)
+     //SetCaretPos (screen->column * screen->xChar  -  screen->xOffset
+	//	  // This ensures visiblity at the far left:
+	//	  + ((screen->column == screen->width) ? -2 : 0),
+	//	  screen->row    * screen->yChar  -  screen->yOffset);
+     SetCaretPos (// This ensures visiblity at the far left:
+		  (screen->column >= screen->width)
+		  ? (screen->width * screen->xChar  -  screen->xOffset - 2)
+		  : (screen->column * screen->xChar  -  screen->xOffset),
 		  screen->row    * screen->yChar  -  screen->yOffset);
 }
 
@@ -1567,7 +1631,8 @@ Screen_SetPosition (SCREEN screen, int row, int column)
 {
   if ((row < 0) || (row >= screen->height))
     return (FALSE);
-  if ((column < 0) || (column > screen->width))         // may be ==
+  //if ((column < 0) || (column > screen->width))         // may be ==
+  if ((column < 0) || (column >= MAXCOLS))
     return (FALSE);
   screen->row    = row;
   screen->column = column;
@@ -1672,7 +1737,12 @@ GetControlKeyState(void)
 static VOID _fastcall
 make_key_event (SCREEN screen, int ch, int vk_code, DWORD lKeyData)
 {
-  SCREEN_EVENT  *event = alloc_event (screen, SCREEN_EVENT_TYPE_KEY);
+  SCREEN_EVENT  *event;
+
+  if ((screen->mode_flags & SCREEN_MODE_VK_KEYS) == 0  &&  ch == -1)
+    return;
+
+  event = alloc_event (screen, SCREEN_EVENT_TYPE_KEY);
   if (event) {
     event->event.key.repeat_count = lKeyData & 0xffff;
     event->event.key.virtual_keycode = vk_code;
@@ -1809,7 +1879,25 @@ Process_KeyDown (HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     case VK_END:
     case VK_PRIOR:
     case VK_NEXT:
-      make_key_event (screen, -1, wParam, lParam);
+      if (screen->mode_flags & SCREEN_MODE_VK_KEYS)
+	make_key_event (screen, -1, wParam, lParam);
+      else {
+	int ch;
+	switch (wParam) {
+	  // Tranlate to default Emacs-oid key bindings to make console
+	  // edwin happy
+	  default:        ch = -1;       break;
+	  case VK_UP:     ch = ASCII_CONTROLIFY('P');   break;
+	  case VK_DOWN:   ch = ASCII_CONTROLIFY('N');   break;
+	  case VK_LEFT:   ch = ASCII_CONTROLIFY('B');   break;
+	  case VK_RIGHT:  ch = ASCII_CONTROLIFY('F');   break;
+	  case VK_PRIOR:  ch = ASCII_METAFY('V');       break;
+	  case VK_NEXT:   ch = ASCII_CONTROLIFY('V');   break;
+	  case VK_DELETE: ch = ASCII_DEL;               break;
+	}
+	if (ch != -1)
+	  make_key_event (screen, ch, 0, lParam);
+      }
       return  TRUE;
 
     default:
@@ -2840,22 +2928,17 @@ GetMinMaxSizes (HWND hWnd, LPPOINT min_size, LPPOINT max_size)
 		 + GetSystemMetrics(SM_CYCAPTION)
 		 + (GetMenu(hWnd) ? GetSystemMetrics(SM_CYMENU) : 0)
 		 ;
-    min_size->x = screen->xChar + extra_width;
-    min_size->y = screen->yChar + extra_height;
+    // The min size sould be configurable so Edwin can configure it
+    // to prevent the window being shrunk so far that the displayed
+    // buffers wont fit.
+    min_size->x = screen->xChar * 5  +  extra_width;
+    min_size->y = screen->yChar * 3  +  extra_height;
     max_size->x = screen->xChar * MAXCOLS  +  extra_width;
     max_size->y = screen->yChar * MAXROWS  +  extra_height;
 }
 
 //---------------------------------------------------------------------------
 //  BOOL SelectScreenFont (SCREEN screen, HWND owner)
-//
-//  Description:
-//     Selects the current font for the TTY screen.
-//     Uses the Common Dialog ChooseFont() API.
-//
-//  Parameters:
-//     HWND hDlg
-//
 //---------------------------------------------------------------------------
 
 static BOOL
@@ -2895,9 +2978,6 @@ SelectScreenFont (SCREEN  screen,  HWND owner)
 //  Description:
 //     Selects the background color for the TTY screen.
 //     Uses the Common Dialog ChooseColor() API.
-//
-//  Parameters:
-//     HWND hDlg
 //
 //---------------------------------------------------------------------------
 
@@ -2948,15 +3028,13 @@ SelectScreenBackColor (SCREEN  screen,  HWND owner)
    {
      HDC hdc = GetDC (owner);
 
-     /* Use GetNearestColor to ensure consistency with the background
-	text color.
-      */
+     // Use GetNearestColor to ensure consistency with the background
+     //	text color.
      screen->rgbBGColour = GetNearestColor (hdc, (backcolor.rgbResult));
      if (screen->bkgnd_brush != NULL)
        DeleteObject (screen->bkgnd_brush);
      screen->bkgnd_brush = CreateSolidBrush (screen->rgbBGColour);
      InvalidateRect (owner, NULL, TRUE);
-     //SendMessage (owner, WM_ERASEBKGND, ((WPARAM) hdc), ((LPARAM) 0));
      ReleaseDC (owner, hdc);
    }
    return  TRUE;
@@ -3032,7 +3110,7 @@ Screen_GetEvent (HANDLE hwnd, SCREEN_EVENT * event)
 BOOL
 Screen_PeekEvent (HANDLE hwnd, SCREEN_EVENT * event)
 {
-  SCREEN screen = (GETSCREEN (hwnd));
+  SCREEN screen = GETSCREEN (hwnd);
 
   if ((screen == ((SCREEN) NULL)) || (screen->n_events == 0))
     return  FALSE;
@@ -3115,193 +3193,16 @@ Screen_Read (HANDLE hWnd, BOOL buffered_p, char * buffer, int buflen)
   return  result;
 }
 
+
 VOID
-Screen_GetSize (HANDLE hWnd, int *rows, int *columns)
+Screen_GetSize (HWND hWnd, int *rows, int *columns)
 {
-  SCREEN screen = (GETSCREEN (hWnd));
+  SCREEN  screen = GETSCREEN (hWnd);
   if (screen == 0)
     return;
   *rows    = screen->height;
   *columns = screen->width;
 }
-
-///* Utilities for MIT character translation */
-//
-//static BOOL _fastcall
-//MIT_post_char_message (CONST MSG * lpmsg, WPARAM the_char)
-//{
-//  return  PostMessage (lpmsg->hwnd,
-//		       ((lpmsg->message == WM_KEYDOWN)
-//			? WM_CHAR
-//			: WM_SYSCHAR),
-//		       the_char,
-//		       lpmsg->lParam));
-//}
-//
-//#ifndef VK_A
-//#  define VK_A 'A'
-//#  define VK_Z 'Z'
-//#endif /* VK_A */
-//
-///* US IBM-PC keyboard */
-//
-//#define VK_ATSIGN       '2'
-//#define VK_CARET        '6'
-//#define VK_LSQB         219
-//#define VK_RSQB         221
-//#define VK_BACKSLASH    220
-//#define VK_UNDERSCORE   189
-//
-//#define ASCII_CONTROLIFY(ascii) ((ascii) - '@')
-//#define ASCII_METAFY(ascii)     ((ascii) | 0200)
-//
-//static BOOL _fastcall
-//MIT_controlify (WPARAM virtual_key, WPARAM * control_char)
-//{
-//  BOOL result = ((BOOL) 1);
-//
-//  if ((virtual_key >= VK_A) && (virtual_key <= VK_Z))
-//    * control_char = (ASCII_CONTROLIFY ('A' + (virtual_key - VK_A)));
-//  else if (virtual_key == VK_ATSIGN)
-//    * control_char = (ASCII_CONTROLIFY ('@'));
-//  else if (virtual_key == VK_CARET)
-//    * control_char = (ASCII_CONTROLIFY ('^'));
-//  else if (virtual_key == VK_LSQB)
-//    * control_char = (ASCII_CONTROLIFY ('['));
-//  else if (virtual_key == VK_RSQB)
-//    * control_char = (ASCII_CONTROLIFY (']'));
-//  else if (virtual_key == VK_BACKSLASH)
-//    * control_char = (ASCII_CONTROLIFY ('\\'));
-//  else if (virtual_key == VK_UNDERSCORE)
-//    * control_char = (ASCII_CONTROLIFY ('_'));
-//  else
-//    result = ((BOOL) 0);
-//
-//  return (result);
-//}
-
-//BOOL
-//MIT_TranslateMessage (CONST MSG * lpmsg)
-//{
-//  UINT message = (lpmsg->message);
-//
-//  switch (message)
-//  {
-//    case WM_KEYDOWN:
-//    case WM_SYSKEYDOWN:
-//    {
-//      WPARAM virtual_key = (lpmsg->wParam);
-//
-//      switch (virtual_key)
-//      {
-//	case VK_LEFT:
-//	  return (MIT_post_char_message (lpmsg, (ASCII_CONTROLIFY ('B'))));
-//
-//	case VK_RIGHT:
-//	  return (MIT_post_char_message (lpmsg, (ASCII_CONTROLIFY ('F'))));
-//
-//	case VK_UP:
-//	  return (MIT_post_char_message (lpmsg, (ASCII_CONTROLIFY ('P'))));
-//
-//	case VK_DOWN:
-//	  return (MIT_post_char_message (lpmsg, (ASCII_CONTROLIFY ('N'))));
-//
-//	case VK_HOME:
-//	  return (MIT_post_char_message (lpmsg, (ASCII_CONTROLIFY ('A'))));
-//
-//	case VK_END:
-//	  return (MIT_post_char_message (lpmsg, (ASCII_CONTROLIFY ('E'))));
-//
-//	case VK_BACK:
-//	  return (MIT_post_char_message (lpmsg, ASCII_DEL));
-//
-//	case VK_DELETE:
-//	  return (MIT_post_char_message (lpmsg, (ASCII_CONTROLIFY ('D'))));
-//	  
-//	case VK_PRIOR:
-//	  return (MIT_post_char_message (lpmsg, (ASCII_METAFY ('v'))));
-//
-//	case VK_NEXT:
-//	  return (MIT_post_char_message (lpmsg, (ASCII_CONTROLIFY ('V'))));
-//
-//	case VK_INSERT:
-//	  return (MIT_post_char_message (lpmsg, (ASCII_CONTROLIFY ('O'))));
-//
-//	case VK_SPACE:
-//	  if ((((DWORD) (GetKeyState (VK_CONTROL))) & 0x8000) != 0)
-//	    return (MIT_post_char_message (lpmsg, ((WPARAM) '\0')));
-//	  break;
-//
-//#ifdef WINDOWSLOSES
-//	case VK_TAB:
-//	  if (MIT_trap_alt_tab)
-//	    return ((BOOL) 0);
-//	  break;
-//
-//	case VK_ESCAPE:
-//	  if ((message == WM_SYSKEYDOWN) && MIT_trap_alt_escape)
-//	    return ((BOOL) 0);
-//	  break;
-//#endif /* WINDOWSLOSES */
-//
-//	default:
-//	{
-//	  WPARAM control_char;
-//
-//	  if (((message == WM_SYSKEYDOWN) || (lpmsg->lParam & KEYDATA_ALT_BIT))
-//	      && ((((DWORD) (GetKeyState (VK_CONTROL))) & 0x8000) != 0)
-//	      && (MIT_controlify (virtual_key, &control_char)))
-//	    return (MIT_post_char_message (lpmsg, control_char));
-//	  break;
-//	}
-//      }
-//      break;
-//    }
-//
-//#ifdef WINDOWSLOSES
-//    case WM_KEYUP:
-//    case WM_SYSKEYUP:
-//    {
-//      WPARAM virtual_key = (lpmsg->wParam);
-//
-//      switch (virtual_key)
-//      {
-//	case VK_TAB:
-//	  if (MIT_trap_alt_tab)
-//	    return (MIT_post_char_message (lpmsg, ((WPARAM) '\t')));
-//	  break;
-//
-//	case VK_ESCAPE:
-//	  if (MIT_trap_alt_escape)
-//	    return (MIT_post_char_message (lpmsg, ((WPARAM) ASCII_ESC)));
-//	  break;
-//
-//	default:
-//	  break;
-//      }
-//      break;
-//    }
-//#endif /* WINDOWSLOSES */
-//
-//    default:
-//      break;
-//  }
-//  return  TranslateMessage (lpmsg);
-//}
-//
-
-int
-Screen_Width (SCREEN screen)
-{
-  return  screen->width;
-}
-
-int
-Screen_Height (SCREEN screen)
-{
-  return  screen->height;
-}
-
 
 VOID
 Screen_CR_to_RECT (RECT * rect, SCREEN screen,
@@ -3317,8 +3218,26 @@ Screen_CR_to_RECT (RECT * rect, SCREEN screen,
 VOID
 Enable_Cursor (SCREEN screen, BOOL show)
 {
-  if (show)
-    screen->CursorState = CS_SHOW;
-  else
-    screen->CursorState = CS_HIDE;
+  ScreenCurrentFocus();
+  if (show) {
+    if (!screen->cursor_visible) {
+      screen->cursor_visible = TRUE;
+      if (screen && screen == screen_focus)
+	ShowCaret (screen->hWnd);
+    }
+  } else {
+    if (screen->cursor_visible) {
+      screen->cursor_visible = FALSE;
+      if (screen && screen == screen_focus)
+	HideCaret (screen->hWnd);
+    }
+  }
+}
+
+
+HICON ScreenSetIcon(SCREEN screen, HICON hIcon)
+{
+  HICON  result = screen->hIcon;
+  screen->hIcon = hIcon;
+  return  result;
 }
