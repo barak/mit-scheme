@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.534 2005/03/19 05:08:28 cph Exp $
+$Id: runtime.pkg,v 14.535 2005/03/29 05:04:09 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -1135,6 +1135,7 @@ USA.
 	  continuation/dynamic-state
 	  continuation/type
 	  continuation?
+	  error:not-continuation
 	  guarantee-continuation
 	  make-continuation
 	  non-reentrant-call-with-current-continuation
@@ -1360,10 +1361,15 @@ USA.
 	  entity-extra
 	  entity-procedure
 	  entity?
+	  error:not-compiled-procedure
+	  error:not-compound-procedure
+	  error:not-primitive-procedure
+	  error:not-procedure
 	  guarantee-compiled-procedure
 	  guarantee-compound-procedure
 	  guarantee-primitive-procedure
 	  guarantee-procedure
+	  guarantee-procedure-of-arity
 	  implemented-primitive-procedure?
 	  make-apply-hook
 	  make-arity-dispatched-procedure
@@ -1376,6 +1382,7 @@ USA.
 	  procedure-components
 	  procedure-environment
 	  procedure-lambda
+	  procedure-of-arity?
 	  procedure?
 	  set-apply-hook-extra!
 	  set-apply-hook-procedure!
@@ -2131,6 +2138,7 @@ USA.
 	  error:not-list
 	  error:not-pair
 	  error:not-restricted-keyword-list
+	  error:not-unique-keyword-list
 	  error:not-weak-list
 	  except-last-pair
 	  except-last-pair!
@@ -2152,6 +2160,7 @@ USA.
 	  guarantee-list-of-type->length
 	  guarantee-pair
 	  guarantee-restricted-keyword-list
+	  guarantee-unique-keyword-list
 	  guarantee-weak-list
 	  keep-matching-items
 	  keyword-list->alist
@@ -2200,6 +2209,7 @@ USA.
 	  tenth
 	  third
 	  tree-copy
+	  unique-keyword-list?
 	  weak-car
 	  weak-cdr
 	  weak-cons
@@ -2840,7 +2850,14 @@ USA.
 	  cmdl?
 	  condition-type:breakpoint
 	  condition/breakpoint?
+	  error:not-cmdl
+	  error:not-repl
 	  ge
+	  guarantee-cmdl
+	  guarantee-repl
+	  hook/repl-eval
+	  hook/repl-read
+	  hook/repl-write
 	  in
 	  initial-top-level-repl
 	  make-cmdl
@@ -2861,12 +2878,15 @@ USA.
 	  push-repl
 	  re
 	  read-eval-print
+	  repl-eval
 	  repl-history/read
 	  repl-history/record!
 	  repl-history/size
 	  repl-printer-history-size
+	  repl-read
 	  repl-reader-history-size
 	  repl-scode-eval
+	  repl-write
 	  repl/base
 	  repl/condition
 	  repl/environment
@@ -2879,6 +2899,7 @@ USA.
 	  repl:write-result-hash-numbers?
 	  repl?
 	  restart
+	  run-in-nearest-repl
 	  set-cmdl/state!
 	  set-repl/environment!
 	  set-repl/printer-history!
@@ -2889,14 +2910,10 @@ USA.
 	  standard-breakpoint-hook
 	  ve
 	  with-repl-eval-boundary)
-  (export (runtime load)
-	  hook/repl-eval
-	  hook/repl-write)
+  (export (runtime load))
   (export (runtime emacs-interface)
 	  hook/error-decision
 	  set-cmdl/port!)
-  (export (runtime user-interface)
-	  hook/repl-eval)
   (export (runtime debugger)
 	  write-restarts)
   (export (runtime working-directory)

@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: rep.scm,v 14.62 2004/02/16 05:38:05 cph Exp $
+$Id: rep.scm,v 14.63 2005/03/29 05:04:00 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1998,1999,2001 Massachusetts Institute of Technology
-Copyright 2003 Massachusetts Institute of Technology
+Copyright 2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -35,6 +35,7 @@ USA.
 
 (define (initialize-package!)
   (set! *nearest-cmdl* #f)
+  (set! hook/repl-read default/repl-read)
   (set! hook/repl-eval default/repl-eval)
   (set! hook/repl-write default/repl-write)
   (set! hook/set-default-environment default/set-default-environment)
@@ -74,6 +75,8 @@ USA.
   (state cmdl/state set-cmdl/state!)
   (operations cmdl/operations)
   (properties cmdl/properties))
+
+(define-guarantee cmdl "command loop")
 
 (define (make-cmdl parent port driver state operations)
   (if (not (or (not parent) (cmdl? parent)))
@@ -428,25 +431,37 @@ USA.
 		    (operation repl condition)))
 	      (hook/error-decision
 	       (hook/error-decision repl condition)))))
-  (let ((reader-history (repl/reader-history repl))
-	(printer-history (repl/printer-history repl)))
-    (port/set-default-environment (cmdl/port repl) (repl/environment repl))
+  (port/set-default-environment (cmdl/port repl) (repl/environment repl))
+  (let ((queue (repl/input-queue repl)))
     (do () (#f)
-      (let ((s-expression
-	     (prompt-for-command-expression (cons 'STANDARD (repl/prompt repl))
-					    (cmdl/port repl))))
-	(repl-history/record! reader-history s-expression)
-	(let ((value
-	       (hook/repl-eval repl s-expression (repl/environment repl))))
-	  (repl-history/record! printer-history value)
-	  (hook/repl-write repl s-expression value))))))
+      (if (queue-empty? queue)
+	  (let ((s-expression (repl-read repl)))
+	    (repl-write repl s-expression (repl-eval repl s-expression)))
+	  ((dequeue! queue) repl)))))
+
+(define (run-in-nearest-repl procedure)
+  (guarantee-procedure-of-arity procedure 1 'run-in-nearest-repl)
+  (enqueue! (repl/input-queue (nearest-repl)) procedure))
+
+(define (repl-read repl)
+  (guarantee-repl repl 'repl-read)
+  (hook/repl-read repl))
+
+(define hook/repl-read)
+(define (default/repl-read repl)
+  (prompt-for-command-expression (cons 'STANDARD (repl/prompt repl))
+				 (cmdl/port repl)))
+
+(define (repl-eval repl s-expression)
+  (guarantee-repl repl 'repl-eval)
+  (repl-history/record! (repl/reader-history repl) s-expression)
+  (let ((value (hook/repl-eval repl s-expression (repl/environment repl))))
+    (repl-history/record! (repl/printer-history repl) value)
+    value))
 
 (define hook/repl-eval)
 (define (default/repl-eval repl s-expression environment)
-  (let ((scode (syntax s-expression environment)))
-    (with-repl-eval-boundary repl
-      (lambda ()
-	(extended-scode-eval scode environment)))))
+  (repl-scode-eval repl (syntax s-expression environment) environment))
 
 (define (repl-scode-eval repl scode environment)
   (with-repl-eval-boundary repl
@@ -458,6 +473,10 @@ USA.
    (lambda () (with-new-history thunk))
    with-repl-eval-boundary
    repl))
+
+(define (repl-write repl s-expression value)
+  (guarantee-repl repl 'repl-write)
+  (hook/repl-write repl s-expression value))
 
 (define hook/repl-write)
 (define (default/repl-write repl s-expression object)
@@ -615,11 +634,14 @@ USA.
   environment
   (condition #f read-only #t)
   (reader-history (make-repl-history repl-reader-history-size))
-  (printer-history (make-repl-history repl-printer-history-size)))
+  (printer-history (make-repl-history repl-printer-history-size))
+  (input-queue (make-queue) read-only #t))
 
 (define (repl? object)
   (and (cmdl? object)
        (repl-state? (cmdl/state object))))
+
+(define-guarantee repl "read-eval-print loop")
 
 (define-integrable (repl/prompt repl)
   (repl-state/prompt (cmdl/state repl)))
@@ -649,6 +671,9 @@ USA.
 
 (define-integrable (set-repl/printer-history! repl printer-history)
   (set-repl-state/printer-history! (cmdl/state repl) printer-history))
+
+(define-integrable (repl/input-queue repl)
+  (repl-state/input-queue (cmdl/state repl)))
 
 (define (repl/parent repl)
   (skip-non-repls (cmdl/parent repl)))
@@ -722,11 +747,8 @@ USA.
     (set-repl/environment! (nearest-repl) environment)
     environment))
 
-(define (->environment object #!optional procedure)
-  (let ((procedure
-	 (if (or (default-object? procedure) (not procedure))
-	     '->ENVIRONMENT
-	     procedure)))
+(define (->environment object #!optional caller)
+  (let ((caller (if (default-object? caller) '->ENVIRONMENT caller)))
     (cond ((environment? object) object)
 	  ((package? object) (package/environment object))
 	  ((procedure? object) (procedure-environment object))
@@ -740,21 +762,14 @@ USA.
 		    (and package-name
 			 (name->package package-name)))))
 	     (if (not package)
-		 (error:wrong-type-argument object "environment" procedure))
+		 (error:wrong-type-argument object "environment" caller))
 	     (package/environment package))))))
 
 (define (re #!optional index)
   (let ((repl (nearest-repl)))
-    (hook/repl-eval repl
-		    (let ((history (repl/reader-history repl)))
-		      (let ((s-expression
-			     (repl-history/read history
-						(if (default-object? index)
-						    1
-						    index))))
-			(repl-history/replace-current! history s-expression)
-			s-expression))
-		    (repl/environment repl))))
+    (repl-eval repl
+	       (repl-history/read (repl/reader-history repl)
+				  (if (default-object? index) 1 index)))))
 
 (define (in #!optional index)
   (repl-history/read (repl/reader-history (nearest-repl))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.68 2004/12/06 21:21:44 cph Exp $
+$Id: load.scm,v 14.69 2005/03/29 05:03:53 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1999,2000,2001,2002,2003 Massachusetts Institute of Technology
@@ -550,10 +550,18 @@ USA.
     (lambda ()
       (set! generate-suspend-file? #f)
       unspecific))
-  (argument-command-line-parser "load" #t load)
+  (argument-command-line-parser "load" #t
+    (lambda (arg)
+      (run-in-nearest-repl
+       (lambda (repl)
+	 repl
+	 (load arg)))))
   (argument-command-line-parser "eval" #t
     (lambda (arg)
-      (eval (with-input-from-string arg read) user-initial-environment))))
+      (run-in-nearest-repl
+       (lambda (repl)
+	 (let ((sexp (with-input-from-string arg read)))
+	   (repl-write repl sexp (repl-eval repl sexp))))))))
 
 ;;;; Loader for packed binaries
 
