@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hppa.h,v 1.41 1993/06/24 04:03:22 gjr Exp $
+$Id: hppa.h,v 1.42 1993/06/30 03:35:47 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -350,7 +350,7 @@ DEFUN_VOID (flush_i_cache_initialize)
   struct utsname sysinfo;
   if ((uname (&sysinfo)) < 0)
     {
-      fprintf (stderr, "\nflush_i_cache_initialize: uname failed.\n");
+      outf_fatal ("\nflush_i_cache_initialize: uname failed.\n");
       goto loser;
     }
   model = &sysinfo.machine[0];
@@ -361,9 +361,8 @@ DEFUN_VOID (flush_i_cache_initialize)
   model = (getenv ("HPPAmodel"));
   if (model == ((char *) NULL))
   {
-    fprintf
-      (stderr,
-       "\nflush_i_cache_initialize: HPPAmodel not set in environment.\n");
+    outf_fatal
+      ("\nflush_i_cache_initialize: HPPAmodel not set in environment.\n");
     goto loser;
   }
 #endif /* _HPUX */
@@ -371,8 +370,8 @@ DEFUN_VOID (flush_i_cache_initialize)
     int fd = (open (models_filename, O_RDONLY));
     if (fd < 0)
       {
-	fprintf (stderr, "\nflush_i_cache: open (%s) failed.\n",
-		 models_filename);
+	outf_fatal ("\nflush_i_cache: open (%s) failed.\n",
+		    models_filename);
 	goto loser;
       }
     while (1)
@@ -389,8 +388,8 @@ DEFUN_VOID (flush_i_cache_initialize)
 	if (read_result != (sizeof (struct pdc_cache_dump)))
 	  {
 	    close (fd);
-	    fprintf (stderr, "\nflush_i_cache: read (%s) failed.\n",
-		     models_filename);
+	    outf_fatal ("\nflush_i_cache: read (%s) failed.\n",
+			models_filename);
 	    goto loser;
 	  }
 	if ((strcmp (model, (cache_info . hardware))) == 0)
@@ -400,13 +399,13 @@ DEFUN_VOID (flush_i_cache_initialize)
 	  }
       }
   }
-  fprintf (stderr,
-	   "The cache parameters database has no entry for the %s model.\n",
-	   model);
-  fprintf (stderr, "Please make an entry in the database;\n");
-  fprintf (stderr, "the installation notes contain instructions for doing so.\n");
+  outf_fatal (
+	      "The cache parameters database has no entry for the %s model.\n",
+	      model);
+  outf_fatal ("Please make an entry in the database;\n");
+  outf_fatal ("the installation notes contain instructions for doing so.\n");
  loser:
-  fprintf (stderr, "\nASM_RESET_HOOK: Unable to read cache parameters.\n");
+  outf_fatal ("\nASM_RESET_HOOK: Unable to read cache parameters.\n");
   termination_init_error ();
 }
 
@@ -749,9 +748,8 @@ DEFUN (transform_procedure_table, (table_length, old_table),
   new_table = ((PTR *) (malloc (table_length * (sizeof (PTR)))));
   if (new_table == ((PTR *) NULL))
   {
-    fprintf (stderr,
-	     "transform_procedure_table: malloc (%d) failed.\n",
-	     (table_length * (sizeof (PTR))));
+    outf_fatal ("transform_procedure_table: malloc (%d) failed.\n",
+		(table_length * (sizeof (PTR))));
     exit (1);
   }
 
@@ -795,10 +793,9 @@ DEFUN_VOID (change_vm_protection)
       == -1)
   {
     perror ("\nchange_vm_protection");
-    fprintf (stderr, "mprotect (0x%lx, 0x%lx, 0x%lx)\n",
-	     heap_start_page, size, VM_PROT_SCHEME);
-    fprintf (stderr,
-	     "ASM_RESET_HOOK: Unable to change VM protection of Heap.\n");
+    outf_fatal ("mprotect (0x%lx, 0x%lx, 0x%lx)\n",
+		heap_start_page, size, VM_PROT_SCHEME);
+    outf_fatal ("ASM_RESET_HOOK: Unable to change VM protection of Heap.\n");
     termination_init_error ();
   }
 #endif
@@ -811,12 +808,14 @@ DEFUN_VOID (change_vm_protection)
    It also changes the VM protection of the heap, if necessary.
  */
 
-extern PTR * hppa_utility_table;
-PTR * hppa_utility_table;
+extern PTR * hppa_utility_table, * hppa_primitive_table;
+PTR * hppa_utility_table, * hppa_primitive_table;
 
 void
-DEFUN (hppa_reset_hook, (table_length, utility_table),
-       long table_length AND PTR * utility_table)
+DEFUN (hppa_reset_hook, (utility_length, utility_table,
+			 primitive_length, primitive_table),
+       long utility_length AND PTR * utility_table
+       AND long primitive_length AND PTR * primitive_table)
 {
   extern void
     EXFUN (interface_initialize, (void));
@@ -824,18 +823,19 @@ DEFUN (hppa_reset_hook, (table_length, utility_table),
   flush_i_cache_initialize ();
   interface_initialize ();
   change_vm_protection ();
-  /* This can be done with the primitive table as well if we add
-     assembly-language primitive invocation code.
-   */
   hppa_utility_table =
-    (transform_procedure_table (table_length, utility_table));
+    (transform_procedure_table (utility_length, utility_table));
+  hppa_primitive_table =
+    (transform_procedure_table (primitive_length, primitive_table));
   return;
 }
 
 #define ASM_RESET_HOOK() do						\
 {									\
   hppa_reset_hook (((sizeof (utility_table)) / (sizeof (PTR))),		\
-		   ((PTR *) (&utility_table[0])));			\
+		   ((PTR *) (&utility_table[0])),			\
+		   (MAX_PRIMITIVE + 1),					\
+		   ((PTR *) (&Primitive_Procedure_Table[0])));		\
 } while (0)
 
 #endif /* IN_CMPINT_C */

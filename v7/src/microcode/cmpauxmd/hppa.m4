@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Id: hppa.m4,v 1.26 1993/03/17 01:47:18 gjr Exp $
+;;;	$Id: hppa.m4,v 1.27 1993/06/30 03:35:29 gjr Exp $
 ;;;
 ;;;	Copyright (c) 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -121,14 +121,17 @@ define(TC_LENGTH, ifdef("TYPE_CODE_LENGTH", TYPE_CODE_LENGTH, 8))
 define(QUAD_MASK, eval(2 ** (TC_LENGTH - 2)))
 define(LOW_TC_BIT, eval(TC_LENGTH - 1))
 define(DATUM_LENGTH, eval(32 - TC_LENGTH))
+define(HALF_DATUM_LENGTH, eval(DATUM_LENGTH/2))
 define(FIXNUM_LENGTH, DATUM_LENGTH)
 define(FIXNUM_POS, eval(FIXNUM_LENGTH - 1))
 define(FIXNUM_BIT, eval(TC_LENGTH + 1))
 define(TC_START, eval(TC_LENGTH - 1))
-define(TC_FIXNUM, 0x1a)
 define(TC_FLONUM, 0x6)
-define(TC_CCENTRY, 0x28)
+define(TC_VECTOR, 0xa)
+define(TC_FIXNUM, 0x1a)
+define(TC_STRING, 0x1e)
 define(TC_NMV, 0x27)
+define(TC_CCENTRY, 0x28)
 define(FLONUM_VECTOR_HEADER, eval((TC_NMV * (2 ** DATUM_LENGTH)) + 2))
 define(TC_FALSE, 0)
 define(TC_TRUE, 0x8)
@@ -139,7 +142,7 @@ define(C_FRAME_SIZE,
 	     ifdef("GCC", 120,
 	           `Unknown C compiler: bad frame size')))
 define(INT_BIT_STACK_OVERFLOW, 31)
-
+
 	.SPACE  $TEXT$
 	.SUBSPA $CODE$,QUAD=0,ALIGN=8,ACCESS=44,CODE_ONLY
 C_to_interface
@@ -169,13 +172,15 @@ C_to_interface
 
 ep_interface_to_scheme
 	LDW	8(0,4),2			; Move interpreter reg to val
-	LDW	0(0,4),20			; Setup memtop
-	ADDIL	L'Ext_Stack_Pointer-$global$,27
-	LDW	R'Ext_Stack_Pointer-$global$(1),22 ; Setup stack pointer
-	ADDIL	L'Free-$global$,27
-	LDW	R'Free-$global$(1),21		; Setup free
 	COPY	2,19				; Restore dynamic link if any
 	DEP	5,LOW_TC_BIT,TC_LENGTH,19
+	ADDIL	L'Ext_Stack_Pointer-$global$,27
+	LDW	R'Ext_Stack_Pointer-$global$(1),22 ; Setup stack pointer
+
+ep_interface_to_scheme_2
+	LDW	0(0,4),20			; Setup memtop
+	ADDIL	L'Free-$global$,27
+	LDW	R'Free-$global$(1),21		; Setup free
 	.CALL	RTNVAL=GR			; out=28
 	BLE	0(5,26)				; Invoke entry point
 	COPY	31,3				; Setup scheme_to_interface_ble
@@ -195,11 +200,11 @@ scheme_to_interface
 	ADDIL	L'Free-$global$,27
 	STW	21,R'Free-$global$(1)		; Update free
 	ifelse(ASM_DEBUG,1,"ADDIL	L'interface_counter-$global$,27
-	LDW	R'interface_counter-$global$(0,1),21
+	LDW	R'interface_counter-$global$(1),21
 	LDO	1(21),21
-	STW	21,R'interface_counter-$global$(0,1)
+	STW	21,R'interface_counter-$global$(1)
 	ADDIL	L'interface_limit-$global$,27
-	LDW	R'interface_limit-$global$(0,1),22
+	LDW	R'interface_limit-$global$(1),22
 	COMB,=,N	21,22,interface_break
 interface_proceed")
 	ifdef("GCC", "LDO	-116(30),28")
@@ -210,7 +215,7 @@ interface_proceed")
 		      LDW	-112(30),29")
 	BV	0(28)				; Call receiver
 	COPY	29,26				; Setup entry point
-
+
 ;; This sequence of NOPs is provided to allow for modification of
 ;; the sequence that appears above without having to recompile the
 ;; world.  The compiler "knows" the distance between
@@ -238,7 +243,7 @@ store_closure_code_hook
 store_closure_entry_hook
 	B	store_closure_entry+4
 	DEP	0,31,2,1			; clear PC protection bits
-
+
 multiply_fixnum_hook
 	B	multiply_fixnum+4
 	EXTRS	26,FIXNUM_POS,FIXNUM_LENGTH,26	; arg1
@@ -302,7 +307,7 @@ generic_positive_hook
 generic_negative_hook
 	B	generic_negative+4
 	LDW	0(0,22),6			; arg1
-
+
 shortcircuit_apply_hook
 	B	shortcircuit_apply+4
 	EXTRU	26,5,6,24			; procedure type -> 24
@@ -342,45 +347,76 @@ shortcircuit_apply_8_hook
 stack_and_interrupt_check_hook
 	B	stack_and_interrupt_check+4
 	LDW	44(0,4),25			; Stack_Guard -> r25
+
+invoke_primitive_hook
+	B	invoke_primitive+4
+	DEPI	0,31,2,31			; clear privilege bits
+
+vector_cons_hook
+	B	vector_cons+4
+	LDW	0(0,22),26			; length as fixnum
+
+string_allocate_hook
+	B	string_allocate+4
+	LDW	0(0,22),26			; length as fixnum
+
+floating_vector_cons_hook
+	B	floating_vector_cons+4
+	LDW	0(0,22),26			; length as fixnum
+
+flonum_sin_hook
+	B	flonum_sin+4
+	COPY	22,18
+
+flonum_cos_hook
+	B	flonum_cos+4
+	COPY	22,18
+
+flonum_tan_hook
+	B	flonum_tan+4
+	COPY	22,18
+
+flonum_asin_hook
+	B	flonum_asin+4
+	COPY	22,18
+
+flonum_acos_hook
+	B	flonum_acos+4
+	COPY	22,18
+
+flonum_atan_hook
+	B	flonum_atan+4
+	COPY	22,18
+
+flonum_exp_hook
+	B	flonum_exp+4
+	COPY	22,18
+
+flonum_log_hook
+	B	flonum_log+4
+	COPY	22,18
+
+flonum_truncate_hook
+	B	flonum_truncate+4
+	COPY	22,18
+
+flonum_ceiling_hook
+	B	flonum_ceiling+4
+	COPY	22,18
+
+flonum_floor_hook
+	B	flonum_floor+4
+	COPY	22,18
+
+flonum_atan2_hook
+	B	flonum_atan2+4
+	COPY	22,18
+
 ;;
 ;; Provide dummy trapping hooks in case a newer version of compiled
 ;; code that expects more hooks is run.
 ;;
 no_hook
-	BREAK	0,28
-	NOP
-	BREAK	0,28
-	NOP
-	BREAK	0,29
-	NOP
-	BREAK	0,30
-	NOP
-	BREAK	0,31
-	NOP
-	BREAK	0,32
-	NOP
-	BREAK	0,33
-	NOP
-	BREAK	0,34
-	NOP
-	BREAK	0,35
-	NOP
-	BREAK	0,36
-	NOP
-	BREAK	0,37
-	NOP
-	BREAK	0,38
-	NOP
-	BREAK	0,39
-	NOP
-	BREAK	0,40
-	NOP
-	BREAK	0,41
-	NOP
-	BREAK	0,42
-	NOP
-	BREAK	0,43
-	NOP
 	BREAK	0,44
 	NOP
 	BREAK	0,45
@@ -392,6 +428,26 @@ no_hook
 	BREAK	0,48
 	NOP
 	BREAK	0,49
+	NOP
+	BREAK	0,50
+	NOP
+	BREAK	0,51
+	NOP
+	BREAK	0,52
+	NOP
+	BREAK	0,53
+	NOP
+	BREAK	0,54
+	NOP
+	BREAK	0,55
+	NOP
+	BREAK	0,56
+	NOP
+	BREAK	0,57
+	NOP
+	BREAK	0,58
+	NOP
+	BREAK	0,59
 	NOP
 
 ifelse(ASM_DEBUG,1,"interface_break
@@ -875,8 +931,143 @@ stack_and_interrupt_check_signal_interrupt
 	ADD	26,31,31
 	BE	0(5,31)				; return
 	NOP
+
+;;; The following all have the same interface:
+;;; The "return address" in r31 points to a word containing
+;;; the distance between itself and the word in memory containing
+;;; the primitive object.
+;;; All arguments are passed on the stack, ready for the primitive.
 
-;; This labelis used by the trap handler
+invoke_primitive
+	DEPI	0,31,2,31			; clear privilege bits
+	LDW	0(0,31),26			; get offset
+	ADDIL	L'hppa_primitive_table-$global$,27
+	LDWX	26(0,31),26			; get primitive
+	LDW	R'hppa_primitive_table-$global$(1),25
+	EXTRU	26,31,HALF_DATUM_LENGTH,24	; get primitive index
+	STW	26,32(0,4)			; store primitive
+	ADDIL	L'Primitive_Arity_Table-$global$,27
+	LDO	R'Primitive_Arity_Table-$global$(1),18
+	LDWX,S	24(0,25),25			; find primitive entry point
+	ADDIL	L'Ext_Stack_Pointer-$global$,27
+	STW	22,R'Ext_Stack_Pointer-$global$(1) ; Update stack pointer
+	ADDIL	L'Free-$global$,27
+	LDWX,S	24(0,18),18			; primitive arity
+	STW	21,R'Free-$global$(1)		; Update free	
+	.CALL	RTNVAL=GR			; out=28
+	BLE	0(4,25)				; Call primitive
+	COPY	31,2				; Setup return address
+
+	ADDIL	L'Ext_Stack_Pointer-$global$,27
+	LDW	R'Ext_Stack_Pointer-$global$(1),22 ; Setup stack pointer
+	COPY	28,2				; Move result to val
+	SH2ADD	18,22,22			; pop frame
+	LDWM	4(0,22),26			; return address as object
+	STW	0,32(0,4)			; clear primitive
+	B	ep_interface_to_scheme_2
+	DEP	5,TC_START,TC_LENGTH,26		; return address as address
+
+vector_cons
+	LDW	0(0,22),26			; length as fixnum
+	COPY	21,2
+	ZDEP	26,31,DATUM_LENGTH,26		; length as machine word
+	SH2ADD	26,21,25			; end of data (-1)
+	COMBF,<	25,20,invoke_primitive		; no space, use primitive
+	LDW	4(0,22),24			; fill value
+	LDO	4(25),21			; allocate!
+	STW	26,0(0,2)			; vector length (0-tagged)
+	LDO	4(2),23				; start location
+
+vector_cons_loop
+	COMBT,<,N	23,21,vector_cons_loop
+	STWM	24,4(0,23)			; initialize
+
+	LDW	8(0,22),25			; return address as object
+	DEPI	TC_VECTOR,TC_START,TC_LENGTH,2	; tag result
+	DEP	5,TC_START,TC_LENGTH,25		; return address as address
+	BLE	0(5,25)				; return!
+	LDO	12(22),22			; pop stack frame
+
+string_allocate
+	LDW	0(0,22),26			; length as fixnum
+	COPY	21,2				; return value
+	ZDEP	26,31,DATUM_LENGTH,26		; length as machine word
+	ADD	26,21,25			; end of data (-(9+round))
+	COMBF,<	25,20,invoke_primitive		; no space, use primitive
+	SHD	0,26,2,24			; scale down to word
+	STB	0,8(0,25)			; end-of-string #\NUL
+	LDO	2(24),24			; total word size (-1)
+	STWS,MB	26,4(0,21)			; store string length
+	LDI	TC_NMV,1
+	SH2ADD	24,21,21			; allocate!
+	DEP	1,TC_START,TC_LENGTH,24		; tag header
+	LDW	4(0,22),25			; return address as object
+	STW	24,0(0,2)			; store nmv header
+	LDI	TC_STRING,1
+	DEP	5,TC_START,TC_LENGTH,25		; return address as address
+	DEP	1,TC_START,TC_LENGTH,2		; tag result
+	BLE	0(5,25)				; return!
+	LDO	8(22),22			; pop stack frame
+
+floating_vector_cons
+	LDW	0(0,22),26			; length as fixnum
+	; STW	0,0(0,21)			; make heap parseable
+	DEPI	4,31,3,21			; bump free past header
+	COPY	21,2				; return value
+	ZDEP	26,31,DATUM_LENGTH,26		; length as machine word
+	SH3ADD	26,21,25			; end of data (-1)
+	COMBF,<	25,20,invoke_primitive		; no space, use primitive
+	SHD	26,0,31,26			; scale, harmless in delay slot
+	LDO	4(25),21			; allocate!
+	LDI	TC_NMV,1
+	DEP	1,TC_START,TC_LENGTH,26		; tag header
+	LDW	4(0,22),25			; return address as object
+	STW	26,0(0,2)			; store nmv header
+	DEPI	TC_FLONUM,TC_START,TC_LENGTH,2	; tag result
+	DEP	5,TC_START,TC_LENGTH,25		; return address as address
+	BLE	0(5,25)				; return!
+	LDO	8(22),22			; pop stack frame
+
+define(define_floating_point_util,
+"flonum_$1
+	COPY	22,18				; preserve regs
+	COPY	21,17
+	COPY	19,16
+        .CALL   ARGW0=FR,ARGW1=FU,RTNVAL=FU     ;fpin=105;fpout=104;
+	BL	$2,2
+	COPY	31,15
+	COPY	16,19
+	COPY	17,21
+	COPY	18,22
+	BE	0(5,15)
+	LDW	0(0,4),20")
+
+define_floating_point_util(sin,sin)
+define_floating_point_util(cos,cos)
+define_floating_point_util(tan,tan)
+define_floating_point_util(asin,asin)
+define_floating_point_util(acos,acos)
+define_floating_point_util(atan,atan)
+define_floating_point_util(exp,exp)
+define_floating_point_util(log,log)
+define_floating_point_util(truncate,double_truncate)
+define_floating_point_util(ceiling,ceil)
+define_floating_point_util(floor,floor)
+
+flonum_atan2
+	COPY	22,18				; preserve regs
+	COPY	21,17
+	COPY	19,16
+        .CALL   ARGW0=FR,ARGW1=FU,ARGW2=FR,ARGW3=FU,RTNVAL=FU   ;fpin=105,107;fpout=104;
+	BL	atan2,2
+	COPY	31,15
+	COPY	16,19
+	COPY	17,21
+	COPY	18,22
+	BE	0(5,15)
+	LDW	0(0,4),20
+
+;; This label is used by the trap handler
 
 ep_scheme_hooks_high
 
@@ -932,7 +1123,7 @@ known_pc
 define(store_entry_point,"ADDIL	L'ep_$1-known_pc,28
 	LDO	R'ep_$1-known_pc(1),29
 	ADDIL	L'$1-$global$,27
-	STW	29,R'$1-$global$(0,1)")
+	STW	29,R'$1-$global$(1)")
 
 	store_entry_point(interface_to_scheme)
 	store_entry_point(interface_to_C)
@@ -1172,9 +1363,23 @@ interface_limit
 	.IMPORT	Ext_Stack_Pointer,DATA
 	.IMPORT	Free,DATA
 	.IMPORT	hppa_utility_table,DATA
+	.IMPORT	hppa_primitive_table,DATA
+	.IMPORT	Primitive_Arity_Table,DATA
 	.SPACE	$TEXT$
 	.SUBSPA $CODE$
         .IMPORT $$remI,MILLICODE
+	.IMPORT	sin,CODE
+	.IMPORT	cos,CODE
+	.IMPORT	tan,CODE
+	.IMPORT	asin,CODE
+	.IMPORT	acos,CODE
+	.IMPORT	atan,CODE
+	.IMPORT	exp,CODE
+	.IMPORT	log,CODE
+	.IMPORT	double_truncate,CODE
+	.IMPORT	ceil,CODE
+	.IMPORT	floor,CODE
+	.IMPORT	atan2,CODE
 	.EXPORT C_to_interface,PRIV_LEV=3,ARGW0=GR,RTNVAL=GR
 	.EXPORT interface_initialize,PRIV_LEV=3
 	.EXPORT scheme_to_interface_ble,PRIV_LEV=3
@@ -1187,4 +1392,5 @@ interface_limit
 	.EXPORT ep_interface_to_scheme,PRIV_LEV=3
 	.EXPORT ep_scheme_hooks_low,PRIV_LEV=3
 	.EXPORT ep_scheme_hooks_high,PRIV_LEV=3
+	.EXPORT	flonum_atan2,PRIV_LEV=3
 	.END
