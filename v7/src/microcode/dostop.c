@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: dostop.c,v 1.5 1992/09/15 20:35:49 jinx Exp $
+$Id: dostop.c,v 1.6 1993/07/16 18:55:14 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -101,7 +101,7 @@ DEFUN_VOID (OS_initialize)
 		     (int) version_number.major, (int) version_number.minor);
     /* To make our compiler vendors happy. */		   
     fprintf(stdout,
-	    "Copyright (c) 1992 Massachusetts Institute of Technology\n");
+	    "Copyright (c) 1992-1993 Massachusetts Institute of Technology\n");
   }
 
   fputs ("", stdout);

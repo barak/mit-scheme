@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttop.c,v 1.3 1993/06/24 02:10:06 gjr Exp $
+$Id: nttop.c,v 1.4 1993/07/16 18:55:35 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -107,7 +107,7 @@ DEFUN_VOID (OS_initialize)
 		     (int) version_number.major, (int) version_number.minor);
     /* To make our compiler vendors happy. */
     outf_console(
-      "Copyright (c) 1992 Massachusetts Institute of Technology\r\n");
+      "Copyright (c) 1993 Massachusetts Institute of Technology\r\n");
   }
 
   outf_console ("\r\n");
