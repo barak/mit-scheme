@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.3 1988/08/05 20:48:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.4 1988/08/15 21:57:18 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -56,6 +56,7 @@ MIT in each case. |#
 
 (define *named-lambda->define?* true)
 (define *pp-primitives-by-name* true)
+(define *pp-uninterned-symbols-by-name* true)
 (define *forced-x-size* false)
 
 (define (pp object #!optional port as-code?)
@@ -342,7 +343,10 @@ MIT in each case. |#
 
 (define walk-dispatcher)
 (define (default/walk-dispatcher x)
-  (cond ((object-type? (ucode-type interned-symbol) x) identity-procedure)
+  (cond ((if *pp-uninterned-symbols-by-name*
+	     (symbol? x)
+	     (object-type? (ucode-type interned-symbol) x))
+	 identity-procedure)
 	((primitive-procedure? x) walk-primitive)
 	((and (pair? x)
 	      (not (unparse-list/unparser x)))
