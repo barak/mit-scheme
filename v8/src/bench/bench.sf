@@ -1,0 +1,11 @@
+;; -*-Scheme-*-
+;;
+;; This file is really for generating the cross reference so we can find
+;; the free variables of the benchmarks.
+
+(sf-directory ".")
+
+(load-option 'CREF)
+(cref/generate-constructors "bench")
+;;(sf "bench.con")
+;;(sf "bench.ldr")
