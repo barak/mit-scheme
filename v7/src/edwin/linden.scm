@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/linden.scm,v 1.122 1991/10/13 01:50:08 arthur Exp $
+;;;	$Id: linden.scm,v 1.123 1995/03/30 21:51:13 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -270,15 +270,19 @@
   (and (re-search-forward ";+[ \t]*" mark (line-end mark 0))
        (cons (re-match-start 0) (re-match-end 0))))
 
-(define (lisp-comment-indentation mark)
-  (cond ((match-forward ";;;" mark)
-	 0)
-	((match-forward ";;" mark)
-	 (let ((indentation (calculate-lisp-indentation mark)))
-	   (if (pair? indentation) (car indentation) indentation)))
-	(else
-	 (max (1+ (mark-column (horizontal-space-start mark)))
-	      (ref-variable comment-column)))))
+(define (lisp-comment-indentation mark #!optional stack)
+  (let ((column
+	 (cond ((match-forward ";;;" mark)
+		0)
+	       ((match-forward ";;" mark)
+		(compute-indentation mark
+				     (if (default-object? stack) '() stack)))
+	       (else
+		(ref-variable comment-column mark)))))
+    (if (within-indentation? mark)
+	column
+	(max (+ 1 (mark-column (horizontal-space-start mark)))
+	     column))))
 
 ;;;; Indent Expression
 
@@ -287,39 +291,38 @@
     (if (mark< point end)
 	(let loop ((index point) (stack '()))
 	  (let next-line-start ((index index) (state false))
-	    (let ((start (line-start index 1)))
+	    (let ((start (mark-right-inserting-copy (line-start index 1))))
 	      (let ((state (parse-partial-sexp index start false false state)))
 		(let ((stack (adjust-stack (parse-state-depth state) stack)))
-		  (cond ((not (mark= start end))
-			 (let ((start (mark-right-inserting start)))
-			   (if (or (parse-state-in-string? state)
-				   (parse-state-in-comment? state))
-			       (next-line-start start state)
-			       (begin
-				 (cond ((indent-comment-line start stack)
-					unspecific)
-				       ((line-blank? start)
-					(delete-horizontal-space start))
-				       (else
-					(indent-expression-line start stack)))
-				 (loop start stack)))))
-			((not (or (parse-state-in-string? state)
-				  (parse-state-in-comment? state)))
-			 (indent-expression-line start stack)))))))))))
+		  (cond ((mark= start end)
+			 (if (not (or (parse-state-in-string? state)
+				      (parse-state-in-comment? state)))
+			     (indent-expression-line start stack state))
+			 (mark-temporary! start))
+			((or (parse-state-in-string? state)
+			     (parse-state-in-comment? state))
+			 (mark-temporary! start)
+			 (next-line-start start state))
+			(else
+			 (if (line-blank? start)
+			     (delete-horizontal-space start)
+			     (indent-expression-line start stack state))
+			 (mark-temporary! start)
+			 (loop start stack)))))))))))
 
-(define (indent-comment-line start stack)
-  (let ((mark (horizontal-space-end start)))
-    (and (match-forward ";" mark)
-	 (begin
-	   (maybe-change-indentation
-	    (cond ((match-forward ";;;" mark) (mark-column mark))
-		  ((match-forward ";;" mark) (compute-indentation start stack))
-		  (else (ref-variable comment-column)))
-	    mark)
-	   true))))
-
-(define (indent-expression-line start stack)
-  (maybe-change-indentation (compute-indentation start stack) start))
+(define (indent-expression-line start stack state)
+  (maybe-change-indentation (compute-indentation start stack) start)
+  (if (eqv? 1
+	    (parse-state-in-comment?
+	     (parse-partial-sexp start (line-end start 0) #f #f state)))
+      ;; PARSE-PARTIAL-SEXP should be changed so that it can report
+      ;; the index at which the comment starts.  Since it has a more
+      ;; precise model of the syntax, it can return a more accurate
+      ;; answer.
+      (let ((comment (lisp-comment-locate start)))
+	(if comment
+	    (maybe-change-column (lisp-comment-indentation (car comment) stack)
+				 (car comment))))))
 
 (define (compute-indentation start stack)
   (cond ((null? stack)
