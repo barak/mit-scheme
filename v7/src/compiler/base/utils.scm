@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.91 1987/08/27 21:32:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.92 1987/11/21 18:43:08 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -347,13 +347,16 @@ MIT in each case. |#
 (define lambda-tag:delay
   (make-named-tag "DELAY-LAMBDA"))
 
+;; Primitives are non pointers, but need to be updated by the fasloader;
+;; they cannot appear as immediate constants in the instruction stream.
+;; Therefore, for the purposes of compilation, they are treated as pointers.
+
 (define (non-pointer-object? object)
   (or (primitive-type? (ucode-type false) object)
       (primitive-type? (ucode-type true) object)
       (primitive-type? (ucode-type fixnum) object)
       (primitive-type? (ucode-type character) object)
       (primitive-type? (ucode-type unassigned) object)
-      (primitive-type? (ucode-type primitive) object)
       (primitive-type? (ucode-type the-environment) object)
       (primitive-type? (ucode-type manifest-nm-vector) object)
       (primitive-type? (ucode-type manifest-special-nm-vector) object)))
