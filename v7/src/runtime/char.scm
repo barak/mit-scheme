@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: char.scm,v 14.8 1998/01/20 18:40:24 adams Exp $
+$Id: char.scm,v 14.9 1998/02/13 22:25:32 adams Exp $
 
 Copyright (c) 1988-1998 Massachusetts Institute of Technology
 
@@ -42,9 +42,9 @@ MIT in each case. |#
   make-char char-code char-bits char->integer integer->char char->ascii
   char-ascii? ascii->char char-upcase char-downcase)
 
-(define-integrable char-code-limit #x80)
+(define-integrable char-code-limit #x10000)
 (define-integrable char-bits-limit #x20)
-(define-integrable char-integer-limit #x1000)
+(define-integrable char-integer-limit #x200000)
 
 (define-integrable (chars->ascii chars)
   (map char->ascii chars))
