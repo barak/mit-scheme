@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchgcl.c,v 9.45 1993/06/24 07:06:57 gjr Exp $
+$Id: bchgcl.c,v 9.46 1993/08/23 02:21:42 gjr Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -41,19 +41,21 @@ MIT in each case. */
 
 SCHEME_OBJECT *
 DEFUN (GCLoop, (Scan, To_ptr, To_Address_ptr),
-       fast SCHEME_OBJECT *Scan AND
-       SCHEME_OBJECT **To_ptr AND
-       SCHEME_OBJECT **To_Address_ptr)
+       fast SCHEME_OBJECT * Scan AND
+       SCHEME_OBJECT ** To_ptr AND
+       SCHEME_OBJECT ** To_Address_ptr)
 {
-  fast SCHEME_OBJECT *To, *Old, Temp, *Low_Constant, *To_Address, New_Address;
+  fast SCHEME_OBJECT
+    * To, * Old, Temp, * Low_Constant,
+    * To_Address, New_Address;
 
-  To = *To_ptr;
-  To_Address = *To_Address_ptr;
+  To = (* To_ptr);
+  To_Address = (* To_Address_ptr);
   Low_Constant = Constant_Space;
 
   for ( ; Scan != To; Scan++)
   {
-    Temp = *Scan;
+    Temp = (* Scan);
     Switch_by_GC_Type (Temp)
     {
       case TC_BROKEN_HEART:
@@ -77,9 +79,7 @@ DEFUN (GCLoop, (Scan, To_ptr, To_Address_ptr),
 	   and if so we need a new bufferfull. */
 	Scan += (OBJECT_DATUM (Temp));
 	if (Scan < scan_buffer_top)
-	{
 	  break;
-	}
 	else
 	{
 	  unsigned long overflow;
@@ -94,7 +94,7 @@ DEFUN (GCLoop, (Scan, To_ptr, To_Address_ptr),
 
       case_compiled_entry_point:
 	relocate_compiled_entry (true);
-	*Scan = Temp;
+	(* Scan) = Temp;
 	break;
 
       case TC_LINKAGE_SECTION:
@@ -118,7 +118,7 @@ DEFUN (GCLoop, (Scan, To_ptr, To_Address_ptr),
 	      max_count -= count;
 	      for ( ; --count >= 0; Scan += 1)
 	      {
-		Temp = *Scan;
+		Temp = (* Scan);
 		relocate_typeless_pointer (copy_quadruple (), 4);
 	      }
 	      if (max_count != 0)
@@ -143,7 +143,9 @@ DEFUN (GCLoop, (Scan, To_ptr, To_Address_ptr),
 	    long overflow;
 
 	    word_ptr = (FIRST_OPERATOR_LINKAGE_ENTRY (Scan));
-	    if (word_ptr > ((char *) scan_buffer_top))
+	    if (! (word_ptr > ((char *) scan_buffer_top)))
+	      BCH_START_OPERATOR_RELOCATION (Scan);
+	    else
 	    {
 	      overflow = (word_ptr - ((char *) Scan));
 	      extend_scan_buffer (word_ptr, To);
@@ -151,8 +153,6 @@ DEFUN (GCLoop, (Scan, To_ptr, To_Address_ptr),
 	      word_ptr = (end_scan_buffer_extension (word_ptr));
 	      Scan = ((SCHEME_OBJECT *) (word_ptr - overflow));
 	    }
-	    else
-	      BCH_START_OPERATOR_RELOCATION (Scan);
 	    
 	    count = (READ_OPERATOR_LINKAGE_COUNT (Temp));
 	    overflow = ((END_OPERATOR_LINKAGE_AREA (Scan, count)) -
@@ -163,15 +163,15 @@ DEFUN (GCLoop, (Scan, To_ptr, To_Address_ptr),
 		 word_ptr = next_ptr,
 		 next_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr)))
 	    {
-	      if (next_ptr > ((char *) scan_buffer_top))
+	      if (! (next_ptr > ((char *) scan_buffer_top)))
+		relocate_linked_operator (true);
+	      else
 	      {
 		extend_scan_buffer (next_ptr, To);
 		relocate_linked_operator (true);
 		next_ptr = (end_scan_buffer_extension (next_ptr));
 		overflow -= gc_buffer_size;
 	      }
-	      else
-		relocate_linked_operator (true);
 	    }
 	    Scan = (scan_buffer_top + overflow);
 	    BCH_END_OPERATOR_RELOCATION (Scan);
@@ -179,12 +179,10 @@ DEFUN (GCLoop, (Scan, To_ptr, To_Address_ptr),
 	  }
 
 	  default:
-	  {
 	    gc_death (TERM_EXIT,
 		      "GC: Unknown compiler linkage kind.",
 		      Scan, Free);
 	    /*NOTREACHED*/
-	  }
 	}
 	break;
       }
@@ -224,7 +222,9 @@ DEFUN (GCLoop, (Scan, To_ptr, To_Address_ptr),
 	for ( ; ((--count) >= 0);
 	     (word_ptr = (NEXT_MANIFEST_CLOSURE_ENTRY (word_ptr))))
 	{
-	  if ((CLOSURE_ENTRY_END (word_ptr)) > ((char *) scan_buffer_top))
+	  if (! ((CLOSURE_ENTRY_END (word_ptr)) > ((char *) scan_buffer_top)))
+	    relocate_manifest_closure (true);
+	  else
 	  {
 	    char * entry_end;
 	    long de, dw;
@@ -238,8 +238,6 @@ DEFUN (GCLoop, (Scan, To_ptr, To_Address_ptr),
 	    word_ptr = (entry_end - dw);
 	    end_ptr = (entry_end + de);
 	  }
-	  else
-	    relocate_manifest_closure (true);
 	}
 	Scan = ((SCHEME_OBJECT *) (end_ptr));
 	BCH_END_CLOSURE_RELOCATION (Scan);
@@ -251,10 +249,8 @@ DEFUN (GCLoop, (Scan, To_ptr, To_Address_ptr),
 
       case TC_REFERENCE_TRAP:
 	if ((OBJECT_DATUM (Temp)) <= TRAP_MAX_IMMEDIATE)
-	{
 	  /* It is a non pointer. */
 	  break;
-	}
 	/* It is a pair, fall through. */
       case_Pair:
 	relocate_normal_pointer (copy_pair (), 2);
@@ -298,7 +294,7 @@ DEFUN (GCLoop, (Scan, To_ptr, To_Address_ptr),
       }
   }
 end_gcloop:
-  *To_ptr = To;
-  *To_Address_ptr = To_Address;
+  (* To_ptr) = To;
+  (* To_Address_ptr) = To_Address;
   return (Scan);
 }

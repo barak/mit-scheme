@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchgcc.h,v 9.53 1993/08/22 22:19:10 gjr Exp $
+$Id: bchgcc.h,v 9.54 1993/08/23 02:21:13 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -324,8 +324,8 @@ extern int
 
 #define relocate_normal_end()						\
 {									\
-  *(OBJECT_ADDRESS (Temp)) = New_Address;				\
-  *Scan = (MAKE_OBJECT_FROM_OBJECTS (Temp, New_Address));		\
+  (* (OBJECT_ADDRESS (Temp))) = New_Address;				\
+  (* Scan) = (MAKE_OBJECT_FROM_OBJECTS (Temp, New_Address));		\
   continue;								\
 }
 
@@ -368,33 +368,28 @@ do {									\
 
 #define relocate_typeless_setup()					\
 {									\
-  Old = ((SCHEME_OBJECT *) Temp);					\
+  Old = (SCHEME_ADDR_TO_ADDR (Temp));					\
   if (Old >= Low_Constant)						\
     continue;								\
-  if ((OBJECT_TYPE (*Old)) == TC_BROKEN_HEART)				\
+  if (BROKEN_HEART_P (* Old))						\
   {									\
-    *Scan = ((SCHEME_OBJECT) (OBJECT_ADDRESS (*Old)));			\
+    (* Scan) = (ADDR_TO_SCHEME_ADDR (OBJECT_ADDRESS (* Old)));		\
     continue;								\
   }									\
   New_Address = ((SCHEME_OBJECT) To_Address);				\
 }
 
-#define relocate_typeless_transport(copy_code, length)			\
-{									\
-  relocate_normal_transport (copy_code, length);			\
-}
-
 #define relocate_typeless_end()						\
 {									\
-  (* ((SCHEME_OBJECT *) Temp)) = (MAKE_BROKEN_HEART (New_Address));	\
-  *Scan = New_Address;							\
+  (* (SCHEME_ADDR_TO_ADDR (Temp))) = (MAKE_BROKEN_HEART (New_Address));	\
+  (* Scan) = (ADDR_TO_SCHEME_ADDR (New_Address));			\
   continue;								\
 }
 
 #define relocate_typeless_pointer(copy_code, length)			\
 {									\
   relocate_typeless_setup ();						\
-  relocate_typeless_transport (copy_code, length);			\
+  relocate_normal_transport (copy_code, length);			\
   relocate_typeless_end ();						\
 }
 
@@ -426,20 +421,20 @@ do {									\
   }									\
 } while (0)
 
-#define relocate_linked_operator(in_gc_p)				\
+#define relocate_linked_operator(in_gc_p) do				\
 {									\
   Scan = ((SCHEME_OBJECT *) (word_ptr));				\
   BCH_EXTRACT_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);			\
   relocate_compiled_entry (in_gc_p);					\
   BCH_STORE_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);			\
-}
+} while (0)
 
-#define relocate_manifest_closure(in_gc_p)				\
+#define relocate_manifest_closure(in_gc_p) do				\
 {									\
   Scan = ((SCHEME_OBJECT *) (word_ptr));				\
   BCH_EXTRACT_CLOSURE_ENTRY_ADDRESS (Temp, Scan);			\
   relocate_compiled_entry (in_gc_p);					\
   BCH_STORE_CLOSURE_ENTRY_ADDRESS (Temp, Scan);				\
-}
+} while (0)
 
 #endif /* _BCHGCC_H_INCLUDED */

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: i386.h,v 1.22 1993/08/21 01:51:42 gjr Exp $
+$Id: i386.h,v 1.23 1993/08/23 02:19:52 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -264,14 +264,16 @@ extern long i386_pc_displacement_relocation;
 		      + i386_pc_displacement_relocation);		\
   (* ((long *) displacement_address)) = new_displacement;		\
   (var) = ((SCHEME_OBJECT)						\
-	   ((((long) (v_addr)) + 5) + new_displacement));		\
+	   ((ADDR_TO_SCHEME_ADDR (((long) (v_addr)) + 5))		\
+	    + new_displacement));					\
 } while (0)
 
 #define BCH_STORE_DISPLACEMENT_FROM_ADDRESS(target, v_addr, p_addr) do	\
 {									\
   long displacement_address = (((long) (p_addr)) + 1);			\
   (* ((long *) displacement_address))					\
-    = (((long) (target)) - (((long) (v_addr)) + 5));			\
+    = (((long) (target))						\
+       - (ADDR_TO_SCHEME_ADDR (((long) (v_addr)) + 5)));		\
 } while (0)
 
 #define START_CLOSURE_RELOCATION(scan) do				\
@@ -385,13 +387,13 @@ extern long i386_pc_displacement_relocation;
 
 #define START_OPERATOR_RELOCATION(scan)	do				\
 {									\
-  SCHEME_OBJECT * _new, * _old, _loc;					\
+  SCHEME_OBJECT * _scan, * _old, _loc;					\
 									\
-  _new = (((SCHEME_OBJECT *) (scan)) + 1);				\
-  _old = ((SCHEME_OBJECT *) (* _new));					\
-  _loc = (ADDR_TO_SCHEME_ADDR (_new));					\
+  _scan = (((SCHEME_OBJECT *) (scan)) + 1);				\
+  _old = ((SCHEME_OBJECT *) (* _scan));					\
+  _loc = (ADDR_TO_SCHEME_ADDR (_scan));					\
 									\
-  (* _new) = _loc;							\
+  (* _scan) = _loc;							\
   i386_pc_displacement_relocation = (((long) _old) - ((long) _loc));	\
 } while (0)
 
@@ -399,15 +401,15 @@ extern long i386_pc_displacement_relocation;
 
 #define BCH_START_OPERATOR_RELOCATION(scan) do				\
 {									\
-  SCHEME_OBJECT * _scan, * _new, * _old;				\
+  SCHEME_OBJECT * _scan, * _old, _loc;					\
 									\
   _scan = (((SCHEME_OBJECT *) (scan)) + 1);				\
-  _new = ((SCHEME_OBJECT *)						\
-	  (SCAN_POINTER_TO_NEWSPACE_ADDRESS (_scan)));			\
   _old = ((SCHEME_OBJECT *) (* _scan));					\
+  _loc = (ADDR_TO_SCHEME_ADDR						\
+	  (SCAN_POINTER_TO_NEWSPACE_ADDRESS (_scan)));			\
 									\
-  * _scan = ((SCHEME_OBJECT) _new);					\
-  i386_pc_displacement_relocation = (((long) _old) - ((long) _new));	\
+  * _scan = _loc;							\
+  i386_pc_displacement_relocation = (((long) _old) - ((long) _loc));	\
 } while (0)
 
 #define BCH_END_OPERATOR_RELOCATION		END_OPERATOR_RELOCATION

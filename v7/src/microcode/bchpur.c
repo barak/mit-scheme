@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchpur.c,v 9.60 1993/08/22 22:39:01 gjr Exp $
+$Id: bchpur.c,v 9.61 1993/08/23 02:22:09 gjr Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -60,16 +60,14 @@ MIT in each case. */
   Old = OBJECT_ADDRESS (Temp);						\
   if (Old >= Low_Constant)						\
     continue;								\
-  if (OBJECT_TYPE (*Old) == TC_BROKEN_HEART)				\
-  {									\
+  if (BROKEN_HEART_P (* Old))						\
     continue;								\
-  }									\
   New_Address = (MAKE_BROKEN_HEART (To_Address));			\
 }
 
 #define relocate_indirect_end()						\
 {									\
-  *OBJECT_ADDRESS (Temp) = New_Address;					\
+  (* (OBJECT_ADDRESS (Temp))) = New_Address;				\
   continue;								\
 }
 
@@ -77,20 +75,22 @@ MIT in each case. */
 
 static SCHEME_OBJECT *
 DEFUN (purifyloop, (Scan, To_ptr, To_Address_ptr, purify_mode),
-       fast SCHEME_OBJECT *Scan AND
-       SCHEME_OBJECT **To_ptr AND
-       SCHEME_OBJECT **To_Address_ptr AND
+       fast SCHEME_OBJECT * Scan AND
+       SCHEME_OBJECT ** To_ptr AND
+       SCHEME_OBJECT ** To_Address_ptr AND
        int purify_mode)
 {
-  fast SCHEME_OBJECT *To, *Old, Temp, *Low_Constant, *To_Address, New_Address;
+  fast SCHEME_OBJECT
+    * To, * Old, Temp, * Low_Constant,
+    * To_Address, New_Address;
 
-  To = *To_ptr;
-  To_Address = *To_Address_ptr;
+  To = (* To_ptr);
+  To_Address = (* To_Address_ptr);
   Low_Constant = Constant_Space;
 
   for ( ; Scan != To; Scan++)
   {
-    Temp = *Scan;
+    Temp = (* Scan);
     Switch_by_GC_Type (Temp)
     {
       case TC_BROKEN_HEART:
@@ -133,18 +133,16 @@ DEFUN (purifyloop, (Scan, To_ptr, To_Address_ptr, purify_mode),
 	if (purify_mode == PURE_COPY)
 	  break;
 	relocate_compiled_entry (false);
-	*Scan = Temp;
+	(* Scan) = Temp;
 	break;
 
       case TC_LINKAGE_SECTION:
       {
 	if (purify_mode == PURE_COPY)
-	{
 	  gc_death (TERM_COMPILER_DEATH,
 		    "purifyloop: linkage section in pure area",
 		    Scan, To);
 	  /*NOTREACHED*/
-	}
 	switch (READ_LINKAGE_KIND (Temp))
 	{
 	  case REFERENCE_LINKAGE_KIND:
@@ -189,7 +187,9 @@ DEFUN (purifyloop, (Scan, To_ptr, To_Address_ptr, purify_mode),
 	    long overflow;
 
 	    word_ptr = (FIRST_OPERATOR_LINKAGE_ENTRY (Scan));
-	    if (word_ptr > ((char *) scan_buffer_top))
+	    if (! (word_ptr > ((char *) scan_buffer_top)))
+	      BCH_START_OPERATOR_RELOCATION (Scan);
+	    else
 	    {
 	      overflow = (word_ptr - ((char *) Scan));
 	      extend_scan_buffer (word_ptr, To);
@@ -197,8 +197,6 @@ DEFUN (purifyloop, (Scan, To_ptr, To_Address_ptr, purify_mode),
 	      word_ptr = (end_scan_buffer_extension (word_ptr));
 	      Scan = ((SCHEME_OBJECT *) (word_ptr - overflow));
 	    }
-	    else
-	      BCH_START_OPERATOR_RELOCATION (Scan);
 	    
 	    count = (READ_OPERATOR_LINKAGE_COUNT (Temp));
 	    overflow = ((END_OPERATOR_LINKAGE_AREA (Scan, count)) -
@@ -209,15 +207,15 @@ DEFUN (purifyloop, (Scan, To_ptr, To_Address_ptr, purify_mode),
 		 word_ptr = next_ptr,
 		 next_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr)))
 	    {
-	      if (next_ptr > ((char *) scan_buffer_top))
+	      if (! (next_ptr > ((char *) scan_buffer_top)))
+		relocate_linked_operator (false);
+	      else
 	      {
 		extend_scan_buffer (next_ptr, To);
 		relocate_linked_operator (false);
 		next_ptr = (end_scan_buffer_extension (next_ptr));
 		overflow -= gc_buffer_size;
 	      }
-	      else
-		relocate_linked_operator (false);
 	    }
 	    Scan = (scan_buffer_top + overflow);
 	    BCH_END_OPERATOR_RELOCATION (Scan);
@@ -225,12 +223,10 @@ DEFUN (purifyloop, (Scan, To_ptr, To_Address_ptr, purify_mode),
 	  }
 
 	  default:
-	  {
 	    gc_death (TERM_EXIT,
 		      "purify: Unknown compiler linkage kind.",
 		      Scan, Free);
 	    /*NOTREACHED*/
-	  }
 	}
 	break;
       }
@@ -238,12 +234,10 @@ DEFUN (purifyloop, (Scan, To_ptr, To_Address_ptr, purify_mode),
       case TC_MANIFEST_CLOSURE:
       {
 	if (purify_mode == PURE_COPY)
-	{
 	  gc_death (TERM_COMPILER_DEATH,
 		    "purifyloop: manifest closure in pure area",
 		    Scan, To);
 	  /*NOTREACHED*/
-	}
       }
       {
 	fast long count;
@@ -279,7 +273,9 @@ DEFUN (purifyloop, (Scan, To_ptr, To_Address_ptr, purify_mode),
 	for ( ; ((--count) >= 0);
 	     (word_ptr = (NEXT_MANIFEST_CLOSURE_ENTRY (word_ptr))))
 	{
-	  if ((CLOSURE_ENTRY_END (word_ptr)) > ((char *) scan_buffer_top))
+	  if (! ((CLOSURE_ENTRY_END (word_ptr)) > ((char *) scan_buffer_top)))
+	    relocate_manifest_closure (false);
+	  else
 	  {
 	    char * entry_end;
 	    long de, dw;
@@ -293,8 +289,6 @@ DEFUN (purifyloop, (Scan, To_ptr, To_Address_ptr, purify_mode),
 	    word_ptr = (entry_end - dw);
 	    end_ptr = (entry_end + de);
 	  }
-	  else
-	    relocate_manifest_closure (false);
 	}
 	Scan = ((SCHEME_OBJECT *) (end_ptr));
 	BCH_END_CLOSURE_RELOCATION (Scan);
@@ -357,7 +351,7 @@ DEFUN (purifyloop, (Scan, To_ptr, To_Address_ptr, purify_mode),
 	relocate_normal_setup();
 	if (!(Future_Spliceable (Temp)))
 	  goto Move_Vector;
-	*Scan = (Future_Value (Temp));
+	(* Scan) = (Future_Value (Temp));
 	Scan -= 1;
 	continue;
 
@@ -371,8 +365,8 @@ DEFUN (purifyloop, (Scan, To_ptr, To_Address_ptr, purify_mode),
       }
   }
 end_purifyloop:
-  *To_ptr = To;
-  *To_Address_ptr = To_Address;
+  (* To_ptr) = To;
+  (* To_Address_ptr) = To_Address;
   return (Scan);
 }
 
@@ -381,9 +375,9 @@ end_purifyloop:
  */
 
 static SCHEME_OBJECT *
-DEFUN (purify_header_overflow, (free_buffer), SCHEME_OBJECT *free_buffer)
+DEFUN (purify_header_overflow, (free_buffer), SCHEME_OBJECT * free_buffer)
 {
-  SCHEME_OBJECT *scan_buffer;
+  SCHEME_OBJECT * scan_buffer;
   long delta;
 
   delta = (free_buffer - free_buffer_top);
@@ -420,36 +414,34 @@ DEFUN (purify, (object, flag),
     fast SCHEME_OBJECT *ptr, *ptrend;
 
     for (ptr = block_start, ptrend = old_free; ptr != ptrend; )
-      *free_buffer_ptr++ = *ptr++;
+      * free_buffer_ptr++ = *ptr++;
   }
 
   new_free += 2;
-  *free_buffer_ptr++ = SHARP_F;	/* Pure block header. */
-  *free_buffer_ptr++ = object;
+  * free_buffer_ptr++ = SHARP_F;	/* Pure block header. */
+  * free_buffer_ptr++ = object;
   if (free_buffer_ptr >= free_buffer_top)
     free_buffer_ptr =
       (dump_and_reset_free_buffer ((free_buffer_ptr - free_buffer_top), NULL));
 
-  if (flag == SHARP_T)
+  if (flag != SHARP_T)
+    pure_length = 3;
+  else
   {
     scan_start = ((initialize_scan_buffer (block_start)) + delta);
     result = (purifyloop (scan_start, &free_buffer_ptr,
 			  &new_free, PURE_COPY));
     if (result != free_buffer_ptr)
-    {
       gc_death (TERM_BROKEN_HEART,
 		"purify: pure copy ended too early",
 		result, free_buffer_ptr);
       /*NOTREACHED*/
-    }
     pure_length = ((new_free - old_free) + 1);
   }
-  else
-    pure_length = 3;
 
   new_free += 2;
-  *free_buffer_ptr++ = (MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1));
-  *free_buffer_ptr++ = (MAKE_OBJECT (CONSTANT_PART, pure_length));
+  * free_buffer_ptr++ = (MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1));
+  * free_buffer_ptr++ = (MAKE_OBJECT (CONSTANT_PART, pure_length));
   if (free_buffer_ptr >= free_buffer_top)
     free_buffer_ptr = (purify_header_overflow (free_buffer_ptr));
 
@@ -461,32 +453,28 @@ DEFUN (purify, (object, flag),
     result = (GCLoop (scan_start, &free_buffer_ptr, &new_free));
 
   if (result != free_buffer_ptr)
-  {
     gc_death (TERM_BROKEN_HEART, "purify: constant copy ended too early",
 	      result, free_buffer_ptr);
     /*NOTREACHED*/
-  }
 
   new_free += 2;
   length = (new_free - old_free);
-  *free_buffer_ptr++ = (MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1));
-  *free_buffer_ptr++ = (MAKE_OBJECT (END_OF_BLOCK, (length - 1)));
+  * free_buffer_ptr++ = (MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1));
+  * free_buffer_ptr++ = (MAKE_OBJECT (END_OF_BLOCK, (length - 1)));
   if (free_buffer_ptr >= free_buffer_top)
     free_buffer_ptr = (purify_header_overflow (free_buffer_ptr));
   end_transport (NULL);
 
   if (!(TEST_CONSTANT_TOP (new_free)))
-  {
     gc_death (TERM_NO_SPACE, "purify: object too large", NULL, NULL);
     /*NOTREACHED*/
-  }
 
   final_reload (block_start,
 		(new_free - block_start),
 		"the new constant space block");
 
-  *old_free++ = (MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, pure_length));
-  *old_free = (MAKE_OBJECT (PURE_PART, (length - 1)));
+  * old_free++ = (MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, pure_length));
+  * old_free = (MAKE_OBJECT (PURE_PART, (length - 1)));
   Free_Constant = new_free;
   SET_CONSTANT_TOP ();
 
@@ -541,8 +529,8 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_primitive_purify, 3, 3, 0)
     purify_result = (purify (object, (ARG_REF (2))));
     words_free = (LONG_TO_UNSIGNED_FIXNUM (MemTop - Free));
     result = (MAKE_POINTER_OBJECT (TC_LIST, Free));
-    (*Free++) = purify_result;
-    (*Free++) = words_free;
+    (* Free++) = purify_result;
+    (* Free++) = words_free;
   }
   run_post_gc_hooks ();
   POP_PRIMITIVE_FRAME (3);
