@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 13.44 1987/05/21 16:41:30 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 13.45 1987/05/29 13:31:58 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -331,7 +331,8 @@
   (combination-components body
     (lambda (operator operands)
       `(FLUID-LET ,(unsyntax-let-bindings
-		    (map extract-transfer-var (lambda-body (car operands)))
+		    (map extract-transfer-var
+			 (sequence-actions (lambda-body (car operands))))
 		    (let every-other ((values values))
 		      (if (null? values)
 			  '()
