@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dbgstr.scm,v 1.12 1995/05/05 12:58:36 adams Exp $
+$Id: dbgstr.scm,v 1.13 1995/07/03 23:40:20 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -124,7 +124,7 @@ MIT in each case. |#
 	(write-char #\Space port)
 	(write (new-dbg-block/type block) port)
 	(if (null? (new-dbg-block/variables block))
-	    (write-string " (no vars)")
+	    (write-string " (no vars)" port)
 	    (begin
 	      (write-string " vars:" port)
 	      (for-each (lambda (var)
@@ -133,30 +133,28 @@ MIT in each case. |#
 			(new-dbg-block/variables block))))))))
   (type false read-only false)
   (parent false read-only false)
-  (variables '() read-only false)
-  (flattened false read-only false))
+  (variables '() read-only false))
 
-;;(define (new-dbg-block/copy-transforming expression-copier block)
-;;  ;; Copy entire environment model structure whilst transforming the
-;;  ;; variable expressions.
-;;  (define (new-variables variables block*)
-;;    (map (lambda (variable)
-;;	   (new-dbg-variable/new-expression&block
-;;	    variable
-;;	    (expression-copier (new-dbg-variable/expression variable))
-;;	    block*))
-;;	 variables))
-;;  (let copy-block ((block block))
-;;    (and block
-;;	 (let ((block*  (new-dbg-block/%make
-;;			 (new-dbg-block/type block)
-;;			 (copy-block (new-dbg-block/parent block))
-;;			 '()
-;;			 (new-dbg-block/flattened block))))
-;;	   (set-new-dbg-block/variables!
-;;	    block*
-;;	    (new-variables (new-dbg-block/variables block) block*))
-;;	   block*))))
+(define (new-dbg-block/reconstruct block variable->path)
+  ;; Copy entire environment model BLOCK, using VARIABLE->PATH to fill in
+  ;; the variable expressions.
+  (define (new-variables variables block*)
+    (map (lambda (variable)
+	   (new-dbg-variable/new-expression&block
+	    variable
+	    (variable->path variable)
+	    block*))
+	 variables))
+  (let copy-block ((block block))
+    (and block
+	 (let ((block*  (new-dbg-block/%make
+			 (new-dbg-block/type block)
+			 (copy-block (new-dbg-block/parent block))
+			 '())))
+	   (set-new-dbg-block/variables!
+	    block*
+	    (new-variables (new-dbg-block/variables block) block*))
+	   block*))))
 
 
 
@@ -269,10 +267,16 @@ MIT in each case. |#
 	 (QUOTE/? (call/operator form))
 	 (hash-table/get *dbg-unconstructable-operators*
 			 (quote/text (call/operator form)) #F)))
-  (if (not (unconstructable? to))
-      (set-cdr! *dbg-rewrites* (cons (list from to) (cdr *dbg-rewrites*)))))
+  (if (and (not (unconstructable? to))
+	   (not (continuation-variable? from)))
+      (set-cdr! *dbg-rewrites* (cons (vector from to) (cdr *dbg-rewrites*)))))
 
 (define *dbg-unconstructable-operators* (make-eq-hash-table))
+
+(define (dbg-info/for-all-dbg-expressions! procedure)
+  (for-each (lambda (from+to)
+	      (procedure (vector-ref from+to 1)))
+    (cdr *dbg-rewrites*)))
 
 (let ((forbid
        (lambda (operator)
