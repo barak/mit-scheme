@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/instr1.scm,v 1.2 1987/08/18 07:56:27 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/instr1.scm,v 1.3 1987/08/18 19:17:01 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -112,13 +112,13 @@ opcodes are
 
 (define-instruction PROBE
   ((R (? mode ea-r-b) (? len ea-r-w) (? base ea-a-b))
-   (BYTE (8 #xOC))
+   (BYTE (8 #x0C))
    (OPERAND B mode)
    (OPERAND W len)
    (OPERAND B base))
 
   ((W (? mode ea-r-b) (? len ea-r-w) (? base ea-a-b))
-   (BYTE (8 #xOD))
+   (BYTE (8 #x0D))
    (OPERAND B mode)
    (OPERAND W len)
    (OPERAND B base)))
@@ -204,7 +204,7 @@ opcodes are
 
 (define-instruction PUSHL
   (((? src ea-r-l))
-   (BYTE (8 #XDD))
+   (BYTE (8 #xDD))
    (OPERAND L src)))
 
 (define-instruction CLR
