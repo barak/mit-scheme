@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.9 1992/02/13 03:18:38 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.10 1992/02/13 06:37:24 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/rules3.scm,v 4.31 1991/05/28 19:14:55 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -243,6 +243,7 @@ MIT in each case. |#
 
 (define-rule statement
   (INVOCATION-PREFIX:DYNAMIC-LINK 0 (REGISTER 4) (? any))
+  any					; ignored
   (LAP))
 
 (define-rule statement
@@ -424,7 +425,7 @@ MIT in each case. |#
 ;; the last component of closures with any entry points.
 
 (define (generate/cons-closure target procedure-label min max size)
-  (let* ((target (target-register-reference))
+  (let* ((target (target-register-reference target))
 	 (temp (temporary-register-reference)))
     (LAP ,@(load-pc-relative-address
 	    temp
@@ -448,7 +449,7 @@ MIT in each case. |#
 	 (MOV W (@RO B ,regnum:free-pointer -4) ,temp))))
 
 (define (generate/cons-multiclosure target nentries size entries)
-  (let* ((target (target-register-reference))
+  (let* ((target (target-register-reference target))
 	 (temp (temporary-register-reference)))
     (with-pc
       (lambda (pc-label pc-reg)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulrew.scm,v 1.4 1992/02/13 05:55:35 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulrew.scm,v 1.5 1992/02/13 06:38:36 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rulrew.scm,v 1.4 1991/10/25 06:50:06 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -138,7 +138,7 @@ MIT in each case. |#
 		 (REGISTER (? operand-1 register-known-value))
 		 (? operand-2)
 		 (? overflow?))
-  (QUALIFIER (rtl:constant-fixnum-test operand-1 (lambda (n) true)))
+  (QUALIFIER (rtl:constant-fixnum-test operand-1 (lambda (n) n true)))
   (rtl:make-fixnum-2-args 'MULTIPLY-FIXNUM operand-1 operand-2 overflow?))
 
 (define-rule rewriting
@@ -146,7 +146,7 @@ MIT in each case. |#
 		 (? operand-1)
 		 (REGISTER (? operand-2 register-known-value))
 		 (? overflow?))
-  (QUALIFIER (rtl:constant-fixnum-test operand-2 (lambda (n) true)))
+  (QUALIFIER (rtl:constant-fixnum-test operand-2 (lambda (n) n true)))
   (rtl:make-fixnum-2-args 'MULTIPLY-FIXNUM operand-1 operand-2 overflow?))
 
 (define-rule rewriting

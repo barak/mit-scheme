@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.14 1992/02/13 06:37:13 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.15 1992/02/13 06:40:36 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -226,17 +226,17 @@ MIT in each case. |#
 ;;;; Utilities
 
 (define (object->fixnum target)
-  (SAL W ,target (& ,scheme-type-width)))
+  (LAP (SAL W ,target (& ,scheme-type-width))))
 
 (define (fixnum->object target)
   (LAP (OR W ,target (& ,(ucode-type fixnum)))
        (ROR W ,target (& ,scheme-type-width))))
 
 (define (address->fixnum target)
-  (SAL W ,target (& ,scheme-type-width)))
+  (LAP (SAL W ,target (& ,scheme-type-width))))
 
 (define (fixnum->address target)
-  (SHR W ,target (& ,scheme-type-width)))
+  (LAP (SHR W ,target (& ,scheme-type-width))))
 
 (define-integrable fixnum-1 64)		; (expt 2 scheme-type-width) ***
 
