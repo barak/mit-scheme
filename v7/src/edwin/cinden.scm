@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: cinden.scm,v 1.16 1997/02/08 07:08:43 cph Exp $
+;;;	$Id: cinden.scm,v 1.17 1998/06/28 20:23:53 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -83,37 +83,39 @@ This is in addition to c-continued-statement-offset."
   exact-integer?)
 
 (define (c-indent-line start)
-  (let* ((start (line-start start 0))
-	 (old-indentation (mark-indentation start))
-	 (new-indentation
-	  (let ((indentation (calculate-indentation start false)))
-	    (cond ((not indentation)
-		   old-indentation)
-		  ((eq? indentation true)
-		   ;; Inside a comment.
-		   (mark-column
-		    (let* ((star?
-			    (char-match-forward #\* (indentation-end start)))
-			   (pend (whitespace-start start (group-start start)))
-			   (pstart (indentation-end pend))
-			   (comment-start
-			    (and (mark< pstart pend)
-				 (re-search-forward "/\\*[ \t]*" pstart pend
-						    false))))
-		      (cond ((not comment-start)
-			     pstart)
-			    (star?
-			     (mark1+ (re-match-start 0)))
-			    (else
-			     comment-start)))))
-		  ((char-match-forward #\# start)
-		   0)
-		  (else
-		   (indent-line:adjust-indentation (horizontal-space-end start)
-						   indentation))))))
-    (if (not (= new-indentation old-indentation))
+  (let ((old-indentation (mark-indentation start))
+	(new-indentation (c-compute-indentation start)))
+    (if (not (fix:= new-indentation old-indentation))
 	(change-indentation new-indentation start))
     (- new-indentation old-indentation)))
+
+(define (c-compute-indentation start)
+  (let ((start (line-start start 0)))
+    (let ((old-indentation (mark-indentation start)))
+      (let ((indentation (calculate-indentation start #f)))
+	(cond ((not indentation)
+	       old-indentation)
+	      ((eq? indentation true)
+	       ;; Inside a comment.
+	       (mark-column
+		(let* ((star?
+			(char-match-forward #\* (indentation-end start)))
+		       (pend (whitespace-start start (group-start start)))
+		       (pstart (indentation-end pend))
+		       (comment-start
+			(and (mark< pstart pend)
+			     (re-search-forward "/\\*[ \t]*" pstart pend #f))))
+		  (cond ((not comment-start)
+			 pstart)
+			(star?
+			 (mark1+ (re-match-start 0)))
+			(else
+			 comment-start)))))
+	      ((char-match-forward #\# start)
+	       0)
+	      (else
+	       (indent-line:adjust-indentation (horizontal-space-end start)
+					       indentation)))))))
 
 (define (indent-line:adjust-indentation start indentation)
   (cond ((or (looking-at-keyword? "case" start)

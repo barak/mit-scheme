@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.222 1998/03/08 07:26:25 cph Exp $
+$Id: edwin.pkg,v 1.223 1998/06/28 20:24:15 cph Exp $
 
 Copyright (c) 1989-98 Massachusetts Institute of Technology
 
@@ -626,6 +626,7 @@ MIT in each case. |#
   (files "cinden")
   (parent (edwin))
   (export (edwin)
+	  c-compute-indentation
 	  c-indent-expression
 	  c-indent-line
 	  edwin-variable$c-argdecl-indent
