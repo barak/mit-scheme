@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: alpha.scm,v 1.5 1995/01/19 04:51:16 adams Exp $
+$Id: alpha.scm,v 1.6 1995/03/12 05:53:10 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -101,7 +101,7 @@ MIT in each case. |#
   (alphaconv/let-like 'LETREC state env bindings body))
 
 (define (alphaconv/let-like keyword state env bindings body)
-  (let* ((names     (lmap car bindings))
+  (let* ((names     (map car bindings))
 	 (new-names (alphaconv/renamings env names))
 	 (inner-env (alphaconv/env/extend env names new-names))
 	 (expr-env  (if (eq? keyword 'LETREC) inner-env env))
@@ -148,42 +148,27 @@ MIT in each case. |#
       (illegal expr))
   (let ((new-expr
 	 (case (car expr)
-	   ((QUOTE)
-	    (alphaconv/quote state env expr))
-	   ((LOOKUP)
-	    (alphaconv/lookup state env expr))
-	   ((LAMBDA)
-	    (alphaconv/lambda state env expr))
-	   ((LET)
-	    (alphaconv/let state env expr))
-	   ((DECLARE)
-	    (alphaconv/declare state env expr))
-	   ((CALL)
-	    (alphaconv/call state env expr))
-	   ((BEGIN)
-	    (alphaconv/begin state env expr))
-	   ((IF)
-	    (alphaconv/if state env expr))
-	   ((LETREC)
-	    (alphaconv/letrec state env expr))
-	   ((SET!)
-	    (alphaconv/set! state env expr))
-	   ((UNASSIGNED?)
-	    (alphaconv/unassigned? state env expr))
-	   ((OR)
-	    (alphaconv/or state env expr))
-	   ((DELAY)
-	    (alphaconv/delay state env expr))
-	   ((ACCESS DEFINE IN-PACKAGE THE-ENVIRONMENT)
-	    (no-longer-legal expr))
+	   ((QUOTE)	    (alphaconv/quote state env expr))
+	   ((LOOKUP)	    (alphaconv/lookup state env expr))
+	   ((LAMBDA)	    (alphaconv/lambda state env expr))
+	   ((LET)	    (alphaconv/let state env expr))
+	   ((DECLARE)	    (alphaconv/declare state env expr))
+	   ((CALL)	    (alphaconv/call state env expr))
+	   ((BEGIN)	    (alphaconv/begin state env expr))
+	   ((IF)	    (alphaconv/if state env expr))
+	   ((LETREC)	    (alphaconv/letrec state env expr))
+	   ((SET!)	    (alphaconv/set! state env expr))
+	   ((UNASSIGNED?)   (alphaconv/unassigned? state env expr))
+	   ((OR)	    (alphaconv/or state env expr))
+	   ((DELAY)	    (alphaconv/delay state env expr))
 	   (else
 	    (illegal expr)))))
     ((alphaconv/state/remember state) new-expr expr)))
 
 (define (alphaconv/expr* state env exprs)
-  (lmap (lambda (expr)
-	  (alphaconv/expr state env expr))
-	exprs))
+  (map (lambda (expr)
+	 (alphaconv/expr state env expr))
+       exprs))
 
 (define-integrable (alphaconv/remember new old)
   (code-rewrite/remember new old))

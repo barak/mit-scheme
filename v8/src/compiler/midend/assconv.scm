@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: assconv.scm,v 1.5 1995/02/21 06:20:05 adams Exp $
+$Id: assconv.scm,v 1.6 1995/03/12 05:59:29 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -110,26 +110,26 @@ MIT in each case. |#
    (lambda (shadowed body*)
      `(LAMBDA ,(if (null? shadowed)
 		   lambda-list
-		   (lmap (lambda (name)
-			   (if (memq name shadowed)
-			       (assconv/new-name 'IGNORED)
-			       name))
-			 lambda-list))
+		   (map (lambda (name)
+			  (if (memq name shadowed)
+			      (assconv/new-name 'IGNORED)
+			      name))
+			lambda-list))
 	,body*))))
 
 (define-assignment-converter LET (env bindings body)
   (call-with-values
    (lambda ()
-     (assconv/binding-body env (lmap car bindings) body))
+     (assconv/binding-body env (map car bindings) body))
    (lambda (shadowed body*)
-     `(LET ,(lmap (lambda (binding)
-		    (list (car binding)
-			  (assconv/expr env (cadr binding))))
-		  (if (null? shadowed)
-		      bindings
-		      (list-transform-negative bindings
-			(lambda (binding)
-			  (memq (car binding) shadowed)))))
+     `(LET ,(map (lambda (binding)
+		   (list (car binding)
+			 (assconv/expr env (cadr binding))))
+		 (if (null? shadowed)
+		     bindings
+		     (list-transform-negative bindings
+		       (lambda (binding)
+			 (memq (car binding) shadowed)))))
 	,body*))))
 
 (define-assignment-converter LOOKUP (env name)
@@ -208,9 +208,9 @@ MIT in each case. |#
      (illegal expr))))
 
 (define (assconv/expr* env exprs)
-  (lmap (lambda (expr)
-	  (assconv/expr env expr))
-	exprs))
+  (map (lambda (expr)
+	 (assconv/expr env expr))
+       exprs))
 
 (define (assconv/remember new old)
   (code-rewrite/remember new old)
@@ -271,7 +271,7 @@ MIT in each case. |#
 
 (define (assconv/binding-body env names body)
   ;; (values shadowed-names body*)
-  (let* ((frame (lmap assconv/binding/make names))
+  (let* ((frame (map assconv/binding/make names))
 	 (env*  (cons frame env))
 	 (body* (assconv/expr env* body))
 	 (assigned
@@ -292,7 +292,7 @@ MIT in each case. |#
 	   (assconv/single-analyze ssa-candidates body*))
 	 (lambda (let-like letrec-like)
 	   (assconv/bind-cells
-	    (lmap assconv/binding/name (append let-like letrec-like))
+	    (map assconv/binding/name (append let-like letrec-like))
 	    (list-transform-negative assigned
 	      (lambda (binding)
 		(or (memq binding let-like)
@@ -328,14 +328,14 @@ MIT in each case. |#
 	  (for-each assconv/cellify! bindings)
 	  (values
 	   shadowed-names
-	   `(LET ,(lmap (lambda (binding)
-			  (let ((name (assconv/binding/name binding)))
-			    `(,(assconv/binding/cell-name binding)
-			      (CALL (QUOTE ,%make-cell)
-				    (QUOTE #F)
-				    (LOOKUP ,name)
-				    (QUOTE ,name)))))
-			bindings)
+	   `(LET ,(map (lambda (binding)
+			 (let ((name (assconv/binding/name binding)))
+			   `(,(assconv/binding/cell-name binding)
+			     (CALL (QUOTE ,%make-cell)
+				   (QUOTE #F)
+				   (LOOKUP ,name)
+				   (QUOTE ,name)))))
+		       bindings)
 	      ,body)))))
 
   (define (default)
@@ -366,9 +366,9 @@ MIT in each case. |#
 
 (define (assconv/letify keyword bindings body)
   `(,keyword
-    ,(lmap (lambda (binding)
-	     (let* ((ass (car (assconv/binding/assignments binding)))
-		    (value (set!/expr ass)))
+    ,(map (lambda (binding)
+	     (let* ((ass    (car (assconv/binding/assignments binding)))
+		    (value  (set!/expr ass)))
 	       (form/rewrite! ass `(QUOTE ,%unassigned))
 	       `(,(assconv/binding/name binding) ,value)))
 	   bindings)
@@ -454,10 +454,10 @@ MIT in each case. |#
   (if (not (pair? body))
       (values '() '())
       (let ((single-assignments
-	     (lmap (lambda (binding)
-		     (cons (car (assconv/binding/assignments binding))
-			   binding))
-		   ssa-candidates))
+	     (map (lambda (binding)
+		    (cons (car (assconv/binding/assignments binding))
+			  binding))
+		  ssa-candidates))
 	    (finish
 	     (lambda (bindings)
 	       (values

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: applicat.scm,v 1.2 1995/02/02 19:35:50 adams Exp $
+$Id: applicat.scm,v 1.3 1995/03/12 05:57:14 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -57,11 +57,11 @@ MIT in each case. |#
 
 (define-applicator LAMBDA (env lambda-list body)
   `(LAMBDA ,lambda-list
-     ,(applicat/expr (append (lmap (lambda (name)
-				      (list name false))
-				    (lambda-list->names lambda-list))
-			      env)
-		      body)))
+     ,(applicat/expr (append (map (lambda (name)
+				    (list name false))
+				  (lambda-list->names lambda-list))
+			     env)
+		     body)))
 
 (define-applicator QUOTE (env object)
   env					; ignored
@@ -129,67 +129,53 @@ MIT in each case. |#
 	 (default))))
 
 (define-applicator LET (env bindings body)
-  `(LET ,(lmap (lambda (binding)
-		 (list (car binding)
-		       (applicat/expr env (cadr binding))))
-	       bindings)
+  `(LET ,(map (lambda (binding)
+		(list (car binding)
+		      (applicat/expr env (cadr binding))))
+	      bindings)
      ,(applicat/expr
-       (append (lmap (lambda (binding)
-		       (list (car binding)
-			     (let ((value (cadr binding)))
-			       (and (pair? value)
-				    (eq? (car value) 'LAMBDA)))))
-		     bindings)
+       (append (map (lambda (binding)
+		      (list (car binding)
+			    (let ((value (cadr binding)))
+			      (LAMBDA/?  value))))
+		    bindings)
 	       env)
        body)))
 
 (define-applicator LETREC (env bindings body)
   (let ((env*
-	 (append (lmap (lambda (binding)
-			 (list (car binding)
-			       (let ((value (cadr binding)))
-				 (and (pair? value)
-				      (eq? (car value) 'LAMBDA)))))
-		       bindings)
+	 (append (map (lambda (binding)
+			(list (car binding)
+			      (let ((value (cadr binding)))
+				(LAMBDA/? value))))
+		      bindings)
 		 env)))
-    `(LETREC ,(lmap (lambda (binding)
-		      (list (car binding)
-			    (applicat/expr env* (cadr binding))))
-		    bindings)
+    `(LETREC ,(map (lambda (binding)
+		     (list (car binding)
+			   (applicat/expr env* (cadr binding))))
+		   bindings)
        ,(applicat/expr env* body))))
 
 (define (applicat/expr env expr)
   (if (not (pair? expr))
       (illegal expr))
   (case (car expr)
-    ((QUOTE)
-     (applicat/quote env expr))
-    ((LOOKUP)
-     (applicat/lookup env expr))
-    ((LAMBDA)
-     (applicat/lambda env expr))
-    ((LET)
-     (applicat/let env expr))
-    ((DECLARE)
-     (applicat/declare env expr))
-    ((CALL)
-     (applicat/call env expr))
-    ((BEGIN)
-     (applicat/begin env expr))
-    ((IF)
-     (applicat/if env expr))
-    ((LETREC)
-     (applicat/letrec env expr))
-    ((SET! UNASSIGNED? OR DELAY
-      ACCESS DEFINE IN-PACKAGE THE-ENVIRONMENT)
-     (no-longer-legal expr))
+    ((QUOTE)    (applicat/quote env expr))
+    ((LOOKUP)   (applicat/lookup env expr))
+    ((LAMBDA)   (applicat/lambda env expr))
+    ((LET)      (applicat/let env expr))
+    ((DECLARE)  (applicat/declare env expr))
+    ((CALL)     (applicat/call env expr))
+    ((BEGIN)    (applicat/begin env expr))
+    ((IF)       (applicat/if env expr))
+    ((LETREC)   (applicat/letrec env expr))
     (else
      (illegal expr))))
 
 (define (applicat/expr* env exprs)
-  (lmap (lambda (expr)
-	  (applicat/expr env expr))
-	exprs))
+  (map (lambda (expr)
+	 (applicat/expr env expr))
+       exprs))
 
 (define (applicat/remember new old)
   (code-rewrite/remember new old))

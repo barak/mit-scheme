@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: stackopt.scm,v 1.4 1995/01/20 22:23:42 adams Exp $
+$Id: stackopt.scm,v 1.5 1995/03/12 05:48:16 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -145,17 +145,17 @@ End of Big Note A |#
 
 
 (define-stack-optimizer LET (state bindings body)
-  `(LET ,(lmap (lambda (binding)
-		 (list (car binding)
-		       (stackopt/expr false (cadr binding))))
-	       bindings)
+  `(LET ,(map (lambda (binding)
+		(list (car binding)
+		      (stackopt/expr false (cadr binding))))
+	      bindings)
      ,(stackopt/expr state body)))
 
 (define-stack-optimizer LETREC (state bindings body)
-  `(LETREC ,(lmap (lambda (binding)
-		    (list (car binding)
-			  (stackopt/expr false (cadr binding))))
-		  bindings)
+  `(LETREC ,(map (lambda (binding)
+		   (list (car binding)
+			 (stackopt/expr false (cadr binding))))
+		 bindings)
      ,(stackopt/expr state body)))
 
 (define-stack-optimizer QUOTE (state object)
@@ -246,27 +246,15 @@ End of Big Note A |#
   (if (not (pair? expr))
       (illegal expr))
   (case (car expr)
-    ((QUOTE)
-     (stackopt/quote state expr))
-    ((LOOKUP)
-     (stackopt/lookup state expr))
-    ((LAMBDA)
-     (stackopt/lambda state expr))
-    ((LET)
-     (stackopt/let state expr))
-    ((DECLARE)
-     (stackopt/declare state expr))
-    ((CALL)
-     (stackopt/call state expr))
-    ((BEGIN)
-     (stackopt/begin state expr))
-    ((IF)
-     (stackopt/if state expr))
-    ((LETREC)
-     (stackopt/letrec state expr))
-    ((SET! UNASSIGNED? OR DELAY
-      ACCESS DEFINE IN-PACKAGE THE-ENVIRONMENT)
-     (no-longer-legal expr))
+    ((QUOTE)    (stackopt/quote state expr))
+    ((LOOKUP)   (stackopt/lookup state expr))
+    ((LAMBDA)   (stackopt/lambda state expr))
+    ((LET)      (stackopt/let state expr))
+    ((DECLARE)  (stackopt/declare state expr))
+    ((CALL)     (stackopt/call state expr))
+    ((BEGIN)    (stackopt/begin state expr))
+    ((IF)       (stackopt/if state expr))
+    ((LETREC)   (stackopt/letrec state expr))
     (else
      (illegal expr))))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: laterew.scm,v 1.4 1995/02/26 16:28:48 adams Exp $
+$Id: laterew.scm,v 1.5 1995/03/12 05:44:38 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -43,12 +43,12 @@ MIT in each case. |#
 (define-macro (define-late-rewriter keyword bindings . body)
   (let ((proc-name (symbol-append 'LATEREW/ keyword)))
     (call-with-values
-     (lambda () (%matchup bindings '(handler) '(cdr form)))
-     (lambda (names code)
-       `(define ,proc-name
-	  (let ((handler (lambda ,names ,@body)))
-	    (named-lambda (,proc-name form)
-	      (laterew/remember ,code form))))))))
+	(lambda () (%matchup bindings '(handler) '(cdr form)))
+      (lambda (names code)
+	`(DEFINE ,proc-name
+	   (LET ((HANDLER (LAMBDA ,names ,@body)))
+	     (NAMED-LAMBDA (,proc-name FORM)
+	       (LATEREW/REMEMBER ,code FORM))))))))
 
 (define-late-rewriter LOOKUP (name)
   `(LOOKUP ,name))
@@ -58,17 +58,17 @@ MIT in each case. |#
      ,(laterew/expr body)))
 
 (define-late-rewriter LET (bindings body)
-  `(LET ,(lmap (lambda (binding)
-		 (list (car binding)
-		       (laterew/expr (cadr binding))))
-	       bindings)
+  `(LET ,(map (lambda (binding)
+		(list (car binding)
+		      (laterew/expr (cadr binding))))
+	      bindings)
      ,(laterew/expr body)))
 
 (define-late-rewriter LETREC (bindings body)
-  `(LETREC ,(lmap (lambda (binding)
-		    (list (car binding)
-			  (laterew/expr (cadr binding))))
-		  bindings)
+  `(LETREC ,(map (lambda (binding)
+		   (list (car binding)
+			 (laterew/expr (cadr binding))))
+		 bindings)
      ,(laterew/expr body)))
 
 (define-late-rewriter QUOTE (object)
@@ -99,31 +99,22 @@ MIT in each case. |#
   (if (not (pair? expr))
       (illegal expr))
   (case (car expr)
-    ((QUOTE)
-     (laterew/quote expr))
-    ((LOOKUP)
-     (laterew/lookup expr))
-    ((LAMBDA)
-     (laterew/lambda expr))
-    ((LET)
-     (laterew/let expr))
-    ((DECLARE)
-     (laterew/declare expr))
-    ((CALL)
-     (laterew/call expr))
-    ((BEGIN)
-     (laterew/begin expr))
-    ((IF)
-     (laterew/if expr))
-    ((LETREC)
-     (laterew/letrec expr))
+    ((QUOTE)    (laterew/quote expr))
+    ((LOOKUP)   (laterew/lookup expr))
+    ((LAMBDA)   (laterew/lambda expr))
+    ((LET)      (laterew/let expr))
+    ((DECLARE)  (laterew/declare expr))
+    ((CALL)     (laterew/call expr))
+    ((BEGIN)    (laterew/begin expr))
+    ((IF)       (laterew/if expr))
+    ((LETREC)   (laterew/letrec expr))
     (else
      (illegal expr))))
 
 (define (laterew/expr* exprs)
-  (lmap (lambda (expr)
-	  (laterew/expr expr))
-	exprs))
+  (map (lambda (expr)
+	 (laterew/expr expr))
+       exprs))
 
 (define (laterew/remember new old)
   (code-rewrite/remember new old))
