@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2term.scm,v 1.8 1995/05/16 09:21:28 cph Exp $
+;;;	$Id: os2term.scm,v 1.9 1995/11/03 12:39:01 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -178,7 +178,7 @@
 
 (define (os2-screen/beep screen)
   screen
-  (os2win-beep 880 50))
+  (os2win-alarm WA_ERROR))
 
 (define (os2-screen/clear-line! screen x y first-unused-x)
   (let ((start (screen-char-index screen x y))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.181 1995/10/25 02:19:27 cph Exp $
+$Id: edwin.pkg,v 1.182 1995/11/03 12:39:11 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -1232,7 +1232,7 @@ MIT in each case. |#
 	    os2ps-set-font
 	    os2ps-write
 	    os2win-activate
-	    os2win-beep
+	    os2win-alarm
 	    os2win-close
 	    os2win-close-event-qid
 	    os2win-console-wid
@@ -1318,6 +1318,7 @@ MIT in each case. |#
 	    vk_sysrq
 	    vk_tab
 	    vk_up
+	    wa_error
 	    window-state:bottom
 	    window-state:hide
 	    window-state:maximize
