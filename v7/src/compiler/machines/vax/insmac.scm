@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insmac.scm,v 1.4 1987/08/18 21:24:54 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insmac.scm,v 1.5 1987/08/20 20:42:12 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -116,7 +116,7 @@ MIT in each case. |#
 			  (lambda (code size)
 			    (receiver code (+ size tail-size)))))
 	   ((OPERAND)
-	    (receiver `(CONS-SYNTAX ,(caddar fields) ,tail)
+	    (receiver `(APPEND-SYNTAX! (EA-VALUE ,(caddar fields)) ,tail)
 		      tail-size))
 	   ((DISPLACEMENT)
 	    (let ((desc (cadar fields)))
