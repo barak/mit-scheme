@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.3 1995/04/01 14:27:57 adams Exp $
+$Id: lapgen.scm,v 1.4 1995/04/01 16:49:32 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -89,8 +89,21 @@ MIT in each case. |#
 		   0
 		   ,regnum:regs-pointer)))
 
+(define machine-register-preference
+  ;; `Less is better'.  The idea is that we want to prefer registers that
+  ;; do not have special uses or are unlikely to be holding or
+  ;; required for an argument.
+  (let ((v (make-vector number-of-machine-registers 100)))
+    (for-each (lambda (r x) (vector-set! v r x))
+      '( 6  7  8  9 10 11 12 13 14 15 16 17  19 23 24 26 28 29 31)
+      '(20 19 18 17 16 15 14 13 12 11 10  9  50 30 30 30 14 14 14))
+    v))
+
 (define (sort-machine-registers registers)
-  registers)
+  (sort registers
+	(lambda (r1 r2)
+	  (<= (vector-ref machine-register-preference r1)
+	      (vector-ref machine-register-preference r2)))))
 
 ;; ***
 ;; Note: fp16-fp31 only exist on PA-RISC 1.1 or later.
@@ -102,7 +115,8 @@ MIT in each case. |#
   ;; g1 removed from this list since it is the target of ADDIL,
   ;; needed to expand some rules.  g31 may want to be removed
   ;; too.
-  (list
+  (sort-machine-registers
+   (list
    ;; g0 g1 g2 g3 g4 g5
    g6 g7 g8 g9
    g10 g11 g12 g13 g14 g15 g16 g17
@@ -121,7 +135,8 @@ MIT in each case. |#
    ;; The following are only available on newer processors
    fp16 fp17 fp18 fp19 fp20 fp21 fp22 fp23
    fp24 fp25 fp26 fp27 fp28 fp29 fp30 fp31
-   ))
+   )))
+
 
 (define-integrable (float-register? register)
   (eq? (register-type register) 'FLOAT))
