@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/calias.scm,v 1.12 1992/01/09 17:49:31 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/calias.scm,v 1.13 1992/04/22 20:51:33 mhwu Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -108,10 +108,12 @@
 (define (key-name key)
   (cond ((ref-variable enable-emacs-key-names)
 	 (emacs-key-name key true))
+	((char? key)
+	 (char->name (unmap-alias-key key)))
 	((special-key? key)
 	 (special-key/name key))
-	(else
-	 (char->name (unmap-alias-key key)))))
+        (else
+          (error "key-name: Unknown key type" key))))
 
 (define (xkey->name xkey)
   (let ((keys (xkey->list xkey)))
@@ -131,39 +133,44 @@
 	      (loop (cdr keys)))))))))
 
 (define (emacs-key-name key handle-prefixes?)
-  (if (special-key? key)
-      (special-key/name key)
-      (let ((code (char-code key))
-	    (bits (char-bits key)))
-	(let ((prefix
-	       (lambda (bits suffix)
-		 (if (zero? bits)
-		     suffix
-		     (string-append "M-" suffix)))))
-	  (let ((process-code
-		 (lambda (bits)
-		   (cond ((< #x20 code #x7F)
-			  (prefix bits (string (ascii->char code))))
-			 ((= code #x09) (prefix bits "TAB"))
-			 ((= code #x0A) (prefix bits "LFD"))
-			 ((= code #x0D) (prefix bits "RET"))
-			 ((= code #x1B) (prefix bits "ESC"))
-			 ((= code #x20) (prefix bits "SPC"))
-			 ((= code #x7F) (prefix bits "DEL"))
-			 (else
-			  (string-append
-			   (if (zero? bits) "C-" "C-M-")
-			   (string
-			    (ascii->char
-			     (+ code
-				(if (<= #x01 code #x1A) #x60 #x40))))))))))
-	    (cond ((< bits 2)
-		   (process-code bits))
-		  ((and handle-prefixes? (< bits 4))
-		   (string-append (if (= 2 bits) "C-^ " "C-z ")
-				  (process-code 0)))
-		  (else
-		   (char->name (unmap-alias-key key)))))))))
+  (cond ((char? key)
+         (let ((code (char-code key))
+               (bits (char-bits key)))
+           (let ((prefix
+                   (lambda (bits suffix)
+                     (if (zero? bits)
+                         suffix
+                         (string-append "M-" suffix)))))
+             (let ((process-code
+                     (lambda (bits)
+                       (cond ((< #x20 code #x7F)
+                              (prefix bits (string (ascii->char code))))
+                             ((= code #x09) (prefix bits "TAB"))
+                             ((= code #x0A) (prefix bits "LFD"))
+                             ((= code #x0D) (prefix bits "RET"))
+                             ((= code #x1B) (prefix bits "ESC"))
+                             ((= code #x20) (prefix bits "SPC"))
+                             ((= code #x7F) (prefix bits "DEL"))
+                             (else
+                               (string-append
+                                 (if (zero? bits) "C-" "C-M-")
+                                 (string
+                                   (ascii->char
+                                     (+ code
+                                        (if (<= #x01 code #x1A)
+                                            #x60
+                                            #x40))))))))))
+               (cond ((< bits 2)
+                      (process-code bits))
+                     ((and handle-prefixes? (< bits 4))
+                      (string-append (if (= 2 bits) "C-^ " "C-z ")
+                                     (process-code 0)))
+                     (else
+                       (char->name (unmap-alias-key key))))))))
+        ((special-key? key)
+         (special-key/name key))
+        (else
+          (error "emacs-key-name: Unknown key type" key))))
 
 (define (key? object)
   (or (char? object)
