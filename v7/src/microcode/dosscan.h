@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dosscan.h,v 1.2 1992/09/03 07:29:58 jinx Exp $
+$Id: dosscan.h,v 1.3 1992/09/05 10:58:38 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -202,7 +202,7 @@ unsigned char META_PLUS[] = {Metafy('+'), '\0'};
 /* 100 */	NO_CONVERSION,					\
 /* 101 */	NO_CONVERSION,					\
 /* 102 */	NO_CONVERSION,					\
-/* 103 */	NO_CONVERSION,					\
+/* 103 */	HARD_ATTN,		/* Ctrl-F10 */		\
 /* 104 */	NO_CONVERSION,					\
 /* 105 */	NO_CONVERSION,					\
 /* 106 */	NO_CONVERSION,					\
@@ -212,7 +212,7 @@ unsigned char META_PLUS[] = {Metafy('+'), '\0'};
 /* 110 */	NO_CONVERSION,					\
 /* 111 */	NO_CONVERSION,					\
 /* 112 */	NO_CONVERSION,					\
-/* 113 */	NO_CONVERSION,					\
+/* 113 */	SOFT_ATTN,		/* Alt-F10 */		\
 /* 114 */	NO_CONVERSION,					\
 /* 115 */	NO_CONVERSION,					\
 /* 116 */	NO_CONVERSION,					\
@@ -237,9 +237,9 @@ unsigned char META_PLUS[] = {Metafy('+'), '\0'};
 /* 135 */	NO_CONVERSION,					\
 /* 136 */	NO_CONVERSION,					\
 /* 137 */	NO_CONVERSION,					\
-/* 138 */	HARD_ATTN,		/* Ctrl-F12 */		\
+/* 138 */	NO_CONVERSION,					\
 /* 139 */	NO_CONVERSION,					\
-/* 140 */	SOFT_ATTN,		/* Alt-F12 */		\
+/* 140 */	NO_CONVERSION,					\
 /* 141 */	NO_CONVERSION,					\
 /* 142 */	NO_CONVERSION,					\
 /* 143 */	NO_CONVERSION,					\
