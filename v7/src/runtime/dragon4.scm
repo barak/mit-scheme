@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: dragon4.scm,v 1.8 1996/06/11 04:29:58 cph Exp $
+$Id: dragon4.scm,v 1.9 1997/02/12 08:00:19 cph Exp $
 
-Copyright (c) 1989-96 Massachusetts Institute of Technology
+Copyright (c) 1989-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -213,8 +213,7 @@ MIT in each case. |#
 		    (values k r m- m+)))))
 	(lambda (k r m- m+)
 	  (let ((2r (* 2 r)))
-	    (let loop
-		((k k) (s s) (m- m-) (m+ m+) (cutoff cutoff) (round-up? #f))
+	    (let loop ((k k) (s s) (m- m-) (m+ m+) (round-up? #f))
 	      (with-values
 		  (lambda ()
 		    (let ((2r+m+ (+ 2r m+)))
@@ -231,7 +230,7 @@ MIT in each case. |#
 				     (m+ (max y m+)))
 				 (let ((round-up? (or (= m+ y) round-up?)))
 				   (if (<= (* 2 s) (+ 2r m+))
-				       (loop k s m- m+ cutoff round-up?)
+				       (loop k s m- m+ round-up?)
 				       (values k r s m- m+ cutoff
 					       round-up?)))))))))
 		    (case cutoff-mode
