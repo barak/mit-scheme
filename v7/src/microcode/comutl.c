@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.19 1989/09/20 23:07:04 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.20 1991/03/06 22:57:31 cph Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -73,7 +73,7 @@ DEFINE_PRIMITIVE ("COMPILED-CODE-ADDRESS->OFFSET", Prim_comp_code_address_offset
 DEFINE_PRIMITIVE ("STACK-TOP-ADDRESS", Prim_stack_top_address, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (long_to_integer ((long) (Stack_Top)));
+  PRIMITIVE_RETURN (long_to_integer ((long) (ADDRESS_TO_DATUM (Stack_Top))));
 }
 
 DEFINE_PRIMITIVE ("STACK-ADDRESS-OFFSET", Prim_stack_address_offset, 1, 1, 0)
@@ -83,9 +83,8 @@ DEFINE_PRIMITIVE ("STACK-ADDRESS-OFFSET", Prim_stack_address_offset, 1, 1, 0)
   CHECK_ARG (1, STACK_ADDRESS_P);
   PRIMITIVE_RETURN
     (long_to_integer
-     ((STACK_LOCATIVE_DIFFERENCE
-       (((long) (Stack_Top)), (OBJECT_DATUM (ARG_REF (1)))))
-      / (sizeof (SCHEME_OBJECT))));
+     (STACK_LOCATIVE_DIFFERENCE ((Stack_Top),
+				 (OBJECT_ADDRESS (ARG_REF (1))))));
 }
 
 #endif /* USE_STACKLETS */
