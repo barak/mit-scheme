@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compat.scm,v 1.1 1994/11/19 02:04:29 adams Exp $
+$Id: compat.scm,v 1.2 1994/11/22 19:45:34 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -36,7 +36,7 @@ MIT in each case. |#
 ;;   Decides which parameters are passed on the stack. Primitives get all
 ;;   their parameters on the stack in an interpreter-like stack-frame.
 ;;   Procedures get some arguments in registers and the rest on the
-;;   stack, with earlier arguments begin deeper to facilitate lexprs.
+;;   stack, with earlier arguments deeper to facilitate lexprs.
 ;;   The number of parameters passed in registers is determined by the
 ;;   back-end (*rtlgen/arguments-registers*)
 
@@ -104,13 +104,15 @@ MIT in each case. |#
   (let ((place (assq name env)))
     (if (not place)
 	`(LOOKUP ,name)
-	(cadr place))))
+	;; Important to copy value so that different debugging info
+	;; can be attached to each copy, since each variable reference
+	;; might have had different debugging info.
+	(form/copy (cadr place)))))
 
 (define-compatibility-rewrite LAMBDA (env lambda-list body)
   env					; ignored
   (compat/rewrite-lambda lambda-list body 
 			 (compat/choose-stack-formals 1 lambda-list)))
-
 
 (define-compatibility-rewrite LET (env bindings body)
   `(LET ,(lmap (lambda (binding)
@@ -146,7 +148,6 @@ MIT in each case. |#
   (compat/rewrite-call env rator cont rands))
 
 (define (compat/rewrite-call env rator cont rands)
-
   (define (possibly-pass-some-args-on-stack)
     (compat/standard-call-handler env rator cont rands))
 
@@ -166,11 +167,13 @@ MIT in each case. |#
 	(args. in registers) calling convention.  This is not a
 	problem because they have fixed arity.
 	((and (operator/satisfies? (quote/text rator) '(OUT-OF-LINE-HOOK))
-	      (not (operator/satisfies? (quote/text rator) '(SPECIAL-INTERFACE)))
+	      (not (operator/satisfies? (quote/text rator)
+					'(SPECIAL-INTERFACE)))
 	      (not (equal? cont '(QUOTE #F))))
 	 (compat/out-of-line env rator cont rands))
 	|#
-	(else (dont-split-cookie-call))))
+	(else
+	 (dont-split-cookie-call))))
 
 (define (compat/expr env expr)
   (if (not (pair? expr))
@@ -209,9 +212,7 @@ MIT in each case. |#
 	  (internal-error "No continuation variable found" lambda-list))
       (list->vector (cons first (reverse (cdr names)))))))
 
-
 (define (compat/rewrite-lambda formals body formals-on-stack)
-
   (define (compat/new-env frame-variable old-frame-vector new-frame-vector)
     ;; The new environment maps names to %stack-closure-refs and %vector-index
     ;; vectors to new, extended vectors
@@ -247,7 +248,8 @@ MIT in each case. |#
 	    ,(compat/expr '() body)))
 	((form/match compat/frame-pattern body)
 	 => (lambda (match)
-	      (let* ((old-frame-vector (cadr(assq compat/?frame-vector match))) 
+	      (let* ((old-frame-vector
+		      (cadr (assq compat/?frame-vector match)))
 		     (new-frame-vector 
 		      (list->vector (append (vector->list old-frame-vector)
 					    formals-on-stack))))
@@ -299,7 +301,6 @@ MIT in each case. |#
 	 (quote/text (CALL/%stack-closure-ref/name expr)))
 	(else
 	 (compat/new-name 'ARG))))
-
 
 (define (compat/uniquify-append prefix addends)
   ;; append addends, ensuring that each is a unique name
