@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xform.scm,v 1.5 1989/04/28 22:54:57 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xform.scm,v 1.6 1990/09/12 02:19:36 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -103,8 +103,8 @@
       (make-combination (transform-expression transforms operator)
 			(transform-expressions transforms operands)))))
 
-(define (transform-lambda transforms lambda)
-  (lambda-components** lambda
+(define (transform-lambda transforms expression)
+  (lambda-components** expression
     (lambda (pattern bound body)
       (make-lambda** pattern bound
 		     (transform-expression (remove-transforms transforms bound)
