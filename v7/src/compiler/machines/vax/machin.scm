@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/machin.scm,v 4.2 1988/02/11 21:11:20 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/machin.scm,v 4.3 1988/02/23 19:37:41 bal Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -69,7 +69,7 @@ MIT in each case. |#
     ;; movb  &type,3+temp(regs) =  4 (literal, rather than byte immediate)
     ;; movl  temp(regs),reg     =  4
     ((ENTRY:CONTINUATION ENTRY:PROCEDURE) 17)
-    ((OBJECT->ADDRESS OBJECT->DATUM) 3)	;bicl2 rmask,reg
+    ((OBJECT->ADDRESS OBJECT->DATUM) 6)	;bicl2 rmask,reg
     ;; movl  reg,temp(regs)     =  4
     ;; movb  temp+3(regs),reg   =  4
     ((OBJECT->TYPE) 8)
