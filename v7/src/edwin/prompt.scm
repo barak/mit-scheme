@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: prompt.scm,v 1.168 1996/05/11 08:44:56 cph Exp $
+;;;	$Id: prompt.scm,v 1.169 1997/07/21 04:37:33 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -852,7 +852,7 @@ Whilst editing the command, the following commands are available:
 		     #f
     (lambda ()
       (let loop ((ts ""))
-	(let ((input (keyboard-read)))
+	(let ((input (keyboard-read #t)))
 	  (cond ((input-event? input)
 		 (abort-typein-edit input))
 		((not (and (char? input) (char-ascii? input)))

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: input.scm,v 1.98 1993/08/20 00:14:28 cph Exp $
+;;;	$Id: input.scm,v 1.99 1997/07/21 04:37:20 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -180,7 +180,7 @@ B 3BAB8C
       (keyboard-macro-peek-key)
       (keyboard-read-1 (editor-peek current-editor) #t)))
 
-(define (keyboard-read)
+(define (keyboard-read #!optional no-save?)
   (set! keyboard-keys-read (+ keyboard-keys-read 1))
   (if *executing-keyboard-macro?*
       (keyboard-macro-read-key)
@@ -188,7 +188,8 @@ B 3BAB8C
 	(cond ((key? key)
 	       (set! auto-save-keystroke-count
 		     (fix:+ auto-save-keystroke-count 1))
-	       (ring-push! (current-char-history) key)
+	       (if (not (and (not (default-object? no-save?)) no-save?))
+		   (ring-push! (current-char-history) key))
 	       (if *defining-keyboard-macro?* (keyboard-macro-write-key key)))
 	      (*defining-keyboard-macro?*
 	       ((ref-command end-kbd-macro) 1)))
