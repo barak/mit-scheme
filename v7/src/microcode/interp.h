@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.h,v 9.28 1987/12/04 22:17:56 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.h,v 9.29 1987/12/23 03:43:31 cph Rel $
  *
  * Macros used by the interpreter and some utilities.
  *
@@ -123,31 +123,43 @@ MIT in each case. */
 
 #define Will_Eventually_Push(N)		Internal_Will_Push(N)
 #define Finished_Eventual_Pushing(M)	/* No op */
-
+
 /* Primitive stack operations:
- * These operations hide the direction of stack growth.
- * Throw in stack.h, Allocate_New_Stacklet in utils.c, apply, cwcc and
- * friends in hooks.c, and possibly other stuff, depend on the direction in
- * which the stack grows. 
- */
+   These operations hide the direction of stack growth.
+   `Throw' in "stack.h", `Allocate_New_Stacklet' in "utils.c",
+   `apply', `cwcc' and friends in "hooks.c", and possibly other stuff,
+   depend on the direction in which the stack grows. */
 
-#define Push(P)				*--Stack_Pointer = (P)
-#define Pop()				(*Stack_Pointer++)
-#define Stack_Ref(N)			(Stack_Pointer[(N)])
-#define Simulate_Pushing(N)		(Stack_Pointer - (N))
-#define Simulate_Popping(N)		(Stack_Pointer + (N))
+#define STACK_LOCATIVE_DECREMENT(locative) (-- (locative))
+#define STACK_LOCATIVE_INCREMENT(locative) ((locative) ++)
+#define STACK_LOCATIVE_OFFSET(locative, offset) ((locative) + (offset))
+#define STACK_LOCATIVE_REFERENCE(locative, offset) ((locative) [(offset)])
+#define STACK_LOCATIVE_DIFFERENCE(x, y) ((x) - (y))
 
-#define Top_Of_Stack()			Stack_Ref(0)
-#define Stack_Distance(previous_top_of_stack)	\
-  ((previous_top_of_stack) -  (&Top_Of_Stack()))
+#define STACK_LOCATIVE_PUSH(locative)					\
+  (* (STACK_LOCATIVE_DECREMENT (locative)))
 
-/* These can be used when SP is a pointer into the stack, to make
- * stack gap operations independent of the direction of stack growth.
- * They must match Push and Pop above.
- */
+#define STACK_LOCATIVE_POP(locative)					\
+  (* (STACK_LOCATIVE_INCREMENT (locative)))
 
-#define Push_From(SP)			*--(SP)
-#define Pop_Into(SP, What)		(*(SP)++) = (What)
+#define STACK_PUSH(object) (STACK_LOCATIVE_PUSH (Stack_Pointer)) = (object)
+#define STACK_POP() (STACK_LOCATIVE_POP (Stack_Pointer))
+#define STACK_LOC(offset) (STACK_LOCATIVE_OFFSET (Stack_Pointer, (offset)))
+#define STACK_REF(offset) (STACK_LOCATIVE_REFERENCE (Stack_Pointer, (offset)))
+
+/* Aliases */
+#define Push STACK_PUSH
+#define Pop STACK_POP
+#define Stack_Ref STACK_REF
+#define Simulate_Pushing(offset) (STACK_LOC (- (offset)))
+#define Simulate_Popping STACK_LOC
+
+#define Top_Of_Stack() (STACK_REF (0))
+#define Stack_Distance(previous_top_of_stack)				\
+  (STACK_LOCATIVE_DIFFERENCE (previous_top_of_stack, (STACK_LOC (0))))
+
+#define Push_From(SP) (STACK_LOCATIVE_PUSH (SP))
+#define Pop_Into(SP, object) (STACK_LOCATIVE_POP (SP)) = (object)
 
 /* Fetch from register */
 
@@ -166,7 +178,7 @@ MIT in each case. */
 #define Restore_Env()		Env = Pop()
 #define Restore_Then_Save_Env()	Env = Top_Of_Stack()
 
-/* Note: Save_Cont must match the definitions in sdata.h */                                
+/* Note: Save_Cont must match the definitions in sdata.h */
 
 #define Save_Cont()							\
 {									\
