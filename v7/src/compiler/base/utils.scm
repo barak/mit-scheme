@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.83 1987/04/13 19:25:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.84 1987/04/13 23:59:26 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -231,6 +231,7 @@ MIT in each case. |#
 			   apply
 			   garbage-collect
 			   primitive-fasdump
+			   set-current-history!
 			   with-history-disabled
 			   force
 			   primitive-purify
