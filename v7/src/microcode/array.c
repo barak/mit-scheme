@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.27 1988/01/07 21:35:51 pas Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.28 1988/01/10 10:38:52 pas Exp $ */
 
 /* CONTAINS:                                                         */
 /* Scheme_Array constructors, and selectors                          */
@@ -395,6 +395,21 @@ void REALlog(a,b) REAL *a,*b;
     Primitive_Error(ERR_ARG_1_BAD_RANGE); /* log(negative) */
   (*b) = ( (REAL) log( (double) (*a)) );
 }
+
+void REALtruncate(a,b) REAL *a,*b;      /* towards zero */
+{ double integral_part, modf();
+  modf( ((double) (*a)), &integral_part);
+  (*b) = ( (REAL) integral_part);
+}
+void REALround(a,b) REAL *a,*b;      /* towards nearest integer */
+{ double integral_part, modf();
+  if ((*a) >= 0.0)		/* It may be faster to look at the sign of mantissa and dispatch */
+    modf( ((double) ((*a)+0.5)), &integral_part); 
+  else
+    modf( ((double) ((*a)-0.5)), &integral_part);
+  (*b) = ( (REAL) integral_part);
+}
+
 void REALsquare(a,b) REAL *a,*b;
 { (*b) = ( (REAL) ((*a) * (*a)) );
 }
@@ -465,6 +480,8 @@ struct array_func_table {
   1, REALabs,
   1, REALexp,
   1, REALlog,
+  1, REALtruncate,
+  1, REALround,
   1, REALsquare,
   1, REALsqrt,
   1, REALsin,
@@ -480,7 +497,7 @@ struct array_func_table {
   2, REALbessel2
   };
 
-#define MAX_ARRAY_FUNCTC 15
+#define MAX_ARRAY_FUNCTC 17
 
 Define_Primitive(Prim_Array_Unary_Function, 2, "ARRAY-UNARY-FUNCTION!")
 { long Length, i, allocated_cells;
