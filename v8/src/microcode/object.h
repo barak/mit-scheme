@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: object.h,v 9.44 1993/12/05 06:07:52 cph Exp $
+$Id: object.h,v 9.45 1993/12/05 06:35:45 cph Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -469,7 +469,7 @@ extern SCHEME_OBJECT * memory_base;
 #define FLOATING_VECTOR_REF(vector, index)				\
   (* (FLOATING_VECTOR_LOC ((vector), (index))))
 
-#define FLOATING_VECTOR_REF(vector, index, x)				\
+#define FLOATING_VECTOR_SET(vector, index, x)				\
   (* (FLOATING_VECTOR_LOC ((vector), (index)))) = ((double) (x))
 
 /* Numeric Type Conversions */
