@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.30 1990/09/12 00:39:42 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.31 1991/02/15 18:15:01 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -136,18 +136,16 @@ MIT in each case. |#
 
 (define (compiler:batch-compile input #!optional output)
   (fluid-let ((compiler:batch-mode? true))
-    (bind-condition-handler '() compiler:batch-error-handler
+    (bind-condition-handler (list condition-type:error)
+	compiler:batch-error-handler
       (lambda ()
 	(if (default-object? output)
 	    (compile-bin-file input)
 	    (compile-bin-file input output))))))
 
 (define (compiler:batch-error-handler condition)
-  (and (not (condition/internal? condition))
-       (condition/error? condition)
-       (begin
-	 (warn (condition/report-string condition))
-	 (compiler:abort false))))
+  (warn (condition/report-string condition))
+  (compiler:abort false))
 
 (define (compiler:abort value)
   (if (not compiler:abort-handled?)

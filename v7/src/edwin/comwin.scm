@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comwin.scm,v 1.139 1990/11/02 03:23:19 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comwin.scm,v 1.140 1991/02/15 18:12:54 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -148,7 +148,7 @@
 
 (define-integrable (check-leaf-window window name)
   (if (not (leaf? window))
-      (error:illegal-datum window name)))
+      (error:wrong-type-argument window "window" name)))
 
 ;;;; Leaf Ordering
 
@@ -185,7 +185,7 @@
 (define (window0 window)
   (if (not (and (object? window)
 		(subclass? (object-class window) combination-leaf-window)))
-      (error:illegal-datum window 'WINDOW0))
+      (error:wrong-type-argument window "window" 'WINDOW0))
   (window-leftmost-leaf (window-root window)))
 
 (define (%window1+ leaf)

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.18 1989/08/29 20:04:00 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.19 1991/02/15 18:13:22 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -204,7 +204,7 @@ With an argument, prompts for the evaluation environment."
 		      (ref-mode-object prompt-for-expression))))
 
 (define (read-from-string string)
-  (bind-condition-handler '() evaluation-error-handler
+  (bind-condition-handler (list condition-type:error) evaluation-error-handler
     (lambda ()
       (with-input-from-string string read))))
 
@@ -241,11 +241,10 @@ may be available.  The following commands are special to this mode:
 (define (evaluation-environment argument)
   (let ((->environment
 	 (lambda (object)
-	   (bind-condition-handler '()
+	   (bind-condition-handler (list condition-type:error)
 	       (lambda (condition)
-		 (and (not (condition/internal? condition))
-		      (error? condition)
-		      (editor-error "Illegal environment: " object)))
+		 condition
+		 (editor-error "Illegal environment: " object))
 	     (lambda ()
 	       (->environment object))))))
     (if argument
@@ -289,31 +288,26 @@ may be available.  The following commands are special to this mode:
 			   environment))
 
 (define (scode-eval-with-history scode environment)
-  (bind-condition-handler '() evaluation-error-handler
+  (bind-condition-handler (list condition-type:error) evaluation-error-handler
     (lambda ()
       (with-new-history
        (lambda ()
 	 (extended-scode-eval scode environment))))))
 
 (define (evaluation-error-handler condition)
-  (and (not (condition/internal? condition))
-       (error? condition)
-       (begin
-	 (if (ref-variable debug-on-evaluation-error)
-	     (debug-scheme-error condition)
-	     (let ((string
-		    (with-output-to-string
-		      (lambda ()
-			((condition/reporter condition)
-			 condition
-			 (current-output-port))))))
-	       (if (and (not (string-find-next-char string #\newline))
-			(< (string-column-length string 18) 80))
-		   (message "Evaluation error: " string)
-		   (begin
-		     (string->temporary-buffer string "*Error*")
-		     (message "Evaluation error")))))
-	 (%editor-error))))
+  (if (ref-variable debug-on-evaluation-error)
+      (debug-scheme-error condition)
+      (let ((string
+	     (with-string-output-port
+	       (lambda (port)
+		 (write-condition-report condition port)))))
+	(if (and (not (string-find-next-char string #\newline))
+		 (< (string-column-length string 18) 80))
+	    (message "Evaluation error: " string)
+	    (begin
+	      (string->temporary-buffer string "*Error*")
+	      (message "Evaluation error")))))
+  (%editor-error))
 
 ;;;; Transcript Buffer
 

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.105 1990/10/03 04:53:58 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.106 1991/02/15 18:12:24 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -213,34 +213,6 @@ procedure when it fails to find a command."
 
 (define (barf-if-read-only)
   (editor-error "Trying to modify read only text."))
-
-(define-variable debug-on-editor-error
-  "True means signal Scheme error when an editor error occurs."
-  false)
-
-(define condition-type:editor-error
-  (make-error-type '()
-    (lambda (condition port)
-      (write-string "Editor error: " port)
-      (write-string (message-args->string (condition/irritants condition))
-		    port))))
-
-(define (editor-error . strings)
-  (if (ref-variable debug-on-editor-error)
-      (call-with-current-continuation
-       (lambda (continuation)
-	 (debug-scheme-error
-	  (make-condition condition-type:editor-error
-			  strings
-			  continuation))
-	 (%editor-error)))
-      (begin
-	(if (not (null? strings)) (apply temporary-message strings))
-	(%editor-error))))
-
-(define (%editor-error)
-  (editor-beep)
-  (abort-current-command))
 
 (define (editor-failure . strings)
   (cond ((not (null? strings)) (apply temporary-message strings))

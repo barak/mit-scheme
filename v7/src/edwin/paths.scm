@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/paths.scm,v 1.7 1990/11/16 01:11:44 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/paths.scm,v 1.8 1991/02/15 18:14:03 cph Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -47,7 +47,7 @@ MIT in each case. |#
 		    (pathname-as-directory (string->pathname "edwin")))))
 
 (define (edwin-tutorial-pathname)
-  (bind-condition-handler (list error-type:open-file)
+  (bind-condition-handler (list condition-type:open-file-error)
       (lambda (condition)
 	condition
 	(editor-error "Unable to find TUTORIAL file"))

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/iserch.scm,v 1.8 1990/10/03 04:55:22 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/iserch.scm,v 1.9 1991/02/15 18:13:52 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -328,10 +328,9 @@
 (define (perform-search forward? regexp? text start)
   (call-with-current-continuation
    (lambda (continuation)
-     (bind-condition-handler
-	 (list error-type:re-compile-pattern)
+     (bind-condition-handler (list condition-type:re-compile-pattern)
 	 (lambda (condition)
-	   (continuation (car (condition/irritants condition))))
+	   (continuation (access-condition condition 'MESSAGE)))
        (lambda ()
 	 (intercept-^G-interrupts (lambda () 'ABORT)
 	   (lambda ()

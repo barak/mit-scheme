@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rgxcmp.scm,v 1.103 1990/10/05 23:54:51 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rgxcmp.scm,v 1.104 1991/02/15 18:14:08 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -265,8 +265,17 @@
 (define-integrable stack-maximum-length
   re-number-of-registers)
 
-(define error-type:re-compile-pattern
-  (make-error-type '() "Error compiling regular expression:"))
+(define condition-type:re-compile-pattern
+  (make-condition-type 'RE-COMPILE-PATTERN condition-type:error
+      '(MESSAGE)
+    (lambda (condition port)
+      (write-string "Error compiling regular expression: " port)
+      (write-string (access-condition condition 'MESSAGE) port))))
+
+(define compilation-error
+  (condition-signaller condition-type:re-compile-pattern
+		       '(MESSAGE)
+		       standard-error-handler))
 
 (define input-list)
 (define current-byte)
@@ -303,7 +312,7 @@
 	      (if fixup-jump
 		  (store-jump! fixup-jump re-code:jump (output-position)))
 	      (if (not (stack-empty?))
-		  (error error-type:re-compile-pattern "Unmatched \\("))
+		  (compilation-error "Unmatched \\("))
 	      (list->string (map ascii->char (cdr output-head))))
 	    (begin
 	      (compile-pattern-char)
@@ -439,7 +448,7 @@
   ((vector-ref pattern-chars (input-peek-1))))
 
 (define (premature-end)
-  (error error-type:re-compile-pattern "Premature end of regular expression"))
+  (compilation-error "Premature end of regular expression"))
 
 (define (normal-char)
   (if (if (input-end?)
@@ -647,7 +656,7 @@
 (define-backslash-char #\(
   (lambda ()
     (if (stack-full?)
-	(error error-type:re-compile-pattern "Nesting too deep"))
+	(compilation-error "Nesting too deep"))
     (if (fix:< register-number re-number-of-registers)
 	(begin
 	  (output-re-code! re-code:start-memory)
@@ -665,7 +674,7 @@
 (define-backslash-char #\)
   (lambda ()
     (if (stack-empty?)
-	(error error-type:re-compile-pattern "Unmatched close paren"))
+	(compilation-error "Unmatched close paren"))
     (if fixup-jump
 	(store-jump! fixup-jump re-code:jump (output-position)))
     (stack-pop!

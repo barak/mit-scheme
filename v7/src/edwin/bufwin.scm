@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.286 1990/11/02 03:22:50 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.287 1991/02/15 18:12:31 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -451,10 +451,10 @@
 
 (define (clip-mark-to-display window mark)
   (if (not (mark? mark))
-      (error:illegal-datum mark 'CLIP-MARK-TO-DISPLAY))
+      (error:wrong-type-argument mark "mark" 'CLIP-MARK-TO-DISPLAY))
   (if (and (%window-point window)
 	   (not (mark~ (%window-point window) mark)))
-      (error:datum-out-of-range mark 'CLIP-MARK-TO-DISPLAY))
+      (error:bad-range-argument mark 'CLIP-MARK-TO-DISPLAY))
   (cond ((group-display-start-index? (mark-group mark) (mark-index mark))
 	 (group-display-start (mark-group mark)))
 	((group-display-end-index? (mark-group mark) (mark-index mark))
@@ -664,7 +664,7 @@
   (if (%window-debug-trace window)
       ((%window-debug-trace window) 'window window 'set-buffer! new-buffer))
   (if (not (buffer? new-buffer))
-      (error:illegal-datum new-buffer 'set-window-buffer!))
+      (error:wrong-type-argument new-buffer "buffer" 'SET-WINDOW-BUFFER!))
   (if (%window-buffer window)
       (%unset-window-buffer! window))
   (%set-window-buffer! window new-buffer)
@@ -763,7 +763,7 @@
 				    y-point))
   (if (not (and (fix:<= 0 y-point)
 		(fix:< y-point (window-y-size window))))
-      (error:datum-out-of-range y-point 'window-scroll-y-absolute!))
+      (error:bad-range-argument y-point 'WINDOW-SCROLL-Y-ABSOLUTE!))
   (with-values
       (lambda ()
 	(predict-start-line window (%window-point-index window) y-point))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/etc/stackp.scm,v 1.5 1988/12/31 06:41:50 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/etc/stackp.scm,v 1.6 1991/02/15 18:14:31 cph Exp $
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987-8, 1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -41,8 +41,7 @@ MIT in each case. |#
 	 (lambda ()
 	   (write-continuation
 	    (if (default-object? continuation)
-		(or (error-continuation)
-		    (current-proceed-continuation))
+		(error-continuation)
 		continuation)))))
     (if (or (default-object? filename) (not filename))
 	(do-it)
@@ -53,6 +52,12 @@ MIT in each case. |#
 			(error-continuation)
 			continuation)
 		    n))
+
+(define (error-continuation)
+  (let ((condition (nearest-repl/condition)))
+    (if (not condition)
+	(error "no error continuation"))
+    (condition/continuation condition)))
 
 (define (write-continuation continuation)
   (let write-stack-stream

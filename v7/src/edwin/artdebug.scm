@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/artdebug.scm,v 1.3 1990/09/12 07:53:39 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/artdebug.scm,v 1.4 1991/02/15 18:13:01 cph Exp $
 ;;;
-;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -52,9 +52,7 @@
   (if in-debugger?
       (exit-editor-and-signal-error condition)
       (fluid-let ((in-debugger? true))
-	(let* ((continuation (condition/continuation condition))
-	       (buffer (continuation-browser continuation)))
-	  (buffer-put! buffer 'DEBUG-CONDITION condition)
+	(let ((buffer (continuation-browser condition)))
 	  (select-buffer buffer)
 	  (standard-output buffer
 	    (lambda ()
@@ -67,8 +65,7 @@ Type \\[describe-mode] for more information.
 
 The error that started the debugger is:
 "))
-	      ((condition/reporter condition) condition
-					      (current-output-port))))))))
+	      (write-condition-report condition (current-output-port))))))))
 
 (define-command browse-continuation
   "Invoke the continuation-browser on CONTINUATION."
@@ -79,11 +76,10 @@ The error that started the debugger is:
       (invoke-debugger-command command/print-subproblem-or-reduction buffer)
       (select-buffer buffer))))
 
-(define (continuation-browser continuation)
+(define (continuation-browser object)
   (let ((buffer (new-buffer "*debug*")))
     (set-buffer-major-mode! buffer (ref-mode-object continuation-browser))
-    (buffer-put! buffer 'DEBUG-CONTINUATION continuation)
-    (buffer-put! buffer 'DEBUG-STATE (make-initial-dstate continuation))
+    (buffer-put! buffer 'DEBUG-STATE (make-initial-dstate object))
     (with-selected-buffer buffer
       (lambda ()
 	(setup-buffer-environment! buffer)))
@@ -230,14 +226,15 @@ Prompts for a value to give the continuation as an argument."
   (lambda ()
     (kill-buffer-interactive (current-buffer))))
 
-(define-command continuation-browser-error-info
-  "Show the error message associated with this continuation."
+(define-command continuation-browser-condition-report
+  "Show the error message that started the continuation browser, if any."
   ()
-  (lambda ()
-    (let ((buffer (current-buffer)))
-      (with-debugger-hooks buffer
-	(lambda ()
-	  (show-error-info (buffer-get buffer 'DEBUG-CONDITION)))))))
+  (debugger-command-invocation command/condition-report))
+
+(define-command continuation-browser-condition-restart
+  "Continue the program using a standard restart option."
+  ()
+  (debugger-command-invocation command/condition-restart))
 
 (define-major-mode continuation-browser fundamental "Debug"
   "You are in the Scheme debugger, where you can do the following:
@@ -249,7 +246,7 @@ Prompts for a value to give the continuation as an argument."
 \\[continuation-browser-later-reduction] moves Forward to the previous reduction (later in time).
 \\[continuation-browser-goto] Goes to an arbitrary subproblem.
 \\[continuation-browser-summarize-subproblems] prints a summary (History) of all subproblems.
-\\[continuation-browser-error-info] prints the error message Info.
+\\[continuation-browser-condition-report] prints the error message Info.
 \\[continuation-browser-print-expression] pretty prints the current expression.
 \\[continuation-browser-print-environment-procedure] pretty prints the procedure that created the current environment.
 \\[continuation-browser-move-to-parent-environment] moves to the environment that is the Parent of the current environment.
@@ -270,7 +267,7 @@ Prompts for a value to give the continuation as an argument."
 (define-key 'continuation-browser #\g 'continuation-browser-goto)
 (define-key 'continuation-browser #\h
   'continuation-browser-summarize-subproblems)
-(define-key 'continuation-browser #\i 'continuation-browser-error-info)
+(define-key 'continuation-browser #\i 'continuation-browser-condition-report)
 (define-key 'continuation-browser #\l 'continuation-browser-print-expression)
 (define-key 'continuation-browser #\o
   'continuation-browser-print-environment-procedure)

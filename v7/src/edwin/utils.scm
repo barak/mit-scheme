@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utils.scm,v 1.20 1989/08/29 20:04:08 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utils.scm,v 1.21 1991/02/15 18:14:14 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -162,8 +162,8 @@
 (define (catch-file-errors if-error thunk)
   (call-with-current-continuation
    (lambda (continuation)
-     (bind-condition-handler
-	 (list error-type:file)
+     (bind-condition-handler (list condition-type:file-error
+				   condition-type:port-error)
 	 (lambda (condition)
 	   condition
 	   (continuation (if-error)))

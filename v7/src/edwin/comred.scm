@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.83 1990/10/03 04:54:25 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.84 1991/02/15 18:12:46 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -103,7 +103,9 @@
 		   (*command-char*)
 		   (*command*)
 		   (*next-message* false))
-	 (start-next-command)))))
+	 (bind-condition-handler (list condition-type:editor-error)
+	     editor-error-handler
+	   start-next-command)))))
 
   (define (start-next-command)
     (reset-command-state!)

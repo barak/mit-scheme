@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/etc/xcbfdir.scm,v 1.5 1991/02/06 02:53:28 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/etc/xcbfdir.scm,v 1.6 1991/02/15 18:14:48 cph Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -43,36 +43,36 @@ MIT in each case. |#
 	   (two (pathname-new-type pathname "tch")))
        (call-with-current-continuation
 	(lambda (here)
-	  (bind-condition-handler
-	   '()
-	   (lambda (condition)
-	     (newline)
-	     (display ";; *** Aborting ")
-	     (display pathname)
-	     (display " ***")
-	     (newline)
-	     (condition/write-report condition)
-	     (newline)
-	     (here 'next))
-	   (lambda ()
-	     (let ((touch-created-file?))
-	       (dynamic-wind
-		(lambda ()
-		  ;; file-touch returns #T if the file did not exist,
-		  ;; it returns #F if it did.
-		  (set! touch-created-file?
-			(file-touch two)))
-		(lambda ()
-		  (if (and touch-created-file?
-			   (let ((one-time (file-modification-time one)))
-			     (or (not one-time)
-				 (< one-time
-				    (file-modification-time pathname)))))
-		      (processor pathname
-				 (pathname-new-type pathname extension))))
-		(lambda ()
-		  (if touch-created-file?
-		      (delete-file two)))))))))))
+	  (bind-condition-handler (list condition-type:error)
+	      (lambda (condition)
+		(let ((port (current-output-port)))
+		  (newline port)
+		  (write-string ";; *** Aborting " port)
+		  (display pathname port)
+		  (write-string " ***" port)
+		  (newline port)
+		  (write-condition-report condition port)
+		  (newline port))
+		(here 'next))
+	    (lambda ()
+	      (let ((touch-created-file?))
+		(dynamic-wind
+		 (lambda ()
+		   ;; file-touch returns #T if the file did not exist,
+		   ;; #F if it did.
+		   (set! touch-created-file? (file-touch two))
+		   unspecific)
+		 (lambda ()
+		   (if (and touch-created-file?
+			    (let ((one-time (file-modification-time one)))
+			      (or (not one-time)
+				  (< one-time
+				     (file-modification-time pathname)))))
+		       (processor pathname
+				  (pathname-new-type pathname extension))))
+		 (lambda ()
+		   (if touch-created-file?
+		       (delete-file two)))))))))))
    (directory-read
     (merge-pathnames (pathname-as-directory (->pathname directory))
 		     (->pathname "*.bin")))))

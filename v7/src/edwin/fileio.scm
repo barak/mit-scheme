@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.91 1989/04/28 22:49:50 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.92 1991/02/15 18:13:37 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -230,15 +230,15 @@ at the end of a file."
 				 buffer mode)))
 			  (call-with-current-continuation
 			   (lambda (continuation)
-			     (bind-condition-handler '()
+			     (bind-condition-handler
+				 (list condition-type:error)
 				 (lambda (condition)
-				   (and (not (condition/internal? condition))
-					(error? condition)
-					(begin
-					  (editor-beep)
-					  (message "Error while processing local variable: "
-						   var)
-					  (continuation false))))
+				   condition
+				   (editor-beep)
+				   (message
+				    "Error while processing local variable: "
+				    var)
+				   (continuation false))
 			       (lambda ()
 				 (if (string-ci=? var "Eval")
 				     (evaluate val)
@@ -304,28 +304,29 @@ Otherwise asks confirmation."
 	      (editor-error
 	       "Attempt to save to a file which you aren't allowed to write"))
 	  (begin
-	   (if (not (or (verify-visited-file-modification-time? buffer)
-			(not (file-exists? truename))
-			(prompt-for-yes-or-no?
-			 "Disk file has changed since visited or saved.  Save anyway")))
-	       (editor-error "Save not confirmed"))
-	   (let ((modes
-		  (and (not (buffer-backed-up? buffer))
-		       (backup-buffer! buffer truename))))
-	     (require-newline buffer)
-	     (if (not (or writable? modes))
-		 (begin
-		   (set! modes (file-modes truename))
-		   (set-file-modes! truename #o777)))
-	     (write-buffer buffer)
-	     (if modes
-		 (bind-condition-handler '()
-		     (lambda (condition)
-		       (and (not (condition/internal? condition))
-			    (error? condition)
-			    ((condition/continuation condition) unspecific)))
-		   (lambda ()
-		     (set-file-modes! truename modes))))))))))
+	    (if (not (or (verify-visited-file-modification-time? buffer)
+			 (not (file-exists? truename))
+			 (prompt-for-yes-or-no?
+			  "Disk file has changed since visited or saved.  Save anyway")))
+		(editor-error "Save not confirmed"))
+	    (let ((modes
+		   (and (not (buffer-backed-up? buffer))
+			(backup-buffer! buffer truename))))
+	      (require-newline buffer)
+	      (if (not (or writable? modes))
+		  (begin
+		    (set! modes (file-modes truename))
+		    (set-file-modes! truename #o777)))
+	      (write-buffer buffer)
+	      (if modes
+		  (call-with-current-continuation
+		   (lambda (continuation)
+		     (bind-condition-handler (list condition-type:error)
+			 (lambda (condition)
+			   condition
+			   (continuation unspecific))
+		       (lambda ()
+			 (set-file-modes! truename modes))))))))))))
 
 (define (verify-visited-file-modification-time? buffer)
   (let ((truename (buffer-truename buffer))

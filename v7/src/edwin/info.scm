@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.95 1990/10/03 04:55:12 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.96 1991/02/15 18:13:44 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -886,11 +886,10 @@ The name may be an abbreviation of the reference name."
   (let ((lose
 	 (lambda ()
 	   (editor-error "Malformed index in Info file"))))
-    (bind-condition-handler '()
+    (bind-condition-handler (list condition-type:error)
 	(lambda (condition)
-	  (and (not (condition/internal? condition))
-	       (error? condition)
-	       (lose)))
+	  condition
+	  (lose))
       (lambda ()
 	(let ((index (with-input-from-mark mark read)))
 	  (if (and (integer? index)

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comman.scm,v 1.63 1990/11/02 03:23:13 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comman.scm,v 1.64 1991/02/15 18:12:40 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -143,7 +143,7 @@
 
 (define (check-variable-value-validity! variable value)
   (if (not (variable-value-valid? variable value))
-      (error:illegal-datum value 'CHECK-VARIABLE-VALUE-VALIDITY)))
+      (error:datum-out-of-range value)))
 
 (define (variable-value-valid? variable value)
   (or (not (variable-value-validity-test variable))

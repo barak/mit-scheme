@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/make.scm-little,v 4.75 1991/02/15 00:19:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/make.scm-little,v 4.79 1991/02/15 18:16:32 cph Exp $
 $MC68020-Header: make.scm,v 4.73 90/05/03 15:17:24 GMT jinx Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
@@ -42,4 +42,4 @@ MIT in each case. |#
 	    ((package/reference (find-package name) 'INITIALIZE-PACKAGE!)))
 	  '((COMPILER MACROS)
 	    (COMPILER DECLARATIONS)))
-(add-system! (make-system "Liar (MIPS)" 4 78 '()))
+(add-system! (make-system "Liar (MIPS)" 4 79 '()))

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autold.scm,v 1.48 1990/09/07 18:39:34 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autold.scm,v 1.49 1991/02/15 18:12:16 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -235,7 +235,8 @@ Second arg PURIFY? means purify the file's contents after loading;
 (define (load-edwin-file filename environment purify?)
   (with-output-to-transcript-buffer
    (lambda ()
-     (bind-condition-handler '() evaluation-error-handler
+     (bind-condition-handler (list condition-type:error)
+	 evaluation-error-handler
        (lambda ()
 	 (fluid-let ((load/suppress-loading-message? true))
 	   (load filename environment edwin-syntax-table purify?)))))))

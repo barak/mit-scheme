@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.143 1990/11/21 23:17:35 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.144 1991/02/15 18:13:29 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -187,7 +187,8 @@ Argument means don't offer to use auto-save file."
 	(let ((database
 	       (with-output-to-transcript-buffer
 		(lambda ()
-		  (bind-condition-handler '() evaluation-error-handler
+		  (bind-condition-handler (list condition-type:error)
+		      evaluation-error-handler
 		    (lambda ()
 		      (catch-file-errors (lambda () false)
 			(lambda ()
