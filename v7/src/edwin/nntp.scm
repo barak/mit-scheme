@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: nntp.scm,v 1.16 1997/11/04 11:02:07 cph Exp $
+;;;	$Id: nntp.scm,v 1.17 1997/11/13 08:01:59 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -783,9 +783,13 @@
     (if number
 	(let ((gdbf (news-group:body-gdbf group #t)))
 	  (if gdbf
-	      (write-string (or (gdbm-fetch gdbf number)
-				(pre-read-body group number))
-			    port)
+	      (let ((body
+		     (or (gdbm-fetch gdbf number)
+			 (pre-read-body group number))))
+		(and body
+		     (begin
+		       (write-string body port)
+		       #t)))
 	      (begin
 		(maybe-switch-groups group)
 		(nntp-body-command (news-group:connection group)
@@ -817,14 +821,21 @@
 	       (gdbm-fetch gdbf (news-header:message-id header)))))))
 
 (define (pre-read-body group key)
-  (let ((datum
-	 (with-string-output-port
-	   (lambda (port)
-	     (nntp-body-command (news-group:connection group)
-				key
-				port)))))
-    (gdbm-store (news-group:body-gdbf group #t) key datum GDBM_REPLACE)
-    datum))
+  (let ((valid?))
+    (let ((datum
+	   (with-string-output-port
+	     (lambda (port)
+	       (maybe-switch-groups group)
+	       (set! valid?
+		     (nntp-body-command (news-group:connection group)
+					key
+					port))
+	       unspecific))))
+      (and valid?
+	   (begin
+	     (gdbm-store (news-group:body-gdbf group #t) key datum
+			 GDBM_REPLACE)
+	     datum)))))
 
 (define (news-group:purge-pre-read-headers group predicate)
   (if (gdbm-available?)
@@ -1325,7 +1336,7 @@
 			(let ((header
 			       (news-group:id->header
 				group id allow-server-probes?)))
-			  (and header
+			  (and (news-header? header)
 			       (begin
 				 (if (eq? (hash-table/get id-table id #t)
 					  #t)
