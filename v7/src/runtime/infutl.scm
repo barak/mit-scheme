@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/infutl.scm,v 1.22 1991/11/04 20:29:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/infutl.scm,v 1.23 1992/05/26 16:05:25 mhwu Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -91,12 +91,14 @@ MIT in each case. |#
 	 false)))
 
 (define (read-binf-file filename)
-  (and (file-exists? filename)
-       (call-with-current-continuation
-	(lambda (k)
-	  (bind-condition-handler (list condition-type:fasload-band)
-	      (lambda (condition) condition (k false))
-	    (lambda () (fasload filename true)))))))
+  (let ((pathname (merge-pathnames filename)))
+    (if (file-exists? pathname)
+	(fasload-loader (->namestring pathname))
+	(find-alternate-file-type pathname
+				  `(("binf" . ,fasload-loader)
+				    ("inf" . ,fasload-loader)
+				    ("bif" . ,fasload-loader)
+				    ("bci" . ,compressed-loader))))))
 
 (define (memoize-debugging-info! block dbg-info)
   (without-interrupts
@@ -353,3 +355,165 @@ MIT in each case. |#
 	       (and scode
 		    (lambda-body scode))))
 	entry)))
+
+;;; Support of BSM files
+
+(define (read-labels descriptor)
+  (cond ((string? descriptor)
+	 (let ((bsm (read-bsm-file descriptor)))
+	   (and bsm ;; bsm are either vectors of pairs or vectors of vectors
+		(if (vector? bsm)
+		    (let ((first (and (not (zero? (vector-length bsm)))
+				      (vector-ref bsm 0))))
+		      (cond ((pair? first) bsm)
+			    ((vector? first) first)
+			    (else false)))))))
+	((and (pair? descriptor)
+	      (string? (car descriptor))
+	      (exact-nonnegative-integer? (cdr descriptor)))
+	 (let ((bsm (read-bsm-file (car descriptor))))
+	   (and bsm
+		(vector? bsm)
+		(< (cdr descriptor) (vector-length bsm))
+		(vector-ref bsm (cdr descriptor)))))
+	(else
+	 false)))
+
+(define (read-bsm-file name)
+  (let ((filename (process-bsym-filename name)))
+    (if (file-exists? filename)
+	(fasload-loader filename)
+	(let ((pathname (merge-pathnames filename)))
+	  (find-alternate-file-type pathname
+				    `(("bsm" . ,fasload-loader)
+				      ("bcs" . compressed-loader)))))))	
+
+(define (process-bsym-filename name)
+  (->namestring
+   (rewrite-directory (merge-pathnames name))))
+
+;;; The conversion hack.
+
+(define (inf->bif/bsm inffile)
+  (let* ((infpath (merge-pathnames inffile))
+	 (bifpath (pathname-new-type infpath "bif"))
+	 (bsmpath (pathname-new-type infpath "bsm")))
+    (let ((binf (fasload infpath)))
+      (inf-structure->bif/bsm binf bifpath bsmpath))))
+
+(define (inf-structure->bif/bsm binf bifpath bsmpath)
+  (let* ((bifpath (merge-pathnames bifpath))
+	 (bsmpath (merge-pathnames bsmpath))
+	 (bsmname (->namestring bsmpath)))
+    (cond ((dbg-info? binf)
+	   (let ((labels (dbg-info/labels/desc binf)))
+	     (set-dbg-info/labels/desc! binf bsmname)
+	     (fasdump binf bifpath)
+	     (fasdump labels bsmpath)))
+	  ((vector? binf)
+	   (let ((bsm (make-vector (vector-length binf))))
+	     (let loop ((pos 0))
+	       (if (fix:= pos (vector-length bsm))
+		   (begin
+		     (fasdump bsm bsmpath)
+		     (fasdump binf bifpath))
+		   (let ((dbg-info (vector-ref binf pos)))
+		     (let ((labels (dbg-info/labels/desc dbg-info)))
+		       (vector-set! bsm pos labels)
+		       (set-dbg-info/labels/desc! dbg-info (cons bsmname pos))
+		       (loop (fix:1+ pos))))))))
+	  (else 
+	   (error "Unknown inf file format" infpath))))))
+
+
+;;; UNCOMPRESS: A simple extractor for compressed binary info files.
+
+(define (uncompress ifile ofile)
+  (define-integrable window-size 4096)
+  (define (expand input-port output-channel buffer-size)
+    (let ((buffer (make-string buffer-size))
+	  (cp-table (make-vector window-size))
+	  (port/read-char 
+	   (or (input-port/operation/read-char input-port)
+	       (error "Port doesn't support read-char" input-port)))
+	  (port/read-substring
+	   (or (input-port/operation input-port 'READ-SUBSTRING)
+	       (error "Port doesn't support read-substring" input-port))))
+      (define (displacement->cp-index displacement cp)
+	(let ((index (fix:- cp displacement)))
+	  (if (fix:< index 0) (fix:+ window-size index) index)))
+      (define-integrable (cp:+ cp n)
+	(fix:remainder (fix:+ cp n) window-size))
+      (define-integrable (read-substring! buffer start end)
+	(port/read-substring input-port buffer start end))
+      (define (read-ascii)
+	(let ((char (port/read-char input-port)))
+	  (and (not (eof-object? char))
+	       (char->ascii char))))
+      (define (guarantee-buffer nbp)
+	(if (fix:> nbp buffer-size)
+	    (let* ((new-size (fix:+ buffer-size (fix:quotient buffer-size 4)))
+		   (nbuffer (make-string new-size)))
+	      (substring-move-right! buffer 0 buffer-size nbuffer 0)
+	      (set! buffer-size new-size)
+	      (set! buffer nbuffer))))
+
+      (let loop ((bp 0) (cp 0) (byte (read-ascii)))
+	(cond ((not byte)
+	       (channel-write output-channel buffer 0 bp)
+	       bp)
+	      ((fix:< byte 16)
+	       (let ((length (fix:+ byte 1)))
+		 (let ((nbp (fix:+ bp length)) (ncp (cp:+ cp length)))
+		   (guarantee-buffer nbp)
+		   (read-substring! buffer bp nbp)
+		   (do ((bp bp (fix:+ bp 1)) (cp cp (cp:+ cp 1)))
+		       ((fix:= bp nbp))
+		     (vector-set! cp-table cp bp))
+		   (loop nbp ncp (read-ascii)))))
+	      (else
+	       (let ((cpi (displacement->cp-index
+			   (fix:+ (fix:* (fix:remainder byte 16) 256)
+				  (read-ascii))
+			   cp))	
+		     (length (fix:+ (fix:quotient byte 16) 1)))
+		 (let ((bp* (vector-ref cp-table cpi))
+		       (nbp (fix:+ bp length))
+		       (ncp (cp:+ cp 1)))
+		    (guarantee-buffer nbp)
+		    (substring-move-right! buffer bp* (fix:+ bp* length)
+					   buffer bp)
+		    (vector-set! cp-table cp bp)
+		    (loop nbp ncp (read-ascii)))))))))
+
+  (let ((input (open-binary-input-file (merge-pathnames ifile))))
+    (if (not (input-port? input))
+	(error "UNCOMPRESS: error opening input" ifile))
+    (let ((output (file-open-output-channel
+		   (->namestring (merge-pathnames ofile))))
+	  (size (file-attributes/length (file-attributes ifile))))
+      (expand input output (fix:* size 2))
+      (channel-close output)
+      (close-input-port input))))
+
+
+(define (find-alternate-file-type base-pathname exts/receivers)
+  (or (null? exts/receivers)
+      (let ((file (pathname-new-type base-pathname (caar exts/receivers))))
+	(if (file-exists? file)
+	    ((cdar exts/receivers) (->namestring file))
+	    (find-alternate-file-type base-pathname (cdr exts/receivers))))))
+
+(define (fasload-loader filename)
+  (call-with-current-continuation
+    (lambda (if-fail)
+      (bind-condition-handler (list condition-type:fasload-band)
+        (lambda (condition) condition (if-fail false))
+        (lambda () (fasload filename true))))))
+
+(define (compressed-loader compressed-filename)
+  (call-with-temporary-filename
+    (lambda (uncompressed-filename)
+      (uncompress compressed-filename uncompressed-filename)
+      (fasload-loader uncompressed-filename))))
+  
