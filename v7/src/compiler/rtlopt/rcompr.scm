@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rcompr.scm,v 1.13 1993/07/01 03:28:05 gjr Exp $
+$Id: rcompr.scm,v 1.14 1993/07/03 08:34:51 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -156,7 +156,8 @@ MIT in each case. |#
 		   (if (rinst-dead-register? next register)
 		       (values next
 			       (rtl:make-offset (rtl:offset-base expression)
-						offset))
+						(rtl:make-machine-constant
+						 offset)))
 		       (phi-1 next offset)))
 		 (phi-1 next
 			(rtl:machine-constant-value
@@ -172,7 +173,8 @@ MIT in each case. |#
 		     (values next expression)
 		     (loop (rinst-next next)))))
 	      ((or (rtl:offset? expression)
-		   (rtl:byte-offset? expression))
+		   (rtl:byte-offset? expression)
+		   (rtl:float-offset? expression))
 	       (search-stopping-at
 		expression
 		(lambda (rtl)
