@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/advice.scm,v 13.42 1987/03/17 18:48:26 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/advice.scm,v 13.43 1987/05/06 04:54:08 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -167,9 +167,9 @@
     (lambda (entry-advice exit-advice cont)
       (cont (if (memq advice entry-advice)
 		entry-advice
-		(cons advice entry-advice))
-	    exit-advice)))
-  (add-to-population! entry-advice-population lambda))
+		(begin (add-to-population! entry-advice-population lambda)
+		       (cons advice entry-advice)))
+	    exit-advice))))
 
 (define (primitive-advise-exit lambda advice)
   (add-lambda-advice! lambda
@@ -177,20 +177,20 @@
       (cont entry-advice
 	    (if (memq advice exit-advice)
 		exit-advice
-		(append! exit-advice (list advice))))))
-  (add-to-population! exit-advice-population lambda))
+		(begin (add-to-population! exit-advice-population lambda)
+		       (append! exit-advice (list advice))))))))
 
 (define ((primitive-advise-both new-entry-advice new-exit-advice) lambda)
   (add-lambda-advice! lambda
     (lambda (entry-advice exit-advice cont)
       (cont (if (memq new-entry-advice entry-advice)
 		entry-advice
-		(cons new-entry-advice entry-advice))
+		(begin (add-to-population! entry-advice-population lambda)
+		       (cons new-entry-advice entry-advice)))
 	    (if (memq new-exit-advice exit-advice)
 		exit-advice
-		(append! exit-advice (list new-exit-advice))))))
-  (add-to-population! entry-advice-population lambda)
-  (add-to-population! exit-advice-population lambda))
+		(begin (add-to-population! exit-advice-population lambda)
+		       (append! exit-advice (list new-exit-advice))))))))
 
 (define (eq?-adjoin object list)
   (if (memq object list)
