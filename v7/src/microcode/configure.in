@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 
-dnl Copyright (c) 2000-2002 Massachusetts Institute of Technology
+dnl Copyright (c) 2000, 2002, 2002 Massachusetts Institute of Technology
 dnl
 dnl This file is part of MIT Scheme.
 dnl
@@ -19,7 +19,7 @@ dnl along with MIT Scheme; if not, write to the Free Software
 dnl Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 dnl 02111-1307, USA.
 
-AC_REVISION([$Id: configure.in,v 11.18 2002/11/20 19:46:07 cph Exp $])
+AC_REVISION([$Id: configure.in,v 11.19 2002/11/20 20:40:45 cph Exp $])
 AC_INIT(boot.c)
 AC_CONFIG_HEADER(config.h)
 
@@ -389,8 +389,8 @@ AC_CHECK_FUNCS(nice)
 AC_CHECK_FUNCS(poll prealloc)
 AC_CHECK_FUNCS(rename rmdir)
 AC_CHECK_FUNCS(select setitimer setpgrp setpgrp2 shmat sigaction)
-AC_CHECK_FUNCS(sighold socket statfs strchr strstr strtol strtoul)
-AC_CHECK_FUNCS(symlink sysconf)
+AC_CHECK_FUNCS(sighold socket statfs strchr strerror strstr strtol)
+AC_CHECK_FUNCS(strtoul symlink sysconf)
 AC_CHECK_FUNCS(times truncate)
 AC_CHECK_FUNCS(uname utime)
 AC_CHECK_FUNCS(waitpid)
