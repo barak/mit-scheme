@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: utils.c,v 9.54 1992/09/26 02:55:05 cph Exp $
+$Id: utils.c,v 9.55 1992/11/24 01:07:30 gjr Exp $
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -50,12 +50,28 @@ DEFUN (Setup_Interrupt, (Masked_Interrupts), long Masked_Interrupts)
   SCHEME_OBJECT Int_Vector, Handler;
   long i, Int_Number, The_Int_Code, New_Int_Enb;
 
-  The_Int_Code = FETCH_INTERRUPT_CODE();
-  Int_Vector = (Get_Fixed_Obj_Slot (System_Interrupt_Vector));
+  The_Int_Code = (FETCH_INTERRUPT_CODE ());
+  Int_Vector = SHARP_F;
+  if (Valid_Fixed_Obj_Vector ())
+    Int_Vector =  (Get_Fixed_Obj_Slot (System_Interrupt_Vector));
+
+  if (!(VECTOR_P (Int_Vector)))
+  {
+    fprintf (stderr,
+	     "\nInvalid handlers vector (0x%lx)\n", Int_Vector);
+lose_big:
+    fprintf (stderr,
+	     "Interrupts = 0x%08lx, Mask = 0x%08lx, Masked = 0x%08lx\n",
+	     FETCH_INTERRUPT_CODE(),
+	     FETCH_INTERRUPT_MASK(),
+	     Masked_Interrupts);
+    Microcode_Termination (TERM_NO_INTERRUPT_HANDLER);
+  }
 
   /* The interrupt vector is normally of size (MAX_INTERRUPT_NUMBER + 1).
      We signal all normal interrupts though the first MAX_INTERRUPT_NUMBER
-     slots, and any other (spurious) interrupts through the last slot. */
+     slots, and any other (spurious) interrupts through the last slot.
+   */
 
   Int_Number = 0;
   i = 1;
@@ -63,7 +79,7 @@ DEFUN (Setup_Interrupt, (Masked_Interrupts), long Masked_Interrupts)
   {
     if (Int_Number > MAX_INTERRUPT_NUMBER)
     {
-      New_Int_Enb = FETCH_INTERRUPT_MASK();
+      New_Int_Enb = (FETCH_INTERRUPT_MASK ());
       break;
     }
     if ((Masked_Interrupts & i) != 0)
@@ -77,23 +93,18 @@ DEFUN (Setup_Interrupt, (Masked_Interrupts), long Masked_Interrupts)
 
   /* Handle case where interrupt vector is too small. */
   if (Int_Number >= (VECTOR_LENGTH (Int_Vector)))
-    {
-      fprintf (stderr,
-	       "\nInterrupt out of range: %ld (vector length = %ld)\n",
-	       Int_Number, (VECTOR_LENGTH (Int_Vector)));
-      fprintf (stderr,
-	       "Interrupts = 0x%08lx, Mask = 0x%08lx, Masked = 0x%08lx\n",
-	       FETCH_INTERRUPT_CODE(),
-	       FETCH_INTERRUPT_MASK(),
-	       Masked_Interrupts);
-      Microcode_Termination (TERM_NO_INTERRUPT_HANDLER);
-    }
+  {
+    fprintf (stderr,
+	     "\nInterrupt out of range: %ld (vector length = %ld)\n",
+	     Int_Number, (VECTOR_LENGTH (Int_Vector)));
+    goto lose_big;
+  }
 
   Global_Interrupt_Hook ();
   Handler = (VECTOR_REF (Int_Vector, Int_Number));
 
 Passed_Checks:	/* This label may be used in Global_Interrupt_Hook */
-  Stop_History();
+  Stop_History ();
   preserve_interrupt_mask ();
  Will_Push (STACK_ENV_EXTRA_SLOTS + 3);
 /*
