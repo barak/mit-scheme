@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.24 1996/12/24 08:50:32 cph Exp $
+;;;	$Id: snr.scm,v 1.25 1996/12/25 06:50:07 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-96 Massachusetts Institute of Technology
 ;;;
@@ -822,7 +822,7 @@ With prefix argument, clears the list for the next several News groups."
   (lambda (argument)
     (group-iteration argument
       (lambda (buffer group)
-	(set-news-group:ranges-seen! group '())
+	(set-news-group:ranges-deleted! group '())
 	(update-news-groups-buffers buffer group)))))
 
 (define-command news-subscribe-group
@@ -1065,7 +1065,7 @@ This shows News groups that have been created since the last time that
     (and name
 	 (let ((connection (buffer-nntp-connection (mark-buffer mark))))
 	   (or (find-news-group connection name)
-	       (make-news-group-1 connection name #f #f '() '()))))))
+	       (make-news-group-1 connection name #f #f '() '() '()))))))
 
 (define (ang-buffer:mark-group-name mark)
   (and (re-match-forward
@@ -1092,12 +1092,16 @@ This shows News groups that have been created since the last time that
       (let ((ls (find-first-property-line buffer 'NEWS-HEADER #f)))
 	(and ls
 	     (let ((header (region-get ls 'NEWS-HEADER #f)))
-	       (cond ((not (news-header:article-seen? header)) ls)
+	       (cond ((not (news-header:article-deleted? header)) ls)
 		     ((news-group-buffer:next-header buffer
 						     header
 						     news-header:unread?)
 		      => (lambda (header)
-			   (news-group-buffer:header-mark-1 buffer header)))
+			   (or (news-group-buffer:header-mark buffer header)
+			       (news-group-buffer:thread-start-mark
+				buffer
+				(news-header:thread header))
+			       ls)))
 		     (else ls))))))))
 
 (define (news-group-buffer-name group)
@@ -1193,12 +1197,9 @@ This shows News groups that have been created since the last time that
 	     (mark-left-inserting-copy
 	      (or (delete-news-thread-lines buffer thread)
 		  (let loop ((thread thread))
-		    (let ((next
-			   (news-group-buffer:next-thread buffer thread)))
+		    (let ((next (news-group-buffer:next-thread buffer thread)))
 		      (if next
-			  (or (news-group-buffer:thread-start-mark
-			       buffer
-			       next)
+			  (or (news-group-buffer:thread-start-mark buffer next)
 			      (loop next))
 			  (begin
 			    (guarantee-newline (buffer-end buffer))
@@ -1207,11 +1208,38 @@ This shows News groups that have been created since the last time that
 	(insert-news-thread-lines thread ls)
 	(mark-temporary! ls)
 	(update-subsequent-news-header-lines ls)))))
+
+(define (delete-news-thread-lines buffer thread)
+  (let ((region (news-thread-lines-region buffer thread)))
+    (and region
+	 (let ((start (mark-right-inserting-copy (region-start region))))
+	   (news-thread:clear-indices! thread)
+	   (delete-string start (region-end region))
+	   (mark-temporary! start)
+	   start))))
+
+(define (news-thread-lines-region buffer thread)
+  (let ((ls (news-group-buffer:thread-start-mark buffer thread)))
+    (and ls
+	 (let ((start (mark-temporary-copy ls))
+	       (end (mark-temporary-copy (line-start ls 1 'LIMIT))))
+	   (news-thread:for-each-header thread
+	     (lambda (header)
+	       (let ((ls (news-group-buffer:header-mark buffer header)))
+		 (if ls
+		     (let ((nls (line-start ls 1 'LIMIT)))
+		       (if (mark< ls start) (move-mark-to! start ls))
+		       (if (mark> nls end) (move-mark-to! end nls)))))))
+	   (make-region start end)))))
 
 (define (insert-news-thread-lines thread mark)
   (if (news-thread:show-collapsed? thread)
       (insert-collapsed-news-thread-line thread mark)
-      (insert-expanded-news-thread-lines thread mark)))
+      (insert-expanded-news-thread-lines thread mark))
+  (news-thread:for-each-real-header thread
+    (let ((buffer (mark-buffer mark)))
+      (lambda (header)
+	(news-header:article-browsed! header buffer)))))
 
 (define (insert-expanded-news-thread-lines thread mark)
   (let ((subject
@@ -1265,28 +1293,13 @@ This shows News groups that have been created since the last time that
      header
      mark)))
 
-(define (delete-news-thread-lines buffer thread)
-  (let ((region (news-thread-lines-region buffer thread)))
-    (and region
-	 (let ((start (mark-right-inserting-copy (region-start region))))
-	   (news-thread:clear-indices! thread)
-	   (delete-string start (region-end region))
-	   (mark-temporary! start)
-	   start))))
-
-(define (news-thread-lines-region buffer thread)
-  (let ((ls (news-group-buffer:thread-start-mark buffer thread)))
-    (and ls
-	 (let ((start (mark-temporary-copy ls))
-	       (end (mark-temporary-copy (line-start ls 1 'LIMIT))))
-	   (news-thread:for-each-header thread
-	     (lambda (header)
-	       (let ((ls (news-group-buffer:header-mark buffer header)))
-		 (if ls
-		     (let ((nls (line-start ls 1 'LIMIT)))
-		       (if (mark< ls start) (move-mark-to! start ls))
-		       (if (mark> nls end) (move-mark-to! end nls)))))))
-	   (make-region start end)))))
+(define (update-subsequent-news-header-lines ls)
+  (let ((header (region-get ls 'NEWS-HEADER #f)))
+    (if header
+	(set-news-header:index! header (mark-index ls))))
+  (let ((ls (line-start ls 1 #f)))
+    (if ls
+	(update-subsequent-news-header-lines ls))))
 
 (define (insert-news-header-line header indentation subject mark)
   (insert-subject-line (news-header:status header)
@@ -1356,14 +1369,6 @@ This shows News groups that have been created since the last time that
 			      (re-match-start-index 1)
 			      (re-match-end-index 1)))
       (or (rfc822-first-address from) from)))
-
-(define (update-subsequent-news-header-lines ls)
-  (let ((header (region-get ls 'NEWS-HEADER #f)))
-    (if header
-	(set-news-header:index! header (mark-index ls))))
-  (let ((ls (line-start ls 1 #f)))
-    (if ls
-	(update-subsequent-news-header-lines ls))))
 
 (define (news-group-buffer:header-mark buffer header)
   (let ((index (news-header:index header)))
@@ -1765,7 +1770,7 @@ With prefix argument, moves down several threads."
 		  (partial-win t n)))))
 
       (define (next-loop-1 t n)
-	(next-loop t (if (news-thread:all-articles-seen? t) n (- n 1))))
+	(next-loop t (if (news-thread:all-articles-deleted? t) n (- n 1))))
 
       (define (prev-loop t n)
 	(if (= n 0)
@@ -1776,7 +1781,7 @@ With prefix argument, moves down several threads."
 		  (partial-win t n)))))
 
       (define (prev-loop-1 t n)
-	(prev-loop t (if (news-thread:all-articles-seen? t) n (+ n 1))))
+	(prev-loop t (if (news-thread:all-articles-deleted? t) n (+ n 1))))
 
       (define (win t)
 	(news-group-buffer:move-to-header
@@ -1901,9 +1906,9 @@ With prefix argument, unmarks the previous several articles."
 
 (define (name->article-marker name)
   (case name
-    ((SEEN) news-header:article-seen!)
+    ((SEEN) news-header:article-deleted!)
     ((MARKED) news-header:article-marked!)
-    ((UNSEEN) news-header:article-unseen!)
+    ((UNSEEN) news-header:article-not-deleted!)
     ((IGNORED) news-header:article-ignored!)
     (else (error "Unknown marker name:" name))))
 
@@ -2117,7 +2122,7 @@ This command has no effect if the variable
 		(let ((regions '()))
 		  (for-each
 		   (lambda (thread)
-		     (if (news-thread:all-articles-seen? thread)
+		     (if (news-thread:all-articles-deleted? thread)
 			 (let ((region
 				(news-thread-lines-region buffer thread)))
 			   (if region
@@ -2143,7 +2148,7 @@ This command has no effect if the variable
 		(buffer-put! buffer 'NEWS-THREADS
 			     (list->vector
 			      (list-transform-negative threads
-				news-thread:all-articles-seen?)))
+				news-thread:all-articles-deleted?)))
 		(if (and on-header?
 			 (not (region-get (current-point) 'NEWS-HEADER #f)))
 		    (let ((ls
@@ -2165,7 +2170,7 @@ This kills the current buffer."
 	      (lambda (thread)
 		(news-thread:for-each-real-header thread
 		  (lambda (header)
-		    (news-header:article-seen! header buffer))))))
+		    (news-header:article-deleted! header buffer))))))
 	  ((ref-command news-kill-current-buffer))))))
 
 (define-command news-group-quit
@@ -2215,12 +2220,12 @@ This kills the current buffer."
 	  (set-buffer-point! buffer (buffer-start buffer))
 	  (buffer-not-modified! buffer)
 	  (set-buffer-read-only! buffer)
-	  (news-header:article-seen! header group-buffer)
+	  (news-header:article-deleted! header group-buffer)
 	  (update-buffer-news-header-status group-buffer header)
 	  buffer)
 	(begin
 	  (kill-buffer buffer)
-	  (news-header:article-seen! header group-buffer)
+	  (news-header:article-deleted! header group-buffer)
 	  (update-buffer-news-header-status group-buffer header)
 	  #f))))
 
@@ -2961,6 +2966,9 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
 		    ((3)
 		     (set! convert-entry convert-groups-init-file-entry-type-3)
 		     validate-groups-init-file-entry-type-3)
+		    ((4)
+		     (set! convert-entry convert-groups-init-file-entry-type-4)
+		     validate-groups-init-file-entry-type-4)
 		    (else #f)))))))
        (map (convert-entry connection) entries)))))
 
@@ -2969,21 +2977,23 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
     (write-init-file
      (groups-init-file-pathname server)
      buffer
-     3
+     4
      (let loop ((groups (vector->list groups)) (entries '()))
        (if (null? groups)
 	   entries
 	   (loop (cdr groups)
 		 (let ((group (car groups)))
 		   (if (and (not (news-group:subscribed? group))
-			    (ranges-empty? (news-group:ranges-seen group))
-			    (ranges-empty? (news-group:ranges-marked group)))
+			    (ranges-empty? (news-group:ranges-deleted group))
+			    (ranges-empty? (news-group:ranges-marked group))
+			    (ranges-empty? (news-group:ranges-browsed group)))
 		       entries
 		       (cons (vector (news-group:name group)
 				     (news-group:subscribed? group)
 				     (news-group:server-info group)
-				     (news-group:ranges-seen group)
-				     (news-group:ranges-marked group))
+				     (news-group:ranges-deleted group)
+				     (news-group:ranges-marked group)
+				     (news-group:ranges-browsed group))
 			     entries)))))))))
 
 (define (groups-init-file-pathname server)
@@ -3000,7 +3010,8 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
        (for-all? (cddr entry) range?)))
 
 (define ((convert-groups-init-file-entry-type-1 connection) entry)
-  (make-news-group-1 connection (car entry) (cadr entry) #f (cddr entry) '()))
+  (make-news-group-1 connection (car entry) (cadr entry) #f (cddr entry)
+		     '() '()))
 
 (define (validate-groups-init-file-entry-type-2 entry)
   (and (list? entry)
@@ -3016,6 +3027,7 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
 		     (cadr entry)
 		     (caddr entry)
 		     (cdddr entry)
+		     '()
 		     '()))
 
 (define (validate-groups-init-file-entry-type-3 entry)
@@ -3033,7 +3045,27 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
 		     (vector-ref entry 1)
 		     (vector-ref entry 2)
 		     (vector-ref entry 3)
-		     (vector-ref entry 4)))
+		     (vector-ref entry 4)
+		     '()))
+
+(define (validate-groups-init-file-entry-type-4 entry)
+  (and (vector? entry)
+       (= (vector-length entry) 6)
+       (string? (vector-ref entry 0))
+       (boolean? (vector-ref entry 1))
+       (valid-group-server-info? (vector-ref entry 2))
+       (for-all? (vector-ref entry 3) range?)
+       (for-all? (vector-ref entry 4) range?)
+       (for-all? (vector-ref entry 5) range?)))
+
+(define ((convert-groups-init-file-entry-type-4 connection) entry)
+  (make-news-group-1 connection
+		     (vector-ref entry 0)
+		     (vector-ref entry 1)
+		     (vector-ref entry 2)
+		     (vector-ref entry 3)
+		     (vector-ref entry 4)
+		     (vector-ref entry 5)))
 
 (define (valid-group-server-info? server-info)
   (and (vector? server-info)
@@ -3142,16 +3174,17 @@ With prefix arg, replaces the groups list with the .newsrc entries."
 		      (let ((group (find-news-group connection name)))
 			(if group
 			    (begin
-			      (set-news-group:ranges-seen!
+			      (set-news-group:ranges-deleted!
 			       group
 			       (if replace?
 				   ranges
-				   (merge-ranges (news-group:ranges-seen group)
-						 ranges)))
-			      (news-group:guarantee-ranges-seen group)
+				   (merge-ranges
+				    (news-group:ranges-deleted group)
+				    ranges)))
+			      (news-group:guarantee-ranges-deleted group)
 			      group)
-			    (make-news-group-1 connection
-					       name #f #f ranges '())))))
+			    (make-news-group-1 connection name #f #f ranges
+					       '() '())))))
 		 (if subscribed?
 		     (subscribe-news-group buffer group)
 		     (unsubscribe-news-group buffer group)))))
@@ -3239,7 +3272,7 @@ With prefix arg, replaces the file with the list information."
 	 (lambda (mark)
 	   (insert-char (if (news-group:subscribed? group) #\: #\!) mark)
 	   (let ((ranges
-		  (let ((ranges (news-group:guarantee-ranges-seen group))
+		  (let ((ranges (news-group:guarantee-ranges-deleted group))
 			(first (news-group:first-article group)))
 		    (if (> first 1)
 			(canonicalize-ranges
@@ -3589,378 +3622,6 @@ With prefix arg, replaces the file with the list information."
 				   (set-car! node #f))))
 			   (map cdr (cdr node)))))))))))
 
-;;;; News-Group Extensions
-
-(define-structure (news-group-extra
-		   (type vector)
-		   (conc-name news-group-extra:)
-		   (constructor make-news-group-extra ()))
-  (subscribed? #f)
-  (ranges-seen '())
-  (index #f)
-  (ignored-subjects 'UNKNOWN)
-  (ranges-marked '()))
-
-(define (get-news-group-extra group write?)
-  (or (news-group:reader-hook group)
-      (let ((extra (make-news-group-extra)))
-	(if write? (set-news-group:reader-hook! group extra))
-	extra)))
-
-(define (news-group:subscribed? group)
-  (news-group-extra:subscribed? (get-news-group-extra group #f)))
-
-(define (set-news-group:subscribed?! group value)
-  (set-news-group-extra:subscribed?! (get-news-group-extra group #t) value))
-
-(define (news-group:ranges-seen group)
-  (news-group-extra:ranges-seen (get-news-group-extra group #f)))
-
-(define (set-news-group:ranges-seen! group value)
-  (set-news-group-extra:ranges-seen! (get-news-group-extra group #t) value))
-
-(define (news-group:index group)
-  (news-group-extra:index (get-news-group-extra group #f)))
-
-(define (set-news-group:index! group value)
-  (set-news-group-extra:index! (get-news-group-extra group #t) value))
-
-(define (news-group:ignored-subjects group)
-  (news-group-extra:ignored-subjects (get-news-group-extra group #f)))
-
-(define (set-news-group:ignored-subjects! group value)
-  (set-news-group-extra:ignored-subjects! (get-news-group-extra group #t)
-					  value))
-
-(define (news-group:ranges-marked group)
-  (news-group-extra:ranges-marked (get-news-group-extra group #f)))
-
-(define (set-news-group:ranges-marked! group value)
-  (set-news-group-extra:ranges-marked! (get-news-group-extra group #t) value))
-
-(define (make-news-group-1 connection name subscribed? server-info
-			   ranges-seen ranges-marked)
-  (let ((group (make-news-group connection name)))
-    (set-news-group:subscribed?! group subscribed?)
-    (set-news-group:server-info! group server-info)
-    (set-news-group:ranges-seen! group (canonicalize-ranges ranges-seen))
-    (set-news-group:ranges-marked! group (canonicalize-ranges ranges-marked))
-    group))
-
-(define (news-group:get-threads group argument buffer)
-  (let ((headers (news-group:get-headers group argument buffer))
-	(msg "Threading headers... "))
-    (message msg)
-    (let ((threads
-	   (organize-headers-into-threads
-	    headers
-	    (ref-variable news-group-show-context-headers buffer)
-	    #f
-	    (ref-variable news-split-threads-on-subject-changes buffer)
-	    (ref-variable news-join-threads-with-same-subject buffer))))
-      (message msg "done")
-      (list->vector
-       (if (or (command-argument-multiplier-only? argument)
-	       (ref-variable news-group-show-seen-headers buffer))
-	   threads
-	   (list-transform-negative threads
-	     news-thread:all-articles-seen?))))))
-
-(define (news-group:get-headers group argument buffer)
-  (let ((connection (news-group:connection group))
-	(all?
-	 (or (command-argument-multiplier-only? argument)
-	     (ref-variable news-group-show-seen-headers buffer)))
-	(limit
-	 (and argument
-	      (not (command-argument-multiplier-only? argument))
-	      (command-argument-value argument))))
-    (if (and (command-argument-multiplier-only? argument)
-	     (nntp-connection:closed? connection))
-	(nntp-connection:reopen connection))
-    (if (and (ref-variable news-refresh-group-when-selected
-			   (news-server-buffer buffer #f))
-	     (not (nntp-connection:closed? connection)))
-	(news-group:update-ranges! group))
-    (call-with-values
-	(lambda ()
-	  (split-list
-	   (news-group:headers
-	    group
-	    (if all?
-		(news-group:all-header-numbers group)
-		(let ((ns (news-group:unread-header-numbers group)))
-		  (if limit
-		      (let ((lns (length ns)))
-			(cond ((<= lns (abs limit)) ns)
-			      ((< limit 0) (list-head ns (- limit)))
-			      (else (list-tail ns (- (length ns) limit)))))
-		      ns)))
-	    (let ((table (news-group:get-ignored-subjects group #f)))
-	      (if table
-		  (let ((t (get-universal-time))
-			(show-ignored? (not all?)))
-		    (lambda (header)
-		      (and (news-header:ignore?! header table t)
-			   (begin
-			     (set-news-header:status! header #\I)
-			     (article-number-seen! group
-						   (news-header:number header))
-			     show-ignored?))))
-		  (lambda (header) header #f))))
-	   news-header?))
-      (lambda (headers invalid)
-	(for-each (lambda (entry)
-		    (if (not (eq? (car entry) 'UNREACHABLE-ARTICLE))
-			(article-number-seen! group (cdr entry))))
-		  invalid)
-	headers))))
-
-(define (news-group:get-unread-headers group buffer)
-  (news-group:update-ranges! group)
-  (news-group:pre-read-headers group (news-group:unread-header-numbers group))
-  (if (not (ref-variable news-group-show-seen-headers buffer))
-      ;; Read in the headers -- this finds the headers to be ignored
-      ;; and marks them as such.
-      (news-group:get-headers group #f buffer)))
-
-(define (article-number-seen! group number)
-  (set-news-group:ranges-seen!
-   group
-   (add-to-ranges! (news-group:guarantee-ranges-seen group) number)))
-
-(define (news-group:unread-header-numbers group)
-  (ranges->list
-   (complement-ranges (news-group:guarantee-ranges-seen group)
-		      (news-group:first-article group)
-		      (news-group:last-article group))))
-
-(define (news-group:all-header-numbers group)
-  (ranges->list
-   (complement-ranges '()
-		      (news-group:first-article group)
-		      (news-group:last-article group))))
-
-(define (news-group:update-ranges! group)
-  (let ((msg
-	 (string-append "Updating group info for "
-			(news-group:name group)
-			"... ")))
-    (message msg)
-    (news-group:update-server-info! group)
-    (message msg "done"))
-  (if (news-group:active? group)
-      (news-group:guarantee-ranges-seen group)))
-
-(define (news-group:purge-and-compact-headers! group buffer)
-  (let ((msg
-	 (string-append "Purging headers in " (news-group:name group) "... ")))
-    (message msg)
-    (news-group:purge-header-cache group 'ALL)
-    (news-group:purge-pre-read-headers group
-      (if (ref-variable news-group-keep-seen-headers buffer)
-	  (lambda (header)
-	    (let ((number (news-header:number header)))
-	      (or (< number (news-group:first-article group))
-		  (> number (news-group:last-article group))
-		  (and (not (ref-variable news-group-keep-ignored-headers
-					  buffer))
-		       (news-header:ignore? header)))))
-	  news-header:article-seen?))
-    (message msg "done")))
-
-(define (news-group:number-of-articles group)
-  (let ((estimate (news-group:estimated-n-articles group)))
-    (and estimate
-	 (if (news-group:reader-hook group)
-	     (let ((n-seen
-		    (count-ranges (news-group:guarantee-ranges-seen group))))
-	       (if (= n-seen 0)
-		   estimate
-		   (- (- (+ (news-group:last-article group) 1)
-			 (news-group:first-article group))
-		      n-seen)))
-	     estimate))))
-
-(define (news-group:guarantee-ranges-seen group)
-  (let ((ranges
-	 (clip-ranges! (news-group:ranges-seen group)
-		       (news-group:first-article group)
-		       (news-group:last-article group))))
-    (set-news-group:ranges-seen! group ranges)
-    ranges))
-
-(define (news-header:article-seen? header)
-  (member-of-ranges? (news-group:ranges-seen (news-header:group header))
-		     (news-header:number header)))
-
-(define (news-group:article-seen! group header buffer)
-  (news-group:article-unmarked! group header buffer)
-  (news-group:adjust-article-status!
-   group header buffer #t
-   (news-group:seen-article-updater add-to-ranges!)))
-
-(define (news-group:article-unseen! group header buffer)
-  (news-group:article-unmarked! group header buffer)
-  (news-group:adjust-article-status!
-   group header buffer #t
-   (news-group:seen-article-updater remove-from-ranges!)))
-
-(define ((news-group:seen-article-updater procedure) group number)
-  (set-news-group:ranges-seen! group
-			       (procedure (news-group:ranges-seen group)
-					  number)))
-
-(define (news-header:article-marked? header)
-  (member-of-ranges? (news-group:ranges-marked (news-header:group header))
-		     (news-header:number header)))
-
-(define (news-group:article-marked! group header buffer)
-  (news-group:article-unseen! group header buffer)
-  (news-group:adjust-article-status!
-   group header buffer #f
-   (news-group:marked-article-updater add-to-ranges!)))
-
-(define (news-group:article-unmarked! group header buffer)
-  (news-group:adjust-article-status!
-   group header buffer #f
-   (news-group:marked-article-updater remove-from-ranges!)))
-
-(define ((news-group:marked-article-updater procedure) group number)
-  (set-news-group:ranges-marked! group
-				 (procedure (news-group:ranges-marked group)
-					    number)))
-
-(define (news-group:adjust-article-status! group header buffer handle-xrefs?
-					   procedure)
-  (let ((do-it
-	 (lambda (group number)
-	   (procedure group number)
-	   (news-group:maybe-defer-update buffer group))))
-    (do-it group (news-header:number header))
-    (if handle-xrefs?
-	(news-group:process-cross-posts group header
-	  (lambda (group xref)
-	    (do-it group (token->number (cdr xref))))))))
-
-(define (defer-marking-updates buffer thunk)
-  (fluid-let ((news-group:adjust-article-status!:deferred-updates (list #t)))
-    (thunk)
-    (for-each (lambda (group) (update-news-groups-buffers buffer group))
-	      (cdr news-group:adjust-article-status!:deferred-updates))))
-
-(define (news-group:maybe-defer-update buffer group)
-  (let ((deferred-updates news-group:adjust-article-status!:deferred-updates))
-    (if deferred-updates
-	(if (not (memq group (cdr deferred-updates)))
-	    (set-cdr! deferred-updates (cons group (cdr deferred-updates))))
-	(update-news-groups-buffers buffer group))))
-
-(define news-group:adjust-article-status!:deferred-updates #f)
-
-(define (news-group:articles-marked? group)
-  (not (ranges-empty? (news-group:ranges-marked group))))
-
-(define (news-group:marked-headers group)
-  (map (lambda (number) (news-group:header group number))
-       (ranges->list (news-group:ranges-marked group))))
-
-(define (news-header:read-marked-body header buffer)
-  (news-header:guarantee-full-text! header)
-  (news-header:pre-read-body header)
-  (news-header:article-unseen! header buffer)
-  (let ((buffer
-	 (if (news-group-buffer? buffer)
-	     buffer
-	     (find-news-group-buffer buffer (news-header:group header)))))
-    (if buffer
-	(update-buffer-news-header-status buffer header))))
-
-(define (news-group:order t1 t2)
-  (cond ((news-group:< t1 t2) 'LESS)
-	((news-group:< t2 t1) 'GREATER)
-	(else 'EQUAL)))
-
-;;;; Ignored-Subjects Database
-
-(define (news-header:ignore?! header table t)
-  (let ((subject (canonicalize-subject (news-header:subject header))))
-    (and (not (fix:= 0 (string-length subject)))
-	 (hash-table/get table subject #f)
-	 (let ((group (news-header:group header)))
-	   (hash-table/put! table subject t)
-	   (news-group:ignored-subjects-modified! group)
-	   (news-group:process-cross-posts group header
-					   (ignore-subject-marker subject t))
-	   #t))))
-
-(define (news-header:ignore? header)
-  (let ((table
-	 (news-group:get-ignored-subjects (news-header:group header) #f)))
-    (and table
-	 (let ((subject (canonicalize-subject (news-header:subject header))))
-	   (and (not (fix:= 0 (string-length subject)))
-		(hash-table/get table subject #f))))))
-
-(define (news-group:article-ignored! group header buffer)
-  (let ((subject (canonicalize-subject (news-header:subject header))))
-    (if (not (fix:= 0 (string-length subject)))
-	(let ((process-group
-	       (ignore-subject-marker subject (get-universal-time))))
-	  (process-group group #f)
-	  (news-group:process-cross-posts group header process-group))))
-  (news-group:article-seen! group header buffer))
-
-(define ((ignore-subject-marker subject t) group xref)
-  xref
-  (hash-table/put! (news-group:get-ignored-subjects group #t) subject t)
-  (news-group:ignored-subjects-modified! group))
-
-(define (news-group:article-not-ignored! group header buffer)
-  buffer
-  (let ((subject (canonicalize-subject (news-header:subject header))))
-    (if (not (fix:= 0 (string-length subject)))
-	(let ((process-group
-	       (lambda (group xref)
-		 xref
-		 (let ((table (news-group:get-ignored-subjects group #f)))
-		   (if (and table (hash-table/get table subject #f))
-		       (begin
-			 (hash-table/remove! table subject)
-			 (news-group:ignored-subjects-modified! group)))))))
-	  (process-group group #f)
-	  (news-group:process-cross-posts group header process-group)))))
-
-(define (news-group:process-cross-posts group header process-group)
-  (for-each (let ((connection (news-group:connection group)))
-	      (lambda (xref)
-		(let ((group (find-news-group connection (car xref))))
-		  (if (and group (news-group:subscribed? group))
-		      (process-group group xref)))))
-	    (news-header:xref header)))
-
-(define (news-group:get-ignored-subjects group intern?)
-  (or (let ((table (news-group:ignored-subjects group)))
-	(if (eq? table 'UNKNOWN)
-	    (let ((table (read-ignored-subjects-file group)))
-	      (set-news-group:ignored-subjects! group (cons table #f))
-	      table)
-	    (car table)))
-      (and intern?
-	   (let ((table (make-string-hash-table)))
-	     (set-news-group:ignored-subjects! group (cons table #f))
-	     table))))
-
-(define-integrable (news-group:ignored-subjects-modified! group)
-  (set-cdr! (news-group:ignored-subjects group) #t))
-
-(define-integrable (news-group:ignored-subjects-not-modified! group)
-  (set-cdr! (news-group:ignored-subjects group) #f))
-
-(define (news-group:ignored-subjects-modified? group)
-  (and (pair? (news-group:ignored-subjects group))
-       (cdr (news-group:ignored-subjects group))))
-
 ;;;; Article Ranges
 
 (define (range? object)
@@ -4141,6 +3802,405 @@ With prefix arg, replaces the file with the list information."
 		  (procedure n))))
 	    ranges))
 
+;;;; News-Group Extensions
+
+(define-structure (news-group-extra
+		   (type vector)
+		   (conc-name news-group-extra:)
+		   (constructor make-news-group-extra ()))
+  (subscribed? #f)
+  (ranges-deleted '())
+  (index #f)
+  (ignored-subjects 'UNKNOWN)
+  (ranges-marked '())
+  (ranges-browsed '()))
+
+(define (get-news-group-extra group write?)
+  (or (news-group:reader-hook group)
+      (let ((extra (make-news-group-extra)))
+	(if write? (set-news-group:reader-hook! group extra))
+	extra)))
+
+(define (news-group:subscribed? group)
+  (news-group-extra:subscribed? (get-news-group-extra group #f)))
+
+(define (set-news-group:subscribed?! group value)
+  (set-news-group-extra:subscribed?! (get-news-group-extra group #t) value))
+
+(define (news-group:ranges-deleted group)
+  (news-group-extra:ranges-deleted (get-news-group-extra group #f)))
+
+(define (set-news-group:ranges-deleted! group value)
+  (set-news-group-extra:ranges-deleted! (get-news-group-extra group #t) value))
+
+(define (news-group:index group)
+  (news-group-extra:index (get-news-group-extra group #f)))
+
+(define (set-news-group:index! group value)
+  (set-news-group-extra:index! (get-news-group-extra group #t) value))
+
+(define (news-group:ignored-subjects group)
+  (news-group-extra:ignored-subjects (get-news-group-extra group #f)))
+
+(define (set-news-group:ignored-subjects! group value)
+  (set-news-group-extra:ignored-subjects! (get-news-group-extra group #t)
+					  value))
+
+(define (news-group:ranges-marked group)
+  (news-group-extra:ranges-marked (get-news-group-extra group #f)))
+
+(define (set-news-group:ranges-marked! group value)
+  (set-news-group-extra:ranges-marked! (get-news-group-extra group #t) value))
+
+(define (news-group:ranges-browsed group)
+  (news-group-extra:ranges-browsed (get-news-group-extra group #f)))
+
+(define (set-news-group:ranges-browsed! group value)
+  (set-news-group-extra:ranges-browsed! (get-news-group-extra group #t) value))
+
+(define (make-news-group-1 connection name subscribed? server-info
+			   ranges-deleted ranges-marked ranges-browsed)
+  (let ((group (make-news-group connection name)))
+    (set-news-group:subscribed?! group subscribed?)
+    (set-news-group:server-info! group server-info)
+    (set-news-group:ranges-deleted! group (canonicalize-ranges ranges-deleted))
+    (set-news-group:ranges-marked! group (canonicalize-ranges ranges-marked))
+    (set-news-group:ranges-browsed! group (canonicalize-ranges ranges-browsed))
+    group))
+
+(define (news-group:get-threads group argument buffer)
+  (let ((headers (news-group:get-headers group argument buffer))
+	(msg "Threading headers... "))
+    (message msg)
+    (let ((threads
+	   (organize-headers-into-threads
+	    headers
+	    (ref-variable news-group-show-context-headers buffer)
+	    #f
+	    (ref-variable news-split-threads-on-subject-changes buffer)
+	    (ref-variable news-join-threads-with-same-subject buffer))))
+      (message msg "done")
+      (list->vector
+       (if (or (command-argument-multiplier-only? argument)
+	       (ref-variable news-group-show-seen-headers buffer))
+	   threads
+	   (list-transform-negative threads
+	     news-thread:all-articles-deleted?))))))
+
+(define (news-group:get-headers group argument buffer)
+  (let ((connection (news-group:connection group))
+	(all?
+	 (or (command-argument-multiplier-only? argument)
+	     (ref-variable news-group-show-seen-headers buffer)))
+	(limit
+	 (and argument
+	      (not (command-argument-multiplier-only? argument))
+	      (command-argument-value argument))))
+    (if (and (command-argument-multiplier-only? argument)
+	     (nntp-connection:closed? connection))
+	(nntp-connection:reopen connection))
+    (if (and (ref-variable news-refresh-group-when-selected
+			   (news-server-buffer buffer #f))
+	     (not (nntp-connection:closed? connection)))
+	(news-group:update-ranges! group))
+    (call-with-values
+	(lambda ()
+	  (split-list
+	   (news-group:headers
+	    group
+	    (if all?
+		(news-group:all-header-numbers group)
+		(let ((ns (news-group:unread-header-numbers group)))
+		  (if limit
+		      (let ((lns (length ns)))
+			(cond ((<= lns (abs limit)) ns)
+			      ((< limit 0) (list-head ns (- limit)))
+			      (else (list-tail ns (- (length ns) limit)))))
+		      ns)))
+	    (let ((table (news-group:get-ignored-subjects group #f)))
+	      (if table
+		  (let ((t (get-universal-time))
+			(show-ignored? (not all?)))
+		    (lambda (header)
+		      (and (news-header:ignore?! header table t)
+			   (begin
+			     (set-news-header:status! header #\I)
+			     (article-number-seen! group
+						   (news-header:number header))
+			     show-ignored?))))
+		  (lambda (header) header #f))))
+	   news-header?))
+      (lambda (headers invalid)
+	(for-each (lambda (entry)
+		    (if (not (eq? (car entry) 'UNREACHABLE-ARTICLE))
+			(article-number-seen! group (cdr entry))))
+		  invalid)
+	headers))))
+
+(define (news-group:get-unread-headers group buffer)
+  (news-group:update-ranges! group)
+  (news-group:pre-read-headers group (news-group:unread-header-numbers group))
+  (if (not (ref-variable news-group-show-seen-headers buffer))
+      ;; Read in the headers -- this finds the headers to be ignored
+      ;; and marks them as such.
+      (news-group:get-headers group #f buffer)))
+
+(define (article-number-seen! group number)
+  (set-news-group:ranges-deleted!
+   group
+   (add-to-ranges! (news-group:guarantee-ranges-deleted group) number)))
+
+(define (news-group:unread-header-numbers group)
+  (ranges->list
+   (complement-ranges (news-group:guarantee-ranges-deleted group)
+		      (news-group:first-article group)
+		      (news-group:last-article group))))
+
+(define (news-group:all-header-numbers group)
+  (ranges->list
+   (complement-ranges '()
+		      (news-group:first-article group)
+		      (news-group:last-article group))))
+
+(define (news-group:update-ranges! group)
+  (let ((msg
+	 (string-append "Updating group info for "
+			(news-group:name group)
+			"... ")))
+    (message msg)
+    (news-group:update-server-info! group)
+    (message msg "done"))
+  (if (news-group:active? group)
+      (news-group:guarantee-ranges-deleted group)))
+
+(define (news-group:purge-and-compact-headers! group buffer)
+  (let ((msg
+	 (string-append "Purging headers in " (news-group:name group) "... ")))
+    (message msg)
+    (news-group:purge-header-cache group 'ALL)
+    (news-group:purge-pre-read-headers group
+      (if (ref-variable news-group-keep-seen-headers buffer)
+	  (lambda (header)
+	    (let ((number (news-header:number header)))
+	      (or (< number (news-group:first-article group))
+		  (> number (news-group:last-article group))
+		  (and (not (ref-variable news-group-keep-ignored-headers
+					  buffer))
+		       (news-header:ignore? header)))))
+	  news-header:article-deleted?))
+    (message msg "done")))
+
+(define (news-group:number-of-articles group)
+  (let ((estimate (news-group:estimated-n-articles group)))
+    (and estimate
+	 (if (news-group:reader-hook group)
+	     (let ((n-seen
+		    (count-ranges
+		     (news-group:guarantee-ranges-deleted group))))
+	       (if (= n-seen 0)
+		   estimate
+		   (- (- (+ (news-group:last-article group) 1)
+			 (news-group:first-article group))
+		      n-seen)))
+	     estimate))))
+
+(define (news-group:guarantee-ranges-deleted group)
+  (let ((ranges
+	 (clip-ranges! (news-group:ranges-deleted group)
+		       (news-group:first-article group)
+		       (news-group:last-article group))))
+    (set-news-group:ranges-deleted! group ranges)
+    ranges))
+
+(define ((range-predicate group-ranges) header)
+  (member-of-ranges? (group-ranges (news-header:group header))
+		     (news-header:number header)))
+
+(define news-header:article-deleted?
+  (range-predicate news-group:ranges-deleted))
+
+(define news-header:article-marked?
+  (range-predicate news-group:ranges-marked))
+
+(define (news-group:article-browsed? group number)
+  (member-of-ranges? (news-group:ranges-browsed group) number))
+
+(define (ranges-marker group-ranges set-group-ranges! handle-xrefs? procedure)
+  (news-group:adjust-article-status! handle-xrefs?
+    (lambda (group number)
+      (set-group-ranges! group (procedure (group-ranges group) number)))))
+
+(define (ranges-deleted-marker procedure)
+  (let ((marker
+	 (ranges-marker news-group:ranges-deleted
+			set-news-group:ranges-deleted!
+			#t
+			procedure)))
+    (lambda (header buffer)
+      (news-group:article-unmarked! header buffer)
+      (marker header buffer))))
+
+(define news-group:article-deleted!
+  (ranges-deleted-marker add-to-ranges!))
+
+(define news-group:article-not-deleted!
+  (ranges-deleted-marker remove-from-ranges!))
+
+(define news-group:article-marked!
+  (let ((marker
+	 (ranges-marker news-group:ranges-marked
+			set-news-group:ranges-marked!
+			#t
+			add-to-ranges!)))
+    (lambda (header buffer)
+      (news-group:article-not-deleted! header buffer)
+      (marker header buffer))))
+
+(define news-group:article-unmarked!
+  (ranges-marker news-group:ranges-marked
+		 set-news-group:ranges-marked!
+		 #t
+		 remove-from-ranges!))
+
+(define news-group:article-browsed!
+  (ranges-marker news-group:ranges-browsed
+		 set-news-group:ranges-browsed!
+		 #f
+		 add-to-ranges!))
+
+(define ((news-group:adjust-article-status! handle-xrefs? procedure)
+	 header buffer)
+  (let ((do-it
+	 (lambda (group number)
+	   (procedure group number)
+	   (news-group:maybe-defer-update buffer group))))
+    (do-it (news-header:group header) (news-header:number header))
+    (if handle-xrefs?
+	(news-group:process-cross-posts header do-it))))
+
+(define (news-group:process-cross-posts header process-header)
+  (for-each (let ((connection
+		   (news-group:connection (news-header:group header))))
+	      (lambda (xref)
+		(let ((group (find-news-group connection (car xref))))
+		  (if (and group (news-group:subscribed? group))
+		      (let ((number (token->number (cdr xref))))
+			(if (not (news-group:article-browsed? group number))
+			    (process-header group number)))))))
+	    (news-header:xref header)))
+
+(define (defer-marking-updates buffer thunk)
+  (fluid-let ((news-group:adjust-article-status!:deferred-updates (list #t)))
+    (thunk)
+    (for-each (lambda (group) (update-news-groups-buffers buffer group))
+	      (cdr news-group:adjust-article-status!:deferred-updates))))
+
+(define (news-group:maybe-defer-update buffer group)
+  (let ((deferred-updates news-group:adjust-article-status!:deferred-updates))
+    (if deferred-updates
+	(if (not (memq group (cdr deferred-updates)))
+	    (set-cdr! deferred-updates (cons group (cdr deferred-updates))))
+	(update-news-groups-buffers buffer group))))
+
+(define news-group:adjust-article-status!:deferred-updates #f)
+
+(define (news-group:articles-marked? group)
+  (not (ranges-empty? (news-group:ranges-marked group))))
+
+(define (news-group:marked-headers group)
+  (map (lambda (number) (news-group:header group number))
+       (ranges->list (news-group:ranges-marked group))))
+
+(define (news-header:read-marked-body header buffer)
+  (news-header:guarantee-full-text! header)
+  (news-header:pre-read-body header)
+  (news-header:article-not-deleted! header buffer)
+  (let ((buffer
+	 (if (news-group-buffer? buffer)
+	     buffer
+	     (find-news-group-buffer buffer (news-header:group header)))))
+    (if buffer
+	(update-buffer-news-header-status buffer header))))
+
+(define (news-group:order t1 t2)
+  (cond ((news-group:< t1 t2) 'LESS)
+	((news-group:< t2 t1) 'GREATER)
+	(else 'EQUAL)))
+
+;;;; Ignored-Subjects Database
+
+(define (news-header:ignore?! header table t)
+  (let ((subject (canonicalize-subject (news-header:subject header))))
+    (and (not (fix:= 0 (string-length subject)))
+	 (hash-table/get table subject #f)
+	 (let ((group (news-header:group header)))
+	   (hash-table/put! table subject t)
+	   (news-group:ignored-subjects-modified! group)
+	   (news-group:process-cross-posts header
+					   (ignore-subject-marker subject t))
+	   #t))))
+
+(define (news-header:ignore? header)
+  (let ((table
+	 (news-group:get-ignored-subjects (news-header:group header) #f)))
+    (and table
+	 (let ((subject (canonicalize-subject (news-header:subject header))))
+	   (and (not (fix:= 0 (string-length subject)))
+		(hash-table/get table subject #f))))))
+
+(define (news-group:article-ignored! header buffer)
+  (let ((subject (canonicalize-subject (news-header:subject header))))
+    (if (not (fix:= 0 (string-length subject)))
+	(let ((process-header
+	       (ignore-subject-marker subject (get-universal-time))))
+	  (process-header (news-header:group header)
+			  (news-header:number header))
+	  (news-group:process-cross-posts header process-header))))
+  (news-group:article-deleted! header buffer))
+
+(define ((ignore-subject-marker subject t) group number)
+  number
+  (hash-table/put! (news-group:get-ignored-subjects group #t) subject t)
+  (news-group:ignored-subjects-modified! group))
+
+(define (news-group:article-not-ignored! header buffer)
+  buffer
+  (let ((subject (canonicalize-subject (news-header:subject header))))
+    (if (not (fix:= 0 (string-length subject)))
+	(let ((process-header
+	       (lambda (group number)
+		 number
+		 (let ((table (news-group:get-ignored-subjects group #f)))
+		   (if (and table (hash-table/get table subject #f))
+		       (begin
+			 (hash-table/remove! table subject)
+			 (news-group:ignored-subjects-modified! group)))))))
+	  (process-header (news-header:group header)
+			  (news-header:number header))
+	  (news-group:process-cross-posts header process-header)))))
+
+(define (news-group:get-ignored-subjects group intern?)
+  (or (let ((table (news-group:ignored-subjects group)))
+	(if (eq? table 'UNKNOWN)
+	    (let ((table (read-ignored-subjects-file group)))
+	      (set-news-group:ignored-subjects! group (cons table #f))
+	      table)
+	    (car table)))
+      (and intern?
+	   (let ((table (make-string-hash-table)))
+	     (set-news-group:ignored-subjects! group (cons table #f))
+	     table))))
+
+(define-integrable (news-group:ignored-subjects-modified! group)
+  (set-cdr! (news-group:ignored-subjects group) #t))
+
+(define-integrable (news-group:ignored-subjects-not-modified! group)
+  (set-cdr! (news-group:ignored-subjects group) #f))
+
+(define (news-group:ignored-subjects-modified? group)
+  (and (pair? (news-group:ignored-subjects group))
+       (cdr (news-group:ignored-subjects group))))
+
 ;;;; News-Header Extensions
 
 (define-structure (news-header-extra
@@ -4163,11 +4223,11 @@ With prefix arg, replaces the file with the list information."
 	       (not number))
 	   #\D)
 	  ((news-header:ignore? header)
-	   (set-news-group:ranges-seen!
+	   (set-news-group:ranges-deleted!
 	    group
-	    (add-to-ranges! (news-group:ranges-seen group) number))
+	    (add-to-ranges! (news-group:ranges-deleted group) number))
 	   #\I)
-	  ((news-header:article-seen? header) #\D)
+	  ((news-header:article-deleted? header) #\D)
 	  ((news-header:article-marked? header) #\M)
 	  (else #\space))))
 
@@ -4183,33 +4243,35 @@ With prefix arg, replaces the file with the list information."
 (define (set-news-header:index! header value)
   (set-news-header-extra:index! (get-news-header-extra header #t) value))
 
-(define (news-header:article-seen! header buffer)
+(define (news-header:article-deleted! header buffer)
   (if (not (eqv? (news-header:status header) #\I))
       (set-news-header:status! header #\D))
-  (news-group:article-seen! (news-header:group header) header buffer))
+  (news-group:article-deleted! header buffer))
 
-(define (news-header:article-unseen! header buffer)
+(define (news-header:article-not-deleted! header buffer)
   (set-news-header:status! header #\space)
-  (news-group:article-unseen! (news-header:group header) header buffer))
+  (news-group:article-not-deleted! header buffer))
 
 (define (news-header:article-marked! header buffer)
   (if (not (news-header:pre-read-body? header))
       (begin
 	(set-news-header:status! header #\M)
-	(news-group:article-marked! (news-header:group header)
-				    header buffer))))
+	(news-group:article-marked! header buffer))))
+
+(define (news-header:article-browsed! header buffer)
+  (news-group:article-browsed! header buffer))
 
 (define (news-header:article-ignored! header buffer)
   (set-news-header:status! header #\I)
-  (news-group:article-ignored! (news-header:group header) header buffer))
+  (news-group:article-ignored! header buffer))
 
 (define (news-header:article-not-ignored! header buffer)
   (set-news-header:status! header #\space)
-  (news-group:article-not-ignored! (news-header:group header) header buffer))
+  (news-group:article-not-ignored! header buffer))
 
 (define (news-header:unread? header)
   (and (news-header:real? header)
-       (not (news-header:article-seen? header))))
+       (not (news-header:article-deleted? header))))
 
 (define (news-header:next-in-thread header)
   (let scan-down ((header header))
@@ -4318,10 +4380,10 @@ With prefix arg, replaces the file with the list information."
 	    bodies
 	    (loop header bodies))))))
 
-(define (news-thread:all-articles-seen? thread)
+(define (news-thread:all-articles-deleted? thread)
   (let loop ((header (news-thread:first-header thread news-header:real?)))
     (or (not header)
-	(and (news-header:article-seen? header)
+	(and (news-header:article-deleted? header)
 	     (loop (news-thread:next-header header news-header:real?))))))
 
 (define (news-thread:show-collapsed? thread)
