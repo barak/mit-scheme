@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: compile.scm,v 1.3 2001/10/01 05:20:36 cph Exp $
+;;; $Id: compile.scm,v 1.4 2001/11/11 06:00:08 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -25,10 +25,8 @@
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
     (for-each compile-file
-	      '("buffer"
-		"matcher"
+	      '("matcher"
 		"parser"
 		"shared"
-		"synchk"
-		"unicode"))
+		"synchk"))
     (cref/generate-constructors "parser")))

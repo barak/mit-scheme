@@ -1,6 +1,6 @@
 #| -*- Scheme -*-
 
-$Id: ed-ffi.scm,v 1.29 2001/11/11 05:52:30 cph Exp $
+$Id: ed-ffi.scm,v 1.30 2001/11/11 05:58:39 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -285,6 +285,8 @@ USA.
     ("uenvir"	(runtime environment)
 		syntax-table/system-internal)
     ("uerror"	(runtime microcode-errors)
+		syntax-table/system-internal)
+    ("unicode"	(runtime unicode)
 		syntax-table/system-internal)
     ("unpars"	(runtime unparser)
 		syntax-table/system-internal)

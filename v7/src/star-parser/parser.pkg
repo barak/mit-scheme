@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.pkg,v 1.14 2001/10/04 16:51:20 cph Exp $
+;;; $Id: parser.pkg,v 1.15 2001/11/11 05:59:19 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -23,47 +23,6 @@
 
 (global-definitions "../runtime/runtime")
 
-(define-package (runtime *parser buffer)
-  (files "buffer")
-  (parent ())
-  (export ()
-	  discard-parser-buffer-head!
-	  get-parser-buffer-pointer
-	  get-parser-buffer-tail
-	  input-port->parser-buffer
-	  match-parser-buffer-char
-	  match-parser-buffer-char-ci
-	  match-parser-buffer-char-ci-no-advance
-	  match-parser-buffer-char-in-set
-	  match-parser-buffer-char-in-set-no-advance
-	  match-parser-buffer-char-no-advance
-	  match-parser-buffer-not-char
-	  match-parser-buffer-not-char-ci
-	  match-parser-buffer-not-char-ci-no-advance
-	  match-parser-buffer-not-char-no-advance
-	  match-parser-buffer-string
-	  match-parser-buffer-string-ci
-	  match-parser-buffer-string-ci-no-advance
-	  match-parser-buffer-string-no-advance
-	  match-parser-buffer-substring
-	  match-parser-buffer-substring-ci
-	  match-parser-buffer-substring-ci-no-advance
-	  match-parser-buffer-substring-no-advance
-	  match-utf8-char-in-alphabet
-	  parser-buffer-line
-	  parser-buffer-pointer-index
-	  parser-buffer-pointer-line
-	  parser-buffer-pointer?
-	  parser-buffer-position-string
-	  parser-buffer-ref
-	  parser-buffer?
-	  peek-parser-buffer-char
-	  read-parser-buffer-char
-	  set-parser-buffer-pointer!
-	  source->parser-buffer
-	  string->parser-buffer
-	  substring->parser-buffer))
-
 (define-package (runtime *parser)
   (files "synchk" "shared" "matcher" "parser")
   (parent ())
@@ -76,27 +35,3 @@
 	  parser-macros?
 	  set-current-parser-macros!
 	  with-current-parser-macros))
-
-(define-package (runtime unicode)
-  (files "unicode")
-  (parent ())
-  (export ()
-	  8-bit-alphabet?
-	  alphabet+
-	  alphabet-
-	  alphabet->char-set
-	  alphabet->code-points
-	  alphabet->string
-	  alphabet?
-	  char-in-alphabet?
-	  char-set->alphabet
-	  code-point->utf8-string
-	  code-point-in-alphabet?
-	  code-points->alphabet
-	  read-utf8-code-point
-	  read-utf8-code-point-from-source
-	  string->alphabet
-	  unicode-code-point?
-	  utf8-string->code-point
-	  well-formed-code-points-list?
-	  write-utf8-code-point))

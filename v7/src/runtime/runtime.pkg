@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.382 2001/11/11 05:51:51 cph Exp $
+$Id: runtime.pkg,v 14.383 2001/11/11 05:58:56 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -3799,3 +3799,27 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  source->parser-buffer
 	  string->parser-buffer
 	  substring->parser-buffer))
+
+(define-package (runtime unicode)
+  (files "unicode")
+  (parent ())
+  (export ()
+	  8-bit-alphabet?
+	  alphabet+
+	  alphabet-
+	  alphabet->char-set
+	  alphabet->code-points
+	  alphabet->string
+	  alphabet?
+	  char-in-alphabet?
+	  char-set->alphabet
+	  code-point->utf8-string
+	  code-point-in-alphabet?
+	  code-points->alphabet
+	  read-utf8-code-point
+	  read-utf8-code-point-from-source
+	  string->alphabet
+	  unicode-code-point?
+	  utf8-string->code-point
+	  well-formed-code-points-list?
+	  write-utf8-code-point))
