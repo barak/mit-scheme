@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.9 2000/02/07 22:31:56 cph Exp $
+;;; $Id: imail-umail.scm,v 1.10 2000/04/06 03:25:27 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -38,7 +38,7 @@
 ;;;; Server operations
 
 (define-method %open-folder ((url <umail-url>))
-  (read-umail-file (file-url-pathname url) #f))
+  (read-umail-file (file-url-pathname url)))
 
 (define-method %new-folder ((url <umail-url>))
   (let ((folder (make-umail-folder url)))
@@ -50,7 +50,7 @@
 (define-class (<umail-folder> (constructor (url))) (<file-folder>))
 
 (define-method %write-folder ((folder <folder>) (url <umail-url>))
-  (write-umail-file folder (file-url-pathname url) #f)
+  (write-umail-file folder (file-url-pathname url))
   (if (eq? url (folder-url folder))
       (update-file-folder-modification-time! folder)))
 
@@ -60,43 +60,39 @@
 
 ;;;; Read unix mail file
 
-(define (read-umail-file pathname import?)
-  (call-with-binary-input-file pathname
-    (lambda (port)
-      (read-umail-folder (make-umail-url pathname) port import?))))
-
-(define (read-umail-folder url port import?)
-  (let ((folder (make-umail-folder url)))
+(define (read-umail-file pathname)
+  (let ((folder (make-umail-folder (make-umail-url pathname))))
     (%revert-folder folder)
     folder))
 
 (define-method %revert-folder ((folder <umail-folder>))
   (set-file-folder-messages!
    folder
-   (let ((from-line (read-line port)))
-     (if (eof-object? from-line)
-	 '()
-	 (begin
-	   (if (not (umail-delimiter? from-line))
-	       (error "Malformed unix mail file:" port))
-	   (let loop ((from-line from-line) (messages '()))
-	     (call-with-values
-		 (lambda () (read-umail-message from-line port import?))
-	       (lambda (message from-line)
-		 (let ((messages (cons message messages)))
-		   (if from-line
-		       (loop from-line messages)
-		       (reverse! messages))))))))))
-    (update-file-folder-modification-time! folder))
+   (call-with-binary-input-file pathname
+     (lambda (port)
+       (let ((from-line (read-line port)))
+	 (if (eof-object? from-line)
+	     '()
+	     (begin
+	       (if (not (umail-delimiter? from-line))
+		   (error "Malformed unix mail file:" port))
+	       (let loop ((from-line from-line) (messages '()))
+		 (call-with-values
+		     (lambda () (read-umail-message from-line port))
+		   (lambda (message from-line)
+		     (let ((messages (cons message messages)))
+		       (if from-line
+			   (loop from-line messages)
+			   (reverse! messages))))))))))))
+  (update-file-folder-modification-time! folder))
 
-(define (read-umail-message from-line port import?)
+(define (read-umail-message from-line port)
   (let read-headers ((header-lines '()))
     (let ((line (read-line port)))
       (cond ((eof-object? line)
 	     (values (make-umail-message from-line
 					 (reverse! header-lines)
-					 '()
-					 import?)
+					 '())
 		     #f))
 	    ((string-null? line)
 	     (let read-body ((body-lines '()))
@@ -104,25 +100,22 @@
 		 (cond ((eof-object? line)
 			(values (make-umail-message from-line
 						    (reverse! header-lines)
-						    (reverse! body-lines)
-						    import?)
+						    (reverse! body-lines))
 				#f))
 		       ((umail-delimiter? line)
 			(values (make-umail-message from-line
 						    (reverse! header-lines)
-						    (reverse! body-lines)
-						    import?)
+						    (reverse! body-lines))
 				line))
 		       (else
 			(read-body (cons line body-lines)))))))
 	    (else
 	     (read-headers (cons line header-lines)))))))
 
-(define (make-umail-message from-line header-lines body-lines import?)
+(define (make-umail-message from-line header-lines body-lines)
   (let ((message
 	 (make-detached-message
-	  (maybe-strip-imail-headers import?
-				     (lines->header-fields header-lines))
+	  (lines->header-fields header-lines)
 	  (lines->string (map (lambda (line)
 				(if (string-prefix-ci? ">From " line)
 				    (string-tail line 1)
@@ -136,17 +129,14 @@
 
 ;;;; Write unix mail file
 
-(define (write-umail-file folder pathname export?)
+(define (write-umail-file folder pathname)
   ;; **** Do backup of file here.
   (call-with-binary-output-file pathname
     (lambda (port)
-      (write-umail-folder folder port export?))))
+      (for-each (lambda (message) (write-umail-message message port))
+		(file-folder-messages folder)))))
 
-(define (write-umail-folder folder port export?)
-  (for-each (lambda (message) (write-umail-message message port export?))
-	    (file-folder-messages folder)))
-
-(define (write-umail-message message port export?)
+(define (write-umail-message message port)
   (let ((from-line (get-message-property message "umail-from-line" #f)))
     (if from-line
 	(write-string from-line port)
@@ -163,17 +153,15 @@
 	  (write-string (universal-time->unix-ctime (get-universal-time))
 			port))))
   (newline port)
-  (if (not export?)
-      (begin
-	(write-header-field
-	 (message-flags->header-field (message-flags message))
-	 port)
-	(for-each (lambda (n.v)
-		    (if (not (string-ci=? "umail-from-line" (car n.v)))
-			(write-header-field
-			 (message-property->header-field (car n.v) (cdr n.v))
-			 port)))
-		  (message-properties message))))
+  (write-header-field
+   (message-flags->header-field (message-flags message))
+   port)
+  (for-each (lambda (n.v)
+	      (if (not (string-ci=? "umail-from-line" (car n.v)))
+		  (write-header-field
+		   (message-property->header-field (car n.v) (cdr n.v))
+		   port)))
+	    (message-properties message))
   (write-header-fields (header-fields message) port)
   (newline port)
   (for-each (lambda (line)
