@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/primutl.c,v 9.56 1992/05/28 19:03:07 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/primutl.c,v 9.57 1992/07/23 12:48:42 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -122,9 +122,7 @@ DEFUN (primitive_name_to_code, (name, table, size),
     while (*s1++ == *s2)
     {
       if (*s2++ == '\0')
-      {
 	return ((long) i);
-      }
     }
   }
   return ((long) (-1));
@@ -149,29 +147,22 @@ DEFUN (primitive_name_to_code, (name, table, size),
   while(low < high)
   {
     middle = ((low + high) / 2);
-    result = strcmp_ci (name, table[middle]);
+    result = (strcmp_ci (name, table[middle]));
     if (result < 0)
-    {
       high = (middle - 1);
-    }
     else if (result > 0)
-    {
       low = (middle + 1);
-    }
     else
-    {
       return ((long) middle);
-    }
   }
 
   /* This takes care of the fact that division rounds down.
      If division were to round up, we would have to use high.
    */
 
-  if (strcmp_ci(name, table[low]) == 0)
-  {
+  if (strcmp_ci (name, table[low]) == 0)
     return ((long) low);
-  }
+
   return ((long) -1);
 }
 
@@ -181,9 +172,7 @@ long
 DEFUN (primitive_code_to_arity, (number), long number)
 {
   if (number <= MAX_PRIMITIVE)
-  {
     return ((long) Primitive_Arity_Table[number]);
-  }
   else
   {
     SCHEME_OBJECT entry;
@@ -191,13 +180,10 @@ DEFUN (primitive_code_to_arity, (number), long number)
 
     entry = VECTOR_REF (Undefined_Primitives_Arity, (number - MAX_PRIMITIVE));
     if (entry == SHARP_F)
-    {
       return ((long) UNKNOWN_PRIMITIVE_ARITY);
-    }
     else
-    {
       arity = FIXNUM_TO_LONG (entry);
-    }
+
     return (arity);
   }
 }
@@ -213,20 +199,22 @@ DEFUN (primitive_code_to_documentation, (number), long number)
 
 /* Externally visible utilities */
 
-extern SCHEME_OBJECT EXFUN (make_primitive, (char *));
+extern SCHEME_OBJECT EXFUN (make_primitive, (unsigned char *));
+
 extern SCHEME_OBJECT EXFUN
   (find_primitive, (SCHEME_OBJECT, Boolean, Boolean, int));
+
 extern SCHEME_OBJECT
 EXFUN (search_for_primitive,
-       (SCHEME_OBJECT scheme_name AND char * c_name
-        AND Boolean intern_p AND Boolean allow_p AND int arity));
+       (SCHEME_OBJECT scheme_name, unsigned char * c_name,
+	Boolean intern_p, Boolean allow_p, int arity));
 
 SCHEME_OBJECT
-DEFUN (make_primitive, (name), char * name)
+DEFUN (make_primitive, (name), unsigned char * name)
 {
 
-  return (search_for_primitive(SHARP_F, name, true, true,
-			       UNKNOWN_PRIMITIVE_ARITY));
+  return (search_for_primitive (SHARP_F, name, true, true,
+				UNKNOWN_PRIMITIVE_ARITY));
 }
 
 SCHEME_OBJECT
@@ -236,8 +224,8 @@ DEFUN (find_primitive, (name, intern_p, allow_p, arity),
        AND int arity)
 {
 
-  return (search_for_primitive(name, (STRING_LOC (name, 0)),
-			       intern_p, allow_p, arity));
+  return (search_for_primitive (name, (STRING_LOC (name, 0)),
+				intern_p, allow_p, arity));
 }
 
 extern long EXFUN (primitive_to_arity, (SCHEME_OBJECT));
@@ -245,7 +233,7 @@ extern long EXFUN (primitive_to_arity, (SCHEME_OBJECT));
 long
 DEFUN (primitive_to_arity, (primitive), SCHEME_OBJECT primitive)
 {
-  return (primitive_code_to_arity(PRIMITIVE_NUMBER(primitive)));
+  return (primitive_code_to_arity (PRIMITIVE_NUMBER (primitive)));
 }
 
 extern char * EXFUN (primitive_to_documentation, (SCHEME_OBJECT));
@@ -268,12 +256,11 @@ DEFUN (primitive_to_arguments, (primitive), SCHEME_OBJECT primitive)
 {
   long arity;
 
-  arity = primitive_code_to_arity(PRIMITIVE_NUMBER(primitive));
+  arity = (primitive_code_to_arity (PRIMITIVE_NUMBER (primitive)));
 
   if (arity == ((long) LEXPR_PRIMITIVE_ARITY))
-  {
     arity = ((long) Regs[REGBLOCK_LEXPR_ACTUALS]);
-  }
+
   return (arity);
 }
 
@@ -309,7 +296,7 @@ extern char *EXFUN (primitive_to_name, (SCHEME_OBJECT));
 char *
 DEFUN (primitive_to_name, (primitive), SCHEME_OBJECT primitive)
 {
-  return (primitive_code_to_name(PRIMITIVE_NUMBER(primitive)));
+  return (primitive_code_to_name (PRIMITIVE_NUMBER (primitive)));
 }
 
 /* this avoids some consing. */
@@ -340,26 +327,26 @@ DEFUN (primitive_name, (code), int code)
 SCHEME_OBJECT
 DEFUN (search_for_primitive,
        (scheme_name, c_name, intern_p, allow_p, arity),
-       SCHEME_OBJECT scheme_name AND char * c_name
+       SCHEME_OBJECT scheme_name AND unsigned char * c_name
        AND Boolean intern_p AND Boolean allow_p
        AND int arity)
 {
   long i, Max, old_arity;
   SCHEME_OBJECT *Next;
 
-  i = primitive_name_to_code(c_name,
-			     &Primitive_Name_Table[0],
-			     MAX_PRIMITIVE);
+  i = (primitive_name_to_code (((char *) c_name),
+			       &Primitive_Name_Table[0],
+			       MAX_PRIMITIVE));
   if (i != -1)
   {
     old_arity = Primitive_Arity_Table[i];
     if ((arity == UNKNOWN_PRIMITIVE_ARITY) || (arity == old_arity))
     {
-      return (MAKE_PRIMITIVE_OBJECT(0, i));
+      return (MAKE_PRIMITIVE_OBJECT (0, i));
     }
     else
     {
-      return (LONG_TO_FIXNUM(old_arity));
+      return (LONG_TO_FIXNUM (old_arity));
     }
   }
   /* Search the undefined primitives table if allowed. */
@@ -371,7 +358,7 @@ DEFUN (search_for_primitive,
 
   /* The vector should be sorted for faster comparison. */
 
-  Max = NUMBER_OF_UNDEFINED_PRIMITIVES();
+  Max = (NUMBER_OF_UNDEFINED_PRIMITIVES ());
   if (Max > 0)
   {
     Next = MEMORY_LOC (Undefined_Primitives, 2);
@@ -381,7 +368,8 @@ DEFUN (search_for_primitive,
       SCHEME_OBJECT temp;
 
       temp = *Next++;
-      if (strcmp_ci (c_name, ((char *) (STRING_LOC (temp, 0)))) == 0)
+      if (strcmp_ci (((char *) c_name), ((char *) (STRING_LOC (temp, 0))))
+	  == 0)
       {
 	if (arity != UNKNOWN_PRIMITIVE_ARITY)
 	{
@@ -393,9 +381,7 @@ DEFUN (search_for_primitive,
 	  {
 	    old_arity = FIXNUM_TO_LONG (temp);
 	    if (arity != old_arity)
-	    {
 	      return (temp);
-	    }
 	  }
 	}
 	return (MAKE_PRIMITIVE_OBJECT((MAX_PRIMITIVE + i), (MAX_PRIMITIVE + 1)));
@@ -409,14 +395,10 @@ DEFUN (search_for_primitive,
    */
 
   if (!intern_p)
-  {
     return (SHARP_F);
-  }
 
   if (scheme_name == SHARP_F)
-  {
-    scheme_name = (char_pointer_to_string ((unsigned char *) c_name));
-  }
+    scheme_name = (char_pointer_to_string (c_name));
 
   if ((Max % CHUNK_SIZE) == 0)
     {
@@ -457,12 +439,11 @@ DEFUN (search_for_primitive,
     Max += 1;
     VECTOR_SET (Undefined_Primitives, Max, scheme_name);
     if (arity != UNKNOWN_PRIMITIVE_ARITY)
-    {
       VECTOR_SET (Undefined_Primitives_Arity, Max, (LONG_TO_FIXNUM (arity)));
-    }
+
     VECTOR_SET (Undefined_Primitives, 0, (LONG_TO_UNSIGNED_FIXNUM(Max)));
   }
-  return (MAKE_PRIMITIVE_OBJECT((MAX_PRIMITIVE + Max), (MAX_PRIMITIVE + 1)));
+  return (MAKE_PRIMITIVE_OBJECT ((MAX_PRIMITIVE + Max), (MAX_PRIMITIVE + 1)));
 }
 
 /* Dumping and loading primitive object references. */
@@ -490,7 +471,7 @@ DEFUN (initialize_primitive_table, (where, end),
   SCHEME_OBJECT *top;
   fast long number_of_primitives;
 
-  number_of_primitives = NUMBER_OF_PRIMITIVES();
+  number_of_primitives = (NUMBER_OF_PRIMITIVES ());
   top = &where[2 * number_of_primitives];
   if (top < end)
   {
@@ -510,7 +491,7 @@ DEFUN (dump_renumber_primitive, (primitive), fast SCHEME_OBJECT primitive)
   fast long number;
   fast SCHEME_OBJECT result;
 
-  number = PRIMITIVE_NUMBER(primitive);
+  number = PRIMITIVE_NUMBER (primitive);
   result = internal_renumber_table[number];
   if (result == SHARP_F)
   {
@@ -582,7 +563,7 @@ DEFUN (cons_primitive_table, (start, end, length),
        count += 1)
   {
     code = (PRIMITIVE_NUMBER(external_renumber_table[count]));
-    start = copy_primitive_information(code, start, end);
+    start = copy_primitive_information (code, start, end);
   }
   return (start);
 }
@@ -602,9 +583,8 @@ DEFUN (cons_whole_primitive_table, (start, end, length),
   for (count = 0;
        ((count < number_of_primitives) && (start < end));
        count += 1)
-  {
-    start = copy_primitive_information(count, start, end);
-  }
+    start = copy_primitive_information (count, start, end);
+
   return (start);
 }
 
@@ -630,15 +610,14 @@ DEFUN (install_primitive_table, (table, length, flush_p),
     arity = FIXNUM_TO_LONG (*table);
     table += 1;
     result =
-      search_for_primitive(MAKE_POINTER_OBJECT (TC_CHARACTER_STRING, table),
-			   ((char *) (&table[STRING_CHARS])),
-			   true, true, arity);
+      (search_for_primitive (MAKE_POINTER_OBJECT (TC_CHARACTER_STRING, table),
+			     ((unsigned char *) (&table[STRING_CHARS])),
+			     true, true, arity));
     if (OBJECT_TYPE (result) != TC_PRIMITIVE)
-    {
       signal_error_from_primitive (ERR_WRONG_ARITY_PRIMITIVES);
-    }
+
     *translation_table++ = result;
-    table += (1 + OBJECT_DATUM (*table));
+    table += (1 + (OBJECT_DATUM (*table)));
   }
   return;
 }
