@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/vector.scm,v 14.3 1989/06/06 22:30:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/vector.scm,v 14.4 1989/06/07 19:15:00 cph Rel $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -92,9 +92,13 @@ MIT in each case. |#
 	vector
 	(let ((result (make-vector length)))
 	  (let loop ((index 0))
-	    (vector-set! result index (procedure (vector-ref vector index)))
 	    (if (< index length)
-		(loop (1+ index))))))))
+		(begin
+		  (vector-set! result
+			       index
+			       (procedure (vector-ref vector index)))
+		  (loop (1+ index)))))
+	  result))))
 
 (define (for-each-vector-element vector procedure)
   (let ((length (vector-length vector)))
