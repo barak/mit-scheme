@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cleanup.scm,v 1.16 1995/04/27 23:18:34 adams Exp $
+$Id: cleanup.scm,v 1.17 1995/05/06 18:04:45 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -135,7 +135,7 @@ MIT in each case. |#
 	  (else  (default)))))
 
 (define-cleanup-handler BEGIN (env #!rest actions)
-  (beginnify (cleanup/expr* env actions)))
+  (beginnify (cleanup/expr* env actions) #T))
 
 (define-cleanup-handler LET (env bindings body)
   (cleanup/let* cleanup/letify env bindings body))

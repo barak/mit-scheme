@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.23 1995/05/05 12:55:51 adams Exp $
+$Id: utils.scm,v 1.24 1995/05/06 18:04:53 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -219,10 +219,14 @@ MIT in each case. |#
 	(else
 	 `(IF ,left ,right (QUOTE #F)))))
 
-(define (beginnify actions)
+(define (beginnify actions #!optional incremental?)
   ;; Flattens the ACTIONS, discarding any in non-tail position that
   ;; are side-effect free or static (compile-time only).  It
   ;; returns (BEGIN) or (BEGIN <action>+ <expression>) or <expression>
+  ;; If INCREMENTAL? is specified and true, BEGIN forms within ACTIONS are
+  ;; assumed to already satisfy the output conditions, otherwise they
+  ;; will be processed.
+  (let ((incremental? (and (not (default-object? incremental?)) incremental?)))
   (let loop ((actions (reverse actions))
 	     (actions* '()))
     (cond ((null? actions)
@@ -230,24 +234,24 @@ MIT in each case. |#
 		   (not (null? (cdr actions*))))
 	       `(BEGIN ,@actions*)
 	       (car actions*)))
-	  ((not (pair? (car actions)))
-	   (internal-warning "BEGINNIFY: Non-pair form in BEGIN:"
-			     (car actions))
-	   (loop (cdr actions)
-		 (cons (car actions) actions*)))
-	  ((eq? (caar actions) 'BEGIN)
-	   (loop (append (reverse (cdar actions)) (cdr actions))
-		 actions*))
+	  ((BEGIN/? (car actions))
+	   (if incremental?
+	       (loop (cdr actions)
+		     (append (begin/exprs (car actions)) actions*))
+	       (loop (append (reverse (begin/expr (car actions)))
+			     (cdr actions))
+		     actions*)))
 	  ((and (not (null? actions*))
 		(or (form/satisfies? (car actions) '(SIDE-EFFECT-FREE))
-		    (and (form/satisfies? (car actions) '(STATIC))
+		    (and compiler:guru?
+			 (form/satisfies? (car actions) '(STATIC))
 			 (begin
 			   (write-line `(BEGINNIFY ELIDING ,(car actions)))
 			   #T))))
 	   (loop (cdr actions) actions*))
 	  (else
 	   (loop (cdr actions)
-		 (cons (car actions) actions*))))))
+		 (cons (car actions) actions*)))))))
 
 (define (simplify-actions expressions)
   ;; Takes a list of expressions, as in a BEGIN body, and produces a
