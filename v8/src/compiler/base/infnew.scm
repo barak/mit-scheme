@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: infnew.scm,v 1.5 1995/07/14 01:00:34 adams Exp $
+$Id: infnew.scm,v 1.6 1995/07/27 14:15:46 adams Exp $
 
-Copyright (c) 1988-1994 Massachusetts Institute of Technology
+Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -66,10 +66,11 @@ MIT in each case. |#
 (define (info-generation-phase-3 expression procedures continuations
 				 label-bindings external-labels
 				 constant-offset-map)
+
   (let ((label-bindings (labels->dbg-labels label-bindings))
 	(no-datum '(NO-DATUM))
-	(labels (make-string-hash-table))
-	(blocks-seen (make-eq-hash-table)))
+	(labels (make-string-hash-table)))
+
     (define (initialize-label label-binding)
       (for-each (lambda (key)
 		  (let ((datum (hash-table/get labels key no-datum)))
@@ -77,12 +78,14 @@ MIT in each case. |#
 			(error "Redefining label:" key datum)))
 		  (hash-table/put! labels key (cdr label-binding)))
 	(car label-binding)))
+
     (define (map-label/fail label)
       (let ((key (system-pair-car label)))
 	(let ((datum (hash-table/get labels key no-datum)))
 	  (if (eq? datum no-datum)
 	      (error "Missing label:" key))
 	  datum)))
+
     (define (map-label/false label)
       (hash-table/get labels (system-pair-car label) #f))
 
@@ -96,23 +99,30 @@ MIT in each case. |#
 	    (for-each-vector-element  (new-dbg-block/variables block)
 	      (lambda (var)
 		(define (map-path! path)
-		  (cond  ((not (pair? path)))
-			 ((and (eq? (caar path) 'CC-ENTRY)
-			       (symbol? (cdar path)))
-			  (let ((label  (map-label/fail (cdr (car path)))))
-			    (if (dbg-label/external? label)
-				(set-cdr! (car path) (dbg-label/offset label))
-				(set-new-dbg-variable/path! var #F)))
-			  (map-path! (cdr path)))
-			 ((and (eq? (caar path) 'INTEGRATED)
-			       (not (interned-symbol? (cdar path)))
-			       (constant-offset-map (cdar path)))
-			  => (lambda (offset)
-			       (set-car! path (cons 'CONSTANT-BLOCK offset))
-			       (map-path! (cdr path))))
-			 (else (map-path! (cdr path)))))
+		  (define (map-item! item)
+		    (cond ((and (pair? item)
+				(eq? (car item) 'CC-ENTRY)
+				(symbol? (cdr item)))
+			   (let ((label  (map-label/fail (cdr item))))
+			     (if (dbg-label/external? label)
+				 (set-cdr! item (dbg-label/offset label))
+				 (set-new-dbg-variable/path! var #F))))
+			  ((and (pair? item)
+				(eq? (car item) 'INTEGRATED)
+				(not (or (interned-symbol? (cdr item))
+					 (fixnum? (cdr item))
+					 (object-type? (object-type #F)
+						       (cdr item))))
+				(constant-offset-map (cdr item)))
+			   => (lambda (offset)
+				(set-car! item 'CONSTANT-BLOCK)
+				(set-cdr! item offset)))))
+		  (cond ((pair? path) (map-item! path))
+			((vector? path)
+			 (for-each-vector-element path map-item!))))
 		(if (new-dbg-variable? var)
 		    (map-path! (new-dbg-variable/path var))))))))
+
     (for-each initialize-label label-bindings)
     (for-each (lambda (label)
 		(set-dbg-label/external?! (map-label/fail label) true))
@@ -142,18 +152,80 @@ MIT in each case. |#
 	   (map-label/fail (dbg-continuation/label continuation)))
 	  (map-block (dbg-continuation/block continuation)))
       continuations)
+
+    (merge-blocks! expression procedures continuations)
+
     (make-dbg-info
      expression
      (list->vector (sort procedures new-dbg-procedure<?))
      (list->vector (sort continuations dbg-continuation<?))
      (list->vector (map cdr label-bindings)))))
 
+(define (merge-blocks! expression procedures continuations)
+  ;; Introduce as much sharing in the block model as possible.
+  ;; Hash on the path info.
+
+  (define blocks (make-equal-hash-table))
+  
+  (define (block=? b1 b2)
+    (define-integrable (test predicate accessor)
+      (predicate (accessor b1) (accessor b2)))
+    (and (test eq? new-dbg-block/type)
+	 (test eq? new-dbg-block/parent)
+	 (test equal? new-dbg-block/parent-path-prefix)
+	 (test equal? new-dbg-block/variables)
+	 (test eq? new-dbg-block/procedure)))
+  (define (merge-blocks block)
+    (let loop ((b block) (depth 0))
+      (cond ((> depth 100)
+	     (bkpt ";; Blocks too deep"))
+	    ((new-dbg-block? b)
+	     (loop (new-dbg-block/parent b) (+ 1 depth)))
+	    (else 'ok)))
+    (if (new-dbg-block? block)
+	(begin
+	  (set-new-dbg-block/parent!
+	   block
+	   (merge-blocks (new-dbg-block/parent block)))
+	  (let* ((key  (new-dbg-block/variables block))
+		 (similar-blocks (hash-table/get blocks key '())))
+	    (let ((replacement (list-search-positive similar-blocks
+				 (lambda (block*)
+				   (block=? block block*)))))
+	      (or replacement
+		  (begin
+		    (if (pair? similar-blocks)
+			;; Share the EQUAL variables
+		    	(set-new-dbg-block/variables!
+			 block
+			 (new-dbg-block/variables (car similar-blocks))))
+		    (hash-table/put! blocks key (cons block similar-blocks))
+		    block)))))
+	block))
+
+  (if expression
+      (set-dbg-expression/block!
+       expression
+       (merge-blocks (dbg-expression/block expression))))
+  (for-each
+      (lambda (procedure)
+	(set-new-dbg-procedure/block!
+	 procedure
+	 (merge-blocks (new-dbg-procedure/block procedure))))
+    procedures)
+  (for-each
+      (lambda (continuation)
+	(set-dbg-continuation/block!
+	 continuation
+	 (merge-blocks (dbg-continuation/block continuation))))
+    continuations))
+
 (define (labels->dbg-labels label-bindings)
   (map (lambda (offset-binding)
 	 (let ((names (cdr offset-binding)))
 	   (cons names
-		 (make-dbg-label-2 (choose-distinguished-label names)
-				   (car offset-binding)))))
+		 (make-dbg-label (choose-distinguished-label names)
+				 (car offset-binding)))))
        (let ((offsets (make-rb-tree = <)))
 	 (for-each (lambda (binding)
 		     (let ((offset (cdr binding))
