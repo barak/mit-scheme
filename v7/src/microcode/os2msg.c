@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2msg.c,v 1.16 2003/02/14 18:28:22 cph Exp $
+$Id: os2msg.c,v 1.17 2003/04/25 05:13:06 cph Exp $
 
-Copyright (c) 1994-2000 Massachusetts Institute of Technology
+Copyright 1994,1995,1997,2000,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -43,6 +43,65 @@ static tqueue_t * make_scm_tqueue (void);
 static msg_t * read_scm_tqueue (tqueue_t *, int);
 static void write_scm_tqueue (tqueue_t *, msg_t *);
 static void process_interrupt_messages (void);
+
+/*
+
+How this works
+==============
+
+This file describes the inter-thread communications mechanism.  The
+naming used here is atrocious.  Mea culpa; the code was written in
+1994, while these notes are being written in 2003.  I've learned a bit
+in the meantime and can now see how bad the code is.
+
+Every thread has an associated input queue, called its "tqueue".
+(Originally meant to be an abbreviation of "Thread QUEUE".)  All
+messages sent to that thread, from any source, are queued there in
+order of transmission.
+
+Two threads that wish to communicate must set up a "channel", which
+consists of a pair of "qid" objects.  ("qid" was originally meant to
+be an abbreviation of "Queue IDentifier".)  These objects are always
+created in pairs, one for each thread, and after creation each qid is
+associated with one of the two threads.  The other half of a qid pair
+is called its "twin".  If you are familiar with sockets, a qid is the
+analog of a socket.  A qid pair is the analog of a connection.
+
+Also associated with each qid is something called a "subqueue", which
+is simply a secondary queue for messages received from that qid's
+twin.
+
+* Suppose that thread A and thread B share two halves of a qid pair,
+  which we will call QA and QB.  Also suppose that the tqueues
+  associated with these threads are called TA and TB.
+
+* If thread A calls OS2_send_message() on QA and a message M, M's
+  "sender" is set to be QB, and M is then queued at the end of TB.
+  Additionally, if any thread is blocked on TB (only B is allowed to
+  block on TB), the event semaphore EB is posted, which wakes up the
+  threads waiting on TB.
+
+* If thread B calls OS2_receive_message() on QB, B first dequeues each
+  the queued messages from TB.  Each dequeued message M is queued at
+  the end of the subqueue of the sender of M.  For example, if M's
+  sender is QB, then the message is put into QB's subqueue.  This
+  process is repeated until all of the messages have been removed from
+  TB and dispatched to the appropriate subqueues.
+
+  The subqueue for QB is then checked; if there are any messages, the
+  first one is dequeued and then returned.  Otherwise, B blocks on TB
+  waiting for another message to arrive, by waiting on EB.  Eventually
+  the message sent by A arrives in TB, EB is posted, and B wakes up.
+
+  This process continues until a message is received.
+
+Some things to note here: the event semaphores are the primary
+synchronization mechanism for communications.  These guarantee that
+messages aren't lost due to timing errors.  Additionally, each tqueue
+has an associated mutex semaphore that is used to lock the tqueue in
+critical sections.
+
+*/
 
 typedef struct
 {
@@ -462,19 +521,6 @@ subqueue_emptyp (qid_t qid)
   OS2_release_mutex_semaphore (QID_LOCK (qid));
   return (result);
 }
-
-int
-OS2_tqueue_select (tqueue_t * tqueue, int blockp)
-{
-  msg_t * message = (read_tqueue (tqueue, blockp));
-  if ((TQUEUE_TYPE (tqueue)) == tqt_scm)
-    {
-      process_interrupt_messages ();
-      if (pending_interrupts_p ())
-	return (-2);
-    }
-  return ((message != 0) ? (MSG_SENDER (message)) : (-1));
-}
 
 static msg_t *
 read_tqueue (tqueue_t * tqueue, int blockp)
@@ -695,8 +741,6 @@ make_scm_tqueue (void)
   return (tqueue);
 }
 
-char OS2_scheme_tqueue_avail_map [QID_MAX + 1];
-
 static msg_t *
 read_scm_tqueue (tqueue_t * tqueue, int blockp)
 {
@@ -721,7 +765,6 @@ read_scm_tqueue (tqueue_t * tqueue, int blockp)
       msg_t * message = (read_std_tqueue (tqueue, blockp));
       if (message != 0)
 	{
-	  (OS2_scheme_tqueue_avail_map [MSG_SENDER (message)]) = 1;
 	  result = message;
 	  /* At most one message needs to be read in blocking mode.  */
 	  blockp = 0;
@@ -737,7 +780,7 @@ write_scm_tqueue (tqueue_t * tqueue, msg_t * message)
   write_std_tqueue (tqueue, message);
   request_attention_interrupt ();
 }
-
+
 void
 OS2_handle_attention_interrupt (void)
 {
@@ -745,6 +788,19 @@ OS2_handle_attention_interrupt (void)
   while ((read_tqueue (tqueue, 0)) != 0)
     ;
   process_interrupt_messages ();
+}
+
+msg_avail_t
+OS2_scheme_tqueue_block (void)
+{
+  int inputp = ((read_tqueue (OS2_scheme_tqueue, 1)) != 0);
+  process_interrupt_messages ();
+  return
+    (inputp
+     ? mat_available
+     : (pending_interrupts_p ())
+     ? mat_interrupt
+     : mat_not_available);
 }
 
 static void

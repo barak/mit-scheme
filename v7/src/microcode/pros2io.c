@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: pros2io.c,v 1.11 2003/02/14 18:28:23 cph Exp $
+$Id: pros2io.c,v 1.12 2003/04/25 05:13:14 cph Exp $
 
-Copyright (c) 1994-2000 Massachusetts Institute of Technology
+Copyright 1994,1995,1997,2000,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -41,10 +41,11 @@ DEFINE_PRIMITIVE ("CHANNEL-DESCRIPTOR", Prim_channel_descriptor, 1, 1, 0)
   PRIMITIVE_HEADER (1);
   {
     Tchannel channel = (arg_channel (1));
-    if (! ((CHANNEL_ABSTRACT_P (channel)) && (CHANNEL_INPUTP (channel))))
-      error_bad_range_arg (1);
     PRIMITIVE_RETURN
-      (LONG_TO_UNSIGNED_FIXNUM (OS2_channel_thread_descriptor (channel)));
+      (LONG_TO_UNSIGNED_FIXNUM
+       ((CHANNEL_ABSTRACT_P (channel))
+	? (OS2_channel_thread_descriptor (channel))
+	: 0));
   }
 }
 
@@ -93,51 +94,29 @@ DEFINE_PRIMITIVE ("OS2-SELECT-REGISTRY-TEST", Prim_OS2_select_registry_test, 3, 
     int inputp = 0;
     int interruptp = 0;
     qid_t qid;
-    int n;
 
-    /* This first phase checks the qid subqueues and OS2_scheme_tqueue
-       for any previously-queued input.  */
-  check_for_input:
-    for (qid = 0; (qid <= QID_MAX); qid += 1)
+    while (1)
       {
-	(results [qid]) = 0;
-	if ((registry [qid]) != 0)
-	  switch (OS2_message_availablep (qid, 0))
-	    {
-	    case mat_available:
-	      inputp = 1;
-	      (results [qid]) = 1;
-	      break;
-	    case mat_interrupt:
-	      interruptp = 1;
-	      break;
-	    }
-      }
-    /* This second phase waits for input if necessary.  It does not
-       check the subqueues for previously-stored data, so it's
-       important that we already did this.  Otherwise we could end up
-       waiting for input when there was valid input ready.  */
-    if (blockp)
-      while (! (inputp || interruptp))
-	{
-	  for (qid = 0; (qid <= QID_MAX); qid += 1)
-	    (OS2_scheme_tqueue_avail_map [qid]) = 0;
-	  n = (OS2_tqueue_select (OS2_scheme_tqueue, blockp));
-	  if (n == (-1))
-	    /* If we're unblocked and there's no message in the
-	       tqueue, go back and check for input again.  */
-	    goto check_for_input;
-	  if (n < 0)
-	    interruptp = 1;
-	  else
-	    for (qid = 0; (qid <= QID_MAX); qid += 1)
-	      if (((registry [qid]) != 0)
-		  && (OS2_scheme_tqueue_avail_map [qid]))
+	for (qid = 0; (qid <= QID_MAX); qid += 1)
+	  {
+	    (results [qid]) = 0;
+	    if ((registry [qid]) != 0)
+	      switch (OS2_message_availablep (qid, 0))
 		{
+		case mat_available:
 		  inputp = 1;
 		  (results [qid]) = 1;
+		  break;
+		case mat_interrupt:
+		  interruptp = 1;
+		  break;
 		}
-	}
+	  }
+	if ((!blockp) || inputp || interruptp)
+	  break;
+	if ((OS2_scheme_tqueue_block ()) == mat_interrupt)
+	  interruptp = 1;
+      }
     if (inputp)
       PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (0));
     else if (!interruptp)

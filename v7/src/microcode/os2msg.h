@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2msg.h,v 1.17 2003/02/14 18:28:22 cph Exp $
+$Id: os2msg.h,v 1.18 2003/04/25 05:13:10 cph Exp $
 
-Copyright (c) 1994-1999 Massachusetts Institute of Technology
+Copyright 1994,1995,1997,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -143,7 +143,6 @@ typedef enum { mat_not_available, mat_available, mat_interrupt } msg_avail_t;
 
 extern tqueue_t * OS2_scheme_tqueue;
 extern qid_t OS2_interrupt_qid;
-extern char OS2_scheme_tqueue_avail_map [QID_MAX + 1];
 
 extern void OS2_make_qid_pair (qid_t *, qid_t *);
 extern void OS2_open_qid (qid_t, tqueue_t *);
@@ -163,7 +162,7 @@ extern msg_avail_t OS2_message_availablep (qid_t, int);
 extern msg_t * OS2_wait_for_message (qid_t, msg_type_t);
 extern msg_t * OS2_message_transaction (qid_t, msg_t *, msg_type_t);
 extern void OS2_unread_message (qid_t, msg_t *);
-extern int OS2_tqueue_select (tqueue_t *, int);
+extern msg_avail_t OS2_scheme_tqueue_block (void);
 extern tqueue_t * OS2_make_std_tqueue (void);
 extern void OS2_close_std_tqueue (tqueue_t *);
 

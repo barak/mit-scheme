@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2io.c,v 1.10 2003/02/14 18:28:22 cph Exp $
+$Id: os2io.c,v 1.11 2003/04/25 05:13:02 cph Exp $
 
-Copyright (c) 1994-1999 Massachusetts Institute of Technology
+Copyright 1994,1995,1996,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -24,6 +24,7 @@ USA.
 */
 
 #include "os2.h"
+#include "os2proc.h"
 
 extern void add_reload_cleanup (void (*) (void));
 extern void OS2_initialize_console_channel (Tchannel);
@@ -38,14 +39,14 @@ Tchannel * OS2_channel_pointer_table;
 const int OS_have_select_p = 1;
 
 #ifndef OS2_DEFAULT_MAX_FH
-#define OS2_DEFAULT_MAX_FH 256
+#  define OS2_DEFAULT_MAX_FH 256
 #endif
 
 /* Set this to a larger size than OS2_DEFAULT_MAX_FH, because the
    maximum number of file handles can be increased dynamically by
    calling a primitive.  */
 #ifndef OS2_DEFAULT_CHANNEL_TABLE_SIZE
-#define OS2_DEFAULT_CHANNEL_TABLE_SIZE 1024
+#  define OS2_DEFAULT_CHANNEL_TABLE_SIZE 1024
 #endif
 
 void
@@ -368,4 +369,192 @@ OS_channel_write_string (Tchannel channel, const char * string)
   unsigned long length = (strlen (string));
   if ((OS_channel_write (channel, string, length)) != length)
     OS2_error_anonymous ();
+}
+
+struct select_registry_s
+{
+  unsigned int n_qids;
+  unsigned int length;
+  qid_t * qids;
+  unsigned char * qmodes;
+  unsigned char * rmodes;
+};
+
+select_registry_t
+OS_allocate_select_registry (void)
+{
+  struct select_registry_s * r
+    = (OS_malloc (sizeof (struct select_registry_s)));
+  (r -> n_qids) = 0;
+  (r -> length) = 16;
+  (r -> qids) = (OS_malloc ((sizeof (qid_t)) * (r -> length)));
+  (r -> qmodes) = (OS_malloc ((sizeof (unsigned char)) * (r -> length)));
+  (r -> rmodes) = (OS_malloc ((sizeof (unsigned char)) * (r -> length)));
+  return (r);
+}
+
+void
+OS_deallocate_select_registry (select_registry_t registry)
+{
+  struct select_registry_s * r = registry;
+  OS_free (r -> rmodes);
+  OS_free (r -> qmodes);
+  OS_free (r -> qids);
+  OS_free (r);
+}
+
+static void
+resize_select_registry (struct select_registry_s * r, int growp)
+{
+  if (growp)
+    (r -> length) *= 2;
+  else
+    (r -> length) /= 2;
+  (r -> qids)
+    = (OS_realloc ((r -> qids),
+		   ((sizeof (qid_t)) * (r -> length))));
+  (r -> qmodes)
+    = (OS_realloc ((r -> qmodes),
+		   ((sizeof (unsigned char)) * (r -> length))));
+  (r -> rmodes)
+    = (OS_realloc ((r -> rmodes),
+		   ((sizeof (unsigned char)) * (r -> length))));
+}
+
+void
+OS_add_to_select_registry (select_registry_t registry, int fd,
+			   unsigned int mode)
+{
+  struct select_registry_s * r = registry;
+  qid_t qid = fd;
+  unsigned int i = 0;
+
+  while (i < (r -> n_qids))
+    {
+      if (((r -> qids) [i]) == qid)
+	{
+	  ((r -> qmodes) [i]) |= mode;
+	  return;
+	}
+      i += 1;
+    }
+  if (i == (r -> length))
+    resize_select_registry (r, 1);
+  ((r -> qids) [i]) = qid;
+  ((r -> qmodes) [i]) = mode;
+  (r -> n_qids) += 1;
+}
+
+void
+OS_remove_from_select_registry (select_registry_t registry, int fd,
+				unsigned int mode)
+{
+  struct select_registry_s * r = registry;
+  qid_t qid = fd;
+  unsigned int i = 0;
+
+  while (1)
+    {
+      if (i == (r -> n_qids))
+	return;
+      if (((r -> qids) [i]) == qid)
+	{
+	  ((r -> qmodes) [i]) &=~ mode;
+	  if (((r -> qmodes) [i]) == 0)
+	    break;
+	  else
+	    return;
+	}
+      i += 1;
+    }
+  while (i < (r -> n_qids))
+    {
+      ((r -> qids) [i]) = ((r -> qids) [(i + 1)]);
+      ((r -> qmodes) [i]) = ((r -> qmodes) [(i + 1)]);
+      i += 1;
+    }
+  (r -> n_qids) -= 1;
+
+  if (((r -> length) > 16) && ((r -> n_qids) < ((r -> length) / 2)))
+    resize_select_registry (r, 0);
+}
+
+unsigned int
+OS_select_registry_length (select_registry_t registry)
+{
+  struct select_registry_s * r = registry;
+  return (r -> n_qids);
+}
+
+void
+OS_select_registry_result (select_registry_t registry, unsigned int index,
+			   int * fd_r, unsigned int * mode_r)
+{
+  struct select_registry_s * r = registry;
+  (*fd_r) = ((r -> qids) [index]);
+  (*mode_r) = ((r -> rmodes) [index]);
+}
+
+int
+OS_test_select_descriptor (int fd, int blockp, unsigned int qmode)
+{
+  qid_t qid = fd;
+  unsigned int rmode = (qmode & SELECT_MODE_WRITE);
+  if ((qmode & SELECT_MODE_READ) == 0)
+    return (rmode);
+  switch (OS2_message_availablep (qid, blockp))
+    {
+    case mat_available:
+      return (rmode | SELECT_MODE_READ);
+    case mat_not_available:
+      return (rmode);
+    case mat_interrupt:
+      return
+	((OS_process_any_status_change ())
+	 ? SELECT_PROCESS_STATUS_CHANGE
+	 : SELECT_INTERRUPT);
+    default:
+      error_external_return ();
+      return (rmode | SELECT_MODE_ERROR);
+    }
+}
+
+int
+OS_test_select_registry (select_registry_t registry, int blockp)
+{
+  struct select_registry_s * r = registry;
+  unsigned int n_values = 0;
+  int interruptp = 0;
+  unsigned int i;
+
+  while (1)
+    {
+      for (i = 0; (i < (r -> n_qids)); i += 1)
+	{
+	  ((r -> rmodes) [i]) = (((r -> qmodes) [i]) & SELECT_MODE_WRITE);
+	  if ((((r -> qmodes) [i]) & SELECT_MODE_READ) != 0)
+	    switch (OS2_message_availablep (((r -> qids) [i]), 0))
+	      {
+	      case mat_available:
+		((r -> rmodes) [i]) |= SELECT_MODE_READ;
+		break;
+	      case mat_interrupt:
+		interruptp = 1;
+		break;
+	      }
+	  if (((r -> rmodes) [i]) != 0)
+	    n_values += 1;
+	}
+      if (n_values > 0)
+	return (n_values);
+      if (interruptp)
+	return
+	  ((OS_process_any_status_change ())
+	   ? SELECT_PROCESS_STATUS_CHANGE
+	   : SELECT_INTERRUPT);
+      if (!blockp)
+	return (0);
+      if ((OS2_scheme_tqueue_block ()) == mat_interrupt)
+	interruptp = 1;
+    }
 }
