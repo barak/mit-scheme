@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11term.c,v 1.10 1990/10/02 22:52:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11term.c,v 1.11 1990/10/07 13:34:08 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -519,21 +519,24 @@ DEFINE_PRIMITIVE ("XTERM-SET-SIZE", Prim_xterm_set_size, 3, 3, 0)
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
+DEFINE_PRIMITIVE ("XTERM-ENABLE-CURSOR", Prim_xterm_enable_cursor, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  (XW_CURSOR_ENABLED_P (x_window_arg (1))) = (BOOLEAN_ARG (2));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
 DEFINE_PRIMITIVE ("XTERM-ERASE-CURSOR", Prim_xterm_erase_cursor, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  (XW_CURSOR_ENABLED_P (x_window_arg (1))) = 0;
+  xterm_erase_cursor (x_window_arg (1));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("XTERM-DRAW-CURSOR", Prim_xterm_draw_cursor, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  {
-    struct xwindow * xw = (x_window_arg (1));
-    (XW_CURSOR_ENABLED_P (xw)) = 1;
-    xterm_draw_cursor (xw);
-  }
+  xterm_draw_cursor (x_window_arg (1));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
