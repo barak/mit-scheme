@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.17 1990/09/13 23:08:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.18 1990/09/19 00:34:16 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -357,16 +357,14 @@ MIT in each case. |#
 	       (loop (-1+ index))))))
 
 (define (unparse/vector vector)
-  ((or (unparse-vector/unparser vector) unparse-vector/normal) vector))
+  (let ((method (unparse-vector/unparser vector)))
+    (if method
+	(invoke-user-method method vector)
+	(unparse-vector/normal vector))))
 
 (define (unparse-vector/unparser vector)
   (and (not (zero? (vector-length vector)))
-       (let ((tag (safe-vector-ref vector 0)))
-	 (and (not (future? tag))
-	      (let ((method (unparser/tagged-vector-method tag)))
-		(and method
-		     (lambda (object)
-		       (invoke-user-method method object))))))))
+       (unparser/tagged-vector-method (safe-vector-ref vector 0))))
 
 (define (unparse-vector/normal vector)
   (limit-unparse-depth
@@ -395,11 +393,17 @@ MIT in each case. |#
 			   (vector-ref vector index))
 	     (object-type? (ucode-type manifest-special-nm-vector)
 			   (vector-ref vector index)))))
-      (error "Attempt to unparse partially marked vector" 0))
+      (error "Attempt to unparse partially marked vector"))
   (vector-ref vector index))
 
 (define (unparse/pair pair)
-  ((or (unparse-list/unparser pair) unparse-list) pair))
+  (let ((prefix (unparse-list/prefix-pair? pair)))
+    (if prefix
+	(unparse-list/prefix-pair prefix pair)
+	(let ((method (unparse-list/unparser pair)))
+	  (if method
+	      (invoke-user-method method pair)
+	      (unparse-list pair))))))
 
 (define (unparse-list list)
   (limit-unparse-depth
@@ -419,35 +423,36 @@ MIT in each case. |#
 
 (define (unparse-tail l n)
   (cond ((pair? l)
-	 (let ((unparser (unparse-list/unparser l)))
-	   (if unparser
-	       (begin (*unparse-string " . ")
-		      (unparser l))
-	       (begin (*unparse-char #\Space)
-		      (*unparse-object (car l))
-		      (if (and *unparser-list-breadth-limit*
-			       (>= n *unparser-list-breadth-limit*)
-			       (not (null? (cdr l))))
-			  (*unparse-string " ...")
-			  (unparse-tail (cdr l) (1+ n)))))))
+	 (let ((prefix (unparse-list/prefix-pair? l)))
+	   (if prefix
+	       (unparse-list/prefix-pair prefix l)
+	       (let ((method (unparse-list/unparser l)))
+		 (if method
+		     (begin
+		       (*unparse-string " . ")
+		       (invoke-user-method method l))
+		     (begin
+		       (*unparse-char #\space)
+		       (*unparse-object (car l))
+		       (if (and *unparser-list-breadth-limit*
+				(>= n *unparser-list-breadth-limit*)
+				(not (null? (cdr l))))
+			   (*unparse-string " ...")
+			   (unparse-tail (cdr l) (1+ n)))))))))
 	((not (null? l))
 	 (*unparse-string " . ")
 	 (*unparse-object l))))
 
-(define (unparse-list/unparser object)
-  (and (not (future? (car object)))
-       (let ((prefix (unparse-list/prefix-pair? object)))
-	 (if prefix
-	     (lambda (pair)
-	       (*unparse-string prefix)
-	       (*unparse-object (cadr pair)))
-	     (let ((method (unparser/tagged-pair-method (car object))))
-	       (and method
-		    (lambda (object)
-		      (invoke-user-method method object))))))))
+(define-integrable (unparse-list/unparser object)
+  (unparser/tagged-pair-method (car object)))
+
+(define (unparse-list/prefix-pair prefix pair)
+  (*unparse-string prefix)
+  (*unparse-object (cadr pair)))
 
 (define (unparse-list/prefix-pair? object)
-  (and (pair? (cdr object))
+  (and (not (future? (car object)))
+       (pair? (cdr object))
        (null? (cddr object))
        (case (car object)
 	 ((QUOTE) "'")

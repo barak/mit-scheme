@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.11 1990/09/13 23:46:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.12 1990/09/19 00:34:36 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -336,19 +336,17 @@ MIT in each case. |#
 
 (define (numerical-walk object list-depth)
   (cond ((pair? object)
-	 (let ((unparser (unparse-list/unparser object)))
-	   (if unparser
-	       (let ((prefix (unparse-list/prefix-pair? object)))
-		 (if prefix
-		     (make-prefix-node prefix
-				       (numerical-walk (cadr object)
-						       list-depth))
-		     (walk-custom unparser object list-depth)))
-	       (walk-pair object list-depth))))
+	 (let ((prefix (unparse-list/prefix-pair? object)))
+	   (if prefix
+	       (make-prefix-node prefix
+				 (numerical-walk (cadr object)
+						 list-depth))
+	       (let ((unparser (unparse-list/unparser object)))
+		 (if unparser
+		     (walk-custom unparser object list-depth)
+		     (walk-pair object list-depth))))))
 	((vector? object)
-	 (let ((unparser
-		(and (not (zero? (vector-length object)))
-		     (unparse-vector/unparser object))))
+	 (let ((unparser (unparse-vector/unparser object)))
 	   (if unparser
 	       (walk-custom unparser object list-depth)
 	       (make-prefix-node "#"
