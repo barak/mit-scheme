@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: fixnum.c,v 9.37 1993/02/11 02:23:12 adams Exp $
+$Id: fixnum.c,v 9.38 1995/01/05 22:46:01 adams Exp $
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -66,6 +66,16 @@ DEFINE_PRIMITIVE ("FIXNUM?", Prim_zero_fixnum_p, 1, 1, 0)
   {
     SCHEME_OBJECT argument = (ARG_REF (1));
     PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (FIXNUM_P (argument)));
+  }
+}
+
+DEFINE_PRIMITIVE ("INDEX-FIXNUM?", Prim_index_fixnum_p, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  {
+    SCHEME_OBJECT argument = (ARG_REF (1));
+    PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (FIXNUM_P (argument) &&
+					 FIXNUM_TO_LONG(argument) >= 0));
   }
 }
 
