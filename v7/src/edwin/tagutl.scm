@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tagutl.scm,v 1.40 1991/05/04 20:14:04 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tagutl.scm,v 1.41 1991/05/15 01:12:06 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -58,10 +58,11 @@ A directory name is ok too; it means file TAGS in that directory."
   "FVisit tags table (default TAGS)"
   (lambda (filename)
     (let ((pathname (->pathname filename)))
-      (set-variable! tags-table-pathname
-		     (if (file-directory? pathname)
-			 (pathname-new-name pathname "TAGS")
-			 pathname)))))
+      (set-variable!
+       tags-table-pathname
+       (if (file-directory? pathname)
+	   (pathname-new-name (pathname-as-directory pathname) "TAGS")
+	   pathname)))))
 
 (define-command find-tag
   "Find tag (in current tag table) whose name contains TAGNAME.
