@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.9 1990/11/09 08:44:51 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.10 1991/01/26 03:21:15 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -146,3 +146,9 @@ MIT in each case. |#
 		 (error-irritant/noise "within procedure")
 		 (ucode-primitive file-touch))
 	  result))))
+
+(define (make-directory name)
+  ((ucode-primitive directory-make)
+   (pathname->string
+    (pathname-as-directory
+     (pathname->absolute-pathname (->pathname name))))))
