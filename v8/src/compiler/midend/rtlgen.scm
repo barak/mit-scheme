@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.22 1995/04/08 19:46:51 adams Exp $
+$Id: rtlgen.scm,v 1.23 1995/04/12 19:23:11 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -1852,12 +1852,18 @@ MIT in each case. |#
     (rtlgen/invoke
      state cont rands
      (lambda (cont-label)
-       (rtlgen/emit!/1
-	`(INVOCATION:REGISTER  ,(+ nargs 1)
-			       ,cont-label
-			       ,rator
-			       #F
-			       (MACHINE-CONSTANT 0)))))))
+       (let ((dest-reg  (if (rtlgen/tagged-entry-points?)
+			    (rtlgen/new-reg)
+			    rator)))
+	 (if (rtlgen/tagged-entry-points?)
+	     (rtlgen/emit!/1
+	      `(ASSIGN ,dest-reg (OBJECT->ADDRESS ,rator))))
+	 (rtlgen/emit!/1
+	  `(INVOCATION:REGISTER  ,(+ nargs 1)
+				 ,cont-label
+				 ,dest-reg
+				 #F
+				 (MACHINE-CONSTANT 0))))))))
 
 (define (rtlgen/invoke-operator-cache state kind name+arity cont rands)
   (if (not (QUOTE/? name+arity))
