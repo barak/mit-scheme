@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: asstop.scm,v 1.2 1994/11/26 19:14:49 adams Exp $
+$Id: asstop.scm,v 1.3 1995/07/16 22:28:06 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -236,9 +236,11 @@ MIT in each case. |#
 ;;;; Dumping the assembler's symbol table to the debugging file...
 
 (define (phase/info-generation-2 pathname)
-  (info-generation-2 pathname set-compiled-code-block/debugging-info!))
+  (info-generation-2 pathname
+		     set-compiled-code-block/debugging-info!
+		     (compiled-code-block/constant-offset-map *code-vector*)))
 
-(define (info-generation-2 pathname set-debugging-info!)
+(define (info-generation-2 pathname set-debugging-info! constant-offset-map)
   (compiler-phase "Debugging Information Generation"
     (lambda ()
       (set-debugging-info!
@@ -250,7 +252,8 @@ MIT in each case. |#
 		    (last-reference *dbg-procedures*)
 		    (last-reference *dbg-continuations*)
 		    *label-bindings*
-		    (last-reference *external-labels*))))
+		    (last-reference *external-labels*)
+		    constant-offset-map)))
 	      (cond ((eq? pathname 'KEEP) ; for dynamic execution
 		     info)
 		    ((eq? pathname 'RECURSIVE) ; recursive compilation
@@ -279,6 +282,18 @@ MIT in each case. |#
 	(lambda (x y)
 	  (< (vector-ref x 0)
 	     (vector-ref y 0)))))
+
+(define (compiled-code-block/constant-offset-map block)
+  (let ((start  (compiled-code-block/constants-start block))
+	(end    (compiled-code-block/constants-end block))
+	(table  (make-eq-hash-table)))
+    (let loop ((i start))
+      (if (< i end)
+	  (begin
+	    (hash-table/put! table (system-vector-ref block i) i)
+	    (loop (+ i 1)))))
+    (lambda (constant)
+      (hash-table/get table constant #F))))
 
 ;;; Various ways of dumping an info file
 
@@ -331,7 +346,7 @@ MIT in each case. |#
 		(loop (cdr files))))))))
 
 (define compiler:dump-info-file
-  compiler:dump-bci-file)
+  compiler:dump-bci/bcs-files)
 
 ;;;; LAP->CODE
 ;;; Example of `lap->code' usage (MC68020):
