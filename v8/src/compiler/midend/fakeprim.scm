@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fakeprim.scm,v 1.28 1996/07/30 19:25:25 adams Exp $
+$Id: fakeprim.scm,v 1.29 1997/07/09 15:12:44 adams Exp $
 
 Copyright (c) 1994-96 Massachusetts Institute of Technology
 
@@ -1137,6 +1137,8 @@ MIT in each case. |#
        ;;set-car! set-cdr! %record-set!
        ;;vector-set!
        ;;string-set! vector-8b-set! flo:vector-set!
+       system-pair-set-car! system-pair-set-cdr!
+       system-hunk3-set-cxr0! system-hunk3-set-cxr1! system-hunk3-set-cxr2!
        (make-primitive-procedure 'PRIMITIVE-INCREMENT-FREE)
        (make-primitive-procedure 'PRIMITIVE-OBJECT-SET!)))
 

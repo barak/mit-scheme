@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.51 1996/07/30 19:52:55 adams Exp $
+$Id: rtlgen.scm,v 1.52 1997/07/09 15:12:26 adams Exp $
 
 Copyright (c) 1994-96 Massachusetts Institute of Technology
 
@@ -4130,6 +4130,11 @@ MIT in each case. |#
   ;; Primitives SET-CAR! and SET-CDR! are used to signal errors
   (define-fixed-mutator %set-car!  (machine-tag 'PAIR) 0 2)
   (define-fixed-mutator %set-cdr!  (machine-tag 'PAIR) 1 2)
+  (define-fixed-mutator 'SYSTEM-PAIR-SET-CAR!  false 0 2)
+  (define-fixed-mutator 'SYSTEM-PAIR-SET-CDR!  false 1 2)
+  (define-fixed-mutator 'SYSTEM-HUNK3-SET-CXR0!  false 0 2)
+  (define-fixed-mutator 'SYSTEM-HUNK3-SET-CXR1!  false 1 2)
+  (define-fixed-mutator 'SYSTEM-HUNK3-SET-CXR2!  false 2 2)
   (define-fixed-mutator 'SET-STRING-LENGTH! (machine-tag 'STRING) 1 2))
 
 (let ((define-indexed-mutator
