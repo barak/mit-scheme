@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.11 1988/11/01 04:50:09 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.12 1988/12/12 21:51:40 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -66,6 +66,7 @@ MIT in each case. |#
 	  (for-each (lambda (continuation)
 		      (set-virtual-continuation/parent! continuation false))
 		    *virtual-continuations*)
+	  (initialize-reference-contexts! expression *procedures*)
 	  expression)))))
 
 (define (make-variables block names)
@@ -255,8 +256,8 @@ MIT in each case. |#
       (make-null-cfg)))
 
 (define-integrable (continue/predicate block continuation rvalue)
-  block continuation ;; ignored
-  (make-true-test rvalue))
+  continuation ;; ignored
+  (make-true-test block rvalue))
 
 (define (continue/value block continuation rvalue)
   (if (virtual-continuation? continuation)
@@ -354,7 +355,7 @@ MIT in each case. |#
 					     ,@names))
 	       (if closure-block
 		   (let ((proc (kernel)))
-		     (set-procedure-closure-block! proc closure-block)
+		     (set-procedure-closure-context! proc closure-block)
 		     proc)
 		   (kernel))))))))))
 
@@ -515,7 +516,8 @@ MIT in each case. |#
 		      (make-scfg
 		       (cfg-entry-node (make-combination push continuation))
 		       (continuation/next-hooks continuation))
-		      (make-true-test (continuation/rvalue continuation)))))))
+		      (make-true-test block
+				      (continuation/rvalue continuation)))))))
 	   (lambda ()
 	     (with-reified-continuation block
 					continuation
