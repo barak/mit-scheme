@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modlin.scm,v 1.8 1991/04/01 10:07:32 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modlin.scm,v 1.9 1991/05/10 22:21:18 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -47,7 +47,7 @@
 
 (declare (usual-integrations))
 
-(define-variable mode-line-format
+(define-variable-per-buffer mode-line-format
   "Template for displaying mode line for current buffer.
 Each buffer has its own value of this variable.
 Value may be a string, a symbol, or a (possibly improper) list.
@@ -83,11 +83,11 @@ Decimal digits after the % specify field width to which to pad."
        (-3 . "%p")
        "-%-"))
 
-(define-variable mode-line-modified
+(define-variable-per-buffer mode-line-modified
   "Mode-line control for displaying whether current buffer is modified."
   '("--%1*%1*-"))
 
-(define-variable mode-line-buffer-identification
+(define-variable-per-buffer mode-line-buffer-identification
   "Mode-line control for identifying the buffer being displayed.
 Its default value is \"Edwin: %17b\".  Major modes that edit things
 other than ordinary files may change this (e.g. Info, Dired,...)"
@@ -97,12 +97,12 @@ other than ordinary files may change this (e.g. Info, Dired,...)"
   "Extra stuff appearing after buffer-name in standard mode-line-format."
   false)
 
-(define-variable mode-line-process
+(define-variable-per-buffer mode-line-process
   "Mode-line control for displaying info on process status.
 Normally false in most modes, since there is no process to display."
   false)
 
-(define-variable mode-line-procedure
+(define-variable-per-buffer mode-line-procedure
   "Procedure used to generate the mode-line.
 Must accept four arguments: WINDOW STRING START END.
 Must generate a modeline string for WINDOW in the given substring.
