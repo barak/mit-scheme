@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: midend.scm,v 1.17 1995/08/18 22:16:20 adams Exp $
+$Id: midend.scm,v 1.18 1995/09/05 19:01:45 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -215,6 +215,8 @@ Example:
 	     coerce/top-level
 
 	     earlyrew/top-level		; rewrite -1+ into -, etc.
+	     typerew/top-level		; safety and type inference based
+					;  operator replacement
 
 	     ;;!frag/top-level
 	     lamlift/top-level/1	; flatten environment structure
@@ -230,11 +232,24 @@ Example:
 	     applicat/top-level		; get rid of #!OPTIONAL and #!REST when
 					;  calling known operators
 					;  Introduce %internal-apply
+
+
+
 	     simplify/top-level/1	; 1st-half of beta substitution
 					;  replace variable operators with
 					;  lambda expressions
 	     cleanup/top-level/2	; 2nd-half of beta substitution
 					;  substituting values for bindings
+
+
+	     split/top-level
+	     simplify/top-level/4	; as above
+	     cleanup/top-level/5	; as above
+
+	     widen/top-level
+	     simplify/top-level/5	; as above
+	     cleanup/top-level/6	; as above
+
 	     cpsconv/top-level/1	; cps conversion, sequencing of
 					;  parallel expressions
 	     simplify/top-level/2	; as above
@@ -247,13 +262,6 @@ Example:
 	     simplify/top-level/3	; as above
 	     cleanup/top-level/4	; as above
 
-	     split/top-level
-	     simplify/top-level/4	; as above
-	     cleanup/top-level/5	; as above
-
-	     widen/top-level
-	     simplify/top-level/5	; as above
-	     cleanup/top-level/6	; as above
 
 	     ;;simplify/top-level
 	     ;;cleanup/top-level
