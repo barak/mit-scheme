@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sendmail.scm,v 1.12 1991/11/04 20:51:55 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sendmail.scm,v 1.13 1992/01/24 00:34:28 cph Exp $
 ;;;
-;;;	Copyright (c) 1991 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -443,52 +443,63 @@ Numeric argument means justify as well."
 	(temp-buffer (temporary-buffer " sendmail temp"))
 	(mail-buffer (current-buffer))
 	(user-name (unix/current-user-name)))
-    (with-selected-buffer temp-buffer
-      (lambda ()
-	(let ((start (buffer-start temp-buffer))
-	      (end (buffer-end temp-buffer)))
-	  (insert-region (buffer-start mail-buffer)
-			 (buffer-end mail-buffer)
-			 start)
-	  (if (not (line-start? end))
-	      (insert-char #\newline end))
-	  (mail-match-header-separator start end)
-	  (let ((header-end (mark-left-inserting-copy (delete-match))))
-	    ;; Delete any blank lines in the header.
-	    (do ((start start (replace-match "\n")))
-		((not (re-search-forward "\n\n+" start header-end false))))
-	    (expand-mail-aliases start header-end)
-	    (if (re-search-forward "^FCC:" start header-end true)
-		(mail-do-fcc temp-buffer header-end))
-	    ;; If there is a From and no Sender, put in a Sender.
-	    (if (and (re-search-forward "^From:" start header-end true)
-		     (not
-		      (re-search-forward "^Sender:" start header-end true)))
-		(begin
-		  (insert-string "\nSender: " header-end)
-		  (insert-string user-name header-end)))
-	    ;; Don't send out a blank subject line.
-	    (if (re-search-forward "^Subject:[ \t]*\n" start header-end true)
-		(delete-match)))
-	  (apply run-synchronous-process
-		 (make-region start end)
-		 (and error-buffer (buffer-end error-buffer))
-		 false
-		 false
-		 (ref-variable sendmail-program)
-		 "-oi" "-t"
-		 ;; Always specify who from, since some systems have
-		 ;; broken sendmails.
-		 "-f" user-name
-		 (if error-buffer
-		     '()
-		     ;; These mean "report errors by mail"
-		     ;; and "deliver in background".
-		     '("-oem" "-odb")))
-	  (if error-buffer
+    (let ((start (buffer-start temp-buffer))
+	  (end (buffer-end temp-buffer)))
+      (insert-region (buffer-start mail-buffer)
+		     (buffer-end mail-buffer)
+		     start)
+      (if (not (line-start? end))
+	  (insert-char #\newline end))
+      (mail-match-header-separator start end)
+      (let ((header-end (mark-left-inserting-copy (delete-match))))
+	;; Delete any blank lines in the header.
+	(do ((start start (replace-match "\n")))
+	    ((not (re-search-forward "\n\n+" start header-end false))))
+	(expand-mail-aliases start header-end)
+	(if (re-search-forward "^FCC:" start header-end true)
+	    (mail-do-fcc temp-buffer header-end))
+	;; If there is a From and no Sender, put in a Sender.
+	(if (and (re-search-forward "^From:" start header-end true)
+		 (not
+		  (re-search-forward "^Sender:" start header-end true)))
+	    (begin
+	      (insert-string "\nSender: " header-end)
+	      (insert-string user-name header-end)))
+	;; Don't send out a blank subject line.
+	(if (re-search-forward "^Subject:[ \t]*\n" start header-end true)
+	    (delete-match)))
+      (let ((program (ref-variable sendmail-program)))
+	(if error-buffer
+	    (begin
+	      (run-synchronous-process (make-region start end)
+				       (buffer-end error-buffer)
+				       false
+				       false
+				       program
+				       "-oi" "-t"
+				       ;; Always specify who from,
+				       ;; since some systems have
+				       ;; broken sendmails.
+				       "-f" user-name)
 	      (let ((end (buffer-end error-buffer)))
 		(do ((start (buffer-start error-buffer) (replace-match "; ")))
-		    ((not (re-search-forward "\n+ *" start end false)))))))))
+		    ((not (re-search-forward "\n+ *" start end false))))))
+	    ;; If we aren't going to look at the errors, run the
+	    ;; program in the background so control returns to the
+	    ;; user as soon as possible.
+	    (let ((process
+		   (start-pipe-subprocess
+		    program
+		    (vector (os/filename-non-directory program)
+			    "-oi" "-t"
+			    (string-append "-f" user-name)
+			    ;; These mean "report errors by mail" and
+			    ;; "deliver in background".
+			    "-oem" "-odb")
+		    false)))
+	      (channel-write-string-block (subprocess-output-channel process)
+					  (extract-string start end))
+	      (subprocess-delete process)))))
     (kill-buffer temp-buffer)
     (if error-buffer
 	(let ((errors
