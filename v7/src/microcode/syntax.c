@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.16 1989/05/16 17:00:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.17 1989/05/16 17:01:17 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -108,7 +108,6 @@ DEFINE_PRIMITIVE ("STRING->SYNTAX-ENTRY", Prim_string_to_syntax_entry, 1, 1, 0)
 
   CHECK_ARG (1, STRING_P);
   length = (string_length (ARG_REF (1)));
-  if (length > 7) error_bad_range_arg (1);
   scan = (string_pointer ((ARG_REF (1)), 0));
 
   if ((length--) > 0)
