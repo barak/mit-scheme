@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Id: hppa.m4,v 1.21 1992/09/12 00:08:04 cph Exp $
+;;;	$Id: hppa.m4,v 1.22 1992/09/22 21:59:29 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-1992 Massachusetts Institute of Technology
 ;;;
@@ -813,7 +813,7 @@ stack_and_interrupt_check_stack_overflow
 ;;; skip forward to gc test.  Otherwise, set MemTop to -1 and signal
 ;;; the interrupt.
 	DEPI	1,INT_BIT_STACK_OVERFLOW,1,25
-	BB,<	24,INT_BIT_STACK_OVERFLOW,stack_and_interrupt_check_no_overflow
+	BB,>=	24,INT_BIT_STACK_OVERFLOW,stack_and_interrupt_check_no_overflow
 	STW	25,48(0,4)		; r25 -> IntCode
 	ADDI	-1,0,20			; -1 -> r20
 	STW	20,0(0,4)		; r20 -> MemTop
