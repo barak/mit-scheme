@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulrew.scm,v 1.9 1993/02/27 21:42:15 gjr Exp $
+$Id: rulrew.scm,v 1.10 1993/07/01 03:24:59 gjr Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -65,11 +65,11 @@ MIT in each case. |#
 
 (define-rule rewriting
   (CONS-POINTER (? type) (REGISTER (? datum register-known-value)))
-  (QUALIFIER (rtl:object->datum? datum))
+  (QUALIFIER (and (rtl:object->datum? datum)
+		  (not (rtl:constant-non-pointer?
+			(rtl:object->datum-expression datum)))))
   ;; Since we use DEP/DEPI, there is no need to clear the old bits
-  (rtl:make-cons-pointer
-   type
-   (rtl:object->datum-expression datum)))
+  (rtl:make-cons-pointer type (rtl:object->datum-expression datum)))
 
 (define-rule rewriting
   (OBJECT->TYPE (REGISTER (? source register-known-value)))
@@ -254,12 +254,21 @@ MIT in each case. |#
 ;; A type is compatible when a depi instruction can put it in assuming that
 ;; the datum has the quad bits set.
 ;; A register is a machine-address-register if it is a machine register and
-;; always contains an address (ie. free pointer, stack pointer, or dlink register)
+;; always contains an address (ie. free pointer, stack pointer,
+;; or dlink register)
 
 (define-rule rewriting
   (CONS-POINTER (REGISTER (? type register-known-value))
 		(REGISTER (? datum machine-address-register)))
-  (QUALIFIER (and (rtl:machine-constant? type)
-		  (spectrum-type-optimizable? (rtl:machine-constant-value type))))
+  (QUALIFIER
+   (and (rtl:machine-constant? type)
+	(spectrum-type-optimizable? (rtl:machine-constant-value type))))
   (rtl:make-cons-pointer type datum))
 |#
+
+(define-rule rewriting
+  (FLOAT-OFFSET (REGISTER (? base register-known-value))
+		(MACHINE-CONSTANT 0))
+  (QUALIFIER (rtl:float-offset-address? base))
+  (rtl:make-float-offset (rtl:float-offset-address-base base)
+			 (rtl:float-offset-address-offset base)))
