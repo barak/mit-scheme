@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxfs.c,v 1.10 1995/11/06 21:51:12 cph Exp $
+$Id: uxfs.c,v 1.11 1996/03/01 09:17:51 cph Exp $
 
 Copyright (c) 1990-95 Massachusetts Institute of Technology
 
@@ -174,28 +174,44 @@ DEFUN (OS_file_rename, (from_name, to_name),
   STD_VOID_SYSTEM_CALL (syscall_rename, (UX_rename (from_name, to_name)));
 }
 
+#ifndef FILE_COPY_BUFFER_LENGTH
+#define FILE_COPY_BUFFER_LENGTH 8192
+#endif
+
 void
 DEFUN (OS_file_copy, (from_name, to_name),
        CONST char * from_name AND
        CONST char * to_name)
 {
-  int result;
-  Tchannel source_channel = (OS_open_input_file (from_name));
-  Tchannel destination_channel = (OS_open_output_file (to_name));
-  off_t source_length = (OS_file_length (source_channel));
+  Tchannel src, dst;
+  off_t src_len, len;
+  char buffer [FILE_COPY_BUFFER_LENGTH];
+  long nread, nwrite;
 
-  result = (OS_channel_copy (source_length,
-			     source_channel,
-			     destination_channel));
-  
-  OS_channel_close (source_channel);
-  OS_channel_close (destination_channel);
-
-  if (result < 0)
-  {
-    signal_error_from_primitive (ERR_IO_ERROR);
-  }
-  return;
+  src = (OS_open_input_file (from_name));
+  OS_channel_close_on_abort (src);
+  dst = (OS_open_output_file (to_name));
+  OS_channel_close_on_abort (dst);
+  src_len = (OS_file_length (src));
+  len = (sizeof (buffer));
+  while (src_len > 0)
+    {
+      if (src_len < len)
+	len = src_len;
+      nread = (OS_channel_read (src, buffer, len));
+      if (nread < 0)
+	error_system_call (errno, syscall_read);
+      else if (nread == 0)
+	break;
+      nwrite = (OS_channel_write (dst, buffer, nread));
+      if (nwrite < 0)
+	error_system_call (errno, syscall_write);
+      else if (nwrite < nread)
+	error_system_call (ENOSPC, syscall_write);
+      src_len -= nread;
+    }
+  OS_channel_close (src);
+  OS_channel_close (dst);
 }
 
 void
