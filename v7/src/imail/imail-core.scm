@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.103 2000/06/18 20:39:34 cph Exp $
+;;; $Id: imail-core.scm,v 1.104 2000/06/19 05:00:47 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -425,12 +425,10 @@
   (if (not (message? message))
       (error:wrong-type-argument message "IMAIL message" procedure)))
 
-(define-generic message-body (message))
-
+(define-generic write-message-body (message port))
 (define-generic set-message-flags! (message flags))
-
-(define-method set-message-flags! ((message <message>) flags)
-  (%set-message-flags! message flags))
+(define-generic message-internal-time (message))
+(define-generic message-length (message))
 
 (define %set-message-flags!
   (let ((modifier (slot-modifier <message> 'FLAGS)))
@@ -460,58 +458,11 @@
   (set-message-folder! message #f))
 
 (define (message->string message)
-  (string-append (header-fields->string (message-header-fields message))
-		 "\n"
-		 (message-body message)))
-
-(define-generic message-internal-time (message))
-(define-method message-internal-time ((message <message>))
-  (let loop ((headers (get-all-header-fields message "received")) (winner #f))
-    (if (pair? headers)
-	(loop (cdr headers)
-	      (let ((time (received-header-time (car headers))))
-		(if (and time (or (not winner) (< time winner)))
-		    time
-		    winner)))
-	(or winner
-	    (message-time message)))))
-
-(define (received-header-time header)
-  (let ((time
-	 (ignore-errors
-	  (lambda ()
-	    (call-with-values
-		(lambda ()
-		  (rfc822:received-header-components
-		   (header-field-value header)))
-	      (lambda (from by via with id for time)
-		from by via with id for	;ignored
-		time))))))
-    (and (not (condition? time))
-	 time)))
-
-(define (message-time message)
-  (let ((date (get-first-header-field-value message "date" #f)))
-    (and date
-	 (let ((t
-		(ignore-errors
-		 (lambda ()
-		   (string->universal-time
-		    (rfc822:tokens->string
-		     (rfc822:strip-comments (rfc822:string->tokens date))))))))
-	   (and (not (condition? t))
-		t)))))
-
-(define-generic message-length (message))
-(define-method message-length ((message <message>))
-  (+ (apply +
-	    (map (lambda (header)
-		   (+ (string-length (header-field-name header))
-		      (string-length (header-field-value header))
-		      2))
-		 (message-header-fields message)))
-     1
-     (string-length (message-body message))))
+  (with-string-output-port
+    (lambda (port)
+      (write-header-fields (message-header-fields message) port)
+      (newline port)
+      (write-message-body message port))))
 
 ;;;; Message Navigation
 
@@ -525,9 +476,6 @@
 		 message))))))
 
 (define-generic first-unseen-message-index (folder))
-(define-method first-unseen-message-index ((folder <folder>))
-  folder
-  0)
 
 (define (first-message folder)
   (and (> (folder-length folder) 0)
@@ -817,8 +765,8 @@
 
 ;;;; MIME structure
 
-(define-generic message-mime-body-structure (message))
-(define-generic message-mime-body-part (message selector cache?))
+(define-generic mime-message-body-structure (message))
+(define-generic write-mime-message-body-part (message selector cache? port))
 
 (define-class <mime-body> (<imail-object>)
   (parameters define accessor)

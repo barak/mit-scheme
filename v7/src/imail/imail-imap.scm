@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.121 2000/06/19 01:49:19 cph Exp $
+;;; $Id: imail-imap.scm,v 1.122 2000/06/19 05:00:50 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -858,14 +858,14 @@
 
 ;;;; MIME support
 
-(define-method message-mime-body-structure ((message <imap-message>))
+(define-method mime-message-body-structure ((message <imap-message>))
   (imap-message-bodystructure message))
 
-(define-method message-body ((message <imap-message>))
-  (message-mime-body-part message '(TEXT) #t))
+(define-method write-message-body ((message <imap-message>) port)
+  (write-mime-message-body-part message '(TEXT) #t port))
 
-(define-method message-mime-body-part
-    ((message <imap-message>) selector cache?)
+(define-method write-mime-message-body-part
+    ((message <imap-message>) selector cache? port)
   (let ((section
 	 (map (lambda (x)
 		(if (exact-nonnegative-integer? x)
@@ -877,7 +877,7 @@
 	     (lambda (entry)
 	       (equal? (car entry) section)))))
       (if entry
-	  (cdr entry)
+	  (write-string (cdr entry) port)
 	  (let ((part (%imap-message-body-part message section)))
 	    (if (let ((limit (and cache? (imail-ui:body-cache-limit message))))
 		  (if (exact-nonnegative-integer? limit)
@@ -887,7 +887,7 @@
 		 message
 		 (cons (cons section part)
 		       (imap-message-body-parts message))))
-	    part)))))
+	    (write-string part port))))))
 
 (define (%imap-message-body-part message section)
   (imap:response:fetch-body-part

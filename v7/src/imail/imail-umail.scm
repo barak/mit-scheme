@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.32 2000/06/14 02:15:43 cph Exp $
+;;; $Id: imail-umail.scm,v 1.33 2000/06/19 05:00:53 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -68,8 +68,7 @@
 
 (define-class (<umail-message>
 	       (constructor (header-fields body flags from-line)))
-    (<message>)
-  (body accessor message-body)
+    (<file-message>)
   (from-line define accessor))
 
 (define-method umail-message-from-line ((message <message>))
@@ -86,7 +85,7 @@
 (define-method make-message-copy ((message <message>) (folder <umail-folder>))
   folder
   (make-umail-message (message-header-fields message)
-		      (message-body message)
+		      (file-message-body message)
 		      (list-copy (message-flags message))
 		      (umail-message-from-line message)))
 
@@ -188,7 +187,7 @@
 		  (write-string ">" port))
 	      (write-string line port)
 	      (newline port))
-	    (string->lines (message-body message))))
+	    (string->lines (file-message-body message))))
 
 ;;;; Detection of unix "from" lines.
 

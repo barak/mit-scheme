@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.44 2000/06/16 17:54:46 cph Exp $
+;;; $Id: imail-file.scm,v 1.45 2000/06/19 05:00:49 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -191,7 +191,7 @@
 				   (message-header-fields message)))
 				 (string-search-forward
 				  criteria
-				  (message-body message))))
+				  (file-message-body message))))
 			   (cons index winners)
 			   winners))
 		 (reverse! winners)))))
@@ -272,3 +272,65 @@
 (define-method folder-supports-mime? ((folder <file-folder>))
   folder
   #f)
+
+(define-method first-unseen-message-index ((folder <file-folder>))
+  folder
+  0)
+
+;;;; Message
+
+(define-class <file-message> (<message>)
+  (body define accessor))
+
+(define-method write-message-body ((message <file-message>) port)
+  (write-string (file-message-body message) port))
+
+(define-method set-message-flags! ((message <file-message>) flags)
+  (%set-message-flags! message flags))
+
+(define-method message-length ((message <file-message>))
+  (+ (apply +
+	    (map (lambda (header)
+		   (+ (string-length (header-field-name header))
+		      (string-length (header-field-value header))
+		      2))
+		 (message-header-fields message)))
+     1
+     (string-length (file-message-body message))))
+
+(define-method message-internal-time ((message <message>))
+  (let loop ((headers (get-all-header-fields message "received")) (winner #f))
+    (if (pair? headers)
+	(loop (cdr headers)
+	      (let ((time (received-header-time (car headers))))
+		(if (and time (or (not winner) (< time winner)))
+		    time
+		    winner)))
+	(or winner
+	    (message-time message)))))
+
+(define (received-header-time header)
+  (let ((time
+	 (ignore-errors
+	  (lambda ()
+	    (call-with-values
+		(lambda ()
+		  (rfc822:received-header-components
+		   (header-field-value header)))
+	      (lambda (from by via with id for time)
+		from by via with id for	;ignored
+		time))))))
+    (and (not (condition? time))
+	 time)))
+
+(define (message-time message)
+  (let ((date (get-first-header-field-value message "date" #f)))
+    (and date
+	 (let ((t
+		(ignore-errors
+		 (lambda ()
+		   (string->universal-time
+		    (rfc822:tokens->string
+		     (rfc822:strip-comments (rfc822:string->tokens date))))))))
+	   (and (not (condition? t))
+		t)))))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.40 2000/06/16 17:54:56 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.41 2000/06/19 05:00:51 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -90,8 +90,7 @@
 (define-class (<rmail-message>
 	       (constructor (header-fields body flags
 					   displayed-header-fields)))
-    (<message>)
-  (body accessor message-body)
+    (<file-message>)
   (displayed-header-fields define accessor))
 
 (define-method rmail-message-displayed-header-fields ((message <message>))
@@ -101,7 +100,7 @@
 (define-method make-message-copy ((message <message>) (folder <rmail-folder>))
   folder
   (make-rmail-message (message-header-fields message)
-		      (message-body message)
+		      (file-message-body message)
 		      (list-copy (message-flags message))
 		      (rmail-message-displayed-header-fields message)))
 
@@ -229,7 +228,7 @@
       (newline port)
       (write-header-fields (if formatted? displayed-headers headers) port)
       (newline port)
-      (write-string (message-body message) port)
+      (write-message-body message port)
       (fresh-line port)
       (write-char rmail-message:end-char port))))
 
