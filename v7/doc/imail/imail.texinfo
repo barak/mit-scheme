@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: imail.texinfo,v 1.8 2000/07/12 04:06:30 cph Exp $
+@comment $Id: imail.texinfo,v 1.9 2000/07/20 02:56:28 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename imail.info
 @settitle IMAIL User's Manual
@@ -27,8 +27,8 @@ Free Documentation License".
 
 @titlepage
 @title{IMAIL User's Manual}
-@subtitle Edition 0.3 for IMAIL Version 1.4
-@subtitle 11 July 2000
+@subtitle Edition 0.4 for IMAIL Version 1.4
+@subtitle 19 July 2000
 @author by Chris Hanson
 
 @page
@@ -687,14 +687,39 @@ is the folder named @samp{inbox} on your @acronym{IMAP} server.  Your
 incoming mail is placed in that folder by your system's mail-delivery
 software.  Whenever it has an open connection to the server,
 @acronym{IMAIL} notices new mail and brings it to your attention by
-modifying the Edwin mode line.  You can also have other folders and edit
-them with @acronym{IMAIL}.  You can move messages into them with
+modifying the Edwin mode line.
+
+@vindex imail-primary-folder
+@vindex imail-default-user-id
+@vindex imail-default-imap-server
+@vindex imail-default-imap-mailbox
+You can specify a different folder to be your primary folder by
+modifying one or more of @acronym{IMAIL}'s variables.  The simplest way
+to do this is to change the variable @code{imail-primary-folder} to
+contain the @acronym{URL} of the folder that you wish to be your primary
+folder.  Normally @code{imail-primary-folder} is @code{#f}, in which
+case the primary folder has the form
+
+@example
+imap://@var{user-id}@@@var{server}/@var{mailbox}
+@end example
+
+@noindent
+where @var{user-id} is the value of the variable
+@code{imail-default-user-id}, @var{server} is the value of
+@code{imail-default-imap-server}, and @var{mailbox} is the value of
+@code{imail-default-imap-mailbox}.  @code{imail-default-user-id} may be
+@code{#f} meaning to use the value of @samp{(current-user-name)}.
+
+In addition to the primary folder, you can also have other folders and
+edit them with @acronym{IMAIL}.  You can move messages into them with
 explicit @acronym{IMAIL} commands.@footnote{While Emacs Rmail
 additionally supports the ability to retrieve mail from ``system
 inboxes'' on your local computer (usually
 @file{/var/spool/mail/@var{USER}} on unix systems), @acronym{IMAIL} does
 not.  @acronym{IMAIL} only supports incoming mail when it is delivered
-to an @acronym{IMAP} server.}
+to an @acronym{IMAP} server.  This Rmail feature can easily be
+implemented if desired, but there has been no call for it.}
 
 One major difference between a file-based mail reader like Rmail and an
 @acronym{IMAP} mail reader like @acronym{IMAIL} is that file-based mail
@@ -742,7 +767,7 @@ Create a folder named @var{URL} (@code{imail-create-folder}).
 To run @acronym{IMAIL} on a folder other than your primary folder, you
 may use the @kbd{i} (@code{imail-input}) command in @acronym{IMAIL}.
 This visits the folder in @acronym{IMAIL} mode.  You can use @kbd{M-x
-rmail-input} even when not in @acronym{IMAIL}.
+imail-input} even when not in @acronym{IMAIL}.
 
 @kindex g
 @findex imail-get-new-mail
@@ -860,8 +885,6 @@ Make a summary of all messages containing any of the flags @var{flags}
 @findex imail-kill-flag
 The @kbd{a} (@code{imail-add-flag}) and @kbd{k} (@code{imail-kill-flag})
 commands allow you to assign or remove any flag on the current message.
-If the @var{flag} argument is empty, it means to assign or remove the
-same flag most recently assigned or removed.
 
 Once you have given messages flags to classify them as you wish, there
 are two ways to use the flags: in moving and in summaries.
@@ -995,9 +1018,9 @@ you type @kbd{C-c C-c} right away, you send the message again exactly
 the same as the first time.  Alternatively, you can edit the text or
 headers and then send it.  The variable
 @code{imail-retry-ignored-headers}, in the same format as
-@code{imail-ignored-headers} (@pxref{Rmail Display}), controls which
+@code{imail-ignored-headers} (@pxref{Appearance Options}), controls which
 headers are stripped from the failed message when retrying it; it
-defaults to @code{nil}.
+defaults to @code{#f}.
 @end ifset
 
 @kindex f
@@ -1218,16 +1241,6 @@ folder and switching to another buffer.
 (@code{imail-use-original-mime-boundaries})
 @end example
 
-@node Primary Folder, Mail-Sending Options, Appearance Options, Variables
-@section Primary Folder
-
-@example
-(@code{imail-default-imap-mailbox})
-(@code{imail-default-imap-server})
-(@code{imail-default-user-id})
-(@code{imail-primary-folder})
-@end example
-
 @node Mail-Sending Options, Summary Options, Primary Folder, Variables
 @section Mail-Sending Options
 
@@ -1265,28 +1278,29 @@ folder and switching to another buffer.
 
 @node GNU Free Documentation License, Key Index, Variables, Top
 @unnumbered GNU Free Documentation License
+@center Version 1.1, March 2000
 
-@format
-		GNU Free Documentation License
-		   Version 1.1, March 2000
+@display
+Copyright (C) 2000  Free Software Foundation, Inc.
+59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
- Copyright (C) 2000  Free Software Foundation, Inc.
-     59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- Everyone is permitted to copy and distribute verbatim copies
- of this license document, but changing it is not allowed.
-
-
-0. PREAMBLE
+Everyone is permitted to copy and distribute verbatim copies
+of this license document, but changing it is not allowed.
+@end display
+@sp 1
+@enumerate 0
+@item
+PREAMBLE
 
 The purpose of this License is to make a manual, textbook, or other
-written document "free" in the sense of freedom: to assure everyone
+written document ``free'' in the sense of freedom: to assure everyone
 the effective freedom to copy and redistribute it, with or without
 modifying it, either commercially or noncommercially.  Secondarily,
 this License preserves for the author and publisher a way to get
 credit for their work, while not being considered responsible for
 modifications made by others.
 
-This License is a kind of "copyleft", which means that derivative
+This License is a kind of ``copyleft'', which means that derivative
 works of the document must themselves be free in the same sense.  It
 complements the GNU General Public License, which is a copyleft
 license designed for free software.
@@ -1299,20 +1313,21 @@ it can be used for any textual work, regardless of subject matter or
 whether it is published as a printed book.  We recommend this License
 principally for works whose purpose is instruction or reference.
 
-
-1. APPLICABILITY AND DEFINITIONS
+@sp 1
+@item
+APPLICABILITY AND DEFINITIONS
 
 This License applies to any manual or other work that contains a
 notice placed by the copyright holder saying it can be distributed
-under the terms of this License.  The "Document", below, refers to any
+under the terms of this License.  The ``Document'', below, refers to any
 such manual or work.  Any member of the public is a licensee, and is
-addressed as "you".
+addressed as ``you''.
 
-A "Modified Version" of the Document means any work containing the
+A ``Modified Version'' of the Document means any work containing the
 Document or a portion of it, either copied verbatim, or with
 modifications and/or translated into another language.
 
-A "Secondary Section" is a named appendix or a front-matter section of
+A ``Secondary Section'' is a named appendix or a front-matter section of
 the Document that deals exclusively with the relationship of the
 publishers or authors of the Document to the Document's overall subject
 (or to related matters) and contains nothing that could fall directly
@@ -1323,15 +1338,15 @@ connection with the subject or with related matters, or of legal,
 commercial, philosophical, ethical or political position regarding
 them.
 
-The "Invariant Sections" are certain Secondary Sections whose titles
+The ``Invariant Sections'' are certain Secondary Sections whose titles
 are designated, as being those of Invariant Sections, in the notice
 that says that the Document is released under this License.
 
-The "Cover Texts" are certain short passages of text that are listed,
+The ``Cover Texts'' are certain short passages of text that are listed,
 as Front-Cover Texts or Back-Cover Texts, in the notice that says that
 the Document is released under this License.
 
-A "Transparent" copy of the Document means a machine-readable copy,
+A ``Transparent'' copy of the Document means a machine-readable copy,
 represented in a format whose specification is available to the
 general public, whose contents can be viewed and edited directly and
 straightforwardly with generic text editors or (for images composed of
@@ -1341,7 +1356,7 @@ for automatic translation to a variety of formats suitable for input
 to text formatters.  A copy made in an otherwise Transparent file
 format whose markup has been designed to thwart or discourage
 subsequent modification by readers is not Transparent.  A copy that is
-not "Transparent" is called "Opaque".
+not ``Transparent'' is called ``Opaque''.
 
 Examples of suitable formats for Transparent copies include plain
 ASCII without markup, Texinfo input format, LaTeX input format, SGML
@@ -1353,15 +1368,15 @@ processing tools are not generally available, and the
 machine-generated HTML produced by some word processors for output
 purposes only.
 
-The "Title Page" means, for a printed book, the title page itself,
+The ``Title Page'' means, for a printed book, the title page itself,
 plus such following pages as are needed to hold, legibly, the material
 this License requires to appear in the title page.  For works in
-formats which do not have any title page as such, "Title Page" means
+formats which do not have any title page as such, ``Title Page'' means
 the text near the most prominent appearance of the work's title,
 preceding the beginning of the body of the text.
-
-
-2. VERBATIM COPYING
+@sp 1
+@item
+VERBATIM COPYING
 
 You may copy and distribute the Document in any medium, either
 commercially or noncommercially, provided that this License, the
@@ -1375,9 +1390,9 @@ number of copies you must also follow the conditions in section 3.
 
 You may also lend copies, under the same conditions stated above, and
 you may publicly display copies.
-
-
-3. COPYING IN QUANTITY
+@sp 1
+@item
+COPYING IN QUANTITY
 
 If you publish printed copies of the Document numbering more than 100,
 and the Document's license notice requires Cover Texts, you must enclose
@@ -1413,9 +1428,9 @@ the public.
 It is requested, but not required, that you contact the authors of the
 Document well before redistributing any large number of copies, to give
 them a chance to provide you with an updated version of the Document.
-
-
-4. MODIFICATIONS
+@sp 1
+@item
+MODIFICATIONS
 
 You may copy and distribute a Modified Version of the Document under
 the conditions of sections 2 and 3 above, provided that you release
@@ -1428,48 +1443,48 @@ A. Use in the Title Page (and on the covers, if any) a title distinct
    from that of the Document, and from those of previous versions
    (which should, if there were any, be listed in the History section
    of the Document).  You may use the same title as a previous version
-   if the original publisher of that version gives permission.
+   if the original publisher of that version gives permission.@*
 B. List on the Title Page, as authors, one or more persons or entities
    responsible for authorship of the modifications in the Modified
    Version, together with at least five of the principal authors of the
-   Document (all of its principal authors, if it has less than five).
+   Document (all of its principal authors, if it has less than five).@*
 C. State on the Title page the name of the publisher of the
-   Modified Version, as the publisher.
-D. Preserve all the copyright notices of the Document.
+   Modified Version, as the publisher.@*
+D. Preserve all the copyright notices of the Document.@*
 E. Add an appropriate copyright notice for your modifications
-   adjacent to the other copyright notices.
+   adjacent to the other copyright notices.@*
 F. Include, immediately after the copyright notices, a license notice
    giving the public permission to use the Modified Version under the
-   terms of this License, in the form shown in the Addendum below.
+   terms of this License, in the form shown in the Addendum below.@*
 G. Preserve in that license notice the full lists of Invariant Sections
-   and required Cover Texts given in the Document's license notice.
-H. Include an unaltered copy of this License.
-I. Preserve the section entitled "History", and its title, and add to
+   and required Cover Texts given in the Document's license notice.@*
+H. Include an unaltered copy of this License.@*
+I. Preserve the section entitled ``History'', and its title, and add to
    it an item stating at least the title, year, new authors, and
    publisher of the Modified Version as given on the Title Page.  If
-   there is no section entitled "History" in the Document, create one
+   there is no section entitled ``History'' in the Document, create one
    stating the title, year, authors, and publisher of the Document as
    given on its Title Page, then add an item describing the Modified
-   Version as stated in the previous sentence.
+   Version as stated in the previous sentence.@*
 J. Preserve the network location, if any, given in the Document for
    public access to a Transparent copy of the Document, and likewise
    the network locations given in the Document for previous versions
-   it was based on.  These may be placed in the "History" section.
+   it was based on.  These may be placed in the ``History'' section.
    You may omit a network location for a work that was published at
    least four years before the Document itself, or if the original
-   publisher of the version it refers to gives permission.
-K. In any section entitled "Acknowledgements" or "Dedications",
+   publisher of the version it refers to gives permission.@*
+K. In any section entitled ``Acknowledgements'' or ``Dedications'',
    preserve the section's title, and preserve in the section all the
    substance and tone of each of the contributor acknowledgements
-   and/or dedications given therein.
+   and/or dedications given therein.@*
 L. Preserve all the Invariant Sections of the Document,
    unaltered in their text and in their titles.  Section numbers
-   or the equivalent are not considered part of the section titles.
-M. Delete any section entitled "Endorsements".  Such a section
-   may not be included in the Modified Version.
-N. Do not retitle any existing section as "Endorsements"
-   or to conflict in title with any Invariant Section.
-
+   or the equivalent are not considered part of the section titles.@*
+M. Delete any section entitled ``Endorsements''.  Such a section
+   may not be included in the Modified Version.@*
+N. Do not retitle any existing section as ``Endorsements''
+   or to conflict in title with any Invariant Section.@*
+@sp 1
 If the Modified Version includes new front-matter sections or
 appendices that qualify as Secondary Sections and contain no material
 copied from the Document, you may at your option designate some or all
@@ -1477,7 +1492,7 @@ of these sections as invariant.  To do this, add their titles to the
 list of Invariant Sections in the Modified Version's license notice.
 These titles must be distinct from any other section titles.
 
-You may add a section entitled "Endorsements", provided it contains
+You may add a section entitled ``Endorsements'', provided it contains
 nothing but endorsements of your Modified Version by various
 parties--for example, statements of peer review or that the text has
 been approved by an organization as the authoritative definition of a
@@ -1496,9 +1511,9 @@ permission from the previous publisher that added the old one.
 The author(s) and publisher(s) of the Document do not by this License
 give permission to use their names for publicity for or to assert or
 imply endorsement of any Modified Version.
-
-
-5. COMBINING DOCUMENTS
+@sp 1
+@item
+COMBINING DOCUMENTS
 
 You may combine the Document with other documents released under this
 License, under the terms defined in section 4 above for modified
@@ -1516,14 +1531,14 @@ author or publisher of that section if known, or else a unique number.
 Make the same adjustment to the section titles in the list of
 Invariant Sections in the license notice of the combined work.
 
-In the combination, you must combine any sections entitled "History"
+In the combination, you must combine any sections entitled ``History''
 in the various original documents, forming one section entitled
-"History"; likewise combine any sections entitled "Acknowledgements",
-and any sections entitled "Dedications".  You must delete all sections
-entitled "Endorsements."
-
-
-6. COLLECTIONS OF DOCUMENTS
+``History''; likewise combine any sections entitled ``Acknowledgements'',
+and any sections entitled ``Dedications''.  You must delete all sections
+entitled ``Endorsements.''
+@sp 1
+@item
+COLLECTIONS OF DOCUMENTS
 
 You may make a collection consisting of the Document and other documents
 released under this License, and replace the individual copies of this
@@ -1535,15 +1550,15 @@ You may extract a single document from such a collection, and distribute
 it individually under this License, provided you insert a copy of this
 License into the extracted document, and follow this License in all
 other respects regarding verbatim copying of that document.
-
-
-7. AGGREGATION WITH INDEPENDENT WORKS
+@sp 1
+@item
+AGGREGATION WITH INDEPENDENT WORKS
 
 A compilation of the Document or its derivatives with other separate
 and independent documents or works, in or on a volume of a storage or
 distribution medium, does not as a whole count as a Modified Version
 of the Document, provided no compilation copyright is claimed for the
-compilation.  Such a compilation is called an "aggregate", and this
+compilation.  Such a compilation is called an ``aggregate'', and this
 License does not apply to the other self-contained works thus compiled
 with the Document, on account of their being thus compiled, if they
 are not themselves derivative works of the Document.
@@ -1553,9 +1568,9 @@ copies of the Document, then if the Document is less than one quarter
 of the entire aggregate, the Document's Cover Texts may be placed on
 covers that surround only the Document within the aggregate.
 Otherwise they must appear on covers around the whole aggregate.
-
-
-8. TRANSLATION
+@sp 1
+@item
+TRANSLATION
 
 Translation is considered a kind of modification, so you may
 distribute translations of the Document under the terms of section 4.
@@ -1567,9 +1582,9 @@ translation of this License provided that you also include the
 original English version of this License.  In case of a disagreement
 between the translation and the original English version of this
 License, the original English version will prevail.
-
-
-9. TERMINATION
+@sp 1
+@item
+TERMINATION
 
 You may not copy, modify, sublicense, or distribute the Document except
 as expressly provided for under this License.  Any other attempt to
@@ -1578,9 +1593,9 @@ automatically terminate your rights under this License.  However,
 parties who have received copies, or rights, from you under this
 License will not have their licenses terminated so long as such
 parties remain in full compliance.
-
-
-10. FUTURE REVISIONS OF THIS LICENSE
+@sp 1
+@item
+FUTURE REVISIONS OF THIS LICENSE
 
 The Free Software Foundation may publish new, revised versions
 of the GNU Free Documentation License from time to time.  Such new
@@ -1590,39 +1605,43 @@ http://www.gnu.org/copyleft/.
 
 Each version of the License is given a distinguishing version number.
 If the Document specifies that a particular numbered version of this
-License "or any later version" applies to it, you have the option of
+License ``or any later version'' applies to it, you have the option of
 following the terms and conditions either of that specified version or
 of any later version that has been published (not as a draft) by the
 Free Software Foundation.  If the Document does not specify a version
 number of this License, you may choose any version ever published (not
 as a draft) by the Free Software Foundation.
 
+@end enumerate
 
-ADDENDUM: How to use this License for your documents
+@unnumberedsec ADDENDUM: How to use this License for your documents
 
 To use this License in a document you have written, include a copy of
 the License in the document and put the following copyright and
 license notices just after the title page:
 
-      Copyright (c)  YEAR  YOUR NAME.
-      Permission is granted to copy, distribute and/or modify this document
-      under the terms of the GNU Free Documentation License, Version 1.1
-      or any later version published by the Free Software Foundation;
-      with the Invariant Sections being LIST THEIR TITLES, with the
-      Front-Cover Texts being LIST, and with the Back-Cover Texts being LIST.
-      A copy of the license is included in the section entitled "GNU
-      Free Documentation License".
+@smallexample
+@group
 
-If you have no Invariant Sections, write "with no Invariant Sections"
+  Copyright (C)  @var{year}  @var{your name}.
+  Permission is granted to copy, distribute and/or modify this document
+  under the terms of the GNU Free Documentation License, Version 1.1
+  or any later version published by the Free Software Foundation;
+  with the Invariant Sections being @var{list their titles}, with the
+  Front-Cover Texts being @var{list}, and with the Back-Cover Texts being @var{list}.
+  A copy of the license is included in the section entitled ``GNU
+  Free Documentation License''.
+@end group
+@end smallexample
+If you have no Invariant Sections, write ``with no Invariant Sections''
 instead of saying which ones are invariant.  If you have no
-Front-Cover Texts, write "no Front-Cover Texts" instead of
-"Front-Cover Texts being LIST"; likewise for Back-Cover Texts.
+Front-Cover Texts, write ``no Front-Cover Texts'' instead of
+``Front-Cover Texts being @var{list}''; likewise for Back-Cover Texts.
 
 If your document contains nontrivial examples of program code, we
 recommend releasing these examples in parallel under your choice of
 free software license, such as the GNU General Public License,
 to permit their use in free software.
-@end format
 
 @node Key Index, Command Index, GNU Free Documentation License, Top
 @unnumbered Key Index
