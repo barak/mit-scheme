@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: syntactic-closures.scm,v 14.8 2002/03/01 05:43:21 cph Exp $
+;;; $Id: syntactic-closures.scm,v 14.9 2002/03/01 17:46:25 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1991, 2001, 2002 Massachusetts Institute of Technology
 ;;;
@@ -575,7 +575,7 @@
     (lambda (parent)
       (guarantee-syntactic-environment parent
 				       'MAKE-INTERNAL-SYNTACTIC-ENVIRONMENT)
-      (constructor parent '() '() (make-rename-state)))))
+      (constructor parent '() '() (make-rename-id)))))
 
 (define internal-syntactic-environment?
   (record-predicate internal-syntactic-environment-rtd))

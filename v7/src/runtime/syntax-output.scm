@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: syntax-output.scm,v 14.3 2002/03/01 05:43:26 cph Exp $
+;;; $Id: syntax-output.scm,v 14.4 2002/03/01 17:46:19 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1991, 2001, 2002 Massachusetts Institute of Technology
 ;;;
@@ -291,28 +291,28 @@
 (define-structure (rename-database (constructor initial-rename-database ())
 				   (conc-name rename-database/))
   (frame-number 0)
-  (mapping-table (make-eq-hash-table) read-only #t)
+  (mapping-table (make-equal-hash-table) read-only #t)
   (unmapping-table (make-eq-hash-table) read-only #t)
-  (id-number 0)
   (id-table (make-eq-hash-table) read-only #t))
 
-(define (make-rename-state)
+(define (make-rename-id)
   (delay
     (let ((n (+ (rename-database/frame-number *rename-database*) 1)))
       (set-rename-database/frame-number! *rename-database* n)
       n)))
 
-(define (rename-identifier identifier state)
-  (let ((mapped-identifier
-	 (string->uninterned-symbol
-	  (symbol-name (identifier->symbol identifier)))))
-    (hash-table/put! (rename-database/mapping-table *rename-database*)
-		     identifier
-		     mapped-identifier)
-    (hash-table/put! (rename-database/unmapping-table *rename-database*)
-		     mapped-identifier
-		     (cons identifier state))
-    mapped-identifier))
+(define (rename-identifier identifier rename-id)
+  (let ((key (cons identifier rename-id))
+	(mapping-table (rename-database/mapping-table *rename-database*)))
+    (or (hash-table/get mapping-table key #f)
+	(let ((mapped-identifier
+	       (string->uninterned-symbol
+		(symbol-name (identifier->symbol identifier)))))
+	  (hash-table/put! mapping-table key mapped-identifier)
+	  (hash-table/put! (rename-database/unmapping-table *rename-database*)
+			   mapped-identifier
+			   key)
+	  mapped-identifier))))
 
 (define (rename-top-level-identifier identifier)
   (if (symbol? identifier)
@@ -320,9 +320,9 @@
       (rename-identifier identifier (delay 0))))
 
 (define (make-name-generator)
-  (let ((state (make-rename-state)))
+  (let ((id (make-rename-id)))
     (lambda (identifier)
-      (rename-identifier identifier state))))
+      (rename-identifier identifier id))))
 
 ;;; Post processing
 
@@ -340,78 +340,76 @@
 (define ((unmapping->substitution unmapping) identifier)
   (or (hash-table/get unmapping identifier #f)
       (finalize-mapped-identifier identifier)))
-
+
 (define (unmap-identifier identifier)
   (let ((entry
 	 (hash-table/get (rename-database/unmapping-table *rename-database*)
 			 identifier
 			 #f)))
     (if entry
-	(car entry)
+	(identifier->symbol (car entry))
 	(begin
 	  (if (not (symbol? identifier))
 	      (error:bad-range-argument identifier 'UNMAP-IDENTIFIER))
 	  identifier))))
-
+
 (define (finalize-mapped-identifier identifier)
   (let ((entry
 	 (hash-table/get (rename-database/unmapping-table *rename-database*)
 			 identifier
 			 #f)))
     (if entry
-	(finalize-mapped-identifier-1 (car entry) (force (cdr entry)))
+	(let ((identifier (car entry))
+	      (frame-number (force (cdr entry))))
+	  (if (interned-symbol? identifier)
+	      (map-interned-symbol identifier frame-number)
+	      (map-uninterned-identifier identifier frame-number)))
 	(begin
 	  (if (not (symbol? identifier))
 	      (error:bad-range-argument identifier
 					'FINALIZE-MAPPED-IDENTIFIER))
 	  identifier))))
 
-(define (finalize-mapped-identifier-1 identifier frame-number)
-  (let ((table (rename-database/id-table *rename-database*)))
-    (let ((alist (hash-table/get table identifier '())))
+(define (map-interned-symbol symbol frame-number)
+  (string->symbol
+   (string-append "."
+		  (symbol-name symbol)
+		  "."
+		  (number->string frame-number))))
+
+(define (map-uninterned-identifier identifier frame-number)
+  (let ((table (rename-database/id-table *rename-database*))
+	(symbol (identifier->symbol identifier)))
+    (let ((alist (hash-table/get table symbol '())))
       (let ((entry (assv frame-number alist)))
 	(if entry
-	    (cdr entry)
-	    (let ((final-identifier
-		   (finalize-mapped-identifier-2 identifier frame-number)))
+	    (let ((entry* (assq identifier (cdr entry))))
+	      (if entry*
+		  (cdr entry*)
+		  (let ((mapped-symbol
+			 (map-indexed-symbol symbol
+					     frame-number
+					     (length (cdr entry)))))
+		    (set-cdr! entry
+			      (cons (cons identifier mapped-symbol)
+				    (cdr entry)))
+		    mapped-symbol)))
+	    (let ((mapped-symbol (map-indexed-symbol symbol frame-number 0)))
 	      (hash-table/put! table
-			       identifier
-			       (cons (cons frame-number final-identifier)
+			       symbol
+			       (cons (list frame-number
+					   (cons identifier mapped-symbol))
 				     alist))
-	      final-identifier))))))
+	      mapped-symbol))))))
 
-(define (finalize-mapped-identifier-2 identifier frame-number)
-  (if (interned-symbol? identifier)
-      (string->symbol
-       (string-append "."
-		      (symbol-name identifier)
-		      "."
-		      (number->string frame-number)))
-      (intern
-       (string-append "."
-		      (symbol-name (identifier->symbol identifier))
-		      "."
-		      (number->string (allocate-id-number))))))
-
-(define (allocate-id-number)
-  (let ((n (+ (rename-database/id-number *rename-database*) 1)))
-    (set-rename-database/id-number! *rename-database* n)
-    n))
-
-;;; Combinator deconstruction
-
-(define (combination-subexpressions expression)
-  (cons (combination-operator expression)
-	(combination-operands expression)))
-
-(define (conditional-subexpressions expression)
-  (list (conditional-predicate expression)
-	(conditional-consequent expression)
-	(conditional-alternative expression)))
-
-(define (disjunction-subexpressions expression)
-  (list (disjunction-predicate expression)
-	(disjunction-alternative expression)))
+(define (map-indexed-symbol symbol frame-number index-number)
+  (string->symbol
+   (string-append "."
+		  (symbol-name symbol)
+		  "."
+		  (number->string frame-number)
+		  "-"
+		  (number->string index-number))))
 
 ;;;; Compute substitution
 
@@ -426,6 +424,10 @@
   (add-to-reference-set (assignment-name expression)
 			(compute-substitution (assignment-value expression)
 					      unmapping)))
+
+(define (compute-substitution/unassigned? expression unmapping)
+  unmapping
+  (singleton-reference-set (unassigned?-name expression)))
 
 (define (compute-substitution/lambda expression unmapping)
   (lambda-components** expression
@@ -443,15 +445,19 @@
   (let ((free-references
 	 (remove-from-reference-set bound
 				    (compute-substitution body unmapping))))
-    (for-each (lambda (identifier)
-		(let ((unmapped-identifier (unmap-identifier identifier)))
-		  (if (not (unmapping-collision? identifier
-						 unmapped-identifier
-						 free-references))
-		      (store-unmapping-entry! identifier
-					      unmapped-identifier
-					      unmapping))))
-	      bound)
+    (let loop
+	((identifiers bound)
+	 (unmapped (map unmap-identifier bound)))
+      (if (pair? identifiers)
+	  (begin
+	    (if (not (or (unmapping-collision? (car identifiers)
+					       (car unmapped)
+					       free-references)
+			 (memq (car unmapped) (cdr unmapped))))
+		(store-unmapping-entry! (car identifiers)
+					(car unmapped)
+					unmapping))
+	    (loop (cdr identifiers) (cdr unmapped)))))
     free-references))
 
 ;;; Reference Set
@@ -542,6 +548,7 @@
 		       (LAMBDA ,compute-substitution/lambda)
 		       (OPEN-BLOCK ,compute-substitution/open-block)
 		       (SEQUENCE ,compute-substitution/sequence)
+		       (UNASSIGNED? ,compute-substitution/unassigned?)
 		       (VARIABLE ,compute-substitution/variable))))
 
 ;;;; Alpha substitution
@@ -556,6 +563,9 @@
   (make-assignment (substitution (assignment-name expression))
 		   (alpha-substitute substitution
 				     (assignment-value expression))))
+
+(define (alpha-substitute/unassigned? substitution expression)
+  (make-unassigned? (substitution (unassigned?-name expression))))
 
 (define (alpha-substitute/lambda substitution expression)
   (lambda-components** expression
@@ -664,4 +674,5 @@
 		       (LAMBDA ,alpha-substitute/lambda)
 		       (OPEN-BLOCK ,alpha-substitute/open-block)
 		       (SEQUENCE ,alpha-substitute/sequence)
+		       (UNASSIGNED? ,alpha-substitute/unassigned?)
 		       (VARIABLE ,alpha-substitute/variable))))
