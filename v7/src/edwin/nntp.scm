@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: nntp.scm,v 1.7 1996/10/15 19:34:26 cph Exp $
+;;;	$Id: nntp.scm,v 1.8 1996/10/15 19:42:29 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-96 Massachusetts Institute of Technology
 ;;;
@@ -513,11 +513,10 @@
 	(set-news-group:%first-article! group (vector-ref info 1))
 	(set-news-group:%last-article! group (vector-ref info 2))
 	(let ((predicate
-	       (lambda (header)
-		 (or (< (news-header:number header)
-			(news-group:%first-article group))
-		     (> (news-header:number header)
-			(news-group:%last-article group))))))
+	       (lambda (number body?)
+		 body?
+		 (or (< number (news-group:%first-article group))
+		     (> number (news-group:%last-article group))))))
 	  (news-group:purge-header-cache group predicate)
 	  (news-group:purge-pre-read-headers group predicate)))
       (begin
@@ -593,7 +592,7 @@
 	    (hash-table/clear! table)
 	    (hash-table/for-each table
 	      (lambda (number header)
-		(if (and (news-header? header) (predicate header))
+		(if (and (news-header? header) (predicate header #f))
 		    (hash-table/remove! table number))))))))
 
 (define (news-group:discard-cached-header! header)
