@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: list.scm,v 14.36 2003/03/07 05:42:38 cph Exp $
+$Id: list.scm,v 14.37 2003/04/25 03:31:49 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1995,1996,2000 Massachusetts Institute of Technology
@@ -179,7 +179,7 @@ USA.
     n))
 
 (define (guarantee-list-of-type->length object predicate description caller)
-  (let ((n (list-of-type? object predicate)))
+  (let ((n (list-of-type?->length object predicate)))
     (if (not n)
 	(error:wrong-type-argument object description caller))
     n))
