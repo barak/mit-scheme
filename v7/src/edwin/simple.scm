@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: simple.scm,v 1.45 1995/04/17 21:47:40 cph Exp $
+;;;	$Id: simple.scm,v 1.46 1995/04/19 01:40:24 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -275,7 +275,7 @@
 (define (reposition-window-top mark)
   (if (not (and mark (set-window-start-mark! (current-window) mark false)))
       (editor-beep)))
-
+
 (define (narrow-to-region mark #!optional point)
   (let ((point (if (default-object? point) (current-point) point)))
     (let ((group (mark-group mark))
@@ -290,3 +290,26 @@
 (define (widen #!optional point)
   (let ((point (if (default-object? point) (current-point) point)))
     (group-widen! (mark-group point))))
+
+(define (region-put! start end key datum)
+  (if (not (mark<= start end))
+      (error "Marks incorrectly related:" start end))
+  (add-text-property (mark-group start)
+		     (mark-index start)
+		     (mark-index end)
+		     key
+		     datum))
+
+(define (region-remove! start end key)
+  (if (not (mark<= start end))
+      (error "Marks incorrectly related:" start end))
+  (remove-text-property (mark-group start)
+			(mark-index start)
+			(mark-index end)
+			key))
+
+(define (region-get mark key)
+  (get-text-property (mark-group mark)
+		     (mark-index mark)
+		     key
+		     default))
