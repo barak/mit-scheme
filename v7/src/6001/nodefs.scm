@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/nodefs.scm,v 1.5 1992/04/06 05:41:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/nodefs.scm,v 1.6 1992/06/01 22:03:12 cph Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -74,7 +74,7 @@ MIT in each case. |#
     (write name port)
     (if (not (default-object? value))
 	(begin
-	  (write-string ": " port)
+	  (write-string " --> " port)
 	  (fluid-let ((*unparser-list-depth-limit* 2)
 		      (*unparser-list-breadth-limit* 10)
 		      (*unparser-string-length-limit* 30))
