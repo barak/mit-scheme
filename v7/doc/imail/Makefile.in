@@ -1,5 +1,5 @@
 
-# $Id: Makefile.in,v 1.7 2004/10/14 04:03:19 cph Exp $
+# $Id: Makefile.in,v 1.8 2004/10/16 06:02:55 cph Exp $
 #
 # Copyright 2000,2001,2002,2003,2004 Massachusetts Institute of Technology
 #
@@ -20,111 +20,12 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 # 02111-1307, USA.
 
-# **** BEGIN BOILERPLATE ****
-
-SHELL = @SHELL@
-
 @SET_MAKE@
-
 srcdir = @srcdir@
 top_srcdir = @top_srcdir@
 VPATH = @srcdir@
-prefix = @prefix@
-exec_prefix = @exec_prefix@
 
-bindir = @bindir@
-sbindir = @sbindir@
-libexecdir = @libexecdir@
-datadir = @datadir@
-sysconfdir = @sysconfdir@
-sharedstatedir = @sharedstatedir@
-localstatedir = @localstatedir@
-libdir = @libdir@
-infodir = @infodir@
-mandir = @mandir@
-includedir = @includedir@
-oldincludedir = /usr/include
+SOURCES = imail.texinfo
+TARGET_ROOT = mit-scheme-imail
 
-DESTDIR =
-top_builddir = .
-
-INSTALL = @INSTALL@
-INSTALL_PROGRAM = @INSTALL_PROGRAM@
-INSTALL_DATA = @INSTALL_DATA@
-INSTALL_SCRIPT = @INSTALL_SCRIPT@
-
-LN_S = @LN_S@
-ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
-
-# **** END BOILERPLATE ****
-
-htmldir = @htmldir@
-pdfdir = @pdfdir@
-psdir = @psdir@
-
-INFO_TARGET = mit-scheme-imail.info
-
-all: $(INFO_TARGET) imail.html imail.pdf imail.ps
-
-$(INFO_TARGET): imail.texinfo
-	rm -f $(INFO_TARGET)*
-	makeinfo --output=$(INFO_TARGET) imail.texinfo
-
-imail.html: imail.texinfo
-	rm -f imail*.html
-	texi2html -split_chapter imail.texinfo
-
-imail.pdf: imail.texinfo
-	texi2pdf imail.texinfo
-
-imail.ps: imail.dvi
-	dvips -o $@ $^
-
-imail.dvi: imail.texinfo
-	texi2dvi imail.texinfo
-
-AUX_SUFFIXES = aux log toc
-INDEX_SUFFIXES = cp fn ky pg tp vr
-
-mostlyclean:
-	@for S in $(AUX_SUFFIXES); do \
-	    echo "rm -f imail.$${S}";\
-	    rm -f imail.$${S};\
-	done
-	@for S in $(INDEX_SUFFIXES); do \
-	    echo "rm -f imail.$${S}";\
-	    rm -f imail.$${S};\
-	    echo "rm -f imail.$${S}s";\
-	    rm -f imail.$${S}s;\
-	done
-	rm -f imail.dvi
-
-clean: mostlyclean
-	rm -f $(INFO_TARGET)* imail*.html imail.pdf imail.ps
-
-distclean: clean
-
-maintainer-clean: distclean
-
-# The install rules depend on macro variables passwd down from the
-# makefile in the top-level documentation directory.
-
-install-info: $(INFO_TARGET)
-	-rm -f $(DESTDIR)$(infodir)/$(INFO_TARGET)*
-	$(INSTALL_DATA) $(INFO_TARGET)* $(DESTDIR)$(infodir)/.
-
-install-info-gz: install-info
-	gzip -v $(DESTDIR)$(infodir)/$(INFO_TARGET)*
-
-install-html: imail.html
-	$(INSTALL_DATA) imail*.html $(DESTDIR)$(htmldir)/.
-
-install-pdf: imail.pdf
-	$(INSTALL_DATA) imail.pdf $(DESTDIR)$(pdfdir)/.
-
-install-ps: imail.ps
-	$(INSTALL_DATA) imail.ps $(DESTDIR)$(psdir)/.
-
-.PHONY: all mostlyclean clean distclean maintainer-clean
-.PHONY: install-info install-html install-pdf install-ps
+include $(top_srcdir)/make-common

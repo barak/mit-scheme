@@ -1,5 +1,5 @@
 @c This file is part of the MIT/GNU Scheme Reference Manual.
-@c $Id: io.texi,v 1.9 2004/10/15 06:00:49 cph Exp $
+@c $Id: io.texi,v 1.10 2004/10/16 06:02:55 cph Exp $
 
 @c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 @c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
@@ -3319,10 +3319,10 @@ The @code{xml-declaration} record represents the @samp{<?xml @dots{}
 @findex make-xml-element
 @findex xml-element-name
 @findex xml-element-attributes
-@findex xml-element-contents
+@findex xml-element-content
 @findex set-xml-element-name!
 @findex set-xml-element-attributes!
-@findex set-xml-element-contents!
+@findex set-xml-element-content!
 The @code{xml-element} record represents general @acronym{XML} elements;
 the bulk of a typical @acronym{XML} document consists of these elements.
 @var{Name} is the element name (an @acronym{XML} name).

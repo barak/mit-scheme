@@ -1,5 +1,5 @@
 
-# $Id: Makefile.in,v 2.7 2004/10/14 04:03:27 cph Exp $
+# $Id: Makefile.in,v 2.8 2004/10/16 06:02:55 cph Exp $
 #
 # Copyright 2000,2001,2002,2003,2004 Massachusetts Institute of Technology
 #
@@ -20,111 +20,12 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 # 02111-1307, USA.
 
-# **** BEGIN BOILERPLATE ****
-
-SHELL = @SHELL@
-
 @SET_MAKE@
-
 srcdir = @srcdir@
 top_srcdir = @top_srcdir@
 VPATH = @srcdir@
-prefix = @prefix@
-exec_prefix = @exec_prefix@
 
-bindir = @bindir@
-sbindir = @sbindir@
-libexecdir = @libexecdir@
-datadir = @datadir@
-sysconfdir = @sysconfdir@
-sharedstatedir = @sharedstatedir@
-localstatedir = @localstatedir@
-libdir = @libdir@
-infodir = @infodir@
-mandir = @mandir@
-includedir = @includedir@
-oldincludedir = /usr/include
+SOURCES = sos.texinfo
+TARGET_ROOT = mit-scheme-sos
 
-DESTDIR =
-top_builddir = .
-
-INSTALL = @INSTALL@
-INSTALL_PROGRAM = @INSTALL_PROGRAM@
-INSTALL_DATA = @INSTALL_DATA@
-INSTALL_SCRIPT = @INSTALL_SCRIPT@
-
-LN_S = @LN_S@
-ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
-
-# **** END BOILERPLATE ****
-
-htmldir = @htmldir@
-pdfdir = @pdfdir@
-psdir = @psdir@
-
-INFO_TARGET = mit-scheme-sos.info
-
-all: $(INFO_TARGET) sos.html sos.pdf sos.ps
-
-$(INFO_TARGET): sos.texinfo
-	rm -f $(INFO_TARGET)*
-	makeinfo --output=$(INFO_TARGET) sos.texinfo
-
-sos.html: sos.texinfo
-	rm -f sos*.html
-	texi2html -split_chapter sos.texinfo
-
-sos.pdf: sos.texinfo
-	texi2pdf sos.texinfo
-
-sos.ps: sos.dvi
-	dvips -o $@ $^
-
-sos.dvi: sos.texinfo
-	texi2dvi sos.texinfo
-
-AUX_SUFFIXES = aux log toc
-INDEX_SUFFIXES = cp fn ky pg tp vr
-
-mostlyclean:
-	@for S in $(AUX_SUFFIXES); do \
-	    echo "rm -f sos.$${S}";\
-	    rm -f sos.$${S};\
-	done
-	@for S in $(INDEX_SUFFIXES); do \
-	    echo "rm -f sos.$${S}";\
-	    rm -f sos.$${S};\
-	    echo "rm -f sos.$${S}s";\
-	    rm -f sos.$${S}s;\
-	done
-	rm -f sos.dvi
-
-clean: mostlyclean
-	rm -f $(INFO_TARGET)* sos*.html sos.pdf sos.ps
-
-distclean: clean
-
-maintainer-clean: distclean
-
-# The install rules depend on macro variables passwd down from the
-# makefile in the top-level documentation directory.
-
-install-info: $(INFO_TARGET)
-	-rm -f $(DESTDIR)$(infodir)/$(INFO_TARGET)*
-	$(INSTALL_DATA) $(INFO_TARGET)* $(DESTDIR)$(infodir)/.
-
-install-info-gz: install-info
-	gzip -v $(DESTDIR)$(infodir)/$(INFO_TARGET)*
-
-install-html: sos.html
-	$(INSTALL_DATA) sos*.html $(DESTDIR)$(htmldir)/.
-
-install-pdf: sos.pdf
-	$(INSTALL_DATA) sos.pdf $(DESTDIR)$(pdfdir)/.
-
-install-ps: sos.ps
-	$(INSTALL_DATA) sos.ps $(DESTDIR)$(psdir)/.
-
-.PHONY: all mostlyclean clean distclean maintainer-clean
-.PHONY: install-info install-html install-pdf install-ps
+include $(top_srcdir)/make-common

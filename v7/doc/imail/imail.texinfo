@@ -2,9 +2,9 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: imail.texinfo,v 1.32 2004/10/14 03:51:49 cph Exp $
+@comment $Id: imail.texinfo,v 1.33 2004/10/16 06:02:55 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
-@setfilename imail.info
+@setfilename mit-scheme-imail
 @settitle IMAIL User's Manual
 @comment %**end of header (This is for running Texinfo on a region.)
 @setchapternewpage on

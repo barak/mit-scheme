@@ -1,5 +1,5 @@
 
-# $Id: Makefile.in,v 1.7 2004/10/14 04:03:55 cph Exp $
+# $Id: Makefile.in,v 1.8 2004/10/16 06:02:55 cph Exp $
 #
 # Copyright 2000,2001,2002,2003,2004 Massachusetts Institute of Technology
 #
@@ -20,111 +20,12 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 # 02111-1307, USA.
 
-# **** BEGIN BOILERPLATE ****
-
-SHELL = @SHELL@
-
 @SET_MAKE@
-
 srcdir = @srcdir@
 top_srcdir = @top_srcdir@
 VPATH = @srcdir@
-prefix = @prefix@
-exec_prefix = @exec_prefix@
 
-bindir = @bindir@
-sbindir = @sbindir@
-libexecdir = @libexecdir@
-datadir = @datadir@
-sysconfdir = @sysconfdir@
-sharedstatedir = @sharedstatedir@
-localstatedir = @localstatedir@
-libdir = @libdir@
-infodir = @infodir@
-mandir = @mandir@
-includedir = @includedir@
-oldincludedir = /usr/include
+SOURCES = user.texinfo
+TARGET_ROOT = mit-scheme-user
 
-DESTDIR =
-top_builddir = .
-
-INSTALL = @INSTALL@
-INSTALL_PROGRAM = @INSTALL_PROGRAM@
-INSTALL_DATA = @INSTALL_DATA@
-INSTALL_SCRIPT = @INSTALL_SCRIPT@
-
-LN_S = @LN_S@
-ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
-
-# **** END BOILERPLATE ****
-
-htmldir = @htmldir@
-pdfdir = @pdfdir@
-psdir = @psdir@
-
-INFO_TARGET = mit-scheme-user.info
-
-all: $(INFO_TARGET) user.html user.pdf user.ps
-
-$(INFO_TARGET): user.texinfo
-	rm -f $(INFO_TARGET)*
-	makeinfo --output=$(INFO_TARGET) user.texinfo
-
-user.html: user.texinfo
-	rm -f user*.html
-	texi2html -split_chapter user.texinfo
-
-user.pdf: user.texinfo
-	texi2pdf user.texinfo
-
-user.ps: user.dvi
-	dvips -o $@ $^
-
-user.dvi: user.texinfo
-	texi2dvi user.texinfo
-
-AUX_SUFFIXES = aux log toc
-INDEX_SUFFIXES = cp fn ky pg tp vr nv op
-
-mostlyclean:
-	@for S in $(AUX_SUFFIXES); do \
-	    echo "rm -f user.$${S}";\
-	    rm -f user.$${S};\
-	done
-	@for S in $(INDEX_SUFFIXES); do \
-	    echo "rm -f user.$${S}";\
-	    rm -f user.$${S};\
-	    echo "rm -f user.$${S}s";\
-	    rm -f user.$${S}s;\
-	done
-	rm -f user.dvi
-
-clean: mostlyclean
-	rm -f $(INFO_TARGET)* user*.html user.pdf user.ps
-
-distclean: clean
-
-maintainer-clean: distclean
-
-# The install rules depend on macro variables passwd down from the
-# makefile in the top-level documentation directory.
-
-install-info: $(INFO_TARGET)
-	-rm -f $(DESTDIR)$(infodir)/$(INFO_TARGET)*
-	$(INSTALL_DATA) $(INFO_TARGET)* $(DESTDIR)$(infodir)/.
-
-install-info-gz: install-info
-	gzip -v $(DESTDIR)$(infodir)/$(INFO_TARGET)*
-
-install-html: user.html
-	$(INSTALL_DATA) user*.html $(DESTDIR)$(htmldir)/.
-
-install-pdf: user.pdf
-	$(INSTALL_DATA) user.pdf $(DESTDIR)$(pdfdir)/.
-
-install-ps: user.ps
-	$(INSTALL_DATA) user.ps $(DESTDIR)$(psdir)/.
-
-.PHONY: all mostlyclean clean distclean maintainer-clean
-.PHONY: install-info install-html install-pdf install-ps
+include $(top_srcdir)/make-common

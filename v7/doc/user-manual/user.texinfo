@@ -2,9 +2,9 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.103 2004/10/14 03:49:52 cph Exp $
+@comment $Id: user.texinfo,v 1.104 2004/10/16 06:02:55 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
-@setfilename user.info
+@setfilename mit-scheme-user
 @settitle MIT/GNU Scheme User's Manual
 @comment %**end of header (This is for running Texinfo on a region.)
 @setchapternewpage odd

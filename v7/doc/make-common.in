@@ -1,0 +1,125 @@
+
+# $Id: make-common.in,v 1.1 2004/10/16 06:02:55 cph Exp $
+#
+# Copyright 2000,2001,2002,2003,2004 Massachusetts Institute of Technology
+#
+# This file is part of MIT/GNU Scheme.
+#
+# MIT/GNU Scheme is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of the
+# License, or (at your option) any later version.
+#
+# MIT/GNU Scheme is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with MIT/GNU Scheme; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+# 02111-1307, USA.
+
+# **** BEGIN BOILERPLATE ****
+
+SHELL = @SHELL@
+
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+
+bindir = @bindir@
+sbindir = @sbindir@
+libexecdir = @libexecdir@
+datadir = @datadir@
+sysconfdir = @sysconfdir@
+sharedstatedir = @sharedstatedir@
+localstatedir = @localstatedir@
+libdir = @libdir@
+infodir = @infodir@
+mandir = @mandir@
+includedir = @includedir@
+oldincludedir = /usr/include
+
+DESTDIR =
+top_builddir = .
+
+INSTALL = @INSTALL@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@
+INSTALL_DATA = @INSTALL_DATA@
+INSTALL_SCRIPT = @INSTALL_SCRIPT@
+
+LN_S = @LN_S@
+ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
+mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
+
+# **** END BOILERPLATE ****
+
+htmldir = @htmldir@
+pdfdir = @pdfdir@
+psdir = @psdir@
+
+INST_TARGETS = @INST_TARGETS@
+
+INFO_TARGET = $(TARGET_ROOT).info
+HTML_TARGET = $(TARGET_ROOT)
+DVI_TARGET = $(TARGET_ROOT).dvi
+PDF_TARGET = $(TARGET_ROOT).pdf
+PS_TARGET = $(TARGET_ROOT).ps
+
+TEX_OPTIONS = --quiet
+
+all: $(INFO_TARGET) $(HTML_TARGET)/index.html $(PDF_TARGET) $(PS_TARGET)
+
+$(INFO_TARGET): $(SOURCES)
+	rm -f $(INFO_TARGET)*
+	makeinfo --output=$(INFO_TARGET) $(word 1, $(SOURCES))
+
+$(HTML_TARGET)/index.html: $(SOURCES)
+	rm -rf $(HTML_TARGET)
+	makeinfo --html $(word 1, $(SOURCES))
+
+$(PDF_TARGET): $(SOURCES)
+	texi2pdf $(TEX_OPTIONS) --output=$@ $(word 1, $(SOURCES))
+
+$(PS_TARGET): $(SOURCES)
+	-rm -f $(DVI_TARGET)
+	texi2dvi $(TEX_OPTIONS) --output=$(DVI_TARGET) $(word 1, $(SOURCES))
+	dvips -q -o $@ $(DVI_TARGET)
+	rm -f $(DVI_TARGET)
+
+mostlyclean:
+
+clean: mostlyclean
+	rm -f $(INFO_TARGET)* $(PDF_TARGET) $(PS_TARGET)
+	rm -rf $(HTML_TARGET)
+
+distclean: clean
+	rm -f Makefile
+
+maintainer-clean: distclean
+
+# The install rules depend on macro variables passwd down from the
+# makefile in the top-level documentation directory.
+
+install: install-info-gz $(INST_TARGETS)
+
+install-info: $(INFO_TARGET)
+	-rm -f $(DESTDIR)$(infodir)/$(INFO_TARGET)*
+	$(INSTALL_DATA) $(INFO_TARGET)* $(DESTDIR)$(infodir)/.
+
+install-info-gz: install-info
+	gzip -v $(DESTDIR)$(infodir)/$(INFO_TARGET)*
+
+install-html: $(HTML_TARGET)/index.html
+	-rm -rf $(DESTDIR)$(htmldir)/$(HTML_TARGET)
+	$(mkinstalldirs) $(DESTDIR)$(htmldir)/$(HTML_TARGET)
+	$(INSTALL_DATA) $(HTML_TARGET)/* $(DESTDIR)$(htmldir)/$(HTML_TARGET)/.
+
+install-pdf: $(PDF_TARGET)
+	$(INSTALL_DATA) $(PDF_TARGET) $(DESTDIR)$(pdfdir)/.
+
+install-ps: $(PS_TARGET)
+	$(INSTALL_DATA) $(PS_TARGET) $(DESTDIR)$(psdir)/.
+
+.PHONY: all mostlyclean clean distclean maintainer-clean
+.PHONY: install-info install-html install-pdf install-ps

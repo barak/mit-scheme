@@ -4,7 +4,7 @@ AC_INIT([MIT/GNU Scheme documentation],
 	[7.7.91],
 	[bug-mit-scheme@gnu.org],
 	[mit-scheme-doc])
-AC_REVISION([$Id: configure.ac,v 1.3 2004/10/14 04:10:14 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.4 2004/10/16 06:02:54 cph Exp $])
 AC_CONFIG_SRCDIR([ref-manual/scheme.texinfo])
 
 AC_COPYRIGHT(
@@ -78,6 +78,7 @@ AC_SUBST([INST_TARGETS])
 
 AC_CONFIG_FILES([
 	Makefile
+	make-common
 	imail/Makefile
 	ref-manual/Makefile
 	sos/Makefile
