@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxpth.scm,v 14.11 1992/04/16 05:12:55 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxpth.scm,v 14.12 1992/08/12 08:42:46 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -50,10 +50,16 @@ MIT in each case. |#
 		  unix/user-homedir-pathname
 		  unix/init-file-pathname
 		  unix/pathname-simplify
-		  unix/end-of-line-string))
+		  unix/end-of-line-string
+		  unix/canonicalize))
 
 (define (initialize-package!)
   (add-pathname-host-type! 'UNIX make-unix-host-type))
+
+(define (unix/canonicalize pathname)
+  ;; No name truncation -- this is not really true:
+  ;; 14 chars for SYSV, 255 for BSD.
+  pathname)
 
 ;;;; Pathname Parser
 
