@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: redpkg.scm,v 1.13 2001/08/09 03:06:17 cph Exp $
+$Id: redpkg.scm,v 1.14 2001/08/16 20:46:11 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -40,35 +40,17 @@ USA.
 		 (let ((pathname
 			(pathname-new-type (merge-pathnames pathname
 							    model-pathname)
-					   "glo")))
+					   "pkd")))
 		   (if (file-exists? pathname)
 		       (let ((contents (fasload pathname)))
-			 (cond ((and (pair? contents)
-				     (pair? (car contents))
-				     (eq? 'VERSION (caar contents))
-				     (exact-nonnegative-integer?
-				      (cdar contents)))
-				(if (not (= 2 (cdar contents)))
-				    (error "Unknown globals-file version:"
-					   (cdar contents)))
-				(cdr contents))
-			       ((check-list contents symbol?)
-				(list (vector '() '() contents)))
-			       ((check-list contents
-				  (lambda (element)
-				    (and (pair? element)
-					 (check-list (car element) symbol?)
-					 (check-list (cdr element) symbol?))))
-				(map (lambda (element)
-				       (vector (car element)
-					       '()
-					       (cdr element)))
-				     contents))
-			       (else
-				(warn "Malformed globals file:" pathname)
-				'())))
+			 (if (package-file? contents)
+			     contents
+			     (begin
+			       (warn "Malformed package-description file:"
+				     pathname)
+			       '())))
 		       (begin
-			 (warn "Can't find globals file:" pathname)
+			 (warn "Can't find package-description file:" pathname)
 			 '())))))
 	      globals)
 	 model-pathname)))))
@@ -425,29 +407,11 @@ USA.
 			     package)
 			   (error "Unknown package name:" name)))))))
 	;; GLOBALS is a list of the bindings supplied externally.
-	(for-each
-	 (lambda (global)
-	   (for-each
-	    (let ((namestring (->namestring (car global))))
-	      (lambda (entry)
-		(for-each
-		 (let ((package (get-package (vector-ref entry 0) #t)))
-		   (let loop
-		       ((package package)
-			(ancestors (vector-ref entry 1)))
-		     (if (eq? 'UNKNOWN (package/parent package))
-			 (if (pair? ancestors)
-			     (let ((parent (get-package (car ancestors) #t)))
-			       (set-package/parent! package parent)
-			       (loop parent (cdr ancestors)))
-			     (set-package/parent! package #f))))
-		   (lambda (name)
-		     (bind! package
-			    name
-			    (make-expression package namestring #f))))
-		 (vector-ref entry 2))))
-	    (cdr global)))
-	 globals)
+	(for-each (lambda (global)
+		    (process-globals-info (cdr global)
+					  (->namestring (car global))
+					  get-package))
+		  globals)
 	(for-each
 	 (lambda (package description)
 	   (let ((parent
@@ -475,6 +439,41 @@ USA.
 		   extra-packages
 		   pathname))))
 
+(define (process-globals-info file namestring get-package)
+  (for-each-vector-element (vector-ref file 2)
+    (lambda (desc)
+      (let ((package (get-package (vector-ref desc 0) #t)))
+	(let loop
+	    ((package package)
+	     (ancestors (vector-ref desc 1)))
+	  (if (eq? 'UNKNOWN (package/parent package))
+	      (if (pair? ancestors)
+		  (let ((parent (get-package (car ancestors) #t)))
+		    (set-package/parent! package parent)
+		    (loop parent (cdr ancestors)))
+		  (set-package/parent! package #f))))
+	(let ((expression (make-expression package namestring #f)))
+	  ;; Unlinked internal names: just bind them.
+	  (for-each-vector-element (vector-ref desc 5)
+	    (lambda (name)
+	      (bind! package name expression)))
+	  ;; Exported bindings: bind the internal and external names.
+	  ;; Perhaps should link them here.
+	  (for-each-vector-element (vector-ref desc 6)
+	    (lambda (entry)
+	      (bind! package (vector-ref entry 0) expression)
+	      (let ((n (vector-length entry)))
+		(do ((i 1 (fix:+ i 1)))
+		    ((fix:= i n))
+		  (let ((p.n (vector-ref entry i)))
+		    (bind! (get-package (car p.n) #t)
+			   (cdr p.n)
+			   expression))))))
+	  ;; Imported bindings: bind just the internal name.
+	  (for-each-vector-element (vector-ref desc 7)
+	    (lambda (entry)
+	      (bind! package (vector-ref entry 0) expression))))))))
+
 (define (package-lookup package name)
   (let package-loop ((package package))
     (or (package/find-binding package name)
