@@ -30,18 +30,15 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.18 1989/11/27 01:01:55 jinx Exp $
- *
- * This file corresponds to
- * $COMPILER-Header: compiler.c,v 9.37 89/10/25 14:55:45 GMT jinx Exp $
- * $MC68020-Header: cmp68020.m4,v 9.93 89/10/26 07:49:23 GMT cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.19 1989/11/27 20:20:26 jinx Exp $
  *
  * Compiled code interface.  Portable version.
- * This file requires a bit of assembly language described in cmpaux.m4
- * See also the files cmpint.h, cmpgc.h, and cmpint.txt .
+ * This file requires a bit of assembly language from cmpaux-md.m4
+ * See also the files cmpint.txt, cmpgc.h, and cmpint-md.h .
  *
  */
 
+#ifdef HAS_COMPILER_SUPPORT
 /*
  * Procedures in this file belong to the following categories:
  *
@@ -1137,7 +1134,7 @@ comutil_operator_lookup_trap (tramp_data, ignore_2, ignore_3, ignore_4)
 
   else /* Error or interrupt */
   {
-    SCHEME_OBJECT *trampoline, environment, name;
+    SCHEME_OBJECT trampoline, environment, name;
 
     /* This could be done by bumpint tramp_data to the entry point.
        It would probably be better.
@@ -1146,7 +1143,7 @@ comutil_operator_lookup_trap (tramp_data, ignore_2, ignore_3, ignore_4)
     environment = (compiled_block_environment (tramp_data[1]));
     name = (compiler_var_error ((tramp_data[0]), environment));
 
-    STACK_PUSH (ENTRY_TO_OBJECT(trampoline));
+    STACK_PUSH (ENTRY_TO_OBJECT((SCHEME_OBJECT *) trampoline));
     STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM(nargs));	/* For debugger */
     STACK_PUSH (environment);				/* For debugger */
     STACK_PUSH (name);					/* For debugger */
@@ -1178,7 +1175,7 @@ comp_op_lookup_trap_restart ()
   offset = (OBJECT_DATUM ((TRAMPOLINE_STORAGE (old_trampoline))[2]));
   EXTRACT_EXECUTE_CACHE_ADDRESS (new_procedure,
 				 (MEMORY_LOC (code_block, offset)));
-  return (C_to_interface ((instruction *) (OBJECT_ADDRESS (new_procedure))));
+  return (C_to_interface ((instruction *) new_procedure));
 }
 
 /* ARITY Mismatch handling
@@ -1359,11 +1356,12 @@ comutil_interrupt_closure (ignore_1, ignore_2, ignore_3, ignore_4)
   TEST_GC_NEEDED();
   if ((PENDING_INTERRUPTS()) == 0)
   {
-    instruction *entry_point;
+    SCHEME_OBJECT entry_point;
 
     EXTRACT_CLOSURE_ENTRY_ADDRESS(entry_point,
 				  (OBJECT_ADDRESS (STACK_REF (0))));
-    RETURN_TO_SCHEME(entry_point + CLOSURE_SKIPPED_CHECK_OFFSET);
+    RETURN_TO_SCHEME(((instruction *) entry_point) +
+		     CLOSURE_SKIPPED_CHECK_OFFSET);
   }
   else
   {
@@ -2026,11 +2024,10 @@ C_UTILITY SCHEME_OBJECT
 compiled_closure_to_entry (entry)
      SCHEME_OBJECT entry;
 {
-  SCHEME_OBJECT *real_entry;
+  SCHEME_OBJECT real_entry;
 
-  EXTRACT_CLOSURE_ENTRY_ADDRESS (real_entry,
-				 (OBJECT_ADDRESS (entry)));
-  return (ENTRY_TO_OBJECT (real_entry));
+  EXTRACT_CLOSURE_ENTRY_ADDRESS (real_entry, (OBJECT_ADDRESS (entry)));
+  return (ENTRY_TO_OBJECT ((SCHEME_OBJECT *) real_entry));
 }
 
 /*
@@ -2158,11 +2155,11 @@ extract_uuo_link (block, offset)
      SCHEME_OBJECT block;
      long offset;
 {
-  SCHEME_OBJECT *cache_address, *compiled_entry_address;
+  SCHEME_OBJECT *cache_address, compiled_entry_address;
 
   cache_address = (MEMORY_LOC (block, offset));
   EXTRACT_EXECUTE_CACHE_ADDRESS (compiled_entry_address, cache_address);
-  return ENTRY_TO_OBJECT(compiled_entry_address);
+  return (ENTRY_TO_OBJECT ((SCHEME_OBJECT *) compiled_entry_address));
 }
 
 static void
@@ -2468,8 +2465,7 @@ coerce_to_compiled (procedure, arity, location)
 #define COMPILER_INTERFACE_VERSION		2
 
 #define COMPILER_REGBLOCK_N_FIXED		16
-#define COMPILER_REGBLOCK_N_HOOKS		64
-#define COMPILER_REGBLOCK_N_TEMPS		128
+#define COMPILER_REGBLOCK_N_TEMPS		256
 
 #if (REGBLOCK_MINIMUM_LENGTH > COMPILER_REGBLOCK_N_FIXED)
 #include "error: cmpint.c and const.h disagree on REGBLOCK_MINIMUM_LENGTH!"
@@ -2477,18 +2473,24 @@ coerce_to_compiled (procedure, arity, location)
 
 #define COMPILER_FIXED_SIZE	1	/* ((sizeof(long)) / (sizeof(long))) */
 
-#ifndef COMPILER_HOOK_SIZE
-#define COMPILER_HOOK_SIZE	(EXECUTE_CACHE_ENTRY_SIZE)
-#endif
-
 #ifndef COMPILER_TEMP_SIZE
 #define COMPILER_TEMP_SIZE	((sizeof (double)) / (sizeof (long)))
 #endif
 
+#ifndef COMPILER_REGBLOCK_EXTRA_SIZE
+#define COMPILER_REGBLOCK_EXTRA_SIZE		0
+#endif
+
 #define REGBLOCK_LENGTH							\
-((COMPILER_REGBLOCK_N_FIXED * COMPILER_FIXED_SIZE)		+	\
- (COMPILER_REGBLOCK_N_HOOKS * COMPILER_HOOK_SIZE)		+	\
- (COMPILER_REGBLOCK_N_TEMPS * COMPILER_TEMP_SIZE))
+((COMPILER_REGBLOCK_N_FIXED * COMPILER_FIXED_SIZE) +			\
+ (COMPILER_REGBLOCK_N_TEMPS * COMPILER_TEMP_SIZE)			\
+ COMPILER_REGBLOCK_EXTRA_SIZE)
+
+#ifndef ASM_RESET_HOOK
+#define ASM_RESET_HOOK()						\
+do {									\
+} while (0)
+#endif
 
 long
   compiler_processor_type,
@@ -2508,10 +2510,7 @@ compiler_reset_internal ()
 {
   /* Other stuff can be placed here. */
 
-#ifdef ASM_RESET_HOOK
   ASM_RESET_HOOK();
-#endif
-
   return_to_interpreter =
     (ENTRY_TO_OBJECT ((SCHEME_OBJECT *)
 		      ((OBJECT_ADDRESS (compiler_utilities)) +
@@ -2577,3 +2576,260 @@ compiler_initialize (fasl_p)
   }
   return;
 }
+
+#else	/* not HAS_COMPILER_SUPPORT */
+
+/* Stubs for compiler utilities.
+   All entries error out or kill the microcode.
+ */
+
+#include "config.h"	/* Machine configurations */
+#include "object.h"	/* Making pointers */
+#include "sdata.h"	/* Needed by const.h */
+#include "types.h"	/* Needed by const.h */
+#include "errors.h"	/* Error codes and Termination codes */
+#include "const.h"	/* REGBLOCK_MINIMUM_LENGTH */
+#include "returns.h"	/* RC_POP_FROM_COMPILED_CODE */
+
+extern long
+  compiler_interface_version,
+  compiler_processor_type;
+
+extern SCHEME_OBJECT
+  Registers[],
+  compiler_utilities,
+  return_to_interpreter;
+
+extern long
+  enter_compiled_expression(),
+  apply_compiled_procedure(),
+  return_to_compiled_code(),
+  make_fake_uuo_link(),
+  make_uuo_link(),
+  compiled_block_closure_p(),
+  compiled_entry_closure_p(),
+  compiled_entry_to_block_offset();
+
+extern SCHEME_OBJECT
+  extract_uuo_link(),
+  extract_variable_cache(),
+  compiled_block_debugging_info(),
+  compiled_block_environment(),
+  compiled_closure_to_entry(),
+  *compiled_entry_to_block_address();
+
+extern void
+  store_variable_cache(),
+  compiled_entry_type(),
+  Microcode_Termination();
+
+SCHEME_OBJECT
+  Registers[REGBLOCK_MINIMUM_LENGTH],
+  compiler_utilities,
+  return_to_interpreter;
+
+long
+  compiler_interface_version,
+  compiler_processor_type;
+
+long
+enter_compiled_expression ()
+{
+  return (ERR_EXECUTE_MANIFEST_VECTOR);
+}
+
+long
+apply_compiled_procedure ()
+{
+  return (ERR_INAPPLICABLE_OBJECT);
+}
+
+long
+return_to_compiled_code ()
+{
+  return (ERR_INAPPLICABLE_CONTINUATION);
+}
+
+/* Bad entry points. */
+
+long
+make_fake_uuo_link (extension, block, offset)
+     SCHEME_OBJECT extension, block;
+     long offset;
+{
+  Microcode_Termination (TERM_COMPILER_DEATH);
+  /*NOTREACHED*/
+}
+
+long
+make_uuo_link (value, extension, block, offset)
+     SCHEME_OBJECT value, extension, block;
+     long offset;
+{
+  Microcode_Termination (TERM_COMPILER_DEATH);
+  /*NOTREACHED*/
+}
+
+SCHEME_OBJECT
+extract_uuo_link (block, offset)
+     SCHEME_OBJECT block;
+     long offset;
+{
+  Microcode_Termination (TERM_COMPILER_DEATH);
+  /*NOTREACHED*/
+}
+
+void
+store_variable_cache (extension, block, offset)
+     SCHEME_OBJECT extension, block;
+     long offset;
+{
+  Microcode_Termination (TERM_COMPILER_DEATH);
+  /*NOTREACHED*/
+}
+
+SCHEME_OBJECT
+extract_variable_cache (block, offset)
+     SCHEME_OBJECT block;
+     long offset;
+{
+  Microcode_Termination (TERM_COMPILER_DEATH);
+  /*NOTREACHED*/
+}
+
+SCHEME_OBJECT
+compiled_block_debugging_info (block)
+     SCHEME_OBJECT block;
+{
+  Microcode_Termination (TERM_COMPILER_DEATH);
+  /*NOTREACHED*/
+}
+
+SCHEME_OBJECT
+compiled_block_environment (block)
+     SCHEME_OBJECT block;
+{
+  Microcode_Termination (TERM_COMPILER_DEATH);
+  /*NOTREACHED*/
+}
+
+long
+compiled_block_closure_p (block)
+     SCHEME_OBJECT block;
+{
+  Microcode_Termination (TERM_COMPILER_DEATH);
+  /*NOTREACHED*/
+}
+
+SCHEME_OBJECT *
+compiled_entry_to_block_address (entry)
+     SCHEME_OBJECT entry;
+{
+  Microcode_Termination (TERM_COMPILER_DEATH);
+  /*NOTREACHED*/
+}
+
+long
+compiled_entry_to_block_offset (entry)
+     SCHEME_OBJECT entry;
+{
+  Microcode_Termination (TERM_COMPILER_DEATH);
+  /*NOTREACHED*/
+}
+
+void
+compiled_entry_type (entry, buffer)
+     SCHEME_OBJECT entry, *buffer;
+{
+  Microcode_Termination (TERM_COMPILER_DEATH);
+  /*NOTREACHED*/
+}
+
+long
+compiled_entry_closure_p (entry)
+     SCHEME_OBJECT entry;
+{
+  Microcode_Termination (TERM_COMPILER_DEATH);
+  /*NOTREACHED*/
+}
+
+SCHEME_OBJECT
+compiled_closure_to_entry (entry)
+     SCHEME_OBJECT entry;
+{
+  Microcode_Termination (TERM_COMPILER_DEATH);
+  /*NOTREACHED*/
+}
+
+#define LOSING_RETURN_ADDRESS(name)					\
+extern long name();							\
+long									\
+name()									\
+{									\
+  Microcode_Termination (TERM_COMPILER_DEATH);				\
+  /*NOTREACHED*/							\
+}
+
+LOSING_RETURN_ADDRESS (comp_interrupt_restart)
+LOSING_RETURN_ADDRESS (comp_lookup_apply_restart)
+LOSING_RETURN_ADDRESS (comp_reference_restart)
+LOSING_RETURN_ADDRESS (comp_access_restart)
+LOSING_RETURN_ADDRESS (comp_unassigned_p_restart)
+LOSING_RETURN_ADDRESS (comp_unbound_p_restart)
+LOSING_RETURN_ADDRESS (comp_assignment_restart)
+LOSING_RETURN_ADDRESS (comp_definition_restart)
+LOSING_RETURN_ADDRESS (comp_safe_reference_restart)
+LOSING_RETURN_ADDRESS (comp_lookup_trap_restart)
+LOSING_RETURN_ADDRESS (comp_assignment_trap_restart)
+LOSING_RETURN_ADDRESS (comp_op_lookup_trap_restart)
+LOSING_RETURN_ADDRESS (comp_cache_lookup_apply_restart)
+LOSING_RETURN_ADDRESS (comp_safe_lookup_trap_restart)
+LOSING_RETURN_ADDRESS (comp_unassigned_p_trap_restart)
+LOSING_RETURN_ADDRESS (comp_link_caches_restart)
+
+/* NOP entry points */
+
+extern void
+  compiler_reset(),
+  compiler_initialize();
+
+extern long
+  coerce_to_compiled();
+
+void
+compiler_reset (new_block)
+     SCHEME_OBJECT new_block;
+{
+  extern void compiler_reset_error();
+
+  if (new_block != SHARP_F)
+  {
+    compiler_reset_error();
+  }
+  return;
+}
+
+void
+compiler_initialize (fasl_p)
+     long fasl_p;
+{
+  compiler_processor_type = 0;
+  compiler_interface_version = 0;
+  compiler_utilities = SHARP_F;
+  return_to_interpreter =
+    (MAKE_OBJECT (TC_RETURN_CODE, RC_POP_FROM_COMPILED_CODE));
+  return;
+}
+
+/* Identity procedure */
+
+long
+coerce_to_compiled(object, arity, location)
+     SCHEME_OBJECT object, *location;
+     long arity;
+{
+  *location = object;
+  return (PRIM_DONE);
+}
+
+#endif	/* HAS_COMPILER_SUPPORT */
