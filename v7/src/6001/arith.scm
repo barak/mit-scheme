@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/arith.scm,v 1.1 1991/08/22 17:42:25 arthur Exp $
+$Id: arith.scm,v 1.2 1992/09/22 02:19:42 cph Exp $
 
-Copyright (c) 1989-91 Massachusetts Institute of Technology
+Copyright (c) 1989-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -308,7 +308,7 @@ MIT in each case. |#
 	(if (flonum? y)
 	    (general-case (int:->flonum x) y)
 	    (int:expt x y)))))
-
+
 (define number? rational?)
 (define complex? rational?)
 (define real? rational?)
@@ -318,41 +318,51 @@ MIT in each case. |#
 
 (define (odd? n)
   (not (even? n)))
-
+
 (define (= . zs)
-  (reduce-comparator real:= zs))
+  (reduce-comparator real:= zs '=))
 
 (define (< . xs)
-  (reduce-comparator real:< xs))
+  (reduce-comparator real:< xs '<))
 
 (define (> . xs)
-  (reduce-comparator (lambda (x y) (real:< y x)) xs))
+  (reduce-comparator (lambda (x y) (real:< y x)) xs '>))
 
 (define (<= . xs)
-  (reduce-comparator (lambda (x y) (not (real:< y x))) xs))
+  (reduce-comparator (lambda (x y) (not (real:< y x))) xs '<=))
 
 (define (>= . xs)
-  (reduce-comparator (lambda (x y) (not (real:< x y))) xs))
+  (reduce-comparator (lambda (x y) (not (real:< x y))) xs '>=))
 
 (define (max x . xs)
-  (reduce-max/min real:max x xs))
+  (reduce-max/min real:max x xs 'MAX))
 
 (define (min x . xs)
-  (reduce-max/min real:min x xs))
+  (reduce-max/min real:min x xs 'MIN))
 
 (define (+ . zs)
-  (cond ((null? zs) 0)
-	((null? (cdr zs)) (car zs))
-	((null? (cddr zs)) (real:+ (car zs) (cadr zs)))
+  (cond ((null? zs)
+	 0)
+	((null? (cdr zs))
+	 (if (not (complex:complex? (car zs)))
+	     (error:wrong-type-argument (car zs) false '+))
+	 (car zs))
+	((null? (cddr zs))
+	 (real:+ (car zs) (cadr zs)))
 	(else
 	 (real:+ (car zs)
 		 (real:+ (cadr zs)
 			 (reduce real:+ 0 (cddr zs)))))))
 
 (define (* . zs)
-  (cond ((null? zs) 1)
-	((null? (cdr zs)) (car zs))
-	((null? (cddr zs)) (real:* (car zs) (cadr zs)))
+  (cond ((null? zs)
+	 1)
+	((null? (cdr zs))
+	 (if (not (complex:complex? (car zs)))
+	     (error:wrong-type-argument (car zs) false '*))
+	 (car zs))
+	((null? (cddr zs))
+	 (real:* (car zs) (cadr zs)))
 	(else
 	 (real:* (car zs)
 		 (real:* (cadr zs)
