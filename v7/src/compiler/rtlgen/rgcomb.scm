@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.21 1987/05/31 22:57:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.22 1987/06/01 21:05:25 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -255,26 +255,6 @@ MIT in each case. |#
 				 (prefix combination frame-size)
 				 continuation))))
 
-(define (make-call/lookup combination operator operands prefix
-			  continuation)
-  (make-call false combination operator operands
-    (lambda (frame-size)
-      (let ((operator (subproblem-value (combination-operator combination))))
-	(let ((name (variable-name (reference-variable operator))))
-	  (if compiler:cache-free-variables?
-	      (rtl:make-invocation:cache-reference
-	       frame-size
-	       (prefix combination frame-size)
-	       continuation
-	       name)
-	      (let ((block (reference-block operator)))
-		(rtl:make-invocation:lookup
-		 frame-size
-		 (prefix combination frame-size)
-		 continuation
-		 (nearest-ic-block-expression block)
-		 (intern-scode-variable! block name)))))))))
-
 (define (make-call/unknown combination operator operands prefix
 			   continuation)
   (let ((callee (subproblem-value (combination-operator combination))))
@@ -299,6 +279,48 @@ MIT in each case. |#
        (prefix combination frame-size)
        continuation
        (constant-value (combination-known-operator combination))))))
+
+(define (make-call/lookup combination operator operands prefix
+			  continuation)
+  (make-call false combination operator operands
+    (lambda (frame-size)
+      (let ((operator (subproblem-value (combination-operator combination)))
+	    (frame-size* (1+ frame-size)))
+	(let ((name (variable-name (reference-variable operator))))
+	  (if compiler:cache-free-variables?
+	      (let* ((temp (make-temporary))
+		     (cell (rtl:make-fetch temp))
+		     (contents (rtl:make-fetch cell)))
+		(let ((n1 (rtl:make-assignment temp
+					       (rtl:make-variable-cache name)))
+		      (n2 (rtl:make-type-test (rtl:make-object->type contents)
+					      (ucode-type reference-trap)))
+		      (n3
+		       (scfg*scfg->scfg!
+			(rtl:make-push contents)
+			(rtl:make-invocation:apply
+			 frame-size*
+			 (prefix combination frame-size*)
+			 continuation)))
+		      (n4
+		       (rtl:make-invocation:cache-reference
+			frame-size*
+			(prefix combination frame-size)
+			continuation
+			cell)))
+		  (scfg-next-connect! n1 n2)
+		  (pcfg-consequent-connect! n2 n4)
+		  (pcfg-alternative-connect! n2 n3)
+		  (make-scfg (cfg-entry-node n1)
+			     (hooks-union (scfg-next-hooks n3)
+					  (scfg-next-hooks n4)))))
+	      (let ((block (reference-block operator)))
+		(rtl:make-invocation:lookup
+		 frame-size
+		 (prefix combination frame-size)
+		 continuation
+		 (nearest-ic-block-expression block)
+		 (intern-scode-variable! block name)))))))))
 
 (define (make-call/child combination operator operands make-receiver)
   (scfg*scfg->scfg!
