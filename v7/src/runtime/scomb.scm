@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scomb.scm,v 14.4 1989/10/26 06:47:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scomb.scm,v 14.5 1990/06/14 00:02:47 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -108,6 +108,17 @@ MIT in each case. |#
 		  (sequence-actions (&triple-third sequence))))
 	(else
 	 (list sequence))))
+
+(define (sequence-immediate-actions sequence)
+  (cond ((object-type? (ucode-type sequence-2) sequence)
+	 (list (&pair-car sequence)
+	       (&pair-cdr sequence)))
+	((object-type? (ucode-type sequence-3) sequence)
+	 (list (&triple-first sequence)
+	       (&triple-second sequence)
+	       (&triple-third sequence)))
+	(else
+	 (error "sequence-immediate-actions: not a sequence" sequence))))
 
 (define-integrable (sequence-components sequence receiver)
   (receiver (sequence-actions sequence)))
