@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2msg.c,v 1.5 1995/02/07 23:54:09 cph Exp $
+$Id: os2msg.c,v 1.6 1995/04/11 05:19:34 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -324,6 +324,19 @@ OS2_receive_message (qid_t qid, int blockp, int interruptp)
 {
   tqueue_t * tqueue = (QID_TQUEUE (qid));
   msg_t * message;
+  if (tqueue == 0)
+    {
+      if ((OS2_current_tid ()) != OS2_scheme_tid)
+	/* This behavior is a little random, but it's based on the
+	   idea that if an inferior thread is reading from a closed
+	   channel, this is due to a race condition, and the fact that
+	   the channel is closed means that the thread is no longer
+	   needed.  So far this has only happened under one
+	   circumstance, and in that case, this is the correct action.  */
+	OS2_endthread ();
+      else
+	OS2_error_anonymous ();
+    }
   while (1)
     {
       while ((read_tqueue (tqueue, 0)) != 0)
@@ -346,6 +359,8 @@ msg_avail_t
 OS2_message_availablep (qid_t qid, int blockp)
 {
   tqueue_t * tqueue = (QID_TQUEUE (qid));
+  if (tqueue == 0)
+    return (mat_not_available);
   while (1)
     {
       while ((read_tqueue (tqueue, 0)) != 0)
@@ -379,7 +394,7 @@ msg_t *
 OS2_message_transaction (qid_t qid, msg_t * request, msg_type_t reply_type)
 {
   OS2_send_message (qid, request);
-  OS2_wait_for_message (qid, reply_type);
+  return (OS2_wait_for_message (qid, reply_type));
 }
 
 static void
