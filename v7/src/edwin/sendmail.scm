@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: sendmail.scm,v 1.34 1996/04/24 01:30:11 cph Exp $
+;;;	$Id: sendmail.scm,v 1.35 1997/01/03 04:07:00 cph Exp $
 ;;;
-;;;	Copyright (c) 1991-96 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -716,7 +716,8 @@ the user from the mailer."
 			(insert-region start end (buffer-end buffer))
 			(append-to-file (make-region start end)
 					pathname
-					true))))
+					#t
+					#t))))
 		pathnames)
       (kill-buffer temp-buffer))))
 

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.54 1996/12/01 17:19:06 cph Exp $
+;;;	$Id: rmail.scm,v 1.55 1997/01/03 04:06:53 cph Exp $
 ;;;
-;;;	Copyright (c) 1991-96 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -1564,23 +1564,8 @@ buffer visiting that file."
 		(call-with-temporary-buffer " rmail output"
 		  (lambda (buffer)
 		    (insert-string babyl-initial-header (buffer-start buffer))
-		    (write-region (buffer-region buffer) pathname #f)))))
-	  (let ((buf (->buffer (region-group region)))
-		(var (ref-variable-object translate-file-data-on-output))
-		(val))
-	    (dynamic-wind
-	     (lambda ()
-	       (set! val
-		     (if (variable-local-value? buf var)
-			 (variable-local-value buf var)
-			 'NONE))
-	       (define-variable-local-value! buf var #f))
-	     (lambda ()
-	       (append-to-file region pathname #f))
-	     (lambda ()
-	       (if (eq? val 'NONE)
-		   (undefine-variable-local-value! buf var)
-		   (define-variable-local-value! buf var val)))))))))
+		    (write-region (buffer-region buffer) pathname #f #f)))))
+	  (append-to-file region pathname #f #f)))))
 
 (define-command rmail-output
   "Append this message to Unix mail file named FILE-NAME."

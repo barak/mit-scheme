@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: filcom.scm,v 1.188 1996/04/23 23:08:06 cph Exp $
+;;;	$Id: filcom.scm,v 1.189 1997/01/03 04:06:46 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -521,13 +521,13 @@ Makes buffer visit that file, and marks it not modified."
   "Write current region into specified file."
   "r\nFWrite region to file"
   (lambda (region filename)
-    (write-region region filename true)))
+    (write-region region filename #t #t)))
 
 (define-command append-to-file
   "Write current region into specified file."
   "r\nFAppend to file"
   (lambda (region filename)
-    (append-to-file region filename true)))
+    (append-to-file region filename #t #t)))
 
 (define-command insert-file
   "Insert contents of file into existing text.

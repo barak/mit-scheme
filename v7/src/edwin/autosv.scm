@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: autosv.scm,v 1.30 1994/05/04 22:56:50 cph Exp $
+;;;	$Id: autosv.scm,v 1.31 1997/01/03 04:06:40 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -198,6 +198,7 @@ This file is not the file you visited; that changes only when you save."
    (lambda ()
      (write-region (buffer-unclipped-region buffer)
 		   (buffer-auto-save-pathname buffer)
-		   false)
+		   #f
+		   'DEFAULT)
      (set-buffer-save-length! buffer)
      (set-buffer-auto-saved! buffer))))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: fileio.scm,v 1.139 1996/12/24 22:33:27 cph Exp $
+;;;	$Id: fileio.scm,v 1.140 1997/01/03 04:06:32 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -554,75 +554,76 @@ Otherwise, a message is written both before and after long file writes."
 	 (->pathname
 	  (write-region (buffer-unclipped-region buffer)
 			(buffer-pathname buffer)
-			'VISIT))))
+			'VISIT
+			'DEFAULT))))
     (set-buffer-truename! buffer truename)
     (delete-auto-save-file! buffer)
     (set-buffer-save-length! buffer)
     (buffer-not-modified! buffer)
     (set-buffer-modification-time! buffer (file-modification-time truename))))
 
-(define (write-region region pathname message?)
-  (write-region* region pathname message? false))
+(define (write-region region pathname message? translate?)
+  (write-region* region pathname message? #f translate?))
 
-(define (append-to-file region pathname message?)
-  (write-region* region pathname message? true))
+(define (append-to-file region pathname message? translate?)
+  (write-region* region pathname message? #t translate?))
 
-(define (write-region* region pathname message? append?)
-  (let ((group (region-group region))
-	(start (region-start-index region))
-	(end (region-end-index region))
-	(pathname
-	 (get-pathname-or-alternate (region-group region) pathname #t)))
-    (let ((translation
-	   (and (ref-variable translate-file-data-on-output group)
-		(pathname-newline-translation pathname)))
-	  (filename (->namestring pathname)))
-      (let ((method (write-file-method group pathname)))
-	(if method
-	    (if append?
-		(let ((rmethod (read-file-method group pathname)))
-		  (if (not rmethod)
-		      (error "Can't append: no read method:"
-			     pathname))
-		  (call-with-temporary-buffer " append region"
-		    (lambda (buffer)
-		      (let ((vcopy
-			     (lambda (v)
-			       (define-variable-local-value! buffer v
-				 (variable-local-value group v)))))
-			(vcopy
-			 (ref-variable-object translate-file-data-on-input))
-			(vcopy
-			 (ref-variable-object translate-file-data-on-output)))
-		      (rmethod pathname (buffer-start buffer) #f)
-		      (insert-region (region-start region)
-				     (region-end region)
-				     (buffer-end buffer))
-		      (method (buffer-region buffer) pathname #f))))
-		(method region pathname (eq? 'VISIT message?)))
-	    (let ((do-it
-		   (lambda ()
-		     (if append?
-			 (group-append-to-file translation group start end
-					       filename)
-			 (group-write-to-file translation group start end
-					      filename)))))
-	      (cond ((not message?)
-		     (do-it))
-		    ((or (ref-variable enable-emacs-write-file-message)
-			 (<= (- end start) 50000))
-		     (do-it)
-		     (message "Wrote " filename))
-		    (else
-		     (let ((msg
-			    (string-append "Writing file " filename "...")))
-		       (message msg)
-		       (do-it)
-		       (message msg "done")))))))
-      ;; This isn't the correct truename on systems that support version
-      ;; numbers.  For those systems, the truename must be supplied by
-      ;; the operating system after the channel is closed.
-      filename)))
+(define (write-region* region pathname message? append? translate?)
+  (let* ((group (region-group region))
+	 (start (region-start-index region))
+	 (end (region-end-index region))
+	 (pathname
+	  (get-pathname-or-alternate (region-group region) pathname #t))
+	 (translate?
+	  (if (eq? 'DEFAULT translate?)
+	      (ref-variable translate-file-data-on-output buffer)
+	      translate?))
+	 (translation (and translate? (pathname-newline-translation pathname)))
+	 (filename (->namestring pathname))
+	 (method (write-file-method group pathname)))
+    (if method
+	(if append?
+	    (let ((rmethod (read-file-method group pathname)))
+	      (if (not rmethod)
+		  (error "Can't append: no read method:" pathname))
+	      (call-with-temporary-buffer " append region"
+		(lambda (buffer)
+		  (local-set-variable!
+		   translate-file-data-on-input
+		   (ref-variable translate-file-data-on-input buffer)
+		   buffer)
+		  (local-set-variable! translate-file-data-on-output
+				       translate?
+				       buffer)
+		  (rmethod pathname (buffer-start buffer) #f)
+		  (insert-region (region-start region)
+				 (region-end region)
+				 (buffer-end buffer))
+		  (method (buffer-region buffer) pathname #f))))
+	    (method region pathname (eq? 'VISIT message?)))
+	(let ((do-it
+	       (lambda ()
+		 (if append?
+		     (group-append-to-file translation group start end
+					   filename)
+		     (group-write-to-file translation group start end
+					  filename)))))
+	  (cond ((not message?)
+		 (do-it))
+		((or (ref-variable enable-emacs-write-file-message)
+		     (<= (- end start) 50000))
+		 (do-it)
+		 (message "Wrote " filename))
+		(else
+		 (let ((msg
+			(string-append "Writing file " filename "...")))
+		   (message msg)
+		   (do-it)
+		   (message msg "done"))))))
+    ;; This isn't the correct truename on systems that support version
+    ;; numbers.  For those systems, the truename must be supplied by
+    ;; the operating system after the channel is closed.
+    filename))
 
 (define (group-write-to-file translation group start end filename)
   (let ((channel (file-open-output-channel filename)))
