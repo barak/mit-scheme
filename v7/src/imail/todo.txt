@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.67 2000/06/08 02:03:30 cph Exp $
+$Id: todo.txt,v 1.68 2000/06/08 04:16:20 cph Exp $
 
 Bug fixes
 ---------
@@ -8,11 +8,6 @@ Bug fixes
   changed significantly since last sync.  It ignores the UNSEEN
   attribute and uses the message indexes.  It should pay attention to
   UNSEEN and to UIDNEXT to figure out what it needs to do.
-
-* Restrict set of recognized character sets to US-ASCII, ISO-8859, and
-  Windows-<n> for some value of <n>.  Messages in other sets should be
-  treated as unknowns; character set should appear in attachment
-  descriptor.
 
 * Treat messages in unrecognized encodings as type
   application/octet-stream.
@@ -50,8 +45,6 @@ New features
 * Set the IMAIL buffer's modification bit to indicate whether the
   folder is locally modified.  Meaningful only for file folders.  Hook
   up the save-folder code into M-x save-some-buffers.
-
-* Add command to rename folders.
 
 * Add mail notification in mode line, active across the editor as long
   as there is an IMAP connection open in some buffer.

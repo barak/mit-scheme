@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.138 2000/06/08 03:24:01 cph Exp $
+;;; $Id: imail-top.scm,v 1.139 2000/06/08 04:16:07 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1038,6 +1038,10 @@ With prefix argument N moves backward N messages with these flags."
     (message body enclosure selector mark))
 
 (define-method insert-mime-message-part
+    (message (body <mime-body>) enclosure selector mark)
+  (insert-mime-message-binary message body enclosure selector mark))
+
+(define-method insert-mime-message-part
     (message (body <mime-body-multipart>) enclosure selector mark)
   enclosure
   (let ((parts (mime-body-multipart-parts body)))
@@ -1057,13 +1061,33 @@ With prefix argument N moves backward N messages with these flags."
 		  (insert-newline mark)))
 	    (insert-mime-message-part message (car parts) body `(,@selector ,i)
 				      mark))))))
+
+(define-method insert-mime-message-part
+    (message (body <mime-body-message>) enclosure selector mark)
+  enclosure
+  (insert-string
+   (header-fields->string
+    (maybe-reformat-headers
+     (string->header-fields
+      (message-mime-body-part message `(,@selector HEADER) #t))
+     mark))
+   mark)
+  (insert-newline mark)
+  (insert-mime-message-part message
+			    (mime-body-message-body body)
+			    body
+			    selector
+			    mark))
 
 (define-method insert-mime-message-part
     (message (body <mime-body-text>) enclosure selector mark)
-  (if (or (eq? (mime-body-subtype body) 'PLAIN)
-	  (let ((charset (mime-body-parameter body 'CHARSET "us-ascii")))
-	    (or (string-ci=? charset "us-ascii")
-		(re-string-match "\\`iso-8859-[0-9]+\\'" charset #t))))
+  (if (re-string-match (string-append "\\`"
+				      (regexp-group "us-ascii"
+						    "iso-8859-[0-9]+"
+						    "windows-[0-9]+")
+				      "\\'")
+		       (mime-body-parameter body 'CHARSET "us-ascii")
+		       #t)
       (let ((text
 	     (message-mime-body-part
 	      message
@@ -1095,41 +1119,29 @@ With prefix argument N moves backward N messages with these flags."
 	(guarantee-newline mark))
       (insert-mime-message-binary message body enclosure selector mark)))
 
-(define-method insert-mime-message-part
-    (message (body <mime-body-message>) enclosure selector mark)
-  enclosure
-  (insert-string
-   (header-fields->string
-    (maybe-reformat-headers
-     (string->header-fields
-      (message-mime-body-part message `(,@selector HEADER) #t))
-     mark))
-   mark)
-  (insert-newline mark)
-  (insert-mime-message-part message
-			    (mime-body-message-body body)
-			    body
-			    selector
-			    mark))
-
-(define-method insert-mime-message-part
-    (message (body <mime-body>) enclosure selector mark)
-  (insert-mime-message-binary message body enclosure selector mark))
-
 (define (insert-mime-message-binary message body enclosure selector mark)
   message enclosure
   (let ((start (mark-right-inserting-copy mark)))
     (insert-string "<IMAIL-ATTACHMENT " mark)
     (let ((column (mark-column mark)))
-      (insert-string "name=" mark)
-      (insert (mime-attachment-name body selector) mark)
-      (insert-newline mark)
-      (change-column column mark)
+      (let ((name (mime-attachment-name body selector #f)))
+	(if name
+	    (begin
+	      (insert-string "name=" mark)
+	      (insert name mark)
+	      (insert-newline mark)
+	      (change-column column mark))))
       (insert-string "type=" mark)
       (insert (mime-body-type body) mark)
       (insert-string "/" mark)
       (insert (mime-body-subtype body) mark)
       (insert-newline mark)
+      (if (eq? (mime-body-type body) 'TEXT)
+	  (begin
+	    (change-column column mark)
+	    (insert-string "charset=" mark)
+	    (insert (mime-body-parameter body 'CHARSET "us-ascii") mark)
+	    (insert-newline mark)))
       (change-column column mark)
       (insert-string "encoding=" mark)
       (insert (mime-body-one-part-encoding body) mark)
@@ -1142,15 +1154,16 @@ With prefix argument N moves backward N messages with these flags."
     (mark-temporary! start))
   (insert-newline mark))
 
-(define (mime-attachment-name body selector)
+(define (mime-attachment-name body selector provide-default?)
   (or (mime-body-parameter body 'NAME #f)
-      (string-append "unnamed-attachment-"
-		     (if (null? selector)
-			 "0"
-			 (decorated-string-append
-			  "" "." ""
-			  (map (lambda (n) (number->string (+ n 1)))
-			       selector))))))
+      (and provide-default?
+	   (string-append "unnamed-attachment-"
+			  (if (null? selector)
+			      "0"
+			      (decorated-string-append
+			       "" "." ""
+			       (map (lambda (n) (number->string (+ n 1)))
+				    selector)))))))
 
 (define (mark-mime-attachment mark)
   (region-get mark 'IMAIL-MIME-ATTACHMENT #f))
@@ -1588,7 +1601,7 @@ With prefix argument, prompt even when point is on an attachment."
 	  (let ((alist
 		 (uniquify-mime-attachment-names
 		  (map (lambda (b.s)
-			 (cons (mime-attachment-name (car b.s) (cdr b.s))
+			 (cons (mime-attachment-name (car b.s) (cdr b.s) #t)
 			       b.s))
 		       attachments))))
 	    (prompt-for-alist-value "Save attachment"
@@ -1627,7 +1640,8 @@ With prefix argument, prompt even when point is on an attachment."
 	  (let ((filename (mime-body-disposition-filename body)))
 	    (and filename
 		 (list
-		  (merge-pathnames (filter-mime-attachment-filename filename)
+		  (merge-pathnames
+		   (filter-mime-attachment-filename filename)
 		   (or (buffer-get buffer 'IMAIL-MIME-ATTACHMENT-DIRECTORY #f)
 		       (buffer-default-directory buffer)))))))))
     (if (or (not (file-exists? filename))
