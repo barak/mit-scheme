@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hppacach.c,v 1.12 1999/01/02 06:11:34 cph Exp $
+$Id: hppacach.c,v 1.13 1999/03/24 23:30:12 cph Exp $
 
 Copyright (c) 1990-1999 Massachusetts Institute of Technology
 
@@ -47,8 +47,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 /* File that contains the symbol table for the kernel */
 
-#define KERNEL_FILE		"/hp-ux"
-#define KERNEL_FILE		"/stand/vmunix"
+char * kernel_filenames [] =
+{
+  "/hp-ux",
+  "/stand/vmunix",
+  0
+};
 
 /* File where the kernel image lives */
 
@@ -97,14 +101,31 @@ struct nlist nl[] =
   { 0 },
 };
 
+static char *
+choose_kernel_file ()
+{
+  char ** p = kernel_filenames;
+  while (1)
+    {
+      struct stat s;
+      if ((stat ((*p), (&s))) == 0)
+	return (*p);
+      p += 1;
+    }
+  fprintf (stderr, "Unable to find kernel.\n");
+  fflush (stderr);
+  exit (1);
+}
+
 void
 read_nlist (kloc)
      struct kernel_locations *kloc;
 {
+  char * kernel_filename = (choose_kernel_file ());
   DEBUGGING (printf ("reading nlist...\n"));
 
-  if ((nlist (KERNEL_FILE, nl)) != 0)
-    io_lose ("read_nlist", "failed on both %s and %s", KERNEL_FILE);
+  if ((nlist (kernel_filename, nl)) != 0)
+    io_lose ("read_nlist", "failed on both %s and %s", kernel_filename);
 
   DEBUGGING (printf ("reading nlist done.\n"));
 
