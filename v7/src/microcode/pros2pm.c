@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pros2pm.c,v 1.10 1995/10/30 08:04:30 cph Exp $
+$Id: pros2pm.c,v 1.11 1995/11/03 01:30:21 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -55,7 +55,7 @@ qid_argument (unsigned int arg_number)
 static psid_t
 psid_argument (unsigned int arg_number)
 {
-  unsigned long result = (arg_nonnegative_integer (arg_number));
+  unsigned long result = (arg_ulong_integer (arg_number));
   if (!OS2_psid_validp (result))
     error_bad_range_arg (arg_number);
   return (result);
@@ -73,7 +73,7 @@ memory_psid_argument (unsigned int arg_number)
 static wid_t
 wid_argument (unsigned int arg_number)
 {
-  unsigned long result = (arg_nonnegative_integer (arg_number));
+  unsigned long result = (arg_ulong_integer (arg_number));
   if (!OS2_wid_validp (result))
     error_bad_range_arg (arg_number);
   return (result);
@@ -82,7 +82,7 @@ wid_argument (unsigned int arg_number)
 static bid_t
 bid_argument (unsigned int arg_number)
 {
-  unsigned long result = (arg_nonnegative_integer (arg_number));
+  unsigned long result = (arg_ulong_integer (arg_number));
   if (!OS2_bid_validp (result))
     error_bad_range_arg (arg_number);
   return (result);
@@ -119,10 +119,17 @@ OS2_initialize_window_primitives (void)
   pm_qid = (OS2_create_pm_qid (OS2_scheme_tqueue));
 }
 
+DEFINE_PRIMITIVE ("OS2WIN-ALARM", Prim_OS2_window_alarm, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN
+    (BOOLEAN_TO_OBJECT (WinAlarm (HWND_DESKTOP, (arg_ulong_integer (1)))));
+}
+
 DEFINE_PRIMITIVE ("OS2WIN-BEEP", Prim_OS2_window_beep, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
-  DosBeep ((arg_nonnegative_integer (1)), (arg_nonnegative_integer (2)));
+  DosBeep ((arg_ulong_integer (1)), (arg_ulong_integer (2)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -137,15 +144,15 @@ DEFINE_PRIMITIVE ("OS2WIN-OPEN", Prim_OS2_window_open, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
   PRIMITIVE_RETURN
-    (long_to_integer (OS2_window_open (pm_qid,
-				       (OS2_qid_twin (qid_argument (1))),
-				       (FCF_TITLEBAR | FCF_SYSMENU
-					| FCF_SHELLPOSITION | FCF_SIZEBORDER
-					| FCF_MINMAX | FCF_TASKLIST),
-				       NULLHANDLE,
-				       1,
-				       0,
-				       (STRING_ARG (2)))));
+    (ulong_to_integer (OS2_window_open (pm_qid,
+					(OS2_qid_twin (qid_argument (1))),
+					(FCF_TITLEBAR | FCF_SYSMENU
+					 | FCF_SHELLPOSITION | FCF_SIZEBORDER
+					 | FCF_MINMAX | FCF_TASKLIST),
+					NULLHANDLE,
+					1,
+					0,
+					(STRING_ARG (2)))));
 }
 
 DEFINE_PRIMITIVE ("OS2WIN-CLOSE", Prim_OS2_window_close, 1, 1, 0)
@@ -177,7 +184,7 @@ DEFINE_PRIMITIVE ("OS2WIN-SHAPE-CURSOR", Prim_OS2_window_shape_cursor, 4, 4, 0)
   OS2_window_shape_cursor ((wid_argument (1)),
 			   (DIMENSION_ARG (2)),
 			   (DIMENSION_ARG (3)),
-			   (arg_nonnegative_integer (4)));
+			   (USHORT_ARG (4)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -306,11 +313,25 @@ DEFINE_PRIMITIVE ("OS2WIN-SET-TITLE", Prim_OS2_window_set_title, 2, 2, 0)
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
+DEFINE_PRIMITIVE ("OS2WIN-TRACK-MOUSE", Prim_OS2_window_track_mouse, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  OS2_window_mousetrack ((wid_argument (1)), (BOOLEAN_ARG (2)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
 DEFINE_PRIMITIVE ("OS2WIN-FRAME-HANDLE", Prim_OS2_window_frame_handle, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN
-    (long_to_integer (OS2_window_frame_handle (wid_argument (1))));
+    (ulong_to_integer (OS2_window_frame_handle (wid_argument (1))));
+}
+
+DEFINE_PRIMITIVE ("OS2WIN-CLIENT-HANDLE", Prim_OS2_window_client_handle, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN
+    (ulong_to_integer (OS2_window_client_handle (wid_argument (1))));
 }
 
 DEFINE_PRIMITIVE ("OS2WIN-UPDATE-FRAME", Prim_OS2_window_update_frame, 2, 2, 0)
@@ -319,17 +340,63 @@ DEFINE_PRIMITIVE ("OS2WIN-UPDATE-FRAME", Prim_OS2_window_update_frame, 2, 2, 0)
   OS2_window_update_frame ((wid_argument (1)), (USHORT_ARG (2)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
+
+DEFINE_PRIMITIVE ("OS2-WINDOW-HANDLE-FROM-ID", Prim_OS2_window_handle_from_id, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  PRIMITIVE_RETURN
+    (ulong_to_integer (OS2_window_handle_from_id (pm_qid,
+						  (arg_ulong_integer (1)),
+						  (arg_ulong_integer (2)))));
+}
+
+DEFINE_PRIMITIVE ("OS2-MAP-WINDOW-POINT", Prim_OS2_map_window_point, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  {
+    SCHEME_OBJECT scheme_point;
+    POINTL point;
+    BOOL rc;
+
+    CHECK_ARG (3, PAIR_P);
+    scheme_point = (ARG_REF (3));
+    if ((!INTEGER_P (PAIR_CAR (scheme_point)))
+	|| (!INTEGER_P (PAIR_CDR (scheme_point))))
+      error_wrong_type_arg (3);
+    if ((!integer_to_long_p (PAIR_CAR (scheme_point)))
+	|| (!integer_to_long_p (PAIR_CDR (scheme_point))))
+      error_bad_range_arg (3);
+    (point . x) = (integer_to_long (PAIR_CAR (scheme_point)));
+    (point . y) = (integer_to_long (PAIR_CDR (scheme_point)));
+    rc = (WinMapWindowPoints ((HWND_ARG (1)), (HWND_ARG (2)), (&point), 1));
+    if (rc)
+      {
+	SET_PAIR_CAR (scheme_point, (long_to_integer (point . x)));
+	SET_PAIR_CDR (scheme_point, (long_to_integer (point . y)));
+      }
+    PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (rc));
+  }
+}
+
+DEFINE_PRIMITIVE ("OS2WIN-SET-CAPTURE", PRIM_OS2_WINDOW_SET_CAPTURE, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  PRIMITIVE_RETURN
+    (BOOLEAN_TO_OBJECT
+     (OS2_window_set_capture ((wid_argument (1)), (BOOLEAN_ARG (2)))));
+}
 
 DEFINE_PRIMITIVE ("OS2WIN-PS", Prim_OS2_window_ps, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (long_to_integer (OS2_window_client_ps (wid_argument (1))));
+  PRIMITIVE_RETURN
+    (ulong_to_integer (OS2_window_client_ps (wid_argument (1))));
 }
 
 DEFINE_PRIMITIVE ("OS2PS-CREATE-MEMORY-PS", Prim_OS2_create_memory_ps, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (long_to_integer (OS2_create_memory_ps (pm_qid)));
+  PRIMITIVE_RETURN (ulong_to_integer (OS2_create_memory_ps (pm_qid)));
 }
 
 DEFINE_PRIMITIVE ("OS2PS-DESTROY-MEMORY-PS", Prim_OS2_destroy_memory_ps, 1, 1, 0)
@@ -343,9 +410,9 @@ DEFINE_PRIMITIVE ("OS2PS-CREATE-BITMAP", Prim_OS2_create_bitmap, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
   PRIMITIVE_RETURN
-    (long_to_integer (OS2_create_bitmap ((psid_argument (1)),
-					 (USHORT_ARG (2)),
-					 (USHORT_ARG (3)))));
+    (ulong_to_integer (OS2_create_bitmap ((psid_argument (1)),
+					  (USHORT_ARG (2)),
+					  (USHORT_ARG (3)))));
 }
 
 DEFINE_PRIMITIVE ("OS2PS-DESTROY-BITMAP", Prim_OS2_destroy_bitmap, 1, 1, 0)
@@ -360,7 +427,7 @@ DEFINE_PRIMITIVE ("OS2PS-GET-BITMAP", Prim_OS2_ps_get_bitmap, 1, 1, 0)
   PRIMITIVE_HEADER (1);
   {
     bid_t bid = (OS2_ps_get_bitmap ((memory_psid_argument (1))));
-    PRIMITIVE_RETURN ((bid == BID_NONE) ? SHARP_F : (long_to_integer (bid)));
+    PRIMITIVE_RETURN ((bid == BID_NONE) ? SHARP_F : (ulong_to_integer (bid)));
   }
 }
 
@@ -372,7 +439,7 @@ DEFINE_PRIMITIVE ("OS2PS-SET-BITMAP", Prim_OS2_ps_set_bitmap, 2, 2, 0)
       = (OS2_ps_set_bitmap
 	 ((memory_psid_argument (1)),
 	  (((ARG_REF (2)) == SHARP_F) ? BID_NONE : (bid_argument (2)))));
-    PRIMITIVE_RETURN ((bid == BID_NONE) ? SHARP_F : (long_to_integer (bid)));
+    PRIMITIVE_RETURN ((bid == BID_NONE) ? SHARP_F : (ulong_to_integer (bid)));
   }
 }
 
@@ -386,7 +453,7 @@ DEFINE_PRIMITIVE ("OS2PS-BITBLT", Prim_OS2_ps_bitblt, 6, 6, 0)
     unsigned long npoints;
     PPOINTL points = (coordinate_vector_point_args (3, 4, (& npoints)));
     LONG rop = (arg_index_integer (5, 0x100));
-    ULONG options = (arg_nonnegative_integer (6));
+    ULONG options = (arg_ulong_integer (6));
     if (! ((npoints == 3) || (npoints == 4)))
       error_bad_range_arg (3);
     OS2_ps_bitblt (target, source, npoints, points, rop, options);
@@ -401,8 +468,8 @@ DEFINE_PRIMITIVE ("OS2PS-WRITE", Prim_OS2_ps_write, 6, 6, 0)
   CHECK_ARG (4, STRING_P);
   {
     SCHEME_OBJECT string = (ARG_REF (4));
-    unsigned long start = (arg_nonnegative_integer (5));
-    unsigned long end = (arg_nonnegative_integer (6));
+    unsigned long start = (arg_ulong_integer (5));
+    unsigned long end = (arg_ulong_integer (6));
     if (end > (STRING_LENGTH (string)))
       error_bad_range_arg (6);
     if (start > end)
@@ -422,14 +489,14 @@ DEFINE_PRIMITIVE ("OS2PS-TEXT-WIDTH", Prim_OS2_ps_text_width, 4, 4, 0)
   CHECK_ARG (2, STRING_P);
   {
     SCHEME_OBJECT string = (ARG_REF (2));
-    unsigned long start = (arg_nonnegative_integer (3));
-    unsigned long end = (arg_nonnegative_integer (4));
+    unsigned long start = (arg_ulong_integer (3));
+    unsigned long end = (arg_ulong_integer (4));
     if (end > (STRING_LENGTH (string)))
       error_bad_range_arg (4);
     if (start > end)
       error_bad_range_arg (3);
     PRIMITIVE_RETURN
-      (long_to_integer
+      (ulong_to_integer
        (OS2_ps_text_width ((psid_argument (1)),
 			   (STRING_LOC (string, start)),
 			   (end - start))));
@@ -444,9 +511,9 @@ convert_font_metrics (font_metrics_t * m)
   else
     {
       SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, 3, 1));
-      VECTOR_SET (v, 0, (long_to_integer (FONT_METRICS_WIDTH (m))));
-      VECTOR_SET (v, 1, (long_to_integer (FONT_METRICS_HEIGHT (m))));
-      VECTOR_SET (v, 2, (long_to_integer (FONT_METRICS_DESCENDER (m))));
+      VECTOR_SET (v, 0, (ulong_to_integer (FONT_METRICS_WIDTH (m))));
+      VECTOR_SET (v, 1, (ulong_to_integer (FONT_METRICS_HEIGHT (m))));
+      VECTOR_SET (v, 2, (ulong_to_integer (FONT_METRICS_DESCENDER (m))));
       OS_free (m);
       return (v);
     }
@@ -666,10 +733,10 @@ DEFINE_PRIMITIVE ("OS2PS-GET-BITMAP-BITS", Prim_OS2_ps_get_bitmap_bits, 5, 5, 0)
 {
   PRIMITIVE_HEADER (5);
   PRIMITIVE_RETURN
-    (long_to_integer
+    (ulong_to_integer
      (OS2_ps_get_bitmap_bits ((memory_psid_argument (1)),
-			      (arg_nonnegative_integer (2)),
-			      (arg_nonnegative_integer (3)),
+			      (arg_ulong_integer (2)),
+			      (arg_ulong_integer (3)),
 			      (STRING_ARG (4)),
 			      ((void *) (STRING_ARG (5))))));
 }
@@ -678,10 +745,10 @@ DEFINE_PRIMITIVE ("OS2PS-SET-BITMAP-BITS", Prim_OS2_ps_set_bitmap_bits, 5, 5, 0)
 {
   PRIMITIVE_HEADER (5);
   PRIMITIVE_RETURN
-    (long_to_integer
+    (ulong_to_integer
      (OS2_ps_set_bitmap_bits ((memory_psid_argument (1)),
-			      (arg_nonnegative_integer (2)),
-			      (arg_nonnegative_integer (3)),
+			      (arg_ulong_integer (2)),
+			      (arg_ulong_integer (3)),
 			      (STRING_ARG (4)),
 			      ((void *) (STRING_ARG (5))))));
 }
@@ -814,15 +881,6 @@ DEFINE_PRIMITIVE ("OS2MENU-SET-ITEM-ATTRIBUTES", Prim_OS2_menu_set_item_attribut
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("OS2-WINDOW-HANDLE-FROM-ID", Prim_OS2_window_handle_from_id, 2, 2, 0)
-{
-  PRIMITIVE_HEADER (2);
-  PRIMITIVE_RETURN
-    (ulong_to_integer (OS2_window_handle_from_id (pm_qid,
-						  (arg_ulong_integer (1)),
-						  (arg_ulong_integer (2)))));
-}
-
 DEFINE_PRIMITIVE ("OS2WIN-LOAD-MENU", Prim_OS2_window_load_menu, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
@@ -830,6 +888,21 @@ DEFINE_PRIMITIVE ("OS2WIN-LOAD-MENU", Prim_OS2_window_load_menu, 3, 3, 0)
     (ulong_to_integer (OS2_window_load_menu ((wid_argument (1)),
 					     (arg_ulong_integer (2)),
 					     (arg_ulong_integer (3)))));
+}
+
+DEFINE_PRIMITIVE ("OS2WIN-POPUP-MENU", Prim_OS2_window_popup_menu, 7, 7, 0)
+{
+  PRIMITIVE_HEADER (7);
+  PRIMITIVE_RETURN
+    (BOOLEAN_TO_OBJECT
+     (OS2_window_popup_menu (pm_qid,
+			     (HWND_ARG (1)),
+			     (HWND_ARG (2)),
+			     (HWND_ARG (3)),
+			     (arg_integer (4)),
+			     (arg_integer (5)),
+			     (arg_integer (6)),
+			     (arg_ulong_integer (7)))));
 }
 
 DEFINE_PRIMITIVE ("OS2WIN-FONT-DIALOG", Prim_OS2_window_font_dialog, 2, 2, 0)
@@ -847,6 +920,25 @@ DEFINE_PRIMITIVE ("OS2WIN-FONT-DIALOG", Prim_OS2_window_font_dialog, 2, 2, 0)
   result = (char_pointer_to_string ((char *) spec));
   OS_free ((void *) spec);
   PRIMITIVE_RETURN (result);
+}
+
+DEFINE_PRIMITIVE ("OS2-QUERY-SYSTEM-POINTER", Prim_OS2_query_system_pointer, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  PRIMITIVE_RETURN
+    (ulong_to_integer (OS2_query_system_pointer (pm_qid,
+						 (HWND_ARG (1)),
+						 (arg_integer (2)),
+						 (BOOLEAN_ARG (3)))));
+}
+
+DEFINE_PRIMITIVE ("OS2-SET-POINTER", Prim_OS2_set_pointer, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  PRIMITIVE_RETURN
+    (BOOLEAN_TO_OBJECT (OS2_set_pointer (pm_qid,
+					 (HWND_ARG (1)),
+					 (arg_ulong_integer (2)))));
 }
 
 DEFINE_PRIMITIVE ("OS2WIN-OPEN-EVENT-QID", Prim_OS2_window_open_event_qid, 0, 0, 0)
@@ -875,119 +967,190 @@ DEFINE_PRIMITIVE ("OS2WIN-CLOSE-EVENT-QID", Prim_OS2_window_close_event_qid, 1, 
 #define ET_VISIBILITY	6
 #define ET_COMMAND	7
 #define ET_HELP		8
+#define ET_MOUSEMOVE	9
 
-#define CVT_UNSIGNED(n, v)						\
+#define CVT_USHORT(n, v)						\
   VECTOR_SET (result, n, (LONG_TO_UNSIGNED_FIXNUM (v)))
+#define CVT_SHORT(n, v)							\
+  VECTOR_SET (result, n, (LONG_TO_FIXNUM (v)))
 #define CVT_BOOLEAN(n, v)						\
   VECTOR_SET (result, n, (BOOLEAN_TO_OBJECT (v)))
 
+static SCHEME_OBJECT make_button_event
+  (wid_t, MPARAM, MPARAM, unsigned short, unsigned short);
+
 DEFINE_PRIMITIVE ("OS2WIN-GET-EVENT", Prim_OS2_window_get_event, 2, 2, 0)
 {
+  qid_t qid;
+  int blockp;
   PRIMITIVE_HEADER (2);
+
+  qid = (qid_argument (1));
+  blockp = (BOOLEAN_ARG (2));
   Primitive_GC_If_Needed (8);
-  {
-    msg_t * message
-      = (OS2_receive_message ((qid_argument (1)), (BOOLEAN_ARG (2)), 1));
-    SCHEME_OBJECT result = SHARP_F;
-    if (message != 0)
-      {
-	switch (MSG_TYPE (message))
+  while (1)
+    {
+      msg_t * message = (OS2_receive_message (qid, blockp, 1));
+      SCHEME_OBJECT result = SHARP_F;
+      if (message == 0)
+	PRIMITIVE_RETURN (result);
+      switch (MSG_TYPE (message))
+	{
+	case mt_pm_event:
 	  {
-	  case mt_button_event:
-	    {
-	      unsigned short type = (SM_BUTTON_EVENT_TYPE (message));
-	      result = (allocate_marked_vector (TC_VECTOR, 7, 0));
-	      CVT_UNSIGNED (0, ET_BUTTON);
-	      CVT_UNSIGNED (1, (SM_BUTTON_EVENT_WID (message)));
-	      CVT_UNSIGNED (2, (BUTTON_TYPE_NUMBER (type)));
-	      CVT_UNSIGNED (3, (BUTTON_TYPE_EVENT (type)));
-	      CVT_UNSIGNED (4, (SM_BUTTON_EVENT_X (message)));
-	      CVT_UNSIGNED (5, (SM_BUTTON_EVENT_Y (message)));
-	      CVT_UNSIGNED (6, (SM_BUTTON_EVENT_FLAGS (message)));
-	      break;
-	    }
-	  case mt_close_event:
-	    {
-	      result = (allocate_marked_vector (TC_VECTOR, 2, 0));
-	      CVT_UNSIGNED (0, ET_CLOSE);
-	      CVT_UNSIGNED (1, (SM_CLOSE_EVENT_WID (message)));
-	      break;
-	    }
-	  case mt_focus_event:
-	    {
-	      result = (allocate_marked_vector (TC_VECTOR, 3, 0));
-	      CVT_UNSIGNED (0, ET_FOCUS);
-	      CVT_UNSIGNED (1, (SM_FOCUS_EVENT_WID (message)));
-	      CVT_BOOLEAN  (2, (SM_FOCUS_EVENT_GAINEDP (message)));
-	      break;
-	    }
-	  case mt_key_event:
-	    {
-	      result = (allocate_marked_vector (TC_VECTOR, 5, 0));
-	      CVT_UNSIGNED (0, ET_KEY);
-	      CVT_UNSIGNED (1, (SM_KEY_EVENT_WID (message)));
-	      CVT_UNSIGNED (2, (SM_KEY_EVENT_CODE (message)));
-	      CVT_UNSIGNED (3, (SM_KEY_EVENT_FLAGS (message)));
-	      CVT_UNSIGNED (4, (SM_KEY_EVENT_REPEAT (message)));
-	      break;
-	    }
-	  case mt_paint_event:
-	    {
-	      result = (allocate_marked_vector (TC_VECTOR, 6, 0));
-	      CVT_UNSIGNED (0, ET_PAINT);
-	      CVT_UNSIGNED (1, (SM_PAINT_EVENT_WID (message)));
-	      CVT_UNSIGNED (2, (SM_PAINT_EVENT_XL (message)));
-	      CVT_UNSIGNED (3, (SM_PAINT_EVENT_XH (message)));
-	      CVT_UNSIGNED (4, (SM_PAINT_EVENT_YL (message)));
-	      CVT_UNSIGNED (5, (SM_PAINT_EVENT_YH (message)));
-	      break;
-	    }
-	  case mt_resize_event:
-	    {
-	      result = (allocate_marked_vector (TC_VECTOR, 4, 0));
-	      CVT_UNSIGNED (0, ET_RESIZE);
-	      CVT_UNSIGNED (1, (SM_RESIZE_EVENT_WID (message)));
-	      CVT_UNSIGNED (2, (SM_RESIZE_EVENT_WIDTH (message)));
-	      CVT_UNSIGNED (3, (SM_RESIZE_EVENT_HEIGHT (message)));
-	      break;
-	    }
-	  case mt_visibility_event:
-	    {
-	      result = (allocate_marked_vector (TC_VECTOR, 3, 0));
-	      CVT_UNSIGNED (0, ET_VISIBILITY);
-	      CVT_UNSIGNED (1, (SM_VISIBILITY_EVENT_WID (message)));
-	      CVT_BOOLEAN  (2, (SM_VISIBILITY_EVENT_SHOWNP (message)));
-	      break;
-	    }
-	  case mt_command_event:
-	    {
-	      result = (allocate_marked_vector (TC_VECTOR, 5, 0));
-	      CVT_UNSIGNED (0, ET_COMMAND);
-	      CVT_UNSIGNED (1, (SM_COMMAND_EVENT_WID (message)));
-	      CVT_UNSIGNED (2, (SM_COMMAND_EVENT_COMMAND (message)));
-	      CVT_UNSIGNED (3, (SM_COMMAND_EVENT_SOURCE (message)));
-	      CVT_BOOLEAN  (4, (SM_COMMAND_EVENT_MOUSEP (message)));
-	      break;
-	    }
-	  case mt_help_event:
-	    {
-	      result = (allocate_marked_vector (TC_VECTOR, 5, 0));
-	      CVT_UNSIGNED (0, ET_HELP);
-	      CVT_UNSIGNED (1, (SM_HELP_EVENT_WID (message)));
-	      CVT_UNSIGNED (2, (SM_HELP_EVENT_COMMAND (message)));
-	      CVT_UNSIGNED (3, (SM_HELP_EVENT_SOURCE (message)));
-	      CVT_BOOLEAN  (4, (SM_HELP_EVENT_MOUSEP (message)));
-	      break;
-	    }
-	  default:
+	    wid_t wid = (SM_PM_EVENT_WID (message));
+	    ULONG msg = (SM_PM_EVENT_MSG (message));
+	    MPARAM mp1 = (SM_PM_EVENT_MP1 (message));
+	    MPARAM mp2 = (SM_PM_EVENT_MP2 (message));
 	    OS2_destroy_message (message);
-	    OS2_error_anonymous ();
+	    switch (msg)
+	      {
+	      case WM_SETFOCUS:
+		{
+		  result = (allocate_marked_vector (TC_VECTOR, 3, 0));
+		  CVT_USHORT (0, ET_FOCUS);
+		  CVT_USHORT (1, wid);
+		  CVT_BOOLEAN (2, (SHORT1FROMMP (mp2)));
+		  break;
+		}
+	      case WM_SIZE:
+		{
+		  result = (allocate_marked_vector (TC_VECTOR, 4, 0));
+		  CVT_USHORT (0, ET_RESIZE);
+		  CVT_USHORT (1, wid);
+		  CVT_USHORT (2, (SHORT1FROMMP (mp2)));
+		  CVT_USHORT (3, (SHORT2FROMMP (mp2)));
+		  break;
+		}
+	      case WM_CLOSE:
+		{
+		  result = (allocate_marked_vector (TC_VECTOR, 2, 0));
+		  CVT_USHORT (0, ET_CLOSE);
+		  CVT_USHORT (1, wid);
+		  break;
+		}
+	      case WM_COMMAND:
+	      case WM_HELP:
+		{
+		  result = (allocate_marked_vector (TC_VECTOR, 5, 0));
+		  CVT_USHORT (0,
+				((msg == WM_HELP) ? ET_HELP : ET_COMMAND));
+		  CVT_USHORT (1, wid);
+		  CVT_USHORT (2, (SHORT1FROMMP (mp1)));
+		  CVT_USHORT (3, (SHORT1FROMMP (mp2)));
+		  CVT_BOOLEAN (4, (SHORT2FROMMP (mp2)));
+		  break;
+		}
+	      case WM_SHOW:
+		{
+		  result = (allocate_marked_vector (TC_VECTOR, 3, 0));
+		  CVT_USHORT (0, ET_VISIBILITY);
+		  CVT_USHORT (1, wid);
+		  CVT_BOOLEAN (2, (SHORT1FROMMP (mp1)));
+		  break;
+		}
+	      case WM_CHAR:
+		{
+		  unsigned short code;
+		  unsigned short flags;
+		  unsigned char repeat;
+		  if (OS2_translate_wm_char (mp1, mp2,
+					     (&code), (&flags), (&repeat)))
+		    {
+		      result = (allocate_marked_vector (TC_VECTOR, 5, 0));
+		      CVT_USHORT (0, ET_KEY);
+		      CVT_USHORT (1, wid);
+		      CVT_USHORT (2, code);
+		      CVT_USHORT (3, flags);
+		      CVT_USHORT (4, repeat);
+		    }
+		  break;
+		}
+	      case WM_BUTTON1DOWN:
+		result = (make_button_event (wid, mp1, mp2, 0, 0));
+		break;
+	      case WM_BUTTON1UP:
+		result = (make_button_event (wid, mp1, mp2, 0, 1));
+		break;
+	      case WM_BUTTON1CLICK:
+		result = (make_button_event (wid, mp1, mp2, 0, 2));
+		break;
+	      case WM_BUTTON1DBLCLK:
+		result = (make_button_event (wid, mp1, mp2, 0, 3));
+		break;
+	      case WM_BUTTON2DOWN:
+		result = (make_button_event (wid, mp1, mp2, 1, 0));
+		break;
+	      case WM_BUTTON2UP:
+		result = (make_button_event (wid, mp1, mp2, 1, 1));
+		break;
+	      case WM_BUTTON2CLICK:
+		result = (make_button_event (wid, mp1, mp2, 1, 2));
+		break;
+	      case WM_BUTTON2DBLCLK:
+		result = (make_button_event (wid, mp1, mp2, 1, 3));
+		break;
+	      case WM_BUTTON3DOWN:
+		result = (make_button_event (wid, mp1, mp2, 2, 0));
+		break;
+	      case WM_BUTTON3UP:
+		result = (make_button_event (wid, mp1, mp2, 2, 1));
+		break;
+	      case WM_BUTTON3CLICK:
+		result = (make_button_event (wid, mp1, mp2, 2, 2));
+		break;
+	      case WM_BUTTON3DBLCLK:
+		result = (make_button_event (wid, mp1, mp2, 2, 3));
+		break;
+	      case WM_MOUSEMOVE:
+		result = (allocate_marked_vector (TC_VECTOR, 6, 0));
+		CVT_USHORT (0, ET_MOUSEMOVE);
+		CVT_USHORT (1, wid);
+		CVT_SHORT (2, (SHORT1FROMMP (mp1)));
+		CVT_SHORT (3, (SHORT2FROMMP (mp1)));
+		CVT_USHORT (4, (SHORT1FROMMP (mp2)));
+		CVT_USHORT (5, (SHORT2FROMMP (mp2)));
+		break;
+	      default:
+		break;
+	      }
 	    break;
 	  }
-	OS2_destroy_message (message);
-      }
-    PRIMITIVE_RETURN (result);
-  }
+	case mt_paint_event:
+	  {
+	    result = (allocate_marked_vector (TC_VECTOR, 6, 0));
+	    CVT_USHORT (0, ET_PAINT);
+	    CVT_USHORT (1, (SM_PAINT_EVENT_WID (message)));
+	    CVT_USHORT (2, (SM_PAINT_EVENT_XL (message)));
+	    CVT_USHORT (3, (SM_PAINT_EVENT_XH (message)));
+	    CVT_USHORT (4, (SM_PAINT_EVENT_YL (message)));
+	    CVT_USHORT (5, (SM_PAINT_EVENT_YH (message)));
+	    OS2_destroy_message (message);
+	    break;
+	  }
+	default:
+	  OS2_destroy_message (message);
+	  OS2_error_anonymous ();
+	  break;
+	}
+      if (result != SHARP_F)
+	PRIMITIVE_RETURN (result);
+    }
+}
+
+static SCHEME_OBJECT
+make_button_event (wid_t wid, MPARAM mp1, MPARAM mp2,
+		   unsigned short number, unsigned short type)
+{
+  SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, 7, 0));
+  CVT_USHORT (0, ET_BUTTON);
+  CVT_USHORT (1, wid);
+  CVT_USHORT (2, number);
+  CVT_USHORT (3, type);
+  CVT_SHORT (4, (SHORT1FROMMP (mp1)));
+  CVT_SHORT (5, (SHORT2FROMMP (mp1)));
+  CVT_USHORT (6, ((SHORT2FROMMP (mp2)) & (KC_SHIFT | KC_CTRL | KC_ALT)));
+  return (result);
 }
 
 DEFINE_PRIMITIVE ("OS2WIN-EVENT-READY?", Prim_OS2_window_event_ready, 2, 2, 0)
@@ -1008,7 +1171,7 @@ DEFINE_PRIMITIVE ("OS2WIN-CONSOLE-WID", Prim_OS2_window_console_wid, 0, 0, 0)
 {
   extern wid_t OS2_console_wid (void);
   PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (long_to_integer (OS2_console_wid ()));
+  PRIMITIVE_RETURN (ulong_to_integer (OS2_console_wid ()));
 }
 
 DEFINE_PRIMITIVE ("OS2WIN-DESKTOP-WIDTH", Prim_OS2_window_desktop_width, 0, 0, 0)

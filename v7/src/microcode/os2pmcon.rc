@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pmcon.rc,v 1.1 1995/10/30 07:58:27 cph Exp $
+$Id: os2pmcon.rc,v 1.2 1995/11/03 01:30:07 cph Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -41,12 +41,12 @@ MENU ID_PMCON_RESOURCES
 {
   SUBMENU "~File", IDM_FILE
   {
-    MENUITEM "~Exit", IDM_EXIT
+    MENUITEM "E~xit", IDM_EXIT
   }
   SUBMENU "~Edit", IDM_EDIT
   {
     MENUITEM "Cu~t\tShift+Delete", IDM_CUT, 0, MIA_DISABLED
-    MENUITEM "~Copy\tCtrl+Insert", IDM_COPY, 0, MIA_DISABLED
+    MENUITEM "~Copy\tCtrl+Insert", IDM_COPY
     MENUITEM "~Paste\tShift+Insert", IDM_PASTE
   }
   SUBMENU "~Options", IDM_OPTIONS
@@ -55,7 +55,7 @@ MENU ID_PMCON_RESOURCES
   }
   SUBMENU "~Help", IDM_HELP
   {
-    MENUITEM "~Product information...", IDM_ABOUT
+    MENUITEM "~About...", IDM_ABOUT
   }
 }
 

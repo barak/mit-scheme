@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pm.h,v 1.11 1995/10/30 08:03:19 cph Exp $
+$Id: os2pm.h,v 1.12 1995/11/03 01:29:32 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -58,53 +58,14 @@ typedef struct
 {
   DECLARE_MSG_HEADER_FIELDS;
   wid_t wid;
-  unsigned char btype;
-  unsigned short x;
-  unsigned short y;
-  unsigned short flags;
-} sm_button_event_t;
-#define SM_BUTTON_EVENT_WID(m) (((sm_button_event_t *) (m)) -> wid)
-#define SM_BUTTON_EVENT_TYPE(m) (((sm_button_event_t *) (m)) -> btype)
-#define SM_BUTTON_EVENT_X(m) (((sm_button_event_t *) (m)) -> x)
-#define SM_BUTTON_EVENT_Y(m) (((sm_button_event_t *) (m)) -> y)
-#define SM_BUTTON_EVENT_FLAGS(m) (((sm_button_event_t *) (m)) -> flags)
-
-#define BUTTON_EVENT_DOWN 0
-#define BUTTON_EVENT_UP 1
-#define BUTTON_EVENT_CLICK 2
-#define BUTTON_EVENT_DBLCLK 3
-
-#define BUTTON_TYPE_NUMBER(type) ((type) & 0xf)
-#define BUTTON_TYPE_EVENT(type) (((type) >> 4) & 0xf)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  wid_t wid;
-} sm_close_event_t;
-#define SM_CLOSE_EVENT_WID(m) (((sm_close_event_t *) (m)) -> wid)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  wid_t wid;
-  char gainedp;
-} sm_focus_event_t;
-#define SM_FOCUS_EVENT_WID(m) (((sm_focus_event_t *) (m)) -> wid)
-#define SM_FOCUS_EVENT_GAINEDP(m) (((sm_focus_event_t *) (m)) -> gainedp)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  wid_t wid;
-  unsigned short code;
-  unsigned short flags;
-  unsigned short repeat;
-} sm_key_event_t;
-#define SM_KEY_EVENT_WID(m) (((sm_key_event_t *) (m)) -> wid)
-#define SM_KEY_EVENT_CODE(m) (((sm_key_event_t *) (m)) -> code)
-#define SM_KEY_EVENT_FLAGS(m) (((sm_key_event_t *) (m)) -> flags)
-#define SM_KEY_EVENT_REPEAT(m) (((sm_key_event_t *) (m)) -> repeat)
+  ULONG msg;
+  MPARAM mp1;
+  MPARAM mp2;
+} sm_pm_event_t;
+#define SM_PM_EVENT_WID(m) (((sm_pm_event_t *) (m)) -> wid)
+#define SM_PM_EVENT_MSG(m) (((sm_pm_event_t *) (m)) -> msg)
+#define SM_PM_EVENT_MP1(m) (((sm_pm_event_t *) (m)) -> mp1)
+#define SM_PM_EVENT_MP2(m) (((sm_pm_event_t *) (m)) -> mp2)
 
 typedef struct
 {
@@ -120,53 +81,6 @@ typedef struct
 #define SM_PAINT_EVENT_XH(m) (((sm_paint_event_t *) (m)) -> xh)
 #define SM_PAINT_EVENT_YL(m) (((sm_paint_event_t *) (m)) -> yl)
 #define SM_PAINT_EVENT_YH(m) (((sm_paint_event_t *) (m)) -> yh)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  wid_t wid;
-  unsigned short width;
-  unsigned short height;
-} sm_resize_event_t;
-#define SM_RESIZE_EVENT_WID(m) (((sm_resize_event_t *) (m)) -> wid)
-#define SM_RESIZE_EVENT_WIDTH(m) (((sm_resize_event_t *) (m)) -> width)
-#define SM_RESIZE_EVENT_HEIGHT(m) (((sm_resize_event_t *) (m)) -> height)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  wid_t wid;
-  char shownp;
-} sm_visibility_event_t;
-#define SM_VISIBILITY_EVENT_WID(m) (((sm_visibility_event_t *) (m)) -> wid)
-#define SM_VISIBILITY_EVENT_SHOWNP(m)					\
-  (((sm_visibility_event_t *) (m)) -> shownp)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  wid_t wid;
-  unsigned short command;
-  unsigned short source;
-  unsigned short mousep;
-} sm_command_event_t;
-#define SM_COMMAND_EVENT_WID(m) (((sm_command_event_t *) (m)) -> wid)
-#define SM_COMMAND_EVENT_COMMAND(m) (((sm_command_event_t *) (m)) -> command)
-#define SM_COMMAND_EVENT_SOURCE(m) (((sm_command_event_t *) (m)) -> source)
-#define SM_COMMAND_EVENT_MOUSEP(m) (((sm_command_event_t *) (m)) -> mousep)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  wid_t wid;
-  unsigned short command;
-  unsigned short source;
-  unsigned short mousep;
-} sm_help_event_t;
-#define SM_HELP_EVENT_WID(m) (((sm_help_event_t *) (m)) -> wid)
-#define SM_HELP_EVENT_COMMAND(m) (((sm_help_event_t *) (m)) -> command)
-#define SM_HELP_EVENT_SOURCE(m) (((sm_help_event_t *) (m)) -> source)
-#define SM_HELP_EVENT_MOUSEP(m) (((sm_help_event_t *) (m)) -> mousep)
 
 typedef enum
 {
@@ -185,23 +99,28 @@ typedef enum
 extern msg_t * OS2_read_pm_tqueue (tqueue_t *, int);
 extern void OS2_write_pm_tqueue (tqueue_t *, msg_t *);
 
-extern int OS2_psid_validp (psid_t);
-extern int OS2_wid_validp (wid_t);
-extern int OS2_bid_validp (bid_t);
-
 /* This machine-generated file contains most of the procedure prototypes.  */
 #include "os2pm-ed.h"
 
+extern int OS2_psid_validp (psid_t);
+extern int OS2_wid_validp (wid_t);
+extern int OS2_bid_validp (bid_t);
 extern psid_t OS2_window_client_ps (wid_t);
 extern qid_t OS2_create_pm_qid (tqueue_t *);
 extern void OS2_window_permanent (wid_t);
+extern void OS2_window_mousetrack (wid_t, int);
+extern HWND OS2_window_frame_handle (wid_t);
+extern HWND OS2_window_client_handle (wid_t);
+extern int OS2_memory_ps_p (psid_t);
+extern bid_t OS2_ps_get_bitmap (psid_t);
+
 extern void OS2_window_pos (wid_t, short *, short *);
 extern void OS2_window_size (wid_t, unsigned short *, unsigned short *);
 extern void OS2_window_frame_size (wid_t, unsigned short *, unsigned short *);
-extern HWND OS2_window_frame_handle (wid_t);
-extern int OS2_memory_ps_p (psid_t);
-extern bid_t OS2_ps_get_bitmap (psid_t);
 extern bid_t OS2_ps_set_bitmap (psid_t, bid_t);
 extern font_metrics_t * OS2_ps_set_font (psid_t, unsigned short, const char *);
+
+extern int OS2_translate_wm_char
+  (MPARAM, MPARAM, unsigned short *, unsigned short *, unsigned char *);
 
 #endif /* SCM_OS2PM_H */

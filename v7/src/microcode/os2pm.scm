@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2pm.scm,v 1.1 1995/10/30 07:57:55 cph Exp $
+$Id: os2pm.scm,v 1.2 1995/11/03 01:29:45 cph Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -766,7 +766,9 @@ MIT in each case. */
   (value sync)
   (arguments qid))
 
-(define-pm-procedure (window_open open_window)
+;;; Windows
+
+(define-pm-procedure window_open
   (value ("wid_t" wid))
   (arguments qid
 	     (qid_t event_qid)
@@ -776,19 +778,10 @@ MIT in each case. */
 	     (ulong style)
 	     ((array (const char)) title)))
 
-(define-pm-procedure (window_close close_window)
+(define-pm-procedure window_close
   (arguments window))
 
-(define-pm-procedure (window_show show_window)
-  (arguments window (boolean showp)))
-
-(define-pm-procedure (window_move_cursor move_cursor)
-  (arguments window (short x) (short y)))
-
-(define-pm-procedure (window_shape_cursor shape_cursor)
-  (arguments window (ushort width) (ushort height) (ushort style)))
-
-(define-pm-procedure (window_show_cursor enable_cursor)
+(define-pm-procedure window_show
   (arguments window (boolean showp)))
 
 (define-pm-procedure window_scroll
@@ -809,29 +802,50 @@ MIT in each case. */
 (define-pm-procedure window_activate
   (arguments window))
 
-;;; window_pos
+;;; (define_pm_procedure window_pos ...)
 
-(define-pm-procedure (window_set_pos set_window_pos)
+(define-pm-procedure window_set_pos
   (arguments window (short x) (short y)))
 
-;;; window_size
-;;; window_frame_size
+;;; (define_pm_procedure window_size ...)
+;;; (define_pm_procedure window_frame_size ...)
 
-(define-pm-procedure (window_set_size set_window_size)
+(define-pm-procedure window_set_size
   (arguments window (ushort x) (ushort y)))
 
 (define-pm-procedure window_focusp
   (value (boolean focusp))
   (arguments window))
 
-(define-pm-procedure (window_set_state set_window_state)
+(define-pm-procedure window_set_state
   (arguments window (window_state_t state)))
 
-(define-pm-procedure (window_set_title set_window_title)
+(define-pm-procedure window_set_title
   (arguments window ((array (const char)) title)))
 
-(define-pm-procedure (window_update_frame update_frame_window)
+(define-pm-procedure window_update_frame
   (arguments window (ushort flags)))
+
+(define-pm-procedure window_handle_from_id
+  (value ("HWND" child))
+  (arguments qid ("HWND" parent) (ulong id)))
+
+(define-pm-procedure window_set_capture
+  (value ("BOOL" successp))
+  (arguments window (int capturep)))
+
+;;; Text Cursors
+
+(define-pm-procedure window_move_cursor
+  (arguments window (short x) (short y)))
+
+(define-pm-procedure window_shape_cursor
+  (arguments window (ushort width) (ushort height) (ushort style)))
+
+(define-pm-procedure window_show_cursor
+  (arguments window (boolean showp)))
+
+;;; Presentation Spaces
 
 (define-pm-procedure create_memory_ps
   (value ps)
@@ -847,7 +861,7 @@ MIT in each case. */
 (define-pm-procedure destroy_bitmap
   (arguments bitmap))
 
-;;; ps_set_bitmap
+;;; (define_pm_procedure ps_set_bitmap ...)
 
 (define-pm-procedure ps_bitblt
   (arguments ((id ps) target)
@@ -870,18 +884,16 @@ MIT in each case. */
 	     ((array (const char)) data size)
 	     (ushort size)))
 
-(define-pm-procedure ps_get_font_metrics
-  (value ((pointer font_metrics_t) metrics))
-  (arguments ps))
-
 (define-pm-procedure ps_clear
   (arguments ps (short xl) (short xh) (short yl) (short yh)))
 
-(define-pm-procedure ps_set_font_internal
-  (value ((pointer font_metrics_t) metrics))
-  (arguments ps
-	     (ushort id)
-	     ((array (const char)) name)))
+(define-pm-procedure ps_get_foreground_color
+  (value ("COLOR" color))
+  (arguments ps))
+
+(define-pm-procedure ps_get_background_color
+  (value ("COLOR" color))
+  (arguments ps))
 
 (define-pm-procedure ps_set_colors
   (arguments ps ("COLOR" foreground) ("COLOR" background)))
@@ -943,6 +955,8 @@ MIT in each case. */
 	     ((pointer "BYTE") data)
 	     ((pointer "BITMAPINFO2") info)))
 
+;;; Clipboard
+
 (define-pm-procedure clipboard_write_text
   (value sync)
   (arguments qid ((pointer (const char)) text)))
@@ -951,11 +965,14 @@ MIT in each case. */
   (value ((pointer (const char)) text))
   (arguments qid))
 
+;;; Menus
+
 (define-pm-procedure menu_create
   (value ("HWND" menu))
   (arguments qid ("HWND" owner) (ushort style) (ushort id)))
 
 (define-pm-procedure menu_destroy
+  (value ("BOOL" successp))
   (arguments qid ("HWND" menu)))
 
 (define-pm-procedure menu_insert_item
@@ -1008,16 +1025,45 @@ MIT in each case. */
 	     (ushort mask)
 	     (ushort attributes)))
 
-(define-pm-procedure window_handle_from_id
-  (value ("HWND" child))
-  (arguments qid ("HWND" parent) (ulong id)))
-
 (define-pm-procedure window_load_menu
   (value ("HWND" menu))
   (arguments window ("HMODULE" module) (ulong id)))
 
+(define-pm-procedure window_popup_menu
+  (value ("BOOL" successp))
+  (arguments qid
+	     ("HWND" parent)
+	     ("HWND" owner)
+	     ("HWND" menu)
+	     (long x)
+	     (long y)
+	     (long id)
+	     (ulong options)))
+
+;;; Font
+
+(define-pm-procedure ps_get_font_metrics
+  (value ((pointer font_metrics_t) metrics))
+  (arguments ps))
+
+(define-pm-procedure ps_set_font_internal
+  (value ((pointer font_metrics_t) metrics))
+  (arguments ps
+	     (ushort id)
+	     ((array (const char)) name)))
+
 (define-pm-procedure window_font_dialog
   (value ((pointer (const char)) spec))
   (arguments window ((pointer (const char)) title)))
+
+;;; Pointers
+
+(define-pm-procedure query_system_pointer
+  (value ("HPOINTER" pointer))
+  (arguments qid ("HWND" desktop) (long id) ("BOOL" copyp)))
+
+(define-pm-procedure set_pointer
+  (value ("BOOL" successp))
+  (arguments qid ("HWND" desktop) ("HPOINTER" pointer)))
 
 (write-all-files)
