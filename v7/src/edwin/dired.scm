@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dired.scm,v 1.155 1995/06/15 06:37:57 cph Exp $
+;;;	$Id: dired.scm,v 1.156 1995/09/25 20:29:00 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -745,7 +745,11 @@ Actions controlled by variables list-directory-brief-switches
 (define (dired-filename-string lstart)
   (let ((start (dired-filename-start lstart)))
     (and start
-	 (extract-string start (line-end start 0)))))
+	 (extract-string start
+			 (let ((end (line-end start 0)))
+			   (if (search-forward " -> " start end)
+			       (re-match-start 0)
+			       end))))))
 
 (define (set-dired-point! mark)
   (set-current-point!
