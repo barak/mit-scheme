@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.180 2000/06/20 19:32:47 cph Exp $
+;;; $Id: imail-top.scm,v 1.181 2000/06/20 19:36:09 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1090,7 +1090,7 @@ ADDRESSES is a string consisting of several addresses separated by commas."
 	      "\\>")))
 	(set-variable! imail-dont-reply-to-names regexp #f)
 	regexp)))
-
+
 (define (message-subject message)
   (let ((subject (get-first-header-field-value message "subject" #f)))
     (if subject
@@ -2202,29 +2202,24 @@ Negative argument means search in reverse."
 ;;;; Automatic wrap/fill
 
 (define (call-with-auto-wrapped-output-mark mark left-margin generator)
-  (case (ref-variable imail-auto-wrap mark)
-    ((#F)
-     (call-with-output-mark mark generator))
-    ((FILL)
-     (let ((start (mark-right-inserting-copy mark))
-	   (end (mark-left-inserting-copy mark)))
-       (call-with-output-mark mark generator)
-       (fill-individual-paragraphs start end
-				   (- (ref-variable fill-column start)
-				      left-margin)
-				   #f #f)
-       (mark-temporary! start)
-       (mark-temporary! end)))
-    (else
-     (let ((start (mark-right-inserting-copy mark))
-	   (end (mark-left-inserting-copy mark)))
-       (call-with-output-mark mark generator)
-       (wrap-individual-paragraphs start end
-				   (- (- (mark-x-size mark) 1) left-margin)
-				   #f)
-       (mark-temporary! start)
-       (mark-temporary! end)))))
-
+  (let ((auto-wrap (ref-variable imail-auto-wrap mark)))
+    (if auto-wrap
+	(let ((start (mark-right-inserting-copy mark))
+	      (end (mark-left-inserting-copy mark)))
+	  (call-with-output-mark mark generator)
+	  (if (eq? auto-wrap 'FILL)
+	      (fill-individual-paragraphs start end
+					  (- (ref-variable fill-column start)
+					     left-margin)
+					  #f #f)
+	      (wrap-individual-paragraphs start end
+					  (- (- (mark-x-size mark) 1)
+					     left-margin)
+					  #f))
+	  (mark-temporary! start)
+	  (mark-temporary! end))
+	(call-with-output-mark mark generator))))
+
 ;;;; Navigation hooks
 
 (define (navigator/first-unseen-message folder)
