@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxctty.c,v 1.7 1991/03/01 00:56:02 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxctty.c,v 1.8 1991/06/15 00:40:28 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -263,13 +263,13 @@ DEFUN (ctty_get_interrupt_chars, (ic), Tinterrupt_chars * ic)
       (ic -> intrpt) = ((s . tio . c_cc) [VINTR]);
       (ic -> tstp) = ((s . tio . c_cc) [VSUSP]);
 
+#ifdef VDSUSP
+      (ic -> dtstp) = ((s . tio . c_cc) [VDSUSP]);
+#else /* not VDSUSP */
 #ifdef _HPUX
       (ic -> dtstp) = (s . ltc . t_dsuspc);
-#else /* not _HPUX */
-#ifdef _ULTRIX
-      (ic -> dtstp) = ((s . tio . c_cc) [VDSUSP]);
-#endif /* _ULTRIX */
-#endif /* not _HPUX */
+#endif /* _HPUX */
+#endif /* not VDSUSP */
 
 #else /* not HAVE_TERMIOS */
 #ifdef HAVE_TERMIO
@@ -328,14 +328,14 @@ DEFUN (ctty_set_interrupt_chars, (ic), Tinterrupt_chars * ic)
       ((s . tio . c_cc) [VQUIT]) = (ic -> quit);
       ((s . tio . c_cc) [VINTR]) = (ic -> intrpt);
       ((s . tio . c_cc) [VSUSP]) = (ic -> tstp);
+#ifdef VDSUSP
+      ((s . tio . c_cc) [VDSUSP]) = (ic -> dtstp);
+#else /* not VDSUSP */
 #ifdef _HPUX
       (s . ltc . t_suspc) = (ic -> tstp);
       (s . ltc . t_dsuspc) = (ic -> dtstp);
-#else /* not _HPUX */
-#ifdef _ULTRIX
-      ((s . tio . c_cc) [VDSUSP]) = (ic -> dtstp);
-#endif /* _ULTRIX */
-#endif /* not _HPUX */
+#endif /* _HPUX */
+#endif /* not VDSUSP */
 
 #else /* not HAVE_TERMIOS */
 #ifdef HAVE_TERMIO

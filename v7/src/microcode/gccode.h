@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.42 1989/10/28 15:38:29 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.43 1991/06/15 00:40:15 cph Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -35,6 +35,12 @@ MIT in each case. */
 /* This file contains the macros for use in code which does GC-like
    loops over memory.  It is only included in a few files, unlike
    gc.h which contains general purpose macros and constants. */
+
+#ifdef ENABLE_DEBUGGING_TOOLS
+#ifndef ENABLE_GC_DEBUGGING_TOOLS
+#define ENABLE_GC_DEBUGGING_TOOLS
+#endif
+#endif
 
 /* A SWITCH on GC types, duplicates information in GC_Type_Map[], but
    exists for efficiency reasons. Macros must be used by convention:
@@ -279,6 +285,36 @@ do									\
    Currently only compiled entry points point to the
    "middle" of vectors. */
 
+#ifdef ENABLE_GC_DEBUGGING_TOOLS
+
+#define CHECK_TRANSPORT_VECTOR_TERMINATION()				\
+{									\
+  if (! ((To <= Scan)							\
+	 && (((Constant_Space <= To) && (To < Constant_Top))		\
+	     ? ((Constant_Space <= Scan) && (Scan < Constant_Top))	\
+	     : ((Heap_Bottom <= Scan) && (Scan < Heap_Top)))))		\
+    {									\
+      fprintf (stderr, "\nBad transport_vector limit:\n");		\
+      fprintf (stderr, "  limit = 0x%x\n", Scan);			\
+      fprintf (stderr, "  Scan = 0x%x\n", Saved_Scan);			\
+      fprintf (stderr, "  To = 0x%x\n", To);				\
+      fflush (stderr);							\
+      abort ();								\
+    }									\
+  if ((OBJECT_DATUM (*Old)) > 65536)					\
+    {									\
+      fprintf (stderr, "\nWarning: copying large vector: %d\n",		\
+	       (OBJECT_DATUM (*Old)));					\
+      fflush (stderr);							\
+    }									\
+}
+
+#else /* not ENABLE_GC_DEBUGGING_TOOLS */
+
+#define CHECK_TRANSPORT_VECTOR_TERMINATION()
+
+#endif /* not ENABLE_GC_DEBUGGING_TOOLS */
+
 #define Real_Transport_Vector()						\
 {									\
   SCHEME_OBJECT *Saved_Scan;						\
@@ -295,6 +331,7 @@ do									\
 	 (OBJECT_DATUM (*Old)));					\
       gc_death (TERM_EXIT, gc_death_message_buffer, Saved_Scan, To);	\
     }									\
+  CHECK_TRANSPORT_VECTOR_TERMINATION ();				\
   while (To != Scan)							\
     (*To++) = (*Old++);							\
   Scan = Saved_Scan;							\

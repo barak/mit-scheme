@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/oscond.h,v 1.4 1991/01/16 00:34:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/oscond.h,v 1.5 1991/06/15 00:40:20 cph Exp $
 
-Copyright (c) 1990, 1991 Massachusetts Institute of Technology
+Copyright (c) 1990-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -79,6 +79,11 @@ MIT in each case. */
 
 #endif /* __hpux */
 #endif /* _HPUX */
+  
+#ifdef _SYSV4
+#define _POSIX
+#define _SYSV3
+#endif
 
 #ifdef _SYSV3
 #define _SYSV

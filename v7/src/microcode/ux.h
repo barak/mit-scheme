@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.22 1991/03/10 01:19:16 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.23 1991/06/15 00:40:24 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -161,6 +161,14 @@ extern void EXFUN (error_system_call, (int code, enum syscall_names name));
 /* Conditionalizations that are overridden by _POSIX. */
 
 #ifdef _POSIX
+
+#ifdef sonyrisc
+/* <limits.h> will redefine these. */
+#undef DBL_MAX
+#undef DBL_MIN
+#undef FLT_MAX
+#undef FLT_MIN
+#endif
 
 #include <limits.h>
 #include <unistd.h>
@@ -383,6 +391,61 @@ extern void EXFUN (error_system_call, (int code, enum syscall_names name));
 #define HAVE_VFORK
 
 #else /* not _AIX */
+#ifdef _SYSV4
+
+#define SYSTEM_VARIANT "ATT (Vr4)"
+
+#define HAVE_FIONREAD
+#define HAVE_GETTIMEOFDAY
+#define HAVE_ITIMER
+#define HAVE_NICE
+#define HAVE_PTYS
+#define HAVE_SELECT
+#define HAVE_SIGCONTEXT
+#define HAVE_SOCKETS
+#define HAVE_SYMBOLIC_LINKS
+#define HAVE_TRUNCATE
+#define HAVE_UNIX_SOCKETS
+#define HAVE_VFORK
+
+#include <stropts.h>
+
+#define PTY_DECLARATIONS						\
+  extern int EXFUN (grantpt, (int));					\
+  extern int EXFUN (unlockpt, (int));					\
+  extern char * EXFUN (ptsname, (int))
+
+#undef PTY_ITERATION
+
+#define PTY_MASTER_NAME_SPRINTF(master_name)				\
+  sprintf ((master_name), "/dev/ptmx")
+
+#define PTY_SLAVE_NAME_SPRINTF(slave_name, fd)				\
+{									\
+  grantpt (fd);								\
+  unlockpt (fd);							\
+  sprintf ((slave_name), "%s", (ptsname (fd)));				\
+}
+
+/* Would be nice if HPUX and SYSV4 agreed on the name of this. */
+#define TIOCSIGSEND TIOCSIGNAL
+
+/* Must push various STREAMS modules onto the slave side of a PTY when
+   it is opened. */
+
+#define SLAVE_PTY_P(filename) ((strncmp ((filename), "/dev/pts/", 9)) == 0)
+
+#define SETUP_SLAVE_PTY(fd)						\
+  (((ioctl ((fd), I_PUSH, "ptem")) >= 0)				\
+   && ((ioctl ((fd), I_PUSH, "ldterm")) >= 0)				\
+   && ((ioctl ((fd), I_PUSH, "ttcompat")) >= 0))
+
+#else /* not _SYSV4 */
+#ifdef _SYSV3
+
+#define SYSTEM_VARIANT "ATT (Vr3)"
+
+#else /* not _SYSV3 */
 #ifdef _SYSV
 
 #define SYSTEM_VARIANT "ATT (V)"
@@ -399,11 +462,13 @@ extern void EXFUN (error_system_call, (int code, enum syscall_names name));
 
 #define SYSTEM_VARIANT "unknown"
 
-#endif /* _PIXEL */
-#endif /* _SYSV */
-#endif /* _AIX */
-#endif /* _HPUX */
-#endif /* _BSD */
+#endif /* not _PIXEL */
+#endif /* not _SYSV */
+#endif /* not _SYSV3 */
+#endif /* not _SYSV4 */
+#endif /* not _AIX */
+#endif /* not _HPUX */
+#endif /* not _BSD */
 
 #ifdef VOID_SIGNAL_HANDLERS
 typedef void Tsignal_handler_result;

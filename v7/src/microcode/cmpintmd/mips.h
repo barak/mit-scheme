@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mips.h,v 1.7 1990/09/08 00:10:10 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mips.h,v 1.8 1991/06/15 00:40:07 cph Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -44,22 +44,40 @@ MIT in each case. */
 #ifndef CMPINT2_H_INCLUDED
 #define CMPINT2_H_INCLUDED
 
+#ifdef sonyrisc
+
 #include <sys/syscall.h>
 #include <sys/sysmips.h>
-#include <mips/cachectl.h>
+#include <sys/cachectl.h>
+
+extern void syscall ();
+
+#define ICACHEFLUSH(addr, nbytes)					\
+  syscall (SYS_sysmips, FLUSH_CACHE, (addr), (nbytes), ICACHE)
+
+#else /* not sonyrisc */
+
 #if 0
 
 /* advertised, but not provided */
 extern void cacheflush();
 
-#else
+#else /* not 0 */
+
+#include <sys/syscall.h>
+#include <sys/sysmips.h>
+#include <mips/cachectl.h>
 
 extern void syscall();
 
 #define cacheflush(addr,nbytes,cache)					\
-  syscall(SYS_sysmips, MIPS_CACHEFLUSH, (addr), (nbytes), (cache))
+  syscall (SYS_sysmips, MIPS_CACHEFLUSH, (addr), (nbytes), (cache))
 
-#endif
+#endif /* not 0 */
+
+#define ICACHEFLUSH(addr, nbytes) cacheflush ((addr), (nbytes), ICACHE)
+
+#endif /* not sonyrisc */
 
 #define COMPILER_NONE_TYPE			0
 #define COMPILER_MC68020_TYPE			1
@@ -103,12 +121,13 @@ typedef unsigned short format_word;
  */
 
 #define EXTRACT_ABSOLUTE_ADDRESS(target, address)			\
-{ unsigned long jal_instr, *addr;					\
-									\
-  addr = (unsigned long *) (address);					\
-  jal_instr = *addr;							\
-  (target) = (SCHEME_OBJECT) ((((long) address) & 0xF0000000) |		\
-                              ((jal_instr & 0x03FFFFFF) <<2));		\
+{									\
+  unsigned long * addr = ((unsigned long *) (address));			\
+  unsigned long jal_instr = (*addr);					\
+  (target) =								\
+    ((SCHEME_OBJECT)							\
+     ((((long) (address)) & 0xF0000000) |				\
+      ((jal_instr & 0x03FFFFFF) << 2)));				\
 }
 
 #define JAL_OP		(003 << 26)
@@ -116,10 +135,8 @@ typedef unsigned short format_word;
 
 #define STORE_ABSOLUTE_ADDRESS(entry_point, address)			\
 {									\
-  unsigned long *addr, ep;						\
-									\
-  ep = ((unsigned long) (entry_point));					\
-  addr = ((unsigned long *) (address));					\
+  unsigned long ep = ((unsigned long) (entry_point));			\
+  unsigned long * addr = ((unsigned long *) (address));			\
   if (((((long) addr) & 0xF0000000)					\
        != (((long) entry_point) & 0xF0000000))				\
       || ((((long) addr) & 0x3) != 0))					\
@@ -128,7 +145,7 @@ typedef unsigned short format_word;
 	     "\nSTORE_ABSOLUTE_ADDRESS: Bad addr in JAL 0x%x, 0x%x\n",	\
 	     addr, ep);							\
   }									\
-  *addr = JAL_INSTR (ep & 0x0FFFFFFF);					\
+  (*addr) = JAL_INSTR (ep & 0x0FFFFFFF);				\
 }
 
 /* Compiled Code Register Conventions */
@@ -223,7 +240,7 @@ do {									\
 
 #define EXTRACT_CLOSURE_ENTRY_ADDRESS(real_entry_point, entry_point)	\
 {									\
-  EXTRACT_ABSOLUTE_ADDRESS(real_entry_point, entry_point);		\
+  EXTRACT_ABSOLUTE_ADDRESS (real_entry_point, entry_point);		\
 }
 
 /* This is the inverse of EXTRACT_CLOSURE_ENTRY_ADDRESS.
@@ -233,7 +250,7 @@ do {									\
 
 #define STORE_CLOSURE_ENTRY_ADDRESS(real_entry_point, entry_point)	\
 {									\
-  STORE_ABSOLUTE_ADDRESS(real_entry_point, entry_point);		\
+  STORE_ABSOLUTE_ADDRESS (real_entry_point, entry_point);		\
 }
 
 /* Trampolines
@@ -340,10 +357,38 @@ do {									\
      +0: JAL	destination
      +4: (unchanged)
      +6: ADDI 0, arg count
+
+   (big endian):
+
+   Before linking
+     +0: TC_SYMBOL || symbol address
+     +4: TC_FIXNUM || 0
+     +6: number of supplied arguments, +1
+
+   After linking
+     +0: JAL	destination
+     +4: ADDI 0, arg count
+     +6: (unchanged)
+
 */
 
+#ifdef MIPSEL
+
+#define MIPS_CACHE_ARITY_OFFSET 2
+#define MIPS_CACHE_CODE_OFFSET 7
+
+#else /* not MIPSEL */
+
+#define MIPS_CACHE_ARITY_OFFSET 3
+#define MIPS_CACHE_CODE_OFFSET 4
+
+#endif /* not MIPSEL */
+
 #define EXTRACT_EXECUTE_CACHE_ARITY(target, address)			\
-{ (target) = (long) (((unsigned short *) (address))[2]);		\
+{									\
+  (target) =								\
+    ((long)								\
+     (((unsigned short *) (address)) [MIPS_CACHE_ARITY_OFFSET]));	\
 }
 
 #define EXTRACT_EXECUTE_CACHE_SYMBOL(target, address)			\
@@ -357,7 +402,7 @@ do {									\
 
 #define EXTRACT_EXECUTE_CACHE_ADDRESS(target, address)			\
 {									\
-  EXTRACT_ABSOLUTE_ADDRESS(target, address);				\
+  EXTRACT_ABSOLUTE_ADDRESS (target, address);				\
 }
 
 /* This is the inverse of EXTRACT_EXECUTE_CACHE_ADDRESS.
@@ -381,10 +426,8 @@ do {									\
 
 #define STORE_EXECUTE_CACHE_CODE(address)				\
 {									\
-  char *opcode_addr;							\
-									\
-  opcode_addr = (((char *) (address)) + 7);				\
-  *opcode_addr = (ADDI_OPCODE << 2);					\
+  char * opcode_addr = (((char *) (address)) + MIPS_CACHE_CODE_OFFSET);	\
+  (*opcode_addr) = (ADDI_OPCODE << 2);					\
 }
 
 /* This flushes the Scheme portion of the I-cache.
@@ -394,21 +437,17 @@ do {									\
    processor might have old copies of.
  */
 
-#define FLUSH_I_CACHE()							\
-do									\
+#define FLUSH_I_CACHE() do						\
 {									\
-  cacheflush (Heap_Bottom,						\
-	      ((sizeof(SCHEME_OBJECT)) *				\
-	       (Heap_Top - Heap_Bottom)),				\
-	      ICACHE);							\
-  cacheflush (Constant_Space,						\
-	      ((sizeof(SCHEME_OBJECT)) *				\
-	       (Constant_Top - Constant_Space)),			\
-	      ICACHE);							\
-  cacheflush (Stack_Pointer,						\
-	      ((sizeof(SCHEME_OBJECT)) *				\
-	       (Stack_Top - Stack_Pointer)),				\
-	      ICACHE);							\
+  ICACHEFLUSH (Heap_Bottom,						\
+	       ((sizeof(SCHEME_OBJECT)) *				\
+		(Heap_Top - Heap_Bottom)));				\
+  ICACHEFLUSH (Constant_Space,						\
+	       ((sizeof(SCHEME_OBJECT)) *				\
+		(Constant_Top - Constant_Space)));			\
+  ICACHEFLUSH (Stack_Pointer,						\
+	       ((sizeof(SCHEME_OBJECT)) *				\
+		(Stack_Top - Stack_Pointer)));				\
 } while (0)
 
 
@@ -417,11 +456,9 @@ do									\
    Not needed during GC because FLUSH_I_CACHE will be used.
  */   
 
-#define FLUSH_I_CACHE_REGION(address, nwords)				\
-do {									\
-  cacheflush ((address),						\
-	      ((sizeof (long)) * (nwords)),				\
-	      ICACHE);							\
+#define FLUSH_I_CACHE_REGION(address, nwords) do			\
+{									\
+  ICACHEFLUSH ((address), ((sizeof (long)) * (nwords)));		\
 } while (0)
 
 /* Derived parameters and macros.
@@ -430,10 +467,8 @@ do {									\
    If they are not, the macros below may have to be changed as well.
  */
 
-#define COMPILED_ENTRY_OFFSET_WORD(entry)                               \
-  (((format_word *) (entry))[-1])
-#define COMPILED_ENTRY_FORMAT_WORD(entry)                               \
-  (((format_word *) (entry))[-2])
+#define COMPILED_ENTRY_OFFSET_WORD(entry) (((format_word *) (entry)) [-1])
+#define COMPILED_ENTRY_FORMAT_WORD(entry) (((format_word *) (entry)) [-2])
 
 /* The next one assumes 2's complement integers....*/
 #define CLEAR_LOW_BIT(word)                     ((word) & ((unsigned long) -2))
@@ -522,17 +557,18 @@ do {									\
     ((-1) << (size))))
 
 #define FORMAT_WORD_LOW_BYTE(word)                                      \
-  (SIGN_EXTEND_FIELD((((unsigned long) (word)) & 0xff), 8))
+  (SIGN_EXTEND_FIELD ((((unsigned long) (word)) & 0xff), 8))
 
 #define FORMAT_WORD_HIGH_BYTE(word)					\
-  (SIGN_EXTEND_FIELD((((unsigned long) (word)) >> 8),			\
-		     (((sizeof (format_word)) * CHAR_BIT) - 8)))
+  (SIGN_EXTEND_FIELD							\
+   ((((unsigned long) (word)) >> 8),					\
+    (((sizeof (format_word)) * CHAR_BIT) - 8)))
 
 #define COMPILED_ENTRY_FORMAT_HIGH(addr)                                \
-  (FORMAT_WORD_HIGH_BYTE(COMPILED_ENTRY_FORMAT_WORD(addr)))
+  (FORMAT_WORD_HIGH_BYTE (COMPILED_ENTRY_FORMAT_WORD (addr)))
 
 #define COMPILED_ENTRY_FORMAT_LOW(addr)                                 \
-  (FORMAT_WORD_LOW_BYTE(COMPILED_ENTRY_FORMAT_WORD(addr)))
+  (FORMAT_WORD_LOW_BYTE (COMPILED_ENTRY_FORMAT_WORD (addr)))
 
 #define FORMAT_BYTE_FRAMEMAX            0x7f
 

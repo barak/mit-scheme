@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxproc.c,v 1.10 1991/03/14 04:23:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxproc.c,v 1.11 1991/06/15 00:40:36 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -347,6 +347,9 @@ DEFUN (OS_make_subprocess,
 	  {
 	    int fd = (UX_open (ctty_name, O_RDWR, 0));
 	    if ((fd < 0)
+#ifdef SLAVE_PTY_P
+		|| ((SLAVE_PTY_P (ctty_name)) && (! (SETUP_SLAVE_PTY (fd))))
+#endif
 		|| (! (isatty (fd)))
 		|| ((child_setup_tty (fd)) < 0))
 	      goto kill_child;

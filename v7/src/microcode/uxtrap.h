@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.h,v 1.6 1990/08/16 05:09:31 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.h,v 1.7 1991/06/15 00:41:01 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -54,24 +54,36 @@ MIT in each case. */
 #define FULL_SIGCONTEXT_RFREE(scp)	((scp)->fs_regs[RFREE])
 #define FULL_SIGCONTEXT_FIRST_REG(scp)	(&((scp)->fs_regs[GPR_START]))
 
-#define DECLARE_UX_SIGNAL_CODES						\
-static struct ux_sig_code_desc ux_signal_codes[] =			\
+#define INITIALIZE_UX_SIGNAL_CODES()					\
 {									\
-  { SIGFPE, (~ 0L), 0, "software floating point exception" },		\
-  { SIGFPE, (~ 0L), 5, "integer divide by zero" },			\
-  { SIGFPE, (1L << 15), (1L << 15), "branch/set on unordered" },	\
-  { SIGFPE, (1L << 14), (1L << 14), "signalling NAN" },			\
-  { SIGFPE, (1L << 13), (1L << 13), "operand error" },			\
-  { SIGFPE, (1L << 12), (1L << 12), "overflow" },			\
-  { SIGFPE, (1L << 11), (1L << 11), "underflow" },			\
-  { SIGFPE, (1L << 10), (1L << 10), "divide by zero" },			\
-  { SIGFPE, (1L << 9), (1L << 9), "inexact operation" },		\
-  { SIGFPE, (1L << 8), (1L << 8), "inexact decimal input" },		\
-  { SIGILL, (~ 0L), 0, "illegal instruction" },				\
-  { SIGILL, (~ 0L), 6, "check instruction" },				\
-  { SIGILL, (~ 0L), 7, "TRAPV instruction" },				\
-  { SIGILL, (~ 0L), 8, "priviledged instruction" },			\
-  { 0, 0, 0, ((char *) NULL) }						\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), 0, "software floating point exception");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), 5, "integer divide by zero");			\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (1L << 15), (1L << 15), "branch/set on unordered");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (1L << 14), (1L << 14), "signalling NAN");			\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (1L << 13), (1L << 13), "operand error");			\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (1L << 12), (1L << 12), "overflow");			\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (1L << 11), (1L << 11), "underflow");			\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (1L << 10), (1L << 10), "divide by zero");			\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (1L << 9), (1L << 9), "inexact operation");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (1L << 8), (1L << 8), "inexact decimal input");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), 0, "illegal instruction");				\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), 6, "check instruction");				\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), 7, "TRAPV instruction");				\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), 8, "privileged instruction");			\
 }
 
 #endif /* hp9000s300 */
@@ -111,18 +123,24 @@ static struct ux_sig_code_desc ux_signal_codes[] =			\
 
 #define PC_VALUE_MASK			((~0) << 2)
 
-#define DECLARE_UX_SIGNAL_CODES						\
-static struct ux_sig_code_desc ux_signal_codes[] =			\
+#define INITIALIZE_UX_SIGNAL_CODES()					\
 {									\
-  { SIGFPE, (~ 0L), 12, "overflow trap" },				\
-  { SIGFPE, (~ 0L), 13, "conditional trap" },				\
-  { SIGFPE, (~ 0L), 22, "floating-point assist exception trap" },	\
-  { SIGFPE, (~ 0L), 22, "floating-point assist emulation trap" },	\
-  { SIGILL, (~ 0L), 8, "illegal instruction trap" },			\
-  { SIGILL, (~ 0L), 9, "break instruction trap" },			\
-  { SIGILL, (~ 0L), 10, "priviledged operation trap" },			\
-  { SIGILL, (~ 0L), 11, "priviledged register trap" },			\
-  { 0, 0, 0, ((char *) NULL) }						\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), 12, "overflow trap");				\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), 13, "conditional trap");				\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), 22, "floating-point assist exception trap");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), 22, "floating-point assist emulation trap");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), 8, "illegal instruction trap");			\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), 9, "break instruction trap");			\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), 10, "privileged operation trap");			\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), 11, "privileged register trap");			\
 }
 
 #endif /* hp9000s800 */
@@ -199,6 +217,7 @@ struct full_sigcontext
 #endif /* vax */
 
 #ifdef mips
+#ifndef _SYSV4
 
 /* Information on sigcontext structure in signal.h */
 
@@ -216,26 +235,100 @@ struct full_sigcontext
 #define FULL_SIGCONTEXT_NREGS		32
 #define PROCESSOR_NREGS			32
 
-#define DECLARE_UX_SIGNAL_CODES                                           \
-static struct ux_sig_code_desc ux_signal_codes[14] =                      \
-{                                                                         \
-  { SIGFPE, (~ 0L), FPE_INTOVF_TRAP, "integer overflow trap" },           \
-  { SIGFPE, (~ 0L), FPE_INTDIV_TRAP, "integer divide by 0 trap" },        \
-  { SIGFPE, (~ 0L), FPE_FLTOVF_TRAP, "floating-point overflow trap"},     \
-  { SIGFPE, (~ 0L), FPE_FLTDIV_TRAP, "floating-point divide by 0 trap"},  \
-  { SIGFPE, (~ 0L), FPE_FLTUND_TRAP, "floating-point underflow trap"},    \
-  { SIGFPE, (~ 0L), FPE_DECOVF_TRAP, "decimal overflow trap"},            \
-  { SIGFPE, (~ 0L), FPE_SUBRNG_TRAP, "subscript-range trap"},             \
-  { SIGFPE, (~ 0L), FPE_FLTOVF_FAULT, "floating-point overflow fault"},   \
-  { SIGFPE, (~ 0L), FPE_FLTDIV_FAULT, "floating-point divide by 0 fault"},\
-  { SIGFPE, (~ 0L), FPE_FLTUND_FAULT, "floating-point underflow fault"},  \
-  { SIGILL, (~ 0L), ILL_PRIVIN_FAULT, "reserved instruction trap" },      \
-  { SIGILL, (~ 0L), ILL_RESOP_FAULT, "reserved operand trap" },           \
-  { SIGILL, (~ 0L), ILL_RESAD_FAULT, "reserved addressing trap" },        \
-  { 0, 0, 0, ((char *) NULL) }                                            \
+#define INITIALIZE_UX_SIGNAL_CODES()					\
+{									\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_INTOVF_TRAP, "integer overflow trap");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_INTDIV_TRAP, "integer divide by 0 trap");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_FLTOVF_TRAP, "floating-point overflow trap");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_FLTDIV_TRAP, "floating-point divide by 0 trap"); \
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_FLTUND_TRAP, "floating-point underflow trap");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_DECOVF_TRAP, "decimal overflow trap");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_SUBRNG_TRAP, "subscript-range trap");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_FLTOVF_FAULT, "floating-point overflow fault"); \
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_FLTDIV_FAULT, "floating-point divide by 0 fault"); \
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_FLTUND_FAULT, "floating-point underflow fault"); \
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_PRIVIN_FAULT, "reserved instruction trap");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_RESOP_FAULT, "reserved operand trap");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_RESAD_FAULT, "reserved addressing trap");	\
 }
 
+#else /* _SYSV4 */
+
+/* Many of these definitions are not specific to the MIPS processor. */
+
+#include <sys/siginfo.h>
+#include <sys/ucontext.h>
+
+#define SIGINFO_T siginfo_t *
+#define SIGINFO_CODE(info) ((info) -> si_code)
+
+#define SIGCONTEXT ucontext
+#define SIGCONTEXT_SP(scp) ((((scp) -> uc_mcontext) . gpregs) [CXT_SP])
+#define SIGCONTEXT_PC(scp) ((((scp) -> uc_mcontext) . gpregs) [CXT_EPC])
+
+#define HAVE_FULL_SIGCONTEXT
+#define FULL_SIGCONTEXT_RFREE(scp) ((((scp) -> uc_mcontext) . gpregs) [CXT_T1])
+#define FULL_SIGCONTEXT_SCHSP(scp) ((((scp) -> uc_mcontext) . gpregs) [CXT_V1])
+#define FULL_SIGCONTEXT_FIRST_REG(scp)	(((scp) -> uc_mcontext) . gpregs)
+#define FULL_SIGCONTEXT_NREGS		NGREG
+#define PROCESSOR_NREGS			NGREG
+
+#define INITIALIZE_UX_SIGNAL_CODES()					\
+{									\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_INTDIV, "integer divide by 0 trap");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_INTOVF, "integer overflow trap");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_FLTDIV, "floating-point divide by 0 trap");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_FLTOVF, "floating-point overflow trap");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_FLTUND, "floating-point underflow trap");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_FLTRES, "floating-point inexact result");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_FLTSUB, "subscript-range trap");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_FLTINV, "invalid floating-point operation");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_ILLOPC, "illegal opcode trap");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_ILLOPN, "illegal operand trap");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_ILLADR, "illegal addressing mode trap");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_ILLTRP, "illegal trap");			\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_PRVOPC, "privileged opcode trap");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_PRVREG, "privileged register trap");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_COPROC, "co-processor trap");			\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_BADSTK, "bad stack trap");			\
+}
+
+#endif /* _SYSV4 */
 #endif /* mips */
+
+#ifndef SIGINFO_T
+#define SIGINFO_T int
+#define SIGINFO_CODE(info) (info)
+#endif
 
 #ifndef SIGCONTEXT
 #define SIGCONTEXT		sigcontext
@@ -270,13 +363,8 @@ static struct ux_sig_code_desc ux_signal_codes[14] =                      \
 #define FULL_SIGCONTEXT_SCHSP FULL_SIGCONTEXT_SP
 #endif
 
-#ifndef DECLARE_UX_SIGNAL_CODES
-
-#define DECLARE_UX_SIGNAL_CODES						\
-static struct ux_sig_code_desc ux_signal_codes[] =			\
-{									\
-  { 0, 0, 0, ((char *) NULL) }						\
-}
+#ifndef INITIALIZE_UX_SIGNAL_CODES
+#define INITIALIZE_UX_SIGNAL_CODES()
 #endif
 
 enum trap_state
@@ -292,7 +380,10 @@ extern void EXFUN (initialize_trap_recovery, (char * C_sp));
 extern enum trap_state EXFUN (OS_set_trap_state, (enum trap_state state));
 extern void EXFUN
   (trap_handler,
-   (CONST char * message, int signo, int code, struct FULL_SIGCONTEXT * scp));
+   (CONST char * message,
+    int signo,
+    SIGINFO_T info,
+    struct FULL_SIGCONTEXT * scp));
 extern void EXFUN (hard_reset, (struct FULL_SIGCONTEXT * scp));
 extern void EXFUN (soft_reset, (void));
 

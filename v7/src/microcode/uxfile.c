@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxfile.c,v 1.5 1991/05/10 00:07:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxfile.c,v 1.6 1991/06/15 00:40:32 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -80,6 +80,14 @@ DEFUN (open_file, (filename, oflag), CONST char * filename AND int oflag)
   int fd;
   STD_UINT_SYSTEM_CALL
     (syscall_open, fd, (UX_open (filename, oflag, MODE_REG)));
+#ifdef SLAVE_PTY_P
+  if ((SLAVE_PTY_P (filename)) && (! (SETUP_SLAVE_PTY (fd))))
+    {
+      int xerrno = errno;
+      UX_close (fd);
+      error_system_call (xerrno, syscall_open);
+    }
+#endif
   return (OS_open_fd (fd));
 }
 

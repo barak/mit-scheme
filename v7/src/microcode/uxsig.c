@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.8 1991/03/28 05:22:07 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.9 1991/06/15 00:40:41 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -52,6 +52,10 @@ DEFUN (current_handler, (signo), int signo)
   return (act . sa_handler);
 }
 
+#ifndef SA_SIGINFO
+#define SA_SIGINFO 0
+#endif
+
 static void
 DEFUN (INSTALL_HANDLER, (signo, handler),
        int signo AND
@@ -61,7 +65,7 @@ DEFUN (INSTALL_HANDLER, (signo, handler),
   (act . sa_handler) = handler;
   UX_sigemptyset (& (act . sa_mask));
   UX_sigaddset ((& (act . sa_mask)), signo);
-  (act . sa_flags) = 0;
+  (act . sa_flags) = SA_SIGINFO;
   UX_sigaction (signo, (&act), 0);
 }
 
@@ -262,9 +266,9 @@ DEFUN_VOID (initialize_signal_descriptors)
 
 #define DEFUN_STD_HANDLER(name, statement)				\
 static Tsignal_handler_result						\
-DEFUN (name, (signo, code, pscp),					\
+DEFUN (name, (signo, info, pscp),					\
        int signo AND							\
-       int code AND							\
+       SIGINFO_T info AND						\
        struct SIGCONTEXT * pscp)					\
 {									\
   int STD_HANDLER_abortp;						\
@@ -287,9 +291,9 @@ struct handler_record
 
 #define DEFUN_STD_HANDLER(name, statement)				\
 static Tsignal_handler_result						\
-DEFUN (name, (signo, code, pscp),					\
+DEFUN (name, (signo, info, pscp),					\
        int signo AND							\
-       int code AND							\
+       SIGINFO_T info AND						\
        struct SIGCONTEXT * pscp)					\
 {									\
   int STD_HANDLER_abortp;						\
@@ -470,14 +474,14 @@ DEFUN_STD_HANDLER (sighnd_fpe,
   {
     if (executing_scheme_primitive_p ())
       error_floating_point_exception ();
-    trap_handler ("floating-point exception", signo, code, scp);
+    trap_handler ("floating-point exception", signo, info, scp);
   })
 
 DEFUN_STD_HANDLER (sighnd_hardware_trap,
-  (trap_handler ("hardware fault", signo, code, scp)))
+  (trap_handler ("hardware fault", signo, info, scp)))
 
 DEFUN_STD_HANDLER (sighnd_software_trap,
-  (trap_handler ("system software fault", signo, code, scp)))
+  (trap_handler ("system software fault", signo, info, scp)))
 
 #ifdef HAVE_NICE
 

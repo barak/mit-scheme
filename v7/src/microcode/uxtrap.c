@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.c,v 1.10 1991/05/07 17:33:39 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.c,v 1.11 1991/06/15 00:40:54 cph Exp $
 
-Copyright (c) 1990-1991 Massachusetts Institute of Technology
+Copyright (c) 1990-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -47,17 +47,20 @@ static enum trap_state user_trap_state;
 
 static enum trap_state saved_trap_state;
 static int saved_signo;
-static int saved_code;
+static SIGINFO_T saved_info;
 static struct FULL_SIGCONTEXT * saved_scp;
 
+static void EXFUN (initialize_ux_signal_codes, (void));
 static void EXFUN
-  (continue_from_trap, (int signo, int code, struct FULL_SIGCONTEXT * scp));
+  (continue_from_trap,
+   (int signo, SIGINFO_T info, struct FULL_SIGCONTEXT * scp));
 
 void
 DEFUN_VOID (UX_initialize_trap_recovery)
 {
   trap_state = trap_state_recover;
   user_trap_state = trap_state_recover;
+  initialize_ux_signal_codes ();
 }
 
 enum trap_state
@@ -98,16 +101,17 @@ DEFUN_VOID (trap_recover)
       EXIT_CRITICAL_SECTION ({});
     }
   reset_interruptable_extent ();
-  continue_from_trap (saved_signo, saved_code, saved_scp);
+  continue_from_trap (saved_signo, saved_info, saved_scp);
 }
 
 void
-DEFUN (trap_handler, (message, signo, code, scp),
+DEFUN (trap_handler, (message, signo, info, scp),
        CONST char * message AND
        int signo AND
-       int code AND
+       SIGINFO_T info AND
        struct FULL_SIGCONTEXT * scp)
 {
+  int code = (SIGINFO_CODE (info));
   Boolean constant_space_broken = (!(CONSTANT_SPACE_SEALED ()));
   enum trap_state old_trap_state = trap_state;
   trap_state = trap_state_trapped;
@@ -144,7 +148,7 @@ DEFUN (trap_handler, (message, signo, code, scp),
 		   ">> [The earlier trap raised signal %d (%s), code %d.]\n",
 		   saved_signo,
 		   (find_signal_name (saved_signo)),
-		   saved_code);
+		   (SIGINFO_CODE (saved_info)));
 	  fputs (((WITHIN_CRITICAL_SECTION_P ())
 		  ? ">> Successful recovery is extremely unlikely.\n"
 		  : ">> Successful recovery is unlikely.\n"),
@@ -163,7 +167,7 @@ DEFUN (trap_handler, (message, signo, code, scp),
       {
 	saved_trap_state = old_trap_state;
 	saved_signo = signo;
-	saved_code = code;
+	saved_info = info;
 	saved_scp = scp;
 	trap_recover ();
       }
@@ -173,7 +177,7 @@ DEFUN (trap_handler, (message, signo, code, scp),
   fflush (stdout);
   saved_trap_state = old_trap_state;
   saved_signo = signo;
-  saved_code = code;
+  saved_info = info;
   saved_scp = scp;
   while (1)
     {
@@ -233,27 +237,42 @@ struct ux_sig_code_desc
   char *name;
 };
 
-DECLARE_UX_SIGNAL_CODES;
+static struct ux_sig_code_desc ux_signal_codes [64];
+
+#define DECLARE_UX_SIGNAL_CODE(s, m, v, n)				\
+{									\
+  ((ux_signal_codes [i]) . signo) = (s);				\
+  ((ux_signal_codes [i]) . code_mask) = (m);				\
+  ((ux_signal_codes [i]) . code_value) = (v);				\
+  ((ux_signal_codes [i]) . name) = (n);					\
+  i += 1;								\
+}
+
+static void
+DEFUN_VOID (initialize_ux_signal_codes)
+{
+  unsigned int i = 0;
+  INITIALIZE_UX_SIGNAL_CODES ();
+  DECLARE_UX_SIGNAL_CODE (0, 0, 0, ((char *) 0));
+}
 
 static SCHEME_OBJECT
-DEFUN (find_signal_code_name, (signo, code),
+DEFUN (find_signal_code_name, (signo, info),
        int signo AND
-       int code)
+       SIGINFO_T info)
 {
   SCHEME_OBJECT codenam, codenum, result;
   struct ux_sig_code_desc *entry;
+  unsigned long code = (SIGINFO_CODE (info));
 
   for (entry = &ux_signal_codes[0];
        entry->signo != 0;
        entry += 1)
-  {
-    if ((entry->signo == signo) &&
-	(((entry->code_mask) & ((unsigned long) code)) ==
-	 (entry->code_value)))
     {
-      break;
+      if ((entry->signo == signo)
+	  && (((entry->code_mask) & code) == (entry->code_value)))
+	break;
     }
-  }
 
   codenam = ((entry->signo == 0)
 	     ? SHARP_F
@@ -268,10 +287,10 @@ DEFUN (find_signal_code_name, (signo, code),
 }
 
 static void
-DEFUN (setup_trap_frame, (signo, code, info, new_stack_pointer),
+DEFUN (setup_trap_frame, (signo, info, trinfo, new_stack_pointer),
        int signo AND
-       int code AND
-       struct trap_recovery_info * info AND
+       SIGINFO_T info AND
+       struct trap_recovery_info * trinfo AND
        SCHEME_OBJECT * new_stack_pointer)
 {
   SCHEME_OBJECT handler;
@@ -294,7 +313,7 @@ DEFUN (setup_trap_frame, (signo, code, info, new_stack_pointer),
     ((signo == 0)
      ? SHARP_F
      : (char_pointer_to_string (find_signal_name (signo))));
-  signal_code = (find_signal_code_name (signo, code));
+  signal_code = (find_signal_code_name (signo, info));
   History = (Make_Dummy_History ());
   if (!stack_recovered_p)
     {
@@ -308,10 +327,10 @@ DEFUN (setup_trap_frame, (signo, code, info, new_stack_pointer),
   else
     Stack_Pointer = new_stack_pointer;
  Will_Push ((6 + CONTINUATION_SIZE) + (STACK_ENV_EXTRA_SLOTS + 2));
-  STACK_PUSH (info -> extra_trap_info);
-  STACK_PUSH (info -> pc_info_2);
-  STACK_PUSH (info -> pc_info_1);
-  STACK_PUSH (info -> state);
+  STACK_PUSH (trinfo -> extra_trap_info);
+  STACK_PUSH (trinfo -> pc_info_2);
+  STACK_PUSH (trinfo -> pc_info_1);
+  STACK_PUSH (trinfo -> state);
   STACK_PUSH (BOOLEAN_TO_OBJECT (stack_recovered_p));
   STACK_PUSH (signal_code);
   STACK_PUSH (signal_name);
@@ -339,45 +358,45 @@ DEFUN (hard_reset, (scp), struct FULL_SIGCONTEXT * scp)
 void
 DEFUN_VOID (soft_reset)
 {
-  struct trap_recovery_info info;
+  struct trap_recovery_info trinfo;
   SCHEME_OBJECT * new_stack_pointer =
     (((Stack_Pointer <= Stack_Top) && (Stack_Pointer > Stack_Guard))
      ? Stack_Pointer
      : 0);
   if ((Regs[REGBLOCK_PRIMITIVE]) != SHARP_F)
     {
-      (info . state) = STATE_PRIMITIVE;
-      (info . pc_info_1) = (Regs[REGBLOCK_PRIMITIVE]);
-      (info . pc_info_2) =
+      (trinfo . state) = STATE_PRIMITIVE;
+      (trinfo . pc_info_1) = (Regs[REGBLOCK_PRIMITIVE]);
+      (trinfo . pc_info_2) =
 	(LONG_TO_UNSIGNED_FIXNUM (Regs[REGBLOCK_LEXPR_ACTUALS]));
-      (info . extra_trap_info) = SHARP_F;
+      (trinfo . extra_trap_info) = SHARP_F;
     }
   else
     {
-      (info . state) = STATE_UNKNOWN;
-      (info . pc_info_1) = SHARP_F;
-      (info . pc_info_2) = SHARP_F;
-      (info . extra_trap_info) = SHARP_F;
+      (trinfo . state) = STATE_UNKNOWN;
+      (trinfo . pc_info_1) = SHARP_F;
+      (trinfo . pc_info_2) = SHARP_F;
+      (trinfo . extra_trap_info) = SHARP_F;
     }
   if ((Free >= Heap_Top) || (Free < Heap_Bottom))
     /* Let's hope this works. */
     Free = MemTop;
-  setup_trap_frame (0, 0, (&info), new_stack_pointer);
+  setup_trap_frame (0, 0, (&trinfo), new_stack_pointer);
 }
 
 #if !defined(HAVE_SIGCONTEXT) || !defined(HAS_COMPILER_SUPPORT) || defined(USE_STACKLETS)
 
 static void
-DEFUN (continue_from_trap, (signo, code, scp),
+DEFUN (continue_from_trap, (signo, info, scp),
        int signo AND
-       int code AND
+       SIGINFO_T info AND
        struct FULL_SIGCONTEXT * scp)
 {
   if (Free < MemTop)
   {
     Free = MemTop;
   }
-  setup_trap_frame (signo, code, (&dummy_recovery_info), 0);
+  setup_trap_frame (signo, info, (&dummy_recovery_info), 0);
 }
 
 #else /* HAVE_SIGCONTEXT and HAS_COMPILER_SUPPORT and not USE_STACKLETS */
@@ -427,9 +446,9 @@ extern long etext;
 #endif
 
 static void
-DEFUN (continue_from_trap, (signo, code, scp),
+DEFUN (continue_from_trap, (signo, info, scp),
        int signo AND
-       int code AND
+       SIGINFO_T info AND
        struct FULL_SIGCONTEXT * scp)
 {
   int pc_in_C;
@@ -443,7 +462,7 @@ DEFUN (continue_from_trap, (signo, code, scp),
   long the_pc = ((FULL_SIGCONTEXT_PC (scp)) & PC_VALUE_MASK);
   SCHEME_OBJECT * new_stack_pointer;
   SCHEME_OBJECT * xtra_info;
-  struct trap_recovery_info info;
+  struct trap_recovery_info trinfo;
 
 #if 0
   fprintf (stderr, "\ncontinue_from_trap:");
@@ -490,9 +509,9 @@ DEFUN (continue_from_trap, (signo, code, scp),
   if (pc_in_hyper_space || (pc_in_scheme && ALLOW_ONLY_C))
   {
     /* In hyper space. */
-    (info . state) = STATE_UNKNOWN;
-    (info . pc_info_1) = SHARP_F;
-    (info . pc_info_2) = SHARP_F;
+    (trinfo . state) = STATE_UNKNOWN;
+    (trinfo . pc_info_1) = SHARP_F;
+    (trinfo . pc_info_2) = SHARP_F;
     new_stack_pointer = 0;
     if ((Free < MemTop) ||
 	(Free >= Heap_Top) ||
@@ -511,9 +530,9 @@ DEFUN (continue_from_trap, (signo, code, scp),
 			   (pc_in_heap ? Heap_Bottom : Constant_Space)));
     if (block_addr == 0)
     {
-      (info . state) = STATE_PROBABLY_COMPILED;
-      (info . pc_info_1) = (LONG_TO_UNSIGNED_FIXNUM (the_pc));
-      (info . pc_info_2) = SHARP_F;
+      (trinfo . state) = STATE_PROBABLY_COMPILED;
+      (trinfo . pc_info_1) = (LONG_TO_UNSIGNED_FIXNUM (the_pc));
+      (trinfo . pc_info_2) = SHARP_F;
       if ((Free < MemTop) ||
 	  (Free >= Heap_Top) ||
 	  ((((unsigned long) Free) & SCHEME_ALIGNMENT_MASK) != 0))
@@ -521,10 +540,10 @@ DEFUN (continue_from_trap, (signo, code, scp),
     }
     else
     {
-      (info . state) = STATE_COMPILED_CODE;
-      (info . pc_info_1) =
+      (trinfo . state) = STATE_COMPILED_CODE;
+      (trinfo . pc_info_1) =
 	(MAKE_POINTER_OBJECT (TC_COMPILED_CODE_BLOCK, block_addr));
-      (info . pc_info_2) =
+      (trinfo . pc_info_2) =
 	(LONG_TO_UNSIGNED_FIXNUM (the_pc - ((long) block_addr)));
 #ifdef HAVE_FULL_SIGCONTEXT
       maybe_free = ((SCHEME_OBJECT *) (FULL_SIGCONTEXT_RFREE (scp)));
@@ -552,18 +571,18 @@ DEFUN (continue_from_trap, (signo, code, scp),
 
     if ((OBJECT_TYPE (primitive)) != TC_PRIMITIVE)
     {
-      (info . state) = STATE_UNKNOWN;
-      (info . pc_info_1) = SHARP_F;
-      (info . pc_info_2) = SHARP_F;
+      (trinfo . state) = STATE_UNKNOWN;
+      (trinfo . pc_info_1) = SHARP_F;
+      (trinfo . pc_info_2) = SHARP_F;
       new_stack_pointer = 0;
     }
     else
     {
       long primitive_address =
 	((long) (Primitive_Procedure_Table[OBJECT_DATUM (primitive)]));
-      (info . state) = STATE_PRIMITIVE;
-      (info . pc_info_1) = primitive;
-      (info . pc_info_2) =
+      (trinfo . state) = STATE_PRIMITIVE;
+      (trinfo . pc_info_1) = primitive;
+      (trinfo . pc_info_2) =
 	(LONG_TO_UNSIGNED_FIXNUM (Regs[REGBLOCK_LEXPR_ACTUALS]));
     }
     if ((new_stack_pointer == 0)
@@ -580,7 +599,7 @@ DEFUN (continue_from_trap, (signo, code, scp),
   }
   xtra_info = Free;
   Free += (1 + 2 + PROCESSOR_NREGS);
-  (info . extra_trap_info) =
+  (trinfo . extra_trap_info) =
     (MAKE_POINTER_OBJECT (TC_NON_MARKED_VECTOR, xtra_info));
   (*xtra_info++) =
     (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, (2 + PROCESSOR_NREGS)));
@@ -604,7 +623,7 @@ DEFUN (continue_from_trap, (signo, code, scp),
   {
     (*xtra_info++) = ((SCHEME_OBJECT) the_pc);
   }
-  setup_trap_frame (signo, code, (&info), new_stack_pointer);
+  setup_trap_frame (signo, info, (&trinfo), new_stack_pointer);
 }
 
 /* Find the compiled code block in area which contains `pc_value'.
