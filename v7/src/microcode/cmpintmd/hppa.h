@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hppa.h,v 1.34 1992/09/26 02:54:50 cph Exp $
+$Id: hppa.h,v 1.35 1992/11/18 04:58:36 gjr Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -57,6 +57,10 @@ MIT in each case. */
 #define COMPILER_ALPHA_TYPE			10
 
 /* Machine parameters to be set by the user. */
+
+/* Until cmpaux-hppa.m4 is updated. */
+
+#define CMPINT_USE_STRUCS
 
 /* Processor type.  Choose a number from the above list, or allocate your own. */
 
