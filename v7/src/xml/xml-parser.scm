@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.58 2004/02/25 21:00:52 cph Exp $
+$Id: xml-parser.scm,v 1.59 2004/02/26 04:50:14 cph Exp $
 
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -517,8 +517,7 @@ USA.
   (*parser
    (with-pointer p
      (map (lambda (s) (cons (make-xml-qname s) p))
-	  (match (seq (? (seq match-name ":"))
-		      match-name))))))
+	  (match match-name)))))
 
 (define (simple-name-parser type)
   (let ((m (string-append "Malformed " type " name")))
