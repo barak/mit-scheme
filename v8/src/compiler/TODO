@@ -1,4 +1,4 @@
-$Id: TODO,v 1.2 1995/08/28 13:29:07 adams Exp $
+$Id: TODO,v 1.3 1996/03/12 17:13:42 adams Exp $
 
 Problems:
 
@@ -22,7 +22,7 @@ form. This would save 10 pairs per stack reference.
 
 [] Why is the new code not more than 12% faster than the old code?
 
-[] Move split earlier, to after applicat.
+[DONE] Move split earlier, to after applicat.
 
 [] Make split introduce closures with no code pointer as tuples.
 
@@ -35,9 +35,13 @@ and give up if that much is not free after every GC.
 than having to test a wierd combination of the form, name and type
 slots.
 
-[] Figure out a way to get some debugging information (even just an
-expression) into the `local' continuations.  Getting an environment is
-harder but worth-while.
+[] Dataflow does not have to keep the transitive closure.  This could
+save lots of space.
+
+
+[PARTLY DONE] Figure out a way to get some debugging information (even
+just an expression) into the `local' continuations.  Getting an
+environment is harder but worth-while.
 
 [] Fix lamlift, split and friends to maintain alpha-conversion wrt
 extra stubs.
@@ -45,6 +49,7 @@ extra stubs.
 [] Fix rtlgen to make internal procedures again.  Bite the bullet.
 Prescan the whole program to see if a letrec label is used in a
 %make-trivial-closure.
+
 
 [] RTLGEN.
 
@@ -79,12 +84,13 @@ Missing functionality
 
 [] Implement checked primitive procedures.  This requires a preserving
 call to arbitrary primitives and debugging info for preservations.
-
+PARTLY DONE -- type based rewriting replaces primitives with unchecked
+versions if possible.
 
 Implementation strategies
 
-[] Make all variables in the source code be represented by structures
-to allow instant lookup.  Requires strict alpha conversion.
+[UNLIKELY] Make all variables in the source code be represented by
+structures to allow instant lookup.  Requires strict alpha conversion.
 
 
 Extra functionality
@@ -123,10 +129,10 @@ carefully this might cause lots of identity continuations.
 make up for RTL's lack of boolean `registers'.  An open-coder for MEMQ
 in predicate position might be helpful.
 
-[] Make SF integrate more procedures as
+[DONE] Make SF integrate more procedures as
     (access <name> system-global-environment)
 Include anything from R4RS that we can improve.
 
-[] Make the unsyntaxer hide all the `spurrious' accesses introduced
-above.  There should be a flag which when set, elides the access
-provided that the <name> would not be captured.
+[DONE] Make the unsyntaxer hide all the `spurrious' accesses
+introduced above.  There should be a flag which when set, elides the
+access provided that the <name> would not be captured.
