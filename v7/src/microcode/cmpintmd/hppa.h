@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hppa.h,v 1.35 1992/11/18 04:58:36 gjr Exp $
+$Id: hppa.h,v 1.36 1992/11/18 05:01:09 gjr Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -48,18 +48,19 @@ MIT in each case. */
 #define COMPILER_MC68020_TYPE			1
 #define COMPILER_VAX_TYPE			2
 #define COMPILER_SPECTRUM_TYPE			3
-#define COMPILER_MIPS_TYPE			4
+#define COMPILER_OLD_MIPS_TYPE			4
 #define COMPILER_MC68040_TYPE			5
 #define COMPILER_SPARC_TYPE			6
 #define COMPILER_RS6000_TYPE			7
 #define COMPILER_MC88K_TYPE			8
 #define COMPILER_I386_TYPE			9
 #define COMPILER_ALPHA_TYPE			10
+#define COMPILER_MIPS_TYPE			11
+#define COMPILER_LOSING_C_TYPE			12
 
 /* Machine parameters to be set by the user. */
 
 /* Until cmpaux-hppa.m4 is updated. */
-
 #define CMPINT_USE_STRUCS
 
 /* Processor type.  Choose a number from the above list, or allocate your own. */
