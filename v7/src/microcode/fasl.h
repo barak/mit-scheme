@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fasl.h,v 9.34 1993/11/04 04:02:49 gjr Exp $
+$Id: fasl.h,v 9.35 1993/11/08 06:34:23 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -60,8 +60,9 @@ MIT in each case. */
 #define FASL_Offset_Check_Sum	12	/* Header and data checksum. */
 #define FASL_Offset_C_Length	13	/* Number of entries in the C code table */
 #define FASL_Offset_C_Size	14	/* Size of C code table in SCHEME_OBJECTs */
+#define FASL_Offset_Mem_Base	15	/* Base address when not HEAP_IN_LOW_MEMORY */
 
-#define FASL_Offset_First_Free	15	/* Used to clear header */
+#define FASL_Offset_First_Free	16	/* Used to clear header */
 
 /* Aliases for backwards compatibility. */
 

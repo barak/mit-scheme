@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dump.c,v 9.38 1993/11/04 19:33:13 gjr Exp $
+$Id: dump.c,v 9.39 1993/11/08 06:34:18 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -127,6 +127,12 @@ DEFUN (prepare_dump_header, (Buffer, Dumped_Object,
     MAKE_OBJECT (TC_BROKEN_HEART, c_table_length);
   Buffer[FASL_Offset_C_Size] =
     MAKE_OBJECT (TC_BROKEN_HEART, c_table_size);
+
+#ifdef HEAP_IN_LOW_MEMORY
+  Buffer[FASL_Offset_Mem_Base] = ((SCHEME_OBJECT) 0);
+#else /* not HEAP_IN_LOW_MEMORY */
+  Buffer[FASL_Offset_Mem_Base] = ((SCHEME_OBJECT) memory_base);
+#endif /* HEAP_IN_LOW_MEMORY */
 
   Buffer[FASL_Offset_Check_Sum] = SHARP_F;
   for (i = FASL_Offset_First_Free; i < FASL_HEADER_LENGTH; i++)

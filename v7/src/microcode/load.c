@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: load.c,v 9.34 1993/11/04 19:33:21 gjr Exp $
+$Id: load.c,v 9.35 1993/11/08 06:34:30 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -75,7 +75,8 @@ static long
   Dumped_Heap_Top, Dumped_Constant_Top,
   Primitive_Table_Size, Primitive_Table_Length,
   C_Code_Table_Size, C_Code_Table_Length,
-  dumped_processor_type, dumped_interface_version;
+  dumped_processor_type, dumped_interface_version,
+  dumped_memory_base;
 
 static unsigned long
   dumped_checksum, computed_checksum;
@@ -186,6 +187,7 @@ DEFUN (initialize_variables_from_fasl_header, (buffer),
     C_Code_Table_Length = (OBJECT_DATUM (buffer[FASL_Offset_C_Length]));
     C_Code_Table_Size = (OBJECT_DATUM (buffer[FASL_Offset_C_Size]));
   }
+  dumped_memory_base = ((long) buffer[FASL_Offset_Mem_Base]);
 
 #ifndef INHIBIT_FASL_VERSION_CHECK
   /* The error messages here should be handled by the runtime system! */
