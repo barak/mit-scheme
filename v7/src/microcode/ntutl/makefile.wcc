@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###     $Id: makefile.wcc,v 1.6 1997/01/05 23:36:47 cph Exp $
+###     $Id: makefile.wcc,v 1.7 1997/06/26 06:56:24 cph Exp $
 ###
 ###     Copyright (c) 1992-97 Massachusetts Institute of Technology
 ###
@@ -60,8 +60,9 @@ WRCFLAGS_SYSTEM = /i=$(%NT_INCLUDE)
 # [DEBUG] marks options used for debugging.
 # [OPTIMIZE] marks options used for optimization.
 #
-# /4r		386 instructions, 486 timings, register-based args
+# /6r		386 instructions, Pentium Pro timings, register-based args
 # /bd		build NT DLL
+# /bm		build multi-thread program
 # /bt=nt	build NT binary (default when host is NT)
 # /d1+		generate debug info [OPTIMIZE]
 # /d2		generate debug info [DEBUG]
@@ -75,7 +76,7 @@ WRCFLAGS_SYSTEM = /i=$(%NT_INCLUDE)
 # /op		force IEEE floating-point semantics
 # /ox		enable various optimizations [OPTIMIZE]
 # /s		remove stack overflow checks
-# /w0		disable warning messages
+# /w1		set warning-message level
 # /zc		place literal strings in code segment
 # /ze		enable language extensions (default)
 # /zp4		use 4-byte alignment (required for MS compatibility)
@@ -84,8 +85,8 @@ WRCFLAGS_SYSTEM = /i=$(%NT_INCLUDE)
 # /DMIT_SCHEME	required to specialize some code
 # /DGUI		configure a console window
 # omitted: /DNO_CONST /Di386
-UTIL_CFLAGS = /4r /d2 /ei /fpi /fp3 /op /s /w1 /zc /zp4 /zq
-CFLAGS = $(UTIL_CFLAGS) /DMIT_SCHEME /DGUI
+UTIL_CFLAGS = /6r /d2 /ei /fpi /fp3 /op /s /w1 /zc /zp4 /zq
+CFLAGS = $(UTIL_CFLAGS) /bm /DMIT_SCHEME /DGUI
 
 # Linker options.
 #
@@ -120,7 +121,7 @@ ASFLAGS = /bt=nt /d1 /fpi /fp3 /mf /zq
 # /q		operate quietly
 WLIB_FLAGS = /b /c /n /q
 
-all : scheme.exe bchschem.exe scheme32.dll bintopsb.exe psbtobin.exe
+all : scheme.exe bchschem.exe bintopsb.exe psbtobin.exe
 
 .c.obj :
 	$(CC) $(CFLAGS) $[@
@@ -368,26 +369,19 @@ primitive_tables : .SYMBOLIC
 	-del bchdef.c
 	-del bchdef.obj
 
-scheme.exe : $(OBJECTS) $(SCHEME_OBJECTS) ntscmlib.lib ntgui.res
+scheme.exe : $(OBJECTS) $(SCHEME_OBJECTS) scheme32.obj ntgui.res
 	*wlink system nt_win name $^@ $(LDFLAGS) &
-	file { $(OBJECTS) $(SCHEME_OBJECTS) } &
-	library { ntscmlib.lib $(SCHEME_LIB) }
+	file { $(OBJECTS) $(SCHEME_OBJECTS) scheme32.obj } &
+	$(SCHEME_LIB)
 	wrc /q /ad /bt=nt ntgui.res $^@
 
-bchschem.exe : $(BCHOBJECTS) $(SCHEME_OBJECTS) ntscmlib.lib ntgui.res
+bchschem.exe : $(BCHOBJECTS) $(SCHEME_OBJECTS) scheme32.obj ntgui.res
 	*wlink system nt_win name $^@ $(LDFLAGS) &
-	file { $(BCHOBJECTS) $(SCHEME_OBJECTS) } &
-	library { ntscmlib.lib $(SCHEME_LIB) }
+	file { $(BCHOBJECTS) $(SCHEME_OBJECTS) scheme32.obj } &
+	$(SCHEME_LIB)
 	wrc /q /ad /bt=nt ntgui.res $^@
-
-ntscmlib.lib : scheme32.dll
-	wlib $(WLIB_FLAGS) $^@ +$[@
-
-scheme32.dll : scheme32.obj scheme32.lnk scheme32.lbc
-	wlink $(LDFLAGS) @scheme32.lnk
 
 scheme32.obj : scheme32.c ntscmlib.h
-	$(CC) /bd $(CFLAGS) $[@
 
 bintopsb.exe : bintopsb.obj missing.obj
 	wlink system nt $(LDFLAGS) name $^@ file { $< }
