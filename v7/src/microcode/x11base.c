@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.61 1995/09/27 16:21:46 cph Exp $
+$Id: x11base.c,v 1.62 1996/09/12 19:23:48 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -262,7 +262,12 @@ static int
 DEFUN (x_io_error_handler, (display), Display * display)
 {
   fprintf (stderr, "\nX IO Error\n");
+  fflush (stderr);
+#if 0
   error_external_return ();
+#else
+  termination_eof ();
+#endif
 }
 
 static int
@@ -278,7 +283,11 @@ DEFUN (x_error_handler, (display, error_event),
 	   (error_event -> request_code));
   fprintf (stderr, "         Error serial: %x\n", (error_event -> serial));
   fflush (stderr);
+#if 0
   error_external_return ();
+#else
+  termination_eof ();
+#endif
 }
 
 typedef int EXFUN ((* x_error_handler_t), (Display *, XErrorEvent *));
