@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: mit-syntax.scm,v 14.6 2002/04/17 15:02:21 cph Exp $
+;;; $Id: mit-syntax.scm,v 14.7 2002/06/21 02:04:22 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1991, 2001, 2002 Massachusetts Institute of Technology
 ;;;
@@ -264,16 +264,14 @@
 	     item)))
     (if (not (keyword-item? item))
 	(let ((history (item/history item)))
-	  (syntax-error history
-			"Syntactic binding value must be a keyword:"
+	  (syntax-error history "Syntactic binding value must be a keyword:"
 			(history/original-form history))))
     (overloaded-binding-theory environment name item history)))
 
 (define (variable-binding-theory environment name item history)
   (if (keyword-item? item)
       (let ((history (item/history item)))
-	(syntax-error history
-		      "Binding value may not be a keyword:"
+	(syntax-error history "Binding value may not be a keyword:"
 		      (history/original-form history))))
   (overloaded-binding-theory environment name item history))
 
