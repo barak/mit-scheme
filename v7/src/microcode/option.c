@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.17 1992/05/23 01:18:30 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.18 1992/05/25 23:43:18 cph Exp $
 
-Copyright (c) 1990-1992 Massachusetts Institute of Technology
+Copyright (c) 1990-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -926,31 +926,36 @@ DEFUN (standard_filename_option, (option, optval, variable, defval, fail_p),
 {
   if (optval != 0)
     {
-      if (!(FILE_ABSOLUTE (optval)))
-	return (search_path_for_file (option, optval, 0, fail_p));
-      if ((FILE_READABLE (optval)) || (!fail_p))
+      if (FILE_READABLE (optval))
 	return (string_copy (optval));
-      else
+      if (FILE_ABSOLUTE (optval))
 	{
-	  fprintf (stderr, "%s: can't read file %s for option %s.\n",
-		   scheme_program_name, optval, option);
-	  termination_init_error ();
+	  if (fail_p)
+	    {
+	      fprintf (stderr, "%s: can't read file %s for option %s.\n",
+		       scheme_program_name, optval, option);
+	      termination_init_error ();
+	    }
+	  return (string_copy (optval));
 	}
+      return (search_path_for_file (option, optval, 0, fail_p));
     }
   {
     CONST char * filename = (getenv (variable));
     if (filename == 0)
       filename = defval;
-    if (!(FILE_ABSOLUTE (filename)))
-      return (search_path_for_file (option, filename, 1, fail_p));
-    else if ((FILE_READABLE (filename)) || (!fail_p))
-      return (string_copy (filename));
+    if (FILE_ABSOLUTE (filename))
+      {
+	if ((! (FILE_READABLE (filename))) && fail_p)
+	  {
+	    fprintf (stderr, "%s: can't read default file %s for option %s.\n",
+		     scheme_program_name, filename, option);
+	    termination_init_error ();
+	  }
+	return (string_copy (filename));
+      }
     else
-    {
-      fprintf (stderr, "%s: can't read default file %s for option %s.\n",
-	       scheme_program_name, filename, option);
-      termination_init_error ();
-    }
+      return (search_path_for_file (option, filename, 1, fail_p));
   }
 }
 
