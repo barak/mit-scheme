@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/etc/asm.scm,v 1.1 1989/11/30 15:54:29 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/etc/asm.scm,v 1.2 1991/02/15 00:25:17 cph Exp $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,56 +38,11 @@ MIT in each case. |#
 
 ;; To be loaded in (compiler top-level)
 
-(define *lap*)
-
-(define (syntax-lap lap)
-  (define (phase-1 lap accum)
-    (if (null? lap)
-	(phase-2 accum empty-instruction-sequence)
-	(phase-1 (cdr lap)
-		 (cons (lap:syntax-instruction (car lap))
-		       accum))))
-  (define (phase-2 lap accum)
-    (if (null? lap)
-	accum
-	(phase-2 (cdr lap)
-		 (append-instruction-sequences!
-		  (car lap)
-		  accum))))
-  (phase-1 lap '()))
-
-(define (phase/syntax-lap)
-  (compiler-phase
-   "Syntax Lap"
-   (lambda ()
-     (set! *bits*
-	   (append-instruction-sequences!
-	    (lap:make-entry-point *entry-label* *block-label*)
-	    (syntax-lap *lap*))))))
-
-(define (lap->code label lap)
-  (in-compiler
-   (lambda ()
-     (fluid-let ((*lap* lap))
-       (set! *entry-label* label)
-       (set! *current-label-number* 0)
-       (set! *next-constant* 0)
-       (set! *interned-constants* '())
-       (set! *interned-variables* '())
-       (set! *interned-assignments* '())
-       (set! *interned-uuo-links* '())
-       (set! *block-label* (generate-label))
-       (set! *external-labels* '())
-       (set! *ic-procedure-headers* '())
-       (phase/syntax-lap)
-       (phase/assemble)
-       (phase/link)
-       *result*))))
-
-#|
-;;;; Example of usage
+;;; Example of `lap->code' usage:
 
 (define bar
+  ;; defines bar to be a procedure that adds 1 to its argument
+  ;; with no type or range checks.
   (scode-eval
    (lap->code
     'start
@@ -106,7 +61,20 @@ MIT in each case. |#
       (rts)))
    '()))
 
-;; defines bar to be a procedure that adds 1 to its argument
-;; with no type or range checks.
-
-|#
+(define (lap->code label lap)
+  (in-compiler
+   (lambda ()
+     (set! *lap* lap)
+     (set! *entry-label* label)
+     (set! *current-label-number* 0)
+     (set! *next-constant* 0)
+     (set! *interned-constants* '())
+     (set! *interned-variables* '())
+     (set! *interned-assignments* '())
+     (set! *interned-uuo-links* '())
+     (set! *block-label* (generate-label))
+     (set! *external-labels* '())
+     (set! *ic-procedure-headers* '())
+     (phase/assemble)
+     (phase/link)
+     *result*)))
