@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.40 1997/09/30 02:21:32 cph Exp $
+;;;	$Id: snr.scm,v 1.41 1998/06/20 05:41:58 cph Exp $
 ;;;
-;;;	Copyright (c) 1995-97 Massachusetts Institute of Technology
+;;;	Copyright (c) 1995-98 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -3062,7 +3062,9 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
 		     (set! convert-entry convert-groups-init-file-entry-type-4)
 		     validate-groups-init-file-entry-type-4)
 		    (else #f)))))))
-       (map (convert-entry connection) entries)))))
+       (if (null? entries)
+	   entries
+	   (map (convert-entry connection) entries))))))
 
 (define (write-groups-init-file connection groups buffer)
   (let ((server (nntp-connection:server connection)))
