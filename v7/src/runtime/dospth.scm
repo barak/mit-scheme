@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: dospth.scm,v 1.18 1993/01/12 23:09:04 gjr Exp $
+$Id: dospth.scm,v 1.19 1994/11/28 05:43:49 cph Exp $
 
-Copyright (c) 1992-1993 Massachusetts Institute of Technology
+Copyright (c) 1992-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,7 +36,7 @@ MIT in each case. |#
 ;;; package: (runtime pathname dos)
 
 (declare (usual-integrations))
-
+
 (define hook/dos/end-of-line-string)
 (define hook/dos/end-of-file-marker/input)
 (define hook/dos/end-of-file-marker/output)
@@ -67,28 +67,30 @@ MIT in each case. |#
 		  dos/init-file-pathname
 		  dos/pathname-simplify
 		  dos/end-of-line-string
-		  dos/canonicalize
 		  dos/end-of-file-marker/input
 		  dos/end-of-file-marker/output))
 
 (define (initialize-package!)
   (set! hook/dos/end-of-line-string default/dos/end-of-line-string)
   (set! hook/dos/end-of-file-marker/input default/dos/end-of-file-marker/input)
-  (set! hook/dos/end-of-file-marker/output default/dos/end-of-file-marker/output)
+  (set! hook/dos/end-of-file-marker/output
+	default/dos/end-of-file-marker/output)
   (add-pathname-host-type! 'DOS make-dos-host-type))
 
 ;;;; Pathname Parser
 
 (define (dos/parse-namestring string host)
-  ;; The DOS file system is case-insensitive, and the canonical case
-  ;; is upper, but it is too inconvenient to type.
-  (let ((components (string-components (string-downcase string)
-				       sub-directory-delimiters)))
-    (with-namestring-device-and-path
-      (expand-directory-prefixes (car components))
+  (let ((components
+	 (string-components (string-downcase string)
+			    sub-directory-delimiters)))
+    (call-with-values
+	(lambda ()
+	  (parse-device-and-path (expand-directory-prefixes (car components))))
       (lambda (device directory-components)
 	(let ((components (append directory-components (cdr components))))
-	  (parse-name (car (last-pair components))
+	  (call-with-values
+	      (lambda ()
+		(parse-name (car (last-pair components))))
             (lambda (name type)
 	      (%make-pathname host
 			      device
@@ -106,115 +108,72 @@ MIT in each case. |#
 			      type
 			      'UNSPECIFIC))))))))
 
-(define (with-namestring-device-and-path components receiver)
-  (let ((string (car components)))
-    (let ((colon (string-find-next-char string #\:)))
-      (if (not colon)
-	  (receiver false components)
-	  (receiver (substring string 0 (1+ colon))
-		    (cons 
-		     (substring string (1+ colon)
-				(string-length string))
-		     (cdr components)))))))
-
-(define (simplify-directory directory)
-  (if (and (eq? (car directory) 'RELATIVE) (null? (cdr directory)))
-      false
-      directory))
-
-(define (parse-directory-component component)
-  (if (string=? ".." component)
-      'UP
-      (let ((len (string-length component)))
-	(cond ((substring-find-previous-char component 0 len #\.)
-	       ;; Handle screwy directories with dots in their names.
-	       (parse-name component unparse-name))
-	      ((> len 8)
-	       (substring component 0 8))
-	      (else
-	       component)))))
-
 (define (expand-directory-prefixes string)
   (if (or (string-null? string)
 	  (not *expand-directory-prefixes?*))
       (list string)
       (case (string-ref string 0)
 	((#\$)
-	 (let* ((name (string-tail string 1))
-		(value (get-environment-variable name)))
+	 (let ((value (get-environment-variable (string-tail string 1))))
 	   (if (not value)
 	       (list string)
 	       (string-components value sub-directory-delimiters))))
 	((#\~)
-	 (let ((user-name (substring string 1 (string-length string))))
-	   (string-components
-	    (if (string-null? user-name)
-		(dos/current-home-directory)
-		(dos/user-home-directory user-name))
-	    sub-directory-delimiters)))
+	 (string-components (let ((user-name (string-tail string 1)))
+			      (if (string-null? user-name)
+				  (dos/current-home-directory)
+				  (dos/user-home-directory user-name)))
+			    sub-directory-delimiters))
 	(else (list string)))))
 
+(define (parse-device-and-path components)
+  (let ((string (car components)))
+    (let ((colon (string-find-next-char string #\:)))
+      (if (not colon)
+	  (values #f components)
+	  (values (string-head string (+ colon 1))
+		  (cons (string-tail string (+ colon 1))
+			(cdr components)))))))
+
+(define (simplify-directory directory)
+  (if (and (eq? (car directory) 'RELATIVE) (null? (cdr directory)))
+      #f
+      directory))
+
+(define (parse-directory-component component)
+  (if (string=? ".." component)
+      'UP
+      component))
+
 (define (string-components string delimiters)
   (substring-components string 0 (string-length string) delimiters))
 
 (define (substring-components string start end delimiters)
   (let loop ((start start))
-    (let ((index (substring-find-next-char-in-set string start 
-                                                  end delimiters)))
+    (let ((index
+	   (substring-find-next-char-in-set string start end delimiters)))
       (if index
 	  (cons (substring string start index) (loop (+ index 1)))
 	  (list (substring string start end))))))
 
-(define (parse-name string receiver)
-  (let ((receiver
-	 (lambda (first second)
-	   (receiver (if (and (string? first)
-			      (> (string-length first) 8))
-			 (substring first 0 8)
-			 first)
-		     (if (and (string? second)
-			      (> (string-length second) 3))
-			 (substring second 0 3)
-			 second)))))
-    (let ((end (string-length string)))
-      (let ((dot (substring-find-previous-char string 0 end #\.)))
-	(if (or (not dot)
-		(= dot 0)
-		(= dot (- end 1))
-		(char=? #\. (string-ref string (- dot 1))))
-	    (receiver (cond ((= end 0) false)
-			    ((string=? "*" string) 'WILD)
-			    (else string))
-		      false)
-	    (receiver (extract string 0 dot)
-		      (extract string (+ dot 1) end)))))))
+(define (parse-name string)
+  (let ((dot (string-find-previous-char string #\.))
+	(end (string-length string)))
+    (if (or (not dot)
+	    (= dot 0)
+	    (= dot (- end 1))
+	    (char=? #\. (string-ref string (- dot 1))))
+	(values (cond ((= end 0) #f)
+		      ((string=? "*" string) 'WILD)
+		      (else string))
+		#f)
+	(values (extract string 0 dot)
+		(extract string (+ dot 1) end)))))
 
 (define (extract string start end)
   (if (substring=? string start end "*" 0 1)
       'WILD
       (substring string start end)))
-
-(define (dos/canonicalize pathname)
-  (define (valid? field length)
-    (or (not (string? field))
-	(<= (string-length field) length)))
-
-  (define (canonicalize-field field length)
-    (if (valid? field length)
-	field
-	(substring field 0 length)))
-
-  ;; This should really canonicalize the directory as well.
-  (let ((name (%pathname-name pathname))
-	(type (%pathname-type pathname)))
-    (if (and (valid? name 8) (valid? type 3))
-	pathname
-	(%make-pathname (%pathname-host pathname)
-			(%pathname-device pathname)
-			(%pathname-directory pathname)
-			(canonicalize-field name 8)
-			(canonicalize-field type 3)
-			(%pathname-version pathname)))))
 
 ;;;; Pathname Unparser
 
@@ -292,8 +251,7 @@ MIT in each case. |#
 		    (or (null? rest)
 			(and (string? (car rest))
 			     (check-directory-components (cdr rest))))))
-		 (else
-		  false)))
+		 (else #f)))
 	  (simplify-directory directory))
 	 (else
 	  (error:wrong-type-argument directory "pathname directory"
@@ -308,9 +266,8 @@ MIT in each case. |#
        (error:wrong-type-argument type "pathname type" 'MAKE-PATHNAME))
    (if (memq version '(#F UNSPECIFIC WILD NEWEST))
        'UNSPECIFIC
-       (error:wrong-type-argument version "pathname version"
-				  'MAKE-PATHNAME))))
-
+       (error:wrong-type-argument version "pathname version" 'MAKE-PATHNAME))))
+
 (define (dos/pathname-as-directory pathname)
   (let ((name (%pathname-name pathname))
 	(type (%pathname-type pathname)))
@@ -321,14 +278,11 @@ MIT in each case. |#
 	 (let ((directory (%pathname-directory pathname))
 	       (component
 		(parse-directory-component (unparse-name name type))))
-	   (cond ((not (pair? directory))
-		  (list 'RELATIVE component))
-		 ((equal? component ".")
-		  directory)
-		 (else
-		  (append directory (list component)))))
-	 false
-	 false
+	   (cond ((not (pair? directory)) (list 'RELATIVE component))
+		 ((equal? component ".") directory)
+		 (else (append directory (list component)))))
+	 #f
+	 #f
 	 'UNSPECIFIC)
 	pathname)))
 
@@ -343,9 +297,12 @@ MIT in each case. |#
 			(%pathname-device pathname)
 			directory
 			""
-			false
+			#f
 			'UNSPECIFIC)
-	(parse-name (unparse-directory-component (car (last-pair directory)))
+	(call-with-values
+	    (lambda ()
+	      (parse-name
+	       (unparse-directory-component (car (last-pair directory)))))
 	  (lambda (name type)
 	    (%make-pathname (%pathname-host pathname)
 			    (%pathname-device pathname)
@@ -361,7 +318,7 @@ MIT in each case. |#
       (eq? 'WILD (%pathname-type pathname))))
 
 (define (dos/pathname->truename pathname)
-  (if (eq? true (file-exists? pathname))
+  (if (eq? #t (file-exists? pathname))
       pathname
       (dos/pathname->truename
        (error:file-operation pathname "find" "file" "file does not exist"
@@ -426,4 +383,4 @@ MIT in each case. |#
 
 (define (default/dos/end-of-file-marker/output pathname)
   pathname				; ignored
-  false)
+  #f)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.51 1994/01/08 21:02:52 gjr Exp $
+$Id: make.scm,v 14.52 1994/11/28 05:44:14 cph Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -435,7 +435,6 @@ MIT in each case. |#
    ;; Typically only one of them is loaded.
    (RUNTIME PATHNAME UNIX)
    (RUNTIME PATHNAME DOS)
-   (RUNTIME PATHNAME NT)
    (RUNTIME PATHNAME)
    (RUNTIME WORKING-DIRECTORY)
    (RUNTIME LOAD)

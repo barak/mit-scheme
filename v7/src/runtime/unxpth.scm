@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: unxpth.scm,v 14.15 1993/01/13 09:53:15 cph Exp $
+$Id: unxpth.scm,v 14.16 1994/11/28 05:45:12 cph Exp $
 
-Copyright (c) 1988-1993 Massachusetts Institute of Technology
+Copyright (c) 1988-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -51,17 +51,11 @@ MIT in each case. |#
 		  unix/init-file-pathname
 		  unix/pathname-simplify
 		  unix/end-of-line-string
-		  unix/canonicalize
 		  unix/end-of-file-marker/input
 		  unix/end-of-file-marker/output))
 
 (define (initialize-package!)
   (add-pathname-host-type! 'UNIX make-unix-host-type))
-
-(define (unix/canonicalize pathname)
-  ;; No name truncation -- this is not really true:
-  ;; 14 chars for SYSV, 255 for BSD.
-  pathname)
 
 ;;;; Pathname Parser
 

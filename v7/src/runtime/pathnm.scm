@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: pathnm.scm,v 14.27 1993/10/21 14:52:38 cph Exp $
+$Id: pathnm.scm,v 14.28 1994/11/28 05:44:35 cph Exp $
 
-Copyright (c) 1988-1993 Massachusetts Institute of Technology
+Copyright (c) 1988-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -231,33 +231,30 @@ these rules:
 
 (define (pathname-new-directory pathname directory)
   (let ((pathname (->pathname pathname)))
-    ((host-operation/pathname-canonicalize (%pathname-host pathname))
-     (%make-pathname (%pathname-host pathname)
-		     (%pathname-device pathname)
-		     directory
-		     (%pathname-name pathname)
-		     (%pathname-type pathname)
-		     (%pathname-version pathname)))))
+    (%make-pathname (%pathname-host pathname)
+		    (%pathname-device pathname)
+		    directory
+		    (%pathname-name pathname)
+		    (%pathname-type pathname)
+		    (%pathname-version pathname))))
 
 (define (pathname-new-name pathname name)
   (let ((pathname (->pathname pathname)))
-    ((host-operation/pathname-canonicalize (%pathname-host pathname))
-     (%make-pathname (%pathname-host pathname)
-		     (%pathname-device pathname)
-		     (%pathname-directory pathname)
-		     name
-		     (%pathname-type pathname)
-		     (%pathname-version pathname)))))
+    (%make-pathname (%pathname-host pathname)
+		    (%pathname-device pathname)
+		    (%pathname-directory pathname)
+		    name
+		    (%pathname-type pathname)
+		    (%pathname-version pathname))))
 
 (define (pathname-new-type pathname type)
   (let ((pathname (->pathname pathname)))
-    ((host-operation/pathname-canonicalize (%pathname-host pathname))
-     (%make-pathname (%pathname-host pathname)
-		     (%pathname-device pathname)
-		     (%pathname-directory pathname)
-		     (%pathname-name pathname)
-		     type
-		     (%pathname-version pathname)))))
+    (%make-pathname (%pathname-host pathname)
+		    (%pathname-device pathname)
+		    (%pathname-directory pathname)
+		    (%pathname-name pathname)
+		    type
+		    (%pathname-version pathname))))
 
 (define (pathname-new-version pathname version)
   (let ((pathname (->pathname pathname)))
@@ -460,7 +457,6 @@ these rules:
   (operation/init-file-pathname false read-only true)
   (operation/pathname-simplify false read-only true)
   (operation/end-of-line-string false read-only true)
-  (operation/pathname-canonicalize false read-only true)
   (operation/end-of-file-marker/input false read-only true)
   (operation/end-of-file-marker/output false read-only true))
 
@@ -518,9 +514,6 @@ these rules:
 
 (define (host-operation/end-of-line-string host)
   (host-type/operation/end-of-line-string (host/type host)))
-
-(define (host-operation/pathname-canonicalize host)
-  (host-type/operation/pathname-canonicalize (host/type host)))
 
 (define (host-operation/end-of-file-marker/input host)
   (host-type/operation/end-of-file-marker/input (host/type host)))
@@ -589,65 +582,71 @@ these rules:
 		   (loop (cdr directories))))))))
 
 (define known-host-types
-  '((UNIX . 0)
-    (DOS . 1)
-    (VMS . 2)
-    (NT . 3)))
+  '((0 UNIX)
+    (1 DOS NT OS/2)
+    (2 VMS)))
 
-(define (make-unimplemented-host-type index)
-  (let* ((name (let loop ((types known-host-types))
-		 (cond ((null? types)
-			'UNKNOWN)
-		       ((= index (cdar types))
-			(caar types))
-		       (else
-			(loop (cdr types))))))
-	 (fail (lambda all
-		 (error "(runtime pathname): Unimplemented host type"
-			name all))))
-    (make-host-type index name
-		    fail fail fail fail fail
-		    fail fail fail fail fail
-		    fail fail fail fail)))
+(define (host-name->index name)
+  (let loop ((entries known-host-types))
+    (if (null? entries)
+	(error "Unknown host type:" name))
+    (if (memq name (cdar entries))
+	(caar entries)
+	(loop (cdr entries)))))
+
+(define (host-index->name index)
+  (let ((entry (assv index known-host-types)))
+    (and entry
+	 (cadr entry))))
 
 (define available-host-types
   '())
 
+(define (host-name->type name)
+  (host-index->type (host-name->index name)))
+
+(define (host-index->type index)
+  (let ((entry (assv index available-host-types)))
+    (if (not entry)
+	(error "Missing host type for index:" index))
+    (cdr entry)))
+
 (define (add-pathname-host-type! name constructor)
-  (let ((host-type (constructor
-		    (let ((place (assq name known-host-types)))
-		      (if (not place)
-			  (error "add-host-type!: Unknown host type"
-				 name)
-			  (cdr place)))))
-	 (place (assq name available-host-types)))
-    (if place
-	(set-cdr! place host-type)
-	(set! available-host-types
-	      (cons (cons name host-type)
-		    available-host-types)))
-    unspecific))
+  (let ((index (host-name->index name)))
+    (let ((host-type (constructor index))
+	  (place (assv index available-host-types)))
+      (if place
+	  (set-cdr! place host-type)
+	  (begin
+	    (set! available-host-types
+		  (cons (cons index host-type)
+			available-host-types))
+	    unspecific)))))
+
+(define (make-unimplemented-host-type index)
+  (let ((name (or (host-index->name index) 'UNKNOWN)))
+    (let ((fail
+	   (lambda arguments
+	     (error "Unimplemented host type:" name arguments))))
+      (make-host-type index name
+		      fail fail fail fail fail
+		      fail fail fail fail fail
+		      fail fail fail))))
 
 (define (reset-package!)
-  (let* ((host-type
-	  (cdr
-	   (let ((os-type (intern (microcode-identification-item
-				  'OS-NAME-STRING))))
-	    (or (assq os-type available-host-types)
-		(error "(runtime pathname) reset-package!: Unknown OS type"
-		       os-type)))))
-	 (len (length known-host-types))
-	 (vec (make-vector len false)))
-    (do ((types available-host-types (cdr types)))
-	((null? types))
-      (let ((type (cdar types)))
-	(vector-set! vec (host-type/index type) type)))
-    (do ((i 0 (1+ i)))
-	((>= i len))
-      (if (not (vector-ref vec i))
-	  (vector-set! vec i (make-unimplemented-host-type i))))
-    (set! host-types vec)
-    (set! local-host (make-host host-type false)))
+  (let ((host-type
+	 (host-name->type
+	  (intern (microcode-identification-item 'OS-NAME-STRING))))
+	(n-types (+ (apply max (map car known-host-types)) 1)))
+    (let ((types (make-vector n-types #f)))
+      (for-each (lambda (type) (vector-set! types (car type) (cdr type)))
+		available-host-types)
+      (do ((index 0 (+ index 1)))
+	  ((= index n-types))
+	(if (not (vector-ref types index))
+	    (vector-set! types index (make-unimplemented-host-type index))))
+      (set! host-types types)
+      (set! local-host (make-host host-type #f))))
   (set! *default-pathname-defaults*
 	(make-pathname local-host false false false false false))
   (set! library-directory-path
