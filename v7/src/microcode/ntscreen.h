@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.h,v 1.5 1993/08/27 05:56:10 gjr Exp $
+$Id: ntscreen.h,v 1.6 1993/09/01 18:47:24 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -76,10 +76,14 @@ typedef unsigned char SCREEN_ATTRIBUTE;
 //  b) flags for screen behaviour
 #define SCREEN_MODE_AUTOWRAP		0x0010
 #define SCREEN_MODE_ECHO		0x0020
-#define SCREEN_MODE_NEWLINE		0x0040
+#define SCREEN_MODE_CR_NEWLINES		0x0040
 #define SCREEN_MODE_LINE_INPUT		0x0080
 #define SCREEN_MODE_PROCESS_OUTPUT	0x0100
 #define SCREEN_MODE_EAGER_UPDATE	0x0200
+#define SCREEN_MODE_EDWIN		0x0400
+#define SCREEN_MODE_NEWLINE_CRS		0x0800
+
+#define SCREEN_EDWIN_RESIZE_COMMAND	0323		/* M-S */
 
 typedef WORD SCREEN_EVENT_TYPE;
 
@@ -88,7 +92,7 @@ typedef struct {
   int	virtual_keycode;
   int	virtual_scancode;
   int	control_key_state;
-  char	ch;
+  unsigned char ch;
   int	key_down : 1;
 } SCREEN_KEY_EVENT_RECORD;
 
@@ -140,9 +144,9 @@ BOOL Screen_InitApplication (HANDLE hInstance);
 BOOL Screen_InitInstance (HANDLE hInstance, int nCmdShow);
 
 
-HANDLE  Screen_Create (HANDLE hParent, LPCSTR title, int nCmdShow);
+extern HANDLE Screen_Create (HANDLE, LPCSTR, int);
+extern void Screen_Destroy (BOOL, HANDLE);
 
-void  Screen_Destroy (HANDLE);
 void  Screen_SetAttribute (HANDLE, SCREEN_ATTRIBUTE);
 void  Screen_WriteChar (HANDLE, char);
 void  Screen_WriteText (HANDLE, char*);
