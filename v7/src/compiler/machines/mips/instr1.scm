@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/instr1.scm,v 1.3 1991/07/25 02:45:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/instr1.scm,v 1.4 1991/08/21 04:11:46 cph Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -58,8 +58,8 @@ MIT in each case. |#
 		     (5 1)
 		     (16 evaluated-immediate)
 		     (6 0)		; reg-op
-		     (5 1)
 		     (5 source)
+		     (5 1)
 		     (5 destination)
 		     (5 0)
 		     (6 ,special-opcode)))
@@ -76,8 +76,8 @@ MIT in each case. |#
 		     (5 1)
 		     (16 (bottom-16-bits evaluated-immediate))
 		     (6 0)		; reg-op
-		     (5 1)
 		     (5 source)
+		     (5 1)
 		     (5 destination)
 		     (5 0)
 		     (6 ,special-opcode)))))))))
@@ -110,8 +110,8 @@ MIT in each case. |#
 		     (5 1)
 		     (16 (bottom-16-bits evaluated-immediate))
 		     (6 0)		; reg-op
-		     (5 1)
 		     (5 source)
+		     (5 1)
 		     (5 destination)
 		     (5 0)
 		     (6 ,special-opcode)))))))))
@@ -131,7 +131,7 @@ MIT in each case. |#
    (VARIABLE-WIDTH (evaluated-immediate immediate)
      ((#x-8000 #x7fff)
       ;; ADDI destination, 0, immediate
-      (LONG (6 32)
+      (LONG (6 8)
 	    (5 0)
 	    (5 destination)
 	    (16 evaluated-immediate SIGNED)))
