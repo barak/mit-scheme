@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.13 1987/04/27 16:28:49 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.14 1987/04/29 21:53:04 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -46,22 +46,6 @@ MIT in each case. |#
 	   (else combination:normal))
      combination offset rest-generator)))
 
-(define (combination:normal combination offset rest-generator)
-  ;; For the time being, all close-coded combinations will return
-  ;; their values in the value register.  If the value of a
-  ;; combination is not a temporary, it is a value-ignore, which is
-  ;; alright.
-  (let ((value (combination-value combination)))
-    (if (temporary? value)
-	(let ((type (temporary-type value)))
-	  (if type
-	      (if (not (eq? 'VALUE type))
-		  (error "COMBINATION:NORMAL: Bad temporary type" type))
-	      (set-temporary-type! value 'VALUE)))))
-  (if (generate:next-is-null? (snode-next combination) rest-generator)
-      (combination:reduction combination offset)
-      (combination:subproblem combination offset rest-generator)))
-
 (define (combination:constant combination offset rest-generator)
   (let ((value (combination-value combination))
 	(next (snode-next combination)))
@@ -77,108 +61,21 @@ MIT in each case. |#
 	   (generate:next next offset rest-generator))
 	  (else (error "Unknown combination value" value)))))
 
-(define (combination:primitive combination offset rest-generator)
-  (let ((open-coder
-	 (assq (constant-value (combination-known-operator combination))
-	       primitive-open-coders)))
-    (or (and open-coder
-	     ((cdr open-coder) combination offset rest-generator))
-	(combination:normal combination offset rest-generator))))
-
-(define (define-open-coder primitive open-coder)
-  (let ((entry (assq primitive primitive-open-coders)))
-    (if entry
-	(set-cdr! entry open-coder)
-	(set! primitive-open-coders
-	      (cons (cons primitive open-coder)
-		    primitive-open-coders))))
-  primitive)
-
-(define primitive-open-coders
-  '())
-
-(define-open-coder pair?
-  (lambda (combination offset rest-generator)
-    (and (combination-compiled-for-predicate? combination)
-	 (open-code:type-test combination offset rest-generator
-			      (ucode-type pair) 0))))
-
-(define-open-coder primitive-type?
-  (lambda (combination offset rest-generator)
-    (and (combination-compiled-for-predicate? combination)
-	 (operand->index combination 0
-	   (lambda (type)
-	     (open-code:type-test combination offset rest-generator
-				  type 1))))))
-
-(define (open-code:type-test combination offset rest-generator type operand)
-  (let ((next (snode-next combination))
-	(operand (list-ref (combination-operands combination) operand)))
-    (generate:subproblem operand offset
-      (lambda (offset)
-	(generate:predicate next offset rest-generator
-	  (rvalue->pexpression (subproblem-value operand) offset
-	    (lambda (expression)
-	      (rtl:make-type-test (rtl:make-object->type expression)
-				  type))))))))
-
-(define-integrable (combination-compiled-for-predicate? combination)
-  (eq? 'PREDICATE (combination-compilation-type combination)))
-
-(define-open-coder car
-  (lambda (combination offset rest-generator)
-    (open-code:memory-reference combination offset rest-generator 0)))
-
-(define-open-coder cdr
-  (lambda (combination offset rest-generator)
-    (open-code:memory-reference combination offset rest-generator 1)))
-
-(define-open-coder cell-contents
-  (lambda (combination offset rest-generator)
-    (open-code:memory-reference combination offset rest-generator 0)))
-
-(define-open-coder vector-length
-  (lambda (combination offset rest-generator)
-    (open-code-expression-1 combination offset rest-generator
-      (lambda (operand)
-	(rtl:make-cons-pointer
-	 (rtl:make-constant (ucode-type fixnum))
-	 (rtl:make-fetch (rtl:locative-offset operand 0)))))))
-
-(define-open-coder vector-ref
-  (lambda (combination offset rest-generator)
-    (operand->index combination 1
-      (lambda (index)
-	(open-code:memory-reference combination offset rest-generator
-				    (1+ index))))))
-
-(define (open-code:memory-reference combination offset rest-generator index)
-  (open-code-expression-1 combination offset rest-generator
-    (lambda (operand)
-      (rtl:make-fetch (rtl:locative-offset operand index)))))
-
-(define (open-code-expression-1 combination offset rest-generator receiver)
-  (let ((operand (car (combination-operands combination))))
-    (generate:subproblem operand offset
-      (lambda (offset)
-	(generate-assignment (combination-block combination)
-			     (combination-value combination)
-			     (subproblem-value operand)
-			     (snode-next combination)
-			     offset
-			     rest-generator
-			     (lambda (rvalue offset receiver*)
-			       (rvalue->sexpression rvalue offset
-				 (lambda (expression)
-				   (receiver* (receiver expression))))))))))
-
-(define (operand->index combination n receiver)
-  (let ((operand (list-ref (combination-operands combination) n)))
-    (and (subproblem-known-constant? operand)
-	 (let ((value (subproblem-constant-value operand)))
-	   (and (integer? value)
-		(not (negative? value))
-		(receiver value))))))
+(define (combination:normal combination offset rest-generator)
+  ;; For the time being, all close-coded combinations will return
+  ;; their values in the value register.  If the value of a
+  ;; combination is not a temporary, it is a value-ignore, which is
+  ;; alright.
+  (let ((value (combination-value combination)))
+    (if (temporary? value)
+	(let ((type (temporary-type value)))
+	  (if type
+	      (if (not (eq? 'VALUE type))
+		  (error "COMBINATION:NORMAL: Bad temporary type" type))
+	      (set-temporary-type! value 'VALUE)))))
+  (if (generate:next-is-null? (snode-next combination) rest-generator)
+      (combination:reduction combination offset)
+      (combination:subproblem combination offset rest-generator)))
 
 ;;;; Subproblems
 
