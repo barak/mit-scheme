@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 14.18 1992/11/03 22:41:38 jinx Exp $
+$Id: syntax.scm,v 14.19 1992/11/29 14:22:20 gjr Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -646,16 +646,16 @@ MIT in each case. |#
       (syntax-error "rebinding syntactic keyword" name)))
 
 (define-integrable lambda-tag:unnamed
-  (string->symbol "#[unnamed-procedure]"))
+  ((ucode-primitive string->symbol) "#[unnamed-procedure]"))
 
 (define-integrable lambda-tag:let
-  (string->symbol "#[let-procedure]"))
+  ((ucode-primitive string->symbol) "#[let-procedure]"))
 
 (define-integrable lambda-tag:fluid-let
-  (string->symbol "#[fluid-let-procedure]"))
+  ((ucode-primitive string->symbol) "#[fluid-let-procedure]"))
 
 (define-integrable lambda-tag:make-environment
-  (string->symbol "#[make-environment]"))
+  ((ucode-primitive string->symbol) "#[make-environment]"))
 
 ;;;; Lambda List Parser
 

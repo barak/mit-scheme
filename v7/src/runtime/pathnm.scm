@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.22 1992/08/12 09:31:41 jinx Exp $
+$Id: pathnm.scm,v 14.23 1992/11/29 14:19:50 gjr Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -106,7 +106,8 @@ these rules:
 |#
 
 (define-structure (pathname
-		   (named (string->symbol "#[(runtime pathname)pathname]"))
+		   (named ((ucode-primitive string->symbol)
+			   "#[(runtime pathname)pathname]"))
 		   (constructor %make-pathname)
 		   (conc-name %pathname-)
 		   (print-procedure
@@ -450,7 +451,8 @@ these rules:
   (operation/pathname-canonicalize false read-only true))
 
 (define-structure (host
-		   (named (string->symbol "#[(runtime pathname)host]"))
+		   (named ((ucode-primitive string->symbol)
+			   "#[(runtime pathname)host]"))
 		   (constructor %make-host)
 		   (conc-name host/))
   (type-index false read-only true)

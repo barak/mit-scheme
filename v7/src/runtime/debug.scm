@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.31 1991/11/26 07:05:17 cph Exp $
+$Id: debug.scm,v 14.32 1992/11/29 14:14:40 gjr Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -326,7 +326,8 @@ MIT in each case. |#
 	   (newline port)
 	   (write (stack-frame/return-address subproblem) port)))))
 
-(define subexpression-marker (string->symbol "###"))
+(define subexpression-marker
+  ((ucode-primitive string->symbol) "###"))
 
 (define (print-subproblem-environment dstate port)
   (let ((environment-list (dstate/environment-list dstate)))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/packag.scm,v 14.10 1991/11/04 20:29:35 cph Exp $
+$Id: packag.scm,v 14.11 1992/11/29 14:18:20 gjr Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -79,7 +79,7 @@ MIT in each case. |#
 	      package))))
 
 (define-integrable package-name-tag
-  (string->symbol "#[(package)package-name-tag]"))
+  ((ucode-primitive string->symbol) "#[(package)package-name-tag]"))
 
 (define (find-package name)
   (let loop ((path name) (package system-global-package))

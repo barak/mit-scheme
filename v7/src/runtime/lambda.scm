@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/lambda.scm,v 14.8 1991/02/15 18:06:07 cph Exp $
+$Id: lambda.scm,v 14.9 1992/11/29 14:17:42 gjr Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -442,7 +442,8 @@ MIT in each case. |#
 (define lambda-bound)
 
 (define-structure (block-declaration
-		   (named (string->symbol "#[Block Declaration]")))
+		   (named ((ucode-primitive string->symbol)
+			   "#[Block Declaration]")))
   (text false read-only true))
 
 ;;;; Simple Lambda/Lexpr
@@ -499,10 +500,10 @@ MIT in each case. |#
 ;;;; Internal Lambda
 
 (define-integrable lambda-tag:internal-lambda
-  (string->symbol "#[internal-lambda]"))
+  ((ucode-primitive string->symbol) "#[internal-lambda]"))
 
 (define-integrable lambda-tag:internal-lexpr
-  (string->symbol "#[internal-lexpr]"))
+  ((ucode-primitive string->symbol) "#[internal-lexpr]"))
 
 (define-integrable (make-internal-lambda names body)
   (make-slambda lambda-tag:internal-lambda names body))

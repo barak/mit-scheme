@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infstr.scm,v 1.6 1992/05/26 21:33:17 mhwu Exp $
+$Id: infstr.scm,v 1.7 1992/11/29 14:16:51 gjr Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -47,11 +47,13 @@ MIT in each case. |#
   (cdr info-vector))
 
 (define-integrable dbg-info-vector-tag
-  (string->symbol "#[(runtime compiler-info)dbg-info-vector-tag]"))
+  ((ucode-primitive string->symbol)
+   "#[(runtime compiler-info)dbg-info-vector-tag]"))
 
 (define-structure (dbg-info
 		   (named
-		    (string->symbol "#[(runtime compiler-info)dbg-info]"))
+		    ((ucode-primitive string->symbol)
+		     "#[(runtime compiler-info)dbg-info]"))
 		   (conc-name dbg-info/))
   (expression false read-only true)	;dbg-expression
   (procedures false read-only true)	;vector of dbg-procedure
@@ -71,7 +73,7 @@ MIT in each case. |#
 
 (define-structure (dbg-expression
 		   (named
-		    (string->symbol
+		    ((ucode-primitive string->symbol)
 		     "#[(runtime compiler-info)dbg-expression]"))
 		   (conc-name dbg-expression/))
   (block false read-only true)		;dbg-block
@@ -83,7 +85,8 @@ MIT in each case. |#
 
 (define-structure (dbg-procedure
 		   (named
-		    (string->symbol "#[(runtime compiler-info)dbg-procedure]"))
+		    ((ucode-primitive string->symbol)
+		     "#[(runtime compiler-info)dbg-procedure]"))
 		   (constructor
 		    make-dbg-procedure
 		    (block label type name required optional rest auxiliary
@@ -111,7 +114,7 @@ MIT in each case. |#
 
 (define-structure (dbg-continuation
 		   (named
-		    (string->symbol
+		    ((ucode-primitive string->symbol)
 		     "#[(runtime compiler-info)dbg-continuation]"))
 		   (conc-name dbg-continuation/))
   (block false read-only true)		;dbg-block
@@ -129,7 +132,8 @@ MIT in each case. |#
 
 (define-structure (dbg-block
 		   (named
-		    (string->symbol "#[(runtime compiler-info)dbg-block]"))
+		    ((ucode-primitive string->symbol)
+		     "#[(runtime compiler-info)dbg-block]"))
 		   (constructor
 		    make-dbg-block
 		    (type parent original-parent layout stack-link))
@@ -144,7 +148,8 @@ MIT in each case. |#
 
 (define-structure (dbg-variable
 		   (named
-		    (string->symbol "#[(runtime compiler-info)dbg-variable]"))
+		    ((ucode-primitive string->symbol)
+		     "#[(runtime compiler-info)dbg-variable]"))
 		   (conc-name dbg-variable/))
   (name false read-only true)		;symbol
   (type false read-only true)		;normal, cell, integrated
@@ -156,7 +161,7 @@ MIT in each case. |#
       (macro (name)
 	(let ((symbol (symbol-append 'DBG-BLOCK-NAME/ name)))
 	  `(DEFINE-INTEGRABLE ,symbol
-	     ',(string->symbol
+	     ',((ucode-primitive string->symbol)
 		(string-append "#[(runtime compiler-info)"
 			       (string-downcase (symbol->string symbol))
 			       "]")))))))
@@ -216,7 +221,8 @@ MIT in each case. |#
 
 (define-structure (dbg-label-1
 		   (named
-		    (string->symbol "#[(runtime compiler-info)dbg-label]"))
+		    ((ucode-primitive string->symbol)
+		     "#[(runtime compiler-info)dbg-label]"))
 		   (constructor make-dbg-label (name offset))
 		   (conc-name dbg-label-1/))
   (name false)				;a string, primary name

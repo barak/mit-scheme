@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 14.18 1991/10/30 21:00:11 cph Exp $
+$Id: defstr.scm,v 14.19 1992/11/29 14:15:27 gjr Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -378,7 +378,7 @@ must be defined when the defstruct is evaluated.
     read-only?))
 
 (define-integrable structure
-  (string->symbol "#[defstruct-description]"))
+  ((ucode-primitive string->symbol) "#[defstruct-description]"))
 
 (define slot-assoc)
 
@@ -393,7 +393,7 @@ must be defined when the defstruct is evaluated.
       (named-structure/get-tag-description tag)))
 
 (define record-type-name-tag
-  (string->symbol "#[defstruct-tag]"))
+  ((ucode-primitive string->symbol) "#[defstruct-tag]"))
 
 (unparser/set-tagged-vector-method! record-type-name-tag
   (lambda (state record-type-name)

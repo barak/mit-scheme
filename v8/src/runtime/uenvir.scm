@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/uenvir.scm,v 14.28 1992/08/04 23:48:59 cph Exp $
+$Id: uenvir.scm,v 14.29 1992/11/29 14:23:01 gjr Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -273,7 +273,8 @@ MIT in each case. |#
 
 (define-structure (stack-ccenv
 		   (named
-		    (string->symbol "#[(runtime environment)stack-ccenv]"))
+		    ((ucode-primitive string->symbol)
+		     "#[(runtime environment)stack-ccenv]"))
 		   (conc-name stack-ccenv/))
   (block false read-only true)
   (frame false read-only true)
@@ -517,7 +518,8 @@ MIT in each case. |#
 
 (define-structure (closure-ccenv
 		   (named
-		    (string->symbol "#[(runtime environment)closure-ccenv]"))
+		    ((ucode-primitive string->symbol)
+		     "#[(runtime environment)closure-ccenv]"))
 		   (conc-name closure-ccenv/))
   (stack-block false read-only true)
   (closure-block false read-only true)

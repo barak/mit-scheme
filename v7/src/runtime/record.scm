@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/record.scm,v 1.12 1991/11/26 06:50:09 cph Exp $
+$Id: record.scm,v 1.13 1992/11/29 14:20:27 gjr Exp $
 
-Copyright (c) 1989-91 Massachusetts Institute of Technology
+Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -42,7 +42,8 @@ MIT in each case. |#
 
 (define (initialize-package!)
   (set! record-type-marker
-	(string->symbol "#[(runtime record)record-type-marker]"))
+	((ucode-primitive string->symbol)
+	 "#[(runtime record)record-type-marker]"))
   (unparser/set-tagged-vector-method!
    record-type-marker
    (unparser/standard-method 'RECORD-TYPE-DESCRIPTOR
