@@ -237,6 +237,7 @@ Special Forms
 * Conditionals::                Conditionals
 * Sequencing::                  Sequencing
 * Iteration::                   Iteration
+* Structure Definitions::       Structure Definitions
 
 Definitions
 
@@ -1543,6 +1544,7 @@ This chapter describes the basic Scheme special forms.
 * Conditionals::                Conditionals
 * Sequencing::                  Sequencing
 * Iteration::                   Iteration
+* Structure Definitions::       Structure Definitions
 @end menu
 
 @node Lambda Expressions, Lexical Binding, Special Forms, Special Forms
@@ -2592,7 +2594,7 @@ The obsolete special form @code{sequence} is identical to @code{begin}.
 It should not be used in new code.
 @end deffn
 
-@node Iteration,  , Sequencing, Special Forms
+@node Iteration, Structure Definitions, Sequencing, Special Forms
 @section Iteration
 
 @cindex expression, iteration (defn)
@@ -2716,6 +2718,242 @@ instead of @code{(@var{variable} @var{init})}.
 @end group
 @end example
 @end deffn
+
+@node Structure Definitions, , Iteration, Special Forms
+
+@comment **** begin CLTL ****
+@comment Altough this documentation isn't plagiarized from Common Lisp,
+@comment the macro certainly is!
+
+This section provides examples and describes the options and syntax of
+@var{define-structure}, an MIT Scheme macro which is essentially
+identical to @var{defstruct} in Common Lisp.  The differences between
+them are summarized at the end of this section.  For more information,
+see Chapter 19 of Steele's Common Lisp book.
+
+@findex define-structure
+@cindex define-structure
+
+@deffn {syntax} define-structure (name structure-option*) slot-descriptions*
+@end deffn
+
+Each @var{slot-description} is of the form (@var{slot-name}
+@var{default-init} [@var{slot-option} [@var{value}]]*).
+
+@cindex keyword constructor
+@cindex BOA constructor
+The fields @var{name} and @var{slot-name} must both be symbols.  The
+field @var{default-init} is an expression for the initial value of the
+slot.  It is evaluated each time a new instance is constructed.  If it
+is not specified, the initial content of the slot is undefined.  Default
+values are only useful with a keyword constructor or BOA constructor
+with argument list (see below).
+
+A call to @var{define-structure} defines a structure descriptor and a
+set of procedures to manipulate instances of the structure.  These
+instances are represented as records by default but may alternately be
+lists or vectors.  The accessors and updaters are declared integrable
+using @var{integrate-operator}.  Usually, no options are required, so a
+simple call to @var{define-structure} looks like:
+
+@example
+(define-structure foo a b c)
+@end example
+
+This defines a record type @code{foo}, a constructor @code{make-foo}, a
+predicate @code{foo?}, accessors @code{foo-a}, @code{foo-b}, and
+@code{foo-c}, and updaters @code{set-foo-a!}, @code{set-foo-b!}, and
+@code{set-foo-c!}.
+
+When optional arguments are not supplied, @var{(name)} may be
+abbreviated to @var{name}.  This convention holds equally for
+@var{structure-options} and @var{slot-options}.  Hence, these
+are equivalent:
+
+@example
+(define-structure foo a b c)
+(define-structure (foo) (a) b (c))
+@end example
+as are
+@example
+(define-structure (foo keyword-constructor) a b c)
+(define-structure (foo (keyword-constructor)) a b c)
+@end example
+
+When specified as option values, @code{false}, @code{nil}, @code{true},
+and @code{t} are treated as if the appropriate boolean constant had been
+specified instead.
+
+Possible @var{slot-options} are:
+@deffn Option @code{read-only} @var{value}
+When given a value other than @code{#f}, this specifies that no
+updater should be created for the slot.
+@end deffn
+
+@deffn Option @code{type} @var{type}
+This is accepted but not presently used.
+@end deffn
+
+Possible @var{structure-options} are:
+@cindex keyword constructor (defn)
+@deffn Option @code{keyword-constructor} [@var{name}]
+This specifies that the constructor should parse its arguments as as a
+list of keywords and values rather than by position (the default).  The
+keywords recognized by the constructor are exactly the names of the
+slots.  If @var{name} is supplied, it is taken as the name of the
+constructor.  Also, @code{keyword-constructor} may be specified multiple
+times to name multiple (identical) keyword constructors.
+
+@example
+(define-structure (foo (keyword-constructor make-bar)) a b)
+(foo-a (make-bar 'b 20 'a 19))         @result{} 19
+@end example
+@end deffn
+
+@deffn Option @code{type} @var{representation-type}
+This specifies the representation type for instances of the structure,
+which are records by default.  Possible values are @code{vector} and
+@code{list}.  If the @code{named} option is not specified, the
+representation does not include a tag, and neither a predicate nor a
+type descriptor is generated.
+
+@example
+(define-structure (foo (type list)) a b) 
+(make-foo 1 2)                          @result{} (1 2)
+@end example
+@end deffn
+
+@deffn Option @code{conc-name} [@var{name}]
+By default, the prefix for naming accessors and updaters is the name
+of the structure followed by a hyphen.  The @code{conc-name} option can
+be used to specify an alternative.  If @var{name} is @code{#f}, the slot
+names are used directly, without prefix.
+
+@example
+@code{(define-structure (foo (conc-name moby/)) a b)}
+@end example
+defines the variables @code{foo make-foo moby/a moby/b set-moby/a!
+set-moby/b!  foo?}.
+
+@example
+@code{(define-structure (foo (conc-name ())) a b)}
+@end example
+defines @code{foo make-foo a b set-a! set-b! foo?}.
+@end deffn
+
+@cindex BOA constructor (defn)
+@deffn Option @code{constructor} [@var{name} [@var{argument-list}]]
+This can be specified multiple times to build constructors with
+different argument lists, called @dfn{BOA constructor}s (By Order of
+Arguments).  This facility can be extrememly useful.  If @var{name} is
+@code{#f}, no constructor is generated.  If @var{name} is unspecified,
+the constructor is named as usual.  @var{argument-list} is a Scheme
+lambda list which may include optional and rest parameters in the usual
+way.  The names of the parameters must be names of defined slots.
+
+@example
+(define-structure (foo (constructor make-foo (#!optional a b)))
+  (a 6 read-only true) (b 9))
+@end example
+@end deffn
+
+@deffn Option @code{predicate} [@var{name}]
+@var{name} specifies a new name for the predicate.  If it is @code{#f},
+the predicate is not generated.  If @var{name} is not specified, the
+predicate is named as usual.
+@end deffn
+
+@deffn Option @code{copier} [@var{name}]
+This specifies that a procedure should be generated to copy instances of
+the structure.  If @var{name} is unspecified, the copier is named by
+prefixing the structure name with @code{copy-}.  If @var{name} is
+@code{#f}, the copier is not generated.
+@end deffn
+
+@deffn Option @code{print-procedure} @var{expression}
+The use of this option is specific to MIT Scheme.  Evaluating
+@var{expression} must yield a procedure of two arguments, the unparser
+state and a structure instance, which is used to print instances of the
+structure.  It is typically generated using
+@code{unparser/standard-method}.
+@end deffn
+
+@deffn Option @code{named} [@var{expression}]
+This is valid only with the @code{type} option and specifies that a tag
+be included in each instance.  @var{expression} is usually a variable
+whose value is the tag, which is by default the type descriptor itself.
+@var{expression} is evaluated whenever the tag is needed and must be
+valid when the @code{define-structure} is evaluated.  If
+@var{expression} returns different values from different evaluations,
+strange behavior results.  For convenience, since tags may have large
+printed representations, specifying this parameter causes instances to
+print as records even though they are actually not.
+@end deffn
+
+@deffn Option @code{initial-offset} @var{offset}
+This is valid only with the @code{type} option.  @var{offset} must be a
+non-negative integer and specifies a number of slots to leave open at
+the beginning of the structure before the specified slots are allocated.
+@end deffn
+
+The essential differences between MIT Scheme's @code{define-structure}
+and Common Lisp's @code{defstruct} are:
+@itemize @bullet
+
+@item
+The default constructor procedure takes positional arguments, in the
+same order as specified in the definition of the structure.  A keyword
+constructor may be specified by giving the option
+@code{keyword-constructor}.
+
+@item
+BOA constructors are described using Scheme lambda lists.  Since there
+is nothing corresponding to &aux in Scheme lambda lists, this
+functionality is not implemented.
+
+@item
+By default, no @code{copier} procedure is generated.
+
+@item
+The side effect procedure corresponding to the accessor "foo" is given
+the name "set-foo!".
+
+@item
+Keywords are just ordinary symbols -- use "foo" instead of ":foo".
+
+@item
+The option values @code{false}, @code{nil}, @code{true}, and @code{t}
+are treated as if the appropriate boolean constant had been specified
+instead.
+
+@item
+The @code{print-function} option is named @code{print-procedure}.  Its
+argument is a procedure of two arguments (the unparser state and the
+structure instance) rather than three as in Common Lisp.
+
+@item
+By default, named structures are tagged with a unique object of some
+kind.  In Common Lisp, the structures are tagged with symbols, but that
+depends on the Common Lisp package system to help generate unique tags;
+Scheme has no such way of generating unique symbols.
+
+@item
+The @code{named} option may optionally take an argument, which is
+normally the name of a variable (any expression may be used, but it is
+evaluated whenever the tag name is needed).  If used, structure
+instances will be tagged with that variable's value.  The variable must
+be defined when the defstruct is evaluated.
+
+@item
+The @code{type} option is restricted to the values @code{vector} and
+@code{list}.
+
+@item
+The @code{include} option is not implemented.
+
+@end itemize
+
+@comment **** end CLTL ****
 
 @node Equivalence Predicates, Numbers, Special Forms, Top
 @chapter Equivalence Predicates
