@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: pgsql.scm,v 1.10 2004/12/28 06:42:25 cph Exp $
+$Id: pgsql.scm,v 1.11 2005/01/16 04:17:24 cph Exp $
 
-Copyright 2003,2004 Massachusetts Institute of Technology
+Copyright 2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -36,12 +36,15 @@ USA.
   (pq-connect-poll 1)
   (pq-connect-start 2)
   (pq-db 1)
+  (pq-end-copy 1)
   (pq-error-message 1)
+  (pq-escape-bytea 1)
   (pq-escape-string 2)
   (pq-exec 3)
   (pq-field-name 2)
   (pq-finish 1)
   (pq-get-is-null? 3)
+  (pq-get-line 2)
   (pq-get-value 3)
   (pq-host 1)
   (pq-make-empty-pg-result 3)
@@ -50,6 +53,7 @@ USA.
   (pq-options 1)
   (pq-pass 1)
   (pq-port 1)
+  (pq-put-line 2)
   (pq-res-status 1)
   (pq-reset 1)
   (pq-reset-poll 1)
@@ -58,6 +62,7 @@ USA.
   (pq-result-status 1)
   (pq-status 1)
   (pq-tty 1)
+  (pq-unescape-bytea 1)
   (pq-user 1))
 
 (define-syntax define-enum
@@ -281,13 +286,30 @@ USA.
 
 (define (pgsql-conn-status connection)
   (index->name (pq-status (connection->handle connection)) connection-status))
-
+
+(define (pgsql-get-line connection buffer)
+  (pq-get-line (connection->handle connection) buffer))
+
+(define (pgsql-put-line connection buffer)
+  (pq-put-line (connection->handle connection) buffer))
+
+(define (pgsql-end-copy connection)
+  (pq-end-copy (connection->handle connection)))
+
 (define (escape-pgsql-string string)
   (guarantee-pgsql-available)
   (let ((escaped (make-string (fix:* 2 (string-length string)))))
     (set-string-maximum-length! escaped (pq-escape-string string escaped))
     escaped))
 
+(define (encode-pgsql-bytea bytes)
+  (guarantee-pgsql-available)
+  (pq-escape-bytea bytes))
+
+(define (decode-pgsql-bytea string)
+  (guarantee-pgsql-available)
+  (pq-unescape-bytea string))
+
 (define (exec-pgsql-query connection query)
   (guarantee-string query 'EXEC-PGSQL-QUERY)
   (let ((result
@@ -300,13 +322,13 @@ USA.
 	      (if (= 0 result-handle)
 		  (error "Unable to execute PostgreSQL query:" query))
 	      (make-result result-handle))))))
-    (if (memq (pgsql-result-status result)
-	      '(PGSQL-COMMAND-OK
-		PGSQL-TUPLES-OK
-		PGSQL-COPY-OUT
-		PGSQL-COPY-IN))
-	result
-	(error:pgsql-query query result))))
+    (if (not (memq (pgsql-result-status result)
+		   '(PGSQL-COMMAND-OK
+		     PGSQL-TUPLES-OK
+		     PGSQL-COPY-OUT
+		     PGSQL-COPY-IN)))
+	(error:pgsql-query query result))
+    result))
 
 (define (make-empty-pgsql-result connection status)
   (let ((handle (connection->handle connection)))
