@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/syntax.scm,v 1.71 1991/05/17 18:39:35 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/syntax.scm,v 1.72 1991/05/17 23:23:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -68,7 +68,7 @@
 	(ah (char->ascii ch))
 	(entry ((ucode-primitive string->syntax-entry) string)))
     (do ((a (char->ascii cl) (+ a 1)))
-	((>= a ah) unspecific)
+	((> a ah) unspecific)
       (vector-set! entries a entry))))
 
 (define standard-syntax-table
