@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.146 2001/01/23 05:15:41 cph Exp $
+;;; $Id: imail-imap.scm,v 1.147 2001/01/24 22:51:35 cph Exp $
 ;;;
-;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -1074,16 +1074,20 @@
 		(string-ci=? "rfc822" (cadr body)))
 	   (if (not (fix:>= n 10))
 	       (parse-mime-body:lose body))
-	   (apply make-mime-body-message
-		  (parse-mime-parameters (list-ref body 2))
-		  (list-ref body 3)
-		  (list-ref body 4)
-		  (intern (list-ref body 5))
-		  (list-ref body 6)
-		  (parse-mime-envelope (list-ref body 7))
-		  (parse-mime-body (list-ref body 8))
-		  (list-ref body 9)
-		  (parse-mime-body:extensions (list-tail body 10))))
+	   (let* ((enclosed (parse-mime-body (list-ref body 8)))
+		  (enclosure
+		   (apply make-mime-body-message
+			  (parse-mime-parameters (list-ref body 2))
+			  (list-ref body 3)
+			  (list-ref body 4)
+			  (intern (list-ref body 5))
+			  (list-ref body 6)
+			  (parse-mime-envelope (list-ref body 7))
+			  enclosed
+			  (list-ref body 9)
+			  (parse-mime-body:extensions (list-tail body 10)))))
+	     (set-mime-body-enclosure! enclosed enclosure)
+	     enclosure))
 	  (else
 	   (if (not (fix:>= n 7))
 	       (parse-mime-body:lose body))
@@ -1102,15 +1106,21 @@
     (if (not (pair? tail))
 	(parse-mime-body:lose body))
     (if (string? (car tail))
-	(let ((extensions (parse-mime-body:extensions (cdr tail))))
-	  (make-mime-body-multipart (intern (car tail))
-				    (parse-mime-parameters (car extensions))
-				    (map parse-mime-body
-					 (sublist body 0 index))
-				    (cadr extensions)
-				    (caddr extensions)))
+	(let ((enclosed (map parse-mime-body (sublist body 0 index)))
+	      (extensions (parse-mime-body:extensions (cdr tail))))
+	  (let ((enclosure
+		 (make-mime-body-multipart (intern (car tail))
+					   (parse-mime-parameters
+					    (car extensions))
+					   enclosed
+					   (cadr extensions)
+					   (caddr extensions))))
+	    (for-each (lambda (enclosed)
+			(set-mime-body-enclosure! enclosed enclosure))
+		      enclosed)
+	    enclosure))
 	(loop (cdr tail) (fix:+ index 1)))))
-
+
 (define (parse-mime-body:extensions tail)
   (if (pair? tail)
       (if (pair? (cdr tail))
@@ -1123,6 +1133,30 @@
 
 (define (parse-mime-body:lose body)
   (error "Unrecognized MIME bodystructure:" body))
+
+(define (parse-mime-parameters parameters)
+  (let ((lose (lambda () (error "Malformed MIME parameters:" parameters))))
+    (let loop ((parameters parameters) (alist '()))
+      (if (pair? parameters)
+	  (if (pair? (cdr parameters))
+	      (loop (cddr parameters)
+		    (cons (cons (intern (car parameters)) (cadr parameters))
+			  alist))
+	      (lose))
+	  (if (null? parameters)
+	      (reverse! alist)
+	      (lose))))))
+
+(define (parse-mime-disposition disposition)
+  (and disposition
+       (begin
+	 (if (not (and (pair? disposition)
+		       (string? (car disposition))
+		       (pair? (cdr disposition))
+		       (null? (cddr disposition))))
+	     (error "Malformed MIME disposition:" disposition))
+	 (cons (intern (car disposition))
+	       (parse-mime-parameters (cadr disposition))))))
 
 (define (parse-mime-envelope envelope)
   (make-mime-envelope (list-ref envelope 0)
@@ -1179,30 +1213,6 @@
 		(else (lose))))
 	(loop addr-list '() '()))
       '()))
-
-(define (parse-mime-parameters parameters)
-  (let ((lose (lambda () (error "Malformed MIME parameters:" parameters))))
-    (let loop ((parameters parameters) (alist '()))
-      (if (pair? parameters)
-	  (if (pair? (cdr parameters))
-	      (loop (cddr parameters)
-		    (cons (cons (intern (car parameters)) (cadr parameters))
-			  alist))
-	      (lose))
-	  (if (null? parameters)
-	      (reverse! alist)
-	      (lose))))))
-
-(define (parse-mime-disposition disposition)
-  (and disposition
-       (begin
-	 (if (not (and (pair? disposition)
-		       (string? (car disposition))
-		       (pair? (cdr disposition))
-		       (null? (cddr disposition))))
-	     (error "Malformed MIME disposition:" disposition))
-	 (cons (intern (car disposition))
-	       (parse-mime-parameters (cadr disposition))))))
 
 ;;;; Server operations
 
