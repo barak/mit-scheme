@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosproc.c,v 1.4 1991/03/08 03:10:16 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosproc.c,v 1.5 1991/03/08 19:49:59 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -208,18 +208,10 @@ DEFINE_PRIMITIVE ("SCHEME-ENVIRONMENT", Prim_scheme_environment, 0, 0, 0)
 }
 
 DEFINE_PRIMITIVE ("PROCESS-DELETE", Prim_process_delete, 1, 1,
-  "Delete process PROCESS-NUMBER from the process table.\n\
-The process may be deleted only if it is exited or signalled.")
+  "Delete process PROCESS-NUMBER from the process table.")
 {
   PRIMITIVE_HEADER (1);
-  {
-    Tprocess process = (arg_process (1));
-    enum process_status status = (OS_process_status (process));
-    if (! ((status == process_status_exited)
-	   || (status == process_status_signalled)))
-      error_bad_range_arg (1);
-    OS_process_deallocate (process);
-  }
+  OS_process_deallocate (arg_process (1));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 

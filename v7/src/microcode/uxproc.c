@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxproc.c,v 1.6 1991/03/08 03:10:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxproc.c,v 1.7 1991/03/08 19:50:44 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -204,9 +204,9 @@ DEFUN_VOID (process_allocate)
 void
 DEFUN (OS_process_deallocate, (process), Tprocess process)
 {
+  (PROCESS_ID (process)) = 0;
   (PROCESS_STATUS (process)) = process_status_free;
   (PROCESS_REASON (process)) = 0;
-  (PROCESS_ID (process)) = 0;
 }
 
 Tprocess
