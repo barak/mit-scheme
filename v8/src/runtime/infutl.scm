@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.39 1992/05/28 18:58:44 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.40 1992/05/28 22:41:02 mhwu Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -228,24 +228,23 @@ MIT in each case. |#
 
 (define (process-binf-filename binf-filename com-pathname)
   (and binf-filename
-       (->namestring
-	(rewrite-directory
-	 (let ((binf-pathname (merge-pathnames binf-filename))
-	       (com-pathname (merge-pathnames com-pathname)))
-	   (if (and (equal? (pathname-name binf-pathname)
-			    (pathname-name com-pathname))
-		    (not (equal? (pathname-type binf-pathname)
-				 (pathname-type com-pathname)))
-		    (equal? (pathname-version binf-pathname)
-			    (pathname-version com-pathname)))
-	       (pathname-new-type com-pathname (pathname-type binf-pathname))
-	       binf-pathname))))))
+       (rewrite-directory
+	(let ((binf-pathname (merge-pathnames binf-filename))
+	      (com-pathname (merge-pathnames com-pathname)))
+	  (if (and (equal? (pathname-name binf-pathname)
+			   (pathname-name com-pathname))
+		   (not (equal? (pathname-type binf-pathname)
+				(pathname-type com-pathname)))
+		   (equal? (pathname-version binf-pathname)
+			   (pathname-version com-pathname)))
+	      (pathname-new-type com-pathname (pathname-type binf-pathname))
+	      binf-pathname)))))
 
 (define directory-rewriting-rules
   '())
 
 (define (add-directory-rewriting-rule! match replace)
-  (let ((match (merge-pathnames match)))
+  (let ((match (pathname-as-directory (merge-pathnames match))))
     (let ((rule
 	   (list-search-positive directory-rewriting-rules
 	     (lambda (rule)
@@ -264,16 +263,20 @@ MIT in each case. |#
 	   (lambda (rule)
 	     (directory-prefix? (pathname-directory pathname)
 				(pathname-directory (car rule)))))))
-    (if rule
-	(let ((replacement-directory (merge-pathnames (cdr rule))))
-	  (pathname-new-device
-	   (pathname-new-directory
+    (->namestring
+     (if rule
+	 (let ((replacement (cdr rule))
+	       (remaining-directories
+		(list-tail (pathname-directory pathname)
+			   (length (pathname-directory (car rule))))))
+	   ;; Moby kludge: we are going to fool the pathname abstraction
+	   ;; into giving us a namestring that might contain uncanonicalized
+	   ;; characters in them.  This will break if the pathname abstraction
+	   ;; cares at all.
+	   (pathname-new-directory 
 	    pathname
-	    (append (pathname-directory replacement-directory)
-		    (list-tail (pathname-directory pathname)
-			       (length (pathname-directory (car rule))))))
-	   (pathname-device replacement-directory)))
-	pathname)))
+	    `(relative ,replacement ,@remaining-directories)))
+	 pathanme))))
 
 (define (directory-prefix? x y)
   (and (pair? x)
@@ -381,17 +384,15 @@ MIT in each case. |#
 	 false)))
 
 (define (read-bsm-file name)
-  (let ((filename (process-bsym-filename name)))
-    (if (file-exists? filename)
-	(fasload-loader filename)
-	(let ((pathname (merge-pathnames filename)))
-	  (find-alternate-file-type pathname
-				    `(("bsm" . ,fasload-loader)
-				      ("bcs" . ,compressed-loader)))))))
+  (let ((pathname (merge-pathnames (process-bsym-filename name))))
+    (if (file-exists? pathname)
+	(fasload-loader pathname)
+	(find-alternate-file-type pathname
+				  `(("bsm" . ,fasload-loader)
+				    ("bcs" . ,compressed-loader))))))
 
 (define (process-bsym-filename name)
-  (->namestring
-   (rewrite-directory (merge-pathnames name))))
+  (rewrite-directory (merge-pathnames name)))
 
 ;;; The conversion hack.
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/site.scm.unix,v 1.8 1992/03/03 23:24:39 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/site.scm.unix,v 1.9 1992/05/28 22:42:48 mhwu Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -60,15 +60,14 @@ MIT in each case. |#
 	       (->environment '(runtime compiler-info)))))
   (for-each
    (lambda (path)
-     (add-directory-rewriting-rule! path "/usr/local/lib/mit-scheme/SRC/"))
-   '("/scheme/300/"
-     "/altdorf/scheme/300/"
-     "/nfs/altdorf/root/scheme/300/"
-     "/scheme/800/"
-     "/altdorf/scheme/800"
-     "/nfs/altdorf/root/scheme/800/"
-     "/scheme/700/"
+     (add-directory-rewriting-rule! path "/usr/local/lib/mit-scheme/SRC"))
+   '("/scheme/300"
+     "/altdorf/scheme/300"
+     "/nfs/altdorf/root/scheme/300"
+     "/scheme/700"
      "/altdorf/scheme/700"
-     "/nfs/altdorf/root/scheme/700/"
-     "/scheme/SONY/"
-     "/nfs/altdorf/root/scheme/SONY/")))
+     "/nfs/altdorf/root/scheme/700"
+     "/scheme/SONY"
+     "/nfs/altdorf/root/scheme/SONY"
+     )
+   ))
