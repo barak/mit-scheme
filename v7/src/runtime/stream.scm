@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: stream.scm,v 14.9 1995/03/07 02:19:20 cph Exp $
+$Id: stream.scm,v 14.10 1998/03/31 20:04:18 cph Exp $
 
-Copyright (c) 1988-95 Massachusetts Institute of Technology
+Copyright (c) 1988-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -108,12 +108,12 @@ MIT in each case. |#
   (if (null? streams)
       (let ((stream-map-1
 	     (lambda (procedure stream)
-	       (let loop ((stream* stream))
-		 (if (stream-pair? stream*)
-		     (cons-stream (procedure (car stream*))
-				  (loop (force (cdr stream*))))
+	       (let loop ((stream stream))
+		 (if (stream-pair? stream)
+		     (cons-stream (procedure (car stream))
+				  (loop (force (cdr stream))))
 		     (begin
-		       (if (not (null? stream*))
+		       (if (not (null? stream))
 			   (error:wrong-type-argument stream
 						      "stream"
 						      'STREAM-MAP))
@@ -122,55 +122,44 @@ MIT in each case. |#
 	(if (or (null? procedure) (stream-pair? procedure))
 	    (stream-map-1 stream procedure)
 	    (stream-map-1 procedure stream)))
-      (let ((streams (cons stream streams)))
-	(let n-loop ((streams* streams))
-	  (let parse-cars
-	      ((streams streams)
-	       (streams* streams*)
-	       (cars '())
-	       (cdrs '()))
-	    (cond ((null? streams*)
-		   (cons-stream (apply procedure (reverse! cars))
-				(n-loop (reverse! cdrs))))
-		  ((stream-pair? (car streams*))
-		   (parse-cars (cdr streams)
-			       (cdr streams*)
-			       (cons (car (car streams*)) cars)
-			       (cons (force (cdr (car streams*))) cdrs)))
-		  (else
-		   (if (not (null? (car streams*)))
-		       (error:wrong-type-argument (car streams)
-						  "stream"
-						  'STREAM-MAP))
-		   '())))))))
+      (let n-loop ((streams (cons stream streams)))
+	(let parse-cars ((streams streams) (cars '()) (cdrs '()))
+	  (cond ((null? streams)
+		 (cons (apply procedure (reverse! cars))
+		       (let ((cdrs (reverse! cdrs)))
+			 (delay (n-loop (map force cdrs))))))
+		((stream-pair? (car streams))
+		 (parse-cars (cdr streams)
+			     (cons (car (car streams)) cars)
+			     (cons (cdr (car streams)) cdrs)))
+		(else
+		 (if (not (null? (car streams)))
+		     (error:wrong-type-argument (car streams)
+						"stream"
+						'STREAM-MAP))
+		 '()))))))
 
 (define (stream-for-each procedure stream . streams)
   (if (null? streams)
-      (let loop ((stream* stream))
-	(cond ((stream-pair? stream*)
-	       (procedure (car stream*))
-	       (loop (force (cdr stream*))))
-	      ((not (null? stream*))
+      (let loop ((stream stream))
+	(cond ((stream-pair? stream)
+	       (procedure (car stream))
+	       (loop (force (cdr stream))))
+	      ((not (null? stream))
 	       (error:wrong-type-argument stream "stream" 'STREAM-FOR-EACH))))
-      (let ((streams (cons stream streams)))
-	(let n-loop ((streams* streams))
-	  (let parse-cars
-	      ((streams streams)
-	       (streams* streams*)
-	       (cars '())
-	       (cdrs '()))
-	    (cond ((null? streams*)
-		   (apply procedure (reverse! cars))
-		   (n-loop (reverse! cdrs)))
-		  ((stream-pair? (car streams*))
-		   (parse-cars (cdr streams)
-			       (cdr streams*)
-			       (cons (car (car streams*)) cars)
-			       (cons (force (cdr (car streams*))) cdrs)))
-		  ((not (null? (car streams*)))
-		   (error:wrong-type-argument (car streams)
-					      "stream"
-					      'STREAM-FOR-EACH))))))))
+      (let n-loop ((streams (cons stream streams)))
+	(let parse-cars ((streams streams) (cars '()) (cdrs '()))
+	  (cond ((null? streams)
+		 (apply procedure (reverse! cars))
+		 (n-loop (map force (reverse! cdrs))))
+		((stream-pair? (car streams))
+		 (parse-cars (cdr streams)
+			     (cons (car (car streams)) cars)
+			     (cons (cdr (car streams)) cdrs)))
+		((not (null? (car streams)))
+		 (error:wrong-type-argument (car streams)
+					    "stream"
+					    'STREAM-FOR-EACH)))))))
 
 (define (stream-append . streams)
   (if (null? streams)
@@ -190,23 +179,23 @@ MIT in each case. |#
 		    (outer-loop (cdr streams)))))))))
 
 (define (stream-accumulate procedure initial stream)
-  (let loop ((stream* stream))
-    (if (stream-pair? stream*)
-	(procedure (car stream*)
-		   (loop (force (cdr stream*))))
+  (let loop ((stream stream))
+    (if (stream-pair? stream)
+	(procedure (car stream)
+		   (loop (force (cdr stream))))
 	(begin
-	  (if (not (null? stream*))
+	  (if (not (null? stream))
 	      (error:wrong-type-argument stream "stream" 'STREAM-ACCUMULATE))
 	  initial))))
 
 (define (stream-filter predicate stream)
-  (let loop ((stream* stream))
-    (if (stream-pair? stream*)
-	(if (predicate (car stream*))
-	    (cons-stream (car stream*) (loop (force (cdr stream*))))
-	    (loop (force (cdr stream*))))
+  (let loop ((stream stream))
+    (if (stream-pair? stream)
+	(if (predicate (car stream))
+	    (cons-stream (car stream) (loop (force (cdr stream))))
+	    (loop (force (cdr stream))))
 	(begin
-	  (if (not (null? stream*))
+	  (if (not (null? stream))
 	      (error:wrong-type-argument stream "stream" 'STREAM-FILTER))
 	  '()))))
 
@@ -215,14 +204,14 @@ MIT in each case. |#
 	 (if (default-object? port)
 	     (current-output-port)
 	     (guarantee-output-port port))))
-    (let loop ((stream* stream) (leader #\{))
-      (if (stream-pair? stream*)
+    (let loop ((stream stream) (leader #\{))
+      (if (stream-pair? stream)
 	  (begin
 	    (write-char leader port)
-	    (write (car stream*) port)
-	    (loop (force (cdr stream*)) #\space))
+	    (write (car stream) port)
+	    (loop (force (cdr stream)) #\space))
 	  (begin
-	    (if (not (null? stream*))
+	    (if (not (null? stream))
 		(error:wrong-type-argument stream "stream" 'STREAM-WRITE))
 	    (write-char #\} port))))))
 
