@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.109 2002/02/04 21:49:22 cph Exp $
+@comment $Id: scheme.texinfo,v 1.110 2002/02/04 21:50:16 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -170,12 +170,13 @@ Macros
 * Syntactic Binding Constructs::  
 * Pattern Language::            
 * Syntactic Closures::          
+* Explicit Renaming::           
 
 Syntactic Closures
 
 * Syntax Terminology::          
 * SC Transformer Definition::   
-* Identifiers::                 
+* SC Identifiers::              
 
 Numbers
 
@@ -3258,6 +3259,7 @@ use of the macro.
 * Syntactic Binding Constructs::  
 * Pattern Language::            
 * Syntactic Closures::          
+* Explicit Renaming::           
 @end menu
 
 @node Syntactic Binding Constructs, Pattern Language, Macros, Macros
@@ -3588,7 +3590,7 @@ instead of
 which would result in an invalid procedure call.
 @end deffn
 
-@node Syntactic Closures,  , Pattern Language, Macros
+@node Syntactic Closures, Explicit Renaming, Pattern Language, Macros
 @subsection Syntactic Closures
 
 @cindex syntactic closures
@@ -3603,7 +3605,7 @@ initiated, but it is easily mastered.
 @menu
 * Syntax Terminology::          
 * SC Transformer Definition::   
-* SC Identifiers::                 
+* SC Identifiers::              
 @end menu
 
 @node Syntax Terminology, SC Transformer Definition, Syntactic Closures, Syntactic Closures
@@ -4104,7 +4106,7 @@ This is implemented by syntactically closing @var{identifier} in a
 special empty environment.
 @end deffn
 
-@node Explicit Renaming
+@node Explicit Renaming,  , Syntactic Closures, Macros
 @subsection Explicit Renaming
 
 @node Equivalence Predicates, Numbers, Special Forms, Top
