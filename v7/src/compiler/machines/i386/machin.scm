@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/machin.scm,v 1.6 1992/02/05 17:22:24 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/machin.scm,v 1.7 1992/02/13 05:31:26 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/machin.scm,v 4.26 1991/10/25 06:49:34 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -292,6 +292,7 @@ MIT in each case. |#
   ;; i486 clock count for instruction to construct/fetch into register.
   (let ((if-integer
 	 (lambda (value)
+	   value			; ignored
 	   ;; Can this be done in fewer bytes for suitably small values?
 	   1))				; MOV immediate
 	(get-pc-cost

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/dassm2.scm,v 1.1 1992/02/13 03:36:26 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/dassm2.scm,v 1.2 1992/02/13 05:28:18 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/dassm2.scm,v 4.18 1991/05/07 13:46:04 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -73,7 +73,7 @@ MIT in each case. |#
 (define (disassembler/instructions/read instruction-stream receiver)
   (receiver (instruction-offset instruction-stream)
 	    (instruction-instruction instruction-stream)
-	    (instruction-next instruction-stream))))
+	    (instruction-next instruction-stream)))
 
 (define-structure (instruction (type vector))
   (offset false read-only true)

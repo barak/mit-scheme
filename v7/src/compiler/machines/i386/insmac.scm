@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/insmac.scm,v 1.3 1992/02/13 02:54:37 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/insmac.scm,v 1.4 1992/02/13 05:30:32 jinx Exp $
 $Vax-Header: insmac.scm,v 1.12 89/05/17 20:29:15 GMT jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -51,14 +51,14 @@ MIT in each case. |#
 				  (categories (car actions))
 				  (mode (cadr actions))
 				  (register (caddr actions))
-				  (extension (cdddr actions)))
+				  (tail (cdddr actions)))
 			      (declare (integrate keyword value))
 			      `(MAKE-EFFECTIVE-ADDRESS
 				',keyword
 				',categories
  				,(integer-syntaxer mode 'UNSIGNED 2)
 				,(integer-syntaxer register 'UNSIGNED 3)
-				,(process-fields value false))))))))
+				,(process-fields tail false))))))))
 
 ;; This one is necessary to distinguish between r/mW mW, etc.
 
