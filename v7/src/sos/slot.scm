@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: slot.scm,v 1.1 1997/06/04 06:09:18 cph Exp $
+;;; $Id: slot.scm,v 1.2 1997/06/17 08:10:41 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-96 Massachusetts Institute of Technology
 ;;;
@@ -173,35 +173,46 @@
 	(null? l1))))
 
 (define (compute-slot-descriptor class slots index)
-  (call-with-values
-      (lambda ()
-	(parse-slot-argument (merge-slot-arguments slots)))
-    (lambda (name properties)
-      (make-slot-descriptor name class index properties))))
+  (let ((slot (merge-slot-arguments slots)))
+    (make-slot-descriptor (car slot) class index (cdr slot))))
 
 (define (merge-slot-arguments slots)
-  (if (null? (cdr slots))
-      (car slots)
-      (let ((slots (reverse slots)))
-	(let ((result (list-copy (car slots))))
-	  (for-each (lambda (slot)
-		      (merge-slot-arguments! slot result))
-		    (cdr slots))
-	  result))))
+  (let ((slots
+	 (reverse!
+	  (map (lambda (slot)
+		 (cons (car slot)
+		       (plist->alist (cdr slot))))
+	       slots))))
+    (let ((result (car slots)))
+      (for-each
+       (lambda (slot)
+	 (for-each
+	  (lambda (x)
+	    (let ((names
+		   (or (list-search-positive interacting-options
+			 (lambda (names)
+			   (memq (car x) names)))
+		       (list names))))
+	      (let ((entry
+		     (let loop ((names interaction))
+		       (and (not (null? names))
+			    (or (assq (car names) (cdr result))
+				(loop (cdr names)))))))
+		(if entry
+		    (begin
+		      (set-car! entry (car x))
+		      (set-cdr! entry (cdr x)))
+		    (set-cdr! result (cons x (cdr result)))))))
+	  (cdr slot)))
+       (cdr slots))
+      result)))
 
-(define (merge-slot-arguments! x y)
-  (do ((x (cdr x) (cddr x)))
-      ((null? x))
-    (let ((key (car x))
-	  (value (cadr x)))
-      (let loop ((z (cdr y)))
-	(cond ((null? z) (set-cdr! y (cons* key value (cdr y))))
-	      ((eq? key (car z)) (set-car! (cdr z) value))
-	      (else (loop (cddr z))))))))
+(define interacting-options
+  '((INITIAL-VALUE INITIALIZER)))
 
-(define (parse-slot-argument argument)
-  (let loop ((plist (cdr argument)) (properties '()))
+(define (plist->alist plist)
+  (let loop ((plist plist) (alist '()))
     (if (null? plist)
-	(values (car argument) properties)
+	alist
 	(loop (cddr plist)
-	      (cons (cons (car plist) (cadr plist)) properties)))))
+	      (cons (cons (car plist) (cadr plist)) alist)))))
