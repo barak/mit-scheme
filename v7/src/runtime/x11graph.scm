@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.13 1992/01/30 00:38:45 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.14 1992/02/04 18:52:59 arthur Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -221,7 +221,9 @@ MIT in each case. |#
 (define (operation/close device)
   (x-graphics-device/process-events! device)
   (x-close-window (x-graphics-device/window device))
-  (remove-from-protection-list! window-list device))
+  (remove-from-protection-list!
+   window-list
+   (graphics-device/descriptor device)))
 
 (define (close-lost-windows-daemon)
   (clean-lost-protected-objects window-list x-close-window))
