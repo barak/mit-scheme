@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.sf,v 14.1 1988/06/13 12:07:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.sf,v 14.2 1988/10/12 06:26:29 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -33,5 +33,10 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 (sf/set-default-syntax-table! syntax-table/system-internal)
-(sf-directory ".")(cref/generate-all "runtim")(sf "runtim.con" "runtim.bcon")
+(sf-directory ".")
+;; Guarantee that the package modeller is loaded.
+(if (not (name->package '(CROSS-REFERENCE)))
+    (with-working-directory-pathname "../cref" (lambda () (load "make"))))
+
+(cref/generate-all "runtim")(sf "runtim.con" "runtim.bcon")
 (sf "runtim.ldr" "runtim.bldr")

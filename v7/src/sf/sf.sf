@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/sf.sf,v 4.1 1988/06/13 12:28:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/sf.sf,v 4.2 1988/10/12 06:27:11 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -36,5 +36,10 @@ MIT in each case. |#
 (sf-conditionally "object")
 (sf-conditionally "lsets")
 (sf-directory ".")
+
+;; Guarantee that the package modeller is loaded.
+(if (not (name->package '(CROSS-REFERENCE)))
+    (with-working-directory-pathname "../cref" (lambda () (load "make"))))
+
 (cref/generate-all "sf")(sf "sf.con" "sf.bcon")
 (sf "sf.ldr" "sf.bldr")
