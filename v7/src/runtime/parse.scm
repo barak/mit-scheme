@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.27 1994/12/02 01:50:28 adams Exp $
+$Id: parse.scm,v 14.28 1997/08/08 21:29:38 cph Exp $
 
-Copyright (c) 1988-94 Massachusetts Institute of Technology
+Copyright (c) 1988-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -76,6 +76,7 @@ MIT in each case. |#
   (set! *parser-associate-positions?* false)
   (set! *parser-associate-position* parser-associate-positions/default)
   (set! *parser-current-position* parser-current-position/default)
+  (set! *parser-canonicalize-symbols?* #t)
   (set! system-global-parser-table (make-system-global-parser-table))
   (set-current-parser-table! system-global-parser-table))
 
@@ -351,9 +352,12 @@ MIT in each case. |#
   (string->number string
 		  (if (memv *parser-radix* '(2 8 10 16)) *parser-radix* 10)))
 
+(define *parser-canonicalize-symbols?*)
+
 (define (intern-string! string)
   ;; Special version of `intern' to reduce consing and increase speed.
-  (substring-downcase! string 0 (string-length string))
+  (if *parser-canonicalize-symbols?*
+      (substring-downcase! string 0 (string-length string)))
   (string->symbol string))
 
 (define-accretor (parse-object/symbol)

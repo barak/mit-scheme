@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.292 1997/07/26 07:40:06 cph Exp $
+$Id: runtime.pkg,v 14.293 1997/08/08 21:29:26 cph Exp $
 
 Copyright (c) 1988-97 Massachusetts Institute of Technology
 
@@ -1625,6 +1625,7 @@ MIT in each case. |#
   (files "parse")
   (parent ())
   (export ()
+	  *parser-canonicalize-symbols?*
 	  *parser-radix*
 	  parse-object
 	  parse-objects
