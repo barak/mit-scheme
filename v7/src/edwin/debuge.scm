@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/debuge.scm,v 1.45 1992/04/04 13:07:06 cph Exp $
+;;;	$Id: debuge.scm,v 1.46 1992/11/09 20:45:33 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -60,7 +60,9 @@
 		       (and (y-or-n? "Save buffer "
 				     (buffer-name buffer)
 				     " (Y or N)? ")
-			    (prompt-for-expression "Filename")))
+			    ((access prompt-for-expression
+				     system-global-environment)
+			     "Filename")))
 		      ((integer? (pathname-version pathname))
 		       (pathname-new-version pathname 'NEWEST))
 		      (else
@@ -77,10 +79,13 @@
 		    (write-string filename)
 		    (write-string "'")
 		    (let ((region (buffer-unclipped-region buffer)))
-		      (group-write-to-file (region-group region)
-					   (region-start-index region)
-					   (region-end-index region)
-					   filename))
+		      (group-write-to-file
+		       (and *translate-file-data-on-output?*
+			    (pathname-newline-translation pathname))
+		       (region-group region)
+		       (region-start-index region)
+		       (region-end-index region)
+		       filename))
 		    (write-string " -- done")
 		    (set-buffer-pathname! buffer pathname)
 		    (set-buffer-truename! buffer (->truename pathname))
