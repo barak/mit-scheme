@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 1.7 1987/05/31 22:56:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 1.8 1987/06/01 16:03:38 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -107,9 +107,21 @@ MIT in each case. |#
   (interpreter-lookup-maker %make-interpreter-call:access))
 
 (define (rtl:make-interpreter-call:cache-assignment name value)
-  (expression-simplify-for-statement value
-    (lambda (value)
-      (%make-interpreter-call:cache-assignment name value))))
+  (expression-simplify-for-statement name
+    (lambda (name)
+      (expression-simplify-for-statement value
+	(lambda (value)
+	  (%make-interpreter-call:cache-assignment name value))))))
+
+(define (rtl:make-interpreter-call:cache-reference name safe?)
+  (expression-simplify-for-statement name
+    (lambda (name)
+      (%make-interpreter-call:cache-reference name safe?))))
+
+(define (rtl:make-interpreter-call:cache-unassigned? name)
+  (expression-simplify-for-statement name
+    (lambda (name)
+      (%make-interpreter-call:cache-unassigned? name))))
 
 (define rtl:make-interpreter-call:define
   (interpreter-assignment-maker %make-interpreter-call:define))
