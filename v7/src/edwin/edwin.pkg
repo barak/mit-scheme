@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.63 1991/10/11 03:35:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.64 1991/10/11 18:33:57 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -892,6 +892,7 @@ MIT in each case. |#
 	  edwin-mode$mail
 	  edwin-variable$mail-archive-file-name
 	  edwin-variable$mail-default-reply-to
+	  edwin-variable$mail-header-function
 	  edwin-variable$mail-header-separator
 	  edwin-variable$mail-interactive
 	  edwin-variable$mail-mode-hook
@@ -901,7 +902,6 @@ MIT in each case. |#
 	  edwin-variable$mail-yank-ignored-headers
 	  edwin-variable$send-mail-procedure
 	  edwin-variable$sendmail-program
-	  edwin-variable$mail-header-function
 	  mail-position-on-field
 	  mail-position-on-cc-field
 	  make-mail-buffer))
