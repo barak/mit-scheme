@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.1 2000/05/11 00:47:42 cph Exp $
+$Id: todo.txt,v 1.2 2000/05/11 02:04:34 cph Exp $
 
 * Must be able to handle malformed headers in incoming mail.
   Generating a low-level error in this situation is unacceptable.
@@ -23,7 +23,7 @@ $Id: todo.txt,v 1.1 2000/05/11 00:47:42 cph Exp $
 
 * Write summary browser for folders.
 
-* Write folder browser for servers.
+* Write folder browser for IMAP servers.
 
 * Implement cache that saves information about messages on disk.  This
   should use UIDs for IMAP folders; for other folders perhaps the
@@ -32,4 +32,16 @@ $Id: todo.txt,v 1.1 2000/05/11 00:47:42 cph Exp $
 * Reimplement UID synchronization.  Take advantage of monotonic UID
   numbers to discover largest prefix range that hasn't changed.
   Binary search can be used which should produce excellent results on
-  large folders.
+  large folders.  UID FETCH command should be useful for this.
+
+* Password memoization should be controllable from the editor.
+
+* Implement background thread to periodically send NOOP to IMAP server
+  both to check for new mail and to keep the connection alive.
+
+* Recovery from server disconnection should be more transparent.
+  Should attempt to reconnect and signal error only if that fails.
+
+* Eliminate message properties.  Store this information in the headers
+  and translate as needed.  E.g. unix from line in umail message would
+  be stored as header in RMAIL message.
