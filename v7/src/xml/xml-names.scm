@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-names.scm,v 1.6 2004/10/14 02:33:37 cph Exp $
+$Id: xml-names.scm,v 1.7 2004/10/14 02:48:51 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -293,11 +293,14 @@ USA.
 (define-record-type <xml-namespace-iri>
     (%make-xml-namespace-iri string)
     xml-namespace-iri?
-  (string xml-namespace-iri-string))
+  (string %xml-namespace-iri-string))
 
 (define (guarantee-xml-namespace-iri object caller)
   (if (not (xml-namespace-iri? object))
       (error:not-xml-namespace-iri object caller)))
+
+(define (xml-namespace-iri-string iri)
+  (string-copy (%xml-namespace-iri-string iri)))
 
 (define (null-xml-namespace-iri? object)
   (eq? object null-namespace-iri))
