@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tximod.scm,v 1.15 1991/10/02 09:16:18 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tximod.scm,v 1.16 1991/10/03 21:30:47 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987-91 Massachusetts Institute of Technology
 ;;;
@@ -69,6 +69,7 @@ commands to save keystrokes."
   (local-set-variable! syntax-table texinfo-mode:syntax-table)
   (local-set-variable! fill-column 72)
   (local-set-variable! require-final-newline true)
+  (local-set-variable! indent-tabs-mode false)
   (local-set-variable!
    page-delimiter
    "^@\\(chapter\\|unnumbered \\|appendix \\|majorheading\\|chapheading\\)")
