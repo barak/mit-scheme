@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.496 2004/10/01 02:32:03 cph Exp $
+$Id: runtime.pkg,v 14.497 2004/10/01 02:48:06 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -158,6 +158,7 @@ USA.
 	  unparser-method?
 	  unparser/standard-method
 	  with-absolutely-no-interrupts
+	  with-limited-interrupts
 	  without-interrupts))
 
 (define-package (runtime equality)
@@ -356,7 +357,6 @@ USA.
 	  wait-interval
 	  with-history-disabled
 	  with-interrupt-mask
-	  with-limited-interrupts
 	  with-values
 	  write-to-string)
   (initialization (initialize-package!)))

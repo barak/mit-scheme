@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: boot.scm,v 14.17 2004/10/01 02:31:51 cph Exp $
+$Id: boot.scm,v 14.18 2004/10/01 02:47:41 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1992 Massachusetts Institute of Technology
 Copyright 1993,1996,2001,2004 Massachusetts Institute of Technology
@@ -104,6 +104,10 @@ USA.
     (lambda (interrupt-mask)
       interrupt-mask
       (thunk))))
+
+(define (with-limited-interrupts limit-mask procedure)
+  (with-interrupt-mask (fix:and limit-mask (get-interrupt-enables))
+    procedure))
 
 (define-primitives
   (object-pure? pure?)
