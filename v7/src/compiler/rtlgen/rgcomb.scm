@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.9 1987/04/17 07:46:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.10 1987/04/18 00:18:35 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -63,6 +63,9 @@ MIT in each case. |#
       (combination:subproblem combination offset rest-generator)))
 
 (define (combination:constant combination offset rest-generator)
+  ;; Can't do anything special here without side-effect analysis.
+  (combination:normal combination offset rest-generator)
+#|
   (let ((value (combination-value combination))
 	(next (snode-next combination)))
     (cond ((value-temporary? value)
@@ -75,7 +78,9 @@ MIT in each case. |#
 				rvalue->sexpression))
 	  ((value-ignore? value)
 	   (generate:next next offset rest-generator))
-	  (else (error "Unknown combination value" value)))))
+	  (else (error "Unknown combination value" value))))
+|#
+  )
 
 (define (combination:primitive combination offset rest-generator)
   (let ((open-coder
