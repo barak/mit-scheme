@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.39 1987/12/04 22:13:39 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.40 1988/02/20 19:50:27 jinx Exp $ */
 
 /* Memory management top level.  Garbage collection to disk.
 
@@ -706,6 +706,7 @@ GC(initial_weak_chain)
 
 DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_Garbage_Collect, 1)
 {
+  extern unsigned long gc_counter;
   Pointer GC_Daemon_Proc;
   Primitive_1_Arg();
 
@@ -715,6 +716,7 @@ DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_Garbage_Collect, 1)
     Microcode_Termination(TERM_GC_OUT_OF_SPACE);
     /*NOTREACHED*/
   }
+  gc_counter += 1;
   GC_Reserve = Get_Integer(Arg1);
   GC(NIL);
   CLEAR_INTERRUPT(INT_GC);

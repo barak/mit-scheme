@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.45 1988/02/20 06:16:41 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.46 1988/02/20 19:50:46 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -649,9 +649,14 @@ Microcode_Termination(code)
   /*NOTREACHED*/
 }
 
+/* Garbage collection debugging utilities. */
+
 extern Pointer
   *deadly_free,
   *deadly_scan;
+
+extern unsigned long
+  gc_counter;
 
 extern void
   gc_death();
@@ -662,6 +667,9 @@ extern char
 Pointer
   *deadly_free,
   *deadly_scan;
+
+unsigned long
+  gc_counter = 0;
 
 char
   gc_death_message_buffer[100];
