@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.63 2000/05/22 02:17:41 cph Exp $
+;;; $Id: imail-imap.scm,v 1.64 2000/05/22 03:01:18 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -68,11 +68,14 @@
        (string-ci=? (imap-url-host url1) (imap-url-host url2))
        (= (imap-url-port url1) (imap-url-port url2))))
 
-(define-method %parse-url-string (string default-url)
-  (or (parse-imap-url-string string default-url)
-      (error:bad-range-argument string 'PARSE-URL-STRING)))
+(define-method parse-url-body (string default-url)
+  (call-with-values (lambda () (parse-imap-url-body string default-url))
+    (lambda (user-id host port mailbox)
+      (if user-id
+	  (make-imap-url user-id host port mailbox)
+	  (error:bad-range-argument string 'PARSE-URL-BODY)))))
 
-(define parse-imap-url-string
+(define parse-imap-url-body
   (let ((parser
 	 (let ((//server
 		(sequence-parser (noise-parser (string-matcher "//"))
@@ -86,59 +89,60 @@
 	    imap:parse:enc-mailbox))))
     (lambda (string default-url)
       (let ((pv (parse-string parser string)))
-	(and pv
-	     (make-imap-url (or (parser-token pv 'USER-ID)
-				(imap-url-user-id default-url))
-			    (or (parser-token pv 'HOST)
-				(imap-url-host default-url))
-			    (cond ((parser-token pv 'PORT) => string->number)
-				  ((parser-token pv 'HOST) 143)
-				  (else (imap-url-port default-url)))
-			    (or (parser-token pv 'MAILBOX)
-				(imap-url-mailbox default-url))))))))
+	(if pv
+	    (values (or (parser-token pv 'USER-ID)
+			(imap-url-user-id default-url))
+		    (or (parser-token pv 'HOST)
+			(imap-url-host default-url))
+		    (cond ((parser-token pv 'PORT) => string->number)
+			  ((parser-token pv 'HOST) 143)
+			  (else (imap-url-port default-url)))
+		    (or (parser-token pv 'MAILBOX)
+			(imap-url-mailbox default-url)))
+	    (values #f #f #f #f))))))
 
 (define-method %url-complete-string
     ((string <string>) (default-url <imap-url>)
 		       if-unique if-not-unique if-not-found)
-  (call-with-values
-      (lambda () (parse-imap-completion-url-string string default-url))
+  (call-with-values (lambda () (imap-completion-args string default-url))
     (lambda (mailbox url)
       (if mailbox
 	  (let ((convert
 		 (lambda (mailbox)
-		   (url-body (parse-imap-url-string mailbox url)))))
+		   (make-imap-url-string (imap-url-user-id url)
+					 (imap-url-host url)
+					 (imap-url-port url)
+					 mailbox))))
 	    (complete-imap-mailbox mailbox url
 	      (lambda (mailbox)
 		(if-unique (convert mailbox)))
 	      (lambda (prefix get-mailboxes)
-		(if-not-unique (if (string-null? prefix)
-				   (make-imap-url-string (imap-url-user-id url)
-							 (imap-url-host url)
-							 (imap-url-port url)
-							 "")
-				   (convert prefix))
+		(if-not-unique (convert prefix)
 			       (lambda () (map convert (get-mailboxes)))))
 	      if-not-found))
 	  (if-not-found)))))
 
 (define-method %url-string-completions
     ((string <string>) (default-url <imap-url>))
-  (call-with-values
-      (lambda () (parse-imap-completion-url-string string default-url))
+  (call-with-values (lambda () (imap-completion-args string default-url))
     (lambda (mailbox url)
       (if mailbox
 	  (map (lambda (mailbox)
-		 (url-body (parse-imap-url-string mailbox url)))
+		 (make-imap-url-string (imap-url-user-id url)
+				       (imap-url-host url)
+				       (imap-url-port url)
+				       mailbox))
 	       (imap-mailbox-completions mailbox url))
 	  '()))))
 
-(define (parse-imap-completion-url-string string default-url)
-  (cond ((string-null? string)
-	 (values string default-url))
-	((parse-imap-url-string string default-url)
-	 => (lambda (url) (values (imap-url-mailbox url) url)))
-	(else
-	 (values #f #f))))
+(define (imap-completion-args string default-url)
+  (if (string-null? string)
+      (values string default-url)
+      (call-with-values (lambda () (parse-imap-url-body string default-url))
+	(lambda (user-id host port mailbox)
+	  (if user-id
+	      (values mailbox (make-imap-url user-id host port "inbox"))
+	      (values #f #f))))))
 
 (define (complete-imap-mailbox mailbox url
 			       if-unique if-not-unique if-not-found)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.23 2000/05/21 00:03:32 cph Exp $
+;;; $Id: imail-util.scm,v 1.24 2000/05/22 03:01:30 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -296,75 +296,6 @@
 
 (define derived-port-condition
   (condition-accessor condition-type:derived-port-error 'CONDITION))
-
-;;;; Ordered-string-vector completion
-
-(define (hash-table/ordered-key-vector table <)
-  (let ((v (list->vector (hash-table/key-list table))))
-    (sort! v <)
-    v))
-
-(define (ordered-string-vector-completer strings)
-  (lambda (string if-unique if-not-unique if-not-found)
-    (ordered-vector-minimum-match strings string identity-procedure
-				  string-order (string-prefix-matcher string)
-				  if-unique if-not-unique if-not-found)))
-
-(define (ordered-string-vector-completer-ci strings)
-  (lambda (string if-unique if-not-unique if-not-found)
-    (ordered-vector-minimum-match strings string identity-procedure
-				  string-order-ci
-				  (string-prefix-matcher-ci string)
-				  if-unique if-not-unique if-not-found)))
-
-(define (ordered-string-vector-matches strings)
-  (lambda (string)
-    (ordered-vector-matches strings string identity-procedure
-			    string-order (string-prefix-matcher string))))
-
-(define (ordered-string-vector-matches-ci strings)
-  (lambda (string)
-    (ordered-vector-matches strings string identity-procedure
-			    string-order-ci
-			    (string-prefix-matcher-ci string))))
-
-(define (string-order x y)
-  (let ((lx (string-length x))
-	(ly (string-length y)))
-    (let ((i (substring-match-forward x 0 lx y 0 ly)))
-      (if (fix:< i lx)
-	  (if (fix:< i ly)
-	      (if (char<? (string-ref x i) (string-ref y i)) 'LESS 'GREATER)
-	      'GREATER)
-	  (if (fix:< i ly)
-	      'LESS
-	      'EQUAL)))))
-
-(define (string-order-ci x y)
-  (let ((lx (string-length x))
-	(ly (string-length y)))
-    (let ((i (substring-match-forward-ci x 0 lx y 0 ly)))
-      (if (fix:< i lx)
-	  (if (fix:< i ly)
-	      (if (char-ci<? (string-ref x i) (string-ref y i)) 'LESS 'GREATER)
-	      'GREATER)
-	  (if (fix:< i ly)
-	      'LESS
-	      'EQUAL)))))
-
-(define (string-prefix-matcher prefix)
-  (let ((l (string-length prefix)))
-    (lambda (x y)
-      (let ((i (string-match-forward x y)))
-	(and (fix:>= i l)
-	     i)))))
-
-(define (string-prefix-matcher-ci prefix)
-  (let ((l (string-length prefix)))
-    (lambda (x y)
-      (let ((i (string-match-forward-ci x y)))
-	(and (fix:>= i l)
-	     i)))))
 
 ;;;; Filename Completion
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.28 2000/05/22 02:17:55 cph Exp $
+;;; $Id: imail-umail.scm,v 1.29 2000/05/22 03:01:28 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -32,7 +32,7 @@
     (lambda (pathname)
       (intern-url (constructor (merge-pathnames pathname))))))
 
-(define-method %parse-url-string ((string <string>) (default-url <umail-url>))
+(define-method parse-url-body ((string <string>) (default-url <umail-url>))
   (make-umail-url (merge-pathnames string (file-url-pathname default-url))))
 
 (define-file-url-completers <umail-url>

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.79 2000/05/22 02:17:35 cph Exp $
+;;; $Id: imail-core.scm,v 1.80 2000/05/22 03:01:13 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -53,8 +53,11 @@
 ;; Return the body of URL as a string.
 (define-generic url-body (url))
 
+(define (make-url-string protocol body)
+  (string-append protocol ":" body))
+
 (define (url->string url)
-  (string-append (url-protocol url) ":" (url-body url)))
+  (make-url-string (url-protocol url) (url-body url)))
 
 (define-method write-instance ((url <url>) port)
   (write-instance-helper 'URL url port
@@ -76,15 +79,15 @@
 (define (parse-url-string string get-default-url)
   (let ((colon (string-find-next-char string #\:)))
     (if colon
-	(%parse-url-string (string-tail string (fix:+ colon 1))
+	(parse-url-body (string-tail string (fix:+ colon 1))
 			   (get-default-url (string-head string colon)))
-	(%parse-url-string string (get-default-url #f)))))
+	(parse-url-body string (get-default-url #f)))))
 
 ;; Protocol-specific parsing.  Dispatch on the class of DEFAULT-URL.
 ;; Each method is responsible for calling INTERN-URL on the result of
 ;; the parse, and returning the interned URL.  Illegal syntax in
 ;; STRING must cause an error to be signalled.
-(define-generic %parse-url-string (string default-url))
+(define-generic parse-url-body (string default-url))
 
 (define (intern-url url)
   (let ((string (url->string url)))
@@ -120,33 +123,17 @@
 
 (define (url-complete-string string get-default-url
 			     if-unique if-not-unique if-not-found)
-  (let ((colon (string-find-next-char string #\:)))
-    (if colon
-	(let ((name (string-head string colon)))
-	  (if (url-protocol-name? name)
-	      (let ((prepend
-		     (lambda (string) (string-append name ":" string))))
-		(%url-complete-string (string-tail string (fix:+ colon 1))
-				      (get-default-url name)
-				      (lambda (string)
-					(if-unique (prepend string)))
-				      (lambda (prefix get-completions)
-					(if-not-unique
-					 (prepend prefix)
-					 (lambda ()
-					   (map prepend (get-completions)))))
-				      if-not-found))
-	      (if-not-found)))
-	(let ((colonify (lambda (name) (string-append name ":"))))
-	  ((ordered-string-vector-completer
-	    (hash-table/ordered-key-vector url-protocols string<?))
-	   string
-	   (lambda (name)
-	     (if-unique (colonify name)))
-	   (lambda (prefix get-completions)
-	     (if-not-unique prefix
-			    (lambda () (map colonify (get-completions)))))
-	   if-not-found)))))
+  (call-with-values (lambda () (url-completion-args string get-default-url))
+    (lambda (body default-url prepend)
+      (if default-url
+	  (%url-complete-string body default-url
+	    (lambda (body)
+	      (if-unique (prepend body)))
+	    (lambda (prefix get-completions)
+	      (if-not-unique (prepend prefix)
+			     (lambda () (map prepend (get-completions)))))
+	    if-not-found)
+	  (if-not-found)))))
 
 (define-generic %url-complete-string
     (string default-url if-unique if-not-unique if-not-found))
@@ -155,22 +142,29 @@
 ;; See PARSE-URL-STRING for a description of GET-DEFAULT-URL.
 
 (define (url-string-completions string get-default-url)
-  (let ((colon (string-find-next-char string #\:)))
-    (if colon
-	(let ((name (string-head string colon)))
-	  (if (url-protocol-name? name)
-	      (map (lambda (string) (string-append name ":" string))
-		   (%url-string-completions
-		    (string-tail string (fix:+ colon 1))
-		    (get-default-url name)))
-	      '()))
-	(map (lambda (name) (string-append name ":"))
-	     (vector->list
-	      ((ordered-string-vector-matches
-		(hash-table/ordered-key-vector url-protocols string<?))
-	       string))))))
+  (call-with-values (lambda () (url-completion-args string get-default-url))
+    (lambda (body default-url prepend)
+      (map prepend
+	   (if default-url
+	       (%url-string-completions body default-url)
+	       '())))))
 
 (define-generic %url-string-completions (string default-url))
+
+(define (url-completion-args string get-default-url)
+  (let ((colon (string-find-next-char string #\:))
+	(make-prepend
+	 (lambda (protocol)
+	   (lambda (body)
+	     (make-url-string protocol body)))))
+    (if colon
+	(let ((protocol (string-head string colon)))
+	  (values (string-tail string (fix:+ colon 1))
+		  (and (url-protocol-name? protocol)
+		       (get-default-url protocol))
+		  (make-prepend protocol)))
+	(let ((url (get-default-url #f)))
+	  (values string url (make-prepend (url-protocol url)))))))
 
 ;;;; Server operations
 

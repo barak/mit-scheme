@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.34 2000/05/22 02:17:47 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.35 2000/05/22 03:01:24 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -32,7 +32,7 @@
     (lambda (pathname)
       (intern-url (constructor (merge-pathnames pathname))))))
 
-(define-method %parse-url-string ((string <string>) (default-url <rmail-url>))
+(define-method parse-url-body ((string <string>) (default-url <rmail-url>))
   (make-rmail-url (merge-pathnames string (file-url-pathname default-url))))
 
 (define-file-url-completers <rmail-url>
