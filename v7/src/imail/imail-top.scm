@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.36 2000/05/05 17:18:17 cph Exp $
+;;; $Id: imail-top.scm,v 1.37 2000/05/08 15:46:20 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -524,8 +524,14 @@ With prefix argument N moves backward N messages with these flags."
 	 (if (or (default-object? buffer) (not buffer))
 	     (selected-buffer)
 	     buffer)))
-    (let ((message (buffer-get buffer 'IMAIL-MESSAGE #f)))
-      (or message
+    (let ((folder (selected-folder #f buffer))
+	  (message (buffer-get buffer 'IMAIL-MESSAGE #f)))
+      (or (and message
+	       (if (eqv? folder (message-folder message))
+		   message
+		   (let ((message (first-unseen-message folder)))
+		     (buffer-put! buffer 'IMAIL-MESSAGE message)
+		     message)))
 	  (and (if (default-object? error?) #t error?)
 	       (error "No selected IMAIL message."))))))
 
