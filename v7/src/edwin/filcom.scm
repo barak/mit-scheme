@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.157 1991/05/21 21:46:35 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.158 1991/09/06 16:19:44 bal Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -598,11 +598,18 @@ If a file with the new name already exists, confirmation is requested first."
   (define (loop directory filenames)
     (let ((unique-case
 	   (lambda (filename)
-	     (if-unique
-	      (let ((filename (os/make-filename directory filename)))
-		(if (os/file-directory? filename)
-		    (os/filename-as-directory filename)
-		    filename)))))
+	     (let ((filename (os/make-filename directory filename)))
+	       (if (os/file-directory? filename)
+		   ;; Note: We assume here that all directories contain
+		   ;; at least one file.  Thus directory names should 
+		   ;; complete, but not uniquely.
+		   (let ((dir (os/filename-as-directory filename)))
+		     (if-not-unique dir
+				    (lambda ()
+				      (canonicalize-filename-completions
+				       dir
+				       (os/directory-list dir)))))
+		   (if-unique filename)))))
 	  (non-unique-case
 	   (lambda (filenames*)
 	     (let ((string (string-greatest-common-prefix filenames*)))
