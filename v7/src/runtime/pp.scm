@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.24 1992/03/25 23:51:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.25 1992/05/20 18:29:29 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -54,7 +54,7 @@ MIT in each case. |#
 	  (NAMED-LAMBDA . ,print-procedure)))
   (set! dispatch-list code-dispatch-list)
   (set! dispatch-default print-combination)
-  (set! cocked-object (generate-uninterned-symbol 'cocked-object))
+  (set! cocked-object (generate-uninterned-symbol))
   unspecific)
 
 (define *pp-named-lambda->define?* true)
