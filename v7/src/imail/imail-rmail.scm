@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.59 2001/03/19 22:26:01 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.60 2001/03/19 22:51:50 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -53,7 +53,7 @@
   (if (file-exists? (file-url-pathname url))
       (error:bad-range-argument url 'CREATE-FOLDER))
   (let ((folder (make-rmail-folder url)))
-    (set-file-folder-messages! folder '())
+    (set-file-folder-messages! folder '#())
     (set-rmail-folder-header-fields!
      folder
      (compute-rmail-folder-header-fields folder))
@@ -133,7 +133,7 @@
 		(begin
 		  (attach-message! message folder index)
 		  (loop line (+ index 1) (cons message messages)))
-		(reverse! messages))))))))
+		(list->vector (reverse! messages)))))))))
 
 (define (read-rmail-prolog port)
   (if (not (rmail-prolog-start-line? (read-required-line port)))
@@ -242,8 +242,9 @@
   (call-with-binary-output-file pathname
     (lambda (port)
       (write-rmail-file-header (rmail-folder-header-fields folder) port)
-      (for-each (lambda (message) (write-rmail-message message port))
-		(file-folder-messages folder)))))
+      (for-each-vector-element (file-folder-messages folder)
+	(lambda (message)
+	  (write-rmail-message message port))))))
 
 (define-method append-message-to-file ((message <message>) (url <rmail-url>))
   (let ((pathname (file-url-pathname url)))

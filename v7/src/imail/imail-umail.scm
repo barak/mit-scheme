@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.41 2001/03/19 19:33:03 cph Exp $
+;;; $Id: imail-umail.scm,v 1.42 2001/03/19 22:51:53 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -53,7 +53,7 @@
   (if (file-exists? (file-url-pathname url))
       (error:bad-range-argument url 'CREATE-FOLDER))
   (let ((folder (make-umail-folder url)))
-    (set-file-folder-messages! folder '())
+    (set-file-folder-messages! folder '#())
     (set-file-folder-file-modification-time! folder (get-universal-time))
     (set-file-folder-file-modification-count!
      folder
@@ -103,7 +103,7 @@
     (lambda (port)
       (let ((from-line (read-line port)))
 	(if (eof-object? from-line)
-	    '()
+	    '#()
 	    (begin
 	      (if (not (umail-delimiter? from-line))
 		  (error "Malformed unix mail file:" port))
@@ -121,7 +121,7 @@
 		    (let ((messages (cons message messages)))
 		      (if from-line
 			  (loop from-line (+ index 1) messages)
-			  (reverse! messages))))))))))))
+			  (list->vector (reverse! messages)))))))))))))
 
 (define (read-umail-message folder from-line port delimiter?)
   (let ((h-start (xstring-port/position port)))
@@ -166,8 +166,9 @@
 (define-method write-file-folder ((folder <umail-folder>) pathname)
   (call-with-binary-output-file pathname
     (lambda (port)
-      (for-each (lambda (message) (write-umail-message message #t port))
-		(file-folder-messages folder)))))
+      (for-each-vector-element (file-folder-messages folder)
+	(lambda (message)
+	  (write-umail-message message #t port))))))
 
 (define-method append-message-to-file ((message <message>) (url <umail-url>))
   (let ((port (open-binary-output-file (file-url-pathname url) #t)))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.60 2001/03/19 19:32:58 cph Exp $
+;;; $Id: imail-file.scm,v 1.61 2001/03/19 22:51:48 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -157,7 +157,7 @@
        (if (not (eq? 'UNKNOWN messages))
 	   (begin
 	     (set-file-folder-messages! folder 'UNKNOWN)
-	     (for-each detach-message! messages)))))))
+	     (for-each-vector-element messages detach-message!)))))))
 
 (define (discard-file-folder-xstring folder)
   (without-interrupts
@@ -167,10 +167,10 @@
      (set-file-folder-file-modification-count! folder #f))))
 
 (define-method folder-length ((folder <file-folder>))
-  (length (file-folder-messages folder)))
+  (vector-length (file-folder-messages folder)))
 
 (define-method %get-message ((folder <file-folder>) index)
-  (list-ref (file-folder-messages folder) index))
+  (vector-ref (file-folder-messages folder) index))
 
 (define-method %append-message ((message <message>) (url <file-url>))
   (let ((folder (get-memoized-folder url)))
@@ -181,21 +181,11 @@
 	     (set-file-folder-messages!
 	      folder
 	      (let ((messages (file-folder-messages folder)))
-		(if (pair? messages)
-		    (begin
-		      (let loop
-			  ((prev messages)
-			   (this (cdr messages))
-			   (index 1))
-			(if (pair? this)
-			    (loop this (cdr this) (fix:+ index 1))
-			    (begin
-			      (attach-message! message folder index)
-			      (set-cdr! prev (list message)))))
-		      messages)
-		    (begin
-		      (attach-message! message folder 0)
-		      (list message))))))))
+		(let ((n (vector-length messages)))
+		  (let ((messages (vector-grow messages (fix:+ n 1))))
+		    (attach-message! message folder n)
+		    (vector-set! messages n message)
+		    messages)))))))
 	(append-message-to-file message url))))
 
 (define-generic make-message-copy (message folder))
@@ -204,27 +194,31 @@
 (define-method expunge-deleted-messages ((folder <file-folder>))
   (without-interrupts
    (lambda ()
-     (let find-first ((messages (file-folder-messages folder)) (prev #f))
-       (if (pair? messages)
-	   (if (message-deleted? (car messages))
-	       (let loop
-		   ((messages messages)
-		    (prev prev)
-		    (index (message-index (car messages))))
-		 (if (pair? messages)
-		     (let ((next (cdr messages)))
-		       (if (message-deleted? (car messages))
-			   (begin
-			     (detach-message! (car messages))
-			     (if prev
-				 (set-cdr! prev next)
-				 (set-file-folder-messages! folder next))
-			     (folder-modified! folder 'EXPUNGE index)
-			     (loop next prev index))
-			   (begin
-			     (set-message-index! (car messages) index)
-			     (loop (cdr messages) messages (+ index 1)))))))
-	       (find-first (cdr messages) messages)))))))
+     (let ((messages (file-folder-messages folder)))
+       (let ((n (vector-length messages)))
+	 (let ((n-deleted
+		(let loop ((i 0) (n-deleted 0))
+		  (if (fix:< i n)
+		      (loop (fix:+ i 1)
+			    (if (message-deleted? (vector-ref messages i))
+				(fix:+ n-deleted 1)
+				n-deleted))
+		      n-deleted))))
+	   (if (fix:> n-deleted 0)
+	       (let ((messages* (make-vector (- n n-deleted))))
+		 (let loop ((i 0) (i* 0))
+		   (if (fix:< i n)
+		       (let ((m (vector-ref messages i)))
+			 (if (message-deleted? m)
+			     (begin
+			       (detach-message! m)
+			       (folder-modified! folder 'EXPUNGE i*)
+			       (loop (fix:+ i 1) i*))
+			     (begin
+			       (set-message-index! m i*)
+			       (vector-set! messages* i* m)
+			       (loop (fix:+ i 1) (fix:+ i* 1)))))))
+		 (set-file-folder-messages! folder messages*)))))))))
 
 (define-method search-folder ((folder <file-folder>) criteria)
   (cond ((string? criteria)
