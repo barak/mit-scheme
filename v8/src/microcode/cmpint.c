@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.69 1993/09/11 14:20:38 gjr Exp $
+$Id: cmpint.c,v 1.70 1993/09/11 19:41:26 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -2393,7 +2393,7 @@ DEFUN (compiled_entry_type,
       {
         kind = KIND_CONTINUATION;
         field1 = CONTINUATION_RETURN_TO_INTERPRETER;
-        field2 = 0;
+        field2 = ((long) (entry != return_to_interpreter));
         break;
       }
       default:
