@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/6001.sf,v 1.6 1992/09/01 20:55:54 cph Exp $
+$Id: 6001.sf,v 1.7 1992/09/10 07:33:15 cph Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -39,7 +39,8 @@ MIT in each case. |#
 
 (fluid-let ((sf/default-syntax-table
 	     (access edwin-syntax-table (->environment '(edwin)))))
-  (sf-conditionally "edextra"))
+  (sf-conditionally "edextra")
+  (sf-conditionally "floppy"))
 
 ;; Guarantee that the package modeller is loaded.
 (if (not (name->package '(CROSS-REFERENCE)))
