@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dirunx.scm,v 1.2 1993/04/15 10:13:05 cph Exp $
+;;;	$Id: dirunx.scm,v 1.3 1993/07/22 19:45:42 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
 ;;;
@@ -77,11 +77,11 @@
 	pathname
 	(let ((old-type (pathname-type pathname)))
 	  (cond ((not old-type)
-		 "z")
-		((string=? old-type "z")
+		 "gz")
+		((string=? old-type "gz")
 		 old-type)
 		(else
-		 (string-append old-type ".z")))))))))
+		 (string-append old-type ".gz")))))))))
 
 (define-command dired-uncompress
   "Uncompress a file using gunzip."
@@ -96,7 +96,8 @@
       (dired-redisplay
        (if (let ((type (pathname-type pathname)))
 	     (and type
-		  (or (string=? "z" type)
+		  (or (string=? "gz" type)
+		      (string=? "z" type)
 		      (string=? "Z" type))))
 	   (pathname-new-type pathname false)
 	   pathname)))))
