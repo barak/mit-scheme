@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.19 1991/11/04 20:52:15 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.20 1992/01/13 19:20:25 cph Exp $
 ;;;
-;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -165,62 +165,77 @@ Includes the new backup.  Must be > 0."
 		   (= (file-attributes/gid attributes) (unix/current-gid)))))))
 
 (define (os/buffer-backup-pathname truename)
-  (let ((no-versions
-	 (lambda ()
-	   (values
-	    (->pathname (string-append (->namestring truename) "~"))
-	    '()))))
-    (if (eq? 'NEVER (ref-variable version-control))
-	(no-versions)
-	(let ((prefix (string-append (file-namestring truename) ".~")))
-	  (let ((filenames
-		 (os/directory-list-completions
-		  (directory-namestring truename)
-		  prefix))
-		(prefix-length (string-length prefix)))
-	    (let ((possibilities
-		   (list-transform-positive filenames
-		     (let ((non-numeric (char-set-invert char-set:numeric)))
-		       (lambda (filename)
-			 (let ((end (string-length filename)))
-			   (let ((last (-1+ end)))
-			     (and (char=? #\~ (string-ref filename last))
-				  (eqv? last
-					(substring-find-next-char-in-set
-					 filename
-					 prefix-length
-					 end
-					 non-numeric))))))))))
-	      (let ((versions
-		     (sort (map (lambda (filename)
-				  (string->number
-				   (substring filename
-					      prefix-length
-					      (-1+ (string-length filename)))))
-				possibilities)
-			   <)))
-		(let ((high-water-mark (apply max (cons 0 versions))))
-		  (if (or (ref-variable version-control)
-			  (positive? high-water-mark))
-		      (let ((version->pathname
-			     (let ((directory (directory-pathname truename)))
-			       (lambda (version)
-				 (merge-pathnames
-				  (string-append prefix
-						 (number->string version)
-						 "~")
-				  directory)))))
-			(values
-			 (version->pathname (1+ high-water-mark))
-			 (let ((start (ref-variable kept-old-versions))
-			       (end
-				(- (length versions)
-				   (-1+ (ref-variable kept-new-versions)))))
-			   (if (< start end)
-			       (map version->pathname
-				    (sublist versions start end))
-			       '()))))
-		      (no-versions))))))))))
+  (with-values
+      (lambda ()
+	;; Handle compressed files specially.
+	(let ((type (pathname-type truename)))
+	  (if (member type unix/encoding-pathname-types)
+	      (values (->namestring (pathname-new-type truename false))
+		      (string-append "~." type))
+	      (values (->namestring truename) "~"))))
+    (lambda (filename suffix)
+      (let ((no-versions
+	     (lambda ()
+	       (values (->pathname (string-append filename suffix)) '()))))
+	(if (eq? 'NEVER (ref-variable version-control))
+	    (no-versions)
+	    (let ((prefix (string-append (file-namestring filename) ".~")))
+	      (let ((filenames
+		     (os/directory-list-completions
+		      (directory-namestring filename)
+		      prefix))
+		    (prefix-length (string-length prefix)))
+		(let ((versions
+		       (sort
+			(let ((pattern
+			       (re-compile-pattern
+				(string-append "\\([0-9]+\\)"
+					       (re-quote-string suffix)
+					       "$")
+				false)))
+			  (let loop ((filenames filenames))
+			    (cond ((null? filenames)
+				   '())
+				  ((re-match-substring-forward
+				    pattern false false
+				    (car filenames)
+				    prefix-length
+				    (string-length (car filenames)))
+				   (let ((version
+					  (string->number
+					   (substring
+					    (car filenames)
+					    (re-match-start-index 1)
+					    (re-match-end-index 1)))))
+				     (cons version
+					   (loop (cdr filenames)))))
+				  (else
+				   (loop (cdr filenames))))))
+			<)))
+		  (let ((high-water-mark (apply max (cons 0 versions))))
+		    (if (or (ref-variable version-control)
+			    (positive? high-water-mark))
+			(let ((version->pathname
+			       (let ((directory
+				      (directory-pathname filename)))
+				 (lambda (version)
+				   (merge-pathnames
+				    (string-append prefix
+						   (number->string version)
+						   suffix)
+				    directory)))))
+			  (values
+			   (version->pathname (+ high-water-mark 1))
+			   (let ((start (ref-variable kept-old-versions))
+				 (end
+				  (- (length versions)
+				     (- (ref-variable kept-new-versions)
+					1))))
+			     (if (< start end)
+				 (map version->pathname
+				      (sublist versions start end))
+				 '()))))
+			(no-versions)))))))))))
 
 (define (os/directory-list directory)
   ((ucode-primitive directory-close 0))
@@ -265,12 +280,22 @@ Includes the new backup.  Must be > 0."
       (if index
 	  (substring filename (+ index 1) end)
 	  filename))))
+
+(define unix/encoding-pathname-types
+  '("Z"))
+
+(define (os/pathname-type-for-mode pathname)
+  (let ((type (pathname-type pathname)))
+    (if (member type unix/encoding-pathname-types)
+	(pathname-type (->namestring (pathname-new-type pathname false)))
+	type)))
 
 (define (os/completion-ignored-extensions)
-  (list-copy
-   '(".o" ".elc" "~" ".bin" ".lbin" ".fasl"
-     ".dvi" ".toc" ".log" ".aux"
-     ".lof" ".blg" ".bbl" ".glo" ".idx" ".lot")))
+  (append '(".o" ".elc" "~" ".bin" ".lbin" ".fasl"
+		 ".dvi" ".toc" ".log" ".aux"
+		 ".lof" ".blg" ".bbl" ".glo" ".idx" ".lot")
+	  (map (lambda (type) (string-append "~." type))
+	       unix/encoding-pathname-types)))
 
 (define (os/file-type-to-major-mode)
   (alist-copy
@@ -300,3 +325,64 @@ Includes the new backup.  Must be > 0."
 	     (merge-pathnames ".edwin-ffi" (directory-pathname pathname))))
 	(and (file-exists? pathname)
 	     pathname))))
+
+;;;; Compressed Files
+
+(define-variable enable-compressed-files
+  "If true, compressed files are automatically uncompressed when read,
+and recompressed when written.  A compressed file is identified by the
+filename suffix \".Z\"."
+  true
+  boolean?)
+
+(define (os/read-file-methods)
+  (list maybe-read-compressed-file))
+
+(define (maybe-read-compressed-file pathname mark visit?)
+  visit?
+  (and (ref-variable enable-compressed-files mark)
+       (equal? "Z" (pathname-type pathname))
+       (begin
+	 (read-compressed-file pathname mark)
+	 true)))
+
+(define (read-compressed-file pathname mark)
+  (if (not (equal? '(EXITED . 0)
+		   (shell-command false
+				  mark
+				  (directory-pathname pathname)
+				  false
+				  (string-append "uncompress < "
+						 (file-namestring pathname)))))
+      (error:file-operation pathname
+			    "uncompress"
+			    "file"
+			    "[unknown]"
+			    read-compressed-file
+			    (list pathname mark))))
+
+(define (os/write-file-methods)
+  (list maybe-write-compressed-file))
+
+(define (maybe-write-compressed-file region pathname visit?)
+  visit?
+  (and (ref-variable enable-compressed-files (region-start region))
+       (equal? "Z" (pathname-type pathname))
+       (begin
+	 (write-compressed-file region pathname)
+	 true)))
+
+(define (write-compressed-file region pathname)
+  (if (not (equal? '(EXITED . 0)
+		   (shell-command region
+				  false
+				  (directory-pathname pathname)
+				  false
+				  (string-append "compress > "
+						 (file-namestring pathname)))))
+      (error:file-operation pathname
+			    "compress"
+			    "file"
+			    "[unknown]"
+			    write-compressed-file
+			    (list region pathname))))
