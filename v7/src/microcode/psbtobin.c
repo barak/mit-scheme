@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: psbtobin.c,v 9.51 1993/11/07 01:39:13 gjr Exp $
+$Id: psbtobin.c,v 9.52 1993/11/07 04:10:00 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -1139,9 +1139,11 @@ DEFUN_VOID (Read_Header_and_Allocate)
   READ_HEADER ("Flags", "%ld", Flags);
   READ_FLAGS (Flags);
 
-  if (((compiled_p && (! allow_compiled_p))
-       || (nmv_p && (! allow_nmv_p)))
-      && (Machine != FASL_INTERNAL_FORMAT))
+  if (band_p)
+    allow_nmv_p = true;
+  if ((Machine != FASL_INTERNAL_FORMAT)
+      && ((nmv_p && (! allow_nmv_p))
+	  || (compiled_p && (! allow_compiled_p) && (! c_compiled_p))))
   {
     if (compiled_p)
       fprintf (stderr, "%s: %s\n", program_name,
