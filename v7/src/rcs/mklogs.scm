@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: mklogs.scm,v 1.15 1999/12/15 01:35:30 cph Exp $
+$Id: mklogs.scm,v 1.16 2000/03/21 05:29:54 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -21,21 +21,31 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;;; Update the RCS log files in the standard Scheme directories.
 
-(for-each rcs-directory-log
-	  '("/scheme/v7/src/6001"
-	    "/scheme/v7/src/compiler"
-	    "/scheme/v7/src/cref"
-	    "/scheme/v7/src/edwin"
-	    "/scheme/v7/src/microcode"
-	    "/scheme/v7/src/pcsample"
-	    "/scheme/v7/src/rcs"
-	    "/scheme/v7/src/runtime"
-	    "/scheme/v7/src/sf"
-	    "/scheme/v7/src/sos"
-	    "/scheme/v7/src/swat"
-	    "/scheme/v7/src/win32"
+(rcs-directory-log "/scheme/v7/src" #f #t
+		   '("zurich.ai.mit.edu"
+		     ("adams" "Stephen Adams")
+		     ("arthur" "Arthur Gleckler")
+		     ("bal" "Brian A. LaMacchia")
+		     ("boogles" "Brian K. Zuzga")
+		     ("cph" "Chris Hanson")
+		     ("gjr" "Guillermo J. Rozas")
+		     ("gjs" "Gerald Jay Sussman")
+		     ("hal" "Hal Abelson")
+		     ("jacob" "Jacob Katzenelson")
+		     ("jawilson" "Jason Wilson")
+		     ("jbank" "Joe Bank")
+		     ("jinx" "Guillermo J. Rozas" "gjr@zurich.ai.mit.edu")
+		     ("jmiller" "Jim Miller")
+		     ("jrm" "Joe Marshall")
+		     ("markf" "Mark Friedman")
+		     ("mhwu" "Henry M. Wu")
+		     ("nick" "Nick Papadakis")
+		     ("pas" "Panayotis Skordos")
+		     ("thanos" "Thanos Siapas")
+		     ("ziggy" "Michael R. Blair")))
 
-	    "/scheme/v8/src/bench"
+(for-each rcs-directory-log
+	  '("/scheme/v8/src/bench"
 	    "/scheme/v8/src/compiler"
 	    "/scheme/v8/src/microcode"
 	    "/scheme/v8/src/runtime"
