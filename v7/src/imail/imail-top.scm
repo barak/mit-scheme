@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.152 2000/06/14 02:24:50 cph Exp $
+;;; $Id: imail-top.scm,v 1.153 2000/06/14 20:16:21 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -149,6 +149,13 @@ Otherwise, only the header fields normally shown by IMAIL are sent."
 Otherwise, they are inserted into the message body."
   #t
   boolean?)
+
+(define-variable imail-known-mime-charsets
+  "List of regular expressions matching character-set names.
+Text messages using these character sets are displayed inline;
+ when other character sets are used, the text is treated as an attachment."
+  (list "us-ascii" "iso-8859-[0-9]+" "windows-[0-9]+")
+  list-of-strings?)
 
 (define-command imail
   "Read and edit incoming mail.
@@ -459,6 +466,7 @@ variable's documentation (using \\[describe-variable]) for details:
     imail-forward-using-mime
     imail-ignored-headers
     imail-kept-headers
+    imail-known-mime-charsets
     imail-message-filter
     imail-mode-hook
     imail-pass-phrase-retention-time
@@ -1109,15 +1117,17 @@ With prefix argument N moves backward N messages with these flags."
 		;; This is illegal, but Netscape does it.
 		encoding
 		(mime-body-one-part-encoding body)))))
-    (if (and (eq? (mime-body-subtype body) 'PLAIN)
+    (if (and (or (not enclosure)
+		 (eq? (mime-body-subtype body) 'PLAIN))
 	     (known-mime-encoding? encoding)
-	     (re-string-match (string-append "\\`"
-					     (regexp-group "us-ascii"
-							   "iso-8859-[0-9]+"
-							   "windows-[0-9]+")
-					     "\\'")
-			      (mime-body-parameter body 'CHARSET "us-ascii")
-			      #t))
+	     (re-string-match
+	      (string-append "\\`"
+			     (apply regexp-group
+				    (ref-variable imail-known-mime-charsets
+						  mark))
+			     "\\'")
+	      (mime-body-parameter body 'CHARSET "us-ascii")
+	      #t))
 	(let ((text
 	       (message-mime-body-part
 		message
