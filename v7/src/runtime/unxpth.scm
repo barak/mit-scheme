@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxpth.scm,v 1.4 1987/07/19 21:43:50 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxpth.scm,v 1.5 1987/08/20 02:44:54 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -336,3 +336,7 @@
 
 (define init-file-pathname
   (string->pathname ".scheme.init"))
+
+(define (pathname-newest pathname)
+  ;; For now, version numbers are disabled.
+  (pathname-new-version pathname false))
