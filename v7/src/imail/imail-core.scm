@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.122 2001/05/15 19:46:48 cph Exp $
+;;; $Id: imail-core.scm,v 1.123 2001/05/17 04:37:26 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -88,10 +88,9 @@
 ;; following the rightmost delimiter.
 (define-generic url-base-name (folder-url))
 
-;; Return a URL that has the same container as FOLDER-URL, but with
-;; base name NAME.  This is roughly equivalent to appending NAME to
-;; the container string of FOLDER-URL.
-(define-generic make-peer-url (folder-url name))
+;; Return a URL that refers to the child NAME of the container
+;; referred to by CONTAINER-URL.
+(define-generic make-child-url (container-url name))
 
 ;; Return a string that concisely identifies URL, for use in the
 ;; presentation layer.

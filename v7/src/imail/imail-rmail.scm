@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.63 2001/05/15 19:46:57 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.64 2001/05/17 04:37:42 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -35,11 +35,6 @@
     (or (equal? (pathname-type pathname) "rmail")
 	(and (equal? (pathname-name pathname) "RMAIL")
 	     (not (pathname-type pathname))))))
-
-(define-method make-peer-url ((url <rmail-url>) name)
-  (make-rmail-url
-   (merge-pathnames (pathname-default-type name "rmail")
-		    (directory-pathname (pathname-url-pathname url)))))
 
 ;;;; Server operations
 

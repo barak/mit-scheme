@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.65 2001/05/15 19:46:51 cph Exp $
+;;; $Id: imail-file.scm,v 1.66 2001/05/17 04:37:30 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -102,18 +102,21 @@
 (define-method parse-url-body ((string <string>) (default-url <pathname-url>))
   (let ((pathname
 	 (parse-pathname-url-body string (pathname-url-pathname default-url))))
-    ((find-pathname-url-constructor pathname #f
-       (lambda (pathname type)
-	 (case type
-	   ((REGULAR) make-file-url)
-	   ((DIRECTORY) make-directory-url)
-	   ((#F)
-	    (if (directory-pathname? pathname)
-		make-directory-url
-		make-file-url))
-	   (else
-	    (error "Pathname refers to illegal file type:" pathname)))))
-     pathname)))
+    ((standard-pathname-url-constructor pathname) pathname)))
+
+(define (standard-pathname-url-constructor pathname)
+  (find-pathname-url-constructor pathname #f
+    (lambda (pathname type)
+      (case type
+	((REGULAR) make-file-url)
+	((DIRECTORY) make-directory-url)
+	((#F)
+	 (if (directory-pathname? pathname)
+	     make-directory-url
+	     ;; Default for non-existent files:
+	     make-umail-url))
+	(else
+	 (error "Pathname refers to illegal file type:" pathname))))))
 
 (define (parse-pathname-url-body string default-pathname)
   (let ((finish
@@ -194,6 +197,10 @@
       (if (pair? (cdr directory))
 	  (car (last-pair directory))
 	  (->namestring pathname)))))
+
+(define-method make-child-url ((url <directory-url>) name)
+  (let ((pathname (merge-pathnames name (pathname-url-pathname url))))
+    ((standard-pathname-url-constructor pathname) pathname)))
 
 ;;;; Server operations
 

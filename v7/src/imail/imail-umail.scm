@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.44 2001/05/15 19:46:59 cph Exp $
+;;; $Id: imail-umail.scm,v 1.45 2001/05/17 04:37:55 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -32,11 +32,6 @@
   (lambda (pathname) (check-file-prefix pathname "From "))
   (lambda (pathname) pathname #f)
   (lambda (pathname) (equal? (pathname-type pathname) "mail")))
-
-(define-method make-peer-url ((url <umail-url>) name)
-  (make-umail-url
-   (merge-pathnames (pathname-default-type name "mail")
-		    (directory-pathname (pathname-url-pathname url)))))
 
 ;;;; Server operations
 

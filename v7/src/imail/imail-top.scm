@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.238 2001/05/13 03:46:14 cph Exp $
+;;; $Id: imail-top.scm,v 1.239 2001/05/17 04:37:52 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -1365,17 +1365,18 @@ If it doesn't exist, it is created first."
       (list from
 	    (prompt-for-folder
 	     "Copy messages to folder"
-	     (make-peer-url
-	      (or (let ((history
-			 (prompt-history-strings 'IMAIL-COPY-FOLDER-TARGET)))
-		    (and (pair? history)
-			 (let ((url
-				(ignore-errors
-				 (lambda ()
-				   (imail-parse-partial-url (car history))))))
-			   (and (url? url)
-				url))))
-		  (imail-default-url #f))
+	     (make-child-url
+	      (url-container
+	       (or (let ((history
+			  (prompt-history-strings 'IMAIL-COPY-FOLDER-TARGET)))
+		     (and (pair? history)
+			  (let ((url
+				 (ignore-errors
+				  (lambda ()
+				    (imail-parse-partial-url (car history))))))
+			    (and (url? url)
+				 url))))
+		   (imail-default-url #f)))
 	      (url-base-name (imail-parse-partial-url from)))
 	     'HISTORY 'IMAIL-COPY-FOLDER-TARGET))))
   (lambda (from to)

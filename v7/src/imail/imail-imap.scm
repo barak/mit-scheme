@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.152 2001/05/17 04:00:04 cph Exp $
+;;; $Id: imail-imap.scm,v 1.153 2001/05/17 04:37:39 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -138,11 +138,9 @@
 	  (string-tail mailbox (fix:+ index 1))
 	  mailbox))))
 
-(define-method make-peer-url ((url <imap-folder-url>) base-name)
-  (imap-url-new-mailbox
-   url
-   (string-append (imap-url-mailbox (url-container url)) base-name)))
-
+(define-method make-child-url ((url <imap-container-url>) base-name)
+  (imap-url-new-mailbox url (string-append (imap-url-mailbox url) base-name)))
+
 (define-method parse-url-body (string (default-url <imap-url>))
   (call-with-values (lambda () (parse-imap-url-body string default-url))
     (lambda (user-id host port mailbox)
