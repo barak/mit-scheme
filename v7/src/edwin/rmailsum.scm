@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.24 1992/11/09 18:32:45 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.25 1992/11/11 19:11:56 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -48,7 +48,7 @@
 
 (define-variable rmailsum-rcs-header
   "The RCS header of the rmailsum.scm file."
-  "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.24 1992/11/09 18:32:45 bal Exp $"
+  "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.25 1992/11/11 19:11:56 bal Exp $"
   string?)
 
 (define-variable-per-buffer rmail-buffer
@@ -336,10 +336,27 @@ RECIPIENTS is a string of names separated by commas."
 	  (re-search-forward "^From:[ \t]*" the-begin the-end)))
      (if (not the-mark)
 	 "                         "
+	 #|
+	 The following hair is required because From: lines can extend
+	 over multiple text lines in the message, so long as the
+	 first characters of each continuation line is a #\space or #\tab 
+	 character.  Previously, we assumed that the field of the From: line
+	 terminated at the end of the text line, thus we could use:
+
+	 (mail-extract-real-name
+	   (skip-chars-forward " \t" the-mark)
+   	   (skip-chars-backward " " (line-end the-mark 0)))
+
+	 to extract the message.  Now, according to RFC822, we have to allow
+	 the presence of newlines in the From: field, so long as the first
+	 character after the newline is a space or tab.
+	 |#
 	 (let* ((from
-		 (mail-extract-real-name
-		  (skip-chars-forward " \t" the-mark)
-		  (skip-chars-backward " " (line-end the-mark 0))))
+		 (let* ((the-new-mark (skip-chars-forward " \t\n" the-mark))
+			(the-new-end-mark (skip-chars-backward " " (line-end the-new-mark 0))))
+		   (if (mark= the-new-mark (line-start the-new-mark 0))
+		       "                         "
+		       (mail-extract-real-name the-new-mark the-new-end-mark))))
 		(len (string-length from))
 		(mch (string-find-next-char-in-set from (char-set #\@ #\%))))
 	   (string-pad-right
