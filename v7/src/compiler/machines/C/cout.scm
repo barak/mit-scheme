@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.12 1993/11/09 04:27:38 gjr Exp $
+$Id: cout.scm,v 1.13 1993/11/09 04:30:06 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -71,26 +71,6 @@ MIT in each case. |#
 			(cdr vars))
 	  ";\n")))
 
-  (if *purification-root-object*
-      (define-object "PURIFICATION_ROOT"
-	(if (vector? (cdr *purification-root-object*))
-	    *purification-root-object*
-	    (cons (car *purification-root-object*)
-		  (list->vector
-		   (reverse (cdr *purification-root-object*)))))))
-
-  (define-object (special-label/debugging)
-    (let frob ((obj info-output-pathname))
-      (cond ((pathname? obj)
-	     (->namestring obj))
-	    ((pair? obj)
-	     (cons (frob (car obj))
-		   (frob (cdr obj))))
-	    (else
-	     obj))))
-
-  (define-object (special-label/environment) unspecific)
-
   (define (choose-proc-name default midfix time-stamp)
     (let ((path (and info-output-pathname
 		     (merge-pathnames
@@ -122,6 +102,26 @@ MIT in each case. |#
 			    suffix
 			    time-stamp)))))
 
+  (if *purification-root-object*
+      (define-object "PURIFICATION_ROOT"
+	(if (vector? (cdr *purification-root-object*))
+	    *purification-root-object*
+	    (cons (car *purification-root-object*)
+		  (list->vector
+		   (reverse (cdr *purification-root-object*)))))))
+
+  (define-object (special-label/debugging)
+    (let frob ((obj info-output-pathname))
+      (cond ((pathname? obj)
+	     (->namestring obj))
+	    ((pair? obj)
+	     (cons (frob (car obj))
+		   (frob (cdr obj))))
+	    (else
+	     obj))))
+
+  (define-object (special-label/environment) unspecific)
+
   (define (subroutine-information-1)
     (cond ((eq? *invoke-interface* 'INFINITY)
 	   (values (list "") (list "")))
