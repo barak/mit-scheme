@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: shared.scm,v 1.7 2001/07/02 12:14:35 cph Exp $
+;;; $Id: shared.scm,v 1.8 2001/07/02 18:18:38 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -106,10 +106,10 @@
   ;; position, which is wasteful since only the last call in the
   ;; sequence is meaningful.
   (cons (car pointer)
-	(let ((p (or (cdr pointer) (car pointer))))
-	  (if (eq? (car pointer) (car backtrack-pointer))
+	(let ((p (or (cdr backtrack-pointer) (car backtrack-pointer))))
+	  (if (eq? (car pointer) p)
 	      #f
-	      (car backtrack-pointer)))))
+	      p))))
 
 (define (handle-pending-backtracking pointer procedure)
   ;; Perform a pending backtracking operation, if any.
