@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: unicode.scm,v 1.5 2001/10/04 16:28:57 cph Exp $
+;;; $Id: unicode.scm,v 1.6 2001/10/04 16:59:18 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -402,7 +402,7 @@
 		(fix:or (fix:lsh n4 6)
 			n5))))
 	  (else
-	   (error "Illegal initial UTF-8 char:" c)))))
+	   (error "Illegal initial UTF-8 char:" c0)))))
 
 (define (utf8-string->code-point string)
   (read-utf8-code-point (string->input-port string)))
