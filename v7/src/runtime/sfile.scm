@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sfile.scm,v 14.24 2001/05/09 03:17:11 cph Exp $
+$Id: sfile.scm,v 14.25 2001/05/09 14:18:50 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -67,6 +67,9 @@ USA.
 	(make-file-type (ucode-primitive file-type-direct 1)))
   (set! file-type-indirect
 	(make-file-type (ucode-primitive file-type-indirect 1))))
+
+(define (file-regular? filename)
+  (eq? 'REGULAR (file-type-indirect filename)))
 
 (define (file-directory? filename)
   (eq? 'DIRECTORY (file-type-indirect filename)))
