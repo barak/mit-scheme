@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: buffer.scm,v 1.4 2001/06/29 05:19:24 cph Exp $
+;;; $Id: buffer.scm,v 1.5 2001/06/29 05:21:43 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -53,10 +53,10 @@
 ;;; length.
 
 (define (substring->parser-buffer string start end)
-  (make-parser-buffer string start end 0 start #f #t 0 0))
+  (make-parser-buffer string start end 0 start #f #t 0))
 
 (define (source->parser-buffer source)
-  (make-parser-buffer (make-string min-length) 0 0 0 0 source #f 0 0))
+  (make-parser-buffer (make-string min-length) 0 0 0 0 source #f 0))
 
 (define-integrable min-length 256)
 
