@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pp.scm,v 14.30 1994/09/16 21:21:09 cph Exp $
+$Id: pp.scm,v 14.31 1994/12/02 16:38:29 adams Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -69,6 +69,8 @@ MIT in each case. |#
 (define *pp-avoid-circularity?* false)
 (define *pp-default-as-code?* #t)
 
+(define *pp-auto-highlighter* #F)
+
 (define (pp object #!optional port . rest)
   (let ((port (if (default-object? port) (current-output-port) port)))
     (let ((pretty-print
@@ -121,12 +123,12 @@ MIT in each case. |#
 			    start-string end-string
 			    as-code? depth-limit
 			    breadth-limit)))
-  (object false)
-  (start-string "*=>")
-  (end-string "<=*")
-  (as-code? 'DEFAULT)
-  (depth-limit 'DEFAULT)
-  (breadth-limit 'DEFAULT))
+  (object false read-only true)
+  (start-string "*=>" read-only true)
+  (end-string   "<=*" read-only true)
+  (as-code? 'DEFAULT read-only true)
+  (depth-limit 'DEFAULT read-only true)
+  (breadth-limit 'DEFAULT read-only true))
 
 (define (with-highlight-strings-printed pph thunk)
   (let ((print-string
@@ -249,7 +251,7 @@ MIT in each case. |#
       (let* ((subnodes (node-subnodes node))
 	     (association
 	      (and (not (null? (cdr subnodes)))
-		   (assq (car subnodes) dispatch-list))))
+		   (assq (unhighlight (car subnodes)) dispatch-list))))
 	(if (and (not association)
 		 (fits-within? node column depth))
 	    (print-guaranteed-list-node node)
@@ -419,11 +421,11 @@ MIT in each case. |#
 
 (define ((special-printer procedure) nodes column depth)
   (*unparse-open)
-  (*unparse-symbol (car nodes))
+  (print-guaranteed-node (car nodes))	;(*unparse-symbol (car nodes))
   (*unparse-space)
   (if (not (null? (cdr nodes)))
       (procedure (cdr nodes)
-		 (+ column 2 (symbol-length (car nodes)))
+		 (+ column 2 (node-size (car nodes)))
 		 (+ column 2)
 		 (+ depth 1)))
   (*unparse-close))
@@ -547,43 +549,62 @@ MIT in each case. |#
 ;;;; Numerical Walk
 
 (define (numerical-walk object list-depth)
-  (cond ((pair? object)
-	 (let ((prefix (unparse-list/prefix-pair? object)))
-	   (if prefix
-	       (make-prefix-node prefix
-				 (numerical-walk (cadr object)
-						 list-depth))
-	       (let ((unparser (unparse-list/unparser object)))
+  (define (numerical-walk-no-auto-highlight object list-depth)
+    (cond ((pair? object)
+	   (let ((prefix (unparse-list/prefix-pair? object)))
+	     (if prefix
+		 (make-prefix-node prefix
+				   (numerical-walk (cadr object)
+						   list-depth))
+		 (let ((unparser (unparse-list/unparser object)))
+		   (if unparser
+		       (walk-custom unparser object list-depth)
+		       (walk-pair object list-depth))))))
+	  ((symbol? object)
+	   (if (or *pp-uninterned-symbols-by-name*
+		   (interned-symbol? object))
+	       object
+	       (walk-custom unparse-object object list-depth)))
+	  ((pretty-printer-highlight? object)
+	   ;; (1) see note below.
+	   (let ((rest (walk-highlighted-object
+			object list-depth
+			numerical-walk-no-auto-highlight)))
+	     (make-highlighted-node (+ (pph/start-string-length object)
+				       (pph/end-string-length object)
+				       (node-size rest))
+				    object
+				    rest)))
+	  ((vector? object)
+	   (if (zero? (vector-length object))
+	       (walk-custom unparse-object object list-depth)
+	       (let ((unparser (unparse-vector/unparser object)))
 		 (if unparser
 		     (walk-custom unparser object list-depth)
-		     (walk-pair object list-depth))))))
-	((symbol? object)
-	 (if (or *pp-uninterned-symbols-by-name*
-		 (object-type? (ucode-type interned-symbol) object))
-	     object
-	     (walk-custom unparse-object object list-depth)))
-	((pretty-printer-highlight? object)
-	 (let ((rest (walk-highlighted-object object list-depth)))
-	   (make-highlighted-node (+ (pph/start-string-length object)
-				     (pph/end-string-length object)
-				     (node-size rest))
-				  object
-				  rest)))
-	((vector? object)
-	 (if (zero? (vector-length object))
-	     (walk-custom unparse-object object list-depth)
-	     (let ((unparser (unparse-vector/unparser object)))
-	       (if unparser
-		   (walk-custom unparser object list-depth)
-		   (make-prefix-node "#"
-				     (walk-pair (vector->list object)
-						list-depth))))))
-	((primitive-procedure? object)
-	 (if *pp-primitives-by-name*
-	     (primitive-procedure-name object)
-	     (walk-custom unparse-object object list-depth)))
+		     (make-prefix-node "#"
+				       (walk-pair (vector->list object)
+						  list-depth))))))
+	  ((primitive-procedure? object)
+	   (if *pp-primitives-by-name*
+	       (primitive-procedure-name object)
+	       (walk-custom unparse-object object list-depth)))
+	  (else
+	   (walk-custom unparse-object object list-depth))))
+
+  ;; We do teh following test first and the test above at (1) for a
+  ;; PRETTY-PRINTER-HIGHLIGHT because the highlighted object may
+  ;; itself be a PRETTY-PRINTER-HIGHLIGHT.  It is also important that
+  ;; the case (1) above uses NUMERICAL-WALK-NO-AUTO-HIGHLIGHT
+  ;; otherwise we would get infinite recursion when the `unwrapped'
+  ;; object REST is re-auto-highlighted by the test below.
+
+  (cond ((and *pp-auto-highlighter*
+	      (not (pretty-printer-highlight? object))
+	      (*pp-auto-highlighter* object))
+	 => (lambda (highlighted)
+	      (numerical-walk-no-auto-highlight highlighted list-depth)))
 	(else
-	 (walk-custom unparse-object object list-depth))))
+	 (numerical-walk-no-auto-highlight object list-depth))))
 
 (define (walk-custom unparser object list-depth)
   (with-string-output-port
@@ -641,12 +662,8 @@ MIT in each case. |#
 	(else
 	 false)))
 
-(define (walk-highlighted-object object list-depth)
-  (let ((dl (pph/depth-limit object))
-	(numerical-walk
-	 (if *pp-avoid-circularity?*
-	     numerical-walk-avoid-circularities
-	     numerical-walk)))
+(define (walk-highlighted-object object list-depth numerical-walk)
+  (let ((dl (pph/depth-limit object)))
     (fluid-let ((*unparser-list-breadth-limit*
 		 (let ((bl (pph/breadth-limit object)))
 		   (if (eq? bl 'DEFAULT)
@@ -706,7 +723,7 @@ MIT in each case. |#
 					    list-depth))))))
 	((symbol? object)
 	 (if (or *pp-uninterned-symbols-by-name*
-		 (object-type? (ucode-type interned-symbol) object))
+		 (interned-symbol? object))
 	     object
 	     (walk-custom unparse-object object list-depth)))
 	((pretty-printer-highlight? object)
@@ -1082,3 +1099,8 @@ MIT in each case. |#
   (size false read-only true)
   (highlight false read-only true)
   (subnode false read-only true))
+
+(define (unhighlight node)
+  (if (highlighted-node? node)
+      (unhighlight (highlighted-node/subnode node))
+      node))
