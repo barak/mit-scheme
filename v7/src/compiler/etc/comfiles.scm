@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/etc/comfiles.scm,v 1.1 1990/03/28 22:05:00 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/etc/comfiles.scm,v 1.2 1991/08/21 20:04:52 cph Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,20 +37,15 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define compiler-directories
-  '("back" "base" #| "etc" |# "fggen" "fgopt"
-	   "bobcat"
-	   "rtlbase" "rtlgen" "rtlopt"))
+  '("back" "base" "fggen" "fgopt" "machine" "rtlbase" "rtlgen" "rtlopt"))
 
 (define runtime-directories
   '("runtime" "sf" "cref"))
 
 (define (->string name)
-  (cond ((string? name)
-	 name)
-	((symbol? name)
-	 (symbol->string name))
-	(else
-	 (error "->string: Can't coerce" name))))
+  (cond ((string? name) name)
+	((symbol? name) (symbol->string name))
+	(else (error "->string: Can't coerce" name))))
 
 (define (for-each-file proc directories)
   (for-each (lambda (dname)
@@ -82,7 +77,5 @@ MIT in each case. |#
      directories)))
 
 (define (check-compiler #!optional stage)
-  (check-stage (if (default-object? stage)
-		   '"STAGE2"
-		   stage)
+  (check-stage (if (default-object? stage) '"STAGE2" stage)
 	       compiler-directories))
