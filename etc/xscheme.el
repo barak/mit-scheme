@@ -21,7 +21,7 @@
 ;;; Requires C-Scheme release 5 or later
 ;;; Changes to Control-G handler require runtime version 13.85 or later
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.18 1988/06/07 16:43:10 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.19 1988/08/12 02:41:22 cph Exp $
 
 (require 'scheme)
 
@@ -734,7 +734,7 @@ When called, the current buffer will be the Scheme process-buffer.")
 	xscheme-process-filter:simple-action)
     (?v xscheme-write-value
 	xscheme-process-filter:string-action)
-    (?w cd
+    (?w xscheme-cd
 	xscheme-process-filter:string-action)
     (?z xscheme-display-process-buffer
 	xscheme-process-filter:simple-action)
@@ -860,6 +860,11 @@ the remaining input.")
     ("[Visiting environment]" . "[Evaluator]")
     ("[Environment Inspector]" . "[Where]"))
   "An alist which maps the Scheme command interpreter type to a print string.")
+
+(defun xscheme-cd (directory-string)
+  (save-excursion
+    (set-buffer (xscheme-process-buffer))
+    (cd directory-string)))
 
 (defun xscheme-prompt-for-confirmation (prompt-string)
   (xscheme-send-char (if (y-or-n-p prompt-string) ?y ?n)))
