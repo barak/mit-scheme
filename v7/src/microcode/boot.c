@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.32 1987/05/27 14:50:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.33 1987/05/28 00:45:29 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -541,7 +541,9 @@ long Err, Micro_Error;
     case TERM_EOF:
       printf("\nEnd of input stream reached.\n"); break;
     case TERM_END_OF_COMPUTATION:
-      Print_Expression(Val, "End of computation; final result"); break;
+      Print_Expression(Val, "End of computation; final result");
+      printf("\n");
+      break;
     case TERM_EXIT:
       printf("Inconsistency detected.\n"); break;
     case TERM_GC_OUT_OF_SPACE:
