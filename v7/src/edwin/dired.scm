@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dired.scm,v 1.135 1992/11/25 00:22:36 cph Exp $
+;;;	$Id: dired.scm,v 1.136 1993/02/21 05:54:25 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-1992 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -195,7 +195,7 @@ Type `h' after entering dired for more info."
   (temporary-message
    (string-append "Reading directory " (->namestring pathname) "..."))
   (read-directory pathname
-		  (ref-variable dired-listing-switches)
+		  (ref-variable dired-listing-switches buffer)
 		  (buffer-point buffer))
   (append-message "done")
   (let ((point (mark-left-inserting-copy (buffer-point buffer)))

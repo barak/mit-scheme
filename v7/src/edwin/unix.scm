@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.31 1992/12/03 21:51:34 arthur Exp $
+;;;	$Id: unix.scm,v 1.32 1993/02/21 05:55:02 cph Exp $
 ;;;
-;;;	Copyright (c) 1989-1992 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -544,7 +544,7 @@ CANNOT contain the 'F' option."
     (run-synchronous-process false lstart directory false
 			     (find-program "ls" directory)
 			     "-d"
-			     (ref-variable dired-listing-switches)
+			     (ref-variable dired-listing-switches lstart)
 			     (->namestring pathname))
     (insert-string "  " start)
     (let ((start (mark-right-inserting (dired-filename-start start))))
