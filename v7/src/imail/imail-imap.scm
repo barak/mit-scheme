@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.82 2000/05/23 04:35:48 cph Exp $
+;;; $Id: imail-imap.scm,v 1.83 2000/05/23 15:11:04 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1021,43 +1021,30 @@
       (if (eq? command 'UID)
 	  (car arguments)
 	  command)))))
-
-(define imail-trace? #f)
-(define imail-trace-output)
 
-(define (start-imail-trace)
-  (without-interrupts
-   (lambda ()
-     (set! imail-trace? #t)
-     (set! imail-trace-output '())
-     unspecific)))
-
-(define (stop-imail-trace)
-  (reverse!
-   (without-interrupts
-    (lambda ()
-      (set! imail-trace? #f)
-      (let ((output imail-trace-output))
-	(set! imail-trace-output)
-	output)))))
-
-(define (save-imail-trace pathname)
+(define (start-imap-trace pathname)
+  (stop-imap-trace)
   (call-with-output-file pathname
     (lambda (port)
-      (for-each (lambda (x) (write-line x port))
-		(stop-imail-trace)))))
+      (set! imap-trace-port port)
+      unspecific)))
 
-(define (imail-trace-record-output object)
-  (without-interrupts
-   (lambda ()
-     (set! imail-trace-output (cons object imail-trace-output))
-     unspecific)))
+(define (stop-imap-trace)
+  (if imap-trace-port
+      (begin
+	(close-port imap-trace-port)
+	(set! imap-trace-port #f)
+	unspecific)))
+
+(define imap-trace-port #f)
 
 (define (imap:send-command connection command arguments)
   (let ((tag (next-imap-command-tag connection))
 	(port (imap-connection-port connection)))
-    (if imail-trace?
-	(imail-trace-record-output (cons* 'SEND tag command arguments)))
+    (if imap-trace-port
+	(begin
+	  (write-line (cons* 'SEND tag command arguments) imap-trace-port)
+	  (flush-output imap-trace-port)))
     (imap-transcript-write-string tag port)
     (imap-transcript-write-char #\space port)
     (imap-transcript-write command port)
@@ -1121,8 +1108,10 @@
   (let ((port (imap-connection-port connection)))
     (let loop ()
       (let ((response (imap:read-server-response port)))
-	(if imail-trace?
-	    (imail-trace-record-output (list 'RECEIVE response)))
+	(if imap-trace-port
+	    (begin
+	      (write-line (list 'RECEIVE response) imap-trace-port)
+	      (flush-output imap-trace-port)))
 	(let ((tag* (imap:response:tag response)))
 	  (if tag*
 	      (let ((responses
