@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.259 2000/06/09 04:11:55 cph Exp $
+$Id: edwin.pkg,v 1.260 2000/06/12 01:38:24 cph Exp $
 
 Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
@@ -1497,7 +1497,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  mail-from-string
 	  mail-header-end
 	  mail-insert-field
+	  mail-insert-field-value
+	  mail-insert-field-value!
 	  mail-match-header-separator
+	  mail-new-field!
 	  mail-organization-string
 	  mail-position-on-field
 	  mail-position-on-cc-field

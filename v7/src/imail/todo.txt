@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.75 2000/06/10 20:59:58 cph Exp $
+$Id: todo.txt,v 1.76 2000/06/12 01:39:09 cph Exp $
 
 Bug fixes
 ---------
@@ -22,11 +22,6 @@ New features
 
 * Support the "flagged" message flag by highlighting messages with
   this flag in the summary buffer.
-
-* Change "X-Mailer" and "Organization" headers so that they are
-  transparently added after the user has finished editing.  This will
-  keep the message composition buffer cleaner.  There's no need to be
-  able to delete these on a per-message basis.
 
 * When yanking formatted MIME messages into a reply buffer,
   attachments should probably be dropped altogether.  Other

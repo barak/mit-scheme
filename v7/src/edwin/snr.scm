@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: snr.scm,v 1.57 2000/06/08 17:58:29 cph Exp $
+;;; $Id: snr.scm,v 1.58 2000/06/12 01:38:17 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-2000 Massachusetts Institute of Technology
 ;;;
@@ -2794,9 +2794,7 @@ Once editing the article, type \\[describe-mode] to get a list of commands."
     (let ((buffer
 	   (make-mail-buffer `(("Newsgroups"
 				,(if group (news-group:name group) ""))
-			       ("Subject" "")
-			       ,@(x-newsreader-header
-				  (current-news-server-buffer #f)))
+			       ("Subject" ""))
 			     #f
 			     selector
 			     (if no-erase?
@@ -2811,10 +2809,6 @@ Once editing the article, type \\[describe-mode] to get a list of commands."
 		(set-buffer-point! buffer
 				   (mail-position-on-field buffer
 							   "Newsgroups"))))))))
-
-(define (x-newsreader-header buffer)
-  `(("X-Newsreader" ,(mailer-version-string buffer))
-    ("X-Mailer" #F)))
 
 (define-command news-compose-followup-article
   "Begin editing a follow-up to the current News article.
@@ -2879,8 +2873,7 @@ While composing the follow-up, use \\[mail-yank-original] to yank the
       ("Distribution"
        ,(let ((distribution (news-header:field-value header "distribution")))
 	  (and (not (string-null? distribution))
-	       distribution)))
-      ,@(x-newsreader-header buffer))))
+	       distribution))))))
 
 (define-major-mode compose-news mail "News"
   "Major mode for editing news to be posted on USENET.
@@ -2946,16 +2939,21 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
 	   (prepare-mail-buffer-for-sending
 	    article-buffer
 	    (news-post-process-headers article-buffer))))
-      (if (let* ((start (buffer-start temp-buffer))
-		 (end (mail-header-end start)))
-	    (or (mail-field-start start end "To")
+      (let* ((start (buffer-start temp-buffer))
+	     (end (mail-header-end start)))
+	(if (or (mail-field-start start end "To")
 		(mail-field-start start end "CC")
-		(mail-field-start start end "BCC")))
-	  (let ((errors (send-mail-buffer temp-buffer article-buffer)))
-	    (if errors
-		(begin
-		  (kill-buffer temp-buffer)
-		  (editor-error errors)))))
+		(mail-field-start start end "BCC"))
+	    (let ((errors (send-mail-buffer temp-buffer article-buffer)))
+	      (if errors
+		  (begin
+		    (kill-buffer temp-buffer)
+		    (editor-error errors)))))
+	(let ((m (mail-field-start start end "X-Mailer")))
+	  (if m
+	      (let ((ls (line-start m 0)))
+		(delete-string ls (mark-1+ (char-search-forward #\: ls m)))
+		(insert-string "X-Newsreader" ls)))))
       (let ((errors (post-news-buffer temp-buffer article-buffer)))
 	(kill-buffer temp-buffer)
 	(if errors (editor-error errors))))))

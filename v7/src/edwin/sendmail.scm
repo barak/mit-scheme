@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sendmail.scm,v 1.53 2000/06/09 04:11:33 cph Exp $
+;;; $Id: sendmail.scm,v 1.54 2000/06/12 01:38:12 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
@@ -307,26 +307,17 @@ is inserted."
 	   (if (string? value)
 	       (list (list key value #f))
 	       '()))))
-    (let ((add-unique
-	   (lambda (key value)
-	     (add key
-		  (and (not (list-search-positive headers
-			      (lambda (header)
-				(string-ci=? (car header) key))))
-		       value)))))
-      (append headers
-	      (add "Reply-to"
-		   (let ((mail-default-reply-to
-			  (ref-variable mail-default-reply-to buffer)))
-		     (if (procedure? mail-default-reply-to)
-			 (mail-default-reply-to)
-			 mail-default-reply-to)))
-	      (add "BCC"
-		   (and (ref-variable mail-self-blind buffer)
-			(mail-from-string buffer)))
-	      (add "FCC" (ref-variable mail-archive-file-name buffer))
-	      (add-unique "Organization" (mail-organization-string buffer))
-	      (add-unique "X-Mailer" (mailer-version-string buffer))))))
+    (append headers
+	    (add "Reply-to"
+		 (let ((mail-default-reply-to
+			(ref-variable mail-default-reply-to buffer)))
+		   (if (procedure? mail-default-reply-to)
+		       (mail-default-reply-to)
+		       mail-default-reply-to)))
+	    (add "BCC"
+		 (and (ref-variable mail-self-blind buffer)
+		      (mail-from-string buffer)))
+	    (add "FCC" (ref-variable mail-archive-file-name buffer)))))
 
 (define (mail-from-string buffer)
   (let ((address
@@ -345,19 +336,6 @@ is inserted."
 	   (string-append (rfc822:quote-string full-name)
 			  " <" address ">"))
 	  (else address)))))
-
-(define (mail-organization-string buffer)
-  (let ((organization (ref-variable mail-organization buffer)))
-    (and (not (string-null? organization))
-	 organization)))
-
-(define (mailer-version-string buffer)
-  (and (ref-variable mail-identify-reader buffer)
-       (string-append "Edwin [version "
-		      (get-subsystem-version-string "edwin")
-		      ", MIT Scheme Release "
-		      (get-subsystem-version-string "release")
-		      "]")))
 
 (define-variable mail-setup-hook
   "An event distributor invoked immediately after a mail buffer is initialized.
@@ -655,6 +633,12 @@ the user from the mailer."
       (let ((header-end (copy-message mail-buffer end)))
 	(if (re-search-forward "^FCC:" start header-end #t)
 	    (mail-do-fcc temp-buffer header-end))
+	(let ((add-field
+	       (lambda (name value)
+		 (if (and value (not (mail-field-start start header-end name)))
+		     (mail-insert-field-value header-end name value)))))
+	  (add-field "Organization" (mail-organization-string mail-buffer))
+	  (add-field "X-Mailer" (mailer-version-string mail-buffer)))
 	(process-header start header-end)
 	(mark-temporary! header-end))
       (mark-temporary! end)
@@ -690,6 +674,19 @@ the user from the mailer."
 	(mark-temporary! h-start)
 	h-end)))
 
+(define (mail-organization-string buffer)
+  (let ((organization (ref-variable mail-organization buffer)))
+    (and (not (string-null? organization))
+	 organization)))
+
+(define (mailer-version-string buffer)
+  (and (ref-variable mail-identify-reader buffer)
+       (string-append "Edwin [version "
+		      (get-subsystem-version-string "edwin")
+		      ", MIT Scheme Release "
+		      (get-subsystem-version-string "release")
+		      "]")))
+
 (define (send-mail-buffer mail-buffer lookup-buffer)
   (let ((error-buffer
 	 (and (ref-variable mail-interactive lookup-buffer)
@@ -852,24 +849,6 @@ the user from the mailer."
 (define regexp:non-us-ascii
   (char-set->regexp char-set:non-us-ascii))
 
-(define (delete-mime-headers! h-start h-end)
-  (let loop ((f-start h-start))
-    (if (mark< f-start h-end)
-	(let ((colon (search-forward ":" f-start (line-end f-start 0))))
-	  (if (not colon)
-	      (error "Not a header-field line:" f-start))
-	  (let ((name (string-trim (extract-string f-start (mark-1+ colon))))
-		(f-start*
-		 (if (re-search-forward "^[^ \t]" colon h-end #f)
-		     (re-match-start 0)
-		     h-end)))
-	    (if (or (string=? "mime-version" name)
-		    (string-prefix? "content-" name))
-		(begin
-		  (delete-string f-start f-start*)
-		  (loop f-start))
-		(loop f-start*)))))))
-
 (define (copy-mime-message-body-with-attachments start end attachments
 						 h-end output-mark)
   (let ((boundary (random-mime-boundary-string 32)))
@@ -982,6 +961,24 @@ the user from the mailer."
 (define (mime-disposition->string disposition)
   (string-append (symbol->string (car disposition))
 		 (mime-parameters->string (cdr disposition))))
+
+(define (delete-mime-headers! h-start h-end)
+  (let loop ((f-start h-start))
+    (if (mark< f-start h-end)
+	(let ((colon (search-forward ":" f-start (line-end f-start 0))))
+	  (if (not colon)
+	      (error "Not a header-field line:" f-start))
+	  (let ((name (string-trim (extract-string f-start (mark-1+ colon))))
+		(f-start*
+		 (if (re-search-forward "^[^ \t]" colon h-end #f)
+		     (re-match-start 0)
+		     h-end)))
+	    (if (or (string=? "mime-version" name)
+		    (string-prefix? "content-" name))
+		(begin
+		  (delete-string f-start f-start*)
+		  (loop f-start))
+		(loop f-start*)))))))
 
 (define (insert-headers headers mark)
   (for-each (lambda (nv)
