@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.16 2000/04/07 19:50:39 cph Exp $
+;;; $Id: imail-top.scm,v 1.17 2000/04/07 20:34:14 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -761,7 +761,7 @@ While composing the reply, use \\[mail-yank-original] to yank the
 	  (if (ref-variable imail-reply-with-re)
 	      (string-append "Re: " subject)
 	      subject))))))
-
+
 (define (imail-dont-reply-to addresses)
   (if (not (ref-variable imail-dont-reply-to-names))
       (set-variable!
