@@ -1,6 +1,6 @@
 ;;; -*-Midas-*-
 ;;;
-;;;	$Id: dosxcutl.asm,v 1.4 1992/09/06 16:23:57 jinx Exp $
+;;;	$Id: dosxcutl.asm,v 1.5 1992/09/15 21:40:26 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -405,14 +405,14 @@ _X32_kbd_interrupt_pointers		dd 0 ; mask
 					dd 0 ; shifted table
 					dd 0 ; caps table
 
-	public _IntCode			; These are usually declared in C,
-_IntCode dd 0				; but they need to be locked since
-	public _IntEnb			; they are accessed by
-_IntEnb dd 0				; X32_timer_interrupt.
-	public _MemTop
-_MemTop dd 0
+					; This is usually declared in C,
+					; but they need to be locked since
+	public _MemTop			; they are accessed by
+_MemTop dd 0				; X32_timer_interrupt.
 
-REGBLOCK_MEMTOP equ 0			; Offset of MEMTOP into Registers.
+REGBLOCK_MEMTOP		equ 0		; Offset of MEMTOP into Registers.
+REGBLOCK_INT_MASK	equ 4		; Offset of INT_MASK into Registers
+REGBLOCK_INT_CODE	equ 48		; Offset of INT_CODE into Registers
 
 	public _Regstart
 _Regstart db 128 dup (0)		; This must be contiguous to Registers!
@@ -572,9 +572,9 @@ _X32_timer_interrupt:
 	push	ds
 	mov	ds,cs:_X32_ds_val
 	push	eax
-	or	_IntCode,INT_Timer
-	mov	eax,_IntCode
-	and	eax,_IntEnb
+	or	dword ptr _Registers[REGBLOCK_INT_CODE],INT_Timer
+	mov	eax,dword ptr _Registers[REGBLOCK_INT_CODE]
+	and	eax,dword ptr _Registers[REGBLOCK_INT_MASK]
 	cmp	eax,0
 	je	x32_timer_continue
 	mov	dword ptr _Registers[REGBLOCK_MEMTOP],-1
