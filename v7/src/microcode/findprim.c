@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.26 1987/08/06 20:01:43 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.27 1987/08/10 21:36:57 jinx Exp $
  *
  * Preprocessor to find and declare defined primitives.
  *
@@ -287,7 +287,8 @@ process()
 int
 scan()
 {
-  register char c, *temp;
+  register int c;
+  register char *temp;
 
   c = '\n';
   while(c != EOF)
@@ -328,7 +329,7 @@ scan()
 
 boolean
 whitespace(c)
-     char c;
+     int c;
 {
   switch(c)
   { case ' ':
@@ -344,7 +345,7 @@ whitespace(c)
 void
 scan_to_token_start()
 {
-  char c;
+  int c;
 
   while (whitespace(c = getc(input))) {};
   ungetc(c, input);
@@ -359,9 +360,9 @@ copy_token(s, cap, Size)
      boolean cap;
      int *Size;
 {
-  register char c;
-  register int n = 0;
+  register int c, n;
 
+  n = 0;
   while (!(whitespace(c = getc(input))))
     s[n++] = ((cap && isalpha(c) && islower(c))? toupper(c) : c);
   s[n] = '\0';
@@ -377,9 +378,9 @@ copy_string(is, s, cap, Size)
      boolean cap;
      int *Size;
 {
-  register char c;
-  register int n = 0;
+  register int c, n;
 
+  n = 0;
   while ((c = *is++) != '\0')
     s[n++] = ((cap && isalpha(c) && islower(c))? toupper(c) : c);
   s[n] = '\0';
