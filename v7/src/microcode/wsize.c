@@ -30,14 +30,21 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/wsize.c,v 9.25 1989/02/15 18:47:04 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/wsize.c,v 9.26 1989/05/24 18:42:37 jinx Rel $ */
 
 #include <stdio.h>
 #include <math.h>
 #include <errno.h>
 
-#define false 0
-#define true 1
+/* This MUST match object.h */ 
+#define TYPE_CODE_LENGTH	8
+
+#define ASCII_LOWER_A		0141
+#define ASCII_UPPER_A		0101
+
+#define boolean			int
+#define false			0
+#define true			1
 
 extern int errno;
 extern char *malloc();
@@ -52,21 +59,23 @@ extern free();
 
 #ifdef hack_signal
 
-#define setup_error() signal(SIGFPE, range_error)
+#define setup_error()		signal(SIGFPE, range_error)
 
+void
 range_error()
 {
   setup_error();
   errno = ERANGE;
+  return;
 }
 #else
 #define setup_error()
 #endif
 
-#define ARR_SIZE 20000
-#define MEM_SIZE 400000
-
 /* Force program data to be relatively large. */
+
+#define ARR_SIZE		20000
+#define MEM_SIZE		400000
 
 static long dummy[ARR_SIZE];
 
@@ -76,7 +85,7 @@ struct double_probe {
   long field_1;
   double field_2;
 } proble_double[2];
-
+
 /* Note: comments are printed in a weird way because some
    C compilers eliminate them even from strings.
 */
@@ -89,9 +98,34 @@ main()
   unsigned bogus;
   char buffer[sizeof(long)];
   char *temp;
+  boolean confused;
 
+  confused = false;
   setup_error();
 
+  printf("/%c CSCHEME configuration parameters. %c/\n", '*', '*');
+  printf("/%c REMINDER: Insert these definitions in config.h. %c/\n\n",
+	 '*', '*');
+
+  printf("/%c REMINDER: Change the following definitions! %c/\n",
+	 '*', '*');
+  printf("#define MACHINE_TYPE          \"Unknown machine, fix config.h\"\n");
+  printf("#define FASL_INTERNAL_FORMAT   FASL_UNKNOWN\n\n");
+
+  if ((((int) 'a') == ASCII_LOWER_A) &&
+      (((int) 'A') == ASCII_UPPER_A))
+  {
+    printf("/%c The ASCII character set is used. %c/\n", '*', '*');
+    printf("#define BELL                   '\\007'\n\n");
+  }
+  else
+  {
+    printf("/%c The ASCII character set is NOT used. %c/\n", '*', '*');
+    printf("/%c REMINDER: Change the following definition! %c/\n",
+	   '*', '*');
+    printf("#define BELL                   'G'\n\n");
+  }
+
   for(bogus = ((unsigned) -1), count = 0;
       bogus != 0;
       count += 1)
@@ -102,7 +136,8 @@ main()
   temp = malloc(MEM_SIZE*sizeof(long));
   if (temp == NULL)
   {
-    printf("/%c CONFUSION: Can't allocate %d Pointers. %c/\n",
+    confused = true;
+    printf("/%c CONFUSION: Could not allocate %d Pointers. %c/\n",
            '*', MEM_SIZE, '*');
     printf("/%c Will not assume that the Heap is in Low Memory. %c/\n",
 	   '*', '*');
@@ -110,19 +145,24 @@ main()
   else
   {
     count = free(temp);
-    if (((unsigned long) temp) < (1 << ((char_size * sizeof(long)) - 8)))
-      printf("#define Heap_In_Low_Memory\n");
+    if (((unsigned long) temp) <
+	(1 << ((char_size * sizeof(long)) - TYPE_CODE_LENGTH)))
+      printf("#define Heap_In_Low_Memory     1\n");
     else
       printf("/%c Heap is not in Low Memory. %c/\n", '*', '*');
   }
   	
   to_be_shifted = -1;
   if ((to_be_shifted >> 1) != to_be_shifted)
-    printf("#define UNSIGNED_SHIFT\n");
+  {
+    printf("#define UNSIGNED_SHIFT         1\n");
+  }
   else
-    printf("/%c unsigned longs use arithmetic shifting. %c/\n", 
+  {
+    printf("/%c unsigned longs use arithmetic shifting. %c/\n",
            '*', '*');
-
+  }
+
   if (sizeof(long) == sizeof(char))
   {
     printf("/%c sizeof(long) == sizeof(char); no byte order problems! %c/\n",
@@ -132,26 +172,32 @@ main()
   {
     buffer[0] = 1;
     for (count = 1; count < sizeof(long); )
+    {
       buffer[count++] = 0;
+    }
     if (*((long *) &buffer[0]) == 1)
-      printf("#define VAX_BYTE_ORDER\n");
+    {
+      printf("#define VAX_BYTE_ORDER         1\n\n");
+    }
     else
-      printf("/%c VAX_BYTE_ORDER not used. %c/\n", '*', '*');
+    {
+      printf("/%c VAX_BYTE_ORDER not used. %c/\n\n", '*', '*');
+    }
   }
 
   double_size = (char_size*sizeof(double));
 
-  printf("#define CHAR_SIZE            %d\n",
+  printf("#define CHAR_SIZE              %d\n",
 	 char_size);
 
-  printf("#define USHORT_SIZE          %d\n",
+  printf("#define USHORT_SIZE            %d\n",
 	 (sizeof(unsigned short) * char_size));
 
-  printf("#define ULONG_SIZE           %d\n",
+  printf("#define ULONG_SIZE             %d\n",
 	 (sizeof(unsigned long) * char_size));
 
-  printf("/%c Flonum (double) size is %d bits. %c/\n",
-	 '*', double_size, '*');
+  printf("#define DBFLT_SIZE             %d\n\n",
+	 double_size);
   
   if (sizeof(struct double_probe) == (sizeof(double) + sizeof(long)))
   {
@@ -161,15 +207,16 @@ main()
   else if ((sizeof(struct double_probe) != (2 * sizeof(double))) ||
 	   ((sizeof(double) % sizeof(long)) != 0))
   {
+    confused = true;
     printf("/%c CONFUSION: Can't determine float alignment constraints! %c/\n",
 	   '*', '*');
     printf("/%c Please define FLOATING_ALIGNMENT by hand. %c/\n", '*', '*');
   }
   else
   {
-    printf("#define FLOATING_ALIGNMENT   0x%lx\n", (sizeof(double)-1));
+    printf("#define FLOATING_ALIGNMENT     0x%lx\n", (sizeof(double)-1));
   }
-
+
   mant_size = 1;
   accum[0] = 1.0;
   accum[1] = 0.0;
@@ -187,7 +234,7 @@ main()
     mant_size += 1;
   }
 
-  printf("#define FLONUM_MANTISSA_BITS %d\n", mant_size);
+  printf("#define FLONUM_MANTISSA_BITS   %d\n", mant_size);
 
   for(errno = 0, expt_size = 0, bogus = 1, dtemp = 0.0;
       ((errno != ERANGE) && (expt_size <= double_size));
@@ -201,13 +248,14 @@ main()
 
   expt_size -= 1;
 
-  printf("#define FLONUM_EXPT_SIZE     %d\n", expt_size);
-  printf("#define MAX_FLONUM_EXPONENT  %d\n", ((1 << expt_size) - 1));
+  printf("#define FLONUM_EXPT_SIZE       %d\n", expt_size);
+  printf("#define MAX_FLONUM_EXPONENT    %d\n", ((1 << expt_size) - 1));
 
   extra = ((2 + expt_size + mant_size) - double_size);
 
   if (extra > 1)
   {
+    confused = true;
     printf("/%c CONFUSION: Can't determine floating parameters! %c/\n",
 	   '*', '*');
     printf("/%c Please fix above three parameters by hand. %c/\n", '*', '*');
@@ -217,5 +265,10 @@ main()
     printf("/%c Floating point representation %s hidden bit. %c/\n", '*',
 	   ((extra == 1) ? "uses" : "does not use"), '*');
   }
-  return;	
+  if (confused)
+  {
+    fprintf(stderr, "Please examine carefully the \"confused\" parameters.\n");
+    exit(1);
+  }
+  return;
 }
