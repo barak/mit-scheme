@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/assmd.scm,v 1.30 1987/07/13 22:04:47 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/assmd.scm,v 1.31 1987/07/30 21:43:32 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -36,10 +36,19 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+(declare (integrate addressing-granularity scheme-object-width
+		    maximum-padding-length
+		    maximum-block-offset block-offset-width))
+
 (define addressing-granularity 8)
 (define scheme-object-width 32)
+
 ;; Instruction length is always a multiple of 16
 (define maximum-padding-length 16)
+
+;; Block offsets are always words
+(define maximum-block-offset (- (expt 2 16) 2))
+(define block-offset-width 16)
 
 (define make-nmv-header)
 (let ()
@@ -58,3 +67,7 @@ MIT in each case. |#
   (bit-string-append
    (unsigned-integer->bit-string 24 (primitive-datum object))
    (unsigned-integer->bit-string 8 (primitive-type object))))
+
+(define (block-offset->bit-string offset start?)
+  (unsigned-integer->bit-string block-offset-width
+				(if start? offset (1+ offset))))

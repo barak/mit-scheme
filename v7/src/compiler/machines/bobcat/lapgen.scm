@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.187 1987/07/30 07:10:24 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.188 1987/07/30 21:44:13 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -257,7 +257,7 @@ MIT in each case. |#
   (set! compiler:external-labels
 	(cons label compiler:external-labels))
   (LAP (ENTRY-POINT ,label)
-       (DC O (- ,label ,block-start-label))
+       (BLOCK-OFFSET ,label)
        (LABEL ,label)))
 
 ;;;; Registers/Entries
