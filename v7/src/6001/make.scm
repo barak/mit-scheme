@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/make.scm,v 15.4 1992/04/13 20:10:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/make.scm,v 15.5 1992/06/01 22:24:40 cph Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -38,7 +38,7 @@ MIT in each case. |#
 
 (package/system-loader "6001" '() 'QUERY)
 ((access initialize-package! (->environment '(student scode-rewriting))))
-(add-system! (make-system "6.001" 15 3 '()))
+(add-system! (make-system "6.001" 15 5 '()))
 
 (set! repl:allow-restart-notifications? false)
 (set! repl:write-result-hash-numbers? false)
@@ -46,6 +46,9 @@ MIT in each case. |#
 (set! *unparse-compound-procedure-names?* false)
 (set! *pp-default-as-code?* true)
 (set! x-graphics:auto-raise? true)
+(set! (access write-result:undefined-value-is-special?
+	      (->environment '(RUNTIME USER-INTERFACE)))
+      false)
 
 (in-package (->environment '(edwin))
   (set! editor-can-exit? false)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/usrint.scm,v 1.1 1991/11/26 07:45:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/usrint.scm,v 1.2 1992/06/01 22:23:16 cph Exp $
 
-Copyright (c) 1991 Massachusetts Institute of Technology
+Copyright (c) 1991-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -185,7 +185,8 @@ MIT in each case. |#
     (lambda ()
       (fresh-line port)
       (write-string ";" port)
-      (if (undefined-value? object)
+      (if (and write-result:undefined-value-is-special?
+	       (undefined-value? object))
 	  (write-string "No value" port)
 	  (begin
 	    (write-string "Value" port)
@@ -195,6 +196,8 @@ MIT in each case. |#
 		  (write hash-number port)))
 	    (write-string ": " port)
 	    (write object port))))))
+
+(define write-result:undefined-value-is-special? true)
 
 (define (port/set-default-directory port directory)
   (let ((operation (port/operation port 'SET-DEFAULT-DIRECTORY)))
