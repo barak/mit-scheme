@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edextra.scm,v 1.20 1995/02/24 00:37:35 cph Exp $
+$Id: edextra.scm,v 1.21 1996/09/28 18:29:33 cph Exp $
 
 Copyright (c) 1992-95 Massachusetts Institute of Technology
 
@@ -48,12 +48,14 @@ MIT in each case. |#
 	  (standard-login-initialization))))
 
 (define (standard-login-initialization)
+  (set! student-root-directory "~u6001/")
+  (set! student-work-directory "~/work/")
   (if (not (file-directory? student-root-directory))
       (set! student-root-directory (user-homedir-pathname)))
-  (set! student-work-directory
-	(merge-pathnames "work/" student-root-directory))
   (if (not (file-directory? student-work-directory))
-      (set! student-work-directory student-root-directory))
+      (set! student-work-directory (user-homedir-pathname)))
+  (set! pset-directory (merge-pathnames "psets/" student-root-directory))
+  (set! pset-list-file (merge-pathnames "probsets.scm" pset-directory))
   (set-default-directory student-work-directory)
   (set-working-directory-pathname! student-work-directory)
   (let ((hairy-floppy-stuff? (eq? 'UNIX microcode-id/operating-system)))

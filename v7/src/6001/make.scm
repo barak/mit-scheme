@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 15.24 1996/09/27 23:06:22 cph Exp $
+$Id: make.scm,v 15.25 1996/09/28 18:29:11 cph Exp $
 
 Copyright (c) 1991-95 Massachusetts Institute of Technology
 
@@ -60,17 +60,18 @@ MIT in each case. |#
 (set! user-initial-environment (->environment '(student)))
 
 (in-package (->environment '(edwin))
-  (set! student-root-directory (user-homedir-pathname))
-  (set! student-work-directory
-	(merge-pathnames "work/" student-root-directory))
-  (set! pset-directory (merge-pathnames "psets/" student-root-directory))
-  (set! pset-list-file (merge-pathnames "probsets.scm" pset-directory)))
+  ;; These defaults will be overridden when the editor is started.
+  (set! student-root-directory "~u6001/")
+  (set! student-work-directory "~/work/")
+  (set! pset-directory "~u6001/psets/")
+  (set! pset-list-file "~u6001/psets/probsets.scm"))
 
 (in-package (->environment '(student))
   (define u6001-dir
-    (let ((homedir (access student-root-directory (->environment '(edwin)))))
+    (let ((edwin (->environment '(edwin))))
       (lambda (filename)
-	(->namestring (merge-pathnames filename homedir)))))
+	(->namestring
+	 (merge-pathnames filename (access student-root-directory edwin))))))
   (define nil #f))
 
 (ge '(student))
