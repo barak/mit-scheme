@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: editor.scm,v 1.249 2000/10/26 02:28:07 cph Exp $
+;;; $Id: editor.scm,v 1.250 2001/05/31 19:41:53 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Editor Top Level
 
@@ -514,19 +515,27 @@ TRANSCRIPT    messages appear in transcript buffer, if it is enabled;
 
 (define (register-inferior-thread! thread output-processor)
   (let ((flags (cons #f output-processor)))
-    (set! inferior-threads
-	  (cons (weak-cons thread flags)
-		inferior-threads))
+    (without-interrupts
+     (lambda ()
+       (set! inferior-threads
+	     (cons (weak-cons thread flags)
+		   inferior-threads))
+       unspecific))
     flags))
 
 (define (deregister-inferior-thread! flags)
-  (let loop ((threads inferior-threads))
-    (if (pair? threads)
-	(if (eq? flags (weak-cdr (car threads)))
-	    (begin
-	      (weak-set-car! (car threads) #f)
-	      (weak-set-cdr! (car threads) #f))
-	    (loop (cdr threads))))))
+  (without-interrupts
+   (lambda ()
+     (let loop ((threads inferior-threads) (prev #f))
+       (if (pair? threads)
+	   (if (eq? flags (weak-cdr (car threads)))
+	       (begin
+		 (if prev
+		     (set-cdr! prev (cdr threads))
+		     (set! inferior-threads (cdr threads)))
+		 (weak-set-car! (car threads) #f)
+		 (weak-set-cdr! (car threads) #f))
+	       (loop (cdr threads) threads)))))))
 
 (define (inferior-thread-output! flags)
   (without-interrupts (lambda () (inferior-thread-output!/unsafe flags))))
