@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.2 2000/12/08 17:53:58 cph Exp $
+# $Id: Makefile.in,v 1.3 2000/12/08 19:07:28 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -74,10 +74,10 @@ all:
 	etc/build-bands.sh
 
 mostlyclean clean distclean maintainer-clean:
-	./Clean.sh $@ $(SUBDIRS)
+	$(srcdir)/Clean.sh $@ $(SUBDIRS)
 
 tags TAGS:
-	./Tags.sh $(SUBDIRS)
+	$(srcdir)/Tags.sh $(SUBDIRS)
 
 install: all
 	$(mkinstalldirs) $(DESTDIR)$(bindir)
@@ -97,9 +97,9 @@ install: all
 	$(INSTALL_PROGRAM) microcode/gcdrone $(DESTDIR)$(AUXDIR)/.
 
 	$(INSTALL_DATA) microcode/utabmd.bin $(DESTDIR)$(AUXDIR)/.
-	$(INSTALL_DATA) etc/optiondb.scm $(DESTDIR)$(AUXDIR)/.
-	$(INSTALL_DATA) etc/TUTORIAL $(DESTDIR)$(EDDIR)/etc/.
-	$(INSTALL_DATA) etc/mime.types $(DESTDIR)$(EDDIR)/etc/.
+	$(INSTALL_DATA) $(srcdir)/etc/optiondb.scm $(DESTDIR)$(AUXDIR)/.
+	$(INSTALL_DATA) $(srcdir)/etc/TUTORIAL $(DESTDIR)$(EDDIR)/etc/.
+	$(INSTALL_DATA) $(srcdir)/etc/mime.types $(DESTDIR)$(EDDIR)/etc/.
 	$(INSTALL_DATA) runtime/*.bci $(DESTDIR)$(AUXDIR)/SRC/runtime/.
 	$(INSTALL_DATA) edwin/*.bci $(DESTDIR)$(AUXDIR)/SRC/edwin/.
 
@@ -119,16 +119,14 @@ install: all
 
 	$(INSTALL_DATA) sos/*.com $(DESTDIR)$(AUXDIR)/sos/.
 	$(INSTALL_DATA) sos/*.bci $(DESTDIR)$(AUXDIR)/sos/.
-	@for FN in sos.bco sos.bld load.scm; do \
-	    echo "$(INSTALL_DATA) sos/$${FN} $(DESTDIR)$(AUXDIR)/sos/.";\
-	    $(INSTALL_DATA) sos/$${FN} $(DESTDIR)$(AUXDIR)/sos/.;\
-	done
+	$(INSTALL_DATA) sos/sos.bco $(DESTDIR)$(AUXDIR)/sos/.
+	$(INSTALL_DATA) sos/sos.bld $(DESTDIR)$(AUXDIR)/sos/.
+	$(INSTALL_DATA) $(srcdir)/sos/load.scm $(DESTDIR)$(AUXDIR)/sos/.
 
 	$(INSTALL_DATA) imail/*.com $(DESTDIR)$(AUXDIR)/imail/.
 	$(INSTALL_DATA) imail/*.bci $(DESTDIR)$(AUXDIR)/imail/.
-	@for FN in imail.bco imail.bld load.scm; do \
-	    echo "$(INSTALL_DATA) imail/$${FN} $(DESTDIR)$(AUXDIR)/imail/.";\
-	    $(INSTALL_DATA) imail/$${FN} $(DESTDIR)$(AUXDIR)/imail/.;\
-	done
+	$(INSTALL_DATA) imail/imail.bco $(DESTDIR)$(AUXDIR)/imail/.
+	$(INSTALL_DATA) imail/imail.bld $(DESTDIR)$(AUXDIR)/imail/.
+	$(INSTALL_DATA) $(srcdir)/imail/load.scm $(DESTDIR)$(AUXDIR)/imail/.
 
 .PHONY: all mostlyclean clean distclean maintainer-clean tags TAGS install
