@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.32 1989/01/30 13:03:22 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.33 1989/05/24 05:33:24 jinx Rel $
  *
  * Utilities to help with debugging
  */
@@ -61,6 +61,8 @@ compiled_block_debug_filename (block)
      ? info
      : SHARP_F);
 }
+
+extern Pointer *compiled_entry_to_block_address();
 
 #define COMPILED_ENTRY_TO_BLOCK(entry)					\
 (Make_Pointer (TC_COMPILED_CODE_BLOCK,					\
