@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sicp/studen.scm,v 1.6 1991/04/06 05:23:30 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sicp/studen.scm,v 1.7 1991/04/06 06:13:53 jinx Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -139,12 +139,16 @@ MIT in each case. |#
 	     (or (syntax-table-ref system-global-syntax-table from)
 		 (error "Missing syntactic keyword" from))))))
     (for-each (lambda (name) (move name name))
-	      '(ACCESS BEGIN COLLECT COND CONS-STREAM DEFINE
-		       DELAY IF LAMBDA LET MAKE-ENVIRONMENT
-		       QUOTE SET! THE-ENVIRONMENT))
+	      '(
+		;; These special forms are shared.
+		COLLECT COND CONS-STREAM DEFINE
+		DELAY IF LAMBDA LET MAKE-ENVIRONMENT
+		QUOTE SEQUENCE SET! THE-ENVIRONMENT
+		;; The following are needed because some of the above are
+		;; macros and they are not syntactically closed.  Yuck!
+		ACCESS BEGIN NAMED-LAMBDA))
     (move 'AND 'CONJUNCTION)
-    (move 'OR 'DISJUNCTION)
-    (move 'BEGIN 'SEQUENCE))
+    (move 'OR 'DISJUNCTION))
   (set! *student-parser-table* (parser-table/copy sicp-parser-table))
   (set! *student-syntax-table* (syntax-table/copy sicp-syntax-table))
   #T)
