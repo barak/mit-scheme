@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: comred.scm,v 1.103 1993/08/19 05:52:22 jawilson Exp $
+;;;	$Id: comred.scm,v 1.104 1993/08/19 22:43:36 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -101,12 +101,7 @@
 		 (do () (false)
 		   (reset-command-state!)
 		   (if (queue-empty? command-reader-override-queue)
-		       (let ((input
-			      (if *executing-keyboard-macro?*
-				  (begin
-				    (set! keyboard-keys-read (+ keyboard-keys-read 1))
-				    (keyboard-macro-read-key))
-				  (with-editor-interrupts-disabled keyboard-read))))
+		       (let ((input (get-next-keyboard-char)))
 			 (if (input-event? input)
 			     (apply-input-event input)
 			     (begin
@@ -149,6 +144,13 @@
     (if (not restart) (error "Missing ABORT-EDITOR-COMMAND restart."))
     (invoke-restart restart input)))
 
+(define (get-next-keyboard-char)
+  (if *executing-keyboard-macro?*
+      (begin
+	(set! keyboard-keys-read (+ keyboard-keys-read 1))
+	(keyboard-macro-read-key))
+      (with-editor-interrupts-disabled keyboard-read)))
+
 (define (reset-command-state!)
   (set! *last-command* *command*)
   (set! *command* false)

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/kmacro.scm,v 1.39 1993/08/19 05:56:15 jawilson Exp $
+;;;	$Id: kmacro.scm,v 1.40 1993/08/19 22:42:14 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
