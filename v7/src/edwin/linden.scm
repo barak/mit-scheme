@@ -154,7 +154,8 @@
 		    (lisp-indent-special-form method state indent-point
 					      normal-indent))
 		   (method
-		    (method state indent-point normal-indent))))))))
+		    (method state indent-point normal-indent))
+                   (else #f)))))))
 
 ;;; Indent the first subform in a definition at the body indent.
 ;;; Indent subsequent subforms normally.

@@ -38,7 +38,7 @@
 ;;;; Undo, translated from the GNU Emacs implementation in C.
 
 (declare (usual-integrations)
-	 (integrate-external "edb:struct.bin.0"))
+	 )
 (using-syntax edwin-syntax-table
 
 (define enable-group-undo!)

@@ -38,7 +38,7 @@
 ;;;; Editor Frame
 
 (declare (usual-integrations)
-	 (integrate-external "edb:window.bin.0"))
+	 )
 (using-syntax class-syntax-table
 
 ;;; Editor Frame

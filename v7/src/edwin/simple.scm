@@ -181,9 +181,9 @@
   (cond (*executing-keyboard-macro?*)
 	((not mark) (beep))
 	((window-mark-visible? (current-window) mark)
+	 (update-alpha-window! #!FALSE)
 	 (with-current-point mark
 	   (lambda ()
-	     (update-alpha-window! #!FALSE)
 	     (keyboard-active? 50))))
 	(else
 	 (temporary-message

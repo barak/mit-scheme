@@ -100,13 +100,13 @@ With an argument, inserts several newlines."
 
 (define (editor-error . strings)
   (if (not (null? strings)) (apply temporary-message strings))
-  (beep)
+  (screen-beep the-alpha-screen)
   (abort-current-command))
 
 (define (editor-failure . strings)
   (cond ((not (null? strings)) (apply temporary-message strings))
 	(*defining-keyboard-macro?* (clear-message)))
-  (beep)
+  (screen-beep the-alpha-screen)
   (keyboard-macro-disable))
 
 (define (not-implemented)

@@ -38,7 +38,7 @@
 ;;;; Buffer Windows:  Base
 
 (declare (usual-integrations)
-	 (integrate-external "edb:linwin.bin.0"))
+	 )
 (using-syntax class-syntax-table
 
 (define-class buffer-window vanilla-window

@@ -152,8 +152,9 @@
 				   registers
 				   group start end)))
 
+
 (define %%re-search-forward
-  (make-primitive re-search-forward))
+  (make-primitive re-search-buffer-forward))
 
 (define-search char-search-backward char
   %re-search-backward compile-char group-start mark>=)
@@ -173,8 +174,10 @@
 				    registers
 				    group end start)))
 
+
 (define %%re-search-backward
-  (make-primitive re-search-backward))
+  (make-primitive re-search-buffer-backward))
+
 
 ;;;; Match
 
@@ -208,8 +211,10 @@
 				  registers
 				  group start end)))
 
+
 (define %%re-match-forward
-  (make-primitive re-match))
+  (make-primitive re-match-buffer))
+
 
 (set! char-match-backward
 (named-lambda (char-match-backward char #!optional start end)

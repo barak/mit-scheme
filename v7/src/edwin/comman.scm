@@ -101,6 +101,7 @@
 (define (variable-ref variable)
   (lexical-reference edwin-package (variable-symbol variable)))
 
+
 (define (variable-set! variable #!optional value)
   (lexical-assignment edwin-package (variable-symbol variable) (set! value)))
 

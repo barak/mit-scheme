@@ -38,7 +38,7 @@
 ;;;; Utility Windows
 
 (declare (usual-integrations)
-	 (integrate-external "edb:window.bin.0"))
+	 )
 (using-syntax class-syntax-table
 
 ;;;; String Window

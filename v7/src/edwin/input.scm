@@ -59,8 +59,8 @@
 	(keyboard-macro-write-char char))
     char))
 
-(define keyboard-active?
-  (make-primitive-procedure 'TTY-READ-CHAR-READY?))
+(define (keyboard-active? delay)
+  (char-ready? editor-input-port delay))
 
 (define reset-command-prompt!)
 (define command-prompt)
@@ -187,8 +187,8 @@ B 3BAB8C
   (set! message-should-be-erased? false)
   ((access clear-message! prompt-package))))
 
-(declare (compilable-primitive-functions
-	  (keyboard-active? tty-read-char-ready?)))
+;(declare (compilable-primitive-functions
+;	  (keyboard-active? tty-read-char-ready?)))
 
 (define ((keyboard-reader macro-read-char read-char))
   (if *executing-keyboard-macro?*
@@ -221,7 +221,11 @@ B 3BAB8C
 				((access set-message! prompt-package)
 				 command-prompt-string))
 			 ((access clear-message! prompt-package))))))
-       (read-char))))
+       (let loop ()
+	 (if (screen-damaged? the-alpha-screen)
+	     (begin (screen-not-damaged! the-alpha-screen)
+		    (update-alpha-window!  #t)))
+	 (if (keyboard-active? 50) (read-char) (loop))))))
 
 (set! keyboard-read-char
       (keyboard-reader (lambda () (keyboard-macro-read-char))

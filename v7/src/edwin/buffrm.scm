@@ -38,7 +38,7 @@
 ;;;; Buffer Frames
 
 (declare (usual-integrations)
-	 (integrate-external "edb:comwin.bin.0"))
+	 )
 (using-syntax class-syntax-table
 
 (define-class buffer-frame combination-leaf-window

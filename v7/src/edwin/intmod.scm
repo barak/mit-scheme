@@ -107,7 +107,8 @@ Otherwise, goes to the end of the current line, copies the preceding
 
 Output is inserted into the buffer at the end."
   (define (extract-expression start)
-    (let ((expression (extract-string start (forward-one-sexp start))))
+    (let ((expression (extract-string start (or (forward-one-sexp start)
+						(editor-error "No Expression")))))
       (ring-push! (ref-variable "Interaction Kill Ring") expression)
       expression))
 
@@ -140,10 +141,11 @@ Output is inserted into the buffer at the end."
 	(dynamic-wind
 	 (lambda () 'DONE)
 	 (lambda ()
-	   (^G-interceptor (lambda ((continuation) value)
+	   (^G-interceptor (lambda (continuation)
+			     (lambda (value)
 			     (newline)
 			     (write-string "Abort!")
-			     (continuation 'EXIT))
+			     (continuation 'EXIT)))
 	     (lambda ()
 	       (let ((environment (evaluation-environment #!FALSE)))
 		 (with-output-to-current-point

@@ -324,6 +324,13 @@ of subproblem 0."
 			(insert-string "No" (window-point window))
 			(window-direct-update! window #!FALSE)
 			#!FALSE)
+		       ;; But there was a third possibility
+		       ;; we didn't think about ...
+		       ((char=? #\E char)
+			((access standard-error-hook error-system)
+			 environment message irritant
+			 substitute-environment?)
+			(loop))
 		       (else
 			(beep)
 			(loop)))))

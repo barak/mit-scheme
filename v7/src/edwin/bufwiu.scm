@@ -32,13 +32,14 @@
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
+
 ;;;	without prior written consent from MIT in each case.
 ;;;
 
 ;;;; Buffer Windows:  Image Update
 
 (declare (usual-integrations)
-	 (integrate-external "edb:bufwin.bin.0"))
+	 )
 (using-syntax class-syntax-table
 
 ;;;; Insert/Delete/Clip

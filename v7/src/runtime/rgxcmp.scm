@@ -734,6 +734,23 @@
 
 ;;;; Compiled Pattern Disassembler
 #|
+(define re-compile-fastmap (make-primitive-procedure 're-compile-fastmap))
+
+(define null-translation
+  (let ((v (make-string 256)))
+    (let loop ((index 0))
+      (if (= index 256)
+	  v
+	  (begin (vector-8b-set! v index index)
+		 (loop (1+ index)))))))
+
+(define (hack-fastmap pat)
+  (let ((pattern (re-compile-pattern pat #f))
+	(cs (char-set)))
+    (re-disassemble-pattern pattern)
+    (re-compile-fastmap pattern null-translation (make-syntax-table) cs)
+    (char-set-members cs)))
+
 (define (re-disassemble-pattern compiled-pattern)
   (let ((n (string-length compiled-pattern)))
     (define (loop i)

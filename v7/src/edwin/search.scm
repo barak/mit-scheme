@@ -42,7 +42,7 @@
 ;;; expression search and match procedures.
 
 (declare (usual-integrations)
-	 (integrate-external "edb:struct.bin.0"))
+	 )
 
 ;;;; Character Search
 #|

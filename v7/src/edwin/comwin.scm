@@ -38,7 +38,7 @@
 ;;;; Combination Windows
 
 (declare (usual-integrations)
-	 (integrate-external "edb:window.bin.0"))
+	 )
 (using-syntax class-syntax-table
 
 ;;; Combination windows are used to split a window into vertically or

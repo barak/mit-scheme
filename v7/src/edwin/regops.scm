@@ -38,7 +38,7 @@
 ;;;; Operations on Groups
 
 (declare (usual-integrations)
-	 (integrate-external "edb:struct.bin.0"))
+	 )
 
 ;;;; Region/Mark Operations
 

@@ -155,6 +155,12 @@
 ;;; end CLASS-MACROS
 ))
 
+(define (make-root-environment)
+  ;; **** Because IN-PACKAGE NULL-ENVIRONMENT broken.
+  (let ((methods (make-environment)))
+    ((access system-environment-remove-parent! environment-package)
+     methods)))
+
 (define make-class)
 (define class?)
 (define name->class)
@@ -178,21 +184,17 @@
 	       class)
 	(let ((class
 	       (vector class-tag name superclass object-size transforms
-		       ;; **** MAKE-PACKAGE used here because
-		       ;; MAKE-ENVIRONMENT is being flushed by the
-		       ;; cross-syntaxer for no good reason.
-		       (if superclass
-			   (in-package (class-methods superclass)
-			     (make-package methods ()))
-			   ;; **** Because IN-PACKAGE NULL-ENVIRONMENT broken.
-			   (make-package methods ()
-			    ((access system-environment-remove-parent!
-				     environment-package)
-			     (the-environment)))))))
+		       (make-empty-methods superclass))))
 	  ((access add-unparser-special-object! unparser-package)
 	   class object-unparser)
 	  (local-assignment class-descriptors name class)
 	  class)))))
+
+(define (make-empty-methods superclass)
+  (if superclass
+      (in-package (class-methods superclass)
+	(make-environment))
+      (make-root-environment)))
 
 (set! class?
 (named-lambda (class? x)
@@ -236,9 +238,7 @@
 	((lexical-reference methods ':print-object) object))))
 
 (define class-descriptors
-  (make-package class-descriptors ()
-    ((access system-environment-remove-parent! environment-package)
-     (the-environment))))
+  (make-root-environment))
 
 )
 

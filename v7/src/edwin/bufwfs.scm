@@ -38,7 +38,7 @@
 ;;;; Buffer Windows:  Fill and Scroll
 
 (declare (usual-integrations)
-	 (integrate-external "edb:bufwin.bin.0"))
+	 )
 (using-syntax class-syntax-table
 
 ;;;; Fill
@@ -176,33 +176,86 @@
   (redraw-screen! window 0))
 
 (define-procedure buffer-window (scroll-lines-down! window inferiors y-start)
-  (define (loop inferiors y-start)
-    (if (or (null? inferiors)
-	    (>= y-start y-size))
-	'()
-	(begin (set-inferior-start! (car inferiors) 0 y-start)
-	       (cons (car inferiors)
-		     (loop (cdr inferiors)
-			   (inferior-y-end (car inferiors)))))))
-  (loop inferiors y-start))
+
+  ;; Returns new list of new inferiors.
+
+  ;; "Fast scroll" can be invoked if the lines in the buffer are
+  ;; the full width of the screen and the screen image is correct.
+  ;; If the buffer-window width is the same size as the-alpha-window width
+  ;; then it is assumed that the line windows can be simply scrolled.
+  ;; If the redisplay flag for the buffer-window is off, then the image
+  ;; on the screen should be correct.
+
+  (let ((absolute-start (inferior-absolute-position (car inferiors)
+						    (lambda (x y) y)
+						    (lambda () #f))))
+    (let ((fast-scroll? (and (= x-size (window-x-size the-alpha-window))
+			     (false? (car (inferior-redisplay-flags
+					   (car inferiors))))
+			     (not (false? absolute-start))))
+	  (starting-line (inferior-y-start (car inferiors))))
+    
+      (define (loop inferiors y-start)
+	(if (or (null? inferiors)
+		(>= y-start y-size))
+	    '()
+	    (begin ((if fast-scroll? 
+			set-inferior-start-no-redisplay!
+			set-inferior-start!)
+		    (car inferiors) 0 y-start)
+		   (cons (car inferiors)
+			 (loop (cdr inferiors)
+			       (inferior-y-end (car inferiors)))))))
+
+      (let ((value (loop inferiors y-start)))
+	;; Now update the display
+	(if fast-scroll?
+	    (screen-scroll-region-down! the-alpha-screen
+					(- y-start starting-line)
+					absolute-start
+					(+ absolute-start
+					   (- y-size starting-line))))
+	value))))
 
 (define-procedure buffer-window
 		  (scroll-lines-up! window inferiors y-start start-index)
-  (define (loop inferiors y-start start-index)
-    (set-inferior-start! (car inferiors) 0 y-start)
-    (cons (car inferiors)
-	  (if (null? (cdr inferiors))
-	      (fill-bottom window
-			   (inferior-y-end (car inferiors))
-			   (line-end-index (buffer-group buffer) start-index))
-	      (let ((y-start (inferior-y-end (car inferiors))))
-		(if (>= y-start y-size)
-		    '()
-		    (loop (cdr inferiors)
-			  y-start
-			  (+ start-index
-			     (line-inferior-length inferiors))))))))
-  (loop inferiors y-start start-index))
+
+  (let ((absolute-start (inferior-absolute-position (car inferiors)
+						    (lambda (x y) y)
+						    (lambda () #f))))
+    (let ((fast-scroll? (and (= x-size (window-x-size the-alpha-window))
+			     (false? (car (inferior-redisplay-flags
+					   (car inferiors))))
+			     (not (false? absolute-start))))
+	  (starting-line (inferior-y-start (car inferiors))))
+		  
+      (define (loop inferiors y-start start-index)
+	((if fast-scroll? 
+	     set-inferior-start-no-redisplay!
+	     set-inferior-start!)
+	 (car inferiors) 0 y-start)
+	(cons (car inferiors)
+	      (if (null? (cdr inferiors))
+		  (fill-bottom window
+			       (inferior-y-end (car inferiors))
+			       (line-end-index (buffer-group buffer)
+					       start-index))
+		  (let ((y-start (inferior-y-end (car inferiors))))
+		    (if (>= y-start y-size)
+			'()
+			(loop (cdr inferiors)
+			      y-start
+			      (+ start-index
+				 (line-inferior-length inferiors))))))))
+      (let ((value (loop inferiors y-start start-index)))
+	(if fast-scroll?
+	    (screen-scroll-region-up! the-alpha-screen
+				      (- starting-line y-start)
+				      (- absolute-start
+					 (- starting-line y-start))
+				      (+ absolute-start
+					 (- y-size starting-line))))
+	value))))
 
 ;;; end USING-SYNTAX
 )

@@ -38,9 +38,7 @@
 ;;;; Current State
 
 (declare (usual-integrations)
-	 (integrate-external "edb:editor.bin.0")
-	 (integrate-external "edb:buffer.bin.0")
-	 (integrate-external "edb:bufset.bin.0"))
+	 )
 (using-syntax edwin-syntax-table
 
 ;;;; Windows

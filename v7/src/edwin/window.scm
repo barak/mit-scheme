@@ -38,7 +38,7 @@
 ;;;; Window System
 
 (declare (usual-integrations)
-	 (integrate-external "edb:class.bin.0"))
+	 )
 (using-syntax class-syntax-table
 
 ;;;  Based on WINDOW-WIN, designed by RMS.
@@ -125,6 +125,12 @@
   (set! y-size y)
   (setup-redisplay-flags! redisplay-flags))
 
+(define-procedure vanilla-window (window-absolute-position window receiver 
+							   fail)
+  (if (eq? window the-alpha-window)
+      (receiver 0 0)
+      (=> superior :inferior-absolute-position window receiver fail)))
+
 (define-procedure vanilla-window (window-redisplay-flags window)
   (declare (integrate window))
   redisplay-flags)
@@ -182,8 +188,6 @@
 	      (xi (inferior-x-start (car inferiors)))
 	      (yi (inferior-y-start (car inferiors)))
 	      (flags (inferior-redisplay-flags (car inferiors))))
-	  (declare (compilable-primitive-functions
-		    (keyboard-active? tty-read-char-ready?)))
 	  (if (and (or display-style (car flags))
 		   xi yi)
 	      (and (or display-style (not (keyboard-active? 0)))
@@ -289,6 +293,11 @@
 
 (define-method vanilla-window (:set-inferior-start! window window* x y)
   (set-inferior-start! (find-inferior inferiors window*) x y))
+
+(define-method vanilla-window (:inferior-absolute-position window window*
+							   receiver fail)
+  (inferior-absolute-position (find-inferior inferiors window*) receiver fail))
+
 
 ;;;; Inferiors
 
@@ -302,6 +311,17 @@
   (if (not position)
       (set-inferior-start! inferior #!FALSE #!FALSE)
       (set-inferior-start! inferior (car position) (cdr position))))
+
+(define (inferior-absolute-position inferior receiver fail)
+  (if (and (inferior-x-start inferior)
+	   (inferior-y-start inferior))
+      (window-absolute-position (window-superior (inferior-window inferior))
+	(lambda (x y)
+	  (receiver
+	   (+ x (inferior-x-start inferior))
+	   (+ y (inferior-y-start inferior))))
+	fail)
+      (fail)))
 
 (define (inferior-needs-redisplay! inferior)
   (if (and (inferior-x-start inferior)
@@ -410,9 +430,12 @@
   (receiver (inferior-x-start inferior)
 	    (inferior-y-start inferior)))
 
-(define (set-inferior-start! inferior x-start y-start)
+(define (set-inferior-start-no-redisplay! inferior x-start y-start)
   (vector-set! (cdr inferior) 0 x-start)
-  (vector-set! (cdr inferior) 1 y-start)
+  (vector-set! (cdr inferior) 1 y-start))
+
+(define (set-inferior-start! inferior x-start y-start)
+  (set-inferior-start-no-redisplay! inferior x-start y-start)
   (inferior-needs-redisplay! inferior))
 
 (define (inferior-redisplay-flags inferior)

@@ -301,33 +301,49 @@
 ;;; The marks list is cleaned every time that FOR-EACH-MARK! is
 ;;; called.  It may be necessary to do this a little more often.
 
-(declare (compilable-primitive-functions object-hash))
+;;; Group marks is a weak list of marks.
+
+(define weak-cons
+  (let ((weak-cons-type (microcode-type 'WEAK-CONS)))
+    (named-lambda (weak-cons car cdr)
+      (system-pair-cons weak-cons-type car cdr))))
+
+(define %weak-car system-pair-car)
+(define %weak-cdr system-pair-cdr)
+(define %weak-set-cdr! system-pair-set-cdr!)
+
+(define (weak-member? object weak-list)
+  (declare (integrate %weak-car %weak-cdr))
+  (cond ((null? weak-list) #f)
+	((eq? object (%weak-car weak-list)) #t)
+	(else (weak-member? object (%weak-cdr weak-list)))))
 
 (define (mark-permanent! mark)
-  (let ((n (object-hash mark))
-	(marks (group-marks (mark-group mark))))
-    (if (not (memq n marks))
-	(vector-set! (mark-group mark) group-index:marks (cons n marks))))
+  (let ((marks (group-marks (mark-group mark))))
+    (if (not (weak-member? mark marks))
+	(vector-set! (mark-group mark) group-index:marks 
+		     (weak-cons mark marks))))
   mark)
 
 (define (for-each-mark group procedure)
+  (declare (integrate %weak-car %weak-cdr %weak-set-cdr))
   (define (loop-1 marks)
     (if (not (null? marks))
-	(let ((mark (object-unhash (car marks))))
+	(let ((mark (%weak-car marks)))
 	  (if mark
 	      (begin (procedure mark)
-		     (loop-2 marks (cdr marks)))
-	      (begin (vector-set! group group-index:marks (cdr marks))
-		     (loop-1 (cdr marks)))))))
+		     (loop-2 marks (%weak-cdr marks)))
+	      (begin (vector-set! group group-index:marks (%weak-cdr marks))
+		     (loop-1 (%weak-cdr marks)))))))
 
   (define (loop-2 previous marks)
     (if (not (null? marks))
-	(let ((mark (object-unhash (car marks))))
+	(let ((mark (%weak-car marks)))
 	  (if mark
 	      (begin (procedure mark)
-		     (loop-2 marks (cdr marks)))
-	      (begin (set-cdr! previous (cddr previous))
-		     (loop-2 previous (cdr previous)))))))
+		     (loop-2 marks (%weak-cdr marks)))
+	      (begin (%weak-set-cdr! previous (%weak-cdr (%weak-cdr previous)))
+		     (loop-2 previous (%weak-cdr previous)))))))
 
   (loop-1 (group-marks group)))
 

@@ -38,7 +38,7 @@
 ;;;; Buffer Windows:  Mark <-> Coordinate Maps
 
 (declare (usual-integrations)
-	 (integrate-external "edb:bufwin.bin.0"))
+	 )
 (using-syntax class-syntax-table
 
 (define-procedure buffer-window (%window-mark->x window mark)

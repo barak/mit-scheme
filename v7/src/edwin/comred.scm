@@ -38,20 +38,23 @@
 ;;;; Command Reader
 
 (declare (usual-integrations)
-	 (integrate-external "edb:curren.bin.0"))
+	 )
 (using-syntax (access edwin-syntax-table edwin-package)
 
 (define (top-level-command-reader)
   (fluid-let ((*auto-save-keystroke-count* 0))
     (define (^G-loop)
-      (with-keyboard-macro-disabled
-       (lambda ()
-	 (call-with-current-continuation
-	   (lambda (continuation)
-	     (fluid-let ((*^G-interrupt-continuation* continuation))
-	       (command-reader))))))
+      (call-with-current-continuation
+       (lambda (continuation)
+	 (fluid-let ((*^g-interrupt-continuation* continuation))
+	   (with-keyboard-macro-disabled
+	    (lambda ()
+	      (catching-^g
+	       (lambda ()
+		 (command-reader))))))))
       (^G-loop))
     (^G-loop)))
+
 
 (define command-reader)
 (define execute-char)

@@ -301,6 +301,8 @@ If a file with the new name already exists, confirmation is requested first."
   "Print the current region on the local printer."
   (print-region (current-region)))
 
+#|
+
 (define (print-region region)
   (let ((temp (temporary-buffer "*Printout*")))
     (region-insert! (buffer-point temp) region)
@@ -316,6 +318,8 @@ If a file with the new name already exists, confirmation is requested first."
 
 (define translate-file
   (make-primitive-procedure 'TRANSLATE-FILE))
+|#
+
 
 ;;;; Supporting Stuff
 
@@ -369,7 +373,8 @@ If a file with the new name already exists, confirmation is requested first."
 (define (prompt-for-pathname prompt #!optional default)
   (if (unassigned? default) (set! default #!FALSE))
   (fluid-let ((*default-pathname* (or default (get-default-pathname)))
-	      (*pathname-cache* #!FALSE))
+	      ;(*pathname-cache* #!FALSE)
+	      )
     (let ((string
 	   (prompt-for-completed-string prompt
 					(pathname->string *default-pathname*)

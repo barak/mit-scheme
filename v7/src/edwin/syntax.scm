@@ -50,7 +50,7 @@
   "If true, ignore comments in backwards expression parsing.
 This should be false for comments that end in Newline, like Lisp.
 It can be true for comments that end in }, like Pascal.
-This is because Newline occurs alot when it doesn't
+This is because Newline occurs often when it doesn't
 indicate a comment ending."
   #!FALSE)
 
@@ -312,6 +312,33 @@ indicate a comment ending."
       (mark-right-char-quoted? (mark-1+ mark))
       (error "Mark has no left char" mark)))
 
+(define (parse-state-depth state)
+  (vector-ref state 0))
+
+(define (parse-state-in-string? state)	;#!FALSE or ASCII delimiter.
+  (vector-ref state 1))
+
+(define (parse-state-in-comment? state)	;#!FALSE or 1 or 2.
+  (vector-ref state 2))
+
+(define (parse-state-quoted? state)
+  (vector-ref state 3))
+
+(define (parse-state-last-sexp state)
+  (vector-ref state 4))
+(define (set-parse-state-last-sexp! state value)
+  (vector-set! state 4 value))
+
+(define (parse-state-containing-sexp state)
+  (vector-ref state 5))
+(define (set-parse-state-containing-sexp! state value)
+  (vector-set! state 5 value))
+
+(define (parse-state-location state)
+  (vector-ref state 6))
+(define (set-parse-state-location! state value)
+  (vector-set! state 6 value))
+
 (define (forward-to-sexp-start mark end)
   (parse-state-location (parse-partial-sexp mark end 0 #!TRUE)))
 
@@ -334,11 +361,17 @@ indicate a comment ending."
 				     (mark-index end)
 				     target-depth stop-before? old-state)))
       ;; Convert the returned indices to marks.
-      (if (vector-ref state 4)
-	  (vector-set! state 4 (make-mark group (vector-ref state 4))))
-      (if (vector-ref state 5)
-	  (vector-set! state 5 (make-mark group (vector-ref state 5))))
-      (vector-set! state 6 (make-mark group (vector-ref state 6)))
+      (if (parse-state-last-sexp state)
+	  (set-parse-state-last-sexp! 
+	   state 
+	   (make-mark group (parse-state-last-sexp state))))
+      (if (parse-state-containing-sexp state)
+	  (set-parse-state-containing-sexp! 
+	   state 
+	   (make-mark group (parse-state-containing-sexp state))))
+      (set-parse-state-location! 
+       state
+       (make-mark group (parse-state-location state)))
       state))))
 
 (set! char->syntax-code
@@ -356,26 +389,6 @@ indicate a comment ending."
 'DONE
 )
 
-(define (parse-state-depth state)
-  (vector-ref state 0))
-
-(define (parse-state-in-string? state)	;#!FALSE or ASCII delimiter.
-  (vector-ref state 1))
-
-(define (parse-state-in-comment? state)	;#!FALSE or 1 or 2.
-  (vector-ref state 2))
-
-(define (parse-state-quoted? state)
-  (vector-ref state 3))
-
-(define (parse-state-last-sexp state)
-  (vector-ref state 4))
-
-(define (parse-state-containing-sexp state)
-  (vector-ref state 5))
-
-(define (parse-state-location state)
-  (vector-ref state 6))
 
 ;;;; Definition Start/End
 

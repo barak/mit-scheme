@@ -640,7 +640,7 @@ The name may be an abbreviation of the reference name."
 (define (node-search-start buffer nodename)
   (if (not (ref-variable "Info Tag Table Start"))
       (buffer-start buffer)
-      (let ((string (string-append "Node: " nodename "¢)))
+      (let ((string (string-append "Node: " nodename "¢")))
 	(let ((mark (search-forward string
 				    (ref-variable "Info Tag Table Start")
 				    (ref-variable "Info Tag Table End"))))

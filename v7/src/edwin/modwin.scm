@@ -38,7 +38,7 @@
 ;;;; Modeline Window
 
 (declare (usual-integrations)
-	 (integrate-external "edb:window.bin.0"))
+	 )
 (using-syntax (access class-syntax-table edwin-package)
 
 (define-class modeline-window vanilla-window

@@ -63,11 +63,16 @@
 (define-alias-char #\C-I #\Tab)
 (define-alias-char #\C-j #\Linefeed)
 (define-alias-char #\C-J #\Linefeed)
+(define-alias-char #\C-k #\VT)
+(define-alias-char #\C-K #\VT)
 (define-alias-char #\C-l #\Page)
 (define-alias-char #\C-L #\Page)
 (define-alias-char #\C-m #\Return)
 (define-alias-char #\C-M #\Return)
+(define-alias-char #\C-z #\Call)
+(define-alias-char #\C-Z #\Call)
 (define-alias-char #\C-[ #\Altmode)
+(define-alias-char #\C-- #\Backnext)
 
 (define-alias-char #\C-M-h #\M-Backspace)
 (define-alias-char #\C-M-H #\M-Backspace)
@@ -75,11 +80,16 @@
 (define-alias-char #\C-M-I #\M-Tab)
 (define-alias-char #\C-M-j #\M-Linefeed)
 (define-alias-char #\C-M-J #\M-Linefeed)
+(define-alias-char #\C-M-k #\M-VT)
+(define-alias-char #\C-M-K #\M-VT)
 (define-alias-char #\C-M-l #\M-Page)
 (define-alias-char #\C-M-L #\M-Page)
 (define-alias-char #\C-M-m #\M-Return)
 (define-alias-char #\C-M-M #\M-Return)
+(define-alias-char #\C-M-z #\M-Call)
+(define-alias-char #\C-M-Z #\M-Call)
 (define-alias-char #\C-M-[ #\M-Altmode)
+(define-alias-char #\C-M-- #\M-Backnext)
 
 ;;; These are definitions for the HP 9000 model 237.
 ;;; They should probably be isolated somehow, but there is no clear way.

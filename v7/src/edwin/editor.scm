@@ -45,6 +45,7 @@
 
 (define edwin-reset)
 (define edwin-reset-windows)
+(define edwin-get-input-port)
 (in-package window-package
 
 (set! edwin-reset
@@ -73,7 +74,7 @@
 	      (write-string "
 
 ;You are in an interaction window of the Edwin editor.
-;Type C-H for help.  C-H M will describe some useful commands.")))
+;Type C-H for help.  C-H M will describe some commands.")))
 	  (insert-interaction-prompt)
 	  (set-window-start-mark! (current-window)
 				  (buffer-start (current-buffer))
@@ -84,39 +85,37 @@
 (named-lambda (edwin-reset-windows)
   (send the-alpha-window ':salvage!)))
 
+(set! edwin-get-input-port
+(named-lambda (edwin-get-input-port)
+  (the-alpha-screen->input-port)))
 )
 
 (define (edwin)
   (if (or (unassigned? edwin-editor)
 	  (not edwin-editor))
       (edwin-reset))
-  (with-keyboard-interrupt-dispatch-table
-   editor-keyboard-interrupt-dispatch-table
-   (lambda ()
-     (with-editor-interrupts-enabled
-      (lambda ()
-	(with-editor-input-port console-input-port
+	(with-editor-input-port (edwin-get-input-port)
 	  (lambda ()
 	    (within-editor edwin-editor
 	      (lambda ()
 		(fluid-let (((access *error-hook* error-system)
 			     edwin-error-hook))
-		  (perform-buffer-initializations! (current-buffer))
-		  (push-command-loop (lambda () 'DONE)
-				     (lambda (state)
+		   (perform-buffer-initializations! (current-buffer))
+		   (push-command-loop (lambda () 'DONE)
+				      (lambda (state)
 				       (update-alpha-window! #!TRUE)
 				       (top-level-command-reader)
 				       state)
-				     'DUMMY-STATE))))))))))
-  (tty-redraw-screen)
+				     'DUMMY-STATE))))))
+;  (tty-redraw-screen)
   *the-non-printing-object*)
 
-(in-package system-global-environment
+;(in-package system-global-environment
 
-(define tty-redraw-screen
-  (make-primitive-procedure 'TTY-REDRAW-SCREEN))
+;(define tty-redraw-screen
+;  (make-primitive-procedure 'TTY-REDRAW-SCREEN))
 
-)
+;)
 
 (define editor-continuation)
 (define recursive-edit-continuation)
