@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.8 1993/10/30 12:58:10 gjr Exp $
+$Id: lapgen.scm,v 1.9 1993/10/30 13:46:34 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -86,7 +86,7 @@ MIT in each case. |#
   (cond ((eq? reg regnum:stack-pointer)
 	 "Rsp")
 	((eq? reg regnum:free)
-	 "Rfp")
+	 "Rhp")
 	((eq? reg regnum:regs)
 	 "Rrb")
 	((eq? reg regnum:dynamic-link)
