@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dragon4.scm,v 1.6 1991/02/15 18:04:59 cph Exp $
+$Id: dragon4.scm,v 1.7 1996/06/06 21:07:57 cph Exp $
 
-Copyright (c) 1989-91 Massachusetts Institute of Technology
+Copyright (c) 1989-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -48,7 +48,7 @@ MIT in each case. |#
 	     (with-values (lambda () (dragon4-normalize x p))
 	       (lambda (f e)
 		 (with-values flonum-unparser-cutoff-args
-		   (lambda (cutoff-mode cutoff)
+		   (lambda (cutoff-mode cutoff display-mode)
 		     (dragon4 f e p radix cutoff-mode cutoff
 		       (lambda (u k generate)
 			 (let ((digits
@@ -69,7 +69,12 @@ MIT in each case. |#
 						     (string-tail digits 1)
 						     "e"
 						     (int:->string k radix)))))
-			       (cond ((< k+1-l (- n))
+			       (cond ((eq? display-mode 'ENGINEERING)
+				      (error "Display mode unimplemented:"
+					     display-mode)
+				      (scientific))
+				     ((or (eq? display-mode 'SCIENTIFIC)
+					  (< k+1-l (- n)))
 				      (scientific))
 				     ((negative? k)
 				      (string-append "."
@@ -103,22 +108,29 @@ MIT in each case. |#
 
 (define (flonum-unparser-cutoff-args)
   (cond ((eq? 'NORMAL flonum-unparser-cutoff)
-	 (values 'NORMAL 0))
+	 (values 'NORMAL 0 'NORMAL))
 	((and (pair? flonum-unparser-cutoff)
 	      (pair? (cdr flonum-unparser-cutoff))
-	      (null? (cddr flonum-unparser-cutoff))
 	      (let ((mode (car flonum-unparser-cutoff))
 		    (place (cadr flonum-unparser-cutoff)))
 		(and (memq mode '(ABSOLUTE RELATIVE NORMAL))
 		     (exact-integer? place)
 		     (or (not (eq? 'RELATIVE mode))
-			 (positive? place)))))
+			 (positive? place))))
+	      (or (null? (cddr flonum-unparser-cutoff))
+		  (and (pair? (cddr flonum-unparser-cutoff))
+		       (null? (cdddr flonum-unparser-cutoff))
+		       (memq (caddr flonum-unparser-cutoff)
+			     '(NORMAL SCIENTIFIC ENGINEERING)))))
 	 (values (car flonum-unparser-cutoff)
-		 (- (cadr flonum-unparser-cutoff))))
+		 (- (cadr flonum-unparser-cutoff))
+		 (if (null? (cddr flonum-unparser-cutoff))
+		     'NORMAL
+		     (caddr flonum-unparser-cutoff))))
 	(else
 	 (warn "illegal flonum unparser cutoff parameter"
 	       flonum-unparser-cutoff)
-	 (values 'NORMAL 0))))
+	 (values 'NORMAL 0 'NORMAL))))
 
 (define flonum-unparser-hook #f)
 (define flonum-unparser-cutoff 'NORMAL)
