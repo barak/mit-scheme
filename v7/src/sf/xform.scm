@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xform.scm,v 4.7 1998/05/18 03:02:53 cph Exp $
+$Id: xform.scm,v 4.8 1998/05/18 03:07:59 cph Exp $
 
 Copyright (c) 1988-98 Massachusetts Institute of Technology
 
@@ -65,11 +65,11 @@ MIT in each case. |#
 	  (begin
 	    (if (not top-level?)
 		(error "Open blocks allowed only at top level:" expression))
-	    (if (not (assq 'USUAL-INTEGRATIONS declarations))
-		(write-string ui-warning (notification-output-port)))
 	    (call-with-values
 		(lambda () (open-block-components expression values))
 	      (lambda (auxiliary declarations body)
+		(if (not (assq 'USUAL-INTEGRATIONS declarations))
+		    (write-string ui-warning (notification-output-port)))
 		(transform/open-block* expression
 				       block
 				       environment
