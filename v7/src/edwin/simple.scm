@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: simple.scm,v 1.51 2000/06/26 16:22:43 cph Exp $
+;;; $Id: simple.scm,v 1.52 2000/06/26 18:59:53 cph Exp $
 ;;;
 ;;; Copyright (c) 1985, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -307,13 +307,22 @@
 	 (make-mark (mark-group start) index))))
 
 (define (specific-property-region mark key)
-  (and (not (let ((default (list 'DEFAULT)))
-	      (eq? (region-get mark key default)
-		   default)))
-       (make-region
-	(let ((start (group-start mark)))
-	  (or (find-previous-specific-property-change start mark key)
-	      start))
-	(let ((end (group-end mark)))
-	  (or (find-next-specific-property-change mark end key)
-	      end)))))
+  (let ((default (list 'DEFAULT)))
+    (let ((datum (region-get mark key default)))
+      (and (not (eq? datum default))
+	   (make-region
+	    (let ((start (group-start mark)))
+	      (if (mark< start mark)
+		  (if (eq? (region-get (mark-1+ mark) key default) datum)
+		      (or (find-previous-specific-property-change start mark
+								  key)
+			  start)
+		      mark)
+		  start))
+	    (let ((end (group-end mark)))
+	      (if (mark< mark end)
+		  (if (eq? (region-get (mark1+ mark) key default) datum)
+		      (or (find-next-specific-property-change mark end key)
+			  end)
+		      mark)
+		  end)))))))
