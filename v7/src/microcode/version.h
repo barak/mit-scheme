@@ -30,14 +30,14 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/version.h,v 9.82 1987/07/18 03:05:18 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/version.h,v 9.83 1987/07/19 21:59:17 cph Exp $
 
 This file contains version information for the microcode. */
 
 /* Scheme system release version */
 
 #ifndef RELEASE
-#define RELEASE		"5.2.0"
+#define RELEASE		"5.3.0"
 #endif
 
 /* Microcode release version */
