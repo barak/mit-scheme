@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.10 1991/07/23 08:19:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.11 1991/12/19 20:49:59 arthur Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -46,6 +46,7 @@ MIT in each case. |#
   (x-display-flush 1)
   (x-display-get-default 3)
   (x-display-process-events 2)
+  (x-font-structure 2)
   (x-window-x-size 1)
   (x-window-y-size 1)
   (x-window-map 1)
@@ -75,6 +76,7 @@ MIT in each case. |#
   (x-graphics-draw-line 5)
   (x-graphics-draw-point 3)
   (x-graphics-draw-string 4)
+  (x-graphics-copy-area 7)
   (x-graphics-set-function 2)
   (x-graphics-set-fill-style 2)
   (x-graphics-set-line-style 2)
@@ -140,6 +142,7 @@ MIT in each case. |#
 	   (clear ,operation/clear)
 	   (close ,operation/close)
 	   (coordinate-limits ,operation/coordinate-limits)
+	   (copy-area ,operation/copy-area)
 	   (create-colormap ,operation/create-colormap)
 	   (create-image ,operation/create-image)
 	   (device-coordinate-limits ,operation/device-coordinate-limits)
@@ -148,6 +151,7 @@ MIT in each case. |#
 	   (draw-point ,operation/draw-point)
 	   (draw-text ,operation/draw-text)
 	   (flush ,operation/flush)
+	   (font-structure ,operation/font-structure)
 	   (get-colormap ,operation/get-colormap)
 	   (get-default ,operation/get-default)
 	   (map-window ,operation/map-window)
@@ -224,6 +228,16 @@ MIT in each case. |#
 	    (vector-ref limits 2)
 	    (vector-ref limits 3))))
 
+(define (operation/copy-area device
+			     source-x-left source-y-top
+			     width height
+			     destination-x-left destination-y-top)
+  (x-graphics-device/process-events! device)
+  (x-graphics-copy-area (x-graphics-device/window device)
+			source-x-left source-y-top
+			width height
+			destination-x-left destination-y-top))
+
 (define (operation/device-coordinate-limits device)
   (x-graphics-device/process-events! device)
   (let ((xw (x-graphics-device/window device)))
@@ -249,6 +263,10 @@ MIT in each case. |#
 (define (operation/flush device)
   (x-display-flush (x-graphics-device/display device))
   (x-graphics-device/process-events! device))
+
+(define (operation/font-structure device string)
+  (x-graphics-device/process-events! device)
+  (x-font-structure (x-graphics-device/display device) string))
 
 (define (operation/get-default device resource-name class-name)
   (x-graphics-device/process-events! device)
@@ -489,3 +507,26 @@ MIT in each case. |#
 
 (define (x-colormap/store-colors colormap color-vector)
   (x-store-colors (colormap/descriptor colormap) color-vector))
+
+;;;; Fonts
+
+(define-structure (x-font-structure (conc-name font-structure/)
+				    (type vector))
+  (name false read-only true)
+  (direction false read-only true)
+  (all-chars-exist? false read-only true)
+  (default-char false read-only true)
+  (min-bounds false read-only true)
+  (max-bounds false read-only true)
+  (start-index false read-only true)
+  (character-bounds false read-only true)
+  (max-ascent false read-only true)
+  (max-descent false read-only true))
+
+(define-structure (x-character-bounds (conc-name character-bounds/)
+				      (type vector))
+  (lbearing false read-only true)
+  (rbearing false read-only true)
+  (width false read-only true)
+  (ascent false read-only true)
+  (descent false read-only true))
