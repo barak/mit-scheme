@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infnew.scm,v 1.2 1994/11/23 02:28:44 adams Exp $
+$Id: infnew.scm,v 1.3 1995/01/10 02:46:27 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -249,7 +249,7 @@ MIT in each case. |#
 	 (lambda (selector object)
 	   (or (selector object)
 	       (begin
-		 (warn "Missing debugging info" object)
+		 ;;(warn "Missing debugging info" object)
 		 false)))))
     (values
      (and expression (debug-info rtl-expr/debugging-info expression))
