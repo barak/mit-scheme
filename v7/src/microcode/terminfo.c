@@ -1,8 +1,8 @@
 /* Interface from Emacs to terminfo.
    Copyright (C) 1985, 1986 Free Software Foundation, Inc.
-   Copyright (C) 1998, 2000 Massachusetts Institute of Technology
+   Copyright (C) 1998, 2000, 2001 Massachusetts Institute of Technology
 
-$Id: terminfo.c,v 1.4 2000/12/05 21:23:48 cph Exp $
+$Id: terminfo.c,v 1.5 2001/02/28 14:40:45 cph Exp $
 
 This file is part of GNU Emacs.
 
@@ -29,11 +29,7 @@ and this notice must be preserved on all copies.  */
 
 #ifdef STDC_HEADERS
 #  include <stdlib.h>
-#endif
-
-#ifndef __IRIX__
-char *UP, *BC, PC;
-short ospeed;
+#  include <string.h>
 #endif
 
 /* Interface to curses/terminfo library.
