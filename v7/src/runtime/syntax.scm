@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 14.22 1993/08/27 20:30:25 cph Exp $
+$Id: syntax.scm,v 14.23 1994/01/31 04:48:59 gjr Exp $
 
-Copyright (c) 1988-93 Massachusetts Institute of Technology
+Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -95,13 +95,21 @@ MIT in each case. |#
 (define *current-keyword* false)
 
 (define (syntax expression #!optional table)
-  (cond ((default-object? table) (set! table *syntax-table*))
+  (cond ((default-object? table)
+	 (set! table
+	       (if (unassigned? *syntax-table*)
+		   (nearest-repl/syntax-table)
+		   *syntax-table*)))
 	((not (syntax-table? table))
 	 (error "SYNTAX: not a syntax table" table)))
   (syntax-top-level syntax-expression table expression))
 
 (define (syntax* expressions #!optional table)
-  (cond ((default-object? table) (set! table *syntax-table*))
+  (cond ((default-object? table)
+	 (set! table
+	       (if (unassigned? *syntax-table*)
+		   (nearest-repl/syntax-table)
+		   *syntax-table*)))
 	((not (syntax-table? table))
 	 (error "SYNTAX: not a syntax table" table)))
   (syntax-top-level syntax-sequence table expressions))
