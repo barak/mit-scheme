@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.10 2000/04/18 21:20:01 cph Exp $
+;;; $Id: imail-file.scm,v 1.11 2000/05/02 21:09:51 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -54,10 +54,6 @@
 (define-method available-folder-names ((url <file-url>))
   url
   (error "Unimplemented operation:" 'AVAILABLE-FOLDER-NAMES))
-
-(define-method subscribed-folder-names ((url <file-url>))
-  url
-  (error "Unimplemented operation:" 'SUBSCRIBED-FOLDER-NAMES))
 
 ;;;; Folder
 
@@ -74,6 +70,10 @@
    folder
    (file-modification-time (file-folder-pathname folder)))
   (folder-not-modified! folder))
+
+(define-method %close-folder ((folder <file-folder>))
+  folder
+  unspecific)
 
 (define-method %folder-valid? ((folder <file-folder>))
   (file-exists? (file-folder-pathname folder)))
@@ -148,6 +148,9 @@
   folder
   unspecific)
 
+(define-method %save-folder ((folder <file-folder>))
+  (%write-folder folder (folder-url folder)))
+
 (define-method %maybe-revert-folder ((folder <file-folder>) resolve-conflict)
   (if (if (eqv? (file-folder-modification-time folder)
 		(file-modification-time (file-folder-pathname folder)))
@@ -155,11 +158,3 @@
 	      (resolve-conflict folder))
 	  (folder-modified? folder))
       (%revert-folder folder)))
-
-(define-method subscribe-folder ((folder <file-folder>))
-  folder
-  (error "Unimplemented operation:" 'SUBSCRIBE-FOLDER))
-
-(define-method unsubscribe-folder ((folder <file-folder>))
-  folder
-  (error "Unimplemented operation:" 'UNSUBSCRIBE-FOLDER))

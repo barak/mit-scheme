@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.33 2000/04/28 18:43:53 cph Exp $
+;;; $Id: imail-core.scm,v 1.34 2000/05/02 21:09:43 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -36,7 +36,7 @@
 
 (define (guarantee-url url procedure)
   (if (not (url? url))
-      (error:wrong-type-argument url "IMAIL url" procedure)))
+      (error:wrong-type-argument url "IMAIL URL" procedure)))
 
 (define-method write-instance ((url <url>) port)
   (write-instance-helper 'URL url port
@@ -56,7 +56,7 @@
       (let ((url
 	     (let ((colon (string-find-next-char string #\:)))
 	       (if (not colon)
-		   (error "Malformed URL string:" string))
+		   (error:bad-range-argument string 'STRING->URL))
 	       ((get-url-protocol-parser (string-head string colon))
 		(string-tail string (fix:+ colon 1))))))
 	(hash-table/put! saved-urls string url)
@@ -73,11 +73,8 @@
   (hash-table/put! url-protocol-parsers (string-downcase name) parser))
 
 (define (get-url-protocol-parser name)
-  (let ((parser
-	 (hash-table/get url-protocol-parsers (string-downcase name) #f)))
-    (if (not parser)
-	(error:bad-range-argument name 'GET-URL-PROTOCOL-PARSER))
-    parser))
+  (or (hash-table/get url-protocol-parsers (string-downcase name) #f)
+      (error:bad-range-argument name 'GET-URL-PROTOCOL-PARSER)))
 
 (define url-protocol-parsers
   (make-string-hash-table))
@@ -125,16 +122,10 @@
 ;;; the client that the folder being synchronized has been deleted or
 ;;; renamed, so that the client can take appropriate action.]
 
-;; Open the folder named URL.
-(define (open-folder url)
-  (let ((url (->url url)))
-    (or (get-memoized-folder url)
-	(memoize-folder (%open-folder url)))))
-
-(define-generic %open-folder (url))
-
+;; -------------------------------------------------------------------
 ;; Create a new folder named URL.  Signal an error if the folder
 ;; already exists or can't be created.
+
 (define (new-folder url)
   (let ((url (->url url)))
     (if (get-memoized-folder url)
@@ -143,8 +134,10 @@
 
 (define-generic %new-folder (url))
 
+;; -------------------------------------------------------------------
 ;; Delete the folder named URL.  Signal an error if the folder doesn't
 ;; exist or if it can't be deleted.
+
 (define (delete-folder url)
   (let ((url (->url url)))
     (unmemoize-folder url)
@@ -152,11 +145,13 @@
 
 (define-generic %delete-folder (url))
 
+;; -------------------------------------------------------------------
 ;; Move the folder named URL to NEW-URL.  Signal an error if the
 ;; folder doesn't exist, if NEW-URL already refers to a folder, or if
 ;; the move can't be performed for some reason.  This operation can be
 ;; also be used to convert between protocols, e.g. to move a folder
 ;; from a server to a file.
+
 (define (move-folder url new-url)
   (let ((url (->url url))
 	(new-url (->url new-url)))
@@ -169,9 +164,11 @@
   (%copy-folder url new-url)
   (%delete-folder url))
 
+;; -------------------------------------------------------------------
 ;; Copy the folder named URL to be NEW-URL.  Signal an error if the
 ;; folder doesn't exist, if NEW-URL already refers to a folder, or if
 ;; the copy can't be performed for some reason.
+
 (define (copy-folder url new-url)
   (%copy-folder (->url url) (->url new-url)))
 
@@ -180,21 +177,21 @@
 (define-method %copy-folder ((url <url>) (new-url <url>))
   (%write-folder (open-folder url) new-url))
 
+;; -------------------------------------------------------------------
 ;; Return a list of URLs for folders that match URL-PATTERN.
 ;; URL-PATTERN can contain wildcards.
+
 (define-generic available-folder-names (url-pattern))
 
-;; [This is an IMAP command that appears to be designed to support
-;; delivery of usenet news.]
-(define-generic subscribed-folder-names (url-pattern))
-
+;; -------------------------------------------------------------------
 ;; Define AUTHENTICATOR to be the authenticator to use in the dynamic
 ;; extent of THUNK.
 
 ;; AUTHENTICATOR is a procedure that performs authentication, for
-;; protocols that require it.  AUTHENTICATOR is called with URL as its
-;; only argument and must return the authentication information,
-;; usually a username/password, as multiple values.
+;; protocols that require it.  AUTHENTICATOR is called with a host
+;; name, a user ID, and a procedure as its arguments.  It invokes the
+;; procedure on a single argument, the password.  The AUTHENTICATOR
+;; may wipe the password string on the procedure's return, if desired.
 
 ;; For protocols that don't require authentication, AUTHENTICATOR is
 ;; not called, and BIND-AUTHENTICATOR need not be used.
@@ -237,21 +234,8 @@
 (define (folder-remove! folder key)
   (1d-table/remove! (folder-properties folder) key))
 
-;; Return the URL of FOLDER.
-(define-generic folder-url (folder))
-
 (define-method ->url ((folder <folder>))
   (folder-url folder))
-
-;; Return #T if FOLDER represents a real folder, i.e. has a
-;; corresponding file or server entry.
-(define (folder-valid? folder)
-  (eq? folder (get-memoized-folder (folder-url folder))))
-
-(define-generic %folder-valid? (folder))
-
-;; Return the number of messages in FOLDER.
-(define-generic folder-length (folder))
 
 (define (folder-modified! folder)
   (if (not (folder-modified? folder))
@@ -270,9 +254,52 @@
 	(set-folder-modified?! folder #f)
 	(event-distributor/invoke! (folder-modification-event folder)
 				   folder))))
+
+;;;; Folder operations
 
+;; -------------------------------------------------------------------
+;; Open the folder named URL.
+
+(define (open-folder url)
+  (let ((url (->url url)))
+    (or (get-memoized-folder url)
+	(memoize-folder (%open-folder url)))))
+
+(define-generic %open-folder (url))
+
+;; -------------------------------------------------------------------
+;; Close FOLDER, freeing up connections, memory, etc.  Subsequent use
+;; of the folder must work, but may incur a significant time or space
+;; penalty.
+
+(define (close-folder folder)
+  (%close-folder folder))
+
+(define-generic %close-folder (folder))
+
+;; -------------------------------------------------------------------
+;; Return #T if FOLDER represents a real folder, i.e. has a
+;; corresponding file or server entry.
+
+(define (folder-valid? folder)
+  (eq? folder (get-memoized-folder (folder-url folder))))
+
+(define-generic %folder-valid? (folder))
+
+;; -------------------------------------------------------------------
+;; Return the URL of FOLDER.
+
+(define-generic folder-url (folder))
+
+;; -------------------------------------------------------------------
+;; Return the number of messages in FOLDER.
+
+(define-generic folder-length (folder))
+
+;; -------------------------------------------------------------------
 ;; Get the INDEX'th message in FOLDER and return it.  Signal an
 ;; error for invalid INDEX.
+
 (define (get-message folder index)
   (guarantee-index index 'GET-MESSAGE)
   (if (not (< index (folder-length folder)))
@@ -280,43 +307,52 @@
   (%get-message folder index))
 
 (define-generic %get-message (folder index))
-
-;;; Insert a copy of MESSAGE in FOLDER at the end of the existing
-;;; messages.  Unspecified result.
+
+;; -------------------------------------------------------------------
+;; Insert a copy of MESSAGE in FOLDER at the end of the existing
+;; messages.  Unspecified result.
+
 (define (append-message folder message)
   (guarantee-message message 'APPEND-MESSAGE)
   (%append-message folder message))
 
 (define-generic %append-message (folder message))
-
+
+;; -------------------------------------------------------------------
 ;; Remove all messages in FOLDER that are marked for deletion.
 ;; Unspecified result.
+
 (define-generic expunge-deleted-messages (folder))
 
-;; Search FOLDER for messages matching CRITERIA, returning them in a
-;; list.  [Possible values for CRITERIA not yet defined.]  Returns a
-;; list of messages.
+;; -------------------------------------------------------------------
+;; Search FOLDER for messages matching CRITERIA.  [Possible values for
+;; CRITERIA not yet defined.]  Returns a list of messages.
+
 (define-generic search-folder (folder criteria))
 
+;; -------------------------------------------------------------------
 ;; Poll the inbox associated with FOLDER to see if there is new mail.
 ;; If so, the mail is appended to FOLDER.  Return the number of new
 ;; messages.  Return #F if FOLDER has no associated inbox.
+
 (define-generic poll-folder (folder))
 
+;; -------------------------------------------------------------------
 ;; Synchronize the local copy of FOLDER with the server's copy.
 ;; Unspecified result.
+
 (define-generic synchronize-folder (folder))
 
+;; -------------------------------------------------------------------
 ;; Save any changes made to FOLDER.  This permits the use of caches
 ;; for improved performance.
+
 (define (save-folder folder)
   (%save-folder folder))
 
 (define-generic %save-folder (folder))
 
-(define-method %save-folder ((folder <folder>))
-  (%write-folder folder (folder-url folder)))
-
+;; -------------------------------------------------------------------
 ;; Check to see if the persistent copy of FOLDER has changed since it
 ;; was copied into memory, and update the memory copy if so.  Return
 ;; #t if the memory copy is updated, #f if it is not.  If both
@@ -324,22 +360,20 @@
 ;; RESOLVE-CONFLICT is called with the folder as an argument.
 ;; RESOLVE-CONFLICT must return a boolean which if true indicates that
 ;; the folder should be reverted.
+
 (define (maybe-revert-folder folder resolve-conflict)
   (%maybe-revert-folder folder resolve-conflict))
 
 (define-generic %maybe-revert-folder (folder resolve-conflict))
 (define-generic %revert-folder (folder))
 
+;; -------------------------------------------------------------------
 ;; Write the contents of FOLDER to URL.
+
 (define (write-folder folder url)
   (%write-folder folder (->url url)))
 
 (define-generic %write-folder (folder url))
-
-;; [These are IMAP commands that appear to be designed to support
-;; delivery of usenet news.]
-(define-generic subscribe-folder (folder))
-(define-generic unsubscribe-folder (folder))
 
 ;;;; Message type
 
@@ -370,28 +404,26 @@
 (define (make-detached-message headers body)
   (let loop ((headers headers) (headers* '()) (flags '()) (properties '()))
     (cond ((not (pair? headers))
-	   (make-message (reverse! headers*)
-			 body
-			 (reverse! flags)
+	   (make-message (reverse! headers*) body
+			 (remove-duplicates! (reverse! flags) string-ci=?)
 			 (reverse! properties)))
 	  ((header-field->message-flags (car headers))
 	   => (lambda (flags*)
-		(loop (cdr headers)
-		      headers*
-		      (append! (reverse! (cdr flags*)) flags)
-		      properties)))
+		(loop (cdr headers) headers*
+		      (append! (reverse! (cdr flags*)) flags) properties)))
 	  ((header-field->message-property (car headers))
 	   => (lambda (property)
-		(loop (cdr headers)
-		      headers*
-		      flags
+		(loop (cdr headers) headers* flags
 		      (cons property properties))))
 	  (else
-	   (loop (cdr headers)
-		 (cons (car headers) headers*)
-		 flags
+	   (loop (cdr headers) (cons (car headers) headers*) flags
 		 properties)))))
-
+
+(define (make-attached-message folder headers body)
+  (let ((message (make-detached-message headers body)))
+    (set-message-folder! message folder)
+    message))
+
 (define (attach-message message folder)
   (guarantee-folder folder 'ATTACH-MESSAGE)
   (let ((message
@@ -406,11 +438,6 @@
   (set-message-folder! message #f)
   (set-message-index! message #f))
 
-(define (make-attached-message folder headers body)
-  (let ((message (make-detached-message headers body)))
-    (set-message-folder! message folder)
-    message))
-
 (define (message-modified! message)
   (without-interrupts
    (lambda ()
@@ -421,14 +448,6 @@
 
 (define (message-not-modified! message)
   (set-message-modified?! message #f))
-
-(define (maybe-strip-imail-headers strip? headers)
-  (if strip?
-      (list-transform-negative headers
-	(lambda (header)
-	  (or (header-field->message-flags header)
-	      (header-field->message-property header))))
-      headers))
 
 (define (message->string message)
   (string-append (header-fields->string (message-header-fields message))
@@ -497,24 +516,22 @@
 
 (define (set-message-flag message flag)
   (guarantee-message-flag flag 'SET-MESSAGE-FLAG)
-  (let ((flags (message-flags message)))
-    (if (not (flags-member? flag flags))
-	(set-message-flags! message (cons flag flags))))
+  (set-message-flags! message (flags-add flag (message-flags message)))
   (message-modified! message))
 
 (define (clear-message-flag message flag)
   (guarantee-message-flag flag 'SET-MESSAGE-FLAG)
-  (flags-delete! flag (message-flags message))
+  (set-message-flags! message (flags-delete! flag (message-flags message)))
   (message-modified! message))
 
 (define (folder-flags folder)
   (let ((n (folder-length folder)))
     (do ((index 0 (+ index 1))
 	 (flags '() (append (message-flags (get-message folder index)) flags)))
-	((= index n)
-	 (remove-duplicates flags string-ci=?)))))
+	((= index n) (remove-duplicates flags string-ci=?)))))
 
 (define flags-member? (member-procedure string-ci=?))
+(define flags-add (add-member-procedure string-ci=?))
 (define flags-delete! (delete-member-procedure list-deletor! string-ci=?))
 
 (define (message-flag? object)
@@ -726,17 +743,7 @@
 
 (define (header-field-name? object)
   (and (string? object)
-       (%header-field-name? object 0 (string-length object))))
-
-(define %header-field-name?
-  (let ((excluded-chars
-	 (char-set-invert
-	  (char-set-difference (ascii-range->char-set 33 127)
-			       (char-set #\:)))))
-    (lambda (string start end)
-      (and (fix:< start end)
-	   (not (substring-find-next-char-in-set string start end
-						 excluded-chars))))))
+       (rfc822:header-field-name? object 0 (string-length object))))
 
 (define (header-field-value? object)
   (and (string? object)
@@ -783,7 +790,7 @@
 (define (header-field-initial-line? line)
   (let ((colon (string-find-next-char line #\:)))
     (and colon
-	 (%header-field-name? line 0 colon))))
+	 (rfc822:header-field-name? line 0 colon))))
 
 (define (header-field-continuation-line? line)
   (and (not (string-null? line))
