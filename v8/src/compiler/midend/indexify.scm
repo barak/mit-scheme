@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: indexify.scm,v 1.2 1995/01/28 04:04:40 adams Exp $
+$Id: indexify.scm,v 1.3 1995/03/28 05:19:27 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -43,12 +43,12 @@ MIT in each case. |#
 (define-macro (define-indexifier keyword bindings . body)
   (let ((proc-name (symbol-append 'INDEXIFY/ keyword)))
     (call-with-values
-     (lambda () (%matchup bindings '(handler) '(cdr form)))
-     (lambda (names code)
-       `(DEFINE ,proc-name
-	  (LET ((HANDLER (LAMBDA ,names ,@body)))
-	    (NAMED-LAMBDA (,proc-name FORM)
-	      (INDEXIFY/REMEMBER ,code FORM))))))))
+	(lambda () (%matchup bindings '(handler) '(cdr form)))
+      (lambda (names code)
+	`(DEFINE ,proc-name
+	   (LET ((HANDLER (LAMBDA ,names ,@body)))
+	     (NAMED-LAMBDA (,proc-name FORM)
+	       (INDEXIFY/REMEMBER ,code FORM))))))))
 
 (define-indexifier LOOKUP (name)
   `(LOOKUP ,name))
@@ -58,17 +58,17 @@ MIT in each case. |#
      ,(indexify/expr body)))
 
 (define-indexifier LET (bindings body)
-  `(LET ,(lmap (lambda (binding)
-		 (list (car binding)
-		       (indexify/expr (cadr binding))))
-	       bindings)
+  `(LET ,(map (lambda (binding)
+		(list (car binding)
+		      (indexify/expr (cadr binding))))
+	      bindings)
      ,(indexify/expr body)))
 
 (define-indexifier LETREC (bindings body)
-  `(LETREC ,(lmap (lambda (binding)
-		    (list (car binding)
-			  (indexify/expr (cadr binding))))
-		  bindings)
+  `(LETREC ,(map (lambda (binding)
+		   (list (car binding)
+			 (indexify/expr (cadr binding))))
+		 bindings)
      ,(indexify/expr body)))
 
 (define-indexifier IF (pred conseq alt)
@@ -105,34 +105,21 @@ MIT in each case. |#
   (if (not (pair? expr))
       (illegal expr))
   (case (car expr)
-    ((QUOTE)
-     (indexify/quote expr))
-    ((LOOKUP)
-     (indexify/lookup expr))
-    ((LAMBDA)
-     (indexify/lambda expr))
-    ((LET)
-     (indexify/let expr))
-    ((DECLARE)
-     (indexify/declare expr))
-    ((CALL)
-     (indexify/call expr))
-    ((BEGIN)
-     (indexify/begin expr))
-    ((IF)
-     (indexify/if expr))
-    ((LETREC)
-     (indexify/letrec expr))
-    ((SET! UNASSIGNED? OR DELAY
-      ACCESS DEFINE IN-PACKAGE THE-ENVIRONMENT)
-     (no-longer-legal expr))
-    (else
-     (illegal expr))))
+    ((QUOTE)    (indexify/quote expr))
+    ((LOOKUP)   (indexify/lookup expr))
+    ((LAMBDA)   (indexify/lambda expr))
+    ((LET)      (indexify/let expr))
+    ((DECLARE)  (indexify/declare expr))
+    ((CALL)     (indexify/call expr))
+    ((BEGIN)    (indexify/begin expr))
+    ((IF)       (indexify/if expr))
+    ((LETREC)   (indexify/letrec expr))
+    (else       (illegal expr))))
 
 (define (indexify/expr* exprs)
-  (lmap (lambda (expr)
-	  (indexify/expr expr))
-	exprs))
+  (map (lambda (expr)
+	 (indexify/expr expr))
+       exprs))
 
 (define (indexify/remember new old)
   (code-rewrite/remember new old))
