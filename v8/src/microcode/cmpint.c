@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.84 1994/11/28 04:03:58 cph Exp $
+$Id: cmpint.c,v 1.85 1995/07/26 19:08:48 adams Exp $
 
-Copyright (c) 1989-1994 Massachusetts Institute of Technology
+Copyright (c) 1989-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -100,6 +100,14 @@ MIT in each case. */
 #include "prims.h"      /* LEXPR */
 #include "prim.h"	/* Primitive_Procedure_Table, etc. */
 
+/* DEBUGGING ONLY */
+#define DEBUG_SHOW_STACK(n)					\
+{ long i;							\
+    for (i=0; i < n; i++)					\
+      outf_error("\nStack[%2d] (0x%08x) = 0x%x", i, STACK_LOC(i), \
+		 STACK_REF(i));					\
+}
+
 #define ENTRY_TO_OBJECT(entry)						\
   (MAKE_POINTER_OBJECT (TC_COMPILED_ENTRY, ((SCHEME_OBJECT *) (entry))))
 
@@ -108,12 +116,16 @@ MIT in each case. */
 
 #ifdef HAS_COMPILER_SUPPORT
 
-#ifndef FLUSH_I_CACHE_REGION
-#  define FLUSH_I_CACHE_REGION(addr, nwords) NOP()
+/* Parameters */
+
+#define COMPILER_INTERFACE_VERSION		3
+
+#ifndef COMPILER_REGBLOCK_N_FIXED
+#  define COMPILER_REGBLOCK_N_FIXED		16
 #endif
 
-#ifndef PUSH_D_CACHE_REGION
-#  define PUSH_D_CACHE_REGION(addr, nwords) FLUSH_I_CACHE_REGION(addr, nwords)
+#ifndef COMPILER_REGBLOCK_N_TEMPS
+#  define COMPILER_REGBLOCK_N_TEMPS		256
 #endif
 
 /* ASM_ENTRY_POINT, EXFNX, and DEFNX are for OS/2.  The IBM C Set++/2
@@ -149,6 +161,41 @@ MIT in each case. */
 #define DEFNX_VOID(name) ASM_ENTRY_POINT (name) ()
 #endif
 
+#ifndef COMPILER_REGBLOCK_EXTRA_SIZE
+#  define COMPILER_REGBLOCK_EXTRA_SIZE		0
+#endif
+
+#if (REGBLOCK_MINIMUM_LENGTH > COMPILER_REGBLOCK_N_FIXED)
+#  include "ERROR: cmpint.c and const.h disagree on REGBLOCK_MINIMUM_LENGTH!"
+#endif
+
+/* ((sizeof(SCHEME_OBJECT)) / (sizeof(SCHEME_OBJECT))) */
+
+#define COMPILER_FIXED_SIZE	1
+
+#ifndef COMPILER_TEMP_SIZE
+#  define COMPILER_TEMP_SIZE	((sizeof (double)) / (sizeof (SCHEME_OBJECT)))
+#endif
+
+#define REGBLOCK_LENGTH							\
+  ((COMPILER_REGBLOCK_N_FIXED * COMPILER_FIXED_SIZE) +			\
+   (COMPILER_REGBLOCK_N_TEMPS * COMPILER_TEMP_SIZE) +			\
+   COMPILER_REGBLOCK_EXTRA_SIZE)
+
+#ifndef COMPILER_FIRST_TEMP
+#  define COMPILER_FIRST_TEMP						\
+    ((COMPILER_REGBLOCK_N_FIXED * COMPILER_FIXED_SIZE)			\
+     + COMPILER_REGBLOCK_EXTRA_SIZE)
+#endif
+
+#ifndef FLUSH_I_CACHE_REGION
+#  define FLUSH_I_CACHE_REGION(addr, nwords) NOP()
+#endif
+
+#ifndef PUSH_D_CACHE_REGION
+#  define PUSH_D_CACHE_REGION(addr, nwords) FLUSH_I_CACHE_REGION(addr, nwords)
+#endif
+
 /* Make noise words invisible to the C compiler. */
 
 #define C_UTILITY
@@ -176,10 +223,15 @@ long C_return_value;
 #define RETURN_TO_C(code) do						\
 {									\
   C_return_value = (code);						\
-  return (interface_to_C_hook);						\
+  return (interface_to_C);						\
 } while (false)
 
 #define RETURN_TO_SCHEME(ep)	return ((utility_result) (ep))
+
+/* Not working, for now */
+
+#define NEW_RETURN_TO_SCHEME(ep)	return ((utility_result) (ep))
+#define RETURN_TO_SCHEME_RESTORING()	return ((utility_result) (ep))
 
 #define ENTER_SCHEME(ep) do						\
 {									\
@@ -219,6 +271,8 @@ extern long EXFNX (C_to_interface, (void *));
 
 EXTENTRY (interface_to_C);
 EXTENTRY (interface_to_scheme);
+EXTENTRY (interface_to_scheme_new);
+EXTENTRY (interface_to_scheme_restore);
 
 /* Convenience macros */
 
@@ -242,6 +296,26 @@ EXTENTRY (interface_to_scheme);
   return (temp);							\
 } while (false)
 
+#define NEW_RETURN_TO_SCHEME(ep) do					\
+{									\
+  struct utility_result_s temp;						\
+									\
+  temp.interface_dispatch = (REFENTRY (interface_to_scheme_new));	\
+  temp.extra.entry_point = ((instruction *) (ep));			\
+									\
+  return (temp);							\
+} while (false)
+
+#define RETURN_TO_SCHEME_RESTORING() do					\
+{									\
+  struct utility_result_s temp;						\
+									\
+  temp.interface_dispatch = (REFENTRY (interface_to_scheme_restore));	\
+  temp.extra.entry_point = ((instruction *) (NULL));			\
+									\
+  return (temp);							\
+} while (false)
+
 #define ENTER_SCHEME(ep)	return (C_to_interface ((void *) (ep)))
 
 #endif /* CMPINT_USE_STRUCS */
@@ -251,13 +325,13 @@ EXTENTRY (interface_to_scheme);
 typedef utility_result EXFUN
   ((*ASM_ENTRY_POINT(utility_table_entry)), (long, long, long, long));
 
-#define RETURN_UNLESS_EXCEPTION(code, entry_point)                      \
+#define RETURN_UNLESS_EXCEPTION(code, before_scheme, entry_point)       \
 {                                                                       \
   int return_code;                                                      \
                                                                         \
   return_code = (code);                                                 \
   if (return_code == PRIM_DONE)                                         \
-  {                                                                     \
+  { before_scheme;                                                      \
     RETURN_TO_SCHEME (entry_point);                                     \
   }                                                                     \
   else                                                                  \
@@ -265,6 +339,30 @@ typedef utility_result EXFUN
     RETURN_TO_C (return_code);                                          \
   }                                                                     \
 }
+
+/* If the "result" is PRIM_DONE generate a call to a compiled      */
+/* procedure, otherwise reflect it back into the interpreter to do */
+/* full apply handling.  This assumes that we are running from a   */
+/* primitive called out of compiled code, and that a full compiler */
+/* stack frame is currently on the stack.                          */
+
+#define REFLECT_TO_INTERPRETER_FOR_FULL_APPLY(prim_arity)		\
+  { STACK_PUSH (FIXNUM_ZERO + REFLECT_CODE_INTERNAL_APPLY);		\
+    STACK_PUSH (reflect_to_interface);					\
+    Stack_Pointer = (STACK_LOC (- prim_arity));				\
+    return (SHARP_F);							\
+  }
+
+#define CALL_IF_SUCCESSFUL(result, compiled_proc, prim_arity)		\
+  if (result == PRIM_DONE)						\
+  { STACK_PUSH (compiled_proc);						\
+    STACK_PUSH (REFLECT_CODE_APPLY_COMPILED);				\
+    STACK_PUSH (((SCHEME_OBJECT) reflect_to_interface));		\
+    Stack_Pointer = (STACK_LOC (- prim_arity));				\
+    return (SHARP_T);							\
+  }									\
+  else									\
+    REFLECT_TO_INTERPRETER_FOR_FULL_APPLY(prim_arity)
 
 #define MAKE_CC_BLOCK(block_addr)					\
   (MAKE_POINTER_OBJECT (TC_COMPILED_CODE_BLOCK, block_addr))
@@ -361,7 +459,7 @@ extern C_UTILITY SCHEME_OBJECT EXFUN
   (bkpt_proceed, (PTR, SCHEME_OBJECT, SCHEME_OBJECT));
 extern C_UTILITY void EXFUN (bkpt_remove, (PTR, SCHEME_OBJECT));
 
-/* These definitions reflect the indices into the table above. */
+/* These definitions reflect the indices into the utility_table below. */
 
 #define TRAMPOLINE_K_RETURN			0x0
 #define TRAMPOLINE_K_APPLY			0x1
@@ -385,12 +483,29 @@ extern C_UTILITY void EXFUN (bkpt_remove, (PTR, SCHEME_OBJECT));
 
 #define TRAMPOLINE_K_OTHER			TRAMPOLINE_K_INTERPRETED
 
+/* Names for data slots in trampolines, by type of trampoline */
+
+/* All trampolines */
+#define TD_ARITY		0	/* Number of call registers in */
+					/* use when the trampoline is */
+					/* invoked. */
+/* Apply trampolines */
+#define TD_APPLY_PROC		1	/* The original procedure */
+/* Fake UUO trampolines */
+#define TD_FAKE_UUO_EXTENSION	1	/* See comutil_operator_lookup_trap */
+#define TD_FAKE_UUO_BLOCK	2	/* Linkage block */
+#define TD_FAKE_UUO_OFFSET      3       /* Offset in linkage block */
+
 /* Ways to bypass the interpreter */
 
 #define REFLECT_CODE_INTERNAL_APPLY		0
 #define REFLECT_CODE_RESTORE_INTERRUPT_MASK	1
 #define REFLECT_CODE_STACK_MARKER		2
 #define REFLECT_CODE_CC_BKPT			3
+#define REFLECT_CODE_INTERRUPT_RESTART		4
+#define REFLECT_CODE_RESTORE_REGS		5
+#define REFLECT_CODE_APPLY_COMPILED		6
+#define REFLECT_CODE_CONTINUE_LINKING		7
 
 /* Markers for special entry points */
 
@@ -468,11 +583,9 @@ DEFUN (setup_lexpr_invocation,
        (nactuals, nmax, entry_address),
        register long nactuals AND register long nmax
        AND instruction * entry_address)
-{
-  register long delta;
-
+{ register long delta;
+  long NumberOfArgsAfterDiddling = (-nmax)-1;
   /* nmax is negative! */
-
   delta = (nactuals + nmax);
 
   if (delta < 0)
@@ -486,6 +599,7 @@ DEFUN (setup_lexpr_invocation,
 
     last_loc = open_gap (nactuals, delta);
     (STACK_LOCATIVE_PUSH (last_loc)) = EMPTY_LIST;
+    STACK_PUSH (FIXNUM_ZERO + NumberOfArgsAfterDiddling);
     return (PRIM_DONE);
   }
   else if (delta == 0)
@@ -507,6 +621,7 @@ DEFUN (setup_lexpr_invocation,
     *gap_location = (MAKE_POINTER_OBJECT (TC_LIST, local_free));
     *local_free++ = temp;
     *local_free = EMPTY_LIST;
+    STACK_PUSH (FIXNUM_ZERO + NumberOfArgsAfterDiddling);
     return (PRIM_DONE);
   }
   else /* (delta > 0) */
@@ -566,6 +681,7 @@ DEFUN (setup_lexpr_invocation,
         (STACK_LOCATIVE_PUSH (source_location));
     }
     Stack_Pointer = gap_location;
+    STACK_PUSH (FIXNUM_ZERO + NumberOfArgsAfterDiddling);
     return (PRIM_DONE);
   }
 }
@@ -580,7 +696,7 @@ DEFUN (setup_compiled_invocation,
        (nactuals, compiled_entry_address),
        long nactuals AND instruction * compiled_entry_address)
 {
-  long nmin, nmax, delta;               /* all +1 */
+  long nmin, nmax, delta;               /* all +1, as is nactuals */
 
   nmax = (COMPILED_ENTRY_MAXIMUM_ARITY (compiled_entry_address));
   if (nactuals == nmax)
@@ -590,6 +706,7 @@ DEFUN (setup_compiled_invocation,
        all the optional arguments have been provided.  Thus the
        frame is in the right format and we are done.
      */
+    STACK_PUSH (FIXNUM_ZERO + (nactuals-1));
     return (PRIM_DONE);
   }
   nmin = (COMPILED_ENTRY_MINIMUM_ARITY (compiled_entry_address));
@@ -615,6 +732,7 @@ DEFUN (setup_compiled_invocation,
        They must be defaulted.
      */
     ((void) (open_gap (nactuals, delta)));
+    STACK_PUSH (FIXNUM_ZERO + (nmax-1));
     return (PRIM_DONE);
   }
   if (nmax > 0)
@@ -630,6 +748,61 @@ DEFUN (setup_compiled_invocation,
   return (setup_lexpr_invocation (nactuals, nmax, compiled_entry_address));
 }
 
+#if (COMPILER_PROCESSOR_TYPE != COMPILER_I386_TYPE)
+
+#define INVOKE_ENTER_SCHEME(Val) do     \
+{ SCHEME_OBJECT ret = STACK_REF(0);     \
+  STACK_PUSH (Val);                     \
+  STACK_PUSH (FIXNUM_ZERO + 1);         \
+  ENTER_SCHEME (OBJECT_ADDRESS (ret));  \
+} while (0)
+
+#define INVOKE_RETURN_ADDRESS(Value)					\
+{ SCHEME_OBJECT ret = STACK_REF(0);					\
+  STACK_PUSH (Value);							\
+  STACK_PUSH (FIXNUM_ZERO + 1);						\
+  RETURN_TO_SCHEME (OBJECT_ADDRESS (ret));				\
+} while (0)
+
+#else /* i386 */
+
+/* Since the 386 doesn't store the continuation in a register
+  (it doesn't have very many registers), it is on the stack.
+  When you invoke Scheme in this way, it expects either a valid
+  continuation on the stack or #f to indicate no continuation.
+  If there is a continuation, it will leave it there.  The HP will
+  simply pop it in a register, no matter what is there.  So care must
+  be taken for the 386 to make sure it pops the "bogus" continuation
+  when it should and leaves a real one when it should.  In this case,
+  a bogus continuation should be left on the stack.  The following code
+  is the true code and should be executed on all platforms, but of course
+  it is slower.  */
+
+#define INVOKE_ENTER_SCHEME(Val) do     \
+{ SCHEME_OBJECT ret = STACK_POP();      \
+  STACK_PUSH (SHARP_F);                 \
+  STACK_PUSH (Val);                     \
+  STACK_PUSH (FIXNUM_ZERO + 1);         \
+  ENTER_SCHEME (OBJECT_ADDRESS (ret));  \
+} while (0)
+
+static utility_result
+  EXFUN (compiler_interrupt_common, (SCHEME_ADDR, SCHEME_OBJECT));
+
+#define INVOKE_RETURN_ADDRESS(Value) do					\
+{ if (((long) Free) >= ((long) (Regs[REGBLOCK_MEMTOP])))		\
+    return (compiler_interrupt_common (0, Value));			\
+  else									\
+  { SCHEME_OBJECT ret = STACK_POP();					\
+    STACK_PUSH (SHARP_F);                                               \
+    STACK_PUSH (Value);							\
+    STACK_PUSH (FIXNUM_ZERO + 1);					\
+    RETURN_TO_SCHEME (OBJECT_ADDRESS (ret));				\
+  }                                                                     \
+} while (0)
+
+#endif /* i386 */
+
 /* Main compiled code entry points.
 
    These are the primary entry points that the interpreter
@@ -650,11 +823,12 @@ DEFUN_VOID (enter_compiled_expression)
     ((instruction *) (OBJECT_ADDRESS (Fetch_Expression ())));
   if ((COMPILED_ENTRY_FORMAT_WORD (compiled_entry_address)) !=
       FORMAT_WORD_EXPR)
-  {
-    /* It self evaluates. */
-    Val = (Fetch_Expression ());
-    ENTER_SCHEME (OBJECT_ADDRESS (STACK_POP ()));
+  { /* It self evaluates, and just after it on the stack is the */
+    /* compiled procedure that wants that value                 */
+    INVOKE_ENTER_SCHEME(Fetch_Expression ());
   }
+  STACK_PUSH (Fetch_Env());	/* Env. passed as arg. */
+  STACK_PUSH (FIXNUM_ZERO+1);	/* One argument */
   ENTER_SCHEME (compiled_entry_address);
 }
 
@@ -688,23 +862,23 @@ DEFUN_VOID (return_to_compiled_code)
 
   compiled_entry_address =
     ((instruction *) (OBJECT_ADDRESS (STACK_POP ())));
+  STACK_PUSH(SHARP_F);          /* bogus continuation */
+  STACK_PUSH (Val);		/* Return value */
+  STACK_PUSH (FIXNUM_ZERO+1);	/* One argument passed */
   ENTER_SCHEME (compiled_entry_address);
 }
 
 C_UTILITY SCHEME_OBJECT
 DEFUN (apply_compiled_from_primitive, (arity), int arity)
-{
-  SCHEME_OBJECT frame_size, procedure;
+{ SCHEME_OBJECT frame_size, procedure;
   long result;
   
   frame_size = (STACK_POP ());
   procedure = (STACK_POP ());
 
   switch (OBJECT_TYPE (procedure))
-  {
-    case TC_ENTITY:
-    {
-      SCHEME_OBJECT data, operator;
+  { case TC_ENTITY:
+    { SCHEME_OBJECT data, operator;
       unsigned long nactuals = (OBJECT_DATUM (frame_size));
 
       data = (MEMORY_REF (procedure, ENTITY_DATA));
@@ -715,10 +889,8 @@ DEFUN (apply_compiled_from_primitive, (arity), int arity)
 	      == (Get_Fixed_Obj_Slot (ARITY_DISPATCHER_TAG))))
 	procedure = (VECTOR_REF (data, nactuals));
       else
-      {
-	operator = (MEMORY_REF (procedure, ENTITY_OPERATOR));
-	if (!COMPILED_CODE_ADDRESS_P (operator))
-	  goto defer_application;
+      { operator = (MEMORY_REF (procedure, ENTITY_OPERATOR));
+	if (!COMPILED_CODE_ADDRESS_P (operator)) break;
 	STACK_PUSH (procedure);
 	frame_size += 1;
 	procedure = operator;
@@ -727,34 +899,25 @@ DEFUN (apply_compiled_from_primitive, (arity), int arity)
     }
 
     case TC_COMPILED_ENTRY:
-    {
-      result = setup_compiled_invocation ((OBJECT_DATUM (frame_size)),
+    { result = setup_compiled_invocation ((OBJECT_DATUM (frame_size)),
 					  ((instruction *)
-					   (OBJECT_ADDRESS (procedure))));
-      if (result == PRIM_DONE)
-      {
-	STACK_PUSH (procedure);
-	Stack_Pointer = (STACK_LOC (- arity));
-	return (SHARP_F);
-      }
-      else
-	break;
+					   (OBJECT_ADDRESS
+					    (procedure))));
+      /* At this point, frame_size is the number of actuals being passed, */
+      /* plus one for the operator.                                       */
+      CALL_IF_SUCCESSFUL(result, procedure, arity);
+      /* NOT REACHED */
     }
 
-    case TC_PRIMITIVE:
-    /* For now, fall through */
-
+    case TC_PRIMITIVE:		/* Default, for now */
     default:
-defer_application:
-      STACK_PUSH (procedure);
-      STACK_PUSH (frame_size);
       break;
   }
-
-  STACK_PUSH (FIXNUM_ZERO + REFLECT_CODE_INTERNAL_APPLY);
-  STACK_PUSH (reflect_to_interface);
-  Stack_Pointer = (STACK_LOC (- arity));
-  return (SHARP_F);
+  /* At this point, frame_size is the number of actuals being passed, */
+  /* plus one for the operator.                                       */
+  STACK_PUSH (procedure);
+  STACK_PUSH (frame_size);
+  REFLECT_TO_INTERPRETER_FOR_FULL_APPLY (arity);
 }
 
 C_UTILITY SCHEME_OBJECT
@@ -762,52 +925,31 @@ DEFUN (compiled_with_interrupt_mask, (old_mask, receiver, new_mask),
        unsigned long old_mask
        AND SCHEME_OBJECT receiver
        AND unsigned long new_mask)
-{
-  long result;
+{ long result;
 
   STACK_PUSH (LONG_TO_FIXNUM (old_mask));
   STACK_PUSH (FIXNUM_ZERO + REFLECT_CODE_RESTORE_INTERRUPT_MASK);
   STACK_PUSH (reflect_to_interface);
 
-  STACK_PUSH (LONG_TO_FIXNUM (new_mask));
+  STACK_PUSH (LONG_TO_FIXNUM (old_mask));
   result = (setup_compiled_invocation (2,
 				       ((instruction *)
-					(OBJECT_ADDRESS (receiver)))));
-  STACK_PUSH (receiver);
-
-  if (result != PRIM_DONE)
-  {
-    STACK_PUSH (STACK_FRAME_HEADER + 1);
-    STACK_PUSH (FIXNUM_ZERO + REFLECT_CODE_INTERNAL_APPLY);
-    STACK_PUSH (reflect_to_interface);
-  }
-
-  Stack_Pointer = (STACK_LOC (- 2));
-  return (SHARP_F);
+					(OBJECT_ADDRESS
+					 (receiver)))));
+  CALL_IF_SUCCESSFUL(result, receiver, 2);
 }
 
 C_UTILITY SCHEME_OBJECT
 DEFUN (compiled_with_stack_marker, (thunk), SCHEME_OBJECT thunk)
-{
+{ /* Called with two markers already on the stack */
   long result;
 
   STACK_PUSH (FIXNUM_ZERO + REFLECT_CODE_STACK_MARKER);
   STACK_PUSH (reflect_to_interface);
-
   result = (setup_compiled_invocation (1,
 				       ((instruction *)
 					(OBJECT_ADDRESS (thunk)))));
-  STACK_PUSH (thunk);
-
-  if (result != PRIM_DONE)
-  {
-    STACK_PUSH (STACK_FRAME_HEADER);
-    STACK_PUSH (FIXNUM_ZERO + REFLECT_CODE_INTERNAL_APPLY);
-    STACK_PUSH (reflect_to_interface);
-  }
-
-  Stack_Pointer = (STACK_LOC (- 3));
-  return (SHARP_F);
+  CALL_IF_SUCCESSFUL(result, thunk, 3);
 }
 
 /*
@@ -829,30 +971,11 @@ DEFNX (comutil_return_to_interpreter,
        (tramp_data_raw, ignore_2, ignore_3, ignore_4),
        SCHEME_ADDR tramp_data_raw
        AND long ignore_2 AND long ignore_3 AND long ignore_4)
-{
+{ Val = STACK_POP();
+  STACK_POP();			/* bogus continuation */
   RETURN_TO_C (PRIM_DONE);
 }
 
-#if (COMPILER_PROCESSOR_TYPE != COMPILER_I386_TYPE)
-
-#define INVOKE_RETURN_ADDRESS()					\
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (STACK_POP ()))
-
-#else /* i386 */
-
-static utility_result
-  EXFUN (compiler_interrupt_common, (SCHEME_ADDR, SCHEME_OBJECT));
-
-#define INVOKE_RETURN_ADDRESS() do					\
-{									\
-  if (((long) Free) >= ((long) (Regs[REGBLOCK_MEMTOP])))		\
-    return (compiler_interrupt_common (0, Val));			\
-  else									\
-    RETURN_TO_SCHEME (OBJECT_ADDRESS (STACK_POP ()));			\
-} while (0)
-
-#endif /* i386 */
-
 /*
   comutil_primitive_apply is used to invoked a C primitive.
   Note that some C primitives (the so called interpreter hooks)
@@ -869,10 +992,9 @@ DEFNX (comutil_primitive_apply,
        (primitive, ignore_2, ignore_3, ignore_4),
        SCHEME_OBJECT primitive
        AND long ignore_2 AND long ignore_3 AND long ignore_4)
-{ 
-  PRIMITIVE_APPLY (Val, primitive);
+{ PRIMITIVE_APPLY (Val, primitive);
   POP_PRIMITIVE_FRAME (PRIMITIVE_ARITY (primitive));
-  INVOKE_RETURN_ADDRESS ();
+  INVOKE_RETURN_ADDRESS (Val);
 }
 
 /*
@@ -888,10 +1010,9 @@ DEFNX (comutil_primitive_lexpr_apply,
        (primitive, ignore_2, ignore_3, ignore_4),
        SCHEME_OBJECT primitive
        AND long ignore_2 AND long ignore_3 AND long ignore_4)
-{
-  PRIMITIVE_APPLY (Val, primitive);
+{ PRIMITIVE_APPLY (Val, primitive);
   POP_PRIMITIVE_FRAME (((long) Regs[REGBLOCK_LEXPR_ACTUALS]));
-  INVOKE_RETURN_ADDRESS ();
+  INVOKE_RETURN_ADDRESS (Val);
 }
 
 /*
@@ -906,72 +1027,57 @@ DEFNX (comutil_apply,
        SCHEME_OBJECT procedure
        AND unsigned long nactuals
        AND long ignore_3 AND long ignore_4)
-{
+{ /* nactuals should include the operator itself */
   SCHEME_OBJECT orig_proc = procedure;
 
 loop:
   switch (OBJECT_TYPE (procedure))
-  {
-    case TC_COMPILED_ENTRY:
+  { case TC_COMPILED_ENTRY:
     callee_is_compiled:
-    {
-      instruction * entry_point;
-
+    { instruction * entry_point;
       entry_point = ((instruction *) (OBJECT_ADDRESS (procedure)));
       RETURN_UNLESS_EXCEPTION
         ((setup_compiled_invocation (nactuals, entry_point)),
+         {  },
          entry_point);
     }
 
     case TC_ENTITY:
-    {
-      SCHEME_OBJECT data, operator;
-
+    { SCHEME_OBJECT data, operator;
       data = (MEMORY_REF (procedure, ENTITY_DATA));
       if ((VECTOR_P (data))
 	  && (nactuals < (VECTOR_LENGTH (data)))
 	  && ((VECTOR_REF (data, nactuals)) != SHARP_F)
 	  && ((VECTOR_REF (data, 0))
 	      == (Get_Fixed_Obj_Slot (ARITY_DISPATCHER_TAG))))
-      {
-	/* No loops allowed! */
+      { /* No loops allowed! */
 	SCHEME_OBJECT nproc = (VECTOR_REF (data, nactuals));
-
 	if ((procedure == orig_proc) && (nproc != procedure))
-	{
-	  procedure = nproc;
+	{ procedure = nproc;
 	  goto loop;
 	}
-	else
-	  procedure = orig_proc;
+	else procedure = orig_proc;
       }
-
       operator = (MEMORY_REF (procedure, ENTITY_OPERATOR));
       if (!(COMPILED_CODE_ADDRESS_P (operator)))
-        goto callee_is_interpreted;
-
+	goto callee_is_interpreted;
       STACK_PUSH (procedure);           /* The entity itself */
       procedure = operator;
       nactuals += 1;
       goto callee_is_compiled;
     }
     case TC_PRIMITIVE:
-    {
-      /* This code depends on the fact that unimplemented
+    { /* This code depends on the fact that unimplemented
          primitives map into a "fake" primitive which accepts
          any number of arguments, thus the arity test will
          fail for unimplemented primitives.
        */
-
       long arity;
-
       arity = (PRIMITIVE_ARITY (procedure));
       if (arity == ((long) (nactuals - 1)))
         return (comutil_primitive_apply (procedure, 0, 0, 0));
-
       if (arity != LEXPR)
-      {
-        /* Wrong number of arguments. */
+      { /* Wrong number of arguments. */
         STACK_PUSH (procedure);
         STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (nactuals));
         RETURN_TO_C (ERR_WRONG_NUMBER_OF_ARGUMENTS);
@@ -979,16 +1085,13 @@ loop:
       if (!(IMPLEMENTED_PRIMITIVE_P (procedure)))
         /* Let the interpreter handle it. */
         goto callee_is_interpreted;
-
       /* "Lexpr" primitive. */
       Regs[REGBLOCK_LEXPR_ACTUALS] = ((SCHEME_OBJECT) (nactuals - 1));
       return (comutil_primitive_lexpr_apply (procedure, 0, 0, 0));
     }
-
     callee_is_interpreted:
     default:
-    {
-      STACK_PUSH (procedure);
+    { STACK_PUSH (procedure);
       STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (nactuals));
       RETURN_TO_C (PRIM_APPLY);
     }
@@ -1006,9 +1109,8 @@ DEFNX (comutil_error,
        (nactuals, ignore_2, ignore_3, ignore_4),
        long nactuals AND
        long ignore_2 AND long ignore_3 AND long ignore_4)
-{
-  SCHEME_OBJECT error_procedure;
-
+{ SCHEME_OBJECT error_procedure;
+  /* nactuals includes the operator itself */
   error_procedure = (Get_Fixed_Obj_Slot (Compiler_Err_Procedure));
   return (comutil_apply (error_procedure, nactuals, 0, 0));
 }
@@ -1037,6 +1139,7 @@ DEFNX (comutil_lexpr_apply,
       ((nactuals + 1),
        (COMPILED_ENTRY_MAXIMUM_ARITY (entry_address)),
        entry_address)),
+     { },
      entry_address);
 }
 
@@ -1092,48 +1195,48 @@ DEFUN (abort_link_cc_block, (ap), PTR ap)
 static long
 DEFUN (link_cc_block,
        (block_address, offset, last_header_offset,
-	sections, original_count, ret_add),
+	sections, original_count, ret_add, count),
        register SCHEME_OBJECT * block_address AND
        register long offset AND
        long last_header_offset AND
        long sections AND
        long original_count AND
-       instruction * ret_add)
-{
-  Boolean execute_p;
-  register long entry_size, count;
+       instruction * ret_add AND
+       register long count)
+{ Boolean execute_p;
+  register long entry_size;
   SCHEME_OBJECT block;
   SCHEME_OBJECT header;
   long result, kind, total_count;
   long EXFUN ((* cache_handler), (SCHEME_OBJECT, SCHEME_OBJECT, long));
+  SCHEME_OBJECT Trampoline_Generator;
 
+  if (count != -1) fprintf(stderr, "Count is %d!\n", count);
   transaction_begin ();
-  {
-    Boolean * ap = (dstack_alloc (sizeof (Boolean)));
+  { Boolean * ap = (dstack_alloc (sizeof (Boolean)));
     *ap = linking_cc_block_p;
     transaction_record_action (tat_abort, abort_link_cc_block, ap);
   }
+  Trampoline_Generator = Get_Fixed_Obj_Slot(Linker_Cache_Generator);
   linking_cc_block_p = true;
 
   result = PRIM_DONE;
   block = (MAKE_CC_BLOCK (block_address));
-
+  /* fprintf(stderr, "Start %d () %d %d (original_count %d)\n",
+	     sections, offset, last_header_offset, original_count);
+  */
   while ((--sections) >= 0)
-  {
-    SCHEME_OBJECT * scan = &(block_address[last_header_offset]);
+  { SCHEME_OBJECT * scan = &(block_address[last_header_offset]);
     header = (*scan);
-
     kind = (READ_LINKAGE_KIND (header));
     switch (kind)
-    {
-      case OPERATOR_LINKAGE_KIND:
+    { case OPERATOR_LINKAGE_KIND:
 	cache_handler = compiler_cache_operator;
-
       handle_operator:
         execute_p = true;
 	entry_size = EXECUTE_CACHE_ENTRY_SIZE;
 	START_OPERATOR_RELOCATION (scan);
-	count = (READ_OPERATOR_LINKAGE_COUNT (header));
+	if (count < 0) count = (READ_OPERATOR_LINKAGE_COUNT (header));
 	break;
 
       case GLOBAL_OPERATOR_LINKAGE_KIND:
@@ -1149,7 +1252,7 @@ DEFUN (link_cc_block,
       handle_reference:
 	execute_p = false;
 	entry_size = 1;
-	count = (READ_CACHE_LINKAGE_COUNT (header));
+	if (count < 0) count = (READ_CACHE_LINKAGE_COUNT (header));
 	break;
 
       case CLOSURE_PATTERN_LINKAGE_KIND:
@@ -1158,34 +1261,39 @@ DEFUN (link_cc_block,
 	goto handle_reference;
 
       default:
+	/* fprintf(stderr, "Error case 0x%x %d %d %d %d",
+	           kind, sections, count, offset, last_header_offset);
+        */
 	offset += 1;
 	total_count = (READ_CACHE_LINKAGE_COUNT (header));
 	count = (total_count - 1);
 	result = ERR_COMPILED_CODE_ERROR;
 	goto back_out;
     }
-
     /* This accomodates the re-entry case after a GC.
        It undoes the effects of the "smash header" code below.
-     */
-
-    if ((OBJECT_TYPE (header)) == TC_LINKAGE_SECTION)
-    {
-      count = (original_count - count);
-      total_count = original_count;
-    }
-    else
-    {
-      total_count = count;
+    */
+    if (original_count < 0)
+    { total_count = count;
       if (execute_p)
 	offset += (FIRST_OPERATOR_LINKAGE_OFFSET - 1);
     }
+    else
+    { total_count = original_count;
+      fprintf(stderr, "Don't get here!\n");
+    }
 
+    /* fprintf(stderr, "Preloop %d %d %d %d %d %d 0x%x ... ",
+	    total_count, original_count, sections, count,
+	    offset, last_header_offset,
+	    block_address[last_header_offset]);
+    */
     block_address[last_header_offset] =
       (MAKE_LINKAGE_SECTION_HEADER (kind, total_count));
+    /* fprintf(stderr, " 0x%x\n", block_address[last_header_offset]);
+       */
     for (offset += 1; ((--count) >= 0); offset += entry_size)
-    {
-      SCHEME_OBJECT info;	/* A symbol or a fixnum */
+    { SCHEME_OBJECT info;	/* A symbol or a fixnum */
 
       if (! execute_p)
 	info = (block_address[offset]);
@@ -1193,9 +1301,11 @@ DEFUN (link_cc_block,
 	EXTRACT_EXECUTE_CACHE_SYMBOL (info, &(block_address[offset]));
 
       result = ((* cache_handler) (info, block, offset));
-      if (result != PRIM_DONE)
-      {
-        /* Save enough state to continue.
+      /* fprintf(stderr, "Loop %d %d %d %d (total_count %d)\n",
+		 sections, count, offset, last_header_offset, total_count);
+      */
+      if ((result != PRIM_DONE) || (Trampoline_Generator != SHARP_F))
+      { /* Save enough state to continue.
 	   Note that offset is decremented to compensate for it being
 	   incremented by the for loop header.
 	   Similary sections and count are incremented to compensate
@@ -1203,7 +1313,8 @@ DEFUN (link_cc_block,
 	   count is saved although it's not needed for re-entry to
 	   match the assembly language versions.
 	 */
-
+	if (result != PRIM_DONE) Trampoline_Generator = SHARP_F;
+	fprintf(stderr, "(backout)\n");
   back_out:
 	if (execute_p)
 	  END_OPERATOR_RELOCATION (&(block_address[offset]));
@@ -1214,17 +1325,29 @@ DEFUN (link_cc_block,
         STACK_PUSH (block);
 	STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (count + 1));
 	STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (total_count));
-
-        Store_Expression (SHARP_F);
-        Store_Return (RC_COMP_LINK_CACHES_RESTART);
-        Save_Cont ();
+	if (Trampoline_Generator != SHARP_F)
+	{ STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (entry_size));
+	  STACK_PUSH (FIXNUM_ZERO + REFLECT_CODE_CONTINUE_LINKING);
+	  STACK_PUSH (reflect_to_interface);
+	  STACK_PUSH (FIXNUM_ZERO);
+	  STACK_PUSH (Trampoline_Generator);
+	  STACK_PUSH (FIXNUM_ZERO + 2);
+	  result = PRIM_APPLY;
+	}
+	else
+	{ Store_Expression (SHARP_F);
+	  Store_Return (RC_COMP_LINK_CACHES_RESTART);
+	  Save_Cont ();
+	}
 
         /* Smash header for the garbage collector.
            It is smashed back on return.  See the comment above.
          */
-
+	fprintf(stderr, "Backout smash %d 0x%x ... ",
+		last_header_offset, block_address[last_header_offset]);
         block_address[last_header_offset] =
           (MAKE_LINKAGE_SECTION_HEADER (kind, (total_count - (count + 1))));
+	fprintf(stderr, " 0x%x\n", block_address[last_header_offset]);
 	goto exit_proc;
       }
     }
@@ -1236,6 +1359,8 @@ DEFUN (link_cc_block,
 exit_proc:
   /* Rather than commit, since we want to undo */
   transaction_abort ();
+  /*  PUSH_D_CACHE_REGION (block_address,
+		       OBJECT_DATUM ((unsigned long) (*block_address)) + 1);*/
   {
     SCHEME_OBJECT * ret_add_block;
     unsigned long block_len = (((unsigned long) (* block_address)) + 1);
@@ -1276,6 +1401,7 @@ DEFNX (comutil_link,
     = (SCHEME_ADDR_TO_ADDR (constant_address_raw));
   long offset;
 
+
 #ifdef AUTOCLOBBER_BUG
   block_address[OBJECT_DATUM (* block_address)] = Regs[REGBLOCK_ENV];
 #endif
@@ -1288,7 +1414,9 @@ DEFNX (comutil_link,
                      offset,
                      sections,
                      -1,
-                     ret_add)),
+                     ret_add,
+		     -1)),
+     { STACK_PUSH(FIXNUM_ZERO); },
      ret_add);
 }
 
@@ -1302,11 +1430,11 @@ C_TO_SCHEME long
 DEFUN_VOID (comp_link_caches_restart)
 {
   SCHEME_OBJECT block, environment;
-  long original_count, offset, last_header_offset, sections, code;
+  long original_count, offset, last_header_offset, sections, code, count;
   instruction * ret_add;
 
-  original_count = (OBJECT_DATUM (STACK_POP()));
-  STACK_POP ();					/* Loop count, for debugger */
+  original_count = (UNSIGNED_FIXNUM_TO_LONG (STACK_POP()));
+  count = UNSIGNED_FIXNUM_TO_LONG(STACK_POP ());
   block = (STACK_POP ());
   environment = (compiled_block_environment (block));
   Store_Env (environment);
@@ -1319,15 +1447,23 @@ DEFUN_VOID (comp_link_caches_restart)
                          last_header_offset,
                          sections,
                          original_count,
-                         ret_add));
+                         ret_add,
+			 count));
   if (code == PRIM_DONE)
     /* Return to the block being linked. */
+  { STACK_PUSH (FIXNUM_ZERO);	/* No value passed back */
     ENTER_SCHEME (ret_add);
+  }
   else
   {
     /* Another GC or error.  We should be ready for back-out. */
     return (code);
   }
+}
+
+SCHEME_OBJECT
+  DEFUN_VOID (comp_link_caches_continue)
+{ return SHARP_F;
 }
 
 /* TRAMPOLINE code
@@ -1359,8 +1495,8 @@ DEFNX (comutil_operator_apply_trap,
 
   /* Used by coerce_to_compiled.  TRAMPOLINE_K_APPLY */
 
-  return (comutil_apply ((tramp_data[0]),
-			 (OBJECT_DATUM (tramp_data[1])),
+  return (comutil_apply ((tramp_data[TD_APPLY_PROC]),
+			 (OBJECT_DATUM (tramp_data[TD_ARITY]))+1,
 			 0, 0));
 }
 
@@ -1374,8 +1510,8 @@ DEFNX (comutil_operator_arity_trap,
 
   /* Linker saw an argument count mismatch. TRAMPOLINE_K_ARITY */
 
-  return (comutil_apply ((tramp_data[0]),
-			 (OBJECT_DATUM (tramp_data[1])),
+  return (comutil_apply ((tramp_data[TD_APPLY_PROC]),
+			 (OBJECT_DATUM (tramp_data[TD_ARITY]))+1,
 			 0, 0));
 }
 
@@ -1389,8 +1525,8 @@ DEFNX (comutil_operator_entity_trap,
 
   /* Linker saw an entity to be applied. TRAMPOLINE_K_ENTITY */
 
-  return (comutil_apply ((tramp_data[0]),
-			 (OBJECT_DATUM (tramp_data[1])),
+  return (comutil_apply ((tramp_data[TD_APPLY_PROC]),
+			 (OBJECT_DATUM (tramp_data[TD_ARITY]))+1,
 			 0, 0));
 }
 
@@ -1406,8 +1542,8 @@ DEFNX (comutil_operator_interpreted_trap,
      link directly.  TRAMPOLINE_K_INTERPRETED
    */
 
-  return (comutil_apply ((tramp_data[0]),
-			 (OBJECT_DATUM (tramp_data[1])),
+  return (comutil_apply ((tramp_data[TD_APPLY_PROC]),
+			 (OBJECT_DATUM (tramp_data[TD_ARITY]))+1,
 			 0, 0));
 }
 
@@ -1424,8 +1560,8 @@ DEFNX (comutil_operator_lexpr_trap,
    */
 
   Regs[REGBLOCK_LEXPR_ACTUALS] =
-    ((SCHEME_OBJECT) ((OBJECT_DATUM (tramp_data[1])) - 1));
-  return (comutil_primitive_lexpr_apply ((tramp_data[0]), 0, 0, 0));
+    ((SCHEME_OBJECT) (OBJECT_DATUM (tramp_data[TD_ARITY])));
+  return (comutil_primitive_lexpr_apply ((tramp_data[TD_APPLY_PROC]), 0, 0, 0));
 }
 
 SCHEME_UTILITY utility_result
@@ -1438,7 +1574,7 @@ DEFNX (comutil_operator_primitive_trap,
 
   /* Linker saw a primitive of fixed matching arity. TRAMPOLINE_K_PRIMITIVE */
 
-  return (comutil_primitive_apply ((tramp_data[0]), 0, 0, 0));
+  return (comutil_primitive_apply ((tramp_data[TD_APPLY_PROC]), 0, 0, 0));
 }
 
 extern SCHEME_OBJECT EXFUN (compiler_var_error,
@@ -1468,23 +1604,25 @@ DEFNX (comutil_operator_lookup_trap,
   SCHEME_OBJECT true_operator, * cache_cell;
   long code, nargs;
 
-  code = (complr_operator_reference_trap (&true_operator, (tramp_data[0])));
-  cache_cell = (MEMORY_LOC ((tramp_data[1]),
-			    (OBJECT_DATUM (tramp_data[2]))));
+  code =
+    (complr_operator_reference_trap
+     (&true_operator,
+      (tramp_data[TD_FAKE_UUO_EXTENSION])));
+  cache_cell = (MEMORY_LOC
+		((tramp_data[TD_FAKE_UUO_BLOCK]),
+		 (OBJECT_DATUM (tramp_data[TD_FAKE_UUO_OFFSET]))));
   EXTRACT_EXECUTE_CACHE_ARITY (nargs, cache_cell);
   if (code == PRIM_DONE)
     return (comutil_apply (true_operator, nargs, 0, 0));
   else /* Error or interrupt */
-  {
-    SCHEME_OBJECT trampoline, environment, name;
-
-    /* This could be done by bumpint tramp_data to the entry point.
+  { SCHEME_OBJECT trampoline, environment, name;
+    /* This could be done by bumping tramp_data to the entry point.
        It would probably be better.
      */
     EXTRACT_EXECUTE_CACHE_ADDRESS (trampoline, cache_cell);
-    environment = (compiled_block_environment (tramp_data[1]));
-    name = (compiler_var_error ((tramp_data[0]), environment));
-
+    environment = (compiled_block_environment (tramp_data[TD_FAKE_UUO_BLOCK]));
+    name = (compiler_var_error ((tramp_data[TD_FAKE_UUO_EXTENSION]),
+				environment));
     STACK_PUSH (ENTRY_TO_OBJECT (SCHEME_ADDR_TO_ADDR (trampoline)));
     STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (nargs));	/* For debugger */
     STACK_PUSH (environment);				/* For debugger */
@@ -1505,18 +1643,18 @@ DEFNX (comutil_operator_lookup_trap,
 
 C_TO_SCHEME long
 DEFUN_VOID (comp_op_lookup_trap_restart)
-{
-  SCHEME_OBJECT * old_trampoline, code_block, new_procedure;
-  long offset;
+{ SCHEME_OBJECT * old_trampoline, code_block, new_procedure;
+  long offset, nargs;
 
-  /* Discard name, env. and nargs */
-
-  Stack_Pointer = (STACK_LOC (3));
+  /* Discard name, and env. */
+  Stack_Pointer = (STACK_LOC (2));
+  nargs = STACK_POP();
   old_trampoline = (OBJECT_ADDRESS (STACK_POP ()));
   code_block = ((TRAMPOLINE_STORAGE (old_trampoline))[1]);
   offset = (OBJECT_DATUM ((TRAMPOLINE_STORAGE (old_trampoline))[2]));
   EXTRACT_EXECUTE_CACHE_ADDRESS (new_procedure,
 				 (MEMORY_LOC (code_block, offset)));
+  STACK_PUSH(LONG_TO_UNSIGNED_FIXNUM(nargs-1));
   ENTER_SCHEME (SCHEME_ADDR_TO_ADDR (new_procedure));
 }
 
@@ -1537,9 +1675,10 @@ DEFNX (comutil_operator_1_0_trap,
        AND long ignore_2 AND long ignore_3 AND long ignore_4)
 {
   SCHEME_OBJECT * tramp_data = (SCHEME_ADDR_TO_ADDR (tramp_data_raw));
-
+  
   STACK_PUSH (UNASSIGNED_OBJECT);
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[0]));
+  STACK_PUSH (FIXNUM_ZERO + 1);
+  RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[TD_APPLY_PROC]));
 }
 
 SCHEME_UTILITY utility_result
@@ -1554,7 +1693,8 @@ DEFNX (comutil_operator_2_1_trap,
   Top = (STACK_POP ());
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (Top);
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[0]));
+  STACK_PUSH (FIXNUM_ZERO + 2);
+  RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[TD_APPLY_PROC]));
 }
 
 SCHEME_UTILITY utility_result
@@ -1567,7 +1707,8 @@ DEFNX (comutil_operator_2_0_trap,
 
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (UNASSIGNED_OBJECT);
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[0]));
+  STACK_PUSH (FIXNUM_ZERO + 2);
+  RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[TD_APPLY_PROC]));
 }
 
 SCHEME_UTILITY utility_result
@@ -1584,7 +1725,8 @@ DEFNX (comutil_operator_3_2_trap,
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (Next);
   STACK_PUSH (Top);
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[0]));
+  STACK_PUSH (FIXNUM_ZERO + 3);
+  RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[TD_APPLY_PROC]));
 }
 
 SCHEME_UTILITY utility_result
@@ -1600,7 +1742,8 @@ DEFNX (comutil_operator_3_1_trap,
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (Top);
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[0]));
+  STACK_PUSH (FIXNUM_ZERO + 3);
+  RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[TD_APPLY_PROC]));
 }
 
 SCHEME_UTILITY utility_result
@@ -1614,7 +1757,8 @@ DEFNX (comutil_operator_3_0_trap,
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (UNASSIGNED_OBJECT);
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[0]));
+  STACK_PUSH (FIXNUM_ZERO + 3);
+  RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[TD_APPLY_PROC]));
 }
 
 SCHEME_UTILITY utility_result
@@ -1634,7 +1778,8 @@ DEFNX (comutil_operator_4_3_trap,
   STACK_PUSH (Bottom);
   STACK_PUSH (Middle);
   STACK_PUSH (Top);
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[0]));
+  STACK_PUSH (FIXNUM_ZERO + 4);
+  RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[TD_APPLY_PROC]));
 }
 
 SCHEME_UTILITY utility_result
@@ -1652,7 +1797,8 @@ DEFNX (comutil_operator_4_2_trap,
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (Next);
   STACK_PUSH (Top);
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[0]));
+  STACK_PUSH (FIXNUM_ZERO + 4);
+  RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[TD_APPLY_PROC]));
 }
 
 SCHEME_UTILITY utility_result
@@ -1669,7 +1815,8 @@ DEFNX (comutil_operator_4_1_trap,
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (Top);
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[0]));
+  STACK_PUSH (FIXNUM_ZERO + 4);
+  RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[TD_APPLY_PROC]));
 }
 
 SCHEME_UTILITY utility_result
@@ -1684,7 +1831,8 @@ DEFNX (comutil_operator_4_0_trap,
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (UNASSIGNED_OBJECT);
   STACK_PUSH (UNASSIGNED_OBJECT);
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[0]));
+  STACK_PUSH (FIXNUM_ZERO + 4);
+  RETURN_TO_SCHEME (OBJECT_ADDRESS (tramp_data[TD_APPLY_PROC]));
 }
 
 /* INTERRUPT/GC from Scheme
@@ -1703,9 +1851,7 @@ DEFNX (comutil_operator_4_0_trap,
  */
 
 #define MAYBE_REQUEST_INTERRUPTS()					\
-{									\
-  if (Free >= MemTop)							\
-    Request_GC (Free - MemTop);						\
+{ if (Free >= MemTop) Request_GC (Free - MemTop);			\
   if (Stack_Pointer <= Stack_Guard)					\
     REQUEST_INTERRUPT (INT_Stack_Overflow);				\
 }
@@ -1714,12 +1860,11 @@ static utility_result
 DEFUN (compiler_interrupt_common, (entry_point_raw, state),
        SCHEME_ADDR entry_point_raw AND
        SCHEME_OBJECT state)
-{
-  MAYBE_REQUEST_INTERRUPTS ();
+{ MAYBE_REQUEST_INTERRUPTS ();
   if (entry_point_raw != ((SCHEME_ADDR) 0))
-  {
-    instruction * entry_point
-      = ((instruction *) (SCHEME_ADDR_TO_ADDR (entry_point_raw)));
+  { instruction * entry_point =
+      ((instruction *) (SCHEME_ADDR_TO_ADDR
+			(entry_point_raw)));
     STACK_PUSH (ENTRY_TO_OBJECT (entry_point));
   }
   STACK_PUSH (state);
@@ -1735,7 +1880,9 @@ DEFNX (comutil_interrupt_closure, (ignore_1, ignore_2, ignore_3, ignore_4),
        long ignore_2 AND
        long ignore_3 AND
        long ignore_4)
-{
+{ outf_error("\ncomutil_interrupt_closure");
+  outf_flush_error();
+
   return (compiler_interrupt_common (0, SHARP_F));
 }
 
@@ -1746,13 +1893,12 @@ DEFNX (comutil_interrupt_dlink,
        SCHEME_ADDR dlink_raw AND
        long ignore_3 AND
        long ignore_4)
-{
-  SCHEME_OBJECT * dlink = (SCHEME_ADDR_TO_ADDR (dlink_raw));
+{ SCHEME_OBJECT * dlink = (SCHEME_ADDR_TO_ADDR (dlink_raw));
   return
     (compiler_interrupt_common
      (entry_point_raw, (MAKE_POINTER_OBJECT (TC_STACK_ENVIRONMENT, dlink))));
 }
-
+
 SCHEME_UTILITY utility_result
 DEFNX (comutil_interrupt_procedure,
        (entry_point_raw, ignore_2, ignore_3, ignore_4),
@@ -1760,7 +1906,9 @@ DEFNX (comutil_interrupt_procedure,
        long ignore_2 AND
        long ignore_3 AND
        long ignore_4)
-{
+{ outf_error("\ncomutil_interrupt_procedure");
+  outf_flush_error();
+
   return (compiler_interrupt_common (entry_point_raw, SHARP_F));
 }
 
@@ -1773,8 +1921,11 @@ DEFNX (comutil_interrupt_continuation,
        long ignore_2 AND
        long ignore_3 AND
        long ignore_4)
-{
-  return (compiler_interrupt_common (return_address_raw, Val));
+{ outf_error("\ncomutil_interrupt_continuation");
+  outf_flush_error();
+
+  return (compiler_interrupt_common
+	  (return_address_raw, Val));
 }
 
 /* Env has live data; no entry point on the stack */
@@ -1786,8 +1937,8 @@ DEFNX (comutil_interrupt_ic_procedure,
        long ignore_2 AND
        long ignore_3 AND
        long ignore_4)
-{
-  return (compiler_interrupt_common (entry_point_raw, (Fetch_Env ())));
+{ return (compiler_interrupt_common
+	  (entry_point_raw, (Fetch_Env ())));
 }
 
 SCHEME_UTILITY utility_result
@@ -1797,19 +1948,64 @@ DEFNX (comutil_interrupt_continuation_2,
        long ignore_2 AND
        long ignore_3 AND
        long ignore_4)
-{
+{ outf_error("\ncomutil_interrupt_continuation_2");
+  outf_flush_error();
+
   return (compiler_interrupt_common (0, Val));
 }
 
 C_TO_SCHEME long
 DEFUN_VOID (comp_interrupt_restart)
-{
-  SCHEME_OBJECT state;
+{ SCHEME_OBJECT state, ret_addr;
 
+  /* outf_error("\ncomp_interrupt_restart");*/
   state = (STACK_POP ());
-  Store_Env (state);
-  Val = state;
-  ENTER_SCHEME (OBJECT_ADDRESS (STACK_POP ()));
+  Store_Env (state); 
+  INVOKE_ENTER_SCHEME(state);
+}
+
+SCHEME_UTILITY utility_result
+DEFUN (comutil_new_interrupt_procedure,
+       (entry_point_raw, n_regs_saved, n_homes_to_save, ignore_4),
+       SCHEME_ADDR entry_point_raw
+       AND long n_regs_saved
+       AND long n_homes_to_save
+       AND long ignore_4)
+{
+  /* For now, this assumes that all the registers contain Scheme objects.
+     Eventually two numbers must be passed (n objects, and m doubles).
+   */
+  /*
+    outf_error("\ncomutil_new_interrupt_procedure ep=0x%08x reg=%d homes=%d)",
+	     entry_point_raw, n_regs_saved, n_homes_to_save);
+    outf_flush_error();
+  */
+
+  MAYBE_REQUEST_INTERRUPTS ();
+
+  if (n_homes_to_save != 0)
+  {
+    long i;
+    SCHEME_OBJECT * homes_ptr = &Registers[COMPILER_FIRST_TEMP];
+
+    for (i = 0; i < n_homes_to_save; i++)
+    {
+      STACK_PUSH (* homes_ptr);
+      homes_ptr += (COMPILER_TEMP_SIZE);
+    }
+  }
+
+  STACK_PUSH (ENTRY_TO_OBJECT (SCHEME_ADDR_TO_ADDR (entry_point_raw)));
+  STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (n_regs_saved));
+  STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (n_homes_to_save));
+  STACK_PUSH (FIXNUM_ZERO + REFLECT_CODE_INTERRUPT_RESTART);
+  STACK_PUSH (reflect_to_interface);
+
+  STACK_PUSH (SHARP_F);
+  Store_Expression (SHARP_F);
+  Store_Return (RC_COMP_INTERRUPT_RESTART);
+  Save_Cont ();
+  RETURN_TO_C (PRIM_INTERRUPT);
 }
 
 /* Other TRAPS */
@@ -1834,13 +2030,19 @@ DEFNX (comutil_assignment_trap,
   extension = (MAKE_POINTER_OBJECT (TC_QUAD, extension_addr));
   code = (compiler_assignment_trap (extension, value));
   if (code == PRIM_DONE)
+  { STACK_PUSH (SHARP_F);	/* Fake continuation */
+    STACK_PUSH (Val);
+    STACK_PUSH (FIXNUM_ZERO + 1);
     RETURN_TO_SCHEME (return_address);
+  }
   else
   {
     SCHEME_OBJECT block, environment, name, sra;
 
     sra = (ENTRY_TO_OBJECT (return_address));
     STACK_PUSH (sra);
+    if (sra == reflect_to_interface)
+      sra = (STACK_REF (4));
     STACK_PUSH (value);
     block = (compiled_entry_to_block (sra));
     environment = (compiled_block_environment (block));
@@ -1856,8 +2058,7 @@ DEFNX (comutil_assignment_trap,
 
 C_TO_SCHEME long
 DEFUN_VOID (comp_assignment_trap_restart)
-{
-  extern long EXFUN (Symbol_Lex_Set,
+{ extern long EXFUN (Symbol_Lex_Set,
 		     (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT));
   SCHEME_OBJECT name, environment, value;
   long code;
@@ -1867,10 +2068,10 @@ DEFUN_VOID (comp_assignment_trap_restart)
   value = (STACK_POP ());
   code = (Symbol_Lex_Set (environment, name, value));
   if (code == PRIM_DONE)
-    ENTER_SCHEME (OBJECT_ADDRESS (STACK_POP ()));
+  { INVOKE_ENTER_SCHEME(Val);
+  }
   else
-  {
-    STACK_PUSH (value);
+  { STACK_PUSH (value);
     STACK_PUSH (environment);
     STACK_PUSH (name);
     Store_Expression (SHARP_F);
@@ -1887,21 +2088,18 @@ DEFNX (comutil_cache_lookup_apply,
        AND SCHEME_ADDR block_address_raw
        AND long nactuals
        AND long ignore_4)
-{
-  extern long EXFUN (compiler_lookup_trap, (SCHEME_OBJECT));
+{ extern long EXFUN (compiler_lookup_trap, (SCHEME_OBJECT));
   SCHEME_OBJECT * extension_addr = (SCHEME_ADDR_TO_ADDR (extension_addr_raw));
   SCHEME_OBJECT * block_address = (SCHEME_ADDR_TO_ADDR (block_address_raw));
   SCHEME_OBJECT extension;
   long code;
-
+  /* nactuals includes the operator */
   extension = (MAKE_POINTER_OBJECT (TC_QUAD, extension_addr));
   code = (compiler_lookup_trap (extension));
   if (code == PRIM_DONE)
     return (comutil_apply (Val, nactuals, 0, 0));
   else
-  {
-    SCHEME_OBJECT block, environment, name;
-
+  { SCHEME_OBJECT block, environment, name;
     block = (MAKE_CC_BLOCK (block_address));
     STACK_PUSH (block);
     STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (nactuals));
@@ -1918,8 +2116,7 @@ DEFNX (comutil_cache_lookup_apply,
 
 C_TO_SCHEME long
 DEFUN_VOID (comp_cache_lookup_apply_restart)
-{
-  extern long EXFUN (Symbol_Lex_Ref, (SCHEME_OBJECT, SCHEME_OBJECT));
+{ extern long EXFUN (Symbol_Lex_Ref, (SCHEME_OBJECT, SCHEME_OBJECT));
   SCHEME_OBJECT name, environment;
   long code;
 
@@ -1927,17 +2124,15 @@ DEFUN_VOID (comp_cache_lookup_apply_restart)
   environment = (STACK_POP ());
   code = (Symbol_Lex_Ref (environment, name));
   if (code == PRIM_DONE)
-  {
-    /* Replace block with actual operator */
-    (* (STACK_LOC (1))) = Val;
+  { /* Replace block with actual operator */
+    STACK_REF (1) = Val;
     if (COMPILED_CODE_ADDRESS_P (Val))
       return (apply_compiled_procedure ());
     else
       return (PRIM_APPLY);
   }
   else
-  {
-    STACK_PUSH (environment);
+  { STACK_PUSH (environment);
     STACK_PUSH (name);
     Store_Expression (SHARP_F);
     Store_Return (RC_COMP_CACHE_REF_APPLY_RESTART);
@@ -1958,8 +2153,7 @@ DEFNX (name,								\
        SCHEME_ADDR return_address_raw					\
        AND SCHEME_ADDR extension_addr_raw				\
        AND long ignore_3 AND long ignore_4)				\
-{									\
-  extern long EXFUN (c_trap, (SCHEME_OBJECT));				\
+{ extern long EXFUN (c_trap, (SCHEME_OBJECT));				\
   instruction * return_address						\
     = ((instruction *) (SCHEME_ADDR_TO_ADDR (return_address_raw)));	\
   SCHEME_OBJECT * extension_addr					\
@@ -1970,13 +2164,17 @@ DEFNX (name,								\
   extension = (MAKE_POINTER_OBJECT (TC_QUAD, extension_addr));		\
   code = c_trap (extension);						\
   if (code == PRIM_DONE)						\
+  { STACK_PUSH (SHARP_F);	/* Fake continuation */			\
+    STACK_PUSH (Val);							\
+    STACK_PUSH (FIXNUM_ZERO + 1);					\
     RETURN_TO_SCHEME (return_address);					\
+  }									\
   else									\
-  {									\
-    SCHEME_OBJECT block, environment, name, sra;			\
-									\
+  { SCHEME_OBJECT block, environment, name, sra;			\
     sra = (ENTRY_TO_OBJECT (return_address));				\
     STACK_PUSH (sra);							\
+    if (sra == reflect_to_interface)					\
+      sra = (STACK_REF (4));						\
     block = (compiled_entry_to_block (sra));				\
     environment = (compiled_block_environment (block));			\
     STACK_PUSH (environment);						\
@@ -1991,19 +2189,18 @@ DEFNX (name,								\
 									\
 C_TO_SCHEME long							\
 DEFUN_VOID (restart)							\
-{									\
-  extern long EXFUN (c_lookup, (SCHEME_OBJECT, SCHEME_OBJECT));		\
+{ extern long EXFUN (c_lookup, (SCHEME_OBJECT, SCHEME_OBJECT));		\
   SCHEME_OBJECT name, environment;					\
   long code;								\
 									\
-  name = (Fetch_Expression ());						\
+  name = (STACK_POP ());						\
   environment = (STACK_POP ());						\
   code = (c_lookup (environment, name));				\
   if (code == PRIM_DONE)						\
-    ENTER_SCHEME (OBJECT_ADDRESS (STACK_POP ()));			\
+  { INVOKE_ENTER_SCHEME(Val);                                           \
+  }									\
   else									\
-  {									\
-    STACK_PUSH (environment);						\
+  { STACK_PUSH (environment);						\
     STACK_PUSH (name);							\
     Store_Expression (SHARP_F);						\
     Store_Return (ret_code);						\
@@ -2044,28 +2241,27 @@ DEFNX (name,								\
        (ignore_1, ignore_2, ignore_3, ignore_4),			\
        long ignore_1 AND long ignore_2					\
        AND long ignore_3 AND long ignore_4)				\
-{									\
-  SCHEME_OBJECT handler;						\
-									\
+{ SCHEME_OBJECT handler;						\
+    									\
   handler = (Get_Fixed_Obj_Slot (fobj_index));				\
-  return (comutil_apply (handler, (arity), 0, 0));			\
+  return (comutil_apply (handler, ((arity)+1), 0, 0));			\
 }
 
-COMPILER_ARITH_PRIM (comutil_decrement, GENERIC_TRAMPOLINE_PREDECESSOR, 2)
-COMPILER_ARITH_PRIM (comutil_divide, GENERIC_TRAMPOLINE_DIVIDE, 3)
-COMPILER_ARITH_PRIM (comutil_equal, GENERIC_TRAMPOLINE_EQUAL_P, 3)
-COMPILER_ARITH_PRIM (comutil_greater, GENERIC_TRAMPOLINE_GREATER_P, 3)
-COMPILER_ARITH_PRIM (comutil_increment, GENERIC_TRAMPOLINE_SUCCESSOR, 2)
-COMPILER_ARITH_PRIM (comutil_less, GENERIC_TRAMPOLINE_LESS_P, 3)
-COMPILER_ARITH_PRIM (comutil_minus, GENERIC_TRAMPOLINE_SUBTRACT, 3)
-COMPILER_ARITH_PRIM (comutil_modulo, GENERIC_TRAMPOLINE_MODULO, 3)
-COMPILER_ARITH_PRIM (comutil_multiply, GENERIC_TRAMPOLINE_MULTIPLY, 3)
-COMPILER_ARITH_PRIM (comutil_negative, GENERIC_TRAMPOLINE_NEGATIVE_P, 2)
-COMPILER_ARITH_PRIM (comutil_plus, GENERIC_TRAMPOLINE_ADD, 3)
-COMPILER_ARITH_PRIM (comutil_positive, GENERIC_TRAMPOLINE_POSITIVE_P, 2)
-COMPILER_ARITH_PRIM (comutil_quotient, GENERIC_TRAMPOLINE_QUOTIENT, 3)
-COMPILER_ARITH_PRIM (comutil_remainder, GENERIC_TRAMPOLINE_REMAINDER, 3)
-COMPILER_ARITH_PRIM (comutil_zero, GENERIC_TRAMPOLINE_ZERO_P, 2)
+COMPILER_ARITH_PRIM (comutil_decrement, GENERIC_TRAMPOLINE_PREDECESSOR, 1)
+COMPILER_ARITH_PRIM (comutil_divide, GENERIC_TRAMPOLINE_DIVIDE, 2)
+COMPILER_ARITH_PRIM (comutil_equal, GENERIC_TRAMPOLINE_EQUAL_P, 2)
+COMPILER_ARITH_PRIM (comutil_greater, GENERIC_TRAMPOLINE_GREATER_P, 2)
+COMPILER_ARITH_PRIM (comutil_increment, GENERIC_TRAMPOLINE_SUCCESSOR, 1)
+COMPILER_ARITH_PRIM (comutil_less, GENERIC_TRAMPOLINE_LESS_P, 2)
+COMPILER_ARITH_PRIM (comutil_minus, GENERIC_TRAMPOLINE_SUBTRACT, 2)
+COMPILER_ARITH_PRIM (comutil_modulo, GENERIC_TRAMPOLINE_MODULO, 2)
+COMPILER_ARITH_PRIM (comutil_multiply, GENERIC_TRAMPOLINE_MULTIPLY, 2)
+COMPILER_ARITH_PRIM (comutil_negative, GENERIC_TRAMPOLINE_NEGATIVE_P, 1)
+COMPILER_ARITH_PRIM (comutil_plus, GENERIC_TRAMPOLINE_ADD, 2)
+COMPILER_ARITH_PRIM (comutil_positive, GENERIC_TRAMPOLINE_POSITIVE_P, 1)
+COMPILER_ARITH_PRIM (comutil_quotient, GENERIC_TRAMPOLINE_QUOTIENT, 2)
+COMPILER_ARITH_PRIM (comutil_remainder, GENERIC_TRAMPOLINE_REMAINDER, 2)
+COMPILER_ARITH_PRIM (comutil_zero, GENERIC_TRAMPOLINE_ZERO_P, 1)
 
 /*
   Obsolete SCHEME_UTILITYs used to handle first class environments.
@@ -2082,15 +2278,16 @@ DEFNX (util_name,							\
        SCHEME_ADDR ret_add_raw						\
        AND SCHEME_OBJECT environment AND SCHEME_OBJECT variable		\
        AND long ignore_4)						\
-{									\
-  extern long EXFUN (c_proc, (SCHEME_OBJECT, SCHEME_OBJECT));		\
+{ extern long EXFUN (c_proc, (SCHEME_OBJECT, SCHEME_OBJECT));		\
   instruction * ret_add							\
     = ((instruction *) (SCHEME_ADDR_TO_ADDR (ret_add_raw)));		\
   long code;								\
 									\
   code = (c_proc (environment, variable));				\
   if (code == PRIM_DONE)						\
-  {									\
+  { STACK_PUSH (SHARP_F);	/* Bogus continuation */		\
+    STACK_PUSH (Val);							\
+    STACK_PUSH (FIXNUM_ZERO + 1);					\
     RETURN_TO_SCHEME (ret_add);						\
   }									\
   else									\
@@ -2107,8 +2304,7 @@ DEFNX (util_name,							\
 									\
 C_TO_SCHEME long							\
 DEFUN_VOID (restart_name)						\
-{									\
-  extern long EXFUN (c_proc, (SCHEME_OBJECT, SCHEME_OBJECT));		\
+{ extern long EXFUN (c_proc, (SCHEME_OBJECT, SCHEME_OBJECT));		\
   SCHEME_OBJECT environment, variable;					\
   long code;								\
 									\
@@ -2116,13 +2312,11 @@ DEFUN_VOID (restart_name)						\
   variable = (STACK_POP ());						\
   code = (c_proc (environment, variable));				\
   if (code == PRIM_DONE)						\
-  {									\
-    Regs[REGBLOCK_ENV] = environment;					\
-    ENTER_SCHEME (OBJECT_ADDRESS (STACK_POP ()));			\
+  { Regs[REGBLOCK_ENV] = environment;					\
+    INVOKE_ENTER_SCHEME(Val);                                           \
   }									\
   else									\
-  {									\
-    STACK_PUSH (variable);						\
+  { STACK_PUSH (variable);						\
     STACK_PUSH (environment);						\
     Store_Expression (SHARP_F);						\
     Store_Return (ret_code);						\
@@ -2139,8 +2333,7 @@ DEFNX (util_name,							\
        AND SCHEME_OBJECT environment					\
        AND SCHEME_OBJECT variable					\
        AND SCHEME_OBJECT value)						\
-{									\
-  extern long EXFUN (c_proc, (SCHEME_OBJECT, SCHEME_OBJECT,		\
+{ extern long EXFUN (c_proc, (SCHEME_OBJECT, SCHEME_OBJECT,		\
 			      SCHEME_OBJECT));				\
   instruction * ret_add							\
     = ((instruction *) (SCHEME_ADDR_TO_ADDR (ret_add_raw)));		\
@@ -2148,10 +2341,13 @@ DEFNX (util_name,							\
 									\
   code = (c_proc (environment, variable, value));			\
   if (code == PRIM_DONE)						\
+  { STACK_PUSH (SHARP_F);	/* Bogus continuation */		\
+    STACK_PUSH (Val);							\
+    STACK_PUSH (FIXNUM_ZERO + 1);					\
     RETURN_TO_SCHEME (ret_add);						\
+  }									\
   else									\
-  {									\
-    STACK_PUSH (ENTRY_TO_OBJECT (ret_add));				\
+  { STACK_PUSH (ENTRY_TO_OBJECT (ret_add));				\
     STACK_PUSH (value);							\
     STACK_PUSH (variable);						\
     STACK_PUSH (environment);						\
@@ -2164,8 +2360,7 @@ DEFNX (util_name,							\
 									\
 C_TO_SCHEME long							\
 DEFUN_VOID (restart_name)						\
-{									\
-  extern long EXFUN (c_proc, (SCHEME_OBJECT, SCHEME_OBJECT,		\
+{ extern long EXFUN (c_proc, (SCHEME_OBJECT, SCHEME_OBJECT,		\
 			      SCHEME_OBJECT));				\
   SCHEME_OBJECT environment, variable, value;				\
   long code;								\
@@ -2175,9 +2370,8 @@ DEFUN_VOID (restart_name)						\
   value = (STACK_POP ());						\
   code = (c_proc (environment, variable, value));			\
   if (code == PRIM_DONE)						\
-  {									\
-    Regs[REGBLOCK_ENV] = environment;					\
-    ENTER_SCHEME (OBJECT_ADDRESS (STACK_POP ()));			\
+  { Regs[REGBLOCK_ENV] = environment;					\
+    INVOKE_ENTER_SCHEME(Val);                                           \
   }									\
   else									\
   {									\
@@ -2231,16 +2425,14 @@ DEFNX (comutil_lookup_apply,
        (environment, variable, nactuals, ignore_4),
        SCHEME_OBJECT environment AND SCHEME_OBJECT variable
        AND long nactuals AND long ignore_4)
-{
-  extern long EXFUN (Lex_Ref, (SCHEME_OBJECT, SCHEME_OBJECT));
+{ extern long EXFUN (Lex_Ref, (SCHEME_OBJECT, SCHEME_OBJECT));
   long code;
-
+  /* nactuals includes the operator */
   code = (Lex_Ref (environment, variable));
   if (code == PRIM_DONE)
     return (comutil_apply (Val, nactuals, 0, 0));
   else
-  {
-    STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (nactuals));
+  { STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (nactuals));
     STACK_PUSH (variable);
     STACK_PUSH (environment);
     Store_Expression (SHARP_F);
@@ -2261,8 +2453,7 @@ DEFUN_VOID (comp_lookup_apply_restart)
   variable = (STACK_POP ());
   code = (Lex_Ref (environment, variable));
   if (code == PRIM_DONE)
-  {
-    SCHEME_OBJECT nactuals;
+  { SCHEME_OBJECT nactuals;
 
     nactuals = (STACK_POP ());
     STACK_PUSH (Val);
@@ -2273,8 +2464,7 @@ DEFUN_VOID (comp_lookup_apply_restart)
       return (PRIM_APPLY);
   }
   else
-  {
-    STACK_PUSH (variable);
+  { STACK_PUSH (variable);
     STACK_PUSH (environment);
     Store_Expression (SHARP_F);
     Store_Return (RC_COMP_LOOKUP_APPLY_RESTART);
@@ -2289,8 +2479,7 @@ DEFNX (comutil_primitive_error,
        SCHEME_ADDR ret_add_raw
        AND SCHEME_OBJECT primitive
        AND long ignore_3 AND long ignore_4)
-{
-  instruction * ret_add =
+{ instruction * ret_add =
     ((instruction *) (SCHEME_ADDR_TO_ADDR (ret_add_raw)));
 
   STACK_PUSH (ENTRY_TO_OBJECT (ret_add));
@@ -2303,11 +2492,11 @@ DEFNX (comutil_primitive_error,
 
 C_TO_SCHEME long
 DEFUN_VOID (comp_error_restart)
-{
-  instruction * ret_add;
+{ instruction * ret_add;
 
   STACK_POP ();			/* primitive */
   ret_add = ((instruction *) (OBJECT_ADDRESS (STACK_POP ())));
+  STACK_PUSH (FIXNUM_ZERO);	/* No value returned */
   ENTER_SCHEME (ret_add);
 }
 
@@ -2323,8 +2512,7 @@ C_UTILITY SCHEME_OBJECT
 DEFUN (compiled_block_debugging_info,
        (block),
        SCHEME_OBJECT block)
-{
-  long length;
+{ long length;
 
   length = (VECTOR_LENGTH (block));
   return (FAST_MEMORY_REF (block, (length - 1)));
@@ -2336,8 +2524,7 @@ C_UTILITY SCHEME_OBJECT
 DEFUN (compiled_block_environment,
        (block),
        SCHEME_OBJECT block)
-{
-  long length;
+{ long length;
 
   length = (VECTOR_LENGTH (block));
   return (FAST_MEMORY_REF (block, length));
@@ -2352,8 +2539,7 @@ C_UTILITY SCHEME_OBJECT *
 DEFUN (compiled_entry_to_block_address,
        (entry),
        SCHEME_OBJECT entry)
-{
-  SCHEME_OBJECT *block_address;
+{ SCHEME_OBJECT *block_address;
 
   Get_Compiled_Block (block_address, (OBJECT_ADDRESS (entry)));
   return (block_address);
@@ -2363,8 +2549,7 @@ C_UTILITY SCHEME_OBJECT
 DEFUN (compiled_entry_to_block,
        (entry),
        SCHEME_OBJECT entry)
-{
-  SCHEME_OBJECT *block_address;
+{ SCHEME_OBJECT *block_address;
 
   Get_Compiled_Block (block_address, (OBJECT_ADDRESS (entry)));
   return (MAKE_CC_BLOCK (block_address));
@@ -2383,8 +2568,7 @@ C_UTILITY long
 DEFUN (compiled_entry_to_block_offset,
        (entry),
        SCHEME_OBJECT entry)
-{
-  SCHEME_OBJECT *entry_address, *block_address;
+{ SCHEME_OBJECT *entry_address, *block_address;
 
   entry_address = (OBJECT_ADDRESS (entry));
   Get_Compiled_Block (block_address, entry_address);
@@ -2400,8 +2584,7 @@ static long
 DEFUN (block_address_closure_p,
        (block_addr),
        SCHEME_OBJECT * block_addr)
-{
-  SCHEME_OBJECT header_word;
+{ SCHEME_OBJECT header_word;
 
   header_word = (*block_addr);
   return (((OBJECT_TYPE (header_word)) == TC_MANIFEST_CLOSURE));
@@ -2415,8 +2598,7 @@ C_UTILITY long
 DEFUN (compiled_block_closure_p,
        (block),
        SCHEME_OBJECT block)
-{
-  return (block_address_closure_p (OBJECT_ADDRESS (block)));
+{ return (block_address_closure_p (OBJECT_ADDRESS (block)));
 }
 
 /*
@@ -2427,8 +2609,7 @@ C_UTILITY long
 DEFUN (compiled_entry_closure_p,
        (entry),
        SCHEME_OBJECT entry)
-{
-  return (block_address_closure_p (compiled_entry_to_block_address (entry)));
+{ return (block_address_closure_p (compiled_entry_to_block_address (entry)));
 }
 
 /*
@@ -2440,8 +2621,7 @@ C_UTILITY SCHEME_OBJECT
 DEFUN (compiled_closure_to_entry,
        (entry),
        SCHEME_OBJECT entry)
-{
-  SCHEME_OBJECT real_entry;
+{ SCHEME_OBJECT real_entry;
 
   EXTRACT_CLOSURE_ENTRY_ADDRESS (real_entry, (OBJECT_ADDRESS (entry)));
   return (ENTRY_TO_OBJECT (SCHEME_ADDR_TO_ADDR (real_entry)));
@@ -2475,8 +2655,7 @@ C_UTILITY void
 DEFUN (compiled_entry_type,
        (entry, buffer),
        SCHEME_OBJECT entry AND long * buffer)
-{
-  long kind, min_arity, max_arity, field1, field2;
+{ long kind, min_arity, max_arity, field1, field2;
   SCHEME_OBJECT * entry_address;
 
   entry_address = (OBJECT_ADDRESS (entry));
@@ -2501,44 +2680,36 @@ DEFUN (compiled_entry_type,
     kind = KIND_ILLEGAL;
 
   else
-  {
-    switch (((unsigned long) max_arity) & 0xff)
-    {
-      case FORMAT_BYTE_EXPR:
-      {
-        kind = KIND_EXPRESSION;
+  { switch (((unsigned long) max_arity) & 0xff)
+    { case FORMAT_BYTE_EXPR:
+      { kind = KIND_EXPRESSION;
         break;
       }
       case FORMAT_BYTE_CLOSURE:
-      {
-        kind = KIND_OTHER;
+      { kind = KIND_OTHER;
 	field1 = OTHER_CLOSURE;
         break;
       }
       case FORMAT_BYTE_COMPLR:
       case FORMAT_BYTE_CMPINT:
-      {
-        kind = KIND_OTHER;
+      { kind = KIND_OTHER;
 	field1 = OTHER_RANDOM;
         break;
       }
       case FORMAT_BYTE_DLINK:
-      {
-        kind = KIND_CONTINUATION;
+      { kind = KIND_CONTINUATION;
         field1 = CONTINUATION_DYNAMIC_LINK;
         field2 = -1;
         break;
       }
       case FORMAT_BYTE_RETURN:
-      {
-        kind = KIND_CONTINUATION;
+      { kind = KIND_CONTINUATION;
         field1 = CONTINUATION_RETURN_TO_INTERPRETER;
         field2 = ((long) (entry != return_to_interpreter));
         break;
       }
       default:
-      {
-        kind = KIND_ILLEGAL;
+      { kind = KIND_ILLEGAL;
         break;
       }
     }
@@ -2551,8 +2722,7 @@ DEFUN (compiled_entry_type,
 
 void
 DEFUN (declare_compiled_code_block, (block), SCHEME_OBJECT block)
-{
-  SCHEME_OBJECT * block_addr = (OBJECT_ADDRESS (block));
+{ SCHEME_OBJECT * block_addr = (OBJECT_ADDRESS (block));
 
   PUSH_D_CACHE_REGION (block_addr, (1+ (OBJECT_DATUM (* block_addr))));
   return;
@@ -2626,7 +2796,7 @@ DEFUN (store_uuo_link,
 /* Enabled so that the profiler can distinguish trampolines */
 
 #if 1 || defined(AUTOCLOBBER_BUG)
-#  define TC_TRAMPOLINE_HEADER	TC_FIXNUM
+#  define TC_TRAMPOLINE_HEADER	TC_POSITIVE_FIXNUM
 #else
 #  define TC_TRAMPOLINE_HEADER	TC_MANIFEST_VECTOR
 #endif
@@ -2648,38 +2818,34 @@ DEFUN (fill_trampoline,
 
 static long
 DEFUN (make_trampoline,
-       (slot, fmt_word, kind, size, value1, value2, value3),
+       (slot, fmt_word, kind, size, nactuals, value1, value2, value3),
        SCHEME_OBJECT * slot
        AND format_word fmt_word
        AND long kind AND long size
-       AND SCHEME_OBJECT value1 AND SCHEME_OBJECT value2
-       AND SCHEME_OBJECT value3)
-{
-  instruction * entry_point;
+       AND long nactuals AND SCHEME_OBJECT value1
+       AND SCHEME_OBJECT value2 AND SCHEME_OBJECT value3)
+{ instruction * entry_point;
   SCHEME_OBJECT * ptr;
-
-  if (GC_Check (TRAMPOLINE_SIZE + size))
-  {
-    Request_GC (TRAMPOLINE_SIZE + size);
+  long TotalSize = TRAMPOLINE_SIZE + size;
+  /* TRAMPOLINE_SIZE does not count *any* space for the storage, even */
+  /* though the number of actuals is always specified. */
+  
+  if (GC_Check (TotalSize))
+  { Request_GC (TotalSize);
     return (PRIM_INTERRUPT);
   }
-
   ptr = Free;
-  Free += (TRAMPOLINE_SIZE + size);
-  ptr[0] = (MAKE_OBJECT (TC_TRAMPOLINE_HEADER,
-				((TRAMPOLINE_SIZE - 1) + size)));
-  ptr[1] = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR,
-			   TRAMPOLINE_ENTRY_SIZE));
+  Free += TotalSize;
+  ptr[0] = (MAKE_OBJECT (TC_TRAMPOLINE_HEADER, (TotalSize-1)));
+  ptr[1] = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, TRAMPOLINE_ENTRY_SIZE));
   entry_point = ((instruction *) (TRAMPOLINE_ENTRY_POINT (ptr)));
   fill_trampoline (ptr, entry_point, fmt_word, kind);
   *slot = (ENTRY_TO_OBJECT (entry_point));
   ptr = (TRAMPOLINE_STORAGE (entry_point));
-  if ((--size) >= 0)
-    *ptr++ = value1;
-  if ((--size) >= 0)
-    *ptr++ = value2;
-  if ((--size) >= 0)
-    *ptr++ = value3;
+  *ptr++ = LONG_TO_UNSIGNED_FIXNUM(nactuals);
+  if (size > 1) *ptr++ = value1;
+  if (size > 2) *ptr++ = value2;
+  if (size > 3) *ptr++ = value3;
   return (PRIM_DONE);
 }
 
@@ -2689,14 +2855,8 @@ static long
 DEFUN (make_redirection_trampoline,
        (slot, kind, procedure),
        SCHEME_OBJECT * slot AND long kind AND SCHEME_OBJECT procedure)
-{
-  return (make_trampoline (slot,
-			   ((format_word) FORMAT_WORD_CMPINT),
-			   kind,
-			   1,
-			   procedure,
-			   SHARP_F,
-			   SHARP_F));
+{ outf_fatal("make_redirection_trampoline is no longer supported.\n");
+  Microcode_Termination(TERM_COMPILER_DEATH);
 }
 
 static long
@@ -2704,13 +2864,14 @@ DEFUN (make_apply_trampoline,
        (slot, kind, procedure, nactuals),
        SCHEME_OBJECT * slot AND long kind
        AND SCHEME_OBJECT procedure AND long nactuals)
-{
+{ /* nactuals includes the operator */
   return (make_trampoline (slot,
 			   ((format_word) FORMAT_WORD_CMPINT),
 			   kind,
-			   2,
-			   procedure,
-			   (LONG_TO_UNSIGNED_FIXNUM (nactuals)),
+			   2,	/* 2 storage slots */
+			   nactuals-1,  /* TD_ARITY */
+			   procedure,   /* TD_APPLY_PROC */
+			   SHARP_F,
 			   SHARP_F));
 }
 
@@ -2768,8 +2929,7 @@ DEFUN (make_uuo_link,
        (procedure, extension, block, offset),
        SCHEME_OBJECT procedure AND SCHEME_OBJECT extension
        AND SCHEME_OBJECT block AND long offset)
-{
-  long kind, result;
+{ long kind, result;
   unsigned long nactuals;
   SCHEME_OBJECT orig_proc, trampoline, *cache_address;
 
@@ -2780,40 +2940,29 @@ DEFUN (make_uuo_link,
   orig_proc = procedure;
 loop:
   switch (OBJECT_TYPE (procedure))
-  {
-    case TC_COMPILED_ENTRY:
-    {
-      SCHEME_OBJECT * entry;
+  { case TC_COMPILED_ENTRY:
+    { SCHEME_OBJECT * entry;
       long nmin, nmax;
 
       entry = (OBJECT_ADDRESS (procedure));
       nmax = (COMPILED_ENTRY_MAXIMUM_ARITY (entry));
       if (((long) nactuals) == nmax)
-      {
-        store_uuo_link (procedure, cache_address);
+      { store_uuo_link (procedure, cache_address);
         return (PRIM_DONE);
       }
       nmin = (COMPILED_ENTRY_MINIMUM_ARITY (entry));
       if ((nmax > 1) && (nmin > 0) && (nmin <= ((long) nactuals)) &&
           (nactuals <= TRAMPOLINE_TABLE_SIZE) &&
           (nmax <= (TRAMPOLINE_TABLE_SIZE + 1)))
-      {
-        kind = (trampoline_arity_table[((nmax - 2) * TRAMPOLINE_TABLE_SIZE) +
-				       (nactuals - 1)]);
-	/* Paranoia */
-	if (kind != TRAMPOLINE_K_ARITY)
-	{
-	  nactuals = 0;
-	  break;
-	}
-      }
-      kind = TRAMPOLINE_K_ARITY;
+	kind =
+	  (trampoline_arity_table[((nmax - 2) * TRAMPOLINE_TABLE_SIZE) +
+				  (nactuals - 1)]);
+      else kind = TRAMPOLINE_K_ARITY;
       break;
     }
 
     case TC_ENTITY:
-    {
-      SCHEME_OBJECT data;
+    { SCHEME_OBJECT data;
 
       data = (MEMORY_REF (procedure, ENTITY_DATA));
       if ((VECTOR_P (data))
@@ -2821,53 +2970,41 @@ loop:
 	  && ((VECTOR_REF (data, nactuals)) != SHARP_F)
 	  && ((VECTOR_REF (data, 0))
 	      == (Get_Fixed_Obj_Slot (ARITY_DISPATCHER_TAG))))
-      {
-	/* No loops allowed! */
+      { /* No loops allowed! */
 	SCHEME_OBJECT nproc = (VECTOR_REF (data, nactuals));
 
 	if ((procedure == orig_proc) && (nproc != procedure))
-	{
-	  procedure = nproc;
+	{ procedure = nproc;
 	  goto loop;
 	}
-	else
-	  procedure = orig_proc;
+	else procedure = orig_proc;
       }
       kind = TRAMPOLINE_K_ENTITY;
       break;
     }
 
     case TC_PRIMITIVE:
-    {
-      long arity;
+    { long arity;
 
       arity = (PRIMITIVE_ARITY (procedure));
       if (arity == ((long) (nactuals - 1)))
-      {
-	nactuals = 0;
         kind = TRAMPOLINE_K_PRIMITIVE;
-      }
       else if (arity == LEXPR_PRIMITIVE_ARITY)
         kind = TRAMPOLINE_K_LEXPR_PRIMITIVE;
-      else
-        kind = TRAMPOLINE_K_OTHER;
+      else kind = TRAMPOLINE_K_OTHER;
       break;
     }
 
     case TC_PROCEDURE: /* and some others... */
     default:
     /* uuo_link_interpreted: */
-    {
-      kind = TRAMPOLINE_K_INTERPRETED;
+    { kind = TRAMPOLINE_K_INTERPRETED;
       break;
     }
   }
-  if (nactuals == 0)
-    result = (make_redirection_trampoline (&trampoline, kind, procedure));
-  else
-    result = (make_apply_trampoline (&trampoline, kind, procedure, nactuals));
-  if (result != PRIM_DONE)
-    return (result);
+  result = (make_apply_trampoline
+	    (&trampoline, kind, procedure, nactuals));
+  if (result != PRIM_DONE) return (result);
   store_uuo_link (trampoline, cache_address);
   return (PRIM_DONE);
 }
@@ -2876,22 +3013,22 @@ C_UTILITY long
 DEFUN (make_fake_uuo_link,
        (extension, block, offset),
        SCHEME_OBJECT extension AND SCHEME_OBJECT block AND long offset)
-{
-  long result;
+{ long result, nactuals;
   SCHEME_OBJECT trampoline, *cache_address;
 
+  /* nactuals includes the operator */
+  cache_address = (MEMORY_LOC (block, offset));
+  EXTRACT_EXECUTE_CACHE_ARITY (nactuals, cache_address);
   result = (make_trampoline (&trampoline,
 			     ((format_word) FORMAT_WORD_CMPINT),
 			     TRAMPOLINE_K_LOOKUP,
-			     3,
-			     extension,
-			     block,
+			     4,	/* 4 storage words */
+			     nactuals-1,  /* TD_ARITY */
+			     extension,	  /* TD_FAKE_UUO_EXTENSION */
+			     block,       /* TD_FAKE_UUO_BLOCK */
 			     (LONG_TO_UNSIGNED_FIXNUM (offset))));
-  if (result != PRIM_DONE)
-  {
-    return (result);
-  }
-  cache_address = (MEMORY_LOC (block, offset));
+				          /* TD_FAKE_UUO_OFFSET */
+  if (result != PRIM_DONE) return (result);
   store_uuo_link (trampoline, cache_address);
   return (PRIM_DONE);
 }
@@ -2902,27 +3039,60 @@ C_UTILITY long
 DEFUN (coerce_to_compiled,
        (procedure, arity, location),
        SCHEME_OBJECT procedure AND long arity AND SCHEME_OBJECT * location)
-{
-  long frame_size;
+{ long frame_size;
 
+  /* arity excludes the operator */
   frame_size = (arity + 1);
-  if ((!(COMPILED_CODE_ADDRESS_P (procedure))) ||
-      (((long) (COMPILED_ENTRY_MAXIMUM_ARITY (OBJECT_ADDRESS (procedure)))) !=
-       frame_size))
+
+  switch (OBJECT_TYPE (procedure))
   {
-    if (frame_size > FORMAT_BYTE_FRAMEMAX)
-      return (ERR_WRONG_NUMBER_OF_ARGUMENTS);
-    return (make_trampoline (location,
-			     ((format_word)
-			      (MAKE_FORMAT_WORD (frame_size, frame_size))),
-			     TRAMPOLINE_K_APPLY,
-			     2,
-			     procedure,
-			     (LONG_TO_UNSIGNED_FIXNUM (frame_size)),
-			     SHARP_F));
+    case TC_COMPILED_ENTRY:
+    { 
+      if ((COMPILED_ENTRY_MAXIMUM_ARITY (OBJECT_ADDRESS(procedure)))
+	  == frame_size)
+      {
+	  (*location) = procedure;
+	  return (PRIM_DONE);
+      }
+      goto make_trampoline;
+    }
+
+    case TC_ENTITY:
+    {
+      SCHEME_OBJECT data = (MEMORY_REF (procedure, ENTITY_DATA));
+      if ((VECTOR_P (data))
+	  && (frame_size < (VECTOR_LENGTH (data)))
+	  && ((VECTOR_REF (data, 0))
+	      == (Get_Fixed_Obj_Slot (ARITY_DISPATCHER_TAG))))
+      {
+	SCHEME_OBJECT nproc = (VECTOR_REF (data, frame_size));
+
+	if ((COMPILED_CODE_ADDRESS_P (nproc)) &&
+	    ((COMPILED_ENTRY_MAXIMUM_ARITY (OBJECT_ADDRESS (nproc)))
+	     == frame_size))
+	{
+	    *location = nproc;
+	    return (PRIM_DONE);
+	}
+      }
+      goto make_trampoline;
+    }
+
+    case TC_PRIMITIVE:
+    default:
+    make_trampoline:
+      if (frame_size > FORMAT_BYTE_FRAMEMAX)
+	return (ERR_WRONG_NUMBER_OF_ARGUMENTS);
+      return (make_trampoline (location,
+			       ((format_word)
+				(MAKE_FORMAT_WORD (frame_size, frame_size))),
+			       TRAMPOLINE_K_APPLY,
+			       2,	        /* 2 words of storage */
+			       arity,     /* TD_ARITY */
+			       procedure,	/* TD_APPLY_PROCEDURE */
+			       SHARP_F,
+			       SHARP_F));
   }
-  (*location) = procedure;
-  return (PRIM_DONE);
 }
 
 #ifndef HAVE_BKPT_SUPPORT
@@ -3028,7 +3198,7 @@ DEFNX (comutil_compiled_code_bkpt,
   STACK_PUSH (stack_ptr);	/* "Environment" pointer */
   STACK_PUSH (entry_point);	/* argument to handler */
   return (comutil_apply ((Get_Fixed_Obj_Slot (COMPILED_CODE_BKPT_HANDLER)),
-			 4, ignore_3, ignore_4));
+			 4 /* 3 plus operator */, ignore_3, ignore_4));
 }
 
 SCHEME_UTILITY utility_result
@@ -3049,7 +3219,7 @@ DEFNX (comutil_compiled_closure_bkpt,
   STACK_PUSH (stack_ptr);	/* "Environment" pointer */
   STACK_PUSH (entry_point);	/* argument to handler */
   return (comutil_apply ((Get_Fixed_Obj_Slot (COMPILED_CODE_BKPT_HANDLER)),
-			 4, ignore_3, ignore_4));
+			 4 /* 3 plus operator */, ignore_3, ignore_4));
 }
 
 SCHEME_UTILITY utility_result
@@ -3057,49 +3227,118 @@ DEFNX (comutil_reflect_to_interface,
        (tramp_data_raw, ignore_2, ignore_3, ignore_4),
        SCHEME_ADDR tramp_data_raw
        AND long ignore_2 AND long ignore_3 AND long ignore_4)
-{
+{ SCHEME_OBJECT current_value = STACK_POP();
+  SCHEME_OBJECT return_address_ignored = STACK_POP();
   SCHEME_OBJECT code = (STACK_POP ());
 
   switch (OBJECT_DATUM (code))
-  {
-    case REFLECT_CODE_INTERNAL_APPLY:
-    {
-      long frame_size = (OBJECT_DATUM (STACK_POP ()));
+  { case REFLECT_CODE_INTERNAL_APPLY:
+    { long frame_size = (OBJECT_DATUM (STACK_POP ()));
       SCHEME_OBJECT procedure = (STACK_POP ());
-      
-      return (comutil_apply (procedure, frame_size, ignore_3, ignore_4));
+      return (comutil_apply (procedure, ((frame_size+1)-STACK_FRAME_HEADER),
+			     ignore_3, ignore_4));
     }
 
     case REFLECT_CODE_RESTORE_INTERRUPT_MASK:
-    {
-      SET_INTERRUPT_MASK (OBJECT_DATUM (STACK_POP ()));
-      INVOKE_RETURN_ADDRESS ();
+    { SET_INTERRUPT_MASK (OBJECT_DATUM (STACK_POP ()));
+      INVOKE_RETURN_ADDRESS (current_value);
     }
 
     case REFLECT_CODE_STACK_MARKER:
-    {
-      STACK_POP ();		/* marker1 */
+    { STACK_POP ();		/* marker1 */
       STACK_POP ();		/* marker2 */
-      INVOKE_RETURN_ADDRESS ();
+      INVOKE_RETURN_ADDRESS (current_value);
     }
 
     case REFLECT_CODE_CC_BKPT:
-    {
-      unsigned long value;
-
+    { unsigned long value;
       /* Attempt to process interrupts before really proceeding. */
-
       if (((long) Free) >= ((long) (Regs[REGBLOCK_MEMTOP])))
-      {
-	STACK_PUSH (FIXNUM_ZERO + REFLECT_CODE_CC_BKPT);
+      { STACK_PUSH (FIXNUM_ZERO + REFLECT_CODE_CC_BKPT);
 	STACK_PUSH (reflect_to_interface);
 	return (compiler_interrupt_common (0, SHARP_F));
       }
-
       if (do_bkpt_proceed (& value))
+      { STACK_PUSH (FIXNUM_ZERO); /* No returned value */
 	RETURN_TO_SCHEME (value);
-      else
-	RETURN_TO_C (value);
+      }
+      else RETURN_TO_C (value);
+    }
+
+    case REFLECT_CODE_INTERRUPT_RESTART:
+    { long homes_saved = (OBJECT_DATUM (STACK_POP ()));
+      long regs_saved  = (OBJECT_DATUM (STACK_POP ()));
+      SCHEME_OBJECT entry_point = (STACK_POP ());
+      if (homes_saved != 0)
+      { long i;
+	SCHEME_OBJECT * homes_ptr
+	  = &Registers[COMPILER_FIRST_TEMP
+		       + (homes_saved * COMPILER_TEMP_SIZE)];
+	for (i = 0; i < homes_saved; i++)
+	{ homes_ptr -= COMPILER_TEMP_SIZE;
+	  *homes_ptr = (STACK_POP ());
+	}
+      }
+      STACK_PUSH ((SCHEME_OBJECT) regs_saved);
+      NEW_RETURN_TO_SCHEME (OBJECT_ADDRESS (entry_point));
+    }    
+    
+    case REFLECT_CODE_RESTORE_REGS:
+    { STACK_POP ();		/* number of words */
+      Val = current_value;
+      RETURN_TO_SCHEME_RESTORING ();
+    }
+
+    case REFLECT_CODE_APPLY_COMPILED:
+    { SCHEME_OBJECT Destination = STACK_POP();
+      RETURN_TO_SCHEME(Destination);
+    }
+
+    case REFLECT_CODE_CONTINUE_LINKING:
+    { SCHEME_OBJECT block, environment;
+      long count, entry_size, original_count, offset,
+           last_header_offset, sections, code;
+      instruction * ret_add;
+
+      entry_size = OBJECT_DATUM (STACK_POP());
+      original_count = (UNSIGNED_FIXNUM_TO_LONG (STACK_POP()));
+      count = UNSIGNED_FIXNUM_TO_LONG(STACK_POP ());
+      block = (STACK_POP ());
+      environment = (compiled_block_environment (block));
+      Store_Env (environment);
+      offset = (OBJECT_DATUM (STACK_POP ()));
+      last_header_offset = (OBJECT_DATUM (STACK_POP ()));
+      sections = (OBJECT_DATUM (STACK_POP ()));
+      ret_add = ((instruction *) (OBJECT_ADDRESS (STACK_POP ())));
+      Debug_Print(current_value, true);
+      /* We now have to simulate incrementing the counters by one */
+      fprintf(stderr, "Back in %d %d %d %d (entry_size %d) =>",
+	      sections, count, offset, last_header_offset, entry_size);
+      offset += entry_size;
+      if (count == 1)
+      { SCHEME_OBJECT *block_address = OBJECT_ADDRESS(block);
+	SCHEME_OBJECT * scan = &(block_address[last_header_offset]);
+	SCHEME_OBJECT header = (*scan);
+	long kind = (READ_LINKAGE_KIND (header));
+	(OBJECT_ADDRESS(block))[last_header_offset] =
+          (MAKE_LINKAGE_SECTION_HEADER (kind, original_count));
+	last_header_offset = offset;
+	sections -= 1;
+	count = -1;
+      }
+      /* fprintf(stderr, " %d %d %d %d\n",
+	      sections, count, offset, last_header_offset);
+      */
+      if (sections > 0)
+	code = (link_cc_block ((OBJECT_ADDRESS (block)),
+			       offset,
+			       last_header_offset,
+			       sections,
+			       original_count,
+			       ret_add,
+			       count));
+      else code = PRIM_DONE;
+      RETURN_UNLESS_EXCEPTION(code, { STACK_PUSH (FIXNUM_ZERO); }, ret_add);
     }
 
     default:
@@ -3123,24 +3362,24 @@ DEFNX (comutil_reflect_to_interface,
 
 utility_table_entry utility_table[] =
 {
-  UTE(comutil_return_to_interpreter),		/* 0x0 */
-  UTE(comutil_operator_apply_trap),		/* 0x1 */
-  UTE(comutil_operator_arity_trap),		/* 0x2 */
-  UTE(comutil_operator_entity_trap),		/* 0x3 */
-  UTE(comutil_operator_interpreted_trap),	/* 0x4 */
-  UTE(comutil_operator_lexpr_trap),		/* 0x5 */
-  UTE(comutil_operator_primitive_trap),		/* 0x6 */
-  UTE(comutil_operator_lookup_trap),		/* 0x7 */
-  UTE(comutil_operator_1_0_trap),		/* 0x8 */
-  UTE(comutil_operator_2_1_trap),		/* 0x9 */
-  UTE(comutil_operator_2_0_trap),		/* 0xa */
-  UTE(comutil_operator_3_2_trap),		/* 0xb */
-  UTE(comutil_operator_3_1_trap),		/* 0xc */
-  UTE(comutil_operator_3_0_trap),		/* 0xd */
-  UTE(comutil_operator_4_3_trap),		/* 0xe */
-  UTE(comutil_operator_4_2_trap),		/* 0xf */
-  UTE(comutil_operator_4_1_trap),		/* 0x10 */
-  UTE(comutil_operator_4_0_trap),		/* 0x11 */
+  UTE(comutil_return_to_interpreter),		/* 0x0  TRAMPOLINE_K_RETURN */
+  UTE(comutil_operator_apply_trap),		/* 0x1  TRAMPOLINE_K_APPLY */
+  UTE(comutil_operator_arity_trap),		/* 0x2  TRAMPOLINE_K_ARITY */
+  UTE(comutil_operator_entity_trap),		/* 0x3  TRAMPOLINE_K_ENTITY */
+  UTE(comutil_operator_interpreted_trap),	/* 0x4  TRAMPOLINE_K_INTERPRETED */
+  UTE(comutil_operator_lexpr_trap),		/* 0x5  TRAMPOLINE_K_LEXPR_PRIMITIVE */
+  UTE(comutil_operator_primitive_trap),		/* 0x6  TRAMPOLINE_K_PRIMITIVE */
+  UTE(comutil_operator_lookup_trap),		/* 0x7  TRAMPOLINE_K_LOOKUP */
+  UTE(comutil_operator_1_0_trap),		/* 0x8  TRAMPOLINE_K_1_0 */
+  UTE(comutil_operator_2_1_trap),		/* 0x9  TRAMPOLINE_K_2_1 */
+  UTE(comutil_operator_2_0_trap),		/* 0xa  TRAMPOLINE_K_2_0 */
+  UTE(comutil_operator_3_2_trap),		/* 0xb  TRAMPOLINE_K_3_2 */
+  UTE(comutil_operator_3_1_trap),		/* 0xc  TRAMPOLINE_K_3_1 */
+  UTE(comutil_operator_3_0_trap),		/* 0xd  TRAMPOLINE_K_3_0 */
+  UTE(comutil_operator_4_3_trap),		/* 0xe  TRAMPOLINE_K_4_3 */
+  UTE(comutil_operator_4_2_trap),		/* 0xf  TRAMPOLINE_K_4_2 */
+  UTE(comutil_operator_4_1_trap),		/* 0x10 TRAMPOLINE_K_4_1 */
+  UTE(comutil_operator_4_0_trap),		/* 0x11 TRAMPOLINE_K_4_0 */
   UTE(comutil_primitive_apply),			/* 0x12 */
   UTE(comutil_primitive_lexpr_apply),		/* 0x13 */
   UTE(comutil_apply),				/* 0x14 */
@@ -3181,15 +3420,17 @@ utility_table_entry utility_table[] =
   UTE(comutil_quotient),			/* 0x37 */
   UTE(comutil_remainder),			/* 0x38 */
   UTE(comutil_modulo),				/* 0x39 */
-  UTE(comutil_reflect_to_interface),		/* 0x3a */
+  UTE(comutil_reflect_to_interface),		/* 0x3a TRAMPOLINE_K_REFLECT_TO_INTERFACE */
   UTE(comutil_interrupt_continuation_2),	/* 0x3b */
   UTE(comutil_compiled_code_bkpt),		/* 0x3c */
-  UTE(comutil_compiled_closure_bkpt)		/* 0x3d */
+  UTE(comutil_compiled_closure_bkpt),		/* 0x3d */
+  UTE(comutil_new_interrupt_procedure)		/* 0x3e */
   };
 
-extern long MAX_TRAMPOLINE;
-long MAX_TRAMPOLINE = ((sizeof (utility_table))
-		       / (sizeof (utility_table_entry)));
+/*extern long MAX_TRAMPOLINE;
+long MAX_TRAMPOLINE
+  = ((sizeof (utility_table)) / (sizeof (utility_table_entry)));
+*/
 
 /* Support for trap handling. */
 
@@ -3256,6 +3497,7 @@ struct util_descriptor_s utility_descriptor_table[] =
   UTLD(comutil_operator_4_2_trap),
   UTLD(comutil_operator_4_1_trap),
   UTLD(comutil_operator_4_0_trap),
+
   UTLD(compiler_interrupt_common),
   UTLD(comutil_interrupt_closure),
   UTLD(comutil_interrupt_dlink),
@@ -3264,7 +3506,7 @@ struct util_descriptor_s utility_descriptor_table[] =
   UTLD(comutil_interrupt_ic_procedure),
   UTLD(comutil_interrupt_continuation_2),
   UTLD(comp_interrupt_restart),
-
+  UTLD(comutil_new_interrupt_procedure),
   UTLD(comutil_assignment_trap),
   UTLD(comp_assignment_trap_restart),
   UTLD(comutil_cache_lookup_apply),
@@ -3319,6 +3561,7 @@ struct util_descriptor_s utility_descriptor_table[] =
   UTLD(compiled_closure_to_entry),
   UTLD(compiled_entry_type),
   UTLD(declare_compiled_code_block),
+
   UTLD(store_variable_cache),
   UTLD(extract_variable_cache),
   UTLD(extract_uuo_link),
@@ -3434,8 +3677,7 @@ DEFUN (declare_builtin, (builtin, name),
     }
     if ((builtins == ((unsigned long *) NULL))
 	|| (builtin_names == ((char **) NULL)))
-    {
-      outf_fatal ("declare_builtin: malloc/realloc failed (size = %d).\n",
+    { outf_fatal ("declare_builtin: malloc/realloc failed (size = %d).\n",
 		  s_builtins);
       termination_init_error ();
     }
@@ -3483,43 +3725,10 @@ DEFUN (pc_to_builtin_index, (pc), unsigned long pc)
   }
 }
 
-/* Initialization */
-
-#define COMPILER_INTERFACE_VERSION		3
-
-#ifndef COMPILER_REGBLOCK_N_FIXED
-#  define COMPILER_REGBLOCK_N_FIXED		16
-#endif
-
-#ifndef COMPILER_REGBLOCK_N_TEMPS
-#  define COMPILER_REGBLOCK_N_TEMPS		256
-#endif
-
-#ifndef COMPILER_REGBLOCK_EXTRA_SIZE
-#  define COMPILER_REGBLOCK_EXTRA_SIZE		0
-#endif
-
-#if (REGBLOCK_MINIMUM_LENGTH > COMPILER_REGBLOCK_N_FIXED)
-#  include "ERROR: cmpint.c and const.h disagree on REGBLOCK_MINIMUM_LENGTH!"
-#endif
-
-/* ((sizeof(SCHEME_OBJECT)) / (sizeof(SCHEME_OBJECT))) */
-
-#define COMPILER_FIXED_SIZE	1
-
-#ifndef COMPILER_TEMP_SIZE
-#  define COMPILER_TEMP_SIZE	((sizeof (double)) / (sizeof (SCHEME_OBJECT)))
-#endif
-
-#define REGBLOCK_LENGTH							\
-  ((COMPILER_REGBLOCK_N_FIXED * COMPILER_FIXED_SIZE) +			\
-   (COMPILER_REGBLOCK_N_TEMPS * COMPILER_TEMP_SIZE) +			\
-   COMPILER_REGBLOCK_EXTRA_SIZE)
-
 #ifndef ASM_RESET_HOOK
 #  define ASM_RESET_HOOK() NOP()
 #endif
-
+
 long
   compiler_processor_type,
   compiler_interface_version;
@@ -3561,9 +3770,16 @@ DEFUN_VOID (compiler_reset_internal)
   return;
 }
 
-#define COMPILER_UTILITIES_N_ENTRIES	2
+#define COMPILER_UTILITIES_N_ENTRIES	2 /* RETURN_TO_INTERPRETER and */
+					  /* RESTORE_REGISTERS         */
 #define COMPILER_UTILITIES_LENGTH					\
- ((COMPILER_UTILITIES_N_ENTRIES * (TRAMPOLINE_ENTRY_SIZE + 1)) + 2)
+ ((COMPILER_UTILITIES_N_ENTRIES *					\
+   ((TRAMPOLINE_ENTRY_SIZE+1)	/* Each of these trampolines has one */	\
+				/* word of storage for the active */	\
+				/* register count (always 0). */	\
+    + 1))			/* And we need a back pointer to each */\
+				/* of them. */				\
+  + 2)				/* And we need two header words. */
 
 C_UTILITY void
 DEFUN (compiler_initialize, (fasl_p), long fasl_p)
@@ -3583,8 +3799,7 @@ DEFUN (compiler_initialize, (fasl_p), long fasl_p)
 
     len = COMPILER_UTILITIES_LENGTH;
     if (GC_Check (len))
-    {
-      outf_fatal ("compiler_initialize: Not enough space!\n");
+    { outf_fatal ("compiler_initialize: Not enough space!\n");
       Microcode_Termination (TERM_NO_SPACE);
     }
 
@@ -3593,20 +3808,23 @@ DEFUN (compiler_initialize, (fasl_p), long fasl_p)
     block[0] = (MAKE_OBJECT (TC_MANIFEST_VECTOR, (len - 1)));
     block[1] = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR,
 			     (COMPILER_UTILITIES_N_ENTRIES
-			      * TRAMPOLINE_ENTRY_SIZE)));
+			      * (TRAMPOLINE_ENTRY_SIZE + 1))));
 
     tramp1 = ((instruction *) (TRAMPOLINE_ENTRY_POINT (block)));
     fill_trampoline (block, tramp1,
 		     ((format_word) FORMAT_WORD_RETURN),
 		     TRAMPOLINE_K_RETURN);
+    (TRAMPOLINE_STORAGE (tramp1))[TD_ARITY] = 1; /* Return value */
     block[len - 2] = (((char *) tramp1) - ((char *) block));
 
     tramp2 = ((instruction *)
 	      (((char *) tramp1)
-	       + (TRAMPOLINE_ENTRY_SIZE * (sizeof (SCHEME_OBJECT)))));
+	       + ((TRAMPOLINE_ENTRY_SIZE+1) /* 1 storage word */
+		  * (sizeof (SCHEME_OBJECT)))));
     fill_trampoline (block, tramp2,
 		     ((format_word) FORMAT_WORD_RETURN),
 		     TRAMPOLINE_K_REFLECT_TO_INTERFACE);
+    (TRAMPOLINE_STORAGE (tramp2))[TD_ARITY] = 1; /* Possible return value */
     block[len - 1] = (((char *) tramp2) - ((char *) block));
 
     block = (copy_to_constant_space (block, len));
@@ -3632,9 +3850,7 @@ DEFUN (compiler_initialize, (fasl_p), long fasl_p)
 }
 
 C_UTILITY void
-DEFUN (compiler_reset,
-       (new_block),
-       SCHEME_OBJECT new_block)
+DEFUN (compiler_reset, (new_block), SCHEME_OBJECT new_block)
 {
   /* Called after a disk restore */
 
@@ -3649,18 +3865,11 @@ lose:
   else if ((MEMORY_REF (new_block, 0))
 	   != (MAKE_OBJECT (TC_MANIFEST_VECTOR,
 			    (COMPILER_UTILITIES_LENGTH - 1))))
-  {
-    /* Backwards compatibility */
-    if ((MEMORY_REF (new_block, 0))
-	!= (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR,
-			 (COMPILER_UTILITIES_N_ENTRIES
-			  * (TRAMPOLINE_ENTRY_SIZE + 1)))))
-      goto lose;
-  }
+    goto lose;
   else if ((MEMORY_REF (new_block, 1))
 	   != (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR,
 			    (COMPILER_UTILITIES_N_ENTRIES
-			     * TRAMPOLINE_ENTRY_SIZE))))
+			     * (TRAMPOLINE_ENTRY_SIZE +1)))))
     goto lose;
 
   compiler_utilities = new_block;
@@ -4127,8 +4336,7 @@ DEFUN_VOID (winnt_allocate_registers)
   winnt_catatonia_block = ((unsigned long *) &mem->catatonia_block[0]);
   RegistersPtr = mem->Registers;
   if (! (win32_lock_memory_area (mem, (sizeof (REGMEM)))))
-  {
-    outf_error ("Unable to lock registers\n");
+  { outf_error ("Unable to lock registers\n");
     outf_flush_error ();
   }
   return;
