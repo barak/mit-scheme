@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.22 1992/03/30 21:10:50 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.23 1992/04/14 18:41:28 jinx Exp $
 ###
 ###	Copyright (c) 1992 Massachusetts Institute of Technology
 ###
@@ -292,6 +292,9 @@ allocate_longword(C_Stack_Pointer)
 define_data(C_Frame_Pointer)
 allocate_longword(C_Frame_Pointer)
 
+define_data(i387_presence)
+allocate_longword(i387_presence)
+
 define_data(Regstart)
 allocate_space(Regstart,128)
 define_data(Registers)
@@ -300,17 +303,33 @@ allocate_space(Registers,eval(REGBLOCK_SIZE_IN_OBJECTS*4))
 DECLARE_CODE_SEGMENT()
 declare_alignment(2)
 
-define_c_label(interface_initialize)
+define_c_label(i386_interface_initialize)
 	OP(push,l)	REG(ebp)
 	OP(mov,l)	TW(REG(esp),REG(ebp))
-IF387(`	OP(sub,l)	TW(IMM(4),REG(esp))
-	fstcw	WOF(-2,REG(ebp))
+	OP(xor,l)	TW(REG(eax),REG(eax))		# No 387 available
+
+# Unfortunately, the `movl cr0,ecx' instruction is privileged.
+# Use the deprecated `smsw cx' instruction instead.
+
+IF387(`	
+#	OP(mov,l)	TW(REG(cr0),REG(ecx))		# Test for 387 presence
+	smsw		REG(cx)
+	OP(mov,l)	TW(IMM(HEX(12)),REG(edx))
+	OP(and,l)	TW(REG(edx),REG(ecx))
+	OP(cmp,l)	TW(REG(edx),REG(ecx))
+	jne	i386_initialize_no_fp
+	OP(inc,l)	REG(eax)			# 387 available
+	OP(sub,l)	TW(IMM(4),REG(esp))
+	fclex
+	fnstcw	WOF(-2,REG(ebp))
 	# Set rounding mode to round-to-even, precision control to double,
 	# mask the inexact result exception, and unmask the other exceptions.
-	OP(and,l)	TW(IMM(HEX(0000f0e0)),LOF(-4,REG(ebp)))
-	OP(or,l)	TW(IMM(HEX(00000220)),LOF(-4,REG(ebp)))
-	fldcw	WOF(-2,REG(ebp))')
-	OP(mov,w)	TW(REG(cs),REG(ax))		# Obtain code segment
+	OP(and,w)	TW(IMM(HEX(f0e0)),WOF(-2,REG(ebp)))
+	OP(or,w)	TW(IMM(HEX(0220)),WOF(-2,REG(ebp)))
+	fldcw	WOF(-2,REG(ebp))
+
+i386_initialize_no_fp:')
+	OP(mov,l)	TW(REG(eax),EDR(i387_presence))
 	leave
 	ret
 
@@ -331,7 +350,6 @@ ifdef(`DOS',
 	OP(mov,l)	TW(REG(eax),EDR(C_Stack_Segment))
 							# and preserve it
 ')
-#	OP(mov,l)	TW(IMM(EDR(Registers)),regs)
 	OP(lea,l)	TW(ABS(EDR(Registers)),regs)
 	jmp	external_code_reference(interface_to_scheme)
 
@@ -345,7 +363,7 @@ define_debugging_label(scheme_to_interface_call)
 	OP(pop,l)	REG(ecx)			# arg1 = ret. add
 	OP(add,l)	TW(IMM(4),REG(ecx))		# Skip format info
 #	jmp	scheme_to_interface
-
+
 define_c_label(asm_scheme_to_interface)
 define_debugging_label(scheme_to_interface)
 	OP(mov,l)	TW(REG(esp),EDR(Ext_Stack_Pointer))
@@ -390,13 +408,18 @@ ifdef(`DOS',
 	jmp	IJMP(REG(edx))
 
 define_c_label(interface_to_C)
-IF387(`	ffree	ST(0)					# Free floating "regs"
+IF387(`
+	OP(cmp,l)	TW(IMM(0),EDR(i387_presence))
+	je	interface_to_C_proceed
+	ffree	ST(0)					# Free floating "regs"
 	ffree	ST(1)
 	ffree	ST(2)
 	ffree	ST(3)
 	ffree	ST(4)
 	ffree	ST(5)
-	ffree	ST(6)')
+	ffree	ST(6)
+interface_to_C_proceed:')
+
 	OP(mov,l)	TW(REG(edx),REG(eax))		# Set up result
 	OP(pop,l)	REG(ebx)			# Restore callee-saves
 	OP(pop,l)	REG(esi)			#  registers
@@ -830,5 +853,21 @@ define_jump_indirection(generic_zero,2d)')
 define_jump_indirection(generic_quotient,37)
 define_jump_indirection(generic_remainder,38)
 define_jump_indirection(generic_modulo,39)
+
+define_jump_indirection(nofp_decrement,22)
+define_jump_indirection(nofp_divide,23)
+define_jump_indirection(nofp_equal,24)
+define_jump_indirection(nofp_greater,25)
+define_jump_indirection(nofp_increment,26)
+define_jump_indirection(nofp_less,27)
+define_jump_indirection(nofp_subtract,28)
+define_jump_indirection(nofp_multiply,29)
+define_jump_indirection(nofp_negative,2a)
+define_jump_indirection(nofp_add,2b)
+define_jump_indirection(nofp_positive,2c)
+define_jump_indirection(nofp_zero,2d)
+define_jump_indirection(nofp_quotient,37)
+define_jump_indirection(nofp_remainder,38)
+define_jump_indirection(nofp_modulo,39)
 
 ifdef(`DOS',`end')
