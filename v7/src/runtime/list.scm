@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/list.scm,v 14.2 1988/08/05 20:47:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/list.scm,v 14.3 1988/10/06 06:38:35 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -314,10 +314,30 @@ MIT in each case. |#
 		 initial-value))))))
 
 (define (reduce f initial list)
-  (let loop ((value initial) (l list))
-    (cond ((pair? l) (loop (f value (car l)) (cdr l)))
-	  ((null? l) value)
-	  (else (error "REDUCE: Argument not a list" list)))))
+  (let ((result
+	 (lambda (l value)
+	   (if (not (null? l))
+	       (error "REDUCE: Argument not a list" list))
+	   value)))
+    (if (pair? list)
+	(let loop ((value (car list)) (l (cdr list)))
+	  (if (pair? l)
+	      (loop (f value (car l)) (cdr l))
+	      (result l value)))
+	(result list initial))))
+
+(define (reduce-reversed f initial list)
+  (let ((result
+	 (lambda (l value)
+	   (if (not (null? l))
+	       (error "REDUCE-REVERSED: Argument not a list" list))
+	   value)))
+    (if (pair? list)
+	(let loop ((value (car list)) (l (cdr list)))
+	  (if (pair? l)
+	      (f value (loop (car l) (cdr l)))
+	      (result l value)))
+	(result list initial))))
 
 (define (for-each f . lists)
   (if (null? lists)
