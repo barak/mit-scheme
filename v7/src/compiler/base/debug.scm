@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/debug.scm,v 4.3 1988/04/06 17:31:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/debug.scm,v 4.4 1988/04/15 02:08:15 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -91,8 +91,17 @@ MIT in each case. |#
      (lambda ()
        (with-output-to-file (pathname-new-type pathname "rtl")
 	 (lambda ()
-	   (for-each show-rtl-instruction
-		     (fasload (pathname-new-type pathname "brtl")))))))))
+	   (let ((obj (fasload (pathname-new-type pathname "brtl"))))
+	     (if (vector? obj)
+		 (for-each (lambda (block)
+			     (write-char #\page)
+			     (newline)
+			     (write-string "Disassembly for object ")
+			     (write (car block))
+			     (for-each show-rtl-instruction (cdr block))
+			     (newline))
+			   (vector->list obj))
+		 (for-each show-rtl-instruction obj)))))))))
 
 (define (dump-rtl filename)
   (write-instructions

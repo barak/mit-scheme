@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.4 1988/03/14 20:24:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.5 1988/04/15 02:09:04 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -192,6 +192,14 @@ MIT in each case. |#
 |#
 (define-integrable (variable-assigned! variable)
   (set-variable-assigned?! variable true))
+
+;; Note:
+;; If integration of known block values (first class environments) is
+;; ever done, the package "optimization" transformations in
+;; fggen/canon and fggen/fggen may break.  There is a hidden reference
+;; to the environment variable from lambda expressions closed in that
+;; context.  The variable can be eliminated if there are no references
+;; and there are no lambda expressions implicitely referencing it.
 
 (define (lvalue-integrated? lvalue)
   (let ((value (lvalue-known-value lvalue)))

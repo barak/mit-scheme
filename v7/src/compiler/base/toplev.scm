@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.5 1988/03/14 20:24:54 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.6 1988/04/15 02:09:53 jinx Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,7 +37,17 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 ;;; Global variables
+
+(define *recursive-compilation-count*)
+(define *recursive-compilation-number*)
+(define *recursive-compilation-results*)
+(define *recursive-compilation-rtl-blocks*)
+
+(define *info-output-pathname* false)
+(define *rtl-output-pathname* false)
+
 (define *input-scode*)
+(define *scode*)
 (define *ic-procedure-headers*)
 (define *root-block*)
 (define *root-expression*)
@@ -63,7 +73,12 @@ MIT in each case. |#
 (define compiler:real-time 0)
 
 (define (compiler:reset!)
+  (set! *recursive-compilation-number* 0)
+  (set! *recursive-compilation-count* 1)
+  (set! *recursive-compilation-results* '())
+  (set! *recursive-compilation-rtl-blocks* '())
   (set! *input-scode*)
+  (set! *scode*)
   (set! *current-label-number*)
   (set! *constants*)
   (set! *blocks*)
@@ -91,10 +106,9 @@ MIT in each case. |#
   (set! compiler:entry-points)
   (set! compiler:expression))
 
-(define (in-compiler thunk)
-  (fluid-let ((compiler:process-time 0)
-	      (compiler:real-time 0)
-	      #|(*input-scode*)
+(define (in-compiler-recursively thunk)
+  (fluid-let ((*input-scode*)
+	      (*scode*)
 	      (*current-label-number*)
 	      (*constants*)
 	      (*blocks*)
@@ -106,23 +120,32 @@ MIT in each case. |#
 	      (*assignments*)
 	      (*ic-procedure-headers*)
 	      (*root-expression*)
-	      (*root-block*)
-	      (*rtl-expression*)
-	      (*rtl-procedures*)
-	      (*rtl-continuations*)
-	      (*rtl-graphs*)
-	      (label->object)
-	      (*machine-register-map*)
-	      (compiler:external-labels)
-	      (compiler:label-bindings)
-	      (compiler:block-label)
-	      (compiler:entry-label)
-	      (compiler:bits)
-	      (compiler:code-vector)
-	      (compiler:entry-points)
-	      (compiler:expression)|#)
+	      (*root-block*))
+    (fluid-let ((*rtl-expression*)
+		(*rtl-procedures*)
+		(*rtl-continuations*)
+		(*rtl-graphs*)
+		(label->object)
+		(*machine-register-map*)
+		(compiler:external-labels)
+		(compiler:label-bindings)
+		(compiler:block-label)
+		(compiler:entry-label)
+		(compiler:bits)
+		(compiler:code-vector)
+		(compiler:entry-points)
+		(compiler:expression))
+      (thunk))))
+
+(define (in-compiler thunk)
+  (fluid-let ((compiler:process-time 0)
+	      (compiler:real-time 0))
     (compiler:reset!)
-    (let ((value (thunk)))
+    (let*  ((topl (thunk))
+	    (value
+	     ((access generate-top-level-object
+		      debugging-information-package)
+	      topl *recursive-compilation-results*)))
       (if (not compiler:preserve-data-structures?)
 	  (compiler:reset!))
       (compiler-time-report "Total compilation time"
@@ -255,37 +278,73 @@ MIT in each case. |#
   (scode-eval (compile-scode (procedure-lambda procedure) false false)
 	      (procedure-environment procedure)))
 
+;; The rtl output should be fixed
+
+(define (compile-recursively scode)
+  (let ((my-number *recursive-compilation-count*))
+    (set! *recursive-compilation-count* (1+ my-number))
+    (newline)
+    (newline)
+    (display "    *** Recursive compilation ")
+    (write my-number)
+    (display " ***")
+    (let ((val
+	   (fluid-let ((*recursive-compilation-number* my-number)
+		       (compiler:package-optimization-level 'NONE))
+	     (compile-scode scode
+			    (and *rtl-output-pathname* true)
+			    (and *info-output-pathname* true)
+			    in-compiler-recursively))))
+      (newline)
+      (display "    *** Done with recursive compilation ")
+      (write my-number)
+      (display " ***")
+      (newline)
+      val)))
+
 (define (compile-scode scode
 		       #!optional
 		       rtl-output-pathname
-		       info-output-pathname)
+		       info-output-pathname
+		       wrapper)
 
   (if (unassigned? rtl-output-pathname)
       (set! rtl-output-pathname false))
   (if (unassigned? info-output-pathname)
       (set! info-output-pathname false))
 
-  (in-compiler
-   (lambda ()
-     (set! *input-scode* scode)
-     (phase/fg-generation)
-     (phase/fg-optimization)
-     (phase/rtl-generation)
-#|
-     (if info-output-pathname
-	 (phase/info-generation-1 info-output-pathname))
-|#
-     (phase/rtl-optimization)
-     (if rtl-output-pathname
-	 (phase/rtl-file-output rtl-output-pathname))
-     (phase/bit-generation)
-     (phase/bit-linearization)
-     (phase/assemble)
-     (if info-output-pathname
-	 (phase/info-generation-2 info-output-pathname))
-     (phase/link)
-     compiler:expression
-     )))
+  (fluid-let ((*info-output-pathname*
+	       (if (and info-output-pathname
+			(not (eq? info-output-pathname true)))
+		   info-output-pathname
+		   *info-output-pathname*))
+	      (*rtl-output-pathname*
+	       (if (and rtl-output-pathname
+			(not (eq? rtl-output-pathname true)))
+		   rtl-output-pathname
+		   *rtl-output-pathname*)))
+    ((if (unassigned? wrapper)
+	 in-compiler
+	 wrapper)
+     (lambda ()
+       (set! *input-scode* scode)
+       (phase/fg-generation)
+       (phase/fg-optimization)
+       (phase/rtl-generation)
+       #|
+       (if info-output-pathname
+	   (phase/info-generation-1 info-output-pathname))
+       |#
+       (phase/rtl-optimization)
+       (if rtl-output-pathname
+	   (phase/rtl-file-output rtl-output-pathname))
+       (phase/bit-generation)
+       (phase/bit-linearization)
+       (phase/assemble)
+       (if info-output-pathname
+	   (phase/info-generation-2 info-output-pathname))
+       (phase/link)
+       compiler:expression))))
 
 (define (compiler-phase name thunk)
   (compiler-phase/visible name
@@ -336,28 +395,40 @@ MIT in each case. |#
        (SET! ,name)))
 
 (define (phase/fg-generation)
-  (compiler-phase "Generating the Flow Graph"
-    (lambda ()
-      (set! *current-label-number* 0)
-      (set! *constants* '())
-      (set! *blocks* '())
-      (set! *expressions* '())
-      (set! *procedures* '())
-      (set! *lvalues* '())
-      (set! *applications* '())
-      (set! *parallels* '())
-      (set! *assignments* '())
-      (set! *root-expression*
-	    ((access construct-graph fg-generator-package)
-	     (if compiler:preserve-data-structures?
-		 *input-scode*
-		 (set! *input-scode*))))
-      (set! *root-block* (expression-block *root-expression*))
-      (if (or (null? *expressions*)
-	      (not (null? (cdr *expressions*))))
-	  (error "Multiple expressions"))
-      (set! *expressions*))))
+  (compiler-superphase
+   "Generating the Flow Graph"
+   (lambda ()
+     (phase/canonicalize-scode)
+     (phase/translate-scode))))
 
+(define (phase/canonicalize-scode)
+  (compiler-subphase "Canonicalizing Scode"
+   (lambda ()
+     (set! *scode*
+	   ((access canonicalize/top-level fg-generator-package)
+	    (last-reference *input-scode*))))))
+
+(define (phase/translate-scode)
+  (compiler-subphase "Translating Scode into Flow Graph"
+   (lambda ()
+     (set! *current-label-number* 0)
+     (set! *constants* '())
+     (set! *blocks* '())
+     (set! *expressions* '())
+     (set! *procedures* '())
+     (set! *lvalues* '())
+     (set! *applications* '())
+     (set! *parallels* '())
+     (set! *assignments* '())
+     (set! *root-expression*
+	   ((access construct-graph fg-generator-package)
+	    (last-reference *scode*)))
+     (set! *root-block* (expression-block *root-expression*))
+     (if (or (null? *expressions*)
+	     (not (null? (cdr *expressions*))))
+	 (error "Multiple expressions"))
+     (set! *expressions*))))
+
 (define (phase/fg-optimization)
   (compiler-superphase "Optimizing the Flow Graph"
     (lambda ()
@@ -483,9 +554,7 @@ MIT in each case. |#
       (set! *ic-procedure-headers* '())
       (initialize-machine-register-map!)
       ((access generate/top-level rtl-generator-package)
-       (if compiler:preserve-data-structures?
-	   *root-expression*
-	   (set! *root-expression*)))
+       (last-reference *root-expression*))
       (set! label->object
 	    (make/label->object *rtl-expression*
 				*rtl-procedures*
@@ -538,8 +607,17 @@ MIT in each case. |#
 (define (phase/rtl-file-output pathname)
   (compiler-phase "RTL File Output"
     (lambda ()
-      (fasdump ((access linearize-rtl rtl-generator-package) *rtl-graphs*)
-	       pathname))))
+      (let ((lin ((access linearize-rtl rtl-generator-package) *rtl-graphs*)))
+	(if (eq? pathname true)
+	    ;; recursive compilation
+	    (set! *recursive-compilation-rtl-blocks*
+		  (cons (cons *recursive-compilation-number* lin)
+			*recursive-compilation-rtl-blocks*))
+	    (fasdump (if (null? *recursive-compilation-rtl-blocks*)
+			 lin
+			 (list->vector
+			  (cons (cons 0 lin) *recursive-compilation-rtl-blocks*)))
+		     pathname))))))
 
 (define (phase/register-allocation)
   (compiler-subphase "Allocating Registers"
@@ -582,9 +660,7 @@ MIT in each case. |#
 	     (lap:make-entry-point compiler:entry-label
 				   compiler:block-label)
 	     ((access linearize-bits lap-syntax-package)
-	      (if compiler:preserve-data-structures?
-		  *rtl-graphs*
-		  (set! *rtl-graphs*))))))))
+	      (last-reference *rtl-graphs*)))))))
 
 (define (phase/assemble)
   (compiler-phase "Assembling"
@@ -600,6 +676,7 @@ MIT in each case. |#
 	   phase/assemble-finish)))))
 
 (define (phase/assemble-finish count code-vector labels bindings linkage-info)
+  linkage-info ;; ignored
   (set! compiler:code-vector code-vector)
   (set! compiler:entry-points labels)
   (set! compiler:label-bindings bindings)
@@ -612,27 +689,44 @@ MIT in each case. |#
 
 (define (phase/info-generation-2 pathname)
   (compiler-phase "Generating Debugging Information (pass 2)"
-    (lambda ()
-      (fasdump ((access generation-phase2 debugging-information-package)
-		compiler:label-bindings
-		(if compiler:preserve-data-structures?
-		    compiler:external-labels
-		    (set! compiler:external-labels)))
-	       pathname)
-      (set-compiled-code-block/debugging-info! compiler:code-vector
-					       (pathname->string pathname)))))
+   (lambda ()
+     (let ((info
+	    ((access generation-phase2 debugging-information-package)
+	     compiler:label-bindings
+	     (last-reference compiler:external-labels))))
+	     
+       (if (eq? pathname true)		; recursive compilation
+	   (begin
+	     (set! *recursive-compilation-results*
+		   (cons (list *recursive-compilation-number*
+			       info
+			       compiler:code-vector)
+			 *recursive-compilation-results*))
+	     (set-compiled-code-block/debugging-info!
+	      compiler:code-vector
+	      (cons (pathname->string *info-output-pathname*)
+		    *recursive-compilation-number*)))
+	   (begin
+	     (fasdump ((access generate-top-level-info
+			       debugging-information-package)
+		       info *recursive-compilation-results*)
+		      pathname)
+	     (set-compiled-code-block/debugging-info!
+	      compiler:code-vector
+	      (pathname->string pathname))))))))
 
 (define (phase/link)
   (compiler-phase "Linking"
     (lambda ()
-      ;; This has sections locked against GC since the code may not be
-      ;; purified.
+      ;; This has sections locked against GC to prevent relocation
+      ;; while computing addresses.
       (let ((bindings
 	     (map (lambda (label)
 		    (cons
 		     label
 		     (with-interrupt-mask interrupt-mask-none
 		       (lambda (old)
+			 old ;; ignored
 			 ((ucode-primitive &make-object)
 			  type-code:compiled-entry
 			  (make-non-pointer-object

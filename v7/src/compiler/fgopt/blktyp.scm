@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/blktyp.scm,v 4.3 1988/03/14 20:51:26 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/blktyp.scm,v 4.4 1988/04/15 02:06:00 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -68,6 +68,12 @@ MIT in each case. |#
 (define (close-procedure! block)
   (let ((procedure (block-procedure block))
 	(parent (block-parent block)))
+    ;; Note: this should be innocuous if there is already a closure block.
+    ;; In particular, if there is a closure block which happens to be a
+    ;; reference placed there by the first-class environment transformation
+    ;; in fggen/fggen and fggen/canon, and it is replaced by the line below,
+    ;; the presumpt first-class environment is not really used as one, so
+    ;; the procedure is being "demoted" from first-class to closure.
     (set-procedure-closure-block! procedure parent)
     (((find-closure-bindings
        (lambda (closure-frame-block size)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgproc.scm,v 4.2 1988/03/14 20:54:09 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgproc.scm,v 4.3 1988/04/15 02:04:53 jinx Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -146,8 +146,7 @@ MIT in each case. |#
 		(recvr (make-non-trivial-closure-cons value)
 		       (rtl:interpreter-call-result:enclose))))
 	   ((IC)
-	    (recvr (make-null-cfg)
-		   (make-ic-cons value)))
+	    (make-ic-cons value 'USE-ENV recvr))
 	   ((OPEN-EXTERNAL OPEN-INTERNAL)
 	    (error "Letrec value is open procedure" value))
 	   (else
@@ -161,8 +160,10 @@ MIT in each case. |#
    (find-variable block variable 0
 		  rtl:make-fetch
 		  (lambda (nearest-ic-locative name)
+		    nearest-ic-locative name ;; ignored
 		    (error "Missing closure variable" variable))
 		  (lambda (name)
+		    name ;; ignored
 		    (error "Missing closure variable" variable)))))
 
 ;;; end GENERATE/PROCEDURE-HEADER

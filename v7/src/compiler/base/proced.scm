@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/proced.scm,v 4.3 1988/03/14 20:24:24 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/proced.scm,v 4.4 1988/04/15 02:09:17 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -191,13 +191,14 @@ MIT in each case. |#
   (ic-block? (procedure-block procedure)))
 
 (define-integrable (procedure/closure? procedure)
-  (procedure-closure-block procedure))
+  (and (procedure-closure-block procedure)
+       (not (procedure/ic? procedure))))
 
 (define-integrable (procedure/trivial-closure? procedure)
   (let ((enclosing (procedure-closing-block procedure)))
     (or (null? enclosing)
 	(and (ic-block? enclosing)
-	     (not (ic-block/use-lookup? enclosing))))))  
+	     (not (ic-block/use-lookup? enclosing))))))
 
 (define (procedure/closed? procedure)
   (or (procedure/ic? procedure)

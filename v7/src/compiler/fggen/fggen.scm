@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.4 1988/03/14 20:48:00 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.5 1988/04/15 02:06:34 jinx Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -212,6 +212,7 @@ MIT in each case. |#
   (continue/rvalue-constant block continuation (make-constant expression)))
 
 (define (generate/the-environment block continuation expression)
+  expression ;; ignored
   (continue/rvalue-constant block continuation block))
 
 (define (continue/rvalue-constant block continuation rvalue)
@@ -225,6 +226,7 @@ MIT in each case. |#
    rvalue))
 
 (define (continue/predicate-constant block continuation rvalue)
+  block continuation ;; ignored
   (if (and (rvalue/constant? rvalue)
 	   (false? (constant-value rvalue)))
       (snode->pcfg-false (make-fg-noop))
@@ -244,11 +246,13 @@ MIT in each case. |#
   (make-return block (make-reference block continuation true) rvalue))
 
 (define (continue/effect block continuation rvalue)
+  rvalue ;; ignored
   (if (variable? continuation)
       (continue/unknown block continuation (make-constant false))
       (make-null-cfg)))
 
 (define-integrable (continue/predicate block continuation rvalue)
+  block continuation ;; ignored
   (make-true-test rvalue))
 
 (define (continue/value block continuation rvalue)
@@ -308,9 +312,10 @@ MIT in each case. |#
   (search block))
 
 (define (generate/lambda block continuation expression)
-  (generate/lambda* block continuation expression false))
+  (generate/lambda* block continuation expression false false))
 
-(define (generate/lambda* block continuation expression continuation-type)
+(define (generate/lambda* block continuation expression
+			  continuation-type closure-block)
   (continue/rvalue-constant
    block
    continuation
@@ -324,6 +329,19 @@ MIT in each case. |#
 		   (optional (make-variables block optional))
 		   (rest (and rest (make-variable block rest)))
 		   (names (make-variables block names)))
+	       (define (kernel)
+		 (make-procedure
+		  continuation-type/procedure
+		  block name (cons continuation required) optional rest names
+		  (map
+		   (lambda (value)
+		     ;; The other parts of this subproblem are not
+		     ;; interesting since `value' is guaranteed to
+		     ;; be either a constant or a procedure.
+		     (subproblem-rvalue
+		      (generate/subproblem/value block continuation value)))
+		       values)
+		  (generate/body block continuation declarations body)))
 	       (set-continuation-variable/type! continuation continuation-type)
 	       (set-block-bound-variables! block
 					   `(,continuation
@@ -331,17 +349,11 @@ MIT in each case. |#
 					     ,@optional
 					     ,@(if rest (list rest) '())
 					     ,@names))
-	       (make-procedure
-		continuation-type/procedure
-		block name (cons continuation required) optional rest names
-		(map (lambda (value)
-		       ;; The other parts of this subproblem are not
-		       ;; interesting since `value' is guaranteed to
-		       ;; be either a constant or a procedure.
-		       (subproblem-rvalue
-			(generate/subproblem/value block continuation value)))
-		     values)
-		(generate/body block continuation declarations body))))))))))
+	       (if closure-block
+		   (let ((proc (kernel)))
+		     (set-procedure-closure-block! proc closure-block)
+		     proc)
+		   (kernel))))))))))
 
 (define (parse-procedure-body auxiliary body)
   (transmit-values
@@ -355,7 +367,9 @@ MIT in each case. |#
 		      lambda-tag:let auxiliary '() false names '()
 		      (scode/make-sequence
 		       (map* actions scode/make-assignment names values)))
-		     (map (lambda (name) (scode/make-unassigned-object))
+		     (map (lambda (name)
+			    name ;; ignored
+			    (scode/make-unassigned-object))
 			  auxiliary)))))))
 
 (define (parse-procedure-body* names actions)
@@ -512,7 +526,8 @@ MIT in each case. |#
 	  (generate/lambda* block
 			    continuation*
 			    operator
-			    (continuation/known-type continuation))
+			    (continuation/known-type continuation)
+			    false)
 	  (generate/expression block
 			       continuation*
 			       operator)))))
@@ -617,11 +632,52 @@ MIT in each case. |#
        (scode/make-combination (ucode-primitive lexical-reference)
 			       (list environment name))))))
 
-(define (generate/comment block continuation expression)
-  (generate/expression block
-		       continuation
-		       (scode/comment-expression expression)))
+;; Handle directives inserted by the canonicalizer
 
+(define (generate/comment block continuation comment)
+  (scode/comment-components comment
+   (lambda (text expression)
+     (if (or (not (pair? text))
+	     (not (eq? (car text) comment-tag:directive))
+	     (null? (cdr text))
+	     (not (pair? (cadr text))))	 (generate/expression block continuation expression)
+	 (case (caadr text)
+	   ((PROCESSED)
+	    (generate/expression block continuation expression))
+	   ((COMPILE)
+	    (if (not (scode/quotation? expression))
+		(error "generate/comment: Bad compile directive" comment))
+	    (continue/rvalue-constant block continuation
+	     (make-constant
+	      (compile-recursively (scode/quotation-expression expression)))))	   ((ENCLOSE)
+	    (generate/enclose block continuation expression))
+	   (else
+	    (warn "generate/comment: Unknown directive" (cadr text) comment)
+	    (generate/expression block continuation expression)))))))
+
+;; Enclose directives are generated only for lambda expressions
+;; evaluated in environments whose manipulation has been made
+;; explicit.  The code should include a syntatic check.  The;; expression must be a call to scode-eval with a quotation of a
+;; lambda and a variable as arguments.
+;; NOTE: This code depends on lvalue-integrated? never integrating
+;; the hidden reference within the procedure object.  See base/lvalue
+;; for some more information.
+
+(define (generate/enclose block continuation expression)
+  (scode/combination-components
+   expression
+   (lambda (operator operands)
+     operator ;; ignored
+     (generate/lambda*
+      (block-parent block)
+      continuation
+      (scode/quotation-expression (car operands))
+      false
+      (make-reference block
+		      (find-name block
+				 (scode/variable-name (cadr operands)))
+		      false)))))
+
 (define (generate/delay block continuation expression)
   (generate/combination
    block
@@ -642,31 +698,18 @@ MIT in each case. |#
        (scode/make-combination compiled-error-procedure
 			       (cons message irritants))))))
 
-;; For now
-
-(define (compile-recursively expression block)
-  (error "compile-recursively: invoked!" expression))
-
-(define (compile-recursively? block)
-  false)
-
 (define (generate/in-package block continuation expression)
-  (let ((recursive? (compile-recursively? block)))
-    (if (not recursive?)
-	(warn "dynamic IN-PACKAGE not supported; body will be interpreted"
-	      expression))
-    (scode/in-package-components expression
-     (lambda (environment expression)
-       (generate/combination
-	block
-	continuation
-	(scode/make-combination
-	 (ucode-primitive scode-eval)
-	 (list (if recursive?
-		   (scode/make-constant
-		    (compile-recursively expression false))
-		   (scode/make-quotation expression))
-	       environment)))))))
+  (warn "generate/in-package: expression will be interpreted"
+	expression)
+  (scode/in-package-components expression
+   (lambda (environment expression)
+     (generate/combination
+      block
+      continuation
+      (scode/make-combination
+       (ucode-primitive scode-eval)
+       (list (scode/make-quotation expression)
+	     environment))))))
 
 (define (generate/quotation block continuation expression)
   (generate/combination

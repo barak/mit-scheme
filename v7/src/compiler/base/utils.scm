@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 4.3 1988/03/14 20:25:13 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 4.4 1988/04/15 02:10:18 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -253,7 +253,6 @@ MIT in each case. |#
 		within-control-point
 		call-with-current-continuation
 		non-reentrant-call-with-current-continuation
-		with-threaded-continuation
 		with-interrupt-mask
 		with-interrupts-reduced
 		execute-at-new-state-point

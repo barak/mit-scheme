@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/switch.scm,v 4.3 1988/03/14 20:24:41 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/switch.scm,v 4.4 1988/04/15 02:09:42 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -36,6 +36,8 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+;;; Binary switches
+
 (define compiler:enable-integration-declarations? true)
 (define compiler:enable-expansion-declarations? true)
 (define compiler:show-subphases? false)
@@ -47,3 +49,9 @@ MIT in each case. |#
 (define compiler:cse? true)
 (define compiler:open-code-primitives? true)
 (define compiler:generate-rtl-files? false)
+
+;;; Nary switches
+
+(define compiler:package-optimization-level
+  ;; Possible values: NONE LOW HYBRID HIGH
+  'HYBRID)

@@ -1,9 +1,9 @@
 d3 1
 a4 1
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.4 1988/03/14 20:54:28 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.5 1988/04/15 02:04:18 jinx Exp $
 #| -*-Scheme-*-
 Copyright (c) 1987 Massachusetts Institute of Technology
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.4 1988/03/14 20:54:28 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.5 1988/04/15 02:04:18 jinx Exp $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -36,7 +36,7 @@ promotional, or sales literature without prior written consent from
 
 ;;;; RTL Generation: RValues
 ;;; package: (compiler rtl-generator generate/rvalue)
-(package (generate/rvalue load-closure-environment)
+(package (generate/rvalue load-closure-environment make-ic-cons)
 
 (define-export (generate/rvalue operand offset scfg*cfg->cfg! generator)
   (transmit-values (generate/rvalue* operand offset)
@@ -66,6 +66,7 @@ promotional, or sales literature without prior written consent from
 
    result
   (lambda (constant offset)
+    offset ;; ignored
     (generate/constant constant)))
 (define-method-table-entry 'CONSTANT rvalue-methods
 (define (generate/constant constant)
@@ -73,6 +74,7 @@ promotional, or sales literature without prior written consent from
 
   (lambda (constant)
   (lambda (block offset)
+    block offset ;; ignored
 (define-method-table-entry 'BLOCK rvalue-methods
 
     block ;; ignored
@@ -160,25 +162,37 @@ promotional, or sales literature without prior written consent from
 					 (rtl:make-fetch register))))
 	      (rtl:make-fetch register)))))
 	 (else
-       (expression-value/simple (make-ic-cons procedure)))
+       (make-ic-cons procedure offset
+		     (lambda (scfg expr) (return-2 scfg expr))))
 	   (make-cons-closure-indirection procedure)))))
        (error "Reference to open procedure" procedure))
        (if (not (procedure-virtual-closure? procedure))
 	   (error "Reference to open procedure" procedure))
 	    ;; inside another IC procedure?
 (define-export (load-closure-environment procedure offset closure-locative)
+  (define (load-closure-parent block force?)
+    (if (and (not force?)
+	     (or (not block)
+		 (not (ic-block/use-lookup? block))))
+	(make-null-cfg)
+	(let ((closure-block (procedure-closure-block procedure)))
+	  (rtl:make-assignment
+	   (rtl:locative-offset closure-locative closure-block-first-offset)
+	   (cond ((not (ic-block/use-lookup? block))
+		  (rtl:make-constant false))
+		 ((reference? closure-block)
+		  (error "load-closure-environment: bad closure block"
+			 procedure))
+		 ((ic-block? closure-block)
+		  (rtl:make-fetch register:environment))
+		 (else
+		  (closure-ic-locative closure-block block offset)))))))
+  (enqueue-procedure! procedure)
   (let ((block (procedure-closing-block procedure)))
 (define (make-non-trivial-closure-cons procedure block**)
 	   (make-null-cfg))
 	  ((ic-block? block)
-	   (rtl:make-assignment
-	    (rtl:locative-offset closure-locative closure-block-first-offset)
-	    (if (ic-block/use-lookup? block)
-		(let ((closure-block (procedure-closure-block procedure)))
-		  (if (ic-block? closure-block)
-		      (rtl:make-fetch register:environment)
-		      (closure-ic-locative closure-block block offset)))
-		(rtl:make-constant false))))
+	   (load-closure-parent block true))
 	  ((closure-block? block)
 	   (let ((closure-block (procedure-closure-block procedure)))
 	     (define (loop entries code)
@@ -211,44 +225,50 @@ promotional, or sales literature without prior written consent from
 
 	     (loop
 	      (block-closure-offsets block)
-	      (if (let ((parent (block-parent block)))
-		    (and parent (ic-block/use-lookup? parent)))
-		  (rtl:make-assignment
-		   (rtl:locative-offset closure-locative
-					closure-block-first-offset)
-		   (if (ic-block? closure-block)
-		       (rtl:make-fetch register:environment)
-		       (closure-ic-locative closure-block block offset)))
-		  (make-null-cfg)))))
+	      (load-closure-parent (block-parent block) false))))
 	  (else
 	   (error "Unknown block type" block)))))
+
+(define-export (make-ic-cons procedure offset recvr)
+  ;; IC procedures have their entry points linked into their headers
+  ;; at load time by the linker.
+  (let* ((header
+	  (scode/make-lambda (procedure-name procedure)
+			     (map variable-name
+				  (procedure-required-arguments procedure))
+			     (map variable-name (procedure-optional procedure))
+			     (let ((rest (procedure-rest procedure)))
+			       (and rest (variable-name rest)))
+			     (map variable-name (procedure-names procedure))
+			     '()
+			     false))
+	 (kernel
+	  (lambda (scfg expr)
+	    (recvr scfg
+		   (rtl:make-typed-cons:pair
+		    (rtl:make-constant (scode/procedure-type-code header))
+		    (rtl:make-constant header)
+		    expr)))))
+    (set! *ic-procedure-headers*
+	  (cons (cons header (procedure-label procedure))
+		*ic-procedure-headers*))
+    
+    (cond ((not (reference? (procedure-closure-block procedure)))
+	   ;; Is this right if the procedure is being closed
+	   ;; inside another IC procedure?
+	   (kernel (make-null-cfg)
+		   (rtl:make-fetch register:environment)))
+	  ((eq? offset 'USE-ENV)
+	   (error "make-ic-cons: offset unavailable" procedure))
+	  (else
+	   (transmit-values
+	    (generate/rvalue* (procedure-closure-block procedure)
+			      offset)
+	    kernel)))))
 
 ;;; end GENERATE/RVALUE
 )
 
-(define (make-ic-cons procedure)
-  ;; IC procedures have their entry points linked into their headers
-  ;; at load time by the linker.
-  (let ((header
-	 (scode/make-lambda (procedure-name procedure)
-			    (map variable-name
-				 (procedure-required-arguments procedure))
-			    (map variable-name (procedure-optional procedure))
-			    (let ((rest (procedure-rest procedure)))
-			      (and rest (variable-name rest)))
-			    (map variable-name (procedure-names procedure))
-			    '()
-			    false)))
-    (set! *ic-procedure-headers*
-	  (cons (cons header (procedure-label procedure))
-		*ic-procedure-headers*))
-    (rtl:make-typed-cons:pair
-     (rtl:make-constant (scode/procedure-type-code header))
-     (rtl:make-constant header)
-     ;; Is this right if the procedure is being closed
-     ;; inside another IC procedure?
-     (rtl:make-fetch register:environment))))
-
 (define (make-trivial-closure-cons procedure)
   (rtl:make-cons-pointer
    (rtl:make-constant type-code:compiled-entry)

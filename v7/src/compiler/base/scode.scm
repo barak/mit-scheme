@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/scode.scm,v 4.2 1987/12/30 06:59:28 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/scode.scm,v 4.3 1988/04/15 02:09:29 jinx Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -67,7 +67,7 @@ MIT in each case. |#
     make-open-block open-block? open-block-components
     primitive-procedure?
     make-quotation quotation? quotation-expression
-    make-sequence sequence-actions
+    make-sequence sequence-actions sequence-components
     symbol?
     make-the-environment the-environment?
     make-unassigned-object unassigned-object?
@@ -80,6 +80,14 @@ MIT in each case. |#
 (define-integrable (scode/constant-value constant) constant)
 (define scode/constant? (access scode-constant? system-global-environment))
 
+(define-integrable (scode/quotation-components quot recvr)
+  (recvr (scode/quotation-expression quot)))
+
+(define comment-tag:directive (make-named-tag "Expression Directive"))
+
+(define (scode/make-directive directive code)
+  (scode/make-comment (list comment-tag:directive directive)
+		      code))
 (define (scode/make-let names values . body)
   (scan-defines (scode/make-sequence body)
     (lambda (auxiliary declarations body)

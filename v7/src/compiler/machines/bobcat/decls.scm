@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.3 1988/03/14 20:23:52 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.4 1988/04/15 02:08:28 jinx Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -228,7 +228,7 @@ MIT in each case. |#
 	 (filename/append "machines/bobcat"
 			  "insmac" "machin" "rgspcm")
 	 (filename/append "fggen"
-			  "declar" "fggen")
+			  "declar" "fggen" "canon")
 	 (filename/append "fgopt"
 			  "blktyp" "closan" "conect" "contan" "desenv" "folcon"
 			  "offset" "operan" "order" "outer" "simapp" "simple")
@@ -320,7 +320,7 @@ MIT in each case. |#
 (file-dependency/integration/join
  (append
   (filename/append "fggen"
-		   "declar" "fggen")
+		   "declar" "fggen")	; "canon" needs no integrations
   (filename/append "fgopt"
 		   "blktyp" "closan" "conect" "contan" "desenv" "folcon"
 		   "offset" "operan" "order" "outer" "simapp" "simple"))

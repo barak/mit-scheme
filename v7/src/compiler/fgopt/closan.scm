@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/closan.scm,v 4.2 1987/12/30 06:44:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/closan.scm,v 4.3 1988/04/15 02:05:28 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -60,6 +60,15 @@ construction mechanism that optimizes by means of a stack, because use
 of a stack associates procedure extent with block scope.  For many
 simple techniques it generates more information than is needed.
 
+**** Unfortunately the analysis is not compatible with the current
+implementation of closures.  If a closure invokes another procedure
+which is not a child, the current implementation requires that the
+other procedure also be a closure.  However, if the closing-limit of
+the caller is the same as the closure-block of the callee, the callee
+will not be marked as a closure.  This has disastrous results.  As a
+result, the analysis has been modified to force the closure-limit to
+#F whenever a closure is identified.
+
 |#
 
 (package (identify-closure-limits!)
@@ -94,11 +103,15 @@ simple techniques it generates more information than is needed.
      (and procedure
 	  (rvalue/procedure? procedure)
 	  (procedure-always-known-operator? procedure)
-	  (procedure-block procedure)))))
+	  ;; **** Force trivial closure limit.
+	  ;; (procedure-block procedure)
+	  false))))
 
 (define (close-assignment-values! assignment)
   (close-rvalue! (assignment-rvalue assignment)
-		 (variable-block (assignment-lvalue assignment))))
+		 ;; **** Force trivial closure limit.
+		 ;; (variable-block (assignment-lvalue assignment))
+		 false))
 
 (define-integrable (close-rvalue! rvalue binding-block)
   (close-values! (rvalue-values rvalue) binding-block))
@@ -119,8 +132,9 @@ simple techniques it generates more information than is needed.
       (if (not (eq? new-closing-limit closing-limit))
 	  (begin
 	    (set-procedure-closing-limit! procedure new-closing-limit)
-	    ;; The following line forces the procedure's type to CLOSURE.
-	    (set-procedure-closure-block! procedure true)
+	    (if (not (procedure-closure-block procedure))
+		;; The following line forces the procedure's type to CLOSURE.
+		(set-procedure-closure-block! procedure true))
 	    (close-callees! (procedure-block procedure) new-closing-limit))))))
 
 (define (close-callees! block new-closing-limit)
