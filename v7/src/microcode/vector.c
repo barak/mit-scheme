@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/vector.c,v 9.33 1989/10/31 12:42:53 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/vector.c,v 9.34 1991/10/29 22:55:11 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -51,10 +51,8 @@ MIT in each case. */
    : ((error_wrong_type_arg (argument_number)), ((SCHEME_OBJECT) 0)))
 
 SCHEME_OBJECT
-allocate_non_marked_vector (type_code, length, gc_check_p)
-     int type_code;
-     fast long length;
-     Boolean gc_check_p;
+DEFUN (allocate_non_marked_vector, (type_code, length, gc_check_p),
+       int type_code AND fast long length AND Boolean gc_check_p)
 {
   fast SCHEME_OBJECT result;
 
@@ -67,10 +65,8 @@ allocate_non_marked_vector (type_code, length, gc_check_p)
 }
 
 SCHEME_OBJECT
-allocate_marked_vector (type_code, length, gc_check_p)
-     int type_code;
-     fast long length;
-     Boolean gc_check_p;
+DEFUN (allocate_marked_vector, (type_code, length, gc_check_p),
+       int type_code AND fast long length AND Boolean gc_check_p)
 {
   if (gc_check_p)
     Primitive_GC_If_Needed (length + 1);
@@ -83,10 +79,8 @@ allocate_marked_vector (type_code, length, gc_check_p)
 }
 
 SCHEME_OBJECT
-make_vector (length, contents, gc_check_p)
-     fast long length;
-     fast SCHEME_OBJECT contents;
-     Boolean gc_check_p;
+DEFUN (make_vector, (length, contents, gc_check_p),
+       fast long length AND fast SCHEME_OBJECT contents AND Boolean gc_check_p)
 {
   if (gc_check_p)
     Primitive_GC_If_Needed (length + 1);
@@ -195,10 +189,8 @@ DEFINE_PRIMITIVE ("SYSTEM-VECTOR-SET!", Prim_sys_vec_set, 3, 3, 0)
 }
 
 static SCHEME_OBJECT
-subvector_to_list (vector, start, end)
-     SCHEME_OBJECT vector;
-     long start;
-     long end;
+DEFUN (subvector_to_list, (vector, start, end),
+       SCHEME_OBJECT vector AND long start AND long end)
 {
   SCHEME_OBJECT result;
   fast SCHEME_OBJECT *scan;
@@ -230,9 +222,8 @@ DEFINE_PRIMITIVE ("SYSTEM-SUBVECTOR-TO-LIST", Prim_sys_subvector_to_list, 3, 3, 
      SUBVECTOR_TO_LIST_PRIMITIVE (ARG_GC_VECTOR)
 
 static SCHEME_OBJECT
-list_to_vector (result_type, argument_number)
-     long argument_number;
-     long result_type;
+DEFUN (list_to_vector, (result_type, argument_number),
+       long result_type AND long argument_number)
 {
   fast SCHEME_OBJECT list;
   fast long count;

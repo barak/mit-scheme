@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/string.c,v 9.33 1989/09/20 23:11:55 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/string.c,v 9.34 1991/10/29 22:55:11 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -66,8 +66,11 @@ char_pointer_to_string (char_pointer)
      unsigned char * char_pointer;
 {
   unsigned char * scan = char_pointer;
-  while ((*scan++) != '\0')
-    ;
+  if (scan == ((unsigned char *) NULL))
+    scan += 1;
+  else
+    while ((*scan++) != '\0')
+      ;
   return (memory_to_string (((scan - 1) - char_pointer), char_pointer));
 }
 

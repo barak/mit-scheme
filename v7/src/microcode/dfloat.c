@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/dfloat.c,v 1.2 1991/08/14 02:02:53 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/dfloat.c,v 1.3 1991/10/29 22:55:11 jinx Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -48,10 +48,9 @@ MIT in each case. */
   (arg_index_integer (argument_number,                                  \
 		      ((VECTOR_LENGTH (vector)) / FLONUM_SIZE)))
 
-extern SCHEME_OBJECT allocate_non_marked_vector ();
-
 DEFINE_PRIMITIVE ("FLOATING-VECTOR-CONS", Prim_floating_vector_cons, 1, 1, 0)
-{ long length = (arg_nonnegative_integer (1));
+{
+  long length = (arg_nonnegative_integer (1));
   long length_in_words = length * FLONUM_SIZE;
   SCHEME_OBJECT result;
   fast double *vect;
@@ -78,7 +77,7 @@ DEFINE_PRIMITIVE( "FLOATING-VECTOR-REF", Prim_floating_vector_ref,
   PRIMITIVE_RETURN (FLOAT_TO_FLONUM(*where));
 }
 
-extern double arg_flonum ();
+extern double EXFUN (arg_flonum, (int));
 
 DEFINE_PRIMITIVE( "FLOATING-VECTOR-SET!", Prim_floating_vector_set,
 		 3, 3, 0)

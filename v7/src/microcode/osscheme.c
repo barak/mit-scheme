@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osscheme.c,v 1.2 1991/03/01 00:55:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osscheme.c,v 1.3 1991/10/29 22:55:11 jinx Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -119,5 +119,5 @@ DEFUN (debug_examine_memory, (address, label),
        long address AND
        CONST char * label)
 {
-  Print_Expression ((* ((SCHEME_OBJECT *) address)), label);
+  Print_Expression ((* ((SCHEME_OBJECT *) address)), ((char *) label));
 }

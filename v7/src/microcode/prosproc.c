@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosproc.c,v 1.8 1991/03/14 04:22:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosproc.c,v 1.9 1991/10/29 22:55:11 jinx Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -183,7 +183,8 @@ DEFINE_PRIMITIVE ("SCHEME-ENVIRONMENT", Prim_scheme_environment, 0, 0, 0)
 	  (allocate_marked_vector (TC_VECTOR, (end_environ - environ), 1));
 	SCHEME_OBJECT * scan_result = (VECTOR_LOC (result, 0));
 	while (scan_environ < end_environ)
-	  (*scan_result++) = (char_pointer_to_string (*scan_environ++));
+	  (*scan_result++) =
+	    (char_pointer_to_string ((unsigned char *) (*scan_environ++)));
 	PRIMITIVE_RETURN (result);
       }
     }

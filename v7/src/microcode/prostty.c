@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prostty.c,v 1.2 1990/11/05 11:55:15 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prostty.c,v 1.3 1991/10/29 22:55:11 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -74,14 +74,16 @@ DEFINE_PRIMITIVE ("TTY-COMMAND-BEEP", Prim_tty_command_beep, 0, 0,
   "Return a string that, when written to the display, will make it beep.")
 {
   PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (char_pointer_to_string (OS_tty_command_beep ()));
+  PRIMITIVE_RETURN
+    (char_pointer_to_string ((unsigned char *) (OS_tty_command_beep ())));
 }
 
 DEFINE_PRIMITIVE ("TTY-COMMAND-CLEAR", Prim_tty_command_clear, 0, 0,
   "Return a string that, when written to the display, will clear it.")
 {
   PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (char_pointer_to_string (OS_tty_command_clear ()));
+  PRIMITIVE_RETURN
+    (char_pointer_to_string ((unsigned char *) (OS_tty_command_clear ())));
 }
 
 DEFINE_PRIMITIVE ("TTY-NEXT-INTERRUPT-CHAR", Prim_tty_next_interrupt_char, 0, 0,

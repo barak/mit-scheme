@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/critsec.h,v 1.1 1990/06/20 19:35:41 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/critsec.h,v 1.2 1991/10/29 22:55:11 jinx Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,7 +38,7 @@ MIT in each case. */
 
 extern char * critical_section_name;
 extern int critical_section_hook_p;
-extern void (*critical_section_hook) ();
+extern void EXFUN ((*critical_section_hook), (char *));
 
 #define DECLARE_CRITICAL_SECTION()					\
   char * critical_section_name = 0;					\

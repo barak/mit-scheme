@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.20 1991/03/06 22:57:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.21 1991/10/29 22:55:11 jinx Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -38,14 +38,13 @@ MIT in each case. */
 #include "prims.h"
 
 extern SCHEME_OBJECT
-  *compiled_entry_to_block_address();
+  * EXFUN (compiled_entry_to_block_address, (SCHEME_OBJECT));
 
 extern long
-  compiled_entry_to_block_offset(),
-  coerce_to_compiled();
+  EXFUN (compiled_entry_to_block_offset, (SCHEME_OBJECT)),
+  EXFUN (coerce_to_compiled, (SCHEME_OBJECT, long, SCHEME_OBJECT *));
 
-extern void
-  compiled_entry_type();
+extern void EXFUN (compiled_entry_type, (SCHEME_OBJECT, long *));
 
 DEFINE_PRIMITIVE ("COMPILED-CODE-ADDRESS->BLOCK", Prim_comp_code_address_block, 1, 1,
   "Given a compiled code address, return its compiled code block.")
@@ -127,11 +126,10 @@ DEFINE_PRIMITIVE ("COERCE-TO-COMPILED-PROCEDURE", Prim_coerce_to_closure, 2, 2, 
 DEFINE_PRIMITIVE ("COMPILED-CLOSURE->ENTRY", Prim_compiled_closure_to_entry, 1, 1,
   "Given a compiled closure, return the entry point which it invokes.")
 {
-  SCHEME_OBJECT entry_type [3];
+  long entry_type [3];
   SCHEME_OBJECT closure;
-  extern void compiled_entry_type ();
-  extern long compiled_entry_closure_p ();
-  extern SCHEME_OBJECT compiled_closure_to_entry ();
+  extern long EXFUN (compiled_entry_closure_p, (SCHEME_OBJECT));
+  extern SCHEME_OBJECT EXFUN (compiled_closure_to_entry, (SCHEME_OBJECT));
   PRIMITIVE_HEADER (1);
 
   CHECK_ARG (1, COMPILED_CODE_ADDRESS_P);

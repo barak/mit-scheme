@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.26 1991/10/02 21:17:07 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.27 1991/10/29 22:55:11 jinx Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -649,7 +649,9 @@ DEFUN (key_event, (xw, event, type),
 	bucky |= 8;
       if ((event -> state) & Mod4Mask) /* Top */
 	bucky |= 16;
-      VECTOR_SET (result, EVENT_0, (memory_to_string (nbytes, copy_buffer)));
+      VECTOR_SET (result, EVENT_0,
+		  (memory_to_string (nbytes,
+				     ((unsigned char *) copy_buffer))));
       VECTOR_SET (result, EVENT_1, LONG_TO_UNSIGNED_FIXNUM (bucky));
       /* Move vendor-specific bit from bit 28 (zero-based) to bit 23 */
       /* so that all keysym values will fit in Scheme fixnums. */
@@ -1027,7 +1029,8 @@ DEFINE_PRIMITIVE ("X-DISPLAY-GET-DEFAULT", Prim_x_display_get_default, 3, 3, 0)
       (XGetDefault
        ((XD_DISPLAY (x_display_arg (1))), (STRING_ARG (2)), (STRING_ARG (3))));
     PRIMITIVE_RETURN
-      ((result == 0) ? SHARP_F : (char_pointer_to_string (result)));
+      ((result == 0) ? SHARP_F
+       : (char_pointer_to_string ((unsigned char *) result)));
   }
 }
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.17 1991/10/15 18:01:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.18 1991/10/29 22:55:11 jinx Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -991,6 +991,13 @@ DEFUN_VOID (print_interactive_help)
 }
 
 static void
+DEFUN (invoke_soft_reset, (name), char * name)
+{
+  soft_reset ();
+  /*NOTREACHED*/
+}
+
+static void
 DEFUN (reset_query, (scp), struct FULL_SIGCONTEXT * scp)
 {
   putc ('\n', stdout);
@@ -1019,7 +1026,7 @@ DEFUN (reset_query, (scp), struct FULL_SIGCONTEXT * scp)
 	  fprintf (stderr, "Problems reading keyboard input -- exitting.\n");
 	  termination_eof ();
 	case 'D':
-	  SET_CRITICAL_SECTION_HOOK (soft_reset);
+	  SET_CRITICAL_SECTION_HOOK (invoke_soft_reset);
 	  return;
 	case 'N':
 	  CLEAR_CRITICAL_SECTION_HOOK ();

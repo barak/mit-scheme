@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosfs.c,v 1.4 1991/10/29 13:58:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosfs.c,v 1.5 1991/10/29 22:55:11 jinx Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -44,7 +44,7 @@ MIT in each case. */
   PRIMITIVE_RETURN							\
     ((result == 0)							\
      ? SHARP_F								\
-     : (char_pointer_to_string (result)));				\
+     : (char_pointer_to_string ((unsigned char *) result)));		\
 }
 
 DEFINE_PRIMITIVE ("FILE-EXISTS?", Prim_file_exists_p, 1, 1,

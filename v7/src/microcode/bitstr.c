@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.48 1991/08/23 22:10:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.49 1991/10/29 22:55:11 jinx Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -43,8 +43,7 @@ MIT in each case. */
 #include "bitstr.h"
 
 SCHEME_OBJECT
-allocate_bit_string (length)
-     long length;
+DEFUN (allocate_bit_string, (length), long length)
 {
   long total_pointers;
   SCHEME_OBJECT result;
@@ -76,9 +75,8 @@ DEFINE_PRIMITIVE ("BIT-STRING?", Prim_bit_string_p, 1, 1, 0)
 }
 
 void
-fill_bit_string (bit_string, sense)
-     SCHEME_OBJECT bit_string;
-     Boolean sense;
+DEFUN (fill_bit_string, (bit_string, sense),
+       SCHEME_OBJECT bit_string AND Boolean sense)
 {
   SCHEME_OBJECT *scanner;
   SCHEME_OBJECT filler;
@@ -92,8 +90,7 @@ fill_bit_string (bit_string, sense)
 }
 
 void
-clear_bit_string (bit_string)
-     SCHEME_OBJECT bit_string;
+DEFUN (clear_bit_string, (bit_string), SCHEME_OBJECT bit_string)
 {
   SCHEME_OBJECT *scanner;
   long i;
@@ -383,9 +380,11 @@ DEFINE_PRIMITIVE ("BIT-SUBSTRING-MOVE-RIGHT!", Prim_bit_substring_move_right_x, 
    starting with the MSB of a bit string and moving down. */
 
 void
-copy_bits (source, source_offset, destination, destination_offset, nbits)
-     SCHEME_OBJECT *source, *destination;
-     long source_offset, destination_offset, nbits;
+DEFUN (copy_bits,
+       (source, source_offset, destination, destination_offset, nbits),
+       SCHEME_OBJECT * source AND long source_offset
+       AND SCHEME_OBJECT * destination AND long destination_offset
+       AND long nbits)
 {
 
   /* This common case can be done very quickly, by splitting the
@@ -609,8 +608,7 @@ copy_bits (source, source_offset, destination, destination_offset, nbits)
 /* Integer <-> Bit-string Conversions */
 
 long
-count_significant_bits (number, start)
-     long number, start;
+DEFUN (count_significant_bits, (number, start), long number AND long start)
 {
   long significant_bits, i;
 
@@ -625,8 +623,7 @@ count_significant_bits (number, start)
 }
 
 long
-long_significant_bits (number)
-     long number;
+DEFUN (long_significant_bits, (number), long number)
 {
   return
     ((number < 0)
@@ -635,8 +632,7 @@ long_significant_bits (number)
 }
 
 SCHEME_OBJECT
-zero_to_bit_string (length)
-     long length;
+DEFUN (zero_to_bit_string, (length), long length)
 {
   SCHEME_OBJECT result;
 
@@ -646,8 +642,7 @@ zero_to_bit_string (length)
 }
 
 SCHEME_OBJECT
-long_to_bit_string (length, number)
-     long length, number;
+DEFUN (long_to_bit_string, (length, number), long length AND long number)
 {
   if (number < 0)
     error_bad_range_arg (2);
@@ -669,9 +664,8 @@ long_to_bit_string (length, number)
 }
 
 SCHEME_OBJECT
-bignum_to_bit_string (length, bignum)
-     long length;
-     SCHEME_OBJECT bignum;
+DEFUN (bignum_to_bit_string, (length, bignum),
+       long length AND SCHEME_OBJECT bignum)
 {
   switch (bignum_test (bignum))
     {
@@ -695,9 +689,9 @@ bignum_to_bit_string (length, bignum)
 }
 
 static void
-btbs_consumer (result_ptr, digit)
-     unsigned char ** result_ptr;
-     unsigned int digit;
+DEFUN (btbs_consumer, (result_ptr, digit),
+       unsigned char ** result_ptr
+       AND unsigned int digit)
 {
   (* (INC_BIT_STRING_PTR (*result_ptr))) = digit;
   return;
@@ -710,9 +704,8 @@ struct bitstr_to_bignm_context
 };
 
 SCHEME_OBJECT
-bit_string_to_bignum (nbits, bitstr)
-     long nbits;
-     SCHEME_OBJECT bitstr;
+DEFUN (bit_string_to_bignum, (nbits, bitstr),
+       long nbits AND SCHEME_OBJECT bitstr)
 {
   static unsigned int bstb_producer ();
   struct bitstr_to_bignm_context context;
@@ -742,8 +735,8 @@ bit_string_to_bignum (nbits, bitstr)
 }
 
 static unsigned int
-bstb_producer (context)
-     struct bitstr_to_bignm_context *context;
+DEFUN (bstb_producer, (context),
+       struct bitstr_to_bignm_context * context)
 {
   unsigned int result;
 

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/tterm.c,v 1.1 1990/10/16 20:52:15 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/tterm.c,v 1.2 1991/10/29 22:55:11 jinx Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -65,6 +65,7 @@ static void
 DEFUN (tputs_write_char, (c), int c)
 {
   (*tputs_output_scan++) = c;
+  return;
 }
 
 DEFINE_PRIMITIVE ("TERMCAP-INITIALIZE", Prim_termcap_initialize, 1, 1, 0)
@@ -96,7 +97,8 @@ DEFINE_PRIMITIVE ("TERMCAP-GET-STRING", Prim_termcap_get_string, 1, 1, 0)
   {
     char * result = (tgetstr ((STRING_ARG (1)), (&tgetstr_pointer)));
     PRIMITIVE_RETURN
-      ((result == 0) ? SHARP_F : (char_pointer_to_string (result)));
+      ((result == 0) ? SHARP_F
+       : (char_pointer_to_string ((unsigned char *) result)));
   }
 }
 
@@ -110,7 +112,7 @@ DEFINE_PRIMITIVE ("TERMCAP-PARAM-STRING", Prim_termcap_param_string, 5, 5, 0)
 	       (arg_nonnegative_integer (3)),
 	       (arg_nonnegative_integer (4)),
 	       (arg_nonnegative_integer (5))));
-    SCHEME_OBJECT result = (char_pointer_to_string (s));
+    SCHEME_OBJECT result = (char_pointer_to_string ((unsigned char *) s));
     free (s);
     PRIMITIVE_RETURN (result);
   }
@@ -124,9 +126,10 @@ DEFINE_PRIMITIVE ("TERMCAP-GOTO-STRING", Prim_termcap_goto_string, 5, 5, 0)
     UP = (((ARG_REF (5)) == SHARP_F) ? 0 : (STRING_ARG (5)));
     PRIMITIVE_RETURN
       (char_pointer_to_string
-       (tgoto ((STRING_ARG (1)),
+       ((unsigned char *)
+	(tgoto ((STRING_ARG (1)),
 		(arg_nonnegative_integer (2)),
-		(arg_nonnegative_integer (3)))));
+		(arg_nonnegative_integer (3))))));
   }
 }
 
@@ -138,5 +141,6 @@ DEFINE_PRIMITIVE ("TERMCAP-PAD-STRING", Prim_termcap_pad_string, 4, 4, 0)
   tputs_output_scan = tputs_output;
   tputs ((STRING_ARG (1)), (arg_nonnegative_integer (2)), tputs_write_char);
   PRIMITIVE_RETURN
-    (memory_to_string ((tputs_output_scan - tputs_output), tputs_output));
+    (memory_to_string ((tputs_output_scan - tputs_output),
+		       ((unsigned char *) tputs_output)));
 }

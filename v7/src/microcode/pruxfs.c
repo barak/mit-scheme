@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.46 1991/10/29 13:59:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.47 1991/10/29 22:55:11 jinx Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -147,8 +147,9 @@ DEFUN (file_attributes_internal, (s), struct stat * s)
     case S_IFLNK:
       VECTOR_SET (result, 0,
 		  (char_pointer_to_string
-		   (OS_file_soft_link_p
-		    ((CONST char *) (STRING_LOC ((ARG_REF (1)), 0))))));
+		   ((unsigned char *)
+		    (OS_file_soft_link_p
+		     ((CONST char *) (STRING_LOC ((ARG_REF (1)), 0)))))));
       break;
 #endif
     default:

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpintmd/hppa.h,v 1.24 1991/08/13 18:23:23 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpintmd/hppa.h,v 1.25 1991/10/29 22:55:11 jinx Exp $
 
 Copyright (c) 1989-1991 Massachusetts Institute of Technology
 
@@ -186,8 +186,7 @@ union bl_offset
  */
 
 unsigned long
-hppa_extract_absolute_address (addr)
-     unsigned long *addr;
+DEFUN (hppa_extract_absolute_address, (addr), unsigned long * addr)
 {
   union short_pointer result;
   union ble_inst ble;
@@ -210,8 +209,9 @@ hppa_extract_absolute_address (addr)
 }
 
 void
-hppa_store_absolute_address (addr, sourcev, nullify_p)
-     unsigned long *addr, sourcev, nullify_p;
+DEFUN (hppa_store_absolute_address, (addr, sourcev, nullify_p),
+       unsigned long * addr AND unsigned long sourcev
+       AND unsigned long nullify_p)
 {
   union short_pointer source;
   union ldil_inst ldil;
@@ -260,15 +260,15 @@ hppa_store_absolute_address (addr, sourcev, nullify_p)
 
 static struct pdc_cache_dump cache_info;
 
-extern void
-  flush_i_cache (),
-  push_d_cache_region ();
+extern void EXFUN (flush_i_cache, (void));
+extern void EXFUN (push_d_cache_region, (PTR, unsigned long));
 
 void
-flush_i_cache ()
+DEFUN_VOID (flush_i_cache)
 {
-  extern void cache_flush_all ();
-  struct pdc_cache_result *cache_desc;
+  extern void EXFUN (cache_flush_all,
+		     (unsigned int, struct pdc_cache_result *));
+  struct pdc_cache_result * cache_desc;
   
   cache_desc = ((struct pdc_cache_result *) &(cache_info.cache_format));
 
@@ -297,12 +297,11 @@ flush_i_cache ()
 }
 
 void
-push_d_cache_region (start_address, block_size)
-     void *start_address;
-     unsigned long block_size;
+DEFUN (push_d_cache_region, (start_address, block_size),
+       PTR start_address AND unsigned long block_size)
 {
-  extern void cache_flush_region ();
-  struct pdc_cache_result *cache_desc;
+  extern void EXFUN (cache_flush_region, (PTR, long, unsigned int));
+  struct pdc_cache_result * cache_desc;
   
   cache_desc = ((struct pdc_cache_result *) &(cache_info.cache_format));
 
@@ -316,7 +315,7 @@ push_d_cache_region (start_address, block_size)
   {
     cache_flush_region (start_address, block_size, D_CACHE);
     cache_flush_region (start_address, 1, I_CACHE);
-    cache_flush_region (((void *)
+    cache_flush_region (((PTR)
 			 (((unsigned long *) start_address)
 			  + (block_size - 1))),
 			1,
@@ -329,8 +328,8 @@ push_d_cache_region (start_address, block_size)
 #define MODELS_FILENAME "HPPAmodels"
 #endif
 
-void
-flush_i_cache_initialize ()
+static void
+DEFUN_VOID (flush_i_cache_initialize)
 {
   struct utsname sysinfo;
   CONST char * models_filename =
@@ -428,8 +427,8 @@ procedures and continuations differ from closures) */
 
 /* A NOP on machines where instructions are longword-aligned. */
 
-#define ADJUST_CLOSURE_AT_CALL(entry_point, location)			\
-do {									\
+#define ADJUST_CLOSURE_AT_CALL(entry_point, location) do		\
+{									\
 } while (0)
 
 /* Compiled closures */
@@ -645,9 +644,9 @@ do {									\
    On PA this is a NOP.
  */
 
-#define STORE_EXECUTE_CACHE_CODE(address)				\
+#define STORE_EXECUTE_CACHE_CODE(address) do				\
 {									\
-}
+} while (0)
 
 /* This is supposed to flush the Scheme portion of the I-cache.
    It flushes the entire I-cache instead, since it is easier.
@@ -659,7 +658,7 @@ do {									\
 
 #define FLUSH_I_CACHE() do						\
 {									\
-  extern void flush_i_cache ();						\
+  extern void EXFUN (flush_i_cache, (void));				\
 									\
   flush_i_cache ();							\
 } while (0)
@@ -671,9 +670,9 @@ do {									\
 
 #define FLUSH_I_CACHE_REGION(address, nwords) do			\
 {									\
-  extern void cache_flush_region ();					\
+  extern void EXFUN (cache_flush_region, (PTR, long, unsigned int));	\
 									\
-  cache_flush_region (((void *) (address)), (nwords),			\
+  cache_flush_region (((PTR) (address)), ((long) (nwords)),		\
 		      (D_CACHE | I_CACHE));				\
 } while (0)
 
@@ -684,9 +683,9 @@ do {									\
 
 #define PUSH_D_CACHE_REGION(address, nwords) do				\
 {									\
-  extern void push_d_cache_region ();					\
+  extern void EXFUN (push_d_cache_region, (PTR, unsigned long));	\
 									\
-  push_d_cache_region (((unsigned long *) (address)),			\
+  push_d_cache_region (((PTR) (address)),				\
 		       ((unsigned long) (nwords)));			\
 } while (0)
 
@@ -699,9 +698,7 @@ do {									\
 #ifdef IN_CMPINT_C
 
 long
-DEFUN (assemble_17,
-       (inst),
-       union ble_inst inst)
+DEFUN (assemble_17, (inst), union ble_inst inst)
 {
   union bl_offset off;
 
@@ -716,21 +713,19 @@ DEFUN (assemble_17,
 
 #include <magic.h>
 
-void **
-DEFUN (transform_procedure_table,
-       (table_length, old_table),
-       long table_length AND
-       void **old_table)
+PTR *
+DEFUN (transform_procedure_table, (table_length, old_table),
+       long table_length AND PTR * old_table)
 {
-  void **new_table;
+  PTR * new_table;
   long counter;
 
-  new_table = ((void **) (malloc (table_length * (sizeof (void *)))));
-  if (new_table == ((void **) NULL))
+  new_table = ((PTR *) (malloc (table_length * (sizeof (PTR)))));
+  if (new_table == ((PTR *) NULL))
   {
     fprintf (stderr,
 	     "transform_procedure_table: malloc (%d) failed.\n",
-	     (table_length * (sizeof (void *))));
+	     (table_length * (sizeof (PTR))));
     exit (1);
   }
 
@@ -739,17 +734,17 @@ DEFUN (transform_procedure_table,
     /* Test for HP-UX >= 8.0 */
 
 #if defined(SHL_MAGIC) && !defined(__GNUC__)
-    char *C_closure, *blp;
+    char * C_closure, * blp;
     long offset;
 
-    C_closure = ((char *) (old_table[counter]));
+    C_closure = ((char *) (old_table [counter]));
     blp = (* ((char **) (C_closure - 2)));
     blp = ((char *) (((unsigned long) blp) & ~3));
     offset = (assemble_17 (* ((union ble_inst *) blp)));
-    new_table[counter] = ((void *) ((blp + 8) + offset));
+    new_table[counter] = ((PTR) ((blp + 8) + offset));
     
 #else
-    new_table[counter] = ((void *) old_table[counter]);
+    new_table[counter] = ((PTR) (old_table [counter]));
 #endif
   }
   return (new_table);
@@ -761,16 +756,14 @@ DEFUN (transform_procedure_table,
    function pointer closure format problems for utilities for HP-UX >= 8.0 .
  */
 
-extern void **hppa_utility_table;
-void **hppa_utility_table;
+extern PTR * hppa_utility_table;
+PTR * hppa_utility_table;
 
 void
-DEFUN (hppa_reset_hook,
-       (table_length, utility_table),
-       long table_length AND
-       void **utility_table)
+DEFUN (hppa_reset_hook, (table_length, utility_table),
+       long table_length AND PTR * utility_table)
 {
-  extern void interface_initialize ();
+  extern void EXFUN (interface_initialize, (void));
 
   flush_i_cache_initialize ();
   interface_initialize ();
@@ -782,9 +775,9 @@ DEFUN (hppa_reset_hook,
   return;
 }
 
-#define ASM_RESET_HOOK()						\
-do {									\
-  hppa_reset_hook (((sizeof (utility_table)) / (sizeof (void *))),	\
+#define ASM_RESET_HOOK() do						\
+{									\
+  hppa_reset_hook (((sizeof (utility_table)) / (sizeof (PTR))),		\
 		   &utility_table[0]);					\
 } while (0)
 

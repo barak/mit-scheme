@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.38 1991/08/26 15:00:09 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.39 1991/10/29 22:55:11 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,16 +39,15 @@ MIT in each case. */
 #include "trap.h"
 #include "lookup.h"
 
-static void do_printing ();
-static Boolean print_primitive_name ();
+static void EXFUN (do_printing, (SCHEME_OBJECT, Boolean));
+static Boolean EXFUN (print_primitive_name, (SCHEME_OBJECT));
 
 /* Compiled Code Debugging */
 
 static SCHEME_OBJECT
-compiled_block_debug_filename (block)
-     SCHEME_OBJECT block;
+DEFUN (compiled_block_debug_filename, (block), SCHEME_OBJECT block)
 {
-  extern SCHEME_OBJECT compiled_block_debugging_info ();
+  extern SCHEME_OBJECT EXFUN (compiled_block_debugging_info, (SCHEME_OBJECT));
   SCHEME_OBJECT info;
 
   info = (compiled_block_debugging_info (block));
@@ -61,15 +60,15 @@ compiled_block_debug_filename (block)
      : SHARP_F);
 }
 
-extern SCHEME_OBJECT *compiled_entry_to_block_address();
+extern SCHEME_OBJECT
+  * EXFUN (compiled_entry_to_block_address, (SCHEME_OBJECT));
 
 #define COMPILED_ENTRY_TO_BLOCK(entry)					\
 (MAKE_POINTER_OBJECT (TC_COMPILED_CODE_BLOCK,				\
 		      (compiled_entry_to_block_address (entry))))
 
 static SCHEME_OBJECT
-compiled_entry_debug_filename (entry)
-     SCHEME_OBJECT entry;
+DEFUN (compiled_entry_debug_filename, (entry), SCHEME_OBJECT entry)
 {
   SCHEME_OBJECT results [3];
   extern void compiled_entry_type ();
@@ -84,8 +83,7 @@ compiled_entry_debug_filename (entry)
 }
 
 char *
-compiled_entry_filename (entry)
-     SCHEME_OBJECT entry;
+DEFUN (compiled_entry_filename, (entry), SCHEME_OBJECT entry)
 {
   SCHEME_OBJECT result;
 
@@ -99,7 +97,7 @@ compiled_entry_filename (entry)
 }
 
 void
-Show_Pure ()
+DEFUN_VOID (Show_Pure)
 {
   SCHEME_OBJECT *Obj_Address;
   long Pure_Size, Total_Size;
@@ -173,8 +171,7 @@ Show_Pure ()
 }
 
 void
-Show_Env (The_Env)
-     SCHEME_OBJECT The_Env;
+DEFUN (Show_Env, (The_Env), SCHEME_OBJECT The_Env)
 {
   SCHEME_OBJECT *name_ptr, procedure, *value_ptr, extension;
   long count, i;
@@ -203,8 +200,8 @@ Show_Env (The_Env)
   name_ptr = MEMORY_LOC (*name_ptr, 2);
   for (i = 0; i < count; i++)
   {
-    Print_Expression(*name_ptr++, "Name ");
-    Print_Expression(*value_ptr++, " Value ");
+    Print_Expression (*name_ptr++, "Name ");
+    Print_Expression (*value_ptr++, " Value ");
     printf ("\n");
   }
   if (extension != SHARP_F)
@@ -223,8 +220,7 @@ Show_Env (The_Env)
 }
 
 static void
-print_list (pair)
-     SCHEME_OBJECT pair;
+DEFUN (print_list, (pair), SCHEME_OBJECT pair)
 {
   int count;
 
@@ -254,8 +250,7 @@ print_list (pair)
 }
 
 static void
-print_return_name (Ptr)
-     SCHEME_OBJECT Ptr;
+DEFUN (print_return_name, (Ptr), SCHEME_OBJECT Ptr)
 {
   long index;
   char * name;
@@ -276,8 +271,7 @@ print_return_name (Ptr)
 }
 
 void
-Print_Return (String)
-     char * String;
+DEFUN (Print_Return, (String), char * String)
 {
   printf ("%s: ", String);
   print_return_name (Fetch_Return ());
@@ -285,8 +279,7 @@ Print_Return (String)
 }
 
 static void
-print_string (string)
-     SCHEME_OBJECT string;
+DEFUN (print_string, (string), SCHEME_OBJECT string)
 {
   long length;
   long i;
@@ -329,8 +322,7 @@ print_string (string)
 }
 
 static void
-print_symbol (symbol)
-     SCHEME_OBJECT symbol;
+DEFUN (print_symbol, (symbol), SCHEME_OBJECT symbol)
 {
   SCHEME_OBJECT string;
   long length;
@@ -346,8 +338,7 @@ print_symbol (symbol)
 }
 
 static void
-print_filename (filename)
-     SCHEME_OBJECT filename;
+DEFUN (print_filename, (filename), SCHEME_OBJECT filename)
 {
   long length;
   char * scan;
@@ -365,9 +356,8 @@ print_filename (filename)
   return;
 }
 
-void
-print_object (object)
-     SCHEME_OBJECT object;
+static void
+DEFUN (print_object, (object), SCHEME_OBJECT object)
 {
   do_printing (object, true);
   printf ("\n");
@@ -384,10 +374,9 @@ DEFINE_PRIMITIVE ("DEBUGGING-PRINTER", Prim_debugging_printer, 1, 1,
   return (SHARP_F);
 }
 
-void
-print_objects (objects, n)
-     SCHEME_OBJECT * objects;
-     int n;
+static void
+DEFUN (print_objects, (objects, n),
+       SCHEME_OBJECT * objects AND int n)
 {
   SCHEME_OBJECT * scan;
   SCHEME_OBJECT * end;
@@ -409,9 +398,8 @@ print_objects (objects, n)
    represent named structures, and most named structures don't want to
    be printed out explicitly.  */
 
-void
-print_vector (vector)
-     SCHEME_OBJECT vector;
+static void
+DEFUN (print_vector, (vector), SCHEME_OBJECT vector)
 {
   print_objects
     ((MEMORY_LOC (vector, 1)), (OBJECT_DATUM (VECTOR_LENGTH (vector))));
@@ -426,14 +414,14 @@ Print_Expression (expression, string)
   if ((string [0]) != 0)
     printf ("%s: ", string);
   do_printing (expression, true);
+  return;
 }
 
 extern char * Type_Names [];
 
 static void
-do_printing (Expr, Detailed)
-     SCHEME_OBJECT Expr;
-     Boolean Detailed;
+DEFUN (do_printing, (Expr, Detailed),
+       SCHEME_OBJECT Expr AND Boolean Detailed)
 {
   long Temp_Address;
   Boolean handled_p;
@@ -700,9 +688,8 @@ do_printing (Expr, Detailed)
   return;
 }
 
-Boolean
-Print_One_Continuation_Frame (Temp)
-     SCHEME_OBJECT Temp;
+static Boolean
+DEFUN (Print_One_Continuation_Frame, (Temp), SCHEME_OBJECT Temp)
 {
   SCHEME_OBJECT Expr;
 
@@ -727,10 +714,9 @@ Print_One_Continuation_Frame (Temp)
  */
 
 void
-Back_Trace (where)
-     FILE *where;
+DEFUN (Back_Trace, (where), FILE * where)
 {
-  SCHEME_OBJECT Temp, *Old_Stack;
+  SCHEME_OBJECT Temp, * Old_Stack;
 
   Back_Trace_Entry_Hook();
   Old_Stack = Stack_Pointer;
@@ -785,9 +771,8 @@ Back_Trace (where)
   return;
 }
 
-void
-print_stack (sp)
-     SCHEME_OBJECT * sp;
+static void
+DEFUN (print_stack, (sp), SCHEME_OBJECT * sp)
 {
   SCHEME_OBJECT * saved_sp;
 
@@ -799,8 +784,7 @@ print_stack (sp)
 }
 
 static Boolean
-print_primitive_name (primitive)
-     SCHEME_OBJECT primitive;
+DEFUN (print_primitive_name, (primitive), SCHEME_OBJECT primitive)
 {
   extern char *primitive_to_name();
   char *name;
@@ -819,11 +803,10 @@ print_primitive_name (primitive)
 }
 
 void
-Print_Primitive (primitive)
-     SCHEME_OBJECT primitive;
+DEFUN (Print_Primitive, (primitive), SCHEME_OBJECT primitive)
 {
   extern long primitive_to_arity();
-  char buffer1[40], buffer2[40];
+  char buffer[40];
   int NArgs, i;
 
   printf ("Primitive: ");
@@ -839,11 +822,11 @@ Print_Primitive (primitive)
 
   for (i = 0; i < NArgs; i++)
   {
-    sprintf (buffer1, "STACK_REF (%d)", i);
-    sprintf (buffer2, "...Arg %d", (i + 1));
-    Print_Expression(buffer1, buffer2);
+    sprintf (buffer, "...Arg %d", (i + 1));
+    Print_Expression ((STACK_REF (i)), buffer);
     printf ("\n");
   }
+  return;
 }
 
 /* Code for interactively setting and clearing the interpreter
@@ -953,6 +936,7 @@ DEFUN (show_flags, (all), int all)
 		 i, (flag_name (i)), (value ? "set" : "clear"));
     }
   fflush (stdout);
+  return;
 }
 
 static int
@@ -966,12 +950,14 @@ DEFUN (set_flag, (flag_number, value), int flag_number AND int value)
       (*flag) = value;
       SET_FLAG_HOOK (flag);
     }
+  return (0);
 }
 
 static int
 DEFUN (debug_getdec, (string), CONST char * string)
 {
   int result;
+
   sscanf (string, "%d", (&result));
   return (result);
 }
@@ -1019,6 +1005,7 @@ DEFUN_VOID (debug_edit_flags)
 {
   fprintf (stderr, "Not a debugging version.  No flags to handle.\n");
   fflush (stderr);
+  return;
 }
 
 #endif /* not ENABLE_DEBUGGING_TOOLS */

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.c,v 1.15 1991/08/06 22:15:09 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.c,v 1.16 1991/10/29 22:55:11 jinx Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -309,7 +309,8 @@ DEFUN (find_signal_code_name, (signo, info, scp),
 	}
     }
   return (cons ((long_to_integer ((long) code)),
-		((name == 0) ? SHARP_F : (char_pointer_to_string (name)))));
+		((name == 0) ? SHARP_F
+		 : (char_pointer_to_string ((unsigned char *) name)))));
 }
 
 static void
@@ -339,7 +340,8 @@ DEFUN (setup_trap_frame, (signo, info, scp, trinfo, new_stack_pointer),
   signal_name =
     ((signo == 0)
      ? SHARP_F
-     : (char_pointer_to_string (find_signal_name (signo))));
+     : (char_pointer_to_string
+	((unsigned char *) (find_signal_name (signo)))));
   signal_code = (find_signal_code_name (signo, info, scp));
   if (!stack_recovered_p)
     {

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.62 1991/05/05 00:45:46 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.63 1991/10/29 22:55:11 jinx Exp $
 
 Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
@@ -58,18 +58,19 @@ static Tchannel load_channel;
 
 #include "load.c"
 
-extern char * malloc ();
+extern char * EXFUN (malloc, (int));
 
 extern char * Error_Names [];
 extern char * Abort_Names [];
 extern SCHEME_OBJECT * load_renumber_table;
 extern SCHEME_OBJECT compiler_utilities;
 
-extern SCHEME_OBJECT intern_symbol ();
-extern void install_primitive_table ();
-extern void compiler_reset_error ();
-extern void compiler_initialize ();
-extern void compiler_reset ();
+extern SCHEME_OBJECT EXFUN (intern_symbol, (SCHEME_OBJECT));
+extern void EXFUN (install_primitive_table,
+		   (SCHEME_OBJECT *, long, Boolean));
+extern void EXFUN (compiler_reset_error, (void));
+extern void EXFUN (compiler_initialize, (long));
+extern void EXFUN (compiler_reset, (SCHEME_OBJECT));
 
 static long failed_heap_length = -1;
 
@@ -79,9 +80,7 @@ static long failed_heap_length = -1;
 
 static void
 DEFUN (read_channel_continue, (header, mode, repeat_p),
-       SCHEME_OBJECT *header AND
-       int mode AND
-       Boolean repeat_p)
+       SCHEME_OBJECT * header AND int mode AND Boolean repeat_p)
 {
   long value, heap_length;
 
@@ -192,9 +191,7 @@ DEFUN (read_channel_continue, (header, mode, repeat_p),
 }
 
 static void
-DEFUN (read_channel_start, (channel, mode),
-       Tchannel channel AND
-       int mode)
+DEFUN (read_channel_start, (channel, mode), Tchannel channel AND int mode)
 {
   load_channel = channel;
 
@@ -225,8 +222,7 @@ DEFUN (read_channel_start, (channel, mode),
 
 static void
 DEFUN (read_file_start, (file_name, from_band_load),
-       CONST char * file_name AND
-       Boolean from_band_load)
+       CONST char * file_name AND Boolean from_band_load)
 {
   Tchannel channel;
 
@@ -329,7 +325,7 @@ relocation_type
 
 static Boolean Warned = false;
 
-SCHEME_OBJECT *
+static SCHEME_OBJECT *
 DEFUN (Relocate, (P), long P)
 {
   SCHEME_OBJECT *Result;
@@ -410,10 +406,9 @@ static SCHEME_OBJECT *Relocate_Temp;
    block of memory.
 */
 
-void
+static void
 DEFUN (Relocate_Block, (Scan, Stop_At),
-       fast SCHEME_OBJECT *Scan AND
-       fast SCHEME_OBJECT *Stop_At)
+       fast SCHEME_OBJECT * Scan AND fast SCHEME_OBJECT * Stop_At)
 {
   fast long address;
   fast SCHEME_OBJECT Temp;
@@ -572,10 +567,9 @@ DEFUN (Relocate_Block, (Scan, Stop_At),
   return;
 }
 
-Boolean
+static Boolean
 DEFUN (check_primitive_numbers, (table, length),
-       fast SCHEME_OBJECT *table AND
-       fast long length)
+       fast SCHEME_OBJECT * table AND fast long length)
 {
   fast long count, top;
 
@@ -611,20 +605,20 @@ DEFUN (check_primitive_numbers, (table, length),
   return (true);
 }
 
+extern void EXFUN (get_band_parameters, (long * heap_size, long * const_size));
+
 void
 DEFUN (get_band_parameters, (heap_size, const_size),
-       long * heap_size AND
-       long * const_size)
+       long * heap_size AND long * const_size)
 {
   /* This assumes we have just aborted out of a band load. */
   (*heap_size) = Heap_Count;
   (*const_size) = Const_Count;
 }
 
-void
+static void
 DEFUN (Intern_Block, (Next_Pointer, Stop_At),
-       fast SCHEME_OBJECT *Next_Pointer AND
-       fast SCHEME_OBJECT *Stop_At)
+       fast SCHEME_OBJECT * Next_Pointer AND fast SCHEME_OBJECT * Stop_At)
 {
   if (Reloc_Debug)
   {
@@ -686,7 +680,7 @@ DEFUN (Intern_Block, (Next_Pointer, Stop_At),
 #define COMPUTE_RELOCATION(new, old) (((relocation_type) (new)) - (old))
 #endif
 
-SCHEME_OBJECT
+static SCHEME_OBJECT
 DEFUN (load_file, (mode), int mode)
 {
   SCHEME_OBJECT
@@ -794,7 +788,8 @@ DEFUN (load_file, (mode), int mode)
     Intern_Block (Orig_Constant, Constant_End);
   }
 
-  FASLOAD_RELOCATE_HOOK (Orig_Heap, primitive_table, Orig_Constant, Constant_End);
+  FASLOAD_RELOCATE_HOOK (Orig_Heap, primitive_table,
+			 Orig_Constant, Constant_End);
   Relocate_Into (temp, Dumped_Object);
   return (*temp);
 }
@@ -830,7 +825,7 @@ DEFINE_PRIMITIVE ("BINARY-FASLOAD", Prim_binary_fasload, 1, 1, 0)
 }
 
 SCHEME_OBJECT
-DEFUN (continue_fasload, (reentry_record), SCHEME_OBJECT *reentry_record)
+DEFUN (continue_fasload, (reentry_record), SCHEME_OBJECT * reentry_record)
 {
   SCHEME_OBJECT header;
 
@@ -854,9 +849,9 @@ The result is a string, or #F if the system was not restored.")
   PRIMITIVE_HEADER (0);
   PRIMITIVE_RETURN
     ((reload_band_name != 0)
-     ? (char_pointer_to_string (reload_band_name))
+     ? (char_pointer_to_string ((unsigned char *) reload_band_name))
      : (option_band_file != 0)
-     ? (char_pointer_to_string (option_band_file))
+     ? (char_pointer_to_string ((unsigned char *) option_band_file))
      : SHARP_F);
 }
 
@@ -1059,14 +1054,16 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
 
 SCHEME_OBJECT String_Chain, Last_String;
 
-Setup_For_String_Inversion ()
+void
+DEFUN_VOID (Setup_For_String_Inversion)
 {
   String_Chain = SHARP_F;
   Last_String = SHARP_F;
   return;
 }
 
-Finish_String_Inversion ()
+void
+DEFUN_VOID (Finish_String_Inversion)
 {
   if (Byte_Invert_Fasl_Files)
   {
@@ -1094,8 +1091,8 @@ Finish_String_Inversion ()
 #define print_char(C) printf (((C < ' ') || (C > '|')) ?	\
 			      "\\%03o" : "%c", (C && MAX_CHAR));
 
-String_Inversion (Orig_Pointer)
-     SCHEME_OBJECT *Orig_Pointer;
+void
+DEFUN (String_Inversion, (Orig_Pointer), SCHEME_OBJECT * Orig_Pointer)
 {
   SCHEME_OBJECT *Pointer_Address;
   char *To_Char;

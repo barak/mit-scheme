@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.50 1991/08/27 07:58:21 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.51 1991/10/29 22:55:11 jinx Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -114,14 +114,13 @@ Passed_Checks:	/* This label may be used in Global_Interrupt_Hook */
  Pushed();
   /* Turn off interrupts */
   SET_INTERRUPT_MASK(New_Int_Enb);
+  return;
 }
 
 /* Error processing utilities */
 
 void
-err_print (error_code, where)
-     long error_code;
-     FILE * where;
+DEFUN (err_print, (error_code, where), long error_code AND FILE * where)
 {
   extern char * Error_Names [];
 
@@ -138,9 +137,7 @@ extern long death_blow;
 long death_blow;
 
 void
-error_death (code, message)
-     long code;
-     char * message;
+DEFUN (error_death, (code, message), long code AND char * message)
 {
   death_blow = code;
   fprintf (stderr, "\nMicrocode Error: %s.\n", message);
@@ -152,7 +149,7 @@ error_death (code, message)
 }
 
 void
-Stack_Death ()
+DEFUN_VOID (Stack_Death)
 {
   fprintf (stderr, "\nWill_Push vs. Pushed inconsistency.\n");
   Microcode_Termination (TERM_BAD_STACK);
@@ -167,6 +164,7 @@ DEFUN_VOID (preserve_interrupt_mask)
   Store_Expression (LONG_TO_FIXNUM (FETCH_INTERRUPT_MASK ()));
   Save_Cont ();
  Pushed ();
+  return;
 }
 
 /* back_out_of_primitive sets the registers up so that the backout
@@ -199,6 +197,7 @@ DEFUN_VOID (back_out_of_primitive_internal)
   Store_Return (RC_INTERNAL_APPLY);
   Store_Expression (SHARP_F);
   (Regs [REGBLOCK_PRIMITIVE]) = SHARP_F;
+  return;
 }
 
 void
@@ -206,6 +205,7 @@ DEFUN_VOID (back_out_of_primitive)
 {
   back_out_of_primitive_internal ();
   Save_Cont ();
+  return;
 }
 
 /* canonicalize_primitive_context should be used by "unsafe" primitives
@@ -216,10 +216,10 @@ DEFUN_VOID (back_out_of_primitive)
    Note: This is called only from the macro PRIMITIVE_CANONICALIZE_CONTEXT,
    so that the work can be divided between them if it is an issue. */
 
-extern void canonicalize_primitive_context ();
+extern void EXFUN (canonicalize_primitive_context, (void));
 
 void
-canonicalize_primitive_context ()
+DEFUN_VOID (canonicalize_primitive_context)
 {
   long nargs;
   SCHEME_OBJECT primitive;
@@ -263,8 +263,7 @@ DEFUN_VOID (signal_interrupt_from_primitive)
 }
 
 void
-error_wrong_type_arg (n)
-     int n;
+DEFUN (error_wrong_type_arg, (n), int n)
 {
   fast long error_code;
 
@@ -286,8 +285,7 @@ error_wrong_type_arg (n)
 }
 
 void
-error_bad_range_arg (n)
-     int n;
+DEFUN (error_bad_range_arg, (n), int n)
 {
   fast long error_code;
 
@@ -309,14 +307,13 @@ error_bad_range_arg (n)
 }
 
 void
-error_external_return ()
+DEFUN_VOID (error_external_return)
 {
   signal_error_from_primitive (ERR_EXTERNAL_RETURN);
 }
 
 long
-arg_integer (arg_number)
-     int arg_number;
+DEFUN (arg_integer, (arg_number), int arg_number)
 {
   fast SCHEME_OBJECT object = (ARG_REF (arg_number));
   if (! (INTEGER_P (object)))
@@ -327,8 +324,7 @@ arg_integer (arg_number)
 }
 
 long
-arg_nonnegative_integer (arg_number)
-     int arg_number;
+DEFUN (arg_nonnegative_integer, (arg_number), int arg_number)
 {
   fast long result = (arg_integer (arg_number));
   if (result < 0)
@@ -337,9 +333,8 @@ arg_nonnegative_integer (arg_number)
 }
 
 long
-arg_index_integer (arg_number, upper_limit)
-     int arg_number;
-     long upper_limit;
+DEFUN (arg_index_integer, (arg_number, upper_limit),
+       int arg_number AND long upper_limit)
 {
   fast long result = (arg_integer (arg_number));
   if ((result < 0) || (result >= upper_limit))
@@ -348,10 +343,9 @@ arg_index_integer (arg_number, upper_limit)
 }
 
 long
-arg_integer_in_range (arg_number, lower_limit, upper_limit)
-     int arg_number;
-     long lower_limit;
-     long upper_limit;
+DEFUN (arg_integer_in_range,
+       (arg_number, lower_limit, upper_limit),
+       int arg_number AND long lower_limit AND long upper_limit)
 {
   fast long result = (arg_integer (arg_number));
   if ((result < lower_limit) || (result >= upper_limit))
@@ -360,15 +354,13 @@ arg_integer_in_range (arg_number, lower_limit, upper_limit)
 }
 
 Boolean
-real_number_to_double_p (x)
-     fast SCHEME_OBJECT x;
+DEFUN (real_number_to_double_p, (x), fast SCHEME_OBJECT x)
 {
   return ((! (BIGNUM_P (x))) || (BIGNUM_TO_DOUBLE_P (x)));
 }
 
 double
-real_number_to_double (x)
-     fast SCHEME_OBJECT x;
+DEFUN (real_number_to_double, (x), fast SCHEME_OBJECT x)
 {
   return
     ((FIXNUM_P (x))
@@ -379,8 +371,7 @@ real_number_to_double (x)
 }
 
 double
-arg_real_number (arg_number)
-     int arg_number;
+DEFUN (arg_real_number, (arg_number), int arg_number)
 {
   fast SCHEME_OBJECT number = (ARG_REF (arg_number));
   if (! (REAL_P (number)))
@@ -391,10 +382,8 @@ arg_real_number (arg_number)
 }
 
 double
-arg_real_in_range (arg_number, lower_limit, upper_limit)
-     int arg_number;
-     double lower_limit;
-     double upper_limit;
+DEFUN (arg_real_in_range, (arg_number, lower_limit, upper_limit),
+       int arg_number AND double lower_limit AND double upper_limit)
 {
   fast double result = (arg_real_number (arg_number));
   if ((result < lower_limit) || (result > upper_limit))
@@ -403,8 +392,7 @@ arg_real_in_range (arg_number, lower_limit, upper_limit)
 }
 
 Boolean
-interpreter_applicable_p (object)
-     fast SCHEME_OBJECT object;
+DEFUN (interpreter_applicable_p, (object), fast SCHEME_OBJECT object)
 {
   extern void compiled_entry_type ();
  tail_recurse:
@@ -450,9 +438,8 @@ unsigned int syscall_error_code;
 unsigned int syscall_error_name;
 
 void
-Do_Micro_Error (Err, From_Pop_Return)
-     long Err;
-     Boolean From_Pop_Return;
+DEFUN (Do_Micro_Error, (Err, From_Pop_Return),
+       long Err AND Boolean From_Pop_Return)
 {
   SCHEME_OBJECT Error_Vector, Handler;
 
@@ -584,7 +571,7 @@ Do_Micro_Error (Err, From_Pop_Return)
 /* HISTORY manipulation */
 
 SCHEME_OBJECT *
-Make_Dummy_History ()
+DEFUN_VOID (Make_Dummy_History)
 {
   SCHEME_OBJECT *History_Rib = Free;
   SCHEME_OBJECT *Result;
@@ -613,7 +600,7 @@ Make_Dummy_History ()
 */
 
 void
-Stop_History ()
+DEFUN_VOID (Stop_History)
 {
   SCHEME_OBJECT Saved_Expression;
   long Saved_Return_Code;
@@ -637,8 +624,7 @@ Stop_History ()
  */
 
 SCHEME_OBJECT
-DEFUN (copy_history, (hist_obj),
-       SCHEME_OBJECT hist_obj)
+DEFUN (copy_history, (hist_obj), SCHEME_OBJECT hist_obj)
 {
   long space_left, vert_type, rib_type;
   SCHEME_OBJECT *fast_free;
@@ -723,8 +709,7 @@ DEFUN (copy_history, (hist_obj),
  */
 
 Boolean
-DEFUN (Restore_History, (hist_obj),
-       SCHEME_OBJECT hist_obj)
+DEFUN (Restore_History, (hist_obj), SCHEME_OBJECT hist_obj)
 {
   SCHEME_OBJECT new_hist;
 
@@ -791,8 +776,7 @@ DEFUN (primitive_apply_internal, (primitive), SCHEME_OBJECT primitive)
  */
 
 void
-record_primitive_entry (primitive)
-     SCHEME_OBJECT primitive;
+DEFUN (record_primitive_entry, (primitive), SCHEME_OBJECT primitive)
 {
   SCHEME_OBJECT table;
 
@@ -816,8 +800,7 @@ record_primitive_entry (primitive)
                       /******************/
 
 void
-Allocate_New_Stacklet (N)
-     long N;
+DEFUN (Allocate_New_Stacklet, (N), long N)
 {
   SCHEME_OBJECT Old_Expression, *Old_Stacklet, Old_Return;
 
@@ -879,8 +862,7 @@ Allocate_New_Stacklet (N)
 /* Dynamic Winder support code */
 
 SCHEME_OBJECT
-Find_State_Space (State_Point)
-     SCHEME_OBJECT State_Point;
+DEFUN (Find_State_Space, (State_Point), SCHEME_OBJECT State_Point)
 {
   long How_Far =
     (UNSIGNED_FIXNUM_TO_LONG
@@ -931,8 +913,7 @@ Find_State_Space (State_Point)
 */
 
 void
-Translate_To_Point (Target)
-     SCHEME_OBJECT Target;
+DEFUN (Translate_To_Point, (Target), SCHEME_OBJECT Target)
 {
   SCHEME_OBJECT State_Space, Current_Location, *Path;
   fast SCHEME_OBJECT Path_Point, *Path_Ptr;
@@ -1019,10 +1000,10 @@ Translate_To_Point (Target)
   /*NOTREACHED*/
 }
 
-extern SCHEME_OBJECT Compiler_Get_Fixed_Objects();
+extern SCHEME_OBJECT EXFUN (Compiler_Get_Fixed_Objects, (void));
 
 SCHEME_OBJECT
-Compiler_Get_Fixed_Objects()
+DEFUN_VOID (Compiler_Get_Fixed_Objects)
 {
   if (Valid_Fixed_Obj_Vector())
   {

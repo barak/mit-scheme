@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.63 1991/07/18 15:58:12 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.64 1991/10/29 22:55:11 jinx Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -419,8 +419,7 @@ DEFUN_VOID (abort_to_interpreter_argument)
 }
 
 void
-Interpret(dumped_p)
-     Boolean dumped_p;
+DEFUN (Interpret, (dumped_p), Boolean dumped_p)
 {
   long Which_Way;
   fast SCHEME_OBJECT *Reg_Block, *Reg_Stack_Pointer, *Reg_History;

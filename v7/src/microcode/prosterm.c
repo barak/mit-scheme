@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosterm.c,v 1.9 1991/03/14 04:22:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosterm.c,v 1.10 1991/10/29 22:55:11 jinx Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -212,8 +212,10 @@ Returns a vector #(CHANNEL MASTER-NAME SLAVE-NAME).")
     {
       SCHEME_OBJECT vector = (allocate_marked_vector (TC_VECTOR, 3, 1));
       VECTOR_SET (vector, 0, (long_to_integer (channel)));
-      VECTOR_SET (vector, 1, (char_pointer_to_string (master_name)));
-      VECTOR_SET (vector, 2, (char_pointer_to_string (slave_name)));
+      VECTOR_SET (vector, 1,
+		  (char_pointer_to_string ((unsigned char *) master_name)));
+      VECTOR_SET (vector, 2,
+		  (char_pointer_to_string ((unsigned char *) slave_name)));
       transaction_commit ();
       PRIMITIVE_RETURN (vector);
     }

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosenv.c,v 1.4 1991/01/24 11:25:05 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosenv.c,v 1.5 1991/10/29 22:55:11 jinx Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -173,7 +173,8 @@ DEFINE_PRIMITIVE ("WORKING-DIRECTORY-PATHNAME", Prim_working_dir_pathname, 0, 0,
   "Return the current working directory as a string.")
 {
   PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (char_pointer_to_string (OS_working_dir_pathname ()));
+  PRIMITIVE_RETURN (char_pointer_to_string
+		    ((unsigned char *) OS_working_dir_pathname ()));
 }
 
 DEFINE_PRIMITIVE ("SET-WORKING-DIRECTORY-PATHNAME!", Prim_set_working_dir_pathname, 1, 1,
@@ -197,7 +198,7 @@ The result is either a string (the variable's value),\n\
     PRIMITIVE_RETURN
       ((variable_value == 0)
        ? SHARP_F
-       : (char_pointer_to_string (variable_value)));
+       : (char_pointer_to_string ((unsigned char *) variable_value)));
   }
 }
 
@@ -205,7 +206,8 @@ DEFINE_PRIMITIVE ("CURRENT-USER-NAME", Prim_current_user_name, 0, 0,
   "Return (as a string) the user name of the user running Scheme.")
 {
   PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (char_pointer_to_string (OS_current_user_name ()));
+  PRIMITIVE_RETURN (char_pointer_to_string
+		    ((unsigned char *) OS_current_user_name ()));
 }
 
 DEFINE_PRIMITIVE ("CURRENT-USER-HOME-DIRECTORY", Prim_current_user_home_directory, 0, 0,
@@ -213,7 +215,8 @@ DEFINE_PRIMITIVE ("CURRENT-USER-HOME-DIRECTORY", Prim_current_user_home_director
 {
   PRIMITIVE_HEADER (0);
   PRIMITIVE_RETURN
-    (char_pointer_to_string (OS_current_user_home_directory ()));
+    (char_pointer_to_string ((unsigned char *)
+			     OS_current_user_home_directory ()));
 }
 
 DEFINE_PRIMITIVE ("SYSTEM-CALL-ERROR-MESSAGE", Prim_system_call_error_message, 1, 1, 0)
@@ -223,6 +226,7 @@ DEFINE_PRIMITIVE ("SYSTEM-CALL-ERROR-MESSAGE", Prim_system_call_error_message, 1
     CONST char * message =
       (OS_error_code_to_message (arg_nonnegative_integer (1)));
     PRIMITIVE_RETURN
-      ((message == 0) ? SHARP_F : (char_pointer_to_string (message)));
+      ((message == 0) ? SHARP_F
+       : (char_pointer_to_string ((unsigned char *) message)));
   }
 }

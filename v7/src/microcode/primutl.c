@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/primutl.c,v 9.53 1991/10/29 22:55:11 jinx Exp $
+
+Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,8 +32,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/primutl.c,v 9.52 1989/09/21 22:48:51 cph Rel $
- *
+/* 
  * This file contains the support routines for mapping primitive names
  * to numbers within the microcode.  Primitives are written in C
  * and available in Scheme, but not always present in all versions of
@@ -50,9 +51,7 @@ SCHEME_OBJECT Undefined_Primitives_Arity = SHARP_F;
 /* Common utilities. */
 
 static int
-strcmp_ci (s1, s2)
-     fast char * s1;
-     fast char * s2;
+DEFUN (strcmp_ci, (s1, s2), fast char * s1 AND fast char * s2)
 {
   int length1 = (strlen (s1));
   int length2 = (strlen (s2));
@@ -79,8 +78,7 @@ struct primitive_alias
 #include "prename.h"
 
 static char *
-primitive_alias_to_name (alias)
-     char *alias;
+DEFUN (primitive_alias_to_name, (alias), char * alias)
 {
   fast struct primitive_alias *alias_ptr;
   fast struct primitive_alias *alias_end;
@@ -106,10 +104,8 @@ primitive_alias_to_name (alias)
 /* This version performs an expensive linear search. */
 
 long
-primitive_name_to_code(name, table, size)
-     char *name;
-     char *table[];
-     int size;
+DEFUN (primitive_name_to_code, (name, table, size),
+       char * name AND char * table[] AND int size)
 {
   fast int i;
 
@@ -139,10 +135,8 @@ primitive_name_to_code(name, table, size)
  */
 
 long
-primitive_name_to_code(name, table, size)
-     char *name;
-     fast char *table[];
-     int size;
+DEFUN (primitive_name_to_code, (name, table, size),
+       char * name AND fast char *table[] AND int size)
 {
   fast int low, high, middle, result;
 
@@ -153,7 +147,7 @@ primitive_name_to_code(name, table, size)
   while(low < high)
   {
     middle = ((low + high) / 2);
-    result = strcmp_ci(name, table[middle]);
+    result = strcmp_ci (name, table[middle]);
     if (result < 0)
     {
       high = (middle - 1);
@@ -182,8 +176,7 @@ primitive_name_to_code(name, table, size)
 #endif /* false */
 
 long
-primitive_code_to_arity(number)
-     long number;
+DEFUN (primitive_code_to_arity, (number), long number)
 {
   if (number <= MAX_PRIMITIVE)
   {
@@ -208,8 +201,7 @@ primitive_code_to_arity(number)
 }
 
 char *
-primitive_code_to_documentation (number)
-     long number;
+DEFUN (primitive_code_to_documentation, (number), long number)
 {
   return
     ((number > MAX_PRIMITIVE)
@@ -219,11 +211,10 @@ primitive_code_to_documentation (number)
 
 /* Externally visible utilities */
 
-extern SCHEME_OBJECT make_primitive();
+extern SCHEME_OBJECT EXFUN (make_primitive, (char *));
 
 SCHEME_OBJECT
-make_primitive(name)
-     char *name;
+DEFUN (make_primitive, (name), char * name)
 {
   SCHEME_OBJECT search_for_primitive();
 
@@ -231,13 +222,14 @@ make_primitive(name)
 			       UNKNOWN_PRIMITIVE_ARITY));
 }
 
-extern SCHEME_OBJECT find_primitive();
+extern SCHEME_OBJECT EXFUN
+  (find_primitive, (SCHEME_OBJECT, Boolean, Boolean, int));
 
 SCHEME_OBJECT
-find_primitive(name, intern_p, allow_p, arity)
-     SCHEME_OBJECT name;
-     Boolean intern_p, allow_p;
-     int arity;
+DEFUN (find_primitive, (name, intern_p, allow_p, arity),
+       SCHEME_OBJECT name
+       AND Boolean intern_p AND Boolean allow_p
+       AND int arity)
 {
   SCHEME_OBJECT search_for_primitive();
 
@@ -245,25 +237,23 @@ find_primitive(name, intern_p, allow_p, arity)
 			       intern_p, allow_p, arity));
 }
 
-extern long primitive_to_arity();
+extern long EXFUN (primitive_to_arity, (SCHEME_OBJECT));
 
 long
-primitive_to_arity(primitive)
-     SCHEME_OBJECT primitive;
+DEFUN (primitive_to_arity, (primitive), SCHEME_OBJECT primitive)
 {
   return (primitive_code_to_arity(PRIMITIVE_NUMBER(primitive)));
 }
 
-extern char * primitive_to_documentation ();
+extern char * EXFUN (primitive_to_documentation, (SCHEME_OBJECT));
 
 char *
-primitive_to_documentation (primitive)
-     SCHEME_OBJECT primitive;
+DEFUN (primitive_to_documentation, (primitive), SCHEME_OBJECT primitive)
 {
   return (primitive_code_to_documentation (PRIMITIVE_NUMBER (primitive)));
 }
 
-extern long primitive_to_arguments();
+extern long EXFUN (primitive_to_arguments, (SCHEME_OBJECT));
 
 /*
   This is only valid during the invocation of a primitive.
@@ -271,8 +261,7 @@ extern long primitive_to_arguments();
  */
 
 long
-primitive_to_arguments(primitive)
-     SCHEME_OBJECT primitive;
+DEFUN (primitive_to_arguments, (primitive), SCHEME_OBJECT primitive)
 {
   long arity;
 
@@ -286,8 +275,7 @@ primitive_to_arguments(primitive)
 }
 
 char *
-primitive_code_to_name(code)
-  int code;
+DEFUN (primitive_code_to_name, (code), int code)
 {
   char *string;
 
@@ -306,17 +294,17 @@ primitive_code_to_name(code)
 
     SCHEME_OBJECT scheme_string;
 
-    scheme_string = VECTOR_REF (Undefined_Primitives, (code - MAX_PRIMITIVE));
+    scheme_string =
+      (VECTOR_REF (Undefined_Primitives, (code - MAX_PRIMITIVE)));
     string = ((char *) (STRING_LOC (scheme_string, 0)));
   }
   return (string);
 }
 
-extern char *primitive_to_name();
+extern char *EXFUN (primitive_to_name, (SCHEME_OBJECT));
 
 char *
-primitive_to_name(primitive)
-     SCHEME_OBJECT primitive;
+DEFUN (primitive_to_name, (primitive), SCHEME_OBJECT primitive)
 {
   return (primitive_code_to_name(PRIMITIVE_NUMBER(primitive)));
 }
@@ -324,18 +312,19 @@ primitive_to_name(primitive)
 /* this avoids some consing. */
 
 SCHEME_OBJECT
-primitive_name(code)
-     int code;
+DEFUN (primitive_name, (code), int code)
 {
   SCHEME_OBJECT scheme_string;
 
   if (code <= MAX_PRIMITIVE)
   {
-    scheme_string = char_pointer_to_string(Primitive_Name_Table[code]);
+    scheme_string =
+      (char_pointer_to_string ((unsigned char *) Primitive_Name_Table[code]));
   }
   else
   {
-    scheme_string = VECTOR_REF (Undefined_Primitives, (code - MAX_PRIMITIVE));
+    scheme_string =
+      (VECTOR_REF (Undefined_Primitives, (code - MAX_PRIMITIVE)));
   }
   return (scheme_string);
 }
@@ -346,11 +335,11 @@ primitive_name(code)
  */
 
 SCHEME_OBJECT
-search_for_primitive(scheme_name, c_name, intern_p, allow_p, arity)
-     SCHEME_OBJECT scheme_name;
-     char *c_name;
-     Boolean intern_p, allow_p;
-     int arity;
+DEFUN (search_for_primitive,
+       (scheme_name, c_name, intern_p, allow_p, arity),
+       SCHEME_OBJECT scheme_name AND char * c_name
+       AND Boolean intern_p AND Boolean allow_p
+       AND int arity)
 {
   long i, Max, old_arity;
   SCHEME_OBJECT *Next;
@@ -389,7 +378,7 @@ search_for_primitive(scheme_name, c_name, intern_p, allow_p, arity)
       SCHEME_OBJECT temp;
 
       temp = *Next++;
-      if (strcmp_ci(c_name, (STRING_LOC (temp, 0))) == 0)
+      if (strcmp_ci (c_name, ((char *) (STRING_LOC (temp, 0)))) == 0)
       {
 	if (arity != UNKNOWN_PRIMITIVE_ARITY)
 	{
@@ -423,7 +412,7 @@ search_for_primitive(scheme_name, c_name, intern_p, allow_p, arity)
 
   if (scheme_name == SHARP_F)
   {
-    scheme_name = char_pointer_to_string(c_name);
+    scheme_name = (char_pointer_to_string ((unsigned char *) c_name));
   }
 
   if ((Max % CHUNK_SIZE) == 0)
@@ -476,13 +465,15 @@ search_for_primitive(scheme_name, c_name, intern_p, allow_p, arity)
 /* Dumping and loading primitive object references. */
 
 extern SCHEME_OBJECT
-  *load_renumber_table,
-  dump_renumber_primitive(),
-  *initialize_primitive_table(),
-  *cons_primitive_table(),
-  *cons_whole_primitive_table();
+  * load_renumber_table,
+  EXFUN (dump_renumber_primitive, (SCHEME_OBJECT)),
+  * EXFUN (initialize_primitive_table, (SCHEME_OBJECT *, SCHEME_OBJECT *)),
+  * EXFUN (cons_primitive_table, (SCHEME_OBJECT *, SCHEME_OBJECT *, long *)),
+  * EXFUN (cons_whole_primitive_table,
+	   (SCHEME_OBJECT *, SCHEME_OBJECT *, long *));
 
-extern void install_primitive_table();
+extern void EXFUN (install_primitive_table,
+		   (SCHEME_OBJECT *, long, Boolean));
 
 SCHEME_OBJECT *load_renumber_table;
 static SCHEME_OBJECT *internal_renumber_table;
@@ -490,9 +481,8 @@ static SCHEME_OBJECT *external_renumber_table;
 static long next_primitive_renumber;
 
 SCHEME_OBJECT *
-initialize_primitive_table(where, end)
-     fast SCHEME_OBJECT *where;
-     SCHEME_OBJECT *end;
+DEFUN (initialize_primitive_table, (where, end),
+       fast SCHEME_OBJECT *where AND SCHEME_OBJECT *end)
 {
   SCHEME_OBJECT *top;
   fast long number_of_primitives;
@@ -512,8 +502,7 @@ initialize_primitive_table(where, end)
 }
 
 SCHEME_OBJECT
-dump_renumber_primitive(primitive)
-     fast SCHEME_OBJECT primitive;
+DEFUN (dump_renumber_primitive, (primitive), fast SCHEME_OBJECT primitive)
 {
   fast long number;
   fast SCHEME_OBJECT result;
@@ -538,10 +527,9 @@ dump_renumber_primitive(primitive)
 static char null_string [] = "";
 
 SCHEME_OBJECT *
-copy_primitive_information(code, start, end)
-     long code;
-     fast SCHEME_OBJECT * start;
-     fast SCHEME_OBJECT * end;
+DEFUN (copy_primitive_information, (code, start, end),
+       long code
+       AND fast SCHEME_OBJECT * start AND fast SCHEME_OBJECT * end)
 {
   if (start < end)
     (*start++) = (LONG_TO_FIXNUM (primitive_code_to_arity ((int) code)));
@@ -576,9 +564,9 @@ copy_primitive_information(code, start, end)
 }
 
 SCHEME_OBJECT *
-cons_primitive_table(start, end, length)
-     SCHEME_OBJECT *start, *end;
-     long *length;
+DEFUN (cons_primitive_table, (start, end, length),
+       SCHEME_OBJECT * start AND SCHEME_OBJECT * end AND
+       long * length)
 {
   SCHEME_OBJECT *saved;
   long count, code;
@@ -597,9 +585,9 @@ cons_primitive_table(start, end, length)
 }
 
 SCHEME_OBJECT *
-cons_whole_primitive_table(start, end, length)
-     SCHEME_OBJECT *start, *end;
-     long *length;
+DEFUN (cons_whole_primitive_table, (start, end, length),
+       SCHEME_OBJECT * start AND SCHEME_OBJECT * end
+       AND long * length)
 {
   SCHEME_OBJECT *saved;
   long count, number_of_primitives;
@@ -618,10 +606,10 @@ cons_whole_primitive_table(start, end, length)
 }
 
 void
-install_primitive_table(table, length, flush_p)
-     fast SCHEME_OBJECT *table;
-     fast long length;
-     Boolean flush_p;
+DEFUN (install_primitive_table, (table, length, flush_p),
+       fast SCHEME_OBJECT * table
+       AND fast long length
+       AND Boolean flush_p)
 {
   fast SCHEME_OBJECT *translation_table;
   SCHEME_OBJECT result;

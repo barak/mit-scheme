@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.70 1991/05/05 00:45:37 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.71 1991/10/29 22:55:11 jinx Exp $
 
 Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
@@ -46,12 +46,12 @@ MIT in each case. */
 extern PTR EXFUN (malloc, (unsigned int size));
 extern void EXFUN (free, (PTR ptr));
 extern void EXFUN (init_exit_scheme, (void));
-extern void Clear_Memory ();
-extern void Setup_Memory ();
-extern void compiler_initialize ();
+extern void EXFUN (Clear_Memory, (int, int, int));
+extern void EXFUN (Setup_Memory, (int, int, int));
+extern void EXFUN (compiler_initialize, (long fasl_p));
 
-forward void Start_Scheme ();
-forward void Enter_Interpreter ();
+static void EXFUN (Start_Scheme, (int, const char *));
+static void EXFUN (Enter_Interpreter, (void));
 
 CONST char * scheme_program_name;
 CONST char * OS_Name;
@@ -104,10 +104,8 @@ DEFUN (usage, (error_string), CONST char * error_string)
 #endif
 
 main_type
-DEFUN (main,
-       (argc, argv),
-       int argc AND
-       CONST char ** argv)
+DEFUN (main, (argc, argv),
+       int argc AND CONST char ** argv)
 {
   init_exit_scheme ();
   scheme_program_name = (argv[0]);
@@ -288,11 +286,9 @@ DEFUN_VOID (make_fixed_objects_vector)
 
 /* Boot Scheme */
 
-void
-DEFUN (Start_Scheme,
-       (Start_Prim, File_Name),
-       int Start_Prim AND
-       char * File_Name)
+static void
+DEFUN (Start_Scheme, (Start_Prim, File_Name),
+       int Start_Prim AND CONST char * File_Name)
 {
   extern SCHEME_OBJECT make_primitive ();
   SCHEME_OBJECT FName, Init_Prog, *Fasload_Call, prim;
@@ -321,8 +317,8 @@ DEFUN (Start_Scheme,
   switch (Start_Prim)
   {
     case BOOT_FASLOAD:	/* (SCODE-EVAL (BINARY-FASLOAD <file>) GLOBAL-ENV) */
-      FName = char_pointer_to_string(File_Name);
-      prim = make_primitive("BINARY-FASLOAD");
+      FName = (char_pointer_to_string ((unsigned char *) File_Name));
+      prim = (make_primitive ("BINARY-FASLOAD"));
       Fasload_Call = Free;
       *Free++ = prim;
       *Free++ = FName;
@@ -334,8 +330,8 @@ DEFUN (Start_Scheme,
       break;
 
     case BOOT_LOAD_BAND:	/* (LOAD-BAND <file>) */
-      FName = char_pointer_to_string(File_Name);
-      prim = make_primitive("LOAD-BAND");
+      FName = (char_pointer_to_string ((unsigned char *) File_Name));
+      prim = (make_primitive ("LOAD-BAND"));
       Fasload_Call = Free;
       *Free++ = prim;
       *Free++ = FName;
@@ -385,7 +381,7 @@ DEFUN (Start_Scheme,
   Enter_Interpreter ();
 }
 
-void
+static void
 DEFUN_VOID (Enter_Interpreter)
 {
   Interpret (scheme_dumped_p);
@@ -420,12 +416,9 @@ char
   gc_death_message_buffer[100];
 
 void
-DEFUN (gc_death,
-       (code, message, scan, free),
-       long code AND
-       char *message AND
-       SCHEME_OBJECT *scan AND
-       SCHEME_OBJECT *free)
+DEFUN (gc_death, (code, message, scan, free),
+       long code AND char * message
+       AND SCHEME_OBJECT * scan AND SCHEME_OBJECT * free)
 {
   fprintf (stderr, "\n%s.\n", message);
   fprintf (stderr, "scan = 0x%lx; free = 0x%lx\n", scan, free);
@@ -436,7 +429,7 @@ DEFUN (gc_death,
 }
 
 void
-DEFUN (stack_death, (name), CONST char *name)
+DEFUN (stack_death, (name), CONST char * name)
 {
   fprintf (stderr,
 	   "\n%s: Constant space is no longer sealed!\n",
@@ -473,8 +466,8 @@ DEFINE_PRIMITIVE ("MICROCODE-IDENTIFY", Prim_microcode_identify, 0, 0, 0)
   fast SCHEME_OBJECT Result;
   PRIMITIVE_HEADER (0);
   Result = (make_vector (IDENTITY_LENGTH, SHARP_F, true));
-  FAST_VECTOR_SET
-    (Result, ID_RELEASE, (char_pointer_to_string (RELEASE)));
+  FAST_VECTOR_SET (Result, ID_RELEASE,
+		   (char_pointer_to_string ((unsigned char *) RELEASE)));
   FAST_VECTOR_SET
     (Result, ID_MICRO_VERSION, (LONG_TO_UNSIGNED_FIXNUM (VERSION)));
   FAST_VECTOR_SET
@@ -490,18 +483,20 @@ DEFINE_PRIMITIVE ("MICROCODE-IDENTIFY", Prim_microcode_identify, 0, 0, 0)
   FAST_VECTOR_SET
     (Result, ID_FLONUM_EPSILON, (double_to_flonum ((double) DBL_EPSILON)));
   FAST_VECTOR_SET
-    (Result, ID_OS_NAME, (char_pointer_to_string (OS_Name)));
-  FAST_VECTOR_SET
-    (Result, ID_OS_VARIANT, (char_pointer_to_string (OS_Variant)));
-  FAST_VECTOR_SET
-    (Result, ID_STACK_TYPE, (char_pointer_to_string (STACK_TYPE_STRING)));
+    (Result, ID_OS_NAME, (char_pointer_to_string ((unsigned char *) OS_Name)));
+  FAST_VECTOR_SET (Result, ID_OS_VARIANT,
+		   (char_pointer_to_string ((unsigned char *) OS_Variant)));
+  FAST_VECTOR_SET (Result, ID_STACK_TYPE,
+		   (char_pointer_to_string
+		    ((unsigned char *) STACK_TYPE_STRING)));
   PRIMITIVE_RETURN (Result);
 }
 
 DEFINE_PRIMITIVE ("MICROCODE-TABLES-FILENAME", Prim_microcode_tables_filename, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (char_pointer_to_string (option_utabmd_file));
+  PRIMITIVE_RETURN
+    (char_pointer_to_string ((unsigned char *) option_utabmd_file));
 }
 
 DEFINE_PRIMITIVE ("MICROCODE-LIBRARY-PATH", Prim_microcode_library_path, 0, 0, 0)
@@ -521,7 +516,8 @@ DEFINE_PRIMITIVE ("MICROCODE-LIBRARY-PATH", Prim_microcode_library_path, 0, 0, 0
 	(allocate_marked_vector (TC_VECTOR, (end - scan), 1));
       SCHEME_OBJECT * scan_result = (VECTOR_LOC (result, 0));
       while (scan < end)
-	(*scan_result++) = (char_pointer_to_string (*scan++));
+	(*scan_result++) =
+	  (char_pointer_to_string ((unsigned char *) *scan++));
       PRIMITIVE_RETURN (result);
     }
   }
@@ -535,7 +531,7 @@ DEFUN (argv_to_object, (argc, argv), int argc AND CONST char ** argv)
   CONST char ** end = (scan + argc);
   SCHEME_OBJECT * scan_result = (VECTOR_LOC (result, 0));
   while (scan < end)
-    (*scan_result++) = (char_pointer_to_string (*scan++));
+    (*scan_result++) = (char_pointer_to_string ((unsigned char *) *scan++));
   return (result);
 }
 
@@ -594,7 +590,8 @@ DEFINE_PRIMITIVE ("RELOAD-RETRIEVE-STRING", Prim_reload_retrieve_string, 0, 0, 0
     PRIMITIVE_RETURN (SHARP_F);
   {
     SCHEME_OBJECT result =
-      (memory_to_string (reload_saved_string_length, reload_saved_string));
+      (memory_to_string (reload_saved_string_length,
+			 ((unsigned char *) reload_saved_string)));
     free (reload_saved_string);
     reload_saved_string = 0;
     PRIMITIVE_RETURN (result);

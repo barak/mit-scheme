@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.51 1991/05/10 00:07:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.52 1991/10/29 22:55:11 jinx Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -57,10 +57,11 @@ static Tchannel dump_channel;
 #include "dump.c"
 
 extern SCHEME_OBJECT
-  dump_renumber_primitive (),
-  *initialize_primitive_table (),
-  *cons_primitive_table (),
-  *cons_whole_primitive_table ();
+  EXFUN (dump_renumber_primitive, (SCHEME_OBJECT)),
+  * EXFUN (initialize_primitive_table, (SCHEME_OBJECT *, SCHEME_OBJECT *)),
+  * EXFUN (cons_primitive_table, (SCHEME_OBJECT *, SCHEME_OBJECT *, long *)),
+  * EXFUN (cons_whole_primitive_table,
+	   (SCHEME_OBJECT *, SCHEME_OBJECT *, long *));
 
 /* Some statics used freely in this file */
 
@@ -128,8 +129,7 @@ static CONST char * dump_file_name = ((char *) 0);
 #define FASDUMP_FIX_BUFFER 10
 
 long
-DEFUN (DumpLoop, (Scan, mode),
-       fast SCHEME_OBJECT *Scan AND int mode)
+DEFUN (DumpLoop, (Scan, mode), fast SCHEME_OBJECT * Scan AND int mode)
 {
   fast SCHEME_OBJECT *To, *Old, Temp, New_Address, *Fixes;
   long result;
@@ -353,9 +353,7 @@ exit_dumploop:
 }
 
 SCHEME_OBJECT
-DEFUN (Fasdump_Exit, (code, close_p),
-       long code AND
-       Boolean close_p)
+DEFUN (Fasdump_Exit, (code, close_p), long code AND Boolean close_p)
 {
   Boolean result;
   fast SCHEME_OBJECT *Fixes;

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bigprm.c,v 1.1 1989/09/20 23:19:56 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bigprm.c,v 1.2 1991/10/29 22:55:11 jinx Exp $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -115,6 +115,15 @@ DEFINE_PRIMITIVE ("BIGNUM-QUOTIENT", Prim_bignum_quotient, 2, 2, 0)
 DEFINE_PRIMITIVE ("BIGNUM-REMAINDER", Prim_bignum_remainder, 2, 2, 0)
      BIGNUM_QR (bignum_remainder)
 
+static void
+DEFUN (listify_bignum_consumer, (previous_cdr, digit),
+       SCHEME_OBJECT * previous_cdr AND unsigned int digit)
+{
+  (*previous_cdr) =
+    (cons ((LONG_TO_UNSIGNED_FIXNUM (digit)), (*previous_cdr)));
+  return;
+}
+
 DEFINE_PRIMITIVE ("LISTIFY-BIGNUM", Prim_listify_bignum, 2, 2,
   "Returns a list of the digits of BIGNUM in RADIX.")
 {
@@ -128,23 +137,12 @@ DEFINE_PRIMITIVE ("LISTIFY-BIGNUM", Prim_listify_bignum, 2, 2,
     if (BIGNUM_ZERO_P (bignum))
       PRIMITIVE_RETURN (cons ((LONG_TO_UNSIGNED_FIXNUM (0)), EMPTY_LIST));
     {
-      static void listify_bignum_consumer ();
       SCHEME_OBJECT previous_cdr = EMPTY_LIST;
       bignum_to_digit_stream
 	(bignum, radix, listify_bignum_consumer, (&previous_cdr));
       PRIMITIVE_RETURN (previous_cdr);
     }
   }
-}
-
-static void
-listify_bignum_consumer (previous_cdr, digit)
-     SCHEME_OBJECT * previous_cdr;
-     unsigned int digit;
-{
-  (*previous_cdr) =
-    (cons ((LONG_TO_UNSIGNED_FIXNUM (digit)), (*previous_cdr)));
-  return;
 }
 
 DEFINE_PRIMITIVE ("FIXNUM->BIGNUM", Prim_fixnum_to_bignum, 1, 1, 0)

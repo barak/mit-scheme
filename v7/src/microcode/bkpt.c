@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bkpt.c,v 9.24 1990/08/07 23:06:06 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bkpt.c,v 9.25 1991/10/29 22:55:11 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -45,7 +45,7 @@ MIT in each case. */
 
 sp_record_list SP_List = sp_nil;
 
-extern Boolean Add_a_Pop_Return_Breakpoint ();
+extern Boolean EXFUN (Add_a_Pop_Return_Breakpoint, (SCHEME_OBJECT *));
 
 static struct sp_record One_Before =
 {
@@ -54,8 +54,7 @@ static struct sp_record One_Before =
 };
 
 Boolean
-Add_a_Pop_Return_Breakpoint (SP)
-     SCHEME_OBJECT *SP;
+DEFUN (Add_a_Pop_Return_Breakpoint, (SP), SCHEME_OBJECT * SP)
 {
   sp_record_list old = SP_List;
   SP_List = ((sp_record_list) (malloc (sizeof(struct sp_record))));
@@ -71,13 +70,30 @@ Add_a_Pop_Return_Breakpoint (SP)
   One_Before.next = SP_List;
   return (true);
 }
+
+/* A breakpoint can be placed here from a C debugger to examine
+   the state of the world. */
+
+extern Boolean EXFUN (Print_One_Continuation_Frame, (void));
+
+void
+DEFUN_VOID (Handle_Pop_Return_Break)
+{
+  Boolean ignore;
+  SCHEME_OBJECT *Old_Stack = Stack_Pointer;
+
+  printf ("Pop Return Break: SP = 0x%x\n", Stack_Pointer);
+  ignore = (Print_One_Continuation_Frame ());
+  Stack_Pointer = Old_Stack;
+  return;
+}
 
 /* This uses register rather than fast because it is invoked
  * very often and would make things too slow.
  */
 
 void
-Pop_Return_Break_Point ()
+DEFUN_VOID (Pop_Return_Break_Point)
 {
   fast SCHEME_OBJECT *SP = Stack_Pointer;
   fast sp_record_list previous = &One_Before;
@@ -98,18 +114,3 @@ Pop_Return_Break_Point ()
   return;
 }
 
-/* A breakpoint can be placed here from a C debugger to examine
-   the state of the world. */
-
-extern Boolean Print_One_Continuation_Frame ();
-
-Handle_Pop_Return_Break ()
-{
-  Boolean ignore;
-  SCHEME_OBJECT *Old_Stack = Stack_Pointer;
-
-  printf ("Pop Return Break: SP = 0x%x\n", Stack_Pointer);
-  ignore = (Print_One_Continuation_Frame ());
-  Stack_Pointer = Old_Stack;
-  return;
-}

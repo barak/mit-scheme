@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/char.c,v 9.28 1989/09/20 23:06:31 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/char.c,v 9.29 1991/10/29 22:55:11 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,8 +39,7 @@ MIT in each case. */
 #include <ctype.h>
 
 long
-arg_ascii_char (n)
-     int n;
+DEFUN (arg_ascii_char, (n), int n)
 {
   CHECK_ARG (n, CHARACTER_P);
   {
@@ -52,8 +51,7 @@ arg_ascii_char (n)
 }
 
 long
-arg_ascii_integer (n)
-     int n;
+DEFUN (arg_ascii_integer, (n), int n)
 {
   return (arg_index_integer (n, MAX_ASCII));
 }
@@ -96,15 +94,13 @@ DEFINE_PRIMITIVE ("INTEGER->CHAR", Prim_integer_to_char, 1, 1, 0)
 }
 
 long
-char_downcase (c)
-     fast long c;
+DEFUN (char_downcase, (c), fast long c)
 {
   return ((isupper (c)) ? ((c - 'A') + 'a') : c);
 }
 
 long
-char_upcase (c)
-     fast long c;
+DEFUN (char_upcase, (c), fast long c)
 {
   return ((islower (c)) ? ((c - 'a') + 'A') : c);
 }

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.41 1991/08/26 15:00:11 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.42 1991/10/29 22:55:11 jinx Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -154,73 +154,79 @@ extern long Stack_Size;
 extern SCHEME_OBJECT * Highest_Allocated_Address;
 
 /* Environment lookup utilities. */
-extern long Lex_Ref ();
-extern long Local_Set ();
-extern long Lex_Set ();
-extern long Symbol_Lex_Ref ();
-extern long Symbol_Lex_Set ();
+extern long EXFUN (Lex_Ref, (SCHEME_OBJECT, SCHEME_OBJECT));
+extern long EXFUN (Local_Set, (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT));
+extern long EXFUN (Lex_Set, (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT));
+extern long EXFUN (Symbol_Lex_Ref, (SCHEME_OBJECT, SCHEME_OBJECT));
+extern long EXFUN (Symbol_Lex_Set,
+		   (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT));
 
 /* Arithmetic utilities */
-extern long fixnum_to_long ();
-extern SCHEME_OBJECT double_to_fixnum ();
-extern SCHEME_OBJECT double_to_flonum ();
-extern Boolean integer_to_long_p ();
-extern long integer_to_long ();
-extern SCHEME_OBJECT long_to_integer ();
-extern Boolean integer_to_double_p ();
-extern double integer_to_double ();
-extern SCHEME_OBJECT double_to_integer ();
-extern double double_truncate ();
-extern Boolean real_number_to_double_p ();
-extern double real_number_to_double ();
-extern SCHEME_OBJECT bignum_to_fixnum ();
-extern SCHEME_OBJECT bignum_to_integer ();
-extern SCHEME_OBJECT bignum_to_flonum ();
-extern SCHEME_OBJECT flonum_floor ();
-extern SCHEME_OBJECT flonum_ceiling ();
-extern SCHEME_OBJECT flonum_round ();
-extern SCHEME_OBJECT flonum_normalize ();
-extern SCHEME_OBJECT flonum_denormalize ();
-extern Boolean integer_zero_p ();
-extern Boolean integer_negative_p ();
-extern Boolean integer_positive_p ();
-extern Boolean integer_equal_p ();
-extern Boolean integer_less_p ();
-extern SCHEME_OBJECT integer_negate ();
-extern SCHEME_OBJECT integer_add ();
-extern SCHEME_OBJECT integer_add_1 ();
-extern SCHEME_OBJECT integer_subtract ();
-extern SCHEME_OBJECT integer_subtract_1 ();
-extern SCHEME_OBJECT integer_multiply ();
-extern Boolean integer_divide ();
-extern SCHEME_OBJECT integer_quotient ();
-extern SCHEME_OBJECT integer_remainder ();
+extern long EXFUN (fixnum_to_long, (SCHEME_OBJECT));
+extern SCHEME_OBJECT EXFUN (double_to_fixnum, (double));
+extern SCHEME_OBJECT EXFUN (double_to_flonum, (double));
+extern Boolean EXFUN (integer_to_long_p, (SCHEME_OBJECT));
+extern long EXFUN (integer_to_long, (SCHEME_OBJECT));
+extern SCHEME_OBJECT EXFUN (long_to_integer, (long));
+extern Boolean EXFUN (integer_to_double_p, (SCHEME_OBJECT));
+extern double EXFUN (integer_to_double, (SCHEME_OBJECT));
+extern SCHEME_OBJECT EXFUN (double_to_integer, (double));
+extern double EXFUN (double_truncate, (double));
+extern Boolean EXFUN (real_number_to_double_p, (SCHEME_OBJECT));
+extern double EXFUN (real_number_to_double, (SCHEME_OBJECT));
+extern SCHEME_OBJECT EXFUN (bignum_to_fixnum, (SCHEME_OBJECT));
+extern SCHEME_OBJECT EXFUN (bignum_to_integer, (SCHEME_OBJECT));
+extern SCHEME_OBJECT EXFUN (bignum_to_flonum, (SCHEME_OBJECT));
+extern SCHEME_OBJECT EXFUN (flonum_floor, (SCHEME_OBJECT));
+extern SCHEME_OBJECT EXFUN (flonum_ceiling, (SCHEME_OBJECT));
+extern SCHEME_OBJECT EXFUN (flonum_round, (SCHEME_OBJECT));
+extern SCHEME_OBJECT EXFUN (flonum_normalize, (SCHEME_OBJECT));
+extern SCHEME_OBJECT EXFUN (flonum_denormalize,
+			    (SCHEME_OBJECT, SCHEME_OBJECT));
+extern Boolean EXFUN (integer_zero_p, (SCHEME_OBJECT));
+extern Boolean EXFUN (integer_negative_p, (SCHEME_OBJECT));
+extern Boolean EXFUN (integer_positive_p, (SCHEME_OBJECT));
+extern Boolean EXFUN (integer_equal_p, (SCHEME_OBJECT, SCHEME_OBJECT));
+extern Boolean EXFUN (integer_less_p, (SCHEME_OBJECT, SCHEME_OBJECT));
+extern SCHEME_OBJECT EXFUN (integer_negate, (SCHEME_OBJECT));
+extern SCHEME_OBJECT EXFUN (integer_add, (SCHEME_OBJECT, SCHEME_OBJECT));
+extern SCHEME_OBJECT EXFUN (integer_add_1, (SCHEME_OBJECT));
+extern SCHEME_OBJECT EXFUN (integer_subtract, (SCHEME_OBJECT, SCHEME_OBJECT));
+extern SCHEME_OBJECT EXFUN (integer_subtract_1, (SCHEME_OBJECT));
+extern SCHEME_OBJECT EXFUN (integer_multiply, (SCHEME_OBJECT, SCHEME_OBJECT));
+extern Boolean EXFUN (integer_divide,
+		      (SCHEME_OBJECT, SCHEME_OBJECT,
+		       SCHEME_OBJECT *, SCHEME_OBJECT *));
+extern SCHEME_OBJECT EXFUN (integer_quotient, (SCHEME_OBJECT, SCHEME_OBJECT));
+extern SCHEME_OBJECT EXFUN (integer_remainder, (SCHEME_OBJECT, SCHEME_OBJECT));
 
 /* Character utilities */
-extern long char_downcase ();
-extern long char_upcase ();
+extern long EXFUN (char_downcase, (long));
+extern long EXFUN (char_upcase, (long));
 
 /* Allocation utilities */
-extern SCHEME_OBJECT cons ();
-extern SCHEME_OBJECT system_pair_cons ();
-extern SCHEME_OBJECT hunk3_cons ();
-extern SCHEME_OBJECT allocate_non_marked_vector ();
-extern SCHEME_OBJECT allocate_marked_vector ();
-extern SCHEME_OBJECT make_vector ();
-extern SCHEME_OBJECT allocate_string ();
-extern SCHEME_OBJECT memory_to_string ();
-extern SCHEME_OBJECT char_pointer_to_string ();
+extern SCHEME_OBJECT EXFUN (cons, (SCHEME_OBJECT, SCHEME_OBJECT));
+extern SCHEME_OBJECT EXFUN (system_pair_cons,
+			    (long, SCHEME_OBJECT, SCHEME_OBJECT));
+extern SCHEME_OBJECT EXFUN (hunk3_cons,
+			    (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT));
+extern SCHEME_OBJECT EXFUN (allocate_non_marked_vector, (int, long, Boolean));
+extern SCHEME_OBJECT EXFUN (allocate_marked_vector, (int, long, Boolean));
+extern SCHEME_OBJECT EXFUN (make_vector, (long, SCHEME_OBJECT, Boolean));
+extern SCHEME_OBJECT EXFUN (allocate_string, (long));
+extern SCHEME_OBJECT EXFUN (memory_to_string, (long, unsigned char *));
+extern SCHEME_OBJECT EXFUN (char_pointer_to_string, (unsigned char *));
 
 /* Random and OS utilities */
-extern Boolean Restore_History ();
-extern Boolean interpreter_applicable_p ();
+extern Boolean EXFUN (Restore_History, (SCHEME_OBJECT));
+extern Boolean EXFUN (interpreter_applicable_p, (SCHEME_OBJECT));
 extern void EXFUN
   (add_reload_cleanup, (void EXFUN ((*cleanup_procedure), (void))));
 
 /* Memory management utilities */
-extern SCHEME_OBJECT Purify_Pass_2 ();
-extern SCHEME_OBJECT Fasload ();
-extern Boolean Pure_Test ();
+
+extern SCHEME_OBJECT EXFUN (Purify_Pass_2, (SCHEME_OBJECT));
+extern Boolean EXFUN (Pure_Test, (SCHEME_OBJECT *));
 
 /* Interpreter utilities */
 
@@ -238,34 +244,32 @@ extern void EXFUN (Setup_Interrupt, (long Masked_Interrupts));
 extern void EXFUN (preserve_interrupt_mask, (void));
 extern void EXFUN (back_out_of_primitive, (void));
 
-extern void
-  Interpret (),
-  Do_Micro_Error (),
-  Translate_To_Point (),
-  Stop_History (),
-  Stack_Death ();
+extern void EXFUN (Interpret, (Boolean));
+extern void EXFUN (Do_Micro_Error, (long, Boolean));
+extern void EXFUN (Translate_To_Point, (SCHEME_OBJECT));
+extern void EXFUN (Stop_History, (void));
+extern void EXFUN (Stack_Death, (void));
 
-#ifdef USE_STACKLETS
-extern void Allocate_New_Stacklet ();
-#endif
-
-extern SCHEME_OBJECT * Make_Dummy_History ();
-extern SCHEME_OBJECT Find_State_Space ();
+extern SCHEME_OBJECT * EXFUN (Make_Dummy_History, (void));
+extern SCHEME_OBJECT EXFUN (Find_State_Space, (SCHEME_OBJECT));
 
 /* Debugging utilities */
 
 extern void EXFUN (debug_edit_flags, (void));
 
-extern void
-  Back_Trace (),
-  Show_Env (),
-  Show_Pure (),
-  Print_Return (),
-  Print_Expression (),
-  Print_Primitive ();
+extern void EXFUN (Back_Trace, (FILE *));
+extern void EXFUN (Show_Env, (SCHEME_OBJECT));
+extern void EXFUN (Show_Pure, (void));
+extern void EXFUN (Print_Return, (char *));
+extern void EXFUN (Print_Expression, (SCHEME_OBJECT, char *));
+extern void EXFUN (Print_Primitive, (SCHEME_OBJECT));
 
 /* Conditional utilities */
 
+#ifdef USE_STACKLETS
+extern void EXFUN (Allocate_New_Stacklet, (long));
+#endif
+
 #if false
-extern void Clear_Perfinfo_Data ();
+extern void EXFUN (Clear_Perfinfo_Data, ());
 #endif
