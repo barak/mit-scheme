@@ -1,0 +1,3039 @@
+@c This file is part of the MIT/GNU Scheme Reference Manual.
+@c $Id: special-forms.texi,v 1.1 2003/04/15 03:30:15 cph Exp $
+
+@c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
+@c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
+@c Copyright 2002,2003 Massachusetts Institute of Technology
+@c See file scheme.texinfo for copying conditions.
+
+@node Special Forms, Equivalence Predicates, Overview, Top
+@chapter Special Forms
+
+@cindex special form
+A special form is an expression that follows special evaluation rules.
+This chapter describes the basic Scheme special forms.
+
+@menu
+* Lambda Expressions::          
+* Lexical Binding::             
+* Dynamic Binding::             
+* Definitions::                 
+* Assignments::                 
+* Quoting::                     
+* Conditionals::                
+* Sequencing::                  
+* Iteration::                   
+* Structure Definitions::       
+* Macros::                      
+* SRFI syntax::                 
+@end menu
+
+@node Lambda Expressions, Lexical Binding, Special Forms, Special Forms
+@section Lambda Expressions
+
+@deffn {special form} lambda formals expression expression @dots{}
+@cindex lambda expression (defn)
+@cindex procedure, construction
+@cindex procedure, closing environment (defn)
+@cindex procedure, invocation environment (defn)
+@cindex construction, of procedure
+@cindex closing environment, of procedure (defn)
+@cindex invocation environment, of procedure (defn)
+@cindex environment, of procedure
+@cindex environment, procedure closing (defn)
+@cindex environment, procedure invocation (defn)
+A @code{lambda} expression evaluates to a procedure.  The environment in
+effect when the @code{lambda} expression is evaluated is remembered as
+part of the procedure; it is called the @dfn{closing environment}.  When
+the procedure is later called with some arguments, the closing
+environment is extended by binding the variables in the formal parameter
+list to fresh locations, and the locations are filled with the arguments
+according to rules about to be given.  The new environment created by
+this process is referred to as the @dfn{invocation environment}.
+
+@cindex region of variable binding, lambda
+@cindex variable binding, lambda
+Once the invocation environment has been constructed, the
+@var{expression}s in the body of the @code{lambda} expression are
+evaluated sequentially in it.  This means that the region of the
+variables bound by the @code{lambda} expression is all of the
+@var{expression}s in the body.  The result of evaluating the last
+@var{expression} in the body is returned as the result of the procedure
+call.
+
+@cindex lambda list (defn)
+@cindex parameter list, of lambda (defn)
+@cindex formal parameter list, of lambda (defn)
+@var{Formals}, the formal parameter list, is often referred to as a
+@dfn{lambda list}.
+
+The process of matching up formal parameters with arguments is somewhat
+involved.  There are three types of parameters, and the matching treats
+each in sequence:
+
+@need 1000
+@table @asis
+@item Required
+All of the @dfn{required} parameters are matched against the arguments
+first.  If there are fewer arguments than required parameters, an error
+of type @code{condition-type:wrong-number-of-arguments} is signalled;
+this error is also signalled if there are more arguments than required
+parameters and there are no further parameters.
+@cindex required parameter (defn)
+@cindex parameter, required (defn)
+@findex condition-type:wrong-number-of-arguments
+
+@item Optional
+Once the required parameters have all been matched, the @dfn{optional}
+parameters are matched against the remaining arguments.  If there are
+fewer arguments than optional parameters, the unmatched parameters are
+bound to special objects called @dfn{default objects}.  If there are
+more arguments than optional parameters, and there are no further
+parameters, an error of type
+@code{condition-type:wrong-number-of-arguments} is signalled.
+@cindex optional parameter (defn)
+@cindex parameter, optional (defn)
+@cindex default object (defn)
+@findex condition-type:wrong-number-of-arguments
+
+@findex default-object?
+The predicate @code{default-object?}, which is true only of default
+objects, can be used to determine which optional parameters were
+supplied, and which were defaulted.
+
+@item Rest
+Finally, if there is a @dfn{rest} parameter (there can only be one), any
+remaining arguments are made into a list, and the list is bound to the
+rest parameter.  (If there are no remaining arguments, the rest
+parameter is bound to the empty list.)
+@cindex rest parameter (defn)
+@cindex parameter, rest (defn)
+
+In Scheme, unlike some other Lisp implementations, the list to which a
+rest parameter is bound is always freshly allocated.  It has infinite
+extent and may be modified without affecting the procedure's caller.
+@end table
+
+@findex #!optional
+@findex #!rest
+Specially recognized keywords divide the @var{formals} parameters into
+these three classes.  The keywords used here are @samp{#!optional},
+@samp{.}, and @samp{#!rest}.  Note that only @samp{.} is defined by
+standard Scheme --- the other keywords are MIT/GNU Scheme extensions.
+@samp{#!rest} has the same meaning as @samp{.} in @var{formals}.
+
+The use of these keywords is best explained by means of examples.  The
+following are typical lambda lists, followed by descriptions of which
+parameters are required, optional, and rest.  We will use @samp{#!rest}
+in these examples, but anywhere it appears @samp{.} could be used
+instead.
+
+@table @code
+@item (a b c)
+@code{a}, @code{b}, and @code{c} are all required.  The procedure must
+be passed exactly three arguments.
+
+@item (a b #!optional c)
+@code{a} and @code{b} are required, @code{c} is optional.  The procedure
+may be passed either two or three arguments.
+
+@item (#!optional a b c)
+@code{a}, @code{b}, and @code{c} are all optional.  The procedure may be
+passed any number of arguments between zero and three, inclusive.
+
+@item a
+@itemx (#!rest a)
+These two examples are equivalent.  @code{a} is a rest parameter.  The
+procedure may be passed any number of arguments.  Note: this is the only
+case in which @samp{.} cannot be used in place of @samp{#!rest}.
+
+@item (a b #!optional c d #!rest e)
+@code{a} and @code{b} are required, @code{c} and @code{d} are optional,
+and @code{e} is rest.  The procedure may be passed two or more
+arguments.
+@end table
+
+Some examples of @code{lambda} expressions:
+
+@example
+@group
+(lambda (x) (+ x x))            @result{}  #[compound-procedure 53]
+
+((lambda (x) (+ x x)) 4)                @result{}  8
+
+(define reverse-subtract
+  (lambda (x y)
+    (- y x)))
+(reverse-subtract 7 10)                 @result{}  3
+
+(define foo
+  (let ((x 4))
+    (lambda (y) (+ x y))))
+(foo 6)                                 @result{}  10
+@end group
+@end example
+@end deffn
+
+@deffn {special form} named-lambda formals expression expression @dots{}
+@cindex named lambda (defn)
+The @code{named-lambda} special form is similar to @code{lambda}, except
+that the first ``required parameter'' in @var{formals} is not a
+parameter but the @dfn{name} of the resulting procedure; thus
+@var{formals} must have at least one required parameter.  This name has
+no semantic meaning, but is included in the external representation of
+the procedure, making it useful for debugging.  In MIT/GNU Scheme,
+@code{lambda} is implemented as @code{named-lambda}, with a special name
+that means ``unnamed''.
+
+@example
+@group
+(named-lambda (f x) (+ x x))    @result{}  #[compound-procedure 53 f]
+((named-lambda (f x) (+ x x)) 4)        @result{}  8
+@end group
+@end example
+@end deffn
+
+@node Lexical Binding, Dynamic Binding, Lambda Expressions, Special Forms
+@section Lexical Binding
+
+@cindex lexical binding expression
+@cindex binding expression, lexical
+@cindex block structure
+The three binding constructs @code{let}, @code{let*}, and @code{letrec},
+give Scheme block structure.  The syntax of the three constructs is
+identical, but they differ in the regions they establish for their
+variable bindings.  In a @code{let} expression, the initial values are
+computed before any of the variables become bound.  In a @code{let*}
+expression, the evaluations and bindings are sequentially interleaved.
+And in a @code{letrec} expression, all the bindings are in effect while
+the initial values are being computed (thus allowing mutually recursive
+definitions).
+
+@deffn {special form} let ((@var{variable} @var{init}) @dots{}) expression expression @dots{}
+@cindex region of variable binding, let
+@cindex variable binding, let
+The @var{init}s are evaluated in the current environment (in some
+unspecified order), the @var{variable}s are bound to fresh locations
+holding the results, the @var{expression}s are evaluated sequentially in
+the extended environment, and the value of the last @var{expression} is
+returned.  Each binding of a @var{variable} has the @var{expression}s as
+its region.
+
+MIT/GNU Scheme allows any of the @var{init}s to be omitted, in which
+case the corresponding @var{variable}s are unassigned.
+
+@cindex lambda, implicit in let
+Note that the following are equivalent:
+
+@example
+@group
+(let ((@var{variable} @var{init}) @dots{}) @var{expression} @var{expression} @dots{})
+((lambda (@var{variable} @dots{}) @var{expression} @var{expression} @dots{}) @var{init} @dots{})
+@end group
+@end example
+
+Some examples:
+
+@example
+@group
+(let ((x 2) (y 3))
+  (* x y))                              @result{}  6
+@end group
+
+@group
+(let ((x 2) (y 3))
+  (let ((foo (lambda (z) (+ x y z)))
+        (x 7))
+    (foo 4)))                           @result{}  9
+@end group
+@end example
+
+@xref{Iteration}, for information on ``named @code{let}''.
+@end deffn
+
+@deffn {special form} let* ((@var{variable} @var{init}) @dots{}) expression expression @dots{}
+@cindex region of variable binding, let*
+@cindex variable binding, let*
+@code{let*} is similar to @code{let}, but the bindings are performed
+sequentially from left to right, and the region of a binding is that
+part of the @code{let*} expression to the right of the binding.  Thus
+the second binding is done in an environment in which the first binding
+is visible, and so on.
+
+Note that the following are equivalent:
+
+@example
+@group
+(let* ((@var{variable1} @var{init1})
+       (@var{variable2} @var{init2})
+       @dots{}
+       (@var{variableN} @var{initN}))
+   @var{expression}
+   @var{expression} @dots{})
+@end group
+
+@group
+(let ((@var{variable1} @var{init1}))
+  (let ((@var{variable2} @var{init2}))
+    @dots{}
+      (let ((@var{variableN} @var{initN}))
+        @var{expression}
+        @var{expression} @dots{})
+    @dots{}))
+@end group
+@end example
+
+An example:
+
+@example
+@group
+(let ((x 2) (y 3))
+  (let* ((x 7)
+         (z (+ x y)))
+    (* z x)))                           @result{}  70
+@end group
+@end example
+@end deffn
+
+@deffn {special form} letrec ((@var{variable} @var{init}) @dots{}) expression expression @dots{}
+@cindex region of variable binding, letrec
+@cindex variable binding, letrec
+The @var{variable}s are bound to fresh locations holding unassigned
+values, the @var{init}s are evaluated in the extended environment (in
+some unspecified order), each @var{variable} is assigned to the result
+of the corresponding @var{init}, the @var{expression}s are evaluated
+sequentially in the extended environment, and the value of the last
+@var{expression} is returned.  Each binding of a @var{variable} has the
+entire @code{letrec} expression as its region, making it possible to
+define mutually recursive procedures.
+
+MIT/GNU Scheme allows any of the @var{init}s to be omitted, in which
+case the corresponding @var{variable}s are unassigned.
+
+@example
+@group
+(letrec ((even?
+          (lambda (n)
+            (if (zero? n)
+                #t
+                (odd? (- n 1)))))
+         (odd?
+          (lambda (n)
+            (if (zero? n)
+                #f
+                (even? (- n 1))))))
+  (even? 88))                           @result{}  #t
+@end group
+@end example
+
+@findex lambda
+@findex delay
+One restriction on @code{letrec} is very important: it shall be possible
+to evaluated each @var{init} without assigning or referring to the value
+of any @var{variable}.  If this restriction is violated, then it is an
+error.  The restriction is necessary because Scheme passes arguments by
+value rather than by name.  In the most common uses of @code{letrec},
+all the @var{init}s are @code{lambda} or @code{delay} expressions and
+the restriction is satisfied automatically.
+@end deffn
+
+@node Dynamic Binding, Definitions, Lexical Binding, Special Forms
+@section Dynamic Binding
+
+@deffn {special form} fluid-let ((@var{variable} @var{init}) @dots{}) expression expression @dots{}
+@cindex binding expression, dynamic (or fluid)
+@cindex fluid binding
+@cindex dynamic binding
+@cindex variable binding, fluid-let
+The @var{init}s are evaluated in the current environment (in some
+unspecified order), the current values of the @var{variable}s are saved,
+the results are assigned to the @var{variable}s, the @var{expression}s
+are evaluated sequentially in the current environment, the
+@var{variable}s are restored to their original values, and the value of
+the last @var{expression} is returned.
+
+@findex let
+The syntax of this special form is similar to that of @code{let}, but
+@code{fluid-let} temporarily rebinds existing variables.  Unlike
+@code{let}, @code{fluid-let} creates no new bindings; instead it
+@emph{assigns} the value of each @var{init} to the binding (determined
+by the rules of lexical scoping) of its corresponding @var{variable}.
+
+@cindex unassigned variable, and dynamic bindings
+MIT/GNU Scheme allows any of the @var{init}s to be omitted, in which
+case the corresponding @var{variable}s are temporarily unassigned.
+
+An error of type @code{condition-type:unbound-variable} is signalled if
+any of the @var{variable}s are unbound.  However, because
+@code{fluid-let} operates by means of side effects, it is valid for any
+@var{variable} to be unassigned when the form is entered.
+@findex condition-type:unbound-variable
+
+Here is an example showing the difference between @code{fluid-let} and
+@code{let}.  First see how @code{let} affects the binding of a variable:
+
+@example
+@group
+(define variable #t)
+(define (access-variable) variable)
+variable                                @result{}  #t
+(let ((variable #f))
+  (access-variable))                    @result{}  #t
+variable                                @result{}  #t
+@end group
+@end example
+
+@code{access-variable} returns @code{#t} in this case because it
+is defined in an environment with @code{variable} bound to
+@code{#t}.  @code{fluid-let}, on the other hand, temporarily reuses an
+existing variable:
+
+@example
+@group
+variable                                @result{}  #t
+(fluid-let ((variable #f))              @r{;reuses old binding}
+  (access-variable))                    @result{}  #f
+variable                                @result{}  #t
+@end group
+@end example
+
+@cindex extent, of dynamic binding (defn)
+The @dfn{extent} of a dynamic binding is defined to be the time period
+during which the variable contains the new value.  Normally this time
+period begins when the body is entered and ends when it is exited; on a
+sequential machine it is normally a contiguous time period.  However,
+because Scheme has first-class continuations, it is possible to leave
+the body and then reenter it, as many times as desired.  In this
+situation, the extent becomes non-contiguous.
+
+@cindex dynamic binding, and continuations
+@cindex continuation, and dynamic binding
+When the body is exited by invoking a continuation, the new value is
+saved, and the variable is set to the old value.  Then, if the body is
+reentered by invoking a continuation, the old value is saved, and the
+variable is set to the new value.  In addition, side effects to the
+variable that occur both inside and outside of body are preserved, even
+if continuations are used to jump in and out of body repeatedly.
+@end deffn
+
+Here is a complicated example that shows the interaction between dynamic
+binding and continuations:
+
+@example
+@group
+(define (complicated-dynamic-binding)
+  (let ((variable 1)
+        (inside-continuation))
+    (write-line variable)
+    (call-with-current-continuation
+     (lambda (outside-continuation)
+       (fluid-let ((variable 2))
+         (write-line variable)
+         (set! variable 3)
+         (call-with-current-continuation
+          (lambda (k)
+            (set! inside-continuation k)
+            (outside-continuation #t)))
+         (write-line variable)
+         (set! inside-continuation #f))))
+    (write-line variable)
+    (if inside-continuation
+        (begin
+          (set! variable 4)
+          (inside-continuation #f)))))
+@end group
+@end example
+
+@noindent
+Evaluating @samp{(complicated-dynamic-binding)} writes the following on
+the console:
+
+@example
+@group
+1
+2
+1
+3
+4
+@end group
+@end example
+
+@noindent
+Commentary: the first two values written are the initial binding of
+@code{variable} and its new binding after the @code{fluid-let}'s body is
+entered.  Immediately after they are written, @code{variable} is set to
+@samp{3}, and then @code{outside-continuation} is invoked, causing us to
+exit the body.  At this point, @samp{1} is written, demonstrating that
+the original value of @code{variable} has been restored, because we have
+left the body.  Then we set @code{variable} to @samp{4} and reenter the
+body by invoking @code{inside-continuation}.  At this point, @samp{3} is
+written, indicating that the side effect that previously occurred within
+the body has been preserved.  Finally, we exit body normally, and write
+@samp{4}, demonstrating that the side effect that occurred outside of
+the body was also preserved.
+
+@node Definitions, Assignments, Dynamic Binding, Special Forms
+@section Definitions
+@cindex definition
+
+@deffn {special form} define variable [expression]
+@deffnx {special form} define @var{formals} expression expression @dots{}
+@cindex variable, adding to environment
+@cindex definition, top-level (defn)
+@cindex definition, internal (defn)
+@cindex top-level definition (defn)
+@cindex internal definition (defn)
+@findex lambda
+@findex let
+@findex let*
+@findex letrec
+@findex fluid-let
+Definitions are valid in some but not all contexts where expressions are
+allowed.  Definitions may only occur at the top level of a program and
+at the beginning of a lambda body (that is, the body of a @code{lambda},
+@code{let}, @code{let*}, @code{letrec}, @code{fluid-let}, or ``procedure
+@code{define}'' expression).  A definition that occurs at the top level
+of a program is called a @dfn{top-level definition}, and a definition
+that occurs at the beginning of a body is called an @dfn{internal
+definition}.
+
+@cindex lambda, implicit in define
+@cindex procedure define (defn)
+@cindex define, procedure (defn)
+@findex named-lambda
+In the second form of @code{define} (called ``@dfn{procedure
+@code{define}}''), the component @var{formals} is identical to the
+component of the same name in a @code{named-lambda} expression.  In
+fact, these two expressions are equivalent:
+
+@example
+@group
+(define (@var{name1} @var{name2} @dots{})
+  @var{expression}
+  @var{expression} @dots{})
+@end group
+
+@group
+(define @var{name1}
+  (named-lambda (@var{name1} @var{name2} @dots{})
+    @var{expression}
+    @var{expression} @dots{}))
+@end group
+@end example
+@end deffn
+
+@menu
+* Top-Level Definitions::       
+* Internal Definitions::        
+@end menu
+
+@node Top-Level Definitions, Internal Definitions, Definitions, Definitions
+@subsection Top-Level Definitions
+@cindex top-level definition
+@cindex definition, top-level
+
+@cindex variable binding, top-level definition
+A top-level definition,
+
+@example
+(define @var{variable} @var{expression})
+@end example
+
+@noindent
+has essentially the same effect as this assignment expression, if
+@var{variable} is bound:
+
+@example
+(set! @var{variable} @var{expression})
+@end example
+
+@cindex unassigned variable, and definition
+@findex set!
+If @var{variable} is not bound, however, @code{define} binds
+@var{variable} to a new location in the current environment before
+performing the assignment (it is an error to perform a @code{set!} on an
+unbound variable).  If you omit @var{expression}, the variable becomes
+unassigned; an attempt to reference such a variable is an error.
+
+@example
+@group
+(define add3
+   (lambda (x) (+ x 3)))                @result{}  @r{unspecified}
+(add3 3)                                @result{}  6
+
+(define first car)                      @result{}  @r{unspecified}
+(first '(1 2))                          @result{}  1
+
+(define bar)                            @result{}  @r{unspecified}
+bar                                     @error{} Unassigned variable
+@end group
+@end example
+
+@node Internal Definitions,  , Top-Level Definitions, Definitions
+@subsection Internal Definitions
+
+@cindex internal definition
+@cindex definition, internal
+@cindex region of variable binding, internal definition
+@cindex variable binding, internal definition
+@findex lambda
+@findex let
+@findex let*
+@findex letrec
+@findex fluid-let
+@findex define
+An @dfn{internal definition} is a definition that occurs at the
+beginning of a @var{body} (that is, the body of a @code{lambda},
+@code{let}, @code{let*}, @code{letrec}, @code{fluid-let}, or ``procedure
+@code{define}'' expression), rather than at the top level of a program.
+The variable defined by an internal definition is local to the
+@var{body}.  That is, @var{variable} is bound rather than assigned, and
+the region of the binding is the entire @var{body}.  For example,
+
+@example
+@group
+(let ((x 5))
+  (define foo (lambda (y) (bar x y)))
+  (define bar (lambda (a b) (+ (* a b) a)))
+  (foo (+ x 3)))                        @result{}  45
+@end group
+@end example
+
+@findex letrec
+A @var{body} containing internal definitions can always be converted
+into a completely equivalent @code{letrec} expression.  For example, the
+@code{let} expression in the above example is equivalent to
+
+@cindex letrec, implicit in define
+@example
+@group
+(let ((x 5))
+  (letrec ((foo (lambda (y) (bar x y)))
+           (bar (lambda (a b) (+ (* a b) a))))
+    (foo (+ x 3))))
+@end group
+@end example
+
+@need 1000
+@node Assignments, Quoting, Definitions, Special Forms
+@section Assignments
+@cindex assignment
+
+@deffn {special form} set! variable [expression]
+@cindex variable, assigning values to
+@cindex unassigned variable, and assignment
+If @var{expression} is specified, evaluates @var{expression} and stores
+the resulting value in the location to which @var{variable} is bound.
+If @var{expression} is omitted, @var{variable} is altered to be
+unassigned; a subsequent reference to such a @var{variable} is an error.
+In either case, the value of the @code{set!} expression is unspecified.
+
+@var{Variable} must be bound either in some region enclosing the
+@code{set!} expression, or at the top level.  However, @var{variable} is
+permitted to be unassigned when the @code{set!} form is entered.
+
+@example
+@group
+(define x 2)                            @result{}  @r{unspecified}
+(+ x 1)                                 @result{}  3
+(set! x 4)                              @result{}  @r{unspecified}
+(+ x 1)                                 @result{}  5
+@end group
+@end example
+
+@cindex access, used with set!
+@findex access
+@var{Variable} may be an @code{access} expression
+(@pxref{Environments}).  This allows you to assign variables in an
+arbitrary environment.  For example,
+
+@example
+@group
+(define x (let ((y 0)) (the-environment)))
+(define y 'a)
+y                                       @result{}  a
+(access y x)                            @result{}  0
+(set! (access y x) 1)                   @result{}  @r{unspecified}
+y                                       @result{}  a
+(access y x)                            @result{}  1
+@end group
+@end example
+@end deffn
+
+@node Quoting, Conditionals, Assignments, Special Forms
+@section Quoting
+@cindex quoting
+
+This section describes the expressions that are used to modify or
+prevent the evaluation of objects.
+
+@deffn {special form} quote datum
+@cindex external representation, and quote
+@cindex literal, and quote
+@cindex constant, and quote
+@code{(quote @var{datum})} evaluates to @var{datum}.  @var{Datum} may be
+any external representation of a Scheme object
+(@pxref{External Representations}).
+Use @code{quote} to include literal constants in
+Scheme code.
+
+@example
+@group
+(quote a)                               @result{}  a
+(quote #(a b c))                        @result{}  #(a b c)
+(quote (+ 1 2))                         @result{}  (+ 1 2)
+@end group
+@end example
+
+@cindex ' as external representation
+@cindex apostrophe, as external representation
+@cindex quote, as external representation
+@findex '
+@code{(quote @var{datum})} may be abbreviated as @code{'@var{datum}}.
+The two notations are equivalent in all respects.
+
+@example
+@group
+'a                                      @result{}  a
+'#(a b c)                               @result{}  #(a b c)
+'(+ 1 2)                                @result{}  (+ 1 2)
+'(quote a)                              @result{}  (quote a)
+''a                                     @result{}  (quote a)
+@end group
+@end example
+
+Numeric constants, string constants, character constants, and boolean
+constants evaluate to themselves, so they don't need to be quoted.
+
+@example
+@group
+'"abc"                                  @result{}  "abc"
+"abc"                                   @result{}  "abc"
+'145932                                 @result{}  145932
+145932                                  @result{}  145932
+'#t                                     @result{}  #t
+#t                                      @result{}  #t
+'#\a                                    @result{}  #\a
+#\a                                     @result{}  #\a
+@end group
+@end example
+@end deffn
+
+@deffn {special form} quasiquote template
+@cindex external representation, and quasiquote
+@cindex literal, and quasiquote
+@cindex constant, and quasiquote
+@findex equal?
+``Backquote'' or ``quasiquote'' expressions are useful for constructing
+a list or vector structure when most but not all of the desired
+structure is known in advance.  If no commas appear within the
+@var{template}, the result of evaluating @code{`@var{template}} is
+equivalent (in the sense of @code{equal?}) to the result of evaluating
+@code{'@var{template}}.  If a comma appears within the @var{template},
+however, the expression following the comma is evaluated (``unquoted'')
+and its result is inserted into the structure instead of the comma and
+the expression.  If a comma appears followed immediately by an at-sign
+(@@), then the following expression shall evaluate to a list; the
+opening and closing parentheses of the list are then ``stripped away''
+and the elements of the list are inserted in place of the comma at-sign
+expression sequence.
+
+@example
+@group
+`(list ,(+ 1 2) 4)                       @result{}  (list 3 4)
+
+(let ((name 'a)) `(list ,name ',name))   @result{}  (list a 'a)
+
+`(a ,(+ 1 2) ,@@(map abs '(4 -5 6)) b)    @result{}  (a 3 4 5 6 b)
+
+`((foo ,(- 10 3)) ,@@(cdr '(c)) . ,(car '(cons)))
+                                         @result{}  ((foo 7) . cons)
+
+`#(10 5 ,(sqrt 4) ,@@(map sqrt '(16 9)) 8)
+                                         @result{}  #(10 5 2 4 3 8)
+
+`,(+ 2 3)                                @result{}  5
+@end group
+@end example
+
+@cindex nesting, of quasiquote expressions
+Quasiquote forms may be nested.  Substitutions are made only for
+unquoted components appearing at the same nesting level as the outermost
+backquote.  The nesting level increases by one inside each successive
+quasiquotation, and decreases by one inside each unquotation.
+
+@example
+@group
+`(a `(b ,(+ 1 2) ,(foo ,(+ 1 3) d) e) f)
+     @result{}  (a `(b ,(+ 1 2) ,(foo 4 d) e) f)
+
+(let ((name1 'x)
+      (name2 'y))
+   `(a `(b ,,name1 ,',name2 d) e))
+     @result{}  (a `(b ,x ,'y d) e)
+@end group
+@end example
+
+@cindex backquote, as external representation
+@cindex ` as external representation
+@cindex comma, as external representation
+@cindex , as external representation
+@cindex ,@@ as external representation
+@findex unquote
+@findex unquote-splicing
+@findex `
+@findex ,
+@findex ,@@
+The notations @code{`@var{template}} and (@code{quasiquote
+@var{template}}) are identical in all respects.
+@code{,@var{expression}} is identical to @code{(unquote
+@var{expression})} and @code{,@@@var{expression}} is identical to
+@code{(unquote-splicing @var{expression})}.
+
+@example
+@group
+(quasiquote (list (unquote (+ 1 2)) 4))
+     @result{}  (list 3 4)
+
+'(quasiquote (list (unquote (+ 1 2)) 4))
+     @result{}  `(list ,(+ 1 2) 4)
+     @emph{i.e.,} (quasiquote (list (unquote (+ 1 2)) 4))
+@end group
+@end example
+
+Unpredictable behavior can result if any of the symbols
+@code{quasiquote}, @code{unquote}, or @code{unquote-splicing} appear in
+a @var{template} in ways otherwise than as described above.
+@end deffn
+
+@node Conditionals, Sequencing, Quoting, Special Forms
+@section Conditionals
+
+@cindex expression, conditional (defn)
+@cindex conditional expression (defn)
+@cindex true, in conditional expression (defn)
+@cindex false, in conditional expression (defn)
+@findex #f
+@findex #t
+The behavior of the @dfn{conditional expressions} is determined by
+whether objects are true or false.  The conditional expressions count
+only @code{#f} as false.  They count everything else, including
+@code{#t}, pairs, symbols, numbers, strings, vectors, and procedures as
+true (but @pxref{True and False}).
+
+In the descriptions that follow, we say that an object has ``a true
+value'' or ``is true'' when the conditional expressions treat it as
+true, and we say that an object has ``a false value'' or ``is false''
+when the conditional expressions treat it as false.
+
+@deffn {special form} if predicate consequent [alternative]
+@var{Predicate}, @var{consequent}, and @var{alternative} are
+expressions.  An @code{if} expression is evaluated as follows: first,
+@var{predicate} is evaluated.  If it yields a true value, then
+@var{consequent} is evaluated and its value is returned.  Otherwise
+@var{alternative} is evaluated and its value is returned.  If
+@var{predicate} yields a false value and no @var{alternative} is
+specified, then the result of the expression is unspecified.
+
+An @code{if} expression evaluates either @var{consequent} or
+@var{alternative}, never both.  Programs should not depend on the value
+of an @code{if} expression that has no @var{alternative}.
+
+@example
+@group
+(if (> 3 2) 'yes 'no)                   @result{}  yes
+(if (> 2 3) 'yes 'no)                   @result{}  no
+(if (> 3 2)
+    (- 3 2)
+    (+ 3 2))                            @result{}  1
+@end group
+@end example
+@end deffn
+
+@deffn {special form} cond clause clause @dots{}
+@cindex cond clause
+@cindex clause, of cond expression
+Each @var{clause} has this form:
+
+@example
+(@var{predicate} @var{expression} @dots{})
+@end example
+
+@noindent
+@cindex else clause, of cond expression (defn)
+@findex else
+where @var{predicate} is any expression.  The last @var{clause} may be
+an @dfn{@code{else} clause}, which has the form:
+
+@example
+(else @var{expression} @var{expression} @dots{})
+@end example
+
+A @code{cond} expression does the following:
+
+@enumerate
+@item
+Evaluates the @var{predicate} expressions of successive @var{clause}s in
+order, until one of the @var{predicate}s evaluates to a true
+value.
+
+@item
+When a @var{predicate} evaluates to a true value, @code{cond} evaluates
+the @var{expression}s in the associated @var{clause} in left to right
+order, and returns the result of evaluating the last @var{expression} in
+the @var{clause} as the result of the entire @code{cond} expression.
+
+If the selected @var{clause} contains only the @var{predicate} and no
+@var{expression}s, @code{cond} returns the value of the @var{predicate}
+as the result.
+
+@item
+If all @var{predicate}s evaluate to false values, and there is no
+@code{else} clause, the result of the conditional expression is
+unspecified; if there is an @code{else} clause, @code{cond} evaluates
+its @var{expression}s (left to right) and returns the value of the last
+one.
+@end enumerate
+
+@example
+@group
+(cond ((> 3 2) 'greater)
+      ((< 3 2) 'less))                  @result{}  greater
+
+(cond ((> 3 3) 'greater)
+      ((< 3 3) 'less)
+      (else 'equal))                    @result{}  equal
+@end group
+@end example
+
+Normally, programs should not depend on the value of a @code{cond}
+expression that has no @code{else} clause.  However, some Scheme
+programmers prefer to write @code{cond} expressions in which at least
+one of the @var{predicate}s is always true.  In this style, the final
+@var{clause} is equivalent to an @code{else} clause.
+
+@cindex => in cond clause
+@findex =>
+Scheme supports an alternative @var{clause} syntax:
+
+@example
+(@var{predicate} => @var{recipient})
+@end example
+
+@noindent
+where @var{recipient} is an expression.  If @var{predicate} evaluates to
+a true value, then @var{recipient} is evaluated.  Its value must be a
+procedure of one argument; this procedure is then invoked on the value
+of the @var{predicate}.
+
+@example
+@group
+(cond ((assv 'b '((a 1) (b 2))) => cadr)
+      (else #f))                        @result{}  2
+@end group
+@end example
+@end deffn
+
+@deffn {special form} case key clause clause @dots{}
+@cindex case clause
+@cindex clause, of case expression
+@var{Key} may be any expression.  Each @var{clause} has this
+form:
+
+@example
+((@var{object} @dots{}) @var{expression} @var{expression} @dots{})
+@end example
+
+@cindex else clause, of case expression (defn)
+@findex else
+No @var{object} is evaluated, and all the @var{object}s must be
+distinct.  The last @var{clause} may be an @dfn{@code{else} clause},
+which has the form:
+
+@example
+(else @var{expression} @var{expression} @dots{})
+@end example
+
+A @code{case} expression does the following:
+
+@enumerate
+@item
+Evaluates @var{key} and compares the result with each
+@var{object}.
+
+@item
+If the result of evaluating @var{key} is equivalent (in the sense of
+@code{eqv?}; @pxref{Equivalence Predicates}) to an @var{object},
+@code{case} evaluates the @var{expression}s in the corresponding
+@var{clause} from left to right and returns the result of evaluating the
+last @var{expression} in the @var{clause} as the result of the
+@code{case} expression.
+@findex eqv?
+
+@item
+If the result of evaluating @var{key} is different from every
+@var{object}, and if there's an @code{else} clause, @code{case}
+evaluates its @var{expression}s and returns the result of the last one
+as the result of the @code{case} expression.  If there's no @code{else}
+clause, @code{case} returns an unspecified result.  Programs should not
+depend on the value of a @code{case} expression that has no @code{else}
+clause.
+@end enumerate
+
+For example,
+
+@example
+@group
+(case (* 2 3)
+   ((2 3 5 7) 'prime)
+   ((1 4 6 8 9) 'composite))            @result{}  composite
+
+(case (car '(c d))
+   ((a) 'a)
+   ((b) 'b))                            @result{}  @r{unspecified}
+
+(case (car '(c d))
+   ((a e i o u) 'vowel)
+   ((w y) 'semivowel)
+   (else 'consonant))                   @result{}  consonant
+@end group
+@end example
+@end deffn
+
+@deffn {special form} and expression @dots{}
+The @var{expression}s are evaluated from left to right, and the value of
+the first @var{expression} that evaluates to a false value is returned.
+Any remaining @var{expression}s are not evaluated.  If all the
+@var{expression}s evaluate to true values, the value of the last
+@var{expression} is returned.  If there are no @var{expression}s then
+@code{#t} is returned.
+
+@example
+@group
+(and (= 2 2) (> 2 1))                   @result{}  #t
+(and (= 2 2) (< 2 1))                   @result{}  #f
+(and 1 2 'c '(f g))                     @result{}  (f g)
+(and)                                   @result{}  #t
+@end group
+@end example
+@end deffn
+
+@deffn {special form} or expression @dots{}
+The @var{expression}s are evaluated from left to right, and the value of
+the first @var{expression} that evaluates to a true value is returned.
+Any remaining @var{expression}s are not evaluated.  If all
+@var{expression}s evaluate to false values, the value of the last
+@var{expression} is returned.  If there are no @var{expression}s then
+@code{#f} is returned.
+
+@example
+@group
+(or (= 2 2) (> 2 1))                    @result{}  #t
+(or (= 2 2) (< 2 1))                    @result{}  #t
+(or #f #f #f)                           @result{}  #f
+(or (memq 'b '(a b c)) (/ 3 0))         @result{}  (b c)
+@end group
+@end example
+@end deffn
+
+@node Sequencing, Iteration, Conditionals, Special Forms
+@section Sequencing
+@cindex sequencing expressions
+
+The @code{begin} special form is used to evaluate expressions in a
+particular order.
+
+@deffn {special form} begin expression expression @dots{}
+The @var{expression}s are evaluated sequentially from left to right, and
+the value of the last @var{expression} is returned.  This expression
+type is used to sequence side effects such as input and output.
+
+@example
+@group
+(define x 0)
+(begin (set! x 5)
+       (+ x 1))                 @result{}  6
+
+(begin (display "4 plus 1 equals ")
+       (display (+ 4 1)))
+                                @print{}  4 plus 1 equals 5
+                                @result{}  @r{unspecified}
+@end group
+@end example
+
+@cindex implicit begin
+Often the use of @code{begin} is unnecessary, because many special forms
+already support sequences of expressions (that is, they have an implicit
+@code{begin}).  Some of these special forms are:
+
+@example
+@group
+case
+cond
+define          @r{;``procedure @code{define}'' only}
+do
+fluid-let
+lambda
+let
+let*
+letrec
+named-lambda
+@end group
+@end example
+@findex case
+@findex cond
+@findex define
+@findex do
+@findex fluid-let
+@findex lambda
+@findex let
+@findex let*
+@findex letrec
+@findex named-lambda
+
+@findex sequence
+The obsolete special form @code{sequence} is identical to @code{begin}.
+It should not be used in new code.
+@end deffn
+
+@node Iteration, Structure Definitions, Sequencing, Special Forms
+@section Iteration
+
+@cindex expression, iteration (defn)
+@cindex iteration expression (defn)
+@cindex looping (see iteration expressions)
+@cindex tail recursion, vs. iteration expression
+The @dfn{iteration expressions} are: ``named @code{let}'' and @code{do}.
+They are also binding expressions, but are more commonly referred to as
+iteration expressions.  Because Scheme is properly tail-recursive, you
+don't need to use these special forms to express iteration; you can
+simply use appropriately written ``recursive'' procedure calls.
+
+@deffn {special form} let name ((@var{variable} @var{init}) @dots{}) expression expression @dots{}
+@cindex named let (defn)
+MIT/GNU Scheme permits a variant on the syntax of @code{let} called
+``named @code{let}'' which provides a more general looping construct
+than @code{do}, and may also be used to express recursions.
+
+Named @code{let} has the same syntax and semantics as ordinary
+@code{let} except that @var{name} is bound within the @var{expression}s
+to a procedure whose formal arguments are the @var{variable}s and whose
+body is the @var{expression}s.  Thus the execution of the
+@var{expression}s may be repeated by invoking the procedure named by
+@var{name}.
+
+@cindex unassigned variable, and named let
+MIT/GNU Scheme allows any of the @var{init}s to be omitted, in which
+case the corresponding @var{variable}s are unassigned.
+
+Note: the following expressions are equivalent:
+
+@example
+@group
+(let @var{name} ((@var{variable} @var{init}) @dots{})
+  @var{expression}
+  @var{expression} @dots{})
+
+((letrec ((@var{name}
+           (named-lambda (@var{name} @var{variable} @dots{})
+             @var{expression}
+             @var{expression} @dots{})))
+   @var{name})
+ @var{init} @dots{})
+@end group
+@end example
+
+Here is an example:
+
+@example
+@group
+(let loop
+     ((numbers '(3 -2 1 6 -5))
+      (nonneg '())
+      (neg '()))
+  (cond ((null? numbers)
+         (list nonneg neg))
+        ((>= (car numbers) 0)
+         (loop (cdr numbers)
+               (cons (car numbers) nonneg)
+               neg))
+        (else
+         (loop (cdr numbers)
+               nonneg
+               (cons (car numbers) neg)))))
+
+     @result{}  ((6 1 3) (-5 -2))
+@end group
+@end example
+@end deffn
+
+@deffn {special form} do ((@var{variable} @var{init} @var{step}) @dots{}) (@var{test} @var{expression} @dots{}) command @dots{}
+@code{do} is an iteration construct.  It specifies a set of variables to
+be bound, how they are to be initialized at the start, and how they are
+to be updated on each iteration.  When a termination condition is met,
+the loop exits with a specified result value.
+
+@code{do} expressions are evaluated as follows: The @var{init}
+expressions are evaluated (in some unspecified order), the
+@var{variable}s are bound to fresh locations, the results of the
+@var{init} expressions are stored in the bindings of the
+@var{variable}s, and then the iteration phase begins.
+
+Each iteration begins by evaluating @var{test}; if the result is false,
+then the @var{command} expressions are evaluated in order for effect,
+the @var{step} expressions are evaluated in some unspecified order, the
+@var{variable}s are bound to fresh locations, the results of the
+@var{step}s are stored in the bindings of the @var{variable}s, and the
+next iteration begins.
+
+If @var{test} evaluates to a true value, then the @var{expression}s are
+evaluated from left to right and the value of the last @var{expression}
+is returned as the value of the @code{do} expression.  If no
+@var{expression}s are present, then the value of the @code{do}
+expression is unspecified in standard Scheme; in MIT/GNU Scheme, the
+value of @var{test} is returned.
+
+@cindex region of variable binding, do
+@cindex variable binding, do
+The region of the binding of a @var{variable} consists of the entire
+@code{do} expression except for the @var{init}s.  It is an error for a
+@var{variable} to appear more than once in the list of @code{do}
+variables.
+
+A @var{step} may be omitted, in which case the effect is the same as if
+@code{(@var{variable} @var{init} @var{variable})} had been written
+instead of @code{(@var{variable} @var{init})}.
+
+@example
+@group
+(do ((vec (make-vector 5))
+      (i 0 (+ i 1)))
+    ((= i 5) vec)
+   (vector-set! vec i i))               @result{}  #(0 1 2 3 4)
+@end group
+
+@group
+(let ((x '(1 3 5 7 9)))
+   (do ((x x (cdr x))
+        (sum 0 (+ sum (car x))))
+       ((null? x) sum)))                @result{}  25
+@end group
+@end example
+@end deffn
+
+@node Structure Definitions, Macros, Iteration, Special Forms
+@section Structure Definitions
+
+This section provides examples and describes the options and syntax of
+@code{define-structure}, an MIT/GNU Scheme macro that is very similar to
+@code{defstruct} in Common Lisp.  The differences between them are
+summarized at the end of this section.  For more information, see
+Steele's Common Lisp book.
+
+@deffn {special form} define-structure (name structure-option @dots{}) slot-description @dots{}
+Each @var{slot-description} takes one of the following forms:
+
+@example
+@group
+@var{slot-name}
+(@var{slot-name} @var{default-init} [@var{slot-option} @var{value}]*)
+@end group
+@end example
+
+@cindex keyword constructor
+@cindex BOA constructor
+The fields @var{name} and @var{slot-name} must both be symbols.  The
+field @var{default-init} is an expression for the initial value of the
+slot.  It is evaluated each time a new instance is constructed.  If it
+is not specified, the initial content of the slot is undefined.  Default
+values are only useful with a @sc{boa} constructor with argument list or
+a keyword constructor (see below).
+
+Evaluation of a @code{define-structure} expression defines a structure
+descriptor and a set of procedures to manipulate instances of the
+structure.  These instances are represented as records by default
+(@pxref{Records}) but may alternately be lists or vectors.  The
+accessors and modifiers are marked with compiler declarations so that
+calls to them are automatically transformed into appropriate references.
+Often, no options are required, so a simple call to
+@code{define-structure} looks like:
+
+@example
+(define-structure foo a b c)
+@end example
+
+This defines a type descriptor @code{foo}, a constructor
+@code{make-foo}, a predicate @code{foo?}, accessors @code{foo-a},
+@code{foo-b}, and @code{foo-c}, and modifiers @code{set-foo-a!},
+@code{set-foo-b!}, and @code{set-foo-c!}.
+
+In general, if no options are specified, @code{define-structure} defines
+the following (using the simple call above as an example):
+
+@table @asis
+@item type descriptor
+The name of the type descriptor is the same as the name of the
+structure, e.g.@: @samp{foo}.  The type descriptor satisfies the
+predicate @code{record-type?}.
+
+@item constructor
+The name of the constructor is @code{"make-"} followed by the name of
+the structure, e.g.@: @samp{make-foo}.  The number of arguments accepted
+by the constructor is the same as the number of slots; the arguments are
+the initial values for the slots, and the order of the arguments matches
+the order of the slot definitions.
+
+@item predicate
+The name of the predicate is the name of the structure followed by
+@code{"?"}, e.g.@: @samp{foo?}.  The predicate is a procedure of one
+argument, which returns @code{#t} if its argument is a record of the
+type defined by this structure definition, and @code{#f} otherwise.
+
+@item accessors
+For each slot, an accessor is defined.  The name of the accessor is
+formed by appending the name of the structure, a hyphen, and the name of
+the slot, e.g.@: @samp{foo-a}.  The accessor is a procedure of one
+argument, which must be a record of the type defined by this structure
+definition.  The accessor extracts the contents of the corresponding
+slot in that record and returns it.
+
+@item modifiers
+For each slot, a modifier is defined.  The name of the modifier is
+formed by appending @code{"set-"}, the name of the accessor, and
+@code{"!"}, e.g.@: @samp{set-foo-a!}.  The modifier is a procedure of
+two arguments, the first of which must be a record of the type defined
+by this structure definition, and the second of which may be any object.
+The modifier modifies the contents of the corresponding slot in that
+record to be that object, and returns an unspecified value.
+@end table
+
+When options are not supplied, @code{(@var{name})} may be abbreviated to
+@var{name}.  This convention holds equally for @var{structure-options}
+and @var{slot-options}.  Hence, these are equivalent:
+
+@example
+@group
+(define-structure foo a b c)
+(define-structure (foo) (a) b (c))
+@end group
+@end example
+
+@noindent
+as are
+
+@example
+@group
+(define-structure (foo keyword-constructor) a b c)
+(define-structure (foo (keyword-constructor)) a b c)
+@end group
+@end example
+
+When specified as option values, @code{false} and @code{nil} are
+equivalent to @code{#f}, and @code{true} and @code{t} are equivalent to
+@code{#t}.
+@end deffn
+
+Possible @var{slot-options} are:
+
+@deffn {slot option} read-only value
+When given a @var{value} other than @code{#f}, this specifies that no
+modifier should be created for the slot.
+@end deffn
+
+@deffn {slot option} type type-descriptor
+This is accepted but not presently used.
+@end deffn
+
+Possible @var{structure-options} are:
+
+@deffn {structure option} predicate [name]
+This option controls the definition of a predicate procedure for the
+structure.  If @var{name} is not given, the predicate is defined with
+the default name (see above).  If @var{name} is @code{#f}, the predicate
+is not defined at all.  Otherwise, @var{name} must be a symbol, and
+the predicate is defined with that symbol as its name.
+@end deffn
+
+@deffn {structure option} copier [name]
+This option controls the definition of a procedure to copy instances of
+the structure.  This is a procedure of one argument, a structure
+instance, that makes a newly allocated copy of the structure and returns
+it.  If @var{name} is not given, the copier is defined, and the name
+of the copier is @code{"copy-"} followed by the structure name (e.g.@:
+@samp{copy-foo}).  If @var{name} is @code{#f}, the copier is not
+defined.  Otherwise, @var{name} must be a symbol, and the copier is
+defined with that symbol as its name.
+@end deffn
+
+@deffn {structure option} print-procedure expression
+Evaluating @var{expression} must yield a procedure of two arguments,
+which is used to print instances of the structure.  The procedure is an
+@dfn{unparser method} (@pxref{Custom Output}).  If the structure
+instances are records, this option has the same effect as calling
+@code{set-record-type-unparser-method!}.
+@findex set-record-type-unparser-method!
+@end deffn
+
+@deffn {structure option} constructor [name [argument-list]]
+@cindex BOA constructor (defn)
+This option controls the definition of constructor procedures.  These
+constructor procedures are called ``@sc{boa} constructors'', for ``By
+Order of Arguments'', because the arguments to the constructor specify
+the initial contents the structure's slots by the order in which they
+are given.  This is as opposed to ``keyword constructors'', which
+specify the initial contents using keywords, and in which the order of
+arguments is irrelevant.
+
+If @var{name} is not given, a constructor is defined with the default
+name and arguments (see above).  If @var{name} is @code{#f}, no
+constructor is defined; @var{argument-list} may not be specified in this
+case.  Otherwise, @var{name} must be a symbol, and a constructor is
+defined with that symbol as its name.  If @var{name} is a symbol,
+@var{argument-list} is optionally allowed; if it is omitted, the
+constructor accepts one argument for each slot in the structure
+definition, in the same order in which the slots appear in the
+definition.  Otherwise, @var{argument-list} must be a lambda list
+(@pxref{Lambda Expressions}), and each of the parameters of the lambda
+list must be the name of a slot in the structure.  The arguments
+accepted by the constructor are defined by this lambda list.  Any slot
+that is not specified by the lambda list is initialized to the
+@var{default-init} as specified above; likewise for any slot specified
+as an optional parameter when the corresponding argument is not
+supplied.
+
+If the @code{constructor} option is specified, the default constructor
+is not defined.  Additionally, the @code{constructor} option may be
+specified multiple times to define multiple constructors with
+different names and argument lists.
+
+@example
+@group
+(define-structure (foo
+                   (constructor make-foo (#!optional a b)))
+  (a 6 read-only #t)
+  (b 9))
+@end group
+@end example
+@end deffn
+
+@deffn {structure option} keyword-constructor [name]
+@cindex keyword constructor (defn)
+This option controls the definition of keyword constructor procedures.
+A @dfn{keyword constructor} is a procedure that accepts arguments that
+are alternating slot names and values.  If @var{name} is omitted, a
+keyword constructor is defined, and the name of the constructor is
+@code{"make-"} followed by the name of the structure (e.g.@:
+@samp{make-foo}).  Otherwise, @var{name} must be a symbol, and a keyword
+constructor is defined with this symbol as its name.
+
+If the @code{keyword-constructor} option is specified, the default
+constructor is not defined.  Additionally, the
+@code{keyword-constructor} option may be specified multiple times to
+define multiple keyword constructors; this is usually not done since
+such constructors would all be equivalent.
+
+@example
+@group
+(define-structure (foo (keyword-constructor make-bar)) a b)
+(foo-a (make-bar 'b 20 'a 19))         @result{} 19
+@end group
+@end example
+@end deffn
+
+@deffn {structure option} type-descriptor name
+This option cannot be used with the @code{type} or @code{named} options.
+
+By default, structures are implemented as records.  The name of the
+structure is defined to hold the type descriptor of the record defined
+by the structure.  The @code{type-descriptor} option specifies a
+different name to hold the type descriptor.
+
+@example
+@group
+(define-structure foo a b)
+foo             @result{} #[record-type 18]
+
+(define-structure (bar (type-descriptor <bar>)) a b)
+bar             @error{} Unbound variable: bar
+<bar>         @result{} #[record-type 19]
+@end group
+@end example
+@end deffn
+
+@deffn {structure option} conc-name [name]
+By default, the prefix for naming accessors and modifiers is the name of
+the structure followed by a hyphen.  The @code{conc-name} option can be
+used to specify an alternative.  If @var{name} is not given, the prefix
+is the name of the structure followed by a hyphen (the default).  If
+@var{name} is @code{#f}, the slot names are used directly, without
+prefix.  Otherwise, @var{name} must a symbol, and that symbol is used as
+the prefix.
+
+@example
+@code{(define-structure (foo (conc-name moby/)) a b)}
+@end example
+
+@noindent
+defines accessors @code{moby/a} and @code{moby/b}, and modifiers
+@code{set-moby/a!} and @code{set-moby/b!}.
+
+@example
+@code{(define-structure (foo (conc-name #f)) a b)}
+@end example
+
+@noindent
+defines accessors @code{a} and @code{b}, and modifiers @code{set-a!} and
+@code{set-b!}.
+@end deffn
+
+@deffn {structure option} type representation-type
+This option cannot be used with the @code{type-descriptor} option.
+
+By default, structures are implemented as records.  The @code{type}
+option overrides this default, allowing the programmer to specify that
+the structure be implemented using another data type.  The option value
+@var{representation-type} specifies the alternate data type; it is
+allowed to be one of the symbols @code{vector} or @code{list}, and the
+data type used is the one corresponding to the symbol.
+
+If this option is given, and the @code{named} option is not specified,
+the representation will not be tagged, and neither a predicate nor a
+type descriptor will be defined; also, the @code{print-procedure}
+option may not be given.
+
+@example
+@group
+(define-structure (foo (type list)) a b) 
+(make-foo 1 2)                          @result{} (1 2)
+@end group
+@end example
+@end deffn
+
+@deffn {structure option} named [expression]
+This is valid only in conjunction with the @code{type} option and
+specifies that the structure instances be tagged to make them
+identifiable as instances of this structure type.  This option cannot be
+used with the @code{type-descriptor} option.
+
+In the usual case, where @var{expression} is not given, the @code{named}
+option causes a type descriptor and predicate to be defined for the
+structure (recall that the @code{type} option without @code{named}
+suppresses their definition), and also defines a default unparser method
+for the structure instances (which can be overridden by the
+@code{print-procedure} option).  If the default unparser method is not
+wanted then the @code{print-procedure} option should be specified as
+@code{#F}.  This causes the structure to be printed in its native
+representation, as a list or vector, which includes the type descriptor.
+The type descriptor is a unique object, @emph{not} a record type, that
+describes the structure instances and is additionally stored in the
+structure instances to identify them: if the representation type is
+@code{vector}, the type descriptor is stored in the zero-th slot of the
+vector, and if the representation type is @code{list}, it is stored as
+the first element of the list.
+
+
+@example
+@group
+(define-structure (foo (type vector) named) a b c)
+(vector-ref (make-foo 1 2 3) 0) @result{} #[structure-type 52]
+@end group
+@end example
+
+If @var{expression} is specified, it is an expression that is evaluated
+to yield a tag object.  The @var{expression} is evaluated once when the
+structure definition is evaluated (to specify the unparser method), and
+again whenever a predicate or constructor is called.  Because of this,
+@var{expression} is normally a variable reference or a constant.  The
+value yielded by @var{expression} may be any object at all.  That object
+is stored in the structure instances in the same place that the type
+descriptor is normally stored, as described above.  If @var{expression}
+is specified, no type descriptor is defined, only a predicate.
+
+@example
+@group
+(define-structure (foo (type vector) (named 'foo)) a b c)
+(vector-ref (make-foo 1 2 3) 0) @result{} foo
+@end group
+@end example
+@end deffn
+
+@deffn {structure option} safe-accessors [boolean]
+This option allows the programmer to have some control over the safety
+of the slot accessors (and modifiers) generated by
+@code{define-structure}.  If @code{safe-accessors} is not specified, or
+if @var{boolean} is @code{#f}, then the accessors are optimized for
+speed at the expense of safety; when compiled, the accessors will turn
+into very fast inline sequences, usually one to three machine
+instructions in length.  However, if @code{safe-accessors} is specified
+and @var{boolean} is either omitted or @code{#t}, then the accessors are
+optimized for safety, will check the type and structure of their
+argument, and will be close-coded.
+
+@example
+@group
+(define-structure (foo safe-accessors) a b c)
+@end group
+@end example
+@end deffn
+
+@deffn {structure option} initial-offset offset
+This is valid only in conjunction with the @code{type} option.
+@var{Offset} must be an exact non-negative integer and specifies the
+number of slots to leave open at the beginning of the structure instance
+before the specified slots are allocated.  Specifying an @var{offset} of
+zero is equivalent to omitting the @code{initial-offset} option.
+
+If the @code{named} option is specified, the structure tag appears in
+the first slot, followed by the ``offset'' slots, and then the regular
+slots.  Otherwise, the ``offset'' slots come first, followed by the
+regular slots.
+
+@example
+@group
+(define-structure (foo (type vector) (initial-offset 3))
+  a b c)
+(make-foo 1 2 3)                @result{} #(() () () 1 2 3)
+@end group
+@end example
+@end deffn
+
+The essential differences between MIT/GNU Scheme's @code{define-structure}
+and Common Lisp's @code{defstruct} are:
+
+@itemize @bullet
+@item
+The default constructor procedure takes positional arguments, in the
+same order as specified in the definition of the structure.  A keyword
+constructor may be specified by giving the option
+@code{keyword-constructor}.
+
+@item
+@sc{boa} constructors are described using Scheme lambda lists.  Since there
+is nothing corresponding to @code{&aux} in Scheme lambda lists, this
+functionality is not implemented.
+
+@item
+By default, no @code{copier} procedure is defined.
+
+@item
+The side-effect procedure corresponding to the accessor @code{foo} is
+given the name @code{set-foo!}.
+
+@item
+Keywords are ordinary symbols -- use @code{foo} instead of @code{:foo}.
+
+@item
+The option values @code{false}, @code{nil}, @code{true}, and @code{t}
+are treated as if the appropriate boolean constant had been specified
+instead.
+
+@item
+The @code{print-function} option is named @code{print-procedure}.  Its
+argument is a procedure of two arguments (the unparser state and the
+structure instance) rather than three as in Common Lisp.
+
+@item
+By default, named structures are tagged with a unique object of some
+kind.  In Common Lisp, the structures are tagged with symbols.  This
+depends on the Common Lisp package system to help generate unique tags;
+MIT/GNU Scheme has no such way to generate unique symbols.
+
+@item
+The @code{named} option may optionally take an argument, which is
+normally the name of a variable (any expression may be used, but it is
+evaluated whenever the tag name is needed).  If used, structure
+instances will be tagged with that variable's value.  The variable must
+be defined when @code{define-structure} is evaluated.
+
+@item
+The @code{type} option is restricted to the values @code{vector} and
+@code{list}.
+
+@item
+The @code{include} option is not implemented.
+@end itemize
+
+@node Macros, SRFI syntax, Structure Definitions, Special Forms
+@section Macros
+
+(This section is largely taken from the @cite{Revised^4 Report on the
+Algorithmic Language Scheme}.  The section on Syntactic Closures is
+derived from a document written by Chris Hanson.  The section on
+Explicit Renaming is derived from a document written by William
+Clinger.)
+
+@cindex macro
+Scheme programs can define and use new derived expression types, called
+@dfn{macros}.  Program-defined expression types have the syntax
+
+@example
+(@var{keyword} @var{datum} @dots{})
+@end example
+
+@noindent
+@cindex syntactic keyword
+@cindex keyword
+@cindex macro keyword
+where @var{keyword} is an identifier that uniquely determines the
+expression type.  This identifier is called the @dfn{syntactic keyword},
+or simply @dfn{keyword}, of the macro.  The number of the @var{datum}s,
+and their syntax, depends on the expression type.
+
+@cindex macro use
+@cindex macro transformer
+Each instance of a macro is called a @dfn{use} of the macro.  The set of
+rules that specifies how a use of a macro is transcribed into a more
+primitive expression is called the @dfn{transformer} of the macro.
+
+@cindex anonymous syntactic keyword
+MIT/GNU Scheme also supports @dfn{anonymous syntactic keywords}.  This means
+that it's not necessary to bind a macro transformer to a syntactic
+keyword before it is used.  Instead, any macro-transformer expression
+can appear as the first element of a form, and the form will be expanded
+by the transformer.
+
+The macro definition facility consists of these parts:
+
+@itemize @bullet
+@item
+A set of expressions used to establish that certain identifiers are
+macro keywords, associate them with macro transformers, and control the
+scope within which a macro is defined.
+
+@item
+A standard high-level pattern language for specifying macro
+transformers, introduced by the @code{syntax-rules} special form.
+
+@item
+Two non-standard low-level languages for specifying macro transformers,
+@dfn{syntactic closures} and @dfn{explicit renaming}.
+@end itemize
+
+@cindex hygienic
+@cindex referentially transparent
+The syntactic keyword of a macro may shadow variable bindings, and local
+variable bindings may shadow keyword bindings.  All macros defined using
+the pattern language are ``hygienic'' and ``referentially transparent''
+and thus preserve Scheme's lexical scoping:
+
+@itemize @bullet
+@item
+If a macro transformer inserts a binding for an identifier (variable or
+keyword), the identifier will in effect be renamed throughout its scope
+to avoid conflicts with other identifiers.
+
+@item
+If a macro transformer inserts a free reference to an identifier, the
+reference refers to the binding that was visible where the transformer
+was specified, regardless of any local bindings that may surround the
+use of the macro.
+@end itemize
+
+@menu
+* Syntactic Binding Constructs::  
+* Pattern Language::            
+* Syntactic Closures::          
+* Explicit Renaming::           
+@end menu
+
+@node Syntactic Binding Constructs, Pattern Language, Macros, Macros
+@subsection Binding Constructs for Syntactic Keywords
+
+@code{let-syntax}, @code{letrec-syntax}, @code{let*-syntax} and
+@code{define-syntax} are analogous to @code{let}, @code{letrec},
+@code{let*} and @code{define}, but they bind syntactic keywords to macro
+transformers instead of binding variables to locations that contain
+values.
+
+@deffn {special form} let-syntax bindings expression expression @dots{}
+@var{Bindings} should have the form
+
+@example
+((@var{keyword} @var{transformer-spec}) @dots{})
+@end example
+
+@noindent
+Each @var{keyword} is an identifier, each @var{transformer-spec} is a
+a macro-transformer expression, and the body is a sequence of
+one or more expressions.  It is an error for a @var{keyword} to appear
+more than once in the list of keywords being bound.
+
+The @var{expression}s are expanded in the syntactic environment obtained
+by extending the syntactic environment of the @code{let-syntax}
+expression with macros whose keywords are the @var{keyword}s, bound to
+the specified transformers.  Each binding of a @var{keyword} has the
+@var{expression}s as its region.
+
+@example
+@group
+(let-syntax ((when (syntax-rules ()
+                     ((when test stmt1 stmt2 ...)
+                      (if test
+                          (begin stmt1
+                                 stmt2 ...))))))
+  (let ((if #t))
+    (when if (set! if 'now))
+    if))                           @result{}  now
+
+(let ((x 'outer))
+  (let-syntax ((m (syntax-rules () ((m) x))))
+    (let ((x 'inner))
+      (m))))                       @result{}  outer
+@end group
+@end example
+@end deffn
+
+@deffn {special form} letrec-syntax bindings expression expression @dots{}
+The syntax of @code{letrec-syntax} is the same as for @code{let-syntax}.
+
+The @var{expression}s are expanded in the syntactic environment obtained
+by extending the syntactic environment of the @code{letrec-syntax}
+expression with macros whose keywords are the @var{keyword}s, bound to
+the specified transformers.  Each binding of a @var{keyword} has the
+@var{bindings} as well as the @var{expression}s within its region, so
+the transformers can transcribe expressions into uses of the macros
+introduced by the @code{letrec-syntax} expression.
+
+@example
+@group
+(letrec-syntax
+  ((my-or (syntax-rules ()
+            ((my-or) #f)
+            ((my-or e) e)
+            ((my-or e1 e2 ...)
+             (let ((temp e1))
+               (if temp
+                   temp
+                   (my-or e2 ...)))))))
+  (let ((x #f)
+        (y 7)
+        (temp 8)
+        (let odd?)
+        (if even?))
+    (my-or x
+           (let temp)
+           (if y)
+           y)))        @result{}  7
+@end group
+@end example
+@end deffn
+
+@deffn {special form} let*-syntax bindings expression expression @dots{}
+The syntax of @code{let*-syntax} is the same as for @code{let-syntax}.
+
+The @var{expression}s are expanded in the syntactic environment obtained
+by extending the syntactic environment of the @code{letrec-syntax}
+expression with macros whose keywords are the @var{keyword}s, bound to
+the specified transformers.  Each binding of a @var{keyword} has the
+subsequent @var{bindings} as well as the @var{expression}s within its
+region.  Thus
+
+@example
+@group
+(let*-syntax
+   ((a (syntax-rules @dots{}))
+    (b (syntax-rules @dots{})))
+  @dots{})
+@end group
+@end example
+
+@noindent
+is equivalent to
+
+@example
+@group
+(let-syntax ((a (syntax-rules @dots{})))
+  (let-syntax ((b (syntax-rules @dots{})))
+    @dots{}))
+@end group
+@end example
+@end deffn
+
+@deffn {special form} define-syntax keyword transformer-spec
+@var{Keyword} is an identifier, and @var{transformer-spec} is a macro
+transformer expression.  The syntactic environment is extended by
+binding the @var{keyword} to the specified transformer.
+
+The region of the binding introduced by @code{define-syntax} is the
+entire block in which it appears.  However, the @var{keyword} may only
+be used after it has been defined.
+
+MIT/GNU Scheme permits @code{define-syntax} to appear both at top level and
+within @code{lambda} bodies.  The Revised^4 Report permits only
+top-level uses of @code{define-syntax}.
+
+When compiling a program, a top-level instance of @code{define-syntax}
+both defines the syntactic keyword and generates code that will redefine
+the keyword when the program is loaded.  This means that the same syntax
+can be used for defining macros that will be used during compilation
+and for defining macros to be used at run time.
+
+Although macros may expand into definitions and syntax definitions in
+any context that permits them, it is an error for a definition or syntax
+definition to shadow a syntactic keyword whose meaning is needed to
+determine whether some form in the group of forms that contains the
+shadowing definition is in fact a definition, or, for internal definitions,
+is needed to determine the boundary between the group and the expressions
+that follow the group.  For example, the following are errors:
+
+@example
+(define define 3)
+
+(begin (define begin list))
+
+(let-syntax
+  ((foo (syntax-rules ()
+          ((foo (proc args ...) body ...)
+           (define proc
+             (lambda (args ...)
+               body ...))))))
+  (let ((x 3))
+    (foo (plus x y) (+ x y))
+    (define foo x)
+    (plus foo x)))
+@end example
+@end deffn
+
+@node Pattern Language, Syntactic Closures, Syntactic Binding Constructs, Macros
+@subsection Pattern Language
+
+MIT/GNU Scheme supports a high-level pattern language for specifying macro
+transformers.  This pattern language is defined by the Revised^4 Report
+and is portable to other conforming Scheme implementations.  To use the
+pattern language, specify a @var{transformer-spec} as a
+@code{syntax-rules} form:
+
+@deffn {special form} syntax-rules literals syntax-rule @dots{}
+@var{Literals} is a list of identifiers and each @var{syntax-rule}
+should be of the form
+
+@example
+(@var{pattern} @var{template})
+@end example
+
+The @var{pattern} in a @var{syntax-rule} is a list @var{pattern} that
+begins with the keyword for the macro.
+
+A @var{pattern} is either an identifier, a constant, or one of the
+following
+
+@example
+(@var{pattern} @dots{})
+(@var{pattern} @var{pattern} @dots{} . @var{pattern})
+(@var{pattern} @dots{} @var{pattern} @var{ellipsis})
+@end example
+
+@noindent
+and a template is either an identifier, a constant, or one of the
+following
+
+@example
+(@var{element} @dots{})
+(@var{element} @var{element} @dots{} . @var{template})
+@end example
+
+@vindex ...
+where an @var{element} is a @var{template} optionally followed by an
+@var{ellipsis} and an @var{ellipsis} is the identifier @samp{...} (which
+cannot be used as an identifier in either a template or a pattern).
+
+An instance of @code{syntax-rules} produces a new macro transformer by
+specifying a sequence of hygienic rewrite rules.  A use of a macro whose
+keyword is associated with a transformer specified by
+@code{syntax-rules} is matched against the patterns contained in the
+@var{syntax-rule}s, beginning with the leftmost @var{syntax-rule}.  When
+a match is found, the macro use is transcribed hygienically according to
+the template.
+
+An identifier that appears in the pattern of a @var{syntax-rule} is a
+@dfn{pattern-variable}, unless it is the keyword that begins the
+pattern, is listed in @var{literals}, or is the identifier @samp{...}.
+Pattern variables match arbitrary input elements and are used to refer
+to elements of the input in the template.  It is an error for the same
+pattern variable to appear more than once in a @var{pattern}.
+
+The keyword at the beginning of the pattern in a @var{syntax-rule} is
+not involved in the matching and is not considered a pattern variable or
+literal identifier.
+
+Identifiers that appear in @var{literals} are interpreted as literal
+identifiers to be matched against corresponding subforms of the input.
+A subform in the input matches a literal identifier if and only if it is
+an identifier and either both its occurrence in the macro expression and
+its occurrence in the macro definition have the same lexical binding, or
+the two identifiers are equal and both have no lexical binding.
+
+A subpattern followed by @samp{...} can match zero or more elements of
+the input.  It is an error for @samp{...} to appear in @var{literals}.
+Within a pattern the identifier @samp{...} must follow the last element
+of a nonempty sequence of subpatterns.
+
+More formally, an input form @var{F} matches a pattern @var{P} if and
+only if:
+
+@itemize @bullet
+@item
+@var{P} is a non-literal identifier; or
+
+@item
+@var{P} is a literal identifier and @var{F} is an identifier with the
+same binding; or
+
+@item
+@var{P} is a list @code{(@var{P_1} @dots{} @var{P_n})} and @var{F} is a
+list of @var{n} forms that match @var{P_1} through @var{P_n},
+respectively; or
+
+@item
+@var{P} is an improper list @code{(@var{P_1} @var{P_2} @dots{} @var{P_n}
+. @var{P_n+1})} and @var{F} is a list or improper list of @var{n} or
+more forms that match @var{P_1} through @var{P_n}, respectively, and
+whose @var{n}th ``cdr'' matches @var{P_n+1}; or
+
+@item
+@var{P} is of the form @code{(@var{P_1} @dots{} @var{P_n} @var{P_n+1}
+@var{ellipsis})} where @var{ellipsis} is the identifier @samp{...} and
+@var{F} is a proper list of at least @var{n} forms, the first @var{n} of
+which match @var{P_1} through @var{P_n}, respectively, and each
+remaining element of @var{F} matches @var{P_n+1}; or
+
+@item
+@var{P} is a datum and @var{F} is equal to @var{P} in the sense of the
+@code{equal?} procedure.
+@end itemize
+
+It is an error to use a macro keyword, within the scope of its
+binding, in an expression that does not match any of the patterns.
+
+When a macro use is transcribed according to the template of the
+matching @var{syntax rule}, pattern variables that occur in the template
+are replaced by the subforms they match in the input.  Pattern variables
+that occur in subpatterns followed by one or more instances of the
+identifier @samp{...} are allowed only in subtemplates that are followed
+by as many instances of @samp{...}.  They are replaced in the output by
+all of the subforms they match in the input, distributed as indicated.
+It is an error if the output cannot be built up as specified.
+
+Identifiers that appear in the template but are not pattern variables or
+the identifier @samp{...} are inserted into the output as literal
+identifiers.  If a literal identifier is inserted as a free identifier
+then it refers to the binding of that identifier within whose scope the
+instance of @code{syntax-rules} appears.  If a literal identifier is
+inserted as a bound identifier then it is in effect renamed to prevent
+inadvertent captures of free identifiers.
+
+@example
+@group
+(let ((=> #f))
+  (cond (#t => 'ok)))           @result{} ok
+@end group
+@end example
+
+The macro transformer for @code{cond} recognizes @code{=>}
+as a local variable, and hence an expression, and not as the
+top-level identifier @code{=>}, which the macro transformer treats
+as a syntactic keyword.  Thus the example expands into
+
+@example
+@group
+(let ((=> #f))
+  (if #t (begin => 'ok)))
+@end group
+@end example
+
+instead of
+
+@example
+@group
+(let ((=> #f))
+  (let ((temp #t))
+    (if temp 
+        ('ok temp))))
+@end group
+@end example
+
+which would result in an invalid procedure call.
+@end deffn
+
+@node Syntactic Closures, Explicit Renaming, Pattern Language, Macros
+@subsection Syntactic Closures
+
+@cindex syntactic closures
+MIT/GNU Scheme's syntax-transformation engine is an implementation of
+@dfn{syntactic closures}, a mechanism invented by Alan Bawden and
+Jonathan Rees.  The main feature of the syntactic-closures mechanism is
+its simplicity and its close relationship to the environment models
+commonly used with Scheme.  Using the mechanism to write macro
+transformers is somewhat cumbersome and can be confusing for the newly
+initiated, but it is easily mastered.
+
+@menu
+* Syntax Terminology::          
+* SC Transformer Definition::   
+* SC Identifiers::              
+@end menu
+
+@node Syntax Terminology, SC Transformer Definition, Syntactic Closures, Syntactic Closures
+@subsubsection Syntax Terminology
+
+This section defines the concepts and data types used by the syntactic
+closures facility.
+
+@itemize @bullet
+@item
+@cindex form
+@dfn{Forms} are the syntactic entities out of which programs are
+recursively constructed.  A form is any expression, any definition, any
+syntactic keyword, or any syntactic closure.  The variable name that
+appears in a @code{set!} special form is also a form.  Examples of
+forms:
+
+@example
+@group
+17
+#t
+car
+(+ x 4)
+(lambda (x) x)
+(define pi 3.14159)
+if
+define
+@end group
+@end example
+
+@item
+@cindex alias
+@cindex identifier
+@cindex synthetic identifier
+An @dfn{alias} is an alternate name for a given symbol.  It can appear
+anywhere in a form that the symbol could be used, and when quoted it is
+replaced by the symbol; however, it does not satisfy the predicate
+@code{symbol?}.  Macro transformers rarely distinguish symbols from
+aliases, referring to both as @dfn{identifiers}.  Another name for an
+alias is @dfn{synthetic identifier}; this document uses both names.
+
+@item
+@cindex syntactic environment
+A @dfn{syntactic environment} maps identifiers to their meanings.  More
+precisely, it determines whether an identifier is a syntactic keyword
+or a variable.  If it is a keyword, the meaning is an interpretation
+for the form in which that keyword appears.  If it is a variable, the
+meaning identifies which binding of that variable is referenced.  In
+short, syntactic environments contain all of the contextual information
+necessary for interpreting the meaning of a particular form.
+
+@item
+@cindex syntactic closure
+A @dfn{syntactic closure} consists of a form, a syntactic environment,
+and a list of identifiers.  All identifiers in the form take their
+meaning from the syntactic environment, except those in the given list.
+The identifiers in the list are to have their meanings determined
+later.
+
+A syntactic closure may be used in any context in which its form could
+have been used.  Since a syntactic closure is also a form, it may not
+be used in contexts where a form would be illegal.  For example, a form
+may not appear as a clause in the @code{cond} special form.
+
+A syntactic closure appearing in a quoted structure is replaced by its
+form.
+@end itemize
+
+@node SC Transformer Definition, SC Identifiers, Syntax Terminology, Syntactic Closures
+@subsubsection Transformer Definition
+
+This section describes the special forms for defining syntactic-closures
+macro transformers, and the associated procedures for manipulating
+syntactic closures and syntactic environments.
+
+@deffn {special form} sc-macro-transformer expression
+The @var{expression} is expanded in the syntactic environment of the
+@code{sc-macro-transformer} expression, and the expanded expression is
+evaluated in the transformer environment to yield a macro transformer as
+described below.  This macro transformer is bound to a macro keyword by
+the special form in which the @code{transformer} expression appears (for
+example, @code{let-syntax}).
+
+@cindex macro transformer
+@cindex input form
+@cindex usage environment
+@cindex output form
+@cindex transformer environment
+In the syntactic closures facility, a @dfn{macro transformer} is a
+procedure that takes two arguments, a form and a syntactic environment,
+and returns a new form.  The first argument, the @dfn{input form}, is
+the form in which the macro keyword occurred.  The second argument, the
+@dfn{usage environment}, is the syntactic environment in which the input
+form occurred.  The result of the transformer, the @dfn{output form}, is
+automatically closed in the @dfn{transformer environment}, which is the
+syntactic environment in which the @code{transformer} expression
+occurred.
+
+For example, here is a definition of a @code{push} macro using
+@code{syntax-rules}:
+
+@example
+@group
+(define-syntax push
+  (syntax-rules ()
+    ((push item list)
+     (set! list (cons item list)))))
+@end group
+@end example
+
+@noindent
+Here is an equivalent definition using @code{sc-macro-transformer}:
+
+@example
+@group
+(define-syntax push
+  (sc-macro-transformer
+   (lambda (exp env)
+     (let ((item (make-syntactic-closure env '() (cadr exp)))
+           (list (make-syntactic-closure env '() (caddr exp))))
+       `(set! ,list (cons ,item ,list))))))
+@end group
+@end example
+
+@noindent
+In this example, the identifiers @code{set!} and @code{cons} are closed
+in the transformer environment, and thus will not be affected by the
+meanings of those identifiers in the usage environment @code{env}.
+
+Some macros may be non-hygienic by design.  For example, the following
+defines a @code{loop} macro that implicitly binds @code{exit} to an
+escape procedure.  The binding of @code{exit} is intended to capture
+free references to @code{exit} in the body of the loop, so @code{exit}
+must be left free when the body is closed:
+
+@example
+@group
+(define-syntax loop
+  (sc-macro-transformer
+   (lambda (exp env)
+     (let ((body (cdr exp)))
+       `(call-with-current-continuation
+         (lambda (exit)
+           (let f ()
+             ,@@(map (lambda (exp)
+                      (make-syntactic-closure env '(exit)
+                        exp))
+                    body)
+             (f))))))))
+@end group
+@end example
+@end deffn
+
+@deffn {special form} rsc-macro-transformer expression
+This form is an alternative way to define a syntactic-closures macro
+transformer.  Its syntax and usage are identical to
+@code{sc-macro-transformer}, except that the roles of the usage
+environment and transformer environment are reversed.  (Hence
+@acronym{RSC} stands for @dfn{Reversed Syntactic Closures}.)  In other
+words, the procedure specified by @var{expression} still accepts two
+arguments, but its second argument will be the transformer environment
+rather than the usage environment, and the returned expression is closed
+in the usage environment rather than the transformer environment.
+
+The advantage of this arrangement is that it allows a simpler definition
+style in some situations.  For example, here is the @code{push} macro
+from above, rewritten in this style:
+
+@example
+@group
+(define-syntax push
+  (rsc-macro-transformer
+   (lambda (exp env)
+     `(,(make-syntactic-closure env '() 'SET!)
+       ,(caddr exp)
+       (,(make-syntactic-closure env '() 'CONS)
+        ,(cadr exp)
+        ,(caddr exp))))))
+@end group
+@end example
+
+@noindent
+In this style only the introduced keywords are closed, while everything
+else remains open.
+
+Note that @code{rsc-macro-transformer} and @code{sc-macro-transformer}
+are easily interchangeable.  Here is how to emulate
+@code{rsc-macro-transformer} using @code{sc-macro-transformer}.  (This
+technique can be used to effect the opposite emulation as well.)
+
+@example
+@group
+(define-syntax push
+  (sc-macro-transformer
+   (lambda (exp usage-env)
+     (capture-syntactic-environment
+      (lambda (env)
+        (make-syntactic-closure usage-env '()
+          `(,(make-syntactic-closure env '() 'SET!)
+            ,(caddr exp)
+            (,(make-syntactic-closure env '() 'CONS)
+             ,(cadr exp)
+             ,(caddr exp)))))))))
+@end group
+@end example
+@end deffn
+
+To assign meanings to the identifiers in a form, use
+@code{make-syntactic-closure} to close the form in a syntactic
+environment.
+
+@deffn procedure make-syntactic-closure environment free-names form
+@var{Environment} must be a syntactic environment, @var{free-names}
+must be a list of identifiers, and @var{form} must be a form.
+@code{make-syntactic-closure} constructs and returns a syntactic
+closure of @var{form} in @var{environment}, which can be used anywhere
+that @var{form} could have been used.  All the identifiers used in
+@var{form}, except those explicitly excepted by @var{free-names},
+obtain their meanings from @var{environment}.
+
+Here is an example where @var{free-names} is something other than the
+empty list.  It is instructive to compare the use of @var{free-names}
+in this example with its use in the @code{loop} example above: the
+examples are similar except for the source of the identifier being left
+free.
+
+@example
+@group
+(define-syntax let1
+  (sc-macro-transformer
+   (lambda (exp env)
+     (let ((id (cadr exp))
+           (init (caddr exp))
+           (exp (cadddr exp)))
+       `((lambda (,id)
+           ,(make-syntactic-closure env (list id) exp))
+         ,(make-syntactic-closure env '() init))))))
+@end group
+@end example
+
+@noindent
+@code{let1} is a simplified version of @code{let} that only binds a
+single identifier, and whose body consists of a single expression.
+When the body expression is syntactically closed in its original
+syntactic environment, the identifier that is to be bound by
+@code{let1} must be left free, so that it can be properly captured by
+the @code{lambda} in the output form.
+@end deffn
+
+In most situations, the @var{free-names} argument to
+@code{make-syntactic-closure} is the empty list.  In those cases, the
+more succinct @code{close-syntax} can be used:
+
+@deffn procedure close-syntax form environment
+@var{Environment} must be a syntactic environment and @var{form} must be
+a form.  Returns a new syntactic closure of @var{form} in
+@var{environment}, with no free names.  Entirely equivalent to
+
+@example
+(make-syntactic-closure @var{environment} '() @var{form})
+@end example
+@end deffn
+
+To obtain a syntactic environment other than the usage environment,
+use @code{capture-syntactic-environment}.
+
+@deffn procedure capture-syntactic-environment procedure
+@code{capture-syntactic-environment} returns a form that will, when
+transformed, call @var{procedure} on the current syntactic environment.
+@var{Procedure} should compute and return a new form to be transformed,
+in that same syntactic environment, in place of the form.
+
+An example will make this clear.  Suppose we wanted to define a simple
+@code{loop-until} keyword equivalent to
+
+@example
+@group
+(define-syntax loop-until
+  (syntax-rules ()
+    ((loop-until id init test return step)
+     (letrec ((loop
+               (lambda (id)
+                 (if test return (loop step)))))
+       (loop init)))))
+@end group
+@end example
+
+@noindent
+The following attempt at defining @code{loop-until} has a subtle
+bug:
+
+@example
+@group
+(define-syntax loop-until
+  (sc-macro-transformer
+   (lambda (exp env)
+     (let ((id (cadr exp))
+           (init (caddr exp))
+           (test (cadddr exp))
+           (return (cadddr (cdr exp)))
+           (step (cadddr (cddr exp)))
+           (close
+            (lambda (exp free)
+              (make-syntactic-closure env free exp))))
+       `(letrec ((loop
+                  (lambda (,id)
+                    (if ,(close test (list id))
+                        ,(close return (list id))
+                        (loop ,(close step (list id)))))))
+          (loop ,(close init '())))))))
+@end group
+@end example
+
+@noindent
+This definition appears to take all of the proper precautions to
+prevent unintended captures.  It carefully closes the subexpressions in
+their original syntactic environment and it leaves the @code{id}
+identifier free in the @code{test}, @code{return}, and @code{step}
+expressions, so that it will be captured by the binding introduced by
+the @code{lambda} expression.  Unfortunately it uses the identifiers
+@code{if} and @code{loop} @emph{within} that @code{lambda} expression,
+so if the user of @code{loop-until} just happens to use, say, @code{if}
+for the identifier, it will be inadvertently captured.
+
+The syntactic environment that @code{if} and @code{loop} want to be
+exposed to is the one just outside the @code{lambda} expression: before
+the user's identifier is added to the syntactic environment, but after
+the identifier @code{loop} has been added.
+@code{capture-syntactic-environment} captures exactly that environment
+as follows:
+
+@example
+@group
+(define-syntax loop-until
+  (sc-macro-transformer
+   (lambda (exp env)
+     (let ((id (cadr exp))
+           (init (caddr exp))
+           (test (cadddr exp))
+           (return (cadddr (cdr exp)))
+           (step (cadddr (cddr exp)))
+           (close
+            (lambda (exp free)
+              (make-syntactic-closure env free exp))))
+       `(letrec ((loop
+                  ,(capture-syntactic-environment
+                    (lambda (env)
+                      `(lambda (,id)
+                         (,(make-syntactic-closure env '() `if)
+                          ,(close test (list id))
+                          ,(close return (list id))
+                          (,(make-syntactic-closure env '() `loop)
+                           ,(close step (list id)))))))))
+          (loop ,(close init '())))))))
+@end group
+@end example
+
+@noindent
+In this case, having captured the desired syntactic environment, it is
+convenient to construct syntactic closures of the identifiers @code{if}
+and the @code{loop} and use them in the body of the
+@code{lambda}.
+
+A common use of @code{capture-syntactic-environment} is to get the
+transformer environment of a macro transformer:
+
+@example
+@group
+(sc-macro-transformer
+ (lambda (exp env)
+   (capture-syntactic-environment
+    (lambda (transformer-env)
+      @dots{}))))
+@end group
+@end example
+@end deffn
+
+@node SC Identifiers,  , SC Transformer Definition, Syntactic Closures
+@subsubsection Identifiers
+
+This section describes the procedures that create and manipulate
+identifiers.  The identifier data type extends the syntactic closures
+facility to be compatible with the high-level @code{syntax-rules}
+facility.
+
+@cindex alias
+As discussed earlier, an identifier is either a symbol or an
+@dfn{alias}.  An alias is implemented as a syntactic closure whose
+@var{form} is an identifier:
+
+@example
+@group
+(make-syntactic-closure env '() 'a) @result{} @r{an alias}
+@end group
+@end example
+
+@noindent
+Aliases are implemented as syntactic closures because they behave just
+like syntactic closures most of the time.  The difference is that an
+alias may be bound to a new value (for example by @code{lambda} or
+@code{let-syntax}); other syntactic closures may not be used this way.
+If an alias is bound, then within the scope of that binding it is looked
+up in the syntactic environment just like any other identifier.
+
+Aliases are used in the implementation of the high-level facility
+@code{syntax-rules}.  A macro transformer created by @code{syntax-rules}
+uses a template to generate its output form, substituting subforms of
+the input form into the template.  In a syntactic closures
+implementation, all of the symbols in the template are replaced by
+aliases closed in the transformer environment, while the output form
+itself is closed in the usage environment.  This guarantees that the
+macro transformation is hygienic, without requiring the transformer to
+know the syntactic roles of the substituted input subforms.
+
+@deffn procedure identifier? object
+Returns @code{#t} if @var{object} is an identifier, otherwise returns
+@code{#f}.  Examples:
+
+@example
+@group
+(identifier? 'a)        @result{} #t
+(identifier? (make-syntactic-closure env '() 'a))
+                        @result{} #t
+
+(identifier? "a")       @result{} #f
+(identifier? #\a)       @result{} #f
+(identifier? 97)        @result{} #f
+(identifier? #f)        @result{} #f
+(identifier? '(a))      @result{} #f
+(identifier? '#(a))     @result{} #f
+@end group
+@end example
+@end deffn
+
+The predicate @code{eq?} is used to determine if two identifers are
+``the same''.  Thus @code{eq?} can be used to compare identifiers
+exactly as it would be used to compare symbols.  Often, though, it is
+useful to know whether two identifiers ``mean the same thing''.  For
+example, the @code{cond} macro uses the symbol @code{else} to identify
+the final clause in the conditional.  A macro transformer for
+@code{cond} cannot just look for the symbol @code{else}, because the
+@code{cond} form might be the output of another macro transformer that
+replaced the symbol @code{else} with an alias.  Instead the transformer
+must look for an identifier that ``means the same thing'' in the usage
+environment as the symbol @code{else} means in the transformer
+environment.
+
+@deffn procedure identifier=? environment1 identifier1 environment2 identifier2
+@var{Environment1} and @var{environment2} must be syntactic
+environments, and @var{identifier1} and @var{identifier2} must be
+identifiers.  @code{identifier=?} returns @code{#t} if the meaning of
+@var{identifier1} in @var{environment1} is the same as that of
+@var{identifier2} in @var{environment2}, otherwise it returns @code{#f}.
+Examples:
+
+@example
+@group
+(let-syntax
+    ((foo
+      (sc-macro-transformer
+       (lambda (form env)
+         (capture-syntactic-environment
+          (lambda (transformer-env)
+            (identifier=? transformer-env 'x env 'x)))))))
+  (list (foo)
+        (let ((x 3))
+          (foo))))
+                        @result{} (#t #f)
+@end group
+
+@group
+(let-syntax ((bar foo))
+  (let-syntax
+      ((foo
+        (sc-macro-transformer
+         (lambda (form env)
+           (capture-syntactic-environment
+            (lambda (transformer-env)
+              (identifier=? transformer-env 'foo
+                            env (cadr form))))))))
+    (list (foo foo)
+          (foo bar))))
+                        @result{} (#f #t)
+@end group
+@end example
+@end deffn
+
+Sometimes it is useful to be able to introduce a new identifier that is
+guaranteed to be different from any existing identifier, similarly to
+the way that @code{generate-uninterned-symbol} is used. 
+
+@deffn procedure make-synthetic-identifier identifier
+Creates and returns and new synthetic identifier (alias) that is
+guaranteed to be different from all existing identifiers.
+@var{Identifier} is any existing identifier, which is used in deriving
+the name of the new identifier.
+
+This is implemented by syntactically closing @var{identifier} in a
+special empty environment.
+@end deffn
+
+@node Explicit Renaming,  , Syntactic Closures, Macros
+@subsection Explicit Renaming
+
+@cindex explicit renaming
+@dfn{Explicit renaming} is an alternative facility for defining macro
+transformers.  In the MIT/GNU Scheme implementation, explicit-renaming
+transformers are implemented as an abstraction layer on top of syntactic
+closures.  An explicit-renaming macro transformer is defined by an
+instance of the @code{er-macro-transformer} keyword:
+
+@deffn {special form} er-macro-transformer expression
+The @var{expression} is expanded in the syntactic environment of the
+@code{er-macro-transformer} expression, and the expanded expression is
+evaluated in the transformer environment to yield a macro transformer as
+described below.  This macro transformer is bound to a macro keyword by
+the special form in which the @code{transformer} expression appears (for
+example, @code{let-syntax}).
+
+@cindex macro transformer
+@cindex input form, to macro
+In the explicit-renaming facility, a @dfn{macro transformer} is a
+procedure that takes three arguments, a form, a renaming procedure, and
+a comparison predicate, and returns a new form.  The first argument, the
+@dfn{input form}, is the form in which the macro keyword occurred.
+
+@cindex renaming procedure
+The second argument to a transformation procedure is a @dfn{renaming
+procedure} that takes the representation of an identifier as its
+argument and returns the representation of a fresh identifier that
+occurs nowhere else in the program.  For example, the transformation
+procedure for a simplified version of the @code{let} macro might be
+written as
+
+@example
+@group
+(lambda (exp rename compare)
+  (let ((vars (map car (cadr exp)))
+        (inits (map cadr (cadr exp)))
+        (body (cddr exp)))
+    `((lambda ,vars ,@@body)
+      ,@@inits)))
+@end group
+@end example
+
+@noindent
+This would not be hygienic, however.  A hygienic @code{let} macro must
+rename the identifier @code{lambda} to protect it from being captured by
+a local binding.  The renaming effectively creates an fresh alias for
+@code{lambda}, one that cannot be captured by any subsequent binding:
+
+@example
+@group
+(lambda (exp rename compare)
+  (let ((vars (map car (cadr exp)))
+        (inits (map cadr (cadr exp)))
+        (body (cddr exp)))
+    `((,(rename 'lambda) ,vars ,@@body)
+      ,@@inits)))
+@end group
+@end example
+
+The expression returned by the transformation procedure will be expanded
+in the syntactic environment obtained from the syntactic environment of
+the macro application by binding any fresh identifiers generated by the
+renaming procedure to the denotations of the original identifiers in the
+syntactic environment in which the macro was defined.  This means that a
+renamed identifier will denote the same thing as the original identifier
+unless the transformation procedure that renamed the identifier placed
+an occurrence of it in a binding position.
+
+The renaming procedure acts as a mathematical function in the sense that
+the identifiers obtained from any two calls with the same argument will
+be the same in the sense of @code{eqv?}.  It is an error if the renaming
+procedure is called after the transformation procedure has returned.
+
+@cindex comparison predicate
+The third argument to a transformation procedure is a @dfn{comparison
+predicate} that takes the representations of two identifiers as its
+arguments and returns true if and only if they denote the same thing in
+the syntactic environment that will be used to expand the transformed
+macro application.  For example, the transformation procedure for a
+simplified version of the @code{cond} macro can be written as
+
+@example
+@group
+(lambda (exp rename compare)
+  (let ((clauses (cdr exp)))
+    (if (null? clauses)
+        `(,(rename 'quote) unspecified)
+        (let* ((first (car clauses))
+               (rest (cdr clauses))
+               (test (car first)))
+          (cond ((and (identifier? test)
+                      (compare test (rename 'else)))
+                 `(,(rename 'begin) ,@@(cdr first)))
+                (else `(,(rename 'if)
+                        ,test
+                         (,(rename 'begin) ,@@(cdr first))
+                         (cond ,@@rest))))))))))
+@end group
+@end example
+
+@noindent
+In this example the identifier @code{else} is renamed before being passed
+to the comparison predicate, so the comparison will be true if and
+only if the test expression is an identifier that denotes the same
+thing in the syntactic environment of the expression being transformed
+as @code{else} denotes in the syntactic environment in which the @code{cond}
+macro was defined.  If @code{else} were not renamed before being passed to
+the comparison predicate, then it would match a local variable that
+happened to be named @code{else}, and the macro would not be hygienic.
+
+Some macros are non-hygienic by design.  For example, the following
+defines a @code{loop} macro that implicitly binds @code{exit} to an
+escape procedure.  The binding of @code{exit} is intended to capture
+free references to @code{exit} in the body of the loop, so @code{exit}
+is not renamed.
+
+@example
+@group
+(define-syntax loop
+  (er-macro-transformer
+   (lambda (x r c)
+     (let ((body (cdr x)))
+       `(,(r 'call-with-current-continuation)
+         (,(r 'lambda) (exit)
+          (,(r 'let) ,(r 'f) () ,@@body (,(r 'f)))))))))
+@end group
+@end example
+
+Suppose a @code{while} macro is implemented using @code{loop}, with the
+intent that @code{exit} may be used to escape from the @code{while}
+loop.  The @code{while} macro cannot be written as
+
+@example
+@group
+(define-syntax while
+  (syntax-rules ()
+    ((while test body ...)
+     (loop (if (not test) (exit #f))
+           body ...))))
+@end group
+@end example
+
+@noindent
+because the reference to @code{exit} that is inserted by the
+@code{while} macro is intended to be captured by the binding of
+@code{exit} that will be inserted by the @code{loop} macro.  In other
+words, this @code{while} macro is not hygienic.  Like @code{loop}, it
+must be written using the @code{er-macro-transformer} syntax:
+
+@example
+@group
+(define-syntax while
+  (er-macro-transformer
+   (lambda (x r c)
+     (let ((test (cadr x))
+           (body (cddr x)))
+       `(,(r 'loop)
+         (,(r 'if) (,(r 'not) ,test) (exit #f))
+         ,@@body)))))
+@end group
+@end example
+@end deffn
+
+@node SRFI syntax,  , Macros, Special Forms
+@section SRFI syntax
+
+@cindex SRFI syntax
+Several special forms have been introduced to support some of the
+@uref{http://srfi.schemers.org/,Scheme Requests for Implementation}
+(@acronym{SRFI}).  Note that MIT/GNU Scheme has for some time supported
+@uref{http://srfi.schemers.org/srfi-23/srfi-23.html,@acronym{SRFI} 23}
+(error-reporting mechanism) and
+@uref{http://srfi.schemers.org/srfi-30/srfi-30.html,@acronym{SRFI} 30}
+(nested multi-line comments), since these @acronym{SRFI}s reflect
+existing practice rather than introducing new functionality.
+
+@menu
+* cond-expand (SRFI 0)::        
+* receive (SRFI 8)::            
+* define-record-type (SRFI 9)::  
+@end menu
+
+@node cond-expand (SRFI 0), receive (SRFI 8), SRFI syntax, SRFI syntax
+@subsection cond-expand (SRFI 0)
+
+@cindex SRFI 0
+@uref{http://srfi.schemers.org/srfi-0/srfi-0.html,@acronym{SRFI} 0}
+is a mechanism for portably determining the availability of
+@uref{http://srfi.schemers.org/,@acronym{SRFI}} @dfn{features}.
+The @code{cond-expand} special form conditionally expands according to
+the features available.
+
+@deffn {special form} cond-expand clause clause dots{}
+Each @var{clause} has the form
+
+@example
+(@var{feature-requirement} @var{expression} @dots{})
+@end example
+
+where @var{feature-requirement} can have one of the following forms:
+
+@example
+@group
+@var{feature-identifier}
+(and @var{feature-requirement} @dots{})
+(or @var{feature-requirement} @dots{})
+(not @var{feature-requirement})
+else
+@end group
+@end example
+
+(Note that at most one @code{else} clause may be present, and it must
+always be the last clause.)
+
+The @code{cond-expand} special form tests for the existence of features
+at macro-expansion time.  It either expands into the body of one of its
+@var{clause}s or signals an error during syntactic processing.
+@code{cond-expand} expands into the body of the first @var{clause} whose
+@var{feature-requirement} is currently satisfied (an @code{else}
+@var{clause}, if present, is selected if none of the previous
+@var{clauses} is selected).
+
+A @var{feature-requirement} has an obvious interpretation as a logical
+formula, where the @var{feature-identifier} variables have meaning true
+if the feature corresponding to the @var{feature-identifier}, as
+specified in the @acronym{SRFI} registry, is in effect at the location
+of the @code{cond-expand} form, and false otherwise.  A
+@var{feature-requirement} is satisfied if its formula is true under this
+interpretation.
+
+@example
+@group
+(cond-expand
+  ((and srfi-1 srfi-10)
+   (write 1))
+  ((or srfi-1 srfi-10)
+   (write 2))
+  (else))
+
+(cond-expand
+  (command-line
+   (define (program-name) (car (argv)))))
+@end group
+@end example
+
+The second example assumes that @code{command-line} is an alias for some
+feature which gives access to command line arguments.  Note that an
+error will be signaled at macro-expansion time if this feature is not
+present.
+
+Note that MIT/GNU Scheme allows @code{cond-expand} in any context where a
+special form is allowed.  This is an extension of the semantics defined
+by @acronym{SRFI 0}, which only allows @code{cond-expand} at top level.
+@end deffn
+
+@node receive (SRFI 8), define-record-type (SRFI 9), cond-expand (SRFI 0), SRFI syntax
+@subsection receive (SRFI 8)
+
+@cindex SRFI 8
+@uref{http://srfi.schemers.org/srfi-8/srfi-8.html,@acronym{SRFI} 8}
+defines a convenient syntax to bind an identifier to each of the values
+of a multiple-valued expression and then evaluate an expression in the
+scope of the bindings.  As an instance of this pattern, consider the
+following excerpt from a @samp{quicksort} procedure:
+
+@example
+@group
+(call-with-values
+  (lambda ()
+    (partition (precedes pivot) others))
+  (lambda (fore aft)
+    (append (qsort fore) (cons pivot (qsort aft)))))
+@end group
+@end example
+
+Here @samp{partition} is a multiple-valued procedure that takes two
+arguments, a predicate and a list, and returns two lists, one comprising
+the list elements that satisfy the predicate, the other those that do
+not.  The purpose of the expression shown is to partition the list
+@samp{others}, sort each of the sublists, and recombine the results into
+a sorted list.
+
+For our purposes, the important step is the binding of the identifiers
+@samp{fore} and @samp{aft} to the values returned by @samp{partition}.
+Expressing the construction and use of these bindings with the
+call-by-values primitive is cumbersome: One must explicitly embed the
+expression that provides the values for the bindings in a parameterless
+procedure, and one must explicitly embed the expression to be evaluated
+in the scope of those bindings in another procedure, writing as its
+parameters the identifiers that are to be bound to the values received.
+
+These embeddings are boilerplate, exposing the underlying binding
+mechanism but not revealing anything relevant to the particular program
+in which it occurs.  So the use of a syntactic abstraction that exposes
+only the interesting parts -- the identifiers to be bound, the
+multiple-valued expression that supplies the values, and the body of the
+receiving procedure -- makes the code more concise and more readable:
+
+@example
+@group
+(receive (fore aft) (partition (precedes pivot) others)
+  (append (qsort fore) (cons pivot (qsort aft))))
+@end group
+@end example
+
+The advantages are similar to those of a @samp{let} expression over a
+procedure call with a @samp{lambda} expression as its operator.  In both
+cases, cleanly separating a ``header'' in which the bindings are
+established from a ``body'' in which they are used makes it easier to
+follow the code.
+
+@deffn {special form} receive formals expression body
+@var{Formals} and @var{body} are defined as for @samp{lambda}
+(@pxref{Lambda Expressions}).  Specifically, @var{formals} can have the
+following forms (the use of @samp{#!optional} and @samp{#!rest} is also
+allowed in @var{formals} but is omitted for brevity):
+
+@table @samp
+@item (@var{ident1} @dots{} @var{identN})
+The environment in which the @samp{receive} expression is evaluated is
+extended by binding @var{ident1}, @dots{}, @var{identN} to fresh
+locations.  The @var{expression} is evaluated, and its values are stored
+into those locations.  (It is an error if @var{expression} does not have
+exactly @var{N} values.)
+
+@item @var{ident}
+The environment in which the @samp{receive} expression is evaluated is
+extended by binding @var{ident} to a fresh location.  The
+@var{expression} is evaluated, its values are converted into a newly
+allocated list, and the list is stored in the location bound to
+@var{ident}.
+
+@item (@var{ident1} @dots{} @var{identN} . @var{identN+1})
+The environment in which the @samp{receive} expression is evaluated is
+extended by binding @var{ident1}, @dots{}, @var{identN+1} to fresh
+locations.  The @var{expression} is evaluated.  Its first @var{N} values
+are stored into the locations bound to @var{ident1} @dots{} @var{identN}.
+Any remaining values are converted into a newly allocated list, which is
+stored into the location bound to @var{identN+1}.  (It is an error if
+@var{expression} does not have at least @var{N} values.)
+@end table
+
+In any case, the expressions in @var{body} are evaluated sequentially in
+the extended environment.  The results of the last expression in the
+body are the values of the @samp{receive} expression.
+@end deffn
+
+@node define-record-type (SRFI 9),  , receive (SRFI 8), SRFI syntax
+@subsection define-record-type (SRFI 9)
+
+@cindex SRFI 9
+The @samp{define-record-type} syntax described in
+@uref{http://srfi.schemers.org/srfi-9/srfi-9.html,@acronym{SRFI} 9} is a
+slight simplification of one written for Scheme 48 by Jonathan Rees.
+Unlike many record-defining special forms, it does not create any new
+identifiers.  Instead, the names of the record type, predicate,
+constructor, and so on are all listed explicitly in the source.  This
+has the following advantages:
+
+@itemize @bullet
+@item
+It can be defined using a simple macro in Scheme implementations that
+provide a procedural interface for creating record types.
+
+@item
+It does not restrict users to a particular naming convention.
+
+@item
+Tools like @command{grep} and the GNU Emacs tag facility will see the
+defining occurance of each identifier.
+@end itemize
+
+@deffn {special form} define-record-type type-name (constructor-name field-tag @dots{}) predicate-name field-spec @dots{}
+@var{Type-name}, @var{contructor-name}, @var{field-tag}, and
+@var{predicate-name} are identifiers.  @var{Field-spec} has one of these
+two forms:
+
+@example
+@group
+(@var{field-tag} @var{accessor-name})
+(@var{field-tag} @var{accessor-name} @var{modifier-name})
+@end group
+@end example
+
+@noindent
+where @var{field-tag}, @var{accessor-name}, and @var{modifier-name} are
+each identifiers.
+
+@code{define-record-type} is generative: each use creates a new record
+type that is distinct from all existing types, including other record
+types and Scheme's predefined types.  Record-type definitions may only
+occur at top-level (there are two possible semantics for ``internal''
+record-type definitions, generative and nongenerative, and no consensus
+as to which is better).
+
+An instance of @code{define-record-type} is equivalent to the following
+definitions:
+
+@itemize @bullet
+@item
+@var{Type-name} is bound to a representation of the record type itself.
+Operations on record types, such as defining print methods, reflection,
+etc.@: are left to other SRFIs.
+
+@item
+@var{constructor-name} is bound to a procedure that takes as many
+arguments as there are @var{field-tag}s in the (@var{constructor-name}
+@dots{}) subform and returns a new @var{type-name} record.  Fields whose
+tags are listed with @var{constructor-name} have the corresponding
+argument as their initial value.  The initial values of all other fields
+are unspecified.
+
+@item
+@var{predicate-name} is a predicate that returns @code{#t} when given a
+value returned by @var{constructor-name} and @code{#f} for everything
+else.
+
+@item
+Each @var{accessor-name} is a procedure that takes a record of type
+@var{type-name} and returns the current value of the corresponding
+field.  It is an error to pass an accessor a value which is not a record
+of the appropriate type.
+
+@item
+Each @var{modifier-name} is a procedure that takes a record of type
+@var{type-name} and a value which becomes the new value of the
+corresponding field; an unspecified value is returned.  It is an error
+to pass a modifier a first argument which is not a record of the
+appropriate type.
+@end itemize
+
+Assigning the value of any of these identifiers has no effect on the
+behavior of any of their original values.
+@end deffn
+
+The following
+
+@example
+@group
+(define-record-type :pare
+  (kons x y)
+  pare?
+  (x kar set-kar!)
+  (y kdr))
+@end group
+@end example
+
+@noindent
+defines @samp{kons} to be a constructor, @samp{kar} and @samp{kdr} to be
+accessors, @samp{set-kar!} to be a modifier, and @samp{pare?} to be a
+predicate for objects of type @samp{:pare}.
+
+@example
+@group
+(pare? (kons 1 2))        @result{} #t
+(pare? (cons 1 2))        @result{} #f
+(kar (kons 1 2))          @result{} 1
+(kdr (kons 1 2))          @result{} 2
+(let ((k (kons 1 2)))
+  (set-kar! k 3)
+  (kar k))                @result{} 3
+@end group
+@end example

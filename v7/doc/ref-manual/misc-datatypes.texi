@@ -1,0 +1,937 @@
+@c This file is part of the MIT/GNU Scheme Reference Manual.
+@c $Id: misc-datatypes.texi,v 1.1 2003/04/15 03:29:53 cph Exp $
+
+@c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
+@c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
+@c Copyright 2002,2003 Massachusetts Institute of Technology
+@c See file scheme.texinfo for copying conditions.
+
+@node Miscellaneous Datatypes, Associations, Bit Strings, Top
+@chapter Miscellaneous Datatypes
+
+@menu
+* Booleans::                    
+* Symbols::                     
+* Cells::                       
+* Records::                     
+* Promises::                    
+* Streams::                     
+* Weak Pairs::                  
+@end menu
+
+@node Booleans, Symbols, Miscellaneous Datatypes, Miscellaneous Datatypes
+@section Booleans
+
+@findex #t
+@findex #f
+@cindex #t as external representation
+@cindex #f as external representation
+@cindex boolean object (defn)
+@cindex true, boolean object (defn)
+@cindex false, boolean object (defn)
+The @dfn{boolean objects} are @dfn{true} and @dfn{false}.  The boolean
+constant true is written as @samp{#t}, and the boolean constant false is
+written as @samp{#f}.
+
+@findex if
+@findex cond
+@findex and
+@findex or
+The primary use for boolean objects is in the conditional expressions
+@code{if}, @code{cond}, @code{and}, and @code{or}; the behavior of these
+expressions is determined by whether objects are true or false.  These
+expressions count only @code{#f} as false.  They count everything else,
+including @code{#t}, pairs, symbols, numbers, strings, vectors, and
+procedures as true (but @pxref{True and False}).
+
+@findex t
+@findex nil
+Programmers accustomed to other dialects of Lisp should note that Scheme
+distinguishes @code{#f} and the empty list from the symbol @code{nil}.
+Similarly, @code{#t} is distinguished from the symbol @code{t}.  In
+fact, the boolean objects (and the empty list) are not symbols at all.
+
+Boolean constants evaluate to themselves, so you don't need to quote
+them.
+
+@example
+@group
+#t                                      @result{}  #t
+#f                                      @result{}  #f
+'#f                                     @result{}  #f
+t                                       @error{} Unbound variable
+@end group
+@end example
+
+@defvr variable false
+@defvrx variable true
+These variables are bound to the objects @code{#f} and @code{#t}
+respectively.  The compiler, given the @code{usual-integrations}
+declaration, replaces references to these variables with their
+respective values.
+
+Note that the symbol @code{true} is not equivalent to @code{#t}, and the
+symbol @code{false} is not equivalent to @code{#f}.
+@end defvr
+
+@deffn procedure boolean? object
+@cindex type predicate, for boolean
+Returns @code{#t} if @var{object} is either @code{#t} or @code{#f};
+otherwise returns @code{#f}.
+
+@example
+@group
+(boolean? #f)                           @result{}  #t
+(boolean? 0)                            @result{}  #f
+@end group
+@end example
+@end deffn
+
+@deffn procedure not object
+@deffnx procedure false? object
+@cindex false, predicate for
+@cindex inverse, of boolean object
+These procedures return @code{#t} if @var{object} is false; otherwise
+they return @code{#f}.  In other words they @emph{invert} boolean
+values.  These two procedures have identical semantics; their names are
+different to give different connotations to the test.
+
+@example
+@group
+(not #t)                                @result{}  #f
+(not 3)                                 @result{}  #f
+(not (list 3))                          @result{}  #f
+(not #f)                                @result{}  #t
+@end group
+@end example
+@end deffn
+
+@deffn procedure boolean=? obj1 obj2
+@cindex boolean object, equivalence predicate
+@cindex equivalence predicate, for boolean objects
+@cindex comparison, of boolean objects
+This predicate is true iff @var{obj1} and @var{obj2} are either both true
+or both false.
+@end deffn
+
+@deffn procedure boolean/and object @dots{}
+This procedure returns @code{#t} if none of its arguments are @code{#f}.
+Otherwise it returns @code{#f}.
+@end deffn
+
+@deffn procedure boolean/or object @dots{}
+This procedure returns @code{#f} if all of its arguments are @code{#f}.
+Otherwise it returns @code{#t}.
+@end deffn
+
+@node Symbols, Cells, Booleans, Miscellaneous Datatypes
+@section Symbols
+
+@cindex symbol (defn)
+@cindex interned symbol (defn)
+@cindex uninterned symbol (defn)
+@cindex property list, of symbol
+@cindex disembodied property list
+@findex read
+MIT/GNU Scheme provides two types of symbols: @dfn{interned} and
+@dfn{uninterned}.  Interned symbols are far more common than uninterned
+symbols, and there are more ways to create them.  Interned symbols have
+an external representation that is recognized by the procedure
+@code{read}; uninterned symbols do not.@footnote{In older dialects of
+Lisp, uninterned symbols were fairly important.  This was true because
+symbols were complicated data structures: in addition to having value
+cells (and sometimes, function cells), these structures contained
+@dfn{property lists}.  Because of this, uninterned symbols were often
+used merely for their property lists --- sometimes an uninterned symbol
+used this way was referred to as a @dfn{disembodied property list}.  In
+MIT/GNU Scheme, symbols do not have property lists, or any other components
+besides their names.  There is a different data structure similar to
+disembodied property lists: one-dimensional tables (@pxref{1D Tables}).
+For these reasons, uninterned symbols are not very useful in MIT/GNU Scheme.
+In fact, their primary purpose is to simplify the generation of unique
+variable names in programs that generate Scheme code.}
+
+@findex string=?
+@findex eq?
+Interned symbols have an extremely useful property: any two interned
+symbols whose names are the same, in the sense of @code{string=?}, are
+the same object (i.e.@: they are @code{eq?} to one another).  The term
+@dfn{interned} refers to the process of @dfn{interning} by which this is
+accomplished.  Uninterned symbols do not share this property.
+
+@cindex case, of interned symbol
+@cindex alphabetic case, of interned symbol
+@findex write
+The names of interned symbols are not distinguished by their alphabetic
+case.  Because of this, MIT/GNU Scheme converts all alphabetic
+characters in the name of an interned symbol to a specific case (lower
+case) when the symbol is created.  When the name of an interned symbol
+is referenced (using @code{symbol->string}) or written (using
+@code{write}) it appears in this case.  It is a bad idea to depend on
+the name being lower case.  In fact, it is preferable to take this one
+step further: don't depend on the name of a symbol being in a uniform
+case.
+
+@cindex external representation, for symbol
+@findex read
+@findex write
+The rules for writing an interned symbol are the same as the rules for
+writing an identifier (@pxref{Identifiers}).  Any interned symbol that
+has been returned as part of a literal expression, or read using the
+@code{read} procedure and subsequently written out using the
+@code{write} procedure, will read back in as the identical symbol (in
+the sense of @code{eq?}).
+
+Usually it is also true that reading in an interned symbol that was
+previously written out produces the same symbol.  An exception are
+symbols created by the procedures @code{string->symbol} and
+@code{intern}; they can create symbols for which this write/read
+invariance may not hold because the symbols' names contain special
+characters or letters in the non-standard case.@footnote{MIT/GNU Scheme
+reserves a specific set of interned symbols for its own use.  If you use
+these reserved symbols it is possible that you could break specific
+pieces of software that depend on them.  The reserved symbols all have
+names beginning with the characters @samp{#[} and ending with the
+character @samp{]}; thus none of these symbols can be read by the
+procedure @code{read} and hence are not likely to be used by accident.
+For example, @code{(intern "#[unnamed-procedure]")} produces a reserved
+symbol.}
+
+@findex read
+The external representation for uninterned symbols is special, to
+distinguish them from interned symbols and prevent them from being
+recognized by the @code{read} procedure:
+
+@example
+@group
+(string->uninterned-symbol "foo")
+     @result{}  #[uninterned-symbol 30 foo]
+@end group
+@end example
+
+In this section, the procedures that return symbols as values will
+either always return interned symbols, or always return uninterned
+symbols.  The procedures that accept symbols as arguments will always
+accept either interned or uninterned symbols, and do not distinguish the
+two.
+
+@deffn procedure symbol? object
+@cindex type predicate, for symbol
+Returns @code{#t} if @var{object} is a symbol, otherwise returns
+@code{#f}.
+
+@example
+@group
+(symbol? 'foo)                                  @result{}  #t
+(symbol? (car '(a b)))                          @result{}  #t
+(symbol? "bar")                                 @result{}  #f
+@end group
+@end example
+@end deffn
+
+@deffn procedure symbol->string symbol
+@cindex name, of symbol
+@cindex print name, of symbol
+@findex string=?
+@findex string-set!
+Returns the name of @var{symbol} as a string.  If @var{symbol} was
+returned by @code{string->symbol}, the value of this procedure will be
+identical (in the sense of @code{string=?}) to the string that was
+passed to @code{string->symbol}.  It is an error to apply mutation
+procedures such as @code{string-set!} to strings returned by this
+procedure.
+
+@example
+@group
+(symbol->string 'flying-fish)           @result{}  "flying-fish"
+(symbol->string 'Martin)                @result{}  "martin"
+(symbol->string (string->symbol "Malvina"))
+                                        @result{}  "Malvina"
+@end group
+@end example
+
+Note that two distinct uninterned symbols can have the same name.
+@end deffn
+
+@deffn procedure intern string
+@cindex interning, of symbols
+@cindex construction, of symbols
+Returns the interned symbol whose name is @var{string}.  Converts
+@var{string} to the standard alphabetic case before generating the
+symbol.  This is the preferred way to create interned symbols, as it
+guarantees the following independent of which case the implementation
+uses for symbols' names:
+
+@example
+(eq? 'bitBlt (intern "bitBlt")) @result{}     #t
+@end example
+
+The user should take care that @var{string} obeys the rules for
+identifiers (@pxref{Identifiers}), otherwise the resulting symbol cannot
+be read as itself.
+@end deffn
+
+@deffn procedure intern-soft string
+Returns the interned symbol whose name is @var{string}.  Converts
+@var{string} to the standard alphabetic case before generating the
+symbol.  If no such interned symbol exists, returns @code{#f}.
+
+This is exactly like @code{intern}, except that it will not create an
+interned symbol, but only returns symbols that already exist.
+@end deffn
+
+@deffn procedure string->symbol string
+@cindex string, interning as symbol
+Returns the interned symbol whose name is @var{string}.  Although you
+can use this procedure to create symbols with names containing special
+characters or lowercase letters, it's usually a bad idea to create such
+symbols because they cannot be read as themselves.  See
+@code{symbol->string}.
+
+@example
+@group
+(eq? 'mISSISSIppi 'mississippi)         @result{}  #t
+(string->symbol "mISSISSIppi")
+     @result{}  @r{the symbol with the name} "mISSISSIppi"
+(eq? 'bitBlt (string->symbol "bitBlt")) @result{}  #f
+(eq? 'JollyWog
+      (string->symbol
+        (symbol->string 'JollyWog)))    @result{}  #t
+(string=? "K. Harper, M.D."
+           (symbol->string
+             (string->symbol
+               "K. Harper, M.D.")))     @result{}  #t
+@end group
+@end example
+@end deffn
+
+@deffn procedure string->uninterned-symbol string
+Returns a newly allocated uninterned symbol whose name is @var{string}.
+It is unimportant what case or characters are used in
+@var{string}.
+
+Note: this is the fastest way to make a symbol.
+@end deffn
+
+@deffn procedure generate-uninterned-symbol [object]
+@cindex gensym (see uninterned symbol)
+@findex eq?
+Returns a newly allocated uninterned symbol that is guaranteed to be
+different from any other object.  The symbol's name consists of a prefix
+string followed by the (exact non-negative integer) value of an internal
+counter.  The counter is initially zero, and is incremented after each
+call to this procedure.
+
+The optional argument @var{object} is used to control how the symbol is
+generated.  It may take one of the following values:
+
+@itemize @bullet
+@item
+If @var{object} is omitted or @code{#f}, the prefix is @code{"G"}.
+
+@item
+If @var{object} is an exact non-negative integer, the internal counter
+is set to that integer prior to generating the result.
+
+@item
+If @var{object} is a string, it is used as the prefix.
+
+@item
+If @var{object} is a symbol, its name is used as the prefix.
+@end itemize
+
+@example
+@group
+(generate-uninterned-symbol)
+     @result{}  #[uninterned-symbol 31 G0]
+(generate-uninterned-symbol)
+     @result{}  #[uninterned-symbol 32 G1]
+(generate-uninterned-symbol 'this)
+     @result{}  #[uninterned-symbol 33 this2]
+(generate-uninterned-symbol)
+     @result{}  #[uninterned-symbol 34 G3]
+(generate-uninterned-symbol 100)
+     @result{}  #[uninterned-symbol 35 G100]
+(generate-uninterned-symbol)
+     @result{}  #[uninterned-symbol 36 G101]
+@end group
+@end example
+@end deffn
+
+@deffn procedure symbol-append symbol @dots{}
+@cindex appending, of symbols
+@cindex pasting, of symbols
+Returns the interned symbol whose name is formed by concatenating the
+names of the given symbols.  This procedure preserves the case of the
+names of its arguments, so if one or more of the arguments' names has
+non-standard case, the result will also have non-standard case.
+
+@example
+@group
+(symbol-append 'foo- 'bar)              @result{}  foo-bar
+@r{;; the arguments may be uninterned:}
+(symbol-append 'foo- (string->uninterned-symbol "baz"))
+                                        @result{}  foo-baz
+@r{;; the result has the same case as the arguments:}
+(symbol-append 'foo- (string->symbol "BAZ"))    @result{}  foo-BAZ
+@end group
+@end example
+@end deffn
+
+@deffn procedure symbol-hash symbol
+@cindex hashing, of symbol
+@findex string-hash
+Returns a hash number for @var{symbol}, which is computed by calling
+@code{string-hash} on @var{symbol}'s name.  The hash number is an exact
+non-negative integer.
+@end deffn
+
+@deffn procedure symbol-hash-mod symbol modulus
+@var{Modulus} must be an exact positive integer.  Equivalent to
+
+@example
+@group
+(modulo (symbol-hash @var{symbol}) @var{modulus})
+@end group
+@end example
+
+This procedure is provided for convenience in constructing hash tables.
+However, it is normally preferable to use @code{make-eq-hash-table} to
+build hash tables keyed by symbols, because @code{eq?} hash tables are
+much faster.
+@end deffn
+
+@deffn procedure symbol<? symbol1 symbol2
+This procedure computes a total order on symbols.  It is equivalent to
+
+@example
+@group
+(string<? (symbol->string @var{symbol1})
+          (symbol->string @var{symbol2}))
+@end group
+@end example
+@end deffn
+
+@node Cells, Records, Symbols, Miscellaneous Datatypes
+@section Cells
+
+@cindex cell (defn)
+@dfn{Cells} are data structures similar to pairs except that they have
+only one element.  They are useful for managing state.
+
+@deffn procedure cell? object
+@cindex type predicate, for cell
+Returns @code{#t} if @var{object} is a cell; otherwise returns
+@code{#f}.
+@end deffn
+
+@deffn procedure make-cell object
+@cindex construction, of cell
+Returns a newly allocated cell whose contents is @var{object}.
+@end deffn
+
+@deffn procedure cell-contents cell
+@cindex selection, of cell component
+@cindex component selection, of cell
+Returns the current contents of @var{cell}.
+@end deffn
+
+@deffn procedure set-cell-contents! cell object
+Alters the contents of @var{cell} to be @var{object}.  Returns an
+unspecified value.
+@end deffn
+
+@deffn procedure bind-cell-contents! cell object thunk
+Alters the contents of @var{cell} to be @var{object}, calls @var{thunk}
+with no arguments, then restores the original contents of @var{cell} and
+returns the value returned by @var{thunk}.  This is completely
+equivalent to dynamic binding of a variable, including the behavior when
+continuations are used (@pxref{Dynamic Binding}).
+@end deffn
+
+@node Records, Promises, Cells, Miscellaneous Datatypes
+@section Records
+
+MIT/GNU Scheme provides a @dfn{record} abstraction, which is a simple and
+flexible mechanism for building structures with named components.
+Records can be defined and accessed using the procedures defined in this
+section.  A less flexible but more concise way to manipulate records is
+to use the @code{define-structure} special form (@pxref{Structure
+Definitions}).
+@findex define-structure
+
+@deffn procedure make-record-type type-name field-names
+@cindex record-type descriptor (defn)
+Returns a @dfn{record-type descriptor}, a value representing a new data
+type, disjoint from all others.  The @var{type-name} argument must be a
+string, but is only used for debugging purposes (such as the printed
+representation of a record of the new type).  The @var{field-names}
+argument is a list of symbols naming the @dfn{fields} of a record of the
+new type.  It is an error if the list contains any duplicates.  It is
+unspecified how record-type descriptors are represented.
+@end deffn
+
+@deffn procedure record-constructor record-type [field-names]
+Returns a procedure for constructing new members of the type represented
+by @var{record-type}.  The returned procedure accepts exactly as many
+arguments as there are symbols in the given list, @var{field-names};
+these are used, in order, as the initial values of those fields in a new
+record, which is returned by the constructor procedure.  The values of
+any fields not named in the list of @var{field-names} are unspecified.
+The @var{field-names} argument defaults to the list of field-names in
+the call to @code{make-record-type} that created the type represented by
+@var{record-type}; if the @var{field-names} argument is provided, it is
+an error if it contains any duplicates or any symbols not in the default
+list.
+@end deffn
+
+@deffn procedure record-predicate record-type
+Returns a procedure for testing membership in the type represented by
+@var{record-type}.  The returned procedure accepts exactly one argument
+and returns @code{#t} if the argument is a member of the indicated
+record type; it returns @code{#f} otherwise.
+@end deffn
+
+@deffn procedure record-accessor record-type field-name
+Returns a procedure for reading the value of a particular field of a
+member of the type represented by @var{record-type}.  The returned
+procedure accepts exactly one argument which must be a record of the
+appropriate type; it returns the current value of the field named by the
+symbol @var{field-name} in that record.  The symbol @var{field-name}
+must be a member of the list of field names in the call to
+@code{make-record-type} that created the type represented by
+@var{record-type}.
+@end deffn
+
+@deffn procedure record-modifier record-type field-name
+Returns a procedure for writing the value of a particular field of a
+member of the type represented by @var{record-type}.  The returned
+procedure accepts exactly two arguments: first, a record of the
+appropriate type, and second, an arbitrary Scheme value; it modifies the
+field named by the symbol @var{field-name} in that record to contain the
+given value.  The returned value of the modifier procedure is
+unspecified.  The symbol @var{field-name} must be a member of the list
+of field names in the call to @code{make-record-type} that created the
+type represented by @var{record-type}.
+@end deffn
+
+@deffn procedure record? object
+@cindex type predicate, for record
+Returns @code{#t} if @var{object} is a record of any type and @code{#f}
+otherwise.  Note that @code{record?} may be true of any Scheme value; of
+course, if it returns @code{#t} for some particular value, then
+@code{record-type-descriptor} is applicable to that value and returns an
+appropriate descriptor.
+@end deffn
+
+@deffn procedure record-type-descriptor record
+Returns the record-type descriptor representing the type of
+@var{record}.  That is, for example, if the returned descriptor were
+passed to @code{record-predicate}, the resulting predicate would return
+@code{#t} when passed @var{record}.  Note that it is not necessarily the
+case that the returned descriptor is the one that was passed to
+@code{record-constructor} in the call that created the constructor
+procedure that created @var{record}.
+@end deffn
+
+@deffn procedure record-type? object
+@cindex type predicate, for record type
+Returns @code{#t} if @var{object} is a record-type descriptor; otherwise
+returns @code{#f}.
+@end deffn
+
+@deffn procedure record-type-name record-type
+Returns the type name associated with the type represented by
+@var{record-type}.  The returned value is @code{eqv?} to the
+@var{type-name} argument given in the call to @code{make-record-type}
+that created the type represented by @var{record-type}.
+@end deffn
+
+@deffn procedure record-type-field-names record-type
+Returns a list of the symbols naming the fields in members of the type
+represented by @var{record-type}.  The returned value is @code{equal?}
+to the @var{field-names} argument given in the call to
+@code{make-record-type} that created the type represented by
+@var{record-type}.@footnote{In MIT/GNU Scheme, the returned list is always
+newly allocated.}
+@end deffn
+
+@node Promises, Streams, Records, Miscellaneous Datatypes
+@section Promises
+
+@deffn {special form} delay expression
+@cindex promise (defn)
+@cindex promise, construction
+@cindex construction, of promise
+@cindex lazy evaluation (defn)
+@cindex call by need evaluation (defn)
+@cindex evaluation, lazy (defn)
+@cindex evaluation, call by need (defn)
+The @code{delay} construct is used together with the procedure
+@code{force} to implement @dfn{lazy evaluation} or @dfn{call by need}.
+@code{(delay @var{expression})} returns an object called a @dfn{promise}
+which at some point in the future may be asked (by the @code{force}
+procedure) to evaluate @var{expression} and deliver the resulting value.
+@end deffn
+
+@deffn procedure force promise
+@cindex promise, forcing
+@cindex forcing, of promise
+@cindex memoization, of promise
+Forces the value of @emph{promise}.  If no value has been computed for
+the promise, then a value is computed and returned.  The value of the
+promise is cached (or ``memoized'') so that if it is forced a second
+time, the previously computed value is returned without any
+recomputation.
+
+@example
+@group
+(force (delay (+ 1 2)))                 @result{}  3
+
+(let ((p (delay (+ 1 2))))
+  (list (force p) (force p)))           @result{}  (3 3)
+@end group
+
+@group
+(define head car)
+
+(define tail
+  (lambda (stream)
+    (force (cdr stream))))
+@end group
+
+@group
+(define a-stream
+  (letrec ((next
+            (lambda (n)
+              (cons n (delay (next (+ n 1)))))))
+    (next 0)))
+
+(head (tail (tail a-stream)))           @result{}  2
+@end group
+@end example
+@end deffn
+
+@deffn procedure promise? object
+@cindex type predicate, for promise
+Returns @code{#t} if @var{object} is a promise; otherwise returns
+@code{#f}.
+@end deffn
+
+@deffn procedure promise-forced? promise
+Returns @code{#t} if @var{promise} has been forced and its value cached;
+otherwise returns @code{#f}.
+@end deffn
+
+@deffn procedure promise-value promise
+If @var{promise} has been forced and its value cached, this procedure
+returns the cached value.  Otherwise, an error is signalled.
+@end deffn
+
+@code{force} and @code{delay} are mainly intended for programs written
+in functional style.  The following examples should not be considered to
+illustrate good programming style, but they illustrate the property that
+the value of a promise is computed at most once.
+
+@example
+@group
+(define count 0)
+
+(define p
+  (delay
+   (begin
+     (set! count (+ count 1))
+     (* x 3))))
+
+(define x 5)
+@end group
+
+@group
+count                                   @result{}  0
+p                                       @result{}  #[promise 54]
+(force p)                               @result{}  15
+p                                       @result{}  #[promise 54]
+count                                   @result{}  1
+(force p)                               @result{}  15
+count                                   @result{}  1
+@end group
+@end example
+
+Here is a possible implementation of @code{delay} and @code{force}.  We
+define the expression
+
+@example
+(delay @var{expression})
+@end example
+
+@noindent
+to have the same meaning as the procedure call
+
+@example
+(make-promise (lambda () @var{expression}))
+@end example
+
+@noindent
+where @code{make-promise} is defined as follows:
+
+@example
+@group
+(define make-promise
+  (lambda (proc)
+    (let ((already-run? #f)
+          (result #f))
+      (lambda ()
+        (cond ((not already-run?)
+               (set! result (proc))
+               (set! already-run? #t)))
+        result))))
+@end group
+@end example
+
+Promises are implemented here as procedures of no arguments, and
+@code{force} simply calls its argument.
+
+@example
+@group
+(define force
+  (lambda (promise)
+    (promise)))
+@end group
+@end example
+
+Various extensions to this semantics of @code{delay} and @code{force}
+are supported in some implementations (none of these are currently
+supported in MIT/GNU Scheme):
+
+@itemize @bullet
+@item
+Calling @code{force} on an object that is not a promise may simply
+return the object.
+
+@item
+It may be the case that there is no means by which a promise can be
+operationally distinguished from its forced value.  That is, expressions
+like the following may evaluate to either @code{#t} or @code{#f},
+depending on the implementation:
+
+@example
+@group
+(eqv? (delay 1) 1)              @result{}  @r{unspecified}
+(pair? (delay (cons 1 2)))      @result{}  @r{unspecified}
+@end group
+@end example
+
+@item
+Some implementations will implement ``implicit forcing'', where the
+value of a promise is forced by primitive procedures like @code{car} and
+@code{+}:
+
+@example
+(+ (delay (* 3 7)) 13)          @result{}  34
+@end example
+@end itemize
+
+@node Streams, Weak Pairs, Promises, Miscellaneous Datatypes
+@section Streams
+
+@cindex stream (defn)
+In addition to promises, MIT/GNU Scheme supports a higher-level abstraction
+called @dfn{streams}.  Streams are similar to lists, except that the
+tail of a stream is not computed until it is referred to.
+This allows streams to be used to represent infinitely long lists.
+
+@deffn procedure stream object @dots{}
+@cindex construction, of stream
+Returns a newly allocated stream whose elements are the arguments.  Note
+that the expression @code{(stream)} returns the empty stream, or
+end-of-stream marker.
+@end deffn
+
+@deffn procedure list->stream list
+@cindex list, converting to stream
+Returns a newly allocated stream whose elements are the elements of
+@var{list}.  Equivalent to @code{(apply stream @var{list})}.
+@end deffn
+
+@deffn procedure stream->list stream
+@cindex stream, converting to list
+Returns a newly allocated list whose elements are the elements of
+@var{stream}.  If @var{stream} has infinite length this procedure will
+not terminate.  This could have been defined by
+
+@example
+@group
+(define (stream->list stream)
+  (if (stream-null? stream)
+      '()
+      (cons (stream-car stream)
+            (stream->list (stream-cdr stream)))))
+@end group
+@end example
+@end deffn
+
+@deffn {special form} cons-stream object expression
+Returns a newly allocated stream pair.  Equivalent to @code{(cons
+@var{object} (delay @var{expression}))}.
+@end deffn
+
+@deffn procedure stream-pair? object
+@cindex type predicate, for stream pair
+Returns @code{#t} if @var{object} is a pair whose cdr contains a
+promise.  Otherwise returns @code{#f}.  This could have been defined by
+
+@example
+@group
+(define (stream-pair? object)
+  (and (pair? object)
+       (promise? (cdr object))))
+@end group
+@end example
+@end deffn
+
+@deffn procedure stream-car stream
+@deffnx procedure stream-first stream
+@findex car
+Returns the first element in @var{stream}.  @code{stream-car} is
+equivalent to @code{car}.  @code{stream-first} is a synonym for
+@code{stream-car}.
+@end deffn
+
+@deffn procedure stream-cdr stream
+@deffnx procedure stream-rest stream
+@findex force
+@findex cdr
+Returns the first tail of @var{stream}.  Equivalent to @code{(force (cdr
+@var{stream}))}.  @code{stream-rest} is a synonym for @code{stream-cdr}.
+@end deffn
+
+@deffn procedure stream-null? stream
+@cindex empty stream, predicate for
+@findex null?
+Returns @code{#t} if @var{stream} is the end-of-stream marker; otherwise
+returns @code{#f}.  This is equivalent to @code{null?}, but should be
+used whenever testing for the end of a stream.
+@end deffn
+
+@deffn procedure stream-length stream
+@cindex length, of stream
+Returns the number of elements in @var{stream}.  If @var{stream} has an
+infinite number of elements this procedure will not terminate.  Note
+that this procedure forces all of the promises that comprise
+@var{stream}.
+@end deffn
+
+@deffn procedure stream-ref stream k
+@cindex selecting, of stream component
+@cindex component selection, of stream
+Returns the element of @var{stream} that is indexed by @var{k}; that is,
+the @var{k}th element.  @var{K} must be an exact non-negative integer
+strictly less than the length of @var{stream}.
+@end deffn
+
+@deffn procedure stream-head stream k
+Returns the first @var{k} elements of @var{stream} as a list.  @var{K}
+must be an exact non-negative integer strictly less than the length of
+@var{stream}.
+@end deffn
+
+@deffn procedure stream-tail stream k
+Returns the tail of @var{stream} that is indexed by @var{k}; that is,
+the @var{k}th tail.  This is equivalent to performing @code{stream-cdr}
+@var{k} times.  @var{K} must be an exact non-negative integer strictly
+less than the length of @var{stream}.
+@end deffn
+
+@deffn procedure stream-map procedure stream stream @dots{}
+@cindex mapping, of stream
+Returns a newly allocated stream, each element being the result of
+invoking @var{procedure} with the corresponding elements of the
+@var{stream}s as its arguments.
+@end deffn
+
+@node Weak Pairs,  , Streams, Miscellaneous Datatypes
+@section Weak Pairs
+
+@cindex weak pair (defn)
+@cindex pair, weak (defn)
+@dfn{Weak pairs} are a mechanism for building data structures that point
+at objects without protecting them from garbage collection.  The car of
+a weak pair holds its pointer weakly, while the cdr holds its pointer in
+the normal way.  If the object in the car of a weak pair is not held
+normally by any other data structure, it will be garbage-collected.
+
+@findex pair?
+Note: weak pairs are @emph{not} pairs; that is, they do not satisfy the
+predicate @code{pair?}.
+
+@deffn procedure weak-pair? object
+@cindex type predicate, for weak pair
+Returns @code{#t} if @var{object} is a weak pair; otherwise returns
+@code{#f}.
+@end deffn
+
+@deffn procedure weak-cons car cdr
+@cindex construction, of weak pair
+Allocates and returns a new weak pair, with components @var{car} and
+@var{cdr}.  The @var{car} component is held weakly.
+@end deffn
+
+@deffn procedure weak-pair/car? weak-pair
+This predicate returns @code{#f} if the car of @var{weak-pair} has been
+garbage-collected; otherwise returns @code{#t}.  In other words, it is
+true if @var{weak-pair} has a valid car component.
+@end deffn
+
+@deffn procedure weak-car weak-pair
+@cindex selection, of weak pair component
+@cindex component selection, of weak pair
+Returns the car component of @var{weak-pair}.  If the car component has
+been garbage-collected, this operation returns @code{#f}, but it can
+also return @code{#f} if that is the value that was stored in the car.
+@end deffn
+
+Normally, @code{weak-pair/car?} is used to determine if @code{weak-car}
+would return a valid value.  An obvious way of doing this would be:
+
+@example
+@group
+(if (weak-pair/car? x)
+    (weak-car x)
+    @dots{})
+@end group
+@end example
+
+@noindent
+However, since a garbage collection could occur between the call to
+@code{weak-pair/car?} and @code{weak-car}, this would not always work
+correctly.  Instead, the following should be used, which always works:
+
+@example
+@group
+(or (weak-car x)
+    (and (not (weak-pair/car? x))
+         @dots{}))
+@end group
+@end example
+
+The reason that the latter expression works is that @code{weak-car}
+returns @code{#f} in just two instances: when the car component is
+@code{#f}, and when the car component has been garbage-collected.  In
+the former case, if a garbage collection happens between the two calls,
+it won't matter, because @code{#f} will never be garbage-collected.  And
+in the latter case, it also won't matter, because the car component no
+longer exists and cannot be affected by the garbage collector.
+
+@deffn procedure weak-set-car! weak-pair object
+Sets the car component of @var{weak-pair} to @var{object} and returns an
+unspecified result.
+@end deffn
+
+@deffn procedure weak-cdr weak-pair
+Returns the cdr component of @var{weak-cdr}.
+@end deffn
+
+@deffn procedure weak-set-cdr! weak-pair object
+Sets the cdr component of @var{weak-pair} to @var{object} and returns an
+unspecified result.
+@end deffn

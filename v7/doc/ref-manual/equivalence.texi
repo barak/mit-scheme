@@ -1,0 +1,295 @@
+@c This file is part of the MIT/GNU Scheme Reference Manual.
+@c $Id: equivalence.texi,v 1.1 2003/04/15 03:29:35 cph Exp $
+
+@c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
+@c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
+@c Copyright 2002,2003 Massachusetts Institute of Technology
+@c See file scheme.texinfo for copying conditions.
+
+@node Equivalence Predicates, Numbers, Special Forms, Top
+@chapter Equivalence Predicates
+
+@cindex predicate (defn)
+@cindex predicate, equivalence (defn)
+@cindex equivalence predicate (defn)
+@cindex comparison, for equivalence
+@findex eq?
+@findex eqv?
+@findex equal?
+A @dfn{predicate} is a procedure that always returns a boolean value
+(@code{#t} or @code{#f}).  An @dfn{equivalence predicate} is the
+computational analogue of a mathematical equivalence relation (it is
+symmetric, reflexive, and transitive).  Of the equivalence predicates
+described in this section, @code{eq?} is the finest or most
+discriminating, and @code{equal?} is the coarsest.  @code{eqv?} is
+slightly less discriminating than @code{eq?}.
+
+@deffn procedure eqv? obj1 obj2
+The @code{eqv?} procedure defines a useful equivalence relation on
+objects.  Briefly, it returns @code{#t} if @var{obj1} and @var{obj2}
+should normally be regarded as the same object.
+
+The @code{eqv?} procedure returns @code{#t} if:
+
+@itemize @bullet
+@item
+@var{obj1} and @var{obj2} are both @code{#t} or both @code{#f}.
+
+@item
+@var{obj1} and @var{obj2} are both interned symbols and
+
+@example
+@group
+(string=? (symbol->string @var{obj1})
+          (symbol->string @var{obj2}))
+     @result{} #t
+@end group
+@end example
+@findex string=?
+@findex symbol->string
+
+@item
+@var{obj1} and @var{obj2} are both numbers, are numerically equal
+according to the @code{=} procedure, and are either both exact or both
+inexact (@pxref{Numbers}).
+@findex =
+
+@item
+@var{obj1} and @var{obj2} are both characters and are the same character
+according to the @code{char=?} procedure (@pxref{Characters}).
+@findex char=?
+
+@item
+both @var{obj1} and @var{obj2} are the empty list.
+
+@item
+@var{obj1} and @var{obj2} are procedures whose location tags are equal.
+
+@item
+@var{obj1} and @var{obj2} are pairs, vectors, strings, bit strings,
+records, cells, or weak pairs that denote the same locations in the
+store.
+@end itemize
+
+@noindent
+The @code{eqv?} procedure returns @code{#f} if:
+
+@itemize @bullet
+@item
+@var{obj1} and @var{obj2} are of different types.
+
+@item
+one of @var{obj1} and @var{obj2} is @code{#t} but the other is
+@code{#f}.
+
+@item
+@var{obj1} and @var{obj2} are symbols but
+
+@example
+@group
+(string=? (symbol->string @var{obj1})
+          (symbol->string @var{obj2}))
+     @result{} #f
+@end group
+@end example
+@findex string=?
+@findex symbol->string
+
+@item
+one of @var{obj1} and @var{obj2} is an exact number but the other is an
+inexact number.
+
+@item
+@var{obj1} and @var{obj2} are numbers for which the @code{=} procedure
+returns @code{#f}.
+@findex =
+
+@item
+@var{obj1} and @var{obj2} are characters for which the @code{char=?}
+procedure returns @code{#f}.
+@findex char=?
+
+@item
+one of @var{obj1} and @var{obj2} is the empty list but the other is not.
+
+@item
+@var{obj1} and @var{obj2} are procedures that would behave differently
+(return a different value or have different side effects) for some
+arguments.
+
+@item
+@var{obj1} and @var{obj2} are pairs, vectors, strings, bit strings,
+records, cells, or weak pairs that denote distinct locations.
+@end itemize
+
+Some examples:
+
+@example
+@group
+(eqv? 'a 'a)                    @result{}  #t
+(eqv? 'a 'b)                    @result{}  #f
+(eqv? 2 2)                      @result{}  #t
+(eqv? '() '())                  @result{}  #t
+(eqv? 100000000 100000000)      @result{}  #t
+(eqv? (cons 1 2) (cons 1 2))    @result{}  #f
+(eqv? (lambda () 1)
+      (lambda () 2))            @result{}  #f
+(eqv? #f 'nil)                  @result{}  #f
+(let ((p (lambda (x) x)))
+  (eqv? p p))                   @result{}  #t
+@end group
+@end example
+
+The following examples illustrate cases in which the above rules do not
+fully specify the behavior of @code{eqv?}.  All that can be said about
+such cases is that the value returned by @code{eqv?} must be a boolean.
+
+@example
+@group
+(eqv? "" "")                    @result{}  @r{unspecified}
+(eqv? '#() '#())                @result{}  @r{unspecified}
+(eqv? (lambda (x) x)
+      (lambda (x) x))           @result{}  @r{unspecified}
+(eqv? (lambda (x) x)
+      (lambda (y) y))           @result{}  @r{unspecified}
+@end group
+@end example
+
+The next set of examples shows the use of @code{eqv?} with procedures
+that have local state.  @code{gen-counter} must return a distinct
+procedure every time, since each procedure has its own internal counter.
+@code{gen-loser}, however, returns equivalent procedures each time,
+since the local state does not affect the value or side effects of the
+procedures.
+
+@example
+@group
+(define gen-counter
+  (lambda ()
+    (let ((n 0))
+      (lambda () (set! n (+ n 1)) n))))
+(let ((g (gen-counter)))
+  (eqv? g g))                   @result{}  #t
+(eqv? (gen-counter) (gen-counter))
+                                @result{}  #f
+@end group
+
+@group
+(define gen-loser
+  (lambda ()
+    (let ((n 0))
+      (lambda () (set! n (+ n 1)) 27))))
+(let ((g (gen-loser)))
+  (eqv? g g))                   @result{}  #t
+(eqv? (gen-loser) (gen-loser))
+                                @result{}  @r{unspecified}
+@end group
+
+@group
+(letrec ((f (lambda () (if (eqv? f g) 'both 'f)))
+         (g (lambda () (if (eqv? f g) 'both 'g)))
+  (eqv? f g))
+                                @result{}  @r{unspecified}
+
+(letrec ((f (lambda () (if (eqv? f g) 'f 'both)))
+         (g (lambda () (if (eqv? f g) 'g 'both)))
+  (eqv? f g))
+                                @result{}  #f
+@end group
+@end example
+
+Objects of distinct types must never be regarded as the same object.
+
+Since it is an error to modify constant objects (those returned by
+literal expressions), the implementation may share structure between
+constants where appropriate.  Thus the value of @code{eqv?} on constants
+is sometimes unspecified.
+
+@example
+@group
+(let ((x '(a)))
+  (eqv? x x))                    @result{}  #t
+(eqv? '(a) '(a))                 @result{}  @r{unspecified}
+(eqv? "a" "a")                   @result{}  @r{unspecified}
+(eqv? '(b) (cdr '(a b)))         @result{}  @r{unspecified}
+@end group
+@end example
+
+Rationale: The above definition of @code{eqv?} allows implementations
+latitude in their treatment of procedures and literals: implementations
+are free either to detect or to fail to detect that two procedures or
+two literals are equivalent to each other, and can decide whether or not
+to merge representations of equivalent objects by using the same pointer
+or bit pattern to represent both.
+@end deffn
+
+@page
+@deffn procedure eq? obj1 obj2
+@code{eq?} is similar to @code{eqv?} except that in some cases it is
+capable of discerning distinctions finer than those detectable by
+@code{eqv?}.
+
+@code{eq?} and @code{eqv?} are guaranteed to have the same behavior on
+symbols, booleans, the empty list, pairs, records, and non-empty strings
+and vectors.  @code{eq?}'s behavior on numbers and characters is
+implementation-dependent, but it will always return either true or
+false, and will return true only when @code{eqv?} would also return
+true.  @code{eq?} may also behave differently from @code{eqv?} on empty
+vectors and empty strings.
+
+@example
+@group
+(eq? 'a 'a)                     @result{}  #t
+(eq? '(a) '(a))                 @result{}  @r{unspecified}
+(eq? (list 'a) (list 'a))       @result{}  #f
+(eq? "a" "a")                   @result{}  @r{unspecified}
+(eq? "" "")                     @result{}  @r{unspecified}
+(eq? '() '())                   @result{}  #t
+(eq? 2 2)                       @result{}  @r{unspecified}
+(eq? #\A #\A)                   @result{}  @r{unspecified}
+(eq? car car)                   @result{}  #t
+(let ((n (+ 2 3)))
+  (eq? n n))                    @result{}  @r{unspecified}
+(let ((x '(a)))
+  (eq? x x))                    @result{}  #t
+(let ((x '#()))
+  (eq? x x))                    @result{}  #t
+(let ((p (lambda (x) x)))
+  (eq? p p))                    @result{}  #t
+@end group
+@end example
+
+Rationale: It will usually be possible to implement @code{eq?} much more
+efficiently than @code{eqv?}, for example, as a simple pointer
+comparison instead of as some more complicated operation.  One reason is
+that it may not be possible to compute @code{eqv?} of two numbers in
+constant time, whereas @code{eq?} implemented as pointer comparison will
+always finish in constant time.  @code{eq?} may be used like @code{eqv?}
+in applications using procedures to implement objects with state since
+it obeys the same constraints as @code{eqv?}.
+@end deffn
+
+@page
+@deffn procedure equal? obj1 obj2
+@cindex circular structure
+@code{equal?} recursively compares the contents of pairs, vectors, and
+strings, applying @code{eqv?} on other objects such as numbers, symbols,
+and records.  A rule of thumb is that objects are generally
+@code{equal?} if they print the same.  @code{equal?} may fail to
+terminate if its arguments are circular data structures.
+
+@example
+@group
+(equal? 'a 'a)                  @result{}  #t
+(equal? '(a) '(a))              @result{}  #t
+(equal? '(a (b) c)
+        '(a (b) c))             @result{}  #t
+(equal? "abc" "abc")            @result{}  #t
+(equal? 2 2)                    @result{}  #t
+(equal? (make-vector 5 'a)
+        (make-vector 5 'a))     @result{}  #t
+(equal? (lambda (x) x)
+        (lambda (y) y))         @result{}  @r{unspecified}
+@end group
+@end example
+@end deffn

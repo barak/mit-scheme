@@ -1,0 +1,1421 @@
+@c This file is part of the MIT/GNU Scheme Reference Manual.
+@c $Id: numbers.texi,v 1.1 2003/04/15 03:29:56 cph Exp $
+
+@c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
+@c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
+@c Copyright 2002,2003 Massachusetts Institute of Technology
+@c See file scheme.texinfo for copying conditions.
+
+@node Numbers, Characters, Equivalence Predicates, Top
+@chapter Numbers
+@cindex number
+
+(This section is largely taken from the @cite{Revised^4 Report on the
+Algorithmic Language Scheme}.)
+
+Numerical computation has traditionally been neglected by the Lisp
+community.  Until Common Lisp there was no carefully thought out
+strategy for organizing numerical computation, and with the exception of
+the MacLisp system little effort was made to execute numerical code
+efficiently.  This report recognizes the excellent work of the Common
+Lisp committee and accepts many of their recommendations.  In some ways
+this report simplifies and generalizes their proposals in a manner
+consistent with the purposes of Scheme.
+
+It is important to distinguish between the mathematical numbers, the
+Scheme numbers that attempt to model them, the machine representations
+used to implement the Scheme numbers, and notations used to write
+numbers.  This report uses the types @emph{number}, @emph{complex},
+@emph{real}, @emph{rational}, and @emph{integer} to refer to both
+mathematical numbers and Scheme numbers.  Machine representations such
+as fixed point and floating point are referred to by names such as
+@emph{fixnum} and @emph{flonum}.
+
+@menu
+* Numerical types::             
+* Exactness::                   
+* Implementation restrictions::  
+* Syntax of numerical constants::  
+* Numerical operations::        
+* Numerical input and output::  
+* Fixnum and Flonum Operations::  
+* Random Numbers::              
+@end menu
+
+@node Numerical types, Exactness, Numbers, Numbers
+@section Numerical types
+@cindex numerical types
+
+Mathematically, numbers may be arranged into a tower of subtypes in
+which each level is a subset of the level above it:
+
+@display
+@group
+number
+complex
+real
+rational
+integer
+@end group
+@end display
+
+For example, 3 is an integer.  Therefore 3 is also a rational, a real,
+and a complex.  The same is true of the Scheme numbers that model 3.
+For Scheme numbers, these types are defined by the predicates
+@code{number?}, @code{complex?}, @code{real?}, @code{rational?}, and
+@code{integer?}.
+
+There is no simple relationship between a number's type and its
+representation inside a computer.  Although most implementations of
+Scheme will offer at least two different representations of 3, these
+different representations denote the same integer.
+
+Scheme's numerical operations treat numbers as abstract data, as
+independent of their representation as possible.  Although an
+implementation of Scheme may use fixnum, flonum, and perhaps other
+representations for numbers, this should not be apparent to a casual
+programmer writing simple programs.
+
+It is necessary, however, to distinguish between numbers that are
+represented exactly and those that may not be.  For example, indexes
+into data structures must be known exactly, as must some polynomial
+coefficients in a symbolic algebra system.  On the other hand, the
+results of measurements are inherently inexact, and irrational numbers
+may be approximated by rational and therefore inexact approximations.
+In order to catch uses of inexact numbers where exact numbers are
+required, Scheme explicitly distinguishes exact from inexact numbers.
+This distinction is orthogonal to the dimension of type.
+
+@node Exactness, Implementation restrictions, Numerical types, Numbers
+@section Exactness
+@cindex exactness
+
+Scheme numbers are either @emph{exact} or @emph{inexact}.  A number is
+exact if it was written as an exact constant or was derived from exact
+numbers using only exact operations.  A number is inexact if it was
+written as an inexact constant, if it was derived using inexact
+ingredients, or if it was derived using inexact operations. Thus
+inexactness is a contagious property of a number.
+
+If two implementations produce exact results for a computation that did
+not involve inexact intermediate results, the two ultimate results will
+be mathematically equivalent.  This is generally not true of
+computations involving inexact numbers since approximate methods such as
+floating point arithmetic may be used, but it is the duty of each
+implementation to make the result as close as practical to the
+mathematically ideal result.
+
+@findex +
+Rational operations such as @code{+} should always produce exact results
+when given exact arguments.  If the operation is unable to produce an
+exact result, then it may either report the violation of an
+implementation restriction or it may silently coerce its result to an
+inexact value.  @xref{Implementation restrictions}.
+
+@findex inexact->exact
+With the exception of @code{inexact->exact}, the operations described in
+this section must generally return inexact results when given any
+inexact arguments.  An operation may, however, return an exact result if
+it can prove that the value of the result is unaffected by the
+inexactness of its arguments.  For example, multiplication of any number
+by an exact zero may produce an exact zero result, even if the other
+argument is inexact.
+
+@node Implementation restrictions, Syntax of numerical constants, Exactness, Numbers
+@section Implementation restrictions
+@cindex implementation restriction
+
+Implementations of Scheme are not required to implement the whole tower
+of subtypes (@pxref{Numerical types}), but they must implement a
+coherent subset consistent with both the purposes of the implementation
+and the spirit of the Scheme language.  For example, an implementation
+in which all numbers are real may still be quite useful.@footnote{MIT/GNU
+Scheme implements the whole tower of numerical types.  It has
+unlimited-precision exact integers and exact rationals.  Flonums are
+used to implement all inexact reals; on machines that support @sc{ieee}
+floating-point arithmetic these are double-precision floating-point
+numbers.}
+
+Implementations may also support only a limited range of numbers of any
+type, subject to the requirements of this section.  The supported range
+for exact numbers of any type may be different from the supported range
+for inexact numbers of that type.  For example, an implementation that
+uses flonums to represent all its inexact real numbers may support a
+practically unbounded range of exact integers and rationals while
+limiting the range of inexact reals (and therefore the range of inexact
+integers and rationals) to the dynamic range of the flonum format.
+Furthermore the gaps between the representable inexact integers and
+rationals are likely to be very large in such an implementation as the
+limits of this range are approached.
+
+@findex length
+@findex vector-length
+@findex string-length
+An implementation of Scheme must support exact integers throughout the
+range of numbers that may be used for indexes of lists, vectors, and
+strings or that may result from computing the length of a list, vector,
+or string.  The @code{length}, @code{vector-length}, and
+@code{string-length} procedures must return an exact integer, and it is
+an error to use anything but an exact integer as an index.  Furthermore
+any integer constant within the index range, if expressed by an exact
+integer syntax, will indeed be read as an exact integer, regardless of
+any implementation restrictions that may apply outside this range.
+Finally, the procedures listed below will always return an exact integer
+result provided all their arguments are exact integers and the
+mathematically expected result is representable as an exact integer
+within the implementation:
+
+@example
+@group
+*                gcd                modulo
++                imag-part          numerator
+-                inexact->exact     quotient
+abs              lcm                rationalize
+angle            magnitude          real-part
+ceiling          make-polar         remainder
+denominator      make-rectangular   round
+expt             max                truncate
+floor            min
+@end group
+@end example
+
+@findex /
+Implementations are encouraged, but not required, to support exact
+integers and exact rationals of practically unlimited size and
+precision, and to implement the above procedures and the @code{/}
+procedure in such a way that they always return exact results when given
+exact arguments.  If one of these procedures is unable to deliver an
+exact result when given exact arguments, then it may either report a
+violation of an implementation restriction or it may silently coerce its
+result to an inexact number.  Such a coercion may cause an error
+later.
+
+An implementation may use floating point and other approximate
+representation strategies for inexact numbers.  This report recommends,
+but does not require, that the @sc{ieee} 32-bit and 64-bit floating
+point standards be followed by implementations that use flonum
+representations, and that implementations using other representations
+should match or exceed the precision achievable using these floating
+point standards.
+
+@findex sqrt
+In particular, implementations that use flonum representations must
+follow these rules: A flonum result must be represented with at least as
+much precision as is used to express any of the inexact arguments to
+that operation.  It is desirable (but not required) for potentially
+inexact operations such as @code{sqrt}, when applied to exact arguments,
+to produce exact answers whenever possible (for example the square root
+of an exact 4 ought to be an exact 2).  If, however, an exact number is
+operated upon so as to produce an inexact result (as by @code{sqrt}),
+and if the result is represented as a flonum, then the most precise
+flonum format available must be used; but if the result is represented
+in some other way then the representation must have at least as much
+precision as the most precise flonum format available.
+
+Although Scheme allows a variety of written notations for numbers, any
+particular implementation may support only some of them.@footnote{MIT/GNU
+Scheme implements all of the written notations for numbers.} For
+example, an implementation in which all numbers are real need not
+support the rectangular and polar notations for complex numbers.  If an
+implementation encounters an exact numerical constant that it cannot
+represent as an exact number, then it may either report a violation of
+an implementation restriction or it may silently represent the constant
+by an inexact number.
+
+@node Syntax of numerical constants, Numerical operations, Implementation restrictions, Numbers
+@section Syntax of numerical constants
+@cindex number, external representation
+@cindex external representation, for number
+
+@findex #b
+@findex #o
+@findex #d
+@findex #x
+@cindex #b as external representation
+@cindex #o as external representation
+@cindex #d as external representation
+@cindex #x as external representation
+A number may be written in binary, octal, decimal, or hexadecimal by the
+use of a radix prefix.  The radix prefixes are @code{#b} (binary),
+@code{#o} (octal), @code{#d} (decimal), and @code{#x} (hexadecimal).
+With no radix prefix, a number is assumed to be expressed in
+decimal.
+
+@findex #e
+@findex #i
+@findex #
+@cindex #e as external representation
+@cindex #i as external representation
+@cindex # in external representation of number
+A numerical constant may be specified to be either exact or inexact by a
+prefix.  The prefixes are @code{#e} for exact, and @code{#i} for
+inexact.  An exactness prefix may appear before or after any radix
+prefix that is used.  If the written representation of a number has no
+exactness prefix, the constant may be either inexact or exact.  It is
+inexact if it contains a decimal point, an exponent, or a @code{#}
+character in the place of a digit, otherwise it is exact.
+
+@cindex s, as exponent marker in number
+@cindex f, as exponent marker in number
+@cindex d, as exponent marker in number
+@cindex l, as exponent marker in number
+@cindex e, as exponent marker in number
+@cindex exponent marker (defn)
+@cindex precision, of inexact number
+@cindex numeric precision, inexact
+@cindex internal representation, for inexact number
+@cindex short precision, of inexact number
+@cindex single precision, of inexact number
+@cindex double precision, of inexact number
+@cindex long precision, of inexact number
+In systems with inexact numbers of varying precisions it may be useful
+to specify the precision of a constant.  For this purpose, numerical
+constants may be written with an @dfn{exponent marker} that indicates
+the desired precision of the inexact representation.  The letters
+@code{s}, @code{f}, @code{d}, and @code{l} specify the use of
+@emph{short}, @emph{single}, @emph{double}, and @emph{long} precision,
+respectively.  (When fewer than four internal inexact representations
+exist, the four size specifications are mapped onto those available.
+For example, an implementation with two internal representations may map
+short and single together and long and double together.)  In addition,
+the exponent marker @code{e} specifies the default precision for the
+implementation.  The default precision has at least as much precision as
+@emph{double}, but implementations may wish to allow this default to be
+set by the user.
+
+@example
+@group
+3.14159265358979F0
+       @r{Round to single ---} 3.141593
+0.6L0
+       @r{Extend to long ---} .600000000000000
+@end group
+@end example
+
+@node Numerical operations, Numerical input and output, Syntax of numerical constants, Numbers
+@section Numerical operations
+@cindex numerical operations
+
+@xref{Entry Format}, for a summary of the naming conventions used to
+specify restrictions on the types of arguments to numerical routines.
+The examples used in this section assume that any numerical constant
+written using an exact notation is indeed represented as an exact
+number.  Some examples also assume that certain numerical constants
+written using an inexact notation can be represented without loss of
+accuracy; the inexact constants were chosen so that this is likely to be
+true in implementations that use flonums to represent inexact
+numbers.
+
+@deffn procedure number? object
+@deffnx procedure complex? object
+@deffnx procedure real? object
+@deffnx procedure rational? object
+@deffnx procedure integer? object
+@cindex type predicate, for number
+These numerical type predicates can be applied to any kind of argument,
+including non-numbers.  They return @code{#t} if the object is of the
+named type, and otherwise they return @code{#f}.  In general, if a type
+predicate is true of a number then all higher type predicates are also
+true of that number.  Consequently, if a type predicate is false of a
+number, then all lower type predicates are also false of that
+number.@footnote{In MIT/GNU Scheme the @code{rational?} procedure is the
+same as @code{real?}, and the @code{complex?} procedure is the same as
+@code{number?}.}
+
+@findex zero?
+@findex =
+If @var{z} is an inexact complex number, then @code{(real? @var{z})} is
+true if and only if @code{(zero? (imag-part @var{z}))} is true.  If
+@var{x} is an inexact real number, then @code{(integer? @var{x})} is
+true if and only if @code{(= @var{x} (round @var{x}))}.
+
+@example
+@group
+(complex? 3+4i)         @result{}  #t
+(complex? 3)            @result{}  #t
+(real? 3)               @result{}  #t
+(real? -2.5+0.0i)       @result{}  #t
+(real? #e1e10)          @result{}  #t
+(rational? 6/10)        @result{}  #t
+(rational? 6/3)         @result{}  #t
+(integer? 3+0i)         @result{}  #t
+(integer? 3.0)          @result{}  #t
+(integer? 8/4)          @result{}  #t
+@end group
+@end example
+
+Note: The behavior of these type predicates on inexact numbers is
+unreliable, since any inaccuracy may affect the result.
+
+@end deffn
+
+@deffn procedure exact? z
+@deffnx procedure inexact? z
+These numerical predicates provide tests for the exactness of a
+quantity.  For any Scheme number, precisely one of these predicates is
+true.
+@end deffn
+
+@deffn procedure exact-integer? object
+@deffnx procedure exact-nonnegative-integer? object
+@deffnx procedure exact-rational? object
+These procedures test for some very common types of numbers.  These
+tests could be written in terms of simpler predicates, but are more
+efficient.
+@end deffn
+
+@deffn procedure = z1 z2 z3 @dots{}
+@deffnx procedure < x1 x2 x3 @dots{}
+@deffnx procedure > x1 x2 x3 @dots{}
+@deffnx procedure <= x1 x2 x3 @dots{}
+@deffnx procedure >= x1 x2 x3 @dots{}
+@cindex ordering, of numbers
+@cindex comparison, of numbers
+@cindex equivalence predicate, for numbers
+These procedures return @code{#t} if their arguments are (respectively):
+equal, monotonically increasing, monotonically decreasing, monotonically
+nondecreasing, or monotonically nonincreasing.
+
+These predicates are transitive.  Note that the traditional
+implementations of these predicates in Lisp-like languages are not
+transitive.
+
+Note: While it is not an error to compare inexact numbers using these
+predicates, the results may be unreliable because a small inaccuracy may
+affect the result; this is especially true of @code{=} and @code{zero?}.
+When in doubt, consult a numerical analyst.
+@end deffn
+
+@deffn procedure zero? z
+@deffnx procedure positive? x
+@deffnx procedure negative? x
+@deffnx procedure odd? x
+@deffnx procedure even? x
+@cindex zero
+@cindex positive number
+@cindex negative number
+@cindex odd number
+@cindex even number
+These numerical predicates test a number for a particular property,
+returning @code{#t} or @code{#f}.  See note above regarding inexact
+numbers.
+@end deffn
+
+@deffn procedure max x1 x2 @dots{}
+@deffnx procedure min x1 x2 @dots{}
+@cindex minimum, of numbers
+@cindex maximum, of numbers
+These procedures return the maximum or minimum of their
+arguments.
+
+@example
+@group
+(max 3 4)              @result{}  4    @r{; exact}
+(max 3.9 4)            @result{}  4.0  @r{; inexact}
+@end group
+@end example
+
+Note: If any argument is inexact, then the result will also be inexact
+(unless the procedure can prove that the inaccuracy is not large enough
+to affect the result, which is possible only in unusual
+implementations).  If @code{min} or @code{max} is used to compare
+numbers of mixed exactness, and the numerical value of the result cannot
+be represented as an inexact number without loss of accuracy, then the
+procedure may report a violation of an implementation
+restriction.@footnote{MIT/GNU Scheme signals an error of type
+@code{condition-type:bad-range-argument} in this case.}
+@findex condition-type:bad-range-argument
+@end deffn
+
+@deffn procedure + z1 @dots{}
+@deffnx procedure * z1 @dots{}
+@cindex addition, of numbers
+@cindex sum, of numbers
+@cindex identity, additive
+@cindex multiplication, of numbers
+@cindex product, of numbers
+@cindex identity, multiplicative
+These procedures return the sum or product of their arguments.
+
+@example
+@group
+(+ 3 4)                 @result{}  7
+(+ 3)                   @result{}  3
+(+)                     @result{}  0
+(* 4)                   @result{}  4
+(*)                     @result{}  1
+@end group
+@end example
+@end deffn
+
+@deffn procedure - z1 z2 @dots{}
+@deffnx procedure / z1 z2 @dots{}
+@cindex subtraction, of numbers
+@cindex difference, of numbers
+@cindex inverse, additive, of number
+@cindex division, of numbers
+@cindex quotient, of numbers
+@cindex inverse, multiplicative, of number
+With two or more arguments, these procedures return the difference or
+quotient of their arguments, associating to the left.  With one
+argument, however, they return the additive or multiplicative inverse of
+their argument.
+
+@example
+@group
+(- 3 4)                 @result{}  -1
+(- 3 4 5)               @result{}  -6
+(- 3)                   @result{}  -3
+(/ 3 4 5)               @result{}  3/20
+(/ 3)                   @result{}  1/3
+@end group
+@end example
+@end deffn
+
+@deffn procedure 1+ z
+@deffnx procedure -1+ z
+@code{(1+ z)} is equivalent to @code{(+ z 1)}; @code{(-1+ z)} is
+equivalent to @code{(- z 1)}.
+@end deffn
+
+@deffn procedure abs x
+@cindex absolute value, of number
+@cindex magnitude, of real number
+@code{abs} returns the magnitude of its argument.
+
+@example
+(abs -7)                @result{}  7
+@end example
+@end deffn
+
+@deffn procedure quotient n1 n2
+@deffnx procedure remainder n1 n2
+@deffnx procedure modulo n1 n2
+@cindex division, of integers
+@cindex quotient, of integers
+@cindex remainder, of integers
+@cindex modulus, of integers
+@cindex integer division
+These procedures implement number-theoretic (integer) division: for
+positive integers @var{n1} and @var{n2}, if @var{n3} and @var{n4} are
+integers such that
+@tex
+$$n_1=n_2n_3+n_4$$
+$$0\leq n_4<n_2$$
+@end tex
+@ifinfo
+
+@example
+@group
+@var{n1} = (@var{n2} * @var{n3}) + @var{n4}
+
+0 <= @var{n4} < @var{n2}
+@end group
+@end example
+
+@end ifinfo
+@noindent
+then
+
+@example
+@group
+(quotient @var{n1} @var{n2})        @result{}  @var{n3}
+(remainder @var{n1} @var{n2})       @result{}  @var{n4}
+(modulo @var{n1} @var{n2})          @result{}  @var{n4}
+@end group
+@end example
+
+@noindent
+For integers @var{n1} and @var{n2} with @var{n2} not equal to 0,
+
+@example
+@group
+(= @var{n1} 
+   (+ (* @var{n2} (quotient @var{n1} @var{n2}))
+      (remainder @var{n1} @var{n2})))
+                                    @result{}  #t
+@end group
+@end example
+
+@noindent
+provided all numbers involved in that computation are exact.
+
+The value returned by @code{quotient} always has the sign of the product
+of its arguments.  @code{remainder} and @code{modulo} differ on negative
+arguments --- the @code{remainder} always has the sign of the dividend,
+the @code{modulo} always has the sign of the divisor:
+
+@example
+@group
+(modulo 13 4)           @result{}  1
+(remainder 13 4)        @result{}  1
+
+(modulo -13 4)          @result{}  3
+(remainder -13 4)       @result{}  -1
+
+(modulo 13 -4)          @result{}  -3
+(remainder 13 -4)       @result{}  1
+
+(modulo -13 -4)         @result{}  -1
+(remainder -13 -4)      @result{}  -1
+
+(remainder -13 -4.0)    @result{}  -1.0  @r{; inexact}
+@end group
+@end example
+
+@findex integer-truncate
+Note that @code{quotient} is the same as @code{integer-truncate}.
+@end deffn
+
+@deffn procedure integer-floor n1 n2
+@deffnx procedure integer-ceiling n1 n2
+@deffnx procedure integer-truncate n1 n2
+@deffnx procedure integer-round n1 n2
+These procedures combine integer division with rounding.  For example,
+the following are equivalent:
+
+@example
+@group
+(integer-floor @var{n1} @var{n2})
+(floor (/ @var{n1} @var{n2}))
+@end group
+@end example
+
+@noindent
+However, the former is faster and does not produce an intermediate
+result.
+
+@findex quotient
+Note that @code{integer-truncate} is the same as @code{quotient}.
+@end deffn
+
+@deffn procedure integer-divide n1 n2
+@deffnx procedure integer-divide-quotient qr
+@deffnx procedure integer-divide-remainder qr
+@findex quotient
+@findex remainder
+@code{integer-divide} is equivalent to performing both @code{quotient}
+and @code{remainder} at once.  The result of @code{integer-divide} is an
+object with two components; the procedures
+@code{integer-divide-quotient} and @code{integer-divide-remainder}
+select those components.  These procedures are useful when both the
+quotient and remainder are needed; often computing both of these numbers
+simultaneously is much faster than computing them separately.
+
+For example, the following are equivalent:
+
+@example
+@group
+(lambda (n d)
+  (cons (quotient n d)
+        (remainder n d)))
+
+(lambda (n d)
+  (let ((qr (integer-divide n d)))
+    (cons (integer-divide-quotient qr)
+          (integer-divide-remainder qr))))
+@end group
+@end example
+@end deffn
+
+@deffn procedure gcd n1 @dots{}
+@deffnx procedure lcm n1 @dots{}
+@cindex greatest common divisor, of numbers
+@cindex least common multiple, of numbers
+These procedures return the greatest common divisor or least common
+multiple of their arguments.  The result is always non-negative.
+
+@example
+@group
+(gcd 32 -36)            @result{}  4
+(gcd)                   @result{}  0
+
+(lcm 32 -36)            @result{}  288
+(lcm 32.0 -36)          @result{}  288.0  @r{; inexact}
+(lcm)                   @result{}  1
+@end group
+@end example
+@end deffn
+
+@deffn procedure numerator q
+@deffnx procedure denominator q
+These procedures return the numerator or denominator of their argument;
+the result is computed as if the argument was represented as a fraction
+in lowest terms.  The denominator is always positive.  The denominator
+of 0 is defined to be 1.
+
+@example
+@group
+(numerator (/ 6 4))  @result{}  3
+(denominator (/ 6 4))  @result{}  2
+(denominator (exact->inexact (/ 6 4))) @result{} 2.0
+@end group
+@end example
+@end deffn
+
+@deffn procedure floor x
+@deffnx procedure ceiling x
+@deffnx procedure truncate x
+@deffnx procedure round x
+These procedures return integers.  @code{floor} returns the largest
+integer not larger than @var{x}.  @code{ceiling} returns the smallest
+integer not smaller than @var{x}.  @code{truncate} returns the integer
+closest to @var{x} whose absolute value is not larger than the absolute
+value of @var{x}.  @code{round} returns the closest integer to @var{x},
+rounding to even when @var{x} is halfway between two integers.
+
+Rationale: @code{round} rounds to even for consistency with the rounding
+modes required by the @sc{ieee} floating point standard.
+
+Note: If the argument to one of these procedures is inexact, then the
+result will also be inexact.  If an exact value is needed, the result
+should be passed to the @code{inexact->exact} procedure (or use one of
+the procedures below).
+
+@example
+@group
+(floor -4.3)          @result{}  -5.0
+(ceiling -4.3)        @result{}  -4.0
+(truncate -4.3)       @result{}  -4.0
+(round -4.3)          @result{}  -4.0
+
+(floor 3.5)           @result{}  3.0
+(ceiling 3.5)         @result{}  4.0
+(truncate 3.5)        @result{}  3.0
+(round 3.5)           @result{}  4.0  @r{; inexact}
+
+(round 7/2)           @result{}  4    @r{; exact}
+(round 7)             @result{}  7
+@end group
+@end example
+@end deffn
+
+@deffn procedure floor->exact x
+@deffnx procedure ceiling->exact x
+@deffnx procedure truncate->exact x
+@deffnx procedure round->exact x
+These procedures are similar to the preceding procedures except that
+they always return an exact result.  For example, the following are
+equivalent
+
+@example
+@group
+(floor->exact x)
+(inexact->exact (floor x))
+@end group
+@end example
+
+@noindent
+except that the former is faster and has fewer range restrictions.
+@end deffn
+
+@deffn procedure rationalize x y
+@deffnx procedure rationalize->exact x y
+@cindex simplest rational (defn)
+@cindex rational, simplest (defn)
+@code{rationalize} returns the @emph{simplest} rational number differing
+from @var{x} by no more than @var{y}.  A rational number @var{r1} is
+@emph{simpler} than another rational number @var{r2} if
+@t{@var{r1}=@var{p1}/@var{q1}} and @t{@var{r2}=@var{p2}/@var{q2}} (both
+in lowest terms) and @t{|@var{p1}|<=|@var{p2}|} and
+@t{|@var{q1}|<=|@var{q2}|}.  Thus @t{3/5} is simpler than @t{4/7}.
+Although not all rationals are comparable in this ordering (consider
+@t{2/7} and @t{3/5}) any interval contains a rational number that is
+simpler than every other rational number in that interval (the simpler
+@t{2/5} lies between @t{2/7} and @t{3/5}).  Note that @t{0=0/1} is the
+simplest rational of all.
+
+@example
+@group
+(rationalize (inexact->exact .3) 1/10)  @result{} 1/3    @r{; exact}
+(rationalize .3 1/10)                   @result{} #i1/3  @r{; inexact}
+@end group
+@end example
+
+@code{rationalize->exact} is similar to @code{rationalize} except that
+it always returns an exact result.
+@end deffn
+
+@deffn procedure simplest-rational x y
+@deffnx procedure simplest-exact-rational x y
+@code{simplest-rational} returns the simplest rational number between
+@var{x} and @var{y} inclusive; @code{simplest-exact-rational} is similar
+except that it always returns an exact result.
+
+These procedures implement the same functionality as @code{rationalize}
+and @code{rationalize->exact}, except that they specify the input range
+by its endpoints; @code{rationalize} specifies the range by its center
+point and its (half-) width.
+@end deffn
+
+@deffn procedure exp z
+@deffnx procedure log z
+@deffnx procedure sin z
+@deffnx procedure cos z
+@deffnx procedure tan z
+@deffnx procedure asin z
+@deffnx procedure acos z
+@deffnx procedure atan z
+@deffnx procedure atan y x
+@findex angle
+@findex make-rectangular
+These procedures compute the usual transcendental functions.  @code{log}
+computes the natural logarithm of @var{z} (not the base ten logarithm).
+@code{asin}, @code{acos}, and @code{atan} compute arcsine, arccosine,
+and arctangent, respectively.  The two-argument variant of @code{atan}
+computes @code{(angle (make-rectangular @var{x} @var{y}))} (see
+below).
+
+In general, the mathematical functions log, arcsine, arccosine, and
+arctangent are multiply defined.  For nonzero real @var{x}, the value of
+log @var{x} is defined to be the one whose imaginary part lies in the
+range minus @var{pi} (exclusive) to @var{pi} (inclusive).  log 0 is
+undefined.  The value of log @var{z} when @var{z} is complex is defined
+according to the formula
+@tex
+$$\log z = \log {\rm magnitude}(z) + i {\rm angle} (z)$$
+@end tex
+@ifinfo
+
+@example
+log @var{z} = log magnitude(@var{z}) + i angle(@var{z})
+@end example
+
+@end ifinfo
+With log defined this way, the values of arcsine, arccosine, and
+arctangent are according to the following formulae:
+@tex
+$$\sin^{-1} z = -i \log (i z + \sqrt{1 - z^2})$$
+$$\cos^{-1} z = \pi / 2 - \sin^{-1} z$$
+$$\tan^{-1} z = (\log (1 + i z) - \log (1 - i z)) / (2 i)$$
+@end tex
+@ifinfo
+
+@example
+@group
+arcsin(@var{z}) = -i log(i @var{z} + sqrt(1 - @var{z}^2))
+arccos(@var{z}) = pi/2 - arcsin(@var{z})
+arctan(@var{z}) = (log(1 + i @var{z}) + log(1 - i @var{z})) / (2 i)
+@end group
+@end example
+
+@end ifinfo
+The above specification follows @cite{Common Lisp: the Language}, which
+in turn cites @cite{Principal Values and Branch Cuts in Complex APL};
+refer to these sources for more detailed discussion of branch cuts,
+boundary conditions, and implementation of these functions.  When it is
+possible these procedures produce a real result from a real
+argument.
+@end deffn
+
+@deffn procedure sqrt z
+Returns the principal square root of @var{z}.  The result will have
+either positive real part, or zero real part and non-negative imaginary
+part.
+@end deffn
+
+@deffn procedure expt z1 z2
+Returns @var{z1} raised to the power @var{z2}:
+@tex
+$${z_1}^{z_2} = e^{z_2 \log {z_1}}$$
+$0^0$ is defined to be equal to 1.
+@end tex
+@ifinfo
+
+@example
+@var{z1}^@var{z2} = e^(@var{z2} log @var{z1})
+@end example
+
+@noindent
+0^0 is defined to be equal to 1.
+@end ifinfo
+@end deffn
+
+@deffn procedure make-rectangular x1 x2
+@deffnx procedure make-polar x3 x4
+@deffnx procedure real-part z
+@deffnx procedure imag-part z
+@deffnx procedure magnitude z
+@deffnx procedure angle z
+@deffnx procedure conjugate z
+Suppose @var{x1}, @var{x2}, @var{x3}, and @var{x4} are real numbers and
+@var{z} is a complex number such that
+@tex
+ $$ z = x_1 + x_2\hbox{$i$}
+ = x_3 \cdot e^{{\displaystyle{\hbox{$i$}} x_4}}$$
+@end tex
+@ifinfo
+
+@example
+@var{z} = @var{x1} + @var{x2} i = @var{x3} e^(i @var{x4})
+@end example
+
+@end ifinfo
+@noindent
+Then @code{make-rectangular} and @code{make-polar} return @var{z},
+@code{real-part} returns @var{x1}, @code{imag-part} returns @var{x2},
+@code{magnitude} returns @var{x3}, and @code{angle} returns @var{x4}.
+In the case of @code{angle}, whose value is not uniquely determined by
+the preceding rule, the value returned will be the one in the range
+minus @var{pi} (exclusive) to @var{pi} (inclusive).
+
+@code{conjugate} returns the complex conjugate of @var{z}.
+@end deffn
+
+@deffn procedure exact->inexact z
+@deffnx procedure inexact->exact z
+@code{exact->inexact} returns an inexact representation of @var{z}.  The
+value returned is the inexact number that is numerically closest to the
+argument.  If an exact argument has no reasonably close inexact
+equivalent, then a violation of an implementation restriction may be
+reported; MIT/GNU Scheme signals an error of type
+@code{condition-type:bad-range-argument} in this case.
+@findex condition-type:bad-range-argument
+
+@code{inexact->exact} returns an exact representation of @var{z}.  The
+value returned is the exact number that is numerically closest to the
+argument.  If an inexact argument has no reasonably close exact
+equivalent, then a violation of an implementation restriction may be
+reported; in MIT/GNU Scheme this case does not occur because all inexact
+numbers are representable as exact numbers.
+
+These procedures implement the natural one-to-one correspondence between
+exact and inexact integers throughout an implementation-dependent range.
+@xref{Implementation restrictions}.
+@end deffn
+
+@node Numerical input and output, Fixnum and Flonum Operations, Numerical operations, Numbers
+@section Numerical input and output
+@cindex numerical input and output
+
+@deffn procedure number->string number [radix]
+@var{Radix} must be an exact integer, either 2, 8, 10, or 16.  If
+omitted, @var{radix} defaults to 10.  The procedure
+@code{number->string} takes a number and a radix and returns as a string
+an external representation of the given number in the given radix such
+that
+
+@example
+@group
+(let ((number @var{number})
+      (radix @var{radix}))
+  (eqv? number
+        (string->number (number->string number radix)
+                        radix)))
+@end group
+@end example
+
+@noindent
+is true.  It is an error if no possible result makes this expression
+true.
+
+If @var{number} is inexact, the radix is 10, and the above expression
+can be satisfied by a result that contains a decimal point, then the
+result contains a decimal point and is expressed using the minimum
+number of digits (exclusive of exponent and trailing zeroes) needed to
+make the above expression true; otherwise the format of the result is
+unspecified.
+
+The result returned by @code{number->string} never contains an explicit
+radix prefix.
+
+Note: The error case can occur only when @var{number} is not a complex
+number or is a complex number with an non-rational real or imaginary
+part.
+
+Rationale: If @var{number} is an inexact number represented using
+flonums, and the radix is 10, then the above expression is normally
+satisfied by a result containing a decimal point.  The unspecified case
+allows for infinities, NaNs, and non-flonum representations.
+@end deffn
+
+@defvr variable flonum-parser-fast?
+This variable controls the behavior of @code{string->number} when
+parsing inexact numbers.  Specifically, it allows the user to trade off
+accuracy against speed.
+
+When set to its default value, @code{#f}, the parser provides maximal
+accuracy, as required by the Scheme standard.  If set to @code{#t}, the
+parser uses faster algorithms that will sometimes introduce small errors
+in the result.  The errors affect a few of the least-significant bits of
+the result, and consequently can be tolerated by many applications.
+@end defvr
+
+@defvr variable flonum-unparser-cutoff
+This variable controls the action of @code{number->string} when
+@var{number} is a flonum (and consequently controls all printing of
+flonums).  The value of this variable is normally a list of three items:
+
+@table @var
+@item rounding-type
+One of the following symbols: @code{normal}, @code{relative}, or
+@code{absolute}.  The symbol @code{normal} means that the number should
+be printed with full precision.  The symbol @code{relative} means that
+the number should be rounded to a specific number of digits.  The symbol
+@code{absolute} means that the number should be rounded so that there
+are a specific number of digits to the right of the decimal point.
+
+@item precision
+An exact integer.  If @var{rounding-type} is @code{normal},
+@var{precision} is ignored.  If @var{rounding-type} is @code{relative},
+@var{precision} must be positive, and it specifies the number of digits
+to which the printed representation will be rounded.  If
+@var{rounding-type} is @code{absolute}, the printed representation will
+be rounded @var{precision} digits to the right of the decimal point; if
+@var{precision} is negative, the representation is rounded @code{(-
+@var{precision})} digits to the left of the decimal point.
+
+@item format-type
+One of the symbols: @code{normal}, @code{scientific}, or
+@code{engineering}.  This specifies the format in which the number will
+be printed.@*  @code{scientific} specifies that the number will be printed
+using scientific notation: @code{@var{x}.@var{xxx}e@var{yyy}}.  In other
+words, the number is printed as a mantissa between zero inclusive and
+ten exclusive, and an exponent.  @code{engineering} is like
+@code{scientific}, except that the exponent is always a power of three,
+and the mantissa is constrained to be between zero inclusive and 1000
+exclusive.  If @code{normal} is specified, the number will be printed in
+positional notation if it is ``small enough'', otherwise it is printed
+in scientific notation.  A number is ``small enough'' when the number of
+digits that would be printed using positional notation does not exceed
+the number of digits of precision in the underlying floating-point
+number representation; @sc{ieee} double-precision floating-point numbers
+have 17 digits of precision.
+@end table
+
+@noindent
+This three-element list may be abbreviated in two ways.  First, the
+symbol @code{normal} may be used, which is equivalent to the list
+@code{(normal 0 normal)}.  Second, the third element of the list,
+@var{format-type}, may be omitted, in which case it defaults to
+@code{normal}.
+
+@noindent
+The default value for @code{flonum-unparser-cutoff} is @code{normal}.
+If it is bound to a value different from those described here,
+@code{number->string} issues a warning and acts as though the value had
+been @code{normal}.
+@end defvr
+
+@noindent
+Some examples of @code{flonum-unparser-cutoff}:
+
+@example
+(number->string (* 4 (atan 1 1)))
+                                    @result{} "3.141592653589793"
+(fluid-let ((flonum-unparser-cutoff '(relative 5)))
+  (number->string (* 4 (atan 1 1))))
+                                    @result{} "3.1416"
+(fluid-let ((flonum-unparser-cutoff '(relative 5)))
+  (number->string (* 4000 (atan 1 1))))
+                                    @result{} "3141.6"
+(fluid-let ((flonum-unparser-cutoff '(relative 5 scientific)))
+  (number->string (* 4000 (atan 1 1))))
+                                    @result{} "3.1416e3"
+(fluid-let ((flonum-unparser-cutoff '(relative 5 scientific)))
+  (number->string (* 40000 (atan 1 1))))
+                                    @result{} "3.1416e4"
+(fluid-let ((flonum-unparser-cutoff '(relative 5 engineering)))
+  (number->string (* 40000 (atan 1 1))))
+                                    @result{} "31.416e3"
+(fluid-let ((flonum-unparser-cutoff '(absolute 5)))
+  (number->string (* 4 (atan 1 1))))
+                                    @result{} "3.14159"
+(fluid-let ((flonum-unparser-cutoff '(absolute 5)))
+  (number->string (* 4000 (atan 1 1))))
+                                    @result{} "3141.59265"
+(fluid-let ((flonum-unparser-cutoff '(absolute -4)))
+  (number->string (* 4e10 (atan 1 1))))
+                                    @result{} "31415930000."
+(fluid-let ((flonum-unparser-cutoff '(absolute -4 scientific)))
+  (number->string (* 4e10 (atan 1 1))))
+                                    @result{} "3.141593e10"
+(fluid-let ((flonum-unparser-cutoff '(absolute -4 engineering)))
+  (number->string (* 4e10 (atan 1 1))))
+                                    @result{} "31.41593e9"
+(fluid-let ((flonum-unparser-cutoff '(absolute -5)))
+  (number->string (* 4e10 (atan 1 1))))
+                                    @result{} "31415900000."
+@end example
+
+@deffn procedure string->number string [radix]
+Returns a number of the maximally precise representation expressed by
+the given @var{string}.  @var{Radix} must be an exact integer, either 2,
+8, 10, or 16.  If supplied, @var{radix} is a default radix that may be
+overridden by an explicit radix prefix in @var{string} (e.g.@:
+@code{"#o177"}).  If @var{radix} is not supplied, then the default radix
+is 10.  If @var{string} is not a syntactically valid notation for a
+number, then @code{string->number} returns @code{#f}.
+
+@example
+@group
+(string->number "100")        @result{}  100
+(string->number "100" 16)     @result{}  256
+(string->number "1e2")        @result{}  100.0
+(string->number "15##")       @result{}  1500.0
+@end group
+@end example
+
+@noindent
+Note that a numeric representation using a decimal point or an exponent
+marker is not recognized unless @var{radix} is @code{10}.
+@end deffn
+
+@node Fixnum and Flonum Operations, Random Numbers, Numerical input and output, Numbers
+@section Fixnum and Flonum Operations
+
+This section describes numerical operations that are restricted forms of
+the operations described above.  These operations are useful because
+they compile very efficiently.  However, care should be exercised: if
+used improperly, these operations can return incorrect answers, or even
+malformed objects that confuse the garbage collector.
+
+@menu
+* Fixnum Operations::           
+* Flonum Operations::           
+@end menu
+
+@node Fixnum Operations, Flonum Operations, Fixnum and Flonum Operations, Fixnum and Flonum Operations
+@subsection Fixnum Operations
+
+@cindex fixnum (defn)
+A @dfn{fixnum} is an exact integer that is small enough to fit in a
+machine word.  In MIT/GNU Scheme, fixnums are typically 24 or 26 bits,
+depending on the machine; it is reasonable to assume that fixnums are at
+least 24 bits.  Fixnums are signed; they are encoded using 2's
+complement.
+
+All exact integers that are small enough to be encoded as fixnums are
+always encoded as fixnums --- in other words, any exact integer that is
+not a fixnum is too big to be encoded as such.  For this reason, small
+constants such as @code{0} or @code{1} are guaranteed to be fixnums.
+
+@deffn procedure fix:fixnum? object
+@cindex type predicate, for fixnum
+Returns @code{#t} if @var{object} is a fixnum; otherwise returns
+@code{#f}.
+@end deffn
+
+Here is an expression that determines the largest fixnum:
+
+@example
+@group
+(let loop ((n 1))
+  (if (fix:fixnum? n)
+      (loop (* n 2))
+      (- n 1)))
+@end group
+@end example
+
+@noindent
+A similar expression determines the smallest fixnum.
+
+@deffn procedure fix:= fixnum fixnum
+@deffnx procedure fix:< fixnum fixnum
+@deffnx procedure fix:> fixnum fixnum
+@deffnx procedure fix:<= fixnum fixnum
+@deffnx procedure fix:>= fixnum fixnum
+@cindex equivalence predicate, for fixnums
+These are the standard order and equality predicates on fixnums.  When
+compiled, they do not check the types of their arguments.
+@end deffn
+
+@deffn procedure fix:zero? fixnum
+@deffnx procedure fix:positive? fixnum
+@deffnx procedure fix:negative? fixnum
+These procedures compare their argument to zero.  When compiled, they do
+not check the type of their argument.  The code produced by the
+following expressions is identical:
+
+@example
+@group
+(fix:zero? @var{fixnum})
+(fix:= @var{fixnum} 0)
+@end group
+@end example
+
+@noindent
+Similarly, @code{fix:positive?} and @code{fix:negative?} produce code
+identical to equivalent expressions using @code{fix:>} and @code{fix:<}.
+@end deffn
+
+@deffn procedure fix:+ fixnum fixnum
+@deffnx procedure fix:- fixnum fixnum
+@deffnx procedure fix:* fixnum fixnum
+@deffnx procedure fix:quotient fixnum fixnum
+@deffnx procedure fix:remainder fixnum fixnum
+@deffnx procedure fix:gcd fixnum fixnum
+@deffnx procedure fix:1+ fixnum
+@deffnx procedure fix:-1+ fixnum
+These procedures are the standard arithmetic operations on fixnums.
+When compiled, they do not check the types of their arguments.
+Furthermore, they do not check to see if the result can be encoded as a
+fixnum.  If the result is too large to be encoded as a fixnum, a
+malformed object is returned, with potentially disastrous effect on the
+garbage collector.
+@end deffn
+
+@deffn procedure fix:divide fixnum fixnum
+@findex integer-divide
+@findex integer-divide-quotient
+@findex integer-divide-remainder
+This procedure is like @code{integer-divide}, except that its arguments
+and its results must be fixnums.  It should be used in conjunction with
+@code{integer-divide-quotient} and @code{integer-divide-remainder}.
+@end deffn
+
+@cindex logical operations, on fixnums
+@cindex bitwise-logical operations, on fixnums
+The following are @dfn{bitwise-logical} operations on fixnums.
+
+@deffn procedure fix:not fixnum
+This returns the bitwise-logical inverse of its argument.  When
+compiled, it does not check the type of its argument.
+
+@example
+@group
+(fix:not 0)                             @result{}  -1
+(fix:not -1)                            @result{}  0
+(fix:not 1)                             @result{}  -2
+(fix:not -34)                           @result{}  33
+@end group
+@end example
+@end deffn
+
+@deffn procedure fix:and fixnum fixnum
+This returns the bitwise-logical ``and'' of its arguments.  When
+compiled, it does not check the types of its arguments.
+
+@example
+@group
+(fix:and #x43 #x0f)                     @result{}  3
+(fix:and #x43 #xf0)                     @result{}  #x40
+@end group
+@end example
+@end deffn
+
+@deffn procedure fix:andc fixnum fixnum
+Returns the bitwise-logical ``and'' of the first argument with the
+bitwise-logical inverse of the second argument.  When compiled, it does
+not check the types of its arguments.
+
+@example
+@group
+(fix:andc #x43 #x0f)                    @result{}  #x40
+(fix:andc #x43 #xf0)                    @result{}  3
+@end group
+@end example
+@end deffn
+
+@deffn procedure fix:or fixnum fixnum
+This returns the bitwise-logical ``inclusive or'' of its arguments.
+When compiled, it does not check the types of its arguments.
+
+@example
+@group
+(fix:or #x40 3)                         @result{} #x43
+(fix:or #x41 3)                         @result{} #x43
+@end group
+@end example
+@end deffn
+
+@deffn procedure fix:xor fixnum fixnum
+This returns the bitwise-logical ``exclusive or'' of its arguments.
+When compiled, it does not check the types of its arguments.
+
+@example
+@group
+(fix:xor #x40 3)                        @result{} #x43
+(fix:xor #x41 3)                        @result{} #x42
+@end group
+@end example
+@end deffn
+
+@deffn procedure fix:lsh fixnum1 fixnum2
+This procedure returns the result of logically shifting @var{fixnum1} by
+@var{fixnum2} bits.  If @var{fixnum2} is positive, @var{fixnum1} is
+shifted left; if negative, it is shifted right.  When compiled, it does
+not check the types of its arguments, nor the validity of its result.
+
+@example
+@group
+(fix:lsh 1 10)                          @result{}  #x400
+(fix:lsh #x432 -10)                     @result{}  1
+(fix:lsh -1 3)                          @result{}  -8
+(fix:lsh -128 -4)                       @result{}  #x3FFFF8
+@end group
+@end example
+@end deffn
+
+@node Flonum Operations,  , Fixnum Operations, Fixnum and Flonum Operations
+@subsection Flonum Operations
+
+@cindex flonum (defn)
+A @dfn{flonum} is an inexact real number that is implemented as a
+floating-point number.  In MIT/GNU Scheme, all inexact real numbers are
+flonums.  For this reason, constants such as @code{0.} and @code{2.3}
+are guaranteed to be flonums.
+
+@deffn procedure flo:flonum? object
+@cindex type predicate, for flonum
+Returns @code{#t} if @var{object} is a flonum; otherwise returns @code{#f}.
+@end deffn
+
+@deffn procedure flo:= flonum1 flonum2
+@deffnx procedure flo:< flonum1 flonum2
+@deffnx procedure flo:> flonum1 flonum2
+@cindex equivalence predicate, for flonums
+These procedures are the standard order and equality predicates on
+flonums.  When compiled, they do not check the types of their arguments.
+@end deffn
+
+@deffn procedure flo:zero? flonum
+@deffnx procedure flo:positive? flonum
+@deffnx procedure flo:negative? flonum
+Each of these procedures compares its argument to zero.  When compiled,
+they do not check the type of their argument.
+@end deffn
+
+@deffn procedure flo:+ flonum1 flonum2
+@deffnx procedure flo:- flonum1 flonum2
+@deffnx procedure flo:* flonum1 flonum2
+@deffnx procedure flo:/ flonum1 flonum2
+These procedures are the standard arithmetic operations on flonums.
+When compiled, they do not check the types of their arguments.
+@end deffn
+
+@deffn procedure flo:finite? flonum
+@vindex +inf
+@vindex -inf
+@vindex NaN
+@cindex positive infinity (@code{+inf})
+@cindex negative infinity (@code{-inf})
+@cindex not a number (@code{NaN})
+The @acronym{IEEE} floating-point number specification supports three
+special ``numbers'': positive infinity (@code{+inf}), negative infinity
+(@code{-inf}), and not-a-number (@code{NaN}).  This predicate returns
+@code{#f} if @var{flonum} is one of these objects, and @code{#t} if it
+is any other floating-point number.
+@end deffn
+
+@deffn procedure flo:negate flonum
+This procedure returns the negation of its argument.  When compiled, it
+does not check the type of its argument.  Equivalent to @code{(flo:- 0.
+@var{flonum})}.
+@end deffn
+
+@deffn procedure flo:abs flonum
+@deffnx procedure flo:exp flonum
+@deffnx procedure flo:log flonum
+@deffnx procedure flo:sin flonum
+@deffnx procedure flo:cos flonum
+@deffnx procedure flo:tan flonum
+@deffnx procedure flo:asin flonum
+@deffnx procedure flo:acos flonum
+@deffnx procedure flo:atan flonum
+@deffnx procedure flo:sqrt flonum
+@deffnx procedure flo:expt flonum1 flonum2
+@deffnx procedure flo:floor flonum
+@deffnx procedure flo:ceiling flonum
+@deffnx procedure flo:truncate flonum
+@deffnx procedure flo:round flonum
+@deffnx procedure flo:floor->exact flonum
+@deffnx procedure flo:ceiling->exact flonum
+@deffnx procedure flo:truncate->exact flonum
+@deffnx procedure flo:round->exact flonum
+These procedures are flonum versions of the corresponding procedures.
+When compiled, they do not check the types of their arguments.
+@end deffn
+
+@deffn procedure flo:atan2 flonum1 flonum2
+@findex atan
+This is the flonum version of @code{atan} with two arguments.  When
+compiled, it does not check the types of its arguments.
+@end deffn
+
+@node Random Numbers,  , Fixnum and Flonum Operations, Numbers
+@section Random Numbers
+@cindex random number
+@cindex pseudo-random number
+@cindex number, pseudo-random
+
+MIT/GNU Scheme provides a facility for generating pseudo-random numbers.
+The current implementation is a ``subtract-with-carry'' random-number
+generator, based on the algorithm from @cite{A New Class of Random
+Number Generators}, George Marsaglia and Arif Zaman, @cite{The Annals of
+Applied Probability}, Vol.@: 1, No.@: 3, 1991.  At the time it was
+implemented, this was a good algorithm for general purposes, but the
+state of the art in random-number generation is constantly changing.  If
+necessary, the implementation will be updated to use a new algorithm
+while retaining the same interface.
+
+The interface described here is very similar to that of Common Lisp.
+
+@deffn procedure random modulus [state]
+@var{Modulus} must be a positive real number.  @code{random} returns a
+pseudo-random number between zero (inclusive) and @var{modulus}
+(exclusive).  The exactness of the returned number is the same as the
+exactness of @var{modulus}.  Additionally, if @var{modulus} is an exact
+integer, the returned number will be also.  Usually, @var{modulus} is
+either an exact integer or an inexact real; the current implementation
+has been tuned to make these two cases fast.
+
+If @var{state} is given and not @code{#f}, it must be a random-state
+object; otherwise, it defaults to the value of the variable
+@code{*random-state*}.  This object is used to maintain the state of the
+pseudo-random-number generator and is altered as a side effect of the
+@code{random} procedure.
+
+@example
+@group
+(random 1.0)    @result{} .32744744667719056
+(random 1.0)    @result{} .01668326768172354
+(random 10)     @result{} 3
+(random 10)     @result{} 8
+(random 100)    @result{} 38
+(random 100)    @result{} 63
+(random 100/3)  @result{} 130501475769920525/6755399441055744
+(random 100/3)  @result{} 170571694016427575/13510798882111488
+@end group
+@end example
+@end deffn
+
+@deffn procedure flo:random-unit state
+@var{State} must be a random-state object.  @code{flo:random-unit}
+returns a pseudo-random number between zero inclusive and one exclusive;
+the returned number is always a flonum and therefore an inexact real
+number.  @code{flo:random-unit} is equivalent to @code{random} with a
+@var{modulus} of @code{1.0}, except that it is faster.
+@end deffn
+
+The next three definitions concern random-state objects.  In addition to
+these definitions, it is important to know that random-state objects are
+specifically designed so that they can be saved to disk using the
+@code{fasdump} procedure, and later restored using the @code{fasload}
+procedure.  This allows a particular random-state object to be saved in
+order to replay a particular pseudo-random sequence.
+
+@defvr variable *random-state*
+This variable holds a data structure, a random-state object, that
+encodes the internal state of the random-number generator that
+@code{random} uses by default.  A call to @code{random} will perform a
+side effect on this data structure.  This variable may be changed, using
+@code{set!} or @code{fluid-let}, to hold a new random-state object.
+@end defvr
+
+@deffn procedure make-random-state [state]
+This procedure returns a new random-state object, suitable for use as
+the value of the variable @code{*random-state*}, or as the @var{state}
+argument to @code{random}.  If @var{state} is not given or @code{#f},
+@code{make-random-state} returns a @emph{copy} of the current
+random-number state object (the value of the variable
+@code{*random-state*}).  If @var{state} is a random-state object, a copy
+of that object is returned.  If @var{state} is @code{#t}, then a new
+random-state object is returned that has been ``randomly'' initialized
+by some means (such as by a time-of-day clock).
+@end deffn
+
+@deffn procedure random-state? object
+Returns @code{#t} if @var{object} is a random-state object, otherwise
+returns @code{#f}.
+@end deffn

@@ -1,0 +1,3179 @@
+@c This file is part of the MIT/GNU Scheme Reference Manual.
+@c $Id: io.texi,v 1.1 2003/04/15 03:29:46 cph Exp $
+
+@c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
+@c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
+@c Copyright 2002,2003 Massachusetts Institute of Technology
+@c See file scheme.texinfo for copying conditions.
+
+@node Input/Output, Operating-System Interface, Environments, Top
+@chapter Input/Output
+
+@cindex input
+@cindex output
+@cindex port
+This chapter describes the procedures that are used for input and
+output (@acronym{I/O}).  The chapter first describes @dfn{ports} and
+how they are manipulated, then describes the @acronym{I/O} operations.
+Finally, some low-level procedures are described that permit the
+implementation of custom ports and high-performance @acronym{I/O}.
+
+@menu
+* Ports::                       
+* File Ports::                  
+* String Ports::                
+* Input Procedures::            
+* Output Procedures::           
+* Format::                      
+* Custom Output::               
+* Prompting::                   
+* Port Primitives::             
+* Parser Buffers::              
+* Parser Language::             
+* XML Parser::                  
+@end menu
+
+@node Ports, File Ports, Input/Output, Input/Output
+@section Ports
+
+@cindex port (defn)
+@findex console-i/o-port
+Scheme uses ports for @acronym{I/O}.  A @dfn{port}, which can be
+treated like any other Scheme object, serves as a source or sink for
+data.  A port must be open before it can be read from or written to.
+The standard @acronym{I/O} port, @code{console-i/o-port}, is opened
+automatically when you start Scheme.  When you use a file for input or
+output, you need to explicitly open and close a port to the file (with
+procedures described in this chapter).  Additional procedures let you
+open ports to strings.
+
+@cindex current input port (defn)
+@cindex input port, current (defn)
+@cindex port, current
+@findex read-char
+@findex read
+Many input procedures, such as @code{read-char} and @code{read}, read
+data from the current input port by default, or from a port that you
+specify.  The current input port is initially @code{console-i/o-port},
+but Scheme provides procedures that let you change the current input
+port to be a file or string.
+
+@cindex current output port (defn)
+@cindex output port, current (defn)
+@findex write-char
+@findex display
+Similarly, many output procedures, such as @code{write-char} and
+@code{display}, write data to the current output port by default, or to
+a port that you specify.  The current output port is initially
+@code{console-i/o-port}, but Scheme provides procedures that let you
+change the current output port to be a file or string.
+
+All ports read or write only @acronym{ISO-8859-1} characters.
+
+Every port is either an input port, an output port, or both.  The
+following predicates distinguish all of the possible cases.
+
+@deffn procedure port? object
+@cindex type predicate, for port
+Returns @code{#t} if @var{object} is a port, otherwise returns
+@code{#f}.
+@end deffn
+
+@deffn procedure input-port? object
+Returns @code{#t} if @var{object} is an input port, otherwise returns
+@code{#f}.  Any object satisfying this predicate also satisfies
+@code{port?}.
+@end deffn
+
+@deffn procedure output-port? object
+Returns @code{#t} if @var{object} is an output port, otherwise returns
+@code{#f}.  Any object satisfying this predicate also satisfies
+@code{port?}.
+@end deffn
+
+@deffn procedure i/o-port? object
+Returns @code{#t} if @var{object} is both an input port and an output
+port, otherwise returns @code{#f}.  Any object satisfying this predicate
+also satisfies @code{port?}, @code{input-port?}, and
+@code{output-port?}.
+@end deffn
+
+@deffn procedure guarantee-port object
+@deffnx procedure guarantee-input-port object
+@deffnx procedure guarantee-output-port object
+@deffnx procedure guarantee-i/o-port object
+These procedures check the type of @var{object}, signalling an error
+of type@* @code{condition-type:wrong-type-argument} if it is not a
+port, input port, output port, or @acronym{I/O} port, respectively.
+Otherwise they return @var{object}.
+@findex condition-type:wrong-type-argument
+@end deffn
+
+@cindex standard ports
+The next five procedures return the runtime system's @dfn{standard
+ports}.  All of the standard ports are dynamically bound by the
+@acronym{REP} loop; this means that when a new @acronym{REP} loop is
+started, for example by an error, each of these ports is dynamically
+bound to the @acronym{I/O} port of the @acronym{REP} loop.  When the
+@acronym{REP} loop exits, the ports revert to their original values.
+
+@deffn procedure current-input-port
+@findex console-input-port
+Returns the current input port.  This is the default port used by many
+input procedures.  Initially, @code{current-input-port} returns the
+value of @code{console-i/o-port}.
+@end deffn
+
+@deffn procedure current-output-port
+@findex console-output-port
+Returns the current output port.  This is the default port used by many
+output procedures.  Initially, @code{current-output-port} returns the
+value of @code{console-i/o-port}.
+@end deffn
+
+@deffn procedure notification-output-port
+Returns an output port suitable for generating ``notifications'', that
+is, messages to the user that supply interesting information about the
+execution of a program.  For example, the @code{load} procedure writes
+messages to this port informing the user that a file is being loaded.
+Initially, @code{notification-output-port} returns the value of
+@code{console-i/o-port}.
+@end deffn
+
+@deffn procedure trace-output-port
+Returns an output port suitable for generating ``tracing'' information
+about a program's execution.  The output generated by the @code{trace}
+procedure is sent to this port.  Initially, @code{trace-output-port}
+returns the value of @code{console-i/o-port}.
+@end deffn
+
+@deffn procedure interaction-i/o-port
+Returns an @acronym{I/O} port suitable for querying or prompting the
+user.  The standard prompting procedures use this port by default
+(@pxref{Prompting}).  Initially, @code{interaction-i/o-port} returns
+the value of @code{console-i/o-port}.
+@end deffn
+
+@deffn procedure with-input-from-port input-port thunk
+@deffnx procedure with-output-to-port output-port thunk
+@deffnx procedure with-notification-output-port output-port thunk
+@deffnx procedure with-trace-output-port output-port thunk
+@deffnx procedure with-interaction-i/o-port i/o-port thunk
+@var{Thunk} must be a procedure of no arguments.  Each of these
+procedures binds one of the standard ports to its first argument, calls
+@var{thunk} with no arguments, restores the port to its original value,
+and returns the result that was yielded by @var{thunk}.  This temporary
+binding is performed the same way as dynamic binding of a variable,
+including the behavior in the presence of continuations (@pxref{Dynamic
+Binding}).
+
+@code{with-input-from-port} binds the current input port,
+@code{with-output-to-port} binds the current output port,
+@code{with-notification-output-port} binds the ``notification'' output
+port, @code{with-trace-output-port} binds the ``trace'' output port,
+and @code{with-interaction-i/o-port} binds the ``interaction''
+@acronym{I/O} port.
+@end deffn
+
+@deffn procedure set-current-input-port! input-port
+@deffnx procedure set-current-output-port! output-port
+@deffnx procedure set-notification-output-port! output-port
+@deffnx procedure set-trace-output-port! output-port
+@deffnx procedure set-interaction-i/o-port! i/o-port
+Each of these procedures alters the binding of one of the standard ports
+and returns an unspecified value.  The binding that is modified
+corresponds to the name of the procedure.
+@end deffn
+
+@defvr variable console-i/o-port
+@cindex port, console
+@cindex console, port
+@cindex input port, console
+@cindex output port, console
+@code{console-i/o-port} is an @acronym{I/O} port that communicates
+with the ``console''.  Under unix, the console is the controlling
+terminal of the Scheme process.  Under Windows and OS/2, the console
+is the window that is created when Scheme starts up.
+
+This variable is rarely used; instead programs should use one of the
+standard ports defined above.  This variable should not be modified.
+@end defvr
+
+@deffn procedure close-port port
+@cindex closing, of port
+Closes @var{port} and returns an unspecified value.  If @var{port} is a
+file port, the file is closed.
+@end deffn
+
+@deffn procedure close-input-port port
+Closes @var{port} and returns an unspecified value.  @var{Port} must
+be an input port or an @acronym{I/O} port; if it is an @acronym{I/O}
+port, then only the input side of the port is closed.
+@end deffn
+
+@deffn procedure close-output-port port
+Closes @var{port} and returns an unspecified value.  @var{Port} must
+be an output port or an @acronym{I/O} port; if it is an @acronym{I/O}
+port, then only the output side of the port is closed.
+@end deffn
+
+@node File Ports, String Ports, Ports, Input/Output
+@section File Ports
+
+@cindex file, input and output ports
+@cindex port, file
+@cindex input port, file
+@cindex output port, file
+@cindex I/O, to files
+Before Scheme can access a file for reading or writing, it is necessary
+to open a port to the file.  This section describes procedures used to
+open ports to files.  Such ports are closed (like any other port) by
+@code{close-port}.  File ports are automatically closed if and when they
+are reclaimed by the garbage collector.
+
+@findex merge-pathnames
+Before opening a file for input or output, by whatever method, the
+@var{filename} argument is converted to canonical form by calling the
+procedure @code{merge-pathnames} with @var{filename} as its sole
+argument.  Thus, @var{filename} can be either a string or a pathname,
+and it is merged with the current pathname defaults to produce the
+pathname that is then opened.
+
+@cindex binary file ports
+@cindex newline translation
+Any file can be opened in one of two modes, @dfn{normal} or
+@dfn{binary}.  Normal mode is for accessing text files, and binary mode
+is for accessing other files.  Unix does not distinguish these modes,
+but Windows and OS/2 do: in normal mode, their file ports perform
+@dfn{newline translation}, mapping between the carriage-return/linefeed
+sequence that terminates text lines in files, and the @code{#\newline}
+that terminates lines in Scheme.  In binary mode, such ports do not
+perform newline translation.  Unless otherwise mentioned, the procedures
+in this section open files in normal mode.
+
+@deffn procedure open-input-file filename
+@cindex construction, of file input port
+Takes a filename referring to an existing file and returns an input port
+capable of delivering characters from the file.  If the file cannot be
+opened, an error of type @code{condition-type:file-operation-error} is
+signalled.
+@findex condition-type:file-operation-error
+@end deffn
+
+@deffn procedure open-output-file filename [append?]
+@cindex construction, of file output port
+Takes a filename referring to an output file to be created and returns
+an output port capable of writing characters to a new file by that name.
+If the file cannot be opened, an error of type
+@code{condition-type:file-operation-error} is signalled.
+@findex condition-type:file-operation-error
+
+@cindex appending, to output file
+The optional argument @var{append?} is an MIT/GNU Scheme extension.  If
+@var{append?} is given and not @code{#f}, the file is opened in
+@dfn{append} mode.  In this mode, the contents of the file are not
+overwritten; instead any characters written to the file are appended to
+the end of the existing contents.  If the file does not exist, append
+mode creates the file and writes to it in the normal way.
+@end deffn
+
+@deffn procedure open-i/o-file filename
+@cindex construction, of file input port
+Takes a filename referring to an existing file and returns an
+@acronym{I/O} port capable of both reading and writing the file.  If
+the file cannot be opened, an error of type
+@code{condition-type:file-operation-error} is signalled.
+@findex condition-type:file-operation-error
+
+This procedure is often used to open special files.  For example, under
+unix this procedure can be used to open terminal device files, @sc{pty}
+device files, and named pipes.
+@end deffn
+
+@deffn procedure open-binary-input-file filename
+@deffnx procedure open-binary-output-file filename [append?]
+@deffnx procedure open-binary-i/o-file filename
+These procedures open files in binary mode.  In all other respects they
+are identical to @code{open-input-file}, @code{open-output-file}, and
+@code{open-i/o-file}, respectively.
+@end deffn
+
+@deffn procedure close-all-open-files
+@cindex closing, of file port
+This procedure closes all file ports that are open at the time that it
+is called, and returns an unspecified value.
+@end deffn
+
+@deffn procedure call-with-input-file filename procedure
+@deffnx procedure call-with-output-file filename procedure
+These procedures call @var{procedure} with one argument: the port
+obtained by opening the named file for input or output, respectively.
+If the file cannot be opened, an error of type
+@code{condition-type:file-operation-error} is signalled.  If
+@var{procedure} returns, then the port is closed automatically and the
+value yielded by @var{procedure} is returned.  If @var{procedure} does
+not return, then the port will not be closed automatically unless it is
+reclaimed by the garbage collector.@footnote{Because Scheme's escape
+procedures have unlimited extent, it is possible to escape from the
+current continuation but later to escape back in.  If implementations
+were permitted to close the port on any escape from the current
+continuation, then it would be impossible to write portable code using
+both @code{call-with-current-continuation} and
+@code{call-with-input-file} or @code{call-with-output-file}.}
+@end deffn
+
+@deffn procedure call-with-binary-input-file filename procedure
+@deffnx procedure call-with-binary-output-file filename procedure
+These procedures open files in binary mode.  In all other respects they
+are identical to @code{call-with-input-file} and
+@code{call-with-output-file}, respectively.
+@end deffn
+
+@deffn procedure with-input-from-file filename thunk
+@deffnx procedure with-output-to-file filename thunk
+@cindex current input port, rebinding
+@cindex current output port, rebinding
+@findex current-input-port
+@findex current-output-port
+@var{Thunk} must be a procedure of no arguments.
+The file is opened for input or output, an input or output port
+connected to it is made the default value returned by
+@code{current-input-port} or @code{current-output-port}, and the
+@var{thunk} is called with no arguments.  When the @var{thunk} returns,
+the port is closed and the previous default is restored.
+@code{with-input-from-file} and @code{with-output-to-file} return the
+value yielded by @var{thunk}.  If an escape procedure is used to escape
+from the continuation of these procedures, their behavior is
+implementation-dependent; in that situation MIT/GNU Scheme leaves the files
+open.
+@end deffn
+
+@deffn procedure with-input-from-binary-file filename thunk
+@deffnx procedure with-output-to-binary-file filename thunk
+These procedures open files in binary mode.  In all other respects they
+are identical to @code{with-input-from-file} and
+@code{with-output-to-file}, respectively.
+@end deffn
+
+@node String Ports, Input Procedures, File Ports, Input/Output
+@section String Ports
+
+@cindex string, input and output ports
+@cindex port, string
+@cindex input port, string
+@cindex output port, string
+@cindex I/O, to strings
+This section describes the simplest kinds of ports: input ports that
+read their input from given strings, and output ports that accumulate
+their output and return it as a string.  It also describes
+``truncating'' output ports, which can limit the length of the resulting
+string to a given value.
+
+@deffn procedure string->input-port string [start [end]]
+@cindex string, converting to input port
+@cindex construction, of string input port
+Returns a new string port that delivers characters from @var{string}.
+The optional arguments @var{start} and @var{end} may be used to specify
+that the string port delivers characters from a substring of
+@var{string}; if not given, @var{start} defaults to @code{0} and
+@var{end} defaults to @code{(string-length @var{string})}.
+@end deffn
+
+@deffn procedure with-input-from-string string thunk
+@cindex current input port, rebinding
+@var{Thunk} must be a procedure of no arguments.
+@code{with-input-from-string} creates a new input port that reads from
+@var{string}, makes that port the current input port, and calls
+@var{thunk}.  When @var{thunk} returns, @code{with-input-from-string}
+restores the previous current input port and returns the result yielded
+by @var{thunk}.
+
+@example
+(with-input-from-string "(a b c) (d e f)" read)  @result{}  (a b c)
+@end example
+
+Note: this procedure is equivalent to:
+
+@example
+(with-input-from-port (string->input-port @var{string}) @var{thunk})
+@end example
+@end deffn
+
+@deffn procedure with-string-output-port procedure
+@var{Procedure} is called with one argument, an output port.  The value
+yielded by @var{procedure} is ignored.  When @var{procedure} returns,
+@code{with-string-output-port} returns the port's accumulated output as
+a newly allocated string.
+@end deffn
+
+@deffn procedure with-output-to-string thunk
+@cindex current output port, rebinding
+@cindex construction, of string output port
+@findex current-output-port
+@var{Thunk} must be a procedure of no arguments.
+@code{with-output-to-string} creates a new output port that accumulates
+output, makes that port the default value returned by
+@code{current-output-port}, and calls @var{thunk} with no arguments.
+When @var{thunk} returns, @code{with-output-to-string} restores the
+previous default and returns the accumulated output as a newly allocated
+string.
+
+@example
+@group
+(with-output-to-string
+  (lambda ()
+    (write 'abc)))                    @result{}  "abc"
+@end group
+@end example
+
+Note: this procedure is equivalent to:
+
+@example
+@group
+(with-string-output-port
+ (lambda (port)
+   (with-output-to-port port @var{thunk})))
+@end group
+@end example
+@end deffn
+
+@deffn procedure with-output-to-truncated-string k thunk
+Similar to @code{with-output-to-string}, except that the output is
+limited to @var{k} characters.  If @var{thunk} attempts to write more
+than @var{k} characters, it will be aborted by invoking an escape
+procedure that returns from @code{with-output-to-truncated-string}.
+
+The value of this procedure is a pair; the car of the pair is @code{#t}
+if @var{thunk} attempted to write more than @var{k} characters, and
+@code{#f} otherwise.  The cdr of the pair is a newly allocated string
+containing the accumulated output.
+
+This procedure is helpful for displaying circular lists, as shown in this
+example:
+
+@example
+@group
+(define inf (list 'inf))
+(with-output-to-truncated-string 40
+  (lambda ()
+    (write inf)))                       @result{}  (#f . "(inf)")
+(set-cdr! inf inf)
+(with-output-to-truncated-string 40
+  (lambda ()
+    (write inf)))
+        @result{}  (#t . "(inf inf inf inf inf inf inf inf inf inf")
+@end group
+@end example
+@end deffn
+
+@deffn procedure write-to-string object [k]
+Writes @var{object} to a string output port, and returns the resulting
+newly allocated string.  If @var{k} is supplied and not @code{#f}, this
+procedure is equivalent to
+
+@example
+@group
+(with-output-to-truncated-string @var{k}
+  (lambda ()
+    (write @var{object})))
+@end group
+@end example
+
+otherwise it is equivalent to
+
+@example
+@group
+(with-output-to-string
+ (lambda ()
+   (write @var{object})))
+@end group
+@end example
+@end deffn
+
+@node Input Procedures, Output Procedures, String Ports, Input/Output
+@section Input Procedures
+@cindex input operations
+
+This section describes the procedures that read input.  Input procedures
+can read either from the current input port or from a given port.
+Remember that to read from a file, you must first open a port to the
+file.
+
+@cindex interactive input ports (defn)
+Input ports can be divided into two types, called @dfn{interactive} and
+@dfn{non-interactive}.  Interactive input ports are ports that read
+input from a source that is time-dependent; for example, a port that
+reads input from a terminal or from another program.  Non-interactive
+input ports read input from a time-independent source, such as an
+ordinary file or a character string.
+
+All optional arguments called @var{input-port}, if not supplied, default
+to the current input port.
+
+@deffn procedure read-char [input-port]
+@cindex character, input from port
+Returns the next character available from @var{input-port}, updating
+@var{input-port} to point to the following character.  If no more
+characters are available, an end-of-file object is returned.
+
+In MIT/GNU Scheme, if @var{input-port} is an interactive input port and no
+characters are immediately available, @code{read-char} will hang waiting
+for input, even if the port is in non-blocking mode.
+@end deffn
+
+@deffn procedure peek-char [input-port]
+Returns the next character available from @var{input-port},
+@emph{without} updating @var{input-port} to point to the following
+character.  If no more characters are available, an end-of-file object
+is returned.@footnote{The value returned by a call to @code{peek-char}
+is the same as the value that would have been returned by a call to
+@code{read-char} on the same port.  The only difference is that the very
+next call to @code{read-char} or @code{peek-char} on that
+@var{input-port} will return the value returned by the preceding call to
+@code{peek-char}.  In particular, a call to @code{peek-char} on an
+interactive port will hang waiting for input whenever a call to
+@code{read-char} would have hung.}
+
+In MIT/GNU Scheme, if @var{input-port} is an interactive input port and no
+characters are immediately available, @code{peek-char} will hang waiting
+for input, even if the port is in non-blocking mode.
+@end deffn
+
+@deffn procedure char-ready? [input-port]
+@findex read-char
+Returns @code{#t} if a character is ready on @var{input-port} and
+returns @code{#f} otherwise.  If @code{char-ready?} returns @code{#t}
+then the next @code{read-char} operation on @var{input-port} is
+guaranteed not to hang.  If @var{input-port} is a file port at end of
+file then @code{char-ready?} returns
+@code{#t}.@footnote{@code{char-ready?} exists to make it possible for a
+program to accept characters from interactive ports without getting
+stuck waiting for input.  Any input editors associated with such ports
+must make sure that characters whose existence has been asserted by
+@code{char-ready?} cannot be rubbed out.  If @code{char-ready?} were to
+return @code{#f} at end of file, a port at end of file would be
+indistinguishable from an interactive port that has no ready
+characters.}
+@end deffn
+
+@deffn procedure read [input-port]
+@cindex expression, input from port
+@cindex external representation, parsing
+@cindex parsing, of external representation
+Converts external representations of Scheme objects into the objects
+themselves.  @code{read} returns the next object parsable from
+@var{input-port}, updating @var{input-port} to point to the first
+character past the end of the written representation of the object.  If
+an end of file is encountered in the input before any characters are
+found that can begin an object, @code{read} returns an end-of-file
+object.  The @var{input-port} remains open, and further attempts to read
+will also return an end-of-file object.  If an end of file is
+encountered after the beginning of an object's written representation,
+but the written representation is incomplete and therefore not parsable,
+an error is signalled.
+@end deffn
+
+@deffn procedure eof-object? object
+@cindex type predicate, for EOF object
+@cindex EOF object, predicate for
+@cindex end of file object (see EOF object)
+@cindex file, end-of-file marker (see EOF object)
+Returns @code{#t} if @var{object} is an end-of-file object; otherwise
+returns @code{#f}.
+@end deffn
+
+@deffn procedure read-char-no-hang [input-port]
+If @var{input-port} can deliver a character without blocking, this
+procedure acts exactly like @code{read-char}, immediately returning that
+character.  Otherwise, @code{#f} is returned, unless @var{input-port} is
+a file port at end of file, in which case an end-of-file object is
+returned.  In no case will this procedure block waiting for input.
+@end deffn
+
+@deffn procedure read-string char-set [input-port]
+@cindex string, input from port
+Reads characters from @var{input-port} until it finds a terminating
+character that is a member of @var{char-set} (@pxref{Character Sets}) or
+encounters end of file.  The port is updated to point to the terminating
+character, or to end of file if no terminating character was found.
+@code{read-string} returns the characters, up to but excluding the
+terminating character, as a newly allocated string.
+
+This procedure ignores the blocking mode of the port, blocking
+unconditionally until it sees either a delimiter or eof of file.  If end
+of file is encountered before any characters are read, an end-of-file
+object is returned.
+
+@findex read-char
+On many input ports, this operation is significantly faster than the
+following equivalent code using @code{peek-char} and @code{read-char}:
+
+@example
+@group
+(define (read-string char-set input-port)
+  (let ((char (peek-char input-port)))
+    (if (eof-object? char)
+        char
+        (list->string
+         (let loop ((char char))
+           (if (or (eof-object? char)
+                   (char-set-member? char-set char))
+               '()
+               (begin
+                 (read-char input-port)
+                 (cons char
+                       (loop (peek-char input-port))))))))))
+@end group
+@end example
+@end deffn
+
+@deffn procedure read-line [input-port]
+@code{read-line} reads a single line of text from @var{input-port}, and
+returns that line as a newly allocated string.  The @code{#\newline}
+terminating the line, if any, is discarded and does not appear in the
+returned string.
+
+This procedure ignores the blocking mode of the port, blocking
+unconditionally until it has read an entire line.  If end of file is
+encountered before any characters are read, an end-of-file object is
+returned.
+@end deffn
+
+@deffn procedure read-string! string [input-port]
+@deffnx procedure read-substring! string start end [input-port]
+@code{read-string!} and @code{read-substring!} fill the specified region
+of @var{string} with characters read from @var{input-port} until the
+region is full or else there are no more characters available from the
+port.  For @code{read-string!}, the region is all of @var{string}, and
+for @code{read-substring!}, the region is that part of @var{string}
+specified by @var{start} and @var{end}.
+
+The returned value is the number of characters filled into the region.
+However, there are several interesting cases to consider:
+
+@itemize @bullet
+@item
+If @code{read-string!} (@code{read-substring!}) is called when
+@var{input-port} is at ``end-of-file'', then the returned value is
+@code{0}.  Note that ``end-of-file'' can mean a file port that is at the
+file's end, a string port that is at the string's end, or any other port
+that will never produce more characters.
+
+@item
+If @var{input-port} is an interactive port (e.g.@: a terminal), and one
+or more characters are immediately available, the region is filled using
+the available characters.  The procedure then returns immediately,
+without waiting for further characters, even if the number of available
+characters is less than the size of the region.  The returned value is
+the number of characters actually filled in.
+
+@item
+If @var{input-port} is an interactive port and no characters are
+immediately available, the result of the operation depends on the
+blocking mode of the port.  If the port is in non-blocking mode,
+@code{read-string!} (@code{read-substring!}) immediately returns the
+value @code{#f}.  Otherwise, the operation blocks until a character is
+available.  As soon as at least one character is available, the region
+is filled using the available characters.  The procedure then returns
+immediately, without waiting for further characters, even if the number
+of available characters is less than the size of the region.  The
+returned value is the number of characters actually filled in.
+@end itemize
+
+The importance of @code{read-string!} and @code{read-substring!} are
+that they are both flexible and extremely fast, especially for large
+amounts of data.
+@end deffn
+
+The following variables may be dynamically bound to change the behavior
+of the @code{read} procedure.
+
+@defvr variable *parser-radix*
+This variable defines the radix used by the reader when it parses
+numbers.  This is similar to passing a radix argument to
+@code{string->number}.  The value of this variable must be one of
+@code{2}, @code{8}, @code{10}, or @code{16}; any other value is ignored,
+and the reader uses radix @code{10}.
+
+Note that much of the number syntax is invalid for radixes other than
+@code{10}.  The reader detects cases where such invalid syntax is used
+and signals an error.  However, problems can still occur when
+@code{*parser-radix*} is set to @code{16}, because syntax that normally
+denotes symbols can now denote numbers (e.g.@: @code{abc}).  Because of
+this, it is usually undesirable to set this variable to anything other
+than the default.
+
+The default value of this variable is @code{10}.
+@end defvr
+
+@defvr variable *parser-canonicalize-symbols?*
+This variable controls how the parser handles case-sensitivity of
+symbols.  If it is bound to its default value of @code{#t}, symbols read
+by the parser are converted to lower case before being interned.
+Otherwise, symbols are interned without case conversion.
+
+In general, it is a bad idea to use this feature, as it doesn't really
+make Scheme case-sensitive, and therefore can break features of the
+Scheme runtime that depend on case-insensitive symbols.
+@end defvr
+
+@node Output Procedures, Format, Input Procedures, Input/Output
+@section Output Procedures
+@cindex output procedures
+
+@cindex buffering, of output
+@cindex flushing, of buffered output
+Output ports may or may not support @dfn{buffering} of output, in which
+output characters are collected together in a buffer and then sent to
+the output device all at once.  (Most of the output ports implemented by
+the runtime system support buffering.)  Sending all of the characters in
+the buffer to the output device is called @dfn{flushing} the buffer.  In
+general, output procedures do not flush the buffer of an output port
+unless the buffer is full.
+
+@cindex discretionary flushing, of buffered output
+@findex discretionary-flush-output
+However, the standard output procedures described in this section
+perform what is called @dfn{discretionary} flushing of the buffer.
+Discretionary output flushing works as follows.  After a procedure
+performs its output (writing characters to the output buffer), it checks
+to see if the port implements an operation called
+@code{discretionary-flush-output}.  If so, then that operation is
+invoked to flush the buffer.  At present, only the console port defines
+@code{discretionary-flush-output}; this is used to guarantee that output
+to the console appears immediately after it is written, without
+requiring calls to @code{flush-output}.
+
+All optional arguments called @var{output-port}, if not supplied,
+default to the current output port.
+
+@deffn procedure write-char char [output-port]
+@cindex character, output to port
+Writes @var{char} (the character itself, not a written representation of
+the character) to @var{output-port}, performs discretionary output
+flushing, and returns an unspecified value.
+@end deffn
+
+@deffn procedure write-string string [output-port]
+@cindex string, output to port
+Writes @var{string} to @var{output-port}, performs discretionary output
+flushing, and returns an unspecified value.  This is equivalent to
+writing the contents of @var{string}, one character at a time using
+@code{write-char}, except that it is usually much faster.
+@end deffn
+
+@deffn procedure write-substring string start end [output-port]
+@cindex string, output to port
+Writes the substring defined by @var{string}, @var{start}, and @var{end}
+to @var{output-port}, performs discretionary output flushing, and
+returns an unspecified value.  This is equivalent to writing the
+contents of the substring, one character at a time using
+@code{write-char}, except that it is usually much faster.
+@end deffn
+
+@deffn procedure write object [output-port]
+@cindex expression, output to port
+Writes a written representation of @var{object} to @var{output-port},
+and returns an unspecified value.  If @var{object} has a standard
+external representation, then the written representation generated by
+@code{write} shall be parsable by @code{read} into an equivalent object.
+Thus strings that appear in the written representation are enclosed in
+doublequotes, and within those strings backslash and doublequote are
+escaped by backslashes.  @code{write} performs discretionary output
+flushing and returns an unspecified value.
+@end deffn
+
+@deffn procedure display object [output-port]
+@cindex external representation, generating
+@cindex generating, external representation
+Writes a representation of @var{object} to @var{output-port}.  Strings
+appear in the written representation as if written by
+@code{write-string} instead of by @code{write}.  Character objects
+appear in the representation as if written by @code{write-char} instead
+of by @code{write}.  @code{display} performs discretionary output
+flushing and returns an unspecified value.@footnote{@code{write} is
+intended for producing machine-readable output and @code{display} is for
+producing human-readable output.}
+@end deffn
+
+@deffn procedure newline [output-port]
+@cindex newline character, output to port
+Writes an end-of-line to @var{output-port}, performs discretionary
+output flushing, and returns an unspecified value.  Equivalent to
+@code{(write-char #\newline @var{output-port})}.
+@end deffn
+
+@deffn procedure fresh-line [output-port]
+Most output ports are able to tell whether or not they are at the
+beginning of a line of output.  If @var{output-port} is such a port,
+this procedure writes an end-of-line to the port only if the port is not
+already at the beginning of a line.  If @var{output-port} is not such a
+port, this procedure is identical to @code{newline}.  In either case,
+@code{fresh-line} performs discretionary output flushing and returns an
+unspecified value.
+@end deffn
+
+@deffn procedure write-line object [output-port]
+Like @code{write}, except that it writes an end-of-line to
+@var{output-port} after writing @var{object}'s representation.  This
+procedure performs discretionary output flushing and returns an
+unspecified value.
+@end deffn
+
+@deffn procedure flush-output [output-port]
+If @var{output-port} is buffered, this causes the contents of its buffer
+to be written to the output device.  Otherwise it has no effect.
+Returns an unspecified value.
+@end deffn
+
+@deffn procedure beep [output-port]
+@cindex console, ringing the bell
+@cindex ringing the console bell
+@cindex bell, ringing on console
+Performs a ``beep'' operation on @var{output-port}, performs
+discretionary output flushing, and returns an unspecified value.  On the
+console port, this usually causes the console bell to beep, but more
+sophisticated interactive ports may take other actions, such as flashing
+the screen.  On most output ports, e.g.@: file and string output ports,
+this does nothing.
+@end deffn
+
+@deffn procedure clear [output-port]
+@cindex console, clearing
+@cindex display, clearing
+@cindex screen, clearing
+@cindex terminal screen, clearing
+@cindex clearing the console screen
+``Clears the screen'' of @var{output-port}, performs discretionary
+output flushing, and returns an unspecified value.  On a terminal or
+window, this has a well-defined effect.  On other output ports, e.g.@:
+file and string output ports, this does nothing.
+@end deffn
+
+@deffn procedure pp object [output-port [as-code?]]
+@cindex pretty printer
+@code{pp} prints @var{object} in a visually appealing and structurally
+revealing manner on @var{output-port}.  If object is a procedure,
+@code{pp} attempts to print the source text.  If the optional argument
+@var{as-code?} is true, @code{pp} prints lists as Scheme code, providing
+appropriate indentation; by default this argument is false.  @code{pp}
+performs discretionary output flushing and returns an unspecified value.
+@end deffn
+
+The following variables may be dynamically bound to change the behavior
+of the @code{write} and @code{display} procedures.
+
+@defvr variable *unparser-radix*
+This variable specifies the default radix used to print numbers.  Its
+value must be one of the exact integers @code{2}, @code{8}, @code{10},
+or @code{16}; the default is @code{10}.  If @code{*unparser-radix*} is
+not @code{10}, numbers are prefixed to indicate their radix.
+@end defvr
+
+@defvr variable *unparser-list-breadth-limit*
+This variable specifies a limit on the length of the printed
+representation of a list or vector; for example, if the limit is
+@code{4}, only the first four elements of any list are printed, followed
+by ellipses to indicate any additional elements.  The value of this
+variable must be an exact non-negative integer, or @code{#f} meaning no
+limit; the default is @code{#f}.
+
+@example
+@group
+(fluid-let ((*unparser-list-breadth-limit* 4))
+  (write-to-string '(a b c d)))
+                                @result{} "(a b c d)"
+(fluid-let ((*unparser-list-breadth-limit* 4))
+  (write-to-string '(a b c d e)))
+                                @result{} "(a b c d ...)"
+@end group
+@end example
+@end defvr
+
+@defvr variable *unparser-list-depth-limit*
+This variable specifies a limit on the nesting of lists and vectors in
+the printed representation.  If lists (or vectors) are more deeply
+nested than the limit, the part of the representation that exceeds the
+limit is replaced by ellipses.  The value of this variable must be an
+exact non-negative integer, or @code{#f} meaning no limit; the default
+is @code{#f}.
+
+@example
+@group
+(fluid-let ((*unparser-list-depth-limit* 4))
+  (write-to-string '((((a))) b c d)))
+                                @result{} "((((a))) b c d)"
+(fluid-let ((*unparser-list-depth-limit* 4))
+  (write-to-string '(((((a)))) b c d)))
+                                @result{} "((((...))) b c d)"
+@end group
+@end example
+@end defvr
+
+@defvr variable *unparser-string-length-limit*
+This variable specifies a limit on the length of the printed
+representation of strings.  If a string's length exceeds this limit, the
+part of the printed representation for the characters exceeding the
+limit is replaced by ellipses.  The value of this variable must be an
+exact non-negative integer, or @code{#f} meaning no limit; the default
+is @code{#f}.
+
+@example
+@group
+(fluid-let ((*unparser-string-length-limit* 4))
+  (write-to-string "abcd"))
+                                @result{} "\"abcd\""
+(fluid-let ((*unparser-string-length-limit* 4))
+  (write-to-string "abcde"))
+                                @result{} "\"abcd...\""
+@end group
+@end example
+@end defvr
+
+@defvr variable *unparse-with-maximum-readability?*
+This variable, which takes a boolean value, tells the printer to use a
+special printed representation for objects that normally print in a form
+that cannot be recognized by @code{read}.  These objects are printed
+using the representation @code{#@@@var{n}}, where @var{n} is the result
+of calling @code{hash} on the object to be printed.  The reader
+recognizes this syntax, calling @code{unhash} on @var{n} to get back the
+original object.  Note that this printed representation can only be
+recognized by the Scheme program in which it was generated, because
+these hash numbers are different for each invocation of Scheme.
+@end defvr
+
+@node Format, Custom Output, Output Procedures, Input/Output
+@section Format
+
+@comment **** begin CLTL ****
+
+The procedure @code{format} is very useful for producing nicely
+formatted text, producing good-looking messages, and so on.  MIT/GNU
+Scheme's implementation of @code{format} is similar to that of Common
+Lisp, except that Common Lisp defines many more
+directives.@footnote{This description of @code{format} is adapted from
+@cite{Common Lisp, The Language}, second edition, section 22.3.3.}
+
+@cindex run-time-loadable option
+@cindex option, run-time-loadable
+@code{format} is a run-time-loadable option.  To use it, execute
+
+@example
+(load-option 'format)
+@end example
+@findex load-option
+
+@noindent
+once before calling it.
+
+@deffn procedure format destination control-string argument @dots{}
+@findex write-string
+@cindex format directive (defn)
+@cindex directive, format (defn)
+Writes the characters of @var{control-string} to @var{destination},
+except that a tilde (@code{~}) introduces a @dfn{format directive}.  The
+character after the tilde, possibly preceded by prefix parameters and
+modifiers, specifies what kind of formatting is desired.  Most
+directives use one or more @var{argument}s to create their output; the
+typical directive puts the next @var{argument} into the output,
+formatted in some special way.  It is an error if no argument remains
+for a directive requiring an argument, but it is not an error if one or
+more arguments remain unprocessed by a directive.
+
+The output is sent to @var{destination}.  If @var{destination} is
+@code{#f}, a string is created that contains the output; this string is
+returned as the value of the call to @code{format}.  In all other cases
+@code{format} returns an unspecified value.  If @var{destination} is
+@code{#t}, the output is sent to the current output port.  Otherwise,
+@var{destination} must be an output port, and the output is sent there.
+
+This procedure performs discretionary output flushing (@pxref{Output
+Procedures}).
+
+A @code{format} directive consists of a tilde (@code{~}), optional
+prefix parameters separated by commas, optional colon (@code{:}) and
+at-sign (@code{@@}) modifiers, and a single character indicating what
+kind of directive this is.  The alphabetic case of the directive
+character is ignored.  The prefix parameters are generally integers,
+notated as optionally signed decimal numbers.  If both the colon and
+at-sign modifiers are given, they may appear in either order.
+
+@cindex V as format parameter
+@cindex # as format parameter
+In place of a prefix parameter to a directive, you can put the letter
+@samp{V} (or @samp{v}), which takes an @var{argument} for use as a
+parameter to the directive.  Normally this should be an exact integer.
+This feature allows variable-width fields and the like.  You can also
+use the character @samp{#} in place of a parameter; it represents the
+number of arguments remaining to be processed.
+
+It is an error to give a format directive more parameters than it is
+described here as accepting.  It is also an error to give colon or
+at-sign modifiers to a directive in a combination not specifically
+described here as being meaningful.
+
+@table @code
+@item ~A
+The next @var{argument}, which may be any object, is printed as if by
+@code{display}.  @code{~@var{mincol}A} inserts spaces on the right, if
+necessary, to make the width at least @var{mincol} columns.  The
+@code{@@} modifier causes the spaces to be inserted on the left rather
+than the right.
+
+@item ~S
+The next @var{argument}, which may be any object, is printed as if by
+@code{write}.  @code{~@var{mincol}S} inserts spaces on the right, if
+necessary, to make the width at least @var{mincol} columns.  The
+@code{@@} modifier causes the spaces to be inserted on the left rather
+than the right.
+
+@item ~%
+This outputs a @code{#\newline} character.  @code{~@var{n}%} outputs
+@var{n} newlines.  No @var{argument} is used.  Simply putting a newline
+in @var{control-string} would work, but @code{~%} is often used because
+it makes the control string look nicer in the middle of a program.
+
+@item ~~
+This outputs a tilde.  @code{~@var{n}~} outputs @var{n} tildes.
+
+@item ~@var{newline}
+Tilde immediately followed by a newline ignores the newline and any
+following non-newline whitespace characters.  With an @code{@@}, the
+newline is left in place, but any following whitespace is ignored.  This
+directive is typically used when @var{control-string} is too long to fit
+nicely into one line of the program:
+
+@example
+@group
+(define (type-clash-error procedure arg spec actual)
+  (format
+   #t
+   "~%Procedure ~S~%requires its %A argument ~
+    to be of type ~S,~%but it was called with ~
+    an argument of type ~S.~%"
+   procedure arg spec actual))
+@end group
+@end example
+
+@example
+@group
+(type-clash-error 'vector-ref
+                  "first"
+                  'integer
+                  'vector)
+
+@r{prints}
+
+Procedure vector-ref
+requires its first argument to be of type integer,
+but it was called with an argument of type vector.
+@end group
+@end example
+
+@noindent
+Note that in this example newlines appear in the output only as
+specified by the @code{~%} directives; the actual newline characters in
+the control string are suppressed because each is preceded by a tilde.
+@end table
+@end deffn
+
+@comment **** end CLTL ****
+
+@node Custom Output, Prompting, Format, Input/Output
+@section Custom Output
+
+MIT/GNU Scheme provides hooks for specifying that certain kinds of objects
+have special written representations.  There are no restrictions on the
+written representations, but only a few kinds of objects may have custom
+representation specified for them, specifically: records
+(@pxref{Records}), vectors that have special tags in their zero-th
+elements (@pxref{Vectors}), and pairs that have special tags in their
+car fields (@pxref{Lists}).  There is a different procedure for
+specifying the written representation of each of these types.
+
+@deffn procedure set-record-type-unparser-method! record-type unparser-method
+Changes the unparser method of the type represented by @var{record-type}
+to be @var{unparser-method}, and returns an unspecified value.
+Subsequently, when the unparser encounters a record of this type, it
+will invoke @var{unparser-method} to generate the written
+representation.
+@end deffn
+
+@deffn procedure unparser/set-tagged-vector-method! tag unparser-method
+Changes the unparser method of the vector type represented by @var{tag}
+to be @var{unparser-method}, and returns an unspecified value.
+Subsequently, when the unparser encounters a vector with @var{tag} as
+its zero-th element, it will invoke @var{unparser-method} to generate
+the written representation.
+@end deffn
+
+@deffn procedure unparser/set-tagged-pair-method! tag unparser-method
+Changes the unparser method of the pair type represented by @var{tag} to
+be @var{unparser-method}, and returns an unspecified value.
+Subsequently, when the unparser encounters a pair with @var{tag} in its
+car field, it will invoke @var{unparser-method} to generate the written
+representation.
+@end deffn
+
+@cindex unparser method (defn)
+@cindex method, unparser (defn)
+An @dfn{unparser method} is a procedure that is invoked with two
+arguments: an unparser state and an object.  An unparser method
+generates a written representation for the object, writing it to the
+output port specified by the unparser state.  The value yielded by an
+unparser method is ignored.  Note that an unparser state is not an
+output port, rather it is an object that contains an output port as one
+of its components.  Application programs generally do not construct or
+examine unparser state objects, but just pass them along.
+
+There are two ways to create an unparser method (which is then
+registered by one of the above procedures).  The first, and easiest, is
+to use @code{standard-unparser-method}.  The second is to define your
+own method using the procedure @code{with-current-unparser-state}.  We
+encourage the use of the first method, as it results in a more uniform
+appearance for objects.  Many predefined datatypes, for example
+procedures and environments, already have this appearance.
+
+@deffn procedure standard-unparser-method name procedure
+Returns a standard unparser method.  @var{Name} may be any object, and
+is used as the name of the type with which the unparser method is
+associated; @var{name} is usually a symbol.  @var{Procedure} must be
+@code{#f} or a procedure of two arguments.
+
+@cindex #[ as external representation
+If @var{procedure} is @code{#f}, the returned method generates an
+external representation of this form:
+
+@example
+#[@var{name} @var{hash}]
+@end example
+
+@noindent
+@findex write
+@findex write-string
+@findex hash
+Here @var{name} is the external representation of the argument
+@var{name}, as generated by @code{write},@footnote{Except that if the
+argument @var{name} is a string, its external representation is
+generated by @code{write-string}.} and @var{hash} is the external
+representation of an exact non-negative integer unique to the object
+being printed (specifically, it is the result of calling @code{hash} on
+the object).  Subsequently, the expression
+
+@example
+#@@@var{hash}
+@end example
+
+@noindent
+is notation for the object.
+
+If @var{procedure} is supplied, the returned method generates a slightly
+different external representation:
+
+@example
+#[@var{name} @var{hash} @var{output}]
+@end example
+
+@noindent
+Here @var{name} and @var{hash} are as above, and @var{output} is the
+output generated by @var{procedure}.  The representation is constructed
+in three stages:
+
+@enumerate
+@item
+The first part of the format (up to @var{output}) is written to the
+output port specified by the unparser state.  This is @code{"#["},
+@var{name}, @code{" "}, and @var{hash}.
+
+@item
+@var{Procedure} is invoked on two arguments: the object and an output
+port.
+
+@item
+The closing bracket is written to the output port.
+@end enumerate
+@end deffn
+
+The following procedure is useful for writing more general kinds of
+unparser methods.
+
+@deffn procedure with-current-unparser-state unparser-state procedure
+This procedure calls @var{procedure} with one argument, the output port
+from @var{unparser-state}.  Additionally, it arranges for the remaining
+components of @var{unparser-state} to be given to the printer when they
+are needed.  The @var{procedure} generates some output by writing to the
+output port using the usual output operations, and the value yielded by
+@var{procedure} is returned from @code{with-current-unparser-state}.
+
+The port passed to @var{procedure} should only be used within the
+dynamic extent of @var{procedure}.
+@end deffn
+
+@node Prompting, Port Primitives, Custom Output, Input/Output
+@section Prompting
+@cindex prompting
+
+This section describes procedures that prompt the user for input.  Why
+should the programmer use these procedures when it is possible to do
+prompting using ordinary input and output procedures?  One reason is
+that the prompting procedures are more succinct.  However, a second and
+better reason is that the prompting procedures can be separately
+customized for each user interface, providing more natural interaction.
+The interfaces for Edwin and for GNU Emacs have already been customized
+in this fashion; because Edwin and Emacs are very similar editors, their
+customizations provide very similar behavior.
+
+@findex interaction-i/o-port
+Each of these procedure accepts an optional argument called
+@var{port}, which if given must be an @acronym{I/O} port.  If not
+given, this port defaults to the value of
+@code{(interaction-i/o-port)}; this is initially the console
+@acronym{I/O} port.
+
+@deffn procedure prompt-for-command-expression prompt [port]
+Prompts the user for an expression that is to be executed as a command.
+This is the procedure called by the @acronym{REP} loop to read the
+user's expressions.
+
+If @var{prompt} is a string, it is used verbatim as the prompt string.
+Otherwise, it must be a pair whose car is @code{standard} and whose cdr
+is a string; in this case the prompt string is formed by prepending to
+the string the current @acronym{REP} loop ``level number'' and a space.
+Also, a space is appended to the string, unless it already ends in a
+space or is an empty string.
+
+The default behavior of this procedure is to print a fresh line, a
+newline, and the prompt string; flush the output buffer; then read an
+object and return it.
+
+Under Edwin and Emacs, before the object is read, the interaction buffer
+is put into a mode that allows expressions to be edited and submitted
+for input using specific editor commands.  The first expression that is
+submitted is returned as the value of this procedure.
+@end deffn
+
+@deffn procedure prompt-for-command-char prompt [port]
+@findex char-graphic?
+Prompts the user for a single character that is to be executed as a
+command; the returned character is guaranteed to satisfy
+@code{char-graphic?}.  If at all possible, the character is read from
+the user interface using a mode that reads the character as a single
+keystroke; in other words, it should not be necessary for the user to
+follow the character with a carriage return or something similar.
+
+@findex debug
+@findex where
+This is the procedure called by @code{debug} and @code{where} to read
+the user's commands.
+
+If @var{prompt} is a string, it is used verbatim as the prompt string.
+Otherwise, it must be a pair whose car is @code{standard} and whose cdr
+is a string; in this case the prompt string is formed by prepending to
+the string the current @acronym{REP} loop ``level number'' and a space.
+Also, a space is appended to the string, unless it already ends in a
+space or is an empty string.
+
+The default behavior of this procedure is to print a fresh line, a
+newline, and the prompt string; flush the output buffer; read a
+character in raw mode, echo that character, and return it.
+
+Under Edwin and Emacs, instead of reading a character, the interaction
+buffer is put into a mode in which graphic characters submit themselves
+as input.  After this mode change, the first such character submitted is
+returned as the value of this procedure.
+@end deffn
+
+@deffn procedure prompt-for-expression prompt [port]
+Prompts the user for an expression.
+
+The prompt string is formed by appending a colon and a space to
+@var{prompt}, unless @var{prompt} already ends in a space or is the null
+string.
+
+The default behavior of this procedure is to print a fresh line, a
+newline, and the prompt string; flush the output buffer; then read an
+object and return it.
+
+Under Edwin and Emacs, the expression is read in the minibuffer.
+@end deffn
+
+@deffn procedure prompt-for-evaluated-expression prompt [environment [port]]
+Prompts the user for an evaluated expression.  Calls
+@code{prompt-for-expression} to read an expression, then evaluates the
+expression using @var{environment}; if @var{environment} is not given,
+the @acronym{REP} loop environment is used.
+@end deffn
+
+@deffn procedure prompt-for-confirmation prompt [port]
+Prompts the user for confirmation.  The result yielded by this procedure
+is a boolean.
+
+The prompt string is formed by appending the string @code{" (y or n)? "}
+to @var{prompt}, unless @var{prompt} already ends in a space or is the
+null string.
+
+The default behavior of this procedure is to print a fresh line, a
+newline, and the prompt string; flush the output buffer; then read a
+character in raw mode.  If the character is @code{#\y}, @code{#\Y}, or
+@code{#\space}, the procedure returns @code{#t}; If the character is
+@code{#\n}, @code{#\N}, or @code{#\rubout}, the procedure returns
+@code{#f}.  Otherwise the prompt is repeated.
+
+Under Edwin or Emacs, the confirmation is read in the minibuffer.
+@end deffn
+
+@node Port Primitives, Parser Buffers, Prompting, Input/Output
+@section Port Primitives
+@cindex port primitives
+
+This section describes the low-level operations that can be used to
+build and manipulate @acronym{I/O} ports.
+
+The purpose of these operations is twofold: to allow programmers to
+construct new kinds of @acronym{I/O} ports, and to provide faster
+@acronym{I/O} operations than those supplied by the standard high
+level procedures.  The latter is useful because the standard
+@acronym{I/O} operations provide defaulting and error checking, and
+sometimes other features, which are often unnecessary.  This interface
+provides the means to bypass such features, thus improving
+performance.
+
+The abstract model of an @acronym{I/O} port, as implemented here, is a
+combination of a set of named operations and a state.  The state is an
+arbitrary object, the meaning of which is determined by the
+operations.  The operations are defined by a mapping from names to
+procedures.
+
+@cindex port type
+The set of named operations is represented by an object called a
+@dfn{port type}.  A port type is constructed from a set of named
+operations, and is subsequently used to construct a port.  The port type
+completely specifies the behavior of the port.  Port types also support
+a simple form of inheritance, allowing you to create new ports that are
+similar to existing ports.
+
+The port operations are divided into two classes:
+
+@table @asis
+@item Standard operations
+There is a specific set of standard operations for input ports, and a
+different set for output ports.  Applications can assume that the
+standard input operations are implemented for all input ports, and
+likewise the standard output operations are implemented for all output
+ports.
+@cindex standard operations, on port
+
+@item Custom operations
+Some ports support additional operations.  For example, ports that
+implement output to terminals (or windows) may define an operation named
+@code{y-size} that returns the height of the terminal in characters.
+Because only some ports will implement these operations, programs that
+use custom operations must test each port for their existence, and be
+prepared to deal with ports that do not implement them.
+@cindex custom operations, on port
+@findex y-size
+@end table
+
+@menu
+* Port Types::                  
+* Constructors and Accessors for Ports::  
+* Input Port Operations::       
+* Output Port Operations::      
+* Blocking Mode::               
+* Terminal Mode::               
+@end menu
+
+@node Port Types, Constructors and Accessors for Ports, Port Primitives, Port Primitives
+@subsection Port Types
+
+The procedures in this section provide means for constructing port types
+with standard and custom operations, and accessing their operations.
+
+@deffn procedure make-port-type operations port-type
+@cindex construction, of port type
+Creates and returns a new port type.
+@var{Operations} must be a list; each element is a list of two elements,
+the name of the operation (a symbol) and the procedure that implements
+it.  @var{Port-type} is either @code{#f} or a port type; if it is a port
+type, any operations implemented by @var{port-type} but not specified in
+@var{operations} will be implemented by the resulting port type.
+
+@var{Operations} need not contain definitions for all of the standard
+operations; the procedure will provide defaults for any standard
+operations that are not defined.  At a minimum, the following operations
+must be defined: for input ports, @code{read-char} and @code{peek-char};
+for output ports, either @code{write-char} or @code{write-substring}.
+@acronym{I/O} ports must supply the minimum operations for both input and
+output.
+
+If an operation in @var{operations} is defined to be @code{#f}, then the
+corresponding operation in @var{port-type} is @emph{not} inherited.
+
+If @code{read-char} is defined in @var{operations}, then any standard
+input operations defined in @var{port-type} are ignored.  Likewise, if
+@code{write-char} or @code{write-substring} is defined in
+@var{operations}, then any standard output operations defined in
+@var{port-type} are ignored.  This feature allows overriding the
+standard operations without having to enumerate them.
+@end deffn
+
+@deffn procedure port-type? object
+@deffnx procedure input-port-type? object
+@deffnx procedure output-port-type? object
+@deffnx procedure i/o-port-type? object
+These predicates return @code{#t} if @var{object} is a port type,
+input-port type, output-port type, or @acronym{I/O}-port type,
+respectively.  Otherwise, they return @code{#f}.
+@end deffn
+
+@deffn procedure port-type/operations port-type
+Returns a newly allocated list containing all of the operations
+implemented by @var{port-type}.  Each element of the list is a list of
+two elements --- the name and its associated operation.
+@end deffn
+
+@deffn procedure port-type/operation-names port-type
+Returns a newly allocated list whose elements are the names of the
+operations implemented by @var{port-type}.
+@end deffn
+
+@deffn procedure port-type/operation port-type symbol
+Returns the operation named @var{symbol} in @var{port-type}.  If
+@var{port-type} has no such operation, returns @code{#f}.
+@end deffn
+
+@node Constructors and Accessors for Ports, Input Port Operations, Port Types, Port Primitives
+@subsection Constructors and Accessors for Ports
+
+The procedures in this section provide means for constructing ports,
+accessing the type of a port, and manipulating the state of a port.
+
+@deffn procedure make-port port-type state
+Returns a new port with type @var{port-type} and the given
+@var{state}.  The port will be an input, output, or @acronym{I/O} port
+according to @var{port-type}.
+@end deffn
+
+@deffn procedure port/type port
+Returns the port type of @var{port}.
+@end deffn
+
+@deffn procedure port/state port
+Returns the state component of @var{port}.
+@end deffn
+
+@deffn procedure set-port/state! port object
+Changes the state component of @var{port} to be @var{object}.
+Returns an unspecified value.
+@end deffn
+
+@deffn procedure port/operation port symbol
+Equivalent to
+
+@example
+(port-type/operation (port/type @var{port}) @var{symbol})
+@end example
+@end deffn
+
+@deffn procedure port/operation-names port
+Equivalent to
+
+@example
+(port-type/operation-names (port/type @var{port}))
+@end example
+@end deffn
+
+@deffn procedure make-eof-object input-port
+@cindex EOF object, construction
+@cindex construction, of EOF object
+@findex eof-object?
+Returns an object that satisfies the predicate @code{eof-object?}.  This
+is sometimes useful when building input ports.
+@end deffn
+
+@node Input Port Operations, Output Port Operations, Constructors and Accessors for Ports, Port Primitives
+@subsection Input Port Operations
+@cindex input port operations
+
+This section describes the standard operations on input ports.
+Following that, some useful custom operations are described.
+
+@defop operation {input port} read-char input-port
+@cindex character, input from port
+Removes the next character available from @var{input-port} and returns
+it.  If @var{input-port} has no more characters and will never have any
+(e.g.@: at the end of an input file), this operation returns an
+end-of-file object.  If @var{input-port} has no more characters but will
+eventually have some more (e.g.@: a terminal where nothing has been
+typed recently), and it is in non-blocking mode, @code{#f} is returned;
+otherwise the operation hangs until input is available.
+@end defop
+
+@defop operation {input port} peek-char input-port
+Reads the next character available from @var{input-port} and returns it.
+The character is @emph{not} removed from @var{input-port}, and a
+subsequent attempt to read from the port will get that character again.
+In other respects this operation behaves like @code{read-char}.
+@end defop
+
+@defop operation {input port} discard-char input-port
+Discards the next character available from @var{input-port} and returns
+an unspecified value.  In other respects this operation behaves like
+@code{read-char}.
+@end defop
+
+@defop operation {input port} char-ready? input-port k
+@code{char-ready?} returns @code{#t} if at least one character is
+available to be read from @var{input-port}.  If no characters are
+available, the operation waits up to @var{k} milliseconds before
+returning @code{#f}, returning immediately if any characters become
+available while it is waiting.
+@end defop
+
+@defop operation {input port} read-string input-port char-set
+@defopx operation {input port} discard-chars input-port char-set
+@cindex string, input from port
+These operations are like @code{read-char} and @code{discard-char},
+except that they read or discard multiple characters at once.  This can
+have a marked performance improvement on buffered input ports.  All
+characters up to, but excluding, the first character in @var{char-set}
+(or end of file) are read from @var{input-port}.  @code{read-string}
+returns these characters as a newly allocated string, while
+@code{discard-chars} discards them and returns an unspecified value.
+These operations hang until sufficient input is available, even if
+@var{input-port} is in non-blocking mode.  If end of file is encountered
+before any input characters, @code{read-string} returns an end-of-file
+object.
+@end defop
+
+@defop operation {input port} read-substring input-port string start end
+Reads characters from @var{input-port} into the substring defined by
+@var{string}, @var{start}, and @var{end} until either the substring has
+been filled or there are no more characters available.  Returns the
+number of characters written to the substring.
+
+If @var{input-port} is an interactive port, and at least one character
+is immediately available, the available characters are written to the
+substring and this operation returns immediately.  If no characters are
+available, and @var{input-port} is in blocking mode, the operation
+blocks until at least one character is available.  Otherwise, the
+operation returns @code{#f} immediately.
+
+This is an extremely fast way to read characters from a port.
+@end defop
+
+@deffn procedure input-port/read-char input-port
+@deffnx procedure input-port/peek-char input-port
+@deffnx procedure input-port/discard-char input-port
+@deffnx procedure input-port/char-ready? input-port k
+@deffnx procedure input-port/read-string input-port char-set
+@deffnx procedure input-port/discard-chars input-port char-set
+@deffnx procedure input-port/read-substring input-port string start end
+Each of these procedures invokes the respective operation on
+@var{input-port}.  For example, the following are equivalent:
+
+@example
+@group
+(input-port/read-char @var{input-port})
+((input-port/operation @var{input-port} 'read-char) @var{input-port})
+@end group
+@end example
+@end deffn
+
+The following custom operations are implemented for input ports to
+files, and will also work with some other kinds of input ports:
+
+@defop operation {input port} eof? input-port
+Returns @code{#t} if @var{input-port} is known to be at end of file,
+otherwise it returns @code{#f}.
+@end defop
+
+@defop operation {input port} chars-remaining input-port
+Returns an estimate of the number of characters remaining to be read
+from @var{input-port}.  This is useful only when @var{input-port} is a
+file port in binary mode; in other cases, it returns @code{#f}.
+@end defop
+
+@defop operation {input port} buffered-input-chars input-port
+Returns the number of unread characters that are stored in
+@var{input-port}'s buffer.  This will always be less than or equal to
+the buffer's size.
+@end defop
+
+@defop operation {input port} input-buffer-size input-port
+Returns the maximum number of characters that @var{input-port}'s buffer
+can hold.
+@end defop
+
+@defop operation {input port} set-input-buffer-size input-port size
+Resizes @var{input-port}'s buffer so that it can hold at most @var{size}
+characters.  Characters in the buffer are discarded.  @var{Size} must be
+an exact non-negative integer.
+@end defop
+
+@node Output Port Operations, Blocking Mode, Input Port Operations, Port Primitives
+@subsection Output Port Operations
+@cindex output port operations
+
+This section describes the standard operations on output ports.
+Following that, some useful custom operations are described.
+
+@defop operation {output port} write-char output-port char
+@cindex character, output to port
+Writes @var{char} to @var{output-port} and returns an unspecified value.
+@end defop
+
+@defop operation {output port} write-substring output-port string start end
+@cindex substring, output to port
+Writes the substring specified by @var{string}, @var{start}, and
+@var{end} to @var{output-port} and returns an unspecified value.
+Equivalent to writing the characters of the substring, one by one, to
+@var{output-port}, but is implemented very efficiently.
+@end defop
+
+@defop operation {output port} fresh-line output-port
+Most output ports are able to tell whether or not they are at the
+beginning of a line of output.  If @var{output-port} is such a port,
+end-of-line is written to the port only if the port is not already at
+the beginning of a line.  If @var{output-port} is not such a port, an
+end-of-line is unconditionally written to the port.  Returns an
+unspecified value.
+@end defop
+
+@defop operation {output port} flush-output output-port
+If @var{output-port} is buffered, this causes its buffer to be written
+out.  Otherwise it has no effect.  Returns an unspecified value.
+@end defop
+
+@defop operation {output port} discretionary-flush-output output-port
+Normally, this operation does nothing.  However, ports that support
+discretionary output flushing implement this operation identically to @code{flush-output}.
+@end defop
+
+@deffn procedure output-port/write-char output-port char
+@deffnx procedure output-port/write-substring output-port string start end
+@deffnx procedure output-port/fresh-line output-port
+@deffnx procedure output-port/flush-output output-port
+@deffnx procedure output-port/discretionary-flush-output output-port
+Each of these procedures invokes the respective operation on
+@var{output-port}.  For example, the following are equivalent:
+
+@example
+@group
+(output-port/write-char @var{output-port} @var{char})
+((output-port/operation @var{output-port} 'write-char)
+ @var{output-port} @var{char})
+@end group
+@end example
+@end deffn
+
+@deffn procedure output-port/write-string output-port string
+Writes @var{string} to @var{output-port}.  Equivalent to
+
+@example
+@group
+(output-port/write-substring @var{output-port}
+                             @var{string}
+                             0
+                             (string-length @var{string}))
+@end group
+@end example
+@end deffn
+
+The following custom operations are generally useful.
+
+@defop operation {output port} buffered-output-chars output-port
+Returns the number of unwritten characters that are stored in
+@var{output-port}'s buffer.  This will always be less than or equal to
+the buffer's size.
+@end defop
+
+@defop operation {output port} output-buffer-size output-port
+Returns the maximum number of characters that @var{output-port}'s buffer
+can hold.
+@end defop
+
+@defop operation {output port} set-output-buffer-size output-port size
+Resizes @var{output-port}'s buffer so that it can hold at most @var{size}
+characters.  Characters in the buffer are discarded.  @var{Size} must be
+an exact non-negative integer.
+@end defop
+
+@defop operation {output port} x-size output-port
+Returns an exact positive integer that is the width of @var{output-port}
+in characters.  If @var{output-port} has no natural width, e.g.@: if it is
+a file port, @code{#f} is returned.
+@end defop
+
+@defop operation {output port} y-size output-port
+Returns an exact positive integer that is the height of
+@var{output-port} in characters.  If @var{output-port} has no natural
+height, e.g.@: if it is a file port, @code{#f} is returned.
+@end defop
+
+@deffn procedure output-port/x-size output-port
+This procedure invokes the custom operation whose name is the symbol
+@code{x-size}, if it exists.  If the @code{x-size} operation is both
+defined and returns a value other than @code{#f}, that value is returned
+as the result of this procedure.  Otherwise, @code{output-port/x-size}
+returns a default value (currently @code{80}).
+
+@code{output-port/x-size} is useful for programs that tailor their
+output to the width of the display (a fairly common practice).  If the
+output device is not a display, such programs normally want some
+reasonable default width to work with, and this procedure provides
+exactly that.
+@end deffn
+
+@deffn procedure output-port/y-size output-port
+This procedure invokes the custom operation whose name is the symbol
+@code{y-size}, if it exists.  If the @code{y-size} operation is defined,
+the value it returns is returned as the result of this procedure;
+otherwise, @code{#f} is returned.
+@end deffn
+
+@node Blocking Mode, Terminal Mode, Output Port Operations, Port Primitives
+@subsection Blocking Mode
+
+@cindex blocking mode, of port
+An interactive port is always in one of two modes: @dfn{blocking} or
+@dfn{non-blocking}.  This mode is independent of the terminal mode:
+each can be changed independent of the other.  Furthermore, if it is
+an interactive @acronym{I/O} port, there are separate blocking modes
+for input and for output.
+
+If an input port is in blocking mode, attempting to read from it when no
+input is available will cause Scheme to ``block'', i.e.@: suspend
+itself, until input is available.  If an input port is in non-blocking
+mode, attempting to read from it when no input is available will cause
+the reading procedure to return immediately, indicating the lack of
+input in some way (exactly how this situation is indicated is separately
+specified for each procedure or operation).
+
+An output port in blocking mode will block if the output device is not
+ready to accept output.  In non-blocking mode it will return immediately
+after performing as much output as the device will allow (again, each
+procedure or operation reports this situation in its own way).
+
+Interactive ports are initially in blocking mode; this can be changed at
+any time with the procedures defined in this section.
+
+These procedures represent blocking mode by the symbol @code{blocking},
+and non-blocking mode by the symbol @code{nonblocking}.  An argument
+called @var{mode} must be one of these symbols.  A @var{port} argument
+to any of these procedures may be any port, even if that port does not
+support blocking mode; in that case, the port is not modified in any
+way.
+
+@deffn procedure port/input-blocking-mode port
+Returns the input blocking mode of @var{port}.
+@end deffn
+
+@deffn procedure port/set-input-blocking-mode port mode
+Changes the input blocking mode of @var{port} to be @var{mode}.  Returns
+an unspecified value.
+@end deffn
+
+@deffn procedure port/with-input-blocking-mode port mode thunk
+@var{Thunk} must be a procedure of no arguments.
+@code{port/with-input-blocking-mode}
+binds the input blocking mode of @var{port} to be @var{mode}, executes
+@var{thunk}, restores the input blocking mode of @var{port} to what it
+was when @code{port/with-input-blocking-mode} was called, and returns
+the value that was yielded by @var{thunk}.  This binding is performed
+by @code{dynamic-wind}, which guarantees that the input blocking mode is
+restored if @var{thunk} escapes from its continuation.
+@end deffn
+
+@deffn procedure port/output-blocking-mode port
+Returns the output blocking mode of @var{port}.
+@end deffn
+
+@deffn procedure port/set-output-blocking-mode port mode
+Changes the output blocking mode of @var{port} to be @var{mode}.
+Returns an unspecified value.
+@end deffn
+
+@deffn procedure port/with-output-blocking-mode port mode thunk
+@var{Thunk} must be a procedure of no arguments.
+@code{port/with-output-blocking-mode}
+binds the output blocking mode of @var{port} to be @var{mode}, executes
+@var{thunk}, restores the output blocking mode of @var{port} to what it
+was when @code{port/with-output-blocking-mode} was called, and returns
+the value that was yielded by @var{thunk}.  This binding is performed
+by @code{dynamic-wind}, which guarantees that the output blocking mode
+is restored if @var{thunk} escapes from its continuation.
+@end deffn
+
+@node Terminal Mode,  , Blocking Mode, Port Primitives
+@subsection Terminal Mode
+
+@cindex terminal mode, of port
+A port that reads from or writes to a terminal has a @dfn{terminal
+mode}; this is either @dfn{cooked} or @dfn{raw}.  This mode is
+independent of the blocking mode: each can be changed independent of
+the other.  Furthermore, a terminal @acronym{I/O} port has independent
+terminal modes both for input and for output.
+
+@cindex cooked mode, of terminal port
+A terminal port in cooked mode provides some standard processing to make
+the terminal easy to communicate with.  For example, under unix, cooked
+mode on input reads from the terminal a line at a time and provides
+rubout processing within the line, while cooked mode on output might
+translate linefeeds to carriage-return/linefeed pairs.  In general, the
+precise meaning of cooked mode is operating-system dependent, and
+furthermore might be customizable by means of operating system
+utilities.  The basic idea is that cooked mode does whatever is
+necessary to make the terminal handle all of the usual user-interface
+conventions for the operating system, while keeping the program's
+interaction with the port as normal as possible.
+
+@cindex raw mode, of terminal port
+A terminal port in raw mode disables all of that processing.  In raw
+mode, characters are directly read from and written to the device
+without any translation or interpretation by the operating system.  On
+input, characters are available as soon as they are typed, and are not
+echoed on the terminal by the operating system.  In general, programs
+that put ports in raw mode have to know the details of interacting with
+the terminal.  In particular, raw mode is used for writing programs such
+as text editors.
+
+Terminal ports are initially in cooked mode; this can be changed at any
+time with the procedures defined in this section.
+
+These procedures represent cooked mode by the symbol @code{cooked}, and
+raw mode by the symbol @code{raw}.  Additionally, the value @code{#f}
+represents ``no mode''; it is the terminal mode of a port that is not a
+terminal.  An argument called @var{mode} must be one of these three
+values.  A @var{port} argument to any of these procedures may be any
+port, even if that port does not support terminal mode; in that case,
+the port is not modified in any way.
+
+@deffn procedure port/input-terminal-mode port
+Returns the input terminal mode of @var{port}.
+@end deffn
+
+@deffn procedure port/set-input-terminal-mode port mode
+Changes the input terminal mode of @var{port} to be @var{mode}.
+Returns an unspecified value.
+@end deffn
+
+@deffn procedure port/with-input-terminal-mode port mode thunk
+@var{Thunk} must be a procedure of no arguments.
+@code{port/with-input-terminal-mode}
+binds the input terminal mode of @var{port} to be @var{mode}, executes
+@var{thunk}, restores the input terminal mode of @var{port} to what it
+was when @code{port/with-input-terminal-mode} was called, and returns
+the value that was yielded by @var{thunk}.  This binding is performed
+by @code{dynamic-wind}, which guarantees that the input terminal mode is
+restored if @var{thunk} escapes from its continuation.
+@end deffn
+
+@deffn procedure port/output-terminal-mode port
+Returns the output terminal mode of @var{port}.
+@end deffn
+
+@deffn procedure port/set-output-terminal-mode port mode
+Changes the output terminal mode of @var{port} to be @var{mode}.
+Returns an unspecified value.
+@end deffn
+
+@deffn procedure port/with-output-terminal-mode port mode thunk
+@var{Thunk} must be a procedure of no arguments.
+@code{port/with-output-terminal-mode}
+binds the output terminal mode of @var{port} to be @var{mode}, executes
+@var{thunk}, restores the output terminal mode of @var{port} to what it
+was when @code{port/with-output-terminal-mode} was called, and returns
+the value that was yielded by @var{thunk}.  This binding is performed
+by @code{dynamic-wind}, which guarantees that the output terminal mode is
+restored if @var{thunk} escapes from its continuation.
+@end deffn
+
+@node Parser Buffers, Parser Language, Port Primitives, Input/Output
+@section Parser Buffers
+
+@cindex Parser buffer
+The @dfn{parser buffer} mechanism facilitates construction of parsers
+for complex grammars.  It does this by providing an input stream with
+unbounded buffering and backtracking.  The amount of buffering is
+under program control.  The stream can backtrack to any position in
+the buffer.
+
+@cindex Parser-buffer pointer
+The mechanism defines two data types: the @dfn{parser buffer} and the
+@dfn{parser-buffer pointer}.  A parser buffer is like an input port
+with buffering and backtracking.  A parser-buffer pointer is a pointer
+into the stream of characters provided by a parser buffer.
+
+Note that all of the procedures defined here consider a parser buffer
+to contain a stream of 8-bit characters in the @acronym{ISO-8859-1}
+character set, except for @code{match-utf8-char-in-alphabet} which
+treats it as a stream of Unicode characters encoded as 8-bit bytes in
+the @acronym{UTF-8} encoding.
+
+There are several constructors for parser buffers:
+
+@deffn procedure input-port->parser-buffer port
+Returns a parser buffer that buffers characters read from @var{port}.
+@end deffn
+
+@deffn procedure substring->parser-buffer string start end
+Returns a parser buffer that buffers the characters in the argument
+substring.  This is equivalent to creating a string input port and
+calling @code{input-port->parser-buffer}, but it runs faster and uses
+less memory.
+@end deffn
+
+@deffn procedure string->parser-buffer string
+Like @code{substring->parser-buffer} but buffers the entire string.
+@end deffn
+
+@deffn procedure source->parser-buffer source
+Returns a parser buffer that buffers the characters returned by
+calling @var{source}.  @var{Source} is a procedure of three arguments:
+a string, a start index, and an end index (in other words, a substring
+specifier).  Each time @var{source} is called, it writes some
+characters in the substring, and returns the number of characters
+written.  When there are no more characters available, it returns
+zero.  It must not return zero in any other circumstance.
+@end deffn
+
+Parser buffers and parser-buffer pointers may be distinguished from
+other objects:
+
+@deffn procedure parser-buffer? object
+Returns @code{#t} if @var{object} is a parser buffer, otherwise
+returns @code{#f}.
+@end deffn
+
+@deffn procedure parser-buffer-pointer? object
+Returns @code{#t} if @var{object} is a parser-buffer pointer,
+otherwise returns @code{#f}.
+@end deffn
+
+Characters can be read from a parser buffer much as they can be read
+from an input port.  The parser buffer maintains an internal pointer
+indicating its current position in the input stream.  Additionally,
+the buffer remembers all characters that were previously read, and can
+look at characters arbitrarily far ahead in the stream.  It is this
+buffering capability that facilitates complex matching and
+backtracking.
+
+@deffn procedure read-parser-buffer-char buffer
+Returns the next character in @var{buffer}, advancing the internal
+pointer past that character.  If there are no more characters
+available, returns @code{#f} and leaves the internal pointer
+unchanged.
+@end deffn
+
+@deffn procedure peek-parser-buffer-char buffer
+Returns the next character in @var{buffer}, or @code{#f} if no
+characters are available.  Leaves the internal pointer unchanged.
+@end deffn
+
+@deffn procedure parser-buffer-ref buffer index
+Returns a character in @var{buffer}.  @var{Index} is a non-negative
+integer specifying the character to be returned.  If @var{index} is
+zero, returns the next available character; if it is one, returns the
+character after that, and so on.  If @var{index} specifies a position
+after the last character in @var{buffer}, returns @code{#f}.  Leaves
+the internal pointer unchanged.
+@end deffn
+
+The internal pointer of a parser buffer can be read or written:
+
+@deffn procedure get-parser-buffer-pointer buffer
+Returns a parser-buffer pointer object corresponding to the internal
+pointer of @var{buffer}.
+@end deffn
+
+@deffn procedure set-parser-buffer-pointer! buffer pointer
+Sets the internal pointer of @var{buffer} to the position specified by
+@var{pointer}.  @var{Pointer} must have been returned from a previous
+call of @code{get-parser-buffer-pointer} on @var{buffer}.
+Additionally, if some of @var{buffer}'s characters have been discarded
+by @code{discard-parser-buffer-head!}, @var{pointer} must be outside
+the range that was discarded.
+@end deffn
+
+@deffn procedure get-parser-buffer-tail buffer pointer
+Returns a newly-allocated string consisting of all of the characters
+in @var{buffer} that fall between @var{pointer} and @var{buffer}'s
+internal pointer.  @var{Pointer} must have been returned from a
+previous call of @code{get-parser-buffer-pointer} on @var{buffer}.
+Additionally, if some of @var{buffer}'s characters have been discarded
+by @code{discard-parser-buffer-head!}, @var{pointer} must be outside
+the range that was discarded.
+@end deffn
+
+@deffn procedure discard-parser-buffer-head! buffer
+Discards all characters in @var{buffer} that have already been read;
+in other words, all characters prior to the internal pointer.  After
+this operation has completed, it is no longer possible to move the
+internal pointer backwards past the current position by calling
+@code{set-parser-buffer-pointer!}.
+@end deffn
+
+The next rather large set of procedures does conditional matching
+against the contents of a parser buffer.  All matching is performed
+relative to the buffer's internal pointer, so the first character to
+be matched against is the next character that would be returned by
+@code{peek-parser-buffer-char}.  The returned value is always
+@code{#t} for a successful match, and @code{#f} otherwise.  For
+procedures whose names do not end in @samp{-no-advance}, a successful
+match also moves the internal pointer of the buffer forward to the end
+of the matched text; otherwise the internal pointer is unchanged.
+
+@deffn procedure match-parser-buffer-char buffer char
+@deffnx procedure match-parser-buffer-char-ci buffer char
+@deffnx procedure match-parser-buffer-not-char buffer char
+@deffnx procedure match-parser-buffer-not-char-ci buffer char
+@deffnx procedure match-parser-buffer-char-no-advance buffer char
+@deffnx procedure match-parser-buffer-char-ci-no-advance buffer char
+@deffnx procedure match-parser-buffer-not-char-no-advance buffer char
+@deffnx procedure match-parser-buffer-not-char-ci-no-advance buffer char
+Each of these procedures compares a single character in @var{buffer}
+to @var{char}.  The basic comparison @code{match-parser-buffer-char}
+compares the character to @var{char} using @code{char=?}.  The
+procedures whose names contain the @samp{-ci} modifier do
+case-insensitive comparison (i.e.@: they use @code{char-ci=?}).  The
+procedures whose names contain the @samp{not-} modifier are successful
+if the character @emph{doesn't} match @var{char}.
+@end deffn
+
+@deffn procedure match-parser-buffer-char-in-set buffer char-set
+@deffnx procedure match-parser-buffer-char-in-set-no-advance buffer char-set
+These procedures compare the next character in @var{buffer} against
+@var{char-set} using @code{char-set-member?}.
+@end deffn
+
+@deffn procedure match-parser-buffer-string buffer string
+@deffnx procedure match-parser-buffer-string-ci buffer string
+@deffnx procedure match-parser-buffer-string-no-advance buffer string
+@deffnx procedure match-parser-buffer-string-ci-no-advance buffer string
+These procedures match @var{string} against @var{buffer}'s contents.
+The @samp{-ci} procedures do case-insensitive matching.
+@end deffn
+
+@deffn procedure match-parser-buffer-substring buffer string start end
+@deffnx procedure match-parser-buffer-substring-ci buffer string start end
+@deffnx procedure match-parser-buffer-substring-no-advance buffer string start end
+@deffnx procedure match-parser-buffer-substring-ci-no-advance buffer string start end
+These procedures match the specified substring against @var{buffer}'s
+contents.  The @samp{-ci} procedures do case-insensitive matching.
+@end deffn
+
+@deffn procedure match-utf8-char-in-alphabet buffer alphabet
+This procedure treats @var{buffer}'s contents as @acronym{UTF-8}
+encoded Unicode characters and matches the next such character against
+@var{alphabet}, which must be a Unicode alphabet (@pxref{Unicode}).
+@acronym{UTF-8} represents characters with 1 to 6 bytes, so a
+successful match can move the internal pointer forward by as many as 6
+bytes.
+@end deffn
+
+The remaining procedures provide information that can be used to
+identify locations in a parser buffer's stream.
+
+@deffn procedure parser-buffer-position-string pointer
+Returns a string describing the location of @var{pointer} in terms of
+its character and line indexes.  This resulting string is meant to be
+presented to an end user in order to direct their attention to a
+feature in the input stream.  In this string, the indexes are
+presented as one-based numbers.
+
+@var{Pointer} may alternatively be a parser buffer, in which case it
+is equivalent to having specified the buffer's internal pointer.
+@end deffn
+
+@deffn procedure parser-buffer-pointer-index pointer
+@deffnx procedure parser-buffer-pointer-line pointer
+Returns the character or line index, respectively, of @var{pointer}.
+Both indexes are zero-based.
+@end deffn
+
+@node Parser Language, XML Parser, Parser Buffers, Input/Output
+@section Parser Language
+
+@cindex Parser language
+Although it is possible to write parsers using the parser-buffer
+abstraction (@pxref{Parser Buffers}), it is tedious.  The problem is
+that the abstraction isn't closely matched to the way that people
+think about syntactic structures.  In this section, we introduce a
+higher-level mechanism that greatly simplifies the implementation of a
+parser.
+
+The @dfn{parser language} described here allows the programmer to
+write @acronym{BNF}-like specifications that are translated into
+efficient Scheme code at compile time.  The language is declarative,
+but it can be freely mixed with Scheme code; this allows the parsing
+of grammars that aren't conveniently described in the language.
+
+@cindex Backtracking, in parser language
+The language also provides backtracking.  For example, this expression
+matches any sequence of alphanumeric characters followed by a single
+alphabetic character:
+
+@example
+@group
+(*matcher
+ (seq (* (char-set char-set:alphanumeric))
+      (char-set char-set:alphabetic)))
+@end group
+@end example
+
+@noindent
+The way that this works is that the matcher matches alphanumeric
+characters in the input stream until it finds a non-alphanumeric
+character.  It then tries to match an alphabetic character, which of
+course fails.  At this point, if it matched at least one alphanumeric
+character, it @emph{backtracks}: the last matched alphanumeric is
+``unmatched'', and it again attempts to match an alphabetic
+character.  The backtracking can be arbitrarily deep; the matcher will
+continue to back up until it finds a way to match the remainder of the
+expression.
+
+So far, this sounds a lot like regular-expression matching
+(@pxref{Regular Expressions}).  However, there are some important
+differences.
+
+@itemize @bullet
+@item
+The parser language uses a Scheme-like syntax that is easier to read
+and write than regular-expression notation.
+
+@item
+The language provides macros so that common syntactic constructs can
+be abstracted.
+
+@item
+The language mixes easily with Scheme code, allowing the full power of
+Scheme to be applied to program around limitations in the parser
+language.
+
+@item
+The language provides expressive facilities for converting syntax into
+parsed structure.  It also makes it easy to convert parsed strings
+into meaningful objects (e.g.@: numbers).
+
+@item
+The language is compiled into machine language; regular expressions
+are usually interpreted.
+@end itemize
+
+Here is an example that shows off several of the features of the
+parser language.  The example is a parser for @acronym{XML} start
+tags:
+
+@anchor{with-pointer example}
+@example
+@group
+(*parser
+ (with-pointer p
+   (seq "<"
+        parse-name
+        parse-attribute-list
+        (alt (match ">")
+             (match "/>")
+             (sexp
+              (lambda (b)
+                (error
+                 (string-append
+                  "Unterminated start tag at "
+                  (parser-buffer-position-string p)))))))))
+@end group
+@end example
+
+@noindent
+This shows that the basic description of a start tag is very similar
+to its @acronym{BNF}.  Non-terminal symbols @code{parse-name} and
+@code{parse-attribute-list} do most of the work, and the noise strings
+@code{"<"} and @code{">"} are the syntactic markers delimiting the
+form.  There are two alternate endings for start tags, and if the
+parser doesn't find either of the endings, the Scheme code (wrapped in
+@code{sexp}) is run to signal an error.  The error procedure
+@code{perror} takes a pointer @code{p}, which it uses to indicate the
+position in the input stream at which the error occurred.  In this
+case, that is the beginning of the start tag, i.e.@: the position of
+the leading @code{"<"} marker.
+
+This example still looks pretty complicated, mostly due to the
+error-signalling code.  In practice, this is abstracted into a macro,
+after which the expression is quite succinct:
+
+@example
+@group
+(*parser
+ (bracket "start tag"
+     (seq (noise (string "<")) parse-name)
+     (match (alt (string ">") (string "/>")))
+   parse-attribute-list))
+@end group
+@end example
+
+@noindent
+The @code{bracket} macro captures the pattern of a bracketed item, and
+hides much of the detail.
+
+The parser language actually consists of two languages: one for
+defining matchers, and one for defining parsers.  The languages are
+intentionally very similar, and are meant to be used together.  Each
+sub-language is described below in its own section.
+
+@cindex run-time-loadable option
+@cindex option, run-time-loadable
+The parser language is a run-time-loadable option; to use it, execute
+
+@example
+(load-option '*parser)
+@end example
+@findex load-option
+
+@noindent
+once before compiling any code that uses the language.
+
+@menu
+* *Matcher::                    
+* *Parser::                     
+* Parser-language Macros::      
+@end menu
+
+@node *Matcher, *Parser, Parser Language, Parser Language
+@subsection *Matcher
+
+@cindex Matcher language
+@cindex Matcher procedure
+The @dfn{matcher language} is a declarative language for specifying a
+@dfn{matcher procedure}.  A matcher procedure is a procedure that
+accepts a single parser-buffer argument and returns a boolean value
+indicating whether the match it performs was successful.  If the match
+succeeds, the internal pointer of the parser buffer is moved forward
+over the matched text.  If the match fails, the internal pointer is
+unchanged.
+
+For example, here is a matcher procedure that matches the character
+@samp{a}:
+
+@example
+(lambda (b) (match-parser-buffer-char b #\a))
+@end example
+
+@noindent
+Here is another example that matches two given characters, @var{c1}
+and @var{c2}, in sequence:
+
+@example
+@group
+(lambda (b)
+  (let ((p (get-parser-buffer-pointer b)))
+    (if (match-parser-buffer-char b @var{c1})
+        (if (match-parser-buffer-char b @var{c2})
+            #t
+            (begin
+              (set-parser-buffer-pointer! b p)
+              #f))
+        #f)))
+@end group
+@end example
+
+@noindent
+This is code is clear, but has lots of details that get in the way of
+understanding what it is doing.  Here is the same example in the
+matcher language:
+
+@example
+(*matcher (seq (char @var{c1}) (char @var{c2})))
+@end example
+
+@noindent
+This is much simpler and more intuitive.  And it generates virtually
+the same code:
+
+@example
+@group
+(pp (*matcher (seq (char c1) (char c2))))
+@print{} (lambda (#[b1])
+@print{}   (let ((#[p1] (get-parser-buffer-pointer #[b1])))
+@print{}     (and (match-parser-buffer-char #[b1] c1)
+@print{}          (if (match-parser-buffer-char #[b1] c2)
+@print{}              #t
+@print{}              (begin
+@print{}                (set-parser-buffer-pointer! #[b1] #[p1])
+@print{}                #f)))))
+@end group
+@end example
+
+Now that we have seen an example of the language, it's time to look at
+the detail.  The @code{*matcher} special form is the interface between
+the matcher language and Scheme.
+
+@deffn {special form} *matcher mexp
+The operand @var{mexp} is an expression in the matcher language.  The
+@code{*matcher} expression expands into Scheme code that implements a
+matcher procedure.
+@end deffn
+
+Here are the predefined matcher expressions.  New matcher expressions
+can be defined using the macro facility (@pxref{Parser-language
+Macros}).  We will start with the primitive expressions.
+
+@deffn {matcher expression} char expression
+@deffnx {matcher expression} char-ci expression
+@deffnx {matcher expression} not-char expression
+@deffnx {matcher expression} not-char-ci expression
+These expressions match a given character.  In each case, the
+@var{expression} operand is a Scheme expression that must evaluate to
+a character at run time.  The @samp{-ci} expressions do
+case-insensitive matching.  The @samp{not-} expressions match any
+character other than the given one.
+@end deffn
+
+@deffn {matcher expression} string expression
+@deffnx {matcher expression} string-ci expression
+These expressions match a given string.  The @var{expression} operand
+is a Scheme expression that must evaluate to a string at run time.
+The @code{string-ci} expression does case-insensitive matching.
+@end deffn
+
+@deffn {matcher expression} char-set expression
+These expressions match a single character that is a member of a given
+character set.  The @var{expression} operand is a Scheme expression
+that must evaluate to a character set at run time.
+@end deffn
+
+@deffn {matcher expression} alphabet expression
+These expressions match a single character that is a member of a given
+Unicode alphabet (@pxref{Unicode}).  The @var{expression} operand is a
+Scheme expression that must evaluate to an alphabet at run time.
+@end deffn
+
+@deffn {matcher expression} end-of-input
+The @code{end-of-input} expression is successful only when there are
+no more characters available to be matched.
+@end deffn
+
+@deffn {matcher expression} discard-matched
+The @code{discard-matched} expression always successfully matches the
+null string.  However, it isn't meant to be used as a matching
+expression; it is used for its effect.  @code{discard-matched} causes
+all of the buffered text prior to this point to be discarded (i.e.@:
+it calls @code{discard-parser-buffer-head!} on the parser buffer).
+
+Note that @code{discard-matched} may not be used in certain places in
+a matcher expression.  The reason for this is that it deliberately
+discards information needed for backtracking, so it may not be used in
+a place where subsequent backtracking will need to back over it.  As a
+rule of thumb, use @code{discard-matched} only in the last operand of
+a @code{seq} or @code{alt} expression (including any @code{seq} or
+@code{alt} expressions in which it is indirectly contained).
+@end deffn
+
+In addition to the above primitive expressions, there are two
+convenient abbreviations.  A character literal (e.g.@: @samp{#\A}) is
+a legal primitive expression, and is equivalent to a @code{char}
+expression with that literal as its operand (e.g.@: @samp{(char
+#\A)}).  Likewise, a string literal is equivalent to a @code{string}
+expression (e.g.@: @samp{(string "abc")}).
+
+Next there are several combinator expressions.  These closely
+correspond to similar combinators in regular expressions.  Parameters
+named @var{mexp} are arbitrary expressions in the matcher language.
+
+@deffn {matcher expression} seq mexp @dots{}
+This matches each @var{mexp} operand in sequence.  For example,
+
+@example
+@group
+(seq (char-set char-set:alphabetic)
+     (char-set char-set:numeric))
+@end group
+@end example
+
+@noindent
+matches an alphabetic character followed by a numeric character, such
+as @samp{H4}.
+
+Note that if there are no @var{mexp} operands, the @code{seq}
+expression successfully matches the null string.
+@end deffn
+
+@deffn {matcher expression} alt mexp @dots{}
+This attempts to match each @var{mexp} operand in order from left to
+right.  The first one that successfully matches becomes the match for
+the entire @code{alt} expression.
+
+The @code{alt} expression participates in backtracking.  If one of the
+@var{mexp} operands matches, but the overall match in which this
+expression is embedded fails, the backtracking mechanism will cause
+the @code{alt} expression to try the remaining @var{mexp} operands.
+For example, if the expression
+
+@example
+(seq (alt "ab" "a") "b")
+@end example
+
+@noindent
+is matched against the text @samp{abc}, the @code{alt} expression will
+initially match its first operand.  But it will then fail to match the
+second operand of the @code{seq} expression.  This will cause the
+@code{alt} to be restarted, at which time it will match @samp{a}, and
+the overall match will succeed.
+
+Note that if there are no @var{mexp} operands, the @code{alt} match
+will always fail.
+@end deffn
+
+@deffn {matcher expression} * mexp
+This matches zero or more occurrences of the @var{mexp} operand.
+(Consequently this match always succeeds.)
+
+The @code{*} expression participates in backtracking; if it matches
+@var{N} occurrences of @var{mexp}, but the overall match fails, it
+will backtrack to @var{N-1} occurrences and continue.  If the overall
+match continues to fail, the @code{*} expression will continue to
+backtrack until there are no occurrences left.
+@end deffn
+
+@deffn {matcher expression} + mexp
+This matches one or more occurrences of the @var{mexp} operand.  It is
+equivalent to
+
+@example
+(seq @var{mexp} (* @var{mexp}))
+@end example
+@end deffn
+
+@deffn {matcher expression} ? mexp
+This matches zero or one occurrences of the @var{mexp} operand.  It is
+equivalent to
+
+@example
+(alt @var{mexp} (seq))
+@end example
+@end deffn
+
+@deffn {matcher expression} sexp expression
+The @code{sexp} expression allows arbitrary Scheme code to be embedded
+inside a matcher.  The @var{expression} operand must evaluate to a
+matcher procedure at run time; the procedure is called to match the
+parser buffer.  For example,
+
+@example
+@group
+(*matcher
+ (seq "a"
+      (sexp parse-foo)
+      "b"))
+@end group
+@end example
+
+@noindent
+expands to
+
+@example
+@group
+(lambda (#[b1])
+  (let ((#[p1] (get-parser-buffer-pointer #[b1])))
+    (and (match-parser-buffer-char #[b1] #\a)
+         (if (parse-foo #[b1])
+             (if (match-parser-buffer-char #[b1] #\b)
+                 #t
+                 (begin
+                   (set-parser-buffer-pointer! #[b1] #[p1])
+                   #f))
+             (begin
+               (set-parser-buffer-pointer! #[b1] #[p1])
+               #f)))))
+@end group
+@end example
+
+The case in which @var{expression} is a symbol is so common that it
+has an abbreviation: @samp{(sexp @var{symbol})} may be abbreviated as
+just @var{symbol}.
+@end deffn
+
+@deffn {matcher expression} with-pointer identifier mexp
+The @code{with-pointer} expression fetches the parser buffer's
+internal pointer (using @code{get-parser-buffer-pointer}), binds it to
+@var{identifier}, and then matches the pattern specified by
+@var{mexp}.  @var{Identifier} must be a symbol.
+
+This is meant to be used on conjunction with @code{sexp}, as a way to
+capture a pointer to a part of the input stream that is outside the
+@code{sexp} expression.  An example of the use of @code{with-pointer}
+appears above (@pxref{with-pointer example}).
+@end deffn
+
+@node *Parser, Parser-language Macros, *Matcher, Parser Language
+@subsection *Parser
+
+@cindex Parser language
+@cindex Parser procedure
+The @dfn{parser language} is a declarative language for specifying a
+@dfn{parser procedure}.  A parser procedure is a procedure that
+accepts a single parser-buffer argument and parses some of the input
+from the buffer.  If the parse is successful, the procedure returns a
+vector of objects that are the result of the parse, and the internal
+pointer of the parser buffer is advanced past the input that was
+parsed.  If the parse fails, the procedure returns @code{#f} and the
+internal pointer is unchanged.  This interface is much like that of a
+matcher procedure, except that on success the parser procedure returns
+a vector of values rather than @code{#t}.
+
+The @code{*parser} special form is the interface between the parser
+language and Scheme.
+
+@deffn {special form} *parser pexp
+The operand @var{pexp} is an expression in the parser language.  The
+@code{*parser} expression expands into Scheme code that implements a
+parser procedure.
+@end deffn
+
+There are several primitive expressions in the parser language.  The
+first two provide a bridge to the matcher language (@pxref{*Matcher}):
+
+@deffn {parser expression} match mexp
+The @code{match} expression performs a match on the parser buffer.
+The match to be performed is specified by @var{mexp}, which is an
+expression in the matcher language.  If the match is successful, the
+result of the @code{match} expression is a vector of one element: a
+string containing that text.
+@end deffn
+
+@deffn {parser expression} noise mexp
+The @code{noise} expression performs a match on the parser buffer.
+The match to be performed is specified by @var{mexp}, which is an
+expression in the matcher language.  If the match is successful, the
+result of the @code{noise} expression is a vector of zero elements.
+(In other words, the text is matched and then thrown away.)
+
+The @var{mexp} operand is often a known character or string, so in the
+case that @var{mexp} is a character or string literal, the
+@code{noise} expression can be abbreviated as the literal.  In other
+words, @samp{(noise "foo")} can be abbreviated just @samp{"foo"}.
+@end deffn
+
+@deffn {parser expression} values expression @dots{}
+Sometimes it is useful to be able to insert arbitrary values into the
+parser result.  The @code{values} expression supports this.  The
+@var{expression} arguments are arbitrary Scheme expressions that are
+evaluated at run time and returned in a vector.  The @code{values}
+expression always succeeds and never modifies the internal pointer of
+the parser buffer.
+@end deffn
+
+@deffn {parser expression} discard-matched
+The @code{discard-matched} expression always succeeds, returning a
+vector of zero elements.  In all other respects it is identical to the
+@code{discard-matched} expression in the matcher language.
+@end deffn
+
+Next there are several combinator expressions.  Parameters named
+@var{pexp} are arbitrary expressions in the parser language.  The
+first few combinators are direct equivalents of those in the matcher
+language.
+
+@deffn {parser expression} seq pexp @dots{}
+The @code{seq} expression parses each of the @var{pexp} operands in
+order.  If all of the @var{pexp} operands successfully match, the
+result is the concatenation of their values (by @code{vector-append}).
+@end deffn
+
+@deffn {parser expression} alt pexp @dots{}
+The @code{alt} expression attempts to parse each @var{pexp} operand in
+order from left to right.  The first one that successfully parses
+produces the result for the entire @code{alt} expression.
+
+Like the @code{alt} expression in the matcher language, this
+expression participates in backtracking.
+@end deffn
+
+@deffn {parser expression} * pexp
+The @code{*} expression parses zero or more occurrences of @var{pexp}.
+The results of the parsed occurrences are concatenated together (by
+@code{vector-append}) to produce the expression's result.
+
+Like the @code{*} expression in the matcher language, this expression
+participates in backtracking.
+@end deffn
+
+@deffn {parser expression} + pexp
+The @code{*} expression parses one or more occurrences of @var{pexp}.
+It is equivalent to
+
+@example
+(seq @var{pexp} (* @var{pexp}))
+@end example
+@end deffn
+
+@deffn {parser expression} ? pexp
+The @code{*} expression parses zero or one occurrences of @var{pexp}.
+It is equivalent to
+
+@example
+(alt @var{pexp} (seq))
+@end example
+@end deffn
+
+The next three expressions do not have equivalents in the matcher
+language.  Each accepts a single @var{pexp} argument, which is parsed
+in the usual way.  These expressions perform transformations on the
+returned values of a successful match.
+
+@deffn {parser expression} transform expression pexp
+The @code{transform} expression performs an arbitrary transformation
+of the values returned by parsing @var{pexp}.  @var{Expression} is a
+Scheme expression that must evaluate to a procedure at run time.  If
+@var{pexp} is successfully parsed, the procedure is called with the
+vector of values as its argument, and must return a vector or
+@code{#f}.  If it returns a vector, the parse is successful, and those
+are the resulting values.  If it returns @code{#f}, the parse fails
+and the internal pointer of the parser buffer is returned to what it
+was before @var{pexp} was parsed.
+
+For example:
+
+@example
+(transform (lambda (v) (if (= 0 (vector-length v)) #f v)) @dots{})
+@end example
+@end deffn
+
+@deffn {parser expression} encapsulate expression pexp
+The @code{encapsulate} expression transforms the values returned by
+parsing @var{pexp} into a single value.  @var{Expression} is a Scheme
+expression that must evaluate to a procedure at run time.  If
+@var{pexp} is successfully parsed, the procedure is called with the
+vector of values as its argument, and may return any Scheme object.
+The result of the @code{encapsulate} expression is a vector of length
+one containing that object.  (And consequently @code{encapsulate}
+doesn't change the success or failure of @var{pexp}, only its value.)
+
+For example:
+
+@example
+(encapsulate vector->list @dots{})
+@end example
+@end deffn
+
+@deffn {parser expression} map expression pexp
+The @code{map} expression performs a per-element transform on the
+values returned by parsing @var{pexp}.  @var{Expression} is a Scheme
+expression that must evaluate to a procedure at run time.  If
+@var{pexp} is successfully parsed, the procedure is mapped (by
+@code{vector-map}) over the values returned from the parse.  The
+mapped values are returned as the result of the @code{map} expression.
+(And consequently @code{map} doesn't change the success or failure of
+@var{pexp}, nor the number of values returned.)
+
+For example:
+
+@example
+(map string->symbol @dots{})
+@end example
+@end deffn
+
+Finally, as in the matcher language, we have @code{sexp} and
+@code{with-pointer} to support embedding Scheme code in the parser.
+
+@deffn {parser expression} sexp expression
+The @code{sexp} expression allows arbitrary Scheme code to be embedded
+inside a parser.  The @var{expression} operand must evaluate to a
+parser procedure at run time; the procedure is called to parse the
+parser buffer.  This is the parser-language equivalent of the
+@code{sexp} expression in the matcher language.
+
+The case in which @var{expression} is a symbol is so common that it
+has an abbreviation: @samp{(sexp @var{symbol})} may be abbreviated as
+just @var{symbol}.
+@end deffn
+
+@deffn {parser expression} with-pointer identifier pexp
+The @code{with-pointer} expression fetches the parser buffer's
+internal pointer (using @code{get-parser-buffer-pointer}), binds it to
+@var{identifier}, and then parses the pattern specified by @var{pexp}.
+@var{Identifier} must be a symbol.  This is the parser-language
+equivalent of the @code{with-pointer} expression in the matcher
+language.
+@end deffn
+
+@node Parser-language Macros,  , *Parser, Parser Language
+@subsection Parser-language Macros
+
+The parser and matcher languages provide a macro facility so that
+common patterns can be abstracted.  The macro facility allows new
+expression types to be independently defined in the two languages.
+The macros are defined in heirarchically organized tables, so that
+different applications can have private macro bindings.
+
+@deffn {special form} define-*matcher-macro formals expression
+@deffnx {special form} define-*parser-macro formals expression
+These special forms are used to define macros in the matcher and
+parser language, respectively.  @var{Formals} is like the
+@var{formals} list of a @code{define} special form, and
+@var{expression} is a Scheme expression.
+
+If @var{formals} is a list (or improper list) of symbols, the first
+symbol in the list is the name of the macro, and the remaining symbols
+are interpreted as the @var{formals} of a lambda expression.  A lambda
+expression is formed by combining the latter @var{formals} with the
+@var{expression}, and this lambda expression, when evaluated, becomes
+the @dfn{expander}.  The defined macro accepts the same number of
+operands as the expander.  A macro instance is expanded by applying
+the expander to the list of operands; the result of the application is
+interpreted as a replacement expression for the macro instance.
+
+If @var{formals} is a symbol, it is the name of the macro.  In this
+case, the expander is a procedure of no arguments whose body is
+@var{expression}.  When the @var{formals} symbol appears by itself as
+an expression in the language, the expander is called with no
+arguments, and the result is interpreted as a replacement expression
+for the symbol.
+@end deffn
+
+@deffn procedure define-*matcher-expander identifier expander
+@deffnx procedure define-*parser-expander identifier expander
+These procedures provide a procedural interface to the
+macro-definition mechanism.  @var{Identifier} must be a symbol, and
+@var{expander} must be an expander procedure, as defined above.
+Instances of the @code{define-*matcher-macro} and
+@code{define-*parser-macro} special forms expand into calls to these
+procedures.
+@end deffn
+
+The remaining procedures define the interface to the parser-macros
+table abstraction.  Each parser-macro table has a separate binding
+space for macros in the matcher and parser languages.  However, the
+table inherits bindings from one specified table; it's not possible to
+inherit matcher-language bindings from one table and parser-language
+bindings from another.
+
+@deffn procedure make-parser-macros parent-table
+Create and return a new parser-macro table that inherits from
+@var{parent-table}.  @var{Parent-table} must be either a parser-macro
+table, or @code{#f}; usually it is specified as the value of
+@code{global-parser-macros}.
+@end deffn
+
+@deffn procedure parser-macros? object
+This is a predicate for parser-macro tables.
+@end deffn
+
+@deffn procedure global-parser-macros
+Return the global parser-macro table.  This table is predefined and
+contains all of the bindings documented here.
+@end deffn
+
+There is a ``current'' table at all times, and macro definitions are
+always placed in this table.  By default, the current table is the
+global macro table, but the following procedures allow this to be
+changed.
+
+@deffn procedure current-parser-macros
+Return the current parser-macro table.
+@end deffn
+
+@deffn procedure set-current-parser-macros! table
+Change the current parser-macro table to @var{table}, which must
+satisfy @code{parser-macros?}.
+@end deffn
+
+@deffn procedure with-current-parser-macros table thunk
+Bind the current parser-macro table to @var{table}, call @var{thunk}
+with no arguments, then restore the original table binding.  The value
+returned by @var{thunk} is the returned as the value of this
+procedure.  @var{Table} must satisfy @code{parser-macros?}, and
+@var{thunk} must be a procedure of no arguments.
+@end deffn
+
+@node XML Parser,  , Parser Language, Input/Output
+@section XML Parser
+
+@cindex XML parser
+@cindex parser, XML
+MIT/GNU Scheme provides a simple non-validating @acronym{XML} parser.
+This parser is mostly conformant, with the exception that it doesn't
+support @acronym{UTF-16}.  The parser also does not support external
+document type declarations (@acronym{DTD}s).  The output of the parser
+is a record tree that closely reflects the structure of the
+@acronym{XML} document.
+
+@cindex XML output
+@cindex output, XML
+There is also an output mechanism that writes an @acronym{XML} record
+tree to a port.  There is no guarantee that parsing an @acronym{XML}
+document and writing it back out will make a verbatim copy of the
+document.  The output will be semantically identical but may have
+small syntactic differences.  For example, comments are discarded by
+the parser, and entities are substituted during the parsing process.
+
+The purpose of the @acronym{XML} support is to provide a mechanism for
+reading and writing simple @acronym{XML} documents.  In the future
+this support may be further developed to support a standard interface
+such as @acronym{DOM} or @acronym{SAX}.
+
+@cindex run-time-loadable option
+@cindex option, run-time-loadable
+The @acronym{XML} support is a run-time-loadable option; to use it,
+execute
+
+@example
+(load-option 'xml)
+@end example
+@findex load-option
+
+@noindent
+once before compiling any code that uses it.
+
+The @acronym{XML} interface consists of an input procedure, an output
+procedure, and a set of record types.
+
+@deffn procedure parse-xml-document buffer
+This procedure parses an @acronym{XML} input stream and returns a
+newly-allocated @acronym{XML} record tree.  The @var{buffer} argument
+must be a parser buffer (@pxref{Parser Buffers}).  Most errors in the
+input stream are detected and signalled, with information identifying
+the location of the error where possible.  Note that the input stream
+is assumed to be @acronym{UTF-8}.
+@end deffn
+
+@deffn procedure write-xml xml-document port
+This procedure writes an @acronym{XML} record tree to @var{port}.  The
+@var{xml-document} argument must be a record of type
+@code{xml-document}, which is the root record of an @acronym{XML}
+record tree.  The output is encoded in @acronym{UTF-8}.
+@end deffn
+
+@cindex XML names
+@cindex names, XML
+@acronym{XML} names are represented in memory as symbols.  All symbols
+appearing within @acronym{XML} records are @acronym{XML} names.
+Because @acronym{XML} names are case sensitive, there is a procedure
+to intern these symbols:
+
+@deffn procedure xml-intern string
+@cindex XML name
+Returns the @acronym{XML} name called @var{string}.  @acronym{XML}
+names are represented as symbols, but unlike ordinary Scheme symbols,
+they are case sensitive.  The following is true for any two strings
+@var{string1} and @var{string2}:
+
+@example
+@group
+(let ((name1 (xml-intern @var{string1}))
+      (name2 (xml-intern @var{string2})))
+  (if (string=? @var{string1} @var{string2})
+      (eq? name1 name2)
+      (not (eq? name1 name2))))
+@end group
+@end example
+@end deffn
+
+The output from the @acronym{XML} parser and the input to the
+@acronym{XML} output procedure is a complex data structure composed of
+a heirarchy of typed components.  Each component is a record whose
+fields correspond to parts of the @acronym{XML} structure that the
+record represents.  There are no special operations on these records;
+each is a tuple with named subparts.  The root record type is
+@code{xml-document}, which represents a complete @acronym{XML}
+document.
+
+Each record type @var{type} has the following associated bindings:
+
+@table @code
+@item <@var{type}>
+is a variable bound to the record-type descriptor for @var{type}.  The
+record-type descriptor may be used as a specializer in @acronym{SOS}
+method definitions, which greatly simplifies code to dispatch on these
+types.
+
+@item @var{type}?
+is a predicate for records of type @var{type}.  It accepts one
+argument, which can be any object, and returns @code{#t} if the object
+is a record of this type, or @code{#f} otherwise.
+
+@item make-@var{type}
+is a constructor for records of type @var{type}.  It accepts one
+argument for each field of @var{type}, in the same order that they are
+written in the type description, and returns a newly-allocated record
+of that type.
+
+@item @var{type}-@var{field}
+is an accessor procedure for the field @var{field} in records of type
+@var{type}.  It accepts one argument, which must be a record of that
+type, and returns the contents of the corresponding field in the
+record.
+
+@item set-@var{type}-@var{field}!
+is a modifier procedure for the field @var{field} in records of type
+@var{type}.  It accepts two arguments: the first must be a record of
+that type, and the second is a new value for the corresponding field.
+The record's field is modified to have the new value.
+@end table
+
+@deftp {record type} xml-document declaration misc-1 dtd misc-2 root misc-3
+@vindex <xml-document>
+@findex xml-document?
+@findex make-xml-document
+@findex xml-document-declaration
+@findex xml-document-misc-1
+@findex xml-document-dtd
+@findex xml-document-misc-2
+@findex xml-document-root
+@findex xml-document-misc-3
+@findex set-xml-document-declaration!
+@findex set-xml-document-misc-1!
+@findex set-xml-document-dtd!
+@findex set-xml-document-misc-2!
+@findex set-xml-document-root!
+@findex set-xml-document-misc-3!
+The @code{xml-document} record is the top-level record representing a
+complete @acronym{XML} document.  @var{Declaration} is either an
+@code{xml-declaration} object or @code{#f}.  @var{Dtd} is either an
+@code{xml-dtd} object or @code{#f}.  @var{Root} is an @code{xml-element}
+object.  @var{Misc-1}, @var{misc-2}, and @var{misc-3} are lists of
+miscellaneous items; a miscellaneous item is either an
+@code{xml-comment} object, an @code{xml-processing-instructions} object,
+or a string of whitespace.
+@end deftp
+
+@deftp {record type} xml-declaration version encoding standalone
+@vindex <xml-declaration>
+@findex xml-declaration?
+@findex make-xml-declaration
+@findex xml-declaration-version
+@findex xml-declaration-encoding
+@findex xml-declaration-standalone
+@findex set-xml-declaration-version!
+@findex set-xml-declaration-encoding!
+@findex set-xml-declaration-standalone!
+The @code{xml-declaration} record represents the @samp{<?xml @dots{}
+?>} declaration that optionally appears at the beginning of an
+@acronym{XML} document.  @var{Version} is a version string, typically
+@code{"1.0"}.  @var{Encoding} is either an encoding string or
+@code{#f}.  @var{Standalone} is either @code{"yes"}, @code{"no"}, or
+@code{#f}.
+@end deftp
+
+@deftp {record type} xml-element name attributes contents
+@vindex <xml-element>
+@findex xml-element?
+@findex make-xml-element
+@findex xml-element-name
+@findex xml-element-attributes
+@findex xml-element-contents
+@findex set-xml-element-name!
+@findex set-xml-element-attributes!
+@findex set-xml-element-contents!
+The @code{xml-element} record represents general @acronym{XML}
+elements; the bulk of a typical @acronym{XML} document consists of
+these elements.  @var{Name} is the element name (a symbol).
+@var{Attributes} is a list of attributes; each attribute is a pair
+whose @sc{car} is the attribute name (a symbol), and whose @sc{cdr} is
+the attribute value (a string).  @var{Contents} is a list of the
+contents of the element.  Each element of this list is either a
+string, an @code{xml-element} record, an
+@code{xml-processing-instructions} record, or an
+@code{xml-uninterpreted} record.
+@end deftp
+
+@deftp {record type} xml-processing-instructions name text
+@vindex <xml-processing-instructions>
+@findex xml-processing-instructions?
+@findex make-xml-processing-instructions
+@findex xml-processing-instructions-name
+@findex xml-processing-instructions-text
+@findex set-xml-processing-instructions-name!
+@findex set-xml-processing-instructions-text!
+The @code{xml-processing-instructions} record represents processing
+instructions, which have the form @samp{<?@var{name} @dots{} ?>}.
+These instructions are intended to contain non-@acronym{XML} data that
+will be processed by another interpreter; for example they might
+contain @acronym{PHP} programs.  The @var{name} field is the processor
+name (a symbol), and the @var{text} field is the body of the
+instructions (a string).
+@end deftp
+
+@deftp {record type} xml-uninterpreted text
+@vindex <xml-uninterpreted>
+@findex xml-uninterpreted?
+@findex make-xml-uninterpreted
+@findex xml-uninterpreted-text
+@findex set-xml-uninterpreted-text!
+Some documents contain entity references that can't be expanded by the
+parser, perhaps because the document requires an external
+@acronym{DTD}.  Such references are left uninterpreted in the output
+by wrapping them in @code{xml-uninterpreted} records.  In some
+situations, for example when they are embedded in attribute values,
+the surrounding text is also included in the @code{xml-uninterpreted}
+record.  The @var{text} field contains the uninterpreted @acronym{XML}
+text (a string).
+@end deftp
+
+@deftp {record type} xml-dtd root external internal
+@vindex <xml-dtd>
+@findex xml-dtd?
+@findex make-xml-dtd
+@findex xml-dtd-root
+@findex xml-dtd-external
+@findex xml-dtd-internal
+@findex set-xml-dtd-root!
+@findex set-xml-dtd-external!
+@findex set-xml-dtd-internal!
+The @code{xml-dtd} record represents a document type declaration.  The
+@var{root} field is an @acronym{XML} name for the root element of the
+document.  @var{External} is either an @code{xml-external-id} record
+or @code{#f}.  @var{Internal} is a list of @acronym{DTD} element
+records (e.g.@: @code{xml-!element}, @code{xml-!attlist}, etc.).
+@end deftp
+
+The remaining record types are valid only within a @acronym{DTD}.
+
+@deftp {record type} xml-!element name content-type
+@vindex <xml-!element>
+@findex xml-!element?
+@findex make-xml-!element
+@findex xml-!element-name
+@findex xml-!element-content-type
+@findex set-xml-!element-name!
+@findex set-xml-!element-content-type!
+The @code{xml-!element} record represents an element-type
+declaration.  @var{Name} is the @acronym{XML} name of the type being
+declared (a symbol).  @var{Content-type} describes the type and can
+have several different values, as follows:
+
+@itemize @bullet
+@item
+The @acronym{XML} names @samp{EMPTY} and @samp{ANY} correspond to the
+@acronym{XML} keywords of the same name.
+
+@item
+A list @samp{(MIX @var{type} @dots{})} corresponds to the
+@samp{(#PCDATA | @var{type} | @dots{})} syntax.
+@end itemize
+@end deftp
+
+@deftp {record type} xml-!attlist name definitions
+@vindex <xml-!attlist>
+@findex xml-!attlist?
+@findex make-xml-!attlist
+@findex xml-!attlist-name
+@findex xml-!attlist-definitions
+@findex set-xml-!attlist-name!
+@findex set-xml-!attlist-definitions!
+The @code{xml-!attlist} record represents an attribute-list
+declaration.  @var{Name} is the @acronym{XML} name of the type for
+which attributes are being declared (a symbol).  @var{Definitions} is
+a list of attribute definitions, each of which is a list of three
+elements @code{(@var{name} @var{type} @var{default})}.  @var{Name} is
+an @acronym{XML} name for the name of the attribute (a symbol).
+@var{Type} describes the attribute type, and can have one of the
+following values:
+
+@itemize @bullet
+@item
+The @acronym{XML} names @samp{CDATA}, @samp{IDREFS}, @samp{IDREF},
+@samp{ID}, @samp{ENTITY}, @samp{ENTITIES}, @samp{NMTOKENS}, and
+@samp{NMTOKEN} correspond to the @acronym{XML} keywords of the same
+names.
+
+@item
+A list @samp{(NOTATION @var{name1} @var{name2} @dots{})} corresponds
+to the @samp{NOTATION (@var{name1} | @var{name2} @dots{})} syntax.
+
+@item
+A list @samp{(ENUMERATED @var{name1} @var{name2} @dots{})} corresponds
+to the @samp{(@var{name1} | @var{name2} @dots{})} syntax.
+@end itemize
+
+@var{Default} describes the default value for the attribute, and can
+have one of the following values:
+
+@itemize @bullet
+@item
+The @acronym{XML} names @samp{#REQUIRED} and @samp{#IMPLIED}
+correspond to the @acronym{XML} keywords of the same names.
+
+@item
+A list @samp{(#FIXED @var{value})} corresponds to the @samp{#FIXED
+"@var{value}"} syntax.  @var{Value} is represented as a string, but
+might also be an @code{xml-uninterpreted} record.
+
+@item
+A list @samp{(DEFAULT @var{value})} corresponds to the
+@samp{"@var{value}"} syntax.  @var{Value} is represented as a string,
+but might also be an @code{xml-uninterpreted} record.
+@end itemize
+@end deftp
+
+@deftp {record type} xml-!entity name value
+@vindex <xml-!entity>
+@findex xml-!entity?
+@findex make-xml-!entity
+@findex xml-!entity-name
+@findex xml-!entity-value
+@findex set-xml-!entity-name!
+@findex set-xml-!entity-value!
+The @code{xml-!entity} record represents a general entity
+declaration.  @var{Name} is an @acronym{XML} name for the entity.
+@var{Value} is the entity's value, either a string, an
+@code{xml-uninterpreted} record, or an @code{xml-external-id} record.
+@end deftp
+
+@deftp {record type} xml-parameter-!entity name value
+@vindex <xml-parameter-!entity>
+@findex xml-parameter-!entity?
+@findex make-xml-parameter-!entity
+@findex xml-parameter-!entity-name
+@findex xml-parameter-!entity-value
+@findex set-xml-parameter-!entity-name!
+@findex set-xml-parameter-!entity-value!
+The @code{xml-parameter-!entity} record represents a parameter entity
+declaration.  @var{Name} is an @acronym{XML} name for the entity.
+@var{Value} is the entity's value, either a string, an
+@code{xml-uninterpreted} record, or an @code{xml-external-id} record.
+@end deftp
+
+@deftp {record type} xml-unparsed-!entity name id notation
+@vindex <xml-unparsed-!entity>
+@findex xml-unparsed-!entity?
+@findex make-xml-unparsed-!entity
+@findex xml-unparsed-!entity-name
+@findex xml-unparsed-!entity-id
+@findex xml-unparsed-!entity-notation
+@findex set-xml-unparsed-!entity-name!
+@findex set-xml-unparsed-!entity-id!
+@findex set-xml-unparsed-!entity-notation!
+The @code{xml-unparsed-!entity} record represents an unparsed entity
+declaration.  @code{Name} is an @acronym{XML} name for the entity.
+@var{Id} is an @code{xml-external-id} record.  @var{Notation} is an
+@acronym{XML} name for the notation.
+@end deftp
+
+@deftp {record type} xml-!notation name id
+@vindex <xml-!notation>
+@findex xml-!notation?
+@findex make-xml-!notation
+@findex xml-!notation-name
+@findex xml-!notation-id
+@findex set-xml-!notation-name!
+@findex set-xml-!notation-id!
+The @code{xml-!notation} record represents a notation declaration.
+@code{Name} is an @acronym{XML} name for the notation.  @var{Id} is an
+@code{xml-external-id} record.
+@end deftp
+
+@deftp {record type} xml-external-id id uri
+@vindex <xml-external-id>
+@findex xml-external-id?
+@findex make-xml-external-id
+@findex xml-external-id-id
+@findex xml-external-id-uri
+@findex set-xml-external-id-id!
+@findex set-xml-external-id-uri!
+The @code{xml-external-id} record is a reference to an external
+@acronym{DTD}.  This reference consists of two parts: @var{id} is a
+public @acronym{ID} literal, corresponding to the @samp{PUBLIC}
+keyword, while @var{uri} is a system literal, corresponding to the
+@samp{SYSTEM} keyword.  Either or both may be present, depending on
+the context.  Each is represented as a string.
+@end deftp

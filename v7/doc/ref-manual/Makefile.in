@@ -1,5 +1,5 @@
 
-# $Id: Makefile.in,v 1.6 2003/02/14 19:22:43 cph Exp $
+# $Id: Makefile.in,v 1.7 2003/04/15 03:29:18 cph Exp $
 #
 # Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
 #
@@ -63,25 +63,47 @@ htmldir = @htmldir@
 pdfdir = @pdfdir@
 psdir = @psdir@
 
+SOURCES = \
+    scheme.texinfo \
+    associations.texi \
+    bit-strings.texi \
+    characters.texi \
+    environments.texi \
+    equivalence.texi \
+    error.texi \
+    gfdl.texinfo \
+    graphics.texi \
+    io.texi \
+    lists.texi \
+    misc-datatypes.texi \
+    numbers.texi \
+    os-interface.texi \
+    overview.texi \
+    procedures.texi \
+    special-forms.texi \
+    strings.texi \
+    vectors.texi \
+    win32-packaging.texi
+
 INFO_TARGET = mit-scheme-ref.info
 
 all: $(INFO_TARGET) scheme.html scheme.pdf scheme.ps
 
-$(INFO_TARGET): scheme.texinfo gfdl.texinfo
+$(INFO_TARGET): $(SOURCES)
 	rm -f $(INFO_TARGET)*
 	makeinfo --output=$(INFO_TARGET) scheme.texinfo
 
-scheme.html: scheme.texinfo gfdl.texinfo
+scheme.html: $(SOURCES)
 	rm -f scheme*.html
 	texi2html -split_chapter scheme.texinfo
 
-scheme.pdf: scheme.texinfo gfdl.texinfo
+scheme.pdf: $(SOURCES)
 	texi2pdf scheme.texinfo
 
 scheme.ps: scheme.dvi
 	dvips -o $@ $^
 
-scheme.dvi: scheme.texinfo gfdl.texinfo
+scheme.dvi: $(SOURCES)
 	texi2dvi scheme.texinfo
 
 AUX_SUFFIXES = aux log toc
