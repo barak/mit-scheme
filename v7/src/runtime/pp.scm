@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pp.scm,v 14.37 1996/04/24 04:22:59 cph Exp $
+$Id: pp.scm,v 14.38 1996/08/26 20:42:45 adams Exp $
 
 Copyright (c) 1988-96 Massachusetts Institute of Technology
 
@@ -59,6 +59,7 @@ MIT in each case. |#
 	  (LETREC . ,print-let-expression)
 	  (FLUID-LET . ,print-let-expression)
 	  (DEFINE . ,print-procedure)
+	  (DEFINE-INTEGRABLE . ,print-procedure)
 	  (LAMBDA . ,print-procedure)
 	  (NAMED-LAMBDA . ,print-procedure)))
   (set! dispatch-list code-dispatch-list)
