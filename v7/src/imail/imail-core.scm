@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.84 2000/05/22 19:44:44 cph Exp $
+;;; $Id: imail-core.scm,v 1.85 2000/05/22 19:49:50 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -311,7 +311,11 @@
 ;; of the folder must work, but may incur a significant time or space
 ;; penalty.
 
-(define-generic close-folder (folder))
+(define (close-folder folder)
+  (save-folder folder)
+  (%close-folder folder))
+
+(define-generic %close-folder (folder))
 
 ;; -------------------------------------------------------------------
 ;; Return the number of messages in FOLDER.

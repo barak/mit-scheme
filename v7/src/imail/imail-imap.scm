@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.73 2000/05/22 19:43:47 cph Exp $
+;;; $Id: imail-imap.scm,v 1.74 2000/05/22 19:49:57 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -840,7 +840,7 @@
 	      (set-imap-connection-folder! connection #f))
 	  #t))))
 
-(define-method close-folder ((folder <imap-folder>))
+(define-method %close-folder ((folder <imap-folder>))
   (maybe-close-imap-connection (imap-folder-connection folder))
   (set-imap-connection-folder! connection #f))
 

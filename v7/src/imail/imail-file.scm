@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.34 2000/05/22 03:44:22 cph Exp $
+;;; $Id: imail-file.scm,v 1.35 2000/05/22 19:49:55 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -102,7 +102,7 @@
 (define (file-folder-pathname folder)
   (file-url-pathname (folder-url folder)))
 
-(define-method close-folder ((folder <file-folder>))
+(define-method %close-folder ((folder <file-folder>))
   (without-interrupts
    (lambda ()
      (let ((messages (%file-folder-messages folder)))
