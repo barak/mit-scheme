@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prntfs.c,v 1.12 1997/06/19 05:17:14 cph Exp $
+$Id: prntfs.c,v 1.13 1997/08/23 02:52:05 cph Exp $
 
 Copyright (c) 1993-97 Massachusetts Institute of Technology
 
@@ -32,13 +32,12 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* Unix-specific file-system primitives. */
-/* DOS Imitation */
+/* NT-specific file-system primitives. */
 
 #include "scheme.h"
 #include "prims.h"
 #include "nt.h"
-#include "osfs.h"
+#include "ntfs.h"
 
 #include <sys/utime.h>
 #include <memory.h>
@@ -55,100 +54,6 @@ static void EXFUN (protect_fd, (int fd));
 #ifndef FILE_TOUCH_OPEN_TRIES
 #define FILE_TOUCH_OPEN_TRIES 5
 #endif
-
-#define STAT_NOT_FOUND_P(code)						\
-  (((code) == ERROR_FILE_NOT_FOUND)					\
-   || ((code) == ERROR_PATH_NOT_FOUND))
-
-#define STAT_NOT_ACCESSIBLE_P(code)					\
-  (((code) == ERROR_ACCESS_DENIED)					\
-   || ((code) == ERROR_SHARING_VIOLATION))
-
-static HANDLE create_file_for_info (const char *);
-static void close_file_handle (HANDLE);
-
-enum get_file_info_result { gfi_ok, gfi_not_found, gfi_not_accessible };
-
-static enum get_file_info_result get_file_info_from_dir
-  (const char *, BY_HANDLE_FILE_INFORMATION *);
-
-static enum get_file_info_result
-get_file_info (const char * namestring, BY_HANDLE_FILE_INFORMATION * info)
-{
-  HANDLE hfile = (create_file_for_info (namestring));
-  if (hfile == INVALID_HANDLE_VALUE)
-    {
-      DWORD code = (GetLastError ());
-      if (STAT_NOT_FOUND_P (code))
-	return (gfi_not_found);
-      if (STAT_NOT_ACCESSIBLE_P (code))
-	return (get_file_info_from_dir (namestring, info));
-      NT_error_api_call (code, apicall_CreateFile);
-    }
-  if (!GetFileInformationByHandle (hfile, info))
-    {
-      DWORD code = (GetLastError ());
-      (void) CloseHandle (hfile);
-      if (STAT_NOT_FOUND_P (code))
-	return (gfi_not_found);
-      if (STAT_NOT_ACCESSIBLE_P (code))
-	return (gfi_not_accessible);
-      NT_error_api_call (code, apicall_GetFileInformationByHandle);
-    }
-  close_file_handle (hfile);
-  return (gfi_ok);
-}
-
-/* Incredible kludge.  Some files (e.g. \pagefile.sys) cannot be
-   accessed by the usual technique, but much of the same information
-   is available by reading the directory.  More M$ bullshit.  */
-static enum get_file_info_result
-get_file_info_from_dir (const char * namestring,
-			BY_HANDLE_FILE_INFORMATION * info)
-{
-  WIN32_FIND_DATA fi;
-  HANDLE handle = (FindFirstFile (namestring, (&fi)));
-  if (handle == INVALID_HANDLE_VALUE)
-    {
-      DWORD code = (GetLastError ());
-      if (STAT_NOT_FOUND_P (code))
-	return (gfi_not_found);
-      if (STAT_NOT_ACCESSIBLE_P (code))
-	return (gfi_not_accessible);
-      NT_error_api_call (code, apicall_FindFirstFile);
-    }
-  FindClose (handle);
-  (info -> dwFileAttributes) = (fi . dwFileAttributes);
-  (info -> ftCreationTime) = (fi . ftCreationTime);
-  (info -> ftLastAccessTime) = (fi . ftLastAccessTime);
-  (info -> ftLastWriteTime) = (fi . ftLastWriteTime);
-  (info -> dwVolumeSerialNumber) = 0;
-  (info -> nFileSizeHigh) = (fi . nFileSizeHigh);
-  (info -> nFileSizeLow) = (fi . nFileSizeLow);
-  (info -> nNumberOfLinks) = 1;
-  (info -> nFileIndexHigh) = 0;
-  (info -> nFileIndexLow) = 0;
-  return (gfi_ok);
-}
-
-static HANDLE
-create_file_for_info (const char * namestring)
-{
-  return
-    (CreateFile (namestring,
-		 0,
-		 (FILE_SHARE_READ | FILE_SHARE_WRITE),
-		 0,
-		 OPEN_EXISTING,
-		 FILE_FLAG_BACKUP_SEMANTICS,
-		 NULL));
-}
-
-static void
-close_file_handle (HANDLE hfile)
-{
-  STD_BOOL_API_CALL (CloseHandle, (hfile));
-}
 
 static double ut_zero = 0.0;
 
@@ -199,7 +104,7 @@ DEFINE_PRIMITIVE ("FILE-MODES", Prim_file_modes, 1, 1,
 {
   BY_HANDLE_FILE_INFORMATION info;
   PRIMITIVE_HEADER (1);
-  switch (get_file_info ((STRING_ARG (1)), (&info)))
+  switch (NT_get_file_info ((STRING_ARG (1)), (&info)))
     {
     case gfi_ok:
       PRIMITIVE_RETURN
@@ -227,7 +132,7 @@ DEFINE_PRIMITIVE ("FILE-MOD-TIME", Prim_file_mod_time, 1, 1, 0)
 {
   BY_HANDLE_FILE_INFORMATION info;
   PRIMITIVE_HEADER (1);
-  switch (get_file_info ((STRING_ARG (1)), (&info)))
+  switch (NT_get_file_info ((STRING_ARG (1)), (&info)))
     {
     case gfi_ok:
       PRIMITIVE_RETURN
@@ -280,7 +185,7 @@ The file must exist and you must be the owner.")
     }
   if (disable_ro)
     STD_BOOL_API_CALL (SetFileAttributes, (filename, attributes));
-  close_file_handle (hfile);
+  NT_close_file_handle (hfile);
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -366,7 +271,7 @@ the result is #F.")
   BY_HANDLE_FILE_INFORMATION info;
   PRIMITIVE_HEADER (1);
   Primitive_GC_If_Needed (MAX_ATTRIBUTES_ALLOCATION);
-  switch (get_file_info ((STRING_ARG (1)), (&info)))
+  switch (NT_get_file_info ((STRING_ARG (1)), (&info)))
     {
     case gfi_not_found:
       PRIMITIVE_RETURN (SHARP_F);

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntfs.c,v 1.15 1997/06/26 06:59:31 cph Exp $
+$Id: ntfs.c,v 1.16 1997/08/23 02:51:59 cph Exp $
 
 Copyright (c) 1992-97 Massachusetts Institute of Technology
 
@@ -33,57 +33,135 @@ promotional, or sales literature without prior written consent from
 MIT in each case. */
 
 #include "nt.h"
-#include "osfs.h"
+#include "ntfs.h"
 #include <string.h>
 #include "outf.h"
 
-int
-DEFUN (NT_read_file_status, (name, s),
-       CONST char * name AND
-       struct stat * s)
-{ char filename[128];
+static HANDLE create_file_for_info (const char *);
 
-  nt_pathname_as_filename (name, filename);
+static enum get_file_info_result get_file_info_from_dir
+  (const char *, BY_HANDLE_FILE_INFORMATION *);
 
-  while ((stat (filename, s)) < 0)
+enum get_file_info_result
+NT_get_file_info (const char * namestring, BY_HANDLE_FILE_INFORMATION * info)
+{
+  HANDLE hfile = (create_file_for_info (namestring));
+  if (hfile == INVALID_HANDLE_VALUE)
     {
-      if (errno == EINTR)
-	continue;
-      if ((errno == ENOENT) || (errno == ENOTDIR))
-	return (0);
-      NT_error_unix_call (errno, syscall_stat);
+      DWORD code = (GetLastError ());
+      if (STAT_NOT_FOUND_P (code))
+	return (gfi_not_found);
+      if (STAT_NOT_ACCESSIBLE_P (code))
+	return (get_file_info_from_dir (namestring, info));
+      NT_error_api_call (code, apicall_CreateFile);
     }
-  return (1);
+  if (!GetFileInformationByHandle (hfile, info))
+    {
+      DWORD code = (GetLastError ());
+      (void) CloseHandle (hfile);
+      if (STAT_NOT_FOUND_P (code))
+	return (gfi_not_found);
+      if (STAT_NOT_ACCESSIBLE_P (code))
+	return (gfi_not_accessible);
+      NT_error_api_call (code, apicall_GetFileInformationByHandle);
+    }
+  NT_close_file_handle (hfile);
+  return (gfi_ok);
 }
 
+/* Incredible kludge.  Some files (e.g. \pagefile.sys) cannot be
+   accessed by the usual technique, but much of the same information
+   is available by reading the directory.  More M$ bullshit.  */
+static enum get_file_info_result
+get_file_info_from_dir (const char * namestring,
+			BY_HANDLE_FILE_INFORMATION * info)
+{
+  WIN32_FIND_DATA fi;
+  HANDLE handle = (FindFirstFile (namestring, (&fi)));
+  if (handle == INVALID_HANDLE_VALUE)
+    {
+      DWORD code = (GetLastError ());
+      if (STAT_NOT_FOUND_P (code))
+	return (gfi_not_found);
+      if (STAT_NOT_ACCESSIBLE_P (code))
+	return (gfi_not_accessible);
+      NT_error_api_call (code, apicall_FindFirstFile);
+    }
+  FindClose (handle);
+  (info -> dwFileAttributes) = (fi . dwFileAttributes);
+  (info -> ftCreationTime) = (fi . ftCreationTime);
+  (info -> ftLastAccessTime) = (fi . ftLastAccessTime);
+  (info -> ftLastWriteTime) = (fi . ftLastWriteTime);
+  (info -> dwVolumeSerialNumber) = 0;
+  (info -> nFileSizeHigh) = (fi . nFileSizeHigh);
+  (info -> nFileSizeLow) = (fi . nFileSizeLow);
+  (info -> nNumberOfLinks) = 1;
+  (info -> nFileIndexHigh) = 0;
+  (info -> nFileIndexLow) = 0;
+  return (gfi_ok);
+}
+
+static HANDLE
+create_file_for_info (const char * namestring)
+{
+  return
+    (CreateFile (namestring,
+		 0,
+		 (FILE_SHARE_READ | FILE_SHARE_WRITE),
+		 0,
+		 OPEN_EXISTING,
+		 FILE_FLAG_BACKUP_SEMANTICS,
+		 NULL));
+}
+
+void
+NT_close_file_handle (HANDLE hfile)
+{
+  STD_BOOL_API_CALL (CloseHandle, (hfile));
+}
+
 enum file_existence
 DEFUN (OS_file_existence_test, (name), CONST char * name)
 {
-  struct stat s;
-  char filename[128];
-
-  nt_pathname_as_filename (name, filename);
-  return (((stat (filename, (&s))) < 0) ? file_doesnt_exist : file_does_exist);
+  BY_HANDLE_FILE_INFORMATION info;
+  return
+    (((NT_get_file_info (name, (&info))) == gfi_ok)
+     ? file_does_exist
+     : file_doesnt_exist);
 }
+
+#define R_OK 4
+#define W_OK 2
+#define X_OK 1
 
 int
 DEFUN (OS_file_access, (name, mode), CONST char * name AND unsigned int mode)
 {
-  char filename[128];
-
-  nt_pathname_as_filename (name, filename);
-  return ((access (filename, mode)) == 0);
+  BY_HANDLE_FILE_INFORMATION info;
+  if ((NT_get_file_info (name, (&info))) != gfi_ok)
+    return (0);
+  if (((mode & W_OK) != 0)
+      && (((info . dwFileAttributes) & FILE_ATTRIBUTE_READONLY) != 0))
+    return (0);
+  if (((mode & X_OK) != 0)
+      && (((info . dwFileAttributes) & FILE_ATTRIBUTE_DIRECTORY) == 0))
+    {
+      const char * extension = (strrchr (name, '.'));
+      if (! (((stricmp (extension, ".exe")) == 0)
+	     || ((stricmp (extension, ".com")) == 0)
+	     || ((stricmp (extension, ".bat")) == 0)))
+	return (0);
+    }
+  return (1);
 }
 
 int
 DEFUN (OS_file_directory_p, (name), CONST char * name)
 {
-  struct stat s;
-  char filename[128];
-
-  nt_pathname_as_filename(name, filename);
-  return (((stat (filename, (&s))) == 0)
-	  && (((s . st_mode) & S_IFMT) == S_IFDIR));
+  BY_HANDLE_FILE_INFORMATION info;
+  return
+    (((NT_get_file_info (name, (&info))) == gfi_ok)
+     && (((info . dwFileAttributes) & FILE_ATTRIBUTE_DIRECTORY) != 0));
 }
 
 CONST char *
@@ -119,7 +197,7 @@ void
 DEFUN (OS_file_remove, (name), CONST char * name)
 {
   guarantee_writable (name, 1);
-  STD_VOID_UNIX_CALL (unlink, (name));
+  STD_BOOL_API_CALL (DeleteFile, (name));
 }
 
 void
@@ -171,13 +249,13 @@ DEFUN (OS_file_link_soft, (from_name, to_name),
 void
 DEFUN (OS_directory_make, (name), CONST char * name)
 {
-  STD_VOID_UNIX_CALL (mkdir, (name));
+  STD_BOOL_API_CALL (CreateDirectory, (name, 0));
 }
 
 void
 DEFUN (OS_directory_delete, (name), CONST char * name)
 {
-  STD_VOID_UNIX_CALL (rmdir, (name));
+  STD_BOOL_API_CALL (RemoveDirectory, (name));
 }
 
 typedef struct nt_dir_struct

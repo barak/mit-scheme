@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntapi.h,v 1.2 1997/01/05 23:37:21 cph Exp $
+$Id: ntapi.h,v 1.3 1997/08/23 02:52:10 cph Exp $
 
 Copyright (c) 1997 Massachusetts Institute of Technology
 
@@ -42,6 +42,8 @@ enum syscall_names
   apicall_CloseHandle,
   apicall_CopyFile,
   apicall_CreateFile,
+  apicall_CreateDirectory,
+  apicall_DeleteFile,
   apicall_FindFirstFile,
   apicall_GetFileAttributes,
   apicall_GetFileInformationByHandle,
@@ -49,6 +51,7 @@ enum syscall_names
   apicall_GetFileTime,
   apicall_MoveFile,
   apicall_MsgWaitForMultipleObjects,
+  apicall_RemoveDirectory,
   apicall_SetCurrentDirectory,
   apicall_SetFileAttributes,
   apicall_SetFilePointer,
@@ -802,6 +805,8 @@ static char * syscall_names_table [] =
   "CLOSE-HANDLE",
   "COPY-FILE",
   "CREATE-FILE",
+  "CREATE-DIRECTORY",
+  "DELETE-FILE",
   "FIND-FIRST-FILE",
   "GET-FILE-ATTRIBUTES",
   "GET-FILE-INFORMATION-BY-HANDLE",
@@ -809,6 +814,7 @@ static char * syscall_names_table [] =
   "GET-FILE-TIME",
   "MOVE-FILE",
   "MSG-WAIT-FOR-MULTIPLE-OBJECTS",
+  "REMOVE-DIRECTORY",
   "SET-CURRENT-DIRECTORY",
   "SET-FILE-ATTRIBUTES",
   "SET-FILE-POINTER",
