@@ -37,7 +37,7 @@
 
 ;;;; RTL Rules for 68020
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.144 1987/01/01 19:41:39 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.145 1987/01/05 02:04:25 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access lap-generator-syntax-table compiler-package)
@@ -379,7 +379,14 @@
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1) (OFFSET (REGISTER (? r)) (? n)))
-  `((MOVE L ,(indirect-reference! r n) (@-A 7))))
+  ;; Prevent probabilistic screws when the MOVE instruction's source
+  ;; operand is evaluated after the destination operand.
+  (if (= r 15)
+      (let ((temporary
+	     (register-reference (allocate-temporary-register! false))))
+	`((MOVE L ,(indirect-reference! r n) ,temporary)
+	  (MOVE L ,temporary (@-A 7))))
+      `((MOVE L ,(indirect-reference! r n) (@-A 7)))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1)
@@ -512,13 +519,19 @@
 (define (generate-invocation-prefix:move-frame-up frame-size how-far)
   (cond ((or (zero? frame-size) (zero? how-far)) '())
 	((= frame-size 1)
-	 `((MOVE L (@A+ 7) ,(offset-reference a7 (-1+ how-far)))))
+	 `((MOVE L (@A 7) ,(offset-reference a7 how-far))
+	   ,@(increment-anl 7 how-far))
+	 #|`((MOVE L (@A+ 7) ,(offset-reference a7 (-1+ how-far)))
+	   ,@(increment-anl 7 (-1+ how-far)))|#)
 	((= frame-size 2)
-	 (if (= how-far 1)
-	     `((MOVE L ,(offset-reference a7 1) ,(offset-reference a7 2))
+	 `((MOVE L (@A 7) ,(offset-reference a7 how-far))
+	   (MOVE L (@AO 7 4) ,(offset-reference a7 (1+ how-far)))
+	   ,@(increment-anl 7 how-far))
+	 #|(if (= how-far 1)
+	     `((MOVE L (@AO 7 4) (@AO 7 8))
 	       (MOVE L (@A+ 7) (@A 7)))
 	     (let ((i `(MOVE L (@A+ 7) ,(offset-reference a7 (-1+ how-far)))))
-	       `(,i ,i ,@(increment-anl 7 (- how-far 2))))))
+	       `(,i ,i ,@(increment-anl 7 (- how-far 2)))))|#)
 	(else
 	 (let ((temp-0 (allocate-temporary-register! 'ADDRESS))
 	       (temp-1 (allocate-temporary-register! 'ADDRESS)))
