@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: unix.scm,v 1.89 1999/01/14 18:25:03 cph Exp $
+;;; $Id: unix.scm,v 1.90 1999/01/14 18:37:50 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -452,7 +452,8 @@ filename suffixes \".bf\" and \".ky\"."
        (let ((type (pathname-type pathname)))
 	 (and (member type unix/encrypted-file-suffixes)
 	      (if (equal? "bf" type)
-		  (blowfish-available?)
+		  (and (blowfish-available?)
+		       (blowfish-file? pathname))
 		  #t)))))
 
 (define unix/encrypted-file-suffixes

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dosfile.scm,v 1.23 1999/01/14 18:25:09 cph Exp $
+;;; $Id: dosfile.scm,v 1.24 1999/01/14 18:37:44 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-1999 Massachusetts Institute of Technology
 ;;;
@@ -674,7 +674,8 @@ filename suffixes \".bf\" and \".ky\"."
 (define (read/write-encrypted-file? group pathname)
   (and (ref-variable enable-encrypted-files group)
        (or (and (equal? "bf" (pathname-type pathname))
-		(blowfish-available?))
+		(blowfish-available?)
+		(blowfish-file? pathname))
 	   (equal? "ky" (pathname-type pathname)))))
 
 (define (read-encrypted-file pathname mark)
