@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 4.11 1992/12/02 20:20:38 cph Exp $
+$Id: usiexp.scm,v 4.12 1992/12/07 18:42:23 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -441,6 +441,14 @@ MIT in each case. |#
 (define (make-type-test type operand)
   (make-combination (ucode-primitive object-type?)
 		    (list (constant/make type) operand)))
+
+(define (string->symbol-expansion operands if-expanded if-not-expanded block)
+  block
+  (if (and (pair? operands)
+	   (string? (car operands))
+	   (null? (cdr operands)))
+      (if-expanded (constant/make (string->symbol (car operands))))
+      (if-not-expanded)))
 
 ;;;; Tables
 
@@ -514,6 +522,7 @@ MIT in each case. |#
     second
     seventh
     sixth
+    string->symbol
     third
     values
     vector?
@@ -592,6 +601,7 @@ MIT in each case. |#
    second-expansion
    seventh-expansion
    sixth-expansion
+   string->symbol-expansion
    third-expansion
    values-expansion
    vector?-expansion
