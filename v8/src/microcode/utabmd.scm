@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1987, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -37,7 +37,7 @@
 
 ;;;; Machine Dependent Type Tables
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.51 1990/01/29 21:14:15 jinx Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.52 1990/10/03 16:49:07 jinx Exp $
 
 (declare (usual-integrations))
 
@@ -464,6 +464,7 @@
 	       COMPILER-LINK-CACHES-RESTART 		;5B
 	       HARDWARE-TRAP				;5C
 	       INTERNAL-APPLY-VAL			;5D
+	       COMPILER-ERROR-RESTART			;5E
 	       ))
 
 ;;; [] Errors
@@ -587,4 +588,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.51 1990/01/29 21:14:15 jinx Exp $"
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.52 1990/10/03 16:49:07 jinx Exp $"
