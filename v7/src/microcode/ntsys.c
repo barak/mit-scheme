@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntsys.c,v 1.1 1993/02/10 22:39:46 adams Exp $
+$Id: ntsys.c,v 1.2 1993/06/24 02:08:47 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and

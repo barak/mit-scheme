@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: nttop.c,v 1.2 1993/06/24 01:52:11 gjr Exp $
+$Id: nttop.c,v 1.3 1993/06/24 02:10:06 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
