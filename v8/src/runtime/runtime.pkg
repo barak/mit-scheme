@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.185 1993/07/18 22:25:37 gjr Exp $
+$Id: runtime.pkg,v 14.186 1993/07/27 00:46:44 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -2454,6 +2454,7 @@ MIT in each case. |#
   (files "thread")
   (parent ())
   (export ()
+	  allow-thread-event-delivery
 	  block-thread-events
 	  condition-type:thread-dead
 	  condition-type:thread-deadlock

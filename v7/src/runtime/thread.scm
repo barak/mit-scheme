@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.16 1993/07/07 20:01:27 gjr Exp $
+$Id: thread.scm,v 1.17 1993/07/27 00:46:36 cph Exp $
 
 Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
@@ -238,6 +238,17 @@ MIT in each case. |#
 		   event))))
 	(set-thread/block-events?! thread block-events?)
 	event))))
+
+(define (allow-thread-event-delivery)
+  (without-interrupts
+   (lambda ()
+     (let ((thread (current-thread)))
+       (let ((block-events? (thread/block-events? thread)))
+	 (set-thread/block-events?! thread #f)
+	 (deliver-timer-events)
+	 (maybe-signal-input-thread-events)
+	 (handle-thread-events thread)
+	 (set-thread/block-events?! thread block-events?))))))
 
 (define (stop-current-thread)
   (without-interrupts
