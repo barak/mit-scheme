@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.64 1996/09/30 18:31:14 cph Exp $
+$Id: x11base.c,v 1.65 1996/10/04 18:48:39 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -1919,6 +1919,7 @@ DEFINE_PRIMITIVE ("X-WINDOW-SET-INPUT-FOCUS", Prim_x_window_set_input_focus, 2, 
 {
   PRIMITIVE_HEADER (2);
   {
+    PTR VOLATILE position = dstack_position;
     struct xwindow * xw = (x_window_arg (1));
     unsigned char status;
 
@@ -1936,7 +1937,11 @@ DEFINE_PRIMITIVE ("X-WINDOW-SET-INPUT-FOCUS", Prim_x_window_set_input_focus, 2, 
 	XFlush (display);
       }
     else
-      error_bad_range_arg (1);
+      {
+	dstack_set_position (position);
+	error_bad_range_arg (1);
+      }
+    dstack_set_position (position);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
