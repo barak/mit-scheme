@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: defstr.scm,v 14.26 1994/01/14 03:26:56 gjr Exp $
+$Id: defstr.scm,v 14.27 1994/01/31 02:51:37 gjr Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -112,7 +112,6 @@ differences:
 	      ,@(modifier-definitions structure)
 	      ,@(predicate-definitions structure)
 	      ,@(copier-definitions structure)
-	      ,@(print-procedure-definitions structure)
 	      ,@(type-definitions structure)))))
 
 ;;;; Parse Options
@@ -621,14 +620,6 @@ differences:
 					  ,tag-expression)))))))
 	'())))
 
-(define (print-procedure-definitions structure)
-  (let ((print-procedure (structure/print-procedure structure)))
-    (if (and print-procedure (eq? (structure/type structure) 'RECORD))
-	`((,(absolute 'SET-RECORD-TYPE-UNPARSER-METHOD!)
-	   ,(structure/type-name structure)
-	   ,print-procedure))
-	'())))
-
 (define (type-definitions structure)
   (if (structure/named? structure)
       (let ((type (structure/type structure))
@@ -637,7 +628,13 @@ differences:
 	    (field-names (map slot/name (structure/slots structure))))
 	(if (eq? type 'RECORD)
 	    `((DEFINE ,type-name
-		(,(absolute 'MAKE-RECORD-TYPE) ',name ',field-names)))
+		(,(absolute 'MAKE-RECORD-TYPE)
+		 ',name ',field-names
+		 ,@(let ((print-procedure
+			  (structure/print-procedure structure)))
+		     (if (not print-procedure)
+			 `()
+			 `(,print-procedure))))))
 	    (let ((type-expression
 		   `(,(absolute 'MAKE-DEFINE-STRUCTURE-TYPE)
 		     ',type
@@ -647,9 +644,10 @@ differences:
 		     ,(structure/print-procedure structure))))
 	      (if type-name
 		  `((DEFINE ,type-name ,type-expression))
-		  `((NAMED-STRUCTURE/SET-TAG-DESCRIPTION!
-		     ,(structure/tag-expression structure)
-		     ,type-expression))))))
+		  `((DEFINE ,(string->uninterned-symbol name)
+		      (NAMED-STRUCTURE/SET-TAG-DESCRIPTION!
+		       ,(structure/tag-expression structure)
+		       ,type-expression)))))))
       '()))
 
 (define structure-type-rtd
