@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/sfile.scm,v 14.3 1989/03/14 02:18:01 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/sfile.scm,v 14.4 1990/06/20 20:30:05 cph Rel $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,10 +36,6 @@ MIT in each case. |#
 ;;; package: ()
 
 (declare (usual-integrations))
-
-(define (copy-file from to)
-  ((ucode-primitive copy-file) (canonicalize-input-filename from)
-			       (canonicalize-output-filename to)))
 
 (define (rename-file from to)
   ((ucode-primitive rename-file) (canonicalize-input-filename from)
@@ -51,14 +47,3 @@ MIT in each case. |#
 	 (begin
 	   ((ucode-primitive remove-file) (pathname->string truename))
 	   true))))
-
-(define (transcript-on filename)
-  (if (not ((ucode-primitive photo-open)
-	    (canonicalize-output-filename filename)))
-      (error "TRANSCRIPT-ON: Transcript file already open" filename))
-  unspecific)
-
-(define (transcript-off)
-  (if (not ((ucode-primitive photo-close)))
-      (error "TRANSCRIPT-OFF: Transcript file already closed"))
-  unspecific)

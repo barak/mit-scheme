@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.66 1990/04/21 16:26:47 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.67 1990/06/20 20:29:56 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -265,7 +265,6 @@ MIT in each case. |#
   (export ()
 	  console-input-port)
   (export (runtime emacs-interface)
-	  hook/read-char-immediate
 	  hook/read-finish
 	  hook/read-start)
   (initialization (initialize-package!)))
@@ -548,6 +547,18 @@ MIT in each case. |#
 	  open-output-file)
   (initialization (initialize-package!)))
 
+(define-package (runtime transcript)
+  (files "tscript")
+  (parent ())
+  (export ()
+	  transcript-off
+	  transcript-on)
+  (export (runtime console-input)
+	  transcript-port)
+  (export (runtime console-output)
+	  transcript-port)
+  (initialization (initialize-package!)))
+
 (define-package (runtime format)
   (file-case options
     ((load) "format")
@@ -712,22 +723,17 @@ MIT in each case. |#
 	  input-port/discard-char
 	  input-port/discard-chars
 	  input-port/operation
+	  input-port/operation-names
 	  input-port/operation/char-ready?
 	  input-port/operation/discard-char
 	  input-port/operation/discard-chars
 	  input-port/operation/peek-char
-	  input-port/operation/peek-char-immediate
 	  input-port/operation/read-char
-	  input-port/operation/read-char-immediate
-	  input-port/operation/read-finish!
-	  input-port/operation/read-start!
 	  input-port/operation/read-string
+	  input-port/immediate-mode
+	  input-port/normal-mode
 	  input-port/peek-char
-	  input-port/peek-char-immediate
 	  input-port/read-char
-	  input-port/read-char-immediate
-	  input-port/read-finish!
-	  input-port/read-start!
 	  input-port/read-string
 	  input-port/state
 	  input-port?
@@ -938,6 +944,7 @@ MIT in each case. |#
 	  error-type:file
 	  error-type:illegal-argument
 	  error-type:open-file
+	  error-type:premature-write-termination
 	  error-type:random-internal
 	  error-type:wrong-type-argument
 	  microcode-error-type)
@@ -1109,6 +1116,7 @@ MIT in each case. |#
 	  output-port/custom-operation
 	  output-port/flush-output
 	  output-port/operation
+	  output-port/operation-names
 	  output-port/operation/flush-output
 	  output-port/operation/write-char
 	  output-port/operation/write-string
@@ -1145,7 +1153,8 @@ MIT in each case. |#
   (export (runtime macros)
 	  lambda-optional-tag)
   (export (runtime unsyntaxer)
-	  lambda-optional-tag)
+	  lambda-optional-tag
+	  lambda-rest-tag)
   (export (runtime parser-table)
 	  collect-list-wrapper)
   (initialization (initialize-package!)))
@@ -1176,7 +1185,11 @@ MIT in each case. |#
   (export ()
 	  ->pathname
 	  canonicalize-input-filename
+	  canonicalize-input-pathname
 	  canonicalize-output-filename
+	  canonicalize-output-pathname
+	  canonicalize-overwrite-filename
+	  canonicalize-overwrite-pathname
 	  file-exists?
 	  init-file-truename
 	  make-pathname
@@ -1265,22 +1278,56 @@ MIT in each case. |#
   (files "io")
   (parent ())
   (export ()
-	  close-all-open-files)
+	  close-all-open-files
+	  copy-file)
   (export (runtime file-input)
-	  channel-name
-	  close-physical-channel
-	  open-input-channel)
+	  file-length
+	  file-open-input-channel
+	  input-buffer/channel
+	  input-buffer/char-ready?
+	  input-buffer/chars-remaining
+	  input-buffer/close
+	  input-buffer/discard-char
+	  input-buffer/discard-until-delimiter
+	  input-buffer/peek-char
+	  input-buffer/read-char
+	  input-buffer/read-substring
+	  input-buffer/read-until-delimiter
+	  make-input-buffer)
   (export (runtime file-output)
-	  channel-name
-	  close-physical-channel
-	  open-append-channel
-	  open-output-channel)
-  (export (runtime subprocesses input)
-	  close-physical-channel
-	  open-input-channel)
-  (export (runtime subprocesses output)
-	  close-physical-channel
-	  open-output-channel)
+	  channel-close
+	  channel-write-char-block
+	  channel-write-string-block
+	  file-open-append-channel
+	  file-open-output-channel
+	  make-output-buffer
+	  output-buffer/close
+	  output-buffer/drain-block
+	  output-buffer/set-size
+	  output-buffer/size
+	  output-buffer/write-char-block
+	  output-buffer/write-string-block)
+  (export (runtime console-output)
+	  channel-write-char-block
+	  channel-write-string-block
+	  make-output-buffer
+	  output-buffer/drain-block
+	  output-buffer/set-size
+	  output-buffer/size
+	  output-buffer/write-char-block
+	  output-buffer/write-string-block
+	  tty-output-channel)
+  (export (runtime console-input)
+	  channel-type=terminal?
+	  input-buffer/char-ready?
+	  input-buffer/read-char
+	  make-input-buffer
+	  terminal-buffered
+	  terminal-buffered?
+	  terminal-char-ready?
+	  terminal-nonbuffered
+	  terminal-read-char
+	  tty-input-channel)
   (initialization (initialize-package!)))
 
 (define-package (runtime random-number)
@@ -1531,6 +1578,7 @@ MIT in each case. |#
 	  make-unassigned?
 	  sequence-actions
 	  sequence-components
+	  sequence-immediate-actions
 	  sequence?
 	  unassigned?-components
 	  unassigned?-name
@@ -1879,37 +1927,4 @@ MIT in each case. |#
 	  working-directory-pathname)
   (export (runtime emacs-interface)
 	  hook/set-working-directory-pathname!)
-  (initialization (initialize-package!)))
-
-(define-package (runtime subprocesses)
-  (files "process")
-  (parent ())
-  (export ()
-	  create-process
-	  delete-process
-	  kill-process
-	  process?
-	  process/command-string
-	  process/microcode-process
-	  process/to-port
-	  process/from-port
-	  process-get-pid
-	  process-get-input-channel
-	  process-get-output-channel
-	  process-get-status-flags
-	  prim-process-char-ready?)
-  (initialization (initialize-package!)))
-
-(define-package (runtime subprocesses input)
-  (files "procin")
-  (parent ())
-  (export ()
-	  open-process-input)
-  (initialization (initialize-package!)))
-
-(define-package (runtime subprocesses output)
-  (files "procout")
-  (parent ())
-  (export ()
-	  open-process-output)
   (initialization (initialize-package!)))

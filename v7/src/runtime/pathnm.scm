@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.6 1989/08/12 08:18:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.7 1990/06/20 20:29:44 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -334,6 +334,15 @@ See the files unkpth.scm, vmspth.scm, or unxpth.scm for examples.|#
 
 ;;;; Truenames
 
+(define (canonicalize-input-filename filename)
+  (pathname->string (canonicalize-input-pathname filename)))
+
+(define (canonicalize-input-pathname filename)
+  (let ((pathname (->pathname filename)))
+    (let ((truename (pathname->input-truename pathname)))
+      (if (not truename) (error error-type:open-file pathname))
+      truename)))
+
 (define (pathname->input-truename pathname)
   (let ((pathname (pathname->absolute-pathname pathname))
 	(truename-exists?
@@ -346,6 +355,12 @@ See the files unkpth.scm, vmspth.scm, or unxpth.scm for examples.|#
 	   (truename-exists? (pathname-new-version pathname false)))
 	  (else
 	   (pathname-newest pathname)))))
+
+(define (canonicalize-output-filename filename)
+  (pathname->string (canonicalize-output-pathname filename)))
+
+(define-integrable (canonicalize-output-pathname filename)
+  (pathname->output-truename (->pathname filename)))
 
 (define (pathname->output-truename pathname)
   (let ((pathname (pathname->absolute-pathname pathname)))
@@ -361,14 +376,21 @@ See the files unkpth.scm, vmspth.scm, or unxpth.scm for examples.|#
 		    1))))
 	pathname)))
 
-(define (canonicalize-input-filename filename)
-  (let ((pathname (->pathname filename)))
-    (let ((truename (pathname->input-truename pathname)))
-      (if (not truename) (error error-type:open-file pathname))
-      (pathname->string truename))))
+(define (canonicalize-overwrite-filename filename)
+  (pathname->string (canonicalize-overwrite-pathname filename)))
 
-(define (canonicalize-output-filename filename)
-  (pathname->string (pathname->output-truename (->pathname filename))))
+(define-integrable (canonicalize-overwrite-pathname filename)
+  (pathname->overwrite-truename (->pathname filename)))
+
+(define (pathname->overwrite-truename pathname)
+  (let ((pathname (pathname->absolute-pathname pathname)))
+    (cond ((not (eq? 'NEWEST (pathname-version pathname)))
+	   pathname)
+	  ((not pathname-newest)
+	   (pathname-new-version pathname false))
+	  ((pathname-newest pathname))
+	  (else
+	   (pathname-new-version pathname 1)))))
 
 (define (file-exists? filename)
   (pathname->input-truename (->pathname filename)))

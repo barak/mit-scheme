@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.13 1989/10/26 06:46:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.14 1990/06/20 20:29:50 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -263,20 +263,22 @@ MIT in each case. |#
 
 (define (make-repl parent environment syntax-table prompt input-port
 		   output-port message)
-  (make-cmdl parent
-	     input-port
-	     output-port
-	     repl-driver
-	     (make-repl-state prompt
-			      environment
-			      syntax-table
-			      (make-repl-history reader-history-size)
-			      (make-repl-history printer-history-size))
-	     (cmdl-message/append
-	      message
-	      (cmdl-message/active
-	       (lambda ()
-		 (hook/repl-environment (nearest-repl) environment))))))
+  (input-port/normal-mode input-port
+    (lambda ()
+      (make-cmdl parent
+		 input-port
+		 output-port
+		 repl-driver
+		 (make-repl-state prompt
+				  environment
+				  syntax-table
+				  (make-repl-history reader-history-size)
+				  (make-repl-history printer-history-size))
+		 (cmdl-message/append
+		  message
+		  (cmdl-message/active
+		   (lambda ()
+		     (hook/repl-environment (nearest-repl) environment))))))))
 
 (define (repl-driver repl)
   (fluid-let ((hook/error-handler default/error-handler))
@@ -562,29 +564,34 @@ MIT in each case. |#
 (define (default/prompt-for-confirmation cmdl prompt)
   (let ((input-port (cmdl/input-port cmdl))
 	(output-port (cmdl/output-port cmdl)))
-    (let loop ()
-      (newline output-port)
-      (write-string prompt output-port)
-      (write-string " (y or n)? " output-port)
-      (let ((char (char-upcase (read-char-internal input-port))))
-	(cond ((or (char=? #\Y char)
-		   (char=? #\Space char))
-	       (write-string "Yes" output-port)
-	       true)
-	      ((or (char=? #\N char)
-		   (char=? #\Rubout char))
-	       (write-string "No" output-port)
-	       false)
-	      (else
-	       (beep output-port)
-	       (loop)))))))
+    (input-port/immediate-mode input-port
+      (lambda ()
+	(let loop ()
+	  (newline output-port)
+	  (write-string prompt output-port)
+	  (write-string " (y or n)? " output-port)
+	  (let ((char (char-upcase (read-char-internal input-port))))
+	    (cond ((or (char=? #\Y char)
+		       (char=? #\Space char))
+		   (write-string "Yes" output-port)
+		   true)
+		  ((or (char=? #\N char)
+		       (char=? #\Rubout char))
+		   (write-string "No" output-port)
+		   false)
+		  (else
+		   (beep output-port)
+		   (loop)))))))))
 
 (define (default/prompt-for-expression cmdl prompt)
-  (let ((output-port (cmdl/output-port cmdl)))
+  (let ((input-port (cmdl/input-port cmdl))
+	(output-port (cmdl/output-port cmdl)))
     (newline output-port)
     (write-string prompt output-port)
     (write-string ": " output-port)
-    (read (cmdl/input-port cmdl))))
+    (input-port/normal-mode input-port
+      (lambda ()
+	(read input-port)))))
 
 (define (read-char-internal input-port)
   (let loop ()

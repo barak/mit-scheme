@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.13 1990/02/21 23:24:25 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.14 1990/06/20 20:30:31 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -208,9 +208,10 @@ MIT in each case. |#
 (define error-type:failed-argument-coercion)
 (define error-type:fasdump)
 (define error-type:fasload)
-(define error-type:illegal-argument)
 (define error-type:file)
+(define error-type:illegal-argument)
 (define error-type:open-file)
+(define error-type:premature-write-termination)
 (define error-type:random-internal)
 (define error-type:wrong-type-argument)
 
@@ -235,6 +236,9 @@ MIT in each case. |#
 	(make-condition-type (list error-type:file) "Fasdump error"))
   (set! error-type:fasload
 	(make-condition-type (list error-type:file) "Fasload error"))
+  (set! error-type:premature-write-termination
+	(make-condition-type (list error-type:file)
+			     "Channel write terminated prematurely"))
   (set! error-type:anomalous
 	(make-internal-type "Anomalous microcode error")))
 

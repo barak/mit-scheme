@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgcmd.scm,v 14.6 1989/08/07 07:36:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgcmd.scm,v 14.7 1990/06/20 20:28:51 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -64,9 +64,17 @@ MIT in each case. |#
 (define (letter-commands command-set message prompt state)
   (with-standard-proceed-point
    (lambda ()
-     (push-cmdl letter-commands/driver
-		(vector command-set prompt state)
-		message))))
+     (let ((state (vector command-set prompt state))
+	   (cmdl (nearest-cmdl)))
+       (let ((input-port (cmdl/input-port cmdl)))
+	 (input-port/immediate-mode input-port
+	   (lambda ()
+	     (make-cmdl cmdl
+			input-port
+			(cmdl/output-port cmdl)
+			letter-commands/driver
+			state
+			message))))))))
 
 (define (letter-commands/driver cmdl)
   (let ((command-set (vector-ref (cmdl/state cmdl) 0))
@@ -111,7 +119,7 @@ MIT in each case. |#
   (hook/leaving-command-loop thunk))
 
 (define (default/leaving-command-loop thunk)
-  (thunk))
+  (input-port/normal-mode (cmdl/input-port (nearest-cmdl)) thunk))
 
 (define (debug/read-eval-print environment message prompt)
   (leaving-command-loop

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/make.scm,v 14.21 1990/02/27 19:44:26 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/make.scm,v 14.22 1990/06/20 20:29:31 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -42,8 +42,11 @@ MIT in each case. |#
 (let ((environment-for-package (let () (the-environment))))
 
 (define-primitives
-  (+ &+)
+  (+ integer-add)
+  (- integer-subtract)
+  (< integer-less?)
   binary-fasload
+  (channel-write 4)
   environment-link-name
   exit
   (file-exists? 1)
@@ -63,27 +66,33 @@ MIT in each case. |#
   substring=?
   substring-move-right!
   substring-downcase!
-  tty-flush-output
-  tty-write-char
-  tty-write-string
+  (tty-output-channel 0)
   vector-ref
   vector-set!
   with-interrupt-mask)
 
-(define microcode-identification
-  (microcode-identify))
+(define microcode-identification (microcode-identify))
+(define newline-char (vector-ref microcode-identification 5))
+(define os-name-string (vector-ref microcode-identification 8))
+(define tty-output-descriptor (tty-output-channel))
 
-(define newline-char
-  (vector-ref microcode-identification 5))
+(define (tty-write-string string)
+  (let ((end (string-length string)))
+    (let loop ((start 0) (n-left end))
+      (let ((n (channel-write tty-output-descriptor string start end)))
+	(cond ((not n) (loop start n-left))
+	      ((< n n-left) (loop (+ start n) (- n-left n))))))))
 
-(define os-name-string
-  (vector-ref microcode-identification 8))
+(define (tty-write-char char)
+  (tty-write-string
+   (let ((string (string-allocate 1)))
+     (string-set! string 0 char)
+     string)))
 
 (define (fatal-error message)
   (tty-write-char newline-char)
   (tty-write-string message)
   (tty-write-char newline-char)
-  (tty-flush-output)
   (exit))
 
 ;;;; GC, Interrupts, Errors
@@ -123,10 +132,8 @@ MIT in each case. |#
 (define (fasload filename purify?)
   (tty-write-char newline-char)
   (tty-write-string filename)
-  (tty-flush-output)
   (let ((value (binary-fasload filename)))
     (tty-write-string " loaded")
-    (tty-flush-output)
     (if purify?
 	(set! fasload-purification-queue
 	      (cons (cons filename value)
@@ -136,7 +143,6 @@ MIT in each case. |#
 (define (eval object environment)
   (let ((value (scode-eval object environment)))
     (tty-write-string " evaluated")
-    (tty-flush-output)
     value))
 
 (define (package-initialize package-name procedure-name)
@@ -155,7 +161,6 @@ MIT in each case. |#
 	(tty-write-string " [")
 	(tty-write-string (system-pair-car procedure-name))
 	(tty-write-string "]")))
-  (tty-flush-output)
   ((lexical-reference (package-reference package-name) procedure-name)))
 
 (define (package-reference name)
@@ -309,6 +314,7 @@ MIT in each case. |#
    ;; I/O
    (RUNTIME CONSOLE-INPUT)
    (RUNTIME CONSOLE-OUTPUT)
+   (RUNTIME TRANSCRIPT)
    (RUNTIME FILE-INPUT)
    (RUNTIME FILE-OUTPUT)
    (RUNTIME STRING-INPUT)
@@ -316,9 +322,6 @@ MIT in each case. |#
    (RUNTIME TRUNCATED-STRING-OUTPUT)
    (RUNTIME INPUT-PORT)
    (RUNTIME OUTPUT-PORT)
-   (RUNTIME SUBPROCESSES)
-   (RUNTIME SUBPROCESSES INPUT)
-   (RUNTIME SUBPROCESSES OUTPUT)
    (RUNTIME WORKING-DIRECTORY)
    (RUNTIME DIRECTORY)
    (RUNTIME LOAD)

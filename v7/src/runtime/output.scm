@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 14.5 1989/03/06 19:58:24 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 14.6 1990/06/20 20:29:39 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -57,7 +57,8 @@ MIT in each case. |#
   (operation/write-char false read-only true)
   (operation/write-string false read-only true)
   (operation/flush-output false read-only true)
-  (custom-operations false read-only true))
+  (custom-operations false read-only true)
+  (operation-names false read-only true))
 
 (define (guarantee-output-port port)
   (if (not (output-port? port)) (error "Bad output port" port))
@@ -99,7 +100,9 @@ MIT in each case. |#
 	    (flush-output
 	     (operation 'FLUSH-OUTPUT default-operation/flush-output)))
 	(%make-output-port state write-char write-string flush-output
-			   operations)))))
+			   operations
+			   (append '(WRITE-CHAR WRITE-STRING FLUSH-OUTPUT)
+				   (map car operations)))))))
 
 (define (default-operation/write-string port string)
   (let ((write-char (output-port/operation/write-char port))

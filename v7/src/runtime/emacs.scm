@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 14.3 1989/08/07 07:36:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 14.4 1990/06/20 20:28:56 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,11 +37,6 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define-primitives
-  tty-read-char-ready?
-  tty-read-char-immediate
-  (under-emacs? 0))
-
 (define (transmit-signal type)
   (write-char #\Altmode console-output-port)
   (write-char type console-output-port))
@@ -138,12 +133,6 @@ MIT in each case. |#
   (transmit-signal #\g)
   (normal/^G-interrupt interrupt-enables))
 
-(define (emacs/read-char-immediate)
-  (emacs/read-start)
-  (let ((char (tty-read-char-immediate)))
-    (emacs/read-finish)
-    char))
-
 (define (emacs/read-command-char cmdl prompt)
   (if (cmdl/io-to-console? cmdl)
       (begin
@@ -173,10 +162,14 @@ MIT in each case. |#
       (normal/prompt-for-expression cmdl prompt)))
 
 (define (read-char-internal)
-  (let ((char (emacs/read-char-immediate)))
-    (if (char=? char char:newline)
-	(read-char-internal)
-	char)))
+  (emacs/read-start)
+  (let loop ()
+    (let ((char (input-port/read-char console-input-port)))
+      (if (char=? char char:newline)
+	  (loop)
+	  (begin
+	    (emacs/read-finish)
+	    char)))))
 
 (define (cmdl/io-to-console? cmdl)
   (and (eq? console-input-port (cmdl/input-port cmdl))
@@ -191,7 +184,6 @@ MIT in each case. |#
 (define normal/cmdl-prompt)
 (define normal/repl-write)
 (define normal/repl-read)
-(define normal/read-char-immediate)
 (define normal/read-start)
 (define normal/read-finish)
 (define normal/error-decision)
@@ -209,7 +201,6 @@ MIT in each case. |#
   (set! normal/cmdl-prompt hook/cmdl-prompt)
   (set! normal/repl-write hook/repl-write)
   (set! normal/repl-read hook/repl-read)
-  (set! normal/read-char-immediate hook/read-char-immediate)
   (set! normal/read-start hook/read-start)
   (set! normal/read-finish hook/read-finish)
   (set! normal/error-decision hook/error-decision)
@@ -224,7 +215,7 @@ MIT in each case. |#
   (install!))
 
 (define (install!)
-  ((if (under-emacs?)
+  ((if ((ucode-primitive under-emacs? 0))
        install-emacs-hooks!
        install-normal-hooks!)))
 
@@ -235,7 +226,6 @@ MIT in each case. |#
   (set! hook/cmdl-prompt emacs/cmdl-prompt)
   (set! hook/repl-write emacs/repl-write)
   (set! hook/repl-read emacs/repl-read)
-  (set! hook/read-char-immediate emacs/read-char-immediate)
   (set! hook/read-start emacs/read-start)
   (set! hook/read-finish emacs/read-finish)
   (set! hook/error-decision emacs/error-decision)
@@ -255,7 +245,6 @@ MIT in each case. |#
   (set! hook/cmdl-prompt normal/cmdl-prompt)
   (set! hook/repl-write normal/repl-write)
   (set! hook/repl-read normal/repl-read)
-  (set! hook/read-char-immediate normal/read-char-immediate)
   (set! hook/read-start normal/read-start)
   (set! hook/read-finish normal/read-finish)
   (set! hook/error-decision normal/error-decision)

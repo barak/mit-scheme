@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/uenvir.scm,v 14.16 1990/04/21 16:25:12 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/uenvir.scm,v 14.17 1990/06/20 20:30:24 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -575,8 +575,8 @@ MIT in each case. |#
 		    (dbg-block/find-name block name)))))
 
 (define (assign-dbg-variable! block name get-value value)
-  (let ((index (dbg-block/find-name block name))	
-	(variable (vector-ref (dbg-block/layout-vector block) index)))
+  (let* ((index (dbg-block/find-name block name))
+	 (variable (vector-ref (dbg-block/layout-vector block) index)))
     (case (dbg-variable/type variable)
       ((CELL)
        (let ((cell (get-value index)))

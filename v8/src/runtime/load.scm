@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/load.scm,v 14.16 1990/06/04 20:46:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/load.scm,v 14.17 1990/06/20 20:29:26 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -198,8 +198,7 @@ MIT in each case. |#
 
 (define (load/internal pathname true-pathname environment syntax-table
 		       purify? load-noisily?)
-  (let* ((true-filename (pathname->string true-pathname))
-	 (port (open-input-file/internal pathname true-filename))
+  (let* ((port (open-input-file/internal pathname true-pathname))
 	 (fasl-marker (peek-char port)))
     (if (and (not (eof-object? fasl-marker))
 	     (= 250 (char->ascii fasl-marker)))
@@ -221,7 +220,8 @@ MIT in each case. |#
 	      (write-stream (value-stream)
 			    (lambda (value)
 			      (hook/repl-write (nearest-repl) value)))
-	      (loading-message load/suppress-loading-message? true-filename
+	      (loading-message load/suppress-loading-message?
+			       (pathname->string true-pathname)
 			       (lambda ()
 				 (write-stream (value-stream)
 					       (lambda (value)
