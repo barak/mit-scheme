@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: buffer.scm,v 1.181 2001/05/24 19:18:57 cph Exp $
+;;; $Id: buffer.scm,v 1.182 2001/06/07 17:43:21 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -497,7 +497,11 @@ The buffer is guaranteed to be deselected at that time."
   (set-variable-local-value! buffer
 			     (ref-variable-object mode-name)
 			     (mode-display-name mode))
-  ((mode-initialization mode) buffer))
+  ((mode-initialization mode) buffer)
+  (event-distributor/invoke! event:set-buffer-major-mode buffer))
+
+(define event:set-buffer-major-mode
+  (make-event-distributor))
 
 (define (buffer-minor-modes buffer)
   (list-copy (cdr (buffer-modes buffer))))
