@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.77 2000/05/20 03:22:41 cph Exp $
+;;; $Id: imail-core.scm,v 1.78 2000/05/20 19:37:03 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -124,56 +124,53 @@
 ;; called with no arguments.
 
 (define (url-complete-string url-string if-unique if-not-unique if-not-found)
-  (let ((colon (string-find-next-char url-string #\:))
-	(have-protocol
-	 (lambda (name body)
-	   (let ((prepend (lambda (string) (string-append name ":" string))))
-	     (let ((completer (get-url-protocol-completer name)))
-	       (if completer
-		   (completer
-		    body
-		    (lambda (string)
-		      (if-unique (prepend string)))
-		    (lambda (prefix get-completions)
-		      (if-not-unique
-		       (prepend prefix)
-		       (lambda () (map prepend (get-completions)))))
-		    if-not-found)
-		   (if-not-found)))))))
+  (let ((colon (string-find-next-char url-string #\:)))
     (if colon
-	(have-protocol (string-head url-string colon)
-		       (string-tail url-string (fix:+ colon 1)))
-	((ordered-string-vector-completer
-	  (hash-table/ordered-key-vector url-protocols string<?))
-	 url-string
-	 (lambda (string)
-	   (have-protocol string ""))
-	 (lambda (prefix get-completions)
-	   (if-not-unique prefix
-			  (lambda ()
-			    (append-map (lambda (name) (have-protocol name ""))
-					(get-completions)))))
-	 if-not-found))))
+	(let ((prepend
+	       (let ((prefix (string-head url-string (fix:+ colon 1))))
+		 (lambda (string)
+		   (string-append prefix string)))))
+	  (let ((completer
+		 (get-url-protocol-completer (string-head url-string colon))))
+	    (if completer
+		(completer (string-tail url-string (fix:+ colon 1))
+			   (lambda (string)
+			     (if-unique (prepend string)))
+			   (lambda (prefix get-completions)
+			     (if-not-unique
+			      (prepend prefix)
+			      (lambda () (map prepend (get-completions)))))
+			   if-not-found)
+		(if-not-found))))
+	(let ((colonify (lambda (name) (string-append name ":"))))
+	  ((ordered-string-vector-completer
+	    (hash-table/ordered-key-vector url-protocols string<?))
+	   url-string
+	   (lambda (name)
+	     (if-unique (colonify name)))
+	   (lambda (prefix get-completions)
+	     (if-not-unique prefix
+			    (lambda () (map colonify (get-completions)))))
+	   if-not-found)))))
 
 ;; Return a list of the completions for URL-STRING.
 
 (define (url-string-completions url-string)
-  (let ((colon (string-find-next-char url-string #\:))
-	(have-protocol
-	 (lambda (name body)
-	   (let ((completer (get-url-protocol-completer name)))
-	     (if completer
-		 (map (lambda (string) (string-append name ":" string))
-		      (completer body))
-		 '())))))
+  (let ((colon (string-find-next-char url-string #\:)))
     (if colon
-	(have-protocol (string-head url-string colon)
-		       (string-tail url-string (fix:+ colon 1)))
-	(append-map (lambda (name) (have-protocol name ""))
-		    (vector->list
-		     ((ordered-string-vector-matches
-		       (hash-table/ordered-key-vector url-protocols string<?))
-		      url-string))))))
+	(let ((get-completions
+	       (get-url-protocol-completions (string-head url-string colon))))
+	  (if get-completions
+	      (map (let ((prefix (string-head url-string (fix:+ colon 1))))
+		     (lambda (string)
+		       (string-append prefix string)))
+		   (get-completions (string-tail url-string (fix:+ colon 1))))
+	      '()))
+	(map (lambda (name) (string-append name ":"))
+	     (vector->list
+	      ((ordered-string-vector-matches
+		(hash-table/ordered-key-vector url-protocols string<?))
+	       url-string))))))
 
 ;;;; Server operations
 
