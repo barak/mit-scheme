@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules1.scm,v 1.16 1993/03/03 16:37:54 gjr Exp $
+$Id: rules1.scm,v 1.17 1993/03/28 21:53:34 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -343,7 +343,7 @@ MIT in each case. |#
   (let ((target (target-register-reference target)))
     (cond ((zero? type)
 	   ;; No faster, but smaller
-	   (LAP (MOVZX ,target ,source)))
+	   (LAP (MOVZX B ,target ,source)))
 	  (else
 	   (LAP ,@(load-non-pointer target type 0)
 		(MOV B ,target ,source))))))
