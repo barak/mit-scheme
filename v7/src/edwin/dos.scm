@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.30 1995/10/25 05:38:47 cph Exp $
+;;;	$Id: dos.scm,v 1.31 1995/10/31 09:06:39 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-95 Massachusetts Institute of Technology
 ;;;
@@ -119,18 +119,18 @@
 
 (define-variable dired-listing-switches
   "Dired listing format -- Ignored under DOS."
-  #f
-  false?)
+  "-l"
+  string?)
 
 (define-variable list-directory-brief-switches
   "list-directory brief listing format -- Ignored under DOS."
-  #f
-  false?)
+  "-l"
+  string?)
 
 (define-variable list-directory-verbose-switches
   "list-directory verbose listing format -- Ignored under DOS."
-  #f
-  false?)
+  "-l"
+  string?)
 
 (define (insert-directory! file switches mark type)
   switches				; ignored
