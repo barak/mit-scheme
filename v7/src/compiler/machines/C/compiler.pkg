@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.6 1993/11/13 03:32:25 gjr Exp $
+$Id: compiler.pkg,v 1.7 1993/12/09 03:23:53 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -638,9 +638,14 @@ MIT in each case. |#
   (parent (compiler lap-syntaxer))
   (export (compiler lap-syntaxer)
 	  add-end-of-block-code!
+	  add-extra-code!
 	  bblock-linearize-lap
+	  extra-code-block/xtra
+	  declare-extra-code-block!
+	  find-extra-code-block
 	  linearize-lap
-	  set-current-branches!)
+	  set-current-branches!
+	  set-extra-code-block/xtra!)
   (export (compiler top-level)
 	  *end-of-block-code*
 	  linearize-lap))
