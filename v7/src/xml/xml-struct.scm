@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xml-struct.scm,v 1.3 2001/07/10 05:30:31 cph Exp $
+;;; $Id: xml-struct.scm,v 1.4 2001/07/14 11:43:50 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -23,7 +23,8 @@
 
 (declare (usual-integrations))
 
-(define-structure xml-document
+(define-structure (xml-document
+		   (type-descriptor xml-document-rtd))
   declaration
   misc-1
   dtd
@@ -31,12 +32,14 @@
   root
   misc-3)
 
-(define-structure xml-declaration
+(define-structure (xml-declaration
+		   (type-descriptor xml-declaration-rtd))
   version
   encoding
   standalone)
 
 (define-structure (xml-element
+		   (type-descriptor xml-element-rtd)
 		   (print-procedure
 		    (standard-unparser-method 'XML-ELEMENT
 		      (lambda (element port)
@@ -47,6 +50,7 @@
   contents)
 
 (define-structure (xml-processing-instructions
+		   (type-descriptor xml-processing-instructions-rtd)
 		   (print-procedure
 		    (standard-unparser-method 'XML-PROCESSING-INSTRUCTIONS
 		      (lambda (element port)
@@ -56,10 +60,12 @@
   name
   text)
 
-(define-structure xml-uninterpreted
+(define-structure (xml-uninterpreted
+		   (type-descriptor xml-uninterpreted-rtd))
   text)
 
 (define-structure (xml-entity-reference
+		   (type-descriptor xml-entity-reference-rtd)
 		   (print-procedure
 		    (standard-unparser-method 'XML-ENTITY-REFERENCE
 		      (lambda (reference port)
@@ -68,6 +74,7 @@
   name)
 
 (define-structure (xml-parameter-entity-reference
+		   (type-descriptor xml-parameter-entity-reference-rtd)
 		   (print-procedure
 		    (standard-unparser-method 'XML-PARAMETER-ENTITY-REFERENCE
 		      (lambda (reference port)
@@ -87,6 +94,7 @@
   (make-string-hash-table))
 
 (define-structure (xml-dtd
+		   (type-descriptor xml-dtd-rtd)
 		   (print-procedure
 		    (standard-unparser-method 'XML-DTD
 		      (lambda (dtd port)
@@ -97,6 +105,7 @@
   internal)
 
 (define-structure (xml-external-id
+		   (type-descriptor xml-external-id-rtd)
 		   (print-procedure
 		    (standard-unparser-method 'XML-EXTERNAL-ID
 		      (lambda (dtd port)
@@ -108,6 +117,7 @@
   uri)
 
 (define-structure (xml-!element
+		   (type-descriptor xml-!element-rtd)
 		   (print-procedure
 		    (standard-unparser-method 'XML-!ELEMENT
 		      (lambda (element port)
@@ -117,6 +127,7 @@
   content-type)
 
 (define-structure (xml-!attlist
+		   (type-descriptor xml-!attlist-rtd)
 		   (print-procedure
 		    (standard-unparser-method 'XML-!ATTLIST
 		      (lambda (element port)
@@ -126,6 +137,7 @@
   definitions)
 
 (define-structure (xml-!entity
+		   (type-descriptor xml-!entity-rtd)
 		   (print-procedure
 		    (standard-unparser-method 'XML-!ENTITY
 		      (lambda (element port)
@@ -135,6 +147,7 @@
   value)
 
 (define-structure (xml-unparsed-!entity
+		   (type-descriptor xml-unparsed-!entity-rtd)
 		   (print-procedure
 		    (standard-unparser-method 'XML-UNPARSED-!ENTITY
 		      (lambda (element port)
@@ -145,6 +158,7 @@
   notation)
 
 (define-structure (xml-parameter-!entity
+		   (type-descriptor xml-parameter-!entity-rtd)
 		   (print-procedure
 		    (standard-unparser-method 'XML-PARAMETER-!ENTITY
 		      (lambda (element port)
@@ -154,6 +168,7 @@
   value)
 
 (define-structure (xml-!notation
+		   (type-descriptor xml-!notation-rtd)
 		   (print-procedure
 		    (standard-unparser-method 'XML-!NOTATION
 		      (lambda (element port)
