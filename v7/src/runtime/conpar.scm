@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: conpar.scm,v 14.42 2003/07/22 02:12:52 cph Exp $
+$Id: conpar.scm,v 14.43 2004/10/01 02:40:39 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
+Copyright 1994,1999,2001,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
