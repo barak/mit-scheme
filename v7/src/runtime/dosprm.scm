@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dosprm.scm,v 1.1 1992/04/11 23:48:57 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dosprm.scm,v 1.2 1992/05/13 00:56:12 mhwu Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -122,28 +122,11 @@ MIT in each case. |#
 (define-integrable dos/current-user-name
   (ucode-primitive current-user-name))
 
-(define-integrable dos/current-uid
-  (ucode-primitive current-uid))
-
-(define-integrable dos/current-gid
-  (ucode-primitive current-gid))
-
 (define-integrable dos/current-file-time
   (ucode-primitive current-file-time))
 
 (define-integrable dos/file-time->string
   (ucode-primitive file-time->string))
-
-(define (dos/uid->string uid)
-  (or ((ucode-primitive uid->string) uid)
-      (number->string uid 10)))
-
-(define (dos/gid->string gid)
-  (or ((ucode-primitive gid->string) gid)
-      (number->string gid 10)))
-
-(define-integrable dos/system
-  (ucode-primitive system))
 
 (define (file-touch filename)
   ((ucode-primitive file-touch) (->namestring (merge-pathnames filename))))
@@ -151,3 +134,4 @@ MIT in each case. |#
 (define (make-directory name)
   ((ucode-primitive directory-make)
    (->namestring (pathname-as-directory (merge-pathnames name)))))
+ 
