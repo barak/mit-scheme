@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcfg.scm,v 1.3 1987/08/07 17:05:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcfg.scm,v 1.4 1987/08/08 22:03:38 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -150,4 +150,8 @@ MIT in each case. |#
   (let ((instructions (loop (bblock-instructions bblock))))
     (if instructions
 	(set-bblock-instructions! bblock instructions)
-	(snode-delete! bblock))))
+	(begin
+	  (snode-delete! bblock)
+	  (let ((rgraph *current-rgraph*))
+	    (set-rgraph-bblocks! rgraph
+				 (delq! bblock (rgraph-bblocks rgraph))))))))
