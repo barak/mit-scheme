@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 15.20 1992/09/21 20:35:24 cph Exp $
+$Id: make.scm,v 15.21 1993/08/12 07:01:10 cph Exp $
 
-Copyright (c) 1991-92 Massachusetts Institute of Technology
+Copyright (c) 1991-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,14 +39,13 @@ MIT in each case. |#
 (package/system-loader "6001" '() 'QUERY)
 (load '("edextra" "floppy") (->environment '(edwin)))
 ((access initialize-package! (->environment '(student scode-rewriting))))
-(add-system! (make-system "6.001" 15 20 '()))
+(add-system! (make-system "6.001" 15 21 '()))
 
 ;;; Customize the runtime system:
 (set! repl:allow-restart-notifications? false)
 (set! repl:write-result-hash-numbers? false)
 (set! *unparse-disambiguate-null-as-itself?* false)
 (set! *unparse-disambiguate-null-lambda-list?* true)
-(set! *unparse-compound-procedure-names?* false)
 (set! *pp-default-as-code?* true)
 (set! *pp-named-lambda->define?* 'LAMBDA)
 (set! x-graphics:auto-raise? true)
