@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/load.scm,v 14.17 1990/06/20 20:29:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/load.scm,v 14.18 1990/10/17 03:31:36 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -39,17 +39,20 @@ MIT in each case. |#
 
 (define (initialize-package!)
   (set! load-noisily? false)
+  (set! load/loading? false)
   (set! load/suppress-loading-message? false)
   (set! load/default-types '("com" "bin" "scm"))
-  (set! fasload/default-types '("com" "bin"))
   (set! load/default-find-pathname-with-type search-types-in-order)
+  (set! fasload/default-types '("com" "bin"))
   (add-event-receiver! event:after-restart load-init-file))
 
 (define load-noisily?)
+(define load/loading?)
 (define load/suppress-loading-message?)
 (define load/default-types)
-(define fasload/default-types)
+(define load/after-load-hooks)
 (define load/default-find-pathname-with-type)
+(define fasload/default-types)
 
 (define (read-file filename)
   (call-with-input-file
@@ -121,27 +124,48 @@ MIT in each case. |#
 		 (eq? purify? default-object))
 	     false
 	     purify?)))
-    (let ((kernel
-	   (lambda (filename last-file?)
-	     (let ((value
-		    (let ((pathname (->pathname filename)))
-		      (load/internal pathname
-				     (find-true-pathname pathname
-							 load/default-types)
-				     environment
-				     syntax-table
-				     purify?
-				     load-noisily?))))
-	       (cond (last-file? value)
-		     (load-noisily? (write-line value)))))))
-      (if (pair? filename/s)
-	  (let loop ((filenames filename/s))
-	    (if (null? (cdr filenames))
-		(kernel (car filenames) true)
-		(begin
-		  (kernel (car filenames) false)
-		  (loop (cdr filenames)))))
-	  (kernel filename/s true)))))
+    (with-values
+	(lambda ()
+	  (fluid-let ((load/loading? true)
+		      (load/after-load-hooks '()))
+	    (let ((kernel
+		   (lambda (filename last-file?)
+		     (let ((value
+			    (let ((pathname (->pathname filename)))
+			      (load/internal
+			       pathname
+			       (find-true-pathname pathname
+						   load/default-types)
+			       environment
+			       syntax-table
+			       purify?
+			       load-noisily?))))
+		       (cond (last-file? value)
+			     (load-noisily? (write-line value)))))))
+	      (let ((value
+		     (if (pair? filename/s)
+			 (let loop ((filenames filename/s))
+			   (if (null? (cdr filenames))
+			       (kernel (car filenames) true)
+			       (begin
+				 (kernel (car filenames) false)
+				 (loop (cdr filenames)))))
+			 (kernel filename/s true))))
+		(values
+		 value
+		 load/after-load-hooks)))))
+      (lambda (result hooks)
+	(if (not (null? hooks))
+	    (for-each (lambda (hook)
+			(hook))
+		      (reverse hooks)))
+	result))))
+	
+(define (load/push-hook! hook)
+  (if (not load/loading?)
+      (error "load/push-hook! Not loading.")
+      (set! load/after-load-hooks
+	    (cons hook load/after-load-hooks))))
 
 (define (load-latest . args)
   (fluid-let ((load/default-find-pathname-with-type find-latest-file))
