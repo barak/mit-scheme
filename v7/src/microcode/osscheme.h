@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: osscheme.h,v 1.7 1992/08/29 13:04:26 jinx Exp $
+$Id: osscheme.h,v 1.8 1993/06/24 06:11:12 gjr Exp $
 
-Copyright (c) 1990-1992 Massachusetts Institute of Technology
+Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -35,7 +35,7 @@ MIT in each case. */
 #ifndef SCM_OSSCHEME_H
 #define SCM_OSSCHEME_H
 
-#include <stdio.h>
+#include "outf.h"
 #include "os.h"
 
 extern Tchannel EXFUN (arg_channel, (int arg_number));
@@ -45,7 +45,7 @@ extern int option_emacs_subprocess;
 extern int EXFUN (executing_scheme_primitive_p, (void));
 
 extern void EXFUN (debug_edit_flags, (void));
-extern void EXFUN (debug_back_trace, (FILE *));
+extern void EXFUN (debug_back_trace, (outf_channel));
 extern void EXFUN (debug_examine_memory, (long address, CONST char * label));
 
 extern void EXFUN (error_out_of_channels, (void));

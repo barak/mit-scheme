@@ -14,9 +14,11 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/transact.c,v 1.1 1990/06/20 19:38:56 cph Rel $ */
+/* $Id: transact.c,v 1.2 1993/06/24 06:26:55 gjr Exp $ */
 
 #include <stdio.h>
+#include "ansidecl.h"
+#include "outf.h"
 #include "dstack.h"
 
 static void
@@ -24,8 +26,8 @@ DEFUN (error, (procedure_name, message),
        CONST char * procedure_name AND
        CONST char * message)
 {
-  fprintf (stderr, "%s: %s\n", procedure_name, message);
-  fflush (stderr);
+  outf_fatal ("%s: %s\n", procedure_name, message);
+  outf_flush_fatal ();
   abort ();
 }
 

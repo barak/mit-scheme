@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: oscond.h,v 1.13 1993/02/11 02:29:29 adams Exp $
+$Id: oscond.h,v 1.14 1993/06/24 06:09:34 gjr Exp $
 
-Copyright (c) 1990-1992 Massachusetts Institute of Technology
+Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and

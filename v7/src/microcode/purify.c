@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: purify.c,v 9.48 1993/03/10 17:20:04 cph Exp $
+$Id: purify.c,v 9.49 1993/06/24 06:18:24 gjr Exp $
 
-Copyright (c) 1988-93 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -420,7 +420,7 @@ DEFUN (Purify,
   Result = GCLoop (Heap_Start, &Free);
   if (Free != Result)
   {
-    fprintf (stderr, "\nPurify: Pure Scan ended too early.\n");
+    outf_fatal ("\nPurify: Pure Scan ended too early.\n");
     Microcode_Termination (TERM_BROKEN_HEART);
   }
   Length = ((Free - Heap_Start) - 1);		/* Length of object */
@@ -469,7 +469,7 @@ DEFUN (Purify_Pass_2,
 
     if (Free_Constant != Result)
     {
-      fprintf (stderr, "\nPurify: Pure Copy ended too early.\n");
+      outf_fatal ("\nPurify: Pure Copy ended too early.\n");
       Microcode_Termination (TERM_BROKEN_HEART);
     }
     Pure_Length = ((Free_Constant - New_Object) + 1);
@@ -485,7 +485,7 @@ DEFUN (Purify_Pass_2,
     Result = PurifyLoop ((New_Object + 1), &Free_Constant, CONSTANT_COPY);
     if (Result != Free_Constant)
     {
-      fprintf (stderr, "\nPurify: Pure Copy ended too early.\n");
+      outf_fatal ("\nPurify: Pure Copy ended too early.\n");
       Microcode_Termination (TERM_BROKEN_HEART);
     }
   }
@@ -499,7 +499,7 @@ DEFUN (Purify_Pass_2,
     Result = GCLoop ((New_Object + 1), &Free_Constant);
     if (Result != Free_Constant)
     {
-      fprintf (stderr, "\nPurify: Constant Copy ended too early.\n");
+      outf_fatal ("\nPurify: Constant Copy ended too early.\n");
       Microcode_Termination (TERM_BROKEN_HEART);
     }
   }
@@ -508,7 +508,7 @@ DEFUN (Purify_Pass_2,
   *Free_Constant++ = (MAKE_OBJECT (END_OF_BLOCK, (Recomputed_Length + 5)));
   if (!(TEST_CONSTANT_TOP (Free_Constant)))
   {
-    fprintf (stderr,
+    outf_fatal (
 	     "\nPurify overrun: Constant_Top = 0x%lx, Free_Constant = 0x%lx\n",
 	     Constant_Top, Free_Constant);
     Microcode_Termination (TERM_EXIT);

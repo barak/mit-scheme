@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: stack.h,v 9.33 1992/09/26 02:55:03 cph Exp $
+$Id: stack.h,v 9.34 1993/06/24 06:22:52 gjr Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -102,8 +102,8 @@ extern void EXFUN (dos386_stack_reset, (void));
 {									\
   if (Stack_Pointer < Stack_Guard)					\
   {									\
-    fprintf(stderr, "\nStack_Pointer: 0x%lx, Guard: 0x%lx\n",		\
-            ((long) Stack_Pointer), ((long) Stack_Guard));		\
+    outf_fatal ("\nStack_Pointer: 0x%lx, Guard: 0x%lx\n",		\
+                ((long) Stack_Pointer), ((long) Stack_Guard));		\
     Microcode_Termination(TERM_EXIT);					\
   }									\
   Internal_Terminate_Old_Stacklet();					\

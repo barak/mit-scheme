@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os.h,v 1.3 1993/02/11 02:27:13 adams Exp $
+$Id: os.h,v 1.4 1993/06/24 06:08:38 gjr Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,11 +38,7 @@ MIT in each case. */
 #include "ansidecl.h"
 #include "oscond.h"
 
-#ifdef WINNT
-#include "posixtyp.h"  /* SRA : renamed for 8 char name length*/
-#else
-#include "posixtype.h"
-#endif
+#include "posixtyp.h"
 
 typedef unsigned int Tchannel;
 

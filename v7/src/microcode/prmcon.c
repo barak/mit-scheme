@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/prmcon.c,v 1.1 1990/11/21 07:00:14 jinx Rel $
+$Id: prmcon.c,v 1.2 1993/06/24 06:14:23 gjr Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -58,8 +58,7 @@ DEFUN (suspend_primitive,
   primitive = (Regs[REGBLOCK_PRIMITIVE]);
   if (!PRIMITIVE_P (primitive))
   {
-    fprintf (stderr,
-	     "\nsuspend_primitive invoked when not in primitive!\n");
+    outf_fatal ("\nsuspend_primitive invoked when not in primitive!\n");
     Microcode_Termination (TERM_BAD_BACK_OUT);
   }
 

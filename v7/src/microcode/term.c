@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/term.c,v 1.5 1991/08/26 15:00:20 arthur Exp $
+$Id: term.c,v 1.6 1993/06/24 06:25:34 gjr Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -62,7 +62,7 @@ DEFUN_VOID (init_exit_scheme)
 static void
 DEFUN (attempt_termination_backout, (code), int code)
 {
-  fflush (stderr);
+  outf_flush_error(); /* NOT flush_fatal */
   if ((WITHIN_CRITICAL_SECTION_P ())
       || (code == TERM_HALT)
       || (! (Valid_Fixed_Obj_Vector ())))
@@ -101,15 +101,15 @@ DEFUN (termination_prefix, (code), int code)
 {
   attempt_termination_backout (code);
   OS_restore_external_state ();
-  putc ('\n', stdout);
+  outf_fatal("\n");
   if ((code < 0) || (code > MAX_TERMINATION))
-    fprintf (stdout, "Unknown termination code 0x%x", code);
+    outf_fatal("Unknown termination code 0x%x", code);
   else
-    fputs ((Term_Messages [code]), stdout);
+    outf_fatal("%s", (Term_Messages [code]));
   if ((WITHIN_CRITICAL_SECTION_P ()) && (code != TERM_HALT))
-    fprintf (stdout, " within critical section \"%s\"",
-	     (CRITICAL_SECTION_NAME ()));
-  fputs (".\n", stdout);
+    outf_fatal (" within critical section \"%s\"",
+                (CRITICAL_SECTION_NAME ()));
+  outf_fatal(".\n");
 }
 
 static void
@@ -119,7 +119,12 @@ DEFUN (termination_suffix, (code, value, abnormal_p),
 #ifdef EXIT_HOOK
   EXIT_HOOK (code, value, abnormal_p);
 #endif
-  fflush (stdout);
+#if WINNT
+  if (code != TERM_HALT)  outf_flush_fatal(); /*dont salute*/
+  winnt_deallocate_registers();
+#else
+  outf_flush_fatal();
+#endif
   Reset_Memory ();
   EXIT_SCHEME (value);
 }
@@ -129,8 +134,8 @@ DEFUN (termination_suffix_trace, (code), int code)
 {
   if (Trace_On_Error)
     {
-      fprintf (stdout, "\n\n**** Stack trace ****\n\n");
-      Back_Trace (stdout);
+      outf_error ("\n\n**** Stack trace ****\n\n");
+      Back_Trace (error_output);
     }
   termination_suffix (code, 1, 1);
 }
@@ -161,7 +166,7 @@ DEFUN_VOID (termination_end_of_computation)
 {
   termination_prefix (TERM_END_OF_COMPUTATION);
   Print_Expression (Val, "Final result");
-  putc ('\n', stdout);
+  outf_console("\n");
   termination_suffix (TERM_END_OF_COMPUTATION, 0, 0);
 }
 
@@ -184,12 +189,12 @@ DEFUN_VOID (termination_no_error_handler)
       long heap_size;
       long const_size;
       get_band_parameters (&heap_size, &const_size);
-      fputs ("Try again with values at least as large as\n", stdout);
-      fprintf (stdout, "  -heap %d (%d + %d)\n",
+      outf_fatal ("Try again with values at least as large as\n");
+      outf_fatal ("  -heap %d (%d + %d)\n",
 	       (MIN_HEAP_DELTA + (BYTES_TO_BLOCKS (heap_size))),
 	       (BYTES_TO_BLOCKS (heap_size)),
 	       MIN_HEAP_DELTA);
-      fprintf (stdout, "  -constant %d\n", (BYTES_TO_BLOCKS (const_size)));
+      outf_fatal ("  -constant %d\n", (BYTES_TO_BLOCKS (const_size)));
     }
   termination_suffix (TERM_NO_ERROR_HANDLER, 1, 1);
 }
@@ -198,12 +203,11 @@ void
 DEFUN_VOID (termination_gc_out_of_space)
 {
   termination_prefix (TERM_GC_OUT_OF_SPACE);
-  fputs ("You are out of space at the end of a Garbage Collection!\n",
-	 stdout);
-  fprintf (stdout, "Free = 0x%lx; MemTop = 0x%lx; Heap_Top = 0x%lx\n",
-	   Free, MemTop, Heap_Top);
-  fprintf (stdout, "Words required = %ld; Words available = %ld\n",
-	   (MemTop - Free), GC_Space_Needed);
+  outf_fatal ("You are out of space at the end of a Garbage Collection!\n");
+  outf_fatal ("Free = 0x%lx; MemTop = 0x%lx; Heap_Top = 0x%lx\n",
+	      Free, MemTop, Heap_Top);
+  outf_fatal ("Words required = %ld; Words available = %ld\n",
+	      (MemTop - Free), GC_Space_Needed);
   termination_suffix_trace (TERM_GC_OUT_OF_SPACE);
 }
 
@@ -219,7 +223,7 @@ DEFUN (termination_signal, (signal_name), CONST char * signal_name)
   if (signal_name != 0)
     {
       termination_prefix (TERM_SIGNAL);
-      fprintf (stdout, "Killed by %s.\n", signal_name);
+      outf_fatal ("Killed by %s.\n");
     }
   else
     attempt_termination_backout (TERM_SIGNAL);

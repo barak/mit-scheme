@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: option.c,v 1.32 1993/06/09 20:30:00 jawilson Exp $
+$Id: option.c,v 1.33 1993/06/24 06:07:24 gjr Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -34,7 +34,6 @@ MIT in each case. */
 
 /* Command-line option processing */
 
-#include <stdio.h>
 #include <ctype.h>
 #include "ansidecl.h"
 #include "obstack.h"
@@ -53,6 +52,10 @@ extern int atoi ();
 #else
 extern int access ();
 extern int strlen ();
+#endif
+
+#ifndef NULL
+# define NULL 0
 #endif
 
 extern struct obstack scratch_obstack;
@@ -353,7 +356,7 @@ The following options are only meaningful to bchscheme:
 #endif
 
 #ifndef DEFAULT_LARGE_CONSTANT
-#define DEFAULT_LARGE_CONSTANT 1010
+#define DEFAULT_LARGE_CONSTANT 1100
 #endif
 
 #ifndef DEFAULT_EDWIN_CONSTANT
@@ -521,6 +524,7 @@ DEFUN (string_compare_ci, (string1, string2),
      : ((length1 < length2) ? (-1) : 1));
 }
 
+#if 0
 static char *
 DEFUN (strchr, (s, c), CONST char * s AND int c)
 {
@@ -531,6 +535,7 @@ DEFUN (strchr, (s, c), CONST char * s AND int c)
       if (c1 == '\0') return (0);
     }
 }
+#endif
 
 static PTR
 DEFUN (xmalloc, (n), unsigned long n)
@@ -539,7 +544,7 @@ DEFUN (xmalloc, (n), unsigned long n)
   PTR result = (malloc (n));
   if (result == 0)
     {
-      fprintf (stderr, "%s: unable to allocate space while parsing options.\n",
+      outf_fatal ("%s: unable to allocate space while parsing options.\n",
 	       scheme_program_name);
       termination_init_error ();
     }
@@ -613,7 +618,7 @@ DEFUN (parse_options, (argc, argv), int argc AND CONST char ** argv)
 		  (*value_cell) = (*scan_argv++);
 		else
 		  {
-		    fprintf (stderr, "%s: option %s requires an argument.\n",
+		    outf_fatal ("%s: option %s requires an argument.\n",
 			     scheme_program_name, option);
 		    termination_init_error ();
 		  }
@@ -698,7 +703,7 @@ DEFUN (non_negative_numeric_option, (option, optval, variable, defval),
       long n = (strtol (optval, ((char **) NULL), 0));
       if (n < 0)
 	{
-	  fprintf (stderr, "%s: illegal argument %s for option %s.\n",
+	  outf_fatal ("%s: illegal argument %s for option %s.\n",
 		   scheme_program_name, optval, option);
 	  termination_init_error ();
 	}
@@ -711,7 +716,7 @@ DEFUN (non_negative_numeric_option, (option, optval, variable, defval),
 	long n = (strtol (t, ((char **) NULL), 0));
 	if (n < 0)
 	  {
-	    fprintf (stderr, "%s: illegal value %s for variable %s.\n",
+	    outf_fatal ("%s: illegal value %s for variable %s.\n",
 		     scheme_program_name, t, variable);
 	    termination_init_error ();
 	  }
@@ -733,7 +738,7 @@ DEFUN (standard_numeric_option, (option, optval, variable, defval),
       int n = (atoi (optval));
       if (n <= 0)
 	{
-	  fprintf (stderr, "%s: illegal argument %s for option %s.\n",
+	  outf_fatal ("%s: illegal argument %s for option %s.\n",
 		   scheme_program_name, optval, option);
 	  termination_init_error ();
 	}
@@ -746,7 +751,7 @@ DEFUN (standard_numeric_option, (option, optval, variable, defval),
 	int n = (atoi (t));
 	if (n <= 0)
 	  {
-	    fprintf (stderr, "%s: illegal value %s for variable %s.\n",
+	    outf_fatal ("%s: illegal value %s for variable %s.\n",
 		     scheme_program_name, t, variable);
 	    termination_init_error ();
 	  }
@@ -910,21 +915,21 @@ DEFUN (search_path_for_file, (option, filename, default_p, fail_p),
   {
     CONST char ** scan_path = option_library_path;
 
-    fprintf (stderr, "%s: can't find a readable %s",
+    outf_fatal ("%s: can't find a readable %s",
 	     scheme_program_name, (default_p ? "default" : "file"));
     if (option != 0)
-      fprintf (stderr, " for option %s", option);
-    fprintf (stderr, ".\n");
-    fprintf (stderr, "\tsearched for file %s in these directories:\n",
+      outf_fatal (" for option %s", option);
+    outf_fatal (".\n");
+    outf_fatal ("\tsearched for file %s in these directories:\n",
 	     filename);
     if (!default_p)
-      fprintf (stderr, "\t.\n");
+      outf_fatal ("\t.\n");
     while (1)
     {
       CONST char * element = (*scan_path++);
       if (element == 0)
 	break;
-      fprintf (stderr, "\t%s\n", element);
+      outf_fatal ("\t%s\n", element);
     }
     termination_init_error ();
     /*NOTREACHED*/
@@ -947,7 +952,7 @@ DEFUN (standard_filename_option, (option, optval, variable, defval, fail_p),
 	{
 	  if (fail_p)
 	    {
-	      fprintf (stderr, "%s: can't read file %s for option %s.\n",
+	      outf_fatal ("%s: can't read file %s for option %s.\n",
 		       scheme_program_name, optval, option);
 	      termination_init_error ();
 	    }
@@ -963,7 +968,7 @@ DEFUN (standard_filename_option, (option, optval, variable, defval, fail_p),
       {
 	if ((! (FILE_READABLE (filename))) && fail_p)
 	  {
-	    fprintf (stderr, "%s: can't read default file %s for option %s.\n",
+	    outf_fatal ("%s: can't read default file %s for option %s.\n",
 		     scheme_program_name, filename, option);
 	    termination_init_error ();
 	  }
@@ -979,7 +984,7 @@ DEFUN (conflicting_options, (option1, option2),
        CONST char * option1 AND
        CONST char * option2)
 {
-  fprintf (stderr, "%s: can't specify both options %s and %s.\n",
+  outf_fatal ("%s: can't specify both options %s and %s.\n",
 	   scheme_program_name, option1, option2);
   termination_init_error ();
 }
@@ -989,7 +994,7 @@ DEFUN (describe_boolean_option, (name, value),
        CONST char * name AND
        int value)
 {
-  fprintf (stderr, "  %s: %s\n", name, (value ? "yes" : "no"));
+  outf_fatal ("  %s: %s\n", name, (value ? "yes" : "no"));
 }
 
 static void
@@ -997,7 +1002,7 @@ DEFUN (describe_string_option, (name, value),
        CONST char * name AND
        CONST char * value)
 {
-  fprintf (stderr, "  %s: %s\n", name, value);
+  outf_fatal ("  %s: %s\n", name, value);
 }
 
 static void
@@ -1005,7 +1010,7 @@ DEFUN (describe_numeric_option, (name, value),
        CONST char * name AND
        int value)
 {
-  fprintf (stderr, "  %s: %d\n", name, value);
+  outf_fatal ("  %s: %d\n", name, value);
 }
 
 static void
@@ -1013,7 +1018,7 @@ DEFUN (describe_size_option, (name, value),
        CONST char * name AND
        unsigned int value)
 {
-  fprintf (stderr, "  %s size: %d\n", name, value);
+  outf_fatal ("  %s size: %d\n", name, value);
 }
 
 static void
@@ -1021,24 +1026,24 @@ DEFUN (describe_path_option, (name, value),
        CONST char * name AND
        CONST char ** value)
 {
-  fprintf (stderr, "  %s: ", name);
+  outf_fatal ("  %s: ", name);
   {
     CONST char ** scan = value;
-    fprintf (stderr, "%s", (*scan++));
+    outf_fatal ("%s", (*scan++));
     while (1)
       {
 	CONST char * element = (*scan++);
 	if (element == 0) break;
-	fprintf (stderr, ":%s", element);
+	outf_fatal (":%s", element);
       }
   }
-  fprintf (stderr, "\n");
+  outf_fatal ("\n");
 }
 
 static void
 DEFUN_VOID (describe_options)
 {
-  fprintf (stderr, "Summary of configuration options:\n");
+  outf_fatal ("Summary of configuration options:\n");
   describe_size_option ("heap", option_heap_size);
   describe_size_option ("constant-space", option_constant_size);
   describe_size_option ("stack", option_stack_size);
@@ -1073,17 +1078,16 @@ DEFUN_VOID (describe_options)
   describe_boolean_option ("force interactive", option_force_interactive);
   describe_boolean_option ("disable core dump", option_disable_core_dump);
   if (option_unused_argc == 0)
-    fprintf (stderr, "  no unused arguments\n");
+    outf_fatal ("  no unused arguments\n");
   else
     {
       CONST char ** scan = option_unused_argv;
       CONST char ** end = (scan + option_unused_argc);
-      fprintf (stderr, "  unused arguments:");
+      outf_fatal ("  unused arguments:");
       while (scan < end)
-	fprintf (stderr, " %s", (*scan++));
-      fprintf (stderr, "\n");
+	outf_fatal (" %s", (*scan++));
+      outf_fatal ("\n");
     }
-  fflush (stderr);
 }
 
 void
@@ -1130,7 +1134,7 @@ DEFUN (read_command_line_options, (argc, argv),
 #ifndef NATIVE_CODE_IS_C
 	if (! (FILE_READABLE (option_fasl_file)))
 	  {
-	    fprintf (stderr, "%s: can't read option file: -fasl %s\n",
+	    outf_fatal ("%s: can't read option file: -fasl %s\n",
 		     scheme_program_name, option_fasl_file);
 	    termination_init_error ();
 	  }

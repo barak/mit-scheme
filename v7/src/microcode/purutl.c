@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purutl.c,v 9.43 1992/02/03 23:37:07 jinx Exp $
+$Id: purutl.c,v 9.44 1993/06/24 06:20:03 gjr Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -136,8 +136,8 @@ DEFUN (Make_Impure,
     case TC_MANIFEST_SPECIAL_NM_VECTOR:
     case_Non_Pointer:
 #if FALSE
-      fprintf(stderr, "\nImpurify Non-Pointer (0x%lx)\n", Object);
-      Microcode_Termination(TERM_NON_POINTER_RELOCATION);
+      outf_fatal ("\nImpurify Non-Pointer (0x%lx)\n", Object);
+      Microcode_Termination (TERM_NON_POINTER_RELOCATION);
       /* fall through */
 #endif
     case TC_BIG_FLONUM:
@@ -170,12 +170,14 @@ DEFUN (Make_Impure,
     case TC_MANIFEST_CLOSURE:
     case_compiled_entry_point:
     default:
-      fprintf(stderr, "\nImpurify: Bad type code = 0x%02x.\n",
-	      OBJECT_TYPE (Object));
 #ifdef BAD_TYPES_LETHAL
-      Microcode_Termination(TERM_INVALID_TYPE_CODE);
+      outf_fatal ("\nImpurify: Bad type code = 0x%02x.\n",
+	          OBJECT_TYPE (Object));
+      Microcode_Termination (TERM_INVALID_TYPE_CODE);
       /*NOTREACHED*/
 #else /* not BAD_TYPES_LETHAL */
+      outf_error ("\nImpurify: Bad type code = 0x%02x.\n",
+	          OBJECT_TYPE (Object));
       return (ERR_ARG_1_WRONG_TYPE);
 #endif /* BAD_TYPES_LETHAL */
   }
@@ -373,8 +375,7 @@ DEFUN (copy_to_constant_space,
   dest = Free_Constant;
   if (!(TEST_CONSTANT_TOP (dest + nobjects + 6)))
   {
-    fprintf (stderr,
-	    "copy_to_constant_space: Not enough constant space!\n");
+    outf_fatal ("copy_to_constant_space: Not enough constant space!\n");
     Microcode_Termination (TERM_NO_SPACE);
   }
   *dest++ = (MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 3));

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: psbmap.h,v 9.38 1993/02/11 02:35:32 adams Exp $
+$Id: psbmap.h,v 9.39 1993/06/24 06:15:32 gjr Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -51,13 +51,7 @@ MIT in each case. */
 #include "types.h"
 #include "object.h"
 #include "bignum.h"
-
-#ifdef WINNT
-#include "bignumin.h" /* SRA: rename bignumint.h  bignumin.h*/
-#else
-#include "bignumint.h"
-#endif
-
+#include "bignmint.h"
 #include "bitstr.h"
 #include "sdata.h"
 #include "const.h"

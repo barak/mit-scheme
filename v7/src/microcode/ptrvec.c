@@ -14,9 +14,9 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ptrvec.c,v 1.1 1990/06/20 19:38:50 cph Rel $ */
+/* $Id: ptrvec.c,v 1.2 1993/06/24 06:17:08 gjr Exp $ */
 
-#include <stdio.h>
+#include "outf.h"
 #include "dstack.h"
 
 static PTR
@@ -26,8 +26,8 @@ DEFUN (xmalloc, (length), unsigned int length)
   PTR result = (malloc (length));
   if (result == 0)
     {
-      fputs ("malloc: memory allocation failed\n", stderr);
-      fflush (stderr);
+      outf_fatal ("malloc: memory allocation failed\n");
+      outf_flush_fatal ();
       abort ();
     }
   return (result);
@@ -40,8 +40,8 @@ DEFUN (xrealloc, (ptr, length), PTR ptr AND unsigned int length)
   PTR result = (realloc (ptr, length));
   if (result == 0)
     {
-      fputs ("realloc: memory allocation failed\n", stderr);
-      fflush (stderr);
+      outf_fatal ("realloc: memory allocation failed\n");
+      outf_flush_fatal ();
       abort ();
     }
   return (result);

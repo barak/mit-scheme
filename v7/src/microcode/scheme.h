@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/scheme.h,v 9.34 1990/11/27 19:15:21 cph Rel $
+$Id: scheme.h,v 9.35 1993/06/24 06:22:01 gjr Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -88,6 +88,7 @@ MIT in each case. */
 #include "butterfly.h"
 #endif
 
+#include "outf.h"	/* Formatted output for errors */
 #include "bkpt.h"	/* Shadows some defaults */
 #include "default.h"	/* Defaults for various hooks. */
 #include "extern.h"	/* External declarations */

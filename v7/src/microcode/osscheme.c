@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osscheme.c,v 1.6 1992/02/04 04:14:32 jinx Exp $
+$Id: osscheme.c,v 1.7 1993/06/24 06:12:14 gjr Exp $
 
-Copyright (c) 1990-92 Massachusetts Institute of Technology
+Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -115,12 +115,12 @@ DEFUN (set_interrupt_mask, (mask), long mask)
 }
 
 void
-DEFUN (debug_back_trace, (stream), FILE * stream)
+DEFUN (debug_back_trace, (stream), outf_channel stream)
 {
-  fputs ("*** Scheme Microcode Back Trace: ***\n", stream);
+  outf (stream, "*** Scheme Microcode Back Trace: ***\n");
   Back_Trace (stream);
-  fputs ("*** End of Back Trace ***\n", stream);
-  fflush (stream);
+  outf (stream, "*** End of Back Trace ***\n");
+  outf_flush (stream);
   return;
 }
 
