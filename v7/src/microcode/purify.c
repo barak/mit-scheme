@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: purify.c,v 9.56 1997/07/15 20:57:06 adams Exp $
+$Id: purify.c,v 9.57 1997/07/16 02:40:13 adams Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -386,8 +386,8 @@ DEFUN (purifyloop, (Scan, To_Pointer, GC_Mode),
         |----------------------|...
         | END   | Total Size M |   . Where END   = TC_FIXNUM
         |----------------------|    .      SNMH  = TC_MANIFEST_SPECIAL_...
-        | SNMH  |      1       |    |      CONST = TC_TRUE
-        |----------------------|    |      PURE  = TC_FALSE
+        | SNMH  |      1       |    |      CONST = TC_CONSTANT
+        |----------------------|    |      PURE  = TC_NULL
         |                      |    |
         |                      |    |
         |    CONSTANT AREA     |    |
