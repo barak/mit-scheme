@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.16 1988/12/23 04:50:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.17 1989/01/05 19:02:19 cph Exp $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -91,7 +91,7 @@ DEFINE_PRIMITIVE ("STACK-ADDRESS-OFFSET", Prim_stack_address_offset, 1, 1, 0)
   PRIMITIVE_RETURN
     (C_Integer_To_Scheme_Integer
      ((STACK_LOCATIVE_DIFFERENCE
-       ((OBJECT_DATUM (ARG_REF (1))), ((long) (Stack_Top))))
+       (((long) (Stack_Top)), (OBJECT_DATUM (ARG_REF (1)))))
       / (sizeof (Pointer))));
 }
 
