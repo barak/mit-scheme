@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/sf/toplev.scm,v 3.9 1988/03/30 23:05:03 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/sf/toplev.scm,v 3.10 1988/04/23 08:24:45 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -153,55 +153,61 @@ Currently only the 68000 implementation needs this."
    (stickify-input-filenames input-string sf/default-input-pathname)))
 
 (define (syntax-file* input-pathname bin-pathname spec-pathname)
-  (let ((start-date (date))
-	(start-time (time))
-	(input-filename (pathname->string input-pathname))
-	(bin-filename (pathname->string bin-pathname))
-	(spec-filename (and spec-pathname (pathname->string spec-pathname))))
-    (newline)
-    (write-string "Syntax file: ")
-    (write input-filename)
-    (write-string " ")
-    (write bin-filename)
-    (write-string " ")
-    (write spec-filename)
-    (transmit-values
-	(transmit-values (file-info/find input-pathname)
-	  (lambda (syntax-table declarations)
-	    (integrate/file input-pathname syntax-table declarations
-			    spec-pathname)))
-      (lambda (expression externs events)
-	(fasdump (wrapping-hook
-		  (make-comment `((SOURCE-FILE . ,input-filename)
-				  (DATE . ,start-date)
-				  (TIME . ,start-time)
-				  (FLUID-LET . ,*fluid-let-type*))
-				(set! expression false)))
-		 bin-pathname)
-	(write-externs-file (pathname-new-type
-			     bin-pathname
-			     (pathname-type sf/default-externs-pathname))
-			    (set! externs false))
-	(if spec-pathname
-	    (begin (newline)
-		   (write-string "Writing ")
-		   (write spec-filename)
-		   (with-output-to-file spec-pathname
-		     (lambda ()
-		       (newline)
-		       (write `(DATE ,start-date ,start-time))
-		       (newline)
-		       (write `(FLUID-LET ,*fluid-let-type*))
-		       (newline)
-		       (write `(SOURCE-FILE ,input-filename))
-		       (newline)
-		       (write `(BINARY-FILE ,bin-filename))
-		       (for-each (lambda (event)
-				   (newline)
-				   (write `(,(car event)
-					    (RUNTIME ,(cdr event)))))
-				 events)))
-		   (write-string " -- done")))))))
+  (fluid-let ((sf/default-externs-pathname
+	       (make-pathname (pathname-device input-pathname)
+			      (pathname-directory input-pathname)
+			      false
+			      "ext"
+			      'NEWEST)))
+    (let ((start-date (date))
+	  (start-time (time))
+	  (input-filename (pathname->string input-pathname))
+	  (bin-filename (pathname->string bin-pathname))
+	  (spec-filename (and spec-pathname (pathname->string spec-pathname))))
+      (newline)
+      (write-string "Syntax file: ")
+      (write input-filename)
+      (write-string " ")
+      (write bin-filename)
+      (write-string " ")
+      (write spec-filename)
+      (transmit-values
+	  (transmit-values (file-info/find input-pathname)
+	    (lambda (syntax-table declarations)
+	      (integrate/file input-pathname syntax-table declarations
+			      spec-pathname)))
+	(lambda (expression externs events)
+	  (fasdump (wrapping-hook
+		    (make-comment `((SOURCE-FILE . ,input-filename)
+				    (DATE . ,start-date)
+				    (TIME . ,start-time)
+				    (FLUID-LET . ,*fluid-let-type*))
+				  (set! expression false)))
+		   bin-pathname)
+	  (write-externs-file (pathname-new-type
+			       bin-pathname
+			       (pathname-type sf/default-externs-pathname))
+			      (set! externs false))
+	  (if spec-pathname
+	      (begin (newline)
+		     (write-string "Writing ")
+		     (write spec-filename)
+		     (with-output-to-file spec-pathname
+		       (lambda ()
+			 (newline)
+			 (write `(DATE ,start-date ,start-time))
+			 (newline)
+			 (write `(FLUID-LET ,*fluid-let-type*))
+			 (newline)
+			 (write `(SOURCE-FILE ,input-filename))
+			 (newline)
+			 (write `(BINARY-FILE ,bin-filename))
+			 (for-each (lambda (event)
+				     (newline)
+				     (write `(,(car event)
+					      (RUNTIME ,(cdr event)))))
+				   events)))
+		     (write-string " -- done"))))))))
 
 (define (read-externs-file pathname)
   (let ((pathname

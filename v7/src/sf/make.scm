@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/make.scm,v 4.2 1988/03/30 21:56:15 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/make.scm,v 4.3 1988/04/23 08:25:27 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -61,11 +61,11 @@ MIT in each case. |#
     (make-environment
       (define :name "SF")
       (define :version 4)
-      (define :modification 2)
+      (define :modification 3)
       (define :files)
 
       (define :rcs-header		;RCS sets up this string.
-	"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/make.scm,v 4.2 1988/03/30 21:56:15 cph Rel $")
+	"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/make.scm,v 4.3 1988/04/23 08:25:27 cph Exp $")
 
       (define :files-lists
 	(list
