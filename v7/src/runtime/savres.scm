@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: savres.scm,v 14.35 2002/11/20 19:46:22 cph Exp $
+$Id: savres.scm,v 14.36 2002/12/31 04:40:53 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -137,22 +137,32 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
     (event-distributor/invoke! event:before-exit)
     ((ucode-primitive load-band) filename)))
 
-(define world-identification "Scheme")
+(define world-identification "Image")
 (define time-world-saved #f)
+(define license-statement
+  "This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.")
 
 (define (identify-world #!optional port)
   (let ((port
 	 (if (default-object? port)
 	     (current-output-port)
 	     (guarantee-output-port port))))
-    (write-string world-identification port)
+    (write-string "Copyright (c) " port)
+    (write (decoded-time/year (or time-world-saved (get-decoded-time))) port)
+    (write-string " Massachusetts Institute of Technology." port)
+    (newline port)
+    (write-string license-statement port)
+    (newline port)
+    (newline port)
     (if time-world-saved
 	(begin
+	  (write-string world-identification port)
 	  (write-string " saved on " port)
 	  (write-string (decoded-time/date-string time-world-saved) port)
 	  (write-string " at " port)
-	  (write-string (decoded-time/time-string time-world-saved) port)))
-    (newline port)
+	  (write-string (decoded-time/time-string time-world-saved) port)
+	  (newline port)))
     (for-each (lambda (name)
 		(write-string "  " port)
 		(write-string (get-subsystem-identification-string name) port)
