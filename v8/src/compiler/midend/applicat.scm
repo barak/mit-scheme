@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: applicat.scm,v 1.4 1995/04/17 03:40:28 adams Exp $
+$Id: applicat.scm,v 1.5 1995/04/17 14:39:18 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -113,11 +113,11 @@ MIT in each case. |#
 	 (let* ((lambda-list (cadr rator))
 		(rator* `(LAMBDA ,lambda-list
 			   ,(applicat/expr
-			     (map env
-				  (lambda (name rand)
-				    (list name (LAMBDA/? rand)))
-				  lambda-list
-				  rands)
+			     (map* env
+				   (lambda (name rand)
+				     (list name (LAMBDA/? rand)))
+				   lambda-list
+				   rands)
 			     (caddr rator)))))
 	   `(CALL ,(applicat/remember rator* rator)
 		  ,(applicat/expr env cont)
