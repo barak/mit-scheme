@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/assmd.scm,v 1.29 1987/03/19 00:54:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/assmd.scm,v 1.30 1990/01/25 16:28:57 jinx Rel $
+$MC68020-Header: assmd.scm,v 1.36 89/08/28 18:33:33 GMT cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,23 +37,55 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define addressing-granularity 8)
-(define scheme-object-width 32)
+(let-syntax ((ucode-type (macro (name) `',(microcode-type name))))
 
-(define make-nmv-header)
-(let ()
+(define-integrable maximum-padding-length
+  ;; Instruction length is always a multiple of 32 bits
+  ;; Would 0 work here?
+  32)
 
-(set! make-nmv-header
-(named-lambda (make-nmv-header n)
-  (bit-string-append (unsigned-integer->bit-string 24 n)
-		     nmv-type-string)))
+(define padding-string
+  ;; Pad with `DIAG SCM' instructions
+  (unsigned-integer->bit-string maximum-padding-length
+				#b00010100010100110100001101001101))
+
+(define-integrable block-offset-width
+  ;; Block offsets are always 16 bit words
+  16)
+
+(define-integrable maximum-block-offset
+  ;; PC always aligned on longword boundary.  Use the extra bit.
+  (- (expt 2 (1+ block-offset-width)) 4))
+
+(define (block-offset->bit-string offset start?)
+  (unsigned-integer->bit-string block-offset-width
+				(+ (quotient offset 2)
+				   (if start? 0 1))))
+
+(define (make-nmv-header n)
+  (bit-string-append (unsigned-integer->bit-string scheme-datum-width n)
+		     nmv-type-string))
 
 (define nmv-type-string
-  (unsigned-integer->bit-string 8 (microcode-type 'MANIFEST-NM-VECTOR)))
-
-)
+  (unsigned-integer->bit-string scheme-type-width
+				(ucode-type manifest-nm-vector)))
 
 (define (object->bit-string object)
   (bit-string-append
-   (unsigned-integer->bit-string 24 (primitive-datum object))
-   (unsigned-integer->bit-string 8 (primitive-type object))))
+   (unsigned-integer->bit-string scheme-datum-width
+				 (careful-object-datum object))
+   (unsigned-integer->bit-string scheme-type-width (object-type object))))
+
+;;; Machine dependent instruction order
+
+(define (instruction-insert! bits block position receiver)
+  (let* ((l (bit-string-length bits))
+	 (new-position (- position l)))
+    (bit-substring-move-right! bits 0 l block new-position)
+    (receiver new-position)))
+
+(define instruction-initial-position bit-string-length)
+(define-integrable instruction-append bit-string-append-reversed)
+
+;;; end let-syntax
+)

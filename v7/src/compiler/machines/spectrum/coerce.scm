@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/coerce.scm,v 1.4 1987/03/19 00:54:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/coerce.scm,v 1.5 1990/01/25 16:30:05 jinx Rel $
+$MC68020-Header: coerce.scm,v 1.10 88/08/31 05:56:37 GMT cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -32,39 +33,10 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; Spectrum Specific Coercions
-
 (declare (usual-integrations))
 
-(define (parse-word expression tail)
-  (expand-descriptors (cdr expression)
-    (lambda (instruction size)
-      (if (not (zero? (remainder size 32)))
-	  (error "PARSE-WORD: Instructions must be 32 bit multiples" size))
-      (let ((instruction (apply optimize-group-syntax instruction)))
-	(if (null? tail)
-	    `(CONS ,instruction '())
-	    `(CONS-SYNTAX ,instruction (CONS ,(car tail) '())))))))
+;;;; Strange hppa coercions
 
-(define (expand-descriptors descriptors receiver)
-  (if (null? descriptors)
-      (receiver '() 0)
-      (expand-descriptors (cdr descriptors)
-	(lambda (instruction* size*)
-	  (expand-descriptor (car descriptors)
-	    (lambda (instruction size)
-	      (receiver (append! instruction instruction*)
-			(+ size size*))))))))
-
-(define (expand-descriptor descriptor receiver)
-  (let ((size (car descriptor)))
-    (receiver `(,(integer-syntaxer (cadr descriptor)
-				   (if (null? (cddr descriptor))
-				       'UNSIGNED
-				       (caddr descriptor))
-				   size))
-	      size)))
-
 (define (coerce-right-signed nbits)
   (let ((offset (1+ (expt 2 nbits))))
     (lambda (n)
@@ -73,57 +45,80 @@ MIT in each case. |#
 					(+ (* n 2) offset)
 					(* n 2))))))
 
-(define coerce-assemble3:x
-  (standard-coercion
-   (lambda (n)
-     (+ (* (land n 3) 2) (quotient n 4)))))
+(define (coerce-assemble12:x nbits)
+  (let ((range (expt 2 11)))
+    (lambda (n)
+      (let ((n (machine-word-offset n range))
+	    (r (unsigned-integer->bit-string nbits 0)))
+	(bit-substring-move-right! n 0 10 r 1)
+	(bit-substring-move-right! n 10 11 r 0)
+	r))))
 
-(define coerce-assemble12:X
-  (standard-coercion
-   (lambda (n)
-     (let ((qr (integer-divide n 4)))
-       (if (not (zero? (integer-divide-remainder qr)))
-	   (error "COERCE-ASSEMBLE12:X: offset not multiple of 4" n))
-       (let ((n (integer-divide-quotient qr)))
-	 (+ (* (land n #x3FF) 2) (quotient (land n #x400) #x400)))))))
+(define (coerce-assemble12:y nbits)
+  (let ((range (expt 2 11)))
+    (lambda (n)
+      (let ((r (unsigned-integer->bit-string nbits 0)))
+	(bit-substring-move-right! (machine-word-offset n range) 11 12 r 0)
+	r))))
 
-(define coerce-assemble12:Y
-  (standard-coercion
-   (lambda (n)
-     (quotient (land (quotient n 4) #x800) #x800))))
+(define (coerce-assemble17:x nbits)
+  (let ((range (expt 2 16)))
+    (lambda (n)
+      (let ((r (unsigned-integer->bit-string nbits 0)))
+	(bit-substring-move-right! (machine-word-offset n range) 11 16 r 0)
+	r))))
 
-(define coerce-assemble17:X
-  (standard-coercion
-   (lambda (n)
-     (let ((qr (integer-divide n 4)))
-       (if (not (zero? (integer-divide-remainder qr)))
-	   (error "COERCE-ASSEMBLE17:X: offset not multiple of 4" n))
-       (quotient (land (integer-divide-quotient qr) #xF800) #x800)))))
+(define (coerce-assemble17:y nbits)
+  (let ((range (expt 2 16)))
+    (lambda (n)
+      (let ((n (machine-word-offset n range))
+	    (r (unsigned-integer->bit-string nbits 0)))
+	(bit-substring-move-right! n 0 10 r 1)
+	(bit-substring-move-right! n 10 11 r 0)
+	r))))
 
-(define coerce-assemble17:Y
-  (standard-coercion
-   (lambda (n)
-     (let ((n (quotient n 4)))
-       (+ (quotient (land n #x400) #x400) (* (land n #x3FF) 2))))))
+(define (coerce-assemble17:z nbits)
+  (let ((range (expt 2 16)))
+    (lambda (n)
+      (let ((r (unsigned-integer->bit-string nbits 0)))
+	(bit-substring-move-right! (machine-word-offset n range) 16 17 r 0)
+	r))))
 
-(define coerce-assemble17:Z
-  (standard-coercion
-   (lambda (n)
-     (+ (quotient (land (quotient n 4) #x10000) #x10000)))))
+(define (coerce-assemble21:x nbits)
+  ;; This one does not check for range.  Should it?
+  (lambda (n)
+    (let ((n (integer->word n))
+	  (r (unsigned-integer->bit-string nbits 0)))
+      (bit-substring-move-right! n 0 2 r 12)
+      (bit-substring-move-right! n 2 7 r 16)
+      (bit-substring-move-right! n 7 9 r 14)
+      (bit-substring-move-right! n 9 20 r 1)
+      (bit-substring-move-right! n 20 21 r 0)
+      r)))
 
-(define coerce-assemble21:X
-  (standard-coercion
-   (lambda (n)
-     (+ (* (land n #x7C) #x4000)
-	(* (land n #x180) #x80)
-	(* (land n #x3) #x1000)
-	(quotient (land n #xFFE00) #x100)
-	(quotient (land n #x100000) #x100000)))))
+(define (machine-word-offset n range)
+  (let ((value (integer-divide n 4)))
+    (if (not (zero? (integer-divide-remainder value)))
+	(error "machine-word-offset: Invalid offset" n))
+    (let ((result (integer-divide-quotient value)))
+      (if (and (< result range)
+	       (>= result (- range)))
+	  (integer->word result)
+	  (error "machine-word-offset: Doesn't fit" n range)))))
+
+(define (integer->word x)
+  (unsigned-integer->bit-string
+   32
+   (let ((x (if (negative? x) (+ x #x100000000) x)))
+     (if (not (and (not (negative? x)) (< x #x100000000)))
+	 (error "Integer too large to be encoded" x))
+     x)))
 
+;;; Coercion top level
+
 (define make-coercion
   (coercion-maker
-   `((ASSEMBLE3:X . ,coerce-assemble3:x)
-     (ASSEMBLE12:X . ,coerce-assemble12:x)
+   `((ASSEMBLE12:X . ,coerce-assemble12:x)
      (ASSEMBLE12:Y . ,coerce-assemble12:y)
      (ASSEMBLE17:X . ,coerce-assemble17:x)
      (ASSEMBLE17:Y . ,coerce-assemble17:y)
@@ -133,34 +128,34 @@ MIT in each case. |#
      (UNSIGNED . ,coerce-unsigned-integer)
      (SIGNED . ,coerce-signed-integer))))
 
-(define-coercion 'UNSIGNED 1)
-(define-coercion 'UNSIGNED 2)
-(define-coercion 'UNSIGNED 3)
-(define-coercion 'UNSIGNED 4)
-(define-coercion 'UNSIGNED 5)
-(define-coercion 'UNSIGNED 6)
-(define-coercion 'UNSIGNED 7)
-(define-coercion 'UNSIGNED 8)
-(define-coercion 'UNSIGNED 9)
-(define-coercion 'UNSIGNED 10)
-(define-coercion 'UNSIGNED 11)
-(define-coercion 'UNSIGNED 12)
-(define-coercion 'UNSIGNED 13)
-(define-coercion 'UNSIGNED 14)
-(define-coercion 'UNSIGNED 16)
-(define-coercion 'UNSIGNED 32)
+(define coerce-1-bit-unsigned (make-coercion 'UNSIGNED 1))
+(define coerce-2-bit-unsigned (make-coercion 'UNSIGNED 2))
+(define coerce-3-bit-unsigned (make-coercion 'UNSIGNED 3))
+(define coerce-4-bit-unsigned (make-coercion 'UNSIGNED 4))
+(define coerce-5-bit-unsigned (make-coercion 'UNSIGNED 5))
+(define coerce-6-bit-unsigned (make-coercion 'UNSIGNED 6))
+(define coerce-7-bit-unsigned (make-coercion 'UNSIGNED 7))
+(define coerce-8-bit-unsigned (make-coercion 'UNSIGNED 8))
+(define coerce-9-bit-unsigned (make-coercion 'UNSIGNED 9))
+(define coerce-10-bit-unsigned (make-coercion 'UNSIGNED 10))
+(define coerce-11-bit-unsigned (make-coercion 'UNSIGNED 11))
+(define coerce-12-bit-unsigned (make-coercion 'UNSIGNED 12))
+(define coerce-13-bit-unsigned (make-coercion 'UNSIGNED 13))
+(define coerce-14-bit-unsigned (make-coercion 'UNSIGNED 14))
+(define coerce-15-bit-unsigned (make-coercion 'UNSIGNED 15))
+(define coerce-16-bit-unsigned (make-coercion 'UNSIGNED 16))
+(define coerce-32-bit-unsigned (make-coercion 'UNSIGNED 32))
 
-(define-coercion 'SIGNED 8)
-(define-coercion 'SIGNED 16)
-(define-coercion 'SIGNED 32)
+(define coerce-8-bit-signed (make-coercion 'SIGNED 8))
+(define coerce-16-bit-signed (make-coercion 'SIGNED 16))
+(define coerce-32-bit-signed (make-coercion 'SIGNED 32))
 
-(define-coercion 'RIGHT-SIGNED 5)
-(define-coercion 'RIGHT-SIGNED 11)
-(define-coercion 'RIGHT-SIGNED 14)
-(define-coercion 'ASSEMBLE3:X 3)
-(define-coercion 'ASSEMBLE12:X 11)
-(define-coercion 'ASSEMBLE12:Y 1)
-(define-coercion 'ASSEMBLE17:X 5)
-(define-coercion 'ASSEMBLE17:Y 11)
-(define-coercion 'ASSEMBLE17:Z 1)
-(define-coercion 'ASSEMBLE21:X 21)
+(define coerce-5-bit-right-signed (make-coercion 'RIGHT-SIGNED 5))
+(define coerce-11-bit-right-signed (make-coercion 'RIGHT-SIGNED 11))
+(define coerce-14-bit-right-signed (make-coercion 'RIGHT-SIGNED 14))
+(define coerce-11-bit-assemble12:x (make-coercion 'ASSEMBLE12:X 11))
+(define coerce-1-bit-assemble12:y (make-coercion 'ASSEMBLE12:Y 1))
+(define coerce-5-bit-assemble17:x (make-coercion 'ASSEMBLE17:X 5))
+(define coerce-11-bit-assemble17:y (make-coercion 'ASSEMBLE17:Y 11))
+(define coerce-1-bit-assemble17:z (make-coercion 'ASSEMBLE17:Z 1))
+(define coerce-21-bit-assemble21:x (make-coercion 'ASSEMBLE21:X 21))
