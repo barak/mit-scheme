@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcfg.scm,v 4.5 1988/11/06 14:38:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcfg.scm,v 4.6 1988/11/07 13:56:13 cph Exp $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -115,7 +115,7 @@ MIT in each case. |#
 	    (let ((next (snode-next bblock)))
 	      (if next
 		  (begin
-		    (if (node-previous=1? next)
+		    (if (null? (cdr (node-previous-edges next)))
 			(begin
 			  (set-rinst-next!
 			   (rinst-last (bblock-instructions bblock))
