@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.5 1993/11/12 14:44:03 jmiller Exp $
+$Id: rules3.scm,v 1.6 1993/11/12 20:21:42 jmiller Exp $
 
 Copyright (c) 1992-1993 Digital Equipment Corporation (D.E.C.)
 
@@ -767,6 +767,95 @@ case.
       (LAP ,@*prefix-instructions*
 	   ,@instructions
 	   ,@*suffix-instructions*))))
+
+
+(define (generate/remote-links n-code-blocks code-blocks-label n-sections)
+  (if (= n-code-blocks 0)
+      (LAP)
+      (let ((loop (generate-label))
+	    (bytes (generate-label))
+	    (after-bytes (generate-label)))
+	(LAP 
+	 ;; Push room for the block counter on the stack
+	 (SUBQ ,regnum:stack-pointer (& ,address-units-per-object)
+	       ,regnum:stack-pointer)
+         (COPY ,regnum:zero ,regnum:first-arg)
+(LABEL ,loop)
+         ;; Increment block counter (into arg 2 and stack)
+         (ADDQ ,regnum:first-arg (& 1) ,regnum:second-arg)
+         (STQ ,regnum:second-arg (OFFSET 0 ,regnum:stack-pointer))
+         ;; Load address of bytes into arg 3 and skip over them
+         (BR ,regnum:third-arg (@PCR ,after-bytes))
+(LABEL ,bytes)
+         ;; Dump the vector of constant data here in the code stream
+         ;; There is one byte per linkage block and the byte contains
+         ;; the number of linkage sections in that block
+         ,@(sections->bytes n-code-blocks n-sections)
+(LABEL ,after-bytes)
+         ;; Code to load the correct byte out of the vector at BYTES into arg 4
+         (ADDQ ,regnum:first-arg ,regnum:third-arg ,regnum:volatile-scratch)
+         (LDQ_U ,regnum:fourth-arg (OFFSET 0 ,regnum:volatile-scratch))
+         (EXTBL ,regnum:fourth-arg ,regnum:volatile-scratch ,regnum:fourth-arg)
+         ;; Load the vector of our compiled subblocks from our constant area
+         (LDQ ,regnum:third-arg (OFFSET (- ,code-blocks-label ,bytes)
+					,regnum:third-arg))
+         ,@(object->address regnum:third-arg regnum:third-arg)
+         ;; Load the subblock of interest
+         (S8ADDQ ,regnum:second-arg ,regnum:third-arg ,regnum:second-arg)
+         (LDQ ,regnum:second-arg (OFFSET 0 ,regnum:second-arg))
+         ,@(object->address regnum:second-arg regnum:second-arg)
+         ;; Get length of code area from subblock header
+         (LDQ ,regnum:third-arg
+	      (OFFSET ,address-units-per-object ,regnum:second-arg))
+         ;; Get length of entire code [sub]block
+         (LDQ ,regnum:first-arg (OFFSET 0 ,regnum:second-arg))
+         (LDQ ,regnum:first-C-arg ,reg:environment)
+         ,@(object->datum regnum:third-arg regnum:third-arg)
+         ,@(object->datum regnum:first-arg regnum:first-arg)
+         ;; Start calculating addr. of 1st linkage sect. of this [sub]block
+         (S8ADDQ ,regnum:third-arg ,regnum:second-arg ,regnum:third-arg)
+         ;; Calculate address of the end of the [sub]block to be linked
+         (S8ADDQ ,regnum:first-arg ,regnum:second-arg ,regnum:first-arg)
+         ;; Finish the address calculation for 1st linkage section
+         (LDA ,regnum:third-arg (OFFSET ,(* 2 address-units-per-object)
+					,regnum:third-arg))
+         ;; Store environment at the end of the [sub]block
+         (STQ ,regnum:first-C-arg (OFFSET 0 ,regnum:first-arg))
+         ;; Call the linker!  Arguments are:
+         ;; first-arg:  return address
+         ;; second-arg: address of [sub]block to link
+         ;; third-arg:  address of first linkage are in [sub]block
+         ;; fourth-arg: number of linkage areas
+         ,@(link-to-interface code:compiler-link)
+,@(make-external-label (continuation-code-word false) (generate-label))
+         ;; Reload the section counter and maybe loop back
+         (LDQ ,regnum:first-arg (OFFSET 0 ,regnum:stack-pointer))
+         ,@(add-immediate (- n-code-blocks)
+			  regnum:first-arg regnum:second-arg)
+         (BLT ,regnum:second-arg (@PCR ,loop))
+         ;; Pop the section counter off the stack
+	 (ADDQ ,regnum:stack-pointer (& ,address-units-per-object)
+	       ,regnum:stack-pointer)))))
+
+(define (sections->bytes n-code-blocks section-count-vector)
+  ;; Generate a vector of bytes, padded to a multiple of 4.  The
+  ;; vector holds the counts of the number of linkage sections in each
+  ;; subblock.
+  (let walk ((bytes			; Pad to multiple of 4
+	      (append (vector->list section-count-vector)
+		      (let ((left (remainder n-code-blocks 4)))
+			(if (zero? left)
+			    '()
+			    (make-list (- 4 left) 0))))))
+    (if (null? bytes)
+	(LAP)
+	(let ((lo (car bytes))
+	      (midlo (cadr bytes))
+	      (midhi (caddr bytes))
+	      (hi (cadddr bytes)))
+	  (LAP
+	   (UWORD ,(+ lo (* 256 (+ midlo (* 256 (+ midhi (* 256 hi)))))))
+	   ,@(walk (cddddr bytes)))))))
 
 (define (generate/constants-block constants references assignments uuo-links
 				  global-links static-vars)
