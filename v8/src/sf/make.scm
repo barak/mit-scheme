@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/sf/make.scm,v 3.0 1987/03/10 13:25:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/sf/make.scm,v 3.1 1987/03/10 13:36:06 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -41,10 +41,10 @@ MIT in each case. |#
 (load "$zcomp/base/load" system-global-environment)
 
 (load-system system-global-environment
-	     'PACKAGE/BETA
+	     'PACKAGE/SCODE-OPTIMIZER
 	     '(SYSTEM-GLOBAL-ENVIRONMENT)
 	     '(
-	       (PACKAGE/BETA
+	       (PACKAGE/SCODE-OPTIMIZER
 		"mvalue.bin"		;Multiple Value Support
 		"eqsets.bin"		;Set Data Abstraction
 
@@ -94,14 +94,14 @@ MIT in each case. |#
 
 	       ))
 
-(in-package package/beta
-  (define beta/system
+(in-package package/scode-optimizer
+  (define scode-optimizer/system
     (make-environment
-      (define :name "Beta")
+      (define :name "SF")
       (define :version 3)
       (define :modification 0)))
-  (add-system! beta/system)
-  (beta/initialize!))
+  (add-system! scode-optimizer/system)
+  (scode-optimizer/initialize!))
 
 ;;; end IN-PACKAGE SYSTEM-GLOBAL-ENVIRONMENT
 )
