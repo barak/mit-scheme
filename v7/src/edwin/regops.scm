@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regops.scm,v 1.83 1991/04/24 00:41:34 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regops.scm,v 1.84 1991/08/16 20:29:22 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -130,9 +130,21 @@
   (%group-narrow! group 0 (group-length group)))
 
 (define (region-clip! region)
-  (group-narrow! (region-group region)
-		 (region-start-index region)
-		 (region-end-index region)))
+  (let ((group (region-group region))
+	(start (region-start region))
+	(end (region-end region)))
+    (let ((point (group-point group)))
+      (cond ((mark< point start) (set-group-point! group start))
+	    ((mark> point end) (set-group-point! group end))))
+    (let ((buffer (group-buffer group)))
+      (if buffer
+	  (for-each
+	   (lambda (window)
+	     (let ((point (window-point window)))
+	       (cond ((mark< point start) (set-window-point! window start))
+		     ((mark> point end) (set-window-point! window end)))))
+	   (buffer-windows buffer))))
+    (group-narrow! group (mark-index start) (mark-index end))))
 
 (define (with-region-clipped! new-region thunk)
   (let ((group (region-group new-region))
