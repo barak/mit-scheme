@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.5 1993/10/28 05:00:04 gjr Exp $
+$Id: rules3.scm,v 1.6 1993/10/30 12:58:12 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -54,7 +54,7 @@ MIT in each case. |#
   (let ()
     (use-invoke-interface! 2)
     (LAP ,@(clear-map!)
-	 "{\n\t  SCHEME_OBJECT procedure = *stack_pointer++;\n\t"
+	 "{\n\t  SCHEME_OBJECT procedure = *Rsp++;\n\t"
 	 "  INVOKE_INTERFACE_2 (" ,code:compiler-apply ", procedure, "
 	 ,frame-size ");\n\t}\n\t")))
 
@@ -87,7 +87,7 @@ MIT in each case. |#
   (let ()
     (use-invoke-interface! 2)
     (LAP ,@(clear-map!)
-	 "{n\t SCHEME_OBJECT procedure = *stack_pointer++;\n\t  "
+	 "{n\t SCHEME_OBJECT procedure = *Rsp++;\n\t  "
 	 "SCHEME_OBJECT * procedure_address = (OBJECT_ADDRESS (procedure));\n\t"
 	 "  INVOKE_INTERFACE_2 (" ,code:compiler-lexpr-apply
 	 ", procedure_address, " ,number-pushed ");\n\t}\n\t")))
@@ -222,27 +222,27 @@ MIT in each case. |#
 (define (move-frame-up frame-size new-frame pfx)
   (case frame-size
     ((0)
-     (LAP ,pfx "stack_pointer = " ,new-frame ";\n\t"))
+     (LAP ,pfx "Rsp = " ,new-frame ";\n\t"))
     ((1)
-     (LAP ,pfx "*--" ,new-frame " = stack_pointer[0];\n\t"
-	  ,pfx "stack_pointer = " ,new-frame ";\n\t"))
+     (LAP ,pfx "*--" ,new-frame " = Rsp[0];\n\t"
+	  ,pfx "Rsp = " ,new-frame ";\n\t"))
     ((2)
-     (LAP ,pfx "*--" ,new-frame " = stack_pointer[1];\n\t"
-	  ,pfx "*--" ,new-frame " = stack_pointer[0];\n\t"
-	  ,pfx "stack_pointer = " ,new-frame ";\n\t"))
+     (LAP ,pfx "*--" ,new-frame " = Rsp[1];\n\t"
+	  ,pfx "*--" ,new-frame " = Rsp[0];\n\t"
+	  ,pfx "Rsp = " ,new-frame ";\n\t"))
     ((3)
-     (LAP ,pfx "*--" ,new-frame " = stack_pointer[2];\n\t"
-	  ,pfx "*--" ,new-frame " = stack_pointer[1];\n\t"
-	  ,pfx "*--" ,new-frame " = stack_pointer[0];\n\t"
-	  ,pfx "stack_pointer = " ,new-frame ";\n\t"))
+     (LAP ,pfx "*--" ,new-frame " = Rsp[2];\n\t"
+	  ,pfx "*--" ,new-frame " = Rsp[1];\n\t"
+	  ,pfx "*--" ,new-frame " = Rsp[0];\n\t"
+	  ,pfx "Rsp = " ,new-frame ";\n\t"))
     (else
-     (LAP ,pfx "{\n\t  SCHEME_OBJECT * frame_top = &stack_pointer["
+     (LAP ,pfx "{\n\t  SCHEME_OBJECT * frame_top = &Rsp["
 	  ,frame-size "];\n\t"
 	  ,pfx "SCHEME_OBJECT * new_frame = " ,new-frame ";\n\t"
 	  ,pfx "  long frame_size = " ,frame-size ";\n\t"
 	  ,pfx "  while ((--frame_size) >= 0)"
 	  ,pfx "    *--new_frame = *--frame_top;\n\t"
-	  ,pfx "  stack_pointer = new_frame;\n\t"
+	  ,pfx "  Rsp = new_frame;\n\t"
 	  ,pfx "}\n\t"))))
 
 ;;; DYNAMIC-LINK instructions have a <frame-size>, <new frame end>,
@@ -420,23 +420,23 @@ MIT in each case. |#
 (define (write-closure-entry internal-label min max offset)
   (let ((external-label
 	 (rtl-procedure/external-label (label->object internal-label))))
-    (LAP "WRITE_LABEL_DESCRIPTOR (free_pointer, 0x"
+    (LAP "WRITE_LABEL_DESCRIPTOR (Rhp, 0x"
 	 ,(number->string (make-procedure-code-word min max) 16) ", "
 	 ,offset ");\n\t"
-	 "free_pointer[0] = (MAKE_LABEL_WORD (current_C_proc, "
+	 "Rhp[0] = (dispatch_base + "
 	 ,(label->dispatch-tag external-label)
-	 "));\n\t"
-	 "free_pointer[1] = ((SCHEME_OBJECT) (&current_block["
+	 ");\n\t"
+	 "Rhp[1] = ((SCHEME_OBJECT) (&current_block["
 	 ,(label->offset external-label) "]));\n\t")))
 
 (define (cons-closure target label min max nvars)
   (let ((target (standard-target! target 'SCHEME_OBJECT*)))
-    (LAP "* free_pointer = (MAKE_OBJECT (" ,(ucode-type manifest-closure) ", "
+    (LAP "* Rhp = (MAKE_OBJECT (" ,(ucode-type manifest-closure) ", "
 	 ,(+ closure-entry-size nvars) "));\n\t"
-	 "free_pointer += 2;\n\t"
-	 ,target " = free_pointer;\n\t"
+	 "Rhp += 2;\n\t"
+	 ,target " = Rhp;\n\t"
 	 ,@(write-closure-entry label min max 2)
-	 "free_pointer += " ,(+ nvars 2) ";\n\t")))
+	 "Rhp += " ,(+ nvars 2) ";\n\t")))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -451,10 +451,10 @@ MIT in each case. |#
   (case nentries
     ((0)
      (let ((dest (standard-target! target 'SCHEME_OBJECT*)))
-       (LAP ,dest " = free_pointer;\n\t"
-	    "*free_pointer = (MAKE_OBJECT (" ,(ucode-type manifest-vector)
+       (LAP ,dest " = Rhp;\n\t"
+	    "*Rhp = (MAKE_OBJECT (" ,(ucode-type manifest-vector)
 	    ", " ,nvars "));\n\t"
-	    "free_pointer += " ,(+ nvars 1) ";\n\t")))
+	    "Rhp += " ,(+ nvars 1) ";\n\t")))
     ((1)
      (let ((entry (vector-ref entries 0)))
        (cons-closure target (car entry) (cadr entry) (caddr entry) nvars)))
@@ -463,12 +463,12 @@ MIT in each case. |#
 
 (define (cons-multiclosure target nentries nvars entries)
   (let ((target (standard-target! target 'SCHEME_OBJECT*)))
-    (LAP "* free_pointer = (MAKE_OBJECT (" ,(ucode-type manifest-closure) ", "
+    (LAP "* Rhp = (MAKE_OBJECT (" ,(ucode-type manifest-closure) ", "
 	 ,(1+ (+ (* nentries closure-entry-size) nvars)) "));\n\t"
-	 "free_pointer += 2;\n\t"
-	 "WRITE_LABEL_DESCRIPTOR (free_pointer, " ,nentries ", 0);\n\t"
-	 "free_pointer += 1;\n\t"
-	 ,target " = free_pointer;\n\t"
+	 "Rhp += 2;\n\t"
+	 "WRITE_LABEL_DESCRIPTOR (Rhp, " ,nentries ", 0);\n\t"
+	 "Rhp += 1;\n\t"
+	 ,target " = Rhp;\n\t"
 	 ,@(reduce-right
 	    (lambda (lap1 lap2)
 	      (LAP ,@lap1 ,@lap2))
@@ -478,9 +478,9 @@ MIT in each case. |#
 			 (min (cadr entry))
 			 (max (caddr entry)))
 		     (LAP ,@(write-closure-entry label min max offset)
-			  "free_pointer += 3;\n\t")))
+			  "Rhp += 3;\n\t")))
 		 entries (make-multiclosure-offsets nentries)))
-	 "free_pointer += " ,(- nvars 1) ";\n\t")))
+	 "Rhp += " ,(- nvars 1) ";\n\t")))
 	 
 (define (make-multiclosure-offsets nentries)
   (let generate ((x nentries)
@@ -500,7 +500,7 @@ MIT in each case. |#
     (declare-block-label! (continuation-code-word false) false label)
     (use-invoke-interface! 4)
     (LAP "current_block[" ,environment-label
-	 "] = register_block[REGBLOCK_ENV];\n\t"
+	 "] = Rrb[REGBLOCK_ENV];\n\t"
 	 "INVOKE_INTERFACE_4 (" ,code:compiler-link
 	 ", &current_block[" ,(label->offset label) "]"
 	 ",\n\t\t\t\tcurrent_block"
@@ -519,7 +519,7 @@ MIT in each case. |#
     (LAP "{\n\t  SCHEME_OBJECT * subblock = (OBJECT_ADDRESS (current_block["
 	 ,code-block-label "]));\n\t  "
 	 "subblock[" ,environment-offset
-	 "] = register_block[REGBLOCK_ENV];\n\t  "
+	 "] = Rrb[REGBLOCK_ENV];\n\t  "
 	 "INVOKE_INTERFACE_4 (" ,code:compiler-link
 	 ", &current_block[" ,(label->offset label) "]"
 	 ",\n\t\t\t\t  subblock"
@@ -565,23 +565,23 @@ MIT in each case. |#
 		(object-label-value code-blocks-label)))
     (declare-block-label! (continuation-code-word false) false label)
     (use-invoke-interface! 4)
-    (LAP "*--stack_pointer = (LONG_TO_UNSIGNED_FIXNUM (1L));\n\t"
+    (LAP "*--Rsp = (LONG_TO_UNSIGNED_FIXNUM (1L));\n\t"
 	 ,@(label-statement label)
 	 "{\n\t  "
 	 "static CONST short sections []\n\t    = {\t0"
 	 ,@(sections->c-sections false 17 (vector->list n-sections))
 	 "};\n\t  "
-	 "long counter = (OBJECT_DATUM (* stack_pointer));\n\t  "
+	 "long counter = (OBJECT_DATUM (* Rsp));\n\t  "
 	 "SCHEME_OBJECT blocks, * subblock;\n\t  "
 	 "short section;\n\t\n\t  "
 	 "if (counter > " ,n-code-blocks "L)\n\t    goto " ,done ";\n\t  "
 	 "blocks = current_block[" ,code-blocks-label "];\n\t  "
 	 "subblock = (OBJECT_ADDRESS (MEMORY_REF (blocks, counter)));\n\t  "
 	 "subblock[(OBJECT_DATUM (subblock[0]))]\n\t  "
-	 "  = register_block[REGBLOCK_ENV];\n\t  "
+	 "  = Rrb[REGBLOCK_ENV];\n\t  "
 	 "section = sections[counter];\n\t  "
 	 "counter += 1;\n\t  "
-	 "*stack_pointer = (LONG_TO_UNSIGNED_FIXNUM (counter));\n\t  "
+	 "*Rsp = (LONG_TO_UNSIGNED_FIXNUM (counter));\n\t  "
 	 "INVOKE_INTERFACE_4 (" ,code:compiler-link
 	 ", &current_block[" ,(label->offset label) "]"
 	 ",\n\t\t\t\t  subblock"
@@ -589,7 +589,7 @@ MIT in each case. |#
 	 "\n\t\t\t\t   + (2 + (OBJECT_DATUM (subblock[1]))))"
 	 ",\n\t\t\t\t  section);\n\t}\n\t"
 	 ,@(label-statement done)
-	 "stack_pointer += 1;\n\t")))
+	 "Rsp += 1;\n\t")))
 
 #|
 (define (generate/constants-block constants references assignments uuo-links

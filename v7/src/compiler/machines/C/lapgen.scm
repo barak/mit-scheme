@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.7 1993/10/28 04:58:37 gjr Exp $
+$Id: lapgen.scm,v 1.8 1993/10/30 12:58:10 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -84,15 +84,15 @@ MIT in each case. |#
 
 (define (machine-register-name reg)
   (cond ((eq? reg regnum:stack-pointer)
-	 "stack_pointer")
+	 "Rsp")
 	((eq? reg regnum:free)
-	 "free_pointer")
+	 "Rfp")
 	((eq? reg regnum:regs)
-	 "register_block")
+	 "Rrb")
 	((eq? reg regnum:dynamic-link)
-	 "dynamic_link")
+	 "Rdl")
 	((eq? reg regnum:value)
-	 "value_reg")
+	 "Rvl")
 	(else
 	 (comp-internal-error "Unknown machine register"
 			      'MACHINE-REGISTER-NAME reg))))
@@ -224,7 +224,7 @@ MIT in each case. |#
   (append-map
    (lambda (register)
      (map (lambda (spec)
-	    (string-append (type->name (car spec)) " " (cdr spec) ";\n\t"))
+	    (string-append "\t" (type->name (car spec)) " " (cdr spec) ";\n"))
 	  (cdr register)))
    permanent-register-list))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules1.scm,v 1.4 1993/10/28 15:06:59 gjr Exp $
+$Id: rules1.scm,v 1.5 1993/10/30 12:58:11 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -274,7 +274,7 @@ MIT in each case. |#
   (ASSIGN (REGISTER (? target)) (POST-INCREMENT (REGISTER (? rsp)) 1))
   (QUALIFIER (= rsp regnum:stack-pointer))
   (let ((target (standard-target! target 'SCHEME_OBJECT)))
-    (LAP ,target " = *stack_pointer++;\n\t")))
+    (LAP ,target " = *Rsp++;\n\t")))
 
 ;;;; Transfers to memory
 
@@ -294,7 +294,7 @@ MIT in each case. |#
   (QUALIFIER (and (word-register? source)
 		  (= rfree regnum:free)))
   (let ((source (standard-source! source 'SCHEME_OBJECT)))
-    (LAP "*free_pointer++ = " ,source ";\n\t")))
+    (LAP "*Rhp++ = " ,source ";\n\t")))
 
 (define-rule statement
   ;; Push an object register on the stack
@@ -303,7 +303,7 @@ MIT in each case. |#
   (QUALIFIER (and (word-register? source)
 		  (= rsp regnum:stack-pointer)))
   (let ((source (standard-source! source 'SCHEME_OBJECT)))
-    (LAP "*--stack_pointer = " ,source ";\n\t")))
+    (LAP "*--Rsp = " ,source ";\n\t")))
 
 ;; Cheaper, common patterns.
 
@@ -317,14 +317,14 @@ MIT in each case. |#
   ; Push NIL (or whatever is represented by a machine 0) on heap
   (ASSIGN (POST-INCREMENT (REGISTER (? rfree)) 1) (MACHINE-CONSTANT 0))
   (QUALIFIER (= rfree regnum:free))
-  (LAP "*free_pointer++ = ((SCHEME_OBJECT) 0);\n\t"))
+  (LAP "*Rhp++ = ((SCHEME_OBJECT) 0);\n\t"))
 
 (define-rule statement
   ;; Push 0 on the stack
   (ASSIGN (PRE-INCREMENT (REGISTER (? rsp)) -1)
 	  (MACHINE-CONSTANT (? const)))
   (QUALIFIER (= rsp regnum:stack-pointer))
-  (LAP "*--stack_pointer = ((SCHEME_OBJECT) " ,const ");\n\t"))
+  (LAP "*--Rsp = ((SCHEME_OBJECT) " ,const ");\n\t"))
 
 ;;;; CHAR->ASCII/BYTE-OFFSET
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.5 1993/10/26 03:02:37 jawilson Exp $
+$Id: cout.scm,v 1.6 1993/10/30 12:58:08 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -64,12 +64,12 @@ MIT in each case. |#
   (define (->variable-declarations vars)
     (if (null? vars)
 	(list "")
-	`("SCHEME_OBJECT\n\t  "
+	`("\tSCHEME_OBJECT\n\t  "
 	  ,(car vars)
 	  ,@(append-map (lambda (var)
 			  (list ",\n\t  " var))
 			(cdr vars))
-	  ";\n\t")))
+	  ";\n")))
 
   (if *purification-root-object*
       (define-object "PURIFICATION_ROOT"
@@ -123,25 +123,25 @@ MIT in each case. |#
 	   (values (list "") (list "")))
 	  ((< *invoke-interface* 5)
 	   (values (list-tail (list
-			       "\ninvoke_interface_0:\n\tsubtmp_1 = 0;\n"
-			       "\ninvoke_interface_1:\n\tsubtmp_2 = 0;\n"
-			       "\ninvoke_interface_2:\n\tsubtmp_3 = 0;\n"
-			       "\ninvoke_interface_3:\n\tsubtmp_4 = 0;\n"
+			       "\ninvoke_interface_0:\n\tutlarg_1 = 0;\n"
+			       "\ninvoke_interface_1:\n\tutlarg_2 = 0;\n"
+			       "\ninvoke_interface_2:\n\tutlarg_3 = 0;\n"
+			       "\ninvoke_interface_3:\n\tutlarg_4 = 0;\n"
 			       "\ninvoke_interface_4:\n\t"
 			       "INVOKE_INTERFACE_CODE ();\n")
 			      *invoke-interface*)
-		   (list "int subtmp_code;\n\t"
-			 "long subtmp_1,subtmp_2,subtmp_3,subtmp_4;\n\t")))
+		   (list "\tint utlarg_code;\n"
+			 "\tlong utlarg_1, utlarg_2, utlarg_3, utlarg_4;\n")))
 	  (else
-	   (error "subroutine-information-1: Interface utilities take at most 4 arguments"
+	   (error "subroutine-information-1: Utilities take at most 4 args"
 		  *invoke-interface*))))
 
   (define (subroutine-information-2)
     (if *used-invoke-primitive*
 	(values (list "\ninvoke_primitive:\n\t"
 		      "INVOKE_PRIMITIVE_CODE ();")
-		(list "SCHEME_OBJECT primitive;\n\t"
-		      "long primitive_nargs;\n\t"))
+		(list "\tSCHEME_OBJECT primitive;\n"
+		      "\tlong primitive_nargs;\n"))
 	(values (list "") (list ""))))
 
   (define (subroutine-information)
@@ -155,23 +155,29 @@ MIT in each case. |#
   (let ((n 1)				; First word is vector header
 	(initial-offset (label->offset initial-label)))
     (with-values (lambda () (handle-labels n))
-      (lambda (n label-defines label-dispatch label-block-initialization
-		 symbol-table)
+      (lambda (n ntags
+	       label-defines label-dispatch
+	       label-block-initialization symbol-table)
 	(with-values (lambda () (handle-free-refs-and-sets n))
 	  (lambda (n free-defines free-block-initialization free-symbols)
 	    (with-values (lambda () (handle-objects n))
-	      (lambda (n decl-code xtra-procs object-prefix object-defines temp-vars
+	      (lambda (n decl-code decl-data
+			 xtra-procs object-prefix
+			 object-defines temp-vars
 			 object-block-initialization)
 		(let* ((time-stamp (make-time-stamp))
 		       (code-name
 			(choose-proc-name "code" "" time-stamp))
-		       (block-name
+		       (data-name
 			(choose-proc-name "data" "_data" time-stamp))
-		       (decl-name (string-append "decl_" code-name)))
+		       (decl-code-name (string-append "decl_" code-name))
+		       (decl-data-name (string-append "decl_" data-name)))
 		  (with-values subroutine-information
 		    (lambda (extra-code extra-variables)
 		      (values
 		       code-name
+		       data-name
+		       ntags
 		       (cons* (cons (special-label/environment)
 				    (-1+ n))
 			      (cons (special-label/debugging)
@@ -184,18 +190,40 @@ MIT in each case. |#
 			      (if (string-null? suffix)
 				  (append
 				   (file-prefix)
-				   (list "DECLARE_COMPILED_CODE (\"" code-name
-					 "\", " decl-name
-					 ", " code-name ")\n\n"))
+				   (list
+				    "#ifndef WANT_ONLY_DATA\n"
+				    ;; This must be a single line!
+				    "DECLARE_COMPILED_CODE (\"" code-name
+				    "\", " (number->string ntags)
+				    ", " decl-code-name
+				    ", " code-name ")\n"
+				    "#endif /* WANT_ONLY_DATA */\n\n"
+				    "#ifndef WANT_ONLY_CODE\n"
+				    ;; This must be a single line!
+				    "DECLARE_COMPILED_DATA (\"" code-name
+				    "\", " decl-data-name
+				    ", " data-name ")\n"
+				    "#endif /* WANT_ONLY_CODE */\n\n"
+				    "DECLARE_DYNAMIC_INITIALIZATION ()\n\n"))
 				  '())
 			      xtra-procs
 
 			      (if (string-null? suffix)
 				  (append
-				   (list "void\n"
-					 "DEFUN_VOID (" decl-name ")\n{\n\t")
+				   (list "#ifndef WANT_ONLY_DATA\n")
+				   (list
+				    "int\n"
+				    "DEFUN_VOID (" decl-code-name ")\n{\n\t")
 				   decl-code
-				   (list "return;\n}\n\n"))
+				   (list "return (0);\n}\n"
+					 "#endif /* WANT_ONLY_DATA */\n\n")
+				   (list "#ifndef WANT_ONLY_CODE\n")
+				   (list
+				    "int\n"
+				    "DEFUN_VOID (" decl-data-name ")\n{\n\t")
+				   decl-data
+				   (list "return (0);\n}\n"
+					 "#endif /* WANT_ONLY_CODE */\n\n"))
 				  '())
 
 			      label-defines
@@ -203,25 +231,32 @@ MIT in each case. |#
 			      free-defines
 			      (list "\n")
 			  
-			      (list "#ifndef BAND_ALREADY_BUILT\n")
-			      (cons "static " (function-header block-name))
-			      (list "SCHEME_OBJECT object = (ALLOCATE_VECTOR (" 
+			      (list "#ifndef WANT_ONLY_CODE\n")
+			      (let ((header (data-function-header data-name)))
+				(if (string-null? suffix)
+				    header
+				    (cons "static " header)))
+			      (list "\tSCHEME_OBJECT object"
+				    " = (ALLOCATE_VECTOR ("
 				    (number->string (- n 1))
-				    "L));\n\t"
-				    "SCHEME_OBJECT * current_block = "
-				    "(OBJECT_ADDRESS (object));\n\t")
+				    "L));\n"
+				    "\tSCHEME_OBJECT * current_block"
+				    " = (OBJECT_ADDRESS (object));\n")
 			      (->variable-declarations temp-vars)
 			      (list "\n\t")
 			      object-prefix
 			      label-block-initialization
 			      free-block-initialization
 			      object-block-initialization
-			      (list "return (current_block);")
-			      (function-trailer block-name)
-			      (list "#endif /* BAND_ALREADY_BUILT */\n")
+			      (list "\n\treturn (&current_block["
+				    (stringify-object initial-offset)
+				    "]);\n")
+			      (function-trailer data-name)
+			      (list "#endif /* WANT_ONLY_CODE */\n")
 			      (list "\n")
 
-			      (let ((header (function-header code-name)))
+			      (list "#ifndef WANT_ONLY_DATA\n")
+			      (let ((header (code-function-header code-name)))
 				(if (string-null? suffix)
 				    header
 				    (cons "static " header)))
@@ -229,34 +264,22 @@ MIT in each case. |#
 			      (register-declarations)
 			      extra-variables
 			      (list
-			       "goto perform_dispatch;\n\n"
-			       (if *use-pop-return*
-				   (string-append
-				    "pop_return_repeat_dispatch:\n\n\t"
-				    "POP_RETURN_REPEAT_DISPATCH();\n\n")
-				   "")
-			       "repeat_dispatch:\n\n\t"
-			       "REPEAT_DISPATCH ();\n\n"
+			       "\n\tgoto perform_dispatch;\n\n"
+			       "pop_return:\n\t"
+			       "Rpc = (OBJECT_ADDRESS (*Rsp++));\n\n"
 			       "perform_dispatch:\n\n\t"
-			       "switch (LABEL_TAG (my_pc))\n\t"
-			       "{\n\t  case 0:\n"
-			       "#ifndef BAND_ALREADY_BUILT\n\t\t"
-			       "current_block = ("
-			       block-name
-			       " (my_pc));\n\t\t"
-			       "return (&current_block["
-			       (stringify-object initial-offset)
-			       "]);\n"
-			       "#else /* BAND_ALREADY_BUILT */\n\t\t"
-			       "error_band_already_built ();\n"
-			       "#endif /* BAND_ALREADY_BUILT */\n")
+			       "switch ((* ((unsigned long *) Rpc))"
+			       " - dispatch_base)\n\t{")
 			      label-dispatch
 			      (list
 			       "\n\t  default:\n\t\t"
-			       "ERROR_UNKNOWN_DISPATCH (my_pc);\n\t}\n\t")
+			       "UNCACHE_VARIABLES ();\n\t\t"
+			       "return (Rpc);\n\t}\n\t")
 			      (map stringify-object lap-code)
 			      extra-code
-			      (function-trailer code-name))))))))))))))))
+			      (function-trailer code-name)
+			      (list
+			       "#endif /* WANT_ONLY_DATA */\n"))))))))))))))))
 
 (define-integrable (list-of-strings->string strings)
   (apply string-append strings))
@@ -266,45 +289,46 @@ MIT in each case. |#
 
 (define (file-prefix)
   (let ((time (get-decoded-time)))
-    (cons* "/* Emacs: this is properly parenthesized -*- C -*- code.\n"
-	   "   Thank God it was generated by a machine.\n"
-	   " */\n\n"
-	   "/* C code produced\n   "
-	   (decoded-time/date-string time)
-	   " at "
-	   (decoded-time/time-string time)
-	   "\n   by Liar version "
-	   (let ((version false))
-	     (for-each-system!
-	      (lambda (system)
-		(if (substring? "Liar" (system/name system))
-		    (set! version
-			  (cons (system/version system)
-				(system/modification system))))
-		unspecific))
-	     (if (not version)
-		 "?.?"
-		 (string-append (number->string (car version))
-				"."
-				(number->string (cdr version)))))
-	   ".\n */\n\n"
-	   includes)))
+    (list "/* Emacs: this is properly parenthesized -*- C -*- code.\n"
+	  "   Thank God it was generated by a machine.\n"
+	  " */\n\n"
+	  "/* C code produced\n   "
+	  (decoded-time/date-string time)
+	  " at "
+	  (decoded-time/time-string time)
+	  "\n   by Liar version "
+	  (let ((version false))
+	    (for-each-system!
+	     (lambda (system)
+	       (if (substring? "Liar" (system/name system))
+		   (set! version
+			 (cons (system/version system)
+			       (system/modification system))))
+	       unspecific))
+	    (if (not version)
+		"?.?"
+		(string-append (number->string (car version))
+			       "."
+			       (number->string (cdr version)))))
+	  ".\n */\n\n"
+	  "#include \"liarc.h\"\n\n")))
 
-(define includes
-  (list "#include \"liarc.h\"\n\n"))
-
-(define (function-header name)
+(define (code-function-header name)
   (list "SCHEME_OBJECT *\n"
-	"DEFUN ("
-	name
-	", (my_pc), SCHEME_OBJECT * my_pc)\n"
-	"{\n\tREGISTER int current_C_proc = (LABEL_PROCEDURE (my_pc));\n\t"))
+	"DEFUN (" name ", (Rpc, dispatch_base),\n\t"
+	"SCHEME_OBJECT * Rpc AND unsigned long dispatch_base)\n"
+	"{\n"))
+
+(define (data-function-header name)
+  (list "SCHEME_OBJECT *\n"
+	"DEFUN (" name ", (dispatch_base), unsigned long dispatch_base)\n"
+	"{\n"))
 
 (define (function-decls)
   (list
-   "REGISTER SCHEME_OBJECT * current_block;\n\t"
-   "SCHEME_OBJECT * dynamic_link;\n\t"
-   "DECLARE_VARIABLES ();\n\n\t"))
+   "\tREGISTER SCHEME_OBJECT * current_block;\n"
+   "\tSCHEME_OBJECT * Rdl;\n"
+   "\tDECLARE_VARIABLES ();\n"))
 
 (define (function-trailer name)
   (list "\n} /* End of " name ". */\n"))
@@ -725,6 +749,8 @@ MIT in each case. |#
   ;; All the reverses produce the correct order in the output block.
   ;; The incoming objects are reversed
   ;; (environment, debugging label, purification root, etc.)
+  ;; (values new-n decl-code decl-data xtra-procs object-prefix
+  ;;         object-defines temp-vars object-block-initialization)
 
   (fluid-let ((new-variables '())
 	      (*subblocks* '())
@@ -737,7 +763,8 @@ MIT in each case. |#
 					 (reverse objects)))
 	    (lambda (prefix suffix)
 	      (values n
-		      (map fake-block->decl *subblocks*)
+		      (map fake-block->code-decl *subblocks*)
+		      (map fake-block->data-decl *subblocks*)
 		      (append-map fake-block->c-code *subblocks*)
 		      prefix
 		      defines
@@ -872,6 +899,7 @@ MIT in each case. |#
 		label-bindings)
     (if (null? labels)
 	(values (- offset 1)
+		tagno
 		(reverse label-defines)
 		(reverse label-dispatch)
 		(cons (string-append
@@ -907,7 +935,7 @@ MIT in each case. |#
 		(cons (string-append
 		       "\n\t  case "
 		       (number->string tagno) ":\n\t\t"
-		       "current_block = (my_pc - " a-symbol ");\n\t\t"
+		       "current_block = (Rpc - " a-symbol ");\n\t\t"
 		       "goto "
 		       (symbol->string (or (label-1 label-data)
 					   (label-2 label-data)))
@@ -919,9 +947,7 @@ MIT in each case. |#
 		       (number->string (code-word-sel label-data) 16)
 		       ", " a-symbol ");\n\t"
 		       "current_block [" a-symbol
-		       "] = (MAKE_LABEL_WORD (current_C_proc, "
-		       (number->string tagno)
-		       "));\n\t")
+		       "] = (dispatch_base + " (number->string tagno) ");\n\t")
 		      label-block-initialization)
 		(append
 		 (if (label-1 label-data)
@@ -932,7 +958,7 @@ MIT in each case. |#
 		     '())
 		 label-bindings)))))
 
-    (iter (+ 2 n) 1 (reverse! labels) '() '() '() '()))
+    (iter (+ 2 n) 0 (reverse! labels) '() '() '() '()))
 
 (define-structure (fake-compiled-procedure
 		   (constructor make-fake-compiled-procedure)
@@ -945,8 +971,10 @@ MIT in each case. |#
 		   (conc-name fake-block/))
   (name false read-only true)
   (c-proc false read-only true)
+  (d-proc false read-only true)
   (c-code false read-only true)
-  (index false read-only true))
+  (index false read-only true)
+  (ntags false read-only true))
 
 (define fake-compiled-block-name-prefix "ccBlock")
 
@@ -954,12 +982,18 @@ MIT in each case. |#
   (string-append fake-compiled-block-name-prefix
 		 "_" (number->string (-1+ number))))
 
-(define (fake-block->decl block)
-  (string-append "declare_compiled_code (\""
+(define (fake-block->code-decl block)
+  (string-append "DECLARE_SUBCODE (\""
+		 (fake-block/c-proc block)
+		 "\", " (number->string (fake-block/ntags block))
+		 ", NO_SUBBLOCKS, "
+		 (fake-block/c-proc block) ");\n\t"))
+
+(define (fake-block->data-decl block)
+  (string-append "DECLARE_SUBDATA (\""
 		 (fake-block/c-proc block)
 		 "\", NO_SUBBLOCKS, "
-		 (fake-block/c-proc block)
-		 ");\n\t"))
+		 (fake-block/d-proc block) ");\n\t"))
 
 (define (fake-block->c-code block)
   (list (fake-block/c-code block)

@@ -10,10 +10,6 @@
 
 * Edwin autoloads and load options.
 
-* Dynamic C loader!
-
-* Dynamic generation of ymake.cclist file.
-
 * Short documentation (how to compile files and add them to the microcode).
 
 RANDOM INFO:

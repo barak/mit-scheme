@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ctop.scm,v 1.1 1993/06/08 06:13:32 gjr Exp $
+$Id: ctop.scm,v 1.2 1993/10/30 12:58:09 gjr Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -93,7 +93,9 @@ MIT in each case. |#
 
 ;; First set: phase/assemble
 ;; Last used: phase/output-generation
-(define *C-proc-name*)
+(define *C-code-name*)
+(define *C-data-name*)
+(define *ntags*)
 (define *labels*)
 (define *code*)
 
@@ -139,7 +141,9 @@ MIT in each case. |#
 	      (*use-pop-return*)
 	      (*purification-root-object*)
 	      (*end-of-block-code*)
-	      (*C-proc-name*)
+	      (*C-code-name*)
+	      (*C-data-name*)
+	      (*ntags*)
 	      (*labels*)
 	      (*code*))
     (thunk)))
@@ -166,7 +170,9 @@ MIT in each case. |#
   (set! *use-pop-return*)
   (set! *purification-root-object*)
   (set! *end-of-block-code*)
-  (set! *C-proc-name*)
+  (set! *C-code-name*)
+  (set! *C-data-name*)
+  (set! *ntags*)
   (set! *labels*)
   (set! *code*)
   unspecific)
@@ -214,8 +220,10 @@ MIT in each case. |#
 		(cons *info-output-filename*
 		      *recursive-compilation-number*)
 		pathname)))
-       (lambda (proc-name labels code)
-	 (set! *C-proc-name* proc-name)
+       (lambda (code-name data-name ntags labels code)
+	 (set! *C-code-name* code-name)
+	 (set! *C-data-name* data-name)
+	 (set! *ntags* ntags)
 	 (set! *labels* labels)
 	 (set! *code* code)
 	 unspecific)))))
@@ -243,13 +251,15 @@ MIT in each case. |#
 		     (translate-label *entry-label*))
 		    (vector
 		     (make-fake-compiled-block name
-					       *C-proc-name*
+					       *C-code-name*
+					       *C-data-name*
 					       *code*
-					       index)
+					       index
+					       *ntags*)
 		     (translate-symbol 0)
 		     (translate-symbol 1)
 		     (translate-symbol 2))))
-	    (cons *C-proc-name*
+	    (cons *C-code-name*
 		  *code*)))
 
   (if (not compiler:preserve-data-structures?)
