@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: comtab.scm,v 1.64 1993/10/06 01:50:22 cph Exp $
+;;;	$Id: comtab.scm,v 1.65 1994/03/18 21:51:08 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -97,10 +97,10 @@
 				    (set-comtab-alist! comtab alist))))))))))))
 	 ;; Defining a lower-case character defines the corresponding
 	 ;; upper-case character to be an alias if not already defined.
-	 (if (char-lower-case? key)
-	     (let ((key* (char-upcase key)))
-	       (if (not (comtab-get comtab key*))
-		   (comtab-put! comtab key* (cons comtab key))))))
+	 (let ((key* (char-upcase key)))
+	   (if (and (not (char=? key key*))
+		    (not (comtab-get comtab key*)))
+	       (comtab-put! comtab key* (cons comtab key)))))
 	(else
 	 (let ((alist (comtab-alist comtab)))
 	   (let ((entry (assq key alist)))
