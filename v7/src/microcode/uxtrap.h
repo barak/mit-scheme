@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtrap.h,v 1.21 1993/08/28 22:46:43 gjr Exp $
+$Id: uxtrap.h,v 1.22 1993/09/09 18:24:19 gjr Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -435,6 +435,53 @@ struct full_sigcontext
 /* INITIALIZE_UX_SIGNAL_CODES should be defined. */
 
 #endif /* i386 */
+
+#ifdef __linux
+/* Linux signal handlers are called with one argument -- the `signo'.
+   There's an alleged "iBCS signal stack" register dump just above it.
+   Thus, the fictitious `info' argument to the handler is actually the
+   first member of this register dump (described by struct sigcontext,
+   below).  Unfortunately, kludging SIGINFO_CODE to access the sc_trapno
+   will fail later on when looking at the saved_info. */
+#define SIGINFO_T long
+#define SIGINFO_VALID_P(info) (0)
+#define SIGINFO_CODE(info) (0)
+
+/* Here's the "iBCS signal stack", whatever that means. */
+struct sigcontext {
+  long sc_gs, sc_fs, sc_es, sc_ds, sc_edi, sc_esi, sc_ebp, sc_esp, sc_ebx;
+  long sc_edx, sc_ecx, sc_eax, sc_trapno, sc_err, sc_eip, sc_cs, sc_eflags;
+  long sc_esp_again, sc_ss;
+};
+
+/* INITIALIZE_FULL_SIGCONTEXT gives us a chance to generate a pointer to
+   the register dump, since it is used at the beginning of STD_HANDLER's.
+   In terms of the expected arguments to the STD_ signal HANDLER's, the
+   register dump is right above `signo', at `info', one long below `pscp',
+   which is what INITIALIZE_FULL_SIGCONTEXT is getting for `partial'.
+   Thus, our pointer to a `full'_SIGCONTEXT is initialized to the address
+   of `partial' minus 1 long. */
+#define HAVE_FULL_SIGCONTEXT
+#define DECLARE_FULL_SIGCONTEXT(name)					\
+  struct FULL_SIGCONTEXT * name
+#define INITIALIZE_FULL_SIGCONTEXT(partial, full)			\
+  ((full) = ((struct FULL_SIGCONTEXT *) (((long *)&(partial))-1)))
+
+/* Grab them all.  Nobody looks at them, but grab them anyway. */
+#define PROCESSOR_NREGS			19
+#define FULL_SIGCONTEXT_NREGS		19
+#define FULL_SIGCONTEXT_FIRST_REG(scp)	(scp)
+
+#define SIGCONTEXT			sigcontext
+#define SIGCONTEXT_SP(scp)		((scp)->sc_esp)
+#define SIGCONTEXT_PC(scp)		((scp)->sc_eip)
+
+#define FULL_SIGCONTEXT SIGCONTEXT
+#define FULL_SIGCONTEXT_SP SIGCONTEXT_SP
+#define FULL_SIGCONTEXT_PC SIGCONTEXT_PC
+#define FULL_SIGCONTEXT_RFREE(scp)	((scp)->sc_edi)
+
+#endif /* __linux */
 
 #ifdef __alpha
 
@@ -540,9 +587,13 @@ struct full_sigcontext
 #endif
 
 #if !(defined (_NEXTOS) && (_NEXTOS_VERSION >= 20))
+#ifdef __linux
+extern unsigned int etext;
+#else
 #if !(defined (_HPUX) && (_HPUX_VERSION >= 80) && defined (hp9000s300))
 extern long etext;
 #endif
+#endif /* __linux */
 #  define get_etext() (&etext)
 #endif
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.51 1993/09/09 18:18:54 gjr Exp $
+$Id: ux.h,v 1.52 1993/09/09 18:19:58 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -578,6 +578,15 @@ typedef int wait_status_t;
 #endif
 #ifndef SIGTTOU
 #define SIGTTOU 0
+#endif
+#ifndef SIGBUS
+#define SIGBUS 0
+#endif
+#ifndef SIGEMT
+#define SIGEMT 0
+#endif
+#ifndef SIGSYS
+#define SIGSYS 0
 #endif
 
 /* constants for access() */

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxsock.c,v 1.11 1993/06/15 19:00:55 gjr Exp $
+$Id: uxsock.c,v 1.12 1993/09/09 18:21:59 gjr Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -68,7 +68,9 @@ DEFUN (OS_open_tcp_stream_socket, (host, port), char * host AND int port)
     }
     (address . sin_port) = port;
     STD_VOID_SYSTEM_CALL
-      (syscall_connect, (UX_connect (s, (&address), (sizeof (address)))));
+      (syscall_connect, (UX_connect (s,
+				     ((struct sockaddr *) (& address)),
+				     (sizeof (address)))));
   }
   MAKE_CHANNEL (s, channel_type_tcp_stream_socket, return);
 }
@@ -119,7 +121,9 @@ DEFUN (OS_open_unix_stream_socket, (filename), CONST char * filename)
     (address . sun_family) = AF_UNIX;
     strncpy ((address . sun_path), filename, (sizeof (address . sun_path)));
     STD_VOID_SYSTEM_CALL
-      (syscall_connect, (UX_connect (s, (&address), (sizeof (address)))));
+      (syscall_connect, (UX_connect (s,
+				     ((struct sockaddr *) (& address)),
+				     (sizeof (address)))));
   }
   MAKE_CHANNEL (s, channel_type_unix_stream_socket, return);
 #else /* not HAVE_UNIX_SOCKETS */
@@ -150,7 +154,9 @@ DEFUN (OS_open_server_socket, (port, ArgNo), unsigned int port AND int ArgNo)
     (address . sin_addr . s_addr) = INADDR_ANY;
     (address . sin_port) = port;
     STD_VOID_SYSTEM_CALL
-      (syscall_bind, (UX_bind (s, (&address), (sizeof (struct sockaddr_in)))));
+      (syscall_bind, (UX_bind (s,
+			       ((struct sockaddr *) (& address)),
+			       (sizeof (struct sockaddr_in)))));
   }
   STD_VOID_SYSTEM_CALL
     (syscall_listen, (UX_listen (s, SOCKET_LISTEN_BACKLOG)));
@@ -168,7 +174,7 @@ DEFUN (OS_server_connection_accept, (channel, peer_host, peer_port),
   int s;
 
   while ((s = (UX_accept ((CHANNEL_DESCRIPTOR (channel)),
-			  (&address),
+			  ((struct sockaddr *) (& address)),
 			  (&address_length))))
 	 < 0)
   {
