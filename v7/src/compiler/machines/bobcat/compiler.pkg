@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.10 1988/11/06 14:53:29 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.11 1988/11/07 13:57:31 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -325,6 +325,12 @@ MIT in each case. |#
 	  generate-bits)
   (import (scode-optimizer expansion)
 	  scode->scode-expander))
+
+(define-package (compiler lap-syntaxer map-merger)
+  (files "back/mermap")
+  (parent (compiler lap-syntaxer))
+  (export (compiler lap-syntaxer)
+	  merge-register-maps))
 
 (define-package (compiler lap-syntaxer linearizer)
   (files "back/linear")
