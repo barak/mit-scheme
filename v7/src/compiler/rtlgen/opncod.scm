@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: opncod.scm,v 4.61 1993/10/26 19:34:45 gjr Exp $
+$Id: opncod.scm,v 4.62 1993/11/10 21:31:13 jmiller Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -477,7 +477,7 @@ MIT in each case. |#
 		  (back-end:+ value header-length-in-units)))
 		(unknown-index)))
 	  (unknown-index)))))
-
+
 (define object-memory-reference
   (indexed-memory-reference
    (lambda (expression) expression false)
@@ -501,7 +501,7 @@ MIT in each case. |#
 			     rtl:locative-byte-index
 			     (back-end:* address-units-per-object 2)
 			     scfg*scfg->scfg!)))
-
+
 (define float-memory-reference
   (indexed-memory-reference
    (lambda (expression) (rtl:make-fetch (rtl:locative-offset expression 0)))
@@ -525,30 +525,6 @@ MIT in each case. |#
 		     (finish (rtl:locative-float-offset data-base value))
 		     (unknown-index)))
 	       (unknown-index)))))))
-
-(define rtl:floating-vector-length-fetch
-  (if (back-end:= address-units-per-float address-units-per-object)
-      rtl:vector-length-fetch
-      (let ((quantum
-	     (back-end:quotient
-	      (back-end:+ address-units-per-float
-			  (back-end:- address-units-per-object 1))
-	      address-units-per-object)))
-	(if (and (number? quantum) (= quantum 2))
-	    (lambda (locative)
-	      (rtl:make-fixnum->object
-	       (rtl:make-fixnum-2-args
-		'FIXNUM-LSH
-		(rtl:make-object->fixnum (rtl:make-fetch locative))
-		(rtl:make-object->fixnum (rtl:make-constant -1))
-		false)))
-	    (lambda (locative)
-	      (rtl:make-fixnum->object
-	       (rtl:make-fixnum-2-args
-		'FIXNUM-QUOTIENT
-		(rtl:make-object->fixnum (rtl:make-fetch locative))
-		(rtl:make-object->fixnum (rtl:make-constant quantum))
-		false)))))))
 
 (define (rtl:length-fetch locative)
   (rtl:make-cons-non-pointer (rtl:make-machine-constant (ucode-type fixnum))
@@ -576,6 +552,30 @@ MIT in each case. |#
 (define (rtl:float-assignment locative value)
   (rtl:make-assignment locative
 		       (rtl:make-object->float value)))
+
+(define rtl:floating-vector-length-fetch
+  (if (back-end:= address-units-per-float address-units-per-object)
+      rtl:vector-length-fetch
+      (let ((quantum
+	     (back-end:quotient
+	      (back-end:+ address-units-per-float
+			  (back-end:- address-units-per-object 1))
+	      address-units-per-object)))
+	(if (and (number? quantum) (= quantum 2))
+	    (lambda (locative)
+	      (rtl:make-fixnum->object
+	       (rtl:make-fixnum-2-args
+		'FIXNUM-LSH
+		(rtl:make-object->fixnum (rtl:make-fetch locative))
+		(rtl:make-object->fixnum (rtl:make-constant -1))
+		false)))
+	    (lambda (locative)
+	      (rtl:make-fixnum->object
+	       (rtl:make-fixnum-2-args
+		'FIXNUM-QUOTIENT
+		(rtl:make-object->fixnum (rtl:make-fetch locative))
+		(rtl:make-object->fixnum (rtl:make-constant quantum))
+		false)))))))
 
 (define (assignment-finisher make-assignment make-fetch)
   make-fetch				;ignore
