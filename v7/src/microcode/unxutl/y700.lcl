@@ -1,9 +1,19 @@
 /* -*- C -*-
    Switzerland local additions to the makefile
-   $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/y700.lcl,v 1.4 1993/01/23 00:08:05 nick Exp $
+   $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/y700.lcl,v 1.5 1993/02/22 20:35:18 nick Exp $
  */
 
 COMMON_OBJECTS = $(CORE_OBJECTS) $(STD_GC_OBJECTS) $(UNIX_OBJECTS) $(OS_PRIM_OBJECTS)
+
+
+/* There is some hair here since scmsig (the signal-processing schemne
+for GJS) and scm6003 (thanos) need separate versions of some files.
+REAL_IS_DEFINED_DOUBLE needs to be set to 1 for scmsig and 0
+otherwise.  Since we need two versions of the .o files, the convention
+is that the version with the variable set to 1 is called 'd_foo.o',
+while the other would be just 'foo.o'. Array.h will set the var to 0
+if it is unset - nick */
+
 
 /* These extra files are for 6003.  They assume we're using HP-UX. */
 
@@ -20,9 +30,9 @@ COMMON_OBJECTS = $(CORE_OBJECTS) $(STD_GC_OBJECTS) $(UNIX_OBJECTS) $(OS_PRIM_OBJ
 /* For GJS's signal processing stuff */
 
 SIG_SOURCES = $(X_SOURCES) $(TERMCAP_OBJECTS)\
-	SOURCES_SYSTEM SOURCES_MACHINE d_fft.c d_array.c image.c
+	SOURCES_SYSTEM SOURCES_MACHINE d_fft.c d_array.c d_image.c
 SIG_OBJECTS = $(X_OBJECTS) $(TERMCAP_OBJECTS)\
-	OBJECTS_SYSTEM OBJECTS_MACHINE d_fft.o d_array.o image.o usrSIG.o
+	OBJECTS_SYSTEM OBJECTS_MACHINE d_fft.o d_array.o d_image.o usrSIG.o
 SIG_LIB =  $(USER_LIBS) $(X_LIB) $(TERMCAP_LIBS)\
 	LIB_MATH LIBS_SYSTEM LIBS_MACHINE LIB_DEBUG LIB_STANDARD
 
@@ -30,10 +40,13 @@ world: all scmsig scm6003
 
 everything: world Ppband
 
-install.world: install scm6003
+install.world: install scmsig scm6003 
 	-mv -f $(BINDIR)/scm6003 $(BINDIR)/scm6003.busy
 	rm -f $(BINDIR)/scm6003.busy
 	$(INSTALL) scm6003 $(BINDIR)/scm6003
+	-mv -f $(BINDIR)/scmsig $(BINDIR)/scmsig.busy
+	rm -f $(BINDIR)/scmsig.busy
+	$(INSTALL) scmsig $(BINDIR)/scmsig
 
 scm6003 : $(COMMON_OBJECTS) $(6003_OBJECTS)
 	@ECHO "#** Re-linking" $@ because of $?
@@ -67,7 +80,7 @@ d_Sgraph_ar.o : scheme.touch prims.h Sgraph.h array.h
 d_fft.o : scheme.touch prims.h zones.h array.h image.h
 	$(CC) $(CFLAGS)  -DREAL_IS_DEFINED_DOUBLE=1 -c $*.c
 
-d_array.o image.o : scheme.touch prims.h array.h
+d_array.o d_image.o : scheme.touch prims.h array.h
 	$(CC) $(CFLAGS)  -DREAL_IS_DEFINED_DOUBLE=1 -c $*.c
 
 
@@ -79,4 +92,12 @@ d_fft.c : fft.c
 
 d_array.c : array.c
 	ln -f -s array.c d_array.c
+
+d_image.c : image.c
+	ln -f -s image.c d_image.c
+
+clean.world: 
+	rm -f scmsig scm6003 kitscheme scmLYN
+	rm -f usrSIG.o usr6003.o usrkit.o usrLYN.o
+	rm -f usrSIG.c usr6003.c usrkit.c usrLYN.c
 
