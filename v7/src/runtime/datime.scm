@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.11 1995/04/23 05:43:43 cph Exp $
+$Id: datime.scm,v 14.12 1995/04/23 05:58:14 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -103,7 +103,7 @@ MIT in each case. |#
   (> (decoded-time/daylight-savings-time dt) 0))
 
 (define (decoded-time/date-string time)
-  (string-append (weekday/long-string (decoded-time/day-of-week time))
+  (string-append (day-of-week/long-string (decoded-time/day-of-week time))
 		 " "
 		 (month/long-string (decoded-time/month time))
 		 " "
@@ -161,13 +161,13 @@ MIT in each case. |#
 
 (define (day-of-week/short-string day)
   (guarantee-day-of-week day 'DAY-OF-WEEK/SHORT-STRING)
-  (vector-ref '#("Mon" "Tue" "Wed" "Thu" "Fri" "Sat" "Sun") day-of-week))
+  (vector-ref '#("Mon" "Tue" "Wed" "Thu" "Fri" "Sat" "Sun") day))
 
 (define (day-of-week/long-string day)
   (guarantee-day-of-week day 'DAY-OF-WEEK/LONG-STRING)
   (vector-ref '#("Monday" "Tuesday" "Wednesday" "Thursday" "Friday"
 			  "Saturday" "Sunday")
-	      day-of-week))
+	      day))
 
 (define (guarantee-day-of-week day name)
   (if (not (exact-integer? day))
