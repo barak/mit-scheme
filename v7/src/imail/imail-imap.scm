@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.101 2000/06/02 02:23:19 cph Exp $
+;;; $Id: imail-imap.scm,v 1.102 2000/06/02 17:25:18 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -880,9 +880,10 @@
 (define (parse-mime-body:extensions tail)
   (if (pair? tail)
       (if (pair? (cdr tail))
-	  (if (pair? (cddr tail))
-	      (list (car tail) (cadr tail) (caddr tail))
-	      (list (car tail) (cadr tail) #f))
+	  (let ((disposition (parse-mime-disposition (cadr tail))))
+	    (if (pair? (cddr tail))
+		(list (car tail) disposition (caddr tail))
+		(list (car tail) disposition #f)))
 	  (list (car tail) #f #f))
       (list #f #f #f)))
 
