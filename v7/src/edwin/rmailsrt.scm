@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsrt.scm,v 1.5 1991/11/04 19:40:43 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsrt.scm,v 1.6 1991/11/26 21:18:56 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -154,7 +154,7 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
 	       (cmpfunc (car x) (car y))))
       (message "Reordering buffer...")
       (set-buffer-writeable! (current-buffer))
-      (kill-string
+      (delete-string
        (msg-memo/start (msg-memo/first (current-msg-memo)))
        (msg-memo/end (msg-memo/last (current-msg-memo))))
       (let loop ((n 0)
