@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.15 1992/02/13 06:40:36 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.16 1992/02/13 07:47:37 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -185,7 +185,7 @@ MIT in each case. |#
 		      (OBJECT->FIXNUM (CONSTANT (? constant))))
   (fixnum-branch! predicate)
   (LAP (CMP W ,(source-register-reference register)
-	    (& ,(fixnum-object->fixnum-word constant)))))
+	    (& ,(* constant fixnum-1)))))
 
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
@@ -193,7 +193,7 @@ MIT in each case. |#
 		      (REGISTER (? register)))
   (fixnum-branch! (commute-fixnum-predicate predicate))
   (LAP (CMP W ,(source-register-reference register)
-	    (& ,(fixnum-object->fixnum-word constant)))))
+	    (& ,(* constant fixnum-1)))))
 
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
@@ -201,7 +201,7 @@ MIT in each case. |#
 		      (OBJECT->FIXNUM (CONSTANT (? constant))))
   (fixnum-branch! predicate)
   (LAP (CMP W ,(source-indirect-reference! address offset)
-	    (& ,(fixnum-object->fixnum-word constant)))))
+	    (& ,(* constant fixnum-1)))))
 
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
@@ -209,7 +209,7 @@ MIT in each case. |#
 		      (OFFSET (REGISTER (? address)) (? offset)))
   (fixnum-branch! (commute-fixnum-predicate predicate))
   (LAP (CMP W ,(source-indirect-reference! address offset)
-	    (& ,(fixnum-object->fixnum-word constant)))))
+	    (& ,(* constant fixnum-1)))))
 
 ;; This assumes that the immediately preceding instruction sets the
 ;; condition code bits correctly.
@@ -288,24 +288,13 @@ MIT in each case. |#
 	(else
 	 (LAP (IMUL W ,target (& ,constant))))))
 
-;;;; Fixnum operation dispatch
-
-(define (define-fixnum-method operator methods method)
-  (let ((entry (assq operator (cdr methods))))
-    (if entry
-	(set-cdr! entry method)
-	(set-cdr! methods (cons (cons operator method) (cdr methods)))))
-  operator)
-
-(define (lookup-fixnum-method operator methods)
-  (cdr (or (assq operator (cdr methods))
-	   (error "Unknown operator" operator))))
+;;;; Operation tables
 
 (define fixnum-methods/1-arg
   (list 'FIXNUM-METHODS/1-ARG))
 
 (define-integrable (fixnum-1-arg/operate operator)
-  (lookup-fixnum-method operator fixnum-methods/1-arg))
+  (lookup-arithmetic-method operator fixnum-methods/1-arg))
 
 (define-integrable (fixnum-1-arg target source operation)
   (operation (standard-move-to-target! source target)))
@@ -314,13 +303,13 @@ MIT in each case. |#
   (list 'FIXNUM-METHODS/2-ARGS))
 
 (define-integrable (fixnum-2-args/operate operator)
-  (lookup-fixnum-method operator fixnum-methods/2-args))
+  (lookup-arithmetic-method operator fixnum-methods/2-args))
 
 (define fixnum-methods/2-args-constant
   (list 'FIXNUM-METHODS/2-ARGS-CONSTANT))
 
 (define-integrable (fixnum-2-args/operate-constant operator)
-  (lookup-fixnum-method operator fixnum-methods/2-args-constant))
+  (lookup-arithmetic-method operator fixnum-methods/2-args-constant))
 
 (define (fixnum-2-args/commutative? operator)
   (memq operator '(PLUS-FIXNUM
@@ -340,7 +329,7 @@ MIT in each case. |#
 				    target source1 source2)
   (let* ((worst-case
 	  (lambda (target source1 source2)
-	    (LAP (LAP (MOV W ,target ,source1))
+	    (LAP (MOV W ,target ,source1)
 		 ,@(operate target source2))))
 	 (new-target-alias!
 	  (lambda ()
@@ -390,27 +379,27 @@ MIT in each case. |#
 
 ;;;; Arithmetic operations
 
-(define-fixnum-method 'ONE-PLUS-FIXNUM fixnum-methods/1-arg
+(define-arithmetic-method 'ONE-PLUS-FIXNUM fixnum-methods/1-arg
   (lambda (target)
     (add-fixnum-constant target 1 false)))
 
-(define-fixnum-method 'MINUS-ONE-PLUS-FIXNUM fixnum-methods/1-arg
+(define-arithmetic-method 'MINUS-ONE-PLUS-FIXNUM fixnum-methods/1-arg
   (lambda (target)
     (add-fixnum-constant target -1 false)))
 
-(define-fixnum-method 'FIXNUM-NOT fixnum-methods/1-arg
+(define-arithmetic-method 'FIXNUM-NOT fixnum-methods/1-arg
   (lambda (target)
     (LAP (NOT W ,target)
 	 ,@(word->fixnum target))))
 
-(define-fixnum-method 'FIXNUM-NEGATE fixnum-methods/1-arg
+(define-arithmetic-method 'FIXNUM-NEGATE fixnum-methods/1-arg
   (lambda (target)
     (LAP (NEG W ,target))))
 
 (let-syntax
     ((binary-operation
       (macro (name instr commutative? idempotent?)
-	`(define-fixnum-method ',name fixnum-methods/2-args
+	`(define-arithmetic-method ',name fixnum-methods/2-args
 	   (fixnum-2-args/standard
 	    ,commutative?
 	    (lambda (target source2)
@@ -424,7 +413,7 @@ MIT in each case. |#
   (binary-operation FIXNUM-OR OR true true)
   (binary-operation FIXNUM-XOR XOR true false))
 
-(define-fixnum-method 'FIXNUM-ANDC fixnum-methods/2-args
+(define-arithmetic-method 'FIXNUM-ANDC fixnum-methods/2-args
   (fixnum-2-args/standard
    false
    (lambda (target source2)
@@ -437,7 +426,7 @@ MIT in each case. |#
 		(NOT W ,temp)
 		(AND W ,target ,temp)))))))
 
-(define-fixnum-method 'MULTIPLY-FIXNUM fixnum-methods/2-args
+(define-arithmetic-method 'MULTIPLY-FIXNUM fixnum-methods/2-args
   (fixnum-2-args/standard
    false
    (lambda (target source2)
@@ -453,7 +442,7 @@ MIT in each case. |#
 		   (SAR W ,target (& ,scheme-type-width))
 		   (IMUL W ,target ,temp))))))))
 
-(define-fixnum-method 'FIXNUM-LSH fixnum-methods/2-args
+(define-arithmetic-method 'FIXNUM-LSH fixnum-methods/2-args
   (let ((operate
 	 (lambda (target source2)
 	   ;; SOURCE2 is guaranteed not to be ECX because of the
@@ -489,7 +478,7 @@ MIT in each case. |#
 				  source1
 				  source2))))
 
-(define-fixnum-method 'FIXNUM-QUOTIENT fixnum-methods/2-args
+(define-arithmetic-method 'FIXNUM-QUOTIENT fixnum-methods/2-args
   (lambda (target source1 source2)
     (if (= source2 source1)
 	(load-fixnum-constant 1 (target-register-reference target))
@@ -503,7 +492,7 @@ MIT in each case. |#
 		 (IDIV W (R ,eax) ,source2)
 		 (SAL W (R ,eax) (& ,scheme-type-width))))))))
 
-(define-fixnum-method 'FIXNUM-REMAINDER fixnum-methods/2-args
+(define-arithmetic-method 'FIXNUM-REMAINDER fixnum-methods/2-args
   (lambda (target source1 source2)
     (if (= source2 source1)
 	(load-fixnum-constant 0 (target-register-reference target))
@@ -517,15 +506,15 @@ MIT in each case. |#
 		 (IDIV W (R ,eax) ,source2)
 		 (SAL W (R ,edx) (& ,scheme-type-width))))))))
 
-(define-fixnum-method 'PLUS-FIXNUM fixnum-methods/2-args-constant
+(define-arithmetic-method 'PLUS-FIXNUM fixnum-methods/2-args-constant
   (lambda (target n overflow?)
     (add-fixnum-constant target n overflow?)))
 
-(define-fixnum-method 'MINUS-FIXNUM fixnum-methods/2-args-constant
+(define-arithmetic-method 'MINUS-FIXNUM fixnum-methods/2-args-constant
   (lambda (target n overflow?)
     (add-fixnum-constant target (- 0 n) overflow?)))
 
-(define-fixnum-method 'FIXNUM-OR fixnum-methods/2-args-constant
+(define-arithmetic-method 'FIXNUM-OR fixnum-methods/2-args-constant
   (lambda (target n overflow?)
     overflow?				; ignored
     (cond ((zero? n)
@@ -535,7 +524,7 @@ MIT in each case. |#
 	  (else
 	   (LAP (OR W ,target (& ,(* n fixnum-1))))))))
 
-(define-fixnum-method 'FIXNUM-XOR fixnum-methods/2-args-constant
+(define-arithmetic-method 'FIXNUM-XOR fixnum-methods/2-args-constant
   (lambda (target n overflow?)
     overflow?				; ignored
     (cond ((zero? n)
@@ -546,7 +535,7 @@ MIT in each case. |#
 	  (else
 	   (LAP (XOR W ,target (& ,(* n fixnum-1))))))))
 
-(define-fixnum-method 'FIXNUM-AND fixnum-methods/2-args-constant
+(define-arithmetic-method 'FIXNUM-AND fixnum-methods/2-args-constant
   (lambda (target n overflow?)
     overflow?				; ignored
     (cond ((zero? n)
@@ -556,7 +545,7 @@ MIT in each case. |#
 	  (else
 	   (LAP (AND W ,target (& ,(* n fixnum-1))))))))
 
-(define-fixnum-method 'FIXNUM-ANDC fixnum-methods/2-args-constant
+(define-arithmetic-method 'FIXNUM-ANDC fixnum-methods/2-args-constant
   (lambda (target n overflow?)
     overflow?				; ignored
     (cond ((zero? n)
@@ -566,7 +555,7 @@ MIT in each case. |#
 	  (else
 	   (LAP (AND W ,target (& ,(* (fix:not n) fixnum-1))))))))
 
-(define-fixnum-method 'FIXNUM-LSH fixnum-methods/2-args-constant
+(define-arithmetic-method 'FIXNUM-LSH fixnum-methods/2-args-constant
   (lambda (target n overflow?)
     overflow?				; ignored
     (cond ((zero? n)
@@ -579,11 +568,11 @@ MIT in each case. |#
 	   (LAP (SHR W ,target (& ,(- 0 n)))
 		,@(word->fixnum target))))))
 
-(define-fixnum-method 'MULTIPLY-FIXNUM fixnum-methods/2-args-constant
+(define-arithmetic-method 'MULTIPLY-FIXNUM fixnum-methods/2-args-constant
   (lambda (target n overflow?)
     (multiply-fixnum-constant target n overflow?)))
 
-(define-fixnum-method 'FIXNUM-QUOTIENT fixnum-methods/2-args-constant
+(define-arithmetic-method 'FIXNUM-QUOTIENT fixnum-methods/2-args-constant
   (lambda (target n overflow?)
     overflow?				; ignored
     (cond ((= n 1)
@@ -600,14 +589,14 @@ MIT in each case. |#
 		    (ADD W ,target (& ,(* (-1+ absn) fixnum-1)))
 		    (LABEL ,label)
 		    (SAR W ,target (& ,expt-of-2))
-		    ,@(word->fixnum ,target)
+		    ,@(word->fixnum target)
 		    ,@(if (negative? n)
 			  (LAP (NEG W ,target))
 			  (LAP))))))
 	  (else
 	   (error "Fixnum-quotient/constant: Bad value" n)))))
 
-(define-fixnum-method 'FIXNUM-REMAINDER fixnum-methods/2-args-constant
+(define-arithmetic-method 'FIXNUM-REMAINDER fixnum-methods/2-args-constant
   (lambda (target n overflow?)
     ;; (remainder x y) is 0 or has the sign of x.
     ;; Thus we can always "divide" by (abs y) to make things simpler.

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/insutl.scm,v 1.6 1992/02/13 03:03:10 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/insutl.scm,v 1.7 1992/02/13 07:48:52 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -37,11 +37,6 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 ;;;; Addressing modes
-
-;; *** We can't really handle switching these right now. ***
-
-(define-integrable *ADDRESS-SIZE* 32)
-(define-integrable *OPERAND-SIZE* 32)
 
 ;; r/m part of ModR/M byte and SIB byte.
 ;; These are valid only for 32-bit addressing.

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instr1.scm,v 1.6 1992/02/13 03:22:20 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instr1.scm,v 1.7 1992/02/13 07:47:52 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -201,11 +201,11 @@ MIT in each case. |#
 (define-instruction CALL
   (((@PCR (? dest)))
    (BYTE (8 #xe8))
-   (IMMEDIATE `(- ,dest (+ *PC* ,*ADDRESS-SIZE*)) ADDRESS))
+   (IMMEDIATE `(- ,dest (+ *PC* 4)) ADDRESS)) ; fcn(*ADDRESS-SIZE*)
 
   (((@PCRO (? dest) (? offset)))
    (BYTE (8 #xe8))
-   (IMMEDIATE `(- (+ ,dest ,offset) (+ *PC* ,*ADDRESS-SIZE*)) ADDRESS))
+   (IMMEDIATE `(- (+ ,dest ,offset) (+ *PC* 4)) ADDRESS)); fcn(*ADDRESS-SIZE*)
 
   (((@PCO (? displ)))
    (BYTE (8 #xe8))
@@ -290,11 +290,11 @@ MIT in each case. |#
 	 `(define-instruction ,mnemonic
 	    ((W (R 0) (? operand r/mW))
 	     (BYTE (8 #xf7))
-	     (ModR/M digit operand))
+	     (ModR/M ,digit operand))
 
 	    ((B (R 0) (? operand r/mB))
 	     (BYTE (8 #xf6))
-	     (ModR/M digit operand))))))
+	     (ModR/M ,digit operand))))))
 
   (define-mul/div DIV 6)
   (define-mul/div IDIV 7)
@@ -392,7 +392,7 @@ MIT in each case. |#
 	    ((W (@PCR (? dest)))
 	     (BYTE (8 #x0f)
 		   (8 ,opcode2))
-	     (IMMEDIATE `(- ,dest (+ *PC* ,*ADDRESS-SIZE*)) ADDRESS))
+	     (IMMEDIATE `(- ,dest (+ *PC* 4)) ADDRESS))	; fcn(*ADDRESS-SIZE*)
 
 	    ((B (@PCO (? displ)))
 	     (BYTE (8 ,opcode1)
@@ -486,7 +486,7 @@ MIT in each case. |#
 
   ((W (@PCR (? dest)))
    (BYTE (8 #xe9))
-   (IMMEDIATE `(- ,dest (+ *PC* ,*ADDRESS-SIZE*)) ADDRESS))
+   (IMMEDIATE `(- ,dest (+ *PC* 4)) ADDRESS)) ; fcn(*ADDRESS-SIZE*)
 
   ((B (@PCO (? displ)))
    (BYTE (8 #xeb)
@@ -527,7 +527,7 @@ MIT in each case. |#
 	    (((? operand mW))
 	     (BYTE (8 #x0f)
 		   (8 ,opcode))
-	     (ModR/M digit operand))))))
+	     (ModR/M ,digit operand))))))
 
   (define-load/store-state INVLPG #x01 7)	; 486 only
   (define-load/store-state LGDT   #x01 2)

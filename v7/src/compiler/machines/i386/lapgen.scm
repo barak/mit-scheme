@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.9 1992/02/13 05:52:58 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.10 1992/02/13 07:46:53 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/lapgen.scm,v 4.42 1991/05/28 19:14:26 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -222,7 +222,7 @@ MIT in each case. |#
 
 (define (non-pointer->literal object)
   (make-non-pointer-literal (object-type object)
-			    (careful-objct-datum object)))
+			    (careful-object-datum object)))
 
 (define (load-immediate target value)
   (if (zero? value)
@@ -238,7 +238,7 @@ MIT in each case. |#
 (define (load-constant target obj)
   (if (non-pointer-object? obj)
       (load-non-pointer target (object-type obj) (careful-object-datum obj))
-      (load-pc-relative target (free-constant-label obj))))
+      (load-pc-relative target (constant->label obj))))
 
 (define (load-pc-relative target label-expr)
   (with-pc
@@ -255,13 +255,19 @@ MIT in each case. |#
     (lambda (label reg)
       (if label
 	  (recvr label reg)
-	  (let ((temporary (allocate-temporary-register! 'GENERAL))
-		(label (generate-label 'GET-PC)))
-	    (cache-label! label temporary)
-	    (LAP (CALL (@PCR ,label))
-		 (LABEL ,label)
-		 (POP (R ,(register-reference temporary)))
-		 ,@(recvr label temporary)))))))
+	  (let ((temporary (allocate-temporary-register! 'GENERAL)))
+	    (pc->reg temporary
+		     (lambda (label prefix)
+		       (cache-label! label temporary)
+		       (LAP ,@prefix
+			    ,@(recvr label temporary)))))))))
+
+(define (pc->reg reg recvr)
+  (let ((label (generate-label 'GET-PC)))
+    (recvr label
+	   (LAP (CALL (@PCR ,label))
+		(LABEL ,label)
+		(POP ,(register-reference reg))))))
 
 (define-integrable (get-cached-label)
   (register-map-label *register-map* 'GENERAL))
@@ -470,3 +476,16 @@ MIT in each case. |#
     primitive-error
     |#
     ))
+
+;; Operation tables
+
+(define (define-arithmetic-method operator methods method)
+  (let ((entry (assq operator (cdr methods))))
+    (if entry
+	(set-cdr! entry method)
+	(set-cdr! methods (cons (cons operator method) (cdr methods)))))
+  operator)
+
+(define (lookup-arithmetic-method operator methods)
+  (cdr (or (assq operator (cdr methods))
+	   (error "Unknown operator" operator))))

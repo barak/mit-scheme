@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules2.scm,v 1.2 1992/01/30 06:32:47 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules2.scm,v 1.3 1992/02/13 07:48:34 jinx Exp $
 $MC68020-Header: rules2.scm,v 4.12 90/01/18 22:44:04 GMT cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -71,14 +71,14 @@ MIT in each case. |#
   (QUALIFIER (non-pointer-object? constant))
   (set-equal-branches!)
   (LAP (CMP W ,(any-reference register)
-	    (&U ,(non-pointer->immediate constant)))))
+	    (&U ,(non-pointer->literal constant)))))
 
 (define-rule predicate
   (EQ-TEST (REGISTER (? register)) (CONSTANT (? constant)))
   (QUALIFIER (non-pointer-object? constant))
   (set-equal-branches!)
   (LAP (CMP W ,(any-reference register)
-	    (&U ,(non-pointer->immediate constant)))))
+	    (&U ,(non-pointer->literal constant)))))
 
 (define-rule predicate
   (EQ-TEST (CONSTANT (? constant)) (OFFSET (REGISTER (? address)) (? offset)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulrew.scm,v 1.5 1992/02/13 06:38:36 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulrew.scm,v 1.6 1992/02/13 07:48:20 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rulrew.scm,v 1.4 1991/10/25 06:50:06 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -168,7 +168,7 @@ MIT in each case. |#
    (and (memq operator '(FIXNUM-QUOTIENT FIXNUM-REMAINDER))
 	(rtl:constant-fixnum-test operand-2
 	  (lambda (n)
-	    (integer-log-base-2? (abs n))))))
+	    (integer-power-of-2? (abs n))))))
   (rtl:make-fixnum-2-args operator operand-1 operand-2 overflow?))
 
 (define (rtl:constant-fixnum? expression)

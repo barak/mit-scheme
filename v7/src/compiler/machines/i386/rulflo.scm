@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulflo.scm,v 1.11 1992/02/13 06:09:45 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulflo.scm,v 1.12 1992/02/13 07:47:21 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -109,7 +109,7 @@ MIT in each case. |#
   (ASSIGN (REGISTER (? target))
 	  (FLONUM-1-ARG (? operation) (REGISTER (? source)) (? overflow?)))
   overflow?				;ignore
-  ((flonm-1-arg/operator operation) target source))
+  ((flonum-1-arg/operator operation) target source))
 
 (define ((flonum-unary-operation/general operate) target source)
   (let* ((source (flonum-source! source))
@@ -132,7 +132,7 @@ MIT in each case. |#
 	    (flonum-unary-operation/general
 	     (lambda (target source)
 	       (if (and (zero? target) (zero? source))
-		   (,opcode)
+		   (LAP (,opcode))
 		   (LAP (FLD (ST ,', source))
 			(,opcode)
 			(FSTP (ST ,',(1+ target)))))))))))
@@ -269,7 +269,7 @@ MIT in each case. |#
 	      (operate (flonum-target! target) sti1 sti2)))))
     (cond ((pseudo-register? target)
 	   (reuse-pseudo-register-alias
-	    source1 target-type
+	    source1 'FLOAT
 	    (lambda (alias)
 	      (let* ((sti1 (floreg->sti alias))
 		     (sti2 (if (= source1 source2)
@@ -278,10 +278,10 @@ MIT in each case. |#
 		(delete-register! alias)
 		(delete-dead-registers!)
 		(add-pseudo-register-alias! target alias)
-		(operate< sti1 sti1 sti2)))
+		(operate sti1 sti1 sti2)))
 	    (lambda ()
 	      (reuse-pseudo-register-alias
-	       source2 target-type
+	       source2 'FLOAT
 	       (lambda (alias2)
 		 (let ((sti1 (flonum-source! source1))
 		       (sti2 (floreg->sti alias2)))
@@ -290,9 +290,9 @@ MIT in each case. |#
 		   (add-pseudo-register-alias! target alias2)
 		   (operate sti2 sti1 sti2)))
 	       default))))
-	  ((not (eq? target-type (register-type target)))
+	  ((not (eq? (register-type target) 'FLOAT))
 	   (error "flonum-2-args: Wrong type register"
-		  target target-type))
+		  target 'FLOAT))
 	  (else
 	   (default)))))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/insmac.scm,v 1.6 1992/02/13 05:43:25 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/insmac.scm,v 1.7 1992/02/13 07:47:07 jinx Exp $
 $Vax-Header: insmac.scm,v 1.12 89/05/17 20:29:15 GMT jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -81,6 +81,11 @@ MIT in each case. |#
 		    (and (memq ',restriction (ea/categories ea))
 			 ea))))))))
 
+;; *** We can't really handle switching these right now. ***
+
+(define-integrable *ADDRESS-SIZE* 32)
+(define-integrable *OPERAND-SIZE* 32)
+
 (define (parse-instruction opcode tail early?)
   (process-fields (cons opcode tail) early?))
 
@@ -173,6 +178,7 @@ MIT in each case. |#
 				 'SIGNED
 				 (cadddr field))))
 		 `(CONS-SYNTAX
+		   #|
 		   (COERCE-TO-TYPE ,value
 				   ,(case mode
 				      ((OPERAND)
@@ -182,6 +188,17 @@ MIT in each case. |#
 				      (else
 				       (error "Unknown IMMEDIATE mode" mode)))
 				   ,domain)
+		   |#
+		   ,(integer-syntaxer
+		     value
+		     domain
+		     (case mode
+		       ((OPERAND)
+			*operand-size*)
+		       ((ADDRESS)
+			*address-size*)
+		       (else
+			(error "Unknown IMMEDIATE mode" mode))))
 		   ,tail)))
 	     tail-size))
 	   (else
