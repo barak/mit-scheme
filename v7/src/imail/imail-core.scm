@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.37 2000/05/03 19:29:33 cph Exp $
+;;; $Id: imail-core.scm,v 1.38 2000/05/03 20:28:38 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -329,9 +329,9 @@
   (header-fields define accessor)
   (body define accessor)
   (flags define standard)
+  (properties define standard)
   (modification-count define standard
 		      initial-value 0)
-  (properties define standard)
   (folder define standard
 	  initial-value #f)
   (index define standard))
@@ -349,11 +349,16 @@
       (error:wrong-type-argument message "IMAIL message" procedure)))
 
 (define (make-detached-message headers body)
+  (call-with-values (lambda () (parse-imail-header-fields headers))
+    (lambda (headers flags properties)
+      (make-message headers body flags properties))))
+
+(define (parse-imail-header-fields headers)
   (let loop ((headers headers) (headers* '()) (flags '()) (properties '()))
     (cond ((not (pair? headers))
-	   (make-message (reverse! headers*) body
-			 (remove-duplicates! (reverse! flags) string-ci=?)
-			 (reverse! properties)))
+	   (values (reverse! headers*)
+		   (remove-duplicates! (reverse! flags) string-ci=?)
+		   (reverse! properties)))
 	  ((header-field->message-flags (car headers))
 	   => (lambda (flags*)
 		(loop (cdr headers) headers*
@@ -394,11 +399,6 @@
      (let ((folder (message-folder message)))
        (if folder
 	   (folder-modified! folder))))))
-
-(define (message->string message)
-  (string-append (header-fields->string (message-header-fields message))
-		 "\n"
-		 (message-body message)))
 
 ;;;; Message Navigation
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.15 2000/05/03 19:29:37 cph Exp $
+;;; $Id: imail-file.scm,v 1.16 2000/05/03 20:28:42 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -70,6 +70,8 @@
   (if (eq? 'UNKNOWN (%file-folder-messages folder))
       (revert-file-folder folder))
   (%file-folder-messages folder))
+
+(define-generic revert-file-folder (folder))
 
 (define (file-folder-pathname folder)
   (file-url-pathname (folder-url folder)))
@@ -141,9 +143,14 @@
 	   (let loop ((index 0) (winners '()))
 	     (if (< index n)
 		 (loop (+ index 1)
-		       (if (string-search-forward
-			    criteria
-			    (message->string (get-message folder index)))
+		       (if (let ((message (get-message folder index)))
+			     (or (string-search-forward
+				  criteria
+				  (header-fields->string
+				   (message-header-fields message)))
+				 (string-search-forward
+				  criteria
+				  (message-body message))))
 			   (cons index winners)
 			   winners))
 		 (reverse! winners)))))
@@ -152,8 +159,6 @@
 				    "search criteria"
 				    'SEARCH-FOLDER))))
 
-(define-generic revert-file-folder (folder))
-
 (define-method folder-sync-status ((folder <file-folder>))
   (let ((sync-time (file-folder-file-modification-time folder))
 	(sync-count (file-folder-file-modification-count folder))
