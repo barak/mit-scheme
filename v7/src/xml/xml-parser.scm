@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.47 2003/09/26 04:27:32 cph Exp $
+$Id: xml-parser.scm,v 1.48 2003/09/26 05:35:40 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -176,8 +176,6 @@ USA.
   (xml-declaration-parser "XML text declaration" #t))
 
 (define (transform-declaration attributes text-decl? p)
-  (if (not (for-all? attributes xml-attribute-value))
-      (perror p "XML declaration can't contain entity refs" attributes))
   (let ((finish
 	 (lambda (version encoding standalone)
 	   (if (and (not text-decl?) (not version))
@@ -204,10 +202,10 @@ USA.
 	 (results '()))
       (if (pair? names)
 	  (if (pair? attributes)
-	      (if (eq? (caar attributes) (car names))
+	      (if (eq? (xml-attribute-name (car attributes)) (car names))
 		  (loop (cdr attributes)
 			(cdr names)
-			(cons (cadar attributes) results))
+			(cons (xml-attribute-value (car attributes)) results))
 		  (loop attributes
 			(cdr names)
 			(cons #f results)))
@@ -347,8 +345,7 @@ USA.
 		(perror (cdar attribute)
 			"Incorrect attribute value"
 			(string->symbol name)))
-	    (if (and (not (eq? type '|CDATA|))
-		     (xml-attribute-value attribute))
+	    (if (not (eq? type '|CDATA|))
 		(set-car! av (trim-attribute-whitespace (car av))))
 	    attributes)
 	  (begin
@@ -465,16 +462,14 @@ USA.
   (set! *prefix-bindings*
 	(let loop ((attributes attributes))
 	  (if (pair? attributes)
-	      (let ((name (caar attributes))
-		    (value (cdar attributes))
+	      (let ((name (xml-attribute-name (car attributes)))
 		    (tail (loop (cdr attributes))))
 		(let ((s (car name))
 		      (pn (cdr name)))
 		  (let ((iri
 			 (lambda ()
 			   (string->symbol
-			    (or (xml-attribute-value (car attributes))
-				(perror pn "Illegal namespace IRI" value)))))
+			    (xml-attribute-value (car attributes)))))
 			(forbidden-iri
 			 (lambda (iri)
 			   (perror pn "Forbidden namespace IRI" iri))))
@@ -626,9 +621,7 @@ USA.
 	(with-pointer p
 	  (transform
 	      (lambda (v)
-		(let ((name (vector-ref v 0)))
-		  (or (dereference-entity name #f p)
-		      (vector (make-xml-entity-ref name)))))
+		(dereference-entity (vector-ref v 0) #f p))
 	    parse-entity-reference-name)))))
 
 (define parse-reference-deferred
@@ -698,10 +691,10 @@ USA.
 	(a2 (alphabet- alphabet (string->alphabet "'"))))
     (*parser
      (encapsulate (lambda (v)
-		    (let ((elements (vector->list v)))
+		    (let ((elements (coalesce-strings! (vector->list v))))
 		      (if (null? elements)
 			  (list "")
-			  (coalesce-strings! elements))))
+			  elements)))
        (alt (sbracket "attribute value" "\"" "\""
 	      (* (alt (match (+ (alphabet a1)))
 		      parse-reference)))
@@ -732,62 +725,52 @@ USA.
 	 (attribute-value-parser alphabet:char-data
 				 parse-reference-deferred)))
     (*parser
-     (map normalize-attribute-value
+     (map (lambda (elements)
+	    (if (not (and (pair? elements)
+			  (string? (car elements))
+			  (null? (cdr elements))))
+		(error "Uncoalesced attribute value:" elements))
+	    (normalize-attribute-value (car elements)))
 	  (require-success "Malformed attribute value"
 	    parser)))))
 
 ;;;; Normalization
 
-(define (normalize-attribute-value elements)
+(define (normalize-attribute-value string)
   (coalesce-strings!
    (reverse!
-    (let loop ((elements elements) (result '()))
-      (if (pair? elements)
-	  (let ((element (car elements))
-		(elements (cdr elements)))
-	    (if (string? element)
-		(let ((buffer
-		       (string->parser-buffer
-			(normalize-line-endings element))))
-		  (let normalize-string
-		      ((port (open-output-string))
-		       (result result))
-		    (let* ((p (get-parser-buffer-pointer buffer))
-			   (char (read-parser-buffer-char buffer)))
-		      (case char
-			((#f)
-			 (loop elements
-			       (cons (get-output-string port) result)))
-			((#\tab #\newline #\return)
-			 (write-char #\space port)
-			 (normalize-string port result))
-			((#\&)
-			 (set-parser-buffer-pointer! buffer p)
-			 (let ((v (parse-char-reference buffer)))
-			   (if v
-			       (begin
-				 (write-string (vector-ref v 0) port)
-				 (normalize-string port result))
-			       (normalize-string
-				(open-output-string)
-				(let ((name
-				       (vector-ref
-					(parse-entity-reference-name buffer)
-					0))
-				      (result
-				       (cons (get-output-string port) result)))
-				  (let ((v (dereference-entity name #t p)))
-				    (if v
-					(expand-entity-value name p
-					  (lambda ()
-					    (loop v result)))
-					(cons (make-xml-entity-ref name)
-					      result))))))))
-			(else
-			 (write-char char port)
-			 (normalize-string port result))))))
-		(loop elements (cons element result))))
-	  result)))))
+    (let loop ((string string) (result '()))
+      (let ((buffer (string->parser-buffer (normalize-line-endings string))))
+	(let normalize-string ((port (open-output-string)) (result result))
+	  (let* ((p (get-parser-buffer-pointer buffer))
+		 (char (read-parser-buffer-char buffer)))
+	    (case char
+	      ((#f)
+	       (cons (get-output-string port) result))
+	      ((#\tab #\newline #\return)
+	       (write-char #\space port)
+	       (normalize-string port result))
+	      ((#\&)
+	       (set-parser-buffer-pointer! buffer p)
+	       (let ((v (parse-char-reference buffer)))
+		 (if v
+		     (begin
+		       (write-string (vector-ref v 0) port)
+		       (normalize-string port result))
+		     (normalize-string
+		      (open-output-string)
+		      (let ((name
+			     (vector-ref (parse-entity-reference-name buffer)
+					 0)))
+			(let ((value (dereference-entity name #t p)))
+			  (expand-entity-value name p
+			    (lambda ()
+			      (loop value
+				    (cons (get-output-string port)
+					  result))))))))))
+	      (else
+	       (write-char char port)
+	       (normalize-string port result))))))))))
 
 (define (trim-attribute-whitespace string)
   (call-with-output-string
@@ -896,31 +879,24 @@ USA.
 
 (define (dereference-entity name in-attribute? p)
   (if (eq? *general-entities* 'STOP)
-      #f
-      (begin
-	(if (assq name *entity-expansion-nesting*)
-	    (perror p "Circular entity reference" name))
-	(let ((entity (find-entity name)))
-	  (if entity
-	      (begin
-		(if (xml-unparsed-!entity? entity)
-		    (perror p "Reference to unparsed entity" name))
-		(let ((value (xml-!entity-value entity)))
-		  (cond ((xml-external-id? value) #f)
-			(in-attribute? value)
-			((and (pair? value)
-			      (string? (car value))
-			      (null? (cdr value)))
-			 (reparse-entity-value-string name (car value) p))
-			(else
-			 (if (or *standalone?* *internal-dtd?*)
-			     (perror p "Reference to partially-defined entity"
-				     name))
-			 #f))))
-	      (begin
-		(if (or *standalone?* *internal-dtd?*)
-		    (perror p "Reference to undefined entity" name))
-		#f))))))
+      (perror p "Reference to externally-defined entity" name))
+  (if (assq name *entity-expansion-nesting*)
+      (perror p "Circular entity reference" name))
+  (let ((entity (find-entity name)))
+    (if (not entity)
+	(perror p "Reference to undefined entity" name))
+    (if (xml-unparsed-!entity? entity)
+	(perror p "Reference to unparsed entity" name))
+    (let ((value (xml-!entity-value entity)))
+      (if (xml-external-id? value)
+	  (perror p "Reference to external entity" name))
+      (if (not (and (pair? value)
+		    (string? (car value))
+		    (null? (cdr value))))
+	  (perror p "Reference to partially-defined entity" name))
+      (if in-attribute?
+	  (car value)
+	  (reparse-entity-value-string name (car value) p)))))
 
 (define (reparse-entity-value-string name string p)
   (let ((v
@@ -1099,14 +1075,11 @@ USA.
 			(type (vector-ref v 1))
 			(default (vector-ref v 2)))
 		    (list name type
-			  (let ((dv
-				 (and (not (eq? type '|CDATA|))
-				      (pair? default)
-				      (xml-attribute-value default))))
-			    (if dv
-				(list (car default)
-				      (trim-attribute-whitespace dv))
-				default)))))
+			  (if (and (not (eq? type '|CDATA|))
+				   (pair? default))
+			      (list (car default)
+				    (trim-attribute-whitespace (cadr default)))
+			      default))))
 	      (seq S
 		   parse-attribute-name
 		   S

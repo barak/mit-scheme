@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-output.scm,v 1.26 2003/09/26 03:56:51 cph Exp $
+$Id: xml-output.scm,v 1.27 2003/09/26 05:35:36 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -371,24 +371,14 @@ USA.
 (define (write-xml-attribute-value value ctx)
   (emit-char #\" ctx)
   (for-each (lambda (item)
-	      (if (string? item)
-		  (write-xml-string item ctx)
-		  (%write-xml item ctx)))
+	      (write-xml-string item ctx))
 	    value)
   (emit-char #\" ctx))
 
 (define (xml-attribute-columns attribute)
   (+ (xml-name-columns (car attribute))
-     1
-     (let loop ((items (cdr attribute)) (n 2))
-       (if (pair? items)
-	   (loop (cdr items)
-		 (+ n
-		    (if (string? (car items))
-			(xml-string-columns (car items))
-			(+ (xml-name-columns (xml-entity-ref-name (car items)))
-			   2))))
-	   n))))
+     3
+     (xml-string-columns (cadr attribute))))
 
 (define (write-xml-string string ctx)
   (write-escaped-string string

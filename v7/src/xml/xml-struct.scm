@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.35 2003/09/26 03:56:58 cph Exp $
+$Id: xml-struct.scm,v 1.36 2003/09/26 05:35:43 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -162,8 +162,7 @@ USA.
        (list-of-type? object xml-attribute-value-item?)))
 
 (define (xml-attribute-value-item? object)
-  (or (xml-char-data? object)
-      (xml-entity-ref? object)))
+  (xml-char-data? object))
 
 (define (xml-content? object)
   (list-of-type? object xml-content-item?))
@@ -172,8 +171,7 @@ USA.
   (or (xml-char-data? object)
       (xml-comment? object)
       (xml-element? object)
-      (xml-processing-instructions? object)
-      (xml-entity-ref? object)))
+      (xml-processing-instructions? object)))
 
 (define-xml-type comment
   (text xml-char-data? canonicalize-char-data))
@@ -195,6 +193,12 @@ USA.
 	 (cons (car a)
 	       (canonicalize-attribute-value (cdr a))))
        attributes))
+
+(define (xml-attribute-name attr)
+  (car attr))
+
+(define (xml-attribute-value attr)
+  (cadr attr))
 
 (define (canonicalize-attribute-value v)
   (canonicalize-content v))
@@ -418,27 +422,10 @@ USA.
     (or (xml-external-id-id dtd)
 	(xml-external-id-iri dtd))))
 
-(define (xml-attribute-value attr)
-  (and (pair? (cdr attr))
-       (string? (cadr attr))
-       (null? (cddr attr))
-       (cadr attr)))
-
-(define (guarantee-xml-attribute-value object #!optional caller)
-  (let ((v (xml-attribute-value object)))
-    (if (not v)
-	(error:not-xml-attribute-value object
-				       (if (default-object? caller)
-					   #f
-					   caller)))
-    v))
-
-(define (error:not-xml-attribute-value object caller)
-  (error:wrong-type-argument object "simple XML attribute value" caller))
-
 (define (xml-attribute-namespace-decl? attr)
-  (or (xml-name=? (car attr) 'xmlns)
-      (xml-name-prefix=? (car attr) 'xmlns)))
+  (let ((name (xml-attribute-name attr)))
+    (or (xml-name=? name 'xmlns)
+	(xml-name-prefix=? name 'xmlns))))
 
 (define (xml-element-namespace-decls elt)
   (keep-matching-items (xml-element-attributes elt)
@@ -447,14 +434,14 @@ USA.
 (define (xml-element-namespace-iri elt prefix)
   (let ((attr
 	 (find-matching-item (xml-element-attributes elt)
-	   (if (null-xml-name-prefix? prefix)
-	       (lambda (attr)
-		 (xml-name=? (car attr) 'xmlns))
-	       (lambda (attr)
-		 (and (xml-name-prefix=? (car attr) 'xmlns)
-		      (xml-name-local=? (car attr) prefix)))))))
+	   (let ((qname
+		  (if (null-xml-name-prefix? prefix)
+		      'xmlns
+		      (symbol-append 'xmlns: prefix))))
+	     (lambda (attr)
+	       (xml-name=? (xml-attribute-name attr) qname))))))
     (and attr
-	 (make-xml-namespace-iri (guarantee-xml-attribute-value attr)))))
+	 (make-xml-namespace-iri (cadr attr)))))
 
 (define (xml-element-namespace-prefix elt iri)
   (let ((iri (xml-namespace-iri-string iri)))
@@ -462,8 +449,9 @@ USA.
 	   (find-matching-item (xml-element-attributes elt)
 	     (lambda (attr)
 	       (and (xml-attribute-namespace-decl? attr)
-		    (string=? (guarantee-xml-attribute-value attr) iri))))))
+		    (string=? (xml-attribute-value attr) iri))))))
       (and attr
-	   (if (xml-name=? (car attr) 'xmlns)
-	       (null-xml-name-prefix)
-	       (xml-name-local (car attr)))))))
+	   (let ((name (xml-attribute-name attr)))
+	     (if (xml-name=? name 'xmlns)
+		 (null-xml-name-prefix)
+		 (xml-name-local name)))))))
