@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 1.5 1993/06/29 22:21:47 gjr Exp $
+$Id: machin.scm,v 1.6 1993/06/29 22:23:57 gjr Exp $
 
 Copyright (c) 1992-1993 Digital Equipment Corporation (D.E.C.)
 
@@ -52,8 +52,11 @@ case.
 (define-integrable type-scale-factor
   (expt 2 (- 8 scheme-type-width)))
 
-(define-integrable flonum-size 1)
+(define-integrable float-width 64)
 (define-integrable float-alignment 64)
+
+(define-integrable address-units-per-float
+  (quotient float-width addressing-granularity))
 
 ;;; It is currently required that both packed characters and objects
 ;;; be integrable numbers of address units.  Furthermore, the number
