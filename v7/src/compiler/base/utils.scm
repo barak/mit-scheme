@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 4.18 1992/11/14 17:20:17 gjr Exp $
+$Id: utils.scm,v 4.19 1994/02/02 04:01:23 adams Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -197,7 +197,7 @@ MIT in each case. |#
   ;; Any reason not to use `object/non-pointer?' here? -- cph
   (or (object-type? (ucode-type false) object)
       (object-type? (ucode-type true) object)
-      (object-type? (ucode-type fixnum) object)
+      (fix:fixnum? object)
       (object-type? (ucode-type character) object)
       (object-type? (ucode-type unassigned) object)
       (object-type? (ucode-type the-environment) object)
@@ -362,9 +362,17 @@ MIT in each case. |#
 (define procedure-object?
   (lexical-reference system-global-environment 'PROCEDURE?))
 
+;;!(define (careful-object-datum object)
+;;!  ;; This works correctly when cross-compiling.
+;;!  (if (and (object-type? (ucode-type fixnum) object)
+;;!	   (negative? object))
+;;!      (+ object unsigned-fixnum/upper-limit)
+;;!      (object-datum object)))
+
 (define (careful-object-datum object)
   ;; This works correctly when cross-compiling.
-  (if (and (object-type? (ucode-type fixnum) object)
+  (if (and (fix:fixnum? object)
 	   (negative? object))
       (+ object unsigned-fixnum/upper-limit)
       (object-datum object)))
+
