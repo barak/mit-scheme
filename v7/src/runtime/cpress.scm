@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/cpress.scm,v 1.1 1992/05/26 17:45:49 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/cpress.scm,v 1.2 1992/05/26 17:51:50 mhwu Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -756,14 +756,8 @@ MIT in each case. |#
 	(output-port/write-substring output-port (cdr ob) 0 (car ob))))
   (output-port/flush-output output-port))
 
-(define uncompress)
-
-(define (initialize-package!)
-  (set! uncompress
-	(lambda (ifile ofile)
-	  ((access uncompress-internal
-		   (->environment '(runtime compiler-info)))
-	   ifile ofile
-	   (lambda (message . irritants)
-	     (error message irritants)))))
+(define (uncompress ifile ofile)
+  (uncompress-internal ifile ofile
+    (lambda (message . irritants)
+      (error message irritants)))
   unspecific)
