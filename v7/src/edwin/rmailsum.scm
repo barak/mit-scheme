@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmailsum.scm,v 1.30 1993/08/02 21:06:09 cph Exp $
+;;;	$Id: rmailsum.scm,v 1.31 1993/08/24 17:25:59 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991-93 Massachusetts Institute of Technology
 ;;;
@@ -48,12 +48,17 @@
 
 (define-variable rmailsum-rcs-header
   "The RCS header of the rmailsum.scm file."
-  "$Id: rmailsum.scm,v 1.30 1993/08/02 21:06:09 cph Exp $"
+  "$Id: rmailsum.scm,v 1.31 1993/08/24 17:25:59 bal Exp $"
   string?)
 
 (define-variable-per-buffer rmail-buffer
   "Corresponding RMAIL buffer for a summary buffer.
 FALSE means buffer is not a summary buffer."
+  false
+  (lambda (x) (or (not x) (buffer? x))))
+
+(define-variable-per-buffer rmail-summary-buffer
+  "Corresponding RMAIL-summary buffer for an RMAIL buffer."
   false
   (lambda (x) (or (not x) (buffer? x))))
 
