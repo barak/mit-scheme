@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.99 1992/02/17 22:08:43 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.100 1992/03/13 10:06:39 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -108,16 +108,10 @@
 	     (update-screen! screen false)))))))
 
 (define (update-screens! display-style)
-  (if display-style
-      (let loop ((screens (screen-list)))
-	(or (null? screens)
-	    (and (update-screen! (car screens) display-style)
-		 (loop (cdr screens)))))
-      (let loop ((screens (cons (selected-screen) (screen-list))))
-	(or (null? screens)
-	    (and (or (screen-in-update? (car screens))
-		     (update-screen! (car screens) false))
-		 (loop (cdr screens)))))))
+  (let loop ((screens (screen-list)))
+    (or (null? screens)
+	(and (update-screen! (car screens) display-style)
+	     (loop (cdr screens))))))
 
 (define (update-selected-screen! display-style)
   (update-screen! (selected-screen) display-style))
