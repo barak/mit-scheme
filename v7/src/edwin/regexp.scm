@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regexp.scm,v 1.55 1991/05/06 00:59:09 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regexp.scm,v 1.56 1991/05/10 22:05:42 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -79,9 +79,41 @@
     group))
 
 (define (preserving-match-data thunk)
-  (fluid-let ((registers (vector-copy registers))
-	      (match-group match-group))
-    (thunk)))
+  (let ((group unspecific)
+	(marks unspecific))
+    (dynamic-wind
+     (lambda ()
+       (set! group (object-unhash match-group))
+       (set! marks
+	     (if group
+		 (let ((v (make-vector 20 false)))
+		   (do ((i 0 (+ i 1)))
+		       ((< i 20))
+		     (let ((index (vector-ref registers i)))
+		       (if index
+			   (vector-set!
+			    v i
+			    ;; Start marks are right-inserting,
+			    ;; end marks are left-inserting.
+			    (make-permanent-mark group index (>= i 10))))))
+		   v)
+		 (vector-copy registers)))
+       unspecific)
+     thunk
+     (lambda ()
+       (set! match-group (object-hash group))
+       (set! registers
+	     (if group
+		 (vector-map marks
+		   (lambda (mark)
+		     (and mark
+			  (let ((index (mark-index mark)))
+			    (mark-temporary! mark)
+			    index))))
+		 marks))
+       (set! group unspecific)
+       (set! marks unspecific)
+       unspecific))))
 
 (define-integrable (syntax-table-argument syntax-table)
   (syntax-table/entries (or syntax-table standard-syntax-table)))
