@@ -20,7 +20,7 @@
 ;;; Requires C-Scheme release 5 or later
 ;;; Changes to Control-G handler require runtime version 13.85 or later
 
-;;; $Id: xscheme.el,v 1.36 1994/08/15 19:15:19 cph Exp $
+;;; $Id: xscheme.el,v 1.37 1995/06/29 04:21:06 cph Exp $
 
 (require 'scheme)
 
@@ -64,6 +64,20 @@ Is processed with `substitute-command-keys' first.")
 (defvar xscheme-buffer-name "*scheme*"
   "*Buffer created by the `run-scheme' command.")
 
+(defun xscheme-emacs-version>= (major minor)
+  (let* ((first-dot (string-match "\\." emacs-version))
+	 (esv (substring emacs-version (1+ first-dot)))
+	 (second-dot (string-match "\\." esv)))
+    (let ((emacs-version-major
+	   (string-to-int (substring emacs-version 0 first-dot)))
+	  (emacs-version-minor
+	   (string-to-int (if second-dot
+			      (substring esv 0 second-dot)
+			      esv))))
+      (or (> emacs-version-major major)
+	  (and (= emacs-version-major major)
+	       (>= emacs-version-minor minor))))))
+
 (defun xscheme-evaluation-commands (keymap)
   (define-key keymap "\e\C-x" 'xscheme-send-definition)
   (define-key keymap "\C-x\C-e" 'advertised-xscheme-send-previous-expression)
@@ -84,7 +98,7 @@ Is processed with `substitute-command-keys' first.")
 
 ;;;###autoload
 (defun run-scheme (command-line)
-  "Run an inferior Scheme process.
+  "Run MIT Scheme in an inferior process.
 Output goes to the buffer `*scheme*'.
 With argument, asks for a command line."
   (interactive
@@ -990,10 +1004,18 @@ When called, the current buffer will be the Scheme process-buffer.")
   (rplaca (nthcdr 3 xscheme-runlight) runlight)
   (xscheme-modeline-redisplay))
 
-(defun xscheme-modeline-redisplay ()
+(defun xscheme-modeline-redisplay-1929 ()
+  (force-mode-line-update t))
+
+(defun xscheme-modeline-redisplay-18 ()
   (save-excursion (set-buffer (other-buffer)))
   (set-buffer-modified-p (buffer-modified-p))
   (sit-for 0))
+
+(fset 'xscheme-modeline-redisplay
+      (if (xscheme-emacs-version>= 19 29)
+	  'xscheme-modeline-redisplay-1929
+	  'xscheme-modeline-redisplay-18))
 
 ;;;; Process Filter Operations
 
