@@ -264,7 +264,9 @@ to figure out what is going on in this code.
 (define (adjoin-element predicate element list)
   (declare (integrate  list))
   predicate ; is ignored
-  (cons element (delq element list)))
+  (if (memq element list)
+      list
+      (cons element list)))
 
 (define (set/adjoin set element)
   (spread-set set
