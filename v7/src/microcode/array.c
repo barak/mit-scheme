@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.44 1991/12/20 22:48:36 cph Exp $
+$Id: array.c,v 9.45 1993/04/27 10:28:44 cph Exp $
 
-Copyright (c) 1987-91 Massachusetts Institute of Technology
+Copyright (c) 1987-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1917,7 +1917,7 @@ DEFINE_PRIMITIVE ("SAMPLE-PERIODIC-FUNCTION", Prim_sample_periodic_function, 4, 
     error_bad_range_arg (1);
   PRIMITIVE_RETURN (Result);
 }
-;
+
 double
 hamming (t, length)
      double t, length;
