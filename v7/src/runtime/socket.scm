@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: socket.scm,v 1.10 1997/11/01 19:19:39 cph Exp $
+$Id: socket.scm,v 1.11 1997/11/01 19:21:16 cph Exp $
 
 Copyright (c) 1990-97 Massachusetts Institute of Technology
 
@@ -49,7 +49,7 @@ MIT in each case. |#
 	       (if (default-object? buffer-size) #f buffer-size)
 	       (if (default-object? line-translation) #f line-translation)))
 
-(define (socket-ports channel buffer-size line-translation)
+(define (socket-port channel buffer-size line-translation)
   (let ((buffer-size (or buffer-size 4096))
 	(line-translation (or line-translation 'DEFAULT)))
     (make-generic-i/o-port channel channel
