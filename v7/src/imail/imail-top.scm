@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.259 2001/05/31 19:58:40 cph Exp $
+;;; $Id: imail-top.scm,v 1.260 2001/06/02 05:43:12 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -1653,6 +1653,9 @@ Negative argument means search in reverse."
 (define (maybe-prompt-for-container prompt . options)
   (or (selected-url-string #f)
       (apply prompt-for-container prompt #f options)))
+
+(define (prompt-for-url prompt default . options)
+  (%prompt-for-url prompt default options url-exists?))
 
 (define (prompt-for-folder prompt default . options)
   (%prompt-for-url prompt default options
