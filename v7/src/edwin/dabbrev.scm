@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dabbrev.scm,v 1.1 1992/11/17 22:41:06 cph Exp $
+;;;	$Id: dabbrev.scm,v 1.2 1992/12/01 14:12:44 gjr Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -151,9 +151,10 @@ with the next possible expansion not yet tried."
 					    (current-point)
 					    (buffer-start (current-buffer))))
 		    (do-case (and do-case
-				  (char=? (string-ref expansion 0)
-					  (char-downcase
-					   (string-ref expansion 0))))))
+				  (substring-lower-case?
+				   expansion
+				   1
+				   (string-length expansion)))))
 		;; First put back the original abbreviation with its original
 		;; case pattern.
 		(replace-match abbrev true true)
