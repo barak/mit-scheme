@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.15 2000/04/06 03:27:10 cph Exp $
+;;; $Id: imail-top.scm,v 1.16 2000/04/07 19:50:39 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -91,7 +91,7 @@ May be called with an IMAIL folder URL as argument;
 		(->url (or url-string (ref-variable imail-primary-folder))))
 	       (folder (open-folder url)))
 	  (select-buffer
-	   (or (imail-folder->buffer folder)
+	   (or (imail-folder->buffer folder #f)
 	       (let ((buffer (new-buffer (imail-url->buffer-name url))))
 		 (associate-imail-folder-with-buffer folder buffer)
 		 (select-message folder (first-unseen-message folder))
@@ -115,9 +115,9 @@ May be called with an IMAIL folder URL as argument;
   (buffer-put! buffer 'IMAIL-FOLDER folder)
   (folder-put! folder 'BUFFER buffer))
 
-(define (imail-folder->buffer folder)
+(define (imail-folder->buffer folder error?)
   (or (folder-get folder 'BUFFER #f)
-      (error:bad-range-argument buffer 'IMAIL-FOLDER->BUFFER)))
+      (and error? (error:bad-range-argument folder 'IMAIL-FOLDER->BUFFER))))
 
 (define (selected-folder #!optional error? buffer)
   (let ((buffer
@@ -220,6 +220,7 @@ DEL	Scroll to previous screen of this message.
 \\[imail-edit-current-message]	Edit the current message.  C-c C-c to return to IMAIL."
   (lambda (buffer)
     (buffer-put! buffer 'REVERT-BUFFER-METHOD imail-revert-buffer)
+    (local-set-variable! mode-line-modified "--- " buffer)
     (set-buffer-read-only! buffer)
     (disable-group-undo! (buffer-group buffer))
     (event-distributor/invoke! (ref-variable imail-mode-hook buffer) buffer)))
@@ -407,9 +408,9 @@ With prefix argument N moves backward N messages with these flags."
 	(lambda (delta step direction)
 	  (let loop
 	      ((delta delta)
-	       (message (selected-message))
+	       (msg (selected-message))
 	       (winner #f))
-	    (let ((next (step message predicate)))
+	    (let ((next (step msg predicate)))
 	      (cond ((not next)
 		     (if winner (select-message (selected-folder) winner))
 		     (message "No " direction " " noun))
@@ -419,7 +420,7 @@ With prefix argument N moves backward N messages with these flags."
 		     (loop (- delta 1) next next)))))))))
 
 (define (select-message folder selector #!optional force? full-headers?)
-  (let ((buffer (imail-folder->buffer folder))
+  (let ((buffer (imail-folder->buffer folder #t))
 	(message
 	 (cond ((or (not selector) (message? selector))
 		selector)
@@ -431,9 +432,8 @@ With prefix argument N moves backward N messages with these flags."
 		(error:wrong-type-argument selector "message selector"
 					   'SELECT-MESSAGE))))
 	(full-headers? (if (default-object? full-headers?) #f full-headers?)))
-    (if (and (not (if (default-object? force?) #f force?))
-	     (eq? message (buffer-get buffer 'IMAIL-MESSAGE #f)))
-	(imail-update-mode-line! buffer)
+    (if (not (and (not (if (default-object? force?) #f force?))
+		  (eq? message (buffer-get buffer 'IMAIL-MESSAGE #f))))
 	(begin
 	  (buffer-reset! buffer)
 	  (associate-imail-folder-with-buffer folder buffer)
@@ -453,7 +453,9 @@ With prefix argument N moves backward N messages with these flags."
 		  (guarantee-newline mark))
 		(insert-string "[This folder has no messages in it.]" mark))
 	    (mark-temporary! mark))
-	  (set-buffer-major-mode! buffer (ref-mode-object imail))))))
+	  (set-buffer-point! buffer (buffer-start buffer))
+	  (set-buffer-major-mode! buffer (ref-mode-object imail))))
+    (imail-update-mode-line! buffer)))
 
 (define (selected-message #!optional error? buffer)
   (let ((buffer
@@ -714,18 +716,18 @@ While composing the reply, use \\[mail-yank-original] to yank the
        ,(rfc822-addresses->string
 	 (string->rfc822-addresses
 	  (or resent-reply-to
-	      (get-all-header-field-values message "reply-to" #f)
+	      (get-all-header-field-values message "reply-to")
 	      from))))
       ("CC"
        ,(and cc?
 	     (let ((to
 		    (if resent-reply-to
 			(get-last-header-field-value message "resent-to" #f)
-			(get-all-header-field-values message "to" #f)))
+			(get-all-header-field-values message "to")))
 		   (cc
 		    (if resent-reply-to
 			(get-last-header-field-value message "resent-cc" #f)
-			(get-all-header-field-values message "cc" #f))))
+			(get-all-header-field-values message "cc"))))
 	       (let ((cc
 		      (if (and to cc)
 			  (string-append to ", " cc)
@@ -761,6 +763,17 @@ While composing the reply, use \\[mail-yank-original] to yank the
 	      subject))))))
 
 (define (imail-dont-reply-to addresses)
+  (if (not (ref-variable imail-dont-reply-to-names))
+      (set-variable!
+       imail-dont-reply-to-names
+       (string-append
+	(let ((imail-default-dont-reply-to-names
+	       (ref-variable imail-default-dont-reply-to-names)))
+	  (if imail-default-dont-reply-to-names
+	      (string-append imail-default-dont-reply-to-names "\\|")
+	      ""))
+	(re-quote-string (current-user-name))
+	"\\>")))
   (let ((pattern
 	 (re-compile-pattern
 	  (string-append "\\(.*!\\|\\)\\("
@@ -853,7 +866,7 @@ together with two commands to return to regular IMAIL:
 
 ;;;; Miscellany
 
-(define-command imail-toggle-headers
+(define-command imail-toggle-header
   "Show full message headers if pruned headers currently shown, or vice versa."
   ()
   (lambda ()
