@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/assmd.scm,v 1.1 1990/05/07 04:10:19 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/assmd.scm,v 1.2 1991/06/17 21:20:45 cph Exp $
 $MC68020-Header: assmd.scm,v 1.36 89/08/28 18:33:33 GMT cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
@@ -78,17 +78,25 @@ MIT in each case. |#
 
 ;;; Machine dependent instruction order
 
-(define-integrable (instruction-initial-position block)
-  block					; ignored
-  0)
+(define (instruction-initial-position block)
+  (if (eq? endianness 'LITTLE)
+      0
+      (bit-string-length block)))
 
 (define (instruction-insert! bits block position receiver)
   (let ((l (bit-string-length bits)))
-    (bit-substring-move-right! bits 0 l block position)
-    (receiver (+ position l))))
+    (if (eq? endianness 'LITTLE)
+	(begin
+	  (bit-substring-move-right! bits 0 l block position)
+	  (receiver (+ position l)))
+	(let ((new-position (- position l)))
+	  (bit-substring-move-right! bits 0 l block new-position)
+	  (receiver new-position)))))
 
-(define-integrable instruction-append
-  bit-string-append)
+(define (instruction-append x y)
+  (if (eq? endianness 'LITTLE)
+      (bit-string-append x y)
+      (bit-string-append-reversed x y)))
 
 ;;; end let-syntax
 )

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/dassm3.scm,v 1.1 1990/05/07 04:12:32 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/dassm3.scm,v 1.2 1991/06/17 21:21:03 cph Exp $
 
 Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
 
@@ -280,7 +280,12 @@ MIT in each case. |#
   `(,op ,(extract word 0 26)))
 
 (define (relative-offset word)
-  `(@PCO ,(* 4 (extract-signed word 0 16))))
+  (let ((pco (* 4 (extract-signed word 0 16))))
+    (if disassembler/symbolize-output?
+	`(@PCR ,(let ((absolute (+ *current-offset pco)))
+		  (or (disassembler/lookup-symbol *symbol-table absolute)
+		      absolute)))
+	`(@PCO ,pco))))
 
 (define (disassemble-branch-zero word)
   (let ((conditions (extract word 16 21))

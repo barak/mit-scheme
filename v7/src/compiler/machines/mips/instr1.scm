@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/instr1.scm,v 1.1 1990/05/07 04:13:59 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/instr1.scm,v 1.2 1991/06/17 21:21:28 cph Exp $
 
-Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,9 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; MIPS instruction set
+
+;; Branch-tensioned instructions are in instr2.scm
+;; Floating point instructions are in instr3.scm
 
 (declare (usual-integrations))
 
@@ -234,12 +237,18 @@ MIT in each case. |#
 ; External labels cause the output of GC header and format words
 (define-instruction EXTERNAL-LABEL
   (((? format-word) (@PCR (? label)))
-   (LONG (16 label BLOCK-OFFSET)
-	 (16 format-word UNSIGNED)))
+   (if (eq? endianness 'LITTLE)
+       (LONG (16 label BLOCK-OFFSET)
+	     (16 format-word UNSIGNED))
+       (LONG (16 format-word UNSIGNED)
+	     (16 label BLOCK-OFFSET))))
 
   (((? format-word) (@PCO (? offset)))
-   (LONG (16 offset UNSIGNED)
-	 (16 format-word UNSIGNED))))
+   (if (eq? endianness 'LITTLE)
+       (LONG (16 offset UNSIGNED)
+	     (16 format-word UNSIGNED))
+       (LONG (16 format-word UNSIGNED)
+	     (16 offset UNSIGNED)))))
 
 (define-instruction PC-RELATIVE-OFFSET
   (((? target) (@PCR (? label)))
@@ -300,15 +309,12 @@ MIT in each case. |#
       (LONG (6 15)			; LUI
 	    (5 0)
 	    (5 target)
-	    (16 (adjusted:high offset))
+	    (16 (adjusted:high (- offset 4)))
 	    (6 9)			; ADDIU
 	    (5 target)
 	    (5 target)
-	    (16 (adjusted:low offset) SIGNED))))))
+	    (16 (adjusted:low (- offset 4)) SIGNED))))))
 
 (define-instruction NOP
   (()					; ADDI 0, 0
    (LONG (6 8) (5 0) (5 0) (16 0))))
-
-;; Branch-tensioned instructions are in instr2.scm
-;; Floating point instructions are in instr3.scm

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/lapgen.scm,v 1.3 1990/11/29 02:11:06 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/lapgen.scm,v 1.4 1991/06/17 21:21:40 cph Exp $
 $MC68020-Header: lapgen.scm,v 4.26 90/01/18 22:43:36 GMT cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
@@ -243,18 +243,25 @@ MIT in each case. |#
 
 ;; Handled by VARIABLE-WIDTH in instr1.scm
 
-(define-integrable (fp-load-doubleword offset base target NOP?)
-  (LAP (LWC1 ,(float-register->fpr target)
-	     (OFFSET ,offset ,base))
-       (LWC1 ,(+ (float-register->fpr target) 1)
-	     (OFFSET ,(+ offset 4) ,base))
-       ,@(if NOP? (LAP (NOP)) (LAP))))
+(define (fp-load-doubleword offset base target NOP?)
+  (let* ((least (float-register->fpr target))
+	 (most (+ least 1)))
+    (if (eq? endianness 'LITTLE)
+	(LAP (LWC1 ,least (OFFSET ,offset ,base))
+	     (LWC1 ,most (OFFSET ,(+ offset 4) ,base))
+	     ,@(if NOP? (LAP (NOP)) (LAP)))
+	(LAP (LWC1 ,least (OFFSET ,(+ offset 4) ,base))
+	     (LWC1 ,most (OFFSET ,offset ,base))
+	     ,@(if NOP? (LAP (NOP)) (LAP))))))
 
-(define-integrable (fp-store-doubleword offset base source)
-  (LAP (SWC1 ,(float-register->fpr source)
-	     (OFFSET ,offset ,base))
-       (SWC1 ,(+ (float-register->fpr source) 1)
-	     (OFFSET ,(+ offset 4) ,base))))
+(define (fp-store-doubleword offset base source)
+  (let* ((least (float-register->fpr source))
+	 (most (+ least 1)))
+    (if (eq? endianness 'LITTLE)
+	(LAP (SWC1 ,least (OFFSET ,offset ,base))
+	     (SWC1 ,most (OFFSET ,(+ offset 4) ,base)))
+	(LAP (SWC1 ,least (OFFSET ,(+ offset 4) ,base))
+	     (SWC1 ,most (OFFSET ,offset ,base))))))
 
 (define (load-pc-relative label target)
   ;; Load a pc-relative location's contents into a machine register.

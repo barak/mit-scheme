@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/insmac.scm,v 1.1 1990/05/07 04:13:45 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/insmac.scm,v 1.2 1991/06/17 21:21:18 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -40,30 +40,36 @@ MIT in each case. |#
 
 (syntax-table-define assembler-syntax-table 'DEFINE-SYMBOL-TRANSFORMER
   (macro (name . alist)
-    `(begin
-       (declare (integrate-operator ,name))
-       (define (,name symbol)
-	 (declare (integrate symbol))
-	 (let ((place (assq symbol ',alist)))
-	   (if (null? place)
+    `(BEGIN
+       (DECLARE (INTEGRATE-OPERATOR ,name))
+       (DEFINE (,name SYMBOL)
+	 (DECLARE (INTEGRATE SYMBOL))
+	 (LET ((PLACE (ASSQ SYMBOL ',alist)))
+	   (IF (NULL? PLACE)
 	       #F
-	       (cdr place)))))))
+	       (CDR PLACE)))))))
 
 (syntax-table-define assembler-syntax-table 'DEFINE-TRANSFORMER
   (macro (name value)
-    `(define ,name ,value)))
-
+    `(DEFINE ,name ,value)))
+
 ;;;; Fixed width instruction parsing
 
 (define (parse-instruction first-word tail early?)
-  (cond ((not (null? tail))
-	 (error "parse-instruction: Unknown format" (cons first-word tail)))
-	((eq? (car first-word) 'LONG)
-	 (process-fields (cdr first-word) early?))
-	((eq? (car first-word) 'VARIABLE-WIDTH)
-	 (process-variable-width first-word early?))
-	(else
-	 (error "parse-instruction: Unknown format" first-word))))
+  (if (not (null? tail))
+      (error "parse-instruction: Unknown format" (cons first-word tail)))
+  (let loop ((first-word first-word))
+    (case (car first-word)
+      ((LONG)
+       (process-fields (cdr first-word) early?))
+      ((VARIABLE-WIDTH)
+       (process-variable-width first-word early?))
+      ((IF)
+       `(IF ,(cadr first-word)
+	    ,(loop (caddr first-word))
+	    ,(loop (cadddr first-word))))
+      (else
+       (error "parse-instruction: Unknown format" first-word)))))
 
 (define (process-variable-width descriptor early?)
   (let ((binding (cadr descriptor))
@@ -83,7 +89,7 @@ MIT in each case. |#
 		    ,size
 		    ,@(car clause)))))
 	     clauses)))))
-
+
 (define (process-fields fields early?)
   (expand-fields fields
 		 early?

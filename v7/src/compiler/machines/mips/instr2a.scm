@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/instr2a.scm,v 1.2 1990/11/28 22:10:56 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/instr2a.scm,v 1.3 1991/06/17 21:21:34 cph Exp $
 
 Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
 
@@ -62,7 +62,7 @@ MIT in each case. |#
 	             (6 15)		; LUI
 		     (5 0)
 		     (5 1)
-		     (16 (adjusted:high offset))
+		     (16 (adjusted:high (* (- offset 3) 4)))
 		     (6 1)		; BGEZAL
 		     (5 0)
 		     (5 17)
@@ -70,7 +70,7 @@ MIT in each case. |#
 		     (6 9)		; ADDIU
 		     (5 1)
 		     (5 1)
-		     (16 (adjusted:low offset) SIGNED)
+		     (16 (adjusted:low (* (- offset 3) 4)) SIGNED)
 		     (6 0)		; ADD
 		     (5 1)
 		     (5 31)

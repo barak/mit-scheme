@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rules1.scm,v 1.2 1990/07/22 20:24:55 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rules1.scm,v 1.3 1991/06/17 21:21:59 cph Exp $
 $MC68020-Header: rules1.scm,v 4.33 90/05/03 15:17:28 GMT jinx Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
@@ -249,7 +249,12 @@ MIT in each case. |#
 	  (CHAR->ASCII (OFFSET (REGISTER (? address)) (? offset))))
   (standard-unary-conversion address target
     (lambda (address target)
-      (LAP (LBU ,target (OFFSET ,(* 4 offset) ,address))
+      (LAP (LBU ,target
+		(OFFSET ,(let ((offset (* 4 offset)))
+			   (if (eq? endianness 'LITTLE)
+			       offset
+			       (+ offset 3)))
+			,address))
 	   (NOP)))))
 
 (define-rule statement

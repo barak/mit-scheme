@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rules3.scm,v 1.4 1990/11/28 22:32:23 cph Rel $
-$MC68020-Header: rules3.scm,v 4.26 90/08/21 02:23:26 GMT jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rules3.scm,v 1.5 1991/06/17 21:22:05 cph Exp $
+$MC68020-Header: /scheme/compiler/bobcat/RCS/rules3.scm,v 4.30 1991/05/07 13:45:31 jinx Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -98,6 +98,13 @@ MIT in each case. |#
   continuation				;ignore
   (LAP ,@(clear-map!)
        (BGEZ 0 (@PCR ,(free-uuo-link-label name frame-size)))
+       (NOP)))
+
+(define-rule statement
+  (INVOCATION:GLOBAL-LINK (? frame-size) (? continuation) (? name))
+  continuation				;ignore
+  (LAP ,@(clear-map!)
+       (BGEZ 0 (@PCR ,(global-uuo-link-label name frame-size)))
        (NOP)))				; DELAY SLOT
 
 (define-rule statement
@@ -600,11 +607,10 @@ MIT in each case. |#
 			      n-sections)
   ;; Link all of the top level procedures within the file
   (LAP ,@(load-pc-relative code-block-label regnum:third-arg)
-       (LW ,regnum:assembler-temp ,reg:environment)
+       (LW ,regnum:fourth-arg ,reg:environment)
        ,@(object->address regnum:third-arg)
-       ,@(add-immediate environment-offset regnum:third-arg
-			regnum:second-arg)
-       (SW ,regnum:assembler-temp (OFFSET 0 ,regnum:second-arg))
+       ,@(add-immediate environment-offset regnum:third-arg regnum:second-arg)
+       (SW ,regnum:fourth-arg (OFFSET 0 ,regnum:second-arg))
        ,@(add-immediate free-ref-offset regnum:third-arg regnum:fourth-arg)
        ,@(load-immediate n-sections regnum:first-arg)
        (SW ,regnum:first-arg (OFFSET 16 ,regnum:C-stack-pointer))
@@ -612,13 +618,19 @@ MIT in each case. |#
        ,@(make-external-label (continuation-code-word false)
 			      (generate-label))))
 
-(define (generate/constants-block constants references assignments uuo-links)
+(define (generate/constants-block constants references assignments uuo-links
+				  global-links static-vars)
   (let ((constant-info
 	 (declare-constants 0 (transmogrifly uuo-links)
 	   (declare-constants 1 references
 	     (declare-constants 2 assignments
-	       (declare-constants false constants
-		 (cons false (LAP))))))))
+	       (declare-constants 3 (transmogrifly global-links)
+		 (declare-constants false
+		     (map (lambda (pair)
+			    (cons false (cdr pair)))
+			  static-vars)
+		   (declare-constants false constants
+		     (cons false (LAP))))))))))
     (let ((free-ref-label (car constant-info))
 	  (constants-code (cdr constant-info))
 	  (debugging-information-label (allocate-constant-label))
@@ -626,7 +638,8 @@ MIT in each case. |#
 	  (n-sections
 	   (+ (if (null? uuo-links) 0 1)
 	      (if (null? references) 0 1)
-	      (if (null? assignments) 0 1))))
+	      (if (null? assignments) 0 1)
+	      (if (null? global-links) 0 1))))
       (values
        (LAP ,@constants-code
 	    ;; Place holder for the debugging info filename

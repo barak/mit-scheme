@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/dassm2.scm,v 1.1 1990/05/07 04:12:17 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/dassm2.scm,v 1.2 1991/06/17 21:20:56 cph Exp $
 $MC68020-Header: dassm2.scm,v 4.16 89/12/11 06:16:42 GMT cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -194,18 +194,24 @@ MIT in each case. |#
 	     (let ((contents (read-bits (- offset 2) 16)))
 	       (if (bit-string-clear! contents 0)
 		   (let ((offset
-			  (- offset (* 2 (bit-string->unsigned-integer contents)))))
+			  (- offset
+			     (* 2 (bit-string->unsigned-integer contents)))))
 		     (and (positive? offset)
 			  (loop offset)))
-		   (= offset (* 2 (bit-string->unsigned-integer contents)))))))))
+		   (= offset
+		      (* 2 (bit-string->unsigned-integer contents)))))))))
 
 (define (make-word bit-string)
   `(UWORD ,(bit-string->unsigned-integer bit-string)))
 
 (define (make-external-label bit-string)
-  `(EXTERNAL-LABEL
-    (FORMAT ,(extract bit-string 0 16))
-    (@PCO ,(* 4 (extract-signed bit-string 16 32)))))
+  (if (eq? endianness 'LITTLE)
+      `(EXTERNAL-LABEL
+	(FORMAT ,(extract bit-string 0 16))
+	(@PCO ,(* 2 (extract bit-string 16 32))))
+      `(EXTERNAL-LABEL
+	(FORMAT ,(extract bit-string 16 32))
+	(@PCO ,(* 2 (extract bit-string 0 16))))))
 
 #|
 ;;; 68k version
@@ -243,4 +249,3 @@ MIT in each case. |#
 (define (invalid-instruction)
   (set! *valid? false)
   false)
-
