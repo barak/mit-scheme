@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.68 2000/03/17 18:08:35 cph Exp $
+@comment $Id: user.texinfo,v 1.69 2000/04/04 18:20:30 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -27,9 +27,9 @@ Free Documentation License".
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.68
+@subtitle Edition 1.69
 @subtitle for Scheme Release 7.5
-@subtitle 17 March 2000
+@subtitle 4 April 2000
 @author by Stephen Adams
 @author Chris Hanson
 @author and the MIT Scheme Team
@@ -4701,6 +4701,13 @@ the Algorithmic Language Scheme}.
 These are the changes since release 7.5.0:
 
 @itemize @bullet
+@item
+Release 7.5.6 has a number of changes mostly having to do with CVS:
+sources converted from RCS to CVS; change logs converted to GNU
+ChangeLog format; VC now support CVS; VC program logic cleaned up;
+several bugs fixed in abbrev support; new procedures convert times
+to/from ISO C ctime() format.
+
 @item
 Release 7.5.5 changes the implementation of @code{sort} (and
 @code{merge-sort}) when applied to lists: previously this procedure was
