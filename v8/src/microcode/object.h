@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/object.h,v 9.24 1987/07/23 21:49:17 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/object.h,v 9.25 1987/10/05 18:35:46 jinx Exp $ */
 
 /* This file contains definitions pertaining to the C view of 
    Scheme pointers: widths of fields, extraction macros, pre-computed
@@ -185,6 +185,7 @@ typedef long relocation_type;	/* Used to relocate pointers on fasload */
 #define PAIR_P(object) ((OBJECT_TYPE (object)) == TC_LIST)
 #define WEAK_PAIR_P(object) ((OBJECT_TYPE (object)) == TC_WEAK_CONS)
 #define VECTOR_P(object) ((OBJECT_TYPE (object)) == TC_VECTOR)
+#define REFERENCE_TRAP_P(object) ((OBJECT_TYPE (object)) == TC_REFERENCE_TRAP)
 
 #define NON_MARKED_VECTOR_P(object)					\
   ((OBJECT_TYPE (object)) == TC_NON_MARKED_VECTOR)

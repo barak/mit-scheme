@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/lookup.h,v 9.38 1987/07/07 02:40:24 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/lookup.h,v 9.39 1987/10/05 18:35:30 jinx Rel $ */
 
 /* Macros and declarations for the variable lookup code. */
 
@@ -129,6 +129,16 @@ extern Pointer
 #define remove_lock(ignore)
 
 #endif
+
+/* This is provided as a separate macro so that it can be made
+   atomic if necessary.
+ */
+
+#define update_lock(handle, cell)					\
+{									\
+  remove_lock(handle);							\
+  setup_lock(handle, cell);						\
+}
 
 #ifndef Future_Variable_Splice
 #define Future_Variable_Splice(Vbl, Ofs, Val)

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.31 1987/07/15 22:08:05 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.32 1987/10/05 18:32:48 jinx Exp $
  *
  * This file contains the heart of the Scheme Scode
  * interpreter
@@ -411,7 +411,8 @@ Do_Expression:
 Eval_Non_Trapping:
   Eval_Ucode_Hook();
   switch (Type_Code(Fetch_Expression()))
-  { case TC_BIG_FIXNUM:         /* The self evaluating items */
+  {
+    case TC_BIG_FIXNUM:         /* The self evaluating items */
     case TC_BIG_FLONUM:
     case TC_CHARACTER_STRING:
     case TC_CHARACTER:
@@ -422,7 +423,8 @@ Eval_Non_Trapping:
     case TC_ENVIRONMENT:
     case TC_EXTENDED_PROCEDURE:
     case TC_FIXNUM:
-    case TC_HUNK3:
+    case TC_HUNK3_A:
+    case TC_HUNK3_B:
     case TC_INTERNED_SYMBOL:
     case TC_LIST:
     case TC_NON_MARKED_VECTOR:
@@ -700,11 +702,6 @@ lookup_end_restart:
 
 /* Interpret(), continued */
 
-	case TRAP_NOP:
-	  Val = Vector_Ref(Val, TRAP_EXTRA);
-	  Set_Time_Zone(Zone_Working);
-	  goto Pop_Return;
-
 	case TRAP_UNBOUND:
 	  temp = ERR_UNBOUND_VARIABLE;
 	  break;
@@ -714,7 +711,7 @@ lookup_end_restart:
 	  break;
 
 	default:
-	  temp = ERR_BROKEN_COMPILED_VARIABLE;
+	  temp = ERR_ILLEGAL_REFERENCE_TRAP;
 	  break;
       }
 
@@ -871,20 +868,23 @@ Pop_Return:
       define_compiler_restart (RC_COMP_SAFE_REFERENCE_RESTART,
 			       comp_safe_reference_restart)
 
-      define_compiler_restart (RC_COMP_CACHE_VARIABLE_RESTART,
-			       comp_cache_variable_restart)
+      define_compiler_restart (RC_COMP_CACHE_LOOKUP_RESTART,
+			       comp_cache_lookup_restart)
 
-      define_compiler_restart (RC_COMP_REFERENCE_TRAP_RESTART,
-			       comp_reference_trap_restart)
+      define_compiler_restart (RC_COMP_LOOKUP_TRAP_RESTART,
+			       comp_lookup_trap_restart)
+
+      define_compiler_restart (RC_COMP_CACHE_ASSIGNMENT_RESTART,
+			       comp_cache_assignment_restart)
 
       define_compiler_restart (RC_COMP_ASSIGNMENT_TRAP_RESTART,
 			       comp_assignment_trap_restart)
 
-      define_compiler_restart (RC_COMP_UUO_LINK_RESTART,
-			       comp_uuo_link_restart)
+      define_compiler_restart (RC_COMP_CACHE_OPERATOR_RESTART,
+			       comp_cache_operator_restart)
 
-      define_compiler_restart (RC_COMP_UUO_LINK_TRAP_RESTART,
-			       comp_uuo_link_trap_restart)
+      define_compiler_restart (RC_COMP_OP_REF_TRAP_RESTART,
+			       comp_op_ref_trap_restart)
 
       define_compiler_restart (RC_COMP_CACHE_REF_APPLY_RESTART,
 			       comp_cache_ref_apply_restart)
@@ -1029,12 +1029,18 @@ external_assignment_return:
 
 	case TRAP_COMPILER_CACHED:
 	{
-	  Pointer extension;
+	  Pointer extension, references;
 
 	  extension = Fast_Vector_Ref(Val, TRAP_EXTRA);
-	  if (Fast_Vector_Ref(extension, TRAP_EXTENSION_UUO_LIST) != NIL)
+	  references = Fast_Vector_Ref(extension, TRAP_EXTENSION_REFERENCES);
+
+	  if (Fast_Vector_Ref(references, TRAP_REFERENCES_OPERATOR) != NIL)
 	  {
-	    /* No need to recompile, pass the fake variable. */
+
+	    /* There are uuo links.
+	       wimp out and let deep_assignment_end handle it.
+	     */
+
 	    remove_lock(set_serializer);
 	    temp = deep_assignment_end(cell,
 				       fake_variable_object,
@@ -1043,6 +1049,7 @@ external_assignment_return:
 	    goto external_assignment_return;
 	  }
 	  cell = Nth_Vector_Loc(extension, TRAP_EXTENSION_CELL);
+	  update_lock(set_serializer, cell);
 	  goto assignment_end_after_lock;
 	}	  
 
@@ -1064,14 +1071,9 @@ external_assignment_return:
 	  Val = bogus_unassigned;
 	  goto normal_assignment_done;
 
-	case TRAP_NOP:
-	  remove_lock(set_serializer);
-	  temp = ERR_BAD_FRAME;
-	  break;
-
 	default:
 	  remove_lock(set_serializer);
-	  temp = ERR_BROKEN_COMPILED_VARIABLE;
+	  temp = ERR_ILLEGAL_REFERENCE_TRAP;
 	  break;
       }
 

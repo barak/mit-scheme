@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/ppband.c,v 9.26 1987/07/01 17:55:37 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/ppband.c,v 9.27 1987/10/05 18:30:44 jinx Exp $
  *
  * Dumps Scheme FASL in user-readable form .
  */
@@ -221,7 +221,8 @@ Display(Location, Type, The_Datum)
     case TC_ACCESS: printf("[ACCESS "); break;
     case TC_DEFINITION: printf("[DEFINITION "); break;
     case TC_ASSIGNMENT: printf("[ASSIGNMENT "); break;
-    case TC_HUNK3: printf("[HUNK3 "); break;
+    case TC_HUNK3_A: printf("[HUNK3_A "); break;
+    case TC_HUNK3_B: printf("[HUNK3_B "); break;
     case TC_IN_PACKAGE: printf("[IN-PACKAGE "); break;
     case TC_COMBINATION: printf("[COMBINATION "); break;
     case TC_COMPILED_EXPRESSION: printf("[COMPILED-EXPRESSION "); break;

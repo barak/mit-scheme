@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.24 1987/04/16 02:20:42 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.25 1987/10/05 18:31:47 jinx Rel $
  *
  * Utilities to help with debugging
  */
@@ -40,18 +40,23 @@ MIT in each case. */
 #include "trap.h"
 #include "lookup.h"
 
-void Show_Pure()
-{ Pointer *Obj_Address;
+void
+Show_Pure()
+{
+  Pointer *Obj_Address;
   long Pure_Size, Total_Size;
 
   Obj_Address = Constant_Space;
   while (true)
-  { if (Obj_Address > Free_Constant)
-    { printf("Past end of area.\n");
+  {
+    if (Obj_Address > Free_Constant)
+    {
+      printf("Past end of area.\n");
       return;
     }
     if (Obj_Address == Free_Constant)
-    { printf("Done.\n");
+    {
+      printf("Done.\n");
       return;
     }
     Pure_Size = Get_Integer(*Obj_Address);
@@ -59,39 +64,52 @@ void Show_Pure()
     printf("0x%x: pure=0x%x, total=0x%x\n",
            Obj_Address, Pure_Size, Total_Size);
     if (Type_Code(*Obj_Address) != TC_MANIFEST_SPECIAL_NM_VECTOR)
-    { printf("Missing initial SNMV.\n");
+    {
+      printf("Missing initial SNMV.\n");
       return;
     }
     if (Type_Code(Obj_Address[1]) != PURE_PART)
+    {
       printf("Missing subsequent pure header.\n");
+    }
     if (Type_Code(Obj_Address[Pure_Size-1]) !=
         TC_MANIFEST_SPECIAL_NM_VECTOR)
-    { printf("Missing internal SNMV.\n");
+    {
+      printf("Missing internal SNMV.\n");
       return;
     }
     if (Type_Code(Obj_Address[Pure_Size]) != CONSTANT_PART)
-    { printf("Missing constant header.\n");
+    {
+      printf("Missing constant header.\n");
       return;
     }
     if (Get_Integer(Obj_Address[Pure_Size]) != Pure_Size)
+    {
       printf("Pure size mismatch 0x%x.\n",
 	     Get_Integer(Obj_Address[Pure_Size]));
+    }
     if (Type_Code(Obj_Address[Total_Size-1]) != 
         TC_MANIFEST_SPECIAL_NM_VECTOR)
-    { printf("Missing ending SNMV.\n");
+    {
+      printf("Missing ending SNMV.\n");
       return;
     }
     if (Type_Code(Obj_Address[Total_Size]) != END_OF_BLOCK)
-    { printf("Missing ending header.\n");
+    {
+      printf("Missing ending header.\n");
       return;
     }
     if (Get_Integer(Obj_Address[Total_Size]) != Total_Size)
+    {
       printf("Total size mismatch 0x%x.\n",
              Get_Integer(Obj_Address[Total_Size]));
+    }
     Obj_Address += Total_Size+1;
 #ifdef FLOATING_ALIGNMENT
     while (*Obj_Address == Make_Non_Pointer(TC_MANIFEST_NM_VECTOR, 0))
+    {
       Obj_Address += 1;
+    }
 #endif
   }
 }
@@ -376,16 +394,19 @@ SPrint:
 /* Do_Printing, continued */
 
     case TC_FUTURE: printf("[FUTURE"); break;
-    case TC_HUNK3: printf("[TRIPLE"); break;
+    case TC_HUNK3_A: printf("[TRIPLE_A"); break;
+    case TC_HUNK3_B: printf("[TRIPLE_B"); break;
     case TC_IN_PACKAGE: printf("[IN_PACKAGE"); break;
+
     case TC_LAMBDA:
-      if (Detailed) printf("[LAMBDA (");
-      Do_Printing(
-        Vector_Ref(
-          Vector_Ref(Expr, LAMBDA_FORMALS),
-	  1), false);
-      if (Detailed) printf(") 0x%x]", Temp_Address);
+      if (Detailed)
+	printf("[LAMBDA (");
+      Do_Printing(Vector_Ref(Vector_Ref(Expr, LAMBDA_FORMALS), 1),
+		  false);
+      if (Detailed)
+	printf(") 0x%x]", Temp_Address);
       return;
+
     case TC_LEXPR: printf("[LEXPR"); break;
     case TC_MANIFEST_NM_VECTOR: printf("[MANIFEST_NM_VECTOR"); break;
     case TC_MANIFEST_SPECIAL_NM_VECTOR:

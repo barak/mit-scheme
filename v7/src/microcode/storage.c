@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.35 1987/06/23 22:01:53 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.36 1987/10/05 18:36:30 jinx Exp $
 
 This file defines the storage for global variables for
 the Scheme Interpreter. */
@@ -65,8 +65,6 @@ Pointer
 			   This is only meaningful while in compiled code.
 			   *** This must be changed when stacklets are used. ***
 			 */
-  compiler_utilities,	/* Utility block in constant space needed by the compiled
-			   code interface. */
  Swap_Temp;		/* Used by Swap_Pointers in default.h */
 
 long IntCode,		/* Interrupts requesting */
@@ -233,17 +231,18 @@ char *Return_Names[] = {
 /* 0x4F */		"COMPILER_DEFINITION_RESTART",
 /* 0x50 */		"COMPILER_LEXPR_GC_RESTART",
 /* 0x51 */		"COMPILER_SAFE_REFERENCE_RESTART",
-/* 0x52 */		"COMPILER_CACHE_VARIABLE_RESTART",
-/* 0x53 */		"COMPILER_REFERENCE_TRAP_RESTART",
+/* 0x52 */		"COMPILER_CACHE_LOOKUP_RESTART",
+/* 0x53 */		"COMPILER_LOOKUP_TRAP_RESTART",
 /* 0x54 */		"COMPILER_ASSIGNMENT_TRAP_RESTART",
-/* 0x55 */		"COMPILER_UUO_LINK_RESTART",
-/* 0x56 */		"COMPILER_UUO_LINK_TRAP_RESTART",
+/* 0x55 */		"COMPILER_CACHE_OPERATOR_RESTART",
+/* 0x56 */		"COMPILER_OPERATOR_REFERENCE_TRAP_RESTART",
 /* 0x57 */		"COMPILER_CACHE_REFERENCE_APPLY_RESTART",
 /* 0x58 */		"COMPILER_SAFE_REFERENCE_TRAP_RESTART",
-/* 0x59 */		"COMPILER_UNASSIGNED_P_TRAP_RESTART"
+/* 0x59 */		"COMPILER_UNASSIGNED_P_TRAP_RESTART",
+/* 0x60 */		"COMPILER_CACHE_ASSIGNMENT_RESTART"
 };
 
-#if (MAX_RETURN_CODE != 0x59)
+#if (MAX_RETURN_CODE != 0x60)
 /* Cause an error */
 #include "Returns.h and storage.c are inconsistent -- Names Table"
 #endif

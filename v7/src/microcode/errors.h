@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/errors.h,v 9.24 1987/04/03 00:11:24 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/errors.h,v 9.25 1987/10/05 18:32:03 jinx Rel $
  *
  * Error and termination code declarations.  This must correspond
  * to UTABMD.SCM
@@ -98,8 +98,10 @@ MIT in each case. */
 #define ERR_COMPILED_CODE_ERROR			0x31
 #define ERR_FLOATING_OVERFLOW			0x32
 #define ERR_UNIMPLEMENTED_PRIMITIVE		0x33
+#define ERR_ILLEGAL_REFERENCE_TRAP		0x34
+#define ERR_BROKEN_VARIABLE_CACHE		0x35
 
-#define MAX_ERROR				0x33
+#define MAX_ERROR				0x35
 
 /* Termination codes: the interpreter halts on these */
 

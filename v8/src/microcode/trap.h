@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/trap.h,v 9.38 1987/05/29 02:24:53 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/trap.h,v 9.39 1987/10/05 18:36:52 jinx Rel $ */
 
 /* Kinds of traps:
 
@@ -51,6 +51,8 @@ MIT in each case. */
 #define TRAP_UNBOUND_DANGEROUS			3
 #define TRAP_ILLEGAL				4
 #define TRAP_ILLEGAL_DANGEROUS			5
+#define TRAP_EXPENSIVE				6
+#define TRAP_EXPENSIVE_DANGEROUS		7
 
 /* TRAP_MAX_IMMEDIATE is defined in const.h */
 
@@ -63,15 +65,18 @@ MIT in each case. */
 #define TRAP_COMPILER_CACHED			14
 #define TRAP_COMPILER_CACHED_DANGEROUS		15
 
+/* These MUST be distinct */
+
 #define TRAP_EXTENSION_TYPE			TC_QUAD
+#define TRAP_REFERENCES_TYPE			TC_HUNK3
 
 /* Trap utilities */
 
 #define get_trap_kind(variable, what)					\
 {									\
-  variable = Datum(what);						\
+  variable = OBJECT_DATUM(what);					\
   if (variable > TRAP_MAX_IMMEDIATE)					\
-    variable = Datum(Vector_Ref(what, TRAP_TAG));			\
+    variable = OBJECT_DATUM(Vector_Ref(what, TRAP_TAG));		\
 }
 
 /* Common constants */
@@ -83,6 +88,8 @@ MIT in each case. */
 #define DANGEROUS_UNBOUND_OBJECT	Make_Non_Pointer(TC_REFERENCE_TRAP, TRAP_UNBOUND_DANGEROUS)
 #define ILLEGAL_OBJECT			Make_Non_Pointer(TC_REFERENCE_TRAP, TRAP_ILLEGAL)
 #define DANGEROUS_ILLEGAL_OBJECT	Make_Non_Pointer(TC_REFERENCE_TRAP, TRAP_ILLEGAL_DANGEROUS)
+#define EXPENSIVE_OBJECT		Make_Non_Pointer(TC_REFERENCE_TRAP, TRAP_EXPENSIVE)
+#define DANGEROUS_EXPENSIVE_OBJECT	Make_Non_Pointer(TC_REFERENCE_TRAP, TRAP_EXPENSIVE_DANGEROUS)
 #else
 #define UNASSIGNED_OBJECT		0x32000000
 #define DANGEROUS_UNASSIGNED_OBJECT	0x32000001
@@ -90,11 +97,14 @@ MIT in each case. */
 #define DANGEROUS_UNBOUND_OBJECT	0x32000003
 #define ILLEGAL_OBJECT			0x32000004
 #define DANGEROUS_ILLEGAL_OBJECT	0x32000005
+#define EXPENSIVE_OBJECT		0x32000006
+#define DANGEROUS_EXPENSIVE_OBJECT	0x32000007
 #endif
 
 #define NOP_OBJECT			Make_Unsigned_Fixnum(TRAP_NOP)
 #define DANGEROUS_OBJECT		Make_Unsigned_Fixnum(TRAP_DANGEROUS)
 #define REQUEST_RECACHE_OBJECT		DANGEROUS_ILLEGAL_OBJECT
+#define EXPENSIVE_ASSIGNMENT_OBJECT	EXPENSIVE_OBJECT
 
 #if (TC_REFERENCE_TRAP != 0x32)
 #include "error: trap.h and types.h are inconsistent"

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/types.h,v 9.23 1987/06/05 17:23:11 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/types.h,v 9.24 1987/10/05 18:37:00 jinx Exp $
  *
  * Type code definitions, numerical order
  *
@@ -69,11 +69,11 @@ MIT in each case. */
 #define TC_INTERNED_SYMBOL		0x1D
 #define TC_CHARACTER_STRING		0x1E
 #define TC_ACCESS			0x1F
-/* UNUSED				0x20 */ /* Used to be EXTENDED_FIXNUM. */
+#define TC_HUNK3_A			0x20 /* Used to be EXTENDED_FIXNUM. */
 #define TC_DEFINITION			0x21
 #define TC_BROKEN_HEART			0x22
 #define TC_ASSIGNMENT			0x23
-#define TC_HUNK3			0x24
+#define TC_HUNK3_B			0x24
 #define TC_IN_PACKAGE			0x25
 #define TC_COMBINATION			0x26
 #define TC_MANIFEST_NM_VECTOR		0x27
@@ -110,3 +110,4 @@ MIT in each case. */
 #define TC_BIT_STRING			TC_VECTOR_1B
 #define TC_VECTOR_8B			TC_CHARACTER_STRING
 #define TC_ADDRESS			TC_FIXNUM
+#define TC_HUNK3			TC_HUNK3_B

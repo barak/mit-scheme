@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.28 1987/09/21 21:56:03 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.29 1987/10/05 18:32:24 jinx Exp $
  *
  * This file contains the macros for use in code which does GC-like
  * loops over memory.  It is only included in a few files, unlike
@@ -115,7 +115,8 @@ MIT in each case. */
 #define case_Triple					\
  case TC_COMBINATION_2:					\
  case TC_EXTENDED_LAMBDA:				\
- case TC_HUNK3:						\
+ case TC_HUNK3_A:					\
+ case TC_HUNK3_B:					\
  case TC_CONDITIONAL:					\
  case TC_SEQUENCE_3:					\
  case TC_PCOMB2

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sdata.h,v 9.24 1987/05/29 02:24:18 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sdata.h,v 9.25 1987/10/05 18:36:16 jinx Exp $
  *
  * Description of the user data objects.  This should parallel the
  * file SDATA.SCM in the runtime system.
@@ -245,9 +245,15 @@ MIT in each case. */
 /* HUNK3
  * User object like a CONS, but with 3 slots rather than 2.
  */
-#define HUNK_CXR0		0
-#define HUNK_CXR1		1
-#define HUNK_CXR2		2
+#define HUNK3_CXR0		0
+#define HUNK3_CXR1		1
+#define HUNK3_CXR2		2
+
+/* Old code uses these */
+
+#define HUNK_CXR0		HUNK3_CXR0
+#define HUNK_CXR1		HUNK3_CXR1
+#define HUNK_CXR2		HUNK3_CXR2
 
 /* INTERNED_SYMBOL
  * A symbol, such as the result of evaluating (QUOTE A).  Some
@@ -347,13 +353,18 @@ MIT in each case. */
  */
 
 #define TRAP_EXTENSION_CELL			HUNK4_CXR0
-#define TRAP_EXTENSION_CACHE_LIST		HUNK4_CXR1
-#define TRAP_EXTENSION_UUO_LIST			HUNK4_CXR2
-#define TRAP_EXTENSION_NAME			HUNK4_CXR3
+#define TRAP_EXTENSION_NAME			HUNK4_CXR1
+#define TRAP_EXTENSION_CLONE			HUNK4_CXR2
+#define TRAP_EXTENSION_REFERENCES		HUNK4_CXR3
 
 /* Aliases */
-#define TRAP_EXTENSION_BLOCK			TRAP_EXTENSION_CACHE_LIST
-#define TRAP_EXTENSION_OFFSET			TRAP_EXTENSION_UUO_LIST
+
+#define TRAP_EXTENSION_BLOCK			TRAP_EXTENSION_CLONE
+#define TRAP_EXTENSION_OFFSET			TRAP_EXTENSION_REFERENCES
+
+#define TRAP_REFERENCES_LOOKUP			HUNK3_CXR0
+#define TRAP_REFERENCES_ASSIGNMENT		HUNK3_CXR1
+#define TRAP_REFERENCES_OPERATOR		HUNK3_CXR2
 
 /* RETURN_CODE
  * Represents an address where computation is to continue.  These can be

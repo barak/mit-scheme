@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/fhooks.c,v 9.24 1987/06/18 21:15:25 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/fhooks.c,v 9.25 1987/10/05 18:32:13 jinx Rel $
  *
  * This file contains hooks and handles for the new fluid bindings
  * scheme for multiprocessors.
@@ -126,11 +126,8 @@ Pointer
     case TRAP_UNASSIGNED:
       return cell;
 
-    case TRAP_NOP:
-      Primitive_Error(ERR_BAD_FRAME);
-
     default:
-      Primitive_Error(ERR_BROKEN_COMPILED_VARIABLE);
+      Primitive_Error(ERR_ILLEGAL_REFERENCE_TRAP);
   }
 }
 
@@ -158,7 +155,6 @@ new_fluid_binding_restart:
     get_trap_kind(trap_kind, trap);
     switch(trap_kind)
     {
-      case TRAP_NOP:
       case TRAP_DANGEROUS:
         Vector_Set(trap,
 		   TRAP_TAG,
@@ -188,11 +184,12 @@ new_fluid_binding_restart:
       case TRAP_COMPILER_CACHED_DANGEROUS:
 	cell = Nth_Vector_Loc(Fast_Vector_Ref(*cell, TRAP_EXTRA),
 			      TRAP_EXTENSION_CELL);
+	update_lock(set_serializer, cell);
 	goto new_fluid_binding_restart;
 
       default:
 	remove_lock(set_serializer);
-	Primitive_Error(ERR_BROKEN_COMPILED_VARIABLE);
+	Primitive_Error(ERR_ILLEGAL_REFERENCE_TRAP);
     }
   }
 

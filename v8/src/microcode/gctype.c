@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/gctype.c,v 9.23 1987/06/05 20:56:37 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/gctype.c,v 9.24 1987/10/05 18:32:37 jinx Exp $
  *
  * This file contains the table which maps between Types and
  * GC Types.
@@ -74,11 +74,11 @@ int GC_Type_Map[MAX_SAFE_TYPE + 1] = {
     GC_Pair,			/* TC_INTERNED_SYMBOL */
     GC_Vector,			/* TC_CHARACTER_STRING,TC_VECTOR_8B */
     GC_Pair,			/* TC_ACCESS */
-    GC_Undefined,		/* 0x20 */
+    GC_Triple,			/* TC_HUNK3_A */
     GC_Pair,			/* TC_DEFINITION */
     GC_Special,			/* TC_BROKEN_HEART */
     GC_Pair,			/* TC_ASSIGNMENT */
-    GC_Triple,			/* TC_HUNK3 */
+    GC_Triple,			/* TC_HUNK3_B */
     GC_Pair,			/* TC_IN_PACKAGE */
 
 /* GC_Type_Map continues on next page */
