@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comint.scm,v 1.11 1991/11/04 20:50:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comint.scm,v 1.12 1992/01/23 20:59:31 cph Exp $
 
-Copyright (c) 1991 Massachusetts Institute of Technology
+Copyright (c) 1991-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -376,7 +376,7 @@ comint-prompt-regexp."
 	   (re-match-forward (ref-variable comint-prompt-regexp)
 			     start
 			     (group-end mark))))
-      (if (mark<= mark (line-end start 0))
+      (if (and mark (mark<= mark (line-end start 0)))
 	  mark
 	  start))))
 
