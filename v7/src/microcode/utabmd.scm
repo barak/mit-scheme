@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.63 1992/07/21 04:27:49 cph Exp $
+;;; $Id: utabmd.scm,v 9.64 1992/11/10 03:05:43 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987-92 Massachusetts Institute of Technology
 ;;;
@@ -573,10 +573,6 @@
 	       TRAP				;19
 	       BAD-BACK-OUT			;20
 	       ))
-
-(vector-set! (get-fixed-objects-vector)
-	     23 ;(fixed-objects-vector-slot 'MICROCODE-TERMINATION-PROCEDURES)
-	     #())
 
 ;;; [] System-call names
 
@@ -702,4 +698,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.63 1992/07/21 04:27:49 cph Exp $"
+"$Id: utabmd.scm,v 9.64 1992/11/10 03:05:43 cph Exp $"
