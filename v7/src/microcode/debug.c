@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.36 1990/08/07 23:33:31 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.37 1990/08/16 08:42:15 jinx Rel $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -736,6 +736,14 @@ Back_Trace (where)
   Old_Stack = Stack_Pointer;
   while (true)
   {
+    if ((STACK_LOCATIVE_DIFFERENCE (Stack_Top, (STACK_LOC (0)))) <= 0)
+    {
+      if ((STACK_LOC (0)) == Old_Stack)
+	printf ("\n[Invalid stack pointer.]\n");
+      else
+	printf ("\n[Stack ends abruptly.]\n");
+      break;
+    }
     if (Return_Hook_Address == (STACK_LOC (0)))
     {
       Temp = (STACK_POP ());
