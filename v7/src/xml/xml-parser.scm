@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.25 2003/07/25 20:37:17 cph Exp $
+$Id: xml-parser.scm,v 1.26 2003/07/25 23:05:57 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -439,7 +439,7 @@ USA.
   (*parser
    (alt parse-char-reference
 	(with-pointer p
-	  (transform (lambda (v) (dereference-entity (vector-ref v 0) #t p))
+	  (transform (lambda (v) (dereference-entity (vector-ref v 0) #f p))
 	    parse-entity-reference-name)))))
 
 (define parse-reference-deferred
@@ -585,7 +585,7 @@ USA.
 				       (cons (get-output-string port) result)))
 				  (let ((value
 					 (vector-ref
-					  (dereference-entity name #f p)
+					  (dereference-entity name #t p)
 					  0)))
 				    (if (string? value)
 					(expand-entity-value name p
@@ -705,7 +705,7 @@ USA.
 
 ;;;; General parsed entities
 
-(define (dereference-entity name expand? p)
+(define (dereference-entity name in-attribute? p)
   (if (eq? *general-entities* 'STOP)
       (vector (make-xml-entity-ref name))
       (begin
@@ -717,23 +717,25 @@ USA.
 		(if (xml-unparsed-!entity? entity)
 		    (perror p "Reference to unparsed entity" name))
 		(let ((value (xml-!entity-value entity)))
-		  (if (and (pair? value)
-			   (string? (car value))
-			   (null? (cdr value)))
-		      (if expand?
-			  (expand-entity-value-string name (car value) p)
-			  (vector (car value)))
-		      (begin
-			(if (or *standalone?* *internal-dtd?*)
-			    (perror p
-				    (string-append
-				     "Reference to "
-				     (if (xml-external-id? value)
-					 "externally"
-					 "partially")
-				     "-defined entity")
-				    name))
-			(vector (make-xml-entity-ref name))))))
+		  (cond ((and (pair? value)
+			      (string? (car value))
+			      (null? (cdr value)))
+			 (if in-attribute?
+			     (vector (car value))
+			     (expand-entity-value-string name (car value) p)))
+			((xml-external-id? value)
+			 (begin
+			   (if in-attribute?
+			       (perror
+				p
+				"Reference to external entity in attribute"
+				name))
+			   (vector (make-xml-entity-ref name))))
+			(else
+			 (if (or *standalone?* *internal-dtd?*)
+			     (perror p "Reference to partially-defined entity"
+				     name))
+			 (vector (make-xml-entity-ref name))))))
 	      (begin
 		(if (or *standalone?* *internal-dtd?*)
 		    (perror p "Reference to undefined entity" name))
