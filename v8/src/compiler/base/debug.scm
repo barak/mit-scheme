@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: debug.scm,v 1.1 1994/11/19 02:02:36 adams Exp $
+$Id: debug.scm,v 1.2 1995/04/26 01:53:25 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -144,96 +144,3 @@ MIT in each case. |#
 (define procedure-queue)
 (define procedures-located)
 
-(define (show-fg)
-  (fluid-let ((procedure-queue (make-queue))
-	      (procedures-located '()))
-    (write-string "\n---------- Expression ----------")
-    (fg/print-object *root-expression*)
-    (with-new-node-marks
-     (lambda ()
-       (fg/print-entry-node (expression-entry-node *root-expression*))
-       (queue-map!/unsafe procedure-queue
-	 (lambda (procedure)
-	   (if (procedure-continuation? procedure)
-	       (write-string "\n\n---------- Continuation ----------")
-	       (write-string "\n\n---------- Procedure ----------"))
-	   (fg/print-object procedure)
-	   (fg/print-entry-node (procedure-entry-node procedure))))))
-    (write-string "\n\n---------- Blocks ----------")
-    (fg/print-blocks (expression-block *root-expression*))))
-
-(define (show-fg-node node)
-  (fluid-let ((procedure-queue false))
-    (with-new-node-marks
-     (lambda ()
-       (fg/print-entry-node
-	(let ((node (->tagged-vector node)))
-	  (if (procedure? node)
-	      (procedure-entry-node node)
-	      node)))))))
-
-(define (fg/print-entry-node node)
-  (if node
-      (fg/print-node node)))
-
-(define (fg/print-object object)
-  (newline)
-  (po object))
-
-(define (fg/print-blocks block)
-  (fg/print-object block)
-  (for-each fg/print-object (block-bound-variables block))
-  (if (not (block-parent block))
-      (for-each fg/print-object (block-free-variables block)))
-  (for-each fg/print-blocks (block-children block))
-  (for-each fg/print-blocks (block-disowned-children block)))
-
-(define (fg/print-node node)
-  (if (and node
-	   (not (node-marked? node)))
-      (begin
-	(node-mark! node)
-	(fg/print-object node)
-	(cfg-node-case (tagged-vector/tag node)
-	  ((PARALLEL)
-	   (for-each fg/print-subproblem (parallel-subproblems node))
-	   (fg/print-node (snode-next node)))
-	  ((APPLICATION)
-	   (fg/print-rvalue (application-operator node))
-	   (for-each fg/print-rvalue (application-operands node)))
-	  ((VIRTUAL-RETURN)
-	   (fg/print-rvalue (virtual-return-operand node))
-	   (fg/print-node (snode-next node)))
-	  ((POP)
-	   (fg/print-rvalue (pop-continuation node))
-	   (fg/print-node (snode-next node)))
-	  ((ASSIGNMENT)
-	   (fg/print-rvalue (assignment-rvalue node))
-	   (fg/print-node (snode-next node)))
-	  ((DEFINITION)
-	   (fg/print-rvalue (definition-rvalue node))
-	   (fg/print-node (snode-next node)))
-	  ((TRUE-TEST)
-	   (fg/print-rvalue (true-test-rvalue node))
-	   (fg/print-node (pnode-consequent node))
-	   (fg/print-node (pnode-alternative node)))
-	  ((STACK-OVERWRITE FG-NOOP)
-	   (fg/print-node (snode-next node)))))))
-
-(define (fg/print-rvalue rvalue)
-  (if procedure-queue
-      (let ((rvalue (rvalue-known-value rvalue)))
-	(if (and rvalue
-		 (rvalue/procedure? rvalue)
-		 (not (memq rvalue procedures-located)))
-	    (begin
-	      (set! procedures-located (cons rvalue procedures-located))
-	      (enqueue!/unsafe procedure-queue rvalue))))))
-
-(define (fg/print-subproblem subproblem)
-  (fg/print-object subproblem)
-  (if (subproblem-canonical? subproblem)
-      (fg/print-rvalue (subproblem-continuation subproblem)))
-  (let ((prefix (subproblem-prefix subproblem)))
-    (if (not (cfg-null? prefix))
-	(fg/print-node (cfg-entry-node prefix)))))
