@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.6 2000/05/12 18:23:05 cph Exp $
+$Id: todo.txt,v 1.7 2000/05/14 03:34:40 cph Exp $
 
 Bug fixes
 ---------
@@ -21,6 +21,10 @@ Bug fixes
 
 * RMAIL file reader must recognize when the tail of the file contains
   umail messages.
+
+* IMAIL must support I/O to compressed files (for my sake if no one
+  else).  A clean solution to this requires moving compressed-file
+  support to the runtime system.
 
 Design changes
 --------------
