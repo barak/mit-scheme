@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxfs.c,v 1.6 1992/02/08 14:54:17 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxfs.c,v 1.7 1992/02/09 03:41:48 cph Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -196,7 +196,7 @@ DEFUN_VOID (UX_initialize_directory_reader)
 }
 
 static unsigned int
-DEFUN (allocate_directory_pointer, (pointer), DIR ** pointer)
+DEFUN (allocate_directory_pointer, (pointer), DIR * pointer)
 {
   if (n_directory_pointers == 0)
     {
@@ -262,7 +262,7 @@ unsigned int
 DEFUN (OS_directory_open, (name), CONST char * name)
 {
   /* Cast `name' to non-const because hp-ux 7.0 declaration incorrect. */
-  DIR ** pointer = (opendir ((char *) name));
+  DIR * pointer = (opendir ((char *) name));
   if (pointer == 0)
     error_system_call (errno, syscall_opendir);
   return (allocate_directory_pointer (pointer));
