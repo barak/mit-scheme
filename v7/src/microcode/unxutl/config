@@ -1,6 +1,6 @@
 #!/bin/sh
 # Configuration script for MIT Scheme
-# $Id: config,v 1.20 1993/09/09 18:15:01 gjr Exp $
+# $Id: config,v 1.21 1993/10/26 17:19:05 gjr Exp $
 # Modelled on the configuration script for GNU CC
 # The section between lines is the copyright prefix from the GNU CC config.
 #----------------------------------------------------------------------
@@ -28,32 +28,15 @@
 # Shell script to create proper links to machine-dependent files in
 # preparation for compiling gcc.
 #
-# Usage: config machine
+# Usage: config [-C-back-end | -native-back-end] machine
 #
 # If config succeeds, it leaves its status in config.out.
 # If config fails after disturbing the status quo, 
 # 	config.out is removed.
 #
 
-progname=$0
-
-remove=rm
-hard_link=ln
-symbolic_link='ln -s'
-copy=cp
-
-#for Test
-#remove="echo rm"
-#hard_link="echo ln"
-#symbolic_link="echo ln -s"
-
-cmpint_file=nothing_special
-cmpaux_file=nothing_special
-cmpaux_target=cmpauxmd.m4
-cmp_file=nothing_special
-
-case $# in
-1)
+discriminate()
+{
 	machine=$1
 
 	case $machine in
@@ -175,8 +158,11 @@ case $# in
 	*)
 		echo "$progname: unknown machine name: $machine"
 		exit 1
-	esac
+	esac;
+}
 
+perform()
+{
 	files="s/${system_file}.h m/${machine_file}.h unxutl/makefile unxutl/ymkfile unxutl/ymake.sed"
 	links="s.h m.h makefile ymkfile ymake.sed"
 
@@ -283,11 +269,12 @@ case $# in
 	(echo "Links are now set up for use with a $machine." ; \
          echo "Remember to edit file cf.h before using make.") \
 		| tee config.out
-	exit 0
+	exit 0;
+}
 
-	;;
-*)
-	echo "Usage: $progname machine"
+usage()
+{
+	echo "Usage: $progname [-C-back-end | -native-back-end] machine"
 	echo "Where \`machine' is one of:"
 	echo "alpha-osf alpha"
 	echo "mips-ultrix nws3250 sgi4d"
@@ -300,5 +287,56 @@ case $# in
 		cat config.out
 	fi
 	exit 1
+}
+
+
+
+progname=$0
+
+remove=rm
+hard_link=ln
+symbolic_link='ln -s'
+copy=cp
+
+#for Test
+#remove="echo rm"
+#hard_link="echo ln"
+#symbolic_link="echo ln -s"
+#copy="echo cp"
+
+cmpint_file=nothing_special
+cmpaux_file=nothing_special
+cmpaux_target=cmpauxmd.m4
+cmp_file=nothing_special
+
+case $# in
+1)
+	discriminate $*
+	perform $*
+	;;
+
+2)
+	case $1 in
+	-C-back-end | -c-back-end)
+		shift
+		discriminate $*
+		cmpint_file=c.h
+		cmpaux_file=c.c
+		cmpaux_target=cmpauxmd.c
+		perform $*
+		;;
+	-native-back-end)
+		shift
+		discriminate $*
+		perform $*
+		;;
+	*)
+		usage
+		;;
+	esac
+	;;
+
+*)
+	usage
 	;;
 esac
