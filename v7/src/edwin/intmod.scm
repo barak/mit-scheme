@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/intmod.scm,v 1.46 1992/04/08 17:57:45 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/intmod.scm,v 1.47 1992/05/21 17:59:33 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -388,10 +388,10 @@ If this is an error, the debugger examines the error condition."
     (let ((port (buffer-interface-port (current-buffer))))
       (start-continuation-browser
        port
-       (or (let ((cmdl (port/inferior-cmdl port)))
-	     (and (repl? cmdl)
-		  (repl/condition cmdl)))
-	   (thread-continuation (port/thread port)))))))
+       (let ((cmdl (port/inferior-cmdl port)))
+	 (if (repl? cmdl)
+	     (repl/condition cmdl)
+	     (thread-continuation (port/thread port))))))))
 
 (define (start-continuation-browser port condition)
   (let ((browser (continuation-browser condition)))
@@ -410,6 +410,11 @@ If this is an error, the debugger examines the error condition."
 	    (unblock-thread-events)
 	    (apply continuation arguments)))))
     (select-buffer browser)))
+
+(define (buffer/inferior-cmdl buffer)
+  (let ((port (buffer-interface-port buffer)))
+    (and port
+	 (port/inferior-cmdl port))))
 
 (define (port/inferior-cmdl port)
   (let ((thread (current-thread))
