@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.18 1990/09/19 00:34:16 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.19 1991/05/15 18:13:06 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -44,6 +44,7 @@ MIT in each case. |#
   (set! *unparser-radix* 10)
   (set! *unparser-list-breadth-limit* false)
   (set! *unparser-list-depth-limit* false)
+  (set! *unparser-string-length-limit* false)
   (set! *unparse-primitives-by-name?* false)
   (set! *unparse-uninterned-symbols-by-name?* false)
   (set! *unparse-with-maximum-readability?* false)
@@ -53,6 +54,7 @@ MIT in each case. |#
 (define *unparser-radix*)
 (define *unparser-list-breadth-limit*)
 (define *unparser-list-depth-limit*)
+(define *unparser-string-length-limit*)
 (define *unparse-primitives-by-name?*)
 (define *unparse-uninterned-symbols-by-name?*)
 (define *unparse-with-maximum-readability?*)
@@ -185,7 +187,7 @@ MIT in each case. |#
   (output-port/write-string *output-port* string))
 
 (define-integrable (*unparse-substring string start end)
-  (*unparse-string (substring string start end)))
+  (output-port/write-substring *output-port* string start end))
 
 (define-integrable (*unparse-datum object)
   (*unparse-hex (object-datum object)))
@@ -308,37 +310,43 @@ MIT in each case. |#
 (define (unparse/string string)
   (cond ((char-set? string)
 	 (*unparse-with-brackets 'CHARACTER-SET string false))
-	(*slashify?*
-	 (*unparse-char #\")
-	 (let ((end (string-length string)))
-	   (define (loop start)
-	     (let ((index
-		    (substring-find-next-char-in-set string start end
-						     string-delimiters)))
-	       (if index
-		   (begin (*unparse-substring string start index)
-			  (*unparse-char #\\)
-			  (let ((char (string-ref string index)))
-			    (cond ((char=? char #\Tab)
-				   (*unparse-char #\t))
-				  ((char=? char char:newline)
-				   (*unparse-char #\n))
-				  ((char=? char #\Page)
-				   (*unparse-char #\f))
-				  ((or (char=? char #\\)
-				       (char=? char #\"))
-				   (*unparse-char char))
-				  (else
-				   (*unparse-string (char->octal char)))))
-			  (loop (1+ index)))
-		   (*unparse-substring string start end))))
-	   (if (substring-find-next-char-in-set string 0 end
-						string-delimiters)
-	       (loop 0)
-	       (*unparse-string string)))
-	 (*unparse-char #\"))
+	((not *slashify?*)
+	 (*unparse-substring string))
 	(else
-	 (*unparse-string string))))
+	 (let ((end (string-length string)))
+	   (let ((end*
+		  (if *unparser-string-length-limit*
+		      (min *unparser-string-length-limit* end)
+		      end)))
+	     (*unparse-char #\")
+	     (if (substring-find-next-char-in-set string 0 end*
+						  string-delimiters)
+		 (let loop ((start 0))
+		   (let ((index
+			  (substring-find-next-char-in-set string start end*
+							   string-delimiters)))
+		     (if index
+			 (begin
+			   (*unparse-substring string start index)
+			   (*unparse-char #\\)
+			   (let ((char (string-ref string index)))
+			     (cond ((char=? char #\Tab)
+				    (*unparse-char #\t))
+				   ((char=? char char:newline)
+				    (*unparse-char #\n))
+				   ((char=? char #\Page)
+				    (*unparse-char #\f))
+				   ((or (char=? char #\\)
+					(char=? char #\"))
+				    (*unparse-char char))
+				   (else
+				    (*unparse-string (char->octal char)))))
+			   (loop (+ index 1)))
+			 (*unparse-substring string start end*))))
+		 (*unparse-substring string 0 end*))
+	     (if (< end* end)
+		 (*unparse-string "..."))
+	     (*unparse-char #\"))))))
 
 (define (char->octal char)
   (let ((qr1 (integer-divide (char->ascii char) 8)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.24 1991/02/15 18:04:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.25 1991/05/15 18:13:49 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -44,6 +44,7 @@ MIT in each case. |#
 (define debugger:use-history? false)
 (define debugger:list-depth-limit 5)
 (define debugger:list-breadth-limit 5)
+(define debugger:string-length-limit 70)
 
 (define (debug #!optional object)
   (if (default-object? object)
@@ -329,7 +330,8 @@ MIT in each case. |#
 
 (define (debugger-pp expression indentation)
   (fluid-let ((*unparser-list-depth-limit* debugger:list-depth-limit)
-	      (*unparser-list-breadth-limit* debugger:list-breadth-limit))
+	      (*unparser-list-breadth-limit* debugger:list-breadth-limit)
+	      (*unparser-string-length-limit* debugger:string-length-limit))
     (pretty-print expression (current-output-port) true indentation)))
 
 (define expression-indentation 4)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.105 1991/05/10 05:24:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.106 1991/05/15 18:14:02 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -387,6 +387,7 @@ MIT in each case. |#
 	  debugger:list-breadth-limit
 	  debugger:list-depth-limit
 	  debugger:print-return-values?
+	  debugger:string-length-limit
 	  debugger:student-walk?
 	  debugger:use-history?)
   (initialization (initialize-package!)))
@@ -2205,6 +2206,7 @@ MIT in each case. |#
 	  *unparser-list-breadth-limit*
 	  *unparser-list-depth-limit*
 	  *unparser-radix*
+	  *unparser-string-length-limit*
 	  current-unparser-table
 	  guarantee-unparser-state
 	  guarantee-unparser-table
