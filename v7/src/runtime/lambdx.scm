@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/lambdx.scm,v 14.3 1990/09/11 22:57:36 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/lambdx.scm,v 14.4 1994/01/29 21:53:03 adams Exp $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -52,7 +52,7 @@ MIT in each case. |#
   (lambda-components* *lambda
     (lambda (name required optional rest body)
       (receiver (make-lambda-pattern name required optional rest)
-		(append required optional (if (null? rest) '() (list rest)))
+		(append required optional (if (false? rest) '() (list rest)))
 		body))))
 
 (define-structure (lambda-pattern (conc-name lambda-pattern/))

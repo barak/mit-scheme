@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.20 1993/03/07 20:56:21 cph Exp $
+$Id: record.scm,v 1.21 1994/01/29 21:54:17 adams Exp $
 
 Copyright (c) 1989-93 Massachusetts Institute of Technology
 
@@ -121,7 +121,7 @@ MIT in each case. |#
 		  false
 		  (->string type-name)
 		  (list-copy field-names)
-		  false
+		  '()
 		  false)))
     (%record-type-has-application-method! record-type)
     (add-to-population! record-type-population record-type)
