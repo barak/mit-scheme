@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.52 1991/08/21 16:18:03 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.53 1991/08/21 18:12:25 arthur Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -878,6 +878,8 @@ MIT in each case. |#
 	  edwin-variable$mail-yank-ignored-headers
 	  edwin-variable$send-mail-procedure
 	  edwin-variable$sendmail-program
+	  mail-position-on-field
+	  mail-position-on-cc-field
 	  make-mail-buffer))
 
 (define-package (edwin mail-alias)
