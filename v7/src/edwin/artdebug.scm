@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/artdebug.scm,v 1.10 1991/09/14 20:29:57 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/artdebug.scm,v 1.11 1991/09/17 14:51:44 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -341,8 +341,7 @@ or #F meaning no limit."
 (define (print-restarts condition buffer)
   (let ((restarts (condition/restarts condition)))
     (if (not (null? restarts))
-	(let ((n-restarts (length restarts))
-	      (write-index (lambda (index port)
+	(let ((write-index (lambda (index port)
 			     (write-string
 			      (string-pad-left (number->string index) 3)
 			      port)
@@ -617,7 +616,6 @@ or #F meaning no limit."
 	      (line-end second-next-level -1)
 	      (group-end next-level)))
 	(let ((buffer (mark-buffer start))
-	      (buf-end (group-end start))
 	      (number (current-subproblem-number (group-end start))))
 	  (if number
 	      (let ((count (count-subproblems (buffer-dstate buffer))))
