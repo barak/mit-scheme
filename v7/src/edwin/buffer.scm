@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.151 1992/02/04 04:01:29 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.152 1992/02/10 21:57:09 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -229,8 +229,8 @@ The buffer is guaranteed to be deselected at that time."
 (define-integrable (set-buffer-display-start! buffer mark)
   (vector-set! buffer buffer-index:display-start mark))
 
-(define-integrable (buffer-visible? buffer)
-  (not (null? (buffer-windows buffer))))
+(define (buffer-visible? buffer)
+  (there-exists? (buffer-windows buffer) window-visible?))
 
 (define (buffer-get buffer key)
   (let ((entry (assq key (vector-ref buffer buffer-index:alist))))
