@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dostop.c,v 1.8 1994/10/04 21:08:20 cph Exp $
+$Id: dostop.c,v 1.9 1994/10/08 05:35:46 cph Exp $
 
 Copyright (c) 1992-94 Massachusetts Institute of Technology
 
@@ -211,7 +211,7 @@ void bcopy (const char *s1, char *s2, int n)
   return;
 }
 
-static unsigned char * syscall_names_table [] =
+static char * syscall_names_table [] =
 {
   "ACCEPT",
   "BIND",
@@ -275,11 +275,11 @@ static unsigned char * syscall_names_table [] =
 void
 OS_syscall_names (unsigned int * length, unsigned char *** names)
 {
-  (*length) = ((sizeof (syscall_names_table)) / (sizeof (unsigned char *)));
-  (*names) = syscall_names_table;
+  (*length) = ((sizeof (syscall_names_table)) / (sizeof (char *)));
+  (*names) = ((unsigned char **) syscall_names_table);
 }
 
-static unsigned char * syserr_names_table [] =
+static char * syserr_names_table [] =
 {
   "UNKNOWN",
   "ARG-LIST-TOO-LONG",
@@ -324,6 +324,6 @@ static unsigned char * syserr_names_table [] =
 void
 OS_syserr_names (unsigned int * length, unsigned char *** names)
 {
-  (*length) = ((sizeof (syserr_names_table)) / (sizeof (unsigned char *)));
-  (*names) = syserr_names_table;
+  (*length) = ((sizeof (syserr_names_table)) / (sizeof (char *)));
+  (*names) = ((unsigned char **) syserr_names_table);
 }

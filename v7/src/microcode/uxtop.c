@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtop.c,v 1.13 1994/10/04 21:07:22 cph Exp $
+$Id: uxtop.c,v 1.14 1994/10/08 05:34:05 cph Exp $
 
 Copyright (c) 1990-94 Massachusetts Institute of Technology
 
@@ -304,7 +304,7 @@ DEFUN (OS_error_code_to_message, (syserr), unsigned int syserr)
   return (((code > 0) && (code <= sys_nerr)) ? (sys_errlist [code]) : 0);
 }
 
-static unsigned char * syscall_names_table [] =
+static char * syscall_names_table [] =
 {
   "ACCEPT",
   "BIND",
@@ -368,11 +368,11 @@ static unsigned char * syscall_names_table [] =
 void
 OS_syscall_names (unsigned int * length, unsigned char *** names)
 {
-  (*length) = ((sizeof (syscall_names_table)) / (sizeof (unsigned char *)));
-  (*names) = syscall_names_table;
+  (*length) = ((sizeof (syscall_names_table)) / (sizeof (char *)));
+  (*names) = ((unsigned char **) syscall_names_table);
 }
 
-static unsigned char * syserr_names_table [] =
+static char * syserr_names_table [] =
 {
   "UNKNOWN",
   "ARG-LIST-TOO-LONG",
@@ -417,6 +417,6 @@ static unsigned char * syserr_names_table [] =
 void
 OS_syserr_names (unsigned int * length, unsigned char *** names)
 {
-  (*length) = ((sizeof (syserr_names_table)) / (sizeof (unsigned char *)));
-  (*names) = syserr_names_table;
+  (*length) = ((sizeof (syserr_names_table)) / (sizeof (char *)));
+  (*names) = ((unsigned char **) syserr_names_table);
 }
