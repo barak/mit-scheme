@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.42 2000/11/26 06:02:28 cph Exp $
+;;; $Id: imap-response.scm,v 1.43 2001/02/05 18:36:08 cph Exp $
 ;;;
-;;; Copyright (c) 2000 Massachusetts Institute of Technology
+;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -475,10 +475,8 @@
    (char-set-difference char-set:graphic
 			(string->char-set " ?"))))
 
-(define atom-is-number?
-  (let ((char-set:not-numeric (char-set-invert char-set:numeric)))
-    (lambda (atom)
-      (not (string-find-next-char-in-set atom char-set:not-numeric)))))
+(define (atom-is-number? atom)
+  (not (string-find-next-char-in-set atom char-set:not-numeric)))
 
 (define read-set
   (let ((read-string
