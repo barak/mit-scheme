@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comint.scm,v 1.3 1991/04/21 00:49:16 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comint.scm,v 1.4 1991/05/06 01:03:32 cph Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -141,8 +141,6 @@ Entry to this mode runs the hooks on comint-mode-hook."
 (define-key 'comint #\M-p 'comint-previous-input)
 (define-key 'comint #\M-n 'comint-next-input)
 (define-key 'comint #\M-s 'comint-previous-similar-input)
-
-(define-prefix-key 'comint #\C-c 'prefix-char)
 
 (define-key 'comint '(#\C-c #\C-c) 'comint-interrupt-subjob)
 (define-key 'comint '(#\C-c #\C-f) 'comint-continue-subjob)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sendmail.scm,v 1.6 1991/05/02 01:14:23 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sendmail.scm,v 1.7 1991/05/06 01:05:36 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -227,9 +227,6 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
 (define-variable mail-mode-hook
   "An event distributor that is invoked when entering Mail mode."
   (make-event-distributor))
-
-(define-prefix-key 'mail #\C-c 'prefix-char)
-(define-prefix-key 'mail '(#\C-c #\C-f) 'prefix-char)
 
 (define-key 'mail '(#\C-c #\?) 'describe-mode)
 (define-key 'mail '(#\C-c #\C-f #\C-t) 'mail-to)

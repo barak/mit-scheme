@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comtab.scm,v 1.58 1991/05/06 01:00:24 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comtab.scm,v 1.59 1991/05/06 01:02:48 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -77,6 +77,8 @@
 			(if-defined alists char))
 		       ((assq char (car alists))
 			=> (lambda (entry) (loop (cdr entry) chars)))
+		       ((assq char (cdr alists))
+			(error "Illegal prefix key:" key))
 		       ((not if-undefined)
 			(set-comtab-entry! alists
 					   char

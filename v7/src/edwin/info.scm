@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.102 1991/05/06 00:55:53 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.103 1991/05/06 01:04:08 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -297,7 +297,6 @@ except for \\[info-cease-edit] to return to Info."
 		       (string-append "^\f\\|"
 				      (ref-variable page-delimiter))))
 
-(define-prefix-key 'info-edit #\c-c 'prefix-char)
 (define-key 'info-edit '(#\c-c #\c-c) 'info-cease-edit)
 
 (define-command info-cease-edit

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/intmod.scm,v 1.37 1991/03/16 00:02:24 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/intmod.scm,v 1.38 1991/05/06 01:04:35 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -90,6 +90,5 @@ The history may be accessed with the following commands:
 (define-key 'scheme-interaction #\M-p 'comint-previous-input)
 (define-key 'scheme-interaction #\M-n 'comint-next-input)
 
-(define-prefix-key 'scheme-interaction #\C-c 'prefix-char)
 (define-key 'scheme-interaction '(#\C-c #\C-r) 'comint-history-search-backward)
 (define-key 'scheme-interaction '(#\C-c #\C-s) 'comint-history-search-forward)
