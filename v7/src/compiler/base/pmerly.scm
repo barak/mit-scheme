@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/pmerly.scm,v 1.3 1987/07/30 07:03:43 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/pmerly.scm,v 1.4 1987/08/24 19:45:33 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -509,11 +509,28 @@ MIT in each case. |#
 	       ((eq? result 'MAYBE)
 		(possible (make-simple-transformer-test name null-form)
 			  make-outer-binding))
-	       ((scode/let? code)
-		;; kludge!
-		(possible true make-late-binding))
-	       (else
-		(possible true make-early-binding))))))))
+	       ((can-integrate? code)
+		(possible true make-early-binding))
+	       (else		
+		(possible true make-late-binding))))))))
+
+;; Mega kludge!
+
+(define (can-integrate? code)
+  (if (not (scode/let? code))
+      true
+      (scode/let-components
+       code
+       (lambda (names values decls body)
+	  (and (not (null? names))
+	       (let ((place (assq 'INTEGRATE decls)))
+		 (and (not (null? place))
+		      (let ((integrated (cdr place)))
+			(let loop ((left names))
+			  (cond ((null? left) true)
+				((memq (car left) integrated)
+				 (loop (cdr left)))
+				(else false)))))))))))			     
 
 (define-integrable (make-simple-transformer-test name tag)
   (scode/make-absolute-combination 'NOT
@@ -637,7 +654,7 @@ MIT in each case. |#
 		      declarations
 		      body)
    values))
-#|
+
 (define (scode/let-components lcomb receiver)
   (scode/combination-components
    (lambda (operator values)
@@ -645,7 +662,6 @@ MIT in each case. |#
       operator
       (lambda (tag names opt rest aux decls body)
 	(receiver names values decls body))))))				     
-|#
 
 ;;;; Scode utilities (continued)
 
