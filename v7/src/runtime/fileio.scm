@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.11 1999/01/02 06:11:34 cph Exp $
+$Id: fileio.scm,v 1.12 1999/02/16 00:34:36 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -61,7 +61,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (SET-OUTPUT-BUFFER-SIZE ,operation/set-output-buffer-size)
 	   (SET-OUTPUT-TERMINAL-MODE ,operation/set-output-terminal-mode)
 	   (WRITE-CHAR ,operation/write-char)
-	   (WRITE-CHARS ,operation/write-chars)
 	   (WRITE-STRING ,operation/write-string)
 	   (WRITE-SUBSTRING ,operation/write-substring)))
 	(other-operations
