@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.31 1991/04/15 21:00:29 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.32 1991/05/06 23:09:24 jinx Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -89,6 +89,7 @@ MIT in each case. |#
 	  compiler:generate-rtl-files?
 	  compiler:generate-type-checks?
 	  compiler:implicit-self-static?
+	  compiler:intersperse-rtl-in-lap?
 	  compiler:noisy?
 	  compiler:open-code-flonum-checks?
 	  compiler:open-code-primitives?
@@ -600,7 +601,9 @@ MIT in each case. |#
   (export (compiler top-level)
 	  *interned-assignments*
 	  *interned-constants*
+	  *interned-global-links*
 	  *interned-uuo-links*
+	  *interned-static-variables*
 	  *interned-variables*
 	  *next-constant*
 	  generate-lap)
