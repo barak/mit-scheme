@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.76 1997/05/21 18:01:46 cph Exp $
+;;;	$Id: unix.scm,v 1.77 1997/06/06 05:04:57 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-97 Massachusetts Institute of Technology
 ;;;
@@ -276,7 +276,7 @@ Includes the new backup.  Must be > 0."
 	      result))))))
 
 (define unix/encoding-pathname-types
-  '("Z" "gz" "KY"))
+  '("Z" "gz" "KY" "ky"))
 
 (define unix/backup-suffixes
   (cons "~"
@@ -487,8 +487,8 @@ of the filename suffixes \".gz\" or \".Z\"."
 (define-variable enable-encrypted-files
   "If true, encrypted files are automatically decrypted when read,
 and recrypted when written.  An encrypted file is identified by the
-filename suffix \".KY\"."
-  true
+filename suffix \".ky\"."
+  #t
   boolean?)
 
 (define (read/write-encrypted-file? group pathname)
@@ -496,11 +496,11 @@ filename suffix \".KY\"."
        (member (pathname-type pathname) unix/encrypted-file-suffixes)))
 
 (define unix/encrypted-file-suffixes
-  '("KY"))
+  '("KY" "ky"))
 
 (define (read-encrypted-file pathname mark)
   (let ((password (prompt-for-password "Password: ")))
-    (temporary-message "Decrypting file " (->namestring pathname) "...")
+    (message "Decrypting file " (->namestring pathname) "...")
     (insert-string (let ((the-encrypted-file
 			  (call-with-binary-input-file pathname
 			    (lambda (port)
