@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.13 1995/02/20 18:24:41 adams Exp $
+$Id: utils.scm,v 1.14 1995/02/20 20:13:39 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -578,6 +578,11 @@ Example use of FORM/COPY-TRANSFORMING:
    (lambda (rator)
      (and (pseudo-simple-operator? rator)
 	  (operator/satisfies? rator '(SIDE-EFFECT-FREE))))))
+
+(define (form/number? form)
+  (and (QUOTE/? form)
+       (number? (quote/text form))
+       (quote/text form)))
 
 (define (binding-context-type keyword context bindings)
   (if (or (eq? keyword 'LETREC)
@@ -1056,17 +1061,17 @@ Example use of FORM/COPY-TRANSFORMING:
   (set! unmap-careful (lambda (v)  (if (eq? v careful-false) '#F v))))
 
 (define (careful/quotient x y)
-  (if (and (number? x) (number? y) (not (zero? y))
+  (if (and (number? x) (number? y) (not (zero? y)))
       (quotient x y)
       (careful-error "quotient: Domain error" x y)))
 
 (define (careful/remainder x y)
-  (if (and (number? x) (number? y) (not (zero? y))
+  (if (and (number? x) (number? y) (not (zero? y)))
       (remainder x y)
       (careful-error "remainder: Domain error" x y)))
 
 (define (careful// x y)
-  (if (and (number? x) (number? y) (not (zero? y))
+  (if (and (number? x) (number? y) (not (zero? y)))
       (/ x y)
       (careful-error "/: Domain error" x y)))
 
