@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: manual.scm,v 1.11 1992/11/13 22:22:45 cph Exp $
+;;;	$Id: manual.scm,v 1.12 1996/04/23 22:24:05 cph Exp $
 ;;;
-;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -74,10 +74,10 @@ where SECTION is the desired section of the manual, as in `tty(4)'."
 	   (if (ref-variable manual-entry-reuse-buffer?)
 	       "*Manual-Entry*"
 	       (string-append
-		"*"
+		"*Man "
 		topic
 		(if section (string-append "(" section ")") "")
-		"-Manual-Entry*"))))
+		"*"))))
       (let ((buffer (temporary-buffer buffer-name)))
 	(disable-group-undo! (buffer-group buffer))
 	(message "Invoking man "
