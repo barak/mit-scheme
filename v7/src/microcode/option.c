@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.9 1991/09/07 22:31:09 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.10 1991/10/08 21:42:37 markf Exp $
 
 Copyright (c) 1990-1991 Massachusetts Institute of Technology
 
@@ -659,7 +659,12 @@ static CONST char **
 DEFUN (parse_path_string, (path), CONST char * path)
 {
   CONST char * start = path;
-  CONST char * wd = 0;
+  /* It is important that this get_wd be called here to make sure that
+     the the unix getcwd is called now, before it allocates heap space
+     This is because getcwd forks off a new process and we want to do
+     that before the scheme process gets too big
+  */
+  CONST char * wd = get_wd();
   unsigned int lwd;
   while (1)
     {
