@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.17 1991/01/16 00:34:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.18 1991/01/24 04:33:55 cph Exp $
 
-Copyright (c) 1988, 1989, 1990, 1991 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -59,8 +59,94 @@ extern int errno;
 #include "intext.h"
 #include "dstack.h"
 #include "osscheme.h"
+
+enum syscall_names
+{
+  syscall_accept,
+  syscall_bind,
+  syscall_chdir,
+  syscall_chmod,
+  syscall_close,
+  syscall_connect,
+  syscall_fcntl_GETFL,
+  syscall_fcntl_SETFL,
+  syscall_fstat,
+  syscall_ftruncate,
+  syscall_getcwd,
+  syscall_gettimeofday,
+  syscall_ioctl_TIOCGPGRP,
+  syscall_ioctl_TIOCSIGSEND,
+  syscall_kill,
+  syscall_link,
+  syscall_listen,
+  syscall_localtime,
+  syscall_lseek,
+  syscall_malloc,
+  syscall_mkdir,
+  syscall_open,
+  syscall_opendir,
+  syscall_pipe,
+  syscall_read,
+  syscall_readlink,
+  syscall_realloc,
+  syscall_rename,
+  syscall_setitimer,
+  syscall_socket,
+  syscall_symlink,
+  syscall_tcdrain,
+  syscall_tcflush,
+  syscall_terminal_get_state,
+  syscall_terminal_set_state,
+  syscall_time,
+  syscall_times,
+  syscall_unlink,
+  syscall_vfork,
+  syscall_write
+};
 
-extern void EXFUN (error_system_call, (int code, CONST char * name));
+enum syserr_names
+{
+  syserr_unknown,
+  syserr_arg_list_too_long,
+  syserr_bad_address,
+  syserr_bad_file_descriptor,
+  syserr_broken_pipe,
+  syserr_directory_not_empty,
+  syserr_domain_error,
+  syserr_exec_format_error,
+  syserr_file_exists,
+  syserr_file_too_large,
+  syserr_filename_too_long,
+  syserr_function_not_implemented,
+  syserr_improper_link
+  syserr_inappropriate_io_control_operation,
+  syserr_interrupted_function_call,
+  syserr_invalid_argument,
+  syserr_invalid_seek,
+  syserr_io_error,
+  syserr_is_a_directory,
+  syserr_no_child_processes,
+  syserr_no_locks_available,
+  syserr_no_space_left_on_device,
+  syserr_no_such_device,
+  syserr_no_such_device_or_address,
+  syserr_no_such_file_or_directory,
+  syserr_no_such_process,
+  syserr_not_a_directory,
+  syserr_not_enough_space,
+  syserr_operation_not_permitted,
+  syserr_permission_denied,
+  syserr_read_only_file_system,
+  syserr_resource_busy,
+  syserr_resource_deadlock_avoided,
+  syserr_resource_temporarily_unavailable,
+  syserr_result_too_large,
+  syserr_too_many_links,
+  syserr_too_many_open_files,
+  syserr_too_many_open_files,
+};
+
+extern void EXFUN (error_system_call, (int code, enum syscall_names name));
 
 /* Conditionalizations that are overridden by _POSIX. */
 
@@ -513,7 +599,7 @@ extern CONST char * EXFUN (getenv, (CONST char * name));
 #define UX_lstat stat
 #endif
 
-extern void EXFUN (UX_prim_check_errno, (CONST char * name));
+extern void EXFUN (UX_prim_check_errno, (enum syscall_names name));
 
 #define STD_VOID_SYSTEM_CALL(name, expression)				\
 {									\
@@ -526,14 +612,14 @@ extern void EXFUN (UX_prim_check_errno, (CONST char * name));
 {									\
   while (((result) = (expression)) < 0)					\
     if (errno != EINTR)							\
-      error_system_call (errno, name);					\
+      error_system_call (errno, (name));				\
 }
 
 #define STD_PTR_SYSTEM_CALL(name, result, expression)			\
 {									\
   while (((result) = (expression)) == 0)				\
     if (errno != EINTR)							\
-      error_system_call (errno, name);					\
+      error_system_call (errno, (name));				\
 }
 
 #ifdef HAVE_TERMIOS

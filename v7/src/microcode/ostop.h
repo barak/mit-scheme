@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ostop.h,v 1.2 1990/07/28 18:56:49 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ostop.h,v 1.3 1991/01/24 04:34:30 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-1 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -46,5 +46,6 @@ extern void EXFUN (OS_save_external_state, (void));
 extern void EXFUN (OS_save_internal_state, (void));
 extern void EXFUN (OS_restore_internal_state, (void));
 extern void EXFUN (OS_restore_external_state, (void));
+extern CONST char * EXFUN (OS_error_code_to_message, (unsigned int code));
 
 #endif /* SCM_OSTOP_H */
