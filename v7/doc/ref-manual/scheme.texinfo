@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.112 2002/02/05 18:12:03 cph Exp $
+@comment $Id: scheme.texinfo,v 1.113 2002/02/12 21:50:12 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -51,7 +51,7 @@ Free Documentation License".
 @title{MIT Scheme Reference Manual}
 @subtitle Edition 1.96
 @subtitle for Scheme Release 7.7.0
-@subtitle 4 February 2002
+@subtitle 12 February 2002
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -298,7 +298,7 @@ Environments
 * Environment Operations::      
 * Environment Variables::       
 * REPL Environment::            
-* Interpreter Environments::    
+* Top-level Environments::    
 
 Input/Output
 
@@ -13082,7 +13082,7 @@ an unspecified value.
 * Environment Operations::      
 * Environment Variables::       
 * REPL Environment::            
-* Interpreter Environments::    
+* Top-level Environments::    
 @end menu
 
 @node Environment Operations, Environment Variables, Environments, Environments
@@ -13094,6 +13094,32 @@ other bindings are inherited.  The operations in this section reveal the
 frame-like structure of environments by permitting you to examine the
 bindings of a particular environment separately from those of its
 parent.
+
+@cindex variable binding
+@cindex binding, variable
+@cindex unassigned binding
+@cindex binding, unassigned
+There are several types of bindings that can occur in an environment.
+The most common is the simple variable binding, which associates a value
+(any Scheme object) with an identifier (a symbol).  A variable binding
+can also be @dfn{unassigned}, which means that it has no value.  An
+unassigned variable is bound, in that is will shadow other bindings of
+the same name in ancestor environments, but a reference to that variable
+will signal an error of type @code{condition-type:unassigned-variable}.
+An unassigned variable can be @dfn{assigned} (using @code{set!} or
+@code{environment-assign!}) to give it a value.
+
+@cindex keyword binding
+@cindex syntactic keyword binding
+@cindex binding, syntactic keyword
+In addition to variable bindings, an environment can also have
+@dfn{keyword bindings}.  A keyword binding associates a syntactic
+keyword (usually a macro transformer) with an identifier.  Keyword
+bindings are special in that they are considered ``bound'', but ordinary
+variable references don't work on them.  So an attempt to reference or
+assign a keyword binding results in an error of type
+@code{condition-type:macro-binding}.  However, keyword bindings can be
+redefined using @code{define} or @code{environment-define}.
 
 @deffn procedure environment? object
 @cindex type predicate, for environment
@@ -13114,26 +13140,73 @@ Returns the parent environment of @var{environment}.  It is an error if
 @deffn procedure environment-bound-names environment
 Returns a newly allocated list of the names (symbols) that are bound by
 @var{environment}.  This does not include the names that are bound by
-the parent environment of @var{environment}.
+the parent environment of @var{environment}.  It does include names that
+are unassigned or keywords in @var{environment}.
+@end deffn
+
+@deffn procedure environment-macro-names environment
+Returns a newly allocated list of the names (symbols) that are bound to
+syntactic keywords in @var{environment}.
 @end deffn
 
 @deffn procedure environment-bindings environment
 Returns a newly allocated list of the bindings of @var{environment};
-does not include the bindings of the parent environment.
-Each element of this list takes one of two forms: @code{(@var{name})}
-indicates that @var{name} is bound but unassigned, while
-@code{(@var{name} @var{object})} indicates that @var{name} is bound, and
-its value is @var{object}.
+does not include the bindings of the parent environment.  Each element
+of this list takes one of two forms: @code{(@var{symbol})} indicates
+that @var{symbol} is bound but unassigned, while @code{(@var{symbol}
+@var{object})} indicates that @var{symbol} is bound, and its value is
+@var{object}.
+@end deffn
+
+@deffn procedure environment-reference-type environment symbol
+Returns a symbol describing the @dfn{reference type} of @var{symbol} in
+@var{environment} or one of its ancestor environments.  The result is
+one of the following:
+
+@table @code
+@item normal
+means @var{symbol} is a variable binding with a normal value.
+
+@item unassigned
+means @var{symbol} is a variable binding with no value.
+
+@item macro
+means @var{symbol} is a keyword binding.
+
+@item unbound
+means @var{symbol} has no associated binding.
+@end table
 @end deffn
 
 @deffn procedure environment-bound? environment symbol
 Returns @code{#t} if @var{symbol} is bound in @var{environment} or one
-of its ancestor environments; otherwise returns @code{#f}.
+of its ancestor environments; otherwise returns @code{#f}.  This is
+equivalent to
+
+@example
+(not (eq? 'unbound
+          (environment-reference-type @var{environment} @var{symbol})))
+@end example
+@end deffn
+
+@deffn procedure environment-assigned? environment symbol
+Returns @code{#t} if @var{symbol} is bound in @var{environment} or one
+of its ancestor environments, and has a normal value.  Returns @code{#f}
+if it is bound but unassigned.  Signals an error if it is unbound or is
+bound to a keyword.
 @end deffn
 
 @deffn procedure environment-lookup environment symbol
-@var{Symbol} must be bound in @var{environment} or one of its ancestor
-environments.  Returns the value to which it is bound.
+@var{Symbol} must be bound to a normal value in @var{environment} or one
+of its ancestor environments.  Returns the value to which it is bound.
+Signals an error if unbound, unassigned, or a keyword.
+@end deffn
+
+@deffn procedure environment-lookup-macro environment symbol
+If @var{symbol} is a keyword binding in @var{environment} or one of its
+ancestor environments, returns the value of the binding.  Otherwise,
+returns @code{#f}.  Does not signal any errors other than argument-type
+errors.
 @end deffn
 
 @deffn procedure environment-assignable? environment symbol
@@ -13146,6 +13219,28 @@ effect.
 @var{Symbol} must be bound in @var{environment} or one of its ancestor
 environments, and must be assignable.  Modifies the binding to have
 @var{object} as its value, and returns an unspecified result.
+@end deffn
+
+@deffn procedure environment-definable? environment symbol
+Returns @code{#t} if @var{symbol} is definable in @var{environment}, and
+@code{#f} otherwise.  At present, this is false for environments
+generated by application of compiled procedures, and true for all other
+environments.
+@end deffn
+
+@deffn procedure environment-define environment symbol object
+Defines @var{symbol} to be bound to @var{object} in @var{environment},
+and returns an unspecified value.  Signals an error if @var{symbol}
+isn't definable in @var{environment}.
+@end deffn
+
+@deffn procedure environment-define-macro environment symbol transformer
+Defines @var{symbol} to be a keyword bound to @var{transformer} in
+@var{environment}, and returns an unspecified value.  Signals an error
+if @var{symbol} isn't definable in @var{environment}.  The type of
+@var{transformer} is defined by the syntax engine and is not checked by
+this procedure.  If the type is incorrect this will subsequently signal
+an error during syntax expansion.
 @end deffn
 
 @deffn procedure eval expression environment
@@ -13182,9 +13277,11 @@ forms or by loading files containing @code{define} forms) occur in
 
 @defvr variable system-global-environment
 The variable @code{system-global-environment} is bound to the
-environment that's the parent of the @code{user-initial-environment}.
-Primitives and system procedures are bound (and sometimes closed) in
-this environment.
+distinguished environment that's the ancestor of most other environments
+(except for those created by @code{make-null-top-level-environment}).
+It is the parent environment of @code{user-initial-environment}.
+Primitives, system procedures, and most syntactic keywords are bound
+(and sometimes closed) in this environment.
 @end defvr
 
 @defvr variable user-initial-environment
@@ -13203,7 +13300,7 @@ are defined in the @code{system-global-environment}, will continue to
 see the original definition.
 @end defvr
 
-@node REPL Environment, Interpreter Environments, Environment Variables, Environments
+@node REPL Environment, Top-level Environments, Environment Variables, Environments
 @section REPL Environment
 
 @deffn procedure nearest-repl/environment
@@ -13220,55 +13317,52 @@ If it's a procedure, the environment in which that procedure was closed
 is the new environment.
 @end deffn
 
-@node Interpreter Environments,  , REPL Environment, Environments
-@section Interpreter Environments
+@node Top-level Environments,  , REPL Environment, Environments
+@section Top-level Environments
 
-The operations in this section return environments that are constructed
-by the interpreter.  These operations should only be used at the top
-level of a file; they are not supported in any other place.  In
-particular, they force the current environment to be represented in a
-form suitable for use by the interpreter.  This prevents the compiler
-from performing many useful optimizations on such environments, and
-forces the use of the interpreter for variable references in them.
-However, because all top-level environments (such as
-@code{user-initial-environment}) are already interpreter environments,
-it does no harm to use such operations on them.
-
-@strong{Warning}: A future release of MIT Scheme will support hygienic
-macros, which are incompatible with non-top-level instances of
-@code{make-environment} and @code{the-environment}.  At that time, other
-uses of these constructs will be disallowed.
-
-@deffn {special form} make-environment expression @dots{}
-@cindex construction, of environment
-Produces a new environment that is a child of the environment in which
-it is executed, evaluates the @var{expression}s sequentially in the new
-environment, and returns the new environment.  Note that
-
-@example
-(make-environment @var{expression} @dots{})
-@end example
-
-@noindent
-is equivalent to:
-
-@example
-@group
-(let ()
-  @var{expression} @dots{}
-  (the-environment))
-@end group
-@end example
-@end deffn
+@cindex top-level environment
+@cindex interpreter environment
+@cindex environment, top-level
+@cindex environment, interpreter
+The operations in this section manipulate top-level environments, as
+opposed to environments created by the application of procedures.  For
+historical reasons, top-level environments are referred to as
+@dfn{interpreter environments}.
 
 @deffn {special form} the-environment
-Returns the current environment.
+@cindex current environment
+@cindex environment, current
+Returns the current environment.  This form may only appear at the top
+level of a file.  An error is signalled if it appears within a
+procedure.
 @end deffn
 
-@deffn procedure interpreter-environment? object
-@cindex type predicate, for interpreter environment
-Returns @code{#t} if @var{object} is an interpreter environment;
-otherwise returns @code{#f}.
+@deffn procedure top-level-environment? object
+@deffnx procedure interpreter-environment? object
+@cindex type predicate, for top-level environment
+Returns @code{#t} if @var{object} is an top-level environment; otherwise
+returns @code{#f}.
+
+@code{interpreter-environment?} is an alias for
+@code{top-level-environment?}.
+@end deffn
+
+@deffn procedure extend-top-level-environment environment [names [values]]
+@deffnx procedure make-null-top-level-environment [names [values]]
+Returns a newly allocated top-level environment.
+@code{extend-top-level-environment} creates an environment that has
+parent @var{environment}, while @code{make-null-top-level-environment}
+creates an environment that has no parent.
+
+The optional arguments @var{names} and @var{values} are used to specify
+initial bindings in the new environment.  If specified, @var{names} must
+be a list of symbols, and @var{values} must be a list of objects.  If
+only @var{names} is specified, each name in @var{names} will be bound in
+the environment, but unassigned.  If @var{names} and @var{values} are
+both specified, they must be the same length, and each name in
+@var{names} will be bound to the corresponding value in @var{values}.
+If neither @var{names} nor @var{values} is specified, the environment
+will have no initial bindings.
 @end deffn
 
 @node Input/Output, Operating-System Interface, Environments, Top
