@@ -1,6 +1,6 @@
 ; -*- Scheme -*-
 ;;;;; Tk interface code for a button
-;;; $Id: widget-mit.scm,v 1.1 1995/08/02 21:26:49 adams Exp $
+;;; $Id: widget-mit.scm,v 1.2 1996/11/14 22:14:06 adams Exp $
 
 ;;; Lowest-level makers for various kinds of TK widgets.  These call C
 ;;; primitives in widget-c-mit.c, and are called by the higher-level
@@ -44,9 +44,8 @@ C end may need to be closed |#
 
 (define (find-tk-protection-list-from-number number)
   (let ((list (assv number display->tk-widgets)))
-    (if (null? list)
-	#F
-	(cdr list))))
+    (and (pair? list)
+	 (cdr list))))
 
 ;;; The item on the protection list is a cell containing the widget
 ;;; pointer.  This permits us to mark the cell when the C object is
