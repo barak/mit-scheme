@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn3.scm,v 1.4 1987/10/05 20:41:28 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn3.scm,v 1.5 1987/11/21 18:45:34 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -51,45 +51,33 @@ MIT in each case. |#
     (set! *next-constant* (1+ *next-constant*))
     label))
 
-(define (constant->label constant)
-  (let ((entry (assv constant *interned-constants*)))
-    (if entry
-	(cdr entry)
-	(let ((label (allocate-constant-label)))
-	  (set! *interned-constants*
-		(cons (cons constant label)
-		      *interned-constants*))
-	  label))))
+(define-integrable (object->label find read write)
+  (lambda (object)
+    (let ((entry (find object (read))))
+      (if entry
+	  (cdr entry)
+	  (let ((label (allocate-constant-label)))
+	    (write (cons (cons object label)
+			 (read)))
+	    label)))))
 
-(define (free-reference-label name)
-  (let ((entry (assq name *interned-variables*)))
-    (if entry
-	(cdr entry)
-	(let ((label (allocate-constant-label)))
-	  (set! *interned-variables*
-		(cons (cons name label)
-		      *interned-variables*))
-	  label))))
+(let-syntax ((->label
+	      (macro (find var)
+		`(object->label ,find
+				(lambda () ,var)
+				(lambda (new)
+				  (declare (integrate new))
+				  (set! ,var new))))))
 
-(define (free-assignment-label name)
-  (let ((entry (assq name *interned-assignments*)))
-    (if entry
-	(cdr entry)
-	(let ((label (allocate-constant-label)))
-	  (set! *interned-assignments*
-		(cons (cons name label)
-		      *interned-assignments*))
-	  label))))
+  (define constant->label (->label assv *interned-constants*))
 
-(define (free-uuo-link-label name)
-  (let ((entry (assq name *interned-uuo-links*)))
-    (if entry
-	(cdr entry)
-	(let ((label (allocate-constant-label)))
-	  (set! *interned-uuo-links*
-		(cons (cons name label)
-		      *interned-uuo-links*))
-	  label))))
+  (define free-reference-label (->label assq *interned-variables*))
+
+  (define free-assignment-label (->label assq *interned-assignments*))
+
+  (define free-uuo-link-label (->label assq *interned-uuo-links*))
+  ;; End of let-syntax
+  )
 
 (define-integrable (set-current-branches! consequent alternative)
   (set-pblock-consequent-lap-generator! *current-bblock* consequent)
