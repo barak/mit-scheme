@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxfs.c,v 1.13 1997/06/01 17:54:27 cph Exp $
+$Id: uxfs.c,v 1.14 1998/06/18 19:11:14 cph Exp $
 
 Copyright (c) 1990-97 Massachusetts Institute of Technology
 
@@ -108,6 +108,9 @@ MIT in each case. */
 #define COH_SUPER_MAGIC 0x012FF7B7
 #endif
 
+#ifndef NTFS_SUPER_MAGIC
+#define NTFS_SUPER_MAGIC 0x5346544E
+#endif
 
 #endif /* __linux */
 
@@ -185,6 +188,7 @@ DEFUN (UX_file_system_type, (name), CONST char * name)
     case MSDOS_SUPER_MAGIC:	return ("fat");
     case NCP_SUPER_MAGIC:	return ("ncp");
     case NFS_SUPER_MAGIC:	return ("nfs");
+    case NTFS_SUPER_MAGIC:	return ("ntfs");
     case PROC_SUPER_MAGIC:	return ("proc");
     case SMB_SUPER_MAGIC:	return ("smb");
     case SYSV2_SUPER_MAGIC:	return ("sysv2");
