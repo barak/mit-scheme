@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntapi.h,v 1.6 1997/10/25 00:15:13 cph Exp $
+$Id: ntapi.h,v 1.7 1997/10/26 08:04:41 cph Exp $
 
 Copyright (c) 1997 Massachusetts Institute of Technology
 
@@ -74,6 +74,17 @@ enum syscall_names
   apicall_WaitForMultipleObjects,
   apicall_WaitForSingleObject,
   apicall_WriteFile,
+
+  /* Winsock procedures: */
+  apicall_accept,
+  apicall_bind,
+  apicall_closesocket,
+  apicall_connect,
+  apicall_ioctlsocket,
+  apicall_listen,
+  apicall_recv,
+  apicall_send,
+  apicall_socket,
 
   /* C Library's unix-style procedures: */
   syscall_close,
@@ -756,6 +767,59 @@ enum syserr_names
   syserr_rec_non_existent,
   syserr_rpl_not_allowed,
 
+  /* Winsock error codes: */
+  syserr_wsaeintr,
+  syserr_wsaebadf,
+  syserr_wsaeacces,
+  syserr_wsaefault,
+  syserr_wsaeinval,
+  syserr_wsaemfile,
+  syserr_wsaewouldblock,
+  syserr_wsaeinprogress,
+  syserr_wsaealready,
+  syserr_wsaenotsock,
+  syserr_wsaedestaddrreq,
+  syserr_wsaemsgsize,
+  syserr_wsaeprototype,
+  syserr_wsaenoprotoopt,
+  syserr_wsaeprotonosupport,
+  syserr_wsaesocktnosupport,
+  syserr_wsaeopnotsupp,
+  syserr_wsaepfnosupport,
+  syserr_wsaeafnosupport,
+  syserr_wsaeaddrinuse,
+  syserr_wsaeaddrnotavail,
+  syserr_wsaenetdown,
+  syserr_wsaenetunreach,
+  syserr_wsaenetreset,
+  syserr_wsaeconnaborted,
+  syserr_wsaeconnreset,
+  syserr_wsaenobufs,
+  syserr_wsaeisconn,
+  syserr_wsaenotconn,
+  syserr_wsaeshutdown,
+  syserr_wsaetoomanyrefs,
+  syserr_wsaetimedout,
+  syserr_wsaeconnrefused,
+  syserr_wsaeloop,
+  syserr_wsaenametoolong,
+  syserr_wsaehostdown,
+  syserr_wsaehostunreach,
+  syserr_wsaenotempty,
+  syserr_wsaeproclim,
+  syserr_wsaeusers,
+  syserr_wsaedquot,
+  syserr_wsaestale,
+  syserr_wsaeremote,
+  syserr_wsaediscon,
+  syserr_wsasysnotready,
+  syserr_wsavernotsupported,
+  syserr_wsanotinitialised,
+  syserr_wsahost_not_found,
+  syserr_wsatry_again,
+  syserr_wsano_recovery,
+  syserr_wsano_data,
+
   /* Unix error codes: */
 #define FIRST_UNIX_ERROR_CODE syserr_arg_list_too_long
   syserr_arg_list_too_long,
@@ -773,6 +837,7 @@ enum syserr_names
   syserr_resource_temporarily_unavailable,
   syserr_result_too_large,
   syserr_unix_too_many_open_files,
+
   syserr_unknown
 };
 
@@ -853,6 +918,17 @@ static char * syscall_names_table [] =
   "WAIT-FOR-MULTIPLE-OBJECTS",
   "WAIT-FOR-SINGLE-OBJECT",
   "WRITE-FILE",
+
+  /* Winsock procedures: */
+  "ACCEPT",
+  "BIND",
+  "CLOSE-SOCKET",
+  "CONNECT",
+  "IOCTL-SOCKET",
+  "LISTEN",
+  "RECV",
+  "SEND",
+  "SOCKET",
 
   /* C Library's unix-style procedures: */
   "CLOSE",
@@ -1534,6 +1610,59 @@ static char * syserr_names_table [] =
   "FULL-BACKUP",
   "REC-NON-EXISTENT",
   "RPL-NOT-ALLOWED",
+
+  /* Winsock error codes: */
+  "WSAEINTR",
+  "WSAEBADF",
+  "WSAEACCES",
+  "WSAEFAULT",
+  "WSAEINVAL",
+  "WSAEMFILE",
+  "WSAEWOULDBLOCK",
+  "WSAEINPROGRESS",
+  "WSAEALREADY",
+  "WSAENOTSOCK",
+  "WSAEDESTADDRREQ",
+  "WSAEMSGSIZE",
+  "WSAEPROTOTYPE",
+  "WSAENOPROTOOPT",
+  "WSAEPROTONOSUPPORT",
+  "WSAESOCKTNOSUPPORT",
+  "WSAEOPNOTSUPP",
+  "WSAEPFNOSUPPORT",
+  "WSAEAFNOSUPPORT",
+  "WSAEADDRINUSE",
+  "WSAEADDRNOTAVAIL",
+  "WSAENETDOWN",
+  "WSAENETUNREACH",
+  "WSAENETRESET",
+  "WSAECONNABORTED",
+  "WSAECONNRESET",
+  "WSAENOBUFS",
+  "WSAEISCONN",
+  "WSAENOTCONN",
+  "WSAESHUTDOWN",
+  "WSAETOOMANYREFS",
+  "WSAETIMEDOUT",
+  "WSAECONNREFUSED",
+  "WSAELOOP",
+  "WSAENAMETOOLONG",
+  "WSAEHOSTDOWN",
+  "WSAEHOSTUNREACH",
+  "WSAENOTEMPTY",
+  "WSAEPROCLIM",
+  "WSAEUSERS",
+  "WSAEDQUOT",
+  "WSAESTALE",
+  "WSAEREMOTE",
+  "WSAEDISCON",
+  "WSASYSNOTREADY",
+  "WSAVERNOTSUPPORTED",
+  "WSANOTINITIALISED",
+  "WSAHOST_NOT_FOUND",
+  "WSATRY_AGAIN",
+  "WSANO_RECOVERY",
+  "WSANO_DATA",
 
   /* Unix error codes: */
   "ARG-LIST-TOO-LONG",

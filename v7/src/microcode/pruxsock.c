@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: pruxsock.c,v 1.10 1996/05/18 06:08:02 cph Exp $
+$Id: pruxsock.c,v 1.11 1997/10/26 08:05:01 cph Exp $
 
-Copyright (c) 1990-96 Massachusetts Institute of Technology
+Copyright (c) 1990-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -47,6 +47,14 @@ MIT in each case. */
 #ifndef DISABLE_SOCKET_SUPPORT
 #define HAVE_SOCKETS 1
 #define HAVE_UNIX_SOCKETS 1
+#endif
+#endif
+
+#ifdef __NT__
+/* Under NT, socket support is the default but can be disabled.  */
+#ifndef DISABLE_SOCKET_SUPPORT
+#define HAVE_SOCKETS 1
+#undef HAVE_UNIX_SOCKETS
 #endif
 #endif
 
@@ -238,6 +246,7 @@ DEFINE_PRIMITIVE ("OPEN-UNIX-STREAM-SOCKET", Prim_open_unix_stream_socket, 1, 1,
     (long_to_integer (OS_open_unix_stream_socket (STRING_ARG (1))));
 #else
   signal_error_from_primitive (ERR_UNIMPLEMENTED_PRIMITIVE);
+  PRIMITIVE_RETURN (UNSPECIFIC);
 #endif
 }
 

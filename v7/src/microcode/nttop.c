@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttop.c,v 1.23 1997/10/22 05:28:45 cph Exp $
+$Id: nttop.c,v 1.24 1997/10/26 08:04:18 cph Exp $
 
 Copyright (c) 1993-97 Massachusetts Institute of Technology
 
@@ -42,21 +42,22 @@ MIT in each case. */
 #include "outf.h"
 #include "ntscmlib.h"
 
-extern void EXFUN (execute_reload_cleanups, (void));
+extern void execute_reload_cleanups (void);
 
-extern void EXFUN (NT_gui_init, (void));
-extern void EXFUN (NT_initialize_channels, (void));
-extern void EXFUN (NT_initialize_directory_reader, (void));
-extern void EXFUN (NT_initialize_processes, (void));
-extern void EXFUN (NT_initialize_signals, (void));
-extern void EXFUN (NT_initialize_traps, (void));
-extern void EXFUN (NT_initialize_tty, (void));
+extern void NT_gui_init (void);
+extern void NT_initialize_channels (void);
+extern void NT_initialize_directory_reader (void);
+extern void NT_initialize_processes (void);
+extern void NT_initialize_signals (void);
+extern void NT_initialize_sockets (void);
+extern void NT_initialize_traps (void);
+extern void NT_initialize_tty (void);
 
-extern void EXFUN (NT_reset_channels, (void));
+extern void NT_reset_channels (void);
 
-extern void EXFUN (NT_restore_channels, (void));
-extern void EXFUN (NT_restore_signals, (void));
-extern void EXFUN (NT_restore_traps, (void));
+extern void NT_restore_channels (void);
+extern void NT_restore_signals (void);
+extern void NT_restore_traps (void);
 
 /* reset_interruptable_extent */
 
@@ -118,7 +119,7 @@ NT_initialize_win32_system_utilities ()
 static int interactive;
 
 int
-DEFUN_VOID (OS_under_emacs_p)
+OS_under_emacs_p (void)
 {
   return (option_emacs_subprocess);
 }
@@ -126,7 +127,7 @@ DEFUN_VOID (OS_under_emacs_p)
 enum windows_type NT_windows_type;
 
 void
-DEFUN_VOID (OS_initialize)
+OS_initialize (void)
 {
   interactive = 1;
 
@@ -138,6 +139,7 @@ DEFUN_VOID (OS_initialize)
   NT_initialize_traps ();
   NT_initialize_directory_reader ();
   NT_initialize_processes ();
+  NT_initialize_sockets ();
 
   OS_Name = SYSTEM_NAME;
   {
@@ -174,7 +176,7 @@ DEFUN_VOID (OS_initialize)
 }
 
 void
-DEFUN_VOID (OS_announcement)
+OS_announcement (void)
 {
 #if 0
   /* To make our compiler vendors happy. */
@@ -185,7 +187,7 @@ DEFUN_VOID (OS_announcement)
 }
 
 void
-DEFUN_VOID (OS_reset)
+OS_reset (void)
 {
   /*
     There should really be a reset for each initialize above,
@@ -198,7 +200,7 @@ DEFUN_VOID (OS_reset)
 }
 
 void
-DEFUN (OS_quit, (code, abnormal_p), int code AND int abnormal_p)
+OS_quit (int code, int abnormal_p)
 {
   outf_console ("\nScheme has terminated abnormally!\n");
   OS_restore_external_state ();
@@ -210,7 +212,7 @@ DEFUN (OS_quit, (code, abnormal_p), int code AND int abnormal_p)
 #endif
 
 enum syserr_names
-DEFUN (OS_error_code_to_syserr, (code), int code)
+OS_error_code_to_syserr (int code)
 {
   switch (code)
   {
@@ -319,7 +321,7 @@ w32_error_message (DWORD rc)
 }
 
 static int
-DEFUN (syserr_to_unix_error_code, (syserr), enum syserr_names syserr)
+syserr_to_unix_error_code (enum syserr_names syserr)
 {
   switch (syserr)
     {
@@ -343,7 +345,7 @@ DEFUN (syserr_to_unix_error_code, (syserr), enum syserr_names syserr)
 }
 
 void
-DEFUN (NT_prim_check_errno, (name), enum syscall_names name)
+NT_prim_check_errno (enum syscall_names name)
 {
   if (errno != EINTR)
     NT_error_unix_call (errno, name);
@@ -1089,6 +1091,60 @@ syserr_to_win32_error_code (enum syserr_names syserr)
     case syserr_full_backup: return (ERROR_FULL_BACKUP);
     case syserr_rec_non_existent: return (ERROR_REC_NON_EXISTENT);
     case syserr_rpl_not_allowed: return (ERROR_RPL_NOT_ALLOWED);
+
+      /* Winsock error codes: */
+    case syserr_wsaeintr: return (WSAEINTR);
+    case syserr_wsaebadf: return (WSAEBADF);
+    case syserr_wsaeacces: return (WSAEACCES);
+    case syserr_wsaefault: return (WSAEFAULT);
+    case syserr_wsaeinval: return (WSAEINVAL);
+    case syserr_wsaemfile: return (WSAEMFILE);
+    case syserr_wsaewouldblock: return (WSAEWOULDBLOCK);
+    case syserr_wsaeinprogress: return (WSAEINPROGRESS);
+    case syserr_wsaealready: return (WSAEALREADY);
+    case syserr_wsaenotsock: return (WSAENOTSOCK);
+    case syserr_wsaedestaddrreq: return (WSAEDESTADDRREQ);
+    case syserr_wsaemsgsize: return (WSAEMSGSIZE);
+    case syserr_wsaeprototype: return (WSAEPROTOTYPE);
+    case syserr_wsaenoprotoopt: return (WSAENOPROTOOPT);
+    case syserr_wsaeprotonosupport: return (WSAEPROTONOSUPPORT);
+    case syserr_wsaesocktnosupport: return (WSAESOCKTNOSUPPORT);
+    case syserr_wsaeopnotsupp: return (WSAEOPNOTSUPP);
+    case syserr_wsaepfnosupport: return (WSAEPFNOSUPPORT);
+    case syserr_wsaeafnosupport: return (WSAEAFNOSUPPORT);
+    case syserr_wsaeaddrinuse: return (WSAEADDRINUSE);
+    case syserr_wsaeaddrnotavail: return (WSAEADDRNOTAVAIL);
+    case syserr_wsaenetdown: return (WSAENETDOWN);
+    case syserr_wsaenetunreach: return (WSAENETUNREACH);
+    case syserr_wsaenetreset: return (WSAENETRESET);
+    case syserr_wsaeconnaborted: return (WSAECONNABORTED);
+    case syserr_wsaeconnreset: return (WSAECONNRESET);
+    case syserr_wsaenobufs: return (WSAENOBUFS);
+    case syserr_wsaeisconn: return (WSAEISCONN);
+    case syserr_wsaenotconn: return (WSAENOTCONN);
+    case syserr_wsaeshutdown: return (WSAESHUTDOWN);
+    case syserr_wsaetoomanyrefs: return (WSAETOOMANYREFS);
+    case syserr_wsaetimedout: return (WSAETIMEDOUT);
+    case syserr_wsaeconnrefused: return (WSAECONNREFUSED);
+    case syserr_wsaeloop: return (WSAELOOP);
+    case syserr_wsaenametoolong: return (WSAENAMETOOLONG);
+    case syserr_wsaehostdown: return (WSAEHOSTDOWN);
+    case syserr_wsaehostunreach: return (WSAEHOSTUNREACH);
+    case syserr_wsaenotempty: return (WSAENOTEMPTY);
+    case syserr_wsaeproclim: return (WSAEPROCLIM);
+    case syserr_wsaeusers: return (WSAEUSERS);
+    case syserr_wsaedquot: return (WSAEDQUOT);
+    case syserr_wsaestale: return (WSAESTALE);
+    case syserr_wsaeremote: return (WSAEREMOTE);
+    case syserr_wsaediscon: return (WSAEDISCON);
+    case syserr_wsasysnotready: return (WSASYSNOTREADY);
+    case syserr_wsavernotsupported: return (WSAVERNOTSUPPORTED);
+    case syserr_wsanotinitialised: return (WSANOTINITIALISED);
+    case syserr_wsahost_not_found: return (WSAHOST_NOT_FOUND);
+    case syserr_wsatry_again: return (WSATRY_AGAIN);
+    case syserr_wsano_recovery: return (WSANO_RECOVERY);
+    case syserr_wsano_data: return (WSANO_DATA);
+
     default: return (ERROR_SUCCESS);
     }
 }
@@ -1757,6 +1813,60 @@ win32_error_code_to_syserr (DWORD code)
     case ERROR_FULL_BACKUP: return (syserr_full_backup);
     case ERROR_REC_NON_EXISTENT: return (syserr_rec_non_existent);
     case ERROR_RPL_NOT_ALLOWED: return (syserr_rpl_not_allowed);
+
+      /* Winsock error codes: */
+    case WSAEINTR: return (syserr_wsaeintr);
+    case WSAEBADF: return (syserr_wsaebadf);
+    case WSAEACCES: return (syserr_wsaeacces);
+    case WSAEFAULT: return (syserr_wsaefault);
+    case WSAEINVAL: return (syserr_wsaeinval);
+    case WSAEMFILE: return (syserr_wsaemfile);
+    case WSAEWOULDBLOCK: return (syserr_wsaewouldblock);
+    case WSAEINPROGRESS: return (syserr_wsaeinprogress);
+    case WSAEALREADY: return (syserr_wsaealready);
+    case WSAENOTSOCK: return (syserr_wsaenotsock);
+    case WSAEDESTADDRREQ: return (syserr_wsaedestaddrreq);
+    case WSAEMSGSIZE: return (syserr_wsaemsgsize);
+    case WSAEPROTOTYPE: return (syserr_wsaeprototype);
+    case WSAENOPROTOOPT: return (syserr_wsaenoprotoopt);
+    case WSAEPROTONOSUPPORT: return (syserr_wsaeprotonosupport);
+    case WSAESOCKTNOSUPPORT: return (syserr_wsaesocktnosupport);
+    case WSAEOPNOTSUPP: return (syserr_wsaeopnotsupp);
+    case WSAEPFNOSUPPORT: return (syserr_wsaepfnosupport);
+    case WSAEAFNOSUPPORT: return (syserr_wsaeafnosupport);
+    case WSAEADDRINUSE: return (syserr_wsaeaddrinuse);
+    case WSAEADDRNOTAVAIL: return (syserr_wsaeaddrnotavail);
+    case WSAENETDOWN: return (syserr_wsaenetdown);
+    case WSAENETUNREACH: return (syserr_wsaenetunreach);
+    case WSAENETRESET: return (syserr_wsaenetreset);
+    case WSAECONNABORTED: return (syserr_wsaeconnaborted);
+    case WSAECONNRESET: return (syserr_wsaeconnreset);
+    case WSAENOBUFS: return (syserr_wsaenobufs);
+    case WSAEISCONN: return (syserr_wsaeisconn);
+    case WSAENOTCONN: return (syserr_wsaenotconn);
+    case WSAESHUTDOWN: return (syserr_wsaeshutdown);
+    case WSAETOOMANYREFS: return (syserr_wsaetoomanyrefs);
+    case WSAETIMEDOUT: return (syserr_wsaetimedout);
+    case WSAECONNREFUSED: return (syserr_wsaeconnrefused);
+    case WSAELOOP: return (syserr_wsaeloop);
+    case WSAENAMETOOLONG: return (syserr_wsaenametoolong);
+    case WSAEHOSTDOWN: return (syserr_wsaehostdown);
+    case WSAEHOSTUNREACH: return (syserr_wsaehostunreach);
+    case WSAENOTEMPTY: return (syserr_wsaenotempty);
+    case WSAEPROCLIM: return (syserr_wsaeproclim);
+    case WSAEUSERS: return (syserr_wsaeusers);
+    case WSAEDQUOT: return (syserr_wsaedquot);
+    case WSAESTALE: return (syserr_wsaestale);
+    case WSAEREMOTE: return (syserr_wsaeremote);
+    case WSAEDISCON: return (syserr_wsaediscon);
+    case WSASYSNOTREADY: return (syserr_wsasysnotready);
+    case WSAVERNOTSUPPORTED: return (syserr_wsavernotsupported);
+    case WSANOTINITIALISED: return (syserr_wsanotinitialised);
+    case WSAHOST_NOT_FOUND: return (syserr_wsahost_not_found);
+    case WSATRY_AGAIN: return (syserr_wsatry_again);
+    case WSANO_RECOVERY: return (syserr_wsano_recovery);
+    case WSANO_DATA: return (syserr_wsano_data);
+
     default: return (syserr_unknown);
     }
 }
