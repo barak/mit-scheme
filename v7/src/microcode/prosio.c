@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prosio.c,v 1.23 2003/02/14 18:28:23 cph Exp $
+$Id: prosio.c,v 1.24 2003/03/25 01:12:29 cph Exp $
 
 Copyright 1987,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1996,1997,2001,2003 Massachusetts Institute of Technology
@@ -39,11 +39,11 @@ DEFUN (arg_to_channel, (argument, arg_number),
        SCHEME_OBJECT argument AND
        int arg_number)
 {
-  if (! ((INTEGER_P (argument)) && (integer_to_long_p (argument))))
+  if (! ((INTEGER_P (argument)) && (integer_to_ulong_p (argument))))
     error_wrong_type_arg (arg_number);
   {
-    fast long channel = (integer_to_long (argument));
-    if (! ((channel >= 0) || (channel < ((long) OS_channel_table_size))))
+    unsigned long channel = (integer_to_ulong (argument));
+    if (! (channel < OS_channel_table_size))
       error_wrong_type_arg (arg_number);
     return (channel);
   }
@@ -52,9 +52,8 @@ DEFUN (arg_to_channel, (argument, arg_number),
 Tchannel
 DEFUN (arg_channel, (arg_number), int arg_number)
 {
-  fast Tchannel channel =
-    (arg_to_channel ((ARG_REF (arg_number)), arg_number));
-  if (! (OS_channel_open_p (channel)))
+  Tchannel channel = (arg_to_channel ((ARG_REF (arg_number)), arg_number));
+  if (!OS_channel_open_p (channel))
     error_bad_range_arg (arg_number);
   return (channel);
 }
