@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 1.8 1995/09/08 03:09:28 adams Exp $
+$Id: usiexp.scm,v 1.9 1995/09/11 13:35:59 adams Exp $
 
 Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
@@ -708,6 +708,7 @@ MIT in each case. |#
     ACOS
     ASIN
     ATAN
+    CEILING->EXACT
     COS
     EQV?
     ERROR
@@ -716,14 +717,17 @@ MIT in each case. |#
     ERROR:WRONG-TYPE-DATUM
     EXP
     EXPT
+    FLOOR->EXACT
     FOR-EACH
     LIST-REF
     LOG
     MEMQ
+    ROUND->EXACT
     SIN
     SQRT
     STRING->SYMBOL
     TAN
+    TRUNCATE->EXACT
     ))
 
 ;;;;  Hooks and utilities for user defined reductions and expanders
