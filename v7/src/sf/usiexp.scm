@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 4.32 1994/01/29 01:47:20 gjr Exp $
+$Id: usiexp.scm,v 4.33 1995/03/20 23:29:00 cph Exp $
 
-Copyright (c) 1988-1994 Massachusetts Institute of Technology
+Copyright (c) 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -535,6 +535,16 @@ MIT in each case. |#
 		      (string->symbol (car operands))))
       (if-not-expanded)))
 
+(define (intern-expansion expr operands if-expanded if-not-expanded block)
+  block
+  (if (and (pair? operands)
+	   (string? (car operands))
+	   (null? (cdr operands)))
+      (if-expanded
+       (constant/make (and expr (object/scode expr))
+		      (intern (car operands))))
+      (if-not-expanded)))
+
 (define (int:->flonum-expansion expr operands if-expanded if-not-expanded
 				block)
   (if (and (pair? operands)
@@ -612,6 +622,7 @@ MIT in each case. |#
     fourth
     int:->flonum
     int:integer?
+    intern
     list
     make-string
     ;; modulo	; Compiler does not currently open-code it.
@@ -696,6 +707,7 @@ MIT in each case. |#
    fourth-expansion
    int:->flonum-expansion
    exact-integer?-expansion
+   intern-expansion
    list-expansion
    make-string-expansion
    ;; modulo-expansion
