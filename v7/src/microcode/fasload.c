@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.28 1987/07/07 21:02:46 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.29 1987/07/29 08:24:27 jinx Exp $
 
    The "fast loader" which reads in and relocates binary files and then
    interns symbols.  It is called with one argument: the (character
@@ -285,7 +285,7 @@ Intern_Block(Next_Pointer, Stop_At)
   if (Reloc_Debug)
     printf("Interning a block.\n");
 
-  while (Next_Pointer <= Stop_At)	/* BBN has < for <= */
+  while (Next_Pointer < Stop_At)
   {
     switch (Type_Code(*Next_Pointer))
     { case TC_MANIFEST_NM_VECTOR:
