@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sysmac.scm,v 14.9 2002/02/09 06:10:07 cph Exp $
+$Id: sysmac.scm,v 14.10 2002/02/10 06:02:51 cph Exp $
 
 Copyright (c) 1988, 1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -28,6 +28,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define-syntax define-primitives
   (sc-macro-transformer
    (lambda (form environment)
+     environment
      (let ((primitive-definition
 	    (lambda (variable-name primitive-args)
 	      `(DEFINE-INTEGRABLE ,variable-name
