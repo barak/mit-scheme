@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.15 1991/08/26 15:00:22 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.16 1991/08/31 03:59:11 arthur Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -426,33 +426,38 @@ void
 DEFUN (stop_signal_default, (signo), int signo)
 {
 #ifdef HAVE_POSIX_SIGNALS
-  /* No need to handle systems without POSIX signals;
-     all job-control systems have them. */
-  sigset_t signo_mask;
-  sigset_t old_mask;
-  Tsignal_handler handler;
+  if ((isatty (STDIN_FILENO))
+      && (isatty (STDOUT_FILENO))
+      && (! option_emacs_subprocess))
+  {
+    /* No need to handle systems without POSIX signals;
+       all job-control systems have them. */
+    sigset_t signo_mask;
+    sigset_t old_mask;
+    Tsignal_handler handler;
 
-  /* Give the terminal back to the invoking process. */
-  OS_save_internal_state ();
-  OS_restore_external_state ();
+    /* Give the terminal back to the invoking process. */
+    OS_save_internal_state ();
+    OS_restore_external_state ();
 
-  /* Temporarily unbind this handler. */
-  handler = (current_handler (signo));
-  INSTALL_HANDLER (signo, SIG_DFL);
+    /* Temporarily unbind this handler. */
+    handler = (current_handler (signo));
+    INSTALL_HANDLER (signo, SIG_DFL);
 
-  /* Perform the default action for this signal. */
-  UX_sigemptyset (&signo_mask);
-  UX_sigaddset ((&signo_mask), signo);
-  UX_sigprocmask (SIG_UNBLOCK, (&signo_mask), (&old_mask));
-  UX_kill ((UX_getpid ()), signo);
-  UX_sigprocmask (SIG_SETMASK, (&old_mask), 0);
+    /* Perform the default action for this signal. */
+    UX_sigemptyset (&signo_mask);
+    UX_sigaddset ((&signo_mask), signo);
+    UX_sigprocmask (SIG_UNBLOCK, (&signo_mask), (&old_mask));
+    UX_kill ((UX_getpid ()), signo);
+    UX_sigprocmask (SIG_SETMASK, (&old_mask), 0);
 
-  /* Rebind this handler. */
-  INSTALL_HANDLER (signo, handler);
+    /* Rebind this handler. */
+    INSTALL_HANDLER (signo, handler);
 
-  /* Get the terminal back to its original state. */
-  OS_save_external_state ();
-  OS_restore_internal_state ();
+    /* Get the terminal back to its original state. */
+    OS_save_external_state ();
+    OS_restore_internal_state ();
+  }
 #endif /* HAVE_POSIX_SIGNALS */
 }
 
