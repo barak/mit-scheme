@@ -1,7 +1,7 @@
 ; -*- Scheme -*-
 ;;;;; C external interfaces to Tk procedures not associated with
 ;;;;; a particular widget.
-;;;; $Id: tk-mit.scm,v 1.1 1995/08/02 21:26:49 adams Exp $
+;;;; $Id: tk-mit.scm,v 1.2 1996/07/31 18:12:58 adams Exp $
 
 ;;;; This is the lowest level Scheme interface to general TK/TCL data
 ;;;; structures.  Primitives are defined in tk-mit.c and tk.c
@@ -51,8 +51,10 @@
   (%tkNextWakeup))
 
 
-;;; A not-so-precise number->string that is faster and more than
-;;; sufficient for our purposes. 
+;; A not-so-precise number->string that is faster and more than
+;; sufficient for our purposes.  Note that the output always has a
+;; leading digit to prevent tk from thinking that .7 is a name and
+;; not a number.
 
 (define (swat:number->string x)
 
@@ -105,34 +107,17 @@
 	   (cons #\- (scale (flo:- 0.0 x) 0))
 	   (scale x 0)))
       (number->string x 10)))
-
-
-#|
-;;; This is a kludge to prevent tk from thinking that .7 is a name and
-;;; not a number.  
-(define (number->tk-string n)
-  (let ((abs-n (abs n)))
-    (if (< abs-n 1)
-	(let ((s (swat:number->string abs-n)))
-	  (if (< n 0)
-	      (string-append "-0" s)
-	      (string-append "0" s)))
-	(swat:number->string n))))
-|#
-
+
 (define (stringify-for-tk arg)
   (define (->string arg)
-    (cond ((string? arg) arg)
-	  ((number? arg)
-	   ;;(number->tk-string arg)
-	   (swat:number->string arg)
-	   )
-	  ((symbol? arg) (symbol->string arg))
+    (cond ((string? arg)      arg)
+	  ((number? arg)      (swat:number->string arg))
+	  ((symbol? arg)      (symbol-name arg))
 	  ((TK-variable? arg) (TK-variable.tk-name arg))
-	  ((pair? arg) (apply string-append (map stringify-for-tk arg)))
-	  ((procedure? arg) (->string (arg)))
-	  (else (error "tcl-global-eval: Unknown argument type"
-		       arg))))
+	  ((pair? arg)        (%string-append (map stringify-for-tk arg)))
+	  ((procedure? arg)   (->string (arg)))
+	  (else (error "tcl-global-eval: Unknown argument type" arg))))
+
   (string-append "{" (->string arg) "} "))
 
 (define (tk-op thunk)
@@ -145,8 +130,9 @@
    (lambda ()
      (%tclGlobalEval
       (application->TKMainWindow application)
-      (apply string-append
-	     (map stringify-for-tk (cons command-name args)))))))
+      ;; (%string-append x) == (apply string-append x)
+      (%string-append (map stringify-for-tk (cons command-name args)))))))
+
 
 ;;;turn off all floating errors around TK processing
 ;;;Note that we don't need a dynamic wind because
@@ -157,7 +143,7 @@
   (let ((old-mask (set-floating-error-mask! 0)))
     (let ((result (%tkCompletelyHandlesEvent? os-event)))
       (set-floating-error-mask! old-mask)
-      (if (eq? result 0)
+      (if (eqv? result 0)
 	  (error "bad argument to tk-completely-handles-event?" os-event)
 	  result))))
 
@@ -180,7 +166,7 @@
   ;; Cause TK to signal us that Scheme wants to know about these kinds
   ;; of events on this window.
   (%tkGenerateSchemeEvent event-mask unwrapped-tk-window))
-
+
 (define (tk-init xdisplay)
   ;; Set up an initial environment with a Tcl interpreter
   (tk-op
@@ -237,7 +223,7 @@
 			  (Point.Y (UITKRectangle.Offset screen-area))
 			  (UITKRectangle.Width screen-area)
 			  (UITKRectangle.Height screen-area)))))
-
+
 (define (TK-Unmap-Window tkwin)
   (tk-op (lambda () (%tkUnmapWindow tkwin))))
 
@@ -356,9 +342,27 @@
 				'do-tk-callback
 				*event-processing-mutex*
 				(lambda ()
-				  (apply callback list-of-string-args))))
+				  (apply-callback callback list-of-string-args))))
 			   (callback-loop rest-of-string))))))
   'OK)
+
+(define (apply-callback callback arglist)
+  (cond ((ignore-errors
+	  (lambda () (apply callback arglist)))
+	 => (lambda (condition)
+	      (let ((port  (notification-output-port)))
+		(newline port)
+		(write-string "; Error in callback " port)
+		(display callback port)
+		(newline port)
+		(write-string ";" port)
+		(write-condition-report condition port)
+		(newline port)
+		(write-string ";To debug, type (debug (unhash " port)
+		(write (hash condition) port)
+		(write-string "))" port)
+		(newline port))))))
+
 
 (define *event-processing-mutex* (make-thread-mutex))
 
