@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typerew.scm,v 1.20 1996/07/23 15:41:23 adams Exp $
+$Id: typerew.scm,v 1.21 1996/07/24 15:11:44 adams Exp $
 
 Copyright (c) 1994-1996 Massachusetts Institute of Technology
 
@@ -934,15 +934,15 @@ MIT in each case. |#
 	(display "\n; Argument ")
 	(display position)
 	(display " is ")
-	(display (type:user-description actual-type))
+	(display (type:user-description actual-type #F))
 	(display ", should be ")
-	(display (type:user-description required-type))
+	(display (type:user-description required-type #T))
 	(display "."))))
 
-  (define (check proc-type rands)
+  (define (check proc-type all-rands)
     (let ((argument-types (procedure-type/argument-types proc-type))
 	  (asserted-types (procedure-type/argument-assertions proc-type)))
-      (let loop ((rands  rands)
+      (let loop ((rands  all-rands)
 		 (position 1)
 		 (argument-types argument-types)
 		 (asserted-types asserted-types)
@@ -962,6 +962,9 @@ MIT in each case. |#
 	(cond ((null? rands)
 	       (if (pair? errors)
 		   (report (reverse! errors))))
+	      ((null? argument-types)
+	       (internal-warning "Extra arguments in: " proc-type all-rands)
+	       (if (pair? errors) (report (reverse! errors))))
 	      ((pair? argument-types)
 	       (test (car argument-types) (car asserted-types)))
 	      (else
@@ -1974,11 +1977,18 @@ MIT in each case. |#
 
 (let ()
   ;; For the indexed selectors or mutators we do not even try to figure out
-  ;; if the index is in range.  With the type and range checking on
+  ;; if the index is in range.  Range checking also performs
+  ;; type-checking of the index (via an unsigned comarison).  Note
+  ;; that %RECORDs are always created with at least a descriptor slot,
+  ;; so an index known to be exact zero does not need a range (or
+  ;; type) check.  This is what RANGE-TYPE-OK is for.  If not #F, then
+  ;; it is a type describing those index values which never need a
+  ;; check.
 
   (define (def-indexed-operations selector-name mutator-name type-check-class
 	    element-type collection-type
-	    %selector %mutator v-typecode v-length element-typecode)
+	    %selector %mutator v-typecode v-length element-typecode
+	    range-ok-type)
     ;; No effects.
     (let ((selector            (make-primitive-procedure selector-name))
 	  (unchecked-selection (typerew-simple-operator-replacement %selector)))
@@ -2002,7 +2012,9 @@ MIT in each case. |#
 				 (not (type:subset? v-type collection-type))
 				 v-typecode))
 		  (check/2?		; length check incorporates type check
-		   (and (or range-checks?
+		   (and (or (and range-checks?
+				 (not (and range-ok-type
+					   (type:subset? i-type range-ok-type))))
 			    (and type-checks?
 				 (not (type:subset? i-type type:fixnum))))
 			v-length)))
@@ -2032,11 +2044,13 @@ MIT in each case. |#
 	    (let ((check/1? (and type-checks?
 				 (not (type:subset? v-type collection-type))
 				 v-typecode))
-		  (check/2? (and (or range-checks?
-				     (and type-checks?
-					  (not (type:subset? i-type
-							     type:fixnum))))
-				 v-length))
+		  (check/2?
+		   (and (or (and range-checks?
+				 (not (and range-ok-type
+					   (type:subset? i-type range-ok-type))))
+			    (and type-checks?
+				 (not (type:subset? i-type type:fixnum))))
+			v-length))
 		  (check/3? (and type-checks? element-typecode
 				 (not (type:subset? e-type element-type))
 				 element-typecode)))
@@ -2046,27 +2060,28 @@ MIT in each case. |#
 
   (def-indexed-operations 'VECTOR-REF  'VECTOR-SET!   'VECTOR
     type:any type:vector
-    %vector-ref %vector-set! (machine-tag 'VECTOR) %vector-length #F)
+    %vector-ref %vector-set! (machine-tag 'VECTOR) %vector-length #F #F)
 
   (def-indexed-operations '%RECORD-REF '%RECORD-SET!  'RECORD
     type:any type:%record
-    %%record-ref %%record-set! (machine-tag 'RECORD) %%record-length #F)
+    %%record-ref %%record-set! (machine-tag 'RECORD) %%record-length #F
+    type:exact-zero)
 
   (def-indexed-operations 'STRING-REF  'STRING-SET!   'STRING
     type:character type:string
     %string-ref %string-set! (machine-tag 'VECTOR-8B) %string-length
-    (machine-tag 'CHARACTER))
+    (machine-tag 'CHARACTER) #F)
 
   (def-indexed-operations 'VECTOR-8B-REF  'VECTOR-8B-SET!  'STRING
     type:unsigned-byte type:string
     %vector-8b-ref %vector-8b-set! (machine-tag 'VECTOR-8B) %string-length
-    (machine-tag 'POSITIVE-FIXNUM))
+    (machine-tag 'POSITIVE-FIXNUM) #F)
 
   (def-indexed-operations
     'FLOATING-VECTOR-REF 'FLOATING-VECTOR-SET!  'FLOATING-VECTOR
     type:flonum type:flonum-vector
     %floating-vector-ref %floating-vector-set! (machine-tag 'FLONUM)
-    %floating-vector-length (machine-tag 'FLONUM))
+    %floating-vector-length (machine-tag 'FLONUM) #F)
 )
 
 
