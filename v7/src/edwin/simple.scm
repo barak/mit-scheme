@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/simple.scm,v 1.44 1992/05/18 19:38:26 cph Exp $
+;;;	$Id: simple.scm,v 1.45 1995/04/17 21:47:40 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -52,11 +52,7 @@
 
 (define (insert-chars char n #!optional point)
   (let ((point (if (default-object? point) (current-point) point)))
-    (cond ((= n 1)
-	   (group-insert-char! (mark-group point) (mark-index point) char))
-	  ((> n 1)
-	   (group-insert-substring! (mark-group point) (mark-index point)
-				    (make-string n char) 0 n)))))
+    (group-insert-chars! (mark-group point) (mark-index point) char n)))
 
 (define (insert-newline #!optional point)
   (let ((point (if (default-object? point) (current-point) point)))
@@ -64,12 +60,7 @@
 
 (define (insert-newlines n #!optional point)
   (let ((point (if (default-object? point) (current-point) point)))
-    (cond ((= n 1)
-	   (group-insert-char! (mark-group point) (mark-index point)
-			       #\newline))
-	  ((> n 1)
-	   (group-insert-substring! (mark-group point) (mark-index point)
-				    (make-string n #\newline) 0 n)))))
+    (group-insert-chars! (mark-group point) (mark-index point) #\newline n)))
 
 (define (guarantee-newline #!optional point)
   (let ((point (if (default-object? point) (current-point) point)))
@@ -123,6 +114,47 @@
     (group-insert-substring! (mark-group point) (mark-index point)
 			     string start end)))
 
+(define (insert-string-pad-left string n-columns #!optional char point)
+  (insert-substring-pad-left
+   string 0 (string-length string)
+   n-columns
+   (if (default-object? char) #\space char)
+   (if (default-object? point) (current-point) point)))
+
+(define (insert-substring-pad-left string start end n-columns
+				   #!optional char point)
+  (let ((char (if (default-object? char) #\space char))
+	(point (if (default-object? point) (current-point) point)))
+    (let ((group (mark-group point))
+	  (index (mark-index point))
+	  (n (fix:- n-columns (fix:- end start))))
+      (if (fix:> n 0)
+	  (begin
+	    (group-insert-chars! group index char n)
+	    (group-insert-substring! group (fix:+ index n) string start end))
+	  (group-insert-substring! group index string start end)))))
+
+(define (insert-string-pad-right string n-columns #!optional char point)
+  (insert-substring-pad-right
+   string 0 (string-length string)
+   n-columns
+   (if (default-object? char) #\space char)
+   (if (default-object? point) (current-point) point)))
+
+(define (insert-substring-pad-right string start end n-columns
+				    #!optional char point)
+  (let ((char (if (default-object? char) #\space char))
+	(point (if (default-object? point) (current-point) point))
+	(length (fix:- end start)))
+    (let ((group (mark-group point))
+	  (index (mark-index point))
+	  (n (fix:- n-columns length)))
+      (if (fix:> n 0)
+	  (begin
+	    (group-insert-substring! group index string start end)
+	    (group-insert-chars! group (fix:+ index length) char n))
+	  (group-insert-substring! group index string start end)))))
+
 (define (insert-region start end #!optional point)
   (if (not (mark<= start end))
       (error "Marks incorrectly related:" start end))
