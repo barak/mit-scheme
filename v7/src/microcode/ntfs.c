@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntfs.c,v 1.19 1997/12/29 20:46:32 cph Exp $
+$Id: ntfs.c,v 1.20 1998/01/09 05:31:21 cph Exp $
 
-Copyright (c) 1992-97 Massachusetts Institute of Technology
+Copyright (c) 1992-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,10 +37,10 @@ MIT in each case. */
 #include <string.h>
 #include "outf.h"
 
-static HANDLE create_file_for_info (const char *);
-
 static enum get_file_info_result get_file_info_from_dir
   (const char *, BY_HANDLE_FILE_INFORMATION *);
+static int valid_drive_p (const char *);
+static HANDLE create_file_for_info (const char *);
 
 enum get_file_info_result
 NT_get_file_info (const char * namestring, BY_HANDLE_FILE_INFORMATION * info)
@@ -51,7 +51,7 @@ NT_get_file_info (const char * namestring, BY_HANDLE_FILE_INFORMATION * info)
   strcpy (nscopy, namestring);
   {
     unsigned int len = (strlen (nscopy));
-    if ((len > 0) && ((nscopy [len - 1]) == '\\'))
+    if ((len > 3) && ((nscopy [len - 1]) == '\\'))
       (nscopy [len - 1]) = '\0';
   }
   hfile = (create_file_for_info (nscopy));
@@ -91,7 +91,33 @@ get_file_info_from_dir (const char * namestring,
     {
       DWORD code = (GetLastError ());
       if (STAT_NOT_FOUND_P (code))
-	return (gfi_not_found);
+	{
+	  /* On Windows 95, the root directory of a drive cannot be
+	     interrogated using either method.  Test to see if it is a
+	     valid drive name, and if so, dummy it.  */
+	  if (((strlen (namestring)) == 3)
+	      && ((namestring[1]) == ':')
+	      && ((namestring[2]) == '\\')
+	      && (valid_drive_p (namestring)))
+	    {
+	      (info -> dwFileAttributes) = FILE_ATTRIBUTE_DIRECTORY;
+	      ((info -> ftCreationTime) . dwHighDateTime) = 0;
+	      ((info -> ftCreationTime) . dwLowDateTime) = 0;
+	      ((info -> ftLastAccessTime) . dwHighDateTime) = 0;
+	      ((info -> ftLastAccessTime) . dwLowDateTime) = 0;
+	      ((info -> ftLastWriteTime) . dwHighDateTime) = 0;
+	      ((info -> ftLastWriteTime) . dwLowDateTime) = 0;
+	      (info -> dwVolumeSerialNumber) = 0;
+	      (info -> nFileSizeHigh) = 0;
+	      (info -> nFileSizeLow) = 0;
+	      (info -> nNumberOfLinks) = 1;
+	      (info -> nFileIndexHigh) = 0;
+	      (info -> nFileIndexLow) = 0;
+	      return (gfi_ok);
+	    }
+	  else
+	    return (gfi_not_found);
+	}
       if (STAT_NOT_ACCESSIBLE_P (code))
 	return (gfi_not_accessible);
       NT_error_api_call (code, apicall_FindFirstFile);
@@ -108,6 +134,25 @@ get_file_info_from_dir (const char * namestring,
   (info -> nFileIndexHigh) = 0;
   (info -> nFileIndexLow) = 0;
   return (gfi_ok);
+}
+
+static int
+valid_drive_p (const char * namestring)
+{
+  DWORD sectors_per_cluster;
+  DWORD bytes_per_sector;
+  DWORD number_of_free_clusters;
+  DWORD total_number_of_clusters;
+  BOOL result;
+  SetErrorMode (SEM_FAILCRITICALERRORS);
+  result
+    = (GetDiskFreeSpace (namestring,
+			 (&sectors_per_cluster),
+			 (&bytes_per_sector),
+			 (&number_of_free_clusters),
+			 (&total_number_of_clusters)));
+  SetErrorMode (0);
+  return (!result);
 }
 
 static HANDLE
