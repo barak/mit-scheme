@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/macros.scm,v 1.54 1992/01/09 17:47:27 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/macros.scm,v 1.55 1992/08/28 18:46:48 jinx Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-1992 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -128,6 +128,14 @@
   (lambda (name)
     `(COMMAND-PROCEDURE
       ,(command-name->scheme-name (canonicalize-name name)))))
+
+(syntax-table-define edwin-syntax-table 'COMMAND-DEFINED?
+  (lambda (name)
+    (let ((variable-name (command-name->scheme-name (canonicalize-name name))))
+      `(let ((env (->environment '(EDWIN))))
+	 (and (environment-bound? env ',variable-name)
+	      (not (lexical-unassigned? env
+					',variable-name)))))))
 
 (define (command-name->scheme-name name)
   (symbol-append 'EDWIN-COMMAND$ name))
