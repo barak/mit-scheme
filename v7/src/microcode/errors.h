@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/errors.h,v 9.32 1989/03/27 23:14:52 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/errors.h,v 9.33 1989/05/26 20:20:24 jinx Rel $
  *
  * Error and termination code declarations.
  *
@@ -204,14 +204,14 @@ MIT in each case. */
 #define TERM_TOUCH				0x17
 #define TERM_SAVE_AND_EXIT			0x18
 #define TERM_TRAP				0x19
-#define TERM_BAD_BACK_OUT			0x20
+#define TERM_BAD_BACK_OUT			0x1a
 
 /*
   If you add any termination codes here, add them to
   the tables below as well!
  */
 
-#define MAX_TERMINATION				0x20
+#define MAX_TERMINATION				0x1a
 
 #define TERM_NAME_TABLE							\
 {									\
@@ -241,7 +241,7 @@ MIT in each case. */
 /* 0x17 */		"TOUCH",					\
 /* 0x18 */		"SAVE-AND-EXIT",				\
 /* 0x19 */		"TERM_TRAP",					\
-/* 0x20 */		"BAD_BACK_OUT"					\
+/* 0x1a */		"BAD_BACK_OUT"					\
 }
 
 #define TERM_MESSAGE_TABLE						\
@@ -272,5 +272,5 @@ MIT in each case. */
 /* 0x17 */		"Touch without futures support",		\
 /* 0x18 */		"Halt requested by external source",		\
 /* 0x19 */		"User requested termination after trap",	\
-/* 0x20 */		"Backing out of non-primitive"			\
+/* 0x1a */		"Backing out of non-primitive"			\
 }
