@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxenv.c,v 1.17 1999/01/02 06:11:34 cph Exp $
+$Id: uxenv.c,v 1.18 1999/04/07 04:01:48 cph Exp $
 
 Copyright (c) 1990-1999 Massachusetts Institute of Technology
 
@@ -50,6 +50,26 @@ DEFUN (OS_decode_time, (t, buffer), time_t t AND struct time_structure * buffer)
 #endif
   {
     /* In localtime() encoding, 0 is Sunday; in ours, it's Monday. */
+    int wday = (ts -> tm_wday);
+    (buffer -> day_of_week) = ((wday == 0) ? 6 : (wday - 1));
+  }
+}
+
+void
+DEFUN (OS_decode_utc, (t, buffer), time_t t AND struct time_structure * buffer)
+{
+  struct tm * ts;
+  STD_PTR_SYSTEM_CALL (syscall_gmtime, ts, (UX_gmtime (&t)));
+  (buffer -> year) = ((ts -> tm_year) + 1900);
+  (buffer -> month) = ((ts -> tm_mon) + 1);
+  (buffer -> day) = (ts -> tm_mday);
+  (buffer -> hour) = (ts -> tm_hour);
+  (buffer -> minute) = (ts -> tm_min);
+  (buffer -> second) = (ts -> tm_sec);
+  (buffer -> daylight_savings_time) = (ts -> tm_isdst);
+  (buffer -> time_zone) = 0;
+  {
+    /* In gmtime() encoding, 0 is Sunday; in ours, it's Monday. */
     int wday = (ts -> tm_wday);
     (buffer -> day_of_week) = ((wday == 0) ? 6 : (wday - 1));
   }

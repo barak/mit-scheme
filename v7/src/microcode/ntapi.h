@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntapi.h,v 1.10 1999/03/09 05:39:03 cph Exp $
+$Id: ntapi.h,v 1.11 1999/04/07 04:01:43 cph Exp $
 
 Copyright (c) 1997, 1999 Massachusetts Institute of Technology
 
@@ -90,6 +90,7 @@ enum syscall_names
   syscall_close,
   syscall_fstat,
   syscall_getcwd,
+  syscall_gmtime,
   syscall_localtime,
   syscall_lseek,
   syscall_malloc,
@@ -947,6 +948,7 @@ static char * syscall_names_table [] =
   "CLOSE",
   "FSTAT",
   "GETCWD",
+  "GMTIME",
   "LOCALTIME",
   "LSEEK",
   "MALLOC",

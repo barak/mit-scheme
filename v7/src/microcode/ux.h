@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.71 1999/01/02 06:11:34 cph Exp $
+$Id: ux.h,v 1.72 1999/04/07 04:01:47 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -734,6 +734,7 @@ extern char * EXFUN (getlogin, (void));
 #define UX_getpwnam getpwnam
 #define UX_getpwuid getpwuid
 #define UX_getuid getuid
+#define UX_gmtime gmtime
 #define UX_ioctl ioctl
 #define UX_link link
 #define UX_localtime localtime

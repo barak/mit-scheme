@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtop.c,v 1.21 1999/01/02 06:11:34 cph Exp $
+$Id: uxtop.c,v 1.22 1999/04/07 04:01:49 cph Exp $
 
 Copyright (c) 1990-1999 Massachusetts Institute of Technology
 
@@ -316,6 +316,7 @@ static char * syscall_names_table [] =
   "GETCWD",
   "GETHOSTNAME",
   "GETTIMEOFDAY",
+  "GMTIME",
   "IOCTL-TIOCGPGRP",
   "IOCTL-TIOCSIGSEND",
   "KILL",

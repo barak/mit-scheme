@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2api.h,v 1.11 1999/01/02 06:11:34 cph Exp $
+$Id: os2api.h,v 1.12 1999/04/07 04:01:45 cph Exp $
 
 Copyright (c) 1994-1999 Massachusetts Institute of Technology
 
@@ -92,6 +92,7 @@ enum syscall_names
   syscall_dos_write,
   syscall_dos_write_queue,
   syscall_beginthread,
+  syscall_gmtime,
   syscall_kbd_char_in,
   syscall_localtime,
   syscall_malloc,
@@ -948,6 +949,7 @@ static char * syscall_names_table [] =
   "dos-write",
   "dos-write-queue",
   "beginthread",
+  "gmtime",
   "kbd-char-in",
   "localtime",
   "malloc",

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: syscall.h,v 1.11 1999/01/02 06:11:34 cph Exp $
+$Id: syscall.h,v 1.12 1999/04/07 04:01:47 cph Exp $
 
 Copyright (c) 1993-1999 Massachusetts Institute of Technology
 
@@ -59,6 +59,7 @@ enum syscall_names
   syscall_getcwd,
   syscall_gethostname,
   syscall_gettimeofday,
+  syscall_gmtime,
   syscall_ioctl_TIOCGPGRP,
   syscall_ioctl_TIOCSIGSEND,
   syscall_kill,

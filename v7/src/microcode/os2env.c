@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2env.c,v 1.11 1999/01/02 06:11:34 cph Exp $
+$Id: os2env.c,v 1.12 1999/04/07 04:01:45 cph Exp $
 
 Copyright (c) 1994-1999 Massachusetts Institute of Technology
 
@@ -87,6 +87,27 @@ OS_decode_time (time_t t, struct time_structure * buffer)
 #endif
   {
     /* In localtime() encoding, 0 is Sunday; in ours, it's Monday. */
+    int wday = (ts -> tm_wday);
+    (buffer -> day_of_week) = ((wday == 0) ? 6 : (wday - 1));
+  }
+}  
+
+void
+OS_decode_utc (time_t t, struct time_structure * buffer)
+{
+  struct tm * ts = (gmtime (&t));
+  if (ts == 0)
+    OS2_error_system_call (errno, syscall_gmtime);
+  (buffer -> year) = ((ts -> tm_year) + 1900);
+  (buffer -> month) = ((ts -> tm_mon) + 1);
+  (buffer -> day) = (ts -> tm_mday);
+  (buffer -> hour) = (ts -> tm_hour);
+  (buffer -> minute) = (ts -> tm_min);
+  (buffer -> second) = (ts -> tm_sec);
+  (buffer -> daylight_savings_time) = (ts -> tm_isdst);
+  (buffer -> time_zone) = 0;
+  {
+    /* In gmtime() encoding, 0 is Sunday; in ours, it's Monday. */
     int wday = (ts -> tm_wday);
     (buffer -> day_of_week) = ((wday == 0) ? 6 : (wday - 1));
   }

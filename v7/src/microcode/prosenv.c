@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prosenv.c,v 1.15 1999/01/02 06:11:34 cph Exp $
+$Id: prosenv.c,v 1.16 1999/04/07 04:01:46 cph Exp $
 
 Copyright (c) 1987-1999 Massachusetts Institute of Technology
 
@@ -33,38 +33,45 @@ DEFINE_PRIMITIVE ("ENCODED-TIME", Prim_encoded_time, 0, 0,
   PRIMITIVE_RETURN (ulong_to_integer ((unsigned long) (OS_encoded_time ())));
 }
 
+#define DECODE_TIME_BODY(proc)						\
+{									\
+  PRIMITIVE_HEADER (2);							\
+  {									\
+    SCHEME_OBJECT vec = (VECTOR_ARG (1));				\
+    unsigned int len = (VECTOR_LENGTH (vec));				\
+    struct time_structure ts;						\
+    if (! (len >= 10))							\
+      error_bad_range_arg (1);						\
+    proc (((time_t) (arg_ulong_integer (2))), &ts);			\
+    FAST_VECTOR_SET (vec, 1, (ulong_to_integer (ts . second)));		\
+    FAST_VECTOR_SET (vec, 2, (ulong_to_integer (ts . minute)));		\
+    FAST_VECTOR_SET (vec, 3, (ulong_to_integer (ts . hour)));		\
+    FAST_VECTOR_SET (vec, 4, (ulong_to_integer (ts . day)));		\
+    FAST_VECTOR_SET (vec, 5, (ulong_to_integer (ts . month)));		\
+    FAST_VECTOR_SET (vec, 6, (ulong_to_integer (ts . year)));		\
+    FAST_VECTOR_SET (vec, 7, (ulong_to_integer (ts . day_of_week)));	\
+    FAST_VECTOR_SET							\
+      (vec, 8, (ulong_to_integer (ts . daylight_savings_time)));	\
+    FAST_VECTOR_SET							\
+      (vec, 9,								\
+       (((ts . time_zone) == INT_MAX)					\
+	? SHARP_F							\
+	: (ulong_to_integer (ts . time_zone))));			\
+  }									\
+  PRIMITIVE_RETURN (UNSPECIFIC);					\
+}
+
 DEFINE_PRIMITIVE ("DECODE-TIME", Prim_decode_time, 2, 2,
   "Fill a vector with the second argument decoded.\n\
 The vector's elements are:\n\
   #(TAG second minute hour day month year day-of-week dst zone)")
-{
-  SCHEME_OBJECT vec;
-  unsigned int len;
-  struct time_structure ts;
-  PRIMITIVE_HEADER (1);
+DECODE_TIME_BODY (OS_decode_time)
 
-  vec = (VECTOR_ARG (1));
-  len = (VECTOR_LENGTH (vec));
-  if (! (len >= 8))
-    error_bad_range_arg (1);
-  OS_decode_time (((time_t) (arg_ulong_integer (2))), &ts);
-  FAST_VECTOR_SET (vec, 1, (ulong_to_integer (ts . second)));
-  FAST_VECTOR_SET (vec, 2, (ulong_to_integer (ts . minute)));
-  FAST_VECTOR_SET (vec, 3, (ulong_to_integer (ts . hour)));
-  FAST_VECTOR_SET (vec, 4, (ulong_to_integer (ts . day)));
-  FAST_VECTOR_SET (vec, 5, (ulong_to_integer (ts . month)));
-  FAST_VECTOR_SET (vec, 6, (ulong_to_integer (ts . year)));
-  FAST_VECTOR_SET (vec, 7, (ulong_to_integer (ts . day_of_week)));
-  if (len > 8)
-    FAST_VECTOR_SET (vec, 8, (ulong_to_integer (ts . daylight_savings_time)));
-  if (len > 9)
-    FAST_VECTOR_SET
-      (vec, 9,
-       (((ts . time_zone) == INT_MAX)
-	? SHARP_F
-	: (ulong_to_integer (ts . time_zone))));
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
+DEFINE_PRIMITIVE ("DECODE-UTC", Prim_decode_utc, 2, 2,
+  "Fill a vector with the second argument decoded.\n\
+The vector's elements are:\n\
+  #(TAG second minute hour day month year day-of-week dst zone)")
+DECODE_TIME_BODY (OS_decode_utc)
 
 DEFINE_PRIMITIVE ("ENCODE-TIME", Prim_encode_time, 1, 1,
   "Return the file time corresponding to the time structure given.")
