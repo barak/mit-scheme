@@ -1,6 +1,6 @@
 # -*- Fundamental -*-
 
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/dosutl/Attic/makefile,v 1.1 1992/05/05 07:01:18 jinx Exp $
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/dosutl/Attic/makefile,v 1.2 1992/07/28 18:26:21 jinx Exp $
 
 # Makefile for Scheme on DOS
 
@@ -14,8 +14,8 @@ MACHINE_SWITCHES = -3 -mx -DNO_CONST -DHAS_COMPILER_SUPPORT -Di386
 MACHINE_SOURCES = cmpint.c cmpi386.asm
 MACHINE_OBJECTS = cmpint.obj cmpi386.obj
 GC_HEAD_FILES = gccode.h cmpgc.h cmpint2.h cmpi386.h
-USER_PRIM_SOURCES =
-USER_PRIM_OBJECTS =
+USER_PRIM_SOURCES = dosint10.c dosi10.asm dosx32.c
+USER_PRIM_OBJECTS = dosint10.obj dosi10.obj dosx32.obj
 USER_LIBS =
 BINDIR = \scheme\microcode
 CC = ztc
@@ -229,16 +229,18 @@ OBJECTS = $(CORE_OBJECTS) $(STD_GC_OBJECTS) $(DOS_OBJECTS) $(OS_PRIM_OBJECTS) us
 BCHSOURCES = $(CORE_SOURCES) $(BCH_GC_SOURCES)
 BCHOBJECTS = $(CORE_OBJECTS) $(BCH_GC_OBJECTS) $(DOS_OBJECTS) $(OS_PRIM_OBJECTS) bchdef.obj
 
+FLASHTEK = x32v.lib
+
 scheme.exe : $(OBJECTS) $(SCHEME_OBJECTS) scm-ztc.lst
-	$(CC) @scm-ztc.lst
+	$(CC) @scm-ztc.lst $(FLASHTEK)
 bchscheme.exe : $(BCHOBJECTS) $(SCHEME_OBJECTS) bch-ztc.lst
-	$(CC) @bch-ztc.lst
+	$(CC) @bch-ztc.lst $(FLASHTEK)
 findprim.exe : findprim.obj
-	$(CC) findprim.obj $(MACHINE_SWITCHES)
+	$(CC) findprim.obj $(MACHINE_SWITCHES) $(FLASHTEK)
 bintopsb.exe : bintopsb.obj missing.obj
-	$(CC) bintopsb.obj missing.obj $(MACHINE_SWITCHES) $(LDFLAGS)
+	$(CC) bintopsb.obj missing.obj $(MACHINE_SWITCHES) $(LDFLAGS) $(FLASHTEK)
 psbtobin.exe : psbtobin.obj missing.obj
-	$(CC) psbtobin.obj missing.obj $(MACHINE_SWITCHES) $(LDFLAGS)
+	$(CC) psbtobin.obj missing.obj $(MACHINE_SWITCHES) $(LDFLAGS) $(FLASHTEK)
 breakup.exe : breakup.obj
 	$(CC) breakup.obj $(MACHINE_SWITCHES) $(LDFLAG)
 wsize.exe : wsize.obj
@@ -379,4 +381,7 @@ doskbd.obj : doskbd.h dossys.h dosinsn.h
 dosasutl.obj : dosasutl.asm
 doskbutl.obj : doskbutl.asm
 dosxcutl.obj : dosxcutl.asm
+dosint10.obj: dosint10.c dosint10.h
+dosi10.obj: dosi10.asm
+dosx32.obj: dosx32.c
 

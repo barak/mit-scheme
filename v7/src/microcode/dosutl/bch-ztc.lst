@@ -68,11 +68,14 @@ dossys.obj
 intext.obj
 dostterm.obj
 tparam.obj
+dosasutl.obj
+dosexcp.obj
+dosi10.obj
+dosint10.obj
 doskbd.obj
 doskbutl.obj
-dosexcp.obj
+dosx32.obj
 dosxcutl.obj
-dosasutl.obj
 bchdmp.obj
 bchgcl.obj
 bchmmg.obj
