@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/object.scm,v 4.2 1988/06/14 08:32:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/object.scm,v 4.3 1988/07/20 00:09:16 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -50,7 +50,10 @@ MIT in each case. |#
     (set-vector-tag-%unparser!
      root-tag
      (lambda (state object)
-       (unparse-object state (vector-tag-name (tagged-vector/tag object)))))
+       ((standard-unparser
+	 (symbol->string (vector-tag-name (tagged-vector/tag object)))
+	 false)
+	state object)))
     (named-lambda (make-vector-tag parent name enumeration)
       (let ((tag
 	     (%make-vector-tag (or parent root-tag)
@@ -136,7 +139,7 @@ MIT in each case. |#
 
 (define (tagged-vector/description object)
   (cond ((named-structure? object)
-	 (named-structure/description object))
+	 named-structure/description)
 	((tagged-vector? object)
 	 (vector-tag-description (tagged-vector/tag object)))
 	(else
