@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/insutl.scm,v 1.8 1992/02/13 16:46:43 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/insutl.scm,v 1.9 1992/02/16 02:04:31 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -58,9 +58,9 @@ MIT in each case. |#
   ((@R 4)				; ESP
    (MEMORY)
    #b00 4
-   (BYTE (2 0)
+   (BYTE (3 4)
 	 (3 4)
-	 (3 4)))
+	 (2 0)))
 
   ((@RO B (? r index-reg) (? offset))
    (MEMORY)
@@ -75,17 +75,17 @@ MIT in each case. |#
   ((@RO B 4 (? offset))
    (MEMORY)
    #b01 4
-   (BYTE (2 0)
+   (BYTE (3 4)
 	 (3 4)
-	 (3 4)
+	 (2 0)
 	 (8 offset SIGNED)))
 
   ((@RO UB 4 (? offset))
    (MEMORY)
    #b01 4
-   (BYTE (2 0)
+   (BYTE (3 4)
 	 (3 4)
-	 (3 4)
+	 (2 0)
 	 (8 offset UNSIGNED)))
 
   ((@RO W (? r index-reg) (? offset))
@@ -101,64 +101,64 @@ MIT in each case. |#
   ((@RO W 4 (? offset))			; ESP
    (MEMORY)
    #b10 #b100
-   (BYTE (2 0)
+   (BYTE (3 4)
 	 (3 4)
-	 (3 4))
+	 (2 0))
    (IMMEDIATE offset ADDRESS SIGNED))
 
   ((@RO UW 4 (? offset))		; ESP
    (MEMORY)
    #b10 #b100
-   (BYTE (2 0)
+   (BYTE (3 4)
 	 (3 4)
-	 (3 4))
+	 (2 0))
    (IMMEDIATE offset ADDRESS UNSIGNED))
    
   ((@RI (? b base-reg) (? i index-reg) (? s index-scale))
    (MEMORY)
    #b00 #b100
-   (BYTE (2 s)
+   (BYTE (3 b)
 	 (3 i)
-	 (3 b)))
+	 (2 s)))
 
   ((@RI 5 (? i index-reg) (? s index-scale)) ; EBP
    (MEMORY)
    #b01 #b100
-   (BYTE (2 s)
+   (BYTE (3 5)
 	 (3 i)
-	 (3 5)
+	 (2 s)
 	 (8 0)))
 
   ((@ROI B (? b) (? offset) (? i index-reg) (? s index-scale))
    (MEMORY)
    #b01 #b100
-   (BYTE (2 s)
+   (BYTE (3 b)
 	 (3 i)
-	 (3 b)
+	 (2 s)
 	 (8 offset SIGNED)))
 
   ((@ROI UB (? b) (? offset) (? i index-reg) (? s index-scale))
    (MEMORY)
    #b01 #b100
-   (BYTE (2 s)
+   (BYTE (3 b)
 	 (3 i)
-	 (3 b)
+	 (2 s)
 	 (8 offset UNSIGNED)))
 
   ((@ROI W (? b) (? offset) (? i index-reg) (? s index-scale))
    (MEMORY)
    #b10 #b100
-   (BYTE (2 s)
+   (BYTE (3 b)
 	 (3 i)
-	 (3 b))
+	 (2 s))
    (IMMEDIATE offset ADDRESS SIGNED))
 
   ((@ROI UW (? b) (? offset) (? i index-reg) (? s index-scale))
    (MEMORY)
    #b10 #b100
-   (BYTE (2 s)
+   (BYTE (3 b)
 	 (3 i)
-	 (3 b))
+	 (2 s))
    (IMMEDIATE offset ADDRESS UNSIGNED))
 
   ((@ (? value))
