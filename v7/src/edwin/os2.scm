@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.12 1995/04/15 06:14:22 cph Exp $
+;;;	$Id: os2.scm,v 1.13 1995/05/02 00:29:23 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -627,8 +627,9 @@ filename suffix \".gz\"."
 				      "-p" password
 				      "-o" target
 				      server)))
-	(if (not (and (eq? 'EXITED (car status.reason))
-		      (memv (cdr status.reason) '(0 1))))
+	(if (and (eq? 'EXITED (car status.reason))
+		 (memv (cdr status.reason) '(0 1)))
+	    (kill-buffer buffer)
 	    (begin
 	      (pop-up-buffer buffer)
 	      (error "Error getting mail from POP server:" status.reason)))))
