@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.63 2004/07/24 03:45:54 cph Exp $
+$Id: xml-parser.scm,v 1.64 2004/10/12 23:20:58 cph Exp $
 
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -87,7 +87,7 @@ USA.
 	       (if (default-object? pi-handlers)
 		   '()
 		   (begin
-		     (guarantee-pi-handlers pi-handlers 'STRING->XML)
+		     (guarantee-pi-handlers pi-handlers 'READ-XML)
 		     pi-handlers)))))
 
 (define (string->xml string #!optional start end pi-handlers)
