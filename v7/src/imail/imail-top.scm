@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.123 2000/06/03 01:57:31 cph Exp $
+;;; $Id: imail-top.scm,v 1.124 2000/06/03 02:11:02 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1581,15 +1581,21 @@ With prefix argument, prompt even when point is on an attachment."
 					    'IMAIL-MIME-ATTACHMENT-DIRECTORY
 					    #f)
 				(buffer-default-directory buffer)))))))
-    (buffer-put! buffer 'IMAIL-MIME-ATTACHMENT-DIRECTORY
-		 (directory-pathname filename))
-    (call-with-binary-output-file filename
-      (lambda (port)
-	(let ((string (message-mime-body-part message selector)))
-	  (case (mime-body-one-part-encoding body)
-	    ((QUOTED-PRINTABLE) (decode-quoted-printable-string string port))
-	    ((BASE64) (decode-base64-binary-string string port))
-	    (else (write-string string port))))))))
+    (if (or (not (file-exists? filename))
+	    (prompt-for-yes-or-no? "File already exists; overwrite"))
+	(begin
+	  (call-with-binary-output-file filename
+	    (lambda (port)
+	      (let ((string (message-mime-body-part message selector)))
+		(case (mime-body-one-part-encoding body)
+		  ((QUOTED-PRINTABLE)
+		   (decode-quoted-printable-string string port))
+		  ((BASE64)
+		   (decode-base64-binary-string string port))
+		  (else
+		   (write-string string port))))))
+	  (buffer-put! buffer 'IMAIL-MIME-ATTACHMENT-DIRECTORY
+		       (directory-pathname filename))))))
 
 (define (mime-body-disposition-filename body)
   (let ((disposition (mime-body-disposition body)))
