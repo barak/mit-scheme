@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.104 2001/11/20 19:38:00 cph Exp $
+@comment $Id: scheme.texinfo,v 1.105 2001/11/20 21:48:04 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -14496,43 +14496,193 @@ appears above (@pxref{with-pointer example}).
 @node *Parser, Parser-language Macros, *Matcher, Parser Language
 @subsection *Parser
 
+@cindex Parser language
+@cindex Parser procedure
+The @dfn{parser language} is a declarative language for specifying a
+@dfn{parser procedure}.  A parser procedure is a procedure that
+accepts a single parser-buffer argument and parses some of the input
+from the buffer.  If the parse is successful, the procedure returns a
+vector of objects that are the result of the parse, and the internal
+pointer of the parser buffer is advanced past the input that was
+parsed.  If the parse fails, the procedure returns @code{#f} and the
+internal pointer is unchanged.  This interface is much like that of a
+matcher procedure, except that on success the parser procedure returns
+a vector of values rather than @code{#t}.
+
+The @code{*parser} special form is the interface between the parser
+language and Scheme.
+
 @deffn {special form} *parser pexp
+The operand @var{pexp} is an expression in the parser language.  The
+@code{*parser} expression expands into Scheme code that implements a
+parser procedure.
 @end deffn
 
-@deffn {parser expression} match pexp
-@deffnx {parser expression} noise pexp
+There are several primitive expressions in the parser language.  The
+first two provide a bridge to the matcher language (@pxref{*Matcher}):
+
+@deffn {parser expression} match mexp
+The @code{match} expression performs a match on the parser buffer.
+The match to be performed is specified by @var{mexp}, which is an
+expression in the matcher language.  If the match is successful, the
+result of the @code{match} expression is a vector of one element: a
+string containing that text.
 @end deffn
 
-@deffn {parser expression} alt pexp @dots{}
-@end deffn
+@deffn {parser expression} noise mexp
+The @code{noise} expression performs a match on the parser buffer.
+The match to be performed is specified by @var{mexp}, which is an
+expression in the matcher language.  If the match is successful, the
+result of the @code{noise} expression is a vector of zero elements.
+(In other words, the text is matched and then thrown away.)
 
-@deffn {parser expression} seq pexp @dots{}
-@end deffn
-
-@deffn {parser expression} * pexp
-@end deffn
-
-@deffn {parser expression} + pexp
-@end deffn
-
-@deffn {parser expression} ? pexp
-@end deffn
-
-@deffn {parser expression} transform procedure pexp
-@deffnx {parser expression} encapsulate procedure pexp
-@deffnx {parser expression} map procedure pexp
+The @var{mexp} operand is often a known character or string, so in the
+case that @var{mexp} is a character or string literal, the
+@code{noise} expression can be abbreviated as the literal.  In other
+words, @samp{(noise "foo")} can be abbreviated just @samp{"foo"}.
 @end deffn
 
 @deffn {parser expression} values expression @dots{}
-@end deffn
-
-@deffn {parser expression} sexp expression
-@end deffn
-
-@deffn {parser expression} with-pointer identifier pexp
+Sometimes it is useful to be able to insert arbitrary values into the
+parser result.  The @code{values} expression supports this.  The
+@var{expression} arguments are arbitrary Scheme expressions that are
+evaluated at run time and returned in a vector.  The @code{values}
+expression always succeeds and never modifies the internal pointer of
+the parser buffer.
 @end deffn
 
 @deffn {parser expression} discard-matched
+The @code{discard-matched} expression always succeeds, returning a
+vector of zero elements.  In all other respects it is identical to the
+@code{discard-matched} expression in the matcher language.
+@end deffn
+
+Next there are several combinator expressions.  Parameters named
+@var{pexp} are arbitrary expressions in the parser language.  The
+first few combinators are direct equivalents of those in the matcher
+language.
+
+@deffn {parser expression} seq pexp @dots{}
+The @code{seq} expression parses each of the @var{pexp} operands in
+order.  If all of the @var{pexp} operands successfully match, the
+result is the concatenation of their values (by @code{vector-append}).
+@end deffn
+
+@deffn {parser expression} alt pexp @dots{}
+The @code{alt} expression attempts to parse each @var{pexp} operand in
+order from left to right.  The first one that successfully parses
+produces the result for the entire @code{alt} expression.
+
+Like the @code{alt} expression in the matcher language, this
+expression participates in backtracking.
+@end deffn
+
+@deffn {parser expression} * pexp
+The @code{*} expression parses zero or more occurrences of @var{pexp}.
+The results of the parsed occurrences are concatenated together (by
+@code{vector-append}) to produce the expression's result.
+
+Like the @code{*} expression in the matcher language, this expression
+participates in backtracking.
+@end deffn
+
+@deffn {parser expression} + pexp
+The @code{*} expression parses one or more occurrences of @var{pexp}.
+It is equivalent to
+
+@example
+(seq @var{pexp} (* @var{pexp}))
+@end example
+@end deffn
+
+@deffn {parser expression} ? pexp
+The @code{*} expression parses zero or one occurrences of @var{pexp}.
+It is equivalent to
+
+@example
+(alt @var{pexp} (seq))
+@end example
+@end deffn
+
+The next three expressions do not have equivalents in the matcher
+language.  Each accepts a single @var{pexp} argument, which is parsed
+in the usual way.  These expressions perform transformations on the
+returned values of a successful match.
+
+@deffn {parser expression} transform expression pexp
+The @code{transform} expression performs an arbitrary transformation
+of the values returned by parsing @var{pexp}.  @var{Expression} is a
+Scheme expression that must evaluate to a procedure at run time.  If
+@var{pexp} is successfully parsed, the procedure is called with the
+vector of values as its argument, and must return a vector or
+@code{#f}.  If it returns a vector, the parse is successful, and those
+are the resulting values.  If it returns @code{#f}, the parse fails
+and the internal pointer of the parser buffer is returned to what it
+was before @var{pexp} was parsed.
+
+For example:
+
+@example
+(transform (lambda (v) (if (= 0 (vector-length v)) #f v)) @dots{})
+@end example
+@end deffn
+
+@deffn {parser expression} encapsulate expression pexp
+The @code{encapsulate} expression transforms the values returned by
+parsing @var{pexp} into a single value.  @var{Expression} is a Scheme
+expression that must evaluate to a procedure at run time.  If
+@var{pexp} is successfully parsed, the procedure is called with the
+vector of values as its argument, and may return any Scheme object.
+The result of the @code{encapsulate} expression is a vector of length
+one containing that object.  (And consequently @code{encapsulate}
+doesn't change the success or failure of @var{pexp}, only its value.)
+
+For example:
+
+@example
+(encapsulate vector->list @dots{})
+@end example
+@end deffn
+
+@deffn {parser expression} map expression pexp
+The @code{map} expression performs a per-element transform on the
+values returned by parsing @var{pexp}.  @var{Expression} is a Scheme
+expression that must evaluate to a procedure at run time.  If
+@var{pexp} is successfully parsed, the procedure is mapped (by
+@code{vector-map}) over the values returned from the parse.  The
+mapped values are returned as the result of the @code{map} expression.
+(And consequently @code{map} doesn't change the success or failure of
+@var{pexp}, nor the number of values returned.)
+
+For example:
+
+@example
+(map string->symbol @dots{})
+@end example
+@end deffn
+
+Finally, as in the matcher language, we have @code{sexp} and
+@code{with-pointer} to support embedding Scheme code in the parser.
+
+@deffn {parser expression} sexp expression
+The @code{sexp} expression allows arbitrary Scheme code to be embedded
+inside a parser.  The @var{expression} operand must evaluate to a
+parser procedure at run time; the procedure is called to parse the
+parser buffer.  This is the parser-language equivalent of the
+@code{sexp} expression in the matcher language.
+
+The case in which @var{expression} is a symbol is so common that it
+has an abbreviation: @samp{(sexp @var{symbol})} may be abbreviated as
+just @var{symbol}.
+@end deffn
+
+@deffn {parser expression} with-pointer identifier pexp
+The @code{with-pointer} expression fetches the parser buffer's
+internal pointer (using @code{get-parser-buffer-pointer}), binds it to
+@var{identifier}, and then parses the pattern specified by @var{pexp}.
+@var{Identifier} must be a symbol.  This is the parser-language
+equivalent of the @code{with-pointer} expression in the matcher
+language.
 @end deffn
 
 @node Parser-language Macros,  , *Parser, Parser Language
