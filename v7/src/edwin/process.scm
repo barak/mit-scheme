@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: process.scm,v 1.25 1992/09/23 23:03:55 jinx Exp $
+;;;	$Id: process.scm,v 1.26 1992/11/24 21:14:45 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-1992 Massachusetts Institute of Technology
 ;;;
@@ -51,10 +51,16 @@
 
 (define (initialize-processes!)
   (set! edwin-processes '())
-  (let ((path (get-environment-variable "PATH")))
-    (if (not path)
-	(error "Can't find PATH environment variable."))
-    (set-variable! exec-path (parse-path-string path))))
+  (set-variable-default-value!
+   (ref-variable-object exec-path)
+   (parse-path-string
+    (let ((path (get-environment-variable "PATH")))
+      (if (not path)
+	  (error "Can't find PATH environment variable."))
+      path)))
+  (set-variable-default-value!
+   (ref-variable-object shell-file-name)
+   (or (get-environment-variable "SHELL") "/bin/sh")))
 
 (define edwin-processes)
 
@@ -81,6 +87,12 @@ Value takes effect when `start-process' is called."
 False means don't delete them until \\[list-processes] is run."
   true
   boolean?)
+
+(define-variable shell-file-name
+  "File name to load inferior shells from.
+Initialized from the SHELL environment variable."
+  ""
+  string?)
 
 (define-structure (process
 		   (constructor %make-process (subprocess name %buffer)))
@@ -679,7 +691,7 @@ Prefix arg means replace the region with it."
 
 (define (shell-command input-region output-mark directory pty? command)
   (run-synchronous-process input-region output-mark directory pty?
-			   "/bin/sh" "-c" command))
+			   (ref-variable shell-file-name) "-c" command))
 
 ;;; These procedures are not specific to the process abstraction.
 
