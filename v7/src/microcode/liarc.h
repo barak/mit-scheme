@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: liarc.h,v 1.5 1993/10/27 00:57:26 gjr Exp $
+$Id: liarc.h,v 1.6 1993/10/28 04:45:25 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -63,12 +63,19 @@ extern PTR dstack_position;
 extern SCHEME_OBJECT * Free;
 extern SCHEME_OBJECT * Ext_Stack_Pointer;
 extern SCHEME_OBJECT Registers[];
-
-extern void EXFUN (lose_big, (char *));
-extern int EXFUN (multiply_with_overflow, (long, long, long *));
-extern SCHEME_OBJECT * EXFUN (invoke_utility, (int, long, long, long, long));
-extern void EXFUN (error_band_already_built, (void));
 
+union machine_word_u
+{
+  SCHEME_OBJECT Obj;
+  SCHEME_OBJECT * pObj;
+  long Lng;
+  char * pChr;
+  unsigned long uLng;
+  double * pDbl;
+};
+
+typedef union machine_word_u machine_word;
+
 #define ERROR_UNKNOWN_DISPATCH( pc ) lose_big ("Unknown tag.")
 
 #define ADDRESS_UNITS_PER_OBJECT	(sizeof (SCHEME_OBJECT))
@@ -346,36 +353,6 @@ REGISTER SCHEME_OBJECT * stack_pointer = Stack_Pointer
     ? (- ((source1) / (- (source2))))					\
     : ((- (source1)) / (- (source2)))))
 
-extern double EXFUN (acos, (double));
-extern double EXFUN (asin, (double));
-extern double EXFUN (atan, (double));
-extern double EXFUN (ceil, (double));
-extern double EXFUN (cos, (double));
-extern double EXFUN (exp, (double));
-extern double EXFUN (floor, (double));
-extern double EXFUN (log, (double));
-extern double EXFUN (sin, (double));
-extern double EXFUN (sqrt, (double));
-extern double EXFUN (tan, (double));
-extern double EXFUN (double_truncate, (double));
-
-#define DOUBLE_ACOS acos
-#define DOUBLE_ASIN asin
-#define DOUBLE_ATAN atan
-#define DOUBLE_CEILING ceil
-#define DOUBLE_COS cos
-#define DOUBLE_EXP exp
-#define DOUBLE_FLOOR floor
-#define DOUBLE_LOG log
-#define DOUBLE_ROUND(dx) (double_truncate ((dx < 0) ? (dx - 0.5) : (dx + 0.5)))
-#define DOUBLE_SIN sin
-#define DOUBLE_SQRT sqrt
-#define DOUBLE_TAN tan
-#define DOUBLE_TRUNCATE double_truncate
-
-extern double EXFUN (atan2, (double, double));
-#define DOUBLE_ATAN2 atan2
-
 #define CLOSURE_HEADER(offset) do					\
 {									\
   SCHEME_OBJECT * entry = ((SCHEME_OBJECT *) my_pc[1]);			\
@@ -405,27 +382,12 @@ extern double EXFUN (atan2, (double, double));
 			dynamic_link);					\
 } while (0)
 
-#ifdef USE_STDARG
-# define RCONSM_TYPE(frob) SCHEME_OBJECT EXFUN (frob, (int, SCHEME_OBJECT DOTS))
-#else /* not USE_STDARG */
-# define RCONSM_TYPE(frob) SCHEME_OBJECT frob ()
-#endif /* USE_STDARG */
-
-extern RCONSM_TYPE(rconsm);
-
 struct compiled_file
 {
   int number_of_procedures;
   char ** names;
   void * EXFUN ((**procs), (void));
 };
-
-extern int EXFUN (declare_compiled_code,
-		  (char *,
-		   void EXFUN ((*), (void)),
-		   SCHEME_OBJECT * EXFUN ((*), (SCHEME_OBJECT *))));
-extern SCHEME_OBJECT EXFUN (initialize_subblock, (char *));
-extern void EXFUN (NO_SUBBLOCKS, (void));
 
 /* This does nothing in the sources. */
 
@@ -450,6 +412,60 @@ extern void EXFUN (NO_SUBBLOCKS, (void));
   }
 
 #endif /* COMPILE_FOR_DYNAMIC_LOADING */
+
+#ifdef USE_STDARG
+# define RCONSM_TYPE(frob) SCHEME_OBJECT EXFUN (frob, (int, SCHEME_OBJECT DOTS))
+#else /* not USE_STDARG */
+# define RCONSM_TYPE(frob) SCHEME_OBJECT frob ()
+#endif /* USE_STDARG */
+
+extern RCONSM_TYPE(rconsm);
+
+extern int
+  EXFUN (declare_compiled_code,
+	 (char *,
+	  void EXFUN ((*), (void)),
+	  SCHEME_OBJECT * EXFUN ((*), (SCHEME_OBJECT *)))),
+  EXFUN (multiply_with_overflow, (long, long, long *));
+
+extern SCHEME_OBJECT
+  EXFUN (initialize_subblock, (char *)),
+   * EXFUN (invoke_utility, (int, long, long, long, long));
+
+extern void
+  EXFUN (NO_SUBBLOCKS, (void)),
+  EXFUN (lose_big, (char *)),
+  EXFUN (error_band_already_built, (void));
+
+extern double
+  EXFUN (acos, (double)),
+  EXFUN (asin, (double)),
+  EXFUN (atan, (double)),
+  EXFUN (ceil, (double)),
+  EXFUN (cos, (double)),
+  EXFUN (exp, (double)),
+  EXFUN (floor, (double)),
+  EXFUN (log, (double)),
+  EXFUN (sin, (double)),
+  EXFUN (sqrt, (double)),
+  EXFUN (tan, (double)),
+  EXFUN (double_truncate, (double)),
+  EXFUN (atan2, (double, double));
+
+#define DOUBLE_ACOS acos
+#define DOUBLE_ASIN asin
+#define DOUBLE_ATAN atan
+#define DOUBLE_CEILING ceil
+#define DOUBLE_COS cos
+#define DOUBLE_EXP exp
+#define DOUBLE_FLOOR floor
+#define DOUBLE_LOG log
+#define DOUBLE_ROUND(dx) (double_truncate ((dx < 0) ? (dx - 0.5) : (dx + 0.5)))
+#define DOUBLE_SIN sin
+#define DOUBLE_SQRT sqrt
+#define DOUBLE_TAN tan
+#define DOUBLE_TRUNCATE double_truncate
+#define DOUBLE_ATAN2 atan2
 
 #ifdef __GNUC__
 # ifdef hp9000s800
@@ -485,16 +501,20 @@ extern SCHEME_OBJECT EXFUN (make_primitive, (char *, int));
 extern SCHEME_OBJECT EXFUN ((* (constructor_kludge [10])), ());
 
 #define MEMORY_TO_STRING						\
-     ((SCHEME_OBJECT EXFUN ((*), (long, unsigned char *))) (constructor_kludge[0]))
+     ((SCHEME_OBJECT EXFUN ((*), (long, unsigned char *)))		\
+      (constructor_kludge[0]))
 
 #define MEMORY_TO_SYMBOL						\
-     ((SCHEME_OBJECT EXFUN ((*), (long, unsigned char *))) (constructor_kludge[1]))
+     ((SCHEME_OBJECT EXFUN ((*), (long, unsigned char *)))		\
+      (constructor_kludge[1]))
 
 #define MAKE_VECTOR							\
-     ((SCHEME_OBJECT EXFUN ((*), (long, SCHEME_OBJECT, Boolean))) (constructor_kludge[2]))
+     ((SCHEME_OBJECT EXFUN ((*), (long, SCHEME_OBJECT, Boolean)))	\
+      (constructor_kludge[2]))
 
 #define CONS								\
-     ((SCHEME_OBJECT EXFUN ((*), (SCHEME_OBJECT, SCHEME_OBJECT))) (constructor_kludge[3]))
+     ((SCHEME_OBJECT EXFUN ((*), (SCHEME_OBJECT, SCHEME_OBJECT)))	\
+      (constructor_kludge[3]))
 
 #define RCONSM								\
      ((RCONSM_TYPE ((*))) (constructor_kludge[4]))
@@ -506,10 +526,12 @@ extern SCHEME_OBJECT EXFUN ((* (constructor_kludge [10])), ());
      ((SCHEME_OBJECT EXFUN ((*), (long))) (constructor_kludge[6]))
 
 #define DIGIT_STRING_TO_INTEGER						\
-     ((SCHEME_OBJECT EXFUN ((*), (Boolean, long, char *))) (constructor_kludge[7]))
+     ((SCHEME_OBJECT EXFUN ((*), (Boolean, long, char *)))		\
+      (constructor_kludge[7]))
 
 #define DIGIT_STRING_TO_BIT_STRING					\
-     ((SCHEME_OBJECT EXFUN ((*), (long, long, char *))) (constructor_kludge[8]))
+     ((SCHEME_OBJECT EXFUN ((*), (long, long, char *)))			\
+      (constructor_kludge[8]))
 
 #define MAKE_PRIMITIVE							\
      ((SCHEME_OBJECT EXFUN ((*), (char *, int))) (constructor_kludge[9]))

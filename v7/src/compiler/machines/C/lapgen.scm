@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.5 1993/10/26 03:02:38 jawilson Exp $
+$Id: lapgen.scm,v 1.6 1993/10/28 04:45:19 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -52,6 +52,8 @@ MIT in each case. |#
 
 (define (type->name type)
   (case type
+    ((WORD)
+     "machine_word")
     ((SCHEME_OBJECT)
      "SCHEME_OBJECT")
     ((SCHEME_OBJECT*)
@@ -70,23 +72,15 @@ MIT in each case. |#
      (comp-internal-error "Unknown type" 'TYPE->NAME type))))
 
 (define (reg*type->name reg type)
-  (case type
-    ((SCHEME_OBJECT)
-     (string-append "Obj" (number->string reg)))
-    ((SCHEME_OBJECT*)
-     (string-append "pObj" (number->string reg)))
-    ((LONG)
-     (string-append "Lng" (number->string reg)))
-    ((CHAR*)
-     (string-append "pChr" (number->string reg)))
-    ((ULONG)
-     (string-append "uLng" (number->string reg)))
-    ((DOUBLE)
-     (string-append "Dbl" (number->string reg)))
-    ((DOUBLE*)
-     (string-append "pDbl" (number->string reg)))
-    (else
-     (comp-internal-error "Unknown type" 'REG*TYPE->NAME type))))
+  (string-append
+   (case type
+     ((WORD)
+      (string-append "Wrd" (number->string reg)))
+     ((DOUBLE)
+      (string-append "Dbl" (number->string reg)))
+     (else
+      (comp-internal-error "Unknown type" 'REG*TYPE->NAME type)))
+   (number->string reg)))
 
 (define (machine-register-name reg)
   (cond ((eq? reg regnum:stack-pointer)
@@ -106,38 +100,12 @@ MIT in each case. |#
 (define (machine-register-type reg)
   (cond ((eq? reg regnum:value)
 	 "SCHEME_OBJECT")
-	#|
-	((eq? reg regnum:stack-pointer)
-	 "SCHEME_OBJECT *")
-	((eq? reg regnum:free)
-	 "SCHEME_OBJECT *")
-	((eq? reg regnum:regs)
-	 "SCHEME_OBJECT *")
-	((eq? reg regnum:dynamic-link)
-	 "SCHEME_OBJECT *")
-	(else
-	 (comp-internal-error "Unknown machine register"
-			      'MACHINE-REGISTER-TYPE reg))
-	|#
 	(else
 	 "SCHEME_OBJECT *")))
 
 (define (machine-register-type-symbol reg)
   (cond ((eq? reg regnum:value)
 	 'SCHEME_OBJECT)
-	#|
-	((eq? reg regnum:stack-pointer)
-	 'SCHEME_OBJECT*)
-	((eq? reg regnum:free)
-	 'SCHEME_OBJECT*)
-	((eq? reg regnum:regs)
-	 'SCHEME_OBJECT*)
-	((eq? reg regnum:dynamic-link)
-	 'SCHEME_OBJECT*)
-	(else
-	 (comp-internal-error "Unknown machine register"
-			      'MACHINE-REGISTER-TYPE-SYMBOL reg))
-	|#
 	(else
 	 'SCHEME_OBJECT*)))
 
@@ -162,62 +130,79 @@ MIT in each case. |#
 		  (cadr aliases))
 		 (else false))))))
 
-(define (allocate-additional-alias reg type)
-  ;; This is flakey.
-  ;; After this, there are two aliases for the same RTL register,
-  ;; with incompatible types.
-  ;; Hopefully Liar will not mix the two up.
-  (let ((aliases (assq reg current-register-list)))
+(define (allocate-register! reg type)
+  (let ((name (new-register-name reg type))
+	(aliases (assq reg current-register-list)))
     (if (not aliases)
-	(error "allocate-additional-alias: No previous aliases" reg)
-	(let ((alias (assq type (cdr aliases))))
-	  (if alias
-	      (error "allocate-additional-alias: Already has alias" reg)
-	      (let ((name (new-register-name reg type)))
-		;; Kludge!  This depends on having at most two!
-		(if (eq? type 'DOUBLE)
-		    (set-cdr! (last-pair aliases) (list (cons type name)))
-		    (set-cdr! aliases
-			      (cons (cons type name)
-				    (cdr aliases))))
-		name))))))
+	(set! current-register-list
+	      (cons (list reg (cons type name))
+		    current-register-list))
+	(set-cdr! aliases
+		  (cons (cons type name) (cdr aliases))))
+    name))
+
+(define (find-register! reg type)
+  (cond ((find-register reg type)
+	 => cdr)
+	(else
+	 (allocate-register! reg type))))
+
+(define-integrable (type->canonical-C-type type)
+  (if (eq? type 'DOUBLE) 'DOUBLE 'WORD))
+
+(define (reg-select reg type)
+  (string-append
+   reg
+   (case type
+     ((SCHEME_OBJECT) ".Obj")
+     ((SCHEME_OBJECT*) ".pObj")
+     ((LONG) ".Lng")
+     ((CHAR*) ".pChr")
+     ((ULONG) ".uLng")
+     ((DOUBLE*) ".pDbl")
+     (else
+      (comp-internal-error "Unknown type" 'REG-SELECT type)))))
 
 (define (standard-source! reg type)
-  (cond ((register-is-machine-register? reg)
-	 (let ((name (machine-register-name reg)))
-	   (if (eq? (machine-register-type-symbol reg) type)
-	       name
-	       (rhs-cast name type))))
-	((find-register reg type)
-	 => cdr)
-	((find-register reg false)
-	 => (lambda (alias)
-	      (if (compatible/C*C? (car alias) type)
-		  (rhs-cast (cdr alias) type)
-		  (allocate-additional-alias reg type))))
-	(else
-	 (comp-internal-error "Unallocated register"
-			      'STANDARD-SOURCE! reg))))
-
-(define (standard-target! reg type)
-  (cond ((register-is-machine-register? reg)
-	 (if (not (compatible/C*register? type (register-type reg)))
-	     (error "standard-target!: Incompatible type register" reg type))
-	 (machine-register-name reg))
-	((find-register reg type)
-	 => cdr)
-	((find-register reg false)
-	 => (lambda (alias)
-	      (if (compatible/C*C? (car alias) type)
-		  (lhs-cast (cdr alias) type)
-		  (allocate-additional-alias reg type))))
-	(else
-	 (let ((name (new-register-name reg type)))
-	   (set! current-register-list
-		 (cons (list reg (cons type name))
-		       current-register-list))
-	   name))))
+  (let ((type* (type->canonical-C-type type)))
+    (cond ((register-is-machine-register? reg)
+	   (let ((name (machine-register-name reg)))
+	     (if (eq? (machine-register-type-symbol reg) type)
+		 name
+		 (rhs-cast name type))))
+	  ((find-register reg type*)
+	   => (lambda (pair)
+		(let ((reg (cdr pair)))
+		  (if (eq? type* 'DOUBLE)
+		      reg
+		      (reg-select reg type)))))
+	  (else
+	   (comp-internal-error "Unallocated register"
+				'STANDARD-SOURCE! reg)))))
 
+(define (standard-target! reg type)
+  (let* ((type* (type->canonical-C-type type))
+	 (finish (lambda (reg)
+		   (if (eq? type* 'DOUBLE)
+		       reg
+		       (reg-select reg type)))))
+    
+    (cond ((register-is-machine-register? reg)
+	   (if (not (compatible/C*register? type (register-type reg)))
+	       (error "standard-target!: Incompatible type register" reg type))
+	   #|
+	   ;; This should not be necessary.
+	   ;; We should only assign correctly typed values
+	   ;; to dedicated machine registers.
+	   (lhs-cast (machine-register-name reg) type)
+	   |#
+	   (machine-register-name reg))
+	  ((find-register reg type*)
+	   => (lambda (pair)
+		(finish (cdr pair))))
+	  (else
+	   (finish (allocate-register! reg type*))))))
+
 (define (new-register-name reg type)
   (cond ((assq reg permanent-register-list)
 	 => (lambda (aliases)
@@ -244,33 +229,30 @@ MIT in each case. |#
    permanent-register-list))
 
 (define (standard-move-to-target! src tgt)
-  ;; This is bogus but we have no more information
-
-  (define (do-tgt src src-type)
-    (let ((tgt (standard-target! tgt src-type)))
-      (LAP ,tgt " = " ,src ";\n\t")))
-
-  (define (do-src tgt tgt-type)
-    (let ((src (standard-source! src tgt-type)))
-      (LAP ,tgt " = " ,src ";\n\t")))
-
-  (cond ((register-is-machine-register? tgt)
-	 (do-src (machine-register-name tgt)
-		 (machine-register-type-symbol tgt)))
-	((assq tgt current-register-list)
-	 => (lambda (aliases)
-	      (let ((alias (cadr aliases)))
-		(do-src (cdr alias) (car alias)))))
-	((register-is-machine-register? src)
-	 (do-tgt (machine-register-name src)
-		 (machine-register-type-symbol src)))
-	((assq src current-register-list)
-	 => (lambda (aliases)
-	      (let ((alias (cadr aliases)))
-		(do-tgt (cdr alias) (car alias)))))
-	(else
-	 (comp-internal-error "Unallocated register"
-			      'STANDARD-MOVE-TO-TARGET! src))))
+  (let ((src-type (register-type src)))
+    (cond ((not (eq? (register-type tgt) src-type))
+	   (comp-internal-error "Incompatible registers"
+				'STANDARD-MOVE-TO-TARGET!
+				src tgt))
+	  ((register-is-machine-register? tgt)
+	   (let ((src (standard-source! src
+					(machine-register-type-symbol tgt))))
+	     (LAP ,(machine-register-name tgt) " = " ,src ";\n\t")))
+	  ((register-is-machine-register? src)
+	   (let ((tgt (standard-target! tgt
+					(machine-register-type-symbol src))))
+	     (LAP ,tgt " = " ,(machine-register-name src) ";\n\t")))
+	  (else
+	   (let ((reg-type
+		  (case src-type
+		    ((WORD) 'WORD)
+		    ((FLOAT) 'DOUBLE)
+		    (else
+		     (comp-internal-error "Unknown RTL register type"
+					  'STANDARD-MOVE-TO-TARGET!
+					  src-type)))))
+	     (LAP ,(find-register! tgt reg-type) " = "
+		  ,(find-register! src reg-type) ";\n\t"))))))
 
 ;;;; Communicate with cout.scm
 
