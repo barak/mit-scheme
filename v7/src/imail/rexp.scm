@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rexp.scm,v 1.13 2000/04/14 01:45:45 cph Exp $
+;;; $Id: rexp.scm,v 1.14 2000/04/18 21:52:57 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -135,7 +135,7 @@
 
 (define (rexp-case-fold rexp)
   (cond ((and (string? rexp) (not (char-set? rexp)))
-	 `(CASE-FOLD rexp))
+	 `(CASE-FOLD ,rexp))
 	((and (pair? rexp)
 	      (memq (car rexp) '(ALTERNATIVES SEQUENCE GROUP OPTIONAL * +))
 	      (list? (cdr rexp)))
