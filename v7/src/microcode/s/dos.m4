@@ -1,10 +1,10 @@
 #!/bin/csh -f
 ###
-###	$Id: dos.m4,v 1.5 1993/06/24 07:25:11 gjr Exp $
+###	$Id: dos.m4,v 1.6 1993/06/24 07:59:37 gjr Exp $
 ###
 ###	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ###
-####	Postprocessing to get valid dos assembly language from cmpaux-i386.m4
+####	Postprocessing to get valid dos assembly language from cmpauxmd/i386.m4
 
 set tmpfil = "m4.tmp"
 set seen_input = 0
