@@ -1,6 +1,6 @@
 -*- Text -*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/cmpint.txt,v 1.9 1991/09/09 18:43:40 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/cmpint.txt,v 1.10 1991/09/09 21:04:33 jinx Exp $
 
 
 Copyright (c) 1991 Massachusetts Institute of Technology
@@ -430,13 +430,13 @@ address of the real entry point).
 of the entry point from a closure object when given the address of the
 closure entry.  Note that the real entry point may be smeared out over
 multiple instructions.  In the example above, given the address the
-word labelled ENTRY, it would extract the address of LAMBDA-1.
+word labeled ENTRY, it would extract the address of LAMBDA-1.
 
 => STORE_CLOSURE_ENTRY_ADDRESS is the inverse of
 EXTRACT_CLOSURE_ENTRY_ADDRESS.  That is, given the address of a
 closure entry point, and a real entry point, it stores the real entry
 point in the closure object.  In the example above, given the address
-of the word labelled ENTRY, and a different entry point, say for
+of the word labeled ENTRY, and a different entry point, say for
 LAMBDA-2, it would make the closure jump to LAMBDA-2 instead. This is
 used to relocate closures after garbage collection and similar
 processes.
@@ -786,7 +786,7 @@ slot instruction.
 
 => EXTRACT_EXECUTE_CACHE_ARITY specifies how to read the argument
 count from an execute-cache entry when given the address of the entry.
-In the above example, it would extract 3 from the address labelled
+In the above example, it would extract 3 from the address labeled
 sort-uuo-link.
 
 => EXTRACT_EXECUTE_CACHE_SYMBOL specifies how to read the symbol from
@@ -797,7 +797,7 @@ symbol SORT from sort-uuo-link.
 => EXTRACT_EXECUTE_CACHE_ADDRESS fetches the real entry point stored
 in an execute-cache entry when given the address of the entry.  In the
 above example, it would extract the entry point of the sort procedure
-when given the address of the jump instruction (labelled as
+when given the address of the jump instruction (labeled as
 sort-uuo-link).
 
 => STORE_EXECUTE_CACHE_ADDRESS is the inverse of this, ie. when given a
@@ -868,8 +868,8 @@ the gc and format word typically take one longword together.
 a trampoline when given the addres of the first instruction (the entry
 point of the trampoline).  This macro should be correct, but may need
 to change in unusual circumstances.  In the picture above it would
-return the address of the word labelled `retadd' when given the
-address of the word labelled `entry'.
+return the address of the word labeled `retadd' when given the
+address of the word labeled `entry'.
 
 => STORE_TRAMPOLINE_ENTRY stores the "compiled" code into an "empty"
 trampoline.  It is given the address of the entry point, and the index
