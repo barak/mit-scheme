@@ -37,7 +37,7 @@
 
 ;;;; Machine Dependent Type Tables
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.28 1987/05/15 18:20:45 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.29 1987/05/21 18:06:30 cph Exp $
 
 (declare (usual-integrations))
 
@@ -313,6 +313,7 @@
 	       COMPILER-UNBOUND?-RESTART		;4E
 	       COMPILER-DEFINITION-RESTART		;4F
 	       COMPILER-LEXPR-INTERRUPT-RESTART		;50
+	       COMPILER-SAFE-REFERENCE-RESTART		;51
 	       ))
 
 ;;; [] Primitives
@@ -854,4 +855,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.28 1987/05/15 18:20:45 cph Exp $"
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.29 1987/05/21 18:06:30 cph Exp $"
