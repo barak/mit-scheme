@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/make.scm,v 3.7 1987/05/09 00:51:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/make.scm,v 3.8 1987/05/09 23:23:51 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -38,6 +38,7 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define sf)
+(define sfu? false)
 (define sf/set-file-syntax-table!)
 (define sf/add-file-declarations!)
 
@@ -59,7 +60,7 @@ MIT in each case. |#
     (make-environment
       (define :name "SF")
       (define :version 3)
-      (define :modification 7)
+      (define :modification 8)
       (define :files)
 
       (define :files-lists
@@ -67,6 +68,7 @@ MIT in each case. |#
 	 (cons package/scode-optimizer
 	       '("mvalue.bin"		;Multiple Value Support
 		 "eqsets.bin"		;Set Data Abstraction
+		 "pthmap.bin"		;Pathname Map Abstraction
 		 "object.bin"		;Data Structures
 		 "emodel.bin"		;Environment Model
 		 "gconst.bin"		;Global Primitives List
