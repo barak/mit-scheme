@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.30 1997/03/31 20:55:06 cph Exp $
+;;;	$Id: snr.scm,v 1.31 1997/04/05 06:09:27 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -1208,8 +1208,7 @@ This shows News groups that have been created since the last time that
 	(set-news-thread:expanded?! thread expanded?)
 	(insert-news-thread-lines thread ls)
 	(mark-temporary! ls)
-	(update-subsequent-news-header-lines ls)
-	(news-group:close-database (news-group-buffer:group buffer))))))
+	(update-subsequent-news-header-lines ls)))))
 
 (define (delete-news-thread-lines buffer thread)
   (let ((region (news-thread-lines-region buffer thread)))
@@ -1898,8 +1897,7 @@ With prefix argument, unmarks the previous several articles."
 	 (news-group-buffer:move-to-header buffer
 					   (if (and next (> n 0))
 					       next
-					       header))))
-      (news-group:close-database (news-group-buffer:group (current-buffer))))))
+					       header)))))))
 
 (define (mark/unmark-news-header-line buffer header name)
   (let ((thread (news-header:thread header)))
@@ -2004,8 +2002,7 @@ This unmarks the article indicated by point and any other articles in
 	  (news-group-buffer:move-to-thread buffer
 					    (if (and next (> n 0))
 						next
-						thread))))
-      (news-group:close-database (news-group-buffer:group (current-buffer))))))
+						thread)))))))
 
 (define (news-group-buffer:move-to-thread buffer thread)
   (news-group-buffer:move-to-header
@@ -2437,8 +2434,7 @@ Kill the current buffer in either case."
   ()
   (lambda ()
     (news-article-thread-action-command news-group-buffer:next-thread
-					news-group-buffer:ignore-thread)
-    (news-group:close-database (news-group-buffer:group (current-buffer)))))
+					news-group-buffer:ignore-thread)))
 
 (define (news-article-header-motion-command select-next)
   (news-article-header-action-command select-next #f))
