@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: matcher.scm,v 1.11 2001/07/02 19:21:54 cph Exp $
+;;; $Id: matcher.scm,v 1.12 2001/07/10 05:04:44 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -110,7 +110,7 @@
 							     internal-bindings)
 			     (car expression)))))
 
-(define-matcher-preprocessor '*
+(define-matcher-preprocessor '(* COMPLETE)
   (lambda (expression external-bindings internal-bindings)
     `(,(car expression)
       ,(preprocess-matcher-expression (check-1-arg expression)
@@ -271,6 +271,16 @@
   `(LET ((,identifier ,(pointer-reference pointer)))
      ,(compile-matcher-expression expression pointer if-succeed if-fail)))
 
+(define-matcher (complete expression)
+  (compile-matcher-expression expression pointer
+    (lambda (pointer*)
+      `(IF (PEEK-PARSER-BUFFER-CHAR ,*buffer-name*)
+	   ,(if-fail (backtrack-to pointer pointer*))
+	   (BEGIN
+	     (DISCARD-PARSER-BUFFER-HEAD! ,*buffer-name*)
+	     ,(if-succeed pointer*))))
+    if-fail))
+
 (define-matcher (* expression)
   if-fail
   (handle-pending-backtracking pointer
@@ -311,7 +321,7 @@
 	    if-succeed
 	    if-fail))
       (if-fail pointer)))
-
+
 ;;; Edwin Variables:
 ;;; Eval: (scheme-indent-method 'handle-pending-backtracking 1)
 ;;; Eval: (scheme-indent-method 'define-matcher-optimizer 2)
