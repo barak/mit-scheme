@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.23 2003/08/01 03:26:09 cph Exp $
+$Id: xml.pkg,v 1.24 2003/08/20 17:23:47 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -151,6 +151,7 @@ USA.
 	  xml-intern
 	  xml-name-hash
 	  xml-name-local
+	  xml-name-prefix
 	  xml-name-string
 	  xml-name-uri
 	  xml-name=?

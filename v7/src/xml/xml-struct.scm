@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.21 2003/08/03 06:20:40 cph Exp $
+$Id: xml-struct.scm,v 1.22 2003/08/20 17:23:34 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -106,6 +106,18 @@ USA.
 	((combo-name? name) (universal-name-uri (combo-name-universal name)))
 	(else (error:not-xml-name name 'XML-NAME-URI))))
 
+(define (xml-name-prefix name)
+  (let ((simple
+	 (lambda (name)
+	   (let ((s (symbol-name name)))
+	     (let ((c (string-find-next-char s #\:)))
+	       (if c
+		   (string->symbol (string-head s c))
+		   #f))))))
+    (cond ((xml-nmtoken? name) (simple name))
+	  ((combo-name? name) (simple (combo-name-simple name)))
+	  (else (error:not-xml-name name 'XML-NAME-PREFIX)))))
+
 (define (xml-name-local name)
   (cond ((xml-nmtoken? name)
 	 (let ((s (symbol-name name)))
@@ -114,7 +126,7 @@ USA.
 		 (string->symbol (string-tail s (fix:+ c 1)))
 		 name))))
 	((combo-name? name) (universal-name-local (combo-name-universal name)))
-	(else (error:not-xml-name name 'XML-NAME-STRING))))
+	(else (error:not-xml-name name 'XML-NAME-LOCAL))))
 
 (define (xml-name=? n1 n2)
   (let ((lose (lambda (n) (error:not-xml-name n 'XML-NAME=?))))
@@ -136,7 +148,7 @@ USA.
 
 (define make-xml-name-hash-table
   (strong-hash-table/constructor xml-name-hash xml-name=? #t))
-
+
 (define (xml-nmtoken? object)
   (and (symbol? object)
        (string-is-xml-nmtoken? (symbol-name object))))
@@ -482,7 +494,7 @@ USA.
       (and (pair? object)
 	   (eq? 'default (car object))
 	   (xml-attribute-value? (cdr object)))))
-
+
 (define-xml-type !entity
   (name xml-name?)
   (value entity-value? canonicalize-entity-value))
@@ -514,7 +526,7 @@ USA.
 
 (define-xml-type parameter-entity-ref
   (name xml-name?))
-
+
 (define-syntax define-xml-printer
   (sc-macro-transformer
    (lambda (form environment)
