@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/format.scm,v 14.1 1988/07/07 15:13:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/format.scm,v 14.2 1988/07/07 15:17:55 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -112,6 +112,7 @@ MIT in each case. |#
 
 (define (parse-default port string supplied-arguments parsed-arguments
 		       modifiers)
+  port supplied-arguments parsed-arguments modifiers ;ignore
   (error "FORMAT: Unknown formatting character" (string-ref string 0)))
 
 ;;;; Argument Parsing
@@ -175,6 +176,7 @@ MIT in each case. |#
   (format-loop port string arguments))
 
 (define ((format-ignore-comment modifiers) port string arguments)
+  modifiers				;ignore
   (format-loop port
 	       (substring string
 			  (1+ (string-find-next-char string #\Newline))
