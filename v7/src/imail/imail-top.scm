@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.22 2000/04/26 18:39:29 cph Exp $
+;;; $Id: imail-top.scm,v 1.23 2000/04/27 00:28:09 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -109,6 +109,12 @@ May be called with an IMAIL folder URL as argument;
 (define (imail-default-user-id)
   (or (ref-variable imail-user-name)
       (current-user-name)))
+
+(define (imail-present-user-alert procedure)
+  (call-with-output-to-temporary-buffer " *IMAP alert*"
+					'(READ-ONLY SHRINK-WINDOW
+						    FLUSH-ON-SPACE)
+					procedure))
 
 (define (associate-imail-folder-with-buffer folder buffer)
   (buffer-put! buffer 'IMAIL-FOLDER folder)
