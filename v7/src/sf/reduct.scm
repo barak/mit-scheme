@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: reduct.scm,v 4.6 1993/08/03 21:53:35 jacob Exp $
+$Id: reduct.scm,v 4.7 1993/08/03 22:40:00 jacob Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -527,14 +527,13 @@ Examples:
 					    decl-block)))
 	     (if-not-expanded)
 	     (if-expanded
-	      (reassign
-	       expr
-	       (combination/make false
-				 (let ((frob (cdr candidate)))
-				   (if (variable? frob)
-				       (lookup (variable/name frob) block)
-				       frob))
-				 operands)))))))))
+	      (combination/make
+	       (and expr (object/scode expr))
+	       (let ((frob (cdr candidate)))
+		 (if (variable? frob)
+		     (lookup (variable/name frob) block)
+		     frob))
+	       operands))))))))
 
 (define (parse-replacement name ocases block)
   (define (collect len cases default)
