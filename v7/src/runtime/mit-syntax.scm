@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: mit-syntax.scm,v 14.9 2002/11/20 19:46:21 cph Exp $
+;;; $Id: mit-syntax.scm,v 14.10 2002/12/13 18:55:07 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1991, 2001, 2002 Massachusetts Institute of Technology
 ;;;
@@ -371,7 +371,7 @@
 	      (constructor (car (caddr form)))
 	      (c-tags (cdr (caddr form)))
 	      (predicate (cadddr form))
-	      (fields (cddddr form))
+	      (fields (car (cddddr form)))
 	      (de (rename 'DEFINE)))
 	  `(,(rename 'BEGIN)
 	    (,de ,type (,(rename 'MAKE-RECORD-TYPE) ',type ',(map car fields)))
