@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.80 2002/11/20 19:46:04 cph Exp $
+;;; $Id: vc.scm,v 1.81 2002/12/09 06:04:43 cph Exp $
 ;;;
-;;; Copyright (c) 1994-2001 Massachusetts Institute of Technology
+;;; Copyright (c) 1994-2002 Massachusetts Institute of Technology
 ;;;
 ;;; This file is part of MIT Scheme.
 ;;;
@@ -128,6 +128,12 @@ Otherwise, not displayed."
 (define-variable vc-rcs-preserve-mod-times
   "If true, files checked out from RCS use checkin time for mod time.
 Otherwise, the mod time of the file is the checkout time."
+  #t
+  boolean?)
+
+(define-variable vc-cvs-stay-local
+  "If true, use only the CVS timestamp to tell if a file has been modified.
+Otherwise, VC will compare the file to the copy in the repository."
   #t
   boolean?)
 
@@ -982,13 +988,15 @@ Normally shows only locked files; prefix arg says to show all files."
 			   #f)
 			  ((cvs-master? master)
 			   (and (vc-workfile-modified? master)
-				(case (cvs-status master)
-				  ((LOCALLY-MODIFIED) "modified")
-				  ((LOCALLY-ADDED) "added")
-				  ((NEEDS-CHECKOUT) "patch")
-				  ((NEEDS-MERGE) "merge")
-				  ((UNRESOLVED-CONFLICT) "conflict")
-				  (else #f))))
+				(if (vc-cvs-stay-local? master)
+				    "modified"
+				    (case (cvs-status master)
+				      ((LOCALLY-MODIFIED) "modified")
+				      ((LOCALLY-ADDED) "added")
+				      ((NEEDS-CHECKOUT) "patch")
+				      ((NEEDS-MERGE) "merge")
+				      ((UNRESOLVED-CONFLICT) "conflict")
+				      (else #f)))))
 			  (else
 			   (vc-backend-locking-user master #f))))))
 	     (if (or status all-files?)
@@ -2123,10 +2131,14 @@ the value of vc-log-mode-hook."
 		     (and ts
 			  (string=? ts (file-time->global-ctime-string tw)))))
 	      #f
-	      (let ((modified? (vc-backend-diff master #f #f #t)))
-		(set-vc-cvs-workfile-mtime-string! master tm tw modified?)
-		modified?))
+	      (or (vc-cvs-stay-local? master)
+		  (let ((modified? (vc-backend-diff master #f #f #t)))
+		    (set-vc-cvs-workfile-mtime-string! master tm tw modified?)
+		    modified?)))
 	  (vc-backend-diff master #f #f #t)))))
+
+(define (vc-cvs-stay-local? master)
+  (ref-variable vc-cvs-stay-local (vc-workfile-buffer master #f)))
 
 (define (vc-cvs-workfile-mtime-string master)
   (read-cached-value-2 master 'CVS-MTIME-STRING
