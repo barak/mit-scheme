@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufcom.scm,v 1.102 1997/04/17 03:49:04 cph Exp $
+;;;	$Id: bufcom.scm,v 1.103 1997/05/18 07:50:30 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -255,19 +255,39 @@ When locked, the buffer's major mode may not be changed."
 	      new-name)))
       name))
 
-(define (string->temporary-buffer string name)
+(define (pop-up-temporary-buffer name properties initialization)
   (let ((buffer (temporary-buffer name)))
-    (insert-string string (buffer-point buffer))
-    (set-buffer-point! buffer (buffer-start buffer))
-    (buffer-not-modified! buffer)
-    (pop-up-buffer buffer false)))
+    (let ((window (pop-up-buffer buffer #f)))
+      (initialization buffer window)
+      (set-buffer-point! buffer (buffer-start buffer))
+      (buffer-not-modified! buffer)
+      (if (memq 'READ-ONLY properties)
+	  (set-buffer-read-only! buffer))
+      (if (and window (memq 'SHRINK-WINDOW properties))
+	  (shrink-window-if-larger-than-buffer window))
+      (if (and (memq 'FLUSH-ON-SPACE properties)
+	       (not (typein-window? (current-window))))
+	  (begin
+	    (message "Hit space to flush.")
+	    (reset-command-prompt!)
+	    (let ((char (keyboard-peek)))
+	      (if (eqv? #\space char)
+		  (begin
+		    (keyboard-read)
+		    (kill-pop-up-buffer #f))))
+	    (clear-message))))))
+
+(define (string->temporary-buffer string name)
+  (pop-up-temporary-buffer name '()
+    (lambda (buffer window)
+      window
+      (insert-string string (buffer-point buffer)))))
 
 (define (call-with-output-to-temporary-buffer name procedure)
-  (let ((buffer (temporary-buffer name)))
-    (call-with-output-mark (buffer-point buffer) procedure)
-    (set-buffer-point! buffer (buffer-start buffer))
-    (buffer-not-modified! buffer)
-    (pop-up-buffer buffer false)))
+  (pop-up-temporary-buffer name '()
+    (lambda (buffer window)
+      window
+      (call-with-output-mark (buffer-point buffer) procedure))))
 
 (define (with-output-to-temporary-buffer name thunk)
   (call-with-output-to-temporary-buffer name

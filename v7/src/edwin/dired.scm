@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dired.scm,v 1.166 1997/03/04 06:43:01 cph Exp $
+;;;	$Id: dired.scm,v 1.167 1997/05/18 07:50:51 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
 ;;;
@@ -900,21 +900,15 @@ Actions controlled by variables list-directory-brief-switches
 		 (message "Deletions failed: " failures)))))))
 
 (define (dired-pop-up-files-window filenames)
-  (let ((buffer (temporary-buffer " *dired-files*")))
-    (define-variable-local-value! buffer
-	(ref-variable-object truncate-partial-width-windows)
-      #f)
-    (let ((window (pop-up-buffer buffer #f)))
+  (pop-up-temporary-buffer " *dired-files*" '(READ-ONLY SHRINK-WINDOW)
+    (lambda (buffer window)
+      (local-set-variable! truncate-partial-width-windows #f buffer)
       (write-strings-densely (map (lambda (filename)
 				    (file-namestring (car filename)))
 				  filenames)
 			     (mark->output-port (buffer-point buffer))
 			     (window-x-size
-			      (or window (car (buffer-windows buffer)))))
-      (set-buffer-point! buffer (buffer-start buffer))
-      (buffer-not-modified! buffer)
-      (set-buffer-read-only! buffer)
-      (if window (shrink-window-if-larger-than-buffer window)))))
+			      (or window (car (buffer-windows buffer))))))))
 
 (define (dired-kill-file! filename lstart)
   (let ((deleted?
