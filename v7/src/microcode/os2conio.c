@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2conio.c,v 1.2 1994/11/28 08:11:48 cph Exp $
+$Id: os2conio.c,v 1.3 1994/12/02 20:42:55 cph Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -32,29 +32,37 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
+#define USE_PMCON
+/* #define USE_VIO */
+/* #define USE_PMIO */
+
 #include "os2.h"
+
+#ifdef USE_PMCON
+
+extern void OS2_initialize_pm_console (void);
+extern int  OS2_pm_console_getch (void);
+extern void OS2_pm_console_write (const char *, size_t);
+
+#else
 #ifdef USE_PMIO
+
 #include <pmio.h>
+
+#endif
 #endif
 
-typedef struct line_buffer_s
-{
-  msg_t * message;
-  struct line_buffer_s * next;
-} line_buffer_t;
+#ifdef USE_PMCON
+#define getch OS2_pm_console_getch
+#else
+#ifndef USE_PMIO
+static int getch (void);
+#endif
+#endif
 
 static void console_thread (void *);
-#ifndef USE_PMIO
-static int  getch (void);
-#endif
 static void grab_console_lock (void);
 static void release_console_lock (void);
-
-static void init_line_buffer (void);
-static line_buffer_t * make_line_buffer (line_buffer_t *);
-static void push_line_buffer (void);
-static void pop_line_buffer (void);
-static line_buffer_t * reverse_line_buffer (void);
 
 static void process_input_char (char);
 static void do_rubout (void);
@@ -78,23 +86,25 @@ static void write_output (const char *, size_t, int);
 static void write_output_1 (const char *, const char *);
 static unsigned int char_output_length (char);
 
-#define LINEFEED  '\012'
-
 static HMTX console_lock;
 static int input_buffered_p;
 static int output_cooked_p;
 static qid_t console_writer_qid;
 static channel_context_t * console_context;
-static line_buffer_t * line_buffer;
+static readahead_buffer_t * line_buffer;
 
 void
 OS2_initialize_console (void)
 {
+#ifdef USE_PMCON
+  OS2_initialize_pm_console ();
+#else
 #ifdef USE_PMIO
   pmio_fontspec = "6.System VIO";
   set_width (80);
   set_height (40);
   start_pmio ();
+#endif
 #endif
   console_lock = (OS2_create_mutex_semaphore ());
   input_buffered_p = 1;
@@ -111,7 +121,7 @@ static void
 console_thread (void * arg)
 {
   grab_console_lock ();
-  init_line_buffer ();
+  line_buffer = (OS2_make_readahead_buffer ());
   release_console_lock ();
   (void) OS2_thread_initialize (console_writer_qid);
   while (1)
@@ -130,19 +140,21 @@ console_thread (void * arg)
 	    OS2_send_message (OS2_interrupt_qid, message);
 	    /* Flush buffers only for certain chars? */
 	    flush_input ();
+	    if (c == '\a')
+	      write_char ('\a', 0);
 	  }
       }
     }
   OS2_endthread ();
 }
 
-#ifndef USE_PMIO
+#if ((!defined(USE_PMCON)) && (!defined(USE_PMIO)))
 static int
 getch (void)
 {
   while (1)
     {
-#if 1
+#ifdef USE_VIO
       KBDKEYINFO info;
       XTD_API_CALL
 	(kbd_char_in, ((&info), IO_WAIT, 0),
@@ -182,62 +194,6 @@ release_console_lock (void)
 }
 
 static void
-init_line_buffer (void)
-{
-  line_buffer = 0;
-  push_line_buffer ();
-}
-
-static line_buffer_t *
-make_line_buffer (line_buffer_t * next)
-{
-  line_buffer_t * buffer = (OS_malloc (sizeof (line_buffer_t)));
-  msg_t * message = (OS2_make_readahead ());
-  (SM_READAHEAD_SIZE (message)) = 0;
-  (buffer -> message) = message;
-  (buffer -> next) = next;
-  return (buffer);
-}
-
-static void
-push_line_buffer (void)
-{
-  line_buffer = (make_line_buffer (line_buffer));
-}
-
-static void
-pop_line_buffer (void)
-{
-  line_buffer_t * buffer = line_buffer;
-  OS2_destroy_message (buffer -> message);
-  line_buffer = (buffer -> next);
-  OS_free (buffer);
-}
-
-static line_buffer_t *
-reverse_line_buffer (void)
-{
-  line_buffer_t * this = line_buffer;
-  line_buffer_t * prev = 0;
-  line_buffer_t * next;
-  line_buffer = 0;
-  while (1)
-    {
-      next = (this -> next);
-      (this -> next) = prev;
-      if (next == 0)
-	break;
-      prev = this;
-      this = next;
-    }
-  push_line_buffer ();
-  return (this);
-}
-
-#define LINE_BUFFER_SIZE (SM_READAHEAD_SIZE (line_buffer -> message))
-#define LINE_BUFFER_DATA (SM_READAHEAD_DATA (line_buffer -> message))
-
-static void
 process_input_char (char c)
 {
   if (!input_buffered_p)
@@ -249,7 +205,7 @@ process_input_char (char c)
       do_rubout ();
       break;
     case '\r':
-      do_self_insert (LINEFEED);
+      do_self_insert ('\n');
       finish_line ();
       break;
     default:
@@ -269,9 +225,7 @@ static void
 add_char_to_line_buffer (char c)
 {
   grab_console_lock ();
-  if (LINE_BUFFER_SIZE == SM_READAHEAD_MAX)
-    push_line_buffer ();
-  (LINE_BUFFER_DATA [LINE_BUFFER_SIZE ++]) = c;
+  OS2_readahead_buffer_insert (line_buffer, c);
   release_console_lock ();
 }
 
@@ -279,19 +233,15 @@ static void
 do_rubout (void)
 {
   grab_console_lock ();
-  if (LINE_BUFFER_SIZE == 0)
+  if (OS2_readahead_buffer_emptyp (line_buffer))
     {
-      if ((line_buffer -> next) == 0)
-	{
-	  release_console_lock ();
-	  write_char ('\a', 0);
-	  return;
-	}
-      pop_line_buffer ();
+      release_console_lock ();
+      write_char ('\a', 0);
+      return;
     }
   {
     unsigned int n
-      = (char_output_length (LINE_BUFFER_DATA [-- LINE_BUFFER_SIZE]));
+      = (char_output_length (OS2_readahead_buffer_rubout (line_buffer)));
     unsigned int i;
     release_console_lock ();
     for (i = 0; (i < n); i += 1)
@@ -306,15 +256,16 @@ do_rubout (void)
 static void
 finish_line (void)
 {
-  line_buffer_t * buffer;
+  msg_list_t * messages;
   grab_console_lock ();
-  buffer = (reverse_line_buffer ());
+  messages = (OS2_readahead_buffer_read_all (line_buffer));
   release_console_lock ();
-  while (buffer != 0)
+  while (messages != 0)
     {
-      send_readahead (buffer -> message);
-      buffer = (buffer -> next);
-      OS_free (buffer);
+      msg_list_t * element = messages;
+      messages = (messages -> next);
+      send_readahead (element -> message);
+      OS_free (element);
     }
 }
 
@@ -349,7 +300,8 @@ console_operator (Tchannel channel, chop_t operation,
     {
     case chop_read:
       (* ((long *) arg3))
-	= (channel_thread_read (channel, ((char *) arg1), ((size_t) arg2)));
+	= (OS2_channel_thread_read
+	   (channel, ((char *) arg1), ((size_t) arg2)));
       break;
     case chop_write:
       write_output (((const char *) arg1), ((size_t) arg2), output_cooked_p);
@@ -377,11 +329,17 @@ console_operator (Tchannel channel, chop_t operation,
 static void
 flush_input (void)
 {
+  msg_list_t * messages;
   grab_console_lock ();
-  while ((line_buffer -> next) != 0)
-    pop_line_buffer ();
-  LINE_BUFFER_SIZE = 0;
+  messages = (OS2_readahead_buffer_read_all (line_buffer));
   release_console_lock ();
+  while (messages != 0)
+    {
+      msg_list_t * element = messages;
+      messages = (messages -> next);
+      OS2_destroy_message (element -> message);
+      OS_free (element);
+    }
 }
 
 static void
@@ -413,6 +371,12 @@ write_char (char c, int cooked_p)
   write_output ((&c), 1, cooked_p);
 }
 
+void
+OS2_console_write (const char * data, size_t size)
+{
+  write_output (data, size, 1);
+}
+
 static void
 write_output (const char * data, size_t size, int cooked_p)
 {
@@ -435,12 +399,12 @@ write_output (const char * data, size_t size, int cooked_p)
 	    out = output_translation;
 	  }
 	c = (*scan++);
-	if (isprint (c))
+	if ((isprint (c)) || (c == '\f') || (c == '\a'))
 	  (*out++) = c;
-	else if (c == LINEFEED)
+	else if (c == '\n')
 	  {
 	    (*out++) = '\r';
-	    (*out++) = c;
+	    (*out++) = '\012';
 	  }
 	else if (c < 0x20)
 	  {
@@ -456,16 +420,26 @@ write_output (const char * data, size_t size, int cooked_p)
 	  }
       }
 }
-
+
 static void
 write_output_1 (const char * scan, const char * end)
 {
+#ifdef USE_PMCON
+
+  OS2_pm_console_write (scan, (end - scan));
+
+#else /* not USE_PMCON */
 #ifdef USE_PMIO
+
   put_raw ((end - scan), scan);
+
 #else /* not USE_PMIO */
-#if 1
+#ifdef USE_VIO
+
   STD_API_CALL (vio_wrt_tty, (((PCH) scan), (end - scan), 0));
-#else
+
+#else /* not USE_VIO */
+
   while (1)
     {
       ULONG n;
@@ -476,8 +450,10 @@ write_output_1 (const char * scan, const char * end)
       if (scan == end)
 	break;
     }
-#endif
+
+#endif /* not USE_VIO */
 #endif /* not USE_PMIO */
+#endif /* not USE_PMCON */
 }
 
 static unsigned int

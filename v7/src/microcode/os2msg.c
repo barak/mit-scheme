@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2msg.c,v 1.1 1994/11/28 03:42:58 cph Exp $
+$Id: os2msg.c,v 1.2 1994/12/02 20:42:46 cph Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -38,8 +38,6 @@ MIT in each case. */
 
 static qid_t allocate_qid (void);
 static void OS2_initialize_message_lengths (void);
-static void read_and_dispatch_nonblocking (tqueue_t *);
-static void read_and_dispatch_one_blocking (tqueue_t *);
 static void write_subqueue (msg_t *);
 static msg_t * read_subqueue (qid_t);
 static int subqueue_emptyp (qid_t);
@@ -51,20 +49,13 @@ static tqueue_t * make_scm_tqueue (void);
 static int read_scm_tqueue (tqueue_t *, int);
 static void write_scm_tqueue (tqueue_t *, msg_t *);
 static void process_interrupt_messages (void);
-static int read_pm_tqueue (tqueue_t *, int);
-static void write_pm_tqueue (tqueue_t *, msg_t *);
 
-typedef struct msg_list_s
-{
-  msg_t * message;
-  struct msg_list_s * next;
-} msg_list_t;
-
 typedef struct
 {
   unsigned int allocatedp : 1;	/* queue allocated? */
   unsigned int openp : 1;	/* queue open? */
   qid_t twin;			/* other end of connection */
+  qid_receive_filter_t filter;	/* filter for received messages */
   tqueue_t * tqueue;		/* thread queue for reception */
   msg_list_t * subqueue_head;	/* head of receiving subqueue */
   msg_list_t * subqueue_tail;	/* tail of receiving subqueue */
@@ -83,6 +74,7 @@ qid_t OS2_interrupt_qid;
 #define QID_TQUEUE(q) ((_QID (q)) . tqueue)
 #define QID_SUBQUEUE_HEAD(q) ((_QID (q)) . subqueue_head)
 #define QID_SUBQUEUE_TAIL(q) ((_QID (q)) . subqueue_tail)
+#define QID_FILTER(q) ((_QID (q)) . filter)
 
 #define MSG_QUEUE_TYPE(m) 0
 #define MSG_QUEUE_PRIORITY(m) 0
@@ -105,8 +97,10 @@ OS2_initialize_message_queues (void)
       }
   }
   OS2_initialize_message_lengths ();
+  SET_MSG_TYPE_LENGTH (mt_init, sm_init_t);
   SET_MSG_TYPE_LENGTH (mt_console_interrupt, sm_console_interrupt_t);
   SET_MSG_TYPE_LENGTH (mt_timer_event, sm_timer_event_t);
+  SET_MSG_TYPE_LENGTH (mt_generic_reply, sm_generic_reply_t);
   qid_lock = (OS2_create_mutex_semaphore ());
   OS2_scheme_tqueue = (make_scm_tqueue ());
   OS2_make_qid_pair ((&OS2_interrupt_qid_local), (&OS2_interrupt_qid));
@@ -189,6 +183,12 @@ OS2_close_qid (qid_t qid)
   (QID_ALLOCATEDP (qid)) = 0;
   OS2_release_mutex_semaphore (qid_lock);
 }
+
+void
+OS2_set_qid_receive_filter (qid_t qid, qid_receive_filter_t filter)
+{
+  (QID_FILTER (qid)) = filter;
+}
 
 /* Message Lengths */
 
@@ -267,7 +267,8 @@ OS2_receive_message (qid_t qid, int blockp)
   msg_t * message;
   while (1)
     {
-      read_and_dispatch_nonblocking (tqueue);
+      while (read_tqueue (tqueue, 0))
+	;
       if ((TQUEUE_TYPE (tqueue)) == tqt_scm)
 	{
 	  process_interrupt_messages ();
@@ -276,37 +277,51 @@ OS2_receive_message (qid_t qid, int blockp)
       message = (read_subqueue (qid));
       if ((!blockp) || (message != 0))
 	break;
-      read_and_dispatch_one_blocking (tqueue);
+      (void) read_tqueue (tqueue, 1);
     }
   return (message);
 }
 
-static void
-read_and_dispatch_nonblocking (tqueue_t * tqueue)
+msg_t *
+OS2_wait_for_message (qid_t qid, msg_type_t reply_type)
 {
-  while (read_tqueue (tqueue, 0))
-    ;
+  msg_t * reply = (OS2_receive_message (qid, 1));
+  if (OS2_error_message_p (reply))
+    OS2_handle_error_message (reply);
+  if ((MSG_TYPE (reply)) != reply_type)
+    OS2_logic_error ("Incorrect reply message type.");
+  return (reply);
 }
 
-static void
-read_and_dispatch_one_blocking (tqueue_t * tqueue)
+msg_t *
+OS2_message_transaction (qid_t qid, msg_t * request, msg_type_t reply_type)
 {
-  (void) read_tqueue (tqueue, 1);
+  OS2_send_message (qid, request);
+  OS2_wait_for_message (qid, reply_type);
 }
 
 static void
 write_subqueue (msg_t * message)
 {
   qid_t qid = (MSG_SENDER (message));
-  msg_list_t * tail = (QID_SUBQUEUE_TAIL (qid));
-  msg_list_t * elt = (OS_malloc (sizeof (struct msg_list_s)));
-  (elt -> message) = message;
-  (elt -> next) = 0;
-  if (tail == 0)
-    (QID_SUBQUEUE_HEAD (qid)) = elt;
-  else
-    (tail -> next) = elt;
-  (QID_SUBQUEUE_TAIL (qid)) = elt;
+  qid_receive_filter_t filter = (QID_FILTER (qid));
+  if (filter != 0)
+    {
+      message = ((* filter) (message));
+      if (message == 0)
+	return;
+    }
+  {
+    msg_list_t * tail = (QID_SUBQUEUE_TAIL (qid));
+    msg_list_t * elt = (OS_malloc (sizeof (struct msg_list_s)));
+    (elt -> message) = message;
+    (elt -> next) = 0;
+    if (tail == 0)
+      (QID_SUBQUEUE_HEAD (qid)) = elt;
+    else
+      (tail -> next) = elt;
+    (QID_SUBQUEUE_TAIL (qid)) = elt;
+  }
 }
 
 static msg_t *
@@ -341,7 +356,7 @@ read_tqueue (tqueue_t * tqueue, int blockp)
     case tqt_scm:
       return (read_scm_tqueue (tqueue, blockp));
     case tqt_pm:
-      return (read_pm_tqueue (tqueue, blockp));
+      return (OS2_read_pm_tqueue (tqueue, blockp));
     }
 }
 
@@ -357,7 +372,7 @@ write_tqueue (tqueue_t * tqueue, msg_t * message)
       write_scm_tqueue (tqueue, message);
       break;
     case tqt_pm:
-      write_pm_tqueue (tqueue, message);
+      OS2_write_pm_tqueue (tqueue, message);
       break;
     }
 }
@@ -379,6 +394,14 @@ OS2_make_std_tqueue (void)
   (STD_TQUEUE_QUEUE (tqueue)) = (OS2_create_queue (QUE_FIFO));
   (STD_TQUEUE_EVENT (tqueue)) = (OS2_create_event_semaphore ());
   return (tqueue);
+}
+
+void
+OS2_close_std_tqueue (tqueue_t * tqueue)
+{
+  OS2_close_queue (STD_TQUEUE_QUEUE (tqueue));
+  OS2_close_event_semaphore (STD_TQUEUE_EVENT (tqueue));
+  OS_free (tqueue);
 }
 
 static int
@@ -446,8 +469,7 @@ read_scm_tqueue (tqueue_t * tqueue, int blockp)
     if (read_std_tqueue (tqueue, blockp))
       {
 	result = 1;
-	/* If blockp was set, after we have read one message we read
-	   any remaining messages in non-blocking mode.  */
+	/* At most one message needs to be read in blocking mode.  */
 	blockp = 0;
       }
   while (test_and_clear_attention_interrupt ());
@@ -464,7 +486,9 @@ write_scm_tqueue (tqueue_t * tqueue, msg_t * message)
 void
 OS2_handle_attention_interrupt (void)
 {
-  read_and_dispatch_nonblocking (QID_TQUEUE (OS2_interrupt_qid_local));
+  tqueue_t * tqueue = (QID_TQUEUE (OS2_interrupt_qid_local));
+  while (read_tqueue (tqueue, 0))
+    ;
   process_interrupt_messages ();
 }
 
@@ -492,15 +516,4 @@ process_interrupt_messages (void)
 	}
       OS2_destroy_message (message);
     }
-}
-
-static int
-read_pm_tqueue (tqueue_t * tqueue, int blockp)
-{
-  return (0);
-}
-
-static void
-write_pm_tqueue (tqueue_t * tqueue, msg_t * message)
-{
 }
