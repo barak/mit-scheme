@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: alpha.scm,v 1.2 1994/11/20 00:40:41 jmiller Exp $
+$Id: alpha.scm,v 1.3 1994/11/25 22:58:37 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -164,8 +164,7 @@ MIT in each case. |#
 	exprs))
 
 (define-integrable (alphaconv/remember new old)
-  old					; ignored for now and forever
-  new)
+  (code-rewrite/remember new old))
 
 (define-structure
   (alphaconv/state
