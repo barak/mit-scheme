@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.69 1991/05/02 06:12:32 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.70 1991/05/05 00:45:37 jinx Exp $
 
 Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
@@ -259,6 +259,29 @@ DEFUN_VOID (make_fixed_objects_vector)
     (fixed_objects_vector,
      GENERIC_TRAMPOLINE_DIVIDE,
      SHARP_F);
+  FAST_VECTOR_SET
+    (fixed_objects_vector,
+     GENERIC_TRAMPOLINE_QUOTIENT,
+     SHARP_F);
+  FAST_VECTOR_SET
+    (fixed_objects_vector,
+     GENERIC_TRAMPOLINE_REMAINDER,
+     SHARP_F);
+  FAST_VECTOR_SET
+    (fixed_objects_vector,
+     GENERIC_TRAMPOLINE_MODULO,
+     SHARP_F);
+
+  /* This guarantees that it will not be EQ? to anything
+     until smashed by the runtime system.
+   */
+
+  (*Free++) = EMPTY_LIST;
+  (*Free++) = EMPTY_LIST;
+  FAST_VECTOR_SET
+    (fixed_objects_vector,
+     ARITY_DISPATCHER_TAG,
+     (MAKE_POINTER_OBJECT (TC_LIST, (Free - 2))));
 
   return (fixed_objects_vector);
 }

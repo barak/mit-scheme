@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gcloop.c,v 9.34 1990/01/20 07:29:47 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gcloop.c,v 9.35 1991/05/05 00:45:55 jinx Exp $
  *
  * This file contains the code for the most primitive part
  * of garbage collection.
@@ -152,49 +152,65 @@ GCLoop(Scan, To_Pointer)
 
       case TC_LINKAGE_SECTION:
       {
-	if (READ_LINKAGE_KIND(Temp) != OPERATOR_LINKAGE_KIND)
+	switch (READ_LINKAGE_KIND (Temp))
 	{
-	  /* Assumes that all others are objects of type TC_QUAD without
-	     their type codes.
-	   */
-
-	  fast long count;
-
-	  Scan++;
-	  for (count = READ_CACHE_LINKAGE_COUNT(Temp);
-	       --count >= 0;
-	       Scan += 1)
+	  case REFERENCE_LINKAGE_KIND:
+	  case ASSIGNMENT_LINKAGE_KIND:
 	  {
-	    Temp = *Scan;
-	    Setup_Pointer_for_GC(Transport_Quadruple());
+	    /* Assumes that all others are objects of type TC_QUAD without
+	       their type codes.
+	       */
+
+	    fast long count;
+
+	    Scan++;
+	    for (count = READ_CACHE_LINKAGE_COUNT(Temp);
+		 --count >= 0;
+		 Scan += 1)
+	    {
+	      Temp = *Scan;
+	      Setup_Pointer_for_GC(Transport_Quadruple());
+	    }
+	    Scan -= 1;
+	    break;
 	  }
-	  Scan -= 1;
-	  break;
-	}
-	else
-	{
-	  fast long count;
-	  fast char *word_ptr;
-	  SCHEME_OBJECT *end_scan;
 
-	  count = (READ_OPERATOR_LINKAGE_COUNT (Temp));
-	  word_ptr = (FIRST_OPERATOR_LINKAGE_ENTRY (Scan));
-	  end_scan = (END_OPERATOR_LINKAGE_AREA (Scan, count));
-
-	  while(--count >= 0)
+	  case OPERATOR_LINKAGE_KIND:
+	  case GLOBAL_OPERATOR_LINKAGE_KIND:
 	  {
-	    Scan = ((SCHEME_OBJECT *) word_ptr);
-	    word_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr));
-	    EXTRACT_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);
-	    GC_Pointer(Setup_Internal(true,
-				      Transport_Compiled(),
-				      Compiled_BH(true, goto next_operator)));
-	  next_operator:
-	    STORE_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);
+	    fast long count;
+	    fast char *word_ptr;
+	    SCHEME_OBJECT *end_scan;
+
+	    count = (READ_OPERATOR_LINKAGE_COUNT (Temp));
+	    word_ptr = (FIRST_OPERATOR_LINKAGE_ENTRY (Scan));
+	    end_scan = (END_OPERATOR_LINKAGE_AREA (Scan, count));
+
+	    while(--count >= 0)
+	    {
+	      Scan = ((SCHEME_OBJECT *) word_ptr);
+	      word_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr));
+	      EXTRACT_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);
+	      GC_Pointer(Setup_Internal(true,
+					Transport_Compiled(),
+					Compiled_BH(true,
+						    goto next_operator)));
+	      next_operator:
+	      STORE_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);
+	    }
+	    Scan = end_scan;
+	    break;
 	  }
-	  Scan = end_scan;
-	  break;
+
+	  default:
+	  {
+	    gc_death (TERM_EXIT,
+		      "GC: Unknown compiler linkage kind.",
+		      Scan, Free);
+	    /*NOTREACHED*/
+	  }
 	}
+	break;
       }
 
       case TC_MANIFEST_CLOSURE:

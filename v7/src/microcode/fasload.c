@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.61 1991/03/21 23:26:27 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.62 1991/05/05 00:45:46 jinx Exp $
 
 Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
@@ -459,46 +459,61 @@ DEFUN (Relocate_Block, (Scan, Stop_At),
 	   This also applies to TC_MANIFEST_CLOSURE.
 	   The lines affected are the ones where ADDRESS_TO_DATUM is used.
 	 */
-	if (READ_LINKAGE_KIND(Temp) != OPERATOR_LINKAGE_KIND)
+	switch (READ_LINKAGE_KIND(Temp))
 	{
-	  /* Assumes that all others are objects of type TC_QUAD without
-	     their type codes.
-	   */
-
-	  fast long count;
-
-	  Scan++;
-	  for (count = (READ_CACHE_LINKAGE_COUNT (Temp));
-	       --count >= 0;
-	       )
+	  case REFERENCE_LINKAGE_KIND:
+	  case ASSIGNMENT_LINKAGE_KIND:
 	  {
-	    address = (ADDRESS_TO_DATUM ((SCHEME_OBJECT *) (*Scan)));
-	    *Scan++ = ((SCHEME_OBJECT) (Relocate (address)));
+	    /* Assumes that all others are objects of type TC_QUAD without
+	       their type codes.
+	       */
+
+	    fast long count;
+
+	    Scan++;
+	    for (count = (READ_CACHE_LINKAGE_COUNT (Temp));
+		 --count >= 0;
+		 )
+	    {
+	      address = (ADDRESS_TO_DATUM ((SCHEME_OBJECT *) (*Scan)));
+	      *Scan++ = ((SCHEME_OBJECT) (Relocate (address)));
+	    }
+	    break;
 	  }
-	  break;
-	}
-	else
-	{
-	  fast long count;
-	  fast char *word_ptr;
-	  SCHEME_OBJECT *end_scan;
 
-	  count = (READ_OPERATOR_LINKAGE_COUNT (Temp));
-	  word_ptr = (FIRST_OPERATOR_LINKAGE_ENTRY (Scan));
-	  end_scan = (END_OPERATOR_LINKAGE_AREA (Scan, count));
-
-	  while(--count >= 0)
+	  case OPERATOR_LINKAGE_KIND:
+	  case GLOBAL_OPERATOR_LINKAGE_KIND:
 	  {
-	    Scan = ((SCHEME_OBJECT *) (word_ptr));
-	    word_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr));
-	    EXTRACT_OPERATOR_LINKAGE_ADDRESS (address, Scan);
-	    address = (ADDRESS_TO_DATUM ((SCHEME_OBJECT *) address));
-	    address = ((long) (Relocate (address)));
-	    STORE_OPERATOR_LINKAGE_ADDRESS (address, Scan);
+	    fast long count;
+	    fast char *word_ptr;
+	    SCHEME_OBJECT *end_scan;
+
+	    count = (READ_OPERATOR_LINKAGE_COUNT (Temp));
+	    word_ptr = (FIRST_OPERATOR_LINKAGE_ENTRY (Scan));
+	    end_scan = (END_OPERATOR_LINKAGE_AREA (Scan, count));
+
+	    while(--count >= 0)
+	    {
+	      Scan = ((SCHEME_OBJECT *) (word_ptr));
+	      word_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr));
+	      EXTRACT_OPERATOR_LINKAGE_ADDRESS (address, Scan);
+	      address = (ADDRESS_TO_DATUM ((SCHEME_OBJECT *) address));
+	      address = ((long) (Relocate (address)));
+	      STORE_OPERATOR_LINKAGE_ADDRESS (address, Scan);
+	    }
+	    Scan = &end_scan[1];
+	    break;
 	  }
-	  Scan = &end_scan[1];
-	  break;
+
+	  default:
+	  {
+	    gc_death (TERM_EXIT,
+		      "Relocate_Block: Unknown compiler linkage kind.",
+		      Scan, NULL);
+	    /*NOTREACHED*/
+	  }
 	}
+	break;
       }
 
       case TC_MANIFEST_CLOSURE:

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purutl.c,v 9.40 1991/02/24 01:11:04 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purutl.c,v 9.41 1991/05/05 00:46:07 jinx Exp $
 
 Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
@@ -51,12 +51,12 @@ DEFUN (Update,
 
   for (; From < To; From++)
   {
-    if (GC_Type_Special(*From))
+    if (GC_Type_Special (*From))
     {
-      switch(OBJECT_TYPE (*From))
+      switch (OBJECT_TYPE (*From))
       {
 	case TC_MANIFEST_NM_VECTOR:
-	  From += OBJECT_DATUM (*From);
+	  From += (OBJECT_DATUM (*From));
 	  continue;
 
 	  /* The following two type codes assume that none of the protected
@@ -64,17 +64,32 @@ DEFUN (Update,
 	     This may be seriously wrong!
 	   */
 	case TC_LINKAGE_SECTION:
-	  if (READ_LINKAGE_KIND(*From) != OPERATOR_LINKAGE_KIND)
+	  switch (READ_LINKAGE_KIND (*From))
 	  {
-	    From += READ_CACHE_LINKAGE_COUNT(*From);
-	    continue;
+	    case REFERENCE_LINKAGE_KIND:
+	    case ASSIGNMENT_LINKAGE_KIND:
+	    {
+	      From += (READ_CACHE_LINKAGE_COUNT (*From));
+	      continue;
+	    }
+
+	    case OPERATOR_LINKAGE_KIND:
+	    case GLOBAL_OPERATOR_LINKAGE_KIND:
+	    {
+	      count = (READ_OPERATOR_LINKAGE_COUNT (*From));
+	      From = (END_OPERATOR_LINKAGE_AREA (From, count));
+	      continue;
+	    }
+
+	    default:
+	    {
+	      gc_death (TERM_EXIT,
+			"Impurify: Unknown compiler linkage kind.",
+			From, NULL);
+	      /*NOTREACHED*/
+	    }
 	  }
-	  else
-	  {
-	    count = READ_OPERATOR_LINKAGE_COUNT(*From);
-	    From = END_OPERATOR_LINKAGE_AREA(From, count);
-	    continue;
-	  }
+
 
 	case TC_MANIFEST_CLOSURE:
 	{

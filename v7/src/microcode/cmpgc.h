@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.15 1991/03/22 06:27:39 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.16 1991/05/05 00:40:42 jinx Exp $
 
 Copyright (c) 1989-1991 Massachusetts Institute of Technology
 
@@ -232,6 +232,7 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
 #define OPERATOR_LINKAGE_KIND			0x000000
 #define REFERENCE_LINKAGE_KIND			0x010000
 #define ASSIGNMENT_LINKAGE_KIND			0x020000
+#define GLOBAL_OPERATOR_LINKAGE_KIND		0x030000
 
 #define READ_LINKAGE_KIND(header)					\
   ((header) & 0xff0000)
@@ -245,8 +246,9 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
 #define MAKE_LINKAGE_SECTION_HEADER(kind, count)			\
   (MAKE_OBJECT(TC_LINKAGE_SECTION,					\
 	       ((kind) |						\
-		(((kind) == OPERATOR_LINKAGE_KIND) ?			\
-		 (EXECUTE_CACHE_ENTRIES_TO_COUNT(count)) :		\
+		((((kind) == OPERATOR_LINKAGE_KIND)			\
+		  || ((kind) == GLOBAL_OPERATOR_LINKAGE_KIND)) ?	\
+		 (EXECUTE_CACHE_ENTRIES_TO_COUNT (count)) :		\
 		 (count)))))
 
 /* This takes into account the 1 added by the main loop of the

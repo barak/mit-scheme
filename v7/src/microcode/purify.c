@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.45 1991/02/24 01:10:56 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.46 1991/05/05 00:46:02 jinx Exp $
 
 Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
@@ -126,50 +126,66 @@ DEFUN (PurifyLoop,
 		   Scan, To);
 	  /*NOTREACHED*/
 	}
-	if (READ_LINKAGE_KIND(Temp) != OPERATOR_LINKAGE_KIND)
+
+	switch (READ_LINKAGE_KIND (Temp))
 	{
-	  /* Assumes that all others are objects of type TC_QUAD without
-	     their type codes.
-	   */
-
-	  fast long count;
-
-	  Scan++;
-	  for (count = READ_CACHE_LINKAGE_COUNT(Temp);
-	       --count >= 0;
-	       Scan += 1)
+	  case REFERENCE_LINKAGE_KIND:
+	  case ASSIGNMENT_LINKAGE_KIND:
 	  {
-	    Temp = *Scan;
-	    Setup_Pointer_for_Purify(Transport_Quadruple());
+	    /* Assumes that all others are objects of type TC_QUAD without
+	       their type codes.
+	     */
+
+	    fast long count;
+
+	    Scan++;
+	    for (count = READ_CACHE_LINKAGE_COUNT(Temp);
+		 --count >= 0;
+		 Scan += 1)
+	    {
+	      Temp = *Scan;
+	      Setup_Pointer_for_Purify(Transport_Quadruple());
+	    }
+	    Scan -= 1;
+	    break;
 	  }
-	  Scan -= 1;
-	  break;
-	}
-	else
-	{
-	  fast long count;
-	  fast char *word_ptr;
-	  SCHEME_OBJECT *end_scan;
 
-	  count = (READ_OPERATOR_LINKAGE_COUNT (Temp));
-	  word_ptr = (FIRST_OPERATOR_LINKAGE_ENTRY (Scan));
-	  end_scan = (END_OPERATOR_LINKAGE_AREA (Scan, count));
-
-	  while(--count >= 0)
+	  case OPERATOR_LINKAGE_KIND:
+	  case GLOBAL_OPERATOR_LINKAGE_KIND:
 	  {
-	    Scan = ((SCHEME_OBJECT *) word_ptr);
-	    word_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr));
-	    EXTRACT_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);
-	    Purify_Pointer(Setup_Internal(false,
-					  Transport_Compiled(),
-					  Compiled_BH(false,
-						      goto next_operator)));
-	  next_operator:
-	    STORE_OPERATOR_LINKAGE_ADDRESS(Temp, Scan);
+	    fast long count;
+	    fast char *word_ptr;
+	    SCHEME_OBJECT *end_scan;
+
+	    count = (READ_OPERATOR_LINKAGE_COUNT (Temp));
+	    word_ptr = (FIRST_OPERATOR_LINKAGE_ENTRY (Scan));
+	    end_scan = (END_OPERATOR_LINKAGE_AREA (Scan, count));
+
+	    while(--count >= 0)
+	    {
+	      Scan = ((SCHEME_OBJECT *) word_ptr);
+	      word_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr));
+	      EXTRACT_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);
+	      Purify_Pointer(Setup_Internal(false,
+					    Transport_Compiled(),
+					    Compiled_BH(false,
+							goto next_operator)));
+	      next_operator:
+	      STORE_OPERATOR_LINKAGE_ADDRESS(Temp, Scan);
+	    }
+	    Scan = end_scan;
+	    break;
 	  }
-	  Scan = end_scan;
-	  break;
+
+	  default:
+	  {
+	    gc_death (TERM_EXIT,
+		      "purifyloop: Unknown compiler linkage kind.",
+		      Scan, Free);
+	    /*NOTREACHED*/
+	  }
 	}
+	break;
       }
 
       case TC_MANIFEST_CLOSURE:

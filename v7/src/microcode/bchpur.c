@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.52 1991/02/26 21:15:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.53 1991/05/05 00:45:30 jinx Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -146,71 +146,85 @@ DEFUN (purifyloop, (Scan, To_ptr, To_Address_ptr, purify_mode),
 		    Scan, To);
 	  /*NOTREACHED*/
 	}
-	if ((READ_LINKAGE_KIND (Temp)) != OPERATOR_LINKAGE_KIND)
+	switch (READ_LINKAGE_KIND (Temp))
 	{
-	  /* count typeless pointers to quads follow. */
-
-	  fast long count;
-	  long max_count, max_here;
-
-	  Scan++;
-	  max_here = (scan_buffer_top - Scan);
-	  max_count = (READ_CACHE_LINKAGE_COUNT (Temp));
-	  while (max_count != 0)
+	  case REFERENCE_LINKAGE_KIND:
+	  case ASSIGNMENT_LINKAGE_KIND:
 	  {
-	    count = ((max_count > max_here) ? max_here : max_count);
-	    max_count -= count;
-	    for ( ; --count >= 0; Scan += 1)
+	    /* count typeless pointers to quads follow. */
+
+	    fast long count;
+	    long max_count, max_here;
+
+	    Scan++;
+	    max_here = (scan_buffer_top - Scan);
+	    max_count = (READ_CACHE_LINKAGE_COUNT (Temp));
+	    while (max_count != 0)
 	    {
-	      Temp = *Scan;
-	      relocate_typeless_pointer (copy_quadruple(), 4);
+	      count = ((max_count > max_here) ? max_here : max_count);
+	      max_count -= count;
+	      for ( ; --count >= 0; Scan += 1)
+	      {
+		Temp = *Scan;
+		relocate_typeless_pointer (copy_quadruple(), 4);
+	      }
+	      if (max_count != 0)
+	      {
+		/* We stopped because we needed to relocate too many. */
+		Scan = dump_and_reload_scan_buffer(0, NULL);
+		max_here = GC_DISK_BUFFER_SIZE;
+	      }
 	    }
-	    if (max_count != 0)
-	    {
-	      /* We stopped because we needed to relocate too many. */
-	      Scan = dump_and_reload_scan_buffer(0, NULL);
-	      max_here = GC_DISK_BUFFER_SIZE;
-	    }
+	    /* The + & -1 are here because of the Scan++ in the for header. */
+	    Scan -= 1;
+	    break;
 	  }
-	  /* The + & -1 are here because of the Scan++ in the for header. */
-	  Scan -= 1;
-	  break;
-	}
 
-	else
-	{
-	  /* Operator linkage */
-
-	  fast long count;
-	  fast char *word_ptr, *next_ptr;
-	  long overflow;
-
-	  count = (READ_OPERATOR_LINKAGE_COUNT (Temp));
-	  word_ptr = (FIRST_OPERATOR_LINKAGE_ENTRY (Scan));
-	  overflow = ((END_OPERATOR_LINKAGE_AREA (Scan, count)) -
-		      scan_buffer_top);
-
-	  for (next_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr));
-	       (--count >= 0);
-	       word_ptr = next_ptr,
-	       next_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr)))
+	  case OPERATOR_LINKAGE_KIND:
+	  case GLOBAL_OPERATOR_LINKAGE_KIND:
 	  {
-	    if (next_ptr > ((char *) scan_buffer_top))
+	    /* Operator linkage */
+
+	    fast long count;
+	    fast char *word_ptr, *next_ptr;
+	    long overflow;
+
+	    count = (READ_OPERATOR_LINKAGE_COUNT (Temp));
+	    word_ptr = (FIRST_OPERATOR_LINKAGE_ENTRY (Scan));
+	    overflow = ((END_OPERATOR_LINKAGE_AREA (Scan, count)) -
+			scan_buffer_top);
+
+	    for (next_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr));
+		 (--count >= 0);
+		 word_ptr = next_ptr,
+		 next_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr)))
 	    {
-	      extend_scan_buffer (((char *) next_ptr), To);
-	      relocate_linked_operator (false);
-	      next_ptr = ((char *)
-			  (end_scan_buffer_extension ((char *) next_ptr)));
-	      overflow -= GC_DISK_BUFFER_SIZE;
+	      if (next_ptr > ((char *) scan_buffer_top))
+	      {
+		extend_scan_buffer (((char *) next_ptr), To);
+		relocate_linked_operator (false);
+		next_ptr = ((char *)
+			    (end_scan_buffer_extension ((char *) next_ptr)));
+		overflow -= GC_DISK_BUFFER_SIZE;
+	      }
+	      else
+	      {
+		relocate_linked_operator (false);
+	      }
 	    }
-	    else
-	    {
-	      relocate_linked_operator (false);
-	    }
+	    Scan = (scan_buffer_top + overflow);
+	    break;
 	  }
-	  Scan = (scan_buffer_top + overflow);
-	  break;
+
+	  default:
+	  {
+	    gc_death (TERM_EXIT,
+		      "purify: Unknown compiler linkage kind.",
+		      Scan, Free);
+	    /*NOTREACHED*/
+	  }
 	}
+	break;
       }
 
       case TC_MANIFEST_CLOSURE:
