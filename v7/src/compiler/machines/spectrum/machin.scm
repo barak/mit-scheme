@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 4.27 1993/01/08 00:05:02 cph Exp $
+$Id: machin.scm,v 4.28 1993/02/28 06:20:24 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -201,7 +201,25 @@ MIT in each case. |#
 (define-integrable fp14 46)
 (define-integrable fp15 47)
 
-(define-integrable number-of-machine-registers 48)
+;; The following registers are available only on the newer processors
+(define-integrable fp16 48)
+(define-integrable fp17 49)
+(define-integrable fp18 50)
+(define-integrable fp19 51)
+(define-integrable fp20 52)
+(define-integrable fp21 53)
+(define-integrable fp22 54)
+(define-integrable fp23 55)
+(define-integrable fp24 56)
+(define-integrable fp25 57)
+(define-integrable fp26 58)
+(define-integrable fp27 59)
+(define-integrable fp28 60)
+(define-integrable fp29 61)
+(define-integrable fp30 62)
+(define-integrable fp31 63)
+
+(define-integrable number-of-machine-registers 64)
 (define-integrable number-of-temporary-registers 256)
 
 ;;; Fixed-use registers for Scheme compiled code.
@@ -244,7 +262,7 @@ MIT in each case. |#
 	 value-class=address)
 	((= register 5)
 	 value-class=immediate)
-	((<= 32 register 47)
+	((<= 32 register 63)
 	 value-class=float)
 	(else
 	 (error "illegal machine register" register))))

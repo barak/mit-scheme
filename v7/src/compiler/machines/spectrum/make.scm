@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/make.scm,v 4.88 1991/10/25 12:29:52 cph Exp $
+$Id: make.scm,v 4.89 1993/02/28 06:20:47 gjr Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,4 +36,7 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-((load "base/make") "HP PA")
+(let ((value ((load "base/make") "HP PA")))
+  (set! (access compiler:compress-top-level? (->environment '(compiler)))
+	true)
+  value)
