@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: texcom.scm,v 1.36 1992/11/16 22:41:19 cph Exp $
+;;;	$Id: texcom.scm,v 1.37 1992/11/17 05:48:07 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -68,8 +68,8 @@
   "An event distributor that is invoked when entering Text mode."
   (make-event-distributor))
 
-(define (turn-on-auto-fill)
-  (enable-current-minor-mode! (ref-mode-object auto-fill)))
+(define (turn-on-auto-fill buffer)
+  (enable-buffer-minor-mode! buffer (ref-mode-object auto-fill)))
 
 (define-command text-mode
   "Make the current mode be Text mode."

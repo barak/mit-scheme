@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: schmod.scm,v 1.27 1992/11/16 22:41:15 cph Exp $
+;;;	$Id: schmod.scm,v 1.28 1992/11/17 05:48:06 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -92,8 +92,8 @@ The following commands evaluate Scheme expressions:
 	  (ref-variable-object paragraph-start)
 	separate)
       (define-variable-local-value! buffer
-	  (ref-variable-object paragraph-separate))
-      separate)
+	  (ref-variable-object paragraph-separate)
+	separate))
     (define-variable-local-value! buffer
 	(ref-variable-object paragraph-ignore-fill-prefix)
       true)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: filcom.scm,v 1.172 1992/11/16 22:41:00 cph Exp $
+;;;	$Id: filcom.scm,v 1.173 1992/11/17 05:48:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -205,7 +205,7 @@ invocation."
 				  '(EDWIN)
 				  edwin-syntax-table))))))))))
 	  (if (and (procedure? database)
-		   (procedure-arity-valid? database 0))
+		   (procedure-arity-valid? database 1))
 	      (database buffer)
 	      (message
 	       "Ill-formed find-file initialization file: "

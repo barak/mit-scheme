@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: buffer.scm,v 1.158 1992/11/16 22:40:50 cph Exp $
+;;;	$Id: buffer.scm,v 1.159 1992/11/17 05:48:02 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -386,19 +386,19 @@ The buffer is guaranteed to be deselected at that time."
 	     (car bindings)
 	     (loop (cdr bindings))))))
 
-(define (undo-local-bindings!)
+(define (undo-local-bindings! buffer)
   ;; Caller guarantees that interrupts are disabled.
-  (let ((buffer (current-buffer)))
-    (let ((bindings (buffer-local-bindings buffer)))
-      (do ((bindings bindings (cdr bindings)))
-	  ((null? bindings))
-	(vector-set! (caar bindings)
-		     variable-index:value
-		     (variable-default-value (caar bindings))))
-      (vector-set! buffer buffer-index:local-bindings '())
-      (do ((bindings bindings (cdr bindings)))
-	  ((null? bindings))
-	(invoke-variable-assignment-daemons! buffer (caar bindings))))))
+  (let ((bindings (buffer-local-bindings buffer)))
+    (if (buffer-local-bindings-installed? buffer)
+	(do ((bindings bindings (cdr bindings)))
+	    ((null? bindings))
+	  (vector-set! (caar bindings)
+		       variable-index:value
+		       (variable-default-value (caar bindings)))))
+    (vector-set! buffer buffer-index:local-bindings '())
+    (do ((bindings bindings (cdr bindings)))
+	((null? bindings))
+      (invoke-variable-assignment-daemons! buffer (caar bindings)))))
 
 (define (with-current-local-bindings! thunk)
   (dynamic-wind (lambda ()
@@ -469,7 +469,7 @@ The buffer is guaranteed to be deselected at that time."
        (set-cdr! modes '()))
      (set-buffer-comtabs! buffer (mode-comtabs mode))
      (vector-set! buffer buffer-index:alist '())
-     (undo-local-bindings!)
+     (undo-local-bindings! buffer)
      ((mode-initialization mode) buffer)
      (buffer-modeline-event! buffer 'BUFFER-MODES))))
 
