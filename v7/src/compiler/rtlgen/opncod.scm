@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.11 1988/08/22 20:03:44 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.12 1988/08/25 06:42:03 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -47,20 +47,7 @@ MIT in each case. |#
 		(lambda (application)
 		  (if (eq? (application-type application) 'COMBINATION)
 		      (let ((inliner (analyze-combination application)))
-			(set-combination/inliner! application inliner)
-			;; Don't push a return address on the stack
-			;; if: (1) the combination is inline coded,
-			;; (2) the continuation is known, and (3) the
-			;; push is unique for this combination.
-			(let ((push
-			       (combination/continuation-push application)))
-			  (if (and inliner
-				   push
-				   (rvalue-known-value
-				    (combination/continuation application)))
-			      (set-virtual-continuation/type!
-			       (virtual-return-operator push)
-			       continuation-type/effect))))))
+			(set-combination/inliner! application inliner))))
 		(lambda (application)
 		  (if (eq? (application-type application) 'COMBINATION)
 		      (set-combination/inliner! application false))))
@@ -93,7 +80,6 @@ MIT in each case. |#
   (let ((offset (node/offset combination)))
     (generate/return* (combination/block combination)
 		      (combination/continuation combination)
-		      (combination/continuation-push combination)
 		      (let ((inliner (combination/inliner combination)))
 			(let ((handler (inliner/handler inliner))
 			      (generator (inliner/generator inliner))
