@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.66 1997/05/01 01:23:43 cph Exp $
+$Id: ux.h,v 1.67 1997/05/01 01:30:49 cph Exp $
 
-Copyright (c) 1988-96 Massachusetts Institute of Technology
+Copyright (c) 1988-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -101,7 +101,6 @@ extern int EXFUN (kill, (pid_t, int));
 #endif
 
 #ifdef __bsdi__			/* works on bsdi 3.0 */
-#  define LSEEK_DECLARED
 #  define SELECT_DECLARED
 #  include <sys/ioctl.h>
 #  define EMULATE_FPATHCONF
