@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/sparc/make.scm,v 1.1 1993/06/08 06:11:02 gjr Exp $
+$Id: make.scm,v 1.2 1998/02/12 02:58:27 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,10 +36,7 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(package/system-loader "comp" '() 'QUERY)
-(for-each (lambda (name)
-	    ((package/reference (find-package name) 'INITIALIZE-PACKAGE!)))
-	  '((COMPILER MACROS)
-	    (COMPILER DECLARATIONS)))
-(set! (access endianness (->environment '(COMPILER))) 'BIG)
-(add-system! (make-system "Liar (SPARC)" 4 87 '()))
+(let* ((val ((load "base/make") "SPARC"))
+       (env (->environment '(COMPILER))))
+  (set! (access endianness env) 'BIG)
+  val)
