@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fasload.c,v 9.76 1993/11/05 20:36:46 gjr Exp $
+$Id: fasload.c,v 9.77 1993/11/08 06:53:53 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -420,6 +420,18 @@ static SCHEME_OBJECT * relocate_temp;
    block of memory.
 */
 
+#ifdef HEAP_IN_LOW_MEMORY
+
+#define SCHEME_ADDR_TO_OLD_DATUM(addr)					\
+  (ADDRESS_TO_DATUM (SCHEME_ADDR_TO_ADDR ((SCHEME_OBJECT *) (addr))))
+
+#else /* not HEAP_IN_LOW_MEMORY */
+
+#define SCHEME_ADDR_TO_OLD_DATUM(addr)					\
+  (((SCHEME_OBJECT *) (addr)) - ((SCHEME_OBJECT *) dumped_memory_base))
+
+#endif /* HEAP_IN_LOW_MEMORY */
+
 static long
 DEFUN (primitive_dumped_number, (datum), unsigned long datum)
 {
@@ -472,13 +484,6 @@ DEFUN (Relocate_Block, (Scan, Stop_At),
 
       case TC_LINKAGE_SECTION:
       {
-	/* Important: The relocation below will not work on machines
-	   where Heap_In_Low_Memory is not true.  At this point we
-	   don't have the original Memory_Base to find the original
-	   address.  Perhaps it should be dumped.
-	   This also applies to TC_MANIFEST_CLOSURE.
-	   The lines affected are the ones where ADDRESS_TO_DATUM is used.
-	 */
 	switch (READ_LINKAGE_KIND(Temp))
 	{
 	  case REFERENCE_LINKAGE_KIND:
@@ -495,8 +500,7 @@ DEFUN (Relocate_Block, (Scan, Stop_At),
 		 --count >= 0;
 		 )
 	    {
-	      address = (ADDRESS_TO_DATUM
-			 (SCHEME_ADDR_TO_ADDR ((SCHEME_OBJECT *) (* Scan))));
+	      address = (SCHEME_ADDR_TO_OLD_DATUM (* Scan));
 	      *Scan++ = (ADDR_TO_SCHEME_ADDR (RELOCATE (address)));
 	    }
 	    break;
@@ -519,7 +523,7 @@ DEFUN (Relocate_Block, (Scan, Stop_At),
 	      Scan = ((SCHEME_OBJECT *) (word_ptr));
 	      word_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr));
 	      EXTRACT_OPERATOR_LINKAGE_ADDRESS (address, Scan);
-	      address = (ADDRESS_TO_DATUM (SCHEME_ADDR_TO_ADDR (address)));
+	      address = (SCHEME_ADDR_TO_OLD_DATUM (address));
 	      address = ((long) (RELOCATE (address)));
 	      STORE_OPERATOR_LINKAGE_ADDRESS ((ADDR_TO_SCHEME_ADDR (address)),
 					      Scan);
@@ -559,7 +563,7 @@ DEFUN (Relocate_Block, (Scan, Stop_At),
 	  Scan = ((SCHEME_OBJECT *) (word_ptr));
 	  word_ptr = (NEXT_MANIFEST_CLOSURE_ENTRY (word_ptr));
 	  EXTRACT_CLOSURE_ENTRY_ADDRESS (address, Scan);
-	  address = (ADDRESS_TO_DATUM (SCHEME_ADDR_TO_ADDR (address)));
+	  address = (SCHEME_ADDR_TO_OLD_DATUM (address));
 	  address = ((long) (RELOCATE (address)));
 	  STORE_CLOSURE_ENTRY_ADDRESS ((ADDR_TO_SCHEME_ADDR (address)), Scan);
 	}
