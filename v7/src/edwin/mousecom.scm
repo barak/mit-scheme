@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: mousecom.scm,v 1.2 1999/01/02 06:11:34 cph Exp $
+;;; $Id: mousecom.scm,v 1.3 1999/01/28 04:16:34 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -17,10 +17,11 @@
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
 ;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-;;;
-;;;
+
 ;;;; Mouse Commands
 
+(declare (usual-integrations))
+
 (define-command mouse-select
   "Select window the mouse is on."
   ()
