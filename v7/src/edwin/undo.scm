@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: undo.scm,v 1.51 1993/01/09 01:16:23 cph Exp $
+;;;	$Id: undo.scm,v 1.52 1993/01/10 10:48:22 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -151,7 +151,8 @@
 This limit is applied when garbage collection happens.
 The size is counted as the number of bytes occupied,
 which includes both the saved text and other data."
-  20000)
+  20000
+  exact-nonnegative-integer?)
 
 (define-variable undo-strong-limit
   "Don't keep more than this much size of undo information.
@@ -159,7 +160,8 @@ A command that pushes past this size is itself forgotten.
 This limit is applied when garbage collection happens.
 The size is counted as the number of bytes occupied,
 which includes both the saved text and other data."
-  30000)
+  30000
+  exact-nonnegative-integer?)
 
 (define (truncate-buffer-undo-lists!)
   ;; This procedure must be careful about accessing editor data
@@ -167,22 +169,19 @@ which includes both the saved text and other data."
   ;; the editor does not exist or is not running.  It would actually
   ;; prefer to be run *before* the GC, but that's not possible now.
   (if edwin-editor
-      (let ((bytes-per-word
+      (let ((bytes/word
 	     (vector-ref ((ucode-primitive gc-space-status 0)) 0)))
-	(let ((min-size
-	       (integer-round (variable-default-value
-			       (ref-variable-object undo-limit))
-			      bytes-per-word))
-	      (max-size
-	       (integer-round (variable-default-value
-			       (ref-variable-object undo-strong-limit))
-			      bytes-per-word)))
-	  (do ((buffers (bufferset-buffer-list (editor-bufferset edwin-editor))
-			(cdr buffers)))
-	      ((null? buffers))
-	    (truncate-undo-data! (group-undo-data (buffer-group (car buffers)))
-				 min-size
-				 max-size))))))
+	(let ((words->bytes
+	       (lambda (words)
+		 (round (/ words bytes/word)))))
+	(do ((buffers (bufferset-buffer-list (editor-bufferset edwin-editor))
+		      (cdr buffers)))
+	    ((null? buffers))
+	  (let ((buffer (car buffers)))
+	    (truncate-undo-data!
+	     (group-undo-data (buffer-group buffer))
+	     (words->bytes (ref-variable undo-limit buffer))
+	     (words->bytes (ref-variable undo-strong-limit buffer)))))))))
 
 (add-gc-daemon! truncate-buffer-undo-lists!)
 
