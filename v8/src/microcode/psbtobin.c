@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbtobin.c,v 9.36 1989/09/20 23:04:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbtobin.c,v 9.37 1989/09/21 22:53:12 cph Exp $
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
@@ -410,24 +410,67 @@ compute_max()
   return (Result);
 }
 
+long
+read_signed_decimal (stream)
+     fast FILE * stream;
+{
+  fast int c = (getc (stream));
+  fast long result = (-1);
+  int negative_p = 0;
+  while (c == ' ')
+    c = (getc (stream));
+  if (c == '-')
+    {
+      negative_p = 1;
+      c = (getc (stream));
+    }
+  else if (c == '+')
+    c = (getc (stream));
+  if ((c >= '0') && (c <= '9'))
+    {
+      result = (c - '0');
+      c = (getc (stream));
+      while ((c >= '0') && (c <= '9'))
+	{
+	  result = ((result * 10) + (c - '0'));
+	  c = (getc (stream));
+	}
+    }
+  if (c != EOF)
+    ungetc (c, stream);
+  if (result == (-1))
+    {
+      fprintf (stderr, "%s: Unable to read expected decimal integer\n",
+	       program_name);
+      inconsistency ();
+    }
+  return (negative_p ? (-result) : result);
+}
+
 double
-read_a_flonum()
+read_a_flonum ()
 {
   Boolean negative;
-  long size_in_bits, exponent;
+  long exponent;
+  long size_in_bits;
   fast double Result;
 
-  getc(portable_file);				/* Space */
-  negative = ((getc(portable_file)) == '-');
-  VMS_BUG(exponent = 0);
-  VMS_BUG(size_in_bits = 0);
-  fscanf(portable_file, "%ld %ld", &exponent, &size_in_bits);
+  getc (portable_file);				/* Space */
+  negative = ((getc (portable_file)) == '-');
+  /* Hair here because portable file format incorrect for flonum 0. */
+  exponent = (read_signed_decimal (portable_file));
+  if (exponent == 0)
+    {
+      int c = (getc (portable_file));
+      if (c == '\n')
+	return (0);
+      ungetc (c, portable_file);
+    }
+  size_in_bits = (read_signed_decimal (portable_file));
   if (size_in_bits == 0)
-  {
-    Result = 0.0;
-  }
-  else if ((exponent > MAX_FLONUM_EXPONENT) ||
-	   (exponent < -MAX_FLONUM_EXPONENT))
+    return (0);
+  if ((exponent > MAX_FLONUM_EXPONENT) ||
+      (exponent < -MAX_FLONUM_EXPONENT))
   {
     /* Skip over mantissa */
 
