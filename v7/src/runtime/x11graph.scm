@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.17 1992/03/26 00:01:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.18 1992/04/01 19:14:09 arthur Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -552,9 +552,10 @@ MIT in each case. |#
   (x-window-set-input-hint (x-graphics-device/xw device) input?))
 
 (define (x-graphics/query-pointer device)
-  (let ((result (x-window-query-pointer (x-graphics-device/xw device))))
-    (values (x-graphics-map-x-coordinate (vector-ref result 2))
-	    (x-graphics-map-y-coordinate (vector-ref result 3))
+  (let* ((window (x-graphics-device/xw device))
+	 (result (x-window-query-pointer window)))
+    (values (x-graphics-map-x-coordinate window (vector-ref result 2))
+	    (x-graphics-map-y-coordinate window (vector-ref result 3))
 	    (vector-ref result 4))))
 
 (define (x-graphics/starbase-filename device)
