@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: info.scm,v 1.135 2000/08/07 02:36:23 cph Exp $
+;;; $Id: info.scm,v 1.136 2001/02/28 14:56:28 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -873,15 +873,16 @@ The name may be an abbreviation of the reference name."
 				    => os/parse-path-string)
 				   (else
 				    (ref-variable info-default-directory-list
-						  buffer))))
-			    (info-dir (edwin-info-directory)))
+						  buffer)))))
 			(map ->namestring
-			     (if (and (file-directory? info-dir)
-				      (not (there-exists? directories
-					     (lambda (dir)
-					       (pathname=? info-dir dir)))))
-				 (append directories (list info-dir))
-				 directories)))))
+			     (let ((info-dir (edwin-info-directory)))
+			       (if (and info-dir
+					(file-directory? info-dir)
+					(not (there-exists? directories
+					       (lambda (dir)
+						 (pathname=? info-dir dir)))))
+				   (append directories (list info-dir))
+				   directories))))))
 		 (set-variable-local-value! buffer variable directories)
 		 directories)
 	       directories)))))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: paths.scm,v 1.14 1999/01/02 06:11:34 cph Exp $
+$Id: paths.scm,v 1.15 2001/02/28 14:56:13 cph Exp $
 
-Copyright (c) 1989-1999 Massachusetts Institute of Technology
+Copyright (c) 1989-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -23,37 +23,29 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (declare (usual-integrations))
 
-(define edwin-library-directory-pathname
-  (let ((directory (pathname-as-directory "edwin")))
-    (lambda (envvar name)
-      (cond ((get-environment-variable envvar)
-	     => (lambda (name)
-		  (pathname-as-directory (merge-pathnames name))))
-	    ((system-library-directory-pathname
-	      (merge-pathnames name directory)))
-	    (else
-	     (error "Can't find edwin library directory:" name))))))
+(define (edwin-library-directory-pathname envvar name required?)
+  (let ((name (get-environment-variable envvar)))
+    (if name
+	(pathname-as-directory (merge-pathnames name))
+	(or (system-library-directory-pathname
+	     (merge-pathnames name (pathname-as-directory "edwin")))
+	    (and required?
+		 (error "Can't find edwin library directory:" name))))))
+
+(define (edwin-binary-directory)
+  (edwin-library-directory-pathname "EDWIN_BINARY_DIRECTORY" "autoload" #t))
+
+(define (edwin-info-directory)
+  (edwin-library-directory-pathname "EDWIN_INFO_DIRECTORY" "info" #f))
+
+(define (edwin-etc-directory)
+  (edwin-library-directory-pathname "EDWIN_ETC_DIRECTORY" "etc" #t))
 
 (define (edwin-etc-pathname filename)
   (let ((pathname (merge-pathnames filename (edwin-etc-directory))))
     (if (not (file-exists? pathname))
 	(error "Unable to find file:" (->namestring pathname)))
     pathname))
-
-(define (edwin-binary-directory)
-  (edwin-library-directory-pathname
-   "EDWIN_BINARY_DIRECTORY"
-   "autoload"))
-
-(define (edwin-info-directory)
-  (edwin-library-directory-pathname
-   "EDWIN_INFO_DIRECTORY"
-   "info"))
-
-(define (edwin-etc-directory)
-  (edwin-library-directory-pathname
-   "EDWIN_ETC_DIRECTORY"
-   "etc"))
 
 (define (edwin-tutorial-pathname)
   (edwin-etc-pathname "TUTORIAL"))
