@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.32 2001/03/18 06:27:47 cph Exp $
+;;; $Id: imail-util.scm,v 1.33 2001/03/19 19:33:06 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -176,16 +176,17 @@
 			   (if (default-object? line-ending) "\n" line-ending)
 			   lines))
 
-(define (read-lines port)
-  (source->list (lambda () (read-line port))))
+(define (read-required-char port)
+  (let ((char (read-char port)))
+    (if (eof-object? char)
+	(error "Premature end of file:" port))
+    char))
 
-(define (read-header-lines port)
-  (source->list
-   (lambda ()
-     (let ((line (read-required-line port)))
-       (if (string-null? line)
-	   (make-eof-object port)
-	   line)))))
+(define (peek-required-char port)
+  (let ((char (peek-char port)))
+    (if (eof-object? char)
+	(error "Premature end of file:" port))
+    char))
 
 (define (read-required-line port)
   (let ((line (read-line port)))
@@ -193,6 +194,29 @@
 	(error "Premature end of file:" port))
     line))
 
+(define (skip-to-line-start port)
+  (let loop ()
+    (if (not (char=? (read-required-char port) #\newline))
+	(loop))))
+
+(define (skip-past-blank-line port)
+  (let loop ()
+    (if (not (char=? (read-required-char port) #\newline))
+	(begin
+	  (skip-to-line-start port)
+	  (loop)))))
+
+(define (parse-header-field-date field-value)
+  (let ((t
+	 (ignore-errors
+	  (lambda ()
+	    (string->universal-time
+	     (rfc822:tokens->string
+	      (rfc822:strip-comments
+	       (rfc822:string->tokens field-value))))))))
+    (and (not (condition? t))
+	 t)))
+
 (define (abbreviate-exact-nonnegative-integer n k)
   (if (< n (expt 10 (- k 1)))
       (string-append (string-pad-left (number->string n) (- k 1)) " ")
@@ -368,25 +392,38 @@
 
 ;;;; Extended-string input port
 
-(define (call-with-input-xstring xstring receiver)
-  (let ((port (open-xstring-input-port xstring)))
+(define (read-file-into-xstring pathname)
+  (call-with-binary-input-file pathname
+    (lambda (port)
+      (let ((n-bytes ((port/operation port 'LENGTH) port)))
+	(let ((xstring (allocate-external-string n-bytes)))
+	  (let ((n-read (read-substring! xstring 0 n-bytes port)))
+	    (if (not (= n-read n-bytes))
+		(error "Failed to read complete file:"
+		       pathname n-read n-bytes)))
+	  xstring)))))
+
+(define (call-with-input-xstring xstring position receiver)
+  (let ((port (open-xstring-input-port xstring position)))
     (let ((value (receiver port)))
       (close-port port)
       value)))
 
-(define (open-xstring-input-port xstring)
-  (let ((state (make-xstring-input-state xstring)))
+(define (open-xstring-input-port xstring position)
+  (if (not (<= 0 position (external-string-length xstring)))
+      (error:bad-range-argument position 'OPEN-XSTRING-INPUT-PORT))
+  (let ((state (make-xstring-input-state xstring position)))
     (read-xstring-buffer state)
     (make-port xstring-input-type state)))
 
 (define-structure (xstring-input-state
-		   (constructor make-xstring-input-state (xstring))
+		   (constructor make-xstring-input-state (xstring position))
 		   (conc-name xstring-input-state/))
-  (xstring #f)
-  (position 0)
-  (buffer (make-string 512) read-only #t)
-  (buffer-start 0)
-  (buffer-end 0))
+  xstring
+  position
+  (buffer (make-string 65536) read-only #t)
+  (buffer-start position)
+  (buffer-end position))
 
 (define (xstring-port/xstring port)
   (xstring-input-state/xstring (port/state port)))
@@ -407,6 +444,11 @@
 		(set-xstring-input-state/buffer-end! state end)
 		(xsubstring-move! xstring start end buffer 0)))
 	     #t)))))
+
+(define (xsubstring xstring start end)
+  (let ((buffer (make-string (- end start))))
+    (xsubstring-move! xstring start end buffer 0)
+    buffer))
 
 (define xstring-input-type
   (make-port-type

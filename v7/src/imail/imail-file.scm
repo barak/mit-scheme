@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.59 2000/08/18 16:55:20 cph Exp $
+;;; $Id: imail-file.scm,v 1.60 2001/03/19 19:32:58 cph Exp $
 ;;;
-;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; IMAIL mail reader: file-based folder support
 
@@ -132,7 +133,8 @@
   (file-modification-time define standard
 			  initial-value #f)
   (file-modification-count define standard
-			   initial-value #f))
+			   initial-value #f)
+  (xstring define standard))
 
 (define (file-folder-messages folder)
   (if (eq? 'UNKNOWN (%file-folder-messages folder))
@@ -145,6 +147,10 @@
   (file-url-pathname (folder-url folder)))
 
 (define-method %close-folder ((folder <file-folder>))
+  (discard-file-folder-messages folder)
+  (discard-file-folder-xstring folder))
+
+(define (discard-file-folder-messages folder)
   (without-interrupts
    (lambda ()
      (let ((messages (%file-folder-messages folder)))
@@ -152,6 +158,13 @@
 	   (begin
 	     (set-file-folder-messages! folder 'UNKNOWN)
 	     (for-each detach-message! messages)))))))
+
+(define (discard-file-folder-xstring folder)
+  (without-interrupts
+   (lambda ()
+     (set-file-folder-xstring! folder #f)
+     (set-file-folder-file-modification-time! folder #f)
+     (set-file-folder-file-modification-count! folder #f))))
 
 (define-method folder-length ((folder <file-folder>))
   (length (file-folder-messages folder)))
@@ -276,18 +289,32 @@
 		(set-file-folder-file-modification-time! folder t))
 	      (loop)))))))
 
-(define (synchronize-file-folder-read folder reader)
-  (let ((pathname (file-folder-pathname folder)))
-    (let loop ()
-      (let ((t (file-modification-time pathname)))
-	(reader folder pathname)
-	(if (= t (file-modification-time pathname))
-	    (begin
-	      (set-file-folder-file-modification-time! folder t)
-	      (set-file-folder-file-modification-count!
-	       folder
-	       (folder-modification-count folder)))
-	    (loop))))))
+(define (read-file-folder-contents folder reader)
+  (discard-file-folder-messages folder)
+  (let ((t (file-folder-file-modification-time folder))
+	(pathname (file-folder-pathname folder)))
+    (if (not (and t (= t (file-modification-time pathname))))
+	(begin
+	  (if t (discard-file-folder-xstring folder))
+	  (let loop ()
+	    (let ((t (file-modification-time pathname)))
+	      ((imail-ui:message-wrapper "Reading file "
+					 (->namestring pathname))
+	       (lambda ()
+		 (set-file-folder-xstring! folder
+					   (read-file-into-xstring pathname))))
+	      (if (= t (file-modification-time pathname))
+		  (begin
+		    (set-file-folder-file-modification-time! folder t)
+		    (set-file-folder-file-modification-count!
+		     folder
+		     (folder-modification-count folder)))
+		  (loop)))))))
+  (set-file-folder-messages!
+   folder
+   ((imail-ui:message-wrapper "Parsing messages")
+    (lambda ()
+      (call-with-input-xstring (file-folder-xstring folder) 0 reader)))))
 
 (define-method discard-folder-cache ((folder <file-folder>))
   (close-folder folder))
@@ -319,7 +346,42 @@
 ;;;; Message
 
 (define-class <file-message> (<message>)
-  (body define accessor))
+  body)
+
+(define (file-message-xstring message)
+  (file-folder-xstring (message-folder message)))
+
+(define (file-external-ref? object)
+  (and (pair? object)
+       (exact-nonnegative-integer? (car object))
+       (exact-nonnegative-integer? (cdr object))))
+
+(define (make-file-external-ref start end) (cons start end))
+(define (file-external-ref/start ref) (car ref))
+(define (file-external-ref/end ref) (cdr ref))
+
+(define (define-file-external-message-method procedure class slot operator)
+  (let ((accessor (slot-accessor class slot)))
+    (define-method procedure ((message class))
+      (let ((item (accessor message)))
+	(if (file-external-ref? item)
+	    (operator
+	     (xsubstring (file-message-xstring message)
+			 (file-external-ref/start item)
+			 (file-external-ref/end item)))
+	    (call-next-method message))))))
+
+(define-file-external-message-method message-header-fields
+  <file-message>
+  'HEADER-FIELDS
+  string->header-fields)
+
+(define-generic file-message-body (message))
+
+(define-file-external-message-method file-message-body
+  <file-message>
+  'BODY
+  (lambda (s) s))
 
 (define-method file-message-body ((message <message>))
   (with-string-output-port
@@ -331,49 +393,72 @@
 
 (define-method set-message-flags! ((message <file-message>) flags)
   (%set-message-flags! message flags))
-
-(define-method message-length ((message <file-message>))
-  (+ (apply + (map header-field-length (message-header-fields message)))
-     1
-     (string-length (file-message-body message))))
+
+(let ((get-header-fields (slot-accessor <file-message> 'HEADER-FIELDS))
+      (get-body (slot-accessor <file-message> 'BODY)))
+  (define-method message-length ((message <file-message>))
+    (+ (let ((headers (get-header-fields message)))
+	 (if (file-external-ref? headers)
+	     (- (file-external-ref/end headers)
+		(file-external-ref/start headers))
+	     (apply +
+		    (map header-field-length
+			 (message-header-fields message)))))
+       1
+       (let ((body (get-body message)))
+	 (if (file-external-ref? body)
+	     (- (file-external-ref/end body)
+		(file-external-ref/start body))
+	     (string-length (file-message-body message)))))))
 
 (define-method message-internal-time ((message <file-message>))
-  (header-fields->internal-time message))
-
-(define (header-fields->internal-time headers)
   (or (let loop
-	  ((headers (get-all-header-fields headers "received")) (winner #f))
+	  ((headers (get-all-header-fields message "received")) (winner #f))
 	(if (pair? headers)
 	    (loop (cdr headers)
-		  (let ((time (received-header-time (car headers))))
-		    (if (and time (or (not winner) (< time winner)))
+		  (let ((time
+			 (ignore-errors
+			  (lambda ()
+			    (call-with-values
+				(lambda ()
+				  (rfc822:received-header-components
+				   (header-field-value (car headers))))
+			      (lambda (from by via with id for time)
+				from by via with id for	;ignored
+				time))))))
+		    (if (and time
+			     (not (condition? time))
+			     (or (not winner) (< time winner)))
 			time
 			winner)))
 	    winner))
-      (message-time headers)))
+      (message-time message)
+      (file-folder-modification-time (message-folder message))))
 
-(define (received-header-time header)
-  (let ((time
-	 (ignore-errors
-	  (lambda ()
-	    (call-with-values
-		(lambda ()
-		  (rfc822:received-header-components
-		   (header-field-value header)))
-	      (lambda (from by via with id for time)
-		from by via with id for	;ignored
-		time))))))
-    (and (not (condition? time))
-	 time)))
+(define (file-folder-modification-time folder)
+  (or (let ((t
+	     (or (file-folder-file-modification-time folder)
+		 (file-modification-time (file-folder-pathname folder)))))
+	(and t
+	     (file-time->universal-time t)))
+      (get-universal-time)))
 
-(define (message-time message)
-  (let ((date (get-first-header-field-value message "date" #f)))
-    (and date
-	 (let ((t
-		(ignore-errors
-		 (lambda ()
-		   (string->universal-time
-		    (rfc822:tokens->string
-		     (rfc822:strip-comments (rfc822:string->tokens date))))))))
-	   (and (not (condition? t))
-		t)))))
+(define (file-folder-strip-internal-headers folder ref)
+  (call-with-input-xstring (file-folder-xstring folder)
+			   (file-external-ref/start ref)
+    (lambda (port)
+      (let loop ((header-lines '()))
+	(let ((line (read-line port))
+	      (finish
+	       (lambda (offset)
+		 (values (make-file-external-ref
+			  (- (xstring-port/position port)
+			     offset)
+			  (file-external-ref/end ref))
+			 (lines->header-fields (reverse! header-lines))))))
+	  (cond ((eof-object? line)
+		 (finish 0))
+		((re-string-match "X-IMAIL-[^:]+:\\|[ \t]" line)
+		 (loop (cons line header-lines)))
+		(else
+		 (finish (+ (string-length line) 1)))))))))

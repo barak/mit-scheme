@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.40 2000/10/20 00:44:34 cph Exp $
+;;; $Id: imail-umail.scm,v 1.41 2001/03/19 19:33:03 cph Exp $
 ;;;
-;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; IMAIL mail reader: RMAIL back end
 
@@ -98,65 +99,64 @@
 ;;;; Read unix mail file
 
 (define-method revert-file-folder ((folder <umail-folder>))
-  (synchronize-file-folder-read folder
-    (lambda (folder pathname)
-      (set-file-folder-messages!
-       folder
-       (call-with-binary-input-file pathname
-	 (lambda (port)
-	   (let ((from-line (read-line port)))
-	     (if (eof-object? from-line)
-		 '()
-		 (begin
-		   (if (not (umail-delimiter? from-line))
-		       (error "Malformed unix mail file:" port))
-		   (let loop ((from-line from-line) (index 0) (messages '()))
-		     (call-with-values
-			 (lambda ()
-			   (read-umail-message from-line
-					       port
-					       umail-delimiter?))
-		       (lambda (message from-line)
-			 (attach-message! message folder index)
-			 (let ((messages (cons message messages)))
-			   (if from-line
-			       (loop from-line (+ index 1) messages)
-			       (reverse! messages)))))))))))))))
+  (read-file-folder-contents folder
+    (lambda (port)
+      (let ((from-line (read-line port)))
+	(if (eof-object? from-line)
+	    '()
+	    (begin
+	      (if (not (umail-delimiter? from-line))
+		  (error "Malformed unix mail file:" port))
+	      (let loop ((from-line from-line) (index 0) (messages '()))
+		(if (= 0 (remainder index 10))
+		    (imail-ui:progress-meter index #f))
+		(call-with-values
+		    (lambda ()
+		      (read-umail-message folder
+					  from-line
+					  port
+					  umail-delimiter?))
+		  (lambda (message from-line)
+		    (attach-message! message folder index)
+		    (let ((messages (cons message messages)))
+		      (if from-line
+			  (loop from-line (+ index 1) messages)
+			  (reverse! messages))))))))))))
 
-(define (read-umail-message from-line port delimiter?)
-  (let loop ((lines '()))
-    (let ((line (read-line port)))
-      (cond ((eof-object? line)
-	     (values (read-umail-message-1 from-line (reverse! lines)) #f))
-	    ((delimiter? line)
-	     (values (read-umail-message-1 from-line (reverse! lines)) line))
-	    (else
-	     (loop (cons line lines)))))))
+(define (read-umail-message folder from-line port delimiter?)
+  (let ((h-start (xstring-port/position port)))
+    (skip-past-blank-line port)
+    (let ((b-start (xstring-port/position port)))
+      (let ((finish
+	     (lambda (b-end line)
+	       (values
+		(read-umail-message-1
+		 folder
+		 from-line
+		 (make-file-external-ref h-start (- b-start 1))
+		 (make-file-external-ref b-start b-end))
+		line))))
+	(let loop ()
+	  (let ((line (read-line port)))
+	    (cond ((eof-object? line)
+		   (finish (xstring-port/position port) #f))
+		  ((delimiter? line)
+		   (finish (- (xstring-port/position port)
+			      (+ (string-length line) 1))
+			   line))
+		  (else
+		   (loop)))))))))
 
-(define (read-umail-message-1 from-line lines)
-  (let loop ((lines lines) (header-lines '()))
-    (if (pair? lines)
-	(if (string-null? (car lines))
-	    (read-umail-message-2 from-line
-				  (reverse! header-lines)
-				  (cdr lines))
-	    (loop (cdr lines) (cons (car lines) header-lines)))
-	(read-umail-message-2 from-line (reverse! header-lines) '()))))
-
-(define (read-umail-message-2 from-line header-lines body-lines)
+(define (read-umail-message-1 folder from-line headers body)
   (call-with-values
-      (lambda ()
-	(parse-imail-header-fields (lines->header-fields header-lines)))
-    (lambda (headers flags)
-      (make-umail-message headers
-			  (lines->string
-			   (map (lambda (line)
-				  (if (string-prefix-ci? ">From " line)
-				      (string-tail line 1)
-				      line))
-				body-lines))
-			  flags
-			  from-line))))
+      (lambda () (file-folder-strip-internal-headers folder headers))
+    (lambda (headers internal-headers)
+      (call-with-values
+	  (lambda ()
+	    (parse-imail-header-fields internal-headers))
+	(lambda (internal-headers flags)
+	  internal-headers
+	  (make-umail-message headers body flags from-line))))))
 
 (define (umail-delimiter? line)
   (re-string-match unix-mail-delimiter line))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.55 2001/03/18 06:47:48 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.56 2001/03/19 19:33:01 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -91,23 +91,24 @@
 					   displayed-header-fields
 					   internal-time)))
     (<file-message>)
-  (displayed-header-fields define accessor)
-  (internal-time accessor message-internal-time))
+  displayed-header-fields
+  internal-time)
 
-(define-method file-message-body ((message <rmail-message>))
-  (let ((body (call-next-method message)))
-    (if (string? body)
-	body
-	(let ((xstring (vector-ref body 0))
-	      (start (vector-ref body 1))
-	      (end (vector-ref body 2)))
-	  (let ((body (make-string (- end start))))
-	     (xsubstring-move! xstring start end body 0)
-	     body)))))
+(define-generic rmail-message-displayed-header-fields (message))
+
+(define-file-external-message-method rmail-message-displayed-header-fields
+  <rmail-message>
+  'DISPLAYED-HEADER-FIELDS
+  string->header-fields)
 
 (define-method rmail-message-displayed-header-fields ((message <message>))
   message
   'UNDEFINED)
+
+(let ((accessor (slot-accessor <rmail-message> 'INTERNAL-TIME)))
+  (define-method message-internal-time ((message <rmail-message>))
+    (or (accessor message)
+	(call-next-method message))))
 
 (define-method make-message-copy ((message <message>) (folder <rmail-folder>))
   folder
@@ -120,47 +121,36 @@
 ;;;; Read RMAIL file
 
 (define-method revert-file-folder ((folder <rmail-folder>))
-  (synchronize-file-folder-read folder
-    (lambda (folder pathname)
-      (without-interrupts
-       (lambda ()
-	 (let ((messages (%file-folder-messages folder)))
-	   (if (not (eq? 'UNKNOWN messages))
-	       (for-each detach-message! messages)))
-	 (set-file-folder-messages! folder '())))
-      (call-with-input-xstring
-       (call-with-binary-input-file pathname
-	 (lambda (port)
-	   (let ((n-bytes ((port/operation port 'LENGTH) port)))
-	     (let ((xstring (allocate-external-string n-bytes)))
-	       (read-substring! xstring 0 n-bytes port)
-	       xstring))))
-       (lambda (port)
-	 (set-rmail-folder-header-fields! folder (read-rmail-prolog port))
-	 (let loop ((line #f))
-	   (call-with-values (lambda () (read-rmail-message port line))
-	     (lambda (message line)
-	       (if message
-		   (begin
-		     (append-message message (folder-url folder))
-		     (loop line)))))))))))
+  (read-file-folder-contents folder
+    (lambda (port)
+      (set-rmail-folder-header-fields! folder (read-rmail-prolog port))
+      (let loop ((line #f) (index 0) (messages '()))
+	(if (= 0 (remainder index 10))
+	    (imail-ui:progress-meter index #f))
+	(call-with-values (lambda () (read-rmail-message folder port line))
+	  (lambda (message line)
+	    (if message
+		(begin
+		  (attach-message! message folder index)
+		  (loop line (+ index 1) (cons message messages)))
+		(reverse! messages))))))))
 
 (define (read-rmail-prolog port)
   (if (not (rmail-prolog-start-line? (read-required-line port)))
       (error "Not an RMAIL file:" port))
   (lines->header-fields (read-lines-to-eom port)))
 
-(define (read-rmail-message port read-ahead-line)
+(define (read-rmail-message folder port read-ahead-line)
   (let ((line (or read-ahead-line (read-line port))))
     (cond ((eof-object? line)
 	   (values #f #f))
 	  ((rmail-prolog-start-line? line)
 	   (discard-to-eom port)
-	   (read-rmail-message port #f))
+	   (read-rmail-message folder port #f))
 	  ((rmail-message-start-line? line)
-	   (values (read-rmail-message-1 port) #f))
+	   (values (read-rmail-message-1 folder port) #f))
 	  ((umail-delimiter? line)
-	   (read-umail-message line port
+	   (read-umail-message folder line port
 	     (lambda (line)
 	       (or (rmail-prolog-start-line? line)
 		   (rmail-message-start-line? line)
@@ -168,80 +158,86 @@
 	  (else
 	   (error "Malformed RMAIL file:" port)))))
 
-(define (read-rmail-message-1 port)
-  (call-with-values
-      (lambda () (parse-attributes-line (read-required-line port)))
+(define (read-rmail-message-1 folder port)
+  (call-with-values (lambda () (read-rmail-attributes-line port))
     (lambda (formatted? flags)
-      (let* ((headers (read-rmail-header-fields port))
-	     (displayed-headers
-	      (lines->header-fields (read-header-lines port)))
-	     (body
-	      (let ((start (xstring-port/position port)))
-		(input-port/discard-chars port rmail-message:end-char-set)
-		(let ((end (xstring-port/position port)))
-		  (input-port/discard-char port)
-		  (vector (xstring-port/xstring port) start end))))
+      (let* ((headers (read-rmail-alternate-headers port))
+	     (displayed-headers (read-rmail-displayed-headers port))
+	     (body (read-rmail-body port))
 	     (finish
 	      (lambda (headers displayed-headers)
 		(call-with-values
-		    (lambda () (rmail-internal-time-header headers))
+		    (lambda ()
+		      (parse-rmail-internal-time-header folder headers))
 		  (lambda (headers time)
-		    (make-rmail-message headers body flags
+		    (make-rmail-message headers
+					body
+					flags
 					displayed-headers
-					(or time
-					    (header-fields->internal-time
-					     headers)
-					    (get-universal-time))))))))
+					time))))))
 	(if formatted?
 	    (finish headers displayed-headers)
 	    (finish displayed-headers 'UNDEFINED))))))
 
-(define (parse-attributes-line line)
-  (let ((parts (map string-trim (burst-string line #\, #f))))
-    (if (not (and (fix:= 2 (count-matching-items parts string-null?))
-		  (or (string=? "0" (car parts))
-		      (string=? "1" (car parts)))
-		  (string-null? (car (last-pair parts)))))
-	(error "Malformed RMAIL message-attributes line:" line))
-    (call-with-values
-	(lambda () (cut-list! (except-last-pair (cdr parts)) string-null?))
-      (lambda (attributes labels)
-	(values (string=? "1" (car parts))
-		(rmail-markers->flags attributes
-				      (if (pair? labels)
-					  (cdr labels)
-					  labels)))))))
+(define (read-rmail-attributes-line port)
+  (let ((line (read-required-line port)))
+    (let ((parts (map string-trim (burst-string line #\, #f))))
+      (if (not (and (fix:= 2 (count-matching-items parts string-null?))
+		    (or (string=? "0" (car parts))
+			(string=? "1" (car parts)))
+		    (string-null? (car (last-pair parts)))))
+	  (error "Malformed RMAIL message-attributes line:" line))
+      (call-with-values
+	  (lambda () (cut-list! (except-last-pair (cdr parts)) string-null?))
+	(lambda (attributes labels)
+	  (values
+	   (string=? "1" (car parts))
+	   (rmail-markers->flags attributes
+				 (if (pair? labels) (cdr labels) labels))))))))
 
-(define (read-rmail-header-fields port)
-  (lines->header-fields
-   (source->list
-    (lambda ()
-      (let ((line (read-required-line port)))
-	(cond ((string-null? line)
-	       (if (not (string=? rmail-message:headers-separator
-				  (read-required-line port)))
-		   (error "Missing RMAIL message-header separator string:"
-			  port))
-	       (make-eof-object port))
-	      ((string=? rmail-message:headers-separator line)
-	       (make-eof-object port))
-	      (else line)))))))
+(define (read-rmail-alternate-headers port)
+  (let ((start (xstring-port/position port)))
+    (make-file-external-ref
+     start
+     (let ((line (read-required-line port)))
+       (cond ((string-null? line)
+	      (let ((end (- (xstring-port/position port) 1)))
+		(skip-rmail-message-headers-separator port)
+		end))
+	     ((string=? line rmail-message:headers-separator)
+	      (- (xstring-port/position port)
+		 (+ (string-length line) 1)))
+	     (else
+	      (skip-past-blank-line port)
+	      (- (xstring-port/position port) 1)))))))
 
-(define (rmail-internal-time-header headers)
-  (let ((header (get-first-header-field headers "X-IMAIL-INTERNAL-TIME" #f)))
-    (if header
-	(values (delq! header headers)
-		(let ((t
-		       (ignore-errors
-			(lambda ()
-			  (string->universal-time
-			   (rfc822:tokens->string
-			    (rfc822:strip-comments
-			     (rfc822:string->tokens
-			      (header-field-value header)))))))))
-		  (and (not (condition? t))
-		       t)))
-	(values headers #f))))
+(define (read-rmail-displayed-headers port)
+  (let ((start (xstring-port/position port)))
+    (skip-past-blank-line port)
+    (make-file-external-ref start (- (xstring-port/position port) 1))))
+
+(define (skip-rmail-message-headers-separator port)
+  (if (not (string=? rmail-message:headers-separator
+		     (read-required-line port)))
+      (error "Missing RMAIL headers-separator string:" port)))
+
+(define (read-rmail-body port)
+  (let ((start (xstring-port/position port)))
+    (input-port/discard-chars port rmail-message:end-char-set)
+    (input-port/discard-char port)
+    (make-file-external-ref start (- (xstring-port/position port) 1))))
+
+(define (parse-rmail-internal-time-header folder headers)
+  (call-with-values
+      (lambda () (file-folder-strip-internal-headers folder headers))
+    (lambda (headers internal-headers)
+      (values headers
+	      (let ((v
+		     (get-first-header-field internal-headers
+					     "X-IMAIL-INTERNAL-TIME"
+					     #f)))
+		(and v
+		     (parse-header-field-date v)))))))
 
 ;;;; Write RMAIL file
 
