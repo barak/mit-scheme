@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.15 1995/03/12 15:34:01 adams Exp $
+$Id: rtlgen.scm,v 1.16 1995/03/13 06:59:28 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -1676,6 +1676,10 @@ MIT in each case. |#
 	 (set! *rtlgen/form-calls-external?* true)
 	 (rtlgen/%apply state (second rands) cont
 			(quote/text (first rands)) (cddr rands)))
+	((eq? rator* %internal-apply-unchecked)
+	 (set! *rtlgen/form-calls-external?* true)
+	 (rtlgen/%apply-unchecked state (second rands) cont
+				  (quote/text (first rands)) (cddr rands)))
 	((eq? rator* %invoke-operator-cache)
 	 (set! *rtlgen/form-calls-external?* true)
 	 (rtlgen/invoke-operator-cache state
@@ -1829,6 +1833,20 @@ MIT in each case. |#
 	`(INVOCATION:NEW-APPLY ,(+ nargs 1)
 			       ,cont-label
 			       ,rator
+			       (MACHINE-CONSTANT 0)))))))
+
+(define (rtlgen/%apply-unchecked state rator cont nargs rands)
+  (let ((rator (rtlgen/->register
+		(rtlgen/expr (rtlgen/state/->expr state '(ANY))
+			     rator))))
+    (rtlgen/invoke
+     state cont rands
+     (lambda (cont-label)
+       (rtlgen/emit!/1
+	`(INVOCATION:REGISTER  ,(+ nargs 1)
+			       ,cont-label
+			       ,rator
+			       #F
 			       (MACHINE-CONSTANT 0)))))))
 
 (define (rtlgen/invoke-operator-cache state kind name+arity cont rands)
@@ -4133,7 +4151,8 @@ MIT in each case. |#
    ;; They should never be found.
    (list %vector-index %variable-cache-ref %variable-cache-set!
 	 %safe-variable-cache-ref %stack-closure-ref
-	 %internal-apply %primitive-apply %invoke-continuation
+	 %internal-apply %internal-apply-unchecked
+	 %primitive-apply %invoke-continuation
 	 %invoke-operator-cache %invoke-remote-cache
 	 %make-read-variable-cache %make-write-variable-cache
 	 %make-operator-variable-cache %fetch-continuation
