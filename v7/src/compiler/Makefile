@@ -1,5 +1,5 @@
 #
-# $Id: Makefile,v 1.12 2000/12/05 22:32:53 cph Exp $
+# $Id: Makefile,v 1.13 2000/12/05 22:36:39 cph Exp $
 #
 # Makefile for Scheme compiler
 # This makefile supports some utilities for the compiler.
@@ -19,8 +19,6 @@ setup:
 	for N in 1 2 3; do \
 	    ln -s instr${N}.scm dinstr${N}.scm; \
 	done)
-	rm -f machine
-	ln -s machines/i386 machine
 
 tags TAGS:
 	etags back/*.scm base/*.scm fggen/*.scm fgopt/*.scm \
