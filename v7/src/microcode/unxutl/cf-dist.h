@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/cf-dist.h,v 1.9 1990/02/27 18:44:04 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/cf-dist.h,v 1.10 1990/03/08 19:26:43 cph Exp $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -41,6 +41,7 @@ MIT in each case. */
 #define PROC_TYPE_NS32K 6
 #define PROC_TYPE_HCX 7		/* Harris HCX */
 #define PROC_TYPE_IBM032 8	/* IBM RT */
+#define PROC_TYPE_SPARC 9
 
 /* Define this macro to use a non-standard compiler.
    It must be defined before including the m/ and s/ files because
