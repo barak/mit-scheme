@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: pathnm.scm,v 14.33 2000/07/05 18:27:24 cph Exp $
+$Id: pathnm.scm,v 14.34 2001/05/12 19:40:09 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 |#
 
 ;;;; Pathnames
@@ -103,24 +104,24 @@ these rules:
 		      (lambda (pathname port)
 			(write-char #\space port)
 			(write (->namestring pathname) port)))))
-  (host false read-only true)
-  (device false read-only true)
-  (directory false read-only true)
-  (name false read-only true)
-  (type false read-only true)
-  (version false read-only true))
+  (host #f read-only #t)
+  (device #f read-only #t)
+  (directory #f read-only #t)
+  (name #f read-only #t)
+  (type #f read-only #t)
+  (version #f read-only #t))
 
 (define (->pathname object)
-  (pathname-arg object false '->PATHNAME))
+  (pathname-arg object #f '->PATHNAME))
 
 (define (pathname-arg object defaults operator)
   (cond ((pathname? object) object)
-	((string? object) (parse-namestring object false defaults))
+	((string? object) (parse-namestring object #f defaults))
 	(else (error:wrong-type-argument object "pathname" operator))))
 
 (define (make-pathname host device directory name type version)
   (let ((host (if host (guarantee-host host 'MAKE-PATHNAME) local-host)))
-    ((host-operation/make-pathname host)
+    ((host-type/operation/make-pathname (host/type host))
      host device directory name type version)))
 
 (define (pathname-host pathname)
@@ -143,7 +144,8 @@ these rules:
 
 (define (pathname-end-of-line-string pathname)
   (let ((pathname (->pathname pathname)))
-    ((host-operation/end-of-line-string (%pathname-host pathname))
+    ((host-type/operation/end-of-line-string
+      (host/type (%pathname-host pathname)))
      pathname)))
 
 (define (pathname=? x y)
@@ -163,38 +165,44 @@ these rules:
 
 (define (pathname-wild? pathname)
   (let ((pathname (->pathname pathname)))
-    ((host-operation/pathname-wild? (%pathname-host pathname)) pathname)))
+    ((host-type/operation/pathname-wild?
+      (host/type (%pathname-host pathname)))
+     pathname)))
+
+(define (directory-pathname? pathname)
+  (let ((pathname (->pathname pathname)))
+    ((host-type/operation/directory-pathname?
+      (host/type (%pathname-host pathname)))
+     pathname)))
 
 (define (pathname-simplify pathname)
   (let ((pathname (->pathname pathname)))
-    ((host-operation/pathname-simplify (%pathname-host pathname)) pathname)))
+    ((host-type/operation/pathname-simplify
+      (host/type (%pathname-host pathname)))
+     pathname)))
 
 (define (directory-pathname pathname)
   (let ((pathname (->pathname pathname)))
-    (%make-pathname (%pathname-host pathname)
-		    (%pathname-device pathname)
-		    (%pathname-directory pathname)
-		    false
-		    false
-		    false)))
+    ((host-type/operation/directory-pathname
+      (host/type (%pathname-host pathname)))
+     pathname)))
 
 (define (file-pathname pathname)
   (let ((pathname (->pathname pathname)))
-    (%make-pathname (%pathname-host pathname)
-		    false
-		    false
-		    (%pathname-name pathname)
-		    (%pathname-type pathname)
-		    (%pathname-version pathname))))
+    ((host-type/operation/file-pathname
+      (host/type (%pathname-host pathname)))
+     pathname)))
 
 (define (pathname-as-directory pathname)
   (let ((pathname (->pathname pathname)))
-    ((host-operation/pathname-as-directory (%pathname-host pathname))
+    ((host-type/operation/pathname-as-directory
+      (host/type (%pathname-host pathname)))
      pathname)))
 
 (define (directory-pathname-as-file pathname)
   (let ((pathname (->pathname pathname)))
-    ((host-operation/directory-pathname-as-file (%pathname-host pathname))
+    ((host-type/operation/directory-pathname-as-file
+      (host/type (%pathname-host pathname)))
      pathname)))
 
 (define (pathname-new-device pathname device)
@@ -295,7 +303,8 @@ these rules:
 		  defaults
 		  *default-pathname-defaults*)))))
     (cond ((string? namestring)
-	   ((host-operation/parse-namestring host) namestring host))
+	   ((host-type/operation/parse-namestring (host/type host))
+	    namestring host))
 	  ((pathname? namestring)
 	   (if (not (host=? host (pathname-host namestring)))
 	       (error:bad-range-argument namestring 'PARSE-NAMESTRING))
@@ -333,7 +342,9 @@ these rules:
 	    (string-append (host-namestring pathname) namestring))))))
 
 (define (pathname->namestring pathname)
-  ((host-operation/pathname->namestring (%pathname-host pathname)) pathname))
+  ((host-type/operation/pathname->namestring
+    (host/type (%pathname-host pathname)))
+   pathname))
 
 ;;;; Pathname Merging
 
@@ -430,27 +441,30 @@ these rules:
 (define local-host)
 
 (define-structure (host-type (conc-name host-type/))
-  (index false read-only true)
-  (name false read-only true)
-  (operation/parse-namestring false read-only true)
-  (operation/pathname->namestring false read-only true)
-  (operation/make-pathname false read-only true)
-  (operation/pathname-wild? false read-only true)
-  (operation/pathname-as-directory false read-only true)
-  (operation/directory-pathname-as-file false read-only true)
-  (operation/pathname->truename false read-only true)
-  (operation/user-homedir-pathname false read-only true)
-  (operation/init-file-pathname false read-only true)
-  (operation/pathname-simplify false read-only true)
-  (operation/end-of-line-string false read-only true))
+  (index #f read-only #t)
+  (name #f read-only #t)
+  (operation/parse-namestring #f read-only #t)
+  (operation/pathname->namestring #f read-only #t)
+  (operation/make-pathname #f read-only #t)
+  (operation/pathname-wild? #f read-only #t)
+  (operation/directory-pathname? #f read-only #t)
+  (operation/directory-pathname #f read-only #t)
+  (operation/file-pathname #f read-only #t)
+  (operation/pathname-as-directory #f read-only #t)
+  (operation/directory-pathname-as-file #f read-only #t)
+  (operation/pathname->truename #f read-only #t)
+  (operation/user-homedir-pathname #f read-only #t)
+  (operation/init-file-pathname #f read-only #t)
+  (operation/pathname-simplify #f read-only #t)
+  (operation/end-of-line-string #f read-only #t))
 
 (define-structure (host (type vector)
 			(named ((ucode-primitive string->symbol)
 				"#[(runtime pathname)host]"))
 			(constructor %make-host)
 			(conc-name host/))
-  (type-index false read-only true)
-  (name false read-only true))
+  (type-index #f read-only #t)
+  (name #f read-only #t))
 
 (define (make-host type name)
   (%make-host (host-type/index type) name))
@@ -469,58 +483,27 @@ these rules:
   (if (not (host? host)) (error:wrong-type-argument host "host" operation))
   host)
 
-(define (host-operation/parse-namestring host)
-  (host-type/operation/parse-namestring (host/type host)))
-
-(define (host-operation/pathname->namestring host)
-  (host-type/operation/pathname->namestring (host/type host)))
-
-(define (host-operation/make-pathname host)
-  (host-type/operation/make-pathname (host/type host)))
-
-(define (host-operation/pathname-wild? host)
-  (host-type/operation/pathname-wild? (host/type host)))
-
-(define (host-operation/pathname-as-directory host)
-  (host-type/operation/pathname-as-directory (host/type host)))
-
-(define (host-operation/directory-pathname-as-file host)
-  (host-type/operation/directory-pathname-as-file (host/type host)))
-
-(define (host-operation/pathname->truename host)
-  (host-type/operation/pathname->truename (host/type host)))
-
-(define (host-operation/user-homedir-pathname host)
-  (host-type/operation/user-homedir-pathname (host/type host)))
-
-(define (host-operation/init-file-pathname host)
-  (host-type/operation/init-file-pathname (host/type host)))
-
-(define (host-operation/pathname-simplify host)
-  (host-type/operation/pathname-simplify (host/type host)))
-
-(define (host-operation/end-of-line-string host)
-  (host-type/operation/end-of-line-string (host/type host)))
-
 ;;;; File System Stuff
 
 (define (->truename pathname)
   (let ((pathname (merge-pathnames pathname)))
-    ((host-operation/pathname->truename (%pathname-host pathname)) pathname)))
+    ((host-type/operation/pathname->truename
+      (host/type (%pathname-host pathname)))
+     pathname)))
 
 (define (user-homedir-pathname #!optional host)
   (let ((host
 	 (if (and (not (default-object? host)) host)
 	     (guarantee-host host 'USER-HOMEDIR-PATHNAME)
 	     local-host)))
-    ((host-operation/user-homedir-pathname host) host)))
+    ((host-type/operation/user-homedir-pathname (host/type host)) host)))
 
 (define (init-file-pathname #!optional host)
   (let ((host
 	 (if (and (not (default-object? host)) host)
 	     (guarantee-host host 'INIT-FILE-PATHNAME)
 	     local-host)))
-    ((host-operation/init-file-pathname host) host)))
+    ((host-type/operation/init-file-pathname (host/type host)) host)))
 
 (define (system-library-pathname pathname)
   (let ((try-directory
@@ -610,7 +593,7 @@ these rules:
 	   (lambda arguments
 	     (error "Unimplemented host type:" name arguments))))
       (make-host-type index name fail fail fail fail fail fail fail fail fail
-		      fail fail))))
+		      fail fail fail fail fail))))
 
 (define (reset-package!)
   (let ((host-type (host-name->type microcode-id/operating-system))
@@ -625,7 +608,7 @@ these rules:
       (set! host-types types)
       (set! local-host (make-host host-type #f))))
   (set! *default-pathname-defaults*
-	(make-pathname local-host false false false false false))
+	(make-pathname local-host #f #f #f #f #f))
   (set! library-directory-path
 	(map pathname-as-directory
 	     (vector->list ((ucode-primitive microcode-library-path 0)))))

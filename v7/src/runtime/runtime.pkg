@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.365 2001/05/09 03:04:54 cph Exp $
+$Id: runtime.pkg,v 14.366 2001/05/12 19:40:19 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -1730,6 +1730,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  directory-namestring
 	  directory-pathname
 	  directory-pathname-as-file
+	  directory-pathname?
 	  enough-namestring
 	  enough-pathname
 	  file-namestring

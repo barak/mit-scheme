@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: unxpth.scm,v 14.25 1999/01/02 06:19:10 cph Exp $
+$Id: unxpth.scm,v 14.26 2001/05/12 19:40:22 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 |#
 
 ;;;; Unix Pathnames
@@ -31,6 +32,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		  unix/pathname->namestring
 		  unix/make-pathname
 		  unix/pathname-wild?
+		  unix/directory-pathname?
+		  unix/directory-pathname
+		  unix/file-pathname
 		  unix/pathname-as-directory
 		  unix/directory-pathname-as-file
 		  unix/pathname->truename
@@ -107,7 +111,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (simplify-directory directory)
   (if (and (eq? (car directory) 'RELATIVE) (null? (cdr directory)))
-      false
+      #f
       directory))
 
 (define (parse-directory-components components)
@@ -137,10 +141,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	      (= dot 0)
 	      (= dot (- end 1))
 	      (char=? #\. (string-ref string (- dot 1))))
-	  (receiver (cond ((= end 0) false)
+	  (receiver (cond ((= end 0) #f)
 			  ((string=? "*" string) 'WILD)
 			  (else string))
-		    false)
+		    #f)
 	  (receiver (extract string 0 dot)
 		    (extract string (+ dot 1) end))))))
 
@@ -222,6 +226,26 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
        'UNSPECIFIC
        (error:illegal-pathname-component version "version"))))
 
+(define (unix/directory-pathname? pathname)
+  (and (not (%pathname-name pathname))
+       (not (%pathname-type pathname))))
+
+(define (unix/directory-pathname pathname)
+  (%make-pathname (%pathname-host pathname)
+		  (%pathname-device pathname)
+		  (%pathname-directory pathname)
+		  #f
+		  #f
+		  'UNSPECIFIC))
+
+(define (unix/file-pathname pathname)
+  (%make-pathname (%pathname-host pathname)
+		  'UNSPECIFIC
+		  #f
+		  (%pathname-name pathname)
+		  (%pathname-type pathname)
+		  (%pathname-version pathname)))
+
 (define (unix/pathname-as-directory pathname)
   (let ((name (%pathname-name pathname))
 	(type (%pathname-type pathname)))
@@ -238,8 +262,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		  directory)
 		 (else
 		  (append directory (list component)))))
-	 false
-	 false
+	 #f
+	 #f
 	 'UNSPECIFIC)
 	pathname)))
 
@@ -274,7 +298,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (eq? 'WILD (%pathname-type pathname))))
 
 (define (unix/pathname->truename pathname)
-  (if (eq? true (file-exists? pathname))
+  (if (file-exists-direct? pathname)
       pathname
       (unix/pathname->truename
        (error:file-operation pathname "find" "file" "file does not exist"

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: dospth.scm,v 1.40 1999/11/11 20:59:28 cph Exp $
+$Id: dospth.scm,v 1.41 2001/05/12 19:40:05 cph Exp $
 
-Copyright (c) 1992-1999 Massachusetts Institute of Technology
+Copyright (c) 1992-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 |#
 
 ;;;; Dos Pathnames (originally based on unxpth version 14.9)
@@ -45,6 +46,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		  dos/pathname->namestring
 		  dos/make-pathname
 		  dos/pathname-wild?
+		  dos/directory-pathname?
+		  dos/directory-pathname
+		  dos/file-pathname
 		  dos/pathname-as-directory
 		  dos/directory-pathname-as-file
 		  dos/pathname->truename
@@ -288,6 +292,26 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
        (string? (cadr directory))
        (string-null? (cadr directory))))
 
+(define (dos/directory-pathname? pathname)
+  (and (not (%pathname-name pathname))
+       (not (%pathname-type pathname))))
+
+(define (dos/directory-pathname pathname)
+  (%%make-pathname (%pathname-host pathname)
+		   (%pathname-device pathname)
+		   (%pathname-directory pathname)
+		   #f
+		   #f
+		   'UNSPECIFIC))
+
+(define (dos/file-pathname pathname)
+  (%%make-pathname (%pathname-host pathname)
+		   #f
+		   #f
+		   (%pathname-name pathname)
+		   (%pathname-type pathname)
+		   (%pathname-version pathname)))
+
 (define (dos/pathname-as-directory pathname)
   (let ((name (%pathname-name pathname))
 	(type (%pathname-type pathname)))
@@ -337,7 +361,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(string-find-next-char namestring #\?))))
 
 (define (dos/pathname->truename pathname)
-  (if (eq? #t (file-exists? pathname))
+  (if (file-exists-direct? pathname)
       pathname
       (dos/pathname->truename
        (error:file-operation pathname "find" "file" "file does not exist"
