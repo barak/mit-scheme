@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pruxdld.c,v 1.5 1993/11/01 16:16:15 gjr Exp $
+$Id: pruxdld.c,v 1.6 1993/11/02 20:59:08 jmiller Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -168,17 +168,18 @@ DEFINE_PRIMITIVE ("OBJECT-LOOKUP-SYMBOL", Prim_object_lookup_symbol, 3, 3,
 DEFINE_PRIMITIVE ("INVOKE-C-THUNK", Prim_invoke_C_thunk, 1, 1,
 		  "(address)\n\
 Treat the integer argument as the address of a C procedure of no\n\
-arguments that returns an unsigned long.  Invoke it, and return\n\
+arguments that returns a long.  Invoke it, and return\n\
 the corresponding Scheme integer.")
 {
-  unsigned long address, result;
-  unsigned long EXFUN ((* thunk), (void));
+  long address;
+  long result;
+  long EXFUN ((* thunk), (void));
   PRIMITIVE_HEADER (1);
   
-  address = ((unsigned long) (arg_integer (1)));
+  address = ((long) (arg_integer (1)));
   thunk = ((unsigned long EXFUN ((*), (void))) address);
   result = ((* thunk) ());
-  PRIMITIVE_RETURN (ulong_to_integer (result));
+  PRIMITIVE_RETURN (long_to_integer (result));
 }
 
 DEFINE_PRIMITIVE ("ADDRESS-TO-STRING", Prim_address_to_string, 1, 1,
@@ -186,9 +187,9 @@ DEFINE_PRIMITIVE ("ADDRESS-TO-STRING", Prim_address_to_string, 1, 1,
 Treat the integer argument as a C (char *) pointer.\n\
 Construct the corresponding Scheme string.")
 {
-  unsigned long address;
+  long address;
   PRIMITIVE_HEADER (1);
 
-  address = ((unsigned long) (arg_integer (1)));
+  address = ((long) (arg_integer (1)));
   PRIMITIVE_RETURN (char_pointer_to_string ((unsigned char *) address));
 }
