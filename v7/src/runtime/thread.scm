@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.27 1999/02/24 04:43:19 cph Exp $
+$Id: thread.scm,v 1.28 1999/02/24 04:51:57 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -689,10 +689,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  any-events?
 	  (begin
 	    (if event
-		(begin
+		(let ((block? (thread/block-events? thread)))
 		  (set-thread/block-events?! thread #t)
 		  (event)
-		  (set-interrupt-enables! interrupt-mask/gc-ok)))
+		  (set-interrupt-enables! interrupt-mask/gc-ok)
+		  (set-thread/block-events?! thread block?)))
 	    (loop #t))))))
 
 (define (allow-thread-event-delivery)
