@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/instr3.scm,v 1.6 1987/08/21 14:31:39 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/instr3.scm,v 1.7 1987/08/24 15:01:13 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -286,17 +286,29 @@ MIT in each case. |#
 ;; branching over an unconditional instruction.
 
 (define-instruction B
-  ((B (? c cc) (? dest displacement))
+  ((B (? c cc) (@PCO (? dest)))
    (BYTE (4 c)
 	 (4 #x1))
    (DISPLACEMENT (8 dest)))
 
-  ((W (? c inverse-cc) (? dest displacement))
+  ((B (? c cc) (@PCR (? dest)))
+   (BYTE (4 c)
+	 (4 #x1))
+   (DISPLACEMENT (8 `(- ,dest (+ *PC* 1)))))
+
+  ((W (? c inverse-cc) (@PCO (? dest)))
    (BYTE (4 c)				; (B B (~ cc) (+ *PC* 3))
 	 (4 #x1))
-   (BYTE (8 #x03))
+   (BYTE (8 #x03 SIGNED))
    (BYTE (8 #x31))			; (BR W dest)
    (DISPLACEMENT (16 dest)))
+
+  ((W (? c inverse-cc) (@PCR (? dest)))
+   (BYTE (4 c)				; (B B (~ cc) (+ *PC* 3))
+	 (4 #x1))
+   (BYTE (8 #x03 SIGNED))
+   (BYTE (8 #x31))			; (BR W dest)
+   (DISPLACEMENT (16 `(- ,dest (+ *PC* 2)))))
 
   ;; Self adjusting version. It does not handle @PCO
   (((? c cc cs) (@PCR (? label)))
@@ -327,13 +339,21 @@ MIT in each case. |#
        (macro (nameb namej bit)
 	 `(begin
 	    (define-instruction ,nameb
-	      ((B (? dest displacement))
+	      ((B (@PCO (? dest)))
 	       (BYTE (8 ,(+ #x10 bit)))
 	       (DISPLACEMENT (8 dest)))
+
+	      ((B (@PCR (? dest)))
+	       (BYTE (8 ,(+ #x10 bit)))
+	       (DISPLACEMENT (8 `(- ,dest (+ *PC* 1)))))
    
-	      ((W (? dest displacement))
+	      ((W (@PCO (? dest)))
 	       (BYTE (8 ,(+ #x30 bit)))
 	       (DISPLACEMENT (16 dest)))
+
+	      ((W (@PCR (? dest)))
+	       (BYTE (8 ,(+ #x30 bit)))
+	       (DISPLACEMENT (16  `(- ,dest (+ *PC* 2)))))
 
 	      ;; Self tensioned version. @PCO not handled.
 	      (((@PCR (? label)))
@@ -377,139 +397,268 @@ MIT in each case. |#
 (define-trivial-instruction RET #x04)
 
 (define-instruction BLB
-  ((S (? src ea-r-l) (? dest displacement))
+  ((S (? src ea-r-l) (@PCO (? dest)))
    (BYTE (8 #xE8))
    (OPERAND L src)
    (DISPLACEMENT (8 dest)))
 
-  ((C (? src ea-r-l) (? dest displacement))
+  ((S (? src ea-r-l) (@PCR (? dest)))
+   (BYTE (8 #xE8))
+   (OPERAND L src)
+   (DISPLACEMENT (8 `(- ,dest (+ *PC* 1)))))
+
+  ((C (? src ea-r-l) (@PCO (? dest)))
    (BYTE (8 #xE9))
    (OPERAND L src)
-   (DISPLACEMENT (8 dest))))
+   (DISPLACEMENT (8 dest)))
+
+  ((C (? src ea-r-l) (@PCR (? dest)))
+   (BYTE (8 #xE9))
+   (OPERAND L src)
+   (DISPLACEMENT (8 `(- ,dest (+ *PC* 1))))))
 
 (define-instruction BB
-  ((S (? pos ea-r-l) (? base ea-v-b) (? dest displacement))
+  ((S (? pos ea-r-l) (? base ea-v-b) (@PCO (? dest)))
    (BYTE (8 #xE0))
    (OPERAND L pos)
    (OPERAND B base)
    (DISPLACEMENT (8 dest)))
+
+  ((S (? pos ea-r-l) (? base ea-v-b) (@PCR (? dest)))
+   (BYTE (8 #xE0))
+   (OPERAND L pos)
+   (OPERAND B base)
+   (DISPLACEMENT (8 `(- ,dest (+ *PC* 1)))))
   
-  ((C (? pos ea-r-l) (? base ea-v-b) (? dest displacement))
+  ((C (? pos ea-r-l) (? base ea-v-b) (@PCO (? dest)))
    (BYTE (8 #xE1))
    (OPERAND L pos)
    (OPERAND B base)
    (DISPLACEMENT (8 dest)))
+
+  ((C (? pos ea-r-l) (? base ea-v-b) (@PCR (? dest)))
+   (BYTE (8 #xE1))
+   (OPERAND L pos)
+   (OPERAND B base)
+   (DISPLACEMENT (8 `(- ,dest (+ *PC* 1)))))
   
-  ((S S (? pos ea-r-l) (? base ea-v-b) (? dest displacement))
+  ((S S (? pos ea-r-l) (? base ea-v-b) (@PCO (? dest)))
    (BYTE (8 #xE2))
    (OPERAND L pos)
    (OPERAND B base)
    (DISPLACEMENT (8 dest)))
+
+  ((S S (? pos ea-r-l) (? base ea-v-b) (@PCR (? dest)))
+   (BYTE (8 #xE2))
+   (OPERAND L pos)
+   (OPERAND B base)
+   (DISPLACEMENT (8 `(- ,dest (+ *PC* 1)))))
   
-  ((C S (? pos ea-r-l) (? base ea-v-b) (? dest displacement))
+  ((C S (? pos ea-r-l) (? base ea-v-b) (@PCO (? dest)))
    (BYTE (8 #xE3))
    (OPERAND L pos)
    (OPERAND B base)
    (DISPLACEMENT (8 dest)))
-  
-  ((S C (? pos ea-r-l) (? base ea-v-b) (? dest displacement))
+
+  ((C S (? pos ea-r-l) (? base ea-v-b) (@PCR (? dest)))
+   (BYTE (8 #xE3))
+   (OPERAND L pos)
+   (OPERAND B base)
+   (DISPLACEMENT (8 `(- ,dest (+ *PC* 1)))))
+  
+  ((S C (? pos ea-r-l) (? base ea-v-b) (@PCO (? dest)))
    (BYTE (8 #xE4))
    (OPERAND L pos)
    (OPERAND B base)
    (DISPLACEMENT (8 dest)))
+
+  ((S C (? pos ea-r-l) (? base ea-v-b) (@PCR (? dest)))
+   (BYTE (8 #xE4))
+   (OPERAND L pos)
+   (OPERAND B base)
+   (DISPLACEMENT (8 `(- ,dest (+ *PC* 1)))))
   
-  ((C C (? pos ea-r-l) (? base ea-v-b) (? dest displacement))
+  ((C C (? pos ea-r-l) (? base ea-v-b) (@PCO (? dest)))
    (BYTE (8 #xE5))
    (OPERAND L pos)
    (OPERAND B base)
    (DISPLACEMENT (8 dest)))
 
-  ((S S I (? pos ea-r-l) (? base ea-v-b) (? dest displacement))
+  ((C C (? pos ea-r-l) (? base ea-v-b) (@PCR (? dest)))
+   (BYTE (8 #xE5))
+   (OPERAND L pos)
+   (OPERAND B base)
+   (DISPLACEMENT (8 `(- ,dest (+ *PC* 1)))))
+
+  ((S S I (? pos ea-r-l) (? base ea-v-b) (@PCO (? dest)))
    (BYTE (8 #xE6))
    (OPERAND L pos)
    (OPERAND B base)
    (DISPLACEMENT (8 dest)))
 
-  ((C C I (? pos ea-r-l) (? base ea-v-b) (? dest displacement))
+  ((S S I (? pos ea-r-l) (? base ea-v-b) (@PCR (? dest)))
+   (BYTE (8 #xE6))
+   (OPERAND L pos)
+   (OPERAND B base)
+   (DISPLACEMENT (8 `(- ,dest (+ *PC* 1)))))
+
+  ((C C I (? pos ea-r-l) (? base ea-v-b) (@PCO (? dest)))
    (BYTE (8 #xE7))
    (OPERAND L pos)
    (OPERAND B base)
-   (DISPLACEMENT (8 dest))))
+   (DISPLACEMENT (8 dest)))
+
+  ((C C I (? pos ea-r-l) (? base ea-v-b) (@PCR (? dest)))
+   (BYTE (8 #xE7))
+   (OPERAND L pos)
+   (OPERAND B base)
+   (DISPLACEMENT (8 `(- ,dest (+ *PC* 1))))))
 
 (define-instruction ACB
-  ((B (? limit ea-r-b) (? add ea-r-b) (? index ea-m-b) (? dest displacement))
+  ((B (? limit ea-r-b) (? add ea-r-b) (? index ea-m-b) (@PCO (? dest)))
    (BYTE (8 #x9D))
    (OPERAND B limit)
    (OPERAND B add)
    (OPERAND B index)
    (DISPLACEMENT (8 dest)))
+
+  ((B (? limit ea-r-b) (? add ea-r-b) (? index ea-m-b) (@PCR (? dest)))
+   (BYTE (8 #x9D))
+   (OPERAND B limit)
+   (OPERAND B add)
+   (OPERAND B index)
+   (DISPLACEMENT (8 `(- ,dest (+ *PC* 1)))))
   
-  ((W (? limit ea-r-w) (? add ea-r-w) (? index ea-m-w) (? dest displacement))
+  ((W (? limit ea-r-w) (? add ea-r-w) (? index ea-m-w) (@PCO (? dest)))
    (BYTE (8 #x3D))
    (OPERAND W limit)
    (OPERAND W add)
    (OPERAND W index)
    (DISPLACEMENT (8 dest)))
+
+  ((W (? limit ea-r-w) (? add ea-r-w) (? index ea-m-w) (@PCR (? dest)))
+   (BYTE (8 #x3D))
+   (OPERAND W limit)
+   (OPERAND W add)
+   (OPERAND W index)
+   (DISPLACEMENT (8 `(- ,dest (+ *PC* 1)))))
   
-  ((L (? limit ea-r-l) (? add ea-r-l) (? index ea-m-l) (? dest displacement))
+  ((L (? limit ea-r-l) (? add ea-r-l) (? index ea-m-l) (@PCO (? dest)))
    (BYTE (8 #xF1))
    (OPERAND L limit)
    (OPERAND L add)
    (OPERAND L index)
    (DISPLACEMENT (8 dest)))
+
+  ((L (? limit ea-r-l) (? add ea-r-l) (? index ea-m-l) (@PCR (? dest)))
+   (BYTE (8 #xF1))
+   (OPERAND L limit)
+   (OPERAND L add)
+   (OPERAND L index)
+   (DISPLACEMENT (8 `(- ,dest (+ *PC* 1)))))
   
-  ((F (? limit ea-r-f) (? add ea-r-f) (? index ea-m-f) (? dest displacement))
+  ((F (? limit ea-r-f) (? add ea-r-f) (? index ea-m-f) (@PCO (? dest)))
    (BYTE (8 #x4F))
    (OPERAND F limit)
    (OPERAND F add)
    (OPERAND F index)
    (DISPLACEMENT (8 dest)))
+
+  ((F (? limit ea-r-f) (? add ea-r-f) (? index ea-m-f) (@PCR (? dest)))
+   (BYTE (8 #x4F))
+   (OPERAND F limit)
+   (OPERAND F add)
+   (OPERAND F index)
+   (DISPLACEMENT (8 `(- ,dest (+ *PC* 1)))))
   
-  ((D (? limit ea-r-d) (? add ea-r-d) (? index ea-m-d) (? dest displacement))
+  ((D (? limit ea-r-d) (? add ea-r-d) (? index ea-m-d) (@PCO (? dest)))
    (BYTE (8 #x6F))
    (OPERAND D limit)
    (OPERAND D add)
    (OPERAND D index)
    (DISPLACEMENT (8 dest)))
+
+  ((D (? limit ea-r-d) (? add ea-r-d) (? index ea-m-d) (@PCR (? dest)))
+   (BYTE (8 #x6F))
+   (OPERAND D limit)
+   (OPERAND D add)
+   (OPERAND D index)
+   (DISPLACEMENT (8 `(- ,dest (+ *PC* 1)))))
   
-  ((G (? limit ea-r-g) (? add ea-r-g) (? index ea-m-g) (? dest displacement))
+  ((G (? limit ea-r-g) (? add ea-r-g) (? index ea-m-g) (@PCO (? dest)))
    (BYTE (16 #x4FFD))
    (OPERAND G limit)
    (OPERAND G add)
    (OPERAND G index)
    (DISPLACEMENT (8 dest)))
+
+  ((G (? limit ea-r-g) (? add ea-r-g) (? index ea-m-g) (@PCR (? dest)))
+   (BYTE (16 #x4FFD))
+   (OPERAND G limit)
+   (OPERAND G add)
+   (OPERAND G index)
+   (DISPLACEMENT (8 `(- ,dest (+ *PC* 1)))))
   
-  ((H (? limit ea-r-h) (? add ea-r-h) (? index ea-m-h) (? dest displacement))
+  ((H (? limit ea-r-h) (? add ea-r-h) (? index ea-m-h) (@PCO (? dest)))
    (BYTE (16 #x6FFD))
    (OPERAND H limit)
    (OPERAND H add)
    (OPERAND H index)
-   (DISPLACEMENT (8 dest))))
+   (DISPLACEMENT (8 dest)))
+
+  ((H (? limit ea-r-h) (? add ea-r-h) (? index ea-m-h) (@PCR (? dest)))
+   (BYTE (16 #x6FFD))
+   (OPERAND H limit)
+   (OPERAND H add)
+   (OPERAND H index)
+   (DISPLACEMENT (8 `(- ,dest (+ *PC* 1))))))
 
 (define-instruction AOB
-  ((LSS (? limit ea-r-l) (? index ea-m-l) (? dest displacement))
+  ((LSS (? limit ea-r-l) (? index ea-m-l) (@PCO (? dest)))
    (BYTE (8 #xF2))
    (OPERAND L limit)
    (OPERAND L index)
    (DISPLACEMENT (8 dest)))
 
-  ((LEQ (? limit ea-r-l) (? index ea-m-l) (? dest displacement))
+  ((LSS (? limit ea-r-l) (? index ea-m-l) (@PCR (? dest)))
+   (BYTE (8 #xF2))
+   (OPERAND L limit)
+   (OPERAND L index)
+   (DISPLACEMENT (8 `(- ,dest (+ *PC* 1)))))
+
+  ((LEQ (? limit ea-r-l) (? index ea-m-l) (@PCO (? dest)))
    (BYTE (8 #xF3))
    (OPERAND L limit)
    (OPERAND L index)
-   (DISPLACEMENT (8 dest))))
+   (DISPLACEMENT (8 dest)))
+
+  ((LEQ (? limit ea-r-l) (? index ea-m-l) (@PCR (? dest)))
+   (BYTE (8 #xF3))
+   (OPERAND L limit)
+   (OPERAND L index)
+   (DISPLACEMENT (8 `(- ,dest (+ *PC* 1))))))
 
 (define-instruction SOB
-  ((GEQ (? index ea-m-l) (? dest displacement))
+  ((GEQ (? index ea-m-l) (@PCO (? dest)))
    (BYTE (8 #xF4))
    (OPERAND L index)
    (DISPLACEMENT (8 dest)))
 
-  ((GTR (? index ea-m-l) (? dest displacement))
+  ((GEQ (? index ea-m-l) (@PCR (? dest)))
+   (BYTE (8 #xF4))
+   (OPERAND L index)
+   (DISPLACEMENT (8 `(- ,dest (+ *PC* 1)))))
+
+  ((GTR (? index ea-m-l) (@PCO (? dest)))
    (BYTE (8 #xF5))
    (OPERAND L index)
-   (DISPLACEMENT (8 dest))))
+   (DISPLACEMENT (8 dest)))
 
+  ((GTR (? index ea-m-l) (@PCR (? dest)))
+   (BYTE (8 #xF5))
+   (OPERAND L index)
+   (DISPLACEMENT (8 `(- ,dest (+ *PC* 1))))))
+
 ;; NOTE: The displacements must be placed separately on the
 ;; instruction stream after the instruction.
 ;;
