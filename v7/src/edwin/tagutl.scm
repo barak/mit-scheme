@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: tagutl.scm,v 1.51 1993/08/10 09:39:53 cph Exp $
+;;;	$Id: tagutl.scm,v 1.52 1993/10/26 21:46:08 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -322,7 +322,6 @@ command."
 
 (define tags-loop-continuation false)
 (define tags-loop-pathnames)
-(define buffer-visited-already? false)
 (define tags-loop-current-buffer false)
 
 (define (tags-loop-start)
@@ -330,21 +329,37 @@ command."
     (if (null? pathnames)
 	(editor-error "All files processed."))
     (set! tags-loop-pathnames (cdr pathnames))
-    (set! buffer-visited-already?
-	  (if (pathname->buffer (car pathnames)) true false))
-    (find-file (car pathnames))
-    (message "Scanning file "
-	     (->namestring (buffer-truename (current-buffer)))
-	     "...")
-    (set-current-point! (buffer-start (current-buffer)))
-    (set! tags-loop-current-buffer (current-buffer))
+    (let ((buffer
+	   (let ((buffer (pathname->buffer (car pathnames))))
+	     (if buffer
+		 (begin
+		   (select-buffer buffer)
+		   (buffer-remove! buffer 'TAGS-LOOP-MODIFIED-TICK)
+		   buffer)
+		 (let ((buffer (find-file-noselect (car pathnames) #t)))
+		   (buffer-put! buffer
+				'TAGS-LOOP-MODIFIED-TICK
+				(buffer-modified-tick buffer))
+		   buffer)))))
+      (message "Scanning file " (->namestring (buffer-truename buffer)) "...")
+      (select-buffer buffer)
+      (set-current-point! (buffer-start buffer))
+      (set! tags-loop-current-buffer buffer))
     (tags-loop-continuation)))
 
 (define (smart-buffer-kill)
-  (if (and (not buffer-visited-already?)
-	   (not (buffer-modified? tags-loop-current-buffer))
-	   (ref-variable new-tags-behavior?))
-      (kill-buffer tags-loop-current-buffer)))
+  (let ((buffer tags-loop-current-buffer))
+    (if (and (ref-variable new-tags-behavior? buffer)
+	     (let ((tick (buffer-get buffer 'TAGS-LOOP-MODIFIED-TICK)))
+	       (and tick
+		    (fix:= tick (buffer-modified-tick buffer)))))
+	(kill-buffer buffer)
+	(buffer-remove! buffer 'TAGS-LOOP-MODIFIED-TICK)))
+  (set! tags-loop-current-buffer #f)
+  unspecific)
+
+(define (buffer-modified-tick buffer)
+  (group-modified-tick (buffer-group buffer)))
 
 (define-variable new-tags-behavior?
   "This variable controls the behavior of tags-search and
