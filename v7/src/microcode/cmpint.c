@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.23 1989/11/30 05:42:46 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.24 1989/12/07 04:49:20 cph Exp $
  *
  * Compiled code interface.  Portable version.
  * This file requires a bit of assembly language from cmpaux-md.m4
@@ -2087,7 +2087,7 @@ compiled_entry_type (entry, buffer)
 
   else
   {
-    switch (max_arity)
+    switch (((unsigned long) max_arity) & 0xff)
     {
       case FORMAT_BYTE_EXPR:
       {
