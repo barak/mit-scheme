@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: hashtb.scm,v 1.6 1993/10/08 23:06:41 cph Exp $
+$Id: hashtb.scm,v 1.7 1993/10/08 23:30:39 cph Exp $
 
 Copyright (c) 1990-93 Massachusetts Institute of Technology
 
@@ -643,6 +643,12 @@ MIT in each case. |#
 (define address-hash-tables)
 (define make-string-hash-table)
 
+;; Define old names for compatibility:
+(define hash-table/entry-value hash-table/entry-datum)
+(define hash-table/set-entry-value! hash-table/set-entry-datum!)
+(define make-object-hash-table)
+(define make-symbol-hash-table)
+
 (define (initialize-package!)
   (set! address-hash-tables '())
   (add-primitive-gc-daemon! mark-address-hash-tables!)
@@ -662,6 +668,8 @@ MIT in each case. |#
 				weak-car
 				weak-cdr
 				weak-set-cdr!))
+  (set! make-object-hash-table make-eqv-hash-table)
+  (set! make-symbol-hash-table make-eq-hash-table)
   (set! make-string-hash-table
 	(hash-table/constructor string-hash-mod
 				string=?
@@ -671,9 +679,3 @@ MIT in each case. |#
 				cdr
 				set-cdr!))
   unspecific)
-
-;; Define old names for compatibility:
-(define hash-table/entry-value hash-table/entry-datum)
-(define hash-table/set-entry-value! hash-table/set-entry-datum!)
-(define make-object-hash-table make-eqv-hash-table)
-(define make-symbol-hash-table make-eq-hash-table)
