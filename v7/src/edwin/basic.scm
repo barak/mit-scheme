@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.112 1991/05/16 21:21:07 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.113 1991/05/17 00:27:32 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -186,12 +186,16 @@ It reads another character (a subcommand) and dispatches on it."
 
 (define-command execute-extended-command
   "Read an extended command from the terminal with completion.
-This command reads the name of a function, with completion.  Then the
-function is called.  Completion is done as the function name is typed
+This command reads the name of a command, with completion.  Then the
+command is invoked.  Completion is done as the command name is typed
 For more information type the HELP key while entering the name."
   ()
   (lambda ()
-    (dispatch-on-command (prompt-for-command "M-x") true)))
+    (dispatch-on-command
+     (prompt-for-command
+      ;; Prompt with the name of the command char.
+      (list (string-append (xchar->name (current-command-char)) " ")))
+     true)))
 
 ;;;; Errors
 
