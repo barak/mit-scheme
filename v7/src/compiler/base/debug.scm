@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/debug.scm,v 4.6 1988/06/14 08:31:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/debug.scm,v 4.7 1988/08/29 22:39:19 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -151,18 +151,18 @@ MIT in each case. |#
       (newline))
   (*show-instruction* rtl))
 
-(define *procedure-queue*)
-(define *procedures*)
+(define procedure-queue)
+(define procedures-located)
 
 (define (show-fg)
-  (fluid-let ((*procedure-queue* (make-queue))
-	      (*procedures* '()))
+  (fluid-let ((procedure-queue (make-queue))
+	      (procedures-located '()))
     (write-string "\n---------- Expression ----------")
     (fg/print-object *root-expression*)
     (with-new-node-marks
      (lambda ()
        (fg/print-entry-node (expression-entry-node *root-expression*))
-       (queue-map!/unsafe *procedure-queue*
+       (queue-map!/unsafe procedure-queue
 	 (lambda (procedure)
 	   (if (procedure-continuation? procedure)
 	       (write-string "\n\n---------- Continuation ----------")
@@ -173,7 +173,7 @@ MIT in each case. |#
     (fg/print-blocks (expression-block *root-expression*))))
 
 (define (show-fg-node node)
-  (fluid-let ((*procedure-queue* false))
+  (fluid-let ((procedure-queue false))
     (with-new-node-marks
      (lambda ()
        (fg/print-entry-node
@@ -229,14 +229,14 @@ MIT in each case. |#
 	   (fg/print-node (snode-next node)))))))
 
 (define (fg/print-rvalue rvalue)
-  (if *procedure-queue*
+  (if procedure-queue
       (let ((rvalue (rvalue-known-value rvalue)))
 	(if (and rvalue
 		 (rvalue/procedure? rvalue)
-		 (not (memq rvalue *procedures*)))
+		 (not (memq rvalue procedures-located)))
 	    (begin
-	      (set! *procedures* (cons rvalue *procedures*))
-	      (enqueue!/unsafe *procedure-queue* rvalue))))))
+	      (set! procedures-located (cons rvalue procedures-located))
+	      (enqueue!/unsafe procedure-queue rvalue))))))
 
 (define (fg/print-subproblem subproblem)
   (fg/print-object subproblem)
