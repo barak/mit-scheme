@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.33 1990/06/26 22:16:23 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.34 1990/07/15 23:37:20 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -561,8 +561,11 @@ MIT in each case. |#
     (else (error "FIXNUM-PREDICATE->CC: Unknown predicate" predicate))))
 
 (define (fixnum-2-args/commutative? operator)
-  (memq operator '(PLUS-FIXNUM MULTIPLY-FIXNUM
-			       FIXNUM-AND FIXNUM-OR FIXNUM-XOR)))
+  (memq operator '(PLUS-FIXNUM
+		   MULTIPLY-FIXNUM
+		   FIXNUM-AND
+		   FIXNUM-OR
+		   FIXNUM-XOR)))
 
 (define (define-fixnum-method operator methods method)
   (let ((entry (assq operator (cdr methods))))
@@ -593,6 +596,24 @@ MIT in each case. |#
 (define-integrable (fixnum-2-args/operate-constant operator)
   (lookup-fixnum-method operator fixnum-methods/2-args-constant))
 
+(define-integrable fixnum-bits-mask
+  (fix:not scheme-type-mask))
+
+(define (word->fixnum target)
+  ;; This renormalizes a fixnum after a bit-wise boolean operation.
+  (cond ((= scheme-type-width 8)
+	 (LAP (CLR B ,target)))
+	((< scheme-type-width 8)
+	 (LAP (AND B (& ,fixnum-bits-mask) ,target)))
+	(else
+	 (LAP (AND L (& ,fixnum-bits-mask) ,target)))))
+
+(define (integer-log-base-2? n)
+  (let loop ((power 1) (exponent 0))
+    (cond ((< n power) false)
+	  ((= n power) exponent)
+	  (else (loop (* 2 power) (1+ exponent))))))
+
 (define-fixnum-method 'ONE-PLUS-FIXNUM fixnum-methods/1-arg
   (lambda (reference)
     (LAP (ADD L (& ,fixnum-1) ,reference))))
@@ -625,7 +646,7 @@ MIT in each case. |#
 		 (lambda (n)
 		   (declare (integrate n))
 		   (fix:= n -1))))
-
+
 ;; XOR is weird because the first operand for an EOR instruction
 ;; must be a D register!
 
@@ -642,7 +663,7 @@ MIT in each case. |#
     (if (zero? n)
 	(LAP)
 	(LAP (EOR L (& ,(* n fixnum-1)) ,target)))))
-
+
 ;; Multiply is hairy, since numbers are shifted by the type code width.
 ;; Rather than unshift, multiply, and shift, we unshift one and then
 ;; multiply, but we have to be careful if the source is the same
@@ -689,12 +710,6 @@ MIT in each case. |#
 			   (AS L L ,temp ,target))))
 		   (else
 		    (LAP (AS L L (& ,power-of-2) ,target)))))))))
-
-(define (integer-log-base-2? n)
-  (let loop ((power 1) (exponent 0))
-    (cond ((< n power) false)
-	  ((= n power) exponent)
-	  (else (loop (* 2 power) (1+ exponent))))))
 
 (define-fixnum-method 'MINUS-FIXNUM fixnum-methods/2-args
   (lambda (target source)
@@ -719,6 +734,46 @@ MIT in each case. |#
 	(LAP)
 	(LAP (AND L (& ,(* (fix:not n) fixnum-1)) ,target)))))
 
+(define-fixnum-method 'FIXNUM-LSH fixnum-methods/2-args
+  (lambda (target source)
+    (let ((temp (reference-temporary-register! 'DATA))
+	  (merge (generate-label 'LSH-MERGE))
+	  (nonneg (generate-label 'LSH-NONNEG)))
+      (LAP (MOV L ,source ,temp)
+	   (AS R L (& ,scheme-type-width) ,temp)
+	   (B GE (@PCR ,nonneg))
+	   (NEG L ,temp)
+	   (LS R L ,temp ,target)
+	   ,@(word->fixnum target)
+	   (BRA (@PCR ,merge))
+	   (LABEL ,nonneg)
+	   (LS L L ,temp ,target)
+	   (LABEL ,merge)))))
+
+(define-fixnum-method 'FIXNUM-LSH fixnum-methods/2-args-constant
+  (lambda (target n)
+    (cond ((zero? n)
+	   (LAP))
+	  ((negative? n)
+	   (let ((m (- 0 n)))
+	     (if (< m 9)
+		 (LAP (LS R L (& ,m) ,target)
+		      ,@(word->fixnum target))
+		 (let ((temp (reference-temporary-register! 'DATA)))
+		   (LAP ,(load-dnl m temp)
+			(LS R L ,temp ,target)
+			,@(word->fixnum target))))))		 
+	  (else
+	   (if (< n 9)
+	       (LAP (LS L L (& ,n) ,target))
+	       (let ((temp (reference-temporary-register! 'DATA)))
+		 (LAP ,(load-dnl n temp)
+		      (LS L L ,temp ,target))))))))
+
+;;; Quotient is weird because it must shift left the quotient,
+;;; to normalize it as a fixnum, and because arithmetic shifting
+;;; does not really do the right thing.
+
 (define-fixnum-method 'FIXNUM-QUOTIENT fixnum-methods/2-args
   (lambda (target source)
     (LAP
@@ -732,7 +787,7 @@ MIT in each case. |#
 	  ((integer-log-base-2? n)
 	   =>
 	   (lambda (power-of-2)
-	     (let ((label (generate-uninterned-symbol "quoshift")))
+	     (let ((label (generate-label 'QUO-SHIFT)))
 	       (LAP (TST L ,target)
 		    (B GE (@PCR ,label))
 		    (ADD L (& ,(* (-1+ n) fixnum-1)) ,target)
@@ -747,24 +802,14 @@ MIT in each case. |#
 	   ;; This includes negative n
 	   (LAP (DIV S L (& ,n) ,target))))))
 
-;; This renormalizes a fixnum after a bit-wise boolean operation
-
-(define-integrable fixnum-bits-mask
-  (fix:not scheme-type-mask))
-
-(define (word->fixnum target)
-  (cond ((= scheme-type-width 8)
-	 (LAP (CLR B ,target)))
-	((< scheme-type-width 8)
-	 (LAP (AND B (& ,fixnum-bits-mask) ,target)))
-	(else
-	 (LAP (AND L (& ,fixnum-bits-mask) ,target)))))
-
 (define-fixnum-method 'FIXNUM-REMAINDER fixnum-methods/2-args
   (lambda (target source)
     (let ((temp (reference-temporary-register! 'DATA)))
       (LAP (DIVL S L ,source ,temp ,target)
 	   (MOV L ,temp ,target)))))
+
+;;; Remainder is very weird when the second arg is negative.
+;;; Especially when the remainder is zero.
 
 (define-fixnum-method 'FIXNUM-REMAINDER fixnum-methods/2-args-constant
   (lambda (target n)
@@ -778,7 +823,7 @@ MIT in each case. |#
 		(LAP (DIVL S L (& ,(* n fixnum-1)) ,temp ,target)
 		     (MOV L ,temp ,target)))
 	      (let ((sign (reference-temporary-register! 'DATA))
-		    (label (generate-uninterned-symbol "remmerge"))
+		    (label (generate-label 'REM-MERGE))
 		    (shift (- scheme-datum-width xpt)))
 		(LAP (CLR L ,sign)
 		     (BFTST ,target (& ,shift) (& ,xpt))
