@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: pp.scm,v 14.27 1992/09/21 21:23:54 cph Exp $
+$Id: pp.scm,v 14.28 1993/08/12 06:01:50 cph Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -126,6 +126,28 @@ MIT in each case. |#
   (depth-limit 'DEFAULT)
   (breadth-limit 'DEFAULT))
 
+(define (with-highlight-strings-printed pph thunk)
+  (let ((print-string
+	 (lambda (s)
+	   (if (string? s)
+	       (*unparse-string s)
+	       (s output-port)))))
+    (print-string (pph/start-string pph))
+    (thunk)
+    (print-string (pph/end-string pph))))
+
+(define (pph/start-string-length pph)
+  (let ((start (pph/start-string pph)))
+    (if (string? start)
+	(string-length start)
+	0)))
+
+(define (pph/end-string-length pph)
+  (let ((end (pph/end-string pph)))
+    (if (string? end)
+	(string-length end)
+	0)))
+
 (define (pp-top-level expression port as-code? indentation list-depth)
   (fluid-let ((x-size (or *pp-forced-x-size* (output-port/x-size port)))
 	      (output-port port))
@@ -200,23 +222,21 @@ MIT in each case. |#
 	       (print-non-code-node subnode new-column depth))))
 	((highlighted-node? node)
 	 (let ((highlight (highlighted-node/highlight node)))
-	   (let ((start-string (pph/start-string highlight))
-		 (end-string  (pph/end-string highlight)))
-	     (*unparse-string start-string)
-	     (let ((handler
-		    (let ((as-code? (pph/as-code? highlight))
-			  (currently-as-code? (not (null? dispatch-list))))
-		      (cond ((or (eq? as-code? 'DEFAULT)
-				 (eq? as-code? currently-as-code?))
-			     print-node)
-			    (as-code?
-			     print-code-node)
-			    (else
-			     print-non-code-node)))))
-	       (handler (highlighted-node/subnode node)
-			(+ column (string-length start-string))
-			(+ depth (string-length end-string))))
-	     (*unparse-string end-string))))
+	   (with-highlight-strings-printed highlight
+	     (lambda ()
+	       (let ((handler
+		      (let ((as-code? (pph/as-code? highlight))
+			    (currently-as-code? (not (null? dispatch-list))))
+			(cond ((or (eq? as-code? 'DEFAULT)
+				   (eq? as-code? currently-as-code?))
+			       print-node)
+			      (as-code?
+			       print-code-node)
+			      (else
+			       print-non-code-node)))))
+		 (handler (highlighted-node/subnode node)
+			  (+ column (pph/start-string-length highlight))
+			  (+ depth (pph/end-string-length highlight))))))))
 	(else
 	 (*unparse-string node))))
 
@@ -242,13 +262,9 @@ MIT in each case. |#
 	((symbol? node)
 	 (*unparse-symbol node))
 	((highlighted-node? node)
-	 (let ((start-string
-		(pph/start-string (highlighted-node/highlight node)))
-	       (end-string
-		(pph/end-string (highlighted-node/highlight node))))
-	   (*unparse-string start-string)
-	   (print-guaranteed-node (highlighted-node/subnode node))
-	   (*unparse-string end-string)))
+	 (with-highlight-strings-printed (highlighted-node/highlight node)
+	   (lambda ()
+	     (print-guaranteed-node (highlighted-node/subnode node)))))
 	((prefix-node? node)
 	 (*unparse-string (prefix-node-prefix node))
 	 (print-guaranteed-node (prefix-node-subnode node)))
@@ -545,15 +561,12 @@ MIT in each case. |#
 	     object
 	     (walk-custom unparse-object object list-depth)))
 	((pretty-printer-highlight? object)
-	 (let ((rest (walk-highlighted-object object list-depth))
-	       (start (pph/start-string object))
-	       (end (pph/end-string object)))
-	   (make-highlighted-node
-	    (+ (string-length start)
-	       (string-length end)
-	       (node-size rest))
-	    object
-	    rest)))
+	 (let ((rest (walk-highlighted-object object list-depth)))
+	   (make-highlighted-node (+ (pph/start-string-length object)
+				     (pph/end-string-length object)
+				     (node-size rest))
+				  object
+				  rest)))
 	((vector? object)
 	 (if (zero? (vector-length object))
 	     (walk-custom unparse-object object list-depth)
@@ -695,15 +708,12 @@ MIT in each case. |#
 	     object
 	     (walk-custom unparse-object object list-depth)))
 	((pretty-printer-highlight? object)
-	 (let ((rest (walk-highlighted-object object list-depth))
-	       (start (pph/start-string object))
-	       (end (pph/end-string object)))
-	   (make-highlighted-node
-	    (+ (string-length start)
-	       (string-length end)
-	       (node-size rest))
-	    object
-	    rest)))
+	 (let ((rest (walk-highlighted-object object list-depth)))
+	   (make-highlighted-node (+ (pph/start-string-length object)
+				     (pph/end-string-length object)
+				     (node-size rest))
+				  object
+				  rest)))
 	((vector? object)
 	 (if (zero? (vector-length object))
 	     (walk-custom unparse-object object list-depth)
