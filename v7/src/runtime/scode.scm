@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scode.scm,v 14.2 1988/06/16 06:29:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scode.scm,v 14.3 1988/08/01 23:10:12 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -281,7 +281,7 @@ MIT in each case. |#
 
 (define (absolute-reference? object)
   (and (access? object)
-       (eq? (access-environment object) system-global-environment)))
+       (system-global-environment? (access-environment object))))
 
 (define-integrable (absolute-reference-name reference)
   (access-name reference))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uenvir.scm,v 14.2 1988/06/13 11:58:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uenvir.scm,v 14.3 1988/08/01 23:08:20 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -39,15 +39,24 @@ MIT in each case. |#
 
 ;;;; Environment
 
-(define-integrable (environment? object)
+(define (environment? object)
+  (if (system-global-environment? object)
+      true
+      (ic-environment? object)))
+
+(define-integrable (system-global-environment? object)
+  (eq? system-global-environment object))
+
+(define-integrable (ic-environment? object)
   (object-type? (ucode-type environment) object))
 
 (define (environment-procedure environment)
   (select-procedure (environment->external environment)))
 
 (define (environment-has-parent? environment)
-  (not (eq? (select-parent (environment->external environment))
-	    null-environment)))
+  (and (ic-environment? environment)
+       (not (eq? (select-parent (environment->external environment))
+		 null-environment))))
 
 (define (environment-parent environment)
   (select-parent (environment->external environment)))

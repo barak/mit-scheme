@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.4 1988/07/14 07:40:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.5 1988/08/01 23:09:21 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -448,8 +448,7 @@ MIT in each case. |#
     environment))
 
 (define (->environment object)
-  (cond ((or (eq? object system-global-environment)
-	     (environment? object))
+  (cond ((environment? object)
 	 object)
 	((compound-procedure? object)	 (procedure-environment object))
 	((promise? object)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/where.scm,v 14.2 1988/07/14 07:41:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/where.scm,v 14.3 1988/08/01 23:09:58 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -88,23 +88,17 @@ MIT in each case. |#
   (show-frame current-frame current-frame-depth))
 
 (define (show-all)
-  (let s1 ((env env)
-	   (depth 0))
-    (if (eq? system-global-environment env)
-	*the-non-printing-object*
+  (let s1 ((env env) (depth 0))
+    (if (not (system-global-environment? env))
 	(begin (show-frame env depth)
 	       (if (environment-has-parent? env)
-		   (s1 (environment-parent env) (1+ depth))
-		   *the-non-printing-object*)))))
-
+		   (s1 (environment-parent env) (1+ depth))))))
+  *the-non-printing-object*)
+
 ;;;; Motion Commands
 
 (define (parent)
-  (cond ((eq? system-global-environment current-frame)
-	 (newline)
-	 (write-string 
-"The current frame is the system global environment, it has no parent."))
-	((environment-has-parent? current-frame)
+  (cond ((environment-has-parent? current-frame)
 	 (set! current-frame (environment-parent current-frame))
 	 (set! current-frame-depth (1+ current-frame-depth))
 	 (show))

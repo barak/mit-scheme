@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgutl.scm,v 14.2 1988/06/13 11:43:10 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgutl.scm,v 14.3 1988/08/01 23:09:37 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -68,7 +68,7 @@ MIT in each case. |#
 (define rename-list)
 
 (define (show-frame frame depth)
-  (if (eq? system-global-environment frame)
+  (if (system-global-environment? frame)
       (begin
 	(newline)
 	(write-string "This frame is the system global environment"))

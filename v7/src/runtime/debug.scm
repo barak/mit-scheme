@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.3 1988/07/14 07:39:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.4 1988/08/01 23:08:34 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -227,7 +227,7 @@ MIT in each case. |#
   ;;; procedure name
   (write-string
    (string-pad-right
-    (if (or (not (environment? environment))
+    (if (or (not (ic-environment? environment))
 	    (special-name? (environment-name environment)))
 	""
 	(write-to-truncated-string (environment-name environment) 20))
@@ -538,7 +538,7 @@ MIT in each case. |#
 (define (if-valid-environment environment receiver)
   (cond ((debugging-info/undefined-environment? environment)
 	 (print-undefined-environment))
-	((eq? environment system-global-environment)
+	((system-global-environment? environment)
 	 (newline)
 	 (write-string
 	  "System global environment at this subproblem/reduction level"))

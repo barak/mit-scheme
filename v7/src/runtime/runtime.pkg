@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.16 1988/07/19 20:42:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.17 1988/08/01 23:09:01 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -407,8 +407,10 @@ MIT in each case. |#
 	  environment-parent
 	  environment-procedure
 	  environment?
+	  ic-environment?
 	  remove-environment-parent!
-	  set-environment-parent!))
+	  set-environment-parent!
+	  system-global-environment?))
 
 (define-package (runtime environment-inspector)
   (files "where")
