@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.36 1987/11/23 05:13:53 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.37 1988/06/08 16:05:31 jrm Exp $
 
    Bit string primitives. 
 
@@ -591,12 +591,27 @@ copy_bits (source, source_offset, destination, destination_offset, nbits)
 	    tail = (nbits % POINTER_LENGTH);
 	    if (tail <= offset1)
 	      {
+		long mask;
+
+		mask = (any_mask (tail, (offset1 - tail)));
+
+
+		/* This path through copy bits didn't work in certain
+		   cases.  The line below seems to fix it.  This was an
+		   empirical test, and I don't understand it enough to
+		   tell if it is correct, but I think it is, and I did
+		   a few tests.  This is probably what is broken if you
+		   are here poking around trying to fix something.
+		   ~JRM
+		 */
+		dest_buffer &= (~ mask);
+
 		(bit_string_word (destination)) =
 		  (dest_buffer |
 		   ((bit_string_word (destination)) &
 		    (low_mask (offset1 - tail))) |
 		   (((bit_string_word (source)) >> offset2) &
-		    (any_mask (tail, (offset1 - tail)))));
+		    mask));
 	      }
 	    else
 	      {
