@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/artutl.c,v 1.4 1989/09/25 16:50:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/artutl.c,v 1.5 1990/09/08 01:38:18 cph Rel $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -43,11 +43,7 @@ long
 fixnum_to_long (fixnum)
      SCHEME_OBJECT fixnum;
 {
-  fast long result = ((long) (OBJECT_DATUM (fixnum)));
-  return
-    (((result & FIXNUM_SIGN_BIT) != 0)
-     ? (result | (-1 << DATUM_LENGTH))
-     : result);
+  return (FIXNUM_TO_LONG (fixnum));
 }
 
 SCHEME_OBJECT
