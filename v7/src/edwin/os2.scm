@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.31 1996/05/11 08:46:35 cph Exp $
+;;;	$Id: os2.scm,v 1.32 1996/05/12 07:14:12 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
 ;;;
@@ -344,7 +344,8 @@ filename suffix \".gz\"."
 			     "-p" (os2-pop-client-password password)
 			     "-o" target
 			     server)))
-		  (apply run-synchronous-process #f (buffer-end buffer) #f #f
+		  (apply run-synchronous-process
+			 #f (cons (buffer-end buffer) #t) #f #f
 			 "popclient"
 			 "-3"
 			 (if (ref-variable rmail-pop-delete)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.70 1996/05/11 08:46:52 cph Exp $
+;;;	$Id: unix.scm,v 1.71 1996/05/12 07:14:21 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -724,7 +724,7 @@ option, instead taking -P <filename>."
 				   password-options
 				   (list "-o" target server))))
 		      (apply run-synchronous-process
-			     #f (buffer-end buffer) #f #f
+			     #f (cons (buffer-end buffer) #t) #f #f
 			     "popclient"
 			     "-3"
 			     (if (ref-variable rmail-pop-delete)
