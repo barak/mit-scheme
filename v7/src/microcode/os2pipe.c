@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pipe.c,v 1.5 1995/04/22 21:13:55 cph Exp $
+$Id: os2pipe.c,v 1.6 1995/04/28 07:05:00 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -54,20 +54,27 @@ OS_make_pipe (Tchannel * readerp, Tchannel * writerp)
   transaction_commit ();
 }
 
+typedef struct
+{
+  LHANDLE handle;
+  qid_t qid;
+} thread_arg_t;
+
 void
 OS2_initialize_pipe_channel (Tchannel channel)
 {
   if (CHANNEL_INPUTP (channel))
     {
       channel_context_t * context = (OS2_make_channel_context ());
+      thread_arg_t * arg = (OS_malloc (sizeof (thread_arg_t)));
       (CHANNEL_OPERATOR_CONTEXT (channel)) = context;
       OS2_open_qid ((CHANNEL_CONTEXT_READER_QID (context)), OS2_scheme_tqueue);
       OS2_open_qid
 	((CHANNEL_CONTEXT_WRITER_QID (context)), (OS2_make_std_tqueue ()));
+      (arg -> handle) = (CHANNEL_HANDLE (channel));
+      (arg -> qid) = (CHANNEL_CONTEXT_WRITER_QID (context));
       (CHANNEL_CONTEXT_TID (context))
-	= (OS2_beginthread (input_pipe_thread,
-			    (CHANNEL_POINTER (channel)),
-			    0));
+	= (OS2_beginthread (input_pipe_thread, arg, 0));
       (CHANNEL_OPERATOR (channel)) = input_pipe_operator;
     }
 }
@@ -95,14 +102,13 @@ input_pipe_operator (Tchannel channel, chop_t operation,
 static void
 input_pipe_thread (void * arg)
 {
-  Tchannel channel = (* ((Tchannel *) arg));
-  LHANDLE handle = (CHANNEL_HANDLE (channel));
-  channel_context_t * context = (CHANNEL_OPERATOR_CONTEXT (channel));
-  qid_t qid = (CHANNEL_CONTEXT_WRITER_QID (context));
-  (void) OS2_thread_initialize (qid);
+  LHANDLE handle = (((thread_arg_t *) arg) -> handle);
+  qid_t qid = (((thread_arg_t *) arg) -> qid);
+  EXCEPTIONREGISTRATIONRECORD registration;
+  OS_free (arg);
+  (void) OS2_thread_initialize ((&registration), qid);
   /* Wait for first read request before doing anything.  */
-  OS2_wait_for_readahead_ack (qid);
-  while (1)
+  while ((OS2_wait_for_readahead_ack (qid)) == raa_read)
     {
       msg_t * message = (OS2_make_readahead ());
       ULONG nread;
@@ -120,16 +126,15 @@ input_pipe_thread (void * arg)
       else
 	{
 	  OS2_destroy_message (message);
-	  if ((rc == ERROR_INVALID_HANDLE) || (rc == ERROR_BROKEN_PIPE))
+	  if (rc == ERROR_INVALID_HANDLE)
 	    /* Handle was closed on us -- no need to do anything else.  */
 	    break;
 	  message = (OS2_make_syscall_error (rc, syscall_dos_read));
-	  eofp = 0;
+	  eofp = (rc == ERROR_BROKEN_PIPE);
 	}
       OS2_send_message (qid, message);
       if (eofp)
 	break;
-      OS2_wait_for_readahead_ack (qid);
     }
   {
     tqueue_t * tqueue = (OS2_qid_tqueue (qid));

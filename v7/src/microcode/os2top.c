@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2top.c,v 1.12 1995/03/08 21:37:54 cph Exp $
+$Id: os2top.c,v 1.13 1995/04/28 07:05:06 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -34,6 +34,7 @@ MIT in each case. */
 
 #define SCM_OS2TOP_C
 #include "scheme.h"
+#define INCL_WIN
 #include "os2.h"
 #include "ostop.h"
 #include "option.h"
@@ -45,6 +46,7 @@ extern void OS2_initialize_directory_reader (void);
 extern void OS2_initialize_environment (void);
 extern void OS2_initialize_exception_handling (void);
 extern void OS2_initialize_keyboard_interrupts (void);
+extern void OS2_initialize_malloc (void);
 extern void OS2_initialize_message_queues (void);
 extern void OS2_initialize_pm_thread (void);
 extern void OS2_initialize_processes (void);
@@ -53,6 +55,10 @@ extern void OS2_initialize_tty (void);
 extern void OS2_initialize_window_primitives (void);
 
 extern void OS2_check_message_length_initializations (void);
+extern void * OS2_malloc_noerror (unsigned int);
+extern void * OS2_realloc_noerror (void *, unsigned int);
+
+extern void OS2_create_msg_queue (void); /* forward reference */
 
 extern const char * OS_Name;
 extern const char * OS_Variant;
@@ -60,8 +66,8 @@ extern HMTX OS2_create_queue_lock;
 
 static const char * OS2_version_string (void);
 static void initialize_locks (void);
-static HAB scheme_hab;
-static HMQ scheme_hmq;
+
+static int initialization_completed = 0;
 
 int
 OS_under_emacs_p (void)
@@ -70,18 +76,18 @@ OS_under_emacs_p (void)
 }
 
 void
+OS2_initialize_early (void)
+{
+  initialization_completed = 0;
+  OS2_initialize_malloc ();
+  initialize_locks ();
+  OS2_create_msg_queue ();
+}
+
+void
 OS_initialize (void)
 {
   (void) DosError (FERR_DISABLEEXCEPTION | FERR_DISABLEHARDERR);
-  initialize_locks ();
-  /* Create a PM message queue.  This allows us to use message boxes
-     to report fatal errors.  */
-  scheme_hab = (WinInitialize (0));
-  if (scheme_hab == NULLHANDLE)
-    OS2_logic_error ("Unable to initialize anchor block.");
-  scheme_hmq = (WinCreateMsgQueue (scheme_hab, 0));
-  if (scheme_hmq == NULLHANDLE)
-    OS2_logic_error ("Unable to create PM message queue.");
   OS2_initialize_exception_handling ();
   OS2_initialize_message_queues ();
   OS2_initialize_scheme_thread ();
@@ -95,8 +101,9 @@ OS_initialize (void)
   OS2_initialize_tty ();
   OS2_initialize_window_primitives ();
   OS2_initialize_processes ();
-  /* This must be after all of initializations that can set message
-     lengths.  */
+  initialization_completed = 1;
+  /* This must be after all of the initializations that can set
+     message lengths.  */
   OS2_check_message_length_initializations ();
   OS_Name = "OS/2";
   {
@@ -321,11 +328,37 @@ OS2_commit_heap (unsigned long size)
 #endif
 
 void
+OS2_create_msg_queue (void)
+{
+  /* Create a PM message queue.  This allows us to use message boxes
+     to report fatal errors.  */
+  HAB hab = (WinInitialize (0));
+  if (hab == NULLHANDLE)
+    OS2_logic_error ("Unable to initialize anchor block.");
+  if ((WinCreateMsgQueue (hab, 0)) == NULLHANDLE)
+    OS2_logic_error ("Unable to create PM message queue.");
+}
+
+void
+OS2_message_box (const char * title, const char * message, int errorp)
+{
+  (void) WinMessageBox (HWND_DESKTOP,
+			NULLHANDLE,
+			((PSZ) message),
+			((PSZ) title),
+			0,
+			(MB_OK | (errorp ? MB_ERROR : MB_WARNING)));
+}
+
+void
 OS2_exit_scheme (int value)
 {
-  extern void OS2_kill_timer_thread (void);
-  OS2_kill_timer_thread ();
-  OS2_channel_close_all_noerror ();
+  if (initialization_completed)
+    {
+#if 0
+      OS2_channel_close_all_noerror ();
+#endif
+    }
   exit (value);
 }
 
@@ -1651,7 +1684,7 @@ dos_error_message (APIRET rc)
 {
   unsigned int blength_increment = 64;
   unsigned int blength = blength_increment;
-  char * buffer = (malloc (blength));
+  char * buffer = (OS2_malloc_noerror (blength));
   ULONG mlength;
 
   if (buffer == 0)
@@ -1662,20 +1695,20 @@ dos_error_message (APIRET rc)
 	   (0, 0, buffer, blength, rc, "OSO001.MSG", (&mlength)))
 	  != NO_ERROR)
 	{
-	  free (buffer);
+	  OS_free (buffer);
 	  return (0);
 	}
       if (mlength < blength)
 	{
 	  while ((mlength > 0) && (isspace (buffer [mlength - 1])))
 	    mlength -= 1;
-	  buffer = (realloc (buffer, (mlength + 1)));
+	  buffer = (OS2_realloc_noerror (buffer, (mlength + 1)));
 	  if (buffer != 0)
 	    (buffer[mlength]) = '\0';
 	  return (buffer);
 	}
       blength += blength_increment;
-      buffer = (realloc (buffer, (blength)));
+      buffer = (OS2_realloc_noerror (buffer, (blength)));
       if (buffer == 0)
 	return (0);
     }
@@ -1691,7 +1724,7 @@ OS_error_code_to_message (unsigned int syserr)
   if (code == NO_ERROR)
     return (0);
   if (last_message != 0)
-    free ((void *) last_message);
+    OS_free ((void *) last_message);
   last_message = (dos_error_message (code));
   /* Many of OS/2's error messages are terminated with a period, but
      the runtime system is assuming that the messages have no period,

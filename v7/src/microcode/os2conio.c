@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2conio.c,v 1.6 1995/04/22 21:06:57 cph Exp $
+$Id: os2conio.c,v 1.7 1995/04/28 07:04:54 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -93,6 +93,8 @@ static qid_t console_writer_qid;
 static channel_context_t * console_context;
 static readahead_buffer_t * line_buffer;
 
+TID OS2_console_tid;
+
 void
 OS2_initialize_console (void)
 {
@@ -115,17 +117,18 @@ OS2_initialize_console (void)
   console_writer_qid = (CHANNEL_CONTEXT_WRITER_QID (console_context));
   OS2_open_qid (console_writer_qid, (OS2_make_std_tqueue ()));
   (CHANNEL_CONTEXT_FIRST_READ_P (console_context)) = 0;
-  (CHANNEL_CONTEXT_TID (console_context))
-    = (OS2_beginthread (console_thread, 0, 0x4000));
+  OS2_console_tid = (OS2_beginthread (console_thread, 0, 0x4000));
+  (CHANNEL_CONTEXT_TID (console_context)) = OS2_console_tid;
 }
 
 static void
 console_thread (void * arg)
 {
+  EXCEPTIONREGISTRATIONRECORD registration;
   grab_console_lock ();
   line_buffer = (OS2_make_readahead_buffer ());
   release_console_lock ();
-  (void) OS2_thread_initialize (console_writer_qid);
+  (void) OS2_thread_initialize ((&registration), console_writer_qid);
   while (1)
     {
       int c = (getch ());
@@ -290,7 +293,7 @@ static void
 send_readahead (msg_t * message)
 {
   OS2_send_message (console_writer_qid, message);
-  OS2_wait_for_readahead_ack (console_writer_qid);
+  (void) OS2_wait_for_readahead_ack (console_writer_qid);
 }
 
 void

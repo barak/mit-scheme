@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2xcpt.c,v 1.2 1995/03/08 21:38:49 cph Exp $
+$Id: os2xcpt.c,v 1.3 1995/04/28 07:05:08 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -217,6 +217,7 @@ OS2_exception_handler (PEXCEPTIONREPORTRECORD report,
 	     || ((report -> ExceptionNum) == XCPT_ILLEGAL_INSTRUCTION)
 	     || ((report -> ExceptionNum) == XCPT_INTEGER_DIVIDE_BY_ZERO)
 	     || ((report -> ExceptionNum) == XCPT_INTEGER_OVERFLOW)
+	     || ((report -> ExceptionNum) == XCPT_INVALID_LOCK_SEQUENCE)
 	     || ((report -> ExceptionNum) == XCPT_PRIVILEGED_INSTRUCTION))))
     return (XCPT_CONTINUE_SEARCH);
   exception_number = (report -> ExceptionNum);
@@ -935,4 +936,76 @@ noise_end (const char * title, ULONG style)
     noise_accumulator_position = 0;
     return (rc);
   }
+}
+
+ULONG APIENTRY
+OS2_subthread_exception_handler (PEXCEPTIONREPORTRECORD report,
+				 PEXCEPTIONREGISTRATIONRECORD registration,
+				 PCONTEXTRECORD context,
+				 PVOID dispatcher_context)
+{
+  ULONG exception_number;
+  PTIB ptib;
+  PPIB ppib;
+  TID tid;
+  char * format
+    = "Scheme has detected exception number 0x%08x within thread %d.%s%s\
+  This indicates a bug in the Scheme implementation.\
+  Please report this information to a Scheme wizard.";
+  char backtrace [1024];
+
+  if (((report -> fHandlerFlags)
+       & (EH_UNWINDING | EH_EXIT_UNWIND | EH_STACK_INVALID | EH_NESTED_CALL))
+      != 0)
+    return (XCPT_CONTINUE_SEARCH);
+  exception_number = (report -> ExceptionNum);
+  if (! ((exception_number == XCPT_ACCESS_VIOLATION)
+	 || (exception_number == XCPT_ARRAY_BOUNDS_EXCEEDED)
+	 || (exception_number == XCPT_DATATYPE_MISALIGNMENT)
+	 || (exception_number == XCPT_FLOAT_DENORMAL_OPERAND)
+	 || (exception_number == XCPT_FLOAT_DIVIDE_BY_ZERO)
+	 || (exception_number == XCPT_FLOAT_INEXACT_RESULT)
+	 || (exception_number == XCPT_FLOAT_INVALID_OPERATION)
+	 || (exception_number == XCPT_FLOAT_OVERFLOW)
+	 || (exception_number == XCPT_FLOAT_STACK_CHECK)
+	 || (exception_number == XCPT_FLOAT_UNDERFLOW)
+	 || (exception_number == XCPT_ILLEGAL_INSTRUCTION)
+	 || (exception_number == XCPT_INTEGER_DIVIDE_BY_ZERO)
+	 || (exception_number == XCPT_INTEGER_OVERFLOW)
+	 || (exception_number == XCPT_INVALID_LOCK_SEQUENCE)
+	 || (exception_number == XCPT_PRIVILEGED_INSTRUCTION)))
+    return (XCPT_CONTINUE_SEARCH);
+  (void) dos_get_info_blocks ((&ptib), (&ppib));
+  if (((context -> ContextFlags) & CONTEXT_CONTROL) == 0)
+    (backtrace[0]) = '\0';
+  else
+    {
+      ULONG * ebp = ((ULONG *) (context -> ctx_RegEbp));
+      unsigned int count = 0;
+      sprintf (backtrace, "  (Backtrace:");
+      sprintf ((backtrace + (strlen (backtrace))), " 0x%08x",
+	       (context -> ctx_RegEip));
+      while ((ebp > (ptib -> tib_pstack))
+	     && (ebp < (ptib -> tib_pstacklimit))
+	     && (count < 10))
+	{
+	  sprintf ((backtrace + (strlen (backtrace))), " 0x%08x", (ebp[1]));
+	  ebp = (ebp[0]);
+	}
+      sprintf ((backtrace + (strlen (backtrace))), ")");
+    }
+  tid = (ptib -> tib_ptib2 -> tib2_ultid);
+  if (OS2_essential_thread_p (tid))
+    {
+      outf_fatal (format, exception_number, tid, backtrace, "");
+      termination_init_error ();
+    }
+  else
+    {
+      char buffer [1024];
+      sprintf (buffer, format, exception_number, tid, backtrace,
+	       "  The thread will be killed.");
+      OS2_message_box ("Scheme Error", buffer, 0);
+      OS2_endthread ();
+    }
 }

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: option.c,v 1.40 1994/11/28 04:28:41 cph Exp $
+$Id: option.c,v 1.41 1995/04/28 07:04:52 cph Exp $
 
-Copyright (c) 1990-94 Massachusetts Institute of Technology
+Copyright (c) 1990-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,6 +37,7 @@ MIT in each case. */
 #include <ctype.h>
 #include "ansidecl.h"
 #include "obstack.h"
+#include "outf.h"
 #include "config.h"
 #include "osenv.h"
 #include "osfs.h"

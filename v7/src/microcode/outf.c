@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: outf.c,v 1.6 1994/12/19 22:26:11 cph Exp $
+$Id: outf.c,v 1.7 1995/04/28 07:05:10 cph Exp $
 
 Copyright (c) 1993-94 Massachusetts Institute of Technology
 
@@ -154,29 +154,25 @@ DEFUN (voutf_master_tty, (chan, format, args),
 #else /* not WINNT */
 #ifdef _OS2
 
-#define INCL_WIN
-#include <os2.h>
+extern char * OS2_thread_fatal_error_buffer (void);
+extern void OS2_message_box (const char *, const char *, int);
 
 #define USE_WINDOWED_OUTPUT
-static char fatal_buffer [1024] = "";
 
 static void
 voutf_fatal (const char * format, va_list args)
 {
-  unsigned int end = (strlen (fatal_buffer));
-  vsprintf ((& (fatal_buffer [end])), format, args);
+  char * buffer = (OS2_thread_fatal_error_buffer ());
+  unsigned int end = (strlen (buffer));
+  vsprintf ((& (buffer [end])), format, args);
 }
 
 static void
 popup_outf_flush_fatal (void)
 {
-  (void) WinMessageBox (HWND_DESKTOP,
-			NULLHANDLE,
-			fatal_buffer,
-			"Scheme Terminating",
-			0,
-			(MB_OK | MB_ERROR));
-  (fatal_buffer[0]) = '\0';
+  char * buffer = (OS2_thread_fatal_error_buffer ());
+  OS2_message_box ("Scheme Terminating", buffer, 1);
+  (buffer[0]) = '\0';
 }
 
 static void

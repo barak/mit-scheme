@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2io.h,v 1.1 1994/11/28 03:42:58 cph Exp $
+$Id: os2io.h,v 1.2 1995/04/28 07:04:59 cph Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -67,7 +67,6 @@ struct channel
 };
 
 #define _CHANNEL(c) (OS2_channel_table [(c)])
-#define CHANNEL_POINTER(c) (& (OS2_channel_pointer_table [(c)]))
 #define CHANNEL_HANDLE(c) ((_CHANNEL (c)) . handle)
 #define CHANNEL_OPERATOR(c) ((_CHANNEL (c)) . operator)
 #define CHANNEL_OPERATOR_CONTEXT(c) ((_CHANNEL (c)) . operator_context)

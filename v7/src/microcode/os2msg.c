@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2msg.c,v 1.8 1995/04/22 21:48:53 cph Exp $
+$Id: os2msg.c,v 1.9 1995/04/28 07:04:59 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -35,6 +35,8 @@ MIT in each case. */
 /* Master Message Queue */
 
 #include "os2.h"
+
+extern void * OS2_malloc_noerror (unsigned int);
 
 static qid_t allocate_qid (void);
 static void OS2_initialize_message_lengths (void);
@@ -294,7 +296,8 @@ OS2_create_message_1 (msg_type_t type, msg_length_t extra)
   /* Do allocation carefully to prevent infinite loop when signalling
      "out of memory" condition.  */
   msg_t * message =
-    (malloc (((unsigned long) (OS2_message_type_length (type))) + extra));
+    (OS2_malloc_noerror (((unsigned long) (OS2_message_type_length (type)))
+			 + extra));
   if (message == 0)
     if ((type == mt_syscall_error)
 	&& ((SM_SYSCALL_ERROR_CODE (message)) == ERROR_NOT_ENOUGH_MEMORY)

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pm.c,v 1.7 1995/02/21 22:54:15 cph Exp $
+$Id: os2pm.c,v 1.8 1995/04/28 07:05:01 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -793,7 +793,7 @@ static id_table_t psid_table;
 static id_table_t wid_table;
 static id_table_t bid_table;
 static qid_t pm_init_qid;
-static TID pm_tid;
+TID OS2_pm_tid;
 static HAB pm_hab;
 static HMQ pm_hmq;
 static HWND pm_object_window;
@@ -914,7 +914,7 @@ OS2_initialize_pm_thread (void)
     qid_t qid;
     OS2_make_qid_pair ((&pm_init_qid), (&qid));
     OS2_open_qid (qid, OS2_scheme_tqueue);
-    pm_tid = (OS2_beginthread (pm_thread_procedure, 0, 0x4000));
+    OS2_pm_tid = (OS2_beginthread (pm_thread_procedure, 0, 0x4000));
     /* Wait for init message from PM thread.  This message tells us
        that the other end of the connection is established and that it
        is safe to send messages on the connection.  */
@@ -958,9 +958,10 @@ sync_reply (qid_t qid)
 static void
 pm_thread_procedure (void * arg)
 {
+  EXCEPTIONREGISTRATIONRECORD registration;
   QMSG qmsg;
 
-  if ((OS2_thread_initialize (QID_NONE)) != 0)
+  if ((OS2_thread_initialize_1 ((&registration), QID_NONE)) != 0)
     OS2_logic_error ("Error signalled within PM thread.");
   pm_hab = (WinInitialize (0));
   if (pm_hab == NULLHANDLE)

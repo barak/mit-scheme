@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.94 1995/01/06 17:42:11 cph Exp $
+$Id: boot.c,v 9.95 1995/04/28 07:04:50 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -119,6 +119,12 @@ DEFUN (main_name, (argc, argv),
   initial_C_stack_pointer = ((PTR) (&argc));
 #ifdef PREALLOCATE_HEAP_MEMORY
   PREALLOCATE_HEAP_MEMORY ();
+#endif
+#ifdef _OS2
+  {
+    extern void OS2_initialize_early (void);
+    OS2_initialize_early ();
+  }
 #endif
   obstack_init (&scratch_obstack);
   dstack_initialize ();

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2cthrd.c,v 1.5 1995/04/21 00:54:49 cph Exp $
+$Id: os2cthrd.c,v 1.6 1995/04/28 07:04:56 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -37,6 +37,7 @@ MIT in each case. */
 #include "os2.h"
 
 static void start_readahead_thread (channel_context_t *);
+static void send_readahead_ack (qid_t, enum readahead_ack_action);
 static msg_list_t * new_list (void);
 static msg_t * new_message (void);
 
@@ -62,16 +63,18 @@ void
 OS2_channel_thread_close (Tchannel channel)
 {
   channel_context_t * context = (CHANNEL_OPERATOR_CONTEXT (channel));
-  /* Closing handle forces input thread to kill itself.  */
-  STD_API_CALL (dos_close, (CHANNEL_HANDLE (channel)));
-  /* Send a readahead ACK, because the thread might be waiting for
-     one, and otherwise it would hang forever.  We could try to
-     determine if it was necessary to send the ACK, but it does no
-     harm to send the ACK when it isn't needed.  */
-  OS2_send_message ((CHANNEL_CONTEXT_READER_QID (context)),
-		    (OS2_make_readahead_ack ()));
+  /* Send a readahead ACK informing the channel thread to kill itself.
+     Then, close our end of the connection -- it's no longer needed.  */
+  send_readahead_ack ((CHANNEL_CONTEXT_READER_QID (context)), raa_close);
   OS2_close_qid (CHANNEL_CONTEXT_READER_QID (context));
   OS_free (context);
+  /* Finally, close the channel handle.  If the channel thread is
+     blocked in dos_read, this will break it out and get it to kill
+     itself.  There's no race, because the channel thread won't try to
+     close the handle, and if it breaks out of dos_read before we do
+     the close, it will see the readahead ACK we just sent and that
+     will kill it.  */
+  STD_API_CALL (dos_close, (CHANNEL_HANDLE (channel)));
 }
 
 qid_t
@@ -95,8 +98,7 @@ start_readahead_thread (channel_context_t * context)
      child process.  */
   if (CHANNEL_CONTEXT_FIRST_READ_P (context))
     {
-      OS2_send_message ((CHANNEL_CONTEXT_READER_QID (context)),
-			(OS2_make_readahead_ack ()));
+      send_readahead_ack ((CHANNEL_CONTEXT_READER_QID (context)), raa_read);
       (CHANNEL_CONTEXT_FIRST_READ_P (context)) = 0;
     }
 }
@@ -125,14 +127,14 @@ OS2_channel_thread_read (Tchannel channel, char * buffer, size_t size)
     return (-1);
   if (OS2_error_message_p (message))
     {
-      OS2_send_message (qid, (OS2_make_readahead_ack ()));
+      send_readahead_ack (qid, raa_read);
       OS2_handle_error_message (message);
     }
   if ((MSG_TYPE (message)) != mt_readahead)
     OS2_logic_error ("Illegal message from channel thread.");
   index = (SM_READAHEAD_INDEX (message));
   if (index == 0)
-    OS2_send_message (qid, (OS2_make_readahead_ack ()));
+    send_readahead_ack (qid, raa_read);
   navail = ((SM_READAHEAD_SIZE (message)) - index);
   if (navail == 0)
     {
@@ -155,12 +157,23 @@ OS2_channel_thread_read (Tchannel channel, char * buffer, size_t size)
     }
 }
 
-void
+static void
+send_readahead_ack (qid_t qid, enum readahead_ack_action action)
+{
+  msg_t * message = (OS2_create_message (mt_readahead_ack));
+  (SM_READAHEAD_ACK_ACTION (message)) = action;
+  OS2_send_message (qid, message);
+}
+
+enum readahead_ack_action
 OS2_wait_for_readahead_ack (qid_t qid)
 {
   /* Wait for an acknowledgement before starting another read.
      This regulates the amount of data in the queue.  */
-  OS2_destroy_message (OS2_wait_for_message (qid, mt_readahead_ack));
+  msg_t * message = (OS2_wait_for_message (qid, mt_readahead_ack));
+  enum readahead_ack_action action = (SM_READAHEAD_ACK_ACTION (message));
+  OS2_destroy_message (message);
+  return (action);
 }
 
 readahead_buffer_t *

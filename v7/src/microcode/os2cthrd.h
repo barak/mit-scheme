@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2cthrd.h,v 1.3 1995/01/05 23:42:50 cph Exp $
+$Id: os2cthrd.h,v 1.4 1995/04/28 07:04:57 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -64,13 +64,18 @@ typedef struct
 #define SM_READAHEAD_INDEX(m) (((sm_readahead_t *) (m)) -> index)
 #define SM_READAHEAD_DATA(m) (((sm_readahead_t *) (m)) -> data)
 
-#define OS2_make_readahead_ack() OS2_create_message (mt_readahead_ack)
+enum readahead_ack_action { raa_read, raa_close };
 
-typedef msg_t sm_readahead_ack_t;
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  enum readahead_ack_action action;
+} sm_readahead_ack_t;
+#define SM_READAHEAD_ACK_ACTION(m) (((sm_readahead_ack_t *) (m)) -> action)
 
 extern channel_context_t * OS2_make_channel_context (void);
 extern long OS2_channel_thread_read (Tchannel, char *, size_t);
-extern void OS2_wait_for_readahead_ack (qid_t);
+extern enum readahead_ack_action OS2_wait_for_readahead_ack (qid_t);
 extern void OS2_channel_thread_close (Tchannel);
 
 typedef struct

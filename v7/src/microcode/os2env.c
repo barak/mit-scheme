@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2env.c,v 1.5 1995/04/23 03:16:49 cph Exp $
+$Id: os2env.c,v 1.6 1995/04/28 07:04:58 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -165,26 +165,21 @@ OS_process_clock (void)
 static HEV timer_event;
 static int timer_handle_valid;
 static HTIMER timer_handle;
-static TID timer_tid;
+TID OS2_timer_tid;
 
 static void
 initialize_timer (void)
 {
   timer_event = (OS2_create_event_semaphore (0, 1));
   timer_handle_valid = 0;
-  timer_tid = (OS2_beginthread (timer_thread, 0, 0));
-}
-
-void
-OS2_kill_timer_thread (void)
-{
-  OS2_kill_thread (timer_tid);
+  OS2_timer_tid = (OS2_beginthread (timer_thread, 0, 0));
 }
 
 static void
 timer_thread (void * arg)
 {
-  (void) OS2_thread_initialize (QID_NONE);
+  EXCEPTIONREGISTRATIONRECORD registration;
+  (void) OS2_thread_initialize ((&registration), QID_NONE);
   while (1)
     {
       ULONG count = (OS2_reset_event_semaphore (timer_event));
@@ -299,8 +294,6 @@ OS_set_working_dir_pathname (const char * name)
   extern char * OS2_remove_trailing_backslash (const char *);
   unsigned int length;
   name = (OS2_remove_trailing_backslash (name));
-  /* **** Documentation doesn't clarify whether DosSetCurrentDir will
-     handle the drive prefix correctly or not.  */
   length = (strlen (name));
   if ((length >= 2) && ((name[1]) == ':'))
     {
@@ -308,6 +301,7 @@ OS_set_working_dir_pathname (const char * name)
 	(dos_set_default_disk,
 	 ((name[0]) - ((islower (name[0])) ? 'a' : 'A') + 1));
       name += 2;
+      length -= 2;
     }
-  STD_API_CALL (dos_set_current_dir, ((char *) name));
+  STD_API_CALL (dos_set_current_dir, ((length == 0) ? "\\" : name));
 }

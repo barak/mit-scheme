@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2proc.c,v 1.1 1995/01/06 00:02:45 cph Exp $
+$Id: os2proc.c,v 1.2 1995/04/28 07:05:03 cph Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -86,7 +86,7 @@ static process_t * process_table;
 static unsigned long process_tick;
 static unsigned long sync_tick;
 static HEV start_child_event;
-static TID child_wait_tid;
+TID OS2_child_wait_tid;
 static qid_t child_wait_qid_reader;
 static qid_t child_wait_qid_writer;
 
@@ -128,7 +128,7 @@ OS2_initialize_processes (void)
   start_child_event = (OS2_create_event_semaphore (0, 0));
   OS2_make_qid_pair ((& child_wait_qid_reader), (& child_wait_qid_writer));
   OS2_open_qid (child_wait_qid_reader, OS2_scheme_tqueue);
-  child_wait_tid = (OS2_beginthread (child_wait_thread, 0, 0));
+  OS2_child_wait_tid = (OS2_beginthread (child_wait_thread, 0, 0));
 }
 
 Tprocess
@@ -158,9 +158,12 @@ OS_make_subprocess (const char * filename,
   if (working_directory != 0)
     OS_set_working_dir_pathname (working_directory);
   {
-    Tprocess child = (allocate_process ());
+    Tprocess child;
     char error_object [100];
     RESULTCODES result_codes;
+
+    lock_process_status ();
+    child = (allocate_process ());
     STD_API_CALL
       (dos_exec_pgm,
        (error_object,
@@ -170,7 +173,6 @@ OS_make_subprocess (const char * filename,
 	((envp == 0) ? 0 : (rewrite_environment (envp))),
 	(& result_codes),
 	((PSZ) filename)));
-    lock_process_status ();
     (PROCESS_ID (child)) = (result_codes . codeTerminate);
     (PROCESS_RAW_STATUS (child)) = process_status_running;
     (PROCESS_RAW_REASON (child)) = 0;
@@ -210,7 +212,12 @@ save_process_state (int save_working_dir_p)
   if (valid_handle_p (2))
     (state -> stderr) = (copy_handle (2));
   if (save_working_dir_p)
-    (state -> working_directory) = (OS_working_dir_pathname ());
+    {
+      const char * dir = (OS_working_dir_pathname ());
+      char * copy = (OS_malloc (strlen (dir)));
+      strcpy (copy, dir);
+      (state -> working_directory) = copy;
+    }
   (state -> copied_p) = 1;
 }
 
@@ -239,7 +246,10 @@ restore_process_state (void * env)
       restore_stdio (1, (state -> stdout));
       restore_stdio (2, (state -> stderr));
       if ((state -> working_directory) != 0)
-	OS_set_working_dir_pathname (state -> working_directory);
+	{
+	  OS_set_working_dir_pathname (state -> working_directory);
+	  OS_free ((void *) (state -> working_directory));
+	}
     }
   if ((state -> stdin) != NULLHANDLE)
     (void) dos_close (state -> stdin);
@@ -552,7 +562,8 @@ OS_process_wait (Tprocess process)
 static void
 child_wait_thread (void * arg)
 {
-  (void) OS2_thread_initialize (QID_NONE);
+  EXCEPTIONREGISTRATIONRECORD registration;
+  (void) OS2_thread_initialize ((&registration), QID_NONE);
  main_loop:
   (void) OS2_wait_event_semaphore (start_child_event, 1);
   (void) OS2_reset_event_semaphore (start_child_event);

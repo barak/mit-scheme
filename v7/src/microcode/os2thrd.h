@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2thrd.h,v 1.2 1995/04/11 05:17:11 cph Exp $
+$Id: os2thrd.h,v 1.3 1995/04/28 07:05:05 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -42,11 +42,17 @@ typedef struct
 {
   error_hook_t error_hook;
   jmp_buf error_restart;
+  PEXCEPTIONREGISTRATIONRECORD exception_handler;
   qid_t error_queue;
+  char fatal_error_buffer [1024];
 } thread_store_t;
 #define THREAD_ERROR_HOOK() ((* (OS2_threadstore ())) -> error_hook)
 #define THREAD_ERROR_RESTART() ((* (OS2_threadstore ())) -> error_restart)
 #define THREAD_ERROR_QUEUE() ((* (OS2_threadstore ())) -> error_queue)
+#define THREAD_FATAL_ERROR_BUFFER()					\
+  ((* (OS2_threadstore ())) -> fatal_error_buffer)
+#define THREAD_EXCEPTION_HANDLER()					\
+  ((* (OS2_threadstore ())) -> exception_handler)
 
 typedef struct
 {
@@ -81,7 +87,8 @@ extern thread_store_t ** OS2_threadstore (void);
 extern PID OS2_scheme_pid;
 extern TID OS2_scheme_tid;
 
-extern int  OS2_thread_initialize (qid_t);
+extern int  OS2_thread_initialize (PEXCEPTIONREGISTRATIONRECORD, qid_t);
+extern int  OS2_thread_initialize_1 (PEXCEPTIONREGISTRATIONRECORD, qid_t);
 extern int  OS2_error_message_p (msg_t *);
 extern void OS2_handle_error_message (msg_t *);
 extern void OS2_ignore_errors (void);

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2thrd.c,v 1.2 1995/04/11 05:17:03 cph Exp $
+$Id: os2thrd.c,v 1.3 1995/04/28 07:05:04 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -35,6 +35,11 @@ MIT in each case. */
 #include "os2.h"
 #include "prims.h"
 #include "errors.h"
+
+extern void OS2_create_msg_queue (void);
+extern ULONG APIENTRY OS2_subthread_exception_handler
+  (PEXCEPTIONREPORTRECORD, PEXCEPTIONREGISTRATIONRECORD, PCONTEXTRECORD,
+   PVOID);
 
 TID
 OS2_beginthread (thread_procedure_t procedure,
@@ -61,6 +66,7 @@ OS2_beginthread (thread_procedure_t procedure,
 void
 OS2_endthread (void)
 {
+  DosUnsetExceptionHandler (THREAD_EXCEPTION_HANDLER ());
 #ifdef __IBMC__
   _endthread ();
 #else
@@ -79,7 +85,6 @@ OS2_current_tid (void)
 {
   PTIB ptib;
   PPIB ppib;
-  TID tid;
   STD_API_CALL (dos_get_info_blocks, ((&ptib), (&ppib)));
   return (ptib -> tib_ptib2 -> tib2_ultid);
 }
@@ -102,7 +107,6 @@ PID OS2_scheme_pid;
 TID OS2_scheme_tid;
 
 static void thread_initialize_1 (qid_t);
-static int  thread_initialize_error_hook (void);
 static void restore_errors (void *);
 static void signal_error (msg_t *);
 static void ignore_error (msg_t *);
@@ -126,10 +130,26 @@ OS2_initialize_scheme_thread (void)
 }
 
 int
-OS2_thread_initialize (qid_t error_qid)
+OS2_thread_initialize (PEXCEPTIONREGISTRATIONRECORD registration,
+		       qid_t error_qid)
+{
+  /* Every thread has a message queue, so that we can use message
+     dialogs to report fatal errors to the user.  Otherwise, Scheme
+     will just die with no explanation.  */
+  OS2_create_msg_queue ();
+  return (OS2_thread_initialize_1 (registration, error_qid));
+}
+
+int
+OS2_thread_initialize_1 (PEXCEPTIONREGISTRATIONRECORD registration,
+			 qid_t error_qid)
 {
   thread_initialize_1 (error_qid);
-  return (thread_initialize_error_hook ());
+  (registration -> ExceptionHandler) = OS2_subthread_exception_handler;
+  DosSetExceptionHandler (registration);
+  (THREAD_EXCEPTION_HANDLER ()) = registration;
+  (THREAD_ERROR_HOOK ()) = send_error;
+  return (setjmp (THREAD_ERROR_RESTART ()));
 }
 
 static void
@@ -137,13 +157,21 @@ thread_initialize_1 (qid_t error_qid)
 {
   (* (OS2_threadstore ())) = (OS_malloc (sizeof (thread_store_t)));
   (THREAD_ERROR_QUEUE ()) = error_qid;
+  ((THREAD_FATAL_ERROR_BUFFER ()) [0]) = '\0';
 }
 
-static int
-thread_initialize_error_hook (void)
+char *
+OS2_thread_fatal_error_buffer (void)
 {
-  (THREAD_ERROR_HOOK ()) = send_error;
-  return (setjmp (THREAD_ERROR_RESTART ()));
+  /* The default buffer may get used if an error occurs very early in
+     a thread, before the regular error buffer is allocated.  This can
+     easily happen in the Scheme thread, but shouldn't happen in the
+     other threads.  */
+  static char default_buffer [1024] = "";
+  return
+    (((* (OS2_threadstore ())) == 0)
+     ? default_buffer
+     : (THREAD_FATAL_ERROR_BUFFER ()));
 }
 
 int

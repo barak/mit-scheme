@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2.c,v 1.3 1995/01/05 23:36:07 cph Exp $
+$Id: os2.c,v 1.4 1995/04/28 07:04:53 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -34,10 +34,140 @@ MIT in each case. */
 
 #include "os2.h"
 
+/* Define OS2_USE_SUBHEAP_MALLOC to use this custom malloc
+   implementation for most of Scheme's memory.  This implementation,
+   by virtue of being separate from the system's malloc, and also by
+   having specific redundancy checks, offers some features that can be
+   valuable during debugging of memory problems.  */
+
+/* #define OS2_USE_SUBHEAP_MALLOC */
+#ifdef OS2_USE_SUBHEAP_MALLOC
+
+static PVOID malloc_object;
+static ULONG malloc_object_size = 0x200000; /* two megabytes */
+
+typedef struct
+{
+  char * check;
+  unsigned int size;
+} malloc_header_t;
+
+void
+OS2_initialize_malloc (void)
+{
+  if (((DosAllocMem ((&malloc_object),
+		     malloc_object_size,
+		     (PAG_EXECUTE | PAG_READ | PAG_WRITE)))
+       != NO_ERROR)
+      || ((DosSubSetMem (malloc_object,
+			 (DOSSUB_INIT | DOSSUB_SPARSE_OBJ | DOSSUB_SERIALIZE),
+			 malloc_object_size))
+	  != NO_ERROR))
+    termination_init_error ();
+}
+
+static malloc_header_t *
+guarantee_valid_malloc_pointer (void * ptr)
+{
+  malloc_header_t * header = (((malloc_header_t *) ptr) - 1);
+  if ((((char *) header) < ((char *) malloc_object))
+      || (((char *) header) > (((char *) malloc_object) + malloc_object_size))
+      || ((((ULONG) header) & 7) != 0)
+      || ((header -> check) != (((char *) header) - 47)))
+    OS2_logic_error ("Bad pointer passed to OS_free.");
+  return (header);
+}
+
+void *
+OS2_malloc_noerror (unsigned int size)
+{
+  PVOID result;
+  APIRET rc
+    = (DosSubAllocMem (malloc_object,
+		       (&result),
+		       (size + (sizeof (malloc_header_t)))));
+  if (rc == ERROR_DOSSUB_NOMEM)
+    return (0);
+  if (rc != NO_ERROR)
+    {
+      char buffer [1024];
+      sprintf (buffer, "DosSubAllocMem error: %d.", rc);
+      OS2_logic_error (buffer);
+    }
+  (((malloc_header_t *) result) -> check) = (((char *) result) - 47);
+  (((malloc_header_t *) result) -> size) = size;
+  return (((malloc_header_t *) result) + 1);
+}
+
+void
+OS_free (void * ptr)
+{
+  malloc_header_t * header = (guarantee_valid_malloc_pointer (ptr));
+  APIRET rc;
+  (header -> check) = 0;
+  rc = (DosSubFreeMem (malloc_object, header, (header -> size)));
+  if (rc != NO_ERROR)
+    {
+      char buffer [1024];
+      sprintf (buffer, "DosSubFreeMem error: %d.", rc);
+      OS2_logic_error (buffer);
+    }
+}
+
+void *
+OS2_realloc_noerror (void * ptr, unsigned int size)
+{
+  unsigned int osize = ((guarantee_valid_malloc_pointer (ptr)) -> size);
+  if (osize == size)
+    return (ptr);
+  {
+    void * result = (OS2_malloc_noerror (size));
+    if (result != 0)
+      {
+	char * scan1 = ptr;
+	char * end1 = (scan1 + ((osize < size) ? osize : size));
+	char * scan2 = result;
+	while (scan1 < end1)
+	  (*scan2++) = (*scan1++);
+	OS_free (ptr);
+      }
+    return (result);
+  }
+}
+
+#else /* not OS2_USE_SUBHEAP_MALLOC */
+
+/* Use malloc.  */
+
+void
+OS2_initialize_malloc (void)
+{
+}
+
+void *
+OS2_malloc_noerror (unsigned int size)
+{
+  return (malloc (size));
+}
+
+void *
+OS2_realloc_noerror (void * ptr, unsigned int size)
+{
+  return (realloc (ptr, size));
+}
+
+void
+OS_free (void * ptr)
+{
+  free (ptr);
+}
+
+#endif /* not OS2_USE_SUBHEAP_MALLOC */
+
 void *
 OS_malloc (unsigned int size)
 {
-  void * result = (malloc (size));
+  void * result = (OS2_malloc_noerror (size));
   if (result == 0)
     OS2_error_system_call (ERROR_NOT_ENOUGH_MEMORY, syscall_malloc);
   return (result);
@@ -46,16 +176,10 @@ OS_malloc (unsigned int size)
 void *
 OS_realloc (void * ptr, unsigned int size)
 {
-  void * result = (realloc (ptr, size));
+  void * result = (OS2_realloc_noerror (ptr, size));
   if (result == 0)
     OS2_error_system_call (ERROR_NOT_ENOUGH_MEMORY, syscall_realloc);
   return (result);
-}
-
-void
-OS_free (void * ptr)
-{
-  free (ptr);
 }
 
 HMTX
@@ -197,13 +321,44 @@ OS2_system_variable (ULONG index)
     (dos_query_sys_info, (index, index, (&result), (sizeof (result))));
   return (result);
 }
+
+int
+OS2_essential_thread_p (TID tid)
+{
+  extern TID OS2_pm_tid;
+  extern TID OS2_timer_tid;
+  extern TID OS2_console_tid;
+  return ((tid == OS2_scheme_tid)
+	  || (tid == OS2_pm_tid)
+	  || (tid == OS2_timer_tid)
+	  || (tid == OS2_console_tid));
+}
 
 void
 OS2_logic_error_1 (const char * description,
 		   const char * file,
 		   unsigned int line)
 {
-  outf_fatal ("\nFatal error in file \"%s\", line %d:\n%s\nGet a wizard.\n",
-	      file, line, description);
-  termination_init_error ();
+  extern TID OS2_child_wait_tid;
+  char * format = "%s error in thread %d, file \"%s\", line %d: %s%s\
+  This indicates a bug in the Scheme implementation.\
+  Please report this information to a Scheme wizard.";
+  TID tid = (OS2_current_tid ());
+  if (OS2_essential_thread_p (tid))
+    {
+      outf_fatal (format, "Fatal", tid, file, line, description, "");
+      termination_init_error ();
+    }
+  else
+    {
+      extern void OS2_message_box (const char *, const char *, int);
+      char buffer [1024];
+      sprintf (buffer, format, "Non-fatal", tid, file, line, description,
+	       ((tid == OS2_child_wait_tid)
+		? "  The thread will be killed.\
+  Afterwards, Scheme will not be able to manage subprocesses properly."
+		: "  The thread will be killed."));
+      OS2_message_box ("Scheme Error", buffer, 0);
+      OS2_endthread ();
+    }
 }
