@@ -1,6 +1,6 @@
 #| -*- Scheme -*-
 
-$Id: ed-ffi.scm,v 1.8 1994/10/11 23:50:22 cph Exp $
+$Id: ed-ffi.scm,v 1.9 1994/12/19 21:07:03 cph Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -67,6 +67,12 @@ MIT in each case. |#
     ("dbgcmd"	(runtime debugger-command-loop)
 		syntax-table/system-internal)
     ("dbgutl"	(runtime debugger-utilities)
+		syntax-table/system-internal)
+    ("dosdir"	(runtime directory)
+		syntax-table/system-internal)
+    ("dosprm"	()
+		syntax-table/system-internal)
+    ("dospth"	(runtime pathname dos)
 		syntax-table/system-internal)
     ("debug"	(runtime debugger)
 		syntax-table/system-internal)
@@ -143,6 +149,10 @@ MIT in each case. |#
     ("numpar"	(runtime number-parser)
 		syntax-table/system-internal)
     ("option"	(runtime options)
+		syntax-table/system-internal)
+    ("os2dir"	(runtime directory)
+		syntax-table/system-internal)
+    ("os2prm"	()
 		syntax-table/system-internal)
     ("output"	(runtime output-port)
 		syntax-table/system-internal)
