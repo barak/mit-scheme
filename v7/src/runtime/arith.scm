@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.58 2003/04/19 04:23:41 cph Exp $
+$Id: arith.scm,v 1.59 2004/06/12 02:14:41 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1999,2001,2002 Massachusetts Institute of Technology
-Copyright 2003 Massachusetts Institute of Technology
+Copyright 2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -97,6 +97,8 @@ USA.
 (define flo:significand-digits-base-2)
 (define flo:significand-digits-base-10)
 (define int:flonum-integer-limit)
+(define fix:largest-value)
+(define fix:smallest-value)
 
 (define (initialize-microcode-dependencies!)
   (let ((p microcode-id/floating-mantissa-bits))
@@ -113,6 +115,12 @@ USA.
 			 (flo:/ (flo:log 10.) (flo:log 2.))))))
     (set! int:flonum-integer-limit (int:expt 2 p)))
   unspecific)
+
+(define (largest-fixnum)
+  fix:largest-value)
+
+(define (smallest-fixnum)
+  fix:smallest-value)
 
 (define (initialize-package!)
   (initialize-microcode-dependencies!)
@@ -252,6 +260,21 @@ USA.
 		      ,generic-binary))))))))
     (max/min max complex:max)
     (max/min min complex:min))
+
+  (let loop ((n 1))
+    (if (fix:fixnum? n)
+	(loop (* n 2))
+	(let ((n (- n 1)))
+	  (if (not (fix:fixnum? n))
+	      (error "Unable to compute largest fixnum:" n))
+	  (set! fix:largest-value n))))
+  (let loop ((n -1))
+    (if (fix:fixnum? n)
+	(loop (* n 2))
+	(let ((n (quotient n 2)))
+	  (if (not (fix:fixnum? n))
+	      (error "Unable to compute smallest fixnum:" n))
+	  (set! fix:smallest-value n))))
 
   unspecific)
 
