@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: filcom.scm,v 1.199 1999/01/28 03:59:53 cph Exp $
+;;; $Id: filcom.scm,v 1.200 1999/01/28 06:14:03 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -680,8 +680,8 @@ Prefix arg means treat the plaintext file as binary data."
 (define (prompt-for-existing-file prompt default . options)
   (->namestring
    (prompt-for-pathname* prompt default file-non-directory?
-	  'REQUIRE-MATCH? #t
-	  options)))
+			 'REQUIRE-MATCH? #t
+			 options)))
 
 (define (file-non-directory? file)
   (and (file-exists? file)
@@ -742,6 +742,7 @@ Prefix arg means treat the plaintext file as binary data."
 	       verify-final-value
 	       (prompt-string->pathname string insertion directory)))
 	    'DEFAULT-TYPE 'INSERTED-DEFAULT
+	    'HISTORY 'PROMPT-FOR-PATHNAME
 	    options)
      insertion
      directory)))
