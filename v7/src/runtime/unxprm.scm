@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.5 1989/10/26 06:47:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.6 1989/12/08 01:52:05 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -71,6 +71,10 @@ MIT in each case. |#
   ((ucode-primitive file-attributes)
    (pathname->string (pathname->absolute-pathname (->pathname filename)))))
 
+(define (file-attributes-indirect filename)
+  ((ucode-primitive file-attributes-indirect)
+   (pathname->string (pathname->absolute-pathname (->pathname filename)))))
+
 (define-structure (file-attributes
 		   (type vector)
 		   (constructor false)
@@ -87,7 +91,7 @@ MIT in each case. |#
   (inode-number false read-only true))
 
 (define (file-modification-time filename)
-  (let ((attributes (file-attributes filename)))
+  (let ((attributes (file-attributes-indirect filename)))
     (and attributes
 	 (file-attributes/modification-time attributes))))
 
