@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prosio.c,v 1.21 2003/01/22 18:42:26 cph Exp $
+$Id: prosio.c,v 1.22 2003/01/22 19:46:01 cph Exp $
 
 Copyright 1987,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1996,1997,2001,2003 Massachusetts Institute of Technology
@@ -304,20 +304,19 @@ DEFINE_PRIMITIVE ("TEST-SELECT-REGISTRY", Prim_test_selreg, 4, 4, 0)
     select_registry_t r = (arg_select_registry (1));
     unsigned int rl = (OS_select_registry_length (r));
     int blockp = (BOOLEAN_ARG (2));
-    SCHEME_OBJECT vr = (VECTOR_ARG (3));
-    SCHEME_OBJECT vw = (VECTOR_ARG (4));
+    SCHEME_OBJECT vfd = (VECTOR_ARG (3));
+    SCHEME_OBJECT vmode = (VECTOR_ARG (4));
     int result;
 
-    if ((VECTOR_LENGTH (vr)) < (rl + 1))
+    if ((VECTOR_LENGTH (vfd)) < rl)
       error_bad_range_arg (3);
-    if ((VECTOR_LENGTH (vw)) < (rl + 1))
+    if ((VECTOR_LENGTH (vmode)) < rl)
       error_bad_range_arg (4);
     result = (OS_test_select_registry (r, blockp));
     if (result > 0)
       {
 	unsigned int i = 0;
-	unsigned int ir = 1;
-	unsigned int iw = 1;
+	unsigned int iv = 0;
 	while (i < rl)
 	  {
 	    int fd;
@@ -326,24 +325,12 @@ DEFINE_PRIMITIVE ("TEST-SELECT-REGISTRY", Prim_test_selreg, 4, 4, 0)
 	    OS_select_registry_result (r, i, (&fd), (&mode));
 	    if (mode > 0)
 	      {
-		SCHEME_OBJECT sfd = (long_to_integer (fd));
-		if (((mode & SELECT_MODE_READ) != 0)
-		    || ((mode & SELECT_MODE_ERROR) != 0)
-		    || ((mode & SELECT_MODE_HUP) != 0))
-		  {
-		    VECTOR_SET (vr, ir, sfd);
-		    ir += 1;
-		  }
-		if ((mode & SELECT_MODE_WRITE) != 0)
-		  {
-		    VECTOR_SET (vw, iw, sfd);
-		    iw += 1;
-		  }
+		VECTOR_SET (vfd, iv, (long_to_integer (fd)));
+		VECTOR_SET (vmode, iv, (ulong_to_integer (mode)));
+		iv += 1;
 	      }
 	    i += 1;
 	  }
-	VECTOR_SET (vr, 0, (ulong_to_integer (ir - 1)));
-	VECTOR_SET (vw, 0, (ulong_to_integer (iw - 1)));
       }
     PRIMITIVE_RETURN (long_to_integer (result));
   }

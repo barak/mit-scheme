@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.37 2003/01/22 02:05:41 cph Exp $
+$Id: thread.scm,v 1.38 2003/01/22 19:46:40 cph Exp $
 
 Copyright 1991,1992,1993,1998,1999,2001 Massachusetts Institute of Technology
 Copyright 2003 Massachusetts Institute of Technology
@@ -455,10 +455,14 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 		(wait-for-io)))))))
 
 (define (signal-select-result result)
-  (cond ((pair? result)
-	 (signal-io-thread-events (car result) (cdr result)))
+  (cond ((vector? result)
+	 (signal-io-thread-events (vector-ref result 0)
+				  (vector-ref result 1)
+				  (vector-ref result 2)))
 	((eq? 'PROCESS-STATUS-CHANGE result)
-	 (signal-io-thread-events '#(1 PROCESS-STATUS-CHANGE) '#(0)))))
+	 (signal-io-thread-events 1
+				  '#(PROCESS-STATUS-CHANGE)
+				  '#(READ)))))
 
 (define (block-on-io-descriptor descriptor mode)
   (without-interrupts
@@ -497,12 +501,14 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	  (%deregister-io-thread-event registration-1)))))))
 
 (define (permanently-register-io-thread-event descriptor mode thread event)
+  (guarantee-select-mode mode 'PERMANENTLY-REGISTER-IO-THREAD-EVENT)
   (guarantee-thread thread 'PERMANENTLY-REGISTER-IO-THREAD-EVENT)
   (without-interrupts
    (lambda ()
      (%register-io-thread-event descriptor mode thread event #t #f))))
 
 (define (register-io-thread-event descriptor mode thread event)
+  (guarantee-select-mode mode 'REGISTER-IO-THREAD-EVENT)
   (guarantee-thread thread 'REGISTER-IO-THREAD-EVENT)
   (without-interrupts
    (lambda ()
@@ -518,6 +524,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
      (%maybe-toggle-thread-timer))))
 
 (define (deregister-io-descriptor-events descriptor mode)
+  (guarantee-select-mode mode 'DEREGISTER-IO-DESCRIPTOR-EVENTS)
   (without-interrupts
    (lambda ()
      (let loop ((dentry io-registrations))
@@ -597,42 +604,44 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 				       (not (tentry/permanent? tentry))))
 			      (cons tentry tentries)
 			      tentries))))))))
+
+(define (guarantee-select-mode mode procedure)
+  (if (not (memq mode '(READ WRITE READ-WRITE)))
+      (error:wrong-type-argument mode "select mode" procedure)))
 
-(define (signal-io-thread-events vr vw)
+(define (signal-io-thread-events n vfd vmode)
   (let ((search
-	 (lambda (descriptor v)
-	   (let ((n (vector-ref v 0)))
-	     (let loop ((i 1))
-	       (and (fix:<= i n)
-		    (or (eqv? descriptor (vector-ref v i))
-			(loop (fix:+ i 1)))))))))
-    (let loop ((dentry io-registrations) (events '()))
-      (if dentry
-	  (let ((mode
-		 (let ((descriptor (dentry/descriptor dentry))
-		       (mode (dentry/mode dentry)))
-		   (case mode
-		     ((READ) (and (search descriptor vr) 'READ))
-		     ((WRITE) (and (search descriptor vw) 'WRITE))
-		     ((READ/WRITE)
-		      (if (search descriptor vr)
-			  (if (search descriptor vw) 'READ/WRITE 'READ)
-			  (if (search descriptor vw) 'WRITE #f)))
-		     (else #f)))))
-	    (if mode
-		(let ((next (dentry/next dentry))
-		      (tentry (dentry/first-tentry dentry)))
-		  (let ((events
-			 (cons (cons (tentry/thread tentry)
-				     (let ((e (tentry/event tentry)))
-				       (and e
-					    (lambda () (e mode)))))
-			       events)))
-		    (if (tentry/permanent? tentry)
-			(move-tentry-to-back! tentry)
-			(delete-tentry! tentry))
-		    (loop next events)))
-		(loop (dentry/next dentry) events)))
+	 (lambda (descriptor predicate)
+	   (let scan-dentries ((dentry io-registrations))
+	     (and dentry
+		  (if (and (eqv? descriptor (dentry/descriptor dentry))
+			   (predicate (dentry/mode dentry)))
+		      dentry
+		      (scan-dentries (dentry/next dentry))))))))
+    (let loop ((i 0) (events '()))
+      (if (fix:< i n)
+	  (let ((descriptor (vector-ref vfd i))
+		(mode (vector-ref vmode i)))
+	    (let ((dentry
+		   (search
+		    descriptor
+		    (case mode
+		      ((READ) (lambda (mode) (memq mode '(READ READ/WRITE))))
+		      ((WRITE) (lambda (mode) (memq mode '(WRITE READ/WRITE))))
+		      ((READ/WRITE) (lambda (mode) mode))
+		      ((ERROR HANGUP) (lambda (mode) mode #t))
+		      (else (error "Illegal mode:" mode))))))
+	      (let ((tentry (dentry/first-tentry dentry)))
+		(let ((events
+		       (cons (cons (tentry/thread tentry)
+				   (let ((e (tentry/event tentry)))
+				     (and e
+					  (lambda () (e mode)))))
+			     events)))
+		  (if (tentry/permanent? tentry)
+		      (move-tentry-to-back! tentry)
+		      (delete-tentry! tentry))
+		  (loop (fix:+ i 1) events)))))
 	  (do ((events events (cdr events)))
 	      ((not (pair? events)))
 	    (%signal-thread-event (caar events) (cdar events)))))))

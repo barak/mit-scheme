@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.68 2003/01/22 18:43:05 cph Exp $
+$Id: io.scm,v 14.69 2003/01/22 19:46:32 cph Exp $
 
 Copyright 1986,1987,1988,1990,1991,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1998,1999,2000,2001 Massachusetts Institute of Technology
@@ -1237,20 +1237,13 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	  descriptor
 	  block?
 	  (encode-select-registry-mode mode))))
-    (if (>= result 0)
-	(cond ((fix:= 8 (fix:and 8 result)) 'HANGUP)
-	      ((fix:= 4 (fix:and 4 result)) 'ERROR)
-	      (else
-	       (if (fix:= 1 (fix:and 1 result))
-		   (if (fix:= 2 (fix:and 2 result)) 'READ/WRITE 'READ)
-		   (if (fix:= 2 (fix:and 2 result)) 'WRITE #f))))
-	(case result
-	  ((-1) 'INTERRUPT)
-	  ((-2)
+    (cond ((>= result 0) (decode-select-registry-mode result))
+	  ((= result -1) 'INTERRUPT)
+	  ((= result -2)
 	   (subprocess-global-status-tick)
 	   'PROCESS-STATUS-CHANGE)
 	  (else
-	   (error "Illegal result from TEST-SELECT-DESCRIPTOR:" result))))))
+	   (error "Illegal result from TEST-SELECT-DESCRIPTOR:" result)))))
 
 (define (encode-select-registry-mode mode)
   (case mode
@@ -1258,19 +1251,32 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
     ((WRITE) 2)
     ((READ/WRITE) 3)
     (else (error:bad-range-argument mode 'ENCODE-SELECT-REGISTRY-MODE))))
+
+(define (decode-select-registry-mode mode)
+  (cond ((fix:= 8 (fix:and 8 mode)) 'HANGUP)
+	((fix:= 4 (fix:and 4 mode)) 'ERROR)
+	(else
+	 (if (fix:= 1 (fix:and 1 mode))
+	     (if (fix:= 2 (fix:and 2 mode)) 'READ/WRITE 'READ)
+	     (if (fix:= 2 (fix:and 2 mode)) 'WRITE #f)))))
 
 (define (test-select-registry registry block?)
-  (receive (vr vw) (allocate-select-registry-result-vectors registry)
+  (receive (vfd vmode) (allocate-select-registry-result-vectors registry)
     (let ((result
 	   ((ucode-primitive test-select-registry 4)
 	    (select-registry-handle registry)
 	    block?
-	    vr
-	    vw)))
+	    vfd
+	    vmode)))
       (if (> result 0)
-	  (cons vr vw)
 	  (begin
-	    (deallocate-select-registry-result-vectors vr vw)
+	    (do ((i 0 (fix:+ i 1)))
+		((fix:= i result))
+	      (vector-set! vmode i
+			   (decode-select-registry-mode (vector-ref vmode i))))
+	    (vector result vfd vmode))
+	  (begin
+	    (deallocate-select-registry-result-vectors vfd vmode)
 	    (cond ((= 0 result) #f)
 		  ((= -1 result) 'INTERRUPT)
 		  ((= -2 result)
@@ -1291,14 +1297,14 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 		 rl))))
       (let loop ((rv select-registry-result-vectors))
 	(if (pair? rv)
-	    (let ((vr (caar rv))
-		  (vw (cdar rv)))
-	      (if (and vr (fix:< n (vector-length vr)))
+	    (let ((vfd (caar rv))
+		  (vmode (cdar rv)))
+	      (if (and vfd (fix:<= n (vector-length vfd)))
 		  (begin
 		    (set-car! (car rv) #f)
 		    (set-cdr! (car rv) #f)
 		    (set-interrupt-enables! interrupt-mask)
-		    (values vr vw))
+		    (values vfd vmode))
 		  (loop (cdr rv))))
 	    (let loop ((m 16))
 	      (if (fix:< n m)
@@ -1307,15 +1313,15 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 		    (values (make-vector m) (make-vector m)))
 		  (loop (fix:* m 2)))))))))
 
-(define (deallocate-select-registry-result-vectors vr vw)
+(define (deallocate-select-registry-result-vectors vfd vmode)
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
     (let loop ((rv select-registry-result-vectors))
       (if (pair? rv)
 	  (if (caar rv)
 	      (loop (cdr rv))
 	      (begin
-		(set-car! (car rv) vr)
-		(set-cdr! (car rv) vw)))
+		(set-car! (car rv) vfd)
+		(set-cdr! (car rv) vmode)))
 	  (set! select-registry-result-vectors
-		(cons (cons vr vw) select-registry-result-vectors))))
+		(cons (cons vfd vmode) select-registry-result-vectors))))
     (set-interrupt-enables! interrupt-mask)))
