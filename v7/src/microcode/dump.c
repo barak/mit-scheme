@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dump.c,v 9.32 1990/11/21 07:04:02 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dump.c,v 9.33 1992/01/16 01:40:57 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -123,25 +123,28 @@ DEFUN (prepare_dump_header,
   return;
 }
 
+extern unsigned long
+  EXFUN (checksum_area, (unsigned long *, long, unsigned long));
+
 Boolean
 DEFUN (Write_File,
        (Dumped_Object, Heap_Count, Heap_Relocation,
 	Constant_Count, Constant_Relocation,
 	table_start, table_length, table_size,
 	cc_code_p, band_p),
-       SCHEME_OBJECT *Dumped_Object AND
-       long Heap_Count AND
-       SCHEME_OBJECT *Heap_Relocation AND
-       long Constant_Count AND
-       SCHEME_OBJECT *Constant_Relocation AND
-       SCHEME_OBJECT *table_start AND
-       long table_length AND
-       long table_size AND
-       Boolean cc_code_p AND
-       Boolean band_p)
+       SCHEME_OBJECT *Dumped_Object
+       AND long Heap_Count
+       AND SCHEME_OBJECT *Heap_Relocation
+       AND long Constant_Count
+       AND SCHEME_OBJECT *Constant_Relocation
+       AND SCHEME_OBJECT *table_start
+       AND long table_length
+       AND long table_size
+       AND Boolean cc_code_p
+       AND Boolean band_p)
 {
   SCHEME_OBJECT Buffer[FASL_HEADER_LENGTH];
-  unsigned long checksum, checksum_area ();
+  unsigned long checksum;
 
   prepare_dump_header (Buffer, Dumped_Object,
 		       Heap_Count, Heap_Relocation,
@@ -205,13 +208,11 @@ DEFUN (Write_File,
   return (true);
 }
 
-extern unsigned long checksum_area ();
-
 unsigned long
 DEFUN (checksum_area, (start, count, initial_value),
-       register unsigned long *start AND
-       register long count AND
-       unsigned long initial_value)
+       register unsigned long * start
+       AND register long count
+       AND unsigned long initial_value)
 {
   register unsigned long value;
 
