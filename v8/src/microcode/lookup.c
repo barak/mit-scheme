@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/lookup.c,v 9.36 1987/10/05 21:48:32 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/lookup.c,v 9.37 1987/11/04 20:01:34 cph Rel $
  *
  * This file contains symbol lookup and modification routines.  See
  * Hal Abelson for a paper describing and justifying the algorithm.
@@ -1928,11 +1928,11 @@ compiler_cache_operator(name, block, offset)
 				  TRAP_REFERENCES_OPERATOR);
 }
 
-extern long compiler_operator_reference_trap();
+extern long complr_operator_reference_trap();
 extern Pointer compiler_var_error();
 
 long
-compiler_operator_reference_trap(frame_slot, extension)
+complr_operator_reference_trap(frame_slot, extension)
      Pointer *frame_slot, extension;
 {
   long temp;
