@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.22 1987/07/18 03:04:11 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.23 1987/11/23 06:37:38 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -49,25 +49,25 @@ MIT in each case. */
 /* Looks up in the user's shell environment the value of the 
    variable specified as a string. */
 
-Define_Primitive (Prim_get_environment_variable, 1, "GET-ENVIRONMENT-VARIABLE")
+DEFINE_PRIMITIVE ("GET-ENVIRONMENT-VARIABLE", Prim_get_environment_variable, 1)
 {
   char *variable_value;
   extern char *getenv ();
-  Primitive_1_Arg ();
+  PRIMITIVE_HEADER (1);
 
   CHECK_ARG (1, STRING_P);
-  variable_value = (getenv (Scheme_String_To_C_String (Arg1)));
-  return
+  variable_value = (getenv (Scheme_String_To_C_String (ARG_REF (1))));
+  PRIMITIVE_RETURN
     ((variable_value == NULL)
      ? NIL
      : (C_String_To_Scheme_String (variable_value)));
 }
 
-Define_Primitive (Prim_get_user_name, 0, "CURRENT-USER-NAME")
+DEFINE_PRIMITIVE ("CURRENT-USER-NAME", Prim_get_user_name, 0)
 {
   char *user_name;
   char *getlogin ();
-  Primitive_0_Args ();
+  PRIMITIVE_HEADER (0);
 
   user_name = (getlogin ());
   if (user_name == NULL)
@@ -81,75 +81,75 @@ Define_Primitive (Prim_get_user_name, 0, "CURRENT-USER-NAME")
 	error_external_return ();
       user_name = (entry -> pw_name);
     }
-  return (C_String_To_Scheme_String (user_name));
+  PRIMITIVE_RETURN (C_String_To_Scheme_String (user_name));
 }
 
-Define_Primitive (Prim_get_user_home_directory, 1, "GET-USER-HOME-DIRECTORY")
+DEFINE_PRIMITIVE ("GET-USER-HOME-DIRECTORY", Prim_get_user_home_directory, 1)
 {
   struct passwd *entry;
   struct passwd *getpwnam ();
-  Primitive_1_Arg ();
+  PRIMITIVE_HEADER (1);
 
   CHECK_ARG (1, STRING_P);
-  entry = (getpwnam (Scheme_String_To_C_String (Arg1)));
-  return
+  entry = (getpwnam (Scheme_String_To_C_String (ARG_REF (1))));
+  PRIMITIVE_RETURN
     ((entry == NULL)
      ? NIL
      : (C_String_To_Scheme_String (entry -> pw_dir)));
 }
 
-Define_Primitive (Prim_current_file_time, 0, "CURRENT-FILE-TIME")
+DEFINE_PRIMITIVE ("CURRENT-FILE-TIME", Prim_current_file_time, 0)
 {
-  Primitive_0_Args ();
+  PRIMITIVE_HEADER (0);
 
-  return (C_Integer_To_Scheme_Integer (time ((long *) 0)));
+  PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (time ((long *) 0)));
 }
 
-Define_Primitive (Prim_file_time_to_string, 1, "FILE-TIME->STRING")
+DEFINE_PRIMITIVE ("FILE-TIME->STRING", Prim_file_time_to_string, 1)
 {
   long clock;
   long temp;
   char *time_string;
-  Primitive_1_Arg ();
+  PRIMITIVE_HEADER (1);
 
   CHECK_ARG (1, INTEGER_P);
-  temp = (Scheme_Integer_To_C_Integer (Arg1, (& clock)));
+  temp = (Scheme_Integer_To_C_Integer ((ARG_REF (1)), (& clock)));
   if (temp != PRIM_DONE)
-    return (temp);
+    PRIMITIVE_RETURN (temp);
   time_string = (ctime (& clock));
   if ((time_string [24]) == '\n')
     (time_string [24]) = '\0';
-  return (C_String_To_Scheme_String (time_string));
+  PRIMITIVE_RETURN (C_String_To_Scheme_String (time_string));
 }
 
-Define_Primitive (Prim_uid_to_string, 1, "UID->STRING")
+DEFINE_PRIMITIVE ("UID->STRING", Prim_uid_to_string, 1)
 {
   struct passwd *getpwuid ();
   void endpwent ();
   struct passwd *entry;
-  Primitive_1_Args ();
+  PRIMITIVE_HEADER (1);
 
   CHECK_ARG (1, FIXNUM_P);
-  entry = (getpwuid (UNSIGNED_FIXNUM_VALUE (Arg1)));
+  entry = (getpwuid (arg_nonnegative_integer (1)));
   endpwent ();
   if (entry == NULL)
     error_bad_range_arg (1);
-  return (C_String_To_Scheme_String (entry -> pw_name));
+  PRIMITIVE_RETURN (C_String_To_Scheme_String (entry -> pw_name));
 }
 
-Define_Primitive (Prim_gid_to_string, 1, "GID->STRING")
+DEFINE_PRIMITIVE ("GID->STRING", Prim_gid_to_string, 1)
 {
   struct group *getgrgid ();
   void endgrent ();
   struct group *entry;
-  Primitive_1_Args ();
+  PRIMITIVE_HEADER (1);
 
   CHECK_ARG (1, FIXNUM_P);
-  entry = (getgrgid (UNSIGNED_FIXNUM_VALUE (Arg1)));
+  entry = (getgrgid (arg_nonnegative_integer (1)));
   endgrent ();
   if (entry == NULL)
     error_bad_range_arg (1);
-  return (C_String_To_Scheme_String (entry -> gr_name));
+  PRIMITIVE_RETURN (C_String_To_Scheme_String (entry -> gr_name));
 }
 
 /* Returns a vector of 9 items:
@@ -167,21 +167,21 @@ Define_Primitive (Prim_gid_to_string, 1, "GID->STRING")
 
    The filemodestring stuff was gobbled from GNU Emacs. */
 
-Define_Primitive (Prim_file_attributes, 1, "FILE-ATTRIBUTES")
+DEFINE_PRIMITIVE ("FILE-ATTRIBUTES", Prim_file_attributes, 1)
 {
   struct stat stat_result;
+  extern Pointer allocate_marked_vector ();
   Pointer result;
+  extern Pointer allocate_string ();
+  Pointer modes;
   static void filemodestring ();
-  char modes[11];
-  Primitive_1_Arg ();
+  PRIMITIVE_HEADER (1);
 
   CHECK_ARG (1, STRING_P);
-  if ((stat ((Scheme_String_To_C_String (Arg1)), (& stat_result))) < 0)
-    return (NIL);
-  Primitive_GC_If_Needed (10);
-  result = (Make_Pointer (TC_VECTOR, Free));
-  (*Free++) = (Make_Non_Pointer (TC_MANIFEST_VECTOR, 9));
-  Free += 9;
+  if ((stat ((Scheme_String_To_C_String (ARG_REF (1))), (& stat_result))) < 0)
+    PRIMITIVE_RETURN (NIL);
+  result = (allocate_marked_vector (TC_VECTOR, 9, true));
+  modes = (allocate_string (10));
   User_Vector_Set
     (result, 0,
      ((((stat_result . st_mode) & S_IFMT) == S_IFDIR) ? TRUTH : NIL));
@@ -196,11 +196,10 @@ Define_Primitive (Prim_file_attributes, 1, "FILE-ATTRIBUTES")
     (result, 6, (C_Integer_To_Scheme_Integer (stat_result . st_ctime)));
   User_Vector_Set
     (result, 7, (C_Integer_To_Scheme_Integer (stat_result . st_size)));
-  filemodestring ((& stat_result), modes);
-  (modes [10]) = '\0';
-  User_Vector_Set (result, 8, (C_String_To_Scheme_String (modes)));
+  filemodestring ((& stat_result), (string_pointer (modes, 0)));
+  User_Vector_Set (result, 8, modes);
   User_Vector_Set (result, 9, (MAKE_UNSIGNED_FIXNUM (stat_result . st_ino)));
-  return (result);
+  PRIMITIVE_RETURN (result);
 }
 
 /* filemodestring - set file attribute data 
