@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules1.scm,v 4.5 1989/05/17 20:30:53 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules1.scm,v 4.6 1989/05/21 03:55:50 jinx Rel $
 $MC68020-Header: rules1.scm,v 4.22 89/04/27 20:06:32 GMT cph Exp $
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
@@ -233,7 +233,7 @@ MIT in each case. |#
     (LAP (MOVA B
 	       (@PCR ,(rtl-procedure/external-label (label->object label)))
 	      ,target)
-	 (BIC L (& ,(make-non-pointer-literal type 0)) ,target))))
+	 (BIS L (& ,(make-non-pointer-literal type 0)) ,target))))
 
 ;;;; Transfers to Memory
 
