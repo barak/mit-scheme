@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.19 1991/08/26 20:29:21 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.20 1991/08/27 00:52:40 jinx Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -1005,6 +1005,7 @@ MIT in each case. |#
 	 condition-type:open-file-error '(FILENAME EXPLANATION)
 	 standard-error-handler
 	 (lambda (pathname explanation)
+	   explanation			; ignored
 	   (string-append
 	    "Expression to yield replacement for file name \""
 	    (if (pathname? pathname)
