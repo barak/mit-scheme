@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.15 1999/01/02 06:06:43 cph Exp $
+$Id: toplev.scm,v 4.16 2000/01/09 21:33:46 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -170,11 +170,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let ((start-date (get-decoded-time)))
     (if sf:noisy?
 	(begin
-	  (newline)
 	  (write-string "Syntax file: ")
 	  (write (enough-namestring input-pathname))
 	  (write-string " ")
-	  (write (enough-namestring bin-pathname))))
+	  (write (enough-namestring bin-pathname))
+	  (newline)))
     (fasdump (make-comment
 	      `((SOURCE-FILE . ,(->namestring input-pathname))
 		(DATE ,(decoded-time/year start-date)
@@ -339,10 +339,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (end-phase)
   (if sf:noisy?
       (begin
-	(newline)
 	(write-string "    ")
 	(write-string this-name)
-	(write-string "...")))
+	(write-string "...")
+	(newline)))
   (set! previous-name this-name)
   unspecific)
 
@@ -362,10 +362,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (time-report prefix process-time real-time)
   (if sf:noisy?
       (begin
-	(newline)
 	(write-string prefix)
 	(write-string ": ")
 	(write (/ (exact->inexact process-time) 1000))
 	(write-string " (process time); ")
 	(write (/ (exact->inexact real-time) 1000))
-	(write-string " (real time)"))))
+	(write-string " (real time)")
+	(newline))))
