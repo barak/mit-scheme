@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: matcher.scm,v 1.20 2001/11/09 21:37:53 cph Exp $
+;;; $Id: matcher.scm,v 1.21 2001/11/09 21:38:47 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -277,6 +277,7 @@
      ,(delay-call ks kf)))
 
 (define-matcher (with-pointer identifier expression)
+  pointer
   `((LAMBDA (,identifier)
       ,(compile-matcher-expression expression identifier ks kf))
     ,(fetch-pointer)))

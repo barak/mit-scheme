@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: shared.scm,v 1.13 2001/10/16 17:52:33 cph Exp $
+;;; $Id: shared.scm,v 1.14 2001/11/09 21:37:58 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -32,68 +32,64 @@
 	     (preprocessor expression external-bindings internal-bindings)))
 	(maybe-make-let (map (lambda (b) (list (cdr b) (car b)))
 			     (cdr external-bindings))
-			`(LAMBDA (,b)
-			   ,(fluid-let ((*buffer-name* b))
-			      (maybe-make-let (map (lambda (b)
-						     (list (cdr b) (car b)))
-						   (cdr internal-bindings))
-					      (generator expression)))))))))
+	  `(LAMBDA (,b)
+	     ,(fluid-let ((*buffer-name* `(PROTECT ,b)))
+		(maybe-make-let (map (lambda (b)
+				       (list (cdr b) (car b)))
+				     (cdr internal-bindings))
+		  (strip-protection-wrappers
+		   (let ((expression (generator expression)))
+		     (if debug:disable-substitution-optimizer?
+			 expression
+			 (optimize-by-substitution expression))))))))))))
 
 (define *buffer-name*)
+(define debug:disable-substitution-optimizer? #f)
+(define debug:disable-peephole-optimizer? #f)
+(define debug:trace-substitution? #f)
 
 (define (maybe-make-let bindings body)
   (if (pair? bindings)
-      `(LET ,bindings ,body)
+      `((LAMBDA ,(map car bindings) ,body)
+	,@(map cadr bindings))
       body))
 
-(define (wrap-matcher generate-body)
-  (let ((ks (make-ks-identifier))
-	(kf (make-kf-identifier)))
-    `(LAMBDA (,ks ,kf)
-       ,(generate-body ks kf))))
-
-(define wrap-parser wrap-matcher)
-
-(define (wrap-external-matcher matcher)
-  (wrap-matcher
-   (lambda (ks kf)
-     `(IF ,matcher
-	  (,ks ,kf)
-	  (,kf)))))
-
-(define (wrap-external-parser expression)
-  (wrap-matcher
-   (lambda (ks kf)
-     (handle-parser-value expression ks kf))))
-
-(define (handle-parser-value expression ks kf)
-  (with-value-binding expression
-    (lambda (v)
-      `(IF ,v
-	   (,ks ,v ,kf)
-	   (,kf)))))
-
 (define (with-value-binding expression generator)
-  (let ((v (make-value-identifier)))
-    `(LET ((,v ,expression))
-       ,(generator v))))
+  `(,(let ((v (make-value-identifier)))
+       `(LAMBDA (,v)
+	  ,(generator v)))
+    ,expression))
 
 (define (call-with-pointer pointer procedure)
   (if pointer
       (procedure pointer)
-      (let ((p (make-ptr-identifier)))
-	`(LET ((,p ,(fetch-pointer)))
-	   ,(procedure p)))))
+      `(,(let ((p (make-ptr-identifier)))
+	   `(LAMBDA (,p)
+	      ,(procedure p)))
+	,(fetch-pointer))))
 
 (define (fetch-pointer)
   `(GET-PARSER-BUFFER-POINTER ,*buffer-name*))
 
 (define (backtracking-kf pointer generate-body)
-  (call-with-pointer pointer
-    (lambda (p)
-      `(LAMBDA ()
-	 (SET-PARSER-BUFFER-POINTER! ,*buffer-name* ,p)
-	 ,(generate-body p)))))
+  (make-kf-lambda
+   (lambda ()
+     `(BEGIN
+	(SET-PARSER-BUFFER-POINTER! ,*buffer-name* ,pointer)
+	,(generate-body)))))
+
+(define (make-kf-lambda generator)
+  (make-delayed-lambda make-kf-identifier (list) generator))
+
+(define (make-matcher-ks-lambda generator)
+  (make-delayed-lambda make-ks-identifier
+		       (list make-kf-identifier)
+		       generator))
+
+(define (make-parser-ks-lambda generator)
+  (make-delayed-lambda make-ks-identifier
+		       (list make-value-identifier make-kf-identifier)
+		       generator))
 
 (define (make-kf-identifier)
   (generate-identifier 'KF))
@@ -239,34 +235,370 @@
 (define *parser-macros*
   *global-parser-macros*)
 
+;;;; Substitution optimization
+
+(define (bind-delayed-lambdas body-generator . operands)
+  `(,(let ((parameters (map (lambda (operand) ((car operand))) operands)))
+       `(LAMBDA ,parameters
+	  ,(apply body-generator parameters)))
+    ,@(map cadr operands)))
+
+(define (make-delayed-lambda name-generator
+			     parameter-name-generators
+			     body-generator)
+  (list name-generator
+	(let ((parameters
+	       (map (lambda (generator) (generator))
+		    parameter-name-generators)))
+	  `(LAMBDA ,parameters
+	     ,(apply body-generator parameters)))))
+
+(define (delay-call operator . operands)
+  `(,operator ,@operands))
+
+(define (delay-reference object)
+  object)
+
+(define (lambda-expression? expression)
+  (and (pair? expression)
+       (eq? (car expression) 'LAMBDA)))
+
+(define (optimize-by-substitution expression)
+  (if (pair? expression)
+      (case (car expression)
+	((LAMBDA)
+	 `(LAMBDA ,(cadr expression)
+	    ,(optimize-by-substitution (caddr expression))))
+	((LET)
+	 (maybe-resubstitute
+	  (let ((identifier (cadr expression))
+		(bindings
+		 (map (lambda (binding)
+			`(,(car binding)
+			  ,(optimize-by-substitution (cadr binding))))
+		      (caddr expression)))
+		(body (optimize-by-substitution (cadddr expression))))
+	    (let ((discards
+		   (map (lambda (count operand)
+			  (and (= 0 count)
+			       (operand-discardable? operand)))
+			(count-references (map car bindings) body)
+			(map cadr bindings))))
+	      (if (there-exists? discards (lambda (discard) discard))
+		  `(LET ,identifier
+		       ,(apply-discards discards bindings)
+		     ,(discard-unused-operands-1 identifier discards body))
+		  `(LET ,identifier ,bindings ,body))))
+	  expression))
+	((PROTECT)
+	 expression)
+	((VECTOR-APPEND)
+	 (optimize-group-expression (map optimize-by-substitution expression)
+				    '(VECTOR)))
+	(else
+	 (let ((expression (map optimize-by-substitution expression)))
+	   (if (lambda-expression? (car expression))
+	       (let ((body (caddr (car expression))))
+		 (call-with-values
+		     (lambda ()
+		       (compute-bindings-and-substitutions
+			(cadr (car expression))
+			(cdr expression)
+			body))
+		   (lambda (bindings substitutions)
+		     (maybe-resubstitute
+		      (call-with-values
+			  (lambda ()
+			    (discard-unused-operands
+			     bindings
+			     (maybe-apply-substitutions substitutions
+							body)))
+			maybe-make-let)
+		      expression))))
+	       expression))))
+      expression))
+
+(define (maybe-resubstitute result expression)
+  (if (equal? result expression)
+      expression
+      (begin
+	(if debug:trace-substitution?
+	    (begin
+	      (pp expression)
+	      (newline)
+	      (write-string "==>")
+	      (pp result)
+	      (newline)
+	      (newline)))
+	(optimize-by-substitution result))))
+
+(define (discard-unused-operands bindings body)
+  (let loop ((bindings bindings) (body body) (bindings* '()))
+    (if (pair? bindings)
+	(let ((identifier (car (car bindings)))
+	      (operand (cadr (car bindings))))
+	  (if (lambda-expression? operand)
+	      (let ((discards
+		     (map (lambda (count) (= 0 count))
+			  (count-references (cadr operand) (caddr operand)))))
+		(if (there-exists? discards (lambda (discard) discard))
+		    (loop (cdr bindings)
+			  (discard-unused-operands-1 identifier discards body)
+			  (cons (list identifier
+				      `(LAMBDA ,(apply-discards discards
+								(cadr operand))
+					 ,(caddr operand)))
+				bindings*))
+		    (loop (cdr bindings)
+			  body
+			  (cons (car bindings) bindings*))))
+	      (loop (cdr bindings)
+		    body
+		    (cons (car bindings) bindings*))))
+	(values (reverse! bindings*) body))))
+
+(define (apply-discards discards items)
+  (if (pair? discards)
+      (if (car discards)
+	  (apply-discards (cdr discards) (cdr items))
+	  (cons (car items) (apply-discards (cdr discards) (cdr items))))
+      '()))
+
+(define (discard-unused-operands-1 identifier discards expression)
+  (let loop ((expression expression))
+    (if (pair? expression)
+	(if (eq? identifier (car expression))
+	    (call-with-values
+		(lambda ()
+		  (discard-unused-operands-2 discards (cdr expression)))
+	      (lambda (kept not-discarded)
+		(let ((call (cons identifier kept)))
+		  (if (pair? not-discarded)
+		      `(BEGIN ,@not-discarded ,call)
+		      call))))
+	    (case (car expression)
+	      ((LAMBDA)
+	       (if (memq identifier (cadr expression))
+		   expression
+		   `(LAMBDA ,(cadr expression)
+		      ,(loop (caddr expression)))))
+	      ((LET)
+	       `(LET ,(cadr expression)
+		  ,(map (lambda (binding)
+			  `(,(car binding) ,(loop (cadr binding))))
+			(caddr expression))
+		  ,(if (or (eq? identifier (cadr expression))
+			   (assq identifier (caddr expression)))
+		       (cadddr expression)
+		       (loop (cadddr expression)))))
+	      ((PROTECT)
+	       expression)
+	      (else
+	       (map loop expression))))
+	expression)))
+
+(define (discard-unused-operands-2 discards operands)
+  (let loop
+      ((discards discards)
+       (operands operands)
+       (kept '())
+       (not-discarded '()))
+    (if (pair? discards)
+	(if (car discards)
+	    (loop (cdr discards)
+		  (cdr operands)
+		  kept
+		  (if (operand-discardable? (car operands))
+		      not-discarded
+		      (cons (car operands) not-discarded)))
+	    (loop (cdr discards)
+		  (cdr operands)
+		  (cons (car operands) kept)
+		  not-discarded))
+	(values (reverse! kept) (reverse! not-discarded)))))
+
+(define (compute-bindings-and-substitutions identifiers operands body)
+  (let loop
+      ((identifiers identifiers)
+       (operands operands)
+       (counts (count-references identifiers body))
+       (bindings '())
+       (substitutions '()))
+    (if (pair? identifiers)
+	(let ((identifier (car identifiers))
+	      (operand (car operands))
+	      (count (car counts)))
+	  (cond ((and (= 0 count)
+		      (operand-discardable? operand))
+		 (loop (cdr identifiers)
+		       (cdr operands)
+		       (cdr counts)
+		       bindings
+		       substitutions))
+		((or (operand-copyable? operand)
+		     (and (= 1 count)
+			  (operand-substitutable? operand body)))
+		 (loop (cdr identifiers)
+		       (cdr operands)
+		       (cdr counts)
+		       bindings
+		       (cons (cons identifier operand) substitutions)))
+		(else
+		 (loop (cdr identifiers)
+		       (cdr operands)
+		       (cdr counts)
+		       (cons (list identifier operand) bindings)
+		       substitutions))))
+	(values (reverse! bindings) substitutions))))
+
+(define (operand-copyable? operand)
+  (or (symbol? operand)
+      (and (lambda-expression? operand)
+	   (or (boolean? (caddr operand))
+	       (symbol? (caddr operand))))
+      (equal? operand '(VECTOR))))
+
+(define (operand-substitutable? operand body)
+  (or (lambda-expression? operand)
+      (not (and (tree-memq 'PROTECT operand)
+		(tree-memq 'PROTECT body)))))
+
+(define (operand-discardable? operand)
+  (not (tree-memq 'PROTECT operand)))
+
+(define (tree-memq item tree)
+  (let loop ((tree tree))
+    (if (pair? tree)
+	(or (loop (car tree))
+	    (loop (cdr tree)))
+	(eq? item tree))))
+
+(define (maybe-apply-substitutions substitutions expression)
+  (if (pair? substitutions)
+      (let loop ((expression expression) (substitutions substitutions))
+	(cond ((pair? expression)
+	       (case (car expression)
+		 ((LAMBDA)
+		  `(LAMBDA ,(cadr expression)
+		     ,(loop (caddr expression)
+			    (delete-matching-items substitutions
+			      (lambda (s)
+				(memq (car s) (cadr expression)))))))
+		 ((LET)
+		  `(LET ,(cadr expression)
+		     ,(map (lambda (binding)
+			     `(,(car binding)
+			       ,(loop (cadr binding) substitutions)))
+			   (caddr expression))
+		     ,(loop (cadddr expression)
+			    (delete-matching-items substitutions
+			      (lambda (s)
+				(or (eq? (car s) (cadr expression))
+				    (assq (car s) (caddr expression))))))))
+		 ((PROTECT)
+		  expression)
+		 (else
+		  (let ((expression
+			 (map (lambda (expression)
+				(loop expression substitutions))
+			      expression)))
+		    (if (and (lambda-expression? (car expression))
+			     (null? (cadr (car expression)))
+			     (null? (cdr expression)))
+			(caddr (car expression))
+			expression)))))
+	      ((symbol? expression)
+	       (let ((entry (assq expression substitutions)))
+		 (if entry
+		     (cdr entry)
+		     expression)))
+	      (else expression)))
+      expression))
+
+(define (count-references identifiers expression)
+  (let ((alist
+	 (map (lambda (identifier)
+		(cons identifier 0))
+	      identifiers)))
+    (let loop ((expression expression) (alist alist))
+      (cond ((pair? expression)
+	     (case (car expression)
+	       ((LAMBDA)
+		(loop (caddr expression)
+		      (delete-matching-items alist
+			(lambda (entry)
+			  (memq (car entry) (cadr expression))))))
+	       ((LET)
+		(for-each (lambda (binding)
+			    (loop (cadr binding) alist))
+			  (caddr expression))
+		(loop (cadddr expression)
+		      (delete-matching-items alist
+			(lambda (entry)
+			  (or (eq? (car entry) (cadr expression))
+			      (assq (car entry) (caddr expression)))))))
+	       ((PROTECT)
+		unspecific)
+	       (else
+		(for-each (lambda (expression)
+			    (loop expression alist))
+			  expression))))
+	    ((symbol? expression)
+	     (let ((entry (assq expression alist)))
+	       (if entry
+		   (set-cdr! entry (+ (cdr entry) 1)))))))
+    (map cdr alist)))
+
+(define (strip-protection-wrappers expression)
+  (if (pair? expression)
+      (case (car expression)
+	((LAMBDA)
+	 `(LAMBDA ,(cadr expression)
+	    ,(strip-protection-wrappers (caddr expression))))
+	((LET)
+	 `(LET ,(cadr expression)
+	    ,(map (lambda (binding)
+		    (list (car binding)
+			  (strip-protection-wrappers (cadr binding))))
+		  (caddr expression))
+	    ,(strip-protection-wrappers (cadddr expression))))
+	((PROTECT)
+	 (cadr expression))
+	(else
+	 (map strip-protection-wrappers expression)))
+      expression))
+
 ;;;; Code optimizer
 
 (define (optimize-expression expression)
-  (let loop ((entries optimizer-patterns))
-    (cond ((pair? entries)
-	   (if (and (syntax-match? (caar entries) expression)
-		    (or (not (cadar entries))
-			((cadar entries) expression)))
-	       (let ((expression* ((cddar entries) expression)))
+  (if debug:disable-peephole-optimizer?
+      expression
+      (let loop ((entries optimizer-patterns))
+	(cond ((pair? entries)
+	       (if (and (syntax-match? (caar entries) expression)
+			(or (not (cadar entries))
+			    ((cadar entries) expression)))
+		   (let ((expression* ((cddar entries) expression)))
+		     (if (equal? expression* expression)
+			 expression
+			 (optimize-expression expression*)))
+		   (loop (cdr entries))))
+	      ((and (pair? expression)
+		    (symbol? (car expression)))
+	       (let ((expression*
+		      (let ((optimizer
+			     (hash-table/get default-optimizers
+					     (car expression)
+					     #f)))
+			(if optimizer
+			    (optimizer expression)
+			    (cons (car expression)
+				  (map optimize-expression
+				       (cdr expression)))))))
 		 (if (equal? expression* expression)
 		     expression
-		     (optimize-expression expression*)))
-	       (loop (cdr entries))))
-	  ((and (pair? expression)
-		(symbol? (car expression)))
-	   (let ((expression*
-		  (let ((optimizer
-			 (hash-table/get default-optimizers
-					 (car expression)
-					 #f)))
-		    (if optimizer
-			(optimizer expression)
-			(cons (car expression)
-			      (map optimize-expression (cdr expression)))))))
-	     (if (equal? expression* expression)
-		 expression
-		 (optimize-expression expression*))))
-	  (else expression))))
+		     (optimize-expression expression*))))
+	      (else expression)))))
 
 (define (define-optimizer pattern predicate optimizer)
   (let ((entry (assoc pattern optimizer-patterns))
@@ -278,15 +610,12 @@
 		(cons (cons pattern datum) optimizer-patterns))
 	  unspecific))))
 
-(define optimizer-patterns
-  '())
-
 (define (define-default-optimizer keyword optimizer)
   (hash-table/put! default-optimizers keyword optimizer)
   keyword)
 
-(define default-optimizers
-  (make-eq-hash-table))
+(define optimizer-patterns '())
+(define default-optimizers (make-eq-hash-table))
 
 (define (predicate-not-or expression)
   (not (and (pair? (cadr expression))

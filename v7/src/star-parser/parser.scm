@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.scm,v 1.23 2001/11/09 21:37:55 cph Exp $
+;;; $Id: parser.scm,v 1.24 2001/11/09 21:38:43 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -282,6 +282,7 @@
       (procedure ks v kf)))))
 
 (define-parser (with-pointer identifier expression)
+  pointer
   `((LAMBDA (,identifier)
       ,(compile-parser-expression expression identifier ks kf))
     ,(fetch-pointer)))
