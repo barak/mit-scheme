@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.36 1997/06/18 07:05:46 cph Exp $
+;;;	$Id: snr.scm,v 1.37 1997/06/18 07:55:26 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -2777,7 +2777,7 @@ While composing the follow-up, use \\[mail-yank-original] to yank the
 		     (nntp-connection:server
 		      (news-group:connection
 		       (news-header:group
-			(news-article-buffer:header buffer))))))))
+			(news-article-buffer:header article-buffer))))))))
 
 (define (news-article-buffer:followup-fields buffer)
   (let ((header (news-article-buffer:header buffer)))
@@ -2868,8 +2868,9 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
 (define (news-post-it)
   (let ((article-buffer (current-buffer)))
     (let ((temp-buffer
-	   (prepare-mail-buffer-for-sending article-buffer
-					    news-post-process-headers)))
+	   (prepare-mail-buffer-for-sending
+	    article-buffer
+	    (news-post-process-headers article-buffer))))
       (if (let* ((start (buffer-start temp-buffer))
 		 (end (mail-header-end start)))
 	    (or (mail-field-start start end "To")
