@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: c.c,v 1.3 1993/06/15 19:02:11 gjr Exp $
+$Id: c.c,v 1.4 1993/10/26 03:05:43 jawilson Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -48,8 +48,7 @@ extern SCHEME_OBJECT EXFUN (double_to_flonum, (double));
 extern SCHEME_OBJECT EXFUN (long_to_integer, (long));
 extern SCHEME_OBJECT EXFUN (digit_string_to_integer, (Boolean, long, char *));
 extern SCHEME_OBJECT EXFUN (digit_string_to_bit_string, (long, long, char *));
-extern SCHEME_OBJECT EXFUN (search_for_primitive,
-			    (SCHEME_OBJECT, char *, Boolean, Boolean, int));
+extern SCHEME_OBJECT EXFUN (make_primitive, (char *, int));
 
 SCHEME_OBJECT EXFUN ((* (constructor_kludge [10])), ()) =
 {
@@ -62,7 +61,7 @@ SCHEME_OBJECT EXFUN ((* (constructor_kludge [10])), ()) =
   ((SCHEME_OBJECT EXFUN ((*), ())) long_to_integer),
   ((SCHEME_OBJECT EXFUN ((*), ())) digit_string_to_integer),
   ((SCHEME_OBJECT EXFUN ((*), ())) digit_string_to_bit_string),
-  ((SCHEME_OBJECT EXFUN ((*), ())) search_for_primitive)
+  ((SCHEME_OBJECT EXFUN ((*), ())) make_primitive)
 };
 
 #endif /* BUG_GCC_LONG_CALLS */

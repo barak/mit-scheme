@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: primutl.c,v 9.66 1993/08/28 20:01:08 gjr Exp $
+$Id: primutl.c,v 9.67 1993/10/26 03:04:12 jawilson Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -87,7 +87,7 @@ extern void
   EXFUN (install_primitive_table, (SCHEME_OBJECT *, long));
 
 extern SCHEME_OBJECT
-  EXFUN (make_primitive, (char *)),
+  EXFUN (make_primitive, (char *, int)),
   EXFUN (find_primitive, (SCHEME_OBJECT, Boolean, Boolean, int)),
   EXFUN (declare_primitive, (char *, primitive_procedure_t, int, int, char *)),
   EXFUN (install_primitive, (char *, primitive_procedure_t, int, int, char *)),
@@ -100,7 +100,6 @@ extern SCHEME_OBJECT
 
 extern int
   EXFUN (strcmp_ci, (char *, char *));
-
 
 /* Common utilities. */
 
@@ -436,7 +435,8 @@ DEFUN_VOID (initialize_primitives)
 
     if (orig == ((node) NULL))
     {
-      SCHEME_OBJECT old = (make_primitive (primitive_aliases[counter].name));
+      SCHEME_OBJECT old = (make_primitive (primitive_aliases[counter].name,
+					   UNKNOWN_PRIMITIVE_ARITY));
       
       if (old == SHARP_F)
       {
@@ -567,14 +567,14 @@ DEFUN (install_primitive, (name, code, nargs_lo, nargs_hi, docstr),
  */
 
 SCHEME_OBJECT
-DEFUN (make_primitive, (name), char * name)
+DEFUN (make_primitive, (name, arity), char * name AND int arity)
 {
   SCHEME_OBJECT result;
 
   result = (declare_primitive (name,
 			       Prim_unimplemented,
-			       UNKNOWN_PRIMITIVE_ARITY,
-			       UNKNOWN_PRIMITIVE_ARITY,
+			       arity,
+			       arity,
 			       ((char *) NULL)));
   return ((result == SHARP_F)
 	  ? SHARP_F

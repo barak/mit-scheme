@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: intercom.c,v 9.29 1993/06/24 07:08:51 gjr Exp $
+$Id: intercom.c,v 9.30 1993/10/26 03:04:08 jawilson Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -287,14 +287,14 @@ DEFINE_PRIMITIVE ("MASTER-GC-BEFORE-SYNC", Prim_master_before, 0, 0, 0)
 DEFINE_PRIMITIVE ("MASTER-GC-LOOP", Prim_master_gc, 1, 1, 0)
 {
   static SCHEME_OBJECT gc_prim = SHARP_F;
-  extern SCHEME_OBJECT make_primitive ();
+  extern SCHEME_OBJECT EXFUN (make_primitive, (char *, int));
   PRIMITIVE_HEADER (1);
   PRIMITIVE_CANONICALIZE_CONTEXT();
   /* This primitive caches the Scheme object for the garbage collector
      primitive so that it does not have to perform a potentially
      expensive search each time. */
   if (gc_prim == SHARP_F)
-    gc_prim = (make_primitive ("GARBAGE-COLLECT"));
+    gc_prim = (make_primitive ("GARBAGE-COLLECT", 1));
   {
     SCHEME_OBJECT argument = (ARG_REF (1));
     POP_PRIMITIVE_FRAME (1);

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dosconio.c,v 1.11 1993/07/18 22:25:57 gjr Exp $
+$Id: dosconio.c,v 1.12 1993/10/26 03:04:07 jawilson Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -271,7 +271,7 @@ DEFUN (DOS_initialize_fov, (fov), SCHEME_OBJECT fov)
 {
   int ctr, in;
   SCHEME_OBJECT iv, imv, prim, mask;
-  extern SCHEME_OBJECT EXFUN (make_primitive, (char *));
+  extern SCHEME_OBJECT EXFUN (make_primitive, (char *, int));
   static int interrupt_numbers[] = {
     Global_GC_Level,
     Global_1_Level
@@ -283,7 +283,7 @@ DEFUN (DOS_initialize_fov, (fov), SCHEME_OBJECT fov)
 
   iv = (FAST_VECTOR_REF (fov, System_Interrupt_Vector));
   imv = (FAST_VECTOR_REF (fov, FIXOBJ_INTERRUPT_MASK_VECTOR));
-  prim = (make_primitive ("MICROCODE-POLL-INTERRUPT-HANDLER"));
+  prim = (make_primitive ("MICROCODE-POLL-INTERRUPT-HANDLER", 2));
 
   for (ctr = 0; ctr < ((sizeof (interrupt_numbers)) / (sizeof (int))); ctr++)
   {
@@ -374,8 +374,8 @@ DEFUN (console_read, (buffer, nbytes, buffered_p, blocking_p, intrpt_p),
   return (0);
 }
 
-DEFINE_PRIMITIVE ("MICROCODE-POLL-INTERRUPT-HANDLER", Prim_dos_high_priority_timer, 2, 2,
-		  "DOS Polling interrupt handler---timer and keyboard.")
+DEFINE_PRIMITIVE ("MICROCODE-POLL-INTERRUPT-HANDLER", Prim_dos_high_priority_timer,
+		  2, 2, "DOS Polling interrupt handler---timer and keyboard.")
 {
   extern void EXFUN (dos_process_timer_interrupt, (void));
   PRIMITIVE_HEADER (2);

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntsig.c,v 1.14 1993/09/13 18:38:57 gjr Exp $
+$Id: ntsig.c,v 1.15 1993/10/26 03:04:10 jawilson Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -480,7 +480,7 @@ DEFUN (NT_initialize_fov, (fov), SCHEME_OBJECT fov)
 {
   int ctr, in;
   SCHEME_OBJECT iv, imv, prim;
-  extern SCHEME_OBJECT EXFUN (make_primitive, (char *));
+  extern SCHEME_OBJECT EXFUN (make_primitive, (char *, int));
   static int interrupt_numbers[2] =
   {
     Global_GC_Level,
@@ -494,7 +494,7 @@ DEFUN (NT_initialize_fov, (fov), SCHEME_OBJECT fov)
 
   iv = (FAST_VECTOR_REF (fov, System_Interrupt_Vector));
   imv = (FAST_VECTOR_REF (fov, FIXOBJ_INTERRUPT_MASK_VECTOR));
-  prim = (make_primitive ("MICROCODE-POLL-INTERRUPT-HANDLER"));
+  prim = (make_primitive ("MICROCODE-POLL-INTERRUPT-HANDLER", 2));
 
   for (ctr = 0; ctr < ((sizeof (interrupt_numbers)) / (sizeof (int))); ctr++)
   {

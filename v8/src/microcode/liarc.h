@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: liarc.h,v 1.2 1993/06/24 05:46:01 gjr Exp $
+$Id: liarc.h,v 1.3 1993/10/26 03:04:10 jawilson Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -89,8 +89,7 @@ extern void EXFUN (error_band_already_built, (void));
 #define C_SYM_INTERN(len,str)						\
   (MEMORY_TO_SYMBOL ((len), ((unsigned char *) str)))
 
-#define MAKE_PRIMITIVE_PROCEDURE(name,arity)				\
-  (SEARCH_FOR_PRIMITIVE (SHARP_F, name, true, true, arity))
+#define MAKE_PRIMITIVE_PROCEDURE(name,arity) (MAKE_PRIMITIVE (name, arity))
 
 #define MAKE_LINKER_HEADER(kind,count)					\
   (OBJECT_NEW_TYPE (TC_FIXNUM,						\
@@ -348,6 +347,36 @@ REGISTER SCHEME_OBJECT * stack_pointer = Stack_Pointer
     ? (- ((source1) / (- (source2))))					\
     : ((- (source1)) / (- (source2)))))
 
+extern double EXFUN (acos, (double));
+extern double EXFUN (asin, (double));
+extern double EXFUN (atan, (double));
+extern double EXFUN (ceil, (double));
+extern double EXFUN (cos, (double));
+extern double EXFUN (exp, (double));
+extern double EXFUN (floor, (double));
+extern double EXFUN (log, (double));
+extern double EXFUN (sin, (double));
+extern double EXFUN (sqrt, (double));
+extern double EXFUN (tan, (double));
+extern double EXFUN (double_truncate, (double));
+
+#define DOUBLE_ACOS acos
+#define DOUBLE_ASIN asin
+#define DOUBLE_ATAN atan
+#define DOUBLE_CEILING ceil
+#define DOUBLE_COS cos
+#define DOUBLE_EXP exp
+#define DOUBLE_FLOOR floor
+#define DOUBLE_LOG log
+#define DOUBLE_ROUND(dx) (double_truncate ((dx < 0) ? (dx - 0.5) : (dx + 0.5)))
+#define DOUBLE_SIN sin
+#define DOUBLE_SQRT sqrt
+#define DOUBLE_TAN tan
+#define DOUBLE_TRUNCATE double_truncate
+
+extern double EXFUN (atan2, (double, double));
+#define DOUBLE_ATAN2 atan2
+
 #define CLOSURE_HEADER(offset) do					\
 {									\
   SCHEME_OBJECT * entry = ((SCHEME_OBJECT *) my_pc[1]);			\
@@ -421,8 +450,7 @@ extern SCHEME_OBJECT EXFUN (double_to_flonum, (double));
 extern SCHEME_OBJECT EXFUN (long_to_integer, (long));
 extern SCHEME_OBJECT EXFUN (digit_string_to_integer, (Boolean, long, char *));
 extern SCHEME_OBJECT EXFUN (digit_string_to_bit_string, (long, long, char *));
-extern SCHEME_OBJECT EXFUN (search_for_primitive,
-			    (SCHEME_OBJECT, char *, Boolean, Boolean, int));
+extern SCHEME_OBJECT EXFUN (make_primitive, (char *, int));
 
 #define MEMORY_TO_STRING memory_to_string
 #define MEMORY_TO_SYMBOL memory_to_symbol
@@ -433,9 +461,9 @@ extern SCHEME_OBJECT EXFUN (search_for_primitive,
 #define LONG_TO_INTEGER long_to_integer
 #define DIGIT_STRING_TO_INTEGER digit_string_to_integer
 #define DIGIT_STRING_TO_BIT_STRING digit_string_to_bit_string
-#define SEARCH_FOR_PRIMITIVE search_for_primitive
+#define MAKE_PRIMITIVE make_primitive
 
-#else /* GCC on Specturm has a strange bug so do thing differently .... */
+#else /* GCC on Spectrum has a strange bug so do thing differently .... */
 
 extern SCHEME_OBJECT EXFUN ((* (constructor_kludge [10])), ());
 
@@ -466,10 +494,8 @@ extern SCHEME_OBJECT EXFUN ((* (constructor_kludge [10])), ());
 #define DIGIT_STRING_TO_BIT_STRING					\
      ((SCHEME_OBJECT EXFUN ((*), (long, long, char *))) (constructor_kludge[8]))
 
-#define SEARCH_FOR_PRIMITIVE						\
-     ((SCHEME_OBJECT EXFUN ((*), (SCHEME_OBJECT, char *,		\
-				  Boolean, Boolean, int)))		\
-      (constructor_kludge[9]))
+#define MAKE_PRIMITIVE							\
+     ((SCHEME_OBJECT EXFUN ((*), (char *, int))) (constructor_kludge[9]))
 
 #endif /* BUG_GCC_LONG_CALLS */
 

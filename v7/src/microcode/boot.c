@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.85 1993/10/14 19:20:09 gjr Exp $
+$Id: boot.c,v 9.86 1993/10/26 03:04:06 jawilson Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -50,7 +50,7 @@ extern void EXFUN (init_exit_scheme, (void));
 extern void EXFUN (Clear_Memory, (int, int, int));
 extern void EXFUN (Setup_Memory, (int, int, int));
 extern void EXFUN (compiler_initialize, (long fasl_p));
-extern SCHEME_OBJECT EXFUN (make_primitive, (char *));
+extern SCHEME_OBJECT EXFUN (make_primitive, (char *, int));
 
 static void EXFUN (Start_Scheme, (int, CONST char *));
 static void EXFUN (Enter_Interpreter, (void));
@@ -237,47 +237,47 @@ DEFUN_VOID (make_fixed_objects_vector)
   FAST_VECTOR_SET
     (fixed_objects_vector,
      GENERIC_TRAMPOLINE_ZERO_P,
-     (make_primitive ("INTEGER-ZERO?")));
+     (make_primitive ("INTEGER-ZERO?", 1)));
   FAST_VECTOR_SET
     (fixed_objects_vector,
      GENERIC_TRAMPOLINE_POSITIVE_P,
-     (make_primitive ("INTEGER-POSITIVE?")));
+     (make_primitive ("INTEGER-POSITIVE?", 1)));
   FAST_VECTOR_SET
     (fixed_objects_vector,
      GENERIC_TRAMPOLINE_NEGATIVE_P,
-     (make_primitive ("INTEGER-NEGATIVE?")));
+     (make_primitive ("INTEGER-NEGATIVE?", 1)));
   FAST_VECTOR_SET
     (fixed_objects_vector,
      GENERIC_TRAMPOLINE_SUCCESSOR,
-     (make_primitive ("INTEGER-ADD-1")));
+     (make_primitive ("INTEGER-ADD-1", 1)));
   FAST_VECTOR_SET
     (fixed_objects_vector,
      GENERIC_TRAMPOLINE_PREDECESSOR,
-     (make_primitive ("INTEGER-SUBTRACT-1")));
+     (make_primitive ("INTEGER-SUBTRACT-1", 1)));
   FAST_VECTOR_SET
     (fixed_objects_vector,
      GENERIC_TRAMPOLINE_EQUAL_P,
-     (make_primitive ("INTEGER-EQUAL?")));
+     (make_primitive ("INTEGER-EQUAL?", 2)));
   FAST_VECTOR_SET
     (fixed_objects_vector,
      GENERIC_TRAMPOLINE_LESS_P,
-     (make_primitive ("INTEGER-LESS?")));
+     (make_primitive ("INTEGER-LESS?", 2)));
   FAST_VECTOR_SET
     (fixed_objects_vector,
      GENERIC_TRAMPOLINE_GREATER_P,
-     (make_primitive ("INTEGER-GREATER?")));
+     (make_primitive ("INTEGER-GREATER?", 2)));
   FAST_VECTOR_SET
     (fixed_objects_vector,
      GENERIC_TRAMPOLINE_ADD,
-     (make_primitive ("INTEGER-ADD")));
+     (make_primitive ("INTEGER-ADD", 2)));
   FAST_VECTOR_SET
     (fixed_objects_vector,
      GENERIC_TRAMPOLINE_SUBTRACT,
-     (make_primitive ("INTEGER-SUBTRACT")));
+     (make_primitive ("INTEGER-SUBTRACT", 2)));
   FAST_VECTOR_SET
     (fixed_objects_vector,
      GENERIC_TRAMPOLINE_MULTIPLY,
-     (make_primitive ("INTEGER-MULTIPLY")));
+     (make_primitive ("INTEGER-MULTIPLY", 2)));
   FAST_VECTOR_SET
     (fixed_objects_vector,
      GENERIC_TRAMPOLINE_DIVIDE,
@@ -362,11 +362,11 @@ DEFUN (Start_Scheme, (Start_Prim, File_Name),
   {
     case BOOT_FASLOAD:	/* (SCODE-EVAL (BINARY-FASLOAD <file>) GLOBAL-ENV) */
       FName = (char_pointer_to_string ((unsigned char *) File_Name));
-      prim = (make_primitive ("BINARY-FASLOAD"));
+      prim = (make_primitive ("BINARY-FASLOAD", 1));
       inner_arg = Free;
       *Free++ = prim;
       *Free++ = FName;
-      prim = (make_primitive ("SCODE-EVAL"));
+      prim = (make_primitive ("SCODE-EVAL", 2));
       expr = MAKE_POINTER_OBJECT (TC_PCOMB2, Free);
       *Free++ = prim;
       *Free++ = MAKE_POINTER_OBJECT (TC_PCOMB1, inner_arg);
@@ -375,7 +375,7 @@ DEFUN (Start_Scheme, (Start_Prim, File_Name),
 
     case BOOT_LOAD_BAND:	/* (LOAD-BAND <file>) */
       FName = (char_pointer_to_string ((unsigned char *) File_Name));
-      prim = make_primitive ("LOAD-BAND");
+      prim = (make_primitive ("LOAD-BAND", 1));
       inner_arg = Free;
       *Free++ = prim;
       *Free++ = FName;
@@ -383,7 +383,7 @@ DEFUN (Start_Scheme, (Start_Prim, File_Name),
       break;
 
     case BOOT_GET_WORK:		/* ((GET-WORK)) */
-      prim = make_primitive ("GET-WORK");
+      prim = (make_primitive ("GET-WORK", 0));
       inner_arg = Free;
       *Free++ = prim;
       *Free++ = SHARP_F;
@@ -395,11 +395,11 @@ DEFUN (Start_Scheme, (Start_Prim, File_Name),
     case BOOT_EXECUTE:
       /* (SCODE-EVAL (INITIALIZE-C-COMPILED-BLOCK <file>) GLOBAL-ENV) */
       FName = (char_pointer_to_string ((unsigned char *) File_Name));
-      prim = (make_primitive ("INITIALIZE-C-COMPILED-BLOCK"));
+      prim = (make_primitive ("INITIALIZE-C-COMPILED-BLOCK", 1));
       inner_arg = Free;
       *Free++ = prim;
       *Free++ = FName;
-      prim = (make_primitive ("SCODE-EVAL"));
+      prim = (make_primitive ("SCODE-EVAL", 2));
       expr = (MAKE_POINTER_OBJECT (TC_PCOMB2, Free));
       *Free++ = prim;
       *Free++ = (MAKE_POINTER_OBJECT (TC_PCOMB1, inner_arg));
