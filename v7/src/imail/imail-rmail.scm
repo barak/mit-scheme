@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.3 2000/01/13 22:17:42 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.4 2000/01/14 17:03:57 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -376,10 +376,16 @@
 			(rmail-attribute->flag (car strings))
 			(rmail-label->flag (car strings)))
 		    flags))
-	(reverse! flags))))
+	(reverse!
+	 (if (memq 'UNSEEN flags)
+	     (delq! 'UNSEEN flags)
+	     (cons 'SEEN flags))))))
 
 (define (flags->rmail-markers flags)
-  (let loop ((flags flags) (attributes '()) (labels '()))
+  (let loop
+      ((flags (if (memq 'SEEN flags) (delq! 'SEEN flags) (cons 'UNSEEN flags)))
+       (attributes '())
+       (labels '()))
     (if (pair? flags)
 	(if (flag-is-rmail-attribute? (car flags))
 	    (loop (cdr flags)
