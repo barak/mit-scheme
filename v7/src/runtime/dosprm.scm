@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dosprm.scm,v 1.33 1995/10/25 02:16:34 cph Exp $
+$Id: dosprm.scm,v 1.34 1995/10/27 08:00:18 cph Exp $
 
 Copyright (c) 1992-95 Massachusetts Institute of Technology
 
@@ -171,7 +171,6 @@ MIT in each case. |#
 (define set-environment-variable-default!)
 (define delete-environment-variable!)
 (define reset-environment-variables!)
-
 (let ((environment-variables '())
       (environment-defaults '()))
 
@@ -180,73 +179,63 @@ MIT in each case. |#
   (define-integrable *variable-deleted* false)
 
   (define (env-error proc var)
-    (error "Variable must be a string" proc var))
+    (error "Variable must be a string:" var proc))
 
   (define (default-variable! var val)
     (if (and (not (assoc var environment-variables))
-	     (not ((ucode-primitive get-environment-variable 1)
-		   var)))
+	     (not ((ucode-primitive get-environment-variable 1) var)))
 	(set! environment-variables
-	      (cons (cons var
-			  (if (procedure? val)
-			      (val)
-			      val))
+	      (cons (cons var (if (procedure? val) (val) val))
 		    environment-variables)))
     unspecific)
 
   (set! get-environment-variable
 	(lambda (variable)
 	  (if (not (string? variable))
-	      (env-error 'GET-ENVIRONMENT-VARIABLE variable)
-	      (let ((variable (string-upcase variable)))
-		(cond ((assoc variable environment-variables) => cdr)
-		      (else ((ucode-primitive get-environment-variable 1)
-			     variable)))))))
+	      (env-error 'GET-ENVIRONMENT-VARIABLE variable))
+	  (let ((variable (string-upcase variable)))
+	    (cond ((assoc variable environment-variables)
+		   => cdr)
+		  (else
+		   ((ucode-primitive get-environment-variable 1) variable))))))
 
   (set! set-environment-variable!
 	(lambda (variable value)
 	  (if (not (string? variable))
-	      (env-error 'SET-ENVIRONMENT-VARIABLE! variable)
-	      (let ((variable (string-upcase variable)))
-		(cond ((assoc variable environment-variables)
-		       =>
-		       (lambda (pair)
-			 (set-cdr! pair value)))
-		      (else
-		       (set! environment-variables
-			     (cons (cons variable value)
-				   environment-variables))))))
+	      (env-error 'SET-ENVIRONMENT-VARIABLE! variable))
+	  (let ((variable (string-upcase variable)))
+	    (cond ((assoc variable environment-variables)
+		   => (lambda (pair) (set-cdr! pair value)))
+		  (else
+		   (set! environment-variables
+			 (cons (cons variable value) environment-variables)))))
 	  unspecific))
 
   (set! delete-environment-variable!
 	(lambda (variable)
 	  (if (not (string? variable))
-	      (env-error 'DELETE-ENVIRONMENT-VARIABLE! variable)
-	      (set-environment-variable! variable *variable-deleted*))))
+	      (env-error 'DELETE-ENVIRONMENT-VARIABLE! variable))
+	  (set-environment-variable! variable *variable-deleted*)))
 
   (set! reset-environment-variables!
 	(lambda ()
 	  (set! environment-variables '())
-	  (for-each (lambda (def)
-		      (default-variable! (car def) (cdr def)))
-		    environment-defaults)
-	  unspecific))
+	  (for-each (lambda (def) (default-variable! (car def) (cdr def)))
+		    environment-defaults)))
 
   (set! set-environment-variable-default!
 	(lambda (var val)
 	  (if (not (string? var))
-	      (env-error 'SET-ENVIRONMENT-VARIABLE-DEFAULT! var)
-	      (let ((var (string-upcase var)))
-		(cond ((assoc var environment-defaults)
-		       => (lambda (pair)
-			    (set-cdr! pair val)))
-		      (else
-		       (set! environment-defaults
-			     (cons (cons var val)
-				   environment-defaults))))
-		(default-variable! var val)))))
+	      (env-error 'SET-ENVIRONMENT-VARIABLE-DEFAULT! var))
+	  (let ((var (string-upcase var)))
+	    (cond ((assoc var environment-defaults)
+		   => (lambda (pair) (set-cdr! pair val)))
+		  (else
+		   (set! environment-defaults
+			 (cons (cons var val) environment-defaults))))
+	    (default-variable! var val))))
 
-  unspecific)				; End LET
+)				; End LET
 
 (define (current-home-directory)
   (let ((home (get-environment-variable "HOME")))
@@ -267,14 +256,6 @@ MIT in each case. |#
 		    (pathname-as-directory (merge-pathnames directory))
 		    user-name)))))
       (merge-pathnames "\\")))
-
-(define (dos/fs-drive-type pathname)
-  pathname
-  (cons "FAT" ""))
-
-(define (dos/fs-long-filenames? pathname)
-  pathname
-  #f)
 
 (define file-time->string
   (ucode-primitive file-time->string 1))
@@ -316,6 +297,34 @@ MIT in each case. |#
     (reset!)
     (add-event-receiver! event:after-restart reset!)))
 
+(define (dos/fs-drive-type pathname)
+  (cons (nt-volume-info/file-system-name (nt-volume-info pathname)) ""))
+
+(define (dos/fs-long-filenames? pathname)
+  ;; 32 is random -- FAT is 12 and everything else is much larger.
+  (> (nt-volume-info/max-component-length (nt-volume-info pathname)) 32))
+
+(define (nt-volume-info pathname)
+  (let ((root
+	 (pathname-new-directory
+	  (directory-pathname (merge-pathnames pathname))
+	  '(ABSOLUTE))))
+    (let ((info
+	   ((ucode-primitive nt-get-volume-information 1)
+	    (->namestring root))))
+      (if (not info)
+	  (error "Error reading volume information:" root))
+      info)))
+
+(define-structure (nt-volume-info (type vector)
+				  (constructor #f)
+				  (conc-name nt-volume-info/))
+  (name #f read-only #t)
+  (serial-number #f read-only #t)
+  (max-component-length #f read-only #t)
+  (file-system-flags #f read-only #t)
+  (file-system-name #f read-only #t))
+
 (define (select-internal console? handles block?)
   (let* ((nt/qs-allinput #xff)
 	 (select
