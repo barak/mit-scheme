@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.scm,v 1.3 2001/06/26 21:02:06 cph Exp $
+;;; $Id: parser.scm,v 1.4 2001/06/26 21:16:46 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -40,17 +40,15 @@
 (define (generate-parser-code expression)
   (with-canonical-parser-expression expression
     (lambda (expression)
-      (with-buffer-name
-	(lambda ()
-	  (compile-parser-expression
-	   expression
-	   (no-pointers)
-	   (lambda (pointers result)
-	     (handle-pending-backtracking pointers
-	       (lambda (pointers)
-		 pointers
-		 result)))
-	   (simple-backtracking-continuation `#F)))))))
+      (compile-parser-expression
+       expression
+       (no-pointers)
+       (lambda (pointers result)
+	 (handle-pending-backtracking pointers
+	   (lambda (pointers)
+	     pointers
+	     result)))
+       (simple-backtracking-continuation `#F)))))
 
 (define (compile-parser-expression expression pointers if-succeed if-fail)
   (cond ((and (pair? expression)
@@ -122,10 +120,11 @@
     (let ((expression (do-expression expression)))
       (maybe-make-let (map (lambda (b) (list (cdr b) (car b)))
 			   (cdr external-bindings))
-		      (receiver
-		       (maybe-make-let (map (lambda (b) (list (cdr b) (car b)))
-					    (cdr internal-bindings))
-				       expression))))))
+	(with-buffer-name
+	  (lambda ()
+	    (maybe-make-let (map (lambda (b) (list (cdr b) (car b)))
+				 (cdr internal-bindings))
+	      (receiver expression))))))))
 
 ;;;; Parsers
 

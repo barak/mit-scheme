@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: matcher.scm,v 1.3 2001/06/26 21:02:04 cph Exp $
+;;; $Id: matcher.scm,v 1.4 2001/06/26 21:16:44 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -40,13 +40,11 @@
 (define (generate-matcher-code expression)
   (with-canonical-matcher-expression expression
     (lambda (expression)
-      (with-buffer-name
-	(lambda ()
-	  (compile-matcher-expression
-	   expression
-	   (no-pointers)
-	   (simple-backtracking-continuation `#T)
-	   (simple-backtracking-continuation `#F)))))))
+      (compile-matcher-expression
+       expression
+       (no-pointers)
+       (simple-backtracking-continuation `#T)
+       (simple-backtracking-continuation `#F)))))
 
 (define (compile-matcher-expression expression pointers if-succeed if-fail)
   (cond ((and (pair? expression)
@@ -82,10 +80,11 @@
 					    internal-bindings)))
       (maybe-make-let (map (lambda (b) (list (cdr b) (car b)))
 			   (cdr external-bindings))
-		      (receiver
-		       (maybe-make-let (map (lambda (b) (list (cdr b) (car b)))
-					    (cdr internal-bindings))
-				       expression))))))
+	(with-buffer-name
+	  (lambda ()
+	    (maybe-make-let (map (lambda (b) (list (cdr b) (car b)))
+				 (cdr internal-bindings))
+	      (receiver expression))))))))
 
 (define (canonicalize-matcher-expression expression
 					 external-bindings internal-bindings)
