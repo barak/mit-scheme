@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: option.scm,v 14.26 1993/11/13 02:21:31 gjr Exp $
+$Id: option.scm,v 14.27 1993/12/08 17:36:14 jmiller Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -89,6 +89,7 @@ MIT in each case. |#
     (KRYPT ((RUNTIME KRYPT) #F "krypt"))
     (PC-SAMPLE (() #F "../pcsample/make"))
     (RB-TREE ((runtime rb-tree) #F "rbtree"))
+    (SWAT (() #F "../swat/load"))
     (WT-TREE ((runtime wt-tree) #F "wttree"))
     (SUBPROCESS ((RUNTIME SUBPROCESS) (INITIALIZE-PACKAGE!) "process"))))
 
