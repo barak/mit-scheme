@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 1.57 1987/04/17 10:51:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 1.58 1987/05/21 14:55:09 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -188,8 +188,8 @@ MIT in each case. |#
 (let ((rtl-common
        (lambda (type prefix components wrap-constructor)
 	 `(BEGIN
-	    (DEFINE-INTEGRABLE (,(symbol-append prefix 'MAKE- type) . REST)
-	      ,(wrap-constructor `(CONS ',type REST)))
+	    (DEFINE-INTEGRABLE (,(symbol-append prefix 'MAKE- type) ,@components)
+	      ,(wrap-constructor `(LIST ',type ,@components)))
 	    (DEFINE-INTEGRABLE (,(symbol-append 'RTL: type '?) EXPRESSION)
 	      (EQ? (CAR EXPRESSION) ',type))
 	    ,@(let loop ((components components)
