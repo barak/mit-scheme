@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/ralloc.scm,v 1.13 1987/10/05 20:21:30 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/ralloc.scm,v 1.14 1988/04/12 18:42:27 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -40,7 +40,11 @@ MIT in each case. |#
 (package (register-allocation)
 
 (define (register-allocation rgraphs)
-  (for-each walk-rgraph rgraphs))
+  (for-each (lambda (rgraph)
+	      (let ((n-temporaries (walk-rgraph rgraph)))
+		(if (> n-temporaries number-of-temporary-registers)
+		    (error "Too many temporary quantities" n-temporaries))))
+	    rgraphs))
 
 (define (walk-rgraph rgraph)
   (let ((n-registers (rgraph-n-registers rgraph)))
