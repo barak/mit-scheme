@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.12 2000/12/08 19:25:23 cph Exp $
+# $Id: Makefile.in,v 1.13 2000/12/08 19:26:44 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -104,15 +104,15 @@ install: all
 	@for FN in $(RUNOPTS); do \
 	    echo "$(INSTALL_DATA) runtime/$${FN}.com $(DESTDIR)$(RODIR)/.";\
 	    $(INSTALL_DATA) runtime/$${FN}.com $(DESTDIR)$(RODIR)/.;\
-	    echo "cd $(DESTDIR)$(RODIR); $(LN_S) ../SRC/runtime/$${FN}.bci .";\
+	    echo "( cd $(DESTDIR)$(RODIR); $(LN_S) ../SRC/runtime/$${FN}.bci . )";\
 	    ( cd $(DESTDIR)$(RODIR); $(LN_S) ../SRC/runtime/$${FN}.bci . );\
 	done
 
 	@for FN in $(EDOPTS); do \
 	    echo "$(INSTALL_DATA) edwin/$${FN}.com $(DESTDIR)$(EODIR)/.";\
 	    $(INSTALL_DATA) edwin/$${FN}.com $(DESTDIR)$(EODIR)/.;\
-	    echo "cd $(DESTDIR)$(EODIR); $(LN_S) ../SRC/edwin/$${FN}.bci .";\
-	    ( cd $(DESTDIR)$(EODIR); $(LN_S) ../SRC/edwin/$${FN}.bci . );\
+	    echo "( cd $(DESTDIR)$(EODIR); $(LN_S) ../../SRC/edwin/$${FN}.bci . )";\
+	    ( cd $(DESTDIR)$(EODIR); $(LN_S) ../../SRC/edwin/$${FN}.bci . );\
 	done
 
 	$(INSTALL_DATA) sos/*.com $(DESTDIR)$(AUXDIR)/sos/.
