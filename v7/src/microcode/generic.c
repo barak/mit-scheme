@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/generic.c,v 9.25 1987/11/17 08:12:07 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/generic.c,v 9.26 1988/06/05 00:54:47 mhwu Exp $ */
 
 #include "scheme.h"
 #include "primitive.h"
@@ -38,24 +38,62 @@ MIT in each case. */
 #include "flonum.h"
 #include "zones.h"
 
-Built_In_Primitive(Prim_Zero, 1, "ZERO?", 0xE6)
-Define_Primitive(Prim_Zero, 1, "ZERO?")
-{
-  Primitive_1_Arg();
 
-  Set_Time_Zone(Zone_Math);
-  switch (Type_Code(Arg1))
-  { case TC_FIXNUM:     if (Get_Integer(Arg1) == 0) return TRUTH;
+/* Complex Number Macros.  Should have its own file. */
+
+#define Real_Part(arg)	Vector_Ref((arg), COMPLEX_REAL)
+#define Imag_Part(arg)	Vector_Ref((arg), COMPLEX_IMAG)
+
+/* Expands ARG twice. Be careful */
+#define Coerce_Real_Part(arg)						\
+  ((Type_Code((arg)) == TC_COMPLEX) ? Real_Part(arg) : arg)
+#define Coerce_Imag_Part(arg)						\
+  ((Type_Code((arg)) == TC_COMPLEX) ? Imag_Part(arg) : FIXNUM_ZERO)
+
+#define Return_Complex(real, imag)					\
+  if (basic_zero_p(imag))						\
+    return real;							\
+  else									\
+  { *Free++ = real;							\
+    *Free++ = imag;							\
+    return Make_Pointer(TC_COMPLEX, (Free - 2));			\
+  }									\
+
+
+static Pointer basic_zero_p(Arg)
+fast Pointer Arg;
+{ 
+  switch (Type_Code(Arg))
+  { case TC_FIXNUM:     if (Get_Integer(Arg) == 0) return TRUTH;
                         else return NIL;
-    case TC_BIG_FLONUM: if (Get_Float(Arg1) == 0.0) return TRUTH;
+    case TC_BIG_FLONUM: if (Get_Float(Arg) == 0.0) return TRUTH;
                         else return NIL;
-    case TC_BIG_FIXNUM: if (ZERO_BIGNUM(Fetch_Bignum(Arg1))) return TRUTH;
+    case TC_BIG_FIXNUM: if (ZERO_BIGNUM(Fetch_Bignum(Arg))) return TRUTH;
                         else return NIL;
+
     default:            Primitive_Error(ERR_ARG_1_WRONG_TYPE);
   }
   /*NOTREACHED*/
 }
 
+
+Built_In_Primitive(Prim_Zero, 1, "ZERO?", 0xE6)
+Define_Primitive(Prim_Zero, 1, "ZERO?")
+{
+  Primitive_1_Arg();
+  Set_Time_Zone(Zone_Math);
+  
+  if (Type_Code(Arg1) == TC_COMPLEX)
+  { if (basic_zero_p(Real_Part(Arg1)) == TRUTH)
+      return basic_zero_p(Imag_Part(Arg1));
+    else
+      return NIL;
+  }
+  else
+    return basic_zero_p(Arg1);
+}
+
+  
 Pointer
 C_Integer_To_Scheme_Integer(C)
      long C;
@@ -220,11 +258,25 @@ Define_Primitive(Prim_Negative, 1, "NEGATIVE?")
   /*NOTREACHED*/
 }
 
-#define Inc_Dec(Normal_Op, Big_Op)					\
+#define Inc_Dec(Normal_Op, Big_Op, Complex_Op)				\
   Primitive_1_Arg();							\
   Set_Time_Zone(Zone_Math);						\
   switch (Type_Code(Arg1))						\
-  { case TC_FIXNUM:							\
+  { case TC_COMPLEX:							\
+    { Primitive_GC_If_Needed(2);					\
+      *Free++ = Complex_Op(Real_Part(Arg1));				\
+      *Free++ = Imag_Part(Arg1);					\
+      return Make_Pointer(TC_COMPLEX, (Free - 2));			\
+    }									\
+Inc_Dec_Basic_Cases(Normal_Op, Big_Op)
+
+#define Basic_Inc_Dec(Normal_Op, Big_Op)				\
+  switch (Type_Code(Arg1))						\
+  {									\
+Inc_Dec_Basic_Cases(Normal_Op, Big_Op)
+
+#define Inc_Dec_Basic_Cases(Normal_Op, Big_Op)				\
+    case TC_FIXNUM:							\
     { fast long A, Result;						\
       Sign_Extend(Arg1, A);						\
       Result = A Normal_Op 1;						\
@@ -255,23 +307,40 @@ P3_Inc_Dec(Normal_Op, Big_Op)
     default:		Primitive_Error(ERR_ARG_1_WRONG_TYPE);		\
   }
 
+Pointer C_One_Plus(Arg1)
+fast Pointer Arg1;
+{ 
+  Basic_Inc_Dec(+, plus_signed_bignum);
+}
+
+Pointer C_One_Minus(Arg1)
+fast Pointer Arg1;
+{ 
+  Basic_Inc_Dec(-, minus_signed_bignum);
+}
+
+  
 Built_In_Primitive(Prim_One_Plus, 1, "1+", 0xF1)
 Define_Primitive(Prim_One_Plus, 1, "1+")
 {
-  Inc_Dec(+, plus_signed_bignum);
+  Inc_Dec(+, plus_signed_bignum, C_One_Plus);
   /*NOTREACHED*/
 }
 
 Built_In_Primitive(Prim_M_1_Plus, 1, "-1+", 0xF2)
 Define_Primitive(Prim_M_1_Plus, 1, "-1+")
 {
-  Inc_Dec(-, minus_signed_bignum);
+  Inc_Dec(-, minus_signed_bignum, C_One_Minus);
   /*NOTREACHED*/
 }
+
 
 #define Two_Op_Comparator(GENERAL_OP, BIG_OP)				\
   Primitive_2_Args();							\
   Set_Time_Zone(Zone_Math);						\
+Basic_Two_Op_Comparator(GENERAL_OP, BIG_OP)
+
+#define Basic_Two_Op_Comparator(GENERAL_OP, BIG_OP)			\
   switch (Type_Code(Arg1))						\
   { case TC_FIXNUM:							\
      { switch (Type_Code(Arg2))						\
@@ -362,10 +431,25 @@ P7_Two_Op_Comparator(GENERAL_OP, BIG_OP)
     default:   Primitive_Error(ERR_ARG_1_WRONG_TYPE);			\
   }
 
+Pointer Basic_Equal_Number(Arg1, Arg2)
+fast Pointer Arg1, Arg2;
+{
+  Basic_Two_Op_Comparator(==, EQUAL);
+}
+  
 Built_In_Primitive(Prim_Equal_Number, 2, "&=", 0xE9)
 Define_Primitive(Prim_Equal_Number, 2, "&=")
-{
-  Two_Op_Comparator(==, EQUAL);
+{ Primitive_2_Args();
+  Set_Time_Zone(Zone_Math);
+  
+  if ((Type_Code(Arg1) != TC_COMPLEX) && (Type_Code(Arg2) != TC_COMPLEX))
+    Basic_Two_Op_Comparator(==, EQUAL)
+  else if ((Type_Code(Arg1) != TC_COMPLEX) || (Type_Code(Arg2) != TC_COMPLEX))
+    return NIL;
+  else if (Basic_Equal_Number(Real_Part(Arg1), Real_Part(Arg2)) == TRUTH)
+    return Basic_Equal_Number(Imag_Part(Arg1), Imag_Part(Arg2));
+  else return NIL;
+
   /*NOTREACHED*/
 }
 
@@ -383,11 +467,30 @@ Define_Primitive(Prim_Greater, 2, "&>")
   /*NOTREACHED*/
 }
 
-#define Two_Op_Operator(GENERAL_OP, BIG_OP)				\
+#define Two_Op_Operator(GENERAL_OP, BIG_OP, COMPLEX_OP)			\
   Primitive_2_Args();							\
-  Set_Time_Zone(Zone_Math);						\
+  Set_Time_Zone(Zone_Math);			     			\
+									\
+  if (Type_Code(Arg2) == TC_COMPLEX) goto complex_handler;		\
+									\
   switch (Type_Code(Arg1))						\
-  { case TC_FIXNUM:							\
+  { case TC_COMPLEX:							\
+complex_handler:							\
+    { fast Pointer real, imag;						\
+      Primitive_GC_If_Needed(2);					\
+      real = COMPLEX_OP(Coerce_Real_Part(Arg1), Coerce_Real_Part(Arg2));\
+      imag = COMPLEX_OP(Coerce_Imag_Part(Arg1), Coerce_Imag_Part(Arg2));\
+      Return_Complex(real, imag);					\
+    }									\
+Two_Op_Operator_Basic_Cases(GENERAL_OP, BIG_OP)
+
+#define Basic_Two_Op_Operator(GENERAL_OP, BIG_OP)			\
+  switch (Type_Code(Arg1))						\
+  {									\
+Two_Op_Operator_Basic_Cases(GENERAL_OP, BIG_OP)
+
+#define Two_Op_Operator_Basic_Cases(GENERAL_OP, BIG_OP)			\
+    case TC_FIXNUM:							\
      { switch (Type_Code(Arg2))						\
        { case TC_FIXNUM:						\
           { fast long A, B, Result;					\
@@ -498,28 +601,36 @@ P9_Two_Op_Operator(GENERAL_OP, BIG_OP)
     default:  Primitive_Error(ERR_ARG_1_WRONG_TYPE);			\
   }
 
+static Pointer basic_plus(Arg1, Arg2)
+fast Pointer Arg1, Arg2;
+{ 
+  Basic_Two_Op_Operator(+, plus_signed_bignum);
+}
+
+static Pointer basic_minus(Arg1, Arg2)
+fast Pointer Arg1, Arg2;
+{ 
+  Basic_Two_Op_Operator(-, minus_signed_bignum);
+}
+
 Built_In_Primitive(Prim_Plus, 2, "&+", 0xEC)
 Define_Primitive(Prim_Plus, 2, "&+")
 {
-  Two_Op_Operator(+, plus_signed_bignum);
+  Two_Op_Operator(+, plus_signed_bignum, basic_plus);
   /*NOTREACHED*/
 }
 
 Built_In_Primitive(Prim_Minus, 2, "&-", 0xED)
 Define_Primitive(Prim_Minus, 2, "&-")
 {
-  Two_Op_Operator(-, minus_signed_bignum);
+  Two_Op_Operator(-, minus_signed_bignum, basic_minus);
   /*NOTREACHED*/
 }
 
-Built_In_Primitive(Prim_Multiply, 2, "&*", 0xEE)
-Define_Primitive(Prim_Multiply, 2, "&*")
-{
-  /* Mul is machine dependent and lives in os.c */
-  extern Pointer Mul();
-  Primitive_2_Args();
+static Pointer basic_multiply(Arg1, Arg2)
+fast Pointer Arg1, Arg2;
+{ extern Pointer Mul();
 
-  Set_Time_Zone(Zone_Math);
   switch (Type_Code(Arg1))
   { case TC_FIXNUM:
      { switch (Type_Code(Arg2))
@@ -618,13 +729,43 @@ Define_Primitive(Prim_Multiply, 2, "&*")
   }
   /*NOTREACHED*/
 }
-
-Built_In_Primitive(Prim_Divide, 2, "&/", 0xEF)
-Define_Primitive(Prim_Divide, 2, "&/")
-{
-  Primitive_2_Args();
 
+
+
+static Pointer complex_multiply(Arg1, Arg2)
+fast Pointer Arg1, Arg2;
+{ fast Pointer real, imag;
+  
+  Primitive_GC_If_Needed(2);
+
+  real = basic_minus(basic_multiply(Coerce_Real_Part(Arg1),
+				    Coerce_Real_Part(Arg2)),
+		     basic_multiply(Coerce_Imag_Part(Arg1),
+				    Coerce_Imag_Part(Arg2)));
+  imag = basic_plus(basic_multiply(Coerce_Real_Part(Arg1),
+				   Coerce_Imag_Part(Arg2)),
+		    basic_multiply(Coerce_Real_Part(Arg2),
+				   Coerce_Imag_Part(Arg1)));
+  Return_Complex(real, imag);
+}
+    
+  
+Built_In_Primitive(Prim_Multiply, 2, "&*", 0xEE)
+Define_Primitive(Prim_Multiply, 2, "&*")
+{ /* Mul is machine dependent and lives in os.c */
+  Primitive_2_Args();
   Set_Time_Zone(Zone_Math);
+
+  if ((Type_Code(Arg1) == TC_COMPLEX)||(Type_Code(Arg2) == TC_COMPLEX))
+    return complex_multiply(Arg1, Arg2);
+  else
+    return basic_multiply(Arg1, Arg2);
+}
+
+
+static Pointer basic_divide(Arg1, Arg2)
+fast Pointer Arg1, Arg2;
+{
   switch (Type_Code(Arg1))
   { case TC_FIXNUM:
      { switch (Type_Code(Arg2))
@@ -782,6 +923,49 @@ Define_Primitive(Prim_Divide, 2, "&/")
   }
   /*NOTREACHED*/
 }
+
+
+static Pointer complex_divide(Arg1, Arg2)
+Pointer Arg1, Arg2;
+{
+  fast Pointer real1, real2, imag1, imag2, real, imag;
+  fast Pointer temp;
+  
+  Primitive_GC_If_Needed(2);
+
+  real1 = Coerce_Real_Part(Arg1);
+  real2 = Coerce_Real_Part(Arg2);
+  imag1 = Coerce_Imag_Part(Arg1);
+  imag2 = Coerce_Imag_Part(Arg2);
+
+  temp = basic_divide(Make_Non_Pointer(TC_FIXNUM, 1),
+		      basic_plus(basic_multiply(real2, real2),
+				 basic_multiply(imag2, imag2)));
+  
+  real =
+    basic_multiply(basic_plus(basic_multiply(real1, real2),
+			      basic_multiply(imag1, imag2)),
+		   temp);
+  imag =
+    basic_multiply(basic_minus(basic_multiply(real2, imag1),
+			       basic_multiply(real1, imag2)),
+		   temp);
+  Return_Complex(real, imag);
+}
+
+Built_In_Primitive(Prim_Divide, 2, "&/", 0xEF)
+Define_Primitive(Prim_Divide, 2, "&/")
+{
+  Primitive_2_Args();
+  Set_Time_Zone(Zone_Math);
+
+  if ((Type_Code(Arg1) == TC_COMPLEX) || (Type_Code(Arg2) == TC_COMPLEX))
+    return complex_divide(Arg1, Arg2);
+  else
+    return basic_divide(Arg1, Arg2);
+}
+
+
 
 Built_In_Primitive(Prim_Integer_Divide, 2, "INTEGER-DIVIDE", 0xF0)
 Define_Primitive(Prim_Integer_Divide, 2, "INTEGER-DIVIDE")
