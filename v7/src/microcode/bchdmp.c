@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchdmp.c,v 9.86 2000/12/05 21:23:42 cph Exp $
+$Id: bchdmp.c,v 9.87 2000/12/23 02:45:55 cph Exp $
 
 Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
@@ -63,6 +63,20 @@ extern SCHEME_OBJECT * EXFUN
 #ifdef __OS2__
 #  include "os2.h"
    static char FASDUMP_FILENAME[] = "faXXXXXX";
+#  ifdef __EMX__
+#    include <io.h>
+#  endif
+#  if defined(__IBMC__) || defined(__WATCOMC__)
+#    include <io.h>
+#    include <sys\stat.h>
+#    include <fcntl.h>
+#    ifndef F_OK
+#      define F_OK 0
+#      define X_OK 1
+#      define W_OK 2
+#      define R_OK 4
+#    endif
+#  endif
 #endif
 
 static Tchannel dump_channel;
