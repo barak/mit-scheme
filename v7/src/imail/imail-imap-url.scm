@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap-url.scm,v 1.1 2000/04/12 03:52:38 cph Exp $
+;;; $Id: imail-imap-url.scm,v 1.2 2000/04/12 03:56:33 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -80,10 +80,10 @@
 				    mailbox-list list-type)))))))))
 
 (define (parse-imap-url:server string start end)
-  )
+  ???)
 
 (define (parse-imap-url:command string start end if-mailbox if-search if-list)
-  )
+  ???)
 
 ;;;; Matcher language
 
@@ -175,18 +175,18 @@
 		  (string->char-set "&=~")))
 
 (define imap:regexp:achar
-  (regexp-group (char-set->regexp url:char-set:achar)
+  (regexp-group (char-set->regexp imap:char-set:achar)
 		url:regexp:escape))
 
 (define imap:regexp:achar+
   (string-append imap:regexp:achar "+"))
 
 (define imap:char-set:bchar
-  (char-set-union url:char-set:achar
+  (char-set-union imap:char-set:achar
 		  (string->char-set ":@/")))
 
 (define imap:regexp:bchar
-  (regexp-group (char-set->regexp url:char-set:bchar)
+  (regexp-group (char-set->regexp imap:char-set:bchar)
 		url:regexp:escape))
 
 (define imap:regexp:bchar+
