@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/fndvar.scm,v 1.3 1989/10/26 07:38:52 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/fndvar.scm,v 1.4 1990/03/28 06:11:14 jinx Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -76,6 +76,15 @@ MIT in each case. |#
       block locative
       (error "Closure variable in IC frame" variable))))
 
+(define (find-stack-overwrite-variable context variable)
+  (find-variable-no-tricks context variable
+    (lambda (variable locative)
+      variable
+      locative)
+    (lambda (variable block locative)
+      block locative
+      (error "Stack overwrite slot in IC frame" variable))))
+
 (define (find-variable-internal context variable if-compiler if-ic)
   (let ((rvalue (lvalue-known-value variable)))
     (if (and rvalue
@@ -101,16 +110,18 @@ MIT in each case. |#
 		(let ((register (variable/register variable)))
 		  (if register
 		      (if-compiler variable (register-locative register))
-		      (find-block/variable context variable
-			(lambda (offset-locative)
-			  (lambda (block locative)
-			    (if-compiler
-			     variable
-			     (offset-locative
-			      locative
-			      (variable-offset block variable)))))
-			(lambda (block locative)
-			  (if-ic variable block locative)))))))))))
+		      (find-variable-no-tricks context variable
+					       if-compiler if-ic)))))))))
+
+(define (find-variable-no-tricks context variable if-compiler if-ic)
+  (find-block/variable context variable
+    (lambda (offset-locative)
+      (lambda (block locative)
+	(if-compiler variable
+		     (offset-locative locative
+				      (variable-offset block variable)))))
+    (lambda (block locative)
+      (if-ic variable block locative))))
 
 (define (find-definition-variable context lvalue)
   (find-block/variable context lvalue

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 4.13 1990/03/21 02:12:01 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 4.14 1990/03/28 06:11:39 jinx Exp $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -234,7 +234,7 @@ MIT in each case. |#
 
 (define (stack-overwrite-locative context target)
   (cond ((variable? target)
-	 (find-closure-variable context target))
+	 (find-stack-overwrite-variable context target))
 	((block? target)
 	 (block-ancestor-or-self->locative
 	  context
