@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: load.c,v 9.36 1993/11/09 08:34:52 gjr Exp $
+$Id: load.c,v 9.37 1995/07/26 23:42:24 adams Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -90,10 +90,10 @@ DEFUN_VOID (print_fasl_information)
 {
   printf ("FASL File Information:\n\n");
   printf ("Machine = %ld; Version = %ld; Subversion = %ld\n",
-	  Machine_Type, Version, Sub_Version);
+		Machine_Type, Version, Sub_Version);
   if ((dumped_processor_type != 0) || (dumped_interface_version != 0))
     printf ("Compiled code interface version = %ld; Processor type = %ld\n",
-	    dumped_interface_version, dumped_processor_type);
+		  dumped_interface_version, dumped_processor_type);
   if (band_p)
     printf ("The file contains a dumped image (band).\n");
 
@@ -145,7 +145,7 @@ DEFUN (initialize_variables_from_fasl_header, (buffer),
   Dumped_Constant_Top =
     ADDRESS_TO_DATUM (MEMORY_LOC (Pointer_Const_Base, Const_Count));
 
-  if (Sub_Version < FASL_MERGED_PRIMITIVES)
+  if (Version == FASL_FORMAT_ADDED_STACK && Sub_Version < FASL_MERGED_PRIMITIVES)
   {
     Primitive_Table_Length = 0;
     Primitive_Table_Size = 0;
@@ -159,7 +159,7 @@ DEFUN (initialize_variables_from_fasl_header, (buffer),
     Ext_Prim_Vector = SHARP_F;
   }
 
-  if (Sub_Version < FASL_INTERFACE_VERSION)
+  if (Version == FASL_FORMAT_ADDED_STACK && Sub_Version < FASL_INTERFACE_VERSION)
   {
     /* This may be all wrong, but... */
     band_p = false;
@@ -177,12 +177,13 @@ DEFUN (initialize_variables_from_fasl_header, (buffer),
     dumped_utilities = buffer[FASL_Offset_Ut_Base];
   }
 
-  if (Sub_Version < FASL_C_CODE)
+  if (Version == FASL_FORMAT_ADDED_STACK && Sub_Version < FASL_C_CODE)
   {
     C_Code_Table_Length = 0;
     C_Code_Table_Size = 0;
   }
   else
+
   {
     C_Code_Table_Length = (OBJECT_DATUM (buffer[FASL_Offset_C_Length]));
     C_Code_Table_Size = (OBJECT_DATUM (buffer[FASL_Offset_C_Size]));
@@ -191,7 +192,6 @@ DEFUN (initialize_variables_from_fasl_header, (buffer),
 
 #ifndef INHIBIT_FASL_VERSION_CHECK
   /* The error messages here should be handled by the runtime system! */
-
   if ((Version != FASL_READ_VERSION) ||
 #ifndef BYTE_INVERSION
       (Machine_Type != FASL_INTERNAL_FORMAT) ||
@@ -199,13 +199,11 @@ DEFUN (initialize_variables_from_fasl_header, (buffer),
       (Sub_Version < FASL_READ_SUBVERSION) ||
       (Sub_Version > FASL_SUBVERSION))
   {
-    fprintf(stderr, "\nread_file:\n");
-    fprintf(stderr,
-	    "FASL File: Version %4d Subversion %4d Machine Type %4d.\n",
-	    Version, Sub_Version , Machine_Type);
-    fprintf(stderr,
-	    "Expected:  Version %4d Subversion %4d Machine Type %4d.\n",
-	    FASL_READ_VERSION, FASL_READ_SUBVERSION, FASL_INTERNAL_FORMAT);
+    outf_error ("\nread_file:\n");
+    outf_error ("FASL File: Version %4d Subversion %4d Machine Type %4d.\n",
+		Version, Sub_Version , Machine_Type);
+    outf_error ("Expected:  Version %4d Subversion %4d Machine Type %4d.\n",
+		FASL_READ_VERSION, FASL_READ_SUBVERSION, FASL_INTERNAL_FORMAT);
 
     return ((Machine_Type != FASL_INTERNAL_FORMAT)	?
 	    FASL_FILE_BAD_MACHINE			:
@@ -213,7 +211,6 @@ DEFUN (initialize_variables_from_fasl_header, (buffer),
 	     FASL_FILE_BAD_VERSION			:
 	     FASL_FILE_BAD_SUBVERSION));
   }
-
 #endif /* INHIBIT_FASL_VERSION_CHECK */
 
 #ifndef INHIBIT_COMPILED_VERSION_CHECK
@@ -228,13 +225,11 @@ DEFUN (initialize_variables_from_fasl_header, (buffer),
 	((dumped_interface_version != 0) &&
 	 (dumped_interface_version != compiler_interface_version)))
     {
-      fprintf (stderr, "\nread_file:\n");
-      fprintf (stderr,
-	       "FASL File: compiled code interface %4d; processor %4d.\n",
-	       dumped_interface_version, dumped_processor_type);
-      fprintf (stderr,
-	       "Expected:  compiled code interface %4d; processor %4d.\n",
-	       compiler_interface_version, compiler_processor_type);
+      outf_error ("\nread_file:\n");
+      outf_error ("FASL File: compiled code interface %4d; processor %4d.\n",
+		  dumped_interface_version, dumped_processor_type);
+      outf_error ("Expected:  compiled code interface %4d; processor %4d.\n",
+		  compiler_interface_version, compiler_processor_type);
       return (((dumped_processor_type != 0) &&
 	       (dumped_processor_type != compiler_processor_type))	?
 	      FASL_FILE_BAD_PROCESSOR					:
