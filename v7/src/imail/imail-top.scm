@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.158 2000/06/15 03:20:04 cph Exp $
+;;; $Id: imail-top.scm,v 1.159 2000/06/15 15:40:21 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -546,6 +546,7 @@ Instead, these commands are available:
 (define-key 'imail #\m-s	'imail-search)
 (define-key 'imail #\t		'imail-toggle-message)
 (define-key 'imail #\u		'imail-undelete-previous-message)
+(define-key 'imail #\m-u	'imail-first-unseen-message)
 (define-key 'imail #\x		'imail-expunge)
 (define-key 'imail #\.		'beginning-of-buffer)
 (define-key 'imail #\<		'imail-first-message)
@@ -640,6 +641,13 @@ Instead, these commands are available:
   (lambda ()
     (let ((folder (selected-folder)))
       (select-message folder (navigator/last-message folder)))))
+
+(define-command imail-first-unseen-message
+  "Show first unseen message in folder."
+  ()
+  (lambda ()
+    (let ((folder (selected-folder)))
+      (select-message folder (navigator/first-unseen-message folder)))))
 
 (define-command imail-next-message
   "Show following message whether deleted or not.

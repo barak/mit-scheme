@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.60 2000/06/15 02:37:16 cph Exp $
+;;; $Id: imail.pkg,v 1.61 2000/06/15 15:40:37 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -214,6 +214,7 @@
 	  edwin-command$imail-disconnect
 	  edwin-command$imail-expunge
 	  edwin-command$imail-first-message
+	  edwin-command$imail-first-unseen-message
 	  edwin-command$imail-forward
 	  edwin-command$imail-get-new-mail
 	  edwin-command$imail-input
