@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.14 2000/05/02 22:02:54 cph Exp $
+;;; $Id: imail-umail.scm,v 1.15 2000/05/02 22:13:03 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -57,10 +57,9 @@
 
 (define-class (<umail-folder> (constructor (url))) (<file-folder>))
 
-(define-method %write-folder ((folder <folder>) (url <umail-url>))
-  (write-umail-file folder (file-url-pathname url))
-  (if (eq? url (folder-url folder))
-      (update-file-folder-modification-time! folder)))
+(define-method %save-folder ((folder <umail-folder>))
+  (write-umail-file folder (file-folder-pathname folder))
+  (update-file-folder-modification-time! folder))
 
 (define-method poll-folder ((folder <umail-folder>))
   folder

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.35 2000/05/02 21:42:06 cph Exp $
+;;; $Id: imail-core.scm,v 1.36 2000/05/02 22:12:39 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -120,6 +120,9 @@
 
 (define (delete-folder url)
   (let ((url (->url url)))
+    (let ((folder (get-memoized-folder url)))
+      (if folder
+	  (close-folder folder)))
     (unmemoize-folder url)
     (%delete-folder url)))
 
@@ -135,8 +138,11 @@
 (define (move-folder url new-url)
   (let ((url (->url url))
 	(new-url (->url new-url)))
-    (unmemoize-folder url)
-    (%move-folder url new-url)))
+    (%move-folder url new-url)
+    (let ((folder (get-memoized-folder url)))
+      (if folder
+	  (close-folder folder)))
+    (unmemoize-folder url)))
 
 (define-generic %move-folder (url new-url))
 
@@ -155,7 +161,13 @@
 (define-generic %copy-folder (url new-url))
 
 (define-method %copy-folder ((url <url>) (new-url <url>))
-  (%write-folder (open-folder url) new-url))
+  (let ((from (open-folder url))
+	(to (new-folder new-url)))
+    (let ((n (folder-length from)))
+      (do ((i 0 (+ i 1)))
+	  ((= i n))
+	(append-message to (get-message from i))))
+    (save-folder to)))
 
 ;; -------------------------------------------------------------------
 ;; Return a list of URLs for folders that match URL-PATTERN.
@@ -362,14 +374,6 @@
 
 (define-generic %maybe-revert-folder (folder resolve-conflict))
 (define-generic %revert-folder (folder))
-
-;; -------------------------------------------------------------------
-;; Write the contents of FOLDER to URL.
-
-(define (write-folder folder url)
-  (%write-folder folder (->url url)))
-
-(define-generic %write-folder (folder url))
 
 ;;;; Message type
 

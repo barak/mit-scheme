@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.10 2000/05/02 21:42:08 cph Exp $
+;;; $Id: imail-imap.scm,v 1.11 2000/05/02 22:13:00 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -391,9 +391,6 @@
   ???)
 
 (define-method %revert-folder ((folder <imap-folder>))
-  ???)
-
-(define-method %write-folder ((folder <folder>) (url <imap-url>))
   ???)
 
 ;;;; IMAP command invocation

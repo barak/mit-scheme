@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.20 2000/05/02 22:02:49 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.21 2000/05/02 22:13:01 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -61,10 +61,9 @@
 (define-method rmail-folder-header-fields ((folder <folder>))
   (compute-rmail-folder-header-fields folder))
 
-(define-method %write-folder ((folder <folder>) (url <rmail-url>))
-  (write-rmail-file folder (file-url-pathname url))
-  (if (eq? url (folder-url folder))
-      (update-file-folder-modification-time! folder)))
+(define-method %save-folder ((folder <rmail-folder>))
+  (write-rmail-file folder (file-folder-pathname folder))
+  (update-file-folder-modification-time! folder))
 
 (define-method poll-folder ((folder <rmail-folder>))
   (rmail-get-new-mail folder))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.13 2000/05/02 22:02:33 cph Exp $
+;;; $Id: imail-file.scm,v 1.14 2000/05/02 22:12:59 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -158,9 +158,6 @@
 (define-method synchronize-folder ((folder <file-folder>))
   folder
   unspecific)
-
-(define-method %save-folder ((folder <file-folder>))
-  (%write-folder folder (folder-url folder)))
 
 (define-method %maybe-revert-folder ((folder <file-folder>) resolve-conflict)
   (if (if (eqv? (file-folder-modification-time folder)
