@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/utabs.scm,v 14.1 1988/06/13 12:00:01 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/utabs.scm,v 14.2 1989/03/23 20:43:59 jinx Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -41,10 +41,12 @@ MIT in each case. |#
   (read-microcode-tables!)
   (add-event-receiver! event:after-restore read-microcode-tables!))
 
-(define (read-microcode-tables!)
+(define (read-microcode-tables! #!optional filename)
   (set! microcode-tables-identification
 	(scode-eval ((ucode-primitive binary-fasload)
-		     ((ucode-primitive microcode-tables-filename)))
+		     (if (default-object? filename)
+			 ((ucode-primitive microcode-tables-filename))
+			 filename))
 		    system-global-environment))
   (set! identification-vector ((ucode-primitive microcode-identify)))
   (set! errors-slot (fixed-object/name->code 'MICROCODE-ERRORS-VECTOR))
