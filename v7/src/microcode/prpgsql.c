@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prpgsql.c,v 1.2 2003/06/06 20:34:02 cph Exp $
+$Id: prpgsql.c,v 1.3 2003/06/06 23:36:12 cph Exp $
 
 Copyright 2003 Massachusetts Institute of Technology
 
@@ -62,7 +62,7 @@ DEFINE_PRIMITIVE ("PQ-CONNECT-DB", Prim_pq_connect_db, 2, 2, 0)
   PRIMITIVE_HEADER (2);
   CHECK_ARG (2, WEAK_PAIR_P);
   SET_PAIR_CDR ((ARG_REF (2)), (ANY_TO_UINT (PQconnectdb (STRING_ARG (1)))));
-  PRIMITIVE_RETURN (unspecific);
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("PQ-CONNECT-START", Prim_pq_connect_start, 2, 2, 0)
@@ -71,7 +71,7 @@ DEFINE_PRIMITIVE ("PQ-CONNECT-START", Prim_pq_connect_start, 2, 2, 0)
   CHECK_ARG (2, WEAK_PAIR_P);
   SET_PAIR_CDR ((ARG_REF (2)),
 		(ANY_TO_UINT (PQconnectStart (STRING_ARG (1)))));
-  PRIMITIVE_RETURN (unspecific);
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("PQ-CONNECT-POLL", Prim_pq_connect_poll, 1, 1, 0)
@@ -116,10 +116,13 @@ DEFINE_PRIMITIVE ("PQ-OPTIONS", Prim_pq_options, 1, 1, 0)
 DEFINE_PRIMITIVE ("PQ-ERROR-MESSAGE", Prim_pq_error_message, 1, 1, 0)
   CONN_TO_STRING (PQerrorMessage)
 
-DEFINE_PRIMITIVE ("PQ-EXEC", Prim_pq_exec, 2, 2, 0)
+DEFINE_PRIMITIVE ("PQ-EXEC", Prim_pq_exec, 3, 3, 0)
 {
-  PRIMITIVE_HEADER (2);
-  PRIMITIVE_RETURN (ANY_TO_UINT (PQexec ((ARG_CONN (1)), (STRING_ARG (2)))));
+  PRIMITIVE_HEADER (3);
+  CHECK_ARG (3, WEAK_PAIR_P);
+  SET_PAIR_CDR ((ARG_REF (3)),
+		(ANY_TO_UINT (PQexec ((ARG_CONN (1)), (STRING_ARG (2))))));
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("PQ-MAKE-EMPTY-PG-RESULT", Prim_pq_make_empty_pg_result,
