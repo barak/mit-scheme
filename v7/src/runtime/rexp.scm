@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rexp.scm,v 1.4 2000/04/13 16:14:40 cph Exp $
+;;; $Id: rexp.scm,v 1.5 2000/04/13 16:19:17 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -35,7 +35,7 @@
 	     (case (car rexp)
 	       ((ALTERNATIVES SEQUENCE)
 		(for-all? (cdr rexp) rexp?))
-	       ((GROUP ? * +)
+	       ((GROUP OPTIONAL * +)
 		(and (one-arg)
 		     (not (and (pair? rexp)
 			       (memq (car rexp) nongroupable-rexp-types)))))
@@ -48,12 +48,21 @@
 		     (assq (cadr rexp) syntax-type-alist)))
 	       (else #f))))))
 
-(define (rexp-alternatives . rexps) `(ALTERNATIVES ,@rexps))
-(define (rexp-sequence . rexps) `(SEQUENCE ,@rexps))
+(define (rexp-alternatives . rexps)
+  `(ALTERNATIVES ,@rexps))
+
+(define (rexp-sequence . rexps)
+  `(SEQUENCE ,@(map (lambda (rexp)
+		      (if (and (pair? rexp)
+			       (eq? (car rexp) 'ALTERNATIVES))
+			  (rexp-group rexp)
+			  rexp))
+		    rexps)))
+
 (define (rexp-group rexp) `(GROUP ,rexp))
-(define (rexp-optional rexp) `(? ,rexp))
-(define (rexp* rexp) `(* ,rexp))
-(define (rexp+ rexp) `(+ ,rexp))
+(define (rexp-optional rexp) `(OPTIONAL ,(rexp-groupify rexp)))
+(define (rexp* rexp) `(* ,(rexp-groupify rexp)))
+(define (rexp+ rexp) `(+ ,(rexp-groupify rexp)))
 
 (define (rexp-any-char) `(ANY-CHAR))
 (define (rexp-line-start) `(LINE-START))
@@ -83,12 +92,11 @@
 	  ((and (pair? rexp) (list? (cdr rexp)))
 	   (let ((one-arg
 		  (lambda ()
-		    (if (not (fix:= 1 (length (cdr rexp))))
-			(lose))
-		    (cadr rexp))))
-	     (let ((repeat-arg
-		    (lambda ()
-		      (rexp->regexp (rexp-groupify (one-arg)))))
+		    (if (fix:= 1 (length (cdr rexp)))
+			(cadr rexp)
+			(lose))))
+		 (rexp-args (lambda () (map rexp->regexp (cdr rexp)))))
+	     (let ((rexp-arg (lambda () (rexp->regexp (one-arg))))
 		   (syntax-type
 		    (lambda ()
 		      (let ((entry (assq (one-arg) syntax-type-alist)))
@@ -96,22 +104,12 @@
 			    (cdr entry)
 			    (lose))))))
 	       (case (car rexp)
-		 ((ALTERNATIVES)
-		  (separated-append (map rexp->regexp (cdr rexp)) "\\|"))
-		 ((SEQUENCE)
-		  (apply string-append
-			 (map (lambda (rexp)
-				(rexp->regexp
-				 (if (and (pair? rexp)
-					  (eq? (car rexp) 'ALTERNATIVES))
-				     (rexp-group rexp)
-				     rexp)))
-			      (cdr rexp))))
-		 ((GROUP)
-		  (string-append "\\(" (rexp->regexp (one-arg)) "\\)"))
-		 ((?) (string-append (repeat-arg) "?"))
-		 ((*) (string-append (repeat-arg) "*"))
-		 ((+) (string-append (repeat-arg) "+"))
+		 ((ALTERNATIVES) (separated-append (rexp-args) "\\|"))
+		 ((SEQUENCE) (apply string-append (rexp-args)))
+		 ((GROUP) (string-append "\\(" (rexp-arg) "\\)"))
+		 ((OPTIONAL) (string-append (rexp-arg) "?"))
+		 ((*) (string-append (rexp-arg) "*"))
+		 ((+) (string-append (rexp-arg) "+"))
 		 ((ANY-CHAR) ".")
 		 ((LINE-START) "^")
 		 ((LINE-END) "$")
@@ -166,7 +164,7 @@
   '(GROUP ANY-CHAR WORD-CHAR NOT-WORD-CHAR SYNTAX-CHAR NOT-SYNTAX-CHAR))
 
 (define groupable-rexp-types
-  '(ALTERNATIVES SEQUENCE ? * +))
+  '(ALTERNATIVES SEQUENCE OPTIONAL * +))
 
 (define nongroupable-rexp-types
   '(LINE-START LINE-END STRING-START STRING-END WORD-EDGE NOT-WORD-EDGE
