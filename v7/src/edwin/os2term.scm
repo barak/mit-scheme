@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2term.scm,v 1.13 1996/04/24 04:34:24 cph Exp $
+;;;	$Id: os2term.scm,v 1.14 1996/05/03 06:56:46 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
 ;;;
@@ -97,7 +97,7 @@
 	(os2win-close-event-qid event-descriptor)
 	(set! event-descriptor #f)
 	unspecific)))
-
+
 (define (with-editor-interrupts-from-os2 receiver)
   (fluid-let ((reading-event? #f)
 	      (signal-interrupts? #t)
@@ -452,7 +452,12 @@
   (os2win-set-pos (screen-wid screen) x y))
 
 (define (os2-screen/set-title! screen title)
-  (os2win-set-title (screen-wid screen) title))
+  (let ((title* (screen-current-title screen)))
+    (if (not (and title* (string=? title title*)))
+	(begin
+	  (set-screen-current-title! screen #f)
+	  (os2win-set-title (screen-wid screen) title)
+	  (set-screen-current-title! screen title)))))
 
 (define (os2-screen/raise! screen)
   (os2win-set-state (screen-wid screen) window-state:top))
@@ -574,7 +579,8 @@
   (pel-height 0)
   (char-map "")
   (face-map '#())
-  (current-face normal-face))
+  (current-face normal-face)
+  (current-title #f))
 
 (define-integrable (screen-wid screen)
   (screen-state/wid (screen-state screen)))
@@ -615,6 +621,12 @@
 (define-integrable (set-screen-current-face! screen face)
   (set-screen-state/current-face! (screen-state screen) face))
 
+(define-integrable (screen-current-title screen)
+  (screen-state/current-title (screen-state screen)))
+
+(define-integrable (set-screen-current-title! screen title)
+  (set-screen-state/current-title! (screen-state screen) title))
+
 (define-integrable (screen-psid screen)
   (os2win-ps (screen-wid screen)))
 
