@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.325 1999/02/24 21:37:22 cph Exp $
+$Id: runtime.pkg,v 14.326 1999/03/04 05:56:18 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -1689,17 +1689,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (initialization (initialize-package!)))
 
 (define-package (runtime pathname unix)
+  (files "unxpth")
   (parent (runtime pathname))
-  (file-case os-type
-   ((unix) "unxpth")
-   (else))
   (initialization (initialize-package!)))
 
 (define-package (runtime pathname dos)
+  (files "dospth")
   (parent (runtime pathname))
-  (file-case os-type
-   ((dos nt os/2) "dospth")
-   (else))
   (initialization (initialize-package!)))
 
 (define-package (runtime population)
