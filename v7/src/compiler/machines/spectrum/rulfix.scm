@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rulfix.scm,v 4.44 1992/09/30 21:57:27 cph Exp $
+$Id: rulfix.scm,v 4.45 1993/07/01 03:24:03 gjr Exp $
 
-Copyright (c) 1989-1992 Massachusetts Institute of Technology
+Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -70,24 +70,6 @@ MIT in each case. |#
   (ASSIGN (REGISTER (? target)) (FIXNUM->ADDRESS (REGISTER (? source))))
   (standard-unary-conversion source target fixnum->address))
 
-#|
-(define-rule statement
-  (ASSIGN (REGISTER (? target))
-	  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
-			 (OBJECT->FIXNUM (CONSTANT 4))
-			 (OBJECT->FIXNUM (REGISTER (? source)))
-			 #F))
-  (standard-unary-conversion source target object->index-fixnum))
-
-(define-rule statement
-  (ASSIGN (REGISTER (? target))
-	  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
-			 (OBJECT->FIXNUM (REGISTER (? source)))
-			 (OBJECT->FIXNUM (CONSTANT 4))
-			 #F))
-  (standard-unary-conversion source target object->index-fixnum))
-|#
-
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
@@ -108,39 +90,11 @@ MIT in each case. |#
   (standard-unary-conversion source target
 			     (make-scaled-object->fixnum value)))
 
-#|
-;; Superseded by code below
-
-;; This is a patch for the time being.  Probably only one of these pairs
-;; of rules is needed.
-
-(define-rule statement
-  (ASSIGN (REGISTER (? target))
-	  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
-			 (OBJECT->FIXNUM (CONSTANT 4))
-			 (REGISTER (? source))
-			 #F))
-  (standard-unary-conversion source target fixnum->index-fixnum))
-
-(define-rule statement
-  (ASSIGN (REGISTER (? target))
-	  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
-			 (REGISTER (? source))
-			 (OBJECT->FIXNUM (CONSTANT 4))
-			 #F))
-  (standard-unary-conversion source target fixnum->index-fixnum))
-|#
-
 (define-integrable (fixnum->index-fixnum src tgt)
   (LAP (SHD () ,src 0 30 ,tgt)))
 
 (define-integrable (object->fixnum src tgt)
   (LAP (SHD () ,src 0 ,scheme-datum-width ,tgt)))
-
-#|
-(define-integrable (object->index-fixnum src tgt)
-  (LAP (SHD () ,src 0 ,(- scheme-datum-width 2) ,tgt)))
-|#
 
 (define (make-scaled-object->fixnum factor)
   (let ((shift (integer-log-base-2? factor)))
@@ -161,6 +115,9 @@ MIT in each case. |#
 
 (define (fixnum->address src tgt)
   (LAP (SHD () ,regnum:quad-bitmask ,src ,scheme-type-width ,tgt)))
+
+(define (fixnum->datum src tgt)
+  (LAP (SHD () 0 ,src ,scheme-type-width ,tgt)))
 
 (define (load-fixnum-constant constant target)
   (load-immediate (* constant fixnum-1) target))
@@ -291,12 +248,6 @@ MIT in each case. |#
 ;; in regnum:second-arg indicating wheter there was overflow.
 
 (define (special-binary-operation operation hook target source1 source2 ovflw?)
-  (define (->machine-register source machine-reg)
-    (let ((code (load-machine-register! source machine-reg)))
-      ;; Prevent it from being allocated again.
-      (need-register! machine-reg)
-      code))
-
   (if (not (pair? hook))
       (error "special-binary-operation: Unknown operation" operation))
 
@@ -305,17 +256,21 @@ MIT in each case. |#
 	 (load-2 (->machine-register source2 regnum:second-arg)))
     ;; Make regnum:first-arg the only alias for target
     (delete-register! target)
+    (delete-dead-registers!)
     (add-pseudo-register-alias! target regnum:first-arg)
     (LAP ,@extra
 	 ,@load-1
 	 ,@load-2
-	 ;; Hopefully a peep-hole optimizer will switch this instruction
-	 ;; and the preceding one, and remove the nop.
-	 (BLE () (OFFSET ,(car hook) 4 ,regnum:scheme-to-interface-ble))
-	 (NOP ())
+	 ,@(invoke-hook (car hook))
 	 ,@(if (not ovflw?)
 	       (LAP)
 	       (LAP (COMICLR (=) 0 ,regnum:second-arg 0))))))
+
+(define (->machine-register source machine-reg)
+  (let ((code (load-machine-register! source machine-reg)))
+    ;; Prevent it from being allocated again.
+    (need-register! machine-reg)
+    code))
 
 ;;; Binary operations with one argument constant.
 
@@ -796,3 +751,243 @@ MIT in each case. |#
     ((POSITIVE-FIXNUM? GREATER-THAN-FIXNUM?) '>)
     (else
      (error "fixnum-pred->cc: unknown predicate" predicate))))
+
+;;;; New "optimizations"
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (OBJECT->DATUM (FIXNUM->OBJECT (REGISTER (? source)))))
+  (standard-unary-conversion source target fixnum->datum))
+
+(define (constant->additive-operand operation constant)
+  (case operation
+    ((PLUS-FIXNUM ONE-PLUS-FIXNUM) constant)
+    ((MINUS-FIXNUM MINUS-ONE-PLUS-FIXNUM) (- constant))
+    (else
+     (error "constant->additive-operand: Unknown operation"
+	    operation))))
+
+(define (guarantee-fixnum-result target)
+  (let ((default
+	  (lambda ()
+	    (deposit-immediate (ucode-type fixnum)
+			       (-1+ scheme-type-width)
+			       scheme-type-width
+			       target))))
+    #|
+    ;; Unsafe at sign crossings until the tags are changed.
+    (if compiler:assume-safe-fixnums?
+	(LAP)
+	(default))
+    |#
+    (default)))
+
+(define (obj->fix-of-reg*obj->fix-of-const operation target source constant)
+  (let* ((source (standard-source! source))
+	 (temp (standard-temporary!))
+	 (target (standard-target! target)))
+    (LAP ,@(load-offset (constant->additive-operand operation constant)
+			source temp)
+	 ,@(object->fixnum temp target))))
+
+(define (fix->obj-of-obj->fix-of-reg*obj->fix-of-const operation target
+						       source constant)
+  (let* ((source (standard-source! source))
+	 (target (standard-target! target)))
+    (LAP ,@(load-offset (constant->additive-operand operation constant)
+			source target)
+	 ,@(guarantee-fixnum-result target))))
+
+(define (obj->dat-of-fix->obj-of-obj->fix-of-reg*obj->fix-of-const
+	 operation target source constant)
+  (let* ((source (standard-source! source))
+	 (temp (standard-temporary!))
+	 (target (standard-target! target)))
+    (LAP ,@(load-offset (constant->additive-operand operation constant)
+			source temp)
+	 ,@(object->datum temp target))))
+
+(define (fix->obj-of-reg*obj->fix-of-const operation target source constant)
+  (let* ((source (standard-source! source))
+	 (temp (standard-temporary!))
+	 (target (standard-target! target)))
+    (LAP ,@(load-offset
+	    (constant->additive-operand operation (* constant fixnum-1))
+	    source temp)
+	 ,@(fixnum->object temp target))))
+
+(define (obj->dat-of-fix->obj-of-reg*obj->fix-of-const
+	 operation target source constant)
+  (let* ((source (standard-source! source))
+	 (temp (standard-temporary!))
+	 (target (standard-target! target)))
+    (LAP ,@(load-offset
+	    (constant->additive-operand operation (* constant fixnum-1))
+	    source temp)
+	 ,@(fixnum->datum temp target))))
+
+(define (incr-or-decr? operation)
+  (and (memq operation '(ONE-PLUS-FIXNUM MINUS-ONE-PLUS-FIXNUM))
+       operation))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-1-ARG (? operation incr-or-decr?)
+			(OBJECT->FIXNUM (REGISTER (? source)))
+			#F))
+  (obj->fix-of-reg*obj->fix-of-const operation target source 1))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-1-ARG (? operation incr-or-decr?)
+			 (OBJECT->FIXNUM (REGISTER (? source)))
+			 #F)))
+  (fix->obj-of-obj->fix-of-reg*obj->fix-of-const operation target source 1))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (OBJECT->DATUM
+	   (FIXNUM->OBJECT
+	    (FIXNUM-1-ARG (? operation incr-or-decr?)
+			  (OBJECT->FIXNUM (REGISTER (? source)))
+			  #F))))
+  (obj->dat-of-fix->obj-of-obj->fix-of-reg*obj->fix-of-const
+   operation target source 1))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-1-ARG (? operation incr-or-decr?)
+			 (REGISTER (? source))
+			 #F)))
+  (fix->obj-of-reg*obj->fix-of-const operation target source 1))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (OBJECT->DATUM
+	   (FIXNUM->OBJECT
+	    (FIXNUM-1-ARG (? operation incr-or-decr?)
+			  (REGISTER (? source))
+			  #F))))
+  (obj->dat-of-fix->obj-of-reg*obj->fix-of-const
+   operation target source 1))
+
+(define (plus-or-minus? operation)
+  (and (memq operation '(PLUS-FIXNUM MINUS-FIXNUM))
+       operation))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS (? operation plus-or-minus?)
+			 (OBJECT->FIXNUM (REGISTER (? source)))
+			 (OBJECT->FIXNUM (CONSTANT (? constant)))
+			 #F))
+  (obj->fix-of-reg*obj->fix-of-const operation target source constant))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS (? operation plus-or-minus?)
+			  (OBJECT->FIXNUM (REGISTER (? source)))
+			  (OBJECT->FIXNUM (CONSTANT (? constant)))
+			  #F)))
+  (QUALIFIER (memq operation '(PLUS-FIXNUM MINUS-FIXNUM)))
+  (fix->obj-of-obj->fix-of-reg*obj->fix-of-const operation target
+						 source constant))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (OBJECT->DATUM
+	   (FIXNUM->OBJECT
+	    (FIXNUM-2-ARGS (? operation plus-or-minus?)
+			   (OBJECT->FIXNUM (REGISTER (? source)))
+			   (OBJECT->FIXNUM (CONSTANT (? constant)))
+			   #F))))
+  (QUALIFIER (memq operation '(PLUS-FIXNUM MINUS-FIXNUM)))
+  (obj->dat-of-fix->obj-of-obj->fix-of-reg*obj->fix-of-const
+   operation target source constant))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS (? operation plus-or-minus?)
+			  (REGISTER (? source))
+			  (OBJECT->FIXNUM (CONSTANT (? constant)))
+			  #F)))
+  (QUALIFIER (memq operation '(PLUS-FIXNUM MINUS-FIXNUM)))
+  (fix->obj-of-reg*obj->fix-of-const operation target source constant))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (OBJECT->DATUM
+	   (FIXNUM->OBJECT
+	    (FIXNUM-2-ARGS (? operation plus-or-minus?)
+			   (REGISTER (? source))
+			   (OBJECT->FIXNUM (CONSTANT (? constant)))
+			   #F))))
+  (QUALIFIER (memq operation '(PLUS-FIXNUM MINUS-FIXNUM)))
+  (obj->dat-of-fix->obj-of-reg*obj->fix-of-const
+   operation target source constant))
+
+(define (additive-operate operation target source-1 source-2)
+  (case operation
+    ((PLUS-FIXNUM)
+     (LAP (ADD () ,source-1 ,source-2 ,target)))
+    ((MINUS-FIXNUM)
+     (LAP (SUB () ,source-1 ,source-2 ,target)))
+    (else
+     (error "constant->additive-operand: Unknown operation"
+	    operation))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS (? operation plus-or-minus?)
+			 (REGISTER (? source-1))
+			 (OBJECT->FIXNUM (REGISTER (? source-2)))
+			 #F))
+  (let* ((source-1 (standard-source! source-1))
+	 (source-2 (standard-source! source-2))
+	 (temp (standard-temporary!))
+	 (target (standard-target! target)))
+    (LAP ,@(object->fixnum source-2 temp)
+	 ,@(additive-operate operation target source-1 temp))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS (? operation plus-or-minus?)
+			 (OBJECT->FIXNUM (REGISTER (? source-1)))
+			 (REGISTER (? source-2))
+			 #F))
+  (let* ((source-1 (standard-source! source-1))
+	 (source-2 (standard-source! source-2))
+	 (temp (standard-temporary!))
+	 (target (standard-target! target)))
+    (LAP ,@(object->fixnum source-1 temp)
+	 ,@(additive-operate operation target temp source-2))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS (? operation plus-or-minus?)
+			 (OBJECT->FIXNUM (REGISTER (? source-1)))
+			 (OBJECT->FIXNUM (REGISTER (? source-2)))
+			 #F))
+  (let* ((source-1 (standard-source! source-1))
+	 (source-2 (standard-source! source-2))
+	 (temp (standard-temporary!))
+	 (target (standard-target! target)))
+    (LAP ,@(additive-operate operation temp source-1 source-2)
+	 ,@(object->fixnum temp target))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-2-ARGS (? operation plus-or-minus?)
+			  (OBJECT->FIXNUM (REGISTER (? source-1)))
+			  (OBJECT->FIXNUM (REGISTER (? source-2)))
+			  #F)))
+  (let* ((source-1 (standard-source! source-1))
+	 (source-2 (standard-source! source-2))
+	 (target (standard-target! target)))
+    (LAP ,@(additive-operate operation target source-1 source-2)
+	 ,@(guarantee-fixnum-result target))))
