@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11term.c,v 1.12 1990/10/16 20:54:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11term.c,v 1.13 1990/10/25 21:34:27 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -727,11 +727,10 @@ Scroll the contents of the region up by LINES.")
     unsigned int x_start = (arg_index_integer (2, (x_end + 1)));
     unsigned int y_end = (arg_index_integer (5, ((XW_Y_CSIZE (xw)) + 1)));
     unsigned int y_start = (arg_index_integer (4, (y_end + 1)));
-    unsigned int lines = (arg_index_integer (6, ((y_end - y_start) + 1)));
-    if ((lines > 0) && (x_start < x_end) && (y_start < y_end))
+    unsigned int lines = (arg_index_integer (6, (y_end - y_start)));
+    if ((0 < lines) && (x_start < x_end) && (y_start < y_end))
       {
-	unsigned int y_mid = (y_start + lines);
-	if (CURSOR_IN_RECTANGLE (xw, x_start, x_end, y_mid, y_end))
+	if (CURSOR_IN_RECTANGLE (xw, x_start, x_end, (y_start + lines), y_end))
 	  {
 	    xterm_erase_cursor (xw);
 	    xterm_scroll_lines_up (xw, x_start, x_end, y_start, y_end, lines);
@@ -740,7 +739,8 @@ Scroll the contents of the region up by LINES.")
 	else
 	  {
 	    xterm_scroll_lines_up (xw, x_start, x_end, y_start, y_end, lines);
-	    if (CURSOR_IN_RECTANGLE (xw, x_start, x_end, y_start, y_mid))
+	    if (CURSOR_IN_RECTANGLE
+		(xw, x_start, x_end, y_start, (y_end - lines)))
 	      {
 		(XW_CURSOR_VISIBLE_P (xw)) = 0;
 		xterm_draw_cursor (xw);
@@ -789,11 +789,10 @@ Scroll the contents of the region down by LINES.")
     unsigned int x_start = (arg_index_integer (2, (x_end + 1)));
     unsigned int y_end = (arg_index_integer (5, ((XW_Y_CSIZE (xw)) + 1)));
     unsigned int y_start = (arg_index_integer (4, (y_end + 1)));
-    unsigned int lines = (arg_index_integer (6, ((y_end - y_start) + 1)));
-    if ((lines > 0) && (x_start < x_end) && (y_start < y_end))
+    unsigned int lines = (arg_index_integer (6, (y_end - y_start)));
+    if ((0 < lines) && (x_start < x_end) && (y_start < y_end))
       {
-	unsigned int y_mid = (y_end - lines);
-	if (CURSOR_IN_RECTANGLE (xw, x_start, x_end, y_start, y_mid))
+	if (CURSOR_IN_RECTANGLE (xw, x_start, x_end, y_start, (y_end - lines)))
 	  {
 	    xterm_erase_cursor (xw);
 	    xterm_scroll_lines_down
@@ -804,7 +803,8 @@ Scroll the contents of the region down by LINES.")
 	  {
 	    xterm_scroll_lines_down
 	      (xw, x_start, x_end, y_start, y_end, lines);
-	    if (CURSOR_IN_RECTANGLE (xw, x_start, x_end, y_mid, y_end))
+	    if (CURSOR_IN_RECTANGLE
+		(xw, x_start, x_end, (y_start + lines), y_end))
 	      {
 		(XW_CURSOR_VISIBLE_P (xw)) = 0;
 		xterm_draw_cursor (xw);
