@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.1 2000/01/04 22:51:09 cph Exp $
+;;; $Id: imail-umail.scm,v 1.2 2000/01/07 23:10:02 cph Exp $
 ;;;
 ;;; Copyright (c) 1999 Massachusetts Institute of Technology
 ;;;
@@ -45,7 +45,7 @@
 (define-class (<umail-folder> (constructor (url messages))) (<file-folder>))
 
 (define-method %write-folder ((folder <folder>) (url <umail-url>))
-  (write-umail-file folder (file-url-pathname url)))
+  (write-umail-file folder url))
 
 (define-method poll-folder ((folder <umail-folder>))
   folder
@@ -54,38 +54,38 @@
 ;;;; Read unix mail file
 
 (define (read-umail-file url)
-  (let* ((pathname (file-url-pathname url))
-	 (namestring (->namestring pathname)))
+  (let* ((pathname (file-url-pathname url)))
     (call-with-input-file pathname
       (lambda (port)
-	(make-umail-folder url (read-umail-messages port namestring))))))
+	(make-umail-folder url (read-umail-messages port))))))
 
-(define (read-umail-messages port namestring)
-  (map (lambda (lines)
-	 (parse-umail-message lines namestring))
-       (let ((groups
-	      (burst-list (read-lines port)
-			  (lambda (line)
-			    (re-string-match unix-mail-delimiter line)))))
-	 (if (and (pair? groups)
-		  (not (null? (caar groups))))
-	     (error "Malformed unix mail file:" namestring))
-	 groups)))
+(define (read-umail-messages port)
+  (map parse-umail-message
+       (burst-list (read-lines port)
+		   (lambda (line)
+		     (re-string-match unix-mail-delimiter line)))))
 
-(define (parse-umail-message lines namestring)
-  (let loop ((ls (cdr lines)) (header-lines '()))
-    (if (pair? ls)
-	(if (string-null? (car ls))
-	    (let ((message
-		   (make-standard-message headers (lines->string (cdr ls)))))
-	      (set-message-property message "umail-from-line" (car lines))
-	      message)
-	    (loop (cdr ls) (cons (car ls) header-lines)))
-	(error "Malformed unix mail file:" namestring))))
+(define (parse-umail-message lines)
+  (let ((message
+	 (let loop ((ls (cdr lines)) (header-lines '()))
+	   (if (pair? ls)
+	       (if (string-null? (car ls))
+		   (make-standard-message
+		    (lines->header-fields (reverse! header-lines))
+		    (lines->string
+		     (map (lambda (line)
+			    (if (string-prefix-ci? ">From " line)
+				(string-tail line 1)
+				line))
+			  (cdr ls))))
+		   (loop (cdr ls) (cons (car ls) header-lines)))
+	       (make-standard-message (reverse! header-lines) "")))))
+    (set-message-property message "umail-from-line" (car lines))
+    message))
 
 ;;;; Write unix mail file
 
-(define (write-umail-file folder pathname)
+(define (write-umail-file folder url)
   (call-with-output-file (file-url-pathname url)
     (lambda (port)
       (write-umail-messages (file-folder-messages folder) port))))
@@ -94,17 +94,21 @@
   (for-each (lambda (message) (write-umail-message message port)) messages))
 
 (define (write-umail-message message port)
-  (write-string
-   (let ((header (get-first-header-field message "umail-from-line" #f)))
-     (if header
-	 (string-trim (header-field-value header))
-	 (string-append "From "
-			(or (rfc822-first-address
-			     (get-first-header-field message "from" #t))
+  (let ((from-line (get-message-property message "umail-from-line" #f)))
+    (if from-line
+	(write-string from-line port)
+	(begin
+	  (write-string "From " port)
+	  (write-string (or (let ((from
+				   (get-first-header-field-value
+				    message "from" #f)))
+			      (and from
+				   (rfc822-first-address from)))
 			    "unknown")
-			" "
-			(universal-time->string (get-universal-time)))))
-   port)
+			port)
+	  (write-string " " port)
+	  (write-string (universal-time->unix-ctime (get-universal-time))
+			port))))
   (newline port)
   (write-header-field (message-flags->header-field (message-flags message))
 		      port)
@@ -116,8 +120,31 @@
 	    (message-properties message))
   (write-header-fields (message-header-fields message) port)
   (newline port)
-  (write-string (message-body message) port)
-  (fresh-line port))
+  (for-each (lambda (line)
+	      (if (string-prefix-ci? "From " line)
+		  (write-string ">" port))
+	      (write-string line port)
+	      (newline port))
+	    (string->lines (message-body message))))
+
+(define (universal-time->unix-ctime time)
+  (decoded-time->unix-ctime (universal-time->local-decoded-time time)))
+
+(define (decoded-time->unix-ctime dt)
+  (string-append
+   (day-of-week/short-string (decoded-time/day-of-week dt))
+   " "
+   (month/short-string (decoded-time/month dt))
+   " "
+   (string-pad-left (number->string (decoded-time/day dt)) 2)
+   " "
+   (string-pad-left (number->string (decoded-time/hour dt)) 2 #\0)
+   ":"
+   (string-pad-left (number->string (decoded-time/minute dt)) 2 #\0)
+   ":"
+   (string-pad-left (number->string (decoded-time/second dt)) 2 #\0)
+   " "
+   (number->string (decoded-time/year dt))))
 
 ;;;; Detection of unix "from" lines.
 
@@ -151,11 +178,11 @@
      ;; We want to match the results of any of these manglings.
      ;; The following regexp rejects names whose first characters are
      ;; obviously bogus, but after that anything goes.
-     "\\([^\0-\b\n-\r\^?].*\\)? "
+     "\\([^\000-\b\n-\r\177].*\\)? "
 
      ;; The time the message was sent.
-     "\\([^\0-\r \^?]+\\) +"				; day of the week
-     "\\([^\0-\r \^?]+\\) +"				; month
+     "\\([^\000-\r \177]+\\) +"				; day of the week
+     "\\([^\000-\r \177]+\\) +"				; month
      "\\([0-3]?[0-9]\\) +"				; day of month
      "\\([0-2][0-9]:[0-5][0-9]\\(:[0-6][0-9]\\)?\\) *"	; time of day
 
