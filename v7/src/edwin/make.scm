@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/make.scm,v 3.71 1992/05/26 16:10:17 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/make.scm,v 3.72 1992/05/28 18:41:26 jinx Exp $
 
-Copyright (c) 1989-92 Massachusetts Institute of Technology
+Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -40,4 +40,4 @@ MIT in each case. |#
  "edwin"
  `((os-type . ,(intern (microcode-identification-item 'OS-NAME-STRING))))
  'QUERY)
-(add-system! (make-system "Edwin" 3 70 '()))
+(add-system! (make-system "Edwin" 3 71 '()))
