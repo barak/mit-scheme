@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/fixobj.h,v 9.24 1987/04/03 00:12:59 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/fixobj.h,v 9.25 1987/04/28 16:38:00 cph Rel $
  *
  * Declarations of user offsets into the Fixed Objects Vector.
  * This should correspond to the file UTABMD.SCM
@@ -70,6 +70,7 @@ MIT in each case. */
 #define Compiler_Err_Procedure  0x20	/* ??? */
 #define Lost_Objects_Base 	0x21	/* Free at the end of the "real" gc. */
 #define State_Space_Root	0x22 	/* Root of state space */
+#define Primitive_Profiling_Table 0x23	/* Table of profile counts for primitives. */
 
-#define NFixed_Objects		0x23
+#define NFixed_Objects		0x24
 
