@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.50 1996/04/24 01:23:01 cph Exp $
+;;;	$Id: rmail.scm,v 1.51 1996/06/16 05:18:24 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-96 Massachusetts Institute of Technology
 ;;;
@@ -2229,8 +2229,10 @@ Completion is performed over known labels when reading."
 	     (delete-string m (skip-chars-forward " \t\n" m end))
 	     (loop m (+ count 1))))
 	  ((re-match-forward umail-message-start-regexp point end false)
-	   (let ((point (mark-left-inserting-copy point)))
+	   (let ((point (mark-right-inserting-copy point))
+		 (end (mark-left-inserting-copy end)))
 	     (nuke-pinhead-header point end)
+	     (mark-temporary! end)
 	     (mark-temporary! point)
 	     (process-rfc822
 	      point
