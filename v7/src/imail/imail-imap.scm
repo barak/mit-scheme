@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.53 2000/05/18 03:43:01 cph Exp $
+;;; $Id: imail-imap.scm,v 1.54 2000/05/18 19:53:26 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -551,9 +551,11 @@
 			      (number->string (+ (message-index message) 1)))))
 	  ((imail-message-wrapper "Reading" suffix)
 	   (lambda ()
-	     (imap:command:uid-fetch connection uid keywords)
-	     (if (not (initpred message))
-		 (error (string-append "Unable to obtain" suffix)))))))))
+	     (imap:read-literal-progress-hook imail-progress-meter
+	       (lambda ()
+		 (imap:command:uid-fetch connection uid keywords)
+		 (if (not (initpred message))
+		     (error (string-append "Unable to obtain" suffix)))))))))))
 
 (let ((reflector
        (lambda (generic-procedure slot-name guarantee)

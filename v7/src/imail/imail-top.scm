@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.63 2000/05/18 17:14:18 cph Exp $
+;;; $Id: imail-top.scm,v 1.64 2000/05/18 19:53:27 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -169,7 +169,25 @@ May be called with an IMAIL folder URL as argument;
 					procedure))
 
 (define (imail-message-wrapper . arguments)
-  (apply message-wrapper #f arguments))
+  (let ((prefix (string-append (message-args->string arguments) "...")))
+    (lambda (thunk)
+      (fluid-let ((*imail-message-wrapper-prefix* prefix))
+	(message prefix)
+	(let ((v (thunk)))
+	  (message prefix "done")
+	  v)))))
+
+(define (imail-progress-meter current total)
+  (if (and *imail-message-wrapper-prefix* (<= 0 current total))
+      (message *imail-message-wrapper-prefix*
+	       (string-pad-left
+		(number->string (round->exact (* (/ current total) 100)))
+		3)
+	       "% (of "
+	       (number->string total)
+	       ")")))
+
+(define *imail-message-wrapper-prefix* #f)
 
 (define-major-mode imail read-only "IMAIL"
   "IMAIL mode is used by \\[imail] for editing IMAIL files.

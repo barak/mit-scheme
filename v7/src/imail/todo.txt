@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.20 2000/05/18 18:57:45 cph Exp $
+$Id: todo.txt,v 1.21 2000/05/18 19:53:30 cph Exp $
 
 Bug fixes
 ---------
@@ -40,8 +40,6 @@ Design changes
 
 New features
 ------------
-
-* Add progress feedback when reading very long message bodies.
 
 * Add commands to create, delete, and rename folders.
 
