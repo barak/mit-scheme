@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lincom.scm,v 1.108 1991/04/21 00:51:10 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lincom.scm,v 1.109 1991/04/23 06:41:30 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -429,15 +429,18 @@ Leaves one space in place of them.  With argument,
 moves down one line first (killing newline after current line)."
   "P"
   (lambda (argument)
-    (set-current-point!
-     (horizontal-space-start
-      (line-end (current-point) (if (not argument) -1 0) 'ERROR)))
-    (let ((point (current-point)))
-      (region-delete! (make-region point (line-start point 1 'ERROR)))
-      (if (ref-variable fill-prefix)
-	  (let ((match (match-forward (ref-variable fill-prefix))))
-	    (if match (delete-string match))))
-      (delete-horizontal-space)
+    (let ((point
+	   (mark-left-inserting-copy
+	    (horizontal-space-start
+	     (line-end (current-point) (if (not argument) -1 0) 'ERROR))))
+	  (fill-prefix (ref-variable fill-prefix)))
+      (delete-string point (line-start point 1 'ERROR))
+      (if fill-prefix
+	  (let ((m
+		 (match-forward fill-prefix point (line-end point 0) false)))
+	    (if m
+		(delete-string point m))))
+      (delete-horizontal-space point)
       (if (or (line-start? point)
 	      (line-end? point)
 	      (not (or (char-set-member?
@@ -446,7 +449,9 @@ moves down one line first (killing newline after current line)."
 		       (char-set-member?
 			(ref-variable delete-indentation-left-protected)
 			(mark-right-char point)))))
-	  (insert-chars #\Space 1)))))
+	  (insert-char #\space point))
+      (mark-temporary! point)
+      (set-current-point! point))))
 
 (define-variable delete-indentation-right-protected
   "\\[delete-indentation] won't insert a space to the right of these."
@@ -490,13 +495,9 @@ The variable tab-width controls the action."
 (define (tabify-region start end)
   (let ((start (mark-left-inserting-copy start))
 	(end (mark-left-inserting-copy end))
-	(pattern (re-compile-pattern "[ \t][ \t]+" false))
 	(tab-width (group-tab-width (mark-group start))))
     (do ()
-	((not (re-search-buffer-forward pattern false false
-					(mark-group start)
-					(mark-index start)
-					(mark-index end))))
+	((not (re-search-forward "[ \t][ \t]+" start end false)))
       (move-mark-to! start (re-match-start 0))
       (let ((end-column (mark-column (re-match-end 0))))
 	(delete-string start (re-match-end 0))

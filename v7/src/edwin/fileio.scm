@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.96 1991/04/21 00:50:30 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.97 1991/04/23 06:45:42 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -206,12 +206,10 @@ at the end of a file."
 	    (lambda ()
 	      (backward-one-page end)))))
       (if start
-	  (with-variable-value! (ref-variable-object case-fold-search) true
-	    (lambda ()
-	      (if (re-search-forward "Edwin Variables:[ \t]*" start)
-		  (parse-local-variables buffer
-					 (re-match-start 0)
-					 (re-match-end 0))))))))))
+	  (if (re-search-forward "Edwin Variables:[ \t]*" start end true)
+	      (parse-local-variables buffer
+				     (re-match-start 0)
+				     (re-match-end 0))))))))
 
 (define (evaluate sexp)
   (scode-eval (syntax sexp system-global-syntax-table)
@@ -234,7 +232,7 @@ at the end of a file."
 	(let ((m1
 	       (horizontal-space-end
 		(if prefix?
-		    (or (match-forward prefix start)
+		    (or (match-forward prefix start end false)
 			(editor-error
 			 "Local variables entry is missing the prefix"))
 		    start))))

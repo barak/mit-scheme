@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sercom.scm,v 1.56 1991/04/21 00:52:01 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sercom.scm,v 1.57 1991/04/23 06:43:29 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -49,66 +49,79 @@
 ;;;; Variables
 
 (define-variable-per-buffer case-fold-search
-  "*True if searches should ignore case.
+  "True if searches should ignore case.
 Automatically becomes local when set in any fashion."
-  true)
+  true
+  boolean?)
 
 (define-variable search-last-string
   "Last string search for by a non-regexp search command.
 This does not include direct calls to the primitive search functions,
 and does not include searches that are aborted."
-  "")
+  ""
+  string?)
 
 (define-variable search-last-regexp
   "Last string searched for by a regexp search command.
 This does not include direct calls to the primitive search functions,
 and does not include searches that are aborted."
-  "")
+  ""
+  string?)
 
 (define-variable search-repeat-char
-  "*Character to repeat incremental search forwards."
-  #\C-s)
+  "Character to repeat incremental search forwards."
+  #\C-s
+  char?)
 
 (define-variable search-reverse-char
-  "*Character to repeat incremental search backwards."
-  #\C-r)
+  "Character to repeat incremental search backwards."
+  #\C-r
+  char?)
 
 (define-variable search-exit-char
-  "*Character to exit incremental search."
-  #\altmode)
+  "Character to exit incremental search."
+  #\altmode
+  char?)
 
 (define-variable search-delete-char
-  "*Character to delete from incremental search string."
-  #\rubout)
+  "Character to delete from incremental search string."
+  #\rubout
+  char?)
 
 (define-variable search-quote-char
-  "*Character to quote special characters for incremental search."
-  #\C-q)
+  "Character to quote special characters for incremental search."
+  #\C-q
+  char?)
 
 (define-variable search-yank-word-char
-  "*Character to pull next word from buffer into search string."
-  #\C-w)
+  "Character to pull next word from buffer into search string."
+  #\C-w
+  char?)
 
 (define-variable search-yank-line-char
-  "*Character to pull rest of line from buffer into search string."
-  #\C-y)
+  "Character to pull rest of line from buffer into search string."
+  #\C-y
+  char?)
 
 (define-variable search-exit-option
-  "*True means random control characters terminate incremental search."
-  true)
+  "True means random control characters terminate incremental search."
+  true
+  boolean?)
 
 (define-variable search-slow-speed
-  "*Highest terminal speed at which to use \"slow\" style incremental search.
+  "Highest terminal speed at which to use \"slow\" style incremental search.
 This is the style where a one-line window is created to show the line
 that the search has reached."
-  1200)
+  1200
+  exact-nonnegative-integer?)
 
 (define-variable search-slow-window-lines
-  "*Number of lines in slow search display windows.
+  "Number of lines in slow search display windows.
 These are the short windows used during incremental search on slow terminals.
 Negative means put the slow search window at the top (normally it's at bottom)
 and the value is minus the number of lines."
-  1)
+  1
+  exact-integer?)
 
 ;;;; String Search
 
@@ -126,41 +139,57 @@ and the value is minus the number of lines."
       (set-variable! search-last-regexp regexp)
       (list regexp))))
 
-(define (search-command procedure pattern)
-  (let ((mark (procedure pattern)))
-    (if mark
-	(begin
-	  (push-current-mark! (current-point))
-	  (set-current-point! mark))
-	(editor-failure))))
-
 (define-command search-forward
   "Search forward from point for a character string.
 Sets point at the end of the occurrence found."
   (search-prompt "Search")
   (lambda (string)
-    (search-command search-forward string)))
+    (let ((point (current-point)))
+      (let ((mark (search-forward string point (group-end point))))
+	(if mark
+	    (begin
+	      (push-current-mark! point)
+	      (set-current-point! mark))
+	    (editor-failure))))))
 
 (define-command search-backward
   "Search backward from point for a character string.
 Sets point at the beginning of the occurrence found."
   (search-prompt "Search backward")
   (lambda (string)
-    (search-command search-backward string)))
+    (let ((point (current-point)))
+      (let ((mark (search-backward string point (group-start point))))
+	(if mark
+	    (begin
+	      (push-current-mark! point)
+	      (set-current-point! mark))
+	    (editor-failure))))))
 
 (define-command re-search-forward
   "Search forward from point for a regular expression.
 Sets point at the end of the occurrence found."
   (search-prompt "RE search")
   (lambda (regexp)
-    (search-command re-search-forward regexp)))
+    (let ((point (current-point)))
+      (let ((mark (re-search-forward regexp point (group-end point))))
+	(if mark
+	    (begin
+	      (push-current-mark! point)
+	      (set-current-point! mark))
+	    (editor-failure))))))
 
 (define-command re-search-backward
   "Search backward from point for a character string.
 Sets point at the beginning of the occurrence found."
   (search-prompt "RE search backward")
   (lambda (regexp)
-    (search-command re-search-backward regexp)))
+    (let ((point (current-point)))
+      (let ((mark (re-search-backward regexp point (group-start point))))
+	(if mark
+	    (begin
+	      (push-current-mark! point)
+	      (set-current-point! mark))
+	    (editor-failure))))))
 
 ;;;; Incremental Search
 
@@ -229,35 +258,34 @@ Special characters:
     (character-search false)))
 
 (define (character-search forward?)
-  (define (char-search char)
-    (search-finish
-     (let ((point (current-point)))
-       (if forward?
-	   (char-search-forward char point (group-end point))
-	   (char-search-backward char point (group-start point))))))
-
-  (define (string-search operator)
-    (search-finish (operator (ref-variable search-last-string))))
-
-  (define (search-finish mark)
-    (if mark
-	(set-current-point! mark)
-	(editor-failure)))
-
   (let ((char (prompt-for-char "Character search")))
     (let ((test-for
 	   (lambda (char*)
 	     (char=? char (remap-alias-char char*)))))
-      (cond ((test-for #\C-a)
-	     (dispatch-on-command
-	      (if forward?
-		  (ref-command-object search-forward)
-		  (ref-command-object search-backward))))
-	    ((test-for #\C-s)
-	     (string-search search-forward))
-	    ((test-for #\C-r)
-	     (string-search search-backward))
-	    ((test-for #\C-q)
-	     (char-search (prompt-for-char "Quote character")))
-	    (else
-	     (char-search char))))))
+      (if (test-for #\C-a)
+	  (dispatch-on-command
+	   (if forward?
+	       (ref-command-object search-forward)
+	       (ref-command-object search-backward)))
+	  (let ((mark
+		 (let ((m (current-point)))
+		   (cond ((test-for #\C-s)
+			  (search-forward (ref-variable search-last-string)
+					  m
+					  (group-end m)))
+			 ((test-for #\C-r)
+			  (search-backward (ref-variable search-last-string)
+					   m
+					   (group-start m)))
+			 (else
+			  (let ((char
+				 (if (test-for #\C-q)
+				     (prompt-for-char "Quote character")
+				     char)))
+			    (if forward?
+				(char-search-forward char m (group-end m))
+				(char-search-backward char m
+						      (group-start m)))))))))
+	    (if mark
+		(set-current-point! mark)
+		(editor-failure)))))))

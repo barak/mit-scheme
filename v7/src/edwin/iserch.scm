@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/iserch.scm,v 1.11 1991/03/22 00:32:01 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/iserch.scm,v 1.12 1991/04/23 06:40:24 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -337,9 +337,11 @@
 	     (with-editor-interrupts-enabled
 	      (lambda ()
 		(if forward?
-		    (if regexp?
-			(re-search-forward text start)
-			(search-forward text start))
-		    (if regexp?
-			(re-search-backward text start)
-			(search-backward text start))))))))))))
+		    (let ((end (group-end start)))
+		      (if regexp?
+			  (re-search-forward text start end)
+			  (search-forward text start end)))
+		    (let ((end (group-start start)))
+		      (if regexp?
+			  (re-search-backward text start end)
+			  (search-backward text start end)))))))))))))

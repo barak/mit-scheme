@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/syntax.scm,v 1.69 1989/04/28 22:53:42 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/syntax.scm,v 1.70 1991/04/23 06:44:12 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -341,18 +341,20 @@ a comment ending."
 
 (define-variable definition-start
   "Regexp to match start of a definition."
-  "^\\s(")
+  "^\\s("
+  string?)
 
 (define (definition-start? mark)
   (re-match-forward (ref-variable definition-start) mark))
 
 (define (forward-one-definition-start mark)
   (and (re-search-forward (ref-variable definition-start)
-			  (if (line-start? mark) (line-end mark 0) mark))
+			  (if (line-start? mark) (line-end mark 0) mark)
+			  (group-end mark))
        (re-match-start 0)))
 
 (define (backward-one-definition-start mark)
-  (re-search-backward (ref-variable definition-start) mark))
+  (re-search-backward (ref-variable definition-start) mark (group-start mark)))
 
 (define (forward-one-definition-end mark)
   (define (loop start)

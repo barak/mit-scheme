@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/replaz.scm,v 1.65 1989/04/28 22:52:40 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/replaz.scm,v 1.66 1991/04/23 06:42:12 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -115,12 +115,14 @@ With an argument, replace only matches surrounded by word boundaries."
 	(old-notification (ref-variable auto-push-point-notification)))
 
     (define (find-next-occurrence start receiver)
-      (if (if replace-words-only?
-	      (re-search-forward (force words-only-source) start)
-	      (search-forward source start))
+      (if (let ((end (group-end start)))
+	    (if replace-words-only?
+		(re-search-forward (force words-only-source) start end)
+		(search-forward source start end)))
 	  (receiver (re-match-start 0) (re-match-end 0))
-	  (begin (if clear-on-exit? (clear-message))
-		 false)))
+	  (begin
+	    (if clear-on-exit? (clear-message))
+	    false)))
 
     (define (query-loop start end)
       (undo-boundary! end)

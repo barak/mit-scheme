@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.99 1991/04/21 00:50:55 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.100 1991/04/23 06:39:49 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -335,7 +335,7 @@ except for \\[info-cease-edit] to return to Info."
 	     (lambda (start)
 	       (without-group-clipped! (buffer-group buffer)
 		 (lambda ()
-		   (re-search-forward regexp start)))))
+		   (re-search-forward regexp start (group-end start))))))
 	    (win
 	     (lambda (mark)
 	       (buffer-widen! buffer)
@@ -429,7 +429,11 @@ except for \\[info-cease-edit] to return to Info."
   (nth-menu-item 4))
 
 (define (find-menu)
-  (search-forward "\n* menu:" (buffer-start (current-buffer))))
+  (let ((buffer (current-buffer)))
+    (search-forward "\n* menu:"
+		    (buffer-start buffer)
+		    (buffer-end buffer)
+		    true)))
 
 (define (collect-menu-items mark)
   (let ((item (next-menu-item mark)))
@@ -440,16 +444,19 @@ except for \\[info-cease-edit] to return to Info."
 	      (collect-menu-items item)))))
 
 (define (next-menu-item mark)
-  (re-search-forward "\n\\*[ \t]+" (line-end mark 0)))
+  (re-search-forward "\n\\*[ \t]+"
+		     (line-end mark 0)
+		     (group-end mark)
+		     false))
 
 (define (menu-item-keyword item)
-  (let ((end (char-search-forward #\: item (line-end item 0))))
+  (let ((end (char-search-forward #\: item (line-end item 0) false)))
     (if (not end)
 	(error "Menu item missing colon"))
     (extract-string item (mark-1+ end))))
 
 (define (menu-item-name item)
-  (let ((colon (char-search-forward #\: item (line-end item 0))))
+  (let ((colon (char-search-forward #\: item (line-end item 0) false)))
     (if (not colon)
 	(error "Menu item missing colon."))
     (if (match-forward "::" (mark-1+ colon))
@@ -461,7 +468,7 @@ except for \\[info-cease-edit] to return to Info."
       (error "Menu item missing node name"))
   (extract-string start
 		  (let ((end (line-end start 0)))
-		    (if (re-search-forward "[.,\t]" start end)
+		    (if (re-search-forward "[.,\t]" start end false)
 			(re-match-start 0)
 			end))))
 
@@ -487,10 +494,10 @@ The name may be an abbreviation of the reference name."
 	      (collect-cref-items item)))))
 
 (define (next-cref-item start)
-  (re-search-forward "\\*Note[ \t\n]*" start))
+  (re-search-forward "\\*Note[ \t\n]*" start (group-end start) true))
 
 (define (cref-item-keyword item)
-  (let ((colon (char-search-forward #\: item (group-end item))))
+  (let ((colon (char-search-forward #\: item (group-end item) false)))
     (if (not colon)
 	(error "Cross reference missing colon."))
     (%cref-item-keyword item (mark-1+ colon))))
@@ -501,7 +508,7 @@ The name may be an abbreviation of the reference name."
     (string-trim string)))
 
 (define (cref-item-name item)
-  (let ((colon (char-search-forward #\: item (group-end item))))
+  (let ((colon (char-search-forward #\: item (group-end item) false)))
     (if (not colon)
 	(error "Cross reference missing colon."))
     (if (match-forward "::" (mark-1+ colon))
@@ -696,7 +703,10 @@ The name may be an abbreviation of the reference name."
 		       (ref-variable info-history))))
 
 (define (node-start start end)
-  (line-start (search-backward "\n" start end 'ERROR) 2 'ERROR))
+  (line-start (or (search-backward "\n" start end false)
+		  (editor-error))
+	      2
+	      'ERROR))
 
 (define (node-region node)
   (make-region node (node-end node)))
@@ -704,20 +714,20 @@ The name may be an abbreviation of the reference name."
 (define (node-end node)
   (let ((end (group-end node)))
     (let loop ((start node))
-      (let ((mark (re-search-forward "[\f]" start)))
+      (let ((mark (re-search-forward "[\f]" start end false)))
 	(cond ((not mark) end)
 	      ((char=? (extract-left-char (re-match-start 0)) #\newline)
 	       (mark-1+ (re-match-start 0)))
 	      (else (loop mark)))))))
 
 (define (next-node start end)
-  (let ((mark (search-forward "\n" start end)))
+  (let ((mark (search-forward "\n" start end false)))
       (and mark
 	   (line-start mark 1))))
 
 (define ((field-value-extractor field) node)
   (let ((end (line-end node 0)))
-    (let ((mark (re-search-forward field node end)))
+    (let ((mark (re-search-forward field node end true)))
       (and mark
 	   (string-trim
 	    (extract-string mark
@@ -780,7 +790,7 @@ The name may be an abbreviation of the reference name."
 
 (define (extract-tag-entry node)
   (let ((end (line-end node 0)))
-    (let ((mark (search-forward "Node:" node end)))
+    (let ((mark (search-forward "Node:" node end true)))
       (and mark
 	   (string-trim
 	    (extract-string node
@@ -797,12 +807,14 @@ The name may be an abbreviation of the reference name."
 	 (mark (line-start end -8))
 	 (tag-table-end
 	  (and mark
-	       (search-forward tag-table-end-string mark)
+	       (search-forward tag-table-end-string mark end true)
 	       (re-match-start 0)))
 	 (tag-table-start
 	  (and tag-table-end
 	       (search-backward tag-table-start-string
-				tag-table-end)
+				tag-table-end
+				(buffer-start buffer)
+				true)
 	       (re-match-end 0))))
     (if (and tag-table-end (not tag-table-start))
 	(begin
@@ -832,7 +844,8 @@ The name may be an abbreviation of the reference name."
 	(let ((mark
 	       (or (search-forward (string-append "Node: " nodename "\177")
 				   (ref-variable info-tag-table-start)
-				   (ref-variable info-tag-table-end))
+				   (ref-variable info-tag-table-end)
+				   true)
 		   (editor-error "No such node: " nodename))))
 	  ;; Force order of events, since read-subfile has side-effect.
 	  (let ((index
@@ -858,10 +871,11 @@ The name may be an abbreviation of the reference name."
 	  (+ (- index (subfile-index (car subfiles)))
 	     (mark-index
 	      (let ((buffer (current-buffer)))
-		(search-forward "\n"
-				(buffer-start buffer)
-				(buffer-end buffer)
-				'ERROR)))))
+		(or (search-forward "\n"
+				    (buffer-start buffer)
+				    (buffer-end buffer)
+				    false)
+		    (editor-error))))))
 	(loop (cdr subfiles)))))
 
 (define (set-current-subfile! pathname)
@@ -881,16 +895,19 @@ The name may be an abbreviation of the reference name."
 
 (define (subfile-list)
   (let ((result
-	 (let loop ((start
-		     (let ((start (ref-variable info-tag-table-start)))
-		       (search-forward "\n\nIndirect:\n"
-				       (group-start start)
-				       start
-				       'ERROR))))
+	 (let loop
+	     ((start
+	       (let ((start (ref-variable info-tag-table-start)))
+		 (or (search-forward "\n\nIndirect:\n"
+				     (group-start start)
+				     start
+				     true)
+		     (editor-error)))))
 	   (if (match-forward "" start)
 	       '()
 	       (begin
-		 (search-forward ": " start (group-end start) 'ERROR)
+		 (if (not (search-forward ": " start (group-end start) false))
+		     (editor-error))
 		 (let* ((colon (re-match-start 0))
 			(index (read-index-from-mark (re-match-end 0))))
 		   (cons (cons (extract-string start colon) index)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tagutl.scm,v 1.36 1991/03/15 23:40:26 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tagutl.scm,v 1.37 1991/04/23 06:44:29 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -125,7 +125,8 @@ See documentation of variable tags-file-name."
 	     (re-search-backward
 	      "\\sw\\|\\s_"
 	      (or (re-match-forward "\\(\\sw\\|\\s_\\)*" point end)
-		  point))))
+		  point)
+	      (group-start point))))
 	(and mark
 	     (let ((mark (mark1+ mark)))
 	       (let ((mark*
@@ -136,53 +137,56 @@ See documentation of variable tags-file-name."
 		      (extract-string mark* mark)))))))))
 
 (define (find-tag string buffer start find-file)
-  (let ((tag
-	 (let loop ((mark start))
-	   (let ((mark (search-forward string mark)))
-	     (and mark
-		  (or (re-match-forward find-tag-match-regexp mark)
-		      (loop mark)))))))
-    (if (not tag)
-	(editor-failure "No "
-			(if (group-start? start) "" "more ")
-			"entries containing "
-			string)
-	(let ((pathname
-	       (merge-pathnames
-		(tag->pathname tag)
-		(pathname-directory-path (buffer-pathname buffer))))
-	      (regexp
-	       (string-append
-		"^"
-		(re-quote-string (extract-string (mark-1+ tag)
-						 (line-start tag 0)))))
-	      (start
-	       (-1+
-		(string->number
-		 (let ((mark (search-forward "," tag)))
-		   (extract-string mark (line-end mark 0)))))))
-	  (set-buffer-point! buffer (line-end tag 0))
-	  (find-file pathname)
-	  (let* ((buffer (current-buffer))
-		 (group (buffer-group buffer))
-		 (end (group-end-index group)))
-	    (buffer-widen! buffer)
-	    (push-current-mark! (current-point))
-	    (let ((mark
-		   (let loop ((offset 1000))
-		     (let ((index (- start offset)))
-		       (if (positive? index)
-			   (or (re-search-forward
-				regexp
-				(make-mark group index)
-				(make-mark group (min (+ start offset) end)))
-			       (loop (* 3 offset)))
-			   (re-search-forward regexp (make-mark group 0)))))))
-	      (if (not mark)
-		  (editor-failure regexp
-				  " not found in "
-				  (pathname-name-string pathname))
-		  (set-current-point! (line-start mark 0)))))))))
+  (let ((end (group-end start)))
+    (let ((tag
+	   (let loop ((mark start))
+	     (let ((mark (search-forward string mark end)))
+	       (and mark
+		    (or (re-match-forward find-tag-match-regexp mark)
+			(loop mark)))))))
+      (if (not tag)
+	  (editor-failure "No "
+			  (if (group-start? start) "" "more ")
+			  "entries containing "
+			  string)
+	  (let ((pathname
+		 (merge-pathnames
+		  (tag->pathname tag)
+		  (pathname-directory-path (buffer-pathname buffer))))
+		(regexp
+		 (string-append
+		  "^"
+		  (re-quote-string (extract-string (mark-1+ tag)
+						   (line-start tag 0)))))
+		(start
+		 (-1+
+		  (string->number
+		   (let ((mark (search-forward "," tag end)))
+		     (extract-string mark (line-end mark 0)))))))
+	    (set-buffer-point! buffer (line-end tag 0))
+	    (find-file pathname)
+	    (let* ((buffer (current-buffer))
+		   (group (buffer-group buffer))
+		   (end (group-end-index group)))
+	      (buffer-widen! buffer)
+	      (push-current-mark! (current-point))
+	      (let ((mark
+		     (let loop ((offset 1000))
+		       (let ((index (- start offset)))
+			 (if (positive? index)
+			     (or (re-search-forward
+				  regexp
+				  (make-mark group index)
+				  (make-mark group (min (+ start offset) end)))
+				 (loop (* 3 offset)))
+			     (re-search-forward regexp
+						(make-mark group 0)
+						end))))))
+		(if (not mark)
+		    (editor-failure regexp
+				    " not found in "
+				    (pathname-name-string pathname))
+		    (set-current-point! (line-start mark 0))))))))))
 
 (define find-tag-match-regexp
   "[^\n\177]*\177")
@@ -199,7 +203,9 @@ See documentation of variable tags-file-name."
   (lambda (regexp)
     (set! tags-loop-continuation
 	  (lambda ()
-	    (let ((mark (re-search-forward regexp (current-point))))
+	    (let ((mark
+		   (let ((point (current-point)))
+		     (re-search-forward regexp point (group-end point)))))
 	      (if mark
 		  (begin
 		    (set-current-point! mark)
