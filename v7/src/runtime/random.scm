@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: random.scm,v 14.22 1999/08/09 19:33:44 cph Exp $
+$Id: random.scm,v 14.23 2000/04/11 03:46:50 cph Exp $
 
-Copyright (c) 1993-1999 Massachusetts Institute of Technology
+Copyright (c) 1993-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -86,6 +86,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				       (fix:+ index 1))))
 	(set-interrupt-enables! mask)
 	(flo:/ element b.)))))
+
+(define (random-byte-vector n #!optional state)
+  (let ((state (if (default-object? state) #f state))
+	(s (make-string n)))
+    (do ((i 0 (fix:+ i 1)))
+	((fix:= i n))
+      (vector-8b-set! s i (random 256 state)))
+    s))
 
 (define (make-random-state #!optional state)
   (let ((state (if (default-object? state) #f state)))
