@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: picture.scm,v 1.23 1995/02/24 00:38:06 cph Exp $
+$Id: picture.scm,v 1.24 1997/12/30 01:53:33 cph Exp $
 
 Copyright (c) 1991-95 Massachusetts Institute of Technology
 
@@ -169,62 +169,6 @@ MIT in each case. |#
       ((OS/2) (n-gray-map/os2 window))
       (else (error "Unsupported graphics type:" name)))))
 
-(define (n-gray-map/X11 window)
-  (let ((properties (x-display/properties (x-graphics/display window))))
-    (or (1d-table/get properties '6001-GRAY-MAP #f)
-	(let ((gm (allocate-grays window)))
-	  (1d-table/put! properties '6001-GRAY-MAP gm)
-	  gm))))
-
-(define (allocate-grays window)
-  (let ((w-cm (graphics-operation window 'get-colormap))
-	(visual-info
-	 ((ucode-primitive x-get-visual-info 10) (x-graphics-device/xw window)
-						 #f #f #f #f #f #f #f #f #f)))
-    (let ((find-info
-	   (let ((length (vector-length visual-info)))
-	     (if (= length 0)
-		 (error "X-GET-VISUAL-INFO: no results"))
-	     (lambda (class depth-min depth-max)
-	       (let loop ((index 0))
-		 (and (< index length)
-		      (let ((info (vector-ref visual-info index)))
-			(if (and (= class (vector-ref info 4))
-				 ;; kludge, but X made us do it.
-				 (<= depth-min (vector-ref info 8) depth-max))
-			    info
-			    (loop (+ index 1)))))))))
-	  (make-gray-map
-	   (lambda (n-levels)
-	     (let ((gm (make-string n-levels))
-		   (step (/ 65535 (- n-levels 1))))
-	       (do ((index 0 (+ index 1)))
-		   ((= index n-levels))
-		 (vector-8b-set!
-		  gm
-		  index
-		  (let ((intensity (round->exact (* step index))))
-		    (x-colormap/allocate-color
-		     w-cm
-		     intensity intensity intensity))))
-	       gm))))
-      (cond ((find-info visual-class:static-gray 256 256)
-	     (make-gray-map 256))
-	    ((or (find-info visual-class:gray-scale 256 256)
-		 (find-info visual-class:pseudo-color 250 256))
-	     (make-gray-map 128))
-	    ((find-info visual-class:static-gray 2 2)
-	     (make-gray-map 2))
-	    (else
-	     (error "ALLOCATE-GRAYS: not known display type" window))))))
-
-(define-integrable visual-class:static-gray 0)
-(define-integrable visual-class:gray-scale 1)
-(define-integrable visual-class:static-color 2)
-(define-integrable visual-class:pseudo-color 3)
-(define-integrable visual-class:true-color 4)
-(define-integrable visual-class:direct-color 5)
-
 (define n-gray-map/win32
   (let ((map (make-string 128)))
     (do ((i 0 (fix:+ i 1)))
@@ -238,6 +182,112 @@ MIT in each case. |#
 	((fix:= i 256))
       (vector-8b-set! map i i))
     (lambda (window) window map)))
+
+(define (n-gray-map/X11 window)
+  (let ((properties (x-display/properties (x-graphics/display window))))
+    (or (1d-table/get properties '6001-GRAY-MAP #f)
+	(let ((gm (allocate-grays window)))
+	  (1d-table/put! properties '6001-GRAY-MAP gm)
+	  gm))))
+
+(define (allocate-grays window)
+  (let ((w-cm (graphics-operation window 'get-colormap))
+	(visual-info (vector->list (x-graphics/visual-info window))))
+    (let ((find-class
+	   (lambda (class)
+	     (there-exists? visual-info
+	       (lambda (info)
+		 (eqv? class (x-visual-info/class info))))))
+	  (find-range
+	   (lambda (class depth-min depth-max)
+	     (there-exists? visual-info
+	       (lambda (info)
+		 (and (eqv? class (x-visual-info/class info))
+		      ;; kludge, but X made us do it.
+		      (<= depth-min
+			  (x-visual-info/colormap-size info)
+			  depth-max))))))
+	  (make-gray-map
+	   (lambda (n-levels)
+	     (let ((gm (make-vector n-levels))
+		   (binner (linear-binner 0 (- n-levels 1) #x10000)))
+	       (do ((index 0 (+ index 1)))
+		   ((= index n-levels))
+		 (vector-set! gm
+			      index
+			      (let ((intensity
+				     (binner (exact->inexact index))))
+				(x-colormap/allocate-color
+				 w-cm intensity intensity intensity))))
+	       gm)))
+	  (make-color-map
+	   (lambda (n-levels)
+	     (make-spectrum-palette n-levels
+	       (let ((binner (linear-binner 0 1 #x10000)))
+		 (lambda (r g b)
+		   (x-colormap/allocate-color w-cm
+					      (binner r)
+					      (binner g)
+					      (binner b))))))))
+      (cond ((or (find-class x-visual-class:true-color)
+		 (find-class x-visual-class:direct-color))
+	     (if use-color?
+		 (make-color-map 256)
+		 (make-gray-map 256)))
+	    ((find-range x-visual-class:pseudo-color 250 256)
+	     (if use-color?
+		 (make-color-map 128)
+		 (make-gray-map 128)))
+	    ((find-range x-visual-class:static-gray 256 256)
+	     (make-gray-map 256))
+	    ((or (find-range x-visual-class:static-gray 128 255)
+		 (find-range x-visual-class:gray-scale 256 256))
+	     (make-gray-map 128))
+	    ((find-range x-visual-class:static-gray 2 2)
+	     (make-gray-map 2))
+	    (else
+	     (error "ALLOCATE-GRAYS: not known display type" window))))))
+
+(define (make-spectrum-palette n-levels encode-color)
+  (make-initialized-vector n-levels
+    (let ((step (/ (* 2/3 2pi) (- n-levels 2))))
+      (lambda (index)
+	(if (= 0 index)
+	    (encode-color 0 0 0)
+	    (call-with-values
+		(lambda ()
+		  (hsv->rgb (* step (- (- n-levels 2) index))
+			    color-saturation
+			    (+ minimum-color-intensity
+			       (* (- 1 minimum-color-intensity)
+				  (/ index (- n-levels 1))))))
+	      encode-color))))))
+
+(define use-color? #f)
+(define 2pi (* 8 (atan 1 1)))
+(define color-saturation 1)
+(define minimum-color-intensity .5)
+
+(define (linear-binner min-value max-value n-bins)
+  (let ((min-value (exact->inexact min-value))
+	(scale (exact->inexact (/ n-bins (- max-value min-value)))))
+    (lambda (value)
+      (let ((bin
+	     (flo:floor->exact (flo:* (flo:- (if (flo:flonum? value)
+						 value
+						 (exact->inexact value))
+					     min-value)
+				      scale))))
+	(cond ((< bin 0) 0)
+	      ((>= bin n-bins) (- n-bins 1))
+	      (else bin))))))
+
+(define-integrable visual-class:static-gray 0)
+(define-integrable visual-class:gray-scale 1)
+(define-integrable visual-class:static-color 2)
+(define-integrable visual-class:pseudo-color 3)
+(define-integrable visual-class:true-color 4)
+(define-integrable visual-class:direct-color 5)
 
 ;;;; Pictures
 
