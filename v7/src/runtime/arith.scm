@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.26 1993/02/01 01:31:05 cph Exp $
+$Id: arith.scm,v 1.27 1993/12/28 18:20:48 cph Exp $
 
-Copyright (c) 1989-1992 Massachusetts Institute of Technology
+Copyright (c) 1989-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1834,10 +1834,10 @@ MIT in each case. |#
 (define-integrable integer-divide-remainder cdr)
 
 (define (gcd . integers)
-  (reduce complex:gcd 0 integers))
+  (fold-left complex:gcd 0 integers))
 
 (define (lcm . integers)
-  (reduce complex:lcm 1 integers))
+  (fold-left complex:lcm 1 integers))
 
 (define numerator complex:numerator)
 (define denominator complex:denominator)
