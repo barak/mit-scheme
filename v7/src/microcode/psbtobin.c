@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbtobin.c,v 9.28 1987/11/17 08:05:02 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbtobin.c,v 9.29 1987/11/20 08:20:36 jinx Exp $
  *
  * This File contains the code to translate portable format binary
  * files to internal format.
@@ -44,19 +44,21 @@ MIT in each case. */
 
 #include "translate.h"
 
-static long Dumped_Object_Addr;
-static long Dumped_Heap_Base, Heap_Objects, Heap_Count;
-static long Dumped_Constant_Base, Constant_Objects, Constant_Count;
-static long Dumped_Pure_Base, Pure_Objects, Pure_Count;
-static long Primitive_Table_Length;
+static long
+  Dumped_Object_Addr,
+  Dumped_Heap_Base, Heap_Objects, Heap_Count,
+  Dumped_Constant_Base, Constant_Objects, Constant_Count,
+  Dumped_Pure_Base, Pure_Objects, Pure_Count,
+  Primitive_Table_Length;
 
-static Pointer *Heap;
-static Pointer *Heap_Base, *Heap_Table, *Heap_Object_Base, *Free;
-static Pointer *Constant_Base, *Constant_Table,
-               *Constant_Object_Base, *Free_Constant;
-static Pointer *Pure_Base, *Pure_Table, *Pure_Object_Base, *Free_Pure;
-static Pointer *primitive_table, *primitive_table_end;
-static Pointer *Stack_Top;
+static Pointer
+  *Heap,
+  *Heap_Base, *Heap_Table, *Heap_Object_Base, *Free,
+  *Constant_Base, *Constant_Table,
+  *Constant_Object_Base, *Free_Constant,
+  *Pure_Base, *Pure_Table, *Pure_Object_Base, *Free_Pure,
+  *primitive_table, *primitive_table_end,
+  *Stack_Top;
 
 long
 Write_Data(Count, From_Where)
@@ -266,7 +268,7 @@ read_an_integer(The_Type, To, Slot)
     fast unsigned long Temp;
     long Length;
 
-    if ((The_Type == TC_FIXNUM) && (!Compact_P))
+    if ((The_Type == TC_FIXNUM) && (!compact_p))
     {
       fprintf(stderr,
 	      "%s: Fixnum too large, coercing to bignum.\n",
@@ -377,7 +379,7 @@ compute_max()
     Result += ldexp(1.0, expt);
   }
   the_max = Result;
-  return Result;
+  return (Result);
 }
 
 double 
@@ -616,13 +618,6 @@ Read_Pointers_and_Relocate(N, To)
 	continue;
 	
       case TC_MANIFEST_NM_VECTOR:
-	if (!(Null_NMV))
-	{
-	  /* Unknown object! */
-	  fprintf(stderr,
-		  "%s: File is not portable: NMH found\n",
-		  Program_Name);
-	}
 	*To++ = Make_Non_Pointer(The_Type, The_Datum);
         {
 	  fast long count;
@@ -631,14 +626,24 @@ Read_Pointers_and_Relocate(N, To)
 	  N -= count;
 	  while (--count >= 0)
 	  {
-	    VMS_BUG(The_Type = 0);
-	    VMS_BUG(The_Datum = 0);
-	    fscanf(Portable_File, "%2x %lx", &The_Type, &The_Datum);
-	    *To++ = Make_Non_Pointer(The_Type, The_Datum);
+	    VMS_BUG(*To = 0);
+	    fscanf(Portable_File, "%lx", To++);
 	  }
 	}
 	continue;
 
+      case TC_COMPILED_EXPRESSION:
+      {
+	Pointer *temp;
+	long base_type, base_datum;
+
+	fscanf(Portable_File, "%02x %lx", &base_type, &base_datum);
+	temp = Relocate(base_datum);
+	*To++ = Make_Pointer(base_type,
+			     ((Pointer *) (&(((char *) temp)[The_Datum]))));
+	break;
+      }
+
       case TC_BROKEN_HEART:
 	if (The_Datum != 0)
 	{
@@ -783,9 +788,9 @@ when(what, message)
 
 #define READ_HEADER(string, format, value)				\
 {									\
- fscanf(Input_File, format, value);					\
+ fscanf(Input_File, format, &(value));					\
  fprintf(stderr, "%s: ", (string));					\
- fprintf(stderr, (format), (*(value)));					\
+ fprintf(stderr, (format), (value));					\
  fprintf(stderr, "\n");							\
 }
 
@@ -797,7 +802,7 @@ when(what, message)
 
 #define READ_HEADER(string, format, value)				\
 {									\
-  fscanf(Input_File, format, value);					\
+  fscanf(Input_File, format, &(value));					\
 }
 
 #endif /* DEBUG */
@@ -805,56 +810,85 @@ when(what, message)
 long
 Read_Header_and_Allocate()
 {
-  long Portable_Version, Flags, Version, Sub_Version;
-  long NFlonums, NIntegers, NBits, NBitstrs, NBBits, NStrings, NChars, NPChars;
-  long Size;
+  long
+    Portable_Version, Machine,
+    Version, Sub_Version, Flags,
+    NFlonums, NIntegers, NBits,
+    NBitstrs, NBBits, NStrings, NChars,
+    NPChars,
+    Size;
 
-  /* Read Header */
+  READ_HEADER("Portable Version", "%ld", Portable_Version);
 
-  READ_HEADER("Portable Version", "%ld", &Portable_Version);
-  READ_HEADER("Flags", "%ld", &Flags);
-  READ_HEADER("Version", "%ld", &Version);
-  READ_HEADER("Sub Version", "%ld", &Sub_Version);
-
-  if ((Portable_Version != PORTABLE_VERSION)	||
-      (Version != FASL_FORMAT_VERSION)		||
-      (Sub_Version != FASL_SUBVERSION))
+  if (Portable_Version != PORTABLE_VERSION)
   {
-    fprintf(stderr,
-	    "Portable File Version %4d Subversion %4d Portable Version %4d\n",
-	    Version, Sub_Version, Portable_Version);
-    fprintf(stderr,
-	    "Expected:     Version %4d Subversion %4d Portable Version %4d\n",
-	    FASL_FORMAT_VERSION, FASL_SUBVERSION, PORTABLE_VERSION);
+    fprintf(stderr, "Portable File Version %4d\n", Portable_Version);
+    fprintf(stderr, "Expected:     Version %4d\n", PORTABLE_VERSION);
     quit(1);
   }
 
-  Read_Flags(Flags);
+  READ_HEADER("Machine", "%ld", Machine);
+  READ_HEADER("Version", "%ld", Version);
+  READ_HEADER("Sub Version", "%ld", Sub_Version);
 
-  READ_HEADER("Heap Count", "%ld", &Heap_Count);
-  READ_HEADER("Dumped Heap Base", "%ld", &Dumped_Heap_Base);
-  READ_HEADER("Heap Objects", "%ld", &Heap_Objects);
+  if ((Version != FASL_FORMAT_VERSION)		||
+      (Sub_Version != FASL_SUBVERSION))
+  {
+    fprintf(stderr,
+	    "Portable File Version %4d Subversion %4d Binary Version %4d\n",
+	    Portable_Version, Version, Sub_Version);
+    fprintf(stderr,
+	    "Expected:     Version %4d Subversion %4d Binary Version %4d\n",
+	    PORTABLE_VERSION, FASL_FORMAT_VERSION, FASL_SUBVERSION);
+    quit(1);
+  }
+
+  READ_HEADER("Flags", "%ld", Flags);
+  READ_FLAGS(Flags);
+
+  if ((compiled_p || nmv_p) && (Machine != FASL_INTERNAL_FORMAT))
+  {
+    if (compiled_p)
+    {
+      fprintf(stderr,
+	      "%s: Portable file contains \"invalid\" compiled code.\n",
+	      Program_Name);
+    }
+    else
+    {
+      fprintf(stderr,
+	      "%s: Portable file contains \"random\" non-marked vectors.\n",
+	      Program_Name);
+    }
+    fprintf(stderr, "Portable File Machine %4d\n", Machine);
+    fprintf(stderr, "Expected:     Machine %4d\n", FASL_INTERNAL_FORMAT);
+    quit(1);
+  }
+
+  READ_HEADER("Heap Count", "%ld", Heap_Count);
+  READ_HEADER("Dumped Heap Base", "%ld", Dumped_Heap_Base);
+  READ_HEADER("Heap Objects", "%ld", Heap_Objects);
   
-  READ_HEADER("Constant Count", "%ld", &Constant_Count);
-  READ_HEADER("Dumped Constant Base", "%ld", &Dumped_Constant_Base);
-  READ_HEADER("Constant Objects", "%ld", &Constant_Objects);
+  READ_HEADER("Constant Count", "%ld", Constant_Count);
+  READ_HEADER("Dumped Constant Base", "%ld", Dumped_Constant_Base);
+  READ_HEADER("Constant Objects", "%ld", Constant_Objects);
   
-  READ_HEADER("Pure Count", "%ld", &Pure_Count);
-  READ_HEADER("Dumped Pure Base", "%ld", &Dumped_Pure_Base);
-  READ_HEADER("Pure Objects", "%ld", &Pure_Objects);
+  READ_HEADER("Pure Count", "%ld", Pure_Count);
+  READ_HEADER("Dumped Pure Base", "%ld", Dumped_Pure_Base);
+  READ_HEADER("Pure Objects", "%ld", Pure_Objects);
   
-  READ_HEADER("& Dumped Object", "%ld", &Dumped_Object_Addr);
+  READ_HEADER("& Dumped Object", "%ld", Dumped_Object_Addr);
   
-  READ_HEADER("Number of flonums", "%ld", &NFlonums);
-  READ_HEADER("Number of integers", "%ld", &NIntegers);
-  READ_HEADER("Number of bits in integers", "%ld", &NBits);
-  READ_HEADER("Number of bit strings", "%ld", &NBitstrs);
-  READ_HEADER("Number of bits in bit strings", "%ld", &NBBits);
-  READ_HEADER("Number of character strings", "%ld", &NStrings);
-  READ_HEADER("Number of characters in strings", "%ld", &NChars);
+  READ_HEADER("Number of flonums", "%ld", NFlonums);
+  READ_HEADER("Number of integers", "%ld", NIntegers);
+  READ_HEADER("Number of bits in integers", "%ld", NBits);
+  READ_HEADER("Number of bit strings", "%ld", NBitstrs);
+  READ_HEADER("Number of bits in bit strings", "%ld", NBBits);
+  READ_HEADER("Number of character strings", "%ld", NStrings);
+  READ_HEADER("Number of characters in strings", "%ld", NChars);
   
-  READ_HEADER("Primitive Table Length", "%ld", &Primitive_Table_Length);
-  READ_HEADER("Number of characters in primitives", "%ld", &NPChars);
+  READ_HEADER("Primitive Table Length", "%ld", Primitive_Table_Length);
+  READ_HEADER("Number of characters in primitives", "%ld", NPChars);
   
   Size = (6 +						/* SNMV */
 	  HEAP_BUFFER_SPACE +
@@ -1040,11 +1074,12 @@ do_it()
 
 /* Top level */
 
-static int Noptions = 0;
-
 /* C does not usually like empty initialized arrays, so ... */
 
-static struct Option_Struct Options[] = {{"dummy", true, NULL}};
+static struct Option_Struct Options[] =
+  {{"dummy", true, NULL}};
+
+static int Noptions = 0;
 
 main(argc, argv)
      int argc;

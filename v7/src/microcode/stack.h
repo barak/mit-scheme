@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/stack.h,v 9.24 1987/11/17 08:16:42 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/stack.h,v 9.25 1987/11/20 08:16:13 jinx Rel $ */
 
 /* This file contains macros for manipulating stacks and stacklets. */
 
@@ -291,7 +291,7 @@ do									\
       {									\
 	Microcode_Termination (TERM_STACK_OVERFLOW);			\
       }									\
-      Request_Interrupt (INT_Stack_Overflow);				\
+      REQUEST_INTERRUPT (INT_Stack_Overflow);				\
     }									\
 } while (0)
 

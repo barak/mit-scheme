@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.27 1987/11/17 08:12:25 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.28 1987/11/20 08:19:46 jinx Exp $
  *
  * This file contains various hooks and handles which connect the
  * primitives with the main interpreter.
@@ -296,9 +296,14 @@ Define_Primitive(Prim_Error_Procedure, 3, "ERROR-PROCEDURE")
 {
   Primitive_3_Args();
 
- Will_Push(CONTINUATION_SIZE+HISTORY_SIZE+STACK_ENV_EXTRA_SLOTS+4);
+  /*
+    This is done outside the Will_Push because the space for it
+    is guaranteed by the interpreter before it gets here.
+    If done inside, this could break when using stacklets.
+   */
   Back_Out_Of_Primitive();
   Save_Cont();
+ Will_Push(HISTORY_SIZE+STACK_ENV_EXTRA_SLOTS+4);
   Stop_History();
  /* Stepping should be cleared here! */
   Push(Arg3);
@@ -310,7 +315,7 @@ Define_Primitive(Prim_Error_Procedure, 3, "ERROR-PROCEDURE")
   PRIMITIVE_ABORT( PRIM_APPLY);
   /*NOTREACHED*/
 }
-
+
 /* (GET-FIXED-OBJECTS-VECTOR)
    Returns the current fixed objects vector.  This vector is used
    for communication between the interpreter and the runtime

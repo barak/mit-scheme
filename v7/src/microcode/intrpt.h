@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intrpt.h,v 1.1 1987/11/17 18:26:12 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intrpt.h,v 1.2 1987/11/20 08:16:43 jinx Exp $
  *
  * Interrupt manipulation utilities.
  */
@@ -68,9 +68,9 @@ MIT in each case. */
 
 #define COMPILER_SETUP_INTERRUPT()					\
 {									\
-  Regs[REGBLOCK_MEMTOP] = ((INTERRUPT_PENDING_P(INT_Mask)) ?		\
-			   ((Pointer) MemTop) :				\
-			   ((Pointer) -1));				\
+  Regs[REGBLOCK_MEMTOP] = ((INTERRUPT_PENDING_P(INT_Mask)) 	?	\
+			   ((Pointer) -1)			:	\
+			   ((Pointer) MemTop));				\
 }
 
 #define FETCH_INTERRUPT_MASK()		(IntEnb)
@@ -106,5 +106,3 @@ MIT in each case. */
 /* Compatibility */
 
 #define COMPILER_SET_MEMTOP()	COMPILER_SETUP_INTERRUPT()
-
-#define Request_Interrupt(code) REQUEST_INTERRUPT(code)

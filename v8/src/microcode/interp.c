@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.35 1987/11/17 08:13:04 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.36 1987/11/20 08:18:21 jinx Exp $
  *
  * This file contains the heart of the Scheme Scode
  * interpreter
@@ -166,9 +166,6 @@ if (GC_Check(Amount))							\
         }
 
 #define Environment_P(Obj) (Obj == NIL || (Type_Code(Obj) == TC_ENVIRONMENT))
-
-#define MAGIC_RESERVE_SIZE	6	/* See SPMD.SCM */
-#define Reserve_Stack_Space()	Will_Eventually_Push(MAGIC_RESERVE_SIZE)
 
                       /***********************/
                       /* Macros for Stepping */
@@ -492,15 +489,22 @@ Eval_Non_Trapping:
 /* Interpret(), continued */
 
     case TC_COMBINATION:
-      { long Array_Length = Vector_Length(Fetch_Expression())-1;
-        Eval_GC_Check(New_Stacklet_Size(Array_Length+1+1+CONTINUATION_SIZE));
-       Will_Push(Array_Length + 1+1+CONTINUATION_SIZE); /* Save_Env, Finger */
+      {
+	long Array_Length;
+
+	Array_Length = (Vector_Length(Fetch_Expression()) - 1);
+#ifdef USE_STACKLETS
+	/* Save_Env, Finger */
+        Eval_GC_Check(New_Stacklet_Size(Array_Length + 1 + 1 + CONTINUATION_SIZE));
+#endif /* USE_STACKLETS */
+       Will_Push(Array_Length + 1 + 1 + CONTINUATION_SIZE);
 	Stack_Pointer = Simulate_Pushing(Array_Length);
         Push(Make_Non_Pointer(TC_MANIFEST_NM_VECTOR, Array_Length));
-	                        /* The finger: last argument number */
+	/* The finger: last argument number */
        Pushed();
         if (Array_Length == 0)
-	{ Push(STACK_FRAME_HEADER);   /* Frame size */
+	{
+	  Push(STACK_FRAME_HEADER);   /* Frame size */
           Do_Nth_Then(RC_COMB_APPLY_FUNCTION, COMB_FN_SLOT, {});
 	}
 	Save_Env();
@@ -508,12 +512,12 @@ Eval_Non_Trapping:
       }
 
     case TC_COMBINATION_1:
-      Reserve_Stack_Space();	/* STACK_ENV_EXTRA_SLOTS+2+CONTINUATION_SIZE */
+     Will_Eventually_Push(CONTINUATION_SIZE + STACK_ENV_FIRST_ARG + 1);
       Save_Env();
       Do_Nth_Then(RC_COMB_1_PROCEDURE, COMB_1_ARG_1, {});
   
     case TC_COMBINATION_2:
-      Reserve_Stack_Space();	/* STACK_ENV_EXTRA_SLOTS+3+CONTINUATION_SIZE */
+     Will_Eventually_Push(CONTINUATION_SIZE + STACK_ENV_FIRST_ARG + 2);      
       Save_Env();
       Do_Nth_Then(RC_COMB_2_FIRST_OPERAND, COMB_2_ARG_2, {});
 
@@ -610,24 +614,28 @@ Eval_Non_Trapping:
 
 /* Interpret(), continued */
 
+    /*
+      The argument to Will_Eventually_Push is determined by how much
+      will be on the stack if we back out of the primitive.
+     */
+
     case TC_PCOMB0:
-      /* In case we back out */
-      Reserve_Stack_Space();			/* CONTINUATION_SIZE */
-      Finished_Eventual_Pushing();		/* of this primitive */
+     Will_Eventually_Push(CONTINUATION_SIZE + STACK_ENV_FIRST_ARG);
+     Finished_Eventual_Pushing(CONTINUATION_SIZE + STACK_ENV_FIRST_ARG);
       Store_Expression(Make_New_Pointer(TC_PRIMITIVE, Fetch_Expression()));
       goto Primitive_Internal_Apply;
 
     case TC_PCOMB1:
-       Reserve_Stack_Space();	/* 1+CONTINUATION_SIZE */
-       Do_Nth_Then(RC_PCOMB1_APPLY, PCOMB1_ARG_SLOT, {});
+     Will_Eventually_Push(CONTINUATION_SIZE + STACK_ENV_FIRST_ARG + 1);
+      Do_Nth_Then(RC_PCOMB1_APPLY, PCOMB1_ARG_SLOT, {});
 
     case TC_PCOMB2:
-      Reserve_Stack_Space();	/* 2+CONTINUATION_SIZE */
+     Will_Eventually_Push(CONTINUATION_SIZE + STACK_ENV_FIRST_ARG + 2);
       Save_Env();
       Do_Nth_Then(RC_PCOMB2_DO_1, PCOMB2_ARG_2_SLOT, {});
 
     case TC_PCOMB3:
-      Reserve_Stack_Space();	/* 3+CONTINUATION_SIZE */
+     Will_Eventually_Push(CONTINUATION_SIZE + STACK_ENV_FIRST_ARG + 3);
       Save_Env();
       Do_Nth_Then(RC_PCOMB3_DO_2, PCOMB3_ARG_3_SLOT, {});
 
@@ -778,12 +786,13 @@ Pop_Return:
    */
 
   switch (Get_Integer(Fetch_Return()))
-  { case RC_COMB_1_PROCEDURE:
+  {
+    case RC_COMB_1_PROCEDURE:
       Restore_Env();
       Push(Val);                /* Arg. 1 */
       Push(NIL);                /* Operator */
-      Push(STACK_FRAME_HEADER+1);
-      Finished_Eventual_Pushing();
+      Push(STACK_FRAME_HEADER + 1);
+     Finished_Eventual_Pushing(CONTINUATION_SIZE);
       Do_Another_Then(RC_COMB_APPLY_FUNCTION, COMB_1_FN);
 
     case RC_COMB_2_FIRST_OPERAND:
@@ -800,8 +809,8 @@ Pop_Return:
       Restore_Env();
       Push(Val);                /* Arg 1, just calculated */
       Push(NIL);                /* Function */
-      Push(STACK_FRAME_HEADER+2);
-      Finished_Eventual_Pushing();
+      Push(STACK_FRAME_HEADER + 2);
+     Finished_Eventual_Pushing(CONTINUATION_SIZE);
       Do_Another_Then(RC_COMB_APPLY_FUNCTION, COMB_2_FN);
 
     case RC_COMB_APPLY_FUNCTION:
@@ -1646,7 +1655,7 @@ return_from_compiled_code:
     case RC_PCOMB1_APPLY:
       End_Subproblem();
       Push(Val);		/* Argument value */
-      Finished_Eventual_Pushing();
+     Finished_Eventual_Pushing(CONTINUATION_SIZE + STACK_ENV_FIRST_ARG);
       Store_Expression(Fast_Vector_Ref(Fetch_Expression(), PCOMB1_FN_SLOT));
 
 Primitive_Internal_Apply:
@@ -1699,7 +1708,7 @@ Primitive_Internal_Apply:
     case RC_PCOMB2_APPLY:
       End_Subproblem();
       Push(Val);		/* Value of arg. 1 */
-      Finished_Eventual_Pushing();
+     Finished_Eventual_Pushing(CONTINUATION_SIZE + STACK_ENV_FIRST_ARG);
       Store_Expression(Fast_Vector_Ref(Fetch_Expression(), PCOMB2_FN_SLOT));
       goto Primitive_Internal_Apply;
 
@@ -1711,7 +1720,7 @@ Primitive_Internal_Apply:
     case RC_PCOMB3_APPLY:
       End_Subproblem();
       Push(Val);		/* Save value of arg. 1 */
-      Finished_Eventual_Pushing();
+     Finished_Eventual_Pushing(CONTINUATION_SIZE + STACK_ENV_FIRST_ARG);
       Store_Expression(Fast_Vector_Ref(Fetch_Expression(), PCOMB3_FN_SLOT));
       goto Primitive_Internal_Apply;
 

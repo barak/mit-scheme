@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbmap.h,v 9.23 1987/11/17 08:18:32 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbmap.h,v 9.24 1987/11/20 08:13:32 jinx Exp $
  *
  * This file contains macros and declarations for Bintopsb.c
  * and Psbtobin.c
@@ -60,7 +60,7 @@ extern double frexp(), ldexp();
 #include "missing.c"
 #endif
 
-#define PORTABLE_VERSION	3
+#define PORTABLE_VERSION	4
 
 /* Number of objects which, when traced recursively, point at all other
    objects dumped.  Currently only the dumped object.
@@ -73,46 +73,81 @@ extern double frexp(), ldexp();
    to an external object.
  */
 
-#define CONSTANT_CODE		TC_FIXNUM
-#define HEAP_CODE		TC_CHARACTER
+#define CONSTANT_CODE			TC_FIXNUM
+#define HEAP_CODE			TC_CHARACTER
 
-#define fixnum_to_bits		FIXNUM_LENGTH
-#define bignum_to_bits(len)	((len) * SHIFT)
-#define bits_to_bigdigit(nbits)	(((nbits) + (SHIFT-1)) / SHIFT)
+#define fixnum_to_bits			FIXNUM_LENGTH
+#define bignum_to_bits(len)		((len) * SHIFT)
+#define bits_to_bigdigit(nbits)		(((nbits) + (SHIFT-1)) / SHIFT)
 
-#define hex_digits(nbits)	(((nbits) + 3) / 4)
+#define hex_digits(nbits)		(((nbits) + 3) / 4)
 
-#define to_pointer(size)					\
+/*
+  This assumes that a bignum header is 2 Pointers.
+  The bignum code is not very portable, unfortunately
+ */
+
+#define bignum_header_to_pointer	Align(0)
+
+#define to_pointer(size)						\
   (((size) + (sizeof(Pointer) - 1)) / sizeof(Pointer))
 
-#define bigdigit_to_pointer(ndig)				\
+#define bigdigit_to_pointer(ndig)					\
   to_pointer((ndig) * sizeof(bigdigit))
 
-/* This assumes that a bignum header is 2 Pointers.
-   The bignum code is not very portable, unfortunately */
-
-#define bignum_header_to_pointer Align(0)
-
-#define float_to_pointer					\
+#define float_to_pointer						\
   to_pointer(sizeof(double))
-#define flonum_to_pointer(nchars)				\
+
+#define flonum_to_pointer(nchars)					\
   ((nchars) * (1 + float_to_pointer))
 
-#define char_to_pointer(nchars)					\
+#define char_to_pointer(nchars)						\
   to_pointer(nchars)
-#define pointer_to_char(npoints)				\
+
+#define pointer_to_char(npoints)					\
   ((npoints) * sizeof(Pointer))
 
-/* Global data */
+/* Status flags */
 
-/* If true, make all integers fixnums if possible, and all strings as
-   short as possible (trim extra stuff). */
+#define COMPACT_P	(1 << 0)
+#define NULL_NMV_P	(1 << 1)
+#define COMPILED_P	(1 << 2)
+#define NMV_P		(1 << 3)
 
-static Boolean Compact_P = true;
+#define MAKE_FLAGS()							\
+((compact_p ? COMPACT_P : 0)	|					\
+ (null_nmv_p ? NULL_NMV_P : 0)	|					\
+ (compiled_p ? COMPILED_P : 0)	|					\
+ (nmv_p ? NMV_P : 0))
+
+#define READ_FLAGS(f)							\
+{									\
+  compact_p = ((f) & COMPACT_P);					\
+  null_nmv_p  = ((f) & NULL_NMV_P);					\
+  compiled_p = ((f) & COMPILED_P);					\
+  nmv_p = ((f) & NMV_P);						\
+}
+
+/*
+  If true, make all integers fixnums if possible, and all strings as
+  short as possible (trim extra stuff).
+ */
+
+static Boolean compact_p = true;
 
 /* If true, null out all elements of random non-marked vectors. */
 
-static Boolean Null_NMV = false;
+static Boolean null_nmv_p = false;
+
+/* If true, the portable file contains compiled code. */
+
+static Boolean compiled_p = false;
+
+/* If true, the portable file contains "random" non-marked vectors. */
+
+static Boolean nmv_p = false;
+
+/* Global data */
 
 #ifndef Heap_In_Low_Memory
 static Pointer *Memory_Base;
@@ -122,25 +157,14 @@ static FILE *Input_File, *Output_File;
 
 static char *Program_Name;
 
-/* Status flags */
-
-#define COMPACT_P 1
-#define NULL_NMV  2
-
-#define Make_Flags()					\
-((Compact_P ? COMPACT_P : 0) |				\
- (Null_NMV ? NULL_NMV : 0))
-
-#define Read_Flags(f)					\
-Compact_P = ((f) & COMPACT_P);				\
-Null_NMV  = ((f) & NULL_NMV)
-
 /* Argument List Parsing */
 
-struct Option_Struct { char *name;
-		       Boolean value;
-		       Boolean *ptr;
-		     };
+struct Option_Struct
+{
+  char *name;
+  Boolean value;
+  Boolean *ptr;
+};
 
 Boolean
 strequal(s1, s2)

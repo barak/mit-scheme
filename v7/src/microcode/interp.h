@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.h,v 9.26 1987/11/17 08:13:39 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.h,v 9.27 1987/11/20 08:17:10 jinx Exp $
  *
  * Macros used by the interpreter and some utilities.
  *
@@ -115,8 +115,14 @@ MIT in each case. */
 
 #endif
 
+/*
+  N in Will_Eventually_Push is the maximum contiguous (single return code)
+  amount that this operation may take.  On the average case it may use less.
+  M in Finished_Eventual_Pushing is the amount not yet pushed.
+ */
+
 #define Will_Eventually_Push(N)		Internal_Will_Push(N)
-#define Finished_Eventual_Pushing()	/* No op */
+#define Finished_Eventual_Pushing(M)	/* No op */
 
 /* Primitive stack operations:
  * These operations hide the direction of stack growth.
