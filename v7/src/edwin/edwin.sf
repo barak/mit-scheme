@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.sf,v 1.9 1991/03/10 05:21:17 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.sf,v 1.10 1992/05/12 18:19:02 mhwu Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -102,3 +102,6 @@
 (sf "edwin.con" "edwin.bcon")
 (if (not (file-processed? "edwin" "ldr" "bldr"))
     (sf "edwin.ldr" "edwin.bldr"))
+(if (and (file-exists? "edwin.avd")
+	 (not (file-processed? "edwin" "avd" "bad")))
+    (fasdump (read-file "edwin.avd") "edwin.bad"))
