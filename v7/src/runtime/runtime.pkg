@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.195 1993/09/30 17:09:53 adams Exp $
+$Id: runtime.pkg,v 14.196 1993/10/05 07:16:21 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -2533,3 +2533,22 @@ MIT in each case. |#
   (export (runtime primitive-io)
 	  block-on-input-descriptor)
   (initialization (initialize-package!)))
+
+(define-package (runtime rb-tree)
+  (file-case options
+    ((load) "rbtree")
+    (else))
+  (parent ())
+  (export ()
+	  alist->rb-tree
+	  rb-tree->alist
+	  rb-tree/copy
+	  rb-tree/delete!
+	  rb-tree/empty?
+	  rb-tree/equal?
+	  rb-tree/height
+	  rb-tree/insert!
+	  rb-tree/lookup
+	  rb-tree/size
+	  rb-tree?
+	  make-rb-tree))

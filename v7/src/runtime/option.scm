@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: option.scm,v 14.23 1993/09/01 05:32:30 ziggy Exp $
+$Id: option.scm,v 14.24 1993/10/05 07:16:12 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -79,9 +79,9 @@ MIT in each case. |#
     (FORMAT ((RUNTIME FORMAT) (INITIALIZE-PACKAGE!) "format"))
     (HASH-TABLE ((RUNTIME HASH-TABLE) (INITIALIZE-PACKAGE!) "hashtb"))
     (KRYPT ((RUNTIME KRYPT) #F "krypt"))
-    (SUBPROCESS ((RUNTIME SUBPROCESS) (INITIALIZE-PACKAGE!) "process"))
-    (PC-SAMPLE (() #F "../pcsample/make"))))
+    (PC-SAMPLE (() #F "../pcsample/make"))
+    (RB-TREE ((runtime rb-tree) #F "rbtree"))
+    (SUBPROCESS ((RUNTIME SUBPROCESS) (INITIALIZE-PACKAGE!) "process"))))
 
 (define loaded-options
   '())
-
