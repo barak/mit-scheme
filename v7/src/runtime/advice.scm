@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/advice.scm,v 13.43 1987/05/06 04:54:08 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/advice.scm,v 13.44 1987/06/30 20:58:10 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -347,8 +347,8 @@
     (define (loop elements)
       (cond ((null? elements)
 	     (error "Couldn't find internal definition" path))
-	    ((definition? (car elements))
-	     (definition-components (car elements)
+	    ((assignment? (car elements))
+	     (assignment-components (car elements)
 	       (lambda (name value)
 		 (if (eq? name (car path))
 		     (if (lambda? value)
@@ -360,9 +360,11 @@
 
     (if (null? path)
 	lambda
-	(lambda-components* lambda
-	  (lambda (name required optional rest body)
-	    (loop (sequence-actions body))))))
+	(lambda-components lambda
+	  (lambda (name required optional rest auxiliary declarations body)
+	    (if (memq (car path) auxiliary)
+		(loop (sequence-actions body))
+		(error "No internal definition by this name" (car path)))))))
 
   (if (null? path)
       (procedure-lambda procedure)
