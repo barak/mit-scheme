@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.48 2000/05/17 13:33:04 cph Exp $
+;;; $Id: imail-imap.scm,v 1.49 2000/05/17 16:15:34 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -330,7 +330,7 @@
 	 (imap:command:fetch-range (imap-folder-connection folder)
 				   start
 				   (folder-length folder)
-				   imap-header-keywords)))))
+				   '(UID FLAGS RFC822.SIZE RFC822.HEADER))))))
 
 (define (remove-imap-folder-message folder index)
   (without-interrupts
@@ -475,6 +475,9 @@
   (uid)
   (length))
 
+(define-generic imap-message-uid (message))
+(define-generic imap-message-length (message))
+
 (define (imap-message-connection message)
   (imap-folder-connection (message-folder message)))
 
@@ -511,14 +514,48 @@
 ;;; slots.  Also, we don't want to fill the BODY slot until it is
 ;;; requested, as the body might be very large.
 
-(define (guarantee-headers-initialized message initpred)
-  (guarantee-slot-initialized message initpred "headers" imap-header-keywords))
+(let ((accessor (slot-accessor <imap-message> 'UID))
+      (initpred (slot-initpred <imap-message> 'UID)))
+  (define-method imap-message-uid ((message <imap-message>))
+    (if (not (initpred message))
+	(let ((connection (imap-message-connection message))
+	      (index (message-index message)))
+	  (let ((suffix
+		 (string-append " UID for message "
+				(number->string (+ index 1)))))
+	    ((imail-message-wrapper "Reading" suffix)
+	     (lambda ()
+	       (imap:command:fetch connection index '(UID))
+	       (if (not (initpred message))
+		   (begin
+		     ;; Still don't have the goods.  Send a NOOP, in
+		     ;; case the server is holding it back because it
+		     ;; also needs to send an EXPUNGE.
+		     (imap:command:noop connection)
+		     (if (not (initpred message))
+			 (error
+			  (string-append "Unable to obtain" suffix))))))))))
+    (accessor message)))
 
-(define imap-header-keywords
-  '(UID FLAGS RFC822.SIZE RFC822.HEADER))
+(define (guarantee-headers-initialized message initpred)
+  (guarantee-slot-initialized message initpred "headers"
+			      '(FLAGS RFC822.SIZE RFC822.HEADER)))
 
 (define (guarantee-body-initialized message initpred)
   (guarantee-slot-initialized message initpred "body" '(RFC822.TEXT)))
+
+(define (guarantee-slot-initialized message initpred noun keywords)
+  (if (not (initpred message))
+      (let ((connection (imap-message-connection message))
+	    (uid (imap-message-uid message)))
+	(let ((suffix
+	       (string-append " " noun " for message "
+			      (number->string (+ (message-index message) 1)))))
+	  ((imail-message-wrapper "Reading" suffix)
+	   (lambda ()
+	     (imap:command:uid-fetch connection uid keywords)
+	     (if (not (initpred message))
+		 (error (string-append "Unable to obtain" suffix)))))))))
 
 (let ((reflector
        (lambda (generic-procedure slot-name guarantee)
@@ -531,9 +568,6 @@
   (reflector message-body 'BODY guarantee-body-initialized)
   (reflector message-flags 'FLAGS guarantee-headers-initialized))
 
-(define-generic imap-message-uid (message))
-(define-generic imap-message-length (message))
-
 (let ((reflector
        (lambda (generic-procedure slot-name)
 	 (let ((accessor (slot-accessor <imap-message> slot-name))
@@ -541,28 +575,7 @@
 	   (define-method generic-procedure ((message <imap-message>))
 	     (guarantee-headers-initialized message initpred)
 	     (accessor message))))))
-  (reflector imap-message-uid 'UID)
   (reflector imap-message-length 'LENGTH))
-
-(define (guarantee-slot-initialized message initpred noun keywords)
-  (if (not (initpred message))
-      (let ((connection (imap-message-connection message))
-	    (index (message-index message)))
-	(let ((suffix
-	       (string-append " " noun " for message "
-			      (number->string (+ index 1)))))
-	  ((imail-message-wrapper "Reading" suffix)
-	   (lambda ()
-	     (imap:command:fetch connection index keywords)
-	     (if (not (initpred message))
-		 (begin
-		   ;; Still don't have the goods.  Send a NOOP, in
-		   ;; case the server is holding it back because it
-		   ;; also needs to send an EXPUNGE.
-		   (imap:command:noop connection)
-		   (if (not (initpred message))
-		       (error
-			(string-append "Unable to obtain" suffix)))))))))))
 
 ;;;; Server operations
 
@@ -698,6 +711,10 @@
   (imap:command:single-response imap:response:fetch?
 				connection 'FETCH (+ index 1) items))
 
+(define (imap:command:uid-fetch connection uid items)
+  (imap:command:single-response imap:response:fetch?
+				connection 'UID 'FETCH uid items))
+
 (define (imap:command:fetch-all connection items)
   (imap:command:multiple-response imap:response:fetch?
 				  connection 'FETCH
@@ -794,14 +811,16 @@
       (imap:wait-for-tagged-response connection
 				     (imap:send-command connection
 							command arguments)
-				     command))))
+				     (if (eq? command 'UID)
+					 (car arguments)
+					 command)))))
 
 (define system-call-name
   (condition-accessor condition-type:system-call-error 'SYSTEM-CALL))
 
 (define system-call-error
   (condition-accessor condition-type:system-call-error 'ERROR-TYPE))
-
+
 (define imail-trace? #f)
 (define imail-trace-output)
 
@@ -820,6 +839,12 @@
       (let ((output imail-trace-output))
 	(set! imail-trace-output)
 	output)))))
+
+(define (save-imail-trace pathname)
+  (call-with-output-file pathname
+    (lambda (port)
+      (for-each (lambda (x) (write-line x port))
+		(stop-imail-trace)))))
 
 (define (imail-trace-record-output object)
   (without-interrupts
