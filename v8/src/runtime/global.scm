@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.48 1995/05/03 21:37:11 adams Exp $
+$Id: global.scm,v 14.49 1995/07/27 20:31:23 adams Exp $
 
-Copyright (c) 1988-93 Massachusetts Institute of Technology
+Copyright (c) 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -302,7 +302,7 @@ MIT in each case. |#
       (eq? object (microcode-object/unassigned))))
 
 (define unspecific
-  (object-new-type (ucode-type constant) 1))
+  (object-new-type (ucode-type constant) #x3800000))
 
 (define *the-non-printing-object*
   unspecific)
