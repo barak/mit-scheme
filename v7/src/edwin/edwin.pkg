@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.107 1992/11/24 22:27:15 cph Exp $
+$Id: edwin.pkg,v 1.108 1992/12/11 04:21:56 arthur Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -737,9 +737,10 @@ MIT in each case. |#
 	  edwin-mode$occur
 	  edwin-variable$list-matching-lines-default-context-lines))
 
-;;;; The following are the variants used under DOS
+;; This package is set up to handle two versions of the debugger.
+;; Therefore, please don't remove variables just because they aren't
+;; referenced by the standard debugger. -- Arthur
 
-#|
 (define-package (edwin debugger)
   (files "debug")
   (parent (edwin))
@@ -747,7 +748,15 @@ MIT in each case. |#
 	  continuation-browser-buffer
 	  debug-scheme-error
 	  edwin-command$browse-continuation
+	  edwin-command$browse-environment
+	  edwin-command$browser-evaluator
+	  edwin-command$browser-next-line
+	  edwin-command$browser-previous-line
+	  edwin-command$browser-quit
+	  edwin-command$browser-select-line
+	  edwin-command$browser-where
 	  edwin-mode$continuation-browser
+	  edwin-mode$environment-browser
 	  edwin-variable$debugger-confirm-return?
 	  edwin-variable$debugger-debug-evaluations?
 	  edwin-variable$debugger-expand-reductions?
@@ -760,7 +769,9 @@ MIT in each case. |#
 	  edwin-variable$debugger-show-help-message?
 	  edwin-variable$debugger-split-window?
 	  edwin-variable$debugger-start-on-error?
-	  edwin-variable$debugger-verbose-mode?)
+	  edwin-variable$debugger-verbose-mode?
+	  edwin-variable$environment-browser-package-limit
+	  environment-browser-buffer)
   (import (runtime continuation-parser)
 	  stack-frame/reductions)
   (import (runtime debugger)
@@ -780,6 +791,7 @@ MIT in each case. |#
 	  dstate/subproblem
 	  dstate/subproblem-number
 	  dstate/using-history?
+	  expression-indentation
 	  improper-list-length
 	  invalid-expression?
 	  make-initial-dstate
@@ -791,12 +803,16 @@ MIT in each case. |#
 	  set-current-subproblem!
 	  set-dstate/environment-list!
 	  set-dstate/reduction-number!
-	  show-environment-name
 	  stack-frame/compiled-code?
 	  write-restarts)
+  (import (runtime debugger-utilities)
+	  print-binding
+	  show-environment-name)
   (import (runtime error-handler)
 	  hook/invoke-restart))
 
+;;;; This is the variant used under DOS
+#|
 (define-package (edwin process)
   (file-case os-type
     ((unix) "process")
@@ -811,41 +827,7 @@ MIT in each case. |#
 	  subprocesses-available?))		; always present
 |#
 
-;;;; The following are the variants used under Unix/X
-
-(define-package (edwin debugger)
-  (files "debug")
-  (parent (edwin))
-  (export (edwin)
-	  continuation-browser-buffer
-	  debug-scheme-error
-	  edwin-command$browse-continuation
-	  edwin-command$browse-environment
-	  edwin-command$browser-evaluator
-	  edwin-command$browser-next-line
-	  edwin-command$browser-previous-line
-	  edwin-command$browser-quit
-	  edwin-command$browser-select-line
-	  edwin-command$browser-where
-	  edwin-mode$continuation-browser
-	  edwin-mode$environment-browser
-	  edwin-variable$debugger-one-at-a-time?
-	  edwin-variable$debugger-start-on-error?
-	  edwin-variable$debugger-max-subproblems
-	  edwin-variable$debugger-confirm-return?
-	  edwin-variable$debugger-quit-on-restart?
-	  edwin-variable$debugger-quit-on-return?
-	  edwin-variable$environment-browser-package-limit
-	  environment-browser-buffer)
-  (import (runtime debugger)
-	  debugger-pp
-	  expression-indentation
-	  invalid-expression?)
-  (import (runtime debugger-utilities)
-	  print-binding
-	  show-environment-name)
-  (import (runtime error-handler)
-	  hook/invoke-restart))
+;;;; This is the variant used under Unix/X
 
 (define-package (edwin process)
   (file-case os-type
