@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comman.scm,v 1.68 1992/02/04 04:01:39 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comman.scm,v 1.69 1992/04/07 09:35:32 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -104,6 +104,7 @@
   value
   buffer-local?
   initial-value
+  default-value
   assignment-daemons
   value-validity-test)
 
@@ -128,16 +129,14 @@
     (vector-set! variable variable-index:value value)
     (vector-set! variable variable-index:buffer-local? buffer-local?)
     (vector-set! variable variable-index:initial-value value)
+    (vector-set! variable variable-index:default-value value)
     (vector-set! variable variable-index:assignment-daemons '())
     (vector-set! variable variable-index:value-validity-test false)
     variable))
 
-(define-integrable (%%set-variable-value! variable value)
-  (vector-set! variable variable-index:value value))
-
 (define-integrable (make-variable-buffer-local! variable)
   (vector-set! variable variable-index:buffer-local? true))
-
+
 (define (define-variable-value-validity-test variable test)
   (vector-set! variable variable-index:value-validity-test test))
 
@@ -157,10 +156,10 @@
 		     variable-index:assignment-daemons
 		     (cons daemon daemons)))))
 
-(define (invoke-variable-assignment-daemons! variable)
+(define (invoke-variable-assignment-daemons! buffer variable)
   (do ((daemons (variable-assignment-daemons variable) (cdr daemons)))
       ((null? daemons))
-    ((car daemons) variable)))
+    ((car daemons) buffer variable)))
 
 (define editor-variables (make-string-table 50))
 
@@ -171,27 +170,3 @@
 
 (define (->variable object)
   (if (variable? object) object (name->variable object)))
-
-(define-integrable (%set-variable-value! variable value)
-  (%%set-variable-value! variable value)
-  (invoke-variable-assignment-daemons! variable))
-
-(define (set-variable-value! variable value)
-  (if (variable-buffer-local? variable)
-      (define-variable-local-value! (current-buffer) variable value)
-      (begin
-	(check-variable-value-validity! variable value)
-	(without-interrupts
-	 (lambda ()
-	   (%set-variable-value! variable value))))))
-
-(define (with-variable-value! variable new-value thunk)
-  (let ((old-value))
-    (unwind-protect (lambda ()
-		      (set! old-value (variable-value variable))
-		      (set-variable-value! variable new-value)
-		      (set! new-value)
-		      unspecific)
-		    thunk
-		    (lambda ()
-		      (set-variable-value! variable old-value)))))

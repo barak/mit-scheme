@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffrm.scm,v 1.41 1992/03/13 10:52:38 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffrm.scm,v 1.42 1992/04/07 09:35:39 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -320,9 +320,12 @@ Automatically becomes local when set in any fashion."
   exact-nonnegative-integer?)
 
 (let ((setup-truncate-lines!
-       (lambda (variable)
+       (lambda (buffer variable)
 	 variable			;ignore
-	 (for-each window-redraw! (window-list)))))
+	 (for-each window-redraw!
+		   (if buffer
+		       (buffer-windows buffer)
+		       (window-list))))))
   (add-variable-assignment-daemon!
    (ref-variable-object truncate-lines)
    setup-truncate-lines!)
