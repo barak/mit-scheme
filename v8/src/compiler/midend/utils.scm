@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.12 1995/02/11 02:47:34 adams Exp $
+$Id: utils.scm,v 1.13 1995/02/20 18:24:41 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -1036,21 +1036,53 @@ Example use of FORM/COPY-TRANSFORMING:
 	  (else
 	   (loop (* 2 power) (1+ exponent))))))
 
+
+
+;; Careful constant folding.  Returns a `result' or #F if not possible to
+;; compute.  Use UNMAP-CAREFUL to get the actual result.
+
+(define *careful-operations-complain?* #F)
+
+(define (careful-error message . irritants)
+  (if *careful-operations-complain?*
+      (apply user-warning message irritants))
+  false)
+
+(define map-careful)
+(define unmap-careful)
+
+(let ((careful-false (list 'careful-false)))
+  (set! map-careful   (lambda (v)  (if (eq? v '#F) careful-false v)))
+  (set! unmap-careful (lambda (v)  (if (eq? v careful-false) '#F v))))
+
 (define (careful/quotient x y)
-  (if (zero? y)
-      (user-error "quotient: Division by zero" x y)
-      (quotient x y)))
+  (if (and (number? x) (number? y) (not (zero? y))
+      (quotient x y)
+      (careful-error "quotient: Domain error" x y)))
 
 (define (careful/remainder x y)
-  (if (zero? y)
-      (user-error "remainder: Division by zero" x y)
-      (remainder x y)))
+  (if (and (number? x) (number? y) (not (zero? y))
+      (remainder x y)
+      (careful-error "remainder: Domain error" x y)))
 
 (define (careful// x y)
-  (if (zero? y)
-      (user-error "/: Division by zero" x y)
-      (/ x y)))
+  (if (and (number? x) (number? y) (not (zero? y))
+      (/ x y)
+      (careful-error "/: Domain error" x y)))
 
+;; This is hideously slow:
+(define (apply-carefully operator operands)
+  (let ((result  (ignore-errors (lambda () (apply operator operands)))))
+    (if (condition? result)
+	(begin
+	  (if *careful-operations-complain?*
+	      (user-warning
+	       (with-string-output-port
+		(lambda (port) (write-condition-report result port)))
+	       (cons operator operands))
+	      #F))
+	(map-careful result))))
+
 (define (iota n)
   (do ((i (- n 1) (- i 1))
        (acc '() (cons i acc)))
