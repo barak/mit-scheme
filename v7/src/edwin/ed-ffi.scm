@@ -93,7 +93,7 @@
 	       edwin-syntax-table)
     ("input"   (edwin keyboard)
 	       edwin-syntax-table)
-    ("intmod"  (edwin)
+    ("intmod"  (edwin inferior-repl)
 	       edwin-syntax-table)
     ("iserch"  (edwin incremental-search)
 	       edwin-syntax-table)

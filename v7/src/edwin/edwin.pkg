@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.67 1991/10/29 13:44:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.68 1991/11/26 08:03:08 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -77,7 +77,6 @@ MIT in each case. |#
 	 "filcom"			; file commands
 	 "fill"				; text fill commands
 	 "hlpcom"			; help commands
-	 "intmod"			; interaction mode
 	 "kilcom"			; kill commands
 	 "kmacro"			; keyboard macros
 	 "lincom"			; line commands
@@ -344,8 +343,6 @@ MIT in each case. |#
 	  terminal-raw-input
 	  terminal-raw-output
 	  terminal-set-state)
-  (import (runtime interrupt-handler)
-	  hook/^g-interrupt)
   (import (runtime transcript)
 	  transcript-port)
   (initialization (initialize-package!)))
@@ -473,7 +470,10 @@ MIT in each case. |#
 	  set-command-argument!
 	  set-command-message!
 	  set-current-command!
-	  top-level-command-reader))
+	  top-level-command-reader)
+  (export (edwin inferior-repl)
+	  *command-continuation*
+	  command-reader-reset-continuation))
 
 (define-package (edwin keyboard)
   (files "input")
@@ -549,6 +549,7 @@ MIT in each case. |#
   (files "bufinp")
   (parent (edwin))
   (export (edwin)
+	  make-buffer-input-port
 	  with-input-from-mark
 	  with-input-from-region))
 
@@ -556,9 +557,6 @@ MIT in each case. |#
   (files "bufout")
   (parent (edwin))
   (export (edwin)
-	  default-window-width
-	  fresh-line
-	  fresh-lines
 	  mark->output-port
 	  with-output-to-mark))
 
@@ -566,7 +564,7 @@ MIT in each case. |#
   (files "winout")
   (parent (edwin))
   (export (edwin)
-	  with-interactive-output-port
+	  window-output-port
 	  with-output-to-current-point
 	  with-output-to-window-point))
 
@@ -682,7 +680,10 @@ MIT in each case. |#
   (files "debug")
   (parent (edwin))
   (export (edwin)
+	  continuation-browser
 	  debug-scheme-error
+	  edwin-command$browse-continuation
+	  edwin-mode$continuation-browser
 	  edwin-variable$debugger-confirm-return?
 	  edwin-variable$debugger-debug-evaluations?
 	  edwin-variable$debugger-expand-reductions?
@@ -699,25 +700,12 @@ MIT in each case. |#
   (import (runtime continuation-parser)
 	  stack-frame/reductions)
   (import (runtime debugger)
-	  command/condition-report
 	  command/condition-restart
-	  command/earlier-reduction
-	  command/earlier-subproblem
 	  command/frame
-	  command/goto
-	  command/later-reduction
-	  command/later-subproblem
-	  command/move-to-child-environment
-	  command/move-to-parent-environment
 	  command/print-environment-procedure
 	  command/print-expression
-	  command/print-reductions
-	  command/print-subproblem-or-reduction
-	  command/return-from
-	  command/return-to
 	  command/show-all-frames
 	  command/show-current-frame
-	  command/summarize-subproblems
 	  debugger-pp
 	  dstate/environment-list
 	  dstate/expression
@@ -728,13 +716,11 @@ MIT in each case. |#
 	  dstate/subproblem
 	  dstate/subproblem-number
 	  dstate/using-history?
-	  hook/debugger-before-return
 	  improper-list-length
 	  invalid-expression?
 	  make-initial-dstate
-	  output-to-string
-	  print-environment
 	  print-reduction-expression
+	  print-subproblem-environment
 	  print-subproblem-expression
 	  reduction-environment
 	  reduction-expression
@@ -742,18 +728,10 @@ MIT in each case. |#
 	  set-dstate/environment-list!
 	  set-dstate/reduction-number!
 	  show-environment-name
-	  show-environment-bindings
 	  stack-frame/compiled-code?
 	  write-restarts)
-  (import (runtime debugger-utilities)
-	  hook/debugger-failure
-	  hook/debugger-message
-	  hook/presentation)
   (import (runtime error-handler)
-	  hook/before-restart)
-  (import (runtime rep)
-	  hook/prompt-for-confirmation
-	  hook/prompt-for-expression)
+	  hook/invoke-restart)
   (import (runtime unparser)
 	  *unparse-primitives-by-name?*))
 
@@ -982,3 +960,20 @@ MIT in each case. |#
 	  edwin-variable$rmail-primary-inbox-list
 	  edwin-variable$rmail-reply-with-re
 	  rmail-spool-directory))
+
+(define-package (edwin inferior-repl)
+  (files "intmod")
+  (parent (edwin))
+  (export (edwin)
+	  edwin-command$inferior-debugger-self-insert
+	  edwin-command$inferior-repl-abort-nearest
+	  edwin-command$inferior-repl-abort-previous
+	  edwin-command$inferior-repl-abort-top-level
+	  edwin-command$inferior-repl-breakpoint
+	  edwin-command$inferior-repl-eval-defun
+	  edwin-command$inferior-repl-eval-last-sexp
+	  edwin-command$inferior-repl-eval-region
+	  edwin-command$repl
+	  edwin-mode$inferior-debugger
+	  edwin-mode$inferior-repl
+	  start-inferior-repl!))

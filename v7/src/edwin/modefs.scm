@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.135 1991/10/11 03:46:26 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.136 1991/11/26 08:03:27 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -62,10 +62,7 @@ Most other major modes are defined by comparison to this one.")
   (ref-mode-object fundamental))
 
 (define initial-buffer-name
-  (ref-variable transcript-buffer-name))
-
-(define initial-buffer-mode
-  (->mode (ref-variable transcript-buffer-mode)))
+  "*repl*")
 
 (define-variable file-type-to-major-mode
   "Specifies the major mode for new buffers based on file type.
@@ -236,7 +233,7 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental #\c-m-w 'append-next-kill)
 (define-key 'fundamental #\c-m-rubout 'backward-kill-sexp)
 
-(define-key 'fundamental '(#\c-c #\c-s) 'select-transcript-buffer)
+(define-key 'fundamental '(#\c-c #\c-s) 'repl)
 
 (define-key 'fundamental '(#\c-h #\a) 'command-apropos)
 (define-key 'fundamental '(#\c-h #\b) 'describe-bindings)

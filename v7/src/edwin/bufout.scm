@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufout.scm,v 1.6 1991/08/16 01:31:00 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufout.scm,v 1.7 1991/11/26 08:02:36 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -58,35 +58,15 @@
 			      false
 			      buffer))))
 
-(define (fresh-line #!optional port)
-  (let ((port (if (default-object? port) (current-output-port) port)))
-    (let ((operation (output-port/custom-operation port 'fresh-line)))
-      (if operation
-	  (operation port)
-	  (output-port/write-char port #\newline))
-      (output-port/flush-output port))))
+(define-integrable (port/mark port)
+  (car (port/state port)))
 
-(define (fresh-lines n #!optional port)
-  (let ((port (if (default-object? port) (current-output-port) port)))
-    (let ((operation (output-port/custom-operation port 'fresh-lines)))
-      (if operation
-	  (operation port n)
-	  (let loop ((n n))
-	    (if (positive? n)
-		(begin
-		  (output-port/write-char port #\newline)
-		  (loop (-1+ n))))))
-      (output-port/flush-output port))))
-
-(define-integrable (output-port/mark port)
-  (car (output-port/state port)))
-
-(define-integrable (output-port/buffer port)
-  (cdr (output-port/state port)))
+(define-integrable (port/buffer port)
+  (cdr (port/state port)))
 
 (define (operation/flush-output port)
-  (let ((mark (output-port/mark port))
-	(buffer (output-port/buffer port)))
+  (let ((mark (port/mark port))
+	(buffer (port/buffer port)))
     (if buffer
 	(for-each (if (mark= mark (buffer-point buffer))
 		      (lambda (window)
@@ -97,42 +77,34 @@
 		  (buffer-windows buffer)))))
 
 (define (operation/fresh-line port)
-  (guarantee-newline (output-port/mark port)))
-
-(define (operation/fresh-lines port n)
-  (guarantee-newlines n (output-port/mark port)))
+  (guarantee-newline (port/mark port)))
 
 (define (operation/print-self state port)
   (unparse-string state "to buffer at ")
-  (unparse-object state (output-port/mark port)))
+  (unparse-object state (port/mark port)))
 
 (define (operation/write-char port char)
-  (region-insert-char! (output-port/mark port) char))
+  (region-insert-char! (port/mark port) char))
 
-(define (operation/write-string port string)
-  (region-insert-string! (output-port/mark port) string))
+(define (operation/write-substring port string start end)
+  (region-insert-substring! (port/mark port) string start end))
 
 (define (operation/close port)
-  (mark-temporary! (output-port/mark port)))
-
-(define default-window-width false)
+  (mark-temporary! (port/mark port)))
 
 (define (operation/x-size port)
-  (let ((sizes
-	 (map window-x-size
-	      (buffer-windows
-	       (mark-buffer (output-port/mark port))))))
-    (if (null? sizes)
-	(or default-window-width 79)
-	(apply min sizes))))
+  (let ((buffer (mark-buffer (port/mark port))))
+    (and buffer
+	 (let ((windows (buffer-windows buffer)))
+	   (and (not (null? windows))
+		(apply min (map window-x-size windows)))))))
 
 (define mark-output-port-template
   (make-output-port `((CLOSE ,operation/close)
 		      (FLUSH-OUTPUT ,operation/flush-output)
 		      (FRESH-LINE ,operation/fresh-line)
-		      (FRESH-LINES ,operation/fresh-lines)
 		      (PRINT-SELF ,operation/print-self)
 		      (WRITE-CHAR ,operation/write-char)
-		      (WRITE-STRING ,operation/write-string)
+		      (WRITE-SUBSTRING ,operation/write-substring)
 		      (X-SIZE ,operation/x-size))
 		    false))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtstr.scm,v 1.17 1991/11/19 19:44:15 markf Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtstr.scm,v 1.18 1991/11/26 08:02:59 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -63,7 +63,7 @@
 (define (make-editor name display-type make-screen-args)
   (let ((initial-buffer
 	 (make-buffer initial-buffer-name
-		      initial-buffer-mode
+		      (ref-mode-object fundamental)
 		      (working-directory-pathname))))
     (let ((bufferset (make-bufferset initial-buffer))
 	  (screen (display-type/make-screen display-type make-screen-args)))

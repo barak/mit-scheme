@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.208 1991/11/04 20:47:33 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.209 1991/11/26 08:02:55 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -58,58 +58,23 @@
 		 (recursive-edit-continuation false)
 		 (recursive-edit-level 0))
        (editor-grab-display edwin-editor
-	 (lambda (with-editor-ungrabbed)
+	 (lambda (with-editor-ungrabbed operations)
 	   (let ((message (cmdl-message/null)))
-	     (push-cmdl
-	      (lambda (cmdl)
-		cmdl		;ignore
-		(bind-condition-handler (list condition-type:error)
-		    internal-error-handler
-		  (lambda ()
-		    (top-level-command-reader edwin-initialization)))
-		message)
-	      false
-	      message
-	      (editor-spawn-child-cmdl with-editor-ungrabbed))))))))
+	     (cmdl/start
+	      (push-cmdl
+	       (lambda (cmdl)
+		 cmdl		;ignore
+		 (bind-condition-handler (list condition-type:error)
+		     internal-error-handler
+		   (lambda ()
+		     (top-level-command-reader edwin-initialization)))
+		 message)
+	       false
+	       `((START-CHILD ,(editor-start-child-cmdl with-editor-ungrabbed))
+		 ,@operations))
+	      message)))))))
   (if edwin-finalization (edwin-finalization))
   unspecific)
-
-(define (editor-grab-display editor receiver)
-  (display-type/with-display-grabbed (editor-display-type editor)
-    (lambda (with-display-ungrabbed)
-      (with-current-local-bindings!
-	(lambda ()
-	  (let ((enter
-		 (lambda ()
-		   (let ((screen (selected-screen)))
-		     (screen-enter! screen)
-		     (update-screen! screen true))))
-		(exit (lambda () (screen-exit! (selected-screen)))))
-	    (dynamic-wind enter
-			  (lambda ()
-			    (receiver
-			     (lambda (thunk)
-			       (dynamic-wind exit
-					     (lambda ()
-					       (with-display-ungrabbed thunk))
-					     enter))))
-			  exit)))))))
-
-(define (editor-spawn-child-cmdl with-editor-ungrabbed)
-  (lambda (editor-cmdl input-port output-port driver state message spawn-child)
-    (with-editor-ungrabbed
-     (lambda ()
-       (make-cmdl editor-cmdl
-		  (if (eq? input-port (cmdl/input-port editor-cmdl))
-		      (cmdl/input-port (cmdl/parent editor-cmdl))
-		      input-port)
-		  (if (eq? output-port (cmdl/output-port editor-cmdl))
-		      (cmdl/output-port (cmdl/parent editor-cmdl))
-		      output-port)
-		  driver
-		  state
-		  message
-		  spawn-child)))))
 
 (define (edwin . args) (apply edit args))
 (define (within-editor?) (not (unassigned? current-editor)))
@@ -158,34 +123,37 @@
     (set! edwin-initialization
 	  (lambda ()
 	    (set! edwin-initialization false)
-	    (with-editor-interrupts-disabled standard-editor-initialization)))
+	    (standard-editor-initialization)))
     unspecific))
 
 (define (standard-editor-initialization)
-  (if (not init-file-loaded?)
-      (begin
-	(let ((filename (os/init-file-name)))
-	  (if (file-exists? filename)
-	      (let ((buffer (temporary-buffer " *dummy*")))
-		(with-selected-buffer buffer
-		  (lambda ()
-		    (load-edwin-file filename '(EDWIN) true)))
-		(kill-buffer buffer))))
-	(set! init-file-loaded? true)))
-  (if (not (ref-variable inhibit-startup-message))
-      (let ((window (current-window)))
-	(let ((buffer (window-buffer window)))
-	  (dynamic-wind
-	   (lambda () unspecific)
-	   (lambda ()
-	     (with-output-to-mark (window-point window)
-				  write-initial-buffer-greeting!)
-	     (set-window-start-mark! window (buffer-start buffer) false)
-	     (buffer-not-modified! buffer)
-	     (sit-for 120000))
-	   (lambda ()
-	     (region-delete! (buffer-unclipped-region buffer))
-	     (buffer-not-modified! buffer)))))))
+  (start-inferior-repl!
+   (current-buffer)
+   user-initial-environment
+   user-initial-syntax-table
+   (and (not (ref-variable inhibit-startup-message))
+	(cmdl-message/append
+	 (cmdl-message/active
+	  (lambda (port)
+	    (identify-world port)
+	    (newline port)
+	    (newline port)))
+	 (cmdl-message/strings
+	  "You are in an interaction window of the Edwin editor."
+	  "Type C-h for help.  C-h m will describe some commands."))))
+  (with-editor-interrupts-disabled
+   (lambda ()
+     (if (not init-file-loaded?)
+	 (begin
+	   (let ((filename (os/init-file-name)))
+	     (if (file-exists? filename)
+		 (let ((buffer (temporary-buffer " *dummy*")))
+		   (with-selected-buffer buffer
+		     (lambda ()
+		       (load-edwin-file filename '(EDWIN) true)))
+		   (kill-buffer buffer))))
+	   (set! init-file-loaded? true)
+	   unspecific)))))
 
 (define inhibit-editor-init-file? false)
 (define init-file-loaded? false)
@@ -195,18 +163,6 @@
 This is for use in your personal init file, once you are familiar
 with the contents of the startup message."
   false)
-
-(define (write-initial-buffer-greeting!)
-  (identify-world)
-  (write-string initial-buffer-greeting))
-
-(define initial-buffer-greeting
-  "
-
-;You are in an interaction window of the Edwin editor.
-;Type C-h for help.  C-h m will describe some commands.
-
-")
 
 (define (reset-editor)
   (without-interrupts
@@ -320,24 +276,48 @@ This does not affect editor errors or evaluation errors."
   (editor-beep)
   (abort-current-command))
 
+(define *^G-interrupt-handler*)
+
 (define (^G-signal)
-  (let ((continuations *^G-interrupt-continuations*))
-    (if (not (pair? continuations))
-	(error "can't signal ^G interrupt"))
-    ((car continuations))))
+  (*^G-interrupt-handler*))
 
 (define (intercept-^G-interrupts interceptor thunk)
   (let ((signal-tag "signal-tag"))
     (let ((value
 	   (call-with-current-continuation
 	     (lambda (continuation)
-	       (fluid-let ((*^G-interrupt-continuations*
-			    (cons (lambda () (continuation signal-tag))
-				  *^G-interrupt-continuations*)))
+	       (fluid-let ((*^G-interrupt-handler*
+			    (lambda () (continuation signal-tag))))
 		 (thunk))))))
       (if (eq? value signal-tag)
 	  (interceptor)
 	  value))))
 
-(define *^G-interrupt-continuations*
-  '())
+(define (editor-grab-display editor receiver)
+  (display-type/with-display-grabbed (editor-display-type editor)
+    (lambda (with-display-ungrabbed operations)
+      (with-current-local-bindings!
+	(lambda ()
+	  (let ((enter
+		 (lambda ()
+		   (let ((screen (selected-screen)))
+		     (screen-enter! screen)
+		     (update-screen! screen true))))
+		(exit
+		 (lambda ()
+		   (screen-exit! (selected-screen)))))
+	    (dynamic-wind enter
+			  (lambda ()
+			    (receiver
+			     (lambda (thunk)
+			       (dynamic-wind exit
+					     (lambda ()
+					       (with-display-ungrabbed thunk))
+					     enter))
+			      operations))
+			  exit)))))))
+
+(define (editor-start-child-cmdl with-editor-ungrabbed)
+  (lambda (cmdl thunk)
+    cmdl
+    (with-editor-ungrabbed thunk)))

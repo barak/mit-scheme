@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.23 1991/10/02 21:22:08 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.24 1991/11/26 08:03:42 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -477,18 +477,15 @@
 	   (select-screen screen))))))
 
 (define signal-interrupts?)
-(define pending-interrupt?)
 (define timer-interval 1000)
 
 (define (signal-interrupt!)
   (editor-beep)
   (temporary-message "Quit")
-  (set! pending-interrupt? false)
   (^G-signal))
 
 (define (with-editor-interrupts-from-x receiver)
   (fluid-let ((signal-interrupts? true)
-	      (pending-interrupt? false)
 	      (timer-interrupt timer-interrupt-handler))
     (dynamic-wind start-timer-interrupt
 		  (lambda ()
@@ -496,7 +493,8 @@
 		     (lambda (thunk)
 		       (dynamic-wind stop-timer-interrupt
 				     thunk
-				     start-timer-interrupt))))
+				     start-timer-interrupt))
+		     '()))
 		  stop-timer-interrupt)))
 
 (define (set-x-timer-interval! interval)
@@ -520,24 +518,10 @@
   (clear-interrupts! interrupt-bit/timer))
 
 (define (with-x-interrupts-enabled thunk)
-  (bind-signal-interrupts? true thunk))
+  (fluid-let ((signal-interrupts? true)) (thunk)))
 
 (define (with-x-interrupts-disabled thunk)
-  (bind-signal-interrupts? false thunk))
-
-(define (bind-signal-interrupts? new-mask thunk)
-  (let ((old-mask))
-    (dynamic-wind (lambda ()
-		    (set! old-mask signal-interrupts?)
-		    (set! signal-interrupts? new-mask)
-		    (if (and new-mask pending-interrupt?)
-			(signal-interrupt!)))
-		  thunk
-		  (lambda ()
-		    (set! new-mask signal-interrupts?)
-		    (set! signal-interrupts? old-mask)
-		    (if (and old-mask pending-interrupt?)
-			(signal-interrupt!))))))
+  (fluid-let ((signal-interrupts? false)) (thunk)))
 
 (define x-display-type)
 (define x-display-data)

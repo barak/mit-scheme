@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.30 1991/11/04 20:47:47 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.31 1991/11/26 08:03:13 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -73,20 +73,20 @@ This does not affect editor errors."
 (define-variable transcript-buffer-name
   "Name of evaluation transcript buffer.
 This can also be a buffer object."
-  "*scratch*")
+  "*transcript*")
 
 (define-variable transcript-buffer-mode
   "Mode of evaluation transcript buffer.
 This can be either a mode object or the name of one."
-  'scheme-interaction)
+  'scheme)
 
 (define-variable transcript-input-recorder
-  "A procedure which receives each input region before evaluation.
+  "A procedure that receives each input region before evaluation.
 If #F, disables input recording."
   false)
 
 (define-variable transcript-output-wrapper
-  "A procedure which is called to setup transcript output.
+  "A procedure that is called to setup transcript output.
 It is passed a thunk as its only argument.
 If #F, normal transcript output is done."
   false)
@@ -143,10 +143,16 @@ With an argument, prompts for the evaluation environment."
     (evaluate-region (buffer-region (current-buffer)) argument)))
 
 (define-command eval-expression
-  "Read an evaluate an expression in the typein window.
+  "Read and evaluate an expression in the typein window.
 With an argument, prompts for the evaluation environment."
   "xEvaluate expression\nP"
   (lambda (expression argument)
+    (let ((enable-transcript-buffer (ref-variable enable-transcript-buffer)))
+      (if enable-transcript-buffer
+	  (insert-string
+	   (fluid-let ((*unparse-with-maximum-readability?* true))
+	     (write-to-string expression))
+	   (buffer-end (transcript-buffer)))))
     (editor-eval expression (evaluation-environment argument))))
 
 (define-command set-environment
@@ -252,6 +258,11 @@ may be available.  The following commands are special to this mode:
   (let ((transcript-input-recorder (ref-variable transcript-input-recorder)))
     (if transcript-input-recorder
 	(transcript-input-recorder region)))
+  (let ((enable-transcript-buffer (ref-variable enable-transcript-buffer)))
+    (if enable-transcript-buffer
+	(insert-region (region-start region)
+		       (region-end region)
+		       (buffer-end (transcript-buffer)))))
   (let ((environment (evaluation-environment argument)))
     (with-input-from-region region
       (lambda ()
@@ -315,17 +326,18 @@ kludge the mode line."
   boolean?)
 
 (define (editor-eval sexp environment)
-  (let* ((to-transcript? (ref-variable enable-transcript-buffer))
-	 (core 
-	  (lambda ()
-	    (with-output-to-transcript-buffer
+  (let ((core
+	 (lambda ()
+	   (with-input-from-string ""
 	     (lambda ()
-	       (let* ((buffer (transcript-buffer))
-		      (value (eval-with-history sexp environment)))
-		 (transcript-write value
-				   buffer
-				   to-transcript?)
-		 value))))))
+	       (with-output-to-transcript-buffer
+		(lambda ()
+		  (let ((value (eval-with-history sexp environment)))
+		    (transcript-write
+		     value
+		     (and (ref-variable enable-transcript-buffer)
+			  (transcript-buffer)))
+		    value))))))))
     (if (ref-variable enable-run-light?)
 	(dynamic-wind
 	 (lambda ()
@@ -348,7 +360,7 @@ kludge the mode line."
     (bind-condition-handler (list condition-type:error)
 	evaluation-error-handler
       (lambda ()
-	(hook/repl-eval (nearest-repl) expression environment syntax-table)))))
+	(hook/repl-eval expression environment syntax-table)))))
 
 (define (evaluation-error-handler condition)
   (default-report-error condition "evaluation")
@@ -367,17 +379,19 @@ kludge the mode line."
 		      report-string)))
 	  (error-buffer-report
 	   (lambda ()
-	     (string->temporary-buffer report-string "*Error*")
+	     (string->temporary-buffer report-string "*error*")
 	     (message (string-capitalize error-type-name) " error"))))
       (case (ref-variable error-display-mode)
 	((TRANSCRIPT)
-	 (with-output-to-transcript-buffer
-	   (lambda ()
-	     (fresh-line)
-	     (display ";Error: ")
-	     (display report-string)
-	     (newline)
-	     (newline))))
+	 (if (ref-variable enable-transcript-buffer)
+	     (with-output-to-transcript-buffer
+	       (lambda ()
+		 (fresh-line)
+		 (write-string ";Error: ")
+		 (write-string report-string)
+		 (newline)
+		 (newline)))
+	     (error-buffer-report)))
 	((ERROR-BUFFER)
 	 (error-buffer-report))
 	((TYPEIN)
@@ -392,10 +406,10 @@ kludge the mode line."
 (define-variable error-display-mode
   "Value of this variable controls the way evaluation errors are displayed:
 TRANSCRIPT    Error messages appear in transcript buffer.
-ERROR-BUFFER  Error messages appear in *Error* buffer.
+ERROR-BUFFER  Error messages appear in *error* buffer.
 TYPEIN        Error messages appear in typein window.
 FIT           Error messages appear in typein window if they fit;
-                in *Error* buffer if they don't."
+                in *error* buffer if they don't."
   'TRANSCRIPT
   (lambda (value) (memq value '(TRANSCRIPT ERROR-BUFFER TYPEIN FIT))))
 
@@ -409,28 +423,19 @@ FIT           Error messages appear in typein window if they fit;
 	    (let ((output-port
 		   (let ((buffer (transcript-buffer)))
 		     (mark->output-port (buffer-end buffer) buffer))))
-	      (fresh-lines 1 output-port)
-	      (with-standard-output-port output-port thunk))))
+	      (fresh-line output-port)
+	      (with-output-to-port output-port thunk))))
       (let ((value))
 	(let ((output
-	       (with-string-output-port
-		(lambda (output-port)
-		  (with-standard-output-port output-port
-		    (lambda ()
-		      (set! value (thunk))
-		      unspecific))))))
+	       (with-output-to-string
+		 (lambda ()
+		   (set! value (thunk))
+		   unspecific))))
 	  (if (not (string-null? output))
 	      (string->temporary-buffer output "*Unsolicited-Output*")))
 	value)))
 
-(define (with-standard-output-port output-port thunk)
-  (with-output-to-port output-port
-    (lambda ()
-      (with-cmdl/output-port (nearest-cmdl) output-port
-	(lambda ()
-	  (thunk))))))
-
-(define (transcript-write value buffer to-transcript?)
+(define (transcript-write value buffer)
   (let ((value-string
 	 (if (undefined-value? value)
 	     "No value"
@@ -441,18 +446,15 @@ FIT           Error messages appear in typein window if they fit;
 			  (*unparser-list-breadth-limit*
 			   (ref-variable transcript-list-breadth-limit)))
 		(write-to-string value))))))
-    (let ((value-message (lambda () (message value-string))))
-      (if to-transcript?
-	  (with-output-to-mark
-	   (buffer-point buffer)
-	   (lambda ()
-	     (fresh-lines 1)
-	     (write-char #\;)
-	     (write-string value-string)
-	     (fresh-lines 2)
-	     (if (null? (buffer-windows buffer))
-		 (value-message))))
-	  (value-message)))))
+    (if buffer
+	(let ((point (mark-left-inserting-copy (buffer-end buffer))))
+	  (guarantee-newlines 1 point)
+	  (insert-char #\; point)
+	  (insert-string value-string point)
+	  (insert-newlines 2 point)
+	  (mark-temporary! point)))
+    (if (or (not buffer) (null? (buffer-windows buffer)))
+	(message value-string))))
 
 (define (transcript-buffer)
   (let ((name (ref-variable transcript-buffer-name)))

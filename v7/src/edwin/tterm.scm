@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.8 1991/05/09 03:26:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.9 1991/11/26 08:03:32 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -188,8 +188,7 @@ MIT in each case. |#
 		(set! start (fix:+ start 1))
 		char)))))))
 
-(define (signal-interrupt! interrupt-enables)
-  interrupt-enables			; ignored
+(define (signal-interrupt!)
   ;; (editor-beep)			; kbd beeps by itself
   (temporary-message "Quit")
   (^G-signal))
@@ -234,14 +233,14 @@ MIT in each case. |#
 			  (input-port/channel console-input-port))
       (terminal-operation terminal-raw-output
 			  (output-port/channel console-output-port))
-      (set! hook/^g-interrupt signal-interrupt!)
       (tty-set-interrupt-enables 2)
       (receiver
        (lambda (thunk)
 	 (bind-console-state (get-outside-state)
 	   (lambda (get-inside-state)
 	     get-inside-state
-	     (thunk))))))))
+	     (thunk))))
+       `((INTERRUPT/ABORT-TOP-LEVEL ,signal-interrupt!))))))
 
 (define (bind-console-state state receiver)
   (let ((outside-state)
@@ -263,7 +262,6 @@ MIT in each case. |#
 (define (console-state)
   (vector (channel-state (input-port/channel console-input-port))
 	  (channel-state (output-port/channel console-output-port))
-	  hook/^g-interrupt
 	  (tty-get-interrupt-enables)))
 
 (define (set-console-state! state)
@@ -271,8 +269,7 @@ MIT in each case. |#
 		      (vector-ref state 0))
   (set-channel-state! (output-port/channel console-output-port)
 		      (vector-ref state 1))
-  (set! hook/^g-interrupt (vector-ref state 2))
-  (tty-set-interrupt-enables (vector-ref state 3)))
+  (tty-set-interrupt-enables (vector-ref state 2)))
 
 (define (channel-state channel)
   (and channel

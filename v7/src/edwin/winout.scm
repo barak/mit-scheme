@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/winout.scm,v 1.6 1991/06/18 20:30:48 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/winout.scm,v 1.7 1991/11/26 08:03:38 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -46,36 +46,22 @@
 ;;; package: (edwin window-output-port)
 
 (declare (usual-integrations))
-
+
 (define (with-output-to-current-point thunk)
   (with-output-to-window-point (current-window) thunk))
 
 (define (with-output-to-window-point window thunk)
-  (with-interactive-output-port (window-output-port window) thunk))
+  (with-output-to-port (window-output-port window) thunk))
 
-(define (with-interactive-output-port port thunk)
-  (with-output-to-port port
-    (lambda ()
-      (with-cmdl/output-port (nearest-cmdl) port thunk))))
-
 (define (window-output-port window)
   (output-port/copy window-output-port-template window))
 
 (define (operation/fresh-line port)
-  (if (not (line-start? (window-point (output-port/state port))))
+  (if (not (line-start? (window-point (port/state port))))
       (operation/write-char port #\newline)))
 
-(define (operation/fresh-lines port n)
-  (let loop
-      ((n
-	(if (line-start? (window-point (output-port/state port))) (-1+ n) n)))
-    (if (positive? n)
-	(begin
-	  (operation/write-char port #\newline)
-	  (loop (-1+ n))))))
-
 (define (operation/write-char port char)
-  (let ((window (output-port/state port)))
+  (let ((window (port/state port)))
     (let ((buffer (window-buffer window))
 	  (point (window-point window)))
       (if (and (null? (cdr (buffer-windows buffer)))
@@ -95,7 +81,7 @@
 	  (region-insert-char! point char)))))
 
 (define (operation/write-string port string)
-  (let ((window (output-port/state port)))
+  (let ((window (port/state port)))
     (let ((buffer (window-buffer window))
 	  (point (window-point window)))
       (if (and (null? (cdr (buffer-windows buffer)))
@@ -117,21 +103,20 @@
   ;; chance to do refresh if it needs to (e.g. if an X exposure event
   ;; is received).
   ((editor-char-ready? current-editor))
-  (let ((window (output-port/state port)))
+  (let ((window (port/state port)))
     (if (window-needs-redisplay? window)
 	(window-direct-update! window false))))
 
 (define (operation/x-size port)
-  (window-x-size (output-port/state port)))
+  (window-x-size (port/state port)))
 
 (define (operation/print-self state port)
   (unparse-string state "to window ")
-  (unparse-object state (output-port/state port)))
+  (unparse-object state (port/state port)))
 
 (define window-output-port-template
   (make-output-port `((FLUSH-OUTPUT ,operation/flush-output)
 		      (FRESH-LINE ,operation/fresh-line)
-		      (FRESH-LINES ,operation/fresh-lines)
 		      (PRINT-SELF ,operation/print-self)
 		      (WRITE-CHAR ,operation/write-char)
 		      (WRITE-STRING ,operation/write-string)
