@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntenv.c,v 1.13 1996/04/23 20:40:11 cph Exp $
+$Id: ntenv.c,v 1.14 1996/10/07 17:56:40 cph Exp $
 
 Copyright (c) 1992-96 Massachusetts Institute of Technology
 
@@ -39,16 +39,35 @@ MIT in each case. */
 #include <stdlib.h>
 #include <string.h>
 
+extern unsigned long file_time_to_unix_time (FILETIME *);
+extern void unix_time_to_file_time (unsigned long, FILETIME *);
+
+static unsigned long
+system_time_to_unix_time (SYSTEMTIME * st)
+{
+  FILETIME ft;
+  (void) SystemTimeToFileTime (st, (&ft));
+  return (file_time_to_unix_time (&ft));
+}
+
+static void
+unix_time_to_system_time (unsigned long ut, SYSTEMTIME * st)
+{
+  FILETIME ft;
+  unix_time_to_file_time (ut, (&ft));
+  (void) FileTimeToSystemTime ((&ft), st);
+}
+
 time_t
 DEFUN_VOID (OS_encoded_time)
 {
-  time_t t;
-  STD_UINT_SYSTEM_CALL (syscall_time, t, (NT_time (0)));
-  return (t);
+  SYSTEMTIME t;
+  GetSystemTime (&t);
+  return (system_time_to_unix_time (&t));
 }
 
 void
-DEFUN (OS_decode_time, (t, buffer), time_t t AND struct time_structure * buffer)
+OS_decode_time (time_t t, struct time_structure * buffer)
 {
   struct tm * ts;
   STD_PTR_SYSTEM_CALL (syscall_localtime, ts, (NT_localtime (&t)));
@@ -69,8 +88,51 @@ DEFUN (OS_decode_time, (t, buffer), time_t t AND struct time_structure * buffer)
   }
 }
 
+#if 0
+/* This nice implementation can't be used because it only works under
+   Windows NT.  */
+void
+OS_decode_time (time_t t, struct time_structure * buffer)
+{
+  SYSTEMTIME st;
+  SYSTEMTIME lst;
+  TIME_ZONE_INFORMATION tzi;
+  unix_time_to_system_time (t, (&st));
+  switch (GetTimeZoneInformation (&tzi))
+    {
+    case TIME_ZONE_ID_STANDARD:
+      (buffer -> daylight_savings_time) = 0;
+      (buffer -> time_zone) = (tzi . Bias);
+      break;
+    case TIME_ZONE_ID_DAYLIGHT:
+      (buffer -> daylight_savings_time) = 1;
+      (buffer -> time_zone) = (tzi . Bias);
+      break;
+    default:
+      (buffer -> daylight_savings_time) = -1;
+      (buffer -> time_zone) = 0;
+      break;
+    }
+  if (((buffer -> daylight_savings_time) == 0) && ((buffer -> time_zone) == 0))
+    lst = st;
+  else
+    (void) SystemTimeToTzSpecificLocalTime ((&tzi), (&st), (&lst));
+  (buffer -> year) = (lst . wYear);
+  (buffer -> month) = (lst . wMonth);
+  (buffer -> day) = (lst . wDay);
+  (buffer -> hour) = (lst . wHour);
+  (buffer -> minute) = (lst . wMinute);
+  (buffer -> second) = (lst . wSecond);
+  {
+    /* In SYSTEMTIME encoding, 0 is Sunday; in ours, it's Monday. */
+    int wday = (lst . wDayOfWeek);
+    (buffer -> day_of_week) = ((wday == 0) ? 6 : (wday - 1));
+  }
+}
+#endif
+
 time_t
-DEFUN (OS_encode_time ,(buffer), struct time_structure * buffer)
+OS_encode_time (struct time_structure * buffer)
 {
   time_t t;
   struct tm ts_s, * ts;
