@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.17 2004/11/23 17:20:34 cph Exp $
+$Id: mod-lisp.scm,v 1.18 2004/11/23 18:00:22 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -24,6 +24,8 @@ USA.
 |#
 
 ;;;; MIT/GNU Scheme interface to Apache mod-lisp.
+
+;;; Requires mod_lisp 2.41, or mod_lisp2 1.2.
 
 (declare (usual-integrations))
 
@@ -79,21 +81,7 @@ USA.
 			      (list (car p) (cdr p)))
 			    (http-message-headers message)))))
   (for-each (lambda (header)
-	      ;; Kludge: mod-lisp uses case-sensitive comparisons for
-	      ;; these headers.
-	      (write-string (case (car header)
-			      ((CONTENT-LENGTH) "Content-Length")
-			      ((CONTENT-TYPE) "Content-Type")
-			      ((KEEP-SOCKET) "Keep-Socket")
-			      ((LAST-MODIFIED) "Last-Modified")
-			      ((LOCATION) "Location")
-			      ((LOG) "Log")
-			      ((LOG-ERROR) "Log-Error")
-			      ((NOTE) "Note")
-			      ((SET-COOKIE) "Set-Cookie")
-			      ((STATUS) "Status")
-			      (else (symbol-name (car header))))
-			    port)
+	      (write-string (symbol-name (car header)) port)
 	      (newline port)
 	      (write-string (cdr header) port)
 	      (newline port))
