@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.13 2000/12/07 22:52:51 cph Exp $
+# $Id: Makefile,v 1.14 2000/12/07 22:55:13 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -52,7 +52,7 @@ mostlyclean: mostlyclean-extra
 
 mostlyclean-extra:
 	@if test -d runtime-check && test -e runtime-check/Makefile; then \
-	    echo "making $@ in runtime-check"; \
+	    echo "making mostlyclean in runtime-check"; \
 	    ( cd runtime-check && $(MAKE) mostlyclean ); \
 	fi
 
