@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.31 1993/10/23 03:01:17 cph Exp $
+@comment $Id: scheme.texinfo,v 1.32 1993/10/25 21:35:08 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -10,6 +10,8 @@
 @setchapternewpage odd
 @syncodeindex vr cp
 @syncodeindex fn cp
+
+@clear sicpstuff
 
 @comment Parts of this document are essentially plagiarized from "Common
 @comment Lisp: The Language".  Those parts are marked by the following
@@ -106,9 +108,9 @@ literature without prior written consent from MIT in each case.
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.31 alpha
+@subtitle Edition 1.32 alpha
 @subtitle for Scheme Release 7.2
-@subtitle 22 October 1993
+@subtitle 25 October 1993
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -384,7 +386,7 @@ Pathnames
 * Filenames and Pathnames::     
 * Components of Pathnames::     
 * Operations on Pathnames::     
-* Miscellaneous Pathnames::     Miscellaneous Pathname Functions
+* Miscellaneous Pathnames::     
 
 Error System
 
@@ -405,12 +407,11 @@ Graphics
 * Characteristics of Graphics Output::  
 * Buffering of Graphics Output::  
 * Clipping of Graphics Output::  
-* Images::                      
 * Custom Graphics Operations::  
+* Images::                      
 * Win32 Graphics::              Graphics on Microsoft Windows and Windows NT
 * X Graphics::                  
 * Starbase Graphics::           
-* Pictures::                    Pictures (MIT 6.001 implementation only)
 
 Win32 Graphics
 
@@ -422,13 +423,6 @@ X Graphics
 * X Graphics Type::             
 * Utilities for X Graphics::    
 * Custom Operations on X Graphics Devices::  
-
-Pictures (MIT 6.001 implementation only)
-
-* Construction of Pictures::    
-* Manipulating Pictures::       
-* Displaying Pictures::         
-* Saving and Restoring Pictures::  
 @end menu
 
 @node Acknowledgements, Overview, Top, Top
@@ -448,11 +442,12 @@ the Free Software Foundation, for creating and maintaining the Texinfo
 formatting language in which this document is written.
 
 This report describes research done at the Artificial Intelligence
-Laboratory of the Massachusetts Institute of Technology.  Support for
-the laboratory's artificial intelligence research is provided in part by
-the Advanced Research Projects Agency of the Department of Defense under
-Office of Naval Research contracts N00014-85-K-0124 and
-N00014-86-K-0180.
+Laboratory and the Laboratory for Computer Science, both of the
+Massachusetts Institute of Technology.  Support for this research is
+provided in part by the Advanced Research Projects Agency of the
+Department of Defense under Office of Naval Research contract
+N00014-92-J-4097 and by the National Science Foundation under grant
+number MIP-9001651.
 
 @node Overview, Special Forms, Acknowledgements, Top
 @chapter Overview
@@ -772,20 +767,18 @@ In addition to the standard data-type names (@var{pair}, @var{list},
 @var{boolean}, @var{string}, etc.), the following names as arguments
 also imply type restrictions:
 
-@table @var
-@item object
-any object
-@item thunk
-a procedure of no arguments
-@item x
-@itemx y
-a real number
-@item q
-@itemx n
-an integer
-@item k
-an exact non-negative integer
-@end table
+@itemize @bullet
+@item
+@var{object}: any object
+@item
+@var{thunk}: a procedure of no arguments
+@item
+@var{x}, @var{y}: real numbers
+@item
+@var{q}, @var{n}: integers
+@item
+@var{k}: an exact non-negative integer
+@end itemize
 @end table
 
 Some examples:
@@ -947,7 +940,7 @@ Lisp except for Common Lisp.
 The fact that Scheme is statically scoped (rather than
 dynamically bound) means that the environment that is extended (and
 becomes current) when a procedure is called is the environment in which
-the procedure was created (i.e., in which the procedure's defining
+the procedure was created (i.e.@: in which the procedure's defining
 lambda expression was evaluated), not the environment in which the
 procedure is called.  Because all the other Scheme @dfn{binding
 expressions} can be expressed in terms of procedures, this determines
@@ -2154,12 +2147,11 @@ into a completely equivalent @code{letrec} expression.  For example, the
 @deffn {special form} set! variable [expression]
 @cindex variable, assigning values to
 @cindex unassigned variable, and assignment
-If @var{expression} is specified, evaluates @var{expression}, and stores
+If @var{expression} is specified, evaluates @var{expression} and stores
 the resulting value in the location to which @var{variable} is bound.
 If @var{expression} is omitted, @var{variable} is altered to be
-unassigned; subsequent references to such @var{variable} are
-``Unassigned Variable'' errors.  In either case, the value of the
-@code{set!} expression is unspecified.
+unassigned; a subsequent reference to such a @var{variable} is an error.
+In either case, the value of the @code{set!} expression is unspecified.
 
 @var{Variable} must be bound either in some region enclosing the
 @code{set!} expression, or at the top level.  However, @var{variable} is
@@ -2747,10 +2739,10 @@ instead of @code{(@var{variable} @var{init})}.
 @section Structure Definitions
 
 This section provides examples and describes the options and syntax of
-@code{define-structure}, an MIT Scheme macro that is essentially
-identical to @code{defstruct} in Common Lisp.  The differences between
-them are summarized at the end of this section.  For more information,
-see Chapter 19 of Steele's Common Lisp book.
+@code{define-structure}, an MIT Scheme macro that is very similar to
+@code{defstruct} in Common Lisp.  The differences between them are
+summarized at the end of this section.  For more information, see
+Steele's Common Lisp book.
 
 @deffn {special form+} define-structure (name structure-option @dots{}) slot-description @dots{}
 Each @var{slot-description} takes one of the following forms:
@@ -2766,53 +2758,53 @@ The fields @var{name} and @var{slot-name} must both be symbols.  The
 field @var{default-init} is an expression for the initial value of the
 slot.  It is evaluated each time a new instance is constructed.  If it
 is not specified, the initial content of the slot is undefined.  Default
-values are only useful with a keyword constructor or @sc{boa} constructor
-with argument list (see below).
+values are only useful with a @sc{boa} constructor with argument list or
+a keyword constructor (see below).
 
-A call to @code{define-structure} defines a structure descriptor and a
-set of procedures to manipulate instances of the structure.  These
-instances are represented as records by default (@pxref{Records}) but
-may alternately be lists or vectors.  The accessors and modifiers are
-marked with compiler declarations so that calls to them are
-automatically transformed into appropriate references.  Often, no
-options are required, so a simple call to @code{define-structure} looks
-like:
+Evaluation of a @code{define-structure} expression defines a structure
+descriptor and a set of procedures to manipulate instances of the
+structure.  These instances are represented as records by default
+(@pxref{Records}) but may alternately be lists or vectors.  The
+accessors and modifiers are marked with compiler declarations so that
+calls to them are automatically transformed into appropriate references.
+Often, no options are required, so a simple call to
+@code{define-structure} looks like:
 
 @example
 (define-structure foo a b c)
 @end example
 
-This defines a record type @code{foo}, a constructor @code{make-foo}, a
-predicate @code{foo?}, accessors @code{foo-a}, @code{foo-b}, and
-@code{foo-c}, and modifiers @code{set-foo-a!}, @code{set-foo-b!}, and
-@code{set-foo-c!}.
+This defines a type descriptor @code{foo}, a constructor
+@code{make-foo}, a predicate @code{foo?}, accessors @code{foo-a},
+@code{foo-b}, and @code{foo-c}, and modifiers @code{set-foo-a!},
+@code{set-foo-b!}, and @code{set-foo-c!}.
 
 In general, if no options are specified, @code{define-structure} defines
 the following (using the simple call above as an example):
 
 @table @asis
+@item type descriptor
+The name of the type descriptor is the same as the name of the
+structure, e.g.@: @samp{foo}.  The type descriptor satisfies the
+predicate @code{record-type?}.
+
 @item constructor
 The name of the constructor is @code{"make-"} followed by the name of
-the structure, e.g.@: @code{make-foo}.  The number of arguments accepted
+the structure, e.g.@: @samp{make-foo}.  The number of arguments accepted
 by the constructor is the same as the number of slots; the arguments are
 the initial values for the slots, and the order of the arguments matches
 the order of the slot definitions.
 
-@item type descriptor
-The name of the type descriptor is the same as the name of the
-structure, e.g.@: @code{foo}.  The type descriptor satisfies the
-predicate @code{record-type?}.
-
 @item predicate
 The name of the predicate is the name of the structure followed by
-@code{"?"}, e.g.@: @code{foo?}.  The predicate is a procedure of one
+@code{"?"}, e.g.@: @samp{foo?}.  The predicate is a procedure of one
 argument, which returns @code{#t} if its argument is a record of the
-type defined by this structure definition.
+type defined by this structure definition, and @code{#f} otherwise.
 
 @item accessors
 For each slot, an accessor is defined.  The name of the accessor is
 formed by appending the name of the structure, a hyphen, and the name of
-the slot, e.g.@: @code{foo-a}.  The accessor is a procedure of one
+the slot, e.g.@: @samp{foo-a}.  The accessor is a procedure of one
 argument, which must be a record of the type defined by this structure
 definition.  The accessor extracts the contents of the corresponding
 slot in that record and returns it.
@@ -2820,7 +2812,7 @@ slot in that record and returns it.
 @item modifiers
 For each slot, a modifier is defined.  The name of the modifier is
 formed by appending @code{"set-"}, the name of the accessor, and
-@code{"!"}, e.g.@: @code{set-foo-a!}.  The modifier is a procedure of
+@code{"!"}, e.g.@: @samp{set-foo-a!}.  The modifier is a procedure of
 two arguments, the first of which must be a record of the type defined
 by this structure definition, and the second of which may be any object.
 The modifier modifies the contents of the corresponding slot in that
@@ -2863,34 +2855,36 @@ This is accepted but not presently used.
 Possible @var{structure-options} are:
 
 @deffn {structure option} predicate [name]
-This option controls the generation of a predicate procedure for the
-structure.  If @var{name} is not given, the predicate is generated with
+This option controls the definition of a predicate procedure for the
+structure.  If @var{name} is not given, the predicate is defined with
 the default name (see above).  If @var{name} is @code{#f}, the predicate
-is not generated at all.  Otherwise, @var{name} must be a symbol, and
-the predicate is generated with that symbol as its name.
+is not defined at all.  Otherwise, @var{name} must be a symbol, and
+the predicate is defined with that symbol as its name.
 @end deffn
 
 @deffn {structure option} copier [name]
-This option controls the generation of a procedure to copy instances of
+This option controls the definition of a procedure to copy instances of
 the structure.  This is a procedure of one argument, a structure
 instance, that makes a newly allocated copy of the structure and returns
-it.  If @var{name} is not given, the copier is generated, and the name
+it.  If @var{name} is not given, the copier is defined, and the name
 of the copier is @code{"copy-"} followed by the structure name (e.g.@:
-@code{copy-foo}).  If @var{name} is @code{#f}, the copier is not
-generated.  Otherwise, @var{name} must be a symbol, and the copier is
-generated with that symbol as its name.
+@samp{copy-foo}).  If @var{name} is @code{#f}, the copier is not
+defined.  Otherwise, @var{name} must be a symbol, and the copier is
+defined with that symbol as its name.
 @end deffn
 
 @deffn {structure option} print-procedure expression
 Evaluating @var{expression} must yield a procedure of two arguments,
 which is used to print instances of the structure.  The procedure is an
-@dfn{unparser method} (@pxref{Custom Output}), which is usually
-constructed by a call to the procedure @code{standard-unparser-method}.
+@dfn{unparser method} (@pxref{Custom Output}).  If the structure
+instances are records, this option has the same effect as calling
+@code{set-record-type-unparser-method!}.
+@findex set-record-type-unparser-method!
 @end deffn
 
 @deffn {structure option} constructor [name [argument-list]]
 @cindex BOA constructor (defn)
-This option controls the generation of constructor procedures.  These
+This option controls the definition of constructor procedures.  These
 constructor procedures are called ``@sc{boa} constructors'', for ``By
 Order of Arguments'', because the arguments to the constructor specify
 the initial contents the structure's slots by the order in which they
@@ -2898,11 +2892,11 @@ are given.  This is as opposed to ``keyword constructors'', which
 specify the initial contents using keywords, and in which the order of
 arguments is irrelevant.
 
-If the @var{name} is not given, a constructor is generated with the
-default name and arguments (see above).  If @var{name} is @code{#f}, no
-constructor is generated; @var{argument-list} may not be specified in
-this case.  Otherwise, @var{name} must be a symbol, and a constructor is
-generated with that symbol as its name.  If @var{name} is a symbol,
+If @var{name} is not given, a constructor is defined with the default
+name and arguments (see above).  If @var{name} is @code{#f}, no
+constructor is defined; @var{argument-list} may not be specified in this
+case.  Otherwise, @var{name} must be a symbol, and a constructor is
+defined with that symbol as its name.  If @var{name} is a symbol,
 @var{argument-list} is optionally allowed; if it is omitted, the
 constructor accepts one argument for each slot in the structure
 definition, in the same order in which the slots appear in the
@@ -2916,8 +2910,8 @@ as an optional parameter when the corresponding argument is not
 supplied.
 
 If the @code{constructor} option is specified, the default constructor
-is not generated.  Additionally, the @code{constructor} option may be
-specified multiple times to generate multiple constructors with
+is not defined.  Additionally, the @code{constructor} option may be
+specified multiple times to define multiple constructors with
 different names and argument lists.
 
 @example
@@ -2931,18 +2925,18 @@ different names and argument lists.
 
 @deffn {structure option} keyword-constructor [name]
 @cindex keyword constructor (defn)
-This option controls the generation of keyword constructor procedures.
+This option controls the definition of keyword constructor procedures.
 A @dfn{keyword constructor} is a procedure that accepts arguments that
 are alternating slot names and values.  If @var{name} is omitted, a
-keyword constructor is generated, and the name of the constructor is
+keyword constructor is defined, and the name of the constructor is
 @code{"make-"} followed by the name of the structure (e.g.@:
-@code{make-foo}).  Otherwise, @var{name} must be a symbol, and a keyword
-constructor is generated with this symbol as its name.
+@samp{make-foo}).  Otherwise, @var{name} must be a symbol, and a keyword
+constructor is defined with this symbol as its name.
 
 If the @code{keyword-constructor} option is specified, the default
-constructor is not generated.  Additionally, the
+constructor is not defined.  Additionally, the
 @code{keyword-constructor} option may be specified multiple times to
-generate multiple keyword constructors; this is usually not done since
+define multiple keyword constructors; this is usually not done since
 such constructors would all be equivalent.
 
 @example
@@ -2989,7 +2983,7 @@ data type used is the one corresponding to the symbol.
 
 If this option is given, and the @code{named} option is not specified,
 the representation will not be tagged, and neither a predicate nor a
-type descriptor will be generated; also, the @code{print-procedure}
+type descriptor will be defined; also, the @code{print-procedure}
 option may not be given.
 
 @example
@@ -3003,41 +2997,54 @@ This is valid only in conjunction with the @code{type} option and
 specifies that the structure instances be tagged to make them
 identifiable as instances of this structure type.  In the usual case,
 where @var{expression} is not given, the @code{named} option causes a
-type descriptor and predicate to be generated for the structure (recall
+type descriptor and predicate to be defined for the structure (recall
 that the @code{type} option without @code{named} suppresses their
-generation), and also defines a default unparser method for the
+definition), and also defines a default unparser method for the
 structure instances (which can be overridden by the
 @code{print-procedure} option).  The type descriptor is a unique object,
-@emph{not} a record type, that describes the structure instances.  If
-the representation type is @code{vector}, the type descriptor is stored
-in the zero-th slot of the vector, and if the representation type is
+@emph{not} a record type, that describes the structure instances and is
+additionally stored in the structure instances to identify them: if the
+representation type is @code{vector}, the type descriptor is stored in
+the zero-th slot of the vector, and if the representation type is
 @code{list}, it is stored as the first element of the list.
+
+@example
+(define-structure (foo (type vector) named) a b c)
+(vector-ref (make-foo 1 2 3) 0) @result{} #[structure-type 52]
+@end example
 
 If @var{expression} is specified, it is an expression that is evaluated
 to yield a tag object.  The @var{expression} is evaluated once when the
 structure definition is evaluated (to specify the unparser method), and
 again whenever a predicate or constructor is called.  Because of this,
-@var{expression} is normally a variable reference or a constant.
+@var{expression} is normally a variable reference or a constant.  The
+value yielded by @var{expression} may be any object at all.  That object
+is stored in the structure instances in the same place that the type
+descriptor is normally stored, as described above.  If @var{expression}
+is specified, no type descriptor is defined, only a predicate.
 
-If @var{expression} is specified, no type descriptor is generated, only
-a predicate.
-
-The value yielded by @var{expression} may be any object at all.  That
-object is stored in the structure in the same place that the type
-descriptor is normally stored, as described above.
+@example
+(define-structure (foo (type vector) (named 'foo)) a b c)
+(vector-ref (make-foo 1 2 3) 0) @result{} foo
+@end example
 @end deffn
 
 @deffn {structure option} initial-offset offset
 This is valid only in conjunction with the @code{type} option.
 @var{Offset} must be an exact non-negative integer and specifies the
-number of slots to leave open at the beginning of the structure before
-the specified slots are allocated.  Specifying an @var{offset} of zero
-is equivalent to omitting the @code{initial-offset} option.
+number of slots to leave open at the beginning of the structure instance
+before the specified slots are allocated.  Specifying an @var{offset} of
+zero is equivalent to omitting the @code{initial-offset} option.
 
 If the @code{named} option is specified, the structure tag appears in
-the first slot, followed the ``offset'' slots, and then the regular
-slots.  Otherwise, the ``offset'' slots come first, then the regular
-slots.
+the first slot, followed by the ``offset'' slots, and then the regular
+slots.  Otherwise, the ``offset'' slots come first, followed by the
+regular slots.
+
+@example
+(define-structure (foo (type vector) (initial-offset 3)) a b c)
+(make-foo 1 2 3)                @result{} #(() () () 1 2 3)
+@end example
 @end deffn
 
 The essential differences between MIT Scheme's @code{define-structure}
@@ -3056,7 +3063,7 @@ is nothing corresponding to @code{&aux} in Scheme lambda lists, this
 functionality is not implemented.
 
 @item
-By default, no @code{copier} procedure is generated.
+By default, no @code{copier} procedure is defined.
 
 @item
 The side-effect procedure corresponding to the accessor @code{foo} is
@@ -4373,6 +4380,10 @@ number, then @code{string->number} returns @code{#f}.
 (string->number "15##")       @result{}  1500.0
 @end group
 @end example
+
+@noindent
+Note that a numeric representation using a decimal point or an exponent
+marker is not recognized unless @var{radix} is @code{10}.
 @end deffn
 
 @node Fixnum and Flonum Operations, Random Numbers, Numerical input and output, Numbers
@@ -6086,7 +6097,7 @@ same, this procedure moves the characters toward the right inside the
 string.
 @end table
 
-The following example shows how these functions can be used to build up
+The following example shows how these procedures can be used to build up
 a string (it would have been easier to use @code{string-append}):
 @example
 @group
@@ -6723,9 +6734,9 @@ six elements).
 0 <= @var{start} <= @var{end} <= (length @var{list})
 @end example
 
-Returns a newly allocated list formed from the elements of @var{list}
-beginning at index @var{start} (inclusive) and ending at @var{end}
-(exclusive).
+@code{sublist} returns a newly allocated list formed from the elements
+of @var{list} beginning at index @var{start} (inclusive) and ending at
+@var{end} (exclusive).
 @end deffn
 
 @deffn {procedure+} list-head list k
@@ -7146,11 +7157,11 @@ is iterative in nature, combining the elements as the list is traversed.
 @deffn {procedure+} there-exists? list predicate
 @var{Predicate} must be a procedure of one argument.  Applies
 @var{predicate} to each element of @var{list}, in order from left to
-right.  If @var{predicate} is true for any element of @var{list}, that
-value is immediately returned as the value of @code{there-exists?};
-@var{predicate} will not be applied to the remaining elements of
-@var{list}.  If @var{predicate} returns @code{#f} for all of the
-elements of @var{list}, then @code{#f} is returned.
+right.  If @var{predicate} is true for any element of @var{list}, the
+value yielded by @var{predicate} is immediately returned as the value of
+@code{there-exists?}; @var{predicate} will not be applied to the
+remaining elements of @var{list}.  If @var{predicate} returns @code{#f}
+for all of the elements of @var{list}, then @code{#f} is returned.
 @end deffn
 
 @deffn {procedure+} for-all? list predicate
@@ -7754,10 +7765,9 @@ direction of copying only matters when @var{bit-string-1} and
 
 @deffn {procedure+} unsigned-integer->bit-string length integer
 Both @var{length} and @var{integer} must be exact non-negative integers.
-@var{Integer} is converted to a newly allocated bit string of
-@var{length} bits.  Signals an error of type
-@code{condition-type:bad-range-argument} if @var{integer} is too large
-to be represented in @var{length} bits.
+Converts @var{integer} into a newly allocated bit string of @var{length}
+bits.  Signals an error of type @code{condition-type:bad-range-argument}
+if @var{integer} is too large to be represented in @var{length} bits.
 @findex condition-type:bad-range-argument
 @end deffn
 
@@ -8172,6 +8182,11 @@ continuations are used (@pxref{Fluid Binding}).
 
 MIT Scheme provides a @dfn{record} abstraction, which is a simple and
 flexible mechanism for building structures with named components.
+Records can be defined and accessed using the procedures defined in this
+section.  A less flexible but more concise way to manipulate records is
+to use the @code{define-structure} special form (@pxref{Structure
+Definitions}).
+@findex define-structure
 
 @deffn {procedure+} make-record-type type-name field-names
 @cindex record-type descriptor (defn)
@@ -8248,8 +8263,7 @@ passed to @code{record-predicate}, the resulting predicate would return
 @code{#t} when passed @var{record}.  Note that it is not necessarily the
 case that the returned descriptor is the one that was passed to
 @code{record-constructor} in the call that created the constructor
-procedure that created @var{record}.@footnote{However, in MIT Scheme,
-the record-type descriptor representing a given record type is unique.}
+procedure that created @var{record}.
 @end deffn
 
 @deffn {procedure+} record-type? object
@@ -9021,7 +9035,7 @@ entries for @var{y-key} exist.
 @cindex hash table
 Hash tables are a fast, powerful mechanism for storing large numbers of
 associations.  MIT Scheme's hash tables feature automatic resizing,
-customizable growth parameters, and customizable hash functions.
+customizable growth parameters, and customizable hash procedures.
 
 The average times for the insertion, deletion, and lookup operations on
 a hash table are bounded by a constant.  The space required by the table
@@ -9396,7 +9410,7 @@ operation is still bounded by a constant.  However, if the table grows
 by a constant amount, this is not true: the amortized cost of an
 insertion is not bounded by a constant.  Thus, using a constant rehash
 size means that the average cost of an insertion increases
-proportionally with the number of associations in the hash table.
+proportionally to the number of associations in the hash table.
 
 @cindex rehash threshold, of hash table (defn)
 The @dfn{rehash threshold} is a real number, between zero exclusive and
@@ -9503,7 +9517,7 @@ table as follows:
 
 @table @var
 @item key-hash
-The hashing function.  A procedure that accepts two arguments, a key and
+The hashing procedure.  A procedure that accepts two arguments, a key and
 an exact positive integer (the @dfn{modulus}), and returns an exact
 non-negative integer that is less than the modulus.
 
@@ -9514,8 +9528,8 @@ the same key.  If this predicate is true of two keys, then
 the same modulus in both cases).
 
 @item make-entry
-A procedure that accepts a key and a datum as arguments and returns an
-entry.
+A procedure that accepts a key and a datum as arguments and returns a
+newly allocated entry.
 
 @item entry-valid?
 A procedure that accepts an entry and returns @code{#f} iff the entry's
@@ -10610,9 +10624,11 @@ also satisfies @code{port?}, @code{input-port?}, and
 
 @deffn {procedure+} guarantee-input-port object
 @deffnx {procedure+} guarantee-output-port object
+@deffnx {procedure+} guarantee-i/o-port object
 These procedures check the type of @var{object}, signalling an error of
 type @code{condition-type:wrong-type-argument} if it is not an input
-port or output port, respectively.  Otherwise they return @var{object}.
+port, output port, or @sc{i/o} port, respectively.  Otherwise they
+return @var{object}.
 @findex condition-type:wrong-type-argument
 @end deffn
 
@@ -10669,7 +10685,7 @@ value of @code{console-i/o-port}.
 @var{Thunk} must be a procedure of no arguments.  Each of these
 procedures binds one of the standard ports to its first argument, calls
 @var{thunk} with no arguments, restores the port to its original value,
-and returns the result that was returned by @var{thunk}.  This temporary
+and returns the result that was yielded by @var{thunk}.  This temporary
 binding is performed the same way as fluid binding of a variable,
 including the behavior in the presence of continuations (@pxref{Fluid
 Binding}).
@@ -10686,9 +10702,9 @@ port, @code{with-trace-output-port} binds the ``trace'' output port, and
 @deffnx {procedure+} set-notification-output-port! output-port
 @deffnx {procedure+} set-trace-output-port! output-port
 @deffnx {procedure+} set-interaction-i/o-port! i/o-port
-Each of these procedures alters one of the standard ports and returns an
-unspecified value.  The port that is modified corresponds to the name of
-the procedure.
+Each of these procedures alters the binding of one of the standard ports
+and returns an unspecified value.  The binding that is modified
+corresponds to the name of the procedure.
 @end deffn
 
 @defvr {variable+} console-i/o-port
@@ -10732,8 +10748,8 @@ defined for compatibility with standard Scheme.
 Before Scheme can access a file for reading or writing, it is necessary
 to open a port to the file.  This section describes procedures used to
 open ports to files.  Such ports are closed (like any other port) by
-@code{close-port}.  File ports are automatically closed if they are
-reclaimed by the garbage collector.
+@code{close-port}.  File ports are automatically closed if and when they
+are reclaimed by the garbage collector.
 
 @findex merge-pathnames
 Before opening a file for input or output, by whatever method, the
@@ -10745,15 +10761,17 @@ pathname that is then opened.
 
 @cindex binary file ports
 @cindex newline translation
-Any file can be opened in two modes, @dfn{normal} and @dfn{binary}.
-Some operating systems, e.g.@: unix, do not distinguish these modes.
-@sc{ms-dos} is an example of an operating system that does distinguish
-these modes: in normal mode, @sc{ms-dos} file ports perform @dfn{newline
-translation}, mapping between the carriage-return/linefeed sequence that
-terminates text lines in files, and the @code{#\newline} that terminates
-lines in Scheme.  In binary mode, @sc{ms-dos} ports do not perform
-newline translation.  Unless otherwise mentioned, the procedures in this
-section open files in normal mode.
+Any file can be opened in one of two modes, @dfn{normal} or
+@dfn{binary}.  Normal mode is for accessing text files, and binary mode
+is for accessing other files.  Some operating systems, e.g.@: unix, do
+not distinguish these modes.  @sc{ms-dos} is an example of an operating
+system that does distinguish these modes: in normal mode, @sc{ms-dos}
+file ports perform @dfn{newline translation}, mapping between the
+carriage-return/linefeed sequence that terminates text lines in files,
+and the @code{#\newline} that terminates lines in Scheme.  In binary
+mode, @sc{ms-dos} ports do not perform newline translation.  Unless
+otherwise mentioned, the procedures in this section open files in normal
+mode.
 
 @deffn procedure open-input-file filename
 @cindex construction, of file input port
@@ -10773,20 +10791,20 @@ If the file cannot be opened, an error of type
 @findex condition-type:file-operation-error
 
 @cindex appending, to output file
-If @var{append?} is given and not @code{#f}, the file is opened in
+The optional argument @var{append?} is an MIT Scheme extension.  If
+@var{append?} is given and not @code{#f}, the file is opened in
 @dfn{append} mode.  In this mode, the contents of the file are not
 overwritten; instead any characters written to the file are appended to
 the end of the existing contents.  If the file does not exist, append
-mode creates the file and writes to it in the normal way.  The optional
-argument @var{append?} is an MIT Scheme extension.
+mode creates the file and writes to it in the normal way.
 @end deffn
 
 @deffn {procedure+} open-i/o-file filename
 @cindex construction, of file input port
 Takes a filename referring to an existing file and returns an @sc{i/o}
-port capable of reading characters from and writing characters to the
-file.  If the file cannot be opened, an error of type
-@code{condition-type:file-operation-error} is signalled.
+port capable of both reading and writing the file.  If the file cannot
+be opened, an error of type @code{condition-type:file-operation-error}
+is signalled.
 @findex condition-type:file-operation-error
 
 This procedure is often used to open special files.  For example, under
@@ -11208,9 +11226,8 @@ output flushing, and returns an unspecified value.  Equivalent to
 
 @deffn {procedure+} fresh-line [output-port]
 Some output ports are able to tell whether or not they are at the
-beginning of a line of output (currently the runtime system does not
-implement any such ports).  If @var{output-port} is such a port, this
-procedure writes an end-of-line to the port only if the port is not
+beginning of a line of output.  If @var{output-port} is such a port,
+this procedure writes an end-of-line to the port only if the port is not
 already at the beginning of a line.  If @var{output-port} is not such a
 port, this procedure is identical to @code{newline}.  In either case,
 @code{fresh-line} performs discretionary output flushing and returns an
@@ -11584,7 +11601,7 @@ The following procedure is useful for writing more general kinds of
 unparser methods.
 
 @deffn {procedure+} with-current-unparser-state unparser-state procedure
-This procedure calls @code{procedure} with one argument, the output port
+This procedure calls @var{procedure} with one argument, the output port
 from @var{unparser-state}.  Additionally, it arranges for the remaining
 components of @var{unparser-state} to be given to the printer when they
 are needed.  The @var{procedure} generates some output by writing to the
@@ -11612,8 +11629,8 @@ customizations provide very similar behavior.
 @findex interaction-i/o-port
 Each of these procedure accepts an optional argument called @var{port},
 which must be an @sc{i/o} port if given.  If not given, this port
-defaults to the value of @code{(interaction-i/o-port)}; this is usually
-the console @sc{i/o} port.
+defaults to the value of @code{(interaction-i/o-port)}; this is
+initially the console @sc{i/o} port.
 
 The required argument @var{prompt} must be a string.
 
@@ -11654,7 +11671,7 @@ The prompt string is formed by appending a space to @var{prompt}, unless
 
 The default behavior of this procedure is to print two newlines, the
 current @sc{rep} loop ``level number'', a space, and the prompt string;
-flush the output buffer; read a character in @dfn{raw} mode, echo that
+flush the output buffer; read a character in raw mode, echo that
 character, and return it.
 
 Under Edwin and Emacs, instead of reading a character, the interaction
@@ -11691,11 +11708,11 @@ The prompt string is formed by appending the string @code{" (y or n)? "}
 to @var{prompt}, unless @var{prompt} already ends in a space.
 
 The default behavior of this procedure is to print two newlines and the
-prompt string; flush the output buffer; then read a character.  If the
-character is @code{#\y}, @code{#\Y}, or @code{#\space}, the procedure
-returns @code{#t}; If the character is @code{#\n}, @code{#\N}, or
-@code{#\rubout}, the procedure returns @code{#f}.  Otherwise the prompt
-is repeated.
+prompt string; flush the output buffer; then read a character in raw
+mode.  If the character is @code{#\y}, @code{#\Y}, or @code{#\space},
+the procedure returns @code{#t}; If the character is @code{#\n},
+@code{#\N}, or @code{#\rubout}, the procedure returns @code{#f}.
+Otherwise the prompt is repeated.
 
 Under Edwin or Emacs, the confirmation is read in the minibuffer.
 @end deffn
@@ -12305,7 +12322,7 @@ external representations.
 * Filenames and Pathnames::     
 * Components of Pathnames::     
 * Operations on Pathnames::     
-* Miscellaneous Pathnames::     Miscellaneous Pathname Functions
+* Miscellaneous Pathnames::     
 @end menu
 
 @node Filenames and Pathnames, Components of Pathnames,  , Pathnames
@@ -12341,7 +12358,7 @@ string, this procedure returns the pathname that corresponds to the
 string, parsed according to the syntax of the file system specified by
 @var{host}.
 
-This function @emph{does not} do defaulting of pathname components.
+This procedure @emph{does not} do defaulting of pathname components.
 
 The optional arguments are used to determine what syntax should be used
 for parsing the string.  In general this is only really useful if your
@@ -12373,7 +12390,7 @@ Returns a pathname that locates the same file or directory as
 @var{pathname}, but is in some sense simpler.  Note that
 @code{pathname-simplify} might not always be able to simplify the
 pathname, e.g.@: on unix with symbolic links the directory
-@code{/usr/morris/../} need not be the same as @code{/usr/}.  In cases
+@file{/usr/morris/../} need not be the same as @file{/usr/}.  In cases
 of uncertainty the behavior is conservative, returning the original or a
 partly simplified pathname.
 @example
@@ -12469,11 +12486,9 @@ Any component of a pathname may be the symbol @code{unspecific}, meaning
 that the component simply does not exist, for file systems in which such
 a value makes no sense.  For example, unix and @sc{ms-dos} file systems
 usually do not support version numbers, so the version component for a
-unix or @sc{ms-dos} host might be @code{unspecific}.  Similarly, the file
-type is usually regarded in a unix file system as the part of a name
-after the period, but some file names contain no periods and therefore
-have no file types).@footnote{This description is adapted from
-@cite{Common Lisp, The Language}, second edition, section 23.1.1.}
+unix or @sc{ms-dos} host might be @code{unspecific}.@footnote{This
+description is adapted from @cite{Common Lisp, The Language}, second
+edition, section 23.1.1.}
 @comment **** end CLTL ****
 
 Each component in a pathname is typically one of the following (with
@@ -12765,7 +12780,7 @@ simultaneously.  It could have been defined by:
 @deffnx {procedure+} host-namestring pathname
 @deffnx {procedure+} enough-namestring pathname [defaults]
 @cindex conversion, pathname to string
-These functions return a string corresponding to a subset of the
+These procedures return a string corresponding to a subset of the
 @var{pathname} information.  @code{file-namestring} returns a string
 representing just the @var{name}, @var{type} and @var{version}
 components of @var{pathname}; the result of @code{directory-namestring}
@@ -12794,7 +12809,7 @@ the file named by @var{pathname} when considered relative to the
 @deffnx {procedure+} directory-pathname pathname
 @deffnx {procedure+} enough-pathname pathname [defaults]
 @cindex selection, components of pathname
-These functions return a pathname corresponding to a subset of the
+These procedures return a pathname corresponding to a subset of the
 @var{pathname} information.
 @code{file-pathname} returns a pathname with just the
 @var{name}, @var{type} and @var{version} components of @var{pathname}.
@@ -12806,7 +12821,7 @@ It returns an abbreviated pathname that is just sufficient to identify
 the file named by @var{pathname} when considered relative to the
 @var{defaults} (which defaults to @code{*default-pathname-defaults*}).
 
-These functions are similar to @code{file-namestring},
+These procedures are similar to @code{file-namestring},
 @code{directory-namestring} and @code{enough-namestring}, but they
 return pathnames instead of strings.
 @end deffn
@@ -12846,7 +12861,7 @@ of directory components.  This is the inverse operation to
 
 
 @node Miscellaneous Pathnames,  , Operations on Pathnames, Pathnames
-@subsection Miscellaneous Pathname Functions
+@subsection Miscellaneous Pathname Procedures
 @cindex directory, reading
 
 This section gives some standard operations on host objects, and some
@@ -12872,8 +12887,20 @@ pathname host; otherwise returns @code{#f}.
 @deffn {procedure+} init-file-pathname [host]
 @cindex home directory, as pathname
 Returns a pathname for the user's initialization file on @var{host}.
-The @var{host} argument defaults to @code{local-host}.
-If the initialization file does not exist this function returns @code{#f}.
+The @var{host} argument defaults to the value of @code{local-host}.  If
+the initialization file does not exist this procedure returns @code{#f}.
+@end deffn
+
+@deffn {procedure+} user-homedir-pathname [host]
+@cindex home directory, as pathname
+Returns a pathname for the user's ``home directory'' on @var{host}.  The
+@var{host} argument defaults to the value of @code{local-host}.  The
+concept of a ``home directory'' is itself somewhat
+implementation-dependent, but it should be the place where the user
+keeps personal files, such as initialization files and mail.  For
+example, on unix this is the user's unix home directory, whereas on
+@sc{ms-dos} the home directory is determined from the @code{HOME},
+@code{USER} and @code{USERDIR} environment variables.
 @end deffn
 
 @deffn {procedure+} system-library-pathname pathname
@@ -12905,19 +12932,6 @@ of type @code{condition-type:file-operation-error} is signalled if
 @end example
 @end deffn
 
-@deffn {procedure+} user-homedir-pathname [host]
-@cindex home directory, as pathname
-Returns a pathname for the user's ``home directory'' on @var{host}.  The
-@var{host} argument defaults to @code{local-host}.  The concept of a
-``home directory'' is itself somewhat implementation-dependent, but it
-should be the place where the user keeps personal files, such as
-initialization files and mail.  For example, on unix this is the user's
-unix home directory, whereas on @sc{ms-dos} the home directory is
-determined from the @code{HOME}, @code{USER} and @code{USERDIR}
-environment variables.
-@end deffn
-
-
 @node Working Directory, File Manipulation, Pathnames, File-System Interface
 @section Working Directory
 
@@ -12942,7 +12956,7 @@ value in effect in their superior at the time they are created.
 Returns the current working directory as a pathname that has no name,
 type, or version components, just host, device, and directory
 components.  @code{pwd} is an alias for
-@code{working-directory-pathname}.  The long name is intended for
+@code{working-directory-pathname}; the long name is intended for
 programs and the short name for interactive use.
 @end deffn
 
@@ -12951,10 +12965,10 @@ programs and the short name for interactive use.
 @findex ->pathname
 @findex pathname-as-directory
 Makes @var{filename} the current working directory and returns the new
-current working directory as a pathname.  @var{Filename} is coerced
-using @code{->pathname} and @code{pathname-as-directory}.  @code{cd} is
-an alias for @code{set-working-directory-pathname!}.  The long name is
-intended for programs and the short name for interactive use.
+current working directory as a pathname.  @var{Filename} is coerced to a
+pathname using @code{pathname-as-directory}.  @code{cd} is an alias for
+@code{set-working-directory-pathname!}; the long name is intended for
+programs and the short name for interactive use.
 
 Additionally, @code{set-working-directory-pathname!} modifies the value
 of @code{*default-pathname-defaults*} by merging the new working
@@ -12974,7 +12988,7 @@ Scheme executable.
 @end example
 
 This procedure signals an error if @var{filename} does not refer to an
-actual directory in the file system.
+existing directory.
 
 If @var{filename} describes a relative rather than absolute pathname,
 this procedure interprets it as relative to the current working
@@ -12994,10 +13008,13 @@ directory, before changing the working directory.
 This procedure temporarily rebinds the current working directory to
 @var{filename}, invokes @var{thunk} (a procedure of no arguments), then
 restores the previous working directory and returns the value yielded by
-@var{thunk}.  @var{Filename} is canonicalized exactly as
-@code{set-working-directory-pathname!} does.  The binding is performed
-in exactly the same way as fluid binding of a variable (@pxref{Fluid
-Binding}).
+@var{thunk}.  @var{Filename} is coerced to a pathname using
+@code{pathname-as-directory}.  In addition to binding the working
+directory, @code{with-working-directory-pathname} also binds the
+variable @code{*default-pathname-defaults*}, merging the old value of
+that variable with the new working directory pathname.  Both bindings
+are performed in exactly the same way as fluid binding of a variable
+(@pxref{Fluid Binding}).
 @end deffn
 
 @node File Manipulation, Directory Reader, Working Directory, File-System Interface
@@ -13042,7 +13059,7 @@ Deletes the file named @var{filename}.
 
 @deffn {procedure+} ->truename filename
 @cindex truename, of input file
-This function attempts to discover and return the ``true name'' of the
+This procedure attempts to discover and return the ``true name'' of the
 file associated with @var{filename} within the file system.  An error of
 type @code{condition-type:file-operation-error} is signalled if the
 appropriate file cannot be located within the file system.
@@ -13909,6 +13926,12 @@ drawing characteristics; and controlling the output buffer (for devices
 that perform buffering).  Additionally, devices may support custom
 operations, such as control of colors.
 
+There are some constraints on the arguments to the procedures described
+in this chapter.  Any argument named @var{graphics-device} must be a
+graphics device object that was returned from a call to
+@code{make-graphics-device}.  Any argument that is a coordinate must be
+either an exact integer or an inexact real.
+
 @menu
 * Opening and Closing of Graphics Devices::  
 * Coordinates for Graphics::    
@@ -13916,12 +13939,11 @@ operations, such as control of colors.
 * Characteristics of Graphics Output::  
 * Buffering of Graphics Output::  
 * Clipping of Graphics Output::  
-* Images::                      
 * Custom Graphics Operations::  
+* Images::                      
 * Win32 Graphics::              Graphics on Microsoft Windows and Windows NT
 * X Graphics::                  
 * Starbase Graphics::           
-* Pictures::                    Pictures (MIT 6.001 implementation only)
 @end menu
 
 @node Opening and Closing of Graphics Devices, Coordinates for Graphics,  , Graphics
@@ -13937,31 +13959,33 @@ to make a graphics device using @var{graphics-device-type}.
 
 @deffn {procedure+} enumerate-graphics-device-types
 This procedure returns a list of symbols which are the names of all the
-graphics device types that are supported by the Scheme system.
-The result is useful in deciding what additional arguments to supply to
-@var{make-graphics-device}, as each device type typically has a
-unique way of specifying the initial size, shape and other attibutes.
+graphics device types that are supported by the Scheme system.  The
+result is useful in deciding what additional arguments to supply to
+@code{make-graphics-device}, as each device type typically has a unique
+way of specifying the initial size, shape and other attributes.
 @end deffn
 
 @deffn {procedure+} make-graphics-device graphics-device-type object @dots{}
-This operation creates a graphics device object.  The first argument is
-a symbol naming a graphics device type, and both the number and the
-meaning of the remaining arguments is determined by that type (see the
-description of each device type for details).  The first argument may
-also be @code{#f}, in which case the graphics device type is chosen by
-the system from what is available.  This allows completely portable
-graphics programs to be written provided no custom graphics operations
-are used.  When @code{#f} is used no further arguments should be given;
-each graphics device type will use some `sensible' defaults.  If more
-control is required then the program should use one of the two
+This operation creates and returns a graphics device object.
+@var{Graphics-device-type} is a symbol naming a graphics device type,
+and both the number and the meaning of the remaining arguments is
+determined by that type (see the description of each device type for
+details); @var{graphics-device-type} must satisfy
+@code{graphics-type-available?}.  @var{Graphics-device-type} may also be
+@code{#f}, in which case the graphics device type is chosen by the
+system from what is available.  This allows completely portable graphics
+programs to be written provided no custom graphics operations are used.
+When @var{graphics-device-type} is @code{#f} no further arguments may be
+given; each graphics device type will use some ``sensible'' defaults.
+If more control is required then the program should use one of the two
 procedures above to dispatch on the available types.
 
 This procedure opens and initializes the device, which remains valid
 until explicitly closed by the procedure @code{graphics-close}.
 Depending on the implementation of the graphics device, if this object
-is garbage-collected, the graphics device may remain open or it may be
-closed.  While a window remains open the resources associated with it
-are not released.
+is reclaimed by the garbage collector, the graphics device may remain
+open or it may be automatically closed.  While a graphics device remains
+open the resources associated with it are not released.
 @end deffn
 
 @deffn {procedure+} graphics-close graphics-device
@@ -13983,8 +14007,8 @@ with it: @dfn{device coordinates} and @dfn{virtual coordinates}.  Device
 coordinates are generally defined by low-level characteristics of the
 device itself, and often cannot be changed.  Most device coordinate
 systems are defined in terms of pixels, and usually the upper-left-hand
-corner is the origin of the coordinate system, with x coordinates
-increasing to the right and y coordinates increasing downwards.
+corner is the origin of the coordinate system, with @var{x} coordinates
+increasing to the right and @var{y} coordinates increasing downwards.
 
 In contrast, virtual coordinates are more flexible in the units
 employed, the position of the origin, and even the direction in which
@@ -13994,8 +14018,9 @@ coordinates are arbitrary real numbers, any Cartesian coordinate system
 can be defined.
 
 All graphics procedures that use coordinates are defined on virtual
-coordinates.  Thus, to draw a line at a particular place on a device,
-the virtual coordinates for the endpoints of that line are given.
+coordinates.  For example, to draw a line at a particular place on a
+device, the virtual coordinates for the endpoints of that line are
+given.
 
 When a graphics device is initialized, its virtual coordinate system is
 reset so that the left edge corresponds to an x-coordinate of @code{-1},
@@ -14036,8 +14061,8 @@ The procedures in this section provide the basic drawing capabilities of
 Scheme's graphics system.
 
 @deffn {procedure+} graphics-clear graphics-device
-Clears the display of @var{graphics-device}.  It is unaffected by the
-current drawing mode.
+Clears the display of @var{graphics-device}.  Unaffected by the current
+drawing mode.
 @end deffn
 
 @deffn {procedure+} graphics-draw-point graphics-device x y
@@ -14047,8 +14072,8 @@ given by @var{x} and @var{y}, using the current drawing mode.
 
 @deffn {procedure+} graphics-erase-point graphics-device x y
 Erases a single point on @var{graphics-device} at the virtual
-coordinates given by @var{x} and @var{y}.  It is unaffected by the
-current drawing mode.
+coordinates given by @var{x} and @var{y}.  This procedure is unaffected
+by the current drawing mode.
 
 This is equivalent to
 
@@ -14126,18 +14151,19 @@ uniform interface.
 
 @cindex drawing mode, graphics (defn)
 @cindex graphics, drawing mode (defn)
-The @dfn{drawing mode}, an exact integer in the range 0 to 15 inclusive,
-determines how the figure being drawn is combined with the background
-over which it is drawn to generate the final result.  Initially the
-drawing mode is set to ``source'', so that the new output overwrites
-whatever appears in that place.  Useful alternative drawing modes can,
-for example, erase what was already there, or invert it.
+The @dfn{drawing mode}, an exact integer in the range @code{0} to
+@code{15} inclusive, determines how the figure being drawn is combined
+with the background over which it is drawn to generate the final result.
+Initially the drawing mode is set to ``source'', so that the new output
+overwrites whatever appears in that place.  Useful alternative drawing
+modes can, for example, erase what was already there, or invert it.
 
 Altogether 16 boolean operations are available for combining the source
 (what is being drawn) and the destination (what is being drawn over).
 The source and destination are combined by the device on a
 pixel-by-pixel basis as follows:
 
+@page
 @example
 @group
 Mode    Meaning
@@ -14163,13 +14189,13 @@ Mode    Meaning
 
 @cindex line style, graphics (defn)
 @cindex graphics, line style (defn)
-The @dfn{line style}, an exact integer in the range 0 to 7 inclusive,
-determines which parts of a line are drawn in the foreground color, and
-which in the background color.  The default line style, ``solid'', draws
-the entire line in the foreground color.  Alternatively, the ``dash''
-style alternates between foreground and background colors to generate a
-dashed line.  This capability is useful for plotting several things on
-the same graph.
+The @dfn{line style}, an exact integer in the range @code{0} to @code{7}
+inclusive, determines which parts of a line are drawn in the foreground
+color, and which in the background color.  The default line style,
+``solid'', draws the entire line in the foreground color.
+Alternatively, the ``dash'' style alternates between foreground and
+background colors to generate a dashed line.  This capability is useful
+for plotting several things on the same graph.
 
 Here is a table showing the name and approximate pattern of the
 different styles.  A @samp{1} in the pattern represents a foreground
@@ -14244,7 +14270,7 @@ operation has no effect for devices that do not support buffering, or if
 buffering is disabled for the device.
 @end deffn
 
-@node Clipping of Graphics Output, Images, Buffering of Graphics Output, Graphics
+@node Clipping of Graphics Output, Custom Graphics Operations, Buffering of Graphics Output, Graphics
 @section Clipping of Graphics Output
 @cindex graphics, clipping
 @cindex clipping, of graphics
@@ -14276,90 +14302,7 @@ graphics output is clipped to the virtual coordinate limits of the
 device.
 @end deffn
 
-@node Images, Custom Graphics Operations, Clipping of Graphics Output, Graphics
-@section Images
-@cindex graphics, images
-@cindex images, graphics
-@cindex graphics, bitmaps
-@cindex bitmaps, graphics
-
-Some graphics device types support images, which are rectangular pieces
-of picture that may be drawn into a graphics device.  Images are often
-called something else in the host graphics system, such as bitmaps and
-pixmaps.  The operations supported vary between devices, so look under
-the different device types to see what operations are available.  All
-images support the following operations.
-
-@defop {operation+} graphics-device create-image width height
-Images are created using the @var{create-image} graphics operation,
-specifying the width and height of the image in device dependent units,
-usually pixels.
-
-@example
-(graphics-operation device 'create-image 200 100)
-@end example
-
-@noindent
-The initial contents of an image are unspecified.
-
-@var{Create-image} is a graphics operation rather than a procedure
-because the kind of image returned depends on the kind of graphics
-device used and the options specified in its creation.  The image may be
-used freely with other graphics devices created with the same
-attributes, but the effects of using an image with a graphics device
-with different attributes (for example, different colors) is undefined.
-Under X, the image is display dependent.
-@end defop
-
-@defop {operation+} graphics-device draw-image x y image
-The image is copied into the graphics device at the specified position.
-@end defop
-
-@defop {operation+} graphics-device draw-subimage x y image im-x im-y w h
-Part of the image is copied into the graphics device at the specified
-(@var{x},@var{y}) position.  The part of the image that is copied is the
-rectangular region at @var{im-x} and @var{im-y} and of width @var{w} and
-height @var{h}.  These four numbers are given in device coordinates
-(pixels).
-@end defop
-
-@deffn {procedure+} image? object
-Predicate to test image-ness.
-@end deffn
-
-@deffn {procedure+} image/destroy image
-This procedure destroys the image, returning storage to the system.
-Programs should destroy images after they have been used because even
-modest images may use large amounts of memory.  Images are garbage
-collected, but they may be implemented using memory outside of Scheme's
-heap.  This means that the @var{create-image} operation may fail due to
-there being too many unreachable images awaiting a garbage collection.
-@end deffn
-
-@c @deffn {procedure+} image/descriptor image
-@c The procedure returns the implementation dependent image.  Its use is
-@c discouraged as it is non-portable.
-@c @end deffn
-
-@deffn {procedure+} image/height image
-Returns the height of the image in device dependent units, usually screen
-pixels.
-@end deffn
-
-@deffn {procedure+} image/width image
-Returns the width of the image in device dependent units, usually screen
-pixels.
-@end deffn
-
-@deffn {procedure+} image/fill-from-byte-vector image bytes
-The contents of @var{image} are set in a device-dependent way, using one
-byte from the byte vector (a string) per pixel.  Pixels are filled row
-by row from the top of the image to the bottom, with each row being
-filled from left to right.  There must be at least
-width(image)*height(image) bytes in @var{bytes}.
-@end deffn
-
-@node Custom Graphics Operations, Win32 Graphics, Images, Graphics
+@node Custom Graphics Operations, Images, Clipping of Graphics Output, Graphics
 @section Custom Graphics Operations
 @cindex custom operations, on graphics device
 @cindex graphics, custom operations
@@ -14387,15 +14330,99 @@ For information on the custom operations for a particular device, see
 the documentation for its type.
 @end deffn
 
-@node Win32 Graphics, X Graphics, Custom Graphics Operations, Graphics
+@node Images, Win32 Graphics, Custom Graphics Operations, Graphics
+@section Images
+@cindex graphics, images
+@cindex images, graphics
+@cindex graphics, bitmaps
+@cindex bitmaps, graphics
+
+Some graphics device types support images, which are rectangular pieces
+of picture that may be drawn into a graphics device.  Images are often
+called something else in the host graphics system, such as bitmaps and
+pixmaps.  The operations supported vary between devices, so look under
+the different device types to see what operations are available.  All
+devices that support images support the following operations.
+
+@defop {operation+} graphics-device create-image width height
+Images are created using the @code{create-image} graphics operation,
+specifying the @var{width} and @var{height} of the image in device
+coordinates (pixels).
+
+@example
+(graphics-operation device 'create-image 200 100)
+@end example
+
+@noindent
+The initial contents of an image are unspecified.
+
+@code{create-image} is a graphics operation rather than a procedure
+because the kind of image returned depends on the kind of graphics
+device used and the options specified in its creation.  The image may be
+used freely with other graphics devices created with the same
+attributes, but the effects of using an image with a graphics device
+with different attributes (for example, different colors) is undefined.
+Under X, the image is display dependent.
+@end defop
+
+@defop {operation+} graphics-device draw-image x y image
+The image is copied into the graphics device at the specified position.
+@end defop
+
+@defop {operation+} graphics-device draw-subimage x y image im-x im-y w h
+Part of the image is copied into the graphics device at the specified
+(@var{x}, @var{y}) position.  The part of the image that is copied is the
+rectangular region at @var{im-x} and @var{im-y} and of width @var{w} and
+height @var{h}.  These four numbers are given in device coordinates
+(pixels).
+@end defop
+
+@deffn {procedure+} image? object
+Returns @code{#t} if @var{object} is an image, otherwise returns
+@code{#f}.
+@end deffn
+
+@deffn {procedure+} image/destroy image
+This procedure destroys @var{image}, returning storage to the system.
+Programs should destroy images after they have been used because even
+modest images may use large amounts of memory.  Images are reclaimed by
+the garbage collector, but they may be implemented using memory outside
+of Scheme's heap.  If an image is reclaimed before being destroyed, the
+implementation might not deallocate that non-heap memory, which can
+cause a subsequent call to @code{create-image} to fail because it is
+unable to allocate enough memory.
+@end deffn
+
+@c @deffn {procedure+} image/descriptor image
+@c The procedure returns the implementation dependent image.  Its use is
+@c discouraged as it is non-portable.
+@c @end deffn
+
+@deffn {procedure+} image/height image
+Returns the height of the image in device coordinates.
+@end deffn
+
+@deffn {procedure+} image/width image
+Returns the width of the image in device coordinates.
+@end deffn
+
+@deffn {procedure+} image/fill-from-byte-vector image bytes
+The contents of @var{image} are set in a device-dependent way, using one
+byte per pixel from @var{bytes} (a string).  Pixels are filled row by
+row from the top of the image to the bottom, with each row being filled
+from left to right.  There must be at least @code{(* (image/height
+@var{image}) (image/width @var{image}))} bytes in @var{bytes}.
+@end deffn
+
+@node Win32 Graphics, X Graphics, Images, Graphics
 @section Win32 Graphics
 @cindex Win32 graphics
 
-Scheme supports graphics on Microsoft Windows 3.1 and NT 3.1.  In
-addition to the usual operations, there are operations to control the
-size, position and colors of a graphics window.  There are also
-operations to load and save an image as a device independent bitmap
-(DIB).
+MIT Scheme supports graphics on Microsoft Windows 3.1 and Microsoft
+Windows NT 3.1.  In addition to the usual operations, there are
+operations to control the size, position and colors of a graphics
+window.  Win32 devices support images, which are implemented as device
+independent bitmaps (@sc{dib}s).
 
 The Win32 graphics device type is implemented as a top level window.
 @code{graphics-enable-buffering} is implemented and gives a 2x to 4x
@@ -14414,24 +14441,22 @@ the click of a mouse button.
 @node Win32 Graphics Type, Custom Operations for Win32 Graphics,  , Win32 Graphics
 @subsection Win32 Graphics Type
 
-Win32 graphics devices are supported under Microsoft Windows 3.1 and
-Microsoft Windows NT 3.1.  Win32 graphics devices are created by
-specifying @code{'WIN32} as the graphics device type name.  The Win32
-graphics device type is implemented as a top-level window and supports
-color drawing in addition to the standard Scheme graphics operations.
+Win32 graphics devices are created by specifying the symbol @code{win32}
+as the @var{graphics-device-type} argument to
+@code{make-graphics-device}.  The Win32 graphics device type is
+implemented as a top-level window and supports color drawing in addition
+to the standard Scheme graphics operations.
 
 Graphics devices are opened as follows:
 
 @example
-(make-graphics-device 'WIN32
-                      #!optional @var{width} @var{height}
-                                 @var{palette})
+(make-graphics-device 'win32 #!optional @var{width} @var{height} @var{palette})
 @end example
 
 @noindent
-where @var{width} and @var{height} specify the size of the drawing area in the graphics window (i.e. excluding the frame).
-@var{Palette}
-determines the colors available for drawing in the window.
+where @var{width} and @var{height} specify the size, in pixels, of the
+drawing area in the graphics window (i.e.@: excluding the frame).
+@var{Palette} determines the colors available for drawing in the window.
 
 When a color is specified for drawing, the nearest color available in
 the palette is used.  Permitted values for @var{palette} are
@@ -14448,7 +14473,7 @@ gray.
 @item @code{'standard}
 The standard palette has good selection of colors and grays.
 
-@item @code{#f} and @code{'system}
+@item @code{#f} or @code{'system}
 The colors available are those in the system palette.  There are usually
 16 to 20 colors in the system palette and these are usually sufficent
 for simple applications like line drawings and x-vs-y graphs of
@@ -14457,7 +14482,8 @@ efficient.
 
 @end table
 @noindent
-If no palette is specified then the @code{standard} palette is used.
+If @var{palette} is not specified then the @code{standard} palette is
+used.
 
 
 
@@ -14484,7 +14510,8 @@ but have no effect on anything drawn prior to their invocation.  Because
 changing the background color affects the entire window, we recommend
 calling @code{graphics-clear} on the window's device afterwards.
 
-The foreground color affects the drawing of text, points, lines, ellispes and filled polygons.
+The foreground color affects the drawing of text, points, lines,
+ellipses and filled polygons.
 
 Colors are specified in one of three ways:
 @table @asis
@@ -14493,7 +14520,7 @@ This is the Win32 internal RGB value.
 
 @item By name
 A limited number of names are understood by the system.
-Names are strings e.g. @code{"red"}, @code{"blue"}, @code{"black"}.
+Names are strings, e.g.@: @code{"red"}, @code{"blue"}, @code{"black"}.
 More names can be registered with the @code{define-color} operation.
 
 
@@ -14514,13 +14541,13 @@ available color is used instead.
 Define the string @var{name} to be the color specified by @var{spec}.
 @var{Spec} may be any acceptable color specification.  Note that the
 color names defined this way are available to any Win32 graphics device,
-and the names do NOT have to be defined for each device.
+and the names do @emph{not} have to be defined for each device.
 @end defop
 
 @defop {operation+} win32-graphics-device find-color name
-Lookup a color previously defined by @var{define-color}.  This returns
+Looks up a color previously defined by @code{define-color}.  This returns
 the color in its most efficient form for operations
-@var{set-foreground-color} or @var{set-background-color}.
+@code{set-foreground-color} or @code{set-background-color}.
 @end defop
 
 
@@ -14543,46 +14570,45 @@ of the line width.
 @defop {operation+} win32-graphics-device fill-polygon points
 @findex fill-polygon
 Draws a filled polygon using the current foreground color.
-@var{Points} is a vector of numbers.
+@var{Points} is a vector of real numbers.
 The numbers are in the order x1 y1 x2 y2 ... xn yn.
 For example,
 @example
-(graphics-operation device 'fill-polygon
-       #(0 0 0 1 1 0))
+(graphics-operation device 'fill-polygon #(0 0 0 1 1 0))
 @end example
 @noindent
-draws a solid triangular region between the points (0,0), (0,1) and
-(1,0).
+draws a solid triangular region between the points (0, 0), (0, 1) and
+(1, 0).
 @end defop
 
 
 @defop {operation+} win32-graphics-device load-bitmap pathname
 @cindex bitmaps
 The graphics device contents and size are initialized from the windows
-bitmap file at @var{pathname}.  If no file type is supplied then a
-``.BMP'' extension is added.  If a clip rectangle is in effect when this
-procedure is called, it is necessary to redefine the clip rectangle
-afterwards.
+bitmap file specified by @var{pathname}.  If no file type is supplied
+then a @code{".BMP"} extension is added.  If a clip rectangle is in
+effect when this procedure is called, it is necessary to redefine the
+clip rectangle afterwards.
 @end defop
 
 @defop {operation+} win32-graphics-device save-bitmap pathname
 @cindex printing graphics output
-The graphics device contents are saved as a bitmap in the file specified
-by @var{pathname}.  If no file type is supplied then a ``.BMP''
+The graphics device contents are saved as a bitmap to the file specified
+by @var{pathname}.  If no file type is supplied then a @code{".BMP"}
 extension is added.  The saved bitmap may be incorporated into documents
 or printed.
 @end defop
 
 @defop {operation+} win32-graphics-device move-window x y
-The graphics device window is moved on the computed screen to the
-specified position.
+The graphics device window is moved to the screen position specified by
+@var{x} and @var{y}.
 @end defop
 
 @defop {operation+} win32-graphics-device resize-window width height
-The graphics device window is resized to the specified width and height
-in device units (pixels).  If a clip rectangle is in effect when this
-procedure is called, it is necessary to redefine the clip rectangle
-afterwards.
+The graphics device window is resized to the specified @var{width} and
+@var{height} in device coordinates (pixels).  If a clip rectangle is in effect
+when this procedure is called, it is necessary to redefine the clip
+rectangle afterwards.
 @end defop
 
 @defop {operation+} win32-graphics-device set-line-width width
@@ -14594,42 +14620,34 @@ default and initial value of this parameter is 1 pixel.
 
 @defop {operation+} win32-graphics-device set-window-name name
 This sets the window title to the string @var{name}.  The window is
-given the name "Scheme Graphics" at creation.
+given the name @code{"Scheme Graphics"} at creation.
 @end defop
 
 @defop {operation+} win32-graphics-device set-font handle
-Set the font for drawing text.
-Currently not well supported.
-If you can get a Win32 font handle it can be used here.
+Sets the font for drawing text.  Currently not well supported.  If you
+can get a Win32 font handle it can be used here.
 @end defop
-
 
 @defop {operation+} win32-graphics-device copy-area source-x-left source-y-top width height destination-x-left destination-y-top
 This operation copies the contents of the rectangle specified by
-@var{source-x-left}, @var{source-y-top}, @var{width}, and @var{height} to
-the rectangle of the same dimensions at @var{destination-x-left} and
+@var{source-x-left}, @var{source-y-top}, @var{width}, and @var{height}
+to the rectangle of the same dimensions at @var{destination-x-left} and
 @var{destination-y-top}.
 @end defop
-
-@defop {operation+} win32-graphics-device create-image ...
-@defopx {operation+} win32-graphics-device draw-image ...
-@defopx {operation+} win32-graphics-device draw-subimage ...
-See @pxref{Images}.
-@end defop
-
-
-
 
 @node X Graphics, Starbase Graphics, Win32 Graphics, Graphics
 @section X Graphics
 @cindex X graphics
 
 @cindex X window system
-Scheme supports graphics in the X window system (version 11).  Arbitrary
-numbers of displays may be opened, and arbitrary numbers of graphics
-windows may be created for each display.  A variety of operations is
-available to manipulate various aspects of the windows, to control their
-size, position, colors, and mapping.
+MIT Scheme supports graphics in the X window system (version 11).
+Arbitrary numbers of displays may be opened, and arbitrary numbers of
+graphics windows may be created for each display.  A variety of
+operations is available to manipulate various aspects of the windows, to
+control their size, position, colors, and mapping.  The X graphics
+device type supports images, which are implemented as Xlib @code{XImage}
+objects.  X display, window, and image objects are automatically closed
+if they are reclaimed by the garbage collector.
 
 @menu
 * X Graphics Type::             
@@ -14641,21 +14659,20 @@ size, position, colors, and mapping.
 @subsection X Graphics Type
 
 
-A graphics device for X windows is created by passing the symbol @code{X}
-as the graphics device type name to @code{make-graphics-device}:
+A graphics device for X windows is created by passing the symbol
+@code{x} as the graphics device type name to
+@code{make-graphics-device}:
 
 @example
-(make-graphics-device 'X #!optional
-                         @var{display}
-                         @var{geometry}
-                         @var{suppress-map?})
+(make-graphics-device 'x #!optional @var{display} @var{geometry} @var{suppress-map?})
 @end example
 
 @noindent
 where @var{display} is either a display object, @code{#f}, or a string;
 @var{geometry} is either @code{#f} or a string; and @var{suppress-map?}
-is a boolean.  A new window is created on the appropriate display, and a
-graphics device representing that window is returned.
+is a boolean or a vector (see below).  A new window is created on the
+appropriate display, and a graphics device representing that window is
+returned.
 
 @findex x-open-display
 @var{Display} specifies which X display the window is to be opened on;
@@ -14663,27 +14680,40 @@ if it is @code{#f} or a string, it is passed as an argument to
 @code{x-open-display}, and the value returned by that procedure is used
 in place of the original argument.  @var{Geometry} is an X geometry
 string, or @code{#f} which means to use the default geometry (which is
-specified as a resource).  @var{Suppress-map?}, if given and not
-@code{#f}, prevents the window from being mapped after it is
-created.
+specified as a resource).
+
+@var{Suppress-map?}, if given, may take two forms.  First, it may be a
+boolean: if @code{#f} (the default), the window is automatically mapped
+after it is created; otherwise, @code{#t} means to suppress this
+automatic mapping.  The second form is a vector of three elements.  The
+first element is a boolean with the same meaning as the boolean form of
+@var{suppress-map?}.  The second element is a string, which specifies an
+alternative resource name to be used for looking up the window's
+resources.  The third element is also a string, which specifies a class
+name for looking up the window's resources.  The default value for
+@var{suppress-map?} is @code{#f}.
+
+The default resource and class names are @code{"schemeGraphics"} and
+@code{"SchemeGraphics"} respectively.
 
 @cindex resources, X graphics
 @cindex X resources, graphics
-The window is initialized using the resource name
-@code{"schemeGraphics"}, class @code{SchemeGraphics}, and is sensitive
-to the following resource properties:
+The window is initialized using the resource and class names specified
+by @var{suppress-map?}, and is sensitive to the following resource
+properties:
 
 @example
 @group
 Property        Class           Default
 --------        -----           -------
 geometry        Geometry        512x384+0+0
-font            Font            9x15
+font            Font            fixed
 borderWidth     BorderWidth     2
 internalBorder  BorderWidth     @r{[border width]}
 background      Background      white
 foreground      Foreground      black
 borderColor     BorderColor     @r{[foreground color]}
+cursorColor     Foreground      @r{[foreground color]}
 pointerColor    Foreground      @r{[foreground color]}
 @end group
 @end example
@@ -14701,9 +14731,10 @@ The window is created with a @code{backing_store} attribute of
 @cindex X display, graphics
 Opens a connection to the display whose name is @var{display-name},
 returning a display object.  If unable to open a connection, @code{#f}
-is returned.  @var{Display-name} is normally a string, which is the
-usual X display name; however, @code{#f} is also allowed, meaning to use
-the value of the unix environment variable @code{DISPLAY}.
+is returned.  @var{Display-name} is normally a string, which is an X
+display name in the usual form; however, @code{#f} is also allowed,
+meaning to use the value of the unix environment variable
+@code{DISPLAY}.
 @end deffn
 
 @deffn {procedure+} x-close-display display
@@ -14738,7 +14769,7 @@ Examples:
 @end example
 
 Note that the @var{x} and @var{y} arguments cannot distinguish between
-@code{+0} and @code{-0}, even though those have different meanings in X.
+@code{+0} and @code{-0}, even though these have different meanings in X.
 If either of those arguments is @code{0}, it means @code{+0} in X
 terminology.  If you need to distinguish these two cases you must create
 your own geometry string using Scheme's string and number primitives.
@@ -14767,19 +14798,20 @@ immediately change the border and mouse-cursor colors.
 colors to be used when drawing, but have no effect on anything drawn
 prior to their invocation.  Because changing the background color
 affects the entire window, we recommend calling @code{graphics-clear} on
-the window's device afterwards.
-Color names include both mnemonic names, like @code{"red"}, and
-intensity names specified in the ``#rrggbb'' notation.
+the window's device afterwards.  Color names include both mnemonic
+names, like @code{"red"}, and intensity names specified in the
+@code{"#@var{rrggbb}"} notation.
 @end defop
 
 @defop {operation+} x-graphics-device set-border-width width
 @defopx {operation+} x-graphics-device set-internal-border-width width
 @findex graphics-clear
 These operations change the external and internal border widths of a
-window.  @var{Width} must be an exact non-negative integer.  The change
-takes place immediately.  Note that changing the internal border width
-can cause displayed graphics to be garbled; we recommend calling
-@code{graphics-clear} on the window's device after doing so.
+window.  @var{Width} must be an exact non-negative integer, specified in
+pixels.  The change takes place immediately.  Note that changing the
+internal border width can cause displayed graphics to be garbled; we
+recommend calling @code{graphics-clear} on the window's device after
+doing so.
 @end defop
 
 @defop {operation+} x-graphics-device set-font font-name
@@ -14799,7 +14831,7 @@ when multiplied by 2 this number corresponds to an index in the file
 @defopx {operation+} x-graphics-device withdraw-window
 These operations control the mapping of windows.  They correspond
 directly to the Xlib procedures @code{XMapWindow} and
-@code{XUnmapWindow}.
+@code{XWithdrawWindow}.
 @end defop
 
 @defop {operation+} x-graphics-device resize-window width height
@@ -14837,53 +14869,41 @@ the rectangle of the same dimensions at @var{destination-x-left} and
 
 @defop {operation+} x-graphics-device font-structure font-name
 Returns a Scheme equivalent of the X font structure for the font named
-@var{font-name}.  If the string @var{Font-name} does not name a font
+@var{font-name}.  If the string @var{font-name} does not name a font
 known to the X server, or names a 16-bit font, @code{#f} is returned.
-The following procedures extract the components of the returned structure:
 @end defop
 
-@deffn {procedure+} x-font-structure/name
-@deffnx {procedure+} x-font-structure/direction
-@deffnx {procedure+} x-font-structure/all-chars-exist
-@deffnx {procedure+} x-font-structure/default-char
-@deffnx {procedure+} x-font-structure/min-bounds
-@deffnx {procedure+} x-font-structure/max-bounds
-@deffnx {procedure+} x-font-structure/start-index
-@deffnx {procedure+} x-font-structure/character-bounds
-@deffnx {procedure+} x-font-structure/max-ascent
-@deffnx {procedure+} x-font-structure/max-descent
+@deffn {procedure+} x-font-structure/name font-structure
+@deffnx {procedure+} x-font-structure/direction font-structure
+@deffnx {procedure+} x-font-structure/all-chars-exist font-structure
+@deffnx {procedure+} x-font-structure/default-char font-structure
+@deffnx {procedure+} x-font-structure/min-bounds font-structure
+@deffnx {procedure+} x-font-structure/max-bounds font-structure
+@deffnx {procedure+} x-font-structure/start-index font-structure
+@deffnx {procedure+} x-font-structure/character-bounds font-structure
+@deffnx {procedure+} x-font-structure/max-ascent font-structure
+@deffnx {procedure+} x-font-structure/max-descent font-structure
 These procedures extract the components of the font description
-structure returned by the X graphics operation @code{font-structure}.
-A more complete description of these components appears in
-documentation of the @code{XLoadQueryFont} Xlib call.
-@code{Start-index} is the index of the first character available in the
-font.  The @code{min-bounds} and @code{max-bounds} components are
-structures of type @code{x-character-bounds}, and the
-@code{character-bounds} component is a vector of the same type.  The
-following procedures extract components of objects of type
-@code{x-character-bounds}:
+structure returned by the X graphics operation @code{font-structure}.  A
+more complete description of these components appears in documentation
+of the @code{XLoadQueryFont} Xlib call.  @code{start-index} is the index
+of the first character available in the font.  The @code{min-bounds} and
+@code{max-bounds} components are structures of type
+@code{x-character-bounds}, and the @code{character-bounds} component is
+a vector of the same type.
 @end deffn
 
-@deffn {procedure+} x-character-bounds/lbearing
-@deffnx {procedure+} x-character-bounds/rbearing
-@deffnx {procedure+} x-character-bounds/width
-@deffnx {procedure+} x-character-bounds/ascent
-@deffnx {procedure+} x-character-bounds/descent
+@deffn {procedure+} x-character-bounds/lbearing character-bounds
+@deffnx {procedure+} x-character-bounds/rbearing character-bounds
+@deffnx {procedure+} x-character-bounds/width character-bounds
+@deffnx {procedure+} x-character-bounds/ascent character-bounds
+@deffnx {procedure+} x-character-bounds/descent character-bounds
 These procedures extract components of objects of type
 @code{x-character-bounds}.  A more complete description of them appears
 in documentation of the @code{XLoadQueryFont} Xlib call.
 @end deffn
 
-@defop {operation+} x-graphics-device starbase-filename
-On Hewlett-Packard computers that support Starbase graphics, this
-operation returns a character string that can be used to open the
-device's window as a Starbase graphics device using the ``sox11''
-driver.  Note that the default distribution of Scheme for HP computers
-does not include support for Starbase --- you must rebuild the microcode
-to get this support.
-@end defop
-
-@node Starbase Graphics, Pictures, X Graphics, Graphics
+@node Starbase Graphics, , X Graphics, Graphics
 @section Starbase Graphics
 @cindex starbase graphics
 
@@ -14897,9 +14917,7 @@ This is the device type for Starbase graphics devices.  A Starbase
 device is opened as follows:
 
 @example
-(make-graphics-device 'STARBASE
-                      @var{device-name}
-                      @var{driver-name})
+(make-graphics-device 'starbase @var{device-name} @var{driver-name})
 @end example
 
 where @var{device-name} and @var{driver-name} are strings that are used
@@ -14989,152 +15007,9 @@ These operations alter the current values of the text characteristics.
 They have no effect on text drawn prior to their invocation.
 @end defop
 
-@node Pictures,  , Starbase Graphics, Graphics
-@section Pictures (MIT 6.001 implementation only)
-
-@cindex pictures
-A @dfn{picture} data object is a two-dimensional array of real numbers
-that represents a grey-scale image on the screen.  The grey level that
-the value of each element represents is determined relative to the range
-of values of the array.
-
-The width of a picture is the number of elements in each row and the
-height is the number of elements in each column.  The elements are
-referenced by giving the horizontal component first and the vertical one
-second, with the origin at the bottom left corner of the displayed
-picture.
-
-Coordinates (@var{i},@var{j}) are @dfn{valid coordinates} of picture
-@var{p} if and only if:
-
-@example
-@group
-(and (exact-nonnegative-integer? @var{i})
-     (exact-nonnegative-integer? @var{j})
-     (< @var{i} (picture-width @var{p}))
-     (< @var{j} (picture-height @var{p})))
-@end group
-@end example
-
-@menu
-* Construction of Pictures::    
-* Manipulating Pictures::       
-* Displaying Pictures::         
-* Saving and Restoring Pictures::  
-@end menu
-
-@node Construction of Pictures, Manipulating Pictures,  , Pictures
-@subsection Construction of Pictures
-
-@code{make-picture} and @code{procedure->picture} are simple ways to
-make pictures.  @code{picture-map} is a way to create a new picture by
-applying a procedure to one or more pictures.  Pictures can also be made
-by reading files: see @code{pgm-file->picture}.
-
-@deffn {procedure+} make-picture x y [k]
-@var{X} and @var{y} must be exact positive integers and @var{k}, if
-specified, must be a real number.  Returns a picture of width @var{x}
-and height @var{y}.  If @var{k} is specified then each picture element
-is initialized to @var{k}, otherwise the elements are unspecified.
-@end deffn
-
-@deffn {procedure+} procedure->picture x y f
-@var{X} and @var{y} must be exact positive integers, and @var{f} must be
-a real-valued procedure of two variables.  Returns a picture of width
-@var{x} and height @var{y}, where the value of each element is the
-result of applying @var{f} to the element's coordinates.
-@end deffn
-
-@deffn {procedure+} picture-map f picture @dots{}
-@var{F} must be a procedure, and all of the @var{picture} arguments must
-have the same dimensions.  Returns a newly allocated picture, each
-element of which is obtained by calling @var{f}, passing it as arguments
-the corresponding element of each @var{picture} argument.  (Thus @var{f}
-must accept the same number of arguments as there are @var{picture}
-arguments to @code{picture-map}.)
-
-In other words, each element could have been initialized as follows:
-
-@example
-@group
-(picture-set! @var{result} @var{i} @var{j}
-              (@var{f} (picture-ref @var{picture} @var{i} @var{j}) @dots{}))
-@end group
-@end example
-@end deffn
-
-@node Manipulating Pictures, Displaying Pictures, Construction of Pictures, Pictures
-@subsection Manipulating Pictures
-
-@deffn {procedure+} picture? object
-Returns @code{#t} if @var{object} is a picture, otherwise returns
-@code{#f}.
-@end deffn
-
-@deffn {procedure+} picture-width picture
-@deffnx {procedure+} picture-height picture
-These procedures return the width and height, respectively, of
-@var{picture}.
-@end deffn
-
-@deffn {procedure+} picture-min picture
-@deffnx {procedure+} picture-max picture
-These procedures return, respectively, the least and the greatest values
-stored in @var{picture}.
-@end deffn
-
-@deffn {procedure+} picture-ref picture i j
-Returns the value of element (@var{i},@var{j}) of @var{picture} (always
-a real number).  @var{I} and @var{j} must be valid coordinates for
-@var{picture}.
-@end deffn
-
-@deffn {procedure+} picture-set! picture i j k
-Stores @var{k} at element (@var{i},@var{j}) in @var{picture} and returns
-an unspecified value.  @var{K} must be a real number and @var{I} and
-@var{j} must be valid coordinates for @var{picture}.
-@end deffn
-
-@node Displaying Pictures, Saving and Restoring Pictures, Manipulating Pictures, Pictures
-@subsection Displaying Pictures
-
-To display pictures, an X graphics window must first be created.
-Although any window may be used, the colormap will not be guaranteed to
-be correct for grey-scale pictures, therefore the recommended way of
-creating windows for displaying pictures is to use the
-@code{make-window} procedure.
-
-@deffn {procedure+} picture-display w picture [min [max]]
-Displays, in the graphics device @var{w}, the largest integer scaling of
-@var{picture} that can be contained in @var{w}.  If @var{min} and
-@var{max} are specified then the grey levels will be computed using
-these values as @var{picture}'s minimum and maximum values, otherwise
-the actual least and greatest values of @var{picture} will be used.  The
-value returned by this procedure is unspecified.
-@end deffn
-
-@deffn {procedure+} make-window w h x y
-Returns a graphics device of width @var{w}, height @var{h} and screen
-position @var{x},@var{y} (as would be given in an X geometry string)
-with a grey-scale colormap attached.
-@end deffn
-
-@node Saving and Restoring Pictures,  , Displaying Pictures, Pictures
-@subsection Saving and Restoring Pictures
-
-Pictures can be read from or written to files in @sc{pgm} format using
-the following procedures.
-
-@deffn {procedure+} pgm-file->picture pathname
-Reads a grey-scale image stored in @sc{pgm} format from the file
-@var{pathname}, returning a picture whose graphical representation will
-closely resemble that of the saved image.
-@end deffn
-
-@deffn {procedure+} picture->pgm-file picture pathname
-Saves @var{picture} in @sc{pgm} format in the file @var{pathname}.
-Overwrites any previously existing file of that name.
-@end deffn
+@ifset sicpstuff
+@include pictures.texinfo
+@end ifset
 
 @node Index,  , Graphics, Top
 @unnumbered Index
