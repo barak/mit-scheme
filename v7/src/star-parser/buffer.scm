@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: buffer.scm,v 1.1 2001/06/26 18:03:09 cph Exp $
+;;; $Id: buffer.scm,v 1.2 2001/06/29 05:17:21 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -43,7 +43,9 @@
   ;; the entire stream.
   source
   ;; True if there are no more characters past END.
-  at-end?)
+  at-end?
+  ;; The number of newlines to the left of the current position.
+  line)
 
 ;;; The two basic kinds of buffers: substring and source.  A substring
 ;;; buffer is one that reads from a pre-filled substring.  A source
@@ -51,10 +53,10 @@
 ;;; length.
 
 (define (substring->parser-buffer string start end)
-  (make-parser-buffer string start end 0 start #f #t))
+  (make-parser-buffer string start end 0 start #f #t 0 0))
 
 (define (source->parser-buffer source)
-  (make-parser-buffer (make-string min-length) 0 0 0 0 source #f))
+  (make-parser-buffer (make-string min-length) 0 0 0 0 source #f 0 0))
 
 (define-integrable min-length 256)
 
@@ -66,49 +68,71 @@
    (lambda (string start end)
      (read-substring! string start end port))))
 
+(define-structure parser-buffer-pointer
+  (index #f read-only #t)
+  (line #f read-only #t))
+
 (define (get-parser-buffer-pointer buffer)
-  ;; Get an object that represents the current buffer pointer.
-  (+ (parser-buffer-base-offset buffer)
-     (parser-buffer-index buffer)))
+  ;; Get an object that represents the current position.
+  (make-parser-buffer-pointer (+ (parser-buffer-base-offset buffer)
+				 (parser-buffer-index buffer))
+			      (parser-buffer-line buffer)))
 
 (define (set-parser-buffer-pointer! buffer p)
-  ;; Move the buffer pointer to the location represented by P.  P must
-  ;; be an object that was previously returned by GET-PARSER-BUFFER-POINTER.
-  ;; The buffer pointer may only be moved to the left.
-  (let ((p* (- p (parser-buffer-base-offset buffer))))
-    (if (not (<= (parser-buffer-start buffer) p* (parser-buffer-index buffer)))
-	(error:bad-range-argument p 'SET-PARSER-BUFFER-POINTER!))
-    (set-parser-buffer-index! buffer p*)))
-
-(define (decrement-parser-buffer-pointer buffer)
-  ;; Decrement the buffer pointer by one.
-  (if (fix:< (parser-buffer-start buffer) (parser-buffer-index buffer))
-      (set-parser-buffer-index! buffer (fix:- (parser-buffer-index buffer) 1))
-      (error "Can't decrement buffer pointer:" buffer)))
+  ;; Move the current position to P, which must be an object that was
+  ;; previously returned by GET-PARSER-BUFFER-POINTER.  The position
+  ;; may only be moved to the left.
+  (set-parser-buffer-index! buffer (pointer->index p buffer))
+  (set-parser-buffer-line! buffer (parser-buffer-pointer-line p)))
 
 (define (get-parser-buffer-tail buffer p)
   ;; P must be a buffer pointer previously returned by
   ;; GET-PARSER-BUFFER-POINTER.  Return the string of characters
   ;; between P and the current buffer pointer.
-  (let ((p* (- p (parser-buffer-base-offset buffer))))
-    (if (not (<= (parser-buffer-start buffer) p* (parser-buffer-index buffer)))
-	(error:bad-range-argument p 'GET-PARSER-BUFFER-TAIL))
-    (substring (parser-buffer-string buffer)
-	       p*
-	       (parser-buffer-index buffer))))
+  (substring (parser-buffer-string buffer)
+	     (pointer->index p buffer)
+	     (parser-buffer-index buffer)))
+
+(define (pointer->index p buffer)
+  (if (parser-buffer-pointer? p)
+      (let ((p*
+	     (- (parser-buffer-pointer-index p)
+		(parser-buffer-base-offset buffer))))
+	(if (<= (parser-buffer-start buffer) p* (parser-buffer-index buffer))
+	    p*
+	    (error:bad-range-argument p 'POINTER->INDEX)))
+      (error:wrong-type-argument p "parser-buffer pointer" 'POINTER->INDEX)))
+
+(define (parser-buffer-position-string object)
+  (let ((position
+	 (if (parser-buffer-position? object)
+	     object
+	     (get-parser-buffer-pointer object))))
+    (string-append
+     "line "
+     (number->string (+ (parser-buffer-pointer-line object) 1))
+     ", char "
+     (number->string (+ (parser-buffer-pointer-index object) 1)))))
 
 (let-syntax
     ((char-matcher
       (lambda (name test)
-	`(DEFINE (,(symbol-append 'MATCH-PARSER-BUFFER- name) BUFFER REFERENCE)
-	   (AND (LET ((CHAR (PEEK-PARSER-BUFFER-CHAR BUFFER)))
-		  (AND CHAR
-		       ,test))
-		(BEGIN
-		  (SET-PARSER-BUFFER-INDEX! BUFFER
-					    (FIX:+ (PARSER-BUFFER-INDEX BUFFER)
-						   1))
-		  #T))))))
+	`(BEGIN
+	   (DEFINE (,(symbol-append 'MATCH-PARSER-BUFFER- name -NO-ADVANCE)
+		    BUFFER REFERENCE)
+	     (LET ((CHAR (PEEK-PARSER-BUFFER-CHAR BUFFER)))
+	       (AND CHAR
+		    ,test)))
+	   (DEFINE (,(symbol-append 'MATCH-PARSER-BUFFER- name)
+		    BUFFER REFERENCE)
+	     (AND (LET ((CHAR (PEEK-PARSER-BUFFER-CHAR BUFFER)))
+		    (AND CHAR
+			 ,test))
+		  (BEGIN
+		    (SET-PARSER-BUFFER-INDEX!
+		     BUFFER
+		     (FIX:+ (PARSER-BUFFER-INDEX BUFFER) 1))
+		    #T)))))))
   (char-matcher char (char=? char reference))
   (char-matcher char-ci (char-ci=? char reference))
   (char-matcher not-char (not (char=? char reference)))
@@ -171,21 +195,24 @@
 
 (define (read-parser-buffer-char buffer)
   ;; Attempt to read the next character from BUFFER, starting at the
-  ;; buffer pointer.  If there is a character available, increment the
-  ;; buffer pointer and return the character.  If there are no more
-  ;; characters available, return #F and leave the buffer pointer
-  ;; unchanged.
+  ;; current position.  If there is a character available, increment
+  ;; the position and return the character.  If there are no more
+  ;; characters available, return #F and leave the position unchanged.
   (let ((char (peek-parser-buffer-char buffer)))
     (if char
-	(set-parser-buffer-index! buffer
-				  (fix:+ (parser-buffer-index buffer) 1)))
+	(begin
+	  (set-parser-buffer-index! buffer
+				    (fix:+ (parser-buffer-index buffer) 1))
+	  (if (char=? char #\newline)
+	      (set-parser-buffer-line! buffer
+				       (fix:+ (parser-buffer-line buffer)
+					      1)))))
     char))
 
 (define (peek-parser-buffer-char buffer)
   ;; Attempt to read the next character from BUFFER, starting at the
-  ;; buffer pointer.  If there is a character available, return it,
-  ;; otherwise return #F.  The buffer pointer is unaffected in either
-  ;; case.
+  ;; current position.  If there is a character available, return it,
+  ;; otherwise return #F.  The position is unaffected in either case.
   (and (guarantee-buffer-chars buffer 1)
        (string-ref (parser-buffer-string buffer)
 		   (parser-buffer-index buffer))))
@@ -221,8 +248,7 @@
 
 (define (discard-parser-buffer-head! buffer)
   ;; Tell the buffer that it is safe to discard all characters to the
-  ;; left of the current buffer pointer.  We promise not to backtrack
-  ;; from here, and the buffer is allowed to enforce the promise.
+  ;; left of the current position.
   (if (parser-buffer-source buffer)
       (let ((string (parser-buffer-string buffer))
 	    (index (parser-buffer-index buffer))
