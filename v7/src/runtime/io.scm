@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.74 2003/11/07 20:35:48 cph Exp $
+$Id: io.scm,v 14.75 2003/11/10 21:46:07 cph Exp $
 
 Copyright 1986,1987,1988,1990,1991,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1998,1999,2000,2001 Massachusetts Institute of Technology
@@ -35,9 +35,15 @@ USA.
 
 (define (initialize-package!)
   (set! open-channels
-	(make-gc-finalizer (ucode-primitive channel-close 1)))
+	(make-gc-finalizer (ucode-primitive channel-close 1)
+			   channel?
+			   channel-descriptor
+			   set-channel-descriptor!))
   (set! open-directories
-	(make-gc-finalizer (ucode-primitive new-directory-close 1)))
+	(make-gc-finalizer (ucode-primitive new-directory-close 1)
+			   directory-channel?
+			   directory-channel/descriptor
+			   set-directory-channel/descriptor!))
   (initialize-select-registry!))
 
 (define-structure (channel (constructor %make-channel))
@@ -83,7 +89,6 @@ USA.
 	(eq? 'OS/2-CONSOLE type))))
 
 (define (channel-close channel)
-  (set-channel-descriptor! channel #f)
   (remove-from-gc-finalizer! open-channels channel))
 
 (define-integrable (channel-open? channel)
@@ -412,18 +417,12 @@ USA.
 (define (directory-channel-open name)
   (without-interrupts
    (lambda ()
-     (let ((descriptor ((ucode-primitive new-directory-open 1) name)))
-       (let ((channel (make-directory-channel descriptor)))
-	 (add-to-gc-finalizer! open-directories channel descriptor)
-	 channel)))))
+     (add-to-gc-finalizer! open-directories
+			   (make-directory-channel
+			    ((ucode-primitive new-directory-open 1) name))))))
 
 (define (directory-channel-close channel)
-  (without-interrupts
-   (lambda ()
-     (if (directory-channel/descriptor channel)
-	 (begin
-	   (remove-from-gc-finalizer! open-directories channel)
-	   (set-directory-channel/descriptor! channel #f))))))
+  (remove-from-gc-finalizer! open-directories channel))
 
 (define (directory-channel-read channel)
   ((ucode-primitive new-directory-read 1)
@@ -1127,7 +1126,10 @@ USA.
 (define (initialize-select-registry!)
   (set! have-select? ((ucode-primitive have-select? 0)))
   (set! select-registry-finalizer
-	(make-gc-finalizer (ucode-primitive deallocate-select-registry 1)))
+	(make-gc-finalizer (ucode-primitive deallocate-select-registry 1)
+			   select-registry?
+			   select-registry-handle
+			   set-select-registry-handle!))
   (let ((reset-rv!
 	 (lambda ()
 	   (set! select-registry-result-vectors '())
@@ -1147,10 +1149,9 @@ USA.
 (define (make-select-registry)
   (without-interrupts
    (lambda ()
-     (let ((handle ((ucode-primitive allocate-select-registry 0))))
-       (let ((registry (%make-select-registry handle)))
-	 (add-to-gc-finalizer! select-registry-finalizer registry handle)
-	 registry)))))
+     (add-to-gc-finalizer! select-registry-finalizer
+			   (%make-select-registry
+			    ((ucode-primitive allocate-select-registry 0)))))))
 
 (define (add-to-select-registry! registry descriptor mode)
   ((ucode-primitive add-to-select-registry 3)

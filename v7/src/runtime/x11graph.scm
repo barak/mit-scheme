@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: x11graph.scm,v 1.57 2003/11/09 04:41:02 cph Exp $
+$Id: x11graph.scm,v 1.58 2003/11/10 21:46:35 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1995 Massachusetts Institute of Technology
 Copyright 1996,1997,1998,1999,2000,2001 Massachusetts Institute of Technology
@@ -200,7 +200,10 @@ USA.
 	   (visual-info ,x-graphics/visual-info)
 	   (withdraw-window ,x-graphics/withdraw-window))))
   (set! display-finalizer
-	(make-gc-finalizer (ucode-primitive x-close-display 1)))
+	(make-gc-finalizer (ucode-primitive x-close-display 1)
+			   x-display?
+			   x-display/xd
+			   set-x-display/xd!))
   (initialize-image-datatype)
   (initialize-colormap-datatype))
 
@@ -223,7 +226,10 @@ USA.
 			(write (x-display/name display) port)))))
   (name #f read-only #t)
   xd
-  (window-finalizer (make-gc-finalizer (ucode-primitive x-close-window 1))
+  (window-finalizer (make-gc-finalizer (ucode-primitive x-close-window 1)
+				       x-window?
+				       x-window/xw
+				       set-x-window/xw!)
 		    read-only #t)
   (event-queue (make-queue))
   (properties (make-1d-table) read-only #t))
@@ -249,7 +255,7 @@ USA.
 	  (if (not xd)
 	      (error "Unable to open display:" name))
 	  (let ((display (make-x-display name xd)))
-	    (add-to-gc-finalizer! display-finalizer display xd)
+	    (add-to-gc-finalizer! display-finalizer display)
 	    (make-event-previewer display)
 	    display)))))
 
@@ -259,7 +265,6 @@ USA.
      (if (x-display/xd display)
 	 (begin
 	   (remove-all-from-gc-finalizer! (x-display/window-finalizer display))
-	   (set-x-display/xd! display #f)
 	   (remove-from-gc-finalizer! display-finalizer display))))))
 
 (define (x-graphics/open-display? display)
@@ -443,12 +448,9 @@ USA.
      (close-x-window (graphics-device/descriptor device)))))
 
 (define (close-x-window window)
-  (if (x-window/xw window)
-      (begin
-	(set-x-window/xw! window #f)
-	(remove-from-gc-finalizer!
-	 (x-display/window-finalizer (x-window/display window))
-	 window))))
+  (remove-from-gc-finalizer!
+   (x-display/window-finalizer (x-window/display window))
+   window))
 
 (define (x-geometry-string x y width height)
   (string-append (if (and width height)
@@ -490,8 +492,7 @@ USA.
 		 (vector #f resource class))))
 	  (x-window-set-event-mask xw event-mask:normal)
 	  (let ((window (make-x-window xw display)))
-	    (add-to-gc-finalizer! (x-display/window-finalizer display)
-				  window xw)
+	    (add-to-gc-finalizer! (x-display/window-finalizer display) window)
 	    (if map? (map-window window))
 	    (descriptor->device window)))))))
 
@@ -838,25 +839,27 @@ USA.
    (graphics-type-properties x-graphics-device-type)
    'IMAGE-TYPE
    (make-image-type
-    `((create   ,create-x-image) ;;this one returns an IMAGE descriptor
-      (destroy  ,x-graphics-image/destroy)
-      (width    ,x-graphics-image/width)
-      (height   ,x-graphics-image/height)
-      (draw     ,x-graphics-image/draw)
-      (draw-subimage  ,x-graphics-image/draw-subimage)
-      (fill-from-byte-vector  ,x-graphics-image/fill-from-byte-vector))))
-  (set! image-list (make-gc-finalizer x-destroy-image))
+    `((create ,create-x-image)
+      (destroy ,x-graphics-image/destroy)
+      (width ,x-graphics-image/width)
+      (height ,x-graphics-image/height)
+      (draw ,x-graphics-image/draw)
+      (draw-subimage ,x-graphics-image/draw-subimage)
+      (fill-from-byte-vector ,x-graphics-image/fill-from-byte-vector))))
+  (set! image-list
+	(make-gc-finalizer x-destroy-image
+			   x-image?
+			   x-image/descriptor
+			   set-x-image/descriptor!))
   unspecific)
 
 (define (create-x-image device width height)
   (let ((window (x-graphics-device/xw device)))
-    (let ((descriptor (x-create-image window width height)))
-      (let ((image (make-x-image descriptor window width height)))
-	(add-to-gc-finalizer! image-list image descriptor)
-	image))))
+    (add-to-gc-finalizer! image-list
+			  (make-x-image (x-create-image window width height)
+					window width height))))
 
 (define (x-image/destroy image)
-  (set-x-image/descriptor! image #f)
   (remove-from-gc-finalizer! image-list image))
 
 (define (x-image/get-pixel image x y)
@@ -941,13 +944,15 @@ USA.
 (define colormap-list)
 
 (define (initialize-colormap-datatype)
-  (set! colormap-list (make-gc-finalizer x-free-colormap))
+  (set! colormap-list
+	(make-gc-finalizer x-free-colormap
+			   x-colormap?
+			   colormap/descriptor
+			   set-colormap/descriptor!))
   unspecific)
 
 (define (make-colormap descriptor)
-  (let ((colormap (%make-colormap descriptor)))
-    (add-to-gc-finalizer! colormap-list colormap descriptor)
-    colormap))
+  (add-to-gc-finalizer! colormap-list (%make-colormap descriptor)))
 
 (define (x-graphics/get-colormap device)
   (make-colormap (x-window-colormap (x-graphics-device/xw device))))
@@ -964,7 +969,6 @@ USA.
 	(make-colormap descriptor)))))
 
 (define (x-colormap/free colormap)
-  (set-colormap/descriptor! colormap #f)
   (remove-from-gc-finalizer! colormap-list colormap))
 
 (define (x-colormap/allocate-color colormap r g b)

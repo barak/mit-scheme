@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: crypto.scm,v 14.17 2003/11/09 04:40:40 cph Exp $
+$Id: crypto.scm,v 14.18 2003/11/10 21:45:55 cph Exp $
 
 Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
 
@@ -71,17 +71,13 @@ USA.
        (let ((index ((ucode-primitive mhash_init 1) id)))
 	 (if (not index)
 	     (error "Unable to allocate mhash context:" name))
-	 (let ((context (make-mhash-context index)))
-	   (add-to-gc-finalizer! mhash-contexts context index)
-	   context))))))
+	 (add-to-gc-finalizer! mhash-contexts (make-mhash-context index)))))))
 
 (define (mhash-update context string start end)
   (guarantee-mhash-context context 'MHASH-UPDATE)
   ((ucode-primitive mhash 4) (mhash-context-index context) string start end))
 
 (define (mhash-end context)
-  (guarantee-mhash-context context 'MHASH-END)
-  (set-mhash-context-index! context #f)
   (remove-from-gc-finalizer! mhash-contexts context))
 
 (define (mhash-hmac-init name key)
@@ -92,9 +88,8 @@ USA.
        (let ((index ((ucode-primitive mhash_hmac_init 3) id key pblock)))
 	 (if (not index)
 	     (error "Unable to allocate mhash HMAC context:" name))
-	 (let ((context (make-mhash-hmac-context index)))
-	   (add-to-gc-finalizer! mhash-hmac-contexts context index)
-	   context))))))
+	 (add-to-gc-finalizer! mhash-hmac-contexts
+			       (make-mhash-hmac-context index)))))))
 
 (define (mhash-hmac-update context string start end)
   (guarantee-mhash-hmac-context context 'MHASH-HMAC-UPDATE)
@@ -102,8 +97,6 @@ USA.
 			     string start end))
 
 (define (mhash-hmac-end context)
-  (guarantee-mhash-hmac-context context 'MHASH-HMAC-END)
-  (set-mhash-hmac-context-index! context #f)
   (remove-from-gc-finalizer! mhash-hmac-contexts context))
 
 (define mhash-keygen-names)
@@ -225,9 +218,15 @@ USA.
 		      (ucode-primitive mhash_count 0)
 		      (ucode-primitive mhash_get_hash_name 1)))
 	       (set! mhash-contexts
-		     (make-gc-finalizer (ucode-primitive mhash_end 1)))
+		     (make-gc-finalizer (ucode-primitive mhash_end 1)
+					mhash-context?
+					mhash-context-index
+					set-mhash-context-index!))
 	       (set! mhash-hmac-contexts
-		     (make-gc-finalizer (ucode-primitive mhash_hmac_end 1)))
+		     (make-gc-finalizer (ucode-primitive mhash_hmac_end 1)
+					mhash-hmac-context?
+					mhash-hmac-context-index
+					set-mhash-hmac-context-index!))
 	       (set! mhash-keygen-names
 		     (make-names-vector
 		      (ucode-primitive mhash_keygen_count 0)
@@ -363,8 +362,10 @@ USA.
 	 (if (not mcrypt-initialized?)
 	     (begin
 	       (set! mcrypt-contexts
-		     (make-gc-finalizer
-		      (ucode-primitive mcrypt_generic_end 1)))
+		     (make-gc-finalizer (ucode-primitive mcrypt_generic_end 1)
+					mcrypt-context?
+					mcrypt-context-index
+					set-mcrypt-context-index!))
 	       (set! mcrypt-algorithm-names-vector
 		     ((ucode-primitive mcrypt_list_algorithms 0)))
 	       (set! mcrypt-mode-names-vector
@@ -385,10 +386,10 @@ USA.
 (define (mcrypt-open-module algorithm mode)
   (without-interrupts
    (lambda ()
-     (let ((index ((ucode-primitive mcrypt_module_open 2) algorithm mode)))
-       (let ((context (make-mcrypt-context index)))
-	 (add-to-gc-finalizer! mcrypt-contexts context index)
-	 context)))))
+     (add-to-gc-finalizer! mcrypt-contexts
+			   (make-mcrypt-context
+			    ((ucode-primitive mcrypt_module_open 2) algorithm
+								    mode))))))
 
 (define (mcrypt-init context key init-vector)
   (guarantee-mcrypt-context context 'MCRYPT-INIT)
@@ -419,8 +420,6 @@ USA.
 	       code))))
 
 (define (mcrypt-end context)
-  (guarantee-mcrypt-context context 'MCRYPT-END)
-  (set-mcrypt-context-index! context #f)
   (remove-from-gc-finalizer! mcrypt-contexts context))
 
 (define (mcrypt-generic-unary name context-op module-op)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: process.scm,v 1.30 2003/11/09 04:40:54 cph Exp $
+$Id: process.scm,v 1.31 2003/11/10 21:46:23 cph Exp $
 
 Copyright 1990,1991,1992,1995,1997,1998 Massachusetts Institute of Technology
 Copyright 1999,2000,2003 Massachusetts Institute of Technology
@@ -35,7 +35,10 @@ USA.
 
 (define (initialize-package!)
   (set! subprocess-finalizer
-	(make-gc-finalizer (ucode-primitive process-delete 1) #t))
+	(make-gc-finalizer (ucode-primitive process-delete 1)
+			   subprocess?
+			   subprocess-index
+			   set-subprocess-index!))
   (reset-package!)
   (add-event-receiver! event:after-restore reset-package!)
   (add-event-receiver! event:before-exit delete-all-processes))
@@ -194,8 +197,7 @@ USA.
 		    (set-subprocess-exit-reason!
 		     process
 		     ((ucode-primitive process-reason 1) index))
-		    (add-to-gc-finalizer! subprocess-finalizer process index)
-		    process))))))))
+		    (add-to-gc-finalizer! subprocess-finalizer process)))))))))
     (if (and (eq? ctty 'FOREGROUND)
 	     (eqv? (%subprocess-status process) 0))
 	(subprocess-continue-foreground process))
@@ -206,7 +208,6 @@ USA.
    (lambda ()
      (if (subprocess-index process)
 	 (begin
-	   (set-subprocess-index! process #f)
 	   (remove-from-gc-finalizer! subprocess-finalizer process)
 	   (%close-subprocess-i/o process))))))
 

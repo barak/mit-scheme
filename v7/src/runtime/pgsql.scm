@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pgsql.scm,v 1.6 2003/11/09 04:40:51 cph Exp $
+$Id: pgsql.scm,v 1.7 2003/11/10 21:46:20 cph Exp $
 
 Copyright 2003 Massachusetts Institute of Technology
 
@@ -145,8 +145,16 @@ USA.
        (begin
 	 (if (not pgsql-initialized?)
 	     (begin
-	       (set! connections (make-gc-finalizer pq-finish))
-	       (set! results (make-gc-finalizer pq-clear))
+	       (set! connections
+		     (make-gc-finalizer pq-finish
+					connection?
+					connection-handle
+					set-connection-handle!))
+	       (set! results
+		     (make-gc-finalizer pq-clear
+					result?
+					result-handle
+					set-result-handle!))
 	       (set! pgsql-initialized? #t)))
 	 #t)))
 
@@ -218,13 +226,7 @@ USA.
        (make-connection handle)))))
 
 (define (close-pgsql-conn connection)
-  (guarantee-connection connection 'CLOSE-PGSQL-CONN)
-  (without-interrupts
-   (lambda ()
-     (if (connection-handle connection)
-	 (begin
-	   (set-connection-handle! connection #f)
-	   (remove-from-gc-finalizer! connections connection))))))
+  (remove-from-gc-finalizer! connections connection))
 
 (define (call-with-pgsql-conn parameters procedure)
   (let ((conn))
@@ -323,13 +325,15 @@ USA.
 	 (ill-formed-syntax form)))))
 
 (define-result-accessor result-error-message)
-(define-result-accessor clear)
 (define-result-accessor n-tuples)
 (define-result-accessor n-fields)
 (define-result-accessor cmd-status)
 
-(define (pgsql-result-status result)
-  (index->name (pq-result-status (result->handle result)) exec-status))
+(DEFINE (PGSQL-RESULT-STATUS RESULT)
+  (INDEX->NAME (PQ-RESULT-STATUS (RESULT->HANDLE RESULT)) EXEC-STATUS))
+
+(define (pgsql-clear result)
+  (remove-from-gc-finalizer! results result))
 
 (define (pgsql-field-name result index)
   (pq-field-name (result->handle result) index))

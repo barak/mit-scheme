@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gdbm.scm,v 1.7 2003/11/09 04:40:43 cph Exp $
+$Id: gdbm.scm,v 1.8 2003/11/10 21:46:03 cph Exp $
 
 Copyright 1996,1999,2000,2003 Massachusetts Institute of Technology
 
@@ -38,7 +38,10 @@ USA.
 	 (if (not gdbm-initialized?)
 	     (begin
 	       (set! gdbf-finalizer
-		     (make-gc-finalizer (ucode-primitive gdbm-close 1)))
+		     (make-gc-finalizer (ucode-primitive gdbm-close 1)
+					gdbf?
+					gdbf-descriptor
+					set-gdbf-descriptor!))
 	       (set! gdbm-initialized? #t)))
 	 #t)))
 
@@ -56,22 +59,16 @@ USA.
   (let ((filename (->namestring (merge-pathnames filename))))
     (without-interrupts
      (lambda ()
-       (let ((descriptor
-	      (gdbm-error ((ucode-primitive gdbm-open 4)
-			   filename block-size flags mode))))
-	 (let ((gdbf (make-gdbf descriptor filename)))
-	   (add-to-gc-finalizer! gdbf-finalizer gdbf descriptor)
-	   gdbf))))))
+       (add-to-gc-finalizer!
+	gdbf-finalizer
+	(make-gdbf (gdbm-error ((ucode-primitive gdbm-open 4)
+				filename block-size flags mode))
+		   filename))))))
 
 (define (gdbm-close gdbf)
   (if (not (gdbf? gdbf))
       (error:wrong-type-argument gdbf "gdbm handle" 'GDBM-CLOSE))
-  (without-interrupts
-   (lambda ()
-     (if (gdbf-descriptor gdbf)
-	 (begin
-	   (set-gdbf-descriptor! gdbf #f)
-	   (remove-from-gc-finalizer! gdbf-finalizer gdbf))))))
+  (remove-from-gc-finalizer! gdbf-finalizer gdbf))
 
 ;; Parameters to gdbm_store for simple insertion or replacement in the
 ;; case that the key is already in the database.

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.53 2003/02/26 00:24:29 cph Exp $
+$Id: string.scm,v 14.54 2003/11/10 21:46:27 cph Exp $
 
 Copyright 1986,1987,1988,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1997,1999,2000,2001,2002 Massachusetts Institute of Technology
@@ -1337,20 +1337,24 @@ USA.
 (define external-strings)
 (define (initialize-package!)
   (set! external-strings
-	(make-gc-finalizer (ucode-primitive deallocate-external-string)))
+	(make-gc-finalizer (ucode-primitive deallocate-external-string)
+			   external-string?
+			   external-string-descriptor
+			   set-external-string-descriptor!))
   unspecific)
 
 (define-structure external-string
-  (descriptor #f read-only #t)
+  descriptor
   (length #f read-only #t))
 
 (define (allocate-external-string n-bytes)
   (without-interrupts
    (lambda ()
-     (let ((descriptor ((ucode-primitive allocate-external-string) n-bytes)))
-       (let ((xstring (make-external-string descriptor n-bytes)))
-	 (add-to-gc-finalizer! external-strings xstring descriptor)
-	 xstring)))))
+     (add-to-gc-finalizer!
+      external-strings
+      (make-external-string
+       ((ucode-primitive allocate-external-string) n-bytes)
+       n-bytes)))))
 
 (define (xstring? object)
   (or (string? object)
