@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.19 1995/03/15 01:08:51 adams Exp $
+$Id: rtlgen.scm,v 1.20 1995/03/18 14:38:59 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -1117,7 +1117,7 @@ MIT in each case. |#
 	(preserve (append pushed-info
 			  (reverse recomputed)
 			  maybe-preserved)))))))
-
+
 (define (rtlgen/preservation-state state orig-reg-defns)
   ;; Returns a list to 4-vectors:
   ;;  #(variable-name register home PUSH/SAVE/RECOMPUTE/IF-AVAILABLE)
@@ -1212,7 +1212,7 @@ MIT in each case. |#
 	  (define (reg-preserved? reg)
 	    (and (rtlgen/%pseudo-register? reg)
 		 (assq (cadr reg) preservations)))
-
+
 	  (define (compute)
 	    (loop (cdr reg-defns)
 		  (cons (cons (cadr reg)
@@ -1262,7 +1262,10 @@ MIT in each case. |#
 		     (preserve)))
 		((OFFSET-ADDRESS BYTE-OFFSET-ADDRESS FLOAT-OFFSET-ADDRESS)
 		 (non-pointer-memory-operation))
-		((OBJECT->ADDRESS OBJECT->TYPE OBJECT->DATUM OBJECT->FLOAT)
+		((OBJECT->TYPE)
+		 ;; Assumption: the type looks like a fixnum
+		 (preserve))
+		((OBJECT->ADDRESS #|OBJECT->TYPE|# OBJECT->DATUM OBJECT->FLOAT)
 		 (if (reg-preserved? (cadr value))
 		     (compute)
 		     (ignore)))
