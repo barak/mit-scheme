@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulrew.scm,v 1.11 1993/07/07 19:21:26 gjr Exp $
+$Id: rulrew.scm,v 1.12 1993/08/06 05:44:41 jawilson Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -143,12 +143,7 @@ MIT in each case. |#
 		 (? operand-2)
 		 #F)
   (QUALIFIER (and (rtl:register? operand-2)
-		  (rtl:constant-fixnum-test
-		   operand-1
-		   (lambda (n)
-		     (let ((absn (abs n)))
-		       (and (integer-log-base-2? absn)
-			    (<= absn 64)))))))
+		  (rtl:constant-fixnum-test operand-1 spectrum-inline-multiply?)))
   (rtl:make-fixnum-2-args 'MULTIPLY-FIXNUM operand-1 operand-2 #F))
 
 (define-rule rewriting
@@ -157,13 +152,17 @@ MIT in each case. |#
 		 (REGISTER (? operand-2 register-known-value))
 		 #F)
   (QUALIFIER (and (rtl:register? operand-1)
-		  (rtl:constant-fixnum-test
-		   operand-2
-		   (lambda (n)
-		     (let ((absn (abs n)))
-		       (and (integer-log-base-2? absn)
-			    (<= absn 64)))))))
+		  (rtl:constant-fixnum-test operand-2 spectrum-inline-multiply?)))
   (rtl:make-fixnum-2-args 'MULTIPLY-FIXNUM operand-1 operand-2 #F))
+
+(define (spectrum-inline-multiply? n)
+  #|
+  (let ((absn (abs n)))
+    (and (integer-log-base-2? absn)
+	 (<= absn 64)))
+  |#
+  n					; fnord
+  true)
 
 (define-rule rewriting
   (FIXNUM-2-ARGS FIXNUM-QUOTIENT
