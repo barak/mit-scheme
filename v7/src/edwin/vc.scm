@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.67 2000/04/07 20:16:33 cph Exp $
+;;; $Id: vc.scm,v 1.68 2000/04/07 20:59:48 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -1060,7 +1060,8 @@ There is a special command, `*l', to mark all files currently locked.
       (comint-record-input vc-comment-ring comment)
       ;; Save any changes the user might have made while editing the
       ;; comment.
-      (if (and (buffer-alive? parent-buffer)
+      (if (and (not (eq? parent-buffer log-buffer))
+	       (buffer-alive? parent-buffer)
 	       (not (vc-dired-buffer? parent-buffer)))
 	  (vc-save-buffer parent-buffer #t))
       ;; If a new window was created to hold the log buffer, and the log
