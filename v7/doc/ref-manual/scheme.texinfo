@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.62 1996/04/16 20:29:18 cph Exp $
+@comment $Id: scheme.texinfo,v 1.63 1996/07/12 18:51:05 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -17394,6 +17394,59 @@ affects the entire window, we recommend calling @code{graphics-clear} on
 the window's device afterwards.  Color names include both mnemonic
 names, like @code{"red"}, and intensity names specified in the
 @code{"#@var{rrggbb}"} notation.
+@end defop
+
+@defop {operation+} x-graphics-device draw-arc x y radius-x radius-y angle-start angle-sweep fill?
+@cindex drawing arcs and circles, graphics
+@cindex graphics, drawing arcs and circles
+@cindex circles, drawing
+@findex draw-arc
+
+Operation @code{draw-arc} draws or fills an arc.  An arc is a segment of
+a circle, which may have been stretched along the x- or y- axis to form
+an ellipse.
+
+The parameters @var{X}, @var{Y}, @var{RADIUS-X} and @var{RADIUS-Y}
+describe the circle and @var{ANGLE-START} and @var{ANGLE-SWEEP} choose
+which part of the circle is drawn.  The arc is drawn on the graphics
+device with the center of the circle at the virtual coordinates given by
+@var{X} and @var{Y}.  @var{RADIUS-X} and @var{RADIUS-Y} determine the
+size of the circle in virtual coordinate units.
+
+The parameter @var{ANGLE-START} determines where the arc starts.  It is
+measured in degrees in an anti-clockwise direction, starting at 3
+o'clock.  @var{ANGLE-SWEEP} determines how much of the circle is drawn.
+It too is measured anti-clockwise in degrees.  A negative value means
+the measurement is in a clockwise direction.
+
+Note that the angles are determined on a unit circle before it is
+stretched into an ellipse, so the actual angles that you will see on the
+computer screen depends on all of: @var{RADIUS-X} and @var{RADIUS-Y},
+the window size, and the virtual coordinates.
+
+If @var{fill?} is @code{#F} then just the segment of the circle is
+drawn, otherwise the arc is filled in a pie-slice fashion.
+
+This draws a quarter circle pie slice, standing on its point, with point
+at virtual coordinates (3,5):
+
+@example
+(graphics-opereration g 'draw-arc 3 5 .5 .5 45 90 #T)
+@end example
+
+@end defop
+
+@defop {operation+} x-graphics-device draw-circle x y radius
+@defopx {operation+} x-graphics-device fill-circle x y radius
+@cindex drawing arcs and circles, graphics
+@cindex graphics, drawing arcs and circles
+@cindex circles, drawing
+@findex draw-circle
+@findex fill-circle
+These operations draw a circle (outline) or a filled circle (solid) at
+on the graphics device at the virtual coordinates given by @var{X} and
+@var{Y}.  These operations could be implemented trivially interms of the
+@code{draw-arc} operation.
 @end defop
 
 @defop {operation+} x-graphics-device set-border-width width
