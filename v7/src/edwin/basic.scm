@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: basic.scm,v 1.134 2000/02/25 14:23:55 cph Exp $
+;;; $Id: basic.scm,v 1.135 2000/02/25 14:28:52 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -46,6 +46,10 @@ Whichever character you type to run this command is inserted."
 		     (char=? #\newline char))
 		 (current-minor-mode? (ref-mode-object auto-fill)))
 	    (auto-fill-break)))))
+
+;;; Placeholders:
+(define-minor-mode abbrev "Abbrev" "")
+(define-command expand-abbrev "" () (lambda () unspecific))
 
 (define (read-quoted-char prompt-string)
   (let ((read-ascii-char
