@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.103 1991/05/06 01:04:08 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.104 1991/05/16 23:14:02 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -443,33 +443,42 @@ except for \\[info-cease-edit] to return to Info."
 	      (collect-menu-items item)))))
 
 (define (next-menu-item mark)
-  (re-search-forward "\n\\*[ \t]+"
-		     (line-end mark 0)
-		     (group-end mark)
-		     false))
+  (and (re-search-forward "\n\\*[ \t]+\\([^:\t\n]*\\):"
+			  mark
+			  (group-end mark)
+			  false)
+       (re-match-start 1)))
 
 (define (menu-item-keyword item)
   (let ((end (char-search-forward #\: item (line-end item 0) false)))
     (if (not end)
 	(error "Menu item missing colon"))
-    (extract-string item (mark-1+ end))))
+    (extract-string item (skip-chars-backward " \t" (mark-1+ end)))))
 
 (define (menu-item-name item)
   (let ((colon (char-search-forward #\: item (line-end item 0) false)))
     (if (not colon)
 	(error "Menu item missing colon."))
     (if (match-forward "::" (mark-1+ colon))
-	(extract-string item (re-match-start 0))
-	(%menu-item-name (horizontal-space-end colon)))))
+	(extract-string item (skip-chars-backward " \t" (mark-1+ colon)))
+	(following-node-name colon ".,\t\n"))))
 
-(define (%menu-item-name start)
-  (if (line-end? start)
-      (error "Menu item missing node name"))
-  (extract-string start
-		  (let ((end (line-end start 0)))
-		    (if (re-search-forward "[.,\t]" start end false)
-			(re-match-start 0)
-			end))))
+(define (following-node-name start delimiters)
+  (let ((start (skip-chars-forward " \t\n" start)))
+    (extract-string
+     start
+     (skip-chars-backward
+      " "
+      (let loop ((start start))
+	(if (re-match-forward (string-append "[^" delimiters "]") start)
+	    (loop
+	     (let ((m
+		    (skip-chars-forward (string-append "^" delimiters "(")
+					start)))
+	       (if (match-forward "(" m)
+		   (skip-chars-forward "^)" m)
+		   m)))
+	    start))))))
 
 ;;;; Cross References
 
@@ -511,11 +520,8 @@ The name may be an abbreviation of the reference name."
     (if (not colon)
 	(error "Cross reference missing colon."))
     (if (match-forward "::" (mark-1+ colon))
-	(%cref-item-keyword item (re-match-start 0))
-	(%menu-item-name (cref-item-space-end colon)))))
-
-(define (cref-item-space-end mark)
-  (skip-chars-forward " \t\n" mark))
+	(%cref-item-keyword item (skip-chars-backward " \t" (mark-1+ colon)))
+	(following-node-name colon ".,\t\n"))))
 
 ;;;; Validation
 
@@ -714,10 +720,12 @@ The name may be an abbreviation of the reference name."
   (let ((end (group-end node)))
     (let loop ((start node))
       (let ((mark (re-search-forward "[\f]" start end false)))
-	(cond ((not mark) end)
-	      ((char=? (extract-left-char (re-match-start 0)) #\newline)
-	       (mark-1+ (re-match-start 0)))
-	      (else (loop mark)))))))
+	(if (not mark)
+	    end
+	    (let ((m (re-match-start 0)))
+	      (if (char=? (extract-left-char m) #\newline)
+		  (mark-1+ m)
+		  (loop mark))))))))
 
 (define (next-node start end)
   (let ((mark (search-forward "\n" start end false)))
@@ -796,7 +804,7 @@ The name may be an abbreviation of the reference name."
 			    (skip-chars-forward "^,\t" mark end)))))))
 
 (define tag-table-start-string
-  "\f\nTag table:\n")
+  "\nTag table:\n")
 
 (define tag-table-end-string
   "\nEnd tag table\n")
