@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.490 2004/07/15 04:05:16 cph Exp $
+$Id: runtime.pkg,v 14.491 2004/09/14 20:00:27 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -1074,6 +1074,7 @@ USA.
 	  console-output-port
 	  set-console-i/o-port!)
   (export (runtime emacs-interface)
+	  set-port/type!
 	  the-console-port)
   (initialization (initialize-package!)))
 

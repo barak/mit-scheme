@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.33 2004/05/26 15:20:09 cph Exp $
+$Id: port.scm,v 1.34 2004/09/14 20:00:05 cph Exp $
 
 Copyright 1991,1992,1993,1994,1997,1999 Massachusetts Institute of Technology
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
@@ -513,7 +513,7 @@ USA.
 (define-structure (port (type-descriptor <port>)
 			(conc-name port/)
 			(constructor %make-port (%type %state)))
-  (%type #f read-only #t)
+  %type
   %state
   (%thread-mutex (make-thread-mutex))
   (unread #f)
@@ -527,6 +527,10 @@ USA.
 (define (port/type port)
   (guarantee-port port 'PORT/TYPE)
   (port/%type port))
+
+(define (set-port/type! port type)
+  (guarantee-port port 'SET-PORT/TYPE!)
+  (set-port/%type! port type))
 
 (define (port/state port)
   (guarantee-port port 'PORT/STATE)
