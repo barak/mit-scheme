@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: pic-imag.scm,v 1.8 1997/12/30 05:43:34 cph Exp $
+$Id: pic-imag.scm,v 1.9 1998/01/23 05:15:11 cph Exp $
 
-Copyright (c) 1991-97 Massachusetts Institute of Technology
+Copyright (c) 1991-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -45,19 +45,20 @@ MIT in each case. |#
 	 (pic-data (picture-data pic))
 	 (image-width (fix:* h-sf pic-width)) ;x
 	 (image-height (fix:* v-sf pic-height)) ;iy
-	 (image-depth (graphics-operation window 'IMAGE-DEPTH))
+	 (use-string?
+	  (for-all? (vector->list gray-map)
+	    (lambda (n)
+	      (<= 0 n 255))))
 	 (image (image/create window image-width image-height))
 	 (pixels
-	  (if (<= image-depth 8)
+	  (if use-string?
 	      (make-string (fix:* image-width image-height))
 	      (make-vector (fix:* image-width image-height))))
-	 (write-pixel
-	  (if (<= image-depth 8)
-	      vector-8b-set!
-	      vector-set!))
+	 (write-pixel (if use-string? vector-8b-set! vector-set!))
 	 (py-max (- pic-height 1))
 	 (rect-index-height (fix:* v-sf image-width))
-	 (binner (cutoff-binner .01 pic-min pic-max (vector-length gray-map)))
+	 (binner
+	  (cutoff-binner .01 pic-min pic-max (vector-length gray-map)))
 	 (gray-pixel
 	  (lambda (pixel-value)
 	    (vector-ref gray-map (binner pixel-value)))))
