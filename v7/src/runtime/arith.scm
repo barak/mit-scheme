@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.1 1989/10/27 02:03:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.2 1989/10/27 07:24:51 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -1569,7 +1569,9 @@ MIT in each case. |#
 (define (number->string z #!optional radix)
   (complex:->string
    z
-   (cond ((default-object? radix)	  10)
+   (cond ((or (default-object? radix)
+	      (equal? radix '(HEUR)))
+	  10)
 	 ((and (integer? radix)
 	       (exact? radix)	       (<= 2 radix 36))
 	  radix)
