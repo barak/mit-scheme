@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.34 1992/02/04 04:02:56 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.35 1992/02/18 16:00:30 markf Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -166,7 +166,9 @@ With an argument, prompts for the evaluation environment."
   "Make ENVIRONMENT the current evaluation environment."
   "XSet environment"
   (lambda (environment)
-    (set-variable! scheme-environment (->environment environment))))
+    (set-variable! scheme-environment
+		   (or (and (eq? environment 'DEFAULT) 'DEFAULT)
+		       (->environment environment)))))
 
 (define-command set-syntax-table
   "Make SYNTAX-TABLE the current syntax table."
@@ -179,7 +181,8 @@ With an argument, prompts for the evaluation environment."
   "XSet default environment"
   (lambda (environment)
     (set-variable-default-value! (ref-variable-object scheme-environment)
-				 (->environment environment))))
+				 (or (and (eq? environment 'DEFAULT) 'DEFAULT)
+				     (->environment environment)))))
 
 (define-command set-default-syntax-table
   "Make SYNTAX-TABLE the default syntax table."
