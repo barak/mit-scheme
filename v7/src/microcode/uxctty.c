@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxctty.c,v 1.3 1990/11/05 11:55:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxctty.c,v 1.4 1990/11/05 22:59:52 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -153,7 +153,15 @@ DEFUN_VOID (UX_ctty_save_external_state)
 }
 
 void
-DEFUN_VOID (UX_ctty_restore_internal_state)
+DEFUN_VOID (UX_ctty_restore_external_state)
+{
+  restore_external_state (&outside_ctty_state);
+  restore_external_state (&outside_stdin_state);
+  restore_external_state (&outside_stdout_state);
+}
+
+void
+DEFUN_VOID (UX_ctty_save_internal_state)
 {
   save_internal_state ((&inside_ctty_state), (&outside_ctty_state));
   save_internal_state ((&inside_stdin_state), (&outside_stdin_state));
@@ -161,7 +169,7 @@ DEFUN_VOID (UX_ctty_restore_internal_state)
 }
 
 void
-DEFUN_VOID (UX_ctty_save_internal_state)
+DEFUN_VOID (UX_ctty_restore_internal_state)
 {
   int do_update =
     ((inside_ctty_state . recorded_p)
@@ -171,14 +179,6 @@ DEFUN_VOID (UX_ctty_save_internal_state)
   restore_internal_state ((&inside_stdout_state), (&outside_stdout_state));
   if (do_update)
     ctty_update_interrupt_chars ();
-}
-
-void
-DEFUN_VOID (UX_ctty_restore_external_state)
-{
-  restore_external_state (&outside_ctty_state);
-  restore_external_state (&outside_stdin_state);
-  restore_external_state (&outside_stdout_state);
 }
 
 int
