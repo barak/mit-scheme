@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comwin.scm,v 1.136 1989/06/20 16:16:09 markf Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comwin.scm,v 1.137 1989/06/21 05:55:50 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
@@ -585,6 +585,12 @@
 (define-method combination-window :set-x-size! set-combination-x-size!)
 (define-method combination-window :set-y-size! set-combination-y-size!)
 (define-method combination-window :set-size! set-combination-size!)
+
+(define-method combination-window (:leaf-containing-coordinates combination x y)
+  (inferior-containing-coordinates combination x y leaf?))
+
+(define-method combination-leaf-window (:leaf-containing-coordinates leaf x y)
+  (values leaf x y))
 
 (define (scale-combination-inferiors! combination new-room except
 				      v size min-size set-w-size! set-start!)
@@ -674,12 +680,3 @@
 			      (+ start new-s)
 			      (- old-room old-s)
 			      (- new-room new-s))))))))))))
-
-(define-method combination-window (:leaf-containing-coordinates combination x y)
-  (inferior-containing-coordinates combination x y leaf?))
-
-(define-method combination-leaf-window (:leaf-containing-coordinates leaf x y)
-  (values leaf x y))
-
-
-  
