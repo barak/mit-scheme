@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.351 2000/06/22 03:48:03 cph Exp $
+$Id: runtime.pkg,v 14.352 2000/06/22 03:48:20 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -3643,9 +3643,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  decode-quoted-printable:update
 	  encode-base64:finalize
 	  encode-base64:initialize
+	  encode-base64:update
 	  encode-binhex40:finalize
 	  encode-binhex40:initialize
-	  encode-binhex40:update
 	  encode-binhex40:update
 	  encode-quoted-printable:finalize
 	  encode-quoted-printable:initialize
