@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcfg.scm,v 1.1 1987/03/19 00:44:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcfg.scm,v 1.2 1987/05/07 00:10:04 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -40,18 +40,19 @@ MIT in each case. |#
 
 (define-snode rtl-snode)
 (define-pnode rtl-pnode)
-(define-vector-slots rnode 7 rtl dead-registers logical-link register-map lap)
-(define-vector-slots rtl-pnode 12 consequent-lap-generator
+(define-vector-slots rnode 7 rtl dead-registers logical-link register-map lap
+  frame-pointer-offset)
+(define-vector-slots rtl-pnode 13 consequent-lap-generator
   alternative-lap-generator)
 
-(define-integrable (statement->snode statement)
-  (make-pnode rtl-snode-tag statement '() false false false))
+(define (statement->snode statement)
+  (make-pnode rtl-snode-tag statement '() false false false false))
 
 (define-integrable (statement->scfg statement)
   (snode->scfg (statement->snode statement)))
 
-(define-integrable (predicate->pnode predicate)
-  (make-pnode rtl-pnode-tag predicate '() false false false false false))
+(define (predicate->pnode predicate)
+  (make-pnode rtl-pnode-tag predicate '() false false false false false false))
 
 (define-integrable (predicate->pcfg predicate)
   (pnode->pcfg (predicate->pnode predicate)))
@@ -65,7 +66,8 @@ MIT in each case. |#
 	   (RNODE-DEAD-REGISTERS ,(rnode-dead-registers rnode))
 	   (RNODE-LOGICAL-LINK ,(rnode-logical-link rnode))
 	   (RNODE-REGISTER-MAP ,(rnode-register-map rnode))
-	   (RNODE-LAP ,(rnode-lap rnode))))))
+	   (RNODE-LAP ,(rnode-lap rnode))
+	   (RNODE-FRAME-POINTER-OFFSET ,(rnode-frame-pointer-offset rnode))))))
 
   (define-vector-method rtl-snode-tag ':DESCRIBE
     (lambda (snode)
