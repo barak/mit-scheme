@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/image.c,v 9.29 1989/09/20 23:09:13 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/image.c,v 9.30 1990/01/02 18:35:32 pas Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -590,37 +590,26 @@ C_Image_Periodic_Shift(Array, New_Array, nrows, ncols, ver_shift, hor_shift)
 
 /* Rotations and stuff */
 
-DEFINE_PRIMITIVE ("IMAGE-TRANSPOSE!", Prim_image_transpose, 1, 1, 0)
-{
-  long nrows;
-  long ncols;
-  REAL * Array;
-  PRIMITIVE_HEADER (1);
-  {
-    SCHEME_OBJECT Parray;
-    arg_image (1, (&nrows), (&ncols), (&Parray));
-    Array = (ARRAY_CONTENTS (Parray));
-  }
-  if (nrows == ncols)
-    {
-      Image_Fast_Transpose (Array, nrows); /* side-effecting ... */
-    }
+DEFINE_PRIMITIVE ("IMAGE-TRANSPOSE!", Prim_image_transpose, 4,4, 0)
+{ long rows, cols;
+  REAL *x, *y;
+  PRIMITIVE_HEADER (4);
+  CHECK_ARG (1, FIXNUM_P);	/* rows */
+  CHECK_ARG (2, FIXNUM_P);	/* cols */
+  CHECK_ARG (3, ARRAY_P);	/* image array 1 */
+  CHECK_ARG (4, ARRAY_P);	/* image array 2,  empty for rows=cols */
+  
+  rows = arg_nonnegative_integer(1);
+  cols = arg_nonnegative_integer(2);
+  x = (ARRAY_CONTENTS (ARG_REF(3)));
+  y = (ARRAY_CONTENTS (ARG_REF(4)));
+  
+  if (rows==cols)		/* square image ==> ignore argument 4  */
+    Image_Fast_Transpose (x, rows);
   else
-    {
-      REAL *New_Array;
-      long Length = (nrows * ncols);
-      /* making space in scheme heap */
-      Primitive_GC_If_Needed (Length * REAL_SIZE);
-      New_Array = ((REAL *) Free);
-      Image_Transpose (Array, New_Array, nrows, ncols);
-      C_Array_Copy (New_Array, Array, Length);
-    }
-  {
-    SCHEME_OBJECT argument = (ARG_REF (1));
-    SET_PAIR_CAR (argument, (LONG_TO_UNSIGNED_FIXNUM (ncols)));
-    SET_PAIR_CAR ((PAIR_CDR (argument)), (LONG_TO_UNSIGNED_FIXNUM (nrows)));
-    PRIMITIVE_RETURN (argument);
-  }
+    Image_Transpose (x, y, rows, cols);
+  
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("IMAGE-ROTATE-90CLW!", Prim_image_rotate_90clw, 1, 1, 0)

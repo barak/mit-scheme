@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/fft.c,v 9.28 1989/12/20 18:03:39 pas Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/fft.c,v 9.29 1990/01/02 18:35:22 pas Rel $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -1619,16 +1619,17 @@ DEFINE_PRIMITIVE ("ARRAY-CZT!", Prim_array_czt, 6,6, 0)
 
   PRIMITIVE_HEADER (6);
   phi = (arg_real_number (1));	/* starting point [0,1]*/
-  phi = (arg_real_number (2));	/* resolution [0,1] */
+  rho = (arg_real_number (2));	/* resolution [0,1] */
   CHECK_ARG (3, ARRAY_P);	/* input real */
   CHECK_ARG (4, ARRAY_P);	/* input imag */
   CHECK_ARG (5, ARRAY_P);	/* output real */
   CHECK_ARG (6, ARRAY_P);	/* output imag */
+  
   a = ARRAY_CONTENTS(ARG_REF(3));
   b = ARRAY_CONTENTS(ARG_REF(4));
   c = ARRAY_CONTENTS(ARG_REF(5));
   d = ARRAY_CONTENTS(ARG_REF(6));
-
+  
   N = ARRAY_LENGTH(ARG_REF(3));	/* N = input length */
   M = ARRAY_LENGTH(ARG_REF(5));	/* M = output length */
   if (N!=(ARRAY_LENGTH(ARG_REF(4))))    error_bad_range_arg(3);
