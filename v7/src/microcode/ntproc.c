@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntproc.c,v 1.3 1997/10/24 07:24:07 cph Exp $
+$Id: ntproc.c,v 1.4 1997/10/25 00:15:06 cph Exp $
 
 Copyright (c) 1997 Massachusetts Institute of Technology
 
@@ -95,9 +95,7 @@ static CRITICAL_SECTION process_table_lock;
 
 static void lock_process_table (void);
 static void lock_process_table_1 (void *);
-static void save_process_state (void);
-static void restore_process_state (void *);
-static void transfer_stdio (DWORD, Tchannel, enum process_channel_type);
+static HANDLE stdio_handle (DWORD, Tchannel, enum process_channel_type);
 static HANDLE copy_handle (HANDLE);
 static Tprocess allocate_process (void);
 static void allocate_process_abort (void *);
@@ -150,107 +148,69 @@ NT_make_subprocess (const char * filename,
 		    Tchannel channel_err,
 		    int hide_windows_p)
 {
+  Tprocess child;
+  SECURITY_ATTRIBUTES sap;
+  SECURITY_DESCRIPTOR sdp;
+  STARTUPINFO si;
+  PROCESS_INFORMATION pi;
+
+  /* Explicitly specify no security */
+  STD_BOOL_API_CALL
+    (InitializeSecurityDescriptor, ((&sdp), SECURITY_DESCRIPTOR_REVISION));
+  STD_BOOL_API_CALL (SetSecurityDescriptorDacl, ((&sdp), TRUE, 0, FALSE));
+  (sap . nLength) = (sizeof (sap));
+  (sap . lpSecurityDescriptor) = (&sdp);
+  (sap . bInheritHandle) = FALSE;
+
+  memset ((&si), 0, (sizeof (si)));
+  (si . cb) = (sizeof (si));
+  /* Specify the handles to be used by the child process.  */
+  (si . dwFlags) = STARTF_USESTDHANDLES;
+  (si . hStdInput)
+    = (stdio_handle (STD_INPUT_HANDLE, channel_in, channel_in_type));
+  (si . hStdOutput)
+    = (stdio_handle (STD_OUTPUT_HANDLE, channel_out, channel_out_type));
+  (si . hStdError)
+    = (stdio_handle (STD_ERROR_HANDLE, channel_err, channel_err_type));
+  /* If requested, hide the top-level window of the child process.  */
+  if (hide_windows_p)
+    {
+      (si . dwFlags) |= STARTF_USESHOWWINDOW;
+      (si . wShowWindow) |= SW_HIDE;
+    }
+
   transaction_begin ();
-  save_process_state ();
-  transfer_stdio (STD_INPUT_HANDLE, channel_in, channel_in_type);
-  transfer_stdio (STD_OUTPUT_HANDLE, channel_out, channel_out_type);
-  transfer_stdio (STD_ERROR_HANDLE, channel_err, channel_err_type);
-  {
-    Tprocess child;
-    SECURITY_ATTRIBUTES sap;
-    SECURITY_DESCRIPTOR sdp;
-    STARTUPINFO si;
-    PROCESS_INFORMATION pi;
-
-    /* Explicitly specify no security */
-    STD_BOOL_API_CALL
-      (InitializeSecurityDescriptor, ((&sdp), SECURITY_DESCRIPTOR_REVISION));
-    STD_BOOL_API_CALL (SetSecurityDescriptorDacl, ((&sdp), TRUE, 0, FALSE));
-    (sap . nLength) = (sizeof (sap));
-    (sap . lpSecurityDescriptor) = (&sdp);
-    (sap . bInheritHandle) = FALSE;
-
-    memset ((&si), 0, (sizeof (si)));
-    (si . cb) = (sizeof (si));
-    (si . dwFlags) = STARTF_USESTDHANDLES;
-    (si . hStdInput) = GetStdHandle (STD_INPUT_HANDLE);
-    (si . hStdOutput) = GetStdHandle (STD_OUTPUT_HANDLE);
-    (si . hStdError) = GetStdHandle (STD_ERROR_HANDLE);
-    if (hide_windows_p)
-      {
-	(si . dwFlags) |= STARTF_USESHOWWINDOW;
-	(si . wShowWindow) |= SW_HIDE;
-      }
-
-    lock_process_table ();
-    child = (allocate_process ());
-    STD_BOOL_API_CALL
-      (CreateProcess,
-       (((LPCTSTR) filename),
-	((LPSTR) command_line),
-	(&sap),
-	0,
-	TRUE,
-	(CREATE_DEFAULT_ERROR_MODE | CREATE_NEW_CONSOLE),
-	((LPVOID) environment),
-	((LPCTSTR) working_directory),
-	(&si),
-	(& (PROCESS_HANDLES (child)))));
-    (PROCESS_RAW_STATUS (child)) = process_status_running;
-    (PROCESS_RAW_REASON (child)) = STILL_ACTIVE;
-    (PROCESS_TICK (child)) = process_tick;
-    PROCESS_STATUS_SYNC (child);
-    transaction_commit ();
-    STD_BOOL_API_CALL (CloseHandle, ((PROCESS_HANDLES (child)) . hThread));
-    ((PROCESS_HANDLES (child)) . hThread) = INVALID_HANDLE_VALUE;
-    return (child);
-  }
+  lock_process_table ();
+  child = (allocate_process ());
+  STD_BOOL_API_CALL
+    (CreateProcess,
+     (((LPCTSTR) filename),
+      ((LPSTR) command_line),
+      (&sap),
+      0,
+      TRUE,
+      (CREATE_DEFAULT_ERROR_MODE | CREATE_NEW_CONSOLE),
+      ((LPVOID) environment),
+      ((LPCTSTR) working_directory),
+      (&si),
+      (& (PROCESS_HANDLES (child)))));
+  (PROCESS_RAW_STATUS (child)) = process_status_running;
+  (PROCESS_RAW_REASON (child)) = STILL_ACTIVE;
+  (PROCESS_TICK (child)) = process_tick;
+  PROCESS_STATUS_SYNC (child);
+  transaction_commit ();
+  STD_BOOL_API_CALL (CloseHandle, ((PROCESS_HANDLES (child)) . hThread));
+  ((PROCESS_HANDLES (child)) . hThread) = INVALID_HANDLE_VALUE;
+  return (child);
 }
 
-typedef struct
+static HANDLE
+stdio_handle (DWORD target, Tchannel channel, enum process_channel_type type)
 {
-  HANDLE std_in;
-  HANDLE std_out;
-  HANDLE std_err;
-} process_state_t;
-
-static void
-save_process_state (void)
-{
-  process_state_t * state = (dstack_alloc (sizeof (process_state_t)));
-  (state -> std_in) = (GetStdHandle (STD_INPUT_HANDLE));
-  (state -> std_out) = (GetStdHandle (STD_OUTPUT_HANDLE));
-  (state -> std_err) = (GetStdHandle (STD_ERROR_HANDLE));
-  transaction_record_action (tat_always, restore_process_state, state);
-}
-
-static void
-restore_process_state (void * env)
-{
-  process_state_t * state = env;
-
-  CloseHandle (GetStdHandle (STD_INPUT_HANDLE));
-  CloseHandle (GetStdHandle (STD_OUTPUT_HANDLE));
-  CloseHandle (GetStdHandle (STD_ERROR_HANDLE));
-
-  SetStdHandle (STD_INPUT_HANDLE, (state -> std_in));
-  SetStdHandle (STD_OUTPUT_HANDLE, (state -> std_out));
-  SetStdHandle (STD_ERROR_HANDLE, (state -> std_err));
-}
-
-static void
-transfer_stdio (DWORD target, Tchannel channel, enum process_channel_type type)
-{
-  if (type == process_channel_type_explicit)
-    {
-      STD_BOOL_API_CALL
-	(SetStdHandle, (target, (copy_handle (CHANNEL_HANDLE (channel)))));
-    }
-  else
-    {
-      STD_BOOL_API_CALL
-	(SetStdHandle, (target, (copy_handle (GetStdHandle (target)))));
-    }
+  return
+    (copy_handle ((type == process_channel_type_explicit)
+		  ? (CHANNEL_HANDLE (channel))
+		  : (GetStdHandle (target))));
 }
 
 static HANDLE
@@ -458,6 +418,7 @@ OS_process_interrupt (Tprocess process)
   BYTE control_scan_code;
   BYTE vk_break_code;
   BYTE break_scan_code;
+  /* BYTE keyboard_state [256]; */
   HWND foreground_window;
 
   hwnd = (find_child_console (PROCESS_ID (process)));
@@ -472,6 +433,7 @@ OS_process_interrupt (Tprocess process)
       vk_break_code = 'C';
       break_scan_code = ((BYTE) (MapVirtualKey (vk_break_code, 0)));
     }
+  /* STD_BOOL_API_CALL (GetKeyboardState, (keyboard_state)); */
   foreground_window = (GetForegroundWindow ());
   if (SetForegroundWindow (hwnd))
     {
@@ -481,8 +443,9 @@ OS_process_interrupt (Tprocess process)
       keybd_event (vk_break_code, break_scan_code, KEYEVENTF_KEYUP, 0);
       keybd_event (VK_CONTROL, control_scan_code, KEYEVENTF_KEYUP, 0);
       if (foreground_window)
-	SetForegroundWindow (foreground_window);
+	(void) SetForegroundWindow (foreground_window);
     }
+  /* STD_BOOL_API_CALL (SetKeyboardState, (keyboard_state)); */
 }
 
 void

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntapi.h,v 1.5 1997/10/22 05:28:29 cph Exp $
+$Id: ntapi.h,v 1.6 1997/10/25 00:15:13 cph Exp $
 
 Copyright (c) 1997 Massachusetts Institute of Technology
 
@@ -54,6 +54,7 @@ enum syscall_names
   apicall_GetFileInformationByHandle,
   apicall_GetFileSize,
   apicall_GetFileTime,
+  apicall_GetKeyboardState,
   apicall_GetStdHandle,
   apicall_InitializeSecurityDescriptor,
   apicall_MoveFile,
@@ -65,6 +66,7 @@ enum syscall_names
   apicall_SetFileAttributes,
   apicall_SetFilePointer,
   apicall_SetFileTime,
+  apicall_SetKeyboardState,
   apicall_SetSecurityDescriptorDacl,
   apicall_SetStdHandle,
   apicall_SetTimer,
@@ -831,6 +833,7 @@ static char * syscall_names_table [] =
   "GET-FILE-INFORMATION-BY-HANDLE",
   "GET-FILE-SIZE",
   "GET-FILE-TIME",
+  "GET-KEYBOARD-STATE",
   "GET-STD-HANDLE",
   "INITIALIZE-SECURITY-DESCRIPTOR",
   "MOVE-FILE",
@@ -842,6 +845,7 @@ static char * syscall_names_table [] =
   "SET-FILE-ATTRIBUTES",
   "SET-FILE-POINTER",
   "SET-FILE-TIME",
+  "SET-KEYBOARD-STATE",
   "SET-SECURITY-DESCRIPTOR-DACL",
   "SET-STD-HANDLE",
   "SET-TIMER",
