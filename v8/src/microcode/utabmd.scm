@@ -37,7 +37,7 @@
 
 ;;;; Machine Dependent Type Tables
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.47 1989/03/27 23:17:15 jinx Rel $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.48 1989/09/24 14:47:07 cph Exp $
 
 (declare (usual-integrations))
 
@@ -566,7 +566,7 @@
 	       CONSOLE-HEIGHT			;04
 	       NEWLINE-CHAR			;05
 	       FLONUM-MANTISSA-LENGTH		;06
-	       FLONUM-EXPONENT-LENGTH		;07
+	       FLONUM-EPSILON			;07
 	       OS-NAME-STRING			;08
 	       OS-VARIANT-STRING		;09
 	       STACK-TYPE-STRING		;0A
@@ -574,4 +574,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.47 1989/03/27 23:17:15 jinx Rel $"
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.48 1989/09/24 14:47:07 cph Exp $"
