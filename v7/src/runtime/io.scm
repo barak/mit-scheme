@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.23 1991/03/14 04:29:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.24 1991/05/06 18:43:58 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -757,53 +757,50 @@ MIT in each case. |#
 
 (define (input-buffer/read-until-delimiter buffer delimiters)
   (let ((channel (input-buffer/channel buffer)))
-    (if (channel-closed? channel)
-	eof-object
-	(with-channel-blocking channel true
-	  (lambda ()
-	    (if (char-ready? buffer input-buffer/fill*)
-		(apply
-		 string-append
-		 (let ((string (input-buffer/string buffer)))
-		   (let loop ()
-		     (let ((start (input-buffer/start-index buffer))
-			   (end (input-buffer/end-index buffer)))
-		       (let ((delimiter
-			      (substring-find-next-char-in-set string start end
-							       delimiters)))
-			 (if delimiter
-			     (let ((head (substring string start delimiter)))
-			       (set-input-buffer/start-index! buffer delimiter)
-			       (list head))
-			     (let ((head (substring string start end)))
-			       (set-input-buffer/start-index! buffer end)
-			       (cons head
-				     (if (input-buffer/fill* buffer)
-					 (loop)
-					 '())))))))))
-		eof-object))))))
+    (if (and (channel-open? channel)
+	     (char-ready? buffer input-buffer/fill-block))
+	(apply string-append
+	       (let ((string (input-buffer/string buffer)))
+		 (let loop ()
+		   (let ((start (input-buffer/start-index buffer))
+			 (end (input-buffer/end-index buffer)))
+		     (let ((delimiter
+			    (substring-find-next-char-in-set string start end
+							     delimiters)))
+		       (if delimiter
+			   (let ((head (substring string start delimiter)))
+			     (set-input-buffer/start-index! buffer delimiter)
+			     (list head))
+			   (let ((head (substring string start end)))
+			     (set-input-buffer/start-index! buffer end)
+			     (cons head
+				   (if (input-buffer/fill-block buffer)
+				       (loop)
+				       '())))))))))
+	eof-object)))
 
 (define (input-buffer/discard-until-delimiter buffer delimiters)
   (let ((channel (input-buffer/channel buffer)))
-    (if (channel-open? channel)
-	(with-channel-blocking channel true
-	  (lambda ()
-	    (if (char-ready? buffer input-buffer/fill*)
-		(let ((string (input-buffer/string buffer)))
-		  (let loop ()
-		    (let ((end-index (input-buffer/end-index buffer)))
-		      (let ((index
-			     (substring-find-next-char-in-set
-			      string
-			      (input-buffer/start-index buffer)
-			      end-index
-			      delimiters)))
-			(if index
-			    (set-input-buffer/start-index! buffer index)
-			    (begin
-			      (set-input-buffer/start-index! buffer end-index)
-			      (if (input-buffer/fill* buffer)
-				  (loop))))))))))))))
+    (if (and (channel-open? channel)
+	     (char-ready? buffer input-buffer/fill-block))
+	(let ((string (input-buffer/string buffer)))
+	  (let loop ()
+	    (let ((end-index (input-buffer/end-index buffer)))
+	      (let ((index
+		     (substring-find-next-char-in-set
+		      string
+		      (input-buffer/start-index buffer)
+		      end-index
+		      delimiters)))
+		(if index
+		    (set-input-buffer/start-index! buffer index)
+		    (begin
+		      (set-input-buffer/start-index! buffer end-index)
+		      (if (input-buffer/fill-block buffer)
+			  (loop)))))))))))
+
+(define (input-buffer/fill-block buffer)
+  (fix:> (let loop () (or (input-buffer/fill buffer) (loop))) 0))
 
 (define (input-buffer/buffer-contents buffer)
   (and (fix:< (input-buffer/start-index buffer)
