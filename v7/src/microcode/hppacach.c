@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hppacach.c,v 1.4 1993/06/04 22:57:12 cph Exp $
+$Id: hppacach.c,v 1.5 1993/06/08 02:27:09 gjr Exp $
 
-Copyright (c) 1990-1991 Massachusetts Institute of Technology
+Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -147,12 +147,13 @@ read_parameters (pdc_cache)
 	   (sizeof (kerninfo.machine)));
   if ((lseek (kmem, (kloc.pdc_cache_location), 0)) < 0)
     io_lose ("read_parameters", "lseek (%s) failed", KERNEL_MEMORY_FILE);
-  if  ((read (kmem, pdc_cache->cache_format,
-	      (sizeof (pdc_cache->cache_format)))) !=
-       (sizeof (pdc_cache->cache_format)))
+  if ((read (kmem, &pdc_cache->cache_format,
+	     (sizeof (pdc_cache->cache_format)))) !=
+      (sizeof (pdc_cache->cache_format)))
     io_lose ("read_parameters", "read (%s) failed", KERNEL_MEMORY_FILE);
   if ((close (kmem)) < 0)
     io_lose ("read_parameters", "close (%s) failed", KERNEL_MEMORY_FILE);
+  return;
 }
 
 void
