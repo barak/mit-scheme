@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.16 1989/04/21 17:10:28 markf Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.17 1989/08/10 11:49:43 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -555,8 +555,15 @@ MIT in each case. |#
 		      (continuation/next-hooks continuation))))))
 	   (lambda ()
 	     (if (eq? not operator)
-		 (pcfg-invert
-		  (generate/expression block continuation (car operands)))		 (with-reified-continuation block
+		 (pcfg*pcfg->pcfg!
+		  (generate/subproblem/predicate
+		   block
+		   continuation
+		   (car operands)
+		   (vector 'COMBINATION-OPERAND expression 1))
+		  (generate/expression block continuation false)
+		  (generate/expression block continuation true))
+		 (with-reified-continuation block
 					    continuation
 					    scfg*pcfg->pcfg!
 		   (lambda (push continuation)
