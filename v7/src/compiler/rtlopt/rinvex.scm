@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rinvex.scm,v 1.1 1989/04/26 05:11:29 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rinvex.scm,v 1.2 1989/07/25 12:31:04 arthur Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -121,27 +121,34 @@ MIT in each case. |#
 
 (define (optimize-expression expression)
   (let ((type (rtl:expression-type expression))
-	(fold-unary
-	 (lambda (type)
-	   (let ((subexpression
-		  (canonicalize-subexpression (cadr expression))))
-	     (if (eq? type (rtl:expression-type subexpression))
-		 (cadr subexpression)
-		 expression)))))
-    (let loop ((unary-inversions unary-inversions))
-      (cond ((null? unary-inversions)
-	     expression)
-	    ((eq? type (caar unary-inversions))
-	     (fold-unary (cdar unary-inversions)))
-	    ((eq? type (cdar unary-inversions))
-	     (fold-unary (caar unary-inversions)))
-	    (else
-	     (loop (cdr unary-inversions)))))))
+	(try-unary-fold
+	 (lambda (types)
+	   (let loop ((types types)
+		      (expression (cadr expression)))
+	     (if (null? types)
+		 expression
+		 (let ((subexpression
+			(canonicalize-subexpression expression)))
+		   (and (eq? (car types) (rtl:expression-type subexpression))
+			(loop (cdr types)
+			      (cadr subexpression)))))))))
+    (let next-inversion ((unary-inversions unary-inversions))
+      (if (null? unary-inversions)
+	  expression
+	  (let ((first-inversion (car unary-inversions)))
+	    (or (and (eq? type (caar first-inversion))
+		     (try-unary-fold (append (cdar first-inversion)
+					     (cdr first-inversion))))
+		(and (eq? type (cadr first-inversion))
+		     (try-unary-fold (append (cddr first-inversion)
+					     (car first-inversion))))
+		(next-inversion (cdr unary-inversions))))))))
 
 (define unary-inversions
-  '((OBJECT->FIXNUM . FIXNUM->OBJECT)
-    (OBJECT->UNSIGNED-FIXNUM . FIXNUM->OBJECT)
-    (ADDRESS->FIXNUM . FIXNUM->ADDRESS)))
+  '(((OBJECT->FIXNUM) . (FIXNUM->OBJECT))
+    ((OBJECT->UNSIGNED-FIXNUM) . (FIXNUM->OBJECT))
+    ((ADDRESS->FIXNUM) . (FIXNUM->ADDRESS))
+    ((@ADDRESS->FLOAT OBJECT->ADDRESS) . (FLOAT->OBJECT))))
 
 (define (canonicalize-subexpression expression)
   (or (and (rtl:pseudo-register-expression? expression)
@@ -209,6 +216,10 @@ MIT in each case. |#
   rtl:fixnum-pred-1-arg-operand
   rtl:set-fixnum-pred-1-arg-operand!)
 
+(define-one-arg-method 'FLONUM-PRED-1-ARG
+  rtl:flonum-pred-1-arg-operand
+  rtl:set-flonum-pred-1-arg-operand!)
+
 (define-one-arg-method 'TRUE-TEST
   rtl:true-test-expression
   rtl:set-true-test-expression!)
@@ -274,6 +285,13 @@ MIT in each case. |#
   rtl:set-fixnum-pred-2-args-operand-1!
   rtl:fixnum-pred-2-args-operand-2
   rtl:set-fixnum-pred-2-args-operand-2!)
+
+(define-two-arg-method 'FLONUM-PRED-2-ARGS
+  rtl:flonum-pred-2-args-operand-1
+  rtl:set-flonum-pred-2-args-operand-1!
+  rtl:flonum-pred-2-args-operand-2
+  rtl:set-flonum-pred-2-args-operand-2!)
+
 (define-two-arg-method 'INVOCATION-PREFIX:DYNAMIC-LINK
   rtl:invocation-prefix:dynamic-link-locative
   rtl:set-invocation-prefix:dynamic-link-locative!
