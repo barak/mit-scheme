@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: sendmail.scm,v 1.40 1997/11/06 07:43:46 cph Exp $
+;;;	$Id: sendmail.scm,v 1.41 1998/02/12 05:58:12 cph Exp $
 ;;;
-;;;	Copyright (c) 1991-97 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-98 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -392,18 +392,11 @@ is inserted."
 
 (define (mailer-version-string buffer)
   (and (ref-variable mail-identify-reader buffer)
-       (let ((id
-	      (system/identification-string
-	       (list-search-positive known-systems
-		 (lambda (system)
-		   (string-ci=? "edwin" (system/name system)))))))
-	 (let ((space (string-find-next-char id #\space)))
-	   (string-append (string-head id space)
-			  " [version"
-			  (string-tail id space)
-			  ", MIT Scheme Release "
-			  microcode-id/release-string
-			  "]")))))
+       (string-append "Edwin [version"
+		      (get-subsystem-version-string "edwin")
+		      ", MIT Scheme Release "
+		      microcode-id/release-string
+		      "]")))
 
 (define-variable mail-setup-hook
   "An event distributor invoked immediately after a mail buffer is initialized.

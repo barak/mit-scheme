@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: savres.scm,v 14.28 1995/06/21 18:19:39 robblau Exp $
+$Id: savres.scm,v 14.29 1998/02/12 05:57:34 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -167,8 +167,8 @@ MIT in each case. |#
     (newline port)
     (write-string "  Release " port)
     (write-string microcode-id/release-string port)
-    (for-each-system!
-     (lambda (system)
-       (newline port)
-       (write-string "  " port)
-       (write-string (system/identification-string system) port)))))
+    (for-each (lambda (name)
+		(newline port)
+		(write-string "  " port)
+		(write-string (get-subsystem-identification-string name) port))
+	      (get-subsystem-names))))

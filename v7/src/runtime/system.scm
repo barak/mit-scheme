@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: system.scm,v 14.9 1998/02/12 04:31:37 cph Exp $
+$Id: system.scm,v 14.10 1998/02/12 05:56:48 cph Exp $
 
 Copyright (c) 1988-98 Massachusetts Institute of Technology
 
@@ -32,123 +32,97 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; Systems
+;;;; Subsystem Identification
 ;;; package: (runtime system)
 
 (declare (usual-integrations))
 
-(define (add-identification! name version modification)
-  (add-system! (make-system name version modification '())))
-
-(define-structure (system
-		   (constructor
-		    make-system
-		    (name version modification files-lists))
-		   (conc-name system/))
-  (name false read-only true)
-  (version false)
-  (modification false)
-  (files-lists false read-only true)
-  (files false))
-
-(define known-systems '())
-
-(define (add-system! system)
-  (let ((system*
-	 (list-search-positive known-systems
-	   (lambda (system*)
-	     (string=? (system/name system) (system/name system*))))))
-    (if system*
-	(set! known-systems (delq! system* known-systems))))
-  (set! known-systems (append! known-systems (list system)))
-  unspecific)
-
-(define (for-each-system! procedure)
-  (for-each procedure known-systems))
-
-(define (system/identification-string system)
-  (string-append
-   (system/name system)
-   (let ((version
-	  (string-append
-	   (version->string (system/version system))
-	   (let ((modification (version->string (system/modification system))))
-	     (if (string-null? modification)
-		 ""
-		 (string-append "." modification))))))
-     (if (string-null? version)
-	 ""
-	 (string-append " " version)))))
-
-(define (version->string version)
-  (cond ((string? version) version)
-	((exact-nonnegative-integer? version) (number->string version))
-	((null? version) "")
-	((list? version)
+(define (add-subsystem-identification! name version)
+  (if (not (and (string? name) (not (string-null? name))))
+      (error:wrong-type-argument name "non-null string"
+				 'ADD-SUBSYSTEM-IDENTIFICATION!))
+  (let ((version
 	 (let loop ((version version))
-	   (if (null? (cdr version))
-	       (version->string (car version))
-	       (string-append (version->string (car version))
-			      "."
-			      (loop (cdr version))))))
-	(else
-	 (error "Illegal system version" version))))
-
-;;; Load the given system.
-
-;;; SYSTEM/FILES will be assigned the list of filenames actually
-;;; loaded.
-
-;;; SYSTEM/FILES-LISTS should contain a list of pairs, the car of each
-;;; pair being an environment, and the cdr a list of filenames.  The
-;;; files are loaded in the order specified, into the environments
-;;; specified.  COMPILED?, if false, means change all of the file
-;;; types to "BIN".
-
-(define (load-system! system #!optional compiled?)
-  (let ((files
-	 (format-files-list (system/files-lists system)
-			    (if (default-object? compiled?)
-				(prompt-for-confirmation "Load compiled")
-				compiled?))))
-    (set-system/files! system
-		       (map (lambda (file) (->namestring (car file))) files))
-    (for-each (lambda (file scode)
-		(newline) (write-string "Eval ")
-		(write (->namestring (car file)))
-		(scode-eval scode (cdr file)))
-	      files
-	      (let loop ((files (map car files)))
-		(if (null? files)
-		    '()
-		    (split-list files 20
-		      (lambda (head tail)
-			(let ((expressions (map fasload head)))
-			  (newline)
-			  (write-string "Purify")
-			  (purify (list->vector expressions) true)
-			  (append! expressions (loop tail))))))))
-    (newline)
-    (write-string "Done"))
-  (add-system! system)
+	   (append-map
+	    (lambda (version)
+	      (cond ((exact-nonnegative-integer? version)
+		     (list version))
+		    ((string? version)
+		     (if (string-null? version)
+			 '()
+			 (list version)))
+		    ((list? version)
+		     (loop version))
+		    (else
+		     (error "Illegal subsystem version:"
+			    version))))
+	    version))))
+    (remove-subsystem-identification! name)
+    (set! subsystem-identifications
+	  (append! subsystem-identifications (list (cons name version)))))
   unspecific)
 
-(define (split-list list n receiver)
-  (if (or (not (pair? list)) (zero? n))
-      (receiver '() list)
-      (split-list (cdr list) (-1+ n)
-	(lambda (head tail)
-	  (receiver (cons (car list) head) tail)))))
+(define (remove-subsystem-identification! name)
+  (let loop ((previous #f) (entries subsystem-identifications))
+    (if (not (null? entries))
+	(if (match-entry? name (car entries))
+	    (begin
+	      (if previous
+		  (set-cdr! previous (cdr entries))
+		  (set! subsystem-identifications (cdr entries)))
+	      (loop previous (cdr entries)))
+	    (loop entries (cdr entries))))))
 
-(define (format-files-list files-lists compiled?)
-  (append-map! (lambda (files-list)
-		 (map (lambda (filename)
-			(let ((pathname (->pathname filename)))
-			  (cons (if (and (not compiled?)
-					 (equal? "com"
-						 (pathname-type pathname)))
-				    (pathname-new-type pathname "bin")
-				    pathname)
-				(car files-list))))
-		      (cdr files-list)))
-	       files-lists))
+(define (get-subsystem-names)
+  (map car subsystem-identifications))
+
+(define (get-subsystem-version name)
+  (let ((entry (find-entry name)))
+    (and entry
+	 (list-copy (cdr entry)))))
+
+(define (get-subsystem-version-string name)
+  (let ((entry (find-entry name)))
+    (and entry
+	 (version-string (cdr entry)))))
+
+(define (get-subsystem-identification-string name)
+  (let ((entry (find-entry name)))
+    (and entry
+	 (let ((name (car entry))
+	       (s (version-string (cdr entry))))
+	   (and s
+		(if (string-null? s)
+		    (string-copy name)
+		    (string-append name " " s)))))))
+
+(define (version-string version)
+  (if (null? version)
+      ""
+      (let loop ((version version))
+	(let ((s
+	       (if (string? (car version))
+		   (car version)
+		   (number->string (car version)))))
+	  (if (null? (cdr version))
+	      s
+	      (string-append s "." (loop (cdr version))))))))
+
+(define (find-entry name)
+  (list-search-positive subsystem-identifications
+    (lambda (entry)
+      (match-entry? name entry))))
+
+(define (match-entry? name entry)
+  (let ((s (car entry)))
+    (substring-ci=? name 0 (string-length name)
+		    s 0
+		    (or (string-find-next-char s #\space)
+			(string-length s)))))
+
+(define subsystem-identifications '())
+
+;;; Upwards compatibility.
+
+(define (add-identification! name version modification)
+  (add-subsystem-identification! name (list version modification)))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.19 1993/11/16 16:36:44 gjr Exp $
+$Id: cout.scm,v 1.20 1998/02/12 05:58:04 cph Exp $
 
-Copyright (c) 1992-1993 Massachusetts Institute of Technology
+Copyright (c) 1992-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -306,19 +306,7 @@ MIT in each case. |#
 	  " at "
 	  (decoded-time/time-string time)
 	  "\n   by Liar version "
-	  (let ((version false))
-	    (for-each-system!
-	     (lambda (system)
-	       (if (substring? "Liar" (system/name system))
-		   (set! version
-			 (cons (system/version system)
-			       (system/modification system))))
-	       unspecific))
-	    (if (not version)
-		"?.?"
-		(string-append (number->string (car version))
-			       "."
-			       (number->string (cdr version)))))
+	  (or (get-subsystem-version-string "liar") "?.?")
 	  ".\n */\n\n"
 	  "#include \"liarc.h\"\n\n")))
 

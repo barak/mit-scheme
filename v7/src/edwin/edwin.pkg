@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.220 1998/02/01 05:12:21 cph Exp $
+$Id: edwin.pkg,v 1.221 1998/02/12 05:57:40 cph Exp $
 
 Copyright (c) 1989-98 Massachusetts Institute of Technology
 
@@ -1517,9 +1517,7 @@ MIT in each case. |#
 	  make-mail-buffer
 	  prepare-mail-buffer-for-sending
 	  rfc822-quote
-	  send-mail-buffer)
-  (import (runtime system)
-	  known-systems))
+	  send-mail-buffer))
 
 (define-package (edwin mail-alias)
   (files "malias")

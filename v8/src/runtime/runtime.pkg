@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.296 1998/02/11 05:11:07 cph Exp $
+$Id: runtime.pkg,v 14.297 1998/02/12 05:57:01 cph Exp $
 
 Copyright (c) 1988-98 Massachusetts Institute of Technology
 
@@ -3067,16 +3067,12 @@ MIT in each case. |#
   (parent ())
   (export ()
 	  add-identification!
-	  add-system!
-	  for-each-system!
-	  load-system!
-	  make-system
-	  set-system/modification!
-	  set-system/version!
-	  system/identification-string
-	  system/modification
-	  system/name
-	  system/version))
+	  add-subsystem-identification!
+	  get-subsystem-identification-string
+	  get-subsystem-names
+	  get-subsystem-version
+	  get-subsystem-version-string
+	  remove-subsystem-identification!))
 
 (define-package (runtime system-clock)
   (files "sysclk")
