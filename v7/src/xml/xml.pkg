@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.35 2003/09/26 19:38:58 cph Exp $
+$Id: xml.pkg,v 1.36 2003/12/29 05:08:15 uid67408 Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -54,6 +54,8 @@ USA.
 	  null-xml-name-prefix?
 	  null-xml-namespace-iri
 	  null-xml-namespace-iri?
+	  string-is-xml-name?
+	  string-is-xml-nmtoken?
 	  xml-iri
 	  xml-name-hash
 	  xml-name-iri
@@ -268,6 +270,7 @@ USA.
   (files "xml-chars" "xml-parser")
   (parent (runtime xml))
   (export ()
+	  alphabet:xml-char
 	  char-set:xml-whitespace
 	  parse-xml-document
 	  read-xml
