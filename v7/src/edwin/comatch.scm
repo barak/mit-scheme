@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: comatch.scm,v 1.2 1997/03/08 00:16:10 cph Exp $
+;;;	$Id: comatch.scm,v 1.3 1997/03/10 05:32:44 cph Exp $
 ;;;
 ;;;	Copyright (c) 1997 Massachusetts Institute of Technology
 ;;;
@@ -73,11 +73,13 @@
       (comatch:general
        (lambda (start end)
 	 (and (mark< start end)
-	      (char=? char (extract-right-char start)))))
+	      (char=? char (extract-right-char start))
+	      (mark1+ start))))
       (comatch:general
        (lambda (start end)
 	 (and (mark< start end)
-	      (char-ci=? char (extract-right-char start)))))))
+	      (char-ci=? char (extract-right-char start))
+	      (mark1+ start))))))
 
 (define (comatch:string string #!optional case-fold?)
   (let ((case-fold? (if (default-object? case-fold?) #f case-fold?)))
@@ -125,6 +127,12 @@
   (comatch:general
    (lambda (start end)
      (or (comatch-apply comatcher start end) start))))
+
+(define (comatch:not comatcher)
+  (comatch:general
+   (lambda (start end)
+     (and (not (comatch-apply comatcher start end))
+	  start))))
 
 (define (comatch:combine-rest initial combine-2)
   (lambda comatchers
