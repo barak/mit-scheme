@@ -1,8 +1,8 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.7 2003/02/14 18:48:11 cph Exp $
+# $Id: Clean.sh,v 1.8 2004/01/17 01:40:27 cph Exp $
 #
-# Copyright 2000 Massachusetts Institute of Technology
+# Copyright 2000,2004 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -67,8 +67,8 @@ if [ ${DIST} = yes ]; then
 fi
 
 if [ ${MAINTAINER} = yes ]; then
-    echo "rm -rf configure lib"
-    rm -rf configure lib
+    echo "rm -rf configure lib autom4te.cache"
+    rm -rf configure lib autom4te.cache
 fi
 
 for SUBDIR; do
