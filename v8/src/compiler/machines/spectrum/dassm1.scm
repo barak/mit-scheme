@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: dassm1.scm,v 1.3 1995/01/14 17:02:41 adams Exp $
+$Id: dassm1.scm,v 1.4 1995/07/16 22:25:57 adams Exp $
 
-Copyright (c) 1988-1994 Massachusetts Institute of Technology
+Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -52,33 +52,34 @@ MIT in each case. |#
 	 (if (default-object? symbol-table?) true symbol-table?)))
     (with-output-to-file (pathname-new-type pathname "lap")
       (lambda ()
-	(let ((com-file (pathname-new-type pathname "com")))
-	  (let ((object (fasload com-file)))
-	    (if (compiled-code-address? object)
-		(let ((block (compiled-code-address->block object)))
-		  (disassembler/write-compiled-code-block
-		   block
-		   (compiled-code-block/dbg-info block symbol-table?)))
-		(begin
-		  (if (not
-		       (and (scode/comment? object)
-			    (dbg-info-vector? (scode/comment-text object))))
-		      (error "Not a compiled file" com-file))
-		  (let ((blocks
-			 (vector->list
-			  (dbg-info-vector/blocks-vector
-			   (scode/comment-text object)))))
-		    (if (not (null? blocks))
-			(do ((blocks blocks (cdr blocks)))
-			    ((null? blocks) unspecific)
-			  (disassembler/write-compiled-code-block
-			   (car blocks)
-			   (compiled-code-block/dbg-info (car blocks)
-							 symbol-table?))
-			  (if (not (null? (cdr blocks)))
-			      (begin
-				(write-char #\page)
-				(newline))))))))))))))
+	(fluid-let ((disassembler/base-address 0))
+	  (let ((com-file (pathname-new-type pathname "com")))
+	    (let ((object (fasload com-file)))
+	      (if (compiled-code-address? object)
+		  (let ((block (compiled-code-address->block object)))
+		    (disassembler/write-compiled-code-block
+		     block
+		     (compiled-code-block/dbg-info block symbol-table?)))
+		  (begin
+		    (if (not
+			 (and (scode/comment? object)
+			      (dbg-info-vector? (scode/comment-text object))))
+			(error "Not a compiled file" com-file))
+		    (let ((blocks
+			   (vector->list
+			    (dbg-info-vector/blocks-vector
+			     (scode/comment-text object)))))
+		      (if (not (null? blocks))
+			  (do ((blocks blocks (cdr blocks)))
+			      ((null? blocks) unspecific)
+			    (disassembler/write-compiled-code-block
+			     (car blocks)
+			     (compiled-code-block/dbg-info (car blocks)
+							   symbol-table?))
+			    (if (not (null? (cdr blocks)))
+				(begin
+				  (write-char #\page)
+				  (newline)))))))))))))))
 
 (define disassembler/base-address)
 
