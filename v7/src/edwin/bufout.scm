@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufout.scm,v 1.4 1991/05/15 21:19:11 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufout.scm,v 1.5 1991/06/18 20:31:43 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -115,6 +115,15 @@
 (define (operation/close port)
   (mark-temporary! (output-port/mark port)))
 
+(define (operation/x-size port)
+  (let ((sizes
+	 (map window-x-size
+	      (buffer-windows
+	       (mark-buffer (output-port/mark port))))))
+    (if (null? sizes)
+	79
+	(apply min sizes))))
+
 (define mark-output-port-template
   (make-output-port `((CLOSE ,operation/close)
 		      (FLUSH-OUTPUT ,operation/flush-output)
@@ -122,5 +131,6 @@
 		      (FRESH-LINES ,operation/fresh-lines)
 		      (PRINT-SELF ,operation/print-self)
 		      (WRITE-CHAR ,operation/write-char)
-		      (WRITE-STRING ,operation/write-string))
+		      (WRITE-STRING ,operation/write-string)
+		      (X-SIZE ,operation/x-size))
 		    false))

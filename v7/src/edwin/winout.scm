@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/winout.scm,v 1.5 1991/03/11 01:14:58 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/winout.scm,v 1.6 1991/06/18 20:30:48 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -121,6 +121,9 @@
     (if (window-needs-redisplay? window)
 	(window-direct-update! window false))))
 
+(define (operation/x-size port)
+  (window-x-size (output-port/state port)))
+
 (define (operation/print-self state port)
   (unparse-string state "to window ")
   (unparse-object state (output-port/state port)))
@@ -131,5 +134,6 @@
 		      (FRESH-LINES ,operation/fresh-lines)
 		      (PRINT-SELF ,operation/print-self)
 		      (WRITE-CHAR ,operation/write-char)
-		      (WRITE-STRING ,operation/write-string))
+		      (WRITE-STRING ,operation/write-string)
+		      (X-SIZE ,operation/x-size))
 		    false))
