@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: assconv.scm,v 1.12 1995/06/22 00:57:02 adams Exp $
+$Id: assconv.scm,v 1.13 1995/07/21 14:37:35 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -91,7 +91,7 @@ MIT in each case. |#
 		   (map (lambda (name)
 			  (if (memq name shadowed)
 			      (let ((outer-name (assconv/new-name 'IGNORED)))
-				(dbg-info/remember name `(LOOKUP ,outer-name))
+				(dbg-info/remember name outer-name)
 				outer-name)
 			      name))
 			lambda-list))
