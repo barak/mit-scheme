@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uerror.scm,v 14.47 2001/03/21 19:15:22 cph Exp $
+$Id: uerror.scm,v 14.48 2001/08/09 03:04:49 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -493,15 +493,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		   ((eq? (ucode-primitive lexical-assignment) operator)
 		    (signal-other (apply-frame/operand frame 0)
 				  (apply-frame/operand frame 1)))
-		   ((eq? (ucode-primitive add-fluid-binding! 3) operator)
+		   ((eq? (ucode-primitive link-variables 4) operator)
 		    (signal-other (apply-frame/operand frame 0)
-				  (let ((name (apply-frame/operand frame 1)))
-				    (if (variable? name)
-					(variable-name name)
-					name))))
-		   ((eq? (ucode-primitive environment-link-name) operator)
-		    (signal-other (apply-frame/operand frame 0)
-				  (apply-frame/operand frame 2)))
+				  (apply-frame/operand frame 1)))
 		   ((eq? (ucode-primitive lexical-unassigned?) operator)
 		    (signal-other (apply-frame/operand frame 0)
 				  (apply-frame/operand frame 1))))))
@@ -546,26 +540,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	    COMPILER-OPERATOR-LOOKUP-TRAP-RESTART)
 	   (signal (reference-trap-frame/environment frame)
 		   (reference-trap-frame/name frame))))))))
-
-(set! condition-type:unlinkable-variable
-  (make-condition-type 'UNLINKABLE-VARIABLE condition-type:variable-error '()
-    (lambda (condition port)
-      (write-string "The variable " port)
-      (write (access-condition condition 'LOCATION) port)
-      (write-string " is already bound; it cannot be linked to." port))))
-
-(define-error-handler 'BAD-ASSIGNMENT
-  (let ((signal
-	 (condition-signaller condition-type:unlinkable-variable
-			      '(ENVIRONMENT LOCATION))))
-    (lambda (continuation)
-      (let ((frame (continuation/first-subproblem continuation)))
-	(if (and (apply-frame? frame)
-		 (eq? (ucode-primitive environment-link-name)
-		      (apply-frame/operator frame)))
-	    (signal continuation
-		    (apply-frame/operand frame 0)
-		    (apply-frame/operand frame 2)))))))
 
 ;;;; Argument Errors
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.69 2001/05/22 03:09:52 cph Exp $
+$Id: make.scm,v 14.70 2001/08/09 03:04:46 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -87,7 +87,6 @@ USA.
   (< integer-less?)
   binary-fasload
   (channel-write 4)
-  environment-link-name
   exit-with-value
   (file-exists? 1)
   garbage-collect
@@ -97,6 +96,7 @@ USA.
   get-primitive-name
   lexical-reference
   lexical-unreferenceable?
+  (link-variables 4)
   microcode-identify
   scode-eval
   set-fixed-objects-vector!
@@ -312,11 +312,10 @@ USA.
 	      PACKAGE/SYSTEM-LOADER
 	      PACKAGE?
 	      SYSTEM-GLOBAL-PACKAGE)))
-  (if (not (null? names))
+  (if (pair? names)
       (begin
-	(environment-link-name system-global-environment
-			       environment-for-package
-			       (car names))
+	(link-variables system-global-environment (car names)
+			environment-for-package (car names))
 	(loop (cdr names)))))
 (package/add-child! system-global-package 'PACKAGE environment-for-package)
 (eval (fasload "runtime.bco" #f) system-global-environment)
@@ -495,9 +494,8 @@ USA.
   (if obj
       (eval obj system-global-environment)))
 
-(environment-link-name (->environment '(RUNTIME ENVIRONMENT))
-		       (->environment '(PACKAGE))
-		       'PACKAGE-NAME-TAG)
+(link-variables (->environment '(RUNTIME ENVIRONMENT)) 'PACKAGE-NAME-TAG
+		(->environment '(PACKAGE)) 'PACKAGE-NAME-TAG)
 
 (let ((roots
        (list->vector
