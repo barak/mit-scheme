@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulflo.scm,v 1.18 1992/08/12 02:41:48 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulflo.scm,v 1.19 1992/08/12 06:03:49 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -534,14 +534,22 @@ MIT in each case. |#
   (case predicate
     ((FLONUM-EQUAL? FLONUM-ZERO?)
      (set-current-branches! (lambda (label)
-			      (LAP (JE (@PCR ,label))))
+			      (let ((unordered (generate-label 'UNORDERED)))
+				(LAP (JP (@PCR ,unordered))
+				     (JE (@PCR ,label))
+				     (LABEL ,unordered))))
 			    (lambda (label)
-			      (LAP (JNE (@PCR ,label))))))
+			      (LAP (JNE (@PCR ,label))
+				   (JP (@PCR ,label))))))
     ((FLONUM-LESS? FLONUM-NEGATIVE?)
      (set-current-branches! (lambda (label)
-			      (LAP (JB (@PCR ,label))))
+			      (let ((unordered (generate-label 'UNORDERED)))
+				(LAP (JP (@PCR ,unordered))
+				     (JB (@PCR ,label))
+				     (LABEL ,unordered))))
 			    (lambda (label)
-			      (LAP (JAE (@PCR ,label))))))
+			      (LAP (JAE (@PCR ,label))
+				   (JP (@PCR ,label))))))
     ((FLONUM-GREATER? FLONUM-POSITIVE?)
      (set-current-branches! (lambda (label)
 			      (LAP (JA (@PCR ,label))))
