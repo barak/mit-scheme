@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2xcpt.c,v 1.5 1995/10/09 05:56:04 cph Exp $
+$Id: os2xcpt.c,v 1.6 1995/11/03 01:24:11 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -953,7 +953,7 @@ OS2_subthread_exception_handler (PEXCEPTIONREPORTRECORD report,
   char * format
     = "Scheme has detected exception number 0x%08x within thread %d.%s%s\
   This indicates a bug in the Scheme implementation.\
-  Please report this information to a Scheme wizard.";
+  Please report this information to a Scheme wizard.\n\n";
   char backtrace [1024];
 
   if (((report -> fHandlerFlags)
