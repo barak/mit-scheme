@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/regmap.scm,v 4.4 1988/06/14 08:10:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/regmap.scm,v 4.5 1988/08/29 22:35:26 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -40,12 +40,12 @@ MIT in each case. |#
 
 The register allocator provides a mechanism for allocating and
 deallocating machine registers.  It manages the available machine
-registers as a cache, by maintaining a ``map'' which records two kinds
+registers as a cache, by maintaining a "map" which records two kinds
 of information: (1) a list of the machine registers which are not in
 use; and (2) a mapping which is the association between the allocated
-machine registers and the ``pseudo registers'' which they represent.
+machine registers and the "pseudo registers" which they represent.
 
-An ``alias'' is a machine register which also holds the contents of a
+An "alias" is a machine register which also holds the contents of a
 pseudo register.  Usually an alias is used for a short period of time,
 as a store-in cache, and then eventually the contents of the alias is
 written back out to the home it is associated with.  Because of the
@@ -53,37 +53,42 @@ lifetime analysis, it is possible to identify those registers which
 will no longer be referenced; these are deleted from the map when they
 die, and thus do not need to be saved.
 
-A ``temporary'' is a machine register with no associated home.  It
-is used during the code generation of a single RTL instruction to
-hold intermediate results.
+A "temporary" is a machine register with no associated home.  It is
+used during the code generation of a single RTL instruction to hold
+intermediate results.
 
 Each pseudo register that has at least one alias has an entry in the
 map.  While a home is entered in the map, it may have one or more
 aliases added or deleted to its entry, but if the number of aliases
 ever drops to zero, the entry is removed from the map.
 
-Each temporary has an entry in the map, with the difference being
-that the entry has no pseudo register associated with it.  Thus it
-need never be written out.
+Each temporary has an entry in the map, with the difference being that
+the entry has no pseudo register associated with it.  Thus it need
+never be written out.
 
 All registers, both machine and pseudo, are represented by
 non-negative integers.  Machine registers start at zero (inclusive)
-and stop at NUMBER-OF-MACHINE-REGISTERS (exclusive).  All others are
-pseudo registers.  Because they are integers, we can use MEMV on lists
-of registers.
+and stop at `number-of-machine-registers' (exclusive).  All others are
+pseudo registers.  Because they are integers, we can use `eqv?' to
+compare register numbers.
 
-AVAILABLE-MACHINE-REGISTERS should be a list of the registers which
+`available-machine-registers' should be a list of the registers which
 the allocator is allowed to allocate, in the preferred order of
 allocation.
 
-(SORT-MACHINE-REGISTERS REGISTERS) should reorder a list of machine
-registers into some interesting sorting order if that is desired.
-
-(PSEUDO-REGISTER=? X Y) is true iff X and Y are the ``same'' register.
-Normally, two pseudo registers are the same if their
-REGISTER-RENUMBERs are equal.
+`(sort-machine-registers registers)' should reorder a list of machine
+registers into some interesting sorting order.
 
 |#
+
+(define (register-type? register type)
+  ;; This predicate is true iff `register' has the given `type'.
+  ;; `register' must be a machine register.
+  (or (not type)
+      (eq? (register-type register) type)))
+
+(define ((register-type-predicate type) register)
+  (register-type? register type))
 
 ;;;; Register Map
 
@@ -94,24 +99,33 @@ REGISTER-RENUMBERs are equal.
 (define (empty-register-map)
   (make-register-map '() available-machine-registers))
 
-(define-integrable (map-entries:search map procedure)
-  (set-search (map-entries map) procedure))
+(define (map-entries:search map procedure)
+  ;; This procedure is used only when attempting to free up an
+  ;; existing register.  Because of this, it must find an LRU
+  ;; register.  Since we order the map entries starting with the MRU
+  ;; registers and working towards the LRU, search the entries
+  ;; starting from the end of the list and working forward.
+  (let loop ((entries (map-entries map)))
+    (and (not (null? entries))
+	 (or (loop (cdr entries))
+	     (procedure (car entries))))))
 
 (define (map-entries:find-home map pseudo-register)
-  (map-entries:search map
-    (lambda (entry)
-      (let ((home (map-entry-home entry)))
-	(and home
-	     (pseudo-register=? home pseudo-register)
-	     entry)))))
+  (let loop ((entries (map-entries map)))
+    (and (not (null? entries))
+	 (or (and (map-entry-home (car entries))
+		  (eqv? (map-entry-home (car entries)) pseudo-register)
+		  (car entries))
+	     (loop (cdr entries))))))
 
 (define (map-entries:find-alias map register)
-  (map-entries:search map
-    (lambda (entry)
-      ;; **** Kludge -- depends on fact that machine registers are
-      ;; fixnums, and thus EQ? works on them.
-      (and (memq register (map-entry-aliases entry))
-	   entry))))
+  (let loop ((entries (map-entries map)))
+    (and (not (null? entries))
+	 ;; **** Kludge -- depends on fact that machine registers are
+	 ;; fixnums, and thus EQ? works on them.
+	 (or (and (memq register (map-entry-aliases (car entries)))
+		  (car entries))
+	     (loop (cdr entries))))))
 
 (define-integrable (map-entries:add map entry)
   (cons entry (map-entries map)))
@@ -122,8 +136,15 @@ REGISTER-RENUMBERs are equal.
 (define-integrable (map-entries:delete* map entries)
   (eq-set-difference (map-entries map) entries))
 
-(define-integrable (map-entries:replace map old new)
-  (eq-set-substitute (map-entries map) old new))
+(define (map-entries:replace map old new)
+  (let loop ((entries (map-entries map)))
+    (if (null? entries)
+	'()
+	(cons (if (eq? (car entries) old) new (car entries))
+	      (loop (cdr entries))))))
+
+(define (map-entries:replace&touch map old new)
+  (cons new (map-entries:delete map old)))
 
 (define-integrable (map-registers:add map register)
   (sort-machine-registers (cons register (map-registers map))))
@@ -133,6 +154,9 @@ REGISTER-RENUMBERs are equal.
 
 (define-integrable (map-registers:delete map register)
   (eqv-set-delete (map-registers map) register))
+
+(define-integrable (map-registers:replace map old new)
+  (eqv-set-substitute (map-registers map) old new))
 
 ;;;; Map Entry
 
@@ -154,6 +178,12 @@ REGISTER-RENUMBERs are equal.
 (define-integrable (map-entry:any-alias entry)
   (car (map-entry-aliases entry)))
 
+(define (map-entry:find-alias entry type needed-registers)
+  (list-search-positive (map-entry-aliases entry)
+    (lambda (alias)
+      (and (register-type? alias type)
+	   (not (memv alias needed-registers))))))
+
 (define (map-entry:add-alias entry alias)
   (make-map-entry (map-entry-home entry)
 		  (map-entry-saved-into-home? entry)
@@ -164,11 +194,13 @@ REGISTER-RENUMBERs are equal.
 		  (map-entry-saved-into-home? entry)
 		  (eq-set-delete (map-entry-aliases entry) alias)))
 
-(define (map-entry=? entry entry*)
-  (and (map-entry-home entry)
-       (map-entry-home entry*)
-       (pseudo-register=? (map-entry-home entry)
-			  (map-entry-home entry*))))
+(define (map-entry:replace-alias entry old new)
+  (make-map-entry (map-entry-home entry)
+		  (map-entry-saved-into-home? entry)
+		  (eq-set-substitute (map-entry-aliases entry) old new)))
+
+(define-integrable (map-entry=? entry entry*)
+  (eqv? (map-entry-home entry) (map-entry-home entry*)))
 
 ;;;; Map Constructors
 
@@ -183,16 +215,26 @@ REGISTER-RENUMBERs are equal.
 		     (map-registers:delete map alias)))
 
 (define (register-map:add-alias map entry alias)
-  (make-register-map (map-entries:replace map entry
-					  (map-entry:add-alias entry alias))
-		     (map-registers:delete map alias)))
+  (make-register-map
+   (map-entries:replace&touch map
+			      entry
+			      (map-entry:add-alias entry alias))
+   (map-registers:delete map alias)))
+
+(define (register-map:replace-alias map entry old new)
+  (make-register-map
+   (map-entries:replace&touch map
+			      entry
+			      (map-entry:replace-alias entry old new))
+   (map-registers:delete map new)))
 
 (define (register-map:save-entry map entry)
   (make-register-map
-   (map-entries:replace map entry
-			(make-map-entry (map-entry-home entry)
-					true
-					(map-entry-aliases entry)))
+   (map-entries:replace&touch map
+			      entry
+			      (make-map-entry (map-entry-home entry)
+					      true
+					      (map-entry-aliases entry)))
    (map-registers map)))
 
 (define (register-map:delete-entry map entry)
@@ -209,13 +251,15 @@ REGISTER-RENUMBERs are equal.
 (define (register-map:delete-alias map entry alias)
   (make-register-map (if (null? (cdr (map-entry-aliases entry)))
 			 (map-entries:delete map entry)
-			 (map-entries:replace map entry
+			 (map-entries:replace map
+					      entry
 					      (map-entry:delete-alias entry
 								      alias)))
 		     (map-registers:add map alias)))
 
 (define (register-map:delete-other-aliases map entry alias)
-  (make-register-map (map-entries:replace map entry
+  (make-register-map (map-entries:replace map
+					  entry
 					  (let ((home (map-entry-home entry)))
 					    (make-map-entry home (not home)
 							    (list alias))))
@@ -228,72 +272,96 @@ REGISTER-RENUMBERs are equal.
 ;;;; Register Allocator
 
 (define (make-free-register map type needed-registers)
-  (define (reallocate-alias entry)
-    (let ((alias (find-alias entry)))
-      (and alias
-	   (delete-alias entry alias '()))))
-
-  (define (find-alias entry)
-    (list-search-positive (map-entry-aliases entry)
-      (lambda (alias)
-	(and (register-type? alias type)
-	     (not (memv alias needed-registers))))))
-
-  (define (delete-alias entry alias instructions)
-    (allocator-values alias
-		      (register-map:delete-alias map entry alias)
-		      instructions))
-
   (or
-   ;; First see if there is an unused register of the given type.
-   (let ((register (list-search-positive (map-registers map)
-		     (register-type-predicate type))))
-     (and register
-	  (allocator-values register map '())))
-   ;; There are no free registers available, so must reallocate one.
-   ;; First look for a temporary register that is no longer needed.
+   ;; First attempt to find a register that can be used without saving
+   ;; its value.
+   (find-free-register map type needed-registers)
+   ;; Then try to recycle a register by saving its value elsewhere.
    (map-entries:search map
      (lambda (entry)
-       (and (not (map-entry-home entry))
-	    (reallocate-alias entry))))
-   ;; Then look for a register which contains the same thing as
-   ;; another register.
-   (map-entries:search map
-     (lambda (entry)
-       (and (not (null? (cdr (map-entry-aliases entry))))
-	    (reallocate-alias entry))))
-   ;; Look for a non-temporary which has been saved into its home.
-   (map-entries:search map
-     (lambda (entry)
-       (and (map-entry-home entry)
-	    (map-entry-saved-into-home? entry)
-	    (reallocate-alias entry))))
-   ;; Finally, save out a non-temporary and reallocate its register.
-   (map-entries:search map
-     (lambda (entry)
-       (and (map-entry-home entry)
-	    (not (map-entry-saved-into-home? entry))
-	    (let ((alias (find-alias entry)))
-	      (and alias
-		   (delete-alias entry alias
-				 (save-into-home-instruction entry)))))))
-   ;; Reaching this point indicates all registers are allocated.
+       (and
+	(map-entry-home entry)
+	(not (map-entry-saved-into-home? entry))
+	(let ((alias (map-entry:find-alias entry type needed-registers)))
+	  (and alias
+	       (or
+		;; If we are reallocating a register of a specific
+		;; type, first see if there is an available register
+		;; of some other type that we can stash the value in.
+		(and type
+		     (let ((values
+			    (find-free-register
+			     map
+			     false			     (cons alias needed-registers))))
+		       (and
+			values
+			(bind-allocator-values values
+			  (lambda (alias* map instructions)
+			    (allocator-values
+			     alias
+			     (register-map:replace-alias map
+							 entry
+							 alias
+							 alias*)
+			     (LAP ,@instructions
+				  ,@(register->register-transfer alias
+								 alias*))))))))
+		;; There is no other register that we can use, so we
+		;; must save the value out into the home.
+		(allocator-values alias
+				  (register-map:delete-alias map entry alias)
+				  (save-into-home-instruction entry))))))))
    (error "MAKE-FREE-REGISTER: Unable to allocate register")))
+
+(define (find-free-register map type needed-registers)
+  (define (reallocate-alias entry)
+    (let ((alias (map-entry:find-alias entry type needed-registers)))
+      (and alias
+	   (allocator-values alias
+			     (register-map:delete-alias map entry alias)
+			     '()))))
+  ;; First see if there is an unused register of the given type.
+  (or (let ((register
+	     (list-search-positive (map-registers map)
+	       (lambda (alias)
+		 (and (register-type? alias type)
+		      (not (memv alias needed-registers)))))))
+	(and register (allocator-values register map '())))
+      ;; There are no free registers available, so must reallocate
+      ;; one.  First look for a temporary register that is no longer
+      ;; needed.
+      (map-entries:search map
+	(lambda (entry)
+	  (and (not (map-entry-home entry))
+	       (reallocate-alias entry))))
+      ;; Then look for a register which contains the same thing as
+      ;; another register.
+      (map-entries:search map
+	(lambda (entry)
+	  (and (not (null? (cdr (map-entry-aliases entry))))
+	       (reallocate-alias entry))))
+      ;; Look for a non-temporary which has been saved into its home.
+      (map-entries:search map
+	(lambda (entry)
+	  (and (map-entry-home entry)
+	       (map-entry-saved-into-home? entry)
+	       (reallocate-alias entry))))))
 
 ;;;; Allocator Operations
 
-(package (load-alias-register allocate-alias-register)
-
-(define-export (load-alias-register map type needed-registers home)
+(define (load-alias-register map type needed-registers home)
   ;; Finds or makes an alias register for HOME, and loads HOME's
   ;; contents into that register.
-  (let ((entry (map-entries:find-home map home)))
-    (or (use-existing-alias map entry type)
-	(bind-allocator-values (make-free-register map type needed-registers)
-	  (lambda (alias map instructions)
+  (or (let ((entry (map-entries:find-home map home)))
+	(and entry
+	     (let ((alias (list-search-positive (map-entry-aliases entry)
+			    (register-type-predicate type))))
+	       (and alias
+		    (allocator-values alias map '())))))
+      (bind-allocator-values (make-free-register map type needed-registers)
+	(lambda (alias map instructions)
+	  (let ((entry (map-entries:find-home map home)))
 	    (if entry
-		;; MAKE-FREE-REGISTER will not flush ENTRY because it
-		;; has no aliases of the appropriate TYPE.
 		(allocator-values
 		 alias
 		 (register-map:add-alias map entry alias)
@@ -307,31 +375,15 @@ REGISTER-RENUMBERs are equal.
 		 (LAP ,@instructions
 		      ,@(home->register-transfer home alias)))))))))
 
-(define-export (allocate-alias-register map type needed-registers home)
-  ;; Finds or makes an alias register for HOME.  Used when about to
-  ;; modify HOME's contents.
-  (let ((entry (map-entries:find-home map home)))
-    (or (use-existing-alias map entry type)
-	(bind-allocator-values (make-free-register map type needed-registers)
-	  (lambda (alias map instructions)
-	    (allocator-values alias
-			      (if entry
-				  ;; MAKE-FREE-REGISTER will not flush
-				  ;; ENTRY because it has no aliases
-				  ;; of the appropriate TYPE.
-				  (register-map:add-alias map entry alias)
-				  (register-map:add-home map home alias true))
-			      instructions))))))
+(define (allocate-alias-register map type needed-registers home)
+  ;; Makes an alias register for `home'.  Used when about to modify
+  ;; `home's contents.  It is assumed that no entry exists for `home'.
+  (bind-allocator-values (make-free-register map type needed-registers)
+    (lambda (alias map instructions)
+      (allocator-values alias
+			(register-map:add-home map home alias false)
+			instructions))))
 
-(define (use-existing-alias map entry type)
-  (and entry
-       (let ((alias (list-search-positive (map-entry-aliases entry)
-		      (register-type-predicate type))))
-	 (and alias
-	      (allocator-values alias map '())))))
-
-)
-
 (define (allocate-temporary-register map type needed-registers)
   (bind-allocator-values (make-free-register map type needed-registers)
     (lambda (alias map instructions)
@@ -355,8 +407,10 @@ REGISTER-RENUMBERs are equal.
   (let ((entry (map-entries:find-home map register)))
     (and entry
 	 (map-entry-aliases entry))))
-
+
 (define (machine-register-alias map type register)
+  "Returns another machine register, of the given TYPE, which holds
+the same value as REGISTER.  If no such register exists, returns #F."
   (let ((entry (map-entries:find-alias map register)))
     (and entry
 	 (list-search-positive (map-entry-aliases entry)
@@ -365,17 +419,32 @@ REGISTER-RENUMBERs are equal.
 		  (register-type? type register*)))))))
 
 (define (pseudo-register-alias map type register)
+  "Returns a machine register, of the given TYPE, which is an alias
+for REGISTER.  If no such register exists, returns #F."
   (let ((entry (map-entries:find-home map register)))
     (and entry
 	 (list-search-positive (map-entry-aliases entry)
 	   (register-type-predicate type)))))
+
+(define (machine-register-is-unique? map register)
+  "True if REGISTER has no other aliases."
+  (let ((entry (map-entries:find-alias map register)))
+    (or (not entry)
+	(null? (cdr (map-entry-aliases entry))))))
+
+(define (machine-register-holds-unique-value? map register)
+  "True if the contents of REGISTER is not saved anywhere else."
+  (let ((entry (map-entries:find-alias map register)))
+    (or (not entry)
+	(and (null? (cdr (map-entry-aliases entry)))
+	     (not (map-entry-saved-into-home? entry))))))
 
 (define (is-pseudo-register-alias? map maybe-alias register)
   (let ((entry (map-entries:find-home map register)))
     (and entry
 	 (list-search-positive (map-entry-aliases entry)
 	   (lambda (alias)
-	     (same-register? maybe-alias alias))))))
+	     (eqv? maybe-alias alias))))))
 
 (define (save-machine-register map register receiver)
   (let ((entry (map-entries:find-alias map register)))
@@ -448,7 +517,7 @@ REGISTER-RENUMBERs are equal.
 (define (save-into-home-instruction entry)
   (register->home-transfer (map-entry:any-alias entry)
 			   (map-entry-home entry)))
-
+
 (define (register-map-live-homes map)
   (let loop ((entries (map-entries map)))
     (if (null? entries)
