@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/object.h,v 9.23 1987/05/14 13:49:24 cph Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/object.h,v 9.24 1987/07/23 21:49:17 cph Exp $ */
 
 /* This file contains definitions pertaining to the C view of 
    Scheme pointers: widths of fields, extraction macros, pre-computed
@@ -186,6 +186,9 @@ typedef long relocation_type;	/* Used to relocate pointers on fasload */
 #define WEAK_PAIR_P(object) ((OBJECT_TYPE (object)) == TC_WEAK_CONS)
 #define VECTOR_P(object) ((OBJECT_TYPE (object)) == TC_VECTOR)
 
+#define NON_MARKED_VECTOR_P(object)					\
+  ((OBJECT_TYPE (object)) == TC_NON_MARKED_VECTOR)
+
 #define SYMBOL_P(object)						\
   (((OBJECT_TYPE (object)) == TC_INTERNED_SYMBOL) ||			\
    ((OBJECT_TYPE (object)) == TC_UNINTERNED_SYMBOL))
@@ -209,6 +212,8 @@ typedef long relocation_type;	/* Used to relocate pointers on fasload */
 #define FIXNUM_NEGATIVE_P(fixnum) (((fixnum) & FIXNUM_SIGN_BIT) != 0)
 #define MAKE_UNSIGNED_FIXNUM(N)	(FIXNUM_ZERO + (N))
 #define UNSIGNED_FIXNUM_VALUE(fixnum) (OBJECT_DATUM (fixnum))
+#define MAKE_SIGNED_FIXNUM Make_Signed_Fixnum
+#define long_to_object C_Integer_To_Scheme_Integer
 
 #define FIXNUM_VALUE(fixnum, target)					\
 do									\
@@ -217,6 +222,8 @@ do									\
   if (FIXNUM_NEGATIVE_P (target))					\
     (target) |= (-1 << ADDRESS_LENGTH);					\
 } while (0)
+
+#define BOOLEAN_TO_OBJECT(expression) ((expression) ? TRUTH : NIL)
 
 #define Make_Broken_Heart(N)	(BROKEN_HEART_ZERO + (N))
 #define Make_Unsigned_Fixnum(N)	(FIXNUM_ZERO + (N))
@@ -234,6 +241,9 @@ do									\
 #define Fixnum_Fits(x)						\
   ((((x) & SIGN_MASK) == 0) ||					\
    (((x) & SIGN_MASK) == SIGN_MASK))
+
+#define BYTES_TO_POINTERS(nbytes)					\
+  (((nbytes) + ((sizeof (Pointer)) - 1)) / (sizeof (Pointer)))
 
 /* Playing with the danger bit */
 
