@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/graphics.scm,v 1.5 1992/03/16 19:27:32 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/graphics.scm,v 1.6 1993/09/15 04:08:44 adams Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -32,6 +32,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Graphics Operations
 ;;; package: (runtime graphics)
 
@@ -170,8 +171,26 @@ MIT in each case. |#
 	   (error "Unknown graphics operation" name type))
        (cdr entry)))))
 
-(define (graphics-type-available? type)
-  ((graphics-device-type/operation/available? type)))
+
+(define graphics-types '())
+;; alist of (<symbol> . <graphics-device-type>)
+
+(define (graphics-type-available? type-name)
+  (memq type-name (enumerate-graphics-device-types)))
+
+(define (register-graphics-device-type name type)
+  (set! graphics-types (cons (cons name type) graphics-types)))
+
+(define (enumerate-graphics-device-types)
+  (define (search items)
+    (if (pair? items)
+	(let* ((name.type  (car items)))
+	  (if ((graphics-device-type/operation/available? (cdr name.type)))
+	      (cons (car name.type) (search (cdr items)))
+	      (search (cdr items))))
+	'()))
+  (search graphics-types))
+
 
 (define-structure (graphics-device
 		   (conc-name graphics-device/)
@@ -183,9 +202,25 @@ MIT in each case. |#
   (buffer? false)
   (properties (make-1d-table) read-only true))
 
-(define (make-graphics-device type . arguments)
-  (let ((descriptor
-	 (apply (graphics-device-type/operation/open type) arguments)))
+
+(define (make-graphics-device type-name . arguments)
+
+  (define (graphics-device-type-specification->type spec)
+    (if (graphics-device-type? spec)
+	spec
+	(let ((types (enumerate-graphics-device-types))
+	      (use   (lambda (name) (cdr (assq name graphics-types)))))
+	  (if (null? types)
+	      (error "No graphics device types supported" 'make-graphics-device)
+	      (cond ((eq? spec #f)     (use (car types)))
+		    ((memq spec types) (use spec))
+		    (else
+		     (error "Graphics type not supported:" spec
+			    'make-graphics-device)))))))
+	
+  (let* ((type  (graphics-device-type-specification->type type-name))
+	 (descriptor
+	  (apply (graphics-device-type/operation/open type) arguments)))
     (and descriptor
 	 (%make-graphics-device type descriptor))))
 
@@ -325,3 +360,91 @@ MIT in each case. |#
 (define (graphics-drag-cursor device x y)
   ((graphics-device/operation/drag-cursor device) device x y)
   (maybe-flush device))
+
+;;
+;;  Images: rectangular images that can be copied from and into the graphics
+;;  device
+;;
+
+(define-structure
+  (image-type
+   (conc-name image-type/)
+   (constructor %make-image-type))
+  (operation/create  false read-only true)
+  (operation/destroy false read-only true)
+  (operation/width   false read-only true)
+  (operation/height  false read-only true)
+  (operation/draw    false read-only true)
+  (operation/draw-subimage    false read-only true)
+  (operation/fill-from-byte-vector  false read-only true)
+)
+
+
+(define (make-image-type operations)
+  (let ((operations
+	 (map (lambda (entry)
+		(if (not (and (pair? entry)
+			      (symbol? (car entry))
+			      (pair? (cdr entry))
+			      (procedure? (cadr entry))
+			      (null? (cddr entry))))
+		    (error "Malformed operation alist entry" entry))
+		(cons (car entry) (cadr entry)))
+	      operations)))
+    (let ((operation
+	   (lambda (name)
+	     (let ((entry (assq name operations)))
+	       (if (not entry)
+		   (error "Missing operation" name))
+	       (set! operations (delq! entry operations))
+	       (cdr entry)))))
+      (let ((create   (operation 'create))
+	    (destroy  (operation 'destroy))
+	    (width    (operation 'width))
+	    (height   (operation 'height))
+	    (draw     (operation 'draw))
+	    (draw-subimage (operation 'draw-subimage))
+	    (fill-from-byte-vector (operation 'fill-from-byte-vector)))
+	(if operations
+	    (error "Extra image type operations: " operations)
+	    (%make-image-type create destroy 
+			      width height 
+			      draw draw-subimage fill-from-byte-vector))))))
+
+
+(define-structure
+  (image
+   (conc-name image/)
+   (constructor %make-image))
+  type
+  descriptor)
+
+(define the-destroyed-image-type #f)
+
+(define (image/create type device width height)
+  ;; operation/create returns a descriptor
+  (%make-image
+   type
+   ((image-type/operation/create type) device width height)))
+
+(define (image/destroy image)
+  ((image-type/operation/destroy (image/type image)) image)
+  (set-image/type! image the-destroyed-image-type)
+  (set-image/descriptor! image #f))
+
+(define (image/width image)
+  ((image-type/operation/width (image/type image)) image))
+
+(define (image/height image)
+  ((image-type/operation/height (image/type image)) image))
+
+(define (image/draw device x y image)
+  ((image-type/operation/draw (image/type image)) device x y image))
+
+(define (image/draw-subimage device x y image im-x im-y width height)
+  ((image-type/operation/draw-subimage (image/type image))
+   device x y image im-x im-y width height))
+
+(define (image/fill-from-byte-vector image byte-vector)
+  ((image-type/operation/fill-from-byte-vector (image/type image))
+   image byte-vector))
