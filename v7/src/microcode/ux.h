@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.8 1990/08/10 02:13:28 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.9 1990/08/16 22:33:54 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -747,9 +747,9 @@ extern int EXFUN (UX_kill, (pid_t pid, int sig));
 #ifdef _POSIX
 
 extern cc_t EXFUN (UX_PC_VDISABLE, (int fildes));
+extern clock_t EXFUN (UX_SC_CLK_TCK, (void));
 #define UX_SC_OPEN_MAX() ((size_t) (sysconf (_SC_OPEN_MAX)))
 #define UX_SC_CHILD_MAX() ((size_t) (sysconf (_SC_CHILD_MAX)))
-#define UX_SC_CLK_TCK() ((clock_t) (sysconf (_SC_CLK_TCK)))
 
 #ifdef _POSIX_JOB_CONTROL
 #define UX_SC_JOB_CONTROL() 1

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.c,v 1.1 1990/06/20 19:36:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.c,v 1.2 1990/08/16 22:33:42 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -398,6 +398,16 @@ DEFUN (UX_PC_VDISABLE, (fildes), int fildes)
      '\377'
 #endif
      : result);
+}
+
+static clock_t memoized_clk_tck = 0;
+
+clock_t
+DEFUN_VOID (UX_SC_CLK_TCK)
+{
+  if (memoized_clk_tck == 0)
+    memoized_clk_tck = ((clock_t) (sysconf (_SC_CLK_TCK)));
+  return (memoized_clk_tck);
 }
 
 #endif /* _POSIX */
