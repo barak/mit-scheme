@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.31 2003/02/14 18:28:33 cph Exp $
+$Id: record.scm,v 1.32 2003/03/07 05:48:28 cph Exp $
 
-Copyright (c) 1989-1999, 2002 Massachusetts Institute of Technology
+Copyright 1989,1990,1991,1993,1994,1996 Massachusetts Institute of Technology
+Copyright 1997,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,7 +31,7 @@ USA.
 ;;; conforms to R4RS proposal
 
 (declare (usual-integrations))
-
+
 (define-primitives
   (%record? 1)
   (%record -1)
@@ -39,27 +40,24 @@ USA.
   (%record-set! 3)
   (primitive-object-ref 2)
   (primitive-object-set! 3)
-  (primitive-object-set-type 2))
+  (primitive-object-set-type 2)
+  (vector-cons 2))
 
-(define (%make-record length #!optional object)
-  (if (not (exact-integer? length))
-      (error:wrong-type-argument length "exact integer" '%MAKE-RECORD))
-  (if (not (> length 0))
-      (error:bad-range-argument length '%MAKE-RECORD))
-  (object-new-type
-   (ucode-type record)
-   ((ucode-primitive vector-cons) length
-				  (if (default-object? object) #f object))))
+(define-integrable (%make-record length object)
+  (object-new-type (ucode-type record) (vector-cons length object)))
 
-(define (%record-copy record)
+(define-integrable (%record-tag record)
+  (%record-ref record 0))
+
+(define-integrable (%tagged-record? tag object)
+  (and (%record? object)
+       (eq? (%record-tag object) tag)))
+
+(define (%copy-record record)
   (let ((length (%record-length record)))
-    (let ((result (object-new-type (ucode-type record) (make-vector length))))
-      ;; Clobber RESULT's length field with that of RECORD, since
-      ;; there is important information in the type of that field that
-      ;; is not preserved by %RECORD-LENGTH.
-      (primitive-object-set! result 0 (primitive-object-ref record 0))
-      (do ((index 0 (+ index 1)))
-	  ((= index length))
+    (let ((result (%make-record length #f)))
+      (do ((index 0 (fix:+ index 1)))
+	  ((fix:= index length))
 	(%record-set! result index (%record-ref record index)))
       result)))
 
@@ -68,16 +66,21 @@ USA.
 (define record-description)
 
 (define (initialize-record-type-type!)
-  (let ((type
-	 (%record #f
-		  "record-type"
-		  '(RECORD-TYPE-NAME
-		    RECORD-TYPE-FIELD-NAMES
-		    RECORD-TYPE-DISPATCH-TAG)
-		  #f)))
+  (let* ((type
+	  (%record #f
+		   "record-type"
+		   '#(RECORD-TYPE-NAME
+		      RECORD-TYPE-FIELD-NAMES
+		      RECORD-TYPE-DISPATCH-TAG
+		      RECORD-TYPE-DEFAULT-RECORD)
+		   #f
+		   #f)))
     (set! record-type-type-tag (make-dispatch-tag type))
     (%record-set! type 0 record-type-type-tag)
-    (%record-set! type 3 record-type-type-tag))
+    (%record-set! type 3 record-type-type-tag)
+    (let ((default-record (%copy-record type)))
+      (%record-set! type 4 default-record)
+      (%record-set! default-record 4 default-record)))
   (initialize-structure-type-type!))
 
 (define (initialize-record-procedures!)
@@ -89,13 +92,13 @@ USA.
 	(let ((tag (cadr tags)))
 	  (cond ((record-type? (dispatch-tag-contents tag))
 		 (standard-unparser-method
-		  (record-type-name (dispatch-tag-contents tag))
+		  (%record-type-name (dispatch-tag-contents tag))
 		  #f))
 		((eq? tag record-type-type-tag)
 		 (standard-unparser-method 'TYPE
 		   (lambda (type port)
 		     (write-char #\space port)
-		     (display (record-type-name type) port))))
+		     (display (%record-type-name type) port))))
 		((eq? tag (built-in-dispatch-tag 'DISPATCH-TAG))
 		 (standard-unparser-method 'DISPATCH-TAG
 		   (lambda (tag port)
@@ -114,7 +117,7 @@ USA.
       generic
       (if (record-type? (dispatch-tag-contents (car tags)))
 	  (lambda (record)
-	    (let ((type (record-type-descriptor record)))
+	    (let ((type (%record-type-descriptor record)))
 	      (map (lambda (field-name)
 		     `(,field-name
 		       ,((record-accessor type field-name) record)))
@@ -126,136 +129,250 @@ USA.
 		  (loop (fix:- i 1)
 			(cons (list i (%record-ref record i)) d)))))))))
 
-(define (make-record-type type-name field-names #!optional print-method)
-  (guarantee-list-of-unique-symbols field-names 'MAKE-RECORD-TYPE)
-  (let ((record-type
-	 (%record record-type-type-tag
-		  (->string type-name)
-		  (list-copy field-names)
-		  #f)))
-    (%record-set! record-type 3 (make-dispatch-tag record-type))
-    (if (not (default-object? print-method))
-	(set-record-type-unparser-method! record-type print-method))
-    record-type))
+(define (make-record-type type-name field-names #!optional default-values)
+  (let ((caller 'MAKE-RECORD-TYPE))
+    (guarantee-list-of-unique-symbols field-names caller)
+    (let* ((names (list->vector field-names))
+	   (n (vector-length names))
+	   (default-record (%make-record (fix:+ 1 n) #f))
+	   (record-type
+	    (%record record-type-type-tag
+		     (->string type-name)
+		     names
+		     #f
+		     default-record))
+	   (tag (make-dispatch-tag record-type)))
+      (%record-set! record-type 3 tag)
+      (%record-set! default-record 0 tag)
+      (if (not (default-object? default-values))
+	  (%set-record-type-default-values! record-type default-values caller))
+      record-type)))
 
 (define (record-type? object)
-  (and (%record? object)
-       (eq? (%record-ref object 0) record-type-type-tag)))
+  (%tagged-record? record-type-type-tag object))
 
+(define-integrable (%record-type-descriptor record)
+  (dispatch-tag-contents (%record-tag record)))
+
+(define-integrable (%record-type-name record-type)
+  (%record-ref record-type 1))
+
+(define-integrable (%record-type-field-names record-type)
+  (%record-ref record-type 2))
+
+(define-integrable (%record-type-dispatch-tag record-type)
+  (%record-ref record-type 3))
+
+(define-integrable (%record-type-default-record record-type)
+  (%record-ref record-type 4))
+
+(define-integrable (%record-type-n-fields record-type)
+  (vector-length (%record-type-field-names record-type)))
+
+(define-integrable (%record-type-length record-type)
+  (%record-length (%record-type-default-record record-type)))
+
 (define (record-type-name record-type)
   (guarantee-record-type record-type 'RECORD-TYPE-NAME)
-  (%record-ref record-type 1))
+  (%record-type-name record-type))
 
 (define (record-type-field-names record-type)
   (guarantee-record-type record-type 'RECORD-TYPE-FIELD-NAMES)
-  (%record-ref record-type 2))
+  ;; Can't use VECTOR->LIST here because it isn't available at cold load.
+  (let ((v (%record-type-field-names record-type)))
+    (subvector->list v 0 (vector-length v))))
+
+(define (record-type-default-values record-type)
+  (guarantee-record-type record-type 'RECORD-TYPE-DEFAULT-VALUES)
+  (let* ((default-record (%record-type-default-record record-type))
+	 (n (%record-length default-record))
+	 (v (make-vector (fix:- n 1))))
+    (do ((i 1 (fix:+ i 1)))
+	((not (fix:< i n)))
+      (vector-set! v (fix:- i 1) (%record-ref default-record i)))
+    v))
+
+(define (set-record-type-default-values! record-type default-values)
+  (let ((caller 'SET-RECORD-TYPE-DEFAULT-VALUES!))
+    (guarantee-record-type record-type caller)
+    (%set-record-type-default-values! record-type default-values caller)))
+
+(define (%set-record-type-default-values! record-type default-values caller)
+  (if (not (fix:= (guarantee-list->length default-values caller)
+		  (%record-type-n-fields record-type)))
+      (error:bad-range-argument default-values caller))
+  (let ((default-record (%record-type-default-record record-type)))
+    (do ((values default-values (cdr values))
+	 (i 1 (fix:+ i 1)))
+	((not (pair? values)))
+      (%record-set! default-record i (car values)))))
 
 (define (record-type-dispatch-tag record-type)
   (guarantee-record-type record-type 'RECORD-TYPE-DISPATCH-TAG)
-  (%record-ref record-type 3))
+  (%record-type-dispatch-tag record-type))
 
-(define (set-record-type-unparser-method! record-type method)
-  (set! deferred-unparser-methods
-	(cons (cons record-type method) deferred-unparser-methods))
-  unspecific)
+(define set-record-type-unparser-method!
+  (named-lambda (set-record-type-unparser-method!/booting record-type method)
+    (set! deferred-unparser-methods
+	  (cons (cons record-type method) deferred-unparser-methods))
+    unspecific))
 
 (define deferred-unparser-methods '())
 
-(define (set-record-type-unparser-method!/after-boot record-type method)
-  (if (not (or (not method) (procedure? method)))
-      (error:wrong-type-argument method "unparser method"
-				 'SET-RECORD-TYPE-UNPARSER-METHOD!))
-  (let ((tag (record-type-dispatch-tag record-type)))
-    (remove-generic-procedure-generators unparse-record
-					 (list (make-dispatch-tag #f) tag))
-    (add-generic-procedure-generator unparse-record
-      (lambda (generic tags)
-	generic
-	(and (eq? (cadr tags) tag) method)))))
+(define set-record-type-unparser-method!/after-boot
+  (named-lambda (set-record-type-unparser-method! record-type method)
+    (if (not (or (not method) (procedure? method)))
+	(error:wrong-type-argument method "unparser method"
+				   'SET-RECORD-TYPE-UNPARSER-METHOD!))
+    (let ((tag (record-type-dispatch-tag record-type)))
+      (remove-generic-procedure-generators unparse-record
+					   (list (make-dispatch-tag #f) tag))
+      (add-generic-procedure-generator unparse-record
+	(lambda (generic tags)
+	  generic
+	  (and (eq? (cadr tags) tag) method))))))
 
 (define (record-constructor record-type #!optional field-names)
   (guarantee-record-type record-type 'RECORD-CONSTRUCTOR)
-  (let ((all-field-names (record-type-field-names record-type))
-	(tag (record-type-dispatch-tag record-type)))
-    (let ((field-names
-	   (if (default-object? field-names) all-field-names field-names))
-	  (record-length (+ 1 (length all-field-names))))
-      (let ((number-of-inits (length field-names))
-	    (indexes
-	     (map (lambda (field-name)
-		    (record-type-field-index record-type
-					     field-name
-					     'RECORD-CONSTRUCTOR))
-		  field-names)))
-	(lambda field-values
-	  (if (not (= (length field-values) number-of-inits))
-	      (error "wrong number of arguments to record constructor"
-		     field-values record-type field-names))
-	  (let ((record
-		 (object-new-type (ucode-type record)
-				  (make-vector record-length))))
-	    (%record-set! record 0 tag)
-	    (do ((indexes indexes (cdr indexes))
-		 (field-values field-values (cdr field-values)))
-		((null? indexes))
-	      (%record-set! record (car indexes) (car field-values)))
-	    record))))))
+  (if (or (default-object? field-names)
+	  (equal? field-names (record-type-field-names record-type)))
+      (%record-constructor-default-names record-type)
+      (begin
+	(guarantee-list field-names 'RECORD-CONSTRUCTOR)
+	(%record-constructor-given-names record-type field-names))))
 
+(define %record-constructor-default-names
+  (let-syntax
+      ((expand-cases
+	(sc-macro-transformer
+	 (lambda (form environment)
+	   (let ((tag (close-syntax (list-ref form 1) environment))
+		 (n-fields (close-syntax (list-ref form 2) environment))
+		 (limit (close-syntax (list-ref form 3) environment))
+		 (default (close-syntax (list-ref form 4) environment))
+		 (make-name
+		  (lambda (i)
+		    (intern (string-append "v" (number->string i))))))
+	     (let loop ((i 0) (names '()))
+	       (if (fix:< i limit)
+		   `(IF (FIX:= ,n-fields ,i)
+			(LAMBDA (,@names) (%RECORD ,tag ,@names))
+			,(loop (fix:+ i 1)
+			       (append names (list (make-name i)))))
+		   default)))))))
+    (lambda (record-type)
+      (let ((tag (%record-type-dispatch-tag record-type))
+	    (n-fields (%record-type-n-fields record-type)))
+	(expand-cases tag n-fields 16
+	  (let ((length (fix:+ 1 n-fields)))
+	    (letrec
+		((constructor
+		  (lambda field-values
+		    (let ((record (%make-record length #f))
+			  (lose
+			   (lambda ()
+			     (error:wrong-number-of-arguments constructor
+							      n-fields
+							      field-values))))
+		      (%record-set! record 0 tag)
+		      (let loop ((i 1) (values field-values))
+			(if (fix:< i length)
+			    (begin
+			      (if (not (pair? values)) (lose))
+			      (%record-set! record i (car values))
+			      (loop (cdr values) (fix:+ i 1)))
+			    (if (not (null? values)) (lose))))
+		      record))))
+	      constructor)))))))
+
+(define (%record-constructor-given-names record-type field-names)
+  (let ((indexes
+	 (map (lambda (field-name)
+		(record-type-field-index record-type field-name #t))
+	      field-names))
+	(template (%record-type-default-record record-type)))
+    (letrec
+	((constructor
+	  (lambda field-values
+	    (let ((lose
+		   (lambda ()
+		     (error:wrong-number-of-arguments constructor
+						      (length indexes)
+						      field-values))))
+	      (let ((record (%copy-record template)))
+		(let loop ((indexes indexes) (values field-values))
+		  (if (pair? indexes)
+		      (begin
+			(if (not (pair? values)) (lose))
+			(%record-set! record (car indexes) (car values))
+			(loop (cdr indexes) (cdr values)))
+		      (if (not (null? values)) (lose))))
+		record)))))
+      constructor)))
+
 (define (record? object)
   (and (%record? object)
-       (dispatch-tag? (%record-ref object 0))
-       (record-type? (dispatch-tag-contents (%record-ref object 0)))))
+       (dispatch-tag? (%record-tag object))
+       (record-type? (dispatch-tag-contents (%record-tag object)))))
 
 (define (record-type-descriptor record)
   (guarantee-record record 'RECORD-TYPE-DESCRIPTOR)
-  (dispatch-tag-contents (%record-ref record 0)))
+  (%record-type-descriptor record))
 
-(define (record-copy record)
-  (guarantee-record record 'RECORD-COPY)
-  (%record-copy record))
+(define (copy-record record)
+  (guarantee-record record 'COPY-RECORD)
+  (%copy-record record))
 
 (define (record-predicate record-type)
   (guarantee-record-type record-type 'RECORD-PREDICATE)
   (let ((tag (record-type-dispatch-tag record-type)))
     (lambda (object)
-      (and (%record? object)
-	   (eq? (%record-ref object 0) tag)))))
+      (%tagged-record? tag object))))
 
 (define (record-accessor record-type field-name)
   (guarantee-record-type record-type 'RECORD-ACCESSOR)
   (let ((tag (record-type-dispatch-tag record-type))
-	(type-name (record-type-name record-type))
-	(procedure-name `(RECORD-ACCESSOR ,record-type ',field-name))
-	(index
-	 (record-type-field-index record-type field-name 'RECORD-ACCESSOR)))
-    (lambda (record)
-      (guarantee-record-of-type record tag type-name procedure-name)
-      (%record-ref record index))))
+	(index (record-type-field-index record-type field-name #t)))
+    (letrec ((accessor
+	      (lambda (record)
+		(if (not (%tagged-record? tag record))
+		    (error:not-tagged-record record record-type accessor))
+		(%record-ref record index))))
+      accessor)))
 
 (define (record-modifier record-type field-name)
   (guarantee-record-type record-type 'RECORD-MODIFIER)
   (let ((tag (record-type-dispatch-tag record-type))
-	(type-name (record-type-name record-type))
-	(procedure-name `(RECORD-ACCESSOR ,record-type ',field-name))
-	(index
-	 (record-type-field-index record-type field-name 'RECORD-MODIFIER)))
-    (lambda (record field-value)
-      (guarantee-record-of-type record tag type-name procedure-name)
-      (%record-set! record index field-value))))
+	(index (record-type-field-index record-type field-name #t)))
+    (letrec ((modifier
+	      (lambda (record field-value)
+		(if (not (%tagged-record? tag record))
+		    (error:not-tagged-record record record-type modifier))
+		(%record-set! record index field-value))))
+      modifier)))
 
-(define record-updater
-  record-modifier)
+(define (error:not-tagged-record record record-type modifier)
+  (error:wrong-type-argument record
+			     (string-append "record of type "
+					    (%record-type-name record-type))
+			     modifier))
 
-(define (record-type-field-index record-type field-name error?)
-  (let loop ((field-names (record-type-field-names record-type)) (index 1))
-    (cond ((null? field-names)
-	   (and error?
-		(record-type-field-index
-		 record-type
-		 (error:no-such-slot record-type field-name)
-		 error?)))
-	  ((eq? field-name (car field-names)) index)
-	  (else (loop (cdr field-names) (+ index 1))))))
+(define record-copy copy-record)
+(define record-updater record-modifier)
+
+(define (record-type-field-index record-type name error?)
+  ;; Can't use VECTOR->LIST here because it isn't available at cold load.
+  (let* ((names (%record-type-field-names record-type))
+	 (n (vector-length names)))
+    (let loop ((i 0))
+      (if (fix:< i n)
+	  (if (eq? (vector-ref names i) name)
+	      (fix:+ i 1)
+	      (loop (fix:+ i 1)))
+	  (and error?
+	       (record-type-field-index record-type
+					(error:no-such-slot record-type name)
+					error?))))))
 
 (define (->string object)
   (if (string? object)
@@ -267,28 +384,21 @@ USA.
       (error:wrong-type-argument object "list of unique symbols" procedure)))
 
 (define (list-of-unique-symbols? object)
-  (and (list? object)
+  (and (list-of-type? object symbol?)
        (let loop ((elements object))
-	 (or (null? elements)
-	     (and (symbol? (car elements))
-		  (not (memq (car elements) (cdr elements)))
-		  (loop (cdr elements)))))))
+	 (if (pair? elements)
+	     (if (memq (car elements) (cdr elements))
+		 #f
+		 (loop (cdr elements)))
+	     #t))))
 
 (define-integrable (guarantee-record-type record-type procedure)
   (if (not (record-type? record-type))
       (error:wrong-type-argument record-type "record type" procedure)))
 
-(define-integrable (guarantee-record-of-type record tag type-name
-					     procedure-name)
-  (if (not (and (%record? record)
-		(eq? (%record-ref record 0) tag)))
-      (error:wrong-type-argument record
-				 (string-append "record of type " type-name)
-				 procedure-name)))
-
-(define-integrable (guarantee-record record procedure-name)
+(define-integrable (guarantee-record record caller)
   (if (not (record? record))
-      (error:wrong-type-argument record "record" procedure-name)))
+      (error:wrong-type-argument record "record" caller)))
 
 ;;;; Runtime support for DEFINE-STRUCTURE
 
@@ -331,27 +441,23 @@ USA.
 	 (structure-type/unparser-method structure-type))))
 
 (define (named-structure? object)
-  (cond ((record? object)
-	 true)
+  (cond ((record? object) #t)
 	((vector? object)
-	 (and (not (zero? (vector-length object)))
+	 (and (not (fix:= (vector-length object) 0))
 	      (tag->structure-type (vector-ref object 0) 'VECTOR)))
-	((pair? object)
-	 (tag->structure-type (car object) 'LIST))
-	(else
-	 false)))
+	((pair? object) (tag->structure-type (car object) 'LIST))
+	(else #f)))
 
 (define (named-structure/description structure)
   (cond ((record? structure)
 	 (record-description structure))
 	((named-structure? structure)
-	 =>
-	 (lambda (type)
-	   (let ((accessor (if (pair? structure) list-ref vector-ref)))
-	     (map (lambda (field-name index)
-		    `(,field-name ,(accessor structure index)))
-		  (structure-type/field-names type)
-		  (structure-type/field-indexes type)))))
+	 => (lambda (type)
+	      (let ((accessor (if (pair? structure) list-ref vector-ref)))
+		(map (lambda (field-name index)
+		       `(,field-name ,(accessor structure index)))
+		     (structure-type/field-names type)
+		     (structure-type/field-indexes type)))))
 	(else
 	 (error:wrong-type-argument structure "named structure"
 				    'NAMED-STRUCTURE/DESCRIPTION))))
@@ -368,52 +474,48 @@ USA.
 ;;;; Support for safe accessors
 
 (define (define-structure/vector-accessor tag field-name)
-  (call-with-values
-      (lambda () (accessor-parameters tag field-name 'VECTOR 'ACCESSOR))
-    (lambda (tag index type-name accessor-name)
-      (if tag
-	  (lambda (structure)
-	    (check-vector structure tag index type-name accessor-name)
-	    (vector-ref structure index))
-	  (lambda (structure)
-	    (check-vector-untagged structure index type-name accessor-name)
-	    (vector-ref structure index))))))
+  (receive (tag index type-name accessor-name)
+      (accessor-parameters tag field-name 'VECTOR 'ACCESSOR)
+    (if tag
+	(lambda (structure)
+	  (check-vector structure tag index type-name accessor-name)
+	  (vector-ref structure index))
+	(lambda (structure)
+	  (check-vector-untagged structure index type-name accessor-name)
+	  (vector-ref structure index)))))
 
 (define (define-structure/vector-modifier tag field-name)
-  (call-with-values
-      (lambda () (accessor-parameters tag field-name 'VECTOR 'MODIFIER))
-    (lambda (tag index type-name accessor-name)
-      (if tag
-	  (lambda (structure value)
-	    (check-vector structure tag index type-name accessor-name)
-	    (vector-set! structure index value))
-	  (lambda (structure value)
-	    (check-vector-untagged structure index type-name accessor-name)
-	    (vector-set! structure index value))))))
+  (receive (tag index type-name accessor-name)
+      (accessor-parameters tag field-name 'VECTOR 'MODIFIER)
+    (if tag
+	(lambda (structure value)
+	  (check-vector structure tag index type-name accessor-name)
+	  (vector-set! structure index value))
+	(lambda (structure value)
+	  (check-vector-untagged structure index type-name accessor-name)
+	  (vector-set! structure index value)))))
 
 (define (define-structure/list-accessor tag field-name)
-  (call-with-values
-      (lambda () (accessor-parameters tag field-name 'LIST 'ACCESSOR))
-    (lambda (tag index type-name accessor-name)
-      (if tag
-	  (lambda (structure)
-	    (check-list structure tag index type-name accessor-name)
-	    (list-ref structure index))
-	  (lambda (structure)
-	    (check-list-untagged structure index type-name accessor-name)
-	    (list-ref structure index))))))
+  (receive (tag index type-name accessor-name)
+      (accessor-parameters tag field-name 'LIST 'ACCESSOR)
+    (if tag
+	(lambda (structure)
+	  (check-list structure tag index type-name accessor-name)
+	  (list-ref structure index))
+	(lambda (structure)
+	  (check-list-untagged structure index type-name accessor-name)
+	  (list-ref structure index)))))
 
 (define (define-structure/list-modifier tag field-name)
-  (call-with-values
-      (lambda () (accessor-parameters tag field-name 'LIST 'MODIFIER))
-    (lambda (tag index type-name accessor-name)
-      (if tag
-	  (lambda (structure value)
-	    (check-list structure tag index type-name accessor-name)
-	    (set-car! (list-tail structure index) value))
-	  (lambda (structure value)
-	    (check-list-untagged structure index type-name accessor-name)
-	    (set-car! (list-tail structure index) value))))))
+  (receive (tag index type-name accessor-name)
+      (accessor-parameters tag field-name 'LIST 'MODIFIER)
+    (if tag
+	(lambda (structure value)
+	  (check-list structure tag index type-name accessor-name)
+	  (set-car! (list-tail structure index) value))
+	(lambda (structure value)
+	  (check-list-untagged structure index type-name accessor-name)
+	  (set-car! (list-tail structure index) value)))))
 
 (define-integrable (check-vector structure tag index type accessor-name)
   (if (not (and (vector? structure)
@@ -467,19 +569,19 @@ USA.
 	(error:bad-range-argument name 'STRUCTURE-TYPE/FIELD-INDEX))))
 
 (define (define-structure/keyword-parser argument-list default-alist)
-  (if (null? argument-list)
-      (map cdr default-alist)
+  (if (pair? argument-list)
       (let ((alist
 	     (map (lambda (entry) (cons (car entry) (cdr entry)))
 		  default-alist)))
 	(let loop ((arguments argument-list))
-	  (if (not (null? arguments))
+	  (if (pair? arguments)
 	      (begin
-		(if (null? (cdr arguments))
+		(if (not (pair? (cdr arguments)))
 		    (error "Keyword list does not have even length:"
 			   argument-list))
 		(set-cdr! (or (assq (car arguments) alist)
 			      (error "Unknown keyword:" (car arguments)))
 			  (cadr arguments))
 		(loop (cddr arguments)))))
-	(map cdr alist))))
+	(map cdr alist))
+      (map cdr default-alist)))

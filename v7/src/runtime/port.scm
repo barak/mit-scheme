@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.26 2003/02/14 18:28:33 cph Exp $
+$Id: port.scm,v 1.27 2003/03/07 05:47:41 cph Exp $
 
-Copyright (c) 1991-2002 Massachusetts Institute of Technology
+Copyright 1991,1992,1993,1994,1997,1999 Massachusetts Institute of Technology
+Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -235,7 +236,7 @@ USA.
      port)))
 
 (define (port/copy port state)
-  (let ((port (record-copy port)))
+  (let ((port (copy-record port)))
     (set-port/state! port state)
     (set-port/thread-mutex! port (make-thread-mutex))
     port))

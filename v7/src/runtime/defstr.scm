@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: defstr.scm,v 14.42 2003/02/14 18:28:32 cph Exp $
+$Id: defstr.scm,v 14.43 2003/03/07 05:47:31 cph Exp $
 
-Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
+Copyright 1993,1994,1995,1996,1997,2000 Massachusetts Institute of Technology
+Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -798,24 +800,6 @@ differences:
 					  ,@list-cons))
 	    ((LIST)
 	     `(,(absolute 'CONS* context) ,@list-cons))))))))
-
-(define (define-structure/keyword-parser argument-list default-alist)
-  (if (null? argument-list)
-      (map cdr default-alist)
-      (let ((alist
-	     (map (lambda (entry) (cons (car entry) (cdr entry)))
-		  default-alist)))
-	(let loop ((arguments argument-list))
-	  (if (pair? arguments)
-	      (begin
-		(if (not (pair? (cdr arguments)))
-		    (error "Keyword list does not have even length:"
-			   argument-list))
-		(set-cdr! (or (assq (car arguments) alist)
-			      (error "Unknown keyword:" (car arguments)))
-			  (cadr arguments))
-		(loop (cddr arguments)))))
-	(map cdr alist))))
 
 (define (constructor-definition/boa structure name lambda-list)
   (make-constructor structure name lambda-list
@@ -870,7 +854,7 @@ differences:
     (if copier-name
 	`((DEFINE ,copier-name
 	    ,(absolute (case (structure/type structure)
-			 ((RECORD) 'RECORD-COPY)
+			 ((RECORD) 'COPY-RECORD)
 			 ((VECTOR) 'VECTOR-COPY)
 			 ((LIST) 'LIST-COPY))
 		       (structure/context structure))))
@@ -919,12 +903,13 @@ differences:
 	    (context (structure/context structure)))
 	(if (eq? type 'RECORD)
 	    `((DEFINE ,type-name
-		(,(absolute 'MAKE-RECORD-TYPE context)
-		 ',name ',field-names
-		 ,@(let ((expression (structure/print-procedure structure)))
-		     (if (not expression)
-			 `()
-			 `(,(close expression context)))))))
+		(,(absolute 'MAKE-RECORD-TYPE context) ',name ',field-names))
+	      ,@(let ((expression (structure/print-procedure structure)))
+		  (if expression
+		      `((,(absolute 'SET-RECORD-TYPE-UNPARSER-METHOD! context)
+			 ,type-name
+			 ,(close expression context)))
+		      `())))
 	    (let ((type-expression
 		   `(,(absolute 'MAKE-DEFINE-STRUCTURE-TYPE context)
 		     ',type
@@ -934,7 +919,7 @@ differences:
 		     ,(close (structure/print-procedure structure) context))))
 	      (if type-name
 		  `((DEFINE ,type-name ,type-expression))
-		  `((NAMED-STRUCTURE/SET-TAG-DESCRIPTION!
+		  `((,(absolute 'NAMED-STRUCTURE/SET-TAG-DESCRIPTION! context)
 		     ,(close (structure/tag-expression structure) context)
 		     ,type-expression))))))
       '()))

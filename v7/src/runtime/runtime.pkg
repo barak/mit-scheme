@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.430 2003/02/28 04:40:19 cph Exp $
+$Id: runtime.pkg,v 14.431 2003/03/07 05:48:36 cph Exp $
 
 Copyright (c) 1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright (c) 1993,1994,1995,1996,1997 Massachusetts Institute of Technology
@@ -2039,6 +2039,11 @@ USA.
 	  for-each
 	  fourth
 	  general-car-cdr
+	  guarantee-alist
+	  guarantee-list
+	  guarantee-list->length
+	  guarantee-list-of-type
+	  guarantee-list-of-type->length
 	  guarantee-pair
 	  keep-matching-items
 	  last-pair
@@ -2050,6 +2055,7 @@ USA.
 	  list-deletor!
 	  list-head
 	  list-of-type?
+	  list-of-type?->length
 	  list-ref
 	  list-search-negative
 	  list-search-positive
@@ -2057,9 +2063,10 @@ USA.
 	  list-transform-negative
 	  list-transform-positive
 	  list?
-	  make-list
+	  list?->length
 	  make-circular-list
 	  make-initialized-list
+	  make-list
 	  map
 	  map*
 	  mapcan
@@ -2644,18 +2651,24 @@ USA.
   (files "record")
   (parent (runtime))
   (export ()
+	  %copy-record
 	  %make-record
 	  %record
-	  %record-copy
 	  %record-length
 	  %record-ref
 	  %record-set!
+	  %record-tag
 	  %record?
+	  copy-record
 	  define-structure/keyword-parser
 	  define-structure/list-accessor
 	  define-structure/list-modifier
 	  define-structure/vector-accessor
 	  define-structure/vector-modifier
+	  guarantee-list-of-unique-symbols
+	  guarantee-record
+	  guarantee-record-type
+	  list-of-unique-symbols?
 	  make-define-structure-type
 	  make-record-type
 	  named-structure/description
@@ -2666,6 +2679,7 @@ USA.
 	  record-description
 	  record-modifier
 	  record-predicate
+	  record-type-default-values
 	  record-type-descriptor
 	  record-type-dispatch-tag
 	  record-type-field-names
@@ -2673,6 +2687,7 @@ USA.
 	  record-type?
 	  record-updater
 	  record?
+	  set-record-type-default-values!
 	  set-record-type-unparser-method!
 	  unparse-record)
   (export (runtime record-slot-access)
