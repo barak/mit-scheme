@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.36 2000/12/21 05:00:25 cph Exp $
+;;; $Id: imail-summary.scm,v 1.37 2000/12/21 05:46:59 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -458,15 +458,22 @@ SUBJECT is a string of regexps separated by commas."
       (selected-message #f (buffer-get buffer 'IMAIL-FOLDER-BUFFER #f))))
 
 (define (imail-summary-selected-message-index mark)
-  (let ((regs
-	 (re-match-forward "[* ][D ][U ][A ][R ][F ] +\\([0-9]+\\) "
-			   (line-start mark 0)
-			   (line-end mark 0)
-			   #f)))
-    (and regs
-	 (- (string->number
-	     (extract-string (re-match-start 1) (re-match-end 1)))
-	    1))))
+  (and (imail-summary-match-line mark)
+       (- (string->number
+	   (extract-string (re-match-start 1) (re-match-end 1)))
+	  1)))
+
+(define (imail-summary-match-line mark)
+  (re-match-forward
+   (string-append
+    "[* ][D ][U ][A ][R ][F ] +\\([0-9]+\\)  +\\([0-9.]+[a-zA-Z ]\\)"
+    (if (ref-variable imail-summary-show-date mark)
+	" \\([ 123][0-9] [a-zA-Z]+\\)"
+	"")
+    "  ")
+   (line-start mark 0)
+   (line-end mark 0)
+   #f))
 
 (define (imail-summary-select-message buffer message)
   (highlight-region (buffer-unclipped-region buffer) #f)
@@ -478,8 +485,13 @@ SUBJECT is a string of regexps separated by commas."
 	    (if (and (not approximate?)
 		     (ref-variable imail-summary-highlight-message buffer))
 		(begin
-		  (highlight-region (make-region mark (line-end mark 0))
-				    #t)
+		  (highlight-region
+		   (make-region (if (imail-summary-match-line mark)
+				    (or (re-match-start 3)
+					(re-match-end 0))
+				    mark)
+				(line-end mark 0))
+		   #t)
 		  (buffer-not-modified! buffer)))))))
   (if (ref-variable imail-summary-pop-up-message buffer)
       (imail-summary-pop-up-message-buffer buffer)))
