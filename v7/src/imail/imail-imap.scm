@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.89 2000/05/25 04:53:25 cph Exp $
+;;; $Id: imail-imap.scm,v 1.90 2000/05/25 05:01:40 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -458,10 +458,10 @@
 	    (not (eq? folder (imap-connection-folder connection))))
 	(begin
 	  (set-imap-folder-messages-synchronized?! folder #f)
-	  (set-imap-connection-folder! connection folder)
 	  (let ((selected? #f))
 	    (dynamic-wind
-	     (lambda () unspecific)
+	     (lambda ()
+	       (set-imap-connection-folder! connection folder))
 	     (lambda ()
 	       (imap:command:select connection
 				    (imap-url-mailbox (folder-url folder)))
@@ -612,9 +612,8 @@
 		  interrupt-mask
 		  ((imail-message-wrapper "Reading message UIDs")
 		   (lambda ()
-		     (imap:command:fetch-all (imap-folder-connection folder)
-					     '(UID))))))
-	      (folder-modified! folder 'SET-LENGTH)
+		     (imap:command:fetch-range (imap-folder-connection folder)
+					       0 #f '(UID))))))
 	      (let ((v* (imap-folder-messages folder))
 		    (n* (imap-folder-n-messages folder)))
 		(let loop ((i 0) (i* 0))
@@ -635,7 +634,8 @@
 			      (if (> (imap-message-uid m)
 				     (imap-message-uid m*))
 				  (error "Message inserted into folder:" m*))
-			      (loop (fix:+ i 1) i*)))))))))))))
+			      (loop (fix:+ i 1) i*)))))))
+	      (folder-modified! folder 'SET-LENGTH)))))))
 
 ;;;; Message datatype
 
@@ -931,10 +931,6 @@
 (define (imap:command:uid-fetch connection uid items)
   (imap:command:single-response imap:response:fetch? connection
 				'UID 'FETCH uid items))
-
-(define (imap:command:fetch-all connection items)
-  (imap:command:multiple-response imap:response:fetch? connection
-				  'FETCH (cons 'ATOM "1:*") items))
 
 (define (imap:command:fetch-range connection start end items)
   (imap:command:multiple-response
