@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: instrf.scm,v 1.15 2001/12/20 20:51:15 cph Exp $
+$Id: instrf.scm,v 1.16 2001/12/20 21:45:24 cph Exp $
 
 Copyright (c) 1992, 1999, 2001 Massachusetts Institute of Technology
 
@@ -25,7 +25,7 @@ along with this program; if not, write to the Free Software
 
 (let-syntax
     ((define-binary-flonum
-       (macro (mnemonic pmnemonic imnemonic digit opcode1 opcode2)
+       (lambda (mnemonic pmnemonic imnemonic digit opcode1 opcode2)
 	 `(begin
 	    (define-instruction ,mnemonic
 	      (((ST 0) (ST (? i)))
@@ -115,7 +115,7 @@ along with this program; if not, write to the Free Software
 
 (let-syntax
     ((define-flonum-comparison
-       (macro (mnemonic digit opcode)
+       (lambda (mnemonic digit opcode)
 	 `(define-instruction ,mnemonic
 	    (((ST 0) (ST (? i)))
 	     (BYTE (8 #xd8)
@@ -147,7 +147,7 @@ along with this program; if not, write to the Free Software
 
 (let-syntax
     ((define-flonum-integer-comparison
-       (macro (mnemonic digit)
+       (lambda (mnemonic digit)
 	 `(define-instruction ,mnemonic
 	    ((L (? source mW))
 	     (BYTE (8 #xda))
@@ -162,7 +162,7 @@ along with this program; if not, write to the Free Software
 
 (let-syntax
     ((define-flonum-integer-memory
-       (macro (mnemonic digit1 digit2)
+       (lambda (mnemonic digit1 digit2)
 	 `(define-instruction ,mnemonic
 	    ,@(if (not digit2)
 		  `()
@@ -188,7 +188,7 @@ along with this program; if not, write to the Free Software
 
 (let-syntax
     ((define-flonum-memory
-       (macro (mnemonic digit1 digit2 opcode1 opcode2)
+       (lambda (mnemonic digit1 digit2 opcode1 opcode2)
 	 `(define-instruction ,mnemonic
 	    (((ST (? i)))
 	     (BYTE (8 ,opcode1)
@@ -222,7 +222,7 @@ along with this program; if not, write to the Free Software
 
 (let-syntax
     ((define-flonum-state
-       (macro (mnemonic opcode digit mnemonic2)
+       (lambda (mnemonic opcode digit mnemonic2)
 	 `(begin
 	    ,@(if (not mnemonic2)
 		  `()
@@ -279,7 +279,7 @@ along with this program; if not, write to the Free Software
 
 (let-syntax
     ((define-binary-flonum
-       (macro (mnemonic opcode1 opcode2)
+       (lambda (mnemonic opcode1 opcode2)
 	 `(define-instruction ,mnemonic
 	    (((ST 0) (ST (? i)))
 	     (BYTE (8 ,opcode1)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rulflo.scm,v 1.5 1999/01/02 06:06:43 cph Exp $
+$Id: rulflo.scm,v 1.6 2001/12/20 21:45:24 cph Exp $
 
-Copyright (c) 1992-1999 Massachusetts Institute of Technology
+Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; LAP Generation Rules: Flonum rules
@@ -190,7 +191,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (let-syntax
     ((define-flonum-operation
-       (macro (primitive-name opcode)
+       (lambda (primitive-name opcode)
 	 `(define-arithmetic-method ',primitive-name flonum-methods/2-args
 	    (lambda (target source1 source2)
 	      (LAP ,',target " = (" ,',source1 ,opcode ,',source2

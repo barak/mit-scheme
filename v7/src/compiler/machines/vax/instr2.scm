@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: instr2.scm,v 1.7 2001/12/20 20:51:16 cph Exp $
+$Id: instr2.scm,v 1.8 2001/12/20 21:45:25 cph Exp $
 
 Copyright (c) 1987, 1989, 1999, 2001 Massachusetts Institute of Technology
 
@@ -336,7 +336,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-arithmetic
-       (macro (name digit)
+       (lambda (name digit)
 	 `(define-instruction ,name
 	    ((B (? op ea-r-b) (? res ea-m-b))
 	     (BYTE (8 ,(+ #x80 digit)))
@@ -535,7 +535,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-bitwise
-       (macro (name opcode)
+       (lambda (name opcode)
 	 `(define-instruction ,name
 	    ((B (? mask ea-r-b) (? dst ea-m-b))
 	     (BYTE (8 ,(+ #x80 opcode)))

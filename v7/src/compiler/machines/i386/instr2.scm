@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: instr2.scm,v 1.7 2001/12/20 20:51:15 cph Exp $
+$Id: instr2.scm,v 1.8 2001/12/20 21:45:24 cph Exp $
 
 Copyright (c) 1992, 1999, 2001 Massachusetts Institute of Technology
 
@@ -43,7 +43,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-load-segment
-       (macro (mnemonic . bytes)
+       (lambda (mnemonic . bytes)
 	 `(define-instruction ,mnemonic
 	    (((R (? reg)) (? pointer mW))
 	     (BYTE ,@(map (lambda (byte)
@@ -65,7 +65,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-data-extension
-       (macro (mnemonic opcode)
+       (lambda (mnemonic opcode)
 	 `(define-instruction ,mnemonic
 	    ((B (R (? target)) (? source r/mB))
 	     (BYTE (8 #x0f)
@@ -82,7 +82,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-unary
-       (macro (mnemonic digit)
+       (lambda (mnemonic digit)
 	 `(define-instruction ,mnemonic
 	    ((W (? operand r/mW))
 	     (BYTE (8 #xf7))
@@ -337,7 +337,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-rotate/shift
-       (macro (mnemonic digit)
+       (lambda (mnemonic digit)
 	 `(define-instruction ,mnemonic
 	   ((W (? operand r/mW) (& 1))
 	    (BYTE (8 #xd1))
@@ -376,7 +376,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-double-shift
-       (macro (mnemonic opcode)
+       (lambda (mnemonic opcode)
 	 `(define-instruction ,mnemonic
 	    ((W (? target r/mW) (R (? source)) (& (? count)))
 	     (BYTE (8 #x0f)
@@ -411,7 +411,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-setcc-instruction
-       (macro (mnemonic opcode)
+       (lambda (mnemonic opcode)
 	 `(define-instruction ,mnemonic
 	    (((? target r/mB))
 	     (BYTE (8 #x0f)

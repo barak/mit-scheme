@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: instr1.scm,v 1.4 1999/01/02 06:48:57 cph Exp $
+$Id: instr1.scm,v 1.5 2001/12/20 21:45:24 cph Exp $
 
-Copyright (c) 1992-1999 Massachusetts Institute of Technology
+Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 
 |#
 
@@ -30,7 +31,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (let-syntax
     ((memory-format-instruction
-      (macro (keyword opcode)
+      (lambda (keyword opcode)
 	`(define-instruction ,keyword
 	   (((? destination) (OFFSET (? offset) (? base)))
 	    (VARIABLE-WIDTH (offset offset)
@@ -91,7 +92,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   
 (let-syntax
     ((special-memory-instruction
-      (macro (keyword functioncode)
+      (lambda (keyword functioncode)
 	`(define-instruction ,keyword
 	   (()
 	    (LONG (6 #x18)
@@ -99,7 +100,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		  (5 #x0)
 		  (16 ,functioncode))))))
      (special-memory-instruction-Ra
-      (macro (keyword functioncode)
+      (lambda (keyword functioncode)
 	`(define-instruction ,keyword
 	   (((? Ra))
 	    (LONG (6 #x18)
@@ -107,7 +108,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		  (5 #x0)
 		  (16 ,functioncode))))))
      (special-memory-instruction-Rb
-      (macro (keyword functioncode)
+      (lambda (keyword functioncode)
 	`(define-instruction ,keyword
 	   (((? Rb))
 	    (LONG (6 #x18)
@@ -126,7 +127,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (let-syntax
     ((operate-format
-      (macro (keyword opcode functioncode)
+      (lambda (keyword opcode functioncode)
 	`(define-instruction ,keyword
 	   (((? source-1) (& (? constant)) (? destination))
 	    (LONG (6 ,opcode)
@@ -214,7 +215,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (let-syntax
     ((pal-format
-      (macro (keyword functioncode)
+      (lambda (keyword functioncode)
 	`(define-instruction ,keyword
 	   (()
 	    (LONG (6 0)

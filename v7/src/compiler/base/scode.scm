@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: scode.scm,v 4.11 2001/12/20 16:28:22 cph Exp $
+$Id: scode.scm,v 4.12 2001/12/20 21:45:23 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -25,7 +25,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (declare (usual-integrations))
 
 (let-syntax ((define-scode-operators
-	       (macro names
+	       (lambda names
 		 `(BEGIN ,@(map (lambda (name)
 				  `(DEFINE ,(symbol-append 'SCODE/ name)
 				     (ACCESS ,name SYSTEM-GLOBAL-ENVIRONMENT)))

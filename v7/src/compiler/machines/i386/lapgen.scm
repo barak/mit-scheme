@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.28 2001/12/16 06:01:31 cph Exp $
+$Id: lapgen.scm,v 1.29 2001/12/20 21:45:24 cph Exp $
 
 Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
 
@@ -568,7 +568,7 @@ USA.
 
 
 (let-syntax ((define-codes
-	       (macro (start . names)
+	       (lambda (start . names)
 		 (define (loop names index)
 		   (if (null? names)
 		       '()
@@ -605,7 +605,7 @@ USA.
        ,@(invoke-hook/call entry:compiler-scheme-to-interface/call)))
 
 (let-syntax ((define-entries
-	       (macro (start high . names)
+	       (lambda (start high . names)
 		 (define (loop names index high)
 		   (cond ((null? names)
 			  '())

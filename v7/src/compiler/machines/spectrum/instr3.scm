@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: instr3.scm,v 1.3 1999/01/02 06:06:43 cph Exp $
+$Id: instr3.scm,v 1.4 2001/12/20 21:45:25 cph Exp $
 
-Copyright (c) 1987, 1989, 1990, 1999 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989, 1990, 1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; HP Spectrum Instruction Set Description
@@ -27,7 +28,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;;;; Computation instructions
 
 (let-syntax ((arith-logical
-	      (macro (keyword extn)
+	      (lambda (keyword extn)
 		`(define-instruction ,keyword
 		  (((? compl complal) (? source-reg1) (? source-reg2)
 				      (? target-reg))
@@ -103,7 +104,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 (5 #b00000))))
 
 (let-syntax ((immed-arith
-	      (macro (keyword opcode extn)
+	      (lambda (keyword opcode extn)
 		`(define-instruction ,keyword
 		   (((? compl complal) (? immed-11) (? source-reg)
 				       (? target-reg))
@@ -144,7 +145,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 (5 (- 31 pos))
 	 (5 target-reg))))
 
-(let-syntax ((extr (macro (keyword extn)
+(let-syntax ((extr (lambda (keyword extn)
 		     `(define-instruction ,keyword
 			(((? compl compled) (? source-reg) (? pos) (? len)
 					    (? target-reg))
@@ -155,7 +156,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			       (3 ,extn)
 			       (5 pos)
 			       (5 (- 32 len)))))))
-	     (vextr (macro (keyword extn)
+	     (vextr (lambda (keyword extn)
 		      `(define-instruction ,keyword
 			 (((? compl compled) (? source-reg) (? len)
 					     (? target-reg))
@@ -172,7 +173,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (vextr VEXTRS 5))
 
 (let-syntax ((depos
-	      (macro (keyword extn)
+	      (lambda (keyword extn)
 		`(define-instruction ,keyword
 		   (((? compl compled) (? source-reg) (? pos) (? len)
 				       (? target-reg))
@@ -184,7 +185,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			  (5 (- 31 pos))
 			  (5 (- 32 len)))))))
 	     (vdepos
-	      (macro (keyword extn)
+	      (lambda (keyword extn)
 		`(define-instruction ,keyword
 		   (((? compl compled) (? source-reg) (? len)
 				       (? target-reg))
@@ -196,7 +197,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			  (5 #b00000)
 			  (5 (- 32 len)))))))
 	     (idepos
-	      (macro (keyword extn)
+	      (lambda (keyword extn)
 		`(define-instruction ,keyword
 		   (((? compl compled) (? immed) (? pos) (? len)
 				       (? target-reg))
@@ -209,7 +210,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			  (5 (- 32 len)))))))
 
 	     (videpos
-	      (macro (keyword extn)
+	      (lambda (keyword extn)
 		`(define-instruction ,keyword
 		   (((? compl compled) (? immed) (? len)
 				       (? target-reg))
@@ -231,7 +232,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (vdepos  ZVDEP  0))
 
 (let-syntax ((Probe-Read-Write
-	      (macro (keyword extn)
+	      (lambda (keyword extn)
 		`(define-instruction ,keyword
 		   ((() (OFFSET 0 (? space) (? base)) (? priv-reg)
 		     (? target-reg))
@@ -332,7 +333,7 @@ DIAG
 |#
 
 (let-syntax ((floatarith-1
-	      (macro (keyword extn-a extn-b)
+	      (lambda (keyword extn-a extn-b)
 		`(define-instruction ,keyword
 		   ((((? fmt fpformat)) (? source-reg) (? target-reg))
 		    (LONG (6 #x0c)
@@ -344,7 +345,7 @@ DIAG
 			  (4 #b0000)
 			  (5 target-reg))))))
 	     (floatarith-2
-	      (macro (keyword extn-a extn-b)
+	      (lambda (keyword extn-a extn-b)
 		`(define-instruction ,keyword
 		   ((((? fmt fpformat)) (? source-reg1) (? source-reg2)
 					(? target-reg))
@@ -378,7 +379,7 @@ DIAG
 	 (5 condition))))
 
 (let-syntax ((fpconvert
-	      (macro (keyword extn)
+	      (lambda (keyword extn)
 		`(define-instruction ,keyword
 		   ((((? sf fpformat) (? df fpformat))
 		     (? source-reg1)
@@ -409,7 +410,7 @@ DIAG
 ;;	     tested before use.    WLH  11/18/86
 
 (let-syntax ((multdiv
-	      (macro (keyword extn)
+	      (lambda (keyword extn)
 		`(define-instruction ,keyword
 		   ((() (? reg-1) (? reg-2))
 		    (LONG (6 #x04)
@@ -439,7 +440,7 @@ DIAG
 	 (16 #b1000000000000000))))
 
 (let-syntax ((multdivresult
-	      (macro (keyword extn-a extn-b)
+	      (lambda (keyword extn-a extn-b)
 		`(define-instruction ,keyword
 		   ((() (? reg-t))
 		    (LONG (6 #x04)

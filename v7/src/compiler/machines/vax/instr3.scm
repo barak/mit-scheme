@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: instr3.scm,v 1.11 2001/12/20 20:51:16 cph Exp $
+$Id: instr3.scm,v 1.12 2001/12/20 21:45:25 cph Exp $
 
 Copyright (c) 1987, 1989, 1991, 1999, 2001 Massachusetts Institute of Technology
 
@@ -240,7 +240,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-field-instruction
-       (macro (name suffix1 suffix2 opcode mode)
+       (lambda (name suffix1 suffix2 opcode mode)
 	 `(define-instruction ,name
 	    ((,suffix1 (? pos ea-r-l) (? size ea-r-b) (? base ea-v-b)
 		       (? dst ,mode))
@@ -336,7 +336,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-unconditional-transfer
-       (macro (nameb namej bit)
+       (lambda (nameb namej bit)
 	 `(begin
 	    (define-instruction ,nameb
 	      ((B (@PCO (? dest)))
@@ -708,7 +708,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-add/sub-bcd-instruction
-       (macro (name opcode4)
+       (lambda (name opcode4)
 	 `(define-instruction ,name
 	    (((? oplen ea-r-w) (? op ea-a-b)
               (? reslen ea-r-w) (? res ea-a-b))
@@ -734,7 +734,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-add/sub-bcd-instruction
-       (macro (name opcode)
+       (lambda (name opcode)
 	 `(define-instruction ,name
 	    (((? op1len ea-r-w) (? op1 ea-a-b)
 	      (? op2len ea-r-w) (? op2 ea-a-b)
@@ -798,7 +798,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-cvt-trailing-instruction
-       (macro (name opcode)
+       (lambda (name opcode)
 	 `(define-instruction ,name
 	    (((? srclen ea-r-w) (? src ea-a-b) 
 	      (? tbl ea-a-b)
@@ -815,7 +815,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-cvt-separate-instruction
-       (macro (name opcode)
+       (lambda (name opcode)
 	 `(define-instruction ,name
 	    (((? srclen ea-r-w) (? src ea-a-b)
 	      (? dstlen ea-r-w) (? dst ea-a-b))

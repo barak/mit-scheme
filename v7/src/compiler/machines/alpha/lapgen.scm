@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.7 2001/12/19 21:39:29 cph Exp $
+$Id: lapgen.scm,v 1.8 2001/12/20 21:45:24 cph Exp $
 
 Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
 
@@ -837,7 +837,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;;; Codes and Hooks
 
 (let-syntax ((define-codes
-	       (macro (start . names)
+	       (lambda (start . names)
 		 (define (loop names index)
 		   (if (null? names)
 		       '()
@@ -859,7 +859,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     set! define lookup-apply))
 
 (let-syntax ((define-codes
-	       (macro (start . names)
+	       (lambda (start . names)
 		 (define (loop names offset)
 		   (if (null? names)
 		       '()

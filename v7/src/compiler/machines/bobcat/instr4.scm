@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: instr4.scm,v 1.4 1999/01/02 06:06:43 cph Exp $
+$Id: instr4.scm,v 1.5 2001/12/20 21:45:24 cph Exp $
 
-Copyright (c) 1987, 1999 Massachusetts Institute of Technology
+Copyright (c) 1987, 1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; 68020 Instruction Set Description (in addition to 68000)
@@ -28,7 +29,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (let-syntax
     ((define-bitfield-manipulation-1
-       (macro (keyword bits ea-mode)
+       (lambda (keyword bits ea-mode)
 	 `(define-instruction ,keyword
 	    (((? ea ,ea-mode) (& (? offset)) (& (? width)) (D (? reg)))
 	     (WORD (4 #b1110)
@@ -87,7 +88,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (let-syntax
     ((define-bitfield-manipulation-2
-       (macro (keyword bits ea-mode)
+       (lambda (keyword bits ea-mode)
 	 `(define-instruction ,keyword
 	    (((? ea ,ea-mode) (& (? offset)) (& (? width)))
 	     (WORD (4 #b1110)

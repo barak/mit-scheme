@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: instr2.scm,v 1.19 1999/01/02 06:06:43 cph Exp $
+$Id: instr2.scm,v 1.20 2001/12/20 21:45:24 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; 68000 Instruction Set Description
@@ -42,7 +43,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;;;; BCD Arithmetic
 
 (let-syntax ((define-BCD-addition
-	      (macro (keyword opcode)
+	      (lambda (keyword opcode)
 		`(define-instruction ,keyword
 		   (((D (? ry)) (D (? rx)))
 		    (WORD (4 ,opcode)
@@ -66,7 +67,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;;;; Binary Arithmetic
 
 (let-syntax ((define-binary-addition
-	      (macro (keyword Qkeyword Xkeyword opcode Qbit Iopcode)
+	      (lambda (keyword Qkeyword Xkeyword opcode Qbit Iopcode)
 		`(BEGIN
 		  (define-instruction ,Qkeyword			;ADDQ/SUBQ
 		    ((B (& (? data)) (? ea ea-all-A))
@@ -184,7 +185,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;; These are the 68020 versions
 
 (let-syntax ((define-mul-and-div
-	       (macro (keyword word-form-bit long-form-bit)
+	       (lambda (keyword word-form-bit long-form-bit)
 		 `(define-instruction ,keyword
 		    (((? sgn us) W (? ea ea-d) (D (? n)))
 		     (WORD (1 #b1)
@@ -284,7 +285,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;;;; Bitwise Logical
 
 (let-syntax ((define-bitwise-logical
-	      (macro (keyword opcode Iopcode)
+	      (lambda (keyword opcode Iopcode)
 		`(define-instruction ,keyword
 		   (((? s bwl ssym) (? ea ea-d) (D (? rx)))
 		    (WORD (4 ,opcode)
@@ -345,7 +346,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;;;; Shift
 
 (let-syntax ((define-shift-instruction
-	      (macro (keyword bits)
+	      (lambda (keyword bits)
 		`(define-instruction ,keyword
 		   (((? d rl) (? s bwl) (D (? rx)) (D (? ry)))
 		    (WORD (4 #b1110)
@@ -379,7 +380,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;;;; Bit Manipulation
 
 (let-syntax ((define-bit-manipulation
-	      (macro (keyword bits ea-register-target ea-immediate-target)
+	      (lambda (keyword bits ea-register-target ea-immediate-target)
 		`(define-instruction ,keyword
 		   (((D (? rx)) (? ea ,ea-register-target))
 		    (WORD (4 #b0000)

@@ -1,9 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rulfix.scm,v 1.6 1999/01/02 06:06:43 cph Exp $
-$MC68020-Header: rules1.scm,v 4.34 1991/01/23 21:34:30 jinx Exp $
+$Id: rulfix.scm,v 1.7 2001/12/20 21:45:26 cph Exp $
 
-Copyright (c) 1989, 1991, 1999 Massachusetts Institute of Technology
+Copyright (c) 1989, 1991, 1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; LAP Generation Rules: Fixnum operations.
@@ -547,7 +547,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (let-syntax
     ((binary/commutative
-      (macro (name instr eql)
+      (lambda (name instr eql)
 	`(define-fixnum-method ',name fixnum-methods/2-args
 	   (lambda (target source1 source2)
 	     (if (ea/same? source1 source2)
@@ -564,7 +564,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 					 ,',target)))))))))
 
      (binary/noncommutative
-      (macro (name instr)
+      (lambda (name instr)
 	`(define-fixnum-method ',name fixnum-methods/2-args
 	   (lambda (target source1 source2)
 	     (cond ((ea/same? source1 source2)
@@ -692,7 +692,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (let-syntax
     ((binary-fixnum/constant
-      (macro (name instr null ->constant identity?)
+      (lambda (name instr null ->constant identity?)
 	`(define-fixnum-method ',name fixnum-methods/2-args-constant
 	   (lambda (target source n)
 	     (cond ((eqv? n ,null)

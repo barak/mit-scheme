@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.35 2001/12/16 06:01:32 cph Exp $
+$Id: rules3.scm,v 1.36 2001/12/20 21:45:24 cph Exp $
 
 Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
 
@@ -172,11 +172,11 @@ USA.
   ;;
   (let-syntax ((invoke
 		#|
-		(macro (code entry)
+		(lambda (code entry)
 		  entry			; ignored (for now)
 		  `(invoke-interface ,code))
 		|#
-		(macro (code entry)
+		(lambda (code entry)
 		  code			; ignored
 		  `(invoke-hook ,entry))))
 
@@ -221,7 +221,7 @@ USA.
 
 (let-syntax
     ((define-special-primitive-invocation
-       (macro (name)
+       (lambda (name)
 	 `(define-rule statement
 	    (INVOCATION:SPECIAL-PRIMITIVE
 	     (? frame-size)
@@ -233,7 +233,7 @@ USA.
 	     ,(symbol-append 'CODE:COMPILER- name)))))
 
      (define-optimized-primitive-invocation
-       (macro (name)
+       (lambda (name)
 	 `(define-rule statement
 	    (INVOCATION:SPECIAL-PRIMITIVE
 	     (? frame-size)
@@ -245,7 +245,7 @@ USA.
 	     ,(symbol-append 'ENTRY:COMPILER- name))))))
 
   (let-syntax ((define-primitive-invocation
-		 (macro (name)
+		 (lambda (name)
 		   #|
 		   `(define-special-primitive-invocation ,name)
 		   |#

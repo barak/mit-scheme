@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: instr1.scm,v 1.13 2001/12/20 20:51:15 cph Exp $
+$Id: instr1.scm,v 1.14 2001/12/20 21:45:24 cph Exp $
 
 Copyright (c) 1992, 1999, 2001 Massachusetts Institute of Technology
 
@@ -68,7 +68,7 @@ USA.
 
 (let-syntax
     ((define-arithmetic-instruction
-       (macro (mnemonic opcode digit)
+       (lambda (mnemonic opcode digit)
 	 `(define-instruction ,mnemonic
 	    ((W (? target r/mW) (R (? source)))
 	     (BYTE (8 ,(1+ opcode)))
@@ -170,7 +170,7 @@ USA.
 
 (let-syntax
     ((define-bit-test-instruction
-       (macro (mnemonic opcode digit)
+       (lambda (mnemonic opcode digit)
 	 `(define-instruction ,mnemonic
 	    (((? target r/mW) (& (? posn)))
 	     (BYTE (8 #x0f)
@@ -224,7 +224,7 @@ USA.
 
 (let-syntax
     ((define-string-instruction
-       (macro (mnemonic opcode)
+       (lambda (mnemonic opcode)
 	 `(define-instruction ,mnemonic
 	    ((W)
 	     (BYTE (8 ,(1+ opcode))))
@@ -260,7 +260,7 @@ USA.
 
 (let-syntax
     ((define-inc/dec
-       (macro (mnemonic digit opcode)
+       (lambda (mnemonic digit opcode)
 	 `(define-instruction ,mnemonic
 	    ((W (R (? reg)))
 	     (BYTE (8 (+ ,opcode reg))))
@@ -278,7 +278,7 @@ USA.
 
 (let-syntax
     ((define-mul/div
-       (macro (mnemonic digit)
+       (lambda (mnemonic digit)
 	 `(define-instruction ,mnemonic
 	    ((W (R 0) (? operand r/mW))
 	     (BYTE (8 #xf7))
@@ -363,7 +363,7 @@ USA.
 
 (let-syntax
     ((define-jump-instruction
-       (macro (mnemonic opcode1 opcode2)
+       (lambda (mnemonic opcode1 opcode2)
 	 `(define-instruction ,mnemonic
 	    ;; This assumes that *ADDRESS-SIZE* is 4 (32-bit mode)
 	    (((@PCR (? dest)))
@@ -428,7 +428,7 @@ USA.
   
 (let-syntax
     ((define-loop-instruction
-       (macro (mnemonic opcode)
+       (lambda (mnemonic opcode)
 	 `(define-instruction ,mnemonic
 	    ((B (@PCR (? dest)))
 	     (BYTE (8 ,opcode)
@@ -514,7 +514,7 @@ USA.
 
 (let-syntax
     ((define-load/store-state
-       (macro (mnemonic opcode digit)
+       (lambda (mnemonic opcode digit)
 	 `(define-instruction ,mnemonic
 	    (((? operand mW))
 	     (BYTE (8 #x0f)

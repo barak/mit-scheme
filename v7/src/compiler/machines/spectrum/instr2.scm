@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: instr2.scm,v 1.8 2001/12/20 20:51:15 cph Exp $
+$Id: instr2.scm,v 1.9 2001/12/20 21:45:25 cph Exp $
 
 Copyright (c) 1987-1999, 2001 Massachusetts Institute of Technology
 
@@ -32,7 +32,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;; 1 -- this may be inappropriate for assembly-language programs, but
 ;;; is OK for the output of the compiler.
 (let-syntax ((long-load
-	      (macro (keyword opcode)
+	      (lambda (keyword opcode)
 		`(define-instruction ,keyword
 		   ((() (OFFSET (? offset) (? space) (? base)) (? reg))
 		    (VARIABLE-WIDTH (disp offset)
@@ -56,7 +56,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			(14 (remainder disp #x800) RIGHT-SIGNED))))))))
 
 	     (long-store
-	      (macro (keyword opcode)
+	      (lambda (keyword opcode)
 		`(define-instruction ,keyword
 		   ((() (? reg) (OFFSET (? offset) (? space) (? base)))
 		    (VARIABLE-WIDTH (disp offset)
@@ -80,7 +80,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			(14 (remainder disp #x800) RIGHT-SIGNED))))))))
 
 	     (load-offset
-	      (macro (keyword opcode)
+	      (lambda (keyword opcode)
 		`(define-instruction ,keyword
 		   ((() (OFFSET (? offset) 0 (? base)) (? reg))
 		    (VARIABLE-WIDTH (disp offset)
@@ -104,7 +104,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			(14 (remainder disp #x800) RIGHT-SIGNED))))))))
 
 	     (load-immediate
-	      (macro (keyword opcode)
+	      (lambda (keyword opcode)
 		`(define-instruction ,keyword
 		   ((() (? offset) (? reg))
 		    (VARIABLE-WIDTH (disp offset)
@@ -128,7 +128,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			(14 (remainder disp #x800) RIGHT-SIGNED))))))))
 
 	     (left-immediate
-	      (macro (keyword opcode)
+	      (lambda (keyword opcode)
 		`(define-instruction ,keyword
 		   ((() (? immed-21) (? reg))
 		    (LONG (6 ,opcode)
@@ -156,7 +156,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;; cache instructions.
 
 (let-syntax ((indexed-load
-	      (macro (keyword opcode extn)
+	      (lambda (keyword opcode extn)
 		`(define-instruction ,keyword
 		   (((? compl complx) (INDEX (? index-reg) (? space) (? base))
 				      (? reg))
@@ -172,7 +172,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			  (5 reg))))))
 
 	     (indexed-store
-	      (macro (keyword opcode extn)
+	      (lambda (keyword opcode extn)
 		`(define-instruction ,keyword
 		   (((? compl complx) (? reg)
 				      (INDEX (? index-reg) (? space) (? base)))
@@ -188,7 +188,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			  (5 reg))))))
 
 	     (indexed-d-cache
-	      (macro (keyword extn)
+	      (lambda (keyword extn)
 		`(define-instruction ,keyword
 		   (((? compl m-val) (INDEX (? index-reg) (? space) (? base)))
 		    (LONG (6 #x01)
@@ -200,7 +200,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			  (5 #x0))))))
 
 	     (indexed-i-cache
-	      (macro (keyword extn)
+	      (lambda (keyword extn)
 		`(define-instruction ,keyword
 		   (((? compl m-val)
 		     (INDEX (? index-reg) (? space sr3) (? base)))
@@ -229,7 +229,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (indexed-i-cache FICE #x0b))
 
 (let-syntax ((scalr-short-load
-	      (macro (keyword extn)
+	      (lambda (keyword extn)
 		`(define-instruction ,keyword
 		   (((? compl compls) (OFFSET (? offset) (? space) (? base))
 				      (? reg))
@@ -245,7 +245,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			  (5 reg))))))
 
 	     (scalr-short-store
-	      (macro (keyword extn)
+	      (lambda (keyword extn)
 		`(define-instruction ,keyword
 		   (((? compl compls) (? reg)
 				      (OFFSET (? offset) (? space) (? base)))
@@ -261,7 +261,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			  (5 offset RIGHT-SIGNED))))))
 
 	     (float-short-load
-	      (macro (keyword opcode extn)
+	      (lambda (keyword opcode extn)
 		`(define-instruction ,keyword
 		   (((? compl compls) (OFFSET (? offset) (? space) (? base))
 				      (? reg))
@@ -277,7 +277,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			  (5 reg))))))
 
 	     (float-short-store
-	      (macro (keyword opcode extn)
+	      (lambda (keyword opcode extn)
 		`(define-instruction ,keyword
 		   (((? compl compls) (? reg)
 				      (OFFSET (? offset) (? space) (? base)))
@@ -315,7 +315,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;; They should be eventually (by using an LDIL,LDI,BLR sequence, for example).
 
 (let-syntax ((branch&link
-	      (macro (keyword extn)
+	      (lambda (keyword extn)
 		`(define-instruction ,keyword
 		   ((() (? reg) (@PCR (? label)))
 		    (LONG (6 #x3a)
@@ -354,7 +354,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			  (1 offset ASSEMBLE17:Z))))))
 	      
 	     (branch
-	      (macro (keyword extn)
+	      (lambda (keyword extn)
 		`(define-instruction ,keyword
 		   ((() (@PCR (? l)))
 		    (LONG (6 #x3a)
@@ -397,7 +397,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (branch&link GATE 1))
 
 (let-syntax ((BV&BLR
-	      (macro (keyword extn)
+	      (lambda (keyword extn)
 		`(define-instruction ,keyword
 		   ((() (? offset-reg) (? reg))
 		    (LONG (6 #x3a)
@@ -418,7 +418,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			  (1 #b0))))))
 
 	     (BE&BLE
-	      (macro (keyword opcode)
+	      (lambda (keyword opcode)
 		`(define-instruction ,keyword
 		   ((() (OFFSET (? offset) (? space sr3) (? base)))
 		    (LONG (6 ,opcode)
@@ -494,7 +494,7 @@ branch-extend-nullify in instr1.
 
 (let-syntax
     ((defccbranch
-       (macro (keyword completer opcode1 opcode2 opr1)
+       (lambda (keyword completer opcode1 opcode2 opr1)
 	 `(define-instruction ,keyword
 	    (((? compl ,completer) (? ,(car opr1)) (? reg-2) (@PCO (? offset)))
 	     (LONG (6  ,opcode1)
@@ -596,7 +596,7 @@ Note: Only those currently used by the code generator are implemented.
 
 (let-syntax
     ((defccbranch
-       (macro (keyword completer opcode1 opcode2 opr1)
+       (lambda (keyword completer opcode1 opcode2 opr1)
 	 `(define-instruction ,keyword
 	    ;; No @PCO form.
 	    ;; This is a pseudo-instruction used by the code-generator
@@ -667,7 +667,7 @@ Note: Only those currently used by the code generator are implemented.
 
 (let-syntax
     ((defmovb&bb
-       (macro (name opcode opr1 opr2 field2)
+       (lambda (name opcode opr1 opr2 field2)
 	 `(define-instruction ,name
 	    (((? compl compledb) (? ,(car opr1)) ,@opr2 (@PCO (? offset)))
 	     (LONG (6  ,opcode)

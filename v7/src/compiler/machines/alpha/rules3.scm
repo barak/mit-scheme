@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.8 2001/12/19 21:39:30 cph Exp $
+$Id: rules3.scm,v 1.9 2001/12/20 21:45:24 cph Exp $
 
 Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
 
@@ -156,7 +156,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-special-primitive-invocation
-       (macro (name)
+       (lambda (name)
 	 `(DEFINE-RULE STATEMENT
 	    (INVOCATION:SPECIAL-PRIMITIVE
 	     (? FRAME-SIZE)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 4.51 1999/01/02 06:06:43 cph Exp $
+$Id: lapgen.scm,v 4.52 2001/12/20 21:45:24 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; RTL Rules for 68020.  Part 1
@@ -744,7 +745,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (let-syntax
     ((binary-fixnum
-      (macro (name instr identity?)
+      (lambda (name instr identity?)
 	`(begin
 	   (define-fixnum-method ',name fixnum-methods/2-args
 	     (lambda (target source)
@@ -980,7 +981,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (let-syntax
     ((define-flonum-operation
-       (macro (primitive-name instruction-name)
+       (lambda (primitive-name instruction-name)
 	 `(DEFINE-FLONUM-METHOD ',primitive-name FLONUM-METHODS/1-ARG
 	    (LAMBDA (SOURCE TARGET)
 	      (IF (EFFECTIVE-ADDRESS/FLOAT-REGISTER? SOURCE)
@@ -1008,7 +1009,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (let-syntax
     ((define-flonum-operation
-       (macro (primitive-name instruction-name)
+       (lambda (primitive-name instruction-name)
 	 `(DEFINE-FLONUM-METHOD ',primitive-name FLONUM-METHODS/2-ARGS
 	   (LAMBDA (TARGET SOURCE)
 	     (IF (EFFECTIVE-ADDRESS/FLOAT-REGISTER? SOURCE)
@@ -1171,7 +1172,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define-integrable reg:stack-guard (INST-EA (@AO 6 #X002C)))
 
 (let-syntax ((define-codes
-	       (macro (start . names)
+	       (lambda (start . names)
 		 (define (loop names index)
 		   (if (null? names)
 		       '()
@@ -1194,7 +1195,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     quotient remainder modulo))
 
 (let-syntax ((define-entries
-	       (macro (start . names)
+	       (lambda (start . names)
 		 (define (loop names index)
 		   (if (null? names)
 		       '()

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lvalue.scm,v 4.22 2001/10/22 19:10:20 cph Exp $
+$Id: lvalue.scm,v 4.23 2001/12/20 21:45:23 cph Exp $
 
 Copyright (c) 1988-1990, 1999, 2001 Massachusetts Institute of Technology
 
@@ -103,7 +103,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-named-variable
-      (macro (name)
+      (lambda (name)
 	(let ((symbol (intern (string-append "#[" (symbol->string name) "]"))))
 	  `(BEGIN (DEFINE-INTEGRABLE
 		    (,(symbol-append 'MAKE- name '-VARIABLE) BLOCK)

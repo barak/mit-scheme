@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: crsend.scm,v 1.10 1999/01/02 06:06:43 cph Exp $
+$Id: crsend.scm,v 1.11 2001/12/20 21:45:23 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Cross Compiler End
@@ -118,10 +119,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		   (with-absolutely-no-interrupts
 		     (lambda ()
 		       (let-syntax ((ucode-primitive
-				     (macro (name)
+				     (lambda (name)
 				       (make-primitive-procedure name)))
 				    (ucode-type
-				     (macro (name)
+				     (lambda (name)
 				       (microcode-type name))))
 			 ((ucode-primitive PRIMITIVE-OBJECT-SET-TYPE)
 			  (ucode-type COMPILED-ENTRY)
@@ -143,10 +144,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (cross-link/finish-assembly code-block objects scheme-object-width)
   (let-syntax ((ucode-primitive
-		(macro (name)
+		(lambda (name)
 		  (make-primitive-procedure name)))
 	       (ucode-type
-		(macro (name)
+		(lambda (name)
 		  (microcode-type name))))
     (let* ((bl (quotient (bit-string-length code-block)
 			 scheme-object-width))

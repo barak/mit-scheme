@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulflo.scm,v 1.4 2001/12/19 21:39:30 cph Exp $
+$Id: rulflo.scm,v 1.5 2001/12/20 21:45:24 cph Exp $
 
 Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
 
@@ -199,7 +199,7 @@ the vector length header are the same size.
 
 (let-syntax
     ((define-flonum-operation
-       (macro (primitive-name opcode)
+       (lambda (primitive-name opcode)
 	 `(define-arithmetic-method ',primitive-name flonum-methods/2-args
 	    (lambda (target source1 source2)
 	      (LAP (,opcode ,',source1 ,',source2 ,',target)))))))
