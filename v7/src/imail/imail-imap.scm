@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.155 2001/05/23 05:05:08 cph Exp $
+;;; $Id: imail-imap.scm,v 1.156 2001/05/23 21:20:17 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -176,7 +176,7 @@
 
 ;;;; Container heirarchy
 
-(define-method url-container ((url <imap-url>))
+(define-method container-url ((url <imap-url>))
   (imap-url-new-mailbox
    url
    (let ((mailbox (imap-url-mailbox url)))

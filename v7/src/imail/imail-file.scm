@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.67 2001/05/23 05:05:00 cph Exp $
+;;; $Id: imail-file.scm,v 1.68 2001/05/23 21:20:09 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -48,7 +48,7 @@
 (define pathname-url-constructors
   (make-eq-hash-table))
 
-(define-method url-container ((url <pathname-url>))
+(define-method container-url ((url <pathname-url>))
   (make-directory-url
    (directory-pathname
     (directory-pathname-as-file (pathname-url-pathname url)))))

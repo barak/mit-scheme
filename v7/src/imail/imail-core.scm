@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.126 2001/05/23 13:46:26 cph Exp $
+;;; $Id: imail-core.scm,v 1.127 2001/05/23 21:20:05 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -137,7 +137,7 @@
 ;; E.g. the container of "imap://localhost/inbox/foo" is
 ;; "imap://localhost/inbox/" (except that for IMAP folders, the result
 ;; may be affected by the NAMESPACE prefix information).
-(define-generic url-container (url))
+(define-generic container-url (url))
 
 ;; Return a list of URLs referring to the contents of CONTAINER-URL.
 ;; The result can contain both folder and container URLs.
@@ -316,7 +316,7 @@
 (define-generic with-open-connection (url thunk))
 
 (define (container-modified! url type . arguments)
-  (let ((container (get-memoized-resource (url-container url))))
+  (let ((container (get-memoized-resource (container-url url))))
     (if container
 	(apply object-modified! container type url arguments))))
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.243 2001/05/23 05:05:26 cph Exp $
+;;; $Id: imail-top.scm,v 1.244 2001/05/23 21:20:28 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -1354,7 +1354,7 @@ The folder's type may not be changed."
 				    'REQUIRE-MATCH? #t)))
       (list from
 	    (prompt-for-folder "Rename folder to"
-			       (url-container (imail-parse-partial-url from))
+			       (container-url (imail-parse-partial-url from))
 			       'HISTORY 'IMAIL-RENAME-FOLDER-TARGET))))
   (lambda (from to)
     (let ((from (imail-parse-partial-url from))
@@ -1385,7 +1385,7 @@ If it doesn't exist, it is created first."
 				 (lambda ()
 				   (imail-parse-partial-url (car history))))))
 			   (and (url? url)
-				(url-container url)))))
+				(container-url url)))))
 		  (imail-default-container))
 	      (url-base-name (imail-parse-partial-url from)))
 	     'HISTORY 'IMAIL-COPY-FOLDER-TARGET))))
