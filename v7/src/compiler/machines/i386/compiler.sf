@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.sf,v 1.12 2001/08/16 19:09:28 cph Exp $
+$Id: compiler.sf,v 1.13 2001/08/16 19:28:21 cph Exp $
 
 Copyright (c) 1992-2001 Massachusetts Institute of Technology
 
@@ -27,7 +27,6 @@ USA.
 ;; Guarantee that the compiler's package structure exists.
 (if (not (name->package '(COMPILER)))
     (begin
-      ;; If there is no existing package constructor, generate one.
       (if (not (file-exists? "compiler.pkd"))
 	  (cref/generate-trivial-constructor "compiler"))
       (construct-packages-from-file (fasload "compiler.pkd"))))
@@ -65,8 +64,9 @@ USA.
 		     (usual-definition (set expt)))))
 	(sf-and-load '("machines/i386/assmd") '(COMPILER ASSEMBLER)))
       (sf-and-load '("back/syntax") '(COMPILER LAP-SYNTAXER))
-      (sf-and-load '("machines/i386/coerce" "back/asmmac"
-					    "machines/i386/insmac")
+      (sf-and-load '("machines/i386/coerce"
+		     "back/asmmac"
+		     "machines/i386/insmac")
 		   '(COMPILER LAP-SYNTAXER))
       (sf-and-load '("base/scode") '(COMPILER))
       (sf-and-load '("base/pmerly") '(COMPILER PATTERN-MATCHER/EARLY))
@@ -77,8 +77,8 @@ USA.
 (in-package (->environment '(COMPILER LAP-SYNTAXER))
   (if (and compiler:enable-expansion-declarations?
 	   (null? early-instructions))
-      (fluid-let ((load-noisily? false)
-		  (load/suppress-loading-message? false))
+      (fluid-let ((load-noisily? #f)
+		  (load/suppress-loading-message? #f))
 	(fresh-line)
 	(newline)
 	(write-string "---- Pre-loading instruction sets ----")

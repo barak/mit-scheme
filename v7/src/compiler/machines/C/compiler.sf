@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: compiler.sf,v 1.6 1999/01/02 06:06:43 cph Exp $
+$Id: compiler.sf,v 1.7 2001/08/16 19:28:21 cph Exp $
 
-Copyright (c) 1992-1999 Massachusetts Institute of Technology
+Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 |#
 
 ;;;; Script to incrementally syntax the compiler
@@ -26,14 +27,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;; Guarantee that the compiler's package structure exists.
 (if (not (name->package '(COMPILER)))
     (begin
-      ;; If there is no existing package constructor, generate one.
-      (if (not (file-exists? "compiler.bco"))
-	  (begin
-	    ((access cref/generate-trivial-constructor
-		     (->environment '(CROSS-REFERENCE)))
-	     "compiler")
-	    (sf "compiler.con")))
-      (load "compiler.bco")))
+      (if (not (file-exists? "compiler.pkd"))
+	  (cref/generate-trivial-constructor "compiler"))
+      (construct-packages-from-file (fasload "compiler.pkd"))))
 
 ;; Guarantee that the necessary syntactic transforms and optimizers
 ;; are loaded.
@@ -45,7 +41,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			 (load (string-append file ".bin") package))
 		       files))))
       (load-option 'HASH-TABLE)
-      (write-string "\n\n---- Loading compile-time files ----")
+      (fresh-line)
+      (newline)
+      (write-string "---- Loading compile-time files ----")
+      (newline)
       (sf-and-load '("base/switch") '(COMPILER))
       (sf-and-load '("base/macros") '(COMPILER MACROS))
       ((access initialize-package! (->environment '(COMPILER MACROS))))
@@ -61,8 +60,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			   (->environment '(COMPILER MACROS)))))
 	(sf-and-load '("machines/C/machin") '(COMPILER)))
       (set! (access endianness (->environment '(COMPILER))) 'BIG)
-      (sf-and-load '("back/syntax")
-		   '(COMPILER LAP-SYNTAXER))
+      (sf-and-load '("back/syntax") '(COMPILER LAP-SYNTAXER))
       (sf-and-load '("base/scode") '(COMPILER))
       (sf-and-load '("base/pmerly") '(COMPILER PATTERN-MATCHER/EARLY))))
 
@@ -71,5 +69,3 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;; Rebuild the package constructors and cref.
 (cref/generate-constructors "compiler")
-(sf "compiler.con")
-(sf "compiler.ldr")
