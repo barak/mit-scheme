@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/cpress.scm,v 1.4 1992/05/27 17:23:14 cph Exp $
+$Id: cpress.scm,v 1.5 1994/07/16 20:48:50 cph Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -188,21 +188,30 @@ MIT in each case. |#
   (let ((copy-pointer current-pointer))
     (let ((finish
 	   (lambda (nb pointer bp)
-	     (write-copy (let ((nb*
-				(fix:- (let ((bp* command-bp))
-					 (if (fix:< bp* bp)
-					     (fix:+ bp* buffer-size)
-					     bp*))
-				       bp)))
-			   (if (fix:<= nb nb*)
-			       nb
-			       (begin
-				 (unread-bytes (fix:- nb nb*))
-				 nb*)))
-			 pointer
-			 copy-pointer)
-	     (increment-current-pointer)
-	     (idle))))
+	     (let ((nb*
+		    (fix:- (let ((bp* command-bp))
+			     (if (fix:< bp* bp)
+				 (fix:+ bp* buffer-size)
+				 bp*))
+			   bp))
+		   (do-copy
+		    (lambda (nb)
+		      (write-copy nb pointer copy-pointer)
+		      (increment-current-pointer)
+		      (idle))))
+	       ;; NB is the number of bytes that we want to write a
+	       ;; copy command for; NB* is the number of bytes between
+	       ;; the start of the copy and the current position.  If
+	       ;; NB* is less than NB, we must truncate the copy in
+	       ;; order to prevent it from copying from itself.  If
+	       ;; NB* is 1, then don't copy -- it's too short.
+	       (if (fix:<= nb nb*)
+		   (do-copy nb)
+		   (begin
+		     (unread-bytes (fix:- nb nb*))
+		     (if (fix:= nb* 1)
+			 (generate-literal)
+			 (do-copy nb*))))))))
       (let loop ((node node) (nb nb))
 	(let ((pointer (node-pointer node))
 	      (bp (node-bp node)))
