@@ -20,7 +20,7 @@
  * software for any purpose.  It is provided "as is" without
  * express or implied warranty.
  *
- * $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/swat/c/tk3.2-custom/tcl/tclUnix.h,v 1.1 1995/08/02 21:24:59 adams Exp $ SPRITE (Berkeley)
+ * $Id: tclUnix.h,v 1.2 2002/11/27 02:09:30 cph Exp $ SPRITE (Berkeley)
  */
 
 #ifndef _TCLUNIX

@@ -18,7 +18,7 @@
 /* ADDED tk_GetIntervalToNextEvent */
 
 #ifndef lint
-static char rcsid[] = "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/swat/c/tk3.2-custom/tkEvent.c,v 1.1 1995/08/02 21:23:26 adams Exp $ SPRITE (Berkeley)";
+static char rcsid[] = "$Id: tkEvent.c,v 1.2 2002/11/27 02:08:19 cph Exp $ SPRITE (Berkeley)";
 #endif
 
 #include "tkConfig.h"
