@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtty.c,v 1.4 1990/11/13 08:45:26 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtty.c,v 1.5 1991/01/15 20:18:46 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990, 1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -62,26 +62,12 @@ DEFUN_VOID (OS_tty_output_channel)
 unsigned int
 DEFUN_VOID (OS_tty_x_size)
 {
-  CONST char * columns = (UX_getenv ("COLUMNS"));
-  if (columns != 0)
-    {
-      int x = (atoi (columns));
-      if (x > 0)
-	tty_x_size = x;
-    }
   return (tty_x_size);
 }
 
 unsigned int
 DEFUN_VOID (OS_tty_y_size)
 {
-  CONST char * lines = (UX_getenv ("LINES"));
-  if (lines != 0)
-    {
-      int y = (atoi (lines));
-      if (y > 0)
-	tty_y_size = y;
-    }
   return (tty_y_size);
 }
 
@@ -109,6 +95,17 @@ DEFUN_VOID (OS_tty_command_clear)
 #define DEFAULT_TTY_Y_SIZE 24
 #endif
 
+/* Define the 4.3 names in terms of the Sun names
+   if the latter exist and the former do not.  */
+#ifdef TIOCGSIZE
+#ifndef TIOCGWINSZ
+#define TIOCGWINSZ TIOCGSIZE
+#define winsize ttysize
+#define ws_row ts_lines
+#define ws_col ts_cols
+#endif /* not TIOCGWINSZ */
+#endif /* TIOCGSIZE */
+
 static char tputs_output [TERMCAP_BUFFER_SIZE];
 static char * tputs_output_scan;
 
@@ -130,6 +127,35 @@ DEFUN_VOID (UX_initialize_tty)
   tty_y_size = (-1);
   tty_command_beep = ALERT_STRING;
   tty_command_clear = 0;
+  /* Figure out the size of the terminal.  First ask the operating
+     system, if it has an appropriate system call.  Then try the
+     environment variables COLUMNS and LINES.  Then try termcap.
+     Finally, use the default.  */
+#ifdef TIOCGWINSZ
+  {
+    struct winsize size;
+    if ((UX_ioctl (STDOUT_FILENO, TIOCGWINSZ, (&size))) >= 0)
+      {
+	tty_x_size = (size . ws_col);
+	tty_y_size = (size . ws_row);
+      }
+  }
+#endif /* TIOCGWINSZ */
+  if ((tty_x_size <= 0) || (tty_y_size <= 0))
+    {
+      CONST char * columns = (UX_getenv ("COLUMNS"));
+      CONST char * lines = (UX_getenv ("LINES"));
+      if ((columns != 0) && (lines != 0))
+	{
+	  int x = (atoi (columns));
+	  int y = (atoi (lines));
+	  if ((x > 0) && (y > 0))
+	    {
+	      tty_x_size = x;
+	      tty_y_size = y;
+	    }
+	}
+    }
   tputs_output_scan = tputs_output;
   {
     extern int EXFUN (tgetent, (PTR, CONST char *));
@@ -144,15 +170,19 @@ DEFUN_VOID (UX_initialize_tty)
 	&& ((term = (getenv ("TERM"))) != 0)
 	&& ((tgetent (termcap_buffer, term)) > 0))
       {
-	tty_x_size = (tgetnum ("co"));
-	tty_y_size = (tgetnum ("li"));
+	if ((tty_x_size <= 0) || (tty_y_size <= 0))
+	  {
+	    tty_x_size = (tgetnum ("co"));
+	    tty_y_size = (tgetnum ("li"));
+	  }
 	tty_command_clear = (tgetstr ("cl", (&tbp)));
       }
   }
-  if (tty_x_size == (-1))
-    tty_x_size = DEFAULT_TTY_X_SIZE;
-  if (tty_y_size == (-1))
-    tty_y_size = DEFAULT_TTY_Y_SIZE;
+  if ((tty_x_size <= 0) || (tty_y_size <= 0))
+    {
+      tty_x_size = DEFAULT_TTY_X_SIZE;
+      tty_y_size = DEFAULT_TTY_Y_SIZE;
+    }
   if (tty_command_clear == 0)
     tty_command_clear = "\f";
   else
