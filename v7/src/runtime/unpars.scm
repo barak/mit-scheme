@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unpars.scm,v 14.56 2004/01/16 05:48:23 cph Exp $
+$Id: unpars.scm,v 14.57 2004/08/14 04:57:12 cph Exp $
 
 Copyright 1986,1987,1990,1991,1992,1995 Massachusetts Institute of Technology
 Copyright 1996,2001,2002,2003,2004 Massachusetts Institute of Technology
@@ -94,7 +94,6 @@ USA.
 		(ENTITY ,unparse/entity)
 		(EXTENDED-PROCEDURE ,unparse/compound-procedure)
 		(FLONUM ,unparse/flonum)
-		(FUTURE ,unparse/future)
 		(INTERNED-SYMBOL ,unparse/interned-symbol)
 		(LIST ,unparse/pair)
 		(NEGATIVE-FIXNUM ,unparse/number)
@@ -434,10 +433,11 @@ USA.
 
 (define (unparse/bit-string bit-string)
   (*unparse-string "#*")
-  (let loop ((index (-1+ (bit-string-length bit-string))))
-    (if (not (negative? index))
-	(begin (*unparse-char (if (bit-string-ref bit-string index) #\1 #\0))
-	       (loop (-1+ index))))))
+  (let loop ((index (fix:- (bit-string-length bit-string) 1)))
+    (if (fix:>= index 0)
+	(begin
+	  (*unparse-char (if (bit-string-ref bit-string index) #\1 #\0))
+	  (loop (fix:- index 1))))))
 
 (define (unparse/vector vector)
   (let ((method (unparse-vector/unparser vector)))
@@ -446,7 +446,7 @@ USA.
 	(unparse-vector/normal vector))))
 
 (define (unparse-vector/unparser vector)
-  (and (not (zero? (vector-length vector)))
+  (and (fix:> (vector-length vector) 0)
        (let ((tag (safe-vector-ref vector 0)))
 	 (or (structure-tag/unparser-method tag 'VECTOR)
 	     ;; Check the global tagging table too.
@@ -456,13 +456,12 @@ USA.
   (limit-unparse-depth
    (lambda ()
      (let ((length (vector-length vector)))
-       (if (zero? length)
-	   (*unparse-string "#()")
+       (if (fix:> length 0)
 	   (begin
 	     (*unparse-string "#(")
 	     (*unparse-object (safe-vector-ref vector 0))
 	     (let loop ((index 1))
-	       (cond ((= index length)
+	       (cond ((fix:= index length)
 		      (*unparse-char #\)))
 		     ((and *unparser-list-breadth-limit*
 			   (>= index *unparser-list-breadth-limit*))
@@ -470,7 +469,8 @@ USA.
 		     (else
 		      (*unparse-char #\space)
 		      (*unparse-object (safe-vector-ref vector index))
-		      (loop (1+ index)))))))))))
+		      (loop (fix:+ index 1))))))
+	   (*unparse-string "#()"))))))
 
 (define (safe-vector-ref vector index)
   (if (with-absolutely-no-interrupts
@@ -479,8 +479,8 @@ USA.
 			   (vector-ref vector index))
 	     (object-type? (ucode-type manifest-special-nm-vector)
 			   (vector-ref vector index)))))
-      (error "Attempt to unparse partially marked vector"))
-  (vector-ref vector index))
+      (error "Attempt to unparse partially marked vector."))
+  (map-reference-trap (lambda () (vector-ref vector index))))
 
 (define (unparse/record record)
   (if *unparse-with-maximum-readability?*
@@ -495,16 +495,16 @@ USA.
 	  (cond (method
 		 (invoke-user-method method pair))
 		((and *unparse-disambiguate-null-lambda-list?*
-		      (eq? (car pair) 'LAMBDA)
-		      (pair? (cdr pair))
-		      (null? (cadr pair))
-		      (pair? (cddr pair)))
+		      (eq? (safe-car pair) 'LAMBDA)
+		      (pair? (safe-cdr pair))
+		      (null? (safe-car (safe-cdr pair)))
+		      (pair? (safe-cdr (safe-cdr pair))))
 		 (limit-unparse-depth
 		  (lambda ()
 		    (*unparse-char #\()
-		    (*unparse-object (car pair))
+		    (*unparse-object (safe-car pair))
 		    (*unparse-string " ()")
-		    (unparse-tail (cddr pair) 3)
+		    (unparse-tail (safe-cdr (safe-cdr pair)) 3)
 		    (*unparse-char #\)))))
 		(else
 		 (unparse-list pair)))))))
@@ -513,13 +513,13 @@ USA.
   (limit-unparse-depth
    (lambda ()
      (*unparse-char #\()
-     (*unparse-object (car list))
-     (unparse-tail (cdr list) 2)
+     (*unparse-object (safe-car list))
+     (unparse-tail (safe-cdr list) 2)
      (*unparse-char #\)))))
 
 (define (limit-unparse-depth kernel)
   (if *unparser-list-depth-limit*
-      (fluid-let ((*list-depth* (1+ *list-depth*)))
+      (fluid-let ((*list-depth* (+ *list-depth* 1)))
 	(if (> *list-depth* *unparser-list-depth-limit*)
 	    (*unparse-string "...")
 	    (kernel)))
@@ -534,37 +534,42 @@ USA.
 		 (invoke-user-method method l))
 	       (begin
 		 (*unparse-char #\space)
-		 (*unparse-object (car l))
+		 (*unparse-object (safe-car l))
 		 (if (and *unparser-list-breadth-limit*
 			  (>= n *unparser-list-breadth-limit*)
-			  (not (null? (cdr l))))
+			  (pair? (safe-cdr l)))
 		     (*unparse-string " ...")
-		     (unparse-tail (cdr l) (1+ n)))))))
+		     (unparse-tail (safe-cdr l) (+ n 1)))))))
 	((not (null? l))
 	 (*unparse-string " . ")
 	 (*unparse-object l))))
 
 (define (unparse-list/unparser pair)
-  (let ((tag (car pair)))
+  (let ((tag (safe-car pair)))
     (or (structure-tag/unparser-method tag 'LIST)
 	;; Check the global tagging table too.
 	(unparser/tagged-pair-method tag))))
 
 (define (unparse-list/prefix-pair prefix pair)
   (*unparse-string prefix)
-  (*unparse-object (cadr pair)))
+  (*unparse-object (safe-car (safe-cdr pair))))
 
 (define (unparse-list/prefix-pair? object)
   (and *unparse-abbreviate-quotations?*
-       (not (future? (car object)))
-       (pair? (cdr object))
-       (null? (cddr object))
-       (case (car object)
+       (pair? (safe-cdr object))
+       (null? (safe-cdr (safe-cdr object)))
+       (case (safe-car object)
 	 ((QUOTE) "'")
 	 ((QUASIQUOTE) "`")
 	 ((UNQUOTE) ",")
 	 ((UNQUOTE-SPLICING) ",@")
 	 (else #f))))
+
+(define (safe-car pair)
+  (map-reference-trap (lambda () (car pair))))
+
+(define (safe-cdr pair)
+  (map-reference-trap (lambda () (cdr pair))))
 
 ;;;; Procedures
 
@@ -694,11 +699,6 @@ USA.
 		 (unparse/flonum ((ucode-primitive floating-vector-ref) v i)))
 	       (if (< limit length)
 		   (*unparse-string " ..."))))))))
-
-(define (unparse/future future)
-  (*unparse-with-brackets 'FUTURE #f
-    (lambda ()
-      (*unparse-hex ((ucode-primitive primitive-object-datum 1) future)))))
 
 (define (unparse/entity entity)
 
