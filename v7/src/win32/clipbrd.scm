@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: clipbrd.scm,v 1.3 1998/07/09 04:29:29 cph Exp $
+;;;	$Id: clipbrd.scm,v 1.4 1998/07/09 04:31:40 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-98 Massachusetts Institute of Technology
 ;;;
@@ -54,14 +54,10 @@
 	(error "Unable to allocate global memory of length" len))
     (copy-memory (global-lock mem) s len)
     (global-unlock mem)
-    (if (not (open-clipboard 0))
-	(error "Error opening clipboard."))
-    (if (not (empty-clipboard))
-	(error "Error emptying clipboard."))
-    (if (not (set-clipboard-data CF_TEXT mem))
-	(error "Error setting clipboard data."))
-    (if (not (close-clipboard))
-	(error "Error closing clipboard."))))
+    (open-clipboard 0)
+    (empty-clipboard)
+    (set-clipboard-data CF_TEXT mem)
+    (close-clipboard)))
 
 (define (win32-clipboard-read-text)
   (open-clipboard 0)

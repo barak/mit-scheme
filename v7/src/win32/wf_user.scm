@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: wf_user.scm,v 1.7 1996/10/07 18:17:03 cph Exp $
+$Id: wf_user.scm,v 1.8 1998/07/09 04:29:36 cph Exp $
 
-Copyright (c) 1993-96 Massachusetts Institute of Technology
+Copyright (c) 1993-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -62,6 +62,7 @@ MIT in each case. |#
 (define  destroy-window)
 (define  draw-menu-bar)
 (define  ellipse)
+(define  empty-clipboard)
 (define  enable-menu-item)
 (define  end-paint)
 (define  get-client-rect)
@@ -69,6 +70,7 @@ MIT in each case. |#
 (define  get-dc)
 (define  get-device-caps)
 (define  get-focus)
+(define  get-last-error)
 (define  get-menu)
 (define  get-menu-check-mark-dimensions)
 (define  get-menu-item-count)
@@ -494,7 +496,8 @@ MIT in each case. |#
       bool user32.dll "OpenClipboard"))
 
   (set! close-clipboard
-    (windows-procedure (close-clipboard) bool user32.dll "CloseClipboard"))
+    (windows-procedure (close-clipboard)
+      bool user32.dll "CloseClipboard"))
 
   (set! set-clipboard-data
     (windows-procedure (set-clipboard-data (format uint) (hdata handle))
@@ -503,6 +506,10 @@ MIT in each case. |#
   (set! get-clipboard-data
     (windows-procedure (get-clipboard-data (format uint))
       handle user32.dll "GetClipboardData"))
+
+  (set! empty-clipboard
+    (windows-procedure (empty-clipboard)
+      bool user32.dll "EmptyClipboard"))
 
 
   (set! global-alloc
@@ -525,6 +532,11 @@ MIT in each case. |#
     (windows-procedure (copy-memory (destination unchecked) (source unchecked)
 				    (length dword))
       bool kernel32.dll "RtlMoveMemory"))
+
+
+  (set! get-last-error
+    (windows-procedure (get-last-error)
+      dword kernel32.dll "GetLastError"))
 
 
   unspecific)
