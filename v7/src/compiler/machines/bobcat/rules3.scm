@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.11 1988/11/01 04:58:20 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.12 1988/11/01 22:52:45 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -359,11 +359,9 @@ MIT in each case. |#
 
 (define-rule statement
   (OPEN-PROCEDURE-HEADER (? internal-label))
-  (LAP ,@(let ((external-label (rtl-procedure/%external-label
-				(label->object internal-label))))
-	   (if external-label
-	       (LAP (EQUATE ,external-label ,internal-label))
-	       (LAP)))
+  (LAP (EQUATE ,(rtl-procedure/external-label
+		 (label->object internal-label))
+	       ,internal-label)
        ,@(simple-procedure-header internal-entry-code-word
 				  internal-label
 				  entry:compiler-interrupt-procedure)))
