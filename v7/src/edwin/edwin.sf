@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: edwin.sf,v 1.20 1999/01/02 06:11:34 cph Exp $
+;;; $Id: edwin.sf,v 1.21 1999/12/22 02:48:37 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-1999 Massachusetts Institute of Technology
 ;;;
@@ -27,7 +27,9 @@
 	 ((OS/2) "edwinos2")
 	 ((UNIX) "edwinunx")
 	 (else "edwinunk"))))
-  (copy-file "edwin.pkg" (pathname-new-type package-name "pkg"))
+  (let ((new-filename (pathname-new-type package-name "pkg")))
+    (delete-file-no-errors new-filename)
+    (copy-file "edwin.pkg" new-filename))
 
 (if (not (name->package '(EDWIN)))
     (begin

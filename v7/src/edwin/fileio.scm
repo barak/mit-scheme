@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: fileio.scm,v 1.147 1999/08/23 04:47:16 cph Exp $
+;;; $Id: fileio.scm,v 1.148 1999/12/22 02:48:27 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -131,18 +131,18 @@ of the predicates is satisfied, the file is written in the usual way."
 
 (define (read-buffer buffer pathname visit?)
   (set-buffer-writable! buffer)
-  (let ((truename false)
-	(file-error false)
+  (let ((truename #f)
+	(file-error #f)
 	(group (buffer-group buffer)))
     ;; Set modified so that file supercession check isn't done.
-    (set-group-modified?! group true)
+    (set-group-modified?! group #t)
     (region-delete! (buffer-unclipped-region buffer))
     (set! pathname (get-pathname-or-alternate group pathname #t))
     (call-with-current-continuation
      (lambda (continuation)
        (bind-condition-handler (list condition-type:file-error)
 	   (lambda (condition)
-	     (set! truename false)
+	     (set! truename #f)
 	     (set! file-error condition)
 	     (continuation unspecific))
 	 (lambda ()
@@ -173,11 +173,11 @@ of the predicates is satisfied, the file is written in the usual way."
 	 (editor-error "File " (->namestring filename) " not found"))
      (lambda ()
        (->truename (get-pathname-or-alternate (mark-group mark) filename #t))))
-   false))
+   #f))
 
 (define-variable read-file-message
   "If true, messages are displayed when files are read into the editor."
-  false
+  #f
   boolean?)
 
 (define-variable translate-file-data-on-input
@@ -270,17 +270,17 @@ of the predicates is satisfied, the file is written in the usual way."
 (define (parse-buffer-mode-header buffer)
   (let ((start (buffer-start buffer)))
     (let ((end (line-end start 0)))
-      (let ((start (re-search-forward "-\\*-[ \t]*" start end false)))
+      (let ((start (re-search-forward "-\\*-[ \t]*" start end #f)))
 	(and start
-	     (re-search-forward "[ \t]*-\\*-" start end false)
+	     (re-search-forward "[ \t]*-\\*-" start end #f)
 	     (let ((end (re-match-start 0)))
-	       (if (not (char-search-forward #\: start end false))
+	       (if (not (char-search-forward #\: start end #f))
 		   (extract-string start end)
-		   (let ((m (re-search-forward "mode:[ \t]*" start end true)))
+		   (let ((m (re-search-forward "mode:[ \t]*" start end #t)))
 		     (and m
 			  (extract-string
 			   m
-			   (if (re-search-forward "[ \t]*;" m end false)
+			   (if (re-search-forward "[ \t]*;" m end #f)
 			       (re-match-start 0)
 			       end)))))))))))
 
@@ -343,7 +343,7 @@ at the end of a file."
 This applies when the local-variables list is scanned automatically
 after you find a file.  If you explicitly request such a scan with
 \\[normal-mode], there is no query, regardless of this variable."
-  false
+  #f
   boolean?)
 
 (define initialize-buffer-local-variables!
@@ -357,7 +357,7 @@ after you find a file.  If you explicitly request such a scan with
 	    end
 	    (lambda () (backward-one-page end)))))
       (if start
-	  (if (re-search-forward "Edwin Variables:[ \t]*" start end true)
+	  (if (re-search-forward "Edwin Variables:[ \t]*" start end #t)
 	      (let ((start (re-match-start 0))
 		    (end (re-match-end 0)))
 		(if (or (not find-file?)
@@ -385,7 +385,7 @@ after you find a file.  If you explicitly request such a scan with
 	(let ((m1
 	       (horizontal-space-end
 		(if prefix?
-		    (or (match-forward prefix start end false)
+		    (or (match-forward prefix start end #f)
 			(editor-error "Local variables entry missing prefix"))
 		    start))))
 	  (let ((m2
@@ -418,7 +418,7 @@ after you find a file.  If you explicitly request such a scan with
 				   (message
 				    "Error while processing local variable: "
 				    var)
-				   (continuation false))
+				   (continuation #f))
 			       (lambda ()
 				 (if (string-ci=? var "Eval")
 				     (evaluate val)
@@ -441,9 +441,8 @@ initialize-buffer-local-variables!))
 
 (define-variable require-final-newline
   "True says silently put a newline at the end whenever a file is saved.
-Neither false nor true says ask user whether to add a newline in each
-such case.  False means don't add newlines."
-  false
+False means don't add newlines."
+  #f
   boolean?)
 
 (define-variable make-backup-files
@@ -463,25 +462,25 @@ The file's owner and group are unchanged.
 The choice of renaming or copying is controlled by the variables
 backup-by-copying ,  backup-by-copying-when-linked  and
 backup-by-copying-when-mismatch ."
-  true
+  #t
   boolean?)
 
 (define-variable backup-by-copying
   "True means always use copying to create backup files.
 See documentation of variable  make-backup-files."
-  false
+  #f
   boolean?)
 
 (define-variable file-precious-flag
   "True means protect against I/O errors while saving files.
 Some modes set this true in particular buffers."
-  false
+  #f
   boolean?)
 
 (define-variable trim-versions-without-asking
   "True means delete excess backup versions silently.
 Otherwise asks confirmation."
-  false
+  #f
   boolean?)
 
 (define-variable write-file-hooks
@@ -494,7 +493,7 @@ and the rest are not called."
 (define-variable enable-emacs-write-file-message
   "If true, generate Emacs-style message when writing files.
 Otherwise, a message is written both before and after long file writes."
-  false
+  #f
   boolean?)
 
 (define-variable translate-file-data-on-output
@@ -528,19 +527,19 @@ Otherwise, a message is written both before and after long file writes."
 		    ((ref-variable file-precious-flag buffer)
 		     (let ((old (os/precious-backup-pathname pathname)))
 		       (let ((rename-back?
-			      (catch-file-errors (lambda () false)
+			      (catch-file-errors (lambda () #f)
 				(lambda ()
 				  (rename-file pathname old)
 				  (set! modes (file-modes old))
-				  true))))
+				  #t))))
 			 (unwind-protect
-			  false
+			  #f
 			  (lambda ()
 			    (clear-visited-file-modification-time! buffer)
 			    (write-buffer buffer)
 			    (if rename-back?
 				(begin
-				  (set! rename-back? false)
+				  (set! rename-back? #f)
 				  (delete-file-no-errors old))))
 			  (lambda ()
 			    (if rename-back?
@@ -580,7 +579,7 @@ Otherwise, a message is written both before and after long file writes."
 	  (and file-time (< (abs (- buffer-time file-time)) 2))))))
 
 (define-integrable (clear-visited-file-modification-time! buffer)
-  (set-buffer-modification-time! buffer false))
+  (set-buffer-modification-time! buffer #f))
 
 (define (write-buffer buffer)
   (let ((truename
@@ -707,7 +706,7 @@ Otherwise, a message is written both before and after long file writes."
 	      (if (let ((last-char (extract-left-char end)))
 		    (and last-char
 			 (not (eqv? #\newline last-char))
-			 (or (eq? require-final-newline? true)
+			 (or (eq? require-final-newline? #t)
 			     (prompt-for-yes-or-no?
 			      (string-append
 			       "Buffer " (buffer-name buffer)
@@ -724,7 +723,7 @@ Otherwise, a message is written both before and after long file writes."
        (os/backup-buffer? truename)
        (let ((truename (file-chase-links truename)))
 	 (catch-file-errors
-	  (lambda () false)
+	  (lambda () #f)
 	  (lambda ()
 	    (call-with-values
 		(lambda () (os/buffer-backup-pathname truename buffer))
@@ -736,17 +735,18 @@ Otherwise, a message is written both before and after long file writes."
 			    (temporary-message
 			     "Cannot write backup file; backing up in "
 			     filename)
+			    (delete-file-no-errors filename)
 			    (copy-file truename filename)
-			    false))
+			    #f))
 			(lambda ()
+			  (delete-file-no-errors backup-pathname)
 			  (if (or (ref-variable file-precious-flag buffer)
 				  (ref-variable backup-by-copying buffer)
 				  (os/backup-by-copying? truename buffer))
 			      (begin
 				(copy-file truename backup-pathname)
-				false)
+				#f)
 			      (begin
-				(delete-file-no-errors backup-pathname)
 				(rename-file truename backup-pathname)
 				(file-modes backup-pathname)))))))
 		  (set-buffer-backed-up?!
