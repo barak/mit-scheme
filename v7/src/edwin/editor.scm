@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.223 1992/08/27 06:43:24 jinx Exp $
+;;;	$Id: editor.scm,v 1.224 1992/09/14 23:12:23 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1992 Massachusetts Institute of Technology
 ;;;
@@ -342,7 +342,7 @@ This does not affect editor errors or evaluation errors."
   (quit-editor-and (lambda () *the-non-printing-object*)))
 
 (define (quit-scheme)
-  (quit-editor-and (lambda () (quit) (edit))))
+  (quit-editor-and (lambda () (%quit) (edit))))
 
 (define (quit-editor-and thunk)
   (call-with-current-continuation
