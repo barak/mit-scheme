@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.24 1992/04/16 01:38:50 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.25 1992/04/18 04:13:12 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -504,6 +504,7 @@ MIT in each case. |#
 
 (define (do-division target source1 source2 result-reg)
   (let ((load-dividend (load-machine-register! source1 eax)))
+    (need-register! eax)
     (require-register! edx)
     (rtl-target:=machine-register! target result-reg)
     (let ((source2 (any-reference source2)))
