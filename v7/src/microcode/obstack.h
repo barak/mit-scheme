@@ -132,7 +132,7 @@ struct obstack		/* control current object in current chunk */
   char	*next_free;		/* where to add next char to current object */
   char	*chunk_limit;		/* address of char after current chunk */
   long	temp;			/* Temporary for some macros.  */
-  int   alignment_mask;		/* Mask of alignment for each object. */
+  long  alignment_mask;		/* Mask of alignment for each object. */
 				 /* User's fcn to allocate a chunk.  */
   struct _obstack_chunk * EXFUN ((*chunkfun), (long));
 				/* User's function to free a chunk.  */
