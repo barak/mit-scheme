@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.2 1994/11/22 21:32:52 adams Exp $
+$Id: rtlgen.scm,v 1.3 1994/11/22 23:33:29 gjr Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -2186,12 +2186,12 @@ MIT in each case. |#
     (internal-error "Unexpected CALL continuation [saved!]" cont))
   (cond
    ((LOOKUP/? cont)
-    (if state
+    (if (not state)
+	(rtlgen/stack-push!/1 (rtlgen/boxed-continuation state))
 	(let ((temp-reg (rtlgen/new-reg)))
 	  (rtlgen/assign! temp-reg (rtlgen/boxed-continuation state))
 	  (rtlgen/bop-stack-pointer! (rtlgen/state/stmt/size state))
-	  (rtlgen/stack-push!/1 temp-reg)
-	(rtlgen/stack-push!/1 (rtlgen/boxed-continuation state))))
+	  (rtlgen/stack-push!/1 temp-reg)))
     false)
    ((CALL/%stack-closure-ref? cont)
     ;; This assumes that (a) it is the continuation variable and (b) it is at
