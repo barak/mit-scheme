@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.c,v 9.29 1988/03/24 07:12:47 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.c,v 9.30 1988/05/11 17:20:18 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -56,7 +56,8 @@ DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-GC-TYPE", Prim_prim_obj_gc_type, 1)
 {
   PRIMITIVE_HEADER (1); 
 
-  PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM (GC_Type (ARG_REF (1))));
+  PRIMITIVE_RETURN
+    (MAKE_SIGNED_FIXNUM (GC_Type_Map [OBJECT_TYPE (ARG_REF (1))]));
 }
 
 /* (PRIMITIVE-OBJECT-TYPE? TYPE-CODE OBJECT)
@@ -173,7 +174,7 @@ DEFINE_PRIMITIVE ("OBJECT-GC-TYPE", Prim_object_gc_type, 1)
   PRIMITIVE_HEADER (1); 
 
   Touch_In_Primitive ((ARG_REF (1)), object);
-  PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM (GC_Type (object)));
+  PRIMITIVE_RETURN (MAKE_SIGNED_FIXNUM (GC_Type (object)));
 }
 
 DEFINE_PRIMITIVE ("OBJECT-TYPE?", Prim_object_type_p, 2)
@@ -201,16 +202,20 @@ DEFINE_PRIMITIVE ("OBJECT-DATUM", Prim_object_datum, 1)
 DEFINE_PRIMITIVE ("OBJECT-SET-TYPE", Prim_object_set_type, 2)
 {
   fast long type_code;
-  fast long gc_type_code;
   fast Pointer object;
   PRIMITIVE_HEADER (2);
 
   type_code = (arg_index_integer (1, (MAX_TYPE_CODE + 1)));
-  gc_type_code = (GC_Type_Code (type_code));
   Touch_In_Primitive ((ARG_REF (2)), object);
-  if ((gc_type_code != (GC_Type (object))) &&
-      (gc_type_code != GC_Non_Pointer))
-    error_bad_range_arg (1);
+  {
+    fast long gc_type_code;
+
+    gc_type_code = (GC_Type_Map [type_code]);
+    if ((gc_type_code == GC_Undefined) ||
+	(! ((gc_type_code == GC_Non_Pointer) ||
+	    (gc_type_code == (GC_Type (object))))))
+      error_bad_range_arg (1);
+  }
   PRIMITIVE_RETURN (Make_New_Pointer (type_code, object));
 }
 
