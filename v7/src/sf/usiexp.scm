@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usiexp.scm,v 3.7 1988/04/23 08:52:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usiexp.scm,v 3.8 1988/05/11 04:19:27 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -327,6 +327,10 @@ MIT in each case. |#
   (map cons
        usual-integrations/expansion-names
        usual-integrations/expansion-values))
+
+;;;;  Hooks and utilities for user defined reductions and expanders
+
+;;; User defined reductions appear in reduct.scm
 
 ;;; Scode->Scode expanders
 

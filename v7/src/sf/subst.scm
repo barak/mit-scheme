@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/subst.scm,v 3.9 1988/04/23 08:51:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/subst.scm,v 3.10 1988/05/11 04:19:05 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -290,7 +290,7 @@ MIT in each case. |#
 		    (if (and (not (variable/integrated var))
 			     (not (variable/referenced var))
 			     (not (variable/can-ignore? var)))
-			(warn "Open block variable bound and unreferenced:" 
+			(warn "Unreferenced defined variable:"
 			      (variable/name var))))
 		  vars))
     (if (open-block/optimized expression)
@@ -357,7 +357,7 @@ you ask for.
 			    (if (and (not (variable/referenced variable))
 				     (not (variable/integrated variable))
 				     (not (variable/can-ignore? variable)))
-				(warn "Procedure variable bound and unreferenced:"
+				(warn "Unreferenced bound variable:"
 				      (variable/name variable)
 				      *current-block-names*)))
 			  (if rest

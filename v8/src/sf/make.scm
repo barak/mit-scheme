@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/sf/make.scm,v 4.3 1988/04/23 08:25:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/sf/make.scm,v 4.4 1988/05/11 04:18:27 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -61,11 +61,11 @@ MIT in each case. |#
     (make-environment
       (define :name "SF")
       (define :version 4)
-      (define :modification 3)
+      (define :modification 4)
       (define :files)
 
       (define :rcs-header		;RCS sets up this string.
-	"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/sf/make.scm,v 4.3 1988/04/23 08:25:27 cph Exp $")
+	"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/sf/make.scm,v 4.4 1988/05/11 04:18:27 jinx Exp $")
 
       (define :files-lists
 	(list
@@ -95,7 +95,8 @@ MIT in each case. |#
 	 (cons package/cgen
 	       '("cgen.bin"))		; Internal -> SCode
 	 (cons package/expansion
-	       '("usiexp.bin"))		; Usual Integrations: Expanders
+	       '("usiexp.bin"		; Usual Integrations: Expanders
+		 "reduct.bin"))		; User defined expanders
 	 (cons package/declarations
 	       '("pardec.bin"))		; Declaration Parser
 	 (cons package/copy

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/pardec.scm,v 3.7 1988/04/23 08:50:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/pardec.scm,v 3.8 1988/05/11 04:18:50 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -99,6 +99,10 @@ MIT in each case. |#
 
 (define (declarations/known? declaration)
   (assq (car declaration) known-declarations))
+
+;; before-bindings? should be true if binding <name> should nullify
+;; the declaration.  It should be false if a binding and the
+;; declaration can "coexist".
 
 (define (define-declaration name before-bindings? parser)
   (let ((entry (assq name known-declarations)))
@@ -386,7 +390,23 @@ MIT in each case. |#
 		(finish value)))
 	    (variable/final-value variable environment finish if-not))))))
 
-;;;; User provided expansions and processors
+;;;; User provided reductions and expansions
+
+;;; Reductions.  See reduct.scm for a description.
+
+(define-declaration 'REDUCE-OPERATOR false
+  (lambda (block table/cons table reduction-rules)
+    block ; ignored
+    ;; Maybe it wants to be exported?
+    (bind/general table/cons table false 'EXPAND false
+		  (map car reduction-rules)
+		  (map (lambda (rule)
+			 (reducer/make rule block))
+		       reduction-rules))))
+
+;; Expansions.  These should be used with great care, and require
+;; knowing a fair amount about the internals of sf.  This declaration
+;; is purely a hook, with no convenience.
 
 (define expander-evaluation-environment
   (access package/expansion
