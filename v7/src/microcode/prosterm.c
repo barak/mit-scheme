@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prosterm.c,v 1.13 1993/04/19 08:27:48 cph Exp $
+$Id: prosterm.c,v 1.14 1994/11/28 07:36:06 cph Exp $
 
-Copyright (c) 1990-93 Massachusetts Institute of Technology
+Copyright (c) 1990-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -44,7 +44,9 @@ DEFUN (arg_terminal, (argument_number), int argument_number)
 {
   Tchannel channel = (arg_channel (argument_number));
   enum channel_type type = (OS_channel_type (channel));
-  if (! ((type == channel_type_terminal) || (type == channel_type_pty_master)))
+  if (! ((type == channel_type_terminal)
+	 || (type == channel_type_unix_pty_master)
+	 || (type == channel_type_os2_console)))
     error_bad_range_arg (argument_number);
   return (channel);
 }
