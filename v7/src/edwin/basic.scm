@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.123 1992/03/08 18:33:55 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.124 1992/03/13 09:45:49 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -247,7 +247,7 @@ For more information type the HELP key while entering the name."
   (set-buffer-backed-up?! buffer false))
 
 (define (editor-failure . strings)
-  (cond ((not (null? strings)) (apply temporary-message strings))
+  (cond ((not (null? strings)) (apply message strings))
 	(*defining-keyboard-macro?* (clear-message)))
   (editor-beep)
   (keyboard-macro-disable))
