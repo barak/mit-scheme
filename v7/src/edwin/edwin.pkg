@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.157 1994/12/19 20:48:20 cph Exp $
+$Id: edwin.pkg,v 1.158 1994/12/19 23:27:34 cph Exp $
 
 Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
@@ -1109,7 +1109,7 @@ MIT in each case. |#
 	  x-button5-up)
   (export (edwin screen x-screen)
 	  update-xterm-screen-names!))
-
+#| PC only:
 (define-package (edwin win-commands)
   (files "win32com")
   (parent (edwin))
@@ -1120,7 +1120,7 @@ MIT in each case. |#
 	  edwin-command$set-icon)
   (export (edwin screen win32)
 	  update-win32-screen-name!))
-
+|#
 (define-package (edwin os2-commands)
   (files "os2com")
   (parent (edwin))
