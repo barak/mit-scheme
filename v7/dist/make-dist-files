@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: make-dist-files,v 1.9 2000/12/23 06:04:02 cph Exp $
+# $Id: make-dist-files,v 1.10 2000/12/27 18:26:32 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -145,7 +145,6 @@ make_tarfile ()
 if [ "${DESTINATION}" = "" ]; then
   PRE="`/scheme/v7/dist/release-prefix`-ix86"
   make_tarfile "${PRE}-gnu-linux"
-  rm -f ${BUILD_DIR}/bin/*
   ${INSTALL} /scheme/v7/dist/freebsd-bin/* ${BINDIR}/.
   make_tarfile "${PRE}-freebsd"
 else
