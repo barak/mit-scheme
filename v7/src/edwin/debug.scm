@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.26 1993/10/26 21:51:31 cph Exp $
+;;;	$Id: debug.scm,v 1.27 1994/03/07 18:52:44 cph Exp $
 ;;;
-;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1992-94 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -1373,7 +1373,6 @@ it has been renamed, it will not be deleted automatically.")
 				n)
 		(loop (cdr reductions) (+ n 1)))
 	  '()))))
-
 
 (define (subproblem/write-summary bline port)
   (let* ((subproblem (bline/object bline))
@@ -1391,41 +1390,17 @@ it has been renamed, it will not be deleted automatically.")
 	    (cond ((debugging-info/compiled-code? expression)
 		   (write-string ";unknown compiled code" port))
 		  ((not (debugging-info/undefined-expression? expression))
-		   (print-with-subexpression expression subexpression))
+		   (fluid-let ((*unparse-primitives-by-name?* true))
+		     (write
+		      (unsyntax (if (invalid-subexpression? subexpression)
+				    expression
+				    subexpression)))))
 		  ((debugging-info/noise? expression)
 		   (write-string ";" port)
 		   (write-string ((debugging-info/noise expression) false)
 				 port))
 		  (else
 		   (write-string ";undefined expression" port))))))))
-
-;;;also marks the subexpression with # #
-(define (print-with-subexpression expression subexpression)
-  (fluid-let ((*unparse-primitives-by-name?* true))
-    (if (invalid-subexpression? subexpression)
-	(write (unsyntax expression))
-	(let ((sub (write-to-string (unsyntax subexpression))))
-	  (write (unsyntax-with-substitutions
-		  expression
-		  (list
-		   (cons subexpression
-			 (unparser-literal/make
-			  (string-append
-			   subexpression-start-marker
-			   sub
-			   subexpression-end-marker))))))))))
-
-(define subexpression-start-marker "#")
-(define subexpression-end-marker "#")
-
-(define-structure (unparser-literal
-		   (conc-name unparser-literal/)
-		   (print-procedure
-		    (lambda (state instance)
-		      (unparse-string state
-				      (unparser-literal/string instance))))
-		   (constructor unparser-literal/make))
-  string)
 
 (define (subproblem/write-description bline port)
   (let* ((subproblem (bline/object bline))
