@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dospth.scm,v 1.6 1992/07/28 16:20:26 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dospth.scm,v 1.7 1992/07/28 19:43:18 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -113,12 +113,24 @@ MIT in each case. |#
       directory))
 
 (define (parse-directory-component component)
-  (cond ((string=? ".." component)
-	 'UP)
-	((> (string-length component) 8)
-	 (substring component 0 8))
-	(else
-	 component)))
+  (if (string=? ".." component)
+      'UP
+      (let ((len (string-length component)))
+	(cond ((substring-find-previous-char component 0 len #\.)
+	       ;; Handle screwy directories with dots in their names.
+	       (parse-name component
+			   (lambda (before after)
+			     (string-append (if (eq? before 'WILD)
+						"*"
+						before)
+					    "."
+					    (if (eq? after 'WILD)
+						"*"
+						after)))))
+	      ((> len 8)
+	       (substring component 0 8))
+	      (else
+	       component)))))
 
 (define (expand-directory-prefixes string)
   (if (string-null? string)
