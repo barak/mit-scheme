@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.32 1990/01/18 22:43:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.33 1990/05/03 15:17:28 jinx Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; LAP Generation Rules: Data Transfers
+;;; package: (compiler lap-syntaxer)
 
 (declare (usual-integrations))
 
@@ -51,38 +52,61 @@ MIT in each case. |#
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OFFSET-ADDRESS (REGISTER (? source)) (? n)))
-  (load-static-link target source n false))
+  (load-static-link target source (* 4 n) false))
 
 (define-rule statement
   ;; This is an intermediate rule -- not intended to produce code.
   (ASSIGN (REGISTER (? target))
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
 			(OFFSET-ADDRESS (REGISTER (? source)) (? n))))
-  (load-static-link target source n
+  (load-static-link target source (* 4 n)
     (lambda (target)
       (LAP (OR UL (& ,(make-non-pointer-literal type 0)) ,target)))))
 
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (BYTE-OFFSET-ADDRESS (REGISTER (? source)) (? n)))
+  (load-static-link target source n false))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (CONS-POINTER (MACHINE-CONSTANT (? type))
+			(BYTE-OFFSET-ADDRESS (REGISTER (? source)) (? n))))
+  (load-static-link target source n
+    (lambda (target)
+      (LAP (OR UL (& ,(make-non-pointer-literal type 0)) ,target)))))
+
 (define (load-static-link target source n suffix)
   (if (and (zero? n) (not suffix))
       (assign-register->register target source)
       (let ((non-reusable
-	     (if (not suffix)
-		 (lambda ()
-		   (let ((source (allocate-indirection-register! source)))
-		     (delete-dead-registers!)
-		     (let ((target (allocate-alias-register! target 'ADDRESS)))
-		       (if (eqv? source target)
-			   (increment-machine-register target n)
-			   (LAP (LEA ,(offset-reference source n)
-				     ,(register-reference target)))))))
-		 (lambda ()
-		   (let ((source (indirect-reference! source n)))
-		     (delete-dead-registers!)
-		     (let ((temp (reference-temporary-register! 'ADDRESS)))
-		       (let ((target (reference-target-alias! target 'DATA)))
-			 (LAP (LEA ,source ,temp)
-			      (MOV L ,temp ,target)
-			      ,@(suffix target)))))))))
+	     (cond ((not suffix)
+		    (lambda ()
+		      (let ((source (allocate-indirection-register! source)))
+			(delete-dead-registers!)
+			(let ((target (allocate-alias-register! target
+								'ADDRESS)))
+			  (if (eqv? source target)
+			      (increment-machine-register target n)
+			      (LAP (LEA ,(byte-offset-reference source n)
+					,(register-reference target))))))))
+		   ((<= -128 n 127)
+		    (lambda ()
+		      (let ((source (register-reference source)))
+			(delete-dead-registers!)
+			(let ((target (reference-target-alias! target 'DATA)))
+			  (LAP (MOVEQ (& ,n) ,target)
+			       (ADD L ,source ,target))))))
+		   (else
+		    (lambda ()
+		      (let ((source (indirect-byte-reference! source n)))
+			(delete-dead-registers!)
+			(let ((temp (reference-temporary-register! 'ADDRESS)))
+			  (let ((target (reference-target-alias! target
+								 'DATA)))
+			    (LAP (LEA ,source ,temp)
+				 (MOV L ,temp ,target)
+				 ,@(suffix target))))))))))
 	(if (machine-register? source)
 	    (non-reusable)
 	    (reuse-pseudo-register-alias! source 'DATA
@@ -166,17 +190,17 @@ MIT in each case. |#
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (CONSTANT (? source)))
-  (LAP ,(load-constant source (standard-target-reference target))))
+  (load-constant source (standard-target-reference target)))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (MACHINE-CONSTANT (? n)))
-  (LAP ,(load-machine-constant n (standard-target-reference target))))
+  (load-machine-constant n (standard-target-reference target)))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
 			(MACHINE-CONSTANT (? datum))))
-  (LAP ,(load-non-pointer type datum (standard-target-reference target))))
+  (load-non-pointer type datum (standard-target-reference target)))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (ENTRY:PROCEDURE (? label)))
@@ -246,8 +270,8 @@ MIT in each case. |#
   (delete-dead-registers!)
   (let ((target (reference-target-alias! target 'DATA)))
     (if (non-pointer-object? constant)
-	(LAP ,(load-non-pointer 0 (careful-object-datum constant) target))
-	(LAP ,(load-constant constant target)
+	(load-non-pointer 0 (careful-object-datum constant) target)
+	(LAP ,@(load-constant constant target)
 	     ,@(conversion target)))))
 
 (define-rule statement
@@ -306,13 +330,13 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a)) (? n))
 	  (CONSTANT (? object)))
-  (LAP ,(load-constant object (indirect-reference! a n))))
+  (load-constant object (indirect-reference! a n)))
 
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a)) (? n))
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
 			(MACHINE-CONSTANT (? datum))))
-  (LAP ,(load-non-pointer type datum (indirect-reference! a n))))
+  (load-non-pointer type datum (indirect-reference! a n)))
 
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a)) (? n)) (REGISTER (? r)))
@@ -346,6 +370,36 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? address)) (? offset))
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
+			(BYTE-OFFSET-ADDRESS (REGISTER (? source)) (? n))))
+  (let ((temp (reference-temporary-register! 'ADDRESS))
+	(target (indirect-reference! address offset)))
+    (LAP (LEA ,(indirect-byte-reference! source n) ,temp)
+	 (MOV L ,temp ,target)
+	 ,(memory-set-type type target))))
+
+;; Common case that can be done cheaply:
+
+(define-rule statement
+  (ASSIGN (OFFSET (REGISTER (? address)) (? offset))
+	  (BYTE-OFFSET-ADDRESS (OFFSET (REGISTER (? address)) (? offset))
+			       (? n)))
+  (if (zero? n)
+      (LAP)
+      (let ((target (indirect-byte-reference! address offset)))
+	(cond ((<= 1 n 8)
+	       (LAP (ADDQ L (& ,n) ,target)))
+	      ((<= -8 n -1)
+	       (LAP (SUBQ L (& ,(- n)) ,target)))
+	      ((<= -128 n 127)
+	       (let ((temp (reference-temporary-register! 'DATA)))
+		 (LAP (MOVEQ (& ,n) ,temp)
+		      (ADD L ,temp ,target))))
+	      (else
+	       (LAP (ADD L (& ,n) ,target)))))))
+
+(define-rule statement
+  (ASSIGN (OFFSET (REGISTER (? address)) (? offset))
+	  (CONS-POINTER (MACHINE-CONSTANT (? type))
 			(ENTRY:PROCEDURE (? label))))
   (let ((temp (reference-temporary-register! 'ADDRESS))
 	(target (indirect-reference! address offset)))
@@ -374,13 +428,13 @@ MIT in each case. |#
 
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER 13) 1) (CONSTANT (? object)))
-  (LAP ,(load-constant object (INST-EA (@A+ 5)))))
+  (load-constant object (INST-EA (@A+ 5))))
 
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER 13) 1)
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
 			(MACHINE-CONSTANT (? datum))))
-  (LAP ,(load-non-pointer type datum (INST-EA (@A+ 5)))))
+  (load-non-pointer type datum (INST-EA (@A+ 5))))
 
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER 13) 1) (REGISTER (? r)))
@@ -412,7 +466,7 @@ MIT in each case. |#
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1) (CONSTANT (? object)))
-  (LAP ,(load-constant object (INST-EA (@-A 7)))))
+  (load-constant object (INST-EA (@-A 7))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1)
@@ -424,7 +478,7 @@ MIT in each case. |#
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1)
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
 			(MACHINE-CONSTANT (? datum))))
-  (LAP ,(load-non-pointer type datum (INST-EA (@-A 7)))))
+  (load-non-pointer type datum (INST-EA (@-A 7))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1)
@@ -445,6 +499,13 @@ MIT in each case. |#
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
 			(OFFSET-ADDRESS (REGISTER (? r)) (? n))))
   (LAP (PEA ,(indirect-reference! r n))
+       ,(memory-set-type type (INST-EA (@A 7)))))
+
+(define-rule statement
+  (ASSIGN (PRE-INCREMENT (REGISTER 15) -1)
+	  (CONS-POINTER (MACHINE-CONSTANT (? type))
+			(BYTE-OFFSET-ADDRESS (REGISTER (? r)) (? n))))
+  (LAP (PEA ,(indirect-byte-reference! r n))
        ,(memory-set-type type (INST-EA (@A 7)))))
 
 (define-rule statement
@@ -606,9 +667,9 @@ MIT in each case. |#
     (let ((target (reference-target-alias! target 'DATA)))
       (LAP (MOV L (A 5) ,target)
 	   (OR L (& ,(make-non-pointer-literal (ucode-type flonum) 0)) ,target)
-	   ,(load-non-pointer (ucode-type manifest-nm-vector)
-			      flonum-size
-			      (INST-EA (@A+ 5)))
+	   ,@(load-non-pointer (ucode-type manifest-nm-vector)
+			       flonum-size
+			       (INST-EA (@A+ 5)))
 	   (FMOVE D ,source (@A+ 5))))))
 
 (define-rule statement
@@ -657,7 +718,7 @@ MIT in each case. |#
 (define (load-char-into-register type source target)
   (delete-dead-registers!)
   (let ((target (reference-target-alias! target 'DATA)))
-    (LAP ,(load-non-pointer type 0 target)
+    (LAP ,@(load-non-pointer type 0 target)
 	 (MOV B ,source ,target))))
 
 (define-rule statement

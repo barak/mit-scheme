@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/blocks.scm,v 4.12 1989/10/26 07:35:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/blocks.scm,v 4.13 1990/05/03 15:04:48 jinx Rel $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Environment model data structures
+;;; package: (compiler)
 
 (declare (usual-integrations))
 
@@ -86,9 +87,12 @@ from the continuation, and then "glued" into place afterwards.
   interned-variables	;alist of interned SCode variable objects
   closure-offsets	;for closure block, alist of bound variable offsets
   debugging-info	;dbg-block, if used
-  stack-link		;for stack block, adjacent block on stack
-  static-link?		;for stack block, true iff static link to parent
-  popping-limits	;for stack block (see continuation analysis)
+  (stack-link		;for stack block, adjacent block on stack
+   shared-block)	;for multi closures, the official block
+  (static-link?		;for stack block, true iff static link to parent
+   entry-number)	;for multi closures, entry number
+  (popping-limits	;for stack block (see continuation analysis)
+   grafted-blocks)	;for multi closures, list of blocks that share
   popping-limit		;for stack block (see continuation analysis)
   layout-frozen?	;used by frame reuse to tell parameter
 			;analysis not to alter this block's layout
@@ -264,7 +268,7 @@ from the continuation, and then "glued" into place afterwards.
 	(loop (block-parent block)
 	      (+ n (block-frame-size block))))))
 
-(define (for-each-block-descendent! block procedure)
+(define (for-each-block-descendant! block procedure)
   (let loop ((block block))
     (procedure block)
     (for-each loop (block-children block))))
@@ -296,13 +300,63 @@ from the continuation, and then "glued" into place afterwards.
 	 (rvalue/procedure? procedure)
 	 (procedure-target-block procedure))))
 
+#|
 (define (disown-block-child! block child)
   (set-block-children! block (delq! child (block-children block)))
-  (set-block-disowned-children! block
-				(cons child (block-disowned-children block)))
+  (if (eq? block (original-block-parent child))
+      (set-block-disowned-children! block
+				    (cons child (block-disowned-children block))))
   unspecific)
 
 (define (own-block-child! block child)
   (set-block-parent! child block)
   (set-block-children! block (cons child (block-children block)))
+  (if (eq? block (original-block-parent child))
+      (set-block-disowned-children! block
+				    (delq! child (block-disowned-children block))))
   unspecific)
+|#
+
+(define (transfer-block-child! child block block*)
+  ;; equivalent to
+  ;; (begin
+  ;;   (disown-block-child! block child)
+  ;;   (own-block-child! block* child))
+  ;; but faster.
+  (let ((original-parent (original-block-parent child)))
+    (set-block-children! block (delq! child (block-children block)))
+    (if (eq? block original-parent)
+	(set-block-disowned-children!
+	 block
+	 (cons child (block-disowned-children block))))
+    (set-block-parent! child block*)
+    (if block*
+	(begin
+	  (set-block-children! block* (cons child (block-children block*)))
+	  (if (eq? block* original-parent)
+	      (set-block-disowned-children!
+	       block*
+	       (delq! child (block-disowned-children block*))))))))
+
+(define-integrable (block-number-of-entries block)
+  (block-entry-number block))
+
+(define (closure-block-entry-number block)
+  (if (eq? block (block-shared-block block))
+      0
+      (block-entry-number block)))
+
+(define (closure-block-first-offset block)
+  (let ((block* (block-shared-block block)))
+    (closure-first-offset (block-entry-number block*)
+			  (if (eq? block block*)
+			      0
+			      (block-entry-number block)))))
+
+(define (block-nearest-closure-ancestor block)
+  (let loop ((block block) (last false))
+    (and block
+	 (if (stack-block? block)
+	     (loop (block-parent block) block)
+	     (and (closure-block? block)
+		  last)))))

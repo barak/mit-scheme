@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/infnew.scm,v 4.7 1990/01/22 23:44:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/infnew.scm,v 4.8 1990/05/03 15:04:52 jinx Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Debugging Information
+;;; package: (compiler debugging-information)
 
 (declare (usual-integrations))
 
@@ -167,10 +168,14 @@ MIT in each case. |#
 
 (define (closure-block->dbg-block block)
   (let ((parent (block-parent block))
+	(start-offset
+	 (closure-object-first-offset
+	  (block-entry-number (block-shared-block block))))
 	(offsets
 	 (map (lambda (offset)
 		(cons (car offset)
-		      (- (cdr offset) closure-block-first-offset)))
+		      (- (cdr offset)
+			 (closure-block-first-offset block))))
 	      (block-closure-offsets block))))
     (let ((layout (make-layout (1+ (apply max (map cdr offsets))))))
       (for-each (lambda (offset)
@@ -180,7 +185,9 @@ MIT in each case. |#
 		offsets)
       (if (and parent (ic-block/use-lookup? parent))
 	  (layout-set! layout 0 dbg-block-name/ic-parent))
-      (make-dbg-block 'CLOSURE (block->dbg-block parent) false layout false))))
+      (make-dbg-block 'CLOSURE (block->dbg-block parent) false
+		      (cons start-offset layout)
+		      false))))
 
 (define (ic-block->dbg-block block)
   (make-dbg-block 'IC (block->dbg-block (block-parent block))
@@ -202,17 +209,22 @@ MIT in each case. |#
       (let ((integrated? (lvalue-integrated? variable))
 	    (indirection (variable-indirection variable)))
 	(let ((dbg-variable
-	       (make-dbg-variable (variable-name variable)
-				  (cond (integrated? 'INTEGRATED)
-					(indirection 'INDIRECTED)
-					((variable-in-cell? variable) 'CELL)
-					(else 'NORMAL))
-				  (cond (integrated?
-					 (lvalue-known-value variable))
-					(indirection
-					 (variable->dbg-variable indirection))
-					(else
-					 false)))))
+	       (make-dbg-variable
+		(variable-name variable)
+		(cond (integrated? 'INTEGRATED)
+		      (indirection 'INDIRECTED)
+		      ((variable-in-cell? variable) 'CELL)
+		      (else 'NORMAL))
+		(cond (integrated?
+		       (lvalue-known-value variable))
+		      (indirection
+		       ;; This currently does not examine whether it is a
+		       ;; simple indirection, or a closure indirection.
+		       ;; The value displayed will be incorrect if it
+		       ;; is a closure indirection, but...
+		       (variable->dbg-variable (car indirection)))
+		      (else
+		       false)))))
 	  (if integrated?
 	      (set! *integrated-variables*
 		    (cons dbg-variable *integrated-variables*)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/closan.scm,v 4.14 1990/04/01 22:23:16 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/closan.scm,v 4.15 1990/05/03 15:09:07 jinx Rel $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Closure Analysis
+;;; package: (compiler fg-optimizer closure-analysis)
 
 (declare (usual-integrations))
 
@@ -255,7 +256,7 @@ MIT in each case. |#
   ;; is an ancestor if free variables captured by `block*' are needed.
 
   (define (process-descendant block)
-    (for-each-block-descendent!
+    (for-each-block-descendant!
      block
      (lambda (block*)
        (for-each process-disowned (block-disowned-children block*)))))
@@ -417,13 +418,7 @@ MIT in each case. |#
    constraints))
 
 (define (undrift-block! block new-parent)
-  (let ((parent (block-parent block)))
-    (set-block-children! parent (delq! block (block-children parent))))
-  (own-block-child! new-parent block)
-  (if (eq? new-parent (original-block-parent block))
-      (set-block-disowned-children!
-       new-parent
-       (delq! block (block-disowned-children new-parent)))))
+  (transfer-block-child! block (block-parent block) new-parent))
 
 ;;;; Utilities
 
@@ -445,7 +440,7 @@ MIT in each case. |#
 ;; envopt has an identical definition commented out.
 
 (define (for-each-callee! block action)
-  (for-each-block-descendent! block
+  (for-each-block-descendant! block
     (lambda (block*)
       (for-each (lambda (application)
 		  (for-each (lambda (value)

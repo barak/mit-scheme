@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgproc.scm,v 4.11 1990/04/01 22:24:35 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgproc.scm,v 4.12 1990/05/03 15:11:55 jinx Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; RTL Generation: Procedure Headers
+;;; package: (compiler rtl-generator generate/procedure-header)
 
 (declare (usual-integrations))
 
@@ -53,22 +54,35 @@ MIT in each case. |#
 		     (error "Inlining a real closure!" procedure))
 		 (make-null-cfg))
 		((procedure/closure? procedure)
-		 (cond ((not (procedure/trivial-closure? procedure))
-			(rtl:make-closure-header (procedure-label procedure)))
-		       ((or (procedure-rest procedure)
+		 (let ((needs-entry?
+			(or (procedure-rest procedure)
 			    (closure-procedure-needs-external-descriptor?
-			     procedure))
-			(with-values
-			    (lambda () (procedure-arity-encoding procedure))
-			  (lambda (min max)
-			    (rtl:make-procedure-header
-			     (procedure-label procedure)
-			     min max))))
-		       (else
-			;; It's not an open procedure but it looks like one
-			;; at the rtl level.
-			(rtl:make-open-procedure-header
-			 (procedure-label procedure)))))
+			     procedure))))
+		   (cond ((not (procedure/trivial-closure? procedure))
+			  (let* ((block (procedure-closing-block procedure))
+				 (nentries (block-entry-number
+					    (block-shared-block block))))
+			    (if (or (not needs-entry?) (zero? nentries))
+				;; It's not an open procedure but it looks like
+				;; one at the rtl level.
+				(rtl:make-open-procedure-header
+				 (procedure-label procedure))
+				(rtl:make-closure-header
+				 (procedure-label procedure)
+				 nentries
+				 (closure-block-entry-number block)))))
+			 (needs-entry?
+			  (with-values
+			      (lambda () (procedure-arity-encoding procedure))
+			    (lambda (min max)
+			      (rtl:make-procedure-header
+			       (procedure-label procedure)
+			       min max))))
+			 (else
+			  ;; It's not an open procedure but it looks like one
+			  ;; at the rtl level.
+			  (rtl:make-open-procedure-header
+			   (procedure-label procedure))))))
 		((procedure-rest procedure)
 		 (with-values (lambda () (procedure-arity-encoding procedure))
 		   (lambda (min max)
@@ -133,20 +147,16 @@ MIT in each case. |#
 	 (if rest
 	     (cellify-variable rest)
 	     (make-null-cfg)))
-       (scfg*->scfg!
-	(map (lambda (name value)
-	       (if (and (procedure? value)
-			(not (procedure/trivial-or-virtual? value)))
-		   (letrec-close context name value)
-		   (make-null-cfg)))
-	     names values))))))
-
+       (scfg*->scfg! (map (lambda (name value)
+			    (close-binding context name value))
+			  names values))))))
+
 (define (setup-bindings names values pushes)
   (if (null? names)
       (scfg*->scfg! pushes)
       (setup-bindings (cdr names)
 		      (cdr values)
-		      (letrec-value (car values)
+		      (letrec-value (car names) (car values)
 		       (lambda (scfg expression)
 			 (cons (scfg*scfg->scfg!
 				scfg
@@ -157,8 +167,8 @@ MIT in each case. |#
   (rtl:make-push (if (variable-in-cell? variable)
 		     (rtl:make-cell-cons value)
 		     value)))
-
-(define (letrec-value value recvr)
+
+(define (letrec-value name value recvr)
   (cond ((constant? value)
 	 (recvr (make-null-cfg)
 		(rtl:make-constant (constant-value value))))
@@ -166,8 +176,22 @@ MIT in each case. |#
 	 (enqueue-procedure! value)
 	 (case (procedure/type value)
 	   ((CLOSURE)
-	    (recvr (make-null-cfg)
-		   (make-non-trivial-closure-cons value)))
+	    (let ((closing-block (procedure-closing-block value)))
+	      (recvr
+	       (make-null-cfg)
+	       (if (eq? closing-block (block-shared-block closing-block))
+		   (make-non-trivial-closure-cons value false)
+		   (let ((how (procedure-closure-cons value)))
+		     (cond ((or (not (eq? (car how) 'INDIRECTED))
+				(not (eq? (variable-block (cdr how))
+					  (variable-block name))))
+			    (make-cons-closure-redirection value))
+			   ((not (variable-in-cell? name))
+			    (error "letrec-value: Non-indirected shared sibling!"
+				   value))
+			   (else
+			    (rtl:make-constant
+			     (make-unassigned-reference-trap)))))))))
 	   ((IC)
 	    (with-values (lambda () (make-ic-cons value 'USE-ENV)) recvr))
 	   ((TRIVIAL-CLOSURE)
@@ -180,18 +204,56 @@ MIT in each case. |#
 	    (error "Letrec value is open procedure" value))
 	   (else
 	    (error "Unknown procedure type" value))))
+	((block? value)
+	 (for-each
+	  (lambda (block*)
+	    (enqueue-procedure!
+	     (block-procedure (car (block-children block*)))))
+	  (block-grafted-blocks value))
+	 (recvr (make-null-cfg)
+		(make-non-trivial-closure-cons
+		 (indirection-block-procedure value)
+		 value)))
 	(else
 	 (error "Unknown letrec binding value" value))))
+
+(define (close-binding context name value)
+  (cond ((block? value)
+	 (letrec-close context name
+		       (indirection-block-procedure value)))
+	((and (procedure? value)
+	      (not (procedure/trivial-or-virtual? value)))
+	 (let ((closing-block (procedure-closing-block value)))
+	   (if (eq? closing-block (block-shared-block closing-block))
+	       (letrec-close context name value)
+	       (let ((how (procedure-closure-cons value)))
+		 (cond ((or (not (eq? (car how) 'INDIRECTED))
+			    (not (eq? (variable-block (cdr how))
+				      (variable-block name))))
+			(make-null-cfg))
+		       ((not (variable-in-cell? name))
+			(error "close-binding: Non-indirected shared sibling!"
+			       value))
+		       (else
+			(find-variable/locative
+			 context name
+			 (lambda (locative)
+			   (rtl:make-assignment
+			    locative
+			    (make-cons-closure-indirection value)))
+			 (lambda (environment name)
+			   environment
+			   (error "close-binding: IC letrec name" name))
+			 (lambda (name)
+			   (error "close-binding: cached letrec name"
+				  name)))))))))
+	(else
+	 (make-null-cfg))))
 
 (define (letrec-close context variable value)
   (load-closure-environment
    value
-   (find-variable context
-		  variable
-		  rtl:make-fetch
-		  (lambda (nearest-ic-locative name)
-		    nearest-ic-locative name ;; ignored
-		    (error "Missing closure variable" variable))
-		  (lambda (name)
-		    name ;; ignored
-		    (error "Missing closure variable" variable)))))
+   (find-variable/value/simple
+    context variable
+    "letrec-close: Missing closure variable")
+   context))

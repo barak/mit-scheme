@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.29 1990/03/26 23:45:05 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.30 1990/05/03 15:16:59 jinx Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -98,7 +98,8 @@ MIT in each case. |#
 	  compiler:show-phases?
 	  compiler:show-procedures?
 	  compiler:show-subphases?
-	  compiler:show-time-reports?))
+	  compiler:show-time-reports?
+	  compiler:use-multiclosures?))
 
 (define-package (compiler reference-contexts)
   (files "base/refctx")
@@ -396,7 +397,9 @@ MIT in each case. |#
   (parent (compiler fg-optimizer))
   (export (compiler top-level)
 	  setup-block-types!
-	  setup-closure-contexts!))
+	  setup-closure-contexts!)
+  (export (compiler)
+	  indirection-block-procedure))
 
 (define-package (compiler fg-optimizer simplicity-analysis)
   (files "fgopt/simple")
@@ -482,9 +485,13 @@ MIT in each case. |#
   (export (compiler rtl-generator)
 	  generate/rvalue
 	  load-closure-environment
+	  make-cons-closure-indirection
+	  make-cons-closure-redirection
+	  make-closure-redirection
 	  make-ic-cons
 	  make-non-trivial-closure-cons
-	  make-trivial-closure-cons))
+	  make-trivial-closure-cons
+	  redirect-closure))
 
 (define-package (compiler rtl-generator generate/combination)
   (files "rtlgen/rgcomb")

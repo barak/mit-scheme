@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/envopt.scm,v 1.6 1990/04/01 22:19:41 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/envopt.scm,v 1.7 1990/05/03 15:09:12 jinx Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Procedure environment optimization
+;;; package: (compiler fg-optimizer environment-optimization)
 
 (declare (usual-integrations))
 
@@ -66,7 +67,7 @@ MIT in each case. |#
 ;; world (which is ultimately functional).
 
 (define (for-each-callee! block procedure)
-  (for-each-block-descendent! block
+  (for-each-block-descendant! block
     (lambda (block*)
       (for-each (lambda (application)
 		  (for-each (lambda (value)
@@ -151,9 +152,7 @@ MIT in each case. |#
     ;; invocation block.
     (set-procedure-target-block! procedure parent)
     (if (not (eq? parent target-block))
-	(begin
-	  (disown-block-child! parent block)
-	  (own-block-child! target-block block)))))
+	(transfer-block-child! block parent target-block))))
 
 #|
 (define (choose-target-block! procedure)
@@ -186,9 +185,7 @@ MIT in each case. |#
 			     (lambda (application)
 			       (eq? (application-block application)
 				    parent)))))))
-	(begin
-	  (disown-block-child! parent block)
-	  (own-block-child! target-block block)))
+	(transfer-block-child! block parent target-block))
     unspecific))
 |#
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 4.16 1990/01/18 22:45:49 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 4.17 1990/05/03 15:10:31 jinx Rel $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Register Transfer Language Type Definitions
+;;; package: (compiler)
 
 (declare (usual-integrations))
 
@@ -64,7 +65,10 @@ MIT in each case. |#
 (define-rtl-expression entry:procedure rtl: procedure)
 
 ;;; Allocating a closure object (returns its address)
-(define-rtl-expression cons-closure rtl: procedure min max size)
+(define-rtl-expression cons-closure rtl: entry min max size)
+;;; Allocating a multi-closure object
+;;; (returns the address of first entry point)
+(define-rtl-expression cons-multiclosure rtl: nentries size entries)
 
 ;;; Cache addresses
 (define-rtl-expression assignment-cache rtl: name)
@@ -79,6 +83,7 @@ MIT in each case. |#
 
 ;;; Add a constant offset to an address
 (define-rtl-expression offset-address rtl: base number)
+(define-rtl-expression byte-offset-address rtl: base number)
 
 ;;; A machine constant (an integer, usually unsigned)
 (define-rtl-expression machine-constant rtl: value)
@@ -134,7 +139,7 @@ MIT in each case. |#
 (define-rtl-statement ic-procedure-header rtl: procedure)
 (define-rtl-statement open-procedure-header rtl: procedure)
 (define-rtl-statement procedure-header rtl: procedure min max)
-(define-rtl-statement closure-header rtl: procedure)
+(define-rtl-statement closure-header rtl: procedure nentries entry)
 
 (define-rtl-statement interpreter-call:access % environment name)
 (define-rtl-statement interpreter-call:define % environment name value)

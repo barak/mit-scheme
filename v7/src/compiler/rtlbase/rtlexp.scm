@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlexp.scm,v 4.15 1990/01/18 22:45:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlexp.scm,v 4.16 1990/05/03 15:10:27 jinx Rel $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Register Transfer Language: Expression Operations
+;;; package: (compiler)
 
 (declare (usual-integrations))
 
@@ -59,16 +60,23 @@ MIT in each case. |#
     ((REGISTER)
      (register-value-class (rtl:register-number expression)))
     ((CONS-POINTER CONSTANT FIXNUM->OBJECT FLOAT->OBJECT GENERIC-BINARY
-		   GENERIC-UNARY OFFSET POST-INCREMENT PRE-INCREMENT)
+		   GENERIC-UNARY OFFSET POST-INCREMENT PRE-INCREMENT
+		   ;; This is a lie, but it is the only way in which it is
+		   ;; used now!  It should be moved to value-class=address,
+		   ;; and a cast type introduced to handle current usage.
+		   BYTE-OFFSET-ADDRESS)
      value-class=object)
-    ((ASSIGNMENT-CACHE FIXNUM->ADDRESS OBJECT->ADDRESS OFFSET-ADDRESS
-		       VARIABLE-CACHE)
+    ((FIXNUM->ADDRESS OBJECT->ADDRESS
+		      OFFSET-ADDRESS
+		      ASSIGNMENT-CACHE VARIABLE-CACHE
+		      CONS-CLOSURE CONS-MULTICLOSURE
+		      ENTRY:CONTINUATION ENTRY:PROCEDURE)
      value-class=address)
     ((MACHINE-CONSTANT)
      value-class=immediate)
     ((BYTE-OFFSET CHAR->ASCII)
      value-class=ascii)
-    ((CONS-CLOSURE ENTRY:CONTINUATION ENTRY:PROCEDURE OBJECT->DATUM)
+    ((OBJECT->DATUM)
      value-class=datum)
     ((ADDRESS->FIXNUM FIXNUM-1-ARG FIXNUM-2-ARGS OBJECT->FIXNUM
 		      OBJECT->UNSIGNED-FIXNUM)
@@ -246,6 +254,7 @@ MIT in each case. |#
   (memq (rtl:expression-type expression)
 	'(ASSIGNMENT-CACHE
 	  CONS-CLOSURE
+	  CONS-MULTICLOSURE
 	  CONSTANT
 	  ENTRY:CONTINUATION
 	  ENTRY:PROCEDURE
@@ -263,7 +272,8 @@ MIT in each case. |#
       MACHINE-CONSTANT
       VARIABLE-CACHE)
      true)
-    ((CHAR->ASCII
+    ((BYTE-OFFSET-ADDRESS
+      CHAR->ASCII
       CONS-POINTER
       FIXNUM-1-ARG
       FIXNUM-2-ARGS

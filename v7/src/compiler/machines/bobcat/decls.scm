@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.26 1990/02/02 18:39:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.27 1990/05/03 15:17:08 jinx Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Compiler File Dependencies
+;;; package: (compiler declarations)
 
 (declare (usual-integrations))
 
@@ -384,7 +385,7 @@ MIT in each case. |#
 			 (source-node/declarations node)))))
 	      filenames))
 
-  (let ((front-end-base
+  (let* ((front-end-base
 	 (filename/append "base"
 			  "blocks" "cfg1" "cfg2" "cfg3"
 			  "contin" "ctypes" "enumer" "lvalue"
@@ -398,7 +399,11 @@ MIT in each case. |#
 			  "rtlty2"))
 	(cse-base
 	 (filename/append "rtlopt"
-			  "rcse1" "rcse2" "rcseep" "rcseht" "rcserq" "rcsesr"))
+			  "rcse1" "rcseht" "rcserq" "rcsesr"))
+	(cse-all
+	 (append (filename/append "rtlopt"
+				  "rcse2" "rcseep")
+		 cse-base))
 	(instruction-base
 	 (filename/append "machines/bobcat" "assmd" "machin"))
 	(lapgen-base
@@ -509,13 +514,13 @@ MIT in each case. |#
      (append bobcat-base front-end-base rtl-base))
 
     (file-dependency/integration/join
-     (append cse-base
+     (append cse-all
 	     (filename/append "rtlopt" "ralloc" "rcompr" "rdebug" "rdflow"
 			      "rerite" "rinvex" "rlife" "rtlcsm")
 	     (filename/append "machines/bobcat" "rulrew"))
      (append bobcat-base rtl-base))
 
-    (file-dependency/integration/join cse-base cse-base)
+    (file-dependency/integration/join cse-all cse-base)
 
     (file-dependency/integration/join
      (filename/append "rtlopt" "ralloc" "rcompr" "rdebug" "rlife")

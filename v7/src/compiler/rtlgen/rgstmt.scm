@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 4.14 1990/03/28 06:11:39 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 4.15 1990/05/03 15:12:04 jinx Rel $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; RTL Generation: Statements
+;;; package: (compiler rtl-generator)
 
 (declare (usual-integrations))
 
@@ -46,7 +47,7 @@ MIT in each case. |#
 	(make-null-cfg)
 	(generate/rvalue rvalue scfg*scfg->scfg!
 	  (lambda (expression)
-	    (find-variable context lvalue
+	    (find-variable/locative context lvalue
 	      (lambda (locative)
 		(rtl:make-assignment locative expression))
 	      (lambda (environment name)
@@ -277,9 +278,8 @@ MIT in each case. |#
     (let ((value (lvalue-known-value lvalue)))
       (cond ((not value)
 	     (pcfg*scfg->scfg!
-	      (find-variable context lvalue
-		(lambda (locative)
-		  (rtl:make-unassigned-test (rtl:make-fetch locative)))
+	      (find-variable/value context lvalue
+	       rtl:make-unassigned-test
 		(lambda (environment name)
 		  (scfg*pcfg->pcfg!
 		   (load-temporary-register scfg*scfg->scfg! environment

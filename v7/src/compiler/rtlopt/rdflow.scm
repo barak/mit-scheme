@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rdflow.scm,v 1.1 1990/01/18 22:49:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rdflow.scm,v 1.2 1990/05/03 15:22:24 jinx Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; RTL Dataflow Analysis
+;;; package: (compiler rtl-optimizer rtl-dataflow-analysis)
 
 (declare (usual-integrations))
 
@@ -127,13 +128,26 @@ MIT in each case. |#
 	      (let ((target (get-rnode address)))
 		(if (rtl:pseudo-register-expression? expression)
 		    (rnode/connect! target (get-rnode expression))
-		    (let ((values (rnode/initial-values target)))
-		      (if (not (there-exists? values
-				 (lambda (value)
-				   (rtl:expression=? expression value))))
-			  (set-rnode/initial-values!
-			   target
-			   (cons expression values)))))))))))
+		    (add-rnode/initial-value! target expression))))))
+    (let loop ((rtl rtl))
+      (rtl:for-each-subexpression rtl
+	(lambda (expression)
+	  (if (rtl:volatile-expression? expression)
+	      (if (or (rtl:post-increment? expression)
+		      (rtl:pre-increment? expression))
+		  (add-rnode/initial-value!
+		   (get-rnode (rtl:address-register expression))
+		   expression)
+		  (error "Unknown volatile expression" expression))
+	      (loop expression)))))))
+
+(define (add-rnode/initial-value! target expression)
+  (let ((values (rnode/initial-values target)))
+    (if (not (there-exists? values
+	       (lambda (value)
+		 (rtl:expression=? expression value))))
+	(set-rnode/initial-values! target
+				   (cons expression values)))))
 
 (define (rnode/connect! target source)
   (if (not (memq source (rnode/backward-links target)))
@@ -157,7 +171,7 @@ MIT in each case. |#
     (lambda (rnode)
       (let ((expression (initial-known-value (rnode/classified-values rnode))))
 	(set-rnode/known-value! rnode expression)
-	(if (not (eq? expression 'UNDETERMINED))
+	(if (not (memq expression '(UNDETERMINED #F)))
 	    (set-rnode/classified-values! rnode '())))))
   (let loop ()
     (let ((new-constant? false))
@@ -197,6 +211,9 @@ MIT in each case. |#
 
 (define (initial-known-value values)
   (and (not (null? values))
+       (not (there-exists? values
+	      (lambda (value)
+		(rtl:volatile-expression? (cdr value)))))
        (let loop ((value (car values)) (rest (cdr values)))
 	 (cond ((eq? (car value) 'SUBSTITUTABLE-REGISTERS) 'UNDETERMINED)
 	       ((null? rest) (values-unique-expression values))

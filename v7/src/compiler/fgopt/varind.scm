@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/varind.scm,v 1.3 1989/11/02 08:08:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/varind.scm,v 1.4 1990/05/03 15:09:28 jinx Rel $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Variable Indirections
+;;; package: (compiler fg-optimizer variable-indirection)
 
 (declare (usual-integrations))
 
@@ -47,7 +48,8 @@ MIT in each case. |#
 	       lvalues))))
 
 (define (initialize-variable-indirection! variable)
-  (if (not (lvalue-marked? variable))
+  (if (and (not (lvalue-marked? variable))
+	   (not (variable-indirection variable)))
       (begin
 	(lvalue-mark! variable)
 	(let ((block (variable-block variable)))
@@ -73,24 +75,24 @@ MIT in each case. |#
 			     (begin
 			       (initialize-variable-indirection! possibility)
 			       (or (variable-indirection possibility)
-				   possibility))))))
+				   (cons possibility false)))))))
 		 (if indirection
-		     (begin
+		     (let ((indirection-variable (car indirection)))
 		       (set-variable-indirection! variable indirection)
 		       (let ((variables
 			      (block-variables-nontransitively-free block)))
-			 (if (not (memq indirection variables))
+			 (if (not (memq indirection-variable variables))
 			     (set-block-variables-nontransitively-free!
 			      block
-			      (cons indirection variables))))
-		       (let ((block* (variable-block indirection)))
+			      (cons indirection-variable variables))))
+		       (let ((block* (variable-block indirection-variable)))
 			 (let loop ((block block))
 			   (let ((variables (block-free-variables block)))
-			     (if (not (memq indirection variables))
+			     (if (not (memq indirection-variable variables))
 				 (begin
 				   (set-block-free-variables!
 				    block
-				    (cons indirection variables))
+				    (cons indirection-variable variables))
 				   (let ((parent (block-parent block)))
 				     (if (not (eq? parent block*))
 					 (loop parent))))))))))))))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rulrew.scm,v 1.2 1990/04/03 04:52:22 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rulrew.scm,v 1.3 1990/05/03 15:17:42 jinx Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; RTL Rewrite Rules
+;;; package: (compiler lap-syntaxer)
 
 (declare (usual-integrations))
 
@@ -77,7 +78,8 @@ MIT in each case. |#
 (define-rule rewriting
   (OBJECT->DATUM (REGISTER (? source register-known-value)))
   (QUALIFIER (rtl:constant-non-pointer? source))
-  (rtl:make-machine-constant (careful-object-datum (rtl:constant-value source))))
+  (rtl:make-machine-constant
+   (careful-object-datum (rtl:constant-value source))))
 
 (define (rtl:constant-non-pointer? expression)
   (and (rtl:constant? expression)

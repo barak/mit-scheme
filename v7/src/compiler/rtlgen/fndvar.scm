@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/fndvar.scm,v 1.4 1990/03/28 06:11:14 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/fndvar.scm,v 1.5 1990/05/03 15:11:40 jinx Rel $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -33,45 +33,38 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; RTL Generation: Variable Locatives
+;;; package: (compiler rtl-generator)
 
 (declare (usual-integrations))
 
-(define (find-variable context variable if-compiler if-ic if-cached)
-  (if (variable/value-variable? variable)
-      (if-compiler
-       (let ((continuation (reference-context/procedure context)))
-	 (if (continuation/ever-known-operator? continuation)
-	     (continuation/register continuation)
-	     register:value)))
-      (find-variable-internal context variable
-	(lambda (variable locative)
-	  (if-compiler
-	   (if (variable-in-cell? variable)
-	       (rtl:make-fetch locative)
-	       locative)))
-	(lambda (variable block locative)
-	  (cond ((variable-in-known-location? context variable)
-		 (if-compiler
-		  (rtl:locative-offset locative
-				       (variable-offset block variable))))
-		((ic-block/use-lookup? block)
-		 (if-ic locative (variable-name variable)))
-		(else
-		 (if-cached (variable-name variable))))))))
+(define-integrable (find-variable/locative context variable
+					   if-compiler if-ic if-cached)
+  (find-variable false context variable if-compiler if-ic if-cached))
+
+(define-integrable (find-variable/value context variable
+					if-compiler if-ic if-cached)
+  (find-variable true context variable if-compiler if-ic if-cached))
+
+(define-integrable (find-variable/value/simple context variable message)
+  (find-variable/value context variable
+		       identity-procedure
+		       (lambda (environment name)
+			 environment	; ignored
+			 (error message name))
+		       (lambda (name)
+			 (error message name))))
 
 (define (find-known-variable context variable)
-  (find-variable context variable identity-procedure
-    (lambda (environment name)
-      environment
-      (error "Known variable found in IC frame" name))
-    (lambda (name)
-      (error "Known variable found in IC frame" name))))
+  (find-variable/value/simple
+   context variable
+   "find-known-variable: Known variable found in IC frame"))
 
 (define (find-closure-variable context variable)
   (find-variable-internal context variable
+    identity-procedure
     (lambda (variable locative)
-      variable
-      locative)
+      variable				; ignored
+      (rtl:make-fetch locative))
     (lambda (variable block locative)
       block locative
       (error "Closure variable in IC frame" variable))))
@@ -83,36 +76,110 @@ MIT in each case. |#
       locative)
     (lambda (variable block locative)
       block locative
-      (error "Stack overwrite slot in IC frame" variable))))
-
-(define (find-variable-internal context variable if-compiler if-ic)
-  (let ((rvalue (lvalue-known-value variable)))
-    (if (and rvalue
-	     (rvalue/procedure? rvalue)
-	     (procedure/closure? rvalue)
-	     (block-ancestor-or-self? (reference-context/block context)
-				      (procedure-block rvalue)))
-	(begin
-	  ;; This is just for paranoia.
-	  (if (procedure/trivial-closure? rvalue)
-	      (error "Trivial closure value encountered"))
-	  (if-compiler
-	   variable
-	   (block-ancestor-or-self->locative
-	    context
-	    (procedure-block rvalue)
-	    0
-	    (procedure-closure-offset rvalue))))
-	(let loop ((variable variable))
-	  (let ((indirection (variable-indirection variable)))
-	    (if indirection
-		(loop indirection)
-		(let ((register (variable/register variable)))
-		  (if register
-		      (if-compiler variable (register-locative register))
-		      (find-variable-no-tricks context variable
-					       if-compiler if-ic)))))))))
+      (error "Stack overwrite slot in IC frame" variable))))      
 
+(define (find-variable get-value? context variable if-compiler if-ic if-cached)
+  (let ((if-locative
+	 (if get-value?
+	     (lambda (locative)
+	       (if-compiler (rtl:make-fetch locative)))
+	     if-compiler)))
+    (if (variable/value-variable? variable)
+	(if-locative
+	 (let ((continuation (reference-context/procedure context)))
+	   (if (continuation/ever-known-operator? continuation)
+	       (continuation/register continuation)
+	       register:value)))
+	(find-variable-internal context variable
+	  (and get-value? if-compiler)
+	  (lambda (variable locative)
+	    (if-locative
+	     (if (variable-in-cell? variable)
+		 (rtl:make-fetch locative)
+		 locative)))
+	  (lambda (variable block locative)
+	    (cond ((variable-in-known-location? context variable)
+		   (if-locative
+		    (rtl:locative-offset locative
+					 (variable-offset block variable))))
+		  ((ic-block/use-lookup? block)
+		   (if-ic locative (variable-name variable)))
+		  (else
+		   (if-cached (variable-name variable)))))))))
+
+(define (find-variable-internal context variable if-value if-locative if-ic)
+  (define (loop variable)
+    (let ((indirection (variable-indirection variable)))
+      (cond ((not indirection)
+	     (let ((register (variable/register variable)))
+	       (if register
+		   (if-locative variable (register-locative register))
+		   (find-variable-no-tricks context variable
+					    if-locative if-ic))))
+	    ((not (cdr indirection))
+	     (loop (car indirection)))
+	    (else
+	     (error "find-variable-internal: Indirection not for value"
+		    variable)))))
+
+  (let ((rvalue (lvalue-known-value variable)))
+    (cond ((or (not if-value)
+	       (not rvalue))
+	   (loop variable))
+	  ((rvalue/block? rvalue)
+	   (let* ((sblock (block-nearest-closure-ancestor
+			   (reference-context/block context)))
+		  (cblock (and sblock (block-parent sblock))))
+	     (if (and cblock (eq? rvalue (block-shared-block cblock)))
+		 (if-value
+		  (redirect-closure context
+				    sblock
+				    (block-procedure sblock)
+				    (indirection-block-procedure rvalue)))
+		 (loop variable))))
+	  ((not (rvalue/procedure? rvalue))
+	   (loop variable))
+	  ((procedure/trivial-or-virtual? rvalue)
+	   (if-value (make-trivial-closure-cons rvalue)))
+	  ((not (procedure/closure? rvalue))
+	   (error "find-variable-internal: Reference to open procedure"
+		  context variable)
+	   (loop variable))
+	  (else
+	   (let ((nearest-closure (block-nearest-closure-ancestor
+				   (reference-context/block context)))
+		 (closing-block (procedure-closing-block rvalue)))
+	     (if (and nearest-closure
+		      (eq? (block-shared-block closing-block)
+			   (block-shared-block
+			    (block-parent nearest-closure))))
+		 (if-value
+		  (redirect-closure context
+				    nearest-closure
+				    (block-procedure nearest-closure)
+				    rvalue))
+		 (let ((indirection (variable-indirection variable)))
+		   (cond ((not indirection)
+			  (loop variable))
+			 ((not (cdr indirection))
+			  (loop (car indirection)))
+			 (else
+			  (let ((source (car indirection)))
+			    ;; Should not be indirected.
+			    (find-variable-no-tricks
+			     context source
+			     (lambda (variable locative)
+			       variable	; ignored
+			       (if-value (make-closure-redirection
+					  (rtl:make-fetch locative)
+					  (indirection-block-procedure
+					   (lvalue-known-value source))
+					  rvalue)))
+			     (lambda (new-variable block locative)
+			       new-variable block locative ; ignored
+			       (error "find-variable-internal: Bad indirection"
+				      variable)))))))))))))
+
 (define (find-variable-no-tricks context variable if-compiler if-ic)
   (find-block/variable context variable
     (lambda (offset-locative)
@@ -122,7 +189,7 @@ MIT in each case. |#
 				      (variable-offset block variable)))))
     (lambda (block locative)
       (if-ic variable block locative))))
-
+
 (define (find-definition-variable context lvalue)
   (find-block/variable context lvalue
     (lambda (offset-locative)
@@ -153,7 +220,7 @@ MIT in each case. |#
 	 ((IC) if-ic)
 	 (else (error "Illegal result type" block)))
        block locative))))
-
+
 (define (nearest-ic-block-expression context)
   (with-values
       (lambda ()

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules4.scm,v 4.11 1990/01/20 07:26:13 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules4.scm,v 4.12 1990/05/03 15:17:38 jinx Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -54,14 +54,14 @@ MIT in each case. |#
        (load-machine-register! (rtl:register-number expression) register))
       ((CONSTANT)
        (LAP ,@(clear-registers! register)
-	    ,(load-constant (rtl:constant-value expression) target)))
+	    ,@(load-constant (rtl:constant-value expression) target)))
       ((CONS-POINTER)
        (LAP ,@(clear-registers! register)
-	    ,(load-non-pointer (rtl:machine-constant-value
-				(rtl:cons-pointer-type expression))
-			       (rtl:machine-constant-value
-				(rtl:cons-pointer-datum expression))
-			       target)))
+	    ,@(load-non-pointer (rtl:machine-constant-value
+				 (rtl:cons-pointer-type expression))
+				(rtl:machine-constant-value
+				 (rtl:cons-pointer-datum expression))
+				target)))
       ((OFFSET)
        (let ((source-reference (offset->indirect-reference! expression)))
 	 (LAP ,@(clear-registers! register)
@@ -96,7 +96,7 @@ MIT in each case. |#
     (let ((clear-map (clear-map!)))
       (LAP ,@set-environment
 	   ,@clear-map
-	   ,(load-constant name (INST-EA (D 3)))
+	   ,@(load-constant name (INST-EA (D 3)))
 	   ,@(invoke-interface-jsr code)))))
 
 (define-rule statement
@@ -119,7 +119,7 @@ MIT in each case. |#
 	(LAP ,@set-environment
 	     ,@set-value
 	     ,@clear-map
-	     ,(load-constant name (INST-EA (D 3)))
+	     ,@(load-constant name (INST-EA (D 3)))
 	     ,@(invoke-interface-jsr code))))))
 
 (define-rule statement

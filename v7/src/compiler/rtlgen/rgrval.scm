@@ -1,9 +1,9 @@
 d3 1
 a4 1
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.15 1990/01/18 22:47:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.16 1990/05/03 15:11:58 jinx Exp $
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.15 1990/01/18 22:47:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.16 1990/05/03 15:11:58 jinx Exp $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -33,6 +33,7 @@ provide any services, by way of maintenance, update, or otherwise.
 there shall be no use of the name of the Massachusetts Institute of
 Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
+MIT in each case. |#
 
 ;;;; RTL Generation: RValues
 ;;; package: (compiler rtl-generator generate/rvalue)
@@ -72,11 +73,11 @@ promotional, or sales literature without prior written consent from
 (define-method-table-entry 'REFERENCE rvalue-methods
   (lambda (reference)
     (let ((context (reference-context reference))
+	  (lvalue (reference-lvalue reference))
 	  (safe? (reference-safe? reference)))
-	     (lambda (lvalue)
-	       (find-variable context lvalue
-		 (lambda (locative)
-		   (expression-value/simple (rtl:make-fetch locative)))
+      (let ((value (lvalue-known-value lvalue))
+	    #| (indirection (variable-indirection lvalue)) |#
+	    (perform-fetch
 	     (lambda (#| lvalue |#)
 	       (find-variable/value context lvalue
 		 expression-value/simple
@@ -94,17 +95,27 @@ promotional, or sales literature without prior written consent from
 			  safe?))))
 		    (rtl:interpreter-call-result:lookup)))
 		 (lambda (name)
-						(rtl:make-variable-cache name)
-						rtl:make-fetch)
+		   (if (memq 'IGNORE-REFERENCE-TRAPS
+			     (variable-declarations lvalue))
 		       (load-temporary-register values
 			   (rtl:make-variable-cache name)
-	       (perform-fetch (or (variable-indirection lvalue) lvalue)))
+			 rtl:make-fetch)
+		       (generate/cached-reference context name safe?)))))))
+	(cond ((not value)
+	       #|
+	       (if (and indirection (cdr indirection))
+		   (error "reference: Unknown mapped indirection"
 			  lvalue))
 	       |#
+	       (perform-fetch #| (if indirection (car indirection) lvalue) |#))
 	      ((not (rvalue/procedure? value))
 	       (generate/rvalue* value))
+	      #|
+	      ((procedure/trivial-or-virtual? value)
+	       (expression-value/simple (make-trivial-closure-cons value)))
+	      ((and indirection (cdr indirection))
 	       (generate/indirected-closure indirection value context
-	       (perform-fetch lvalue)))))))
+					    reference))
 	      |#
 	      (else
 	       (perform-fetch #| lvalue |#)))))))
@@ -152,15 +163,23 @@ promotional, or sales literature without prior written consent from
   (lambda (procedure)
     (enqueue-procedure! procedure)
     (case (procedure/type procedure)
-       (load-temporary-register
-	(lambda (assignment reference)
-	  (values
-	   (scfg*scfg->scfg!
-	    assignment
-	    (load-closure-environment procedure reference))
-	   reference))
-	(make-non-trivial-closure-cons procedure)
-	identity-procedure))
+      ((TRIVIAL-CLOSURE)
+       (expression-value/simple (make-trivial-closure-cons procedure)))
+      ((CLOSURE)
+       (case (car (procedure-closure-cons procedure))
+	 ((NORMAL)
+	  (load-temporary-register
+	   (lambda (assignment reference)
+	     (values
+	      (scfg*scfg->scfg!
+	       assignment
+	       (load-closure-environment procedure reference false))
+	      reference))
+	   (make-non-trivial-closure-cons procedure false)
+	   identity-procedure))
+	 ((DESCENDANT)
+	  (expression-value/simple
+	   (make-cons-closure-redirection procedure)))
 	 (else
 	  (expression-value/simple
 	   (make-cons-closure-indirection procedure)))))
@@ -170,12 +189,6 @@ promotional, or sales literature without prior written consent from
        (if (not (procedure-virtual-closure? procedure))
 	   (error "Reference to open procedure" procedure))
        (expression-value/simple (make-trivial-closure-cons procedure)))
-(define (make-trivial-closure-cons procedure)
-  (enqueue-procedure! procedure)
-  (rtl:make-cons-pointer
-   (rtl:make-machine-constant type-code:compiled-entry)
-   (rtl:make-entry:procedure (procedure-label procedure))))
-
       (else
        (error "Unknown procedure type" procedure)))))
 
@@ -209,42 +222,143 @@ promotional, or sales literature without prior written consent from
 	      kernel)
 	    ;; Is this right if the procedure is being closed
 	    ;; inside another IC procedure?
-(define (make-non-trivial-closure-cons procedure)
-  (rtl:make-cons-pointer
-   (rtl:make-machine-constant type-code:compiled-entry)
-   (with-values (lambda () (procedure-arity-encoding procedure))
-     (lambda (min max)
-       (rtl:make-cons-closure
-	(rtl:make-entry:procedure (procedure-label procedure))
-	min
-	max
-	(procedure-closure-size procedure))))))
-
-(define (load-closure-environment procedure closure-locative)
-  (define (load-closure-parent block force?)
-    (if (and (not force?)
-	     (or (not block)
-		 (not (ic-block/use-lookup? block))))
-	(make-null-cfg)
-	(rtl:make-assignment
-	 (rtl:locative-offset closure-locative closure-block-first-offset)
-	 (if (not (ic-block/use-lookup? block))
-	     (rtl:make-constant false)
-	     (let ((context (procedure-closure-context procedure)))
-	       (if (not (reference-context? context))
-		   (error "load-closure-environment: bad closure context"
-			  procedure))
-	       (if (ic-block? (reference-context/block context))
-		   (rtl:make-fetch register:environment)
-		   (closure-ic-locative context block)))))))
+	    (kernel (make-null-cfg)
+		    (rtl:make-fetch register:environment)))))))
+
+(define (make-trivial-closure-cons procedure)
   (enqueue-procedure! procedure)
-  (let ((block (procedure-closing-block procedure)))
+  (rtl:make-typed-cons:procedure
+   (rtl:make-entry:procedure (procedure-label procedure))))
+
+(define (make-cons-closure-indirection procedure)
+  (let* ((context (procedure-closure-context procedure))
+	 (variable (cdr (procedure-closure-cons procedure))))
+    (make-closure-redirection
+     (find-variable/value/simple
+      context variable
+      "make-cons-closure-indirection: Unavailable indirection variable")
+     (indirection-block-procedure
+      (block-shared-block (procedure-closing-block procedure)))
+     procedure)))
+
+(define (make-cons-closure-redirection procedure)
+  (let* ((context (procedure-closure-context procedure))
+	 (block (stack-block/external-ancestor
+		 (reference-context/block context))))
+    (redirect-closure context
+		      block
+		      (block-procedure block)
+		      procedure)))
+
+(define (redirect-closure context block* procedure* procedure)
+  (make-closure-redirection
+   (rtl:make-fetch (block-ancestor-or-self->locative
+		    context block* 0
+		    (procedure-closure-offset procedure*)))
+   procedure*
+   procedure))
+
+(define (make-closure-redirection expression procedure procedure*)
+  (enqueue-procedure! procedure*)
+  (let ((block (procedure-closing-block procedure))
+	(block* (procedure-closing-block procedure*)))
+    (let* ((block** (block-shared-block block)))
+      (if (not (eq? (block-shared-block block*) block**))
+	  (error "make-closure-redirection: non-shared redirection"
+		 procedure procedure*))
+      (let ((nentries (block-number-of-entries block**))
+	    (entry (closure-block-entry-number block))
+	    (entry* (closure-block-entry-number block*)))
+	(let ((distance
+	       (- (closure-entry-distance nentries entry entry*)
+		  (closure-environment-adjustment nentries entry))))
+	  (if (zero? distance)
+	      expression
+	      ;; This is cheaper than the obvious thing with object->address,
+	      ;; etc.
+	      (rtl:make-byte-offset-address expression distance)))))))
+
 (define (make-non-trivial-closure-cons procedure block**)
-	   (make-null-cfg))
-	  ((ic-block? block)
-	   (load-closure-parent block true))
-	  ((closure-block? block)
-	   (let ((context (procedure-closure-context procedure)))
+  (let* ((block (procedure-closing-block procedure))
+	 (block* (or block** block)))
+    (cond ((not block)
+	   (error "make-non-trivial-closure-cons: Consing trivial closure"
+		  procedure))
+	  ((not (eq? (block-shared-block block) block*))
+	   (error "make-non-trivial-closure-cons: Non-canonical closure"
+		  procedure))
+	  ((= (block-entry-number block*) 1)
+	   ;; Single entry point.  This could use the multiclosure case
+	   ;; below, but this is simpler.
+	   (with-values (lambda () (procedure-arity-encoding procedure))
+	     (lambda (min max)
+	       (rtl:make-typed-cons:procedure
+		(rtl:make-cons-closure
+		 (rtl:make-entry:procedure (procedure-label procedure))
+		 min
+		 max
+		 (procedure-closure-size procedure))))))
+	  ((= (block-entry-number block*) 0)
+	   ;; No entry point (used for environment only)
+	   (rtl:make-cons-pointer
+	    (rtl:make-machine-constant (ucode-type vector))
+	    (rtl:make-cons-multiclosure 0
+					(procedure-closure-size procedure)
+					'#())))
+	  (else
+	   ;; Multiple entry points
+	   (let* ((procedures
+		   (let ((children
+			  ;; This depends on the order of entries established
+			  ;; by graft-block! in fgopt/blktyp.scm .
+			  (reverse
+			   (map (lambda (block)
+				  (block-procedure
+				   (car (block-children block))))
+				(list-transform-negative
+				    (block-grafted-blocks block*)
+				  (lambda (block)
+				    (zero? (block-entry-number block))))))))
+		     ;; Official entry point.
+		     (cons procedure children)))
+		  (entries
+		   (map (lambda (proc)
+			  (with-values
+			      (lambda () (procedure-arity-encoding proc))
+			    (lambda (min max)
+			      (list (procedure-label proc) min max))))
+			procedures)))
+	     (if (not (= (length entries) (block-entry-number block*)))
+		 (error "make-non-trivial-closure-cons: disappearing entries"
+			procedure))
+	     (rtl:make-typed-cons:procedure
+	      (rtl:make-cons-multiclosure (block-entry-number block*)
+					  (procedure-closure-size procedure)
+					  (list->vector entries))))))))
+
+(define (load-closure-environment procedure closure-locative context*)
+  (let ((context (or context* (procedure-closure-context procedure))))
+    (define (load-closure-parent block force?)
+      (if (and (not force?)
+	       (or (not block)
+		   (not (ic-block/use-lookup? block))))
+	  (make-null-cfg)
+	  (rtl:make-assignment
+	   (rtl:locative-offset closure-locative
+				(closure-block-first-offset block))
+	   (if (not (ic-block/use-lookup? block))
+	       (rtl:make-constant false)
+	       (begin
+		 (if (not (reference-context? context))
+		     (error "load-closure-environment: bad closure context"
+			    procedure))
+		 (if (ic-block? (reference-context/block context))
+		     (rtl:make-fetch register:environment)
+		     (closure-ic-locative context block)))))))
+
+    (let ((block (procedure-closing-block procedure)))
+      (cond ((not block)
+	     (make-null-cfg))
 	    ((ic-block? block)
 	     (load-closure-parent block true))
 	    ((closure-block? block)
@@ -270,11 +384,11 @@ promotional, or sales literature without prior written consent from
 					   value variable))
 			       (make-trivial-closure-cons value))
 			      ((eq? value
+	    (else
 			       (rtl:make-fetch
-				(find-closure-variable context variable))))))
-			  code))))))
-	  (else
-	   (error "Unknown block type" block)))))			       (find-closure-variable context variable)))))
+				(block-closure-locative context)))
+			      (else
+			       (find-closure-variable context variable)))))
 			  code)))))
 	     (error "Unknown block type" block))))))
 	     (error "Unknown block type" block))))))

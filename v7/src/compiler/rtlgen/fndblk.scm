@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/fndblk.scm,v 4.10 1988/12/12 21:52:15 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/fndblk.scm,v 4.11 1990/05/03 15:11:36 jinx Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; RTL Generation: Environment Locatives
+;;; package: (compiler rtl-generator find-block)
 
 (declare (usual-integrations))
 
@@ -150,9 +151,10 @@ MIT in each case. |#
   'TRIVIAL-CLOSURE-BOGUS-LOCATIVE)
 
 (define (closure-block/parent-locative block context locative)
-  block context
+  context
   (rtl:make-fetch
-   (rtl:locative-offset locative closure-block-first-offset)))
+   (rtl:locative-offset locative
+			(closure-block-first-offset block))))
 
 (define (stack-block/parent-of-dummy-closure-locative block context locative)
   (closure-block/parent-locative

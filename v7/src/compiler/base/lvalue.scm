@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.17 1990/02/02 18:38:16 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.18 1990/05/03 15:04:56 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -86,7 +86,7 @@ MIT in each case. |#
   register	;register for parameters passed in registers
   stack-overwrite-target?
 		;true iff variable is the target of a stack overwrite
-  indirection	;alias for this variable [variable or #f]
+  indirection	;alias for this variable (variable . boolean) or #f
   source-node	;virtual-return that initializes this variable, or #f
   )
 
@@ -256,7 +256,8 @@ MIT in each case. |#
     (and value
 	 (or (rvalue/constant? value)
 	     (and (rvalue/procedure? value)
-		  (procedure/virtually-open? value))))))
+		  (procedure/virtually-open? value))
+	     (lvalue-get lvalue 'INTEGRATED)))))
 
 (define (variable-unused? variable)
   (or (lvalue-integrated? variable)

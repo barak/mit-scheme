@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/subfre.scm,v 1.4 1990/01/18 22:44:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/subfre.scm,v 1.5 1990/05/03 15:09:24 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Subproblem Free Variables
+;;; package: (compiler fg-optimizer subproblem-free-variables)
 
 (declare (usual-integrations))
 
@@ -40,9 +41,10 @@ MIT in each case. |#
   (with-analysis-state
    (lambda ()
      (for-each (lambda (parallel)
-		 (for-each (lambda (subproblem)
-			     (set-subproblem-free-variables! subproblem 'UNKNOWN))
-			   (parallel-subproblems parallel)))
+		 (for-each
+		  (lambda (subproblem)
+		    (set-subproblem-free-variables! subproblem 'UNKNOWN))
+		  (parallel-subproblems parallel)))
 	       parallels)
      (for-each (lambda (parallel)
 		 (for-each walk-subproblem (parallel-subproblems parallel)))
@@ -70,16 +72,44 @@ MIT in each case. |#
       (else
        free))))
 
+(define (walk-procedure proc)
+  (define (default)
+    ;; This should be OK for open procedures, but perhaps
+    ;; we should look at the closure block for closures.
+    (list-transform-negative
+	(block-free-variables (procedure-block proc))
+      lvalue-integrated?))
+
+  (if (or (not (procedure/closure? proc))
+	  (procedure/trivial-closure? proc))
+      (default)
+      (let ((how (procedure-closure-cons proc)))
+	(case (car how)
+	  ((NORMAL)
+	   (default))
+	  ((DESCENDANT)
+	   ;; This will automatically imply saving the ancestor
+	   ;; for stack overwrites since that is how the free
+	   ;; variables will be obtained.
+	   ;; Is this really true?
+	   ;; What if some of them are in registers?
+	   ;; What if it is a descendant of an indirected procedure?
+	   (default))
+	  ((INDIRECTED)
+	   ;; In reality, only the indirection variable or the default
+	   ;; set is needed, depending on where the reference occurs.
+	   ;; This is always safe, however.
+	   (cons (cdr how) (default)))
+	  (else
+	   (error "walk-procedure: Unknown closure method" proc))))))
+
 (define (walk-operator rvalue)
   (enumeration-case rvalue-type (tagged-vector/index rvalue)
     ((REFERENCE) (walk-lvalue (reference-lvalue rvalue) walk-operator))
     ((PROCEDURE)
      (if (procedure-continuation? rvalue)
 	 (walk-next (continuation/entry-node rvalue) '())
-	 (map-union (lambda (procedure)
-		      (list-transform-negative
-			  (block-free-variables (procedure-block procedure))
-			lvalue-integrated?))
+	 (map-union walk-procedure
 		    (eq-set-union (list rvalue)
 				  (procedure-callees rvalue)))))
     (else '())))
@@ -90,9 +120,7 @@ MIT in each case. |#
     ((PROCEDURE)
      (if (procedure-continuation? rvalue)
 	 (walk-next (continuation/entry-node rvalue) '())
-	 (list-transform-negative
-	     (block-free-variables (procedure-block rvalue))
-	   lvalue-integrated?)))
+	 (walk-procedure rvalue)))
     (else '())))
 
 (define (walk-lvalue lvalue walk-rvalue)
@@ -103,7 +131,8 @@ MIT in each case. |#
 	    (eq-set-adjoin lvalue (walk-rvalue value)))
 	(if (and (variable? lvalue)
 		 (variable-indirection lvalue))
-	    (walk-lvalue (variable-indirection lvalue) walk-rvalue)
+	    (walk-lvalue (car (variable-indirection lvalue))
+			 walk-rvalue)
 	    (list lvalue)))))
 
 (define *nodes*)

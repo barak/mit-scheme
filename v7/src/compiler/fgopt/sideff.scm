@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/sideff.scm,v 1.6 1990/03/21 02:11:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/sideff.scm,v 1.7 1990/05/03 15:09:20 jinx Rel $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Side effect analysis
+;;; package: (compiler fg-optimizer)
 
 (declare (usual-integrations))
 
@@ -407,24 +408,19 @@ MIT in each case. |#
       r/lvalue))
 
 (define (procedure/trivial! procedure kind)
-  (let ((place (assq 'TRIVIAL (procedure-properties procedure))))
-    (cond ((not place)
-	   (set-procedure-properties!
-	    procedure
-	    (cons `(TRIVIAL ,kind) (procedure-properties procedure))))
-	  ((not (memq kind (cdr place)))
-	   (set-cdr! place (cons kind (cdr place)))))))
+  (let ((kinds (procedure-get procedure 'TRIVIAL)))
+    (cond ((or (not kinds) (null? kinds))
+	   (procedure-put! procedure 'TRIVIAL (list kind)))
+	  ((not (memq kind kinds))
+	   (procedure-put! procedure 'TRIVIAL (cons kind kinds))))))
 
 (define (simplify-procedure! procedure r/lvalue)
-  (let ((place (assq 'SIMPLIFIED (procedure-properties procedure))))
-    (if place
-	(error "procedure/trivial!: Already simplified" procedure))
-    (set-procedure-properties! procedure
-			       (cons `(SIMPLIFIED ,r/lvalue)
-				     (procedure-properties procedure))))
   ;; **** Kludge! `make-application' requires that a block be given,
   ;; rather than a context, because this is how "fggen" builds things.
   ;; So we must pass the block and then clobber it after.
+  (if (procedure-get procedure 'SIMPLIFIED)
+      (error "procedure/trivial!: Already simplified" procedure))
+  (procedure-put! procedure 'SIMPLIFIED r/lvalue)
   (let ((block (procedure-block procedure)))
     (let ((context (make-reference-context block)))
       (let ((application

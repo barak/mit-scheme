@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.31 1990/04/01 22:26:01 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.32 1990/05/03 15:17:14 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; RTL Rules for 68020.  Part 1
+;;; package: (compiler lap-syntaxer)
 
 (declare (usual-integrations))
 
@@ -177,21 +178,24 @@ MIT in each case. |#
 
 (define (increment-machine-register register n)
   (let ((target (register-reference register)))
-    (case n
-      ((0) (LAP))
-      ((1 2) (LAP (ADDQ L (& ,(* 4 n)) ,target)))
-      ((-1 -2) (LAP (SUBQ L (& ,(* -4 n)) ,target)))
-      (else
-       (if (< register 8)
-	   (LAP (ADD L (& ,(* 4 n)) ,target))
-	   (LAP (LEA (@AO ,(- register 8) ,(* 4 n)) ,target)))))))
+    (cond ((zero? n) (LAP))
+	  ((<= 1 n 8) (LAP (ADDQ L (& ,n) ,target)))
+	  ((>= -1 n -8) (LAP (SUBQ L (& ,n) ,target)))
+	  ((not (< register 8))
+	   (LAP (LEA (@AO ,(- register 8) ,n) ,target)))
+	  ((<= -128 n 127)
+	   (let ((temp (reference-temporary-register! 'DATA)))
+	     (LAP (MOVEQ (& ,n) ,temp)
+		  (ADD L ,temp ,target))))
+	  (else
+	   (LAP (ADD L (& ,n) ,target))))))
 
 (define (load-constant constant target)
   (if (non-pointer-object? constant)
       (load-non-pointer-constant constant target)
-      (INST (MOV L
-		 (@PCR ,(constant->label constant))
-		 ,target))))
+      (LAP (MOV L
+		(@PCR ,(constant->label constant))
+		,target))))
 
 (define (load-non-pointer-constant constant target)
   (load-non-pointer (object-type constant)
@@ -204,12 +208,32 @@ MIT in each case. |#
 (define (load-machine-constant n target)
   (cond ((and (zero? n)
 	      (effective-address/data&alterable? target))
-	 (INST (CLR L ,target)))
-	((and (<= -128 n 127)
-	      (effective-address/data-register? target))
-	 (INST (MOVEQ (& ,n) ,target)))
+	 (LAP (CLR L ,target)))
+	((not (effective-address/data-register? target))
+	 (LAP (MOV UL (& ,n) ,target)))
+	((<= -128 n 127)
+	 (LAP (MOVEQ (& ,n) ,target)))
 	(else
-	 (INST (MOV UL (& ,n) ,target)))))
+	 (find-zero-bits n
+	  (lambda (zero-bits datum)
+	    (cond ((> datum 127)
+		   (LAP (MOV UL (& ,n) ,target)))
+		  ((<= zero-bits 16)
+		   (LAP (MOVEQ (& ,datum) ,target)
+			(LS L L (& ,zero-bits) ,target)))
+		  (else
+		   ;; This is useful for type-code or-masks.
+		   ;; It should be extended to handle and-masks.
+		   (LAP (MOVEQ (& ,datum) ,target)
+			(RO R L (& ,(- 32 zero-bits)) ,target)))))))))
+		  
+(define (find-zero-bits n receiver)
+  (let loop ((bits 0) (n n))
+    (let ((result (integer-divide n 2)))
+      (if (zero? (integer-divide-remainder result))
+	  (loop (1+ bits)
+		(integer-divide-quotient result))
+	  (receiver bits n)))))
 
 (define (memory-set-type type target)
   (if (= 8 scheme-type-width)

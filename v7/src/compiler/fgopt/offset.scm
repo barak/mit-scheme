@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/offset.scm,v 4.6 1988/12/12 21:51:52 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/offset.scm,v 4.7 1990/05/03 15:09:17 jinx Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,37 +33,59 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Compute FG Node Offsets
+;;; package: (compiler fg-optimizer compute-node-offsets)
 
 (declare (usual-integrations))
 
+(define *grafted-procedures*)
 (define *procedure-queue*)
 (define *procedures*)
 
 (define (compute-node-offsets root-expression)
   (fluid-let ((*procedure-queue* (make-queue))
+	      (*grafted-procedures* '())
 	      (*procedures* '()))
     (with-new-node-marks
      (lambda ()
        (walk-node (expression-entry-node root-expression) 0)
        (queue-map!/unsafe *procedure-queue*
-	 (lambda (procedure)
-	   (if (procedure-continuation? procedure)
-	       (walk-next (continuation/entry-node procedure)
-			  (if (eq? (continuation/type procedure)
-				   continuation-type/push)
-			      (1+ (continuation/offset procedure))
-			      (continuation/offset procedure)))
-	       (begin
-		 (for-each
-		  (lambda (value)
-		    (if (and (rvalue/procedure? value)
-			     (not (procedure-continuation? value)))
-			(let ((context (procedure-closure-context value)))
-			  (if (reference-context? context)
-			      (update-reference-context/offset! context 0))))
-		    (walk-rvalue value 0))
-		  (procedure-values procedure))
-		 (walk-next (procedure-entry-node procedure) 0)))))))))
+	(lambda (procedure)
+	  (if (procedure-continuation? procedure)
+	      (walk-next (continuation/entry-node procedure)
+			 (if (eq? (continuation/type procedure)
+				  continuation-type/push)
+			     (1+ (continuation/offset procedure))
+			     (continuation/offset procedure)))
+	      (begin
+		(for-each
+		 (lambda (value)
+		   (cond ((and (rvalue/procedure? value)
+			       (not (procedure-continuation? value)))
+			  (let ((context (procedure-closure-context value)))
+			    (if (reference-context? context)
+				(update-reference-context/offset! context 0)))
+			  (walk-rvalue value 0))
+			 ((rvalue/block? value)
+			  (enqueue-grafted-procedures! value))
+			 (else
+			  (walk-rvalue value 0))))
+		 (procedure-values procedure))
+		(walk-next (procedure-entry-node procedure) 0)))))
+       ;; This is a kludge.  If the procedure hasn't been encountered
+       ;; elsewhere, tag it as closed when the letrec was done.
+       (for-each
+	(lambda (procedure)
+	  (let ((context (procedure-closure-context procedure)))
+	    (if (not (reference-context/offset context))
+		(set-reference-context/offset! context 0))))
+	*grafted-procedures*)))))
+
+(define (enqueue-grafted-procedures! block)
+  (let ((procs (map (lambda (block)
+		      (block-procedure (car (block-children block))))
+		    (block-grafted-blocks block))))
+    (set! *grafted-procedures* (append procs *grafted-procedures*))
+    (for-each maybe-enqueue-procedure! procs)))
 
 (define (walk-rvalue rvalue offset)
   (if (and (rvalue/procedure? rvalue)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty2.scm,v 4.8 1990/01/18 22:45:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty2.scm,v 4.9 1990/05/03 15:10:34 jinx Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Register Transfer Language Type Definitions
+;;; package: (compiler)
 
 (declare (usual-integrations))
 
@@ -150,8 +151,8 @@ MIT in each case. |#
 (define-integrable (rtl:make-typed-cons:vector type elements)
   `(TYPED-CONS:VECTOR ,type ,@elements))
 
-(define-integrable (rtl:make-typed-cons:procedure label arg-info nvars)
-  `(TYPED-CONS:PROCEDURE ,label ,arg-info ,nvars))
+(define-integrable (rtl:make-typed-cons:procedure entry)
+  `(TYPED-CONS:PROCEDURE ,entry))
 
 ;;; Linearizer Support
 

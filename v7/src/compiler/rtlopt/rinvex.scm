@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rinvex.scm,v 1.3 1990/01/18 22:48:02 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rinvex.scm,v 1.4 1990/05/03 15:22:29 jinx Rel $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; RTL Invertible Expression Elimination
+;;; package: (compiler rtl-optimizer invertible-expression-elimination)
 
 (declare (usual-integrations))
 
@@ -112,6 +113,14 @@ MIT in each case. |#
   unspecific)
 
 (define (expression-update! get-expression set-expression! object)
+  ;; Note: The following code may cause pseudo register copies to be
+  ;; generated since it would have to propagate some of the
+  ;; simplifications, and then delete the now-unused registers.
+  ;; This is not worth it since the previous register is likely to be
+  ;; dead at this point, so the lap-level register allocator will
+  ;; reuse the alias achieving the effect of the deletion.  Ultimately
+  ;; the expression invertibility code should be integrated into the
+  ;; CSE and this register deletion would happen there.
   (set-expression!
    object
    (let loop ((expression (get-expression object)))
@@ -120,35 +129,78 @@ MIT in each case. |#
 	 (optimize-expression (rtl:map-subexpressions expression loop))))))
 
 (define (optimize-expression expression)
-  (let ((type (rtl:expression-type expression))
-	(try-unary-fold
-	 (lambda (types)
-	   (let loop ((types types)
-		      (expression (cadr expression)))
-	     (if (null? types)
-		 expression
-		 (let ((subexpression
-			(canonicalize-subexpression expression)))
-		   (and (eq? (car types) (rtl:expression-type subexpression))
-			(loop (cdr types)
-			      (cadr subexpression)))))))))
-    (let next-inversion ((unary-inversions unary-inversions))
-      (if (null? unary-inversions)
-	  expression
-	  (let ((first-inversion (car unary-inversions)))
-	    (or (and (eq? type (caar first-inversion))
-		     (try-unary-fold (append (cdar first-inversion)
-					     (cdr first-inversion))))
-		(and (eq? type (cadr first-inversion))
-		     (try-unary-fold (append (cddr first-inversion)
-					     (car first-inversion))))
-		(next-inversion (cdr unary-inversions))))))))
+  (define (try-identity identity)
+    (let ((in-domain? (car identity))
+	  (matching-operation (cadr identity)))
+      (let loop ((operations (cddr identity))
+		 (subexpression ((cadr matching-operation) expression)))
+	(if (null? operations)
+	    (and (valid-subexpression? subexpression)
+		 (in-domain? (rtl:expression-value-class subexpression))
+		 subexpression)
+	    (let ((subexpression (canonicalize-subexpression subexpression)))
+	      (and (eq? (caar operations) (rtl:expression-type subexpression))
+		   (loop (cdr operations)
+			 ((cadar operations) subexpression))))))))
 
-(define unary-inversions
-  '(((OBJECT->FIXNUM) . (FIXNUM->OBJECT))
-    ((OBJECT->UNSIGNED-FIXNUM) . (FIXNUM->OBJECT))
-    ((ADDRESS->FIXNUM) . (FIXNUM->ADDRESS))
-    ((@ADDRESS->FLOAT OBJECT->ADDRESS) . (FLOAT->OBJECT))))
+  (let loop ((rules (list-transform-positive
+			identities
+		      (let ((type (rtl:expression-type expression)))
+			(lambda (identity)
+			  (eq? type (car (cadr identity))))))))
+
+    (cond ((null? rules) expression)
+	  ((try-identity (car rules)) => optimize-expression)
+	  (else (loop (cdr rules))))))
+
+(define identities
+  ;; Each entry is composed of a value class and a sequence
+  ;; of operations whose composition is the identity for that
+  ;; value class.
+  ;; Each operation is described by the operator and the selector for
+  ;; the relevant operand.
+  `((,value-class=value? (OBJECT->FIXNUM ,rtl:object->fixnum-expression)
+			 (FIXNUM->OBJECT ,rtl:fixnum->object-expression))
+    (,value-class=value? (FIXNUM->OBJECT ,rtl:fixnum->object-expression)
+			 (OBJECT->FIXNUM ,rtl:object->fixnum-expression))
+    (,value-class=value? (OBJECT->UNSIGNED-FIXNUM
+			  ,rtl:object->unsigned-fixnum-expression)
+			 (FIXNUM->OBJECT ,rtl:fixnum->object-expression))
+    (,value-class=value? (FIXNUM->OBJECT ,rtl:fixnum->object-expression)
+			 (OBJECT->UNSIGNED-FIXNUM
+			  ,rtl:object->unsigned-fixnum-expression))
+    (,value-class=value? (FIXNUM->ADDRESS ,rtl:fixnum->address-expression)
+			 (ADDRESS->FIXNUM ,rtl:address->fixnum-expression))
+    (,value-class=value? (ADDRESS->FIXNUM ,rtl:address->fixnum-expression)
+			 (FIXNUM->ADDRESS ,rtl:fixnum->address-expression))
+    (,value-class=value? (@ADDRESS->FLOAT ,rtl:@address->float-expression)
+			 (OBJECT->ADDRESS ,rtl:object->address-expression)
+			 (FLOAT->OBJECT ,rtl:float->object-expression))
+    (,value-class=value? (FLOAT->OBJECT ,rtl:float->object-expression)
+			 (@ADDRESS->FLOAT ,rtl:@address->float-expression)
+			 (OBJECT->ADDRESS ,rtl:object->address-expression))
+    #|
+    ;; This one, although true, is useless.
+    (,value-class=value? (OBJECT->ADDRESS ,rtl:object->address-expression)
+			 (FLOAT->OBJECT ,rtl:float->object-expression)
+			 (@ADDRESS->FLOAT ,rtl:@address->float-expression))
+    |#
+    (,value-class=address? (OBJECT->ADDRESS ,rtl:object->address-expression)
+			   (CONS-POINTER ,rtl:cons-pointer-datum))
+    (,value-class=datum? (OBJECT->DATUM ,rtl:object->datum-expression)
+			 (CONS-POINTER ,rtl:cons-pointer-datum))
+    ;; Perhaps this should be value-class=type
+    (,value-class=immediate? (OBJECT->TYPE ,rtl:object->type-expression)
+			     (CONS-POINTER ,rtl:cons-pointer-type))))
+
+(define (valid-subexpression? expression)
+  ;; Machine registers not allowed because they are volatile.
+  ;; Ideally at this point we could introduce a copy to the
+  ;; value of the machine register required, but it is too late
+  ;; to do this.  Perhaps always copying machine registers out
+  ;; before using them would make this win.
+  (or (not (rtl:register? expression))
+      (rtl:pseudo-register-expression? expression)))
 
 (define (canonicalize-subexpression expression)
   (or (and (rtl:pseudo-register-expression? expression)

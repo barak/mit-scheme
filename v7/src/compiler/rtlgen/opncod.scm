@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.36 1990/04/03 06:01:54 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.37 1990/05/03 15:11:44 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; RTL Generation: Inline Combinations
+;;; package: (compiler rtl-generator combination/inline)
 
 (declare (usual-integrations))
 
@@ -148,9 +149,8 @@ MIT in each case. |#
 	    ((and (rvalue/reference? rvalue)
 		  (not (variable/value-variable? (reference-lvalue rvalue)))
 		  (reference-to-known-location? rvalue))
-	     (rtl:make-fetch
-	      (find-known-variable (reference-context rvalue)
-				   (reference-lvalue rvalue))))
+	     (find-known-variable (reference-context rvalue)
+				  (reference-lvalue rvalue)))
 	    (else
 	     (rtl:make-fetch
 	      (continuation*/register

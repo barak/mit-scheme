@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/proced.scm,v 4.15 1989/10/26 07:36:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/proced.scm,v 4.16 1990/05/03 15:05:01 jinx Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Procedure datatype
+;;; package: (compiler)
 
 (declare (usual-integrations))
 
@@ -52,7 +53,7 @@ MIT in each case. |#
   label			;label to identify procedure entry point [symbol]
   applications		;list of applications for which this is an operator
   always-known-operator? ;always known operator of application? [boolean]
-  closing-limit		;closing limit (see code)
+  closure-cons		;for closure, how it is to be consed.
   closure-context	;for closure, where procedure is closed [block]
   closure-offset	;for closure, offset of procedure in stack frame
   register		;for continuation, argument register
@@ -67,7 +68,7 @@ MIT in each case. |#
   closure-reasons	;reasons why a procedure is closed.
   (variables		;variables which may be bound to this procedure (1)
    side-effects)	;classes of side-effects performed by this procedure
-  properties		;random bits of information [assq list]
+  alist			;random bits of information [assq list]
   debugging-info	;[dbg-procedure or dbg-continuation]
   )
 
@@ -173,11 +174,26 @@ MIT in each case. |#
     (if (null? applications)
 	(set-procedure-always-known-operator?! procedure false))))
 
+(define (procedure-get procedure key)
+  (let ((entry (assq key (procedure-alist procedure))))
+    (and entry
+	 (cdr entry))))
+
+(define (procedure-put! procedure key item)
+  (let ((entry (assq key (procedure-alist procedure))))
+    (if entry
+	(set-cdr! entry item)
+	(set-procedure-alist! procedure
+			      (cons (cons key item) (procedure-alist procedure))))))
+
+(define (procedure-remove! procedure key)
+  (set-procedure-alist! procedure (del-assq! key (procedure-alist procedure))))
+
 (define-integrable (procedure/simplified? procedure)
-  (assq 'SIMPLIFIED (procedure-properties procedure)))
+  (procedure-get procedure 'SIMPLIFIED))
 
 (define-integrable (procedure/trivial? procedure)
-  (assq 'TRIVIAL (procedure-properties procedure)))
+  (procedure-get procedure 'TRIVIAL))
 
 (define (procedure-inline-code? procedure)
   (and (not (procedure-rest procedure))
@@ -313,7 +329,8 @@ MIT in each case. |#
   (let loop ((reasons (procedure-closure-reasons procedure)))
     (and (not (null? reasons))
 	 (or (memq (caar reasons)
-		   '(PASSED-OUT ARGUMENT ASSIGNMENT APPLY-COMPATIBILITY))
+		   '(PASSED-OUT ARGUMENT ASSIGNMENT
+				COMPATIBILITY APPLY-COMPATIBILITY))
 	     (loop (cdr reasons))))))
 
 (define (procedure-maybe-registerizable? procedure)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 4.20 1990/01/18 22:45:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 4.21 1990/05/03 15:10:19 jinx Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Register Transfer Language: Complex Constructors
+;;; package: (compiler)
 
 (declare (usual-integrations))
 
@@ -463,12 +464,44 @@ MIT in each case. |#
 		  (lambda (element)
 		    (loop (cdr elements*)
 			  (cons element simplified-elements)))))))))))
-
+
 (define-expression-method 'TYPED-CONS:PROCEDURE
-  ;; A NOP for simplification
-  (lambda (receiver scfg-append! type entry min max size)
-    scfg-append!
-    (receiver (rtl:make-typed-cons:procedure type entry min max size))))
+  (lambda (receiver scfg-append! entry)
+    (expression-simplify
+     entry scfg-append!
+     (lambda (entry)
+       (receiver (rtl:make-cons-pointer
+		  (rtl:make-machine-constant type-code:compiled-entry)
+		  entry))))))
+
+(define-expression-method 'BYTE-OFFSET-ADDRESS
+  (lambda (receiver scfg-append! base number)
+    (expression-simplify
+     base scfg-append!
+     (lambda (base)
+       (receiver (rtl:make-byte-offset-address base number))))))
+
+;; NOPs for simplification
+
+(define-expression-method 'ENTRY:CONTINUATION
+  (lambda (receiver scfg-append! label)
+    scfg-append!			; unused
+    (receiver (rtl:make-entry:continuation label))))
+
+(define-expression-method 'ENTRY:PROCEDURE
+  (lambda (receiver scfg-append! label)
+    scfg-append!			; unused
+    (receiver (rtl:make-entry:procedure label))))
+
+(define-expression-method 'CONS-CLOSURE
+  (lambda (receiver scfg-append! entry min max size)
+    scfg-append!			; unused
+    (receiver (rtl:make-cons-closure entry min max size))))
+
+(define-expression-method 'CONS-MULTICLOSURE
+  (lambda (receiver scfg-append! nentries size entries)
+    scfg-append!			; unused
+    (receiver (rtl:make-cons-multiclosure nentries size entries))))
 
 (define (object-selector make-object-selector)
   (lambda (receiver scfg-append! expression)

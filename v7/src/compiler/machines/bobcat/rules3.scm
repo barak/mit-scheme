@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.23 1990/01/18 22:44:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.24 1990/05/03 15:17:33 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; LAP Generation Rules: Invocations and Entries
+;;; package: (compiler lap-syntaxer)
 
 (declare (usual-integrations))
 
@@ -133,7 +134,7 @@ MIT in each case. |#
     (delete-dead-registers!)
     (LAP ,@set-environment
 	 ,@(clear-map!)
-	 ,(load-constant name (INST-EA (D 2)))
+	 ,@(load-constant name (INST-EA (D 2)))
 	 ,(load-dnl frame-size 3)
 	 ,@(invoke-interface code:compiler-lookup-apply))))
 
@@ -205,10 +206,10 @@ MIT in each case. |#
     (cond ((zero? how-far)
 	   (LAP))
 	  ((zero? frame-size)
-	   (increment-machine-register 15 how-far))
+	   (increment-machine-register 15 (* 4 how-far)))
 	  ((= frame-size 1)
 	   (LAP (MOV L (@A+ 7) ,(offset-reference a7 (-1+ how-far)))
-		,@(increment-machine-register 15 (-1+ how-far))))
+		,@(increment-machine-register 15 (* 4 (-1+ how-far)))))
 	  ((= frame-size 2)
 	   (if (= how-far 1)
 	       (LAP (MOV L (@AO 7 4) (@AO 7 8))
@@ -218,7 +219,7 @@ MIT in each case. |#
 				     ,(offset-reference a7 (-1+ how-far)))))))
 		 (LAP ,(i)
 		      ,(i)
-		      ,@(increment-machine-register 15 (- how-far 2))))))
+		      ,@(increment-machine-register 15 (* 4 (- how-far 2)))))))
 	  (else
 	   (generate/move-frame-up frame-size (offset-reference a7 offset))))))
 
@@ -322,20 +323,22 @@ MIT in each case. |#
 (define internal-entry-code-word
   (make-code-word #xff #xfe))
 
+(define (frame-size->code-word offset)
+  (cond ((not offset)
+	 (make-code-word #xff #xfc))
+	((< offset #x2000)
+	 ;; This uses up through (#xff #xdf).
+	 (let ((qr (integer-divide offset #x80)))
+	   (make-code-word (+ #x80 (integer-divide-remainder qr))
+			   (+ #x80 (integer-divide-quotient qr)))))
+	(else
+	 (error "Unable to encode continuation offset" offset))))
+
 (define (continuation-code-word label)
-  (let ((offset
-	 (if label
-	     (rtl-continuation/next-continuation-offset (label->object label))
-	     0)))
-    (cond ((not offset)
-	   (make-code-word #xff #xfc))
-	  ((< offset #x2000)
-	   ;; This uses up through (#xff #xdf).
-	   (let ((qr (integer-divide offset #x80)))
-	     (make-code-word (+ #x80 (integer-divide-remainder qr))
-			     (+ #x80 (integer-divide-quotient qr)))))
-	  (else
-	   (error "Unable to encode continuation offset" offset)))))
+  (frame-size->code-word
+   (if label
+       (rtl-continuation/next-continuation-offset (label->object label))
+       0)))
 
 ;;;; Procedure headers
 
@@ -415,56 +418,57 @@ MIT in each case. |#
 				  entry:compiler-interrupt-procedure)))
 
 ;;;; Closures.  These two statements are intertwined:
+;;; Note: If the closure is a multiclosure, the closure object on the
+;;; stack corresponds to the first (official) entry point.
+;;; Thus on entry and interrupt it must be bumped around.
 
-(define magic-closure-constant
-  (- (make-non-pointer-literal (ucode-type compiled-entry) 0) 6))
+(define (make-magic-closure-constant entry)
+  (- (make-non-pointer-literal (ucode-type compiled-entry) 0)
+     (+ (* entry 10) 6)))
 
 (define-rule statement
-  (CLOSURE-HEADER (? internal-label))
+  (CLOSURE-HEADER (? internal-label) (? nentries) (? entry))
+  nentries				; ignored
   (let ((procedure (label->object internal-label)))
     (let ((gc-label (generate-label))
 	  (external-label (rtl-procedure/external-label procedure)))
-      (LAP (LABEL ,gc-label)
-	   (JMP ,entry:compiler-interrupt-closure)
-	   ,@(make-external-label internal-entry-code-word external-label)
-	   (ADD UL (& ,magic-closure-constant) (@A 7))
-	   (LABEL ,internal-label)
-	   (CMP L ,reg:compiled-memtop (A 5))
-	   (B GE B (@PCR ,gc-label))))))
+      (if (zero? nentries)
+	  (LAP (EQUATE ,external-label ,internal-label)
+	       ,@(simple-procedure-header internal-entry-code-word
+					  internal-label
+					  entry:compiler-interrupt-procedure))
+	  (LAP (LABEL ,gc-label)
+	       ,@(let ((distance (* 10 entry)))
+		   (cond ((zero? distance)
+			  (LAP))
+			 ((< distance 128)
+			  (LAP (MOVEQ (& ,distance) (D 0))
+			       (ADD L (D 0) (@A 7))))
+			 (else
+			  (LAP (ADD L (& ,distance) (@A 7))))))
+	       (JMP ,entry:compiler-interrupt-closure)
+	       ,@(make-external-label internal-entry-code-word
+				      external-label)
+	       (ADD UL (& ,(make-magic-closure-constant entry)) (@A 7))
+	       (LABEL ,internal-label)
+	       (CMP L ,reg:compiled-memtop (A 5))
+	       (B GE B (@PCR ,gc-label)))))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (CONS-CLOSURE (ENTRY:PROCEDURE (? procedure-label))
 			(? min) (? max) (? size)))
-  (generate/cons-closure (reference-target-alias! target 'DATA)
+  (generate/cons-closure (reference-target-alias! target 'ADDRESS)
 			 false procedure-label min max size))
-
-(define-rule statement
-  (ASSIGN (REGISTER (? target))
-	  (CONS-POINTER (MACHINE-CONSTANT (? type))
-			(CONS-CLOSURE (ENTRY:PROCEDURE (? procedure-label))
-				      (? min) (? max) (? size))))
-  (generate/cons-closure (reference-target-alias! target 'DATA)
-			 type procedure-label min max size))
-
-(define-rule statement
-  (ASSIGN (? target)
-	  (CONS-POINTER (MACHINE-CONSTANT (? type))
-			(CONS-CLOSURE (ENTRY:PROCEDURE (? procedure-label))
-				      (? min) (? max) (? size))))
-  (QUALIFIER (standard-target-expression? target))
-  (let ((temporary (reference-temporary-register! 'DATA)))
-    (LAP ,@(generate/cons-closure temporary type procedure-label min max size)
-	 (MOV L ,temporary ,(standard-target-expression->ea target)))))
 
 (define (generate/cons-closure target type procedure-label min max size)
   (let ((temporary (reference-temporary-register! 'ADDRESS)))
     (LAP (LEA (@PCR ,(rtl-procedure/external-label
 		      (label->object procedure-label)))
 	      ,temporary)
-	 ,(load-non-pointer (ucode-type manifest-closure)
-			    (+ 3 size)
-			    (INST-EA (@A+ 5)))
+	 ,@(load-non-pointer (ucode-type manifest-closure)
+			     (+ 3 size)
+			     (INST-EA (@A+ 5)))
 	 (MOV UL
 	      (& ,(+ (* (make-procedure-code-word min max) #x10000) 8))
 	      (@A+ 5))
@@ -475,7 +479,70 @@ MIT in each case. |#
 	 (MOV UW (& #x4eb9) (@A+ 5))	; (JSR (L <entry>))
 	 (MOV L ,temporary (@A+ 5))
 	 (CLR W (@A+ 5))
-	 ,@(increment-machine-register 13 size))))
+	 ,@(increment-machine-register 13 (* 4 size)))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (CONS-MULTICLOSURE (? nentries) (? size) (? entries)))
+  (let ((target (reference-target-alias! target 'ADDRESS)))
+    (case nentries
+      ((0)
+       (LAP (MOV L (A 5) ,target)
+	    ,@(load-non-pointer (ucode-type manifest-vector)
+				size
+				(INST-EA (@A+ 5)))
+	    ,@(increment-machine-register 13 (* 4 size))))
+      ((1)
+       (let ((entry (vector-ref entries 0)))
+	 (generate/cons-closure target false
+				(car entry) (cadr entry) (caddr entry)
+				size)))
+      (else
+       (generate/cons-multiclosure target nentries size
+				   (vector->list entries))))))
+
+(define (generate/cons-multiclosure target nentries size entries)
+  (let ((total-size (+ size
+		       (quotient (+ 3 (* 5 nentries))
+				 2)))
+	(temp1 (reference-temporary-register! 'ADDRESS))
+	(temp2 (reference-temporary-register! 'DATA)))
+
+    (define (generate-entries entries offset first?)
+      (if (null? entries)
+	  (LAP)
+	  (let ((entry (car entries)))
+	    (LAP (MOV UL (& ,(+ (* (make-procedure-code-word (cadr entry)
+							     (caddr entry))
+				   #x10000)
+				offset))
+		      (@A+ 5))
+		 ,@(if first?
+		       (LAP (MOV L (A 5) ,target))
+		       (LAP))
+		 (LEA (@PCR ,(rtl-procedure/external-label
+			      (label->object (car entry))))
+		      ,temp1)
+		 (MOV W ,temp2 (@A+ 5))	; (JSR (L <entry>))
+		 (MOV L ,temp1 (@A+ 5))
+		 ,@(generate-entries (cdr entries)
+				     (+ 10 offset)
+				     false)))))	  
+
+    (LAP ,@(load-non-pointer (ucode-type manifest-closure)
+			     total-size
+			     (INST-EA (@A+ 5)))
+	 (MOV UL (& ,(* nentries #x10000)) (@A+ 5))
+	 (MOV UW (& #x4eb9) ,temp2)
+	 ,@(generate-entries entries
+			     (if (= nentries 1)
+				 8
+				 12)
+			     true)
+	 ,@(if (odd? nentries)
+	       (LAP (CLR W (@A+ 5)))
+	       (LAP))
+	 ,@(increment-machine-register 13 (* 4 size)))))
 
 ;;;; Entry Header
 ;;; This is invoked by the top level of the LAP generator.

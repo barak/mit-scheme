@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 4.14 1989/12/05 20:17:13 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 4.15 1990/05/03 15:11:50 jinx Rel $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; RTL Generation: Combinations
+;;; package: (compiler rtl-generator generate/combination)
 
 (declare (usual-integrations))
 
@@ -52,9 +53,9 @@ MIT in each case. |#
 		(case (procedure/type model)
 		  ((OPEN-EXTERNAL OPEN-INTERNAL) invocation/jump)
 		  ((CLOSURE TRIVIAL-CLOSURE)
-		   ;; *** For the time being, known lexpr closures are
-		   ;; invoked through apply.  This makes the code
-		   ;; simpler and probably does not matter much. ***
+		   ;; Known lexpr closures are invoked through apply.
+		   ;; This makes the code simpler and probably does
+		   ;; not matter much.
 		   (if (procedure-rest model)
 		       invocation/apply
 		       invocation/jump))
@@ -90,26 +91,56 @@ MIT in each case. |#
 	    (generate/procedure-entry/inline callee))
 	   (else
 	    (enqueue-procedure! callee)
-	    (if (not (procedure-rest callee))
-		(rtl:make-invocation:jump
-		 frame-size
-		 continuation
-		 (procedure-label callee))
-		(let* ((callee-block (procedure-block callee))
-		       (core
-			(lambda (frame-size)
-			  (rtl:make-invocation:lexpr
-			   (if (stack-block/static-link? callee-block)
-			       (-1+ frame-size)
-			       frame-size)
-			   continuation
-			   (procedure-label callee)))))
-		  (if (not (block/dynamic-link? callee-block))
-		      (core frame-size)
-		      (scfg*scfg->scfg!
-		       (rtl:make-push-link)
-		       (core (1+ frame-size)))))))))))
+	    (let ((trivial-call
+		   (lambda ()
+		     (rtl:make-invocation:jump
+		      frame-size
+		      continuation
+		      (procedure-label callee)))))
+	      (cond ((procedure-rest callee)
+		     ;; Note that callee can't be a closure because of
+		     ;; the dispatch in generate/combination!
+		     (let* ((callee-block (procedure-block callee))
+			    (core
+			     (lambda (frame-size)
+			       (rtl:make-invocation:lexpr
+				(if (stack-block/static-link? callee-block)
+				    (-1+ frame-size)
+				    frame-size)
+				continuation
+				(procedure-label callee)))))
+		       (if (not (block/dynamic-link? callee-block))
+			   (core frame-size)
+			   (scfg*scfg->scfg!
+			    (rtl:make-push-link)
+			    (core (1+ frame-size))))))
+		    ((and (procedure/closure? callee)
+			  (not (procedure/trivial-closure? callee)))
+		     (let* ((block (procedure-closing-block callee))
+			    (block* (block-shared-block block)))
+		       (if (eq? block block*)
+			   (trivial-call)
+			   (invocation/adjust-closure-prefix block block*
+							     (trivial-call)))))
+		    (else
+		     (trivial-call)))))))))
 
+(define (invocation/adjust-closure-prefix block block* call-code)
+  (let ((distance (closure-environment-adjustment
+		   (block-number-of-entries block*)
+		   (closure-block-entry-number block))))
+    (if (zero? distance)
+	call-code
+	(let ((locative
+	       (rtl:make-offset (rtl:make-fetch (interpreter-stack-pointer))
+				(stack->memory-offset 0))))
+	  (scfg*scfg->scfg!
+	   (rtl:make-assignment
+	    locative
+	    (rtl:make-byte-offset-address (rtl:make-fetch locative)
+					  distance))
+	   call-code)))))
+
 (define (invocation/apply model operator frame-size continuation prefix)
   model operator			; ignored
   (invocation/apply* frame-size 0 continuation prefix))
@@ -144,10 +175,10 @@ MIT in each case. |#
       (invocation/apply* frame-size 0 continuation prefix)
       (let ((context (reference-context operator))
 	    (variable (reference-lvalue operator)))
-	(find-variable context variable
-	  (lambda (locative)
+	(find-variable/value context variable
+	  (lambda (expression)
 	    (scfg*scfg->scfg!
-	     (rtl:make-push (rtl:make-fetch locative))
+	     (rtl:make-push expression)
 	     (invocation/apply* (1+ frame-size) 1 continuation prefix)))
 	  (lambda (environment name)
 	    (invocation/lookup frame-size
