@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr1.scm,v 1.63 1987/07/17 15:48:41 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr1.scm,v 1.64 1987/07/21 18:34:34 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -36,19 +36,16 @@ MIT in each case. |#
 ;;; Originally from GJS (who did the hard part).
 
 (declare (usual-integrations))
-
-;;;; Effective Address transformers and description database
+
+;;; Effective Address description database
 
 (define-ea-database
+
   ((D (? r)) (DATA ALTERABLE) #b000 r)
 
   ((A (? r)) (ALTERABLE) #b001 r)
 
   ((@A (? r)) (DATA MEMORY CONTROL ALTERABLE) #b010 r)
-
-  ((@D (? r))
-   (DATA MEMORY CONTROL ALTERABLE) #b110 #b000
-   (output-@D-indirect r))
 
   ((@A+ (? r)) (DATA MEMORY ALTERABLE) #b011 r)
 
@@ -62,10 +59,6 @@ MIT in each case. |#
    (DATA MEMORY CONTROL ALTERABLE) #b101 r
    (output-16bit-relative l))
 
-  ((@DO (? r) (? o))
-   (DATA MEMORY CONTROL ALTERABLE) #b110 #b000
-   (output-@DO-indirect r o))
-  
   ((@AOX (? r) (? o) (? xtype da) (? xr) (? s wl))
    (DATA MEMORY CONTROL ALTERABLE) #b110 r
    (output-offset-index-register xtype xr s o))
@@ -100,7 +93,82 @@ MIT in each case. |#
 
   ((& (? i))
    (DATA MEMORY) #b111 #b100
-   (output-immediate-data immediate-size i)))
+   (output-immediate-data immediate-size i))
+
+;;; 68020 only
+
+  ;; These are common special cases of the full extension word forms below
+
+  ((@D (? r))
+   (DATA MEMORY CONTROL ALTERABLE) #b110 #b000
+   (output-@D-indirect r))
+
+  ((@DO (? r) (? o))
+   (DATA MEMORY CONTROL ALTERABLE) #b110 #b000
+   (output-@DO-indirect r o))
+
+  ;; Brief format extension word addressing modes
+
+  ;; These 2 are like @AOX and @ARX but accept a scale factor.
+  ;; The index register is collected into a spec like ((D 4) L 2).
+
+  ((@AOXS (? r) (? l) (((? xtype da) (? xr)) (? s wl) (? factor)))
+   (DATA MEMORY CONTROL ALTERABLE) #b110 r
+   (output-brief-format-extension-word xtype xr s factor l))
+
+  ((@ARXS (? r) (? l) (((? xtype da) (? xr)) (? s wl) (? factor)))
+   (DATA MEMORY CONTROL ALTERABLE) #b110 r
+   (output-brief-format-extension-word xtype xr s factor `(- ,l *PC*)))
+
+  ;; Similarly for @PCOX and @PCRX.
+
+  ((@PCOXS (? o) (((? xtype da) (? xr)) (? s wl) (? factor)))
+   (DATA MEMORY CONTROL) #b111 #b011
+   (output-brief-format-extension-word xtype xr s factor o))
+
+  ((@PCRXS (? l) (((? xtype da) (? xr)) (? s wl) (? factor)))
+   (DATA MEMORY CONTROL) #b111 #b011
+   (output-brief-format-extension-word xtype xr s factor `(- ,l *PC*)))
+
+;;; Full format extension word addressing modes
+
+  ((@AOF (? r) (? brs ze)
+	 ((? bd) (? bdtype nwl)) (? memtype)
+	 (((? xtype da) (? xr)) (? xsz wl) (? factor)) (? irs ze)
+	 ((? od) (? odtype nwl)))
+   (DATA MEMORY CONTROL ALTERABLE) #b110 r
+   (output-full-format-extension-word xtype xr xsz factor
+				      brs irs bdtype bd
+				      memtype odtype od))
+
+  ((@ARF (? r) (? brs ze)
+	 ((? bd) (? bdtype nwl)) (? memtype)
+	 (((? xtype da) (? xr)) (? xsz wl) (? factor)) (? irs ze)
+	 ((? od) (? odtype nwl)))
+   (DATA MEMORY CONTROL ALTERABLE) #b110 r
+   (output-full-format-extension-word xtype xr xsz factor
+				      brs irs bdtype `(- ,bd *PC*)
+				      memtype odtype od))
+
+  ((@PCOF (? pcs ze)
+	 ((? bd) (? bdtype nwl)) (? memtype)
+	 (((? xtype da) (? xr)) (? xsz wl) (? factor)) (? irs ze)
+	 ((? od) (? odtype nwl)))
+   (DATA MEMORY CONTROL) #b111 #b011
+   (output-full-format-extension-word xtype xr xsz factor
+				      pcs irs bdtype bd
+				      memtype odtype od))
+
+  ((@PCRF (? pcs ze)
+	  ((? bd) (? bdtype nwl)) (? memtype)
+	  (((? xtype da) (? xr)) (? xsz wl) (? factor)) (? irs ze)
+	  ((? od) (? odtype nwl)))
+   (DATA MEMORY CONTROL) #b111 #b011
+   (output-full-format-extension-word xtype xr xsz factor
+				      pcs irs bdtype `(- ,bd *PC*)
+				      memtype odtype od)))
+
+;;;; Effective address transformers (restrictions)
 
 (define-ea-transformer ea-all)
 
@@ -132,7 +200,8 @@ MIT in each case. |#
 (define-symbol-transformer us    (U . 0) (S . 1))
 (define-symbol-transformer chkwl (W . 6) (L . 4))
 (define-symbol-transformer bwl+1 (B . 1) (W . 2) (L . 3))
-(define-symbol-transformer nwl-n (W . 2) (L . 3))
+(define-symbol-transformer wl+2  (W . 2) (L . 3))
+(define-symbol-transformer ze    (Z . 1) (E . 0))
 
 (define-symbol-transformer cc
   (T . 0) (F . 1) (HI . 2) (LS . 3) (HS . 4) (LO . 5)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/coerce.scm,v 1.8 1987/07/17 15:40:20 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/coerce.scm,v 1.9 1987/07/21 18:34:10 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -58,6 +58,20 @@ MIT in each case. |#
 	   ((= w 32) 0)
 	   (else (error "Bad bit field width" w))))))
 
+(define coerce-index-scale
+  (standard-coercion
+   (lambda (sf)
+     (case sf
+       ((1) #b00)
+       ((2) #b01)
+       ((4) #b10)
+       ((8) #b11)
+       (else (error "Bad index scale" sf))))))
+
+;; *** NOTE ***
+;; If you add coercions here, remember to also add them to
+;; EXPAND-DESCRIPTOR in isnmac.scm .
+
 (define make-coercion
   (coercion-maker
    `((UNSIGNED . ,coerce-unsigned-integer)
@@ -65,7 +79,8 @@ MIT in each case. |#
      (QUICK . ,coerce-quick)
      (SHIFT-NUMBER . ,coerce-quick)
      (SHORT-LABEL . ,coerce-short-label)
-     (BFWIDTH . ,coerce-bit-field-width))))
+     (BFWIDTH . ,coerce-bit-field-width)
+     (SCALE-FACTOR . ,coerce-index-scale))))
 
 (define-coercion 'UNSIGNED 1)
 (define-coercion 'UNSIGNED 2)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/insutl.scm,v 1.3 1987/07/17 15:49:20 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/insutl.scm,v 1.4 1987/07/21 18:34:47 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -131,29 +131,22 @@ MIT in each case. |#
      (error "OUTPUT-IMMEDIATE-DATA: illegal immediate size"
 	    immediate-size))))
 
-;;; New stuff for 68020
+;;; Support for 68020 addressing modes
 
-;; (? index-register-type da)
-;; (? index-size wl)
-;; (? scale-factor bwlq)
-;; (? base-displacement-size nwl)
-;; (? outer-displacement-size nwl)
-
-(define (output-brief-format-extension-word immediate-size
-					    index-register-type index-register
-					    index-size scale-factor
-					    displacement)
+(define-integrable (output-brief-format-extension-word
+		    index-register-type index-register
+		    index-size factor
+		    displacement)
   (EXTENSION-WORD (1 index-register-type)
 		  (3 index-register)
 		  (1 index-size)
-		  (2 scale-factor)
+		  (2 factor SCALE-FACTOR)
 		  (1 #b0)
 		  (8 displacement SIGNED)))
 
-(define (output-full-format-extension-word immediate-size
-					   index-register-type index-register
-					   index-size scale-factor
-					   base-suppress? index-suppress?
+(define (output-full-format-extension-word index-register-type index-register
+					   index-size factor
+					   base-suppress index-suppress
 					   base-displacement-size
 					   base-displacement
 					   memory-indirection-type
@@ -162,17 +155,21 @@ MIT in each case. |#
   (EXTENSION-WORD (1 index-register-type)
 		  (3 index-register)
 		  (1 index-size)
-		  (2 scale-factor)
+		  (2 factor SCALE-FACTOR)
 		  (1 #b1)
-		  (1 (if base-suppress? #b1 #b0))
-		  (1 (if index-suppress? #b1 #b0))
+		  (1 base-suppress)
+		  (1 index-suppress)
 		  (2 base-displacement-size)
 		  (1 #b0)
 		  (3 (case memory-indirection-type
-		       ((#F) #b000)
-		       ((PRE) outer-displacement-size)
+		       ((#F)
+			#b000)
+		       ((PRE)
+			outer-displacement-size)
 		       ((POST)
-			(+ #b100 outer-displacement-size)))))
+			(+ #b100 outer-displacement-size))
+		       (else
+			"bad memory indirection-type" memory-indirection-type))))
   (output-displacement base-displacement-size base-displacement)
   (output-displacement outer-displacement-size outer-displacement))
 
@@ -182,6 +179,8 @@ MIT in each case. |#
     ((2) (EXTENSION-WORD (16 displacement SIGNED)))
     ((3) (EXTENSION-WORD (32 displacement SIGNED)))))
 
+;;;; Common special cases
+
 (define-integrable (output-@D-indirect register)
   (EXTENSION-WORD (1 #b0)		;index register = data
 		  (3 register)

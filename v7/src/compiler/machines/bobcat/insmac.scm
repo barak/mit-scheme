@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/insmac.scm,v 1.120 1987/07/17 15:48:27 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/insmac.scm,v 1.121 1987/07/21 18:34:23 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -151,7 +151,7 @@ MIT in each case. |#
 	   (error "PARSE-WORD: Instructions must be 16 bit multiples" size)))))
   (if (or (unassigned? early?) (not early?))
       (kernel)
-      (with-early-selectors kernel)))     
+      (with-early-selectors kernel)))
 
 (define (expand-descriptors descriptors receiver)
   (if (null? descriptors)
@@ -195,7 +195,7 @@ MIT in each case. |#
 	(coercion-type
 	 (if (null? (cddr descriptor)) 'UNSIGNED (caddr descriptor))))
     (case coercion-type
-      ((UNSIGNED SIGNED SHIFT-NUMBER QUICK BFWIDTH)
+      ((UNSIGNED SIGNED SHIFT-NUMBER QUICK BFWIDTH SCALE-FACTOR)
        (receiver `(,(integer-syntaxer expression coercion-type size))
 		 size false false))
       ((SHORT-LABEL)
