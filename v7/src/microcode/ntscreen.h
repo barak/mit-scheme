@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntscreen.h,v 1.15 1997/05/17 06:59:56 cph Exp $
+$Id: ntscreen.h,v 1.16 1998/01/20 18:39:45 adams Exp $
 
-Copyright (c) 1993-97 Massachusetts Institute of Technology
+Copyright (c) 1993-1998 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -92,25 +92,19 @@ typedef struct {
   int	key_down : 1;
 } SCREEN_KEY_EVENT_RECORD;
 
-// control_key_state flags
+// control_key_state flags.  Only used for effective modifiers (i.e.
+// not set when already incorporated into a character translation.
 
-//#define SCREEN_RIGHT_ALT_PRESSED     0x0001 // the right alt key is pressed.
-//#define SCREEN_LEFT_ALT_PRESSED      0x0002 // the left alt key is pressed.
-//#define SCREEN_RIGHT_CTRL_PRESSED    0x0004 // the right ctrl key is pressed.
-//#define SCREEN_LEFT_CTRL_PRESSED     0x0008 // the left ctrl key is pressed.
-//#define SCREEN_SHIFT_PRESSED         0x0010 // the shift key is pressed.
-//#define SCREEN_NUMLOCK_ON            0x0020 // the numlock light is on.
-//#define SCREEN_SCROLLLOCK_ON         0x0040 // the scrolllock light is on.
-//#define SCREEN_CAPSLOCK_ON           0x0080 // the capslock light is on.
-//#define SCREEN_ENHANCED_KEY          0x0100 // the key is enhanced.
-//#define SCREEN_ALT_KEY_PRESSED       0x0200 // Any alt key pressed
+#define SCREEN_ALT_PRESSED            0x0001 // An Alt key is pressed.
+#define SCREEN_CONTROL_PRESSED        0x0002 // a Ctrl key is pressed.
+#define SCREEN_SHIFT_PRESSED          0x0004 // a Shift key is pressed.
+#define SCREEN_CAPSLOCK_ON            0x0008
+#define SCREEN_LEFT_CONTROL_PRESSED   0x0010
+#define SCREEN_RIGHT_CONTROL_PRESSED  0x0020
+#define SCREEN_LEFT_ALT_PRESSED       0x0040
+#define SCREEN_RIGHT_ALT_PRESSED      0x0080
+#define SCREEN_NUMLOCK_ON             0x0100
 
-#define SCREEN_ALT_PRESSED       0x0001 // An alt key is pressed.
-#define SCREEN_CTRL_PRESSED      0x0002 // a ctrl key is pressed.
-#define SCREEN_SHIFT_PRESSED     0x0004 // a shift key is pressed.
-#define SCREEN_NUMLOCK_ON        0x0020 // the numlock light is on.
-#define SCREEN_SCROLLLOCK_ON     0x0040 // the scrolllock light is on.
-#define SCREEN_CAPSLOCK_ON       0x0080 // the capslock light is on.
 
 #define SCREEN_ANY_ALT_KEY_MASK	     SCREEN_ALT_PRESSED
 

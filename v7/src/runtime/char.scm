@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: char.scm,v 14.7 1997/10/15 03:20:42 adams Exp $
+$Id: char.scm,v 14.8 1998/01/20 18:40:24 adams Exp $
 
-Copyright (c) 1988-97 Massachusetts Institute of Technology
+Copyright (c) 1988-1998 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,7 +38,8 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define-primitives
-  char? make-char char-code char-bits char->integer integer->char char->ascii
+  (char? 1)
+  make-char char-code char-bits char->integer integer->char char->ascii
   char-ascii? ascii->char char-upcase char-downcase)
 
 (define-integrable char-code-limit #x80)
@@ -169,7 +170,14 @@ MIT in each case. |#
   (if (substring-ci=? string start end "Newline" 0 7)
       (char-code char:newline)
       (or (-map-> named-codes string start end)
+	  (numeric-name->code string start end)
 	  (error "Unknown character name" (substring string start end)))))
+
+(define (numeric-name->code string start end)
+  (and (> (- end start) 6)
+       (substring-ci=? string start (+ start 5) "<code" 0 5)
+       (substring-ci=? string (- end 1)  end    ">" 0 1)
+       (string->number (substring string (+ start 5) (- end 1)) 10)))
 
 (define (char->name char #!optional slashify?)
   (if (default-object? slashify?) (set! slashify? false))
@@ -187,16 +195,16 @@ MIT in each case. |#
 		  ((char-graphic? base-char)
 		   (string base-char))
 		  (else
-		   (string-append "<code "
-				  (write-to-string code)
+		   (string-append "<code"
+				  (number->string code 10)
 				  ">")))))
 	(let ((qr (integer-divide bits 2)))
 	  (let ((rest (loop (fix:* weight 2) (integer-divide-quotient qr))))
 	    (if (fix:= 0 (integer-divide-remainder qr))
 		rest
 		(string-append (or (<-map- named-bits weight)
-				   (string-append "<bit "
-						  (write-to-string weight)
+				   (string-append "<bits-"
+						  (number->string weight 10)
 						  ">"))
 			       "-"
 			       rest))))))

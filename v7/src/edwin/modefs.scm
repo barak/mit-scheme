@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: modefs.scm,v 1.150 1996/04/23 23:09:44 cph Exp $
+;;;	$Id: modefs.scm,v 1.151 1998/01/20 18:40:46 adams Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989-96 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-1998 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -64,7 +64,11 @@ Most other major modes are defined by comparison to this one.")
 (define initial-buffer-name
   "*scheme*")
 
-(define-key 'fundamental char-set:graphic 'self-insert-command)
+;; The extra range allows international keyboards to insert 8-bit characters
+(define char-set:self-insert-keys
+  (char-set-union char-set:graphic (ascii-range->char-set 128 255)))
+
+(define-key 'fundamental char-set:self-insert-keys 'self-insert-command)
 (define-key 'fundamental char-set:numeric 'auto-digit-argument)
 (define-key 'fundamental #\- 'auto-negative-argument)
 (define-key 'fundamental #\rubout 'delete-backward-char)
@@ -74,7 +78,7 @@ Most other major modes are defined by comparison to this one.")
 Like Fundamental mode, but no self-inserting characters.
 Digits and - are bound to prefix argument commands.")
 
-(define-key 'read-only char-set:graphic 'undefined)
+(define-key 'read-only char-set:self-insert-keys 'undefined)
 (define-key 'read-only char-set:numeric 'digit-argument)
 (define-key 'read-only #\- 'negative-argument)
 (define-key 'read-only '(#\c-x #\c-q) 'no-toggle-read-only)
@@ -83,7 +87,7 @@ Digits and - are bound to prefix argument commands.")
   "Major mode for read-only buffers.
 Like Fundamental mode, but no self-inserting characters.")
 
-(define-key 'read-only-noarg char-set:graphic 'undefined)
+(define-key 'read-only-noarg char-set:self-insert-keys 'undefined)
 (define-key 'read-only-noarg '(#\c-x #\c-q) 'no-toggle-read-only)
 
 (define-key 'fundamental #\c-space 'set-mark-command)

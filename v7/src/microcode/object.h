@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: object.h,v 9.47 1997/07/15 22:06:24 adams Exp $
+$Id: object.h,v 9.48 1998/01/20 18:40:57 adams Exp $
 
-Copyright (c) 1987-95 Massachusetts Institute of Technology
+Copyright (c) 1987-1998 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -355,9 +355,9 @@ extern SCHEME_OBJECT * memory_base;
 /* Character Operations */
 
 #define ASCII_LENGTH CHAR_BIT	/* CHAR_BIT in config.h - 8 for unix  */
-#define CODE_LENGTH 7
+#define CODE_LENGTH 16
 #define BITS_LENGTH 5
-#define MIT_ASCII_LENGTH 12
+#define MIT_ASCII_LENGTH 21
 
 #define CHAR_BITS_META 		01
 #define CHAR_BITS_CONTROL 	02

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.31 1997/11/29 04:37:25 cph Exp $
+$Id: ntscreen.c,v 1.32 1998/01/20 18:40:13 adams Exp $
 
-Copyright (c) 1993-97 Massachusetts Institute of Technology
+Copyright (c) 1993-1998 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -161,8 +161,11 @@ static BOOL ScrollScreenHorz (HWND, WORD, WORD);
 static BOOL ScrollScreenVert (HWND, WORD, WORD);
 static BOOL SizeScreen (HWND, WORD, WORD);
 static BOOL handle_window_pos_changing (HWND, LPWINDOWPOS);
-static VOID ProcessScreenCharacter (HWND, int, DWORD);
+//static VOID ProcessScreenCharacter (HWND, int, DWORD);
+static VOID reset_modifiers ();
+static void record_modifier_transition (WPARAM, LPARAM, BOOL);
 static BOOL Process_KeyDown (HWND, UINT, WPARAM, LPARAM);
+static BOOL Process_KeyUp   (HWND, UINT, WPARAM, LPARAM);
 static VOID ProcessMouseButton (HWND, UINT, UINT, LONG, BOOL);
 static VOID ProcessCloseMessage (SCREEN);
 static BOOL WriteScreenBlock (HWND, LPSTR, int);
@@ -190,7 +193,7 @@ extern LRESULT ScreenCommand_ChooseFont (HWND, WORD);
 extern LRESULT ScreenCommand_ChooseBackColor (HWND, WORD);
 
 static SCREEN_EVENT * alloc_event (SCREEN, SCREEN_EVENT_TYPE);
-static int GetControlKeyState (void);
+static int  GetModifiers(void);
 
 //void *xmalloc (int size);
 //void xfree (void*);
@@ -679,6 +682,7 @@ ScreenWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
       case WM_SYSKEYDOWN:
       case WM_KEYDOWN:
+         record_modifier_transition (wParam, lParam, TRUE);
          if (IsIconic (hWnd)) goto use_default;
          if (Process_KeyDown (hWnd, uMsg, wParam, lParam))
 	   goto use_default;
@@ -695,7 +699,12 @@ ScreenWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
       case WM_SYSKEYUP:
       case WM_KEYUP:
+         record_modifier_transition (wParam, lParam, FALSE);
          if (IsIconic (hWnd)) goto use_default;
+         if (Process_KeyUp (hWnd, uMsg, wParam, lParam))
+	   goto  use_default;
+	 else
+	   return  0L;
 #if 1
 	 return (1L);
 #ifdef WINDOWSLOSES
@@ -720,13 +729,14 @@ ScreenWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
       case WM_SYSCHAR:
       case WM_CHAR:
          if (IsIconic (hWnd)) goto use_default;
-	 ProcessScreenCharacter (hWnd,
-				 LOBYTE (LOWORD(wParam)),
-				 (DWORD) lParam);
+//	 ProcessScreenCharacter (hWnd,
+//				 LOBYTE (LOWORD(wParam)),
+//				 (DWORD) lParam);
 	 break ;
 
       case WM_SETFOCUS:
  	 SetScreenFocus (hWnd);
+         reset_modifiers ();
          goto use_default;
 
       case WM_KILLFOCUS:
@@ -1852,63 +1862,112 @@ flush_typeahead (SCREEN screen)
 }
 
 //---------------------------------------------------------------------------
-//
+
+/* Reportedly, GetKeyState ans MapVirtualKey on Windows 95 do not
+actually distinguish between left and right keys as advertized.  We
+track the left and right control and alt keys ourselves.  This is
+necessary for detecting `double meta' key presses on keyboards where
+AltGr is used to get an ordinary character.  For example, on the
+Swiss-French keyboard, @ is obtained from AltGr-2.  To complicate
+things, the AltGr key is represented as having both left control and
+right alt keys pressed.  To generate M-@ on this keyboard we check for
+both alt keys being pressed.  */
+
 //---------------------------------------------------------------------------
 
-#define KEYDATA_ALT_BIT 0x20000000
+#define MOD_LCONTROL 0
+#define MOD_RCONTROL 1
+#define MOD_LMENU 2
+#define MOD_RMENU 3
 
-static int
-GetControlKeyState(void)
+static BOOL modifiers[4] = {FALSE, FALSE, FALSE, FALSE};
+
+static VOID
+reset_modifiers ()
 {
-  return
-    (  (((GetKeyState (VK_MENU)) < 0)     ?     SCREEN_ALT_PRESSED   : 0)
-     | (((GetKeyState (VK_CONTROL)) < 0)  ?     SCREEN_CTRL_PRESSED  : 0)
-     | (((GetKeyState (VK_SHIFT)) < 0)    ?     SCREEN_SHIFT_PRESSED : 0)
-     | (((GetKeyState (VK_NUMLOCK)) & 1)  ?     SCREEN_NUMLOCK_ON    : 0)
-     | (((GetKeyState (VK_SCROLL)) & 1)   ?     SCREEN_SCROLLLOCK_ON : 0)
-     | (((GetKeyState (VK_CAPITAL)) & 1)  ?     SCREEN_CAPSLOCK_ON   : 0));
+  // This is used when we regain focus, since we cannot regenerate the modifier
+  // state.
+  modifiers[0] = modifiers[1] = modifiers[2] = modifiers[3] = FALSE;
 }
 
-static VOID _fastcall
-make_key_event (SCREEN screen, int ch, int vk_code, DWORD lKeyData)
+static BOOL
+test_modifier (int vk)
 {
-  SCREEN_EVENT  *event;
-
-  if ((screen->mode_flags & SCREEN_MODE_VK_KEYS) == 0  &&  ch == -1)
-    return;
-
-  event = alloc_event (screen, SCREEN_EVENT_TYPE_KEY);
-  if (event) {
-    event->event.key.repeat_count = lKeyData & 0xffff;
-    event->event.key.virtual_keycode = vk_code;
-    event->event.key.virtual_scancode = (lKeyData >> 16) & 0xff;
-    event->event.key.ch = ch;
-    event->event.key.control_key_state = GetControlKeyState();
+  switch (vk) {
+  case VK_LCONTROL:   return  modifiers[MOD_LCONTROL];
+  case VK_RCONTROL:   return  modifiers[MOD_RCONTROL];
+  case VK_LMENU:      return  modifiers[MOD_LMENU];
+  case VK_RMENU:      return  modifiers[MOD_RMENU];
+  default:            return  GetKeyState (vk) < 0;
   }
 }
 
-// We learn which scan codes are for keys that we process ourselves and
-// hence do not want to accept as WM_CHARS from Transalate Message
-
-BOOL scan_codes_to_avoid[256] = {0};
-
-//---------------------------------------------------------------------------
-//  VOID ProcessScreenCharacter (HWND hWnd, int ch, DWORD lKeyData)
-//---------------------------------------------------------------------------
-
-static VOID
-ProcessScreenCharacter (HWND hWnd, int ch, DWORD lKeyData)
+static void
+record_modifier_transition (WPARAM wParam, LPARAM lParam, BOOL updown)
 {
-  // Process a WM_CHAR or WM_SYSCHAR character
-   SCREEN  screen = GETSCREEN (hWnd);
-   
-   if (NULL == screen)
-      return;
-    
+  int  i;
+  switch (wParam) {
+  default:
+    return;
+  case VK_MENU:
+    i = (lParam & 0x1000000) ? MOD_RMENU : MOD_LMENU;
+    break;
+  case VK_CONTROL:
+    i = (lParam & 0x1000000) ? MOD_RCONTROL : MOD_LCONTROL;
+    break;
+  }
+  modifiers[i] = updown;
+}
+
+static int
+GetPlainModifiers()
+{
+  int mods = 0;
+  if (test_modifier (VK_SHIFT))    mods |= SCREEN_SHIFT_PRESSED;
+  if (test_modifier (VK_CAPITAL))  mods |= SCREEN_CAPSLOCK_ON;
+  if (test_modifier (VK_LCONTROL)) mods |= SCREEN_LEFT_CONTROL_PRESSED;
+  if (test_modifier (VK_RCONTROL)) mods |= SCREEN_RIGHT_CONTROL_PRESSED;
+  if (test_modifier (VK_LMENU))    mods |= SCREEN_LEFT_ALT_PRESSED;
+  if (test_modifier (VK_RMENU))    mods |= SCREEN_RIGHT_ALT_PRESSED;
+
+  if (mods & (SCREEN_RIGHT_ALT_PRESSED | SCREEN_LEFT_ALT_PRESSED))
+    mods |= SCREEN_ALT_PRESSED;
+
+  if (mods & (SCREEN_RIGHT_CONTROL_PRESSED | SCREEN_LEFT_CONTROL_PRESSED))
+    mods |= SCREEN_CONTROL_PRESSED;
+
+  return  mods;
+}
+
+static int
+GetModifiers(void)
+{
+  int mods =
+    GetPlainModifiers() & ~ (SCREEN_ALT_PRESSED | SCREEN_CONTROL_PRESSED);
+
+  // If AltGr pressed, remove it.
+  if (mods & (SCREEN_RIGHT_ALT_PRESSED | SCREEN_LEFT_CONTROL_PRESSED)
+      == (SCREEN_RIGHT_ALT_PRESSED | SCREEN_LEFT_CONTROL_PRESSED))
+    mods &= ~ (SCREEN_RIGHT_ALT_PRESSED | SCREEN_LEFT_CONTROL_PRESSED);
+
+  if (mods & (SCREEN_RIGHT_ALT_PRESSED | SCREEN_LEFT_ALT_PRESSED))
+    mods |= SCREEN_ALT_PRESSED;
+
+  if (mods & (SCREEN_RIGHT_CONTROL_PRESSED | SCREEN_LEFT_CONTROL_PRESSED))
+    mods |= SCREEN_CONTROL_PRESSED;
+
+  return  mods;
+}
+
+static VOID _fastcall
+make_key_event (SCREEN screen, int ch, int vk_code, DWORD lKeyData, int CCstate)
+{
+  SCREEN_EVENT  *event;
+
    // check for bindings:
-   {
+   if (CCstate == 0) {
      int  i;
-     for (i=0; i<screen->n_bindings; i++)
+     for (i = 0; i < screen->n_bindings; i++)
        if (screen->bindings[i].key == ch)
        {
 	 if (SendMessage (screen->hWnd,
@@ -1921,122 +1980,172 @@ ProcessScreenCharacter (HWND hWnd, int ch, DWORD lKeyData)
        }
    } 
 
-   // exclude characters that TranslateMessage produces but we handle
-   // differently in order to get all those wonderful control-shift-meta
-   // things
+  if ((screen->mode_flags & SCREEN_MODE_VK_KEYS) == 0  &&  ch == -1)
+    return;
 
-   if (scan_codes_to_avoid[(lKeyData >> 16) & 0xff])
-     return;
+  event = alloc_event (screen, SCREEN_EVENT_TYPE_KEY);
+  if (event) {
+    event->event.key.repeat_count = 1;
+    event->event.key.virtual_keycode = vk_code;
+    event->event.key.virtual_scancode = (lKeyData >> 16) & 0xff;
+    event->event.key.ch = ch;
+    event->event.key.control_key_state = CCstate;
 
-   switch (ch) {
-     case -1:
-     return;
-   }
+#if 0
+    {
+      static HWND disp = NULL;
+      static char prevline2[50] = {0};
+      static char prevline1[50] = {0};
+      char line[50], buf[100], name[20];
+      if (disp==NULL)
+	disp = CreateWindowEx(WS_EX_TOPMOST, "STATIC", "", 
+			      WS_VISIBLE | SS_LEFT | SS_NOPREFIX,
+			      0, 0, 130, 20+3*20,
+			      0, 0, ghInstance, 0);
+      if (ch==-1)
+	sprintf(name, "VK_x%02X", vk_code);
+      else if (' ' < ch && ch < ASCII_DEL)
+	sprintf(name, "%c", ch);
+      else if (ch>127)
+	sprintf(name, "code x%02X %c", ch, ch);
+      else if (ch==' ')
+	sprintf(name, "Space");
+      else
+	sprintf(name, "code x%02X", ch);
+      sprintf(line, "%s%s%s%s",
+	      (CCstate & SCREEN_ALT_PRESSED) ? "M-" : "",
+	      (CCstate & SCREEN_CONTROL_PRESSED) ? "C-" : "",
+	      (CCstate & SCREEN_SHIFT_PRESSED) ? "S-" : "",
+	      name);
+      sprintf(buf,"%s\r\n%s\r\n%s", prevline2, prevline1, line);
+      strcpy (prevline2, prevline1);
+      strcpy (prevline1, line);
+      SetWindowText (disp, buf);
+    }
+#endif
+  }
+}
 
-   make_key_event (screen, ch, 0, lKeyData);
+static BOOL
+Translate_vk_to_tty_char (SCREEN screen, int vk, LPARAM lParam)
+{
+  // Tranlate to default Emacs-oid key bindings to make console
+  // edwin happy
+  int ch = -1;
+  switch (vk) {
+  case VK_UP:     ch = ASCII_CONTROLIFY('P');   break;
+  case VK_DOWN:   ch = ASCII_CONTROLIFY('N');   break;
+  case VK_LEFT:   ch = ASCII_CONTROLIFY('B');   break;
+  case VK_RIGHT:  ch = ASCII_CONTROLIFY('F');   break;
+  case VK_PRIOR:
+    make_key_event (screen, 'V', 0, lParam, SCREEN_ALT_PRESSED);
+    return  TRUE;
+  case VK_NEXT:   ch = ASCII_CONTROLIFY('V');   break;
+  case VK_DELETE: ch = ASCII_DEL;               break;
+  }
+  if (ch != -1)
+    make_key_event (screen, ch, 0, lParam, 0);
+  return  TRUE;
 }
 
 static BOOL
 Process_KeyDown (HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-  // processing for non-ascii VKs
-  // Assume msg = WM_KEYDOWN or WM_SYSKEYDOWN
-  // returns flag to say if DefWindowProc should be called.
   SCREEN  screen = GETSCREEN (hWnd);
-  BOOL  default_ok = TRUE;
   int   scan_code = (lParam >> 16) & 0xff;
+  int   extended_key = (lParam & 0x1000000);
+  int   vk = wParam;
 
-  switch (wParam) {
-    case VK_BACK:
-      make_key_event (screen, ASCII_DEL, 0, lParam);
-      scan_codes_to_avoid[scan_code] = TRUE;
+  MSG   message;
+  BOOL  found_wm_chars = FALSE;
+
+  // If Alt is pressed and the key is from the keypad, we are in the middle
+  // of and ALT+numbers sequence.  We will get the char when Alt is released.
+  if (msg == WM_SYSKEYDOWN) {
+    if (VK_NUMPAD0 <= vk && vk <= VK_NUMPAD9)
       return  TRUE;
-
-    case VK_SPACE:
-      make_key_event (screen, ' ', 0, lParam);
-      scan_codes_to_avoid[scan_code] = TRUE;
+    if (!extended_key &&
+	(vk == VK_HOME  || vk == VK_UP    || vk == VK_PRIOR ||
+	 vk == VK_LEFT  ||                   vk == VK_RIGHT ||
+	 vk == VK_END   || vk == VK_DOWN  || vk == VK_NEXT  ||
+	 vk == VK_INSERT))
       return  TRUE;
+  }
 
-    case '0':  case '1':  case '2':  case '3':  case '4':
-    case '5':  case '6':  case '7':  case '8':  case '9':
-      // This is very naughty.  We should figure out how to allow the
-      // keyboard to produce the correct  keys according to the keyboard
-      // layout.
-      if (GetKeyState(VK_SHIFT)<0)
-	make_key_event (screen, ")!@#$%^&*("[wParam-'0'], 0, lParam);
-      else
-	make_key_event (screen, wParam, 0, lParam);
-      scan_codes_to_avoid[scan_code] = TRUE;
+  if (vk == VK_LSHIFT   || vk == VK_RSHIFT   || vk == VK_SHIFT ||
+      vk == VK_LMENU    || vk == VK_RMENU    || vk == VK_MENU  ||
+      vk == VK_LCONTROL || vk == VK_RCONTROL || vk == VK_CONTROL ||
+      vk == VK_CAPITAL  || vk == VK_NUMLOCK  || vk == VK_SCROLL) {
+    return  TRUE;
+  }
+
+  while (PeekMessage (&message, hWnd, WM_CHAR, WM_CHAR, PM_REMOVE) ||
+	 PeekMessage (&message, hWnd, WM_SYSCHAR, WM_SYSCHAR, PM_REMOVE)) {
+    int mods = GetPlainModifiers();
+    int event_mods = 0;
+    if (vk == VK_BACK && message.wParam == 8)
+      message.wParam = ASCII_DEL;
+    if (vk == VK_SPACE && (mods & SCREEN_CONTROL_PRESSED))
+      event_mods |= SCREEN_CONTROL_PRESSED;
+    if (msg == WM_SYSKEYDOWN ||
+	((mods & SCREEN_LEFT_ALT_PRESSED) && (mods & SCREEN_RIGHT_ALT_PRESSED)))
+      event_mods |= SCREEN_ALT_PRESSED;
+    make_key_event (screen, message.wParam, 0, lParam, event_mods);
+    found_wm_chars = TRUE;
+  }
+  if (found_wm_chars)
+    return TRUE;
+
+  if (vk == VK_LEFT   || vk == VK_RIGHT  || vk == VK_UP     || vk == VK_DOWN ||
+      vk == VK_HOME   || vk == VK_END    || vk == VK_PRIOR  || vk == VK_NEXT ||
+      vk == VK_INSERT || vk == VK_DELETE || (vk >= VK_F1 && vk <= VK_F24)) {
+    if (screen->mode_flags & SCREEN_MODE_VK_KEYS) {
+      make_key_event (screen, -1, vk, lParam, GetModifiers());
       return  TRUE;
-
-    case 'A': case 'B': case 'C': case 'D': case 'E': case 'F': case 'G':
-    case 'H': case 'I': case 'J': case 'K': case 'L': case 'M': case 'N':
-    case 'O': case 'P': case 'Q': case 'R': case 'S': case 'T': case 'U':
-    case 'V': case 'W': case 'X': case 'Y': case 'Z':
-    {
-      // This is very naughty.  We should figure out how to allow the
-      // keyboard to produce the correct  keys according to the keyboard
-      // layout.
-      int  shift = ((GetKeyState(VK_SHIFT)>>15) ^ GetKeyState(VK_CAPITAL)) & 1;
-      int  control = GetKeyState(VK_CONTROL) < 0;
-      int  alt = GetKeyState(VK_MENU) < 0;
-
-      if (control)
-	make_key_event (screen, wParam-64, 0, lParam);
-      else if (shift)
-	make_key_event (screen, wParam,    0, lParam);
-      else
-	make_key_event (screen, wParam+32, 0, lParam);
-      scan_codes_to_avoid[scan_code] = TRUE;
-      return  TRUE;
+    } else {
+      return  Translate_vk_to_tty_char (screen, vk, lParam);
     }
+  }
 
-    case VK_F1:
-    case VK_F2:
-    case VK_F3:
-    case VK_F4:
-    case VK_F5:
-    case VK_F6:
-    case VK_F7:
-    case VK_F8:
-    case VK_F9:
-    case VK_F10:
-    case VK_F11:
-    case VK_F12:
-    case VK_UP:
-    case VK_DOWN:
-    case VK_LEFT:
-    case VK_RIGHT:
-    case VK_INSERT:
-    case VK_DELETE:
-    case VK_HOME:
-    case VK_END:
-    case VK_PRIOR:
-    case VK_NEXT:
-      if (screen->mode_flags & SCREEN_MODE_VK_KEYS)
-	make_key_event (screen, -1, wParam, lParam);
-      else {
-	int ch;
-	switch (wParam) {
-	  // Tranlate to default Emacs-oid key bindings to make console
-	  // edwin happy
-	  default:        ch = -1;       break;
-	  case VK_UP:     ch = ASCII_CONTROLIFY('P');   break;
-	  case VK_DOWN:   ch = ASCII_CONTROLIFY('N');   break;
-	  case VK_LEFT:   ch = ASCII_CONTROLIFY('B');   break;
-	  case VK_RIGHT:  ch = ASCII_CONTROLIFY('F');   break;
-	  case VK_PRIOR:  ch = ASCII_METAFY('V');       break;
-	  case VK_NEXT:   ch = ASCII_CONTROLIFY('V');   break;
-	  case VK_DELETE: ch = ASCII_DEL;               break;
-	}
-	if (ch != -1)
-	  make_key_event (screen, ch, 0, lParam);
-      }
-      return  TRUE;
+  // At this point the keypress didnt generate a character because it
+  // doesn't understand the combination of modifiers, or the character
+  // could be a dead character.
 
-    default:
-      return  TRUE;
+  if (PeekMessage (&message, hWnd, WM_DEADCHAR, WM_DEADCHAR, PM_REMOVE) ||
+      PeekMessage (&message, hWnd, WM_SYSDEADCHAR, WM_SYSDEADCHAR, PM_REMOVE)) {
+    return  TRUE;
+  }
+
+  if (('A' <= vk && vk <= 'Z') ||
+      ('0' <= vk && vk <= '9') ||
+      (vk == VK_SPACE)) {
+    make_key_event (screen, vk, 0, lParam, GetPlainModifiers());
+    return  TRUE;
+  }
+
+  return  TRUE;
+}
+
+static BOOL
+Process_KeyUp (HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+  SCREEN  screen = GETSCREEN (hWnd);
+  int   vk = wParam;
+
+  // Releasing ALT might give us an ALT+numbers character.
+  if (vk == VK_MENU) {
+    MSG   message;
+    BOOL  found_wm_chars = FALSE;
+    while (PeekMessage (&message, hWnd, WM_CHAR, WM_CHAR, PM_REMOVE) ||
+	   PeekMessage (&message, hWnd, WM_SYSCHAR, WM_SYSCHAR, PM_REMOVE)) {
+      make_key_event (screen, message.wParam, 0, lParam, 0);
+      found_wm_chars = TRUE;
     }
+    if (found_wm_chars)
+      return  TRUE;
+    return  FALSE;    // Don't activate the system menu!
+  }
+  return  TRUE;
 }
 
 static VOID
@@ -2049,7 +2158,7 @@ ProcessCloseMessage (SCREEN screen)
 
 static VOID
 ProcessMouseButton (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
-		    BOOL up)
+                    BOOL up)
 {
   SCREEN screen = GETSCREEN (hWnd) ;
   SCREEN_EVENT * event ;
