@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.10 1991/10/08 21:42:37 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.11 1991/10/29 22:38:56 jinx Exp $
 
 Copyright (c) 1990-1991 Massachusetts Institute of Technology
 
@@ -380,7 +380,7 @@ The following options are only meaningful to bchscheme
 #endif
 
 #ifndef DEFAULT_GC_READ_OVERLAP
-#define DEFAULT_GC_READ_OVERLAP 1
+#define DEFAULT_GC_READ_OVERLAP 0
 #endif
 
 #ifndef GC_READ_OVERLAP_VARIABLE
@@ -396,7 +396,7 @@ The following options are only meaningful to bchscheme
 #endif
 
 #ifndef DEFAULT_GC_WRITE_OVERLAP
-#define DEFAULT_GC_WRITE_OVERLAP 1
+#define DEFAULT_GC_WRITE_OVERLAP 0
 #endif
 
 #ifndef GC_WRITE_OVERLAP_VARIABLE
@@ -602,6 +602,41 @@ DEFUN (standard_string_option, (option, variable, defval),
 }
 
 static unsigned int
+DEFUN (overlap_numeric_option, (option, optval, variable, defval),
+       CONST char * option AND
+       CONST char * optval AND
+       CONST char * variable AND
+       unsigned int defval)
+{
+  if (optval != 0)
+    {
+      int n = (atoi (optval));
+      if (n < 0)
+	{
+	  fprintf (stderr, "%s: illegal argument %s for option %s.\n",
+		   scheme_program_name, optval, option);
+	  termination_init_error ();
+	}
+      return (n);
+    }
+  {
+    CONST char * t = (getenv (variable));
+    if (t != 0)
+      {
+	int n = (atoi (t));
+	if (n < 0)
+	  {
+	    fprintf (stderr, "%s: illegal value %s for variable %s.\n",
+		     scheme_program_name, t, variable);
+	    termination_init_error ();
+	  }
+	return (n);
+      }
+  }
+  return (defval);
+}
+
+static unsigned int
 DEFUN (standard_numeric_option, (option, optval, variable, defval),
        CONST char * option AND
        CONST char * optval AND
@@ -755,10 +790,7 @@ DEFUN (free_parsed_path, (path), CONST char ** path)
 }
 
 CONST char *
-DEFUN (search_path_for_file, (option, filename, default_p),
-       CONST char * option AND
-       CONST char * filename AND
-       int default_p)
+DEFUN (search_for_library_file, (filename), CONST char * filename)
 {
   unsigned int flen = (strlen (filename));
   CONST char ** scan_path = option_library_path;
@@ -768,26 +800,7 @@ DEFUN (search_path_for_file, (option, filename, default_p),
       unsigned int dlen;
       CONST char * fullname;
       if (directory == 0)
-	{
-	  fprintf (stderr, "%s: can't find a readable %s",
-		   scheme_program_name, (default_p ? "default" : "file"));
-	  if (option != 0)
-	    fprintf (stderr, " for option %s", option);
-	  fprintf (stderr, ".\n");
-	  fprintf (stderr, "\tsearched for file %s in these directories:\n",
-		   filename);
-	  if (!default_p)
-	    fprintf (stderr, "\t.\n");
-	  scan_path = option_library_path;
-	  while (1)
-	    {
-	      CONST char * element = (*scan_path++);
-	      if (element == 0)
-		break;
-	      fprintf (stderr, "\t%s\n", element);
-	    }
-	  termination_init_error ();
-	}
+	return ((char *) NULL);
       dlen = (strlen (directory));
       if (dlen > 0)
 	{
@@ -805,6 +818,41 @@ DEFUN (search_path_for_file, (option, filename, default_p),
 	}
       obstack_free ((&scratch_obstack), ((char *) fullname));
     }
+}
+
+CONST char *
+DEFUN (search_path_for_file, (option, filename, default_p),
+       CONST char * option AND
+       CONST char * filename AND
+       int default_p)
+{
+  CONST char * result;
+
+  if ((result = (search_for_library_file (filename))) != ((char *) NULL))
+    return (result);
+  else
+  {
+    CONST char ** scan_path = option_library_path;
+
+    fprintf (stderr, "%s: can't find a readable %s",
+	     scheme_program_name, (default_p ? "default" : "file"));
+    if (option != 0)
+      fprintf (stderr, " for option %s", option);
+    fprintf (stderr, ".\n");
+    fprintf (stderr, "\tsearched for file %s in these directories:\n",
+	     filename);
+    if (!default_p)
+      fprintf (stderr, "\t.\n");
+    while (1)
+    {
+      CONST char * element = (*scan_path++);
+      if (element == 0)
+	break;
+      fprintf (stderr, "\t%s\n", element);
+    }
+    termination_init_error ();
+    /*NOTREACHED*/
+  }
 }
 
 static CONST char *
@@ -1098,22 +1146,22 @@ DEFUN (read_command_line_options, (argc, argv),
 			     DEFAULT_GC_FILE));
 
   option_gc_read_overlap =
-    (standard_numeric_option ("-gc-read-overlap",
-			      option_raw_gc_read_overlap,
-			      GC_READ_OVERLAP_VARIABLE,
-			      DEFAULT_GC_READ_OVERLAP));
+    (overlap_numeric_option ("-gc-read-overlap",
+			     option_raw_gc_read_overlap,
+			     GC_READ_OVERLAP_VARIABLE,
+			     DEFAULT_GC_READ_OVERLAP));
 
   option_gc_window_size =
-    (standard_numeric_option ("-gc-read-overlap",
+    (standard_numeric_option ("-gc-window-size",
 			      option_raw_gc_window_size,
 			      GC_WINDOW_SIZE_VARIABLE,
 			      DEFAULT_GC_WINDOW_SIZE));
 
   option_gc_write_overlap =
-    (standard_numeric_option ("-gc-write-overlap",
-			      option_raw_gc_write_overlap,
-			      GC_WRITE_OVERLAP_VARIABLE,
-			      DEFAULT_GC_WRITE_OVERLAP));
+    (overlap_numeric_option ("-gc-write-overlap",
+			     option_raw_gc_write_overlap,
+			     GC_WRITE_OVERLAP_VARIABLE,
+			     DEFAULT_GC_WRITE_OVERLAP));
 
   if (option_summary)
     describe_options ();
