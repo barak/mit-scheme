@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.11 1993/04/27 20:21:26 hal Exp $
+$Id: thread.scm,v 1.12 1993/04/28 19:47:27 cph Exp $
 
 Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
@@ -643,8 +643,7 @@ MIT in each case. |#
       new-record)))
 
 (define (sleep-current-thread interval)
-  (let ((time (+ (real-time-clock) interval))
-	(delivered? #f))
+  (let ((delivered? #f))
     (let ((block-events? (block-thread-events)))
       (register-timer-event interval
 			    (lambda () (set! delivered? #t) unspecific))
