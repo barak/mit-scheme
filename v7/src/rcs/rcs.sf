@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rcs.sf,v 1.6 1995/01/06 18:37:56 cph Exp $
+$Id: rcs.sf,v 1.7 1995/01/06 20:51:57 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -35,10 +35,7 @@ MIT in each case. |#
 (fluid-let ((sf/default-syntax-table system-global-syntax-table))
   (sf-directory "."))
 
-;; Guarantee that the package modeller is loaded.
-(if (not (name->package '(CROSS-REFERENCE)))
-    (with-working-directory-pathname "../cref" (lambda () (load "make"))))
-
+(load-option 'CREF)
 (cref/generate-constructors "rcs")
 (sf "rcs.con")
 (sf "rcs.ldr")
