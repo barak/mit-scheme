@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: assconv.scm,v 1.8 1995/04/10 15:30:31 adams Exp $
+$Id: assconv.scm,v 1.9 1995/04/24 16:06:45 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -267,6 +267,7 @@ MIT in each case. |#
 		   (constructor assconv/binding/make (name)))
   (name false read-only true)
   (cell-name false read-only false)
+  (multicell-layout false read-only false)
   (references '() read-only false)
   (assignments '() read-only false)
   (dbg-references '() read-only false))
@@ -326,18 +327,11 @@ MIT in each case. |#
   (define (finish shadowed-names bindings body)
     (if (null? bindings)
 	(values shadowed-names body)
-	(begin
+	(let ((cell-bindings (assconv/partition-cells! bindings)))
 	  (for-each assconv/cellify! bindings)
 	  (values
 	   shadowed-names
-	   `(LET ,(map (lambda (binding)
-			 (let ((name (assconv/binding/name binding)))
-			   `(,(assconv/binding/cell-name binding)
-			     (CALL (QUOTE ,%make-cell)
-				   (QUOTE #F)
-				   (LOOKUP ,name)
-				   (QUOTE ,name)))))
-		       bindings)
+	   `(LET ,cell-bindings
 	      ,body)))))
 
   (define (default)
@@ -377,9 +371,10 @@ MIT in each case. |#
     ,body))
 
 (define (assconv/cell-reference binding)
-  `(CALL (QUOTE ,%cell-ref)
+  `(CALL (QUOTE ,%multicell-ref)
 	 (QUOTE #F)
 	 (LOOKUP ,(assconv/binding/cell-name binding))
+	 (QUOTE ,(assconv/binding/multicell-layout binding))
 	 (QUOTE ,(assconv/binding/name binding))))
 
 (define (assconv/cell-assignment binding value assignment-form)
@@ -398,43 +393,87 @@ MIT in each case. |#
 	     (LOOKUP ,local-name)))
     |#
     ;; This returns the old value, if needed
-    (if (assconv/form/effect-only? assignment-form)
-	`(CALL (QUOTE ,%cell-set!)
-	       (QUOTE #F)
-	       (LOOKUP ,cell-name)
-	       ,value
-	       (QUOTE ,value-name))
-	(bind local-name
-	      `(CALL (QUOTE ,%cell-ref)
+    (let ((write-cell!
+	   `(CALL (QUOTE ,%multicell-set!)
+		  (QUOTE #F)
+		  (LOOKUP ,cell-name)
+		  ,value
+		  (QUOTE ,(assconv/binding/multicell-layout binding))
+		  (QUOTE ,value-name))))
+      (if (assconv/form/effect-only? assignment-form)
+	  write-cell!
+	  (bind local-name
+		(assconv/cell-reference binding)
+		`(BEGIN
+		   ,write-cell!
+		   (LOOKUP ,local-name)))))))
+
+(define (assconv/partition-cells! bindings)
+  ;; 1. Decide on cell structure for bindings.  This should be done by using
+  ;;    multicells for variables with the same dynamic extent.  At the
+  ;;    moment we use singleton cells or a multicell if there are many
+  ;;    bindings.
+  ;; 2. Returns a let of LET-bindings to create the cells
+
+  ;; A partition is a list of headed lists.
+  ;; The first two elements of the list are the cell name and format.
+  ;; The remaining elements are the bindings assigned to that cell.
+
+  (define (each-binding-in-its-own-cell) ;returns a partition
+    (map (lambda (binding)
+	   (list (assconv/new-cell-name (assconv/binding/name binding))
+		 (vector (assconv/binding/name binding))
+		 binding))
+	 bindings))
+  (define (all-in-one-cell)		;returns a partition
+    (list
+     (cons* (assconv/new-cell-name 'MULTI)
+	    (list->vector (map assconv/binding/name bindings))
+	    bindings)))
+  (define (setup-partition partition)
+    (map (lambda (subset)
+	   (let ((cell-name (first subset))
+		 (layout (second subset))
+		 (bindings (cddr subset)))
+	     (for-each
+		 (lambda (binding)
+		   (set-assconv/binding/cell-name! binding cell-name)
+		   (set-assconv/binding/multicell-layout! binding layout))
+	       bindings)
+	     `(,cell-name
+	       (CALL (QUOTE ,%make-multicell)
 		     (QUOTE #F)
-		     (LOOKUP ,cell-name)
-		     (QUOTE ,value-name))
-	      `(BEGIN
-		 (CALL (QUOTE ,%cell-set!)
-		       (QUOTE #F)
-		       (LOOKUP ,cell-name)
-		       ,value
-		       (QUOTE ,value-name))
-		 (LOOKUP ,local-name))))))
+		     (QUOTE ,layout)
+		     ,@(map (lambda (binding)
+			      `(LOOKUP ,(assconv/binding/name binding)))
+			    bindings)))))
+	 partition))
+  (setup-partition
+   (if (<= (length bindings) 10)
+       (each-binding-in-its-own-cell)
+       (begin
+	 (if compiler:guru?
+	     (internal-warning "Creating multicell" (length bindings)
+			       (error-irritant/noise " bindings")))
+	 (all-in-one-cell)))))
+
 
 (define (assconv/cellify! binding)
-  (let ((cell-name (assconv/new-cell-name (assconv/binding/name binding))))
-    (set-assconv/binding/cell-name! binding cell-name)
-    (for-each (lambda (ref)
-		(form/rewrite!
-		 ref
-		 (assconv/cell-reference binding)))
-	      (assconv/binding/references binding))
-    (for-each (lambda (ass)
-		(form/rewrite!
-		 ass
-		 (assconv/cell-assignment binding (set!/expr ass) ass)))
-	      (assconv/binding/assignments binding))
-    (for-each (lambda (ref)
-		(form/rewrite!
-		 ref
-		 (assconv/cell-reference binding)))
-	      (assconv/binding/dbg-references binding))))
+  (for-each (lambda (ref)
+	      (form/rewrite!
+		  ref
+		(assconv/cell-reference binding)))
+    (assconv/binding/references binding))
+  (for-each (lambda (ass)
+	      (form/rewrite!
+		  ass
+		(assconv/cell-assignment binding (set!/expr ass) ass)))
+    (assconv/binding/assignments binding))
+  (for-each (lambda (ref)
+	      (form/rewrite!
+		  ref
+		(assconv/cell-reference binding)))
+    (assconv/binding/dbg-references binding)))
 
 (define (assconv/env-lookup env name)
   (let spine-loop ((env env))
