@@ -37,7 +37,7 @@
 
 ;;;; Compiler Utilities
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.72 1986/12/16 06:25:56 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.73 1986/12/16 23:49:00 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -115,9 +115,12 @@
     (write (vector-method object ':TYPE-NAME))))
 
 (define (po object)
-  (fluid-let ((*unparser-radix* 16))
-    (write-line object)
-    (for-each pp ((vector-method object ':DESCRIBE) object))))
+  (let ((object (if (integer? object)
+		    (object-unhash object)
+		    object)))
+    (fluid-let ((*unparser-radix* 16))
+      (write-line object)
+      (for-each pp ((vector-method object ':DESCRIBE) object)))))
 
 ;;;; Queue
 
