@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infutl.scm,v 1.49 1993/11/18 00:47:13 cph Exp $
+$Id: infutl.scm,v 1.50 1993/11/18 01:33:22 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -293,8 +293,9 @@ MIT in each case. |#
 	 (merge-pathnames
 	  (pathname-new-directory
 	   pathname
-	   (list-tail (pathname-directory pathname)
-		      (length (pathname-directory (car rule)))))
+	   (cons 'RELATIVE
+		 (list-tail (pathname-directory pathname)
+			    (length (pathname-directory (car rule))))))
 	  (cdr rule))
 	 pathname))))
 
