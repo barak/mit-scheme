@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: schmod.scm,v 1.42 1998/06/07 08:14:37 cph Exp $
+;;;	$Id: schmod.scm,v 1.43 1998/11/03 05:53:36 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
@@ -227,7 +227,10 @@ The following commands evaluate Scheme expressions:
 	(lambda (prefix if-unique if-not-unique if-not-found)
 	  (let ((completions
 		 (let ((completions
-			(obarray-completions (string-downcase prefix))))
+			(obarray-completions
+			 (if *parser-canonicalize-symbols?*
+			     (string-downcase prefix)
+			     prefix))))
 		   (if (not bound-only?)
 		       completions
 		       (let ((environment (evaluation-environment #f)))
@@ -246,7 +249,7 @@ The following commands evaluate Scheme expressions:
 	(lambda (completion)
 	  (delete-string start end)
 	  (insert-string completion start))))))
-
+
 (define (obarray-completions prefix)
   (let ((obarray (fixed-objects-item 'OBARRAY)))
     (let ((prefix-length (string-length prefix))
