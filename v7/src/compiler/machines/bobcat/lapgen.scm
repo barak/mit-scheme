@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.165 1987/05/18 16:23:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.166 1987/05/21 15:06:54 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -715,9 +715,11 @@ MIT in each case. |#
 			 '(@A+ 5))
       ,@(generate-n-times number-pushed 5 '(MOVE L (@A+ 7) (@A+ 5))
 	  (lambda (generator)
-	    `(,@(clear-registers! d0)
-	      ,@(generator 0)))))
+	    (generator (allocate-temporary-register! 'DATA)))))
 #| Alternate sequence which minimizes code size.
+   DO NOT USE THIS!  The `clear-registers!' call does not distinguish between
+   registers containing objects and registers containing unboxed things, and
+   as a result can write unboxed stuff to memory.
     `(,@(clear-registers! a0 a1 d0)
       (MOVE W (& ,number-pushed) (D 0))
       (JSR ,entry:compiler-enclose))
