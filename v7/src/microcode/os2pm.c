@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pm.c,v 1.10 1995/05/06 23:01:05 cph Exp $
+$Id: os2pm.c,v 1.11 1995/05/07 05:52:34 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -1032,6 +1032,10 @@ pm_thread_procedure (void * arg)
     window_error (WinDestroyWindow);
   WinDestroyMsgQueue (pm_hmq);
   WinTerminate (pm_hab);
+  /* There's no way to exit properly, because the normal exit depends
+     on the PM thread being active enough to print the closing
+     messages.  So just use exit.  */
+  exit (1);
 }
 
 static tqueue_t *
