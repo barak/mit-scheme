@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: memmag.c,v 9.49 1993/03/11 19:53:49 cph Exp $
+$Id: memmag.c,v 9.50 1993/06/24 05:56:59 gjr Exp $
 
-Copyright (c) 1987-93 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -47,6 +47,10 @@ MIT in each case. */
 #include "scheme.h"
 #include "prims.h"
 #include "gccode.h"
+
+#ifdef WINNT
+#  include "ntcmp386.h"
+#endif
 
 /* Imports */
 
@@ -107,6 +111,13 @@ DEFUN (Clear_Memory,
   return;
 }
 
+static void 
+DEFUN_VOID (failed_consistency_check)
+{
+    outf_flush_fatal ();
+    exit (1);
+}
+
 /* This procedure allocates and divides the total memory. */
 
 void
@@ -116,11 +127,15 @@ DEFUN (Setup_Memory,
 {
   SCHEME_OBJECT test_value;
 
+#ifdef WINNT
+  winnt_allocate_registers();
+#endif
+
   /* Consistency check 1 */
   if (Our_Heap_Size == 0)
   {
-    fprintf (stderr, "Configuration won't hold initial data.\n");
-    exit (1);
+    outf_fatal ("Configuration won't hold initial data.\n");
+    failed_consistency_check ();
   }
 
   /* Allocate */
@@ -133,8 +148,8 @@ DEFUN (Setup_Memory,
   /* Consistency check 2 */
   if (Heap == NULL)
   {
-    fprintf (stderr, "Not enough memory for this configuration.\n");
-    exit (1);
+    outf_fatal ("Not enough memory for this configuration.\n");
+    failed_consistency_check ();
   }
 
   /* Initialize the various global parameters */
@@ -152,11 +167,11 @@ DEFUN (Setup_Memory,
   if (((OBJECT_TYPE (test_value)) != LAST_TYPE_CODE) ||
       ((OBJECT_ADDRESS (test_value)) != Highest_Allocated_Address))
   {
-    fprintf (stderr,
-	     "Largest address does not fit in datum field of object.\n");
-    fprintf (stderr,
-	     "Allocate less space or re-configure without HEAP_IN_LOW_MEMORY.\n");
-    exit (1);
+    outf_fatal (
+        "Largest address does not fit in datum field of object.\n");
+    outf_fatal (
+        "Allocate less space or re-configure without HEAP_IN_LOW_MEMORY.\n");
+    failed_consistency_check ();
   }
 
   Heap_Bottom = Heap;
@@ -169,6 +184,9 @@ DEFUN (Setup_Memory,
 void
 DEFUN_VOID (Reset_Memory)
 {
+#ifdef WINNT
+  winnt_deallocate_registers();
+#endif
   return;
 }
 
@@ -273,17 +291,15 @@ DEFUN_VOID (Fix_Weak_Chain)
 	continue;
 
       case GC_Undefined:
-	fprintf(stderr,
-		"\nFix_Weak_Chain: Clearing bad object 0x%08lx.\n",
-		Temp);
+	outf_error ("\nFix_Weak_Chain: Clearing bad object 0x%08lx.\n",
+		    Temp);
 	*Scan = SHARP_F;
 	continue;
 
       default:			/* Non Marked Headers and Broken Hearts */
       fail:
-        fprintf(stderr,
-		"\nFix_Weak_Chain: Bad Object: 0x%08lx.\n",
-		Temp);
+        outf_fatal ("\nFix_Weak_Chain: Bad Object: 0x%08lx.\n",
+		    Temp);
 	Microcode_Termination(TERM_INVALID_TYPE_CODE);
 	/*NOTREACHED*/
     }
@@ -369,14 +385,14 @@ DEFUN_VOID (GC)
   Result = (GCLoop (Constant_Space, &Free));
   if (Result != Check_Value)
   {
-    fprintf (stderr, "\nGC: Constant Scan ended too early.\n");
+    outf_fatal ("\nGC: Constant Scan ended too early.\n");
     Microcode_Termination (TERM_BROKEN_HEART);
   }
 
   Result = (GCLoop (Root, &Free));
   if (Free != Result)
   {
-    fprintf (stderr, "\nGC-1: Heap Scan ended too early.\n");
+    outf_fatal ("\nGC-1: Heap Scan ended too early.\n");
     Microcode_Termination (TERM_BROKEN_HEART);
   }
 
@@ -385,7 +401,7 @@ DEFUN_VOID (GC)
   Result = (GCLoop (Root2, &Free));
   if (Free != Result)
   {
-    fprintf (stderr, "\nGC-2: Heap Scan ended too early.\n");
+    outf_fatal ("\nGC-2: Heap Scan ended too early.\n");
     Microcode_Termination (TERM_BROKEN_HEART);
   }
 
@@ -405,7 +421,7 @@ DEFUN_VOID (GC)
 	Result = (GCLoop ((VECTOR_LOC (gc_objects_referencing, 1)), (&end)));
 	if ((end != Result) || (end != gc_objects_referencing_scan))
 	  {
-	    fprintf (stderr, "\nGC-3: Heap Scan ended too early.\n");
+	    outf_fatal ("\nGC-3: Heap Scan ended too early.\n");
 	    Microcode_Termination (TERM_BROKEN_HEART);
 	  }
       }
@@ -468,11 +484,9 @@ DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
   new_gc_reserve = (arg_nonnegative_integer (1));
   if (Free > Heap_Top)
   {
-    fprintf (stderr,
-	     "\nGARBAGE-COLLECT: GC has been delayed too long!\n");
-    fprintf (stderr,
-	     "Free = 0x%lx; MemTop = 0x%lx; Heap_Top = 0x%lx\n",
-	     Free, MemTop, Heap_Top);
+    outf_fatal ("\nGARBAGE-COLLECT: GC has been delayed too long!\n");
+    outf_fatal ("Free = 0x%lx; MemTop = 0x%lx; Heap_Top = 0x%lx\n",
+	        Free, MemTop, Heap_Top);
     Microcode_Termination (TERM_NO_SPACE);
   }
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: msdos.h,v 1.4 1993/01/12 19:47:44 gjr Exp $
+$Id: msdos.h,v 1.5 1993/06/24 05:58:01 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -64,7 +64,7 @@ MIT in each case. */
 
 #include "oscond.h"
 #include "ansidecl.h"
-#include "posixtype.h"
+#include "posixtyp.h"
 
 #include "intext.h"
 #include "dstack.h"
@@ -460,6 +460,10 @@ extern void EXFUN (DOS_prim_check_errno, (enum syscall_names name));
   while (((result) = (expression)) == 0)				\
       error_system_call (errno, (name));				\
 }
+
+typedef struct {
+   int dummy;
+} Ttty_state;
 
 #ifdef HAVE_GETTIMEOFDAY
 #define DOS_gettimeofday gettimeofday
