@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/print.scm,v 1.6 1992/08/21 23:52:18 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/print.scm,v 1.7 1992/08/27 02:59:06 jinx Exp $
 ;;;
-;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-1992 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -103,7 +103,7 @@ Variable LPR-SWITCHES is a list of extra switches (strings) to pass to lpr."
 		   (if (and title
 			    (not (there-exists? switches
 				   (lambda (switch)
-				     (string-prefix "-T" switch)))))
+				     (string-prefix? "-T" switch)))))
 		       (list (string-append "-T \"" title "\""))
 		       '())
 		   switches))))
