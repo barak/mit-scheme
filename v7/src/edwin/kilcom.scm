@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: kilcom.scm,v 1.69 1995/11/20 08:00:51 cph Exp $
+;;;	$Id: kilcom.scm,v 1.70 1995/11/20 10:26:55 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -293,12 +293,13 @@ comes the newest one."
   (let ((start (mark-right-inserting-copy (current-point))))
     (let ((end (mark-left-inserting-copy start)))
       (insert-string (let ((paste (and (= offset 0) (os/interprogram-paste))))
-		       (if (and paste (not (string-null? paste)))
+		       (if (and paste
+				(not (string-null? paste))
+				(let ((kill-ring (ref-variable kill-ring)))
+				  (or (null? kill-ring)
+				      (not (string=? paste (car kill-ring))))))
 			   (begin
-			     (if (let ((kill-ring (ref-variable kill-ring)))
-				   (or (null? kill-ring)
-				       (not (string=? paste (car kill-ring)))))
-				 (kill-ring-save-1 paste))
+			     (kill-ring-save-1 paste)
 			     paste)
 			   (begin
 			     ((ref-command rotate-yank-pointer) offset)
