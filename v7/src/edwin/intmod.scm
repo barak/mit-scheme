@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/intmod.scm,v 1.47 1992/05/21 17:59:33 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/intmod.scm,v 1.48 1992/06/05 21:38:54 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -388,13 +388,17 @@ If this is an error, the debugger examines the error condition."
     (let ((port (buffer-interface-port (current-buffer))))
       (start-continuation-browser
        port
-       (let ((cmdl (port/inferior-cmdl port)))
-	 (if (repl? cmdl)
-	     (repl/condition cmdl)
-	     (thread-continuation (port/thread port))))))))
+       (let ((object
+	      (let ((cmdl (port/inferior-cmdl port)))
+		(or (and (repl? cmdl)
+			 (repl/condition cmdl))
+		    (thread-continuation (port/thread port))))))
+	 (if (not object)
+	     (editor-error "No error condition to debug."))
+	 object)))))
 
 (define (start-continuation-browser port condition)
-  (let ((browser (continuation-browser condition)))
+  (let ((browser (continuation-browser-buffer condition)))
     (buffer-put! browser 'INVOKE-CONTINUATION
       (lambda (continuation arguments)
 	(if (not (buffer-alive? (port/buffer port)))
