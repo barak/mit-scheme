@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/pmlook.scm,v 1.7 1989/04/15 18:06:14 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/pmlook.scm,v 1.8 1992/02/17 21:20:57 jinx Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Very Simple Pattern Matcher: Lookup
+;;; package: (compiler pattern-matcher/lookup)
 
 (declare (usual-integrations))
 
@@ -45,24 +46,28 @@ MIT in each case. |#
 ;;; as the list of values.
 
 (define (pattern-lookup entries instance)
-  (define (lookup-loop entries values)
+  (define (lookup-loop entries values bindings)
     (define (match pattern instance)
       (if (pair? pattern)
 	  (if (eq? (car pattern) pattern-variable-tag)
-	      (let ((entry (memq (cdr pattern) values)))
-		(if entry
-		    (eqv? (cdr entry) instance)
-		    (begin (set! values (cons instance values))
-			   true)))
+	      (let ((entry (memq (cdr pattern) bindings)))
+		(if (not entry)
+		    (begin (set! bindings (cons (cdr pattern) bindings))
+			   (set! values (cons instance values))
+			   true)
+		    (eqv? instance
+			  (list-ref values (- (length bindings)
+					      (length entry))))))
 	      (and (pair? instance)
 		   (match (car pattern) (car instance))
 		   (match (cdr pattern) (cdr instance))))
 	  (eqv? pattern instance)))
+
     (and (not (null? entries))
 	 (or (and (match (caar entries) instance)
 		  (pattern-lookup/bind (cdar entries) values))
-	     (lookup-loop (cdr entries) '()))))
-  (lookup-loop entries '()))
+	     (lookup-loop (cdr entries) '() '()))))
+  (lookup-loop entries '() '()))
 
 (define-integrable (pattern-lookup/bind binder values)
   (apply binder values))
