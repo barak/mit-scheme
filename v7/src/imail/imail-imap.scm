@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.47 2000/05/16 22:07:38 cph Exp $
+;;; $Id: imail-imap.scm,v 1.48 2000/05/17 13:33:04 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -409,12 +409,19 @@
 				(vector-grow v new-length #f))))
 			 (set-imap-folder-n-messages! folder count)
 			 (fill-messages-vector! folder n)
+			 (set-imap-folder-messages-synchronized?! folder #t)
 			 (folder-modified! folder)
 			 n)
 			((< count n)
 			 (error "EXISTS response decreased folder length:"
 				folder))
-			(else #f)))))))
+			(else
+			 (if (not (imap-folder-messages-synchronized? folder))
+			     (begin
+			       (set-imap-folder-messages-synchronized?!
+				folder #t)
+			       (folder-modified! folder)))
+			 #f)))))))
 	(if n
 	    (read-message-headers! folder n)))
       (let ((v.n
@@ -456,7 +463,10 @@
 			   (attach-message! m folder i*)
 			   (vector-set! v* i* m)
 			   (loop (fix:+ i 1) (fix:+ i* 1)))
-			 (loop (fix:+ i 1) i*))))))
+			 (begin
+			   (if (> (imap-message-uid m) (imap-message-uid m*))
+			       (error "Message inserted into folder:" m*))
+			   (loop (fix:+ i 1) i*)))))))
 	   (folder-modified! folder))))))
 
 ;;;; Message datatype
@@ -941,8 +951,9 @@
 	 #f)
 	((imap:response:expunge? response)
 	 (let ((folder (imap-connection-folder connection)))
-	   (remove-imap-folder-message folder
-				       (imap:response:expunge-index response))
+	   (remove-imap-folder-message
+	    folder
+	    (- (imap:response:expunge-index response) 1))
 	   (folder-modified! folder))
 	 #f)
 	((imap:response:flags? response)
