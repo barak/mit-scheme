@@ -1,9 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules3.scm,v 4.8 1991/02/15 00:42:30 jinx Exp $
-$MC68020-Header: rules3.scm,v 4.26 90/08/21 02:23:26 GMT jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules3.scm,v 4.9 1991/10/18 09:55:38 cph Exp $
 
-Copyright (c) 1987, 1989, 1991 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -105,6 +104,12 @@ MIT in each case. |#
        ;; The 2 below accomodates the arrangement between the arity
        ;; and the instructions in an execute cache.
        (BR (@PCRO ,(free-uuo-link-label name frame-size) 2))))
+
+(define-rule statement
+  (INVOCATION:GLOBAL-LINK (? frame-size) (? continuation) (? name))
+  continuation				; ignored
+  (LAP ,@(clear-map!)
+       (BR (@PCRO ,(global-uuo-link-label name frame-size) 2))))
 
 ;;; The following two rules are obsolete.  They haven't been used in a while.
 ;;; They are provided in case the relevant switches are turned off, but there
@@ -608,13 +613,19 @@ MIT in each case. |#
        ,@(make-external-label (continuation-code-word false)
 			      (generate-label))))
 
-(define (generate/constants-block constants references assignments uuo-links)
+(define (generate/constants-block constants references assignments
+				  uuo-links global-links static-vars)
   (let ((constant-info
 	 (declare-constants 0 (transmogrifly uuo-links)
 	   (declare-constants 1 references
 	     (declare-constants 2 assignments
-	       (declare-constants false constants
-		 (cons false (LAP))))))))
+	       (declare-constants 3 (transmogrifly global-links)
+		 (declare-constants false
+		     (map (lambda (pair)
+			    (cons false (cdr pair)))
+			  static-vars)
+		   (declare-constants false constants
+		     (cons false (LAP))))))))))
     (let ((free-ref-label (car constant-info))
 	  (constants-code (cdr constant-info))
 	  (debugging-information-label (allocate-constant-label))
@@ -622,7 +633,8 @@ MIT in each case. |#
 	  (n-sections
 	   (+ (if (null? uuo-links) 0 1)
 	      (if (null? references) 0 1)
-	      (if (null? assignments) 0 1))))
+	      (if (null? assignments) 0 1)
+	      (if (null? global-links) 0 1))))
       (values
        (LAP ,@constants-code
 	    ;; Place holder for the debugging info filename
