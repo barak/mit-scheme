@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pgsql.scm,v 1.1 2003/06/08 05:07:07 cph Exp $
+$Id: pgsql.scm,v 1.2 2003/07/21 00:59:45 cph Exp $
 
 Copyright 2003 Massachusetts Institute of Technology
 
@@ -78,7 +78,7 @@ USA.
   (guarantee-index-fixnum index 'INDEX->NAME)
   (if (not (fix:< index (vector-length enum)))
       (error:bad-range-argument index 'INDEX->NAME))
-  (vector-ref index enum))
+  (vector-ref enum index))
 
 (define-enum connection-status
   PGSQL-CONNECTION-OK
@@ -146,10 +146,13 @@ USA.
 	 (if (not pgsql-initialized?)
 	     (begin
 	       (set! connections (make-gc-finalizer pq-finish))
+	       (set! results (make-gc-finalizer pq-clear))
 	       (set! pgsql-initialized? #t)))
 	 #t)))
 
 (define (open-pgsql-conn parameters #!optional wait?)
+  (if (not (pgsql-available?))
+      (error "No PostgreSQL support in this sytem."))
   (let ((wait? (if (default-object? wait?) #t wait?)))
     (make-gc-finalized-object
      connections
@@ -208,7 +211,7 @@ USA.
 (define-connection-accessor error-message)
 
 (define (pgsql-conn-status connection)
-  (index->name (connection->handle connection) connection-status))
+  (index->name (pq-status (connection->handle connection)) connection-status))
 
 (define (escape-pgsql-string string)
   (let ((escaped (make-string (fix:* 2 (string-length string)))))
@@ -251,15 +254,17 @@ USA.
 	      (,(symbol-append 'PQ- field) (RESULT->HANDLE OBJECT))))
 	 (ill-formed-syntax form)))))
 
-(define-result-accessor result-status)
 (define-result-accessor result-error-message)
 (define-result-accessor clear)
 (define-result-accessor n-tuples)
 (define-result-accessor n-fields)
 (define-result-accessor cmd-status)
 
-(define (pgsql-res-status status)
-  (pq-res-status status))
+(define (pgsql-result-status result)
+  (index->name (pq-result-status (result->handle result)) exec-status))
+
+(define (pgsql-result-status-string result)
+  (pq-res-status (pq-result-status (result->handle result))))
 
 (define (pgsql-field-name result index)
   (pq-field-name (result->handle result) index))
