@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prdosenv.c,v 1.4 1992/09/30 19:32:25 jinx Exp $
+$Id: prdosenv.c,v 1.5 1992/10/01 18:18:05 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -38,6 +38,7 @@ MIT in each case. */
 #include "scheme.h"
 #include "prims.h"
 #include "msdos.h"
+#include "dosio.h"
 
 DEFINE_PRIMITIVE ("CURRENT-FILE-TIME", Prim_current_file_time, 0, 0,
   "Return the current file system time stamp.\n\
@@ -103,49 +104,51 @@ DEFINE_PRIMITIVE ("SYSTEM", Prim_system, 1, 1,
   "Invoke COMMAND.COM on the string argument.\n\
 Wait until the command terminates, returning its exit status as an integer.")
 {
-  static int state = 0;
-  extern int EXFUN (under_X32_p, (void));
-  extern int EXFUN (under_DPMI_p, (void));
+  int result;
+  extern int EXFUN (X32_system, (char *));
   PRIMITIVE_HEADER (1);
-
-  while (1)
-    switch (state)
-    {
-      case 0:
-        state = (((under_X32_p ()) && (! (under_DPMI_p ()))) ? 1 : -1);
-	break;
-	
-      case 1:
-	PRIMITIVE_RETURN (long_to_integer (DOS_system (STRING_ARG (1))));
-
-      case -1:
-        PRIMITIVE_RETURN (long_to_integer (-1));
-    }
+  
+  result = (X32_system (STRING_ARG (1)));
+  if (result < -1)
+    error_external_return ();
+  PRIMITIVE_RETURN (long_to_integer ((long) result));
 }
 
-DEFINE_PRIMITIVE ("UNIX-ENVIRONMENT", Prim_unix_environment_alist, 0, 0,
-  "Copy the unix environment and return it as a vector of strings.")
+/* values for io specs:
+   -1   => default (console)
+   >= 0 => channel number.
+ */
+
+static int
+DEFUN (arg_io_spec, (arg_no), int arg_no)
 {
-  PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (SHARP_F);
+  int arg = (arg_integer (arg_no));
+  
+  if ((arg < -1)
+      || (arg >= ((int) OS_channel_table_size))
+      || ((arg >= 0)
+	  && (! (OS_channel_open_p ((Tchannel) arg)))))
+    error_bad_range_arg (arg_no);
+  return (arg);
 }
 
-DEFINE_PRIMITIVE ("FULL-HOSTNAME", Prim_full_hostname, 0, 0,
-  "Returns the full hostname (including domain if available) as a string.")
+DEFINE_PRIMITIVE ("RUN-SUBPROCESS", Prim_run_subprocess, 4, 4,
+  "Invoke COMMAND.COM on STRING with I/O as specified by other arguments.\n\
+Wait until the command terminates, returning its exit status as an integer.")
 {
-  PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN
-    (char_pointer_to_string ((unsigned char *) "PC"));
+  int result;
+  extern int EXFUN (X32_subprocess, (char *, int, int, int));
+  PRIMITIVE_HEADER (3);
+  
+  result = (X32_subprocess ((STRING_ARG (1)),
+			    (arg_io_spec (2)),
+			    (arg_io_spec (3)),
+			    (arg_io_spec (4))));
+  if (result < -1)
+    error_external_return ();
+  PRIMITIVE_RETURN ((long) result);
 }
-
-DEFINE_PRIMITIVE ("HOSTNAME", Prim_hostname, 0, 0,
-  "Returns the hostname of the machine as a string.")
-{
-  PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN
-    (char_pointer_to_string ((unsigned char *) "IBMPC"));
-}
-
+
 DEFINE_PRIMITIVE ("DOS-SET-KEYBOARD-MODIFIER-MASK!", Prim_dos_set_kbd_mod_mask,
 		  1, 1,
 		  "Set the keyboard modifier mask")

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dosx32.c,v 1.2 1992/09/03 07:30:13 jinx Exp $
+$Id: dosx32.c,v 1.3 1992/10/01 18:20:41 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -35,6 +35,8 @@ MIT in each case. */
 #include <int.h>
 #include <stdio.h>
 #include "ansidecl.h"
+#include "dosio.h"
+#include "dossys.h"
 
 /* Exports */
 
@@ -116,7 +118,7 @@ DEFUN (unlock_region, (segment, offset, size),
 {
   return (lock_unlock (OPERATION_UNLOCK, segment, offset, size));
 }
-
+
 #define ES	0
 #define CS	1
 #define SS	2
@@ -154,7 +156,7 @@ static struct wired_area_s wired_areas[] =
     ((PTR) &scan_code_tables_end[0])
   }
 };
-
+
 #define N_WIRED_AREAS ((sizeof (wired_areas)) / (sizeof (struct wired_area_s)))
 
 int
@@ -201,6 +203,7 @@ struct save_record
   unsigned iv;
   struct save_area * area;
   struct save_record * next;
+  void EXFUN ((* handler), (void));
 };
 
 static struct save_record
@@ -224,33 +227,49 @@ DEFUN (X32_do_restore, (iv, area),
   return (((regs.e.flags & 0x1) == 0) ? 0 : -1);
 }
 
-int 
-DEFUN (X32_interrupt_restore, (iv), unsigned iv)
+static int
+DEFUN (X32_do_install, (iv, handler),
+       unsigned iv
+       AND void EXFUN ((* handler), (void)))
+{
+  struct SREGS sregs;
+  union REGS regs;
+
+  /* Set real and protected mode handler. */
+
+  segread (&sregs);
+  regs.x.ax = 0x2506;
+  regs.h.cl = iv;
+  regs.e.edx = ((unsigned) handler);
+  sregs.ds = (getCS ());
+  int86x (0x21, &regs, &regs, &sregs);
+  if ((regs.e.flags & 1) != 0)
+    return (-1);
+  return (0);
+}
+
+static struct save_record **
+DEFUN (X32_find_interrupt, (iv), unsigned iv)
 {
   struct save_record ** loc, * this;
   
   loc = &X32_save_areas;
-  this = (*loc);
+  this = (* loc);
   while (this != ((struct save_record *) NULL))
   {
     if (this->iv == iv)
-    {
-      if ((X32_do_restore (iv, this->area)) != 0)
-	return (-1);
-      *loc = (this->next);
-      free (this);
-      return (0);
-    }
+      break;
     loc = &this->next;
     this = (*loc);
   }
-  return (-1);
+  return (loc);
 }
-
-int
-DEFUN (X32_remember_interrupt, (iv, area),
+
+static int
+DEFUN (X32_remember_interrupt, (iv, area, handler),
        unsigned iv
-       AND struct save_area * area)
+       AND struct save_area * area
+       AND void EXFUN ((* handler), (void)))
 {
   struct save_record * this;
 
@@ -260,7 +279,24 @@ DEFUN (X32_remember_interrupt, (iv, area),
   this->iv = iv;
   this->area = area;
   this->next = X32_save_areas;
+  this->handler = handler;
   X32_save_areas = this;
+  return (0);
+}
+
+int
+DEFUN (X32_interrupt_restore, (iv), unsigned iv)
+{
+  struct save_record ** loc, * this;
+  
+  loc = (X32_find_interrupt (iv));
+  this = (* loc);
+  if ((this == ((struct save_record *) NULL))
+      || ((X32_do_restore (iv, this->area)) != 0))
+    return (-1);
+    
+  * loc = (this->next);
+  free (this);
   return (0);
 }
 
@@ -299,22 +335,146 @@ DEFUN (X32_int_intercept, (iv, handler, ptr),
     area->protected_offset = regs.e.ebx;
   }
   
-  /* Set real and protected mode handler. */
+  if ((X32_do_install (iv, handler)) != 0)
+    return (-1);
 
-  {
-    segread (&sregs);
-    regs.x.ax = 0x2506;
-    regs.h.cl = iv;
-    regs.e.edx = ((unsigned) handler);
-    sregs.ds = (getCS ());
-    int86x (0x21, &regs, &regs, &sregs);
-    if ((regs.e.flags & 1) != 0)
-      return (-1);
-  }
-  if ((X32_remember_interrupt (iv, area)) != 0)
+  if ((X32_remember_interrupt (iv, area, handler)) != 0)
   {
     (void) X32_do_restore (iv, area);
     return (-1);
   }
   return (0);
+}
+
+extern int EXFUN (X32_subprocess, (char *, int, int, int));
+extern int EXFUN (X32_system, (char *));
+extern int EXFUN (system, (char *));
+
+static int
+DEFUN (dummy_system, (command), char * command)
+{
+  return (-1);
+}
+
+static int
+DEFUN (X32_DPMI_system, (command), char * command)
+{
+  /* Plain system does not work in X32 under DPMI
+     in the presence of our timer interrupt handler.
+     Disable the timer interrupt around the call to system.
+   */
+  static struct save_record ** ptimer_record = ((struct save_record **) NULL);
+  struct save_record * timer_record;
+  int result;
+  
+  if (ptimer_record == ((struct save_record **) NULL))
+  {
+    ptimer_record = (X32_find_interrupt (DOS_INTVECT_USER_TIMER_TICK));
+    if (ptimer_record == ((struct save_record **) NULL))
+      return (-1);
+  }
+  
+  timer_record = * ptimer_record;
+  if ((X32_do_restore (DOS_INTVECT_USER_TIMER_TICK, timer_record->area))
+      != 0)
+    return (-1);
+
+  result = (system (command));
+  
+  if ((X32_do_install (DOS_INTVECT_USER_TIMER_TICK, timer_record->handler))
+      != 0)
+  {
+    /* We are massively scrod. */
+    * ptimer_record = timer_record->next;
+    return (-2);
+  }
+  return (result);
+}
+
+int EXFUN (which_system, (char *));
+
+static int EXFUN ((* fsystem), (char *)) = which_system;
+
+static int
+DEFUN (which_system, (command), char * command)
+{
+  if (! (under_X32_p ()))
+    fsystem = dummy_system;
+  else if (! (under_DPMI_p ()))
+    fsystem = system;
+  else
+    fsystem = X32_DPMI_system;
+  return ((* fsystem) (command));
+}
+
+int
+DEFUN (X32_system, (command), char * command)
+{
+  return (((* fsystem) (command)));
+}
+
+/* values for io specs:
+   -1   => default (console)
+   >= 0 => channel number.
+ */
+
+static int
+DEFUN (swap_io_handle, (handle, spec),
+       int handle AND int spec)
+{
+  if ((spec == -1) || ((CHANNEL_DESCRIPTOR (spec)) == handle))
+    return (-1);
+  else
+  {
+    int saved = (dup (handle));
+    if (saved == -1)
+      return (-3);
+    if ((dup2 ((CHANNEL_DESCRIPTOR (spec)), handle)) != 0)
+    {
+      close (saved);
+      return (-4);
+    }
+    return (saved);
+  }
+}
+
+static int
+DEFUN (restore_io_handle, (handle, saved_handle),
+       int handle AND int saved_handle)
+{
+  if (saved_handle < 0)
+    return (0);
+  else if ((dup2 (saved_handle, handle)) != 0)
+    return (-1);
+  close (saved_handle);
+  return (0);
+}
+
+#define SWAPPING_HANDLE(h, spec, code) do				\
+{									\
+  int saved_handle = (swap_io_handle ((h), (spec)));			\
+  if (saved_handle < -1)						\
+    result = saved_handle;						\
+  else									\
+  {									\
+    code;								\
+    restore_io_handle ((h), saved_handle);				\
+  }									\
+} while (0)
+
+int
+DEFUN (X32_subprocess, (command, in_spec, out_spec, err_spec),
+       char * command
+       AND int in_spec
+       AND int out_spec
+       AND int err_spec)
+{
+  int result;
+  
+  SWAPPING_HANDLE (0, in_spec,
+		   SWAPPING_HANDLE (1, out_spec,
+				    SWAPPING_HANDLE (2, err_spec,
+						     (result = ((* fsystem)
+								(command))))));
+  return (result);
 }
