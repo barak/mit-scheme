@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dbgstr.scm,v 1.8 1995/01/19 04:55:13 adams Exp $
+$Id: dbgstr.scm,v 1.9 1995/01/30 18:53:14 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -131,8 +131,8 @@ MIT in each case. |#
 			  (write (new-dbg-variable/name var) port))
 			(new-dbg-block/variables block))))))))
   (type false read-only false)
-  (variables '() read-only false)
   (parent false read-only false)
+  (variables '() read-only false)
   (flattened false read-only false))
 
 (define (new-dbg-block/copy-transforming expression-copier block)
