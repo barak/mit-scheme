@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.12 1995/07/27 21:33:44 adams Exp $
+$Id: string.scm,v 14.13 1997/06/26 22:55:46 adams Exp $
 
 Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
@@ -34,6 +34,17 @@ MIT in each case. |#
 
 ;;;; Character String Operations
 ;;; package: ()
+
+;; NOTE
+;;
+;; This file is designed to be compiled with type and range checking
+;; turned off. The advertised user-visible procedures all explicitly
+;; check their arguments.
+;;
+;; Many of the procedures are split into several user versions that just
+;; validate their arguments and pass them on to an internal version
+;; (prefixed with `%') that assumes all arguments have been checked.
+;; This avoids repeated argument checks.
 
 (declare (usual-integrations))
 
@@ -86,108 +97,108 @@ MIT in each case. |#
 ;;; Substring Covers
 
 (define (string=? string1 string2)
-  (guarantee-2-strings string1 string2 'string=?)
+  (guarantee-2-strings string1 string2 'STRING=?)
   (substring=? string1 0 (string-length string1)
 	       string2 0 (string-length string2)))
 
 (define (string-ci=? string1 string2)
-  (guarantee-2-strings string1 string2 'string-ci=?)
+  (guarantee-2-strings string1 string2 'STRING-CI=?)
   (substring-ci=? string1 0 (string-length string1)
 		  string2 0 (string-length string2)))
 
 (define (string<? string1 string2)
-  (guarantee-2-strings string1 string2 'string<?)
+  (guarantee-2-strings string1 string2 'STRING<?)
   (substring<? string1 0 (string-length string1)
 	       string2 0 (string-length string2)))
 
 (define (string-ci<? string1 string2)
-  (guarantee-2-strings string1 string2 'string-ci<?)
+  (guarantee-2-strings string1 string2 'STRING-ci<?)
   (substring-ci<? string1 0 (string-length string1)
 		  string2 0 (string-length string2)))
 
 (define (string>? string1 string2)
-  (guarantee-2-strings string1 string2 'string>?)
+  (guarantee-2-strings string1 string2 'STRING>?)
   (substring<? string2 0 (string-length string2)
 	       string1 0 (string-length string1)))
 
 (define (string-ci>? string1 string2)
-  (guarantee-2-strings string1 string2 'string-ci>?)
+  (guarantee-2-strings string1 string2 'STRING-CI>?)
   (substring-ci<? string2 0 (string-length string2)
 		  string1 0 (string-length string1)))
 
 (define (string>=? string1 string2)
-  (guarantee-2-strings string1 string2 'string-ci>=?)
+  (guarantee-2-strings string1 string2 'STRING-CI>=?)
   (not (substring<? string1 0 (string-length string1)
 		    string2 0 (string-length string2))))
 
 (define (string-ci>=? string1 string2)
-  (guarantee-2-strings string1 string2 'string-ci>=?)
+  (guarantee-2-strings string1 string2 'STRING-CI>=?)
   (not (substring-ci<? string1 0 (string-length string1)
 		       string2 0 (string-length string2))))
 
 (define (string<=? string1 string2)
-  (guarantee-2-strings string1 string2 'string<=?)
+  (guarantee-2-strings string1 string2 'STRING<=?)
   (not (substring<? string2 0 (string-length string2)
 		    string1 0 (string-length string1))))
 
 (define (string-ci<=? string1 string2)
-  (guarantee-2-strings string1 string2 'string-ci<=?)
+  (guarantee-2-strings string1 string2 'STRING-ci<=?)
   (not (substring-ci<? string2 0 (string-length string2)
 		       string1 0 (string-length string1))))
 
 (define (string-fill! string char)
-  (guarantee-string string 'string-fill!)
+  (guarantee-string string 'STRING-FILL!)
   (substring-fill! string 0 (string-length string) char))
-
+
 (define (string-find-next-char string char)
-  (guarantee-string string 'string-find-next-char)
+  (guarantee-string string 'STRING-FIND-NEXT-CHAR)
   (substring-find-next-char string 0 (string-length string) char))
 
 (define (string-find-previous-char string char)
-  (guarantee-string string 'string-find-previous-char)
+  (guarantee-string string 'STRING-FIND-PREVIOUS-CHAR)
   (substring-find-previous-char string 0 (string-length string) char))
 
 (define (string-find-next-char-ci string char)
-  (guarantee-string string 'string-find-next-char-ci)
+  (guarantee-string string 'STRING-FIND-NEXT-CHAR-CI)
   (substring-find-next-char-ci string 0 (string-length string) char))
 
 (define (string-find-previous-char-ci string char)
-  (guarantee-string string 'string-find-previous-char-ci)
+  (guarantee-string string 'STRING-FIND-PREVIOUS-CHAR-CI)
   (substring-find-previous-char-ci string 0 (string-length string) char))
 
 (define (string-find-next-char-in-set string char-set)
-  (guarantee-string string 'string-find-next-char-in-set)
+  (guarantee-string string 'STRING-FIND-NEXT-CHAR-IN-SET)
   (substring-find-next-char-in-set string 0 (string-length string) char-set))
 
 (define (string-find-previous-char-in-set string char-set)
-  (guarantee-string string 'string-find-previous-char-in-set)
+  (guarantee-string string 'STRING-FIND-PREVIOUS-CHAR-IN-SET)
   (substring-find-previous-char-in-set string 0 (string-length string)
 				       char-set))
 
 (define (string-match-forward string1 string2)
-  (guarantee-2-strings string1 string2 'string-match-forward)
+  (guarantee-2-strings string1 string2 'STRING-MATCH-FORWARD)
   (substring-match-forward string1 0 (string-length string1)
 			   string2 0 (string-length string2)))
 
 (define (string-match-backward string1 string2)
-  (guarantee-2-strings string1 string2 'string-match-backward)
+  (guarantee-2-strings string1 string2 'STRING-MATCH-BACKWARD)
   (substring-match-backward string1 0 (string-length string1)
 			    string2 0 (string-length string2)))
 
 (define (string-match-forward-ci string1 string2)
-  (guarantee-2-strings string1 string2 'string-match-forward-ci)
+  (guarantee-2-strings string1 string2 'STRING-MATCH-FORWARD-CI)
   (substring-match-forward-ci string1 0 (string-length string1)
 			      string2 0 (string-length string2)))
 
 (define (string-match-backward-ci string1 string2)
-  (guarantee-2-strings string1 string2 'string-match-backward-ci)
+  (guarantee-2-strings string1 string2 'STRING-MATCH-BACKWARD-CI)
   (substring-match-backward-ci string1 0 (string-length string1)
 			       string2 0 (string-length string2)))
 
 ;;;; Basic Operations
 
 (define (make-string length #!optional char)
-  (guarantee-index/string length 'make-string)
+  (guarantee-index/string length 'MAKE-STRING)
   (if (default-object? char)
       (string-allocate length)
       (let ((result (string-allocate length)))
@@ -195,7 +206,7 @@ MIT in each case. |#
 	result)))
 
 (define (string-null? string)
-  (guarantee-string string 'string-null?)
+  (guarantee-string string 'STRING-NULL?)
   (%string-null? string))
 
 (define-integrable (%string-null? string)
@@ -209,19 +220,17 @@ MIT in each case. |#
       result)))
 
 (define (substring string start end)
-  (guarantee-string string 'substring)
-  (guarantee-index/string start 'substring)
-  (guarantee-index/string end   'substring)
+  (guarantee-substring string start end 'SUBSTRING)
   (%substring string start end))
 
 (define (string-head string end)
-  (guarantee-string string 'string-head)
-  (guarantee-index/string end 'string-head)
+  (guarantee-string string 'STRING-HEAD)
+  (guarantee-index/string end 'STRING-HEAD)
   (%substring string 0 end))
 
 (define (string-tail string start)
-  (guarantee-string string 'string-tail)
-  (guarantee-index/string start 'string-tail)
+  (guarantee-string string 'STRING-TAIL)
+  (guarantee-index/string start 'STRING-TAIL)
   (%substring string start (string-length string)))
 
 (define (list->string chars)
@@ -242,17 +251,8 @@ MIT in each case. |#
 (define char->string string)
 
 (define (string->list string)
-  (guarantee-string string 'string->list)
+  (guarantee-string string 'STRING->LIST)
   (%substring->list string 0 (string-length string)))
-
-;; This version is unnecessarily recursive:
-;;
-;;(define (%substring->list string start end)
-;;  (let loop ((index start))
-;;    (if (fix:< index end)
-;;	(cons (string-ref string index)
-;;	      (loop (fix:+ index 1)))
-;;	'())))
 
 (define (%substring->list string start end)
   (let loop ((index (fix:- end 1)) (list '()))
@@ -262,13 +262,11 @@ MIT in each case. |#
 	list)))
 
 (define (substring->list string start end)
-  (guarantee-string string 'substring->list)
-  (guarantee-index/string start 'substring->list)
-  (guarantee-string-bound end string 'substring->list)
+  (guarantee-substring string start end 'SUBSTRING->LIST)
   (%substring->list string start end))
 
 (define (string-copy string)
-  (guarantee-string string 'string-copy)
+  (guarantee-string string 'STRING-COPY)
   (let ((size (string-length string)))
     (let ((result (string-allocate size)))
       (substring-move-right! string 0 size result 0)
@@ -281,7 +279,7 @@ MIT in each case. |#
 	    (if (null? strings)
 		length
 		(begin
-		  (guarantee-string (car strings) 'string-append)
+		  (guarantee-string (car strings) 'STRING-APPEND)
 		  (loop (cdr strings)
 			(fix:+ (string-length (car strings)) length))))))))
 
@@ -298,13 +296,11 @@ MIT in each case. |#
 ;;;; Case
 
 (define (string-upper-case? string)
-  (guarantee-string string 'string-upper-case?)
+  (guarantee-string string 'STRING-UPPER-CASE?)
   (%substring-upper-case? string 0 (string-length string)))
 
 (define (substring-upper-case? string start end)
-  (guarantee-string string 'substring-upper-case?)
-  (guarantee-index/string start 'substring-upper-case?)
-  (guarantee-string-bound end string 'substring-upper-case?)
+  (guarantee-substring string start end 'SUBSTRING-UPPER-CASE?)
   (%substring-upper-case? string start end))
 
 (define (%substring-upper-case? string start end)
@@ -325,19 +321,16 @@ MIT in each case. |#
     string))
 
 (define (string-upcase! string)
-  (guarantee-string string 'string-upcase!)
+  (guarantee-string string 'STRING-UPCASE!)
   (substring-upcase! string 0 (string-length string)))
 
-;;
 
 (define (string-lower-case? string)
-  (guarantee-string string 'string-lower-case?)
+  (guarantee-string string 'STRING-LOWER-CASE?)
   (%substring-lower-case? string 0 (string-length string)))
 
 (define (substring-lower-case? string start end)
-  (guarantee-string string 'substring-lower-case?)
-  (guarantee-index/string start 'substring-lower-case?)
-  (guarantee-string-bound end string 'substring-lower-case?)
+  (guarantee-substring string start end 'SUBSTRING-LOWER-CASE?)
   (%substring-lower-case? string start end))
   
 (define (%substring-lower-case? string start end)
@@ -358,17 +351,15 @@ MIT in each case. |#
     string))
 
 (define (string-downcase! string)
-  (guarantee-string string 'string-downcase!)
+  (guarantee-string string 'STRING-DOWNCASE!)
   (substring-downcase! string 0 (string-length string)))
 
 (define (string-capitalized? string)
-  (guarantee-string string 'string-capitalized?)
+  (guarantee-string string 'STRING-CAPITALIZED?)
   (substring-capitalized? string 0 (string-length string)))
 
 (define (substring-capitalized? string start end)
-  (guarantee-string string 'substring-capitalized?)
-  (guarantee-index/string start 'substring-capitalized?)
-  (guarantee-string-bound end string 'substring-capitalized?)
+  (guarantee-substring string start end 'SUBSTRING-CAPITALIZED?)
   (%substring-capitalized? string start end))
 
 (define (%substring-capitalized? string start end)
@@ -410,7 +401,7 @@ MIT in each case. |#
     string))
 
 (define (string-capitalize! string)
-  (guarantee-string string 'string-capitalize!)
+  (guarantee-string string 'STRING-CAPITALIZE!)
   (substring-capitalize! string 0 (string-length string)))
 
 (define (substring-capitalize! string start end)
@@ -439,7 +430,7 @@ MIT in each case. |#
     string))
 
 (define (string-replace! string char1 char2)
-  (guarantee-string string 'string-replace!)
+  (guarantee-string string 'STRING-REPLACE!)
   (substring-replace! string 0 (string-length string) char1 char2))
 
 (define (substring-replace! string start end char1 char2)
@@ -453,7 +444,7 @@ MIT in each case. |#
 ;;;; Compare
 
 (define (string-compare string1 string2 if= if< if>)
-  (guarantee-2-strings string1 string2 'string-compare)
+  (guarantee-2-strings string1 string2 'STRING-COMPARE)
   (let ((size1 (string-length string1))
 	(size2 (string-length string2)))
     (let ((match (substring-match-forward string1 0 size1 string2 0 size2)))
@@ -465,7 +456,7 @@ MIT in each case. |#
 		   if< if>)))))))
 
 (define (string-prefix? string1 string2)
-  (guarantee-2-strings string1 string2 'string-prefix?)
+  (guarantee-2-strings string1 string2 'STRING-PREFIX?)
   (substring-prefix? string1 0 (string-length string1)
 		     string2 0 (string-length string2)))
 
@@ -477,7 +468,7 @@ MIT in each case. |#
 	    length))))
 
 (define (string-suffix? string1 string2)
-  (guarantee-2-strings string1 string2 'string-suffix?)
+  (guarantee-2-strings string1 string2 'STRING-SUFFIX?)
   (substring-suffix? string1 0 (string-length string1)
 		     string2 0 (string-length string2)))
 
@@ -489,7 +480,7 @@ MIT in each case. |#
 	    length))))
 
 (define (string-compare-ci string1 string2 if= if< if>)
-  (guarantee-2-strings string1 string2 'string-compare-ci)
+  (guarantee-2-strings string1 string2 'STRING-COMPARE-CI)
   (let ((size1 (string-length string1))
 	(size2 (string-length string2)))
     (let ((match (substring-match-forward-ci string1 0 size1 string2 0 size2)))
@@ -501,7 +492,7 @@ MIT in each case. |#
 		   if< if>)))))))
 
 (define (string-prefix-ci? string1 string2)
-  (guarantee-2-strings string1 string2 'string-prefix-ci?)
+  (guarantee-2-strings string1 string2 'STRING-PREFIX-CI?)
   (substring-prefix-ci? string1 0 (string-length string1)
 			string2 0 (string-length string2)))
 
@@ -513,7 +504,7 @@ MIT in each case. |#
 	    length))))
 
 (define (string-suffix-ci? string1 string2)
-  (guarantee-2-strings string1 string2 'string-suffix-ci?)
+  (guarantee-2-strings string1 string2 'STRING-SUFFIX-CI?)
   (substring-suffix-ci? string1 0 (string-length string1)
 			string2 0 (string-length string2)))
 
@@ -535,7 +526,7 @@ MIT in each case. |#
 	(length (string-length string)))
     (if (not index)
 	""
-	(substring string index length))))
+	(%substring string index length))))
 
 (define (string-trim-right string #!optional char-set)
   (let ((index
@@ -545,7 +536,7 @@ MIT in each case. |#
 					       char-set))))
     (if (not index)
 	""
-	(substring string 0 (fix:+ index 1)))))
+	(%substring string 0 (fix:+ index 1)))))
 
 (define (string-trim string #!optional char-set)
   (let ((char-set
@@ -553,14 +544,14 @@ MIT in each case. |#
     (let ((index (string-find-next-char-in-set string char-set)))
       (if (not index)
 	  ""
-	  (substring string
-		     index
-		     (fix:+ (string-find-previous-char-in-set string char-set)
-			    1))))))
+	  (%substring string
+		      index
+		      (fix:+ (string-find-previous-char-in-set string char-set)
+			     1))))))
 
 (define (string-pad-right string n #!optional char)
-  (guarantee-string string 'string-pad-right)
-  (guarantee-index/string n 'string-pad-right)
+  (guarantee-string string 'STRING-PAD-RIGHT)
+  (guarantee-index/string n 'STRING-PAD-RIGHT)
   (let ((length (string-length string)))
     (if (fix:= length n)
 	string
@@ -574,8 +565,8 @@ MIT in each case. |#
 	  result))))
 
 (define (string-pad-left string n #!optional char)
-  (guarantee-string string 'string-pad-left)
-  (guarantee-index/string n 'string-pad-left)
+  (guarantee-string string 'STRING-PAD-LEFT)
+  (guarantee-index/string n 'STRING-PAD-LEFT)
   (let ((length (string-length string)))
     (if (fix:= length n)
 	string
@@ -591,8 +582,8 @@ MIT in each case. |#
 
 (define (substring? substring string)
   ;; Returns starting-position or #f if not true.
-  (guarantee-string substring 'substring?)
-  (guarantee-string string 'substring?)
+  (guarantee-string substring 'SUBSTRING?)
+  (guarantee-string string 'SUBSTRING?)
   (if (%string-null? substring)
       0
       (let ((len (string-length substring))
@@ -609,6 +600,15 @@ MIT in each case. |#
 			    posn*
 			    (loop posn*))))))))))
 
+;;;; Guarantors
+;;
+;; The guarantors are integrated.  Most are structured as combination of
+;; simple tests which the compiler can open-code, followed by a call to a
+;; GUARANTEE-.../FAIL version which does the tests again to signal a
+;; menaingful message. Structuring the code this way significantly
+;; reduces code bloat from large integrated procedures.
+
+
 (define-integrable (guarantee-string object procedure)
   (if (not (string? object))
       (error:wrong-type-argument object "string" procedure)))
@@ -632,14 +632,21 @@ MIT in each case. |#
 (define (guarantee-index/string/fail object procedure)
   (error:wrong-type-argument object "valid string index"
 			     procedure))
-;; Not used:
-;;(define-integrable (guarantee-string-index object string procedure)
-;;  (guarantee-index/string object procedure)
-;;  (if (not (fix:< object (string-length string)))
-;;      (error:bad-range-argument object procedure)))
 
-(define-integrable (guarantee-string-bound object string procedure)
-  (guarantee-index/string object procedure)
-  (if (not (fix:<= object (string-length string)))
-      (error:bad-range-argument object procedure)))
 
+(define-integrable (guarantee-substring string start end procedure)
+  (if (or (not (string? string))
+	  (not (index-fixnum? start))
+	  (not (index-fixnum? end))
+	  (not (fix:<= start end))
+	  (not (fix:<= end (string-length string))))
+      (guarantee-substring/fail string start end procedure)))
+
+(define (guarantee-substring/fail string start end procedure)
+  (guarantee-string string procedure)
+  (guarantee-index/string start procedure)
+  (guarantee-index/string end procedure)
+  (if (not (fix:<= end (string-length string)))
+      (error:bad-range-argument end procedure))
+  (if (not (fix:<= start end))
+      (error:bad-range-argument start procedure)))
