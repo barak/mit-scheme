@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.94 1992/06/05 21:39:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.95 1992/08/18 22:27:50 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -807,8 +807,13 @@ MIT in each case. |#
 	  edwin-command$list-processes
 	  edwin-command$shell-command
 	  edwin-command$shell-command-on-region
+	  edwin-variable$backup-by-copying-when-linked
+	  edwin-variable$backup-by-copying-when-mismatch
 	  edwin-variable$exec-path
+	  edwin-variable$kept-new-versions
+	  edwin-variable$kept-old-versions
 	  edwin-variable$process-connection-type
+	  edwin-variable$version-control
 	  find-program
 	  get-buffer-process
 	  get-process-by-name
