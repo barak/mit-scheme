@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.scm,v 1.2 2000/04/22 05:04:31 cph Exp $
+;;; $Id: parser.scm,v 1.3 2000/04/23 03:04:02 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -80,6 +80,13 @@
     (let ((pv (parser string start end)))
       (and pv
 	   (list (car pv) (cons keyword (transformer pv)))))))
+
+(define (predicated-parser parser predicate)
+  (lambda (string start end)
+    (let ((pv (parser string start end)))
+      (and pv
+	   (predicate pv)
+	   pv))))
 
 (define (list-parser match-element match-delimiter keyword)
   (lambda (string start end)
