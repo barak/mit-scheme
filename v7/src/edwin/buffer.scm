@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: buffer.scm,v 1.172 1999/11/01 03:40:08 cph Exp $
+;;; $Id: buffer.scm,v 1.173 1999/11/05 05:37:41 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -231,12 +231,6 @@ The buffer is guaranteed to be deselected at that time."
 (define (buffer-remove! buffer key)
   (set-buffer-alist! buffer (del-assq! key (buffer-alist buffer))))
 
-(define (remove-impermanent-bindings! alist)
-  ((list-deletor!
-    (lambda (entry)
-      (not (variable-permanent-local? (car entry)))))
-   alist))
-
 (define (->buffer object)
   (cond ((buffer? object) object)
 	((and (mark? object) (mark-buffer object)))
@@ -390,12 +384,16 @@ The buffer is guaranteed to be deselected at that time."
 	    ((null? bindings))
 	  (set-variable-%value! (caar bindings)
 				(variable-default-value (caar bindings)))))
-    (set-buffer-local-bindings!
-     buffer
-     (if all? '() (remove-impermanent-bindings! bindings)))
-    (do ((bindings bindings (cdr bindings)))
-	((null? bindings))
-      (invoke-variable-assignment-daemons! buffer (caar bindings)))))
+    (call-with-values
+	(lambda ()
+	  (split-list bindings
+		      (lambda (binding)
+			(variable-permanent-local? (car binding)))))
+      (lambda (permanent impermanent)
+	(set-buffer-local-bindings! buffer (if all? '() permanent))
+	(do ((bindings impermanent (cdr bindings)))
+	    ((null? bindings))
+	  (invoke-variable-assignment-daemons! buffer (caar bindings)))))))
 
 (define (with-current-local-bindings! thunk)
   (dynamic-wind (lambda ()
