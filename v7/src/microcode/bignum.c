@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bignum.c,v 9.38 1992/09/18 16:52:22 jinx Exp $
+$Id: bignum.c,v 9.39 1993/02/10 23:13:36 adams Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -40,7 +40,13 @@ MIT in each case. */
 #else
 #include "bignum.h"
 #endif
+
+#ifdef WINNT
+#include "bignumin.h"  /* SRA: renamed for 8 char name length*/
+#else
 #include "bignumint.h"
+#endif
+
 #include "limits.h"
 
 #ifndef MIT_SCHEME
@@ -108,7 +114,7 @@ static bignum_digit_type EXFUN (bignum_digit_divide_subtract,
 				 bignum_digit_type, bignum_digit_type *));
 static void EXFUN (bignum_divide_unsigned_small_denominator,
 		   (bignum_type, bignum_digit_type, bignum_type *,
-		    bignum_type *, int, int));		    
+		    bignum_type *, int, int));
 static bignum_digit_type EXFUN (bignum_destructive_scale_down,
 				(bignum_type, bignum_digit_type));
 static bignum_type EXFUN (bignum_remainder_unsigned_small_denominator,
@@ -1300,7 +1306,7 @@ DEFUN (bignum_divide_unsigned_medium_denominator, (numerator, denominator,
     }
   {
     fast bignum_digit_type r = 0;
-    fast bignum_digit_type * start = (BIGNUM_START_PTR (q)); 
+    fast bignum_digit_type * start = (BIGNUM_START_PTR (q));
     fast bignum_digit_type * scan = (start + length_q);
     bignum_digit_type qj;
     if (quotient != ((bignum_type *) 0))
