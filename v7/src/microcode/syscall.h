@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: syscall.h,v 1.5 1994/11/28 04:35:28 cph Exp $
+$Id: syscall.h,v 1.6 1994/12/19 22:27:33 cph Exp $
 
 Copyright (c) 1993-94 Massachusetts Institute of Technology
 
@@ -71,6 +71,8 @@ enum syscall_names
   syscall_DosQueryCurrentDir,
   syscall_DosQueryCurrentDisk,
   syscall_DosQueryFileInfo,
+  syscall_DosQueryFSAttach,
+  syscall_DosQueryFSInfo,
   syscall_DosQueryHType,
   syscall_DosQueryNPHState,
   syscall_DosQueryPathInfo,
