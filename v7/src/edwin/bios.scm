@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bios.scm,v 1.1 1992/08/27 06:30:02 jinx Exp $
+$Id: bios.scm,v 1.2 1992/10/17 23:14:22 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -37,15 +37,6 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-;;; NOTE: Currently this level knows nothing about BIOS highlights.
-;;; It just passes down a boolean flag indicating whether to highlight,
-;;; and the microcode sets up the attributes depending on the values
-;;; of environment variables EDWIN_FOREGROUND and EDWIN_BACKGROUND.
-;;; ** This is wrong **
-;;; The primitives should just get an attribute value, and this
-;;; level should take care of mapping the boolean highlight value
-;;; to the appropriate attribute.
-
 (define (make-bios-screen)
   ;; What is the baud rate needed for?  It's not even meaningful.
   (let ((baud-rate (output-port/baud-rate console-output-port))
@@ -73,7 +64,8 @@ MIT in each case. |#
 		 y-size)))
 
 (define (bios-available?)
-  (and (implemented-primitive-procedure? bios:scroll-lines-up!)
+  (and (implemented-primitive-procedure? bios:can-use-bios?)
+       (bios:can-use-bios?)
        (let ((term (get-environment-variable "TERM")))
 	 (and term
 	      (string-ci=? term "ibm_pc_bios")))))
@@ -98,12 +90,12 @@ MIT in each case. |#
 
 (define-primitives
   (bios:beep 0)
+  (bios:can-use-bios? 0)
   (bios:clear-line! 3)
   (bios:clear-rectangle! 5)
   (bios:clear-screen! 0)
-  (bios:discard! 0)
-  (bios:enter! 0)
   (bios:exit! 0)
+  (bios:initialize! 2)
   (bios:scroll-lines-up! 5)
   (bios:scroll-lines-down! 5)
   (bios:write-char! 2)
@@ -112,11 +104,18 @@ MIT in each case. |#
 
 (define (bios-console-discard! screen)
   screen
-  (bios:discard!)
   unspecific)
 
 (define (bios-console-enter! screen)
-  (bios:enter!)
+  (define (default-attribute variable default)
+    (let ((val (get-environment-variable variable)))
+      (cond ((not val) default)
+	    ((string? val) (string->number val))
+	    (else val))))
+
+  (bios:initialize!
+   (default-attribute "EDWIN_FOREGROUND" 37)	; white foreground
+   (default-attribute "EDWIN_BACKGROUND" 40))	; black background
   unspecific)
 
 (define (bios-console-exit! screen)
@@ -144,6 +143,7 @@ MIT in each case. |#
   unspecific)
 
 (define-integrable (bios-move-cursor screen x y)
+  screen
   (bios:write-cursor! x y))
 
 (define (bios-console-write-cursor! screen x y)
@@ -157,18 +157,17 @@ MIT in each case. |#
 	(bios:write-char! char highlight))))
 
 (define (bios-console-write-substring! screen x y string start end highlight)
-  (define (with-delta-and-end delta end)
+  (let ((end
+	 (let ((delta (fix:- end start)))
+	   (if (and (fix:= y (car (screen-state screen)))
+		    (fix:= (fix:+ x delta)
+			   (screen-x-size screen)))
+	       (fix:-1+ end)
+	       end))))
     (if (fix:< start end)
 	(begin
 	  (bios-move-cursor screen x y)
-	  (bios:write-substring! string start end highlight))))
-
-  (let ((delta (fix:- end start)))
-    (if (and (fix:= y (car (screen-state screen)))
-	     (fix:= (fix:+ x delta)
-		    (screen-x-size screen)))
-	(with-delta-and-end (fix:-1+ delta) (fix:-1+ end))
-	(with-delta-and-end delta end))))
+	  (bios:write-substring! string start end highlight)))))
 
 (define (bios-console-clear-line! screen x y first-unused-x)
   (bios:clear-line! x y (fix:-1+ first-unused-x))
