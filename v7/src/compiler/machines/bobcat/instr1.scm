@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr1.scm,v 1.60 1987/03/19 00:53:05 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr1.scm,v 1.61 1987/04/27 20:26:11 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -322,10 +322,11 @@ MIT in each case. |#
 
 ;;;; Symbolic Constants
 
-;(declare (integrate symbol-member bwl? bw? wl? rl? us? da? cc? nwl? bwlq?))
+(declare (integrate-operator symbol-member bwl? bw? wl? rl? us? da?
+			     cc? nwl? bwlq?))
 
 (define ((symbol-member list) expression)
-;  (declare (integrate list expression))
+  (declare (integrate list expression))
   (memq expression list))
 
 (define bwl? (symbol-member '(B W L)))
@@ -341,12 +342,12 @@ MIT in each case. |#
   (symbol-member
    '(T F HI LS HS LO CC CS NE EQ VC VS PL MI GE LT GT LE)))
 
-;(declare (integrate symbol-mapping encode-bwl encode-blw encode-bw encode-wl
-;		    encode-lw encode-rl encode-us encode-da granularity
-;		    encode-cc encode-nwl encode-bwlq))
+(declare (integrate-operator symbol-mapping encode-bwl encode-blw encode-bw
+			     encode-wl encode-lw encode-rl encode-us encode-da
+			     granularity encode-cc encode-nwl encode-bwlq))
 
 (define ((symbol-mapping alist) expression)
-;  (declare (integrate alist expression))
+  (declare (integrate alist expression))
   (cdr (assq expression alist)))
 
 (define encode-bwl  (symbol-mapping '((B . 0) (W . 1) (L . 2))))
