@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.90 2000/05/23 00:18:19 cph Exp $
+;;; $Id: imail-top.scm,v 1.91 2000/05/23 02:26:01 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -706,14 +706,30 @@ With prefix argument N moves backward N messages with these flags."
 	       (index (message-index message)))
 	   (and folder
 		(if index
-		    (string-append
-		     " "
-		     (number->string (+ 1 index))
-		     "/"
-		     (number->string (folder-length folder))
-		     (decorated-string-append
-		      "," "" ""
-		      (flags-delete "seen" (message-flags message))))
+		    (let ((n (folder-length folder)))
+		      (string-append
+		       " "
+		       (number->string (+ 1 index))
+		       "/"
+		       (number->string n)
+		       (let loop ((i 0) (unseen 0))
+			 (if (< i n)
+			     (loop (+ i 1)
+				   (if (message-unseen? (get-message folder i))
+				       (+ unseen 1)
+				       unseen))
+			     (if (> unseen 0)
+				 (string-append " ("
+						(number->string unseen)
+						" unseen)")
+				 "")))
+		       (let ((flags
+			      (flags-delete "seen" (message-flags message))))
+			 (if (pair? flags)
+			     (string-append
+			      " "
+			      (decorated-string-append "" "," "" flags))
+			     ""))))
 		    " 0/0"))))))
 
 (define (maybe-reformat-headers message buffer)
