@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comwin.scm,v 1.140 1991/02/15 18:12:54 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comwin.scm,v 1.141 1991/05/09 15:54:11 markf Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -290,7 +290,7 @@
 (define (%window-has-up-neighbor? window)
   (and (combination? (window-superior window))
        (or (and (combination-vertical? (window-superior window))
-		(window-next window))
+		(window-previous window))
 	   (%window-has-up-neighbor? (window-superior window)))))
 
 (define (window-has-down-neighbor? leaf)
