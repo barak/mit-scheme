@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: slot.scm,v 1.4 1997/06/19 21:17:12 cph Exp $
+;;; $Id: slot.scm,v 1.5 1997/06/25 03:28:58 cph Exp $
 ;;;
-;;; Copyright (c) 1995-96 Massachusetts Institute of Technology
+;;; Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
 ;;; This material was developed by the Scheme project at the
 ;;; Massachusetts Institute of Technology, Department of Electrical
@@ -96,11 +96,16 @@
 ;;;; Slot Accessors
 
 (define (method-constructor make-generator)
-  (lambda (class name)
-    (make-computed-method (list class)
-      (let ((generator (make-generator name)))
-	(lambda classes
-	  (generator #f (map class->dispatch-tag classes)))))))
+  (letrec
+      ((constructor
+	(lambda (class name)
+	  (if (class-slot class name #f)
+	      (make-computed-method (list class)
+		(let ((generator (make-generator name)))
+		  (lambda classes
+		    (generator #f (map class->dispatch-tag classes)))))
+	      (constructor class (error:no-such-slot class name))))))
+    constructor))
 
 (define slot-accessor-method (method-constructor %record-accessor-generator))
 (define slot-modifier-method (method-constructor %record-modifier-generator))
@@ -130,23 +135,19 @@
        (install 'INITPRED slot-initpred-method)))
    (class-direct-slot-names class)))
 
-(define (slot-value instance name)
-  (%record-ref instance (compute-slot-index instance name 'SLOT-VALUE)))
+(define (slot-value object name)
+  (%record-ref object (compute-slot-index object name)))
 
-(define (set-slot-value! instance name value)
-  (%record-set! instance
-		(compute-slot-index instance name 'SET-SLOT-VALUE!)
-		value))
+(define (set-slot-value! object name value)
+  (%record-set! object (compute-slot-index object name) value))
 
-(define (slot-initialized? instance name)
+(define (slot-initialized? object name)
   (not (eq? record-slot-uninitialized
-	    (%record-ref instance
-			 (compute-slot-index instance name
-					     'SLOT-INITIALIZED?)))))
+	    (%record-ref object (compute-slot-index object name)))))
 
-(define (compute-slot-index instance name error-name)
-  (or (%record-slot-index instance name)
-      (error:bad-range-argument name error-name)))
+(define (compute-slot-index object name)
+  (or (%record-slot-index object name)
+      (error:no-such-slot (object-class object) name)))
 
 ;;;; Slot Arguments
 
