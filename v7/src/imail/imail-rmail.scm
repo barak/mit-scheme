@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.16 2000/04/07 19:12:24 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.17 2000/04/07 19:39:10 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -282,7 +282,7 @@
 		  (lambda (filename)
 		    (merge-pathnames (string-trim filename) directory)))
 		(burst-string inboxes #\, #f)))
-	  ((pathname=? (edwin-variable 'RMAIL-FILE-NAME)
+	  ((pathname=? (edwin-variable-value 'RMAIL-FILE-NAME)
 		       (url-body (folder-url folder)))
 	   (edwin-variable-value 'RMAIL-PRIMARY-INBOX-LIST))
 	  (else '()))))

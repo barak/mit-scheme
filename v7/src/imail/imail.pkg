@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.1 2000/01/18 20:57:41 cph Exp $
+;;; $Id: imail.pkg,v 1.2 2000/04/07 19:38:55 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -32,4 +32,7 @@
 	 "imail-rmail"
 	 "imail-umail"
 	 "imail-top")
-  (parent (edwin)))
+  (parent (edwin))
+  (import (edwin rmail)
+	  guarantee-rmail-variables-initialized
+	  rmail-spool-directory))
