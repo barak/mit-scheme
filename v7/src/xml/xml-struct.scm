@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.29 2003/09/24 04:55:56 cph Exp $
+$Id: xml-struct.scm,v 1.30 2003/09/24 22:39:12 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -40,9 +40,9 @@ USA.
       (write (combo-name-simple name) port))))
 
 (define-record-type <universal-name>
-    (make-universal-name uri local combos)
+    (make-universal-name iri local combos)
     universal-name?
-  (uri universal-name-uri)
+  (iri universal-name-iri)
   (local universal-name-local)
   (combos universal-name-combos))
 
@@ -58,39 +58,48 @@ USA.
 (define (error:not-xml-name object caller)
   (error:wrong-type-argument object "an XML name" caller))
 
-(define (make-xml-namespace-uri uri)
-  (if (string? uri)
+(define (make-xml-namespace-iri iri)
+  (if (string? iri)
       (begin
-	(if (not (namespace-uri-string? uri))
-	    (error:not-xml-namespace-uri uri 'MAKE-XML-NAMESPACE-URI))
-	(string->symbol uri))
+	(if (not (namespace-iri-string? iri))
+	    (error:not-xml-namespace-iri iri 'MAKE-XML-NAMESPACE-IRI))
+	(string->symbol iri))
       (begin
-	(if uri (guarantee-xml-namespace-uri uri 'MAKE-XML-NAMESPACE-URI))
-	uri)))
+	(guarantee-xml-namespace-iri iri 'MAKE-XML-NAMESPACE-IRI)
+	iri)))
 
-(define (xml-namespace-uri? object)
+(define (xml-namespace-iri? object)
   (and (interned-symbol? object)
-       (namespace-uri-string? (symbol-name object))))
+       (namespace-iri-string? (symbol-name object))))
 
-(define (namespace-uri-string? object)
-  (and (fix:> (string-length object) 0)
-       (utf8-string-valid? object)))
+(define (namespace-iri-string? object)
+  ;; See RFC 1630 for correct syntax.
+  (utf8-string-valid? object))
 
-(define (guarantee-xml-namespace-uri object caller)
-  (if (not (xml-namespace-uri? object))
-      (error:not-xml-namespace-uri object caller)))
+(define (default-xml-namespace-iri? object)
+  (eq? object '||))
 
-(define (error:not-xml-namespace-uri object caller)
-  (error:wrong-type-argument object "an XML namespace URI" caller))
+(define (default-xml-namespace-iri)
+  '||)
 
-(define (xml-namespace-uri-string uri)
-  (guarantee-xml-namespace-uri uri 'XML-NAMESPACE-URI-STRING)
-  (symbol->string uri))
+(define (guarantee-xml-namespace-iri object caller)
+  (if (not (xml-namespace-iri? object))
+      (error:not-xml-namespace-iri object caller)))
+
+(define (error:not-xml-namespace-iri object caller)
+  (error:wrong-type-argument object "an XML namespace IRI" caller))
+
+(define (xml-namespace-iri->string iri)
+  (guarantee-xml-namespace-iri iri 'XML-NAMESPACE-IRI->STRING)
+  (symbol->string iri))
 
-(define (xml-intern simple #!optional uri)
-  (make-xml-name simple (if (default-object? uri) #f uri)))
+(define (xml-intern simple #!optional iri)
+  (make-xml-name simple
+		 (if (default-object? iri)
+		     (default-xml-namespace-iri)
+		     iri)))
 
-(define (make-xml-name simple uri)
+(define (make-xml-name simple iri)
   (let ((lose
 	 (lambda ()
 	   (error:wrong-type-argument simple "an XML name" 'MAKE-XML-NAME))))
@@ -99,27 +108,25 @@ USA.
 	      ((string? simple) (values simple (string->symbol simple)))
 	      (else (lose)))
       (let ((type (string-is-xml-nmtoken? string)))
-	(cond ((and type (not uri))
+	(cond ((and type (default-xml-namespace-iri? iri))
 	       symbol)
 	      ((eq? type 'NAME)
 	       (%make-xml-name symbol
-			       (make-xml-namespace-uri uri)
+			       (make-xml-namespace-iri iri)
 			       (let ((c (string-find-next-char string #\:)))
 				 (if c
-				     (substring->symbol string
-							(fix:+ c 1)
-							(string-length string))
+				     (string-tail->symbol string (fix:+ c 1))
 				     symbol))))
 	      (else (lose)))))))
 
-(define (%make-xml-name simple uri local)
+(define (%make-xml-name simple iri local)
   (let ((uname
 	 (hash-table/intern! (hash-table/intern! universal-names
-						 uri
+						 iri
 						 make-eq-hash-table)
 			     local
 			     (lambda ()
-			       (make-universal-name uri
+			       (make-universal-name iri
 						    local
 						    (make-eq-hash-table))))))
     (hash-table/intern! (universal-name-combos uname)
@@ -140,25 +147,30 @@ USA.
 (define (xml-name-string name)
   (symbol-name (xml-name-simple name)))
 
-(define (xml-name-uri name)
-  (cond ((xml-nmtoken? name) #f)
-	((combo-name? name) (universal-name-uri (combo-name-universal name)))
-	(else (error:not-xml-name name 'XML-NAME-URI))))
+(define (xml-name-iri name)
+  (cond ((xml-nmtoken? name) (default-xml-namespace-iri))
+	((combo-name? name) (universal-name-iri (combo-name-universal name)))
+	(else (error:not-xml-name name 'XML-NAME-IRI))))
 
-(define (xml-name-uri=? name uri)
-  (eq? (xml-name-uri name) uri))
+(define (xml-name-iri=? name iri)
+  (eq? (xml-name-iri name) iri))
 
 (define (xml-name-prefix name)
-  (let ((simple
-	 (lambda (name)
-	   (let ((s (symbol-name name)))
-	     (let ((c (string-find-next-char s #\:)))
-	       (if c
-		   (string->symbol (string-head s c))
-		   #f))))))
-    (cond ((xml-nmtoken? name) (simple name))
-	  ((combo-name? name) (simple (combo-name-simple name)))
-	  (else (error:not-xml-name name 'XML-NAME-PREFIX)))))
+  (let ((s
+	 (symbol-name
+	  (cond ((xml-nmtoken? name) name)
+		((combo-name? name) (combo-name-simple name))
+		(else (error:not-xml-name name 'XML-NAME-PREFIX))))))
+    (let ((c (string-find-next-char s #\:)))
+      (if c
+	  (string-head->symbol s c)
+	  (null-xml-name-prefix)))))
+
+(define (null-xml-name-prefix? object)
+  (eq? object ':NULL))
+
+(define (null-xml-name-prefix)
+  ':NULL)
 
 (define (xml-name-prefix=? name prefix)
   (eq? (xml-name-prefix name) prefix))
@@ -168,7 +180,7 @@ USA.
 	 (let ((s (symbol-name name)))
 	   (let ((c (string-find-next-char s #\:)))
 	     (if c
-		 (string->symbol (string-tail s (fix:+ c 1)))
+		 (string-tail->symbol s (fix:+ c 1))
 		 name))))
 	((combo-name? name) (universal-name-local (combo-name-universal name)))
 	(else (error:not-xml-name name 'XML-NAME-LOCAL))))
@@ -638,35 +650,51 @@ USA.
     (or (xml-external-id-id dtd)
 	(xml-external-id-uri dtd))))
 
-(define (simple-xml-attribute-value? object)
-  (and (pair? object)
-       (xml-char-data? (car object))
-       (null? (cdr object))
-       (car object)))
+(define (xml-attribute-value attr)
+  (and (pair? (cdr attr))
+       (string? (cadr attr))
+       (null? (cddr attr))
+       (cadr attr)))
 
-(define (guarantee-simple-xml-attribute-value object caller)
-  (let ((v (simple-xml-attribute-value? object)))
+(define (guarantee-xml-attribute-value object #!optional caller)
+  (let ((v (xml-attribute-value object)))
     (if (not v)
-	(error:not-simple-xml-attribute-value object caller))
+	(error:not-xml-attribute-value object
+				       (if (default-object? caller)
+					   #f
+					   caller)))
     v))
 
-(define (error:not-simple-xml-attribute-value object caller)
+(define (error:not-xml-attribute-value object caller)
   (error:wrong-type-argument object "simple XML attribute value" caller))
 
+(define (xml-attribute-namespace-decl? attr)
+  (or (xml-name=? (car attr) 'xmlns)
+      (xml-name-prefix=? (car attr) 'xmlns)))
+
 (define (xml-element-namespace-decls elt)
-  (guarantee-xml-element elt 'XML-ELEMENT-NAMESPACE-DECLS)
-  (let loop ((attrs (xml-element-attributes elt)))
-    (if (pair? attrs)
-	(let ((name (caar attrs))
-	      (keep
-	       (lambda (prefix)
-		 (cons (cons prefix
-			     (make-xml-namespace-uri
-			      (guarantee-simple-xml-attribute-value
-			       (cdar attrs)
-			       #f)))
-		       (loop (cdr attrs))))))
-	  (cond ((xml-name=? name 'xmlns) (keep #f))
-		((xml-name-prefix=? name 'xmlns) (keep (xml-name-local name)))
-		(else (loop (cdr attrs)))))
-	'())))
+  (keep-matching-items (xml-element-attributes elt)
+    xml-attribute-namespace-decl?))
+
+(define (xml-element-namespace-iri elt prefix)
+  (let ((attr
+	 (find-matching-item (xml-element-attributes elt)
+	   (lambda (attr)
+	     (or (and (xml-name=? (car attr) 'xmlns)
+		      (null-xml-name-prefix? prefix))
+		 (and (xml-name-prefix=? (car attr) 'xmlns)
+		      (xml-name-local=? (car attr) prefix)))))))
+    (and attr
+	 (make-xml-namespace-iri (guarantee-xml-attribute-value attr)))))
+
+(define (xml-element-namespace-prefix elt iri)
+  (let ((iri (xml-namespace-iri->string iri)))
+    (let ((attr
+	   (find-matching-item (xml-element-attributes elt)
+	     (lambda (attr)
+	       (and (xml-attribute-namespace-decl? attr)
+		    (string=? (guarantee-xml-attribute-value attr) iri))))))
+      (and attr
+	   (if (xml-name=? (car attr) 'xmlns)
+	       (null-xml-name-prefix)
+	       (xml-name-local (car attr)))))))

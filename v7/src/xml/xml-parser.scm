@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.41 2003/09/24 03:26:19 cph Exp $
+$Id: xml-parser.scm,v 1.42 2003/09/24 22:39:09 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -176,9 +176,7 @@ USA.
   (xml-declaration-parser "XML text declaration" #t))
 
 (define (transform-declaration attributes text-decl? p)
-  (if (not (for-all? attributes
-	     (lambda (attribute)
-	       (simple-xml-attribute-value? (cdr attribute)))))
+  (if (not (for-all? attributes xml-attribute-value))
       (perror p "XML declaration can't contain entity refs" attributes))
   (let ((finish
 	 (lambda (version encoding standalone)
@@ -350,7 +348,7 @@ USA.
 			"Incorrect attribute value"
 			(string->symbol name)))
 	    (if (and (not (eq? type '|CDATA|))
-		     (simple-xml-attribute-value? av))
+		     (xml-attribute-value attribute))
 		(set-car! av (trim-attribute-whitespace (car av))))
 	    attributes)
 	  (begin
@@ -472,38 +470,35 @@ USA.
 		    (tail (loop (cdr attributes))))
 		(let ((s (car name))
 		      (pn (cdr name)))
-		  (let ((uri
+		  (let ((iri
 			 (lambda ()
-			   (if (not (simple-xml-attribute-value? value))
-			       (perror pn "Illegal namespace URI" value))
-			   (if (string-null? (car value))
-			       #f	;xmlns=""
-			       (car value))))
-			(forbidden-uri
-			 (lambda (uri)
-			   (perror pn "Forbidden namespace URI" uri))))
-		    (let ((guarantee-legal-uri
-			   (lambda (uri)
-			     (if (and uri
-				      (or (string=? uri xml-uri)
-					  (string=? uri xmlns-uri)))
-				 (forbidden-uri uri)))))
+			   (string->symbol
+			    (or (xml-attribute-value (car attributes))
+				(perror pn "Illegal namespace IRI" value)))))
+			(forbidden-iri
+			 (lambda (iri)
+			   (perror pn "Forbidden namespace IRI" iri))))
+		    (let ((guarantee-legal-iri
+			   (lambda (iri)
+			     (if (or (eq? iri xml-iri)
+				     (eq? iri xmlns-iri))
+				 (forbidden-iri iri)))))
 		      (cond ((string=? "xmlns" s)
-			     (let ((uri (uri)))
-			       (guarantee-legal-uri uri)
-			       (cons (cons #f uri) tail)))
+			     (let ((iri (iri)))
+			       (guarantee-legal-iri iri)
+			       (cons (cons (null-xml-name-prefix) iri) tail)))
 			    ((string-prefix? "xmlns:" s)
 			     (if (string=? "xmlns:xmlns" s)
 				 (perror pn "Illegal namespace prefix" s))
-			     (let ((uri (uri)))
-			       (if (not uri) ;legal in XML 1.1
-				   (forbidden-uri ""))
+			     (let ((iri (iri)))
+			       (if (default-xml-namespace-iri? iri)
+				   ;; legal in XML 1.1
+				   (forbidden-iri ""))
 			       (if (string=? "xmlns:xml" s)
-				   (if (not (and uri (string=? uri xml-uri)))
-				       (forbidden-uri uri))
-				   (guarantee-legal-uri uri))
-			       (cons (cons (string->symbol (string-tail s 6))
-					   uri)
+				   (if (not (eq? iri xml-iri))
+				       (forbidden-iri iri))
+				   (guarantee-legal-iri iri))
+			       (cons (cons (string-tail->symbol s 6) iri)
 				     tail)))
 			    (else tail))))))
 	      *prefix-bindings*)))
@@ -517,31 +512,34 @@ USA.
 	(p (cdr n)))
     (let ((simple (string->symbol s))
 	  (c (string-find-next-char s #\:)))
-      (let ((uri
+      (let ((iri
 	     (and (not *in-dtd?*)
 		  (or element-name? c)
-		  (let ((prefix (and c (string->symbol (string-head s c)))))
+		  (let ((prefix
+			 (if c
+			     (string-head->symbol s c)
+			     (null-xml-name-prefix))))
 		    (case prefix
-		      ((xmlns) xmlns-uri)
-		      ((xml) xml-uri)
+		      ((xmlns) xmlns-iri)
+		      ((xml) xml-iri)
 		      (else
 		       (let ((entry (assq prefix *prefix-bindings*)))
 			 (if entry
 			     (cdr entry)
 			     (begin
-			       (if prefix
+			       (if (not (null-xml-name-prefix? prefix))
 				   (perror p "Unknown XML prefix" prefix))
-			       #f)))))))))
-	(if uri
+			       (default-xml-namespace-iri))))))))))
+	(if iri
 	    (%make-xml-name simple
-			    (string->symbol uri)
+			    iri
 			    (if c
-				(string->symbol (string-tail s (fix:+ c 1)))
+				(string-tail->symbol s (fix:+ c 1))
 				simple))
 	    simple)))))
 
-(define xml-uri "http://www.w3.org/XML/1998/namespace")
-(define xmlns-uri "http://www.w3.org/2000/xmlns/")
+(define xml-iri "http://www.w3.org/XML/1998/namespace")
+(define xmlns-iri "http://www.w3.org/2000/xmlns/")
 
 ;;;; Processing instructions
 
@@ -887,7 +885,9 @@ USA.
 	      (let ((entity (find-parameter-entity name)))
 		(and entity
 		     (xml-parameter-!entity-value entity))))))
-    (if (simple-xml-attribute-value? value)
+    (if (and (pair? value)
+	     (string? (car value))
+	     (null? (cdr value)))
 	(car value)
 	(begin
 	  (set! *parameter-entities* 'STOP)
@@ -917,7 +917,9 @@ USA.
 		(let ((value (xml-!entity-value entity)))
 		  (cond ((xml-external-id? value) #f)
 			(in-attribute? value)
-			((simple-xml-attribute-value? value)
+			((and (pair? value)
+			      (string? (car value))
+			      (null? (cdr value)))
 			 (reparse-entity-value-string name (car value) p))
 			(else
 			 (if (or *standalone?* *internal-dtd?*)
@@ -1106,12 +1108,14 @@ USA.
 			(type (vector-ref v 1))
 			(default (vector-ref v 2)))
 		    (list name type
-			  (if (and (not (eq? type '|CDATA|))
-				   (pair? default)
-				   (simple-xml-attribute-value? (cdr default)))
-			      (list (car default)
-				    (trim-attribute-whitespace (cadr default)))
-			      default))))
+			  (let ((dv
+				 (and (not (eq? type '|CDATA|))
+				      (pair? default)
+				      (xml-attribute-value default))))
+			    (if dv
+				(list (car default)
+				      (trim-attribute-whitespace dv))
+				default)))))
 	      (seq S
 		   parse-attribute-name
 		   S

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.28 2003/09/24 04:17:45 cph Exp $
+$Id: xml.pkg,v 1.29 2003/09/24 22:39:05 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -51,7 +51,9 @@ USA.
 	  <xml-parameter-entity-ref>
 	  <xml-processing-instructions>
 	  <xml-unparsed-!entity>
-	  error:not-simple-xml-attribute-value
+	  default-xml-namespace-iri
+	  default-xml-namespace-iri?
+	  error:not-xml-attribute-value
 	  error:not-xml-!attlist
 	  error:not-xml-!element
 	  error:not-xml-!entity
@@ -64,16 +66,16 @@ USA.
 	  error:not-xml-entity-ref
 	  error:not-xml-external-id
 	  error:not-xml-name
-	  error:not-xml-namespace-uri
+	  error:not-xml-namespace-iri
 	  error:not-xml-parameter-!entity
 	  error:not-xml-parameter-entity-ref
 	  error:not-xml-processing-instructions
 	  error:not-xml-unparsed-!entity
-	  guarantee-simple-xml-attribute-value
 	  guarantee-xml-!attlist
 	  guarantee-xml-!element
 	  guarantee-xml-!entity
 	  guarantee-xml-!notation
+	  guarantee-xml-attribute-value
 	  guarantee-xml-comment
 	  guarantee-xml-declaration
 	  guarantee-xml-document
@@ -82,7 +84,7 @@ USA.
 	  guarantee-xml-entity-ref
 	  guarantee-xml-external-id
 	  guarantee-xml-name
-	  guarantee-xml-namespace-uri
+	  guarantee-xml-namespace-iri
 	  guarantee-xml-parameter-!entity
 	  guarantee-xml-parameter-entity-ref
 	  guarantee-xml-processing-instructions
@@ -100,11 +102,13 @@ USA.
 	  make-xml-external-id
 	  make-xml-name
 	  make-xml-name-hash-table
-	  make-xml-namespace-uri
+	  make-xml-namespace-iri
 	  make-xml-parameter-!entity
 	  make-xml-parameter-entity-ref
 	  make-xml-processing-instructions
 	  make-xml-unparsed-!entity
+	  null-xml-name-prefix
+	  null-xml-name-prefix?
 	  set-xml-!attlist-definitions!
 	  set-xml-!attlist-name!
 	  set-xml-!element-content-type!
@@ -140,7 +144,6 @@ USA.
 	  set-xml-unparsed-!entity-id!
 	  set-xml-unparsed-!entity-name!
 	  set-xml-unparsed-!entity-notation!
-	  simple-xml-attribute-value?
 	  xml-!attlist-definitions
 	  xml-!attlist-name
 	  xml-!attlist?
@@ -154,6 +157,8 @@ USA.
 	  xml-!notation-name
 	  xml-!notation?
 	  xml-attribute-list?
+	  xml-attribute-namespace-decl?
+	  xml-attribute-value
 	  xml-attribute-value-item?
 	  xml-attribute-value?
 	  xml-attribute?
@@ -196,12 +201,12 @@ USA.
 	  xml-name-simple
 	  xml-name-simple=?
 	  xml-name-string
-	  xml-name-uri
-	  xml-name-uri=?
+	  xml-name-iri
+	  xml-name-iri=?
 	  xml-name=?
 	  xml-name?
-	  xml-namespace-uri-string
-	  xml-namespace-uri?
+	  xml-namespace-iri->string
+	  xml-namespace-iri?
 	  xml-nmtoken?
 	  xml-parameter-!entity-name
 	  xml-parameter-!entity-value
