@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: hashtb.scm,v 1.18 1994/01/29 22:08:15 adams Exp $
+$Id: hashtb.scm,v 1.19 1994/05/30 06:57:54 cph Exp $
 
-Copyright (c) 1990-93 Massachusetts Institute of Technology
+Copyright (c) 1990-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -683,50 +683,6 @@ MIT in each case. |#
 (define-integrable (eq-hash-mod key modulus)
   (fix:remainder (eq-hash key) modulus))
 
-(define (eqv-hash-mod key modulus)
-  (cond ((%bignum? key)
-	 (int-hash-mod key modulus))
-	((%ratnum? key)
-	 (int-hash-mod (%ratnum->integer key) modulus))
-	((flo:flonum? key)
-	 (int-hash-mod (%flonum->integer key) modulus))
-	((%recnum? key)
-	 (int-hash-mod (%recnum->integer key) modulus))
-	(else
-	 (eq-hash-mod key modulus))))
-
-(define (equal-hash-mod key modulus)
-  (int-hash-mod (let loop ((object key))
-		  (cond ((pair? object)
-			 (int:+ (loop (car object))
-				(loop (cdr object))))
-			((vector? object)
-			 (let ((length (vector-length object)))
-			   (do ((i 0 (fix:+ i 1))
-				(accum 0
-				       (int:+ accum
-					      (loop (vector-ref object i)))))
-			       ((fix:= i length) accum))))
-			((cell? object)
-			 (loop (cell-contents object)))
-			((%bignum? object)
-			 object)
-			((%ratnum? object)
-			 (%ratnum->integer object))
-			((flo:flonum? object)
-			 (%flonum->integer object))
-			((%recnum? object)
-			 (%recnum->integer object))
-			((string? object)
-			 (string-hash object))
-			((bit-string? object)
-			 (bit-string->unsigned-integer object))
-			((pathname? object)
-			 (string-hash (->namestring object)))
-			(else
-			 (eq-hash object))))
-		modulus))
-
 (define-integrable (eq-hash object)
   (let ((n
 	 ((ucode-primitive primitive-object-set-type)
@@ -736,6 +692,49 @@ MIT in each case. |#
 	(fix:not n)
 	n)))
 
+(define (eqv-hash-mod key modulus)
+  (int:remainder (eqv-hash key) modulus))
+
+(define (eqv-hash key)
+  (cond ((%bignum? key) (%bignum->nonneg-int key))
+	((%ratnum? key) (%ratnum->nonneg-int key))
+	((flo:flonum? key) (%flonum->nonneg-int key))
+	((%recnum? key) (%recnum->nonneg-int key))
+	(else (eq-hash key))))
+
+(define (equal-hash-mod key modulus)
+  (int:remainder (equal-hash key) modulus))
+
+(define (equal-hash key)
+  (cond ((pair? key)
+	 (int:+ (equal-hash (car key))
+		(equal-hash (cdr key))))
+	((vector? key)
+	 (let ((length (vector-length key)))
+	   (do ((i 0 (fix:+ i 1))
+		(accum 0
+		       (int:+ accum
+			      (equal-hash (vector-ref key i)))))
+	       ((fix:= i length) accum))))
+	((cell? key)
+	 (equal-hash (cell-contents key)))
+	((%bignum? key)
+	 (%bignum->nonneg-int key))
+	((%ratnum? key)
+	 (%ratnum->nonneg-int key))
+	((flo:flonum? key)
+	 (%flonum->nonneg-int key))
+	((%recnum? key)
+	 (%recnum->nonneg-int key))
+	((string? key)
+	 (string-hash key))
+	((bit-string? key)
+	 (bit-string->unsigned-integer key))
+	((pathname? key)
+	 (string-hash (->namestring key)))
+	(else
+	 (eq-hash key))))
+
 (define-integrable (%bignum? object)
   (object-type? (ucode-type big-fixnum) object))
 
@@ -745,27 +744,31 @@ MIT in each case. |#
 (define-integrable (%recnum? object)
   (object-type? (ucode-type recnum) object))
 
-(define-integrable (%ratnum->integer ratnum)
-  (int:+ (system-pair-car ratnum) (system-pair-cdr ratnum)))
+(define-integrable (%bignum->nonneg-int bignum)
+  (int:abs bignum))
 
-(define-integrable (%flonum->integer flonum)
-  (flo:truncate->exact
-   ((ucode-primitive flonum-denormalize 2)
-    (car ((ucode-primitive flonum-normalize 1) flonum))
-    microcode-id/floating-mantissa-bits)))
+(define-integrable (%ratnum->nonneg-int ratnum)
+  (int:abs (int:+ (system-pair-car ratnum) (system-pair-cdr ratnum))))
 
-(define-integrable (%recnum->integer recnum)
-  (let ((%real->integer
+(define-integrable (%flonum->nonneg-int flonum)
+  (int:abs
+   (flo:truncate->exact
+    ((ucode-primitive flonum-denormalize 2)
+     (car ((ucode-primitive flonum-normalize 1) flonum))
+     microcode-id/floating-mantissa-bits))))
+
+(define-integrable (%recnum->nonneg-int recnum)
+  (let ((%real->nonneg-int
 	 (lambda (real)
-	   (cond ((%ratnum? real) (%ratnum->integer real))
-		 ((flo:flonum? real) (%flonum->integer real))
-		 (else real)))))
-    (int:+ (%real->integer (system-pair-car recnum))
-	   (%real->integer (system-pair-cdr recnum)))))
+	   (cond ((%ratnum? real) (%ratnum->nonneg-int real))
+		 ((flo:flonum? real) (%flonum->nonneg-int real))
+		 (else (%bignum->nonneg-int real))))))
+    (int:+ (%real->nonneg-int (system-pair-car recnum))
+	   (%real->nonneg-int (system-pair-cdr recnum)))))
 
-(declare (integrate-operator int-hash-mod))
-(define (int-hash-mod n d)
-  (int:remainder (if (int:negative? n) (int:negate n) n) d))
+(declare (integrate-operator int:abs))
+(define (int:abs n)
+  (if (int:negative? n) (int:negate n) n))
 
 (define (mark-address-hash-tables!)
   (let loop ((previous #f) (tables address-hash-tables))
