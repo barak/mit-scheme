@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.79 2000/05/22 03:32:17 cph Exp $
+;;; $Id: imail-top.scm,v 1.80 2000/05/22 03:49:11 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -180,7 +180,10 @@ May be called with an IMAIL folder URL as argument;
 			      port
 			      (ref-variable imail-default-imap-mailbox)))))))
     (cond ((not protocol)
-	   (let ((folder (selected-folder #f)))
+	   (let ((folder
+		  (buffer-get (chase-imail-buffer (selected-buffer))
+			      'IMAIL-FOLDER
+			      #f)))
 	     (if folder
 		 (folder-url folder)
 		 (do-imap))))
