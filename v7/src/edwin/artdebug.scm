@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/artdebug.scm,v 1.14 1991/11/26 08:02:40 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/artdebug.scm,v 1.15 1991/12/05 16:18:51 markf Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -392,7 +392,7 @@ Use \\[kill-buffer] to quit the debugger."
   (local-set-variable! transcript-buffer-name (current-buffer))
   (local-set-variable! comint-input-ring
 		       (make-ring (ref-variable comint-input-ring-size)))
-  (local-set-variable! transcript-input-recorder
+  (local-set-variable! evaluation-input-recorder
 		       continuation-browser-input-recorder)
   (local-set-variable! transcript-output-wrapper
 		       continuation-browser-output-wrapper))
