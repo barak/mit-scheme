@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.115 2000/05/31 02:10:35 cph Exp $
+;;; $Id: imail-top.scm,v 1.116 2000/06/01 20:09:12 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -123,6 +123,12 @@ This has no effect on file-based folders.
 Set this variable to #F to disable updating."
   600
   (lambda (x) (or (not x) (and (exact-integer? x) (positive? x)))))
+
+(define-variable imail-receive-mime
+  "If true, MIME messages are decoded before being presented.
+Otherwise, all messages are presented as plain text."
+  #t
+  boolean?)
 
 (define-command imail
   "Read and edit incoming mail.
@@ -678,10 +684,14 @@ With prefix argument N moves backward N messages with these flags."
 		   (header-fields->string
 		    (if full-headers?
 			(message-header-fields message)
-			(maybe-reformat-headers message buffer)))
+			(maybe-reformat-headers (message-header-fields message)
+						buffer)))
 		   mark)
 		  (insert-newline mark)
-		  (insert-string (message-body message) mark)
+		  (if (and (ref-variable imail-receive-mime buffer)
+			   (folder-supports-mime? folder))
+		      (insert-mime-message-body message mark)
+		      (insert-string (message-body message) mark))
 		  (guarantee-newline mark))
 		(insert-string "[This folder has no messages in it.]" mark))
 	    (mark-temporary! mark))
@@ -691,6 +701,81 @@ With prefix argument N moves backward N messages with these flags."
     (if message
 	(message-seen message))
     (folder-event folder 'SELECT-MESSAGE message)))
+
+(define (insert-mime-message-body message mark)
+  (insert-mime-message-part message
+			    (message-mime-body-structure message)
+			    '()
+			    mark))
+
+(define-generic insert-mime-message-part (message body selector mark))
+
+(define-method insert-mime-message-part
+    (message (body <mime-body-multipart>) selector mark)
+  (let ((parts (mime-body-multipart-parts body)))
+    (if (eq? (mime-body-subtype body) 'ALTERNATIVE)
+	(insert-mime-message-part message (car parts) `(,@selector 0) mark)
+	(do ((parts parts (cdr parts))
+	     (i 0 (fix:+ i 1)))
+	    ((null? parts))
+	  (if (fix:> i 0)
+	      (insert-mime-message-separator mark))
+	  (insert-mime-message-part message (car parts) `(,@selector ,i)
+				    mark)))))
+
+(define (insert-mime-message-separator mark)
+  (insert-string "\n----------------------------------------\n\n" mark))
+
+(define-method insert-mime-message-part
+    (message (body <mime-body-text>) selector mark)
+  (let ((text
+	 (if (null? selector)
+	     (message-body message)
+	     (message-mime-body-part message selector))))
+    (if (let ((charset
+	       (let ((entry (assq 'CHARSET (mime-body-parameters body))))
+		 (if entry
+		     (cdr entry)
+		     "us-ascii"))))
+	  (or (string-ci=? charset "us-ascii")
+	      (re-string-match "^iso-8859-[0-9]+$" charset #t)))
+	(begin
+	  (case (mime-body-one-part-encoding body)
+	    ((QUOTED-PRINTABLE)
+	     (insert-string (decode-quoted-printable-string text) mark))
+	    ((BASE64)
+	     (call-with-values (lambda () (decode-base64-text-string text #f))
+	       (lambda (decoded-text pending-return?)
+		 (insert-string decoded-text mark)
+		 (if pending-return?
+		     (insert-char #\return mark)))))
+	    (else
+	     (insert-string text mark)))
+	  (guarantee-newline mark))
+	(insert-mime-message-binary message body selector mark))))
+
+(define-method insert-mime-message-part
+    (message (body <mime-body-message>) selector mark)
+  (insert-string
+   (header-fields->string
+    (maybe-reformat-headers
+     (string->header-fields
+      (message-mime-body-part message `(,@selector HEADER)))
+     mark))
+   mark)
+  (insert-newline mark)
+  (insert-mime-message-part message
+			    (mime-body-message-body body)
+			    selector
+			    mark))
+
+(define-method insert-mime-message-part
+    (message (body <mime-body>) selector mark)
+  (insert-mime-message-binary message body selector mark))
+
+(define (insert-mime-message-binary message body selector mark)
+  message body selector
+  (insert-string "[** ATTACHMENT **]\n" mark))
 
 (define (associate-imail-with-buffer buffer folder message)
   (without-interrupts
@@ -897,27 +982,26 @@ With prefix argument N moves backward N messages with these flags."
 		      " 0/0"))
 		""))))))
 
-(define (maybe-reformat-headers message buffer)
+(define (maybe-reformat-headers headers buffer)
   (let ((headers
-	 (let ((headers (message-header-fields message)))
-	   (cond ((ref-variable imail-kept-headers buffer)
-		  => (lambda (regexps)
-		       (append-map!
-			(lambda (regexp)
-			  (list-transform-positive headers
-			    (lambda (header)
-			      (re-string-match regexp
-					       (header-field-name header)
-					       #t))))
-			regexps)))
-		 ((ref-variable imail-ignored-headers buffer)
-		  => (lambda (regexp)
-		       (list-transform-negative headers
-			 (lambda (header)
-			   (re-string-match regexp
-					    (header-field-name header)
-					    #t)))))
-		 (else headers))))
+	 (cond ((ref-variable imail-kept-headers buffer)
+		=> (lambda (regexps)
+		     (append-map!
+		      (lambda (regexp)
+			(list-transform-positive headers
+			  (lambda (header)
+			    (re-string-match regexp
+					     (header-field-name header)
+					     #t))))
+		      regexps)))
+	       ((ref-variable imail-ignored-headers buffer)
+		=> (lambda (regexp)
+		     (list-transform-negative headers
+		       (lambda (header)
+			 (re-string-match regexp
+					  (header-field-name header)
+					  #t)))))
+	       (else headers)))
 	(filter (ref-variable imail-message-filter buffer)))
     (if filter
 	(map (lambda (n.v)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: load.scm,v 1.12 2000/05/30 20:21:52 cph Exp $
+;;; $Id: load.scm,v 1.13 2000/06/01 20:10:21 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -90,6 +90,7 @@
 	    edwin-variable$imail-mode-hook
 	    edwin-variable$imail-pass-phrase-retention-time
 	    edwin-variable$imail-primary-folder
+	    edwin-variable$imail-receive-mime
 	    edwin-variable$imail-reply-with-re
 	    edwin-variable$imail-summary-highlight-message
 	    edwin-variable$imail-summary-mode-hook
