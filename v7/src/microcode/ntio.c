@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntio.c,v 1.28 2003/03/29 05:35:49 cph Exp $
+$Id: ntio.c,v 1.29 2003/04/07 19:49:26 cph Exp $
 
 Copyright 1993,1997,1998,2000,2001,2003 Massachusetts Institute of Technology
 
@@ -694,8 +694,8 @@ struct select_registry_s
   unsigned int n_channels;
   unsigned int length;
   Tchannel * channels;
-  unsigned int * qmodes;
-  unsigned int * rmodes;
+  unsigned char * qmodes;
+  unsigned char * rmodes;
 };
 
 select_registry_t
@@ -706,8 +706,8 @@ OS_allocate_select_registry (void)
   (r -> n_channels) = 0;
   (r -> length) = 16;
   (r -> channels) = (OS_malloc ((sizeof (Tchannel)) * (r -> length)));
-  (r -> qmodes) = (OS_malloc ((sizeof (unsigned int)) * (r -> length)));
-  (r -> rmodes) = (OS_malloc ((sizeof (unsigned int)) * (r -> length)));
+  (r -> qmodes) = (OS_malloc ((sizeof (unsigned char)) * (r -> length)));
+  (r -> rmodes) = (OS_malloc ((sizeof (unsigned char)) * (r -> length)));
   return (r);
 }
 
@@ -719,6 +719,24 @@ OS_deallocate_select_registry (select_registry_t registry)
   OS_free (r -> qmodes);
   OS_free (r -> channels);
   OS_free (r);
+}
+
+static void
+resize_select_registry (select_registry_s * r, int growp)
+{
+  if (growp)
+    (r -> length) *= 2;
+  else
+    (r -> length) /= 2;
+  (r -> channels)
+    = (OS_realloc ((r -> channels),
+		   ((sizeof (Tchannel)) * (r -> length))));
+  (r -> qmodes)
+    = (OS_realloc ((r -> qmodes),
+		   ((sizeof (unsigned char)) * (r -> length))));
+  (r -> rmodes)
+    = (OS_realloc ((r -> rmodes),
+		   ((sizeof (unsigned char)) * (r -> length))));
 }
 
 void
@@ -739,12 +757,7 @@ OS_add_to_select_registry (select_registry_t registry, int fd,
       i += 1;
     }
   if (i == (r -> length))
-    {
-      (r -> length) *= 2;
-      (r -> channels) = (OS_realloc ((r -> channels), (r -> length)));
-      (r -> qmodes) = (OS_realloc ((r -> qmodes), (r -> length)));
-      (r -> rmodes) = (OS_realloc ((r -> rmodes), (r -> length)));
-    }
+    resize_select_registry (r, 1);
   ((r -> channels) [i]) = channel;
   ((r -> qmodes) [i]) = mode;
   (r -> n_channels) += 1;
@@ -781,12 +794,7 @@ OS_remove_from_select_registry (select_registry_t registry, int fd,
   (r -> n_channels) -= 1;
 
   if (((r -> length) > 16) && ((r -> n_channels) < ((r -> length) / 2)))
-    {
-      (r -> length) /= 2;
-      (r -> channels) = (OS_realloc ((r -> channels), (r -> length)));
-      (r -> qmodes) = (OS_realloc ((r -> qmodes), (r -> length)));
-      (r -> rmodes) = (OS_realloc ((r -> rmodes), (r -> length)));
-    }
+    resize_select_registry (r, 0);
 }
 
 unsigned int
