@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: filcom.scm,v 1.183 1995/01/23 20:05:29 cph Exp $
+;;;	$Id: filcom.scm,v 1.184 1995/02/24 00:30:27 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -237,7 +237,6 @@ invocation."
 		(begin
 		  (message "Ignoring bad evaluation environment: "
 			   (cadr entry))
-		  (editor-beep)
 		  (define-variable-local-value! buffer
 		      (ref-variable-object scheme-syntax-table)
 		    'DEFAULT))
