@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: wincom.scm,v 1.116 1994/03/08 20:23:59 cph Exp $
+;;;	$Id: wincom.scm,v 1.117 1994/03/11 05:22:42 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -315,6 +315,14 @@ ARG lines.  No arg means split equally."
     (disallow-typein)
     (window-grow-vertically! (current-window) (- argument))))
 
+(define-command shrink-window-if-larger-than-buffer
+  "Shrink the WINDOW to be as small as possible to display its contents.
+Do nothing if the buffer contains more lines than the present window height,
+or if some of the window's contents are scrolled out of view,
+or if the window is the only window of its frame."
+  ()
+  (lambda () (shrink-window-if-larger-than-buffer (current-window))))
+
 (define-command enlarge-window-horizontally
   "Makes current window ARG columns wider."
   "p"
@@ -343,14 +351,12 @@ ARG lines.  No arg means split equally."
 (define-command delete-other-windows
   "Make the current window fill the screen."
   ()
-  (lambda ()
-    (delete-other-windows (current-window))))
+  (lambda () (delete-other-windows (current-window))))
 
 (define-command other-window
   "Select the ARG'th different window."
   "p"
-  (lambda (argument)
-    (select-window (other-window-interactive argument))))
+  (lambda (argument) (select-window (other-window-interactive argument))))
 
 (define (other-window-interactive n)
   (let ((window
@@ -406,6 +412,21 @@ ARG lines.  No arg means split equally."
 	       screen)
 	     (make-screen buffer))))
       (editor-error "Display doesn't support multiple screens")))
+
+(define (shrink-window-if-larger-than-buffer window)
+  (if (not (window-has-no-neighbors? window))
+      (let ((buffer (window-buffer window)))
+	(if (and (window-mark-visible? window (buffer-start buffer))
+		 (window-mark-visible? window (buffer-end buffer)))
+	    (let ((min-height
+		   (+ (window-mark->y window (buffer-end buffer)) 1))
+		  (height (window-y-size window)))
+	      (if (< 0 min-height height)
+		  (with-variable-value! (ref-variable-object window-min-height)
+		    1
+		    (lambda ()
+		      (window-grow-vertically! window
+					       (- min-height height))))))))))
 
 ;;;; Pop-up Buffers
 
