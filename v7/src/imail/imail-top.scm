@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.229 2001/01/06 02:37:02 cph Exp $
+;;; $Id: imail-top.scm,v 1.230 2001/01/24 04:29:09 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -2363,7 +2363,7 @@ Negative argument means search in reverse."
 				      selector))))))))
 
 (define (attach-mime-info start end info)
-  (region-put! start end 'IMAIL-MIME-INFO info)
+  (region-put! start end 'IMAIL-MIME-INFO info #t)
   (set-region-local-comtabs!
    (make-region start end)
    (let ((comtab (make-comtab)))
