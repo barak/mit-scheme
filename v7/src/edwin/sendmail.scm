@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sendmail.scm,v 1.8 1991/05/07 03:21:16 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sendmail.scm,v 1.9 1991/05/08 22:47:55 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -384,14 +384,17 @@ and don't delete any header fields."
 	      (mark1+ (re-match-start 0))
 	      end)))
 	(mail-yank-ignored-headers (ref-variable mail-yank-ignored-headers)))
-    (do ()
-	((not (re-search-forward mail-yank-ignored-headers start end true)))
-      (move-mark-to! start (re-match-start 0))
-      (delete-string
-       start
-       (if (re-search-forward "^[^ \t]" (line-end start 0) end false)
-	   (re-match-start 0)
-	   end)))
+    (with-text-clipped start end
+      (lambda ()
+	(do ()
+	    ((not
+	      (re-search-forward mail-yank-ignored-headers start end true)))
+	  (move-mark-to! start (re-match-start 0))
+	  (delete-string
+	   start
+	   (if (re-search-forward "^[^ \t]" (line-end start 0) end false)
+	       (re-match-start 0)
+	       end)))))
     (mark-temporary! start)
     (mark-temporary! end)))
 
