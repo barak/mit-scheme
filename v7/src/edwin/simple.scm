@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/simple.scm,v 1.27 1989/04/15 00:53:03 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/simple.scm,v 1.28 1989/04/25 02:04:27 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
@@ -66,6 +66,15 @@
 	   (group-insert-substring! (mark-group point) (mark-index point)
 				    (make-string n #\newline) 0 n)))))
 
+(define (guarantee-newline #!optional point)
+  (let ((point (if (default-object? point) (current-point) point)))
+    (if (not (line-start? point))
+	(insert-newline point))))
+
+(define (guarantee-newlines n #!optional point)
+  (let ((point (if (default-object? point) (current-point) point)))
+    (insert-newlines (if (line-start? point) (-1+ n) n) point)))
+
 (define (extract-left-char #!optional point)
   (let ((point (if (default-object? point) (current-point) point)))
     (let ((group (mark-group point))
@@ -104,7 +113,7 @@
   (let ((point (if (default-object? point) (current-point) point)))
     (group-insert-substring! (mark-group point) (mark-index point)
 			     string start end)))
-
+
 (define (extract-string mark #!optional point)
   (let ((point (if (default-object? point) (current-point) point)))
     (let ((group (mark-group mark))
@@ -115,7 +124,7 @@
       (if (< index1 index2)
 	  (group-extract-string group index1 index2)
 	  (group-extract-string group index2 index1)))))
-
+
 (define (delete-string mark #!optional point)
   (let ((point (if (default-object? point) (current-point) point)))
     (let ((group (mark-group mark))
