@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.120 1991/11/04 20:50:53 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.121 1991/11/06 22:45:48 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -131,7 +131,7 @@ Type `h' after entering dired for more info."
     (select-buffer-other-window (make-dired-buffer directory))))
 
 (define (make-dired-buffer directory)
-  (let ((directory (->pathname directory)))
+  (let ((directory (pathname-simplify directory)))
     (let ((buffer (get-dired-buffer directory)))
       (set-buffer-major-mode! buffer (ref-mode-object dired))
       (set-buffer-default-directory! buffer (directory-pathname directory))
