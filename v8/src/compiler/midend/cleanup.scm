@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cleanup.scm,v 1.21 1995/07/06 20:23:37 adams Exp $
+$Id: cleanup.scm,v 1.22 1995/07/24 17:38:03 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -337,6 +337,72 @@ MIT in each case. |#
   (careful-binary (make-primitive-procedure 'QUOTIENT) careful/quotient)
   (careful-binary (make-primitive-procedure 'REMAINDER) careful/remainder)
 )
+
+;; Fixnum algebraic rewrites
+;;
+;; (+ (+ x a) b)  =>  (+ x (+ a b))
+;; (+ a x) => (+ x a)
+;; (- x a) => (+ x -a)
+;; (+ (+ x a) (+ y b)) => (+ (+ x y) (+ a b))
+
+(let ()
+  (define (constant-case op value1 value2) ; OP should be overflow-save
+    (and (fixnum? value1)
+	 (fixnum? value2)
+	 (let ((result (op value1 value2)))
+	   (and (fixnum? result)
+		`(QUOTE ,result)))))
+
+  (define (call-of? op form)
+    (and (CALL/? form)
+	 (QUOTE/? (call/operator form))
+	 (eq? (quote/text (call/operator form)) op)))
+
+  (define (define-commutative-cleanup-rewrite fix-op #!optional test-op)
+    (let ((test-op (if (default-object? test-op) fix-op test-op)))
+      (define-cleanup-rewrite fix-op 2
+	(lambda (expr1 expr2)
+	  (let ((value1 (form/number? expr1))
+		(value2 (form/number? expr2)))
+	    (cond ((constant-case test-op value1 value2))
+		  ((and (call-of? fix-op expr1)
+			(constant-case test-op value2
+				       (form/number? (call/operand2 expr1))))
+		   ;; (op (op x c) d) => (op x (op c d))
+		   => (lambda (result)
+			`(CALL ',fix-op '#F ,(call/operand1 expr1) ,result)))
+		  ((and (call-of? fix-op expr1)
+			(call-of? fix-op expr2)
+			(constant-case test-op
+				       (form/number? (call/operand2 expr1))
+				       (form/number? (call/operand2 expr2))))
+		   ;; (op (op x a) (op y b)) => (op (op x y) (op a b))
+		   => (lambda (result)
+			`(CALL ',fix-op
+			       '#F
+			       (CALL ',fix-op
+				     '#F
+				     ,(call/operand1 expr1)
+				     ,(call/operand1 expr2))
+			       ,result)))
+		  ((and value1 (not value2)) ; (op c x) => (op x c)
+		   `(CALL ',fix-op '#F ,expr2 ,expr1))
+		  (else #F)))))))
+
+  (define-cleanup-rewrite fix:- 2
+    (lambda (expr1 expr2)
+      (let ((value1 (form/number? expr1))
+	    (value2 (form/number? expr2)))
+	(cond ((constant-case - value1 value2))
+	      ((and (fixnum? value2) (fixnum? (- value2)))
+	       `(CALL ',fix:+ '#F ,expr1 ',(- value2)))
+	      (else #F)))))
+
+  (define-commutative-cleanup-rewrite fix:and)
+  (define-commutative-cleanup-rewrite fix:or)
+  (define-commutative-cleanup-rewrite fix:xor)
+  (define-commutative-cleanup-rewrite fix:+ +)
+  (define-commutative-cleanup-rewrite fix:* *))
 
 ;;
 (let ((NOT-primitive  (make-primitive-procedure 'NOT)))
