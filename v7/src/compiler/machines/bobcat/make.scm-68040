@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.23 1987/06/13 20:49:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.24 1987/06/13 21:08:57 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -50,7 +50,7 @@ MIT in each case. |#
       (define :files)
 
 ;      (parse-rcs-header
-;       "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.23 1987/06/13 20:49:35 cph Exp $"
+;       "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.24 1987/06/13 21:08:57 cph Exp $"
 ;       (lambda (filename version date time zone author state)
 ;	 (set! :version (car version))
 ;	 (set! :modification (cadr version))))
@@ -131,7 +131,9 @@ MIT in each case. |#
 		 ))
 
 	 (cons lap-generator-package
-	       '("back-end/lapgen.bin"	;LAP generator.
+	       '("back-end/lapgn1.bin"	;LAP generator.
+		 "back-end/lapgn2.bin"
+		 "back-end/lapgn3.bin"
 		 ))
 
 	 (cons (access register-allocator-package lap-generator-package)
@@ -140,6 +142,10 @@ MIT in each case. |#
 
 	 (cons lap-generator-package
 	       '("machines/bobcat/lapgen.bin" ;code generation rules.
+		 "machines/bobcat/rules1.bin"
+		 "machines/bobcat/rules2.bin"
+		 "machines/bobcat/rules3.bin"
+		 "machines/bobcat/rules4.bin"
 		 ))
 
 
