@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sendmail.scm,v 1.13 1992/01/24 00:34:28 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sendmail.scm,v 1.14 1992/08/18 22:10:54 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -54,7 +54,10 @@
 (define-variable mail-default-reply-to
   "Address to insert as default Reply-to field of outgoing messages."
   false
-  string-or-false?)
+  (lambda (object)
+    (or (not object)
+	(string? object)
+	(procedure? object))))
 
 (define-variable mail-self-blind
   "True means insert BCC to self in messages to be sent.
@@ -194,11 +197,15 @@ is inserted."
 	(insert-string subject point))
     (insert-newline point)
     (let ((mail-default-reply-to (ref-variable mail-default-reply-to)))
-      (if mail-default-reply-to
-	  (begin
-	    (insert-string "Reply-to: " point)
-	    (insert-string mail-default-reply-to point)
-	    (insert-newline point))))
+      (let ((mail-default-reply-to
+	     (if (procedure? mail-default-reply-to)
+		 (mail-default-reply-to)
+		 mail-default-reply-to)))
+	(if (string? mail-default-reply-to)
+	    (begin
+	      (insert-string "Reply-to: " point)
+	      (insert-string mail-default-reply-to point)
+	      (insert-newline point)))))
     (let ((mail-header-function (ref-variable mail-header-function)))
       (if mail-header-function
 	  (mail-header-function point)))
