@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/instr1.scm,v 1.3 1987/08/18 19:17:01 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/instr1.scm,v 1.4 1987/08/19 04:40:53 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -145,12 +145,12 @@ opcodes are
 
 (define-instruction BUG
   ((W (? message))
-   (BYTE (16 #xFEFF)
-	 (16 message)))
+   (BYTE (16 #xFEFF))
+   (BYTE (16 message)))
 
   ((L (? message))
-   (BYTE (16 #xFDFF)
-	 (32 message))))
+   (BYTE (16 #xFDFF))
+   (BYTE (32 message))))
 
 (define-trivial-instruction HALT #x00)
 
