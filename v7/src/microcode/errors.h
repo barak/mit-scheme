@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/errors.h,v 9.36 1991/01/24 04:32:01 cph Exp $ */
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/errors.h,v 9.37 1991/01/24 04:40:51 cph Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
