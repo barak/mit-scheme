@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: typedb.scm,v 1.6 1995/11/05 14:25:35 adams Exp $
+$Id: typedb.scm,v 1.7 1996/07/20 18:30:14 adams Exp $
 
-Copyright (c) 1995 Massachusetts Institute of Technology
+Copyright (c) 1996 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,21 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Types of known operators
+;;
+;; Note: this table is the initial table of type behaviours.  typerew has
+;; lots of its own tables, especially for numerical operations.
+;; typerew uses this information to pad out its own tables.
+;;
+;; Remember that global procedures need to be integrated as
+;;   (access NAME system-blocbal-environment)
+;; for this info to be used.
+
+;; NOTE: we need to think of what to do for #!optionals and how typerew
+;; could be made to use the info.  The simplest but least refined
+;; option is just encode #!optionals as a rest list of type:any.  At
+;; least typerew could be made to work with the mandatory argument and
+;; return types.
+
 ;;; package: (compiler midend)
 
 (declare (usual-integrations))
@@ -45,18 +60,36 @@ MIT in each case. |#
   (procedure-type (list type:symbol) type:string
 		  'effect effect:allocation))
 
+;; string * string -> bool  predicates
+
+(for-each
+    (lambda (name)
+      (define-operator-type name
+	(procedure-type (list type:string type:string) type:boolean
+			'effect-sensitive effect:string-set!)))
+  '(STRING<?    STRING=?    STRING>?    STRING<=?    STRING>=?
+    STRING-CI<? STRING-CI=? STRING-CI>? STRING-CI<=? STRING-CI>=?))
+
 (define-operator-type 'SUBSTRING?
-  (procedure-type (list type:string type:string) type:boolean
+  (procedure-type (list type:string type:string)
+		  (type:or type:false type:fixnum>=0)
 		  'effect-sensitive effect:string-set!))
 
-(define-operator-type 'ERROR
-  ;; return type empty => Never returns 
-  (procedure-type (cons* type:any type:any) type:empty
-		  'function))
+
+;; The following error:* procedures have return type empty, which means
+;; the procedure never returns.  This is only true if there are no
+;; restarts for the relevant error conditions.
 
 (define-operator-type 'ERROR:WRONG-TYPE-ARGUMENT
-  ;; return type empty => Never returns 
   (procedure-type (list type:any type:any type:any) type:empty
+		  'function))
+
+(define-operator-type 'ERROR:WRONG-TYPE-DATUM
+  (procedure-type (list type:any type:any) type:empty
+		  'function))
+
+(define-operator-type 'ERROR:BAD-RANGE-ARGUMENT
+  (procedure-type (list type:any type:any) type:empty
 		  'function))
 
 (define-operator-type 'EXACT->INEXACT
@@ -77,6 +110,11 @@ MIT in each case. |#
 (define-operator-type 'TRUNCATE->EXACT
   (procedure-type (list type:number) type:exact-integer 'function))
 
+(define-operator-type (make-primitive-procedure 'CONS)
+  (primitive-procedure-type (list type:any type:any) type:pair
+			    'effect-insensitive
+			    'effect effect:allocation))
+
 (define-operator-type (make-primitive-procedure 'CAR)
   (primitive-procedure-type (list type:pair) type:any
 			    'effect-free
@@ -100,6 +138,13 @@ MIT in each case. |#
 (define-operator-type (make-primitive-procedure 'SYSTEM-VECTOR-SIZE)
   (primitive-procedure-type (list type:any) type:vector-length
 			    'function))
+
+;; Note: before the VECTOR definition is useful, we need to change typerew to
+;; handle rest lists:
+(define-operator-type (make-primitive-procedure 'VECTOR)
+  (primitive-procedure-type type:any type:vector
+			    'effect-insensitive
+			    'effect effect:allocation))
 
 (define-operator-type (make-primitive-procedure 'VECTOR-LENGTH)
   (primitive-procedure-type (list type:vector) type:vector-length
@@ -129,7 +174,7 @@ MIT in each case. |#
 
 
 ;;; MIT Scheme charatcers have a 7 code-bits + 5 bucky-bits encoding,
-;;; hence some results are fix in bytes:
+;;; hence some results will fit in bytes:
 
 (define-operator-type (make-primitive-procedure 'CHAR-CODE)
   (primitive-procedure-type (list type:character) type:unsigned-byte
