@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.35 1992/09/14 20:14:31 cph Exp $
+;;;	$Id: xterm.scm,v 1.36 1992/11/20 18:24:55 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -115,7 +115,9 @@
   (xterm false read-only true)
   (display false read-only true)
   (redisplay-flag true)
-  (selected? true))
+  (selected? true)
+  (name false)
+  (icon-name false))
 
 (define screen-list)
 
@@ -152,9 +154,16 @@
 			(xterm-y-size xterm)))))
     (set! screen-list (cons screen screen-list))
     screen))
-
+
 (define-integrable (screen-xterm screen)
   (xterm-screen-state/xterm (screen-state screen)))
+
+(define (xterm->screen xterm)
+  (let loop ((screens screen-list))
+    (and (not (null? screens))
+	 (if (eq? xterm (screen-xterm (car screens)))
+	     (car screens)
+	     (loop (cdr screens))))))
 
 (define-integrable (screen-display screen)
   (xterm-screen-state/display (screen-state screen)))
@@ -171,29 +180,94 @@
 (define-integrable (set-screen-selected?! screen selected?)
   (set-xterm-screen-state/selected?! (screen-state screen) selected?))
 
-(define (xterm->screen xterm)
-  (let loop ((screens screen-list))
-    (and (not (null? screens))
-	 (if (eq? xterm (screen-xterm (car screens)))
-	     (car screens)
-	     (loop (cdr screens))))))
+(define-integrable (screen-name screen)
+  (xterm-screen-state/name (screen-state screen)))
+
+(define-integrable (set-screen-name! screen name)
+  (set-xterm-screen-state/name! (screen-state screen) name))
+
+(define (xterm-screen/set-name screen name)
+  (let ((name* (screen-name screen)))
+    (if (or (not name*) (not (string=? name name*)))
+	(begin
+	  (set-screen-name! screen name)
+	  (x-window-set-name (screen-xterm screen) name)))))
+
+(define-integrable (screen-icon-name screen)
+  (xterm-screen-state/icon-name (screen-state screen)))
+
+(define-integrable (set-screen-icon-name! screen name)
+  (set-xterm-screen-state/icon-name! (screen-state screen) name))
+
+(define (xterm-screen/set-icon-name screen name)
+  (let ((name* (screen-icon-name screen)))
+    (if (or (not name*) (not (string=? name name*)))
+	(begin
+	  (set-screen-icon-name! screen name)
+	  (x-window-set-icon-name (screen-xterm screen) name)))))
 
 (define (xterm-screen/wrap-update! screen thunk)
-  (dynamic-wind
-   (lambda ()
-     (xterm-enable-cursor (screen-xterm screen) false))
-   thunk
-   (lambda ()
-     (if (screen-selected? screen)
-	 (let ((xterm (screen-xterm screen)))
-	   (xterm-enable-cursor xterm true)
-	   (xterm-draw-cursor xterm)))
-     (if (screen-redisplay-flag screen)
-	 (begin
-	   (update-xterm-screen-names! screen)
-	   (set-screen-redisplay-flag! screen false)))
-     (xterm-screen/flush! screen))))
+  (let ((finished? false))
+    (dynamic-wind
+     (lambda ()
+       (xterm-enable-cursor (screen-xterm screen) false))
+     (lambda ()
+       (let ((result (thunk)))
+	 (set! finished? result)
+	 result))
+     (lambda ()
+       (if (screen-selected? screen)
+	   (let ((xterm (screen-xterm screen)))
+	     (xterm-enable-cursor xterm true)
+	     (xterm-draw-cursor xterm)))
+       (if (and finished? (screen-redisplay-flag screen))
+	   (begin
+	     (update-xterm-screen-names! screen)
+	     (set-screen-redisplay-flag! screen false)))
+       (xterm-screen/flush! screen)))))
 
+(define (update-xterm-screen-names! screen)
+  (let ((window
+	 (if (and (selected-screen? screen) (within-typein-edit?))
+	     (typein-edit-other-window)
+	     (screen-selected-window screen))))
+    (let ((buffer (window-buffer window))
+	  (update-name
+	   (lambda (set-name format length)
+	     (if format
+		 (set-name
+		  screen
+		  (string-trim-right
+		   (format-modeline-string window format length)))))))
+      (update-name xterm-screen/set-name
+		   (ref-variable x-screen-name-format buffer)
+		   (ref-variable x-screen-name-length buffer))
+      (update-name xterm-screen/set-icon-name
+		   (ref-variable x-screen-icon-name-format buffer)
+		   (ref-variable x-screen-icon-name-length buffer)))))
+
+(define-variable x-screen-name-format
+  "If not false, template for displaying X window name.
+Has same format as `mode-line-format'."
+  'mode-line-buffer-identification)
+
+(define-variable x-screen-name-length
+  "Maximum length of X window name.
+Used only if `x-screen-name-format' is non-false."
+  64
+  exact-nonnegative-integer?)
+
+(define-variable x-screen-icon-name-format
+  "If not false, template for displaying X window icon name.
+Has same format as `mode-line-format'."
+  "edwin")
+
+(define-variable x-screen-icon-name-length
+  "Maximum length of X window icon name.
+Used only if `x-screen-icon-name-format' is non-false."
+  32
+  exact-nonnegative-integer?)
+
 (define (xterm-screen/discard! screen)
   (set! screen-list (delq! screen screen-list))
   (x-close-window (screen-xterm screen)))

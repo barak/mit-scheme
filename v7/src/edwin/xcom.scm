@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xcom.scm,v 1.8 1992/03/26 22:29:37 cph Exp $
+;;;	$Id: xcom.scm,v 1.9 1992/11/20 18:24:46 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -52,11 +52,9 @@
   (x-window-set-cursor-color 2)
   (x-window-set-font 2)
   (x-window-set-foreground-color 2)
-  (x-window-set-icon-name 2)
   (x-window-set-internal-border-width 2)
   (x-window-set-mouse-color 2)
   (x-window-set-mouse-shape 2)
-  (x-window-set-name 2)
   (x-window-set-position 3)
   (x-window-set-size 3)
   (xterm-x-size 1)
@@ -141,53 +139,14 @@
 Useful only if `x-screen-name-format' is false."
   "sSet X window name"
   (lambda (name)
-    (x-window-set-name (current-xterm) name)))
+    (xterm-screen/set-name (selected-screen) name)))
 
 (define-command x-set-icon-name
   "Set X window icon name to NAME.
 Useful only if `x-screen-icon-name-format' is false."
   "sSet X window icon name"
   (lambda (name)
-    (x-window-set-icon-name (current-xterm) name)))
-
-(define-variable x-screen-name-format
-  "If not false, template for displaying X window name.
-Has same format as `mode-line-format'."
-  'mode-line-buffer-identification)
-
-(define-variable x-screen-icon-name-format
-  "If not false, template for displaying X window icon name.
-Has same format as `mode-line-format'."
-  "edwin")
-
-(define-variable x-screen-icon-name-length
-  "Maximum length of X window icon name.
-Used only if `x-screen-icon-name-format' is non-false."
-  32)
-
-(define (update-xterm-screen-names! screen)
-  (let ((window
-	 (if (and (selected-screen? screen) (within-typein-edit?))
-	     (typein-edit-other-window)
-	     (screen-selected-window screen)))
-	(xterm (screen-xterm screen)))
-    (let ((update-name
-	   (lambda (set-name variable length)
-	     (let ((format
-		    (variable-local-value (window-buffer window) variable)))
-	       (if format
-		   (set-name
-		    xterm
-		    (string-trim-right
-		     (format-modeline-string window format length))))))))
-      (update-name x-window-set-name
-		   (ref-variable-object x-screen-name-format)
-		   (screen-x-size screen))
-      (update-name x-window-set-icon-name
-		   (ref-variable-object x-screen-icon-name-format)
-		   (variable-local-value
-		    (window-buffer window)
-		    (ref-variable-object x-screen-icon-name-length))))))
+    (xterm-screen/set-icon-name (selected-screen) name)))
 
 (define-command x-raise-screen
   "Raise the editor screen so that it is not obscured by other X windows."
