@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.c,v 1.10 1992/02/03 23:44:05 jinx Exp $
+$Id: ux.c,v 1.11 1993/02/18 05:15:19 gjr Exp $
 
-Copyright (c) 1990-1992 Massachusetts Institute of Technology
+Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -551,3 +551,72 @@ DEFUN (UX_sigsuspend, (set), CONST sigset_t * set)
 
 #endif /* HAVE_BSD_SIGNALS */
 #endif /* not _POSIX */
+
+#ifdef EMULATE_SYSCONF
+
+long
+DEFUN (sysconf, (parameter), int parameter)
+{
+  switch (parameter)
+  {
+    case _SC_CLK_TCK:
+#ifdef CLK_TCK
+      return ((long) (CLK_TCK));
+#else
+#ifdef HZ
+      return ((long) HZ);
+#else
+      return (60);
+#endif /* HZ */
+#endif /* CLK_TCK */
+
+    case _SC_OPEN_MAX:
+#ifdef OPEN_MAX
+      return ((long) OPEN_MAX);
+#else
+#ifdef _NFILE
+      return ((long) _NFILE);
+#else
+      return ((long) 16);
+#endif /* _NFILE */
+#endif /* OPEN_MAX */
+
+    case _SC_CHILD_MAX:
+#ifdef CHILD_MAX
+      return ((long) CHILD_MAX);
+#else
+      return ((long) 6);
+#endif /* CHILD_MAX */
+
+    case _SC_JOB_CONTROL:
+#if defined(_POSIX_JOB_CONTROL) || defined(HAVE_BSD_JOB_CONTROL)
+      return ((long) 1);
+#else
+      return ((long) 0);
+#endif
+
+    default:
+      errno = EINVAL;
+      return ((long) (-1));
+  }
+}
+
+#endif /* EMULATE_SYSCONF */
+
+#ifdef EMULATE_FPATHCONF
+
+long
+DEFUN (fpathconf, (filedes, parameter), int filedes AND int parameter)
+{
+  switch (parameter)
+  {
+    case _PC_VDISABLE:
+      return ((long) '\377');
+
+    default:
+      errno = EINVAL;
+      return ((long) (-1));
+  }
+}
+
+#endif /* EMULATE_FPATHCONF */

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.41 1993/02/14 23:03:51 gjr Exp $
+$Id: ux.h,v 1.42 1993/02/18 05:14:28 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -43,7 +43,9 @@ MIT in each case. */
 #include "ansidecl.h"
 #include "posixtype.h"
 
-#include <sys/times.h>
+#ifndef _POSIX			/* Prevent multiple inclusion */
+# include <sys/times.h>
+#endif /* _POSIX */
 #include <sys/file.h>
 #include <sys/param.h>
 #include <sys/stat.h>
@@ -60,7 +62,13 @@ MIT in each case. */
 extern int errno;
 
 /* These seem to be missing from versions of unistd.h */
-extern int EXFUN (ioctl, (int, int, ...));
+
+#ifndef _HPUX
+/* <unistd.h> in HP-UX has mis-matching prototype 
+   The following is as specified by OSF/1 Programmer's reference.
+ */
+extern int EXFUN (ioctl, (int, unsigned long, ...));
+#endif
 extern int EXFUN (open, (const char *, int, ...));
 extern int EXFUN (kill, (pid_t, int));
 
@@ -179,6 +187,14 @@ extern void EXFUN (error_system_call, (int code, enum syscall_names name));
 #ifdef __osf__
 #  include <sys/time.h>
 #  include <sys/ioctl.h>
+#  define SYSTEM_VARIANT "OSF"
+#endif
+
+#ifdef __386BSD__
+#  include <sys/ioctl.h>
+#  define EMULATE_FPATHCONF
+#  define EMULATE_SYSCONF
+#  define NO_BAUD_CONVERSION
 #endif
 
 #ifdef sonyrisc
@@ -772,7 +788,13 @@ extern char * EXFUN (getlogin, (void));
 extern PTR EXFUN (malloc, (unsigned int size));
 extern PTR EXFUN (realloc, (PTR ptr, unsigned int size));
 extern char * EXFUN (getenv, (CONST char * name));
-extern int EXFUN (gethostname, (char * name, unsigned int size));
+
+#ifndef _HPUX
+/* <unistd.h> in HP-UX has mis-matching prototype 
+   The following is as specified by OSF/1 Programmer's reference.
+ */
+extern int EXFUN (gethostname, (char * name, int size));
+#endif /* _HPUX */
 
 #ifdef HAVE_FCNTL
 #define UX_fcntl fcntl
@@ -1060,6 +1082,33 @@ extern int EXFUN (UX_sigsuspend, (CONST sigset_t * set));
 #endif /* HAVE_POSIX_SIGNALS */
 
 #ifdef _POSIX
+
+#ifdef EMULATE_FPATHCONF
+
+/* These values match HP-UX, and the index in the table in the 
+   OSF/1 Programmer's reference.
+ */
+
+extern long EXFUN (fpathconf, (int, int));
+
+# define _PC_VDISABLE		8
+
+#endif /* EMULATE_FPATHCONF */
+
+#ifdef EMULATE_SYSCONF
+
+extern long EXFUN (sysconf, (int));
+
+/* These values match HP-UX, and the index in the table in the 
+   OSF/1 Programmer's reference.
+ */
+
+# define _SC_CHILD_MAX		1
+# define _SC_CLK_TCK		2
+# define _SC_OPEN_MAX		4
+# define _SC_JOB_CONTROL	5
+
+#endif /* EMULATE_SYSCONF */
 
 extern cc_t EXFUN (UX_PC_VDISABLE, (int fildes));
 extern clock_t EXFUN (UX_SC_CLK_TCK, (void));
