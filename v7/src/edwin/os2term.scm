@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2term.scm,v 1.5 1995/02/24 00:36:44 cph Exp $
+;;;	$Id: os2term.scm,v 1.6 1995/04/10 16:53:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -654,7 +654,8 @@
 		     (cond ((fix:= 0 repeat)
 			    (set! pending #f))
 			   ((and (char? pending)
-				 (char=? pending #\BEL)
+				 (or (char=? pending #\BEL)
+				     (char=? pending #\C-g))
 				 signal-interrupts?)
 			    (set! pending #f)
 			    (signal-interrupt!)))
@@ -711,7 +712,7 @@
 (define-integrable event:process-output -2)
 (define-integrable event:process-status -3)
 (define-integrable event:inferior-thread-output -4)
-
+
 (define (preview-event-stream)
   (set! previewer-registration
 	(permanently-register-input-thread-event
@@ -753,7 +754,7 @@
 	       (cdr events)))
       ((null? events))
     (enqueue!/unsafe queue (car events))))
-
+
 (define (signal-interrupt!)
   (editor-beep)
   (temporary-message "Quit")
@@ -780,7 +781,7 @@
 		   (if (fix:fixnum? key)
 		       (process-code key)
 		       (make-special-key key (fix:or meta control))))))))))
-
+
 (define (process-change-event event)
   (cond ((fix:= event event:process-output) (accept-process-output))
 	((fix:= event event:process-status) (handle-process-status-changes))
