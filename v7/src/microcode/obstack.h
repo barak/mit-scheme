@@ -334,31 +334,31 @@ int obstack_chunk_size (struct obstack *obstack);
 #define obstack_grow(h,where,length)					\
 ( (h)->temp = (length),							\
   (((h)->next_free + (h)->temp > (h)->chunk_limit)			\
-   ? _obstack_newchunk ((h), (h)->temp) : 0),				\
+   ? (_obstack_newchunk ((h), (h)->temp), 0) : 0),			\
   bcopy (where, (h)->next_free, (h)->temp),				\
   (h)->next_free += (h)->temp)
 
 #define obstack_grow0(h,where,length)					\
 ( (h)->temp = (length),							\
   (((h)->next_free + (h)->temp + 1 > (h)->chunk_limit)			\
-   ? _obstack_newchunk ((h), (h)->temp + 1) : 0),			\
+   ? (_obstack_newchunk ((h), (h)->temp + 1), 0) : 0),			\
   bcopy (where, (h)->next_free, (h)->temp),				\
   (h)->next_free += (h)->temp,						\
   *((h)->next_free)++ = 0)
 
 #define obstack_1grow(h,datum)						\
 ( (((h)->next_free + 1 > (h)->chunk_limit)				\
-   ? _obstack_newchunk ((h), 1) : 0),					\
+   ? (_obstack_newchunk ((h), 1), 0) : 0),				\
   *((h)->next_free)++ = (datum))
 
 #define obstack_ptr_grow(h,datum)					\
 ( (((h)->next_free + sizeof (char *) > (h)->chunk_limit)		\
-   ? _obstack_newchunk ((h), sizeof (char *)) : 0),			\
+   ? (_obstack_newchunk ((h), sizeof (char *)), 0) : 0),		\
   *((char **)(((h)->next_free+=sizeof(char *))-sizeof(char *))) = ((char *)datum))
 
 #define obstack_int_grow(h,datum)					\
 ( (((h)->next_free + sizeof (int) > (h)->chunk_limit)			\
-   ? _obstack_newchunk ((h), sizeof (int)) : 0),			\
+   ? (_obstack_newchunk ((h), sizeof (int)), 0) : 0),			\
   *((int *)(((h)->next_free+=sizeof(int))-sizeof(int))) = ((int)datum))
 
 #define obstack_ptr_grow_fast(h,aptr) (*((char **)(h)->next_free)++ = (char *)aptr)
@@ -367,7 +367,7 @@ int obstack_chunk_size (struct obstack *obstack);
 #define obstack_blank(h,length)						\
 ( (h)->temp = (length),							\
   (((h)->chunk_limit - (h)->next_free < (h)->temp)			\
-   ? _obstack_newchunk ((h), (h)->temp) : 0),				\
+   ? (_obstack_newchunk ((h), (h)->temp), 0) : 0),			\
   (h)->next_free += (h)->temp)
 
 #define obstack_alloc(h,length)						\
