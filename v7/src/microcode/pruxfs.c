@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.39 1990/04/12 22:51:15 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.40 1990/04/17 22:16:44 cph Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -82,7 +82,8 @@ system_error_message (s)
   else
     {
       result = (allocate_string ((strlen (s)) + (strlen (error_message)) + 2));
-      sprintf ((STRING_LOC (result, 0)), "%s: %s", s, error_message);
+      sprintf (((char *) (STRING_LOC (result, 0))), "%s: %s",
+	       s, error_message);
     }
   return (result);
 }
@@ -113,7 +114,6 @@ DEFINE_PRIMITIVE ("CURRENT-USER-NAME", Prim_get_user_name, 0, 0,
   user_name = (getlogin ());
   if (user_name == NULL)
     {
-      unsigned short getuid ();
       struct passwd *entry;
       struct passwd *getpwuid ();
 
@@ -251,7 +251,6 @@ DEFINE_PRIMITIVE ("FILE-ACCESS", Prim_file_access, 2, 2, 0)
 DEFINE_PRIMITIVE ("CURRENT-UID", Prim_current_uid, 0, 0,
   "Return the effective uid of Scheme, as an integer.")
 {
-  unsigned short geteuid ();
   PRIMITIVE_HEADER (0);
   PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (geteuid ()));
 }
@@ -259,9 +258,7 @@ DEFINE_PRIMITIVE ("CURRENT-UID", Prim_current_uid, 0, 0,
 DEFINE_PRIMITIVE ("CURRENT-GID", Prim_current_gid, 0, 0,
   "Return the effective gid of Scheme, as an integer.")
 {
-  unsigned short getegid ();
   PRIMITIVE_HEADER (0);
-
   PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (getegid ()));
 }
 
@@ -338,42 +335,8 @@ otherwise returns #F.")
 
    The filemodestring stuff was gobbled from GNU Emacs. */
 
-static SCHEME_OBJECT file_attributes_internal ();
 static void filemodestring ();
-static void rwx ();
-static void setst ();
 
-/* If system does not have symbolic links, it does not have lstat.
-   In that case, use ordinary stat instead.  */
-#ifndef S_IFLNK
-#define lstat stat
-#endif
-
-DEFINE_PRIMITIVE ("FILE-ATTRIBUTES", Prim_file_attributes, 1, 1,
-  "Given a file name, returns attribute information about the file.\n\
-If the file exists and its status information is accessible, the result\n\
-is a vector of 10 items (see the reference manual for details).  Otherwise\n\
-the result is #F.")
-{
-  struct stat stat_result;
-  PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN
-    (((lstat ((STRING_ARG (1)), (& stat_result))) < 0)
-     ? SHARP_F
-     : (file_attributes_internal (& stat_result)));
-}
-
-DEFINE_PRIMITIVE ("FILE-ATTRIBUTES-INDIRECT", Prim_file_attributes_indirect, 1, 1,
-  "Like FILE-ATTRIBUTES except that it indirects through symbolic links.")
-{
-  struct stat stat_result;
-  PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN
-    (((stat ((STRING_ARG (1)), (& stat_result))) < 0)
-     ? SHARP_F
-     : (file_attributes_internal (& stat_result)));
-}
-
 static SCHEME_OBJECT
 file_attributes_internal (stat_result)
      struct stat * stat_result;
@@ -408,6 +371,31 @@ file_attributes_internal (stat_result)
   VECTOR_SET (result, 9, (long_to_integer (stat_result -> st_ino)));
   return (result);
 }
+
+#define FILE_ATTRIBUTES_PRIMITIVE(stat_syscall)				\
+{									\
+  struct stat stat_result;						\
+  PRIMITIVE_HEADER (1);							\
+  PRIMITIVE_RETURN							\
+    (((stat_syscall ((STRING_ARG (1)), (&stat_result))) < 0)		\
+     ? SHARP_F								\
+     : (file_attributes_internal (&stat_result)));			\
+}
+
+#ifndef S_IFLNK
+#define lstat stat
+#endif
+
+DEFINE_PRIMITIVE ("FILE-ATTRIBUTES", Prim_file_attributes, 1, 1,
+  "Given a file name, returns attribute information about the file.\n\
+If the file exists and its status information is accessible, the result\n\
+is a vector of 10 items (see the reference manual for details).  Otherwise\n\
+the result is #F.")
+     FILE_ATTRIBUTES_PRIMITIVE (lstat)
+
+DEFINE_PRIMITIVE ("FILE-ATTRIBUTES-INDIRECT", Prim_file_attributes_indirect, 1, 1,
+  "Like FILE-ATTRIBUTES except that it indirects through symbolic links.")
+     FILE_ATTRIBUTES_PRIMITIVE (stat)
 
 /* filemodestring - set file attribute data
 
@@ -424,28 +412,24 @@ file_attributes_internal (stat_result)
    0	File type.  'd' for directory, 'c' for character special, 'b'
 	for block special, 'm' for multiplex, 'l' for symbolic link,
 	's' for socket, 'p' for fifo, '-' for any other file type
-
    1	'r' if the owner may read, '-' otherwise.
    2	'w' if the owner may write, '-' otherwise.
-
    3	'x' if the owner may execute, 's' if the file is set-user-id,
 	'-' otherwise.  'S' if the file is set-user-id, but the
 	execute bit isn't set.  (sys V `feature' which helps to catch
 	screw case.)
-
    4	'r' if group members may read, '-' otherwise.
    5	'w' if group members may write, '-' otherwise.
-
    6	'x' if group members may execute, 's' if the file is
 	set-group-id, '-' otherwise.  'S' if it is set-group-id but
 	not executable.
-
    7	'r' if any user may read, '-' otherwise.
    8	'w' if any user may write, '-' otherwise.
-
    9	'x' if any user may execute, 't' if the file is "sticky" (will
-	be retained in swap space after execution), '-' otherwise.
-   */
+	be retained in swap space after execution), '-' otherwise. */
+
+static void rwx ();
+static void setst ();
 
 static void
 filemodestring (s, a)
@@ -453,18 +437,13 @@ filemodestring (s, a)
    char * a;
 {
   extern char file_type_letter ();
-
   (a [0]) = (file_type_letter (s));
-  /* Aren't there symbolic names for these byte-fields? */
   rwx ((((s -> st_mode) & 0700) << 0), (& (a [1])));
   rwx ((((s -> st_mode) & 0070) << 3), (& (a [4])));
   rwx ((((s -> st_mode) & 0007) << 6), (& (a [7])));
   setst ((s -> st_mode), a);
   return;
 }
-
-/* rwx - look at read, write, and execute bits and set character
-   flags accordingly. */
 
 static void
 rwx (bits, chars)
@@ -476,8 +455,6 @@ rwx (bits, chars)
   (chars [2]) = ((bits & S_IEXEC)  ? 'x' : '-');
   return;
 }
-
-/* setst - set s & t flags in a file attributes string */
 
 static void
 setst (bits, chars)
@@ -535,13 +512,6 @@ file_touch (filename)
   char buf [1];
   int count;
   SCHEME_OBJECT ret_val;
-
-  extern int ftruncate ();
-  extern int lseek ();
-  extern int open ();
-  extern int read ();
-  extern int stat ();
-  extern int write ();
 
 #if 0
 /*
