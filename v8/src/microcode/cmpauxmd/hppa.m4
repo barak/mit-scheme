@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Id: hppa.m4,v 1.31 1993/08/31 05:51:33 gjr Exp $
+;;;	$Id: hppa.m4,v 1.32 1993/09/01 22:03:52 gjr Exp $
 ;;;
 ;;;	Copyright (c) 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -1143,10 +1143,16 @@ define(store_entry_point,"ADDIL	L'ep_$1-known_pc,3
 	store_entry_point(interface_to_scheme)
 	store_entry_point(interface_to_C)
 
-define(builtin,"ADDIL L'$1-known_pc,3
+changequote([,])
+define(builtin,[ADDIL	L'$1-known_pc,3
+	LDO	R'$1-known_pc(1),26
+	ADDIL	L'$1_string-$global$,27
 	.CALL	ARGW0=GR
 	BL	declare_builtin,2
-	LDO	R'$1-known_pc(1),26")	
+	LDO	R'$1_string-$global$(1),25 divert(1)
+$1_string
+	.ALIGN	8
+	.STRINGZ "$1" divert(0)])
 
 	builtin(scheme_to_interface_ble)
 	builtin(ep_scheme_hooks_low)
@@ -1198,6 +1204,7 @@ define(builtin,"ADDIL L'$1-known_pc,3
 	builtin(flonum_floor)
 	builtin(flonum_atan2)
 	builtin(ep_scheme_hooks_high)
+changequote(",")
 						; Return
 	LDW	-84(30),2			; Restore return address
 	LDW	-64(30),3			; Restore gr3
@@ -1428,6 +1435,7 @@ ifelse(ASM_DEBUG,1,"interface_counter
 	.WORD	0
 interface_limit
 	.WORD	0")
+undivert(1)
 	.SUBSPA $BSS$,QUAD=1,ALIGN=8,ACCESS=31,ZERO
 	.IMPORT $global$,DATA
 	.IMPORT	Registers,DATA
