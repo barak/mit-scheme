@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dassm2.scm,v 4.21 1993/01/08 00:03:51 cph Exp $
+$Id: dassm2.scm,v 4.22 1993/02/11 21:27:47 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -283,7 +283,7 @@ MIT in each case. |#
 
 (define interpreter-register-assignments
   (let* ((first-entry (* 4 16))
-	 (first-temp (+ first-entry (* 8 40))))
+	 (first-temp (+ first-entry (* 8 80))))
     (define (make-entries index names)
       (if (null? names)
 	  '()
@@ -345,6 +345,7 @@ MIT in each case. |#
 	   stack-and-interrupt-check-18
 	   stack-and-interrupt-check-22
 	   stack-and-interrupt-check-24
+	   set-interrupt-enables
 	   ))
       ;; Compiled code temporaries
       ,@(let loop ((i 0) (index first-temp))
