@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/declar.scm,v 1.3 1988/11/02 21:54:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/declar.scm,v 1.4 1988/11/15 16:34:06 jinx Exp $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -140,3 +140,4 @@ MIT in each case. |#
 (define-declaration 'CONSTANT boolean-variable-property)
 (define-declaration 'IGNORE-REFERENCE-TRAPS boolean-variable-property)
 (define-declaration 'IGNORE-ASSIGNMENT-TRAPS boolean-variable-property)
+(define-declaration 'USUAL-DEFINITION boolean-variable-property)

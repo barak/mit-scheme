@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.7 1988/11/01 04:47:24 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.8 1988/11/15 16:33:41 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -238,7 +238,9 @@ MIT in each case. |#
       (lvalue/internal-source? lvalue)))
 
 (define-integrable (lvalue/external-source? lvalue)
-  (eq? 'SOURCE (lvalue-passed-in? lvalue)))
+  ;; (number? (lvalue-passed-in? lvalue))
+  (and (lvalue-passed-in? lvalue)
+       (not (eq? (lvalue-passed-in? lvalue) 'INHERITED))))
 
 (define-integrable (lvalue/internal-source? lvalue)
   (not (null? (lvalue-initial-values lvalue))))

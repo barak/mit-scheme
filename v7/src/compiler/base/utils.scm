@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 4.6 1988/11/08 21:25:58 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 4.7 1988/11/15 16:33:19 jinx Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -68,7 +68,7 @@ MIT in each case. |#
 
 (define (generate-label #!optional prefix)
   (if (default-object? prefix) (set! prefix 'LABEL))
-  (string->symbol
+  (string->uninterned-symbol
    (string-append
     (symbol->string
      (cond ((eq? prefix lambda-tag:unnamed) 'LAMBDA)
@@ -255,24 +255,55 @@ MIT in each case. |#
       (scode/primitive-procedure? object)
       (eq? object compiled-error-procedure)))
 
-(define (operator-constant-foldable? operator)
+(define invariant-names
+  '(
+    ;; Predicates
+    OBJECT-TYPE? EQ?  FALSE? NULL? PAIR? VECTOR? SYMBOL? STRING?
+    NUMBER? CHAR? PROMISE? BIT-STRING? CELL? CHAR-ASCII?
+
+    ;; Numbers
+    COMPLEX? REAL? RATIONAL? INTEGER? EXACT? INEXACT?
+    ZERO? POSITIVE? NEGATIVE? ODD? EVEN?
+    = < > <= >= MAX MIN
+    + - * / 1+ -1+ ABS QUOTIENT REMAINDER MODULO INTEGER-DIVIDE
+    GCD LCM FLOOR CEILING TRUNCATE ROUND
+    EXP LOG EXPT SQRT SIN COS TAN ASIN ACOS ATAN
+    FIX:ZERO? FIX:NEGATIVE? FIX:POSITIVE?
+    FIX:= FIX:< FIX:> FIX:1+ FIX:-1+ FIX:+ FIX:- FIX:*
+    FIX:DIVIDE FIX:GCD FIX:QUOTIENT FIX:REMAINDER
+
+    ;; Random
+    OBJECT-TYPE NOT ASCII->CHAR CHAR->INTEGER CHAR-BITS CHAR-CODE
+    CHAR-DOWNCASE CHAR-UPCASE INTEGER->CHAR VECTOR-LENGTH MAKE-CHAR
+    PRIMITIVE-PROCEDURE-ARITY STRING-MAXIMUM-LENGTH
+
+    ;; If we could guarantee no side effects
+    #| APPLY CONS LIST CONS* MAKE-STRING VECTOR MAKE-VECTOR LIST-COPY VECTOR-COPY
+    CAR CDR VECTOR-REF STRING-REF BIT-STRING-REF LENGTH LIST->VECTOR VECTOR->LIST
+    MAKE-BIT-STRING MAKE-CELL STRING->SYMBOL STRING-LENGTH
+    |#
+    ))
+
+;;;; Constant "Foldable" operators
+
+(define (constant-foldable-primitive? operator)
   (memq operator constant-foldable-primitives))
+
+(define (variable-usual-definition name)
+  (let ((place (assq name invariant-variables)))
+    (and place
+	 (cdr place))))
+
+(define invariant-variables
+  (map (lambda (name)
+	 (cons name
+	       (lexical-reference system-global-environment name)))
+       invariant-names))
 
 (define constant-foldable-primitives
   (append!
    (list-transform-positive
-       (map (lambda (name)
-	      (lexical-reference system-global-environment name))
-	    '(OBJECT-TYPE OBJECT-TYPE?
-	      EQ? NULL? PAIR? NUMBER? COMPLEX? REAL? RATIONAL? INTEGER?
-	      ZERO? POSITIVE? NEGATIVE? ODD? EVEN? EXACT? INEXACT?
-	      = < > <= >= MAX MIN
-	      + - * / 1+ -1+ ABS QUOTIENT REMAINDER MODULO INTEGER-DIVIDE
-	      GCD LCM FLOOR CEILING TRUNCATE ROUND
-	      EXP LOG EXPT SQRT SIN COS TAN ASIN ACOS ATAN
-	      FIX:ZERO? FIX:NEGATIVE? FIX:POSITIVE?
-	      FIX:= FIX:< FIX:> FIX:1+ FIX:-1+ FIX:+ FIX:- FIX:*
-	      FIX:DIVIDE FIX:GCD FIX:QUOTIENT FIX:REMAINDER))
+       (map cdr invariant-variables)
      (lexical-reference system-global-environment 'PRIMITIVE-PROCEDURE?))
    (list
     (ucode-primitive &+) (ucode-primitive &-)

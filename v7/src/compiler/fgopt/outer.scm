@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/outer.scm,v 4.3 1987/12/30 06:44:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/outer.scm,v 4.4 1988/11/15 16:32:58 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -74,22 +74,9 @@ MIT in each case. |#
       (application-arguments-passed-out! application)))
 
 (define (check-application application)
-  (if (rvalue-passed-in? (application-operator application))
-      (application-arguments-passed-out! application))
-#|
-  ;; This looks like it isn't necessary, but I seem to recall that it
-  ;; was needed to fix some bug.  If so, then there is a serious
-  ;; problem, since we could "throw" into some operand other than
-  ;; the continuation. -- CPH.
-  (if (and (application/combination? application)
-	   (there-exists? (combination/operands application)
-			  rvalue-passed-in?))
-      (for-each (lambda (value)
-		  (if (uni-continuation? value)
-		      (lvalue-passed-in! (uni-continuation/parameter value))))
-		(rvalue-values (combination/continuation application))))
-|#
-  )
+  (if (and (rvalue-passed-in? (application-operator application))
+	   (not (null? (application-arguments application))))
+      (application-arguments-passed-out! application)))
 
 (define (application-arguments-passed-out! application)
   (let ((arguments (application-arguments application)))
@@ -101,7 +88,11 @@ MIT in each case. |#
    rvalue))
 
 (define-integrable (%rvalue-passed-out! rvalue)
-  (set-rvalue-%passed-out?! rvalue true))
+  (set-rvalue-%passed-out?! rvalue
+			    (let ((old (rvalue-%passed-out? rvalue)))
+			      (if old
+				  (1+ old)
+				  1))))
 
 (define passed-out-methods
   (make-method-table rvalue-types %rvalue-passed-out!))
@@ -112,32 +103,28 @@ MIT in each case. |#
 
 (define-method-table-entry 'PROCEDURE passed-out-methods
   (lambda (procedure)
-    (if (not (rvalue-%passed-out? procedure))
-	(begin
-	  (%rvalue-passed-out! procedure)
-	  ;; The rest parameter was marked in the initialization.
-	  (for-each lvalue-passed-in! (procedure-required procedure))
-	  (for-each lvalue-passed-in! (procedure-optional procedure))))))
+    (%rvalue-passed-out! procedure)
+    ;; The rest parameter was marked in the initialization.
+    (for-each lvalue-passed-in! (procedure-required procedure))
+    (for-each lvalue-passed-in! (procedure-optional procedure))))
 
 (define (block-passed-out! block)
-  (if (not (rvalue-%passed-out? block))
-      (begin
-	(%rvalue-passed-out! block)
-	(for-each (let ((procedure (block-procedure block)))
-		    (if (and (rvalue/procedure? procedure)
-			     (not (procedure-continuation? procedure)))
-			(let ((continuation
-			       (procedure-continuation-lvalue procedure)))
-			  (lambda (lvalue)
-			    (if (not (eq? lvalue continuation))
-				(lvalue-externally-visible! lvalue))))
-			lvalue-externally-visible!))
-		  (block-bound-variables block))
-	(let ((parent (block-parent block)))
-	  (if parent
-	      (block-passed-out! parent)
-	      (for-each lvalue-externally-visible!
-			(block-free-variables block)))))))
+  (%rvalue-passed-out! block)
+  (for-each (let ((procedure (block-procedure block)))
+	      (if (and (rvalue/procedure? procedure)
+		       (not (procedure-continuation? procedure)))
+		  (let ((continuation
+			 (procedure-continuation-lvalue procedure)))
+		    (lambda (lvalue)
+		      (if (not (eq? lvalue continuation))
+			  (lvalue-externally-visible! lvalue))))
+		  lvalue-externally-visible!))
+	    (block-bound-variables block))
+  (let ((parent (block-parent block)))
+    (if parent
+	(block-passed-out! parent)
+	(for-each lvalue-externally-visible!
+		  (block-free-variables block)))))
 
 (define-method-table-entry 'BLOCK passed-out-methods
   block-passed-out!)
@@ -149,14 +136,17 @@ MIT in each case. |#
   (lvalue-passed-out! lvalue))
 
 (define (lvalue-passed-in! lvalue)
-  (if (lvalue-passed-in? lvalue)
-      (set-lvalue-passed-in?! lvalue 'SOURCE)
-      (begin
-	(%lvalue-passed-in! lvalue 'SOURCE)
-	(for-each (lambda (lvalue)
-		    (if (not (lvalue-passed-in? lvalue))
-			(%lvalue-passed-in! lvalue 'INHERITED)))
-		  (lvalue-forward-links lvalue)))))
+  (let ((prev (lvalue-passed-in? lvalue)))
+    (cond ((false? prev)
+	   (%lvalue-passed-in! lvalue 1)
+	   (for-each (lambda (lvalue)
+		       (if (not (lvalue-passed-in? lvalue))
+			   (%lvalue-passed-in! lvalue 'INHERITED)))
+		     (lvalue-forward-links lvalue)))
+	  ((not (eq? prev 'INHERITED))		; (number? prev)
+	   (set-lvalue-passed-in?! lvalue (1+ prev)))
+	  (else
+	   (set-lvalue-passed-in?! lvalue 1)))))
 
 (define (%lvalue-passed-in! lvalue value)
   (set-lvalue-passed-in?! lvalue value)
@@ -166,12 +156,15 @@ MIT in each case. |#
 	    (lvalue-applications lvalue)))
 
 (define (lvalue-passed-out! lvalue)
-  (if (not (lvalue-passed-out? lvalue))
-      (begin (%lvalue-passed-out! lvalue)
-	     (for-each %lvalue-passed-out! (lvalue-backward-links lvalue))
-	     (for-each rvalue-passed-out! (lvalue-values lvalue)))))
+  (%lvalue-passed-out! lvalue)
+  (for-each %lvalue-passed-out! (lvalue-backward-links lvalue))
+  (for-each rvalue-passed-out! (lvalue-values lvalue)))
 
 (define-integrable (%lvalue-passed-out! lvalue)
-  (set-lvalue-passed-out?! lvalue true))
+  (set-lvalue-passed-out?! lvalue
+			   (let ((old (lvalue-passed-out? lvalue)))
+			     (if old
+				 (1+ old)
+				 1))))
 
 )
