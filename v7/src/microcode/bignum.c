@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.c,v 9.36 1991/10/29 22:55:11 jinx Exp $
+$Id: bignum.c,v 9.37 1992/08/29 13:34:08 jinx Exp $
 
-Copyright (c) 1989-91 Massachusetts Institute of Technology
+Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -522,7 +522,7 @@ DEFUN (double_to_bignum, (x), double x)
     fast bignum_digit_type digit;
     int odd_bits = (exponent % BIGNUM_DIGIT_LENGTH);
     if (odd_bits > 0)
-      DTB_WRITE_DIGIT (1 << odd_bits);
+      DTB_WRITE_DIGIT (1L << odd_bits);
     while (start < scan)
       {
 	if (significand == 0)
@@ -568,7 +568,7 @@ DEFUN (bignum_fits_in_word_p, (bignum, word_length, twos_complement_p),
       ((length < max_digits) ||
        ((length == max_digits) &&
 	((((msd = (BIGNUM_REF (bignum, (length - 1)))) <
-	   (max = (1 << (n_bits - ((length - 1) * BIGNUM_DIGIT_LENGTH))))) ||
+	   (max = (1L << (n_bits - ((length - 1) * BIGNUM_DIGIT_LENGTH))))) ||
 	  (twos_complement_p &&
 	   (msd == max) &&
 	   (BIGNUM_NEGATIVE_P (bignum)))))));
@@ -1296,7 +1296,7 @@ DEFUN (bignum_destructive_normalization, (source, target, shift_left),
   bignum_digit_type * end_source = (scan_source + (BIGNUM_LENGTH (source)));
   bignum_digit_type * end_target = (scan_target + (BIGNUM_LENGTH (target)));
   int shift_right = (BIGNUM_DIGIT_LENGTH - shift_left);
-  bignum_digit_type mask = ((1 << shift_right) - 1);
+  bignum_digit_type mask = ((1L << shift_right) - 1);
   while (scan_source < end_source)
     {
       digit = (*scan_source++);
@@ -1319,7 +1319,7 @@ DEFUN (bignum_destructive_unnormalization, (bignum, shift_right),
   fast bignum_digit_type digit;
   fast bignum_digit_type carry = 0;
   int shift_left = (BIGNUM_DIGIT_LENGTH - shift_right);
-  bignum_digit_type mask = ((1 << shift_right) - 1);
+  bignum_digit_type mask = ((1L << shift_right) - 1);
   while (start < scan)
     {
       digit = (*--scan);
