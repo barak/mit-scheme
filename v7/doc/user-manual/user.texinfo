@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.74 2000/07/21 18:23:32 cph Exp $
+@comment $Id: user.texinfo,v 1.75 2000/07/21 18:26:43 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -68,6 +68,7 @@ Scheme with Edwin and GNU Emacs.
 * GNU Emacs Interface::         
 * Edwin::                       
 * Release Notes::               
+* GNU Free Documentation License::  
 * Index::                       
 @end menu
 
@@ -4677,7 +4678,7 @@ Edwin's internal display data structures to get into an inconsistent
 state that prevents Edwin from running.
 @end deffn
 
-@node Release Notes, Index, Edwin, Top
+@node Release Notes, GNU Free Documentation License, Edwin, Top
 @appendix Release Notes
 
 The previous full release of MIT Scheme was version 7.4.7 in 1998.  This
@@ -5206,11 +5207,11 @@ New undocumented primitives provide access to the registry.
 
 @end itemize
 
-@node GNU Free Documentation License, Binding Index, Printing, Top
+@node GNU Free Documentation License, Index, Release Notes, Top
 @unnumbered GNU Free Documentation License
 @include gfdl.texinfo
 
-@node Index,  , Release Notes, Top
+@node Index,  , GNU Free Documentation License, Top
 @unnumbered Index
 @printindex cp
 

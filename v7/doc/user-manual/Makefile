@@ -1,5 +1,5 @@
 
-# $Id: Makefile,v 1.5 2000/07/10 22:12:34 cph Exp $
+# $Id: Makefile,v 1.6 2000/07/21 18:25:24 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -22,19 +22,19 @@ all:	user.ps user.pdf user.info html/user_toc.html
 user.ps: user.dvi
 	dvips -o $@ $^
 
-user.dvi: user.texinfo
+user.dvi: user.texinfo gfdl.texinfo
 	texi2dvi $^
 
-user.pdf: user.texinfo
+user.pdf: user.texinfo gfdl.texinfo
 	texi2pdf $^
 
-user.info: user.texinfo
+user.info: user.texinfo gfdl.texinfo
 	makeinfo $^
 	rm -f /usr/local/lib/mit-scheme/edwin/info/user.info*
 	cpx user.info* /usr/local/lib/mit-scheme/edwin/info/.
 	gzip -v /usr/local/lib/mit-scheme/edwin/info/user.info*
 
-html/user_toc.html: user.texinfo
+html/user_toc.html: user.texinfo gfdl.texinfo
 	(cd html;make)
 
 AUX_SUFFIXES = aux log toc
