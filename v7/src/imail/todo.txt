@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.71 2000/06/08 19:09:41 cph Exp $
+$Id: todo.txt,v 1.72 2000/06/09 04:32:42 cph Exp $
 
 Bug fixes
 ---------
@@ -21,6 +21,11 @@ Bug fixes
 
 New features
 ------------
+
+* Change "X-Mailer" and "Organization" headers so that they is
+  transparently added after the user has finished editing.  This will
+  keep the message composition buffer cleaner.  There's no need to be
+  able to delete these on a per-message basis.
 
 * When yanking formatted MIME messages into a reply buffer,
   attachments should probably be dropped altogether.  Other
