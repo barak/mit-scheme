@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.198 2000/06/27 16:41:17 cph Exp $
+;;; $Id: imail-top.scm,v 1.199 2000/06/27 17:25:40 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -338,6 +338,7 @@ Instead, these commands are available:
 
 \\[imail-output]       Append this message to a specified folder.
 \\[imail-save-attachment]	Save a MIME attachment to a file.
+\\[imail-save-mime-entity]	Save an arbitrary MIME entity to a file.
 
 \\[imail-add-flag]	Add flag to message.  It will be displayed in the mode line.
 \\[imail-kill-flag]	Remove flag from message.
@@ -348,18 +349,21 @@ Instead, these commands are available:
           Any other flag is present only if you add it with `\\[imail-add-flag]'.
 \\[imail-previous-flagged-message]   Move to previous message with specified flag.
 
+\\[imail-summary]	Show headers buffer, with a one line summary of each message.
+\\[imail-summary-by-flags]	Like \\[imail-summary] only just messages with particular flag(s).
+\\[imail-summary-by-recipients]   Like \\[imail-summary] only just messages with particular recipient(s).
+\\[imail-summary-by-topic]   Like \\[imail-summary] only just messages with particular topic(s).
+\\[imail-summary-by-regexp]   Like \\[imail-summary] only just messages matching regular expression.
+
+\\[imail-toggle-header]	Toggle between full headers and reduced headers.
+\\[imail-toggle-mime-entity]	Toggle MIME entity between expanded and collapsed formats.
+\\[imail-toggle-message]	Toggle between standard and raw message formats.
+
 \\[imail-create-folder]	Create a new folder.  (Normally not needed as output commands
 	  create folders automatically.)
 \\[imail-delete-folder]	Delete an existing folder and all its messages.
 \\[imail-rename-folder]	Rename a folder.
-\\[imail-copy-folder]	Copy all messages from one folder to another.
-
-\\[imail-summary]	Show headers buffer, with a one line summary of each message.
-\\[imail-summary-by-flags]	Like \\[imail-summary] only just messages with particular flag(s).
-\\[imail-summary-by-recipients]   Like \\[imail-summary] only just messages with particular recipient(s).
-
-\\[imail-toggle-header]	Toggle between full headers and reduced headers.
-\\[imail-toggle-message]	Toggle between standard and raw message formats.")
+\\[imail-copy-folder]	Copy all messages from one folder to another.")
 
 (define (imail-revert-buffer buffer dont-use-auto-save? dont-confirm?)
   dont-use-auto-save?
@@ -422,9 +426,10 @@ Instead, these commands are available:
 (define-key 'imail #\s		'imail-save-folder)
 (define-key 'imail #\m-s	'imail-search)
 (define-key 'imail #\t		'imail-toggle-header)
-(define-key 'imail #\c-t	'imail-toggle-attachment)
+(define-key 'imail #\c-t	'imail-toggle-mime-entity)
 (define-key 'imail #\u		'imail-undelete-previous-message)
 (define-key 'imail #\m-u	'imail-first-unseen-message)
+(define-key 'imail #\w		'imail-save-mime-entity)
 (define-key 'imail #\x		'imail-expunge)
 (define-key 'imail #\.		'beginning-of-buffer)
 (define-key 'imail #\<		'imail-first-message)
@@ -801,37 +806,76 @@ If point is not on an attachment, prompts for the attachment to save.
 With prefix argument, prompt even when point is on an attachment."
   "P"
   (lambda (always-prompt?)
-    (let ((i.m
-	   (maybe-prompt-for-mime-info "Save attachment"
-				       (current-point)
-				       always-prompt?)))
-      (save-mime-part (mime-info-body (car i.m))
-		      (mime-info-selector (car i.m))
-		      (selected-message)
-		      (selected-buffer)))))
+    (save-mime-entity (car (maybe-prompt-for-mime-info "Save attachment"
+						       (current-point)
+						       always-prompt?
+						       mime-attachment?))
+		      (selected-buffer))))
 
-(define-command imail-toggle-attachment
-  "Expand or collapse the attachment at point.
-If point is not on an attachment, prompts for the attachment to save.
-With prefix argument, prompt even when point is on an attachment."
-  "P"
-  (lambda (always-prompt?)
-    (let ((i.m
-	   (maybe-prompt-for-mime-info "Toggle attachment"
-				       (current-point)
-				       always-prompt?)))
-      (toggle-mime-part (car i.m) (cdr i.m) (selected-message)))))
+(define-command imail-mouse-save-mime-entity
+  "Save the MIME entity that mouse is on."
+  ()
+  (lambda ()
+    (let ((button-event (current-button-event)))
+      (let ((window (button-event/window button-event)))
+	(let ((buffer (window-buffer window)))
+	  (save-mime-entity
+	   (let ((info
+		  (mark-mime-info
+		   (or (window-coordinates->mark
+			window
+			(button-event/x button-event)
+			(button-event/y button-event))
+		       (buffer-end buffer)))))
+	     (if (not info)
+		 (editor-error "Mouse not on a MIME entity."))
+	     info)
+	   buffer))))))
+	
 
-(define (maybe-prompt-for-mime-info prompt mark always-prompt?)
+(define-command imail-save-mime-entity
+  "Save the MIME entity at point."
+  ()
+  (lambda ()
+    (save-mime-entity (car (current-mime-entity)) (selected-buffer))))
+
+(define-command imail-toggle-mime-entity
+  "Expand or collapse the MIME entity at point."
+  ()
+  (lambda ()
+    (let ((i.m (current-mime-entity)))
+      (toggle-mime-entity (car i.m)
+			  (cdr i.m)
+			  (selected-message)))))
+
+(define (toggle-mime-entity info mark message)
+  (set-mime-info-expanded?! info (not (mime-info-expanded? info)))
+  (let ((region (specific-property-region mark 'IMAIL-MIME-INFO))
+	(buffer (mark-buffer mark)))
+    (let ((point (mark-right-inserting-copy (buffer-point buffer))))
+      (with-read-only-defeated mark
+	(lambda ()
+	  (region-delete! region)
+	  (let ((mark (mark-left-inserting-copy (region-start region))))
+	    (insert-mime-info info message mark)
+	    (mark-temporary! mark))))
+      (mark-temporary! point)
+      (set-buffer-point! buffer point))
+    (buffer-not-modified! buffer)))
+
+(define (maybe-prompt-for-mime-info prompt mark always-prompt? predicate)
   (let ((info (mark-mime-info mark)))
-    (if (and info (not always-prompt?))
+    (if (and info (not always-prompt?) (predicate info))
 	(cons info mark)
 	(let ((alist
 	       (uniquify-mime-attachment-names
 		(map (lambda (i.m)
 		       (cons (mime-attachment-name (car i.m) #t)
 			     i.m))
-		     (buffer-mime-info (mark-buffer mark))))))
+		     (list-transform-positive
+			 (buffer-mime-info (mark-buffer mark))
+		       (lambda (i.m)
+			 (predicate (car i.m))))))))
 	  (if (pair? alist)
 	      (if (or (pair? (cdr alist)) always-prompt?)
 		  (prompt-for-alist-value prompt
@@ -863,50 +907,65 @@ With prefix argument, prompt even when point is on an attachment."
 			  (cdar alist))
 		    converted))
 	(reverse! converted))))
+
+(define (current-mime-entity)
+  (let ((point (current-point)))
+    (let ((info (mark-mime-info point)))
+      (if (not info)
+	  (editor-error "Point not on a MIME entity."))
+      (cons info point))))
 
-(define (save-mime-part body selector message buffer)
-  (let ((filename
-	 (let ((history 'IMAIL-SAVE-ATTACHMENT))
-	   (prompt-for-file
-	    "Save attachment as"
-	    (let ((filename
-		   (let ((filename (mime-body-disposition-filename body)))
-		     (and filename
-			  (filter-mime-attachment-filename filename)))))
-	      (and filename
-		   (list
-		    (merge-pathnames
-		     filename
-		     (let ((pathname
-			    (ref-variable imail-mime-attachment-directory
-					  buffer)))
-		       (if pathname
-			   (pathname-as-directory pathname)
-			   (let ((filenames (prompt-history-strings history)))
-			     (if (pair? filenames)
-				 (directory-pathname (car filenames))
-				 (buffer-default-directory buffer)))))))))
-	    'HISTORY history)))
-	(text?
-	 (let ((type (mime-body-type body)))
-	   (or (eq? type 'TEXT)
-	       (eq? type 'MESSAGE)))))
-    (if (or (not (file-exists? filename))
-	    (prompt-for-yes-or-no? "File already exists; overwrite"))
-	((if text? call-with-output-file call-with-binary-output-file)
-	 filename
-	 (lambda (port)
-	   (call-with-mime-decoding-output-port
-	    (let ((encoding (mime-body-one-part-encoding body)))
-	      (if (and (eq? (mime-body-type body) 'APPLICATION)
-		       (eq? (mime-body-subtype body) 'MAC-BINHEX40)
-		       (eq? encoding '7BIT))
-		  'BINHEX40
-		  encoding))
-	    port
-	    text?
-	    (lambda (port)
-	      (write-mime-message-body-part message selector #f port))))))))
+(define (save-mime-entity info buffer)
+  (let ((body (mime-info-body info))
+	(selector (mime-info-selector info))
+	(message (selected-message #t buffer)))
+    (let ((filename
+	   (let ((history 'IMAIL-SAVE-ATTACHMENT))
+	     (prompt-for-file
+	      (string-append "Save "
+			     (if (mime-attachment? info)
+				 "attachment"
+				 "MIME entity")
+			     " as")
+	      (let ((filename
+		     (let ((filename (mime-body-disposition-filename body)))
+		       (and filename
+			    (filter-mime-attachment-filename filename)))))
+		(and filename
+		     (list
+		      (merge-pathnames
+		       filename
+		       (let ((pathname
+			      (ref-variable imail-mime-attachment-directory
+					    buffer)))
+			 (if pathname
+			     (pathname-as-directory pathname)
+			     (let ((filenames
+				    (prompt-history-strings history)))
+			       (if (pair? filenames)
+				   (directory-pathname (car filenames))
+				   (buffer-default-directory buffer)))))))))
+	      'HISTORY history)))
+	  (text?
+	   (let ((type (mime-body-type body)))
+	     (or (eq? type 'TEXT)
+		 (eq? type 'MESSAGE)))))
+      (if (or (not (file-exists? filename))
+	      (prompt-for-yes-or-no? "File already exists; overwrite"))
+	  ((if text? call-with-output-file call-with-binary-output-file)
+	   filename
+	   (lambda (port)
+	     (call-with-mime-decoding-output-port
+	      (let ((encoding (mime-body-one-part-encoding body)))
+		(if (and (eq? (mime-body-type body) 'APPLICATION)
+			 (eq? (mime-body-subtype body) 'MAC-BINHEX40)
+			 (eq? encoding '7BIT))
+		    'BINHEX40
+		    encoding))
+	      port
+	      text?
+	      (lambda (port)
+		(write-mime-message-body-part message selector #f port)))))))))
 
 (define (filter-mime-attachment-filename filename)
   (let ((filename
@@ -931,21 +990,6 @@ With prefix argument, prompt even when point is on an attachment."
   (char-set-invert
    (char-set-difference char-set:graphic
 			char-set:mime-attachment-filename-delimiters)))
-
-(define (toggle-mime-part info mark message)
-  (set-mime-info-expanded?! info (not (mime-info-expanded? info)))
-  (let ((region (specific-property-region mark 'IMAIL-MIME-INFO))
-	(buffer (mark-buffer mark)))
-    (let ((point (mark-right-inserting-copy (buffer-point buffer))))
-      (with-read-only-defeated mark
-	(lambda ()
-	  (region-delete! region)
-	  (let ((mark (mark-left-inserting-copy (region-start region))))
-	    (insert-mime-info info message mark)
-	    (mark-temporary! mark))))
-      (mark-temporary! point)
-      (set-buffer-point! buffer point))
-    (buffer-not-modified! buffer)))
 
 ;;;; Sending mail
 
@@ -2229,7 +2273,12 @@ Negative argument means search in reverse."
 				      selector))))))))
 
 (define (attach-mime-info start end info)
-  (region-put! start end 'IMAIL-MIME-INFO info))
+  (region-put! start end 'IMAIL-MIME-INFO info)
+  (set-region-local-comtabs!
+   (make-region start end)
+   (let ((comtab (make-comtab)))
+     (define-key comtab button3-down 'imail-mouse-save-mime-entity)
+     (list comtab))))
 
 (define (mark-mime-info mark)
   (region-get mark 'IMAIL-MIME-INFO #f))
@@ -2247,6 +2296,9 @@ Negative argument means search in reverse."
 	(if mark
 	    (loop mark attachments)
 	    (reverse! attachments))))))
+
+(define (mime-attachment? info)
+  (not (eq? (mime-info-class info) 'INLINE)))
 
 (define-structure mime-info
   (class #f read-only #t)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.68 2000/06/26 19:30:57 cph Exp $
+;;; $Id: imail.pkg,v 1.69 2000/06/27 17:25:48 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -221,6 +221,7 @@
 	  edwin-command$imail-kill-flag
 	  edwin-command$imail-last-message
 	  edwin-command$imail-mail
+	  edwin-command$imail-mouse-save-mime-entity
 	  edwin-command$imail-next-flagged-message
 	  edwin-command$imail-next-message
 	  edwin-command$imail-next-same-subject
@@ -234,7 +235,9 @@
 	  edwin-command$imail-rename-folder
 	  edwin-command$imail-reply
 	  edwin-command$imail-resend
+	  edwin-command$imail-save-attachment
 	  edwin-command$imail-save-folder
+	  edwin-command$imail-save-mime-entity
 	  edwin-command$imail-search
 	  edwin-command$imail-select-message
 	  edwin-command$imail-summary
@@ -243,9 +246,9 @@
 	  edwin-command$imail-summary-by-regexp
 	  edwin-command$imail-summary-by-topic
 	  edwin-command$imail-summary-select-message
-	  edwin-command$imail-toggle-attachment
 	  edwin-command$imail-toggle-header
 	  edwin-command$imail-toggle-message
+	  edwin-command$imail-toggle-mime-entity
 	  edwin-command$imail-undelete-backward
 	  edwin-command$imail-undelete-forward
 	  edwin-command$imail-undelete-previous-message
@@ -269,14 +272,15 @@
 	  edwin-variable$imail-known-mime-charsets
 	  edwin-variable$imail-message-filter
 	  edwin-variable$imail-mime-attachment-directory
+	  edwin-variable$imail-mime-show-alternatives
 	  edwin-variable$imail-mode-hook
 	  edwin-variable$imail-pass-phrase-retention-time
 	  edwin-variable$imail-primary-folder
 	  edwin-variable$imail-reply-with-re
-	  edwin-variable$imail-mime-show-alternatives
 	  edwin-variable$imail-summary-highlight-message
 	  edwin-variable$imail-summary-mode-hook
 	  edwin-variable$imail-summary-pop-up-message
 	  edwin-variable$imail-summary-show-date
 	  edwin-variable$imail-summary-subject-width
-	  edwin-variable$imail-update-interval))
+	  edwin-variable$imail-update-interval
+	  edwin-variable$imail-use-original-mime-boundaries))
