@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: memmag.c,v 9.63 1996/10/02 19:01:40 cph Exp $
+$Id: memmag.c,v 9.64 1997/07/15 21:34:36 adams Exp $
 
 Copyright (c) 1987-96 Massachusetts Institute of Technology
 
@@ -262,7 +262,7 @@ DEFUN_VOID (GCFlip)
   ALIGN_FLOAT (Free);
   SET_MEMTOP (Heap_Top - GC_Reserve);
 
-  Weak_Chain = EMPTY_LIST;
+  Weak_Chain = EMPTY_WEAK_CHAIN;
   return;
 }
 
@@ -286,7 +286,7 @@ DEFUN_VOID (Fix_Weak_Chain)
     Temp, * Old, * low_heap;
 
   low_heap = Constant_Top;
-  while (Weak_Chain != EMPTY_LIST)
+  while (Weak_Chain != EMPTY_WEAK_CHAIN)
   {
     Old_Weak_Cell = (OBJECT_ADDRESS (Weak_Chain));
     Scan = (OBJECT_ADDRESS (*Old_Weak_Cell++));
