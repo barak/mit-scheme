@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pathnm.scm,v 14.23 1992/11/29 14:19:50 gjr Exp $
+$Id: pathnm.scm,v 14.24 1992/12/03 03:20:15 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -106,6 +106,7 @@ these rules:
 |#
 
 (define-structure (pathname
+		   (type vector)
 		   (named ((ucode-primitive string->symbol)
 			   "#[(runtime pathname)pathname]"))
 		   (constructor %make-pathname)
@@ -450,11 +451,11 @@ these rules:
   (operation/end-of-line-string false read-only true)
   (operation/pathname-canonicalize false read-only true))
 
-(define-structure (host
-		   (named ((ucode-primitive string->symbol)
-			   "#[(runtime pathname)host]"))
-		   (constructor %make-host)
-		   (conc-name host/))
+(define-structure (host (type vector)
+			(named ((ucode-primitive string->symbol)
+				"#[(runtime pathname)host]"))
+			(constructor %make-host)
+			(conc-name host/))
   (type-index false read-only true)
   (name false read-only true))
 
@@ -469,8 +470,7 @@ these rules:
        (equal? (host/name x) (host/name y))))
 
 (define (guarantee-host host operation)
-  (if (not (host? host))
-      (error:wrong-type-argument host "host" operation))
+  (if (not (host? host)) (error:wrong-type-argument host "host" operation))
   host)
 
 (define (host-operation/parse-namestring host)

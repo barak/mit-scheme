@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: object.scm,v 4.3 1992/11/04 10:17:32 jinx Exp $
+$Id: object.scm,v 4.4 1992/12/03 03:18:21 cph Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -51,6 +51,7 @@ MIT in each case. |#
 	 `(BEGIN
 	    (DEFINE-ENUMERAND ,name ,enumeration)
 	    (DEFINE-STRUCTURE (,name
+			       (TYPE VECTOR)
 			       (NAMED ,(symbol-append name '/ENUMERAND))
 			       (CONC-NAME ,(symbol-append name '/))
 			       (CONSTRUCTOR ,(symbol-append name '/MAKE)))
@@ -110,7 +111,8 @@ MIT in each case. |#
      )))
 
 (define-enumerand block random)
-(define-structure (block (named block/enumerand)
+(define-structure (block (type vector)
+			 (named block/enumerand)
 			 (conc-name block/)
 			 (constructor %block/make))
   parent
@@ -129,6 +131,7 @@ MIT in each case. |#
 
 (define-enumerand delayed-integration random)
 (define-structure (delayed-integration
+		   (type vector)
 		   (named delayed-integration/enumerand)
 		   (conc-name delayed-integration/)
 		   (constructor delayed-integration/make (operations value)))

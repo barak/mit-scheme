@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/object.scm,v 1.4 1991/10/30 20:58:35 cph Exp $
+$Id: object.scm,v 1.5 1992/12/03 03:13:59 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,6 +37,7 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define-structure (package-description
+		   (type vector)
 		   (named
 		    (string->symbol "#[(cross-reference)package-description]"))
 		   (constructor make-package-description)
@@ -49,6 +50,7 @@ MIT in each case. |#
   (imports false read-only true))
 
 (define-structure (pmodel
+		   (type vector)
 		   (named (string->symbol "#[(cross-reference)pmodel]"))
 		   (conc-name pmodel/))
   (root-package false read-only true)
@@ -58,6 +60,7 @@ MIT in each case. |#
   (pathname false read-only true))
 
 (define-structure (package
+		   (type vector)
 		   (named (string->symbol "#[(cross-reference)package]"))
 		   (constructor %make-package
 				(name file-cases files initialization parent))
@@ -106,6 +109,7 @@ MIT in each case. |#
   (cdr clause))
 
 (define-structure (binding
+		   (type vector)
 		   (named (string->symbol "#[(cross-reference)binding]"))
 		   (constructor %make-binding (package name value-cell))
 		   (conc-name binding/))
@@ -132,6 +136,7 @@ MIT in each case. |#
   (eq? binding (binding/source-binding binding)))
 
 (define-structure (value-cell
+		   (type vector)
 		   (named (string->symbol "#[(cross-reference)value-cell]"))
 		   (constructor make-value-cell ())
 		   (conc-name value-cell/))
@@ -140,6 +145,7 @@ MIT in each case. |#
   (source-binding false))
 
 (define-structure (link
+		   (type vector)
 		   (named (string->symbol "#[(cross-reference)link]"))
 		   (constructor %make-link)
 		   (conc-name link/))
@@ -153,6 +159,7 @@ MIT in each case. |#
     link))
 
 (define-structure (expression
+		   (type vector)
 		   (named (string->symbol "#[(cross-reference)expression]"))
 		   (constructor make-expression (package file type))
 		   (conc-name expression/))
@@ -163,6 +170,7 @@ MIT in each case. |#
   (value-cell false))
 
 (define-structure (reference
+		   (type vector)
 		   (named (string->symbol "#[(cross-reference)reference]"))
 		   (constructor %make-reference (package name))
 		   (conc-name reference/))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lambda.scm,v 14.9 1992/11/29 14:17:42 gjr Exp $
+$Id: lambda.scm,v 14.10 1992/12/03 03:20:52 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -442,6 +442,7 @@ MIT in each case. |#
 (define lambda-bound)
 
 (define-structure (block-declaration
+		   (type vector)
 		   (named ((ucode-primitive string->symbol)
 			   "#[Block Declaration]")))
   (text false read-only true))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infstr.scm,v 1.7 1992/11/29 14:16:51 gjr Exp $
+$Id: infstr.scm,v 1.8 1992/12/03 03:18:37 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -51,6 +51,7 @@ MIT in each case. |#
    "#[(runtime compiler-info)dbg-info-vector-tag]"))
 
 (define-structure (dbg-info
+		   (type vector)
 		   (named
 		    ((ucode-primitive string->symbol)
 		     "#[(runtime compiler-info)dbg-info]"))
@@ -72,6 +73,7 @@ MIT in each case. |#
 		 labels))))))
 
 (define-structure (dbg-expression
+		   (type vector)
 		   (named
 		    ((ucode-primitive string->symbol)
 		     "#[(runtime compiler-info)dbg-expression]"))
@@ -84,6 +86,7 @@ MIT in each case. |#
   (dbg-label/offset (dbg-expression/label expression)))
 
 (define-structure (dbg-procedure
+		   (type vector)
 		   (named
 		    ((ucode-primitive string->symbol)
 		     "#[(runtime compiler-info)dbg-procedure]"))
@@ -113,6 +116,7 @@ MIT in each case. |#
   (< (dbg-procedure/label-offset x) (dbg-procedure/label-offset y)))
 
 (define-structure (dbg-continuation
+		   (type vector)
 		   (named
 		    ((ucode-primitive string->symbol)
 		     "#[(runtime compiler-info)dbg-continuation]"))
@@ -131,6 +135,7 @@ MIT in each case. |#
   (< (dbg-continuation/label-offset x) (dbg-continuation/label-offset y)))
 
 (define-structure (dbg-block
+		   (type vector)
 		   (named
 		    ((ucode-primitive string->symbol)
 		     "#[(runtime compiler-info)dbg-block]"))
@@ -147,6 +152,7 @@ MIT in each case. |#
   )
 
 (define-structure (dbg-variable
+		   (type vector)
 		   (named
 		    ((ucode-primitive string->symbol)
 		     "#[(runtime compiler-info)dbg-variable]"))
@@ -220,6 +226,7 @@ MIT in each case. |#
 				    'SET-DBG-LABEL/NAMES!))))
 
 (define-structure (dbg-label-1
+		   (type vector)
 		   (named
 		    ((ucode-primitive string->symbol)
 		     "#[(runtime compiler-info)dbg-label]"))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uenvir.scm,v 14.29 1992/11/29 14:23:01 gjr Exp $
+$Id: uenvir.scm,v 14.30 1992/12/03 03:20:32 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -272,6 +272,7 @@ MIT in each case. |#
 ;;;; Compiled Code Environments
 
 (define-structure (stack-ccenv
+		   (type vector)
 		   (named
 		    ((ucode-primitive string->symbol)
 		     "#[(runtime environment)stack-ccenv]"))
@@ -517,6 +518,7 @@ MIT in each case. |#
   (vector-length (dbg-block/layout-vector block)))
 
 (define-structure (closure-ccenv
+		   (type vector)
 		   (named
 		    ((ucode-primitive string->symbol)
 		     "#[(runtime environment)closure-ccenv]"))
