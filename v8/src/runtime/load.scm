@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/load.scm,v 14.24 1991/08/22 15:18:02 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/load.scm,v 14.25 1991/08/23 01:27:06 arthur Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -39,7 +39,6 @@ MIT in each case. |#
 
 (define (initialize-package!)
   (set! hook/process-command-line default/process-command-line)
-  (set! load-init-file? true)
   (set! load-noisily? false)
   (set! load/loading? false)
   (set! load/suppress-loading-message? false)
@@ -48,11 +47,8 @@ MIT in each case. |#
   (set! fasload/default-types '("com" "bin"))
   (add-event-receiver! event:after-restart
 		       (lambda ()
-			 (process-command-line)
-			 (if load-init-file?
-			     (load-init-file)))))
+			 (process-command-line))))
 
-(define load-init-file?)
 (define load-noisily?)
 (define load/loading?)
 (define load/suppress-loading-message?)
@@ -326,6 +322,13 @@ MIT in each case. |#
 			    ((char=? (string-ref first 0) #\-)
 			     index)
 			    (else (loop (1+ index))))))))))
+    (let find-no-init-file-option ((index 0))
+      (if (= index unused-command-line-length)
+	  (load-init-file)
+	  (or (string=?
+	       "-no-init-file"
+	       (string-downcase (vector-ref unused-command-line index)))
+	      (find-no-init-file-option (1+ index)))))
     (let process-next-option ((index 0)
 			      (unhandled-options '()))
       (if (= index unused-command-line-length)
@@ -334,7 +337,6 @@ MIT in each case. |#
 		    (reverse unhandled-options)))
 	  (let ((option (string-downcase (vector-ref unused-command-line index))))
 	    (cond ((string=? "-no-init-file" option)
-		   (set! load-init-file? false)
 		   (process-next-option (1+ index) unhandled-options))
 		  ((string=? "-eval" option)
 		   (let ((next-option (find-first-dash (1+ index))))
