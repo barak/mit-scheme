@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.89 2001/11/26 19:48:14 cph Exp $
+@comment $Id: user.texinfo,v 1.90 2001/11/26 19:52:11 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -435,12 +435,12 @@ can decide if you want to delete some of them.  Also, we will discuss
 the two different Scheme executables, which are each useful in different
 situations; you should read this to decide which is right for you.
 
-The Scheme runtime environment and associated tools are normally stored
-in @dfn{bands}, which are large memory images stored in files
+The Scheme runtime environment and associated tools are normally
+stored in @dfn{bands}, which are large memory images stored in files
 (@pxref{World Images}).  Scheme requires at least one band to work
-properly.  The Scheme distribution contains several bands.  These bands
-are stored in the @file{lib/mit-scheme} directory on unix systems, and
-the @file{lib} directory on PC systems.
+properly.  The Scheme distribution two bands.  These bands are stored
+in the @file{lib/mit-scheme} directory on unix systems, and the
+@file{lib} directory on PC systems.
 
 @table @file
 @item runtime.com
@@ -448,26 +448,16 @@ The is the basic world image, and the smallest.  It contains just the
 runtime files.  This is the band that is chosen when Scheme is invoked
 with no special command-line options.
 
-@item compiler.com
-This contains the runtime files and the native-code Scheme compiler.
-This band is chosen when the @code{-compiler} command-line option is
-supplied.
-
-@item edwin.com
-This contains the runtime files and the Edwin text editor.  This band is
-chosen when the @code{-edwin} command-line option is supplied.
-
 @item all.com
 This contains the runtime files, the native-code compiler, and Edwin.
-This band is chosen when both the @code{-compiler} and @code{-edwin}
+This band is chosen when either the @code{-compiler} or @code{-edwin}
 command-line options are supplied.
 @end table
 
-Depending on your needs, you may not need all of these files.  For
-example, if you always want the full development environment, you might
-keep @file{all.com} and delete the others.  Or if you will never use the
-compiler, you could delete @file{compiler.com} and @file{all.com}.
-Remember that you must keep at least one of these files to use Scheme.
+Depending on your needs, you may not need both of these files.  For
+example, if you always want the full development environment, you
+might keep @file{all.com} and delete @file{runtime.com}.  Remember
+that you must keep at least one of these files to use Scheme.
 
 In addition to bands, Scheme is distributed with two executable
 programs: @file{scheme} (called @file{scheme.exe} on PC systems), and
