@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pack-compiler.scm,v 1.3 1992/10/20 01:41:38 jinx Exp $
+$Id: pack-compiler.scm,v 1.4 1992/11/22 23:33:20 gjr Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -75,6 +75,7 @@ MIT in each case. |#
 		    "base\\mvalue.com"
 		    "base\\scode.com"
 		    "machines\\i386\\machin.com"
+		    "back\\asutl.com"
 		    "base\\utils.com"
 		    "base\\cfg1.com"
 		    "base\\cfg2.com"
