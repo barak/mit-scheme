@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: malias.scm,v 1.9 2003/08/07 01:43:45 cph Exp $
+$Id: malias.scm,v 1.10 2003/08/07 01:46:34 cph Exp $
 
 Copyright 1991,1997,1999,2003 Massachusetts Institute of Technology
 
@@ -105,23 +105,18 @@ USA.
 		  (loop (cdr strings)))))
 	  (mark-temporary! point)))))
 
-(define mail-aliases)
+(define mail-aliases '())
 (define mail-aliases-time #f)
 
 (define (guarantee-mail-aliases)
   (let ((filename "~/.mailrc"))
     (let ((t (file-modification-time filename)))
-      (if (not (and t
-		    mail-aliases-time
-		    (= t mail-aliases-time)))
+      (if (and t (not (eqv? t mail-aliases-time)))
 	  (begin
-	    (set! mail-aliases '())
-	    (if t
-		(begin
-		  (set! mail-aliases-time t)
-		  (for-each (lambda (entry)
-			      (define-mail-alias (car entry) (cdr entry)))
-			    (parse-mailrc-file filename)))))))))
+	    (set! mail-aliases-time t)
+	    (for-each (lambda (entry)
+			(define-mail-alias (car entry) (cdr entry)))
+		      (parse-mailrc-file filename)))))))
 
 (define (parse-mailrc-file filename)
   (call-with-input-file filename
