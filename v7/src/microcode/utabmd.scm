@@ -37,7 +37,7 @@
 
 ;;;; Machine Dependent Type Tables
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.35 1987/07/14 02:59:08 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.36 1987/07/14 04:57:04 mhwu Rel $
 
 (declare (usual-integrations))
 
@@ -500,7 +500,7 @@
 	       NEGATIVE-FLONUM?				;$A9
 	       GREATER-THAN-FLONUM?			;$AA
 	       INTERN-CHARACTER-LIST			;$AB
-	       #F					;$AC
+	       COMPILED-CODE-ADDRESS->OFFSET		;$AC
 	       (STRING-SIZE VECTOR-8B-SIZE)		;$AD
 	       SYSTEM-VECTOR-SIZE			;$AE
 	       FORCE					;$AF
@@ -863,4 +863,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.35 1987/07/14 02:59:08 cph Exp $"
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.36 1987/07/14 04:57:04 mhwu Rel $"
