@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bkpt.c,v 9.26 1992/02/03 23:03:20 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bkpt.c,v 9.27 1992/02/03 23:21:38 jinx Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -74,23 +74,18 @@ DEFUN (Add_a_Pop_Return_Breakpoint, (SP), SCHEME_OBJECT * SP)
 /* A breakpoint can be placed here from a C debugger to examine
    the state of the world. */
 
-extern Boolean EXFUN (Print_One_Continuation_Frame, (void));
+extern Boolean EXFUN (Print_One_Continuation_Frame, (SCHEME_OBJECT));
 
 void
 DEFUN_VOID (Handle_Pop_Return_Break)
 {
-  Boolean ignore;
   SCHEME_OBJECT *Old_Stack = Stack_Pointer;
 
-  printf ("Pop Return Break: SP = 0x%lx\n", Stack_Pointer);
-  ignore = (Print_One_Continuation_Frame ());
+  printf ("Pop Return Break: SP = 0x%lx\n", ((long) Stack_Pointer));
+  (void) (Print_One_Continuation_Frame (Return));
   Stack_Pointer = Old_Stack;
   return;
 }
-
-/* This uses register rather than fast because it is invoked
- * very often and would make things too slow.
- */
 
 void
 DEFUN_VOID (Pop_Return_Break_Point)
