@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtrap.h,v 1.17 1993/02/06 05:46:32 gjr Exp $
+$Id: uxtrap.h,v 1.18 1993/03/14 22:12:53 gjr Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -433,7 +433,7 @@ struct full_sigcontext
 /* INITIALIZE_UX_SIGNAL_CODES should be defined. */
 
 #endif /* i386 */
-
+
 #ifdef __alpha
 
 #define sc_sp				sc_regs[30]
@@ -445,16 +445,32 @@ struct full_sigcontext
 #define FULL_SIGCONTEXT_SCHSP(scp)	((scp)->sc_schsp)
 #define FULL_SIGCONTEXT_FIRST_REG(scp)	(&((scp)->sc_regs[0]))
 #define FULL_SIGCONTEXT_NREGS		32
+
 #define PROCESSOR_NREGS			32
 
-#define INITIALIZE_UX_SIGNAL_CODES()					\
-{									\
+#ifdef FPE_COMPLETE_FAULT
+#define STUPID_FIRST_SIGNAL()						\
   DECLARE_UX_SIGNAL_CODE						\
-    (SIGFPE, (~ 0L), FPE_COMPLETE_FAULT, "software completion fault");	\
+    (SIGFPE, (~ 0L), FPE_COMPLETE_FAULT, "software completion fault")
+#endif
+
+#ifdef FPE_UNIMP_FAULT
+#define STUPID_FIRST_SIGNAL()						\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_UNIMP_FAULT, "unimplemented fp instruction fault")
+#endif
+
+#ifndef STUPID_FIRST_SIGNAL
+#define STUPID_FIRST_SIGNAL()	{ }
+#endif
+
+#define INITIALIZE_UX_SIGNAL_CODES()					\
+{                                                                       \
+  STUPID_FIRST_SIGNAL();						\
   DECLARE_UX_SIGNAL_CODE						\
     (SIGFPE, (~ 0L), FPE_INVALID_FAULT, "invalid operation fault");	\
   DECLARE_UX_SIGNAL_CODE						\
-    (SIGFPE, (~ 0L), FPE_INEXACT_FAULT, "floating-point inexact result");	\
+    (SIGFPE, (~ 0L), FPE_INEXACT_FAULT, "floating-point inexact result");\
   DECLARE_UX_SIGNAL_CODE						\
     (SIGFPE, (~ 0L), FPE_INTOVF_FAULT, "integer overflow fault");	\
 }
