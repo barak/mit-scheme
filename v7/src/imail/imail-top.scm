@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.51 2000/05/17 17:06:53 cph Exp $
+;;; $Id: imail-top.scm,v 1.52 2000/05/17 17:15:22 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -38,11 +38,14 @@ It is useful to set this variable in the site customisation file."
   string?)
 
 (define-variable imail-kept-headers
-  "A regular expression matching header fields one wants to see.
-This variable overrides imail-ignored-headers; to use imail-ignored-headers,
-set imail-kept-headers to #F."
-  (string-append "^" (regexp-group "date" "from" "to" "cc" "subject") "$")
-  string-or-false?)
+  "A list of regular expressions matching header fields one wants to see.
+Headers matching these regexps are shown in the given order,
+ and other headers are hidden.
+This variable overrides imail-ignored-headers;
+ to use imail-ignored-headers, set imail-kept-headers to '()."
+  (map (lambda (name) (string-append "^" name "$"))
+       '("date" "from" "to" "cc" "subject"))
+  (lambda (object) (list-of-type? object string?)))
 
 (define-variable imail-ignored-headers
   "A regular expression matching header fields one would rather not see."
@@ -549,12 +552,15 @@ With prefix argument N moves backward N messages with these flags."
   (let ((headers
 	 (let ((headers (message-header-fields message)))
 	   (cond ((ref-variable imail-kept-headers buffer)
-		  => (lambda (regexp)
-		       (list-transform-positive headers
-			 (lambda (header)
-			   (re-string-match regexp
-					    (header-field-name header)
-					    #t)))))
+		  => (lambda (regexps)
+		       (append-map!
+			(lambda (regexp)
+			  (list-transform-positive headers
+			    (lambda (header)
+			      (re-string-match regexp
+					       (header-field-name header)
+					       #t))))
+			regexps)))
 		 ((ref-variable imail-ignored-headers buffer)
 		  => (lambda (regexp)
 		       (list-transform-negative headers
