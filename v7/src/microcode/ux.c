@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.c,v 1.9 1992/01/20 16:38:07 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.c,v 1.10 1992/02/03 23:44:05 jinx Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
@@ -394,13 +394,13 @@ DEFUN (UX_PC_VDISABLE, (fildes), int fildes)
   extern long EXFUN (fpathconf, (int, int));
   long result = (fpathconf (fildes, _PC_VDISABLE));
   return
-    ((result < 0) ?
+    ((cc_t) ((result < 0) ?
 #ifdef _POSIX_VDISABLE
      _POSIX_VDISABLE
 #else
      '\377'
 #endif
-     : result);
+     : result));
 }
 
 static clock_t memoized_clk_tck = 0;
