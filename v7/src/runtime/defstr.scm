@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 14.3 1988/10/29 00:12:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 14.4 1988/12/11 11:24:36 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -314,7 +314,8 @@ must be defined when the defstruct is evaluated.
 		       (VECTOR-REF ,name ,n))
 		     (DEFINE (,set-name ,name ,(car slots))
 		       (DECLARE (INTEGRATE ,name ,(car slots)))
-		       (VECTOR-SET! ,name ,n ,(car slots)))))
+		       (VECTOR-SET! ,name ,n ,(car slots))
+		       ',unspecific)))
 		(loop (cdr slots) (1+ n)))))
 	 `(BEGIN ,@(loop slots reserved)))))
 
@@ -441,7 +442,8 @@ must be defined when the defstruct is evaluated.
 						    ,(slot/index slot))
 			    VALUE))
 			 (else
-			  (error "Unknown scheme type" structure))))))))
+			  (error "Unknown scheme type" structure)))
+		      ',unspecific)))))
 	  (structure/slots structure)))
 
 (define (constructor-definitions structure)
