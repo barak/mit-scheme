@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: mime-codec.scm,v 14.8 2000/06/27 16:32:02 cph Exp $
+;;; $Id: mime-codec.scm,v 14.9 2001/02/08 17:16:05 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -469,6 +469,11 @@
   (text? #f read-only #t)
   (input-buffer (make-string 4) read-only #t)
   (input-index 0)
+  ;; Ugh bletch.  Add state to look for line starting with NON-BASE64
+  ;; character, and stop decoding there.  This works around problem
+  ;; that arises when mail-processing agents randomly glue text on the
+  ;; end of a MIME message.
+  (input-state 'LINE-START)
   (output-buffer (make-string 3) read-only #t)
   (pending-return? #f))
 
@@ -479,26 +484,40 @@
       (write-char #\return (base64-decoding-context/port context))))
 
 (define (decode-base64:update context string start end)
-  (let ((buffer (base64-decoding-context/input-buffer context)))
-    (let loop
-	((start start)
-	 (index (base64-decoding-context/input-index context)))
-      (if (fix:< start end)
-	  (let ((char (string-ref string start))
-		(start (fix:+ start 1)))
-	    (if (or (char=? char #\=)
-		    (fix:< (vector-8b-ref base64-char-table
-					  (char->integer char))
-			   #x40))
-		(begin
-		  (string-set! buffer index char)
-		  (if (fix:< index 3)
-		      (loop start (fix:+ index 1))
+  (if (not (eq? 'FINISHED (base64-decoding-context/input-state context)))
+      (let ((buffer (base64-decoding-context/input-buffer context)))
+	(let loop
+	    ((start start)
+	     (index (base64-decoding-context/input-index context))
+	     (state (base64-decoding-context/input-state context)))
+	  (let ((done
+		 (lambda (state)
+		   (set-base64-decoding-context/input-index! context index)
+		   (set-base64-decoding-context/input-state! context state))))
+	    (if (fix:< start end)
+		(let* ((char (string-ref string start))
+		       (continue
+			(lambda (index)
+			  (loop (fix:+ start 1)
+				index
+				(if (char=? char #\newline)
+				    'LINE-START
+				    'IN-LINE)))))
+		  (if (or (char=? char #\=)
+			  (fix:< (vector-8b-ref base64-char-table
+						(char->integer char))
+				 #x40))
 		      (begin
-			(decode-base64-quantum context)
-			(loop start 0))))
-		(loop start index)))
-	  (set-base64-decoding-context/input-index! context index)))))
+			(string-set! buffer index char)
+			(if (fix:< index 3)
+			    (continue (fix:+ index 1))
+			    (begin
+			      (decode-base64-quantum context)
+			      (continue 0))))
+		      (if (eq? state 'LINE-START)
+			  (done 'FINISHED)
+			  (continue index))))
+		(done state)))))))
 
 (define (decode-base64-quantum context)
   (let ((input (base64-decoding-context/input-buffer context))
