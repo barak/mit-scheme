@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: earlyrew.scm,v 1.2 1994/12/08 16:46:54 adams Exp $
+$Id: earlyrew.scm,v 1.3 1995/01/20 20:33:59 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -45,10 +45,10 @@ MIT in each case. |#
     (call-with-values
      (lambda () (%matchup bindings '(handler) '(cdr form)))
      (lambda (names code)
-       `(define ,proc-name
-	  (let ((handler (lambda ,names ,@body)))
-	    (named-lambda (,proc-name form)
-	      (earlyrew/remember ,code form))))))))
+       `(DEFINE ,proc-name
+	  (LET ((HANDLER (LAMBDA ,names ,@body)))
+	    (NAMED-LAMBDA (,proc-name FORM)
+	      (EARLYREW/REMEMBER ,code FORM))))))))
 
 (define-early-rewriter LOOKUP (name)
   `(LOOKUP ,name))
@@ -140,7 +140,7 @@ MIT in each case. |#
   (new-variable prefix))
 
 (define *early-rewritten-operators*
-  (make-eq-hash-table 311))
+  (make-eq-hash-table))
 
 (define-integrable (rewrite-operator/early? rator)
   (hash-table/get *early-rewritten-operators* rator false))
