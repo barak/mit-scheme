@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.316 1999/02/16 18:48:36 cph Exp $
+$Id: runtime.pkg,v 14.317 1999/02/16 19:43:54 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -1100,7 +1100,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  guarantee-i/o-port
 	  guarantee-input-port
 	  guarantee-output-port
+	  guarantee-port-type
+	  i/o-port-type?
 	  i/o-port?
+	  input-port-type?
 	  input-port/channel
 	  input-port/copy
 	  input-port/custom-operation
@@ -1110,9 +1113,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  input-port?
 	  interaction-i/o-port
 	  make-i/o-port
+	  make-i/o-port-type
 	  make-input-port
+	  make-input-port-type
 	  make-output-port
+	  make-output-port-type
 	  notification-output-port
+	  output-port-type?
 	  output-port/channel
 	  output-port/copy
 	  output-port/custom-operation
@@ -1120,6 +1127,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  output-port/operation-names
 	  output-port/state
 	  output-port?
+	  port-type/operation
+	  port-type/operation-names
+	  port-type/operations
+	  port-type?
 	  port/copy
 	  port/input-blocking-mode
 	  port/input-channel
@@ -1135,6 +1146,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  port/set-output-terminal-mode
 	  port/state
 	  port/thread-mutex
+	  port/type
 	  port/with-input-blocking-mode
 	  port/with-input-terminal-mode
 	  port/with-output-blocking-mode
@@ -1165,6 +1177,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (export (runtime output-port)
 	  output-port/operation/discretionary-flush
 	  output-port/operation/flush-output
+	  output-port/operation/fresh-line
 	  output-port/operation/write-char
 	  output-port/operation/write-substring)
   (export (runtime rep)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: output.scm,v 14.18 1999/02/16 00:49:02 cph Exp $
+$Id: output.scm,v 14.19 1999/02/16 19:44:51 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -38,6 +38,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (output-port/write-object port object)
   (unparse-object/top-level object port #t (current-unparser-table)))
 
+(define (output-port/fresh-line port)
+  ((output-port/operation/fresh-line port) port))
+
 (define (output-port/flush-output port)
   ((output-port/operation/flush-output port) port))
 
@@ -48,7 +51,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (or (let ((operation (port/operation port 'X-SIZE)))
 	(and operation
 	     (operation port)))
-      79))
+      80))
 
 (define (output-port/y-size port)
   (let ((operation (port/operation port 'Y-SIZE)))
@@ -70,10 +73,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 (if (default-object? port)
 	     (current-output-port)
 	     (guarantee-output-port port))))
-    (let ((operation (port/operation port 'FRESH-LINE)))
-      (if operation
-	  (operation port)
-	  (output-port/write-char port #\newline)))
+    (output-port/fresh-line port)
     (output-port/discretionary-flush port)))
 
 (define (write-char char #!optional port)
@@ -104,11 +104,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	      (operation port)
 	      (output-port/discretionary-flush port)))))))
 
-(define beep
-  (wrap-custom-operation-0 'BEEP))
-
-(define clear
-  (wrap-custom-operation-0 'CLEAR))
+(define beep (wrap-custom-operation-0 'BEEP))
+(define clear (wrap-custom-operation-0 'CLEAR))
 
 (define (display object #!optional port unparser-table)
   (let ((port
@@ -145,7 +142,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 (if (default-object? unparser-table)
 	     (current-unparser-table)
 	     (guarantee-unparser-table unparser-table 'WRITE-LINE))))
-    (output-port/write-char port #\Newline)
+    (output-port/write-char port #\newline)
     (unparse-object/top-level object port #t unparser-table)
     (output-port/discretionary-flush port)))
 
