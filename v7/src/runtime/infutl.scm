@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infutl.scm,v 1.65 2001/08/10 17:09:23 cph Exp $
+$Id: infutl.scm,v 1.66 2001/12/20 18:05:07 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -32,8 +32,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  (,lambda-tag:internal-lambda . LAMBDA)
 	  (,lambda-tag:internal-lexpr . LAMBDA)
 	  (,lambda-tag:let . LET)
-	  (,lambda-tag:fluid-let . FLUID-LET)
-	  (,lambda-tag:make-environment . MAKE-ENVIRONMENT)))
+	  (,lambda-tag:fluid-let . FLUID-LET)))
   (set! wrappers-with-memoized-debugging-info (make-population))
   (add-secondary-gc-daemon! discard-debugging-info!)
   (initialize-uncompressed-files!)

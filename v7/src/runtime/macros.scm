@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: macros.scm,v 1.4 2001/12/20 06:34:37 cph Exp $
+$Id: macros.scm,v 1.5 2001/12/20 18:03:05 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -37,7 +37,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	      DO
 	      LET*
 	      LETREC
-	      MAKE-ENVIRONMENT
 	      QUASIQUOTE
 	      SEQUENCE)
 	    (list transform/and
@@ -47,7 +46,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		  transform/do
 		  transform/let*
 		  transform/letrec
-		  transform/make-environment
 		  transform/quasiquote
 		  transform/sequence)))
 
@@ -66,11 +64,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define (transform/cons-stream head tail)
   `(,(make-absolute-reference 'CONS) ,head (DELAY ,tail)))
-
-(define (transform/make-environment . body)
-  `((NAMED-LAMBDA (,lambda-tag:make-environment)
-      ,@body
-      (THE-ENVIRONMENT))))
 
 (define (transform/sequence . actions)
   `(BEGIN . ,actions))

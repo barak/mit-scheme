@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: schmod.scm,v 1.56 2001/12/20 16:13:18 cph Exp $
+;;; $Id: schmod.scm,v 1.57 2001/12/20 18:01:59 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -167,7 +167,6 @@ The following commands evaluate Scheme expressions:
 	    (LET-SYNTAX . 1)
 	    (LOCAL-DECLARE . 1)
 	    (MACRO . 1)
-	    (MAKE-ENVIRONMENT . 0)
 	    (NAMED-LAMBDA . 1)
 
 	    (CALL-WITH-APPEND-FILE . 1)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gconst.scm,v 4.26 2001/09/25 16:53:25 cph Exp $
+$Id: gconst.scm,v 4.27 2001/12/20 18:06:22 cph Exp $
 
 Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
@@ -167,7 +167,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     INTERRUPT-MASK/TIMER-OK
     LAMBDA-TAG:FLUID-LET
     LAMBDA-TAG:LET
-    LAMBDA-TAG:MAKE-ENVIRONMENT
     LAMBDA-TAG:UNNAMED
     LEXICAL-ASSIGNMENT
     LEXICAL-REFERENCE

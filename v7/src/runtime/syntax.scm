@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 14.42 2001/12/20 16:13:18 cph Exp $
+$Id: syntax.scm,v 14.43 2001/12/20 18:05:34 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -658,9 +658,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-integrable lambda-tag:fluid-let
   ((ucode-primitive string->symbol) "#[fluid-let-procedure]"))
-
-(define-integrable lambda-tag:make-environment
-  ((ucode-primitive string->symbol) "#[make-environment]"))
 
 ;;;; Lambda List Parser
 

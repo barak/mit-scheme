@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: disload.scm,v 1.10 2001/12/19 01:49:45 cph Exp $
+$Id: disload.scm,v 1.11 2001/12/20 18:01:28 cph Exp $
 
 Copyright (c) 1993, 1999, 2001 Massachusetts Institute of Technology
 
@@ -39,7 +39,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	     (disassembler
 	      (package/add-child! parent
 				  'disassembler
-				  (eval '(make-environment) parenv))))
+				  (extend-interpreter-environment parenv))))
 	(let ((disenv (package/environment disassembler))
 	      (global system-global-environment)
 	      (compinfo (package/environment

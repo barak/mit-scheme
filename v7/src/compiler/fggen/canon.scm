@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: canon.scm,v 1.17 2001/12/20 16:28:22 cph Exp $
+$Id: canon.scm,v 1.18 2001/12/20 18:04:49 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -760,8 +760,7 @@ ARBITRARY:	The expression may be executed more than once.  It
 			   (scode/make-absolute-reference '*MAKE-ENVIRONMENT)
 			   (cons* (scode/make-variable environment-variable)
 				  (list->vector
-				   (cons lambda-tag:make-environment
-					 names))
+				   (cons lambda-tag:unnamed names))
 				  (map scode/make-variable names)))))
 
 		    (if (and (scode/the-environment? body)
