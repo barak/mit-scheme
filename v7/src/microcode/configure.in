@@ -16,13 +16,15 @@ dnl You should have received a copy of the GNU General Public License
 dnl along with this program; if not, write to the Free Software
 dnl Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-AC_REVISION([$Id: configure.in,v 11.4 2001/02/28 21:41:58 cph Exp $])
+AC_REVISION([$Id: configure.in,v 11.5 2001/03/01 04:25:51 cph Exp $])
 AC_INIT(boot.c)
 AC_CONFIG_HEADER(config.h)
 
 dnl Feature options.
 AC_ARG_ENABLE(static-libs,
 [  --enable-static-libs    Link some libraries statically [no]])
+AC_ARG_WITH(openssl,
+[  --with-openssl          Use the OpenSSL crypto library if available [yes]])
 AC_ARG_WITH(mhash,
 [  --with-mhash            Use the mhash library if available [yes]])
 AC_ARG_WITH(mcrypt,
@@ -54,16 +56,19 @@ fi
 dnl Checks for libraries.
 AC_CHECK_LIB(dl, dlopen)
 AC_CHECK_LIB(m, exp)
+AC_CHECK_LIB(crypto, BF_set_key,
+    [scheme_cv_lib_crypto=yes],
+    [scheme_cv_lib_crypto=no])
 AC_CHECK_LIB(mhash, mhash_count,
     [scheme_cv_lib_mhash=yes],
     [scheme_cv_lib_mhash=no])
-AC_CHECK_LIB(md5, MD5Init,
-    [scheme_cv_lib_md5=yes],
-    [scheme_cv_lib_md5=no])
 AC_CHECK_LIB(mcrypt, mcrypt_generic_init,
     [scheme_cv_lib_mcrypt=yes],
     [scheme_cv_lib_mcrypt=no],
     [-lltdl])
+AC_CHECK_LIB(md5, MD5Init,
+    [scheme_cv_lib_md5=yes],
+    [scheme_cv_lib_md5=no])
 AC_CHECK_LIB(blowfish, BF_set_key,
     [scheme_cv_lib_blowfish=yes],
     [scheme_cv_lib_blowfish=no])
@@ -88,29 +93,74 @@ AC_CHECK_LIB(termcap, tparam,
 if test "${ac_cv_lib_dl_dlopen}" = "yes"; then
     OPTIONAL_BASES="${OPTIONAL_BASES} pruxdld"
 fi
-if test "${scheme_cv_lib_mhash}" = "yes" && test "${with_mhash}" != "no"; then
+
+dnl OK, now some complex logic to handle the crypto stuff.
+
+dnl First, handle options to enable/disable use of some libraries.
+test "${with_openssl:-yes}" = "no" && scheme_cv_lib_crypto=no
+test "${with_mhash:-yes}" = "no" && scheme_cv_lib_mhash=no
+test "${with_mcrypt:-yes}" = "no" && scheme_cv_lib_mcrypt=no
+
+dnl Next, we decide which libraries to use.  We mostly want support
+dnl for Blowfish and MD5, each of which can come from multiple libraries.
+have_blowfish=no
+have_md5=no
+
+dnl The OpenSSL crypto library provides support for both, and is preferred.
+if test "${scheme_cv_lib_crypto}" = "yes"; then
+    AC_DEFINE(HAVE_LIBCRYPTO)
+    QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -lcrypto"
+    OPTIONAL_BASES="${OPTIONAL_BASES} prbfish prmd5"
+    have_blowfish=yes
+    have_md5=yes
+fi
+
+dnl The mhash library provides md5 support.  It can be loaded in addition
+dnl to other MD5 libraries and provides a rich set of hashes.
+if test "${scheme_cv_lib_mhash}" = "yes"; then
     AC_DEFINE(HAVE_LIBMHASH)
     QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -lmhash"
     OPTIONAL_BASES="${OPTIONAL_BASES} prmhash"
-elif test "${scheme_cv_lib_md5}" = "yes"; then
-    AC_DEFINE(HAVE_LIBMD5)
-    STATIC_LIBS="${STATIC_LIBS} -lmd5"
-    OPTIONAL_BASES="${OPTIONAL_BASES} prmd5"
+    have_md5=yes
 fi
-if test "${scheme_cv_lib_mcrypt}" = "yes" && test "${with_mcrypt}" != "no"; then
+
+dnl The mcrypt library provides blowfish, but its CFB mode is 8 bit.
+dnl We have been using 64-bit CFB, so this isn't really compatible.
+dnl But mcrypt provides many ciphers and can be loaded in addition.
+if test "${scheme_cv_lib_mcrypt}" = "yes"; then
     AC_DEFINE(HAVE_LIBMCRYPT)
     QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -lmcrypt -lltdl"
     OPTIONAL_BASES="${OPTIONAL_BASES} prmcrypt"
-elif test "${scheme_cv_lib_blowfish}" = "yes"; then
-    AC_DEFINE(HAVE_LIBBLOWFISH)
-    STATIC_LIBS="${STATIC_LIBS} -lblowfish"
-    OPTIONAL_BASES="${OPTIONAL_BASES} prbfish"
 fi
+
+dnl This is a stripped-down library that provides just Blowfish.  It
+dnl seems to be code that was extracted from OpenSSL long ago.  We
+dnl used this for a long time but no longer do.
+if test "${have_blowfish}" = "no"; then
+    if test "${scheme_cv_lib_blowfish}" = "yes"; then
+	AC_DEFINE(HAVE_LIBBLOWFISH)
+	STATIC_LIBS="${STATIC_LIBS} -lblowfish"
+	OPTIONAL_BASES="${OPTIONAL_BASES} prbfish"
+    fi
+fi
+
+dnl This is Phil Karn's MD5 implementation, which seems to have nearly
+dnl the same interface as that of OpenSSL.
+if test "${have_md5}" = "no"; then
+    if test "${scheme_cv_lib_md5}" = "yes"; then
+	AC_DEFINE(HAVE_LIBMD5)
+	STATIC_LIBS="${STATIC_LIBS} -lmd5"
+	OPTIONAL_BASES="${OPTIONAL_BASES} prmd5"
+    fi
+fi
+
 if test "${scheme_cv_lib_gdbm}" = "yes"; then
     AC_DEFINE(HAVE_LIBGDBM)
     QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -lgdbm"
     OPTIONAL_BASES="${OPTIONAL_BASES} prgdbm"
 fi
+
+
 if test "${scheme_cv_lib_ncurses}" = "yes"; then
     AC_DEFINE(HAVE_LIBNCURSES)
     QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -lncurses"
@@ -129,7 +179,7 @@ else
     OPTIONAL_BASES="${OPTIONAL_BASES} termcap tparam"
 fi
 
-if test "${enable_static_libs}" = "no"; then
+if test "${enable_static_libs:-no}" = "no"; then
     LIBS="${LIBS}${QUASI_STATIC_LIBS}"
 else
     STATIC_LIBS="${STATIC_LIBS}${QUASI_STATIC_LIBS}"
@@ -144,6 +194,7 @@ AC_CHECK_HEADERS(bsdtty.h fcntl.h limits.h malloc.h sgtty.h stropts.h time.h)
 AC_CHECK_HEADERS(sys/file.h sys/ioctl.h sys/mount.h sys/param.h sys/poll.h)
 AC_CHECK_HEADERS(sys/ptyio.h sys/socket.h sys/time.h sys/un.h sys/vfs.h)
 AC_CHECK_HEADERS(termcap.h termio.h termios.h unistd.h utime.h)
+AC_CHECK_HEADERS(openssl/blowfish.h openssl/md5.h blowfish.h md5.h)
 
 dnl Checks for typedefs
 AC_TYPE_MODE_T
@@ -384,8 +435,10 @@ fi
 dnl Add OS-dependent customizations.
 case "$host_os" in
 linux-gnu)
-    STATIC_PREFIX="-Xlinker -Bstatic"
-    STATIC_SUFFIX="-Xlinker -Bdynamic"
+    if test "${STATIC_LIBS}" != ""; then
+	STATIC_PREFIX="-Xlinker -Bstatic"
+	STATIC_SUFFIX="-Xlinker -Bdynamic"
+    fi
     AC_MSG_CHECKING([for ELF binaries])
     AC_TRY_RUN(
 [int

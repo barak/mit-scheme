@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: acconfig.h,v 11.1 2000/12/05 21:23:42 cph Exp $
+$Id: acconfig.h,v 11.2 2001/03/01 04:25:48 cph Exp $
 
-Copyright (c) 2000 Massachusetts Institute of Technology
+Copyright (c) 2000-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -68,6 +68,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 /* Define if blowfish library is present.  */
 #undef HAVE_LIBBLOWFISH
 
+/* Define if OpenSSL crypto library is present.  */
+#undef HAVE_LIBCRYPTO
+
 /* Define if curses library is present.  */
 #undef HAVE_LIBCURSES
 
@@ -79,6 +82,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 /* Define if md5 library is present.  */
 #undef HAVE_LIBMD5
+
+/* Define if mcrypt library is present.  */
+#undef HAVE_LIBMCRYPT
 
 /* Define if mhash library is present.  */
 #undef HAVE_LIBMHASH

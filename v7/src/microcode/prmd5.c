@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prmd5.c,v 1.4 1999/01/02 06:11:34 cph Exp $
+$Id: prmd5.c,v 1.5 2001/03/01 04:25:57 cph Exp $
 
-Copyright (c) 1997, 1999 Massachusetts Institute of Technology
+Copyright (c) 1997-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -23,7 +23,25 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #include "scheme.h"
 #include "prims.h"
-#include <md5.h>
+
+#if defined(HAVE_LIBCRYPTO) && defined(HAVE_OPENSSL_MD5_H)
+#  include <openssl/md5.h>
+#else
+#  ifdef HAVE_MD5_H
+#    include <md5.h>
+#  endif
+#endif
+
+#ifdef HAVE_LIBCRYPTO
+#  define MD5_INIT MD5_Init
+#  define MD5_UPDATE MD5_Update
+#  define MD5_FINAL MD5_Final
+#else
+#  define MD5_INIT MD5Init
+#  define MD5_UPDATE MD5Update
+#  define MD5_FINAL MD5Final
+#  define MD5_DIGEST_LENGTH 16
+#endif
 
 DEFINE_PRIMITIVE ("MD5", Prim_md5, 1, 1,
   "(STRING)\n\
@@ -37,11 +55,22 @@ The digest is returned as a 16-byte string.")
     SCHEME_OBJECT result = (allocate_string (16));
     unsigned char * scan_result = (STRING_LOC (result, 0));
     MD5_CTX context;
-    unsigned char * scan_digest = (context . digest);
-    unsigned char * end_digest = (scan_digest + 16);
-    MD5Init (&context);
-    MD5Update ((&context), (STRING_LOC (string, 0)), (STRING_LENGTH (string)));
-    MD5Final (&context);
+#ifdef HAVE_LIBCRYPTO
+    unsigned char digest [MD5_DIGEST_LENGTH];
+#endif
+    unsigned char * scan_digest;
+    unsigned char * end_digest;
+
+    MD5_INIT (&context);
+    MD5_UPDATE ((&context), (STRING_LOC (string, 0)), (STRING_LENGTH (string)));
+#ifdef HAVE_LIBCRYPTO
+    MD5_FINAL (digest, (&context));
+    scan_digest = digest;
+#else
+    MD5_FINAL (&context);
+    scan_digest = (context . digest);
+#endif
+    end_digest = (scan_digest + MD5_DIGEST_LENGTH);
     while (scan_digest < end_digest)
       (*scan_result++) = (*scan_digest++);
     PRIMITIVE_RETURN (result);
@@ -55,7 +84,7 @@ Create and return an MD5 digest context.")
   PRIMITIVE_HEADER (0);
   {
     SCHEME_OBJECT context = (allocate_string (sizeof (MD5_CTX)));
-    MD5Init ((MD5_CTX *) (STRING_LOC (context, 0)));
+    MD5_INIT ((MD5_CTX *) (STRING_LOC (context, 0)));
     PRIMITIVE_RETURN (context);
   }
 }
@@ -80,9 +109,9 @@ Update CONTEXT with the contents of the substring (STRING,START,END).")
     unsigned long l = (STRING_LENGTH (string));
     unsigned long start = (arg_ulong_index_integer (3, l));
     unsigned long end = (arg_integer_in_range (4, start, (l + 1)));
-    MD5Update ((md5_context_arg (1)),
-	       (STRING_LOC (string, start)),
-	       (end - start));
+    MD5_UPDATE ((md5_context_arg (1)),
+		(STRING_LOC (string, start)),
+		(end - start));
     PRIMITIVE_RETURN (UNSPECIFIC);
   }
 }
@@ -94,12 +123,21 @@ Finalize CONTEXT and return the digest as a 16-byte string.")
   PRIMITIVE_HEADER (1);
   {
     MD5_CTX * context = (md5_context_arg (1));
-    MD5Final (context);
+#ifdef HAVE_LIBCRYPTO
+    unsigned char digest [MD5_DIGEST_LENGTH];
+    MD5_FINAL (digest, context);
+#else
+    MD5_FINAL (context);
+#endif
     {
-      SCHEME_OBJECT result = (allocate_string (16));
+      SCHEME_OBJECT result = (allocate_string (MD5_DIGEST_LENGTH));
       unsigned char * scan_result = (STRING_LOC (result, 0));
+#ifdef HAVE_LIBCRYPTO
+      unsigned char * scan_digest = digest;
+#else
       unsigned char * scan_digest = (context -> digest);
-      unsigned char * end_digest = (scan_digest + 16);
+#endif
+      unsigned char * end_digest = (scan_digest + MD5_DIGEST_LENGTH);
       while (scan_digest < end_digest)
 	(*scan_result++) = (*scan_digest++);
       PRIMITIVE_RETURN (result);

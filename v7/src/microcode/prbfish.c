@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prbfish.c,v 1.9 2000/12/05 21:23:47 cph Exp $
+$Id: prbfish.c,v 1.10 2001/03/01 04:25:54 cph Exp $
 
-Copyright (c) 1997, 1999, 2000 Massachusetts Institute of Technology
+Copyright (c) 1997-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -23,7 +23,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #include "scheme.h"
 #include "prims.h"
-#include <blowfish.h>
+
+#if defined(HAVE_LIBCRYPTO) && defined(HAVE_OPENSSL_BLOWFISH_H)
+#  include <openssl/blowfish.h>
+#else
+#  ifdef HAVE_BLOWFISH_H
+#    include <blowfish.h>
+#  endif
+#endif
 
 /* This interface uses the Blowfish library from SSLeay.  */
 
