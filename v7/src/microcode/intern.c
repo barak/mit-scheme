@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intern.c,v 9.47 1989/06/16 11:15:04 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intern.c,v 9.48 1989/06/16 11:32:03 cph Exp $ */
 
 /* String hash functions and interning of symbols. */
 
@@ -41,19 +41,26 @@ MIT in each case. */
 
 /* Hashing strings */
 
-static long
+#define STRING_HASH_BITS 16
+
+static unsigned int
 string_hash (string)
      Pointer string;
 {
   fast unsigned char * scan;
   fast unsigned char * end;
-  fast long result;
+  fast unsigned int result;
 
   scan = ((unsigned char *) (string_pointer (string, 0)));
   end = (scan + (string_length (string)));
   result = 0;
   while (scan < end)
-    result = ((((result & 0x1fff) << 1) | (result >> 13)) ^ (*scan++));
+    {
+      result <<= 1;
+      result |= (result >> STRING_HASH_BITS);
+      result ^= (*scan++);
+      result &= ((1 << STRING_HASH_BITS) - 1);
+    }
   return (result);
 }
 
