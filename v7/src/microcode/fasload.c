@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.47 1990/01/16 01:57:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.48 1990/01/21 18:26:16 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -307,6 +307,13 @@ Relocate_Block(Scan, Stop_At)
 
       case TC_LINKAGE_SECTION:
       {
+	/* Important: The relocation below will not work on machines
+	   where Heap_In_Low_Memory is not true.  At this point we
+	   don't have the original Memory_Base to find the original
+	   address.  Perhaps it should be dumped.
+	   This also applies to TC_MANIFEST_CLOSURE.
+	   The lines affected are the ones where ADDRESS_TO_DATUM is used.
+	 */
 	if (READ_LINKAGE_KIND(Temp) != OPERATOR_LINKAGE_KIND)
 	{
 	  /* Assumes that all others are objects of type TC_QUAD without
@@ -321,6 +328,7 @@ Relocate_Block(Scan, Stop_At)
 	       )
 	  {
 	    address = ((long) *Scan);
+	    address = (ADDRESS_TO_DATUM (address));
 	    *Scan++ = ((SCHEME_OBJECT) Relocate(address));
 	  }
 	  break;
@@ -340,6 +348,7 @@ Relocate_Block(Scan, Stop_At)
 	    Scan = ((SCHEME_OBJECT *) (word_ptr));
 	    word_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr));
 	    EXTRACT_OPERATOR_LINKAGE_ADDRESS (address, Scan);
+	    address = (ADDRESS_TO_DATUM (address));
 	    address = ((long) (Relocate(address)));
 	    STORE_OPERATOR_LINKAGE_ADDRESS (address, Scan);
 	  }
@@ -350,6 +359,8 @@ Relocate_Block(Scan, Stop_At)
 
       case TC_MANIFEST_CLOSURE:
       {
+	/* See comment about relocation in TC_LINKAGE_SECTION above. */
+
 	fast long count;
 	fast char *word_ptr;
 	SCHEME_OBJECT *area_end;
@@ -364,6 +375,7 @@ Relocate_Block(Scan, Stop_At)
 	  Scan = ((SCHEME_OBJECT *) (word_ptr));
 	  word_ptr = (NEXT_MANIFEST_CLOSURE_ENTRY (word_ptr));
 	  EXTRACT_CLOSURE_ENTRY_ADDRESS (address, Scan);
+	  address = (ADDRESS_TO_DATUM (address));
 	  address = ((long) (Relocate (address)));
 	  STORE_CLOSURE_ENTRY_ADDRESS (address, Scan);
 	}
@@ -503,6 +515,12 @@ Intern_Block(Next_Pointer, Stop_At)
   return;
 }
 
+/* This should be moved to config.h! */
+
+#ifndef COMPUTE_RELOCATION
+#define COMPUTE_RELOCATION(new, old) (((relocation_type) (new)) - (old))
+#endif
+
 SCHEME_OBJECT
 load_file(from_band_load)
      Boolean from_band_load;
@@ -528,7 +546,7 @@ load_file(from_band_load)
   Orig_Constant = Free_Constant;
   primitive_table = read_file_end();
   Constant_End = Free_Constant;
-  heap_relocation = ((relocation_type) Orig_Heap) - Heap_Base;
+  heap_relocation = (COMPUTE_RELOCATION (Orig_Heap, Heap_Base));
 
   /*
     Magic!
@@ -556,8 +574,8 @@ load_file(from_band_load)
     }
 
     const_relocation =
-      (((relocation_type) (OBJECT_ADDRESS (compiler_utilities))) -
-       (OBJECT_DATUM (dumped_utilities)));
+      (COMPUTE_RELOCATION ((OBJECT_ADDRESS (compiler_utilities)),
+			   (OBJECT_DATUM (dumped_utilities))));
     Dumped_Constant_Top =
       (ADDRESS_TO_DATUM
        (MEMORY_LOC (dumped_utilities,
@@ -565,9 +583,9 @@ load_file(from_band_load)
   }
   else
   {
-    const_relocation = (((relocation_type) Orig_Constant) - Const_Base);
+    const_relocation = (COMPUTE_RELOCATION (Orig_Constant, Const_Base));
   }
-  stack_relocation = ((relocation_type) Stack_Top) - Dumped_Stack_Top;
+  stack_relocation = (COMPUTE_RELOCATION (Stack_Top, Dumped_Stack_Top));
 
 #ifdef BYTE_INVERSION
   Setup_For_String_Inversion();
