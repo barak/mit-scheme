@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.15 1992/12/02 20:21:17 cph Exp $
+$Id: record.scm,v 1.16 1992/12/02 20:30:00 cph Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -46,7 +46,7 @@ MIT in each case. |#
   (%record-ref 2)
   (%record-set! 3))
 
-(define-integrable (%vector? object)
+(define-integrable (%record? object)
   (object-type? (ucode-type record) object))
 
 (define (initialize-package!)
