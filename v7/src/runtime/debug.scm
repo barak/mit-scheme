@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 13.44 1987/12/05 16:40:13 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 13.45 1987/12/09 21:51:55 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -472,6 +472,17 @@
 
 (define-debug-command #\X internal-command
   "Create a read eval print loop in the debugger environment")
+
+(define debug-compiled-continuation false)
+
+(define (debug-compiled)
+  (if debug-compiled-continuation
+      (debug-compiled-continuation current-continuation)
+      (begin (beep)
+	     (format "~%The compiled code debugger is not present in this system."))))
+
+(define-debug-command #\A debug-command
+  "Invoke the compiled code debugger on the current continuation")
 
 ;;;; Reduction and continuation motion low-level
 
