@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.66 2001/01/04 22:25:42 cph Exp $
+$Id: make.scm,v 14.67 2001/05/09 13:58:28 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -444,10 +444,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    (RUNTIME STRING-INPUT)
    (RUNTIME STRING-OUTPUT)
    (RUNTIME TRUNCATED-STRING-OUTPUT)
-   ;; These MUST be done before (RUNTIME PATHNAME) 
-   ;; Typically only one of them is loaded.
+   ;; This MUST be done before (RUNTIME PATHNAME) 
    (RUNTIME PATHNAME UNIX)
-   (RUNTIME PATHNAME DOS)
    (RUNTIME PATHNAME)
    (RUNTIME WORKING-DIRECTORY)
    (RUNTIME LOAD)
