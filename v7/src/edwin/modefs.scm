@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: modefs.scm,v 1.154 1999/01/14 20:49:11 cph Exp $
+;;; $Id: modefs.scm,v 1.155 1999/01/28 04:45:52 cph Exp $
 ;;;
 ;;; Copyright (c) 1985, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -133,6 +133,7 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental #\m-7 'auto-argument)
 (define-key 'fundamental #\m-8 'auto-argument)
 (define-key 'fundamental #\m-9 'auto-argument)
+(define-key 'fundamental #\m-: 'eval-expression)
 (define-key 'fundamental #\m-\; 'indent-for-comment)
 (define-key 'fundamental #\m-< 'beginning-of-buffer)
 (define-key 'fundamental #\m-= 'count-lines-region)
