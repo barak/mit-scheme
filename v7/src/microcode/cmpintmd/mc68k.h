@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mc68k.h,v 1.21 1991/03/24 00:46:41 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mc68k.h,v 1.22 1991/03/24 03:01:13 jinx Exp $
 
 Copyright (c) 1989-1991 Massachusetts Institute of Technology
 
@@ -581,6 +581,9 @@ DEFUN (allocate_closure,
     last_chunk_size = space;	/* To be used next time, maybe. */
     result = (start + 3);
     space = (eptr - result);
+      unsigned short *wptr;
+    for (ptr = result; ptr < eptr; ptr++)
+      *ptr = SHARP_F;		/* Allow forward scanning of heap. */
 
     for (ptr = result; ptr < eptr; ptr += CLOSURE_ENTRY_WORDS)
       wptr = ((unsigned short *) ptr);
