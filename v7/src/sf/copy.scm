@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/copy.scm,v 3.3 1987/03/20 23:49:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/copy.scm,v 3.4 1987/04/27 21:45:33 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -143,7 +143,8 @@ MIT in each case. |#
 	  (environment/lookup environment variable
 	    identity-procedure
 	    (lambda ()
-	      (block/lookup-name root-block variable))))
+	      (block/lookup-name root-block
+				 (variable/name variable)))))
 	(lambda (expression)
 	  (copy/expression block environment expression)))))
 
