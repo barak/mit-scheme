@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: sort.scm,v 1.4 1992/11/24 04:03:25 arthur Exp $
+;;;	$Id: sort.scm,v 1.5 1992/11/24 04:28:08 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -76,19 +76,18 @@
 (define (identify-records region forward-record record-end)
   (define (mark-temporary-right-inserting-copy mark)
     (make-temporary-mark (mark-group mark) (mark-index mark) false))
-  (map
-   (lambda (record)
-     (cons (car record)
-	   (mark-temporary-right-inserting-copy (cdr record))))
-   (let ((limit (region-end region)))
-     (let next-record ((start (region-start region)))
-       (if (and start (mark< start limit))
-	   (let ((end (record-end start)))
-	     (if (and end (mark< end limit))
-		 (cons (cons start end)
-		       (next-record (forward-record end)))
-		 (list (cons start (region-end region)))))
-	   '())))))
+  (let ((limit (region-end region)))
+    (let next-record ((start (region-start region)))
+      (if (and start (mark< start limit))
+	  (let ((end (record-end start)))
+	    (if (and end (mark< end limit))
+		(cons (cons start
+			    (mark-temporary-right-inserting-copy end))
+		      (next-record (forward-record end)))
+		(list (cons start
+			    (mark-temporary-right-inserting-copy
+			     (region-end region))))))
+	  '()))))
 
 (define (insert-reordered-region start end sorted-list unsorted-list)
   (let ((end-mark (mark-right-inserting-copy end))
