@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtrap.c,v 1.25 1993/12/07 20:36:05 gjr Exp $
+$Id: uxtrap.c,v 1.26 1995/07/27 00:35:24 adams Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -196,7 +196,7 @@ DEFUN (trap_handler, (message, signo, info, scp),
   saved_signo = signo;
   saved_info = info;
   saved_scp = scp;
-    
+
   while (1)
   {
     static CONST char * trap_query_choices[] =
@@ -318,7 +318,7 @@ DEFUN (setup_trap_frame, (signo, info, scp, trinfo, new_stack_pointer),
     }
   if (Free > MemTop)
   {
-    Request_GC (0);
+      Request_GC (0);
   }
   signal_name =
     ((signo == 0)
@@ -482,11 +482,8 @@ DEFUN (continue_from_trap, (signo, info, scp),
     utility_index = (pc_to_utility_index (the_pc));
     pc_in_utility = (utility_index != -1);    
     pc_in_C = ((the_pc <= ((long) (get_etext ()))) && (!pc_in_builtin));
-    pc_in_heap =
-      ((the_pc < ((long) Heap_Top)) && (the_pc >= ((long) Heap_Bottom)));
-    pc_in_constant_space =
-      ((the_pc < ((long) Constant_Top)) &&
-       (the_pc >= ((long) Constant_Space)));
+    pc_in_heap = ADDRESS_HEAP_P ((SCHEME_OBJECT*) the_pc);
+    pc_in_constant_space = ADDRESS_CONSTANT_P ((SCHEME_OBJECT*) the_pc);
     pc_in_scheme = (pc_in_heap || pc_in_constant_space || pc_in_builtin);
     pc_in_hyper_space = ((!pc_in_C) && (!pc_in_scheme));
   }
@@ -748,7 +745,9 @@ DEFUN (find_block_address_in_area, (pc_value, area_start),
 	      SCHEME_OBJECT * block = (area - 1);
 	      return
 		(((area == first_valid) ||
-		  ((OBJECT_TYPE (*block)) != TC_MANIFEST_VECTOR) ||
+		  (((OBJECT_TYPE (*block)) != TC_MANIFEST_VECTOR)
+		   && ((OBJECT_TYPE (*block)) != TC_POSITIVE_FIXNUM))
+		   ||
 		  ((OBJECT_DATUM (*block)) < (count + 1)) ||
 		  (! (PLAUSIBLE_CC_BLOCK_P (block))))
 		 ? 0
@@ -766,3 +765,92 @@ DEFUN (find_block_address_in_area, (pc_value, area_start),
 }
 
 #endif /* HAVE_SIGCONTEXT and HAS_COMPILER_SUPPORT and not USE_STACKLETS */
+
+
+
+SCHEME_OBJECT
+DEFUN (find_ccblock, (the_pc),
+       long the_pc)
+{
+  int pc_in_builtin;
+  int builtin_index;
+  int pc_in_C;
+  int pc_in_heap;
+  int pc_in_constant_space;
+  int pc_in_scheme;
+  int pc_in_hyper_space;
+  int pc_in_utility;
+  int utility_index;
+  extern int EXFUN (pc_to_utility_index, (unsigned long));
+  extern int EXFUN (pc_to_builtin_index, (unsigned long));
+
+  if ((the_pc & PC_ALIGNMENT_MASK) != 0)
+  {
+    pc_in_builtin = 0;
+    pc_in_utility = 0;
+    pc_in_C = 0;
+    pc_in_heap = 0;
+    pc_in_constant_space = 0;
+    pc_in_scheme = 0;
+    pc_in_hyper_space = 1;
+  }
+  else
+  {
+    builtin_index = (pc_to_builtin_index (the_pc));
+    pc_in_builtin = (builtin_index != -1);
+    utility_index = (pc_to_utility_index (the_pc));
+    pc_in_utility = (utility_index != -1);    
+    pc_in_C = ((the_pc <= ((long) (get_etext ()))) && (!pc_in_builtin));
+    pc_in_heap = ADDRESS_HEAP_P ((SCHEME_OBJECT*) the_pc);
+    pc_in_constant_space = ADDRESS_CONSTANT_P ((SCHEME_OBJECT*) the_pc);
+    pc_in_scheme = (pc_in_heap || pc_in_constant_space || pc_in_builtin);
+    pc_in_hyper_space = ((!pc_in_C) && (!pc_in_scheme));
+  }
+
+  if (pc_in_hyper_space || (pc_in_scheme && ALLOW_ONLY_C))
+  {
+      return  SHARP_F;
+  }
+  else if (pc_in_scheme)
+  {
+    /* In compiled code. */
+    SCHEME_OBJECT * block_addr;
+    SCHEME_OBJECT * maybe_free;
+    block_addr =
+      (pc_in_builtin
+       ? ((SCHEME_OBJECT *) NULL)
+       : (find_block_address (((PTR) the_pc),
+			      (pc_in_heap ? Heap_Bottom : Constant_Space))));
+    if (block_addr != ((SCHEME_OBJECT *) NULL))
+    {
+	return  MAKE_POINTER_OBJECT (TC_COMPILED_CODE_BLOCK, block_addr);
+    }
+    else if (pc_in_builtin)
+    {
+	return  SHARP_F;
+    }
+    else 
+    {
+	return  SHARP_F;
+    }
+  }
+  else /* pc_in_C */
+  {
+    /* In the interpreter, a primitive, or a compiled code utility. */
+
+    SCHEME_OBJECT primitive = (Regs[REGBLOCK_PRIMITIVE]);
+
+    if (pc_in_utility)
+    {
+	return  SHARP_F;
+    }
+    else if ((OBJECT_TYPE (primitive)) != TC_PRIMITIVE)
+    {
+	return  SHARP_F;
+    }
+    else
+    {
+	return  SHARP_F;
+    }
+  }
+}
