@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syncproc.scm,v 1.4 1999/01/31 20:46:25 cph Exp $
+$Id: syncproc.scm,v 1.5 1999/01/31 20:48:23 cph Exp $
 
 Copyright (c) 1999 Massachusetts Institute of Technology
 
@@ -61,8 +61,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				  context)))
 
 (define (run-synchronous-subprocess program arguments . options)
-  (run-synchronous-process-1 program arguments
-			     (apply make-subprocess-context options)))
+  (run-synchronous-subprocess-1 program arguments
+				(apply make-subprocess-context options)))
 
 (define (run-synchronous-subprocess-1 program arguments context)
   (let* ((directory (subprocess-context/working-directory context))
