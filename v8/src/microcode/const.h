@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/const.h,v 9.32 1989/05/31 01:49:52 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/const.h,v 9.33 1989/06/16 09:37:04 cph Rel $
  *
  * Named constants used throughout the interpreter
  *
@@ -50,12 +50,14 @@ MIT in each case. */
 
 #define SHARP_F			Make_Non_Pointer(TC_NULL, 0)
 #define SHARP_T			Make_Non_Pointer(TC_TRUE, 0)
+#define UNSPECIFIC		Make_Non_Pointer(TC_TRUE, 1)
 #define FIXNUM_ZERO		Make_Non_Pointer(TC_FIXNUM, 0)
 #define BROKEN_HEART_ZERO	Make_Non_Pointer(TC_BROKEN_HEART, 0)
 
 #else				/* 32 bit word */
 #define SHARP_F			0x00000000
 #define SHARP_T			0x08000000
+#define UNSPECIFIC		0x08000001
 #define FIXNUM_ZERO		0x1A000000
 #define BROKEN_HEART_ZERO	0x22000000
 #endif				/* b32 */
@@ -91,12 +93,6 @@ MIT in each case. */
 #define MAX_LIST_PRINT		10
 
 #define ILLEGAL_PRIMITIVE	-1
-
-/* Hashing algorithm for interning */
-
-#define MAX_HASH_CHARS		5
-#define LENGTH_MULTIPLIER	5
-#define SHIFT_AMOUNT		2
 
 /* Last immediate reference trap. */
 				    
