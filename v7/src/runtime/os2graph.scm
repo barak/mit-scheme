@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: os2graph.scm,v 1.12 1996/04/24 03:48:24 cph Exp $
+$Id: os2graph.scm,v 1.13 1997/05/15 00:12:07 cph Exp $
 
-Copyright (c) 1995-96 Massachusetts Institute of Technology
+Copyright (c) 1995-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -63,6 +63,7 @@ MIT in each case. |#
 	   (find-color ,os2-graphics/find-color)
 	   (flush ,os2-graphics/flush)
 	   (hide-window ,os2-graphics/hide-window)
+	   (image-depth ,os2-graphics/image-depth)
 	   (lower-window ,os2-graphics/lower-window)
 	   (maximize-window ,os2-graphics/maximize-window)
 	   (minimize-window ,os2-graphics/minimize-window)
@@ -471,6 +472,14 @@ MIT in each case. |#
   (os2ps-set-colors (window/backing-store window)
 		    (window/foreground-color window)
 		    (window/background-color window)))
+
+(define (os2-graphics/image-depth device)
+  (let ((bitcount
+	 (os2ps-query-capability (os2-graphics-device/psid device)
+				 CAPS_COLOR_BITCOUNT)))
+    (if (<= 1 bitcount 8)
+	bitcount
+	8)))
 
 ;;;; Window Operations
 
