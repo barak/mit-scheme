@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sendmail.scm,v 1.45 2000/02/29 02:41:44 cph Exp $
+;;; $Id: sendmail.scm,v 1.46 2000/03/15 03:37:01 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
@@ -371,7 +371,7 @@ is inserted."
        (string-append "Edwin [version "
 		      (get-subsystem-version-string "edwin")
 		      ", MIT Scheme Release "
-		      microcode-id/release-string
+		      (get-subsystem-version-string "release")
 		      "]")))
 
 (define-variable mail-setup-hook
