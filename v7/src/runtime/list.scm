@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/list.scm,v 13.41 1987/01/23 00:15:33 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/list.scm,v 13.42 1987/02/11 02:22:09 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -43,6 +43,7 @@
 
 ;;; This IN-PACKAGE is just a kludge to prevent the definitions of the
 ;;; primitives from shadowing the USUAL-INTEGRATIONS declaration.
+#| Temporarily relocated to `boot.scm' to help compiler.
 (in-package system-global-environment
 (let-syntax ()
   (define-macro (define-primitives . names)
@@ -51,7 +52,7 @@
 		   names)))
   (define-primitives
    cons pair? null? length car cdr set-car! set-cdr!
-   general-car-cdr memq assq)))
+   general-car-cdr memq assq)))|#
 
 (define (list . elements)
   elements)
@@ -79,21 +80,18 @@
   (apply list elements))
 
 (define (list-ref l n)
-  (car (list-tail l n)))
+  (cond ((not (pair? l)) (error "LIST-REF: Bad argument" l n))
+	((zero? n) (car l))
+	(else (list-ref (cdr l) (-1+ n)))))
 
 (define (list-tail l n)
   (cond ((zero? n) l)
 	((pair? l) (list-tail (cdr l) (-1+ n)))
-	(else (error "LIST-TAIL: Argument not a list" l))))
+	(else (error "LIST-TAIL: Bad argument" l))))
 
-(define the-empty-stream
-  '())
-
-(define empty-stream?
-  null?)
-
-(define head
-  car)
+(define the-empty-stream '())
+(define empty-stream? null?)
+(define head car)
 
 (define (tail stream)
   (force (cdr stream)))
@@ -183,63 +181,92 @@
 
 ;;;; Mapping Procedures
 
-(define map)
-(define map*)
-(let ()
-
-(define (inner-map f lists initial-value)
-  (define (loop lists)
-    (define (scan lists c)
-      (if (null? lists)
-	  (c '() '())
-	  (let ((list (car lists)))
-	    (cond ((null? list) initial-value)
-		  ((pair? list)
-		   (scan (cdr lists)
-			 (lambda (cars cdrs)
-			   (c (cons (car list) cars)
-			      (cons (cdr list) cdrs)))))
-		  (else (error "MAP: Argument not a list" list))))))
-    (scan lists
-	  (lambda (cars cdrs)
-	    (cons (apply f cars) (loop cdrs)))))
-  (loop lists))
-
-(set! map
-(named-lambda (map f . lists)
-  (if (null? lists)
-      (error "MAP: Too few arguments" f)
-      (inner-map f lists '()))))
-
-(set! map*
-(named-lambda (map* initial-value f . lists)
-  (if (null? lists)
-      (error "MAP*: Too few arguments" initial-value f)
-      (inner-map f lists initial-value))))
-
-)
+(define (map f . lists)
+  (cond ((null? lists)
+	 (error "MAP: Too few arguments" f))
+	((null? (cdr lists))
+	 (let 1-loop ((list (car lists)))
+	   (if (null? list)
+	       '()
+	       (cons (f (car list))
+		     (1-loop (cdr list))))))
+	(else
+	 (let n-loop ((lists lists))
+	   (let parse-cars
+	       ((lists lists)
+		(receiver
+		 (lambda (cars cdrs)
+		   (cons (apply f cars)
+			 (n-loop cdrs)))))
+	     (cond ((null? lists)
+		    (receiver '() '()))
+		   ((null? (car lists))
+		    '())
+		   ((pair? (car lists))
+		    (parse-cars (cdr lists)
+				(lambda (cars cdrs)
+				  (receiver (cons (car (car lists)) cars)
+					    (cons (cdr (car lists)) cdrs)))))
+		   (else
+		    (error "MAP: Argument not a list" (car lists)))))))))
+
+(define (map* initial-value f . lists)
+  (cond ((null? lists)
+	 (error "MAP*: Too few arguments" f))
+	((null? (cdr lists))
+	 (let 1-loop ((list (car lists)))
+	   (if (null? list)
+	       initial-value
+	       (cons (f (car list))
+		     (1-loop (cdr list))))))
+	(else
+	 (let n-loop ((lists lists))
+	   (let parse-cars
+	       ((lists lists)
+		(receiver
+		 (lambda (cars cdrs)
+		   (cons (apply f cars)
+			 (n-loop cdrs)))))
+	     (cond ((null? lists)
+		    (receiver '() '()))
+		   ((null? (car lists))
+		    initial-value)
+		   ((pair? (car lists))
+		    (parse-cars (cdr lists)
+				(lambda (cars cdrs)
+				  (receiver (cons (car (car lists)) cars)
+					    (cons (cdr (car lists)) cdrs)))))
+		   (else
+		    (error "MAP*: Argument not a list" (car lists)))))))))
 
 (define (for-each f . lists)
-  (define (loop lists)
-    (define (scan lists c)
-      (if (null? lists)
-	  (c '() '())
-	  (let ((list (car lists)))
-	    (cond ((null? list) '())
-		  ((pair? list)
-		   (scan (cdr lists)
-			 (lambda (cars cdrs)
-			   (c (cons (car list) cars)
-			      (cons (cdr list) cdrs)))))
-		  (else (error "FOR-EACH: Argument not a list" list))))))
-    (scan lists
-	  (lambda (cars cdrs)
-	    (apply f cars)
-	    (loop cdrs))))
-  (if (null? lists)
-      (error "FOR-EACH: Too few arguments" f)
-      (loop lists))
-  *the-non-printing-object*)
+  (cond ((null? lists)
+	 (error "FOR-EACH: Too few arguments" f))
+	((null? (cdr lists))
+	 (let 1-loop ((list (car lists)))
+	   (if (null? list)
+	       *the-non-printing-object*
+	       (begin (f (car list))
+		      (1-loop (cdr list))))))
+	(else
+	 (let n-loop ((lists lists))
+	   (let parse-cars
+	       ((lists lists)
+		(receiver
+		 (lambda (cars cdrs)
+		   (apply f cars)
+		   (n-loop cdrs))))
+	     (cond ((null? lists)
+		    (receiver '() '()))
+		   ((null? (car lists))
+		    *the-non-printing-object*)
+		   ((pair? (car lists))
+		    (parse-cars (cdr lists)
+				(lambda (cars cdrs)
+				  (receiver (cons (car (car lists)) cars)
+					    (cons (cdr (car lists)) cdrs)))))
+		   (else
+		    (error "FOR-EACH: Argument not a list" (car lists)))))))))
 
 (define mapcar map)
 (define mapcar* map*)
@@ -262,19 +289,19 @@
 
 ;;;; Generalized List Operations
 
-(define (positive-list-searcher pred if-win if-lose)
+(define (positive-list-searcher predicate if-win if-lose)
   (define (list-searcher-loop list)
     (if (pair? list)
-	(if (pred list)
+	(if (predicate list)
 	    (if-win list)
 	    (list-searcher-loop (cdr list)))
 	(and if-lose (if-lose))))
   list-searcher-loop)
 
-(define (negative-list-searcher pred if-win if-lose)
+(define (negative-list-searcher predicate if-win if-lose)
   (define (list-searcher-loop list)
     (if (pair? list)
-	(if (pred list)
+	(if (predicate list)
 	    (list-searcher-loop (cdr list))
 	    (if-win list))
 	(and if-lose (if-lose))))
@@ -300,64 +327,80 @@
 	tail))
   list-transform-loop)
 
-;;; Not so general, but useful.
+(define (list-deletor predicate)
+  (define (list-deletor-loop list)
+    (if (pair? list)
+	(if (predicate (car list))
+	    (list-deletor-loop (cdr list))
+	    (cons (car list) (list-deletor-loop (cdr list))))
+	'()))
+  list-deletor-loop)
 
-(define (list-deletor pred)
-  (negative-list-transformer pred '()))
-
-(define (list-deletor! pred)
+(define (list-deletor! predicate)
   (define (trim-initial-segment list)
     (if (pair? list)
-	(if (pred (car list))
+	(if (predicate (car list))
 	    (trim-initial-segment (cdr list))
 	    (begin (locate-initial-segment list (cdr list))
 		   list))
 	list))
   (define (locate-initial-segment last this)
     (if (pair? this)
-	(if (pred (car this))
+	(if (predicate (car this))
 	    (set-cdr! last (trim-initial-segment (cdr this)))
 	    (locate-initial-segment this (cdr this)))
 	this))
   trim-initial-segment)
 
 (define (list-transform-positive list predicate)
-  ((positive-list-transformer predicate '()) list))
+  (let loop ((list list))
+    (if (pair? list)
+	(if (predicate (car list))
+	    (cons (car list) (loop (cdr list)))
+	    (loop (cdr list)))
+	'())))
 
 (define (list-transform-negative list predicate)
-  ((negative-list-transformer predicate '()) list))
+  (let loop ((list list))
+    (if (pair? list)
+	(if (predicate (car list))
+	    (loop (cdr list))
+	    (cons (car list) (loop (cdr list))))
+	'())))
 
 (define (list-search-positive list predicate)
-  ((positive-list-searcher (lambda (items)
-			     (predicate (car items)))
-			   car
-			   false)
-   list))
+  (let loop ((list list))
+    (and (pair? list)
+	 (if (predicate (car list))
+	     (car list)
+	     (loop (cdr list))))))
 
 (define (list-search-negative list predicate)
-  ((negative-list-searcher (lambda (items)
-			     (predicate (car items)))
-			   car
-			   false)
-   list))
+  (let loop ((list list))
+    (and (pair? list)
+	 (if (predicate (car list))
+	     (loop (cdr list))
+	     (car list)))))
 
 ;;;; Membership Lists
 
-(define ((member-procedure pred) element list)
-  ((positive-list-searcher (lambda (sub-list)
-			     (pred (car sub-list) element))
-			   identity-procedure
-			   false)
-   list))
+(define (member-procedure predicate)
+  (lambda (element list)
+    (let loop ((list list))
+      (and (pair? list)
+	   (if (predicate (car list) element)
+	       list
+	       (loop (cdr list)))))))
 
 ;(define memq (member-procedure eq?))
 (define memv (member-procedure eqv?))
 (define member (member-procedure equal?))
 
-(define ((delete-member-procedure deletor pred) element list)
-  ((deletor (lambda (match)
-	      (pred match element)))
-   list))
+(define (delete-member-procedure deletor predicate)
+  (lambda (element list)
+    ((deletor (lambda (match)
+		(predicate match element)))
+     list)))
 
 (define delq (delete-member-procedure list-deletor eq?))
 (define delv (delete-member-procedure list-deletor eqv?))
@@ -369,20 +412,21 @@
 
 ;;;; Association Lists
 
-(define ((association-procedure pred selector) key alist)
-  ((positive-list-searcher (lambda (sub-alist)
-			     (pred (selector (car sub-alist)) key))
-			   car
-			   false)
-   alist))
+(define (association-procedure predicate selector)
+  (lambda (key alist)
+    (let loop ((alist alist))
+      (and (pair? alist)
+	   (if (predicate (selector (car alist)) key)
+	       (car alist)
+	       (loop (cdr alist)))))))
 
 ;(define assq (association-procedure eq? car))
 (define assv (association-procedure eqv? car))
 (define assoc (association-procedure equal? car))
 
-(define ((delete-association-procedure deletor pred selector) key alist)
+(define ((delete-association-procedure deletor predicate selector) key alist)
   ((deletor (lambda (association)
-	      (pred (selector association) key)))
+	      (predicate (selector association) key)))
    alist))
 
 (define del-assq (delete-association-procedure list-deletor eq? car))
@@ -396,33 +440,29 @@
 ;;;; Lastness
 
 (define (last-pair l)
-  (define (loop l)
-    (if (pair? (cdr l))
-	(loop (cdr l))
-	l))
   (if (pair? l)
-      (loop l)
+      (let loop ((l l))
+	(if (pair? (cdr l))
+	    (loop (cdr l))
+	    l))
       (error "LAST-PAIR: Argument not a list" l)))
 
 (define (except-last-pair l)
-  (define (loop l)
-    (if (pair? (cdr l))
-	(cons (car l)
-	      (loop (cdr l)))
-	'()))
   (if (pair? l)
-      (loop l)
+      (let loop ((l l))
+	(if (pair? (cdr l))
+	    (cons (car l)
+		  (loop (cdr l)))
+	    '()))
       (error "EXCEPT-LAST-PAIR: Argument not a list" l)))
 
 (define (except-last-pair! l)
-  (define (loop l)
-    (if (pair? (cddr l))
-	(loop (cdr l))
-	(set-cdr! l '())))
   (if (pair? l)
       (if (pair? (cdr l))
-	  (begin (loop l)
+	  (begin (let loop ((l l))
+		   (if (pair? (cddr l))
+		       (loop (cdr l))
+		       (set-cdr! l '())))
 		 l)
 	  '())
-      (error "EXCEPT-LAST-PAIR!: Argument not a list" l)))
       (error "EXCEPT-LAST-PAIR!: Argument not a list" l)))
