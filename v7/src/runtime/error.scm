@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.8 1989/05/04 19:45:56 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.9 1989/05/04 19:47:33 jinx Rel $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -159,9 +159,6 @@ MIT in each case. |#
       (1d-table/get (condition-type/properties (condition/type condition))
 		    message-tag
 		    "Anonymous error")))
-
-(define default-condition-environment
-  (cons false false))
 
 (define (condition/environment condition)
   (let ((place (1d-table/get (condition/properties condition)
