@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.5 2000/12/06 04:57:03 cph Exp $
+# $Id: Makefile,v 1.6 2000/12/06 04:58:05 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -44,7 +44,7 @@ mostlyclean clean distclean maintainer-clean:
 	    if test -f $${SUBDIR}/Makefile; then \
 		echo "making $@ in $${SUBDIR}"; \
 		(cd $${SUBDIR} && $(MAKE) $@); \
-	    fi
+	    fi;
 	done
 
 .PHONY: all setup tags TAGS mostlyclean clean distclean maintainer-clean
