@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/simapp.scm,v 4.5 1989/08/21 19:34:13 cph Rel $
+$Id: simapp.scm,v 4.6 1993/06/29 04:35:29 gjr Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -58,7 +58,7 @@ MIT in each case. |#
   (make-method-table rvalue-types
 		     (lambda (old operator apply-operator)
 		       old apply-operator
-		       (warn "Unapplicable operator" operator)
+		       (warn "Inapplicable operator" operator)
 		       operator)))
 
 (let ((processor
@@ -114,8 +114,7 @@ MIT in each case. |#
 		 (if (not
 		      (cond ((eq? value compiled-error-procedure)
 			     (positive? argument-count))
-			    ((or (primitive-procedure? value)
-				 (compiled-procedure? value))
+			    ((procedure? value)
 			     (procedure-arity-valid? value argument-count))
 			    (else
 			     (if (not (unassigned-reference-trap? value))
