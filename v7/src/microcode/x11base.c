@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.45 1993/01/12 21:41:22 cph Exp $
+$Id: x11base.c,v 1.46 1993/02/02 22:14:51 nick Exp $
 
 Copyright (c) 1989-93 Massachusetts Institute of Technology
 
@@ -373,7 +373,7 @@ DEFUN (x_get_default,
 
 static unsigned long
 DEFUN (x_default_color,
-       (display, resource_class, resource_name,
+       (display, resource_name, resource_class,
 	property_name, property_class, default_color),
        Display * display AND
        CONST char * resource_name AND
@@ -436,24 +436,24 @@ DEFUN (x_default_attributes,
     unsigned long foreground_pixel;
     (attributes -> background_pixel) =
       (x_default_color
-       (display, resource_class, resource_name,
+       (display, resource_name, resource_class,
 	"background", "Background", white_pixel));
     foreground_pixel =
       (x_default_color
-       (display, resource_class, resource_name,
+       (display, resource_name, resource_class,
 	"foreground", "Foreground", black_pixel));
     (attributes -> foreground_pixel) = foreground_pixel;
     (attributes -> border_pixel) =
       (x_default_color
-       (display, resource_class, resource_name,
+       (display, resource_name, resource_class,
 	"borderColor", "BorderColor", foreground_pixel));
     (attributes -> cursor_pixel) =
       (x_default_color
-       (display, resource_class, resource_name,
+       (display, resource_name, resource_class,
 	"cursorColor", "Foreground", foreground_pixel));
     (attributes -> mouse_pixel) =
       (x_default_color
-       (display, resource_class, resource_name,
+       (display, resource_name, resource_class,
 	"pointerColor", "Foreground", foreground_pixel));
   }
 }
