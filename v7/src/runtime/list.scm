@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: list.scm,v 14.23 1999/01/02 06:11:34 cph Exp $
+$Id: list.scm,v 14.24 2000/05/02 20:39:37 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -21,7 +21,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;;; List Operations
 ;;; package: (runtime list)
-
 
 ;;; Note: Many list operations (like LIST-COPY and DELQ) have been
 ;;  replaced with iterative versions which are slightly longer than
@@ -47,7 +46,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;;  Each interative version appears after the commented-out recursive
 ;;  version.  Please leave them in the file, we may want them in the
 ;;  future.  We have commented them out with ;; rather than block (i.e
-;;  #||#) comments deliberately.
+;;  #||#) comments deliberately.  [Note from CPH: commented-out code
+;;  deleted as it can always be recovered from version control.]
 ;;
 ;;  -- Yael & Stephen
 
@@ -61,11 +61,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (cons* first-element . rest-elements)
   (let loop ((this-element first-element) (rest-elements rest-elements))
-    (if (null? rest-elements)
-	this-element
+    (if (pair? rest-elements)
 	(cons this-element
 	      (loop (car rest-elements)
-		    (cdr rest-elements))))))
+		    (cdr rest-elements)))
+	this-element)))
 
 (define (make-list length #!optional value)
   (guarantee-index/list length 'MAKE-LIST)
@@ -76,11 +76,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  (loop (fix:- n 1) (cons value result))))))
 
 (define (circular-list . items)
-  (if (not (null? items))
+  (if (pair? items)
       (let loop ((l items))
-	(if (null? (cdr l))
-	    (set-cdr! l items)
-	    (loop (cdr l)))))
+	(if (pair? (cdr l))
+	    (loop (cdr l))
+	    (set-cdr! l items))))
   items)
 
 (define (make-circular-list length #!optional value)
@@ -154,69 +154,41 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			     (loop (cdr l1) (cdr l2)))
 			(null? l1)))))
 	(null? l1))))
-
-;;(define (list-copy items)
-;;  (let loop ((items* items))
-;;    (if (pair? items*)
-;;	(cons (car items*) (loop (cdr items*)))
-;;	(begin
-;;	  (if (not (null? items*))
-;;	      (error:wrong-type-argument items "list" 'LIST-COPY))
-;;	  '()))))
-
-;; Iterative version:
-
+
 (define (list-copy items)
-  (define (end-check list result)
-    (if (not (null? list))
-	(error:wrong-type-argument items "list" 'LIST-COPY))
-    result)
-  (if (pair? items)
-      (let ((head (cons (car items) '())))    
-	(let loop ((list (cdr items)) (previous head))
-	  (if (pair? list)
-	      (let ((new (cons (car list) '())))
-		(set-cdr! previous new)
-		(loop (cdr list) new))
-	      (end-check list head))))
-      (end-check items '())))
-
-;;(define (alist-copy alist)
-;;  (let loop ((alist* alist))
-;;    (if (pair? alist*)
-;;	(begin
-;;	  (if (not (pair? (car alist*)))
-;;	      (error:wrong-type-argument alist "alist" 'ALIST-COPY))
-;;	  (cons (cons (car (car alist*)) (cdr (car alist*)))
-;;		(loop (cdr alist*))))
-;;	(begin
-;;	  (if (not (null? alist*))
-;;	      (error:wrong-type-argument alist "alist" 'ALIST-COPY))
-;;	  '()))))
-
-;; Iterative version:
+  (let ((lose (lambda () (error:wrong-type-argument items "list" 'LIST-COPY))))
+    (cond ((pair? items)
+	   (let ((head (cons (car items) '())))
+	     (let loop ((list (cdr items)) (previous head))
+	       (cond ((pair? list)
+		      (let ((new (cons (car list) '())))
+			(set-cdr! previous new)
+			(loop (cdr list) new)))
+		     ((not (null? list)) (lose))))
+	     head))
+	  ((null? items) items)
+	  (else (lose)))))
 
 (define (alist-copy alist)
-  (define (end-check list result)
-    (if (not (null? list))
-	(error:wrong-type-argument alist "list" 'ALIST-COPY))
-    result)
-  (if (pair? alist)
-      (begin 
-	(if (not (pair? (car alist)))
-	    (error:wrong-type-argument alist "alist" 'ALIST-COPY))
-	(let ((head (cons (car alist) '())))
-	  (let loop ((alist* (cdr alist)) (previous head))
-	    (if (pair? alist*)
-		(begin
-		  (if (not (pair? (car alist*)))
-		      (error:wrong-type-argument alist "alist" 'ALIST-COPY))
-		  (let ((new (cons (cons (car (car alist*)) 
-					 (cdr (car alist*))) '())))
-		    (set-cdr! previous new)
-		    (loop (cdr alist*) new)))
-		(end-check alist* head)))))
-      (end-check alist '())))
+  (let ((lose
+	 (lambda () (error:wrong-type-argument alist "alist" 'ALIST-COPY))))
+    (cond ((pair? alist)
+	   (if (pair? (car alist))
+	       (let ((head (cons (car alist) '())))
+		 (let loop ((alist (cdr alist)) (previous head))
+		   (cond ((pair? alist)
+			  (if (pair? (car alist))
+			      (let ((new
+				     (cons (cons (caar alist) (cdar alist))
+					   '())))
+				(set-cdr! previous new)
+				(loop (cdr alist) new))
+			      (lose)))
+			 ((not (null? alist)) (lose))))
+		 head)
+	       (lose)))
+	  ((null? alist) alist)
+	  (else (lose)))))
 
 (define (tree-copy tree)
   (let walk ((tree tree))
@@ -255,7 +227,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(let ((car (system-pair-car items*)))
 	  (if (not car)
 	      (loop (system-pair-cdr items*))
-	      (cons (if (eq? car weak-pair/false) false car)
+	      (cons (if (eq? car weak-pair/false) #f car)
 		    (loop (system-pair-cdr items*)))))
 	(begin
 	  (if (not (null? items*))
@@ -306,7 +278,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (lambda (last this)
 	      (if (weak-pair? this)
 		  (if (or (eq? item (system-pair-car this))
-			  (eq? false (system-pair-car this)))
+			  (eq? #f (system-pair-car this)))
 		      (set-cdr! last
 				(trim-initial-segment (system-pair-cdr this)))
 		      (locate-initial-segment this (system-pair-cdr this)))
@@ -406,11 +378,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (%append lists)
   (let ((lists (reverse! lists)))
-    (if (null? lists)
-	'()
+    (if (pair? lists)
 	(let loop ((accum (car lists)) (rest (cdr lists)))
-	  (if (null? rest)
-	      accum
+	  (if (pair? rest)
 	      (loop (let ((l1 (car rest)))
 		      (cond ((pair? l1)
 			     (let ((root (cons (car l1) #f)))
@@ -431,16 +401,17 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			    (else
 			     (error:wrong-type-argument (car rest) "list"
 							'APPEND))))
-		    (cdr rest)))))))
+		    (cdr rest))
+	      accum))
+	'())))
 
 (define (append! . lists)
   (%append! lists))
 
 (define (%append! lists)
-  (if (null? lists)
-      '()
+  (if (pair? lists)
       (let loop ((head (car lists)) (tail (cdr lists)))
-	(cond ((null? tail)
+	(cond ((not (pair? tail))
 	       head)
 	      ((pair? head)
 	       (set-cdr! (last-pair head) (loop (car tail) (cdr tail)))
@@ -448,7 +419,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	      (else
 	       (if (not (null? head))
 		   (error:wrong-type-argument (car lists) "list" 'APPEND!))
-	       (loop (car tail) (cdr tail)))))))
+	       (loop (car tail) (cdr tail)))))
+      '()))
 
 (define (reverse l)
   (%reverse l '()))
@@ -474,126 +446,123 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  new-cdr))))
 
 ;;;; Mapping Procedures
-;;
-;;  This is an iterative, side effecting version of map.
 
 (define (map procedure first . rest)
 
-  (define (bad-list thing)
-    (error:wrong-type-argument thing "list" 'MAP))
+  (define (map-1 l)
+    (cond ((pair? l)
+	   (let ((head (cons (procedure (car l)) '())))
+	     (let loop ((l (cdr l)) (previous head))
+	       (cond ((pair? l)
+		      (let ((new (cons (procedure (car l)) '())))
+			(set-cdr! previous new)
+			(loop (cdr l) new)))
+		     ((not (null? l))
+		      (bad-end))))
+	     head))
+	  ((null? l) '())
+	  (else (bad-end))))
 
-  (define (map-1 list)
-    (define-integrable (end-check thing result)
-      (if (not (null? thing)) (bad-list list))
-      result)
-    (if (pair? list)
-	(let ((head (cons (procedure (car list)) '())))
-	  (let 1-loop ((list* (cdr list)) (previous head))
-	    (if (pair? list*)
-		(let ((new (cons (procedure (car list*)) '())))
-		  (set-cdr! previous new)
-		  (1-loop (cdr list*) new))
-		(end-check list* head))))
-	(end-check list '())))
-
-  (define (map-2 list1 list2)
-    (define-integrable (end-check end1 end2 result)
-      (if (pair? end1)
-	  (if (not (null? end2)) (bad-list list2))
-	  (if (pair? end2)
-	      (if (not (null? end1)) (bad-list list1))))
-      result)
-    (if (and (pair? list1) (pair? list2))
-	(let ((head (cons (procedure (car list1) (car list2)) '())))
-	  (let 2-loop ((list1* (cdr list1))
-		       (list2* (cdr list2))
-		       (previous head))
-	    (if (and (pair? list1*) (pair? list2*))
-		(let ((new (cons (procedure (car list1*) (car list2*))
-				 '())))
-		  (set-cdr! previous new)
-		  (2-loop (cdr list1*) (cdr list2*) new))
-		(end-check list1* list2* head))))
-	(end-check list1 list2 '())))
+  (define (map-2 l1 l2)
+    (cond ((and (pair? l1) (pair? l2))
+	   (let ((head (cons (procedure (car l1) (car l2)) '())))
+	     (let loop ((l1 (cdr l1)) (l2 (cdr l2)) (previous head))
+	       (cond ((and (pair? l1) (pair? l2))
+		      (let ((new (cons (procedure (car l1) (car l2)) '())))
+			(set-cdr! previous new)
+			(loop (cdr l1) (cdr l2) new)))
+		     ((not (and (null? l1) (null? l2)))
+		      (bad-end))))
+	     head))
+	  ((and (null? l1) (null? l2)) '())
+	  (else (bad-end))))
 
   (define (map-n lists)
-    ;; LISTS has at least one list.
-    (let ((head  (cons '() '()))) 
-      (let n-loop ((lists* lists) (previous head))
-	(let parse-cars ((lists lists)
-			 (lists* lists*)
-			 (cars '())
-			 (cdrs '()))
-	  (cond ((null? lists*)
-		 (let ((new (cons (apply procedure 
-					 (reverse! cars)) '())))
+    (let ((head (cons unspecific '())))
+      (let loop ((lists lists) (previous head))
+	(if (pair? (car lists))
+	    (do ((lists lists (cdr lists))
+		 (cars '() (cons (caar lists) cars))
+		 (cdrs '() (cons (cdar lists) cdrs)))
+		((not (pair? lists))
+		 (let ((new (cons (apply procedure (reverse! cars)) '())))
 		   (set-cdr! previous new)
-		   (n-loop (reverse! cdrs) new)))
-		((pair? (car lists*))
-		 (parse-cars (cdr lists)
-			     (cdr lists*)
-			     (cons (car (car lists*)) cars)
-			     (cons (cdr (car lists*)) cdrs)))
-		(else
-		 (if (not (null? (car lists*)))
-		     (bad-list (car lists)))
-		 (cdr head)))))))
+		   (loop (reverse! cdrs) new)))
+	      (if (not (pair? (car lists)))
+		  (bad-end)))
+	    (do ((lists lists (cdr lists)))
+		((not (pair? lists)))
+	      (if (not (null? (car lists)))
+		  (bad-end)))))
+      (cdr head)))
 
-  (cond ((null? rest)
-	 (map-1 first))
-	((null? (cdr rest))
-	 (map-2 first (car rest)))
-	(else
-	 (map-n (cons first rest)))))
-	   
+  (define (bad-end)
+    (do ((lists (cons first rest) (cdr lists)))
+	((not (pair? lists)))
+      (if (not (list? (car lists)))
+	  (error:wrong-type-argument (car lists) "list" 'MAP)))
+    (let ((n (length first)))
+      (do ((lists rest (cdr lists)))
+	  ((not (pair? lists)))
+	(if (not (= n (length (car lists))))
+	    (error:bad-range-argument (car lists) 'MAP)))))
 
+  (if (pair? rest)
+      (if (pair? (cdr rest))
+	  (map-n (cons first rest))
+	  (map-2 first (car rest)))
+      (map-1 first)))
+
 (let-syntax
     ((mapping-procedure
       (macro (name combiner initial-value procedure first rest)
-	`(COND ((NULL? ,rest)
-		(LET 1-LOOP ((LIST ,first))
-		  (IF (PAIR? LIST)
-		      (,combiner (,procedure (CAR LIST))
-				 (1-LOOP (CDR LIST)))
-		      (BEGIN
-			(IF (NOT (NULL? LIST))
-			    (ERROR:WRONG-TYPE-ARGUMENT ,first "list" ',name))
-			,initial-value))))
-	       ((NULL? (CDR ,rest))
-		(LET 2-LOOP ((LIST1 ,first) (LIST2 (CAR ,rest)))
-		  (IF (AND (PAIR? LIST1) (PAIR? LIST2))
-		      (,combiner (,procedure (CAR LIST1) (CAR LIST2))
-				 (2-LOOP (CDR LIST1) (CDR LIST2)))
-		      (BEGIN
-			(IF (AND (NOT (PAIR? LIST1))
-				 (NOT (NULL? LIST1)))
-			    (ERROR:WRONG-TYPE-ARGUMENT ,first "list" ',name))
-			(IF (AND (NOT (PAIR? LIST2))
-				 (NOT (NULL? LIST2)))
-			    (ERROR:WRONG-TYPE-ARGUMENT (CAR ,rest)
-						       "list" ',name))
-			,initial-value))))
-	       (ELSE
-		(LET ((LISTS (CONS ,first ,rest)))
-		  (LET N-LOOP ((LISTS* LISTS))
-		    (LET PARSE-CARS
-			((LISTS LISTS)
-			 (LISTS* LISTS*)
-			 (CARS '())
-			 (CDRS '()))
-		      (COND ((NULL? LISTS*)
-			     (,combiner (APPLY ,procedure (REVERSE! CARS))
-					(N-LOOP (REVERSE! CDRS))))
-			    ((PAIR? (CAR LISTS*))
-			     (PARSE-CARS (CDR LISTS)
-					 (CDR LISTS*)
-					 (CONS (CAR (CAR LISTS*)) CARS)
-					 (CONS (CDR (CAR LISTS*)) CDRS)))
-			    (ELSE
-			     (IF (NOT (NULL? (CAR LISTS*)))
-				 (ERROR:WRONG-TYPE-ARGUMENT (CAR LISTS) "list"
-							    ',name))
-			     ,initial-value))))))))))
+	`(BEGIN
+	   (DEFINE (MAP-1 L)
+	     (COND ((PAIR? L)
+		    (,combiner (,procedure (CAR L))
+			       (MAP-1 (CDR L))))
+		   ((NULL? L) ,initial-value)
+		   (ELSE (BAD-END))))
+
+	   (DEFINE (MAP-2 L1 L2)
+	     (COND ((AND (PAIR? L1) (PAIR? L2))
+		    (,combiner (,procedure (CAR L1) (CAR L2))
+			       (MAP-2 (CDR L1) (CDR L2))))
+		   ((AND (NULL? L1) (NULL? L2)) ,initial-value)
+		   (ELSE (BAD-END))))
+
+	   (DEFINE (MAP-N LISTS)
+	     (LET N-LOOP ((LISTS LISTS))
+	       (IF (PAIR? (CAR LISTS))
+		   (DO ((LISTS LISTS (CDR LISTS))
+			(CARS '() (CONS (CAAR LISTS) CARS))
+			(CDRS '() (CONS (CDAR LISTS) CDRS)))
+		       ((NOT (PAIR? LISTS))
+			(,combiner (APPLY ,procedure (REVERSE! CARS))
+				   (N-LOOP (REVERSE! CDRS))))
+		     (IF (NOT (PAIR? (CAR LISTS)))
+			 (BAD-END)))
+		   (DO ((LISTS LISTS (CDR LISTS)))
+		       ((NOT (PAIR? LISTS)) ,initial-value)
+		     (IF (NOT (NULL? (CAR LISTS)))
+			 (BAD-END))))))
+
+	   (DEFINE (BAD-END)
+	     (DO ((LISTS (CONS ,first ,rest) (CDR LISTS)))
+		 ((NOT (PAIR? LISTS)))
+	       (IF (NOT (LIST? (CAR LISTS)))
+		   (ERROR:WRONG-TYPE-ARGUMENT (CAR LISTS) "list" ',name)))
+	     (LET ((N (LENGTH ,first)))
+	       (DO ((LISTS ,rest (CDR LISTS)))
+		   ((NOT (PAIR? LISTS)))
+		 (IF (NOT (= N (LENGTH (CAR LISTS))))
+		     (ERROR:BAD-RANGE-ARGUMENT (CAR LISTS) ',name)))))
+
+	   (IF (PAIR? ,rest)
+	       (IF (PAIR? (CDR ,rest))
+		   (MAP-N (CONS ,first ,rest))
+		   (MAP-2 ,first (CAR ,rest)))
+	       (MAP-1 ,first))))))
 
 (define (for-each procedure first . rest)
   (mapping-procedure for-each begin unspecific procedure first rest))
@@ -673,95 +642,44 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;;;; Generalized List Operations
 
 (define (list-transform-positive items predicate)
-  (let loop ((items* items))
-    (if (pair? items*)
-	(if (predicate (car items*))
-	    (cons (car items*) (loop (cdr items*)))
-	    (loop (cdr items*)))
-	(begin
-	  (if (not (null? items*))
-	      (error:wrong-type-argument items "list"
-					 'LIST-TRANSFORM-POSITIVE))
-	  '()))))
-
-;; Iterative version:
-;;
-;;(define (list-transform-positive items predicate)
-;;  (define (end-check list result)
-;;    (if (not (null? list))
-;;	(error:wrong-type-argument items "list" 'LIST-TRANSFORM-POSITIVE))
-;;    result)
-;;  (if (pair? items)
-;;      (let ((head (cons (car items) '())))
-;;	(let loop ((items* (cdr items)) (previous head))
-;;	  (if (pair? items*)
-;;	      (if  (not (predicate (car items*)))
-;;		   (loop (cdr items*) previous)
-;;		   (let ((new (cons (car items*) '())))
-;;		     (set-cdr! previous new)
-;;		     (loop (cdr items*) new)))
-;;	      (if (predicate (car items))
-;;		  (end-check items* head)
-;;		  (end-check items* (cdr head))))))
-;;      (end-check items '())))
-		  
+  (let ((lose
+	 (lambda ()
+	   (error:wrong-type-argument items "list" 'LIST-TRANSFORM-POSITIVE))))
+    (cond ((pair? items)
+	   (let ((head (cons (car items) '())))
+	     (let loop ((items* (cdr items)) (previous head))
+	       (cond ((pair? items*)
+		      (if (predicate (car items*))
+			  (let ((new (cons (car items*) '())))
+			    (set-cdr! previous new)
+			    (loop (cdr items*) new))
+			  (loop (cdr items*) previous)))
+		     ((not (null? items*)) (lose))))
+	     (if (predicate (car items))
+		 head
+		 (cdr head))))
+	  ((null? items) items)
+	  (else (lose)))))
 
 (define (list-transform-negative items predicate)
-  (let loop ((items* items))
-    (if (pair? items*)
-	(if (predicate (car items*))
-	    (loop (cdr items*))
-	    (cons (car items*) (loop (cdr items*))))
-	(begin
-	  (if (not (null? items*))
-	      (error:wrong-type-argument items "list"
-					 'LIST-TRANSFORM-NEGATIVE))
-	  '()))))
-
-;; Iterative version:
-;;
-;;(define (list-transform-negative items predicate)
-;;  (define (end-check list result)
-;;    (if (not (null? list))
-;;	(error:wrong-type-argument items "list" 'LIST-TRANSFORM-NEGATIVE))
-;;    result)
-;;  (if (pair? items)
-;;      (let ((head (cons (car items) '())))
-;;	(let loop ((items* (cdr items)) (previous head))
-;;	  (if (pair? items*)
-;;	      (if  (predicate (car items*))
-;;		   (loop (cdr items*) previous)
-;;		   (let ((new (cons (car items*) '())))
-;;		     (set-cdr! previous new)
-;;		     (loop (cdr items*) new)))
-;;	      (if (not (predicate (car items)))
-;;		  (end-check items* head)
-;;		  (end-check items* (cdr head))))))
-;;      (end-check items '())))
-
-(define (list-search-positive items predicate)
-  (let loop ((items* items))
-    (if (pair? items*)
-	(if (predicate (car items*))
-	    (car items*)
-	    (loop (cdr items*)))
-	(begin
-	  (if (not (null? items*))
-	      (error:wrong-type-argument items "list"
-					 'LIST-SEARCH-POSITIVE))
-	  #f))))
-
-(define (list-search-negative items predicate)
-  (let loop ((items* items))
-    (if (pair? items*)
-	(if (predicate (car items*))
-	    (loop (cdr items*))
-	    (car items*))
-	(begin
-	  (if (not (null? items*))
-	      (error:wrong-type-argument items "list"
-					 'LIST-SEARCH-NEGATIVE))
-	  #f))))
+  (let ((lose
+	 (lambda ()
+	   (error:wrong-type-argument items "list" 'LIST-TRANSFORM-NEGATIVE))))
+    (cond ((pair? items)
+	   (let ((head (cons (car items) '())))
+	     (let loop ((items* (cdr items)) (previous head))
+	       (cond ((pair? items*)
+		      (if (predicate (car items*))
+			  (loop (cdr items*) previous)
+			  (let ((new (cons (car items*) '())))
+			    (set-cdr! previous new)
+			    (loop (cdr items*) new))))
+		     ((not (null? items*)) (lose))))
+	     (if (predicate (car items))
+		 (cdr head)
+		 head)))
+	  ((null? items) items)
+	  (else (lose)))))
 
 (define ((list-deletor predicate) items)
   (list-transform-negative items predicate))
@@ -789,6 +707,28 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		    (if (not (null? this))
 			(error:wrong-type-argument items "list" #f))))))
       (trim-initial-segment items))))
+
+(define (list-search-positive items predicate)
+  (let loop ((items* items))
+    (if (pair? items*)
+	(if (predicate (car items*))
+	    (car items*)
+	    (loop (cdr items*)))
+	(begin
+	  (if (not (null? items*))
+	      (error:wrong-type-argument items "list" 'LIST-SEARCH-POSITIVE))
+	  #f))))
+
+(define (list-search-negative items predicate)
+  (let loop ((items* items))
+    (if (pair? items*)
+	(if (predicate (car items*))
+	    (loop (cdr items*))
+	    (car items*))
+	(begin
+	  (if (not (null? items*))
+	      (error:wrong-type-argument items "list" 'LIST-SEARCH-NEGATIVE))
+	  #f))))
 
 ;;;; Membership/Association Lists
 
@@ -835,6 +775,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (if (not (null? items*))
 		(error:wrong-type-argument items "list" #f))
 	    #f)))))
+
+(define (add-member-procedure predicate)
+  (let ((member (member-procedure predicate)))
+    (lambda (item items)
+      (if (member item items)
+	  items
+	  (cons item items)))))
 
 (define ((delete-member-procedure deletor predicate) item items)
   ((deletor (lambda (match) (predicate match item))) items))
@@ -883,37 +830,23 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	      (error:wrong-type-argument alist "alist" 'ASSQ))
 	  #f))))
 
-;;(define (delq item items)
-;;  (let loop ((items* items))
-;;    (if (pair? items*)
-;;	(if (eq? item (car items*))
-;;	    (loop (cdr items*))
-;;	    (cons (car items*) (loop (cdr items*))))
-;;	(begin
-;;	  (if (not (null? items*))
-;;	      (error:wrong-type-argument items "list" 'DELQ))
-;;	  '()))))
-
-;; Iterative version:
-
 (define (delq item items)
-  (define (end-check list result)
-    (if (not (null? list))
-	(error:wrong-type-argument items "list" 'DELQ))
-    result)
-  (if (pair? items)
-      (let ((head (cons (car items) '())))
-	(let loop ((items* (cdr items)) (previous head))
-	  (if (pair? items*)
-	      (if (eq? item (car items*))
-		  (loop (cdr items*) previous)
-		  (let ((new (cons (car items*) '())))
-		    (set-cdr! previous new)
-		    (loop (cdr items*) new)))
-	      (if (not (eq? item (car items)))
-		  (end-check items* head)
-		  (end-check items* (cdr head))))))
-      (end-check items '())))
+  (let ((lose (lambda () (error:wrong-type-argument items "list" 'DELQ))))
+    (cond ((pair? items)
+	   (let ((head (cons (car items) '())))
+	     (let loop ((items (cdr items)) (previous head))
+	       (cond ((pair? items)
+		      (if (eq? item (car items))
+			  (loop (cdr items) previous)
+			  (let ((new (cons (car items) '())))
+			    (set-cdr! previous new)
+			    (loop (cdr items) new))))
+		     ((not (null? items)) (lose))))
+	     (if (eq? item (car items))
+		 (cdr head)
+		 head)))
+	  ((null? items) items)
+	  (else (lose)))))
 
 (define (delq! item items)
   (letrec ((trim-initial-segment
@@ -947,16 +880,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(loop (cdr list))
 	list)))
 
-;;(define (except-last-pair list)
-;;  (guarantee-pair list 'EXCEPT-LAST-PAIR)
-;;  (let loop ((list list))
-;;    (if (pair? (cdr list))
-;;	(cons (car list)
-;;	      (loop (cdr list)))
-;;	'())))
-
-;; Iterative version:
-
 (define (except-last-pair list)
   (guarantee-pair list 'EXCEPT-LAST-PAIR)
   (if (not (pair? (cdr list)))
@@ -968,7 +891,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		(set-cdr! previous new)
 		(loop (cdr list*) new))
 	      head)))))
-      
 
 (define (except-last-pair! list)
   (guarantee-pair list 'EXCEPT-LAST-PAIR!)
@@ -990,6 +912,4 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (guarantee-index/list/fail object procedure)))
 
 (define (guarantee-index/list/fail object procedure)
-  (error:wrong-type-argument object "valid list index"
-			     procedure))
-
+  (error:wrong-type-argument object "valid list index" procedure))
