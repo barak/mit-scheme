@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapopt.scm,v 1.2 1994/11/26 19:23:53 adams Exp $
+$Id: lapopt.scm,v 1.3 1994/12/16 20:15:09 adams Exp $
 
 Copyright (c) 1991-1994 Massachusetts Institute of Technology
 
@@ -715,7 +715,8 @@ MIT in each case. |#
 	   (fail))))))
 
 (define (fits-in-11-bits-signed? value)
-  (and (< value 1024)
+  (and (number? value)			; i.e. not a symbolic expressions
+       (< value 1024)
        (>= value -1024)))
 
 (define (instr-skips? instr)
@@ -907,12 +908,6 @@ MIT in each case. |#
  (copy () 26 2)
  (ldwm () (offset 4 0 22) 6)
  (bv (n) 0 6))
-
-** But there is still a bug:
-
-gc.scm when optimized SEGVs in flush-purification-queue for no apparent reason
-
-
 |#
 (define (optimize-linear-lap instructions)
   (old-optimize-linear-lap instructions))
