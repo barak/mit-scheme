@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ymkfile,v 1.80 1993/10/27 00:55:44 gjr Exp $
+$Id: ymkfile,v 1.81 1993/10/27 20:40:36 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -359,9 +359,9 @@ CFLAGS = -DMIT_SCHEME C_OPTIMIZE_SWITCH C_DEBUG_SWITCH C_SWITCH_MACHINE C_SWITCH
 	$(CC) $(CFLAGS) -c $*.c
 
 .c.cpp: ; @ECHO "#** Generating" $@
-	make -f xmkfile Breakup
+	make -f xmkfile breakup
 	$(CC) $(CFLAGS) -E $*.c | \
-	RUN(Breakup) | \
+	RUN(breakup) | \
 	sed -e 's/^#.*//' -e 's/^[ 	]*$$//' -e 's/^$$//' | \
 	sed -n -e '/^..*/p' > $*.cpp
 
