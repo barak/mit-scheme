@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.10 1990/04/12 22:46:59 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.11 1990/04/19 19:09:56 jinx Exp $
 ###
 ###	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 ###
@@ -137,7 +137,7 @@ define(utility_call,
               `',
 	      `mov.l	4(%a0),%d1
 	       mov.l	0(%a0),%a0')
-	jmp(%a0)')
+	jmp	(%a0)')
 
 # Scheme object representation.  Must match object.h
 
@@ -224,7 +224,7 @@ define_debugging_label(ring_block_5)
 ### Initialize the 68881 if present.
 
 define_c_label(interface_initialize)
-	link.l	%a6,&0
+	link	%a6,&0
 	ifdef(`MC68881', `fmov.l	&0x7480,%fpcr')
 	unlk	%a6
 	rts
@@ -233,7 +233,7 @@ define_c_label(interface_initialize)
 ### to the entry point specified by its only argument.
 
 define_c_label(C_to_interface)
-	link.l	%a6,&-44
+	link	%a6,&-44
 	movm.l	%d2-%d7/%a2-%a5,4(%sp)
 	mov.l	8(%a6),%a0		# Argument: entry point
 	bra.b	interface_to_scheme_internal
