@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.12 1991/03/06 05:14:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.13 1991/03/11 23:31:21 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -854,8 +854,9 @@ MIT in each case. |#
 			     '(DATUM TYPE OPERANDS)
 			     standard-error-handler))
   (set! error:divide-by-zero
-	(condition-constructor condition-type:divide-by-zero
-			       '(OPERATOR OPERANDS)))
+	(condition-signaller condition-type:divide-by-zero
+			     '(OPERATOR OPERANDS)
+			     standard-error-handler))
   (set! error:no-such-restart
 	(condition-signaller condition-type:no-such-restart
 			     '(NAME)
