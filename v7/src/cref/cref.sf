@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/cref.sf,v 1.4 1992/06/04 02:57:18 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/cref.sf,v 1.5 1992/06/04 03:02:47 mhwu Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -48,7 +48,7 @@ MIT in each case. |#
 ;; After the runtime system is built, more elaborate work is done
 (with-working-directory-pathname "../cref" ; this is rather useless
   (lambda ()
-    (if (file-exists? "../runtime/runtime.glob")
+    (if (file-exists? "../runtime/runtim.glob")
 	(begin
 	  (if (not (name->package '(CROSS-REFERENCE)))
 	      (load "make"))
