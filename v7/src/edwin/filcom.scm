@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.131 1989/03/15 19:13:05 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.132 1989/04/05 18:19:16 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -79,22 +79,43 @@ Like \\[Kill Buffer] followed by \\[Find File]."
 	    (kill-buffer buffer*))
 	  (kernel)))))
 
-(define ((file-finder select-buffer) pathname)
+(define (find-file pathname)
+  (select-buffer (find-file-noselect pathname)))
+
+(define (find-file-other-window pathname)
+  (select-buffer-other-window (find-file-noselect pathname)))
+
+(define (find-file-noselect pathname)
   (let ((buffer (pathname->buffer pathname)))
-    (if buffer
-	(select-buffer buffer)
+    (or buffer
 	(let ((buffer (new-buffer (pathname->buffer-name pathname))))
-	  (read-buffer buffer pathname)
-	  (select-buffer buffer)))))
+	  (after-find-file
+	   buffer
+	   (catch-file-errors (lambda () true)
+			      (lambda () (not (read-buffer buffer pathname)))))
+	  buffer))))
 
-(define find-file
-  (file-finder select-buffer))
-
-(define find-file-other-window
-  (file-finder select-buffer-other-window))
-
-(define find-file-noselect
-  (file-finder identity-procedure))
+(define (after-find-file buffer error?)
+  (let ((pathname (or (buffer-truename buffer) (buffer-pathname buffer))))
+    (if (or (not pathname) (file-writable? pathname))
+	(set-buffer-writeable! buffer)
+	(set-buffer-read-only! buffer)))
+  (let ((msg
+	 (cond ((not (buffer-read-only? buffer))
+		(and error? "(New file)"))
+	       ((not error?)
+		"File is write protected")
+	       ((file-attributes (buffer-pathname buffer))
+		"File exists, but is read-protected.")
+	       ((file-attributes
+		 (pathname-directory-path (buffer-pathname buffer)))
+		"File not found and directory write-protected")
+	       (else
+		"File not found and directory doesn't exist"))))
+    (if msg
+	(message msg)))
+  (setup-buffer-auto-save! buffer)
+  (initialize-buffer! buffer))
 
 (define (pathname->buffer pathname)
   (or (list-search-positive (buffer-list)
@@ -207,11 +228,12 @@ The next time the buffer is saved it will go in the newly specified file. "
   (set-buffer-pathname! buffer pathname)
   (set-buffer-truename! buffer false)
   (if pathname
-      (begin (let ((name (pathname->buffer-name pathname)))
-	       (if (not (find-buffer name))
-		   (rename-buffer buffer name)))
-	     (setup-buffer-auto-save! buffer)
-	     (buffer-modified! buffer))
+      (begin
+       (let ((name (pathname->buffer-name pathname)))
+	 (if (not (find-buffer name))
+	     (rename-buffer buffer name)))
+       (setup-buffer-auto-save! buffer)
+       (buffer-modified! buffer))
       (disable-buffer-auto-save! buffer)))
 
 (define-command ("Write File")
@@ -268,7 +290,8 @@ Leaves point at the beginning, mark at the end."
 		 (let ((where (mark-index (buffer-point buffer))))
 		   (read-buffer buffer pathname)
 		   (set-current-point!
-		    (mark+ (buffer-start buffer) where 'LIMIT)))))))))
+		    (mark+ (buffer-start buffer) where 'LIMIT))
+		   (after-find-file buffer false))))))))
 
 (define-command ("Copy File")
   "Copy a file; the old and new names are read in the typein window.

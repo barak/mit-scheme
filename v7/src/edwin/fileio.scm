@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.87 1989/03/15 19:14:13 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.88 1989/04/05 18:19:54 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -44,6 +44,8 @@
 ;;;; Input
 
 (define (read-buffer buffer pathname)
+  (set-buffer-writeable! buffer)
+  (set-buffer-pathname! buffer pathname)
   (let ((truename (pathname->input-truename pathname)))
     (if truename
 	(begin
@@ -52,18 +54,12 @@
 	   (region-insert! (buffer-start buffer) region))
 	 (set-buffer-point! buffer (buffer-start buffer))
 	 (set-buffer-modification-time! buffer
-					(file-modification-time truename))
-	 (if (file-writable? truename)
-	     (set-buffer-writeable! buffer)
-	     (set-buffer-read-only! buffer)))
-	(temporary-message "(New File)"))
+					(file-modification-time truename))))
     (set-buffer-truename! buffer truename))
-  (set-buffer-pathname! buffer pathname)
-  (setup-buffer-auto-save! buffer)
   (set-buffer-save-length! buffer)
   (buffer-not-modified! buffer)
   (undo-done! (buffer-point buffer))
-  (initialize-buffer! buffer))
+  (buffer-truename buffer))
 
 (define (initialize-buffer! buffer)
   (initialize-buffer-modes! buffer)
@@ -372,56 +368,63 @@ Otherwise asks confirmation."
 		  (insert-newline end))))))))
 
 (define (backup-buffer! buffer truename)
-  (let (;; This isn't the correct set of types, but it will do for now.
-	(error-types (list (microcode-error-type 'EXTERNAL-RETURN)))
-	(continue-with-false
-	 (lambda (condition) ((condition/continuation condition) false))))
+  (let ((continue-with-false (lambda () false)))
     (and truename
 	 (ref-variable "Make Backup Files")
 	 (not (buffer-backed-up? buffer))
 	 (file-exists? truename)
 	 (os/backup-buffer? truename)
-	 (bind-condition-handler error-types continue-with-false
-	   (lambda ()
-	     (with-values (lambda () (os/buffer-backup-pathname truename))
-	       (lambda (backup-pathname targets)
-		 (let ((modes
-			(bind-condition-handler error-types
-			    (lambda (condition)
-			      (let ((filename (os/default-backup-filename)))
-				(temporary-message
-				 "Cannot write backup file; backing up in \""
-				 filename
-				 "\"")
-				(copy-file truename
-					   (string->pathname filename))
-				(continue-with-false condition)))
-			  (lambda ()
-			    (if (or (file-symbolic-link? truename)
-				    (ref-variable "Backup By Copying")
-				    (os/backup-by-copying? truename))
-				(begin
-				  (copy-file truename backup-pathname)
-				  false)
-				(begin
-				  (bind-condition-handler error-types
-				      continue-with-false
-				    (lambda ()
-				      (delete-file backup-pathname)))
-				  (rename-file truename backup-pathname)
-				  (file-modes backup-pathname)))))))
-		   (set-buffer-backed-up?! buffer true)
-		   (if (and (not (null? targets))
-			    (or (ref-variable "Trim Versions Without Asking")
-				(prompt-for-confirmation?
-				 (string-append
-				  "Delete excess backup versions of "
-				  (pathname->string
-				   (buffer-pathname buffer))))))
-		       (for-each (lambda (target)
-				   (bind-condition-handler error-types
-				       continue-with-false
-				     (lambda ()
-				       (delete-file target))))
-				 targets))
-		   modes))))))))
+	 (catch-file-errors
+	  continue-with-false
+	  (lambda ()
+	    (with-values (lambda () (os/buffer-backup-pathname truename))
+	      (lambda (backup-pathname targets)
+		(let ((modes
+		       (catch-file-errors
+			(lambda ()
+			  (let ((filename (os/default-backup-filename)))
+			    (temporary-message
+			     "Cannot write backup file; backing up in \""
+			     filename
+			     "\"")
+			    (copy-file truename
+				       (string->pathname filename))
+			    false))
+			(lambda ()
+			  (if (or (file-symbolic-link? truename)
+				  (ref-variable "Backup By Copying")
+				  (os/backup-by-copying? truename))
+			      (begin
+				(copy-file truename backup-pathname)
+				false)
+			      (begin
+				(catch-file-errors
+				 (lambda () false)
+				 (lambda ()
+				   (delete-file backup-pathname)))
+				(rename-file truename backup-pathname)
+				(file-modes backup-pathname)))))))
+		  (set-buffer-backed-up?! buffer true)
+		  (if (and (not (null? targets))
+			   (or (ref-variable "Trim Versions Without Asking")
+			       (prompt-for-confirmation?
+				(string-append
+				 "Delete excess backup versions of "
+				 (pathname->string
+				  (buffer-pathname buffer))))))
+		      (for-each (lambda (target)
+				  (catch-file-errors continue-with-false
+						     (lambda ()
+						       (delete-file target))))
+				targets))
+		  modes))))))))
+
+(define (catch-file-errors if-error thunk)
+  (call-with-current-continuation
+   (lambda (continuation)
+     (bind-condition-handler
+	 (list error-type:file)
+	 (lambda (condition)
+	   condition
+	   (continuation (if-error)))
+       thunk))))
