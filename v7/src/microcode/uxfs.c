@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxfs.c,v 1.15 1998/06/18 19:13:42 cph Exp $
+$Id: uxfs.c,v 1.16 1998/07/25 05:46:56 cph Exp $
 
 Copyright (c) 1990-98 Massachusetts Institute of Technology
 
@@ -39,33 +39,42 @@ MIT in each case. */
 #include <sys/vfs.h>
 
 #ifdef __linux
-#include <linux/ext2_fs.h>
-#include <linux/ext_fs.h>
-#include <linux/hpfs_fs.h>
-#include <linux/iso_fs.h>
-#include <linux/minix_fs.h>
-#include <linux/msdos_fs.h>
-#include <linux/nfs_fs.h>
-#include <linux/sysv_fs.h>
-#include <linux/xia_fs.h>
-
-#if 0				/* Broken -- requires __KERNEL__ defined. */
-#include <linux/proc_fs.h>
-#include <linux/version.h>
-#if (LINUX_VERSION_CODE >= 66304) /* 1.3.0 (is this correct?) */
-#include <linux/smb_fs.h>
-#if (LINUX_VERSION_CODE >= 66387) /* 1.3.53 */
-#include <linux/ncp_fs.h>
-#endif
-#endif
-#endif
-
-/* Explicitly code various constants that are, for one reason or
-   another, possibly unavailable.  These constants are unlikely to be
-   changed, so this ought to be safe.  */
+/* The following superblock magic constants are taken from the kernel
+   headers for Linux 2.0.33.  We use these rather than reading the
+   header files, because the Linux kernel header files have
+   definitions that conflict with those of glibc2.  These constants
+   are unlikely to be changed, so this ought to be safe.  */
 
 #ifndef AFFS_SUPER_MAGIC
 #define AFFS_SUPER_MAGIC 0xadff
+#endif
+
+#ifndef COH_SUPER_MAGIC
+#define COH_SUPER_MAGIC 0x012FF7B7
+#endif
+
+#ifndef EXT_SUPER_MAGIC
+#define EXT_SUPER_MAGIC 0x137D
+#endif
+
+#ifndef EXT2_SUPER_MAGIC
+#define EXT2_SUPER_MAGIC 0xEF53
+#endif
+
+#ifndef HPFS_SUPER_MAGIC
+#define HPFS_SUPER_MAGIC 0xf995e849
+#endif
+
+#ifndef ISOFS_SUPER_MAGIC
+#define ISOFS_SUPER_MAGIC 0x9660
+#endif
+
+#ifndef MINIX_SUPER_MAGIC
+#define MINIX_SUPER_MAGIC 0x137F
+#endif
+
+#ifndef MINIX_SUPER_MAGIC2
+#define MINIX_SUPER_MAGIC2 0x138F
 #endif
 
 #ifndef MINIX2_SUPER_MAGIC
@@ -76,12 +85,20 @@ MIT in each case. */
 #define MINIX2_SUPER_MAGIC2 0x2478
 #endif
 
+#ifndef MSDOS_SUPER_MAGIC
+#define MSDOS_SUPER_MAGIC 0x4d44
+#endif
+
 #ifndef NCP_SUPER_MAGIC
 #define NCP_SUPER_MAGIC 0x564c
 #endif
 
 #ifndef NFS_SUPER_MAGIC
 #define NFS_SUPER_MAGIC 0x6969
+#endif
+
+#ifndef NTFS_SUPER_MAGIC
+#define NTFS_SUPER_MAGIC 0x5346544E
 #endif
 
 #ifndef PROC_SUPER_MAGIC
@@ -92,24 +109,20 @@ MIT in each case. */
 #define SMB_SUPER_MAGIC 0x517B
 #endif
 
-#ifndef XENIX_SUPER_MAGIC
-#define XENIX_SUPER_MAGIC 0x012FF7B4
+#ifndef SYSV2_SUPER_MAGIC
+#define SYSV2_SUPER_MAGIC 0x012FF7B6
 #endif
 
 #ifndef SYSV4_SUPER_MAGIC
 #define SYSV4_SUPER_MAGIC 0x012FF7B5
 #endif
 
-#ifndef SYSV2_SUPER_MAGIC
-#define SYSV2_SUPER_MAGIC 0x012FF7B6
+#ifndef XENIX_SUPER_MAGIC
+#define XENIX_SUPER_MAGIC 0x012FF7B4
 #endif
 
-#ifndef COH_SUPER_MAGIC
-#define COH_SUPER_MAGIC 0x012FF7B7
-#endif
-
-#ifndef NTFS_SUPER_MAGIC
-#define NTFS_SUPER_MAGIC 0x5346544E
+#ifndef _XIAFS_SUPER_MAGIC
+#define _XIAFS_SUPER_MAGIC 0x012FD16D
 #endif
 
 #endif /* __linux */
