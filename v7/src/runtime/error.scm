@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.5 1988/08/05 20:47:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.6 1989/02/28 16:49:52 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -76,12 +76,16 @@ MIT in each case. |#
 ;;; return VALUE as the value of the error subproblem.
 
 (define (proceed-value-filter continuation values)
-  (let ((next-subproblem
-	 (and (not (null? values))
-	      (continuation/first-subproblem continuation))))
-    (if next-subproblem
-	((stack-frame->continuation next-subproblem) (car values))
-	(continuation unspecific))))
+  (let ((default (lambda () (continuation unspecific))))
+    (if (null? values)
+	(default)
+	(let ((first-subproblem (continuation/first-subproblem continuation)))
+	  (if first-subproblem
+	      (let ((next-subproblem (stack-frame/next first-subproblem)))
+		(if next-subproblem
+		    ((stack-frame->continuation next-subproblem) (car values))
+		    (default)))
+	      (default))))))
 
 (define (simple-error environment message irritants)
   (signal-error
