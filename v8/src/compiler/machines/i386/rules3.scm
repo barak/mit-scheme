@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.6 1995/01/11 22:09:38 ssmith Exp $
+$Id: rules3.scm,v 1.7 1995/01/11 22:14:41 ssmith Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -358,6 +358,11 @@ MIT in each case. |#
 
 (define internal-continuation-code-word
   (make-code-word #xff #xfc))
+
+;; #xff #xfb taken up by return-to-interpreter and reflect-to-interface
+
+(define internal-closure-code-word
+  (make-code-word #xff #xfa))
 
 (define (frame-size->code-word offset default)
   (cond ((not offset)
