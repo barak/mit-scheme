@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: calias.scm,v 1.20 2001/01/06 05:37:43 cph Exp $
+;;; $Id: calias.scm,v 1.21 2001/09/25 03:15:15 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Alias Keys
 
@@ -78,23 +79,21 @@
 
 (define-variable enable-emacs-key-names
   "True means keys are shown using Emacs-style names."
-  true
+  #t
   boolean?)
 
 (define (key-name key)
-  (cond ((ref-variable enable-emacs-key-names)
-	 (emacs-key-name key true))
-	((char? key)
-	 (char->name (unmap-alias-key key)))
-	((special-key? key)
-	 (special-key/name key))
-	((button? key)
-	 (string-append "button-"
-			(if (button/down? key) "down" "up")
-			"-"
-			(number->string (button/number key))))
-        (else
-          (error "key-name: Unknown key type" key))))
+  (cond ((ref-variable enable-emacs-key-names) (emacs-key-name key #t))
+	((char? key) (char->name (unmap-alias-key key)))
+	((special-key? key) (special-key/name key))
+	((button? key) (button-name key))
+        (else (error "Unknown key type:" key))))
+
+(define (button-name button)
+  (string-append "button-"
+		 (if (button/down? button) "down" "up")
+		 "-"
+		 (number->string (button/number button))))
 
 (define (xkey->name xkey)
   (let ((keys (xkey->list xkey)))
@@ -103,15 +102,14 @@
      (let ((key-name
 	    (if (ref-variable enable-emacs-key-names)
 		(lambda (key)
-		  (emacs-key-name key false))
+		  (emacs-key-name key #f))
 		(lambda (key)
 		  (key-name (unmap-alias-key key))))))
        (let loop ((keys (cdr keys)))
-	 (if (null? keys)
-	     ""
-	     (string-append-separated
-	      (key-name (car keys))
-	      (loop (cdr keys)))))))))
+	 (if (pair? keys)
+	     (string-append-separated (key-name (car keys))
+				      (loop (cdr keys)))
+	     ""))))))
 
 (define (emacs-key-name key handle-prefixes?)
   (cond ((char? key)
@@ -122,26 +120,23 @@
 		 suffix
 		 (string-append "M-" suffix)))
 	   (define (process-code bits)
-	     (cond ((or (< #x20 code #x7F) ; 7-bit ASCII visible characters
-			(> code #x7F))	; 8-bit ISO characters
-		    (prefix bits
-			    (vector-ref (ref-variable char-image-strings #f)
-					code)))
-		   ((= code #x09) (prefix bits "TAB"))
-		   ((= code #x0A) (prefix bits "LFD"))
-		   ((= code #x0D) (prefix bits "RET"))
-		   ((= code #x1B) (prefix bits "ESC"))
-		   ((= code #x20) (prefix bits "SPC"))
-		   ((= code #x7F) (prefix bits "DEL"))
-		   (else
-		    (string-append
-		     (if (zero? bits) "C-" "C-M-")
-		     (string
-		      (ascii->char
-		       (+ code
-			  (if (<= #x01 code #x1A)
-			      #x60	; C-a .. C-z
-			      #x40)))))))) ; C-@, C-] etc
+	     (if (<= code #x20)
+		 (cond ((= code #x09) (prefix bits "TAB"))
+		       ((= code #x0A) (prefix bits "LFD"))
+		       ((= code #x0D) (prefix bits "RET"))
+		       ((= code #x1B) (prefix bits "ESC"))
+		       ((= code #x20) (prefix bits "SPC"))
+		       (else
+			(string-append (if (zero? bits) "C-" "C-M-")
+				       (string
+					(integer->char
+					 (+ (if (<= #x01 code #x1A) #x60 #x40)
+					    code))))))
+		 (prefix bits
+			 (if (= code #x7F)
+			     "DEL"
+			     (vector-ref (ref-variable char-image-strings #f)
+					 code)))))
 	   (cond ((< bits 2)		; no bits or Meta only
 		  (process-code bits))
 		 ((and handle-prefixes? (< bits 4))
@@ -149,10 +144,9 @@
 				 (process-code 0)))
 		 (else
 		  (char->name (unmap-alias-key key))))))
-	((special-key? key)
-         (special-key/name key))
-        (else
-          (error "emacs-key-name: Unknown key type" key))))
+	((special-key? key) (special-key/name key))
+	((button? key) (button-name key))
+        (else (error "Unknown key type:" key))))
 
 (define (key? object)
   (or (char? object)
@@ -187,14 +181,14 @@
   (let loop ((x (xkey->list x)) (y (xkey->list y)))
     (or (key<? (car x) (car y))
 	(and (key=? (car x) (car y))
-	     (not (null? (cdr y)))
-	     (or (null? (cdr x))
+	     (pair? (cdr y))
+	     (or (not (pair? (cdr x)))
 		 (loop (cdr x) (cdr y)))))))
 
 (define (xkey->list xkey)
   (cond ((or (key? xkey) (button? xkey))
 	 (list xkey))
-	((and (not (null? xkey))
+	((and (pair? xkey)
 	      (list-of-type? xkey key?))
 	 xkey)
 	((and (string? xkey)
@@ -213,8 +207,8 @@
 				    (write-char #\space port)
 				    (write-string (special-key/name key)
 						  port)))))
-  (symbol false read-only true)
-  (bucky-bits false read-only true))
+  (symbol #f read-only #t)
+  (bucky-bits #f read-only #t))
 
 (define (intern-special-key name bucky-bits)
   (let ((name-entry (assq name (cdr hashed-keys))))
