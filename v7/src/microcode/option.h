@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.h,v 1.2 1990/12/01 00:06:31 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.h,v 1.3 1991/09/07 22:30:18 jinx Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -53,12 +53,21 @@ extern CONST char * option_band_file;
 extern CONST char * option_fasl_file;
 extern int option_band_specified;
 extern CONST char * option_utabmd_file;
-extern CONST char * option_gc_file;
 
 /* Numeric options */
 extern unsigned int option_heap_size;
 extern unsigned int option_constant_size;
 extern unsigned int option_stack_size;
+
+/* Meaningful only to bchscheme */
+
+extern CONST char * option_gc_directory;
+extern CONST char * option_gc_drone;
+extern CONST char * option_gc_file;
+int option_gc_keep;
+int option_gc_read_overlap;
+int option_gc_window_size;
+int option_gc_write_overlap;
 
 extern void EXFUN (read_command_line_options, (int argc, CONST char ** argv));
 extern CONST char * EXFUN
