@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: comred.scm,v 1.108 1993/10/26 00:37:56 cph Exp $
+;;;	$Id: comred.scm,v 1.109 1993/10/26 18:42:29 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -140,7 +140,7 @@
        (lambda (restart) restart (thunk))))))
 
 (define (return-to-command-loop condition)
-  (let ((restart (find-restart 'ABORT-EDITOR-COMMAND condition)))
+  (let ((restart (find-restart 'ABORT-EDITOR-COMMAND)))
     (if (not restart) (error "Missing ABORT-EDITOR-COMMAND restart."))
     (keyboard-macro-disable)
     (invoke-restart restart
