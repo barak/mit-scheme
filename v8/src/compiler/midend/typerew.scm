@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typerew.scm,v 1.23 1996/07/30 19:24:53 adams Exp $
+$Id: typerew.scm,v 1.24 1996/11/14 22:17:26 adams Exp $
 
 Copyright (c) 1994-1996 Massachusetts Institute of Technology
 
@@ -96,18 +96,26 @@ MIT in each case. |#
   ;; . It is a shame to waste the returned information: it tells us the
   ;;   return type and constraints imposed on the arguments, and even if the
   ;;   procedure returns at all.
-  lambda-list				; ignored
-  (typerew/expr
-   body
-   (q-env:restrict env effect:unknown)
-   (lambda (quantity type env*)
-     quantity type env*			; a shame
-     ;; Creating the procedure or closure itself is no big deal since we dont
-     ;; have reasonable type information for procedures:
-     (typerew/send receiver
-		   (quantity:other-expression form effect:none)
-		   type:compiled-entry
-		   env))))
+  (call-with-values
+      (lambda () (lambda-list/parse lambda-list))
+    (lambda (required optional rest aux)
+      required optional aux		; ignored
+      rest
+
+      (typerew/expr
+       body
+       (let ((env-at-call-time (q-env:restrict env effect:unknown)))
+	 (if rest
+	     (q-env:glb/1 env-at-call-time (quantity:variable rest) type:list)
+	     env-at-call-time))       
+       (lambda (quantity type env*)
+	 quantity type env*		; a shame
+	 ;; Creating the procedure or closure itself is no big deal since
+	 ;; we dont have reasonable type information for procedures:
+	 (typerew/send receiver
+		       (quantity:other-expression form effect:none)
+		       type:compiled-entry
+		       env))))))
 
 (define-type-rewriter CALL (rator cont #!rest rands)
   cont					; ignored - pre-CPS
