@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.5 1991/08/13 02:31:02 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.6 1991/08/23 18:11:02 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -190,18 +190,13 @@
 		    "")))
 	     (line
 	      (begin
-		(set-current-point! start)
-		((ref-command next-line) 1)
-		(let ((point (current-point)))
+		(let ((point (line-start start 2)))
 		  (if (string-prefix? 
 		       "Summary-line: "
 		       (extract-string point (line-end point 0)))
 		      (begin
 			(string-tail
-			 (extract-string point
-					 (begin
-					   ((ref-command next-line) 1)
-					   (current-point)))
+			 (extract-string point (line-start point 1))
 			 14))
 		      false)))))
 	 ;; If we didn't get a valid status line from the message,
