@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fixnum.c,v 9.28 1989/09/20 23:08:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fixnum.c,v 9.29 1989/09/28 21:18:59 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -122,6 +122,12 @@ DEFINE_PRIMITIVE ("MINUS-FIXNUM", Prim_minus_fixnum, 2, 2, 0)
   FIXNUM_RESULT ((arg_fixnum (1)) - (arg_fixnum (2)));
 }
 
+DEFINE_PRIMITIVE ("FIXNUM-NEGATE", Prim_fixnum_negate, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  FIXNUM_RESULT (- (arg_fixnum (1)));
+}
+
 /* Fixnum multiplication routine with overflow detection. */
 #include "mul.c"
 
@@ -180,6 +186,48 @@ DEFINE_PRIMITIVE ("DIVIDE-FIXNUM", Prim_divide_fixnum, 2, 2, 0)
   PRIMITIVE_RETURN
     (cons ((LONG_TO_FIXNUM (quotient)), (LONG_TO_FIXNUM (remainder))));
 }
+
+DEFINE_PRIMITIVE ("FIXNUM-QUOTIENT", Prim_fixnum_quotient, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  {
+    fast long numerator = (arg_fixnum (1));
+    fast long denominator = (arg_fixnum (2));
+    fast long quotient =
+      ((denominator > 0)
+       ? ((numerator < 0)
+	  ? (- ((- numerator) / denominator))
+	  : (numerator / denominator))
+       : (denominator < 0)
+       ? ((numerator < 0)
+	  ? ((- numerator) / (- denominator))
+	  : (- (numerator / (- denominator))))
+       : (error_bad_range_arg (2), 0));
+    if (! (LONG_TO_FIXNUM_P (quotient)))
+      error_bad_range_arg (1);
+    PRIMITIVE_RETURN (LONG_TO_FIXNUM (quotient));
+  }
+}
+
+DEFINE_PRIMITIVE ("FIXNUM-REMAINDER", Prim_fixnum_remainder, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  {
+    fast long numerator = (arg_fixnum (1));
+    fast long denominator = (arg_fixnum (2));
+    PRIMITIVE_RETURN
+      (LONG_TO_FIXNUM
+       ((denominator > 0)
+	? ((numerator < 0)
+	   ? (- ((- numerator) % denominator))
+	   : (numerator % denominator))
+	: (denominator < 0)
+	? ((numerator < 0)
+	   ? (- ((- numerator) % (- denominator)))
+	   : (numerator % (- denominator)))
+	: (error_bad_range_arg (2), 0)));
+  }
+}
 
 DEFINE_PRIMITIVE ("GCD-FIXNUM", Prim_gcd_fixnum, 2, 2, 0)
 {
@@ -189,6 +237,8 @@ DEFINE_PRIMITIVE ("GCD-FIXNUM", Prim_gcd_fixnum, 2, 2, 0)
   PRIMITIVE_HEADER (2);
   x = (arg_fixnum (1));
   y = (arg_fixnum (2));
+  if (x < 0) x = (-x);
+  if (y < 0) y = (-y);
   while (y != 0)
     {
       z = x;
