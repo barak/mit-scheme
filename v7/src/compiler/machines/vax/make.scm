@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/make.scm,v 1.0 1988/01/05 15:53:49 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/make.scm,v 4.1 1988/01/05 15:54:46 bal Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -36,21 +36,19 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-;(set-working-directory-pathname! "$zcomp")
-;(load "base/rcs" system-global-environment)
-(load "base/pkging" system-global-environment)
+(load "base/pkging.bin" system-global-environment)
 
 (in-package compiler-package
 
   (define compiler-system
     (make-environment
       (define :name "Liar (DEC VAX)")
-      (define :version 3)
+      (define :version 4)
       (define :modification 0)
       (define :files)
 
 ;      (parse-rcs-header
-;       "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/make.scm,v 1.0 1988/01/05 15:53:49 bal Exp $"
+;       "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/make.scm,v 4.1 1988/01/05 15:54:46 bal Exp $"
 ;       (lambda (filename version date time zone author state)
 ;	 (set! :version (car version))
 ;	 (set! :modification (cadr version))))
@@ -58,134 +56,156 @@ MIT in each case. |#
       (define :files-lists
 	(list
 	 (cons system-global-environment
-	       '("base/pbs.bin"		   ;bit-string read/write syntax
+	       '("base/pbs.bin"		;bit-string read/write syntax
+		 "/scheme/rel5/etc/direct.bin" ;directory reader
+		 "etc/butils.bin"	;system building utilities
 		 ))
 
 	 (cons compiler-package
-	       '("base/macros.bin"	   ;compiler syntax
-		 "base/decls.bin"	   ;declarations
+	       '("base/switch.bin"	;compiler option switches
+		 "base/macros.bin"	;compiler syntax
+		 "base/hashtb.com"	;hash tables
+		 ))
 
-		 "base/object.bin"	   ;tagged object support
-		 "base/queue.bin"	   ;queue abstraction
-		 "base/sets.bin"	   ;set abstraction
-		 "base/mvalue.bin"	   ;multiple-value support
+	 (cons decls-package
+	       '("base/decls.com"	;declarations
+		 ))
 
-		 "machines/vax/machin.bin" ;machine dependent stuff
-		 "base/toplv1.bin"	   ;top level
-		 "base/toplv2.bin"
-		 "base/toplv3.bin"
-		 "base/utils.bin"	   ;odds and ends
-		 "base/cfg1.bin"	   ;control flow graph
-		 "base/cfg2.bin"
-		 "base/cfg3.bin"
-		 "base/rgraph.bin"	   ;program graph abstraction
-		 "base/ctypes.bin"	   ;CFG datatypes
-		 "base/dtype1.bin"	   ;DFG datatypes
-		 "base/dtype2.bin"
-		 "base/dtype3.bin"
-		 "base/dfg.bin"		   ;data flow graph
-		 "base/rtlty1.bin"	   ;RTL: type definitions
-		 "base/rtlty2.bin"
-		 "base/rtlexp.bin"	   ;RTL: expression operations
-		 "base/rtlcon.bin"	   ;RTL: complex constructors
-		 "base/rtlreg.bin"	   ;RTL: registers
-		 "base/rtlcfg.bin"	   ;RTL: CFG types
-		 "base/emodel.bin"	   ;environment model
-		 "base/rtypes.bin"	   ;RTL Registers
-		 "base/regset.bin"	   ;RTL Register Sets
-		 "base/pmlook.bin"	   ;pattern matcher: lookup
-		 "base/pmpars.bin"	   ;pattern matcher: parser
-		 "base/infutl.bin"	   ;utilities for info generation, shared
-		 "back-end/insseq.bin"	   ;lap instruction sequences
-		 "machines/vax/dassm1.bin" ;disassembler
-		 "base/linear.bin"	   ;linearization
+	 (cons compiler-package
+	       '("base/object.com"	;tagged object support
+		 "base/enumer.com"	;enumerations
+		 "base/queue.com"	;queue abstraction
+		 "base/sets.com"	;set abstraction
+		 "base/mvalue.com"	;multiple-value support
+		 "base/scode.com"	;SCode abstraction
+		 "base/pmlook.com"	;pattern matcher: lookup
+		 "base/pmpars.com"	;pattern matcher: parser
+
+		 "machines/vax/machin.com" ;machine dependent stuff
+		 "base/toplev.com"	;top level
+		 "base/debug.com"	;debugging support
+		 "base/utils.com"	;odds and ends
+
+		 "base/cfg1.com"	;control flow graph
+		 "base/cfg2.com"
+		 "base/cfg3.com"
+		 "base/ctypes.com"	;CFG datatypes
+
+		 "base/rvalue.com"	;Right hand values
+		 "base/lvalue.com"	;Left hand values
+		 "base/blocks.com"	;rvalue: blocks
+		 "base/proced.com"	;rvalue: procedures
+		 "base/contin.com"	;rvalue: continuations
+
+		 "base/subprb.com"	;subproblem datatype
+
+		 "rtlbase/rgraph.com"	;program graph abstraction
+		 "rtlbase/rtlty1.com"	;RTL: type definitions
+		 "rtlbase/rtlty2.com"	;RTL: type definitions
+		 "rtlbase/rtlexp.com"	;RTL: expression operations
+		 "rtlbase/rtlcon.com"	;RTL: complex constructors
+		 "rtlbase/rtlreg.com"	;RTL: registers
+		 "rtlbase/rtlcfg.com"	;RTL: CFG types
+		 "rtlbase/rtlobj.com"	;RTL: CFG objects
+		 "rtlbase/regset.com"	;RTL: register sets
+
+		 "base/infutl.com"	;utilities for info generation, shared
+		 "back/insseq.com"	;LAP instruction sequences
+		 "machines/vax/dassm1.com" ;disassembler
 		 ))
 
 	 (cons disassembler-package
-	       '("machines/vax/dsyn.bin" ; disassembler instruction syntax
-		 "machines/vax/dassm2.bin" ;disassembler
-		 "machines/vax/dassm3.bin"
-		 "machines/vax/instr1.dbin" ;disassembler instruction definitions
-		 "machines/vax/instr2.dbin"
-		 "machines/vax/instr3.dbin"
+	       '("machines/vax/dassm2.com" ;disassembler
+		 "machines/vax/dassm3.com"
 		 ))
 
-	 (cons converter-package
-	       '("alpha/fggen1.bin"	   ;SCode->flow-graph converter
-		 "alpha/fggen2.bin"
-		 "alpha/declar.bin"	   ;Declaration handling
+	 (cons fg-generator-package
+	       '("fggen/fggen.com"	;SCode->flow-graph converter
+		 "fggen/declar.com"	;Declaration handling
 		 ))
 
-	 (cons dataflow-package
-	       '("alpha/dflow1.bin"	   ;Dataflow analyzer
-		 "alpha/dflow2.bin"
-		 "alpha/dflow3.bin"
-		 "alpha/dflow4.bin"
-		 "alpha/dflow5.bin"
-		 "alpha/dflow6.bin"
+	 (cons fg-optimizer-package
+	       '("fgopt/simapp.com"	;simulate applications
+		 "fgopt/outer.com"	;outer analysis
+		 "fgopt/folcon.com"	;fold constants
+		 "fgopt/operan.com"	;operator analysis
+		 "fgopt/closan.com"	;closure analysis
+		 "fgopt/blktyp.com"	;environment type assignment
+		 "fgopt/contan.com"	;continuation analysis
+		 "fgopt/simple.com"	;simplicity analysis
+		 "fgopt/order.com"	;subproblem ordering
+		 "fgopt/conect.com"	;connectivity analysis
+		 "fgopt/desenv.com"	;environment design
+		 "fgopt/offset.com"	;compute node offsets
 		 ))
 
 	 (cons rtl-generator-package
-	       '("front-end/rtlgen.bin"	   ;RTL generator
-		 "front-end/rgproc.bin"	   ;RTL generator: Procedure Headers
-		 "front-end/rgstmt.bin"	   ;RTL generator: Statements
-		 "front-end/rgpred.bin"	   ;RTL generator: Predicates
-		 "front-end/rgrval.bin"	   ;RTL generator: RValues
-		 "front-end/rgcomb.bin"	   ;RTL generator: Combinations
-		 "front-end/rgpcom.bin"	   ;RTL generator: Primitive open-coding
+	       '("rtlgen/rtlgen.com"	;RTL generator
+		 "rtlgen/rgproc.com"	;procedure headers
+		 "rtlgen/rgstmt.com"	;statements
+		 "rtlgen/rgrval.com"	;rvalues
+		 "rtlgen/rgcomb.com"	;combinations
+		 "rtlgen/rgretn.com"	;returns
+		 "rtlgen/fndblk.com"	;find blocks and variables
+		 "rtlgen/opncod.com"	;open-coded primitives
+		 "machines/vax/rgspcm.com" ;special close-coded primitives
+		 "rtlbase/rtline.com"	;linearizer
 		 ))
 
 	 (cons rtl-cse-package
-	       '("front-end/rcse1.bin"	   ;RTL common subexpression eliminator
-		 "front-end/rcse2.bin"
-		 "front-end/rcseep.bin"	   ;CSE expression predicates
-		 "front-end/rcseht.bin"	   ;CSE hash table
-		 "front-end/rcserq.bin"	   ;CSE register/quantity abstractions
+	       '("rtlopt/rcse1.com"	;RTL common subexpression eliminator
+		 "rtlopt/rcse2.com"
+		 "rtlopt/rcseep.com"	;CSE expression predicates
+		 "rtlopt/rcseht.com"	;CSE hash table
+		 "rtlopt/rcserq.com"	;CSE register/quantity abstractions
+		 "rtlopt/rcsesr.com"	;CSE stack references
 		 ))
 
-	 (cons rtl-analyzer-package
-	       '("front-end/rlife.bin"	   ;RTL register lifetime analyzer
-		 "front-end/rdeath.bin"	   ;RTL dead code eliminations
-		 "front-end/rdebug.bin"	   ;RTL optimizer debugging output
-		 "front-end/ralloc.bin"	   ;RTL register allocator
+	 (cons rtl-optimizer-package
+	       '("rtlopt/rlife.com"	;RTL register lifetime analyzer
+		 "rtlopt/rdeath.com"	;RTL code compression
+		 "rtlopt/rdebug.com"	;RTL optimizer debugging output
+		 "rtlopt/ralloc.com"	;RTL register allocation
 		 ))
 
 	 (cons debugging-information-package
-	       '("base/infgen.bin"	   ;debugging information generation
+	       '("base/infnew.com"	;debugging information generation
 		 ))
 
 	 (cons lap-syntax-package
-	       '("back-end/lapgn1.bin"	   ;LAP generator.
-		 "back-end/lapgn2.bin"
-		 "back-end/lapgn3.bin"
-		 "back-end/regmap.bin"	   ;Hardware register allocator.
-		 "machines/vax/lapgen.bin" ;code generation rules.
-		 "machines/vax/rules1.bin"
-		 "machines/vax/rules2.bin"
-		 "machines/vax/rules3.bin"
-		 "machines/vax/rules4.bin"
-		 "back-end/syntax.bin"	   ;Generic syntax phase
-		 "machines/vax/coerce.bin" ;Coercions: integer -> bit string
-		 "back-end/asmmac.bin"	   ;Macros for hairy syntax
-		 "machines/vax/insmac.bin" ;Macros for hairy syntax
-		 "machines/vax/insutl.bin" ;Utilities and effective addressing
-		 "machines/vax/instr1.bin" ;VAX Instructions
-		 "machines/vax/instr2.bin" ; "        "
-		 "machines/vax/instr3.bin" ; "        "
+	       '("back/lapgn1.com"	;LAP generator.
+		 "back/lapgn2.com"
+		 "back/lapgn3.com"
+		 "back/regmap.com"	;Hardware register allocator.
+		 "back/linear.com"	;LAP linearizer.
+		 "machines/vax/lapgen.com" ;code generation rules.
+		 "machines/vax/rules1.com"
+		 "machines/vax/rules2.com"
+		 "machines/vax/rules3.com"
+		 "machines/vax/rules4.com"
+		 "back/syntax.com"	;Generic syntax phase
+		 "machines/vax/coerce.com" ;Coercions: integer -> bit string
+		 "back/asmmac.com"	;Macros for hairy syntax
+		 "machines/vax/insmac.com" ;Macros for hairy syntax
+		 "machines/vax/insutl.com" ;Utilities for instructions
+		 "machines/vax/instr1.com" ;VAX Instructions
+		 "machines/vax/instr2.com" ; "        "
+		 "machines/vax/instr3.com" ; "        "
+		 "machines/vax/instr4.com" ; "        "
 		 ))
 
 	 (cons bit-package
-	       '("machines/vax/assmd.bin"  ;Machine dependent
-		 "back-end/symtab.bin"	   ;Symbol tables
-		 "back-end/bitutl.bin"	   ;Assembly blocks
-		 "back-end/bittop.bin"	   ;Assembler top level
+	       '("machines/vax/assmd.com" ;Machine dependent
+		 "back/symtab.com"	;Symbol tables
+		 "back/bitutl.com"	;Assembly blocks
+		 "back/bittop.com"	;Assembler top level
 		 ))
 
 	 ))
 
       ))
 
-  (load-system! compiler-system true))
+  (load-system! compiler-system))
 
 (for-each (lambda (name)
 	    (local-assignment system-global-environment name
