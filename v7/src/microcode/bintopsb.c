@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bintopsb.c,v 9.34 1988/03/12 15:58:02 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bintopsb.c,v 9.35 1988/05/05 09:35:34 cph Exp $
  *
  * This File contains the code to translate internal format binary
  * files to portable format.
@@ -166,7 +166,7 @@ print_a_char(c, name)
 	      "%s: %s: File may not be portable: c = 0x%x\n",
 	      program_name, name, ((int) c));
       /* This does not follow C conventions, but eliminates ambiguity */
-      fprintf(portable_file, "\X%x ", ((int) c));
+      fprintf(portable_file, "X%x ", ((int) c));
     }
   }
   return;
@@ -286,37 +286,37 @@ print_a_fixnum(val)
 }
 
 void
-print_a_string_internal(len, string)
+print_a_string_internal(len, str)
      fast long len;
-     fast char *string;
+     fast char *str;
 {
   fprintf(portable_file, "%ld ", len);
   if (shuffle_bytes_p)
   {
     while(len > 0)
     {
-      print_a_char(string[3], "print_a_string");
+      print_a_char(str[3], "print_a_string");
       if (len > 1)
       {
-	print_a_char(string[2], "print_a_string");
+	print_a_char(str[2], "print_a_string");
       }
       if (len > 2)
       {
-	print_a_char(string[1], "print_a_string");
+	print_a_char(str[1], "print_a_string");
       }
       if (len > 3)
       {
-	print_a_char(string[0], "print_a_string");
+	print_a_char(str[0], "print_a_string");
       }
       len -= 4;
-      string += 4;
+      str += 4;
     }
   }
   else
   {
     while(--len >= 0)
     {
-      print_a_char(*string++, "print_a_string");
+      print_a_char(*str++, "print_a_string");
     }
   }
   putc('\n', portable_file);
