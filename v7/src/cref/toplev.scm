@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/toplev.scm,v 1.2 1988/08/05 21:14:19 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/toplev.scm,v 1.3 1989/08/03 23:27:08 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -55,7 +55,9 @@ MIT in each case. |#
 
 (define cref/generate-constructors
   (generate/common
-   (lambda (pathname pmodel)     (write-constructor pathname pmodel)
+   (lambda (pathname pmodel)
+     (write-globals pathname pmodel)
+     (write-constructor pathname pmodel)
      (write-loader pathname pmodel))))
 
 (define cref/generate-all
