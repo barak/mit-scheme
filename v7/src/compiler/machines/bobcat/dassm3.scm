@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm3.scm,v 4.5 1988/05/14 16:20:17 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm3.scm,v 4.6 1988/08/29 22:40:41 cph Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -573,20 +573,20 @@ MIT in each case. |#
 	  ,(make-data-register 'D (extract *ir 0 3))))))
 
 (define (bit-extract)
-  (let ((opcode (decode-bf (extract *ir 8 11)))
-	(source (decode-ea-m&d)))
-    (let ((extension (get-word)))
-      (let ((target (if (memq opcode '(BFEXTS BFEXTU BFFFO BFINS))
-			`(,(make-data-register 'D
-					       (extract extension 12 15)))
-			'()))
-	    (offset (if (= #b0 (extract extension 11 12))
-			`(& ,(extract extension 6 11))
-			(make-data-register 'D (extract extension 6 9))))
-	    (width (if (= #b0 (extract extension 5 6))
-		       `(& ,(extract extension 0 5))
-		       (make-data-register 'D (extract extension 0 3)))))
-	`(,opcode ,source ,offset ,width ,@target)))))
+  (let* ((opcode (decode-bf (extract *ir 8 11)))
+	 (extension (get-word))
+	 (source (decode-ea-m&d)))
+    (let ((target (if (memq opcode '(BFEXTS BFEXTU BFFFO BFINS))
+		      `(,(make-data-register 'D
+					     (extract extension 12 15)))
+		      '()))
+	  (offset (if (= #b0 (extract extension 11 12))
+		      `(& ,(extract extension 6 11))
+		      (make-data-register 'D (extract extension 6 9))))
+	  (width (if (= #b0 (extract extension 5 6))
+		     `(& ,(extract extension 0 5))
+		     (make-data-register 'D (extract extension 0 3)))))
+      `(,opcode ,source ,offset ,width ,@target))))
 
 
 ;;;; Bit String Manipulation
