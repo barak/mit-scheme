@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.37 1989/05/25 16:24:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.38 1989/06/06 22:42:36 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -86,7 +86,8 @@ MIT in each case. |#
 (define-package (runtime 1d-property)
   (files "prop1d")
   (parent ())
-  (export ()	  1d-table/get
+  (export ()	  1d-table/alist
+	  1d-table/get
 	  1d-table/lookup
 	  1d-table/put!
 	  1d-table/remove!
@@ -720,6 +721,10 @@ MIT in each case. |#
 	  alist?
 	  append
 	  append!
+	  append-map
+	  append-map!
+	  append-map*
+	  append-map*!
 	  assoc
 	  association-procedure
 	  assq
