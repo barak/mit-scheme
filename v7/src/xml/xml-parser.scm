@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xml-parser.scm,v 1.10 2001/07/16 20:39:33 cph Exp $
+;;; $Id: xml-parser.scm,v 1.11 2001/10/16 20:13:03 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -93,30 +93,30 @@
 ;;;; Top level
 
 (define (parse-xml-document buffer)	;[1,22]
-  (fluid-let ((*general-entities* (predefined-entities))
-	      (*standalone?*)
-	      (*internal-dtd?* #t))
-    (let ((declaration (parse-declaration buffer))
-	  (one-value (lambda (v) (and v (vector-ref v 0)))))
-      (set! *standalone?*
-	    (and declaration
-		 (equal? (xml-declaration-standalone declaration)
-			 "yes")))
-      (let* ((misc-1 (one-value (parse-misc buffer)))
-	     (dtd (one-value (parse-dtd buffer)))
-	     (misc-2 (if dtd (one-value (parse-misc buffer)) '()))
-	     (element
-	      (or (one-value (parse-element buffer))
-		  (perror buffer "Missing root element")))
-	     (misc-3 (one-value (parse-misc buffer))))
-	(if (peek-parser-buffer-char buffer)
-	    (perror buffer "Unparsed content in input"))
-	(make-xml-document declaration
-			   misc-1
-			   dtd
-			   misc-2
-			   element
-			   misc-3)))))
+  (let ((one-value (lambda (v) (and v (vector-ref v 0)))))
+    (fluid-let ((*general-entities* (predefined-entities))
+		(*standalone?*)
+		(*internal-dtd?* #t))
+      (let ((declaration (one-value (parse-declaration buffer))))
+	(set! *standalone?*
+	      (and declaration
+		   (equal? (xml-declaration-standalone declaration)
+			   "yes")))
+	(let* ((misc-1 (one-value (parse-misc buffer)))
+	       (dtd (one-value (parse-dtd buffer)))
+	       (misc-2 (if dtd (one-value (parse-misc buffer)) '()))
+	       (element
+		(or (one-value (parse-element buffer))
+		    (perror buffer "Missing root element")))
+	       (misc-3 (one-value (parse-misc buffer))))
+	  (if (peek-parser-buffer-char buffer)
+	      (perror buffer "Unparsed content in input"))
+	  (make-xml-document declaration
+			     misc-1
+			     dtd
+			     misc-2
+			     element
+			     misc-3))))))
 
 (define *standalone?*)
 (define *internal-dtd?*)
@@ -133,7 +133,7 @@
   (*parser
    (top-level
     (with-pointer p
-      (transform
+      (encapsulate
 	  (lambda (v)
 	    (transform-declaration (vector-ref v 0) allow-standalone? p))
 	(sbracket description "<?xml" "?>"
