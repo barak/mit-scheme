@@ -1,6 +1,6 @@
 ;; -*-Scheme-*-
 ;;
-;;  $Id: wttree.scm,v 1.1 1995/09/29 17:50:10 adams Exp $
+;;  $Id: wttree.scm,v 1.2 1995/09/29 20:20:31 adams Exp $
 ;;
 ;;  Copyright (c) 1993-1994 Stephen Adams
 ;;
@@ -809,7 +809,7 @@
 
     
 (lambda ()
-  (test 2000))
+  (test 3000))
 
 
 ;;; Local Variables:
