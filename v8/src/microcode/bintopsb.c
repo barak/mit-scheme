@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/bintopsb.c,v 9.51 1992/05/15 03:26:33 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/bintopsb.c,v 9.52 1992/06/10 21:44:48 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -80,7 +80,7 @@ extern int strlen ();
 static char
   punctuation[] = "'\",<.>/?;:{}[]|`~=+-_()*&^%$#@!";
 
-Boolean
+static Boolean
 DEFUN (ispunct, (c),
        fast char c)
 {
