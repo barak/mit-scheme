@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.44 1994/08/14 19:38:01 cph Exp $
+@comment $Id: scheme.texinfo,v 1.45 1994/10/13 23:24:17 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -7439,6 +7439,24 @@ initialized from the corresponding elements of @var{vector}.  The
 remaining elements of the result are unspecified.
 @end deffn
 
+@deffn {procedure+} vector-map vector procedure
+@cindex mapping, of vector
+@var{Procedure} must be a procedure of one argument.  @code{vector-map}
+applies @var{procedure} element-wise to the elements of the @var{vector}
+and returns a vector of the results, with the each result in the
+position corresponding with that of the element.  The dynamic order in
+which @var{procedure} is applied to the elements of the @var{list}s is
+unspecified.
+
+@example
+@group
+(vector-map '#((a b) (d e) (g h)) cadr)           @result{}  #(b e h)
+(vector-map '#(1 2 3 4) (lambda (n) (expt n n)))  @result{}  #(1 4 27 256)
+(vector-map '#() +)                               @result{}  #(5 7 9)
+@end group
+@end example
+@end deffn
+
 @node Selecting Vector Components, Cutting Vectors, Construction of Vectors, Vectors
 @section Selecting Vector Components
 @cindex selection, of vector component
@@ -10422,9 +10440,9 @@ times required by this operation are proportional to the logarithm of
 the number of associations in the tree.
 @end deffn
 
-@deffn {procedure+} wt-tree/min wt-tree index
-@deffnx {procedure+} wt-tree/min-datum wt-tree index
-@deffnx {procedure+} wt-tree/min-pair wt-tree index
+@deffn {procedure+} wt-tree/min wt-tree
+@deffnx {procedure+} wt-tree/min-datum wt-tree
+@deffnx {procedure+} wt-tree/min-pair wt-tree
 Returns the association of @var{wt-tree} that has the least key under the tree's ordering relation.
 @code{wt-tree/min} returns the least key,
 @code{wt-tree/min-datum} returns the datum associated with the
