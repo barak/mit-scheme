@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comint.scm,v 1.8 1991/08/28 14:47:04 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comint.scm,v 1.9 1991/09/19 22:12:17 arthur Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -486,10 +486,13 @@ it just adds completion characters to the end of the filename."
 (define (comint-current-filename-region)
   (let ((point (current-point))
 	(chars "~/A-Za-z0-9---_.$#,"))
-    (let ((start (skip-chars-backward chars point (comint-line-start point))))
-      (let ((end (skip-chars-forward chars start (line-end start 0))))
-	(and (mark< start end)
-	     (make-region start end))))))
+    (let ((line-start (comint-line-start point)))
+      (let ((start
+	     (if (mark< point line-start)
+		 point
+		 (skip-chars-backward chars point (comint-line-start point)))))
+	(let ((end (skip-chars-forward chars start (line-end start 0))))
+	  (make-region start end))))))
 
 (define (comint-filename-complete pathname filename insert-completion)
   (standard-completion filename
