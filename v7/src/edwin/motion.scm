@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: motion.scm,v 1.86 1994/09/08 20:34:04 adams Exp $
+;;;	$Id: motion.scm,v 1.87 1995/04/26 03:23:03 adams Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -79,20 +79,6 @@
 (define mark-)
 (let ()
 
-(set! mark+
-(named-lambda (mark+ mark n #!optional limit?)
-  (let ((limit? (and (not (default-object? limit?)) limit?)))
-    (cond ((fix:positive? n) (%mark+ mark n limit?))
-	  ((fix:negative? n) (%mark- mark (fix:- 0 n) limit?))
-	  (else mark)))))
-
-(set! mark-
-(named-lambda (mark- mark n #!optional limit?)
-  (let ((limit? (and (not (default-object? limit?)) limit?)))
-    (cond ((fix:positive? n) (%mark- mark n limit?))
-	  ((fix:negative? n) (%mark+ mark (fix:- 0 n) limit?))
-	  (else mark)))))
-
 (define (%mark+ mark n limit?)
   (let ((group (mark-group mark))
 	(new-index (fix:+ (mark-index mark) n)))
@@ -106,6 +92,20 @@
     (if (fix:< new-index (group-start-index group))
 	(limit-mark-motion limit? (group-start-mark group))
 	(make-mark group new-index))))
+
+(set! mark+
+(named-lambda (mark+ mark n #!optional limit?)
+  (let ((limit? (and (not (default-object? limit?)) limit?)))
+    (cond ((fix:positive? n) (%mark+ mark n limit?))
+	  ((fix:negative? n) (%mark- mark (fix:- 0 n) limit?))
+	  (else mark)))))
+
+(set! mark-
+(named-lambda (mark- mark n #!optional limit?)
+  (let ((limit? (and (not (default-object? limit?)) limit?)))
+    (cond ((fix:positive? n) (%mark- mark n limit?))
+	  ((fix:negative? n) (%mark+ mark (fix:- 0 n) limit?))
+	  (else mark)))))
 
 )
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: fileio.scm,v 1.124 1995/01/31 19:35:11 cph Exp $
+;;;	$Id: fileio.scm,v 1.125 1995/04/26 03:22:49 adams Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -260,32 +260,12 @@ after you find a file.  If you explicitly request such a scan with
 (define initialize-buffer-local-variables!)
 (let ()
 
-(set! initialize-buffer-local-variables!
-(named-lambda (initialize-buffer-local-variables! buffer find-file?)
-  (let ((end (buffer-end buffer)))
-    (let ((start
-	   (with-text-clipped
-	    (mark- end (ref-variable local-variable-search-limit) 'LIMIT)
-	    end
-	    (lambda () (backward-one-page end)))))
-      (if start
-	  (if (re-search-forward "Edwin Variables:[ \t]*" start end true)
-	      (let ((start (re-match-start 0))
-		    (end (re-match-end 0)))
-		(if (or (not find-file?)
-			(not (ref-variable inhibit-local-variables buffer))
-			(prompt-for-confirmation?
-			 (string-append
-			  "Set local variables as specified at end of "
-			  (file-namestring (buffer-pathname buffer)))))
-		    (parse-local-variables buffer start end)))))))))
-
 (define edwin-environment (->environment '(edwin)))
 
 (define (evaluate sexp)
   (scode-eval (syntax sexp edwin-syntax-table)
 	      edwin-environment))
-
+
 (define (parse-local-variables buffer start end)
   (let ((prefix (extract-string (line-start start 0) start))
 	(suffix (extract-string end (line-end end 0))))
@@ -346,8 +326,26 @@ after you find a file.  If you explicitly request such a scan with
 		      (loop m4))))))))
 
       (loop start))))
-
-)
+
+(set! initialize-buffer-local-variables!
+(named-lambda (initialize-buffer-local-variables! buffer find-file?)
+  (let ((end (buffer-end buffer)))
+    (let ((start
+	   (with-text-clipped
+	    (mark- end (ref-variable local-variable-search-limit) 'LIMIT)
+	    end
+	    (lambda () (backward-one-page end)))))
+      (if start
+	  (if (re-search-forward "Edwin Variables:[ \t]*" start end true)
+	      (let ((start (re-match-start 0))
+		    (end (re-match-end 0)))
+		(if (or (not find-file?)
+			(not (ref-variable inhibit-local-variables buffer))
+			(prompt-for-confirmation?
+			 (string-append
+			  "Set local variables as specified at end of "
+			  (file-namestring (buffer-pathname buffer)))))
+		    (parse-local-variables buffer start end))))))))))
 
 ;;;; Output
 
