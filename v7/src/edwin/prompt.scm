@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: prompt.scm,v 1.186 2000/06/15 00:25:44 cph Exp $
+;;; $Id: prompt.scm,v 1.187 2000/06/18 20:35:33 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -421,12 +421,13 @@
 (define prompt-histories)
 
 (define (name->history name)
-  (if (not (symbol? name))
+  (if (not (or (not name) (symbol? name)))
       (error:wrong-type-argument name "symbol" 'NAME->HISTORY))
-  (or (hash-table/get prompt-histories name #f)
-      (let ((history (list 'PROMPT-HISTORY)))
-	(hash-table/put! prompt-histories name history)
-	history)))
+  (let ((name (or name 'MINIBUFFER-DEFAULT)))
+    (or (hash-table/get prompt-histories name #f)
+	(let ((history (list 'PROMPT-HISTORY)))
+	  (hash-table/put! prompt-histories name history)
+	  history))))
 
 (define (prompt-history-strings name)
   (list-copy (cdr (name->history name))))
