@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compat.scm,v 1.9 1995/06/22 15:11:12 adams Exp $
+$Id: compat.scm,v 1.10 1995/06/22 15:20:40 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -541,7 +541,7 @@ MIT in each case. |#
 	   (LET ((,cell-name
 		  (CALL (QUOTE ,%variable-write-cache) (QUOTE #F)
 			,cell ,quoted-name)))
-	     ,(if (compat/ignore-assignment-traps? name)
+	     ,(if (quote/text ignore-traps?)
 
 		  `(CALL (QUOTE ,%variable-cell-set!)
 			 ,cont
