@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/vector.c,v 9.25 1987/07/07 21:03:26 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/vector.c,v 9.26 1987/07/23 21:53:19 cph Rel $
  *
  * This file contains procedures for handling vectors and conversion
  * back and forth to lists.
@@ -38,6 +38,53 @@ MIT in each case. */
 
 #include "scheme.h"
 #include "primitive.h"
+
+Pointer
+allocate_non_marked_vector (type_code, length, gc_check_p)
+     int type_code;
+     fast long length;
+     Boolean gc_check_p;
+{
+  fast Pointer result;
+
+  if (gc_check_p)
+    Primitive_GC_If_Needed (length + 1);
+  result = (Make_Pointer (type_code, Free));
+  (*Free++) = (Make_Non_Pointer (TC_MANIFEST_NM_VECTOR, length));
+  Free += length;
+  return (result);
+}
+
+Pointer
+allocate_marked_vector (type_code, length, gc_check_p)
+     int type_code;
+     fast long length;
+     Boolean gc_check_p;
+{
+  fast Pointer result;
+
+  if (gc_check_p)
+    Primitive_GC_If_Needed (length + 1);
+  result = (Make_Pointer (type_code, Free));
+  (*Free++) = (Make_Non_Pointer (TC_MANIFEST_VECTOR, length));
+  Free += length;
+  return (result);
+}
+
+Pointer
+make_vector (length, contents)
+     fast long length;
+     fast Pointer contents;
+{
+  fast Pointer result;
+
+  Primitive_GC_If_Needed (length + 1);
+  result = (Make_Pointer (TC_VECTOR, Free));
+  (*Free++) = (Make_Non_Pointer (TC_MANIFEST_VECTOR, length));
+  while ((length--) > 0)
+    (*Free++) = contents;
+  return (result);
+}
 
                        /*********************/
                        /* VECTORS <-> LISTS */
@@ -124,21 +171,6 @@ Built_In_Primitive(Prim_Subvector_To_List, 3, "SUBVECTOR->LIST", 0x7D)
 
   Arg_1_Type(TC_VECTOR);
   return Subvector_To_List();
-}
-
-Pointer
-make_vector (length, contents)
-     fast long length;
-     fast Pointer contents;
-{
-  fast Pointer result;
-
-  Primitive_GC_If_Needed (length + 1);
-  result = (Make_Pointer (TC_VECTOR, Free));
-  *Free++ = (Make_Non_Pointer (TC_MANIFEST_VECTOR, length));
-  while (length-- > 0)
-    *Free++ = contents;
-  return (result);
 }
 
 /* (VECTOR_CONS LENGTH CONTENTS)
