@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typerew.scm,v 1.5 1995/09/08 03:07:41 adams Exp $
+$Id: typerew.scm,v 1.6 1995/09/11 14:26:45 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -1100,6 +1100,7 @@ MIT in each case. |#
 		  (after-tests t1 t2 q1 q2 env form receiver)))))))
   (let ((compiled-spec  (compile-spec spec)))
     (lambda (quantities types env form receiver)
+      ;;(pp `(types ,@types))
       (compiled-spec (first types)      (second types)
 		     (first quantities) (second quantities)
 		     env form receiver))))
@@ -1125,7 +1126,9 @@ MIT in each case. |#
 		 effect)
 		(second spec)))
 	      ((type:subset? type (car spec))
-	       (if (caddr spec) (typerew/suggest-rewrite form (caddr spec)))
+	       (if (caddr spec)
+		   (typerew/suggest-rewrite
+		    form (typerew-simple-operator-replacement (caddr spec))))
 	       (result env (cadr spec)))
 	      (else (loop (cdddr spec))))))))
 
@@ -1146,6 +1149,23 @@ MIT in each case. |#
   type:real      type:exact-real    #F
   type:recnum    type:exact-recnum  #F
   type:number    type:exact-number)
+
+(define-typerew-unary-variants-type-method 'CEILING->EXACT   effect:none
+  type:flonum    type:exact-integer  FLO:CEILING->EXACT
+  type:number    type:exact-integer)
+
+(define-typerew-unary-variants-type-method 'FLOOR->EXACT     effect:none
+  type:flonum    type:exact-integer  FLO:FLOOR->EXACT
+  type:number    type:exact-integer)
+
+(define-typerew-unary-variants-type-method 'ROUND->EXACT     effect:none
+  type:flonum    type:exact-integer  FLO:ROUND->EXACT
+  type:number    type:exact-integer)
+
+(define-typerew-unary-variants-type-method 'TRUNCATE->EXACT  effect:none
+  type:flonum    type:exact-integer  FLO:TRUNCATE->EXACT
+  type:number    type:exact-integer)
+
 
 (define-typerew-unary-variants-type-method 'COS    effect:none
   type:exact-zero type:exact-one     #F
