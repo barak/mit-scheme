@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.54 1989/03/27 23:14:13 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.55 1989/06/02 21:43:13 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -532,59 +532,80 @@ Enter_Interpreter()
   /*NOTREACHED*/
 }
 
+void
+attempt_termination_backout(code)
+     long code;
+{
+  extern long death_blow;
+  Pointer Term_Vector, Handler;
+
+  if ((WITHIN_CRITICAL_SECTION_P())	||
+      (code == TERM_HALT)		||
+      (!(Valid_Fixed_Obj_Vector())))
+  {
+    return;
+  }
+
+  Term_Vector = Get_Fixed_Obj_Slot(Termination_Proc_Vector);
+
+  if ((OBJECT_TYPE(Term_Vector) != TC_VECTOR) ||
+      (Vector_Length(Term_Vector) <= code))
+  {
+    return;
+  }
+
+  Handler = User_Vector_Ref(Term_Vector, code);
+
+  if (Handler == NIL)
+  {
+    return;
+  }
+
+ Will_Push(CONTINUATION_SIZE + STACK_ENV_EXTRA_SLOTS +
+	   ((code == TERM_NO_ERROR_HANDLER) ? 5 : 4));
+  Store_Return(RC_HALT);
+  Store_Expression(Make_Unsigned_Fixnum(code));
+  Save_Cont();
+  if (code == TERM_NO_ERROR_HANDLER)
+  {
+    Push(MAKE_UNSIGNED_FIXNUM(death_blow));
+  }
+  Push(Val);			/* Arg 3 */
+  Push(Fetch_Env());		/* Arg 2 */
+  Push(Fetch_Expression());		/* Arg 1 */
+  Push(Handler);			/* The handler function */
+  Push(STACK_FRAME_HEADER + ((code == TERM_NO_ERROR_HANDLER) ? 4 : 3));
+ Pushed();
+  longjmp(*Back_To_Eval, PRIM_NO_TRAP_APPLY);
+  /*NOTREACHED*/
+}
+
 term_type
 Microcode_Termination(code)
      long code;
 {
   extern long death_blow;
   extern char *Term_Messages[];
-  Pointer Term_Vector;
   Boolean abnormal_p;
   long value;
 
-  if ((code != TERM_HALT) &&
-      (Valid_Fixed_Obj_Vector()) &&
-      (Type_Code(Term_Vector =
-		 Get_Fixed_Obj_Slot(Termination_Proc_Vector)) ==
-       TC_VECTOR) &&
-      (Vector_Length(Term_Vector) > code))
-  { 
-    Pointer Handler;
-
-    Handler = User_Vector_Ref(Term_Vector, code);
-    if (Handler != NIL)
-    {
-     Will_Push(CONTINUATION_SIZE + STACK_ENV_EXTRA_SLOTS +
- 	       ((code == TERM_NO_ERROR_HANDLER) ? 5 : 4));
-      Store_Return(RC_HALT);
-      Store_Expression(Make_Unsigned_Fixnum(code));
-      Save_Cont();
-      if (code == TERM_NO_ERROR_HANDLER)
-      {
-	Push(MAKE_UNSIGNED_FIXNUM(death_blow));
-      }
-      Push(Val);			/* Arg 3 */
-      Push(Fetch_Env());		/* Arg 2 */
-      Push(Fetch_Expression());		/* Arg 1 */
-      Push(Handler);			/* The handler function */
-      Push(STACK_FRAME_HEADER + ((code == TERM_NO_ERROR_HANDLER) ? 4 : 3));
-     Pushed();
-      longjmp(*Back_To_Eval, PRIM_NO_TRAP_APPLY);
-    }
-  }
+  attempt_termination_backout(code);
 
   if (! inhibit_termination_messages)
-    {
-      putchar('\n');
-      if ((code < 0) || (code > MAX_TERMINATION))
-	printf ("Unknown termination code 0x%x\n", code);
-      else
-	printf("%s.\n", Term_Messages [code]);
-    }
+  {
+    putchar('\n');
+    if ((code < 0) || (code > MAX_TERMINATION))
+      printf ("Unknown termination code 0x%x", code);
+    else
+      printf("%s", Term_Messages [code]);
 
-/* Microcode_Termination continues on the next page */
-
-/* Microcode_Termination, continued */
+    if (WITHIN_CRITICAL_SECTION_P())
+    {
+      printf(" within critical section \"%s\"",
+	     CRITICAL_SECTION_NAME());
+    }
+    printf(".\n");
+  }
 
   switch(code)
   {
@@ -599,7 +620,7 @@ Microcode_Termination(code)
       value = 0;
       abnormal_p = false;
       break;
-
+
 #ifdef unix
     case TERM_SIGNAL:
     {
