@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: primutl.c,v 9.76 2003/02/14 18:28:22 cph Exp $
+$Id: primutl.c,v 9.77 2004/01/07 05:30:44 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright 1993,2000,2001,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -42,12 +42,12 @@ USA.
 #include "cmpgc.h"
 #include <ctype.h>
 
-extern PTR EXFUN (malloc, (size_t));
-extern PTR EXFUN (realloc, (PTR, size_t));
-
 #ifdef STDC_HEADERS
+#  include <stdlib.h>
 #  include <string.h>
 #else
+   extern PTR EXFUN (malloc, (size_t));
+   extern PTR EXFUN (realloc, (PTR, size_t));
    extern PTR EXFUN (memcpy, (PTR, CONST PTR, size_t));
    extern char * EXFUN (strcpy, (char *, CONST char *));
 #endif
@@ -66,7 +66,7 @@ extern SCHEME_OBJECT * load_renumber_table;
   Exported variables:
  */
 
-long MAX_PRIMITIVE = 0;
+unsigned long MAX_PRIMITIVE = 0;
 
 primitive_procedure_t * Primitive_Procedure_Table = 0;
 
@@ -143,56 +143,44 @@ DEFUN (initialization_error, (reason, item), char * reason AND char * item)
   termination_init_error ();
 }
 
-static long prim_table_size = 0;
+static unsigned long prim_table_size = 0;
 
-static Boolean
-DEFUN (copy_table, (ltable, otable, item_size),
-       PTR * ltable AND PTR otable AND int item_size)
-{
-  long size = (((long) item_size) * prim_table_size);
-  PTR ntable;
+#define COPY_TABLE(table, static_table, elt_t, static_elt_t) do		\
+{									\
+  if (table == 0)							\
+    {									\
+      table = (OS_malloc (new_size * (sizeof (elt_t))));		\
+      static_elt_t * from = (& (static_table [0]));			\
+      static_elt_t * from_end						\
+	= (& (static_table [MAX_STATIC_PRIMITIVE + 1]));		\
+      elt_t * to = ((elt_t *) table);					\
+      while (from < from_end)						\
+	(*to++) = ((elt_t) (*from++));					\
+    }									\
+  else									\
+    table = (OS_realloc (table, (new_size * (sizeof (elt_t)))));	\
+} while (0)
 
-  if (*ltable != ((PTR) NULL))
-    ntable = ((PTR) (realloc (*ltable, size)));
-  else
-  {
-    ntable = ((PTR) (malloc (size)));
-    if (ntable != ((PTR) NULL))
-      memcpy (ntable, otable, size);
-  }
-  if (ntable != ((PTR) NULL))
-    *ltable = ntable;
-  return (ntable != ((PTR) NULL));
-}
-
-static Boolean
+static void
 DEFUN_VOID (grow_primitive_tables)
 {
-  Boolean result;
-
-  prim_table_size = (MAX_PRIMITIVE + (MAX_PRIMITIVE / 10));
-
-  result = (   (copy_table (((PTR *) &Primitive_Arity_Table),
-			    ((PTR) &Static_Primitive_Arity_Table[0]),
-			    (sizeof (int))))
-	    && (copy_table (((PTR *) &Primitive_Count_Table),
-			    ((PTR) &Static_Primitive_Count_Table[0]),
-			    (sizeof (int))))
-	    && (copy_table (((PTR *) &Primitive_Name_Table),
-			    ((PTR) &Static_Primitive_Name_Table[0]),
-			    (sizeof (char *))))
-	    && (copy_table (((PTR *) &Primitive_Documentation_Table),
-			    ((PTR) &Static_Primitive_Documentation_Table[0]),
-			    (sizeof (char *))))
-	    && (copy_table (((PTR *) &Primitive_Procedure_Table),
-			    ((PTR) &Static_Primitive_Procedure_Table[0]),
-			    (sizeof (primitive_procedure_t))))
-	    && (GROW_PRIMITIVE_TABLE_HOOK (prim_table_size)));
-  if (result)
-    UPDATE_PRIMITIVE_TABLE_HOOK (0, MAX_PRIMITIVE);
-  else
-    prim_table_size = prim_table_size;
-  return (result);
+  unsigned long new_size = (MAX_PRIMITIVE + (MAX_PRIMITIVE / 10));
+  COPY_TABLE (Primitive_Arity_Table, Static_Primitive_Arity_Table, int, int);
+  COPY_TABLE (Primitive_Count_Table, Static_Primitive_Count_Table, int, int);
+  COPY_TABLE (Primitive_Name_Table,
+	      Static_Primitive_Name_Table,
+	      char *,
+	      CONST char *);
+  COPY_TABLE (Primitive_Documentation_Table,
+	      Static_Primitive_Documentation_Table,
+	      char *,
+	      CONST char *);
+  COPY_TABLE (Primitive_Procedure_Table,
+	      Static_Primitive_Procedure_Table,
+	      primitive_procedure_t,
+	      primitive_procedure_t);
+  prim_table_size = new_size;
+  UPDATE_PRIMITIVE_TABLE_HOOK (0, MAX_PRIMITIVE);
 }
 
 static tree_node prim_procedure_tree = ((tree_node) NULL);
@@ -205,8 +193,7 @@ DEFUN_VOID (initialize_primitives)
   /* MAX_STATIC_PRIMITIVE is the index of the last primitive */
 
   MAX_PRIMITIVE = (MAX_STATIC_PRIMITIVE + 1);
-  if (! (grow_primitive_tables ()))
-    initialization_error ("allocating", "the primitive tables");
+  grow_primitive_tables ();
 
   tree_error_message = ((char *) NULL);
   prim_procedure_tree = (tree_build (MAX_PRIMITIVE, Primitive_Name_Table, 0));
@@ -282,8 +269,7 @@ DEFUN (declare_primitive_internal,
   else
   {
     if (MAX_PRIMITIVE == prim_table_size)
-      if (! (grow_primitive_tables ()))
-	return (SHARP_F);
+      grow_primitive_tables ();
 
     /* Allocate a new primitive index, and insert in data base. */
 
