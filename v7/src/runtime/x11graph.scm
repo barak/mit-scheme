@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: x11graph.scm,v 1.24 1992/09/18 19:05:15 cph Exp $
+$Id: x11graph.scm,v 1.25 1992/09/22 22:42:14 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -375,8 +375,14 @@ MIT in each case. |#
      (lambda ()
        (let ((queue (x-display/event-queue display)))
 	 (let loop ()
-	   (if (not (queue-empty? queue))
-	       (dequeue! queue)))))
+	   (cond ((not (queue-empty? queue))
+		  (dequeue! queue)
+		  (loop))
+		 ((x-display-process-events (x-display/xd display) 2)
+		  =>
+		  (lambda (event)
+		    (process-event display event)
+		    (loop)))))))
      (lambda ()
        (unlock-thread-mutex mutex)))))
 
