@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cpsconv.scm,v 1.4 1994/11/26 16:56:47 gjr Exp $
+$Id: cpsconv.scm,v 1.5 1995/02/11 02:50:11 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -52,13 +52,13 @@ MIT in each case. |#
 (define-macro (define-cps-converter keyword bindings . body)
   (let ((proc-name (symbol-append 'CPSCONV/ keyword)))
     (call-with-values
-     (lambda () (%matchup (cdr bindings) '(handler cont) '(cdr form)))
-     (lambda (names code)
-       `(define ,proc-name
-	  (named-lambda (,proc-name cont form)
-	    (let ((handler (lambda ,(cons (car bindings) names) ,@body)))
-	      (cpsconv/remember ,code
-				form))))))))
+	(lambda () (%matchup (cdr bindings) '(handler cont) '(cdr form)))
+      (lambda (names code)
+	`(DEFINE ,proc-name
+	   (NAMED-LAMBDA (,proc-name CONT FORM)
+	     (LET ((HANDLER (LAMBDA ,(cons (car bindings) names) ,@body)))
+	       (CPSCONV/REMEMBER ,code
+				 form))))))))
 
 (define-cps-converter LOOKUP (cont name)
   (cpsconv/return form cont `(LOOKUP ,name)))
@@ -295,18 +295,22 @@ MIT in each case. |#
 		   next)))))))
 
 (define-cps-converter IF (cont pred conseq alt)
-  ;; This does anchor pointing by default?
-  (let ((consname (cpsconv/new-name 'CONS))
-	(altname  (cpsconv/new-name 'ALT))
-	(ignore1   (cpsconv/new-ignored-continuation))
-	(ignore2   (cpsconv/new-ignored-continuation)))
-    `(LET ((,consname (LAMBDA (,ignore1) ,(cpsconv/expr cont conseq)))
-	   (,altname  (LAMBDA (,ignore2) ,(cpsconv/expr cont alt))))
-       ,(cpsconv/expr
-	 (cpsconv/predicate-continuation
-	  consname altname
-	  (cpsconv/dbg-continuation/make 'PREDICATE form pred))
-	 pred))))
+  (if (and (form/simple&side-effect-free? pred)
+	   (form/pseudo-simple&side-effect-free? conseq)
+	   (form/pseudo-simple&side-effect-free? alt))
+      (cpsconv/return form cont (cpsconv/simple/copy form))
+      ;; This does anchor pointing by default?
+      (let ((consname (cpsconv/new-name 'CONS))
+	    (altname  (cpsconv/new-name 'ALT))
+	    (ignore1   (cpsconv/new-ignored-continuation))
+	    (ignore2   (cpsconv/new-ignored-continuation)))
+	`(LET ((,consname (LAMBDA (,ignore1) ,(cpsconv/expr cont conseq)))
+	       (,altname  (LAMBDA (,ignore2) ,(cpsconv/expr cont alt))))
+	   ,(cpsconv/expr
+	     (cpsconv/predicate-continuation
+	      consname altname
+	      (cpsconv/dbg-continuation/make 'PREDICATE form pred))
+	     pred)))))
 
 (define (cpsconv/expr cont expr)
   (if (not (pair? expr))
