@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: coerce.scm,v 1.8 1996/07/30 16:54:58 adams Exp $
+$Id: coerce.scm,v 1.9 1996/07/30 20:11:40 adams Exp $
 
 Copyright (c) 1996 Massachusetts Institute of Technology
 
@@ -198,7 +198,7 @@ MIT in each case. |#
 (define (%compiled-code-support:nonrestartable-continuation result)
   (error
    "You attempted to return to a subproblem with a non-restartable error in compiled code, using the value: ")
-   result))
+   result)
 
 (define (%compiled-code-support:signal-error-in-primitive prim . args)
   (apply prim args))
