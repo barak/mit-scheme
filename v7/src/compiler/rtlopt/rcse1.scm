@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.6 1988/03/14 20:58:41 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.7 1988/04/26 18:52:37 markf Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -247,8 +247,14 @@ MIT in each case. |#
   rtl:eq-test-expression-1 rtl:set-eq-test-expression-1!
   rtl:eq-test-expression-2 rtl:set-eq-test-expression-2!)
 
+(define-trivial-two-arg-method 'FIXNUM-PRED-2-ARGS
+  rtl:fixnum-pred-2-args-operand-1 rtl:set-fixnum-pred-2-args-operand-1!
+  rtl:fixnum-pred-2-args-operand-2 rtl:set-fixnum-pred-2-args-operand-2!)
 (define-trivial-one-arg-method 'TRUE-TEST
   rtl:true-test-expression rtl:set-true-test-expression!)
+
+(define-trivial-one-arg-method 'FIXNUM-PRED-1-ARG
+  rtl:fixnum-pred-1-arg-operand rtl:set-fixnum-pred-1-arg-operand!)
 
 (define-trivial-one-arg-method 'TYPE-TEST
   rtl:type-test-expression rtl:set-type-test-expression!)
