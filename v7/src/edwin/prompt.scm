@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.148 1991/08/06 15:54:57 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.149 1991/10/18 16:03:02 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -299,14 +299,20 @@
 						  string-table
 						  require-match?)))
 
-(define (prompt-for-alist-value prompt alist)
+(define (prompt-for-alist-value prompt alist #!optional default)
   (fluid-let ((map-name/external->internal identity-procedure)
 	      (map-name/internal->external identity-procedure))
-    (prompt-for-string-table-value prompt
-				   false
-				   'NO-DEFAULT
-				   (alist->string-table alist)
-				   true)))
+    (if (default-object? default)
+	(prompt-for-string-table-value prompt
+				       false
+				       'NO-DEFAULT
+				       (alist->string-table alist)
+				       true)
+	(prompt-for-string-table-value prompt
+				       default
+				       'VISIBLE-DEFAULT
+				       (alist->string-table alist)
+				       true))))
 
 (define (prompt-for-command prompt)
   (fluid-let ((map-name/external->internal editor-name/external->internal)

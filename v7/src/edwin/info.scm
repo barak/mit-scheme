@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.106 1991/10/04 06:14:14 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.107 1991/10/18 16:02:39 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -393,7 +393,13 @@ except for \\[info-cease-edit] to return to Info."
        (menu-item-name
 	(make-mark
 	 (mark-group menu)
-	 (prompt-for-alist-value "Menu item" (collect-menu-items menu))))))))
+	 (let ((current-item (current-menu-item (current-point))))
+	   (if current-item
+	       (prompt-for-alist-value "Menu item"
+				       (collect-menu-items menu)
+				       (menu-item-name current-item))
+	       (prompt-for-alist-value "Menu item"
+				       (collect-menu-items menu))))))))))
 
 (define (nth-menu-item n)
   (lambda ()
@@ -460,6 +466,17 @@ except for \\[info-cease-edit] to return to Info."
 (define (next-menu-item mark)
   (and (re-search-forward menu-item-regexp mark (group-end mark) false)
        (re-match-start 1)))
+
+(define (current-menu-item mark)
+  (let ((menu (find-menu))
+	(start (mark-1+ (line-start mark 0) 'LIMIT)))
+    (and menu
+	 (mark> start menu)
+	 (re-search-forward menu-item-regexp
+			    (mark-1+ (line-start mark 0) 'LIMIT)
+			    (line-end mark 0)
+			    false)
+	 (re-match-start 1))))
 
 (define (menu-item-name item)
   (let ((colon (char-search-forward #\: item (line-end item 0) false)))
