@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.36 2004/11/19 06:59:50 cph Exp $
+$Id: port.scm,v 1.37 2005/02/17 17:52:08 cph Exp $
 
 Copyright 1991,1992,1993,1994,1997,1999 Massachusetts Institute of Technology
-Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -346,7 +346,8 @@ USA.
 		     (set-port/unread! port #f)
 		     char)
 		   (let ((char (defer port)))
-		     (transcribe-char char port)
+		     (if (char? char)
+			 (transcribe-char char port))
 		     char))))))
 	(unread-char
 	 (lambda (port char)
@@ -360,7 +361,9 @@ USA.
 	     (or (port/unread port)
 		 (let ((char (defer port)))
 		   (if (char? char)
-		       (set-port/unread! port char))
+		       (begin
+			 (set-port/unread! port char)
+			 (transcribe-char char port)))
 		   char)))))
 	(discard-char
 	 (lambda (port)
