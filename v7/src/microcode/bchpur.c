@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.54 1991/09/07 01:06:53 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.55 1991/09/07 22:46:53 jinx Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -125,8 +125,9 @@ DEFUN (purifyloop, (Scan, To_ptr, To_Address_ptr, purify_mode),
 
 	  /* The + & -1 are here because of the Scan++ in the for header. */
 	  overflow = ((Scan - scan_buffer_top) + 1);
-	  Scan = ((dump_and_reload_scan_buffer ((overflow / GC_DISK_BUFFER_SIZE), NULL) +
-		   (overflow % GC_DISK_BUFFER_SIZE)) - 1);
+	  Scan = ((dump_and_reload_scan_buffer
+		   ((overflow >> gc_buffer_shift), NULL)
+		   + (overflow & gc_buffer_mask)) - 1);
 	  break;
 	}
 
@@ -172,7 +173,7 @@ DEFUN (purifyloop, (Scan, To_ptr, To_Address_ptr, purify_mode),
 	      {
 		/* We stopped because we needed to relocate too many. */
 		Scan = dump_and_reload_scan_buffer(0, NULL);
-		max_here = GC_DISK_BUFFER_SIZE;
+		max_here = gc_buffer_size;
 	      }
 	    }
 	    /* The + & -1 are here because of the Scan++ in the for header. */
@@ -205,7 +206,7 @@ DEFUN (purifyloop, (Scan, To_ptr, To_Address_ptr, purify_mode),
 		relocate_linked_operator (false);
 		next_ptr = ((char *)
 			    (end_scan_buffer_extension ((char *) next_ptr)));
-		overflow -= GC_DISK_BUFFER_SIZE;
+		overflow -= gc_buffer_size;
 	      }
 	      else
 	      {
@@ -557,13 +558,13 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_primitive_purify, 3, 3, 0)
   }
 
   RENAME_CRITICAL_SECTION ("purify daemon");
- Will_Push(CONTINUATION_SIZE + (STACK_ENV_EXTRA_SLOTS + 1));
-  Store_Expression(result);
-  Store_Return(RC_NORMAL_GC_DONE);
-  Save_Cont();
+ Will_Push (CONTINUATION_SIZE + (STACK_ENV_EXTRA_SLOTS + 1));
+  Store_Expression (result);
+  Store_Return (RC_NORMAL_GC_DONE);
+  Save_Cont ();
   STACK_PUSH (daemon);
   STACK_PUSH (STACK_FRAME_HEADER);
- Pushed();
+ Pushed ();
   PRIMITIVE_ABORT(PRIM_APPLY);
   /*NOTREACHED*/
 }

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcl.c,v 9.41 1991/05/05 00:45:23 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcl.c,v 9.42 1991/09/07 22:47:15 jinx Exp $
 
 Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
@@ -40,9 +40,10 @@ MIT in each case. */
 #include "bchgcc.h"
 
 SCHEME_OBJECT *
-GCLoop (Scan, To_ptr, To_Address_ptr)
-     fast SCHEME_OBJECT *Scan;
-     SCHEME_OBJECT **To_ptr, **To_Address_ptr;
+DEFUN (GCLoop, (Scan, To_ptr, To_Address_ptr),
+       fast SCHEME_OBJECT *Scan AND
+       SCHEME_OBJECT **To_ptr AND
+       SCHEME_OBJECT **To_Address_ptr)
 {
   fast SCHEME_OBJECT *To, *Old, Temp, *Low_Constant, *To_Address, New_Address;
 
@@ -53,28 +54,28 @@ GCLoop (Scan, To_ptr, To_Address_ptr)
   for ( ; Scan != To; Scan++)
   {
     Temp = *Scan;
-    Switch_by_GC_Type(Temp)
+    Switch_by_GC_Type (Temp)
     {
       case TC_BROKEN_HEART:
         if (Scan != (OBJECT_ADDRESS (Temp)))
 	{
-	  sprintf(gc_death_message_buffer,
-		  "gcloop: broken heart (0x%lx) in scan",
-		  Temp);
-	  gc_death(TERM_BROKEN_HEART, gc_death_message_buffer, Scan, To);
+	  sprintf (gc_death_message_buffer,
+		   "gcloop: broken heart (0x%lx) in scan",
+		   Temp);
+	  gc_death (TERM_BROKEN_HEART, gc_death_message_buffer, Scan, To);
 	  /*NOTREACHED*/
 	}
 	if (Scan != scan_buffer_top)
 	  goto end_gcloop;
 	/* The -1 is here because of the Scan++ in the for header. */
-	Scan = dump_and_reload_scan_buffer(0, NULL) - 1;
+	Scan = ((dump_and_reload_scan_buffer (0, NULL)) - 1);
 	continue;
 
       case TC_MANIFEST_NM_VECTOR:
       case TC_MANIFEST_SPECIAL_NM_VECTOR:
 	/* Check whether this bumps over current buffer,
 	   and if so we need a new bufferfull. */
-	Scan += OBJECT_DATUM (Temp);
+	Scan += (OBJECT_DATUM (Temp));
 	if (Scan < scan_buffer_top)
 	{
 	  break;
@@ -84,21 +85,21 @@ GCLoop (Scan, To_ptr, To_Address_ptr)
 	  unsigned long overflow;
 
 	  /* The + & -1 are here because of the Scan++ in the for header. */
-	  overflow = (Scan - scan_buffer_top) + 1;
+	  overflow = ((Scan - scan_buffer_top) + 1);
 	  Scan = ((dump_and_reload_scan_buffer
-		   ((overflow / GC_DISK_BUFFER_SIZE), NULL) +
-		   (overflow % GC_DISK_BUFFER_SIZE)) - 1);
+		   ((overflow >> gc_buffer_shift), NULL)
+		   + (overflow & gc_buffer_mask)) - 1);
 	  break;
 	}
 
       case_compiled_entry_point:
-	relocate_compiled_entry(true);
+	relocate_compiled_entry (true);
 	*Scan = Temp;
 	break;
 
       case TC_LINKAGE_SECTION:
       {
-	switch (READ_LINKAGE_KIND(Temp))
+	switch (READ_LINKAGE_KIND (Temp))
 	{
 	  case REFERENCE_LINKAGE_KIND:
 	  case ASSIGNMENT_LINKAGE_KIND:
@@ -110,7 +111,7 @@ GCLoop (Scan, To_ptr, To_Address_ptr)
 
 	    Scan++;
 	    max_here = (scan_buffer_top - Scan);
-	    max_count = READ_CACHE_LINKAGE_COUNT(Temp);
+	    max_count = (READ_CACHE_LINKAGE_COUNT (Temp));
 	    while (max_count != 0)
 	    {
 	      count = ((max_count > max_here) ? max_here : max_count);
@@ -118,13 +119,13 @@ GCLoop (Scan, To_ptr, To_Address_ptr)
 	      for ( ; --count >= 0; Scan += 1)
 	      {
 		Temp = *Scan;
-		relocate_typeless_pointer(copy_quadruple(), 4);
+		relocate_typeless_pointer (copy_quadruple (), 4);
 	      }
 	      if (max_count != 0)
 	      {
 		/* We stopped because we needed to relocate too many. */
-		Scan = dump_and_reload_scan_buffer(0, NULL);
-		max_here = GC_DISK_BUFFER_SIZE;
+		Scan = (dump_and_reload_scan_buffer (0, NULL));
+		max_here = gc_buffer_size;
 	      }
 	    }
 	    /* The + & -1 are here because of the Scan++ in the for header. */
@@ -157,7 +158,7 @@ GCLoop (Scan, To_ptr, To_Address_ptr)
 		relocate_linked_operator (true);
 		next_ptr = ((char *)
 			    (end_scan_buffer_extension ((char *) next_ptr)));
-		overflow -= GC_DISK_BUFFER_SIZE;
+		overflow -= gc_buffer_size;
 	      }
 	      else
 	      {
@@ -231,7 +232,7 @@ GCLoop (Scan, To_ptr, To_Address_ptr)
 	  }
 	  else
 	  {
-	    relocate_manifest_closure(true);
+	    relocate_manifest_closure (true);
 	  }
 	}
 	Scan = ((SCHEME_OBJECT *) (end_ptr));
@@ -239,50 +240,50 @@ GCLoop (Scan, To_ptr, To_Address_ptr)
       }
 
       case_Cell:
-	relocate_normal_pointer(copy_cell(), 1);
+	relocate_normal_pointer (copy_cell(), 1);
 
       case TC_REFERENCE_TRAP:
-	if (OBJECT_DATUM (Temp) <= TRAP_MAX_IMMEDIATE)
+	if ((OBJECT_DATUM (Temp)) <= TRAP_MAX_IMMEDIATE)
 	{
 	  /* It is a non pointer. */
 	  break;
 	}
 	/* It is a pair, fall through. */
       case_Pair:
-	relocate_normal_pointer(copy_pair(), 2);
+	relocate_normal_pointer (copy_pair (), 2);
 
       case TC_VARIABLE:
       case_Triple:
-	relocate_normal_pointer(copy_triple(), 3);
+	relocate_normal_pointer (copy_triple (), 3);
 
       case_Quadruple:
-	relocate_normal_pointer(copy_quadruple(), 4);
+	relocate_normal_pointer (copy_quadruple (), 4);
 
       case TC_BIG_FLONUM:
-	relocate_flonum_setup();
+	relocate_flonum_setup ();
 	goto Move_Vector;
 
       case_Vector:
-	relocate_normal_setup();
+	relocate_normal_setup ();
       Move_Vector:
-	copy_vector(NULL);
-	relocate_normal_end();
+	copy_vector (NULL);
+	relocate_normal_end ();
 
       case TC_FUTURE:
-	relocate_normal_setup();
-	if (!(Future_Spliceable(Temp)))
+	relocate_normal_setup ();
+	if (!(Future_Spliceable (Temp)))
 	{
 	  goto Move_Vector;
 	}
-	*Scan = Future_Value(Temp);
+	*Scan = (Future_Value (Temp));
 	Scan -= 1;
 	continue;
 
       case TC_WEAK_CONS:
-	relocate_normal_pointer(copy_weak_pair(), 2);
+	relocate_normal_pointer (copy_weak_pair (), 2);
 
       default:
-	GC_BAD_TYPE("gcloop");
+	GC_BAD_TYPE ("gcloop");
 	/* Fall Through */
 
       case_Non_Pointer:
