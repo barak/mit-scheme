@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prbfish.c,v 1.4 1999/01/02 06:11:34 cph Exp $
+$Id: prbfish.c,v 1.5 1999/08/09 18:29:38 cph Exp $
 
 Copyright (c) 1997, 1999 Massachusetts Institute of Technology
 
@@ -66,10 +66,11 @@ DEFUN (init_vector_arg, (arg), unsigned int arg)
   return (STRING_LOC ((ARG_REF (arg)), 0));
 }
 
-DEFINE_PRIMITIVE ("BLOWFISH-CBC", Prim_blowfish_cbc, 4, 4,
-  "(INPUT KEY INIT-VECTOR ENCRYPT?)\n\
+DEFINE_PRIMITIVE ("BLOWFISH-CBC-V2", Prim_blowfish_cbc, 5, 5,
+  "(INPUT OUTPUT KEY INIT-VECTOR ENCRYPT?)\n\
 Apply Blowfish in Cipher Block Chaining mode.\n\
 INPUT is a string whose length is a multiple of 8 bytes.\n\
+OUTPUT is a string whose length is the same as INPUT.\n\
 KEY is a Blowfish key.\n\
 INIT-VECTOR is an 8-byte string; it is modified after each call.\n\
   The value from any call may be passed in to a later call.\n\
@@ -77,99 +78,74 @@ ENCRYPT? says whether to encrypt (#T) or decrypt (#F).\n\
 Returned value is a string of the same length as INPUT.")
 {
   SCHEME_OBJECT input_text;
-  BF_KEY * key;
-  unsigned char * init_vector;
-  SCHEME_OBJECT output_text;
-  PRIMITIVE_HEADER (4);
-
-  CHECK_ARG (1, STRING_P);
-  input_text = (ARG_REF (1));
-  if (((STRING_LENGTH (input_text)) % 8) != 0)
-    error_bad_range_arg (1);
-  key = (key_arg (2));
-  init_vector = (init_vector_arg (3));
-  output_text = (allocate_string (STRING_LENGTH (input_text)));
-  BF_cbc_encrypt ((STRING_LOC (input_text, 0)),
-		  (STRING_LOC (output_text, 0)),
-		  (STRING_LENGTH (input_text)),
-		  key,
-		  init_vector,
-		  (BOOLEAN_ARG (4)));
-  PRIMITIVE_RETURN (output_text);
-}
-
-DEFINE_PRIMITIVE ("BLOWFISH-CFB64", Prim_blowfish_cfb64, 5, 5,
-  "(INPUT KEY INIT-VECTOR NUM ENCRYPT?)\n\
-Apply Blowfish in Cipher FeedBack mode.\n\
-INPUT is an arbitrary string.\n\
-KEY is a Blowfish key.\n\
-INIT-VECTOR is an 8-byte string; it is modified after each call.\n\
-  The value from any call may be passed in to a later call.\n\
-NUM is a digit from 0 to 7 inclusive; it is the low 3 bits of the\n\
-  number of bytes that have previously been processed in this stream.\n\
-ENCRYPT? says whether to encrypt (#T) or decrypt (#F).\n\
-Returned value is a string of the same length as INPUT.")
-{
-  SCHEME_OBJECT input_text;
-  BF_KEY * key;
-  unsigned char * init_vector;
-  int num;
   SCHEME_OBJECT output_text;
   PRIMITIVE_HEADER (5);
 
   CHECK_ARG (1, STRING_P);
   input_text = (ARG_REF (1));
-  key = (key_arg (2));
-  init_vector = (init_vector_arg (3));
-  num = (arg_index_integer (4, 8));
-  output_text = (allocate_string (STRING_LENGTH (input_text)));
-  BF_cfb64_encrypt ((STRING_LOC (input_text, 0)),
-		    (STRING_LOC (output_text, 0)),
-		    (STRING_LENGTH (input_text)),
-		    key,
-		    init_vector,
-		    (&num),
-		    (BOOLEAN_ARG (5)));
-  PRIMITIVE_RETURN (output_text);
+  if (((STRING_LENGTH (input_text)) % 8) != 0)
+    error_bad_range_arg (1);
+  CHECK_ARG (2, STRING_P);
+  output_text = (ARG_REF (2));
+  if ((output_text == input_text)
+      || ((STRING_LENGTH (output_text)) != (STRING_LENGTH (input_text))))
+    error_bad_range_arg (2);
+  BF_cbc_encrypt ((STRING_LOC (input_text, 0)),
+		  (STRING_LOC (output_text, 0)),
+		  (STRING_LENGTH (input_text)),
+		  (key_arg (3)),
+		  (init_vector_arg (4)),
+		  (BOOLEAN_ARG (5)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("BLOWFISH-CFB64-SUBSTRING", Prim_blowfish_cfb64_substring, 7, 7,
-  "(INPUT START END KEY INIT-VECTOR NUM ENCRYPT?)\n\
-Apply Blowfish in Cipher FeedBack mode.\n\
-(INPUT,START,END) is an arbitrary substring.\n\
+DEFINE_PRIMITIVE ("BLOWFISH-CFB64-SUBSTRING-V2", Prim_blowfish_cfb64_substring, 9, 9,
+  "(INPUT ISTART IEND OUTPUT OSTART KEY INIT-VECTOR NUM ENCRYPT?)\n\
+Apply Blowfish in Cipher Feed-Back mode.\n\
+(INPUT,ISTART,IEND) is an arbitrary substring.\n\
+OUTPUT is a string as large as the input substring.\n\
+OSTART says where to start writing to the output string.\n\
 KEY is a Blowfish key.\n\
 INIT-VECTOR is an 8-byte string; it is modified after each call.\n\
   The value from any call may be passed in to a later call.\n\
+  The initial value must be unique for each message/key pair.\n\
 NUM is a digit from 0 to 7 inclusive; it is the low 3 bits of the\n\
   number of bytes that have previously been processed in this stream.\n\
 ENCRYPT? says whether to encrypt (#T) or decrypt (#F).\n\
-Returned value is a string of the same length as INPUT.")
+Returned value is the new value of NUM.")
 {
   SCHEME_OBJECT input_text;
   unsigned long l;
-  unsigned long start;
-  unsigned long end;
-  BF_KEY * key;
-  unsigned char * init_vector;
-  int num;
+  unsigned long istart;
+  unsigned long iend;
+  unsigned long ilen;
   SCHEME_OBJECT output_text;
-  PRIMITIVE_HEADER (7);
+  unsigned long ostart;
+  int num;
+  PRIMITIVE_HEADER (9);
 
   CHECK_ARG (1, STRING_P);
   input_text = (ARG_REF (1));
-  l = (STRING_LENGTH (input_text));
-  start = (arg_ulong_index_integer (2, l));
-  end = (arg_integer_in_range (3, start, (l + 1)));
-  key = (key_arg (4));
-  init_vector = (init_vector_arg (5));
-  num = (arg_index_integer (6, 8));
-  output_text = (allocate_string (end - start));
-  BF_cfb64_encrypt ((STRING_LOC (input_text, start)),
-		    (STRING_LOC (output_text, 0)),
-		    (end - start),
-		    key,
-		    init_vector,
+  {
+    unsigned long l = (STRING_LENGTH (input_text));
+    istart = (arg_ulong_index_integer (2, l));
+    iend = (arg_integer_in_range (3, istart, (l + 1)));
+  }
+  ilen = (iend - istart);
+  CHECK_ARG (4, STRING_P);
+  output_text = (ARG_REF (4));
+  ostart = (arg_ulong_index_integer (5, (STRING_LENGTH (output_text))));
+  if ((output_text == input_text)
+      && (ostart < iend)
+      && (istart < (ostart + ilen)))
+    error_bad_range_arg (4);
+  num = (arg_index_integer (8, 8));
+  BF_cfb64_encrypt ((STRING_LOC (input_text, istart)),
+		    (STRING_LOC (output_text, ostart)),
+		    ilen,
+		    (key_arg (6)),
+		    (init_vector_arg (7)),
 		    (&num),
-		    (BOOLEAN_ARG (7)));
-  PRIMITIVE_RETURN (output_text);
+		    (BOOLEAN_ARG (9)));
+  PRIMITIVE_RETURN (long_to_integer (num));
 }
