@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.11 1991/02/15 18:05:10 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.12 1991/03/06 05:14:06 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -398,21 +398,22 @@ MIT in each case. |#
 
 ;;;; Condition Signalling and Handling
 
-(define handler-frames false)
+(define static-handler-frames '())
+(define dynamic-handler-frames '())
 (define break-on-signals-types '())
 
-(define-structure (handler-frame
-		   (type vector)
-		   (conc-name handler-frame/))
-  (types false read-only true)
-  (handler false read-only true)
-  (next false read-only true))
+(define (bind-default-condition-handler types handler)
+  (guarantee-condition-types types 'BIND-DEFAULT-CONDITION-HANDLER)
+  (guarantee-condition-handler handler 'BIND-DEFAULT-CONDITION-HANDLER)
+  (set! static-handler-frames
+	(cons (cons types handler) static-handler-frames))
+  unspecific)
 
 (define (bind-condition-handler types handler thunk)
   (guarantee-condition-types types 'BIND-CONDITION-HANDLER)
   (guarantee-condition-handler handler 'BIND-CONDITION-HANDLER)
-  (fluid-let ((handler-frames
-	       (make-handler-frame types handler handler-frames)))
+  (fluid-let ((dynamic-handler-frames
+	       (cons (cons types handler) dynamic-handler-frames)))
     (thunk)))
 
 (define (break-on-signals types)
@@ -437,15 +438,21 @@ MIT in each case. |#
 	    (and (not (null? types))
 		 (intersect-generalizations? types)))
 	  (bkpt "BKPT entered because of BREAK-ON-SIGNALS:" condition))
-      (let loop ((frame handler-frames))
-	(if frame
-	    (let ((next (handler-frame/next frame)))
-	      (if (let ((types (handler-frame/types frame)))
-		    (or (null? types)
-			(intersect-generalizations? types)))
-		  (fluid-let ((handler-frames next))
-		    ((handler-frame/handler frame) condition)))
-	      (loop next)))))))
+      (do ((frames dynamic-handler-frames (cdr frames)))
+	  ((null? frames))
+	(if (let ((types (caar frames)))
+	      (or (null? types)
+		  (intersect-generalizations? types)))
+	    (fluid-let ((dynamic-handler-frames (cdr frames)))
+	      ((cdar frames) condition))))
+      (do ((frames static-handler-frames (cdr frames)))
+	  ((null? frames))
+	(if (let ((types (caar frames)))
+	      (or (null? types)
+		  (intersect-generalizations? types)))
+	    (fluid-let ((static-handler-frames (cdr frames))
+			(dynamic-handler-frames '()))
+	      ((cdar frames) condition)))))))
 
 ;;;; Standard Condition Signallers
 
