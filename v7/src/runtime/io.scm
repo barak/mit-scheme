@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.80 2004/12/20 04:38:37 cph Exp $
+$Id: io.scm,v 14.81 2004/12/28 06:41:33 cph Exp $
 
 Copyright 1986,1987,1988,1990,1991,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1998,1999,2000,2001 Massachusetts Institute of Technology
@@ -56,7 +56,7 @@ USA.
   port)
 
 (define (make-channel d)
-  (open-channel (lambda (p) (system-pair-set-cdr! p d) #t)))
+  (open-channel (lambda (p) (system-pair-set-cdr! p d))))
 
 (define (open-channel procedure)
   (make-gc-finalized-object open-channels procedure

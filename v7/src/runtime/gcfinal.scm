@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: gcfinal.scm,v 14.9 2003/11/11 01:31:28 cph Exp $
+$Id: gcfinal.scm,v 14.10 2004/12/28 06:41:10 cph Exp $
 
-Copyright 2000,2002,2003 Massachusetts Institute of Technology
+Copyright 2000,2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -63,7 +63,7 @@ USA.
   (guarantee-gc-finalizer finalizer 'ADD-TO-GC-FINALIZER!)
   (if (not ((gc-finalizer-object? finalizer) object))
       (error:wrong-type-argument object
-				 "Finalized object"
+				 "finalized object"
 				 'ADD-TO-GC-FINALIZER!))
   (without-interrupts
    (lambda ()
@@ -83,7 +83,7 @@ USA.
 	(set-object-context! (gc-finalizer-set-object-context! finalizer)))
     (if (not (object? object))
 	(error:wrong-type-argument object
-				   "Finalized object"
+				   "finalized object"
 				   'REMOVE-FROM-GC-FINALIZER!))
     (without-interrupts
      (lambda ()
@@ -157,16 +157,16 @@ USA.
     (dynamic-wind
      (lambda () unspecific)
      (lambda ()
-       (and (get-context p)
-	    (let ((context (weak-cdr p)))
-	      (let ((object (context->object context)))
-		(without-interrupts
-		 (lambda ()
-		   (weak-set-car! p object)
-		   (set-gc-finalizer-items!
-		    finalizer
-		    (cons p (gc-finalizer-items finalizer)))))
-		object))))
+       (get-context p)
+       (let ((context (weak-cdr p)))
+	 (let ((object (context->object context)))
+	   (without-interrupts
+	    (lambda ()
+	      (weak-set-car! p object)
+	      (set-gc-finalizer-items!
+	       finalizer
+	       (cons p (gc-finalizer-items finalizer)))))
+	   object)))
      (lambda ()
        (if (and (not (weak-pair/car? p)) (weak-cdr p))
 	   (begin
