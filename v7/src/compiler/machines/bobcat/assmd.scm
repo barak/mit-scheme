@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/assmd.scm,v 1.29 1987/03/19 00:52:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/assmd.scm,v 1.30 1987/07/13 22:04:47 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -38,6 +38,8 @@ MIT in each case. |#
 
 (define addressing-granularity 8)
 (define scheme-object-width 32)
+;; Instruction length is always a multiple of 16
+(define maximum-padding-length 16)
 
 (define make-nmv-header)
 (let ()
