@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/notify.scm,v 1.4 1992/02/18 14:29:09 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/notify.scm,v 1.5 1992/02/18 15:24:56 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -72,27 +72,29 @@
       mail-not-present-string))
 
 (define (check-for-mail)
-  (let ((mail-file
-	 (merge-pathnames (ref-variable mail-notify-directory)
-			  (unix/current-user-name))))
-    (and (file-exists? mail-file)
-	 (> (file-attributes/length (file-attributes mail-file)) 0))))
+  (let ((attributes
+	 (file-attributes
+	  (merge-pathnames (ref-variable mail-notify-directory)
+			   (unix/current-user-name)))))
+    (and attributes
+	 (> (file-attributes/length attributes) 0))))
 
 (define (get-load-average-string)
   (let ((temporary-buffer (temporary-buffer "*uptime*")))
     (let ((start (buffer-start temporary-buffer)))
       (shell-command false start false false "uptime")
-      (re-search-forward
-       "[ ]*\\([0-9]*:[0-9]*[ap]m\\).*load average: \\([0-9.]*\\),"
-       start 
-       (buffer-end temporary-buffer))
       (let ((result
-	     (string-append 
-	      (extract-string (re-match-start 1) (re-match-end 1))
-	      " "
-	      (extract-string (re-match-start 2) (re-match-end 2)))))
+	     (if (re-search-forward
+		  "[ ]*\\([0-9:]+[ap]m\\).*load average:[ ]*\\([0-9.]*\\),"
+		  start 
+		  (buffer-end temporary-buffer))
+		 (string-append
+		  (extract-string (re-match-start 1) (re-match-end 1))
+		  " "
+		  (extract-string (re-match-start 2) (re-match-end 2)))
+		 "n/a")))
 	(kill-buffer temporary-buffer)
-	(or result "n/a")))))
+	result))))
 
 (define-variable notify-string
   "Either \" Mail\" or \"\" depending on whether mail is waiting."
@@ -134,7 +136,8 @@
       (notify-cycle))))
 
 (define (start-notifier notifier)
-  (if current-notifier-thread
+  (if (and current-notifier-thread
+	   (not (thread-dead? current-notifier-thread)))
       (signal-thread-event current-notifier-thread
 			   (lambda () (exit-current-thread unspecific))))
   (let ((thread (create-thread editor-thread-root-continuation notifier)))
