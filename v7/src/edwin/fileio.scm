@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: fileio.scm,v 1.137 1996/05/11 08:37:57 cph Exp $
+;;;	$Id: fileio.scm,v 1.138 1996/05/15 19:10:52 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -199,7 +199,16 @@ of the predicates is satisfied, the file is written in the usual way."
 	       (let ((text (group-text group))
 		     (end (fix:+ index length)))
 		 (if buffer
-		     (input-buffer/read-substring buffer text index end)
+		     (fix:- (let loop ((index index))
+			      (if (fix:< index end)
+				  (let ((n
+					 (input-buffer/read-substring
+					  buffer text index end)))
+				    (if (fix:= n 0)
+					index
+					(loop (fix:+ index n))))
+				  index))
+			    index)
 		     (channel-read-block channel text index end)))))
 	  (if (fix:> n 0)
 	      (without-interrupts
