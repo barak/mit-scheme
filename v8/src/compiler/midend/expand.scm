@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: expand.scm,v 1.7 1995/08/19 02:03:46 adams Exp $
+$Id: expand.scm,v 1.8 1996/02/09 02:30:23 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -119,7 +119,11 @@ MIT in each case. |#
        ,(expand/expr conseq)
        ,(expand/expr alt)))
 
-;;;; Sort AUX bindings so that ASSCONV will do a better job.
+;;;; Sort assignments to AUX bindings so that ASSCONV will do a better job.
+;;
+;; Note: reordering the sequence of assignments makes sense only because
+;; AUX bindings correspond directly to internal defines, and the order
+;; of internal defines is not specified.
 
 (define (expand/aux/sort auxes body)
   (if (not (BEGIN/? body))
