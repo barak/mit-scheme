@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dired.scm,v 1.136 1993/02/21 05:54:25 cph Exp $
+;;;	$Id: dired.scm,v 1.137 1993/09/09 04:52:50 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -342,7 +342,7 @@ Type `h' after entering dired for more info."
 	(with-read-only-defeated lstart
 	  (lambda ()
 	    (add-dired-entry to)))
-	(set-current-point! (dired-filename-start lstart))))))
+	(set-dired-point! lstart)))))
 
 (define (dired-redisplay pathname)
   (let ((lstart (mark-right-inserting (line-start (current-point) 0))))
@@ -350,7 +350,7 @@ Type `h' after entering dired for more info."
       (lambda ()
 	(delete-string lstart (line-start lstart 1))
 	(add-dired-entry pathname)))
-    (set-current-point! (dired-filename-start lstart))))
+    (set-dired-point! lstart)))
 
 (define (dired-filename-start lstart)
   (let ((eol (line-end lstart 0)))
