@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: berkeley-db.scm,v 1.3 2005/03/20 22:01:58 cph Exp $
+$Id: berkeley-db.scm,v 1.4 2005/03/20 22:08:30 cph Exp $
 
 Copyright 2004,2005 Massachusetts Institute of Technology
 
@@ -338,7 +338,7 @@ USA.
 				      set-bdb-id-handle!)))))
 
 (define (open-bdb-env env home flags mode)
-  (pcall db4:db-open
+  (pcall db4:db-env-open
 	 (bdb-env-handle env)
 	 (->namestring (merge-pathnames home))
 	 flags
@@ -378,7 +378,7 @@ USA.
     lock))
 
 (define (bdb-env-lock-put env lock)
-  (pcall db4:db-env-lock-get (bdb-env-handle env) lock))
+  (pcall db4:db-env-lock-put (bdb-env-handle env) lock))
 
 (define (bdb-env-txn-begin env txn flags)
   (make-gc-finalized-object
