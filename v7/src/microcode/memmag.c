@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.46 1991/03/21 23:26:35 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.47 1992/01/15 03:35:48 jinx Exp $
 
-Copyright (c) 1987-1991 Massachusetts Institute of Technology
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -50,12 +50,19 @@ MIT in each case. */
 
 /* Imports */
 
-extern SCHEME_OBJECT *GCLoop();
+extern SCHEME_OBJECT *
+  EXFUN (GCLoop, (SCHEME_OBJECT *, SCHEME_OBJECT **));
 
 /* Exports */
 
-extern void GCFlip(), GC();
-extern void Clear_Memory(), Setup_Memory(), Reset_Memory();
+extern void
+  EXFUN (GCFlip, (void)),
+  EXFUN (GC, (void));
+
+extern void
+  EXFUN (Clear_Memory, (int, int, int)),
+  EXFUN (Setup_Memory, (int, int, int)),
+  EXFUN (Reset_Memory, (void));
 
 /* 	Memory Allocation, sequential processor:
 

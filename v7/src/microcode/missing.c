@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/missing.c,v 9.27 1991/12/07 01:55:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/missing.c,v 9.28 1992/01/15 03:39:01 jinx Exp $
 
-Copyright (c) 1987-91 Massachusetts Institute of Technology
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,14 +34,15 @@ MIT in each case. */
 
 /* This file contains utilities potentially missing from the math library. */
 
+#include "ansidecl.h"
 #include "config.h"
 
 #ifndef HAS_FREXP
 
 double
-frexp (value, eptr)
-     double value;
-     int * eptr;
+DEFUN (frexp, (value, eptr),
+       double value
+       AND int * eptr)
 {
   register double x = ((value < 0) ? (-value) : value);
   int e = 0;
@@ -117,9 +118,9 @@ frexp (value, eptr)
 }
 
 double
-ldexp (value, exponent)
-     double value;
-     int exponent;
+DEFUN (ldexp, (value, exponent),
+       double value
+       AND int exponent)
 {
   register double x = value;
   register int e = exponent;
@@ -162,9 +163,9 @@ ldexp (value, exponent)
 #ifndef HAS_MODF
 
 double
-modf (value, iptr)
-     double value;
-     double * iptr;
+DEFUN (modf, (value, iptr),
+       double value
+       AND double * iptr)
 {
   int exponent;
   double significand = (frexp (value, (&exponent)));
@@ -221,8 +222,7 @@ modf (value, iptr)
 #ifndef HAS_FLOOR
 
 double
-floor (x)
-     double x;
+DEFUN (floor, (x), double x)
 {
   double iptr;
   double fraction = (modf (x, (&iptr)));
@@ -230,8 +230,7 @@ floor (x)
 }
 
 double
-ceil (x)
-     double x;
+DEFUN (ceil, (x), double x)
 {
   double iptr;
   double fraction = (modf (x, (&iptr)));
@@ -259,4 +258,5 @@ main ()
       printf ("Result = %G\n", (ldexp (output, exponent)));
     }
 }
-#endif
+
+#endif /* DEBUG_MISSING */

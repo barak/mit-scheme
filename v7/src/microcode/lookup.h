@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookup.h,v 9.44 1989/09/20 23:10:10 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookup.h,v 9.45 1992/01/15 03:32:22 jinx Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -35,13 +35,14 @@ MIT in each case. */
 /* Macros and declarations for the variable lookup code. */
 
 extern SCHEME_OBJECT
-  *deep_lookup(),
-  *lookup_fluid(),
-  *force_definition();
+  * EXFUN (deep_lookup, (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT *)),
+  * EXFUN (lookup_fluid, (SCHEME_OBJECT)),
+  * EXFUN (force_definition, (SCHEME_OBJECT, SCHEME_OBJECT, long *));
 
 extern long
-  deep_lookup_end(),
-  deep_assignment_end();
+  EXFUN (deep_lookup_end, (SCHEME_OBJECT *, SCHEME_OBJECT *)),
+  EXFUN (deep_assignment_end,
+	 (SCHEME_OBJECT *, SCHEME_OBJECT *, SCHEME_OBJECT, Boolean));
 
 extern SCHEME_OBJECT
   unbound_trap_object[],
@@ -279,19 +280,23 @@ label:									\
 
 /* Macros and exports for incremental definition and hooks. */
 
-extern long extend_frame();
+extern long
+  EXFUN (extend_frame,
+	 (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT,
+	  SCHEME_OBJECT, Boolean));
 
 /* Definition recaches eagerly by default. */
 
 #ifndef DEFINITION_RECACHES_LAZILY
-#ifndef DEFINITION_RECACHES_EAGERLY
-#define DEFINITION_RECACHES_EAGERLY
-#endif
+# ifndef DEFINITION_RECACHES_EAGERLY
+#  define DEFINITION_RECACHES_EAGERLY
+# endif
 #endif
 
 #ifndef DEFINITION_RECACHES_EAGERLY
 
-extern long compiler_uncache();
+extern long
+  EXFUN (compiler_uncache, (SCHEME_OBJECT *, SCHEME_OBJECT));
 
 #define simple_uncache(cell, sym)		PRIM_DONE
 
@@ -303,9 +308,12 @@ extern long compiler_uncache();
 
 #else /* DEFINITION_RECACHES_EAGERLY */
 
-extern long compiler_recache();
+extern long
+  EXFUN (compiler_recache,
+	 (SCHEME_OBJECT *, SCHEME_OBJECT *, SCHEME_OBJECT, SCHEME_OBJECT
+	  SCHEME_OBJECT, Boolean, Boolean));
 
-extern SCHEME_OBJECT *shadowed_value_cell;
+extern SCHEME_OBJECT * shadowed_value_cell;
 
 #define compiler_uncache(cell, sym)					\
   (shadowed_value_cell = cell, PRIM_DONE)

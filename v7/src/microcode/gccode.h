@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.43 1991/06/15 00:40:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.44 1992/01/15 03:37:03 jinx Exp $
 
-Copyright (c) 1987-91 Massachusetts Institute of Technology
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -153,8 +153,10 @@ MIT in each case. */
    TC_FUTURE
    TC_BIG_FLONUM */
 
-extern void gc_death ();
 extern char gc_death_message_buffer [];
+
+extern void
+  EXFUN (gc_death, (long code, char *, SCHEME_OBJECT *, SCHEME_OBJECT *));
 
 /* Assumption: A call to GC_BAD_TYPE is followed by the non-pointer code. */
 
