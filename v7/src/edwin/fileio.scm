@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: fileio.scm,v 1.115 1993/01/09 09:46:54 cph Exp $
+;;;	$Id: fileio.scm,v 1.116 1993/01/23 06:55:45 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -136,14 +136,11 @@ Each procedure is called with three arguments:
 (define (group-insert-translated-file! translation group index truename)
   (if (not translation)
       (group-insert-file! group index truename)
-      (with-group-daemons-disabled group true
-	(lambda ()
-	  (with-group-undo-flushed group
-	    (lambda ()
-	      (let* ((n (group-insert-file! group index truename))
-		     (end (group-translate! group translation "\n"
-					    index (fix:+ index n))))
-		(fix:- end index))))))))
+      (fix:- (group-translate! group translation "\n" index
+			       (fix:+ index
+				      (group-insert-file! group index
+							  truename)))
+	     index)))
 
 (define (group-insert-file! group index truename)
   (let ((filename (->namestring truename)))
@@ -601,7 +598,7 @@ Otherwise, a message is written both before and after long file writes."
       (with-output-translation translation group start end core)))
 
 (define (with-output-translation translation group start end core)
-  (with-group-daemons-disabled group false
+  (with-group-changes-disabled group
     (lambda ()
       (with-group-undo-disabled group
 	(lambda ()
@@ -695,34 +692,27 @@ Otherwise, a message is written both before and after long file writes."
     (and (not (string=? "\n" end-of-line))
 	 end-of-line)))
 
-(define (with-group-daemons-disabled group redisplay? action)
-  (let ((clip-daemons '()))
-    (let ((swap
-	   (lambda ()
-	     ;; I think the following is unnecessary, but...
-	     (let ((old (vector-ref group group-index:clip-daemons)))
-	       (vector-set! group group-index:clip-daemons
-			    clip-daemons)
-	       (set! clip-daemons old))
-	     unspecific)))
-      (dynamic-wind
-       swap
-       action
-       (lambda ()
-	 (swap)
-	 (if redisplay?
-	     (for-each window-redraw!
-		       (buffer-windows (group-buffer group)))))))))
-
-;;; For the time being, inserting a translated file loses all undo
-;;; information from before the insertion.
-
-(define (with-group-undo-flushed group action)
-  (dynamic-wind (lambda ()
-		  (disable-group-undo! group))
-		action
-		(lambda ()
-		  (enable-group-undo! group))))  
+(define (with-group-changes-disabled group action)
+  (let ((get-changes
+	 (lambda (changes)
+	   (vector-set! changes 0 (group-modified-tick group))
+	   (vector-set! changes 1 (group-start-changes-index group))
+	   (vector-set! changes 2 (group-end-changes-index group))))
+	(set-changes
+	 (lambda (changes)
+	   (vector-set! group group-index:modified-tick (vector-ref changes 0))
+	   (set-group-start-changes-index! group (vector-ref changes 1))
+	   (set-group-end-changes-index! group (vector-ref changes 2)))))
+    (let ((outside-changes (vector #f #f #f))
+	  (inside-changes (vector #f #f #f)))
+      (get-changes inside-changes)
+      (dynamic-wind (lambda ()
+		      (get-changes outside-changes)
+		      (set-changes inside-changes))
+		    action
+		    (lambda ()
+		      (get-changes inside-changes)
+		      (set-changes outside-changes))))))  
 
 ;;; Group translation operation.
 ;;; This operation could be pushed under the group abstraction and be taught
