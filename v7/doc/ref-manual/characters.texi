@@ -1,5 +1,5 @@
 @c This file is part of the MIT/GNU Scheme Reference Manual.
-@c $Id: characters.texi,v 1.3 2003/07/04 01:45:36 cph Exp $
+@c $Id: characters.texi,v 1.4 2003/09/09 03:47:32 cph Exp $
 
 @c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 @c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
@@ -51,6 +51,23 @@ Case is significant in @code{#\@var{character}}, but not in
 by a delimiter character such as a space or parenthesis.  Characters
 written in the @code{#\} notation are self-evaluating; you don't need to
 quote them.
+
+@findex #\U+
+In addition to the standard character syntax, MIT Scheme also supports a
+general syntax that denotes any Unicode character by its code point.
+This notation is @code{#\U+@var{code-point}}, where @var{code-point} is
+a sequence of hexadecimal digits for a valid code point.  So the above
+examples could also be written like this:
+
+@example
+@group
+#\U+61                  @r{; lowercase letter}
+#\U+41                  @r{; uppercase letter}
+#\U+28                  @r{; left parenthesis}
+#\U+20                  @r{; the space character}
+#\U+0A                  @r{; the newline character}
+@end group
+@end example
 
 @cindex bucky bit, prefix (defn)
 @cindex control, bucky bit prefix (defn)
@@ -516,11 +533,6 @@ contain only @acronym{ISO-8859-1} characters; use the @dfn{alphabet}
 abstraction (@pxref{Unicode} if you need to cover the entire Unicode
 range.
 
-There is no meaningful external representation for character sets; use
-@code{char-set-members} to examine their contents.  There is (at
-present) no specific equivalence predicate for character sets; use
-@code{equal?} for this purpose.
-
 @deffn procedure char-set? object
 @cindex type predicate, for character set
 Returns @code{#t} if @var{object} is a character set; otherwise returns
@@ -599,6 +611,11 @@ Returns a newly allocated list of the characters in @var{char-set}.
 @deffn procedure char-set-member? char-set char
 Returns @code{#t} if @var{char} is in @var{char-set}; otherwise returns
 @code{#f}.
+@end deffn
+
+@deffn {procedure} char-set=? char-set-1 char-set-2
+Returns @code{#t} if @var{char-set-1} and @var{char-set-2} contain
+exactly the same characters; otherwise returns @code{#f}.
 @end deffn
 
 @deffn procedure char-set char @dots{}
