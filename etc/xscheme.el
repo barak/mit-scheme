@@ -21,7 +21,7 @@
 ;;; Requires C-Scheme release 5 or later
 ;;; Changes to Control-G handler require runtime version 13.85 or later
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.9 1987/12/07 04:47:23 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.10 1987/12/07 09:42:13 cph Exp $
 
 (require 'scheme)
 
@@ -34,14 +34,43 @@
 (defvar scheme-program-arguments nil
   "*Arguments passed to the Scheme program by the `run-scheme' command.")
 
-(defvar xscheme-signal-death-message nil
-  "If non-nil, causes a message to be generated when the Scheme process dies.")
-
 (defvar xscheme-allow-pipelined-evaluation t
   "If non-nil, an expression may be transmitted while another is evaluating.
 Otherwise, attempting to evaluate an expression before the previous expression
 has finished evaluating will signal an error.")
 
+(defvar xscheme-startup-message
+  "This is the Scheme process buffer.
+Type \\[advertised-xscheme-send-previous-expression] to evaluate the expression before point.
+Type \\[xscheme-send-control-g-interrupt] to abort evaluation.
+Type \\[describe-mode] for more information.
+
+"
+  "String to insert into Scheme process buffer first time it is started.
+Is processed with `substitute-command-keys' first.")
+
+(defvar xscheme-signal-death-message nil
+  "If non-nil, causes a message to be generated when the Scheme process dies.")
+
+(defun xscheme-evaluation-commands (keymap)
+  (define-key keymap "\e\C-x" 'xscheme-send-definition)
+  (define-key keymap "\C-x\C-e" 'xscheme-send-previous-expression)
+  (define-key keymap "\eo" 'xscheme-send-buffer)
+  (define-key keymap "\ez" 'xscheme-send-definition)
+  (define-key keymap "\e\C-m" 'xscheme-send-previous-expression)
+  (define-key keymap "\e\C-z" 'xscheme-send-region)
+  (define-key keymap "\C-cn" 'xscheme-send-next-expression)
+  (define-key keymap "\C-cp" 'xscheme-send-previous-expression))
+
+(defun xscheme-interrupt-commands (keymap)
+  (define-key keymap "\C-cb" 'xscheme-send-breakpoint-interrupt)
+  (define-key keymap "\C-cg" 'xscheme-send-control-g-interrupt)
+  (define-key keymap "\C-cu" 'xscheme-send-control-u-interrupt)
+  (define-key keymap "\C-cx" 'xscheme-send-control-x-interrupt))
+
+(xscheme-evaluation-commands scheme-mode-map)
+(xscheme-interrupt-commands scheme-mode-map)
+
 (defun run-scheme (command-line)
   "Run an inferior Scheme process.
 Output goes to the buffer `*scheme*'.
@@ -77,6 +106,312 @@ With argument, asks for a command line."
 	  (if scheme-band-name
 	      (concat " -band " scheme-band-name)
 	      "")))
+
+;;;; Interaction Mode
+
+(defun scheme-interaction-mode ()
+  "Major mode for interacting with the inferior Scheme process.
+Like  scheme-mode  except that:
+
+\\[advertised-xscheme-send-previous-expression] sends the expression before point to the Scheme process as input
+\\[xscheme-yank-previous-send] yanks the expression most recently sent to Scheme
+
+All output from the Scheme process is written in the Scheme process
+buffer, which is initially named \"*scheme*\".  The result of
+evaluating a Scheme expression is also printed in the process buffer,
+preceded by the string \";Value: \" to highlight it.  If the process
+buffer is not visible at that time, the value will also be displayed
+in the minibuffer.  If an error occurs, the process buffer will
+automatically pop up to show you the error message.
+
+While the Scheme process is running, the modelines of all buffers in
+scheme-mode are modified to show the state of the process.  The
+possible states and their meanings are:
+
+input		waiting for input
+run		evaluating
+gc		garbage collecting
+
+The process buffer's modeline contains additional information where
+the buffer's name is normally displayed: the command interpreter level
+and type.
+
+Scheme maintains a stack of command interpreters.  Every time an error
+or breakpoint occurs, the current command interpreter is pushed on the
+command interpreter stack, and a new command interpreter is started.
+One example of why this is done is so that an error that occurs while
+you are debugging another error will not destroy the state of the
+initial error, allowing you to return to it after the second error has
+been fixed.
+
+The command interpreter level indicates how many interpreters are in
+the command interpreter stack.  It is initially set to one, and it is
+incremented every time that stack is pushed, and decremented every
+time it is popped.  The following commands are useful for manipulating
+the command interpreter stack:
+
+\\[xscheme-send-breakpoint-interrupt]	pushes the stack once
+\\[xscheme-send-control-u-interrupt]	pops the stack once
+\\[xscheme-send-control-g-interrupt]	pops everything off
+\\[xscheme-send-control-x-interrupt]	aborts evaluation, doesn't affect stack
+
+Some possible command interpreter types and their meanings are:
+
+[Read-Eval-Print]	Read-Eval-Print loop for evaluating expressions
+[Debugger]		single character commands for debugging errors
+[Environment Inspector]	single character commands for examining environments
+
+The latter two types of command interpreters will change the major
+mode of the Scheme process buffer to scheme-debugger-mode , in which
+the evaluation commands are disabled, and the keys which normally self
+insert instead send themselves to the Scheme process.  Typing ?  will
+list the available commands.
+
+Commands:
+Delete converts tabs to spaces as it moves back.
+Blank lines separate paragraphs.  Semicolons start comments.
+\\{scheme-interaction-mode-map}
+
+Entry to this mode calls the value of scheme-interaction-mode-hook
+with no args, if that value is non-nil."
+  (interactive)
+  (kill-all-local-variables)
+  (scheme-interaction-mode-initialize)
+  (scheme-mode-variables)
+  (make-local-variable 'xscheme-previous-send)
+  (run-hooks 'scheme-interaction-mode-hook))
+
+(defun scheme-interaction-mode-initialize ()
+  (use-local-map scheme-interaction-mode-map)
+  (setq major-mode 'scheme-interaction-mode)
+  (setq mode-name "Scheme-Interaction"))
+
+(defun scheme-interaction-mode-commands (keymap)
+  (define-key keymap "\C-j" 'advertised-xscheme-send-previous-expression)
+  (define-key keymap "\C-c\C-m" 'xscheme-send-current-line)
+  (define-key keymap "\C-c\C-p" 'xscheme-send-proceed)
+  (define-key keymap "\C-c\C-y" 'xscheme-yank-previous-send))
+
+(defvar scheme-interaction-mode-map nil)
+(if (not scheme-interaction-mode-map)
+    (progn
+      (setq scheme-interaction-mode-map (make-keymap))
+      (scheme-mode-commands scheme-interaction-mode-map)
+      (xscheme-interrupt-commands scheme-interaction-mode-map)
+      (xscheme-evaluation-commands scheme-interaction-mode-map)
+      (scheme-interaction-mode-commands scheme-interaction-mode-map)))
+
+(defun xscheme-enter-interaction-mode ()
+  (save-excursion
+    (set-buffer (xscheme-process-buffer))
+    (if (not (eq major-mode 'scheme-interaction-mode))
+	(if (eq major-mode 'scheme-debugger-mode)
+	    (scheme-interaction-mode-initialize)
+	    (scheme-interaction-mode)))))
+
+(fset 'advertised-xscheme-send-previous-expression
+      'xscheme-send-previous-expression)
+
+;;;; Debugger Mode
+
+(defun scheme-debugger-mode ()
+  "Major mode for executing the Scheme debugger.
+Like  scheme-mode  except that the evaluation commands
+are disabled, and characters that would normally be self inserting are
+sent to the Scheme process instead.  Typing ?  will show you which
+characters perform useful functions.
+
+Commands:
+\\{scheme-debugger-mode-map}"
+  (error "Illegal entry to scheme-debugger-mode"))
+
+(defun scheme-debugger-mode-initialize ()
+  (use-local-map scheme-debugger-mode-map)
+  (setq major-mode 'scheme-debugger-mode)
+  (setq mode-name "Scheme-Debugger"))
+
+(defun scheme-debugger-mode-commands (keymap)
+  (let ((char ? ))
+    (while (< char 127)
+      (define-key keymap (char-to-string char) 'scheme-debugger-self-insert)
+      (setq char (1+ char)))))
+
+(defvar scheme-debugger-mode-map nil)
+(if (not scheme-debugger-mode-map)
+    (progn
+      (setq scheme-debugger-mode-map (make-keymap))
+      (scheme-mode-commands scheme-debugger-mode-map)
+      (xscheme-interrupt-commands scheme-debugger-mode-map)
+      (scheme-debugger-mode-commands scheme-debugger-mode-map)))
+
+(defun scheme-debugger-self-insert ()
+  "Transmit this character to the Scheme process."
+  (interactive)
+  (xscheme-send-char last-command-char))
+
+(defun xscheme-enter-debugger-mode (prompt-string)
+  (save-excursion
+    (set-buffer (xscheme-process-buffer))
+    (if (not (eq major-mode 'scheme-debugger-mode))
+	(progn
+	  (if (not (eq major-mode 'scheme-interaction-mode))
+	      (scheme-interaction-mode))
+	  (scheme-debugger-mode-initialize)))))
+
+(defun xscheme-debugger-mode-p ()
+  (let ((buffer (xscheme-process-buffer)))
+    (and buffer
+	 (save-excursion
+	   (set-buffer buffer)
+	   (eq major-mode 'scheme-debugger-mode)))))
+
+;;;; Evaluation Commands
+
+(defun xscheme-send-string (&rest strings)
+  "Send the string arguments to the Scheme process.
+The strings are concatenated and terminated by a newline."
+  (cond ((not (xscheme-process-running-p))
+	 (if (yes-or-no-p "The Scheme process has died.  Reset it? ")
+	     (progn
+	       (reset-scheme)
+	       (xscheme-wait-for-process)
+	       (goto-char (point-max))
+	       (apply 'insert-before-markers strings)
+	       (xscheme-send-string-1 strings))))
+	((xscheme-debugger-mode-p) (error "No sends allowed in debugger mode"))
+	((and (not xscheme-allow-pipelined-evaluation)
+	      xscheme-running-p)
+	 (error "No sends allowed while Scheme running"))
+	(t (xscheme-send-string-1 strings))))
+
+(defun xscheme-send-string-1 (strings)
+  (let ((string (apply 'concat strings)))
+    (xscheme-send-string-2 string)
+    (if (eq major-mode 'scheme-interaction-mode)
+	(setq xscheme-previous-send string))))
+
+(defun xscheme-send-string-2 (string)
+  (let ((process (get-process "scheme")))
+    (send-string process (concat string "\n"))
+    (if (xscheme-process-buffer-current-p)
+	(set-marker (process-mark process) (point)))))
+
+(defun xscheme-yank-previous-send ()
+  "Insert the most recent expression at point."
+  (interactive)
+  (push-mark)
+  (insert xscheme-previous-send))
+
+(defun xscheme-send-region (start end)
+  "Send the current region to the Scheme process.
+The region is sent terminated by a newline."
+  (interactive "r")
+  (if (xscheme-process-buffer-current-p)
+      (progn (goto-char end)
+	     (set-marker (process-mark (get-process "scheme")) end)))
+  (xscheme-send-string (buffer-substring start end)))
+
+(defun xscheme-send-definition ()
+  "Send the current definition to the Scheme process.
+If the current line begins with a non-whitespace character,
+parse an expression from the beginning of the line and send that instead."
+  (interactive)
+  (let ((start nil) (end nil))
+    (save-excursion
+      (end-of-defun)
+      (setq end (point))
+      (if (re-search-backward "^\\s(" nil t)
+	  (setq start (point))
+	  (error "Can't find definition")))
+    (xscheme-send-region start end)))
+
+(defun xscheme-send-next-expression ()
+  "Send the expression to the right of `point' to the Scheme process."
+  (interactive)
+  (let ((start (point)))
+    (xscheme-send-region start (save-excursion (forward-sexp) (point)))))
+
+(defun xscheme-send-previous-expression ()
+  "Send the expression to the left of `point' to the Scheme process."
+  (interactive)
+  (let ((end (point)))
+    (xscheme-send-region (save-excursion (backward-sexp) (point)) end)))
+
+(defun xscheme-send-current-line ()
+  "Send the current line to the Scheme process.
+Useful for working with `adb'."
+  (interactive)
+  (let ((line
+	 (save-excursion
+	   (beginning-of-line)
+	   (let ((start (point)))
+	     (end-of-line)
+	     (buffer-substring start (point))))))
+    (end-of-line)
+    (insert ?\n)
+    (xscheme-send-string-2 line)))
+
+(defun xscheme-send-buffer ()
+  "Send the current buffer to the Scheme process."
+  (interactive)
+  (if (xscheme-process-buffer-current-p)
+      (error "Not allowed to send this buffer's contents to Scheme"))
+  (xscheme-send-region (point-min) (point-max)))
+
+(defun xscheme-send-char (char)
+  "Prompt for a character and send it to the Scheme process."
+  (interactive "cCharacter to send: ")
+  (send-string "scheme" (char-to-string char)))
+
+;;;; Interrupts
+
+(defun xscheme-send-breakpoint-interrupt ()
+  "Cause the Scheme process to enter a breakpoint."
+  (interactive)
+  (xscheme-send-interrupt ?b nil))
+
+(defun xscheme-send-proceed ()
+  "Cause the Scheme process to proceed from a breakpoint."
+  (interactive)
+  (send-string "scheme" "(proceed)\n"))
+
+(defun xscheme-send-control-g-interrupt ()
+  "Cause the Scheme processor to halt and flush input.
+Control returns to the top level rep loop."
+  (interactive)
+  (let ((inhibit-quit t))
+    (cond ((not xscheme-control-g-synchronization-p)
+	   (interrupt-process "scheme" t))
+	  (xscheme-control-g-disabled-p
+	   (message "Relax..."))
+	  (t
+	   (setq xscheme-control-g-disabled-p t)
+	   (message "Sending C-G interrupt to Scheme...")
+	   (interrupt-process "scheme" t)
+	   (send-string "scheme" (char-to-string 0))))))
+
+(defun xscheme-send-control-u-interrupt ()
+  "Cause the Scheme process to halt, returning to previous rep loop."
+  (interactive)
+  (xscheme-send-interrupt ?u t))
+
+(defun xscheme-send-control-x-interrupt ()
+  "Cause the Scheme process to halt, returning to current rep loop."
+  (interactive)
+  (xscheme-send-interrupt ?x t))
+
+;;; This doesn't really work right -- Scheme just gobbles the first
+;;; character in the input.  There is no way for us to guarantee that
+;;; the argument to this procedure is the first char unless we put
+;;; some kind of marker in the input stream.
+
+(defun xscheme-send-interrupt (char mark-p)
+  "Send a ^A type interrupt to the Scheme process."
+  (interactive "cInterrupt character to send: ")
+  (quit-process "scheme" t)
+  (send-string "scheme" (char-to-string char))
+  (if (and mark-p xscheme-control-g-synchronization-p)
+      (send-string "scheme" (char-to-string 0))))
 
 ;;;; Internal Variables
 
@@ -128,197 +463,6 @@ When called, the current buffer will be the Scheme process-buffer.")
 (defvar xscheme-runlight-string nil)
 (defvar xscheme-mode-string nil)
 
-;;;; Keymaps
-
-(define-key scheme-mode-map "\eo" 'xscheme-send-buffer)
-(define-key scheme-mode-map "\ez" 'xscheme-send-definition)
-(define-key scheme-mode-map "\e\C-m" 'xscheme-send-previous-expression)
-(define-key scheme-mode-map "\e\C-x" 'xscheme-send-definition)
-(define-key scheme-mode-map "\e\C-z" 'xscheme-send-region)
-(define-key scheme-mode-map "\C-cn" 'xscheme-send-next-expression)
-(define-key scheme-mode-map "\C-cp" 'xscheme-send-previous-expression)
-;(define-key scheme-mode-map "\C-c\C-m" 'xscheme-send-current-line)
-(define-key scheme-mode-map "\C-c\C-y" 'xscheme-yank-previous-send)
-(define-key scheme-mode-map "\C-x\C-e" 'xscheme-send-previous-expression)
-(define-key scheme-mode-map "\C-cb" 'xscheme-send-breakpoint-interrupt)
-(define-key scheme-mode-map "\C-cg" 'xscheme-send-control-g-interrupt)
-(define-key scheme-mode-map "\C-cu" 'xscheme-send-control-u-interrupt)
-(define-key scheme-mode-map "\C-cx" 'xscheme-send-control-x-interrupt)
-
-(defun xscheme-make-shared-keymap (keymap)
-  (let ((result (make-keymap)) (char 0))
-    (while (< char 128)
-      (aset result char (cons keymap char))
-      (setq char (1+ char)))
-    result))
-
-(defvar xscheme-mode-map nil)
-(if (not xscheme-mode-map)
-    (progn
-      (setq xscheme-mode-map (xscheme-make-shared-keymap scheme-mode-map))
-      (define-key xscheme-mode-map "\C-j" 'xscheme-send-previous-expression)))
-
-(defvar xscheme-debug-mode-map nil)
-(if (not xscheme-debug-mode-map)
-    (progn
-      (setq xscheme-debug-mode-map
-	    (xscheme-make-shared-keymap xscheme-mode-map))
-      (let ((char ? ))
-	(while (< char 127)
-	  (aset xscheme-debug-mode-map char 'xscheme-debug-self-insert)
-	  (setq char (1+ char))))))
-
-;;;; Evaluation Commands
-
-(defun xscheme-send-string (&rest strings)
-  "Send the string arguments to the Scheme process.
-The strings are concatenated and terminated by a newline."
-  (cond ((not (xscheme-process-running-p))
-	 (if (yes-or-no-p "The Scheme process has died.  Reset it? ")
-	     (progn
-	       (reset-scheme)
-	       (xscheme-wait-for-process)
-	       (goto-char (point-max))
-	       (apply 'insert-before-markers strings)
-	       (xscheme-send-string-1 strings))))
-	((xscheme-debug-mode-p) (error "No sends allowed in debugger mode"))
-	((and (not xscheme-allow-pipelined-evaluation)
-	      xscheme-running-p)
-	 (error "No sends allowed while Scheme running"))
-	(t (xscheme-send-string-1 strings))))
-
-(defun xscheme-send-string-1 (strings)
-  (let ((string (apply 'concat strings)))
-    (xscheme-send-string-2 string)
-    (if (xscheme-process-buffer-current-p)
-	(setq xscheme-previous-send string))))
-
-(defun xscheme-send-string-2 (string)
-  (let ((process (get-process "scheme")))
-    (send-string process (concat string "\n"))
-    (if (xscheme-process-buffer-current-p)
-	(set-marker (process-mark process) (point)))))
-
-(defun xscheme-yank-previous-send ()
-  "Insert the most recent expression at point."
-  (interactive)
-  (push-mark)
-  (insert xscheme-previous-send))
-
-(defun xscheme-send-region (start end)
-  "Send the current region to the Scheme process.
-The region is sent terminated by a newline."
-  (interactive "r")
-  (if (xscheme-process-buffer-current-p)
-      (progn (goto-char end)
-	     (set-marker (process-mark (get-process "scheme")) end)))
-  (xscheme-send-string (buffer-substring start end)))
-
-(defun xscheme-send-definition ()
-  "Send the current definition to the Scheme process.
-If the current line begins with a non-whitespace character,
-parse an expression from the beginning of the line and send that instead."
-  (interactive)
-  (let ((start nil) (end nil))
-    (save-excursion
-      (end-of-defun)
-      (setq end (point))
-      (if (re-search-backward "^\\s(" nil t)
-	  (setq start (point))
-	  (error "Can't find definition")))
-    (xscheme-send-region start end)))
-
-(defun xscheme-send-next-expression ()
-  "Send the expression to the right of `point' to the Scheme process."
-  (interactive)
-  (let ((start (point)))
-    (xscheme-send-region start (save-excursion (forward-sexp) (point)))))
-
-(defun xscheme-send-previous-expression ()
-  "Send the expression to the left of `point' to the Scheme process."
-  (interactive)
-  (let ((end (point)))
-    (xscheme-send-region (save-excursion (backward-sexp) (point)) end)))
-
-(defun xscheme-eval-print-last-sexp ()
-  "Send the expression to the left of `point' to the Scheme process.
-Works only in the Scheme process buffer."
-  (interactive)
-  (if (xscheme-process-buffer-current-p)
-      (xscheme-send-previous-expression)
-      (call-interactively 'newline-and-indent)))
-
-(defun xscheme-send-current-line ()
-  "Send the current line to the Scheme process.
-Useful for working with `adb'."
-  (interactive)
-  (let ((line
-	 (save-excursion
-	   (beginning-of-line)
-	   (let ((start (point)))
-	     (end-of-line)
-	     (buffer-substring start (point))))))
-    (end-of-line)
-    (insert ?\n)
-    (xscheme-send-string-2 line)))
-
-(defun xscheme-send-buffer ()
-  "Send the current buffer to the Scheme process."
-  (interactive)
-  (if (xscheme-process-buffer-current-p)
-      (error "Not allowed to send this buffer's contents to Scheme"))
-  (xscheme-send-region (point-min) (point-max)))
-
-(defun xscheme-send-char (char)
-  "Prompt for a character and send it to the Scheme process."
-  (interactive "cCharacter to send: ")
-  (send-string "scheme" (char-to-string char)))
-
-;;;; Interrupts
-
-(defun xscheme-send-breakpoint-interrupt ()
-  "Cause the Scheme process to enter a breakpoint."
-  (interactive)
-  (xscheme-send-interrupt ?b nil))
-
-(defun xscheme-send-control-g-interrupt ()
-  "Cause the Scheme processor to halt and flush input.
-Control returns to the top level rep loop."
-  (interactive)
-  (let ((inhibit-quit t))
-    (cond ((not xscheme-control-g-synchronization-p)
-	   (interrupt-process "scheme" t))
-	  (xscheme-control-g-disabled-p
-	   (message "Relax..."))
-	  (t
-	   (setq xscheme-control-g-disabled-p t)
-	   (message "Sending C-G interrupt to Scheme...")
-	   (interrupt-process "scheme" t)
-	   (send-string "scheme" (char-to-string 0))))))
-
-(defun xscheme-send-control-u-interrupt ()
-  "Cause the Scheme process to halt, returning to previous rep loop."
-  (interactive)
-  (xscheme-send-interrupt ?u t))
-
-(defun xscheme-send-control-x-interrupt ()
-  "Cause the Scheme process to halt, returning to current rep loop."
-  (interactive)
-  (xscheme-send-interrupt ?x t))
-
-;;; This doesn't really work right -- Scheme just gobbles the first
-;;; character in the input.  There is no way for us to guarantee that
-;;; the argument to this procedure is the first char unless we put
-;;; some kind of marker in the input stream.
-
-(defun xscheme-send-interrupt (char mark-p)
-  "Send a ^A type interrupt to the Scheme process."
-  (interactive "cInterrupt character to send: ")
-  (quit-process "scheme" t)
-  (send-string "scheme" (char-to-string char))
-  (if (and mark-p xscheme-control-g-synchronization-p)
-      (send-string "scheme" (char-to-string 0))))
-
 ;;;; Basic Process Control
 
 (defun xscheme-start-process (command-line)
@@ -330,7 +474,10 @@ Control returns to the top level rep loop."
 	    (set-marker (process-mark process) (point-max))
 	    (progn (if process (delete-process process))
 		   (goto-char (point-max))
-		   (scheme-mode xscheme-mode-map)
+		   (if (bobp)
+		       (insert-before-markers
+			(substitute-command-keys xscheme-startup-message)))
+		   (scheme-interaction-mode)
 		   (setq process
 			 (apply 'start-process
 				(cons "scheme"
@@ -396,7 +543,9 @@ Control returns to the top level rep loop."
     (xscheme-process-filter-initialize (eq reason 'run))
     (if (eq reason 'run)
 	(xscheme-modeline-initialize)
-	(setq scheme-mode-line-process "")))
+	(progn
+	 (setq scheme-mode-line-process "")
+	 (setq xscheme-mode-string "no process"))))
   (if (and (not (memq reason '(run stop)))
 	   xscheme-signal-death-message)
       (progn (beep)
@@ -412,8 +561,7 @@ Control returns to the top level rep loop."
   (setq xscheme-prompt "")
   (setq xscheme-string-accumulator "")
   (setq xscheme-string-receiver nil)
-  (setq scheme-mode-line-process
-	'(" " xscheme-runlight-string " " xscheme-mode-string)))
+  (setq scheme-mode-line-process '(": " xscheme-runlight-string)))
 
 (defun xscheme-process-filter (proc string)
   (let ((inhibit-quit t))
@@ -524,11 +672,12 @@ Control returns to the top level rep loop."
     (goto-char (process-mark process))))
 
 (defun xscheme-modeline-initialize ()
-  (setq xscheme-runlight-string " ")
-  (setq xscheme-mode-string ""))
+  (setq xscheme-runlight-string "")
+  (setq xscheme-mode-string "")
+  (setq mode-line-buffer-identification '("Scheme: " xscheme-mode-string)))
 
 (defun xscheme-set-runlight (runlight)
-  (aset xscheme-runlight-string 0 runlight)
+  (setq xscheme-runlight-string runlight)
   (xscheme-modeline-redisplay))
 
 (defun xscheme-modeline-redisplay ()
@@ -539,11 +688,11 @@ Control returns to the top level rep loop."
 ;;;; Process Filter Operations
 
 (defvar xscheme-process-filter-alist
-  '((?D xscheme-enter-debug-mode
+  '((?D xscheme-enter-debugger-mode
 	xscheme-process-filter:string-action)
     (?P xscheme-set-prompt-variable
 	xscheme-process-filter:string-action)
-    (?R xscheme-enter-rep-mode
+    (?R xscheme-enter-interaction-mode
 	xscheme-process-filter:simple-action)
     (?b xscheme-start-gc
 	xscheme-process-filter:simple-action)
@@ -559,7 +708,7 @@ Control returns to the top level rep loop."
 	xscheme-process-filter:string-action)
     (?n xscheme-prompt-for-confirmation
 	xscheme-process-filter:string-action)
-    (?o xscheme-get-debug-command
+    (?o xscheme-output-goto
 	xscheme-process-filter:simple-action)
     (?p xscheme-set-prompt
 	xscheme-process-filter:string-action)
@@ -601,13 +750,13 @@ the remaining input.")
   (setq xscheme-string-receiver action)
   (xscheme-process-filter:reading-string string))
 
-(defconst xscheme-runlight:running ?R
+(defconst xscheme-runlight:running "run"
   "The character displayed when the Scheme process is running.")
 
-(defconst xscheme-runlight:input ?I
+(defconst xscheme-runlight:input "input"
   "The character displayed when the Scheme process is waiting for input.")
 
-(defconst xscheme-runlight:gc ?G
+(defconst xscheme-runlight:gc "gc"
   "The character displayed when the Scheme process is garbage collecting.")
 
 (defun xscheme-start-gc ()
@@ -634,40 +783,12 @@ the remaining input.")
     (save-window-excursion
       (select-window window)
       (xscheme-goto-output-point)
-      (if (xscheme-debug-mode-p)
-	  (xscheme-enter-rep-mode)))))
+      (if (xscheme-debugger-mode-p)
+	  (xscheme-enter-interaction-mode)))))
 
 (defun xscheme-unsolicited-read-char ()
   nil)
 
-(defun xscheme-input-char-immediately ()
-  (message "%s" xscheme-prompt)
-  (let ((char nil)
-	(aborted-p t)
-	(not-done t))
-    (unwind-protect
-	(while not-done
-	  (setq char
-		(let ((cursor-in-echo-area t))
-		  (read-char)))
-	  (cond ((= char ?\C-g)
-		 (setq char nil)
-		 (setq not-done nil))
-		((= char ?\n)
-		 ;; Disallow newlines, as Scheme is explicitly
-		 ;; ignoring them.  This is necessary because
-		 ;; otherwise Scheme will attempt to read another
-		 ;; character.
-		 (beep))
-		(t
-		 (setq aborted-p nil)
-		 (setq not-done nil))))
-      (if aborted-p
-	  (xscheme-send-control-g-interrupt)))
-    (message "")
-    (if char
-	(xscheme-send-char char))))
-
 (defun xscheme-message (string)
   (xscheme-write-message-1 nil string))
 
@@ -687,7 +808,7 @@ the remaining input.")
 	      (if prefix
 		  (format ";%s: %s" prefix string)
 		  (format ";%s" string))))))
-
+
 (defun xscheme-set-prompt-variable (string)
   (setq xscheme-prompt string))
 
@@ -697,74 +818,29 @@ the remaining input.")
   (setq xscheme-mode-string (xscheme-coerce-prompt string))
   (xscheme-modeline-redisplay))
 
+(defun xscheme-output-goto ()
+  (xscheme-goto-output-point)
+  (xscheme-guarantee-newlines 2))
+
 (defun xscheme-coerce-prompt (string)
   (if (string-match "^[0-9]+ " string)
       (let ((end (match-end 0)))
 	(concat (substring string 0 end)
 		(let ((prompt (substring string end)))
-		  (cond ((or (string-equal prompt "]=>")
-			     (string-equal prompt "==>")
-			     (string-equal prompt "Eval-in-env-->"))
-			 "[Normal REP]")
-			((string-equal prompt "Bkpt->") "[Breakpoint REP]")
-			((string-equal prompt "Error->") "[Error REP]")
-			((string-equal prompt "Debug-->") "[Debugger]")
-			((string-equal prompt "Debugger-->") "[Debugger REP]")
-			((string-equal prompt "Where-->")
-			 "[Environment Inspector]")
-			(t prompt)))))
+		  (let ((entry (assoc prompt xscheme-prompt-alist)))
+		    (if entry
+			(cdr entry)
+			prompt)))))
       string))
 
-(defun add-to-global-mode-string (x)
-  (cond ((null global-mode-string)
-	 (setq global-mode-string (list "" x " ")))
-	((not (memq x global-mode-string))
-	 (setq global-mode-string
-	       (cons ""
-		     (cons x
-			   (cons " "
-				 (if (equal "" (car global-mode-string))
-				     (cdr global-mode-string)
-				     global-mode-string))))))))
+(defvar xscheme-prompt-alist
+  '(("[Normal REPL]" . "[Read-Eval-Print]")
+    ("[Error REPL]" . "[Read-Eval-Print]")
+    ("[Breakpoint REPL]" . "[Read-Eval-Print]")
+    ("[Debugger REPL]" . "[Read-Eval-Print]")
+    ("[Visiting Environment]" . "[Read-Eval-Print]"))
+  "An alist which maps the Scheme command interpreter type to a print string.")
 
-;;;; Debug Mode
-
-(defun xscheme-debug-mode ()
-  "Major mode for executing the Scheme debugger.
-Just like `scheme-mode' except characters that would normally be self
-inserting are sent to Scheme instead.
-\\{xscheme-debug-mode-map}
-"
-  (error "Illegal entry to xscheme-debug-mode"))
-
-(defun xscheme-enter-debug-mode (mode-string)
-  (save-excursion
-    (set-buffer (xscheme-process-buffer))
-    (use-local-map xscheme-debug-mode-map)
-    (setq major-mode 'xscheme-debug-mode)
-    (setq mode-name mode-string)))
-
-(defun xscheme-debug-mode-p ()
-  (let ((buffer (xscheme-process-buffer)))
-    (and buffer
-	 (save-excursion
-	   (set-buffer buffer)
-	   (eq major-mode 'xscheme-debug-mode)))))
-
-(defun xscheme-debug-self-insert ()
-  "Transmit this character to the Scheme process."
-  (interactive)
-  (xscheme-send-char last-command-char))
-
-(defun xscheme-get-debug-command ()
-  (xscheme-goto-output-point)
-  (xscheme-guarantee-newlines 2))
-
-(defun xscheme-enter-rep-mode ()
-  (save-excursion
-    (set-buffer (xscheme-process-buffer))
-    (scheme-mode-initialize-internal xscheme-mode-map)))
-
 (defun xscheme-prompt-for-confirmation (prompt-string)
   (xscheme-send-char (if (y-or-n-p prompt-string) ?y ?n)))
 
