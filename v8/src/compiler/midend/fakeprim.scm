@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fakeprim.scm,v 1.10 1995/04/01 16:53:14 adams Exp $
+$Id: fakeprim.scm,v 1.11 1995/04/08 16:44:54 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -110,10 +110,10 @@ MIT in each case. |#
 			   `()))
 		,path
 		(INTERNAL-ERROR "Illegal Cookie call syntax" ',name FORM)))
-	 `(DEFINE-INTEGRABLE (,unsafe-name FORM)
-	    ,(if quoted?
-		 `(CADR ,path)
-		 path))
+	 ;;`(DEFINE-INTEGRABLE (,unsafe-name FORM)
+	 ;;   ,(if quoted?
+	 ;;	 `(CADR ,path)
+	 ;;	 path))
 	 defs)))
     (cond ((null? args)
 	   defs)
