@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.117 1993/02/25 03:26:20 gjr Exp $
+$Id: edwin.pkg,v 1.118 1993/04/27 09:22:28 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -247,6 +247,7 @@ MIT in each case. |#
 	  screen-discard!
 	  screen-enter!
 	  screen-exit!
+	  screen-force-update
 	  screen-get-output-line
 	  screen-in-update?
 	  screen-line-draw-cost
@@ -874,6 +875,7 @@ MIT in each case. |#
 	  process-list				; always present
 	  process-mark
 	  process-name
+	  process-output-available?
 	  process-runnable?
 	  process-send-char
 	  process-send-eof
@@ -881,6 +883,7 @@ MIT in each case. |#
 	  process-send-substring
 	  process-sentinel
 	  process-status
+	  process-status-changes?
 	  process-status-message
 	  quit-process
 	  set-process-buffer!

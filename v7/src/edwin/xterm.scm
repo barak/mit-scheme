@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: xterm.scm,v 1.37 1992/11/20 19:10:11 cph Exp $
+;;;	$Id: xterm.scm,v 1.38 1993/04/27 09:22:32 cph Exp $
 ;;;
-;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -52,6 +52,7 @@
   (x-close-all-displays 0)
   (x-close-display 1)
   (x-close-window 1)
+  (x-display-descriptor 1)
   (x-display-flush 1)
   (x-display-process-events 2)
   (x-display-sync 2)
@@ -309,19 +310,11 @@
 (define (get-xterm-input-operations)
   (let ((display x-display-data)
 	(queue x-display-events)
-	(pending-result false)
-	(string false)
+	(pending-result #f)
+	(string #f)
 	(start 0)
-	(end 0)
-	(pending-event false))
-    (let ((get-next-event
-	   (lambda (time-limit)
-	     (if pending-event
-		 (let ((event pending-event))
-		   (set! pending-event false)
-		   event)
-		 (read-event queue display time-limit))))
-	  (process-key-press-event
+	(end 0))
+    (let ((process-key-press-event
 	   (lambda (event)
 	     (set! last-focus-time (vector-ref event 5))
 	     (set! string (vector-ref event 2))
@@ -341,7 +334,7 @@
 		      (if (and signal-interrupts? (char=? char #\BEL))
 			  (begin
 			    (signal-interrupt!)
-			    false)
+			    #f)
 			  (begin
 			    (maybe-raise-screen)
 			    char))))
@@ -362,128 +355,119 @@
 			    (set! start 1)
 			    (maybe-raise-screen)
 			    (string-ref string 0)))))))))
-      (let ((guarantee-result
-	     (lambda ()
-	       (let loop ()
-		 (let ((event
-			(or (get-next-event 0)
-			    (begin
-			      (update-screens! false)
-			      (get-next-event false)))))
-		   (cond ((not event)
-			  (error "#F returned from blocking read"))
-			 ((not (vector? event))
-			  (process-change-event event)
-			  (loop))
-			 (else
-			  (or (if (fix:= event-type:key-press
-					 (vector-ref event 0))
-				  (process-key-press-event event)
-				  (process-special-event event))
-			      (loop)))))))))
-	(values
-	 (lambda ()			;halt-update?
-	   (or pending-result
-	       pending-event
-	       (fix:< start end)
-	       (let ((event (read-event queue display 0)))
-		 (if event (set! pending-event event))
-		 event)))
-	 (lambda ()			;peek-no-hang
-	   (or pending-result
-	       (fix:< start end)
-	       (let loop ()
-		 (let ((event (get-next-event 0)))
-		   (cond ((not event)
-			  false)
-			 ((not (vector? event))
-			  (process-change-event event)
-			  (loop))
-			 (else
-			  (let ((result
-				 (if (fix:= event-type:key-press
-					    (vector-ref event 0))
-				     (process-key-press-event event)
-				     (process-special-event event))))
-			    (if result
-				(begin
-				  (set! pending-result result)
-				  result)
-				(loop)))))))))
-	 (lambda ()			;peek
-	   (or pending-result
-	       (if (fix:< start end)
-		   (string-ref string start)
-		   (let ((result (guarantee-result)))
-		     (set! pending-result result)
-		     result))))
-	 (lambda ()			;read
-	   (cond (pending-result
-		  => (lambda (result)
-		       (set! pending-result false)
-		       result))
-		 ((fix:< start end)
-		  (let ((char (string-ref string start)))
-		    (set! start (fix:+ start 1))
-		    char))
-		 (else
-		  (guarantee-result)))))))))
+      (let ((process-event
+	     (lambda (event)
+	       (if (fix:= event-type:key-press (vector-ref event 0))
+		   (process-key-press-event event)
+		   (process-special-event event)))))
+	(let ((probe
+	       (lambda (block?)
+		 (let loop ()
+		   (let ((event (read-event queue display block?)))
+		     (cond ((not event) #f)
+			   ((not (vector? event))
+			    (process-change-event event)
+			    (loop))
+			   (else
+			    (let ((result (process-event event)))
+			      (if result
+				  (begin (set! pending-result result) result)
+				  (loop)))))))))
+	      (guarantee-result
+	       (lambda ()
+		 (let loop ()
+		   (let ((event (read-event queue display #t)))
+		     (cond ((not event)
+			    (error "#F returned from blocking read"))
+			   ((not (vector? event))
+			    (if (process-change-event event)
+				(make-input-event update-screens! #f)
+				(loop)))
+			   (else
+			    (or (process-event event) (loop)))))))))
+	  (values
+	   (lambda ()			;halt-update?
+	     (or pending-result
+		 (fix:< start end)
+		 (probe 'IN-UPDATE)))
+	   (lambda ()			;peek-no-hang
+	     (or pending-result
+		 (fix:< start end)
+		 (probe #f)))
+	   (lambda ()			;peek
+	     (or pending-result
+		 (if (fix:< start end)
+		     (string-ref string start)
+		     (let ((result (guarantee-result)))
+		       (set! pending-result result)
+		       result))))
+	   (lambda ()			;read
+	     (cond (pending-result
+		    => (lambda (result)
+			 (set! pending-result #f)
+			 result))
+		   ((fix:< start end)
+		    (let ((char (string-ref string start)))
+		      (set! start (fix:+ start 1))
+		      char))
+		   (else
+		    (guarantee-result))))))))))
 
-(define (read-event queue display time-limit)
-  (dynamic-wind
-   (lambda ()
-     (lock-thread-mutex event-stream-mutex))
-   (lambda ()
-     (let loop ()
-       (let ((event
-	      (if (queue-empty? queue)
-		  (if (and (not time-limit)
-			   (other-running-threads?))
-		      ;; Don't block process if any other threads
-		      ;; want to run.  Mutex will stop previewer.
-		      (or (x-display-process-events display 0)
-			  (begin
-			    (yield-current-thread)
-			    event:interrupt))
-		      (x-display-process-events display time-limit))
-		  (dequeue!/unsafe queue))))
-	 (cond ((eq? event event:interrupt)
-		(if inferior-thread-changes? event (loop)))
-	       ((and (vector? event)
-		     (fix:= (vector-ref event 0) event-type:expose))
-		(xterm-dump-rectangle (vector-ref event 1)
-				      (vector-ref event 2)
-				      (vector-ref event 3)
-				      (vector-ref event 4)
-				      (vector-ref event 5))
-		(loop))
-	       (else event)))))
-   (lambda ()
-     (unlock-thread-mutex event-stream-mutex))))
+(define (read-event queue display block?)
+  (let loop ()
+    (let ((event
+	   (let ((block-events? (block-thread-events)))
+	     (let ((event
+		    (if (queue-empty? queue)
+			(if (eq? 'IN-UPDATE block?)
+			    (x-display-process-events display 2)
+			    (read-event-1 display block?))
+			(dequeue!/unsafe queue))))
+	       (if (not block-events?)
+		   (unblock-thread-events))
+	       event))))
+      (if (and (vector? event)
+	       (fix:= (vector-ref event 0) event-type:expose))
+	  (begin
+	    (xterm-dump-rectangle (vector-ref event 1)
+				  (vector-ref event 2)
+				  (vector-ref event 3)
+				  (vector-ref event 4)
+				  (vector-ref event 5))
+	    (loop))
+	  event))))
+
+(define (read-event-1 display block?)
+  (or (x-display-process-events display 2)
+      (let loop ()
+	(cond (inferior-thread-changes? event:interrupt)
+	      ((process-output-available?) event:process-output)
+	      (else
+	       (case (test-for-input-on-descriptor
+		      (x-display-descriptor display)
+		      block?)
+		 ((#F) #f)
+		 ((PROCESS-STATUS-CHANGE) event:process-status)
+		 ((INTERRUPT) (loop))
+		 (else (read-event-1 display block?))))))))
 
 (define (preview-event-stream)
-  (detach-thread (current-thread))
-  (do () (false)
-    (lock-thread-mutex event-stream-mutex)
-    (let loop ()
-      (let ((event (x-display-process-events x-display-data 0)))
-	(cond ((not (vector? event))
-	       (if (and event
-			(or (not (eq? event:interrupt event))
-			    inferior-thread-changes?)
-			(not (queued?/unsafe x-display-events event)))
-		   (enqueue!/unsafe x-display-events event)))
-	      ((and signal-interrupts?
-		    (fix:= event-type:key-press (vector-ref event 0))
-		    (string-find-next-char (vector-ref event 2) #\BEL))
-	       (clean-event-queue x-display-events)
-	       (signal-thread-event editor-thread signal-interrupt!))
-	      (else
-	       (enqueue!/unsafe x-display-events event)
-	       (loop)))))
-    (unlock-thread-mutex event-stream-mutex)
-    (sleep-current-thread previewer-interval)))
-
+  (set! previewer-registration
+	(permanently-register-input-thread-event
+	 (x-display-descriptor x-display-data)
+	 (current-thread)
+	 (lambda ()
+	   (let ((event (x-display-process-events x-display-data 2)))
+	     (if event
+		 (if (and signal-interrupts?
+			  (fix:= event-type:key-press (vector-ref event 0))
+			  (string-find-next-char (vector-ref event 2) #\BEL))
+		     (begin
+		       (clean-event-queue x-display-events)
+		       (signal-interrupt!))
+		     (enqueue!/unsafe x-display-events event)))))))
+  unspecific)
+
 (define (clean-event-queue queue)
   ;; Flush keyboard and mouse events from the input queue.  Other
   ;; events are harmless and must be processed regardless.
@@ -502,7 +486,7 @@
 	       (cdr events)))
       ((null? events))
     (enqueue!/unsafe queue (car events))))
-
+
 (define (process-change-event event)
   (cond ((fix:= event event:process-output) (accept-process-output))
 	((fix:= event event:process-status) (handle-process-status-changes))
@@ -521,21 +505,6 @@
 
 (define-integrable (define-event-handler event-type handler)
   (vector-set! event-handlers event-type handler))
-
-(define-event-handler event-type:configure
-  (lambda (screen event)
-    (let ((xterm (screen-xterm screen))
-	  (x-size (vector-ref event 2))
-	  (y-size (vector-ref event 3)))
-      (xterm-reconfigure xterm x-size y-size)
-      (let ((x-size (xterm-map-x-size xterm x-size))
-	    (y-size (xterm-map-y-size xterm y-size)))
-	(if (not (and (= x-size (screen-x-size screen))
-		      (= y-size (screen-y-size screen))))
-	    (begin
-	      (set-screen-size! screen x-size y-size)
-	      (update-screen! screen true)))))
-    false))
 
 (define-event-handler event-type:button-down
   (lambda (screen event)
@@ -556,6 +525,22 @@
 			(make-up-button (vector-ref event 4))
 			(xterm-map-x-coordinate xterm (vector-ref event 2))
 			(xterm-map-y-coordinate xterm (vector-ref event 3))))))
+
+(define-event-handler event-type:configure
+  (lambda (screen event)
+    (let ((xterm (screen-xterm screen))
+	  (x-size (vector-ref event 2))
+	  (y-size (vector-ref event 3)))
+      (xterm-reconfigure xterm x-size y-size)
+      (let ((x-size (xterm-map-x-size xterm x-size))
+	    (y-size (xterm-map-y-size xterm y-size)))
+	(and (not (and (= x-size (screen-x-size screen))
+		       (= y-size (screen-y-size screen))))
+	     (make-input-event
+	      (lambda (screen x-size y-size)
+		(set-screen-size! screen x-size y-size)
+		(update-screen! screen #t))
+	      screen x-size y-size))))))
 
 (define-event-handler event-type:focus-in
   (lambda (screen event)
@@ -567,20 +552,15 @@
   (lambda (screen event)
     event
     (and (not (screen-deleted? screen))
-	 (if (selected-screen? screen)
-	     (make-input-event delete-screen! screen)
-	     (begin
-	       (delete-screen! screen)
-	       false)))))
+	 (make-input-event delete-screen! screen))))
 
 (define-event-handler event-type:map
   (lambda (screen event)
     event
-    (if (not (screen-deleted? screen))
-	(begin
-	  (set-screen-visibility! screen 'VISIBLE)
-	  (update-screen! screen true)))
-    false))
+    (and (not (screen-deleted? screen))
+	 (begin
+	   (set-screen-visibility! screen 'VISIBLE)
+	   (make-input-event update-screen! screen #t)))))
 
 (define-event-handler event-type:unmap
   (lambda (screen event)
@@ -596,16 +576,15 @@
 (define-event-handler event-type:visibility
   (lambda (screen event)
     (let ((old-visibility (screen-visibility screen)))
-      (if (not (eq? old-visibility 'DELETED))
-	  (begin
-	    (case (vector-ref event 2)
-	      ((0) (set-screen-visibility! screen 'VISIBLE))
-	      ((1) (set-screen-visibility! screen 'PARTIALLY-OBSCURED))
-	      ((2) (set-screen-visibility! screen 'OBSCURED)))
-	     (if (or (eq? old-visibility 'UNMAPPED)
-		     (eq? old-visibility 'OBSCURED))
-		 (update-screen! screen true)))))
-    false))
+      (and (not (eq? old-visibility 'DELETED))
+	   (begin
+	     (case (vector-ref event 2)
+	       ((0) (set-screen-visibility! screen 'VISIBLE))
+	       ((1) (set-screen-visibility! screen 'PARTIALLY-OBSCURED))
+	       ((2) (set-screen-visibility! screen 'OBSCURED)))
+	      (and (or (eq? old-visibility 'UNMAPPED)
+		       (eq? old-visibility 'OBSCURED))
+		   (make-input-event update-screen! screen #t)))))))
 
 (define-event-handler event-type:take-focus
   (lambda (screen event)
@@ -613,16 +592,18 @@
     (make-input-event select-screen screen)))
 
 (define signal-interrupts?)
-(define event-stream-mutex)
-(define previewer-interval 1000)
 (define last-focus-time)
+(define previewer-registration)
 
 (define (with-editor-interrupts-from-x receiver)
   (fluid-let ((signal-interrupts? true)
-	      (event-stream-mutex (make-thread-mutex))
-	      (last-focus-time false))
-    (queue-initial-thread preview-event-stream)
-    (receiver (lambda (thunk) (thunk)) '())))
+	      (last-focus-time false)
+	      (previewer-registration))
+    (dynamic-wind
+     preview-event-stream
+     (lambda () (receiver (lambda (thunk) (thunk)) '()))
+     (lambda ()
+       (deregister-input-thread-event previewer-registration)))))
 
 (define (with-x-interrupts-enabled thunk)
   (with-signal-interrupts true thunk))

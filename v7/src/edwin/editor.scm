@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: editor.scm,v 1.226 1993/02/25 08:52:48 gjr Exp $
+;;;	$Id: editor.scm,v 1.227 1993/04/27 09:22:26 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -428,12 +428,12 @@ This does not affect editor errors or evaluation errors."
    (lambda ()
      (set-car! flags true)
      (set! inferior-thread-changes? true)
-     unspecific)))
+     (signal-thread-event editor-thread #f))))
 
 (define (inferior-thread-output!/unsafe flags)
   (set-car! flags true)
   (set! inferior-thread-changes? true)
-  unspecific)
+  (signal-thread-event editor-thread #f))
 
 (define (accept-thread-output)
   (without-interrupts

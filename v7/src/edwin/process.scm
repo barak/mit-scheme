@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: process.scm,v 1.28 1993/02/10 16:24:39 cph Exp $
+;;;	$Id: process.scm,v 1.29 1993/04/27 09:22:31 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-93 Massachusetts Institute of Technology
 ;;;
@@ -51,6 +51,7 @@
 
 (define (initialize-processes!)
   (set! edwin-processes '())
+  (set! process-input-queue (cons '() '()))
   (set-variable! exec-path
 		 (parse-path-string
 		  (let ((path (get-environment-variable "PATH")))
@@ -101,7 +102,8 @@ Initialized from the SHELL environment variable."
   (filter false)
   (sentinel false)
   (kill-without-query false)
-  (notification-tick (cons false false)))
+  (notification-tick (cons false false))
+  (input-registration #f))
 
 (define-integrable (process-arguments process)
   (subprocess-arguments (process-subprocess process)))
@@ -166,11 +168,6 @@ Initialized from the SHELL environment variable."
     (without-interrupts
      (lambda ()
        (let ((subprocess (make-subprocess)))
-	 (let ((channel (subprocess-input-channel subprocess)))
-	   (if channel
-	       (begin
-		 (channel-nonblocking channel)
-		 (channel-register channel))))
 	 (let ((process
 		(%make-process
 		 subprocess
@@ -180,6 +177,11 @@ Initialized from the SHELL environment variable."
 					    "<" (number->string n) ">")))
 		     ((not (get-process-by-name name*)) name*))
 		 buffer)))
+	   (let ((channel (subprocess-input-channel subprocess)))
+	     (if channel
+		 (begin
+		   (channel-nonblocking channel)
+		   (register-process-input process channel))))
 	   (update-process-mark! process)
 	   (subprocess-put! subprocess 'EDWIN-PROCESS process)
 	   (set! edwin-processes (cons process edwin-processes))
@@ -200,10 +202,15 @@ Initialized from the SHELL environment variable."
 	   (begin
 	     (subprocess-kill subprocess)
 	     (%perform-status-notification process 'SIGNALLED false)))
-       (let ((channel (subprocess-input-channel subprocess)))
-	 (if (and channel (channel-open? channel))
-	     (channel-unregister channel)))
+       (deregister-process-input process)
        (subprocess-delete subprocess)))))
+
+(define (deregister-process-input process)
+  (let ((registration (process-input-registration process)))
+    (if registration
+	(begin
+	  (set-process-input-registration! process #f)
+	  (deregister-input-thread-event registration)))))
 
 (define (get-process-by-name name)
   (let loop ((processes edwin-processes))
@@ -228,6 +235,55 @@ Initialized from the SHELL environment variable."
 
 ;;;; Input and Output
 
+(define process-input-queue)
+
+(define (register-process-input process channel)
+  (set-process-input-registration!
+   process
+   (permanently-register-input-thread-event
+    (channel-descriptor-for-select channel)
+    (current-thread)
+    (lambda ()
+      (let ((queue process-input-queue)
+	    (tail (list process)))
+	(if (null? (cdr queue))
+	    (set-car! queue tail)
+	    (set-cdr! (cdr queue) tail))
+	(set-cdr! queue tail))))))
+
+(define (process-output-available?)
+  (not (null? (car process-input-queue))))
+
+(define (accept-process-output)
+  (let ((queue process-input-queue))
+    (let loop ((output? #f))
+      (if (null? (car queue))
+	  output?
+	  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+	    (let ((process (caar queue)))
+	      (set-car! queue (cdar queue))
+	      (if (null? (car queue))
+		  (set-cdr! queue '()))
+	      (let ((output?
+		     (if (poll-process-for-output process) #t output?)))
+		(set-interrupt-enables! interrupt-mask)
+		(loop output?))))))))
+
+(define (poll-process-for-output process)
+  (let ((channel (process-input-channel process))
+	(buffer (make-string 512)))
+    (and (channel-open? channel)
+	 (let ((n (channel-read channel buffer 0 512)))
+	   (cond ((not n)
+		  #f)
+		 ((> n 0)
+		  (output-substring process buffer n))
+		 (else
+		  (deregister-process-input process)
+		  (channel-close channel)
+		  (%update-global-notification-tick)
+		  (poll-process-for-status-change process)))))))
+
 (define (process-send-eof process)
   (process-send-char process #\EOT))
 
@@ -240,45 +296,29 @@ Initialized from the SHELL environment variable."
 (define (process-send-char process char)
   (channel-write-char-block (process-output-channel process) char))
 
-(define (accept-process-output)
+(define (process-status-changes?)
   (without-interrupts
    (lambda ()
-     (let loop ((processes edwin-processes) (output? false))
-       (if (null? processes)
-	   output?
-	   (loop (cdr processes)
-		 (if (poll-process-for-output (car processes))
-		     true
-		     output?)))))))
-
-(define (poll-process-for-output process)
-  (let ((channel (process-input-channel process))
-	(buffer (make-string 512)))
-    (and (channel-open? channel)
-	 (let loop ((output? false))
-	   (let ((n (channel-read channel buffer 0 512)))
-	     (cond ((not n)
-		    output?)
-		   ((> n 0)
-		    (loop (or (output-substring process buffer n) output?)))
-		   (else
-		    (channel-close channel)
-		    output?)))))))
+     (not (eq? (subprocess-global-status-tick) global-notification-tick)))))
 
 (define (handle-process-status-changes)
   (without-interrupts
    (lambda ()
-     (let ((tick (subprocess-global-status-tick)))
-       (and (not (eq? tick global-notification-tick))
-	    (begin
-	      (set! global-notification-tick tick)
-	      (let loop ((processes edwin-processes) (output? false))
-		(if (null? processes)
-		    output?
-		    (loop (cdr processes)
-			  (if (poll-process-for-status-change (car processes))
-			      true
-			      output?))))))))))
+     (and (%update-global-notification-tick)
+	  (let loop ((processes edwin-processes) (output? false))
+	    (if (null? processes)
+		output?
+		(loop (cdr processes)
+		      (if (poll-process-for-status-change (car processes))
+			  true
+			  output?))))))))
+
+(define (%update-global-notification-tick)
+  (let ((tick (subprocess-global-status-tick)))
+    (and (not (eq? tick global-notification-tick))
+	 (begin
+	   (set! global-notification-tick tick)
+	   #t))))
 
 (define global-notification-tick
   (cons false false))
@@ -559,7 +599,7 @@ after the listing is made.)"
 		  (output-channel (subprocess-input-channel process))
 		  (output-mark (mark-left-inserting-copy output-mark)))
 	      (let loop ()
-		(let ((n (channel-read output-channel buffer 0 512)))
+		(let ((n (channel-read-block output-channel buffer 0 512)))
 		  (if (> n 0)
 		      (begin
 			(insert-substring buffer 0 n output-mark)

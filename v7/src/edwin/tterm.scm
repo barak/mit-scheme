@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.18 1992/08/27 06:30:57 jinx Exp $
+$Id: tterm.scm,v 1.19 1993/04/27 09:22:31 cph Exp $
 
-Copyright (c) 1990-1992 Massachusetts Institute of Technology
+Copyright (c) 1990-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -146,77 +146,78 @@ MIT in each case. |#
   (let ((channel (input-port/channel console-input-port))
 	(string (make-string input-buffer-size))
 	(start input-buffer-size)
-	(end input-buffer-size)
-	(pending-event false))
-    (let ((read-event
-	   (lambda (block?)
-	     (let ((event pending-event))
-	       (cond (event
-		      (set! pending-event false)
-		      event)
-		     ((fix:< start end)
-		      (string-ref string start))
-		     (else
-		      (let loop ()
-			(if block?
-			    (channel-blocking channel)
-			    (channel-nonblocking channel))
-			(let ((n
-			       (channel-select-then-read
-				channel string 0 input-buffer-size)))
-			  (cond ((not n)
-				 (if block?
-				     (error "#F returned from blocking read"))
-				 false)
-				((fix:> n 0)
-				 (set! start 0)
-				 (set! end n)
-				 (if transcript-port
-				     (output-port/write-substring
-				      transcript-port string 0 n))
-				 (string-ref string 0))
-				((or (fix:= n event:process-output)
-				     (fix:= n event:process-status))
-				 n)
-				((fix:= n event:interrupt)
-				 (if inferior-thread-changes? n (loop)))
-				((fix:= n 0)
-				 (error "Reached EOF in keyboard input."))
-				(else
-				 (error "Illegal return value:" n)))))))))))
-      (let ((read-until-result
-	     (lambda (block?)
-	       (let loop ()
-		 (let ((event
-			(if block?
-			    (or (read-event false)
-				(begin
-				  (update-screens! false)
-				  (read-event true)))
-			    (read-event false))))
-		   (if (fix:fixnum? event)
-		       (begin
-			 (process-change-event event)
-			 (loop))
-		       event))))))
-	(values
-	 (lambda ()			;halt-update?
-	   (or pending-event
-	       (fix:< start end)
-	       (let ((event (read-event false)))
+	(end input-buffer-size))
+    (letrec
+	((read-char
+	  (lambda (block?)
+	    (if block?
+		(channel-blocking channel)
+		(channel-nonblocking channel))
+	    (let ((n
+		   (channel-read channel
+				 string 0 input-buffer-size)))
+	      (cond ((not n) #f)
+		    ((fix:> n 0)
+		     (set! start 0)
+		     (set! end n)
+		     (if transcript-port
+			 (output-port/write-substring transcript-port
+						      string 0 n))
+		     (string-ref string 0))
+		    ((fix:= n 0)
+		     (error "Reached EOF in keyboard input."))
+		    (else
+		     (error "Illegal return value:" n))))))
+	 (read-event
+	  (lambda (block?)
+	    (or (read-char #f)
+		(let loop ()
+		  (cond (inferior-thread-changes? event:interrupt)
+			((process-output-available?) event:process-output)
+			(else
+			 (case (test-for-input-on-descriptor
+				(channel-descriptor-for-select channel)
+				block?)
+			   ((#F) #f)
+			   ((PROCESS-STATUS-CHANGE) event:process-status)
+			   ((INTERRUPT) (loop))
+			   (else (read-event block?)))))))))
+	 (guarantee-result
+	  (lambda ()
+	    (let ((event (read-event #t)))
+	      (cond ((char? event)
+		     event)
+		    ((process-change-event event)
+		     (make-input-event update-screens! #f))
+		    (else
+		     (guarantee-result)))))))
+      (values
+       (lambda ()			;halt-update?
+	 (or (fix:< start end)
+	     (read-char #f)))
+       (lambda ()			;peek-no-hang
+	 (if (fix:< start end)
+	     (string-ref string start)
+	     (let loop ()
+	       (let ((event (read-event #f)))
 		 (if (fix:fixnum? event)
-		     (set! pending-event event))
-		 event)))
-	 (lambda ()			;peek-no-hang
-	   (read-until-result false))
-	 (lambda ()			;peek
-	   (read-until-result true)
-	   (string-ref string start))
-	 (lambda ()			;read
-	   (read-until-result true)
-	   (let ((char (string-ref string start)))
-	     (set! start (fix:+ start 1))
-	     char)))))))
+		     (begin
+		       (process-change-event event)
+		       #f)
+		     event)))))
+       (lambda ()			;peek
+	 (if (fix:< start end)
+	     (string-ref string start)
+	     (guarantee-result)))
+       (lambda ()			;read
+	 (if (fix:< start end)
+	     (let ((char (string-ref string start)))
+	       (set! start (fix:+ start 1))
+	       char)
+	     (let ((event (guarantee-result)))
+	       (if (char? event)
+		   (set! start (fix:+ start 1)))
+	       event)))))))
 
 (define-integrable input-buffer-size 16)
 (define-integrable event:process-output -2)

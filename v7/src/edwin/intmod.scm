@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.55 1993/01/20 04:50:16 cph Exp $
+;;;	$Id: intmod.scm,v 1.56 1993/04/27 09:22:29 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -208,9 +208,11 @@ REPL uses current evaluation environment."
   (let ((port (buffer-interface-port buffer)))
     (if port
 	(begin
-	  (signal-thread-event (port/thread port)
-	    (lambda ()
-	      (exit-current-thread unspecific)))
+	  (let ((thread (port/thread port)))
+	    (if (not (thread-dead? thread))
+		(signal-thread-event thread
+		  (lambda ()
+		    (exit-current-thread unspecific)))))
 	  (buffer-remove! buffer 'INTERFACE-PORT)
 	  (let ((run-light (ref-variable-object run-light)))
 	    (if (and (ref-variable evaluate-in-inferior-repl buffer)
