@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.4 1992/11/18 03:50:59 gjr Exp $
+$Id: decls.scm,v 1.5 1993/07/16 19:27:46 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -482,6 +482,8 @@ MIT in each case. |#
     (define-integration-dependencies "rtlbase" "rtlcon" "base" "cfg3" "utils")
     (define-integration-dependencies "rtlbase" "rtlcon" "machines/i386"
       "machin")
+    (file-dependency/integration/join (filename/append "rtlbase" "rtlcon")
+				      rtl-base)
     (define-integration-dependencies "rtlbase" "rtlexp" "rtlbase"
       "rtlreg" "rtlty1")
     (define-integration-dependencies "rtlbase" "rtline" "base" "cfg1" "cfg2")

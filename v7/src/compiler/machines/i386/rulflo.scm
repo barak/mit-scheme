@@ -1,9 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulflo.scm,v 1.19 1992/08/12 06:03:49 jinx Exp $
-$MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
+$Id: rulflo.scm,v 1.20 1993/07/16 19:27:57 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -74,11 +73,8 @@ MIT in each case. |#
 			   ,(offset-reference regnum:regs-pointer (1+ off)))
 		      (MOV W (@RO B ,regnum:free-pointer 4) ,target)
 		      (MOV W (@RO B ,regnum:free-pointer 8) ,temp)))
-	       (let ((sti (floreg->sti source)))
-		 (if (zero? sti)
-		     (LAP (FST D (@RO B ,regnum:free-pointer 4)))
-		     (LAP (FLD (ST ,(floreg->sti source)))
-			  (FSTP D (@RO B ,regnum:free-pointer 4))))))
+	       (store-float (floreg->sti source)
+			    (INST-EA (@RO B ,regnum:free-pointer 4))))
 	 (LEA ,target
 	      (@RO UW ,regnum:free-pointer
 		   ,(make-non-pointer-literal (ucode-type flonum) 0)))
@@ -90,18 +86,86 @@ MIT in each case. |#
   (let* ((source (move-to-temporary-register! source 'GENERAL))
 	 (target (flonum-target! target)))
     (LAP ,@(object->address (register-reference source))
-	 (FLD D (@RO B ,source 4))
-	 (FSTP (ST ,(1+ target))))))
+	 ,@(load-float (INST-EA (@RO B ,source 4)) target))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
-	  (OBJECT->FLOAT (CONSTANT (? value))))
-  (QUALIFIER (or (= value 0.) (= value 1.)))
+	  (OBJECT->FLOAT (CONSTANT (? value flonum-bit?))))
   (let ((target (flonum-target! target)))
     (LAP ,@(if (= value 0.)
 	       (LAP (FLDZ))
 	       (LAP (FLD1)))
 	 (FSTP (ST ,(1+ target))))))
+
+(define (flonum-bit? value)
+  (and (or (= value 0.) (= value 1.))
+       value))
+
+;;;; Floating-point vector support.
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (? expression rtl:simple-float-offset?))
+  (let* ((source (float-offset->reference! expression))
+	 (target (flonum-target! target)))
+    (load-float source target)))
+
+(define-rule statement
+  (ASSIGN (? expression rtl:simple-float-offset?) (REGISTER (? source)))
+  (let ((source (flonum-source! source))
+	(target (float-offset->reference! expression)))
+    (store-float source target)))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (? expression rtl:detagged-float-offset?))
+  (with-detagged-float-location expression
+    (lambda (temp)
+      (load-float temp target))))
+
+(define-rule statement
+  (ASSIGN (? expression rtl:detagged-float-offset?)
+	  (REGISTER (? source)))
+  (with-detagged-float-location expression
+    (lambda (temp)
+      (store-float (flonum-source! source) temp))))
+
+(define (with-detagged-float-location rtl-expression recvr)
+  ;; Never needs to protect a register because it is a float register!
+  (with-decoded-detagged-float-offset rtl-expression
+    (lambda (base index w-offset)
+      (with-indexed-address base index 8 (* 4 w-offset) false recvr))))
+
+(define (rtl:detagged-float-offset? expression)
+  (and (rtl:float-offset? expression)
+       (let ((base (rtl:float-offset-base expression))
+	     (offset (rtl:float-offset-offset expression)))
+	 (and (rtl:offset-address? base)
+	      (rtl:machine-constant? (rtl:offset-address-offset base))
+	      (rtl:detagged-index? (rtl:offset-address-base base)
+				   offset)))
+       expression))
+
+(define (with-decoded-detagged-float-offset expression recvr)
+  (let ((base (rtl:float-offset-base expression))
+	(index (rtl:float-offset-offset expression)))
+    (let ((base* (rtl:offset-address-base base)))
+      (recvr (rtl:register-number (if (rtl:register? base*)
+				      base*
+				      (rtl:object->address-expression base*)))
+	     (rtl:register-number (if (rtl:register? index)
+				      index
+				      (rtl:object->datum-expression index)))
+	     (rtl:machine-constant-value (rtl:offset-address-offset base))))))
+
+(define (load-float ea sti)
+  (LAP (FLD D ,ea)
+       (FSTP (ST ,(1+ sti)))))
+
+(define (store-float sti ea)
+  (if (zero? sti)
+      (LAP (FST D ,ea))
+      (LAP (FLD (ST ,sti))
+	   (FSTP D ,ea))))
 
 ;;;; Flonum Arithmetic
 
@@ -136,30 +200,38 @@ MIT in each case. |#
 		   (LAP (FLD (ST ,', source))
 			(,opcode)
 			(FSTP (ST ,',(1+ target)))))))))))
-  (define-flonum-operation flonum-negate FCHS)
-  (define-flonum-operation flonum-abs FABS)
-  (define-flonum-operation flonum-sin FSIN)
-  (define-flonum-operation flonum-cos FCOS)
-  (define-flonum-operation flonum-sqrt FSQRT)
-  (define-flonum-operation flonum-round FRNDINT))
+  (define-flonum-operation FLONUM-NEGATE FCHS)
+  (define-flonum-operation FLONUM-ABS FABS)
+  (define-flonum-operation FLONUM-SIN FSIN)
+  (define-flonum-operation FLONUM-COS FCOS)
+  (define-flonum-operation FLONUM-SQRT FSQRT)
+  (define-flonum-operation FLONUM-ROUND FRNDINT))
 
-(define-arithmetic-method 'flonum-truncate flonum-methods/1-arg
-  (flonum-unary-operation/general
-   (lambda (target source)
-     (let ((temp (temporary-register-reference)))
-       (LAP (FSTCW (@R ,regnum:free-pointer))
-	    ,@(if (and (zero? target) (zero? source))
-		  (LAP)
-		  (LAP (FLD (ST ,source))))
-	    (MOV B ,temp (@RO B ,regnum:free-pointer 1))
-	    (OR B (@RO B ,regnum:free-pointer 1) (&U #x0c))
-	    (FNLDCW (@R ,regnum:free-pointer))
-	    (FRNDINT)
-	    (MOV B (@RO B ,regnum:free-pointer 1) ,temp)
-	    ,@(if (and (zero? target) (zero? source))
-		  (LAP)
-		  (LAP (FSTP (ST ,(1+ target)))))
-	    (FNLDCW (@R ,regnum:free-pointer)))))))
+;; These (and FLONUM-ROUND above) presume that the default rounding mode
+;; is round-to-nearest/even
+
+(define (define-rounding prim-name mode)
+  (define-arithmetic-method prim-name flonum-methods/1-arg
+    (flonum-unary-operation/general
+     (lambda (target source)
+       (let ((temp (temporary-register-reference)))
+	 (LAP (FSTCW (@R ,regnum:free-pointer))
+	      ,@(if (and (zero? target) (zero? source))
+		    (LAP)
+		    (LAP (FLD (ST ,source))))
+	      (MOV B ,temp (@RO B ,regnum:free-pointer 1))
+	      (OR B (@RO B ,regnum:free-pointer 1) (&U ,mode))
+	      (FNLDCW (@R ,regnum:free-pointer))
+	      (FRNDINT)
+	      (MOV B (@RO B ,regnum:free-pointer 1) ,temp)
+	      ,@(if (and (zero? target) (zero? source))
+		    (LAP)
+		    (LAP (FSTP (ST ,(1+ target)))))
+	      (FNLDCW (@R ,regnum:free-pointer))))))))
+
+(define-rounding 'FLONUM-CEILING #x08)
+(define-rounding 'FLONUM-FLOOR #x04)
+(define-rounding 'FLONUM-TRUNCATE #x0c)
 
 ;; This is used in order to avoid using two stack locations for
 ;; the remainder unary operations.
@@ -169,7 +241,7 @@ MIT in each case. |#
     ;; Perhaps this can be improved?
     (rtl-target:=machine-register! target fr0)
     (LAP ,@source->top
-	 ,@(operate 0 0)))
+	 ,@(operate)))
 
   (if (or (machine-register? source)
 	  (not (is-alias-for-register? fr0 source))
@@ -179,64 +251,69 @@ MIT in each case. |#
 	(delete-dead-registers!)
 	(finish (LAP)))))
 
-(define-arithmetic-method 'flonum-log flonum-methods/1-arg
+(define-arithmetic-method 'FLONUM-LOG flonum-methods/1-arg
   (flonum-unary-operation/stack-top
-   (lambda (target source)
-     (if (and (zero? target) (zero? source))
-	 (LAP (FLDLN2)
-	      (FXCH (ST 0) (ST 1))
-	      (FYL2X))
-	 (LAP (FLDLN2)
-	      (FLD (ST ,(1+ source)))
-	      (FYL2X)
-	      (FSTP (ST ,(1+ target))))))))
+   (lambda ()
+     #|
+     (LAP (FLDLN2)
+	  (FLD (ST ,(1+ source)))
+	  (FYL2X)
+	  (FSTP (ST ,(1+ target))))
+     |#
+     (LAP (FLDLN2)
+	  (FXCH (ST 0) (ST 1))
+	  (FYL2X)))))
 
-(define-arithmetic-method 'flonum-exp flonum-methods/1-arg
+(define-arithmetic-method 'FLONUM-EXP flonum-methods/1-arg
   (flonum-unary-operation/stack-top
-   (lambda (target source)
-     (if (and (zero? target) (zero? source))
-	 (LAP (FLDL2E)
-	      (FMULP (ST 1) (ST 0))
-	      (F2XM1)
-	      (FLD1)
-	      (FADDP (ST 1) (ST 0)))
-	 (LAP (FLD (ST ,source))
-	      (FLDL2E)
-	      (FMULP (ST 1) (ST 0))
-	      (F2XM1)
-	      (FLD1)
-	      (FADDP (ST 1) (ST 0))
-	      (FSTP (ST ,(1+ target))))))))
+   (lambda ()
+     #|
+     (LAP (FLD (ST ,source))
+	  (FLDL2E)
+	  (FMULP (ST 1) (ST 0))
+	  (F2XM1)
+	  (FLD1)
+	  (FADDP (ST 1) (ST 0))
+	  (FSTP (ST ,(1+ target))))
+     |#
+     (LAP (FLDL2E)
+	  (FMULP (ST 1) (ST 0))
+	  (F2XM1)
+	  (FLD1)
+	  (FADDP (ST 1) (ST 0))))))
 
-(define-arithmetic-method 'flonum-tan flonum-methods/1-arg
+(define-arithmetic-method 'FLONUM-TAN flonum-methods/1-arg
   (flonum-unary-operation/stack-top
-   (lambda (target source)
-     (if (and (zero? target) (zero? source))
-	 (LAP (FPTAN)
-	      (FSTP (ST 0)))		; FPOP
-	 (LAP (FLD (ST ,source))
-	      (FPTAN)
-	      (FSTP (ST 0))		; FPOP
-	      (FSTP (ST ,(1+ target))))))))
+   (lambda ()
+     #|
+     (LAP (FLD (ST ,source))
+	  (FPTAN)
+	  (FSTP (ST 0))			; FPOP
+	  (FSTP (ST ,(1+ target))))
+     |#
+     (LAP (FPTAN)
+	  (FSTP (ST 0))			; FPOP
+	  ))))
 
-(define-arithmetic-method 'flonum-atan flonum-methods/1-arg
+(define-arithmetic-method 'FLONUM-ATAN flonum-methods/1-arg
   (flonum-unary-operation/stack-top
-   (lambda (target source)
-     (if (and (zero? target) (zero? source))
-	 (LAP (FLD1)
-	      (FPATAN))
-	 (LAP (FLD (ST ,source))
-	      (FLD1)
-	      (FPATAN)
-	      (FSTP (ST ,(1+ target))))))))
+   (lambda ()
+     #|
+     (LAP (FLD (ST ,source))
+	  (FLD1)
+	  (FPATAN)
+	  (FSTP (ST ,(1+ target))))
+     |#
+     (LAP (FLD1)
+	  (FPATAN)))))
 
-#|
-;; These really need two locations on the stack.
-;; To avoid that, they are rewritten at the RTL level into simpler operations.
+;; For now, these preserve values in memory
+;; in order to avoid flushing a stack location.
 
-(define-arithmetic-method 'flonum-acos flonum-methods/1-arg
-  (flonum-unary-operation/general
-   (lambda (target source)
+(define-arithmetic-method 'FLONUM-ACOS flonum-methods/1-arg
+  (flonum-unary-operation/stack-top
+   (lambda ()
+     #|
      (LAP (FLD (ST ,source))
 	  (FMUL (ST 0) (ST 0))
 	  (FLD1)
@@ -244,11 +321,20 @@ MIT in each case. |#
 	  (FSQRT)
 	  (FLD (ST ,(1+ source)))
 	  (FPATAN)
-	  (FSTP (ST ,(1+ target)))))))
+	  (FSTP (ST ,(1+ target))))
+     |#
+     (LAP (FST D (@R ,regnum:free-pointer))
+	  (FMUL (ST 0) (ST 0))
+	  (FLD1)
+	  (F%SUBP (ST 1) (ST 0))
+	  (FSQRT)
+	  (FLD D (@R ,regnum:free-pointer))
+	  (FPATAN)))))
 
-(define-arithmetic-method 'flonum-asin flonum-methods/1-arg
-  (flonum-unary-operation/general
-   (lambda (target source)
+(define-arithmetic-method 'FLONUM-ASIN flonum-methods/1-arg
+  (flonum-unary-operation/stack-top
+   (lambda ()
+     #|
      (LAP (FLD (ST ,source))
 	  (FMUL (ST 0) (ST 0))
 	  (FLD1)
@@ -257,8 +343,16 @@ MIT in each case. |#
 	  (FLD (ST ,(1+ source)))
 	  (FXCH (ST 0) (ST 1))
 	  (FPATAN)
-	  (FSTP (ST ,(1+ target)))))))
-|#
+	  (FSTP (ST ,(1+ target))))
+     |#
+     (LAP (FST D (@R ,regnum:free-pointer))
+	  (FMUL (ST 0) (ST 0))
+	  (FLD1)
+	  (F%SUBP (ST 1) (ST 0))
+	  (FSQRT)
+	  (FLD D (@R ,regnum:free-pointer))
+	  (FXCH (ST 0) (ST 1))
+	  (FPATAN)))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -373,31 +467,33 @@ MIT in each case. |#
 			  (,op2%1 (ST 0) (ST ,',(1+ source)))
 			  (FSTP (ST ,',(1+ target))))))))))))
 
-  (define-flonum-operation flonum-add fadd faddp fadd faddp)
-  (define-flonum-operation flonum-subtract f%sub f%subp f%subr f%subpr)
-  (define-flonum-operation flonum-multiply fmul fmulp fmul fmulp)
-  (define-flonum-operation flonum-divide f%div f%divp f%divr f%divpr))
+  (define-flonum-operation FLONUM-ADD FADD FADDP FADD FADDP)
+  (define-flonum-operation FLONUM-SUBTRACT F%SUB F%SUBP F%SUBR F%SUBPR)
+  (define-flonum-operation FLONUM-MULTIPLY FMUL FMULP FMUL FMULP)
+  (define-flonum-operation FLONUM-DIVIDE F%DIV F%DIVP F%DIVR F%DIVPR))
 
-(define-arithmetic-method 'flonum-atan2 flonum-methods/2-args
+(define-arithmetic-method 'FLONUM-ATAN2 flonum-methods/2-args
   (lambda (target source1 source2)
-    (if (or (machine-register? source1)
-	    (not (is-alias-for-register? fr0 source1))
-	    (not (dead-register? source1)))
-	(let* ((source1->top (load-machine-register! source1 fr0))
-	       (source2 (if (= source2 source1)
-			    fr0
-			    (flonum-source! source2))))
-	  (rtl-target:=machine-register! target fr0)
-	  (LAP ,@source1->top
-	       (FLD (ST ,source2))
-	       (FPATAN)))
+    (if (and (not (machine-register? source1))
+	     (is-alias-for-register? fr0 source1)
+	     (dead-register? source1))
 	(let ((source2 (flonum-source! source2)))
 	  (delete-dead-registers!)
 	  (rtl-target:=machine-register! target fr0)
 	  (LAP (FLD (ST ,source2))
-	       (FPATAN))))))
+	       (FPATAN)))
+	(begin
+	  (prefix-instructions! (load-machine-register! source1 fr0))
+	  (need-register! fr0)
+	  (let ((source2 (if (= source2 source1)
+			     fr0
+			     (flonum-source! source2))))
+	    (delete-dead-registers!)
+	    (rtl-target:=machine-register! target fr0)
+	    (LAP (FLD (ST ,source2))
+		 (FPATAN)))))))
 
-(define-arithmetic-method 'flonum-remainder flonum-methods/2-args
+(define-arithmetic-method 'FLONUM-REMAINDER flonum-methods/2-args
   (flonum-binary-operation
    (lambda (target source1 source2)
      (if (zero? source2)

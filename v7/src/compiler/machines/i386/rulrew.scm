@@ -1,9 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulrew.scm,v 1.11 1992/03/31 20:48:14 jinx Exp $
-$MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rulrew.scm,v 1.4 1991/10/25 06:50:06 cph Exp $
+$Id: rulrew.scm,v 1.12 1993/07/16 19:27:58 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -102,10 +101,11 @@ MIT in each case. |#
   (list 'ASSIGN target comparand))
 
 (define-rule rewriting
-  (ASSIGN (OFFSET (REGISTER (? address)) (? offset))
+  (ASSIGN (OFFSET (REGISTER (? address)) (MACHINE-CONSTANT (? offset)))
 	  (REGISTER (? source register-known-value)))
   (QUALIFIER
    (and (rtl:byte-offset-address? source)
+	(rtl:machine-constant? (rtl:byte-offset-address-offset source))
 	(let ((base (let ((base (rtl:byte-offset-address-base source)))
 		      (if (rtl:register? base)
 			  (register-known-value (rtl:register-number base))
@@ -113,18 +113,19 @@ MIT in each case. |#
 	  (and base
 	       (rtl:offset? base)
 	       (let ((base* (rtl:offset-base base))
-		     (offset* (rtl:offset-number base)))
-		 (and (= (rtl:register-number base*) address)
-		      (= offset* offset)))))))
+		     (offset* (rtl:offset-offset base)))
+		 (and (rtl:machine-constant? offset*)
+		      (= (rtl:register-number base*) address)
+		      (= (rtl:machine-constant-value offset*) offset)))))))
   (let ((target (let ((base (rtl:byte-offset-address-base source)))
 		  (if (rtl:register? base)
 		      (register-known-value (rtl:register-number base))
 		      base))))
     (list 'ASSIGN
 	  target
-	  (rtl:make-byte-offset-address target
-					(rtl:byte-offset-address-number
-					 source)))))
+	  (rtl:make-byte-offset-address
+	   target
+	   (rtl:byte-offset-address-offset source)))))
 
 (define-rule rewriting
   (EQ-TEST (? source) (REGISTER (? comparand register-known-value)))
@@ -323,3 +324,56 @@ MIT in each case. |#
 
 (define (flo:one? value)
   (flo:= value 1.))
+
+;;;; Indexed addressing modes
+
+(define-rule rewriting
+  (OFFSET (REGISTER (? base register-known-value))
+	  (MACHINE-CONSTANT (? value)))
+  (QUALIFIER (and (rtl:offset-address? base)
+		  (rtl:simple-subexpressions? base)))
+  (rtl:make-offset base (rtl:make-machine-constant value)))
+
+(define-rule rewriting
+  (BYTE-OFFSET (REGISTER (? base register-known-value))
+	       (MACHINE-CONSTANT (? value)))
+  (QUALIFIER (and (rtl:byte-offset-address? base)
+		  (rtl:simple-subexpressions? base)))
+  (rtl:make-byte-offset base (rtl:make-machine-constant value)))
+
+(define-rule rewriting
+  (FLOAT-OFFSET (REGISTER (? base register-known-value))
+		(MACHINE-CONSTANT (? value)))
+  (QUALIFIER (and (rtl:float-offset-address? base)
+		  (rtl:simple-subexpressions? base)))
+  (if (zero? value)
+      (rtl:make-float-offset
+       (rtl:float-offset-address-base base)
+       (rtl:float-offset-address-offset base))
+      (rtl:make-float-offset base (rtl:make-machine-constant value))))
+
+(define-rule rewriting
+  (FLOAT-OFFSET (REGISTER (? base register-known-value))
+		(MACHINE-CONSTANT (? value)))
+  (QUALIFIER
+   (and (rtl:offset-address? base)
+	(rtl:simple-subexpressions? base)
+	(rtl:machine-constant? (rtl:offset-address-offset base))))   
+  (rtl:make-float-offset base (rtl:make-machine-constant value)))
+
+;; This is here to avoid generating things like
+;;
+;; (offset (offset-address (object->address (constant #(foo bar baz gack)))
+;;                         (register 29))
+;;         (machine-constant 1))
+;;
+;; since the offset-address subexpression is constant, and therefore
+;; known!
+
+(define (rtl:simple-subexpressions? expr)
+  (for-all? (cdr expr)
+    (lambda (sub)
+      (or (rtl:machine-constant? sub)
+	  (rtl:register? sub)))))
+
+

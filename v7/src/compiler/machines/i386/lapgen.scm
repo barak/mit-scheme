@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.22 1993/02/23 17:34:10 gjr Exp $
+$Id: lapgen.scm,v 1.23 1993/07/16 19:27:48 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -83,9 +83,13 @@ MIT in each case. |#
   (machine->machine-register source target))
 
 (define (reference->register-transfer source target)
-  (if (equal? (INST-EA (R ,target)) source)
-      (LAP)
-      (memory->machine-register source target)))
+  (cond ((equal? (register-reference target) source)
+	 (LAP))
+	((float-register-reference? source)
+	 ;; Assume target is a float register
+	 (LAP (FLD ,source)))
+	(else
+	 (memory->machine-register source target))))
 
 (define-integrable (pseudo-register-home register)
   (offset-reference regnum:regs-pointer
@@ -96,6 +100,10 @@ MIT in each case. |#
 
 (define (register->home-transfer source target)
   (machine->pseudo-register source target))
+
+(define-integrable (float-register-reference? ea)
+  (and (pair? ea)
+       (eq? (car ea) 'ST)))
 
 ;;;; Linearizer interface
 
@@ -310,10 +318,12 @@ MIT in each case. |#
 (define-integrable (temporary-register-reference)
   (reference-temporary-register! 'GENERAL))
 
-(define (source-register-reference source)
-  (register-reference
+(define (source-register source)
    (or (register-alias source 'GENERAL)
-       (load-alias-register! source 'GENERAL))))
+       (load-alias-register! source 'GENERAL)))
+
+(define-integrable (source-register-reference source)
+  (register-reference (source-register source)))
 
 (define-integrable (any-reference rtl-reg)
   (standard-register-reference rtl-reg 'GENERAL true))
@@ -324,23 +334,176 @@ MIT in each case. |#
 (define (standard-move-to-target! source target)
   (register-reference (move-to-alias-register! source 'GENERAL target)))
 
-(define-integrable (source-indirect-reference! rtl-reg offset)
-  (indirect-reference! rtl-reg offset))
-
-(define-integrable (target-indirect-reference! rtl-reg offset)
-  (indirect-reference! rtl-reg offset))
-
 (define (indirect-reference! rtl-reg offset)
   (offset-reference (allocate-indirection-register! rtl-reg)
 		    offset))
 
+(define (indirect-byte-reference! register offset)
+  (byte-offset-reference (allocate-indirection-register! register) offset))
+
 (define-integrable (allocate-indirection-register! register)
   (load-alias-register! register 'GENERAL))
+
+(define (with-indexed-address base* index* scale b-offset protect recvr)
+  (let* ((base (allocate-indirection-register! base*))
+	 (index (source-register index*))
+	 (with-address-temp
+	   (lambda (temp)
+	     (let ((tref (register-reference temp))
+		   (ea (indexed-ea-mode base index scale b-offset)))
+	       (LAP (LEA ,tref ,ea)
+		    ,@(object->address tref)
+		    ,@(recvr (INST-EA (@R ,temp)))))))
+	 (with-reused-temp
+	   (lambda (temp)
+	     (need-register! temp)
+	     (with-address-temp temp)))	       
+	 (fail-index
+	  (lambda ()
+	    (with-address-temp
+	      (allocate-temporary-register! 'GENERAL))))
+	 (fail-base
+	  (lambda ()
+	    (if (and protect (= index* protect))
+		(fail-index)
+		(reuse-pseudo-register-alias! index*
+					      'GENERAL
+					      with-reused-temp
+					      fail-index)))))
+    (if (and protect (= base* protect))
+	(fail-base)
+	(reuse-pseudo-register-alias! base*
+				      'GENERAL
+				      with-reused-temp
+				      fail-base))))
 
-(define (offset->indirect-reference! rtl-expr)
-  (indirect-reference! (rtl:register-number (rtl:offset-base rtl-expr))
-		       (rtl:offset-number rtl-expr)))
+(define (indexed-ea base index scale offset)
+  (indexed-ea-mode (allocate-indirection-register! base)
+		   (source-register index)
+		   scale
+		   offset))
 
+(define (indexed-ea-mode base index scale offset)
+  (cond ((zero? offset)
+	 (INST-EA (@RI ,base ,index ,scale)))
+	((<= -128 offset 127)
+	 (INST-EA (@ROI B ,base ,offset ,index ,scale)))
+	(else
+	 (INST-EA (@ROI W ,base ,offset ,index ,scale)))))
+
+(define (rtl:simple-offset? expression)
+  (and (rtl:offset? expression)
+       (let ((base (rtl:offset-base expression))
+	     (offset (rtl:offset-offset expression)))
+	 (if (rtl:register? base)
+	     (or (rtl:machine-constant? offset)
+		 (rtl:register? offset))
+	     (and (rtl:offset-address? base)
+		  (rtl:machine-constant? offset)
+		  (rtl:register? (rtl:offset-address-base base))
+		  (rtl:register? (rtl:offset-address-offset base)))))
+       expression))
+
+(define (offset->reference! offset)
+  ;; OFFSET must be a simple offset
+  (let ((base (rtl:offset-base offset))
+	(offset (rtl:offset-offset offset)))
+    (cond ((not (rtl:register? base))
+	   (indexed-ea (rtl:register-number (rtl:offset-address-base base))
+		       (rtl:register-number (rtl:offset-address-offset base))
+		       4
+		       (* 4 (rtl:machine-constant-value offset))))
+	  ((rtl:machine-constant? offset)
+	   (indirect-reference! (rtl:register-number base)
+				(rtl:machine-constant-value offset)))
+	  (else
+	   (indexed-ea (rtl:register-number base)
+		       (rtl:register-number offset)
+		       4
+		       0)))))
+
+(define (rtl:simple-byte-offset? expression)
+  (and (rtl:byte-offset? expression)
+       (let ((base (rtl:byte-offset-base expression))
+	     (offset (rtl:byte-offset-offset expression)))
+	 (if (rtl:register? base)
+	     (or (rtl:machine-constant? offset)
+		 (rtl:register? offset))
+	     (and (rtl:byte-offset-address? base)
+		  (rtl:machine-constant? offset)
+		  (rtl:register? (rtl:byte-offset-address-base base))
+		  (rtl:register? (rtl:byte-offset-address-offset base)))))
+       expression))
+
+(define (rtl:detagged-index? base offset)
+  (let ((o-ok? (and (rtl:object->datum? offset)
+		    (rtl:register? (rtl:object->datum-expression offset)))))
+    (if (and (rtl:object->address? base)
+	     (rtl:register? (rtl:object->address-expression base)))
+	(or o-ok? (rtl:register? offset))
+	(and o-ok? (rtl:register? base)))))
+
+(define (byte-offset->reference! offset)
+  ;; OFFSET must be a simple byte offset
+  (let ((base (rtl:byte-offset-base offset))
+	(offset (rtl:byte-offset-offset offset)))
+    (cond ((not (rtl:register? base))
+	   (indexed-ea (rtl:register-number
+			(rtl:byte-offset-address-base base))
+		       (rtl:register-number
+			(rtl:byte-offset-address-offset base))
+		       1
+		       (rtl:machine-constant-value offset)))
+	  ((rtl:machine-constant? offset)
+	   (indirect-byte-reference! (rtl:register-number base)
+				     (rtl:machine-constant-value offset)))
+	  (else
+	   (indexed-ea (rtl:register-number base)
+		       (rtl:register-number offset)
+		       1
+		       0)))))
+
+(define (rtl:simple-float-offset? expression)
+  (and (rtl:float-offset? expression)
+       (let ((base (rtl:float-offset-base expression))
+	     (offset (rtl:float-offset-offset expression)))
+	 (and (or (rtl:machine-constant? offset)
+		  (rtl:register? offset))
+	      (or (rtl:register? base)
+		  (and (rtl:offset-address? base)
+		       (rtl:register? (rtl:offset-address-base base))
+		       (rtl:machine-constant?
+			(rtl:offset-address-offset base))))))
+       expression))
+
+(define (float-offset->reference! offset)
+  ;; OFFSET must be a simple float offset
+  (let ((base (rtl:float-offset-base offset))
+	(offset (rtl:float-offset-offset offset)))
+    (cond ((not (rtl:register? base))
+	   (let ((base*
+		  (rtl:register-number (rtl:offset-address-base base)))
+		 (w-offset
+		  (rtl:machine-constant-value
+		   (rtl:offset-address-offset base))))
+	     (if (rtl:machine-constant? offset)
+		 (indirect-reference!
+		  base*
+		  (+ (* 2 (rtl:machine-constant-value offset))
+		     w-offset))
+		 (indexed-ea base*
+			     (rtl:register-number offset)
+			     8
+			     (* 4 w-offset)))))
+	  ((rtl:machine-constant? offset)
+	   (indirect-reference! (rtl:register-number base)
+				(* 2 (rtl:machine-constant-value offset))))
+	  (else
+	   (indexed-ea (rtl:register-number base)
+		       (rtl:register-number offset)
+		       8
+		       0)))))
+
 (define (object->type target)
   (LAP (SHR W ,target (& ,scheme-datum-width))))
 
@@ -356,8 +519,7 @@ MIT in each case. |#
       (and (rtl:cons-pointer? expression)
 	   (rtl:machine-constant? (rtl:cons-pointer-type expression))
 	   (rtl:machine-constant? (rtl:cons-pointer-datum expression)))
-      (and (rtl:offset? expression)
-	   (rtl:register? (rtl:offset-base expression)))))
+      (rtl:simple-offset? expression)))
 
 (define (interpreter-call-argument->machine-register! expression register)
   (let ((target (register-reference register)))
@@ -372,7 +534,7 @@ MIT in each case. |#
 				 (rtl:cons-pointer-datum expression))
 				target)))
       ((OFFSET)
-       (let ((source-reference (offset->indirect-reference! expression)))
+       (let ((source-reference (offset->reference! expression)))
 	 (LAP ,@(clear-registers! register)
 	      (MOV W ,target ,source-reference))))
       (else

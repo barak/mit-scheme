@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 1.17 1993/06/29 22:25:12 gjr Exp $
+$Id: machin.scm,v 1.18 1993/07/16 19:27:49 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -208,23 +208,29 @@ MIT in each case. |#
 (define (interpreter-register:unbound?)
   (rtl:make-machine-register eax))
 
-(define-integrable (interpreter-value-register)
+(define-integrable (interpreter-block-register offset-value)
   (rtl:make-offset (interpreter-regs-pointer)
-		   register-block/value-offset))
+		   (rtl:make-machine-constant offset-value)))
+
+(define-integrable (interpreter-block-register? expression offset-value)
+  (and (rtl:offset? expression)
+       (interpreter-regs-pointer? (rtl:offset-base expression))
+       (let ((offset (rtl:offset-offset expression)))
+	 (and (rtl:machine-constant? offset)
+	      (= (rtl:machine-constant-value offset)
+		 offset-value)))))
+  
+(define-integrable (interpreter-value-register)
+  (interpreter-block-register register-block/value-offset))
 
 (define (interpreter-value-register? expression)
-  (and (rtl:offset? expression)
-       (interpreter-regs-pointer? (rtl:offset-base expression))
-       (= (rtl:offset-number expression) register-block/value-offset)))
+  (interpreter-block-register? expression register-block/value-offset))
 
 (define (interpreter-environment-register)
-  (rtl:make-offset (interpreter-regs-pointer)
-		   register-block/environment-offset))
+  (interpreter-block-register register-block/environment-offset))
 
 (define (interpreter-environment-register? expression)
-  (and (rtl:offset? expression)
-       (interpreter-regs-pointer? (rtl:offset-base expression))
-       (= (rtl:offset-number expression) register-block/environment-offset)))
+  (interpreter-block-register? expression register-block/environment-offset))
 
 (define (interpreter-free-pointer)
   (rtl:make-machine-register regnum:free-pointer))
@@ -248,13 +254,10 @@ MIT in each case. |#
        (= (rtl:register-number expression) regnum:stack-pointer)))
 
 (define (interpreter-dynamic-link)
-  (rtl:make-offset (interpreter-regs-pointer)
-		   register-block/dynamic-link-offset))
+  (interpreter-block-register register-block/dynamic-link-offset))
 
 (define (interpreter-dynamic-link? expression)
-  (and (rtl:offset? expression)
-       (interpreter-regs-pointer? (rtl:offset-base expression))
-       (= (rtl:offset-number expression) register-block/dynamic-link-offset)))
+  (interpreter-block-register? expression register-block/dynamic-link-offset))
 
 (define (rtl:machine-register? rtl-register)
   (case rtl-register
@@ -336,7 +339,8 @@ MIT in each case. |#
 	VARIABLE-CACHE)
        (+ get-pc-cost based-reference-cost))
       ((OFFSET-ADDRESS
-	BYTE-OFFSET-ADDRESS)
+	BYTE-OFFSET-ADDRESS
+	FLOAT-OFFSET-ADDRESS)
        address-offset-cost)
       ((CONS-POINTER)
        (and (rtl:machine-constant? (rtl:cons-pointer-type expression))
@@ -359,5 +363,4 @@ MIT in each case. |#
 		  ;; Disabled for now.  The F2XM1 instruction is
 		  ;; broken on the 387 (or at least some of them).
 		  FLONUM-EXP
-		  VECTOR-CONS STRING-ALLOCATE FLOATING-VECTOR-CONS
-		  FLOATING-VECTOR-REF FLOATING-VECTOR-SET!))
+		  VECTOR-CONS STRING-ALLOCATE FLOATING-VECTOR-CONS))

@@ -1,9 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules2.scm,v 1.5 1992/02/28 20:23:57 jinx Exp $
-$MC68020-Header: rules2.scm,v 4.12 90/01/18 22:44:04 GMT cph Exp $
+$Id: rules2.scm,v 1.6 1993/07/16 19:27:54 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -55,15 +54,15 @@ MIT in each case. |#
   (compare/register*register register-1 register-2))
 
 (define-rule predicate
-  (EQ-TEST (REGISTER (? register)) (OFFSET (REGISTER (? address)) (? offset)))
+  (EQ-TEST (REGISTER (? register)) (? expression rtl:simple-offset?))
   (set-equal-branches!)
   (LAP (CMP W ,(source-register-reference register)
-	    ,(source-indirect-reference! address offset))))
+	    ,(offset->reference! expression))))
 
 (define-rule predicate
-  (EQ-TEST (OFFSET (REGISTER (? address)) (? offset)) (REGISTER (? register)))
+  (EQ-TEST (? expression rtl:simple-offset?) (REGISTER (? register)))
   (set-equal-branches!)
-  (LAP (CMP W ,(source-indirect-reference! address offset)
+  (LAP (CMP W ,(offset->reference! expression)
 	    ,(source-register-reference register))))
 
 (define-rule predicate
@@ -81,17 +80,17 @@ MIT in each case. |#
 	    (&U ,(non-pointer->literal constant)))))
 
 (define-rule predicate
-  (EQ-TEST (CONSTANT (? constant)) (OFFSET (REGISTER (? address)) (? offset)))
+  (EQ-TEST (CONSTANT (? constant)) (? expression rtl:simple-offset?))
   (QUALIFIER (non-pointer-object? constant))
   (set-equal-branches!)
-  (LAP (CMP W ,(source-indirect-reference! address offset)
+  (LAP (CMP W ,(offset->reference! expression)
 	    (&U ,(non-pointer->literal constant)))))
 
 (define-rule predicate
-  (EQ-TEST (OFFSET (REGISTER (? address)) (? offset)) (CONSTANT (? constant)))
+  (EQ-TEST (? expression rtl:simple-offset?) (CONSTANT (? constant)))
   (QUALIFIER (non-pointer-object? constant))
   (set-equal-branches!)
-  (LAP (CMP W ,(source-indirect-reference! address offset)
+  (LAP (CMP W ,(offset->reference! expression)
 	    (&U ,(non-pointer->literal constant)))))
 
 (define-rule predicate
@@ -113,15 +112,15 @@ MIT in each case. |#
 (define-rule predicate
   (EQ-TEST (CONS-POINTER (MACHINE-CONSTANT (? type))
 			 (MACHINE-CONSTANT (? datum)))
-	   (OFFSET (REGISTER (? address)) (? offset)))
+	   (? expression rtl:simple-offset?))
   (set-equal-branches!)
-  (LAP (CMP W ,(source-indirect-reference! address offset)
+  (LAP (CMP W ,(offset->reference! expression)
 	    (&U ,(make-non-pointer-literal type datum)))))
 
 (define-rule predicate
-  (EQ-TEST (OFFSET (REGISTER (? address)) (? offset))
+  (EQ-TEST (? expression rtl:simple-offset?)
 	   (CONS-POINTER (MACHINE-CONSTANT (? type))
 			 (MACHINE-CONSTANT (? datum))))
   (set-equal-branches!)
-  (LAP (CMP W ,(source-indirect-reference! address offset)
+  (LAP (CMP W ,(offset->reference! expression)
 	    (&U ,(make-non-pointer-literal type datum)))))

@@ -1,9 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.25 1992/04/18 04:13:12 jinx Exp $
-$MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
+$Id: rulfix.scm,v 1.26 1993/07/16 19:27:56 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -153,9 +152,9 @@ MIT in each case. |#
   (object->fixnum (standard-move-to-temporary! register)))
 
 (define-rule predicate
-  (FIXNUM-PRED-1-ARG (? predicate) (OFFSET (REGISTER (? address)) (? offset)))
+  (FIXNUM-PRED-1-ARG (? predicate) (? expression rtl:simple-offset?))
   (fixnum-branch! (fixnum-predicate/unary->binary predicate))
-  (LAP (CMP W ,(source-indirect-reference! address offset) (& 0))))
+  (LAP (CMP W ,(offset->reference! expression) (& 0))))
 
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
@@ -167,17 +166,17 @@ MIT in each case. |#
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
 		      (REGISTER (? register))
-		      (OFFSET (REGISTER (? address)) (? offset)))
+		      (? expression rtl:simple-offset?))
   (fixnum-branch! predicate)
   (LAP (CMP W ,(source-register-reference register)
-	    ,(source-indirect-reference! address offset))))
+	    ,(offset->reference! expression))))
 
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
-		      (OFFSET (REGISTER (? address)) (? offset))
+		      (? expression rtl:simple-offset?)
 		      (REGISTER (? register)))
   (fixnum-branch! predicate)
-  (LAP (CMP W ,(source-indirect-reference! address offset)
+  (LAP (CMP W ,(offset->reference! expression)
 	    ,(source-register-reference register))))
 
 (define-rule predicate
@@ -198,18 +197,18 @@ MIT in each case. |#
 
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
-		      (OFFSET (REGISTER (? address)) (? offset))
+		      (? expression rtl:simple-offset?)
 		      (OBJECT->FIXNUM (CONSTANT (? constant))))
   (fixnum-branch! predicate)
-  (LAP (CMP W ,(source-indirect-reference! address offset)
+  (LAP (CMP W ,(offset->reference! expression)
 	    (& ,(* constant fixnum-1)))))
 
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
 		      (OBJECT->FIXNUM (CONSTANT (? constant)))
-		      (OFFSET (REGISTER (? address)) (? offset)))
+		      (? expression rtl:simple-offset?))
   (fixnum-branch! (commute-fixnum-predicate predicate))
-  (LAP (CMP W ,(source-indirect-reference! address offset)
+  (LAP (CMP W ,(offset->reference! expression)
 	    (& ,(* constant fixnum-1)))))
 
 ;; This assumes that the immediately preceding instruction sets the

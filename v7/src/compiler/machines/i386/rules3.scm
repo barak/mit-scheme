@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.25 1993/03/01 17:35:59 gjr Exp $
+$Id: rules3.scm,v 1.26 1993/07/16 19:27:55 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -265,8 +265,10 @@ MIT in each case. |#
   (LAP))
 
 (define-rule statement
-  (INVOCATION-PREFIX:MOVE-FRAME-UP (? frame-size)
-				   (OFFSET-ADDRESS (REGISTER 4) (? offset)))
+  (INVOCATION-PREFIX:MOVE-FRAME-UP
+   (? frame-size)
+   (OFFSET-ADDRESS (REGISTER 4)
+		   (MACHINE-CONSTANT (? offset))))
   (QUALIFIER (or (zero? (- offset frame-size)) (< frame-size 3)))
   (let ((how-far (- offset frame-size)))
     (cond ((zero? how-far)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules1.scm,v 1.17 1993/03/28 21:53:34 gjr Exp $
+$Id: rules1.scm,v 1.18 1993/07/16 19:27:52 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -51,25 +51,54 @@ MIT in each case. |#
   (assign-register->register target source))
 
 (define-rule statement
-  (ASSIGN (REGISTER (? target)) (OFFSET-ADDRESS (REGISTER (? source)) (? n)))
+  (ASSIGN (REGISTER (? target))
+	  (OFFSET-ADDRESS (REGISTER (? source))
+			  (REGISTER (? index))))
+  (load-indexed-register target source index 4))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (OFFSET-ADDRESS (REGISTER (? source))
+			  (MACHINE-CONSTANT (? n))))
   (load-displaced-register target source (* 4 n)))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (BYTE-OFFSET-ADDRESS (REGISTER (? source))
+			       (REGISTER (? index))))
+  (load-indexed-register target source index 1))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (BYTE-OFFSET-ADDRESS (REGISTER (? source))
+			       (MACHINE-CONSTANT (? n))))
+  (load-displaced-register target source n))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FLOAT-OFFSET-ADDRESS (REGISTER (? source))
+				(REGISTER (? index))))
+  (load-indexed-register target source index 8))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FLOAT-OFFSET-ADDRESS (REGISTER (? source))
+				(MACHINE-CONSTANT (? n))))
+  (load-displaced-register target source (* 8 n)))
 
 (define-rule statement
   ;; This is an intermediate rule -- not intended to produce code.
   (ASSIGN (REGISTER (? target))
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
-			(OFFSET-ADDRESS (REGISTER (? source)) (? n))))
+			(OFFSET-ADDRESS (REGISTER (? source))
+					(MACHINE-CONSTANT (? n)))))
   (load-displaced-register/typed target source type (* 4 n)))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
-	  (BYTE-OFFSET-ADDRESS (REGISTER (? source)) (? n)))
-  (load-displaced-register target source n))
-
-(define-rule statement
-  (ASSIGN (REGISTER (? target))
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
-			(BYTE-OFFSET-ADDRESS (REGISTER (? source)) (? n))))
+			(BYTE-OFFSET-ADDRESS (REGISTER (? source))
+					     (MACHINE-CONSTANT (? n)))))
   (load-displaced-register/typed target source type n))
 
 (define-rule statement
@@ -179,8 +208,8 @@ MIT in each case. |#
 ;;;; Transfers from Memory
 
 (define-rule statement
-  (ASSIGN (REGISTER (? target)) (OFFSET (REGISTER (? address)) (? offset)))
-  (let ((source (source-indirect-reference! address offset)))
+  (ASSIGN (REGISTER (? target)) (? expression rtl:simple-offset?))
+  (let ((source (offset->reference! expression)))
     (LAP (MOV W ,(target-register-reference target) ,source))))
 
 (define-rule statement
@@ -190,33 +219,33 @@ MIT in each case. |#
 ;;;; Transfers to Memory
 
 (define-rule statement
-  (ASSIGN (OFFSET (REGISTER (? a)) (? n)) (REGISTER (? r)))
+  (ASSIGN (? expression rtl:simple-offset?) (REGISTER (? r)))
   (QUALIFIER (register-value-class=word? r))
   (let ((source (source-register-reference r)))
     (LAP (MOV W
-	      ,(target-indirect-reference! a n)
+	      ,(offset->reference! expression)
 	      ,source))))
 
 (define-rule statement
-  (ASSIGN (OFFSET (REGISTER (? a)) (? n)) (CONSTANT (? value)))
+  (ASSIGN (? expression rtl:simple-offset?) (CONSTANT (? value)))
   (QUALIFIER (non-pointer-object? value))
-  (LAP (MOV W ,(target-indirect-reference! a n)
+  (LAP (MOV W ,(offset->reference! expression)
 	    (&U ,(non-pointer->literal value)))))
 
 (define-rule statement
-  (ASSIGN (OFFSET (REGISTER (? a)) (? n))
+  (ASSIGN (? expression rtl:simple-offset?)
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
 			(MACHINE-CONSTANT (? datum))))
-  (LAP (MOV W ,(target-indirect-reference! a n)
+  (LAP (MOV W ,(offset->reference! expression)
 	    (&U ,(make-non-pointer-literal type datum)))))
 
 (define-rule statement
-  (ASSIGN (OFFSET (REGISTER (? address)) (? offset))
-	  (BYTE-OFFSET-ADDRESS (OFFSET (REGISTER (? address)) (? offset))
-			       (? n)))
+  (ASSIGN (? expression rtl:simple-offset?)
+	  (BYTE-OFFSET-ADDRESS (? expression)
+			       (MACHINE-CONSTANT (? n))))
   (if (zero? n)
       (LAP)
-      (LAP (ADD W ,(target-indirect-reference! address offset) (& ,n)))))
+      (LAP (ADD W ,(offset->reference! expression) (& ,n)))))
 
 ;;;; Consing
 
@@ -248,9 +277,9 @@ MIT in each case. |#
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
-	  (CHAR->ASCII (OFFSET (REGISTER (? address)) (? offset))))
+	  (CHAR->ASCII (? expression rtl:simple-offset?)))
   (load-char-into-register 0
-			   (indirect-char/ascii-reference! address offset)
+			   (offset->reference! expression)
 			   target))
 
 (define-rule statement
@@ -261,44 +290,43 @@ MIT in each case. |#
 			   target))
 
 (define-rule statement
-  (ASSIGN (REGISTER (? target))
-	  (BYTE-OFFSET (REGISTER (? address)) (? offset)))
+  (ASSIGN (REGISTER (? target)) (? expression rtl:simple-byte-offset?))
   (load-char-into-register 0
-			   (indirect-byte-reference! address offset)
+			   (byte-offset->reference! expression)
 			   target))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
-			(BYTE-OFFSET (REGISTER (? address)) (? offset))))
+			(? expression rtl:simple-byte-offset?)))
   (load-char-into-register type
-			   (indirect-byte-reference! address offset)
+			   (byte-offset->reference! expression)
 			   target))
 
 (define-rule statement
-  (ASSIGN (BYTE-OFFSET (REGISTER (? address)) (? offset))
+  (ASSIGN (? expression rtl:simple-byte-offset?)
 	  (CHAR->ASCII (CONSTANT (? character))))
   (LAP (MOV B
-	    ,(indirect-byte-reference! address offset)
+	    ,(byte-offset->reference! expression)
 	    (& ,(char->signed-8-bit-immediate character)))))
+
+(define-rule statement
+  (ASSIGN (? expression rtl:simple-byte-offset?)
+	  (REGISTER (? source)))
+  (let* ((source (source-register-reference source))
+	 (target (byte-offset->reference! expression)))
+    (LAP (MOV B ,target ,source))))
+
+(define-rule statement
+  (ASSIGN (? expression rtl:simple-byte-offset?)
+	  (CHAR->ASCII (REGISTER (? source))))
+  (let ((source (source-register-reference source))
+	(target (byte-offset->reference! expression)))
+    (LAP (MOV B ,target ,source))))
 
 (define (char->signed-8-bit-immediate character)
   (let ((ascii (char->ascii character)))
     (if (< ascii 128) ascii (- ascii 256))))
-
-(define-rule statement
-  (ASSIGN (BYTE-OFFSET (REGISTER (? address)) (? offset))
-	  (REGISTER (? source)))
-  (let ((source (source-register-reference source)))
-    (let ((target (indirect-byte-reference! address offset)))
-      (LAP (MOV B ,target ,source)))))
-
-(define-rule statement
-  (ASSIGN (BYTE-OFFSET (REGISTER (? address)) (? offset))
-	  (CHAR->ASCII (REGISTER (? source))))
-  (let ((source (source-register-reference source)))
-    (let ((target (indirect-byte-reference! address offset)))
-      (LAP (MOV B ,target ,source)))))
 
 ;;;; Utilities specific to rules1
 
@@ -331,6 +359,11 @@ MIT in each case. |#
 					   n))
 				    false))
 
+(define (load-indexed-register target source index scale)
+  (let* ((source (indexed-ea source index scale 0))
+	 (target (target-register-reference target)))
+    (LAP (LEA ,target ,source))))  
+
 (define (load-pc-relative-address/typed target type label)
   (with-pc
     (lambda (pc-label pc-register)
@@ -348,12 +381,120 @@ MIT in each case. |#
 	   (LAP ,@(load-non-pointer target type 0)
 		(MOV B ,target ,source))))))
 
-(define (indirect-char/ascii-reference! register offset)
-  (indirect-byte-reference! register (* offset 4)))
-
-(define (indirect-byte-reference! register offset)
-  (byte-offset-reference (allocate-indirection-register! register) offset))
-
 (define (indirect-unsigned-byte-reference! register offset)
   (byte-unsigned-offset-reference (allocate-indirection-register! register)
 				  offset))
+
+;;;; Improved vector and string references
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (? expression rtl:detagged-offset?))
+  (with-detagged-vector-location expression false
+    (lambda (temp)
+      (LAP (MOV W ,(target-register-reference target) ,temp)))))
+
+(define-rule statement
+  (ASSIGN (? expression rtl:detagged-offset?)
+	  (REGISTER (? source)))
+  (QUALIFIER (register-value-class=word? source))
+  (with-detagged-vector-location expression source
+    (lambda (temp)
+      (LAP (MOV W ,temp ,(source-register-reference source))))))
+
+(define (with-detagged-vector-location rtl-expression protect recvr)
+  (with-decoded-detagged-offset rtl-expression
+    (lambda (base index offset)
+      (with-indexed-address base index 4 (* 4 offset) protect recvr))))
+
+(define (rtl:detagged-offset? expression)
+  (and (rtl:offset? expression)
+       (rtl:machine-constant? (rtl:offset-offset expression))
+       (let ((base (rtl:offset-base expression)))
+	 (and (rtl:offset-address? base)
+	      (rtl:detagged-index? (rtl:offset-address-base base)
+				   (rtl:offset-address-offset base))))
+       expression))
+
+(define (with-decoded-detagged-offset expression recvr)
+  (let ((base (rtl:offset-base expression)))
+    (let ((base* (rtl:offset-address-base base))
+	  (index (rtl:offset-address-offset base)))
+      (recvr (rtl:register-number (if (rtl:register? base*)
+				      base*
+				      (rtl:object->address-expression base*)))
+	     (rtl:register-number (if (rtl:register? index)
+				      index
+				      (rtl:object->datum-expression index)))
+	     (rtl:machine-constant-value (rtl:offset-offset expression))))))
+
+;;;; Improved string references
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (? expression rtl:detagged-byte-offset?))
+  (load-char-indexed/detag 0 target expression))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (CONS-POINTER (MACHINE-CONSTANT (? type))
+			(? expression rtl:detagged-byte-offset?)))
+  (load-char-indexed/detag type target expression))
+
+(define-rule statement
+  (ASSIGN (? expression rtl:detagged-byte-offset?)
+	  (REGISTER (? source)))
+  (store-char-indexed/detag expression
+			    source
+			    (source-register-reference source)))
+
+(define-rule statement
+  (ASSIGN (? expression rtl:detagged-byte-offset?)
+	  (CHAR->ASCII (REGISTER (? source))))
+  (store-char-indexed/detag expression
+			    source
+			    (source-register-reference source)))
+
+(define-rule statement
+  (ASSIGN (? expression rtl:detagged-byte-offset?)
+	  (CHAR->ASCII (CONSTANT (? character))))
+  (store-char-indexed/detag expression
+			    false
+			    (INST-EA (& ,(char->signed-8-bit-immediate
+					  character)))))
+
+(define (load-char-indexed/detag tag target rtl-source-expression)
+  (with-detagged-string-location rtl-source-expression false
+    (lambda (temp)
+      (load-char-into-register tag temp target))))
+
+(define (store-char-indexed/detag rtl-target-expression protect source)
+  (with-detagged-string-location rtl-target-expression protect
+    (lambda (temp)
+      (LAP (MOV B ,temp ,source)))))
+
+(define (with-detagged-string-location rtl-expression protect recvr)
+  (with-decoded-detagged-byte-offset rtl-expression
+    (lambda (base index offset)
+      (with-indexed-address base index 1 offset protect recvr))))
+
+(define (rtl:detagged-byte-offset? expression)
+  (and (rtl:byte-offset? expression)
+       (rtl:machine-constant? (rtl:byte-offset-offset expression))
+       (let ((base (rtl:byte-offset-base expression)))
+	 (and (rtl:byte-offset-address? base)
+	      (rtl:detagged-index? (rtl:byte-offset-address-base base)
+				   (rtl:byte-offset-address-offset base))))
+       expression))
+
+(define (with-decoded-detagged-byte-offset expression recvr)
+  (let ((base (rtl:byte-offset-base expression)))
+    (let ((base* (rtl:byte-offset-address-base base))
+	  (index (rtl:byte-offset-address-offset base)))
+      (recvr (rtl:register-number (if (rtl:register? base*)
+				      base*
+				      (rtl:object->address-expression base*)))
+	     (rtl:register-number (if (rtl:register? index)
+				      index
+				      (rtl:object->datum-expression index)))
+	     (rtl:machine-constant-value
+	      (rtl:byte-offset-offset expression))))))
