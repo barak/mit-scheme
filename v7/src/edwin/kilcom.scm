@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: kilcom.scm,v 1.68 1995/06/07 18:42:23 cph Exp $
+;;;	$Id: kilcom.scm,v 1.69 1995/11/20 08:00:51 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -290,20 +290,19 @@ comes the newest one."
 	  set-current-mark!)))
 
 (define (yank offset before? set-current-mark!)
-  (let ((start (mark-right-inserting-copy (current-point)))
-	(get-yank
-	 (lambda ()
-	   ((ref-command rotate-yank-pointer) offset)
-	   (car (ref-variable kill-ring-yank-pointer)))))
+  (let ((start (mark-right-inserting-copy (current-point))))
     (let ((end (mark-left-inserting-copy start)))
       (insert-string (let ((paste (and (= offset 0) (os/interprogram-paste))))
 		       (if (and paste (not (string-null? paste)))
 			   (begin
-			     (if (or (null? (ref-variable kill-ring))
-				     (not (string=? paste (get-yank))))
+			     (if (let ((kill-ring (ref-variable kill-ring)))
+				   (or (null? kill-ring)
+				       (not (string=? paste (car kill-ring)))))
 				 (kill-ring-save-1 paste))
 			     paste)
-			   (get-yank)))
+			   (begin
+			     ((ref-command rotate-yank-pointer) offset)
+			     (car (ref-variable kill-ring-yank-pointer)))))
 		     start)
       (mark-temporary! end)
       (mark-temporary! start)
