@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.45 2000/06/02 02:33:54 cph Exp $
+;;; $Id: imail.pkg,v 1.46 2000/06/05 20:04:39 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -253,7 +253,7 @@
 	  edwin-command$imail-summary-by-recipients
 	  edwin-command$imail-summary-quit
 	  edwin-command$imail-summary-select-message
-	  edwin-command$imail-toggle-header
+	  edwin-command$imail-toggle-message
 	  edwin-command$imail-undelete-backward
 	  edwin-command$imail-undelete-forward
 	  edwin-command$imail-undelete-previous-message

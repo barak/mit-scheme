@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.129 2000/06/05 19:31:14 cph Exp $
+;;; $Id: imail-top.scm,v 1.130 2000/06/05 20:04:40 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -429,8 +429,7 @@ Instead, these commands are available:
 \\[imail-summary-by-flags]	Like \\[imail-summary] only just messages with particular flag(s).
 \\[imail-summary-by-recipients]   Like \\[imail-summary] only just messages with particular recipient(s).
 
-\\[imail-toggle-header]	Toggle between full headers and reduced headers.
-	  Normally only reduced headers are shown.
+\\[imail-toggle-message]	Toggle between standard and raw message formats.
 
 The following variables customize the behavior of IMAIL.  See each
 variable's documentation (using \\[describe-variable]) for details:
@@ -519,7 +518,7 @@ variable's documentation (using \\[describe-variable]) for details:
 (define-key 'imail #\c		'imail-continue)
 (define-key 'imail #\f		'imail-forward)
 
-(define-key 'imail #\t		'imail-toggle-header)
+(define-key 'imail #\t		'imail-toggle-message)
 (define-key 'imail #\m-s	'imail-search)
 (define-key 'imail #\i		'imail-input)
 (define-key 'imail #\o		'imail-output)
@@ -701,7 +700,7 @@ With prefix argument N moves backward N messages with these flags."
 
 ;;;; Message selection
 
-(define (select-message folder selector #!optional force? full-headers?)
+(define (select-message folder selector #!optional force? raw?)
   (let ((buffer (imail-folder->buffer folder #t))
 	(message
 	 (let loop ((selector selector))
@@ -718,7 +717,7 @@ With prefix argument N moves backward N messages with these flags."
 		 (else
 		  (error:wrong-type-argument selector "message selector"
 					     'SELECT-MESSAGE)))))
-	(full-headers? (if (default-object? full-headers?) #f full-headers?)))
+	(raw? (if (default-object? raw?) #f raw?)))
     (if (or (if (default-object? force?) #f force?)
 	    (not (eq? message (buffer-get buffer 'IMAIL-MESSAGE 'UNKNOWN))))
 	(begin
@@ -732,22 +731,30 @@ With prefix argument N moves backward N messages with these flags."
 	      (lambda ()
 		(if message
 		    (begin
-		      (store-property! message 'FULL-HEADERS? full-headers?)
-		      (insert-string
-		       (header-fields->string
-			(if full-headers?
-			    (message-header-fields message)
-			    (maybe-reformat-headers
-			     (message-header-fields message)
-			     buffer)))
-		       mark)
-		      (insert-newline mark)
-		      (if (and (ref-variable imail-receive-mime buffer)
-			       (folder-supports-mime? folder))
-			  (insert-mime-message-body message mark)
-			  (insert-auto-wrapped-string (message-body message)
-						      #f mark))
-		      (guarantee-newline mark))
+		      (store-property! message 'RAW? raw?)
+		      (if raw?
+			  (begin
+			    (insert-string
+			     (header-fields->string
+			      (message-header-fields message))
+			     mark)
+			    (insert-newline mark)
+			    (insert-string (message-body message) mark))
+			  (begin
+			    (insert-string
+			     (header-fields->string
+			      (maybe-reformat-headers
+			       (message-header-fields message)
+			       buffer))
+			     mark)
+			    (insert-newline mark)
+			    (if (and (ref-variable imail-receive-mime buffer)
+				     (folder-supports-mime? folder))
+				(insert-mime-message-body message mark)
+				(insert-auto-wrapped-string
+				 (message-body message)
+				 #f mark))
+			    (guarantee-newline mark))))
 		    (insert-string "[This folder has no messages in it.]"
 				   mark))))
 	    (mark-temporary! mark))
@@ -1900,15 +1907,15 @@ A prefix argument says to prompt for a URL and append all messages
 	 "Folder saved"
 	 "(No changes need to be saved)"))))
 
-(define-command imail-toggle-header
-  "Show full message headers if pruned headers currently shown, or vice versa."
+(define-command imail-toggle-message
+  "Toggle between standard and raw formats for message."
   ()
   (lambda ()
     (let ((message (selected-message)))
       (select-message (selected-folder)
 		      message
 		      #t
-		      (not (get-property message 'FULL-HEADERS? #f))))))
+		      (not (get-property message 'RAW? #f))))))
 
 (define-command imail-disconnect
   "Disconnect the selected IMAIL folder from its server.
