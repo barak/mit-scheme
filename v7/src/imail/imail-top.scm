@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.189 2000/06/26 15:28:25 cph Exp $
+;;; $Id: imail-top.scm,v 1.190 2000/06/26 19:02:23 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -417,7 +417,8 @@ Instead, these commands are available:
 (define-key 'imail #\s		'imail-save-folder)
 (define-key 'imail #\m-s	'imail-search)
 (define-key 'imail #\t		'imail-toggle-header)
-(define-key 'imail #\c-t	'imail-toggle-message)
+(define-key 'imail #\c-t	'imail-toggle-attachment)
+(define-key 'imail #\c-m-t	'imail-toggle-message)
 (define-key 'imail #\u		'imail-undelete-previous-message)
 (define-key 'imail #\m-u	'imail-first-unseen-message)
 (define-key 'imail #\x		'imail-expunge)
@@ -795,37 +796,48 @@ If point is not on an attachment, prompts for the attachment to save.
 With prefix argument, prompt even when point is on an attachment."
   "P"
   (lambda (always-prompt?)
-    (let ((attachment
-	   (maybe-prompt-for-mime-attachment (current-point) always-prompt?)))
-      (save-mime-attachment (car attachment)
-			    (cdr attachment)
-			    (selected-message)
-			    (selected-buffer)))))
+    (let ((i.m
+	   (maybe-prompt-for-mime-info "Save attachment"
+				       (current-point)
+				       always-prompt?)))
+      (save-mime-part (mime-info-body (car i.m))
+		      (mime-info-selector (car i.m))
+		      (selected-message)
+		      (selected-buffer)))))
 
-(define (maybe-prompt-for-mime-attachment mark always-prompt?)
-  (let ((attachment (mark-mime-attachment mark)))
-    (if (and attachment (not always-prompt?))
-	attachment
-	(let ((attachments (buffer-mime-attachments (mark-buffer mark))))
-	  (if (null? attachments)
+(define-command imail-toggle-attachment
+  "Expand or collapse the attachment at point.
+If point is not on an attachment, prompts for the attachment to save.
+With prefix argument, prompt even when point is on an attachment."
+  "P"
+  (lambda (always-prompt?)
+    (let ((i.m
+	   (maybe-prompt-for-mime-info "Toggle attachment"
+				       (current-point)
+				       always-prompt?)))
+      (toggle-mime-part (car i.m) (cdr i.m) (selected-message)))))
+
+(define (maybe-prompt-for-mime-info prompt mark always-prompt?)
+  (let ((info (mark-mime-info mark)))
+    (if (and info (not always-prompt?))
+	(cons info mark)
+	(let ((alist
+	       (uniquify-mime-attachment-names
+		(map (lambda (i.m)
+		       (cons (mime-attachment-name (car i.m) #t)
+			     i.m))
+		     (buffer-mime-info (mark-buffer mark))))))
+	  (if (null? alist)
 	      (editor-error "This message has no attachments."))
-	  (let ((alist
-		 (uniquify-mime-attachment-names
-		  (map (lambda (b.s)
-			 (cons (mime-attachment-name (car b.s) (cdr b.s) #t)
-			       b.s))
-		       attachments))))
-	    (prompt-for-alist-value "Save attachment"
-				    alist
-				    (and attachment
-					 (let ((entry
-						(list-search-positive alist
-						  (lambda (entry)
-						    (eq? (cdr entry)
-							 attachment)))))
-					   (and entry
-						(car entry))))
-				    #f))))))
+	  (prompt-for-alist-value prompt
+				  alist
+				  (and info
+				       (let loop ((alist alist))
+					 (if (pair? alist)
+					     (if (eq? (cadar alist) info)
+						 (caar alist)
+						 (loop (cdr alist))))))
+				  #f)))))
 
 (define (uniquify-mime-attachment-names alist)
   (let loop ((alist alist) (converted '()))
@@ -844,7 +856,7 @@ With prefix argument, prompt even when point is on an attachment."
 		    converted))
 	(reverse! converted))))
 
-(define (save-mime-attachment body selector message buffer)
+(define (save-mime-part body selector message buffer)
   (let ((filename
 	 (let ((history 'IMAIL-SAVE-ATTACHMENT))
 	   (prompt-for-file
@@ -906,6 +918,21 @@ With prefix argument, prompt even when point is on an attachment."
   (char-set-invert
    (char-set-difference char-set:graphic
 			char-set:mime-attachment-filename-delimiters)))
+
+(define (toggle-mime-part info mark message)
+  (set-mime-info-expanded?! info (not (mime-info-expanded? info)))
+  (let ((region (specific-property-region mark 'IMAIL-MIME-INFO))
+	(buffer (mark-buffer mark)))
+    (let ((point (mark-right-inserting-copy (buffer-point buffer))))
+      (with-read-only-defeated mark
+	(lambda ()
+	  (region-delete! region)
+	  (let ((mark (mark-left-inserting-copy (region-start region))))
+	    (insert-mime-info info message mark)
+	    (mark-temporary! mark))))
+      (mark-temporary! point)
+      (set-buffer-point! buffer point))
+    (buffer-not-modified! buffer)))
 
 ;;;; Sending mail
 
@@ -1989,13 +2016,25 @@ Negative argument means search in reverse."
 		(insert-string boundary mark)))
 	  (insert-newline mark)
 	  (insert-newline mark)))))
+
+(define (mime-part-encoding context body)
+  (let ((encoding
+	 (let ((enclosure (insert-mime-context-enclosure context)))
+	   (and enclosure
+		(eq? (mime-body-type enclosure) 'MESSAGE)
+		(eq? (mime-body-subtype enclosure) 'RFC822)
+		(mime-body-one-part-encoding enclosure)))))
+    (if (and encoding (not (memq encoding '(7BIT 8BIT BINARY))))
+	;; This is illegal, but Netscape does it.
+	encoding
+	(mime-body-one-part-encoding body))))
 
 (define-generic insert-mime-message-part (message body selector context mark))
 
 (define-method insert-mime-message-part
     (message (body <mime-body>) selector context mark)
-  message
-  (insert-mime-message-attachment 'ATTACHMENT body selector context mark))
+  (insert-mime-message-attachment 'ATTACHMENT message body selector context
+				  mark))
 
 (define-method insert-mime-message-part
     (message (body <mime-body-multipart>) selector context mark)
@@ -2006,8 +2045,7 @@ Negative argument means search in reverse."
 	  (if (ref-variable imail-use-original-mime-boundaries mark)
 	      (mime-body-parameter body 'BOUNDARY "----------")
 	      'SIMPLE)))
-	(show-alternatives?
-	 (ref-variable imail-mime-show-alternatives mark)))
+	(show-alternatives? (ref-variable imail-mime-show-alternatives mark)))
     (do ((parts (mime-body-multipart-parts body) (cdr parts))
 	 (i 0 (fix:+ i 1)))
 	((null? parts))
@@ -2016,8 +2054,8 @@ Negative argument means search in reverse."
 	(if (and (fix:> i 0)
 		 (eq? (mime-body-subtype body) 'ALTERNATIVE))
 	    (if show-alternatives?
-		(insert-mime-message-attachment 'ALTERNATIVE part selector
-						context mark))
+		(insert-mime-message-attachment 'ALTERNATIVE message part
+						selector context mark))
 	    (insert-mime-message-part message part selector context mark))))))
 
 (define-method insert-mime-message-part
@@ -2039,130 +2077,153 @@ Negative argument means search in reverse."
 
 (define-method insert-mime-message-part
     (message (body <mime-body-text>) selector context mark)
-  (let* ((enclosure (insert-mime-context-enclosure context))
-	 (message-enclosure?
-	  (and enclosure
-	       (eq? (mime-body-type enclosure) 'MESSAGE)
-	       (eq? (mime-body-subtype enclosure) 'RFC822)))
-	 (encoding
-	  (let ((encoding
-		 (and message-enclosure?
-		      (mime-body-one-part-encoding enclosure))))
-	    (if (and encoding (not (memq encoding '(7BIT 8BIT BINARY))))
-		;; This is illegal, but Netscape does it.
-		encoding
-		(mime-body-one-part-encoding body)))))
-    (if (and (or (not enclosure)
-		 (let ((disposition (mime-body-disposition body)))
-		   (and disposition
-			(eq? (car disposition) 'INLINE)))
-		 (let ((subtype (mime-body-subtype body)))
-		   (or (eq? subtype 'PLAIN)
-		       (memq subtype
-			     (ref-variable imail-inline-mime-text-subtypes
-					   mark)))))
-	     (known-mime-encoding? encoding)
-	     (re-string-match
-	      (string-append "\\`"
-			     (apply regexp-group
-				    (ref-variable imail-known-mime-charsets
-						  mark))
-			     "\\'")
-	      (mime-body-parameter body 'CHARSET "us-ascii")
-	      #t))
-	(begin
-	  (maybe-insert-mime-boundary context mark)
-	  (call-with-auto-wrapped-output-mark
-	   mark
-	   (insert-mime-context-left-margin context)
-	   (lambda (port)
-	     (call-with-mime-decoding-output-port encoding port #t
-	       (lambda (port)
-		 (write-mime-message-body-part message
-					       (if (or (not enclosure)
-						       message-enclosure?)
-						   `(,@selector TEXT)
-						   selector)
-					       #t
-					       port))))))
-	(insert-mime-message-attachment 'ATTACHMENT body selector context
-					mark))))
-
-(define (insert-mime-message-attachment class body selector context mark)
+  (if (and (or (not (insert-mime-context-enclosure context))
+	       (let ((disposition (mime-body-disposition body)))
+		 (and disposition
+		      (eq? (car disposition) 'INLINE)))
+	       (let ((subtype (mime-body-subtype body)))
+		 (or (eq? subtype 'PLAIN)
+		     (memq subtype
+			   (ref-variable imail-inline-mime-text-subtypes
+					 mark)))))
+	   (known-mime-encoding? (mime-part-encoding context body))
+	   (re-string-match
+	    (string-append "\\`"
+			   (apply regexp-group
+				  (ref-variable imail-known-mime-charsets
+						mark))
+			   "\\'")
+	    (mime-body-parameter body 'CHARSET "us-ascii")
+	    #t))
+      (begin
+	(maybe-insert-mime-boundary context mark)
+	(insert-mime-info (make-mime-info 'INLINE #t body selector context)
+			  message
+			  mark))
+      (insert-mime-message-attachment 'ATTACHMENT message body selector context
+				      mark)))
+
+(define (insert-mime-message-attachment class message body selector context
+					mark)
   (if (not (insert-mime-context-inline-only? context))
       (begin
 	(maybe-insert-mime-boundary context mark)
-	(let ((start (mark-right-inserting-copy mark)))
-	  (insert-string "<IMAIL-" mark)
-	  (insert-string (string-upcase (symbol->string class)) mark)
-	  (insert-string " " mark)
-	  (let ((column (mark-column mark)))
-	    (let ((name (mime-attachment-name body selector #f)))
-	      (if name
-		  (begin
-		    (insert-string "name=" mark)
-		    (insert name mark)
-		    (insert-newline mark)
-		    (change-column column mark))))
-	    (insert-string "type=" mark)
-	    (insert (mime-body-type body) mark)
-	    (insert-string "/" mark)
-	    (insert (mime-body-subtype body) mark)
-	    (insert-newline mark)
-	    (if (eq? (mime-body-type body) 'TEXT)
-		(begin
-		  (change-column column mark)
-		  (insert-string "charset=" mark)
-		  (insert (mime-body-parameter body 'CHARSET "us-ascii") mark)
-		  (insert-newline mark)))
-	    (let ((encoding (mime-body-one-part-encoding body)))
-	      (if (not (known-mime-encoding? encoding))
-		  (begin
-		    (change-column column mark)
-		    (insert-string "encoding=" mark)
-		    (insert encoding mark)
-		    (insert-newline mark))))
-	    (change-column column mark)
-	    (insert-string "length=" mark)
-	    (insert (mime-body-one-part-n-octets body) mark))
-	  (insert-string ">" mark)
-	  (region-put! start mark 'IMAIL-MIME-ATTACHMENT (cons body selector))
-	  (mark-temporary! start))
-	(insert-newline mark))))
+	(insert-mime-info (make-mime-info class #f body selector context)
+			  message
+			  mark))))
+
+(define (insert-mime-info info message mark)
+  (let ((start (mark-right-inserting-copy mark)))
+    (if (mime-info-expanded? info)
+	(insert-mime-info-expanded info message mark)
+	(insert-mime-info-collapsed info message mark))
+    (attach-mime-info start mark info)
+    (mark-temporary! start)))
 
+(define (insert-mime-info-expanded info message mark)
+  (let ((context (mime-info-context info)))
+    (call-with-auto-wrapped-output-mark
+     mark
+     (insert-mime-context-left-margin context)
+     (lambda (port)
+       (call-with-mime-decoding-output-port
+	(mime-part-encoding context (mime-info-body info))
+	port
+	#t
+	(lambda (port)
+	  (write-mime-message-body-part
+	   message
+	   (if (let ((enclosure (insert-mime-context-enclosure context)))
+		 (or (not enclosure)
+		     (and (eq? (mime-body-type enclosure) 'MESSAGE)
+			  (eq? (mime-body-subtype enclosure) 'RFC822))))
+	       `(,@(mime-info-selector info) TEXT)
+	       (mime-info-selector info))
+	   #t
+	   port)))))))
+
+(define (insert-mime-info-collapsed info message mark)
+  message
+  (let ((body (mime-info-body info)))
+    (insert-string "<IMAIL-" mark)
+    (insert-string (string-upcase (symbol->string (mime-info-class info)))
+		   mark)
+    (insert-string " " mark)
+    (let ((column (mark-column mark)))
+      (let ((name (mime-attachment-name info #f)))
+	(if name
+	    (begin
+	      (insert-string "name=" mark)
+	      (insert name mark)
+	      (insert-newline mark)
+	      (change-column column mark))))
+      (insert-string "type=" mark)
+      (insert (mime-body-type body) mark)
+      (insert-string "/" mark)
+      (insert (mime-body-subtype body) mark)
+      (insert-newline mark)
+      (if (eq? (mime-body-type body) 'TEXT)
+	  (begin
+	    (change-column column mark)
+	    (insert-string "charset=" mark)
+	    (insert (mime-body-parameter body 'CHARSET "us-ascii") mark)
+	    (insert-newline mark)))
+      (let ((encoding (mime-body-one-part-encoding body)))
+	(if (not (known-mime-encoding? encoding))
+	    (begin
+	      (change-column column mark)
+	      (insert-string "encoding=" mark)
+	      (insert encoding mark)
+	      (insert-newline mark))))
+      (change-column column mark)
+      (insert-string "length=" mark)
+      (insert (mime-body-one-part-n-octets body) mark))
+    (insert-string ">" mark)
+    (insert-newline mark)))
+
 (define (known-mime-encoding? encoding)
   (memq encoding '(7BIT 8BIT BINARY QUOTED-PRINTABLE BASE64)))
 
-(define (mime-attachment-name body selector provide-default?)
-  (or (mime-body-parameter body 'NAME #f)
+(define (mime-attachment-name info provide-default?)
+  (or (mime-body-parameter (mime-info-body info) 'NAME #f)
       (and provide-default?
-	   (string-append "unnamed-attachment-"
-			  (if (null? selector)
-			      "0"
-			      (decorated-string-append
-			       "" "." ""
-			       (map (lambda (n) (number->string (+ n 1)))
-				    selector)))))))
+	   (string-append (if (eq? (mime-info-class info) 'INLINE)
+			      "inline-"
+			      "unnamed-attachment-")
+			  (let ((selector (mime-info-selector info)))
+			    (if (null? selector)
+				"0"
+				(decorated-string-append
+				 "" "." ""
+				 (map (lambda (n) (number->string (+ n 1)))
+				      selector))))))))
 
-(define (mark-mime-attachment mark)
-  (region-get mark 'IMAIL-MIME-ATTACHMENT #f))
+(define (attach-mime-info start end info)
+  (region-put! start end 'IMAIL-MIME-INFO info))
 
-(define (buffer-mime-attachments buffer)
+(define (mark-mime-info mark)
+  (region-get mark 'IMAIL-MIME-INFO #f))
+
+(define (buffer-mime-info buffer)
   (let ((end (buffer-end buffer)))
     (let loop ((start (buffer-start buffer)) (attachments '()))
-      (let ((index
-	     (next-specific-property-change (mark-group start)
-					    (mark-index start)
-					    (mark-index end)
-					    'IMAIL-MIME-ATTACHMENT))
+      (let ((mark
+	     (find-next-specific-property-change start end 'IMAIL-MIME-INFO))
 	    (attachments
-	     (let ((attachment (region-get start 'IMAIL-MIME-ATTACHMENT #f)))
+	     (let ((attachment (region-get start 'IMAIL-MIME-INFO #f)))
 	       (if attachment
-		   (cons attachment attachments)
+		   (cons (cons attachment start) attachments)
 		   attachments))))
-	(if index
-	    (loop (make-mark (mark-group start) index) attachments)
+	(if mark
+	    (loop mark attachments)
 	    (reverse! attachments))))))
+
+(define-structure mime-info
+  (class #f read-only #t)
+  (expanded? #f)
+  (body #f read-only #t)
+  (selector #f read-only #t)
+  (context #f read-only #t))
 
 (define (call-with-mime-decoding-output-port encoding port text? generator)
   (case encoding

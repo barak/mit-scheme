@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.97 2000/06/26 15:28:37 cph Exp $
+$Id: todo.txt,v 1.98 2000/06/26 19:02:39 cph Exp $
 
 Bug fixes
 ---------
@@ -34,18 +34,12 @@ New features
 * Examine spec for text/enriched and see if it can be incorporated
   into the reader.
 
-* Command to save an attachment should work on inline entities too.
-
 * Support the "flagged" message flag by highlighting messages with
   this flag in the summary buffer.
 
 * When yanking a message into a reply buffer, need option to quote the
   original message using MIME, rather than the current copy-and-indent
   mechanism.
-
-* Command to expand attachment inline.  Sometimes attachments aren't
-  big binary things but small text things that are easier to view
-  inline.
 
 * Set the IMAIL buffer's modification bit to indicate whether the
   folder is locally modified.  Meaningful only for file folders.  Hook
