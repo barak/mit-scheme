@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dosshell.scm,v 1.1 1993/02/25 02:50:59 gjr Exp $
+$Id: dosshell.scm,v 1.2 1993/02/25 02:56:29 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -42,6 +42,8 @@ license should have been included along with this file. |#
 
 (declare (usual-integrations))
 
+(load-option 'DOSPROCESS)
+
 (define-major-mode pseudo-shell fundamental "Pseudo Shell"
   "Major mode for executing DOS commands.
 Return executes the current line as a DOS command.

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: doscom.scm,v 1.1 1993/02/25 02:49:43 gjr Exp $
+$Id: doscom.scm,v 1.2 1993/02/25 02:56:52 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -41,6 +41,8 @@ license should have been included along with this file. |#
 
 (declare (usual-integrations))
 
+(load-option 'DOSPROCESS)
+
 (define-command shell-command
   "Execute string COMMAND in inferior shell; display output, if any.
 Optional second arg true (prefix arg, if interactive) means
