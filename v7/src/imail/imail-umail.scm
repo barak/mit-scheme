@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.38 2000/07/05 20:02:24 cph Exp $
+;;; $Id: imail-umail.scm,v 1.39 2000/10/19 21:37:38 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -166,19 +166,20 @@
 (define-method write-file-folder ((folder <umail-folder>) pathname)
   (call-with-binary-output-file pathname
     (lambda (port)
-      (for-each (lambda (message) (write-umail-message message port))
+      (for-each (lambda (message) (write-umail-message message #t port))
 		(file-folder-messages folder)))))
 
 (define-method append-message-to-file ((message <message>) (url <umail-url>))
   (let ((port (open-binary-output-file (file-url-pathname url) #t)))
-    (write-umail-message message port)
+    (write-umail-message message #t port)
     (close-port port)))
 
-(define (write-umail-message message port)
+(define (write-umail-message message output-flags? port)
   (write-string (umail-message-from-line message) port)
   (newline port)
-  (write-header-field (message-flags->header-field (message-flags message))
-		      port)
+  (if output-flags?
+      (write-header-field (message-flags->header-field (message-flags message))
+			  port))
   (write-header-fields (message-header-fields message) port)
   (newline port)
   (for-each (lambda (line)
@@ -193,22 +194,27 @@
 (define (extract-umail-from-time string)
   (let ((regs (re-string-search-forward unix-from-time-regexp string)))
     (and regs
-	 (ctime-string->universal-time
-	  (string-append
-	   (re-match-extract string regs 1)
-	   " "
-	   (re-match-extract string regs 2)
-	   " "
-	   (re-match-extract string regs 3)
-	   " "
-	   (re-match-extract string regs 4)
-	   " "
-	   (re-match-extract string regs 8))
-	  (let ((tz1 (re-match-extract string regs 6))
-		(tz2 (re-match-extract string regs 9)))
-	    (cond ((not (string-null? tz1)) (string->time-zone tz1))
-		  ((not (string-null? tz2)) (string->time-zone tz2))
-		  (else #f)))))))
+	 (let ((t
+		(ignore-errors
+		 (lambda ()
+		   (ctime-string->universal-time
+		    (string-append
+		     (re-match-extract string regs 1)
+		     " "
+		     (re-match-extract string regs 2)
+		     " "
+		     (re-match-extract string regs 3)
+		     " "
+		     (re-match-extract string regs 4)
+		     " "
+		     (re-match-extract string regs 8))
+		    (let ((tz1 (re-match-extract string regs 6))
+			  (tz2 (re-match-extract string regs 9)))
+		      (cond ((not (string-null? tz1)) (string->time-zone tz1))
+			    ((not (string-null? tz2)) (string->time-zone tz2))
+			    (else #f))))))))
+	   (and (not (condition? t))
+		t)))))
 
 (define unix-from-time-regexp
   ;; This very complex regular expression taken from Emacs 20.
