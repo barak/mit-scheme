@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.41 1993/03/08 07:08:01 gjr Exp $
+$Id: load.scm,v 14.42 1993/03/13 05:39:16 jawilson Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -250,7 +250,7 @@ MIT in each case. |#
       (and (object-type? (ucode-type compiled-entry) object)
 	   (let* ((block ((ucode-primitive compiled-code-address->block 1)
 			  object))
-		  (index (- (system-vector-length block) 2)))
+		  (index (- (system-vector-length block) 3)))
 	     (and (not (negative? index))
 		  (let ((frob (system-vector-ref block index)))
 		    (and (pair? frob)
