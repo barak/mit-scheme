@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/toplev.scm,v 4.2 1988/10/29 00:07:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/toplev.scm,v 4.3 1988/10/30 14:27:50 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -72,6 +72,12 @@ Currently only the 68000 implementation needs this."
 			(pathname/normalize pathname)
 			syntax-table))
 
+(define (sf/set-usual-integrations-default-deletions! del-list)
+  (if (not (list-of-symbols? del-list))
+      (error "sf/set-usual-integrations-default-deletions!: Bad deletion list"
+	     del-list))
+  (set! sf/usual-integrations-default-deletions del-list))
+
 (define (sf/add-file-declarations! pathname declarations)
   (let ((pathname (pathname/normalize pathname)))
     (pathname-map/insert! file-info/declarations
@@ -107,6 +113,9 @@ Currently only the 68000 implementation needs this."
   false)
 
 (define sf/top-level-definitions
+  '())
+
+(define sf/usual-integrations-default-deletions
   '())
 
 (define (list-of-symbols? object)

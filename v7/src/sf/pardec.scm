@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/pardec.scm,v 4.1 1988/06/13 12:29:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/pardec.scm,v 4.2 1988/10/30 14:31:20 jinx Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -193,25 +193,27 @@ MIT in each case. |#
 (define-declaration 'USUAL-INTEGRATIONS true
   (lambda (block table/cons table deletions)
     block				;ignored
-    (let ((finish
-	   (lambda (table operation names vals)
-	     (with-values
-		 (lambda ()
-		   (if (null? deletions)
-		       (values names vals)
-		       (let deletion-loop ((names names) (vals vals))
-			 (cond ((null? names) (values '() '()))
-			       ((memq (car names) deletions)
-				(deletion-loop (cdr names) (cdr vals)))
-			       (else
-				(with-values
-				    (lambda ()
-				      (deletion-loop (cdr names) (cdr vals)))
-				  (lambda (names* vals*)
-				    (values (cons (car names) names*)
-					    (cons (car vals) vals*)))))))))
-	       (lambda (names vals)
-		 (bind/values table/cons table operation false names vals))))))
+    (let* ((deletions (append sf/usual-integrations-default-deletions
+			      deletions))
+	   (finish
+	    (lambda (table operation names vals)
+	      (with-values
+		  (lambda ()
+		    (if (null? deletions)
+			(values names vals)
+			(let deletion-loop ((names names) (vals vals))
+			  (cond ((null? names) (values '() '()))
+				((memq (car names) deletions)
+				 (deletion-loop (cdr names) (cdr vals)))
+				(else
+				 (with-values
+				     (lambda ()
+				       (deletion-loop (cdr names) (cdr vals)))
+				   (lambda (names* vals*)
+				     (values (cons (car names) names*)
+					     (cons (car vals) vals*)))))))))
+		(lambda (names vals)
+		  (bind/values table/cons table operation false names vals))))))
       (finish (finish table 'INTEGRATE
 		      usual-integrations/constant-names
 		      usual-integrations/constant-values)
