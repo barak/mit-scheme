@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.29 2000/05/17 15:03:10 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.30 2000/05/17 17:54:08 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -245,93 +245,6 @@
 	(write-char #\, port)
 	(write-markers labels))))
   (newline port))
-
-;;;; Get new mail
-
-(define (rmail-get-new-mail folder)
-  (let ((pathnames (rmail-folder-inbox-list folder)))
-    (if (null? pathnames)
-	#f
-	(let ((initial-count (folder-length folder)))
-	  (guarantee-rmail-variables-initialized)
-	  (let ((inbox-folders
-		 (map (lambda (pathname)
-			(let ((inbox (read-rmail-inbox folder pathname #t)))
-			  (let ((n (folder-length inbox)))
-			    (do ((index 0 (+ index 1)))
-				((= index n))
-			      (append-message (get-message inbox index)
-					      (folder-url folder))))
-			  inbox))
-		      pathnames)))
-	    (save-folder folder)
-	    (for-each (lambda (folder)
-			(if folder
-			    (delete-folder folder)))
-		      inbox-folders))
-	  (- (folder-length folder) initial-count)))))
-
-(define (rmail-folder-inbox-list folder)
-  (let ((inboxes
-	 (get-first-header-field-value (rmail-folder-header-fields folder)
-				       "mail" #f)))
-    (cond (inboxes
-	   (map (let ((directory
-		       (directory-pathname (file-folder-pathname folder))))
-		  (lambda (filename)
-		    (merge-pathnames (string-trim filename) directory)))
-		(burst-string inboxes #\, #f)))
-	  ((pathname=? (edwin-variable-value 'RMAIL-FILE-NAME)
-		       (url-body (folder-url folder)))
-	   (edwin-variable-value 'RMAIL-PRIMARY-INBOX-LIST))
-	  (else '()))))
-
-(define (read-rmail-inbox folder pathname rename?)
-  (let ((pathname
-	 (cond ((not rename?)
-		pathname)
-	       ((pathname=? rmail-spool-directory
-			    (directory-pathname pathname))
-		(rename-inbox-using-movemail
-		 pathname
-		 (directory-pathname (file-folder-pathname folder))))
-	       (else
-		(rename-inbox-using-rename pathname)))))
-    (and (file-exists? pathname)
-	 (read-umail-file pathname))))
-
-(define (rename-inbox-using-movemail pathname directory)
-  (let ((pathname
-	 ;; On some systems, /usr/spool/mail/foo is a directory and
-	 ;; the actual inbox is /usr/spool/mail/foo/foo.
-	 (if (file-directory? pathname)
-	     (merge-pathnames (file-pathname pathname)
-			      (pathname-as-directory pathname))
-	     pathname))
-	(target (merge-pathnames ".newmail" directory)))
-    (if (and (file-exists? pathname)
-	     (not (file-exists? target)))
-	(let ((port (make-accumulator-output-port)))
-	  (let ((result
-		 (run-shell-command
-		  (string-append "movemail "
-				 (->namestring pathname)
-				 " "
-				 (->namestring target))
-		  'OUTPUT port)))
-	    (if (not (= 0 result))
-		(error "Movemail failure:"
-		       (get-output-from-accumulator port))))))
-    target))
-
-(define (rename-inbox-using-rename pathname)
-  (let ((target
-	 (merge-pathnames (string-append (file-namestring pathname) "+")
-			  (directory-pathname pathname))))
-    (if (and (file-exists? pathname)
-	     (not (file-exists? target)))
-	(rename-file pathname target))
-    target))
 
 ;;;; Attributes and labels
 
