@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uproc.scm,v 1.4 1992/12/03 19:18:07 cph Exp $
+$Id: uproc.scm,v 1.5 1992/12/10 01:25:52 cph Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -83,12 +83,11 @@ MIT in each case. |#
 	 (skip-entities (if (%entity-is-apply-hook? object)
 			    (apply-hook-procedure object)
 			    (entity-procedure object))))
-	((and (%record? object)
-	      (let ((type (%record-ref object 0)))
-		(and (%record? type)
-		     (>= (%record-length type) 2)
-		     (%record-ref type 1))))
-	 => skip-entities)
+	((%record? object)
+	 (let ((method (%record-application-method record)))
+	   (if method
+	       (skip-entities method)
+	       object)))
 	(else
 	 object)))
 

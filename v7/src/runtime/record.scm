@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.17 1992/12/07 19:06:52 cph Exp $
+$Id: record.scm,v 1.18 1992/12/10 01:25:37 cph Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -39,12 +39,15 @@ MIT in each case. |#
 ;;; conforms to R4RS proposal
 
 (declare (usual-integrations))
-
+
 (define-primitives
   (%record -1)
   (%record-length 1)
   (%record-ref 2)
-  (%record-set! 3))
+  (%record-set! 3)
+  (primitive-object-ref 2)
+  (primitive-object-set! 3)
+  (primitive-object-set-type 2))
 
 (define-integrable (%record? object)
   (object-type? (ucode-type record) object))
@@ -61,18 +64,42 @@ MIT in each case. |#
 (define (%record-copy record)
   (let ((length (%record-length record)))
     (let ((result (object-new-type (ucode-type record) (make-vector length))))
+      ;; Clobber RESULT's length field with that of RECORD, since
+      ;; there is important information in the type of that field that
+      ;; is not preserved by %RECORD-LENGTH.
+      (primitive-object-set! result 0 (primitive-object-ref record 0))
       (do ((index 0 (+ index 1)))
 	  ((= index length))
 	(%record-set! result index (%record-ref record index)))
       result)))
+
+(define (%record-application-method record)
+  ;; This procedure must match the code in "microcode/interp.c".
+  (let ((record-type (%record-ref record 0)))
+    (and (and (object-type? (ucode-type constant)
+			    (primitive-object-ref record-type 0))
+	      (>= (%record-length record-type) 2))
+	 (let ((method (%record-ref record-type 1)))
+	   (and (not (eq? method record))
+		method)))))
+
+(define (%record-type-has-application-method! record-type)
+  (primitive-object-set!
+   record-type
+   0
+   (primitive-object-set-type (ucode-type constant)
+			      (primitive-object-ref record-type 0))))
 
 (define (make-record-type type-name field-names)
   (guarantee-list-of-unique-symbols field-names 'MAKE-RECORD-TYPE)
-  (%record record-type-type
-	   false
-	   (->string type-name)
-	   (list-copy field-names)
-	   false))
+  (let ((record-type
+	 (%record record-type-type
+		  false
+		  (->string type-name)
+		  (list-copy field-names)
+		  false)))
+    (%record-type-has-application-method! record-type)
+    record-type))
 
 (define (record-type? object)
   (and (%record? object)
@@ -131,6 +158,7 @@ MIT in each case. |#
 			  RECORD-TYPE-UNPARSER-METHOD)
 			false)))
 	  (%record-set! record-type-type 0 record-type-type)
+	  (%record-type-has-application-method! record-type-type)
 	  record-type-type))
   unspecific)
 
