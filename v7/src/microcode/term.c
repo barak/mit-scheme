@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: term.c,v 1.10 1993/11/08 20:58:12 cph Exp $
+$Id: term.c,v 1.11 1994/12/19 22:29:05 cph Exp $
 
-Copyright (c) 1990-1993 Massachusetts Institute of Technology
+Copyright (c) 1990-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -40,6 +40,10 @@ extern long death_blow;
 extern char * Term_Messages [];
 extern void EXFUN (get_band_parameters, (long * heap_size, long * const_size));
 extern void EXFUN (Reset_Memory, (void));
+
+#if WINNT || defined(_OS2)
+#define USING_MESSAGE_BOX_FOR_FATAL_OUTPUT
+#endif
 
 static void EXFUN (edwin_auto_save, (void));
 static void EXFUN (delete_temp_files, (void));
@@ -114,15 +118,21 @@ DEFUN (termination_prefix, (code), int code)
     }
   else
     {
-      outf_fatal("\n");
+#ifdef USING_MESSAGE_BOX_FOR_FATAL_OUTPUT
+      outf_fatal ("Reason for termination:");
+#endif
+      outf_fatal ("\n");
       if ((code < 0) || (code > MAX_TERMINATION))
-	outf_fatal("Unknown termination code 0x%x", code);
+	outf_fatal ("Unknown termination code 0x%x", code);
       else
-	outf_fatal("%s", (Term_Messages [code]));
+	outf_fatal ("%s", (Term_Messages [code]));
       if (WITHIN_CRITICAL_SECTION_P ())
 	outf_fatal (" within critical section \"%s\"",
 		    (CRITICAL_SECTION_NAME ()));
-      outf_fatal(".\n");
+      outf_fatal (".");
+#ifndef USING_MESSAGE_BOX_FOR_FATAL_OUTPUT
+      outf_fatal ("\n");
+#endif
     }
 }
 
@@ -135,11 +145,13 @@ DEFUN (termination_suffix, (code, value, abnormal_p),
 #endif
   edwin_auto_save ();
   delete_temp_files ();
+#ifdef USING_MESSAGE_BOX_FOR_FATAL_OUTPUT
+  /* Don't put up message box for ordinary exit.  */
+  if (code != TERM_HALT)
+#endif
+    outf_flush_fatal();
 #if WINNT
-  if (code != TERM_HALT)  outf_flush_fatal(); /*dont salute*/
   winnt_deallocate_registers();
-#else
-  outf_flush_fatal();
 #endif
   Reset_Memory ();
   EXIT_SCHEME (value);
