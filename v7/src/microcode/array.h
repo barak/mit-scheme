@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.h,v 9.25 1988/01/07 19:17:54 pas Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.h,v 9.26 1988/02/14 20:16:01 pas Rel $ */
 
 
 #define REAL float
@@ -75,36 +75,42 @@ MIT in each case. */
 #define ARRAY_MAX_LENGTH 1000000
 /* This is 4 Mbytes for what it's worth... */
 
-/* The following Macros implement useful procs on arrays 
-   Note: The running index "MCRINDX" in the macro loops has been chosen
-   so as to avoid name shadowing other variables when substituted.
+/* The following macros implement commonly used array procs. */
+
+/* In the following macros we assign the arguments to local variables 
+   so as to do any computation (referencing, etc.) only once outside the loop.
+   Otherwise it would be done again and again inside the loop -- look at "cc -v -S -O" to see the difference
+   */
+/* The names, like "MCRINDX", have been chosen to avoid shadowing the variables that are substituted in. 
+   WARNING: Do not use any names starting with the prefix "mcr", when calling these macros
    */
 
-#define C_Array_Scale(a,scale, len)  \
-{ register long mcrindx;             \
-  for (mcrindx=0;mcrindx<len;mcrindx++) a[mcrindx] = a[mcrindx] * scale; }
+#define C_Array_Scale(a,scale, N)               \
+{ register long mcrindx;                        \
+  register REAL mcrd0, *mcrfrom;                \
+  mcrd0 = scale;                                \
+  mcrfrom = a;                                  \
+  for (mcrindx=0; mcrindx<N; mcrindx++) mcrfrom[mcrindx] = mcrfrom[mcrindx] * mcrd0; }
 #define Array_Scale(ar,scale) \
-  C_Array_Scale(Scheme_Array_To_C_Array(ar), \
-		scale,                       \
-		Array_Length(ar))
+  C_Array_Scale(Scheme_Array_To_C_Array(ar), scale, Array_Length(ar))
 
-#define C_Array_Copy(ar1,ar2, len) \
-{ register long mcrindx; for (mcrindx=0; mcrindx<len; mcrindx++) ar2[mcrindx] = ar1[mcrindx]; }
+#define C_Array_Copy(from,to,N)                 \
+{ register long mcrindx;                        \
+  register REAL *mcrfrom, *mcrto;               \
+  mcrfrom = from;                               \
+  mcrto   = to;                                 \
+  for (mcrindx=0; mcrindx<N; mcrindx++) mcrto[mcrindx] = mcrfrom[mcrindx]; }
 #define Array_Copy(ar1,ar2) \
-  C_Array_Copy(Scheme_Array_To_C_Array(ar1), \
-	       Scheme_Array_To_C_Array(ar2), \
-	       Array_Length(ar1))
+  C_Array_Copy(Scheme_Array_To_C_Array(ar1), Scheme_Array_To_C_Array(ar2), Array_Length(ar1))
 
-#define C_Array_Add_Into_Second_One(ar1,ar2,len) \
-{ register long mcrindx; for (mcrindx=0; mcrindx<len; mcrindx++) ar2[mcrindx] = ar1[mcrindx] + ar2[mcrindx]; }
+#define C_Array_Add_Into_Second_One(from,to,N)  \
+{ register long mcrindx;                        \
+  register REAL *mcrfrom, *mcrto;               \
+  mcrfrom = from;                               \
+  mcrto   = to;                                 \
+  for (mcrindx=0; mcrindx<N; mcrindx++) mcrto[mcrindx] = mcrto[mcrindx] + mcrfrom[mcrindx]; }
 #define Array_Add_Into_Second_One(ar1,ar2) \
-  C_Array_Add_Into_Second_One(Scheme_Array_To_C_Array(ar1), \
-			      Scheme_Array_To_C_Array(ar2), \
-			      Array_Length(ar1))
-
-#define C_Array_Multiply_Into_Second_One(ar1,ar2, len) \
-{ register long mcrindx;                               \
-  for (mcrindx=0; mcrindx<len; mcrindx++) ar2[mcrindx] = ar1[mcrindx] * ar2[mcrindx] ; }
+  C_Array_Add_Into_Second_One(Scheme_Array_To_C_Array(ar1), Scheme_Array_To_C_Array(ar2), Array_Length(ar1))
 
 /* More Macros about random things
  */
