@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.91 2001/11/26 19:52:48 cph Exp $
+@comment $Id: user.texinfo,v 1.92 2002/02/12 14:54:42 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -22,7 +22,7 @@
 @ifinfo
 This file documents the use of MIT Scheme.
 
-Copyright @copyright{} 1991-2001 Massachusetts Institute of Technology
+Copyright @copyright{} 1991-2002 Massachusetts Institute of Technology
 
 Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version 1.1 or
@@ -35,8 +35,8 @@ Free Documentation License".
 @titlepage
 @title{MIT Scheme User's Manual}
 @subtitle Edition 1.88
-@subtitle for Scheme Release 7.6.0
-@subtitle 26 November 2001
+@subtitle for Scheme Release 7.7.0
+@subtitle 12 February 2002
 @author by Stephen Adams
 @author Chris Hanson
 @author and the MIT Scheme Team
@@ -44,7 +44,7 @@ Free Documentation License".
 @page
 
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1991-2001 Massachusetts Institute of Technology
+Copyright @copyright{} 1991-2002 Massachusetts Institute of Technology
 
 Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version 1.1 or
@@ -1052,8 +1052,8 @@ during evaluation are silently ignored.
 This option causes Scheme to load the @var{file}s (or lists of files)
 following it on the command line, up to (but not including) the next
 option that starts with a hyphen.  The files are loaded in the
-@code{user-initial-environment} using the default syntax table.  Unless
-explicitly handled, errors during loading are silently ignored.
+@code{user-initial-environment}.  Unless explicitly handled, errors
+during loading are silently ignored.
 @end table
 
 @noindent
@@ -1901,16 +1901,6 @@ name (a list of symbols).  If the current @sc{repl} environment does not
 belong to a package then the environment is returned.
 @end deffn
 
-@deffn {procedure+} gst syntax-table
-In addition to the current environment, each @sc{repl} maintains a
-current @dfn{syntax table}.  The current syntax table tells the
-@sc{repl} which keywords are used to identify special forms (e.g.@:
-@code{if}, @code{lambda}).  If you write macros, you may want to
-make your own syntax table, in which case it is useful to be able to
-make that syntax table be the current one; @code{gst} allows you to do
-that.
-@end deffn
-
 @node Loading Files, World Images, REPL, Using Scheme
 @section Loading Files
 
@@ -1920,7 +1910,9 @@ To load files of Scheme code, use the procedure @code{load}:
 @var{Filename} may be a string naming a file, or a list of strings
 naming multiple files.  @var{Environment}, if given, is the environment to
 evaluate the file in; if not given the current @sc{repl} environment is
-used.  Likewise @var{syntax-table} is the syntax table to use.  
+used.
+
+@var{Syntax-table} is no longer used and if supplied will be ignored.
 
 @findex purify
 The optional argument @var{purify?} is a boolean that says whether to
