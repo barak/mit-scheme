@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: unix.scm,v 1.91 1999/01/16 06:04:29 cph Exp $
+;;; $Id: unix.scm,v 1.92 1999/02/01 03:31:01 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -592,62 +592,6 @@ CANNOT contain the 'F' option."
 
 ;;;; Subprocess/Shell Support
 
-(define (os/parse-path-string string)
-  (let ((end (string-length string))
-	(substring
-	 (lambda (string start end)
-	   (pathname-as-directory (substring string start end)))))
-    (let loop ((start 0))
-      (if (< start end)
-	  (let ((index (substring-find-next-char string start end #\:)))
-	    (if index
-		(cons (if (= index start)
-			  false
-			  (substring string start index))
-		      (loop (+ index 1)))
-		(list (substring string start end))))
-	  '()))))
-
-(define (os/find-program program default-directory)
-  (or (unix/find-program program (ref-variable exec-path) default-directory)
-      (error "Can't find program:" (->namestring program))))
-
-(define (unix/find-program program exec-path default-directory)
-  (let ((try
-	 (lambda (pathname)
-	   (and (file-access pathname 1)
-		(->namestring pathname)))))
-    (cond ((pathname-absolute? program)
-	   (try program))
-	  ((not default-directory)
-	   (let loop ((path exec-path))
-	     (and (not (null? path))
-		  (or (and (car path)
-			   (pathname-absolute? (car path))
-			   (try (merge-pathnames program (car path))))
-		      (loop (cdr path))))))
-	  (else
-	   (let ((default-directory (merge-pathnames default-directory)))
-	     (let loop ((path exec-path))
-	       (and (not (null? path))
-		    (or (try (merge-pathnames
-			      program
-			      (if (car path)
-				  (merge-pathnames (car path)
-						   default-directory)
-				  default-directory)))
-			(loop (cdr path))))))))))
-
-(define (os/shell-file-name)
-  (or (get-environment-variable "SHELL")
-      "/bin/sh"))
-
-(define (os/form-shell-command command)
-  (list "-c" command))
-
-(define (os/executable-pathname-types)
-  '())
-
 (define (os/shell-name pathname)
   (file-namestring pathname))
 
@@ -662,7 +606,7 @@ Value is a list of strings."
       ;; than us about what terminal modes to use.
       '("-i" "-T")
       '("-i")))
-
+
 (define (os/default-shell-prompt-pattern)
   "^[^#$>]*[#$>] *")
 
