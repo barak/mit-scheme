@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/types.h,v 9.32 1991/01/24 04:31:04 cph Exp $
+$Id: types.h,v 9.33 1992/12/05 03:33:01 cph Exp $
 
-Copyright (c) 1987-91 Massachusetts Institute of Technology
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -176,6 +176,7 @@ MIT in each case. */
   /* 0x3B */			"STACK-ENVIRONMENT",			\
   /* 0x3C */			"COMPLEX",				\
   /* 0x3D */			"COMPILED-CODE-BLOCK"			\
+  /* 0x3E */			"RECORD"				\
   }
 
 /* Flags and aliases */

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.45 1992/02/03 23:28:28 jinx Exp $
+$Id: gccode.h,v 9.46 1992/12/05 03:33:24 cph Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
@@ -133,6 +133,7 @@ MIT in each case. */
 #define case_simple_Vector				\
  case TC_NON_MARKED_VECTOR:				\
  case TC_VECTOR:					\
+ case TC_RECORD:					\
  case TC_CONTROL_POINT:					\
  case TC_COMBINATION:					\
  case TC_PCOMB3:					\

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: gctype.c,v 9.31 1992/09/26 02:47:42 cph Exp $
+$Id: gctype.c,v 9.32 1992/12/05 03:33:18 cph Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
@@ -108,7 +108,7 @@ int GC_Type_Map[MAX_TYPE_CODE + 1] = {
     GC_Non_Pointer,		/* TC_STACK_ENVIRONMENT */
     GC_Pair,			/* TC_COMPLEX */
     GC_Vector,			/* TC_COMPILED_CODE_BLOCK */
-    GC_Undefined,			/* 0x3E */
+    GC_Vector,			/* TC_RECORD */
 
 #if (TYPE_CODE_LENGTH == 6)
 
