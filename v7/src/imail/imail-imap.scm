@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.190 2001/10/14 02:00:13 cph Exp $
+;;; $Id: imail-imap.scm,v 1.191 2001/11/06 04:44:38 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -1140,10 +1140,14 @@
 (define-method preload-folder-outlines ((folder <imap-folder>))
   (for-each-message folder
     (lambda (message)
-      (if (not (imap-message-header-fields-initialized? message))
-	  (preload-cached-message-item message 'RFC822.HEADER))
-      (if (not (imap-message-length-initialized? message))
-	  (preload-cached-message-item message 'RFC822.SIZE))))
+      (with-folder-locked (message-folder message)
+	(lambda ()
+	  (if (not (imap-message-header-fields-initialized? message))
+	      (preload-cached-message-item message 'RFC822.HEADER))
+	  (if (not (imap-message-length-initialized? message))
+	      (preload-cached-message-item message 'RFC822.SIZE)))
+	(lambda ()
+	  unspecific))))
   (let* ((connection (guarantee-imap-folder-open folder))
 	 (messages
 	  (messages-satisfying folder
@@ -1431,19 +1435,23 @@
   (let ((directory (imap-folder-cache-pathname folder))
 	(uidvalidity (imap-folder-uidvalidity folder)))
     (if uidvalidity
-	(let ((up (merge-pathnames "uidvalidity" directory)))
-	  (if (file-directory? directory)
-	      (let ((uidvalidity* (simple-read-file up)))
-		(if (and (file-regular? up)
-			 (eqv? uidvalidity* uidvalidity))
-		    (remove-expunged-messages folder directory)
-		    (begin
-		      (delete-directory-contents directory)
-		      (simple-write-file uidvalidity up))))
-	      (begin
-		(delete-file-no-errors directory)
-		(guarantee-init-file-directory directory)
-		(simple-write-file uidvalidity up)))))))
+	(with-folder-locked folder
+	  (lambda ()
+	    (let ((up (merge-pathnames "uidvalidity" directory)))
+	      (if (file-directory? directory)
+		  (let ((uidvalidity* (simple-read-file up)))
+		    (if (and (file-regular? up)
+			     (eqv? uidvalidity* uidvalidity))
+			(remove-expunged-messages folder directory)
+			(begin
+			  (delete-directory-contents directory)
+			  (simple-write-file uidvalidity up))))
+		  (begin
+		    (delete-file-no-errors directory)
+		    (guarantee-init-file-directory directory)
+		    (simple-write-file uidvalidity up)))))
+	  (lambda ()
+	    unspecific)))))
 
 (define (remove-expunged-messages folder directory)
   (for-each (lambda (pathname)
@@ -1472,33 +1480,37 @@
 (define (fetch-message-items message keywords suffix)
   (if (equal? keywords '(FLAGS))
       (fetch-message-items-1 message keywords suffix)
-      (let ((alist
-	     (map (lambda (keyword)
-		    (cons keyword
-			  (let ((pathname
-				 (message-item-pathname message keyword)))
-			    (if (file-exists? pathname)
-				(list
-				 (read-cached-message-item message
-							   keyword
-							   pathname))
-				'()))))
-		  keywords)))
-	(let ((uncached
-	       (list-transform-positive alist
-		 (lambda (entry)
-		   (null? (cdr entry))))))
-	  (if (pair? uncached)
-	      (let ((response
-		     (fetch-message-items-1 message
-					    (map car uncached)
-					    suffix)))
-		(cache-fetch-response message response
-		  (lambda (keyword)
-		    (assq keyword alist))
-		  (lambda (keyword item)
-		    (set-cdr! (assq keyword alist) (list item)))))))
-	`(FETCH ,(+ (message-index message) 1) ,@alist))))
+      (with-folder-locked (message-folder message)
+	(lambda ()
+	  (let ((alist
+		 (map (lambda (keyword)
+			(cons keyword
+			      (let ((pathname
+				     (message-item-pathname message keyword)))
+				(if (file-exists? pathname)
+				    (list
+				     (read-cached-message-item message
+							       keyword
+							       pathname))
+				    '()))))
+		      keywords)))
+	    (let ((uncached
+		   (list-transform-positive alist
+		     (lambda (entry)
+		       (null? (cdr entry))))))
+	      (if (pair? uncached)
+		  (let ((response
+			 (fetch-message-items-1 message
+						(map car uncached)
+						suffix)))
+		    (cache-fetch-response message response
+		      (lambda (keyword)
+			(assq keyword alist))
+		      (lambda (keyword item)
+			(set-cdr! (assq keyword alist) (list item)))))))
+	    `(FETCH ,(+ (message-index message) 1) ,@alist)))
+	(lambda ()
+	  (fetch-message-items-1 message keywords suffix)))))
 
 (define (cache-fetch-response message response keyword-predicate save-item)
   (for-each (lambda (keyword)
@@ -1528,26 +1540,35 @@
 
 (define (fetch-message-body-part-to-port message section port)
   (let ((keyword (imap-body-section->keyword section)))
-    (let ((pathname (message-item-pathname message keyword)))
-      (if (not (file-exists? pathname))
-	  (begin
-	    (guarantee-init-file-directory pathname)
-	    (call-with-output-file pathname
-	      (lambda (port)
-		(imap:bind-fetch-body-part-port port
-		  (lambda ()
-		    (fetch-message-body-part-1 message section keyword)))))))
-      (file->port pathname port))))
+    (let ((fetch-to-port
+	   (lambda (port)
+	     (imap:bind-fetch-body-part-port port
+	       (lambda ()
+		 (fetch-message-body-part-1 message section keyword))))))
+      (with-folder-locked (message-folder message)
+	(lambda ()
+	  (let ((pathname (message-item-pathname message keyword)))
+	    (if (not (file-exists? pathname))
+		(begin
+		  (guarantee-init-file-directory pathname)
+		  (call-with-output-file pathname fetch-to-port)))
+	    (file->port pathname port)))
+	(lambda ()
+	  (fetch-to-port port))))))
 
 (define (fetch-message-body-part message section)
   (let ((keyword (imap-body-section->keyword section)))
-    (let ((pathname (message-item-pathname message keyword)))
-      (if (file-exists? pathname)
-	  (file->string pathname)
-	  (let ((part (fetch-message-body-part-1 message section keyword)))
-	    (guarantee-init-file-directory pathname)
-	    (string->file part pathname)
-	    part)))))
+    (with-folder-locked (message-folder message)
+      (lambda ()
+	(let ((pathname (message-item-pathname message keyword)))
+	  (if (file-exists? pathname)
+	      (file->string pathname)
+	      (let ((part (fetch-message-body-part-1 message section keyword)))
+		(guarantee-init-file-directory pathname)
+		(string->file part pathname)
+		part))))
+      (lambda ()
+	(fetch-message-body-part-1 message section keyword)))))
 
 (define (fetch-message-body-part-1 message section keyword)
   (imap:response:fetch-body-part
@@ -1578,24 +1599,64 @@
 			     (symbol-name x)))
 		       section))
 		 "]"))
-
+
 (define (preload-cached-message-item message keyword)
   (let ((pathname (message-item-pathname message keyword)))
     (if (file-exists? pathname)
 	(read-cached-message-item message keyword pathname))))
 
 (define (cache-preload-responses folder keywords responses)
-  (for-each
-   (lambda (response)
-     (cache-fetch-response
-      (%get-message folder (- (imap:response:fetch-index response) 1))
-      response
-      (lambda (keyword) (memq keyword keywords))
-      (lambda (keyword item) keyword item unspecific)))
-   responses))
+  (for-each (lambda (response)
+	      (let ((message
+		     (%get-message folder
+				   (- (imap:response:fetch-index response)
+				      1))))
+		(with-folder-locked (message-folder message)
+		  (lambda ()
+		    (cache-fetch-response message response
+		      (lambda (keyword) (memq keyword keywords))
+		      (lambda (keyword item) keyword item unspecific)))
+		  (lambda ()
+		    unspecific))))
+	    responses))
 
 (define (delete-cached-message message)
-  (delete-file-recursively (imap-message-cache-pathname message)))
+  (with-folder-locked (message-folder message)
+    (lambda ()
+      (delete-file-recursively (imap-message-cache-pathname message)))))
+
+(define (with-folder-locked folder if-locked if-not-locked)
+  (let ((pathname (imap-folder-lock-pathname folder))
+	(locked? #f))
+    (dynamic-wind
+     (lambda () unspecific)
+     (lambda ()
+       (let loop ((i 0))
+	 (without-interrupts
+	  (lambda ()
+	    (set! locked? (allocate-temporary-file pathname))
+	    unspecific))
+	 (cond (locked?
+		(if (> i 0)
+		    (imail-ui:clear-message))
+		(remove-property! folder 'IMAP-CACHE-LOCK-FAILURE)
+		(if-locked))
+	       ((get-property folder 'IMAP-CACHE-LOCK-FAILURE #f)
+		(if-not-locked))
+	       ((= i 2)
+		(imail-ui:clear-message)
+		(store-property! folder 'IMAP-CACHE-LOCK-FAILURE #t)
+		(if-not-locked))
+	       (else
+		(imail-ui:message "Waiting for folder lock..." i)
+		(imail-ui:sit-for 1000)
+		(loop (+ i 1))))))
+     (lambda ()
+       (if locked?
+	   (deallocate-temporary-file pathname))))))
+
+(define (clear-lock-state-on-folder-close folder)
+  (remove-property! folder 'IMAP-CACHE-LOCK-FAILURE))
 
 (define (message-item-pathname message keyword)
   (init-file-specifier->pathname
@@ -1609,6 +1670,12 @@
 (define (imap-message-cache-specifier message)
   `(,@(imap-folder-cache-specifier (message-folder message))
     ,(write-to-string (imap-message-uid message))))
+
+(define (imap-folder-lock-pathname folder)
+  (let ((spec (imap-folder-cache-specifier folder)))
+    (let ((p (last-pair spec)))
+      (set-car! p (string-append (car p) "#lock")))
+    (init-file-specifier->pathname spec)))
 
 (define (imap-folder-cache-pathname folder)
   (pathname-as-directory
@@ -1794,6 +1861,7 @@
     (if connection
 	(begin
 	  (maybe-close-imap-connection connection 0 no-defer?)
+	  (clear-lock-state-on-folder-close folder)
 	  (object-modified! folder 'STATUS)))))
 
 (define-method %get-message ((folder <imap-folder>) index)

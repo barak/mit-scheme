@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.92 2001/11/05 21:21:12 cph Exp $
+;;; $Id: imail.pkg,v 1.93 2001/11/06 04:45:45 cph Exp $
 ;;;
 ;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
 ;;;
@@ -266,12 +266,15 @@
   (export (edwin imail)
 	  imail-ui:body-cache-limit
 	  imail-ui:call-with-pass-phrase
+	  imail-ui:clear-message
 	  imail-ui:delete-stored-pass-phrase
+	  imail-ui:message
 	  imail-ui:message-wrapper
 	  imail-ui:present-user-alert
 	  imail-ui:progress-meter
 	  imail-ui:prompt-for-alist-value
-	  imail-ui:prompt-for-yes-or-no?))
+	  imail-ui:prompt-for-yes-or-no?
+	  imail-ui:sit-for))
 
 (define-package (edwin imail front-end summary)
   (files "imail-summary")

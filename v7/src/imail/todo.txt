@@ -1,13 +1,10 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.134 2001/09/30 15:10:22 cph Exp $
+$Id: todo.txt,v 1.135 2001/11/06 04:48:23 cph Exp $
 
 Bug fixes
 ---------
 
 * Remove cache for folders that aren't on server any more.
-
-* Add locking to cache so that two processes don't try to
-  write into it simultaneously.
 
 * When browser pops up a window of URLs that it is operating on, the
   strings shown should be relative to the container being browsed.

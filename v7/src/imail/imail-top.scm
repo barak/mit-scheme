@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.277 2001/10/30 19:29:11 cph Exp $
+;;; $Id: imail-top.scm,v 1.278 2001/11/06 04:45:13 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -1875,6 +1875,8 @@ Negative argument means search in reverse."
 (define *imail-message-wrapper-prefix* #f)
 
 (define imail-ui:message message)
+(define imail-ui:clear-message clear-message)
+(define imail-ui:sit-for sit-for)
 (define imail-ui:prompt-for-alist-value prompt-for-alist-value)
 (define imail-ui:prompt-for-yes-or-no? prompt-for-yes-or-no?)
 
