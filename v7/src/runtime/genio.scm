@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.22 2004/02/16 05:36:36 cph Exp $
+$Id: genio.scm,v 1.23 2004/02/17 04:59:29 cph Exp $
 
 Copyright 1991,1993,1995,1996,1999,2002 Massachusetts Institute of Technology
 Copyright 2003,2004 Massachusetts Institute of Technology
@@ -1269,16 +1269,18 @@ USA.
 
 ;;;; Normalizers
 
-(define-normalizer 'BINARY
+(define-normalizer 'NEWLINE
   (lambda (ib)
     (decode-char ib)))
 
-(define-denormalizer 'BINARY
+(define-denormalizer 'NEWLINE
   (lambda (ob char)
     (encode-char ob char)))
 
-(define-normalizer 'LF 'BINARY)
-(define-denormalizer 'LF 'BINARY)
+(define-normalizer 'LF 'NEWLINE)
+(define-denormalizer 'LF 'NEWLINE)
+(define-normalizer 'BINARY 'NEWLINE)
+(define-denormalizer 'BINARY 'NEWLINE)
 
 (define-normalizer 'CR
   (lambda (ib)

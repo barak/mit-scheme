@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.164 2004/02/16 05:43:33 cph Exp $
+$Id: fileio.scm,v 1.165 2004/02/17 04:59:29 cph Exp $
 
 Copyright 1986,1989,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1997,1999,2000,2001,2002 Massachusetts Institute of Technology
@@ -216,7 +216,7 @@ of the predicates is satisfied, the file is written in the usual way."
   (call-with-input-file truename
     (lambda (port)
       (if (not (ref-variable translate-file-data-on-input group))
-	  (port/set-line-ending port 'BINARY))
+	  (port/set-line-ending port 'NEWLINE))
       (let ((length ((port/operation port 'LENGTH) port)))
 	(bind-condition-handler (list condition-type:allocation-failure)
 	    (lambda (condition)
@@ -683,14 +683,14 @@ Otherwise, a message is written both before and after long file writes."
   (call-with-output-file filename
     (lambda (port)
       (if (not translate?)
-	  (port/set-line-ending port 'BINARY))
+	  (port/set-line-ending port 'NEWLINE))
       (group-write-to-port group start end port))))
 
 (define (group-append-to-file translate? group start end filename)
   (call-with-append-file filename
     (lambda (port)
       (if (not translate?)
-	  (port/set-line-ending port 'BINARY))
+	  (port/set-line-ending port 'NEWLINE))
       (group-write-to-port group start end port))))
 
 (define (group-write-to-port group start end port)
