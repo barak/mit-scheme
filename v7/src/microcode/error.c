@@ -1,4 +1,4 @@
-/* Copyright (C) 1990 Free Software Foundation, Inc.
+/* Copyright (C) 1990-1992 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -14,7 +14,7 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/error.c,v 1.1 1990/06/20 19:35:47 cph Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/error.c,v 1.2 1992/02/10 13:10:44 jinx Exp $ */
 
 #include <stdio.h>
 #include "dstack.h"
@@ -37,7 +37,7 @@ struct handler_record
 {
   struct handler_record * next;
   Tcondition_type type;
-  void EXFUN ((*handler), (Tcondition condition));
+  void EXFUN ((*handler), (Tcondition));
 };
 
 struct restart_record

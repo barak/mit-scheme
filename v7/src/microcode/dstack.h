@@ -14,7 +14,7 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/dstack.h,v 1.4 1992/01/20 16:29:00 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/dstack.h,v 1.5 1992/02/10 13:09:11 jinx Exp $ */
 
 #ifndef __DSTACK_H__
 #define __DSTACK_H__
@@ -116,7 +116,7 @@ struct condition_type
   unsigned long index;
   PTR name;
   Tptrvec generalizations;
-  void EXFUN ((*reporter), (Tcondition condition));
+  void EXFUN ((*reporter), (Tcondition));
 };
 #define CONDITION_TYPE_INDEX(type) ((type) -> index)
 #define CONDITION_TYPE_NAME(type) ((type) -> name)
@@ -135,7 +135,7 @@ struct condition_restart
 {
   PTR name;
   Tcondition_type type;
-  void EXFUN ((*procedure), (PTR argument));
+  void EXFUN ((*procedure), (PTR));
 };
 #define CONDITION_RESTART_NAME(restart) ((restart) -> name)
 #define CONDITION_RESTART_TYPE(restart) ((restart) -> type)
