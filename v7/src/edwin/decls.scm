@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.35 1992/04/17 20:05:10 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.36 1992/04/22 21:16:09 mhwu Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -78,7 +78,8 @@ MIT in each case. |#
        (sf-edwin (sf-dependent 'edwin-syntax-table))
        (sf-class (sf-dependent 'class-syntax-table)))
   (for-each sf-global
-	    '("class"
+	    '("ansi"
+	      "class"
 	      "clscon"
 	      "clsmac"
 	      "display"
