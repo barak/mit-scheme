@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.36 2000/06/30 19:05:49 cph Exp $
+;;; $Id: imap-response.scm,v 1.37 2000/07/03 02:03:11 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -517,7 +517,7 @@
 (define read-set
   (let ((read-string
 	 (non-null-string-reader
-	  (char-set-union char-set:numeric (char-set #\: #\,)))))
+	  (char-set-union char-set:numeric (char-set #\: #\, #\*)))))
     (lambda (port)
       (let ((string (read-string port)))
 	(let ((lose
@@ -536,7 +536,7 @@
 			       (cons (seqnum 0 index)
 				     (seqnum (fix:+ index 1) length))))
 			 (else (seqnum 0 length)))))
-	       (burst-string string #\: #f)))))))
+	       (burst-string string #\, #f)))))))
 
 (define char-set:space
   (char-set #\space))
