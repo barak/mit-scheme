@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.211 1992/02/04 04:02:36 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.212 1992/02/08 15:23:31 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -61,41 +61,36 @@
    (lambda (continuation)
      (fluid-let ((editor-abort continuation)
 		 (current-editor edwin-editor)
-		 (editor-thread)
+		 (editor-thread (current-thread))
 		 (editor-initial-threads '())
-		 (unwind-protect-cleanups '())
 		 (inferior-thread-changes? false)
 		 (recursive-edit-continuation false)
 		 (recursive-edit-level 0))
-       (within-thread-environment
-	(lambda ()
-	  (set! editor-thread (create-initial-thread))
-	  (editor-grab-display edwin-editor
-	    (lambda (with-editor-ungrabbed operations)
-	      (let ((message (cmdl-message/null)))
-		(cmdl/start
-		 (push-cmdl
-		  (lambda (cmdl)
-		    cmdl		;ignore
-		    (bind-condition-handler (list condition-type:error)
-			internal-error-handler
-		      (lambda ()
-			(call-with-current-continuation
-			 (lambda (root-continuation)
-			   (set-thread-root-continuation! root-continuation)
-			   (do ((thunks (let ((thunks editor-initial-threads))
-					  (set! editor-initial-threads '())
-					  thunks)
-					(cdr thunks)))
-			       ((null? thunks))
-			     (create-thread (car thunks)))
-			   (top-level-command-reader edwin-initialization)))))
-		    message)
-		  false
-		  `((START-CHILD
-		     ,(editor-start-child-cmdl with-editor-ungrabbed))
-		    ,@operations))
-		 message))))))))))
+       (editor-grab-display edwin-editor
+	 (lambda (with-editor-ungrabbed operations)
+	   (let ((message (cmdl-message/null)))
+	     (cmdl/start
+	      (push-cmdl
+	       (lambda (cmdl)
+		 cmdl		;ignore
+		 (bind-condition-handler (list condition-type:error)
+		     internal-error-handler
+		   (lambda ()
+		     (call-with-current-continuation
+		      (lambda (root-continuation)
+			(do ((thunks (let ((thunks editor-initial-threads))
+				       (set! editor-initial-threads '())
+				       thunks)
+				     (cdr thunks)))
+			    ((null? thunks))
+			  (create-thread root-continuation (car thunks)))
+			(top-level-command-reader edwin-initialization)))))
+		 message)
+	       false
+	       `((START-CHILD
+		  ,(editor-start-child-cmdl with-editor-ungrabbed))
+		 ,@operations))
+	      message))))))))
 
 (define (edwin . args) (apply edit args))
 (define (within-editor?) (not (unassigned? current-editor)))
@@ -238,8 +233,8 @@ with the contents of the startup message."
 				    (window-modeline-event! window
 							    'RECURSIVE-EDIT))
 				  (window-list)))))
-		 (unwind-protect
-		  false
+		 (dynamic-wind
+		  (lambda () unspecific)
 		  (lambda ()
 		    (recursive-edit-event!)
 		    (command-reader))
@@ -347,39 +342,13 @@ This does not affect editor errors or evaluation errors."
 	  (interceptor)
 	  value))))
 
-(define (call-with-protected-continuation receiver)
-  (call-with-current-continuation
-   (lambda (continuation)
-     (let ((cleanups unwind-protect-cleanups))
-       (receiver
-	(lambda (value)
-	  (let ((blocked? (block-thread-events)))
-	    (do () ((eq? cleanups unwind-protect-cleanups))
-	      (if (null? unwind-protect-cleanups)
-		  (error "unwind-protect stack slipped!"))
-	      (let ((cleanup (car unwind-protect-cleanups)))
-		(set! unwind-protect-cleanups (cdr unwind-protect-cleanups))
-		(cleanup)))
-	    (if (not blocked?) (unblock-thread-events)))
-	  (continuation value)))))))
+(define call-with-protected-continuation
+  call-with-current-continuation)
 
 (define (unwind-protect setup body cleanup)
-  (let ((blocked? (block-thread-events)))
-    (if setup (setup))
-    (let ((cleanups (cons cleanup unwind-protect-cleanups)))
-      (set! unwind-protect-cleanups cleanups)
-      (if (not blocked?) (unblock-thread-events))
-      (let ((value (body)))
-	(block-thread-events)
-	(if (not (eq? unwind-protect-cleanups cleanups))
-	    (error "unwind-protect stack slipped!"))
-	(set! unwind-protect-cleanups (cdr cleanups))
-	(cleanup)
-	(if (not blocked?) (unblock-thread-events))
-	value))))
+  (dynamic-wind (or setup (lambda () unspecific)) body cleanup))
 
 (define *^G-interrupt-handler* false)
-(define unwind-protect-cleanups)
 
 (define (editor-grab-display editor receiver)
   (display-type/with-display-grabbed (editor-display-type editor)
@@ -388,14 +357,12 @@ This does not affect editor errors or evaluation errors."
 	(lambda ()
 	  (let ((enter
 		 (lambda ()
-		   (start-timer-interrupt)
 		   (let ((screen (selected-screen)))
 		     (screen-enter! screen)
 		     (update-screen! screen true))))
 		(exit
 		 (lambda ()
-		   (screen-exit! (selected-screen))
-		   (stop-timer-interrupt))))
+		   (screen-exit! (selected-screen)))))
 	    (dynamic-wind enter
 			  (lambda ()
 			    (receiver
@@ -412,27 +379,6 @@ This does not affect editor errors or evaluation errors."
     cmdl
     (with-editor-ungrabbed thunk)))
 
-(define (start-timer-interrupt)
-  (if timer-interval
-      ((ucode-primitive real-timer-set) timer-interval timer-interval)
-      (stop-timer-interrupt)))
-
-(define (stop-timer-interrupt)
-  ((ucode-primitive real-timer-clear))
-  ((ucode-primitive clear-interrupts!) interrupt-bit/timer))
-
-(define (set-thread-timer-interval! interval)
-  (if (not (or (false? interval)
-	       (and (exact-integer? interval)
-		    (positive? interval))))
-      (error:wrong-type-argument interval false 'SET-THREAD-TIMER-INTERVAL!))
-  (set! timer-interval interval)
-  (start-timer-interrupt))
-
-(define (thread-timer-interval)
-  timer-interval)
-
-(define timer-interval 100)
 (define inferior-thread-changes?)
 
 (define (accept-thread-output)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.21 1992/01/13 20:15:26 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.22 1992/02/08 15:23:43 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -238,26 +238,24 @@ Includes the new backup.  Must be > 0."
 			(no-versions)))))))))))
 
 (define (os/directory-list directory)
-  ((ucode-primitive directory-close 0))
-  ((ucode-primitive directory-open-noread 1) directory)
-  (let loop ((result '()))
-    (let ((name ((ucode-primitive directory-read 0))))
-      (if name
-	  (loop (cons name result))
-	  (begin
-	    ((ucode-primitive directory-close 0))
-	    result)))))
+  (let ((channel (directory-channel-open directory)))
+    (let loop ((result '()))
+      (let ((name (directory-channel-read channel)))
+	(if name
+	    (loop (cons name result))
+	    (begin
+	      (directory-channel-close channel)
+	      result))))))
 
 (define (os/directory-list-completions directory prefix)
-  ((ucode-primitive directory-close 0))
-  ((ucode-primitive directory-open-noread 1) directory)
-  (let loop ((result '()))
-    (let ((name ((ucode-primitive directory-read-matching 1) prefix)))
-      (if name
-	  (loop (cons name result))
-	  (begin
-	    ((ucode-primitive directory-close 0))
-	    result)))))
+  (let ((channel (directory-channel-open directory)))
+    (let loop ((result '()))
+      (let ((name (directory-channel-read-matching channel prefix)))
+	(if name
+	    (loop (cons name result))
+	    (begin
+	      (directory-channel-close channel)
+	      result))))))
 
 (define-integrable os/file-directory?
   (ucode-primitive file-directory?))

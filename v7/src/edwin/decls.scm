@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.30 1992/02/04 04:02:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.31 1992/02/08 15:23:28 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -93,7 +93,6 @@ MIT in each case. |#
 	      "strpad"
 	      "strtab"
 	      "termcap"
-	      "thread"
 	      "utils"
 	      "winren"
 	      "xform"

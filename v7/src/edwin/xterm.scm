@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.25 1992/02/04 04:04:50 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.26 1992/02/08 15:23:45 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -57,9 +57,9 @@
   (x-display-sync 2)
   (x-window-beep 1)
   (x-window-display 1)
-  (x-window-set-class-hint 4)
   (x-window-set-event-mask 2)
   (x-window-set-icon-name 2)
+  (x-window-set-input-focus 2)
   (x-window-set-name 2)
   (xterm-clear-rectangle! 6)
   (xterm-draw-cursor 1)
@@ -97,11 +97,15 @@
 (define-integrable event-type:leave 7)
 (define-integrable event-type:motion 8)
 (define-integrable event-type:expose 9)
-(define-integrable number-of-event-types 10)
+(define-integrable event-type:delete-window 10)
+(define-integrable event-type:map 11)
+(define-integrable event-type:unmap 12)
+(define-integrable event-type:take-focus 13)
+(define-integrable number-of-event-types 14)
 
 ;; This mask contains button-down, button-up, configure, focus-in,
-;; key-press, and expose.
-(define-integrable event-mask #x257)
+;; key-press, expose, destroy, map, and unmap.
+(define-integrable event-mask #x1e57)
 
 (define-structure (xterm-screen-state
 		   (constructor make-xterm-screen-state (xterm display))
@@ -121,9 +125,8 @@
 					(error "unable to open display"))
 				    (and (not (default-object? geometry))
 					 geometry)
-				    false)))
+				    '("edwin" . "Edwin"))))
 	   (x-window-set-event-mask xterm event-mask)
-	   (x-window-set-class-hint display xterm "edwin" "Edwin")
 	   (make-screen (make-xterm-screen-state xterm
 						 (x-window-display xterm))
 			xterm-screen/beep
@@ -201,7 +204,9 @@
   (set-screen-selected?! screen true)
   (let ((xterm (screen-xterm screen)))
     (xterm-enable-cursor xterm true)
-    (xterm-draw-cursor xterm))
+    (xterm-draw-cursor xterm)
+    (if (and last-focus-time (screen-visible? screen))
+	(x-window-set-input-focus xterm last-focus-time)))
   (xterm-screen/flush! screen))
 
 (define (xterm-screen/exit! screen)
@@ -267,6 +272,7 @@
 		 (read-event queue display time-limit))))
 	  (process-key-press-event
 	   (lambda (event)
+	     (set! last-focus-time (vector-ref event 5))
 	     (set! string (vector-ref event 2))
 	     (set! end (string-length string))
 	     (set! start end)
@@ -470,6 +476,7 @@
 
 (define-event-handler event-type:button-down
   (lambda (screen event)
+    (set! last-focus-time (vector-ref event 5))
     (let ((xterm (screen-xterm screen)))
       (send (screen-root-window screen) ':button-event!
 	    (make-down-button (vector-ref event 4))
@@ -479,13 +486,14 @@
 
 (define-event-handler event-type:button-up
   (lambda (screen event)
+    (set! last-focus-time (vector-ref event 5))
     (let ((xterm (screen-xterm screen)))
       (send (screen-root-window screen) ':button-event!
 	    (make-up-button (vector-ref event 4))
 	    (xterm-map-x-coordinate xterm (vector-ref event 2))
 	    (xterm-map-y-coordinate xterm (vector-ref event 3))))
     (update-screen! screen false)))
-
+
 (define-event-handler event-type:focus-in
   (lambda (screen event)
     event
@@ -493,14 +501,52 @@
 	(command-reader/reset-and-execute
 	 (lambda ()
 	   (select-screen screen))))))
+
+(define-event-handler event-type:delete-window
+  (lambda (screen event)
+    event
+    (if (not (screen-deleted? screen))
+	(if (other-screen screen)
+	    (delete-screen! screen)
+	    (begin
+	      (save-buffers-kill-edwin)
+	      ;; Return here only if user changes mind about killing
+	      ;; editor.  In that case, the screen will need updating.
+	      (update-screen! screen false))))))
+
+(define-event-handler event-type:map
+  (lambda (screen event)
+    event
+    (if (not (screen-deleted? screen))
+	(begin
+	  (set-screen-visibility! screen 'VISIBLE)
+	  (update-screen! screen true)))))
+
+(define-event-handler event-type:unmap
+  (lambda (screen event)
+    event
+    (if (not (screen-deleted? screen))
+	(begin
+	  (set-screen-visibility! screen 'INVISIBLE)
+	  (if (selected-screen? screen)
+	      (let ((screen (other-screen screen)))
+		(if screen
+		    (select-screen screen))))))))
+
+(define-event-handler event-type:take-focus
+  (lambda (screen event)
+    (set! last-focus-time (vector-ref event 2))
+    (select-screen screen)))
 
 (define signal-interrupts?)
 (define event-stream-mutex)
 (define previewer-interval 1000)
+(define last-focus-time)
 
 (define (with-editor-interrupts-from-x receiver)
   (fluid-let ((signal-interrupts? true)
-	      (event-stream-mutex (make-thread-mutex)))
+	      (event-stream-mutex (make-thread-mutex))
+	      (last-focus-time false))
     (queue-initial-thread preview-event-stream)
     (receiver (lambda (thunk) (thunk)) '())))
 

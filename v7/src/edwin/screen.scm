@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.95 1992/02/04 04:04:04 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.96 1992/02/08 15:23:40 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -87,6 +87,7 @@
   (operation/write-substring! false read-only true)
   (preemption-modulus false read-only true)
   (root-window false)
+  (visibility 'VISIBLE)
   (needs-update? false)
   (in-update? false)
   (x-size false)
@@ -130,9 +131,12 @@
 			  'DESELECT-SCREEN))
 
 (define (screen-discard! screen)
-  (for-each (lambda (window) (send window ':kill!))
-	    (screen-window-list screen))
-  ((screen-operation/discard! screen) screen))
+  (if (not (eq? (screen-visibility screen) 'DELETED))
+      (begin
+	(set-screen-visibility! screen 'DELETED)
+	(for-each (lambda (window) (send window ':kill!))
+		  (screen-window-list screen))
+	((screen-operation/discard! screen) screen))))
 
 (define (screen-modeline-event! screen window type)
   ((screen-operation/modeline-event! screen) screen window type))
@@ -159,12 +163,23 @@
 (define (window-screen window)
   (editor-frame-screen (window-root-window window)))
 
+(define-integrable (screen-visible? screen)
+  (eq? 'VISIBLE (screen-visibility screen)))
+
+(define-integrable (screen-deleted? screen)
+  (eq? 'DELETED (screen-visibility screen)))
+
 (define (update-screen! screen display-style)
-  (if display-style (screen-force-update screen))
-  (with-screen-in-update screen display-style
-    (lambda ()
-      (editor-frame-update-display! (screen-root-window screen)
-				    display-style))))
+  (if (screen-visible? screen)
+      (begin
+	(if display-style (screen-force-update screen))
+	(with-screen-in-update screen display-style
+	  (lambda ()
+	    (editor-frame-update-display! (screen-root-window screen)
+					  display-style))))
+      (begin
+	(set-screen-needs-update?! screen false)
+	true)))
 
 ;;; Interface from update optimizer to terminal:
 

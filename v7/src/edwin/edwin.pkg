@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.74 1992/02/04 04:02:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.75 1992/02/08 15:23:35 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -223,6 +223,7 @@ MIT in each case. |#
 	  initialize-screen-root-window!
 	  screen-beep
 	  screen-clear-rectangle
+	  screen-deleted?
 	  screen-direct-output-char
 	  screen-direct-output-move-cursor
 	  screen-direct-output-substring
@@ -245,6 +246,8 @@ MIT in each case. |#
 	  screen-selected-window
 	  screen-state
 	  screen-typein-window
+	  screen-visibility
+	  screen-visible?
 	  screen-window-list
 	  screen-window0
 	  screen-x-size
@@ -258,7 +261,8 @@ MIT in each case. |#
 	  make-screen)
   (export (edwin x-screen)
 	  make-screen
-	  set-screen-size!))
+	  set-screen-size!
+	  set-screen-visibility!))
 
 (define-package (edwin x-screen)
   (files "xterm")
@@ -472,7 +476,6 @@ MIT in each case. |#
 	  set-current-command!
 	  top-level-command-reader)
   (export (edwin inferior-repl)
-	  *command-continuation*
 	  command-reader-reset-continuation))
 
 (define-package (edwin keyboard)
@@ -1019,36 +1022,3 @@ MIT in each case. |#
   (import (runtime debugger-utilities)
 	  show-environment-bindings)
   (initialization (initialize-bochser-mode!)))
-
-(define-package (edwin thread)
-  (files "thread")
-  (parent (edwin))
-  (export (edwin)
-	  allow-preempt-current-thread
-	  block-thread-events
-	  condition-type:thread-deadlock
-	  condition-type:thread-detached
-	  condition-type:thread-error
-	  create-initial-thread
-	  create-thread
-	  current-thread
-	  detach-thread
-	  disallow-preempt-current-thread
-	  exit-current-thread
-	  join-thread
-	  lock-thread-mutex
-	  make-thread-mutex
-	  other-running-threads?
-	  set-thread-root-continuation!
-	  signal-thread-event
-	  sleep-current-thread
-	  suspend-current-thread
-	  thread-continuation
-	  thread-dead?
-	  thread-mutex?
-	  thread?
-	  try-lock-thread-mutex
-	  unblock-thread-events
-	  unlock-thread-mutex
-	  within-thread-environment
-	  yield-current-thread))

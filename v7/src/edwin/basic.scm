@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.118 1992/02/04 04:01:10 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.119 1992/02/08 15:23:24 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -250,7 +250,7 @@ For more information type the HELP key while entering the name."
 
 (define-integrable (editor-beep)
   (screen-beep (selected-screen)))
-
+
 ;;;; Level Control
 
 (define-command exit-recursive-edit
@@ -266,55 +266,78 @@ For a normal exit, you should use \\[exit-recursive-edit], NOT this command."
   ()
   (lambda ()
     (exit-recursive-edit 'ABORT)))
+
+;;;; Leaving Edwin
+
+;; Set this to #F to indicate that returning from the editor has the
+;; same effect as calling %EXIT.
+(define editor-can-exit? true)
+
+;; Set this to #F to indicate that calling QUIT has the same effect
+;; as calling %EXIT.
+(define scheme-can-quit? true)
+
+;; Set this to #T to force the exit commands to always prompt for
+;; confirmation before killing Edwin.
+(define paranoid-exit? false)
 
 (define-command suspend-scheme
   "Go back to Scheme's superior job.
 With argument, saves visited file first."
   "P"
   (lambda (argument)
-    (if (prompt-for-yes-or-no? "Suspend Scheme")
-	(begin
-	  (if argument (save-buffer (current-buffer) false))
-	  (quit)))))
+    (if argument (save-buffer (current-buffer) false))
+    (if (not (and scheme-can-quit? (subprocess-job-control-available?)))
+	(editor-error "Scheme cannot be suspended"))
+    (quit)))
 
 (define-command suspend-edwin
   "Stop Edwin and return to Scheme."
   ()
   (lambda ()
-    (if (prompt-for-yes-or-no? "Suspend Edwin")
-	(quit-editor))))
+    (if (not editor-can-exit?)
+	(editor-error "Edwin cannot be suspended"))
+    (quit-editor)))
+
+(define (save-buffers-and-exit no-confirmation? noun exit)
+  (save-some-buffers no-confirmation? true)
+  (if (and (or (not (there-exists? (buffer-list)
+		      (lambda (buffer)
+			(and (buffer-modified? buffer)
+			     (buffer-pathname buffer)))))
+	       (prompt-for-yes-or-no? "Modified buffers exist; exit anyway"))
+	   (if (there-exists? (process-list)
+		 (lambda (process)
+		   (and (not (process-kill-without-query process))
+			(process-runnable? process))))
+	       (and (prompt-for-yes-or-no?
+		     "Active processes exist; kill them and exit anyway")
+		    (begin
+		      (for-each delete-process (process-list))
+		      true))
+	       (or (not paranoid-exit?)
+		   (prompt-for-yes-or-no? (string-append "Kill " noun)))))
+      (exit)))
 
 (define-command save-buffers-kill-scheme
   "Offer to save each buffer, then kill Scheme.
 With prefix arg, silently save all file-visiting buffers, then kill."
   "P"
   (lambda (no-confirmation?)
-    (save-some-buffers no-confirmation? true)
-    (if (prompt-for-yes-or-no? "Kill Scheme")
-	(%exit))))
+    (save-buffers-and-exit no-confirmation? "Scheme" %exit)))
+
+(define (save-buffers-kill-edwin #!optional no-confirmation?)
+  (let ((no-confirmation?
+	 (and (not (default-object? no-confirmation?)) no-confirmation?)))
+    (if editor-can-exit?
+	(save-buffers-and-exit no-confirmation? "Edwin" exit-editor)
+	(save-buffers-and-exit no-confirmation? "Scheme" %exit))))
 
 (define-command save-buffers-kill-edwin
   "Offer to save each buffer, then kill Edwin, returning to Scheme.
 With prefix arg, silently save all file-visiting buffers, then kill."
   "P"
-  (lambda (no-confirmation?)
-    (save-some-buffers no-confirmation? true)
-    (if (and (or (not (there-exists? (buffer-list)
-			(lambda (buffer)
-			  (and (buffer-modified? buffer)
-			       (buffer-pathname buffer)))))
-		 (prompt-for-yes-or-no?
-		  "Modified buffers exist; exit anyway"))
-	     (or (not (there-exists? (process-list)
-			(lambda (process)
-			  (and (not (process-kill-without-query process))
-			       (process-runnable? process)))))
-		 (and (prompt-for-yes-or-no?
-		       "Active processes exist; kill them and exit anyway")
-		      (begin
-			(for-each delete-process (process-list))
-			true))))
-	(exit-editor))))
+  save-buffers-kill-edwin)
 
 ;;;; Comment Commands
 

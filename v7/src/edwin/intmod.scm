@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/intmod.scm,v 1.41 1992/02/04 04:03:13 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/intmod.scm,v 1.42 1992/02/08 15:23:37 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -71,6 +71,7 @@ but prefix argument means prompt for different environment."
    buffer
    (lambda ()
      (create-thread
+      command-reader-reset-continuation
       (lambda ()
 	(let ((thread (current-thread)))
 	  (detach-thread thread)

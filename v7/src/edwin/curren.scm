@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.94 1992/02/04 04:02:06 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.95 1992/02/08 15:23:26 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -156,7 +156,15 @@
 	 screen)))
 
 (define (other-screen screen)
-  (let ((screen* (screen1+ screen)))
+  (let ((screen*
+	 (let loop ((screen* screen))
+	   (let ((screen* (screen1+ screen*)))
+	     (cond ((eq? screen* screen)
+		    (screen1+ screen*))
+		   ((screen-visible? screen*)
+		    screen*)
+		   (else
+		    (loop screen*)))))))
     (and (not (eq? screen screen*))
 	 screen*)))
 
