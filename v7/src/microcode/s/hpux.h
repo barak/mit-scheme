@@ -1,7 +1,7 @@
 /* -*-C-*-
    System file for HP-UX
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/hpux.h,v 1.4 1990/01/16 19:57:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/hpux.h,v 1.5 1990/04/17 22:20:00 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -51,4 +51,11 @@ MIT in each case. */
 
 #ifndef INSTALL_PROGRAM
 #define INSTALL_PROGRAM cp
+#endif
+
+#ifdef ALTERNATE_CC
+/* If the alternate compiler defines __STDC__ this macro must also be
+   defined or the include files don't define many necessary symbols.
+   In any case this definition does no harm. */
+#define C_SWITCH_SYSTEM -D_HPUX_SOURCE
 #endif
