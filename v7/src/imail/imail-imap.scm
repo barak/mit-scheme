@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.85 2000/05/23 18:03:53 cph Exp $
+;;; $Id: imail-imap.scm,v 1.86 2000/05/23 18:36:03 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -316,7 +316,7 @@
 	       (set-imap-connection-port! connection port)
 	       (set-imap-connection-greeting!
 		connection
-		(let ((response (imap:read-server-response port)))
+		(let ((response (imap:read-server-response-1 port)))
 		  (if (imap:response:ok? response)
 		      (imap:response:response-text-string response)
 		      response)))
@@ -366,7 +366,7 @@
 		    (let ((response
 			   (ignore-errors
 			    (lambda ()
-			      (imap:read-server-response port)))))
+			      (imap:read-server-response-1 port)))))
 		      (if (or (condition? response)
 			      (begin
 				(enqueue-imap-response connection response)
@@ -418,7 +418,9 @@
 (define (maybe-close-imap-connection connection)
   (if (= (imap-connection-reference-count connection)
 	 (if (imap-connection-folder connection) 0 1))
-      (close-imap-connection connection)))
+      (begin
+	(imap:command:logout connection)
+	(close-imap-connection connection))))
 
 ;;;; Folder datatype
 
@@ -793,9 +795,9 @@
   (let ((folder (message-folder message))
 	(maybe-create
 	 (lambda (connection thunk)
-	   (call-with-current-continuation
-	    (lambda (k)
-	      (if (bind-condition-handler
+	   (if (call-with-current-continuation
+		(lambda (k)
+		  (bind-condition-handler
 		      (list condition-type:imap-server-error)
 		      (lambda (condition)
 			(let ((response
@@ -805,10 +807,10 @@
 				    (imap:response:response-text-code
 				     response)))
 			      (k #t))))
-		    (lambda () (thunk) #f))
-		  (begin
-		    (imap:command:create connection (imap-url-mailbox url))
-		    (thunk))))))))
+		    (lambda () (thunk) #f))))
+	       (begin
+		 (imap:command:create connection (imap-url-mailbox url))
+		 (thunk))))))
     (if (let ((url* (folder-url folder)))
 	  (and (imap-url? url*)
 	       (compatible-imap-urls? url url*)))
@@ -836,6 +838,12 @@
 (define-method available-folder-names ((url <imap-url>))
   url
   (error "Unimplemented operation:" 'AVAILABLE-FOLDER-NAMES))
+
+(define-method with-open-connection ((url <imap-url>) thunk)
+  (with-open-imap-connection url
+    (lambda (connection)
+      connection
+      (thunk))))
 
 ;;;; Folder operations
 
@@ -952,6 +960,9 @@
 (define (imap:command:noop connection)
   (imap:command:no-response connection 'NOOP))
 
+(define (imap:command:logout connection)
+  (imap:command:no-response connection 'LOGOUT))
+
 (define (imap:command:create connection mailbox)
   (imap:command:no-response connection 'CREATE mailbox))
 
@@ -1052,7 +1063,13 @@
 	(port (imap-connection-port connection)))
     (if imap-trace-port
 	(begin
-	  (write-line (cons* 'SEND tag command arguments) imap-trace-port)
+	  (write-line (cons* 'SEND tag command
+			     (if (eq? command 'LOGIN)
+				 (cons* (car arguments)
+					"password"
+					(cddr arguments))
+				 arguments))
+		      imap-trace-port)
 	  (flush-output imap-trace-port)))
     (imap-transcript-write-string tag port)
     (imap-transcript-write-char #\space port)
@@ -1103,7 +1120,7 @@
     (imap:write-literal-string-header string port)
     (imap-transcript-flush-output port)
     (let loop ()
-      (let ((response (imap:read-server-response port)))
+      (let ((response (imap:read-server-response-1 port)))
 	(cond ((imap:response:continue? response)
 	       (imap:write-literal-string-body string port))
 	      ((and (imap:response:tag response)
@@ -1116,11 +1133,7 @@
 (define (imap:wait-for-tagged-response connection tag command)
   (let ((port (imap-connection-port connection)))
     (let loop ()
-      (let ((response (imap:read-server-response port)))
-	(if imap-trace-port
-	    (begin
-	      (write-line (list 'RECEIVE response) imap-trace-port)
-	      (flush-output imap-trace-port)))
+      (let ((response (imap:read-server-response-1 port)))
 	(let ((tag* (imap:response:tag response)))
 	  (if tag*
 	      (let ((responses
@@ -1139,6 +1152,14 @@
 	      (begin
 		(enqueue-imap-response connection response)
 		(loop))))))))
+
+(define (imap:read-server-response-1 port)
+  (let ((response (imap:read-server-response port)))
+    (if imap-trace-port
+	(begin
+	  (write-line (list 'RECEIVE response) imap-trace-port)
+	  (flush-output imap-trace-port)))
+    response))
 
 (define (process-responses connection command responses)
   (if (pair? responses)
@@ -1256,12 +1277,12 @@
 	      folder
 	      (- (imap:response-code:unseen code) 1)))))
 	#|
-	  ((or (imap:response-code:badcharset? code)
-	       (imap:response-code:newname? code)
-	       (imap:response-code:parse? code)
-	       (imap:response-code:trycreate? code))
-	   unspecific)
-	  |#
+	((or (imap:response-code:badcharset? code)
+	     (imap:response-code:newname? code)
+	     (imap:response-code:parse? code)
+	     (imap:response-code:trycreate? code))
+	 unspecific)
+	|#
 	))
 
 (define (process-fetch-attributes message response)
