@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.154 1992/04/07 09:35:20 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.155 1992/04/07 12:30:21 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -377,23 +377,20 @@ The buffer is guaranteed to be deselected at that time."
 	(variable-default-value variable))))
 
 (define (set-variable-local-value! buffer variable value)
-  (if (variable-buffer-local? variable)
-      (define-variable-local-value! buffer variable value)
-      (begin
-	(check-variable-value-validity! variable value)
-	(without-interrupts
-	 (lambda ()
-	   (let ((binding (search-local-bindings buffer variable)))
-	     (if binding
-		 (begin
-		   (set-cdr! binding value)
-		   (if (buffer-local-bindings-installed? buffer)
-		       (vector-set! variable variable-index:value value))
-		   (invoke-variable-assignment-daemons! buffer variable))
-		 (begin
-		   (vector-set! variable variable-index:default-value value)
-		   (vector-set! variable variable-index:value value)
-		   (invoke-variable-assignment-daemons! false variable)))))))))
+  (cond ((variable-buffer-local? variable)
+	 (define-variable-local-value! buffer variable value))
+	((search-local-bindings buffer variable)
+	 =>
+	 (lambda (binding)
+	   (check-variable-value-validity! variable value)
+	   (without-interrupts
+	    (lambda ()
+	      (set-cdr! binding value)
+	      (if (buffer-local-bindings-installed? buffer)
+		  (vector-set! variable variable-index:value value))
+	      (invoke-variable-assignment-daemons! buffer variable)))))
+	(else
+	 (set-variable-default-value! variable value))))
 
 (define (set-variable-default-value! variable value)
   (check-variable-value-validity! variable value)
@@ -450,7 +447,7 @@ The buffer is guaranteed to be deselected at that time."
       ((null? bindings))
     (vector-set! (caar bindings)
 		 variable-index:value
-		 (variable-value (caar bindings))))
+		 (variable-default-value (caar bindings))))
   (vector-set! buffer buffer-index:local-bindings-installed? false))
 
 (define (set-variable-value! variable value)
