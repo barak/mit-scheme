@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: socket.scm,v 1.13 1999/01/02 06:19:10 cph Exp $
+$Id: socket.scm,v 1.14 1999/07/26 21:20:44 cph Exp $
 
 Copyright (c) 1990-1999 Massachusetts Institute of Technology
 
@@ -103,5 +103,5 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		       p)))))))))
       (if channel
 	  (let ((port (make-generic-i/o-port channel channel 64 64)))
-	    (values port port peer-address))
-	  (values false false false)))))
+	    (values port peer-address))
+	  (values #f #f)))))
