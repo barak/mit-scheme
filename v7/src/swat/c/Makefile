@@ -1,5 +1,5 @@
 ##
-## $Id: Makefile,v 1.1 1995/08/02 21:21:00 adams Exp $
+## $Id: Makefile,v 1.2 2000/03/21 04:40:45 cph Exp $
 ##
 ## WARNING: This makefile is designed to be used only from the master
 ## makefile in the parent directory.
@@ -90,7 +90,7 @@ SCXL_OBJS = scxl.o
 # Contents of custom directory structure:
 
 CUSTOM_SRC = \
-	$(CUSTOM)/Makefile $(CUSTOM)/tkCanvArc.c $(CUSTOM)/tkMenu.c \
+	$(CUSTOM)/Makefile \
 	$(CUSTOM)/tkEvent.c $(CUSTOM)/tkWindow.c \
 	$(CUSTOM)/tcl/Makefile $(CUSTOM)/tcl/tclUnix.h \
 	$(CUSTOM)/library/emacs.tcl
