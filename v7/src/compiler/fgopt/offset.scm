@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/offset.scm,v 4.5 1988/11/01 04:51:59 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/offset.scm,v 4.6 1988/12/12 21:51:52 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -36,119 +36,136 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(package (compute-node-offsets)
-
 (define *procedure-queue*)
 (define *procedures*)
 
-(define-export (compute-node-offsets root-expression)
+(define (compute-node-offsets root-expression)
   (fluid-let ((*procedure-queue* (make-queue))
 	      (*procedures* '()))
-    (walk-node (expression-entry-node root-expression) 0)
-    (queue-map!/unsafe *procedure-queue*
-      (lambda (procedure)
-	(if (procedure-continuation? procedure)
-	    (walk-node (continuation/entry-node procedure)
-		       (if (eq? (continuation/type procedure)
-				continuation-type/push)
-			   (1+ (continuation/offset procedure))
-			   (continuation/offset procedure)))
-	    (begin
-	      (for-each walk-rvalue (procedure-values procedure))
-	      (walk-node (procedure-entry-node procedure) 0)))))))
+    (with-new-node-marks
+     (lambda ()
+       (walk-node (expression-entry-node root-expression) 0)
+       (queue-map!/unsafe *procedure-queue*
+	 (lambda (procedure)
+	   (if (procedure-continuation? procedure)
+	       (walk-next (continuation/entry-node procedure)
+			  (if (eq? (continuation/type procedure)
+				   continuation-type/push)
+			      (1+ (continuation/offset procedure))
+			      (continuation/offset procedure)))
+	       (begin
+		 (for-each
+		  (lambda (value)
+		    (if (and (rvalue/procedure? value)
+			     (not (procedure-continuation? value)))
+			(let ((context (procedure-closure-context value)))
+			  (if (reference-context? context)
+			      (update-reference-context/offset! context 0))))
+		    (walk-rvalue value 0))
+		  (procedure-values procedure))
+		 (walk-next (procedure-entry-node procedure) 0)))))))))
 
-(define (walk-node node offset)
-  (let ((offset* (node/offset node)))
-    (cond ((not offset*)
-	   (set-node/offset! node offset)
-	   (walk-node* node offset))
-	  ((not (= offset offset*))
-	   (error "COMPUTE-NODE-OFFSETS: mismatched offsets" node)))))
+(define (walk-rvalue rvalue offset)
+  (if (and (rvalue/procedure? rvalue)
+	   (not (procedure-continuation? rvalue)))
+      (let ((context (procedure-closure-context rvalue)))
+	(if (reference? context)
+	    (update-reference-context/offset! (reference-context context)
+					      offset))))
+  (maybe-enqueue-procedure! rvalue))
 
-(define (walk-rvalue rvalue)
-  (let ((rvalue (rvalue-known-value rvalue)))
-    (if (and rvalue
-	     (rvalue/procedure? rvalue)
-	     (not (procedure-continuation? rvalue))
-	     (not (memq rvalue *procedures*)))
-	(enqueue-procedure! rvalue))))
+(define (maybe-enqueue-procedure! rvalue)
+  (let ((value (rvalue-known-value rvalue)))
+    (if (and value
+	     (rvalue/procedure? value)
+	     (not (procedure-continuation? value))
+	     (not (memq value *procedures*)))
+	(enqueue-procedure! value))))
 
 (define (enqueue-procedure! procedure)
   (set! *procedures* (cons procedure *procedures*))
   (enqueue!/unsafe *procedure-queue* procedure))
 
+(define (walk-next node offset)
+  (if (and node (not (node-marked? node)))
+      (walk-node node offset)))
+
+(define (update-reference-context/offset! context offset)
+  (let ((offset* (reference-context/offset context)))
+    (cond ((not offset*)	   (set-reference-context/offset! context offset))
+	  ((not (= offset offset*))
+	   (error "mismatched offsets" context)))))
+
 (define (walk-return operator operand offset)
-  offset
-  (walk-rvalue operator)
-  (let ((continuation (rvalue-known-value operator)))
-    (if (not (and continuation
+  (if (let ((continuation (rvalue-known-value operator)))
+	(not (and continuation
 		  (eq? continuation-type/effect
-		       (continuation/type continuation))))
-	(walk-rvalue operand))))
+		       (continuation/type continuation)))))
+      (walk-rvalue operand offset)))
 
-(define (walk-node* node offset)
+(define (walk-node node offset)
+  (node-mark! node)
   (cfg-node-case (tagged-vector/tag node)
     ((VIRTUAL-RETURN)
+     (update-reference-context/offset! (virtual-return-context node) offset)
      (let ((operator (virtual-return-operator node))
 	   (operand (virtual-return-operand node)))
        (if (virtual-continuation/reified? operator)
-	   (walk-return operator operand offset)
-	   (walk-node
-	    (snode-next node)
-	    (enumeration-case continuation-type
-		(virtual-continuation/type operator)
-	      ((EFFECT)
-	       (if (rvalue/continuation? operand)
-		   (begin
-		     (set-continuation/offset! operand offset)
-		     (enqueue-procedure! operand)))
-	       offset)
-	      ((REGISTER VALUE)
-	       (walk-rvalue operand)
-	       offset)
-	      ((PUSH)
-	       (if (rvalue/continuation? operand)
-		   (begin
-		     (set-continuation/offset! operand offset)
-		     (enqueue-procedure! operand)
-		     (+ offset
-			(block-frame-size (continuation/block operand))))
-		   (begin
-		     (walk-rvalue operand)
-		     (1+ offset))))
-	      (else
-	       (error "Unknown continuation type" return)))))))
+	   (walk-return (virtual-continuation/reification operator)
+			operand
+			offset)
+	   (begin
+	     (if (rvalue/continuation? operand)
+		 (begin
+		   (set-continuation/offset! operand offset)
+		   (enqueue-procedure! operand)))
+	     (walk-next
+	      (snode-next node)
+	      (enumeration-case continuation-type
+		  (virtual-continuation/type operator)
+		((EFFECT)
+		 offset)
+		((REGISTER VALUE)
+		 (walk-rvalue operand offset)
+		 offset)
+		((PUSH)
+		 (if (rvalue/continuation? operand)
+		     (+ offset (block-frame-size (continuation/block operand)))
+		     (begin
+		       (walk-rvalue operand offset)
+		       (1+ offset))))
+		(else
+		 (error "Unknown continuation type" return))))))))
     ((APPLICATION)
+     (update-reference-context/offset! (application-context node) offset)
      (case (application-type node)
        ((COMBINATION)
-	;; This is done because the arguments may be integrated and may
-	;; be closures that would otherwise not be met, since they are
-	;; never operators.
-	(if (combination/inline? node)
-	    (for-each
-	     (lambda (subp)
-	       (walk-rvalue (subproblem-rvalue subp)))
-	     (cdr (parallel-subproblems (application-owner node)))))
-	(walk-rvalue (combination/operator node)))
+	(maybe-enqueue-procedure! (combination/operator node))
+	(for-each maybe-enqueue-procedure! (combination/operands node)))
        ((RETURN)
 	(walk-return (return/operator node) (return/operand node) offset))))
     ((POP)
-     (let ((continuation (pop-continuation node)))
-       (if (procedure? continuation)
-	   (walk-rvalue continuation)))
-     (walk-node (snode-next node) (-1+ offset)))
+     (walk-next (snode-next node) (-1+ offset)))
     ((ASSIGNMENT)
+     (update-reference-context/offset! (assignment-context node) offset)
      (if (not (lvalue-integrated? (assignment-lvalue node)))
-	 (walk-rvalue (assignment-rvalue node)))
-     (walk-node (snode-next node) offset))
+	 (walk-rvalue (assignment-rvalue node) offset))
+     (walk-next (snode-next node) offset))
     ((DEFINITION)
-     (walk-rvalue (definition-rvalue node))
-     (walk-node (snode-next node) offset))
+     (update-reference-context/offset! (definition-context node) offset)
+     (walk-rvalue (definition-rvalue node) offset)
+     (walk-next (snode-next node) offset))
+    ((STACK-OVERWRITE)
+     (let ((offset
+	    (if (eq? (continuation*/type (stack-overwrite-continuation node))
+		     continuation-type/push)
+		(-1+ offset)
+		offset)))
+       (update-reference-context/offset! (stack-overwrite-context node) offset)
+       (walk-next (snode-next node) offset)))
     ((FG-NOOP)
-     (walk-node (snode-next node) offset))
+     (walk-next (snode-next node) offset))
     ((TRUE-TEST)
-     (walk-node (pnode-consequent node) offset)
-     (walk-node (pnode-alternative node) offset))))
-
-;;; end COMPUTE-NODE-OFFSETS
-)
+     (update-reference-context/offset! (true-test-context node) offset)
+     (walk-next (pnode-consequent node) offset)
+     (walk-next (pnode-alternative node) offset))))
