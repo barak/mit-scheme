@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: symbol.scm,v 1.11 2003/07/29 03:45:02 cph Exp $
+$Id: symbol.scm,v 1.12 2003/09/24 03:38:46 cph Exp $
 
 Copyright 1992,1993,2001,2003 Massachusetts Institute of Technology
 
@@ -62,6 +62,9 @@ USA.
   ;; is created.
   (or ((ucode-primitive find-symbol) string)
       ((ucode-primitive string->symbol) (string-copy string))))
+
+(define (substring->symbol string start end)
+  ((ucode-primitive string->symbol) (substring string start end)))
 
 (define (intern string)
   (if (string-lower-case? string)
