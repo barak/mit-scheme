@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.11 1993/08/15 22:03:59 jbank Exp $
+;;;	$Id: debug.scm,v 1.12 1993/08/16 19:00:03 jbank Exp $
 ;;;
 ;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
 ;;;
@@ -383,11 +383,11 @@
 				environment*
 				#f))
 			  #f)))
-    (temporary-message "Computing, please wait...")
     (if (and buffer (buffer-alive? buffer))
 	buffer
 	(let ((write-description
 	       (bline-type/write-description (bline/type bline))))
+	  (temporary-message "Computing, please wait...")
 	  (and write-description
 	       (let ((buffer (browser/new-buffer (bline/browser bline) false)))
 		 (call-with-output-mark (buffer-start buffer)
@@ -1729,9 +1729,9 @@ once it has been renamed, it will not be deleted automatically.")
 
 (define (environment/write-description bline port)
   (let ((environment (bline/object bline)))
-    (temporary-message "Computing environment bindings...")
+
     (show-environment-name-and-bindings environment port)
-    (append-message "done")))
+))
 
 (define (show-environment-name-and-bindings environment port)
   (show-environment-name environment port)
