@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: loadef.scm,v 1.18 1992/11/05 23:31:52 cph Exp $
+;;;	$Id: loadef.scm,v 1.19 1992/11/13 22:22:53 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -151,6 +151,13 @@ Otherwise, a new buffer is created for each topic."
   false
   boolean?)
 
+(define-variable manual-command
+  "A string containing the manual page formatting command.  
+Section (if any) and topic strings are appended (with space separators)
+and the resulting string is provided to a shell running in a subprocess."
+  false
+  string-or-false?)
+
 (define-library 'print
   '("print" (EDWIN)))
 
@@ -193,7 +200,7 @@ variable's value is #F, the text is printed using LPR-COMMAND."
 
 (define-autoload-command 'print-region 'PRINT
   "Print region contents as with Unix command `lpr -p'.")
-
+
 (define-library 'SORT
   '("sort" (EDWIN)))
 

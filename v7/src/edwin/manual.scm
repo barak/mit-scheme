@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/manual.scm,v 1.10 1992/08/25 19:27:22 cph Exp $
+;;;	$Id: manual.scm,v 1.11 1992/11/13 22:22:45 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -85,9 +85,10 @@ where SECTION is the desired section of the manual, as in `tty(4)'."
 		 topic
 		 "...")
 	(shell-command false (buffer-point buffer) false false
-		       (string-append (if (file-exists? "/usr/bin/man")
-					  "/usr/bin/man"
-					  "/usr/ucb/man")
+		       (string-append (or (ref-variable manual-command)
+					  (if (file-exists? "/usr/bin/man")
+					      "/usr/bin/man"
+					      "/usr/ucb/man"))
 				      (if section
 					  (string-append " " section)
 					  "")
