@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/outline.scm,v 1.4 1992/04/21 19:08:41 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/outline.scm,v 1.5 1992/04/21 22:26:05 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -48,20 +48,10 @@ match, the deeper our level in the outline."
   string?)
 
 (define (topic-level outline-pattern mark)
-  (and (re-search-backward outline-pattern (line-end mark 0) (group-start mark))
+  (and (re-search-backward
+	outline-pattern (line-end mark 0) (group-start mark))
        (- (re-match-end-index 0)
 	  (re-match-start-index 0))))
-
-(define (level-start outline-pattern level end start)
-  (if (not (mark<= start end))
-      (error "Marks incorrectly related:" start end))
-  (let loop ((end end))
-    (and (re-search-backward outline-pattern end start)
-	 (if (= (- (re-match-end-index 0)
-		   (re-match-start-index 0))
-		level)
-	     (re-match-start 0)
-	     (loop (re-match-start 0))))))
 
 (define (%forward-up-topic start end outline-pattern)
   (if (not (mark<= start end))
@@ -131,6 +121,42 @@ match, the deeper our level in the outline."
 			      false)
 			     (else (previous-topic (re-match-start 0)))))))))))
 
+(define (%forward-down-topic start end outline-pattern)
+  (if (not (mark<= start end))
+      (error "Marks incorrectly related:" start end))
+  (and (mark< start end)
+       (let ((level (topic-level outline-pattern start)))
+	 (if level
+	     (let next-topic ((start start))
+	       (and start
+		    (re-search-forward outline-pattern (line-end start 0) end)
+		    (let ((found-level
+			   (- (re-match-end-index 0)
+			      (re-match-start-index 0))))
+		      (if (<= found-level level)
+			  (next-topic (re-match-end 0))
+			  (re-match-start 0)))))
+	     (and (re-search-forward outline-pattern start end)
+		  (re-match-start 0))))))
+
+(define (%backward-down-topic end start outline-pattern)
+  (if (not (mark<= start end))
+      (error "Marks incorrectly related:" start end))
+  (and (mark< start end)
+       (let ((level (topic-level outline-pattern start)))
+	 (if level
+	     (let next-topic ((start start))
+	       (and start
+		    (re-search-backward outline-pattern end start)
+		    (let ((found-level
+			   (- (re-match-end-index 0)
+			      (re-match-start-index 0))))
+		      (if (<= found-level level)
+			  (next-topic (re-match-end 0))
+			  (re-match-start 0)))))
+	     (and (re-search-forward outline-pattern start end)
+		  (re-match-start 0))))))
+
 (define (forward-one-topic mark)
   (%forward-topic mark
 		  (group-end mark)
@@ -153,6 +179,18 @@ match, the deeper our level in the outline."
    (group-start mark)
    (mark-local-ref mark (ref-variable-object outline-pattern))))
 
+(define (forward-down-one-topic mark)
+  (%forward-down-topic
+   mark
+   (group-end mark)
+   (mark-local-ref mark (ref-variable-object outline-pattern))))
+
+(define (backward-down-one-topic mark)
+  (%backward-down-topic
+   mark
+   (group-start mark)
+   (mark-local-ref mark (ref-variable-object outline-pattern))))
+
 (define forward-topic)
 (define backward-topic)
 
@@ -169,6 +207,15 @@ match, the deeper our level in the outline."
  (lambda (f b)
    (set! forward-up-topic f)
    (set! backward-up-topic b)
+   unspecific))
+
+(define forward-down-topic)
+(define backward-down-topic)
+
+(make-motion-pair forward-down-one-topic backward-down-one-topic
+ (lambda (f b)
+   (set! forward-down-topic f)
+   (set! backward-down-topic b)
    unspecific))
 
 (define (topic-region mark)
@@ -229,6 +276,22 @@ OUTLINE-PATTERN."
   (lambda (argument)
     (move-thing backward-up-topic argument 'ERROR)))
 
+(define-command forward-down-topic
+  "Move forward to the next-innermost outline topic.  With arg,
+repeat, and go backward if negative.  Outline topics match the regexp
+OUTLINE-PATTERN."
+  "p"
+  (lambda (argument)
+    (move-thing forward-down-topic argument 'ERROR)))
+
+(define-command backward-down-topic
+  "Move backward to the next-innermost outline topic.  With arg,
+repeat, and go forward if negative.  Outline topics match the regexp
+OUTLINE-PATTERN."
+  "p"
+  (lambda (argument)
+    (move-thing backward-down-topic argument 'ERROR)))
+
 (define-command outline-mode
   "Toggle outline mode.
 With argument, turn outline mode on iff argument is positive."
@@ -249,3 +312,4 @@ With argument, turn outline mode on iff argument is positive."
 (define-key 'outline '(#\C-c #\C-n) 'narrow-to-topic)
 (define-key 'outline '(#\C-c #\C-a) 'forward-up-topic)
 (define-key 'outline '(#\C-c #\C-u) 'backward-up-topic)
+(define-key 'outline '(#\C-c #\C-d) 'forward-down-topic)
