@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/cf-dist.h,v 1.8 1989/10/20 12:39:28 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/cf-dist.h,v 1.9 1990/02/27 18:44:04 markf Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -72,6 +72,8 @@ MIT in each case. */
    -DCOMPILE_FUTURES		turns on parallel processing features
    -DFUTURE_LOGGING		???
    -DCOMPILE_STEPPER		enables single-stepper (currently broken)
+   -DENABLE_SUBPROCESSES	enables creation of and communication with
+   				subprocesses
    */
 
 #define C_SWITCH_FEATURES -DCOMPILE_HISTORY
