@@ -1,4 +1,4 @@
-# $Id: Makefile.in.in,v 1.7 2000/12/07 19:58:39 cph Exp $
+# $Id: Makefile.in.in,v 1.8 2000/12/07 20:15:19 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -112,6 +112,7 @@ SHARED_OBJECTS = $(CORE_OBJECTS) $(OS_PRIM_OBJECTS) $(UNIX_OBJECTS) \
 
 bin_PROGRAMS = scheme bchscheme
 aux_PROGRAMS = gcdrone
+aux_DATA = utabmd.bin
 EXTRA_PROGRAMS = findprim bintopsb psbtobin
 
 scheme_SOURCES = $(SHARED_SOURCES) $(STD_GC_SOURCES) usrdef.c
@@ -212,6 +213,9 @@ psbtobin: $(psbtobin_OBJECTS) $(psbtobin_DEPENDENCIES)
 	-rm -f $@
 	$(LINK) $(psbtobin_LDFLAGS) $(psbtobin_OBJECTS) $(psbtobin_LIBS)
 
+utabmd.bin: utabmd.scm
+	scheme -compiler -eval '(sf "utabmd")' < /dev/null
+
 setup:
 	( cd cmpauxmd && $(MAKE) )
 
@@ -232,7 +236,7 @@ maintainer-clean: distclean
 	-rm -f $(MAINTAINER_CLEAN_FILES)
 	( cd cmpauxmd && $(MAKE) $@ )
 
-install: install-binPROGRAMS install-auxPROGRAMS
+install: install-binPROGRAMS install-auxPROGRAMS install-auxDATA
 
 install-binPROGRAMS: $(bin_PROGRAMS)
 	$(mkinstalldirs) $(DESTDIR)$(bindir)
@@ -254,8 +258,18 @@ install-auxPROGRAMS: $(aux_PROGRAMS)
 	    fi; \
 	done
 
+install-auxDATA: $(aux_DATA)
+	$(mkinstalldirs) $(DESTDIR)$(auxdir)
+	@list='$(aux_DATA)'; \
+	for p in $$list; do \
+	    if test -f $$p; then \
+		echo "  $(INSTALL_DATA) $$p $(DESTDIR)$(auxdir)/."; \
+		$(INSTALL_DATA) $$p $(DESTDIR)$(auxdir)/.; \
+	    fi; \
+	done
+
 .PHONY: all tags TAGS mostlyclean clean distclean maintainer-clean
-.PHONY: install install_binPROGRAMS install_auxPROGRAMS
+.PHONY: install install_binPROGRAMS install_auxPROGRAMS install_auxDATA
 
 # **** File dependencies ****
 
