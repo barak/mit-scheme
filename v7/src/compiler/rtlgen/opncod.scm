@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: opncod.scm,v 4.49 1992/12/02 19:34:48 cph Exp $
+$Id: opncod.scm,v 4.50 1992/12/09 23:29:40 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -278,12 +278,11 @@ MIT in each case. |#
 		    internal-close-coding?)
 	    (values false false false))))))
 
-(define filter/nonnegative-integer
-  (constant-filter exact-nonnegative-integer?))
-
-(define filter/positive-integer
+(define filter/type-code
   (constant-filter
-   (lambda (value) (and (exact-integer? value) (positive? value)))))
+   (lambda (operand)
+     (and (exact-nonnegative-integer? operand)
+	  (< operand (expt 2 scheme-type-width))))))
 
 (define (internal-close-coding-for-type-checks)
   compiler:generate-type-checks?)
@@ -574,7 +573,7 @@ MIT in each case. |#
     (simple-type-test 'BIT-STRING? (ucode-type vector-1b)))
 
   (define-open-coder/predicate 'OBJECT-TYPE?
-    (filter/nonnegative-integer open-code/type-test 0 '(1) false)))
+    (filter/type-code open-code/type-test 0 '(1) false)))
 
 (define-open-coder/predicate 'EQ?
   (simple-open-coder
@@ -597,7 +596,7 @@ MIT in each case. |#
     (simple-open-coder (open-code/pair-cons (ucode-type pair)) '(0 1) false))
 
   (define-open-coder/value 'SYSTEM-PAIR-CONS
-    (filter/nonnegative-integer open-code/pair-cons 0 '(1 2) false)))
+    (filter/type-code open-code/pair-cons 0 '(1 2) false)))
 
 (define-open-coder/value 'VECTOR
   (lambda (operands)
@@ -676,7 +675,7 @@ MIT in each case. |#
 	    internal-close-coding-for-type-checks)))))
   (user-ref 'CELL-CONTENTS rtl:make-fetch (ucode-type cell) 0)
   (user-ref 'VECTOR-LENGTH rtl:length-fetch (ucode-type vector) 0)
-  (user-ref '%RECORD-LENGTH rtl:length-fetch (ucode-type record) 0)
+  (user-ref '%RECORD-LENGTH rtl:vector-length-fetch (ucode-type record) 0)
   (user-ref 'SYSTEM-VECTOR-SIZE rtl:vector-length-fetch false 0)
   (user-ref 'STRING-LENGTH rtl:length-fetch (ucode-type string) 1)
   (user-ref 'BIT-STRING-LENGTH rtl:length-fetch (ucode-type vector-1b) 1)
@@ -698,6 +697,32 @@ MIT in each case. |#
   (system-ref 'SYSTEM-HUNK3-CXR0 rtl:make-fetch 0)
   (system-ref 'SYSTEM-HUNK3-CXR1 rtl:make-fetch 1)
   (system-ref 'SYSTEM-HUNK3-CXR2 rtl:make-fetch 2))
+
+(let ((open-coder
+       (simple-open-coder
+	(lambda (combination expressions finish)
+	  combination
+	  (finish
+	   (rtl:make-cons-non-pointer
+	    (rtl:make-machine-constant (ucode-type fixnum))
+	    (rtl:make-object->datum (car expressions)))))
+	'(0)
+	false)))
+  (define-open-coder/value 'OBJECT-TYPE open-coder)
+  (define-open-coder/value 'PRIMITIVE-OBJECT-TYPE open-coder))
+
+(define-open-coder/value 'PRIMITIVE-OBJECT-SET-TYPE
+  (filter/type-code
+   (lambda (type)
+     (lambda (combination expressions finish)
+       combination
+       (finish
+	(rtl:make-cons-non-pointer
+	 (rtl:make-machine-constant type)
+	 (rtl:make-object->datum (car expressions))))))
+   0
+   '(1)
+   false))
 
 (let ((make-ref
        (lambda (name type)
