@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtstr.scm,v 1.20 1992/02/13 21:51:36 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtstr.scm,v 1.21 1992/02/13 23:35:07 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -78,9 +78,9 @@
 			bufferset
 			(make-ring 100)
 			halt-update?
-			char-ready?
-			peek-char
-			read-char
+			peek-no-hang
+			peek
+			read
 			false
 			1))))))
 
