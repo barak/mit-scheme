@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/dassm3.scm,v 1.3 1992/08/11 02:20:16 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/dassm3.scm,v 1.4 1992/08/18 13:40:14 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -126,7 +126,7 @@ MIT in each case. |#
 				 (fix:= scale 1))
 			    (if (not size)
 				(@R index)
-				(@RO size index offset)))
+				(@RO size index (next-offset))))
 			   ((not size)
 			    `(@RI ,base ,index ,scale))
 			   (else
