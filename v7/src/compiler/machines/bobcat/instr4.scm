@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr4.scm,v 1.1 1987/07/17 15:59:50 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr4.scm,v 1.2 1987/07/21 15:13:39 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -223,9 +223,9 @@ MIT in each case. |#
 		   (3 compare))))
 
 (define-instruction CAS2
-  (((? size nwl-n) (D (? c1)) (D (? c2)) (D (? u1)) (D (? u2))
-		   ((? Rtype1 da) (? n1))
-		   ((? Rtype2 da) (? n2)))
+  (((? size wl+2) (D (? c1)) (D (? c2)) (D (? u1)) (D (? u2))
+		  ((? Rtype1 da) (? n1))
+		  ((? Rtype2 da) (? n2)))
    (WORD (5 #b00001)
 	 (2 size)
 	 (9 #b011111100))
