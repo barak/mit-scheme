@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sicp/sbuild.scm,v 1.3 1991/03/06 21:12:23 cph Exp $
+$Id: sbuild.scm,v 1.4 1998/02/12 05:41:58 cph Exp $
 
-Copyright (c) 1987-91 Massachusetts Institute of Technology
+Copyright (c) 1987-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,12 +36,9 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define student-system
-  (make-system "Student (6.001)"
-	       14 3
-	       `((,system-global-environment
-		  "compat" "graphics" "strmac" "stream" "genenv" "studen"))))
-
-(load-system! student-system #f)
+(for-each (lambda (filename)
+	    (load filename system-global-environment))
+	  '("compat" "graphics" "strmac" "stream" "genenv" "studen"))
+(add-identification! "Student (6.001)" 14 3)
 
 "Student environment loaded."
