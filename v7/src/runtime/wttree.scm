@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: wttree.scm,v 1.6 1994/11/14 19:06:20 adams Exp $
+$Id: wttree.scm,v 1.7 1995/03/01 21:57:17 adams Exp $
 
 Copyright (c) 1993-94 Massachusetts Institute of Technology
 
@@ -70,6 +70,7 @@ reference:
   (split-lt    #F read-only true)
   (split-gt    #F read-only true)
   (union       #F read-only true)
+  (union-merge #F read-only true)
   (intersection #F read-only true)
   (difference  #F read-only true)
   (subset?     #F read-only true)
@@ -329,6 +330,22 @@ reference:
 		      (r1  (node/split-gt tree1 ak)))
 		  (node/concat3 ak av (node/union l1 l) (node/union r1 r))))))))
 
+  (define (node/union-merge merge tree1 tree2)
+    (cond ((empty? tree1)  tree2)
+	  ((empty? tree2)  tree1)
+	  (else
+	   (with-n-node tree2
+	     (lambda (ak av l r)
+	       (let* ((node1  (node/find ak tree1))
+		      (l1     (node/split-lt tree1 ak))
+		      (r1     (node/split-gt tree1 ak))
+		      (value  (if node1
+				  (merge ak av (node/v node1))
+				  av)))
+		 (node/concat3 ak value
+			       (node/union-merge merge l1 l)
+			       (node/union-merge merge r1 r))))))))
+
   (define (node/difference tree1 tree2)
     (cond ((empty? tree1)   empty)
 	  ((empty? tree2)   tree1)
@@ -404,6 +421,11 @@ reference:
     (%make-wt-tree (tree/type tree1)
 		   (node/union (tree/root tree1) (tree/root tree2))))
 
+  (define (tree/union-merge merge tree1 tree2)
+    (%make-wt-tree (tree/type tree1)
+		   (node/union-merge merge
+				     (tree/root tree1) (tree/root tree2))))
+
   (define (tree/intersection tree1 tree2)
     (%make-wt-tree (tree/type tree1)
 		   (node/intersection (tree/root tree1) (tree/root tree2))))
@@ -449,6 +471,7 @@ reference:
      tree/split-lt        ;  split-lt
      tree/split-gt        ;  split-gt
      tree/union           ;  union
+     tree/union-merge     ;  union-merge
      tree/intersection    ;  intersection
      tree/difference      ;  difference
      tree/subset?         ;  subset?
@@ -539,6 +562,10 @@ reference:
 (define (wt-tree/union tree1 tree2)
   (guarantee-compatible-trees tree1 tree2 'wt-tree/union)
   ((tree-type/union (tree/type tree1)) tree1 tree2))
+
+(define (wt-tree/union-merge merge tree1 tree2)
+  (guarantee-compatible-trees tree1 tree2 'wt-tree/union-merge)
+  ((tree-type/union-merge (tree/type tree1)) merge tree1 tree2))
 
 (define (wt-tree/intersection tree1 tree2)
   (guarantee-compatible-trees tree1 tree2 'wt-tree/intersection)
