@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.124 1992/03/13 09:45:49 cph Exp $
+;;;	$Id: basic.scm,v 1.125 1992/10/17 23:28:06 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -284,7 +284,8 @@ For a normal exit, you should use \\[exit-recursive-edit], NOT this command."
 
 ;; Set this to #F to indicate that calling QUIT has the same effect
 ;; as calling %EXIT.
-(define scheme-can-quit? true)
+(define scheme-can-quit?
+  (not (string=? microcode-id/operating-system-name "dos")))
 
 ;; Set this to #T to force the exit commands to always prompt for
 ;; confirmation before killing Edwin.
