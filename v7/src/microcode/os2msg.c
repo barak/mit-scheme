@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2msg.c,v 1.6 1995/04/11 05:19:34 cph Exp $
+$Id: os2msg.c,v 1.7 1995/04/22 21:17:36 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -165,7 +165,6 @@ OS2_close_qid (qid_t qid)
       OS2_destroy_message (this -> message);
       OS_free (this);
     }
-  (QID_TQUEUE (qid)) = 0;
   OS2_request_mutex_semaphore (qid_lock);
   {
     qid_t twin = (QID_TWIN (qid));
@@ -175,27 +174,48 @@ OS2_close_qid (qid_t qid)
 	(QID_TWIN (qid)) = QID_NONE;
       }
   }
+  (QID_TQUEUE (qid)) = 0;
   (QID_ALLOCATEDP (qid)) = 0;
   OS2_release_mutex_semaphore (qid_lock);
 }
 
+tqueue_t *
+OS2_qid_tqueue (qid_t qid)
+{
+  return (QID_TQUEUE (qid));
+}
+
 qid_t
 OS2_qid_twin (qid_t qid)
 {
-  return (((QID_ALLOCATEDP (qid))
-	   && ((QID_TWIN (qid)) != QID_NONE)
-	   && (QID_ALLOCATEDP (QID_TWIN (qid))))
-	  ? (QID_TWIN (qid))
-	  : QID_NONE);
+  qid_t twin;
+  OS2_request_mutex_semaphore (qid_lock);
+  twin
+    = (((QID_ALLOCATEDP (qid))
+	&& ((QID_TWIN (qid)) != QID_NONE)
+	&& (QID_ALLOCATEDP (QID_TWIN (qid))))
+       ? (QID_TWIN (qid))
+       : QID_NONE);
+  OS2_release_mutex_semaphore (qid_lock);
+  return (twin);
 }
 
 void
 OS2_close_qid_pair (qid_t qid)
 {
+  /* This is safe because it is used only in a particular way.  The
+     twin of this qid is never received from, and qid is never sent
+     to, and the twin will never be closed by the other thread.  Thus,
+     even though the unlocked sections of OS2_close_qid are
+     manipulating structures that belong to the other thread, the
+     other thread won't be manipulating them so no conflict will
+     arise.  It's important not to use this procedure in any other
+     situation!  */
   if (QID_ALLOCATEDP (qid))
     {
-      if (((QID_TWIN (qid)) != QID_NONE) && (QID_ALLOCATEDP (QID_TWIN (qid))))
-	OS2_close_qid (QID_TWIN (qid));
+      qid_t twin = (OS2_qid_twin (qid));
+      if (twin != QID_NONE)
+	OS2_close_qid (twin);
       OS2_close_qid (qid);
     }
 }
@@ -297,7 +317,9 @@ OS2_destroy_message (msg_t * message)
 void
 OS2_send_message (qid_t qid, msg_t * message)
 {
-  qid_t twin = (QID_TWIN (qid));
+  qid_t twin;
+  OS2_request_mutex_semaphore (qid_lock);
+  twin = (QID_TWIN (qid));
   if (twin == QID_NONE)
     /* Other end of connection has been closed, so discard the
        message.  We used to signal an error here, but this can happen
@@ -317,6 +339,7 @@ OS2_send_message (qid_t qid, msg_t * message)
       (MSG_SENDER (message)) = twin;
       write_tqueue (tqueue, message);
     }
+  OS2_release_mutex_semaphore (qid_lock);
 }
 
 msg_t *

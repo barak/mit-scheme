@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2msg.h,v 1.7 1995/02/21 22:54:30 cph Exp $
+$Id: os2msg.h,v 1.8 1995/04/22 21:17:54 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -210,6 +210,7 @@ extern void OS2_make_qid_pair (qid_t *, qid_t *);
 extern void OS2_open_qid (qid_t, tqueue_t *);
 extern int OS2_qid_openp (qid_t);
 extern void OS2_close_qid (qid_t);
+extern tqueue_t * OS2_qid_tqueue (qid_t);
 extern qid_t OS2_qid_twin (qid_t);
 extern void OS2_close_qid_pair (qid_t);
 extern void OS2_set_qid_receive_filter (qid_t, qid_receive_filter_t);
