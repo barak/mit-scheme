@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 1.13 1993/07/20 00:52:23 gjr Exp $
+$Id: machin.scm,v 1.14 1993/11/10 18:32:26 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -296,8 +296,8 @@ MIT in each case. |#
   (and (rtl:offset? expression)
        (interpreter-regs-pointer? (rtl:offset-base expression))
        (let ((offset (rtl:offset-offset expression)))
-	 (rtl:machine-constant? offset)
-	 (= 3 (rtl:machine-constant-value offset)))))
+	 (and (rtl:machine-constant? offset)
+	      (= 3 (rtl:machine-constant-value offset))))))
 
 (define-integrable (interpreter-register:access)
   (rtl:make-machine-register regnum:C-return-value))
