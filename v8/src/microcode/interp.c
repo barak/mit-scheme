@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: interp.c,v 9.67 1992/09/11 21:58:33 cph Exp $
+$Id: interp.c,v 9.68 1992/09/14 20:34:40 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -403,9 +403,9 @@ DEFUN (abort_to_interpreter, (argument), int argument)
   interpreter_throw_argument = argument;
   {
     long old_mask = IntEnb;
-    set_IntEnb = 0;
+    set_IntEnb (0);
     dstack_set_position (interpreter_catch_dstack_position);
-    set_IntEnb = old_mask;
+    set_IntEnb (old_mask);
   }
   obstack_free ((&scratch_obstack), 0);
   obstack_init (&scratch_obstack);
