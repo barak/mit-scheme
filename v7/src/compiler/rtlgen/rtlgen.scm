@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.10 1988/10/26 12:33:00 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.11 1988/11/02 21:45:03 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -213,12 +213,13 @@ MIT in each case. |#
 
 (define (generate/rgraph node generator)
   (let ((rgraph (node->rgraph node)))
-    (let ((entry-node
-	   (cfg-entry-node
-	    (fluid-let ((*current-rgraph* rgraph))
-	      (with-new-node-marks (lambda () (generator node)))))))
-      (add-rgraph-entry-node! rgraph entry-node)
-      (return-2 rgraph (node->edge entry-node)))))
+    (let ((entry-edge
+	   (node->edge
+	    (cfg-entry-node
+	     (fluid-let ((*current-rgraph* rgraph))
+	       (with-new-node-marks (lambda () (generator node))))))))
+      (add-rgraph-entry-edge! rgraph entry-edge)
+      (return-2 rgraph entry-edge))))
 
 (define (node->rgraph node)
   (let ((color
