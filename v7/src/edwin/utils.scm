@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: utils.scm,v 1.30 1993/01/20 10:06:09 cph Exp $
+;;;	$Id: utils.scm,v 1.31 1993/01/20 10:35:53 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -100,7 +100,7 @@
 	  (fix:- n-words 1)))
 	(set-string-length! result n-chars)
 	;; This won't work if range-checking is turned on.
-	(string-set! result (fix:+ n-chars 1) #\nul)
+	(string-set! result n-chars #\nul)
 	((ucode-primitive primitive-increment-free 1) n-words)
 	(set-interrupt-enables! mask)
 	result))))
@@ -124,7 +124,7 @@
       (fix:+ (fix:lsh n-chars (chars-to-words-shift)) 2)))
     (set-string-length! string n-chars)
     ;; This won't work if range-checking is turned on.
-    (string-set! string (fix:+ n-chars 1) #\nul)
+    (string-set! string n-chars #\nul)
     (set-interrupt-enables! mask)
     unspecific))
 
