@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/debuge.scm,v 1.41 1991/04/21 00:49:31 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/debuge.scm,v 1.42 1991/05/10 04:52:20 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -81,15 +81,6 @@
 		      (set-buffer-pathname! buffer pathname)
 		      (set-buffer-truename! buffer truename)
 		      (buffer-not-modified! buffer)))))))))
-
-(define-command debug-show-rings
-  "Show the number of items in the mark and kill rings."
-  ()
-  (lambda ()
-    (message "Mark Ring: "
-	     (write-to-string (ring-size (buffer-mark-ring (current-buffer))))
-	     "; Kill Ring: "
-	     (write-to-string (ring-size (current-kill-ring))))))
 
 (define-command debug-count-marks
   "Show the number of in-use and GC'ed marks for the current buffer."
