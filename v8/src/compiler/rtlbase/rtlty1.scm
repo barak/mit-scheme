@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlty1.scm,v 1.1 1994/11/19 02:05:54 adams Exp $
+$Id: rtlty1.scm,v 1.2 1994/11/26 19:21:03 adams Exp $
 
 Copyright (c) 1987-1994 Massachusetts Institute of Technology
 
@@ -238,3 +238,7 @@ MIT in each case. |#
 (define-rtl-expression align-float rtl: expression)
 
 (define-rtl-expression coerce-value-class rtl: expression class)
+
+;;; data is a of the form (CONSTANT stuff)
+(define-rtl-statement profile-count rtl:)
+(define-rtl-statement profile-data rtl: data)
