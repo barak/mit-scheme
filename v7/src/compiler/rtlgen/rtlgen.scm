@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.14 1987/05/09 06:27:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.15 1987/05/21 15:05:03 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -49,15 +49,23 @@ MIT in each case. |#
     (scfg*scfg->scfg!
      (rtl:make-assignment register:frame-pointer
 			  (rtl:make-fetch register:stack-pointer))
-     (generate/node (quotation-fg-entry quotation) false)))))
+     (generate/node (let ((entry (quotation-fg-entry quotation)))
+		      (if (not compiler:preserve-data-structures?)
+			  (unset-quotation-fg-entry! quotation))
+		      entry)
+		    false)))))
 
 (define (generate/procedure procedure)
   (set-procedure-rtl-entry!
    procedure
    (cfg-entry-node
-    (generate/procedure-header procedure
-			       (generate/node (procedure-fg-entry procedure)
-					      false)))))
+    (generate/procedure-header
+     procedure
+     (generate/node (let ((entry (procedure-fg-entry procedure)))
+		      (if (not compiler:preserve-data-structures?)
+			  (unset-procedure-fg-entry! procedure))
+		      entry)
+		    false)))))
 
 (define (generate/node node subproblem?)
   ;; This won't work when there are loops in the RTL.
@@ -81,14 +89,11 @@ MIT in each case. |#
       (generate/node (cfg-entry-node (subproblem-cfg subproblem)) true)))
 
 (define (generate/operand subproblem)
-  ;; The subproblem-cfg must be generated before the subproblem-value,
-  ;; because if it is a combination, the combination-value must be
-  ;; marked as a value-temporary before the code for referencing it
-  ;; can be generated.
-  (let ((cfg (generate/subproblem-cfg subproblem)))
-    (transmit-values (generate/rvalue (subproblem-value subproblem))
-      (lambda (prefix expression)
-	(return-3 cfg prefix expression)))))
+  (transmit-values (generate/rvalue (subproblem-value subproblem))
+    (lambda (prefix expression)
+      (return-3 (generate/subproblem-cfg subproblem)
+		prefix
+		expression))))
 
 (define (generate/subproblem subproblem)
   (transmit-values (generate/operand subproblem)
@@ -109,11 +114,8 @@ MIT in each case. |#
 
 (define (generate/normal-statement node subproblem? generator)
   (if (snode-next node)
-      ;; Due to the side-effect on combination-value temporaries, we
-      ;; must generate the nodes in the control flow order.
-      (let ((cfg (generator true)))
-	(scfg*scfg->scfg! cfg
-			  (generate/node (snode-next node) subproblem?)))
+      (scfg*scfg->scfg! (generator true)
+			(generate/node (snode-next node) subproblem?))
       (generator subproblem?)))
 
 (define (define-predicate-generator tag generator)
@@ -121,13 +123,10 @@ MIT in each case. |#
 
 (define (normal-predicate-generator generator)
   (lambda (node subproblem?)
-    ;; Due to the side-effect on combination-value temporaries, we
-    ;; must generate the nodes in the control flow order.
-    (let ((cfg (generator node)))
-      (pcfg*scfg->scfg!
-       cfg
-       (generate/node (pnode-consequent node) subproblem?)
-       (generate/node (pnode-alternative node) subproblem?)))))
+    (pcfg*scfg->scfg!
+     (generator node)
+     (generate/node (pnode-consequent node) subproblem?)
+     (generate/node (pnode-alternative node) subproblem?))))
 
 (define-integrable (node-rtl-result node)
   (node-property-get node tag/node-rtl-result))
