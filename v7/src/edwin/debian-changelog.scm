@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: debian-changelog.scm,v 1.5 2001/03/11 05:15:20 cph Exp $
+;;; $Id: debian-changelog.scm,v 1.6 2002/08/12 18:03:26 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -218,9 +218,10 @@ address and release date) so that new entries can be made."
 (define (trailer-line buffer)
   (let ((start (buffer-start buffer))
 	(end (buffer-end buffer)))
-    (if (not (re-search-forward "\n\\S " start end))
-	(error "Unable to find version-end line."))
-    (let ((m (mark1+ (re-match-start 0))))
+    (let ((m
+	   (if (re-search-forward "\n\\S " start end)
+	       (mark1+ (re-match-start 0))
+	       end)))
       (if (re-search-backward "\n --"  m)
 	  (re-match-end 0)
 	  (let ((m (mark-left-inserting-copy m)))
