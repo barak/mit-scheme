@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: missing.c,v 9.30 1993/06/24 07:09:00 gjr Exp $
+$Id: missing.c,v 9.31 1998/07/20 03:50:31 cph Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,6 +34,7 @@ MIT in each case. */
 
 /* This file contains utilities potentially missing from the math library. */
 
+#include "oscond.h"
 #include "ansidecl.h"
 #include "config.h"
 

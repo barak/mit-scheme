@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: psbmap.h,v 9.41 1993/11/11 20:20:03 cph Exp $
+$Id: psbmap.h,v 9.42 1998/07/20 03:50:07 cph Exp $
 
-Copyright (c) 1987-1993 Massachusetts Institute of Technology
+Copyright (c) 1987-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -50,6 +50,7 @@ MIT in each case. */
 #ifndef _NEXTOS
 #include <stdlib.h>
 #endif
+#include "oscond.h"
 #include "ansidecl.h"
 #include "config.h"
 #include "types.h"
