@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.23 2004/02/17 04:59:29 cph Exp $
+$Id: genio.scm,v 1.24 2004/02/23 20:49:32 cph Exp $
 
 Copyright 1991,1993,1995,1996,1999,2002 Massachusetts Institute of Technology
 Copyright 2003,2004 Massachusetts Institute of Technology
@@ -1266,6 +1266,60 @@ USA.
   (fix:+ (fix:or (extract n0 #x3FF 10)
 		 (extract n1 #x3FF 0))
 	 #x10000))
+
+(define-decoder 'UTF-32-BE
+  (lambda (ib)
+    (let ((bv (input-buffer-bytes ib))
+	  (bs (input-buffer-start ib)))
+      (and (fix:<= (fix:+ bs 4) (input-buffer-end ib))
+	   (let ((cp
+		  (+ (* (get-byte bv bs 0) #x1000000)
+		     (* (get-byte bv bs 1) #x10000)
+		     (* (get-byte bv bs 2) #x100)
+		     (get-byte bv bs 3))))
+	     (if (unicode-code-point? cp)
+		 (begin
+		   (set-input-buffer-start! ib (fix:+ bs 4))
+		   cp)
+		 (error:char-decoding ib)))))))
+
+(define-decoder 'UTF-32-LE
+  (lambda (ib)
+    (let ((bv (input-buffer-bytes ib))
+	  (bs (input-buffer-start ib)))
+      (and (fix:<= (fix:+ bs 4) (input-buffer-end ib))
+	   (let ((cp
+		  (+ (* (get-byte bv bs 3) #x1000000)
+		     (* (get-byte bv bs 2) #x10000)
+		     (* (get-byte bv bs 1) #x100)
+		     (get-byte bv bs 0))))
+	     (if (unicode-code-point? cp)
+		 (begin
+		   (set-input-buffer-start! ib (fix:+ bs 4))
+		   cp)
+		 (error:char-decoding ib)))))))
+
+(define-encoder 'UTF-32-BE
+  (lambda (ob cp)
+    (if (fix:< cp #x110000)
+	(let ((bv (output-buffer-bytes ob))
+	      (bs (output-buffer-start ob)))
+	  (put-byte bv bs 0 #x00)
+	  (put-byte bv bs 1 (fix:and (fix:lsh cp #x10) #xFF))
+	  (put-byte bv bs 2 (fix:and (fix:lsh cp #x08) #xFF))
+	  (put-byte bv bs 3 (fix:and cp #xFF)))
+	(error:char-encoding ob cp))))
+
+(define-encoder 'UTF-32-LE
+  (lambda (ob cp)
+    (if (fix:< cp #x110000)
+	(let ((bv (output-buffer-bytes ob))
+	      (bs (output-buffer-start ob)))
+	  (put-byte bv bs 0 (fix:and cp #xFF))
+	  (put-byte bv bs 1 (fix:and (fix:lsh cp #x08) #xFF))
+	  (put-byte bv bs 2 (fix:and (fix:lsh cp #x10) #xFF))
+	  (put-byte bv bs 3 #x00))
+	(error:char-encoding ob cp))))
 
 ;;;; Normalizers
 
