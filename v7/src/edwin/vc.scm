@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.50 2000/03/31 18:26:15 cph Exp $
+;;; $Id: vc.scm,v 1.51 2000/03/31 19:08:27 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -56,10 +56,24 @@ value of this flag."
   #t
   boolean?)
 
+(define-variable vc-delete-logbuf-window
+  "If true, delete the *VC-log* buffer and window after each logical action.
+If false, bury that buffer instead.
+This is most useful if you have multiple windows on a frame and would like to
+preserve the setting."
+  #t
+  boolean?)
+
 (define-variable vc-initial-comment
   "Prompt for initial comment when a file is registered."
   #f
   boolean?)
+
+(define-variable vc-default-init-version
+  "A string used as the default version number when a new file is registered.
+This can be overriden by giving a prefix argument to \\[vc-register]."
+  "1.1"
+  string?)
 
 (define-variable vc-command-messages
   "If true, display run messages from back-end commands."
@@ -337,12 +351,7 @@ Otherwise, the mod time of the file is the checkout time."
 ;;;; VC-MASTER association
 
 (define (buffer-vc-master buffer error?)
-  (let ((buffer
-	 (let loop ((buffer buffer))
-	   (let ((buffer* (buffer-get buffer 'VC-PARENT-BUFFER #f)))
-	     (if buffer*
-		 (loop buffer*)
-		 buffer)))))
+  (let ((buffer (chase-parent-buffer buffer)))
     (let ((master (buffer-get buffer 'VC-MASTER #f)))
       (if (and master (vc-backend-master-valid? master))
 	  master
@@ -359,6 +368,13 @@ Otherwise, the mod time of the file is the checkout time."
 			(if master (buffer-put! buffer 'VC-MASTER master))
 			master)
 		      (and error? (vc-registration-error buffer))))))))))
+
+(define (chase-parent-buffer buffer)
+  (let loop ((buffer buffer))
+    (let ((buffer* (buffer-get buffer 'VC-PARENT-BUFFER #f)))
+      (if buffer*
+	  (loop buffer*)
+	  buffer))))
 
 (define (file-vc-master workfile error?)
   (let ((workfile (->pathname workfile)))
@@ -541,29 +557,30 @@ merge in the changes into your working copy."
 	  (message msg "done"))))))
 
 (define (vc-register workfile revision? comment keep?)
-  (let ((revision
-	 (vc-get-revision revision?
-			  (string-append "Initial version level for "
-					 (->namestring workfile)))))
-    (let ((buffer (pathname->buffer workfile)))
+  (let ((buffer (pathname->buffer workfile)))
+    (let ((revision
+	   (or (vc-get-revision revision?
+				(string-append "Initial version level for "
+					       (->namestring workfile)))
+	       (ref-variable vc-default-init-version buffer))))
       ;; Watch out for new buffers of size 0: the corresponding file
       ;; does not exist yet, even though buffer-modified? is false.
       (if (and buffer
 	       (not (buffer-modified? buffer))
 	       (= 0 (buffer-length buffer))
 	       (not (file-exists? workfile)))
-	  (buffer-modified! buffer)))
-    (vc-save-workfile-buffer workfile)
-    (vc-start-entry workfile "Enter initial comment."
-		    (or comment
-			(if (ref-variable vc-initial-comment buffer)
-			    #f
-			    ""))
-		    (let ((keep? (or keep? (vc-keep-workfiles? workfile))))
-		      (lambda (comment)
-			(vc-backend-register workfile revision comment keep?)
-			(vc-resync-workfile-buffer workfile keep?)))
-		    #f)))
+	  (buffer-modified! buffer))
+      (vc-save-workfile-buffer workfile)
+      (vc-start-entry workfile "Enter initial comment."
+		      (or comment
+			  (if (ref-variable vc-initial-comment buffer)
+			      #f
+			      ""))
+		      (let ((keep? (or keep? (vc-keep-workfiles? workfile))))
+			(lambda (comment)
+			  (vc-backend-register workfile revision comment keep?)
+			  (vc-resync-workfile-buffer workfile keep?)))
+		      #f))))
 
 (define (vc-checkout master revision?)
   (let ((revision (vc-get-revision revision? "Branch or version to move to")))
@@ -952,30 +969,39 @@ Normally shows only locked files; prefix arg says to show all files."
 
 (define (vc-finish-entry master finish-entry after log-window window)
   (lambda (log-buffer)
-    ;; If a new window was created to hold the log buffer, and the
-    ;; log buffer is still selected in that window, delete it.
+    (if (vc-master? master)
+	(begin
+	  (guarantee-vc-master-valid master)
+	  (vc-backend-check-log-entry master log-buffer)))
+    (guarantee-newline (buffer-end log-buffer))
+    (let ((comment (buffer-string log-buffer))
+	  (buffer (chase-parent-buffer log-buffer)))
+      (comint-record-input vc-comment-ring comment)
+      (if (buffer-alive? log-buffer)
+	  (begin
+	    ;; Save any changes the user might have made while editing
+	    ;; the comment.
+	    (vc-save-buffer buffer #t)
+	    (pop-up-buffer buffer #t)))
+      ;; Do the log operation.
+      (finish-entry comment))
+    ;; If a new window was created to hold the log buffer, and the log
+    ;; buffer is still selected in that window, delete it.
     (let ((log-window (weak-car log-window)))
       (if (and log-window
 	       (window-live? log-window)
 	       (eq? log-buffer (window-buffer log-window))
 	       (not (window-has-no-neighbors? log-window)))
 	  (window-delete! log-window)))
+    ;; Either kill or bury the log buffer.
+    (if (buffer-alive? log-buffer)
+	(if (ref-variable vc-delete-logbuf-window log-buffer)
+	    (kill-buffer log-buffer)
+	    (bury-buffer log-buffer)))
     (let ((window (weak-car window)))
       (if (and window
 	       (window-live? window))
 	  (select-window window)))
-    (guarantee-newline (buffer-end log-buffer))
-    (if (vc-master? master)
-	(begin
-	  (guarantee-vc-master-valid master)
-	  (vc-backend-check-log-entry master log-buffer)))
-    (let ((comment (buffer-string log-buffer)))
-      ;; Enter the comment in the comment ring.
-      (comint-record-input vc-comment-ring comment)
-      ;; We're finished with the log buffer now.
-      (kill-buffer log-buffer)
-      ;; Perform the log operation.
-      (finish-entry comment))
     (if after (after))))
 
 (define vc-comment-ring
