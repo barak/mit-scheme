@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: cinden.scm,v 1.17 1998/06/28 20:23:53 cph Exp $
+;;;	$Id: cinden.scm,v 1.18 1998/06/29 04:07:43 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
@@ -91,31 +91,28 @@ This is in addition to c-continued-statement-offset."
 
 (define (c-compute-indentation start)
   (let ((start (line-start start 0)))
-    (let ((old-indentation (mark-indentation start)))
-      (let ((indentation (calculate-indentation start #f)))
-	(cond ((not indentation)
-	       old-indentation)
-	      ((eq? indentation true)
-	       ;; Inside a comment.
-	       (mark-column
-		(let* ((star?
-			(char-match-forward #\* (indentation-end start)))
-		       (pend (whitespace-start start (group-start start)))
-		       (pstart (indentation-end pend))
-		       (comment-start
-			(and (mark< pstart pend)
-			     (re-search-forward "/\\*[ \t]*" pstart pend #f))))
-		  (cond ((not comment-start)
-			 pstart)
-			(star?
-			 (mark1+ (re-match-start 0)))
-			(else
-			 comment-start)))))
-	      ((char-match-forward #\# start)
-	       0)
-	      (else
-	       (indent-line:adjust-indentation (horizontal-space-end start)
-					       indentation)))))))
+    (let ((indentation (calculate-indentation start #f)))
+      (if (exact-integer? indentation)
+	  (if (char-match-forward #\# start)
+	      0
+	      (indent-line:adjust-indentation (horizontal-space-end start)
+					      indentation))
+	  (nonstandard-indentation start indentation)))))
+
+(define (nonstandard-indentation start state)
+  (cond ((parse-state-in-string? state)
+	 (mark-indentation start))
+	((parse-state-in-comment? state)
+	 (mark-column
+	  (let ((comment-start (parse-state-comment-start state)))
+	    (if (and (char-match-forward #\* (indentation-end start))
+		     (match-forward "/*" comment-start))
+		(mark1+ comment-start)
+		(or (re-match-forward "/\\(/+\\|\\*+\\)[ \t]*"
+				      comment-start)
+		    comment-start)))))
+	(else
+	 (error "Illegal non-standard indentation:" state))))
 
 (define (indent-line:adjust-indentation start indentation)
   (cond ((or (looking-at-keyword? "case" start)
@@ -144,10 +141,9 @@ This is in addition to c-continued-statement-offset."
 		   state
 		   (loop (parse-state-location state)))))))
       (let ((container (parse-state-containing-sexp state)))
-	(cond ((parse-state-in-string? state)
-	       false)
-	      ((parse-state-in-comment? state)
-	       true)
+	(cond ((or (parse-state-in-string? state)
+		   (parse-state-in-comment? state))
+	       state)
 	      ((not container)
 	       (calculate-indentation:top-level indent-point
 						(or parse-start
@@ -264,7 +260,8 @@ This is in addition to c-continued-statement-offset."
       (let ((mark (whitespace-end mark gend)))
 	(cond ((mark>= mark end)
 	       false)
-	      ((char-match-forward #\# mark)
+	      ((or (char-match-forward #\# mark)
+		   (match-forward "//" mark))
 	       (loop (line-start mark 1 'LIMIT) colon-line-end))
 	      ((match-forward "/*" mark)
 	       (loop (or (search-forward "*/" mark gend) gend) colon-line-end))
@@ -339,7 +336,11 @@ This is in addition to c-continued-statement-offset."
 	 (indent-line:adjust-indentation
 	  start
 	  (cond ((not (car indent-stack))
-		 (let ((indentation (calculate-indentation start false)))
+		 (let ((indentation
+			(let ((indentation (calculate-indentation start #f)))
+			  (if (exact-integer? indentation)
+			      indentation
+			      (nonstandard-indentation start indentation)))))
 		   (set-car! indent-stack indentation)
 		   indentation))
 		((not (char-match-forward #\{ (car contain-stack)))
@@ -381,12 +382,13 @@ This is in addition to c-continued-statement-offset."
 
 (define (backward-to-noncomment start end)
   (let loop ((start start))
-    (let ((mark (whitespace-start start end)))
-      (let ((m (match-backward "*/" mark)))
-	(if m
-	    (let ((m (search-backward "/*" m end)))
-	      (and m
-		   (loop m)))
+    (let ((mark
+	   (let ((mark (whitespace-start start end)))
+	     (or (match-backward "*/" mark)
+		 mark))))
+      (let ((state (parse-partial-sexp end mark)))
+	(if (parse-state-in-comment? state)
+	    (loop (parse-state-comment-start state))
 	    (let ((mark* (indentation-end mark)))
 	      (cond ((not (char-match-forward #\# mark*)) mark)
 		    ((mark<= mark* end) mark*)
