@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/framex.scm,v 14.8 1989/04/15 01:24:10 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/framex.scm,v 14.9 1989/07/13 18:38:41 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -39,8 +39,11 @@ MIT in each case. |#
 
 (define (debugging-info/undefined-expression? expression)
   (or (eq? expression undefined-expression)
-      (and (pair? expression)
-	   (eq? (car expression) undefined-expression))))
+      (debugging-info/noise? expression)))
+
+(define (debugging-info/noise? expression)
+  (and (pair? expression)
+       (eq? (car expression) undefined-expression)))
 
 (define-integrable (debugging-info/noise expression)
   (cdr expression))

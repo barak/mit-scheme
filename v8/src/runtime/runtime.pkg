@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.41 1989/06/23 21:13:06 ojn Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.42 1989/07/13 18:38:16 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -385,6 +385,7 @@ MIT in each case. |#
 	  debugging-info/undefined-environment?
 	  debugging-info/undefined-expression?
 	  debugging-info/noise
+	  debugging-info/noise?
 	  stack-frame/debugging-info)
   (initialization (initialize-package!)))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.12 1989/05/21 04:31:33 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.13 1989/07/13 18:38:31 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -169,7 +169,7 @@ MIT in each case. |#
 	       (print-expression current-expression))
 	      ((or (not (debugging-info/undefined-expression?
 			 current-expression))
-		   (not (debugging-info/noise current-expression)))
+		   (not (debugging-info/noise? current-expression)))
 	       (write-string
 		(if (stack-frame/compiled-code? current-subproblem)
 		    "Compiled code expression unknown"
@@ -224,7 +224,7 @@ MIT in each case. |#
 	 (write-string ";compiled code"))
 	((not (debugging-info/undefined-expression? current-expression))
 	 (print-expression current-expression))
-	((debugging-info/noise current-expression)
+	((debugging-info/noise? current-expression)
 	 (newline)
 	 (write-string ";")
 	 (write-string ((debugging-info/noise current-expression) false)))
@@ -312,7 +312,7 @@ MIT in each case. |#
 	 ((not (debugging-info/undefined-expression? expression))
 	  (output-to-string 50
 			    (lambda () (write-sexp (unsyntax expression)))))
-	 ((debugging-info/noise expression)
+	 ((debugging-info/noise? expression)
 	  (output-to-string
 	   50
 	   (lambda ()
