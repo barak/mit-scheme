@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: osio.h,v 1.8 1993/04/06 22:18:26 cph Exp $
+$Id: osio.h,v 1.9 1994/11/13 23:47:37 cph Exp $
 
 Copyright (c) 1990-93 Massachusetts Institute of Technology
 
@@ -37,21 +37,32 @@ MIT in each case. */
 
 #include "os.h"
 
+/* Must match definition of `channel_type_names' in "prosio.c".  */
 enum channel_type
 {
   channel_type_unknown,
   channel_type_file,
-  channel_type_pipe,
-  channel_type_fifo,
+  channel_type_unix_pipe,
+  channel_type_unix_fifo,
   channel_type_terminal,
-  channel_type_pty_master,
+  channel_type_unix_pty_master,
   channel_type_unix_stream_socket,
   channel_type_tcp_stream_socket,
   channel_type_tcp_server_socket,
   channel_type_directory,
-  channel_type_character_device,
-  channel_type_block_device
+  channel_type_unix_character_device,
+  channel_type_unix_block_device,
+  channel_type_os2_console,
+  channel_type_os2_unnamed_pipe,
+  channel_type_os2_named_pipe
 };
+
+/* For upwards compatibility: */
+#define channel_type_pipe channel_type_unix_pipe
+#define channel_type_fifo channel_type_unix_fifo
+#define channel_type_pty_master channel_type_unix_pty_master
+#define channel_type_character_device channel_type_unix_character_device
+#define channel_type_block_device channel_type_unix_block_device
 
 extern size_t OS_channel_table_size;
 #define NO_CHANNEL OS_channel_table_size
