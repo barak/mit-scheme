@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/make.scm,v 4.19 1991/08/14 02:08:09 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/make.scm,v 4.20 1991/08/22 18:17:27 jinx Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -39,4 +39,4 @@ MIT in each case. |#
 (package/system-loader "sf" '() 'QUERY)
 ((package/reference (find-package '(SCODE-OPTIMIZER))
 		    'USUAL-INTEGRATIONS/CACHE!))
-(add-system! (make-system "SF" 4 19 '()))
+(add-system! (make-system "SF" 4 20 '()))
