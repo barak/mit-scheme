@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rfc822.scm,v 1.7 2000/05/17 20:53:32 cph Exp $
+;;; $Id: rfc822.scm,v 1.8 2000/05/22 14:50:50 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -47,20 +47,17 @@
 (define (rfc822:string->addresses string)
   (let ((address-list
 	 (rfc822:strip-quoted-names
-	  (let loop ((tokens (rfc822:string->tokens string)))
-	    (if (pair? tokens)
-		(let ((rest (loop (cdr tokens))))
-		  (if (cond ((char? (car tokens))
-			     (eqv? #\space (car tokens)))
-			    ((string? (car tokens))
-			     (char=? #\( (string-ref (car tokens) 0)))
-			    (else #t))
-		      rest
-		      (cons (car tokens) rest)))
-		'())))))
+	  (rfc822:strip-whitespace! (rfc822:string->tokens string)))))
     (if (and address-list (null? (cdr address-list)))
 	(car address-list)
 	(map string-trim (burst-string string #\, #f)))))
+
+(define rfc822:strip-whitespace!
+  (list-deletor!
+   (lambda (token)
+     (cond ((char? token) (eqv? #\space token))
+	   ((string? token) (char=? #\( (string-ref token 0)))
+	   (else #f)))))
 
 (define (rfc822:strip-quoted-names tokens)
   (rfc822:parse-list tokens #\,
@@ -110,30 +107,34 @@
 	(id #f)
 	(for #f)
 	(lose (lambda () (error "Malformed Received header:" string))))
-    (let loop ((tokens (rfc822:string->tokens string)))
+    (let loop ((tokens
+		(rfc822:strip-whitespace! (rfc822:string->tokens string))))
       (cond ((not (pair? tokens))
 	     (lose))
-	    ((eqv? #\: (car tokens))
+	    ((eqv? #\; (car tokens))
 	     (values from by via (reverse! with) id for
-		     (string->universal-time (rfc822:tokens->string tokens))))
+		     (let ((pv (rfc822:parse-date-time (cdr tokens))))
+		       (if (not (and (pair? pv) (null? (cdr pv))))
+			   (lose))
+		       (car pv))))
 	    ((not (string? (car tokens)))
 	     (lose))
 	    ((string-ci=? "from" (car tokens))
-	     (let ((tokens (rfc822:parse-domain (cdr tokens))))
-	       (if (not tokens)
+	     (let ((pv (rfc822:parse-domain (cdr tokens))))
+	       (if (not pv)
 		   (lose))
-	       (set! from (car tokens))
-	       (loop (cdr tokens))))
+	       (set! from (car pv))
+	       (loop (cdr pv))))
 	    ((string-ci=? "by" (car tokens))
-	     (let ((tokens (rfc822:parse-domain (cdr tokens))))
-	       (if (not tokens)
+	     (let ((pv (rfc822:parse-domain (cdr tokens))))
+	       (if (not pv)
 		   (lose))
-	       (set! from (car tokens))
-	       (loop (cdr tokens))))
+	       (set! by (car pv))
+	       (loop (cdr pv))))
 	    ((string-ci=? "via" (car tokens))
 	     (if (not (pair? (cdr tokens)))
 		 (lose))
-	     (set! from (cadr tokens))
+	     (set! via (cadr tokens))
 	     (loop (cddr tokens)))
 	    ((string-ci=? "with" (car tokens))
 	     (if (not (pair? (cdr tokens)))
@@ -141,18 +142,101 @@
 	     (set! with (cons (cadr tokens) with))
 	     (loop (cddr tokens)))
 	    ((string-ci=? "id" (car tokens))
-	     (let ((tokens (rfc822:parse-msg-id (cdr tokens))))
-	       (if (not tokens)
+	     (let ((pv
+		    (or (rfc822:parse-msg-id (cdr tokens))
+			;; Kludge: it's a common error for mailers to
+			;; put malformed message IDs here.
+			(and (pair? (cdr tokens))
+			     (string? (car tokens))
+			     (cdr tokens)))))
+	       (if (not pv)
 		   (lose))
-	       (set! id (car tokens))
-	       (loop (cdr tokens))))
+	       (set! id (car pv))
+	       (loop (cdr pv))))
 	    ((string-ci=? "for" (car tokens))
-	     (let ((tokens (rfc822:parse-addr-spec (cdr tokens))))
-	       (if (not tokens)
+	     (let ((pv (rfc822:parse-addr-spec (cdr tokens))))
+	       (if (not pv)
 		   (lose))
-	       (set! for (car tokens))
-	       (loop (cdr tokens))))
+	       (set! for (car pv))
+	       (loop (cdr pv))))
 	    (else (lose))))))
+
+(define (rfc822:parse-date-time tokens)
+  (let ((pv1 (rfc822:parse-date tokens)))
+    (and pv1
+	 (let ((pv2 (rfc822:parse-time (cdr pv1))))
+	   (and pv2
+		(let ((pv3 (rfc822:parse-time-zone (cdr pv2))))
+		  (and pv3
+		       (cons (string->universal-time
+			      (string-append (car pv1)
+					     " "
+					     (car pv2)
+					     " "
+					     (car pv3)))
+			     (cdr pv3)))))))))
+
+(define (rfc822:parse-date tokens)
+  (let* ((pv1 (rfc822:parse-day-of-week tokens))
+	 (pv2 (rfc822:parse-number (cdr pv1))))
+    (and pv2
+	 (let ((pv3 (rfc822:parse-month (cdr pv2))))
+	   (and pv3
+		(let ((pv4 (rfc822:parse-number (cdr pv3))))
+		  (and pv4
+		       (cons (string-append (if (car pv1)
+						(string-append (car pv1) ", ")
+						"")
+					    (car pv2)
+					    " "
+					    (car pv3)
+					    " "
+					    (car pv4))
+			     (cdr pv4)))))))))
+
+(define (rfc822:parse-day-of-week tokens)
+  (if (and (pair? tokens)
+	   (string? (car tokens))
+	   (parse-date/time-component string->day-of-week (car tokens))
+	   (pair? (cdr tokens))
+	   (eqv? #\, (cadr tokens)))
+      (cons (car tokens) (cddr tokens))
+      (cons #f tokens)))
+
+(define (rfc822:parse-month tokens)
+  (and (pair? tokens)
+       (string? (car tokens))
+       (parse-date/time-component string->month (car tokens))
+       tokens))
+
+(define (rfc822:parse-time tokens)
+  (let ((pv1 (rfc822:parse-number tokens)))
+    (and pv1
+	 (pair? (cdr pv1))
+	 (eqv? #\: (cadr pv1))
+	 (let ((pv2 (rfc822:parse-number (cddr pv1))))
+	   (and pv2
+		(pair? (cdr pv2))
+		(eqv? #\: (cadr pv2))
+		(let ((pv3 (rfc822:parse-number (cddr pv2))))
+		  (and pv3
+		       (cons (string-append (car pv1)
+					    ":"
+					    (car pv2)
+					    ":"
+					    (car pv3))
+			     (cdr pv3)))))))))
+
+(define (rfc822:parse-time-zone tokens)
+  (and (pair? tokens)
+       (string? (car tokens))
+       (parse-date/time-component string->time-zone (car tokens))
+       tokens))
+
+(define (parse-date/time-component string->component string)
+  (let ((v (ignore-errors (lambda () (string->component string)))))
+    (and (not (condition? v))
+	 v)))
 
 (define (rfc822:parse-msg-id tokens)
   (and (pair? tokens)
@@ -188,6 +272,12 @@
   (and (pair? tokens)
        (string? (car tokens))
        (not (char=? #\[ (string-ref (car tokens) 0)))
+       tokens))
+
+(define (rfc822:parse-number tokens)
+  (and (pair? tokens)
+       (string? (car tokens))
+       (exact-nonnegative-integer? (string->number (car tokens)))
        tokens))
 
 (define (rfc822:parse-list tokens separator parse-element)
