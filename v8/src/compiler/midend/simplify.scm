@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: simplify.scm,v 1.7 1995/02/26 14:59:03 adams Exp $
+$Id: simplify.scm,v 1.8 1995/03/01 14:06:55 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -63,7 +63,7 @@ MIT in each case. |#
   `(LAMBDA ,lambda-list
      ,(simplify/expr
        (simplify/env/make env
-	(lmap simplify/binding/make (lambda-list->names lambda-list)))
+        (map simplify/binding/make (lambda-list->names lambda-list)))
        body)))
 
 (define-simplifier QUOTE (env object)
@@ -118,7 +118,7 @@ MIT in each case. |#
 	 (guarantee-simple-lambda-list (lambda/formals rator)) ;Miller & Adams
 	 (let* ((lambda-list (lambda/formals rator))
 		(env0  (simplify/env/make env
-			 (lmap simplify/binding/make lambda-list)))
+			 (map simplify/binding/make lambda-list)))
 		(body* (simplify/expr env0 (caddr rator)))
 		(bindings* (map (lambda (name value)
 				  (simplify/binding&value env name value))
@@ -132,24 +132,24 @@ MIT in each case. |#
 
 (define-simplifier LET (env bindings body)
   (let* ((env0 (simplify/env/make env
-		(lmap (lambda (binding) (simplify/binding/make (car binding)))
-		      bindings)))
+		(map (lambda (binding) (simplify/binding/make (car binding)))
+		     bindings)))
 	 (body* (simplify/expr env0 body))
 	 (bindings*
-	  (lmap (lambda (binding)
+	  (map (lambda (binding)
 		  (simplify/binding&value env (car binding) (cadr binding)))
-		bindings)))
+	       bindings)))
     (do-simplification env0 #F bindings* body* simplify/letify)))
 
 (define-simplifier LETREC (env bindings body)
   (let* ((env0 (simplify/env/make env
-		(lmap (lambda (binding) (simplify/binding/make (car binding)))
-		      bindings)))
+		(map (lambda (binding) (simplify/binding/make (car binding)))
+		     bindings)))
 	 (body* (simplify/expr env0 body))
 	 (bindings*
-	  (lmap (lambda (binding)
+	  (map (lambda (binding)
 		  (simplify/binding&value env0 (car binding) (cadr binding)))
-		bindings)))
+	       bindings)))
     (do-simplification env0 #T bindings* body* simplify/letrecify)))
 
 (define (simplify/binding&value env name value)
@@ -157,8 +157,8 @@ MIT in each case. |#
       (list false name (simplify/expr env value))
       (let* ((lambda-list (lambda/formals value))
 	     (env1 (simplify/env/make env
-		    (lmap simplify/binding/make
-			  (lambda-list->names lambda-list)))))
+		    (map simplify/binding/make
+			 (lambda-list->names lambda-list)))))
 	(let ((value*
 	       `(LAMBDA ,lambda-list
 		  ,(simplify/expr env1 (lambda/body value)))))
@@ -200,7 +200,7 @@ MIT in each case. |#
 			unrefd))))))
     (simplify/env/bindings env0)
     bindings)
-  (lmap cdr bindings))
+  (map cdr bindings))
 
 (define (simplify/maybe-delete unrefd bnode form)
   (let ((position (simplify/operand/position unrefd form))
@@ -277,10 +277,10 @@ MIT in each case. |#
 		       (form/simple&side-effect-free? (cadr place))))))
      (lambda (simple-unused hairy-unused)
        ;; simple-unused can be flushed, since they have no side effects
-       (let ((bindings* (delq* (lmap (lambda (simple)
-				       (assq (simplify/binding/name simple)
-					     bindings))
-				     simple-unused)
+       (let ((bindings* (delq* (map (lambda (simple)
+				      (assq (simplify/binding/name simple)
+					    bindings))
+				    simple-unused)
 			       bindings))
 	     (not-simple-unused (delq* simple-unused frame-bindings)))
 	 (if (or (not (eq? *order-of-argument-evaluation* 'ANY))
@@ -293,10 +293,10 @@ MIT in each case. |#
 				   body
 				   letify))
 	     (let ((hairy-bindings
-		    (lmap (lambda (hairy)
-			    (assq (simplify/binding/name hairy)
-				  bindings*))
-			  hairy-unused))
+		    (map (lambda (hairy)
+			   (assq (simplify/binding/name hairy)
+				 bindings*))
+			 hairy-unused))
 		   (used-bindings (delq* hairy-unused not-simple-unused)))
 	       (beginnify
 		(append
@@ -341,10 +341,10 @@ MIT in each case. |#
 					 bindings))))
      to-substitute)
     ;; This works only as long as all references are replaced.
-    (letify (delq* (lmap (lambda (node)
-			   (assq (simplify/binding/name node)
-				 bindings))
-			 to-substitute)
+    (letify (delq* (map (lambda (node)
+			  (assq (simplify/binding/name node)
+				bindings))
+			to-substitute)
 		   bindings)
 	    body)))
 
@@ -472,13 +472,29 @@ MIT in each case. |#
 	;;	     (LOOKUP/? element)))))
 	(and *after-cps-conversion?*
 	     (CALL/? body)
-	     (<= (length (call/cont-and-operands body))
-		 (1+ (length (lambda/formals value))))
+	     (<= (call/count-dynamic-operands body)
+		 (length (lambda/formals value)))
 	     (not (unsafe-cyclic-reference? name))
 	     (for-all? (cdr body)
 	       (lambda (element)
 		 (or (QUOTE/? element)
-		     (LOOKUP/? element))))))))
+		     (LOOKUP/? element)
+		     (form/static? element))))))))
+
+(define (call/count-dynamic-operands call)
+  (let ((count (length (call/operands call))))
+    (- count
+       (if (QUOTE/? (call/operator call))
+	   (let ((rator  (quote/text (call/operator call))))
+	     (cond ((eq? rator %invoke-remote-cache)      2)
+		   ((eq? rator %invoke-operator-cache)    2)
+		   ((eq? rator %internal-apply)           1)
+		   ((eq? rator %internal-apply-unchecked) 1)
+		   ((eq? rator %primitive-apply)          2)
+		   ((eq? rator %cell-ref)                 1)
+		   ((eq? rator %cell-set!)                1)
+		   (else                                  0)))
+	   0))))
 
 (define (simplify/expr env expr)
   (if (not (pair? expr))
@@ -502,16 +518,13 @@ MIT in each case. |#
      (simplify/if env expr))
     ((LETREC)
      (simplify/letrec env expr))
-    ((SET! UNASSIGNED? OR DELAY
-      ACCESS DEFINE IN-PACKAGE THE-ENVIRONMENT)
-     (no-longer-legal expr))
     (else
      (illegal expr))))
 
 (define (simplify/expr* env exprs)
-  (lmap (lambda (expr)
-	  (simplify/expr env expr))
-	exprs))
+  (map (lambda (expr)
+	 (simplify/expr env expr))
+       exprs))
 
 (define (simplify/remember new old)
   (code-rewrite/remember new old))
