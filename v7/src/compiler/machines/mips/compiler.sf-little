@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.sf-little,v 1.5 1994/01/08 21:16:24 gjr Exp $
+$Id: compiler.sf-little,v 1.6 1994/02/02 01:23:49 gjr Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -46,7 +46,7 @@ MIT in each case. |#
 	  (begin
 	    ((access cref/generate-trivial-constructor
 		     (->environment '(CROSS-REFERENCE)))
-	     "comp")
+	     "compiler")
 	    (sf "compiler.con" "compiler.bcon")))
       (load "compiler.bcon")))
 
