@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.45 2003/03/14 20:10:20 cph Exp $
+$Id: record.scm,v 1.46 2003/03/14 20:38:39 cph Exp $
 
 Copyright 1989,1990,1991,1993,1994,1996 Massachusetts Institute of Technology
 Copyright 1997,2002,2003 Massachusetts Institute of Technology
@@ -495,15 +495,9 @@ USA.
 				 unparser-method tag length)
 	    (constructor physical-type
 			 name
-			 (if (vector? field-names)
-			     field-names
-			     (list->vector field-names))
-			 (if (vector? field-indexes)
-			     field-indexes
-			     (list->vector field-indexes))
-			 (if (vector? default-inits)
-			     (vector-copy default-inits)
-			     (list->vector default-inits))
+			 field-names
+			 field-indexes
+			 default-inits
 			 unparser-method
 			 tag
 			 length))))
