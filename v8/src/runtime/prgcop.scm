@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/prgcop.scm,v 1.1 1990/07/20 01:12:33 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/prgcop.scm,v 1.2 1990/09/09 03:13:56 cph Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -41,21 +41,22 @@ MIT in each case. |#
 
 (define (initialize-package!)
   (set! copier/scode-walker
-	(make-scode-walker copy-constant
-			   `((ACCESS ,(%copy-pair (ucode-type ACCESS)))
-			     (ASSIGNMENT ,(%copy-triple (ucode-type ASSIGNMENT)))
-			     (COMBINATION ,copy-COMBINATION-object)
-			     (COMMENT ,copy-COMMENT-object)
-			     (CONDITIONAL ,(%copy-triple (ucode-type CONDITIONAL)))
-			     (DEFINITION ,(%copy-triple (ucode-type DEFINITION)))
-			     (DELAY ,(%copy-pair (ucode-type DELAY)))
-			     (DISJUNCTION ,(%copy-pair (ucode-type DISJUNCTION)))
-			     (IN-PACKAGE ,(%copy-pair (ucode-type IN-PACKAGE)))
-			     (LAMBDA ,copy-LAMBDA-object)
-			     (QUOTATION ,(%copy-pair (ucode-type QUOTATION)))
-			     (SEQUENCE ,copy-SEQUENCE-object)
-			     (THE-ENVIRONMENT ,copy-constant)
-			     (VARIABLE ,copy-VARIABLE-object))))
+	(make-scode-walker
+	 copy-constant
+	 `((ACCESS ,(%copy-pair (ucode-type ACCESS)))
+	   (ASSIGNMENT ,(%copy-triple (ucode-type ASSIGNMENT)))
+	   (COMBINATION ,copy-COMBINATION-object)
+	   (COMMENT ,copy-COMMENT-object)
+	   (CONDITIONAL ,(%copy-triple (ucode-type CONDITIONAL)))
+	   (DEFINITION ,(%copy-triple (ucode-type DEFINITION)))
+	   (DELAY ,(%copy-pair (ucode-type DELAY)))
+	   (DISJUNCTION ,(%copy-pair (ucode-type DISJUNCTION)))
+	   (IN-PACKAGE ,(%copy-pair (ucode-type IN-PACKAGE)))
+	   (LAMBDA ,copy-LAMBDA-object)
+	   (QUOTATION ,(%copy-pair (ucode-type QUOTATION)))
+	   (SEQUENCE ,copy-SEQUENCE-object)
+	   (THE-ENVIRONMENT ,copy-constant)
+	   (VARIABLE ,copy-VARIABLE-object))))
   unspecific)
 
 ;;;; Top level
@@ -113,9 +114,12 @@ MIT in each case. |#
 	 (%copy-constant obj))))
 
 (define (%copy-constant obj)
-  (cond ((or (number? obj) (symbol? obj)
-	     (boolean? obj) (null? obj)
-	     (character? obj)	     (object-type? (ucode-type REFERENCE-TRAP) obj))
+  (cond ((or (number? obj)
+	     (symbol? obj)
+	     (boolean? obj)
+	     (null? obj)
+	     (char? obj)
+	     (object-type? (ucode-type REFERENCE-TRAP) obj))
 	 obj)
 	((pair? obj)
 	 (%%copy-pair (ucode-type PAIR) obj))
