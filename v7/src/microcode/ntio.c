@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntio.c,v 1.3 1993/06/24 02:03:59 gjr Exp $
+$Id: ntio.c,v 1.4 1993/07/21 04:42:25 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -246,7 +246,9 @@ DEFUN (nt_channel_read, (channel, buffer, nbytes),
   if (nbytes == 0)
     return 0;
   else if (Screen_IsScreenHandle(CHANNEL_HANDLE (channel))) {
-    bytesRead = Screen_Read (CHANNEL_HANDLE (channel), buffer, nbytes);
+    bytesRead = Screen_Read ((CHANNEL_HANDLE (channel)),
+			     ((BOOL) (CHANNEL_BUFFERED (channel))),
+			     buffer, nbytes);
     if (bytesRead == 0xffffffff) {
       Sleep(0);  /* for pleasantness give up rest of this timeslice */
       errno = ERRNO_NONBLOCK;

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntsig.c,v 1.4 1993/07/18 22:25:44 gjr Exp $
+$Id: ntsig.c,v 1.5 1993/07/21 04:43:46 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -350,7 +350,7 @@ static cc_t int_handlers[NUM_INT_CHANNELS];
 LRESULT   master_tty_interrupt (HWND tty, WORD command)
 {
     int  ch = int_chars[command - SCREEN_COMMAND_INTERRUPT_FIRST];
-    signal_keyboard_character_interrupt (ch);
+    return (signal_keyboard_character_interrupt (ch));
 }
 
 static void

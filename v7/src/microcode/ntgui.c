@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntgui.c,v 1.3 1993/07/18 22:25:50 gjr Exp $
+$Id: ntgui.c,v 1.4 1993/07/21 04:42:02 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -175,10 +175,11 @@ DEFUN_VOID (nt_gui_default_poll)
    int events_processed = 0;
 
    while (//events_processed < 5 &&
-          PeekMessage (&msg, 0, 0, 0, PM_REMOVE)) {
-     TranslateMessage(&msg);
-     DispatchMessage(&msg);
-     events_processed ++;
+          PeekMessage (&msg, 0, 0, 0, PM_REMOVE))
+   {
+     MIT_TranslateMessage (&msg);
+     DispatchMessage (&msg);
+     events_processed++;
    }
 #endif
 }
@@ -420,7 +421,7 @@ DEFINE_PRIMITIVE ("WIN:CREATE-WINDOW", Prim_create_window, 10, 10,
     lpvParam   = (LPVOID)  ARG_REF (10);
     
     result = CreateWindowEx (0, class_name, window_name, style, x, y, w, h,
-                   hWndParent, hMenu, ghInstance, lpvParam);
+			     hWndParent, hMenu, ghInstance, lpvParam);
 		 
     return  ulong_to_integer (result);
 }

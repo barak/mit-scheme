@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.h,v 1.3 1993/06/24 02:16:40 gjr Exp $
+$Id: ntscreen.h,v 1.4 1993/07/21 04:43:21 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -79,7 +79,7 @@ typedef unsigned char SCREEN_ATTRIBUTE;
 #define SCREEN_MODE_NEWLINE		0x0040
 #define SCREEN_MODE_LINE_INPUT		0x0080
 #define SCREEN_MODE_PROCESS_OUTPUT	0x0100
-#define SCREEN_MODE_LAZY_UPDATE		0x0200
+#define SCREEN_MODE_EAGER_UPDATE	0x0200
 
 typedef WORD SCREEN_EVENT_TYPE;
 
@@ -103,6 +103,10 @@ typedef struct {
 #define SCREEN_SCROLLLOCK_ON         0x0040 // the scrolllock light is on.
 #define SCREEN_CAPSLOCK_ON           0x0080 // the capslock light is on.
 #define SCREEN_ENHANCED_KEY          0x0100 // the key is enhanced.
+#define SCREEN_ALT_KEY_PRESSED       0x0200 // Any alt key pressed
+
+#define SCREEN_ANY_ALT_KEY_MASK						\
+  (SCREEN_RIGHT_ALT_PRESSED | SCREEN_LEFT_ALT_PRESSED | SCREEN_ALT_KEY_PRESSED)
 
 typedef struct {
   int	rows;
@@ -142,7 +146,7 @@ void  Screen_Destroy (HANDLE);
 void  Screen_SetAttribute (HANDLE, SCREEN_ATTRIBUTE);
 void  Screen_WriteChar (HANDLE, char);
 void  Screen_WriteText (HANDLE, char*);
-int   Screen_Read (HANDLE, char*, int);
+int   Screen_Read (HANDLE, BOOL, char *, int);
 void  Screen_SetCursorPosition (HANDLE, int line, int column);
 void  Screen_SetMenu (HANDLE, HMENU);
 void  Screen_SetMode (HANDLE, int);
@@ -240,6 +244,8 @@ typedef LRESULT (*COMMAND_HANDLER)(HWND,WORD command);
 
 #define SCREEN_COMMAND_CHOOSEFONT	0x400
 #define SCREEN_COMMAND_CLOSE		0x401
+
+extern VOID init_MIT_TranslateMessage (VOID);
 
 //---------------------------------------------------------------------------
 //  End of File: screen.h

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.2 1993/06/24 02:06:59 gjr Exp $
+$Id: ntscreen.c,v 1.3 1993/07/21 04:43:00 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -43,10 +43,13 @@ MIT in each case. */
 
 #define ATOM_TTYINFO       0x100
 
-//#define MAXCOLS 132
-//#define MAXROWS  66
+#if 0
 #define MAXCOLS 80
 #define MAXROWS 40
+#else
+#define MAXCOLS 132
+#define MAXROWS 80
+#endif
 
 // cursor states
 
@@ -62,6 +65,8 @@ MIT in each case. */
 #define ASCII_LF        0x0A
 #define ASCII_FF	0x0C
 #define ASCII_CR        0x0D
+#define ASCII_ESC	0x1B
+#define ASCII_DEL	0x7F
 
 // data structures
 
@@ -77,7 +82,7 @@ typedef struct tagSCREEN_EVENT_LINK {
 #define MAX_BINDINGS 10 
 
 #define MAX_LINEINPUT 1024
-
+
 typedef struct tagSCREENINFO
 {
    SCREEN  registry_link;
@@ -120,7 +125,7 @@ typedef struct tagSCREENINFO
    int n_chars;
    char  *line_buffer;
 } SCREEN_STRUCT;
-
+
 //#define WIDTH(screen) (screen->width)
 #define WIDTH(screen) MAXCOLS
 #define HEIGHT(screen) MAXROWS
@@ -183,8 +188,37 @@ BOOL FAR PASCAL SettingsDlgProc (HWND, UINT, WPARAM, LPARAM ) ;
 
 VOID RegisterScreen (SCREEN);
 VOID UnregisterScreen (SCREEN);
+
+#ifdef WINDOWSLOSES
 
+static BOOL
+  MIT_trap_alt_tab = ((BOOL) 0),
+  MIT_trap_alt_escape = ((BOOL) 1);
 
+static VOID
+init_flag (char * flag_symbol, BOOL * flag)
+{
+  extern int strcmp_ci (char *, char *);
+  char * envvar = (getenv (flag_symbol));
+  if (envvar != NULL)
+  {
+    if ((strcmp_ci (envvar, "true")) || (strcmp_ci (envvar, "yes")))
+      * flag = ((BOOL) 1);
+    else if ((strcmp_ci (envvar, "false")) || (strcmp_ci (envvar, "no")))
+      * flag = ((BOOL) 0);
+  }
+  return;
+}
+
+VOID
+init_MIT_Keyboard (VOID)
+{
+  init_flag ("MITSCHEME_TRAP_ALT_TAB", (& MIT_trap_alt_tab));
+  init_flag ("MITSCHEME_TRAP_ALT_ESCAPE", (& MIT_trap_alt_escape));
+  return;
+}
+#endif /* WINDOWSLOSES */
+
 //---------------------------------------------------------------------------
 //  BOOL Screen_InitApplication (HANDLE hInstance )
 //
@@ -198,9 +232,14 @@ VOID UnregisterScreen (SCREEN);
 //
 //---------------------------------------------------------------------------
 
-BOOL Screen_InitApplication (HANDLE hInstance )
+BOOL 
+Screen_InitApplication (HANDLE hInstance)
 {
    WNDCLASS  wndclass ;
+
+#ifdef WINDOWSLOSES
+   init_MIT_Keyboard ();
+#endif /* WINDOWSLOSES */
 
    wndclass.style =         0;
    wndclass.lpfnWndProc =   ScreenWndProc ;
@@ -213,7 +252,7 @@ BOOL Screen_InitApplication (HANDLE hInstance )
    wndclass.lpszMenuName =  0;
    wndclass.lpszClassName = "SCREEN";
 
-   return  RegisterClass (&wndclass) ;
+   return  (RegisterClass (&wndclass));
 }
 
 //---------------------------------------------------------------------------
@@ -221,7 +260,7 @@ BOOL Screen_InitApplication (HANDLE hInstance )
 //
 //  Description:
 //     Initializes instance specific information for the screen class.
-//     returns TRUE on sucess.
+//     returns TRUE on success.
 //
 //  Parameters:
 //     HANDLE hInstance
@@ -233,13 +272,13 @@ BOOL Screen_InitApplication (HANDLE hInstance )
 
 static  HANDLE  ghInstance;
 
-BOOL Screen_InitInstance (HANDLE hInstance, int nCmdShow )
+BOOL 
+Screen_InitInstance (HANDLE hInstance, int nCmdShow )
 {
-    ghInstance = hInstance;
-    return  TRUE;
+  ghInstance = hInstance;
+  return (TRUE);
 }
-
-
+
 //---------------------------------------------------------------------------
 //  SCREEN  Screen_Create (HANDLE hParent, LPCSTR title, int nCmdShow)
 //
@@ -251,21 +290,20 @@ BOOL Screen_InitInstance (HANDLE hInstance, int nCmdShow )
 //        Handle to parent window
 //---------------------------------------------------------------------------
 
-HANDLE  Screen_Create (HANDLE hParent, LPCSTR title, int nCmdShow)
+HANDLE
+Screen_Create (HANDLE hParent, LPCSTR title, int nCmdShow)
 {
-    HWND  hWnd;
-    hWnd = CreateWindow ("SCREEN", title,
-                         WS_OVERLAPPEDWINDOW,
-                         CW_USEDEFAULT, CW_USEDEFAULT,
-                         CW_USEDEFAULT, CW_USEDEFAULT,
-                         hParent, NULL, ghInstance, (LPVOID)nCmdShow);
+  HWND  hWnd = (CreateWindow ("SCREEN", title,
+			      WS_OVERLAPPEDWINDOW,
+			      CW_USEDEFAULT, CW_USEDEFAULT,
+			      CW_USEDEFAULT, CW_USEDEFAULT,
+			      hParent, NULL, ghInstance,
+			      ((LPVOID) nCmdShow)));
 
-    if (NULL == hWnd)
-        return  NULL;
-
-    return  hWnd;
+  if (hWnd == NULL)
+    return (NULL);
+  return (hWnd);
 }
-
 
 //---------------------------------------------------------------------------
 //  Registry of screen handles
@@ -273,35 +311,41 @@ HANDLE  Screen_Create (HANDLE hParent, LPCSTR title, int nCmdShow)
 
 static SCREEN registered_screens = 0;
 
-static VOID RegisterScreen (SCREEN screen)
+static VOID 
+RegisterScreen (SCREEN screen)
 {
-    screen->registry_link = registered_screens;
-    registered_screens = screen;
+  screen->registry_link = registered_screens;
+  registered_screens = screen;
+  return;
 }
 
-static SCREEN *head_to_registered_screen (HWND hWnd)
+static SCREEN 
+* head_to_registered_screen (HWND hWnd)
 {
-    SCREEN *link = &registered_screens;
-    while (*link)
-      if ((*link)->hWnd == hWnd)
-	return link;
-      else
-	link = &((*link)->registry_link);
-    return  0;
+  SCREEN *link = &registered_screens;
+  while (*link)
+    if ((*link)->hWnd == hWnd)
+      return link;
+    else
+      link = &((*link)->registry_link);
+  return (0);
 }
 
-static VOID UnregisterScreen (SCREEN screen)
+static VOID
+UnregisterScreen (SCREEN screen)
 {
-    SCREEN *link = head_to_registered_screen (screen->hWnd);
-//  if (link)
-      *link = screen->registry_link;
+  SCREEN *link = head_to_registered_screen (screen->hWnd);
+  //  if (link)
+    *link = screen->registry_link;
+  return;
 }
 
-BOOL Screen_IsScreenHandle (HANDLE handle)
+BOOL
+Screen_IsScreenHandle (HANDLE handle)
 {
-    return  head_to_registered_screen (handle) != 0;
+  return ((head_to_registered_screen (handle)) != 0);
 }
-
+
 //---------------------------------------------------------------------------
 //  LRESULT FAR PASCAL ScreenWndProc (HWND hWnd, UINT uMsg,
 //                                 WPARAM wParam, LPARAM lParam )
@@ -319,8 +363,8 @@ BOOL Screen_IsScreenHandle (HANDLE handle)
 //
 //---------------------------------------------------------------------------
 
-LRESULT FAR PASCAL ScreenWndProc (HWND hWnd, UINT uMsg,
-                               WPARAM wParam, LPARAM lParam )
+LRESULT FAR PASCAL 
+ScreenWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
    SCREEN  screen = GETSCREEN (hWnd);
 
@@ -333,12 +377,10 @@ LRESULT FAR PASCAL ScreenWndProc (HWND hWnd, UINT uMsg,
       case WM_CREATE:
       {
 	 LRESULT result = CreateScreenInfo (hWnd);
-	 ShowWindow (hWnd, (int) ((LPCREATESTRUCT)lParam)->lpCreateParams);
+	 ShowWindow (hWnd, ((int) ((LPCREATESTRUCT) lParam) -> lpCreateParams));
 	 UpdateWindow (hWnd);
 	 return  result;
       }
-
-
 
       case SCREEN_SETPOSITION:
 	 return  (LRESULT)Screen_SetPosition
@@ -364,7 +406,7 @@ LRESULT FAR PASCAL ScreenWndProc (HWND hWnd, UINT uMsg,
       case SCREEN_SETCOMMAND:
 	 return  (LRESULT)
 	   ScreenSetCommand(screen, LOWORD(wParam), (COMMAND_HANDLER)lParam);
-	 
+
       case SCREEN_GETCOMMAND:
 	 return  (LRESULT)
 	   ScreenSetCommand(screen, LOWORD(wParam), (COMMAND_HANDLER)-1);
@@ -372,7 +414,7 @@ LRESULT FAR PASCAL ScreenWndProc (HWND hWnd, UINT uMsg,
       case SCREEN_SETBINDING:
 	 return  (LRESULT)
 	   ScreenSetBinding(screen, LOBYTE(wParam), (WORD)lParam);
-	 
+	 
       case SCREEN_GETBINDING:
 	 return  (LRESULT)
 	   ScreenSetBinding(screen, LOBYTE(wParam), (WORD)-1);
@@ -425,11 +467,9 @@ LRESULT FAR PASCAL ScreenWndProc (HWND hWnd, UINT uMsg,
          break ;
 
       case WM_SIZE:
-      {
-	 if (wParam!=SIZE_MINIMIZED)
- 	    SizeScreen (hWnd, HIWORD(lParam), LOWORD(lParam));
-      }
-      break ;
+        if (wParam!=SIZE_MINIMIZED)
+	  SizeScreen (hWnd, HIWORD(lParam), LOWORD(lParam));
+        break ;
 
       case WM_HSCROLL:
          ScrollScreenHorz (hWnd, LOWORD(wParam), HIWORD(wParam));
@@ -438,29 +478,45 @@ LRESULT FAR PASCAL ScreenWndProc (HWND hWnd, UINT uMsg,
       case WM_VSCROLL:
          ScrollScreenVert (hWnd, LOWORD(wParam), HIWORD(wParam));
          break ;
-
-       
+
+      case WM_SYSKEYDOWN:
       case WM_KEYDOWN:
 	 if (vk_pending)
-	   ProcessScreenCharacter (hWnd, vk_code, 0, vk_lparam);
+	   ProcessScreenCharacter (hWnd, vk_code, -1, vk_lparam);
 	 vk_pending = TRUE;
 	 vk_code    = wParam;
 	 vk_lparam  = lParam;
-	 return  DefWindowProc (hWnd, uMsg, wParam, lParam);
-	 
+#ifdef WINDOWSLOSES
+         if (((wParam == VK_ESCAPE) && MIT_trap_alt_escape)
+	     || ((wParam == VK_TAB) && MIT_trap_alt_tab))
+           return (0L);
+         else
+#endif /* WINDOWSLOSES */
+	   return (DefWindowProc (hWnd, uMsg, wParam, lParam));
+
+      case WM_SYSKEYUP:
       case WM_KEYUP:
 	 if (vk_pending)
-	   ProcessScreenCharacter (hWnd, vk_code, 0, vk_lparam);
+	   ProcessScreenCharacter (hWnd, vk_code, -1, vk_lparam);
 	 vk_pending = FALSE;
-	 return  DefWindowProc (hWnd, uMsg, wParam, lParam);
+#ifdef WINDOWSLOSES
+         if (((wParam == VK_ESCAPE) && MIT_trap_alt_escape)
+	     || ((wParam == VK_TAB) && MIT_trap_alt_tab))
+           return (0L);
+         else
+#endif /* WINDOWSLOSES */
+	   return (DefWindowProc (hWnd, uMsg, wParam, lParam));
 
+      case WM_SYSDEADCHAR:
       case WM_DEADCHAR:
 	 vk_pending = FALSE;
-	 return  DefWindowProc (hWnd, uMsg, wParam, lParam);
+	 return (DefWindowProc (hWnd, uMsg, wParam, lParam));
 	 
+      case WM_SYSCHAR:
       case WM_CHAR:
-         ProcessScreenCharacter (hWnd,
-	           vk_code, LOBYTE(LOWORD(wParam)), (DWORD)lParam);
+         ProcessScreenCharacter (hWnd, vk_code,
+				 (LOBYTE (LOWORD(wParam))),
+				 ((DWORD) lParam));
          vk_pending = FALSE;
          break ;
 
@@ -477,19 +533,29 @@ LRESULT FAR PASCAL ScreenWndProc (HWND hWnd, UINT uMsg,
          break ;
 
       case WM_CLOSE:
-         if (IDOK != MessageBox (hWnd, "OK to close screen window?",
-	                         "Screen Sample",
-                                 MB_ICONQUESTION | MB_OKCANCEL ))
+         if (IDOK != (MessageBox (hWnd, "OK to close screen window?",
+				  "Screen Sample",
+				  (MB_ICONQUESTION | MB_OKCANCEL))))
             break ;
 
          // fall through
 
       default:
-         return  DefWindowProc (hWnd, uMsg, wParam, lParam);
+         return (DefWindowProc (hWnd, uMsg, wParam, lParam));
    }
-   return 0L ;
-
-} 
+   return (0L);
+}
+
+static VOID
+ClearScreen_internal (SCREEN screen)
+{
+  screen->row			= 0;
+  screen->column		= 0;
+  _fmemset (screen->chars, ' ', MAXROWS * MAXCOLS);
+  _fmemset (screen->attrs, screen->write_attribute,
+	    MAXROWS * MAXCOLS * sizeof(SCREEN_ATTRIBUTE));
+  return;
+}
 
 //---------------------------------------------------------------------------
 //  LRESULT CreateScreenInfo (HWND hWnd)
@@ -502,15 +568,9 @@ LRESULT FAR PASCAL ScreenWndProc (HWND hWnd, UINT uMsg,
 //     HWND  hWnd
 //
 //---------------------------------------------------------------------------
-
-static void ClearScreen_internal (SCREEN screen)
-{
-   screen->row			= 0 ;
-   screen->column		= 0 ;
-   _fmemset (screen->chars, ' ', MAXROWS * MAXCOLS);
-   _fmemset (screen->attrs, screen->write_attribute,   MAXROWS * MAXCOLS * sizeof(SCREEN_ATTRIBUTE));}
    
-static LRESULT CreateScreenInfo (HWND hWnd)
+static LRESULT
+CreateScreenInfo (HWND hWnd)
 {
    HMENU   hMenu;
    int     i;
@@ -533,8 +593,7 @@ static LRESULT CreateScreenInfo (HWND hWnd)
 			        | SCREEN_MODE_AUTOWRAP
 				| SCREEN_MODE_PROCESS_OUTPUT
 				| SCREEN_MODE_LINE_INPUT
-			     // | SCREEN_MODE_LAZY_UPDATE
-				;
+				| SCREEN_MODE_EAGER_UPDATE;
    screen->xSize		= 0;
    screen->ySize		= 0 ;
    screen->xScroll		= 0 ;
@@ -553,7 +612,7 @@ static LRESULT CreateScreenInfo (HWND hWnd)
    // clear screen space
 
    // setup default font information
-
+
    screen->lfFont.lfHeight =         9 ;
    screen->lfFont.lfWidth =          0 ;
    screen->lfFont.lfEscapement =     0 ;
@@ -598,25 +657,31 @@ static LRESULT CreateScreenInfo (HWND hWnd)
    SendMessage (hWnd, SCREEN_SETBINDING, 6, SCREEN_COMMAND_CHOOSEFONT);
 		  
    screen->n_chars = 0;
-   screen->line_buffer = xmalloc (MAX_LINEINPUT+1);
+   screen->line_buffer = xmalloc (MAX_LINEINPUT + 1);
      
    return  (LRESULT) TRUE;
 }
-
+
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 
-VOID SetDebuggingTitle (SCREEN screen)
+VOID
+SetDebuggingTitle (SCREEN screen)
 {
-    char buf[80];
-    return;
-    wsprintf (buf, "%d@%d  q=%d  c=%d  b=%d",
-        screen->row, screen->column,
-	screen->n_events,
-	screen->n_commands,
-	screen->n_bindings,
-	  0);
-    SendMessage (screen->hWnd, WM_SETTEXT, 0, (LPARAM) buf);
+#if 1
+  return;
+#else				/* not 1 */
+  char buf[80];
+
+  wsprintf (buf, "%d@%d  q=%d  c=%d  b=%d",
+	    screen->row, screen->column,
+	    screen->n_events,
+	    screen->n_commands,
+	    screen->n_bindings,
+	    0);
+  SendMessage (screen->hWnd, WM_SETTEXT, 0, ((LPARAM) buf));
+  return;
+#endif				/* 1 */
 }
 
 //---------------------------------------------------------------------------
@@ -631,26 +696,29 @@ VOID SetDebuggingTitle (SCREEN screen)
 //
 //---------------------------------------------------------------------------
 
-static BOOL DestroyScreenInfo (HWND hWnd)
+static BOOL
+DestroyScreenInfo (HWND hWnd)
 {
-   SCREEN  screen = GETSCREEN (hWnd);
+   SCREEN screen = (GETSCREEN (hWnd));
 
    if (NULL == screen)
-      return  FALSE;
+      return (FALSE);
 
    KillScreenFocus (hWnd);
-
    UnregisterScreen (screen);
-
    DeleteObject (screen->hFont);
 
-   if (screen->chars)   xfree (screen->chars);
-   if (screen->attrs)   xfree (screen->attrs);
-   if (screen->events)	xfree (screen->events);
-   LocalFree (screen);
-   return  TRUE;
-}
+   if (screen->chars)
+     xfree (screen->chars);
+   if (screen->attrs)
+     xfree (screen->attrs);
+   if (screen->events)
+     xfree (screen->events);
 
+   LocalFree (screen);
+   return (TRUE);
+}
+
 //---------------------------------------------------------------------------
 //  COMMAND_HANDLER  ScreenSetCommand (SCREEN, WORD cmd, COMMAND_HANDLER h)
 //---------------------------------------------------------------------------
@@ -659,91 +727,110 @@ static COMMAND_HANDLER
 ScreenSetCommand (SCREEN screen, WORD cmd, COMMAND_HANDLER thunk)
 {
     int i;
-    for (i = 0;  i<screen->n_commands;  i++)
-      if (screen->commands[i].wID == cmd) {
+    for (i = 0; i < screen->n_commands; i++)
+      if (screen->commands[i].wID == cmd)
+      {
 	COMMAND_HANDLER  result = screen->commands[i].thunk;
-	if (thunk==0) {	// remove by overwriting with last in list
+	if (thunk == 0)
+	{
+	  // remove by overwriting with last in list
 	  screen->commands[i] = screen->commands[screen->n_commands-1];
 	  screen->n_commands--;
-	} else if (thunk==(COMMAND_HANDLER)-1) {// just leave it alone
-	} else {	// redefine
+	}
+	else if (thunk == ((COMMAND_HANDLER) -1))
+	{
+	  // just leave it alone
+	}
+	else
+	  // redefine
 	  screen->commands[i].thunk = thunk;
-        }
-	return  result;
+	return (result);
       }
       
     // didnt find it
-    if (thunk==0 || thunk==(COMMAND_HANDLER)-1)
-      return  0;
+    if ((thunk == 0) || (thunk == ((COMMAND_HANDLER) -1)))
+      return (0);
     // add new command
     if (screen->n_commands == MAX_COMMANDS)
-      return (COMMAND_HANDLER)-1;
+      return ((COMMAND_HANDLER) - 1);
 
     screen->commands[screen->n_commands].wID   = cmd;
     screen->commands[screen->n_commands].thunk = thunk;
     screen->n_commands++;
     
-    return  0;
+    return (0);
 }
-
+
 //---------------------------------------------------------------------------
 //  WORD  ScreenSetBinding (SCREEN, char key, WORD command)
 //---------------------------------------------------------------------------
 
-static WORD  ScreenSetBinding (SCREEN screen, char key, WORD command)
+static WORD
+ScreenSetBinding (SCREEN screen, char key, WORD command)
 {
     int i;
-    for (i=0;  i<screen->n_bindings;  i++)
-      if (screen->bindings[i].key == key) {
+    for (i=0; i < screen->n_bindings; i++)
+      if (screen->bindings[i].key == key)
+      {
 	WORD  result = screen->bindings[i].command;
-	if (command==0) { // remove by blatting with last in list
+	if (command == 0)
+	{
+	  // remove by blatting with last in list
 	  screen->bindings[i] = screen->bindings[screen->n_bindings-1];
 	  screen->n_bindings--;
-	} else if (command==(WORD)-1) { //let it be
-	} else { // redefine
+	}
+	else if (command == ((WORD) -1))
+	{
+	  // let it be
+	}
+	else
+	  // redefine
 	  screen->bindings[i].command = command;
-        }
-	return  result;
+	return (result);
       }
       
     // no existing binding for key
-    if (command==0 || command==(WORD)-1)
-      return 0;
+    if ((command == 0) || (command == ((WORD) -1)))
+      return (0);
     // add new binding
     if (screen->n_bindings == MAX_BINDINGS)
-      return  (WORD)-1;
+      return ((WORD) - 1);
 
     screen->bindings[screen->n_bindings].key     = key;
     screen->bindings[screen->n_bindings].command = command;
     screen->n_bindings++;
     
-    return  0;
+    return (0);
 }
-
+
 //===========================================================================
 //  Standard commands
 //===========================================================================
 
-LRESULT  ScreenCommand_ChooseFont (HWND hWnd, WORD command)
+LRESULT
+ScreenCommand_ChooseFont (HWND hWnd, WORD command)
 {
-    SCREEN  screen = GETSCREEN (hWnd);
-      if (screen == 0)
-	return  1L;
-    SelectScreenFont (screen, hWnd);
-    return  0L;
+  SCREEN  screen = GETSCREEN (hWnd);
+  if (screen == 0)
+    return (1L);
+  SelectScreenFont (screen, hWnd);
+  return (0L);
 }
 
 //---------------------------------------------------------------------------
 //  Screen_SetMenu (SCREEN, HMENU)
 //---------------------------------------------------------------------------
 
-VOID Screen_SetMenu (SCREEN screen, HMENU hMenu)
+VOID 
+Screen_SetMenu (SCREEN screen, HMENU hMenu)
 {
-    HMENU hOld = GetMenu (screen->hWnd);
-    SetMenu (screen->hWnd, hMenu);
-    if (hOld)
-      DestroyMenu (hOld);
+  HMENU hOld = GetMenu (screen->hWnd);
+  SetMenu (screen->hWnd, hMenu);
+  if (hOld)
+    DestroyMenu (hOld);
+  return;
 }
+
 //---------------------------------------------------------------------------
 //  BOOL ResetScreen (SCREEN  screen)
 //
@@ -757,7 +844,8 @@ VOID Screen_SetMenu (SCREEN screen, HMENU hMenu)
 //
 //---------------------------------------------------------------------------
 
-static BOOL ResetScreen (SCREEN screen)
+static BOOL
+ResetScreen (SCREEN screen)
 {
    HWND	       hWnd;
    HDC         hDC ;
@@ -771,7 +859,7 @@ static BOOL ResetScreen (SCREEN screen)
    
    if (screen->hFont)
       DeleteObject (screen->hFont);
-
+
    screen->hFont = CreateFontIndirect (&screen->lfFont);
 
    hDC = GetDC (hWnd);
@@ -787,6 +875,7 @@ static BOOL ResetScreen (SCREEN screen)
      KillScreenFocus (hWnd);
      SetScreenFocus(hWnd);
    }
+
    // a slimy hack to force the scroll position, region to
    // be recalculated based on the new character sizes
    {
@@ -795,22 +884,22 @@ static BOOL ResetScreen (SCREEN screen)
      GetWindowRect (hWnd, &rcWindow);
      GetMinMaxSizes (hWnd, &minsz, &maxsz);
      width  = rcWindow.right - rcWindow.left;
-     height = rcWindow.bottom - rcWindow.top
-            - GetSystemMetrics(SM_CYCAPTION)
-	    - GetSystemMetrics(SM_CYFRAME)
-            - (GetMenu(hWnd) ? GetSystemMetrics(SM_CYMENU) : 0)
-	    ;
+     height = (rcWindow.bottom - rcWindow.top
+	       - GetSystemMetrics(SM_CYCAPTION)
+	       - GetSystemMetrics(SM_CYFRAME)
+	       - (GetMenu(hWnd) ? GetSystemMetrics(SM_CYMENU) : 0));
      if (width<minsz.x || width>maxsz.x || height<minsz.y || height>maxsz.y)
        MoveWindow (hWnd, rcWindow.left, rcWindow.top,
 	           min(maxsz.x,max(minsz.x,width)),
 		   min(maxsz.y,max(minsz.y,height)), TRUE);
      else
-     SendMessage (hWnd, WM_SIZE, SIZENORMAL, (LPARAM) MAKELONG(width,height));
+       SendMessage (hWnd, WM_SIZE, SIZENORMAL,
+		    ((LPARAM) (MAKELONG (width,height))));
    }
 
-   return  TRUE;
+   return (TRUE);
 }
-
+
 //---------------------------------------------------------------------------
 //  BOOL PaintScreen (HWND hWnd )
 //
@@ -824,18 +913,21 @@ static BOOL ResetScreen (SCREEN screen)
 //
 //---------------------------------------------------------------------------
 
-static BOOL PaintScreen (HWND hWnd)
+static BOOL 
+PaintScreen (HWND hWnd)
 {
-   SCREEN	screen = GETSCREEN (hWnd);
+   SCREEN	screen = (GETSCREEN (hWnd));
    HDC          hDC ;
    PAINTSTRUCT  ps ;
    RECT         rect ;
 
-   if (NULL == screen)  return  FALSE;
+   if (NULL == screen)
+     return (FALSE);
 
    hDC = BeginPaint (hWnd, &ps);
 
-   if (IsIconic(hWnd)) {
+   if (IsIconic(hWnd))
+   {
 //      // draw a minature version of the window
 //      int  ICONSIZE = 36;
 //      int  row, col;
@@ -879,7 +971,10 @@ static BOOL PaintScreen (HWND hWnd)
 //      }
 //      SelectObject (hDC, hOldPen);
 //      DeleteObject (hPen);
-   } else {
+   }
+
+   else
+   {
       int          nRow, nCol, nEndRow, nEndCol, nCount, nHorzPos, nVertPos ;
       HFONT        hOldFont ;
 
@@ -951,50 +1046,54 @@ static BOOL PaintScreen (HWND hWnd)
    }
    EndPaint (hWnd, &ps);
    MoveScreenCursor(screen);
-   return  TRUE;
-
+   return (TRUE);
 }
-
+
 //---------------------------------------------------------------------------
 //  void SetCells (screen,r,col,count,char,attr)
 //
 //---------------------------------------------------------------------------
 
-static void SetCells (SCREEN screen, int row, int col, int count,
-                      char ch, SCREEN_ATTRIBUTE attr)
+static VOID
+SetCells (SCREEN screen, int row, int col, int count,
+	  char ch, SCREEN_ATTRIBUTE attr)
 {
-    int  address1 = row * MAXCOLS + col;
-    int  address2 = address1 + count;
-    int  i;
-    for (i = address1;  i<address2;  i++) {
-      screen->chars[i] = ch;
-      screen->attrs[i] = attr;
-    }
+  int  address1 = row * MAXCOLS + col;
+  int  address2 = address1 + count;
+  int  i;
+  for (i = address1;  i<address2;  i++)
+  {
+    screen->chars[i] = ch;
+    screen->attrs[i] = attr;
+  }
+  return;
 }
 
 //---------------------------------------------------------------------------
 //  void ScrollScreenBufferUp (SCREEN  screen,  int count)
 //---------------------------------------------------------------------------
 
-static void ScrollScreenBufferUp (SCREEN  screen,  int count)
+static VOID 
+ScrollScreenBufferUp (SCREEN  screen,  int count)
 {
-    //int  total_rows = MAXROWS;
-    int  total_rows = screen->height;
-    int  rows_copied = max (total_rows - count, 0);
-    count = min (count, total_rows);
+  //int  total_rows = MAXROWS;
+  int  total_rows = screen->height;
+  int  rows_copied = max (total_rows - count, 0);
+  count = min (count, total_rows);
 
-    _fmemmove ((LPSTR) (screen->chars),
-               (LPSTR) (screen->chars + count * MAXCOLS),
-	       rows_copied * MAXCOLS);
-    _fmemmove ((LPSTR) (screen->attrs),
-               (LPSTR) (screen->attrs + count * MAXCOLS),
-	       rows_copied * MAXCOLS);
-    _fmemset ((LPSTR)(screen->chars + rows_copied * MAXCOLS),
-               ' ', count*MAXCOLS);
-    _fmemset ((LPSTR)(screen->attrs + rows_copied * MAXCOLS),
-              screen->write_attribute, count*MAXCOLS);
+  _fmemmove ((LPSTR) (screen->chars),
+	     (LPSTR) (screen->chars + count * MAXCOLS),
+	     rows_copied * MAXCOLS);
+  _fmemmove ((LPSTR) (screen->attrs),
+	     (LPSTR) (screen->attrs + count * MAXCOLS),
+	     rows_copied * MAXCOLS);
+  _fmemset ((LPSTR)(screen->chars + rows_copied * MAXCOLS),
+	    ' ', count*MAXCOLS);
+  _fmemset ((LPSTR)(screen->attrs + rows_copied * MAXCOLS),
+	    screen->write_attribute, count*MAXCOLS);
+  return;
 }
-
+
 //---------------------------------------------------------------------------
 //  BOOL SizeScreen (HWND hWnd, WORD wVertSize, WORD wHorzSize )
 //
@@ -1003,7 +1102,8 @@ static void ScrollScreenBufferUp (SCREEN  screen,  int count)
 //
 //---------------------------------------------------------------------------
 
-static BOOL SizeScreen (HWND hWnd, WORD wVertSize, WORD wHorzSize )
+static BOOL
+SizeScreen (HWND hWnd, WORD wVertSize, WORD wHorzSize )
 {
    //int        nScrollAmt ;
    SCREEN     screen = GETSCREEN (hWnd);
@@ -1060,6 +1160,7 @@ static BOOL SizeScreen (HWND hWnd, WORD wVertSize, WORD wHorzSize )
    screen->ySize = (int) wVertSize ;
    screen->yScroll = max (0, (MAXROWS * screen->yChar) -
                                screen->ySize);
+
    screen->yScroll = 0;
 //   nScrollAmt = min (screen->yScroll, screen->yOffset ) -
 //                     screen->yOffset;
@@ -1084,7 +1185,7 @@ static BOOL SizeScreen (HWND hWnd, WORD wVertSize, WORD wHorzSize )
    return  TRUE;
 
 } // end of SizeTTY()
-
+
 //---------------------------------------------------------------------------
 //  BOOL ScrollScreenVert (HWND hWnd, WORD wScrollCmd, WORD wScrollPos )
 //
@@ -1103,7 +1204,8 @@ static BOOL SizeScreen (HWND hWnd, WORD wVertSize, WORD wHorzSize )
 //
 //---------------------------------------------------------------------------
 
-static BOOL ScrollScreenVert (HWND hWnd, WORD wScrollCmd, WORD wScrollPos)
+static BOOL 
+ScrollScreenVert (HWND hWnd, WORD wScrollCmd, WORD wScrollPos)
 {
    int        nScrollAmt ;
    SCREEN     screen = GETSCREEN (hWnd);
@@ -1154,7 +1256,7 @@ static BOOL ScrollScreenVert (HWND hWnd, WORD wScrollCmd, WORD wScrollPos)
 
    return  TRUE;
 }
-
+
 //---------------------------------------------------------------------------
 //  BOOL ScrollScreenHorz (HWND hWnd, WORD wScrollCmd, WORD wScrollPos )
 //
@@ -1173,7 +1275,8 @@ static BOOL ScrollScreenVert (HWND hWnd, WORD wScrollCmd, WORD wScrollPos)
 //
 //---------------------------------------------------------------------------
 
-static BOOL ScrollScreenHorz (HWND hWnd, WORD wScrollCmd, WORD wScrollPos)
+static BOOL 
+ScrollScreenHorz (HWND hWnd, WORD wScrollCmd, WORD wScrollPos)
 {
    int        nScrollAmt ;
    SCREEN     screen = GETSCREEN (hWnd);
@@ -1225,7 +1328,7 @@ static BOOL ScrollScreenHorz (HWND hWnd, WORD wScrollCmd, WORD wScrollPos)
    return  TRUE;
 
 }
-
+
 //---------------------------------------------------------------------------
 //  BOOL SetScreenFocus (HWND hWnd )
 //
@@ -1238,7 +1341,8 @@ static BOOL ScrollScreenHorz (HWND hWnd, WORD wScrollCmd, WORD wScrollPos)
 //
 //---------------------------------------------------------------------------
 
-static BOOL SetScreenFocus (HWND hWnd)
+static BOOL 
+SetScreenFocus (HWND hWnd)
 {
    SCREEN  screen = GETSCREEN (hWnd);
 
@@ -1252,7 +1356,6 @@ static BOOL SetScreenFocus (HWND hWnd)
    }
    MoveScreenCursor (screen);
    return  TRUE ;
-
 }
 
 //---------------------------------------------------------------------------
@@ -1267,7 +1370,8 @@ static BOOL SetScreenFocus (HWND hWnd)
 //
 //---------------------------------------------------------------------------
 
-BOOL KillScreenFocus (HWND hWnd )
+BOOL 
+KillScreenFocus (HWND hWnd )
 {
    SCREEN  screen = GETSCREEN (hWnd);
 
@@ -1280,9 +1384,8 @@ BOOL KillScreenFocus (HWND hWnd )
       screen->CursorState = CS_HIDE;
    }
    return  TRUE;
-
 }
-
+
 //---------------------------------------------------------------------------
 //  BOOL MoveScreenCursor (SCREEN screen)
 //
@@ -1290,30 +1393,32 @@ BOOL KillScreenFocus (HWND hWnd )
 //     Moves caret to current position.
 //---------------------------------------------------------------------------
 
-static BOOL MoveScreenCursor (SCREEN screen)
+static BOOL 
+MoveScreenCursor (SCREEN screen)
 {
    if (screen->CursorState & CS_SHOW)
       SetCaretPos (screen->column * screen->xChar  -  screen->xOffset,
 	           screen->row    * screen->yChar  -  screen->yOffset);
 
    SetDebuggingTitle (screen);		 
-		 
-   return  TRUE;
+   return (TRUE);
 }
-
 
 //---------------------------------------------------------------------------
 //  BOOL Screen_SetPosition (SCREEN, int row, int column);
 //
 //---------------------------------------------------------------------------
 
-static BOOL Screen_SetPosition (SCREEN screen, int row, int column)
+static BOOL 
+Screen_SetPosition (SCREEN screen, int row, int column)
 {
-   if (row < 0    || row >= screen->height)   return  FALSE;
-   if (column < 0 || column > screen->width)  return  FALSE;	//may be ==
-   screen->row    = row;
-   screen->column = column;
-   return  MoveScreenCursor (screen);
+  if ((row < 0) || (row >= screen->height))
+    return (FALSE);
+  if ((column < 0) || (column > screen->width))		// may be ==
+    return (FALSE);
+  screen->row    = row;
+  screen->column = column;
+  return (MoveScreenCursor (screen));
 }
 
 //---------------------------------------------------------------------------
@@ -1330,7 +1435,7 @@ static BOOL Screen_SetPosition (SCREEN screen, int row, int column)
 //---------------------------------------------------------------------------
 
 static UINT
-ScreenPeekOrRead (SCREEN screen, int count, SCREEN_EVENT* buffer, BOOL remove)
+ScreenPeekOrRead (SCREEN screen, int count, SCREEN_EVENT * buffer, BOOL remove)
 {
     UINT  processed = 0;
     SCREEN_EVENT_LINK  *current = screen->queue_head;
@@ -1339,7 +1444,8 @@ ScreenPeekOrRead (SCREEN screen, int count, SCREEN_EVENT* buffer, BOOL remove)
     if (count<0)
       count = MAX_EVENTS;
     
-    while (count>0 && current) {
+    while (count>0 && current)
+    {
       if (entry)
 	*entry++ = current->event;
       current = current->next;
@@ -1352,7 +1458,7 @@ ScreenPeekOrRead (SCREEN screen, int count, SCREEN_EVENT* buffer, BOOL remove)
     }
     return  processed;
 }
-
+
 //---------------------------------------------------------------------------
 //  BOOL ProcessScreenCharacter (HWND hWnd, int vk_code, int ch, DWORD lKeyData)
 //
@@ -1373,8 +1479,9 @@ ScreenPeekOrRead (SCREEN screen, int count, SCREEN_EVENT* buffer, BOOL remove)
 //
 //---------------------------------------------------------------------------
 
-static BOOL ProcessScreenCharacter (HWND hWnd, int vk_code, int bOut,
-                                    DWORD lKeyData)
+static BOOL
+ProcessScreenCharacter (HWND hWnd, int vk_code, int bOut,
+			DWORD lKeyData)
 {
    SCREEN  screen = GETSCREEN (hWnd);
    SCREEN_EVENT *event;
@@ -1391,19 +1498,24 @@ static BOOL ProcessScreenCharacter (HWND hWnd, int vk_code, int bOut,
        return  TRUE;
    }
 
+   if (bOut == -1)
+     return TRUE;
+
    // check for bindings:
    {
      int  i;
      for (i=0; i<screen->n_bindings; i++)
        if (screen->bindings[i].key == bOut) {
-	 SendMessage (screen->hWnd,
-	              WM_COMMAND,
-		      MAKEWPARAM(screen->bindings[i].command, 0),
-		      0);
-         return  TRUE;
+	 if (SendMessage (screen->hWnd,
+			  WM_COMMAND,
+			  MAKEWPARAM(screen->bindings[i].command, 0),
+			  0))
+	   return  TRUE;
+	 else
+	   break;
        }
    } 
-   
+   
    event = alloc_event (screen, SCREEN_EVENT_TYPE_KEY);
    if (event) {
 //     char buf[80];
@@ -1433,8 +1545,162 @@ static BOOL ProcessScreenCharacter (HWND hWnd, int vk_code, int bOut,
 //     }
 //   }
 
-   return  TRUE;
+   return (TRUE);
+}
+
+/* Utilities for WriteScreenBlock */
 
+static VOID _fastcall 
+Screen_BS (SCREEN screen)
+{
+  if (screen->column > 0)
+    screen->column -- ;
+  else if (screen->row > 0)
+  {
+    screen->row --;
+    screen->column = screen->width-1;
+  }
+  MoveScreenCursor (screen);
+  return;
+}
+
+static VOID _fastcall
+Screen_LF (SCREEN screen)
+{
+  if ((screen->row++) >= (screen->height - 1))
+  {
+    ScrollScreenBufferUp (screen, 1);
+    ScrollWindow (screen->hWnd, 0, -screen->yChar, NULL, NULL);
+    //InvalidateRect (hWnd, NULL, FALSE);
+    //screen->row-- ;
+    screen->row = screen->height-1;
+  }
+  MoveScreenCursor (screen);
+  if (screen->mode_flags & SCREEN_MODE_EAGER_UPDATE)
+    UpdateWindow (screen->hWnd);
+  return;
+}
+
+static VOID _fastcall 
+Screen_CR (SCREEN screen)
+{
+  screen->column = 0 ;
+  if (screen->mode_flags & SCREEN_MODE_NEWLINE)
+    Screen_LF (screen);
+  else
+    MoveScreenCursor (screen);
+  return;
+}
+
+static VOID _fastcall
+Screen_WriteCharUninterpreted (SCREEN screen, int ch)
+{
+  RECT       rect ;
+
+  screen->chars[screen->row * MAXCOLS + screen->column] = ch;
+  screen->attrs[screen->row * MAXCOLS + screen->column] =
+    screen->write_attribute;
+  rect.left = (screen->column * screen->xChar) - screen->xOffset;
+  rect.right = rect.left + screen->xChar;
+  rect.top = (screen->row * screen->yChar) - screen->yOffset;
+  rect.bottom = rect.top + screen->yChar;
+  InvalidateRect (screen->hWnd, &rect, FALSE);
+
+  /* Line wrap */
+  if (screen->column < (screen->width - 1))
+    screen->column++ ;
+  else if (screen->mode_flags & SCREEN_MODE_AUTOWRAP)
+  {
+    Screen_CR (screen);
+    if (! (screen->mode_flags & SCREEN_MODE_NEWLINE))
+      Screen_LF (screen);
+  }
+  return;
+}
+
+static VOID _fastcall
+Screen_TAB (SCREEN screen)
+{
+  do Screen_WriteCharUninterpreted (screen, ' ');
+  while ((screen->column % 8) != 0);
+  return;
+}
+
+static VOID _fastcall
+clear_screen_rectangle (SCREEN screen,
+			int low_row, int low_col,
+			int high_row, int high_col)
+{
+  RECT rect;
+  int row, delta_col;
+  char * screen_chars;
+  SCREEN_ATTRIBUTE * screen_attrs;
+
+  delta_col = (high_col - low_col);
+
+  for (row = low_row,
+       screen_chars = &screen->chars[low_row * MAXCOLS + low_col],
+       screen_attrs = &screen->attrs[low_row * MAXCOLS + low_col];
+       row < high_row;
+       row++,
+       screen_chars += MAXCOLS,
+       screen_attrs += MAXCOLS)
+  {
+    _fmemset (screen_chars, ' ', delta_col);
+    _fmemset (screen_attrs,
+	      screen->write_attribute,
+	      (delta_col * (sizeof (SCREEN_ATTRIBUTE))));
+  }
+
+  rect.left = ((low_col * screen->xChar) - screen->xOffset);
+  rect.right = ((high_col * screen->xChar) - screen->xOffset);
+  rect.top = ((low_row * screen->yChar) - screen->yOffset);
+  rect.bottom = ((high_row * screen->yChar) - screen->yOffset);
+  InvalidateRect (screen->hWnd, &rect, FALSE);
+
+  return;
+}
+
+static VOID _fastcall
+relocate_cursor (SCREEN screen, int row, int col)
+{
+  screen->row = ((row < 0)
+		 ? 0
+		 : ((row > screen->height)
+		    ? (screen->height - 1)
+		    : row));
+  screen->column = ((col < 0)
+		    ? 0
+		    : ((col > screen->width)
+		       ? (screen->width - 1)
+		       : col));
+  MoveScreenCursor (screen);
+  return;
+}
+
+static int _fastcall
+read_decimal (LPSTR str, int low, int len, int * high)
+{
+  int ctr, result;
+
+  for (result = 0, ctr = low;
+       ctr < len;
+       result = ((result * 10) + ((str[ctr]) - '0')), ctr++)
+    if ((str[ctr] < '0') || (str[ctr] > '9'))
+      break;
+
+  * high = ctr;
+  return (result);
+}
+
+static VOID _fastcall
+screen_write_octal (SCREEN screen, unsigned char the_char)
+{
+  Screen_WriteCharUninterpreted (screen, '\\');
+  Screen_WriteCharUninterpreted (screen, ((the_char / 0100) + '0'));
+  Screen_WriteCharUninterpreted (screen, (((the_char % 0100) / 010) + '0'));
+  Screen_WriteCharUninterpreted (screen, ((the_char % 010) + '0'));
+  return;
 }
 
 //---------------------------------------------------------------------------
@@ -1457,107 +1723,48 @@ static BOOL ProcessScreenCharacter (HWND hWnd, int vk_code, int bOut,
 //
 //---------------------------------------------------------------------------
 
-static VOID _fastcall Screen_BS (SCREEN screen)
+static BOOL 
+WriteScreenBlock (HWND hWnd, LPSTR lpBlock, int nLength )
 {
-    if (screen->column > 0)
-      screen->column -- ;
-    else if (screen->row > 0) {
-      screen->row --;
-      screen->column = screen->width-1;
-    }
-    MoveScreenCursor (screen);
-}
-
-static VOID _fastcall Screen_LF(SCREEN screen)
-{
-    if (screen->row++ >= screen->height-1)
-    {
-      ScrollScreenBufferUp (screen, 1);
-      ScrollWindow (screen->hWnd, 0, -screen->yChar, NULL, NULL);
-      //InvalidateRect (hWnd, NULL, FALSE);
-      //screen->row-- ;
-      screen->row = screen->height-1;
-    }
-    MoveScreenCursor (screen);
-    if (! (screen->mode_flags & SCREEN_MODE_LAZY_UPDATE))
-      UpdateWindow (screen->hWnd);
-}
-
-static VOID _fastcall Screen_CR (SCREEN screen)
-{
-    screen->column = 0 ;
-    if (screen->mode_flags & SCREEN_MODE_NEWLINE)
-      Screen_LF (screen);
-    else
-      MoveScreenCursor (screen);
-}
-
-static VOID _fastcall Screen_WriteCharUninterpreted (SCREEN screen, int ch)
-{
-    RECT       rect ;
-
-    screen->chars[screen->row * MAXCOLS + screen->column] =
-      ch;
-    screen->attrs[screen->row * MAXCOLS + screen->column] =
-      screen->write_attribute;
-    rect.left = (screen->column * screen->xChar) - screen->xOffset;
-    rect.right = rect.left + screen->xChar;
-    rect.top = (screen->row * screen->yChar) - screen->yOffset;
-    rect.bottom = rect.top + screen->yChar;
-    InvalidateRect (screen->hWnd, &rect, FALSE);
-
-    // Line wrap
-    //if (screen->column < MAXCOLS - 1)
-    if (screen->column < screen->width-1)
-      screen->column++ ;
-    else if (screen->mode_flags & SCREEN_MODE_AUTOWRAP) {
-      Screen_CR (screen);
-      if (! (screen->mode_flags & SCREEN_MODE_NEWLINE))
-	Screen_LF (screen);
-    }
-}
-
-static VOID _fastcall Screen_TAB (SCREEN screen)
-{
-    do {
-      Screen_WriteCharUninterpreted (screen, ' ');
-    } while (screen->column%8 != 0);
-}
-
-
-static BOOL WriteScreenBlock (HWND hWnd, LPSTR lpBlock, int nLength )
-{
-   int        i ;
-   SCREEN     screen = GETSCREEN(hWnd);
+   int i;
+   WORD saved_mode_flags;
+   SCREEN screen = (GETSCREEN (hWnd));
 
    if (NULL == screen)
-      return  FALSE;
+      return (FALSE);
 
-   for (i = 0 ; i < nLength; i++)
+   saved_mode_flags = (screen->mode_flags & SCREEN_MODE_EAGER_UPDATE);
+   screen->mode_flags &= (~ (SCREEN_MODE_EAGER_UPDATE));
+
+   if ((screen->mode_flags & SCREEN_MODE_PROCESS_OUTPUT) == 0)
+     for (i = 0 ; i < nLength; i++)
+       Screen_WriteCharUninterpreted (screen, (lpBlock[i]));
+   else for (i = 0 ; i < nLength; i++)
    {
-      if ((screen->mode_flags & SCREEN_MODE_PROCESS_OUTPUT)==0)
-	goto uninterpreted;
-      switch (lpBlock[ i ])
-      {
-         case ASCII_BEL:
-            MessageBeep (0);
-            break ;
-   
-         case ASCII_BS:
-	    Screen_BS (screen);
-            break ;
-	    
-	 case '\t':
-	    Screen_TAB (screen);
-	    break;
-   
-         case ASCII_LF:
-	    Screen_CR (screen);
-	    Screen_LF (screen);
-            break ;
+     unsigned char the_char = ((unsigned char) (lpBlock[i]));
 
-         case ASCII_CR:
-	    break;
+     switch (the_char)
+     {
+       case ASCII_BEL:
+	  MessageBeep (0);
+	  break ;
+
+       case ASCII_BS:
+	  Screen_BS (screen);
+	  break ;
+
+       case '\t':
+	  Screen_TAB (screen);
+	  break;
+
+#if 0
+       case ASCII_LF:
+	  Screen_CR (screen);
+	  Screen_LF (screen);
+	  break ;
+
+       case ASCII_CR:
+	  break;
 
 //	 case ASCII_LF:
 //	    Screen_LF (screen);
@@ -1566,88 +1773,250 @@ static BOOL WriteScreenBlock (HWND hWnd, LPSTR lpBlock, int nLength )
 //         case ASCII_CR:
 //	    Screen_CR (screen);
 //	    break;
-   
-	 case ASCII_FF:
-	    Screen_Clear (screen, 0);
+#endif
+       case ASCII_LF:
+	  Screen_LF (screen);
+	  break ;
+
+       case ASCII_CR:
+	  Screen_CR (screen);
+	  break;
+
+       case ASCII_FF:
+	  Screen_Clear (screen, 0);
+	  break;
+
+       default:
+	  if (the_char < ' ')
+	  {
+	    Screen_WriteCharUninterpreted (screen, '^');
+	    Screen_WriteCharUninterpreted (screen, (the_char + '@'));
+	  }
+	  else if (the_char < ASCII_DEL)
+	    Screen_WriteCharUninterpreted (screen, the_char);
+	  else if (the_char == ASCII_DEL)
+	  {
+	    Screen_WriteCharUninterpreted (screen, '^');
+	    Screen_WriteCharUninterpreted (screen, '?');
+	  }
+	  else
+	    screen_write_octal (screen, ((unsigned char) the_char));
+	  break;
+	    
+       case ASCII_ESC:
+	{
+	  char dispatch;
+
+	  /* This emulates the subset of an ANSI terminal that
+	     Edwin uses.  Temporary until we write a real screen
+	     driver for Edwin.
+	     This assumes the command is not split.
+	   */
+	  if ((i + 2) >= nLength)
+	  {
+	    MessageBeep (0);
 	    break;
-	    
-	 uninterpreted:
-         default:
-	    Screen_WriteCharUninterpreted (screen, lpBlock[i]);
-            break;
+	  }
+
+	  if (lpBlock[i+1] != '[')
+	  {
+	    i += 1;		/* 1 added in for loop */
+	    MessageBeep (0);
+	    break;
+	  }
+
+	  dispatch = (lpBlock[i + 2]);
+	  switch (dispatch)
+	  {
+	    case 'K':
+	      /* Clear Line */
+	      clear_screen_rectangle (screen,
+				      screen->row, screen->column,
+				      (screen->row + 1), screen->width);
+	      i += 2;		/* 1 added in for loop */
+	      continue;
+
+	    case 'J':
+	      /* Clear to bottom */
+	      if (screen->column == 0)
+		clear_screen_rectangle (screen, screen->row, 0,
+					screen->height, screen->width);
+	      else
+	      {
+		clear_screen_rectangle (screen,
+					screen->row, screen->column,
+					(screen->row + 1), screen->width);
+		clear_screen_rectangle (screen, (screen->row + 1), 0,
+					screen->height, screen->width);
+	      }
+	      i += 2;		/* 1 added in for loop */
+	      continue;
+
+	    case 'H':
+	      /* Cursor home */
+	      relocate_cursor (screen, 0, 0);
+	      i += 2;		/* 1 added in for loop */
+	      continue;
+
+	    case 'C':
+	      /* Cursor right */
+	      relocate_cursor (screen, screen->row, (screen->column + 1));
+	      i += 2;		/* 1 added in for loop */
+	      continue;
+
+	    case 'A':
+	      /* Cursor up */
+	      relocate_cursor (screen, (screen->row - 1), screen->column);
+	      i += 2;		/* 1 added in for loop */
+	      continue;
+
+	    default:
+	      if ((dispatch >= '0') && (dispatch <= '9'))
+	      {
+		int j, x_value;
+
+		x_value = (read_decimal (&lpBlock[0], (i + 2), nLength, &j));
+		if (j >= nLength)
+		{
+		  MessageBeep (0);
+		  i = (j - 1); /* 1 added in for loop */
+		  continue;
+		}
+		else switch (lpBlock[j])
+		{
+		  case ';':
+		  {
+		    int k, y_value;
+
+		    y_value = (read_decimal (&lpBlock[0], (j + 1),
+					     nLength, &k));
+		    if ((k < nLength) && (lpBlock[k] == 'H'))
+		    {
+		      /* Direct cursor motion */
+		      relocate_cursor (screen, (x_value - 1), (y_value - 1));
+		      i = k;	/* 1 added in for loop */
+		      continue;
+		    }
+		    else
+		    {
+		      MessageBeep (0);
+		      i = k; /* 1 added in for loop */
+		      continue;
+		    } 
+		  }
+
+		  case 'm':
+		    if ((j == (i + 3)) && ((x_value == 0) || (x_value == 7)))
+		    {
+		      /* Enter stdout (7) or exit stdout (0) */
+		      screen->write_attribute = (x_value == 7);
+		      i = j;	/* 1 added in for loop */
+		      continue;
+		    }
+		    /* fall through */
+
+		  default:
+		    MessageBeep (0);
+		    i = j;	/* 1 added in for loop */
+		    continue;
+		}
+
+	      }
+	      break;
+	  }
+	}
       }
    }
-    if (! (screen->mode_flags & SCREEN_MODE_LAZY_UPDATE))
-      UpdateWindow (screen->hWnd);
-   return  TRUE;
+   if (saved_mode_flags != 0)
+   {
+     UpdateWindow (screen->hWnd);
+     screen->mode_flags |= saved_mode_flags;
+   }
+   return (TRUE);
 }
+
+/* Utilities for line-buffered input. */
 
-//---------------------------------------------------------------------------
-//  int  ReadScreen (SCREEN screen, LPSTR buffer, int buflen)
-//
-//  Read characters into buffer.
-//  If in line mode, collect characters into the line buffer.
-//  Return the number of characters read.
-//  If in line mode and not yet at end of line, return -1 (i.e. this
-//    is a non-blocking read
-//
-//---------------------------------------------------------------------------
-
-static void key_buffer_insert_self (SCREEN screen, int ch)
+static VOID
+key_buffer_insert_self (SCREEN screen, int ch)
 {
-  if (screen->n_chars < MAX_LINEINPUT) {
+  if (screen->n_chars < MAX_LINEINPUT)
+  {
     screen->line_buffer[screen->n_chars++] = ch;
-    if (screen->mode_flags & SCREEN_MODE_ECHO) {
-      if (ch == '\n') {
+    if (screen->mode_flags & SCREEN_MODE_ECHO)
+    {
+      if (ch == '\n')
+      {
 	Screen_CR (screen);
 	Screen_LF (screen);
       } else
+      {
+	char c = ((char) ch);
 	//Screen_WriteCharUninterpreted (screen, ch);
-	WriteScreenBlock (screen->hWnd, &ch, 1);
+	WriteScreenBlock (screen->hWnd, &c, 1);
+      }
     }
   }
+  return;
 }
 
-static void key_buffer_erase_character (SCREEN screen)
+static VOID 
+key_buffer_erase_character (SCREEN screen)
 {
-  if (screen->n_chars > 0) {
+  if (screen->n_chars > 0)
+  {
     screen->n_chars -= 1;
-    if (screen->mode_flags & SCREEN_MODE_ECHO) {
+    if (screen->mode_flags & SCREEN_MODE_ECHO)
+    {
       Screen_BS (screen);
       Screen_WriteCharUninterpreted (screen, ' ');
       Screen_BS (screen);
     }
   }
+  return;
 }
 
-static void buffered_key_command (SCREEN screen,  int ch)
+static VOID 
+buffered_key_command (SCREEN screen,  int ch)
 {
-  switch (ch) {
+  switch (ch)
+  {
     case '\n':
     case '\r':
       key_buffer_insert_self (screen, '\n');
       break;
+
     case '\b':
-    case 127:
+    case ASCII_DEL:
       key_buffer_erase_character (screen);
       break;
+
     default:
       key_buffer_insert_self (screen, ch);
       break;
   }
-  if (! (screen->mode_flags & SCREEN_MODE_LAZY_UPDATE))
+  if (screen->mode_flags & SCREEN_MODE_EAGER_UPDATE)
     UpdateWindow (screen->hWnd);
+  return;
 }
+
+/* Line-buffered input. */
 
-static  int  ReadScreen_line_input (SCREEN screen, LPSTR buffer, int buflen)
+static int
+ReadScreen_line_input (SCREEN screen, LPSTR buffer, int buflen)
 {
     SCREEN_EVENT_LINK *current = screen->queue_head;
     SCREEN_EVENT_LINK *previous = 0;
 
-    while (current) {
-
-      if (current->event.type == SCREEN_EVENT_TYPE_KEY) {
+    while (current)
+    {
+      if (current->event.type == SCREEN_EVENT_TYPE_KEY)
+      {
 	int  ch = current->event.event.key.ch;
+	if ((current->event.event.key.control_key_state
+	     & SCREEN_ANY_ALT_KEY_MASK)
+	    != 0)
+	  ch |= 0200;	    
 	
 	if (ch!=0)
 	  buffered_key_command (screen, ch);
@@ -1667,7 +2036,8 @@ static  int  ReadScreen_line_input (SCREEN screen, LPSTR buffer, int buflen)
 	}
 	  
 	// If end of line then copy buffer and return
-	if (ch == '\n' || ch == '\r') {
+	if (ch == '\n' || ch == '\r')
+	{
 	  int  count = min (screen->n_chars, buflen);
 	  int  i;
 	  for (i = 0; i<count; i++)
@@ -1676,7 +2046,9 @@ static  int  ReadScreen_line_input (SCREEN screen, LPSTR buffer, int buflen)
 	  return  count;
 	}
 
-      } else /*not a key event*/ {
+      }
+      else /*not a key event*/
+      {
 	previous = current;
 	current = current->next;	
       }	
@@ -1684,24 +2056,35 @@ static  int  ReadScreen_line_input (SCREEN screen, LPSTR buffer, int buflen)
     //  We have copied all pending characters but there is no EOL yet
     return  -1;
 }
+
+/* Untranslated/unbuffered input */
 
-
-static  int  ReadScreen_raw (SCREEN screen, LPSTR buffer, int buflen)
+static int
+ReadScreen_raw (SCREEN screen, LPSTR buffer, int buflen)
 {
     int  position = 0;
     SCREEN_EVENT_LINK *current = screen->queue_head;
     SCREEN_EVENT_LINK *previous = 0;
 
-    while (current) {
-
-      if (current->event.type == SCREEN_EVENT_TYPE_KEY) {
+    while (current)
+    {
+      if (current->event.type == SCREEN_EVENT_TYPE_KEY)
+      {
 	int  ch = current->event.event.key.ch;
+	if ((current->event.event.key.control_key_state
+	     & SCREEN_ANY_ALT_KEY_MASK)
+	    != 0)
+	  ch |= 0200;	    
 	
         // stash away the character
 	if (position < buflen)
 	  buffer[position++] = ch;
 	if (screen->mode_flags & SCREEN_MODE_ECHO)
-	  Screen_WriteCharUninterpreted (screen, ch);
+	{
+	  char c = ((char) ch);
+	  // Screen_WriteCharUninterpreted (screen, ch);
+	  WriteScreenBlock (screen->hWnd, &c, 1);
+	}
 	
         { // dequeue
 	  SCREEN_EVENT_LINK  *next = current->next;
@@ -1717,32 +2100,52 @@ static  int  ReadScreen_raw (SCREEN screen, LPSTR buffer, int buflen)
 	  current = next;
 	}
 	  
+#if 0
 	// If end of line or the buffer is full then  return
 	if (ch == '\n' || ch == '\r' || position==buflen)
 	  return  position;
+#else
+	// If end of line or the buffer is full then  return
+	if (position == buflen)
+	  return (position);
+#endif
 
-      } else /*not a key event*/ {
+      }
+      else /*not a key event*/
+      {
 	previous = current;
 	current = current->next;	
       }	
     }
     //  We have copied all pending characters but there is no EOL yet
-    return  position;
+    return ((position == 0) ? -1 : position);
 }
+
+//---------------------------------------------------------------------------
+//  int  ReadScreen (SCREEN screen, LPSTR buffer, int buflen)
+//
+//  Read characters into buffer.
+//  If in line mode, collect characters into the line buffer.
+//  Return the number of characters read.
+//  In raw mode, return -1 if there are no characters.
+//  If in line mode and not yet at end of line, return -1 (i.e. this
+//    is a non-blocking read
+//
+//---------------------------------------------------------------------------
 
-
-static  int  ReadScreen (SCREEN screen, LPSTR buffer, int buflen)
+static int
+ReadScreen (SCREEN screen, LPSTR buffer, int buflen)
 {
-    if (screen->mode_flags & SCREEN_MODE_LINE_INPUT)
-      return ReadScreen_line_input (screen, buffer, buflen);
-    else
-      return ReadScreen_raw (screen, buffer, buflen);
+  if (screen->mode_flags & SCREEN_MODE_LINE_INPUT)
+    return (ReadScreen_line_input (screen, buffer, buflen));
+  else
+    return (ReadScreen_raw (screen, buffer, buflen));
 }
 
-
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
-VOID Screen_Clear (SCREEN screen, int kind)
+VOID
+Screen_Clear (SCREEN screen, int kind)
 {
     if (kind==0) {
       // clear whole screen
@@ -1763,7 +2166,8 @@ VOID Screen_Clear (SCREEN screen, int kind)
 //     determine the minimum and maxinum sizes for a screen window.//
 //---------------------------------------------------------------------------
 
-static VOID GetMinMaxSizes (HWND hWnd, LPPOINT min_size, LPPOINT max_size)
+static VOID
+GetMinMaxSizes (HWND hWnd, LPPOINT min_size, LPPOINT max_size)
 {
     SCREEN  screen = GETSCREEN (hWnd);
     int  extra_width, extra_height;
@@ -1778,8 +2182,9 @@ static VOID GetMinMaxSizes (HWND hWnd, LPPOINT min_size, LPPOINT max_size)
     min_size->y = screen->yChar + extra_height;
     max_size->x = screen->xChar * MAXCOLS  +  extra_width;
     max_size->y = screen->yChar * MAXROWS  +  extra_height;
+    return;
 }
-
+
 //---------------------------------------------------------------------------
 //  VOID GoModalDialogBoxParam (HINSTANCE hInstance,
 //                                   LPCSTR lpszTemplate, HWND hWnd,
@@ -1795,7 +2200,8 @@ static VOID GetMinMaxSizes (HWND hWnd, LPPOINT min_size, LPPOINT max_size)
 //
 //---------------------------------------------------------------------------
 
-static VOID GoModalDialogBoxParam (HINSTANCE hInstance, LPCSTR lpszTemplate,
+static VOID
+GoModalDialogBoxParam (HINSTANCE hInstance, LPCSTR lpszTemplate,
                                  HWND hWnd, DLGPROC lpDlgProc, LPARAM lParam )
 {
    DLGPROC  lpProcInstance ;
@@ -1806,8 +2212,6 @@ static VOID GoModalDialogBoxParam (HINSTANCE hInstance, LPCSTR lpszTemplate,
    FreeProcInstance ((FARPROC) lpProcInstance);
 
 }
-
-
 
 //---------------------------------------------------------------------------
 //  BOOL SettingsDlgInit (HWND hDlg )
@@ -1826,7 +2230,8 @@ static VOID GoModalDialogBoxParam (HINSTANCE hInstance, LPCSTR lpszTemplate,
 //
 //---------------------------------------------------------------------------
 
-static BOOL SettingsDlgInit (HWND hDlg )
+static BOOL
+SettingsDlgInit (HWND hDlg )
 {
 #if 0
    char       szBuffer[ MAXLEN_TEMPSTR ], szTemp[ MAXLEN_TEMPSTR ] ;
@@ -1861,11 +2266,10 @@ static BOOL SettingsDlgInit (HWND hDlg )
    CheckDlgButton (hDlg, IDD_AUTOWRAP, AUTOWRAP (screen));
    CheckDlgButton (hDlg, IDD_NEWLINE, NEWLINE (screen));
    CheckDlgButton (hDlg, IDD_LOCALECHO, LOCALECHO (screen));
-#endif /*0*/
-   return  TRUE;
-
+#endif /* 0 */
+   return (TRUE);
 }
-
+
 //---------------------------------------------------------------------------
 //  BOOL SelectScreenFont (SCREEN screen, HWND owner)
 //
@@ -1878,7 +2282,8 @@ static BOOL SettingsDlgInit (HWND hDlg )
 //
 //---------------------------------------------------------------------------
 
-static BOOL SelectScreenFont (SCREEN  screen,  HWND owner)
+static BOOL
+SelectScreenFont (SCREEN  screen,  HWND owner)
 {
    CHOOSEFONT  cfTTYFont ;
 
@@ -1901,8 +2306,7 @@ static BOOL SelectScreenFont (SCREEN  screen,  HWND owner)
      screen->rgbFGColour = cfTTYFont.rgbColors ;
      ResetScreen (screen);
    }
-
-   return  TRUE;
+   return (TRUE);
 }
 
 //---------------------------------------------------------------------------
@@ -1917,7 +2321,8 @@ static BOOL SelectScreenFont (SCREEN  screen,  HWND owner)
 //
 //---------------------------------------------------------------------------
 
-static BOOL SettingsDlgTerm (HWND hDlg )
+static BOOL 
+SettingsDlgTerm (HWND hDlg)
 {
 #if 0
    NPTTYINFO  npTTYInfo ;
@@ -1936,7 +2341,7 @@ static BOOL SettingsDlgTerm (HWND hDlg )
 #endif /*0*/
    return  TRUE;
 }
-
+
 //---------------------------------------------------------------------------
 //  BOOL FAR PASCAL SettingsDlgProc (HWND hDlg, UINT uMsg,
 //                                   WPARAM wParam, LPARAM lParam )
@@ -1960,8 +2365,9 @@ static BOOL SettingsDlgTerm (HWND hDlg )
 //
 //---------------------------------------------------------------------------
 
-BOOL FAR PASCAL SettingsDlgProc (HWND hDlg, UINT uMsg,
-                                 WPARAM wParam, LPARAM lParam )
+BOOL FAR PASCAL
+SettingsDlgProc (HWND hDlg, UINT uMsg,
+		 WPARAM wParam, LPARAM lParam)
 {
    switch (uMsg)
    {
@@ -2003,27 +2409,31 @@ BOOL FAR PASCAL SettingsDlgProc (HWND hDlg, UINT uMsg,
          REMOVE_PROP (hDlg, ATOM_TTYINFO);
          break ;
    }
-   return  FALSE;
-
+   return (FALSE);
 }
-
+
 //---------------------------------------------------------------------------
 
-static int  GetControlKeyState(DWORD lKeyData)
+#define KEYDATA_ALT_BIT 0x20000000
+
+static int
+GetControlKeyState(DWORD lKeyData)
 {
   return
-    (GetKeyState(VK_RMENU) < 0  ?	SCREEN_RIGHT_ALT_PRESSED	: 0) |
-    (GetKeyState(VK_LMENU) < 0  ?	SCREEN_LEFT_ALT_PRESSED		: 0) |
-    (GetKeyState(VK_RCONTROL) < 0  ?	SCREEN_RIGHT_CTRL_PRESSED	: 0) |
-    (GetKeyState(VK_LCONTROL) < 0  ?	SCREEN_LEFT_CTRL_PRESSED	: 0) |
-    (GetKeyState(VK_SHIFT) < 0  ?	SCREEN_SHIFT_PRESSED		: 0) |
-    (GetKeyState(VK_NUMLOCK) & 1   ?	SCREEN_NUMLOCK_ON		: 0) |
-    (GetKeyState(VK_SCROLL) & 1  ?	SCREEN_SCROLLLOCK_ON		: 0) |
-    (GetKeyState(VK_CAPITAL) & 1   ?	SCREEN_CAPSLOCK_ON		: 0) |
-    ((lKeyData & 0x01000000) ?		SCREEN_ENHANCED_KEY		: 0);
+    (  (((GetKeyState (VK_RMENU)) < 0)    ?	SCREEN_RIGHT_ALT_PRESSED : 0)
+     | (((GetKeyState (VK_LMENU)) < 0)    ?	SCREEN_LEFT_ALT_PRESSED : 0)
+     | (((GetKeyState (VK_RCONTROL)) < 0) ?	SCREEN_RIGHT_CTRL_PRESSED : 0)
+     | (((GetKeyState (VK_LCONTROL)) < 0) ?	SCREEN_LEFT_CTRL_PRESSED : 0)
+     | (((GetKeyState (VK_SHIFT)) < 0)    ?	SCREEN_SHIFT_PRESSED : 0)
+     | (((GetKeyState (VK_NUMLOCK)) & 1)  ?	SCREEN_NUMLOCK_ON : 0)
+     | (((GetKeyState (VK_SCROLL)) & 1)   ?	SCREEN_SCROLLLOCK_ON : 0)
+     | (((GetKeyState (VK_CAPITAL)) & 1)  ?	SCREEN_CAPSLOCK_ON : 0)
+     | ((lKeyData & 0x01000000) 	  ?	SCREEN_ENHANCED_KEY : 0)
+     | ((lKeyData & KEYDATA_ALT_BIT)      ?	SCREEN_ALT_KEY_PRESSED : 0));
 }
 
-static SCREEN_EVENT  *alloc_event (SCREEN screen,  SCREEN_EVENT_TYPE type)
+static SCREEN_EVENT *
+alloc_event (SCREEN screen,  SCREEN_EVENT_TYPE type)
 {
     SCREEN_EVENT_LINK *link;
     if ((screen->mode_flags & type) == 0)
@@ -2050,7 +2460,8 @@ static SCREEN_EVENT  *alloc_event (SCREEN screen,  SCREEN_EVENT_TYPE type)
     return  &link->event;
 }
 
-BOOL  Screen_GetEvent (SCREEN screen, SCREEN_EVENT *event)
+BOOL
+Screen_GetEvent (SCREEN screen, SCREEN_EVENT *event)
 {
     SCREEN_EVENT_LINK *link;
     if (screen->n_events == 0)
@@ -2063,54 +2474,220 @@ BOOL  Screen_GetEvent (SCREEN screen, SCREEN_EVENT *event)
     screen->free_events = link;
     return TRUE;
 }
-
+
 //---------------------------------------------------------------------------
 
-void  Screen_SetAttribute (HANDLE screen, SCREEN_ATTRIBUTE sa)
+VOID
+Screen_SetAttribute (HANDLE screen, SCREEN_ATTRIBUTE sa)
 {
-    SendMessage (screen, SCREEN_SETATTRIBUTE, (WPARAM)sa, 0);
+  SendMessage (screen, SCREEN_SETATTRIBUTE, (WPARAM)sa, 0);
 }
 
-void  Screen_WriteChar (HANDLE screen, char ch)
+VOID
+Screen_WriteChar (HANDLE screen, char ch)
 {
-    SendMessage (screen, SCREEN_WRITE, 1, (LPARAM)(LPSTR) &ch);
+  SendMessage (screen, SCREEN_WRITE, 1, (LPARAM)(LPSTR) &ch);
 }
 
-void  Screen_WriteText (HANDLE screen, char *string)
+VOID
+Screen_WriteText (HANDLE screen, char *string)
 {
-    SendMessage (screen, SCREEN_WRITE, strlen(string), (LPARAM)(LPSTR)string);
+  SendMessage (screen, SCREEN_WRITE, strlen(string), (LPARAM)(LPSTR)string);
 }
 
-void  Screen_SetCursorPosition (HANDLE screen, int line, int column)
+VOID
+Screen_SetCursorPosition (HANDLE screen, int line, int column)
 {
-    SendMessage(screen, SCREEN_SETPOSITION, 0, MAKELPARAM(column,line));
-}
-
-
-void  Screen_SetMode (HANDLE screen, int mode)
-{
-    SendMessage (screen, SCREEN_SETMODES, (LPARAM)mode, 0);
-}
-
-
-int  Screen_GetMode (HANDLE screen)
-{
-    return  SendMessage (screen, SCREEN_GETMODES, 0, 0);
+  SendMessage(screen, SCREEN_SETPOSITION, 0, MAKELPARAM(column,line));
 }
 
 
-int  Screen_Read (HANDLE screen, char *buffer, int buflen)
+VOID
+Screen_SetMode (HANDLE screen, int mode)
 {
-    return
-      SendMessage (screen, SCREEN_READ, (WPARAM)buflen, (LPARAM)buffer);
+  SendMessage (screen, SCREEN_SETMODES, (LPARAM)mode, 0);
 }
 
-
-void  Screen_GetSize (HANDLE hWnd, int *rows, int *columns)
+int
+Screen_GetMode (HANDLE screen)
 {
-    SCREEN  screen = GETSCREEN (hWnd);
-    if (screen==0)
-      return;
-    *rows    = screen->height;
-    *columns = screen->width;
+  return (SendMessage (screen, SCREEN_GETMODES, 0, 0));
+}
+
+#define SCREEN_MODE_COOKED (SCREEN_MODE_LINE_INPUT | SCREEN_MODE_ECHO)
+
+int
+Screen_Read (HANDLE hWnd, BOOL buffered_p, char * buffer, int buflen)
+{
+  int result;
+  WORD input_flags;
+  SCREEN screen = (GETSCREEN (hWnd));
+  
+  if (screen != NULL)
+  {
+    input_flags = (screen->mode_flags & SCREEN_MODE_COOKED);
+    screen->mode_flags &= (~ SCREEN_MODE_COOKED);
+    if (buffered_p)
+      screen->mode_flags |= SCREEN_MODE_COOKED;
+  }
+      
+  result = (SendMessage (hWnd, SCREEN_READ,
+			 ((WPARAM) buflen), ((LPARAM) buffer)));
+
+  if (screen != NULL)
+  {
+    screen->mode_flags &= (~ SCREEN_MODE_COOKED);
+    screen->mode_flags |= input_flags;
+  }
+
+  return (result);
+}
+
+VOID
+Screen_GetSize (HANDLE hWnd, int *rows, int *columns)
+{
+  SCREEN screen = (GETSCREEN (hWnd));
+  if (screen == 0)
+    return;
+  *rows    = screen->height;
+  *columns = screen->width;
+  return;
+}
+
+/* Utilities for MIT character translation */
+
+static BOOL _fastcall
+MIT_post_char_message (CONST MSG * lpmsg, WPARAM the_char)
+{
+  return (PostMessage (lpmsg->hwnd,
+		       ((lpmsg->message == WM_KEYDOWN)
+			? WM_CHAR
+			: WM_SYSCHAR),
+		       the_char,
+		       lpmsg->lParam));
+}
+
+#ifndef VK_A
+#  define VK_A 'A'
+#  define VK_Z 'Z'
+#endif /* VK_A */
+
+/* US IBM-PC keyboard */
+
+#define VK_ATSIGN	'2'
+#define VK_CARET	'6'
+#define VK_LSQB		219
+#define VK_RSQB		221
+#define VK_BACKSLASH	220
+#define VK_UNDERSCORE	189
+
+#define ASCII_CONTROLIFY(ascii)	((ascii) - '@')
+
+static BOOL _fastcall
+MIT_controlify (WPARAM virtual_key, WPARAM * control_char)
+{
+  BOOL result = ((BOOL) 1);
+
+  if ((virtual_key >= VK_A) && (virtual_key <= VK_Z))
+    * control_char = (ASCII_CONTROLIFY ('A' + (virtual_key - VK_A)));
+  else if (virtual_key == VK_ATSIGN)
+    * control_char = (ASCII_CONTROLIFY ('@'));
+  else if (virtual_key == VK_CARET)
+    * control_char = (ASCII_CONTROLIFY ('^'));
+  else if (virtual_key == VK_LSQB)
+    * control_char = (ASCII_CONTROLIFY ('['));
+  else if (virtual_key == VK_RSQB)
+    * control_char = (ASCII_CONTROLIFY (']'));
+  else if (virtual_key == VK_BACKSLASH)
+    * control_char = (ASCII_CONTROLIFY ('\\'));
+  else if (virtual_key == VK_UNDERSCORE)
+    * control_char = (ASCII_CONTROLIFY ('_'));
+  else
+    result = ((BOOL) 0);
+
+  return (result);
+}
+
+BOOL
+MIT_TranslateMessage (CONST MSG * lpmsg)
+{
+  UINT message = (lpmsg->message);
+
+  switch (message)
+  {
+    case WM_KEYDOWN:
+    case WM_SYSKEYDOWN:
+    {
+      WPARAM virtual_key = (lpmsg->wParam);
+
+      switch (virtual_key)
+      {
+	case VK_BACK:
+	  return (MIT_post_char_message (lpmsg, ((WPARAM) ASCII_DEL)));
+
+	case VK_DELETE:
+	  return (MIT_post_char_message (lpmsg, ((WPARAM) ASCII_BS)));
+	  
+	case VK_SPACE:
+	  if (((GetKeyState (VK_RCONTROL)) < 0)
+	      || ((GetKeyState (VK_LCONTROL)) < 0))
+	    return (MIT_post_char_message (lpmsg, ((WPARAM) '\0')));
+	  break;
+
+#ifdef WINDOWSLOSES
+	case VK_TAB:
+	  if (MIT_trap_alt_tab)
+	    return ((BOOL) 0);
+	  break;
+
+	case VK_ESCAPE:
+	  if ((message == WM_SYSKEYDOWN) && MIT_trap_alt_escape)
+	    return ((BOOL) 0);
+	  break;
+#endif /* WINDOWSLOSES */
+
+	default:
+	{
+	  WPARAM control_char;
+
+	  if (((message == WM_SYSKEYDOWN) || (lpmsg->lParam & KEYDATA_ALT_BIT))
+	      && (((GetKeyState (VK_RCONTROL)) < 0)
+		  || ((GetKeyState (VK_LCONTROL)) < 0))
+	      && (MIT_controlify (virtual_key, &control_char)))
+	    return (MIT_post_char_message (lpmsg, control_char));
+	  break;
+	}
+      }
+      break;
+    }
+
+#ifdef WINDOWSLOSES
+    case WM_KEYUP:
+    case WM_SYSKEYUP:
+    {
+      WPARAM virtual_key = (lpmsg->wParam);
+
+      switch (virtual_key)
+      {
+	case VK_TAB:
+	  if (MIT_trap_alt_tab)
+	    return (MIT_post_char_message (lpmsg, ((WPARAM) '\t')));
+	  break;
+
+	case VK_ESCAPE:
+	  if (MIT_trap_alt_escape)
+	    return (MIT_post_char_message (lpmsg, ((WPARAM) ASCII_ESC)));
+	  break;
+
+	default:
+	  break;
+      }
+      break;
+    }
+#endif /* WINDOWSLOSES */
+
+    default:
+      break;
+  }
+  return (TranslateMessage (lpmsg));
 }
