@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.142 2000/06/08 19:06:58 cph Exp $
+;;; $Id: imail-top.scm,v 1.143 2000/06/08 20:47:55 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -758,7 +758,7 @@ With prefix argument N moves backward N messages with these flags."
 
 (define (insert-header-fields headers raw? mark)
   (insert-string (header-fields->string
-		  (let ((headers (message-header-fields headers)))
+		  (let ((headers (->header-fields headers)))
 		    (if raw?
 			headers
 			(maybe-reformat-headers
