@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.24 1992/04/21 17:27:25 mhwu Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.25 1992/04/22 20:26:41 mhwu Exp $
 ;;;
 ;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -279,6 +279,7 @@ Includes the new backup.  Must be > 0."
 	  (substring filename (+ index 1) end)
 	  filename))))
 
+
 (define unix/encoding-pathname-types
   '("Z"))
 
@@ -349,6 +350,13 @@ Includes the new backup.  Must be > 0."
 	     (merge-pathnames ".edwin-ffi" (directory-pathname pathname))))
 	(and (file-exists? pathname)
 	     pathname))))
+
+(define (os/auto-save-filename? filename)
+  ;; This could be more sophisticated, but is what the edwin
+  ;; code was originally doing.
+  (and (string? filename)
+       (string-find-next-char filename #\#)))
+       
 
 (define (os/read-file-methods)
   (list maybe-read-compressed-file

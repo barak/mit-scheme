@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.123 1992/04/18 16:38:49 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.124 1992/04/22 20:26:56 mhwu Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -498,9 +498,8 @@ CANNOT contain the 'F' option."
       (lambda ()
 	(for-each-file-line (current-buffer)
 	  (lambda (lstart)
-	    (if (match-forward "#"
-			       (dired-filename-start lstart)
-			       (line-end lstart 0))
+	    (if (os/auto-save-filename?
+		 (region->string (dired-filename-region lstart)))
 		(dired-mark-1 lstart #\D))))))))
 
 (define-command dired-flag-backup-files
