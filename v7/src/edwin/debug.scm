@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: debug.scm,v 1.60 2002/01/07 04:12:37 cph Exp $
+;;; $Id: debug.scm,v 1.61 2002/01/07 04:30:28 cph Exp $
 ;;;
 ;;; Copyright (c) 1992-2002 Massachusetts Institute of Technology
 ;;;
@@ -1853,17 +1853,20 @@ once it has been renamed, it will not be deleted automatically.")
 	     (lambda ()
 	       (write-dbg-name name (current-output-port))))))
       (write-string name port)
-      (if (unassigned-reference-trap? value)
-	  (write-string " is unassigned" port)
-	  (let ((separator " = "))
-	    (write-string separator port)
-	    (write-string
-	     (output-to-string (max 0
-				    (- (- x-size 1)
-				       (+ (string-length name)
-					  (string-length separator))))
-			       (lambda () (write value)))
-	     port))))
+      (cond ((unassigned-reference-trap? value)
+	     (write-string " is unassigned" port))
+	    ((macro-reference-trap? value)
+	     (write-string " is a syntactic keyword" port))
+	    (else
+	     (let ((separator " = "))
+	       (write-string separator port)
+	       (write-string
+		(output-to-string (max 0
+				       (- (- x-size 1)
+					  (+ (string-length name)
+					     (string-length separator))))
+				  (lambda () (write value)))
+		port)))))
     (debugger-newline port)))
 
 ;;;; Interface Port
