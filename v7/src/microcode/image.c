@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/image.c,v 9.21 1987/01/22 14:27:21 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/image.c,v 9.22 1987/08/10 20:06:33 pas Exp $ */
 
 #include "scheme.h"
 #include "primitive.h"
@@ -146,6 +146,60 @@ Define_Primitive(Prim_Read_Image_From_Cbin_File, 1, "READ-IMAGE-FROM-CBIN-FILE")
     if (feof(fp)!=0) { printf("not enough values read, last read i-1 %d , value %d\n", (i-1), *(To_Here-1));
 		       return NIL; }
     *To_Here++ = ((REAL) getw(fp));
+  }
+  
+  Close_File(fp);
+  return Result;
+}
+
+/* 2BINT FORMAT = integer stored in 2 consecutive bytes.
+   We need to use 2bint because on many machines (bobcats included)
+   "putw", and "getw" use 4 byte integers (C int) ---> waste lots of space.
+   */
+Define_Primitive(Prim_Read_Image_From_2bint_File, 1, "READ-IMAGE-FROM-2BINT-FILE")
+{ long Length, i,j;
+  long nrows, ncols, array_index;
+  FILE *fopen(), *fp;
+  char *file_string;
+  REAL *To_Here;
+  Pointer Result, Array_Data_Result, *Orig_Free;
+  int Error_Number;
+  long allocated_cells;
+  Boolean Open_File();
+  float x_origin, y_origin;
+
+  Primitive_1_Args();
+  Arg_1_Type(TC_CHARACTER_STRING);
+  
+  if (!(Open_File(Arg1, "r", &fp))) Primitive_Error(ERR_ARG_1_BAD_RANGE);
+  if (feof(fp)!=0) { printf("Datafile is empty!"); return NIL; }
+  nrows = getw(fp);  ncols = getw(fp);
+  Length = nrows * ncols;
+  
+  /* ALLOCATE SPACE */
+  Primitive_GC_If_Needed(6);
+  Orig_Free = Free;
+  Free += 6;
+  Result = Make_Pointer(TC_LIST, Orig_Free);
+  *Orig_Free++ = Make_Non_Pointer(TC_FIXNUM, nrows);
+  *Orig_Free = Make_Pointer(TC_LIST, Orig_Free+1);
+  Orig_Free++;
+  *Orig_Free++ = Make_Non_Pointer(TC_FIXNUM, ncols);
+  *Orig_Free = Make_Pointer(TC_LIST, Orig_Free+1);
+  Orig_Free++;
+  Allocate_Array(Array_Data_Result, Length, allocated_cells); 
+  *Orig_Free++ = Array_Data_Result;
+  *Orig_Free = NIL;
+  /* END ALLOCATION */
+  
+  To_Here = Scheme_Array_To_C_Array(Array_Data_Result);
+  
+  for (i=0;i<Length;i++) {
+    if (feof(fp)!=0) { printf("not enough values read, last read i-1 %d , value %d\n", (i-1), *(To_Here-1));
+		       return NIL; }
+    foo1=getc(fp); foo2=getc(fp);        /* Read 2BYTE INT FORMAT */
+    *To_Here++ = ((REAL)
+		  ((foo1<<8) ^ foo2) );  /* put together the integer */
   }
   
   Close_File(fp);
