@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.1 1992/01/28 14:01:20 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.2 1992/01/29 04:31:09 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/rules3.scm,v 4.31 1991/05/28 19:14:55 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -105,13 +105,13 @@ MIT in each case. |#
   continuation
   (LAP ,@(clear-map!)
        (JMP (@PCR ,(free-uuo-link-label name frame-size)))))
-
+
 (define-rule statement
   (INVOCATION:GLOBAL-LINK (? frame-size) (? continuation) (? name))
   continuation
   (LAP ,@(clear-map!)
        (JMP (@PCR ,(global-uuo-link-label name frame-size)))))
-
+
 (define-rule statement
   (INVOCATION:CACHE-REFERENCE (? frame-size) (? continuation) (? extension))
   (QUALIFIER (interpreter-call-argument? extension))
@@ -218,116 +218,76 @@ MIT in each case. |#
 (define (optimized-primitive-invocation hook)
   (LAP ,@(clear-map!)
        (JMP ,hook)))
-
-;;;; Invocation Prefixes
+
+;;; Invocation Prefixes
 
 (define-rule statement
   (INVOCATION-PREFIX:MOVE-FRAME-UP 0 (REGISTER 4))
   (LAP))
 
-;; **** Here **** (register 12) = dynamic link
-
 (define-rule statement
-  (INVOCATION-PREFIX:MOVE-FRAME-UP (? frame-size) (REGISTER 12))
-  (let ((temp (allocate-temporary-register! 'ADDRESS)))
-    (LAP (MOV L ,(register-reference 12) ,(register-reference temp))
-	 ,@(generate/move-frame-up* frame-size temp))))
-
+  (INVOCATION-PREFIX:DYNAMIC-LINK 0 (REGISTER 4) (? any))
+  (LAP))
+
 (define-rule statement
   (INVOCATION-PREFIX:MOVE-FRAME-UP (? frame-size)
 				   (OFFSET-ADDRESS (REGISTER 4) (? offset)))
+  (QUALIFIER (or (zero? (- offset frame-size)) (< frame-size 3)))
   (let ((how-far (- offset frame-size)))
     (cond ((zero? how-far)
 	   (LAP))
 	  ((zero? frame-size)
-	   (increment-machine-register 15 (* 4 how-far)))
+	   (LAP (ADD W (R 4) (& ,(* 4 how-far)))))
 	  ((= frame-size 1)
-	   (LAP (MOV L (@A+ 7) ,(offset-reference a7 (-1+ how-far)))
-		,@(increment-machine-register 15 (* 4 (-1+ how-far)))))
+	   (let ((temp (temporary-register-reference)))
+	     (LAP (MOV W ,temp (@R 4))
+		  (ADD W (R 4) (& ,(* 4 offset)))
+		  (PUSH W ,temp))))
 	  ((= frame-size 2)
-	   (if (= how-far 1)
-	       (LAP (MOV L (@AO 7 4) (@AO 7 8))
-		    (MOV L (@A+ 7) (@A 7)))
-	       (let ((i (lambda ()
-			  (INST (MOV L (@A+ 7)
-				     ,(offset-reference a7 (-1+ how-far)))))))
-		 (LAP ,(i)
-		      ,(i)
-		      ,@(increment-machine-register 15 (* 4 (- how-far 2)))))))
+	   (let ((temp1 (temporary-register-reference))
+		 (temp2 (temporary-register-reference)))
+	     (LAP (MOV W ,temp2 (@RO 4 4))
+		  (MOV W ,temp1 (@R 4))
+		  (ADD W (R 4) (& ,(* 4 offset)))
+		  (PUSH W ,temp2)
+		  (PUSH W ,temp1))))
 	  (else
-	   (generate/move-frame-up frame-size (offset-reference a7 offset))))))
+	   (error "INVOCATION-PREFIX:MOVE-FRAME-UP: Incorrectly invoked!")))))
 
 (define-rule statement
-  (INVOCATION-PREFIX:MOVE-FRAME-UP (? frame-size)
-				   (OFFSET-ADDRESS (REGISTER (? base))
-						   (? offset)))
-  (generate/move-frame-up frame-size (indirect-reference! base offset)))
-
-(define-rule statement
-  (INVOCATION-PREFIX:DYNAMIC-LINK 0 (REGISTER 4) (REGISTER 12))
-  (LAP))
+  (INVOCATION-PREFIX:MOVE-FRAME-UP (? frame-size) (REGISTER (? reg)))
+  (generate/move-frame-up* frame-size
+			   (move-to-temporary-register! reg 'GENERAL)
+			   temporary-register-reference))
 
 (define-rule statement
   (INVOCATION-PREFIX:DYNAMIC-LINK (? frame-size)
-				  (OFFSET-ADDRESS (REGISTER (? base))
-						  (? offset))
-				  (REGISTER 12))
-  (let ((label (generate-label))
-	(temp (allocate-temporary-register! 'ADDRESS)))
-    (let ((temp-ref (register-reference temp)))
-      (LAP (LEA ,(indirect-reference! base offset) ,temp-ref)
-	   (CMP L ,temp-ref (A 4))
-	   (B HS B (@PCR ,label))
-	   (MOV L (A 4) ,temp-ref)
-	   (LABEL ,label)
-	   ,@(generate/move-frame-up* frame-size temp)))))
-
-(define-rule statement
-  (INVOCATION-PREFIX:DYNAMIC-LINK (? frame-size)
-				  (OBJECT->ADDRESS (REGISTER (? source)))
-				  (REGISTER 12))
-  (let ((dreg (standard-move-to-temporary! source 'DATA))
-	(label (generate-label))
-	(temp (allocate-temporary-register! 'ADDRESS)))
-    (let ((areg (register-reference temp)))
-      (LAP (AND L ,mask-reference ,dreg)
-	   (MOV L ,dreg ,areg)
-	   (CMP L ,areg (A 4))
-	   (B HS B (@PCR ,label))
-	   (MOV L (A 4) ,areg)
-	   (LABEL ,label)
-	   ,@(generate/move-frame-up* frame-size temp)))))
-
-(define-rule statement
-  (INVOCATION-PREFIX:DYNAMIC-LINK (? frame-size)
-				  (REGISTER (? source))
-				  (REGISTER 12))
-  (let ((areg (standard-move-to-temporary! source 'ADDRESS))
-	(label (generate-label)))
-    (LAP (CMP L ,areg (A 4))
-	 (B HS B (@PCR ,label))
-	 (MOV L (A 4) ,areg)
+				  (REGISTER (? reg-1))
+				  (REGISTER (? reg-2)))
+  (QUALIFIER (not (= reg-1 4)))
+  (let* ((label (generate-label 'DYN-CHOICE))
+	 (temp1 (move-to-temporary-register! reg-1 'GENERAL))
+	 (temp2 (standard-move-to-temporary! reg-2)))
+    (LAP (CMP W (R ,temp1) ,temp2)
+	 (JLE (@PCR ,label))
+	 (MOV W (R ,temp1) ,temp2)
 	 (LABEL ,label)
-	 ,@(generate/move-frame-up* frame-size
-				    (+ (lap:ea-operand-1 areg) 8)))))
+	 ,@(generate/move-frame-up* frame-size temp1 (lambda () temp2)))))
 
-(define (generate/move-frame-up frame-size destination)
-  (let ((temp (allocate-temporary-register! 'ADDRESS)))
-    (LAP (LEA ,destination ,(register-reference temp))
-	 ,@(generate/move-frame-up* frame-size temp))))
-
-(define (generate/move-frame-up* frame-size destination)
-  (let ((temp (allocate-temporary-register! 'ADDRESS)))
-    (LAP (LEA ,(offset-reference a7 frame-size) ,(register-reference temp))
-	 ,@(generate-n-times
-	    frame-size 5
-	    (lambda ()
-	      (INST (MOV L
-			 (@-A ,(- temp 8))
-			 (@-A ,(- destination 8)))))
-	    (lambda (generator)
-	      (generator (allocate-temporary-register! 'DATA))))
-	 (MOV L ,(register-reference destination) (A 7)))))
+(define (generate/move-frame-up* frame-size reg get-temp)
+  (if (zero? frame-size)
+      (LAP (MOV W (R 4) (R ,reg)))
+      (let ((temp (get-temp))
+	    (ctr (allocate-temporary-register! 'GENERAL))
+	    (label (generate-label 'MOVE-LOOP)))
+	(LAP (LEA (R ,reg) (@RO ,reg ,(* -4 frame-size)))
+	     (MOV W (R ,ctr) (& (-1+ frame-size)))
+	     (LABEL ,label)
+	     (MOV W ,temp (@RI 4 ,ctr 4))
+	     (MOV W (@RI ,reg ,ctr 4) ,temp)
+	     (DEC W ,ctr)
+	     (JGE (PCR ,label))
+	     (MOV W (R 4) (R ,reg))))))
 
 ;;;; External Labels
 
@@ -369,7 +329,8 @@ MIT in each case. |#
 	   (make-code-word (+ #x80 (integer-divide-remainder qr))
 			   (+ #x80 (integer-divide-quotient qr)))))
 	(else
-	 (error "Unable to encode continuation offset" offset))))
+	 (error "Unable to encode continuation offset"
+		offset))))
 
 (define (continuation-code-word label)
   (frame-size->code-word
@@ -384,6 +345,8 @@ MIT in each case. |#
    internal-entry-code-word))
 
 ;;;; Procedure headers
+
+;; **** Here ****
 
 ;;; The following calls MUST appear as the first thing at the entry
 ;;; point of a procedure.  They assume that the register map is clear
