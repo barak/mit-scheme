@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: modlin.scm,v 1.17 1994/03/04 21:30:33 cph Exp $
+;;;	$Id: modlin.scm,v 1.18 1994/03/08 20:23:18 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -50,7 +50,7 @@
 (define-variable-per-buffer mode-line-format
   "Template for displaying mode line for current buffer.
 Each buffer has its own value of this variable.
-Value may be a string, a symbol, or a (possibly improper) list.
+Value may be a string, a symbol, a list, or a pair.
 For a symbol, its value is used (but it is ignored if #t or #f).
  A string appearing directly as the value of a symbol is processed verbatim
  in that the %-constructs below are not recognized.
@@ -66,8 +66,8 @@ A string is printed verbatim in the mode line except for %-constructs:
   (%-constructs are allowed when the string is the entire mode-line-format
    or when it is found in a cons-cell or a list)
   %b -- print buffer name.      %f -- print visited file name.
-  %* -- print *, % or hyphen.   %M -- print major mode name.
-  %s -- print process status.   %m -- print minor mode names.
+  %* -- print *, % or hyphen.
+  %s -- print process status.
   %p -- print percent of buffer above top of window, or top, bot or all.
   %n -- print Narrow if appropriate.
   %[ -- print one [ for each recursive editing level.  %] similar.
@@ -77,7 +77,10 @@ Decimal digits after the % specify field width to which to pad."
        mode-line-buffer-identification
        "   "
        global-mode-string
-       "   %[(%M%m%n"
+       "   %[("
+       mode-name
+       minor-mode-alist
+       "%n"
        mode-line-process
        ")%]----"
        (-3 . "%p")
@@ -95,18 +98,33 @@ other than ordinary files may change this (e.g. Info, Dired,...)"
 
 (define-variable global-mode-string
   "Extra stuff appearing after buffer-name in standard mode-line-format."
-  false)
+  #f)
+
+(define-variable-per-buffer mode-name
+  "Pretty name of current buffer's major mode (a string)."
+  ""
+  string?)
+
+(define-variable-per-buffer minor-mode-alist
+  "Alist saying how to show minor modes in the mode line.
+Each element looks like (VARIABLE STRING);
+STRING is included in the mode line iff VARIABLE's value is true.
+
+Actually, STRING need not be a string; any possible mode-line element
+is okay.  See `mode-line-format'."
+  `((,(lambda (window) window *defining-keyboard-macro?*) " Def"))
+  alist?)
 
 (define-variable-per-buffer mode-line-process
   "Mode-line control for displaying info on process status."
-  false)
+  #f)
 
 (define-variable-per-buffer mode-line-procedure
   "Procedure used to generate the mode-line.
 Must accept four arguments: WINDOW STRING START END.
 Must generate a modeline string for WINDOW in the given substring.
 If #F, the normal method is used."
-  false)
+  #f)
 
 (define (modeline-string! window line start end)
   (let ((procedure
@@ -134,8 +152,11 @@ If #F, the normal method is used."
 	 (display-mode-pair element window line column min-end max-end))
 	((string? element)
 	 (display-mode-string element window line column min-end max-end))
-	((symbol? element)
-	 (let ((value (window-symbol-value window element)))
+	((or (symbol? element) (variable? element))
+	 (let ((value
+		(if (symbol? element)
+		    (window-symbol-value window element)
+		    (variable-local-value (window-buffer window) element))))
 	   (cond ((string? value)
 		  (display-string value line column min-end max-end))
 		 ((boolean? value)
@@ -155,43 +176,55 @@ If #F, the normal method is used."
 	(finish (lambda (column) (display-pad line column min-end)))
 	(key (car element))
 	(rest (cdr element)))
-    (cond ((symbol? key)
-	   (cond ((not (pair? rest))
-		  (invalid))
-		 ((window-symbol-value window key)
-		  (display-mode-element (car rest)
-					window line column min-end max-end))
-		 ((null? (cdr rest))
-		  (finish column))
-		 ((pair? (cdr rest))
-		  (display-mode-element (cadr rest)
-					window line column min-end max-end))
-		 (else
-		  (invalid))))
-	  ((integer? key)
-	   (let ((values
-		  (lambda (min-end max-end)
-		    (display-mode-element rest window line column
-					  min-end
-					  max-end))))
-	     (cond ((negative? key)
-		    (values min-end (min max-end (- column key))))
-		   ((positive? key)
-		    (values (max min-end (min max-end (+ column key)))
-			    max-end))
+    (let ((do-boolean
+	   (lambda (value)
+	     (cond ((not (pair? rest))
+		    (invalid))
+		   (value
+		    (display-mode-element (car rest)
+					  window line column min-end max-end))
+		   ((null? (cdr rest))
+		    (finish column))
+		   ((pair? (cdr rest))
+		    (display-mode-element (cadr rest)
+					  window line column min-end max-end))
 		   (else
-		    (values min-end max-end)))))
-	  ((or (string? key) (pair? key))
-	   (let loop ((element element) (column column))
-	     (if (and (pair? element)
-		      (< column max-end))
-		 (loop (cdr element)
-		       (display-mode-element
-			(car element)
-			window line column column max-end))
-		 (finish column))))
-	  (else
-	   (finish column)))))
+		    (invalid))))))
+      (cond ((boolean? key)
+	     (do-boolean key))
+	    ((symbol? key)
+	     (do-boolean (window-symbol-value window key)))
+	    ((variable? key)
+	     (do-boolean (variable-local-value (window-buffer window) key)))
+	    ((minor-mode? key)
+	     (do-boolean (buffer-minor-mode? (window-buffer window) key)))
+	    ((integer? key)
+	     (let ((values
+		    (lambda (min-end max-end)
+		      (display-mode-element rest window line column
+					    min-end
+					    max-end))))
+	       (cond ((negative? key)
+		      (values min-end (min max-end (- column key))))
+		     ((positive? key)
+		      (values (max min-end (min max-end (+ column key)))
+			      max-end))
+		     (else
+		      (values min-end max-end)))))
+	    ((or (string? key) (pair? key))
+	     (let loop ((element element) (column column))
+	       (if (and (pair? element)
+			(< column max-end))
+		   (loop (cdr element)
+			 (display-mode-element
+			  (car element)
+			  window line column column max-end))
+		   (finish column))))
+	    ((procedure? key)
+	     (display-mode-pair (cons (key window) rest)
+				window line column min-end max-end))
+	    (else
+	     (finish column))))))
 
 (define (display-mode-string element window line column min-end max-end)
   (let ((end (string-length element)))
@@ -210,105 +243,96 @@ If #F, the normal method is used."
 		       (values
 			(lambda (index width)
 			  (if (< index end)
-			      (loop (1+ index)
-				    (display-string
-				     (decode-mode-spec
-				      window
-				      (string-ref element index)
-				      (- max-end column))
-				     line column
+			      (loop (+ index 1)
+				    (display-mode-spec
+				     (string-ref element index)
+				     window
+				     line
+				     column
 				     (min max-end (+ width column))
 				     max-end))
 			      (loop index column)))))
-		  (let loop ((index (1+ percent)) (width 0))
+		  (let loop ((index (+ percent 1)) (width 0))
 		    (if (< index end)
 			(let* ((char (string-ref element index))
 			       (digit (char->digit char)))
 			  (if digit
-			      (loop (1+ index) (+ (* 10 width) digit))
+			      (loop (+ index 1) (+ (* 10 width) digit))
 			      (values index width)))
 			(values index width))))))
 	  (display-pad line column min-end)))))
 
-(define (decode-mode-spec window char max-width)
-  (let ((buffer (window-buffer window)))
-    (case char
-      ((#\b)
-       (let ((name (buffer-name buffer)))
-	 (if (< 2 max-width (string-length name))
-	     (let ((result (substring name 0 max-width)))
-	       (string-set! result (-1+ max-width) #\\)
-	       result)
-	     name)))
-      ((#\f)
-       (let ((pathname (buffer-pathname buffer)))
-	 (cond ((not pathname)
-		"[none]")
-	       ((pathname? pathname)
-		(os/truncate-filename-for-modeline (->namestring pathname)
-						   max-width))
-	       (else
-		""))))
-      ((#\M)
-       (mode-display-name (buffer-major-mode buffer)))
-      ((#\m)
-       (let loop ((modes (buffer-minor-modes buffer)))
-	 (if (null? modes)
-	     (if *defining-keyboard-macro?* " Def" "")
-	     (string-append " "
-			    (mode-display-name (car modes))
-			    (loop (cdr modes))))))
-      ((#\n)
-       (if (group-clipped? (buffer-group buffer))
-	   " Narrow"
-	   ""))
-      ((#\*)
-       (cond ((not (buffer-writable? buffer)) "%")
-	     ((buffer-modified? buffer) "*")
-	     (else "-")))
-      ((#\s)
-       (let ((process (get-buffer-process buffer)))
-	 (if process
-	     (symbol->string (process-status process))
-	     "no process")))
-      ((#\p)
-       (let ((group (buffer-group buffer)))
-	 (let ((start (group-display-start group)))
-	   (if (let ((end (group-display-end group)))
-		 (or (window-mark-visible? window end)
-		     (and (mark< start end)
-			  (line-start? end)
-			  (window-mark-visible? window (mark-1+ end)))))
-	       (if (window-mark-visible? window start)
-		   "All"
-		   "Bottom")
-	       (if (window-mark-visible? window start)
-		   "Top"
-		   (string-append
-		    (string-pad-left
-		     (number->string
-		      (min
-		       (let ((start (group-display-start-index group)))
-			 (integer-round
-			  (* 100
-			     (- (mark-index (window-start-mark window)) start))
-			  (- (group-display-end-index group) start)))
-		       99))
-		     2)
-		    "%"))))))
-      ((#\[ #\])
-       (cond ((<= recursive-edit-level 10)
-	      (make-string recursive-edit-level char))
-	     ((char=? #\[ char)
-	      "[[[... ")
-	     (else
-	      "]]]... ")))
-      ((#\%)
-       "%")
-      ((#\-)
-       (make-string max-width #\-))
-      (else
-       ""))))
+(define (display-mode-spec char window line column min-end max-end)
+  (let ((max-width (- max-end column))
+	(buffer (window-buffer window)))
+    (if (char=? char #\m)
+	(display-mode-element (ref-variable minor-mode-alist buffer)
+			      window line column min-end max-end)
+	(display-string
+	 (case char
+	   ((#\b)
+	    (let ((name (buffer-name buffer)))
+	      (if (< 2 max-width (string-length name))
+		  (let ((result (substring name 0 max-width)))
+		    (string-set! result (- max-width 1) #\\)
+		    result)
+		  name)))
+	   ((#\f)
+	    (let ((pathname (buffer-pathname buffer)))
+	      (if (pathname? pathname)
+		  (os/truncate-filename-for-modeline (->namestring pathname)
+						     max-width)
+		  "")))
+	   ((#\M)
+	    (ref-variable mode-name buffer))
+	   ((#\n)
+	    (if (group-clipped? (buffer-group buffer)) " Narrow" ""))
+	   ((#\*)
+	    (cond ((not (buffer-writable? buffer)) "%")
+		  ((buffer-modified? buffer) "*")
+		  (else "-")))
+	   ((#\s)
+	    (let ((process (get-buffer-process buffer)))
+	      (if process
+		  (symbol->string (process-status process))
+		  "no process")))
+	   ((#\p)
+	    (let ((group (buffer-group buffer)))
+	      (let ((start (group-display-start group)))
+		(if (let ((end (group-display-end group)))
+		      (or (window-mark-visible? window end)
+			  (and (mark< start end)
+			       (line-start? end)
+			       (window-mark-visible? window (mark-1+ end)))))
+		    (if (window-mark-visible? window start)
+			"All"
+			"Bottom")
+		    (if (window-mark-visible? window start)
+			"Top"
+			(string-append
+			 (string-pad-left
+			  (number->string
+			   (min
+			    (let ((start (group-display-start-index group)))
+			      (integer-round
+			       (* 100
+				  (- (mark-index (window-start-mark window))
+				     start))
+			       (- (group-display-end-index group) start)))
+			    99))
+			  2)
+			 "%"))))))
+	   ((#\[ #\])
+	    (cond ((<= recursive-edit-level 10)
+		   (make-string recursive-edit-level char))
+		  ((char=? #\[ char)
+		   "[[[... ")
+		  (else
+		   " ...]]]")))
+	   ((#\%) "%")
+	   ((#\-) (make-string max-width #\-))
+	   (else ""))
+	 line column min-end max-end))))
 
 (define (display-string string line column min-end max-end)
   (display-substring string 0 (string-length string)
@@ -318,7 +342,7 @@ If #F, the normal method is used."
   (let ((results substring-image-results))
     (substring-image! string start end
 		      line column max-end
-		      false 0 results)
+		      #f 0 results)
     (if (fix:< (vector-ref results 1) min-end)
 	(begin
 	  (do ((x (vector-ref results 1) (fix:+ x 1)))
@@ -336,3 +360,28 @@ If #F, the normal method is used."
 
 (define (window-symbol-value window symbol)
   (variable-local-value (window-buffer window) (name->variable symbol)))
+
+(define (add-minor-mode-line-entry! buffer predicate #!optional consequent)
+  (let ((consequent
+	 (if (or (default-object? consequent)
+		 (not consequent))
+	     (cond ((minor-mode? predicate)
+		    (string-append " " (mode-display-name predicate)))
+		   ((or (symbol? predicate) (variable? predicate))
+		    predicate)
+		   (else ""))
+	     consequent))
+	(minor-mode-alist (ref-variable-object minor-mode-alist)))
+    (let ((alist (variable-local-value buffer minor-mode-alist)))
+      (if (not (assq predicate alist))
+	  (set-variable-local-value! buffer
+				     minor-mode-alist
+				     (cons (list predicate consequent)
+					   alist))))))
+
+(define (remove-minor-mode-line-entry! buffer predicate)
+  (let ((minor-mode-alist (ref-variable-object minor-mode-alist)))
+    (set-variable-local-value!
+     buffer
+     minor-mode-alist
+     (del-assq predicate (variable-local-value buffer minor-mode-alist)))))
