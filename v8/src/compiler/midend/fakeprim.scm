@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fakeprim.scm,v 1.17 1995/06/22 15:09:29 adams Exp $
+$Id: fakeprim.scm,v 1.18 1995/07/24 14:32:57 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -1123,3 +1123,7 @@ MIT in each case. |#
   (kmp-form THE-ENVIRONMENT)
   (kmp-form IN-PACKAGE env-expr expr)
   )
+
+(define-integrable (call/operand1 form)  (first  (call/operands form)))
+(define-integrable (call/operand2 form)  (second (call/operands form)))
+(define-integrable (call/operand3 form)  (third  (call/operands form)))
