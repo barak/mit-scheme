@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulrew.scm,v 1.8 1992/05/14 19:09:00 cph Exp $
+$Id: rulrew.scm,v 1.9 1993/02/27 21:42:15 gjr Exp $
 
-Copyright (c) 1990-92 Massachusetts Institute of Technology
+Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -62,6 +62,14 @@ MIT in each case. |#
    (rtl:make-machine-constant
     (object-type (rtl:constant-value (rtl:object->type-expression datum))))
    datum))
+
+(define-rule rewriting
+  (CONS-POINTER (? type) (REGISTER (? datum register-known-value)))
+  (QUALIFIER (rtl:object->datum? datum))
+  ;; Since we use DEP/DEPI, there is no need to clear the old bits
+  (rtl:make-cons-pointer
+   type
+   (rtl:object->datum-expression datum)))
 
 (define-rule rewriting
   (OBJECT->TYPE (REGISTER (? source register-known-value)))
