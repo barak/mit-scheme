@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sendmail.scm,v 1.76 2001/04/11 00:47:06 cph Exp $
+;;; $Id: sendmail.scm,v 1.77 2001/04/11 01:14:28 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2001 Massachusetts Institute of Technology
 ;;;
@@ -1590,7 +1590,7 @@ This is a list, each element of which is a list of three items:
 1. The file type as a string, e.g. \"jpg\".
    This can also be #F for files with no type.
 2. The MIME type, one of the following symbols:
-      TEXT IMAGE AUDIO VIDEO APPLICATION
+      TEXT IMAGE AUDIO VIDEO APPLICATION MESSAGE
 3. The MIME subtype, also specified as a symbol."
   '(("scm" TEXT X-SCHEME)
     ("text" TEXT PLAIN)
@@ -1608,4 +1608,4 @@ This is a list, each element of which is a list of three items:
 
 (define mime-top-level-types
   (map (lambda (s) (cons (symbol->string s) s))
-       '(TEXT IMAGE AUDIO VIDEO APPLICATION)))
+       '(TEXT IMAGE AUDIO VIDEO APPLICATION MESSAGE)))
