@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usrint.scm,v 1.6 1993/10/16 06:33:09 cph Exp $
+$Id: usrint.scm,v 1.7 1993/10/16 07:32:34 cph Exp $
 
 Copyright (c) 1991-93 Massachusetts Institute of Technology
 
@@ -39,8 +39,16 @@ MIT in each case. |#
 
 ;;;; Prompting
 
+(define (canonicalize-prompt prompt suffix)
+  (if (let ((length (string-length prompt)))
+	(and (not (fix:= length 0))
+	     (char=? (string-ref prompt (fix:- length 1)) #\space)))
+      prompt
+      (string-append prompt suffix)))
+
 (define (prompt-for-command-expression prompt #!optional port)
-  (let ((port (if (default-object? port) (nearest-cmdl/port) port)))
+  (let ((prompt (canonicalize-prompt prompt " "))
+	(port (if (default-object? port) (nearest-cmdl/port) port)))
     (let ((operation (port/operation port 'PROMPT-FOR-COMMAND-EXPRESSION)))
       (if operation
 	  (operation port prompt)
@@ -59,14 +67,15 @@ MIT in each case. |#
       (read port))))
 
 (define (prompt-for-expression prompt #!optional port)
-  (let ((port (if (default-object? port) (nearest-cmdl/port) port)))
+  (let ((prompt (canonicalize-prompt prompt ": "))
+	(port (if (default-object? port) (nearest-cmdl/port) port)))
     (let ((operation (port/operation port 'PROMPT-FOR-EXPRESSION)))
       (if operation
 	  (operation port prompt)
 	  (default/prompt-for-expression port prompt)))))
 
-(define (default/prompt-for-expression port prompt)
-  (default/prompt-for-command-expression port (string-append prompt ":")))
+(define default/prompt-for-expression
+  default/prompt-for-command-expression)
 
 (define (prompt-for-evaluated-expression prompt #!optional environment port)
   (hook/repl-eval #f
@@ -80,7 +89,8 @@ MIT in each case. |#
 		  (nearest-repl/syntax-table)))
 
 (define (prompt-for-command-char prompt #!optional port)
-  (let ((port (if (default-object? port) (nearest-cmdl/port) port)))
+  (let ((prompt (canonicalize-prompt prompt " "))
+	(port (if (default-object? port) (nearest-cmdl/port) port)))
     (let ((operation (port/operation port 'PROMPT-FOR-COMMAND-CHAR)))
       (if operation
 	  (operation port prompt)
@@ -94,7 +104,6 @@ MIT in each case. |#
 	  (fresh-line port)
 	  (newline port)
 	  (write-string prompt port)
-	  (write-string " " port)
 	  (flush-output port)
 	  (let loop ()
 	    (let ((char (read-char port)))
@@ -106,40 +115,40 @@ MIT in each case. |#
 		  (loop)))))))))
 
 (define (prompt-for-confirmation prompt #!optional port)
-  (let ((port (if (default-object? port) (nearest-cmdl/port) port)))
+  (let ((prompt (canonicalize-prompt prompt " (y or n)? "))
+	(port (if (default-object? port) (nearest-cmdl/port) port)))
     (let ((operation (port/operation port 'PROMPT-FOR-CONFIRMATION)))
       (if operation
 	  (operation port prompt)
 	  (default/prompt-for-confirmation port prompt)))))
 
 (define (default/prompt-for-confirmation port prompt)
-  (let ((prompt (string-append prompt " (y or n)? ")))
-    (port/with-output-terminal-mode port 'COOKED
-      (lambda ()
-	(port/with-input-terminal-mode port 'RAW
-	  (lambda ()
-	    (fresh-line port)
-	    (let loop ()
-	      (newline port)
-	      (write-string prompt port)
-	      (flush-output port)
-	      (let ((char (read-char port)))
-		(case char
-		  ((#\y #\Y #\space)
-		   (write-string "Yes" port)
-		   (flush-output port)
-		   true)
-		  ((#\n #\N #\rubout)
-		   (write-string "No" port)
-		   (flush-output port)
-		   false)
-		  ((#\newline)
-		   (loop))
-		  (else
-		   (write char port)
-		   (beep port)
-		   (flush-output port)
-		   (loop)))))))))))
+  (port/with-output-terminal-mode port 'COOKED
+    (lambda ()
+      (port/with-input-terminal-mode port 'RAW
+	(lambda ()
+	  (fresh-line port)
+	  (let loop ()
+	    (newline port)
+	    (write-string prompt port)
+	    (flush-output port)
+	    (let ((char (read-char port)))
+	      (case char
+		((#\y #\Y #\space)
+		 (write-string "Yes" port)
+		 (flush-output port)
+		 true)
+		((#\n #\N #\rubout)
+		 (write-string "No" port)
+		 (flush-output port)
+		 false)
+		((#\newline)
+		 (loop))
+		(else
+		 (write char port)
+		 (beep port)
+		 (flush-output port)
+		 (loop))))))))))
 
 ;;;; Debugger Support
 

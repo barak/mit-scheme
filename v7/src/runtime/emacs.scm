@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: emacs.scm,v 14.15 1993/10/16 05:59:35 cph Exp $
+$Id: emacs.scm,v 14.16 1993/10/16 07:32:43 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -57,10 +57,11 @@ MIT in each case. |#
    (let ((prefix (string-append (number->string (nearest-cmdl/level)) " ")))
      (string-append prefix
 		    (let ((prompt
-			   (if (and (string-prefix? prefix prompt)
-				    (not (string=? prefix prompt)))
-			       (string-tail prompt (string-length prefix))
-			       prompt)))
+			   (string-trim-right
+			    (if (and (string-prefix? prefix prompt)
+				     (not (string=? prefix prompt)))
+				(string-tail prompt (string-length prefix))
+				prompt))))
 		      (let ((entry (assoc prompt cmdl-prompt-alist)))
 			(if entry
 			    (cadr entry)
@@ -75,11 +76,20 @@ MIT in each case. |#
     ("where>" "[Where]")))
 
 (define (emacs/prompt-for-expression port prompt)
-  (transmit-signal-with-argument port #\i (string-append prompt ": "))
+  (transmit-signal-with-argument port #\i prompt)
   (read port))
 
 (define (emacs/prompt-for-confirmation port prompt)
-  (transmit-signal-with-argument port #\n (string-append prompt "? "))
+  (transmit-signal-with-argument
+   port
+   #\n
+   (let ((suffix " (y or n)? "))
+     (if (string-suffix? suffix prompt)
+	 (string-append (string-head prompt
+				     (fix:- (string-length prompt)
+					    (string-length suffix)))
+			"? ")
+	 prompt)))
   (char=? #\y (read-char-internal port)))
 
 (define (read-char-internal port)
