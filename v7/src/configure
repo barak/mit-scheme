@@ -1,0 +1,55 @@
+#!/bin/sh
+
+# $Id: configure,v 1.1 2000/12/06 04:46:33 cph Exp $
+#
+# Copyright (c) 2000 Massachusetts Institute of Technology
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or (at
+# your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
+# The microcode has its own configuration script.
+(cd microcode && ./configure)
+
+# The compiler only needs to know if the machine is an architecture we
+# target.  Run config.guess and parse the output.
+if [ ! -f compiler/machine ]; then
+    case `microcode/config.guess` in
+    alpha-* | alphaev[56]-* | alphaev56-* | alphapca56-* )
+	MACHINE=alpha
+	;;
+    m68k-* )
+	MACHINE=bobcat
+	;;
+    i[3456]86-* )
+	MACHINE=i386
+	;;
+    mips-* | mipsel-* )
+	MACHINE=mips
+	;;
+    sparc-* )
+	MACHINE=sparc
+	;;
+    hppa-* | hppa1.[01]-* | hppa2.?-* )
+	MACHINE=spectrum
+	;;
+    vax-* )
+	MACHINE=vax
+	;;
+    * )
+	echo "Unable to determine machine type."
+	exit 1
+	;;
+    esac
+    ln -s machines/${MACHINE} compiler/machine
+fi
