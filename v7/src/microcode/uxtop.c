@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtop.c,v 1.11 1993/08/03 08:30:09 gjr Exp $
+$Id: uxtop.c,v 1.12 1993/11/09 19:06:14 gjr Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -227,7 +227,7 @@ DEFUN (OS_error_code_to_syserr, (code), int code)
     case ENOSPC:	return (syserr_no_space_left_on_device);
     case ENOSYS:	return (syserr_function_not_implemented);
     case ENOTDIR:	return (syserr_not_a_directory);
-#ifdef ENOTEMPTY
+#if defined(ENOTEMPTY) && (ENOTEMPTY != EEXIST)
     case ENOTEMPTY:	return (syserr_directory_not_empty);
 #endif
     case ENOTTY:	return (syserr_inappropriate_io_control_operation);
