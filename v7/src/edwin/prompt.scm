@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: prompt.scm,v 1.187 2000/06/18 20:35:33 cph Exp $
+;;; $Id: prompt.scm,v 1.188 2000/06/18 20:36:15 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -326,7 +326,7 @@
   (default-type 'VISIBLE-DEFAULT)
   (confirm-completion? #f)
   (case-insensitive-completion? #f)
-  (history 'MINIBUFFER-DEFAULT)
+  (history #f)
   (history-index -1))
 
 (define (parse-prompt-options option-structure options)
