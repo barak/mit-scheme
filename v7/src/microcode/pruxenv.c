@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxenv.c,v 1.5 1991/10/29 22:55:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxenv.c,v 1.6 1992/03/26 03:56:12 cph Exp $
 
-Copyright (c) 1990-91 Massachusetts Institute of Technology
+Copyright (c) 1990-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -160,7 +160,7 @@ DEFINE_PRIMITIVE ("FULL-HOSTNAME", Prim_full_hostname, 0, 0,
   {
     char this_host_name[HOSTNAMESIZE];
 #ifdef HAVE_SOCKETS
-    struct hostent * EXFUN (gethostbyname, (char *));
+    struct hostent * EXFUN (gethostbyname, (const char *));
     struct hostent *this_host_entry;
 #endif
     STD_VOID_SYSTEM_CALL (syscall_gethostname,
