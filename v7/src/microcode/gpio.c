@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/gpio.c,v 1.2 1990/06/13 20:49:58 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/gpio.c,v 1.3 1990/06/13 21:15:14 jinx Exp $ */
 
 /* Scheme primitives for GPIO */
 
@@ -141,7 +141,7 @@ DEFINE_PRIMITIVE ("GPIO-OPEN", Prim_gpio_open, 1, 1, 0)
        in all the other primitives.
      */
     close (gpio_channel);
-    error_external_return;
+    error_external_return();
   }
 
   io_lock (gpio_channel);
