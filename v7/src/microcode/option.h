@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.h,v 1.7 1992/02/18 20:34:47 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.h,v 1.8 1992/02/18 20:51:57 mhwu Exp $
 
 Copyright (c) 1990-1991 Massachusetts Institute of Technology
 
@@ -78,11 +78,5 @@ extern CONST char * EXFUN (search_for_library_file, (CONST char *));
 extern CONST char * EXFUN
   (search_path_for_file,
    (CONST char * option, CONST char * filename, int default_p));
-
-#ifdef DOS386
-#define SUB_DIRECTORY_DELIMITER	'\\'
-#else
-#define SUB_DIRECTORY_DELIMITER '/'
-#endif
 
 #endif /* SCM_OPTION_H */
