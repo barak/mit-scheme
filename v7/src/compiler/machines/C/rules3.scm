@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.1 1993/06/08 06:13:32 gjr Exp $
+$Id: rules3.scm,v 1.2 1993/10/26 17:27:06 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -236,10 +236,11 @@ MIT in each case. |#
     (else
      (LAP ,pfx "{\n\t  SCHEME_OBJECT * frame_top = &stack_pointer["
 	  ,frame-size "];\n\t"
+	  ,pfx "SCHEME_OBJECT * new_frame = " ,new-frame ";\n\t"
 	  ,pfx "  long frame_size = " ,frame-size ";\n\t"
 	  ,pfx "  while ((--frame_size) >= 0)"
-	  ,pfx "    *--" ,new-frame " = *--frame_top;\n\t"
-	  ,pfx "  stack_pointer = " ,new-frame ";\n\t"
+	  ,pfx "    *--new_frame = *--frame_top;\n\t"
+	  ,pfx "  stack_pointer = new_frame;\n\t"
 	  ,pfx "}\n\t"))))
 
 ;;; DYNAMIC-LINK instructions have a <frame-size>, <new frame end>,
