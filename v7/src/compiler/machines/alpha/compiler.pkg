@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.4 1992/11/18 03:52:52 gjr Exp $
+$Id: compiler.pkg,v 1.5 1992/12/01 22:07:02 gjr Exp $
 
 Copyright (c) 1992 Digital Equipment Corporation (D.E.C.)
 
@@ -186,7 +186,7 @@ case.
 	  *rtl-graphs*)
   (import (runtime compiler-info)
 	  make-dbg-info-vector
-	  inf-structure->bif/bsm)
+	  split-inf-structure!)
   (import (runtime unparser)
 	  *unparse-uninterned-symbols-by-name?*))
 
