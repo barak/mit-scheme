@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/socket.scm,v 1.4 1992/06/10 21:10:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/socket.scm,v 1.5 1992/06/15 22:22:35 cph Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -77,16 +77,23 @@ MIT in each case. |#
 (define (tcp-server-connection-accept server-socket block?)
   (let ((peer-address (allocate-host-address)))
     (let ((channel
-	   (with-channel-blocking server-socket block?
+	   (with-channel-blocking server-socket false
 	     (lambda ()
-	       (without-interrupts
-		(lambda ()
-		  (let ((descriptor
-			 ((ucode-primitive tcp-server-connection-accept 2)
-			  (channel-descriptor server-socket)
-			  peer-address)))
-		    (and descriptor
-			 (make-channel descriptor)))))))))
+	       (let loop ()
+		 (or (without-interrupts
+		      (lambda ()
+			(let ((descriptor
+			       ((ucode-primitive tcp-server-connection-accept
+						 2)
+				(channel-descriptor server-socket)
+				peer-address)))
+			  (and descriptor
+			       (make-channel descriptor)))))
+		     (and block?
+			  (begin
+			    (if (other-running-threads?)
+				(yield-current-thread))
+			    (loop)))))))))
       (if channel
 	  (let ((port (make-generic-i/o-port channel channel 64 64)))
 	    (values port port peer-address))
