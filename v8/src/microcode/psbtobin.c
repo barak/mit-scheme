@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbtobin.c,v 9.38 1989/09/24 15:12:41 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbtobin.c,v 9.39 1989/09/24 15:24:26 cph Exp $
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
@@ -38,6 +38,7 @@ MIT in each case. */
 /* Cheap renames */
 
 #include "psbmap.h"
+#include "float.h"
 #define portable_file input_file
 #define internal_file output_file
 
@@ -487,7 +488,7 @@ read_a_flonum ()
     fast double Normalization;
     long digit;
 
-    if (size_in_bits > DBL_MAN_DIG)
+    if (size_in_bits > DBL_MANT_DIG)
     {
       fprintf(stderr,
 	      "%s: Some precision may be lost.",

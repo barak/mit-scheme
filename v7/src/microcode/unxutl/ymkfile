@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.13 1989/09/24 15:13:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.14 1989/09/24 15:25:19 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -488,8 +488,8 @@ regex.o : scheme.touch syntax.h regex.h
 rgxprim.o : scheme.touch prims.h edwin.h syntax.h regex.h
 unixprim.o : scheme.touch prims.h
 
-Bintopsb.o : psbmap.touch trap.h fasl.h load.c bltdef.h limits.h
-Psbtobin.o : psbmap.touch fasl.h dump.c
+Bintopsb.o : psbmap.touch trap.h limits.h fasl.h load.c bltdef.h
+Psbtobin.o : psbmap.touch float.h fasl.h dump.c
 Ppband.o : config.h types.h const.h object.h sdata.h fasl.h load.c
 
 dmpwrld.o : unexec.c getpagesize.h
