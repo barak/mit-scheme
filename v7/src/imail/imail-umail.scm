@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.30 2000/05/23 20:19:08 cph Exp $
+;;; $Id: imail-umail.scm,v 1.31 2000/06/05 20:56:52 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -64,6 +64,7 @@
 (define-class (<umail-message>
 	       (constructor (header-fields body flags from-line)))
     (<message>)
+  (body accessor message-body)
   (from-line define accessor))
 
 (define-method umail-message-from-line ((message <message>))

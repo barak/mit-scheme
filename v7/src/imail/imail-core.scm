@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.97 2000/06/05 17:50:53 cph Exp $
+;;; $Id: imail-core.scm,v 1.98 2000/06/05 20:56:46 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -396,10 +396,8 @@
 
 ;;;; Message type
 
-(define-class (<message> (constructor (header-fields body flags)))
-    (<imail-object>)
+(define-class <message> (<imail-object>)
   (header-fields define accessor)
-  (body define accessor)
   (flags define accessor)
   (folder define standard
 	  initial-value #f)
@@ -417,6 +415,8 @@
 (define (guarantee-message message procedure)
   (if (not (message? message))
       (error:wrong-type-argument message "IMAIL message" procedure)))
+
+(define-generic message-body (message))
 
 (define-generic set-message-flags! (message flags))
 
@@ -808,11 +808,6 @@
 ;;;; MIME structure
 
 (define-generic message-mime-body-structure (message))
-
-;; Cache is either a boolean or an exact nonnegative integer.
-;; #F means don't cache.
-;; #T means cache unconditionally.
-;; integer means cache if less than this length.
 (define-generic message-mime-body-part (message selector cache?))
 
 (define-class <mime-body> (<imail-object>)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.130 2000/06/05 20:04:40 cph Exp $
+;;; $Id: imail-top.scm,v 1.131 2000/06/05 20:56:50 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -80,6 +80,13 @@ SHOW-MESSAGES	Pop up window with messages to be expunged."
   "True means prepend subject with Re: in replies."
   #f
   boolean?)
+
+(define-variable imail-body-cache-limit
+  "Size limit for caching of message bodies.
+Message bodies (or inline MIME message parts) less than this size are cached.
+This variable can also be #T or #F meaning cache/don't cache unconditionally."
+  65536
+  (lambda (x) (or (boolean? x) (exact-nonnegative-integer? x))))
 
 (define-variable imail-primary-folder
   "URL for the primary folder that you read your mail from."
@@ -298,6 +305,12 @@ regardless of the folder type."
 
 (define imail-ui:prompt-for-yes-or-no?
   prompt-for-yes-or-no?)
+
+(define (imail-ui:body-cache-limit message)
+  (ref-variable imail-body-cache-limit
+		(let ((folder (message-folder message)))
+		  (and folder
+		       (imail-folder->buffer folder #f)))))
 
 (define (imail-call-with-pass-phrase url receiver)
   (let ((key (url-pass-phrase-key url))
@@ -436,6 +449,7 @@ variable's documentation (using \\[describe-variable]) for details:
 
     imail-auto-wrap
     imail-auto-wrap-mime-encoded
+    imail-body-cache-limit
     imail-default-dont-reply-to-names
     imail-default-imap-mailbox
     imail-default-imap-server

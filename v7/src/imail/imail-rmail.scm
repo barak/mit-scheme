@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.37 2000/05/23 20:19:05 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.38 2000/06/05 20:56:49 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -86,6 +86,7 @@
 	       (constructor (header-fields body flags
 					   displayed-header-fields)))
     (<message>)
+  (body accessor message-body)
   (displayed-header-fields define accessor))
 
 (define-method rmail-message-displayed-header-fields ((message <message>))

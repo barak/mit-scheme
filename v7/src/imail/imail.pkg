@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.46 2000/06/05 20:04:39 cph Exp $
+;;; $Id: imail.pkg,v 1.47 2000/06/05 20:56:45 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -261,6 +261,7 @@
 	  edwin-mode$imail-summary
 	  edwin-variable$imail-auto-wrap
 	  edwin-variable$imail-auto-wrap-mime-encoded
+	  edwin-variable$imail-body-cache-limit
 	  edwin-variable$imail-default-dont-reply-to-names
 	  edwin-variable$imail-default-imap-mailbox
 	  edwin-variable$imail-default-imap-server

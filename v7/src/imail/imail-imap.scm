@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.110 2000/06/05 18:29:16 cph Exp $
+;;; $Id: imail-imap.scm,v 1.111 2000/06/05 20:56:48 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -743,9 +743,6 @@
   (guarantee-slot-initialized message initpred "headers"
 			      '(FLAGS RFC822.SIZE RFC822.HEADER)))
 
-(define (guarantee-body-initialized message initpred)
-  (guarantee-slot-initialized message initpred "body" '(RFC822.TEXT)))
-
 (define (guarantee-slot-initialized message initpred noun keywords)
   (if (not (initpred message))
       (with-imap-message-open message
@@ -772,7 +769,6 @@
 	     (call-next-method message))))))
   (reflector message-header-fields 'HEADER-FIELDS
 	     guarantee-headers-initialized)
-  (reflector message-body 'BODY guarantee-body-initialized)
   (reflector message-flags 'FLAGS guarantee-headers-initialized))
 
 (let ((reflector
@@ -798,36 +794,40 @@
 (define-method message-mime-body-structure ((message <imap-message>))
   (imap-message-bodystructure message))
 
+(define-method message-body ((message <imap-message>))
+  (message-mime-body-part message '(TEXT) #t))
+
 (define-method message-mime-body-part
     ((message <imap-message>) selector cache?)
-  (if (equal? selector '(TEXT))
-      (message-body message)
-      (let ((section
-	     (map (lambda (x)
-		    (if (exact-nonnegative-integer? x)
-			(+ x 1)
-			x))
-		  selector)))
-	(let ((entry
-	       (list-search-positive (imap-message-body-parts message)
-		 (lambda (entry)
-		   (equal? (car entry) section)))))
-	  (if entry
-	      (cdr entry)
-	      (let ((part (%imap-message-body-part message section)))
-		(if (and cache?
-			 (or (eq? cache? #t)
-			     (< (string-length part) cache?)))
-		    (set-imap-message-body-parts!
-		     message
-		     (cons (cons section part)
-			   (imap-message-body-parts message))))
-		part))))))
+  (let ((section
+	 (map (lambda (x)
+		(if (exact-nonnegative-integer? x)
+		    (+ x 1)
+		    x))
+	      selector)))
+    (let ((entry
+	   (list-search-positive (imap-message-body-parts message)
+	     (lambda (entry)
+	       (equal? (car entry) section)))))
+      (if entry
+	  (cdr entry)
+	  (let ((part (%imap-message-body-part message section)))
+	    (if (let ((limit (and cache? (imail-ui:body-cache-limit message))))
+		  (if (exact-nonnegative-integer? limit)
+		      (< (string-length part) limit)
+		      limit))
+		(set-imap-message-body-parts!
+		 message
+		 (cons (cons section part)
+		       (imap-message-body-parts message))))
+	    part)))))
 
 (define (%imap-message-body-part message section)
   (imap:response:fetch-body-part
    (let ((suffix 
-	  (string-append " body part for message "
+	  (string-append " body"
+			 (if (equal? section '(TEXT)) "" " part")
+			 " for message "
 			 (number->string (+ (message-index message) 1)))))
      ((imail-message-wrapper "Reading" suffix)
       (lambda ()
@@ -1561,9 +1561,6 @@
     ((RFC822.SIZE)
      (%set-imap-message-length! message datum)
      #t)
-    ((RFC822.TEXT)
-     (%set-message-body! message datum)
-     #t)
     ((UID)
      (%set-imap-message-uid! message datum)
      #t)
@@ -1576,9 +1573,6 @@
 
 (define %set-message-header-fields!
   (slot-modifier <imap-message> 'HEADER-FIELDS))
-
-(define %set-message-body!
-  (slot-modifier <imap-message> 'BODY))
 
 (define %message-flags-initialized?
   (slot-initpred <imap-message> 'FLAGS))
