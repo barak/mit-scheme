@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: memmag.h,v 1.3 1995/10/24 04:56:12 cph Exp $
+$Id: memmag.h,v 1.4 1996/03/23 19:25:10 adams Exp $
 
-Copyright (c) 1993-95 Massachusetts Institute of Technology
+Copyright (c) 1993-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -48,8 +48,8 @@ extern void winnt_deallocate_registers (void);
 
 #ifdef WINNT_RAW_ADDRESSES
 
-#define WIN32_ALLOCATE_HEAP win32_allocate_heap
-#define WIN32_RELEASE_HEAP win32_release_heap
+#define WIN32_ALLOCATE_HEAP win32_system_utilities.allocate_heap
+#define WIN32_RELEASE_HEAP win32_system_utilities.release_heap
 
 #else /* not WINNT_RAW_ADDRESSES */
 
@@ -84,17 +84,18 @@ WIN32_ALLOCATE_HEAP (unsigned long size, unsigned long * handle)
   total_fudge = (actual_fudge_1 + actual_fudge_2);
   actual_size = (size + total_fudge);
 
-  base = (win32_allocate_heap (actual_size, handle));
+  base = (win32_system_utilities.allocate_heap (actual_size, handle));
   if (base == ((char *) NULL))
     return (base);
 
   virtual_base = (base + total_fudge);
   winnt_address_delta = (((unsigned long) base) + actual_fudge_1);
-  if (! (win32_alloc_scheme_selectors (winnt_address_delta,
-				       (size + actual_fudge_2),
-				       &Scheme_Code_Segment_Selector,
-				       &Scheme_Data_Segment_Selector,
-				       &Scheme_Stack_Segment_Selector)))
+  if (! (win32_system_utilities.alloc_scheme_selectors
+	 (winnt_address_delta,
+	  (size + actual_fudge_2),
+	  &Scheme_Code_Segment_Selector,
+	  &Scheme_Data_Segment_Selector,
+	  &Scheme_Stack_Segment_Selector)))
     /* Let the higher-level code fail. */
     winnt_address_delta = 0L;
     
@@ -105,10 +106,11 @@ static void
 WIN32_RELEASE_HEAP (char * area, unsigned long handle)
 {
   if (winnt_address_delta != 0)
-    win32_release_scheme_selectors (Scheme_Code_Segment_Selector,
-				    Scheme_Data_Segment_Selector,
-				    Scheme_Stack_Segment_Selector);  
-  win32_release_heap ((area - total_fudge), handle);
+    win32_system_utilities.release_scheme_selectors
+      (Scheme_Code_Segment_Selector,
+       Scheme_Data_Segment_Selector,
+       Scheme_Stack_Segment_Selector);  
+  win32_system_utilities.release_heap ((area - total_fudge), handle);
   return;
 }
 

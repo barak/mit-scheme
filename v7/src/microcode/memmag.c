@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: memmag.c,v 9.58 1995/10/08 15:22:15 cph Exp $
+$Id: memmag.c,v 9.59 1996/03/23 19:25:17 adams Exp $
 
 Copyright (c) 1987-95 Massachusetts Institute of Technology
 
@@ -543,6 +543,26 @@ DEFUN_VOID (GC)
   }
 
   COMPILER_TRANSPORT_END ();
+
+#ifdef WINNT
+  /* Since we allocated the heap with VirtualAlloc, we can decommit the old
+     half-space to tell the VM system that it comtains trash.
+     Immediately recommitting the region allows the old half-space to be used
+     for temporary storage (e.g. by fasdump).
+     We are careful to do this with pages that are strictly within the old
+     half-space
+  */
+  { long pagesize = 4096;
+    void *base =
+      ((void*)
+       (((DWORD)((char*)Unused_Heap_Bottom + pagesize)) & ~(pagesize-1))) ;
+    DWORD  len =
+      ((DWORD)(((char*)Unused_Heap_Top) - ((char*)base))) & ~(pagesize-1);
+    VirtualFree (base, len, MEM_DECOMMIT);
+    VirtualAlloc (base, len, MEM_COMMIT, PAGE_READWRITE);
+  }
+#endif	       
+
   CLEAR_INTERRUPT (INT_GC);
   return;
 }

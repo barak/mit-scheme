@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntsig.c,v 1.16 1994/05/19 00:05:14 adams Exp $
+$Id: ntsig.c,v 1.17 1996/03/23 19:24:53 adams Exp $
 
-Copyright (c) 1992-1993 Massachusetts Institute of Technology
+Copyright (c) 1992-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -428,15 +428,16 @@ DEFUN_VOID (install_timer)
   winnt_catatonia_block[CATATONIA_BLOCK_LIMIT]
     = (CATATONIA_PERIOD / ASYNC_TIMER_PERIOD);
   winnt_catatonia_block[CATATONIA_BLOCK_FLAG] = 0;
-  switch (win32_install_async_timer (&timer_state,
-				     &Registers[0],
-				     REGBLOCK_MEMTOP,
-				     REGBLOCK_INT_CODE,
-				     REGBLOCK_INT_MASK,
-				     (INT_Global_GC | INT_Global_1),
-				     catatonia_offset,
-				     WM_CATATONIC,
-				     master_tty_window))
+  switch (win32_system_utilities.install_async_timer
+	  (&timer_state,
+	   &Registers[0],
+	   REGBLOCK_MEMTOP,
+	   REGBLOCK_INT_CODE,
+	   REGBLOCK_INT_MASK,
+	   (INT_Global_GC | INT_Global_1),
+	   catatonia_offset,
+	   WM_CATATONIC,
+	   master_tty_window))
   {
     case WIN32_ASYNC_TIMER_OK:
       return (NULL);
@@ -467,7 +468,7 @@ DEFUN_VOID (install_timer)
 static void
 DEFUN_VOID (flush_timer)
 {
-  win32_flush_async_timer (timer_state);
+  win32_system_utilities.flush_async_timer (timer_state);
   return;
 }
 

@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###     $Id: makefile,v 1.17 1995/10/24 05:32:20 cph Exp $
+###     $Id: makefile,v 1.18 1996/03/23 19:24:33 adams Exp $
 ###
 ###     Copyright (c) 1992-95 Massachusetts Institute of Technology
 ###
@@ -56,7 +56,7 @@ USER_PRIM_SOURCES =
 USER_PRIM_OBJECTS =
 USER_LIBS =
 BINDIR = \scheme\nt\microcode
-AS = mlx /Zm /Cp /c # masm386 /z # 
+AS = c:\usr\lib\masm\bin\mlx /Zm /Cp /c # masm386 /z # 
 LDFLAGS =
 cflags = $(cflags) -DMIT_SCHEME -DWINNT -DCL386 $(MACHINE_SWITCHES) -DGUI=1
 
@@ -66,7 +66,8 @@ sysflags = $(guiflags)
 syslibs = $(guilibs)
 cvobj = cvtomf
 
-all: scheme.exe ntscmlib.dll bchschem.exe # bintopsb.exe psbtobin.exe
+all: scheme.exe scheme31.dll scheme32.dll bchschem.exe # bintopsb.exe psbtobin.exe
+#  scheme16.dll  has to build with a 16 bit compiler
 
 .c.obj:
 	$(cc) $(cflags) $(cdebug) -c $*.c
@@ -282,10 +283,12 @@ ntgui.rbj: ntgui.rc ntgui.h ntdialog.dlg ntdialog.h
 !ENDIF
 
 scheme: scheme.exe
-scheme.exe : $(OBJECTS) $(SCHEME_OBJECTS) scm-cl3.lst ntscmlib.dll
-	$(link) $(linkdebug) $(sysflags) -out:scheme.exe @scm-cl3.lst $(syslibs) ntscmlib.lib crtdll.lib
-bchschem.exe : $(BCHOBJECTS) $(SCHEME_OBJECTS) bch-cl3.lst ntscmlib.dll
-	$(link) $(linkdebug) $(sysflags) -out:bchschem.exe @bch-cl3.lst $(syslibs) ntscmlib.lib crtdll.lib
+scheme.exe : $(OBJECTS) $(SCHEME_OBJECTS) scm-cl3.lst
+##	$(link) $(linkdebug) $(sysflags) -out:scheme.exe @scm-cl3.lst $(syslibs) crtdll.lib
+	$(link)              $(sysflags) -out:scheme.exe @scm-cl3.lst $(syslibs) crtdll.lib
+bchschem.exe : $(BCHOBJECTS) $(SCHEME_OBJECTS) bch-cl3.lst
+##	$(link) $(linkdebug) $(sysflags) -out:bchschem.exe @bch-cl3.lst $(syslibs) crtdll.lib
+	$(link)              $(sysflags) -out:bchschem.exe @bch-cl3.lst $(syslibs) crtdll.lib
 findprim.exe : findprim.obj
 	$(link) $(linkdebug) $(conflags) -out:findprim.exe findprim.obj $(conlibs)
 bintopsb.exe : bintopsb.obj missing.obj
@@ -429,14 +432,15 @@ NT_DEPENDENCIES = oscond.h ansidecl.h posixtyp.h intext.h \
 ntenv.obj : scheme.tch osenv.h ntscreen.h $(NT_DEPENDENCIES)
 ntfile.obj : osfile.h osio.h ntio.h $(NT_DEPENDENCIES)
 ntfs.obj : osfs.h $(NT_DEPENDENCIES)
-ntio.obj : osio.h ntio.h ntscreen.h $(NT_DEPENDENCIES)
-nttop.obj : ostop.h nttop.h osctty.h errors.h option.h $(NT_DEPENDENCIES)
+ntio.obj : osio.h ntio.h ntscmlib.h ntscreen.h $(NT_DEPENDENCIES)
+nttop.obj : ostop.h nttop.h osctty.h errors.h option.h ntscmlib.h \
+	$(NT_DEPENDENCIES)
 nttty.obj : ostty.h osenv.h osio.h ntio.h osterm.h ntterm.h $(NT_DEPENDENCIES)
 ntsig.obj : ossig.h osctty.h ostty.h critsec.h \
 	$(NT_DEPENDENCIES) ntgui.h ntio.h ntscmlib.h ntscreen.h
 nttrap.obj: nttrap.h ntscmlib.h $(GC_HEAD_FILES) $(NT_DEPENDENCIES)
 ntsys.obj: ntsys.h
-ntgui.obj : ntgui.c ntdialog.h ntgui.h ntscreen.h $(NT_DEPENDENCIES) scheme.tch
+ntgui.obj : ntgui.c ntdialog.h ntgui.h ntscmlib.h ntscreen.h $(NT_DEPENDENCIES) scheme.tch
 ntasutl.obj : ntasutl.asm
 ntkbutl.obj : ntkbutl.asm
 ntscreen.obj : ntscreen.c ntgui.h ntscreen.h
@@ -446,26 +450,24 @@ prntio.obj : $(NT_DEPENDENCIES) scheme.tch prims.h ntio.h osio.h syscall.h
 
 cmpauxmd.obj : cmpauxmd.asm
 
-ntscmlib.dll: ntwntlib.dll ntw32lib.dll
-	copy ntwntlib.lib ntscmlib.lib
-	copy ntwntlib.dll ntscmlib.dll
 
-ntwntlib.obj: ntwntlib.c ntscmlib.h makefile
+scheme32.obj: scheme32.c ntscmlib.h makefile
 
-ntwntlib.exp: ntwntlib.obj ntscmlib.def
-	$(implib) -machine:$(CPU) -def:ntscmlib.def $*.obj -out:$*.lib
+scheme32.exp: scheme32.obj scheme32.def
+	$(implib) -machine:$(CPU) -def:scheme32.def $*.obj -out:$*.lib
 	
-ntwntlib.dll: ntwntlib.obj ntwntlib.exp
+scheme32.dll: scheme32.obj scheme32.exp
 	$(link) $(linkdebug) -dll -out:$*.dll \
 		-entry:_CRT_INIT$(DLLENTRY) \
 		$** $(syslibs) winmm.lib crtdll.lib
 
-ntw32lib.obj : ntw32lib.c ntscmlib.h makefile
 
-ntw32lib.exp: ntw32lib.obj ntscmlib.def
-	$(implib) -machine:$(CPU) -def:ntscmlib.def $*.obj -out:$*.lib
+scheme31.obj: scheme31.c ntscmlib.h makefile
+
+scheme31.exp: scheme31.obj scheme31.def
+	$(implib) -machine:$(CPU) -def:scheme32.def $*.obj -out:$*.lib
 	
-ntw32lib.dll: ntw32lib.obj ntw32lib.exp
+scheme31.dll: scheme31.obj scheme31.exp
 	$(link) $(linkdebug) -dll -out:$*.dll \
 		-entry:ntw32lib_dllinit$(DLLENTRY) \
 		$** $(syslibs) w32sut32.lib

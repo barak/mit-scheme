@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: scheme32.c,v 1.8 1995/10/24 05:36:00 cph Exp $
+$Id: scheme32.c,v 1.9 1996/03/23 19:23:47 adams Exp $
 
-Copyright (c) 1993-95 Massachusetts Institute of Technology
+Copyright (c) 1993-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,38 +39,64 @@ MIT in each case. */
 #include "ntscmlib.h"
 #include <mmsystem.h>
 
-BOOL
+static BOOL
 win32_under_win32s_p (void)
 {
   return ((BOOL) 0);
 }
 
-char *
+//char *
+//win32_allocate_heap (unsigned long size, unsigned long * handle)
+//{
+//#ifdef CL386
+//  extern char * malloc (unsigned long);
+//#endif
+//  * handle = 0L;
+//  return ((char *) (malloc (size)));
+//}
+//
+//void
+//win32_release_heap (char * base, unsigned long handle)
+//{
+//  extern void free (char *);
+//
+//  free (base);
+//  return;
+//}
+
+
+static char *
 win32_allocate_heap (unsigned long size, unsigned long * handle)
 {
-#ifdef CL386
-  extern char * malloc (unsigned long);
-#endif
-  * handle = 0L;
-  return ((char *) (malloc (size)));
+  LPVOID base;
+
+  base = (VirtualAlloc (((LPVOID) NULL),
+			((DWORD) size),
+			((DWORD) (MEM_RESERVE | MEM_COMMIT)),
+			((DWORD) PAGE_READWRITE)));
+  * handle = size;
+  return ((char *) base);
 }
 
-void
-win32_release_heap (char * base, unsigned long handle)
+static void
+win32_release_heap (char * area, unsigned long handle)
 {
-  extern void free (char *);
-
-  free (base);
+  VirtualFree (((LPVOID) area),
+	       ((DWORD) handle),
+	       ((DWORD) MEM_DECOMMIT));
+  VirtualFree (((LPVOID) area),
+	       ((DWORD) 0),
+	       ((DWORD) MEM_RELEASE));
   return;
 }
 
-BOOL
+static BOOL
 win32_lock_memory_area (void * area, unsigned long size)
 {
   return (VirtualLock (area, size));
 }
 
-void
+static void
 win32_unlock_memory_area (void * area, unsigned long size)
 {
   (void) VirtualUnlock (area, size);
@@ -134,7 +160,7 @@ win32_nt_timer_tick (UINT wID, UINT wMsg, DWORD dwUser, DWORD dw1, DWORD dw2)
   return;
 }
 
-void
+static void
 win32_flush_async_timer (void * state)
 {
   struct win32_timer_closure_s * scm_timer
@@ -153,7 +179,7 @@ win32_flush_async_timer (void * state)
   return;
 }
 
-UINT
+static UINT
 win32_install_async_timer (void ** state_ptr,
 			   unsigned long * base,
 			   long memtop_off,
@@ -222,7 +248,7 @@ win32_install_async_timer (void ** state_ptr,
 
 /* These are NOPs in this version. */
 
-BOOL
+static BOOL
 win32_alloc_scheme_selectors (unsigned long base,
 			      unsigned long size,
 			      unsigned short * scheme_cs,
@@ -232,10 +258,26 @@ win32_alloc_scheme_selectors (unsigned long base,
   return (FALSE);
 }
 
-void
+static void
 win32_release_scheme_selectors (unsigned short scheme_cs,
 				unsigned short scheme_ds,
 				unsigned short scheme_ss)
 {
   return;
+}
+
+
+void
+install_win32_system_utilities (WIN32_SYSTEM_UTILITIES *utils)
+{
+#define EXPORT(field) utils->field = win32_##field
+  EXPORT (under_win32s_p);
+  EXPORT (allocate_heap);
+  EXPORT (release_heap);
+  EXPORT (lock_memory_area);
+  EXPORT (unlock_memory_area);
+  EXPORT (install_async_timer);
+  EXPORT (flush_async_timer);
+  EXPORT (alloc_scheme_selectors);
+  EXPORT (release_scheme_selectors);
 }

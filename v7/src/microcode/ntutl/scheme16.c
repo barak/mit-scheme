@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: scheme16.c,v 1.7 1993/09/13 18:39:57 gjr Exp $
+$Id: scheme16.c,v 1.8 1996/03/23 19:24:27 adams Exp $
 
-Copyright (c) 1993 Massachusetts Institute of Technology
+Copyright (c) 1993-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and

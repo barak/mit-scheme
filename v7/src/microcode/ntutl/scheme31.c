@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: scheme31.c,v 1.6 1995/10/24 05:34:23 cph Exp $
+$Id: scheme31.c,v 1.7 1996/03/23 19:24:08 adams Exp $
 
 Copyright (c) 1993-95 Massachusetts Institute of Technology
 
@@ -122,13 +122,13 @@ ntw32lib_dllinit (HANDLE self, DWORD reason, LPVOID reserved)
   return (crt_result);
 }
 
-BOOL
+static BOOL
 win32_under_win32s_p (void)
 {
   return (TRUE);
 }
 
-char *
+static char *
 win32_allocate_heap (unsigned long size, unsigned long * handle)
 {
   LPVOID base;
@@ -141,7 +141,7 @@ win32_allocate_heap (unsigned long size, unsigned long * handle)
   return ((char *) base);
 }
 
-void
+static void
 win32_release_heap (char * area, unsigned long handle)
 {
   VirtualFree (((LPVOID) area),
@@ -153,7 +153,7 @@ win32_release_heap (char * area, unsigned long handle)
   return;
 }
 
-BOOL
+static BOOL
 win32_lock_memory_area (LPVOID area, unsigned long size)
 {
   struct ntw32lib_vlock_s param;
@@ -168,7 +168,7 @@ win32_lock_memory_area (LPVOID area, unsigned long size)
 		  (&param, NTW32LIB_VIRTUAL_LOCK, &translation[0])));
 }
 
-void
+static void
 win32_unlock_memory_area (LPVOID area, unsigned long size)
 {
   struct ntw32lib_vulock_s param;
@@ -183,7 +183,7 @@ win32_unlock_memory_area (LPVOID area, unsigned long size)
   return;
 }
 
-UINT
+static UINT
 win32_install_async_timer (void ** state_ptr,
 			   unsigned long * base,
 			   long memtop_off,
@@ -216,7 +216,7 @@ win32_install_async_timer (void ** state_ptr,
   return (result);
 }
 
-void
+static void
 win32_flush_async_timer (void * timer_state)
 {
   struct ntw32lib_ftimer_s param;
@@ -230,7 +230,7 @@ win32_flush_async_timer (void * timer_state)
 
 #define I386_PAGE_SIZE 0x1000
 
-BOOL
+static BOOL
 win32_alloc_scheme_selectors (unsigned long base,
 			      unsigned long size,
 			      unsigned short * scheme_cs,
@@ -258,7 +258,7 @@ win32_alloc_scheme_selectors (unsigned long base,
   return (result);
 }
 
-void
+static void
 win32_release_scheme_selectors (unsigned short scheme_cs,
 				unsigned short scheme_ds,
 				unsigned short scheme_ss)
@@ -274,4 +274,21 @@ win32_release_scheme_selectors (unsigned short scheme_cs,
   translation[0] = ((LPVOID) NULL);
   (* call_16_bit_code) (& param, NTW32LIB_FREE_SELECTORS, &translation[0]);
   return;
+}
+
+
+
+void
+install_win32_system_utilities (WIN32_SYSTEM_UTILITIES *utils)
+{
+#define EXPORT(field) utils->field = win32_##field
+  EXPORT (under_win32s_p);
+  EXPORT (allocate_heap);
+  EXPORT (release_heap);
+  EXPORT (lock_memory_area);
+  EXPORT (unlock_memory_area);
+  EXPORT (install_async_timer);
+  EXPORT (flush_async_timer);
+  EXPORT (alloc_scheme_selectors);
+  EXPORT (release_scheme_selectors);
 }

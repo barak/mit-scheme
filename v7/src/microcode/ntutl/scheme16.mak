@@ -1,8 +1,8 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: scheme16.mak,v 1.3 1993/08/21 03:56:17 gjr Exp $
+###	$Id: scheme16.mak,v 1.4 1996/03/23 19:24:14 adams Exp $
 ###
-###	Copyright (c) 1993 Massachusetts Institute of Technology
+###	Copyright (c) 1996 Massachusetts Institute of Technology
 ###
 ###	This material as developed by the Scheme project at the
 ###	Massachusetts Institute of Technology, Department of
@@ -39,15 +39,15 @@
 
 ####	Makefile for the 16-bit component of the MIT Scheme Win32 support
 
-all: ntw16lib.dll
+all: scheme16.dll
 
 # These have to be compiled by a 16-bit compiler (e.g. C700)
 # with the Win16 SDK!
 
-ntw16lib.obj: ntw16lib.c ntscmlib.h
-	cl /c /ASw /G2 /Gsw /Ow /W2 /Zp1 ntw16lib.c
+scheme16.obj: scheme16.c ntscmlib.h
+	cl /c /ASw /G2 /Gsw /Ow /W2 /Zp1 scheme16.c
 
-ntw16lib.dll: ntw16lib.obj ntw16lib.def
-	link ntw16lib.obj, ntw16lib.dll,ntw16lib.map /map, \
-	     w32sut16.lib mdllcew.lib libw.lib/noe/nod,ntw16lib.def
+scheme16.dll: scheme16.obj scheme16.def
+	link scheme16.obj, scheme16.dll,scheme16.map /map, \
+	     w32sut16.lib mdllcew.lib libw.lib/noe/nod,scheme16.def
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.88 1996/01/04 23:59:47 cph Exp $
+$Id: cmpint.c,v 1.89 1996/03/23 19:25:23 adams Exp $
 
 Copyright (c) 1989-96 Massachusetts Institute of Technology
 
@@ -4162,7 +4162,7 @@ DEFUN_VOID (winnt_allocate_registers)
 
   winnt_catatonia_block = ((unsigned long *) &mem->catatonia_block[0]);
   RegistersPtr = mem->Registers;
-  if (! (win32_lock_memory_area (mem, (sizeof (REGMEM)))))
+  if (! (win32_system_utilities.lock_memory_area (mem, (sizeof (REGMEM)))))
   {
     outf_error ("Unable to lock registers\n");
     outf_flush_error ();
@@ -4173,7 +4173,7 @@ DEFUN_VOID (winnt_allocate_registers)
 void
 DEFUN_VOID (winnt_deallocate_registers)
 {
-  win32_unlock_memory_area (&regmem, (sizeof (REGMEM)));
+  win32_system_utilities.unlock_memory_area (&regmem, (sizeof (REGMEM)));
   return;
 }
 

@@ -1,5 +1,5 @@
-LIBRARY		ntw16lib
-DESCRIPTION	"MIT Scheme Win16 Server for Win32s DLL"
+LIBRARY		scheme16
+DESCRIPTION	"MIT Scheme Win16 Server for Win32S DLL"
 
 EXETYPE		WINDOWS
 

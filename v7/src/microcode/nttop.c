@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: nttop.c,v 1.16 1995/10/25 02:30:37 cph Exp $
+$Id: nttop.c,v 1.17 1996/03/23 19:24:40 adams Exp $
 
-Copyright (c) 1993-95 Massachusetts Institute of Technology
+Copyright (c) 1993-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,6 +39,7 @@ MIT in each case. */
 #include "errors.h"
 #include "option.h"
 #include "outf.h"
+#include "ntscmlib.h"
 
 extern void EXFUN (execute_reload_cleanups, (void));
 
@@ -59,6 +60,46 @@ extern void EXFUN (NT_restore_traps, (void));
 
 extern CONST char * OS_Name;
 extern CONST char * OS_Variant;
+
+
+BOOL
+win32_under_win32s_p ()
+{
+  return  ((GetVersion()) >> 31);
+}
+
+WIN32_SYSTEM_UTILITIES win32_system_utilities;
+
+HINSTANCE win32_system_utilities_dll = 0;
+
+void
+NT_initialize_win32_system_utilities ()
+{
+  char * dll_name = win32_under_win32s_p() ? "SCHEME31.DLL" : "SCHEME32.DLL";
+  char * entry_name = "install_win32_system_utilities";
+  FARPROC install;
+
+  win32_system_utilities_dll = LoadLibrary (dll_name);
+  if (win32_system_utilities_dll == NULL) {
+    outf_fatal ("MIT Scheme is unable to find or load %s\n"
+		"This essential MIT Scheme file should be in the\n"
+		"same directory as SCHEME.EXE",
+		dll_name);
+    outf_flush_fatal();
+    abort ();
+  }
+
+  install = GetProcAddress (win32_system_utilities_dll, entry_name);
+  if (install==NULL) {
+    outf_fatal ("Something is wrong with %s\n"
+		"It does not have an entry called \"%s\".",
+		dll_name, entry_name);
+    outf_flush_fatal ();
+    abort ();
+  }
+
+  install (&win32_system_utilities);
+}
 
 static int interactive;
 

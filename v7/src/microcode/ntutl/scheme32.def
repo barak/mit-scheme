@@ -1,17 +1,9 @@
-LIBRARY		ntscmlib
+LIBRARY		scheme32
 DESCRIPTION	"MIT Scheme Win32 DLL"
 
-VERSION		0.4
+VERSION		0.5
 
 CODE		PRELOAD MOVEABLE DISCARDABLE
 DATA		NONE
 
-EXPORTS		win32_under_win32s_p		@ 1
-		win32_allocate_heap		@ 2
-		win32_release_heap		@ 3
-		win32_lock_memory_area		@ 4
-		win32_unlock_memory_area	@ 5
-		win32_install_async_timer	@ 6
-		win32_flush_async_timer		@ 7
-		win32_alloc_scheme_selectors	@ 8
-		win32_release_scheme_selectors	@ 9
+EXPORTS		install_win32_system_utilities  @ 1

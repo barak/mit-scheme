@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntscmlib.h,v 1.5 1995/10/24 05:24:48 cph Exp $
+$Id: ntscmlib.h,v 1.6 1996/03/23 19:24:58 adams Exp $
 
-Copyright (c) 1993-95 Massachusetts Institute of Technology
+Copyright (c) 1993-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -52,48 +52,53 @@ MIT in each case. */
 
 /* Exports to Scheme */
 
-extern BOOL __cdecl
-  win32_under_win32s_p (void);
+typedef struct {
 
-extern char * __cdecl
-  win32_allocate_heap (unsigned long,			/* size */
-		       unsigned long *);		/* handle */
-extern void __cdecl
-  win32_release_heap (char *,				/* base */
-		      unsigned long);			/* handle */
+  BOOL (__cdecl *under_win32s_p) ();
 
-extern BOOL __cdecl
-  win32_lock_memory_area (void *,			/* area */
-			  unsigned long);		/* size */
-extern void __cdecl
-  win32_unlock_memory_area (void *,			/* area */
-			    unsigned long);		/* size */
+  char *
+    (__cdecl *allocate_heap) (unsigned long,		/* size */
+			      unsigned long *);		/* handle */
+  void
+    (__cdecl *release_heap) (char *,			/* base */
+		     unsigned long);			/* handle */
 
-extern UINT __cdecl
-  win32_install_async_timer (void **,			/* timer state */
-			     unsigned long *,		/* regs */
-			     long,			/* memtop off */
-			     long,			/* int_code off */
-			     long,			/* int_mask off */
-			     unsigned long,		/* mask */
-			     long, 			/* ctr_off */
-			     unsigned long,		/* message */
-			     HWND);			/* window */
+  BOOL
+    (__cdecl *lock_memory_area) (void *,		/* area */
+				 unsigned long);	/* size */
+  void
+    (__cdecl *unlock_memory_area) (void *,		/* area */
+				   unsigned long);	/* size */
 
-extern void __cdecl
-  win32_flush_async_timer (void *);
+  UINT
+    (__cdecl *install_async_timer) (void **,		/* timer state */
+				    unsigned long *,	/* regs */
+				    long,		/* memtop off */
+				    long,		/* int_code off */
+				    long,		/* int_mask off */
+				    unsigned long,	/* mask */
+				    long, 		/* ctr_off */
+				    unsigned long,	/* message */
+				    HWND);		/* window */
 
-extern BOOL __cdecl
-  win32_alloc_scheme_selectors (unsigned long,		/* base */
-				unsigned long,		/* limit */
-				unsigned short *,	/* cs */
-				unsigned short *,	/* ds */
-				unsigned short *);	/* ss */
+  void
+    (__cdecl *flush_async_timer) (void *);
 
-extern void __cdecl
-  win32_release_scheme_selectors (unsigned short,	/* cs */
-				  unsigned short,	/* ds */
-				  unsigned short);	/* ss */
+  BOOL
+    (__cdecl *alloc_scheme_selectors) (unsigned long,		/* base */
+				       unsigned long,		/* limit */
+				       unsigned short *,	/* cs */
+				       unsigned short *,	/* ds */
+				       unsigned short *);	/* ss */
+  
+  void
+    (__cdecl *release_scheme_selectors) (unsigned short,	/* cs */
+					 unsigned short,	/* ds */
+					 unsigned short);	/* ss */
+
+} WIN32_SYSTEM_UTILITIES;
+
+extern WIN32_SYSTEM_UTILITIES win32_system_utilities;
 #endif /* not W32SUT_16 */
 
 #if defined(W32SUT_32) || defined(W32SUT_16)
@@ -119,7 +124,7 @@ typedef unsigned short SCM_SEL;
 
 #define STRINGIFY(arg) #arg
 
-#define NTW16LIB_DLL_NAME	"ntw16lib.dll"
+#define NTW16LIB_DLL_NAME	"scheme16.dll"
 #define NTW16LIB_DLL_INIT	ntw16lib_init
 #define NTW16LIB_DLL_ENTRY	ntw16lib_handler
 
