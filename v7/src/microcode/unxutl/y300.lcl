@@ -1,6 +1,6 @@
 /* -*- C -*-
    Switzerland local additions to the makefile
-   $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/y300.lcl,v 1.8 1990/06/21 21:01:08 jinx Exp $
+   $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/y300.lcl,v 1.9 1990/06/25 18:29:04 jinx Exp $
  */
 
 /* These extra files are for 6003.  They assume we're using HP-UX. */
@@ -46,6 +46,7 @@ install.world: install scm6003
 
 scm6003 : $(OBJECTS) $(6003_OBJECTS)
 	@ECHO "#** Re-linking" $@ because of $?
+	rm -f $@
 	$(CC) $(LDFLAGS) -o $@ $(OBJECTS) $(6003_OBJECTS) $(6003_LIB)
 
 usr6003.c : $(6003_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.touch Findprim xmakefile
@@ -55,6 +56,7 @@ usr6003.c : $(6003_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.touch Findprim 
 
 scmkit : $(OBJECTS) $(KIT_OBJECTS)
 	@ECHO "#** Re-linking" $@ because of $?
+	rm -f $@
 	$(CC) $(LDFLAGS) -o $@ $(OBJECTS) $(KIT_OBJECTS) $(KIT_LIB)
 
 usrkit.c : $(KIT_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.touch Findprim xmakefile
@@ -64,7 +66,9 @@ usrkit.c : $(KIT_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.touch Findprim xm
 
 scmLYN : $(OBJECTS) $(LYN_OBJECTS)
 	@echo "#** Re-linking" $@ because of $?
+	rm -f $@
 	$(CC) $(LDFLAGS) -o $@ $(OBJECTS) $(LYN_OBJECTS) $(LYN_LIB)
+
 usrLYN.c : $(LYN_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.touch Findprim xmakefile
 	@echo "#** Re-making" $@ because of $?
 	rm -f usrLYN.c
