@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.346 2000/04/13 20:11:32 cph Exp $
+$Id: runtime.pkg,v 14.347 2000/04/14 01:29:52 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -79,6 +79,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (export ()
 	  burst-string
 	  char->string
+	  decorated-string-append
 	  list->string
 	  guarantee-string
 	  make-string

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.32 2000/04/13 22:23:03 cph Exp $
+$Id: string.scm,v 14.33 2000/04/14 01:30:10 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -259,6 +259,45 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (substring-move-left! string 0 size result 0)
       result)))
 
+(define (string-move! string1 string2 start2)
+  (guarantee-string string1 'STRING-MOVE!)
+  (guarantee-string string2 procedure)
+  (guarantee-index/string start2 procedure)
+  (let ((end1 (string-length string1)))
+    (if (not (fix:<= (fix:+ start2 end1) (string-length string2)))
+	(error:bad-range-argument start2 procedure))
+    (%substring-move! string1 0 end1 string2 start2)))
+
+(define (substring-move! string1 start1 end1 string2 start2)
+  (guarantee-substring string1 start1 end1 'SUBSTRING-MOVE!)
+  (guarantee-string string2 procedure)
+  (guarantee-index/string start2 procedure)
+  (if (not (fix:<= (fix:+ start2 (fix:- end1 start1)) (string-length string2)))
+      (error:bad-range-argument start2 procedure))
+  (%substring-move! string1 start1 end1 string2 start2))
+
+(define (%substring-move! string1 start1 end1 string2 start2)
+  (let ((n (fix:- end1 start1)))
+    (if (fix:< n 32)
+	;; When transferring less than 32 bytes, it's faster to do
+	;; inline than to call the primitive.
+	(if (or (not (eq? string2 string1)) (fix:< start2 start1))
+	    (let loop ((i1 start1) (i2 start2))
+	      (if (fix:< i1 end1)
+		  (begin
+		    (string-set! string2 i2 (string-ref string1 i1))
+		    (loop (fix:+ i1 1) (fix:+ i2 1)))))
+	    (let loop ((i1 end1) (i2 (fix:+ start2 n)))
+	      (if (fix:> i1 start1)
+		  (let ((i1 (fix:+ i1 1))
+			(i2 (fix:+ i2 1)))
+		    (string-set! string2 i2 (string-ref string1 i1))
+		    (loop i1 i2)))))
+	(if (or (not (eq? string2 string1)) (fix:< start2 start1))
+	    (substring-move-left! string1 start1 end1 string2 start2)
+	    (substring-move-right! string1 start1 end1 string2 start2)))
+    (fix:+ start2 n)))
+
 (define (string-append . strings)
   (%string-append strings))
 
@@ -279,42 +318,51 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (loop (cdr strings) (fix:+ index size)))
 	  result))))
 
-(define (string-move! string1 string2 start2)
-  (guarantee-string string1 'STRING-MOVE!)
-  (%substring-move! string1 0 (string-length string1) string2 start2
-		    'STRING-MOVE!))
+(define (decorated-string-append prefix infix suffix strings)
+  (guarantee-string prefix 'DECORATED-STRING-APPEND)
+  (guarantee-string infix 'DECORATED-STRING-APPEND)
+  (guarantee-string suffix 'DECORATED-STRING-APPEND)
+  (%decorated-string-append prefix infix suffix strings
+			    'DECORATED-STRING-APPEND))
 
-(define (substring-move! string1 start1 end1 string2 start2)
-  (guarantee-substring string1 start1 end1 'SUBSTRING-MOVE!)
-  (%substring-move! string1 start1 end1 string2 start2
-		    'SUBSTRING-MOVE!))
-
-(define (%substring-move! string1 start1 end1 string2 start2 procedure)
-  (guarantee-string string2 procedure)
-  (guarantee-index/string start2 procedure)
-  (let* ((n (fix:- end1 start1))
-	 (end2 (fix:+ start2 n)))
-    (if (not (fix:<= end2 (string-length string2)))
-	(error:bad-range-argument start2 procedure))
-    (if (fix:< n 32)
-	;; When transferring less than 32 bytes, it's faster to do
-	;; inline than to call the primitive.
-	(if (or (not (eq? string2 string1)) (fix:< start2 start1))
-	    (let loop ((i1 start1) (i2 start2))
-	      (if (fix:< i1 end1)
-		  (begin
-		    (string-set! string2 i2 (string-ref string1 i1))
-		    (loop (fix:+ i1 1) (fix:+ i2 1)))))
-	    (let loop ((i1 end2) (i2 end2))
-	      (if (fix:> i1 start1)
-		  (let ((i1 (fix:+ i1 1))
-			(i2 (fix:+ i2 1)))
-		    (string-set! string2 i2 (string-ref string1 i1))
-		    (loop i1 i2)))))
-	(if (or (not (eq? string2 string1)) (fix:< start2 start1))
-	    (substring-move-left! string1 start1 end1 string2 start2)
-	    (substring-move-right! string1 start1 end1 string2 start2)))
-    end2))
+(define (%decorated-string-append prefix infix suffix strings procedure)
+  (if (pair? strings)
+      (let ((np (string-length prefix))
+	    (ni (string-length infix))
+	    (ns (string-length suffix)))
+	(guarantee-string (car strings) procedure)
+	(let ((string
+	       (make-string
+		(let ((ni* (fix:+ np (fix:+ ni ns))))
+		  (do ((strings (cdr strings) (cdr strings))
+		       (count (fix:+ np (string-length (car strings)))
+			      (fix:+ count
+				     (fix:+ ni*
+					    (string-length (car strings))))))
+		      ((not (pair? strings))
+		       (fix:+ count ns))
+		    (guarantee-string (car strings) procedure))))))
+	  (let ((mp
+		 (lambda (index)
+		   (%substring-move! prefix 0 np string index)))
+		(mi
+		 (lambda (index)
+		   (%substring-move! infix 0 ni string index)))
+		(ms
+		 (lambda (index)
+		   (%substring-move! suffix 0 ns string index)))
+		(mv
+		 (lambda (s index)
+		   (%substring-move! s 0 (string-length s) string index))))
+	    (let loop
+		((strings (cdr strings))
+		 (index (mv (car strings) (mp 0))))
+	      (if (pair? strings)
+		  (loop (cdr strings)
+			(mv (car strings) (mp (mi (ms index)))))
+		  (ms index))))
+	  string))
+      (make-string 0)))
 
 (define (burst-string string delimiter allow-runs?)
   (guarantee-string string 'BURST-STRING)
