@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: object.scm,v 1.3 1999/01/02 06:11:34 cph Exp $
+$Id: object.scm,v 1.4 2000/03/20 22:52:51 cph Exp $
 
-Copyright (c) 1988, 1991, 1999 Massachusetts Institute of Technology
+Copyright (c) 1988, 1991, 1999, 2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -61,50 +61,22 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (lambda (state delta)
       (unparse-string state (delta/number delta)))))
 
+(define *date-rounds-to-day?* #f)
+
 (define (date/make year month day hour minute second)
-  (vector
-   year month day hour minute second
-   (+ second
-      (* 60
-	 (+ minute
-	    (* 60
-	       (+ hour
-		  (* 24
-		     (+ (-1+ day)
-			(vector-ref
-			 (if (zero? (remainder year 4))
-			     '#(0 31 60 91 121 152 182 213 244 274 305 335)
-			     '#(0 31 59 90 120 151 181 212 243 273 304 334))
-			 (-1+ month))
-			(* 365 year)
-			(quotient year 4))))))))))
+  (let ((year (if (< year 100) (+ 1900 year) year)))
+    (let ((dt (make-decoded-time second minute hour day month year 0)))
+      (cons dt
+	    (decoded-time->universal-time
+	     (if *date-rounds-to-day?*
+		 (make-decoded-time 0 0 0 day month year 0)
+		 dt))))))
 
-(define-integrable (date/year date) (vector-ref date 0))
-(define-integrable (date/month date) (vector-ref date 1))
-(define-integrable (date/day date) (vector-ref date 2))
-(define-integrable (date/hour date) (vector-ref date 3))
-(define-integrable (date/minute date) (vector-ref date 4))
-(define-integrable (date/second date) (vector-ref date 5))
-(define-integrable (date/total-seconds date) (vector-ref date 6))
+(define-integrable (date/decoded date) (car date))
+(define-integrable (date/universal date) (cdr date))
 
-(define (date->string date)
-  (string-append (date-component->string (date/year date))
-		 "/"
-		 (date-component->string (date/month date))
-		 "/"
-		 (date-component->string (date/day date))
-		 " "
-		 (date-component->string (date/hour date))
-		 ":"
-		 (date-component->string (date/minute date))
-		 ":"
-		 (date-component->string (date/second date))
-		 " GMT"))
-
-(define (date-component->string number)
-  (cond ((zero? number) "00")
-	((< number 10) (string-append "0" (write-to-string number)))
-	(else (write-to-string number))))
+(define-integrable (date->string date)
+  (decoded-time->string (date/decoded date)))
 
 (define-integrable (date<? x y)
-  (< (date/total-seconds x) (date/total-seconds y)))
+  (< (date/universal x) (date/universal y)))
