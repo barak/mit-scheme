@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/artdebug.scm,v 1.11 1991/09/17 14:51:44 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/artdebug.scm,v 1.12 1991/09/17 14:53:45 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -1040,12 +1040,6 @@ reduction shown in the previous subproblem."
        (show-frame (car environment-list)
 		   (length (cdr environment-list))
 		   brief?)))))
-
-(define (command/show-all-frames dstate)
-  (let ((environment-list (dstate/environment-list dstate)))
-    (if (pair? environment-list)
-	(show-frames (car (last-pair environment-list)) 0)
-	(undefined-environment))))
 
 (define (show-frames environment depth)
   (edwin-debugger-presentation
