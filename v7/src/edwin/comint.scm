@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comint.scm,v 1.4 1991/05/06 01:03:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comint.scm,v 1.5 1991/05/20 22:05:08 cph Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -514,12 +514,13 @@ it just adds completion characters to the end of the filename."
     (clear-message)
     (if (null? completions)
 	(editor-failure "No completions")
-	(cleanup-pop-up-buffers
-	 (lambda ()
-	   (write-completions-list completions)
-	   (message "Hit space to flush.")
-	   (reset-command-prompt!)
-	   (let ((char (keyboard-peek-char)))
-	     (if (char=? #\space char)
-		 (keyboard-read-char)))
-	   (clear-message))))))
+	(begin
+	  (write-completions-list completions)
+	  (message "Hit space to flush.")
+	  (reset-command-prompt!)
+	  (let ((char (keyboard-peek-char)))
+	    (if (char=? #\space char)
+		(begin
+		  (keyboard-read-char)
+		  (kill-pop-up-buffer false))))
+	  (clear-message)))))
