@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cf-dist.h,v 1.20 1994/06/28 19:05:14 cph Exp $
+$Id: cf-dist.h,v 1.21 1994/06/28 19:30:49 cph Exp $
 
 Copyright (c) 1989-94 Massachusetts Institute of Technology
 
@@ -70,7 +70,7 @@ MIT in each case. */
 /* #define ALTERNATE_AS gashp */
 
 /* Define this macro to use a non-standard install program. */
-/* #define INSTALL_PROGRAM ginstall -c */
+/* #define INSTALL_PROGRAM cp -p */
 
 #include "s.h"
 #include "m.h"
@@ -82,10 +82,34 @@ MIT in each case. */
 /* Define HAVE_X_WINDOWS if you want to use the X window system.  */
 #define HAVE_X_WINDOWS
 
-/* Define HAVE_STARBASE_GRAPHICS if you want Starbase graphics support.
-   This is specific to HP-UX. */
-/* #define HAVE_STARBASE_GRAPHICS */
-/* #define STARBASE_DEVICE_DRIVERS -ldd300h -ldd98556 -lddgcrx */
+#if defined(__hpux) || defined(hpux)
+/* If this is an HP-UX system, Starbase graphics support is available.
+   If you don't want this support, comment out the following line.  */
+#define HAVE_STARBASE_GRAPHICS
+#endif
+
+#ifdef HAVE_STARBASE_GRAPHICS
+/* You may need to tweak one of the following device driver
+   definitions to be correct for your machine.  */
+
+#if defined(__hp9000s700) || defined(hp9000s700)
+
+/* This default covers the standard grayscale and 8-bit color graphics
+   for series 700 workstations.  If you have 24-bit graphics you will
+   need to change this.  */
+#define STARBASE_DEVICE_DRIVERS -lddgcrx
+
+#else
+#if defined(__hp9000s300) || defined(hp9000s300)
+
+/* This default covers the standard monochrome and 8-bit (or less)
+   color displays for 300 and 400 series workstations.  It also
+   supports the 98556 graphics accelerator.  */
+#define STARBASE_DEVICE_DRIVERS -ldd300h -ldd98556
+
+#endif /* __hp9000s300 */
+#endif /* __hp9000s700 */
+#endif /* HAVE_STARBASE_GRAPHICS */
 
 /* Some compilation options:
    -DDISABLE_HISTORY		turns off history recording mechanism
