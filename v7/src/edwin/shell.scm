@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: shell.scm,v 1.12 1995/01/06 01:14:58 cph Exp $
+$Id: shell.scm,v 1.13 1996/05/11 08:36:59 cph Exp $
 
-Copyright (c) 1991-95 Massachusetts Institute of Technology
+Copyright (c) 1991-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -240,7 +240,7 @@ Otherwise, one argument `-i' is passed to the shell."
        (string->number string)))
 
 (define (shell-process-cd filename)
-  (call-with-protected-continuation
+  (call-with-current-continuation
    (lambda (continuation)
      (bind-condition-handler (list condition-type:editor-error)
 	 (lambda (condition)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: fileio.scm,v 1.136 1996/05/04 17:37:30 cph Exp $
+;;;	$Id: fileio.scm,v 1.137 1996/05/11 08:37:57 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -366,7 +366,7 @@ after you find a file.  If you explicitly request such a scan with
 				     set-buffer-major-mode!
 				     enable-buffer-minor-mode!)
 				 buffer mode)))
-			  (call-with-protected-continuation
+			  (call-with-current-continuation
 			   (lambda (continuation)
 			     (bind-condition-handler
 				 (list condition-type:error)

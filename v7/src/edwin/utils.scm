@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: utils.scm,v 1.39 1996/04/24 02:38:19 cph Exp $
+;;;	$Id: utils.scm,v 1.40 1996/05/11 08:38:11 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -337,7 +337,7 @@
 					 (decoded-time/year dt))))))))
 
 (define (catch-file-errors if-error thunk)
-  (call-with-protected-continuation
+  (call-with-current-continuation
    (lambda (continuation)
      (bind-condition-handler (list condition-type:file-error
 				   condition-type:port-error)

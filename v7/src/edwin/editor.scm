@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: editor.scm,v 1.240 1995/01/06 17:47:23 cph Exp $
+;;;	$Id: editor.scm,v 1.241 1996/05/11 08:37:35 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -424,9 +424,6 @@ This does not affect editor errors or evaluation errors."
 
 (define (exit-scheme)
   (within-continuation editor-abort %exit))
-
-(define call-with-protected-continuation
-  call-with-current-continuation)
 
 (define (unwind-protect setup body cleanup)
   (dynamic-wind (or setup (lambda () unspecific)) body cleanup))
