@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: process.scm,v 1.30 1993/08/02 03:06:36 cph Exp $
+;;;	$Id: process.scm,v 1.31 1993/09/10 19:12:52 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-93 Massachusetts Institute of Technology
 ;;;
@@ -185,6 +185,7 @@ Initialized from the SHELL environment variable."
 	   (update-process-mark! process)
 	   (subprocess-put! subprocess 'EDWIN-PROCESS process)
 	   (set! edwin-processes (cons process edwin-processes))
+	   (buffer-modeline-event! buffer 'PROCESS-STATUS)
 	   process))))))
 
 (define (start-subprocess filename arguments environment pty?)
@@ -203,6 +204,9 @@ Initialized from the SHELL environment variable."
 	     (subprocess-kill subprocess)
 	     (%perform-status-notification process 'SIGNALLED false)))
        (deregister-process-input process)
+       (let ((buffer (process-buffer process)))
+	 (if (buffer-alive? buffer)
+	     (buffer-modeline-event! buffer 'PROCESS-STATUS)))
        (subprocess-delete subprocess)))))
 
 (define (deregister-process-input process)
