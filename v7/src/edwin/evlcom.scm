@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.36 1992/04/08 17:57:42 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.37 1992/06/01 21:55:55 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -108,6 +108,16 @@ If #F, normal transcript output is done."
   false
   (lambda (object) (or (not object) (exact-nonnegative-integer? object))))
 
+(define-variable transcript-disable-evaluation
+  "If true, evaluation commands are disabled in the transcript buffer."
+  true
+  boolean?)
+
+(define-variable disable-evaluation-commands
+  "If true, evaluation commands signal an error."
+  false
+  boolean?)
+
 (define-variable evaluate-in-inferior-repl
   "If true, evaluation commands evaluate expressions in an inferior REPL.
 Also, the inferior REPL's run light appears in all Scheme mode buffers.
@@ -146,9 +156,12 @@ With an argument, prompts for the evaluation environment."
   "r"
   (lambda (region)
     (let ((buffer (mark-buffer (region-start region))))
-      (if (ref-variable evaluate-in-inferior-repl buffer)
-	  (inferior-repl-eval-region (current-repl-buffer) region)
-	  (evaluate-region region (evaluation-environment buffer))))))
+      (cond ((ref-variable disable-evaluation-commands buffer)
+	     (editor-error "Evaluation commands disabled in this buffer."))
+	    ((ref-variable evaluate-in-inferior-repl buffer)
+	     (inferior-repl-eval-region (current-repl-buffer) region))
+	    (else
+	     (evaluate-region region (evaluation-environment buffer)))))))
 
 (define-command eval-current-buffer
   "Evaluate the current buffer.
@@ -161,17 +174,19 @@ The values are printed in the typein window."
   "xEvaluate expression"
   (lambda (expression)
     (let ((buffer (current-buffer)))
-      (if (ref-variable evaluate-in-inferior-repl buffer)
-	  (inferior-repl-eval-expression (current-repl-buffer) expression)
-	  (begin
-	    (if (ref-variable enable-transcript-buffer buffer)
-		(insert-string
-		 (fluid-let ((*unparse-with-maximum-readability?* true))
-		   (write-to-string expression))
-		 (buffer-end (transcript-buffer))))
-	    (editor-eval buffer
-			 expression
-			 (evaluation-environment buffer)))))))
+      (cond ((ref-variable disable-evaluation-commands buffer)
+	     (editor-error "Evaluation commands disabled in this buffer."))
+	    ((ref-variable evaluate-in-inferior-repl buffer)
+	     (inferior-repl-eval-expression (current-repl-buffer) expression))
+	    (else
+	     (if (ref-variable enable-transcript-buffer buffer)
+		 (insert-string
+		  (fluid-let ((*unparse-with-maximum-readability?* true))
+		    (write-to-string expression))
+		  (buffer-end (transcript-buffer))))
+	     (editor-eval buffer
+			  expression
+			  (evaluation-environment buffer)))))))
 
 (define-command eval-abort-top-level
   "Force the evaluation REPL up to top level.
@@ -311,12 +326,10 @@ may be available.  The following commands are special to this mode:
 	   (ref-variable evaluation-input-recorder buffer)))
       (if evaluation-input-recorder
 	  (evaluation-input-recorder region)))
-    (let ((enable-transcript-buffer
-	   (ref-variable enable-transcript-buffer buffer)))
-      (if enable-transcript-buffer
-	  (insert-region (region-start region)
-			 (region-end region)
-			 (buffer-end (transcript-buffer)))))
+    (if (ref-variable enable-transcript-buffer buffer)
+	(insert-region (region-start region)
+		       (region-end region)
+		       (buffer-end (transcript-buffer))))
     (bind-condition-handler (list condition-type:error)
 	evaluation-error-handler
       (lambda ()
@@ -551,4 +564,8 @@ FIT           Error messages appear in typein window if they fit;
 	      (set-buffer-major-mode!
 	       buffer
 	       (->mode (ref-variable transcript-buffer-mode)))
+	      (if (ref-variable transcript-disable-evaluation)
+		  (define-variable-local-value! buffer
+		    (ref-variable-object disable-evaluation-commands)
+		    true))
 	      buffer)))))
