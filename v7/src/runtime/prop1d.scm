@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/prop1d.scm,v 14.2 1988/06/13 11:50:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/prop1d.scm,v 14.3 1989/06/06 22:28:51 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -101,7 +101,8 @@ MIT in each case. |#
 	  (system-pair-set-cdr! entry value)
 	  (set-cdr! table
 		    (cons (weak-cons key value)
-			  (cdr table)))))))
+			  (cdr table))))
+      unspecific)))
 
 (define (1d-table/remove! table key)
   (let ((key (or key false-key)))
@@ -111,8 +112,9 @@ MIT in each case. |#
 		(next (cdr alist)))
 	    (loop (if (or (not key*) (eq? key* key))
 		      ;; Might as well clean whole list.
-		      (begin (set-cdr! previous next)
-			     previous)
+		      (begin
+			(set-cdr! previous next)
+			previous)
 		      alist)
 		  next))))))
 
@@ -122,6 +124,22 @@ MIT in each case. |#
 	(let ((next (cdr alist)))
 	  (loop (if (system-pair-car (car alist))
 		    alist
-		    (begin (set-cdr! previous next)
-			   previous))
+		    (begin
+		      (set-cdr! previous next)
+		      previous))
 		next)))))
+
+(define (1d-table/alist table)
+  (let loop ((previous table) (alist (cdr table)) (result '()))
+    (if (null? alist)
+	result
+	(let ((entry (car alist))
+	      (next (cdr alist)))
+	  (let ((key (system-pair-car entry)))
+	    (if (not key)
+		(begin
+		  (set-cdr! previous next)
+		  (loop previous next result))
+		(loop alist
+		      next
+		      (cons (cons key (system-pair-cdr entry)) result))))))))
