@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcompr.scm,v 1.12 1991/10/25 00:15:18 cph Exp $
+$Id: rcompr.scm,v 1.13 1993/07/01 03:28:05 gjr Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,6 +34,7 @@ MIT in each case. |#
 
 ;;;; RTL Compression
 ;;;  Based on the GNU C Compiler
+;;; package: (compiler rtl-optimizer code-compression)
 
 (declare (usual-integrations))
 
@@ -118,80 +119,99 @@ MIT in each case. |#
 		 (if next
 		     (values next (wrap expression))
 		     (values false false)))))))
-      (cond ((interpreter-value-register? expression)
-	     (search-stopping-at expression
-	       (lambda (rtl)
-		 (and (rtl:assign? rtl)
-		      (interpreter-value-register?
-		       (rtl:assign-address rtl))))))
-	    ((and (rtl:offset? expression)
-		  (interpreter-stack-pointer? (rtl:offset-base expression)))
-	     (let ()
-	       (define (phi-1 next offset)
-		 (let ((rtl (rinst-rtl next)))
-		   (cond ((expression-is-stack-push? rtl)
-			  (phi-2 (rinst-next next) (1+ offset)))
-			 ((or (and (rtl:assign? rtl)
-				   (rtl:expression=? (rtl:assign-address rtl)
-						     expression))
-			      (expression-clobbers-stack-pointer? rtl))
-			  (values false false))
-			 (else
-			  (phi-2 (rinst-next next) offset)))))
-	       (define (phi-2 next offset)
+      (let ((recurse-and-search
+	     (lambda (unwrap wrap)
+	       (with-values (lambda ()
+			      (recursion unwrap wrap))
+		 (lambda (next expression*)
+		   (if next
+		       (values next expression*)
+		       (search-stopping-at expression
+					   (lambda (rtl)
+					     rtl ; ignored
+					     false))))))))
+	       
+	(cond ((interpreter-value-register? expression)
+	       (search-stopping-at expression
+				   (lambda (rtl)
+				     (and (rtl:assign? rtl)
+					  (interpreter-value-register?
+					   (rtl:assign-address rtl))))))
+	      ((and (rtl:offset? expression)
+		    (interpreter-stack-pointer? (rtl:offset-base expression))
+		    (rtl:machine-constant? (rtl:offset-offset expression)))
+	       (let ()
+		 (define (phi-1 next offset)
+		   (let ((rtl (rinst-rtl next)))
+		     (cond ((expression-is-stack-push? rtl)
+			    (phi-2 (rinst-next next) (1+ offset)))
+			   ((or (and (rtl:assign? rtl)
+				     (rtl:expression=? (rtl:assign-address rtl)
+						       expression))
+				(expression-clobbers-stack-pointer? rtl))
+			    (values false false))
+			   (else
+			    (phi-2 (rinst-next next) offset)))))
+		 (define (phi-2 next offset)
+		   (if (rinst-dead-register? next register)
+		       (values next
+			       (rtl:make-offset (rtl:offset-base expression)
+						offset))
+		       (phi-1 next offset)))
+		 (phi-1 next
+			(rtl:machine-constant-value
+			 (rtl:offset-offset expression)))))
+	      ((and (rtl:offset-address? expression)
+		    (interpreter-stack-pointer?
+		     (rtl:offset-address-base expression)))
+	       (search-stopping-at expression
+				   expression-clobbers-stack-pointer?))
+	      ((rtl:constant-expression? expression)
+	       (let loop ((next (rinst-next next)))
 		 (if (rinst-dead-register? next register)
-		     (values next
-			     (rtl:make-offset (rtl:offset-base expression)
-					      offset))
-		     (phi-1 next offset)))
-	       (phi-1 next (rtl:offset-number expression))))
-	    ((and (rtl:offset-address? expression)
-		  (interpreter-stack-pointer?
-		   (rtl:offset-address-base expression)))
-	     (search-stopping-at expression
-				 expression-clobbers-stack-pointer?))
-	    ((rtl:constant-expression? expression)
-	     (let loop ((next (rinst-next next)))
-	       (if (rinst-dead-register? next register)
-		   (values next expression)
-		   (loop (rinst-next next)))))
-	    ((or (rtl:offset? expression)
-		 (rtl:byte-offset? expression))
-	     (search-stopping-at expression
-	       (lambda (rtl)
-		 (or (and (rtl:assign? rtl)
-			  (memq (rtl:expression-type
-				 (rtl:assign-address rtl))
-				'(OFFSET POST-INCREMENT PRE-INCREMENT)))
-		     (expression-clobbers-stack-pointer? rtl)))))
-	    ((and (rtl:cons-pointer? expression)
-		  (rtl:machine-constant? (rtl:cons-pointer-type expression)))
-	     (recursion rtl:cons-pointer-datum
-	       (lambda (datum)
-		 (rtl:make-cons-pointer (rtl:cons-pointer-type expression)
-					datum))))
-	    ((and (rtl:cons-non-pointer? expression)
-		  (rtl:machine-constant?
-		   (rtl:cons-non-pointer-type expression)))
-	     (recursion rtl:cons-non-pointer-datum
-	       (lambda (datum)
-		 (rtl:make-cons-non-pointer
-		  (rtl:cons-non-pointer-type expression)
-		  datum))))
-	    ((rtl:object->address? expression)
-	     (recursion rtl:object->address-expression
-			rtl:make-object->address))
-	    ((rtl:object->datum? expression)
-	     (recursion rtl:object->datum-expression rtl:make-object->datum))
-	    ((rtl:object->fixnum? expression)
-	     (recursion rtl:object->fixnum-expression rtl:make-object->fixnum))
-	    ((rtl:object->type? expression)
-	     (recursion rtl:object->type-expression rtl:make-object->type))
-	    ((rtl:object->unsigned-fixnum? expression)
-	     (recursion rtl:object->unsigned-fixnum-expression
-			rtl:make-object->unsigned-fixnum))
-	    (else
-	     (values false false))))))
+		     (values next expression)
+		     (loop (rinst-next next)))))
+	      ((or (rtl:offset? expression)
+		   (rtl:byte-offset? expression))
+	       (search-stopping-at
+		expression
+		(lambda (rtl)
+		  (or (and (rtl:assign? rtl)
+			   (memq (rtl:expression-type
+				  (rtl:assign-address rtl))
+				 '(OFFSET POST-INCREMENT PRE-INCREMENT)))
+		      (expression-clobbers-stack-pointer? rtl)))))
+	      ((and (rtl:cons-pointer? expression)
+		    (rtl:machine-constant? (rtl:cons-pointer-type expression)))
+	       (recursion rtl:cons-pointer-datum
+			  (lambda (datum)
+			    (rtl:make-cons-pointer
+			     (rtl:cons-pointer-type expression)
+			     datum))))
+	      ((and (rtl:cons-non-pointer? expression)
+		    (rtl:machine-constant?
+		     (rtl:cons-non-pointer-type expression)))
+	       (recursion rtl:cons-non-pointer-datum
+			  (lambda (datum)
+			    (rtl:make-cons-non-pointer
+			     (rtl:cons-non-pointer-type expression)
+			     datum))))
+	      ((rtl:object->address? expression)
+	       (recursion rtl:object->address-expression
+			  rtl:make-object->address))
+	      ((rtl:object->datum? expression)
+	       (recurse-and-search rtl:object->datum-expression
+				   rtl:make-object->datum))
+	      ((rtl:object->fixnum? expression)
+	       (recurse-and-search rtl:object->fixnum-expression
+				   rtl:make-object->fixnum))
+	      ((rtl:object->type? expression)
+	       (recursion rtl:object->type-expression rtl:make-object->type))
+	      ((rtl:object->unsigned-fixnum? expression)
+	       (recursion rtl:object->unsigned-fixnum-expression
+			  rtl:make-object->unsigned-fixnum))
+	      (else
+	       (values false false)))))))
 
 (define (expression-clobbers-stack-pointer? rtl)
   (or (and (rtl:assign? rtl)
