@@ -1,7 +1,7 @@
 \input texinfo @c -*-Texinfo-*-
-@tex
-\special{twoside}
-@end tex
+@c @tex
+@c \special{twoside}
+@c @end tex
 @c %**start of header
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -127,23 +127,22 @@ Scheme with Edwin and GNU Emacs.
 
 Installation
 
-* Generic Unix::                
-* C-backend::                   
-* Microsoft Windows and Windows NT installation::  
+* Unix::
+* PC Operating Systems::	DOS, Windows, and Windows NT
 
-DOS, Microsoft Windows and Windows NT installation
+DOS, Windows, and Windows NT installation
 
 * System requirements::         
 * Manifest::                    
-* Installation-win32::          Installation
+* PC Installation::
 
 Release Notes
 
 * Unix Release Notes::          
-* C-Backend Release Notes::     
+* C Back-End Release Notes::     
 * DOS::                         
 
-DOS, Microsoft Windows 3.1 and Windows NT Release Notes
+DOS, Windows 3.1, and Windows NT Release Notes
 
 * Known Problems::              
 
@@ -153,7 +152,7 @@ Running Scheme
 * Customizing Scheme::          
 * Command-Line Options::        
 * Environment Variables::       
-* Starting Scheme from Microsoft Windows 3.1/NT::  
+* Starting Scheme from Windows 3.1/NT::  
 * Leaving Scheme::              
 
 Environment Variables
@@ -231,35 +230,28 @@ Device Independent Bitmap Utilities
 
 
 @menu
-* Generic Unix::                
-* C-backend::                   
-* Microsoft Windows and Windows NT installation::  
+* Unix::                
+* PC Operating Systems::  
 @end menu
 
-@node Generic Unix, C-backend,  , Installation
-@section Generic Unix
+@node Unix, PC Operating Systems,  , Installation
+@section Unix
 
 Installation information for Unix versions goes here.
-(perhaps several a multitude of unixes?
-
-
-@node C-backend, Microsoft Windows and Windows NT installation, Generic Unix, Installation
-@section C-backend
-
-Installation information for C back-end versions goes here?
+(perhaps several, a multitude of unices?)
 
 
 @c NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN
-@node Microsoft Windows and Windows NT installation,  , C-backend, Installation
-@section DOS, Microsoft Windows and Windows NT installation
+@node PC Operating Systems,  ,Unix, Installation
+@section DOS, Windows, and Windows NT installation
 
-This section describes how to install MIT Scheme on DOS, Microsoft
-Windows 3.1 and Microsoft Windows NT.  We would prefer that the Windows
-version be used, rather than the DOS version, because we intend to
-maintain the DOS version only so long as it is convenient.  For the most
-part the installation any of these platforms uses the same files, and
-the procedure is similar.  It is possible to install MIT Scheme so that
-it will run under all three operating systems on one computer, but this
+This section describes how to install MIT Scheme on DOS, Windows 3.1, and
+Windows NT.  We would prefer that the Windows version be used,
+rather than the DOS version, because we intend to maintain the DOS
+version only so long as it is convenient.  For the most part the
+installation any of these platforms uses the same files, and the
+procedure is similar.  It is possible to install MIT Scheme so that it
+will run under all three operating systems on one computer, but this
 does require some care with the configuration of the system.
 
 Note that we have only tested the DOS version on Microsoft DOS 5.0.
@@ -267,10 +259,10 @@ Note that we have only tested the DOS version on Microsoft DOS 5.0.
 @menu
 * System requirements::         
 * Manifest::                    
-* Installation-win32::          Installation
+* PC Installation::          Installation
 @end menu
 
-@node System requirements, Manifest,  , Microsoft Windows and Windows NT installation
+@node System requirements, Manifest,  , PC Operating Systems
 @subsection System requirements
 
 MIT Scheme requires at least a 386SX with 8Mb RAM.
@@ -280,45 +272,46 @@ for Scheme.  We strongly recommend a more advanced environment.  To
 build the Edwin editor band requires an additional 4.3Mb.  The whole
 installation without source code occupies 36Mb of disk.
 
-@node Manifest, Installation-win32, System requirements, Microsoft Windows and Windows NT installation
+@node Manifest, PC Installation, System requirements, PC Operating Systems
 @subsection Manifest
 
 The installation comprises the following files:
 
 @example
-bin.zip         @r{Scheme binaries for Windows 3.1/Windows NT}
-dosbin.zip      @r{Scheme binaries for PC-DOS}
-lib.zip         @r{Smaller files from Scheme library}
-runtime.zip     @r{@file{runtime.com} band}
-runnoflo.zip    @r{@file{runtime.com} band for machines with no FP hardware}
-eddel.zip       @r{@file{eddel.com}: a kit to build @file{edwin.com} band}
-compdel.zip     @r{@file{compdel.com}: a kit to build @file{compiler.com} band}
+BIN.ZIP         @r{Scheme binaries for Windows 3.1/Windows NT}
+DOSBIN.ZIP      @r{Scheme binaries for PC-DOS}
+LIB.ZIP         @r{Smaller files from Scheme library}
+RUNTIME.ZIP     @r{@file{runtime.com} band}
+RUNNOFLO.ZIP    @r{@file{runtime.com} band for machines with no FP hardware}
+EDDEL.ZIP       @r{@file{eddel.com}: a kit to build @file{edwin.com} band}
+COMPDEL.ZIP     @r{@file{compdel.com}: a kit to build @file{compiler.com} band}
 
-bcirun1.zip     @r{Debugging information for runtime system}
-bcirun2.zip     @r{    "          "       "     "      "}
-bcirun3.zip     @r{    "          "       "     "      "}
-bcied1.zip      @r{Debugging information for Edwin}
-bcied2.zip      @r{    "          "       "    "}
-bcied3.zip      @r{    "          "       "    "}
+BCIRUN1.ZIP     @r{Debugging information for runtime system}
+BCIRUN2.ZIP     @r{    "          "       "     "      "}
+BCIRUN3.ZIP     @r{    "          "       "     "      "}
+BCIED1.ZIP      @r{Debugging information for Edwin}
+BCIED2.ZIP      @r{    "          "       "    "}
+BCIED3.ZIP      @r{    "          "       "    "}
+BCINOFLO.ZIP    @r{Extra debugging information for machines with no FP hardware}
 
-srcrun.zip      @r{Source code for the runtime system}
-srcuc.zip       @r{Source code for the microcode (C)}
-srced.zip       @r{Source code for Edwin}
-srccomp.zip     @r{Source code for i386 compiler}
+SRCRUN.ZIP      @r{Source code for the runtime system}
+SRCUC.ZIP       @r{Source code for the microcode (C)}
+SRCED.ZIP       @r{Source code for Edwin}
+SRCCOMP.ZIP     @r{Source code for i386 compiler}
 
-win32s.zip      @r{Win32s installation floppy from Microsoft}
-install.txt     @r{These instructions}
-unzip.exe       @r{Program to unpack the @file{.zip} files}
+WIN32S.ZIP      @r{Win32s installation floppy from Microsoft}
+INSTALL.TXT     @r{These instructions}
+UNZIP.EXE       @r{Program to unpack the @file{.zip} files}
 @end example
 
 
-@node Installation-win32,  , Manifest, Microsoft Windows and Windows NT installation
+@node PC Installation,  , Manifest, PC Operating Systems
 @subsection Installation
 
 These installation instructions describe how to install MIT Scheme on
-one or more of PC-DOS, Microsoft Windows 3.1 and Microsoft Windows NT.
-If you are installing for PC-DOS and another operating system, you
-should do the bulk of the installation using the windowing environment.
+one or more of DOS, Windows 3.1, and Windows NT.  If you are
+installing for DOS and another operating system, you should do the
+bulk of the installation using the windowing environment.
 
 In each of the following steps the amount of disk space consumed is
 indicated in square brackets.
@@ -541,7 +534,7 @@ This will load in @file{eddel.com} and create the new band [4.3Mb].
 After a successful build the program will exit.
 The @file{edwin.com} band can be used by both the DOS and Windows
 versions, so you only need to do this step once, even if you are
-installing for more than one of DOS, Windows 3.1 and Windows NT.
+installing for more than one of DOS, Windows 3.1, and Windows NT.
 
 If you are installing only for DOS you will have to build
 @file{edwin.com} from the command line.  Be sure to run the DOS
@@ -655,18 +648,187 @@ General release notes
 
 @menu
 * Unix Release Notes::          
-* C-Backend Release Notes::     
+* C Back-End Release Notes::     
 * DOS::                         
 @end menu
 
-@node Unix Release Notes, C-Backend Release Notes,  , Release Notes
+@node Unix Release Notes, C Back-End Release Notes,  , Release Notes
 @section Unix Release Notes
 
-@node C-Backend Release Notes, DOS, Unix Release Notes, Release Notes
-@section C-Backend Release Notes
+@node C Back-End Release Notes, DOS, Unix Release Notes, Release Notes
+@section C Back-End Release Notes
 
-@node DOS,  , C-Backend Release Notes, Release Notes
-@section DOS, Microsoft Windows 3.1 and Windows NT Release Notes
+@subsection General Notes
+
+@itemize @bullet
+
+@item
+The C back end was written very recently, and we do not use it
+ourselves for development--we have native back ends for the
+hardware that we use regularly.  Furthermore, most of the
+system-building tools and changes were put together and tested
+immediately preceding the release.  It is not unlikely that there
+are serious problems and shortcomings.  We'd like to hear about
+them so we can fix them or bypass them for a future release.  If
+something does not work, do not assume that we know about it.
+Please report it.  The worse that can happen is that we hear about
+it several times.
+
+@item
+The compiler produces C code that works in the context of the MIT
+Scheme runtime library.  It is not stand-alone code, and there is
+currently no way to generate stand-alone executables.
+
+@item
+We have done some performance testing on machines where we have
+both a native back end and the C back end.  The C back end code is
+somewhat larger and slower than the native code.  The speed varies
+depending primarily on the number of inter-C-procedure calls (even
+within a single source file).  In some cases the C code is
+somewhat faster than the native code, but it is usually noticeably
+slower.  The average is about 2.5 times slower.
+
+@item
+The output code should work on virtually any modern
+general-purpose architecture with an ANSI-compliant (perhaps even
+a traditional K&R) C compiler.  We've tried it on several 32-bit
+architectures (HP PA, Sparc, Motorola 68040, RS6000/Power) and a
+64-bit architecture (Alpha).
+
+However, there may very well be assumptions of the following form:
+
+@itemize @bullet
+@item
+Memory is byte addressable.
+
+@item
+Addresses and ordinary data live in the same memory.
+Some special-purpose processors do not satisfy this constraint.
+
+@item
+@emph{unsigned} data items and addresses fit into the same
+memory, and if @emph{union}-ed, take the same space. 
+
+@item
+Signed integers are represented using 2s-complement representation.
+
+@item
+The machine/OS uses the ASCII character set.  This is not a
+property of the compiler per-se, but of the MIT Scheme system.
+@end itemize
+
+In addition, some configuration of the compiler, microcode and
+build-scripts would have to be done for new architectures/operating
+systems.  The things that come to mind are:
+
+@itemize @bullet
+@item
+Dynamic loading primitives are OS-dependent.
+
+@item
+Basic microcode configuration, including:
+
+@itemize
+
+@item
+OS interface
+
+@item
+Choosing a new machine type (FASL numbers in @file{config. h})
+@end itemize
+
+@item
+Build scripts dispatch on the OS and architecture type,
+and only understand a handful.
+
+@item
+The compiler has a table of C compiler and linker switches
+for the configurations we have tried.  It needs to be extended
+for new configurations, although this can be done easily.
+@end itemize
+
+If you are interested in bringing up the system on a new
+configuration, please contact us for further instructions, and to
+obtain the set of crude tools that we use to do this.
+
+@item
+The performance of the output code could be greatly improved by
+judicious use of assembly language to achieve faster cross-module
+tail recursion.  So far, we've given more weight to portability
+than to performance.
+
+@item
+The resulting C code can be compiled and statically linked with the MIT
+Scheme @emph{microcode} (the runtime library is linked in this way), or
+compiled and dynamically loaded and linked if the operating system
+supports this feature.  The C code must be compiled defining the
+@code{COMPILE_FOR_STATIC_LINKING} if it is to be statically linked into
+the @emph{microcode} or collected into a larger dynamically-loadable
+library (e.g.@: edwin or the compiler).  If you'd like to put together a
+shared library of a large subsystem that you have written, please
+contact us for advice on how it can be done.
+@end itemize
+
+@subsection Problems and shortcomings of the system specific to the C back end
+
+@itemize @bullet
+
+@item
+@code{compile-procedure} and @code{compile-scode} do not work.  This will be
+fixed for a future release and is not very hard to bypass in most
+cases.
+@code{compile-procedure} gives an error.
+@code{compile-scode} returns something which is not a compiled
+expression.
+@code{cf} and @code{compile-bin-file} work.
+
+@item
+Dynamically loaded compiled modules are not unloaded when no longer
+accessed.  In particular, after a @code{disk-restore}, previously loaded
+modules are still mapped.  In addition, at least in some versions of
+Unix, the shared object file cannot be deleted while it is loaded, so
+recompilation of a module in place will fail if some process has it
+already loaded.
+
+@item
+Multiple loading does not work.  This is bad for development.
+After loading a compiled module once, it cannot be reloaded 
+(presumably after recompilation).
+
+@item
+@code{fasdump} does not work for compiled code.  It gives an error.
+Only bands can be dumped.
+
+@item
+Several C compilers are unhappy about the size of the resulting C
+procedures.  They often turn their optimizers off.
+
+@item
+Some C compilers/optimizers produce non-working code for some of
+the output.  In particular, we've had serious problems with the
+RS6000/AIX-3.2 C compiler.
+
+@item
+Several C compilers give copious ``statement not reached'' warnings
+about the resulting code.
+This arises from the heavy use of macros expanding into the pattern
+@example
+do
+@{
+  ...
+@} while (0)
+@end example
+Most of these macros are not really necessary, and the code
+generator could just issue the ... part directly.
+
+@item
+ The mechanism for accreting object files into large
+dynamically-loadable libraries is currently ad-hoc.
+@end itemize
+
+
+@node DOS,  , C Back-End Release Notes, Release Notes
+@section DOS, Windows 3.1, and Windows NT Release Notes
 
 
 @menu
@@ -765,7 +927,7 @@ in your @file{edwin.ini} file.
 @chapter Running Scheme
 
 This chapter describes how to run MIT Scheme on a unix system or a PC
-running DOS, Microsoft Windows 3.1, or Microsoft Windows NT.
+running DOS, Windows 3.1, or Windows NT.
 It also describes how you can customize the behavior of MIT Scheme
 using command-line options and environment variables.
 
@@ -774,7 +936,7 @@ using command-line options and environment variables.
 * Customizing Scheme::          
 * Command-Line Options::        
 * Environment Variables::       
-* Starting Scheme from Microsoft Windows 3.1/NT::  
+* Starting Scheme from Windows 3.1/NT::  
 * Leaving Scheme::              
 @end menu
 
@@ -788,10 +950,9 @@ scheme
 @end example
 
 @noindent
-at your operating system's command interpreter. (Under Microsoft Windows
-3.1 you must use the Program Manager's @var{Run} command, or an icon.)
-Scheme will load itself, clear the screen, and print something like
-this:
+at your operating system's command interpreter. (Under Windows 3.1 you
+must use the Program Manager's @var{Run} command, or an icon.)  Scheme
+will load itself, clear the screen, and print something like this:
 
 @example
 Scheme saved on Thursday December 2, 1993 at 6:18:35 PM
@@ -896,7 +1057,7 @@ See @xref{Environment Variables}.
 @item
 @dfn{Icons}.
 @cindex icons
-Under Microsoft Windows and Windows NT it is possible to create icons in
+Under Windows and Windows NT it is possible to create icons in
 the Program Manager that invoke Scheme with different parameters.
 @end itemize
 
@@ -1302,7 +1463,7 @@ environment variable @code{MITSCHEME_GC_WRITE_OVERLAP} is used instead,
 and if that is not defined, 0 is used, disabling overlapped writes.
 @end table
 
-@node Environment Variables, Starting Scheme from Microsoft Windows 3.1/NT, Command-Line Options, Running Scheme
+@node Environment Variables, Starting Scheme from Windows 3.1/NT, Command-Line Options, Running Scheme
 @section Environment Variables
 
 
@@ -1465,19 +1626,19 @@ The maximum number of simultaneous write operations.  Overridden by
 @node Environment variables for PC versions, Environment variables that affect the runtime system, Environment variables for Bchscheme, Environment Variables
 @subsection Environment variables for PC versions
 
-These environment variables only make sense to the Microsoft Windows,
-Windows NT or MS-DOS versions of MIT Scheme.
+These environment variables only make sense to the Windows,
+Windows NT, or MS-DOS versions of MIT Scheme.
 
 @table @asis
 @item @code{MITSCHEME_DPMI_EXT_KBD} (default: @samp{false})
 @findex MITSCHEME_DPMI_EXT_KBD
-DOS version only.
+DOS only.
 Boolean option specifying whether Scheme inserts its own keyboard handling
 routine when running under DPMI (DOS Protected Mode Interface) or Windows.
 
 @item @code{MITSCHEME_X32_EXT_KBD} (default: @samp{false})
 @findex MITSCHEME_X32_EXT_KBD
-DOS version only.
+DOS only.
 Boolean option specifying whether Scheme inserts its own keyboard handling
 routine when @emph{not} running under DPMI or Windows.
 
@@ -1485,13 +1646,13 @@ routine when @emph{not} running under DPMI or Windows.
 @findex MITSCHEME_TRAP_ALT_TAB
 @item @code{MITSCHEME_TRAP_ALT_ESCAPE} (default: @samp{false})
 @findex MITSCHEME_TRAP_ALT_ESCAPE
-Microsoft Windows and Windows NT only.
+Windows and Windows NT only.
 Boolean option specifying the handling of system command accelerators.
 These options do not actually work.
 
 @item @code{MITSCHEME_GEOMETRY} (default: @samp{-1,-1,-1,-1})
 @findex MITSCHEME_GEOMETRY
-Microsoft Windows and Windows NT only.  Four integers separated by
+Windows and Windows NT only.  Four integers separated by
 commas or spaces that specify the placement and size of the MIT Scheme
 window as a @var{left,top,width,height} quadruple.  The units are screen
 pixels, and @samp{-1} means allow the system to choose this parameter.
@@ -1501,13 +1662,13 @@ the window border and title.
 
 @item @code{MITSCHEME_FOREGROUND} (default: according to desktop color scheme)
 @findex MITSCHEME_FOREGROUND
-Microsoft Windows and Windows NT only.  An value specifying the window
+Windows and Windows NT only.  An value specifying the window
 text color.  The color is specified as hex blue, green and red values
 (@emph{not} RGB): e.g.@: @code{0xff0000} for blue.
 
 @item @code{MITSCHEME_BACKGROUND} (default: according to desktop color scheme)
 @findex MITSCHEME_BACKGROUND
-Microsoft Windows and Windows NT only.  A value specifying the window
+Windows and Windows NT only.  A value specifying the window
 background color.  See @code{MITSCHEME_FOREGROUND}.
 
 @end table
@@ -1591,17 +1752,17 @@ adapter and support software.  E.g.@: 132.
 @end table
 
 
-@node Starting Scheme from Microsoft Windows 3.1/NT, Leaving Scheme, Environment Variables, Running Scheme
-@section Starting Scheme from Microsoft Windows 3.1/NT
+@node Starting Scheme from Windows 3.1/NT, Leaving Scheme, Environment Variables, Running Scheme
+@section Starting Scheme from Windows 3.1/NT
 
 There are two distinct versions of MIT Scheme that run on IBM
 `compatible' PCs: the DOS version is a character-mode only
 implementation, which can also run under Windows 3.1 as a DOS application.
-The Windows version runs as a graphics-based application under Microsoft
-Windows 3.1 or Microsoft Windows NT.
-The DOS version will not run under Windows NT.
+The Windows version runs as a graphics-based application under
+Windows 3.1 or Windows NT.
+The DOS version does not run under Windows NT.
 
-Under Microsoft Windows 3.1, Scheme must be run from the Program Manager or
+Under Windows 3.1, Scheme must be run from the Program Manager or
 the File Manager.  Scheme cannot be run from the command line, because
 only DOS programs can be run from the command line.
 (This is the case even with WXSERVER as it appears not to work with
@@ -1645,7 +1806,7 @@ editor.  You also have to put
 at the end of the command line.
 @end itemize
 
-@node Leaving Scheme,  , Starting Scheme from Microsoft Windows 3.1/NT, Running Scheme
+@node Leaving Scheme,  , Starting Scheme from Windows 3.1/NT, Running Scheme
 @section Leaving Scheme
 
 There are two ways you can leave Scheme.  The first is to evaluate
@@ -3960,7 +4121,7 @@ column zero.
 @ifinfo
 The Win32 implementation is still in a state of development.  It is
 expected that changes will be necessary when MIT Scheme is ported to
-Microsoft Windows NT on the DEC Alpha architecture.  In particular, the
+Windows NT on the DEC Alpha architecture.  In particular, the
 current system is not arranged in a way that adequately distinguishes 
 between issues that are a consequence of the NT operating system and
 those which are a consequence of the Intel architecture.
@@ -3979,7 +4140,7 @@ those which are a consequence of the Intel architecture.
 
 The Win32 implementation is still in a state of development.  It is
 expected that changes will be necessary when MIT Scheme is ported to
-Microsoft Windows NT on the DEC Alpha architecture.  In particular, the
+Windows NT on the DEC Alpha architecture.  In particular, the
 current system is not arranged in a way that adequately distinguishes
 between issues that are a consequence of the NT operating system and
 those which are a consequence of the Intel x86 architecture.
@@ -4007,7 +4168,7 @@ An interface for Edwin.
 
 @item
 The Win32 package provides support for using the features of the
-Microsoft Windows 3.1 and Microsoft Windows NT 3.1 environments.
+Windows 3.1 and Windows NT 3.1 environments.
 
 @item
 Device Independent Bitmap utilities.  These are used by the win32 Scheme
@@ -4604,8 +4765,8 @@ of 4 bytes long).  doing this
 
 
 The @file{DIBUTILS.DLL} library is an ordinary DLL.  See the standard
-Microsoft documentation on how to create DLLs.  Look at the code in the
-@file{WIN32/DIBUTILS} directory of the Scheme source.
+Microsoft Windows documentation on how to create DLLs.  Look at the code
+in the @file{WIN32/DIBUTILS} directory of the Scheme source.
 
 Please note:
 @itemize @bullet
