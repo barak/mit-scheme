@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.5 1989/04/28 22:55:01 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.6 1989/06/19 22:22:49 markf Exp $
 ;;;
 ;;;	Copyright (c) 1989 Massachusetts Institute of Technology
 ;;;
@@ -63,7 +63,10 @@
   (xterm-write-char! 5)
   (xterm-write-substring! 7)
   (xterm-clear-rectangle! 6)
-  (xterm-read-chars 2))
+  (xterm-read-chars 2)
+  (xterm-pointer-x 1)
+  (xterm-pointer-y 1)
+  (xterm-button 1))
 
 (define-structure (xterm-screen-state
 		   (constructor make-xterm-screen-state (xterm))
@@ -272,16 +275,78 @@
 	(update-screen! screen false))
     result))
 
+(define xterm-event-list '())
+
+(define xterm-event-mask car)
+
+(define xterm-event-proc cdr)
+
+(define (add-xterm-event mask thunk)
+  (set! xterm-event-list
+	(cons (cons mask thunk)
+	      xterm-event-list)))
+
+(define xterm-event-resized (unsigned-integer->bit-string 32 1))
+(add-xterm-event xterm-event-resized
+   (lambda (xterm window)
+     (send window ':set-size!
+	   (xterm-x-size xterm)
+	   (xterm-y-size xterm))))
+
+(define *xterm-max-button-number* 5)
+
+(define (max-button-number)
+  (xterm-normalize-button-number *xterm-max-button-number*))
+
+(define (xterm-normalize-button-number button-number)
+  (-1+ button-number))
+
+(define xterm-button xterm-normalize-button-number)
+
+(define xterm-event-button-down (unsigned-integer->bit-string 32 2))
+(add-xterm-event xterm-event-button-down
+   (lambda (xterm window)
+     (send window ':button-down
+	   (xterm-normalize-button-number (xterm-button xterm))
+	   (xterm-pointer-x xterm)
+	   (xterm-pointer-y xterm))))
+
+(define xterm-event-button-up (unsigned-integer->bit-string 32 4))
+(add-xterm-event xterm-event-button-up
+   (lambda (xterm window)
+     (send window ':button-up
+	   (xterm-normalize-button-number (xterm-button xterm))
+	   (xterm-pointer-x xterm)
+	   (xterm-pointer-y xterm))))
+
 (define (xterm-screen/process-events! screen)
-  (let ((xterm (screen-xterm screen)))
-    (and (odd? (xterm-read-event-flags! xterm))
+  (let* ((xterm (screen-xterm screen))
+	 (flags (xterm-read-event-flags! xterm)))
+    (and (not (zero? flags))
 	 (let ((window (screen-window screen)))
 	   (and window
-		(send window ':set-size!
-		      (xterm-x-size xterm)
-		      (xterm-y-size xterm))
-		true)))))
-
+		(let ((flag-bits
+		       (unsigned-integer->bit-string 32 flags)))
+		  (let loop ((events xterm-event-list)
+			     (any-events? false))
+		    (if (and (not (bit-string-zero? flag-bits))
+			     (pair? events))
+			(let ((event-found?
+			       (not (bit-string-zero?
+				     (bit-string-and
+				      flag-bits
+				      (xterm-event-mask (car events)))))))
+			  (bit-string-xor! flag-bits
+					   (xterm-event-mask (car events)))
+			  (if event-found?
+			      (begin
+				((xterm-event-proc (car events))
+				 xterm
+				 window)
+				(loop (cdr events) true))
+			      (loop (cdr events) any-events?)))
+			any-events?))))))))
+
 (define (check-for-interrupts! state buffer index)
   (set-xterm-input-port-state/buffer! state buffer)
   (let ((^g-index
