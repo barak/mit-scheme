@@ -37,7 +37,7 @@
 
 ;;;; Compiler Utilities
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.73 1986/12/16 23:49:00 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.74 1986/12/16 23:52:14 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -56,7 +56,7 @@
 	    ((vector-method object ':UNPARSE) object))
 	  (write-string " ")
 	  (fluid-let ((*unparser-radix* 10))
-	    (write (object-hash object)))))))
+	    (write (hash object)))))))
     tag))
 
 (define (vector-tag-put! tag key value)
@@ -116,7 +116,7 @@
 
 (define (po object)
   (let ((object (if (integer? object)
-		    (object-unhash object)
+		    (unhash object)
 		    object)))
     (fluid-let ((*unparser-radix* 16))
       (write-line object)
