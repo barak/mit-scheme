@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.334 1999/12/21 19:05:20 cph Exp $
+$Id: runtime.pkg,v 14.335 2000/01/04 05:14:26 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -584,6 +584,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (parent ())
   (export ()
 	  define-structure/keyword-parser
+	  define-structure/list-accessor
+	  define-structure/list-modifier
+	  define-structure/vector-accessor
+	  define-structure/vector-modifier
 	  make-define-structure-type
 	  named-structure/description
 	  named-structure?)

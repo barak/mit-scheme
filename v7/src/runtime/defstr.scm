@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: defstr.scm,v 14.32 1999/01/02 06:11:34 cph Exp $
+$Id: defstr.scm,v 14.33 2000/01/04 05:14:22 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -127,10 +127,10 @@ differences:
 	(print-procedure default)
 	(type 'RECORD)
 	(type-name name)
-	(tag-expression)
+	(tag-expression name)
+	(safe-accessors? #f)
 	(offset 0)
 	(options-seen '()))
-    (set! tag-expression type-name)
     (for-each
      (lambda (option)
        (if (not (or (symbol? option)
@@ -239,6 +239,11 @@ differences:
 		      (begin
 			(set! type-name false)
 			(set! tag-expression (car arguments)))))
+		 ((SAFE-ACCESSORS)
+		  (check-duplicate)
+		  (check-arguments 1)
+		  (set! safe-accessors?
+			(if (null? arguments) #t (car arguments))))
 		 ((INITIAL-OFFSET)
 		  (check-duplicate)
 		  (check-argument)
@@ -308,6 +313,7 @@ differences:
 			named?
 			(and named? type-name)
 			(and named? tag-expression)
+			safe-accessors?
 			offset
 			slots)))))
 
@@ -374,6 +380,7 @@ differences:
 (define structure/named?)
 (define structure/type-name)
 (define structure/tag-expression)
+(define structure/safe-accessors?)
 (define structure/offset)
 (define structure/slots)
 
@@ -389,20 +396,11 @@ differences:
 
 (define (initialize-structure-types!)
   (set! structure-rtd
-	(make-record-type "structure"
-			  '(NAME
-			    CONC-NAME
-			    KEYWORD-CONSTRUCTORS
-			    BOA-CONSTRUCTORS
-			    COPIER-NAME
-			    PREDICATE-NAME
-			    PRINT-PROCEDURE
-			    TYPE
-			    NAMED?
-			    TYPE-NAME
-			    TAG-EXPRESSION
-			    OFFSET
-			    SLOTS)))
+	(make-record-type
+	 "structure"
+	 '(NAME CONC-NAME KEYWORD-CONSTRUCTORS BOA-CONSTRUCTORS COPIER-NAME
+		PREDICATE-NAME PRINT-PROCEDURE TYPE NAMED? TYPE-NAME
+		TAG-EXPRESSION SAFE-ACCESSORS? OFFSET SLOTS)))
   (set! make-structure (record-constructor structure-rtd))
   (set! structure? (record-predicate structure-rtd))
   (set! structure/name (record-accessor structure-rtd 'NAME))
@@ -421,6 +419,8 @@ differences:
   (set! structure/type-name (record-accessor structure-rtd 'TYPE-NAME))
   (set! structure/tag-expression
 	(record-accessor structure-rtd 'TAG-EXPRESSION))
+  (set! structure/safe-accessors?
+	(record-accessor structure-rtd 'SAFE-ACCESSORS?))
   (set! structure/offset (record-accessor structure-rtd 'OFFSET))
   (set! structure/slots (record-accessor structure-rtd 'SLOTS))
   (set! slot-rtd
@@ -443,49 +443,71 @@ differences:
 
 (define (accessor-definitions structure)
   (map (lambda (slot)
-	 `(DEFINE-INTEGRABLE
-	    (,(if (structure/conc-name structure)
-		  (symbol-append (structure/conc-name structure)
-				 (slot/name slot))
-		  (slot/name slot))
-	     STRUCTURE)
-	    (,(absolute
-	       (case (structure/type structure)
-		 ((RECORD) '%RECORD-REF)
-		 ((VECTOR) 'VECTOR-REF)
-		 ((LIST) 'LIST-REF)))
-	     STRUCTURE
-	     ,(slot/index slot))))
+	 (let* ((name (slot/name slot))
+		(accessor-name
+		 (if (structure/conc-name structure)
+		     (symbol-append (structure/conc-name structure) name)
+		     name)))
+	   (if (structure/safe-accessors? structure)
+	       `(DEFINE ,accessor-name
+		  (,(absolute
+		     (case (structure/type structure)
+		       ((RECORD) 'RECORD-ACCESSOR)
+		       ((VECTOR) 'DEFINE-STRUCTURE/VECTOR-ACCESSOR)
+		       ((LIST) 'DEFINE-STRUCTURE/LIST-ACCESSOR)))
+		   ,(or (structure/tag-expression structure)
+			(slot/index slot))
+		   ',name))
+	       `(DEFINE-INTEGRABLE (,accessor-name STRUCTURE)
+		  (,(absolute
+		     (case (structure/type structure)
+		       ((RECORD) '%RECORD-REF)
+		       ((VECTOR) 'VECTOR-REF)
+		       ((LIST) 'LIST-REF)))
+		   STRUCTURE
+		   ,(slot/index slot))))))
        (structure/slots structure)))
 
 (define (modifier-definitions structure)
-  (append-map! (lambda (slot)
-		 (if (slot/read-only? slot)
-		     '()
-		     `((DEFINE-INTEGRABLE
-			 (,(if (structure/conc-name structure)
-			       (symbol-append 'SET-
-					      (structure/conc-name structure)
-					      (slot/name slot)
-					      '!)
-			       (symbol-append 'SET- (slot/name slot) '!))
-			  STRUCTURE
-			  VALUE)
-			 ,(case (structure/type structure)
-			    ((RECORD)
-			     `(,(absolute '%RECORD-SET!) STRUCTURE
-							 ,(slot/index slot)
-							 VALUE))
-			    ((VECTOR)
-			     `(,(absolute 'VECTOR-SET!) STRUCTURE
-							,(slot/index slot)
-							VALUE))
-			    ((LIST)
-			     `(,(absolute 'SET-CAR!)
-			       (,(absolute 'LIST-TAIL) STRUCTURE
-						       ,(slot/index slot))
-			       VALUE)))))))
-	       (structure/slots structure)))
+  (append-map!
+   (lambda (slot)
+     (if (slot/read-only? slot)
+	 '()
+	 (list
+	  (let* ((name (slot/name slot))
+		 (modifier-name
+		  (if (structure/conc-name structure)
+		      (symbol-append 'SET-
+				     (structure/conc-name structure)
+				     name
+				     '!)
+		      (symbol-append 'SET- name '!))))
+	    (if (structure/safe-accessors? structure)
+		`(DEFINE ,modifier-name
+		   (,(absolute
+		      (case (structure/type structure)
+			((RECORD) 'RECORD-MODIFIER)
+			((VECTOR) 'DEFINE-STRUCTURE/VECTOR-MODIFIER)
+			((LIST) 'DEFINE-STRUCTURE/LIST-MODIFIER)))
+		    ,(or (structure/tag-expression structure)
+			 (slot/index slot))
+		    ',name))
+		`(DEFINE-INTEGRABLE (,modifier-name STRUCTURE VALUE)
+		   ,(case (structure/type structure)
+		      ((RECORD)
+		       `(,(absolute '%RECORD-SET!) STRUCTURE
+						   ,(slot/index slot)
+						   VALUE))
+		      ((VECTOR)
+		       `(,(absolute 'VECTOR-SET!) STRUCTURE
+						  ,(slot/index slot)
+						  VALUE))
+		      ((LIST)
+		       `(,(absolute 'SET-CAR!)
+			 (,(absolute 'LIST-TAIL) STRUCTURE
+						 ,(slot/index slot))
+			 VALUE)))))))))
+   (structure/slots structure)))
 
 (define (constructor-definitions structure)
   `(,@(map (lambda (boa-constructor)
@@ -673,6 +695,8 @@ differences:
 		       ,type-expression)))))))
       '()))
 
+;;;; Exported type structure
+
 (define structure-type-rtd)
 (define make-define-structure-type)
 (define structure-type?)
@@ -745,3 +769,104 @@ differences:
 	(and (structure-type? structure-type)
 	     (eq? (structure-type/type structure-type) type)
 	     structure-type))))
+
+;;;; Support for safe accessors
+
+(define (define-structure/vector-accessor tag field-name)
+  (call-with-values
+      (lambda () (accessor-parameters tag field-name 'VECTOR 'ACCESSOR))
+    (lambda (tag index type-name accessor-name)
+      (if tag
+	  (lambda (structure)
+	    (check-vector structure tag index type-name accessor-name)
+	    (vector-ref structure index))
+	  (lambda (structure)
+	    (check-vector-untagged structure index type-name accessor-name)
+	    (vector-ref structure index))))))
+
+(define (define-structure/vector-modifier tag field-name)
+  (call-with-values
+      (lambda () (accessor-parameters tag field-name 'VECTOR 'MODIFIER))
+    (lambda (tag index type-name accessor-name)
+      (if tag
+	  (lambda (structure value)
+	    (check-vector structure tag index type-name accessor-name)
+	    (vector-set! structure index value))
+	  (lambda (structure value)
+	    (check-vector-untagged structure index type-name accessor-name)
+	    (vector-set! structure index value))))))
+
+(define (define-structure/list-accessor tag field-name)
+  (call-with-values
+      (lambda () (accessor-parameters tag field-name 'LIST 'ACCESSOR))
+    (lambda (tag index type-name accessor-name)
+      (if tag
+	  (lambda (structure)
+	    (check-list structure tag index type-name accessor-name)
+	    (list-ref structure index))
+	  (lambda (structure)
+	    (check-list-untagged structure index type-name accessor-name)
+	    (list-ref structure index))))))
+
+(define (define-structure/list-modifier tag field-name)
+  (call-with-values
+      (lambda () (accessor-parameters tag field-name 'LIST 'MODIFIER))
+    (lambda (tag index type-name accessor-name)
+      (if tag
+	  (lambda (structure value)
+	    (check-list structure tag index type-name accessor-name)
+	    (set-car! (list-tail structure index) value))
+	  (lambda (structure value)
+	    (check-list-untagged structure index type-name accessor-name)
+	    (set-car! (list-tail structure index) value))))))
+
+(define-integrable (check-vector structure tag index type accessor-name)
+  (if (not (and (vector? structure)
+		(fix:> (vector-length structure) index)
+		(eq? tag (vector-ref structure 0))))
+      (error:wrong-type-argument structure type accessor-name)))
+
+(define-integrable (check-vector-untagged structure index type accessor-name)
+  (if (not (and (vector? structure)
+		(fix:> (vector-length structure) index)))
+      (error:wrong-type-argument structure type accessor-name)))
+
+(define-integrable (check-list structure tag index type accessor-name)
+  (if (not (and (list-to-index? structure index)
+		(eq? tag (car structure))))
+      (error:wrong-type-argument structure type accessor-name)))
+
+(define-integrable (check-list-untagged structure index type accessor-name)
+  (if (not (list-to-index? structure index))
+      (error:wrong-type-argument structure type accessor-name)))
+
+(define (list-to-index? object index)
+  (and (pair? object)
+       (or (fix:= 0 index)
+	   (list-to-index? (cdr object) (fix:- index 1)))))
+
+(define (accessor-parameters tag field-name structure-type accessor-type)
+  (if (exact-nonnegative-integer? tag)
+      (values #f
+	      tag
+	      (string-append (symbol->string structure-type)
+			     " of length >= "
+			     (number->string (+ tag 1)))
+	      `(,accessor-type ,tag ',field-name))
+      (let ((type (tag->structure-type tag structure-type)))
+	(if (not type)
+	    (error:wrong-type-argument tag "structure tag" accessor-type))
+	(values tag
+		(structure-type/field-index type field-name)
+		(structure-type/name type)
+		`(,accessor-type ,type ',field-name)))))
+
+(define (structure-type/field-index type name)
+  (let loop
+      ((names (structure-type/field-names type))
+       (indexes (structure-type/field-indexes type)))
+    (if (pair? names)
+	(if (eq? name (car names))
+	    (car indexes)
+	    (loop (cdr names) (cdr indexes)))
+	(error:bad-range-argument name 'STRUCTURE-TYPE/FIELD-INDEX))))
