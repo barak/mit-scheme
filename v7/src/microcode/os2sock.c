@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2sock.c,v 1.6 1997/11/12 22:14:09 cph Exp $
+$Id: os2sock.c,v 1.7 1998/08/31 03:57:49 cph Exp $
 
-Copyright (c) 1990-97 Massachusetts Institute of Technology
+Copyright (c) 1990-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -135,6 +135,12 @@ OS_get_service_by_name (const char * service_name, const char * protocol_name)
     = (getservbyname (((char *) service_name),
 		      ((char *) protocol_name)));
   return ((entry == 0) ? (-1) : (entry -> s_port));
+}
+
+unsigned short
+OS_get_service_by_number (const unsigned short port_number)
+{
+  return (htons (port_number));
 }
 
 unsigned int
