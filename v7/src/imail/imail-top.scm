@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.168 2000/06/18 20:39:36 cph Exp $
+;;; $Id: imail-top.scm,v 1.169 2000/06/19 04:37:25 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -872,14 +872,12 @@ With prefix argument, prompt even when point is on an attachment."
 	  ((if text? call-with-output-file call-with-binary-output-file)
 	   filename
 	   (lambda (port)
-	     (let ((string (message-mime-body-part message selector #f)))
-	       (case (mime-body-one-part-encoding body)
-		 ((QUOTED-PRINTABLE)
-		  (decode-quoted-printable-string string port text?))
-		 ((BASE64)
-		  (decode-base64-string string port text?))
-		 (else
-		  (write-string string port))))))
+	     (call-with-mime-decoding-output-port
+	      (mime-body-one-part-encoding body)
+	      port
+	      text?
+	      (lambda (port)
+		(write-mime-message-body-part message selector #f port)))))
 	  (set-variable! imail-mime-attachment-directory
 			 (directory-pathname filename)
 			 buffer)))))
@@ -907,16 +905,51 @@ With prefix argument, prompt even when point is on an attachment."
   (char-set-invert
    (char-set-difference char-set:graphic
 			char-set:mime-attachment-filename-delimiters)))
+
+(define (call-with-mime-decoding-output-port encoding port text? generator)
+  (case encoding
+    ((QUOTED-PRINTABLE)
+     (call-with-decode-quoted-printable-output-port port text? generator))
+    ((BASE64)
+     (call-with-decode-base64-output-port port text? generator))
+    (else
+     (generator port))))
 
-(define (decode-quoted-printable-string string port text?)
-  (let ((context (decode-quoted-printable:initialize port text?)))
-    (decode-quoted-printable:update context string 0 (string-length string))
-    (decode-quoted-printable:finalize context)))
+(define (call-with-decode-quoted-printable-output-port port text? generator)
+  (let ((port
+	 (make-port decode-quoted-printable-port-type
+		    (decode-quoted-printable:initialize port text?))))
+    (let ((v (generator port)))
+      (close-output-port port)
+      v)))
 
-(define (decode-base64-string string port text?)
-  (let ((context (decode-base64:initialize port text?)))
-    (decode-base64:update context string 0 (string-length string))
-    (decode-base64:finalize context)))
+(define decode-quoted-printable-port-type
+  (make-port-type
+   `((WRITE-SUBSTRING
+      ,(lambda (port string start end)
+	 (decode-quoted-printable:update (port/state port) string start end)))
+     (CLOSE-OUTPUT
+      ,(lambda (port)
+	 (decode-quoted-printable:finalize (port/state port)))))
+   #f))
+
+(define (call-with-decode-base64-output-port port text? generator)
+  (let ((port
+	 (make-port decode-base64-port-type
+		    (decode-base64:initialize port text?))))
+    (let ((v (generator port)))
+      (close-output-port port)
+      v)))
+
+(define decode-base64-port-type
+  (make-port-type
+   `((WRITE-SUBSTRING
+      ,(lambda (port string start end)
+	 (decode-base64:update (port/state port) string start end)))
+     (CLOSE-OUTPUT
+      ,(lambda (port)
+	 (decode-base64:finalize (port/state port)))))
+   #f))
 
 ;;;; Sending mail
 
@@ -954,7 +987,7 @@ While composing the reply, use \\[mail-yank-original] to yank the
 (define (imail-yank-original buffer mark)
   (let ((message (selected-message #t buffer)))
     (insert-header-fields message #f mark)
-    (insert-string (message-body message) mark)))
+    (insert-message-body message mark)))
 
 (define-command imail-forward
   "Forward the current message to another user.
@@ -992,12 +1025,12 @@ see the documentation of `imail-resend'."
 		     (if raw?
 			 headers
 			 (maybe-reformat-headers headers mail-buffer))))
-	      (message-body message))
+	      (lambda (port) (write-message-body message port)))
 	     (let ((mark (mark-left-inserting-copy (buffer-end mail-buffer))))
 	       (with-buffer-point-preserved mail-buffer
 		 (lambda ()
 		   (insert-header-fields message raw? mark)
-		   (insert-string (message-body message) mark)))
+		   (insert-message-body message mark)))
 	       (mark-temporary! mark))))
        (if (window-has-no-neighbors? (current-window))
 	   (select-buffer mail-buffer)
@@ -1026,7 +1059,7 @@ ADDRESSES is a string consisting of several addresses separated by commas."
        (lambda (mail-buffer)
 	 (with-buffer-point-preserved mail-buffer
 	   (lambda ()
-	     (insert-string (message-body message) (buffer-end mail-buffer))))
+	     (insert-message-body message (buffer-end mail-buffer))))
 	 (disable-buffer-mime-processing! mail-buffer)
 	 (if (window-has-no-neighbors? (current-window))
 	     (select-buffer mail-buffer)
@@ -1316,8 +1349,8 @@ A prefix argument says to prompt for a URL and append all messages
 	      (let ((unseen (navigator/first-unseen-message folder)))
 		(if unseen
 		    (select-message folder unseen)
-		    (message "No unseen messages.")))
-	      (message "No changes to mail folder."))))))
+		    (message "No unseen messages")))
+	      (message "No changes to mail folder"))))))
 
 (define-command imail-disconnect
   "Disconnect the selected IMAIL folder from its server.
@@ -1377,7 +1410,10 @@ Negative argument means search in reverse."
 
 (define (imail-get-default-url protocol)
   (cond ((not protocol)
-	 (let ((folder (selected-folder #f)))
+	 (let ((folder
+		(buffer-get (chase-imail-buffer (selected-buffer))
+			    'IMAIL-FOLDER
+			    #f)))
 	   (if folder
 	       (folder-url folder)
 	       (imail-get-default-url "imap"))))
@@ -1628,14 +1664,13 @@ Negative argument means search in reverse."
 		      (store-property! message 'RAW? raw?)
 		      (insert-header-fields message raw? mark)
 		      (cond (raw?
-			     (insert-string (message-body message) mark))
+			     (insert-message-body message mark))
 			    ((folder-supports-mime? folder)
 			     (insert-mime-message-body message mark))
 			    (else
 			     (call-with-auto-wrapped-output-mark mark
 			       (lambda (port)
-				 (write-string (message-body message)
-					       port))))))
+				 (write-message-body message port))))))
 		    (insert-string "[This folder has no messages in it.]"
 				   mark))))
 	    (mark-temporary! mark))
@@ -1771,9 +1806,10 @@ Negative argument means search in reverse."
 		  (message-detached? m))
 	      (select-message folder
 			      (let ((length (folder-length folder)))
-				(cond ((< index length) index)
-				      ((> length 0) (- length 1))
-				      (else #f)))
+				(and (> length 0)
+				     (if (< index length)
+					 index
+					 (- length 1))))
 			      #t)))))
   (notice-folder-modifications folder))
 
@@ -1879,6 +1915,8 @@ Negative argument means search in reverse."
 		     (set-car! holder 'KILL-THREAD))))
 	     (remove-property! folder 'PROBE-REGISTRATION)))))))
 
+;;;; Message insertion procedures
+
 (define (insert-header-fields headers raw? mark)
   (for-each (lambda (header)
 	      (insert-string (header-field-name header) mark)
@@ -1924,12 +1962,17 @@ Negative argument means search in reverse."
 				  (header-field-value header)))
 			  headers)))
 	headers)))
+
+(define (insert-message-body message mark)
+  (call-with-output-mark mark
+    (lambda (port)
+      (write-message-body message port))))
 
 ;;;; MIME message formatting
 
 (define (insert-mime-message-body message mark)
   (insert-mime-message-part message
-			    (message-mime-body-structure message)
+			    (mime-message-body-structure message)
 			    #f
 			    '()
 			    mark))
@@ -1969,9 +2012,12 @@ Negative argument means search in reverse."
 (define-method insert-mime-message-part
     (message (body <mime-body-message>) enclosure selector mark)
   enclosure
-  (insert-header-fields (message-mime-body-part message
-						`(,@selector HEADER)
-						#t)
+  (insert-header-fields (with-string-output-port
+			  (lambda (port)
+			    (write-mime-message-body-part message
+							  `(,@selector HEADER)
+							  #t
+							  port)))
 			#f
 			mark)
   (insert-mime-message-part message
@@ -2012,22 +2058,17 @@ Negative argument means search in reverse."
 			     "\\'")
 	      (mime-body-parameter body 'CHARSET "us-ascii")
 	      #t))
-	(let ((text
-	       (message-mime-body-part
-		message
-		(if (or (not enclosure) message-enclosure?)
-		    `(,@selector TEXT)
-		    selector)
-		#t)))
-	  (call-with-auto-wrapped-output-mark mark
-	    (lambda (port)
-	      (case encoding
-		((QUOTED-PRINTABLE)
-		 (decode-quoted-printable-string text port #t))
-		((BASE64)
-		 (decode-base64-string text port #t))
-		(else
-		 (write-string text port))))))
+	(call-with-auto-wrapped-output-mark mark
+	  (lambda (port)
+	    (call-with-mime-decoding-output-port encoding port #t
+	      (lambda (port)
+		(write-mime-message-body-part message
+					      (if (or (not enclosure)
+						      message-enclosure?)
+						  `(,@selector TEXT)
+						  selector)
+					      #t
+					      port)))))
 	(insert-mime-message-attachment 'ATTACHMENT body selector mark))))
 
 (define (insert-mime-message-attachment class body selector mark)
