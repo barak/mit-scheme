@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rcse2.scm,v 1.1 1994/11/19 02:06:38 adams Exp $
+$Id: rcse2.scm,v 1.2 1996/07/24 03:09:30 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -145,7 +145,7 @@ MIT in each case. |#
     (define (continue expression)
       (rtl:reduce-subparts expression + 0 loop
 	(lambda (object)
-	  (cond ((integer? object) (inexact->exact object))
+	  (cond ((real? object)   (round->exact object))
 		((symbol? object) (symbol-hash object))
 		((string? object) (string-hash object))
 		(else (hash object))))))
