@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/offset.scm,v 4.1 1987/12/30 06:47:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/offset.scm,v 4.2 1988/01/02 16:45:01 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -53,7 +53,9 @@ MIT in each case. |#
 				continuation-type/push)
 			   (1+ (continuation/offset procedure))
 			   (continuation/offset procedure)))
-	    (walk-node (procedure-entry-node procedure) 0))))))
+	    (begin
+	      (for-each walk-rvalue (procedure-values procedure))
+	      (walk-node (procedure-entry-node procedure) 0)))))))
 
 (define (walk-node node offset)
   (let ((offset* (node/offset node)))
