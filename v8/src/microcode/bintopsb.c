@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bintopsb.c,v 9.59 1993/11/07 01:57:14 gjr Exp $
+$Id: bintopsb.c,v 9.60 1993/11/07 02:12:56 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -1258,7 +1258,7 @@ DEFUN (Process_Area, (Code, Area, Bound, Obj, FObj),
 	else
 	{
 	  char * word_ptr;
-	  long count, address;
+	  long count, address = 0;
 	  SCHEME_OBJECT * area_end, * scan, * i_scan;
 
 	  i_scan = (&Mem_Base[*Area]);
@@ -1312,7 +1312,7 @@ DEFUN (Process_Area, (Code, Area, Bound, Obj, FObj),
 	    case GLOBAL_OPERATOR_LINKAGE_KIND:
 	    {
 	      char * word_ptr;
-	      long count, address;
+	      long count, address = 0;
 	      SCHEME_OBJECT * area_end, * scan, * i_scan;
 
 	      i_scan = (&Mem_Base[*Area]);
@@ -1609,7 +1609,7 @@ DEFUN (print_c_closure_entries, (entry, count),
     unsigned long entry_index = (* ((unsigned long *) entry));
     unsigned long format = (COMPILED_ENTRY_FORMAT_WORD (entry));
     SCHEME_OBJECT * block, base;
-    unsigned long entry_number;
+    unsigned long entry_number = 0;
     long offset;
 
     EXTRACT_CLOSURE_ENTRY_ADDRESS (entry_number, entry);
@@ -1693,12 +1693,12 @@ DEFUN (print_objects, (from, to),
 		     ((long) count));
 	    while (--count >= 0)
 	    {
-	      unsigned long quad = ((unsigned long) *from++);
+	      unsigned long the_quad = ((unsigned long) *from++);
 
 	      fprintf (portable_file, "%02x %lx %lx\n",
 		       TC_C_COMPILED_TAG,
 		       ((long) C_COMPILED_RAW_QUAD),
-		       quad);
+		       the_quad);
 	    }
 	    break;
 	  }
@@ -1707,7 +1707,7 @@ DEFUN (print_objects, (from, to),
 	  case GLOBAL_OPERATOR_LINKAGE_KIND:
 	  {
 	    char * word_ptr;
-	    long count, address;
+	    long count, address = 0;
 	    SCHEME_OBJECT This, * area_end, * scan, * i_scan;
 
 	    i_scan = (from - 1);
@@ -1726,7 +1726,7 @@ DEFUN (print_objects, (from, to),
 	    while (--count >= 0)
 	    {
 	      SCHEME_OBJECT base;
-	      long arity, address, offset;
+	      long arity, offset, address = 0;
 
 	      scan = ((SCHEME_OBJECT *) word_ptr);
 	      word_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr));
