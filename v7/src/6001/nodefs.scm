@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/nodefs.scm,v 1.1 1991/08/22 17:42:36 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/nodefs.scm,v 1.2 1991/12/06 23:14:19 sasha Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -41,11 +41,11 @@ MIT in each case. |#
   (set! hook/repl-eval student/repl-eval)
   unspecific)
 
-(define (student/repl-eval repl s-expression environment syntax-table)
-  (let ((scode (rewrite-scode (syntax s-expression syntax-table) repl)))
+(define (student/repl-eval s-expression environment syntax-table)
+  (let ((scode (rewrite-scode (syntax s-expression syntax-table))))
     (with-new-history (lambda () (extended-scode-eval scode environment)))))
 
-(define (rewrite-scode expression repl)
+(define (rewrite-scode expression)
   (let ((expression
 	 (if (open-block? expression)
 	     (open-block-components expression unscan-defines)
@@ -65,7 +65,7 @@ MIT in each case. |#
 	  (sequence-actions expression)))))
 
 (define (write-definition-value name value)
-  (let ((port (nearest-cmdl/output-port)))
+  (let ((port (nearest-cmdl/port)))
     (fresh-line port)
     (write-string ";" port)
     (write name port)
