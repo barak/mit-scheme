@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 13.45 1987/09/18 03:25:31 gjs Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 13.46 1987/09/24 06:27:43 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -82,6 +82,19 @@
   (with-output-to-string
     (lambda ()
       (write object))))
+
+(define paranoid-error-hook?
+  false)
+
+(define (emacs-error-hook)
+  (transmit-signal-without-gc #\z)
+  (beep)
+  (if paranoid-error-hook?
+      (begin
+	(transmit-signal-with-argument #\P
+"Error! Type ctl-E to enter error loop, anything else to return to top level.")
+	(if (not (char-ci=? (emacs-read-char-immediate) #\C-E))
+	    (abort-to-previous-driver "Quit!")))))
 
 (define (emacs-rep-prompt level string)
   (transmit-signal-with-argument
@@ -117,50 +130,21 @@
       (transmit-signal-without-gc #\c))
   (loop))
 
+(define (emacs-check-and-clean-up-input-channel delete-mode interrupt-char)
+  (if (= delete-mode
+	 (access until-most-recent-interrupt-character interrupt-system))
+      (begin
+	(let loop ()
+	  (if (not (char=? (primitive-read-char-immediate) #\C-@))
+	      (loop)))
+	(transmit-signal #\g)))
+  true)
+
 (define primitive-read-char-ready?
   (make-primitive-procedure 'TTY-READ-CHAR-READY?))
 
 (define primitive-read-char-immediate
   (make-primitive-procedure 'TTY-READ-CHAR-IMMEDIATE))
-
-(define paranoid-error-hook?
-  false)
-
-(define (emacs-error-hook)
-  (transmit-signal-without-gc #\z)
-  (beep)
-  (if paranoid-error-hook?
-      (begin
-	(transmit-signal-with-argument #\P
-"Error! Type ctl-E to enter error loop, anything else to return to top level.")
-	(if (not (char-ci=? (emacs-read-char-immediate) #\C-E))
-	    (abort-to-previous-driver "Quit!")))))
-
-(define emacs-check-and-clean-up-input-channel
-  (lambda (delete-mode interrupt-character)
-    (if (= delete-mode (access until-most-recent-interrupt-character interrupt-system))
-	(begin
-	  (flush-until-emacs-flush-character)
-	  (transmit-signal #\g)
-	  true)
-	)))
-
-(define flush-until-emacs-flush-character
-  (let ((flush-char1 (integer->char 192))) ;corresponds to null (ascii 0)
-    (declare (integrate-primitive-procedures tty-read-char-immediate
-					     char->integer
-					     &=))
-    (define &= (make-primitive-procedure '&=))
-    (define tty-read-char-immediate
-      (make-primitive-procedure 'tty-read-char-immediate))
-    (named-lambda (flush-until-emacs-flush-character)
-      (if (under-emacs?)
-	  (let loop ()
-	    (if (&= (char->integer (tty-read-char-immediate))
-		    192)		;corresponds to null (ascii 0)
-		'()
-		(loop)))))))
-
 
 (define normal-start-gc (access gc-start-hook gc-statistics-package))
 (define normal-finish-gc (access gc-finish-hook gc-statistics-package))
