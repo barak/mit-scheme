@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scomb.scm,v 13.42 1987/03/17 18:52:59 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scomb.scm,v 13.43 1987/08/17 18:16:27 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -237,7 +237,6 @@
 (define constant-folding-operators
   (map make-primitive-procedure
        '(PRIMITIVE-TYPE
-	 CAR CDR VECTOR-LENGTH VECTOR-REF
 	 &+ &- &* &/ INTEGER-DIVIDE 1+ -1+
 	 TRUNCATE ROUND FLOOR CEILING
 	 SQRT EXP LOG SIN COS &ATAN)))
