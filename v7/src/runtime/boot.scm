@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: boot.scm,v 14.10 1993/10/21 13:57:29 cph Exp $
+$Id: boot.scm,v 14.11 1996/05/17 17:47:59 cph Exp $
 
-Copyright (c) 1988-93 Massachusetts Institute of Technology
+Copyright (c) 1988-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -95,6 +95,9 @@ MIT in each case. |#
 ;; GC & stack overflow only
 (define-integrable interrupt-mask/gc-ok    #x0007)
 
+;; GC, stack overflow, and keyboard only
+(define-integrable interrupt-mask/no-background #x0017)
+
 ;; GC, stack overflow, and timer only
 (define-integrable interrupt-mask/timer-ok #x0047)
 
@@ -112,6 +115,12 @@ MIT in each case. |#
 
 (define (without-interrupts thunk)
   (with-interrupt-mask interrupt-mask/gc-ok
+    (lambda (interrupt-mask)
+      interrupt-mask
+      (thunk))))
+
+(define (without-background-interrupts thunk)
+  (with-interrupt-mask interrupt-mask/no-background
     (lambda (interrupt-mask)
       interrupt-mask
       (thunk))))
