@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.70 1992/02/29 19:48:36 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.71 1992/03/16 16:51:21 mhwu Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -43,10 +43,11 @@ MIT in each case. */
 #ifdef DOS386
 #include "msdos.h"
 #define SUB_DIRECTORY_DELIMITER '\\'
-extern void EXFUN (mktemp, (unsigned char *));
+extern char * EXFUN (mktemp, (char *));
 #else
 #include "ux.h"
 #define SUB_DIRECTORY_DELIMITER '/'
+#define UNLINK_BEFORE_CLOSE
 extern int EXFUN (unlink, (CONST char *));
 #endif
 
@@ -1669,7 +1670,7 @@ do {									\
   open_gc_file (size, 1);						\
 } while (0)
 
-#define BUFFER_SHUTDOWN(lt)	close_gc_file (0)
+#define BUFFER_SHUTDOWN(lt)	close_gc_file (lt)
 
 #define INITIALIZE_IO()		do { } while (0)
 #define AWAIT_IO_COMPLETION()	do { } while (0)
@@ -1904,10 +1905,13 @@ DEFUN (open_gc_file, (size, unlink_p),
     termination_open_gc_file ("open", ((char *) NULL));
 
   keep_gc_file_p = (exists_p || option_gc_keep);
+
+#ifdef UNLINK_BEFORE_CLOSE
   if (!keep_gc_file_p && unlink_p)
   {
     (void) (unlink (gc_file_name));
   }
+#endif  
 
 #ifdef HAVE_PREALLOC
   if (!exists_p)
