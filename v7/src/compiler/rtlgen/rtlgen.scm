@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.11 1988/11/02 21:45:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.12 1988/12/12 21:53:00 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -206,6 +206,9 @@ MIT in each case. |#
     ((DEFINITION)
      (scfg*scfg->scfg! (generate/definition node)
 		       (generate/node (snode-next node))))
+    ((STACK-OVERWRITE)
+     (scfg*scfg->scfg! (generate/stack-overwrite node)
+		       (generate/node (snode-next node))))
     ((TRUE-TEST)
      (generate/true-test node))
     ((FG-NOOP)
@@ -237,58 +240,26 @@ MIT in each case. |#
      (for-each (lambda (edge)
 		 (bblock-compress! (edge-right-node edge)))
 	       (rgraph-initial-edges rgraph))))
-  (let ((collected-bblocks (collect-rgraph-bblocks rgraph)))
-    (remove-unreachable-nodes! collected-bblocks)
-    (set-rgraph-bblocks! rgraph collected-bblocks)))
+  (set-rgraph-bblocks! rgraph (collect-rgraph-bblocks rgraph)))
 
 (define collect-rgraph-bblocks
-  ;; Before you do anything to this procedure which might change the
-  ;; order of the bblocks in resultant list, please read the comment
-  ;; for remove-unreachable-nodes!
-  (let ((result))
+  (let ()
     (define (loop bblock)
       (node-mark! bblock)
-      (if (sblock? bblock)
-	  (next (snode-next bblock))
-	  (begin
-	    (next (pnode-consequent bblock))
-	    (next (pnode-alternative bblock))))
-      (set! result (cons bblock result)))
+      (cons bblock
+	    (if (sblock? bblock)
+		(next (snode-next bblock))
+		(append! (next (pnode-consequent bblock))
+			 (next (pnode-alternative bblock))))))
 
     (define (next bblock)
-      (and bblock
-	   (not (node-marked? bblock))
-	   (loop bblock)))
-    
-    (define (doit bblock)
-      (set! result '())
-      (loop bblock)
-      result)
+      (if (and bblock (not (node-marked? bblock)))
+	  (loop bblock)
+	  '()))
 
     (lambda (rgraph)
       (with-new-node-marks
        (lambda ()
 	 (mapcan (lambda (edge)
-		   (doit (edge-right-node edge)))
+		   (loop (edge-right-node edge)))
 		 (rgraph-initial-edges rgraph)))))))
-
-(define (remove-unreachable-nodes! collected-bblocks)
-  ;; This procedure depends on the order of the nodes in
-  ;; collected-bblocks. This order must be such that every node on a
-  ;; path from the root of the rgraph to a given node must precede the
-  ;; given node in the ordering. Another way of saying this is that
-  ;; the order of node in collected-bblocks must be a partial order on
-  ;; the ancestor-of relation on the rgraph DAG. Needless to say the
-  ;; procedure collect-rgraph-bblocks above produces a list of bblocks
-  ;; which has the correct order.
-  (with-new-node-marks
-   (lambda ()
-     (for-each
-      (lambda (bblock)
-	(node-mark! bblock)
-	(set-node-previous-edges! bblock
-	  (list-transform-positive (node-previous-edges bblock)
-	    (lambda (edge)
-	      (let ((prev-node (edge-left-node edge)))
-		(or (not prev-node) (node-marked? prev-node)))))))
-      collected-bblocks))))
