@@ -1,7 +1,7 @@
 /* -*-C-*-
    Machine file for Intel i386 computers
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/i386.h,v 1.2 1992/02/19 18:57:36 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/i386.h,v 1.3 1992/08/27 09:06:10 jinx Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
@@ -35,8 +35,11 @@ MIT in each case. */
 
 #define PROC_TYPE PROC_TYPE_I386
 
-/* This is really only good under bsd.  SysV versions probably have -D */
-
+#ifdef _SYSV
+#define M4_SWITCH_MACHINE -DTYPE_CODE_LENGTH=6
+#else
+/* BSD hack when using ultrix.m4 */
 #define M4_SWITCH_MACHINE -P "define(TYPE_CODE_LENGTH,6)"
+#endif
 
 #define C_SWITCH_MACHINE -DTYPE_CODE_LENGTH=6
