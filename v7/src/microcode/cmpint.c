@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.64 1993/08/26 05:38:29 gjr Exp $
+$Id: cmpint.c,v 1.65 1993/09/01 22:09:17 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -2981,6 +2981,7 @@ DEFUN (pc_to_utility_index, (pc), unsigned long pc)
   }
 }
 
+extern char * EXFUN (builtin_index_to_name, (int));
 extern void EXFUN (declare_builtin, (unsigned long));
 extern int EXFUN (pc_to_builtin_index, (unsigned long));
 extern unsigned long * builtins;
@@ -2988,9 +2989,11 @@ extern unsigned long * builtins;
 static int n_builtins = 0;
 static int s_builtins = 0;
 unsigned long * builtins = ((unsigned long *) NULL);
+char ** builtin_names = ((char **) NULL);
 
 void
-DEFUN (declare_builtin, (builtin), unsigned long builtin)
+DEFUN (declare_builtin, (builtin, name),
+       unsigned long builtin AND char * name)
 {
   if (n_builtins == s_builtins)
   {
@@ -2999,6 +3002,7 @@ DEFUN (declare_builtin, (builtin), unsigned long builtin)
       s_builtins = 30;
       builtins = ((unsigned long *)
 		  (malloc (s_builtins * (sizeof (unsigned long)))));
+      builtin_names = ((char **) (malloc (s_builtins * (sizeof (char *)))));
     }
     else
     {
@@ -3006,16 +3010,30 @@ DEFUN (declare_builtin, (builtin), unsigned long builtin)
       builtins = ((unsigned long *)
 		  (realloc (builtins,
 			    (s_builtins * (sizeof (unsigned long))))));
+      builtin_names = ((char **)
+		       (realloc (builtin_names,
+				 (s_builtins * (sizeof (char *))))));
     }
-    if (builtins == ((unsigned long *) NULL))
+    if ((builtins == ((unsigned long *) NULL))
+	|| (builtin_names == ((char **) NULL)))
     {
       outf_fatal ("declare_builtin: malloc/realloc failed (size = %d).\n",
-		  (s_builtins * (sizeof (unsigned long))));
+		  s_builtins);
       termination_init_error ();
     }
   }
-  builtins[n_builtins++] = builtin;
+  builtins[n_builtins] = builtin;
+  bulitin_names[n_builtins++] = name;
   return;
+}
+
+char *
+DEFUN (builtin_index_to_name, (index), int index)
+{
+  if ((index < 0) || (index >= n_builtins))
+    return ((char *) NULL);
+  else
+    return (builtin_names[index]);
 }
 
 int

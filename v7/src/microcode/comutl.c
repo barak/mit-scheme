@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: comutl.c,v 1.24 1993/08/22 20:25:32 gjr Exp $
+$Id: comutl.c,v 1.25 1993/09/01 22:09:26 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -148,6 +148,20 @@ DEFINE_PRIMITIVE ("UTILITY-INDEX->NAME", Prim_utility_index_to_name, 1, 1,
   PRIMITIVE_HEADER (1);
 
   result = (utility_index_to_name (arg_integer (1)));
+  if (result == ((char *) NULL))
+    PRIMITIVE_RETURN (SHARP_F);
+  else
+    PRIMITIVE_RETURN (char_pointer_to_string ((unsigned char *) result));
+}
+
+DEFINE_PRIMITIVE ("BUILTIN-INDEX->NAME", Prim_builtin_index_to_name, 1, 1,
+  "Given an integer, return the name of the corresponding compiled code utility.")
+{
+  extern char * EXFUN (builtin_index_to_name, (int));
+  char * result;
+  PRIMITIVE_HEADER (1);
+
+  result = (builtin_index_to_name (arg_integer (1)));
   if (result == ((char *) NULL))
     PRIMITIVE_RETURN (SHARP_F);
   else
