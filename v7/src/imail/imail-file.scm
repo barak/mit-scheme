@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.50 2000/06/30 02:59:54 cph Exp $
+;;; $Id: imail-file.scm,v 1.51 2000/06/30 03:08:20 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -46,7 +46,8 @@
     ((string <string>) (default-url <file-url>)
 		       if-unique if-not-unique if-not-found)
   (pathname-complete-string
-   (merge-pathnames string (file-url-pathname default-url))
+   (merge-pathnames string
+		    (directory-pathname (file-url-pathname default-url)))
    (lambda (pathname) pathname #t)
    (lambda (string)
      (if-unique (->namestring string)))
@@ -59,7 +60,8 @@
     ((string <string>) (default-url <file-url>))
   (map ->namestring
        (pathname-completions-list
-	(merge-pathnames string (file-url-pathname default-url))
+	(merge-pathnames string
+			 (directory-pathname (file-url-pathname default-url)))
 	(lambda (pathname) pathname #t))))
 
 ;;;; Server operations
