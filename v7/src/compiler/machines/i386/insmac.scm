@@ -1,6 +1,6 @@
-#| -*-Scheme-*-
+>#| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/insmac.scm,v 1.4 1992/02/13 05:30:32 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/insmac.scm,v 1.5 1992/02/13 05:42:40 jinx Exp $
 $Vax-Header: insmac.scm,v 1.12 89/05/17 20:29:15 GMT jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -58,7 +58,12 @@ MIT in each case. |#
 				',categories
  				,(integer-syntaxer mode 'UNSIGNED 2)
 				,(integer-syntaxer register 'UNSIGNED 3)
-				,(process-fields tail false))))))))
+				,(process-tail tail false))))))))
+
+(define (process-tail tail early?)
+  (if (null? tail)
+      `()
+      (process-fields tail early?)))
 
 ;; This one is necessary to distinguish between r/mW mW, etc.
 
