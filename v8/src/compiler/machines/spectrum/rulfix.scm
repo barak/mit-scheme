@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulfix.scm,v 1.4 1996/07/23 19:11:20 adams Exp $
+$Id: rulfix.scm,v 1.5 1996/07/23 19:23:21 adams Exp $
 
 Copyright (c) 1989-1996 Massachusetts Institute of Technology
 
@@ -366,6 +366,7 @@ MIT in each case. |#
     (if ovflw? (error "RULFIX: FIXNUM-LSH with overflow check requested"))
     (signed-fixnum? constant))
   (lambda (tgt src shift overflow?)
+    (if overflow? (error "RULFIX: FIXNUM-LSH with overflow check requested"))
     (cond ((zero? shift)
 	   (copy src tgt))
 	  ((negative? shift)
