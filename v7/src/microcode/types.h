@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: types.h,v 9.34 1993/03/01 19:41:18 arthur Exp $
+$Id: types.h,v 9.35 1997/07/15 23:26:32 adams Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
@@ -189,7 +189,6 @@ MIT in each case. */
 
 #define TC_FALSE	        	TC_NULL
 #define TC_MANIFEST_VECTOR		TC_NULL
-#define GLOBAL_ENV			TC_NULL
 #define TC_BIT_STRING			TC_VECTOR_1B
 #define TC_VECTOR_8B			TC_CHARACTER_STRING
 #define TC_HUNK3			TC_HUNK3_B
