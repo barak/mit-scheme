@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.13 1987/05/07 04:38:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.14 1987/05/09 06:27:14 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -80,7 +80,7 @@ MIT in each case. |#
       (make-null-cfg)
       (generate/node (cfg-entry-node (subproblem-cfg subproblem)) true)))
 
-(define (generate/subproblem subproblem)
+(define (generate/operand subproblem)
   ;; The subproblem-cfg must be generated before the subproblem-value,
   ;; because if it is a combination, the combination-value must be
   ;; marked as a value-temporary before the code for referencing it
@@ -88,8 +88,12 @@ MIT in each case. |#
   (let ((cfg (generate/subproblem-cfg subproblem)))
     (transmit-values (generate/rvalue (subproblem-value subproblem))
       (lambda (prefix expression)
-	(return-2 (scfg*scfg->scfg! cfg prefix)
-		  expression)))))
+	(return-3 cfg prefix expression)))))
+
+(define (generate/subproblem subproblem)
+  (transmit-values (generate/operand subproblem)
+    (lambda (cfg prefix expression)
+      (return-2 (scfg*scfg->scfg! cfg prefix) expression))))
 
 (define (generate/subproblem-push subproblem)
   (transmit-values (generate/subproblem subproblem)
@@ -97,20 +101,20 @@ MIT in each case. |#
       (scfg*scfg->scfg! cfg (rtl:make-push expression)))))
 
 (define (define-statement-generator tag generator)
-  (define-generator tag (normal-statement-generator generator)))
-
-(define (normal-statement-generator generator)
-  (lambda (node subproblem?)
-    (generate/normal-statement node subproblem? generator)))
+  (define-generator tag
+    (lambda (node subproblem?)
+      (generate/normal-statement node subproblem?
+	(lambda (subproblem?)
+	  (generator node subproblem?))))))
 
 (define (generate/normal-statement node subproblem? generator)
   (if (snode-next node)
       ;; Due to the side-effect on combination-value temporaries, we
       ;; must generate the nodes in the control flow order.
-      (let ((cfg (generator node true)))
+      (let ((cfg (generator true)))
 	(scfg*scfg->scfg! cfg
 			  (generate/node (snode-next node) subproblem?)))
-      (generator node subproblem?)))
+      (generator subproblem?)))
 
 (define (define-predicate-generator tag generator)
   (define-generator tag (normal-predicate-generator generator)))
