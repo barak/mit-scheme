@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.22 1992/02/28 20:23:57 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.23 1992/04/14 20:30:35 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -502,34 +502,30 @@ MIT in each case. |#
 				  source1
 				  source2))))
 
+(define (do-division target source1 source2 result-reg)
+  (let ((load-dividend (load-machine-register! source1 eax)))
+    (require-register! edx)
+    (rtl-target:=machine-register! target result-reg)
+    (let ((source2 (any-reference source2)))
+      (LAP ,@load-dividend
+	   (MOV W (R ,edx) (R ,eax))
+	   (SAR W (R ,edx) (& 31))
+	   (IDIV W (R ,eax) ,source2)))))  
+
 (define-arithmetic-method 'FIXNUM-QUOTIENT fixnum-methods/2-args
   (lambda (target source1 source2 overflow?)
     overflow?				; ignored
     (if (= source2 source1)
 	(load-fixnum-constant 1 (target-register-reference target))
-	(let ((load-dividend (load-machine-register! source1 eax)))
-	  (require-register! edx)
-	  (let ((source2 (any-reference source2)))
-	    (rtl-target:=machine-register! target eax)
-	    (LAP ,@load-dividend
-		 (MOV W (R ,edx) (R ,eax))
-		 (SAR W (R ,edx) (& 31))
-		 (IDIV W (R ,eax) ,source2)
-		 (SAL W (R ,eax) (& ,scheme-type-width))))))))
+	(LAP ,@(do-division target source1 source2 eax)
+	     (SAL W (R ,eax) (& ,scheme-type-width))))))
 
 (define-arithmetic-method 'FIXNUM-REMAINDER fixnum-methods/2-args
   (lambda (target source1 source2 overflow?)
     overflow?				; ignored
     (if (= source2 source1)
 	(load-fixnum-constant 0 (target-register-reference target))
-	(let ((load-dividend (load-machine-register! source1 eax)))
-	  (require-register! edx)
-	  (let ((source2 (any-reference source2)))
-	    (rtl-target:=machine-register! target edx)
-	    (LAP ,@load-dividend
-		 (MOV W (R ,edx) (R ,eax))
-		 (SAR W (R ,edx) (& 31))
-		 (IDIV W (R ,eax) ,source2)))))))
+	(do-division target source1 source2 edx))))
 
 (define-arithmetic-method 'PLUS-FIXNUM fixnum-methods/2-args-constant
   (lambda (target n overflow?)
