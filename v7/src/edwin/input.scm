@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/input.scm,v 1.88 1991/03/16 00:02:18 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/input.scm,v 1.89 1991/05/02 20:38:36 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -195,8 +195,7 @@ B 3BAB8C
 
 (define (keyboard-read-char-1 read-char)
   (remap-alias-char
-   (let ((char-ready? (editor-char-ready? current-editor))
-	 (halt-update? (editor-halt-update? current-editor)))
+   (let ((char-ready? (editor-char-ready? current-editor)))
      (if (not (char-ready?))
 	 (begin
 	   (accept-process-output)
