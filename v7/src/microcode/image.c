@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/image.c,v 9.24 1987/10/13 03:42:27 pas Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/image.c,v 9.25 1987/10/21 03:44:33 pas Rel $ */
 
 #include "scheme.h"
 #include "primitive.h"
@@ -206,7 +206,7 @@ Define_Primitive(Prim_Read_Image_From_2bint_File, 1, "READ-IMAGE-FROM-2BINT-FILE
   Close_File(fp);
   return Result;
 }
-
+
 Define_Primitive(Prim_Read_Image_From_CTSCAN_File, 1, "READ-IMAGE-FROM-CTSCAN-FILE")
 { long Length, i,j;
   long nrows, ncols, array_index;
@@ -247,7 +247,7 @@ Define_Primitive(Prim_Read_Image_From_CTSCAN_File, 1, "READ-IMAGE-FROM-CTSCAN-FI
   Close_File(fp);
   return Result;
 }
-
+
 Image_Read_From_CTSCAN_File(fp,Array,nrows,ncols)
      FILE *fp; REAL *Array; long nrows,ncols;
 { int i,m;
@@ -285,7 +285,7 @@ Image_Read_From_CTSCAN_File(fp,Array,nrows,ncols)
   Temp_Row = ((REAL *) Free); 
   Image_Mirror_Upside_Down(Array,nrows,ncols,Temp_Row);   /* CTSCAN images are upside down */
 }
-
+
 Image_Mirror_Upside_Down(Array,nrows,ncols,Temp_Row) 
      REAL *Array, *Temp_Row; long nrows,ncols;
 { int i;
@@ -298,7 +298,7 @@ Image_Mirror_Upside_Down(Array,nrows,ncols,Temp_Row)
     C_Array_Copy(Temp_Row, M_row,    ncols);
   }
 }
-
+
 Define_Primitive(Prim_Subimage, 5, "SUBIMAGE")
 { long Length, new_Length;
   long i,j;
@@ -357,7 +357,9 @@ Define_Primitive(Prim_Subimage, 5, "SUBIMAGE")
   
   return Result;
 }
-
+
+/* The following does not work properly, to be fixed if need.
+ */
 Define_Primitive(Prim_Image_Double_To_Float, 1, "IMAGE-DOUBLE-TO-FLOAT!")
 { long Length;
   long i,j;
@@ -404,7 +406,7 @@ Define_Primitive(Prim_Image_Double_To_Float, 1, "IMAGE-DOUBLE-TO-FLOAT!")
   
   return Arg1;
 }
-
+
 Define_Primitive(Prim_Image_Set_Row, 3, "IMAGE-SET-ROW!")
 { long Length, i,j;
   Pointer Pnrows, Pncols, Prest, Parray;
@@ -434,7 +436,7 @@ Define_Primitive(Prim_Image_Set_Row, 3, "IMAGE-SET-ROW!")
   C_Image_Set_Row(Array, row_to_set, Row_Array, nrows, ncols);
   return Arg1;
 }
-
+
 Define_Primitive(Prim_Image_Set_Column, 3, "IMAGE-SET-COLUMN!")
 { long Length, i,j;
   Pointer Pnrows, Pncols, Prest, Parray;
@@ -464,7 +466,7 @@ Define_Primitive(Prim_Image_Set_Column, 3, "IMAGE-SET-COLUMN!")
   C_Image_Set_Col(Array, col_to_set, Col_Array, nrows, ncols);
   return Arg1;
 }
-
+
 C_Image_Set_Row(Image_Array, row_to_set, Row_Array, nrows, ncols) REAL *Image_Array, *Row_Array; 
 long nrows, ncols, row_to_set;
 { long j;
@@ -475,7 +477,7 @@ long nrows, ncols, row_to_set;
   for (j=0;j<ncols;j++) 
     *To_Here++ = *From_Here++;
 }
-
+
 C_Image_Set_Col(Image_Array, col_to_set, Col_Array, nrows, ncols) REAL *Image_Array, *Col_Array; 
 long nrows, ncols, col_to_set;
 { long i;
@@ -489,29 +491,30 @@ long nrows, ncols, col_to_set;
   }
 }
        
-
 Define_Primitive(Prim_Image_Make_Ring, 4, "IMAGE-MAKE-RING")
 { long Length, i,j;
   long nrows, ncols;
-  long Min_Cycle=0, Max_Cycle=min((nrows/2),(ncols/2));
+  long Min_Cycle, Max_Cycle;
   long low_cycle, high_cycle;
   REAL *Ring_Array;
   Pointer Result, Ring_Array_Result, *Orig_Free;
   long allocated_cells;
-
+  
   Primitive_4_Args();
   Arg_1_Type(TC_FIXNUM);
   Range_Check(nrows, Arg1, 0, 512, ERR_ARG_1_BAD_RANGE);
   Arg_2_Type(TC_FIXNUM);
   Range_Check(ncols, Arg2, 0, 512, ERR_ARG_2_BAD_RANGE);
   Length = nrows*ncols;
+  Min_Cycle=0;
+  Max_Cycle=min((nrows/2),(ncols/2));
   Arg_3_Type(TC_FIXNUM);      
-  Range_Check(low_cycle, Arg3, Min_Cycle, Max_Cycle, ERR_ARG_2_BAD_RANGE);
+  Range_Check(low_cycle, Arg3, Min_Cycle, Max_Cycle, ERR_ARG_3_BAD_RANGE);
   Arg_4_Type(TC_FIXNUM);      
-  Range_Check(high_cycle, Arg4, Min_Cycle, Max_Cycle, ERR_ARG_3_BAD_RANGE);
-  if (high_cycle<low_cycle) Primitive_Error(ERR_ARG_3_BAD_RANGE);
-
-  /* ALLOCATE SPACE */
+  Range_Check(high_cycle, Arg4, Min_Cycle, Max_Cycle, ERR_ARG_4_BAD_RANGE);
+  if (high_cycle<low_cycle) Primitive_Error(ERR_ARG_4_BAD_RANGE);
+  
+  /* Allocate Space */
   Primitive_GC_If_Needed(6);
   Orig_Free = Free;
   Free += 6;
@@ -525,13 +528,13 @@ Define_Primitive(Prim_Image_Make_Ring, 4, "IMAGE-MAKE-RING")
   Allocate_Array(Ring_Array_Result, Length, allocated_cells); 
   *Orig_Free++ = Ring_Array_Result;
   *Orig_Free = NIL;
-  /* END ALLOCATION */
+  /* end allocation */
   
   Ring_Array = Scheme_Array_To_C_Array(Ring_Array_Result);
   C_Image_Make_Ring(Ring_Array, nrows, ncols, low_cycle, high_cycle);
   return Result;
 }
-
+
 C_Image_Make_Ring(Ring_Array, nrows, ncols, low_cycle, high_cycle) REAL *Ring_Array; 
 long nrows, ncols, low_cycle, high_cycle;
 { long Square_LC=low_cycle*low_cycle, Square_HC=high_cycle*high_cycle;
@@ -548,8 +551,8 @@ long nrows, ncols, low_cycle, high_cycle;
     }}
 }
 
-
-/* DONE WITHOUT SIDE-EFFECTS FOR SIMPLICITY */
+/* Periodic-shift without side-effects for code-simplicity
+ */
 Define_Primitive(Prim_Image_Periodic_Shift, 3, "IMAGE-PERIODIC-SHIFT")
 { long Length, i,j;
   Pointer Pnrows, Pncols, Prest, Parray;
@@ -579,8 +582,8 @@ Define_Primitive(Prim_Image_Periodic_Shift, 3, "IMAGE-PERIODIC-SHIFT")
   Arg_3_Type(TC_FIXNUM);
   Sign_Extend(Arg3, hor_shift);
   hor_shift = hor_shift % ncols;
-
-  /* ALLOCATE SPACE */
+
+  /* Allocate SPACE */
   Primitive_GC_If_Needed(6);
   Orig_Free = Free;
   Free += 6;
@@ -594,15 +597,16 @@ Define_Primitive(Prim_Image_Periodic_Shift, 3, "IMAGE-PERIODIC-SHIFT")
   Allocate_Array(Array_Data_Result, Length, allocated_cells); 
   *Orig_Free++ = Array_Data_Result;
   *Orig_Free = NIL;
-  /* END ALLOCATION */
+  /* end allocation */
   
   Array = Scheme_Array_To_C_Array(Parray);
   New_Array = Scheme_Array_To_C_Array(Array_Data_Result);
   C_Image_Periodic_Shift(Array, New_Array, nrows, ncols, ver_shift, hor_shift);
   return Result;
 }
-
-/* ASSUMES hor_shift<nrows, ver_shift<ncols */
+
+/* ASSUMES hor_shift<nrows, ver_shift<ncols
+ */
 C_Image_Periodic_Shift(Array, New_Array, nrows, ncols, ver_shift, hor_shift)
      REAL *Array, *New_Array; long nrows, ncols, hor_shift, ver_shift;
 { long i, j, ver_index, hor_index;
@@ -611,16 +615,16 @@ C_Image_Periodic_Shift(Array, New_Array, nrows, ncols, ver_shift, hor_shift)
   for (i=0;i<nrows;i++) { 
     for (j=0;j<ncols;j++) {
       ver_index = (i+ver_shift) % nrows;
-      if (ver_index<0) ver_index = nrows+ver_index;             /* wrapping around */
+      if (ver_index<0) ver_index = nrows+ver_index; /* wrapping around */
       hor_index = (j+hor_shift) % ncols;
       if (hor_index<0) hor_index = ncols+hor_index;
       *To_Here++ = Array[ver_index*ncols + hor_index];
     }}
 }
 
-
-/* ROTATIONS.....           */
 
+/* Rotations and stuff
+ */
 Define_Primitive(Prim_Image_Transpose, 1, "IMAGE-TRANSPOSE!")
 { long Length;
   Pointer Pnrows, Pncols, Prest, Parray;
