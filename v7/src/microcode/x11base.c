@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.32 1992/02/08 14:54:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.33 1992/02/09 03:48:11 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -490,8 +490,9 @@ DEFUN (xw_set_class_hint, (xw, name, class),
   XClassHint * class_hint = (XAllocClassHint ());
   if (class_hint == 0)
     error_external_return ();
-  (class_hint -> res_name) = name;
-  (class_hint -> res_class) = class;
+  /* This structure is misdeclared, so cast the args. */
+  (class_hint -> res_name) = ((char *) name);
+  (class_hint -> res_class) = ((char *) class);
   XSetClassHint ((XW_DISPLAY (xw)), (XW_WINDOW (xw)), class_hint);
   XFree ((caddr_t) class_hint);
 }
@@ -514,7 +515,7 @@ void
 DEFUN (xw_set_wm_name, (xw, name), struct xwindow * xw AND CONST char * name)
 {
   XTextProperty property;
-  if ((XStringListToTextProperty ((&name), 1, (&property))) == 0)
+  if ((XStringListToTextProperty (((char **) (&name)), 1, (&property))) == 0)
     error_external_return ();
   XSetWMName ((XW_DISPLAY (xw)), (XW_WINDOW (xw)), (&property));
 }
@@ -525,7 +526,7 @@ DEFUN (xw_set_wm_icon_name, (xw, name),
        CONST char * name)
 {
   XTextProperty property;
-  if ((XStringListToTextProperty ((&name), 1, (&property))) == 0)
+  if ((XStringListToTextProperty (((char **) (&name)), 1, (&property))) == 0)
     error_external_return ();
   XSetWMIconName ((XW_DISPLAY (xw)), (XW_WINDOW (xw)), (&property));
 }
@@ -537,7 +538,6 @@ DEFUN (xw_make_window_map, (xw, resource_name, resource_class, map_arg),
        CONST char * resource_class AND
        SCHEME_OBJECT map_arg)
 {
-  SCHEME_OBJECT map_arg = (ARG_REF (3));
   int map_p = 0;
   if (map_arg == SHARP_F)
     map_p = 1;
