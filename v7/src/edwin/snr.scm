@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.22 1996/12/07 07:32:57 cph Exp $
+;;;	$Id: snr.scm,v 1.23 1996/12/19 04:50:00 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-96 Massachusetts Institute of Technology
 ;;;
@@ -221,6 +221,13 @@ If false, subject changes within the thread are not ignored."
 If true (the default), all headers are kept.
 Otherwise, only unseen headers are kept."
   #t
+  boolean?)
+
+(define-variable news-group-keep-ignored-headers
+  "Switch controlling which headers are kept in the off-line database.
+If true, all headers are kept.
+Otherwise (the default), ignored headers aren't kept."
+  #f
   boolean?)
 
 (define-variable news-group-show-seen-headers
@@ -3748,14 +3755,14 @@ With prefix arg, replaces the file with the list information."
     (news-group:purge-header-cache group 'ALL)
     (news-group:purge-pre-read-headers group
       (if (ref-variable news-group-keep-seen-headers buffer)
-	  (lambda (number body?)
-	    body?
-	    (or (< number (news-group:first-article group))
-		(> number (news-group:last-article group))))
-	  (let ((ranges (news-group:guarantee-ranges-seen group)))
-	    (lambda (number body?)
-	      body?
-	      (member-of-ranges? ranges number)))))
+	  (lambda (header)
+	    (let ((number (news-header:number header)))
+	      (or (< number (news-group:first-article group))
+		  (> number (news-group:last-article group))
+		  (and (not (ref-variable news-group-keep-ignored-headers
+					  buffer))
+		       (news-header:ignore? header)))))
+	  news-header:article-seen?))
     (message msg "done")))
 
 (define (news-group:number-of-articles group)

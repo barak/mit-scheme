@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.202 1996/12/10 22:49:58 cph Exp $
+$Id: edwin.pkg,v 1.203 1996/12/19 04:50:07 cph Exp $
 
 Copyright (c) 1989-96 Massachusetts Institute of Technology
 
@@ -1704,6 +1704,7 @@ MIT in each case. |#
 	  edwin-variable$news-group-author-column
 	  edwin-variable$news-group-ignore-hidden-subjects
 	  edwin-variable$news-group-ignored-subject-retention
+	  edwin-variable$news-group-keep-ignored-headers
 	  edwin-variable$news-group-keep-seen-headers
 	  edwin-variable$news-group-mode-hook
 	  edwin-variable$news-group-show-author-name
