@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: simple.scm,v 1.50 2000/04/04 16:50:43 cph Exp $
+;;; $Id: simple.scm,v 1.51 2000/06/26 16:22:43 cph Exp $
 ;;;
 ;;; Copyright (c) 1985, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -248,7 +248,7 @@
 (define (widen #!optional point)
   (let ((point (if (default-object? point) (current-point) point)))
     (group-widen! (mark-group point))))
-
+
 (define (region-put! start end key datum)
   (if (not (mark<= start end))
       (error "Marks incorrectly related:" start end))
@@ -271,3 +271,49 @@
 		     (mark-index mark)
 		     key
 		     default))
+
+(define (find-next-property-change start end)
+  (let ((index
+	 (next-property-change (mark-group start)
+			       (mark-index start)
+			       (mark-index end))))
+    (and index
+	 (make-mark (mark-group start) index))))
+
+(define (find-previous-property-change start end)
+  (let ((index
+	 (previous-property-change (mark-group start)
+				   (mark-index start)
+				   (mark-index end))))
+    (and index
+	 (make-mark (mark-group start) index))))
+
+(define (find-next-specific-property-change start end key)
+  (let ((index
+	 (next-specific-property-change (mark-group start)
+					(mark-index start)
+					(mark-index end)
+					key)))
+    (and index
+	 (make-mark (mark-group start) index))))
+
+(define (find-previous-specific-property-change start end key)
+  (let ((index
+	 (previous-specific-property-change (mark-group start)
+					    (mark-index start)
+					    (mark-index end)
+					    key)))
+    (and index
+	 (make-mark (mark-group start) index))))
+
+(define (specific-property-region mark key)
+  (and (not (let ((default (list 'DEFAULT)))
+	      (eq? (region-get mark key default)
+		   default)))
+       (make-region
+	(let ((start (group-start mark)))
+	  (or (find-previous-specific-property-change start mark key)
+	      start))
+	(let ((end (group-end mark)))
+	  (or (find-next-specific-property-change mark end key)
+	      end)))))
