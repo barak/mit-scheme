@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: desenv.scm,v 4.4 1999/01/02 06:06:43 cph Exp $
+$Id: desenv.scm,v 4.5 2001/10/22 19:41:46 cph Exp $
 
-Copyright (c) 1987, 1999 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989, 1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,14 +16,13 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Environment Design
 
 (declare (usual-integrations))
-
-;;;; Frame Layout
 
 #|
 
@@ -83,18 +82,19 @@ Closed procedure frame:
 		((STACK)
 		 (for-each (lambda (variable)
 			     (if (variable-assigned? variable)
-				 (set-variable-in-cell?! variable true)))
+				 (set-variable-in-cell?! variable #t)))
 			   (block-bound-variables block))
 		 (setup-stack-block-offsets! block))
 		((CONTINUATION)
 		 (set-block-frame-size!
 		  block
 		  (continuation/frame-size (block-procedure block))))
-		((CLOSURE) 'DONE)
+		((CLOSURE)
+		 unspecific)
 		(else
 		 (error "Illegal block type" block))))
 	    blocks))
-
+
 (define (setup-ic-block-offsets! block)
   (let ((procedure (block-procedure block)))
     (setup-variable-offsets!
@@ -121,26 +121,29 @@ Closed procedure frame:
 		      (setup-variable-offsets! (procedure-names procedure) 0)))
 		 (if (and (procedure/closure? procedure)
 			  (closure-procedure-needs-operator? procedure))
-		     (begin (set-procedure-closure-offset! procedure offset)
-			    (1+ offset))
+		     (begin
+		       (set-procedure-closure-offset! procedure offset)
+		       (+ offset 1))
 		     offset)))))))
        (if (or (procedure/closure? procedure)
 	       (not (stack-block/static-link? block)))
 	   offset
-	   (1+ offset))))))
+	   (+ offset 1))))))
 
 (define (setup-variable-offsets! variables offset)
-  (if (null? variables)
-      offset
+  (if (pair? variables)
       (if (variable-register (car variables))
 	  (setup-variable-offsets! (cdr variables) offset)
-	  (begin (set-variable-normal-offset! (car variables) offset)
-		 (setup-variable-offsets! (cdr variables) (1+ offset))))))
+	  (begin
+	    (set-variable-normal-offset! (car variables) offset)
+	    (setup-variable-offsets! (cdr variables) (+ offset 1))))
+      offset))
 
 (define (setup-variable-offset! variable offset)
   (if (and variable (not (variable-register variable)))
-      (begin (set-variable-normal-offset! variable offset)
-	     (1+ offset))
+      (begin
+	(set-variable-normal-offset! variable offset)
+	(+ offset 1))
       offset))
 
 
