@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/make.scm,v 15.0 1991/08/22 19:41:10 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/make.scm,v 15.1 1992/03/25 21:53:01 cph Exp $
 
-Copyright (c) 1991 Massachusetts Institute of Technology
+Copyright (c) 1991-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,8 +38,5 @@ MIT in each case. |#
 
 (package/system-loader "6001" '() 'QUERY)
 ((access initialize-package! (->environment '(student scode-rewriting))))
-(add-system! (make-system "6.001" 15 0 '()))
-(in-package (->environment '(edwin))
-  (using-syntax (access edwin-syntax-table (->environment '(edwin)))
-    (set-variable! enable-transcript-buffer true)))
+(add-system! (make-system "6.001" 15 1 '()))
 (ge '(student))
