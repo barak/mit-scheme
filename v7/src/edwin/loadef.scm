@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/loadef.scm,v 1.11 1991/09/18 13:56:13 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/loadef.scm,v 1.12 1991/09/20 20:46:33 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -135,3 +135,18 @@ modified version of TeX input format.")
 
 (define-autoload-command 'manual-entry 'MANUAL
   "Display UNIX man page.")
+
+(define-library 'print
+  '("print" (EDWIN)))
+
+(define-autoload-command 'lpr-buffer 'PRINT
+  "Print buffer contents with Unix command `lpr'.")
+
+(define-autoload-command 'print-buffer 'PRINT
+  "Print buffer contents as with Unix command `lpr -p'.")
+
+(define-autoload-command 'lpr-region 'PRINT
+  "Print region contents as with Unix command `lpr'.")
+
+(define-autoload-command 'print-region 'PRINT
+  "Print region contents as with Unix command `lpr -p'.")

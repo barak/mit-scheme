@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.61 1991/09/18 13:56:05 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.62 1991/09/20 20:47:00 arthur Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -99,7 +99,8 @@ MIT in each case. |#
 	 "midas"
 	 "pasmod"
 	 "tximod"
-	 "manual")			; man page display
+	 "manual"			; man page display
+	 "print")			; printer output
   (parent ())
   (import (runtime rep)
 	  hook/repl-eval)

@@ -141,6 +141,8 @@
 	       edwin-syntax-table)
     ("paths"   (edwin)
 	       syntax-table/system-internal)
+    ("print"   (edwin)
+	       edwin-syntax-table)
     ("process" (edwin process)
 	       edwin-syntax-table)
     ("prompt"  (edwin prompt)
