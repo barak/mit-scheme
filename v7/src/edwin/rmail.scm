@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rmail.scm,v 1.70 2000/03/27 20:43:24 cph Exp $
+;;; $Id: rmail.scm,v 1.71 2000/06/08 17:58:26 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
@@ -1046,8 +1046,7 @@ original message into it."
 		    "["
 		    (let ((from (fetch-first-field "from" start end)))
 		      (if from
-			  (rfc822-addresses->string
-			   (rfc822-strip-quoted-names from))
+			  (rfc822:canonicalize-address-string from)
 			  ""))
 		    ": "
 		    (or (fetch-first-field "subject" start end) "")
@@ -1087,11 +1086,10 @@ original message into it."
     (let ((resent-reply-to (fetch-last-field "resent-reply-to" start end))
 	  (from (fetch-first-field "from" start end)))
       `(("To"
-	 ,(rfc822-addresses->string
-	   (rfc822-strip-quoted-names
-	    (or resent-reply-to
-		(fetch-all-fields "reply-to" start end)
-		from))))
+	 ,(rfc822:canonicalize-address-string
+	   (or resent-reply-to
+	       (fetch-all-fields "reply-to" start end)
+	       from)))
 	("CC"
 	 ,(and cc?
 	       (let ((to
@@ -1108,10 +1106,9 @@ original message into it."
 			    (or to cc))))
 		   (and cc
 			(let ((addresses
-			       (dont-reply-to
-				(rfc822-strip-quoted-names cc))))
-			  (and (not (null? addresses))
-			       (rfc822-addresses->string addresses))))))))
+			       (dont-reply-to (rfc822:string->addresses cc))))
+			  (and (pair? addresses)
+			       (rfc822:addresses->string addresses))))))))
 	("In-reply-to"
 	 ,(if resent-reply-to
 	      (make-in-reply-to-field
@@ -1202,18 +1199,6 @@ original message into it."
 (define (header-end start end)
   (or (search-forward "\n\n" start end false) end))
 
-(define (rfc822-strip-quoted-names string)
-  (let ((address-list (strip-quoted-names-1 (string->rfc822-tokens string))))
-    (if (and address-list (null? (cdr address-list)))
-	(car address-list)
-	(let ((end (string-length string)))
-	  (let loop ((start 0))
-	    (let ((index (substring-find-next-char string start end #\,)))
-	      (if index
-		  (cons (string-trim (substring string start index))
-			(loop (+ index 1)))
-		  (list (string-trim (substring string start end))))))))))
-
 (define (dont-reply-to addresses)
   (let ((pattern
 	 (re-compile-pattern
@@ -1229,11 +1214,6 @@ original message into it."
 	    (else
 	     (cons (car addresses) (loop (cdr addresses))))))))
 
-(define (rfc822-addresses->string addresses)
-  (if (null? addresses)
-      ""
-      (separated-append addresses ", ")))
-
 (define (separated-append tokens separator)
   (if (null? (cdr tokens))
       (car tokens)
@@ -1248,7 +1228,7 @@ original message into it."
 	 message-id)
 	(message-id
 	 ;; Append from field to message-id if needed.
-	 (let ((from (rfc822-first-address from)))
+	 (let ((from (rfc822:first-address from)))
 	   (if (re-string-search-forward
 		(let ((r (re-string-search-forward "@[^@]*\\'" from #f)))
 		  (if r
@@ -1258,7 +1238,7 @@ original message into it."
 	       message-id
 	       (string-append message-id " (" from ")"))))
 	(else
-	 (let ((field (write-to-string (rfc822-first-address from))))
+	 (let ((field (write-to-string (rfc822:first-address from))))
 	   (if date
 	       (string-append field "'s message of " date)
 	       field)))))
@@ -1335,154 +1315,6 @@ original message into it."
 			      (eqv? #\> (cadr addr-spec))
 			      (cons (car addr-spec) (cddr addr-spec))))))))))
    #\,))
-
-;;;; RFC 822 parser
-
-(define (string->rfc822-tokens string)
-  (rfc822-clean-tokens (rfc822-read-tokens (string->input-port string))))
-
-(define (rfc822-clean-tokens tokens)
-  (let loop ((tokens tokens))
-    (if (null? tokens)
-	'()
-	(let ((rest (loop (cdr tokens))))
-	  (if (cond ((char? (car tokens))
-		     (eqv? #\space (car tokens)))
-		    ((string? (car tokens))
-		     (char=? #\( (string-ref (car tokens) 0)))
-		    (else true))
-	      rest
-	      (cons (car tokens) rest))))))
-
-(define rfc822-read-tokens
-  (let* ((special-chars
-	  (char-set #\( #\) #\[ #\] #\< #\> #\@ #\, #\; #\: #\\ #\" #\.))
-	 (atom-chars
-	  (char-set-difference (ascii-range->char-set #x21 #x7F)
-			       special-chars)))
-    (lambda (port)
-      (let ((special-char?
-	     (lambda (char) (char-set-member? special-chars char)))
-	    (atom-char? (lambda (char) (char-set-member? atom-chars char)))
-	    (lwsp?
-	     (lambda (char) (or (char=? #\space char) (char=? #\tab char))))
-	    (loser
-	     (lambda (chars)
-	       (list (cons 'UNTERMINATED (apply string (reverse! chars)))))))
-	(let dispatch ()
-	  (let ((char (input-port/read-char port)))
-	    (cond ((eof-object? char)
-		   '())
-		  ((lwsp? char)
-		   (do ()
-		       ((not (lwsp? (input-port/peek-char port))))
-		     (input-port/discard-char port))
-		   (cons #\space (dispatch)))
-		  ((atom-char? char)
-		   ;; atom
-		   (let loop ((chars (list char)))
-		     (let ((char (input-port/peek-char port)))
-		       (if (and (not (eof-object? char))
-				(atom-char? char))
-			   (begin
-			     (input-port/discard-char port)
-			     (loop (cons char chars)))
-			   (cons (apply string (reverse! chars))
-				 (dispatch))))))
-		  ((char=? #\" char)
-		   ;; quoted string
-		   (let loop ((chars (list char)))
-		     (let ((char (input-port/read-char port)))
-		       (cond ((eof-object? char)
-			      (loser chars))
-			     ((char=? #\" char)
-			      (cons (apply string (reverse! (cons char chars)))
-				    (dispatch)))
-			     ((char=? #\\ char)
-			      (let ((char (input-port/read-char port))
-				    (chars (cons char chars)))
-				(if (eof-object? char)
-				    (loser chars)
-				    (loop (cons char chars)))))
-			     ((char=? #\newline char)
-			      (let ((char (input-port/peek-char port)))
-				(if (lwsp? char)
-				    (begin
-				      (input-port/discard-char port)
-				      (loop (cons char chars)))
-				    (loser chars))))
-			     (else
-			      (loop (cons char chars)))))))
-
-		  ((char=? #\( char)
-		   ;; comment
-		   (let loop ((level 1) (chars (list char)))
-		     (let ((char (input-port/read-char port)))
-		       (cond ((eof-object? char)
-			      (loser chars))
-			     ((char=? #\( char)
-			      (loop (+ level 1) (cons char chars)))
-			     ((char=? #\) char)
-			      (let ((chars (cons char chars)))
-				(if (= level 1)
-				    (cons (apply string (reverse! chars))
-					  (dispatch))
-				    (loop (- level 1) chars))))
-			     ((char=? #\\ char)
-			      (let ((char (input-port/read-char port))
-				    (chars (cons char chars)))
-				(if (eof-object? char)
-				    (loser chars)
-				    (loop level (cons char chars)))))
-			     ((char=? #\newline char)
-			      (let ((char (input-port/peek-char port)))
-				(if (lwsp? char)
-				    (begin
-				      (input-port/discard-char port)
-				      (loop level (cons char chars)))
-				    (loser chars))))
-			     (else
-			      (loop level (cons char chars)))))))
-		  ((char=? #\[ char)
-		   ;; domain literal
-		   (let loop ((chars (list char)))
-		     (let ((char (input-port/peek-char port)))
-		       (cond ((or (eof-object? char)
-				  (char=? #\[ char))
-			      (loser chars))
-			     ((char=? #\] char)
-			      (input-port/discard-char port)
-			      (cons (apply string (reverse! (cons char chars)))
-				    (dispatch)))
-			     ((char=? #\\ char)
-			      (input-port/discard-char port)
-			      (let ((char (input-port/read-char port))
-				    (chars (cons char chars)))
-				(if (eof-object? char)
-				    (loser chars)
-				    (loop (cons char chars)))))
-			     ((char=? #\newline char)
-			      (input-port/discard-char port)
-			      (let ((char (input-port/peek-char port)))
-				(if (lwsp? char)
-				    (begin
-				      (input-port/discard-char port)
-				      (loop (cons char chars)))
-				    (loser chars))))
-			     (else
-			      (input-port/discard-char port)
-			      (loop (cons char chars)))))))
-		  ((char=? #\newline char)
-		   (let ((char (input-port/peek-char port)))
-		     (if (and (not (eof-object? char))
-			      (lwsp? char))
-			 (dispatch)
-			 '())))
-		  (else
-		   (cons (if (special-char? char)
-			     char
-			     (cons 'ILLEGAL char))
-			 (dispatch))))))))))
 
 ;;;; Mail output
 
@@ -1572,7 +1404,7 @@ buffer visiting that file."
 	(insert-string
 	 (string-append
 	  "From "
-	  (or (rfc822-first-address
+	  (or (rfc822:first-address
 	       (fetch-first-field "from" start (header-end start end)))
 	      "unknown")
 	  " "
@@ -1595,12 +1427,6 @@ buffer visiting that file."
 	 (merge-pathnames (file-pathname default)
 			  (pathname-as-directory pathname))
 	 pathname))))
-
-(define (rfc822-first-address field)
-  (and field
-       (let ((addresses (rfc822-strip-quoted-names field)))
-	 (and (not (null? addresses))
-	      (car addresses)))))
 
 ;;;; Editing
 
@@ -1695,7 +1521,7 @@ Leaves original message, deleted, before the undigestified messages."
 	  (delete-string (skip-chars-backward " \t\n" end start) end)
 	  (insert-string "\n\037" end)
 	  (let ((digest-name
-		 (rfc822-first-address
+		 (rfc822:first-address
 		  (let ((hend (header-end start end)))
 		    (or (fetch-first-field "Reply-To" start hend)
 			(fetch-first-field "To" start hend)

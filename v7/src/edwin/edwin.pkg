@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.256 2000/05/08 17:34:51 cph Exp $
+$Id: edwin.pkg,v 1.257 2000/06/08 17:58:23 cph Exp $
 
 Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
@@ -1451,7 +1451,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (files "sendmail")
   (parent (edwin))
   (export (edwin)
-	  char-set:rfc822-quoted
 	  edwin-command$mail
 	  edwin-command$mail-bcc
 	  edwin-command$mail-cc
@@ -1500,7 +1499,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  mailer-version-string
 	  make-mail-buffer
 	  prepare-mail-buffer-for-sending
-	  rfc822-quote
 	  send-mail-buffer))
 
 (define-package (edwin mail-alias)
@@ -1596,15 +1594,33 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  guarantee-rmail-variables-initialized
 	  make-in-reply-to-field
 	  prompt-for-rmail-output-filename
-	  rfc822-addresses->string
-	  rfc822-first-address
 	  rfc822-region->babyl
 	  rfc822-region-reply-headers
-	  rfc822-strip-quoted-names
 	  rmail-output-to-rmail-file
 	  rmail-output-to-unix-mail-file
 	  rmail-spool-directory
 	  with-buffer-open))
+
+(define-package (edwin rfc822)
+  (files "rfc822")
+  (parent (edwin))
+  (export (edwin)
+	  rfc822:addresses->string
+	  rfc822:canonicalize-address-string
+	  rfc822:first-address
+	  rfc822:header-field-name?
+	  rfc822:parse-addr-spec
+	  rfc822:parse-domain
+	  rfc822:parse-list
+	  rfc822:parse-msg-id
+	  rfc822:parse-word
+	  rfc822:quote-string
+	  rfc822:received-header-components
+	  rfc822:string->addresses
+	  rfc822:string->tokens
+	  rfc822:strip-comments
+	  rfc822:strip-quoted-names
+	  rfc822:tokens->string))
 
 (define-package (edwin stepper)
   (files "eystep")
