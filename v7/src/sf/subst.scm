@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/subst.scm,v 4.3 1988/09/22 18:42:57 jrm Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/subst.scm,v 4.4 1988/11/05 22:14:02 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -828,12 +828,11 @@ forms are simply removed.
 	   (constant/make (apply (constant/value operator)
 				 (map foldable-constant-value operands))))
 
-	  ;; (force (delay x)) ==> x
-	  ((and (constant? operator)
-		(primitive-procedure? (constant/value operator))
-		(eq? (constant/value operator) 
-		     (make-primitive-procedure 'FORCE))
-		(eq? (length operands) 1)
+	  (
+	   ;; (force (delay x)) ==> x
+	   (and (constant? operator)
+		(eq? (constant/value operator) force)
+		(= (length operands) 1)
 		(delay? (car operands)))
 	   (delay/expression (car operands)))
 
