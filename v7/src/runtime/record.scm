@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.40 2003/03/13 03:58:18 cph Exp $
+$Id: record.scm,v 1.41 2003/03/13 20:13:03 cph Exp $
 
 Copyright 1989,1990,1991,1993,1994,1996 Massachusetts Institute of Technology
 Copyright 1997,2002,2003 Massachusetts Institute of Technology
@@ -462,7 +462,7 @@ USA.
 
 ;;;; Runtime support for DEFINE-STRUCTURE
 
-(define <structure-type>)
+(define rtd:structure-type)
 (define make-define-structure-type)
 (define structure-type?)
 (define structure-type/physical-type)
@@ -473,61 +473,62 @@ USA.
 (define structure-type/unparser-method)
 (define set-structure-type/unparser-method!)
 (define structure-type/tag)
-(define structure-type/offset)
+(define structure-type/length)
 
 (define (initialize-structure-type-type!)
-  (set! <structure-type>
+  (set! rtd:structure-type
 	(make-record-type "structure-type"
 			  '(PHYSICAL-TYPE NAME FIELD-NAMES FIELD-INDEXES
 					  DEFAULT-INITS UNPARSER-METHOD TAG
-					  OFFSET)))
+					  LENGTH)))
   (set! make-define-structure-type
-	(let ((constructor (record-constructor <structure-type>)))
-	  (lambda (physical-type name field-names field-indexes . rest)
-	    (receive (default-inits unparser-method tag offset)
-		(case (length rest)
-		  ((1) (values #f (car rest) physical-type 0))
-		  ((2) (values (car rest) (cadr rest) physical-type 0))
-		  ((4) (apply values rest))
-		  (else
-		   (error:wrong-number-of-arguments
-		    'MAKE-DEFINE-STRUCTURE-TYPE
-		    8
-		    (cons* physical-type name field-names field-indexes
-			   rest))))
-	      (constructor physical-type
-			   name
-			   (list->vector field-names)
-			   (list->vector field-indexes)
-			   (if default-inits
-			       (list->vector default-inits)
-			       (make-vector (length field-names)
-					    (lambda () #f)))
-			   unparser-method
-			   tag
-			   offset)))))
+	(let ((constructor (record-constructor rtd:structure-type)))
+	  (lambda (physical-type name field-names field-indexes default-inits
+				 unparser-method tag length)
+	    (constructor physical-type
+			 name
+			 (list->vector field-names)
+			 (list->vector field-indexes)
+			 (list->vector default-inits)
+			 unparser-method
+			 tag
+			 length))))
   (set! structure-type?
-	(record-predicate <structure-type>))
+	(record-predicate rtd:structure-type))
   (set! structure-type/physical-type
-	(record-accessor <structure-type> 'PHYSICAL-TYPE))
+	(record-accessor rtd:structure-type 'PHYSICAL-TYPE))
   (set! structure-type/name
-	(record-accessor <structure-type> 'NAME))
+	(record-accessor rtd:structure-type 'NAME))
   (set! structure-type/field-names
-	(record-accessor <structure-type> 'FIELD-NAMES))
+	(record-accessor rtd:structure-type 'FIELD-NAMES))
   (set! structure-type/field-indexes
-	(record-accessor <structure-type> 'FIELD-INDEXES))
+	(record-accessor rtd:structure-type 'FIELD-INDEXES))
   (set! structure-type/default-inits
-	(record-accessor <structure-type> 'DEFAULT-INITS))
+	(record-accessor rtd:structure-type 'DEFAULT-INITS))
   (set! structure-type/unparser-method
-	(record-accessor <structure-type> 'UNPARSER-METHOD))
+	(record-accessor rtd:structure-type 'UNPARSER-METHOD))
   (set! set-structure-type/unparser-method!
-	(record-modifier <structure-type> 'UNPARSER-METHOD))
+	(record-modifier rtd:structure-type 'UNPARSER-METHOD))
   (set! structure-type/tag
-	(record-accessor <structure-type> 'TAG))
-  (set! structure-type/offset
-	(record-accessor <structure-type> 'OFFSET))
+	(record-accessor rtd:structure-type 'TAG))
+  (set! structure-type/length
+	(record-accessor rtd:structure-type 'LENGTH))
   unspecific)
 
+(define (structure-type/field-index type field-name)
+  (vector-ref (structure-type/field-indexes type)
+	      (structure-type/field-name-index type field-name)))
+
+(define (structure-type/field-name-index type field-name)
+  (let ((names (structure-type/field-names type)))
+    (let ((n (vector-length names)))
+      (let loop ((i 0))
+	(if (not (fix:< i n))
+	    (error:no-such-slot type field-name))
+	(if (eq? (vector-ref names i) field-name)
+	    i
+	    (loop (fix:+ i 1)))))))
+
 (define (structure-tag/unparser-method tag type)
   (let ((structure-type (tag->structure-type tag type)))
     (and structure-type
@@ -659,41 +660,61 @@ USA.
 		(structure-type/name type)
 		`(,accessor-type ,type ',field-name)))))
 
-(define (define-structure/keyword-parser type argument-list)
-  (let ((inits (structure-type/default-inits type)))
-    (let ((n (vector-length inits)))
-      (if (pair? argument-list)
-	  (let* ((unseen (list 'UNSEEN))
-		 (values (make-vector n unseen)))
-	    (do ((args argument-list (cddr args)))
-		((not (pair? args)))
-	      (if (not (pair? (cdr args)))
-		  (error "Keyword list does not have even length:"
-			 argument-list))
-	      (let ((i (structure-type/field-name-index type (car args))))
-		(if (eq? (vector-ref values i) unseen)
-		    (vector-set! values i (cadr args)))))
-	    (do ((i (fix:- n 1) (fix:- i 1))
-		 (l '()
-		    (cons (if (eq? (vector-ref values i) unseen)
-			      (vector-ref values i)
-			      ((vector-ref inits i)))
-			  l)))
-		((not (fix:>= i 0)) l)))
-	  (do ((i (fix:- n 1) (fix:- i 1))
-	       (l '() (cons ((vector-ref inits i)) l)))
-	      ((not (fix:>= i 0)) l))))))
-
-(define (structure-type/field-index type field-name)
-  (vector-ref (structure-type/field-indexes type)
-	      (structure-type/field-name-index type field-name)))
-
-(define (structure-type/field-name-index type field-name)
-  (let ((names (structure-type/field-names type)))
+(define (define-structure/keyword-parser type arguments)
+  (let ((names (structure-type/field-names type))
+	(inits (structure-type/default-inits type)))
     (let ((n (vector-length names)))
-      (let loop ((i 0))
-	(if (not (fix:< i n))
-	    (error:no-such-slot type field-name))
-	(if (eq? (vector-ref names i) field-name)
-	    i
-	    (loop (fix:+ i 1)))))))
+      (let* ((unseen (list 'UNSEEN))
+	     (values (make-vector n unseen)))
+	(do ((args arguments (cddr args)))
+	    ((not (pair? args)))
+	  (if (not (pair? (cdr args)))
+	      (error "Keyword list does not have even length:" arguments))
+	  (let ((i (structure-type/field-name-index type (car args))))
+	    (if (eq? (vector-ref values i) unseen)
+		(vector-set! values i (cadr args)))))
+	(do ((i (fix:- n 1) (fix:- i 1))
+	     (l '()
+		(cons (if (eq? (vector-ref values i) unseen)
+			  (vector-ref values i)
+			  ((vector-ref inits i)))
+		      l)))
+	    ((not (fix:>= i 0)) l))))))
+
+(define (define-structure/keyword-parser* type arguments)
+  (let ((names (structure-type/field-names type))
+	(indexes (structure-type/field-indexes type))
+	(inits (structure-type/default-inits type))
+	(v (vector-cons (structure-type/length type) #f)))
+    (let ((n (vector-length names)))
+      (let ((tag (structure-type/tag type)))
+	(if tag
+	    (vector-set! v 0 tag)))
+      (let ((seen? (make-vector n #f)))
+	(do ((args arguments (cddr args)))
+	    ((not (pair? args)))
+	  (if (not (pair? (cdr args)))
+	      (error "Keyword list does not have even length:" arguments))
+	  (let ((field-name (car args)))
+	    (let loop ((i 0))
+	      (if (not (fix:< i n))
+		  (error:no-such-slot type field-name))
+	      (if (eq? (vector-ref names i) field-name)
+		  (if (not (vector-ref seen? i))
+		      (begin
+			(vector-set! v
+				     (vector-ref indexes i)
+				     (cadr args))
+			(vector-set! seen? i #t)))
+		  (loop (fix:+ i 1))))))
+	(do ((i 0 (fix:+ i 1)))
+	    ((not (fix:< i n)))
+	  (if (not (vector-ref seen? i))
+	      (vector-set! v
+			   (vector-ref indexes i)
+			   ((vector-ref inits i))))))
+      (if (eq? (structure-type/physical-type type) 'LIST)
+	  (do ((i (fix:- n 1) (fix:- i 1))
+	       (l '() (cons (vector-ref v i) l)))
+	      ((not (fix:>= i 0)) l))
+	  v))))
