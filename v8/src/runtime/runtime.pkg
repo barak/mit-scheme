@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.329 1999/04/08 05:01:33 cph Exp $
+$Id: runtime.pkg,v 14.330 1999/05/07 21:08:27 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -82,6 +82,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  list->string
 	  guarantee-string
 	  make-string
+	  reverse-string
+	  reverse-string!
+	  reverse-substring
+	  reverse-substring!
 	  set-string-length!
 	  string
 	  string->list
@@ -125,6 +129,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  string-ref
 	  string-replace
 	  string-replace!
+	  string-search-backward
+	  string-search-forward
 	  string-set!
 	  string-suffix-ci?
 	  string-suffix?
@@ -166,6 +172,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  substring-prefix?
 	  substring-replace
 	  substring-replace!
+	  substring-search-backward
+	  substring-search-forward
 	  substring-suffix-ci?
 	  substring-suffix?
 	  substring-upcase!
