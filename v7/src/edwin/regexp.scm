@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regexp.scm,v 1.53 1991/04/29 10:16:44 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regexp.scm,v 1.54 1991/04/29 11:22:26 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -88,7 +88,7 @@
 
 (define (replace-match replacement #!optional preserve-case? literal?)
   (let ((start (re-match-start 0))
-	(end (re-match-end 0)))
+	(end (mark-left-inserting-copy (re-match-end 0))))
     (let ((replacement
 	   (let ((replacement
 		  (if (and (not (default-object? literal?)) literal?)
@@ -109,7 +109,8 @@
 		 replacement))))
       (delete-string start end)
       (insert-string replacement start))
-    start))
+    (mark-temporary! end)
+    end))
 
 (define (re-substitute-registers string)
   (let ((end (string-length string)))
