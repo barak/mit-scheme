@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: dassm3.scm,v 1.9 2001/12/23 17:20:58 cph Exp $
+$Id: dassm3.scm,v 1.10 2002/02/12 00:26:42 cph Exp $
 
-Copyright (c) 1992, 1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1992, 1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -440,9 +440,11 @@ USA.
 (define decode-fp
   (let-syntax
       ((IN
-	(non-hygienic-macro-transformer
-	 (lambda (body . bindings)
-	   `(LET ,bindings ,body)))))
+	(rsc-macro-transformer
+	 (lambda (form environment)
+	   `(,(close-syntax 'LET environment)
+	     ,(cddr form)
+	     ,(cadr form))))))
     (IN
      (lambda (opcode-byte)
        (let* ((next (next-unsigned-byte))

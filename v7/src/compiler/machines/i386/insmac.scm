@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: insmac.scm,v 1.13 2001/12/23 17:20:58 cph Exp $
+$Id: insmac.scm,v 1.14 2002/02/12 00:26:46 cph Exp $
 
-Copyright (c) 1992, 1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1992, 1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -25,14 +25,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (declare (usual-integrations))
 
 (define-syntax define-trivial-instruction
-  (non-hygienic-macro-transformer
-   (lambda (mnemonic opcode . extra)
-     `(DEFINE-INSTRUCTION ,mnemonic
-	(()
-	 (BYTE (8 ,opcode))
-	 ,@(map (lambda (extra)
-		  `(BYTE (8 ,extra)))
-		extra))))))
+  (sc-macro-transformer
+   (lambda (form environment)
+     (if (syntax-match? '(IDENTIFIER DATUM * DATUM) (cdr form))
+	 `(DEFINE-INSTRUCTION ,(cadr form)
+	    (()
+	     (BYTE (8 ,(close-syntax (caddr form) environment)))
+	     ,@(map (lambda (extra)
+		      `(BYTE (8 ,(close-syntax extra environment))))
+		    (cdddr form))))
+	 (ill-formed-syntax form)))))
 
 ;;;; Effective addressing
 
@@ -40,23 +42,22 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   'EA-DATABASE)
 
 (define-syntax define-ea-database
-  (non-hygienic-macro-transformer
-   (lambda rules
+  (sc-macro-transformer
+   (lambda (form environment)
      `(DEFINE ,ea-database-name
-	,(compile-database rules
-			   (lambda (pattern actions)
-			     (let ((keyword (car pattern))
-				   (categories (car actions))
-				   (mode (cadr actions))
-				   (register (caddr actions))
-				   (tail (cdddr actions)))
-			       (declare (integrate keyword value))
-			       `(MAKE-EFFECTIVE-ADDRESS
-				 ',keyword
-				 ',categories
-				 ,(integer-syntaxer mode 'UNSIGNED 2)
-				 ,(integer-syntaxer register 'UNSIGNED 3)
-				 ,(process-tail tail false)))))))))
+	,(compile-database (cdr form) environment
+	   (lambda (pattern actions)
+	     (let ((keyword (car pattern))
+		   (categories (car actions))
+		   (mode (cadr actions))
+		   (register (caddr actions))
+		   (tail (cdddr actions)))
+	       `(MAKE-EFFECTIVE-ADDRESS
+		 ',keyword
+		 ',categories
+		 ,(integer-syntaxer mode 'UNSIGNED 2)
+		 ,(integer-syntaxer register 'UNSIGNED 3)
+		 ,(process-tail tail #f)))))))))
 
 (define (process-tail tail early?)
   (if (null? tail)
@@ -66,19 +67,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;; This one is necessary to distinguish between r/mW mW, etc.
 
 (define-syntax define-ea-transformer
-  (non-hygienic-macro-transformer
-   (lambda (name #!optional restriction)
-     (if (default-object? restriction)
-	 `(DEFINE (,name EXPRESSION)
+  (sc-macro-transformer
+   (lambda (form environment)
+     environment
+     (if (syntax-match? '(IDENTIFIER ? SYMBOL) (cdr form))
+	 `(DEFINE (,(cadr form) EXPRESSION)
 	    (LET ((MATCH-RESULT (PATTERN-LOOKUP ,ea-database-name EXPRESSION)))
 	      (AND MATCH-RESULT
-		   (MATCH-RESULT))))
-	 `(DEFINE (,name EXPRESSION)
-	    (LET ((MATCH-RESULT (PATTERN-LOOKUP ,ea-database-name EXPRESSION)))
-	      (AND MATCH-RESULT
-		   (LET ((EA (MATCH-RESULT)))
-		     (AND (MEMQ ',restriction (EA/CATEGORIES EA))
-			  EA)))))))))
+		   ,(if (pair? (cddr form))
+			`(LET ((EA (MATCH-RESULT)))
+			   (AND (MEMQ ',(caddr form) (EA/CATEGORIES EA))
+				EA))
+			`(MATCH-RESULT)))))
+	 (ill-formed-syntax form)))))
 
 ;; *** We can't really handle switching these right now. ***
 
