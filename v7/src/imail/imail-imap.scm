@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.57 2000/05/19 02:31:07 cph Exp $
+;;; $Id: imail-imap.scm,v 1.58 2000/05/19 04:15:35 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -95,22 +95,21 @@
 
 ;;;; Server connection
 
-(define-class (<imap-connection> (constructor (host ip-port user-id))) ()
-  (host define accessor)
-  (ip-port define accessor)
-  (user-id define accessor)
-  (passphrase define standard
-	      initial-value #f)
-  (port define standard
-	initial-value #f)
-  (greeting define standard
-	    initial-value #f)
-  (sequence-number define standard
-		   initial-value 0)
-  (response-queue define accessor
-		  initializer (lambda () (cons '() '())))
-  (folder define standard
-	  initial-value #f))
+(define-class (<imap-connection> (constructor (url))) ()
+  (url             define accessor)
+  (passphrase      define standard initial-value #f)
+  (port            define standard initial-value #f)
+  (greeting        define standard initial-value #f)
+  (sequence-number define standard initial-value 0)
+  (response-queue  define accessor initializer (lambda () (cons '() '())))
+  (folder          define standard initial-value #f)
+  (reference-count define standard initial-value 0))
+
+(define-method write-instance ((connection <imap-connection>) port)
+  (write-instance-helper 'IMAP-CONNECTION connection port
+    (lambda ()
+      (write-char #\space port)
+      (write (url-body (imap-connection-url connection)) port))))
 
 (define (reset-imap-connection connection)
   (without-interrupts
@@ -168,40 +167,38 @@
 	 (set-cdr! queue '())
 	 responses)))))
 
-(define (get-imap-connection url)
-  (let ((host (imap-url-host url))
-	(ip-port (imap-url-port url))
-	(user-id (imap-url-user-id url)))
-    (let loop ((connections memoized-imap-connections) (prev #f))
-      (if (weak-pair? connections)
-	  (let ((connection (weak-car connections)))
-	    (if connection
-		(if (and (string-ci=? (imap-connection-host connection) host)
-			 (eqv? (imap-connection-ip-port connection) ip-port)
-			 (string=? (imap-connection-user-id connection)
-				   user-id))
-		    connection
-		    (loop (weak-cdr connections) connections))
-		(let ((next (weak-cdr connections)))
-		  (if prev
-		      (weak-set-cdr! prev next)
-		      (set! memoized-imap-connections next))
-		  (loop next prev))))
-	  (let ((connection (make-imap-connection host ip-port user-id)))
-	    (set! memoized-imap-connections
-		  (weak-cons connection memoized-imap-connections))
-	    connection)))))
+(define (get-imap-connection url for-folder?)
+  (let loop ((connections memoized-imap-connections) (prev #f))
+    (if (weak-pair? connections)
+	(let ((connection (weak-car connections)))
+	  (if connection
+	      (if (let ((url* (imap-connection-url connection)))
+		    (if for-folder?
+			(eq? url* url)
+			(compatible-imap-urls? url* url)))
+		  connection
+		  (loop (weak-cdr connections) connections))
+	      (let ((next (weak-cdr connections)))
+		(if prev
+		    (weak-set-cdr! prev next)
+		    (set! memoized-imap-connections next))
+		(loop next prev))))
+	(let ((connection (make-imap-connection url)))
+	  (set! memoized-imap-connections
+		(weak-cons connection memoized-imap-connections))
+	  connection))))
 
 (define memoized-imap-connections '())
 
 (define (guarantee-imap-connection-open connection)
   (if (imap-connection-port connection)
       #f
-      (let ((host (imap-connection-host connection))
-	    (ip-port (imap-connection-ip-port connection))
-	    (user-id (imap-connection-user-id connection)))
+      (let ((url (imap-connection-url connection)))
 	(let ((port
-	       (open-tcp-stream-socket host (or ip-port "imap2") #f "\n")))
+	       (open-tcp-stream-socket (imap-url-host url)
+				       (or (imap-url-port url) "imap2")
+				       #f
+				       "\n")))
 	  (set-imap-connection-greeting!
 	   connection
 	   (let ((response (imap:read-server-response port)))
@@ -213,23 +210,28 @@
 	  (if (not (memq 'IMAP4REV1 (imap:command:capability connection)))
 	      (begin
 		(close-imap-connection connection)
-		(error "Server doesn't support IMAP4rev1:" host)))
+		(error "Server doesn't support IMAP4rev1:" url)))
 	  (let ((response
 		 (call-with-memoized-passphrase connection
 		   (lambda (passphrase)
-		     (imap:command:login connection user-id passphrase)))))
+		     (imap:command:login connection
+					 (imap-url-user-id url)
+					 passphrase)))))
 	    (if (imap:response:no? response)
 		(begin
 		  (close-imap-connection connection)
 		  (error "Unable to log in:" response)))))
 	#t)))
-
+
 (define (close-imap-connection connection)
-  (let ((port (imap-connection-port connection)))
+  (let ((port
+	 (without-interrupts
+	  (lambda ()
+	    (let ((port (imap-connection-port connection)))
+	      (set-imap-connection-port! connection #f)
+	      port)))))
     (if port
-	(begin
-	  (close-port port)
-	  (set-imap-connection-port! connection #f))))
+	(close-port port)))
   (reset-imap-connection connection))
 
 (define (imap-connection-open? connection)
@@ -240,13 +242,33 @@
     (cond ((not (string? greeting)) #f)
 	  ((string-search-forward " Cyrus " greeting) 'CYRUS)
 	  (else #f))))
+
+(define (with-open-imap-connection url receiver)
+  (let ((connection (get-imap-connection url #f)))
+    (dynamic-wind (lambda ()
+		    (set-imap-connection-reference-count!
+		     connection
+		     (+ (imap-connection-reference-count connection) 1)))
+		  (lambda ()
+		    (guarantee-imap-connection-open connection)
+		    (let ((v (receiver connection)))
+		      (maybe-close-imap-connection connection)
+		      v))
+		  (lambda ()
+		    (set-imap-connection-reference-count!
+		     connection
+		     (- (imap-connection-reference-count connection) 1))))))
+
+(define (maybe-close-imap-connection connection)
+  (if (= (imap-connection-reference-count connection)
+	 (if (imap-connection-folder connection) 0 1))
+      (close-imap-connection connection)))
 
 (define (call-with-memoized-passphrase connection receiver)
   (let ((passphrase (imap-connection-passphrase connection)))
     (if passphrase
 	(call-with-unobscured-passphrase passphrase receiver)
-	(authenticate (imap-connection-host connection)
-		      (imap-connection-user-id connection)
+	(imail-call-with-pass-phrase (imap-connection-url connection)
 	  (lambda (passphrase)
 	    (set-imap-connection-passphrase! connection
 					     (obscure-passphrase passphrase))
@@ -596,37 +618,40 @@
 ;;;; Server operations
 
 (define-method %create-folder ((url <imap-url>))
-  (imap:command:create (get-imap-connection url)
-		       (imap-url-mailbox url)))
+  (with-open-imap-connection url
+    (lambda (connection)
+      (imap:command:create connection (imap-url-mailbox url)))))
 
 (define-method %delete-folder ((url <imap-url>))
-  (imap:command:delete (get-imap-connection url)
-		       (imap-url-mailbox url)))
+  (with-open-imap-connection url
+    (lambda (connection)
+      (imap:command:delete connection (imap-url-mailbox url)))))
 
 (define-method %rename-folder ((url <imap-url>) (new-url <imap-url>))
   (if (compatible-imap-urls? url new-url)
-      (imap:command:create (get-imap-connection url)
-			   (imap-url-mailbox url)
-			   (imap-url-mailbox new-url))
+      (with-open-imap-connection url
+	(lambda (connection)
+	  (imap:command:rename connection
+			       (imap-url-mailbox url)
+			       (imap-url-mailbox new-url))))
       (error "Unable to perform rename between different IMAP accounts:"
 	     url new-url)))
 
 (define-method %append-message ((message <message>) (url <imap-url>))
-  (if (let ((url* (folder-url (message-folder message))))
-	(and (imap-url? url*)
-	     (compatible-imap-urls? url url*)))
-      (imap:command:copy (imap-message-connection message)
-			 (message-index message)
-			 (imap-url-mailbox url))
-      (imap:command:append
-       (get-imap-connection url)
-       (imap-url-mailbox url)
-       (message-flags message)
-       (message-internal-time message)
-       (string-append
-	(header-fields->string (message-header-fields message))
-	"\n"
-	(message-body message)))))
+  (let ((folder (message-folder message)))
+    (if (let ((url* (folder-url folder)))
+	  (and (imap-url? url*)
+	       (compatible-imap-urls? url url*)))
+	(imap:command:copy (imap-folder-connection folder)
+			   (message-index message)
+			   (imap-url-mailbox url))
+	(with-open-imap-connection url
+	  (lambda (connection)
+	    (imap:command:append connection
+				 (imap-url-mailbox url)
+				 (message-flags message)
+				 (message-internal-time message)
+				 (message->string message)))))))
 
 (define-method available-folder-names ((url <imap-url>))
   url
@@ -635,7 +660,7 @@
 ;;;; Folder operations
 
 (define-method %open-folder ((url <imap-url>))
-  (let ((folder (make-imap-folder url (get-imap-connection url))))
+  (let ((folder (make-imap-folder url (get-imap-connection url #t))))
     (reset-imap-folder! folder)
     (guarantee-imap-folder-open folder)
     folder))
@@ -653,7 +678,7 @@
 	  #t))))
 
 (define-method close-folder ((folder <imap-folder>))
-  (close-imap-connection (imap-folder-connection folder)))
+  (maybe-close-imap-connection (imap-folder-connection folder)))
 
 (define-method %folder-valid? ((folder <imap-folder>))
   folder
@@ -698,7 +723,7 @@
   unspecific)
 
 (define-method discard-folder-cache ((folder <imap-folder>))
-  (close-imap-connection (imap-folder-connection folder))
+  (maybe-close-imap-connection (imap-folder-connection folder))
   (reset-imap-folder! folder))
 
 (define-method probe-folder ((folder <imap-folder>))
@@ -721,7 +746,8 @@
   ((imail-message-wrapper "Select mailbox " mailbox)
    (lambda ()
      (imap:response:ok?
-      (imap:command:no-response-1 connection 'SELECT mailbox)))))
+      (imap:command:no-response-1 connection 'SELECT
+				  (adjust-mailbox-name connection mailbox))))))
 
 (define (imap:command:fetch connection index items)
   (imap:command:single-response imap:response:fetch?
@@ -1011,18 +1037,24 @@
 		  (newline port)))))
 	 (imap:response:preauth? response))
 	((imap:response:exists? response)
-	 (set-imap-folder-length! (imap-connection-folder connection)
-				  (imap:response:exists-count response))
+	 (with-imap-connection-folder connection
+	   (lambda (folder)
+	     (set-imap-folder-length! folder
+				      (imap:response:exists-count response))))
 	 #f)
 	((imap:response:expunge? response)
-	 (remove-imap-folder-message
-	  (imap-connection-folder connection)
-	  (- (imap:response:expunge-index response) 1))
+	 (with-imap-connection-folder connection
+	   (lambda (folder)
+	     (remove-imap-folder-message
+	      folder
+	      (- (imap:response:expunge-index response) 1))))
 	 #f)
 	((imap:response:flags? response)
-	 (set-imap-folder-allowed-flags!
-	  (imap-connection-folder connection)
-	  (map imap-flag->imail-flag (imap:response:flags response)))
+	 (with-imap-connection-folder connection
+	   (lambda (folder)
+	     (set-imap-folder-allowed-flags!
+	      folder
+	      (map imap-flag->imail-flag (imap:response:flags response)))))
 	 #f)
 	((imap:response:recent? response)
 	 #f)
@@ -1037,10 +1069,12 @@
 	((imap:response:status? response)
 	 (eq? command 'STATUS))
 	((imap:response:fetch? response)
-	 (process-fetch-attributes
-	  (get-message (imap-connection-folder connection)
-		       (- (imap:response:fetch-index response) 1))
-	  response)
+	 (with-imap-connection-folder connection
+	   (lambda (folder)
+	     (process-fetch-attributes
+	      (get-message folder
+			   (- (imap:response:fetch-index response) 1))
+	      response)))
 	 (eq? command 'FETCH))
 	(else
 	 (error "Illegal server response:" response))))
@@ -1055,37 +1089,47 @@
 	    (display text port)
 	    (newline port))))
 	((imap:response-code:permanentflags? code)
-	 (let ((pflags (imap:response-code:permanentflags code))
-	       (folder (imap-connection-folder connection)))
-	   (set-imap-folder-permanent-keywords?!
-	    folder
-	    (if (memq '\* pflags) #t #f))
-	   (set-imap-folder-permanent-flags!
-	    folder
-	    (map imap-flag->imail-flag (delq '\* pflags)))))
+	 (with-imap-connection-folder connection
+	   (lambda (folder)
+	     (let ((pflags (imap:response-code:permanentflags code)))
+	       (set-imap-folder-permanent-keywords?!
+		folder
+		(if (memq '\* pflags) #t #f))
+	       (set-imap-folder-permanent-flags!
+		folder
+		(map imap-flag->imail-flag (delq '\* pflags)))))))
 	((imap:response-code:read-only? code)
-	 (set-imap-folder-read-only?! (imap-connection-folder connection) #t))
+	 (with-imap-connection-folder connection
+	   (lambda (folder)
+	     (set-imap-folder-read-only?! folder #t))))
 	((imap:response-code:read-write? code)
-	 (set-imap-folder-read-only?! (imap-connection-folder connection) #f))
+	 (with-imap-connection-folder connection
+	   (lambda (folder)
+	     (set-imap-folder-read-only?! folder #f))))
 	((imap:response-code:uidnext? code)
-	 (set-imap-folder-uidnext! (imap-connection-folder connection)
-				   (imap:response-code:uidnext code)))
+	 (with-imap-connection-folder connection
+	   (lambda (folder)
+	     (set-imap-folder-uidnext! folder
+				       (imap:response-code:uidnext code)))))
 	((imap:response-code:uidvalidity? code)
-	 (let ((folder (imap-connection-folder connection))
-	       (uidvalidity (imap:response-code:uidvalidity code)))
-	   (if (not (eqv? uidvalidity (imap-folder-uidvalidity folder)))
-	       (new-imap-folder-uidvalidity! folder uidvalidity))))
+	 (with-imap-connection-folder connection
+	   (lambda (folder)
+	     (let ((uidvalidity (imap:response-code:uidvalidity code)))
+	       (if (not (eqv? uidvalidity (imap-folder-uidvalidity folder)))
+		   (new-imap-folder-uidvalidity! folder uidvalidity))))))
 	((imap:response-code:unseen? code)
-	 (set-imap-folder-unseen!
-	  (imap-connection-folder connection)
-	  (- (imap:response-code:unseen code) 1)))
+	 (with-imap-connection-folder connection
+	   (lambda (folder)
+	     (set-imap-folder-unseen!
+	      folder
+	      (- (imap:response-code:unseen code) 1)))))
 	#|
-	((or (imap:response-code:badcharset? code)
-	     (imap:response-code:newname? code)
-	     (imap:response-code:parse? code)
-	     (imap:response-code:trycreate? code))
-	 unspecific)
-	|#
+	  ((or (imap:response-code:badcharset? code)
+	       (imap:response-code:newname? code)
+	       (imap:response-code:parse? code)
+	       (imap:response-code:trycreate? code))
+	   unspecific)
+	  |#
 	))
 
 (define (process-fetch-attributes message response)
@@ -1116,6 +1160,11 @@
      (%set-imap-message-uid! message datum)
      #t)
     (else #f)))
+
+(define (with-imap-connection-folder connection receiver)
+  (let ((folder (imap-connection-folder connection)))
+    (if folder
+	(receiver folder))))
 
 (define %set-message-header-fields!
   (slot-modifier <imap-message> 'HEADER-FIELDS))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.65 2000/05/18 22:11:15 cph Exp $
+;;; $Id: imail-top.scm,v 1.66 2000/05/19 04:15:41 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -106,30 +106,30 @@ May be called with an IMAIL folder URL as argument;
     (list (and (command-argument)
 	       (prompt-for-string "Run IMAIL on folder" #f))))
   (lambda (url-string)
-    (bind-authenticator imail-authenticator
-      (lambda ()
-	(let ((folder
-	       (open-folder
-		(if url-string
-		    (imail-parse-partial-url url-string)
-		    (imail-default-url)))))
-	  (select-buffer
-	   (let ((buffer
-		  (or (imail-folder->buffer folder #f)
-		      (let ((buffer
-			     (new-buffer
-			      (url-presentation-name (folder-url folder)))))
-			(associate-imail-with-buffer buffer folder #f)
-			buffer))))
-	     (select-message folder
-			     (or (first-unseen-message folder)
-				 (selected-message #f buffer))
-			     #t)
-	     buffer)))))))
+    (let ((folder
+	   (open-folder
+	    (if url-string
+		(imail-parse-partial-url url-string)
+		(imail-default-url)))))
+      (select-buffer
+       (let ((buffer
+	      (or (imail-folder->buffer folder #f)
+		  (let ((buffer
+			 (new-buffer
+			  (url-presentation-name (folder-url folder)))))
+		    (associate-imail-with-buffer buffer folder #f)
+		    buffer))))
+	 (select-message folder
+			 (or (first-unseen-message folder)
+			     (selected-message #f buffer))
+			 #t)
+	 buffer)))))
 
-(define (imail-authenticator host user-id receiver)
-  (call-with-pass-phrase (string-append "Password for user " user-id
-					" on host " host)
+(define (imail-call-with-pass-phrase url receiver)
+  (call-with-pass-phrase (string-append "Password for user "
+					(imap-url-user-id url)
+					" on host "
+					(imap-url-host url))
 			 receiver))
 
 (define (imail-default-url)

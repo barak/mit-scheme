@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.72 2000/05/19 03:20:46 cph Exp $
+;;; $Id: imail-core.scm,v 1.73 2000/05/19 04:16:16 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -156,34 +156,12 @@
   (%append-message message (->url url)))
 
 (define-generic %append-message (message url))
-
+
 ;; -------------------------------------------------------------------
 ;; Return a list of URLs for folders that match URL-PATTERN.
 ;; URL-PATTERN can contain wildcards.
 
 (define-generic available-folder-names (url-pattern))
-
-;; -------------------------------------------------------------------
-;; Define AUTHENTICATOR to be the authenticator to use in the dynamic
-;; extent of THUNK.
-
-;; AUTHENTICATOR is a procedure that performs authentication, for
-;; protocols that require it.  AUTHENTICATOR is called with a host
-;; name, a user ID, and a procedure as its arguments.  It invokes the
-;; procedure on a single argument, the password.  The AUTHENTICATOR
-;; may wipe the password string on the procedure's return, if desired.
-
-;; For protocols that don't require authentication, AUTHENTICATOR is
-;; not called, and BIND-AUTHENTICATOR need not be used.
-
-;; [AUTHENTICATOR can be called at a variety of times; these will be
-;; made more explicit when known.]
-
-(define (bind-authenticator authenticator thunk)
-  (fluid-let ((authenticate authenticator))
-    (thunk)))
-
-(define authenticate)
 
 ;;;; Folder type
 
