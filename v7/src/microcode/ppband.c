@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/ppband.c,v 9.38 1990/06/20 17:37:59 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/ppband.c,v 9.39 1990/06/21 03:50:30 jinx Exp $
 
 Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
 
@@ -51,7 +51,7 @@ static SCHEME_OBJECT * memory_base;
 long
 Load_Data(Count, To_Where)
      long Count;
-     FILE *To_Where;
+     SCHEME_OBJECT *To_Where;
 {
   return (fread (To_Where, (sizeof (SCHEME_OBJECT)), Count, stdin));
 }
