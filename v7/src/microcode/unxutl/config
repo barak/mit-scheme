@@ -1,6 +1,6 @@
 #!/bin/sh
 # Configuration script for MIT Scheme
-# $Id: config,v 1.24 1993/11/03 22:08:04 gjr Exp $
+# $Id: config,v 1.25 1993/11/03 22:08:32 gjr Exp $
 # Modelled on the configuration script for GNU CC
 # The section between lines is the copyright prefix from the GNU CC config.
 #----------------------------------------------------------------------
@@ -140,14 +140,14 @@ discriminate()
 		cmpaux_file=mc68k.m4
 		cmp_file=sun3-nfp.s
 		;;
-	sun3-os3-nfp)			# sun3, pre-4.0 sunos, No Floating Point
+	sun3-os3-nfp)			# sun3, pre-4.0 sunos, No FP
 		system_file=sunos3
 		machine_file=sun3
 		cmpint_file=mc68k.h
 		cmpaux_file=mc68k.m4
 		cmp_file=sun3-nfp.s
 		;;
-	sun4 sparc)
+	sun4 | sparc)
 		system_file=sunos4
 		machine_file=sun4 
 		;;
