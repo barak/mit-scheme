@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.106 1992/11/20 19:35:38 cph Exp $
+$Id: edwin.pkg,v 1.107 1992/11/24 22:27:15 cph Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -864,6 +864,7 @@ MIT in each case. |#
 	  edwin-variable$delete-exited-processes
 	  edwin-variable$exec-path
 	  edwin-variable$process-connection-type
+	  edwin-variable$shell-file-name
 	  find-program
 	  get-buffer-process			; always present
 	  get-process-by-name
@@ -997,7 +998,19 @@ MIT in each case. |#
 
 (define-package (edwin rcs)
   (files "rcs")
-  (parent (edwin)))
+  (parent (edwin))
+  (export (edwin)
+	  edwin-command$rcs-ci
+	  edwin-command$rcs-ci-locked-files
+	  edwin-command$rcs-co
+	  edwin-command$rcs-diff
+	  edwin-command$rcs-list-locked-files
+	  edwin-command$rcs-log
+	  edwin-command$rcs-unlock
+	  edwin-variable$rcs-ci-default-switches
+	  edwin-variable$rcs-co-default-switches
+	  edwin-variable$rcs-diff-default-switches
+	  edwin-variable$rcs-log-default-switches))
 
 (define-package (edwin sendmail)
   (files "sendmail")
