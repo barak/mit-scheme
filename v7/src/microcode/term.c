@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: term.c,v 1.8 1993/08/24 06:10:01 cph Exp $
+$Id: term.c,v 1.9 1993/08/31 18:54:33 gjr Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -254,7 +254,12 @@ DEFUN_VOID (edwin_auto_save)
      end up back here, we continue saving, skipping the entries
      already saved as well as the entry that caused the error.  */
   if (edwin_auto_save_position == SHARP_T)
-    edwin_auto_save_position = (Get_Fixed_Obj_Slot (FIXOBJ_EDWIN_AUTO_SAVE));
+  {
+    if (Valid_Fixed_Obj_Vector ())
+      edwin_auto_save_position = (Get_Fixed_Obj_Slot (FIXOBJ_EDWIN_AUTO_SAVE));
+    else
+      edwin_auto_save_position = SHARP_F;
+  }
   while (PAIR_P (edwin_auto_save_position))
     {
       SCHEME_OBJECT entry = (PAIR_CAR (edwin_auto_save_position));
