@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: txtprp.scm,v 1.5 1993/08/13 23:20:31 cph Exp $
+;;;	$Id: txtprp.scm,v 1.6 1993/08/23 20:46:20 cph Exp $
 ;;;
 ;;;	Copyright (c) 1993 Massachusetts Institute of Technology
 ;;;
@@ -211,16 +211,16 @@
 		  (fix:= start (interval-total-length root)))))
        (not (eq? 'FULLY (group-writable? group)))
        (let ((interval (find-interval group start)))
-	 (let ((datum (interval-property interval 'READ-ONLY)))
+	 (let ((datum (interval-property interval 'READ-ONLY #f)))
 	   (and datum
 		(if (fix:= start (interval-start interval))
 		    (eq? datum
 			 (interval-property (previous-interval interval)
-					    'READ-ONLY))
+					    'READ-ONLY #f))
 		    (or (fix:< start (interval-end interval))
 			(eq? datum
 			     (interval-property (next-interval interval)
-						'READ-ONLY)))))))))
+						'READ-ONLY #f)))))))))
 
 ;; export
 #|
@@ -252,7 +252,7 @@
   (and (group-text-properties group)
        (not (eq? 'FULLY (group-writable? group)))
        (let loop ((interval (find-interval group start)))
-	 (or (interval-property interval 'READ-ONLY)
+	 (or (interval-property interval 'READ-ONLY #f)
 	     (let ((next (next-interval interval)))
 	       (and next
 		    (fix:> end (interval-start next))
@@ -469,8 +469,11 @@
 	   true)
 	  (else false))))
 
-(define-integrable (interval-property interval key)
-  (get-property key (interval-properties interval)))
+(define-integrable (interval-property interval key default)
+  (let ((entry (assq key (interval-properties interval))))
+    (if entry
+	(cdr entry)
+	default)))
 
 (define-integrable (null-right-child? t)
   (not (interval-right t)))
