@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.104 2000/06/05 17:20:47 cph Exp $
+;;; $Id: imail-imap.scm,v 1.105 2000/06/05 17:25:38 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -211,6 +211,7 @@
   (url             define accessor)
   (port            define standard initial-value #f)
   (greeting        define standard initial-value #f)
+  (capabilities    define standard initial-value '())
   (sequence-number define standard initial-value 0)
   (response-queue  define accessor initializer (lambda () (cons '() '())))
   (folder          define standard initial-value #f)
@@ -225,6 +226,8 @@
 (define (reset-imap-connection connection)
   (without-interrupts
    (lambda ()
+     (set-imap-connection-greeting! connection #f)
+     (set-imap-connection-capabilities! connection '())
      (set-imap-connection-sequence-number! connection 0)
      (let ((queue (imap-connection-response-queue connection)))
        (set-car! queue '())
@@ -332,8 +335,10 @@
 				(imap:response:response-text-string response)
 				response)))
 			 (reset-imap-connection connection)
-			 (if (not (memq 'IMAP4REV1
-					(imap:command:capability connection)))
+			 (imap:command:capability connection)
+			 (if (not
+			      (memq 'IMAP4REV1
+				    (imap-connection-capabilities connection)))
 			     (error "Server doesn't support IMAP4rev1:" url))
 			 (let ((response
 				(imail-call-with-pass-phrase url
@@ -1125,9 +1130,7 @@
 ;;;; IMAP command invocation
 
 (define (imap:command:capability connection)
-  (imap:response:capabilities
-   (imap:command:single-response imap:response:capability? connection
-				 'CAPABILITY)))
+  (imap:command:no-response connection 'CAPABILITY))
 
 (define (imap:command:login connection user-id pass-phrase)
   ((imail-message-wrapper "Logging in as " user-id)
@@ -1436,7 +1439,10 @@
 	((imap:response:recent? response)
 	 #f)
 	((imap:response:capability? response)
-	 (eq? command 'CAPABILITY))
+	 (set-imap-connection-capabilities!
+	  connection
+	  (imap:response:capabilities response))
+	 #f)
 	((imap:response:list? response)
 	 (eq? command 'LIST))
 	((imap:response:lsub? response)
