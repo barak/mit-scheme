@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.15 1988/12/30 07:11:17 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.16 1989/01/21 09:16:27 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -55,7 +55,10 @@ MIT in each case. |#
 	     (list-transform-positive (reverse! *rtl-graphs*)
 	       (lambda (rgraph)
 		 (not (null? (rgraph-entry-edges rgraph))))))
-       (for-each rgraph/compress! *rtl-graphs*)
+       (for-each (lambda (rgraph)
+		   (rgraph/compress! rgraph)
+		   (rgraph/postcompress! rgraph))
+		 *rtl-graphs*)
        (set! *rtl-procedures* (reverse! *rtl-procedures*))
        (set! *rtl-continuations*
 	     (append *extra-continuations* (reverse! *rtl-continuations*)))))))
@@ -116,20 +119,6 @@ MIT in each case. |#
 			     (generate/node (procedure-entry-node procedure))
 			     true))
 
-(define (operator/needs-no-heap-check? op)
-  (and (rvalue/constant? op)
-       (let ((obj (constant-value op)))
-	 (and (normal-primitive-procedure? obj)
-	      (special-primitive-handler obj)))))
-
-(define (continuation/avoid-check? continuation)
-  (and (null? (continuation/returns continuation))
-       (for-all?
-	(continuation/combinations continuation)
-	(lambda (combination)
-	  (let ((op (rvalue-known-value (combination/operator combination))))
-	    (and op (operator/needs-no-heap-check? op)))))))
-
 (define (generate/continuation continuation)
   (let ((label (continuation/label continuation)))
     (with-values
@@ -168,6 +157,20 @@ MIT in each case. |#
 	  (continuation/closing-block continuation)
 	  (continuation/offset continuation))
 	 (continuation/debugging-info continuation))))))
+
+(define (continuation/avoid-check? continuation)
+  (and (null? (continuation/returns continuation))
+       (for-all?
+	(continuation/combinations continuation)
+	(lambda (combination)
+	  (let ((op (rvalue-known-value (combination/operator combination))))
+	    (and op (operator/needs-no-heap-check? op)))))))
+
+(define (operator/needs-no-heap-check? op)
+  (and (rvalue/constant? op)
+       (let ((obj (constant-value op)))
+	 (and (normal-primitive-procedure? obj)
+	      (special-primitive-handler obj)))))
 
 (define (wrap-with-continuation-entry context scfg)
   (with-values (lambda () (generate-continuation-entry context))
@@ -226,11 +229,31 @@ MIT in each case. |#
 	(else
 	 (make-null-cfg))))
 
+(define (generate/rgraph node generator)
+  (let ((rgraph (node->rgraph node)))
+    (let ((entry-edge
+	   (node->edge
+	    (cfg-entry-node
+	     (rtl-precompress!
+	      (fluid-let ((*current-rgraph* rgraph))
+		(generator node)))))))
+      (add-rgraph-entry-edge! rgraph entry-edge)
+      (values rgraph entry-edge))))
+
+(define (node->rgraph node)
+  (let ((color
+	 (or (node/subgraph-color node)
+	     (error "node lacking subgraph color" node))))
+    (or (subgraph-color/rgraph color)
+	(let ((rgraph (make-rgraph number-of-machine-registers)))
+	  (set-subgraph-color/rgraph! color rgraph)
+	  (set! *rtl-graphs* (cons rgraph *rtl-graphs*))	  rgraph))))
+
 (define (generate/node node)
   (let ((memoization (cfg-node-get node memoization-tag)))
     (cond ((not memoization)
 	   (cfg-node-put! node memoization-tag loop-memoization-marker)
-	   (let ((result (generate/node/no-memoize node)))
+	   (let ((result (rtl-precompress! (generate/node/no-memoize node))))
 	     (cfg-node-put! node memoization-tag result)
 	     result))
 	  ((eq? memoization loop-memoization-marker)
@@ -244,59 +267,69 @@ MIT in each case. |#
   "rtlgen-loop-memoization-marker")
 
 (define (generate/node/no-memoize node)
-  (cfg-node-case (tagged-vector/tag node)
-    ((APPLICATION)
-     (if (snode-next node)
-	 (error "Application node has next" node))
-     (case (application-type node)
-       ((COMBINATION) (generate/combination node))
-       ((RETURN) (generate/return node))
-       (else (error "Unknown application type" node))))
-    ((VIRTUAL-RETURN)
-     (scfg*scfg->scfg! (generate/virtual-return node)
-		       (generate/node (snode-next node))))
-    ((POP)
-     (scfg*scfg->scfg! (generate/pop node)
-		       (generate/node (snode-next node))))
-    ((ASSIGNMENT)
-     (scfg*scfg->scfg! (generate/assignment node)
-		       (generate/node (snode-next node))))
-    ((DEFINITION)
-     (scfg*scfg->scfg! (generate/definition node)
-		       (generate/node (snode-next node))))
-    ((STACK-OVERWRITE)
-     (scfg*scfg->scfg! (generate/stack-overwrite node)
-		       (generate/node (snode-next node))))
-    ((TRUE-TEST)
-     (generate/true-test node))
-    ((FG-NOOP)
-     (generate/node (snode-next node)))))
+  (let ((simple-snode
+	 (lambda (generator)
+	   (scfg*scfg->scfg! (generator node)
+			     (generate/node (snode-next node))))))
+    (cfg-node-case (tagged-vector/tag node)
+      ((APPLICATION)
+       (if (snode-next node)
+	   (error "Application node has next" node))
+       (case (application-type node)
+	 ((COMBINATION) (generate/combination node))
+	 ((RETURN) (generate/return node))
+	 (else (error "Unknown application type" node))))
+      ((VIRTUAL-RETURN)
+       (simple-snode generate/virtual-return))
+      ((POP)
+       (simple-snode generate/pop))
+      ((ASSIGNMENT)
+       (simple-snode generate/assignment))
+      ((DEFINITION)
+       (simple-snode generate/definition))
+      ((STACK-OVERWRITE)
+       (simple-snode generate/stack-overwrite))
+      ((TRUE-TEST)
+       (generate/true-test node))
+      ((FG-NOOP)
+       (generate/node (snode-next node))))))
 
-(define (generate/rgraph node generator)
-  (let ((rgraph (node->rgraph node)))
-    (let ((entry-edge
-	   (node->edge
-	    (cfg-entry-node
-	     (fluid-let ((*current-rgraph* rgraph))
-	       (with-new-node-marks (lambda () (generator node))))))))
-      (add-rgraph-entry-edge! rgraph entry-edge)
-      (values rgraph entry-edge))))
+(define (rtl-precompress! cfg)
+  (if (cfg-null? cfg)
+      cfg
+      (let ((edge (cfg-entry-edge cfg)))
+	(with-new-node-marks
+	 (lambda ()
+	   (bblock-compress!
+	    (edge-right-node edge)
+	    (lambda (bblock)
+	      (cfg-node-get bblock potential-control-merge-marker)))))
+	(let ((bblock (edge-right-node edge)))
+	  (edge-disconnect-right! edge)
+	  (cfg-node-put! bblock potential-control-merge-marker true)
+	  (case (cfg-tag cfg)
+	    ((SNODE-CFG)
+	     (make-scfg bblock (scfg-next-hooks cfg)))
+	    ((PNODE-CFG)
+	     (make-pcfg bblock
+			(pcfg-consequent-hooks cfg)
+			(pcfg-alternative-hooks cfg)))
+	    (else
+	     (error "Illegal cfg-tag" cfg)))))))
 
-(define (node->rgraph node)
-  (let ((color
-	 (or (node/subgraph-color node)
-	     (error "node lacking subgraph color" node))))
-    (or (subgraph-color/rgraph color)
-	(let ((rgraph (make-rgraph number-of-machine-registers)))
-	  (set-subgraph-color/rgraph! color rgraph)
-	  (set! *rtl-graphs* (cons rgraph *rtl-graphs*))
-	  rgraph))))
+(define (rgraph/postcompress! rgraph)
+  (for-each (lambda (bblock)
+	      (cfg-node-remove! bblock potential-control-merge-marker))
+	    (rgraph-bblocks rgraph)))
 
+(define-integrable potential-control-merge-marker
+  (string->symbol "#[(compiler rtl-generator)potential-control-merge]"))
+
 (define (rgraph/compress! rgraph)
   (with-new-node-marks
    (lambda ()
      (for-each (lambda (edge)
-		 (bblock-compress! (edge-right-node edge)))
+		 (bblock-compress! (edge-right-node edge) false))
 	       (rgraph-initial-edges rgraph))))
   ;; This code attempts to remove backwards edges to pieces of the
   ;; graph which were generated and then not used.  It does this by
@@ -339,3 +372,35 @@ MIT in each case. |#
 	 (for-each (delete-block-edges! false) initial-bblocks)
 	 (for-each (delete-block-edges! true) result)
 	 (set-rgraph-bblocks! rgraph (append! initial-bblocks result)))))))
+
+(define (bblock-compress! bblock limit-predicate)
+  ;; This improved compressor should replace the original in "rtlbase/rtlcfg".
+  (let ((walk-next?
+	 (if limit-predicate
+	     (lambda (next) (and next (not (limit-predicate next))))
+	     (lambda (next) next))))
+    (let walk-bblock ((bblock bblock))
+      (if (not (node-marked? bblock))
+	  (begin
+	    (node-mark! bblock)
+	    (if (sblock? bblock)
+		(let ((next (snode-next bblock)))
+		  (if (walk-next? next)
+		      (begin
+			(if (null? (cdr (node-previous-edges next)))
+			    (begin
+			      (set-rinst-next!
+			       (rinst-last (bblock-instructions bblock))
+			       (bblock-instructions next))
+			      (set-bblock-instructions!
+			       next
+			       (bblock-instructions bblock))
+			      (snode-delete! bblock)))
+			(walk-bblock next))))
+		(begin
+		  (let ((consequent (pnode-consequent bblock)))
+		    (if (walk-next? consequent)
+			(walk-bblock consequent)))
+		  (let ((alternative (pnode-alternative bblock)))
+		    (if (walk-next? alternative)
+			(walk-bblock alternative))))))))))
