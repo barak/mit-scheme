@@ -21,7 +21,7 @@
 ;;; Requires C-Scheme release 5 or later
 ;;; Changes to Control-G handler require runtime version 13.85 or later
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.3 1987/11/23 18:32:32 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.4 1987/12/04 18:58:01 cph Exp $
 
 (require 'scheme)
 
@@ -273,7 +273,7 @@ Control returns to the top level rep loop."
   (interactive "cInterrupt character to send: ")
   (quit-process "scheme" t)
   (send-string "scheme" (char-to-string char))
-  (if mark-p
+  (if (and mark-p xscheme-control-g-synchronization-p)
       (send-string "scheme" (char-to-string 0))))
 
 ;;;; Basic Process Control
