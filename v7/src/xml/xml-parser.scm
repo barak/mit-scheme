@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.29 2003/07/30 19:44:02 cph Exp $
+$Id: xml-parser.scm,v 1.30 2003/08/01 03:50:16 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -486,25 +486,26 @@ USA.
     (let ((parse-body
 	   (terminated-region-parser description alphabet:xml-char end)))
       (*parser
-       (transform
-	   (lambda (v)
-	     (let ((name (vector-ref v 0))
-		   (text (vector-ref v 1)))
-	       (let ((entry (assq name *pi-handlers*)))
-		 (if entry
-		     (let ((content ((cadr entry) text)))
-		       (if (not (list-of-type? content valid-content?))
-			   (error "Illegal output from XML processor:" name))
-		       (list->vector content))
-		     (vector (make-xml-processing-instructions name text))))))
-	 (sbracket description start end
-	   (with-pointer p
-	     (map (lambda (name)
-		    (if (string-ci=? (symbol-name name) "xml")
-			(perror p "Illegal PI name" name))
-		    name)
-		  parse-pi-name))
-	   parse-body))))))
+       (with-pointer p
+	 (transform
+	     (lambda (v)
+	       (let ((name (vector-ref v 0))
+		     (text (vector-ref v 1)))
+		 (if (string-ci=? (symbol-name name) "xml")
+		     (perror p "Reserved XML processor name" name))
+		 (let ((entry (assq name *pi-handlers*)))
+		   (if entry
+		       (let ((content ((cadr entry) text)))
+			 (if (not (list-of-type? content valid-content?))
+			     (perror p
+				     "Illegal output from XML processor"
+				     name))
+			 (list->vector content))
+		       (vector
+			(make-xml-processing-instructions name text))))))
+	   (sbracket description start end
+	     parse-pi-name
+	     parse-body)))))))
 
 (define parse-pi:misc
   (pi-parser
