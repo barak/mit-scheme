@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.35 1997/06/14 07:34:04 cph Exp $
+;;;	$Id: snr.scm,v 1.36 1997/06/18 07:05:46 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -4057,7 +4057,7 @@ With prefix arg, replaces the file with the list information."
     (news-group:update-server-info! group)
     (message msg "done"))
   (if (news-group:active? group)
-      (news-group:guarantee-ranges-deleted group)))
+      (news-group:clip-ranges! group)))
 
 (define (news-group:purge-and-compact-headers! group buffer)
   (let ((msg
@@ -4080,7 +4080,7 @@ With prefix arg, replaces the file with the list information."
 	  news-header:article-deleted?))
     (news-group:close-database group)
     (message msg "done")))
-
+
 (define (news-group:number-of-articles group)
   (let ((estimate (news-group:estimated-n-articles group)))
     (and estimate
@@ -4095,6 +4095,24 @@ With prefix arg, replaces the file with the list information."
 			 (news-group:first-article group))
 		      n-seen)))
 	     estimate))))
+
+(define (news-group:clip-ranges! group)
+  (if (news-group:server-has-articles? group)
+      (let ((first (news-group:first-article group))
+	    (last (news-group:last-article group)))
+	(set-news-group:ranges-deleted!
+	 group
+	 (clip-ranges! (news-group:ranges-deleted group) first last))
+	(set-news-group:ranges-marked!
+	 group
+	 (clip-ranges! (news-group:ranges-marked group) first last))
+	(set-news-group:ranges-browsed!
+	 group
+	 (clip-ranges! (news-group:ranges-browsed group) first last)))
+      (begin
+	(set-news-group:ranges-deleted! group '())
+	(set-news-group:ranges-marked! group '())
+	(set-news-group:ranges-browsed! group '()))))
 
 (define (news-group:guarantee-ranges-deleted group)
   (let ((ranges
