@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/redpkg.scm,v 1.1 1988/06/13 12:38:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/redpkg.scm,v 1.2 1988/10/28 07:03:24 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -325,7 +325,7 @@ MIT in each case. |#
 		   default-pathname))))
 
 (define primitive-package-name
-  (list (string->uninterned-symbol "primitives")))
+  (list (string->symbol "#[(cross-reference reader)primitives]")))
 
 ;;;; Binding and Reference
 
@@ -340,6 +340,8 @@ MIT in each case. |#
   (let ((source-binding (intern-binding! source-package source-name)))
     (make-link source-binding
 	       (btree-insert! (package/bindings destination-package)
+			      symbol<?
+			      binding/name
 			      destination-name
 		 (lambda (destination-name)
 		   (make-binding destination-package
@@ -351,7 +353,7 @@ MIT in each case. |#
 		 identity-procedure))))
 
 (define (intern-binding! package name)
-  (btree-insert! (package/bindings package) name
+  (btree-insert! (package/bindings package) symbol<? binding/name name
     (lambda (name)
       (let ((value-cell (make-value-cell)))
 	(let ((binding (make-binding package name value-cell)))
@@ -369,7 +371,7 @@ MIT in each case. |#
 	   (set-expression/references!
 	    expression
 	    (cons reference (expression/references expression))))))
-    (btree-insert! (package/references package) name
+    (btree-insert! (package/references package) symbol<? reference/name name
       (lambda (name)
 	(%make-reference package name))
       (lambda (reference)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/object.scm,v 1.1 1988/06/13 12:38:28 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/object.scm,v 1.2 1988/10/28 07:03:20 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -36,8 +36,11 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define-structure (package-description (constructor make-package-description)
-				       (conc-name package-description/))
+(define-structure (package-description
+		   (named
+		    (string->symbol "#[(cross-reference)package-description]"))
+		   (constructor make-package-description)
+		   (conc-name package-description/))
   (name false read-only true)
   (file-cases false read-only true)
   (parent false read-only true)
@@ -45,7 +48,9 @@ MIT in each case. |#
   (exports false read-only true)
   (imports false read-only true))
 
-(define-structure (pmodel (conc-name pmodel/))
+(define-structure (pmodel
+		   (named (string->symbol "#[(cross-reference)pmodel]"))
+		   (conc-name pmodel/))
   (root-package false read-only true)
   (primitive-package false read-only true)
   (packages false read-only true)
@@ -53,6 +58,7 @@ MIT in each case. |#
   (default-pathname false read-only true))
 
 (define-structure (package
+		   (named (string->symbol "#[(cross-reference)package]"))
 		   (constructor %make-package
 				(name file-cases files initialization parent))
 		   (conc-name package/))
@@ -62,8 +68,8 @@ MIT in each case. |#
   (initialization false read-only true)
   parent
   (children '())
-  (bindings (make-btree symbol<? binding/name) read-only true)
-  (references (make-btree symbol<? reference/name) read-only true))
+  (bindings (make-btree) read-only true)
+  (references (make-btree) read-only true))
 
 (define (make-package name file-cases initialization parent)
   (let ((files
@@ -84,7 +90,7 @@ MIT in each case. |#
   (null? (package/name package)))
 
 (define (package/find-binding package name)
-  (btree-lookup (package/bindings package) name
+  (btree-lookup (package/bindings package) symbol<? binding/name name
     identity-procedure
     (lambda (name) name false)))
 
@@ -100,9 +106,10 @@ MIT in each case. |#
 (define-integrable (file-case-clause/files clause)
   (cdr clause))
 
-(define-structure (binding (constructor %make-binding
-					(package name value-cell))
-			   (conc-name binding/))
+(define-structure (binding
+		   (named (string->symbol "#[(cross-reference)binding]"))
+		   (constructor %make-binding (package name value-cell))
+		   (conc-name binding/))
   (package false read-only true)
   (name false read-only true)
   (value-cell false read-only true)
@@ -125,14 +132,18 @@ MIT in each case. |#
 (define (binding/internal? binding)
   (eq? binding (binding/source-binding binding)))
 
-(define-structure (value-cell (constructor make-value-cell ())
-			      (conc-name value-cell/))
+(define-structure (value-cell
+		   (named (string->symbol "#[(cross-reference)value-cell]"))
+		   (constructor make-value-cell ())
+		   (conc-name value-cell/))
   (bindings '())
   (expressions '())
   (source-binding false))
 
-(define-structure (link (constructor %make-link)
-			(conc-name link/))
+(define-structure (link
+		   (named (string->symbol "#[(cross-reference)link]"))
+		   (constructor %make-link)
+		   (conc-name link/))
   (source false read-only true)
   (destination false read-only true))
 
@@ -142,16 +153,20 @@ MIT in each case. |#
 			(cons link (binding/links source-binding)))
     link))
 
-(define-structure (expression (constructor make-expression (package file type))
-			      (conc-name expression/))
+(define-structure (expression
+		   (named (string->symbol "#[(cross-reference)expression]"))
+		   (constructor make-expression (package file type))
+		   (conc-name expression/))
   (package false read-only true)
   (file false read-only true)
   (type false read-only true)
   (references '())
   (value-cell false))
 
-(define-structure (reference (constructor %make-reference (package name))
-			     (conc-name reference/))
+(define-structure (reference
+		   (named (string->symbol "#[(cross-reference)reference]"))
+		   (constructor %make-reference (package name))
+		   (conc-name reference/))
   (package false read-only true)
   (name false read-only true)
   (expressions '())

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/cref.pkg,v 1.1 1988/06/13 12:38:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/cref.pkg,v 1.2 1988/10/28 07:03:12 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -38,7 +38,6 @@ MIT in each case. |#
 
 (define-package (cross-reference)
   (files "mset"
-	 "btree"
 	 "object"
 	 "toplev")
   (parent ())
@@ -47,6 +46,16 @@ MIT in each case. |#
 	  cref/generate-constructors
 	  cref/generate-cref
 	  cref/generate-trivial-constructor))
+
+(define-package (cross-reference balanced-binary-tree)
+  (files "btree")
+  (parent ())
+  (export (cross-reference)
+	  btree-delete!
+	  btree-fringe
+	  btree-insert!
+	  btree-lookup
+	  make-btree))
 
 (define-package (cross-reference analyze-file)
   (files "anfile")
