@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.1 2000/01/04 22:51:02 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.2 2000/01/07 23:09:17 cph Exp $
 ;;;
 ;;; Copyright (c) 1999 Massachusetts Institute of Technology
 ;;;
@@ -44,10 +44,10 @@
 
 (define-class (<rmail-folder> (constructor (url header-fields messages)))
     (<file-folder>)
-  (header-fields define standard accessor header-fields))
+  (header-fields accessor header-fields define modifier))
 
 (define-method %write-folder ((folder <folder>) (url <rmail-url>))
-  (write-rmail-file folder (file-url-pathname url)))
+  (write-rmail-file folder url))
 
 (define-method poll-folder ((folder <rmail-folder>))
   (rmail-get-new-mail folder))
@@ -249,7 +249,7 @@
 	     (lambda (n.v)
 	       (string-ci=? "summary-line" (car n.v))))))
       (if summary-line
-	  (%write-header-field (car n.v) (cdr n.v) port)))
+	  (%write-header-field (car summary-line) (cdr summary-line) port)))
     (for-each
      (lambda (n.v)
        (if (not (or (string-ci=? "summary-line" (car n.v))

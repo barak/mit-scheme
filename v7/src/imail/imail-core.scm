@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.1 2000/01/04 22:50:53 cph Exp $
+;;; $Id: imail-core.scm,v 1.2 2000/01/07 23:08:48 cph Exp $
 ;;;
 ;;; Copyright (c) 1999 Massachusetts Institute of Technology
 ;;;
@@ -214,7 +214,7 @@
 ;; error for invalid INDEX.
 (define (get-message folder index)
   (guarantee-index index 'GET-MESSAGE)
-  (if (not (fix:< index (length (count-messages folder))))
+  (if (not (fix:< index (count-messages folder)))
       (error:bad-range-argument index 'GET-MESSAGE))
   (%get-message folder index))
 
@@ -313,7 +313,7 @@
 		      headers*
 		      (append! (reverse! (cdr flags*)) flags)
 		      properties)))
-	  ((header-field->message-property header)
+	  ((header-field->message-property (car headers))
 	   => (lambda (property)
 		(loop (cdr headers)
 		      headers*
@@ -409,14 +409,14 @@
 (define (set-message-property message name value)
   (guarantee-message-property-name name 'SET-MESSAGE-PROPERTY)
   (guarantee-message-property-value value 'SET-MESSAGE-PROPERTY)
-  (let ((headers (message-properties message)))
-    (let loop ((headers headers))
-      (if (pair? headers)
-	  (if (string-ci=? name (caar headers))
-	      (set-cdr! (car headers) value)
-	      (loop (cdr headers)))
+  (let ((alist (message-properties message)))
+    (let loop ((alist* alist))
+      (if (pair? alist*)
+	  (if (string-ci=? name (caar alist*))
+	      (set-cdr! (car alist*) value)
+	      (loop (cdr alist*)))
 	  (set-message-properties! message
-				   (cons (cons name value) headers))))))
+				   (cons (cons name value) alist))))))
 
 (define (message-property-name? object)
   (header-field-name? object))
