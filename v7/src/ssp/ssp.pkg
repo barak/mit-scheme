@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ssp.pkg,v 1.5 2004/10/30 01:24:31 cph Exp $
+$Id: ssp.pkg,v 1.6 2004/10/30 04:44:51 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -175,8 +175,6 @@ USA.
 	  xd:boolean?
 	  xd:case
 	  xd:case?
-	  xd:check-action
-	  xd:check-action?
 	  xd:check-input
 	  xd:check-input?
 	  xd:check-inputs
@@ -215,8 +213,8 @@ USA.
 	  xd:radio-entry?
 	  xd:refer
 	  xd:refer?
-	  xd:submit-action
-	  xd:submit-action?
+	  xd:submit
+	  xd:submit?
 	  xd:text
 	  xd:text?
 	  xd:true-false
