@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: autosv.scm,v 1.28 1993/08/24 06:11:48 cph Exp $
+;;;	$Id: autosv.scm,v 1.29 1994/03/08 20:16:41 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -56,6 +56,7 @@ Normally auto-save files are written under other names."
   "True says by default do auto-saving of every file-visiting buffer."
   true
   boolean?)
+(variable-permanent-local! (ref-variable-object auto-save-default))
 
 (define-variable auto-save-interval
   "Number of keyboard input characters between auto-saves.
