@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/make.scm,v 14.11 1989/05/04 16:38:08 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/make.scm,v 14.12 1989/05/21 17:17:56 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -256,7 +256,9 @@ MIT in each case. |#
 				    (car names))
 	     (loop (cdr names)))))
 (package/add-child! system-global-package 'PACKAGE environment-for-package)
-(eval (fasload "runtim.bcon" false) system-global-environment)
+(eval (fasload "runtim.bcon" false)
+      ;; (cold-load/purify (fasload "runtim.bcon" false))
+      system-global-environment)
 
 ;; Global databases.  Load, then initialize.
 (let loop
