@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xterm.scm,v 1.59 1999/12/10 17:52:16 cph Exp $
+;;; $Id: xterm.scm,v 1.60 1999/12/10 17:55:22 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -824,7 +824,7 @@
      WM_CLASS
      WM_TRANSIENT_FOR))
 
-(define (intern-atom display name soft?)
+(define (symbol->x-atom display name soft?)
   (or (hash-table/get built-in-atoms-table name #f)
       (let ((table (car (display/cached-atoms-tables display))))
 	(or (hash-table/get table name #f)
@@ -836,7 +836,7 @@
 		  (hash-table/put! table name atom))
 	      atom)))))
 
-(define (get-atom-name display atom)
+(define (x-atom->symbol display atom)
   (if (< atom (vector-length built-in-atoms))
       (vector-ref built-in-atoms atom)
       (let ((table (cdr (display/cached-atoms-tables display))))
@@ -875,8 +875,8 @@
 		       delete?))
 
 (define (get-window-property display window property type delete?)
-  (let ((property (intern-atom display property #f))
-	(type-atom (intern-atom display type #f)))
+  (let ((property (symbol->x-atom display property #f))
+	(type-atom (symbol->x-atom display type #f)))
     (let ((v (x-get-window-property display window property 0 0 #f type-atom)))
       (and v
 	   (vector-ref v 3)
@@ -887,7 +887,7 @@
 					 (vector-ref v 2))))
 	     (if type
 		 data
-		 (cons (get-atom-name display (vector-ref v 0))
+		 (cons (x-atom->symbol display (vector-ref v 0))
 		       data)))))))
 
 (define (get-window-property-1 display window property delete?
@@ -936,8 +936,8 @@
 
 (define (put-window-property display window property type format data)
   (let ((put-1
-	 (let ((property (intern-atom display property #f))
-	       (type (intern-atom display type #f)))
+	 (let ((property (symbol->x-atom display property #f))
+	       (type (symbol->x-atom display type #f)))
 	   (lambda (mode data)
 	     (let ((status
 		    (x-change-property display window property type format
@@ -976,7 +976,7 @@
 			  property))
 
 (define (delete-window-property display window property)
-  (x-delete-property display window (intern-atom display property #f)))
+  (x-delete-property display window (symbol->x-atom display property #f)))
 
 (define-integrable x-status:success		0)
 (define-integrable x-status:bad-request		1)
@@ -1011,7 +1011,7 @@
 
 (define (own-selection display selection window time value)
   (and (eqv? window
-	     (let ((selection (intern-atom display selection #f)))
+	     (let ((selection (symbol->x-atom display selection #f)))
 	       (x-set-selection-owner display selection window time)
 	       (x-get-selection-owner display selection)))
        (begin
@@ -1056,11 +1056,11 @@
     (let ((display x-display-data))
       (let ((requestor (selection-request/requestor event))
 	    (selection
-	     (get-atom-name display (selection-request/selection event)))
+	     (x-atom->symbol display (selection-request/selection event)))
 	    (target
-	     (get-atom-name display (selection-request/target event)))
+	     (x-atom->symbol display (selection-request/target event)))
 	    (property
-	     (get-atom-name display (selection-request/property event)))
+	     (x-atom->symbol display (selection-request/property event)))
 	    (time (selection-request/time event)))
 	(let ((reply
 	       (lambda (property)
@@ -1068,7 +1068,7 @@
 					  requestor
 					  (selection-request/selection event)
 					  (selection-request/target event)
-					  (intern-atom display property #f)
+					  (symbol->x-atom display property #f)
 					  time)
 		 (x-display-flush display))))
 	  (if (let ((record (display/selection-record display selection time)))
@@ -1095,7 +1095,7 @@
     (let ((display x-display-data))
       (display/delete-selection-record!
        display
-       (get-atom-name display (selection-clear/selection event))
+       (x-atom->symbol display (selection-clear/selection event))
        (selection-clear/time event)))
     #f))
 
@@ -1141,7 +1141,7 @@
       (else #f))))
 
 (define (atoms->property-data names display)
-  (list->vector (map (lambda (name) (intern-atom display name #f)) names)))
+  (list->vector (map (lambda (name) (symbol->x-atom display name #f)) names)))
 
 (define (timestamp->property-data time)
   (vector time))
@@ -1150,7 +1150,7 @@
   (if (not (even? (vector-length data)))
       (error:bad-range-argument data 'PROPERTY-DATA->ATOM-ALIST))
   (let loop ((atoms
-	      (map (lambda (atom) (get-atom-name display atom))
+	      (map (lambda (atom) (x-atom->symbol display atom))
 		   (vector->list data))))
     (if (null? atoms)
 	'()
@@ -1190,9 +1190,9 @@
 (define (request-selection xterm selection target property time)
   (let ((display (x-window-display xterm))
 	(window (x-window-id xterm)))
-    (let ((selection (intern-atom display selection #f))
-	  (target (intern-atom display target #f))
-	  (property (intern-atom display property #f)))
+    (let ((selection (symbol->x-atom display selection #f))
+	  (target (symbol->x-atom display target #f))
+	  (property (symbol->x-atom display property #f)))
       (x-delete-property display window property)
       (x-convert-selection display selection target property window time)
       (x-display-flush display)
@@ -1250,7 +1250,7 @@
   (wait-for-event x-selection-timeout
     (lambda (event)
       (fix:= event-type:property-notify (vector-ref event 0)))
-    (let ((property (intern-atom (x-window-display xterm) property #f))
+    (let ((property (symbol->x-atom (x-window-display xterm) property #f))
 	  (window (x-window-id xterm)))
       (lambda (event)
 	(and (= window (property-notify/window event))
