@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/clscon.scm,v 1.3 1989/05/01 21:11:34 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/clscon.scm,v 1.4 1990/11/02 02:54:34 cph Rel $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -79,17 +79,20 @@
 	    (set! class-descriptors (cons (cons name class) class-descriptors))
 	    class)
 	  (let ((class (cdr entry)))
-	    (if (eq? (class-superclass class) superclass)
-		(begin
-		  (with-output-to-port (cmdl/output-port (nearest-cmdl))
-		    (lambda ()
-		      (warn "Redefining class" name)))
-		  (vector-set! class 3 object-size)
-		  (vector-set! class 4 transforms)
-		  class)
-		(let ((class (make-class)))
-		  (set-cdr! entry class)
-		  class)))))))
+	    (cond ((not (eq? (class-superclass class) superclass))
+		   (let ((class (make-class)))
+		     (set-cdr! entry class)
+		     class))
+		  ((or (not (= object-size (vector-ref class 3)))
+		       (not (equal? transforms (vector-ref class 4))))
+		   (with-output-to-port (cmdl/output-port (nearest-cmdl))
+		     (lambda ()
+		       (warn "Redefining class" name)))
+		   (vector-set! class 3 object-size)
+		   (vector-set! class 4 transforms)
+		   class)
+		  (else
+		   class)))))))
 
 (define (class? x)
   (and (vector? x)
