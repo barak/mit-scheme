@@ -1,0 +1,180 @@
+#| -*-Scheme-*-
+
+$Id: sos.pkg,v 1.1 1997/06/04 06:09:57 cph Exp $
+
+Copyright (c) 1995-97 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. |#
+
+;;;; Packaging for Scheme Object System
+
+(global-definitions "../runtime/runtime")
+
+(define-package (sos)
+  (files)
+  (parent ()))
+
+(define-package (sos slot)
+  (files "slot")
+  (parent ())
+  (export ()
+	  set-slot-value!
+	  slot-accessor
+	  slot-accessor-method
+	  slot-class
+	  slot-descriptor?
+	  slot-index
+	  slot-initial-value
+	  slot-initial-value?
+	  slot-initialized?
+	  slot-initializer
+	  slot-initpred
+	  slot-initpred-method
+	  slot-modifier
+	  slot-modifier-method
+	  slot-name
+	  slot-properties
+	  slot-property
+	  slot-value)
+  (export (sos class)
+	  canonicalize-slot-argument
+	  compute-slot-descriptor
+	  install-slot-accessor-methods))
+
+(define-package (sos class)
+  (files "class")
+  (parent ())
+  (export ()
+	  <%record>
+	  <bignum>
+	  <boolean>
+	  <char>
+	  <class>
+	  <complex>
+	  <dispatch-tag>
+	  <entity>
+	  <exact-complex>
+	  <exact-integer>
+	  <exact-rational>
+	  <exact-real>
+	  <exact>
+	  <fixnum>
+	  <flonum-vector>
+	  <flonum>
+	  <generic-procedure>
+	  <inexact-complex>
+	  <inexact-integer>
+	  <inexact-rational>
+	  <inexact-real>
+	  <inexact>
+	  <instance>
+	  <integer>
+	  <number>
+	  <object>
+	  <pair>
+	  <procedure>
+	  <rational>
+	  <ratnum>
+	  <real>
+	  <recnum>
+	  <record>
+	  <string>
+	  <symbol>
+	  <vector>
+	  class->dispatch-tag
+	  class-direct-slot-names
+	  class-direct-superclasses
+	  class-name
+	  class-precedence-list
+	  class-slot
+	  class-slots
+	  class?
+	  dispatch-tag->class
+	  instance-of?
+	  instance-predicate
+	  make-class
+	  make-trivial-subclass
+	  object-class
+	  record-class
+	  record-type-class
+	  subclass?))
+
+(define-package (sos instance)
+  (files "instance")
+  (parent ())
+  (export ()
+	  instance-class
+	  instance-constructor
+	  instance?))
+
+(define-package (sos method)
+  (files "method")
+  (parent ())
+  (export ()
+	  <chained-method>
+	  <computed-emp>
+	  <computed-method>
+	  <method>
+	  add-method
+	  add-methods
+	  chained-method?
+	  compute-effective-method-procedure
+	  compute-method
+	  computed-emp-key
+	  computed-emp?
+	  computed-method?
+	  delete-method
+	  generic-procedure-methods
+	  make-chained-method
+	  make-computed-emp
+	  make-computed-method
+	  make-method
+	  method-applicable?
+	  method-procedure
+	  method-specializers
+	  method?
+	  specializer=?
+	  specializer?
+	  specializers=?
+	  specializers?
+	  union-specializer
+	  union-specializer-classes
+	  union-specializer=?
+	  union-specializer?))
+
+(define-package (sos printer)
+  (files "printer")
+  (parent ())
+  (export ()
+	  write-instance
+	  write-instance-helper))
+
+(define-package (sos macros)
+  (files "macros")
+  (parent ()))
