@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/switch.scm,v 4.15 1990/05/03 15:05:05 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/switch.scm,v 4.16 1991/05/06 22:46:10 jinx Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Compiler Option Switches
+;;; package: (compiler)
 
 (declare (usual-integrations))
 
@@ -56,6 +57,7 @@ MIT in each case. |#
 (define compiler:open-code-primitives? true)
 (define compiler:generate-rtl-files? false)
 (define compiler:generate-lap-files? false)
+(define compiler:intersperse-rtl-in-lap? true)
 (define compiler:generate-range-checks? false)
 (define compiler:generate-type-checks? false)
 (define compiler:open-code-flonum-checks? false)
