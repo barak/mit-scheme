@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: tterm.c,v 1.10 2001/03/02 18:03:17 cph Exp $
+$Id: tterm.c,v 1.11 2001/03/03 02:01:21 cph Exp $
 
 Copyright (c) 1990-2001 Massachusetts Institute of Technology
 
@@ -25,23 +25,26 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "prims.h"
 #include "osterm.h"
 
-#ifdef HAVE_TERMCAP_H
-#  include <termcap.h>
+#ifdef HAVE_LIBNCURSES
+#  include <curses.h>
+#  include <term.h>
+   extern char * EXFUN (tparam, (CONST char *, PTR, int, ...));
 #else
-   extern int EXFUN (tgetent, (char *, char *));
-   extern int EXFUN (tgetnum, (char *));
-   extern int EXFUN (tgetflag, (char *));
-   extern char * EXFUN (tgetstr, (char *, char **));
-   extern char * EXFUN (tgoto, (char *, int, int));
-   extern int EXFUN (tputs, (char *, int, void (*) (int)));
-   extern char * BC;
-   extern char * UP;
-   extern char PC;
-   extern short ospeed;
-#endif
-
-#ifndef LIBNCURSES_DEFINES_TPARAM
-   extern char * EXFUN (tparam, (char *, char*, int, int, ...));
+#  ifdef HAVE_TERMCAP_H
+#    include <termcap.h>
+#  else
+     extern int EXFUN (tgetent, (char *, CONST char *));
+     extern int EXFUN (tgetnum, (CONST char *));
+     extern int EXFUN (tgetflag, (CONST char *));
+     extern char * EXFUN (tgetstr, (CONST char *, char **));
+     extern char * EXFUN (tgoto, (CONST char *, int, int));
+     extern int EXFUN (tputs, (CONST char *, int, void (*) (int)));
+     extern char * EXFUN (tparam, (CONST char *, PTR, int, ...));
+     extern char * BC;
+     extern char * UP;
+     extern char PC;
+     extern short ospeed;
+#  endif
 #endif
 
 #ifndef TERMCAP_BUFFER_SIZE
