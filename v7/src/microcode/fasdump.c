@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.40 1988/08/15 20:45:56 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.41 1988/10/04 14:48:41 jinx Exp $
 
    This file contains code for fasdump and dump-band.
 */
@@ -502,7 +502,7 @@ DEFINE_PRIMITIVE ("DUMP-BAND", Prim_band_dump, 2, 2, 0)
   {
     long type_code;
 
-    type_code = (Type_Code (Arg1));
+    type_code = (OBJECT_TYPE (Arg1));
     if (! ((type_code == TC_COMPILED_ENTRY) ||
 	   (type_code == TC_CONTROL_POINT) ||
 	   (type_code == TC_ENTITY) ||
@@ -512,6 +512,15 @@ DEFINE_PRIMITIVE ("DUMP-BAND", Prim_band_dump, 2, 2, 0)
       error_wrong_type_arg (1);
   }
   Arg_2_Type(TC_CHARACTER_STRING);
+
+  if (Unused_Heap < Heap_Bottom)
+  {
+    /* Cause the image to be in the low heap, to increase
+       the probability that no relocation is needed on reload.
+     */
+
+    Primitive_GC(0);
+  }
 
   if (!Open_Dump_File(Arg2, WRITE_FLAG))
   {
