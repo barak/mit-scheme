@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: scheme31.c,v 1.2 1993/08/21 03:56:46 gjr Exp $
+$Id: scheme31.c,v 1.3 1993/08/24 04:51:20 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -130,6 +130,9 @@ win32_release_heap (char * area, unsigned long handle)
   VirtualFree (((LPVOID) area),
 	       ((DWORD) handle),
 	       ((DWORD) MEM_DECOMMIT));
+  VirtualFree (((LPVOID) area),
+	       ((DWORD) 0),
+	       ((DWORD) MEM_RELEASE));
   return;
 }
 
