@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwmc.scm,v 1.10 1991/03/22 00:31:13 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwmc.scm,v 1.11 1991/03/23 02:22:45 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -420,7 +420,8 @@
 	(group (%window-group window))
 	(tab-width (%window-tab-width window))
 	(x-size (window-x-size window))
-	(truncate-lines? (%window-truncate-lines? window)))
+	(truncate-lines? (%window-truncate-lines? window))
+	(group-end (%window-group-end-index window)))
     (let ((y
 	   (fix:- y
 		  (column->y (cdr (group-line-columns group
@@ -434,20 +435,19 @@
       (cond ((fix:= y 0)
 	     (values start y))
 	    ((fix:< y 0)
-	     (let ((group-end (%window-group-end-index window)))
-	       (let loop ((start start) (y y))
-		 (let ((e&c
-			(group-line-columns group start group-end
-					    0 tab-width)))
-		   (let ((y-end
-			  (fix:+ y
-				 (column->y-size (cdr e&c)
-						 x-size
-						 truncate-lines?))))
-		     (if (and (fix:<= y-end 0)
-			      (fix:< (car e&c) group-end))
-			 (loop (fix:+ (car e&c) 1) y-end)
-			 (values start y)))))))
+	     (let loop ((start start) (y y))
+	       (let ((e&c
+		      (group-line-columns group start group-end
+					  0 tab-width)))
+		 (let ((y-end
+			(fix:+ y
+			       (column->y-size (cdr e&c)
+					       x-size
+					       truncate-lines?))))
+		   (if (and (fix:<= y-end 0)
+			    (fix:< (car e&c) group-end))
+		       (loop (fix:+ (car e&c) 1) y-end)
+		       (values start y))))))
 	    (else
 	     (let ((group-start (%window-group-start-index window)))
 	       (let loop ((start start) (y y))
