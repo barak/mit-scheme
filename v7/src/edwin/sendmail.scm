@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: sendmail.scm,v 1.27 1995/05/05 22:35:01 cph Exp $
+;;;	$Id: sendmail.scm,v 1.28 1995/05/05 22:53:18 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
@@ -281,21 +281,23 @@ is inserted."
     (insert-newline point)
     (mark-temporary! point))
   (let ((given-header?
-	 (lambda (name)
+	 (lambda (name null-true?)
 	   (let ((header
 		  (list-search-positive headers
 		    (lambda (header)
 		      (string-ci=? (car header) name)))))
 	     (and header
 		  (cadr header)
-		  (not (string-null? (cadr header))))))))
+		  (if null-true?
+		      (string-null? (cadr header))
+		      (not (string-null? (cadr header)))))))))
     (set-buffer-point! buffer
-		       (if (given-header? "to")
-			   (buffer-end buffer)
-			   (mail-position-on-field buffer "to")))
-    (if (not (or (given-header? "to")
-		 (given-header? "subject")
-		 (given-header? "in-reply-to")))
+		       (if (given-header? "To" #t)
+			   (mail-position-on-field buffer "To")
+			   (buffer-end buffer)))
+    (if (not (or (given-header? "To" #f)
+		 (given-header? "Subject" #f)
+		 (given-header? "In-reply-to" #f)))
 	(buffer-not-modified! buffer)))
   (event-distributor/invoke! (ref-variable mail-setup-hook buffer) buffer))
 
