@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: win32.scm,v 1.14 2000/12/01 06:07:39 cph Exp $
+;;; $Id: win32.scm,v 1.15 2000/12/25 05:25:31 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -486,7 +486,7 @@
   (cond ((and signal-interrupts?
 	      (vector? event)
 	      (fix:= event-type:key (event-type event))
-	      (eqv? #\BEL (decode-key-event event)))
+	      (eqv? #\C-g (decode-key-event event)))
 	 (clean-event-queue win32-event-queue)
 	 (signal-interrupt!))
 	(else
@@ -593,7 +593,7 @@
   (lambda (screen event)
     screen
     (let ((key (decode-key-event event)))
-      (if (and signal-interrupts? (eq? key #\BEL))
+      (if (and signal-interrupts? (eqv? key #\C-g))
 	  (begin
 	    (signal-interrupt!)
 	    #f)
