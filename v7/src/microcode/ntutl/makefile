@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile,v 1.1 1993/06/24 07:47:15 gjr Exp $
+###	$Id: makefile,v 1.2 1993/06/24 15:55:22 gjr Exp $
 ###
 ###	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ###
@@ -352,14 +352,14 @@ usrdef.tch : usrdef.h config.h object.h prim.h
 	touch usrdef.tch
 
 # Zortech MAKE seems not to allow redirection
-# limits.h : hard-params.exe
-#	-./hard-params -l > limits.h
+# limits.h : hard-par.exe
+#	-./hard-par -l > limits.h
 
-# float.h : hard-params.exe
-#	-./hard-params -f > float.h
+# float.h : hard-par.exe
+#	-./hard-par -f > float.h
 
-hard-params.exe : hard-params.c
-	$(CC) hard-params.c $(MACHINE_SWITCHES) -DNO_SIG -DNO_SC $(LDFLAGS)
+hard-par.exe : hard-par.c
+	$(CC) hard-par.c $(MACHINE_SWITCHES) -DNO_SIG -DNO_SC $(LDFLAGS)
 
 foo $(USER_PRIM_OBJECTS) : $(HEAD_FILES)
 interp.obj : scheme.tch locks.h trap.h lookup.h history.h cmpint.h zones.h prmcon.h
@@ -469,6 +469,11 @@ ntscreen.obj : ntscreen.c ntscreen.h
 # 
 # mswload.obj: mswload.c mswload.h
 #   ztc -2 -ml -W1 -v2 -c -C -g -a1 -o-all mswload.c
+
+clean:
+  del *.tch
+  del *.obj
+  del *.exe
 
 unconfig:
   del cmpintmd.h
