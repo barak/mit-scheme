@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.29 1988/10/06 16:33:23 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.30 1988/10/17 11:52:18 cph Exp $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -46,28 +46,69 @@ MIT in each case. */
 #else
 #include <time.h>
 #endif
+#ifdef hpux
+#include <unistd.h>
+#endif
+#include <errno.h>
+extern int errno;
+
+/* This returns the string that `perror' would have printed, except
+   that it is not terminated by a newline.  */
+
+Pointer
+system_error_message (s)
+     char * s;
+{
+  extern char * sys_errlist [];
+  extern int sys_nerr;
+  char * error_message;
+  char unknown_error [64];
+  extern char * malloc ();
+  Pointer result;
+
+  if ((errno >= 0) && (errno <= sys_nerr))
+    error_message = (sys_errlist [errno]);
+  else
+    {
+      sprintf (unknown_error, "Unknown error %d", errno);
+      error_message = unknown_error;
+    }
+  if (s == NULL)
+    {
+      result = (allocate_string (strlen (error_message)));
+      strcpy ((string_pointer (result, 0)), error_message);
+    }
+  else
+    {
+      result = (allocate_string ((strlen (s)) + (strlen (error_message)) + 2));
+      sprintf ((string_pointer (result, 0)), "%s: %s", s, error_message);
+    }
+  return (result);
+}
 
 DEFINE_PRIMITIVE ("GET-ENVIRONMENT-VARIABLE", Prim_get_environment_variable, 1, 1,
-  "Looks up in the user's shell environment the value of the\n\
-variable specified as a string.")
+  "Looks up the value of a variable in the user's shell environment.\n\
+The argument, a variable name, must be a string.\n\
+The result is either a string (the variable's value),\n\
+or #F indicating that the variable does not exist.")
 {
-  char *variable_value;
-  extern char *getenv ();
+  char * variable_value;
+  extern char * getenv ();
   PRIMITIVE_HEADER (1);
 
   CHECK_ARG (1, STRING_P);
   variable_value = (getenv (Scheme_String_To_C_String (ARG_REF (1))));
   PRIMITIVE_RETURN
     ((variable_value == NULL)
-     ? NIL
+     ? SHARP_F
      : (C_String_To_Scheme_String (variable_value)));
 }
 
 DEFINE_PRIMITIVE ("CURRENT-USER-NAME", Prim_get_user_name, 0, 0, 
-  "Returns a string specifying the user running Scheme.")
+  "Returns (as a string) the user name of the user running Scheme.")
 {
-  char *user_name;
-  char *getlogin ();
+  char * user_name;
+  char * getlogin ();
   PRIMITIVE_HEADER (0);
 
   user_name = (getlogin ());
@@ -86,23 +127,28 @@ DEFINE_PRIMITIVE ("CURRENT-USER-NAME", Prim_get_user_name, 0, 0,
 }
 
 DEFINE_PRIMITIVE ("GET-USER-HOME-DIRECTORY", Prim_get_user_home_directory, 1, 1,
-  "Given a string argument, USER, it returns the pathname of USER's home directory.")
+  "Returns the file name of a given user's home directory.\n\
+The user name argument must be a string.\n\
+The result is either the file name as a string,\n\
+or #F indicating that no such user is known.")
 {
-  struct passwd *entry;
-  struct passwd *getpwnam ();
+  struct passwd * entry;
+  struct passwd * getpwnam ();
   PRIMITIVE_HEADER (1);
 
   CHECK_ARG (1, STRING_P);
   entry = (getpwnam (Scheme_String_To_C_String (ARG_REF (1))));
   PRIMITIVE_RETURN
     ((entry == NULL)
-     ? NIL
+     ? SHARP_F
      : (C_String_To_Scheme_String (entry -> pw_dir)));
 }
 
 DEFINE_PRIMITIVE ("CURRENT-FILE-TIME", Prim_current_file_time, 0, 0,
-  "Returns as an integer the current file system time stamp.")
+  "Returns the current file system time stamp.\n\
+This is an integer whose units are in seconds.")
 {
+  extern long time ();
   PRIMITIVE_HEADER (0);
 
   PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (time ((long *) 0)));
@@ -111,15 +157,15 @@ DEFINE_PRIMITIVE ("CURRENT-FILE-TIME", Prim_current_file_time, 0, 0,
 DEFINE_PRIMITIVE ("FILE-TIME->STRING", Prim_file_time_to_string, 1, 1,
   "Converts a file system time stamp into a date/time string.")
 {
+  extern long object_to_long ();
   long clock;
-  long temp;
-  char *time_string;
+  char * time_string;
   PRIMITIVE_HEADER (1);
 
-  CHECK_ARG (1, INTEGER_P);
-  temp = (Scheme_Integer_To_C_Integer ((ARG_REF (1)), (& clock)));
-  if (temp != PRIM_DONE)
-    PRIMITIVE_RETURN (temp);
+  clock =
+    (object_to_long ((ARG_REF (1)),
+		     ERR_ARG_1_WRONG_TYPE,
+		     ERR_ARG_1_BAD_RANGE));
   time_string = (ctime (& clock));
   if ((time_string [24]) == '\n')
     (time_string [24]) = '\0';
@@ -127,48 +173,53 @@ DEFINE_PRIMITIVE ("FILE-TIME->STRING", Prim_file_time_to_string, 1, 1,
 }
 
 DEFINE_PRIMITIVE ("UID->STRING", Prim_uid_to_string, 1, 1,
-  "Returns the user name given a Unix user id number.")
+  "Given a unix user ID number, returns the corresponding user name.\n\
+If the argument is not a known user ID, returns #F.")
 {
-  struct passwd *getpwuid ();
+  struct passwd * getpwuid ();
   void endpwent ();
-  struct passwd *entry;
+  struct passwd * entry;
   PRIMITIVE_HEADER (1);
 
   CHECK_ARG (1, FIXNUM_P);
   entry = (getpwuid (arg_nonnegative_integer (1)));
   endpwent ();
-  if (entry == NULL)
-    error_bad_range_arg (1);
-  PRIMITIVE_RETURN (C_String_To_Scheme_String (entry -> pw_name));
+  PRIMITIVE_RETURN
+    ((entry == NULL)
+     ? SHARP_F
+     : (C_String_To_Scheme_String (entry -> pw_name)));
 }
 
 DEFINE_PRIMITIVE ("GID->STRING", Prim_gid_to_string, 1, 1,
-  "Returns the group name given a Unix group id number.")
+  "Given a unix group ID number, returns the corresponding group name.\n\
+If the argument is not a known group ID, returns #F.")
 {
-  struct group *getgrgid ();
+  struct group * getgrgid ();
   void endgrent ();
-  struct group *entry;
+  struct group * entry;
   PRIMITIVE_HEADER (1);
 
   CHECK_ARG (1, FIXNUM_P);
   entry = (getgrgid (arg_nonnegative_integer (1)));
   endgrent ();
-  if (entry == NULL)
-    error_bad_range_arg (1);
-  PRIMITIVE_RETURN (C_String_To_Scheme_String (entry -> gr_name));
+  PRIMITIVE_RETURN
+    ((entry == NULL)
+     ? SHARP_F
+     : (C_String_To_Scheme_String (entry -> gr_name)));
 }
 
 DEFINE_PRIMITIVE ("FILE-DIRECTORY?", Prim_file_directory_p, 1, 1,
-  "Returns #T if the argument pathname is a directory.")
+  "Returns #T if the argument file name is a directory;\n\
+otherwise returns #F.")
 {
   struct stat stat_result;
   PRIMITIVE_HEADER (1);
 
   CHECK_ARG (1, STRING_P);
   if ((stat ((Scheme_String_To_C_String (ARG_REF (1))), (& stat_result))) < 0)
-    PRIMITIVE_RETURN (NIL);
+    PRIMITIVE_RETURN (SHARP_F);
   PRIMITIVE_RETURN
-    ((((stat_result . st_mode) & S_IFMT) == S_IFDIR) ? SHARP_T : NIL);
+    ((((stat_result . st_mode) & S_IFMT) == S_IFDIR) ? SHARP_T : SHARP_F);
 }
 
 /* The following is originally from GNU Emacs. */
@@ -203,7 +254,7 @@ file_symlink_p (filename)
   if (valsize < 0)
     {
       free (buf);
-      return (NIL);
+      return (SHARP_F);
     }
   (buf [valsize]) = '\0';
   val = (C_String_To_Scheme_String (buf));
@@ -214,7 +265,8 @@ file_symlink_p (filename)
 #endif /* S_IFLNK */
 
 DEFINE_PRIMITIVE ("FILE-SYMLINK?", Prim_file_symlink_p, 1, 1,
-  "Returns #T if the argument pathname is a symbolic link.")
+  "Returns #T if the argument file name is a symbolic link;\n\
+otherwise returns #F.")
 {
   PRIMITIVE_HEADER (1);
 
@@ -222,7 +274,7 @@ DEFINE_PRIMITIVE ("FILE-SYMLINK?", Prim_file_symlink_p, 1, 1,
 #ifdef S_IFLNK
   PRIMITIVE_RETURN (file_symlink_p (ARG_REF (1)));
 #else /* not S_IFLNK */
-  PRIMITIVE_RETURN (NIL);
+  PRIMITIVE_RETURN (SHARP_F);
 #endif /* S_IFLNK */
 }
 
@@ -248,7 +300,10 @@ static void rwx ();
 static void setst ();
 
 DEFINE_PRIMITIVE ("FILE-ATTRIBUTES", Prim_file_attributes, 1, 1, 
-  "Retuns a vector containing relevant information about the argument pathname.")
+  "Given a file name, returns attribute information about the file.\n\
+If the file exists and its status information is accessible, the result\n\
+is a vector of 10 items (see the reference manual for details).  Otherwise\n\
+the result is #F.")
 {
   struct stat stat_result;
   extern Pointer allocate_marked_vector ();
@@ -259,7 +314,7 @@ DEFINE_PRIMITIVE ("FILE-ATTRIBUTES", Prim_file_attributes, 1, 1,
 
   CHECK_ARG (1, STRING_P);
   if ((stat ((Scheme_String_To_C_String (ARG_REF (1))), (& stat_result))) < 0)
-    PRIMITIVE_RETURN (NIL);
+    PRIMITIVE_RETURN (SHARP_F);
   result = (allocate_marked_vector (TC_VECTOR, 10, true));
   modes = (allocate_string (10));
   switch ((stat_result . st_mode) & S_IFMT)
@@ -273,7 +328,7 @@ DEFINE_PRIMITIVE ("FILE-ATTRIBUTES", Prim_file_attributes, 1, 1,
       break;
 #endif
     default:
-      User_Vector_Set (result, 0, NIL);
+      User_Vector_Set (result, 0, SHARP_F);
       break;
     }
   User_Vector_Set (result, 1, (MAKE_UNSIGNED_FIXNUM (stat_result . st_nlink)));
@@ -394,13 +449,71 @@ setst (bits, chars)
 }
 
 DEFINE_PRIMITIVE ("SYSTEM", Prim_system, 1, 1,
-  "Given a string COMMAND, it invokes a shell to execute COMMAND.")
+  "Invokes sh (the Bourne shell) on the string argument.\n\
+Waits until the shell terminates, then returns its exit status as an integer.")
 {
-  extern int system();
-  char *command;
-  PRIMITIVE_HEADER(1);
+  extern int system ();
+  PRIMITIVE_HEADER (1);
 
-  command = STRING_ARG(1);
-  PRIMITIVE_RETURN (MAKE_FIXNUM(system(command)));
+  PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (system (STRING_ARG (1))));
 }
 
+DEFINE_PRIMITIVE ("FILE-TOUCH", Prim_file_touch, 1, 1,
+  "Given a file name, changes the times of the file to the current time.\n\
+If the file does not exist, creates it.\n\
+Both the access time and modification time are changed.\n\
+Returns #F if successful, otherwise a unix error string.")
+{
+#if defined(bsd) || defined(hpux)
+
+  char * filename;
+  int result;
+  struct stat file_status;
+  extern int stat ();
+#ifdef bsd
+  extern long time ();
+  long current_time;
+  struct timeval tvp [2];
+  extern int utimes ();
+#else /* not bsd */
+#ifdef hpux
+  extern int utime ();
+#endif /* hpux */
+#endif /* bsd */
+  PRIMITIVE_HEADER (1);
+
+  filename = (STRING_ARG (1));
+  result = (stat (filename, (& file_status)));
+  if (result != 0)
+    {
+      if ((errno == EACCES) || (errno == EIO))
+	PRIMITIVE_RETURN (system_error_message ("stat"));
+      result = (creat (filename, 0666));
+      if (result < 0)
+	PRIMITIVE_RETURN (system_error_message ("creat"));
+      result = (close (result));
+      if (result != 0)
+	PRIMITIVE_RETURN (system_error_message ("close"));
+    }
+#ifdef bsd
+  current_time = (time (0));
+  ((tvp [0]) . tv_sec) = current_time;
+  ((tvp [0]) . tv_usec) = 0;
+  ((tvp [1]) . tv_sec) = current_time;
+  ((tvp [1]) . tv_usec) = 0;
+  result = (utimes (filename, tvp));
+  if (result != 0)
+    PRIMITIVE_RETURN (system_error_message ("utimes"));
+#else /* not bsd */
+#ifdef hpux
+  result = (utime (filename, 0));
+  if (result != 0)
+    PRIMITIVE_RETURN (system_error_message ("utime"));
+#endif /* hpux */
+#endif /* bsd */
+  PRIMITIVE_RETURN (SHARP_F);
+
+#else /* neither bsd nor hpux */
+  PRIMITIVE_RETURN (C_String_to_Scheme_String ("unimplemented"));
+#endif
+}
