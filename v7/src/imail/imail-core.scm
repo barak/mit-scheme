@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.46 2000/05/08 18:54:05 cph Exp $
+;;; $Id: imail-core.scm,v 1.47 2000/05/08 18:54:51 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -333,10 +333,8 @@
   (body define accessor)
   (flags define standard)
   (properties define standard)
-  (modification-count define standard
-		      initial-value 0)
-  (folder define standard
-	  initial-value #f)
+  (modification-count define standard initial-value 0)
+  (folder define standard initial-value #f)
   (index define standard))
 
 (define-method write-instance ((message <message>) port)
