@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.25 1987/08/01 06:56:26 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.26 1987/10/09 16:11:27 jinx Rel $
  *
  * This file contains various hooks and handles which connect the
  * primitives with the main interpreter.
@@ -39,6 +39,7 @@ MIT in each case. */
 #include "scheme.h"
 #include "primitive.h"
 #include "winder.h"
+#include "history.h"
 
 /* (APPLY FN LIST-OF-ARGUMENTS)
    Calls the function FN to the arguments specified in the list
@@ -116,86 +117,97 @@ Built_In_Primitive(Prim_Apply, 2, "APPLY", 0x5)
   /*NOTREACHED*/
 }
 
-/* This code used to be in the middle of Make_Control_Point, replaced
- * by CWCC below.  Preprocessor conditionals do not work in macros.
- */
+/* Implementation detail: in addition to setting aside the old
+   stacklet on a catch, the new stacklet is cleared and a return
+   code is placed at the base of the (now clear) stack indicating
+   that a return back through here requires restoring the stacklet.
+   The current enabled interrupts are also saved in the old stacklet.
 
-#define CWCC(Return_Code) 						\
-  fast Pointer *From_Where; 						\
-  Primitive_1_Arg();							\
+   >>> Temporarily (maybe) the act of doing a CATCH will disable any
+   >>> return hook that may be in the stack.
+*/
+
+#define CWCC(Return_Code)						\
+{									\
+  fast Pointer *From_Where;						\
+									\
   CWCC_1();								\
-  /* Implementation detail: in addition to setting aside the old	\
-     stacklet on a catch, the new stacklet is cleared and a return	\
-     code is placed at the base of the (now clear) stack indicating	\
-     that a return back through here requires restoring the stacklet.	\
-     The current enabled interrupts are also saved in the old stacklet.	\
-									\
-     >>> Temporarily (maybe) the act of doing a CATCH will disable any	\
-     >>> return hook that may be in the stack.				\
-									\
-     >>> Don't even think about adding COMPILER to this stuff!		\
-  */ 									\
   Pop_Primitive_Frame(1);						\
   if (Return_Hook_Address != NULL)					\
   {									\
     *Return_Hook_Address = Old_Return_Code;				\
     Return_Hook_Address = NULL;						\
   }									\
-/* Put down frames to restore history and interrupts so that these 	\
- * operations will be performed on a throw.				\
- */									\
+  /*									\
+    Put down frames to restore history and interrupts so that these	\
+    operations will be performed on a throw.				\
+   */									\
   Will_Push(CONTINUATION_SIZE + HISTORY_SIZE);				\
     Save_History(Return_Code);						\
     Store_Expression(Make_Non_Pointer(TC_FIXNUM, IntEnb));		\
     Store_Return(RC_RESTORE_INT_MASK);					\
     Save_Cont();							\
   Pushed();								\
-/* There is no history to use since the last control point was formed.	\
- */									\
+  /*									\
+    There is no history to use since the last control point was formed.	\
+   */									\
   Prev_Restore_History_Stacklet = NULL;					\
   Prev_Restore_History_Offset = 0;					\
   CWCC_2();								\
-/* Will_Push(3); -- we just cleared the stack so there MUST be room */	\
+  /* we just cleared the stack so there MUST be room */			\
+  /* Will_Push(3); */							\
   Push(Control_Point);							\
   Push(Arg1);	/* Function */						\
-  Push(STACK_FRAME_HEADER+1);						\
-/*  Pushed(); */
+  Push(STACK_FRAME_HEADER + 1);						\
+  /*  Pushed(); */							\
+}
 
 #ifdef USE_STACKLETS
+
 #define CWCC_1()							\
-  Primitive_GC_If_Needed(2*Default_Stacklet_Size)
+{									\
+  Primitive_GC_If_Needed(2 * Default_Stacklet_Size);			\
+}
 
 #define CWCC_2()							\
+{									\
   Control_Point = Get_Current_Stacklet();				\
-  Allocate_New_Stacklet(3)
+  Allocate_New_Stacklet(3);						\
+}
 
-#else	/* Not using stacklets, so full copy must be made */
+#else /* not USE_STACKLETS */
+
 #define CWCC_1()							\
-  Primitive_GC_If_Needed((Stack_Top-Stack_Pointer) +			\
-			 STACKLET_HEADER_SIZE - 1 +			\
-			 CONTINUATION_SIZE +			 	\
-                         HISTORY_SIZE)
+{									\
+  Primitive_GC_If_Needed((Stack_Top - Stack_Pointer) +			\
+			 STACKLET_HEADER_SIZE +				\
+			 CONTINUATION_SIZE +				\
+                         HISTORY_SIZE);					\
+}
 
 #define CWCC_2()							\
 {									\
   fast long i, Stack_Cells;						\
 									\
-  Stack_Cells = (Stack_Top-Stack_Pointer);				\
+  Stack_Cells = (Stack_Top - Stack_Pointer);				\
   Control_Point = Make_Pointer(TC_CONTROL_POINT, Free);			\
   Free[STACKLET_LENGTH] =						\
     Make_Non_Pointer(TC_MANIFEST_VECTOR,				\
-		     Stack_Cells + STACKLET_HEADER_SIZE - 1);		\
+		     (Stack_Cells + (STACKLET_HEADER_SIZE - 1)));	\
+  Free[STACKLET_REUSE_FLAG] = TRUTH;					\
   Free[STACKLET_UNUSED_LENGTH] =					\
     Make_Non_Pointer(TC_MANIFEST_NM_VECTOR, 0);				\
   Free += STACKLET_HEADER_SIZE;						\
-  for (i=0; i < Stack_Cells; i++)					\
+  for (i = Stack_Cells; --i >= 0; )					\
   {									\
     *Free++ = Pop();							\
   }									\
   if (Consistency_Check)						\
   {									\
     if (Stack_Pointer != Stack_Top)					\
+    {									\
       Microcode_Termination(TERM_BAD_STACK);				\
+    }									\
   }									\
  Will_Push(CONTINUATION_SIZE);						\
   Store_Return(RC_JOIN_STACKLETS);					\
@@ -203,29 +215,31 @@ Built_In_Primitive(Prim_Apply, 2, "APPLY", 0x5)
   Save_Cont();								\
  Pushed();								\
 }
-#endif
+
+#endif /* USE_STACKLETS */
 
 /* (CALL-WITH-CURRENT-CONTINUATION PROCEDURE)
-   Creates a control point (a pointer to the current stack) and
-   passes it to PROCEDURE as its only argument.  The inverse
-   operation, typically called THROW, is performed by using the
-   control point as you would a procedure.  A control point accepts
-   one argument which is then returned as the value of the CATCH
-   which created the control point.  If the dangerous bit of the
-   unused length word in the stacklet is clear then the control
-   point may be reused as often as desired since the stack will be
-   copied on every throw.  The user level CATCH is built on this
-   primitive but is not the same, since it handles dynamic-wind
-   while the primitive does not; it assumes that the microcode
-   sets and clears the appropriate danger bits for copying.
+
+   Creates a control point (a pointer to the current stack) and passes
+   it to PROCEDURE as its only argument.  The inverse operation,
+   typically called THROW, is performed by using the control point as
+   you would a procedure.  A control point accepts one argument which
+   is then returned as the value of the CATCH which created the
+   control point.  If the reuse flag of the stacklet is clear then the
+   control point may be reused as often as desired since the stack
+   will be copied on every throw.  The user level CATCH is built on
+   this primitive but is not the same, since it handles dynamic state
+   while the primitive does not; it assumes that the microcode sets
+   and clears the appropriate reuse flags for copying.
 */
 
 Built_In_Primitive(Prim_Catch, 1, "CALL-WITH-CURRENT-CONTINUATION", 0x3)
 {
-  fast Pointer Control_Point;
+  Pointer Control_Point;
+  Primitive_1_Arg();
 
   CWCC(RC_RESTORE_HISTORY);
-  Clear_Danger_Bit((Get_Pointer(Control_Point))[STACKLET_UNUSED_LENGTH]);
+  Vector_Set(Control_Point, STACKLET_REUSE_FLAG, NIL);
   PRIMITIVE_ABORT( PRIM_APPLY);
   /*NOTREACHED*/
 }
@@ -234,6 +248,7 @@ Built_In_Primitive(Prim_Non_Reentrant_Catch, 1,
 		   "NON-REENTRANT-CALL-WITH-CURRENT-CONTINUATION", 0x9)
 {
   Pointer Control_Point;
+  Primitive_1_Arg();
 
 #ifdef USE_STACKLETS
 
@@ -243,7 +258,7 @@ Built_In_Primitive(Prim_Non_Reentrant_Catch, 1,
   /* When there are no stacklets, it is identical to the reentrant version. */
 
   CWCC(RC_RESTORE_HISTORY);
-  Clear_Danger_Bit((Get_Pointer(Control_Point))[STACKLET_UNUSED_LENGTH]);
+  Vector_Set(Control_Point, STACKLET_REUSE_FLAG, NIL);
 
 #endif
 
@@ -524,11 +539,7 @@ Built_In_Primitive(Prim_Set_Current_History, 1, "SET-CURRENT-HISTORY!", 0x2F)
 {
   Primitive_1_Arg();
 
-  /* History is one of the few places where we still used danger bits.
-     Check explicitely.
-   */
-
-  if ((safe_pointer_type (Arg1)) != TC_HUNK3)
+  if (!(HUNK3_P(Arg1)))
     error_wrong_type_arg (1);
 
   Val = *History;
@@ -610,17 +621,18 @@ Built_In_Primitive(Prim_With_History_Disabled, 1,
   /* Remove one reduction from the history before saving it */
   First_Rib = Get_Pointer(History[HIST_RIB]);
   Second_Rib = Get_Pointer(First_Rib[RIB_NEXT_REDUCTION]);
-  if (!((Dangerous(First_Rib[RIB_MARK])) ||
+  if (!((HISTORY_MARKED_P(First_Rib[RIB_MARK])) ||
        (First_Rib == Second_Rib)))
   {
-    Set_Danger_Bit(Second_Rib[RIB_MARK]);
+    HISTORY_MARK(Second_Rib[RIB_MARK]);
     for (Rib = First_Rib;
          Get_Pointer(Rib[RIB_NEXT_REDUCTION]) != First_Rib;
          Rib = Get_Pointer(Rib[RIB_NEXT_REDUCTION]))
     {
       /* Look for one that points to the first rib */
     }
-    History[HIST_RIB] = Make_Pointer(Type_Code(History[HIST_RIB]), Rib);
+    /* This maintains the mark in History[HIST_RIB] */
+    History[HIST_RIB] = Make_Pointer(OBJECT_TYPE(History[HIST_RIB]), Rib);
   }
   Pop_Primitive_Frame(1);
   Stop_History();

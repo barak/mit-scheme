@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/types.h,v 9.24 1987/10/05 18:37:00 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/types.h,v 9.25 1987/10/09 16:14:39 jinx Rel $
  *
  * Type code definitions, numerical order
  *
@@ -111,3 +111,6 @@ MIT in each case. */
 #define TC_VECTOR_8B			TC_CHARACTER_STRING
 #define TC_ADDRESS			TC_FIXNUM
 #define TC_HUNK3			TC_HUNK3_B
+
+#define UNMARKED_HISTORY_TYPE		TC_HUNK3_A
+#define MARKED_HISTORY_TYPE		TC_HUNK3_B

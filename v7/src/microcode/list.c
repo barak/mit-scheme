@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/list.c,v 9.23 1987/04/16 02:25:19 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/list.c,v 9.24 1987/10/09 16:12:36 jinx Rel $
  *
  * List creation and manipulation primitives.
  */
@@ -259,7 +259,7 @@ Built_In_Primitive(Prim_Sys_Pair_Cons, 3, "SYSTEM-PAIR-CONS", 0x84)
   Primitive_3_Args();
 
   Arg_1_Type(TC_FIXNUM);
-  Range_Check(Type, Arg1, 0, MAX_SAFE_TYPE,
+  Range_Check(Type, Arg1, 0, MAX_TYPE_CODE,
               ERR_ARG_1_BAD_RANGE);
   if (GC_Type_Code(Type) == GC_Pair)
   {

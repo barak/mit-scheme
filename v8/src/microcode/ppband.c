@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/ppband.c,v 9.27 1987/10/05 18:30:44 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/ppband.c,v 9.28 1987/10/09 16:08:24 jinx Rel $
  *
  * Dumps Scheme FASL in user-readable form .
  */
@@ -79,7 +79,7 @@ Close_Dump_File()
 
 #ifdef Heap_In_Low_Memory
 #ifdef spectrum
-#define File_To_Pointer(P)	((((long) (P))&ADDRESS_MASK) / sizeof(Pointer))
+#define File_To_Pointer(P)	((((long) (P)) & ADDRESS_MASK) / sizeof(Pointer))
 #else
 #define File_To_Pointer(P)	((P) / sizeof(Pointer))
 #endif /* spectrum */
@@ -107,8 +107,8 @@ static Pointer *Data, *end_of_memory;
 
 Boolean
 scheme_string(From, Quoted)
-long From;
-Boolean Quoted;
+     long From;
+     Boolean Quoted;
 {
   fast long i, Count;
   fast char *Chars;
@@ -129,11 +129,11 @@ Boolean Quoted;
   return false;
 }
 
-#define via(File_Address)	Relocate(Address(Data[File_Address]))
+#define via(File_Address)	Relocate(OBJECT_DATUM(Data[File_Address]))
 
 void
 scheme_symbol(From)
-long From;
+     long From;
 {
   Pointer *symbol;
 
@@ -151,13 +151,11 @@ Display(Location, Type, The_Datum)
   long Points_To;
 
   printf("%5x: %2x|%6x     ", Location, Type, The_Datum);
-  if (GC_Type_Map[Type & MAX_SAFE_TYPE] != GC_Non_Pointer)
+  if (GC_Type_Map[Type] != GC_Non_Pointer)
     Points_To = Relocate((Pointer *) The_Datum);
   else
     Points_To = The_Datum;
-  if (Type > MAX_SAFE_TYPE)
-    printf("*");
-  switch (Type & SAFE_TYPE_MASK)
+  switch (Type)
   { /* "Strange" cases */
     case TC_NULL: if (The_Datum == 0)
                   { printf("NIL\n");
@@ -253,11 +251,12 @@ Display(Location, Type, The_Datum)
 }
 
 main(argc, argv)
-int argc;
-char **argv;
+     int argc;
+     char **argv;
 {
   Pointer *Next;
   long i, total_length;
+
   if (argc == 1)
   {
     if (!Read_Header())
@@ -296,44 +295,54 @@ char **argv;
     }
     total_length -= Heap_Count;
     if (total_length < Const_Count)
+    {
       Const_Count = total_length;
+    }
   }
   printf("Heap contents:\n\n");
   for (Next = Data, i = 0; i < Heap_Count;  Next++, i++)
   {
-    if (Safe_Type_Code(*Next) == TC_MANIFEST_NM_VECTOR)
+    if (OBJECT_TYPE(*Next) == TC_MANIFEST_NM_VECTOR)
     {
       long j, count;
 
       count = Get_Integer(*Next);
-      Display(i, Type_Code(*Next), Address(*Next));
+      Display(i, OBJECT_TYPE(*Next), OBJECT_DATUM(*Next));
       Next += 1;
       for (j = 0; j < count ; j++, Next++)
+      {
         printf("          %02x%06x\n",
-               Type_Code(*Next), Address(*Next));
+               OBJECT_TYPE(*Next), OBJECT_DATUM(*Next));
+      }
       i += count;
       Next -= 1;
     }
     else
-      Display(i, Type_Code(*Next),  Address(*Next));
+    {
+      Display(i, OBJECT_TYPE(*Next),  OBJECT_DATUM(*Next));
+    }
   }
   printf("\n\nConstant space:\n\n");
   for (; i < Heap_Count + Const_Count;  Next++, i++)
   {
-    if (Safe_Type_Code(*Next) == TC_MANIFEST_NM_VECTOR)
+    if (OBJECT_TYPE(*Next) == TC_MANIFEST_NM_VECTOR)
     {
       long j, count;
 
       count = Get_Integer(*Next);
-      Display(i, Type_Code(*Next), Address(*Next));
+      Display(i, OBJECT_TYPE(*Next), OBJECT_DATUM(*Next));
       Next += 1;
       for (j = 0; j < count ; j++, Next++)
+      {
         printf("          %02x%06x\n",
-               Type_Code(*Next), Address(*Next));
+               OBJECT_TYPE(*Next), OBJECT_DATUM(*Next));
+      }
       i += count;
       Next -= 1;
     }
     else
-      Display(i, Type_Code(*Next),  Address(*Next));
+    {
+      Display(i, OBJECT_TYPE(*Next),  OBJECT_DATUM(*Next));
+    }
   }
 }

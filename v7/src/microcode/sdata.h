@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sdata.h,v 9.25 1987/10/05 18:36:16 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sdata.h,v 9.26 1987/10/09 16:13:47 jinx Rel $
  *
  * Description of the user data objects.  This should parallel the
  * file SDATA.SCM in the runtime system.
@@ -120,7 +120,9 @@ MIT in each case. */
              _______________________________________
              |MAN. VECT.| n                        |
            _ _______________________________________
-         /   | NM VECT   | m  at GC or when full   |
+         /   | #T if it does not need to be copied |
+        |    _______________________________________
+        |    | NM VECT   | m  at GC or when full   |
         |    _______________________________________
         |    |               ...                   |\
         |    |     not yet in use -- garbage       | > m
@@ -135,10 +137,13 @@ MIT in each case. */
 
 */
 
+#define STACKLET_HEADER_SIZE		3
 #define STACKLET_LENGTH			0	/* = VECTOR_LENGTH */
-#define STACKLET_HEADER_SIZE		2
-#define STACKLET_UNUSED_LENGTH		1
-#define STACKLET_FREE_LIST_LINK		1	/* If on free list */
+#define STACKLET_REUSE_FLAG		1
+#define STACKLET_UNUSED_LENGTH		2
+
+/* Aliases */
+#define STACKLET_FREE_LIST_LINK		STACKLET_REUSE_FLAG
 
 /* DELAYED
  * The object returned by a DELAY operation.  Consists initially of a

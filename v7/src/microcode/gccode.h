@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.29 1987/10/05 18:32:24 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.30 1987/10/09 16:10:56 jinx Rel $
  *
  * This file contains the macros for use in code which does GC-like
  * loops over memory.  It is only included in a few files, unlike
@@ -45,7 +45,7 @@ MIT in each case. */
 */
 
 #define Switch_by_GC_Type(P) 				\
-  switch(Safe_Type_Code(P))
+  switch(OBJECT_TYPE(P))
 
 #define case_simple_Non_Pointer				\
   case TC_NULL:						\

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/scheme.h,v 9.25 1987/07/07 19:58:16 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/scheme.h,v 9.26 1987/10/09 16:13:39 jinx Rel $
  *
  * General declarations for the SCode interpreter.  This
  * file is INCLUDED by others and contains declarations only.
@@ -86,7 +86,6 @@ MIT in each case. */
 #include "returns.h"	/* Return code numbers */
 #include "fixobj.h"	/* Format of fixed objects vector */
 #include "stack.h"	/* Macros for stack (stacklet) manipulation */
-#include "history.h"	/* History maintenance */
 #include "interpret.h"	/* Macros for interpreter */
 
 #ifdef butterfly

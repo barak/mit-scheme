@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gc.h,v 9.22 1987/04/03 00:13:13 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gc.h,v 9.23 1987/10/09 16:10:46 jinx Rel $
  *
  * Garbage collection related macros of sufficient utility to be
  * included in all compilations.
@@ -56,7 +56,7 @@ MIT in each case. */
   (fprintf(stderr, "Bad Type code = 0x%02x\n", TC),		\
    Invalid_Type_Code(), GC_Undefined))
 
-#define GC_Type(Object)			GC_Type_Code(Safe_Type_Code(Object))
+#define GC_Type(Object)			GC_Type_Code(OBJECT_TYPE(Object))
 
 #define GC_Type_Non_Pointer(Object)	(GC_Type(Object) == GC_Non_Pointer)
 #define GC_Type_Cell(Object)		(GC_Type(Object) == GC_Cell)

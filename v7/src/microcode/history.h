@@ -30,12 +30,12 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/history.h,v 9.22 1987/04/16 02:23:38 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/history.h,v 9.23 1987/10/09 16:11:17 jinx Rel $
  *
  * History maintenance data structures and support.
  *
  */
-
+
 /*
  * The history consists of a "vertebra" which is a doubly linked ring,
  * each entry pointing to a "rib".  The rib consists of a singly
@@ -52,6 +52,25 @@ MIT in each case. */
 #define RIB_NEXT_REDUCTION	2
 #define RIB_MARK		2
 
+#define HISTORY_MARK_TYPE	(UNMARKED_HISTORY_TYPE ^ MARKED_HISTORY_TYPE)
+#define HISTORY_MARK_MASK	(HISTORY_MARK_TYPE << ADDRESS_LENGTH)
+
+#if ((UNMARKED_HISTORY_TYPE | HISTORY_MARK_TYPE) != MARKED_HISTORY_TYPE)
+#include "error: Bad history types in types.h and history.h"
+#endif
+
+#define HISTORY_MARK(object)						\
+{									\
+  (object) |= (HISTORY_MARK_MASK);					\
+}
+
+#define HISTORY_UNMARK(object)						\
+{									\
+  (object) &= (~HISTORY_MARK_MASK);					\
+}
+
+#define HISTORY_MARKED_P(object) ((object) & HISTORY_MARK_MASK)
+
 /* Save_History places a restore history frame on the stack. Such a 
  * frame consists of a normal continuation frame plus a pointer to the
  * stacklet on which the last restore history is located and the
@@ -69,7 +88,7 @@ MIT in each case. */
     Push(Make_Pointer(TC_CONTROL_POINT,					\
 		      Prev_Restore_History_Stacklet));			\
   Push(Make_Non_Pointer(TC_FIXNUM, Prev_Restore_History_Offset));	\
-  Store_Expression(Make_Pointer(TC_HUNK3, History));			\
+  Store_Expression(Make_Pointer(UNMARKED_HISTORY_TYPE, History));	\
   Store_Return((Return_Code));						\
   Save_Cont();								\
   History = Get_Pointer(Get_Fixed_Obj_Slot(Dummy_History));		\
@@ -79,42 +98,52 @@ MIT in each case. */
 
 #ifdef COMPILE_HISTORY
 #define New_Subproblem(Expr, Env)					\
-{ fast Pointer *Rib;							\
+{									\
+  fast Pointer *Rib;							\
+									\
   History = Get_Pointer(History[HIST_NEXT_SUBPROBLEM]);			\
-  History[HIST_MARK] |= DANGER_BIT;					\
+  HISTORY_MARK(History[HIST_MARK]);					\
   Rib = Get_Pointer(History[HIST_RIB]);					\
-  Rib[RIB_MARK] |= DANGER_BIT;						\
+  HISTORY_MARK(Rib[RIB_MARK]);						\
   Rib[RIB_ENV] = Env;							\
   Rib[RIB_EXP] = Expr;							\
 }
 
 #define Reuse_Subproblem(Expr, Env)					\
-{ fast Pointer *Rib;							\
+{									\
+  fast Pointer *Rib;							\
+									\
   Rib = Get_Pointer(History[HIST_RIB]);					\
-  Rib[RIB_MARK] |= DANGER_BIT;						\
+  HISTORY_MARK(Rib[RIB_MARK]);						\
   Rib[RIB_ENV] = Env;							\
   Rib[RIB_EXP] = Expr;							\
 }
 
 #define New_Reduction(Expr, Env)					\
-{ fast Pointer *Rib;							\
+{									\
+  fast Pointer *Rib;							\
+									\
   Rib = Get_Pointer(Fast_Vector_Ref(History[HIST_RIB],			\
 				    RIB_NEXT_REDUCTION));		\
-  History[HIST_RIB] = Make_Pointer(TC_HUNK3, Rib);			\
+  History[HIST_RIB] = Make_Pointer(UNMARKED_HISTORY_TYPE, Rib);		\
   Rib[RIB_ENV] = Env;							\
   Rib[RIB_EXP] = Expr;							\
-  Rib[RIB_MARK] &= ~DANGER_BIT;						\
+  HISTORY_UNMARK(Rib[RIB_MARK]);					\
 }
 
 #define End_Subproblem()						\
-  History[HIST_MARK] &= ~DANGER_BIT;					\
-  History = Get_Pointer(History[HIST_PREV_SUBPROBLEM]);
+{									\
+  HISTORY_UNMARK(History[HIST_MARK]);					\
+  History = Get_Pointer(History[HIST_PREV_SUBPROBLEM]);			\
+}
 
-#else /* COMPILE_HISTORY */
+#else /* not COMPILE_HISTORY */
+
 #define New_Subproblem(Expr, Env)	{ }
 #define Reuse_Subproblem(Expr, Env)	{ }
 #define New_Reduction(Expr, Env)	{ }
 #define End_Subproblem()		{ }
+
 #endif /* COMPILE_HISTORY */
 
 /* History manipulation for the compiled code interface. */
@@ -122,22 +151,25 @@ MIT in each case. */
 #ifdef COMPILE_HISTORY
 
 #define Compiler_New_Reduction()					\
-{ New_Reduction(NIL,							\
+{									\
+  New_Reduction(NIL,							\
 		Make_Non_Pointer(TC_RETURN_CODE,			\
 				 RC_POP_FROM_COMPILED_CODE));		\
 }
 
 #define Compiler_New_Subproblem()					\
-{ New_Subproblem(NIL,							\
+{									\
+  New_Subproblem(NIL,							\
 		 Make_Non_Pointer(TC_RETURN_CODE,			\
 				  RC_POP_FROM_COMPILED_CODE));		\
 }
 
 #define Compiler_End_Subproblem()					\
-{ End_Subproblem();							\
+{									\
+  End_Subproblem();							\
 }
 
-#else /* COMPILE_HISTORY */
+#else /* not COMPILE_HISTORY */
 
 #define Compiler_New_Reduction()
 #define Compiler_New_Subproblem()

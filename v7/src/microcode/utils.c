@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.33 1987/07/23 21:52:40 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.34 1987/10/09 16:15:08 jinx Rel $ */
 
 /* This file contains utilities for interrupts, errors, etc. */
 
@@ -38,6 +38,8 @@ MIT in each case. */
 #include "primitive.h"
 #include "flonum.h"
 #include "winder.h"
+#include "history.h"
+#include "cmpint.h"
 
 /* Set_Up_Interrupt is called from the Interrupt
  * macro to do all of the setup for calling the user's
@@ -210,7 +212,8 @@ Err_Print (Micro_Error)
 
 void
 Stack_Death ()
-{ fprintf(stderr, "\nWill_Push vs. Pushed inconsistency.\n");
+{
+  fprintf(stderr, "\nWill_Push vs. Pushed inconsistency.\n");
   Microcode_Termination(TERM_BAD_STACK);
 }      
 
@@ -234,7 +237,7 @@ Back_Out_Of_Primitive ()
    * not be in the expression register.
    */
 
-  if (Safe_Type_Code(expression) == 0)
+  if (OBJECT_TYPE(expression) == 0)
   {
     expression = Make_Non_Pointer(TC_PRIMITIVE, expression);
     Store_Expression(expression);
@@ -245,7 +248,7 @@ Back_Out_Of_Primitive ()
    */
 
   nargs = N_Args_Primitive(Get_Integer(expression));
-  if (Type_Code(Stack_Ref(nargs)) == TC_RETURN_ADDRESS)
+  if (OBJECT_TYPE(Stack_Ref(nargs)) == TC_RETURN_ADDRESS)
   { 
     /* This clobbers the expression register. */
     compiler_apply_procedure(nargs);
@@ -276,7 +279,7 @@ signal_error_from_primitive (error_code)
      long error_code;
 {
   Back_Out_Of_Primitive ();
-  longjmp (*Back_To_Eval, error_code);
+  PRIMITIVE_ABORT(error_code);
   /*NOTREACHED*/
 }
 
@@ -284,7 +287,7 @@ void
 signal_interrupt_from_primitive ()
 {
   Back_Out_Of_Primitive ();
-  longjmp (*Back_To_Eval, PRIM_INTERRUPT);
+  PRIMITIVE_ABORT(PRIM_INTERRUPT);
   /*NOTREACHED*/
 }
 
@@ -297,7 +300,7 @@ specl_interrupt_from_primitive(local_mask)
   Store_Return(RC_RESTORE_INT_MASK);
   Store_Expression(Make_Unsigned_Fixnum(IntEnb));
   IntEnb = (local_mask);
-  longjmp(*Back_To_Eval, PRIM_INTERRUPT);
+  PRIMITIVE_ABORT(PRIM_INTERRUPT);
   /*NOTREACHED*/
 }
 
@@ -439,8 +442,8 @@ Do_Micro_Error (Err, From_Pop_Return)
 /* Do_Micro_Error, continued */
 
   if ((!Valid_Fixed_Obj_Vector()) ||
-      (Type_Code((Error_Vector = 
-		  Get_Fixed_Obj_Slot(System_Error_Vector))) !=
+      (OBJECT_TYPE((Error_Vector = 
+		    Get_Fixed_Obj_Slot(System_Error_Vector))) !=
        TC_VECTOR))
   {
     fprintf(stderr,
@@ -526,26 +529,32 @@ C_String_To_Scheme_String (C_String)
   Max_Length = ((Space_Before_GC() - STRING_CHARS) *
                 sizeof( Pointer));
   if (C_String == NULL)
+  {
+    Length = 0;
+    if (Max_Length < 0)
     {
-      Length = 0;
-      if (Max_Length < 0)
-	Primitive_GC(3);
+      Primitive_GC(3);
     }
+  }
   else
+  {
+    for (Length = 0;
+	 (*C_String != '\0') && (Length < Max_Length);
+	 Length += 1)
     {
-      for (Length = 0;
-	   (*C_String != '\0') && (Length < Max_Length);
-	   Length += 1)
-	*Next++ = *C_String++;
-      if (Length >= Max_Length)
-	{
-	  while (*C_String++ != '\0')
-	    Length += 1;
-	  Primitive_GC(2 +
-		       (((Length + 1) + (sizeof( Pointer) - 1))
-			/ sizeof( Pointer)));
-	}
+      *Next++ = *C_String++;
     }
+    if (Length >= Max_Length)
+    {
+      while (*C_String++ != '\0')
+      {
+	Length += 1;
+      }
+      Primitive_GC(2 +
+		   (((Length + 1) + (sizeof( Pointer) - 1))
+		    / sizeof( Pointer)));
+    }
+  }
   *Next = '\0';
   Free += (2 + ((Length + sizeof( Pointer)) / sizeof( Pointer)));
   Vector_Set(Result, STRING_LENGTH, Length);
@@ -587,14 +596,14 @@ Make_Dummy_History ()
   Free[RIB_EXP] = NIL;
   Free[RIB_ENV] = NIL;
   Free[RIB_NEXT_REDUCTION] =
-    Make_Pointer(TC_HUNK3, History_Rib);
+    Make_Pointer(UNMARKED_HISTORY_TYPE, History_Rib);
   Free += 3;
   Result = Free;
-  Free[HIST_RIB] = Make_Pointer(TC_HUNK3, History_Rib);
+  Free[HIST_RIB] = Make_Pointer(UNMARKED_HISTORY_TYPE, History_Rib);
   Free[HIST_NEXT_SUBPROBLEM] =
-    Make_Pointer(TC_HUNK3, Result);
+    Make_Pointer(UNMARKED_HISTORY_TYPE, Result);
   Free[HIST_PREV_SUBPROBLEM] =
-    Make_Pointer(TC_HUNK3, Result);
+    Make_Pointer(UNMARKED_HISTORY_TYPE, Result);
   Free += 3;
   return Result;
 }
@@ -633,11 +642,18 @@ Copy_Rib (Orig_Rib)
   for (This_Rib=NULL, Result=Free;
        (This_Rib != Orig_Rib) && (!GC_Check(0));
        This_Rib = Get_Pointer(This_Rib[RIB_NEXT_REDUCTION]))
-  { if (This_Rib==NULL) This_Rib = Orig_Rib;
+  {
+    if (This_Rib == NULL)
+    {
+      This_Rib = Orig_Rib;
+    }
     Free[RIB_EXP] = This_Rib[RIB_EXP];
     Free[RIB_ENV] = This_Rib[RIB_ENV];
-    Free[RIB_NEXT_REDUCTION] = Make_Pointer(TC_HUNK3, Free+3);
-    if (Dangerous(This_Rib[RIB_MARK])) Free[RIB_MARK] |= DANGER_BIT;
+    Free[RIB_NEXT_REDUCTION] = Make_Pointer(UNMARKED_HISTORY_TYPE, Free+3);
+    if (HISTORY_MARKED_P(This_Rib[RIB_MARK]))
+    {
+      HISTORY_MARK(Free[RIB_MARK]);
+    }
     Free += 3;
   }
   Store_Address((Free-3)[RIB_NEXT_REDUCTION], C_To_Scheme(Result));
@@ -658,36 +674,56 @@ Restore_History (Hist_Obj)
           *Orig_Vertebra;
 
   if (Consistency_Check)
-    if (Type_Code(Hist_Obj) != TC_HUNK3)
-    { printf("Bad history to restore.\n");
+  {
+    if (!(HUNK3_P(Hist_Obj)))
+    {
+      fprintf(stderr, "Bad history to restore.\n");
       Microcode_Termination(TERM_EXIT);
     }
+  }
   Orig_Vertebra = Get_Pointer(Hist_Obj);
-  for (Next_Vertebra=NULL, Prev_Vertebra=NULL;
+  for (Next_Vertebra = NULL, Prev_Vertebra = NULL;
        Next_Vertebra != Orig_Vertebra;
        Next_Vertebra = 
          Get_Pointer(Next_Vertebra[HIST_NEXT_SUBPROBLEM]))
   { Pointer *New_Rib;
-    if (Prev_Vertebra==NULL) Next_Vertebra = Orig_Vertebra;
+
+    if (Prev_Vertebra == NULL)
+    {
+      Next_Vertebra = Orig_Vertebra;
+    }
     New_Rib = Copy_Rib(Get_Pointer(Next_Vertebra[HIST_RIB]));
-    if (Prev_Vertebra==NULL) New_History = Free;
-    else Prev_Vertebra[HIST_NEXT_SUBPROBLEM] =
-           Make_Pointer(TC_HUNK3, Free);
-    Free[HIST_RIB] = Make_Pointer(TC_HUNK3, New_Rib);
+    if (Prev_Vertebra == NULL)
+    {
+      New_History = Free;
+    }
+    else
+    {
+      Prev_Vertebra[HIST_NEXT_SUBPROBLEM] =
+           Make_Pointer(UNMARKED_HISTORY_TYPE, Free);
+    }
+    Free[HIST_RIB] = Make_Pointer(UNMARKED_HISTORY_TYPE, New_Rib);
     Free[HIST_NEXT_SUBPROBLEM] = NIL;
     Free[HIST_PREV_SUBPROBLEM] =
-      Make_Pointer(TC_HUNK3, Prev_Vertebra);
-    if (Dangerous(Next_Vertebra[HIST_MARK]))
-      Free[HIST_MARK] |= DANGER_BIT;
+      Make_Pointer(UNMARKED_HISTORY_TYPE, Prev_Vertebra);
+    if (HISTORY_MARKED_P(Next_Vertebra[HIST_MARK]))
+    {
+      HISTORY_MARK(Free[HIST_MARK]);
+    }
     Prev_Vertebra = Free;
     Free += 3;
-    if (GC_Check(0)) return false;
+    if (GC_Check(0))
+    {
+      return false;
+    }
   }
   Store_Address(New_History[HIST_PREV_SUBPROBLEM], C_To_Scheme(Free-3));
   Prev_Vertebra[HIST_NEXT_SUBPROBLEM] =
-    Make_Pointer(TC_HUNK3, New_History); 
-  if (Dangerous(Orig_Vertebra[HIST_MARK]))
-    Prev_Vertebra[HIST_MARK] |= DANGER_BIT;
+    Make_Pointer(UNMARKED_HISTORY_TYPE, New_History); 
+  if (HISTORY_MARKED_P(Orig_Vertebra[HIST_MARK]))
+  {
+    HISTORY_MARK(Prev_Vertebra[HIST_MARK]);
+  }
   History = New_History;
   return true;
 }
@@ -802,23 +838,37 @@ Allocate_New_Stacklet (N)
   Old_Stacklet = Current_Stacklet;
   Terminate_Old_Stacklet();
   if ((Free_Stacklets == NULL) ||
-      ((N+STACKLET_SLACK) > Get_Integer(Free_Stacklets[STACKLET_LENGTH])))
-  { long size = New_Stacklet_Size(N);
-    /* Room is set aside for the two header bytes of a stacklet plus
-     * the two bytes required for the RC_JOIN_STACKLETS frame.
+      ((N + STACKLET_SLACK) >
+       Get_Integer(Free_Stacklets[STACKLET_LENGTH])))
+  {
+    long size;
+
+    /*
+      Room is set aside for the header bytes of a stacklet plus
+      the two words required for the RC_JOIN_STACKLETS frame.
      */
+
+    size = New_Stacklet_Size(N);
     if (GC_Check(size))
-    { Request_GC(size);
-      if (Free+size >= Heap_Top)
+    {
+      Request_GC(size);
+      if ((Free + size) >= Heap_Top)
+      {
 	Microcode_Termination(TERM_STACK_OVERFLOW);
+      }
     }
-    Free[STACKLET_LENGTH] = Make_Non_Pointer(TC_MANIFEST_VECTOR, size-1);
+    Free[STACKLET_LENGTH] = Make_Non_Pointer(TC_MANIFEST_VECTOR, (size - 1));
     Stack_Guard = &(Free[STACKLET_HEADER_SIZE]);
     Free += size;
     Stack_Pointer = Free;
   } 
-  else /* Grab first one on the free list */
-  { Pointer *New_Stacklet = Free_Stacklets;
+  else
+  {
+    /* Grab first one on the free list */
+
+    Pointer *New_Stacklet;
+
+    New_Stacklet = Free_Stacklets;
     Free_Stacklets = ((Pointer *) Free_Stacklets[STACKLET_FREE_LIST_LINK]);
     Stack_Pointer =
       &New_Stacklet[1 + Get_Integer(New_Stacklet[STACKLET_LENGTH])];
@@ -828,13 +878,16 @@ Allocate_New_Stacklet (N)
   Old_Return = Fetch_Return();
   Store_Expression(Make_Pointer(TC_CONTROL_POINT, Old_Stacklet));
   Store_Return(RC_JOIN_STACKLETS);
-/* Will_Push omitted because size calculation includes enough room. */
+  /*
+    Will_Push omitted because size calculation includes enough room.
+   */
   Save_Cont();
   Store_Expression(Old_Expression);
   Store_Return(Old_Return);
   return;
 }
-#endif
+
+#endif /* USE_STACKLETS */
 
 /* Dynamic Winder support code */
 
@@ -893,26 +946,41 @@ Translate_To_Point (Target)
   Distance =
     Get_Integer(Fast_Vector_Ref(Target, STATE_POINT_DISTANCE_TO_ROOT));
   if (State_Space == NIL)
+  {
     Current_Location = Current_State_Point;
+  }
   else
+  {
     Current_Location = Vector_Ref(State_Space, STATE_SPACE_NEAREST_POINT);
+  }
   if (Target == Current_Location)
-    longjmp(*Back_To_Eval, PRIM_POP_RETURN);
+  {
+    PRIMITIVE_ABORT(PRIM_POP_RETURN);
+    /*NOTREACHED*/
+  }
   for (Path_Ptr=(&(Path[Distance])), Path_Point=Target, i=0;
        i <= Distance;
        i++, Path_Point=Fast_Vector_Ref(Path_Point, STATE_POINT_NEARER_POINT))
+  {
     *Path_Ptr-- = Path_Point;
+  }
   From_Depth =
     Get_Integer(Fast_Vector_Ref(Current_Location, STATE_POINT_DISTANCE_TO_ROOT));
   for (Path_Point=Current_Location, Merge_Depth = From_Depth;
        Merge_Depth > Distance;
        Merge_Depth--)
+  {
     Path_Point = Fast_Vector_Ref(Path_Point, STATE_POINT_NEARER_POINT);
+  }
   for (Path_Ptr=(&(Path[Merge_Depth])); Merge_Depth >= 0;
        Merge_Depth--, Path_Ptr--,
        Path_Point=Fast_Vector_Ref(Path_Point, STATE_POINT_NEARER_POINT))
+  {
     if (*Path_Ptr == Path_Point)
+    {
       break;
+    }
+  }
 #ifdef ENABLE_DEBUGGING_TOOLS
   if (Merge_Depth < 0)
   {
@@ -933,6 +1001,6 @@ Translate_To_Point (Target)
   Save_Cont();
  Pushed();
   IntEnb &= (INT_GC<<1) - 1;	/* Disable lower than GC level */
-  longjmp(*Back_To_Eval, PRIM_POP_RETURN);
+  PRIMITIVE_ABORT(PRIM_POP_RETURN);
   /*NOTREACHED*/
 }

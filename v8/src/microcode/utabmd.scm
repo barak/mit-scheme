@@ -37,7 +37,7 @@
 
 ;;;; Machine Dependent Type Tables
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.37 1987/08/06 19:10:08 jinx Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.38 1987/10/09 16:14:47 jinx Rel $
 
 (declare (usual-integrations))
 
@@ -130,11 +130,11 @@
 	       INTERNED-SYMBOL				;1D
 	       (STRING CHARACTER-STRING VECTOR-8B)	;1E
 	       ACCESS					;1F
-	       #F					;20
+	       (HUNK3-A UNMARKED-HISTORY)		;20
 	       DEFINITION				;21
 	       BROKEN-HEART		       		;22
 	       ASSIGNMENT				;23
-	       (TRIPLE HUNK3)				;24
+	       (TRIPLE HUNK3 HUNK3-B MARKED-HISTORY)	;24
 	       IN-PACKAGE				;25
 	       COMBINATION	       			;26
 	       MANIFEST-NM-VECTOR	       		;27
@@ -226,6 +226,134 @@
 	       #F					;7D
 	       #F                        		;7E
 	       #F        				;7F
+	       #F                			;80
+	       #F					;81
+	       #F					;82
+	       #F					;83
+	       #F					;84
+	       #F					;85
+	       #F                                       ;86
+	       #F					;87
+	       #F                			;88
+	       #F					;89
+	       #F					;8A
+	       #F					;8B
+	       #F					;8C
+	       #F					;8D
+	       #F                        		;8E
+	       #F        				;8F
+	       #F                			;90
+	       #F					;91
+	       #F					;92
+	       #F					;93
+	       #F					;94
+	       #F					;95
+	       #F                                       ;96
+	       #F					;97
+	       #F                			;98
+	       #F					;99
+	       #F					;9A
+	       #F					;9B
+	       #F					;9C
+	       #F					;9D
+	       #F                        		;9E
+	       #F        				;9F
+	       #F                			;A0
+	       #F					;A1
+	       #F					;A2
+	       #F					;A3
+	       #F					;A4
+	       #F					;A5
+	       #F                                       ;A6
+	       #F					;A7
+	       #F                			;A8
+	       #F					;A9
+	       #F					;AA
+	       #F					;AB
+	       #F					;AC
+	       #F					;AD
+	       #F                        		;AE
+	       #F        				;AF
+	       #F                			;B0
+	       #F					;B1
+	       #F					;B2
+	       #F					;B3
+	       #F					;B4
+	       #F					;B5
+	       #F                                       ;B6
+	       #F					;B7
+	       #F                			;B8
+	       #F					;B9
+	       #F					;BA
+	       #F					;BB
+	       #F					;BC
+	       #F					;BD
+	       #F                        		;BE
+	       #F        				;BF
+	       #F                			;C0
+	       #F					;C1
+	       #F					;C2
+	       #F					;C3
+	       #F					;C4
+	       #F					;C5
+	       #F                                       ;C6
+	       #F					;C7
+	       #F                			;C8
+	       #F					;C9
+	       #F					;CA
+	       #F					;CB
+	       #F					;CC
+	       #F					;CD
+	       #F                        		;CE
+	       #F        				;CF
+	       #F                			;D0
+	       #F					;D1
+	       #F					;D2
+	       #F					;D3
+	       #F					;D4
+	       #F					;D5
+	       #F                                       ;D6
+	       #F					;D7
+	       #F                			;D8
+	       #F					;D9
+	       #F					;DA
+	       #F					;DB
+	       #F					;DC
+	       #F					;DD
+	       #F                        		;DE
+	       #F        				;DF
+	       #F                			;E0
+	       #F					;E1
+	       #F					;E2
+	       #F					;E3
+	       #F					;E4
+	       #F					;E5
+	       #F                                       ;E6
+	       #F					;E7
+	       #F                			;E8
+	       #F					;E9
+	       #F					;EA
+	       #F					;EB
+	       #F					;EC
+	       #F					;ED
+	       #F                        		;EE
+	       #F        				;EF
+	       #F                			;F0
+	       #F					;F1
+	       #F					;F2
+	       #F					;F3
+	       #F					;F4
+	       #F					;F5
+	       #F                                       ;F6
+	       #F					;F7
+	       #F                			;F8
+	       #F					;F9
+	       #F					;FA
+	       #F					;FB
+	       #F					;FC
+	       #F					;FD
+	       #F                        		;FE
+	       #F        				;FF
 	       ))
 
 ;;; [] Returns
@@ -322,6 +450,7 @@
 	       COMPILER-CACHE-REFERENCE-APPLY-RESTART	;57
 	       COMPILER-SAFE-REFERENCE-TRAP-RESTART	;58
 	       COMPILER-UNASSIGNED?-TRAP-RESTART	;59
+	       COMPILER-CACHE-ASSIGNMENT-RESTART	;5A
 	       ))
 
 ;;; [] Primitives
@@ -365,7 +494,7 @@
 	       (CDR FIRST-TAIL)				;$22
 	       (SET-CAR! SET-FIRST!)			;$23
 	       (SET-CDR! SET-FIRST-TAIL!)		;$24
-	       #F					;$25
+	       GET-COMMAND-LINE				;$25
 	       TTY-GET-CURSOR				;$26
 	       GENERAL-CAR-CDR				;$27
 	       HUNK3-CONS				;$28
@@ -399,9 +528,9 @@
 	       TRUNCATE-STRING!				;$44
 	       SUBSTRING				;$45
 	       ZERO-FIXNUM?				;$46
-	       MAKE-OBJECT-SAFE				;$47
-	       MAKE-OBJECT-DANGEROUS			;$48
-	       OBJECT-DANGEROUS?			;$49
+	       #F					;$47
+	       #F					;$48
+	       #F					;$49
 	       SUBSTRING->LIST				;$4A
 	       MAKE-FILLED-STRING			;$4B
 	       PLUS-BIGNUM				;$4C
@@ -863,4 +992,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.37 1987/08/06 19:10:08 jinx Exp $"
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.38 1987/10/09 16:14:47 jinx Rel $"

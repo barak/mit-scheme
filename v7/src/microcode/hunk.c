@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hunk.c,v 9.22 1987/04/16 02:24:07 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hunk.c,v 9.23 1987/10/09 16:11:45 jinx Rel $
  *
  * Support for Hunk3s (triples)
  */
@@ -60,23 +60,23 @@ Built_In_Primitive(Prim_Hunk3_Cxr, 2, "HUNK3-CXR", 0x29)
   long Offset;
   Primitive_2_Args();
 
-  Arg_1_Type(TC_HUNK3);
-  Arg_2_Type(TC_FIXNUM);
+  CHECK_ARG(1, HUNK3_P);
+  CHECK_ARG(2, FIXNUM_P);
   Range_Check(Offset, Arg2, 0, 2, ERR_ARG_2_BAD_RANGE);
   return Vector_Ref(Arg1, Offset);
 }
 
 /* (HUNK3-SET-CXR! TRIPLE N VALUE)
       Stores VALUE in the Nth item of TRIPLE.  N must be 0, 1, or 2.
-      Returns (not good style to count on this) the previous contents.
+      Returns the previous contents.
 */
 Built_In_Primitive(Prim_Hunk3_Set_Cxr, 3, "HUNK3-SET-CXR!", 0x2A)
 {
   long Offset;
   Primitive_3_Args();
 
-  Arg_1_Type(TC_HUNK3);
-  Arg_2_Type(TC_FIXNUM);
+  CHECK_ARG(1, HUNK3_P);
+  CHECK_ARG(2, FIXNUM_P);
   Range_Check(Offset, Arg2, 0, 2, ERR_ARG_2_BAD_RANGE);
   Side_Effect_Impurify(Arg1, Arg3);
   return Swap_Pointers(Nth_Vector_Loc(Arg1, Offset), Arg3);
@@ -125,7 +125,7 @@ Built_In_Primitive(Prim_Sys_H3_2, 1, "SYSTEM-HUNK3-CXR2", 0x94)
       Replaces item 0 (the first item) in any object with a GC type of
       triple with NEW-CONTENTS.  For example, this would modify the
       operator slot of a COMBINATION_2_OPERAND SCode item.  Returns
-      (bad style to rely on this) the previous contents.
+      the previous contents.
 */
 Built_In_Primitive(Prim_SH3_Set_0, 2, "SYSTEM-HUNK3-SET-CXR0!", 0x8F)
 {
@@ -140,7 +140,7 @@ Built_In_Primitive(Prim_SH3_Set_0, 2, "SYSTEM-HUNK3-SET-CXR0!", 0x8F)
       Replaces item 1 (the second item) in any object with a GC type
       of triple with NEW-CONTENTS.  For example, this would modify the
       first operand slot of a COMBINATION_2_OPERAND SCode item.
-      Returns (bad style to rely on this) the previous contents.
+      Returns the previous contents.
 */
 Built_In_Primitive(Prim_SH3_Set_1, 2, "SYSTEM-HUNK3-SET-CXR1!", 0x92)
 {
@@ -155,7 +155,7 @@ Built_In_Primitive(Prim_SH3_Set_1, 2, "SYSTEM-HUNK3-SET-CXR1!", 0x92)
       Replaces item 2 (the third item) in any object with a GC type of
       triple with NEW-CONTENTS.  For example, this would modify the
       second operand slot of a COMBINATION_2_OPERAND SCode item.
-      Returns (bad style to rely on this) the previous contents.
+      Returns the previous contents.
 */
 Built_In_Primitive(Prim_SH3_Set_2, 2, "SYSTEM-HUNK3-SET-CXR2!", 0x95)
 {

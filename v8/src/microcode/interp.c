@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.32 1987/10/05 18:32:48 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.33 1987/10/09 16:11:55 jinx Exp $
  *
  * This file contains the heart of the Scheme Scode
  * interpreter
@@ -42,6 +42,8 @@ MIT in each case. */
 #include "locks.h"
 #include "trap.h"
 #include "lookup.h"
+#include "history.h"
+#include "cmpint.h"
 #include "zones.h"
 
 /* In order to make the interpreter tail recursive (i.e.

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/object.h,v 9.25 1987/10/05 18:35:46 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/object.h,v 9.26 1987/10/09 16:12:57 jinx Rel $ */
 
 /* This file contains definitions pertaining to the C view of 
    Scheme pointers: widths of fields, extraction macros, pre-computed
@@ -46,21 +46,11 @@ MIT in each case. */
 #define TYPE_CODE_LENGTH	8	/* Not CHAR_SIZE!! */
 #define MAX_TYPE_CODE		0xFF	/* ((1<<TYPE_CODE_LENGTH) - 1) */
 
-/* The danger bit is being phased out.  It is currently used by stacklets
-   and the history mechanism.  The variable lookup code no longer uses it.
- */
-
-#define DANGER_TYPE		0x80	/* (1<<(TYPE_CODE_LENGTH-1)) */
-#define MAX_SAFE_TYPE   	0x7F	/* (MAX_TYPE_CODE & ~DANGER_TYPE) */
-#define SAFE_TYPE_MASK		MAX_SAFE_TYPE
-#define DANGER_BIT		HIGH_BIT
-
-#ifndef b32			/* Safe versions */
+#ifndef b32			/* Portable versions */
 
 #define ADDRESS_LENGTH		(POINTER_LENGTH-TYPE_CODE_LENGTH)
 #define ADDRESS_MASK		((1<<ADDRESS_LENGTH) - 1)
 #define TYPE_CODE_MASK		(~ADDRESS_MASK)
-#define HIGH_BIT		(1 << (POINTER_LENGTH-1))
 /* FIXNUM_LENGTH does NOT include the sign bit! */
 #define FIXNUM_LENGTH		(ADDRESS_LENGTH-1)
 #define FIXNUM_SIGN_BIT		(1<<FIXNUM_LENGTH)
@@ -73,7 +63,6 @@ MIT in each case. */
 #define ADDRESS_LENGTH		24
 #define ADDRESS_MASK		0x00FFFFFF
 #define TYPE_CODE_MASK		0xFF000000
-#define HIGH_BIT		0x80000000
 #define FIXNUM_LENGTH		23
 #define FIXNUM_SIGN_BIT		0x00800000
 #define SIGN_MASK		0xFF800000
@@ -82,19 +71,16 @@ MIT in each case. */
 
 #endif
 
-#ifndef UNSIGNED_SHIFT		/* Safe version */
+#ifndef UNSIGNED_SHIFT		/* Portable version */
 #define OBJECT_TYPE(P)		(((P) >> ADDRESS_LENGTH) & MAX_TYPE_CODE)
-#define safe_pointer_type(P)	(((P) >> ADDRESS_LENGTH) & SAFE_TYPE_MASK)
 #else				/* Faster for logical shifts */
 #define OBJECT_TYPE(P)		((P) >> ADDRESS_LENGTH)
-#define safe_pointer_type(P)	((pointer_type (P)) & SAFE_TYPE_MASK)
 #endif
 
 #define OBJECT_DATUM(P)		((P) & ADDRESS_MASK)
 
 /* compatibility definitions */
 #define Type_Code(P)		(OBJECT_TYPE (P))
-#define Safe_Type_Code(P) 	(safe_pointer_type (P))
 #define Datum(P)		(OBJECT_DATUM (P))
 
 #define pointer_type(P)		(OBJECT_TYPE (P))
@@ -103,7 +89,7 @@ MIT in each case. */
 #define Make_Object(TC, D)					\
 ((((unsigned) (TC)) << ADDRESS_LENGTH) | (OBJECT_DATUM (D)))
 
-#ifndef Heap_In_Low_Memory	/* Safe version */
+#ifndef Heap_In_Low_Memory	/* Portable version */
 
 typedef Pointer *relocation_type; /* Used to relocate pointers on fasload */
 
@@ -209,6 +195,10 @@ typedef long relocation_type;	/* Used to relocate pointers on fasload */
    ((OBJECT_TYPE (object)) == TC_BIG_FLONUM)				\
    ((OBJECT_TYPE (object)) == TC_COMPLEX))
 
+#define HUNK3_P(object)							\
+  (((OBJECT_TYPE(object)) == TC_HUNK3_A) ||				\
+   ((OBJECT_TYPE(object)) == TC_HUNK3_B))
+
 #define MAKE_FIXNUM(N) (Make_Non_Pointer (TC_FIXNUM, (N)))
 #define FIXNUM_NEGATIVE_P(fixnum) (((fixnum) & FIXNUM_SIGN_BIT) != 0)
 #define MAKE_UNSIGNED_FIXNUM(N)	(FIXNUM_ZERO + (N))
@@ -225,7 +215,7 @@ do									\
 } while (0)
 
 #define BOOLEAN_TO_OBJECT(expression) ((expression) ? TRUTH : NIL)
-
+
 #define Make_Broken_Heart(N)	(BROKEN_HEART_ZERO + (N))
 #define Make_Unsigned_Fixnum(N)	(FIXNUM_ZERO + (N))
 #define Make_Signed_Fixnum(N)	Make_Non_Pointer( TC_FIXNUM, (N))
@@ -245,14 +235,6 @@ do									\
 
 #define BYTES_TO_POINTERS(nbytes)					\
   (((nbytes) + ((sizeof (Pointer)) - 1)) / (sizeof (Pointer)))
-
-/* Playing with the danger bit */
-
-#define Without_Danger_Bit(P)	((P) & (~DANGER_BIT))
-#define Dangerous(P)		((P & DANGER_BIT) != 0)
-#define Clear_Danger_Bit(P)	P &= ~DANGER_BIT
-#define Set_Danger_Bit(P)	P |= DANGER_BIT
-/* Side effect testing */
 
 #define Is_Constant(address) 					\
   (((address) >= Constant_Space) && ((address) < Free_Constant))

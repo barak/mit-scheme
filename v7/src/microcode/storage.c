@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.36 1987/10/05 18:36:30 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.37 1987/10/09 16:14:23 jinx Rel $
 
 This file defines the storage for global variables for
 the Scheme Interpreter. */
@@ -239,12 +239,12 @@ char *Return_Names[] = {
 /* 0x57 */		"COMPILER_CACHE_REFERENCE_APPLY_RESTART",
 /* 0x58 */		"COMPILER_SAFE_REFERENCE_TRAP_RESTART",
 /* 0x59 */		"COMPILER_UNASSIGNED_P_TRAP_RESTART",
-/* 0x60 */		"COMPILER_CACHE_ASSIGNMENT_RESTART"
+/* 0x5A */		"COMPILER_CACHE_ASSIGNMENT_RESTART"
 };
 
-#if (MAX_RETURN_CODE != 0x60)
+#if (MAX_RETURN_CODE != 0x5A)
 /* Cause an error */
-#include "Returns.h and storage.c are inconsistent -- Names Table"
+#include "error: returns.h and storage.c are inconsistent -- Names Table"
 #endif
 
 long MAX_RETURN = MAX_RETURN_CODE;

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.c,v 9.25 1987/04/16 23:20:46 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.c,v 9.26 1987/10/09 16:13:08 jinx Exp $
  *
  * The leftovers ... primitives that don't seem to belong elsewhere.
  *
@@ -103,7 +103,7 @@ Built_In_Primitive(Prim_Prim_Type, 1, "PRIMITIVE-TYPE", 0x10)
   Primitive_1_Arg();
 
   Touch_In_Primitive(Arg1, Arg1);
-  return Make_Unsigned_Fixnum(Safe_Type_Code(Arg1));
+  return Make_Unsigned_Fixnum(OBJECT_TYPE(Arg1));
 }
 
 /* (PRIMITIVE-GC-TYPE OBJECT)
@@ -148,7 +148,7 @@ Built_In_Primitive(Prim_Primitive_Set_Type, 2, "PRIMITIVE-SET-TYPE", 0x11)
   Primitive_2_Args();
 
   Arg_1_Type(TC_FIXNUM);
-  Range_Check(New_Type, Arg1, 0, MAX_SAFE_TYPE, ERR_ARG_1_BAD_RANGE);
+  Range_Check(New_Type, Arg1, 0, MAX_TYPE_CODE, ERR_ARG_1_BAD_RANGE);
   Touch_In_Primitive(Arg2, Arg2);
   New_GC_Type = GC_Type_Code(New_Type);
   if ((GC_Type(Arg2) == New_GC_Type) ||
@@ -177,7 +177,7 @@ Built_In_Primitive(Prim_And_Make_Object, 2, "&MAKE-OBJECT", 0x8D)
   Primitive_2_Args();
 
   Arg_1_Type(TC_FIXNUM);
-  Range_Check(New_Type, Arg1, 0, MAX_SAFE_TYPE, ERR_ARG_1_BAD_RANGE);
+  Range_Check(New_Type, Arg1, 0, MAX_TYPE_CODE, ERR_ARG_1_BAD_RANGE);
   return Make_New_Pointer(New_Type, Arg2);
 }
 
@@ -207,40 +207,6 @@ Built_In_Primitive(Prim_System_Memory_Set, 3, "SYSTEM-MEMORY-SET!", 0x196)
   Arg_2_Type(TC_FIXNUM);
   index = Get_Integer(Arg2);
   return Swap_Pointers(Nth_Vector_Loc(Arg1, index), Arg3);
-}
-
-/* Playing with the danger bit */
-
-/* (OBJECT-DANGEROUS? OBJECT)
-   Returns #!TRUE if OBJECT has the danger bit set, NIL otherwise.
-*/
-Built_In_Primitive(Prim_Dangerous_QM, 1, "OBJECT-DANGEROUS?", 0x49)
-{
-  Primitive_1_Arg();
-
-  return (Dangerous(Arg1)) ? TRUTH : NIL;
-}
-
-/* (MAKE-OBJECT-DANGEROUS OBJECT)
-   Returns OBJECT, but with the danger bit set.
-*/
-Built_In_Primitive(Prim_Dangerize, 1, "MAKE-OBJECT-DANGEROUS", 0x48)
-{
-  Primitive_1_Arg();
-
-  return Set_Danger_Bit(Arg1);
-}
-
-/* (MAKE-OBJECT-SAFE OBJECT)
-   Returns OBJECT with the danger bit cleared.  This does not
-   side-effect the object, it merely returns a new (non-dangerous)
-   pointer to the same item.
-*/
-Built_In_Primitive(Prim_Undangerize, 1, "MAKE-OBJECT-SAFE", 0x47)
-{
-  Primitive_1_Arg();
-
-  return Clear_Danger_Bit(Arg1);
 }
 
 /* Cells */

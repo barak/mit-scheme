@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.33 1987/08/17 19:31:42 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.34 1987/10/09 16:08:51 jinx Rel $
 
    Bit string primitives. 
 
@@ -644,7 +644,9 @@ long_to_bit_string (length, number)
     error_bad_range_arg (2);
 
   if (number == 0)
-    zero_to_bit_string (length);
+  {
+    return (zero_to_bit_string (length));
+  }
   else
   {
     Pointer result;

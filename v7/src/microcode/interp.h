@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.h,v 9.24 1987/07/23 21:48:38 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.h,v 9.25 1987/10/09 16:12:22 jinx Rel $
  *
  * Macros used by the interpreter and some utilities.
  *
@@ -93,18 +93,26 @@ MIT in each case. */
 /* Internal_Will_Push is in stack.h. */
 
 #ifdef ENABLE_DEBUGGING_TOOLS
-#define Will_Push(N)						\
-{ Pointer *Will_Push_Limit;					\
-  Internal_Will_Push((N));					\
+
+#define Will_Push(N)							\
+{									\
+  Pointer *Will_Push_Limit;						\
+									\
+  Internal_Will_Push((N));						\
   Will_Push_Limit = Simulate_Pushing(N)
 
-#define Pushed()						\
-  if (Stack_Pointer < Will_Push_Limit) Stack_Death();		\
+#define Pushed()							\
+  if (Stack_Pointer < Will_Push_Limit)					\
+  {									\
+    Stack_Death();							\
+  }									\
 }
 
 #else
+
 #define Will_Push(N)			Internal_Will_Push(N)
 #define Pushed()			/* No op */
+
 #endif
 
 #define Will_Eventually_Push(N)		Internal_Will_Push(N)
@@ -135,42 +143,6 @@ MIT in each case. */
 #define Push_From(SP)			*--(SP)
 #define Pop_Into(SP, What)		(*(SP)++) = (What)
 
-/* Stack Gap Operations: */
-
-/* With_Stack_Gap opens a gap Gap_Size wide Gap_Position cells above the
- * top of the stack.  Code must push Gap_Size objects.  It executes Code
- * with the stack pointer placed so that these objects will fill the gap.
- */
-
-#define With_Stack_Gap(Gap_Size, Gap_Position, Code)		\
-{ Pointer *Saved_Destination;					\
-  fast Pointer *Destination;					\
-  fast long size_to_move = (Gap_Position);			\
-  Destination = Simulate_Pushing(Gap_Size);			\
-  Saved_Destination = Destination;				\
-  while (--size_to_move >= 0)					\
-    Pop_Into(Destination, Pop());				\
-  Code;								\
-  Stack_Pointer = Saved_Destination;				\
-}
-
-/* Close_Stack_Gap closes a gap Gap_Size wide Gap_Position cells above the 
- * top of the stack.  The contents of the gap are lost.
- */
-
-#define Close_Stack_Gap(Gap_Size, Gap_Position, extra_code)		\
-{ fast long size_to_move = (Gap_Position);				\
-  fast Pointer *Source = Simulate_Popping(size_to_move);		\
-  Stack_Pointer = Simulate_Popping((Gap_Size) + size_to_move);		\
-  extra_code;								\
-  while (--size_to_move >= 0)						\
-    Push(Push_From(Source));						\
-}
-
-/* Racks operations continue on the next page */
-
-/* Rack operations, continued */
-
 /* Fetch from register */
 
 #define Fetch_Expression()	Expression
@@ -190,32 +162,44 @@ MIT in each case. */
 
 /* Note: Save_Cont must match the definitions in sdata.h */                                
 
-#define Save_Cont()	{ Push(Expression);				\
-			  Push(Return);					\
-			  Cont_Print();					\
-			}
+#define Save_Cont()							\
+{									\
+  Push(Expression);							\
+  Push(Return);								\
+  Cont_Print();								\
+}
 
-#define Restore_Cont()	{ Return = Pop();				\
-			  Expression = Pop();				\
-                          if (Cont_Debug)				\
-                          { Print_Return(RESTORE_CONT_RETURN_MESSAGE);	\
-                            Print_Expression(Fetch_Expression(),	\
-                                             RESTORE_CONT_EXPR_MESSAGE);\
-                            CRLF();					\
-                          }						\
-                        }
+#define Restore_Cont()							\
+{									\
+  Return = Pop();							\
+  Expression = Pop();							\
+  if (Cont_Debug)							\
+  {									\
+    Print_Return(RESTORE_CONT_RETURN_MESSAGE);				\
+    Print_Expression(Fetch_Expression(),				\
+		     RESTORE_CONT_EXPR_MESSAGE);			\
+    CRLF();								\
+  }									\
+}
 
-#define Cont_Print()	if (Cont_Debug)					\
-                          { Print_Return(CONT_PRINT_RETURN_MESSAGE);	\
-                            Print_Expression(Fetch_Expression(),	\
-			                     CONT_PRINT_EXPR_MESSAGE);	\
-                            CRLF();					\
-                          }
+#define Cont_Print()							\
+{									\
+  if (Cont_Debug)							\
+  {									\
+    Print_Return(CONT_PRINT_RETURN_MESSAGE);				\
+    Print_Expression(Fetch_Expression(),				\
+		     CONT_PRINT_EXPR_MESSAGE);				\
+    CRLF();								\
+  }									\
+}
 
 #define Stop_Trapping()							\
-{ Trapping = false;							\
+{									\
+  Trapping = false;							\
   if (Return_Hook_Address != NULL)					\
+  {									\
     *Return_Hook_Address = Old_Return_Code;				\
+  }									\
   Return_Hook_Address = NULL;						\
 }
 
@@ -238,173 +222,6 @@ MIT in each case. */
 
 #define Pop_Primitive_Frame(NArgs)					\
   Stack_Pointer = Simulate_Popping(NArgs)
-
-/* Compiled code utility macros */
-
-/* Going from interpreted code to compiled code */
-
-/* Tail recursion is handled as follows:
-   if the return code is `reenter_compiled_code', it is discarded,
-   and the two contiguous interpreter segments on the stack are
-   merged.
- */
-
-/* Apply interface:
-   calling a compiled procedure with a frame nslots long.
- */
-
-#define apply_compiled_setup(nslots)					\
-{ long frame_size = (nslots);						\
-  if (Stack_Ref(frame_size + CONTINUATION_RETURN_CODE) ==		\
-      (Make_Non_Pointer(TC_RETURN_CODE, RC_REENTER_COMPILED_CODE)))	\
-  { /* Merge compiled code segments on the stack. */			\
-    Close_Stack_Gap(CONTINUATION_SIZE,					\
-		    frame_size,						\
-		    { long segment_size =				\
-			Datum(Stack_Ref(CONTINUATION_EXPRESSION -	\
-					CONTINUATION_SIZE));		\
-		      last_return_code = Simulate_Popping(segment_size); \
-		    });							\
-    /* Undo the subproblem rotation. */					\
-    Compiler_End_Subproblem();						\
-  }									\
-  else									\
-  { /* Make a new compiled code segment which includes this frame. */	\
-    /* History need not be hacked here. */				\
-    With_Stack_Gap(1,							\
-		   frame_size,						\
-		   { last_return_code = &Top_Of_Stack();		\
-		     Push(return_to_interpreter);			\
-		   });							\
-  }									\
-}
-
-/* Eval interface:
-   executing a compiled expression.
- */
-
-#define execute_compiled_setup()					\
-{ if (Stack_Ref(CONTINUATION_RETURN_CODE) ==				\
-      (Make_Non_Pointer(TC_RETURN_CODE, RC_REENTER_COMPILED_CODE)))	\
-  { /* Merge compiled code segments on the stack. */			\
-    long segment_size;							\
-    Restore_Cont();							\
-    segment_size = Datum(Fetch_Expression());				\
-    last_return_code = Simulate_Popping(segment_size);			\
-    /* Undo the subproblem rotation. */					\
-    Compiler_End_Subproblem();						\
-  }									\
-    else								\
-  { /* Make a new compiled code segment on the stack. */		\
-    /* History need not be hacked here. */				\
-    last_return_code = &Top_Of_Stack();					\
-    Push(return_to_interpreter);					\
-  }									\
-}
-
-/* Pop return interface:
-   Returning to compiled code from the interpreter.
- */
-   
-#define compiled_code_restart()						\
-{ long segment_size;							\
-  segment_size = Datum(Fetch_Expression());				\
-  last_return_code = Simulate_Popping(segment_size);			\
-  /* Undo the subproblem rotation. */					\
-  Compiler_End_Subproblem();						\
-}
-
-/* Going from compiled code to interpreted code */
-
-/* Tail recursion is handled in the following way:
-   if the return address is `return_to_interpreter', it is discarded,
-   and the two contiguous interpreter segments on the stack are
-   merged.
- */
-
-/* Apply interface:
-   calling an interpreted procedure (or unsafe primitive)
-   with a frame nslots long.
- */
-
-#define compiler_apply_procedure(nslots)				\
-{ long frame_size = (nslots);						\
-  if (Stack_Ref( frame_size) == return_to_interpreter)			\
-  {									\
-    Close_Stack_Gap(1, frame_size, {});					\
-    /* Set up the current rib. */					\
-    Compiler_New_Reduction();						\
-  }									\
-  else									\
-    { /* Make a new interpreter segment which includes this frame. */	\
-      With_Stack_Gap(CONTINUATION_SIZE,					\
-		     frame_size,					\
-		     { long segment_size = Stack_Distance(last_return_code); \
-		       Store_Expression(Make_Unsigned_Fixnum(segment_size)); \
-		       Store_Return(RC_REENTER_COMPILED_CODE);		\
-		       Save_Cont();					\
-		     });						\
-      /* Rotate history to a new subproblem. */				\
-      Compiler_New_Subproblem();					\
-    }									\
-}
-
-/* Pop Return interface:
-   returning to the interpreter from compiled code.
-   Nothing needs to be done at this time.
- */
-
-#define compiled_code_done()
-
-/* Various handlers for backing out of compiled code. */
-
-/* Backing out of apply. */
-
-#define apply_compiled_backout()					\
-{ compiler_apply_procedure(STACK_ENV_EXTRA_SLOTS +			\
-			   Get_Integer( Stack_Ref( STACK_ENV_HEADER)));	\
-}
-
-/* Backing out of eval. */
-
-#define execute_compiled_backout()					\
-{ if (Top_Of_Stack() == return_to_interpreter)				\
-  {									\
-    Simulate_Popping(1);						\
-    /* Set up the current rib. */					\
-    Compiler_New_Reduction();						\
-  }									\
-  else									\
-  { long segment_size = Stack_Distance(last_return_code);		\
-    Store_Expression(Make_Unsigned_Fixnum(segment_size));		\
-    Store_Return(RC_REENTER_COMPILED_CODE);				\
-    Save_Cont();							\
-    /* Rotate history to a new subproblem. */				\
-    Compiler_New_Subproblem();						\
-  }									\
-}
-
-/* Backing out because of special errors or interrupts.
-   The microcode has already setup a return code with a NIL.
-   No tail recursion in this case.
-   ***
-       Is the history manipulation correct?
-       Does Microcode_Error do something special?
-   ***
- */
-
-#define compiled_error_backout()					\
-{ long segment_size;							\
-  Restore_Cont();							\
-  segment_size = Stack_Distance(last_return_code);			\
-  Store_Expression(Make_Unsigned_Fixnum(segment_size));			\
-  /* The Store_Return is a NOP, the Save_Cont is done by the code	\
-     that follows.							\
-   */									\
-  /* Store_Return(Datum(Fetch_Return())); */				\
-  /* Save_Cont(); */							\
-  Compiler_New_Subproblem();						\
-}
 
 #define UNWIND_PROTECT(body_statement, cleanup_statement) do		\
 {									\

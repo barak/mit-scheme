@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.30 1987/06/23 22:00:09 cph Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.31 1987/10/09 16:12:45 jinx Rel $ */
 
 /* Memory management top level.
 
@@ -299,7 +299,7 @@ void GC()
   Set_Fixed_Obj_Slot(Lost_Objects_Base, NIL);
 
   *Free++ = Fixed_Objects;
-  *Free++ = Make_Pointer(TC_HUNK3, History);
+  *Free++ = Make_Pointer(UNMARKED_HISTORY_TYPE, History);
   *Free++ = Undefined_Externals;
   *Free++ = Get_Current_Stacklet();
   *Free++ = ((Prev_Restore_History_Stacklet == NULL) ?

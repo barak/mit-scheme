@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/gctype.c,v 9.24 1987/10/05 18:32:37 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/gctype.c,v 9.25 1987/10/09 16:11:06 jinx Rel $
  *
  * This file contains the table which maps between Types and
  * GC Types.
@@ -41,7 +41,7 @@ MIT in each case. */
 	    /* Mapping GC_Type to Type_Codes */
 	    /*********************************/
 
-int GC_Type_Map[MAX_SAFE_TYPE + 1] = {
+int GC_Type_Map[MAX_TYPE_CODE + 1] = {
     GC_Non_Pointer,		/* TC_NULL,etc */
     GC_Pair,			/* TC_LIST */
     GC_Non_Pointer,		/* TC_CHARACTER */
@@ -179,9 +179,141 @@ int GC_Type_Map[MAX_SAFE_TYPE + 1] = {
     GC_Undefined,			/* 0x7C */
     GC_Undefined,			/* 0x7D */
     GC_Undefined,			/* 0x7E */
-    GC_Undefined			/* 0x7F */
+    GC_Undefined,			/* 0x7F */
+
+    GC_Undefined,			/* 0x80 */
+    GC_Undefined,			/* 0x81 */
+    GC_Undefined,			/* 0x82 */
+    GC_Undefined,			/* 0x83 */
+    GC_Undefined,			/* 0x84 */
+    GC_Undefined,			/* 0x85 */
+    GC_Undefined,			/* 0x86 */
+    GC_Undefined,			/* 0x87 */
+    GC_Undefined,			/* 0x88 */
+    GC_Undefined,			/* 0x89 */
+    GC_Undefined,			/* 0x8A */
+    GC_Undefined,			/* 0x8B */
+    GC_Undefined,			/* 0x8C */
+    GC_Undefined,			/* 0x8D */
+    GC_Undefined,			/* 0x8E */
+    GC_Undefined,			/* 0x8F */
+    GC_Undefined,			/* 0x90 */
+    GC_Undefined,			/* 0x91 */
+    GC_Undefined,			/* 0x92 */
+    GC_Undefined,			/* 0x93 */
+    GC_Undefined,			/* 0x94 */
+    GC_Undefined,			/* 0x95 */
+    GC_Undefined,			/* 0x96 */
+    GC_Undefined,			/* 0x97 */
+    GC_Undefined,			/* 0x98 */
+    GC_Undefined,			/* 0x99 */
+    GC_Undefined,			/* 0x9A */
+    GC_Undefined,			/* 0x9B */
+    GC_Undefined,			/* 0x9C */
+    GC_Undefined,			/* 0x9D */
+    GC_Undefined,			/* 0x9E */
+    GC_Undefined,			/* 0x9F */
+    GC_Undefined,			/* 0xA0 */
+    GC_Undefined,			/* 0xA1 */
+    GC_Undefined,			/* 0xA2 */
+    GC_Undefined,			/* 0xA3 */
+    GC_Undefined,			/* 0xA4 */
+    GC_Undefined,			/* 0xA5 */
+    GC_Undefined,			/* 0xA6 */
+    GC_Undefined,			/* 0xA7 */
+    GC_Undefined,			/* 0xA8 */
+    GC_Undefined,			/* 0xA9 */
+    GC_Undefined,			/* 0xAA */
+    GC_Undefined,			/* 0xAB */
+    GC_Undefined,			/* 0xAC */
+    GC_Undefined,			/* 0xAD */
+    GC_Undefined,			/* 0xAE */
+    GC_Undefined,			/* 0xAF */
+
+    GC_Undefined,			/* 0xB0 */
+    GC_Undefined,			/* 0xB1 */
+    GC_Undefined,			/* 0xB2 */
+    GC_Undefined,			/* 0xB3 */
+    GC_Undefined,			/* 0xB4 */
+    GC_Undefined,			/* 0xB5 */
+    GC_Undefined,			/* 0xB6 */
+    GC_Undefined,			/* 0xB7 */
+    GC_Undefined,			/* 0xB8 */
+    GC_Undefined,			/* 0xB9 */
+    GC_Undefined,			/* 0xBA */
+    GC_Undefined,			/* 0xBB */
+    GC_Undefined,			/* 0xBC */
+    GC_Undefined,			/* 0xBD */
+    GC_Undefined,			/* 0xBE */
+    GC_Undefined,			/* 0xBF */
+    GC_Undefined,			/* 0xC0 */
+    GC_Undefined,			/* 0xC1 */
+    GC_Undefined,			/* 0xC2 */
+    GC_Undefined,			/* 0xC3 */
+    GC_Undefined,			/* 0xC4 */
+    GC_Undefined,			/* 0xC5 */
+    GC_Undefined,			/* 0xC6 */
+    GC_Undefined,			/* 0xC7 */
+    GC_Undefined,			/* 0xC8 */
+    GC_Undefined,			/* 0xC9 */
+    GC_Undefined,			/* 0xCA */
+    GC_Undefined,			/* 0xCB */
+    GC_Undefined,			/* 0xCC */
+    GC_Undefined,			/* 0xCD */
+    GC_Undefined,			/* 0xCE */
+    GC_Undefined,			/* 0xCF */
+    GC_Undefined,			/* 0xD0 */
+    GC_Undefined,			/* 0xD1 */
+    GC_Undefined,			/* 0xD2 */
+    GC_Undefined,			/* 0xD3 */
+    GC_Undefined,			/* 0xD4 */
+    GC_Undefined,			/* 0xD5 */
+    GC_Undefined,			/* 0xD6 */
+    GC_Undefined,			/* 0xD7 */
+    GC_Undefined,			/* 0xD8 */
+    GC_Undefined,			/* 0xD9 */
+    GC_Undefined,			/* 0xDA */
+    GC_Undefined,			/* 0xDB */
+    GC_Undefined,			/* 0xDC */
+    GC_Undefined,			/* 0xDD */
+    GC_Undefined,			/* 0xDE */
+    GC_Undefined,			/* 0xDF */
+
+    GC_Undefined,			/* 0xE0 */
+    GC_Undefined,			/* 0xE1 */
+    GC_Undefined,			/* 0xE2 */
+    GC_Undefined,			/* 0xE3 */
+    GC_Undefined,			/* 0xE4 */
+    GC_Undefined,			/* 0xE5 */
+    GC_Undefined,			/* 0xE6 */
+    GC_Undefined,			/* 0xE7 */
+    GC_Undefined,			/* 0xE8 */
+    GC_Undefined,			/* 0xE9 */
+    GC_Undefined,			/* 0xEA */
+    GC_Undefined,			/* 0xEB */
+    GC_Undefined,			/* 0xEC */
+    GC_Undefined,			/* 0xED */
+    GC_Undefined,			/* 0xEE */
+    GC_Undefined,			/* 0xEF */
+    GC_Undefined,			/* 0xF0 */
+    GC_Undefined,			/* 0xF1 */
+    GC_Undefined,			/* 0xF2 */
+    GC_Undefined,			/* 0xF3 */
+    GC_Undefined,			/* 0xF4 */
+    GC_Undefined,			/* 0xF5 */
+    GC_Undefined,			/* 0xF6 */
+    GC_Undefined,			/* 0xF7 */
+    GC_Undefined,			/* 0xF8 */
+    GC_Undefined,			/* 0xF9 */
+    GC_Undefined,			/* 0xFA */
+    GC_Undefined,			/* 0xFB */
+    GC_Undefined,			/* 0xFC */
+    GC_Undefined,			/* 0xFD */
+    GC_Undefined,			/* 0xFE */
+    GC_Undefined			/* 0xFF */
     };
 
-#if (MAX_SAFE_TYPE != 0x7F)
+#if (MAX_TYPE_CODE != 0xFF)
 #include "gctype.c and scheme.h inconsistent -- GC_Type_Map"
 #endif
+

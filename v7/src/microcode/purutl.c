@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purutl.c,v 9.30 1987/07/22 21:54:46 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purutl.c,v 9.31 1987/10/09 16:13:19 jinx Rel $ */
 
 /* Pure/Constant space utilities. */
 
@@ -47,14 +47,14 @@ Update(From, To, Was, Will_Be)
   {
     if (GC_Type_Special(*From))
     {
-      if (Safe_Type_Code(*From) == TC_MANIFEST_NM_VECTOR)
+      if (OBJECT_TYPE(*From) == TC_MANIFEST_NM_VECTOR)
         From += Get_Integer(*From);
       continue;
     }
     if (GC_Type_Non_Pointer(*From))
       continue;
     if (Get_Pointer(*From) == Was)
-      *From = Make_Pointer(Type_Code(*From), Will_Be);
+      *From = Make_Pointer(OBJECT_TYPE(*From), Will_Be);
   }
   return;
 }
@@ -108,7 +108,7 @@ Make_Impure(Object)
 
     default:
       fprintf(stderr, "\nImpurify: Bad type code = 0x%02x\n",
-	      Type_Code(Object));
+	      OBJECT_TYPE(Object));
       Invalid_Type_Code();
   }
 
@@ -129,7 +129,7 @@ Make_Impure(Object)
      block, or something like it. -- JINX
    */
 
-  if (Type_Code(Object) == TC_BIG_FLONUM)
+  if (OBJECT_TYPE(Object) == TC_BIG_FLONUM)
   {
     Pointer *Start;
 
@@ -162,7 +162,7 @@ Make_Impure(Object)
   Terminate_Constant_Space(End_Of_Area);
   Update(Heap_Bottom, Free, Obj_Address, New_Address);
   Update(Constant_Space, End_Of_Area, Obj_Address, New_Address);
-  return Make_Pointer(Type_Code(Object), New_Address);
+  return Make_Pointer(OBJECT_TYPE(Object), New_Address);
 }
 
 /* (PRIMITIVE-IMPURIFY OBJECT)

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.36 1987/08/25 20:37:58 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.37 1987/10/09 16:08:36 jinx Rel $ */
 
 /* Memory management top level.  Garbage collection to disk.
 
@@ -589,7 +589,7 @@ GC(initial_weak_chain)
   Set_Fixed_Obj_Slot(Lost_Objects_Base, NIL);
 
   *free_buffer++ = Fixed_Objects;
-  *free_buffer++ = Make_Pointer(TC_HUNK3, History);
+  *free_buffer++ = Make_Pointer(UNMARKED_HISTORY_TYPE, History);
   *free_buffer++ = Undefined_Externals;
   *free_buffer++ = Get_Current_Stacklet();
   *free_buffer++ = ((Prev_Restore_History_Stacklet == NULL) ?
