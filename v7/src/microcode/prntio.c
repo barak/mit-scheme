@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prntio.c,v 1.6 1997/05/17 07:00:23 cph Exp $
+$Id: prntio.c,v 1.7 1997/10/22 05:27:26 cph Exp $
 
 Copyright (c) 1993-97 Massachusetts Institute of Technology
 
@@ -42,126 +42,217 @@ MIT in each case. */
 #include "ntscreen.h"
 #include "ntgui.h"
 #include "syscall.h"
+#include "ntproc.h"
 
 extern HANDLE master_tty_window;
+extern Tchannel EXFUN (arg_to_channel, (SCHEME_OBJECT, int));
 
-static HANDLE * to_win_hand_vec (int nhand, SCHEME_OBJECT *);
-static long wait_for_multiple_objects (DWORD, HANDLE *, DWORD, BOOL);
+static Tchannel * object_to_channel_vector
+  (SCHEME_OBJECT, int, unsigned long *, long *);
+static long wait_for_multiple_objects (unsigned long, Tchannel *, long, int);
+static long wait_for_multiple_objects_1 (unsigned long, Tchannel *, long, int);
 
 DEFINE_PRIMITIVE ("CHANNEL-DESCRIPTOR", Prim_channel_descriptor, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN
-    (long_to_integer ((long) (CHANNEL_HANDLE (arg_channel (1)))));
+  PRIMITIVE_RETURN (ulong_to_integer (arg_channel (1)));
 }
 
 DEFINE_PRIMITIVE ("NT:MSGWAITFORMULTIPLEOBJECTS", Prim_nt_msgwaitformultipleobjects, 4, 4, 0)
 {
   PRIMITIVE_HEADER (4);
-  {
-    SCHEME_OBJECT schhands = (VECTOR_ARG (1));
-    BOOL wait_for_all = (BOOLEAN_ARG (2));
-    DWORD timeout = (arg_ulong_integer (3));
-    DWORD mask = (arg_ulong_integer (4));
-    DWORD nhand = (VECTOR_LENGTH (schhands));
-    HANDLE * handles;
-    DWORD result;
-
-    if (wait_for_all != FALSE)
-      error_bad_range_arg (2);
-    if (mask != QS_ALLINPUT)
-      error_bad_range_arg (4);
-    if (Screen_PeekEvent (master_tty_window, 0))
-      PRIMITIVE_RETURN (long_to_integer (nhand + 1));
-    handles = (to_win_hand_vec (nhand, (VECTOR_LOC (schhands, 0))));
-    result = (wait_for_multiple_objects (nhand, handles, timeout, TRUE));
-    if (handles != 0)
-      free (handles);
-    PRIMITIVE_RETURN (long_to_integer (result));
-  }
+  error_unimplemented_primitive ();
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("NT:WAITFORMULTIPLEOBJECTS", Prim_nt_waitformultipleobjects, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
   {
-    SCHEME_OBJECT schhands = (VECTOR_ARG (1));
-    BOOL wait_for_all = (BOOLEAN_ARG (2));
-    DWORD timeout = (arg_ulong_integer (3));
-    DWORD nhand = (VECTOR_LENGTH (schhands));
-    HANDLE * handles;
-    DWORD result;
+    SCHEME_OBJECT channel_vector = (VECTOR_ARG (1));
+    int blockp = (BOOLEAN_ARG (3));
+    unsigned long nc;
+    long console_index = (-1);
+    Tchannel * channels;
+    long result;
 
-    if (wait_for_all != FALSE)
+    if (BOOLEAN_ARG (2))
       error_bad_range_arg (2);
-    handles = (to_win_hand_vec (nhand, (VECTOR_LOC (schhands, 0))));
-    do
-      result = (wait_for_multiple_objects (nhand, handles, timeout, FALSE));
-    while ((result == (nhand + 1))
-	   && ((timeout == 0) || (timeout == INFINITE)));
-    if (handles != 0)
-      free (handles);
+    transaction_begin ();
+    channels
+      = (object_to_channel_vector
+	 (channel_vector, 1, (&nc), (&console_index)));
+    result
+      = (wait_for_multiple_objects (nc, channels, console_index, blockp));
+    transaction_commit ();
     PRIMITIVE_RETURN (long_to_integer (result));
   }
 }
 
-static HANDLE *
-to_win_hand_vec (int nhand, SCHEME_OBJECT * schhands)
+static Tchannel *
+object_to_channel_vector (SCHEME_OBJECT channel_vector,
+			  int argno,
+			  unsigned long * ncp,
+			  long * console_index)
 {
-  int ctr;
-  HANDLE * winhands;
-
-  if (nhand == 0)
-    return (0);
-  winhands = (OS_malloc (nhand * (sizeof (HANDLE))));
-  for (ctr = 0; ctr < nhand; ctr++)
-    winhands[ctr] = ((HANDLE) (integer_to_long (schhands[ctr])));
-  return (winhands);
+  unsigned int index = 0;
+  Tchannel tty_input_channel = (OS_tty_input_channel ());
+  unsigned long nc = (VECTOR_LENGTH (channel_vector));
+  Tchannel * channels
+    = ((nc == 0) ? 0 : (dstack_alloc (nc * (sizeof (Tchannel)))));
+  while (index < nc)
+    {
+      Tchannel channel
+	= (arg_to_channel ((VECTOR_REF (channel_vector, (index))), argno));
+      if (channel == tty_input_channel)
+	{
+	  (*console_index) = index;
+	  (channels[index]) = NO_CHANNEL;
+	}
+      else
+	(channels[index]) = channel;
+      index += 1;
+    }
+  (*ncp) = nc;
+  return (channels);
+}
+
+static long
+wait_for_multiple_objects (unsigned long n_channels, Tchannel * channels,
+			   long console_index, int blockp)
+{
+#ifdef TRACE_SCREEN_MSGS
+  fprintf
+    (trace_file,
+     "wait_for_multiple_objects: n_channels=%d console_index=%d blockp=%d\n",
+     n_channels, console_index, blockp);
+  fflush (trace_file);
+  {
+    long result
+      = (wait_for_multiple_objects_1
+	 (n_channels, channels, console_index, blockp));
+    fprintf (trace_file, "wait_for_multiple_objects: result=0x%x\n", result);
+    fflush (trace_file);
+    return (result);
+  }
+#else
+  return
+    (wait_for_multiple_objects_1
+     (n_channels, channels, console_index, blockp));
+#endif
 }
 
 static long
-wait_for_multiple_objects (DWORD nhand, HANDLE * handles, DWORD timeout,
-			   BOOL msgp)
+wait_for_multiple_objects_1 (unsigned long n_channels, Tchannel * channels,
+			     long console_index, int blockp)
 {
-  DWORD result;
-  MSG m;
-#ifdef TRACE_SCREEN_MSGS
-  fprintf (trace_file, "MsgWaitForMultipleObjects: timeout=0x%x\n", timeout);
-  fflush (trace_file);
-#endif
-  if (msgp)
+  while (1)
     {
-      if (Screen_pending_events_p ())
-	return (nhand + 1);
-      /* This is a kludge.  MsgWaitForMultipleObjects has a race
-	 condition -- it ignores messages that are already queued.  So
-	 check the queue as late as possible before the call, in order
-	 to minimize the window in which we can get stuck waiting for
-	 a message that has already arrived.  */
-      if (PeekMessage ((&m), 0, 0, 0, PM_NOREMOVE))
-	return (((m.message) == WM_SCHEME_INTERRUPT)
-		? (nhand + 2)
-		: (nhand + 1));
+      if (console_index < 0)
+	{
+	  if (pending_interrupts_p ())
+	    return (-2);
+	}
+      else if (Screen_PeekEvent (master_tty_window, 0))
+	return (console_index);
+      else
+	{
+	  MSG m;
+	  while (PeekMessage ((&m), 0, 0, 0, PM_NOREMOVE))
+	    {
+	      if ((m . message) != WM_SCHEME_INTERRUPT)
+		return (console_index);
+	      else if (pending_interrupts_p ())
+		return (-2);
+	      else
+		PeekMessage ((&m), 0, 0, 0, PM_REMOVE);
+	    }
+	}
+      {
+	unsigned int index;
+	for (index = 0; (index < n_channels); index += 1)
+	  if ((index != console_index)
+	      && (((CHANNEL_TYPE (channels[index])) != channel_type_win32_pipe)
+		  || ((NT_pipe_channel_available (channels[index])) != 0)))
+	    return (index);
+      }
+      if (OS_process_any_status_change ())
+	return (-3);
+      if (!blockp)
+	return (-1);
+      if ((MsgWaitForMultipleObjects (0, 0, FALSE, INFINITE, QS_ALLINPUT))
+	  != WAIT_OBJECT_0)
+	NT_error_api_call
+	  ((GetLastError ()), apicall_MsgWaitForMultipleObjects);
     }
-  result =
-    (MsgWaitForMultipleObjects (nhand, handles, FALSE, timeout, QS_ALLINPUT));
-#ifdef TRACE_SCREEN_MSGS
-  fprintf (trace_file, "MsgWaitForMultipleObjects: result=0x%x\n", result);
-  fflush (trace_file);
-#endif
-  return
-    ((result == WAIT_TIMEOUT)
-     ? 0
-     : (result == (WAIT_OBJECT_0 + nhand))
-     ? (((!PeekMessage ((&m), 0, 0, 0, PM_NOREMOVE))
-	 || ((m.message) == WM_SCHEME_INTERRUPT))
-	? (nhand + 2)
-	: (nhand + 1))
-     : ((WAIT_OBJECT_0 <= result) && (result < (WAIT_OBJECT_0 + nhand)))
-     ? ((result - WAIT_OBJECT_0) + 1)
-     : ((WAIT_ABANDONED_0 <= result) && (result < (WAIT_ABANDONED_0 + nhand)))
-     ? (- ((long) ((result - WAIT_ABANDONED_0) + 1)))
-     : ((NT_error_api_call ((GetLastError ()),
-			    apicall_MsgWaitForMultipleObjects)),
-	0));
+}
+
+#define PROCESS_CHANNEL_ARG(arg, type, channel)				\
+{									\
+  if ((ARG_REF (arg)) == SHARP_F)					\
+    (type) = process_channel_type_none;					\
+  else if ((ARG_REF (arg)) == (LONG_TO_FIXNUM (-1)))			\
+    (type) = process_channel_type_inherit;				\
+  else									\
+    {									\
+      (type) = process_channel_type_explicit;				\
+      (channel) = (arg_channel (arg));					\
+    }									\
+}
+
+static void
+parse_subprocess_options (int arg, int * hide_windows_p)
+{
+  SCHEME_OBJECT options = (VECTOR_ARG (arg));
+  if ((VECTOR_LENGTH (options)) < 1)
+    error_bad_range_arg (arg);
+  (*hide_windows_p) = (OBJECT_TO_BOOLEAN (VECTOR_REF (options, 0)));
+}
+
+DEFINE_PRIMITIVE ("NT-MAKE-SUBPROCESS", Prim_NT_make_subprocess, 8, 8,
+  "(FILENAME CMD-LINE ENV WORK-DIR STDIN STDOUT STDERR OPTIONS)\n\
+Create a subprocess.\n\
+FILENAME is the program to run.\n\
+CMD-LINE a string containing the program's invocation.\n\
+ENV is a string to pass as the program's environment;\n\
+  #F means inherit Scheme's environment.\n\
+WORK-DIR is a string to pass as the program's working directory;\n\
+  #F means inherit Scheme's working directory.\n\
+STDIN is the input channel for the subprocess.\n\
+STDOUT is the output channel for the subprocess.\n\
+STDERR is the error channel for the subprocess.\n\
+  Each channel arg can take these values:\n\
+  #F means none;\n\
+  -1 means use the corresponding channel from Scheme;\n\
+  otherwise the argument must be a channel.\n\
+OPTIONS is a vector of options.")
+{
+  PRIMITIVE_HEADER (8);
+  {
+    CONST char * filename = (STRING_ARG (1));
+    CONST char * command_line = (STRING_ARG (2));
+    CONST char * env = (((ARG_REF (3)) == SHARP_F) ? 0 : (STRING_ARG (3)));
+    CONST char * working_directory
+      = (((ARG_REF (4)) == SHARP_F) ? 0 : (STRING_ARG (4)));
+    enum process_channel_type channel_in_type;
+    Tchannel channel_in;
+    enum process_channel_type channel_out_type;
+    Tchannel channel_out;
+    enum process_channel_type channel_err_type;
+    Tchannel channel_err;
+    int hide_windows_p;
+
+    PROCESS_CHANNEL_ARG (5, channel_in_type, channel_in);
+    PROCESS_CHANNEL_ARG (6, channel_out_type, channel_out);
+    PROCESS_CHANNEL_ARG (7, channel_err_type, channel_err);
+    parse_subprocess_options (8, (&hide_windows_p));
+    PRIMITIVE_RETURN
+      (long_to_integer
+       (NT_make_subprocess
+	(filename, command_line, env, working_directory,
+	 channel_in_type, channel_in,
+	 channel_out_type, channel_out,
+	 channel_err_type, channel_err,
+	 hide_windows_p)));
+  }
 }
