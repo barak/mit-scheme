@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: termcap.scm,v 1.5 1993/09/01 18:05:37 gjr Exp $
+$Id: termcap.scm,v 1.6 1994/11/01 22:58:29 adams Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -128,7 +128,10 @@ MIT in each case. |#
   (ts-set-scroll-region false read-only true)
   (ts-set-scroll-region-1 false read-only true)
   (ts-set-window false read-only true)
-  (ts-visible-bell false read-only true))
+  (ts-visible-bell false read-only true)
+
+  ;; keys is an alist mapping key names (symbols) to strings or #F
+  (termcap-description-keys false read-only true)  )
 
 (define (make-termcap-description terminal-type-name)
   (if (string-ci=? terminal-type-name "ansi.sys")
@@ -203,9 +206,9 @@ MIT in each case. |#
 	      supdup?			;tf-lose-wrap
 	      (termcap-get-flag "xn")	;tf-magic-wrap
 	      (termcap-get-flag "da")	;tf-memory-above-screen
-	      (or (termcap-get-flag "db")	;tf-memory-below-screen
+	      (or (termcap-get-flag "db") ;tf-memory-below-screen
 		  supdup?)
-	      (or (termcap-get-flag "km")	;tf-meta-key
+	      (or (termcap-get-flag "km") ;tf-meta-key
 		  (termcap-get-flag "MT"))
 	      (termcap-get-flag "in")	;tf-must-write-spaces
 	      (termcap-get-flag "ns")	;tf-newline-doesnt-scroll
@@ -222,7 +225,7 @@ MIT in each case. |#
 	      (termcap-get-number "co")	;tn-x-size
 	      (termcap-get-number "li")	;tn-y-size
 
-	      (or (termcap-get-string "bl")	;ts-audible-bell
+	      (or (termcap-get-string "bl") ;ts-audible-bell
 		  "\007")
 	      (termcap-get-string "ce")	;ts-clear-line
 	      (termcap-get-string "ec")	;ts-clear-multi-char
@@ -230,7 +233,7 @@ MIT in each case. |#
 	      (termcap-get-string "cd")	;ts-clear-to-bottom
 	      ts-cursor-down
 	      (termcap-get-string "DO")	;ts-cursor-down-multi
-	      (if (termcap-get-flag "bs")	;ts-cursor-left
+	      (if (termcap-get-flag "bs") ;ts-cursor-left
 		  "\010"
 		  (or (termcap-get-string "le")
 		      (termcap-get-string "bc")))
@@ -273,4 +276,62 @@ MIT in each case. |#
 	      ts-set-scroll-region-1
 	      ts-set-window
 	      (termcap-get-string "vb")	;ts-visible-bell
-	      )))))
+	      
+	      ; ts-keys
+	      (append-map (lambda (string.name)
+			    (let* ((string  (car string.name))
+				   (keystr  (termcap-get-string string)))
+			      (if keystr
+				  (list (cons (cdr string.name) keystr))
+				  '() )))
+			  termcap-key-codes))))))
+
+
+(define termcap-key-codes
+  `(("ku" . up)				;arrow keys
+    ("kd" . down)			;  "    "
+    ("kl" . left)			;  "    "
+    ("kr" . right)			;  "    "
+    ("kb" . backspace)
+    ("ka" . clear-all-tabs)		; clear-all-tabs key
+    ("kC" . clear)			; clear screen or erase
+    ("kt" . clear-tab)			; clear-tab
+    ("kD" . delete-char)		; delete character
+    ("kL" . delete-line)		; delete line
+    ("kE" . clear-eol)			; clear-to-end-of-line key
+    ("kS" . clear-eos)			; clear-to-end-of-screen key
+    ("k0" . f0)
+    ("k1" . f1)
+    ("k2" . f2)
+    ("k3" . f3)
+    ("k4" . f4)
+    ("k5" . f5)
+    ("k6" . f6)
+    ("k7" . f7)
+    ("k8" . f8)
+    ("k9" . f9)
+    ("ka" . f10)
+    ("F1" . f11)
+    ("F2" . f12)
+    ("F3" . f13)
+    ("F4" . f14)
+    ("F5" . f15)
+    ("F6" . f16)
+    ("F7" . f17)
+    ("F8" . f18)
+    ("F9" . f19)
+    ("FA" . f20)
+    ("FB" . f21)
+    ("FC" . f22)
+    ("FD" . f23)
+    ("FE" . f24)
+    ("kh" . home)			; home key
+    ("kI" . insert-char)		; insert-char or enter-insert-mode
+    ("kA" . insert-line)		; insert-line key
+    ("kH" . home-down)
+    ("kN" . next-page)			; next-page key
+    ("kP" . previous-page)		; previous-page key
+    ("kF" . scroll-forward)		; scroll-forward / scroll-down
+    ("kR" . scroll-backward)		; scroll-backward / scroll-up
+    ("kT" . set-tab) 
+    ))
