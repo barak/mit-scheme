@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.8 1996/10/07 18:14:27 cph Exp $
+$Id: ntprm.scm,v 1.9 1996/10/07 18:52:13 cph Exp $
 
 Copyright (c) 1992-96 Massachusetts Institute of Technology
 
@@ -53,6 +53,15 @@ MIT in each case. |#
   ((ucode-primitive set-file-modes! 2)
    (->namestring (merge-pathnames filename))
    modes))
+
+(define-integrable nt-file-mode/read-only  #x001)
+(define-integrable nt-file-mode/hidden     #x002)
+(define-integrable nt-file-mode/system     #x004)
+(define-integrable nt-file-mode/directory  #x010)
+(define-integrable nt-file-mode/archive    #x020)
+(define-integrable nt-file-mode/normal     #x080)
+(define-integrable nt-file-mode/temporary  #x100)
+(define-integrable nt-file-mode/compressed #x800)
 
 (define (file-access filename amode)
   ((ucode-primitive file-access 2)
