@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: option.scm,v 14.40 2002/02/13 01:04:50 cph Exp $
+$Id: option.scm,v 14.41 2002/03/01 03:18:21 cph Exp $
 
 Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
@@ -100,6 +100,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define *parent* initial-load-options)	; A thunk or a pathname/string or #f.
 (define *initial-options-file* #f)
 
+(define (dummy-option-loader)
+  unspecific)
+
 (define (standard-option-loader package-name init-expression . files)
   (lambda ()
     (let ((environment (package/environment (find-package package-name)))

@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.114 2002/02/13 01:00:56 cph Exp $
+@comment $Id: scheme.texinfo,v 1.115 2002/03/01 03:23:23 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -51,7 +51,7 @@ Free Documentation License".
 @title{MIT Scheme Reference Manual}
 @subtitle Edition 1.96
 @subtitle for Scheme Release 7.7.0
-@subtitle 12 February 2002
+@subtitle 28 February 2002
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -11107,18 +11107,9 @@ is proportional to the number of associations in the table; the
 constant of proportionality is described below (@pxref{Resizing of Hash
 Tables}).
 
-@cindex run-time-loadable option
-@cindex option, run-time-loadable
-The hash-table implementation is a run-time-loadable option.  To use
-hash tables, execute
-
-@example
-(load-option 'hash-table)
-@end example
-@findex load-option
-
-@noindent
-once before calling any of the procedures defined here.
+(Previously, the hash-table implementation was a run-time-loadable
+option, but as of release 7.7.0 it is loaded by default.  It's no longer
+necessary to call @code{load-option} prior to using hash tables.)
 
 @menu
 * Construction of Hash Tables::  

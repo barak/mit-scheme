@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: optiondb.scm,v 1.13 2001/11/05 21:22:01 cph Exp $
+$Id: optiondb.scm,v 1.14 2002/03/01 03:18:25 cph Exp $
 
-Copyright (c) 1994-2001 Massachusetts Institute of Technology
+Copyright (c) 1994-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -63,7 +63,6 @@ USA.
    (DOSPROCESS	()			#F			"dosproc")
    (FORMAT	(RUNTIME FORMAT)	(INITIALIZE-PACKAGE!)	"format")
    (GDBM	(RUNTIME GDBM)		(INITIALIZE-PACKAGE!)	"gdbm")
-   (HASH-TABLE	(RUNTIME HASH-TABLE)	(INITIALIZE-PACKAGE!)	"hashtb")
    (KRYPT	(RUNTIME KRYPT)		#F			"krypt")
    (MIME-CODEC	(RUNTIME MIME-CODEC)	#F			"mime-codec")
    (ORDERED-VECTOR (RUNTIME ORDERED-VECTOR) #F			"ordvec")
@@ -87,3 +86,6 @@ USA.
   (standard-option-loader '(RUNTIME REXP)
 			  #F
 			  "rexp"))
+
+;; HASH-TABLE is now always loaded.
+(define-load-option 'HASH-TABLE dummy-option-loader)

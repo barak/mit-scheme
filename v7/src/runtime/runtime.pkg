@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.410 2002/02/13 01:03:13 cph Exp $
+$Id: runtime.pkg,v 14.411 2002/03/01 03:18:38 cph Exp $
 
 Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
@@ -1672,9 +1672,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (initialization (initialize-package!)))
 
 (define-package (runtime hash-table)
-  (file-case options
-    ((load) "hashtb")
-    (else))
+  (files "hashtb")
   (parent (runtime))
   (export ()
 	  eq-hash
@@ -2294,12 +2292,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  *initial-options-file*
 	  declare-shared-library
 	  define-load-option
+	  dummy-option-loader
 	  further-load-options
 	  load-option
 	  local-load-options
 	  standard-load-options
-	  standard-option-loader
-	  ))
+	  standard-option-loader))
 
 (define-package (runtime parser)
   (files "parse")

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.85 2002/02/12 00:30:39 cph Exp $
+$Id: make.scm,v 14.86 2002/03/01 03:18:17 cph Exp $
 
 Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
@@ -437,6 +437,7 @@ USA.
    (RUNTIME GENSYM)
    (RUNTIME STREAM)
    (RUNTIME 2D-PROPERTY)
+   (RUNTIME HASH-TABLE)
    ;; Microcode data structures
    (RUNTIME HISTORY)
    (RUNTIME LAMBDA-ABSTRACTION)
