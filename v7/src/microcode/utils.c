@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.32 1987/06/18 21:16:04 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.33 1987/07/23 21:52:40 cph Exp $ */
 
 /* This file contains utilities for interrupts, errors, etc. */
 
@@ -354,13 +354,29 @@ error_external_return ()
 }
 
 long
+arg_fixnum (n)
+     int n;
+{
+  fast Pointer argument;
+
+  argument = (ARG_REF (n));
+  if (! (FIXNUM_P (argument)))
+    error_wrong_type_arg (n);
+  return
+    ((FIXNUM_NEGATIVE_P (argument))
+     ? ((UNSIGNED_FIXNUM_VALUE (argument)) | (-1 << ADDRESS_LENGTH))
+     : (UNSIGNED_FIXNUM_VALUE (argument)));
+}
+
+long
 arg_nonnegative_integer (n)
      int n;
 {
   fast Pointer argument;
 
-  CHECK_ARG (n, FIXNUM_P);
   argument = (ARG_REF (n));
+  if (! (FIXNUM_P (argument)))
+    error_wrong_type_arg (n);
   if (FIXNUM_NEGATIVE_P (argument))
     error_bad_range_arg (n);
   return (UNSIGNED_FIXNUM_VALUE (argument));
@@ -374,8 +390,9 @@ arg_index_integer (n, upper_limit)
   fast Pointer argument;
   fast long result;
 
-  CHECK_ARG (n, FIXNUM_P);
   argument = (ARG_REF (n));
+  if (! (FIXNUM_P (argument)))
+    error_wrong_type_arg (n);
   if (FIXNUM_NEGATIVE_P (argument))
     error_bad_range_arg (n);
   result = (UNSIGNED_FIXNUM_VALUE (argument));
