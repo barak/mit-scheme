@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 13.50 1987/07/24 22:11:16 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 13.51 1988/04/26 19:41:49 cph Exp $
 ;;;
-;;;	Copyright (c) 1987 Massachusetts Institute of Technology
+;;;	Copyright (c) 1988 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -443,74 +443,89 @@
   (and ((access :char-ready? port) 0)
        (read-char port)))
 
-(define load)
-(define load-noisily)
-(define load-noisily? false)
+(define load/default-types '("bin" "scm"))
+(define load-noisily? true)
+
+(define (load-noisily filename #!optional environment)
+  (let ((environment
+	 (if (unassigned? environment) (rep-environment) environment)))
+    (fluid-let ((load-noisily? true))
+      (load filename environment))))
+
 (define read-file)
+(define load)
 (let ()
 
-(define default-pathname
-  (make-pathname false false false false 'NEWEST))
+(set! read-file
+  (named-lambda (read-file filename)
+    (call-with-input-file
+	(pathname-default-version (->pathname filename) 'NEWEST)
+      (access *parse-objects-until-eof parser-package))))
 
 ;;; This crufty piece of code, once it decides which file to load,
 ;;; does `file-exists?' on that file at least three times!!
 
-(define (basic-load filename environment)
-  (define (kernel pathname)
-    (let ((pathname
-	   (or (pathname->input-truename pathname)
-	       (let ((pathname (merge-pathnames pathname default-pathname)))
-		   (if (pathname-type pathname)
-		       (pathname->input-truename pathname)
-		       (or (pathname->input-truename
-			    (pathname-new-type pathname "bin"))
-			   (pathname->input-truename
-			    (pathname-new-type pathname "scm")))))
-	       (error "No such file" pathname))))
-      (if (call-with-input-file pathname
-	    (lambda (port)
-	      (= 250 (char->ascii (peek-char port)))))
-	  (scode-load pathname)
-	  (sexp-load pathname))))
-
-  (define (sexp-load filename)
-    (call-with-input-file filename
-      (lambda (port)
-	(define (load-loop previous-object)
-	  (let ((object (read port)))
-	    (if (eof-object? object)
-		previous-object
-		(let ((value (eval object environment)))
-		  (if load-noisily? (begin (newline) (write value)))
-		  (load-loop value)))))
-	(load-loop *the-non-printing-object*))))
-
-  (define (scode-load filename)
-    (scode-eval (fasload filename) environment))
-
-  (for-each kernel (stickify-input-filenames filename false)))
-
 (set! load
-  (named-lambda (load filename #!optional environment)
-    (if (unassigned? environment) (set! environment (rep-environment)))
-    (basic-load filename environment)))
+  (named-lambda (load filename/s #!optional environment)
+    (let ((environment
+	   (if (unassigned? environment) (rep-environment) environment)))
+      (let ((kernel
+	     (lambda (filename last-file?)
+	       (let ((value
+		      (load/internal (find-true-filename (->pathname filename)
+							 load/default-types)
+				     environment
+				     load-noisily?)))
+		 (cond (last-file? value)
+		       (load-noisily? (rep-value value)))))))
+	(if (pair? filename/s)
+	    (let loop ((filenames filename/s))
+	      (if (null? (cdr filenames))
+		  (kernel (car filenames) true)
+		  (begin (kernel (car filenames) false)
+			 (loop (cdr filenames)))))
+	    (kernel filename/s true))))))
+
+(define (load/internal true-filename environment load-noisily?)
+  (let ((port (open-input-file true-filename)))
+    (if (= 250 (char->ascii (peek-char port)))
+	(begin (close-input-port port)
+	       (scode-eval (fasload true-filename) environment))
+	(let ((syntax-table (rep-syntax-table))
+	      (no-value "no value"))
+	  (let load-loop ((value no-value))
+	    (let ((s-expression (read port)))
+	      (if (eof-object? s-expression)
+		  (begin (close-input-port port)
+			 value)
+		  (begin (if (and load-noisily? (not (eq? no-value value)))
+			     (rep-value value))
+			 (load-loop (rep-eval-hook s-expression
+						   environment
+						   syntax-table))))))))))
 
-(set! load-noisily
-  (named-lambda (load-noisily filename #!optional environment)
-    (if (unassigned? environment) (set! environment (rep-environment)))
-    (fluid-let ((load-noisily? true))
-      (basic-load filename environment))))
+(define (find-true-filename pathname default-types)
+  (pathname->string
+   (or (let ((try
+	      (lambda (pathname)
+		(pathname->input-truename
+		 (pathname-default-version pathname 'NEWEST)))))
+	 (if (pathname-type pathname)
+	     (try pathname)
+	     (or (pathname->input-truename pathname)
+		 (let loop ((types default-types))
+		   (and (not (null? types))
+			(or (try (pathname-new-type pathname (car types)))
+			    (loop (cdr types))))))))
+       (error "No such file" pathname))))
 
-(set! read-file
-  (named-lambda (read-file filename)
-    (let ((name (pathname->input-truename
-		 (merge-pathnames (->pathname filename) default-pathname))))
-      (if name
-	  (call-with-input-file name
-	    (access *parse-objects-until-eof parser-package))
-	  (error "Read-file: No such file" name)))))
+(define (pathname-default-version pathname version)
+  (if (pathname-version pathname)
+      pathname
+      (pathname-new-version pathname version)))
+
 )
-
+
 (define (stickify-input-filenames filename/s default-pathname)
   (map (if default-pathname
 	   (lambda (filename)

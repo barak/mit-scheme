@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 13.43 1987/12/05 16:39:25 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 13.44 1988/04/26 19:41:15 cph Exp $
 ;;;
-;;;	Copyright (c) 1987 Massachusetts Institute of Technology
+;;;	Copyright (c) 1988 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -229,6 +229,8 @@
 
 (define make-rep)
 (define push-rep)
+(define rep-eval-hook)
+(define rep-value)
 (define reader-history)
 (define printer-history)
 (let ()
@@ -268,18 +270,22 @@
 
 (define (rep-driver state)
   (*rep-current-prompt*)
-  (let ((object
-	 (let ((scode
-		(let ((s-expression (rep-read-hook)))
-		  (record-in-history! (rep-state-reader-history state)
-				      s-expression)
-		  (syntax s-expression *rep-current-syntax-table*))))
-	   (with-new-history
-	    (lambda ()
-	      (scode-eval scode *rep-current-environment*))))))
-    (record-in-history! (rep-state-printer-history state) object)
-    (rep-value-hook object))
+  (rep-value (rep-eval-hook (rep-read-hook)
+			    *rep-current-environment*
+			    *rep-current-syntax-table*))
   state)
+
+(set! rep-eval-hook
+  (named-lambda (rep-eval-hook s-expression environment syntax-table)
+    (record-in-history! (rep-state-reader-history (rep-state)) s-expression)
+    (with-new-history
+     (let ((scode (syntax s-expression syntax-table)))
+       (lambda () (scode-eval scode environment))))))
+
+(set! rep-value
+  (named-lambda (rep-value object)
+    (record-in-history! (rep-state-printer-history (rep-state)) object)
+    (rep-value-hook object)))
 
 ;;; History Manipulation
 
