@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: tagutl.scm,v 1.57 1999/01/28 04:00:06 cph Exp $
+;;; $Id: tagutl.scm,v 1.58 2000/02/25 20:18:38 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -208,14 +208,14 @@ See documentation of variable tags-table-pathnames."
 	      (push-current-mark! (current-point))
 	      (let ((mark
 		     (let loop ((offset 1000))
-		       (let ((index (- start offset)))
-			 (if (positive? index)
+		       (let ((index (- start offset))
+			     (end (group-end-index group)))
+			 (if (and (fix:> index 0)
+				  (fix:< index end))
 			     (or (re-search-forward
 				  regexp
 				  (make-mark group index)
-				  (make-mark group
-					     (min (+ start offset)
-						  (group-end-index group))))
+				  (make-mark group (min (+ start offset) end)))
 				 (loop (* 3 offset)))
 			     (re-search-forward regexp
 						(make-mark group 0)
