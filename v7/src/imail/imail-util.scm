@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.5 2000/02/03 04:48:54 cph Exp $
+;;; $Id: imail-util.scm,v 1.6 2000/04/06 03:14:36 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -158,7 +158,7 @@
 		       ((not (pair? tokens)) count))))))
 	   (let loop
 	       ((tokens (cdr tokens))
-		(index (copy (car tokens) 0)))
+		(index (string-move! (car tokens) string 0)))
 	     (if (pair? tokens)
 		 (loop (cdr tokens)
 		       (string-move! (car tokens)
