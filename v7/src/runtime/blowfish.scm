@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: blowfish.scm,v 1.13 1999/08/10 16:59:46 cph Exp $
+$Id: blowfish.scm,v 1.14 1999/08/13 18:32:11 cph Exp $
 
 Copyright (c) 1997, 1999 Massachusetts Institute of Technology
 
@@ -32,8 +32,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define blowfish-available?)
 (define blowfish-set-key)
+(define blowfish-ecb)
 (define blowfish-cbc)
 (define blowfish-cfb64)
+(define blowfish-ofb64)
 
 (let ((unlocked? 'UNKNOWN)
       (key-sum "8074396df211ba2da12a872b6e84d7ce"))
@@ -74,6 +76,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  (check-key)
 	  ((ucode-primitive blowfish-set-key 1) string)))
 
+  (set! blowfish-ecb
+	(lambda (input output key init-vector encrypt?)
+	  (check-key)
+	  ((ucode-primitive blowfish-ecb 4) input output key encrypt?)))
+
   (set! blowfish-cbc
 	(lambda (input output key init-vector encrypt?)
 	  (check-key)
@@ -86,7 +93,15 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  (check-key)
 	  ((ucode-primitive blowfish-cfb64-substring-v2 9)
 	   input input-start input-end output output-start
-	   key init-vector num encrypt?))))
+	   key init-vector num encrypt?)))
+
+  (set! blowfish-ofb64
+	(lambda (input input-start input-end output output-start
+		       key init-vector num)
+	  (check-key)
+	  ((ucode-primitive blowfish-ofb64-substring 8)
+	   input input-start input-end output output-start
+	   key init-vector num))))
 
 (define (blowfish-encrypt-port input output key init-vector encrypt?)
   ;; Assumes that INPUT is in blocking mode.
