@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: compile.scm,v 1.2 2001/07/12 03:20:48 cph Exp $
+;;; $Id: compile.scm,v 1.3 2001/07/14 11:44:13 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -20,15 +20,23 @@
 ;;; 02111-1307, USA.
 
 (load-option 'CREF)
+
+(if (not (environment-bound? system-global-environment 'XML-PARSER-MACROS))
+    (local-assignment system-global-environment
+		      'XML-PARSER-MACROS
+		      (make-parser-macros #f)))
+
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
-    (load "parser-macro")
-    (for-each compile-file
-	      '("xml-struct"
-		"xml-chars"
-		"xml-parser"
-		;;"xml-output"
-		))
+    (with-current-parser-macros xml-parser-macros
+      (lambda ()
+	(load "parser-macro")
+	(for-each compile-file
+		  '("xml-struct"
+		    "xml-chars"
+		    "xml-parser"
+		    ;;"xml-output"
+		    ))))
     (cref/generate-constructors "xml")
     (sf "xml.con")
     (sf "xml.ldr")))
