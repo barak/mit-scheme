@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: unpars.scm,v 14.40 1995/01/13 22:11:39 adams Exp $
+$Id: unpars.scm,v 14.41 1995/03/04 00:37:55 cph Exp $
 
-Copyright (c) 1988-1994 Massachusetts Institute of Technology
+Copyright (c) 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -41,6 +41,7 @@ MIT in each case. |#
   (set! string-delimiters
 	(char-set-union char-set:not-graphic (char-set #\" #\\)))
   (set! hook/interned-symbol unparse-symbol)
+  (set! hook/record-unparser false)
   (set! hook/unparse-record false)
   (set! hook/procedure-unparser false)
   (set! *unparser-radix* 10)
@@ -458,16 +459,25 @@ MIT in each case. |#
   (vector-ref vector index))
 
 (define (unparse/record record)
-  (if (record? record)
-      (let ((type (record-type-descriptor record)))
-	(let ((method
-	       (or (record-type-unparser-method type)
-		   hook/unparse-record)))
-	  (if method
-	      (invoke-user-method method record)
-	      (*unparse-with-brackets (record-type-name type) record #f))))
-      (unparse/default record)))
+  (let ((method
+	 (and hook/record-unparser
+	      (hook/record-unparser record))))
+    (cond (method
+	   (invoke-user-method method record))
+	  ((record? record)
+	   (let ((type (record-type-descriptor record)))
+	     (let ((method
+		    (or (record-type-unparser-method type)
+			hook/unparse-record)))
+	       (if method
+		   (invoke-user-method method record)
+		   (*unparse-with-brackets (record-type-name type)
+					   record
+					   #f)))))
+	  (else
+	   (unparse/default record)))))
 
+(define hook/record-unparser)
 (define hook/unparse-record)
 
 (define (unparse/pair pair)
