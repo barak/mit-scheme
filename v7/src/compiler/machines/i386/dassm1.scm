@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: dassm1.scm,v 1.9 1999/01/02 06:06:43 cph Exp $
+$Id: dassm1.scm,v 1.10 2001/08/10 17:29:03 cph Exp $
 
-Copyright (c) 1992-1999 Massachusetts Institute of Technology
+Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Disassembler: User Level
@@ -26,17 +27,17 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;; Flags that control disassembler behavior
 
-(define disassembler/symbolize-output? true)
-(define disassembler/compiled-code-heuristics? true)
-(define disassembler/write-offsets? true)
-(define disassembler/write-addresses? false)
+(define disassembler/symbolize-output? #t)
+(define disassembler/compiled-code-heuristics? #t)
+(define disassembler/write-offsets? #t)
+(define disassembler/write-addresses? #f)
 
 ;;;; Top level entries
 
 (define (compiler:write-lap-file filename #!optional symbol-table?)
   (let ((pathname (->pathname filename))
 	(symbol-table?
-	 (if (default-object? symbol-table?) true symbol-table?)))
+	 (if (default-object? symbol-table?) #t symbol-table?)))
     (with-output-to-file (pathname-new-type pathname "lap")
       (lambda ()
 	(let ((com-file (pathname-new-type pathname "com")))
@@ -71,9 +72,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (compiler:disassemble entry)
   (let ((block (compiled-entry/block entry)))
-    (let ((info (compiled-code-block/dbg-info block true)))
-      (fluid-let ((disassembler/write-offsets? true)
-		  (disassembler/write-addresses? true)
+    (let ((info (compiled-code-block/dbg-info block #t)))
+      (fluid-let ((disassembler/write-offsets? #t)
+		  (disassembler/write-addresses? #t)
 		  (disassembler/base-address (object-datum block)))
 	(newline)
 	(newline)
@@ -83,20 +84,16 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let ((symbol-table (and info (dbg-info/labels info))))
     (write-string "Disassembly of ")
     (write block)
-    (let loop ((info (compiled-code-block/debugging-info block)))
-      (cond ((string? info)
-	     (write-string " (")
-	     (write-string info)
-	     (write-string ")"))
-	    ((not (pair? info)))
-	    ((vector? (car info))
-	     (loop (cdr info)))
-	    (else
-	       (write-string " (Block ")
-	       (write (cdr info))
-	       (write-string " in ")
-	       (write-string (car info))
-	       (write-string ")"))))
+    (call-with-values
+	(lambda () (compiled-code-block/filename-and-index block))
+      (lambda (filename index)
+	(if filename
+	    (begin
+	      (write-string " (Block ")
+	      (write index)
+	      (write-string " in ")
+	      (write-string filename)
+	      (write-string ")")))))
     (write-string ":\n")
     (write-string "Code:\n\n")
     (disassembler/write-instruction-stream
@@ -113,7 +110,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			     symbol-table))
 
 (define (disassembler/instructions/address start-address end-address)
-  (disassembler/instructions false start-address end-address false))
+  (disassembler/instructions #f start-address end-address #f))
 
 (define (disassembler/write-instruction-stream symbol-table instruction-stream)
   (fluid-let ((*unparser-radix* 16))
@@ -185,7 +182,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 (write-string " in ")
 	 (write (compiled-code-address->block constant))
 	 (write-string ")"))
-	(else false)))
+	(else #f)))
 
 (define (disassembler/write-linkage-section block symbol-table index)
   (let* ((field (object-datum (system-vector-ref block index)))

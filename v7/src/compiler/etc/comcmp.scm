@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: comcmp.scm,v 1.6 1999/12/20 23:07:27 cph Exp $
+$Id: comcmp.scm,v 1.7 2001/08/10 17:28:20 cph Exp $
 
-Copyright (c) 1989-1999 Massachusetts Institute of Technology
+Copyright (c) 1989-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Compiled code binary comparison program
@@ -29,8 +30,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define-macro (ucode-type name)
   (microcode-type name))
 
-(define comcmp:ignore-debugging-info? true)
-(define comcmp:show-differing-blocks? false)
+(define comcmp:ignore-debugging-info? #t)
+(define comcmp:show-differing-blocks? #f)
 
 (define (compare-code-blocks b1 b2)
   (let ((memoizations '()))
@@ -61,16 +62,16 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 					       (vector-ref y index))
 				       (loop (1+ index))))))))
 		    ((compiled-code-block? x)
-		     (not (compare-blocks x y false)))
+		     (not (compare-blocks x y #f)))
 		    ((compiled-code-address? x)
 		     (and (= (compiled-entry/offset x)
 			     (compiled-entry/offset y))
 			  (not (compare-blocks
 				(compiled-entry/block x)
 				(compiled-entry/block y)
-				false))))
+				#f))))
 		    (else
-		     false))
+		     #f))
 	      (and (number? x)
 		   (number? y)
 		   (= x y)
@@ -133,7 +134,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				  (read-code b2 s2 e2)))
 	       `(code))
 	      (else
-	       false))))
+	       #f))))
 
     (define (read-code b s e)
       (let ((bs (bit-string-allocate (* addressing-granularity (- e s)))))
@@ -146,8 +147,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       ;; Kludge!
       (if comcmp:ignore-debugging-info?
 	  (begin
-	    (set-compiled-code-block/debugging-info! b1 '())
-	    (set-compiled-code-block/debugging-info! b2 '())))
+	    (set-compiled-code-block/debugging-info! b1 #f)
+	    (set-compiled-code-block/debugging-info! b2 #f)))
 
       (let ((s1 (compiled-code-block/constants-start b1))
 	    (s2 (compiled-code-block/constants-start b2))
@@ -176,7 +177,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				(else
 				 diff))))
 		       ((null? diffs)
-			false)
+			#f)
 		       (else
 			(cons 'CONSTANTS (reverse! diffs)))))))))
 
@@ -210,7 +211,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			(differ)))
 		   (else
 		    (differ))))))
-    (compare-blocks b1 b2 true)))
+    (compare-blocks b1 b2 #t)))
 
 (define (compare-com-files f1 f2 #!optional verbose?)
   (let ((quiet? (or (default-object? verbose?) (not verbose?))))
