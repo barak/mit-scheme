@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.95 2000/05/23 03:57:44 cph Exp $
+;;; $Id: imail-top.scm,v 1.96 2000/05/23 03:58:25 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1116,8 +1116,7 @@ ADDRESSES is a string consisting of several addresses separated by commas."
 	 ,@(if (ref-variable mail-self-blind buffer)
 	       `(("Resent-Bcc" ,(mail-from-string buffer)))
 	       '())
-	 ,@(map transform
-		(lambda (header)
+	 ,@(map (lambda (header)
 		  (list (header-field-name header)
 			(header-field-value header)))
 		(list-transform-negative (message-header-fields message)
