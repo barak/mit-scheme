@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.43 1993/12/17 02:34:15 cph Exp $
+$Id: error.scm,v 14.44 1993/12/17 02:47:39 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -290,7 +290,8 @@ MIT in each case. |#
 
 (define-structure (restart
 		   (conc-name %restart/)
-		   (constructor %make-restart (name reporter effector))
+		   (constructor %make-restart
+				(name reporter effector interactor))
 		   (print-procedure
 		    (standard-unparser-method 'RESTART
 		      (lambda (restart port)
@@ -308,15 +309,15 @@ MIT in each case. |#
 (define (with-restart name reporter effector interactor thunk)
   (if name (guarantee-symbol name 'WITH-RESTART))
   (if (not (or (string? reporter) (procedure-of-arity? reporter 1)))
-      (error:wrong-type-argument reporter "restart reporter" 'WITH-RESTART))
+      (error:wrong-type-argument reporter "reporter" 'WITH-RESTART))
   (if (not (procedure? effector))
-      (error:wrong-type-argument effector "restart effector" 'WITH-RESTART))
+      (error:wrong-type-argument effector "effector" 'WITH-RESTART))
   (if (not (or (not interactor) (procedure? interactor)))
-      (error:wrong-type-argument interactor "restart interactor"
-				 'WITH-RESTART))
-  (let ((restart (%make-restart name reporter effector interactor)))
-    (fluid-let ((*bound-restarts* (cons restart *bound-restarts*)))
-      (thunk))))
+      (error:wrong-type-argument interactor "interactor" 'WITH-RESTART))
+  (fluid-let ((*bound-restarts*
+	       (cons (%make-restart name reporter effector interactor)
+		     *bound-restarts*)))
+    (thunk)))
 
 (define (with-simple-restart name reporter thunk)
   (call-with-current-continuation
