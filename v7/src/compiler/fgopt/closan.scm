@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: closan.scm,v 4.19 2001/11/01 18:29:59 cph Exp $
+$Id: closan.scm,v 4.20 2001/11/01 18:37:39 cph Exp $
 
 Copyright (c) 1987-1991, 1998, 1999, 2001 Massachusetts Institute of Technology
 
@@ -47,16 +47,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
      (lambda (combination)
        (let ((values
 	      (let ((operands (application-operands combination)))
-		(if (null? operands)
-		    '()
+		(if (pair? operands)
 		    (eq-set-union* (rvalue-values (car operands))
-				   (map rvalue-values (cdr operands)))))))
+				   (map rvalue-values (cdr operands)))
+		    '()))))
 	 (set-application-operand-values! combination values)
 	 (for-each
 	  (lambda (value)
 	    (if (and (rvalue/procedure? value)
 		     (not (procedure-continuation? value)))
-		(set-procedure-virtual-closure?! value true)))
+		(set-procedure-virtual-closure?! value #t)))
 	  values))
        (set-combination/model!
 	combination
@@ -71,7 +71,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	     (for-each
 	      (lambda (procedure)
 		(if (procedure-passed-out? procedure)
-		    (close-procedure! procedure 'PASSED-OUT false)
+		    (close-procedure! procedure 'PASSED-OUT #f)
 		    (analyze-procedure
 		     procedure
 		     (procedure-closing-block procedure))))
@@ -102,8 +102,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	   ;; they have been marked as passed out already.
 	   (close-rvalue! operator 'APPLY-COMPATIBILITY combination))
 	  ((null? procs)
-	   ;; The (null? procs) case is the NOP node case.  This combination
-	   ;; should not be executed, so it should have no effect on any items
+	   ;; This is the NOP node case.  This combination should not
+	   ;; be executed, so it should have no effect on any items
 	   ;; involved in it.
 	   unspecific)
 	  ((not proc)
@@ -111,11 +111,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		 (model (car procs)))
 	     (set-combination/model! combination
 				     (if (eq? class 'APPLY-COMPATIBILITY)
-					 false
+					 #f
 					 model))
 	     (if (eq? class 'POTENTIAL)
 		 (for-each (lambda (proc)
-			     (set-procedure-virtual-closure?! proc true))
+			     (set-procedure-virtual-closure?! proc #t))
 			   procs)
 		 (begin
 		   (close-rvalue! operator class combination)
@@ -144,11 +144,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	    (let loop
 		((procs (cdr procs))
 		 (class
-		  (if (or (procedure/closure? model) (pending-undrifting? model))
-		      'COMPATIBILITY	; Cop-out.  Could be postponed 'til later.
+		  (if (or (procedure/closure? model)
+			  (pending-undrifting? model))
+		      'COMPATIBILITY ;Cop-out.  Could be postponed 'til later.
 		      'POTENTIAL)))
-	      (if (null? procs)
-		  class
+	      (if (pair? procs)
 		  (let ((this (car procs)))
 		    (with-values (lambda () (procedure-arity-encoding this))
 		      (lambda (this-min this-max)
@@ -161,7 +161,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 					   (not (pending-undrifting? this)))
 				      class
 				      'COMPATIBILITY))
-			    'APPLY-COMPATIBILITY)))))))))))
+			    'APPLY-COMPATIBILITY))))
+		  class)))))))
 
 (define-integrable (close-rvalue! rvalue reason1 reason2)
   (close-values! (rvalue-values rvalue) reason1 reason2))
@@ -193,9 +194,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	;; Force the procedure's type to CLOSURE.  Don't change the
 	;; closing block yet -- that will be taken care of by
 	;; `setup-block-types!'.
-	(set-procedure-closure-context! procedure true)
+	(set-procedure-closure-context! procedure #t)
 	(if (procedure-virtual-closure? procedure)
-	    (set-procedure-virtual-closure?! procedure false))
+	    (set-procedure-virtual-closure?! procedure #f))
 	;; This procedure no longer requires undrifting of others
 	;; since it has been closed anyway.
 	(cancel-dependent-undrifting-constraints! procedure)
@@ -206,9 +207,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	;; trivial now, so the callers are not affected.
 	(if (not (procedure/trivial-closure? procedure))
 	    (begin
-	      (undrift-disowned-children! block block false
+	      (undrift-disowned-children! block block #f
 					  'CONTAGION procedure)
-	      (examine-free-callers! procedure block false
+	      (examine-free-callers! procedure block #f
 				     'CONTAGION procedure)
 	      (guarantee-connectivity! procedure)
 	      ;; Guarantee that all callees are contained within.
@@ -237,7 +238,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		 (let ((block** (variable-block var)))
 		   (if (not (block-ancestor-or-self? block* block**))
 		       (undrifting-constraint!
-			block* block** false 'CONTAGION procedure)))))))
+			block* block** #f 'CONTAGION procedure)))))))
      (block-free-variables block))))
 
 (define (undrift-disowned-children! block block* procedure reason1 reason2)
@@ -324,7 +325,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define (undrifting-constraint! block block* procedure reason1 reason2)
   ;; Undrift `block' so it is a descendant of `block*' in order not
   ;; to close `procedure' for <`reason1',`reason2'>
-  ;; If `procedure' is false, undrift unconditionally
+  ;; If `procedure' is #f, undrift unconditionally
   (if (block-ancestor? block block*)
       (error "Attempt to undrift block below an ancestor:" block block*))
   (if (or (not procedure)
@@ -382,7 +383,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(cdr entry))
        (if (there-exists? (cdr entry)
 	     (lambda (entry*)
-	       (and (not (null? (cdr entry*)))
+	       (and (pair? (cdr entry*))
 		    (block-ancestor-or-self? (car entry*) block))))
 	   (close-non-descendant-callees! (car entry) block
 					  'CONTAGION procedure))))
@@ -402,10 +403,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		    (and condition
 			 (eq? 'CONTAGION (cadr condition))
 			 (procedure/trivial-closure? (caddr condition)))))))))
-       (if (not (null? entries))
+       (if (pair? entries)
 	   (undrift-block! (car entry)
 			   (reduce original-block-nearest-ancestor
-				   false
+				   #f
 				   (map car entries))))))
    constraints))
 
