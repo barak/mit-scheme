@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: interp.c,v 9.81 1993/11/08 20:40:03 cph Exp $
+$Id: interp.c,v 9.82 1994/06/02 19:02:15 cph Exp $
 
-Copyright (c) 1988-1993 Massachusetts Institute of Technology
+Copyright (c) 1988-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -699,7 +699,8 @@ Eval_Non_Trapping:
 	Array_Length = (VECTOR_LENGTH (Fetch_Expression()) - 1);
 #ifdef USE_STACKLETS
 	/* Save_Env, Finger */
-        Eval_GC_Check(New_Stacklet_Size(Array_Length + 1 + 1 + CONTINUATION_SIZE));
+        Eval_GC_Check
+	  (New_Stacklet_Size (Array_Length + 1 + 1 + CONTINUATION_SIZE));
 #endif /* USE_STACKLETS */
        Will_Push(Array_Length + 1 + 1 + CONTINUATION_SIZE);
 	Stack_Pointer = (STACK_LOC (- Array_Length));
@@ -1674,7 +1675,8 @@ apply_dispatch:
 	      Apply_Error(ERR_UNIMPLEMENTED_PRIMITIVE);
 	    }
 
-	    /* Note that the first test below will fail for lexpr primitives. */
+	    /* Note that the first test below will fail for lexpr
+	       primitives.  */
 
 	    nargs = ((OBJECT_DATUM (STACK_REF(STACK_ENV_HEADER))) -
 		     (STACK_ENV_FIRST_ARG - 1));
@@ -1720,8 +1722,9 @@ apply_dispatch:
 
 	    if (0 && Eval_Debug)
 	    {
-	      Print_Expression(LONG_TO_UNSIGNED_FIXNUM(nargs+STACK_FRAME_HEADER),
-			       "APPLY: Number of arguments");
+	      Print_Expression
+		(LONG_TO_UNSIGNED_FIXNUM (nargs+STACK_FRAME_HEADER),
+		 "APPLY: Number of arguments");
 	    }
 
             lambda = FAST_MEMORY_REF (Function, PROCEDURE_LAMBDA_EXPR);
@@ -1805,8 +1808,9 @@ apply_dispatch:
 
           case TC_COMPILED_ENTRY:
 	  {
-	    apply_compiled_setup (STACK_ENV_EXTRA_SLOTS +
-				  (OBJECT_DATUM (STACK_REF (STACK_ENV_HEADER))));
+	    apply_compiled_setup
+	      (STACK_ENV_EXTRA_SLOTS +
+	       (OBJECT_DATUM (STACK_REF (STACK_ENV_HEADER))));
 	    Export_Registers ();
 	    Which_Way = apply_compiled_procedure();
 
@@ -2236,8 +2240,13 @@ Primitive_Internal_Apply:
 /* Interpret(), continued */
 
     case RC_SNAP_NEED_THUNK:
-      MEMORY_SET (Fetch_Expression(), THUNK_SNAPPED, SHARP_T);
-      MEMORY_SET (Fetch_Expression(), THUNK_VALUE, Val);
+      /* Don't snap thunk twice; evaluation of the thunk's body might
+	 have snapped it already.  *
+      if ((MEMORY_REF ((Fetch_Expression ()), THUNK_SNAPPED)) == SHARP_F)
+	{
+	  MEMORY_SET ((Fetch_Expression ()), THUNK_SNAPPED, SHARP_T);
+	  MEMORY_SET ((Fetch_Expression ()), THUNK_VALUE, Val);
+	}
       break;
 
     case RC_AFTER_MEMORY_UPDATE:
