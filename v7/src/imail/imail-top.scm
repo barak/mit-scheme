@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.105 2000/05/24 19:44:23 cph Exp $
+;;; $Id: imail-top.scm,v 1.106 2000/05/24 21:43:21 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -616,7 +616,7 @@ With prefix argument N moves backward N messages with these flags."
 	      (lambda (n step direction)
 		(let ((folder (selected-folder))
 		      (msg (selected-message)))
-		  (if (and operation (> delta 0))
+		  (if (and operation (> n 0))
 		      (operation msg))
 		  (let loop ((n n) (msg msg) (winner #f))
 		    (let ((next (step msg predicate)))
