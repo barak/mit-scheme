@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.109 1991/05/06 22:28:50 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.110 1991/05/10 04:53:29 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -67,15 +67,20 @@ Type c to copy a file.
 Type g to read the directory again.  This discards all deletion-flags.
 Space and Rubout can be used to move down and up by lines.
 Also:
- M, G, O -- change file's mode, group or owner."
+ M, G, O -- change file's mode, group or owner.
+ C -- compress this file.  U -- uncompress this file."
 ;;Type v to view a file in View mode, returning to Dired when done.
-;; C -- compress this file.  U -- uncompress this file.
-  (local-set-variable! case-fold-search false))
+  (local-set-variable! case-fold-search false)
+  (event-distributor/invoke! (ref-variable dired-mode-hook)))
+
+(define-variable dired-mode-hook
+  "An event distributor that is invoked when entering Dired mode."
+  (make-event-distributor))
 
 (define-key 'dired #\r 'dired-rename-file)
 (define-key 'dired #\c-d 'dired-flag-file-deleted)
 (define-key 'dired #\d 'dired-flag-file-deleted)
-;(define-key 'dired #\v 'dired-view-file)
+(define-key 'dired #\v 'dired-view-file)
 (define-key 'dired #\e 'dired-find-file)
 (define-key 'dired #\f 'dired-find-file)
 (define-key 'dired #\o 'dired-find-file-other-window)
@@ -94,8 +99,8 @@ Also:
 (define-key 'dired #\n 'dired-next-line)
 (define-key 'dired #\p 'dired-previous-line)
 (define-key 'dired #\g 'dired-revert)
-;(define-key 'dired #\C 'dired-compress)
-;(define-key 'dired #\U 'dired-uncompress)
+(define-key 'dired #\C 'dired-compress)
+(define-key 'dired #\U 'dired-uncompress)
 (define-key 'dired #\M 'dired-chmod)
 (define-key 'dired #\G 'dired-chgrp)
 (define-key 'dired #\O 'dired-chown)
@@ -151,7 +156,13 @@ Type `h' after entering dired for more info."
 (define-variable dired-listing-switches
   "Switches passed to ls for dired.  MUST contain the 'l' option.
 CANNOT contain the 'F' option."
-  "-al")
+  "-al"
+  string?)
+
+(define-variable dired-kept-versions
+  "When cleaning directory, number of versions to keep."
+  2
+  exact-nonnegative-integer?)
 
 (define (fill-dired-buffer! buffer pathname)
   (set-buffer-writeable! buffer)
@@ -160,21 +171,9 @@ CANNOT contain the 'F' option."
    (string-append "Reading directory "
 		  (pathname->string pathname)
 		  "..."))
-  (let ((directory (pathname-directory-path pathname)))
-    (with-working-directory-pathname directory
-      (lambda ()
-	(if (file-directory? pathname)
-	    (run-synchronous-process false
-				     (buffer-point buffer)
-				     (find-program "ls" directory)
-				     (ref-variable dired-listing-switches)
-				     (pathname->string pathname))
-	    (shell-command
-	     (string-append "ls "
-			    (ref-variable dired-listing-switches)
-			    " "
-			    (pathname-name-string pathname))
-	     (buffer-point buffer))))))
+  (read-directory pathname
+		  (ref-variable dired-listing-switches)
+		  (buffer-point buffer))
   (append-message "done")
   (let ((point (mark-left-inserting-copy (buffer-point buffer)))
 	(group (buffer-group buffer)))
@@ -189,6 +188,21 @@ CANNOT contain the 'F' option."
   (set-buffer-point! buffer (buffer-start buffer))
   (buffer-not-modified! buffer)
   (set-buffer-read-only! buffer))
+
+(define (read-directory pathname switches mark)
+  (with-working-directory-pathname (pathname-directory-path pathname)
+    (lambda ()
+      (if (file-directory? pathname)
+	  (run-synchronous-process false
+				   mark
+				   (find-program "ls" false)
+				   switches
+				   (pathname->string pathname))
+	  (shell-command (string-append "ls "
+					switches
+					" "
+					(pathname-name-string pathname))
+			 mark)))))
 
 (define (add-dired-entry pathname)
   (let ((lstart (line-start (current-point) 0))
@@ -296,8 +310,14 @@ CANNOT contain the 'F' option."
 			     pathname
 			     false)))))
   (lambda (to-file)
-    (let ((to (->pathname to-file)))
-      (rename-file (dired-current-pathname) to)
+    (let ((from (dired-current-pathname))
+	  (to (->pathname to-file)))
+      (bind-condition-handler (list condition-type:file-error
+				    condition-type:port-error)
+	  (lambda (condition)
+	    (editor-error "Rename failed: "
+			  (condition/report-string condition)))
+	(lambda () (rename-file from to)))
       (dired-redisplay to))))
 
 (define-command dired-copy-file
@@ -312,8 +332,13 @@ CANNOT contain the 'F' option."
 			     pathname
 			     false)))))
   (lambda (to-file)
-    (let ((to (->pathname to-file)))
-      (copy-file (dired-current-pathname) to)
+    (let ((from (dired-current-pathname))
+	  (to (->pathname to-file)))
+      (bind-condition-handler (list condition-type:file-error
+				    condition-type:port-error)
+	  (lambda (condition)
+	    (editor-error "Copy failed: " (condition/report-string condition)))
+	(lambda () (copy-file from to)))
       (let ((lstart (mark-right-inserting (line-start (current-point) 0))))
 	(with-read-only-defeated lstart
 	  (lambda ()
@@ -456,7 +481,15 @@ CANNOT contain the 'F' option."
 	  (if (with-selected-buffer buffer
 		(lambda ()
 		  (prompt-for-yes-or-no? "Delete these files")))
-	      (for-each dired-kill-file! filenames))
+	      (let loop ((filenames filenames) (failures '()))
+		(cond ((not (null? filenames))
+		       (loop (cdr filenames)
+			     (if (dired-kill-file! (car filenames))
+				 failures
+				 (cons (pathname-name-string (caar filenames))
+				       failures))))
+		      ((not (null? failures))
+		       (message "Deletions failed: " (reverse! failures))))))
 	  (kill-buffer buffer)))))
 
 (define (dired-killable-filenames)
@@ -472,49 +505,55 @@ CANNOT contain the 'F' option."
   (loop (line-start (buffer-start (current-buffer)) 1)))
 
 (define (dired-kill-file! filename)
-  (if (file-exists? (car filename))
-      (delete-file (car filename)))
-  (with-read-only-defeated (cdr filename)
-    (lambda ()
-      (delete-string (cdr filename) (mark1+ (line-end (cdr filename) 0))))))
+  (let ((deleted?
+	 (catch-file-errors (lambda () false)
+			    (lambda () (delete-file (car filename)) true))))
+    (if deleted?
+	(with-read-only-defeated (cdr filename)
+	  (lambda ()
+	    (delete-string (cdr filename)
+			   (line-start (cdr filename) 1)))))
+    deleted?))
 
 ;;;; List Directory
 
-(define-variable list-directory-unpacked
-  "If not false, \\[list-directory] puts one file on each line.
-Normally it packs many onto a line.
-This has no effect if \\[list-directory] is invoked with an argument."
-  false)
+(define-variable list-directory-brief-switches
+  "Switches for list-directory to pass to `ls' for brief listing,"
+  "-CF"
+  string?)
+
+(define-variable list-directory-verbose-switches
+  "Switches for list-directory to pass to `ls' for verbose listing,"
+  "-l"
+  string?)
 
 (define-command list-directory
-  "Generate a directory listing."
-  "DList directory\nP"
+  "Display a list of files in or matching DIRNAME, a la `ls'.
+DIRNAME is globbed by the shell if necessary.
+Prefix arg (second arg if noninteractive) means supply -l switch to `ls'.
+Actions controlled by variables list-directory-brief-switches
+ and list-directory-verbose-switches."
+  (lambda ()
+    (let ((argument (command-argument)))
+      (list (pathname->string
+	     (prompt-for-directory (if argument
+				       "List directory (verbose)"
+				       "List directory (brief)")
+				   false false))
+	    argument)))
   (lambda (directory argument)
-    (temporary-message
-     (string-append "Reading directory "
-		    directory
-		    "..."))
-    (let ((pathnames (read&sort-directory directory)))
-      (append-message "done")
-      (with-output-to-temporary-buffer "*Directory*"
-	(lambda ()
-	  (write-string "Directory ")
-	  (write-string directory)
-	  (newline)
-	  (newline)
-	  (cond (argument
-		 (for-each (lambda (pathname)
-			     (write-string (os/make-dired-line pathname))
-			     (newline))
-			   pathnames))
-		((ref-variable list-directory-unpacked)
-		 (for-each (lambda (pathname)
-			     (write-string (pathname-name-string pathname))
-			     (newline))
-			   pathnames))
-		(else
-		 (write-strings-densely
-		  (map pathname-name-string pathnames)))))))))
-
-(define (read&sort-directory pathname)
-  (os/dired-sort-pathnames (directory-read pathname false)))
+    (let ((directory (->pathname directory))
+	  (buffer (temporary-buffer "*Directory*")))
+      (disable-group-undo! (buffer-group buffer))
+      (let ((point (buffer-end buffer)))
+	(insert-string "Directory " point)
+	(insert-string (pathname->string directory) point)
+	(insert-newline point)
+	(read-directory directory
+			(if argument
+			    (ref-variable list-directory-verbose-switches)
+			    (ref-variable list-directory-brief-switches))
+			point))
+      (set-buffer-point! buffer (buffer-start buffer))
+      (buffer-not-modified! buffer)
+      (pop-up-buffer buffer false))))

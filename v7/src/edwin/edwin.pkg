@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.36 1991/05/08 22:51:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.37 1991/05/10 04:54:15 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -641,8 +641,34 @@ MIT in each case. |#
   (files "dired")
   (parent (edwin))
   (export (edwin)
+	  edwin-command$dired
+	  edwin-command$dired-other-window
+	  edwin-command$dired-find-file
+	  edwin-command$dired-find-file-other-window
+	  edwin-command$dired-revert
+	  edwin-command$dired-flag-file-deleted
+	  edwin-command$dired-unflag
+	  edwin-command$dired-backup-unflag
+	  edwin-command$dired-next-line
+	  edwin-command$dired-previous-line
+	  edwin-command$dired-do-deletions
+	  edwin-command$dired-quit
+	  edwin-command$dired-abort
+	  edwin-command$dired-summary
+	  edwin-command$dired-rename-file
+	  edwin-command$dired-copy-file
+	  edwin-command$dired-chmod
+	  edwin-command$dired-chgrp
+	  edwin-command$dired-chown
+	  edwin-command$dired-flag-auto-save-files
+	  edwin-command$dired-flag-backup-files
+	  edwin-command$list-directory
+	  edwin-mode$dired
+	  edwin-variable$dired-kept-versions
 	  edwin-variable$dired-listing-switches
-	  edwin-variable$list-directory-unpacked
+	  edwin-variable$dired-mode-hook
+	  edwin-variable$list-directory-brief-switches
+	  edwin-variable$list-directory-verbose-switches
 	  make-dired-buffer))
 
 (define-package (edwin info)
