@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/generic.c,v 9.23 1987/07/23 21:47:55 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/generic.c,v 9.24 1987/07/27 17:47:20 jinx Rel $ */
 
 #include "scheme.h"
 #include "primitive.h"
@@ -941,41 +941,71 @@ Built_In_Primitive(Prim_Arctan, 1, "&ATAN", 0xFC)
 
    All these primitives differ only in how floating point numbers
    are mapped before they are truncated.
-
-   If the system does not provide the double precision procedures
-   floor and ceil, Floor is incorrect for negative integers in
-   floating point format, and Ceiling is incorrect for positive
-   integers in floating point format.
 */
-
-#define Truncate_Mapping(arg)	arg
-#define Round_Mapping(arg)	((arg) >= 0.0 ? ((arg) + 0.5) : ((arg) - 0.5))
 
 #ifdef HAS_FLOOR
 
 extern double floor(), ceil();
-#define Floor_Mapping(arg)	floor(arg)
-#define Ceiling_Mapping(arg)    ceil(arg)
 
 #else
 
-#define Floor_Mapping(arg)	((arg) >= 0.0 ? (arg) : ((arg) - 1.0))
-#define Ceiling_Mapping(arg)	((arg) >= 0.0 ? ((arg) + 1.0) : (arg))
+double 
+floor(arg)
+     double arg;
+{
+  long temp;
+  double narg;
+
+  temp = ((long) arg);
+  narg = ((double) temp);
+  if ((narg == arg) || (arg > 0.0))
+    return (narg);
+  else
+    return (narg - 1.0);
+}
+
+double
+ceil(arg)
+     double arg;
+{
+  long temp;
+  double narg;
+
+  temp = ((long) arg);
+  narg = ((double) temp);
+  if ((narg == arg) || (arg < 0.0))
+    return (narg);
+  else
+    return (narg + 1.0);
+}
 
 #endif
 
+#define Truncate_Mapping(arg)	arg
+#define Round_Mapping(arg)	((arg) >= 0.0 ? ((arg) + 0.5) : ((arg) - 0.5))
+#define Floor_Mapping(arg)	floor(arg)
+#define Ceiling_Mapping(arg)    ceil(arg)
+
 #define Flonum_To_Integer(How_To_Do_It)					\
   Primitive_1_Arg();							\
+									\
   Set_Time_Zone(Zone_Math);						\
   switch (Type_Code(Arg1))						\
-  { case TC_FIXNUM :							\
-    case TC_BIG_FIXNUM: return Arg1;					\
-    case TC_BIG_FLONUM: 						\
-      { fast double Arg = Get_Float(Arg1);				\
-	fast double temp = How_To_Do_It(Arg);				\
+  {									\
+    case TC_FIXNUM :							\
+    case TC_BIG_FIXNUM:							\
+      return Arg1;							\
+    case TC_BIG_FLONUM:							\
+      {									\
+	fast double Arg, temp;						\
 	Pointer Result;							\
-	if (flonum_exceeds_fixnum(temp)) Result = Float_To_Big(temp);	\
-        else double_into_fixnum(temp, Result);				\
+									\
+	Arg = Get_Float(Arg1);						\
+	temp = How_To_Do_It(Arg);					\
+	if (flonum_exceeds_fixnum(temp))				\
+	  Result = Float_To_Big(temp);					\
+        else								\
+	  double_into_fixnum(temp, Result);				\
         return Result;							\
       }									\
     default: Primitive_Error(ERR_ARG_1_WRONG_TYPE);			\
