@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 4.16 1991/05/06 22:43:36 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 4.17 1992/04/01 19:08:50 arthur Exp $
 
 Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
@@ -159,7 +159,14 @@ MIT in each case. |#
   model					; ignored
   (scfg*scfg->scfg!
    (prefix frame-size 0)
-   (let ((primitive (constant-value (rvalue-known-value operator))))
+   (let* ((primitive (constant-value (rvalue-known-value operator)))
+	  (arity (primitive-procedure-arity primitive)))
+     (if (not (or (= arity -1)
+		  (= arity frame-size)))
+	 (error "Primitive called with incorrect number of arguments."
+		primitive
+		arity
+		frame-size))
      ((or (special-primitive-handler primitive)
 	  rtl:make-invocation:primitive)
       (1+ frame-size)
