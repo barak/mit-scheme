@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: closan.scm,v 4.24 2001/11/02 04:59:12 cph Exp $
+$Id: closan.scm,v 4.25 2001/11/02 14:57:50 cph Exp $
 
 Copyright (c) 1987-1991, 1998, 1999, 2001 Massachusetts Institute of Technology
 
@@ -298,8 +298,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			     (application-operator application))))
 		(block-applications block)))))
 
-(define *undrifting-constraints*)
-
 (define (undrifting-constraint! block block* condition)
   ;; Undrift BLOCK so it is a descendant of BLOCK*, due to CONDITION.
   (if (block-ancestor? block block*)
@@ -316,30 +314,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 						   block*))
 		     (loop (block-parent block))
 		     block))))
-	  (debug:add-constraint block block* condition)
-	  (let ((entry (assq block *undrifting-constraints*))
-		(condition* (if procedure condition #f)))
-	    (if entry
-		(let ((entry* (assq block* (cdr entry))))
-		  (if entry*
-		      (if (not
-			   (if condition*
-			       (there-exists? (cdr entry*)
-				 (lambda (condition**)
-				   (and condition**
-					(condition=? condition** condition*))))
-			       (memq condition* (cdr entry*))))
-			  (set-cdr! entry* (cons condition* (cdr entry*))))
-		      (begin
-			(set-cdr! entry
-				  (cons (list block* condition*)
-					(cdr entry)))
-			(update-callers-and-callees! block block* condition))))
-		(begin
-		  (set! *undrifting-constraints*
-			(cons (list block (list block* condition*))
-			      *undrifting-constraints*))
-		  (update-callers-and-callees! block block* condition))))))))
+	  (if (add-constraint block block* condition)
+	      (update-callers-and-callees! block block* condition))))))
 
 (define (update-callers-and-callees! block block* condition)
   ;; The context of BLOCK has changed, so it may be necessary to
@@ -366,8 +342,58 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  (analyze-procedure procedure block*)
 	  ;; Reanalyze the combinations calling BLOCK's procedure.
 	  (enqueue-nodes! (procedure-applications procedure))))))
-
+
 (define (cancel-dependent-undrifting-constraints! procedure condition)
+  (remove-condition procedure condition)
+  (for-each (let ((block (procedure-block procedure)))
+	      (lambda (entry)
+		(if (there-exists? (cdr entry)
+		      (lambda (entry*)
+			(block-ancestor-or-self? (car entry*) block)))
+		    (close-non-descendant-callees! (car entry) block
+						   condition))))
+	    *undrifting-constraints*))
+
+(define *undrifting-constraints*)
+(define debug:trace-constraints? #f)
+
+(define (add-constraint block block* condition)
+  (debug:add-constraint block block* condition)
+  (let ((entry (assq block *undrifting-constraints*))
+	(condition* (if (condition-procedure condition) condition #f)))
+    (if entry
+	(let ((entry* (assq block* (cdr entry))))
+	  (if entry*
+	      (begin
+		(if (not
+		     (if condition*
+			 (there-exists? (cdr entry*)
+			   (lambda (condition**)
+			     (and condition**
+				  (condition=? condition** condition*))))
+			 (memq condition* (cdr entry*))))
+		    (set-cdr! entry* (cons condition* (cdr entry*))))
+		#f)
+	      (begin
+		(set-cdr! entry
+			  (cons (list block* condition*)
+				(cdr entry)))
+		#t)))
+	(begin
+	  (set! *undrifting-constraints*
+		(cons (list block (list block* condition*))
+		      *undrifting-constraints*))
+	  #t))))
+
+(define (debug:add-constraint block block* condition)
+  (if debug:trace-constraints?
+      (write-line (list 'ADD block block*
+			(condition-procedure condition)
+			(condition-keyword condition)
+			(condition-argument condition)
+			(condition-dependency condition)))))
+
+(define (remove-condition procedure condition)
   (for-each (lambda (entry)
 	      (for-each
 	       (lambda (entry*)
@@ -392,16 +418,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(list-transform-negative! *undrifting-constraints*
 	  (lambda (entry)
 	    (null? (cdr entry)))))
-  (for-each (let ((block (procedure-block procedure)))
-	      (lambda (entry)
-		(if (there-exists? (cdr entry)
-		      (lambda (entry*)
-			(block-ancestor-or-self? (car entry*) block)))
-		    (close-non-descendant-callees! (car entry) block
-						   condition))))
-	    *undrifting-constraints*)
   unspecific)
 
+(define (debug:remove-condition block block* condition)
+  (if debug:trace-constraints?
+      (write-line (list 'REMOVE block block*
+			(condition-procedure condition)
+			(condition-keyword condition)
+			(condition-argument condition)
+			(condition-dependency condition)))))
+
 (define (pending-undrifting? procedure)
   (let ((entry (assq (procedure-block procedure) *undrifting-constraints*)))
     (and entry
@@ -435,7 +461,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
        (and condition
 	    (eq? 'CONTAGION (condition-keyword condition))
 	    (procedure/trivial-closure? (condition-argument condition)))))))
-
+
 (define-structure condition
   (procedure #f read-only #t)
   (keyword #f read-only #t)
@@ -453,26 +479,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		  (condition-keyword condition)
 		  (condition-argument condition)
 		  (condition-procedure condition)))
-
-(define debug:trace-constraints? #f)
-
-(define (debug:add-constraint block block* condition)
-  (if debug:trace-constraints?
-      (write-line
-       (list 'ADD block block*
-	     (condition-procedure condition)
-	     (condition-keyword condition)
-	     (condition-argument condition)
-	     (condition-dependency condition)))))
-
-(define (debug:remove-condition block block* condition)
-  (if debug:trace-constraints?
-      (write-line
-       (list 'REMOVE block block*
-	     (condition-procedure condition)
-	     (condition-keyword condition)
-	     (condition-argument condition)
-	     (condition-dependency condition)))))
 
 (define (list-transform-negative! items predicate)
   ((list-deletor! predicate) items))
