@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rexp.scm,v 1.17 2001/10/05 15:54:35 cph Exp $
+$Id: rexp.scm,v 1.18 2001/11/11 05:56:08 cph Exp $
 
 Copyright (c) 2000, 2001 Massachusetts Institute of Technology
 
@@ -186,7 +186,7 @@ USA.
 		 ((CASE-FOLD)
 		  (let ((arg (one-arg)))
 		    (cond ((string? arg) (case-fold-string arg))
-			  ((char-set? arg) (case-fold-char-et arg))
+			  ((char-set? arg) (case-fold-char-set arg))
 			  (else (lose)))))
 		 ((ANY-CHAR) ".")
 		 ((LINE-START) "^")
