@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.37 2000/05/08 15:46:20 cph Exp $
+;;; $Id: imail-top.scm,v 1.38 2000/05/08 17:55:56 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -138,7 +138,9 @@ May be called with an IMAIL folder URL as argument;
   (buffer-put! buffer 'IMAIL-FOLDER folder)
   (folder-put! folder 'BUFFER buffer)
   (add-event-receiver! (folder-modification-event folder)
-		       notice-folder-modifications))
+		       (lambda (folder)
+			 (maybe-add-command-suffix! notice-folder-modifications
+						    folder))))
 
 (define (imail-folder->buffer folder error?)
   (or (let ((buffer (folder-get folder 'BUFFER #f)))
@@ -493,7 +495,7 @@ With prefix argument N moves backward N messages with these flags."
 					   'SELECT-MESSAGE))))
 	(full-headers? (if (default-object? full-headers?) #f full-headers?)))
     (if (or (if (default-object? force?) #f force?)
-	    (not (eq? message (buffer-get buffer 'IMAIL-MESSAGE 'UNDEFINED))))
+	    (not (eq? message (buffer-get buffer 'IMAIL-MESSAGE 'UNKNOWN))))
 	(begin
 	  (buffer-reset! buffer)
 	  (associate-imail-folder-with-buffer folder buffer)
@@ -525,7 +527,9 @@ With prefix argument N moves backward N messages with these flags."
 	     (selected-buffer)
 	     buffer)))
     (let ((folder (selected-folder #f buffer))
-	  (message (buffer-get buffer 'IMAIL-MESSAGE #f)))
+	  (message (buffer-get buffer 'IMAIL-MESSAGE 'UNKNOWN)))
+      (if (eq? message 'UNKNOWN)
+	  (error "IMAIL-MESSAGE property not bound:" buffer))
       (or (and message
 	       (if (eqv? folder (message-folder message))
 		   message
