@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 14.1 1988/06/13 11:43:43 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 14.2 1988/06/16 06:26:59 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -82,7 +82,6 @@ evaluated.
 |#
 
 (define (initialize-package!)
-  (set! structure (make-named-tag "DEFSTRUCT-DESCRIPTION"))
   (set! slot-assoc (association-procedure eq? slot/name))
   (syntax-table-define system-global-syntax-table 'DEFINE-STRUCTURE
     transform/define-structure))
@@ -320,7 +319,9 @@ evaluated.
     type
     read-only?))
 
-(define structure)
+(define-integrable structure
+  (string->symbol "#[DEFSTRUCT-DESCRIPTION]"))
+
 (define slot-assoc)
 
 (define (structure? object)
@@ -331,8 +332,9 @@ evaluated.
 (define (tag->structure tag)
   (if (structure? tag)
       tag
-      (let ((tag (2d-get tag structure)))
-	(and (structure? tag)
+      (let ((tag (named-structure/get-tag-description tag)))
+	(and tag
+	     (structure? tag)
 	     tag))))
 
 (define (named-structure? object)
@@ -461,6 +463,24 @@ evaluated.
 	     list-cons)
 	    (else
 	     (error "Unknown scheme type" structure)))))))
+
+(define (define-structure/keyword-parser argument-list default-alist)
+  (if (null? argument-list)
+      (map cdr default-alist)
+      (let ((alist
+	     (map (lambda (entry) (cons (car entry) (cdr entry)))
+		  default-alist)))
+	(let loop ((arguments argument-list))
+	  (if (not (null? arguments))
+	      (begin
+		(if (null? (cdr arguments))
+		    (error "Keyword list does not have even length"
+			   argument-list))
+		(set-cdr! (or (assq (car arguments) alist)
+			      (error "Unknown keyword" (car arguments)))
+			  (cadr arguments))
+		(loop (cddr arguments)))))
+	(map cdr alist))))
 
 (define (constructor-definition/boa structure name lambda-list)
   `(DEFINE (,name . ,lambda-list)
@@ -494,16 +514,16 @@ evaluated.
 	(cons (structure/tag-name structure) offsets)
 	offsets)))
 
-(define (type-definitions *structure)
-  (cond ((not (structure/named? *structure))
+(define (type-definitions structure)
+  (cond ((not (structure/named? structure))
 	 '())
-	((eq? (structure/tag-name *structure) (structure/name *structure))
-	 `((DEFINE ,(structure/name *structure)
-	     ',*structure)))
+	((eq? (structure/tag-name structure) (structure/name structure))
+	 `((DEFINE ,(structure/name structure)
+	     ',structure)))
 	(else
-	 `((2D-PUT! ,(structure/tag-name *structure)
-		    ',structure
-		    ',*structure)))))
+	 `((NAMED-STRUCTURE/SET-TAG-DESCRIPTION!
+	    ,(structure/tag-name structure)
+	    ',structure)))))
 
 (define (predicate-definitions structure)
   (if (and (structure/predicate-name structure)
