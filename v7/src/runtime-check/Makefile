@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.1 2000/12/07 23:04:36 cph Exp $
+# $Id: Makefile,v 1.2 2000/12/07 23:08:49 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -29,16 +29,16 @@ all:
 setup:
 	(cd ../runtime; \
 	 for FNS in *.scm; do \
-	     FN="`basename ${FNS} .scm`.bin"; \
-	     if test ! -e ../runtime-check/${FN}; then \
-		 echo "ln -s ../runtime/${FN} ../runtime-check/${FN}"; \
-		 ln -s ../runtime/${FN} ../runtime-check/${FN}; \
+	     FN="`basename $${FNS} .scm`.bin"; \
+	     if test ! -e ../runtime-check/$${FN}; then \
+		 echo "ln -s ../runtime/$${FN} ../runtime-check/$${FN}"; \
+		 ln -s ../runtime/$${FN} ../runtime-check/$${FN}; \
 	     fi; \
 	 done; \
 	 for FN in runtime.bco runtime.bld; do \
-	     if test ! -e ../runtime-check/${FN}; then \
-		 echo "ln -s ../runtime/${FN} ../runtime-check/${FN}"; \
-		 ln -s ../runtime/${FN} ../runtime-check/${FN}; \
+	     if test ! -e ../runtime-check/$${FN}; then \
+		 echo "ln -s ../runtime/$${FN} ../runtime-check/$${FN}"; \
+		 ln -s ../runtime/$${FN} ../runtime-check/$${FN}; \
 	     fi; \
 	 done)
 
