@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/sf/toplev.scm,v 3.3 1987/05/09 23:22:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/sf/toplev.scm,v 3.4 1987/06/30 21:45:39 cph Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -117,37 +117,29 @@ Currently only the 68000 implementation needs this."
 (define sf/unfasl-pathname-type "unf")
 
 (define (syntax-file input-string bin-string spec-string)
-  (let ((eval-sf-expression
-	 (lambda (input-string)
-	   (let ((input-path
-		  (pathname->input-truename
-		   (merge-pathnames (->pathname input-string)
-				    sf/default-input-pathname))))
-	     (if (not input-path)
-		 (error "SF: File does not exist" input-string))
-	     (let ((bin-path
-		    (let ((bin-path
-			   (pathname-new-type input-path
-					      sf/output-pathname-type)))
-		      (if bin-string
-			  (merge-pathnames (->pathname bin-string) bin-path)
-			  bin-path))))
-	       (let ((spec-path
-		      (and (or spec-string sfu?)
-			   (let ((spec-path
-				  (pathname-new-type bin-path
-						     sf/unfasl-pathname-type)))
-			     (if spec-string
-				 (merge-pathnames (->pathname spec-string)
-						  spec-path)
-				 spec-path)))))
-		 (syntax-file* input-path bin-path spec-path)))))))
-    (if (list? input-string)
-	(for-each (lambda (input-string)
-		    (eval-sf-expression input-string))
-		  input-string)
-	(eval-sf-expression input-string)))
-  *the-non-printing-object*)
+  (for-each
+   (lambda (pathname)
+     (let ((input-path (pathname->input-truename pathname)))
+       (if (not input-path)
+	   (error "SF: File does not exist" pathname))
+       (let ((bin-path
+	      (let ((bin-path
+		     (pathname-new-type input-path
+					sf/output-pathname-type)))
+		(if bin-string
+		    (merge-pathnames (->pathname bin-string) bin-path)
+		    bin-path))))
+	 (let ((spec-path
+		(and (or spec-string sfu?)
+		     (let ((spec-path
+			    (pathname-new-type bin-path
+					       sf/unfasl-pathname-type)))
+		       (if spec-string
+			   (merge-pathnames (->pathname spec-string)
+					    spec-path)
+			   spec-path)))))
+	   (syntax-file* input-path bin-path spec-path)))))
+   (stickify-input-filenames input-string sf/default-input-pathname)))
 
 (define (syntax-file* input-pathname bin-pathname spec-pathname)
   (let ((start-date (date))

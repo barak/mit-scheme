@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/sf/make.scm,v 3.9 1987/06/05 21:36:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/sf/make.scm,v 3.10 1987/06/30 21:48:06 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -60,7 +60,7 @@ MIT in each case. |#
     (make-environment
       (define :name "SF")
       (define :version 3)
-      (define :modification 9)
+      (define :modification 10)
       (define :files)
 
       (define :files-lists
