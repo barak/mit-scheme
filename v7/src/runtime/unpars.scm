@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 13.49 1987/06/25 22:27:53 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 13.50 1987/06/30 20:39:50 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -249,6 +249,10 @@
 	((unassigned-object? object) unparse-unassigned)
 	((unbound-object? object) unparse-unbound)
 	((reference-trap? object) unparse-reference-trap)
+	((eq? (car object) 'QUOTE)
+	 (and (pair? (cdr object))
+	      (null? (cddr object))
+	      unparse-quote-form))
 	(else
 	 (let ((entry (assq (car object) *unparser-special-pairs*)))
 	   (and entry
@@ -262,13 +266,9 @@
 	      *unparser-special-pairs*))
   *the-non-printing-object*)
 
-(add-unparser-special-pair! 'QUOTE
-  (lambda (pair)
-    (if (and (pair? (cdr pair))
-	     (null? (cddr pair)))
-	(begin (*unparse-char #\')
-	       (*unparse-object-or-future (cadr pair)))
-	(unparse-list pair))))
+(define (unparse-quote-form pair)
+  (*unparse-char #\')
+  (*unparse-object-or-future (cadr pair)))
 
 (define (unparse-unassigned x)
   (unparse-with-brackets
