@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dossig.c,v 1.2 1992/05/28 18:56:35 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dossig.c,v 1.3 1992/05/28 19:34:43 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -453,6 +453,7 @@ DEFUN_VOID (print_interrupt_help)
   console_write_string("C-B interrupt: B, b, ^B (break)\n");
   console_write_string("C-U interrupt: U, u, ^U (up)\n");
   console_write_string("Quit scheme:   Q, q\n");
+  console_write_string("Print help:    ?");
 
   return;
 }
