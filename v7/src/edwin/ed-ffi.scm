@@ -107,6 +107,8 @@
 	       edwin-syntax-table)
     ("macros"  (edwin macros)
 	       syntax-table/system-internal)
+    ("malias"  (edwin mail-alias)
+	       edwin-syntax-table)
     ("make"    ()
 	       syntax-table/system-internal)
     ("midas"   (edwin)

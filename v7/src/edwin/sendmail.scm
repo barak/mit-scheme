@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sendmail.scm,v 1.4 1991/04/24 00:53:42 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sendmail.scm,v 1.5 1991/04/24 07:26:09 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -249,15 +249,15 @@ Prefix arg means don't delete this window."
   (lambda (argument)
     ((ref-command mail-send))
     (bury-buffer (current-buffer))
-    (if #|
-	(and (not argument)
+    (if (and (not argument)
 	     (not (window-has-no-neighbors? (current-window)))
 	     (eq? (ref-mode-object rmail)
 		  (buffer-major-mode (window-buffer (other-window)))))
-	|#
-	false
 	(window-delete! (current-window))
 	(select-buffer (previous-buffer)))))
+
+(define-major-mode rmail fundamental "RMAIL"
+  "Not implemented")
 
 (define-command mail-send
   "Send the message in the current buffer.
@@ -518,10 +518,3 @@ Numeric argument means justify as well."
 	  (begin
 	    (mark-temporary! m)
 	    pathnames)))))
-
-(define (guarantee-mail-aliases)
-  unspecific)
-
-(define (expand-mail-aliases start end)
-  start end
-  unspecific)

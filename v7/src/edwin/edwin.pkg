@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.31 1991/04/24 00:54:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.32 1991/04/24 07:27:00 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -731,3 +731,11 @@ MIT in each case. |#
 	  edwin-variable$send-mail-procedure
 	  edwin-variable$sendmail-program
 	  make-mail-buffer))
+
+(define-package (edwin mail-alias)
+  (files "malias")
+  (parent (edwin))
+  (export (edwin)
+	  define-mail-alias
+	  expand-mail-aliases
+	  guarantee-mail-aliases))
