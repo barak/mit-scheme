@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comlin.c,v 1.6 1992/01/15 17:17:54 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comlin.c,v 1.7 1992/01/15 21:04:42 jinx Exp $
  *
  * This file contains the scheme command parser.
  *
@@ -253,7 +253,7 @@ DEFUN (parse_keywords,
 		  fprintf(stderr,
 			  "parse_keywords: Invalid boolean value: %s\n",
 			  argv[i]);
-		  print_usage_and_exit(&options[0, 1]);
+		  print_usage_and_exit(&options[0], 1);
 		}
 	      }
 	    }
