@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: gcloop.c,v 9.47 2000/12/05 21:23:44 cph Exp $
+$Id: gcloop.c,v 9.48 2001/08/07 01:26:14 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* 
@@ -175,7 +176,7 @@ DEFUN (GCLoop,
 	    {
 	      Temp = (* Scan);
 	      GC_RAW_POINTER (Setup_Internal (true,
-					      TRANSPORT_RAW_QUADRUPLE (),
+					      TRANSPORT_RAW_TRIPLE (),
 					      RAW_BH (true, continue)));
 	    }
 	    Scan -= 1;

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: psbtobin.c,v 9.58 2000/01/18 05:09:07 cph Exp $
+$Id: psbtobin.c,v 9.59 2001/08/07 01:26:49 cph Exp $
 
-Copyright (c) 1987-2000 Massachusetts Institute of Technology
+Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* This file contains the code to translate portable format binary
@@ -952,13 +953,13 @@ DEFUN (Read_Pointers_and_Relocate, (how_many, to),
 	    continue;
 	  }
 
-	  case C_COMPILED_RAW_QUAD:
+	  case C_COMPILED_RAW_TRIPLE:
 	  {
-	    long quad_datum;
+	    long triple_datum;
 
-	    VMS_BUG (quad_datum = 0);
-	    fscanf (portable_file, "%lx", &quad_datum);
-	    *to++ = (ADDR_TO_SCHEME_ADDR (Relocate (quad_datum)));
+	    VMS_BUG (triple_datum = 0);
+	    fscanf (portable_file, "%lx", &triple_datum);
+	    *to++ = (ADDR_TO_SCHEME_ADDR (Relocate (triple_datum)));
 	    continue;
 	  }
 

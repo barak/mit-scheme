@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.93 2001/07/31 03:11:12 cph Exp $
+$Id: cmpint.c,v 1.94 2001/08/07 01:25:51 cph Exp $
 
 Copyright (c) 1989-2001 Massachusetts Institute of Technology
 
@@ -1427,11 +1427,13 @@ DEFNX (comutil_operator_lookup_trap,
        long ignore_4)
 {
   SCHEME_OBJECT * tramp_data = (SCHEME_ADDR_TO_ADDR (tramp_data_raw));
+  SCHEME_OBJECT cache = (tramp_data[0]);
+  SCHEME_OBJECT block = (tramp_data[1]);
+  unsigned long offset = (OBJECT_DATUM (tramp_data[2]));
   SCHEME_OBJECT true_operator;
   long code
-    = (compiler_operator_reference_trap ((tramp_data[0]), (&true_operator)));
-  SCHEME_OBJECT * cache_cell
-    = (MEMORY_LOC ((tramp_data[1]), (OBJECT_DATUM (tramp_data[2]))));
+    = (compiler_operator_reference_trap (cache, (&true_operator)));
+  SCHEME_OBJECT * cache_cell = (MEMORY_LOC (block, offset));
   long nargs;
 
   EXTRACT_EXECUTE_CACHE_ARITY (nargs, cache_cell);
@@ -1442,13 +1444,13 @@ DEFNX (comutil_operator_lookup_trap,
     SCHEME_OBJECT trampoline;
 
     /* This could be done by bumping tramp_data to the entry point.
-	 It would probably be better.  */
+       It would probably be better.  */
     EXTRACT_EXECUTE_CACHE_ADDRESS (trampoline, cache_cell);
     STACK_PUSH (ENTRY_TO_OBJECT (SCHEME_ADDR_TO_ADDR (trampoline)));
     /* Next three for debugger.  */
     STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (nargs));
-    STACK_PUSH (compiled_block_environment (tramp_data[1]));
-    STACK_PUSH (compiler_var_error (tramp_data[0]));
+    STACK_PUSH (compiled_block_environment (block));
+    STACK_PUSH (compiler_var_error (cache, block, CACHE_REFERENCES_OPERATOR));
     Store_Expression (SHARP_F);
     Store_Return (RC_COMP_OP_REF_TRAP_RESTART);
     Save_Cont ();
@@ -1776,27 +1778,29 @@ DEFUN_VOID (comp_interrupt_restart)
 
 SCHEME_UTILITY utility_result
 DEFNX (comutil_assignment_trap,
-       (return_address_raw, extension_addr_raw, value, ignore_4),
+       (return_address_raw, cache_addr_raw, value, ignore_4),
        SCHEME_ADDR return_address_raw AND
-       SCHEME_ADDR extension_addr_raw AND
+       SCHEME_ADDR cache_addr_raw AND
        SCHEME_OBJECT value AND
        long ignore_4)
 {
   instruction * return_address
     = ((instruction *) (SCHEME_ADDR_TO_ADDR (return_address_raw)));
-  SCHEME_OBJECT extension
+  SCHEME_OBJECT cache
     = (MAKE_POINTER_OBJECT
-       (TC_QUAD, (SCHEME_ADDR_TO_ADDR (extension_addr_raw))));
-  long code = (compiler_assignment_trap (extension, value, (&Val)));
+       (CACHE_TYPE, (SCHEME_ADDR_TO_ADDR (cache_addr_raw))));
+  long code = (compiler_assignment_trap (cache, value, (&Val)));
   if (code == PRIM_DONE)
     RETURN_TO_SCHEME (return_address);
   else
     {
       SCHEME_OBJECT sra = (ENTRY_TO_OBJECT (return_address));
+      SCHEME_OBJECT block = (compiled_entry_to_block (sra));
       STACK_PUSH (sra);
       STACK_PUSH (value);
-      STACK_PUSH (compiled_block_environment (compiled_entry_to_block (sra)));
-      STACK_PUSH (compiler_var_error (extension));
+      STACK_PUSH (compiled_block_environment (block));
+      STACK_PUSH
+	(compiler_var_error (cache, block, CACHE_REFERENCES_ASSIGNMENT));
       Store_Expression (SHARP_F);
       Store_Return (RC_COMP_ASSIGNMENT_TRAP_RESTART);
       Save_Cont ();
@@ -1827,28 +1831,27 @@ DEFUN_VOID (comp_assignment_trap_restart)
 
 SCHEME_UTILITY utility_result
 DEFNX (comutil_cache_lookup_apply,
-       (extension_addr_raw, block_address_raw, nactuals, ignore_4),
-       SCHEME_ADDR extension_addr_raw AND
+       (cache_addr_raw, block_address_raw, nactuals, ignore_4),
+       SCHEME_ADDR cache_addr_raw AND
        SCHEME_ADDR block_address_raw AND
        long nactuals AND
        long ignore_4)
 {
-  SCHEME_OBJECT extension
+  SCHEME_OBJECT cache
     = (MAKE_POINTER_OBJECT
-       (TC_QUAD, (SCHEME_ADDR_TO_ADDR (extension_addr_raw))));
+       (CACHE_TYPE, (SCHEME_ADDR_TO_ADDR (cache_addr_raw))));
   SCHEME_OBJECT value;
-  long code = (compiler_lookup_trap (extension, (&value)));
+  long code = (compiler_lookup_trap (cache, (&value)));
   if (code == PRIM_DONE)
     return (comutil_apply (value, nactuals, 0, 0));
   {
     SCHEME_OBJECT block
       = (MAKE_CC_BLOCK (SCHEME_ADDR_TO_ADDR (block_address_raw)));
-    SCHEME_OBJECT environment = (compiled_block_environment (block));
-    SCHEME_OBJECT name = (compiler_var_error (extension));
     STACK_PUSH (block);
     STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (nactuals));
-    STACK_PUSH (environment);
-    STACK_PUSH (name);
+    STACK_PUSH (compiled_block_environment (block));
+    STACK_PUSH
+      (compiler_var_error (cache, block, CACHE_REFERENCES_OPERATOR));
     Store_Expression (SHARP_F);
     Store_Return (RC_COMP_CACHE_REF_APPLY_RESTART);
     Save_Cont ();
@@ -1890,28 +1893,29 @@ DEFUN_VOID (comp_cache_lookup_apply_restart)
 #define CMPLR_REF_TRAP(name, c_trap, ret_code, restart, c_lookup)	\
 SCHEME_UTILITY utility_result						\
 DEFNX (name,								\
-       (return_address_raw, extension_addr_raw, ignore_3, ignore_4),	\
+       (return_address_raw, cache_addr_raw, ignore_3, ignore_4),	\
        SCHEME_ADDR return_address_raw AND				\
-       SCHEME_ADDR extension_addr_raw AND				\
+       SCHEME_ADDR cache_addr_raw AND					\
        long ignore_3 AND						\
        long ignore_4)							\
 {									\
   instruction * return_address						\
     = ((instruction *) (SCHEME_ADDR_TO_ADDR (return_address_raw)));	\
-  SCHEME_OBJECT extension						\
+  SCHEME_OBJECT cache							\
     = (MAKE_POINTER_OBJECT						\
-       (TC_QUAD, (SCHEME_ADDR_TO_ADDR (extension_addr_raw))));		\
-  long code = (c_trap (extension, (&Val)));				\
+       (CACHE_TYPE, (SCHEME_ADDR_TO_ADDR (cache_addr_raw))));		\
+  long code = (c_trap (cache, (&Val)));					\
   if (code == PRIM_DONE)						\
     RETURN_TO_SCHEME (return_address);					\
   else									\
     {									\
       SCHEME_OBJECT sra = (ENTRY_TO_OBJECT (return_address));		\
+      SCHEME_OBJECT block = (compiled_entry_to_block (sra));		\
       STACK_PUSH (sra);							\
+      STACK_PUSH (compiled_block_environment (block));			\
       STACK_PUSH							\
-	(compiled_block_environment					\
-	 (compiled_entry_to_block (sra)));				\
-      STACK_PUSH (compiler_var_error (extension));			\
+	(compiler_var_error						\
+	 (cache, block, CACHE_REFERENCES_LOOKUP));			\
       Store_Expression (SHARP_F);					\
       Store_Return (ret_code);						\
       Save_Cont ();							\

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: lookprm.c,v 1.14 2001/08/02 04:30:03 cph Exp $
+$Id: lookprm.c,v 1.15 2001/08/07 01:26:22 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -168,7 +168,26 @@ If SYMBOL is already bound in ENV1, the existing binding is modified.")
   CHECK_ARG (1, ENVIRONMENT_P);
   CHECK_ARG (2, ENVIRONMENT_P);
   CHECK_ARG (3, SYMBOL_P);
-  STD_LOOKUP (link_variable ((ARG_REF (1)), (ARG_REF (2)), (ARG_REF (3))));
+  STD_LOOKUP
+    (link_variables ((ARG_REF (1)), (ARG_REF (3)),
+		     (ARG_REF (2)), (ARG_REF (3))));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("LINK-VARIABLES", Prim_link_variables, 4, 4,
+		  "(TARGET-ENV TARGET-NAME SOURCE-ENV SOURCE-NAME)\n
+Define a new binding for TARGET-NAME in TARGET-ENV, which shares its\n
+value cell with the binding for SOURCE-NAME in SOURCE-ENV.\n
+SOURCE-NAME must be bound in SOURCE-ENV.")
+{
+  PRIMITIVE_HEADER (4);
+  CHECK_ARG (1, ENVIRONMENT_P);
+  CHECK_ARG (2, SYMBOL_P);
+  CHECK_ARG (3, ENVIRONMENT_P);
+  CHECK_ARG (4, SYMBOL_P);
+  STD_LOOKUP
+    (link_variables ((ARG_REF (1)), (ARG_REF (2)),
+		     (ARG_REF (3)), (ARG_REF (4))));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 

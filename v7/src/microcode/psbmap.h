@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: psbmap.h,v 9.44 2000/12/05 21:23:48 cph Exp $
+$Id: psbmap.h,v 9.45 2001/08/07 01:26:41 cph Exp $
 
-Copyright (c) 1987-2000 Massachusetts Institute of Technology
+Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* This file contains macros and declarations for "bintopsb.c"
@@ -57,7 +58,7 @@ extern double
   EXFUN (frexp, (double, int *)),
   EXFUN (ldexp, (double, int));
 
-#define PORTABLE_VERSION	6
+#define PORTABLE_VERSION	7
 
 /* Number of objects which, when traced recursively, point at all other
    objects dumped.
@@ -167,7 +168,7 @@ static Boolean nmv_p = false;
 #define C_COMPILED_CLOSURE_HEADER		3
 #define C_COMPILED_MULTI_CLOSURE_HEADER		4
 #define C_COMPILED_LINKAGE_HEADER		5
-#define C_COMPILED_RAW_QUAD			6
+#define C_COMPILED_RAW_TRIPLE			6
 #define C_COMPILED_EXECUTE_ENTRY		7
 #define C_COMPILED_EXECUTE_ARITY		8
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchgcl.c,v 9.52 2001/02/12 22:32:20 cph Exp $
+$Id: bchgcl.c,v 9.53 2001/08/07 01:25:26 cph Exp $
 
 Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* This is the main GC loop for bchscheme.  */
@@ -460,7 +461,7 @@ DEFUN (gc_loop,
 	    case REFERENCE_LINKAGE_KIND:
 	    case ASSIGNMENT_LINKAGE_KIND:
 	      {
-		/* `count' typeless pointers to quads follow. */
+		/* `count' typeless pointers to hunk3s follow. */
 		unsigned long count = (READ_CACHE_LINKAGE_COUNT (object));
 		scan += 1;
 		while (count > 0)
@@ -478,11 +479,10 @@ DEFUN (gc_loop,
 			(*free++) = (old_start[0]);
 			(*free++) = (old_start[1]);
 			(*free++) = (old_start[2]);
-			(*free++) = (old_start[3]);
 			MAYBE_DUMP_FREE (free);
 			(*scan++) = (ADDR_TO_SCHEME_ADDR (new_address));
 			(*old_start) = (MAKE_BROKEN_HEART (new_address));
-			new_address += 4;
+			new_address += 3;
 		      }
 		    count -= 1;
 		  }

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: purify.c,v 9.59 2000/12/05 21:23:48 cph Exp $
+$Id: purify.c,v 9.60 2001/08/07 01:27:03 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* This file contains the code that copies objects into pure
@@ -147,7 +148,7 @@ DEFUN (purifyloop, (Scan, To_Pointer, GC_Mode),
 	    {
 	      Temp = (* Scan);
 	      PURIFY_RAW_POINTER (Setup_Internal (false,
-						  TRANSPORT_RAW_QUADRUPLE (),
+						  TRANSPORT_RAW_TRIPLE (),
 						  RAW_BH (false, continue)));
 	    }
 	    Scan -= 1;

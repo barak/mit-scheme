@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fasload.c,v 9.89 2001/07/31 03:11:26 cph Exp $
+$Id: fasload.c,v 9.90 2001/08/07 01:26:05 cph Exp $
 
 Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
@@ -465,9 +465,8 @@ DEFUN (Relocate_Block, (Scan, Stop_At),
 	  case REFERENCE_LINKAGE_KIND:
 	  case ASSIGNMENT_LINKAGE_KIND:
 	  {
-	    /* Assumes that all others are objects of type TC_QUAD without
-	       their type codes.
-	       */
+	    /* Assumes that all others are objects of type TC_HUNK3
+	       without their type codes.  */
 
 	    fast long count;
 

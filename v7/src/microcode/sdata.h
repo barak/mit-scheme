@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: sdata.h,v 9.37 2001/08/02 04:30:16 cph Exp $
+$Id: sdata.h,v 9.38 2001/08/07 01:27:09 cph Exp $
 
 Copyright (c) 1987-1989, 1999, 2001 Massachusetts Institute of Technology
 
@@ -425,47 +425,36 @@ USA.
 #define GET_TRAP_TAG(object)						\
   (MEMORY_REF ((object), TRAP_TAG))
 
-#define GET_TRAP_EXTENSION(object)					\
+#define GET_TRAP_CACHE(object)						\
   (MEMORY_REF ((object), TRAP_EXTRA))
 
-/* Traps can be extended for the use of the fast variable reference
-   mechanism in compiled code.  The following is the format of a trap
-   extension object.  */
-
-#define TRAP_EXTENSION_CELL			HUNK4_CXR0
-#define TRAP_EXTENSION_NAME			HUNK4_CXR1
-#define TRAP_EXTENSION_CLONE			HUNK4_CXR2
-#define TRAP_EXTENSION_REFERENCES		HUNK4_CXR3
+#define CACHE_CELL				HUNK3_CXR0
+#define CACHE_CLONE				HUNK3_CXR1
+#define CACHE_REFERENCES			HUNK3_CXR2
 
 #define CACHE_REFERENCES_LOOKUP			HUNK3_CXR0
 #define CACHE_REFERENCES_ASSIGNMENT		HUNK3_CXR1
 #define CACHE_REFERENCES_OPERATOR		HUNK3_CXR2
 
-#define GET_TRAP_CACHE GET_TRAP_EXTENSION
-
 
 #define GET_CACHE_VALUE(cache)						\
-  (MEMORY_REF ((cache), TRAP_EXTENSION_CELL))
+  (MEMORY_REF ((cache), CACHE_CELL))
 
 #define SET_CACHE_VALUE(cache, value)					\
-  MEMORY_SET ((cache), TRAP_EXTENSION_CELL, (value))
-
-#define GET_CACHE_NAME(cache)						\
-  (MEMORY_REF ((cache), TRAP_EXTENSION_NAME))
+  MEMORY_SET ((cache), CACHE_CELL, (value))
 
 #define GET_CACHE_CLONE(cache)						\
-  (MEMORY_REF ((cache), TRAP_EXTENSION_CLONE))
+  (MEMORY_REF ((cache), CACHE_CLONE))
 
 #define SET_CACHE_CLONE(cache, clone)					\
-  MEMORY_SET ((cache), TRAP_EXTENSION_CLONE, (clone))
+  MEMORY_SET ((cache), CACHE_CLONE, (clone))
 
 #define GET_CACHE_REFERENCES_OBJECT(cache)				\
-  (MEMORY_REF ((cache), TRAP_EXTENSION_REFERENCES))
+  (MEMORY_REF ((cache), CACHE_REFERENCES))
 
 
 #define GET_CACHE_REFERENCES(cache, kind)				\
-  (MEMORY_LOC ((MEMORY_REF ((cache), TRAP_EXTENSION_REFERENCES)),	\
-	       (kind)))
+  (MEMORY_LOC ((GET_CACHE_REFERENCES_OBJECT (cache)), (kind)))
 
 #define GET_CACHE_LOOKUP_REFERENCES(cache)				\
   (GET_CACHE_REFERENCES ((cache), CACHE_REFERENCES_LOOKUP))

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: gccode.h,v 9.57 2000/12/05 21:23:44 cph Exp $
+$Id: gccode.h,v 9.58 2001/08/07 01:26:09 cph Exp $
 
-Copyright (c) 1987-2000 Massachusetts Institute of Technology
+Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* This file contains the macros for use in code which does GC-like
@@ -351,24 +352,21 @@ extern SCHEME_OBJECT * gc_objects_referencing_end;
   Pointer_End ();							\
 }
 
-#define TRANSPORT_QUADRUPLE_INTERNAL()					\
+#define TRANSPORT_RAW_TRIPLE()						\
+{									\
+  TRANSPORT_ONE_THING ((*To++) = (*Old++));				\
+  TRANSPORT_ONE_THING ((*To++) = (*Old++));				\
+  TRANSPORT_ONE_THING ((*To++) = (*Old));				\
+  RAW_POINTER_END ();							\
+}
+
+#define Transport_Quadruple()						\
 {									\
   TRANSPORT_ONE_THING ((*To++) = (*Old++));				\
   TRANSPORT_ONE_THING ((*To++) = (*Old++));				\
   TRANSPORT_ONE_THING ((*To++) = (*Old++));				\
   TRANSPORT_ONE_THING ((*To++) = (*Old));				\
-}
-
-#define Transport_Quadruple()						\
-{									\
-  TRANSPORT_QUADRUPLE_INTERNAL ();					\
   Pointer_End ();							\
-}
-
-#define TRANSPORT_RAW_QUADRUPLE()					\
-{									\
-  TRANSPORT_QUADRUPLE_INTERNAL ();					\
-  RAW_POINTER_END ();							\
 }
 
 #ifndef In_Fasdump

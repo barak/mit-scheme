@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: trap.h,v 9.47 2001/08/02 04:24:19 cph Exp $
+$Id: trap.h,v 9.48 2001/08/07 01:27:13 cph Exp $
 
 Copyright (c) 1987-1989, 1999-2001 Massachusetts Institute of Technology
 
@@ -67,8 +67,11 @@ typedef unsigned long trap_kind_t;
    a reference trap object.  */
 #define NON_TRAP_KIND				32
 
-/* These MUST be distinct */
-#define CACHE_TYPE				TC_QUAD
+/* The garbage collector knows that pointers of type CACHE_TYPE point
+   to three words of storage, because these pointers are embedded in
+   compiled-code linkage sections (TC_LINKAGE_SECTION) without types.
+   */
+#define CACHE_TYPE				TC_HUNK3
 #define CACHE_REFERENCES_TYPE			TC_HUNK3
 
 #if (SIZEOF_UNSIGNED_LONG == 4)	/* 32 bit objects */

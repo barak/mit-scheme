@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bintopsb.c,v 9.72 2000/12/05 21:23:43 cph Exp $
+$Id: bintopsb.c,v 9.73 2001/08/07 01:25:37 cph Exp $
 
-Copyright (c) 1987-2000 Massachusetts Institute of Technology
+Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* This File contains the code to translate internal format binary
@@ -718,7 +719,7 @@ DEFUN (print_a_flonum, (src), SCHEME_OBJECT * src)
     }									\
 } while (0)
 
-#define DO_RAW_QUAD(Code, Rel, Fre, Scn, Obj, FObj) do			\
+#define DO_RAW_TRIPLE(Code, Rel, Fre, Scn, Obj, FObj) do		\
 {									\
   Old_Address += (Rel);							\
   Old_Contents = (* Old_Address);					\
@@ -729,7 +730,6 @@ DEFUN (print_a_flonum, (src), SCHEME_OBJECT * src)
       (*Old_Address++) = (MAKE_BROKEN_HEART (Fre));			\
       (Mem_Base [(Scn)]) = (Fre);					\
       (Mem_Base [(Fre)++]) = Old_Contents;				\
-      (Mem_Base [(Fre)++]) = (*Old_Address++);				\
       (Mem_Base [(Fre)++]) = (*Old_Address++);				\
       (Mem_Base [(Fre)++]) = (*Old_Address++);				\
     }									\
@@ -1312,7 +1312,7 @@ DEFUN (Process_Area, (Code, Area, Bound, Obj, FObj),
 	      *Area += 1;
 	      while (--count >= 0)
 	      {
-		DO_RAW_POINTER (Mem_Base[*Area], *Area, DO_RAW_QUAD);
+		DO_RAW_POINTER (Mem_Base[*Area], *Area, DO_RAW_TRIPLE);
 		*Area += 1;
 	      }
 	      break;
@@ -1701,12 +1701,12 @@ DEFUN (print_objects, (from, to),
 		     ((long) count));
 	    while (--count >= 0)
 	    {
-	      unsigned long the_quad = ((unsigned long) *from++);
+	      unsigned long the_triple = ((unsigned long) *from++);
 
 	      fprintf (portable_file, "%02x %lx %lx\n",
 		       TC_C_COMPILED_TAG,
-		       ((long) C_COMPILED_RAW_QUAD),
-		       the_quad);
+		       ((long) C_COMPILED_RAW_TRIPLE),
+		       the_triple);
 	    }
 	    break;
 	  }
