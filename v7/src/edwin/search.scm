@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;$Id: search.scm,v 1.150 1999/01/02 06:11:34 cph Exp $
+;;;$Id: search.scm,v 1.151 2001/12/20 20:51:16 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -264,21 +264,23 @@
       (and index
 	   (make-mark group index)))))
 
-(define-macro (default-end-mark start end)
-  `(IF (DEFAULT-OBJECT? ,end)
-       (GROUP-END ,start)
-       (BEGIN
-	 (IF (NOT (MARK<= ,start ,end))
-	     (ERROR "Marks incorrectly related:" ,start ,end))
-	 ,end)))
+(define-syntax default-end-mark
+  (lambda (start end)
+    `(IF (DEFAULT-OBJECT? ,end)
+	 (GROUP-END ,start)
+	 (BEGIN
+	   (IF (NOT (MARK<= ,start ,end))
+	       (ERROR "Marks incorrectly related:" ,start ,end))
+	   ,end))))
 
-(define-macro (default-start-mark start end)
-  `(IF (DEFAULT-OBJECT? ,start)
-       (GROUP-START ,end)
-       (BEGIN
-	 (IF (NOT (MARK<= ,start ,end))
-	     (ERROR "Marks incorrectly related:" ,start ,end))
-	 ,start)))
+(define-syntax default-start-mark
+  (lambda (start end)
+    `(IF (DEFAULT-OBJECT? ,start)
+	 (GROUP-START ,end)
+	 (BEGIN
+	   (IF (NOT (MARK<= ,start ,end))
+	       (ERROR "Marks incorrectly related:" ,start ,end))
+	   ,start))))
 
 (define (char-match-forward char start #!optional end case-fold-search)
   (and (mark< start (default-end-mark start end))

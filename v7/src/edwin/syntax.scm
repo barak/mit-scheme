@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: syntax.scm,v 1.86 2001/12/18 22:12:30 cph Exp $
+;;; $Id: syntax.scm,v 1.87 2001/12/20 20:51:16 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -191,21 +191,23 @@ a comment ending."
 
 ;;;; Lisp Parsing
 
-(define-macro (default-end/forward start end)
-  `(COND ((DEFAULT-OBJECT? ,end)
-	  (GROUP-END ,start))
-	 ((MARK<= ,start ,end)
-	  ,end)
-	 (ELSE
-	  (ERROR "Marks incorrectly related:" ,start ,end))))
+(define-syntax default-end/forward
+  (lambda (start end)
+    `(COND ((DEFAULT-OBJECT? ,end)
+	    (GROUP-END ,start))
+	   ((MARK<= ,start ,end)
+	    ,end)
+	   (ELSE
+	    (ERROR "Marks incorrectly related:" ,start ,end)))))
 
-(define-macro (default-end/backward start end)
-  `(COND ((DEFAULT-OBJECT? ,end)
-	  (GROUP-START ,start))
-	 ((MARK>= ,start ,end)
-	  ,end)
-	 (ELSE
-	  (ERROR "Marks incorrectly related:" ,start ,end))))
+(define-syntax default-end/backward
+  (lambda (start end)
+    `(COND ((DEFAULT-OBJECT? ,end)
+	    (GROUP-START ,start))
+	   ((MARK>= ,start ,end)
+	    ,end)
+	   (ELSE
+	    (ERROR "Marks incorrectly related:" ,start ,end)))))
 
 (define (forward-prefix-chars start #!optional end)
   (let ((group (mark-group start))

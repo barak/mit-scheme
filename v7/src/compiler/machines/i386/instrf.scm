@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: instrf.scm,v 1.14 1999/01/02 06:06:43 cph Exp $
+$Id: instrf.scm,v 1.15 2001/12/20 20:51:15 cph Exp $
 
-Copyright (c) 1992, 1999 Massachusetts Institute of Technology
+Copyright (c) 1992, 1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,6 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 |#
 
 ;;;; Intel i387/i486 Instruction Set
@@ -88,13 +87,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (define-binary-flonum FSUB   FSUBP   FISUB   4 #xe0 #xe8)
   (define-binary-flonum FSUBR  FSUBPR  FISUBR  5 #xe8 #xe0))
 
-(define-macro (define-trivial-instruction mnemonic opcode . extra)
-  `(define-instruction ,mnemonic
-     (()
-      (BYTE (8 ,opcode))
-      ,@(map (lambda (extra)
-	       `(BYTE (8 ,extra)))
-	     extra))))
+(define-syntax define-trivial-instruction
+  (lambda (mnemonic opcode . extra)
+    `(define-instruction ,mnemonic
+       (()
+	(BYTE (8 ,opcode))
+	,@(map (lambda (extra)
+		 `(BYTE (8 ,extra)))
+	       extra)))))
 
 (define-trivial-instruction F2XM1 #xd9 #xf0)
 (define-trivial-instruction FABS  #xd9 #xe1)

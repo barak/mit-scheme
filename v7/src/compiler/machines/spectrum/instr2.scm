@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: instr2.scm,v 1.7 1999/01/02 06:06:43 cph Exp $
+$Id: instr2.scm,v 1.8 2001/12/20 20:51:15 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; HP Spectrum Instruction Set Description
@@ -534,14 +535,16 @@ branch-extend-nullify in instr1.
 		     (1  (branch-extend-nullify disp (car compl)))
 		     (1  (branch-extend-disp disp) ASSEMBLE17:Z)))))))))
 
-  (define-macro (defcond name opcode1 opcode2 opr1)
-    `(defccbranch ,name complaltfb ,opcode1 ,opcode2 ,opr1))
+  (define-syntax defcond
+    (lambda (name opcode1 opcode2 opr1)
+      `(defccbranch ,name complaltfb ,opcode1 ,opcode2 ,opr1)))
 
-  (define-macro (defpseudo name opcode opr1)
-    `(defccbranch ,name complalb
-       (TF-adjust ,opcode (cdr compl))
-       (TF-adjust-inverted ,opcode (cdr compl))
-       ,opr1))
+  (define-syntax defpseudo
+    (lambda (name opcode opr1)
+      `(defccbranch ,name complalb
+	 (TF-adjust ,opcode (cdr compl))
+	 (TF-adjust-inverted ,opcode (cdr compl))
+	 ,opr1)))
 
   (defcond COMBT #x20 #x22 (reg-1))
   (defcond COMBF #x22 #x20 (reg-1))
@@ -644,14 +647,16 @@ Note: Only those currently used by the code generator are implemented.
 		     (1  1)
 		     (1  (branch-extend-disp disp) ASSEMBLE17:Z)))))))))
 
-  (define-macro (defcond name opcode1 opcode2 opr1)
-    `(defccbranch ,name complaltf ,opcode1 ,opcode2 ,opr1))
+  (define-syntax defcond
+    (lambda (name opcode1 opcode2 opr1)
+      `(defccbranch ,name complaltf ,opcode1 ,opcode2 ,opr1)))
 
-  (define-macro (defpseudo name opcode opr1)
-    `(defccbranch ,name complal
-       (TF-adjust ,opcode compl)
-       (TF-adjust-inverted ,opcode compl)
-       ,opr1))
+  (define-syntax defpseudo
+    (lambda (name opcode opr1)
+      `(defccbranch ,name complal
+	 (TF-adjust ,opcode compl)
+	 (TF-adjust-inverted ,opcode compl)
+	 ,opr1)))
 
   (defcond COMIBTN #X21 #x23 (immed-5 right-signed))
   (defcond COMIBFN #X23 #x21 (immed-5 right-signed))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: utils.scm,v 1.48 2001/05/10 18:22:34 cph Exp $
+;;; $Id: utils.scm,v 1.49 2001/12/20 20:51:16 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -54,15 +54,17 @@
 		       '(N-WORDS OPERATOR)
 		       standard-error-handler))
 
-(define-macro (chars-to-words-shift)
-  ;; This is written as a macro so that the shift will be a constant
-  ;; in the compiled code.
-  ;; It does not work when cross-compiled!
-  (let ((chars-per-word (vector-ref ((ucode-primitive gc-space-status 0)) 0)))
-    (case chars-per-word
-      ((4) -2)
-      ((8) -3)
-      (else (error "Can't support this word size:" chars-per-word)))))
+(define-syntax chars-to-words-shift
+  (lambda ()
+    ;; This is written as a macro so that the shift will be a constant
+    ;; in the compiled code.
+    ;; It does not work when cross-compiled!
+    (let ((chars-per-word
+	   (vector-ref ((ucode-primitive gc-space-status 0)) 0)))
+      (case chars-per-word
+	((4) -2)
+	((8) -3)
+	(else (error "Can't support this word size:" chars-per-word))))))
 
 (define (edwin-string-allocate n-chars)
   (if (not (fix:fixnum? n-chars))

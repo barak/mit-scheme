@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: os2winp.scm,v 1.15 1999/01/02 06:11:34 cph Exp $
+$Id: os2winp.scm,v 1.16 2001/12/20 20:51:16 cph Exp $
 
-Copyright (c) 1995-1999 Massachusetts Institute of Technology
+Copyright (c) 1995-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; OS/2 PM Interface -- Primitives
@@ -111,16 +112,17 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define-integrable (event-wid event) (vector-ref event 1))
 (define-integrable (set-event-wid! event wid) (vector-set! event 1 wid))
 
-(define-macro (define-event name type . slots)
-  `(BEGIN
-     (DEFINE-INTEGRABLE ,(symbol-append 'EVENT-TYPE: name) ,type)
-     ,@(let loop ((slots slots) (index 2))
-	 (if (null? slots)
-	     '()
-	     (cons `(DEFINE-INTEGRABLE
-		      (,(symbol-append name '-EVENT/ (car slots)) EVENT)
-		      (VECTOR-REF EVENT ,index))
-		   (loop (cdr slots) (+ index 1)))))))
+(define-syntax define-event
+  (lambda (name type . slots)
+    `(BEGIN
+       (DEFINE-INTEGRABLE ,(symbol-append 'EVENT-TYPE: name) ,type)
+       ,@(let loop ((slots slots) (index 2))
+	   (if (null? slots)
+	       '()
+	       (cons `(DEFINE-INTEGRABLE
+			(,(symbol-append name '-EVENT/ (car slots)) EVENT)
+			(VECTOR-REF EVENT ,index))
+		     (loop (cdr slots) (+ index 1))))))))
 
 ;; These must match "microcode/pros2pm.c"
 (define-event button     0 number type x y flags)

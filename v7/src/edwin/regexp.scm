@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: regexp.scm,v 1.75 2001/02/05 18:16:00 cph Exp $
+;;; $Id: regexp.scm,v 1.76 2001/12/20 20:51:16 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -154,26 +154,29 @@
     (group-delete! group start (re-match-end-index 0))
     (make-mark group start)))
 
-(define-macro (default-end-mark start end)
-  `(IF (DEFAULT-OBJECT? ,end)
-       (GROUP-END ,start)
-       (BEGIN
-	 (IF (NOT (MARK<= ,start ,end))
-	     (ERROR "Marks incorrectly related:" ,start ,end))
-	 ,end)))
+(define-syntax default-end-mark
+  (lambda (start end)
+    `(IF (DEFAULT-OBJECT? ,end)
+	 (GROUP-END ,start)
+	 (BEGIN
+	   (IF (NOT (MARK<= ,start ,end))
+	       (ERROR "Marks incorrectly related:" ,start ,end))
+	   ,end))))
 
-(define-macro (default-start-mark start end)
-  `(IF (DEFAULT-OBJECT? ,start)
-       (GROUP-START ,end)
-       (BEGIN
-	 (IF (NOT (MARK<= ,start ,end))
-	     (ERROR "Marks incorrectly related:" ,start ,end))
-	 ,start)))
+(define-syntax default-start-mark
+  (lambda (start end)
+    `(IF (DEFAULT-OBJECT? ,start)
+	 (GROUP-START ,end)
+	 (BEGIN
+	   (IF (NOT (MARK<= ,start ,end))
+	       (ERROR "Marks incorrectly related:" ,start ,end))
+	   ,start))))
 
-(define-macro (default-case-fold-search case-fold-search mark)
-  `(IF (DEFAULT-OBJECT? ,case-fold-search)
-       (GROUP-CASE-FOLD-SEARCH (MARK-GROUP ,mark))
-       ,case-fold-search))
+(define-syntax default-case-fold-search
+  (lambda (case-fold-search mark)
+    `(IF (DEFAULT-OBJECT? ,case-fold-search)
+	 (GROUP-CASE-FOLD-SEARCH (MARK-GROUP ,mark))
+	 ,case-fold-search)))
 
 (define (search-forward string start #!optional end case-fold-search)
   (%re-search string start (default-end-mark start end)

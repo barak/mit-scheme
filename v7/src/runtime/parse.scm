@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.33 1999/05/15 02:50:34 cph Exp $
+$Id: parse.scm,v 14.34 2001/12/20 20:51:16 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Scheme Parser
@@ -274,21 +275,22 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define *parser-associate-positions?*)
 (define *parser-current-position*)
 
-(define-macro (define-accretor param-list-1 param-list-2 . body)
-  (let ((real-param-list (if (number? param-list-1)
-			     param-list-2
-			     param-list-1))
-	(real-body (if (number? param-list-1)
-		       body
-		       (cons param-list-2 body)))
-	(offset (if (number? param-list-1)
-		    param-list-1
-		    0)))
-    `(define ,real-param-list
-       (let ((core (lambda () ,@real-body)))
-	 (if *parser-associate-positions?*
-	     (recording-object-position ,offset core)
-	     (core))))))
+(define-syntax define-accretor
+  (lambda (param-list-1 param-list-2 . body)
+    (let ((real-param-list (if (number? param-list-1)
+			       param-list-2
+			       param-list-1))
+	  (real-body (if (number? param-list-1)
+			 body
+			 (cons param-list-2 body)))
+	  (offset (if (number? param-list-1)
+		      param-list-1
+		      0)))
+      `(DEFINE ,real-param-list
+	 (LET ((CORE (LAMBDA () ,@real-body)))
+	   (IF *PARSER-ASSOCIATE-POSITIONS?*
+	       (RECORDING-OBJECT-POSITION ,offset CORE)
+	       (CORE)))))))
 
 (define (current-position-getter port)
   (cond ((input-port/operation port 'POSITION)

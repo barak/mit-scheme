@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rgxcmp.scm,v 1.116 2001/09/25 05:07:50 cph Exp $
+;;; $Id: rgxcmp.scm,v 1.117 2001/12/20 20:51:16 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -26,16 +26,17 @@
 
 ;;;; Compiled Opcodes
 
-(define-macro (define-enumeration name prefix . suffixes)
-  `(BEGIN
-     ,@(let loop ((n 0) (suffixes suffixes))
-	 (if (null? suffixes)
-	     '()
-	     (cons `(DEFINE-INTEGRABLE ,(symbol-append prefix (car suffixes))
-		      ,n)
-		   (loop (1+ n) (cdr suffixes)))))
-     (DEFINE ,name
-       (VECTOR ,@(map (lambda (suffix) `',suffix) suffixes)))))
+(define-syntax define-enumeration
+  (lambda (name prefix . suffixes)
+    `(BEGIN
+       ,@(let loop ((n 0) (suffixes suffixes))
+	   (if (null? suffixes)
+	       '()
+	       (cons `(DEFINE-INTEGRABLE ,(symbol-append prefix (car suffixes))
+			,n)
+		     (loop (1+ n) (cdr suffixes)))))
+       (DEFINE ,name
+	 (VECTOR ,@(map (lambda (suffix) `',suffix) suffixes))))))
 
 (define-enumeration re-codes re-code:
 

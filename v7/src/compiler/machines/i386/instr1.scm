@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: instr1.scm,v 1.12 2001/12/16 06:01:31 cph Exp $
+$Id: instr1.scm,v 1.13 2001/12/20 20:51:15 cph Exp $
 
 Copyright (c) 1992, 1999, 2001 Massachusetts Institute of Technology
 
@@ -30,13 +30,14 @@ USA.
 
 ;; Utility
 
-(define-macro (define-trivial-instruction mnemonic opcode . extra)
-  `(define-instruction ,mnemonic
-     (()
-      (BYTE (8 ,opcode))
-      ,@(map (lambda (extra)
-	       `(BYTE (8 ,extra)))
-	     extra))))
+(define-syntax define-trivial-instruction
+  (lambda (mnemonic opcode . extra)
+    `(define-instruction ,mnemonic
+       (()
+	(BYTE (8 ,opcode))
+	,@(map (lambda (extra)
+		 `(BYTE (8 ,extra)))
+	       extra)))))
 
 ;;;; Pseudo ops
 

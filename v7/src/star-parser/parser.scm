@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.scm,v 1.29 2001/12/20 06:40:11 cph Exp $
+;;; $Id: parser.scm,v 1.30 2001/12/20 20:51:16 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -216,13 +216,14 @@
 	   ,(delay-call ks v kf)
 	   ,(delay-call kf)))))
 
-(define-macro (define-parser form . compiler-body)
-  (let ((name (car form))
-	(parameters (cdr form)))
-    `(DEFINE-PARSER-COMPILER ',name
-       ,(if (symbol? parameters) `#F (length parameters))
-       (LAMBDA (POINTER KS KF . ,parameters)
-	 ,@compiler-body))))
+(define-syntax define-parser
+  (lambda (form . compiler-body)
+    (let ((name (car form))
+	  (parameters (cdr form)))
+      `(DEFINE-PARSER-COMPILER ',name
+	 ,(if (symbol? parameters) `#F (length parameters))
+	 (LAMBDA (POINTER KS KF . ,parameters)
+	   ,@compiler-body)))))
 
 (define (define-parser-compiler keyword arity compiler)
   (hash-table/put! parser-compilers keyword (cons arity compiler))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: os2pm.scm,v 1.8 1999/01/02 06:11:34 cph Exp $
+$Id: os2pm.scm,v 1.9 2001/12/20 20:51:16 cph Exp $
 
-Copyright (c) 1995-1999 Massachusetts Institute of Technology
+Copyright (c) 1995-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Program to generate OS/2 PM interface code.
@@ -50,35 +51,37 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;;; Syntax
 
-(define-macro (define-pm-procedure name . clauses)
-  (let ((external-name (if (pair? name) (car name) name))
-	(internal-name (if (pair? name) (cadr name) name)))
-    `(BEGIN
-       (HASH-TABLE/PUT! PM-PROCEDURES ',external-name
-	 (MAKE-PMP (TRANSLATE-NAME ',external-name)
-		   (TRANSLATE-NAME ',internal-name)
-		   ,(let ((clause (assq 'VALUE clauses)))
-		      (if clause
-			  (let ((val (cadr clause)))
-			    (if (symbol? val)
-				(if (eq? val 'SYNC)
-				    `',val
-				    `(TRANSLATE-TYPE/NAME ',`((ID ,val) ,val)))
-				`(TRANSLATE-TYPE/NAME ',val)))
-			  '#F))
-		   ,(let ((args
-			   (let ((clause (assq 'ARGUMENTS clauses)))
-			     (if (not clause)
-				 (error "ARGUMENTS clause is required:" name))
-			     (cdr clause))))
-		      `(CONS (TRANSLATE-TYPE/NAME
-			      ',(if (symbol? (car args))
-				    `((ID ,(car args)) ,(car args))
-				    (car args)))
-			     (LIST ,@(map (lambda (arg)
-					    `(TRANSLATE-TYPE/NAME ',arg))
-					  (cdr args)))))))
-       ',external-name)))
+(define-syntax define-pm-procedure
+  (lambda (name . clauses)
+    (let ((external-name (if (pair? name) (car name) name))
+	  (internal-name (if (pair? name) (cadr name) name)))
+      `(BEGIN
+	 (HASH-TABLE/PUT! PM-PROCEDURES ',external-name
+	   (MAKE-PMP (TRANSLATE-NAME ',external-name)
+		     (TRANSLATE-NAME ',internal-name)
+		     ,(let ((clause (assq 'VALUE clauses)))
+			(if clause
+			    (let ((val (cadr clause)))
+			      (if (symbol? val)
+				  (if (eq? val 'SYNC)
+				      `',val
+				      `(TRANSLATE-TYPE/NAME
+					',`((ID ,val) ,val)))
+				  `(TRANSLATE-TYPE/NAME ',val)))
+			    '#F))
+		     ,(let ((args
+			     (let ((clause (assq 'ARGUMENTS clauses)))
+			       (if (not clause)
+				   (error "ARGUMENTS clause is required:" name))
+			       (cdr clause))))
+			`(CONS (TRANSLATE-TYPE/NAME
+				',(if (symbol? (car args))
+				      `((ID ,(car args)) ,(car args))
+				      (car args)))
+			       (LIST ,@(map (lambda (arg)
+					      `(TRANSLATE-TYPE/NAME ',arg))
+					    (cdr args)))))))
+	 ',external-name))))
 
 (define (translate-type/name tn)
   (cond ((and (pair? tn)

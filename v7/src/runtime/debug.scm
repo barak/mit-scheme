@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: debug.scm,v 14.40 1999/12/20 23:08:22 cph Exp $
+$Id: debug.scm,v 14.41 2001/12/20 20:51:16 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Debugger
@@ -205,13 +206,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define command-set)
 
-(define-macro (define-command bvl . body)
-  (let ((dstate (cadr bvl))
-	(port (caddr bvl)))
-    `(DEFINE (,(car bvl) #!OPTIONAL ,dstate ,port)
-       (LET ((,dstate (IF (DEFAULT-OBJECT? ,dstate) *DSTATE* ,dstate))
-	     (,port (IF (DEFAULT-OBJECT? ,port) *PORT* ,port)))
-	 ,@body))))
+(define-syntax define-command
+  (lambda (bvl . body)
+    (let ((dstate (cadr bvl))
+	  (port (caddr bvl)))
+      `(DEFINE (,(car bvl) #!OPTIONAL ,dstate ,port)
+	 (LET ((,dstate (IF (DEFAULT-OBJECT? ,dstate) *DSTATE* ,dstate))
+	       (,port (IF (DEFAULT-OBJECT? ,port) *PORT* ,port)))
+	   ,@body)))))
 
 ;;;; Display commands
 

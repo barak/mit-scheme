@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 14.44 2001/12/20 20:38:29 cph Exp $
+$Id: syntax.scm,v 14.45 2001/12/20 20:51:16 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -63,7 +63,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 	      ;; Syntax extensions
 	      (DEFINE-SYNTAX ,syntax/define-syntax)
-	      (DEFINE-MACRO ,syntax/define-macro)
 	      (LET-SYNTAX ,syntax/let-syntax)
 	      (MACRO ,syntax/lambda)
 
@@ -445,13 +444,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (syntax-table/define *syntax-table* name
     (syntax-eval (syntax-subexpression value)))
   name)
-
-(define (syntax/define-macro top-level? pattern . body)
-  top-level?
-  (let ((keyword (car pattern)))
-    (syntax-table/define *syntax-table* keyword
-      (syntax-eval (apply syntax/named-lambda #f pattern body)))
-    keyword))
 
 (define-integrable (syntax-eval scode)
   (extended-scode-eval scode syntaxer/default-environment))

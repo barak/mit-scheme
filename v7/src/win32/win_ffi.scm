@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: win_ffi.scm,v 1.6 1999/01/02 06:19:10 cph Exp $
+$Id: win_ffi.scm,v 1.7 2001/12/20 20:51:16 cph Exp $
 
-Copyright (c) 1993, 1999 Massachusetts Institute of Technology
+Copyright (c) 1993, 1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Foreign function interface
@@ -52,42 +53,44 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    "Bad argument type for foreign procedure: "  type  'value:  arg))
 
 
-(define-macro (call-case n)
-;;  Generate code like this:
-;;    (lambda (module-entry)
-;;	(let ((arg1-type (list-ref arg-types 0))
-;;	      (arg2-type (list-ref arg-types 1)))
-;;	  (lambda (arg1 arg2)
-;;	    (result-type (%call-foreign-function
-;;	                   (module-entry/machine-address module-entry)
-;;			   (arg1-type arg1)
-;;			   (arg2-type arg2)))))))
+(define-syntax call-case
+  (lambda (n)
+    #|
+    ;; Generate code like this:
+    (lambda (module-entry)
+	(let ((arg1-type (list-ref arg-types 0))
+	      (arg2-type (list-ref arg-types 1)))
+	  (lambda (arg1 arg2)
+	    (result-type (%call-foreign-function
+	                   (module-entry/machine-address module-entry)
+			   (arg1-type arg1)
+			   (arg2-type arg2)))))))
+    |#
+    (define (map-index f i n)
+      (if (<= i n)
+	  (cons (f i) (map-index f (1+ i) n))
+	  '()))
+    (define (->string thing)
+      (cond  ((string? thing)  thing)
+	     ((symbol? thing)  (symbol-name thing))
+	     ((number? thing)  (number->string thing))))
+    (define (concat . things)
+      (string->symbol (apply string-append (map ->string things))))
 
-  (define (map-index f i n)
-    (if (<= i n)
-	(cons (f i) (map-index f (1+ i) n))
-	'()))
-  (define (->string thing)
-    (cond  ((string? thing)  thing)
-	   ((symbol? thing)  (symbol-name thing))
-	   ((number? thing)  (number->string thing))))
-  (define (concat . things)
-    (string->symbol (apply string-append (map ->string things))))
+    (let* ((arg-names  (map-index (lambda (i) (concat "arg" i)) 1 n))
+	   (type-names (map-index (lambda (i) (concat "arg" i "-type")) 1 n))
+	   (indexes    (map-index identity-procedure 1 n))
+	   (type-binds (map (lambda (type-name index) 
+			      `(,type-name (list-ref arg-types ,(- index 1))))
+			    type-names indexes))
+	   (conversions (map list type-names arg-names)))
 
-  (let* ((arg-names  (map-index (lambda (i) (concat "arg" i)) 1 n))
- 	 (type-names (map-index (lambda (i) (concat "arg" i "-type")) 1 n))
-	 (indexes    (map-index identity-procedure 1 n))
-	 (type-binds (map (lambda (type-name index) 
-			    `(,type-name (list-ref arg-types ,(- index 1))))
-			  type-names indexes))
-	 (conversions (map list type-names arg-names)))
-
-    `(lambda (module-entry)
-       (let ,type-binds
-	   (lambda ,arg-names
-	     (result-type (%call-foreign-function
-			   (module-entry/machine-address module-entry)
-			   . ,conversions)))))))
+      `(lambda (module-entry)
+	 (let ,type-binds
+	     (lambda ,arg-names
+	       (result-type (%call-foreign-function
+			     (module-entry/machine-address module-entry)
+			     . ,conversions))))))))
 
 
 (define (make-windows-procedure lib name result-type . arg-types)

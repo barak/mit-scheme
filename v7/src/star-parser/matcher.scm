@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: matcher.scm,v 1.26 2001/12/20 06:39:41 cph Exp $
+;;; $Id: matcher.scm,v 1.27 2001/12/20 20:51:16 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -225,13 +225,14 @@
        ,(delay-call ks kf)
        ,(delay-call kf)))
 
-(define-macro (define-matcher form . compiler-body)
-  (let ((name (car form))
-	(parameters (cdr form)))
-    `(DEFINE-MATCHER-COMPILER ',name
-       ,(if (symbol? parameters) `#F (length parameters))
-       (LAMBDA (POINTER KS KF . ,parameters)
-	 ,@compiler-body))))
+(define-syntax define-matcher
+  (lambda (form . compiler-body)
+    (let ((name (car form))
+	  (parameters (cdr form)))
+      `(DEFINE-MATCHER-COMPILER ',name
+	 ,(if (symbol? parameters) `#F (length parameters))
+	 (LAMBDA (POINTER KS KF . ,parameters)
+	   ,@compiler-body)))))
 
 (define (define-matcher-compiler keyword arity compiler)
   (hash-table/put! matcher-compilers keyword (cons arity compiler))
@@ -240,10 +241,11 @@
 (define matcher-compilers
   (make-eq-hash-table))
 
-(define-macro (define-atomic-matcher form test-expression)
-  `(DEFINE-MATCHER ,form
-     POINTER
-     (WRAP-EXTERNAL-MATCHER ,test-expression KS KF)))
+(define-syntax define-atomic-matcher
+  (lambda (form test-expression)
+    `(DEFINE-MATCHER ,form
+       POINTER
+       (WRAP-EXTERNAL-MATCHER ,test-expression KS KF))))
 
 (define-atomic-matcher (char char)
   `(MATCH-PARSER-BUFFER-CHAR ,*buffer-name* (PROTECT ,char)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 4.20 1999/01/02 06:06:43 cph Exp $
+$Id: utils.scm,v 4.21 2001/12/20 20:51:15 cph Exp $
 
 Copyright (c) 1987-1999 Massachusetts Institute of Technology
 
@@ -62,7 +62,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
      (symbol->string
       (cond ((eq? prefix lambda-tag:unnamed) 'LAMBDA)
 	    ((eq? prefix lambda-tag:let) 'LET)
-	    ((eq? prefix lambda-tag:make-environment) 'MAKE-ENVIRONMENT)
 	    ((eq? prefix lambda-tag:fluid-let) 'FLUID-LET)
 	    (else prefix)))
      "-"
