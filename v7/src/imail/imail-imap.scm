@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.45 2000/05/16 18:55:37 cph Exp $
+;;; $Id: imail-imap.scm,v 1.46 2000/05/16 18:59:42 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -53,11 +53,13 @@
   (let ((constructor
 	 (instance-constructor <imap-url> '(USER-ID HOST PORT MAILBOX))))
     (lambda (user-id host port mailbox)
-      (let ((default (imail-default-imap-url)))
-	(constructor (or user-id (imap-url-user-id default))
-		     (or host (imap-url-host default))
-		     (or port (imap-url-port default))
-		     (or mailbox (imap-url-mailbox default)))))))
+      (if (and user-id host port mailbox)
+	  (constructor user-id host port mailbox)
+	  (let ((default (imail-default-imap-url)))
+	    (constructor (or user-id (imap-url-user-id default))
+			 (or host (imap-url-host default))
+			 (or port (imap-url-port default))
+			 (or mailbox (imap-url-mailbox default))))))))
 
 (define imap:parse:imail-url
   (let ((//server
