@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlcsm.scm,v 1.2 1994/11/26 19:02:23 adams Exp $
+$Id: rtlcsm.scm,v 1.3 1995/03/18 15:09:27 adams Exp $
 
 Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
@@ -290,6 +290,7 @@ MIT in each case. |#
   (not (memq (rtl:expression-type expression)
 	     '(INVOCATION:PROCEDURE
 	       INVOCATION:NEW-APPLY
+	       INVOCATION:REGISTER
 	       INVOCATION:UUO-LINK
 	       INVOCATION:GLOBAL-LINK))))
 
