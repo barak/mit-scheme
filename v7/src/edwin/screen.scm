@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: screen.scm,v 1.112 1996/05/15 00:04:34 cph Exp $
+;;;	$Id: screen.scm,v 1.113 1996/07/02 21:01:15 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -551,10 +551,13 @@
 	(string-fill! (vector-ref current-contents y) #\space)
 	(boolean-vector-set! current-enable y true)
 	(boolean-vector-set! current-hl-enable y false)))
-    (set-matrix-cursor-x! new-matrix (matrix-cursor-x current-matrix))
-    (set-matrix-cursor-y! new-matrix (matrix-cursor-y current-matrix))
-    (set-matrix-cursor-x! current-matrix #f)
-    (set-matrix-cursor-y! current-matrix #f))
+    (if (or (matrix-cursor-x current-matrix)
+	    (matrix-cursor-y current-matrix))
+	(begin
+	  (set-matrix-cursor-x! new-matrix (matrix-cursor-x current-matrix))
+	  (set-matrix-cursor-y! new-matrix (matrix-cursor-y current-matrix))
+	  (set-matrix-cursor-x! current-matrix #f)
+	  (set-matrix-cursor-y! current-matrix #f))))
   (set-screen-needs-update?! screen true))
 
 (define (screen-scroll-lines-down screen xl xu yl yu amount)
