@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dragon4.scm,v 1.2 1989/10/30 22:36:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dragon4.scm,v 1.3 1990/01/15 21:27:25 cph Exp $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -43,49 +43,71 @@ MIT in each case. |#
 	   (let ((p flo:significand-digits-base-2))
 	     (with-values (lambda () (dragon4-normalize x p))
 	       (lambda (f e)
-		 (dragon4 f e p radix 'NORMAL 0
-		   (lambda (u k generate)
-		     (let ((digits
-			    (list->string
-			     (let loop ((u u) (k k) (generate generate))
-			       k	;ignore
-			       (if (negative? u)
-				   '()
-				   (cons (digit->char u radix)
-					 (generate loop)))))))
-		       (let ((k+1 (1+ k)))
-			 (let ((k+1-l (- k+1 (string-length digits)))
-			       (n (flo:significand-digits radix))
-			       (scientific
-				(lambda ()
-				  (string-append (string-head digits 1)
-						 "."
-						 (string-tail digits 1)
-						 "e"
-						 (int:->string k radix)))))
-			   (cond ((< k+1-l (- n))
-				  (scientific))
-				 ((negative? k)
-				  (string-append "."
-						 (make-string (- k+1) #\0)
-						 digits))
-				 ((negative? k+1-l)
-				  (string-append (string-head digits k+1)
-						 "."
-						 (string-tail digits k+1)))
-				 ((<= k n)
-				  (string-append digits
-						 (make-string k+1-l #\0)
-						 "."))
-				 (else
-				  (scientific))))))))))))))
+		 (with-values flonum-unparser-cutoff-args
+		   (lambda (cutoff-mode cutoff)
+		     (dragon4 f e p radix cutoff-mode cutoff
+		       (lambda (u k generate)
+			 (let ((digits
+				(list->string
+				 (let loop ((u u) (k k) (generate generate))
+				   k	;ignore
+				   (if (negative? u)
+				       '()
+				       (cons (digit->char u radix)
+					     (generate loop)))))))
+			   (let ((k+1 (1+ k)))
+			     (let ((k+1-l (- k+1 (string-length digits)))
+				   (n (flo:significand-digits radix))
+				   (scientific
+				    (lambda ()
+				      (string-append (string-head digits 1)
+						     "."
+						     (string-tail digits 1)
+						     "e"
+						     (int:->string k radix)))))
+			       (cond ((< k+1-l (- n))
+				      (scientific))
+				     ((negative? k)
+				      (string-append "."
+						     (make-string (- k+1) #\0)
+						     digits))
+				     ((negative? k+1-l)
+				      (string-append (string-head digits k+1)
+						     "."
+						     (string-tail digits k+1)))
+				     ((<= k n)
+				      (string-append digits
+						     (make-string k+1-l #\0)
+						     "."))
+				     (else
+				      (scientific))))))))))))))))
     (or (and flonum-unparser-hook
 	     (flonum-unparser-hook x radix))
 	(cond ((flo:positive? x) (x>0 x))
 	      ((flo:negative? x) (string-append "-" (x>0 (flo:negate x))))
 	      (else (string-copy "0."))))))
 
+(define (flonum-unparser-cutoff-args)
+  (cond ((eq? 'NORMAL flonum-unparser-cutoff)
+	 (values 'NORMAL 0))
+	((and (pair? flonum-unparser-cutoff)
+	      (pair? (cdr flonum-unparser-cutoff))
+	      (null? (cddr flonum-unparser-cutoff))
+	      (let ((mode (car flonum-unparser-cutoff))
+		    (place (cadr flonum-unparser-cutoff)))
+		(and (memq mode '(ABSOLUTE RELATIVE NORMAL))
+		     (exact-integer? place)
+		     (or (not (eq? 'RELATIVE mode))
+			 (positive? place)))))
+	 (values (car flonum-unparser-cutoff)
+		 (- (cadr flonum-unparser-cutoff))))
+	(else
+	 (warn "illegal flonum unparser cutoff parameter"
+	       flonum-unparser-cutoff)
+	 (values 'NORMAL 0))))
+
 (define flonum-unparser-hook #f)
+(define flonum-unparser-cutoff 'NORMAL)
 
 (define (dragon4-normalize x precision)
   (with-values (lambda () (flo:normalize x))
