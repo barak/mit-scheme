@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1986 Massachusetts Institute of Technology
+Copyright (c) 1987 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,11 +30,9 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* File: utils.c
- *
- * This file contains a number of utility routines for use
- * in the Scheme scode interpreter.
- */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 5.2 1987/01/12 17:26:03 cph Exp $ */
+
+/* This file contains utilities for interrupts, errors, etc. */
 
 #include "scheme.h"
 #include "primitive.h"
@@ -47,9 +45,10 @@ MIT in each case. */
  */
 
 void
-Setup_Interrupt(Masked_Interrupts)
-long Masked_Interrupts;
-{ Pointer Int_Vector, Handler;
+Setup_Interrupt (Masked_Interrupts)
+     long Masked_Interrupts;
+{
+  Pointer Int_Vector, Handler;
   long i, Int_Number, The_Int_Code = IntCode, New_Int_Enb;
   long Save_Space;
 
@@ -121,8 +120,8 @@ Passed_Checks:	/* This label may be used in Global_Interrupt_Hook */
  */
 
 void
-Err_Print(Micro_Error)
-long Micro_Error;
+Err_Print (Micro_Error)
+     long Micro_Error;
 { switch (Micro_Error)
   { 
 /*  case ERR_BAD_ERROR_CODE:
@@ -191,7 +190,7 @@ long Micro_Error;
 }
 
 void
-Stack_Death()
+Stack_Death ()
 { fprintf(stderr, "\nWill_Push vs. Pushed inconsistency.\n");
   Microcode_Termination(TERM_BAD_STACK);
 }      
@@ -207,8 +206,9 @@ Stack_Death()
 #endif
 
 void
-Back_Out_Of_Primitive()
-{ long nargs;
+Back_Out_Of_Primitive ()
+{
+  long nargs;
 
   /* When primitives are called from compiled code, the type code may
    * not be in the expression register.
@@ -237,11 +237,264 @@ Back_Out_Of_Primitive()
   Val = NIL;
 }
 
+/* Useful error procedures */
+
 void
-Do_Micro_Error(Err, From_Pop_Return)
-long Err;
-Boolean From_Pop_Return;
-{ Pointer Error_Vector, Handler;
+signal_error_from_primitive (error_code)
+     long error_code;
+{
+  Back_Out_Of_Primitive ();
+  longjmp (*Back_To_Eval, error_code);
+}
+
+void
+signal_interrupt_from_primitive ()
+{
+  Back_Out_Of_Primitive ();
+  longjmp (*Back_To_Eval, PRIM_INTERRUPT);
+}
+
+void
+error_wrong_type_arg_1 ()
+{
+  signal_error_from_primitive (ERR_ARG_1_WRONG_TYPE);
+}
+
+void
+error_wrong_type_arg_2 ()
+{
+  signal_error_from_primitive (ERR_ARG_2_WRONG_TYPE);
+}
+
+void
+error_wrong_type_arg_3 ()
+{
+  signal_error_from_primitive (ERR_ARG_3_WRONG_TYPE);
+}
+
+void
+error_wrong_type_arg_4 ()
+{
+  signal_error_from_primitive (ERR_ARG_4_WRONG_TYPE);
+}
+
+void
+error_wrong_type_arg_5 ()
+{
+  signal_error_from_primitive (ERR_ARG_5_WRONG_TYPE);
+}
+
+void
+error_wrong_type_arg_6 ()
+{
+  signal_error_from_primitive (ERR_ARG_6_WRONG_TYPE);
+}
+
+void
+error_wrong_type_arg_7 ()
+{
+  signal_error_from_primitive (ERR_ARG_7_WRONG_TYPE);
+}
+
+void
+error_wrong_type_arg_8 ()
+{
+  signal_error_from_primitive (ERR_ARG_8_WRONG_TYPE);
+}
+
+void
+error_wrong_type_arg_9 ()
+{
+  signal_error_from_primitive (ERR_ARG_9_WRONG_TYPE);
+}
+
+void
+error_wrong_type_arg_10 ()
+{
+  signal_error_from_primitive (ERR_ARG_10_WRONG_TYPE);
+}
+
+void
+error_bad_range_arg_1 ()
+{
+  signal_error_from_primitive (ERR_ARG_1_BAD_RANGE);
+}
+
+void
+error_bad_range_arg_2 ()
+{
+  signal_error_from_primitive (ERR_ARG_2_BAD_RANGE);
+}
+
+void
+error_bad_range_arg_3 ()
+{
+  signal_error_from_primitive (ERR_ARG_3_BAD_RANGE);
+}
+
+void
+error_bad_range_arg_4 ()
+{
+  signal_error_from_primitive (ERR_ARG_4_BAD_RANGE);
+}
+
+void
+error_bad_range_arg_5 ()
+{
+  signal_error_from_primitive (ERR_ARG_5_BAD_RANGE);
+}
+
+void
+error_bad_range_arg_6 ()
+{
+  signal_error_from_primitive (ERR_ARG_6_BAD_RANGE);
+}
+
+void
+error_bad_range_arg_7 ()
+{
+  signal_error_from_primitive (ERR_ARG_7_BAD_RANGE);
+}
+
+void
+error_bad_range_arg_8 ()
+{
+  signal_error_from_primitive (ERR_ARG_8_BAD_RANGE);
+}
+
+void
+error_bad_range_arg_9 ()
+{
+  signal_error_from_primitive (ERR_ARG_9_BAD_RANGE);
+}
+
+void
+error_bad_range_arg_10 ()
+{
+  signal_error_from_primitive (ERR_ARG_10_BAD_RANGE);
+}
+
+void
+error_external_return ()
+{
+  signal_error_from_primitive (ERR_EXTERNAL_RETURN);
+}
+
+#define define_integer_guarantee(procedure_name, wta, bra)	\
+long								\
+procedure_name (argument)					\
+     Pointer argument;						\
+{								\
+  if (! (fixnum_p (argument)))					\
+    wta ();							\
+  if (fixnum_negative_p (argument))				\
+    bra ();							\
+  return (pointer_datum (argument));				\
+}
+
+define_integer_guarantee (guarantee_nonnegative_integer_arg_1,
+			  error_wrong_type_arg_1,
+			  error_bad_range_arg_1)
+
+define_integer_guarantee (guarantee_nonnegative_integer_arg_2,
+			  error_wrong_type_arg_2,
+			  error_bad_range_arg_2)
+
+define_integer_guarantee (guarantee_nonnegative_integer_arg_3,
+			  error_wrong_type_arg_3,
+			  error_bad_range_arg_3)
+
+define_integer_guarantee (guarantee_nonnegative_integer_arg_4,
+			  error_wrong_type_arg_4,
+			  error_bad_range_arg_4)
+
+define_integer_guarantee (guarantee_nonnegative_integer_arg_5,
+			  error_wrong_type_arg_5,
+			  error_bad_range_arg_5)
+
+define_integer_guarantee (guarantee_nonnegative_integer_arg_6,
+			  error_wrong_type_arg_6,
+			  error_bad_range_arg_6)
+
+define_integer_guarantee (guarantee_nonnegative_integer_arg_7,
+			  error_wrong_type_arg_7,
+			  error_bad_range_arg_7)
+
+define_integer_guarantee (guarantee_nonnegative_integer_arg_8,
+			  error_wrong_type_arg_8,
+			  error_bad_range_arg_8)
+
+define_integer_guarantee (guarantee_nonnegative_integer_arg_9,
+			  error_wrong_type_arg_9,
+			  error_bad_range_arg_9)
+
+define_integer_guarantee (guarantee_nonnegative_integer_arg_10,
+			  error_wrong_type_arg_10,
+			  error_bad_range_arg_10)
+
+#define define_index_guarantee(procedure_name, wta, bra)	\
+long								\
+procedure_name (argument, upper_limit)				\
+     Pointer argument, upper_limit;				\
+{								\
+  fast long index;						\
+								\
+  if (! (fixnum_p (argument)))					\
+    wta ();							\
+  if (fixnum_negative_p (argument))				\
+    bra ();							\
+  index = (pointer_datum (argument));				\
+  if (index >= upper_limit)					\
+    bra ();							\
+  return (index);						\
+}
+
+define_index_guarantee (guarantee_index_arg_1,
+			error_wrong_type_arg_1,
+			error_bad_range_arg_1)
+
+define_index_guarantee (guarantee_index_arg_2,
+			error_wrong_type_arg_2,
+			error_bad_range_arg_2)
+
+define_index_guarantee (guarantee_index_arg_3,
+			error_wrong_type_arg_3,
+			error_bad_range_arg_3)
+
+define_index_guarantee (guarantee_index_arg_4,
+			error_wrong_type_arg_4,
+			error_bad_range_arg_4)
+
+define_index_guarantee (guarantee_index_arg_5,
+			error_wrong_type_arg_5,
+			error_bad_range_arg_5)
+
+define_index_guarantee (guarantee_index_arg_6,
+			error_wrong_type_arg_6,
+			error_bad_range_arg_6)
+
+define_index_guarantee (guarantee_index_arg_7,
+			error_wrong_type_arg_7,
+			error_bad_range_arg_7)
+
+define_index_guarantee (guarantee_index_arg_8,
+			error_wrong_type_arg_8,
+			error_bad_range_arg_8)
+
+define_index_guarantee (guarantee_index_arg_9,
+			error_wrong_type_arg_9,
+			error_bad_range_arg_9)
+
+define_index_guarantee (guarantee_index_arg_10,
+			error_wrong_type_arg_10,
+			error_bad_range_arg_10)
+
+void
+Do_Micro_Error (Err, From_Pop_Return)
+     long Err;
+     Boolean From_Pop_Return;
+{
+  Pointer Error_Vector, Handler;
 
   if (Consistency_Check)
   { Err_Print(Err);
@@ -315,7 +568,7 @@ Boolean From_Pop_Return;
 /* Make a Scheme string with the characters in C_String. */
 
 Pointer
-C_String_To_Scheme_String( C_String)
+C_String_To_Scheme_String (C_String)
      fast char *C_String;
 {
   fast char *Next;
@@ -345,7 +598,7 @@ C_String_To_Scheme_String( C_String)
 }
 
 Boolean
-Open_File( Name, Mode_String, Handle)
+Open_File (Name, Mode_String, Handle)
      Pointer Name;
      char *Mode_String;
      FILE **Handle;
@@ -357,7 +610,7 @@ Open_File( Name, Mode_String, Handle)
 }
 
 void
-Close_File(stream)
+Close_File (stream)
      FILE *stream;
 {
   extern Boolean OS_file_close();
@@ -367,9 +620,10 @@ Close_File(stream)
   return;
 }
 
-Pointer
-*Make_Dummy_History()
-{ Pointer *History_Rib = Free;
+Pointer *
+Make_Dummy_History ()
+{
+  Pointer *History_Rib = Free;
   Pointer *Result;
 
   Free[RIB_EXP] = NIL;
@@ -396,9 +650,11 @@ Pointer
 */
 
 void
-Stop_History()
-{ Pointer Saved_Expression = Fetch_Expression();
+Stop_History ()
+{
+  Pointer Saved_Expression = Fetch_Expression();
   long Saved_Return_Code = Fetch_Return();
+
 Will_Push(HISTORY_SIZE);
   Save_History(RC_RESTORE_DONT_COPY_HISTORY);
 Pushed();
@@ -411,10 +667,12 @@ Pushed();
   return;
 }
 
-Pointer
-*Copy_Rib(Orig_Rib)
-Pointer *Orig_Rib;
-{ Pointer *Result, *This_Rib;
+Pointer *
+Copy_Rib (Orig_Rib)
+     Pointer *Orig_Rib;
+{
+  Pointer *Result, *This_Rib;
+
   for (This_Rib=NULL, Result=Free;
        (This_Rib != Orig_Rib) && (!GC_Check(0));
        This_Rib = Get_Pointer(This_Rib[RIB_NEXT_REDUCTION]))
@@ -436,10 +694,12 @@ Pointer *Orig_Rib;
 */
 
 Boolean
-Restore_History(Hist_Obj)
-Pointer Hist_Obj;
-{ Pointer *New_History, *Next_Vertebra, *Prev_Vertebra,
+Restore_History (Hist_Obj)
+     Pointer Hist_Obj;
+{
+  Pointer *New_History, *Next_Vertebra, *Prev_Vertebra,
           *Orig_Vertebra;
+
   if (Consistency_Check)
     if (Type_Code(Hist_Obj) != TC_HUNK3)
     { printf("Bad history to restore.\n");
@@ -475,8 +735,9 @@ Pointer Hist_Obj;
   return true;
 }
 
-CRLF()
-{ printf( "\n");
+CRLF ()
+{
+  printf( "\n");
 }
 
 /* If a debugging version of the interpreter is made, then this
@@ -488,10 +749,12 @@ CRLF()
 
 #ifdef ENABLE_DEBUGGING_TOOLS
 Pointer
-Apply_Primitive(Primitive_Number)
-long Primitive_Number;
-{ Pointer Result, *Saved_Stack;
+Apply_Primitive (Primitive_Number)
+     long Primitive_Number;
+{
+  Pointer Result, *Saved_Stack;
   int NArgs;
+
   if (Primitive_Number > MAX_PRIMITIVE)
     Primitive_Error(ERR_UNDEFINED_PRIMITIVE);
   NArgs = (int) Arg_Count_Table[Primitive_Number];
@@ -513,16 +776,19 @@ long Primitive_Number;
 }
 #endif
 
-Built_In_Primitive(Prim_Unused, 0, "Unimplemented Primitive Handler")
-{ printf("Ignoring missing primitive. Expression = 0x%02x|%06x\n",
+Built_In_Primitive (Prim_Unused, 0, "Unimplemented Primitive Handler")
+{
+  printf("Ignoring missing primitive. Expression = 0x%02x|%06x\n",
          Type_Code(Fetch_Expression()), Datum(Fetch_Expression()));
   Primitive_Error(ERR_UNDEFINED_PRIMITIVE);
 }
-
+
 Pointer
-Allocate_Float(F)
-double F;
-{ Pointer Result;
+Allocate_Float (F)
+     double F;
+{
+  Pointer Result;
+
   Align_Float(Free);
   Result = Make_Pointer(TC_BIG_FLONUM, Free);
   *Free = Make_Non_Pointer(TC_MANIFEST_NM_VECTOR, FLONUM_SIZE);
@@ -538,9 +804,11 @@ double F;
                       /******************/
 
 void
-Allocate_New_Stacklet(N)
-long N;
-{ Pointer Old_Expression, *Old_Stacklet, Old_Return;
+Allocate_New_Stacklet (N)
+     long N;
+{
+  Pointer Old_Expression, *Old_Stacklet, Old_Return;
+
   Old_Stacklet = Current_Stacklet;
   Terminate_Old_Stacklet();
   if ((Free_Stacklets == NULL) ||
@@ -581,12 +849,14 @@ long N;
 /* Dynamic Winder support code */
 
 Pointer
-Find_State_Space(State_Point)
-Pointer State_Point;
-{ long How_Far = Get_Integer(Fast_Vector_Ref(State_Point,
+Find_State_Space (State_Point)
+     Pointer State_Point;
+{
+  long How_Far = Get_Integer(Fast_Vector_Ref(State_Point,
 					     STATE_POINT_DISTANCE_TO_ROOT));
   long i;
   fast Pointer Point = State_Point;
+
   for (i=0; i <= How_Far; i++)
   { 
 #ifdef ENABLE_DEBUGGING_TOOLS
@@ -621,9 +891,10 @@ Pointer State_Point;
 */
 
 void
-Translate_To_Point(Target)
-Pointer Target;
-{ Pointer State_Space = Find_State_Space(Target);
+Translate_To_Point (Target)
+     Pointer Target;
+{
+  Pointer State_Space = Find_State_Space(Target);
   Pointer Current_Location, *Path = Free;
   fast Pointer Path_Point, *Path_Ptr;
   long Distance =
