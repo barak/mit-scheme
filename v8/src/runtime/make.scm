@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/make.scm,v 14.10 1989/04/18 16:29:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/make.scm,v 14.11 1989/05/04 16:38:08 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -168,21 +168,6 @@ MIT in each case. |#
   (tty-write-string " purified")
   (tty-flush-output)
   object)
-
-(define (implemented-primitive-procedure? primitive)
-  (get-primitive-address (intern (get-primitive-name (object-datum primitive)))
-			 false))
-
-(define map-filename
-  (if (and (implemented-primitive-procedure? file-exists?)
-	   (not (prompt-for-confirmation "Load interpreted? ")))
-      (lambda (filename)
-	(let ((com-file (string-append filename ".com")))
-	  (if (file-exists? com-file)
-	      com-file
-	      (string-append filename ".bin"))))
-      (lambda (filename)
-	(string-append filename ".bin"))))
 
 (define (string-append x y)
   (let ((x-length (string-length x))
@@ -206,6 +191,20 @@ MIT in each case. |#
 (define (intern string)
   (string->symbol (string-downcase string)))
 
+(define (implemented-primitive-procedure? primitive)
+  (get-primitive-address (intern (get-primitive-name (object-datum primitive)))
+			 false))
+
+(define map-filename
+  (if (and (implemented-primitive-procedure? file-exists?)
+	   (not (prompt-for-confirmation "Load interpreted? ")))      (lambda (filename)
+	(let ((com-file (string-append filename ".com")))
+	  (if (file-exists? com-file)
+	      com-file
+	      (string-append filename ".bin"))))
+      (lambda (filename)
+	(string-append filename ".bin"))))
+
 (define (package-initialize package-name procedure-name)
   (tty-write-char newline-char)
   (tty-write-string "initialize: (")
