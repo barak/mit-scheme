@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/scode.scm,v 4.4 1988/06/14 08:33:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/scode.scm,v 4.5 1988/08/11 02:15:57 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -146,7 +146,7 @@ MIT in each case. |#
 		  (cons (car operands)
 			(loop (cadr operands)))))
 	       (else
-		(error "Illegal irritants" (cadr operands)))))))))
+		(cadr operands))))))))
 
 (define (scode/make-error-combination message operand)
   (scode/make-absolute-combination
