@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.83 1994/08/15 20:21:23 cph Exp $
+;;;	$Id: intmod.scm,v 1.84 1994/09/16 00:30:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -416,31 +416,32 @@ Additionally, these commands abort the command loop:
 
 ;;;; Commands
 
-(define (interrupt-command interrupt)
+(define (interrupt-command interrupt flush-queue?)
   (lambda ()
-    (signal-thread-event
-	(port/thread (buffer-interface-port (current-repl-buffer #f)))
-      interrupt)))
+    (let ((port (buffer-interface-port (current-repl-buffer #f))))
+      (signal-thread-event (port/thread port) interrupt)
+      (if flush-queue?
+	  (flush-queue! (port/expression-queue port))))))
 
 (define-command inferior-cmdl-breakpoint
   "Force the inferior REPL into a breakpoint."
   ()
-  (interrupt-command cmdl-interrupt/breakpoint))
+  (interrupt-command cmdl-interrupt/breakpoint #f))
 
 (define-command inferior-cmdl-abort-nearest
   "Force the inferior REPL back to the current level."
   ()
-  (interrupt-command cmdl-interrupt/abort-nearest))
+  (interrupt-command cmdl-interrupt/abort-nearest #t))
 
 (define-command inferior-cmdl-abort-previous
   "Force the inferior REPL up to the previous level."
   ()
-  (interrupt-command cmdl-interrupt/abort-previous))
+  (interrupt-command cmdl-interrupt/abort-previous #t))
 
 (define-command inferior-cmdl-abort-top-level
   "Force the inferior REPL up to top level."
   ()
-  (interrupt-command cmdl-interrupt/abort-top-level))
+  (interrupt-command cmdl-interrupt/abort-top-level #t))
 
 (define-command inferior-repl-eval-defun
   "Evaluate defun that point is in or before."
@@ -617,6 +618,13 @@ If this is an error, the debugger examines the error condition."
     (let ((value (dequeue!/unsafe queue empty)))
       (set-interrupt-enables! interrupt-mask)
       value)))
+
+(define (flush-queue! queue)
+  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+    (set-car! queue '())
+    (set-cdr! queue '())
+    (set-interrupt-enables! interrupt-mask)
+    unspecific))
 
 ;;;; Interface Port
 
