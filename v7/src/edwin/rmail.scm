@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.49 1996/03/23 06:26:03 cph Exp $
+;;;	$Id: rmail.scm,v 1.50 1996/04/24 01:23:01 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-96 Massachusetts Institute of Technology
 ;;;
@@ -698,38 +698,14 @@ This variable is ignored if rmail-pop-procedure is #F."
 With prefix argument N, moves forward N messages,
 or backward if N is negative."
   "p"
-  (lambda (n)
-    (cond ((> n 0)
-	   (let loop ((n n) (memo (current-msg-memo)) (winner false))
-	     (let ((next (msg-memo/next memo)))
-	       (cond ((not next)
-		      (if winner (set-current-msg-memo! winner))
-		      (message "No following message"))
-		     ((= n 1)
-		      (set-current-msg-memo! next))
-		     (else
-		      (loop (- n 1) next next))))))
-	  ((< n 0)
-	   ((ref-command rmail-previous-message) (- n))))))
+  (lambda (n) (move-to-message n (lambda (memo) memo #t) "message")))
 
 (define-command rmail-previous-message
   "Show previous message whether deleted or not.
 With prefix argument N, moves backward N messages,
 or forward if N is negative."
   "p"
-  (lambda (n)
-    (cond ((> n 0)
-	   (let loop ((n n) (memo (current-msg-memo)) (winner false))
-	     (let ((previous (msg-memo/previous memo)))
-	       (cond ((not previous)
-		      (if winner (set-current-msg-memo! winner))
-		      (message "No previous message"))
-		     ((= n 1)
-		      (set-current-msg-memo! previous))
-		     (else
-		      (loop (- n 1) previous previous))))))
-	  ((< n 0)
-	   ((ref-command rmail-next-message) (- n))))))
+  (lambda (n) ((ref-command rmail-next-message) (- n))))
 
 (define-command rmail-next-undeleted-message
   "Show following non-deleted message.
@@ -737,37 +713,94 @@ With prefix argument N, moves forward N non-deleted messages,
 or backward if N is negative."
   "p"
   (lambda (n)
-    (cond ((> n 0)
-	   (let loop ((n n) (memo (current-msg-memo)) (winner false))
-	     (let ((next (msg-memo/next-undeleted memo)))
-	       (cond ((not next)
-		      (if winner (set-current-msg-memo! winner))
-		      (message "No following undeleted message"))
-		     ((= n 1)
-		      (set-current-msg-memo! next))
-		     (else
-		      (loop (- n 1) next next))))))
-	  ((< n 0)
-	   ((ref-command rmail-previous-undeleted-message) (- n))))))
+    (move-to-message n
+		     (lambda (memo) (not (msg-memo/deleted? memo)))
+		     "undeleted message")))
 
 (define-command rmail-previous-undeleted-message
   "Show previous non-deleted message.
 With prefix argument N, moves backward N non-deleted messages,
 or forward if N is negative."
   "p"
-  (lambda (n)
-    (cond ((> n 0)
-	   (let loop ((n n) (memo (current-msg-memo)) (winner false))
-	     (let ((previous (msg-memo/previous-undeleted memo)))
-	       (cond ((not previous)
-		      (if winner (set-current-msg-memo! winner))
-		      (message "No previous undeleted message"))
-		     ((= n 1)
-		      (set-current-msg-memo! previous))
-		     (else
-		      (loop (- n 1) previous previous))))))
-	  ((< n 0)
-	   ((ref-command rmail-next-undeleted-message) (- n))))))
+  (lambda (n) ((ref-command rmail-next-undeleted-message) (- n))))
+
+(define (move-to-message n predicate noun)
+  (if (not (= n 0))
+      (call-with-values
+	  (lambda ()
+	    (if (< n 0)
+		(values (- n) msg-memo/previous "previous")
+		(values n msg-memo/next "next")))
+	(lambda (n step direction)
+	  (let loop ((n n) (memo (current-msg-memo)) (winner #f))
+	    (let ((next
+		   (let loop ((memo memo))
+		     (let ((next (step memo)))
+		       (if (or (not next) (predicate next))
+			   next
+			   (loop next))))))
+	      (cond ((not next)
+		     (if winner (set-current-msg-memo! winner))
+		     (message "No " direction " " noun))
+		    ((= n 1)
+		     (set-current-msg-memo! next))
+		    (else
+		     (loop (- n 1) next next)))))))))
+
+(define-command rmail-next-labeled-message
+  "Show next message with one of the labels LABELS.
+LABELS should be a comma-separated list of label names.
+If LABELS is empty, the last set of labels specified is used.
+With prefix argument N moves forward N messages with these labels."
+  "p\nsMove to next msg with labels"
+  (lambda (n labels)
+    (let ((labels (check-multi-labels labels)))
+      (move-to-message n
+		       (multi-labels-predicate labels)
+		       (string-append "message with labels " labels)))))
+
+(define-command rmail-previous-labeled-message
+  "Show previous message with one of the labels LABELS.
+LABELS should be a comma-separated list of label names.
+If LABELS is empty, the last set of labels specified is used.
+With prefix argument N moves backward N messages with these labels."
+  "p\nsMove to previous msg with labels"
+  (lambda (n labels) ((ref-command rmail-next-labeled-message) (- n) labels)))
+
+(define (check-multi-labels labels)
+  (let ((labels (if (string-null? labels) rmail-last-multi-labels labels)))
+    (if (not labels)
+	(editor-error "No labels to find have been specified previously"))
+    (set! rmail-last-multi-labels labels)
+    labels))
+
+(define rmail-last-multi-labels #f)
+
+(define (multi-labels-predicate labels)
+  (let ((regexp
+	 (string-append " ?\\(" (multi-labels->regexp labels) "\\),")))
+    (lambda (memo)
+      (let ((start (msg-memo/start memo)))
+	(with-group-open (mark-group start)
+	  (lambda ()
+	    (let ((start (attributes-start-mark start)))
+	      (re-search-forward regexp start (line-end start 0) #t))))))))
+
+(define (multi-labels->regexp labels)
+  (apply string-append
+	 (let ((labels (map string-trim (burst-string labels #\,))))
+	   (cons (car labels)
+		 (append-map (lambda (label) (list "\\|" label))
+			     (cdr labels))))))
+
+(define (burst-string string delimiter)
+  (let ((end (string-length string)))
+    (let loop ((start 0) (result '()))
+      (let ((index (substring-find-next-char string start end delimiter)))
+	(if index
+	    (loop (fix:+ index 1)
+		  (cons (substring string start index) result))
+	    (reverse! (cons (substring string start end) result)))))))
 
 (define-command rmail-show-message
   "Show message number N (prefix argument), counting from start of file."
@@ -1229,15 +1262,26 @@ original message into it."
 		   (cons* (car tokens) separator (loop (cdr tokens))))))))
 
 (define (make-in-reply-to-field from date message-id)
-  message-id
-  (and (or from date)
-       (string-append "Msg"
-		      (if date
-			  (string-append " of " date)
-			  "")
-		      (if from
-			  (string-append " from " from)
-			  ""))))
+  (cond ((not from)
+	 message-id)
+	(message-id
+	 ;; Append from field to message-id if needed.
+	 (let ((from (rfc822-first-address from)))
+	   (if (re-search-string-forward
+		(re-compile-string
+		 (if (re-search-string-forward
+		      (re-compile-pattern "@[^@]*\\'" #f) #f #f from)
+		     (string-head from (re-match-start-index 0))
+		     from)
+		 #t)
+		#t #f message-id)
+	       message-id
+	       (string-append message-id " (" from ")"))))
+	(else
+	 (let ((field (write-to-string (rfc822-first-address from))))
+	   (if date
+	       (string-append field "'s message of " date)
+	       field)))))
 
 ;;;; Address Extraction
 
@@ -1567,7 +1611,7 @@ buffer visiting that file."
 	       (fetch-first-field "from" start (header-end start end)))
 	      "unknown")
 	  " "
-	  (file-time->string (current-file-time))
+	  (universal-time->string (get-universal-time))
 	  "\n")
 	 start)))
     (define-variable-local-value! buffer
@@ -1890,13 +1934,6 @@ Leaves original message, deleted, before the undigestified messages."
 	     (msg-memo/previous-undeleted previous)
 	     previous))))
 
-(define (msg-memo/next-deleted memo)
-  (let ((next (msg-memo/next memo)))
-    (and next
-	 (if (msg-memo/deleted? next)
-	     next
-	     (msg-memo/next-deleted next)))))
-
 (define (msg-memo/previous-deleted memo)
   (let ((previous (msg-memo/previous memo)))
     (and previous
@@ -1906,6 +1943,44 @@ Leaves original message, deleted, before the undigestified messages."
 
 ;;;; Attributes and Labels
 
+(define-command rmail-add-label
+  "Add LABEL to labels associated with current RMAIL message.
+Completion is performed over known labels when reading."
+  (lambda () (list (rmail-read-label "Add label" #f)))
+  (lambda (label)
+    (let ((memo (current-msg-memo))
+	  (attribute (label->attribute label)))
+      (if attribute
+	  (set-attribute! memo attribute)
+	  (set-keyword! memo label)))))
+
+(define-command rmail-kill-label
+  "Remove LABEL from labels associated with current RMAIL message.
+Completion is performed over known labels when reading."
+  (lambda () (list (rmail-read-label "Remove label" #t)))
+  (lambda (label)
+    (let ((memo (current-msg-memo))
+	  (attribute (label->attribute label)))
+      (if attribute
+	  (clear-attribute! memo attribute)
+	  (clear-keyword! memo label)))))
+
+(define (rmail-read-label prompt require-match?)
+  (let ((label
+	 (prompt-for-string-table-name
+	  prompt
+	  rmail-last-label
+	  'VISIBLE-DEFAULT
+	  (alist->string-table
+	   (map list
+		(append! (map symbol->string attributes)
+			 (buffer-keywords (current-buffer)))))
+	  require-match?)))
+    (set! rmail-last-label label)
+    label))
+
+(define rmail-last-label #f)
+
 (define (canonicalize-message-attributes mstart)
   (let ((start (attributes-start-mark mstart)))
     (let ((end (line-end start 0)))
@@ -1957,6 +2032,58 @@ Leaves original message, deleted, before the undigestified messages."
 
 (define (attribute->string attribute)
   (string-append " " (string-downcase (symbol->string attribute)) ","))
+
+(define (label->attribute label)
+  (let ((s (intern-soft label)))
+    (and s
+	 (memq s attributes)
+	 s)))
+
+(define attributes
+  '(DELETED ANSWERED FILED FORWARDED UNSEEN EDITED RESENT))
+
+(define (set-keyword! memo keyword)
+  (let ((mstart (msg-memo/start memo))
+	(ks (keyword->string keyword)))
+    (with-group-open (mark-group mstart)
+      (lambda ()
+	(if (not (search-forward ks
+				 (labels-start-mark mstart)
+				 (labels-end-mark mstart)
+				 #t))
+	    (insert-string ks (labels-end-mark mstart)))
+	(let ((buffer (mark-buffer mstart)))
+	  (if (not (member keyword (buffer-keywords buffer)))
+	      (begin
+		(buffer-remove! buffer 'RMAIL-KEYWORDS)
+		(insert-string
+		 (string-append "," keyword)
+		 (line-end (or (keywords-start-mark buffer)
+			       (let ((s (line-end (buffer-start buffer) 0)))
+				 (insert-string "\nLabels:" s)
+				 (mark1+ s)))
+			   0)))))
+	(update-mode-line! (mark-buffer mstart))))))
+
+(define (clear-keyword! memo keyword)
+  (let ((mstart (msg-memo/start memo)))
+    (with-group-open (mark-group mstart)
+      (lambda ()
+	(if (search-forward (keyword->string keyword)
+			    (labels-start-mark mstart)
+			    (labels-end-mark mstart)
+			    #t)
+	    (delete-match))
+	(update-mode-line! (mark-buffer mstart))))))
+
+(define (keyword->string keyword)
+  (string-append " " (string-downcase keyword) ","))
+
+(define (buffer-keywords buffer)
+  (cdr (or (buffer-get buffer 'RMAIL-KEYWORDS #f)
+	   (let ((keywords (cons 'RMAIL-KEYWORDS (parse-keywords buffer))))
+	     (buffer-put! buffer 'RMAIL-KEYWORDS keywords)
+	     keywords))))
 
 (define (attributes-start-mark mstart)
   (let ((m
@@ -1991,12 +2118,32 @@ Leaves original message, deleted, before the undigestified messages."
   (parse-label-list (labels-start-mark mstart)
 		    (labels-end-mark mstart)))
 
+(define (parse-keywords buffer)
+  (with-buffer-open buffer
+    (lambda ()
+      (let ((start (keywords-start-mark buffer)))
+	(if start
+	    (parse-label-list start (line-end start 0))
+	    '())))))
+
+(define (keywords-start-mark buffer)
+  (search-forward "\nLabels:"
+		  (buffer-start buffer)
+		  (msg-memo/start (msg-memo/first (buffer-msg-memo buffer)))
+		  #t))
+
 (define (parse-label-list start end)
   (let loop ((m start))
     (if (mark< m end)
 	(let ((aend (char-search-forward #\, m end false)))
-	  (cons (string-downcase (extract-string (mark1+ m) (mark-1+ aend)))
-		(loop aend)))
+	  (let ((label
+		 (string-downcase
+		  (string-trim
+		   (extract-string m (if aend (mark-1+ aend) end)))))
+		(rest (if aend (loop aend) '())))
+	    (if (string-null? label)
+		rest
+		(cons label rest))))
 	'())))
 
 (define-command rmail-toggle-header
