@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgutl.scm,v 14.10 1990/09/11 20:43:59 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgutl.scm,v 14.11 1990/09/11 21:17:02 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -165,15 +165,14 @@ MIT in each case. |#
 
 (define (default/debugger-failure message)
   (beep)
-  (write-string message)
-  (newline))
+  (default/debugger-message message))
 
 (define (debugger-message . objects)
   (hook/debugger-message (message-arguments->string objects)))
 
 (define (default/debugger-message message)
-  (write-string message)
-  (newline))
+  (newline)
+  (write-string message))
 
 (define (message-arguments->string objects)
   (apply string-append
