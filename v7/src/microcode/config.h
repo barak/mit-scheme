@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.36 1988/07/07 18:11:35 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.37 1988/07/21 18:45:55 cph Exp $
  *
  * This file contains the configuration information and the information
  * given on the command line on Unix.
@@ -38,13 +38,6 @@ MIT in each case. */
  */
 
 /* Default pathnames. */
-
-#ifndef DEFAULT_BAND_NAME
-#define DEFAULT_BAND_NAME	 "scm:scheme.bin"
-#endif
-#ifndef SCHEME_SOURCES_PATH
-#define SCHEME_SOURCES_PATH	 "scm:"
-#endif
 
 #ifndef butterfly
 #ifndef unix

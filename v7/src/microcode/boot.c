@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.48 1988/05/04 20:44:33 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.49 1988/07/21 18:41:36 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -84,6 +84,7 @@ for details.  They are created by defining a macro Command_Line_Args.
 #include "version.h"
 #include "char.h"
 #include "string.h"
+#include "paths.h"
 #ifndef islower
 #include <ctype.h>
 #endif
