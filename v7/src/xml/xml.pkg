@@ -1,0 +1,147 @@
+;;; -*-Scheme-*-
+;;;
+;;; $Id: xml.pkg,v 1.1 2001/07/06 20:50:45 cph Exp $
+;;;
+;;; Copyright (c) 2001 Massachusetts Institute of Technology
+;;;
+;;; This program is free software; you can redistribute it and/or
+;;; modify it under the terms of the GNU General Public License as
+;;; published by the Free Software Foundation; either version 2 of the
+;;; License, or (at your option) any later version.
+;;;
+;;; This program is distributed in the hope that it will be useful,
+;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+;;; General Public License for more details.
+;;;
+;;; You should have received a copy of the GNU General Public License
+;;; along with this program; if not, write to the Free Software
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
+
+;;;; XML: packaging
+
+(global-definitions "$brun/runtime")
+(global-definitions "../parser/parser")
+
+(define-package (runtime xml)
+  (files)
+  (parent ()))
+
+(define-package (runtime xml structure)
+  (files "xml-struct")
+  (parent ())
+  (export ()
+	  make-xml-!attlist
+	  make-xml-!element
+	  make-xml-!entity
+	  make-xml-!ignore
+	  make-xml-!include
+	  make-xml-!notation
+	  make-xml-comment
+	  make-xml-declaration
+	  make-xml-document
+	  make-xml-dtd
+	  make-xml-element
+	  make-xml-entity-reference
+	  make-xml-external-id
+	  make-xml-parameter-!entity
+	  make-xml-parameter-entity-reference
+	  make-xml-processing-instructions
+	  make-xml-unparsed-!entity
+	  set-xml-!attlist-definitions!
+	  set-xml-!attlist-name!
+	  set-xml-!element-content-type!
+	  set-xml-!element-name!
+	  set-xml-!entity-name!
+	  set-xml-!entity-value!
+	  set-xml-!ignore-contents!
+	  set-xml-!include-contents!
+	  set-xml-!notation-id!
+	  set-xml-!notation-name!
+	  set-xml-comment-text!
+	  set-xml-declaration-encoding!
+	  set-xml-declaration-standalone?!
+	  set-xml-declaration-version!
+	  set-xml-document-declaration!
+	  set-xml-document-dtd!
+	  set-xml-document-misc-1!
+	  set-xml-document-misc-2!
+	  set-xml-document-misc-3!
+	  set-xml-document-root!
+	  set-xml-dtd-external!
+	  set-xml-dtd-internal!
+	  set-xml-dtd-root!
+	  set-xml-element-attributes!
+	  set-xml-element-contents!
+	  set-xml-element-name!
+	  set-xml-entity-reference-name!
+	  set-xml-external-id-id!
+	  set-xml-external-id-uri!
+	  set-xml-parameter-!entity-name!
+	  set-xml-parameter-!entity-value!
+	  set-xml-processing-instructions-name!
+	  set-xml-processing-instructions-text!
+	  set-xml-unparsed-!entity-id!
+	  set-xml-unparsed-!entity-name!
+	  set-xml-unparsed-!entity-notation!
+	  xml-!attlist-definitions
+	  xml-!attlist-name
+	  xml-!attlist?
+	  xml-!element-content-type
+	  xml-!element-name
+	  xml-!element?
+	  xml-!entity-name
+	  xml-!entity-value
+	  xml-!entity?
+	  xml-!ignore-contents
+	  xml-!ignore?
+	  xml-!include-contents
+	  xml-!include?
+	  xml-!notation-id
+	  xml-!notation-name
+	  xml-!notation?
+	  xml-comment-text
+	  xml-comment?
+	  xml-declaration-encoding
+	  xml-declaration-standalone?
+	  xml-declaration-version
+	  xml-declaration?
+	  xml-document-declaration
+	  xml-document-dtd
+	  xml-document-misc-1
+	  xml-document-misc-2
+	  xml-document-misc-3
+	  xml-document-root
+	  xml-document?
+	  xml-dtd-external
+	  xml-dtd-internal
+	  xml-dtd-root
+	  xml-dtd?
+	  xml-element-attributes
+	  xml-element-contents
+	  xml-element-name
+	  xml-element?
+	  xml-entity-reference-name
+	  xml-entity-reference?
+	  xml-external-id-id
+	  xml-external-id-uri
+	  xml-external-id?
+	  xml-intern
+	  xml-parameter-!entity-name
+	  xml-parameter-!entity-value
+	  xml-parameter-!entity?
+	  xml-parameter-entity-reference?
+	  xml-processing-instructions-name
+	  xml-processing-instructions-text
+	  xml-processing-instructions?
+	  xml-unparsed-!entity-id
+	  xml-unparsed-!entity-name
+	  xml-unparsed-!entity-notation
+	  xml-unparsed-!entity?))
+
+(define-package (runtime xml parser)
+  (files "xml-parser")
+  (parent ())
+  (export ()
+	  parse-xml-document))

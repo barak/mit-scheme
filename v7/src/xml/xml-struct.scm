@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xml-struct.scm,v 1.1 2001/07/05 20:47:53 cph Exp $
+;;; $Id: xml-struct.scm,v 1.2 2001/07/06 20:50:49 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -107,56 +107,63 @@
   id
   uri)
 
-(define-structure (xml-element-declaration
+(define-structure (xml-!element
 		   (print-procedure
-		    (standard-unparser-method 'XML-ELEMENT-DECLARATION
+		    (standard-unparser-method 'XML-!ELEMENT
 		      (lambda (element port)
 			(write-char #\space port)
-			(write (xml-element-declaration-name element) port)))))
+			(write (xml-!element-name element) port)))))
   name
   content-type)
 
-(define-structure (xml-attribute-declaration
+(define-structure (xml-!attlist
 		   (print-procedure
-		    (standard-unparser-method 'XML-ATTRIBUTE-DECLARATION
+		    (standard-unparser-method 'XML-!ATTLIST
 		      (lambda (element port)
 			(write-char #\space port)
-			(write (xml-attribute-declaration-name element)
-			       port)))))
+			(write (xml-!attlist-name element) port)))))
   name
   definitions)
 
-(define-structure xml-include-section
+(define-structure xml-!include
   contents)
 
-(define-structure xml-ignore-section
+(define-structure xml-!ignore
   contents)
 
-(define-structure (xml-entity-declaration
+(define-structure (xml-!entity
 		   (print-procedure
-		    (standard-unparser-method 'XML-ENTITY-DECLARATION
+		    (standard-unparser-method 'XML-!ENTITY
 		      (lambda (element port)
 			(write-char #\space port)
-			(write (xml-entity-declaration-name element) port)))))
+			(write (xml-!entity-name element) port)))))
   name
   value)
 
-(define-structure (xml-parameter-entity-declaration
+(define-structure (xml-unparsed-!entity
 		   (print-procedure
-		    (standard-unparser-method 'XML-PARAMETER-ENTITY-DECLARATION
+		    (standard-unparser-method 'XML-UNPARSED-!ENTITY
 		      (lambda (element port)
 			(write-char #\space port)
-			(write (xml-parameter-entity-declaration-name element)
-			       port)))))
+			(write (xml-unparsed-!entity-name element) port)))))
+  name
+  id
+  notation)
+
+(define-structure (xml-parameter-!entity
+		   (print-procedure
+		    (standard-unparser-method 'XML-PARAMETER-!ENTITY
+		      (lambda (element port)
+			(write-char #\space port)
+			(write (xml-parameter-!entity-name element) port)))))
   name
   value)
 
-(define-structure (xml-notation-declaration
+(define-structure (xml-!notation
 		   (print-procedure
-		    (standard-unparser-method 'XML-NOTATION-DECLARATION
+		    (standard-unparser-method 'XML-!NOTATION
 		      (lambda (element port)
 			(write-char #\space port)
-			(write (xml-notation-declaration-name element)
-			       port)))))
+			(write (xml-!notation-name element) port)))))
   name
-  value)
+  id)
