@@ -1,6 +1,8 @@
 ;;; -*- Scheme -*-
 
-(define TS 256)				; Actual table size to use
+(declare (usual-integrations))
+
+(define-integrable ts 256)				; Actual table size to use
 
 (define-structure (key (conc-name key/)
 		       (constructor %make-key))
@@ -34,48 +36,50 @@
 	    (let ((s (key/state-table key)))
 	      (let* ((j (fix:remainder (fix:+ (fix:+ j 1)
 					      (fix:+ (vector-ref s i)
-						     (char->ascii (string-ref kbuf k)))) ts))
+						     (vector-8b-ref kbuf k)))
+				       ts))
 		     (t (vector-ref s i)))
 		(vector-set! s i (vector-ref s j))
 		(vector-set! s j t)
 		(loop (fix:1+ i) j (fix:remainder (fix:1+ k) m)))))))))
 
-(define (rcm key n buf)
-  (let ((i (key/index-i key))
-	(j (key/index-j key)))
-    (let ((s (key/state-table key)))
-      (let loop ((k 0)
-		 (i i)
-		 (j j))
-	(if (fix:< k n)
-	    (begin
-	      (let* ((i (fix:remainder (fix:1+ i) ts))
-		     (j (fix:remainder (fix:+ j (vector-ref s i)) ts))
-		     (t (vector-ref s i)))
-		(vector-set! s i (vector-ref s j))
-		(vector-set! s j t)
-		(string-set! buf k 
-			     (ascii->char 
-			      (fix:xor (char->ascii (string-ref buf k))
-				       (vector-ref s (fix:remainder 
-						      (fix:+ (fix:1+ (vector-ref s i))
-							     (vector-ref s j)) ts)))))
 #|
-		(let ((buf-k-bitstr
-		       (unsigned-integer->bit-string 
-			8 (char->ascii (string-ref buf k))))
-		      (xor-string
-		       (unsigned-integer->bit-string
-			8 (vector-ref s (modulo (+ 1 (vector-ref s i) 
-						   (vector-ref s j)) ts)))))
-		  (string-set! buf k (ascii->char 
-				      (bit-string->unsigned-integer
-				       (bit-string-xor buf-k-bitstr xor-string)))))
+(define-integrable (inc-mod i ts)
+  (if (fix:< i ts) 
+      i
+      (fix:- i ts)))
 |#
-		(loop (1+ k) i j)))
-	    (begin
-	      (set-key/index-i! key i)
-	      (set-key/index-j! key j)))))))
+(define-integrable (inc-mod i ts)
+  (fix:remainder i ts))
+
+(define-integrable (rcm key n buf)
+  (rcm-iter key n buf 0))
+
+(define (rcm-iter key n buf start-index)
+  (let ((i (key/index-i key))
+	(j (key/index-j key))
+	(s (key/state-table key))
+	(end-index (fix:+ n start-index)))
+    (let loop ((k start-index)
+	       (i i)
+	       (j j))
+      (if (fix:< k end-index)
+	  (begin
+	    (let* ((i (inc-mod (fix:1+ i) ts))
+		   (j (inc-mod (fix:+ j (vector-ref s i)) ts))
+		   (t (vector-ref s i)))
+	      (vector-set! s i (vector-ref s j))
+	      (vector-set! s j t)
+	      (vector-8b-set! buf k
+			      (fix:xor (vector-8b-ref buf k)
+				       (vector-ref s (inc-mod
+						      (fix:+ (fix:1+ (vector-ref s i))
+							     (vector-ref s j)) 
+						      ts))))
+	      (loop (fix:1+ k) i j)))
+	  (begin
+	    (set-key/index-i! key i)
+	    (set-key/index-j! key j))))))
 
 (define kryptid "This file krypted ")
 
@@ -103,55 +107,52 @@
   "Mon Mar 30 17:21:44 1992")
 |#
 
-(define (update-checksum cs block)
-  (let ((block-length (string-length block)))
-    (let loop ((i 0)
+(define (update-checksum cs block index length)
+  (let ((end-index (fix:+ index length)))
+    (let loop ((i index)
 	       (checksum cs))
-      (if (< i block-length)
-	  (loop (fix:1+ i) (fix:+ checksum (char->ascii (string-ref block i))))
+      (if (fix:< i end-index)
+	  (loop (fix:1+ i) (fix:+ checksum (vector-8b-ref block i)))
 	  (fix:remainder checksum 256)))))
 
 (define (encrypt input-string password)
-  (let ((checksum 0)
-	(output-string "")
-	(header (string-append kryptid (get-krypt-time-string) "\n")))
+  (let* ((checksum 0)
+	 (header (string-append kryptid (get-krypt-time-string) "\n"))
+	 (hlen (string-length header))
+	 (output-string (make-string (fix:+ 6 (fix:+ hlen (string-length input-string)))))
+	 (end-index (fix:- (string-length output-string) ts)))
     (let ((key1 (make-key)))
       (rcm-keyinit key1)
       (rcm-key key1 header)
       (rcm-key key1 password)
       (let ((passwordmac (make-string 5 #\NUL)))
 	(rcm key1 5 passwordmac)
-	(set! output-string (string-append header passwordmac)))
-      (let loop ((rest input-string)
-		 (output-string-list '()))
-	(if (>= (string-length rest) 256)
-	    (let ((current-block (string-head rest 256))
-		  (new-rest (string-tail rest 256)))
-;	      (set! checksum (+ checksum (reduce + 0 (map char->ascii (string->list current-block)))))
-	      (set! checksum (update-checksum checksum current-block))
-	      (rcm key1 (string-length current-block) current-block)
-	      (loop new-rest (cons current-block output-string-list)))
+	(substring-move-left! header 0 hlen output-string 0)
+	(substring-move-left! passwordmac 0 5 output-string hlen)
+	(substring-move-left! input-string 0 (string-length input-string) output-string (fix:+ hlen 5)))
+      (let loop ((index (fix:+ hlen 5)))
+	(if (fix:< index end-index)
 	    (begin
-;	      (set! checksum (+ checksum (reduce + 0 (map char->ascii (string->list rest)))))
-	      (set! checksum (update-checksum checksum rest))
-	      (rcm key1 (string-length rest) rest)
-	      (set! output-string 
-		    (apply string-append (cons output-string (reverse (cons rest output-string-list))))))))
-      (let ((check-char (ascii->char (modulo (- checksum) 256))))
+	      (set! checksum (update-checksum checksum output-string index ts))
+	      (rcm-iter key1 ts output-string index)
+	      (loop (fix:+ index ts)))
+	    (let ((count (fix:- (string-length output-string) (fix:1+ index))))
+	      (set! checksum (update-checksum checksum output-string index count))
+	      (rcm-iter key1 count output-string index))))
+      (let ((check-char (ascii->char (modulo (- checksum) ts))))
 	(let ((cc-string (char->string check-char)))
 	  (rcm key1 1 cc-string)
-	  (set! output-string (string-append output-string cc-string))))
+	  (string-set! output-string (fix:-1+ (string-length output-string)) (string-ref cc-string 0))))
       output-string)))
 
 (define (decrypt input-string password #!optional password-error checksum-error)
   (let* ((header-length (+ (string-length kryptid) 25))
 	 (header (string-head input-string header-length))
-	 (text1 (string-tail input-string header-length))
-	 (pwordmac (string-head text1 5))
-	 (encrypted-text (string-tail text1 5)))
-    (let ((key1 (make-key))
-	  (checksum 0)
-	  (output-string ""))
+	 (pwordmac (substring input-string header-length (fix:+ header-length 5)))
+	 (output-string (string-tail input-string (fix:+ header-length 5)))
+	 (end-index (fix:- (string-length output-string) ts))
+	 (key1 (make-key))
+	 (checksum 0))
       (rcm-keyinit key1)
       (rcm-key key1 header)
       (rcm-key key1 password)
@@ -159,29 +160,25 @@
 	(rcm key1 5 passwordmac)
 	(if (string=? passwordmac pwordmac)
 	    (begin
-	      (let loop ((rest encrypted-text)
-			 (output-string-list '()))
-		(if (>= (string-length rest) 256)
-		    (let ((current-block (string-head rest 256))
-			  (new-rest (string-tail rest 256)))
-		      (rcm key1 (string-length current-block) current-block)
-;		      (set! checksum (+ checksum (reduce + 0 (map char->ascii (string->list current-block)))))
-		      (set! checksum (update-checksum checksum current-block))
-		      (loop new-rest (cons current-block output-string-list)))
+	      (let loop ((index 0))
+		(if (fix:< index end-index)
 		    (begin
-		      (rcm key1 (string-length rest) rest)
-;		      (set! checksum (+ checksum (reduce + 0 (map char->ascii (string->list rest)))))
-		      (set! checksum (update-checksum checksum rest))
-		      (let ((foo (apply string-append (reverse (cons rest output-string-list)))))
-			(set! output-string (string-head foo (-1+ (string-length foo))))))))
+		      (rcm-iter key1 ts output-string index)
+		      (set! checksum (update-checksum checksum output-string index ts))
+		      (loop (fix:+ index ts)))
+		    (let ((count (fix:- (string-length output-string) index)))
+		      (rcm-iter key1 count output-string index)
+		      (set! checksum (update-checksum checksum output-string index count)))))
 	      (if (not (= (modulo checksum 256) 0))
 		  (if (default-object? checksum-error)
 		      (error "krypt: Checksum error.")
 		      (checksum-error output-string))
-		  output-string))
+		  (begin
+		    (set-string-length! output-string (fix:-1+ (string-length output-string)))
+		    output-string)))
 	    (if (default-object? password-error)
 		(error "krypt: Password error.")
-		(password-error)))))))
+		(password-error))))))
 
 	    
 	      
