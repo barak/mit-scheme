@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: earlyrew.scm,v 1.3 1995/01/20 20:33:59 adams Exp $
+$Id: earlyrew.scm,v 1.4 1995/02/14 02:38:45 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -37,6 +37,11 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+
+;; Affects how careful we are to maintain exactness:
+(define *earlyrew/maximize-exactness?* #T)
+
+
 (define (earlyrew/top-level program)
   (earlyrew/expr program))
 
@@ -262,9 +267,11 @@ MIT in each case. |#
 		      (list x y)
 		      `(IF ,(andify (%test x-name) (%test y-name))
 			   (CALL (QUOTE ,%fixop)
+				 (QUOTE #F)
 				 (LOOKUP ,x-name)
 				 (LOOKUP ,y-name))
 			   (CALL (QUOTE ,%genop)
+				 (QUOTE #F)
 				 (LOOKUP ,x-name)
 				 (LOOKUP ,y-name))))))))))
 
@@ -272,9 +279,11 @@ MIT in each case. |#
   (earlyrew/binaryop + '&+ fix:+ %+ 1
 		     (lambda (x-value y)
 		       (and (zero? x-value)
+			    (exact? x-value)
 			    y))
 		     (lambda (x y-value)
 		       (and (zero? y-value)
+			    (exact? y-value)
 			    x))))
 
 (define-rewrite/early '&-
@@ -282,6 +291,7 @@ MIT in each case. |#
 		     earlyrew/nothing-special
 		     (lambda (x y-value)
 		       (and (zero? y-value)
+			    (exact? y-value)
 			    x))))
 
 (define-rewrite/early 'QUOTIENT
@@ -343,21 +353,33 @@ MIT in each case. |#
 
 (define-rewrite/early '&*
   (let ((&* (make-primitive-procedure '&*)))
+
+    (define (by-zero expression zero-value)
+      (if *earlyrew/maximize-exactness?*
+	  `(IF (CALL (QUOTE ,eq?) ,expression (QUOTE 0))
+	       (QUOTE 0)
+	       (QUOTE 0.0))
+	  `(BEGIN ,expression (QUOTE ,zero-value))))
+
     (lambda (x y)
+      (define (unexpanded)
+	`(CALL (QUOTE ,&*) (QUOTE #F) ,x ,y))
+      (define (out-of-line)
+	`(CALL (QUOTE ,%*) (QUOTE #F) ,x ,y))
       (cond ((earlyrew/number? x)
 	     => (lambda (x-value)
 		  (cond ((earlyrew/number? y)
 			 => (lambda (y-value)
 			      `(QUOTE ,(* x-value y-value))))
 			((zero? x-value)
-			 `(QUOTE 0))
-			((= x-value 1)
+			 (by-zero y x-value))
+			((eqv? x-value 1) 
 			 y)
-			((= x-value -1)
+			((eqv? x-value -1)
 			 (earlyrew/negate y))
 			((good-factor? x-value)
 			 (if (not *earlyrew-expand-genarith?*)
-			     `(CALL (QUOTE ,&*) (QUOTE #F) (QUOTE ,x-value) ,y)
+			     (unexpanded)
 			     (let ((y-name (earlyrew/new-name 'Y))
 				   (n-bits (good-factor->nbits x-value)))
 			       `(CALL
@@ -376,18 +398,18 @@ MIT in each case. |#
 					     (LOOKUP ,y-name))))
 				 ,y))))
 			(else
-			 `(CALL (QUOTE ,%*) (QUOTE #F) (QUOTE ,x-value) ,y)))))
+			 (out-of-line)))))
 	    ((earlyrew/number? y)
 	     => (lambda (y-value)
 		  (cond ((zero? y-value)
-			 `(QUOTE 0))
-			((= y-value 1)
+			 (by-zero x y-value))
+			((eqv? y-value 1)
 			 x)
-			((= y-value -1)
+			((eqv? y-value -1)
 			 (earlyrew/negate x))
 			((good-factor? y-value)
 			 (if (not *earlyrew-expand-genarith?*)
-			     `(CALL (QUOTE ,&*) (QUOTE #F) ,x (QUOTE ,y-value))
+			     (unexpanded)
 			     (let ((x-name (earlyrew/new-name 'X))
 				   (n-bits (good-factor->nbits y-value)))
 			       (bind x-name x
@@ -404,9 +426,9 @@ MIT in each case. |#
 						(LOOKUP ,x-name)
 						(QUOTE ,y-value)))))))
 			(else
-			 `(CALL (QUOTE ,%*) (QUOTE #F) ,x (QUOTE ,y-value))))))
+			 (out-of-line)))))
 	    (else
-	     `(CALL (QUOTE ,%*) (QUOTE #F) ,x ,y))))))
+	     (out-of-line))))))
 
 ;; NOTE: these could use 0 as the number of bits, but this would prevent
 ;; a common RTL-level optimization triggered by CSE.
