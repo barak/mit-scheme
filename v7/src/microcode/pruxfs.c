@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.41 1990/04/27 23:43:27 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.42 1990/06/20 19:39:44 cph Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -32,290 +32,42 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* Simple unix primitives. */
+/* Unix-specific file-system primitives. */
 
 #include "scheme.h"
 #include "prims.h"
-#include <pwd.h>
-#include <grp.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#ifdef bsd
-#include <sys/time.h>
-#include <sys/file.h>
-#else
-#include <time.h>
-#include <fcntl.h>
+#include "ux.h"
+#include "osfs.h"
+
+static SCHEME_OBJECT EXFUN (file_attributes_internal, (struct stat * s));
+static void EXFUN (file_mode_string, (struct stat * s, char * a));
+static char EXFUN (file_type_letter, (struct stat * s));
+static void EXFUN (rwx, (unsigned short bits, char * chars));
+static SCHEME_OBJECT EXFUN (file_touch, (CONST char * filename));
+static void EXFUN (protect_fd, (int fd));
+
+#ifndef FILE_TOUCH_OPEN_TRIES
+#define FILE_TOUCH_OPEN_TRIES 5
 #endif
-#ifdef hpux
-#include <unistd.h>
-#endif
-#include <errno.h>
-extern int errno;
-
-/* This returns the string that `perror' would have printed, except
-   that it is not terminated by a newline.  */
-
-SCHEME_OBJECT
-system_error_message (s)
-     char * s;
-{
-  extern char * sys_errlist [];
-  extern int sys_nerr;
-  char * error_message;
-  char unknown_error [64];
-  extern char * malloc ();
-  SCHEME_OBJECT result;
-
-  if ((errno >= 0) && (errno <= sys_nerr))
-    error_message = (sys_errlist [errno]);
-  else
-    {
-      sprintf (unknown_error, "Unknown error %d", errno);
-      error_message = unknown_error;
-    }
-  if (s == NULL)
-    {
-      result = (allocate_string (strlen (error_message)));
-      strcpy ((STRING_LOC (result, 0)), error_message);
-    }
-  else
-    {
-      result = (allocate_string ((strlen (s)) + (strlen (error_message)) + 2));
-      sprintf (((char *) (STRING_LOC (result, 0))), "%s: %s",
-	       s, error_message);
-    }
-  return (result);
-}
-
-DEFINE_PRIMITIVE ("GET-ENVIRONMENT-VARIABLE", Prim_get_environment_variable, 1, 1,
-  "Looks up the value of a variable in the user's shell environment.\n\
-The argument, a variable name, must be a string.\n\
-The result is either a string (the variable's value),\n\
-or #F indicating that the variable does not exist.")
-{
-  char * variable_value;
-  extern char * getenv ();
-  PRIMITIVE_HEADER (1);
-  variable_value = (getenv (STRING_ARG (1)));
-  PRIMITIVE_RETURN
-    ((variable_value == ((char *) 0))
-     ? SHARP_F
-     : (char_pointer_to_string (variable_value)));
-}
-
-DEFINE_PRIMITIVE ("CURRENT-USER-NAME", Prim_get_user_name, 0, 0,
-  "Returns (as a string) the user name of the user running Scheme.")
-{
-  char * user_name;
-  char * getlogin ();
-  PRIMITIVE_HEADER (0);
-
-  user_name = (getlogin ());
-  if (user_name == NULL)
-    {
-      struct passwd *entry;
-      struct passwd *getpwuid ();
-
-      entry = (getpwuid (getuid ()));
-      if (entry == NULL)
-	error_external_return ();
-      user_name = (entry -> pw_name);
-    }
-  PRIMITIVE_RETURN (char_pointer_to_string (user_name));
-}
-
-DEFINE_PRIMITIVE ("GET-USER-HOME-DIRECTORY", Prim_get_user_home_directory, 1, 1,
-  "Returns the file name of a given user's home directory.\n\
-The user name argument must be a string.\n\
-The result is either the file name as a string,\n\
-or #F indicating that no such user is known.")
-{
-  struct passwd * entry;
-  struct passwd * getpwnam ();
-  PRIMITIVE_HEADER (1);
-  entry = (getpwnam (STRING_ARG (1)));
-  PRIMITIVE_RETURN
-    ((entry == ((struct passwd *) 0))
-     ? SHARP_F
-     : (char_pointer_to_string (entry -> pw_dir)));
-}
-
-DEFINE_PRIMITIVE ("CURRENT-FILE-TIME", Prim_current_file_time, 0, 0,
-  "Returns the current file system time stamp.\n\
-This is an integer whose units are in seconds.")
-{
-  extern long time ();
-  PRIMITIVE_HEADER (0);
-
-  PRIMITIVE_RETURN (long_to_integer (time ((long *) 0)));
-}
-
-DEFINE_PRIMITIVE ("FILE-TIME->STRING", Prim_file_time_to_string, 1, 1,
-  "Converts a file system time stamp into a date/time string.")
-{
-  long clock;
-  char * time_string;
-  PRIMITIVE_HEADER (1);
-  CHECK_ARG (1, INTEGER_P);
-  {
-    fast SCHEME_OBJECT number = (ARG_REF (1));
-    if (! (integer_to_long_p (number)))
-      error_bad_range_arg (1);
-    clock = (integer_to_long (number));
-  }
-  time_string = (ctime (& clock));
-  if ((time_string [24]) == '\n')
-    (time_string [24]) = '\0';
-  PRIMITIVE_RETURN (char_pointer_to_string (time_string));
-}
-
-DEFINE_PRIMITIVE ("UID->STRING", Prim_uid_to_string, 1, 1,
-  "Given a unix user ID number, returns the corresponding user name.\n\
-If the argument is not a known user ID, returns #F.")
-{
-  struct passwd * getpwuid ();
-  void endpwent ();
-  struct passwd * entry;
-  PRIMITIVE_HEADER (1);
-
-  CHECK_ARG (1, FIXNUM_P);
-  entry = (getpwuid (arg_nonnegative_integer (1)));
-  endpwent ();
-  PRIMITIVE_RETURN
-    ((entry == NULL)
-     ? SHARP_F
-     : (char_pointer_to_string (entry -> pw_name)));
-}
-
-DEFINE_PRIMITIVE ("GID->STRING", Prim_gid_to_string, 1, 1,
-  "Given a unix group ID number, returns the corresponding group name.\n\
-If the argument is not a known group ID, returns #F.")
-{
-  struct group * getgrgid ();
-  void endgrent ();
-  struct group * entry;
-  PRIMITIVE_HEADER (1);
-
-  CHECK_ARG (1, FIXNUM_P);
-  entry = (getgrgid (arg_nonnegative_integer (1)));
-  endgrent ();
-  PRIMITIVE_RETURN
-    ((entry == NULL)
-     ? SHARP_F
-     : (char_pointer_to_string (entry -> gr_name)));
-}
-
-DEFINE_PRIMITIVE ("FILE-DIRECTORY?", Prim_file_directory_p, 1, 1,
-  "Returns #T if the argument file name is a directory;\n\
-otherwise returns #F.")
-{
-  struct stat stat_result;
-  PRIMITIVE_HEADER (1);
-
-  if ((stat ((STRING_ARG (1)), (& stat_result))) < 0)
-    PRIMITIVE_RETURN (SHARP_F);
-  PRIMITIVE_RETURN
-    ((((stat_result . st_mode) & S_IFMT) == S_IFDIR) ? SHARP_T : SHARP_F);
-}
 
 DEFINE_PRIMITIVE ("FILE-MODES", Prim_file_modes, 1, 1,
   "Return mode bits of FILE, as an integer.")
 {
   struct stat stat_result;
   PRIMITIVE_HEADER (1);
-
-  if ((stat ((STRING_ARG (1)), (& stat_result))) < 0)
-    PRIMITIVE_RETURN (SHARP_F);
-  PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM ((stat_result . st_mode) & 07777));
+  PRIMITIVE_RETURN
+    (((UX_stat ((STRING_ARG (1)), (&stat_result))) < 0)
+     ? SHARP_F
+     : (LONG_TO_UNSIGNED_FIXNUM ((stat_result . st_mode) & 07777)));
 }
 
 DEFINE_PRIMITIVE ("SET-FILE-MODES!", Prim_set_file_modes, 2, 2,
-  "Return mode bits of FILE, as an integer.")
+  "Set the mode bits of FILE to MODE.")
 {
   PRIMITIVE_HEADER (2);
-  if ((chmod ((STRING_ARG (1)), (arg_index_integer (2, 010000)))) < 0)
-    error_external_return ();
+  if ((UX_chmod ((STRING_ARG (1)), (arg_index_integer (2, 010000)))) < 0)
+    error_system_call (errno, "chmod");
   PRIMITIVE_RETURN (SHARP_F);
-}
-
-DEFINE_PRIMITIVE ("FILE-ACCESS", Prim_file_access, 2, 2, 0)
-{
-  PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN
-    (((access ((STRING_ARG (1)), (arg_index_integer (2, 8)))) >= 0)
-     ? SHARP_T
-     : SHARP_F);
-}
-
-DEFINE_PRIMITIVE ("CURRENT-UID", Prim_current_uid, 0, 0,
-  "Return the effective uid of Scheme, as an integer.")
-{
-  PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (geteuid ()));
-}
-
-DEFINE_PRIMITIVE ("CURRENT-GID", Prim_current_gid, 0, 0,
-  "Return the effective gid of Scheme, as an integer.")
-{
-  PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (getegid ()));
-}
-
-/* The following is originally from GNU Emacs. */
-
-#ifdef S_IFLNK
-
-static SCHEME_OBJECT
-file_symlink_p (filename)
-     SCHEME_OBJECT filename;
-{
-  char *buf;
-  int bufsize;
-  int valsize;
-  SCHEME_OBJECT val;
-  extern char *malloc ();
-  extern void free ();
-
-  bufsize = 100;
-  while (1)
-    {
-      buf = (malloc (bufsize));
-      if (buf == NULL)
-	error_external_return ();
-      valsize =
-	(readlink ((STRING_LOC (filename, 0)), buf, bufsize));
-      if (valsize < bufsize)
-	break;
-      /* Buffer was not long enough */
-      free (buf);
-      bufsize *= 2;
-    }
-  if (valsize < 0)
-    {
-      free (buf);
-      return (SHARP_F);
-    }
-  (buf [valsize]) = '\0';
-  val = (char_pointer_to_string (buf));
-  free (buf);
-  return (val);
-}
-
-#endif /* S_IFLNK */
-
-DEFINE_PRIMITIVE ("FILE-SYMLINK?", Prim_file_symlink_p, 1, 1,
-  "If FILENAME is a symbolic link, returns its contents;\n\
-otherwise returns #F.")
-{
-  PRIMITIVE_HEADER (1);
-
-  CHECK_ARG (1, STRING_P);
-#ifdef S_IFLNK
-  PRIMITIVE_RETURN (file_symlink_p (ARG_REF (1)));
-#else /* not S_IFLNK */
-  PRIMITIVE_RETURN (SHARP_F);
-#endif /* S_IFLNK */
 }
 
 /* Returns a vector of 10 items:
@@ -333,73 +85,67 @@ otherwise returns #F.")
    8 = mode string for the file
    9 = inode number of the file
 
-   The filemodestring stuff was gobbled from GNU Emacs. */
+   The file_mode_string stuff was gobbled from GNU Emacs. */
 
-static void filemodestring ();
+#define FILE_ATTRIBUTES_PRIMITIVE(stat_syscall)				\
+{									\
+  struct stat s;							\
+  PRIMITIVE_HEADER (1);							\
+  PRIMITIVE_RETURN							\
+    (((stat_syscall ((STRING_ARG (1)), (&s))) < 0)			\
+     ? SHARP_F								\
+     : (file_attributes_internal (&s)));				\
+}
+
+DEFINE_PRIMITIVE ("FILE-ATTRIBUTES", Prim_file_attributes, 1, 1,
+  "Given a file name, return attribute information about the file.\n\
+If the file exists and its status information is accessible, the result\n\
+is a vector of 10 items (see the reference manual for details).  Otherwise\n\
+the result is #F.")
+     FILE_ATTRIBUTES_PRIMITIVE (UX_lstat)
+
+DEFINE_PRIMITIVE ("FILE-ATTRIBUTES-INDIRECT", Prim_file_attributes_indirect, 1, 1,
+  "Like FILE-ATTRIBUTES but indirect through symbolic links.")
+     FILE_ATTRIBUTES_PRIMITIVE (UX_stat)
 
 static SCHEME_OBJECT
-file_attributes_internal (stat_result)
-     struct stat * stat_result;
+DEFUN (file_attributes_internal, (s), struct stat * s)
 {
-  extern SCHEME_OBJECT allocate_marked_vector ();
-  extern SCHEME_OBJECT allocate_string ();
   SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, 10, true));
   SCHEME_OBJECT modes = (allocate_string (10));
-  switch ((stat_result -> st_mode) & S_IFMT)
+  switch ((s -> st_mode) & S_IFMT)
     {
     case S_IFDIR:
       VECTOR_SET (result, 0, SHARP_T);
       break;
 #ifdef S_IFLNK
     case S_IFLNK:
-      VECTOR_SET (result, 0, (file_symlink_p (ARG_REF (1))));
+      VECTOR_SET (result, 0,
+		  (char_pointer_to_string
+		   (OS_file_soft_link_p
+		    ((CONST char *) (STRING_LOC ((ARG_REF (1)), 0))))));
       break;
 #endif
     default:
       VECTOR_SET (result, 0, SHARP_F);
       break;
     }
-  VECTOR_SET (result, 1, (long_to_integer (stat_result -> st_nlink)));
-  VECTOR_SET (result, 2, (long_to_integer (stat_result -> st_uid)));
-  VECTOR_SET (result, 3, (long_to_integer (stat_result -> st_gid)));
-  VECTOR_SET (result, 4, (long_to_integer (stat_result -> st_atime)));
-  VECTOR_SET (result, 5, (long_to_integer (stat_result -> st_mtime)));
-  VECTOR_SET (result, 6, (long_to_integer (stat_result -> st_ctime)));
-  VECTOR_SET (result, 7, (long_to_integer (stat_result -> st_size)));
-  filemodestring (stat_result, (STRING_LOC (modes, 0)));
+  VECTOR_SET (result, 1, (long_to_integer (s -> st_nlink)));
+  VECTOR_SET (result, 2, (long_to_integer (s -> st_uid)));
+  VECTOR_SET (result, 3, (long_to_integer (s -> st_gid)));
+  VECTOR_SET (result, 4, (long_to_integer (s -> st_atime)));
+  VECTOR_SET (result, 5, (long_to_integer (s -> st_mtime)));
+  VECTOR_SET (result, 6, (long_to_integer (s -> st_ctime)));
+  VECTOR_SET (result, 7, (long_to_integer (s -> st_size)));
+  file_mode_string (s, ((char *) (STRING_LOC (modes, 0))));
   VECTOR_SET (result, 8, modes);
-  VECTOR_SET (result, 9, (long_to_integer (stat_result -> st_ino)));
+  VECTOR_SET (result, 9, (long_to_integer (s -> st_ino)));
   return (result);
 }
-
-#define FILE_ATTRIBUTES_PRIMITIVE(stat_syscall)				\
-{									\
-  struct stat stat_result;						\
-  PRIMITIVE_HEADER (1);							\
-  PRIMITIVE_RETURN							\
-    (((stat_syscall ((STRING_ARG (1)), (&stat_result))) < 0)		\
-     ? SHARP_F								\
-     : (file_attributes_internal (&stat_result)));			\
-}
-
-#ifndef S_IFLNK
-#define lstat stat
-#endif
-
-DEFINE_PRIMITIVE ("FILE-ATTRIBUTES", Prim_file_attributes, 1, 1,
-  "Given a file name, returns attribute information about the file.\n\
-If the file exists and its status information is accessible, the result\n\
-is a vector of 10 items (see the reference manual for details).  Otherwise\n\
-the result is #F.")
-     FILE_ATTRIBUTES_PRIMITIVE (lstat)
-
-DEFINE_PRIMITIVE ("FILE-ATTRIBUTES-INDIRECT", Prim_file_attributes_indirect, 1, 1,
-  "Like FILE-ATTRIBUTES except that it indirects through symbolic links.")
-     FILE_ATTRIBUTES_PRIMITIVE (stat)
 
-/* filemodestring - set file attribute data
+/* file_mode_string - set file attribute data
 
-   Filemodestring converts the data in the st_mode field of file
+   File_mode_string converts the data in the st_mode field of file
    status block `s' to a 10 character attribute string, which it
    stores in the block that `a' points to.
 
@@ -428,312 +174,165 @@ DEFINE_PRIMITIVE ("FILE-ATTRIBUTES-INDIRECT", Prim_file_attributes_indirect, 1, 
    9	'x' if any user may execute, 't' if the file is "sticky" (will
 	be retained in swap space after execution), '-' otherwise. */
 
-static void rwx ();
-static void setst ();
-
 static void
-filemodestring (s, a)
-   struct stat * s;
-   char * a;
+DEFUN (file_mode_string, (s, a), struct stat * s AND char * a)
 {
-  extern char file_type_letter ();
-  (a [0]) = (file_type_letter (s));
+  (a[0]) = (file_type_letter (s));
   rwx ((((s -> st_mode) & 0700) << 0), (& (a [1])));
   rwx ((((s -> st_mode) & 0070) << 3), (& (a [4])));
   rwx ((((s -> st_mode) & 0007) << 6), (& (a [7])));
-  setst ((s -> st_mode), a);
-  return;
-}
-
-static void
-rwx (bits, chars)
-   unsigned short bits;
-   char chars[];
-{
-  (chars [0]) = ((bits & S_IREAD)  ? 'r' : '-');
-  (chars [1]) = ((bits & S_IWRITE) ? 'w' : '-');
-  (chars [2]) = ((bits & S_IEXEC)  ? 'x' : '-');
-  return;
-}
-
-static void
-setst (bits, chars)
-   unsigned short bits;
-   char chars[];
-{
 #ifdef S_ISUID
-   if (bits & S_ISUID)
-     (chars [3]) = (((chars [3]) == 'x') ? 's' : 'S');
+   if (((s -> st_mode) & S_ISUID) != 0)
+     (a[3]) = (((a[3]) == 'x') ? 's' : 'S');
 #endif
 #ifdef S_ISGID
-   if (bits & S_ISGID)
-     (chars [6]) = (((chars [6]) == 'x') ? 's' : 'S');
+   if (((s -> st_mode) & S_ISGID) != 0)
+     (a[6]) = (((a [6]) == 'x') ? 's' : 'S');
 #endif
 #ifdef S_ISVTX
-   if (bits & S_ISVTX)
-     (chars [9]) = (((chars [9]) == 'x') ? 't' : 'T');
+   if (((s -> st_mode) & S_ISVTX) != 0)
+     (a[9]) = (((a [9]) == 'x') ? 't' : 'T');
 #endif
-   return;
 }
 
-DEFINE_PRIMITIVE ("SYSTEM", Prim_system, 1, 1,
-  "Invokes sh (the Bourne shell) on the string argument.\n\
-Waits until the shell terminates, then returns its exit status as an integer.")
+static char
+DEFUN (file_type_letter, (s), struct stat * s)
 {
-  extern int system ();
-  PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (long_to_integer (system (STRING_ARG (1))));
+  switch ((s -> st_mode) & S_IFMT)
+    {
+    case S_IFDIR:
+      return ('d');
+    case S_IFCHR:
+      return ('c');
+    case S_IFBLK:
+      return ('b');
+#ifdef S_IFLNK
+    case S_IFLNK:
+      return ('l');
+#endif
+#ifdef S_IFMPC
+/* These do not seem to exist */
+    case S_IFMPC:
+    case S_IFMPB:
+      return ('m');
+#endif
+#ifdef S_IFSOCK
+    case S_IFSOCK:
+      return ('s');
+#endif
+#ifdef S_IFIFO
+    case S_IFIFO:
+      return ('p');
+#endif
+#ifdef S_IFNWK /* hp-ux hack */
+    case S_IFNWK:
+      return ('n');
+#endif
+    default:
+      return ('-');
+    }
 }
 
-static SCHEME_OBJECT file_touch ();
-
+static void
+DEFUN (rwx, (bits, chars), unsigned short bits AND char * chars)
+{
+  (chars[0]) = (((bits & S_IREAD) != 0)  ? 'r' : '-');
+  (chars[1]) = (((bits & S_IWRITE) != 0) ? 'w' : '-');
+  (chars[2]) = (((bits & S_IEXEC) != 0)  ? 'x' : '-');
+}
+
 DEFINE_PRIMITIVE ("FILE-TOUCH", Prim_file_touch, 1, 1,
-  "Given a file name, changes the times of the file to the current time.\n\
-If the file does not exist, creates it.\n\
+  "Given a file name, change the times of the file to the current time.\n\
+If the file does not exist, create it.\n\
 Both the access time and modification time are changed.\n\
-Returns #T if the file did not exist and it was created.\n\
-Returns #F if the file existed and its time was modified.\n\
-Otherwise it returns a unix error string.")
+Return #F if the file existed and its time was modified.\n\
+Otherwise the file did not exist and it was created.")
 {
   PRIMITIVE_HEADER (1);
-
-  PRIMITIVE_RETURN (file_touch (STRING_ARG (1)));
+  PRIMITIVE_RETURN (file_touch ((CONST char *) (STRING_ARG (1))));
 }
-
-#define N_RETRIES 5
-
-#define RET_ERROR(errno, message)					\
-do {									\
-  return (((errno) == ESTALE) ?						\
-	  ret_val :							\
-	  (system_error_message (message)));				\
-} while (0)
 
 static SCHEME_OBJECT
-file_touch (filename)
-     char * filename;
+DEFUN (file_touch, (filename), CONST char * filename)
 {
-  int result, serrno;
-  struct stat file_status;
   int fd;
-  char buf [1];
-  int count;
-  SCHEME_OBJECT ret_val;
-
-#if 0
-/*
-  IMPORTANT: Don't turn this code on without examining the code below
-  carefully. The code below has changed since this stuff was last enabled!
- */
-#ifdef bsd
-  extern long time ();
-  long current_time;
-  struct timeval tvp [2];
-  extern int utimes ();
-#else /* not bsd */
-#ifdef hpux
-  extern int utime ();
-#endif /* hpux */
-#endif /* bsd */
-#endif /* 0 */
-
-  ret_val = SHARP_F;
-
-  for (count = 0; true; count += 1)
+  transaction_begin ();
   {
-    /* Use O_EXCL to prevent overwriting existing file.
-     */
-    fd = (open (filename, (O_RDWR | O_CREAT | O_EXCL), 0666));
-    if (fd >= 0)
-    {
-      ret_val = SHARP_T;
-      goto zero_length_file;
-    }
-    else if (errno == EEXIST)
-    {
-      fd = (open (filename, O_RDWR, 0666));
-      if (fd >= 0)
-      {
-	break;
-      }
-      else if (((errno != ENOENT) && (errno != ESTALE)) ||
-	       (count >= N_RETRIES))
-      {
-	return (system_error_message ("open"));
-      }
-      /* The file disappeared between the opens.
-	 Go around the loop again.
-      */
-    }
-    else if (errno == ESTALE)
-    {
-      if (count >= N_RETRIES)
-      {
-	return (system_error_message ("open"));
-      }
-    }
-    else if (count >= N_RETRIES)
-    {
-      return (system_error_message ("open"));
-    }
-  }
-
-  result = fstat(fd, &file_status);
-  if (result != 0)
-  {
-    RET_ERROR (errno, "fstat");
-  }
-
-#if 0
-/*
-  IMPORTANT: Don't turn this code on without examining the code below
-  carefully. The code below has changed since this stuff was last enabled!
- */
-
-  /* Disable this code -- this is subject to clock skew problems
-     when the file is on an NFS server.  */
-
-  /* CASE 2: try utime (utimes) if it's available. */
-#ifdef bsd
-
-  current_time = (time (0));
-  ((tvp [0]) . tv_sec) = current_time;
-  ((tvp [0]) . tv_usec) = 0;
-  ((tvp [1]) . tv_sec) = current_time;
-  ((tvp [1]) . tv_usec) = 0;
-  result = (utimes (filename, tvp));
-  if (result == 0)
-    return (ret_val);
-
-#else /* not bsd */
-#ifdef hpux
-
-  result = (utime (filename, 0));
-  if (result == 0)
-    return (ret_val);
-
-#endif /* hpux */
-#endif /* bsd */
-
-  /* utime (utimes) has failed, or does not exist.  Instead, open the
-     file, read one byte, and write it back in place.  */
-
-#endif /* 0 */
-
-  if (((file_status . st_mode) & S_IFMT) != S_IFREG)
-  {
-    return (char_pointer_to_string ("can only touch regular files"));
-  }
-
-  /* CASE 3: file length of 0 needs special treatment. */
-  if ((file_status . st_size) == 0)
-  {
-zero_length_file:
-    (buf [0]) = '\0';
+    unsigned int count = 0;
     while (1)
-    {
-      result = (write (fd, buf, 1));
-      if (result > 0)
       {
-	break;
+	count += 1;
+	/* Use O_EXCL to prevent overwriting existing file. */
+	fd = (UX_open (filename, (O_RDWR | O_CREAT | O_EXCL), MODE_REG));
+	if (fd >= 0)
+	  {
+	    protect_fd (fd);
+	    transaction_commit ();
+	    return (SHARP_T);
+	  }
+	if (errno == EEXIST)
+	  {
+	    fd = (UX_open (filename, O_RDWR, MODE_REG));
+	    if (fd >= 0)
+	      {
+		protect_fd (fd);
+		break;
+	      }
+	    else if ((errno == ENOENT) || (errno == ESTALE))
+	      continue;
+	  }
+	if (count >= FILE_TOUCH_OPEN_TRIES)
+	  error_system_call (errno, "open");
       }
-      if ((result < 0) && (errno != EINTR))
-      {
-	serrno = errno;
-	(void) close (fd);
-	RET_ERROR (serrno, "write");
-      }
-    }
-#if 0
-    if ((lseek (fd, 0, 0)) != 0)
-    {
-      serrno = errno;
-      (void) ftruncate (fd, 0);
-      (void) close (fd);
-      RET_ERROR (serrno, "lseek");
-    }
-    while (1)
-    {
-      result = (read (fd, buf, 1));
-      if (result > 0)
-      {
-	break;
-      }
-      if (result == 0)
-      {
-	(void) ftruncate (fd, 0);
-	(void) close (fd);
-	return (char_pointer_to_string ("read: eof encountered"));
-      }
-      if ((result < 0) && (errno != EINTR))
-      {
-	serrno = errno;
-	(void) ftruncate (fd, 0);
-	(void) close (fd);
-	RET_ERROR (serrno, "read");
-      }
-    }
-#endif
-    if ((ftruncate (fd, 0)) != 0)
-    {
-      serrno = errno;
-      (void) close(fd);
-      RET_ERROR (serrno, "ftruncate");
-    }
-    if ((close (fd)) != 0)
-    {
-      return (system_error_message ("close"));
-    }
-    return (ret_val);
   }
-
+  {
+    struct stat file_status;
+    STD_VOID_SYSTEM_CALL ("fstat", (UX_fstat (fd, (&file_status))));
+    if (((file_status . st_mode) & S_IFMT) != S_IFREG)
+      error_bad_range_arg (1);
+    /* CASE 3: file length of 0 needs special treatment. */
+    if ((file_status . st_size) == 0)
+      {
+	char buf [1];
+	(buf[0]) = '\0';
+	STD_VOID_SYSTEM_CALL ("write", (UX_write (fd, buf, 1)));
+#ifdef HAVE_TRUNCATE
+	STD_VOID_SYSTEM_CALL ("ftruncate", (UX_ftruncate (fd, 0)));
+	transaction_commit ();
+#else /* not HAVE_TRUNCATE */
+	transaction_commit ();
+	fd = (UX_open (filename, (O_WRONLY | O_TRUNC), MODE_REG));
+	if (fd >= 0)
+	  STD_VOID_SYSTEM_CALL ("close", (UX_close (fd)));
+#endif /* HAVE_TRUNCATE */
+	return (SHARP_F);
+      }
+  }
   /* CASE 4: read, then write back the first byte in the file. */
-  while (1)
   {
-    result = (read (fd, buf, 1));
-    if (result > 0)
-    {
-      break;
-    }
-    if (result == 0)
-    {
-      /* Someone else truncated the file! */
-#if 0
-      (void) close (fd);
-      return (char_pointer_to_string ("read: eof encountered"));
-#endif
-      goto zero_length_file;
-    }
-    if ((result < 0) && (errno != EINTR))
-    {
-      serrno = errno;
-      (void) close (fd);
-      RET_ERROR (serrno, "read");
-    }
+    char buf [1];
+    int scr;
+    STD_UINT_SYSTEM_CALL ("read", scr, (UX_read (fd, buf, 1)));
+    if (scr > 0)
+      {
+	STD_VOID_SYSTEM_CALL ("lseek", (UX_lseek (fd, 0, SEEK_SET)));
+	STD_VOID_SYSTEM_CALL ("write", (UX_write (fd, buf, 1)));
+      }
   }
-  if ((lseek (fd, 0, 0)) != 0)
-  {
-    serrno = errno;
-    (void) close (fd);
-    RET_ERROR (serrno, "lseek");
-  }
-  while (1)
-  {
-    result = (write (fd, buf, 1));
-    if (result > 0)
-    {
-      break;
-    }
-    if ((result < 0) && (errno != EINTR))
-    {
-      serrno = errno;
-      (void) close (fd);
-      RET_ERROR (serrno, "write");
-    }
-  }
-  if ((close (fd)) != 0)
-  {
-    return (system_error_message ("close"));
-  }
-  return (ret_val);
+  transaction_commit ();
+  return (SHARP_F);
+}
+
+static void
+DEFUN (protect_fd_close, (ap), PTR ap)
+{
+  UX_close (* ((int *) ap));
+}
+
+static void
+DEFUN (protect_fd, (fd), int fd)
+{
+  int * p = (dstack_alloc (sizeof (int)));
+  (*p) = fd;
+  transaction_record_action (tat_always, protect_fd_close, p);
 }
