@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.50 2000/06/08 03:14:00 cph Exp $
+;;; $Id: imail.pkg,v 1.51 2000/06/08 16:42:13 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -283,20 +283,3 @@
 	  edwin-variable$imail-summary-show-date
 	  edwin-variable$imail-summary-subject-width
 	  edwin-variable$imail-update-interval))
-
-(define-package (edwin imail mime-codec)
-  (files "mime-codec")
-  (parent (edwin imail))
-  (export (edwin imail)
-	  decode-base64:finalize
-	  decode-base64:initialize
-	  decode-base64:update
-	  decode-quoted-printable:finalize
-	  decode-quoted-printable:initialize
-	  decode-quoted-printable:update
-	  encode-base64:finalize
-	  encode-base64:initialize
-	  encode-base64:update
-	  encode-quoted-printable:finalize
-	  encode-quoted-printable:initialize
-	  encode-quoted-printable:update))
