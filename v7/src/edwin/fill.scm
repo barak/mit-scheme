@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fill.scm,v 1.54 1992/05/14 18:38:50 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fill.scm,v 1.55 1992/05/14 20:25:59 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -353,38 +353,41 @@ With argument, turn auto-fill mode on iff argument is positive."
   "Breaks the line if it exceeds the fill column, then inserts a space."
   "p"
   (lambda (argument)
-    (conditionally-override-key
-     (ref-command-object self-insert-command)
-     (lambda ()
-       (insert-chars #\space argument)
-       (auto-fill-break)))))
+    (conditionally-override-key (ref-command-object &auto-fill-space)
+				(ref-command-object self-insert-command)
+				(lambda ()
+				  (insert-chars #\space argument)
+				  (auto-fill-break)))))
 
 (define-command &auto-fill-newline
   "Breaks the line if it exceeds the fill column, then inserts a newline."
   "P"
   (lambda (argument)
-    (conditionally-override-key
-     (ref-command-object newline)
-     (lambda ()
-       (auto-fill-break)
-       ((ref-command newline) argument)))))
+    (conditionally-override-key (ref-command-object &auto-fill-newline)
+				(ref-command-object newline)
+				(lambda ()
+				  (auto-fill-break)
+				  ((ref-command newline) argument)))))
 
-(define (conditionally-override-key override-command action)
+(define (conditionally-override-key overriding overridden action)
   ;; This looks at the context in which the auto-fill commands are
   ;; invoked, and performs the auto-fill action only when the context
   ;; is the expected one.
-  (let ((comtabs (current-comtabs))
-	(key (current-command-key)))
-    (let ((tail
-	   (memq (minor-mode-comtab (ref-mode-object auto-fill)) comtabs)))
-      (if (or (null? tail)
-	      (null? (cdr tail)))
-	  (dispatch-on-key comtabs key)
-	  (let ((command (comtab-entry (cdr tail) key)))
-	    (if (or (eq? command override-command)
-		    (eq? command (ref-command-object undefined)))
-		(action)
-		(dispatch-on-command command)))))))
+  (let ((command
+	 (comtab-entry
+	  (let ((comtabs (current-comtabs)))
+	    (let ((tail
+		   (memq (minor-mode-comtab (ref-mode-object auto-fill))
+			 comtabs)))
+	      (if (or (null? tail) (null? (cdr tail)))
+		  comtabs
+		  (cdr tail))))
+	  (current-command-key))))
+    (if (or (eq? command overriding)
+	    (eq? command overridden)
+	    (eq? command (ref-command-object undefined)))
+	(action)
+	(dispatch-on-command command))))
 
 (define-minor-mode auto-fill "Fill" "")
 (define-key 'auto-fill #\space '&auto-fill-space)
