@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.18 1991/03/14 23:03:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.19 1991/04/26 05:25:16 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -353,12 +353,7 @@ DEFUN (x_make_window, (xd, window, x_size, y_size, attributes, methods, extra),
   x_set_mouse_colors
     (display, mouse_cursor, (attributes -> mouse_pixel), background_pixel);
   XDefineCursor (display, window, mouse_cursor);
-  XSelectInput
-    (display, window,
-     KeyPressMask | ExposureMask |
-     ButtonPressMask | ButtonReleaseMask |
-     StructureNotifyMask | FocusChangeMask |
-     LeaveWindowMask | EnterWindowMask);
+  XSelectInput (display, window, 0);
   xw =
     (x_malloc (((sizeof (struct xwindow)) - (sizeof (xw -> extra))) + extra));
   (XW_ALLOCATION_INDEX (xw)) = (allocate_table_index ((&x_window_table), xw));
@@ -508,6 +503,7 @@ enum event_type
   event_type_key_press,
   event_type_leave,
   event_type_motion,
+  event_type_expose,
   event_type_supremum
 };
 
@@ -520,6 +516,10 @@ enum event_type
 #define EVENT_0 2
 #define EVENT_1 3
 #define EVENT_2 4
+#define EVENT_3 5
+
+#define EVENT_INTEGER(event, slot, number)				\
+  VECTOR_SET ((event), (slot), (long_to_integer (number)))
 
 static SCHEME_OBJECT
 DEFUN (make_event_object, (xw, type, extra),
@@ -532,48 +532,6 @@ DEFUN (make_event_object, (xw, type, extra),
   VECTOR_SET (result, 1, (XW_TO_OBJECT (xw)));
   return (result);
 }
-
-static void
-DEFUN (standard_position, (xw, result, x, y),
-       struct xwindow * xw AND
-       SCHEME_OBJECT result AND
-       int x AND
-       int y)
-{
-  int bx = (x - (XW_INTERNAL_BORDER_WIDTH (xw)));
-  int by = (y - (XW_INTERNAL_BORDER_WIDTH (xw)));
-  VECTOR_SET
-    (result, EVENT_0,
-     ((* (XW_X_COORDINATE_MAP (xw)))
-      (xw,
-       ((bx < 0) ? 0
-	: (bx >= (XW_X_SIZE (xw))) ? ((XW_X_SIZE (xw)) - 1)
-	: bx))));
-  VECTOR_SET
-    (result, EVENT_1,
-     ((* (XW_Y_COORDINATE_MAP (xw)))
-      (xw,
-       ((by < 0) ? 0
-	: (by >= (XW_Y_SIZE (xw))) ? ((XW_Y_SIZE (xw)) - 1)
-	: by))));
-}
-
-static void
-DEFUN (standard_size, (xw, result, width, height),
-       struct xwindow * xw AND
-       SCHEME_OBJECT result AND
-       int width AND
-       int height)
-{
-  width -= (2 * (XW_INTERNAL_BORDER_WIDTH (xw)));
-  height -= (2 * (XW_INTERNAL_BORDER_WIDTH (xw)));
-  VECTOR_SET
-    (result, EVENT_0,
-     ((* (XW_X_COORDINATE_MAP (xw))) (xw, ((width < 0) ? 0 : width))));
-  VECTOR_SET
-    (result, EVENT_1,
-     ((* (XW_Y_COORDINATE_MAP (xw))) (xw, ((height < 0) ? 0 : height))));
-}
 
 static SCHEME_OBJECT
 DEFUN (button_event, (xw, event, type),
@@ -582,7 +540,8 @@ DEFUN (button_event, (xw, event, type),
        enum event_type type)
 {
   SCHEME_OBJECT result = (make_event_object (xw, type, 3));
-  standard_position (xw, result, (event -> x), (event -> y));
+  EVENT_INTEGER (result, EVENT_0, (event -> x));
+  EVENT_INTEGER (result, EVENT_1, (event -> y));
   {
     SCHEME_OBJECT conversion;
     switch (event -> button)
@@ -658,18 +617,38 @@ DEFUN (x_event_to_object, (event), XEvent * event)
       if (EVENT_ENABLED (xw, event_type_motion))
 	{
 	  result = (make_event_object (xw, event_type_motion, 2));
-	  standard_position
-	    (xw, result, ((event -> xmotion) . x), ((event -> xmotion) . y));
+	  EVENT_INTEGER (result, EVENT_0, ((event -> xmotion) . x));
+	  EVENT_INTEGER (result, EVENT_1, ((event -> xmotion) . y));
 	}
       break;
     case ConfigureNotify:
       if (EVENT_ENABLED (xw, event_type_configure))
 	{
 	  result = (make_event_object (xw, event_type_configure, 2));
-	  standard_size (xw,
-			 result,
-			 ((event -> xconfigure) . width),
-			 ((event -> xconfigure) . height));
+	  EVENT_INTEGER (result, EVENT_0, ((event -> xconfigure) . width));
+	  EVENT_INTEGER (result, EVENT_1, ((event -> xconfigure) . height));
+	}
+      break;
+    case Expose:
+      if (EVENT_ENABLED (xw, event_type_expose))
+	{
+	  result = (make_event_object (xw, event_type_expose, 4));
+	  EVENT_INTEGER (result, EVENT_0, ((event -> xexpose) . x));
+	  EVENT_INTEGER (result, EVENT_1, ((event -> xexpose) . y));
+	  EVENT_INTEGER (result, EVENT_2, ((event -> xexpose) . width));
+	  EVENT_INTEGER (result, EVENT_3, ((event -> xexpose) . height));
+	}
+      break;
+    case GraphicsExpose:
+      if (EVENT_ENABLED (xw, event_type_expose))
+	{
+	  result = (make_event_object (xw, event_type_expose, 4));
+	  EVENT_INTEGER (result, EVENT_0, ((event -> xgraphicsexpose) . x));
+	  EVENT_INTEGER (result, EVENT_1, ((event -> xgraphicsexpose) . y));
+	  EVENT_INTEGER (result, EVENT_2,
+			 ((event -> xgraphicsexpose) . width));
+	  EVENT_INTEGER (result, EVENT_3,
+			 ((event -> xgraphicsexpose) . height));
 	}
       break;
     case EnterNotify:
@@ -832,7 +811,11 @@ DEFINE_PRIMITIVE ("X-DISPLAY-PROCESS-EVENTS", Prim_x_display_process_events, 2, 
 static void
 DEFUN (update_input_mask, (xw), struct xwindow * xw)
 {
-  long event_mask = (ExposureMask | StructureNotifyMask);
+  long event_mask = 0;
+  if (EVENT_ENABLED (xw, event_type_expose))
+    event_mask |= ExposureMask;
+  if (EVENT_ENABLED (xw, event_type_configure))
+    event_mask |= StructureNotifyMask;
   if (EVENT_ENABLED (xw, event_type_button_down))
     event_mask |= ButtonPressMask;
   if (EVENT_ENABLED (xw, event_type_button_up))

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.8 1991/04/15 16:14:09 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.9 1991/04/26 05:25:22 cph Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -358,6 +358,7 @@ If third argument SUPPRESS-MAP? is true, do not map the window immediately.")
 	wm_set_size_hint (xw, geometry_mask, x_pos, y_pos);
 	XStoreName (display, window, "scheme-graphics");
 	XSetIconName (display, window, "scheme-graphics");
+	XSelectInput (display, window, StructureNotifyMask);
 	if ((ARG_REF (3)) == SHARP_F)
 	  {
 	    XMapWindow (display, window);

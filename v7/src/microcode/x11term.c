@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11term.c,v 1.14 1990/11/14 17:05:25 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11term.c,v 1.15 1991/04/26 05:25:28 cph Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -142,6 +142,13 @@ DEFUN (xterm_draw_cursor, (xw), struct xwindow * xw)
 			(XW_CURSOR_GC (xw)));
       (XW_CURSOR_VISIBLE_P (xw)) = 1;
     }
+}
+
+static void
+DEFUN (xterm_process_event, (xw, event),
+       struct xwindow * xw AND
+       XEvent * event)
+{
 }
 
 static void
@@ -307,15 +314,14 @@ DEFUN (xterm_dump_rectangle, (xw, x, y, width, height),
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 
 static void
-DEFUN (xterm_process_configure_notify_event, (xw, event),
+DEFUN (xterm_reconfigure, (xw, width, height),
        struct xwindow * xw AND
-       XConfigureEvent * event)
+       unsigned int width AND
+       unsigned int height)
 {
   unsigned int extra = (2 * (XW_INTERNAL_BORDER_WIDTH (xw)));
-  unsigned int x_size =
-    (((event -> width) < extra) ? 0 : ((event -> width) - extra));
-  unsigned int y_size =
-    (((event -> height) < extra) ? 0 : ((event -> height) - extra));
+  unsigned int x_size = ((width < extra) ? 0 : (width - extra));
+  unsigned int y_size = ((height < extra) ? 0 : (height - extra));
   if ((x_size != (XW_X_SIZE (xw))) || (y_size != (XW_Y_SIZE (xw))))
     {
       unsigned int x_csize = (x_size / (FONT_WIDTH (XW_FONT (xw))));
@@ -383,31 +389,82 @@ DEFUN (xterm_process_configure_notify_event, (xw, event),
     }
 }
 
-static void
-DEFUN (xterm_process_event, (xw, event),
-       struct xwindow * xw AND
-       XEvent * event)
+DEFINE_PRIMITIVE ("XTERM-RECONFIGURE", Prim_xterm_reconfigure, 3, 3, 0)
 {
-  switch (event -> type)
-    {
-    case ConfigureNotify:
-      xterm_process_configure_notify_event (xw, (& (event -> xconfigure)));
-      break;
-    case Expose:
-      xterm_dump_rectangle (xw,
-			    ((event -> xexpose) . x),
-			    ((event -> xexpose) . y),
-			    ((event -> xexpose) . width),
-			    ((event -> xexpose) . height));
-      break;
-    case GraphicsExpose:
-      xterm_dump_rectangle (xw,
-			    ((event -> xgraphicsexpose) . x),
-			    ((event -> xgraphicsexpose) . y),
-			    ((event -> xgraphicsexpose) . width),
-			    ((event -> xgraphicsexpose) . height));
-      break;
-    }
+  PRIMITIVE_HEADER (3);
+  xterm_reconfigure ((x_window_arg (1)),
+		     (arg_nonnegative_integer (2)),
+		     (arg_nonnegative_integer (3)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("XTERM-DUMP-RECTANGLE", Prim_xterm_dump_rectangle, 5, 5, 0)
+{
+  PRIMITIVE_HEADER (5);
+  xterm_dump_rectangle ((x_window_arg (1)),
+			(arg_nonnegative_integer (2)),
+			(arg_nonnegative_integer (3)),
+			(arg_nonnegative_integer (4)),
+			(arg_nonnegative_integer (5)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("XTERM-MAP-X-COORDINATE", Prim_xterm_map_x_coordinate, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    unsigned int xp = (arg_nonnegative_integer (2));
+    int bx = (xp - (XW_INTERNAL_BORDER_WIDTH (xw)));
+    PRIMITIVE_RETURN
+      (long_to_integer
+       (((bx < 0) ? 0
+	 : (bx >= (XW_X_SIZE (xw))) ? ((XW_X_SIZE (xw)) - 1)
+	 : bx)
+	/ (FONT_WIDTH (XW_FONT (xw)))));
+  }
+}
+
+DEFINE_PRIMITIVE ("XTERM-MAP-Y-COORDINATE", Prim_xterm_map_y_coordinate, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    unsigned int yp = (arg_nonnegative_integer (2));
+    int by = (yp - (XW_INTERNAL_BORDER_WIDTH (xw)));
+    PRIMITIVE_RETURN
+      (long_to_integer
+       (((by < 0) ? 0
+	 : (by >= (XW_Y_SIZE (xw))) ? ((XW_Y_SIZE (xw)) - 1)
+	 : by)
+	/ (FONT_HEIGHT (XW_FONT (xw)))));
+  }
+}
+
+DEFINE_PRIMITIVE ("XTERM-MAP-X-SIZE", Prim_xterm_map_x_size, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    int width =
+      ((arg_nonnegative_integer (2)) - (2 * (XW_INTERNAL_BORDER_WIDTH (xw))));
+    PRIMITIVE_RETURN
+      (long_to_integer
+       ((width < 0) ? 0 : (width / (FONT_WIDTH (XW_FONT (xw))))));
+  }
+}
+
+DEFINE_PRIMITIVE ("XTERM-MAP-Y-SIZE", Prim_xterm_map_y_size, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    int height =
+      ((arg_nonnegative_integer (2)) - (2 * (XW_INTERNAL_BORDER_WIDTH (xw))));
+    PRIMITIVE_RETURN
+      (long_to_integer
+       ((height < 0) ? 0 : (height / (FONT_HEIGHT (XW_FONT (xw))))));
+  }
 }
 
 DEFINE_PRIMITIVE ("XTERM-OPEN-WINDOW", Prim_xterm_open_window, 3, 3, 0)
