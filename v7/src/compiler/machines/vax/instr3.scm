@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: instr3.scm,v 1.13 2001/12/23 17:20:58 cph Exp $
+$Id: instr3.scm,v 1.14 2002/02/16 03:31:39 cph Exp $
 
-Copyright (c) 1987, 1989, 1991, 1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989, 1991, 1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -25,13 +25,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;; The ordering is essentially that in "Vax Architecture Handbook" 1981.
 
 (declare (usual-integrations))
-
-(define-syntax define-trivial-instruction
-  (non-hygienic-macro-transformer
-   (lambda (mnemonic opcode)
-     `(DEFINE-INSTRUCTION ,mnemonic
-	(()
-	 (BYTE (8 ,opcode)))))))
 
 (define-instruction ASH
   ((L (? cnt ea-r-b) (? src ea-r-l) (? dst ea-w-l))
@@ -241,23 +234,30 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-field-instruction
-       (lambda (name suffix1 suffix2 opcode mode)
-	 `(define-instruction ,name
-	    ((,suffix1 (? pos ea-r-l) (? size ea-r-b) (? base ea-v-b)
-		       (? dst ,mode))
-	     (BYTE (8 ,opcode))
-	     (OPERAND L pos)
-	     (OPERAND B size)
-	     (OPERAND B base)
-	     (OPERAND L dst))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  environment
+	  (let ((name (list-ref form 1))
+		(suffix1 (list-ref form 2))
+		(suffix2 (list-ref form 3))
+		(opcode (list-ref form 4))
+		(mode (list-ref form 5)))
+	    `(DEFINE-INSTRUCTION ,name
+	       ((,suffix1 (? pos ea-r-l) (? size ea-r-b) (? base ea-v-b)
+			  (? dst ,mode))
+		(BYTE (8 ,opcode))
+		(OPERAND L pos)
+		(OPERAND B size)
+		(OPERAND B base)
+		(OPERAND L dst))
 
-	    ((,suffix2 (? pos ea-r-l) (? size ea-r-b) (? base ea-v-b)
-		       (? dst ,mode))
-	     (BYTE (8 ,(1+ opcode)))
-	     (OPERAND L pos)
-	     (OPERAND B size)
-	     (OPERAND B base)
-	     (OPERAND L dst))))))
+	       ((,suffix2 (? pos ea-r-l) (? size ea-r-b) (? base ea-v-b)
+			  (? dst ,mode))
+		(BYTE (8 ,(1+ opcode)))
+		(OPERAND L pos)
+		(OPERAND B size)
+		(OPERAND B base)
+		(OPERAND L dst))))))))
 
   (define-field-instruction FF S C #xEA ea-w-l)
   (define-field-instruction EXTV S Z #xEE ea-w-l)
@@ -337,60 +337,65 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-unconditional-transfer
-       (lambda (nameb namej bit)
-	 `(begin
-	    (define-instruction ,nameb
-	      ((B (@PCO (? dest)))
-	       (BYTE (8 ,(+ #x10 bit)))
-	       (DISPLACEMENT (8 dest)))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  environment
+	  (let ((nameb (cadr form))
+		(namej (caddr form))
+		(bit (cadddr form)))
+	    `(BEGIN
+	       (DEFINE-INSTRUCTION ,nameb
+		 ((B (@PCO (? dest)))
+		  (BYTE (8 ,(+ #x10 bit)))
+		  (DISPLACEMENT (8 dest)))
 
-	      ((B (@PCR (? dest)))
-	       (BYTE (8 ,(+ #x10 bit)))
-	       (DISPLACEMENT (8 `(- ,dest (+ *PC* 1)))))
-   
-	      ((W (@PCO (? dest)))
-	       (BYTE (8 ,(+ #x30 bit)))
-	       (DISPLACEMENT (16 dest)))
+		 ((B (@PCR (? dest)))
+		  (BYTE (8 ,(+ #x10 bit)))
+		  (DISPLACEMENT (8 `(- ,dest (+ *PC* 1)))))
 
-	      ((W (@PCR (? dest)))
-	       (BYTE (8 ,(+ #x30 bit)))
-	       (DISPLACEMENT (16  `(- ,dest (+ *PC* 2)))))
+		 ((W (@PCO (? dest)))
+		  (BYTE (8 ,(+ #x30 bit)))
+		  (DISPLACEMENT (16 dest)))
 
-	      ;; Self tensioned version. @PCO not handled.
-	      (((@PCR (? label)))
-	       (VARIABLE-WIDTH
-		(disp `(- ,label (+ *PC* 2)))
-		((-128 127)		; (BR/BSB B label)
-		 (BYTE (8 ,(+ #x10 bit)))
-		 (BYTE (8 disp SIGNED)))
-		((-32767 32768)		; (BR/BSB W label)
-		 (BYTE (8 ,(+ #x30 bit)))
-		 (BYTE (16 (- disp 1) SIGNED)))
-		((() ())		; (JMP/JSB (@PCO L label))
-		 (BYTE (8 ,(+ #x16 bit)))
-		 (BYTE (4 15)
-		       (4 14))
-		 (BYTE (32 (- disp 4) SIGNED)))))
+		 ((W (@PCR (? dest)))
+		  (BYTE (8 ,(+ #x30 bit)))
+		  (DISPLACEMENT (16  `(- ,dest (+ *PC* 2)))))
 
-	      (((@PCRO (? label) (? offset))) ; Kludge!
-	       (VARIABLE-WIDTH
-		(disp `(+ ,offset (- ,label (+ *PC* 2))))
-		((-128 127)		; (BR/BSB B label)
-		 (BYTE (8 ,(+ #x10 bit)))
-		 (BYTE (8 disp SIGNED)))
-		((-32767 32768)		; (BR/BSB W label)
-		 (BYTE (8 ,(+ #x30 bit)))
-		 (BYTE (16 (- disp 1) SIGNED)))
-		((() ())		; (JMP/JSB (@PCO L label))
-		 (BYTE (8 ,(+ #x16 bit)))
-		 (BYTE (4 15)
-		       (4 14))
-		 (BYTE (32 (- disp 4) SIGNED))))))
+		 ;; Self tensioned version. @PCO not handled.
+		 (((@PCR (? label)))
+		  (VARIABLE-WIDTH
+		   (disp `(- ,label (+ *PC* 2)))
+		   ((-128 127)		; (BR/BSB B label)
+		    (BYTE (8 ,(+ #x10 bit)))
+		    (BYTE (8 disp SIGNED)))
+		   ((-32767 32768)	; (BR/BSB W label)
+		    (BYTE (8 ,(+ #x30 bit)))
+		    (BYTE (16 (- disp 1) SIGNED)))
+		   ((() ())		; (JMP/JSB (@PCO L label))
+		    (BYTE (8 ,(+ #x16 bit)))
+		    (BYTE (4 15)
+			  (4 14))
+		    (BYTE (32 (- disp 4) SIGNED)))))
 
-	    (define-instruction ,namej
-	      (((? dst ea-a-b))
-	       (BYTE (8 ,(+ #x16 bit)))
-	       (OPERAND B dst)))))))
+		 (((@PCRO (? label) (? offset))) ; Kludge!
+		  (VARIABLE-WIDTH
+		   (disp `(+ ,offset (- ,label (+ *PC* 2))))
+		   ((-128 127)		; (BR/BSB B label)
+		    (BYTE (8 ,(+ #x10 bit)))
+		    (BYTE (8 disp SIGNED)))
+		   ((-32767 32768)	; (BR/BSB W label)
+		    (BYTE (8 ,(+ #x30 bit)))
+		    (BYTE (16 (- disp 1) SIGNED)))
+		   ((() ())		; (JMP/JSB (@PCO L label))
+		    (BYTE (8 ,(+ #x16 bit)))
+		    (BYTE (4 15)
+			  (4 14))
+		    (BYTE (32 (- disp 4) SIGNED))))))
+
+	       (DEFINE-INSTRUCTION ,namej
+		 (((? dst ea-a-b))
+		  (BYTE (8 ,(+ #x16 bit)))
+		  (OPERAND B dst)))))))))
 
   (define-unconditional-transfer BR JMP #x1)
   (define-unconditional-transfer BSB JSB #x0))
@@ -480,7 +485,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
    (OPERAND L pos)
    (OPERAND B base)
    (DISPLACEMENT (8 `(- ,dest (+ *PC* 1)))))
-  
+  
   ((S C (? pos ea-r-l) (? base ea-v-b) (@PCO (? dest)))
    (BYTE (8 #xE4))
    (OPERAND L pos)
@@ -578,7 +583,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
    (OPERAND F add)
    (OPERAND F index)
    (DISPLACEMENT (8 dest)))
-
+
   ((F (? limit ea-r-f) (? add ea-r-f) (? index ea-m-f) (@PCR (? dest)))
    (BYTE (8 #x4F))
    (OPERAND F limit)
@@ -709,44 +714,49 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-add/sub-bcd-instruction
-       (lambda (name opcode4)
-	 `(define-instruction ,name
-	    (((? oplen ea-r-w) (? op ea-a-b)
-              (? reslen ea-r-w) (? res ea-a-b))
-	     (BYTE (8 ,opcode4))
-	     (OPERAND W oplen)
-	     (OPERAND B op)
-	     (OPERAND W reslen)
-	     (OPERAND B res))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  environment
+	  (let ((opcode4 (caddr form)))
+	    `(DEFINE-INSTRUCTION ,(cadr form)
+	       (((? oplen ea-r-w) (? op ea-a-b)
+				  (? reslen ea-r-w) (? res ea-a-b))
+		(BYTE (8 ,opcode4))
+		(OPERAND W oplen)
+		(OPERAND B op)
+		(OPERAND W reslen)
+		(OPERAND B res))
 
-	    (((? op1len ea-r-w) (? op1 ea-a-b)
-	      (? op2len ea-r-w) (? op2 ea-a-b)
-              (? reslen ea-r-w) (? res ea-a-b))
-	     (BYTE (8 ,(1+ opcode4)))
-	     (OPERAND W op1len)
-	     (OPERAND B op1)
-	     (OPERAND W op2len)
-	     (OPERAND B op2)
-	     (OPERAND W reslen)
-	     (OPERAND B res))))))
+	       (((? op1len ea-r-w) (? op1 ea-a-b)
+				   (? op2len ea-r-w) (? op2 ea-a-b)
+				   (? reslen ea-r-w) (? res ea-a-b))
+		(BYTE (8 ,(1+ opcode4)))
+		(OPERAND W op1len)
+		(OPERAND B op1)
+		(OPERAND W op2len)
+		(OPERAND B op2)
+		(OPERAND W reslen)
+		(OPERAND B res))))))))
 
   (define-add/sub-bcd-instruction ADDP #x20)
   (define-add/sub-bcd-instruction SUBP #x22))
 
 (let-syntax
     ((define-add/sub-bcd-instruction
-       (lambda (name opcode)
-	 `(define-instruction ,name
-	    (((? op1len ea-r-w) (? op1 ea-a-b)
-	      (? op2len ea-r-w) (? op2 ea-a-b)
-              (? reslen ea-r-w) (? res ea-a-b))
-	     (BYTE (8 ,opcode))
-	     (OPERAND W op1len)
-	     (OPERAND B op1)
-	     (OPERAND W op2len)
-	     (OPERAND B op2)
-	     (OPERAND W reslen)
-	     (OPERAND B res))))))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  environment
+	  `(DEFINE-INSTRUCTION ,(cadr form)
+	     (((? op1len ea-r-w) (? op1 ea-a-b)
+	       (? op2len ea-r-w) (? op2 ea-a-b)
+	       (? reslen ea-r-w) (? res ea-a-b))
+	      (BYTE (8 ,(caddr form)))
+	      (OPERAND W op1len)
+	      (OPERAND B op1)
+	      (OPERAND W op2len)
+	      (OPERAND B op2)
+	      (OPERAND W reslen)
+	      (OPERAND B res)))))))
 
   (define-add/sub-bcd-instruction MULP #x25)
   (define-add/sub-bcd-instruction DIVP #x27))
@@ -799,32 +809,36 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-cvt-trailing-instruction
-       (lambda (name opcode)
-	 `(define-instruction ,name
-	    (((? srclen ea-r-w) (? src ea-a-b) 
-	      (? tbl ea-a-b)
-	      (? dstlen ea-r-w) (? dst ea-a-b))
-	     (BYTE (8 ,opcode))
-	     (OPERAND W srclen)
-	     (OPERAND B src)
-	     (OPERAND B tbl)
-	     (OPERAND W dstlen)
-	     (OPERAND B dst))))))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  environment
+	  `(DEFINE-INSTRUCTION ,(cadr form)
+	     (((? srclen ea-r-w) (? src ea-a-b) 
+	       (? tbl ea-a-b)
+	       (? dstlen ea-r-w) (? dst ea-a-b))
+	      (BYTE (8 ,(caddr form)))
+	      (OPERAND W srclen)
+	      (OPERAND B src)
+	      (OPERAND B tbl)
+	      (OPERAND W dstlen)
+	      (OPERAND B dst)))))))
 
   (define-cvt-trailing-instruction CVTPT #x24)
   (define-cvt-trailing-instruction CVTTT #x26))
 
 (let-syntax
     ((define-cvt-separate-instruction
-       (lambda (name opcode)
-	 `(define-instruction ,name
-	    (((? srclen ea-r-w) (? src ea-a-b)
-	      (? dstlen ea-r-w) (? dst ea-a-b))
-	     (BYTE (8 ,opcode))
-	     (OPERAND W srclen)
-	     (OPERAND B src)
-	     (OPERAND W dstlen)
-	     (OPERAND B dst))))))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  environment
+	  `(DEFINE-INSTRUCTION ,(cadr form)
+	     (((? srclen ea-r-w) (? src ea-a-b)
+	       (? dstlen ea-r-w) (? dst ea-a-b))
+	      (BYTE (8 ,(caddr form)))
+	      (OPERAND W srclen)
+	      (OPERAND B src)
+	      (OPERAND W dstlen)
+	      (OPERAND B dst)))))))
 
   (define-cvt-separate-instruction CVTPS #x08)
   (define-cvt-separate-instruction CVTSP #x09))

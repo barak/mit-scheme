@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: instr2.scm,v 1.9 2001/12/23 17:20:58 cph Exp $
+$Id: instr2.scm,v 1.10 2002/02/16 03:32:20 cph Exp $
 
-Copyright (c) 1987, 1989, 1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989, 1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -25,13 +25,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;; The ordering is essentially that in "Vax Architecture Handbook" 1981.
 
 (declare (usual-integrations))
-
-(define-syntax define-trivial-instruction
-  (non-hygienic-macro-transformer
-   (lambda (mnemonic opcode)
-     `(DEFINE-INSTRUCTION ,mnemonic
-	(()
-	 (BYTE (8 ,opcode)))))))
 
 (define-instruction CVT
   ((B W (? src ea-r-b) (? dst ea-w-w))
