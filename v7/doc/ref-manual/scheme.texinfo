@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.105 2001/11/20 21:48:04 cph Exp $
+@comment $Id: scheme.texinfo,v 1.106 2001/11/20 22:27:55 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -14688,30 +14688,90 @@ language.
 @node Parser-language Macros,  , *Parser, Parser Language
 @subsection Parser-language Macros
 
+The parser and matcher languages provide a macro facility so that
+common patterns can be abstracted.  The macro facility allows new
+expression types to be independently defined in the two languages.
+The macros are defined in heirarchically organized tables, so that
+different applications can have private macro bindings.
+
 @deffn {special form} define-*matcher-macro formals expression
 @deffnx {special form} define-*parser-macro formals expression
+These special forms are used to define macros in the matcher and
+parser language, respectively.  @var{Formals} is like the
+@var{formals} list of a @code{define} special form, and
+@var{expression} is a Scheme expression.
+
+If @var{formals} is a list (or improper list) of symbols, the first
+symbol in the list is the name of the macro, and the remaining symbols
+are interpreted as the @var{formals} of a lambda expression.  A lambda
+expression is formed by combining the latter @var{formals} with the
+@var{expression}, and this lambda expression, when evaluated, becomes
+the @dfn{expander}.  The defined macro accepts the same number of
+operands as the expander.  A macro instance is expanded by applying
+the expander to the list of operands; the result of the application is
+interpreted as a replacement expression for the macro instance.
+
+If @var{formals} is a symbol, it is the name of the macro.  In this
+case, the expander is a procedure of no arguments whose body is
+@var{expression}.  When the @var{formals} symbol appears by itself as
+an expression in the language, the expander is called with no
+arguments, and the result is interpreted as a replacement expression
+for the symbol.
 @end deffn
 
 @deffn procedure define-*matcher-expander identifier expander
 @deffnx procedure define-*parser-expander identifier expander
+These procedures provide a procedural interface to the
+macro-definition mechanism.  @var{Identifier} must be a symbol, and
+@var{expander} must be an expander procedure, as defined above.
+Instances of the @code{define-*matcher-macro} and
+@code{define-*parser-macro} special forms expand into calls to these
+procedures.
 @end deffn
 
-@deffn procedure make-parser-macros parent-macros
+The remaining procedures define the interface to the parser-macros
+table abstraction.  Each parser-macro table has a separate binding
+space for macros in the matcher and parser languages.  However, the
+table inherits bindings from one specified table; it's not possible to
+inherit matcher-language bindings from one table and parser-language
+bindings from another.
+
+@deffn procedure make-parser-macros parent-table
+Create and return a new parser-macro table that inherits from
+@var{parent-table}.  @var{Parent-table} must be either a parser-macro
+table, or @code{#f}; usually it is specified as the value of
+@code{global-parser-macros}.
 @end deffn
 
 @deffn procedure parser-macros? object
-@end deffn
-
-@deffn procedure current-parser-macros
+This is a predicate for parser-macro tables.
 @end deffn
 
 @deffn procedure global-parser-macros
+Return the global parser-macro table.  This table is predefined and
+contains all of the bindings documented here.
 @end deffn
 
-@deffn procedure set-current-parser-macros! macros
+There is a ``current'' table at all times, and macro definitions are
+always placed in this table.  By default, the current table is the
+global macro table, but the following procedures allow this to be
+changed.
+
+@deffn procedure current-parser-macros
+Return the current parser-macro table.
 @end deffn
 
-@deffn procedure with-current-parser-macros macros thunk
+@deffn procedure set-current-parser-macros! table
+Change the current parser-macro table to @var{table}, which must
+satisfy @code{parser-macros?}.
+@end deffn
+
+@deffn procedure with-current-parser-macros table thunk
+Bind the current parser-macro table to @var{table}, call @var{thunk}
+with no arguments, then restore the original table binding.  The value
+returned by @var{thunk} is the returned as the value of this
+procedure.  @var{Table} must satisfy @code{parser-macros?}, and
+@var{thunk} must be a procedure of no arguments.
 @end deffn
 
 @node Operating-System Interface, Error System, Input/Output, Top
