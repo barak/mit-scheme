@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.61 1994/02/15 20:04:27 cph Exp $
+$Id: ux.h,v 1.62 1995/06/29 23:47:45 cph Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -278,8 +278,9 @@ extern int EXFUN (kill, (pid_t, int));
 #define HAVE_VFORK
 
 #ifdef __linux
-#include <sys/time.h>
 #define SYSTEM_VARIANT "Linux"
+#include <sys/time.h>
+#define HAVE_FTRUNCATE
 #endif
 
 #ifdef _ULTRIX
