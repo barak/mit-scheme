@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: intmod.scm,v 1.110 2000/10/26 02:28:16 cph Exp $
+;;; $Id: intmod.scm,v 1.111 2001/02/27 17:43:24 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -237,14 +237,12 @@ evaluated in the specified inferior REPL buffer."
   (signal-thread-event (port/thread port) #f))
 
 (define (standard-prompt-spacing port)
-  (fresh-line port)
-  (enqueue-output-operation!
-   port
-   (lambda (mark transcript?)
-     transcript?
-     (if (not (group-start? mark))
-	 (insert-newline mark))
-     #t))
+  (let ((fresh-lines (port/operation port 'FRESH-LINES)))
+    (if fresh-lines
+	(fresh-lines port 2)
+	(begin
+	  (fresh-line port)
+	  (newline port))))
   (enqueue-output-operation! port
     (lambda (mark transcript?)
       transcript?
@@ -868,6 +866,11 @@ If this is an error, the debugger examines the error condition."
    port
    (lambda (mark transcript?) transcript? (guarantee-newline mark) #t)))
 
+(define (operation/fresh-lines port n)
+  (enqueue-output-operation!
+   port
+   (lambda (mark transcript?) transcript? (guarantee-newlines mark n) #t)))
+
 (define (operation/beep port)
   (enqueue-output-operation!
    port
@@ -1133,6 +1136,7 @@ If this is an error, the debugger examines the error condition."
    `((WRITE-CHAR ,operation/write-char)
      (WRITE-SUBSTRING ,operation/write-substring)
      (FRESH-LINE ,operation/fresh-line)
+     (FRESH-LINES ,operation/fresh-lines)
      (BEEP ,operation/beep)
      (X-SIZE ,operation/x-size)
      (DEBUGGER-FAILURE ,operation/debugger-failure)
