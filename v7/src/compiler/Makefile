@@ -1,5 +1,5 @@
 #
-# $Id: Makefile,v 1.13 2000/12/05 22:36:39 cph Exp $
+# $Id: Makefile,v 1.14 2000/12/05 23:04:57 cph Exp $
 #
 # Makefile for Scheme compiler
 # This makefile supports some utilities for the compiler.
@@ -17,7 +17,7 @@ all:
 setup:
 	(cd machines/vax; \
 	for N in 1 2 3; do \
-	    ln -s instr${N}.scm dinstr${N}.scm; \
+	    ln -s instr$${N}.scm dinstr$${N}.scm; \
 	done)
 
 tags TAGS:
