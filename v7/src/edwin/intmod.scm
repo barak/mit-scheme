@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: intmod.scm,v 1.99 1999/02/24 21:59:07 cph Exp $
+;;; $Id: intmod.scm,v 1.100 1999/08/26 18:20:44 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -555,7 +555,11 @@ If this is an error, the debugger examines the error condition."
   "Kill all output from REPL since last input."
   ()
   (lambda ()
-    (let ((start (mark1+ (ref-variable comint-last-input-end) 'LIMIT))
+    (let ((start
+	   (let ((start (ref-variable comint-last-input-end)))
+	     (if (eqv? #\newline (extract-right-char start))
+		 (mark1+ start)
+		 start)))
 	  (end (port/mark (buffer-interface-port (selected-buffer) #t))))
       (let ((value-mark
 	     (re-search-backward flush-output-regexp end start #f)))
@@ -564,6 +568,7 @@ If this is an error, the debugger examines the error condition."
 	  (if (mark< start end)
 	      (begin
 		(delete-string start end)
+		(guarantee-newline start)
 		(insert-string "*** output flushed ***\n" start)))
 	  (if value-mark
 	      (let ((m

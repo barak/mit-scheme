@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: comint.scm,v 1.29 1999/08/10 16:54:57 cph Exp $
+$Id: comint.scm,v 1.30 1999/08/26 18:20:39 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -291,12 +291,19 @@ With negative arg, newer inputs are reentered."
   "Kill all output from interpreter since last input."
   ()
   (lambda ()
-    (let ((start (mark1+ (ref-variable comint-last-input-end) 'LIMIT))
+    (let ((start
+	   (mark-left-inserting-copy
+	    (let ((start (ref-variable comint-last-input-end)))
+	      (if (eqv? #\newline (extract-right-char start))
+		  (mark1+ start)
+		  start))))
 	  (end (line-start (comint-process-mark) 0)))
       (if (< (mark-index start) (mark-index end))
 	  (begin
 	    (delete-string start end)
-	    (insert-string "*** output flushed ***\n" start))))))
+	    (guarantee-newline start)
+	    (insert-string "*** output flushed ***\n" start)))
+      (mark-temporary! start))))
 
 (define (comint-process-mark)
   (let ((buffer (selected-buffer)))
