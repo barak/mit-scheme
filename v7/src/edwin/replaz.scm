@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/replaz.scm,v 1.67 1991/04/26 03:13:19 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/replaz.scm,v 1.68 1991/04/29 11:23:46 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -131,14 +131,18 @@ and \\<n> means insert what matched <n>th \\(...\\) in REGEXP."
 
     (define (replacement-loop point)
       (undo-boundary! point)
-      (cond ((not (find-next-occurrence point))
-	     (done false))
-	    ((mark< point (re-match-end 0))
-	     (replacement-loop (perform-replacement)))
-	    ((not (group-end? point))
-	     (replacement-loop (mark1+ point)))
-	    (else
-	     (done false))))
+      (let ((done
+	     (lambda ()
+	       (set-current-point! point)
+	       (done false))))
+	(cond ((not (find-next-occurrence point))
+	       (done))
+	      ((mark< point (re-match-end 0))
+	       (replacement-loop (perform-replacement)))
+	      ((not (group-end? point))
+	       (replacement-loop (mark1+ point)))
+	      (else
+	       (done)))))
 
     (define (query-loop point)
       (undo-boundary! point)
