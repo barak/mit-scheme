@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.59 1993/07/29 07:02:47 gjr Exp $
+$Id: cmpint.c,v 1.60 1993/07/29 07:11:02 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -2371,7 +2371,10 @@ DEFUN (store_uuo_link,
  */
 
 #define TRAMPOLINE_SIZE	(TRAMPOLINE_ENTRY_SIZE + 2)
-#ifdef AUTOCLOBBER_BUG
+
+/* Enabled so that the profiler can distinguish trampolines */
+
+#if 1 || defined(AUTOCLOBBER_BUG)
 #  define TC_TRAMPOLINE_HEADER	TC_FIXNUM
 #else
 #  define TC_TRAMPOLINE_HEADER	TC_MANIFEST_VECTOR
