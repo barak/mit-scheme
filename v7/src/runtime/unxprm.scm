@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.48 1997/10/22 07:26:34 cph Exp $
+$Id: unxprm.scm,v 1.49 1998/05/31 03:20:10 cph Exp $
 
-Copyright (c) 1988-97 Massachusetts Institute of Technology
+Copyright (c) 1988-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -76,14 +76,16 @@ MIT in each case. |#
 (define (file-executable? filename)
   (file-access filename 1))
 
-(define (temporary-file-pathname)
+(define (temporary-file-pathname #!optional directory)
   (let ((root-string
-	 (string-append "sch"
-			(string-pad-left (number->string (unix/current-pid))
-					 6
-					 #\0)
-			"_"))
-	(directory (temporary-directory-pathname)))
+	 (string-append
+	  "sch"
+	  (string-pad-left (number->string (unix/current-pid)) 6 #\0)
+	  "_"))
+	(directory
+	 (if (or (default-object? directory) (not directory))
+	     (temporary-directory-pathname)
+	     (pathname-as-directory directory))))
     (let loop ((ext 0))
       (let ((pathname
 	     (merge-pathnames (string-append root-string (number->string ext))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.35 1997/11/12 22:58:53 cph Exp $
+$Id: os2prm.scm,v 1.36 1998/05/31 03:20:22 cph Exp $
 
-Copyright (c) 1994-97 Massachusetts Institute of Technology
+Copyright (c) 1994-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -162,9 +162,12 @@ MIT in each case. |#
 (define (get-environment-variable name)
   ((ucode-primitive get-environment-variable 1) name))
 
-(define (temporary-file-pathname)
+(define (temporary-file-pathname #!optional directory)
   (let ((root
-	 (let ((directory (temporary-directory-pathname)))
+	 (let ((directory
+		(if (or (default-object? directory) (not directory))
+		    (temporary-directory-pathname)
+		    (pathname-as-directory directory))))
 	   (merge-pathnames
 	    (if (dos/fs-long-filenames? directory)
 		(string-append

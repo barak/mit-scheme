@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.21 1998/01/08 05:56:11 cph Exp $
+$Id: ntprm.scm,v 1.22 1998/05/31 03:19:56 cph Exp $
 
 Copyright (c) 1992-98 Massachusetts Institute of Technology
 
@@ -46,8 +46,7 @@ MIT in each case. |#
   false)
 
 (define (file-modes filename)
-  ((ucode-primitive file-modes 1)
-   (->namestring (merge-pathnames filename))))
+  ((ucode-primitive file-modes 1) (->namestring (merge-pathnames filename))))
 
 (define (set-file-modes! filename modes)
   ((ucode-primitive set-file-modes! 2)
@@ -64,9 +63,8 @@ MIT in each case. |#
 (define-integrable nt-file-mode/compressed #x800)
 
 (define (file-access filename amode)
-  ((ucode-primitive file-access 2)
-   (->namestring (merge-pathnames filename))
-   amode))
+  ((ucode-primitive file-access 2) (->namestring (merge-pathnames filename))
+				   amode))
 
 ;; upwards compatability
 (define dos/file-access file-access)
@@ -83,8 +81,12 @@ MIT in each case. |#
 		(directory-namestring pathname)
 		2))))))
 
-(define (temporary-file-pathname)
-  (let ((root (merge-pathnames "_scm_tmp" (temporary-directory-pathname))))
+(define (temporary-file-pathname #!optional directory)
+  (let ((root
+	 (merge-pathnames "_scm_tmp"
+			  (if (or (default-object? directory) (not directory))
+			      (temporary-directory-pathname)
+			      (pathname-as-directory directory)))))
     (let loop ((ext 0))
       (let ((pathname (pathname-new-type root (number->string ext))))
 	(if (allocate-temporary-file pathname)

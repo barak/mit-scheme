@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: dosprm.scm,v 1.39 1996/10/07 18:13:47 cph Exp $
+$Id: dosprm.scm,v 1.40 1998/05/31 03:19:31 cph Exp $
 
-Copyright (c) 1992-96 Massachusetts Institute of Technology
+Copyright (c) 1992-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -74,8 +74,12 @@ MIT in each case. |#
 		(directory-namestring pathname)
 		2))))))
 
-(define (temporary-file-pathname)
-  (let ((root (merge-pathnames "_scm_tmp" (temporary-directory-pathname))))
+(define (temporary-file-pathname #!optional directory)
+  (let ((root
+	 (merge-pathnames "_scm_tmp"
+			  (if (or (default-object? directory) (not directory))
+			      (temporary-directory-pathname)
+			      (pathname-as-directory directory)))))
     (let loop ((ext 0))
       (let ((pathname (pathname-new-type root (number->string ext))))
 	(if (allocate-temporary-file pathname)
