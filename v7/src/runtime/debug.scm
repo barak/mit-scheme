@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 13.42 1987/03/17 18:49:00 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 13.43 1987/04/18 00:15:53 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -351,7 +351,7 @@
     (cond ((> current-number-of-reductions 1) (get-reduction-number))
 	  ((= current-number-of-reductions 1)
 	   (format "~%There is only one reduction for this subproblem")
-	   (set-current-reduction! 1))
+	   (set-current-reduction! 0))
 	  (else (format "~%There are no reductions for this subproblem."))))
   
   (define (get-subproblem-number)
