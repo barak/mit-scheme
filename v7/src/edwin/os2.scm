@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.3 1995/01/16 20:40:09 cph Exp $
+;;;	$Id: os2.scm,v 1.4 1995/01/19 19:41:55 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -91,10 +91,15 @@ Includes the new backup.  Must be > 0."
 	    (else (string-tail string start))))))
 
 (define (os/pathname->display-string pathname)
-  (let ((pathname (enough-pathname pathname (user-homedir-pathname))))
-    (if (pathname-absolute? pathname)
-	(->namestring pathname)
-	(string-append "~\\" (->namestring pathname)))))
+  (let ((homedir (user-homedir-pathname)))
+    (if (let ((d1 (pathname-device pathname))
+	      (d2 (pathname-device homedir)))
+	  (and d1 d2 (string-ci=? d1 d2)))
+	(let ((pathname (enough-pathname pathname homedir)))
+	  (if (pathname-absolute? pathname)
+	      (->namestring pathname)
+	      (string-append "~\\" (->namestring pathname))))
+	(->namestring pathname))))
 
 (define (os/truncate-filename-for-modeline filename width)
   (let ((length (string-length filename)))
