@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infutl.scm,v 1.64 2001/03/21 19:15:12 cph Exp $
+$Id: infutl.scm,v 1.65 2001/08/10 17:09:23 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -34,7 +34,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  (,lambda-tag:let . LET)
 	  (,lambda-tag:fluid-let . FLUID-LET)
 	  (,lambda-tag:make-environment . MAKE-ENVIRONMENT)))
-  (set! blocks-with-memoized-debugging-info (make-population))
+  (set! wrappers-with-memoized-debugging-info (make-population))
   (add-secondary-gc-daemon! discard-debugging-info!)
   (initialize-uncompressed-files!)
   (add-event-receiver! event:after-restore initialize-uncompressed-files!)
@@ -42,43 +42,24 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (add-gc-daemon! clean-uncompressed-files!))
 
 (define (compiled-code-block/dbg-info block demand-load?)
-  (let ((old-info (compiled-code-block/debugging-info block)))
-    (cond ((dbg-info? old-info)
-	   old-info)
-	  ((and (pair? old-info) (dbg-info? (car old-info)))
-	   (car old-info))
-	  (demand-load?
-	   (let ((dbg-info (read-debugging-info old-info)))
-	     (if dbg-info (memoize-debugging-info! block dbg-info))
-	     dbg-info))
-	  (else #f))))
+  (let ((wrapper (compiled-code-block/debugging-wrapper block)))
+    (and wrapper
+	 (or (debugging-wrapper/info wrapper)
+	     (and demand-load?
+		  (read-debugging-info wrapper))))))
 
-(define (discard-debugging-info!)
-  (without-interrupts
-   (lambda ()
-     (map-over-population! blocks-with-memoized-debugging-info
-			   discard-block-debugging-info!)
-     (set! blocks-with-memoized-debugging-info (make-population))
-     unspecific)))
-
-(define (read-debugging-info descriptor)
-  (cond ((debug-info-pathname? descriptor)
-	 (let ((binf (read-binf-file descriptor)))
-	   (and binf
-		(if (dbg-info? binf)
-		    binf
-		    (and (vector? binf)
-			 (not (zero? (vector-length binf)))
-			 (vector-ref binf 0))))))
-	((and (pair? descriptor)
-	      (debug-info-pathname? (car descriptor))
-	      (exact-nonnegative-integer? (cdr descriptor)))
-	 (let ((binf (read-binf-file (car descriptor))))
-	   (and binf
-		(vector? binf)
-		(< (cdr descriptor) (vector-length binf))
-		(vector-ref binf (cdr descriptor)))))
-	(else #f)))
+(define (read-debugging-info wrapper)
+  (let ((pathname (debugging-wrapper/pathname wrapper)))
+    (and pathname
+	 (let ((file-wrapper (read-binf-file pathname)))
+	   (and file-wrapper
+		(let ((file-wrapper (canonicalize-file-wrapper file-wrapper)))
+		  (and file-wrapper
+		       (let ((info
+			      (get-wrapped-dbg-info file-wrapper wrapper)))
+			 (if info
+			     (memoize-debugging-info! wrapper info))
+			 info))))))))
 
 (define (read-binf-file pathname)
   (let ((pathname (canonicalize-debug-info-pathname pathname)))
@@ -101,30 +82,23 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		(if (> time* time)
 		    (loop (cdr left) time* file* receiver*)
 		    (loop (cdr left) time file receiver))))))))
-
-(define (memoize-debugging-info! block dbg-info)
+
+(define (memoize-debugging-info! wrapper info)
   (without-interrupts
    (lambda ()
-     (let ((old-info (compiled-code-block/debugging-info block)))
-       (if (not (and (pair? old-info) (dbg-info? (car old-info))))
-	   (begin
-	     (set-compiled-code-block/debugging-info! block
-						      (cons dbg-info old-info))
-	     (add-to-population! blocks-with-memoized-debugging-info
-				 block)))))))
+     (set-debugging-wrapper/info! wrapper info)
+     (add-to-population! wrappers-with-memoized-debugging-info wrapper))))
 
-(define (un-memoize-debugging-info! block)
+(define (discard-debugging-info!)
   (without-interrupts
    (lambda ()
-     (discard-block-debugging-info! block)
-     (remove-from-population! blocks-with-memoized-debugging-info block))))
+     (map-over-population! wrappers-with-memoized-debugging-info
+       (lambda (wrapper)
+	 (set-debugging-wrapper/info! wrapper #f)))
+     (set! wrappers-with-memoized-debugging-info (make-population))
+     unspecific)))
 
-(define (discard-block-debugging-info! block)
-  (let ((old-info (compiled-code-block/debugging-info block)))
-    (if (and (pair? old-info) (dbg-info? (car old-info)))
-	(set-compiled-code-block/debugging-info! block (cdr old-info)))))
-
-(define blocks-with-memoized-debugging-info)
+(define wrappers-with-memoized-debugging-info)
 
 (define (compiled-entry/dbg-object entry #!optional demand-load?)
   (let ((block (compiled-entry/block entry))
@@ -174,16 +148,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (compiled-code-block/filename-and-index (compiled-entry/block entry)))
 
 (define (compiled-code-block/filename-and-index block)
-  (let loop ((info (compiled-code-block/debugging-info block)))
-    (cond ((debug-info-pathname? info)
-	   (values (canonicalize-debug-info-filename info) #f))
-	  ((not (pair? info)) (values #f #f))
-	  ((dbg-info? (car info)) (loop (cdr info)))
-	  ((debug-info-pathname? (car info))
-	   (values (canonicalize-debug-info-filename (car info))
-		   (and (exact-nonnegative-integer? (cdr info))
-			(cdr info))))
-	  (else (values #f #f)))))
+  (let ((wrapper (compiled-code-block/debugging-wrapper block)))
+    (if wrapper
+	(let ((pathname (debugging-wrapper/pathname wrapper)))
+	  (if pathname
+	      (values (canonicalize-debug-info-filename pathname)
+		      (debugging-wrapper/index wrapper))
+	      (values #f #f)))
+	(values #f #f))))
 
 (define (dbg-labels/find-offset labels offset)
   (vector-binary-search labels < dbg-label/offset offset))
@@ -208,55 +180,57 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  (else (error "Illegal dbg-info-vector" info)))))
 
 (define (fasload/update-debugging-info! value com-pathname)
-  (let ((process-block
-	 (lambda (block)
-	   (let ((binf-filename
-		  (process-binf-filename
-		   (compiled-code-block/debugging-info block)
-		   com-pathname)))
-	     (set-compiled-code-block/debugging-info! block binf-filename)
-	     binf-filename)))
-	(process-subblocks
-	 (lambda (blocks start binf-filename)
-	   (let ((end (vector-length blocks)))
-	     (let loop ((index start))
-	       (if (< index end)
-		   (begin
-		     (set-car! (compiled-code-block/debugging-info
-				(vector-ref blocks index))
-			       binf-filename)
-		     (loop (1+ index)))))))))
+  (cond ((compiled-code-address? value)
+	 (fasload-update-internal (compiled-code-address->block value)
+				  (let ((blocks
+					 (load/purification-root value)))
+				    (and (vector? blocks)
+					 blocks))
+				  0
+				  com-pathname))
+	((and (comment? value)
+	      (dbg-info-vector? (comment-text value)))
+	 (let ((blocks (dbg-info-vector/blocks-vector (comment-text value))))
+	   (fasload-update-internal (vector-ref blocks 0)
+				    blocks
+				    1
+				    com-pathname)))))
 
-    (cond ((compiled-code-address? value)
-	   (let ((binf-filename
-		  (process-block (compiled-code-address->block value)))
-		 (blocks (load/purification-root value)))
-	     (if (vector? blocks)
-		 (process-subblocks blocks 0 binf-filename))))
-	  ((and (comment? value)
-		(dbg-info-vector? (comment-text value)))
-	   (let ((blocks (dbg-info-vector/blocks-vector (comment-text value))))
-	     (process-subblocks blocks
-				1
-				(process-block (vector-ref blocks 0))))))))
+(define (fasload-update-internal block blocks start com-pathname)
+  (let ((wrapper (compiled-code-block/debugging-wrapper block)))
+    (if wrapper
+	(let ((pathname (debugging-wrapper/pathname wrapper)))
+	  (if pathname
+	      (let ((pathname*
+		     (fasload-compute-pathname pathname com-pathname)))
+		(set-debugging-wrapper/pathname! wrapper pathname*)
+		(if blocks
+		    (fasload-update-sub-blocks blocks start
+					       pathname pathname*))))))))
 
-(define (process-binf-filename binf-filename com-pathname)
-  (and binf-filename
-       (rewrite-directory
-	(let ((binf-pathname (merge-pathnames binf-filename))
-	      (com-pathname (merge-pathnames com-pathname)))
-	  (if (and (equal? (pathname-name binf-pathname)
-			   (pathname-name com-pathname))
-		   (not (equal? (pathname-type binf-pathname)
-				(pathname-type com-pathname)))
-		   (equal? (pathname-version binf-pathname)
-			   (pathname-version com-pathname)))
-	      (pathname-new-type com-pathname (pathname-type binf-pathname))
-	      binf-pathname)))))
+(define (fasload-compute-pathname pathname com-pathname)
+  (rewrite-directory
+   (let ((pathname (merge-pathnames pathname))
+	 (com-pathname (merge-pathnames com-pathname)))
+     (if (and (equal? (pathname-name pathname)
+		      (pathname-name com-pathname))
+	      (not (equal? (pathname-type pathname)
+			   (pathname-type com-pathname)))
+	      (equal? (pathname-version pathname)
+		      (pathname-version com-pathname)))
+	 (pathname-new-type com-pathname (pathname-type pathname))
+	 pathname))))
 
-(define (debug-info-pathname? object)
-  (or (pathname? object)
-      (string? object)))
+(define (fasload-update-sub-blocks blocks start pathname pathname*)
+  (let ((n (vector-length blocks)))
+    (do ((i start (fix:+ i 1)))
+	((fix:= i n))
+      (let ((wrapper
+	     (compiled-code-block/debugging-wrapper (vector-ref blocks i))))
+	(if (and wrapper
+		 (pathname? (debugging-wrapper/pathname wrapper))
+		 (pathname=? (debugging-wrapper/pathname wrapper) pathname))
+	    (set-debugging-wrapper/pathname! wrapper pathname*))))))
 
 (define directory-rewriting-rules
   '())
@@ -442,37 +416,33 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (let* ((infpath (merge-pathnames inffile))
 	 (bifpath (pathname-new-type infpath "bif"))
 	 (bsmpath (pathname-new-type infpath "bsm")))
-    (let ((binf (fasload infpath)))
-      (inf-structure->bif/bsm binf bifpath bsmpath))))
+    (let ((file-info (fasload infpath)))
+      (inf-structure->bif/bsm file-info bifpath bsmpath))))
 
-(define (inf-structure->bif/bsm binf bifpath bsmpath)
+(define (inf-structure->bif/bsm file-info bifpath bsmpath)
   (let ((bifpath (merge-pathnames bifpath))
 	(bsmpath (and bsmpath (merge-pathnames bsmpath))))
-    (let ((bsm (split-inf-structure! binf bsmpath)))
-      (fasdump binf bifpath #t)
-      (if bsmpath
-	  (fasdump bsm bsmpath #t)))))
+    (call-with-values (lambda () (split-inf-structure! file-info bsmpath))
+      (lambda (file-wrapper bsm)
+	(fasdump file-wrapper bifpath #t)
+	(if bsmpath (fasdump bsm bsmpath #t))))))
 
-(define (split-inf-structure! binf bsmpath)
-  (let ((bsmname (and bsmpath (->namestring bsmpath))))
-    (cond ((dbg-info? binf)
-	   (let ((labels (dbg-info/labels/desc binf)))
-	     (set-dbg-info/labels/desc! binf bsmname)
-	     labels))
-	  ((vector? binf)
-	   (let ((n (vector-length binf)))
-	     (let ((bsm (make-vector n)))
-	       (do ((i 0 (fix:+ i 1)))
-		   ((fix:= i n))
-		 (let ((dbg-info (vector-ref binf i)))
-		   (let ((labels (dbg-info/labels/desc dbg-info)))
-		     (vector-set! bsm i labels)
-		     (set-dbg-info/labels/desc!
-		      dbg-info
-		      (and bsmname (cons bsmname i))))))
-	       bsm)))
-	  (else 
-	   (error "Unknown inf format:" binf)))))
+(define (split-inf-structure! file-info bsmpath)
+  (let ((file-wrapper (canonicalize-file-wrapper file-info))
+	(bsmname (and bsmpath (->namestring bsmpath))))
+    (if (not file-wrapper)
+	(error "Unknown debugging-file format:" file-info))
+    (let ((info (debugging-file-wrapper/info file-wrapper)))
+      (let ((n (vector-length info)))
+	(let ((bsm (make-vector n)))
+	  (do ((i 0 (fix:+ i 1)))
+	      ((fix:= i n))
+	    (let ((dbg-info (vector-ref info i)))
+	      (let ((labels (dbg-info/labels/desc dbg-info)))
+		(vector-set! bsm i labels)
+		(set-dbg-info/labels/desc! dbg-info
+					   (and bsmname (cons bsmname i))))))
+	  (values file-wrapper bsm))))))
 
 ;;;; UNCOMPRESS
 ;;;  A simple extractor for compressed binary info files.
@@ -581,7 +551,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;
 ;; This version is written for speed:
 ;;
-;;  . The main speed gain is from is by buffering the input.  This version
+;;  . The main speed gain is from buffering the input.  This version
 ;;    is about 10 times faster than the above version on files, and about
 ;;    1.5 times faster than the above version called on custom input
 ;;    operations.
@@ -594,8 +564,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;    is `single-threaded'.  This prevents the compiler from
 ;;    cellifying the variables.
 ;;
-;;  . Some of the drudge in passing all of the state is handed over to the
-;;    compiler by making the procedures internal to PARSE-COMMAND.
+;;  . Some of the drudgery of passing all of the state is handed over
+;;    to the compiler by making the procedures internal to PARSE-COMMAND.
 ;;
 ;;  . The main loop (PARSE-COMMAND) is `restartable'.  This allows the
 ;;    parsing operation to determine if enough input or output buffer is

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infstr.scm,v 1.10 2001/03/21 19:15:10 cph Exp $
+$Id: infstr.scm,v 1.11 2001/08/10 17:09:18 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -44,10 +44,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		    ((ucode-primitive string->symbol)
 		     "#[(runtime compiler-info)dbg-info]"))
 		   (conc-name dbg-info/))
-  (expression false read-only true)	;dbg-expression
-  (procedures false read-only true)	;vector of dbg-procedure
-  (continuations false read-only true)	;vector of dbg-continuation
-  (labels/desc false read-only false)	;vector of dbg-label, sorted by offset
+  (expression #f read-only #t)		;dbg-expression
+  (procedures #f read-only #t)		;vector of dbg-procedure
+  (continuations #f read-only #t)	;vector of dbg-continuation
+  (labels/desc #f read-only #f)		;vector of dbg-label, sorted by offset
   )
 
 (define (dbg-info/labels dbg-info)
@@ -66,8 +66,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		    ((ucode-primitive string->symbol)
 		     "#[(runtime compiler-info)dbg-expression]"))
 		   (conc-name dbg-expression/))
-  (block false read-only true)		;dbg-block
-  (label false)				;dbg-label
+  (block #f read-only #t)		;dbg-block
+  (label #f)				;dbg-label
   )
 
 (define-integrable (dbg-expression/label-offset expression)
@@ -83,16 +83,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		    (block label type name required optional rest auxiliary
 			   source-code))
 		   (conc-name dbg-procedure/))
-  (block false read-only true)		;dbg-block
-  (label false)				;dbg-label
-  (type false read-only true)
-  (name false read-only true)		;procedure's name
-  (required false read-only true)	;names of required arguments
-  (optional false read-only true)	;names of optional arguments
-  (rest false read-only true)		;name of rest argument, or #F
-  (auxiliary false read-only true)	;names of internal definitions
-  (external-label false)		;for closure, external entry
-  (source-code false read-only true)	;SCode
+  (block #f read-only #t)		;dbg-block
+  (label #f)				;dbg-label
+  (type #f read-only #t)
+  (name #f read-only #t)		;procedure's name
+  (required #f read-only #t)		;names of required arguments
+  (optional #f read-only #t)		;names of optional arguments
+  (rest #f read-only #t)		;name of rest argument, or #F
+  (auxiliary #f read-only #t)		;names of internal definitions
+  (external-label #f)			;for closure, external entry
+  (source-code #f read-only #t)		;SCode
   )
 
 (define (dbg-procedure/label-offset procedure)
@@ -109,11 +109,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		    ((ucode-primitive string->symbol)
 		     "#[(runtime compiler-info)dbg-continuation]"))
 		   (conc-name dbg-continuation/))
-  (block false read-only true)		;dbg-block
-  (label false)				;dbg-label
-  (type false read-only true)
-  (offset false read-only true)		;difference between sp and block
-  (source-code false read-only true)
+  (block #f read-only #t)		;dbg-block
+  (label #f)				;dbg-label
+  (type #f read-only #t)
+  (offset #f read-only #t)		;difference between sp and block
+  (source-code #f read-only #t)
   )
 
 (define-integrable (dbg-continuation/label-offset continuation)
@@ -131,12 +131,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		    make-dbg-block
 		    (type parent original-parent layout stack-link))
 		   (conc-name dbg-block/))
-  (type false read-only true)		;continuation, stack, closure, ic
-  (parent false read-only true)		;parent block, or #F
-  (original-parent false read-only true) ;for closures, closing block
-  (layout false read-only true)		;vector of names, except #F for ic
-  (stack-link false read-only true)	;next block on stack, or #F
-  (procedure false)			;procedure which this is block of
+  (type #f read-only #t)		;continuation, stack, closure, ic
+  (parent #f read-only #t)		;parent block, or #F
+  (original-parent #f read-only #t)	;for closures, closing block
+  (layout #f read-only #t)		;vector of names, except #F for ic
+  (stack-link #f read-only #t)		;next block on stack, or #F
+  (procedure #f)			;procedure which this is block of
   )
 
 (define-structure (dbg-variable
@@ -145,8 +145,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		    ((ucode-primitive string->symbol)
 		     "#[(runtime compiler-info)dbg-variable]"))
 		   (conc-name dbg-variable/))
-  (name false read-only true)		;symbol
-  (type false read-only true)		;normal, cell, integrated
+  (name #f read-only #t)		;symbol
+  (type #f read-only #t)		;normal, cell, integrated
   value					;for integrated, the value
   )
 
@@ -220,9 +220,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		     "#[(runtime compiler-info)dbg-label]"))
 		   (constructor make-dbg-label (name offset))
 		   (conc-name dbg-label-1/))
-  (name false)				;a string, primary name
-  (offset false read-only true)		;mach. dependent offset into code block
-  (external? false)			;if true, can have pointer to this
+  (name #f)				;a string, primary name
+  (offset #f read-only #t)		;mach. dependent offset into code block
+  (external? #f)			;if true, can have pointer to this
   (names (list name))			;names of all labels at this offset
   )
 
@@ -240,3 +240,140 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	    (negative? offset))
 	(set-cdr! label (- offset))))
   unspecific)
+
+;;;; Debugging-info wrappers
+
+(define (compiled-code-block/debugging-wrapper block)
+  (let ((wrapper (compiled-code-block/debugging-info block)))
+    (if (debugging-wrapper? wrapper)
+	wrapper
+	(let ((wrapper (convert-old-debugging-wrapper wrapper)))
+	  (if wrapper
+	      (set-compiled-code-block/debugging-info! block wrapper))
+	  wrapper))))
+
+(define (debugging-wrapper? wrapper)
+  (and (vector? wrapper)
+       (fix:= (vector-length wrapper) 6)
+       (eq? (vector-ref wrapper 0) 'DEBUGGING-INFO-WRAPPER)
+       (or (fix:= (vector-ref wrapper 1) 1)
+	   (fix:= (vector-ref wrapper 1) 2))
+       (or (and (not (vector-ref wrapper 2))
+		(not (vector-ref wrapper 3))
+		(not (vector-ref wrapper 4))
+		(dbg-info? (vector-ref wrapper 5)))
+	   (and (if (fix:= (vector-ref wrapper 1) 1)
+		    (not (vector-ref wrapper 2))
+		    (dbg-info-key? (vector-ref wrapper 2)))
+		(debug-info-pathname? (vector-ref wrapper 3))
+		(index-fixnum? (vector-ref wrapper 4))
+		(or (not (vector-ref wrapper 5))
+		    (dbg-info? (vector-ref wrapper 5)))))))
+
+(define (debugging-wrapper/version wrapper)
+  (vector-ref wrapper 1))
+
+(define (debugging-wrapper/key wrapper)
+  (vector-ref wrapper 2))
+
+(define (debugging-wrapper/pathname wrapper)
+  (vector-ref wrapper 3))
+
+(define (set-debugging-wrapper/pathname! wrapper pathname)
+  (vector-set! wrapper 3 pathname))
+
+(define (debugging-wrapper/index wrapper)
+  (vector-ref wrapper 4))
+
+(define (debugging-wrapper/info wrapper)
+  (vector-ref wrapper 5))
+
+(define (set-debugging-wrapper/info! wrapper info)
+  (vector-set! wrapper 5 info))
+
+(define (convert-old-debugging-wrapper wrapper)
+  (let ((make-wrapper
+	 (lambda (pathname index info)
+	   (vector 'DEBUGGING-INFO-WRAPPER 1 #f pathname index info))))
+    (cond ((dbg-info? wrapper)
+	   (make-wrapper #f #f wrapper))
+	  ((debug-info-pathname? wrapper)
+	   (make-wrapper wrapper 0 #f))
+	  ((and (pair? wrapper)
+		(debug-info-pathname? (car wrapper))
+		(dbg-info? (cdr wrapper)))
+	   (make-wrapper (car wrapper) 0 (cdr wrapper)))
+	  ((and (pair? wrapper)
+		(debug-info-pathname? (car wrapper))
+		(index-fixnum? (cdr wrapper))
+		(fix:> (cdr wrapper) 0))
+	   (make-wrapper (car wrapper) (cdr wrapper) #f))
+	  ((and (pair? wrapper)
+		(pair? (car wrapper))
+		(debug-info-pathname? (caar wrapper))
+		(index-fixnum? (cdar wrapper))
+		(fix:> (cdar wrapper) 0)
+		(dbg-info? (cdr wrapper)))
+	   (make-wrapper (caar wrapper) (cdar wrapper) (cdr wrapper)))
+	  (else #f))))
+
+(define (debugging-file-wrapper? wrapper)
+  (and (vector? wrapper)
+       (fix:= (vector-length wrapper) 4)
+       (eq? (vector-ref wrapper 0) 'DEBUGGING-FILE-WRAPPER)
+       (or (and (fix:= (vector-ref wrapper 1) 1)
+		(not (vector-ref wrapper 2)))
+	   (and (fix:= (vector-ref wrapper 1) 2)
+		(dbg-info-key? (vector-ref wrapper 2))))
+       (let ((info (vector-ref wrapper 3)))
+	 (let ((n (vector-length info)))
+	   (and (fix:>= n 1)
+		(let loop ((i 0))
+		  (or (fix:= i n)
+		      (and (dbg-info? (vector-ref info i))
+			   (loop (fix:+ i 1))))))))))
+
+(define (debugging-file-wrapper/version wrapper)
+  (vector-ref wrapper 1))
+
+(define (debugging-file-wrapper/key wrapper)
+  (vector-ref wrapper 2))
+
+(define (debugging-file-wrapper/info wrapper)
+  (vector-ref wrapper 3))
+
+(define (canonicalize-file-wrapper wrapper)
+  (cond ((debugging-file-wrapper? wrapper)
+	 wrapper)
+	((dbg-info? wrapper)
+	 (vector 'DEBUGGING-FILE-WRAPPER 1 #f (vector wrapper)))
+	((and (vector? wrapper)
+	      (let ((n (vector-length wrapper)))
+		(and (fix:>= n 1)
+		     (let loop ((i 0))
+		       (or (fix:= i n)
+			   (and (dbg-info? (vector-ref wrapper i))
+				(loop (fix:+ i 1))))))))
+	 (vector 'DEBUGGING-FILE-WRAPPER 1 #f wrapper))
+	(else #f)))
+
+(define (get-wrapped-dbg-info file-wrapper wrapper)
+  (and (let ((k1 (debugging-wrapper/key wrapper))
+	     (k2 (debugging-file-wrapper/key file-wrapper)))
+	 (or (and k1 k2 (dbg-info-key=? k1 k2))
+	     (and (not k1) (not k2))))
+       (let ((v (debugging-file-wrapper/info file-wrapper))
+	     (index (debugging-wrapper/index wrapper)))
+	 (and (fix:< index (vector-length v))
+	      (vector-ref v index)))))
+
+(define (dbg-info-key? object)
+  (and (string? object)
+       (fix:= (string-length object) 32)))
+
+(define (dbg-info-key=? a b)
+  (string=? a b))
+
+(define (debug-info-pathname? object)
+  (or (pathname? object)
+      (string? object)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.371 2001/08/03 20:29:54 cph Exp $
+$Id: runtime.pkg,v 14.372 2001/08/10 17:09:28 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -357,6 +357,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (export ()
 	  *save-uncompressed-files?*
 	  *uncompressed-file-lifetime*
+	  compiled-code-block/filename-and-index
+	  compiled-entry/filename-and-index
 	  compiled-entry/block
 	  compiled-entry/dbg-object
 	  compiled-entry/offset
@@ -409,12 +411,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  dbg-procedure/block
 	  dbg-procedure/source-code
 	  dbg-expression?)
-  (export (runtime unparser)
-	  compiled-entry/filename-and-index)
   (export (runtime compress)
 	  uncompress-internal)
   (export (runtime options)
 	  with-directory-rewriting-rule)
+  (export (runtime continuation-parser)
+	  )
   (initialization (initialize-package!)))
 
 (define-package (runtime console-i/o-port)

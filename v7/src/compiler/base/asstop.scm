@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: asstop.scm,v 1.11 1999/01/02 06:06:43 cph Exp $
+$Id: asstop.scm,v 1.12 2001/08/10 17:10:28 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Assembler and Linker top level
@@ -229,44 +230,58 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	       *label-bindings*
 	       (last-reference *external-labels*))))
 	 (cond ((eq? pathname 'KEEP)	; for dynamic execution
-		info)
+		(vector 'DEBUGGING-INFO-WRAPPER
+			2
+			#f
+			#f
+			#f
+			info))
 	       ((eq? pathname 'RECURSIVE) ; recursive compilation
 		(set! *recursive-compilation-results*
 		      (cons (vector *recursive-compilation-number*
 				    info
 				    *code-vector*)
 			    *recursive-compilation-results*))
-		(cons *info-output-filename* *recursive-compilation-number*))
+		(vector 'DEBUGGING-INFO-WRAPPER
+			2
+			*debugging-key*
+			*info-output-filename*
+			*recursive-compilation-number*
+			#f))
 	       (else
 		(compiler:dump-info-file
-		 (let ((others (recursive-compilation-results)))
-		   (if (null? others)
-		       info
-		       (list->vector
-			(cons info
-			      (map (lambda (other) (vector-ref other 1))
-				   others)))))
+		 (vector 'DEBUGGING-FILE-WRAPPER
+			 2
+			 *debugging-key*
+			 (list->vector
+			  (cons info
+				(map (lambda (other) (vector-ref other 1))
+				     (recursive-compilation-results)))))
 		 pathname)
-		*info-output-filename*)))))))
+		(vector 'DEBUGGING-INFO-WRAPPER
+			2
+			*debugging-key*
+			*info-output-filename*
+			0
+			#f))))))))
 
 (define (recursive-compilation-results)
   (sort *recursive-compilation-results*
-	(lambda (x y)
-	  (< (vector-ref x 0)
-	     (vector-ref y 0)))))
+    (lambda (x y)
+      (fix:< (vector-ref x 0) (vector-ref y 0)))))
 
 ;;; Various ways of dumping an info file
 
 (define (compiler:dump-inf-file binf pathname)
-  (fasdump binf pathname true)
+  (fasdump binf pathname #t)
   (announce-info-files pathname))
 
 (define (compiler:dump-bif/bsm-files binf pathname)
   (let ((bif-path (pathname-new-type pathname "bif"))
 	(bsm-path (pathname-new-type pathname "bsm")))
     (let ((bsm (split-inf-structure! binf bsm-path)))
-      (fasdump binf bif-path true)
-      (fasdump bsm bsm-path true))
+      (fasdump binf bif-path #t)
+      (fasdump bsm bsm-path #t))
     (announce-info-files bif-path bsm-path)))
   
 (define (compiler:dump-bci/bcs-files binf pathname)
@@ -275,20 +290,20 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (let ((bsm (split-inf-structure! binf bcs-path)))
       (call-with-temporary-filename
 	(lambda (bif-name)
-	  (fasdump binf bif-name true)
+	  (fasdump binf bif-name #t)
 	  (compress bif-name bci-path)))
       (call-with-temporary-filename
 	(lambda (bsm-name)
-	  (fasdump bsm bsm-name true)
+	  (fasdump bsm bsm-name #t)
 	  (compress bsm-name bcs-path))))
     (announce-info-files bci-path bcs-path)))
   
 (define (compiler:dump-bci-file binf pathname)
   (let ((bci-path (pathname-new-type pathname "bci")))
-    (split-inf-structure! binf false)
+    (split-inf-structure! binf #f)
     (call-with-temporary-filename
       (lambda (bif-name)
-	(fasdump binf bif-name true)
+	(fasdump binf bif-name #t)
 	(compress bif-name bci-path)))
     (announce-info-files bci-path)))
 

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.59 2000/01/10 03:47:47 cph Exp $
+$Id: toplev.scm,v 4.60 2001/08/10 17:10:33 cph Exp $
 
-Copyright (c) 1988-2000 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Compiler Top Level
@@ -100,7 +101,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let ((kernel
 	 (lambda (source-file)
 	   (with-values
-	       (lambda () (sf/pathname-defaulting source-file false false))
+	       (lambda () (sf/pathname-defaulting source-file #f #f))
 	     (lambda (source-pathname bin-pathname spec-pathname)
 	       ;; Maybe this should be done only if scode-file
 	       ;; does not exist or is older than source-file.
@@ -125,7 +126,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(compiler-pathnames
 	 input-string
 	 (and (not (default-object? output-string)) output-string)
-	 (make-pathname false false false false "bin" 'NEWEST)
+	 (make-pathname #f #f #f #f "bin" 'NEWEST)
 	 (lambda (input-pathname output-pathname)
 	   (maybe-open-file
 	    compiler:generate-rtl-files?
@@ -134,17 +135,21 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	      (maybe-open-file compiler:generate-lap-files?
 			       (pathname-new-type output-pathname "lap")
 			       (lambda (lap-output-port)
-				 (compile-scode/internal
-				  (compiler-fasload input-pathname)
-				  (pathname-new-type output-pathname "inf")
-				  rtl-output-port
-				  lap-output-port)))))))
+				 (fluid-let ((*debugging-key*
+					      (random-byte-vector 32)))
+				   (compile-scode/internal
+				    (compiler-fasload input-pathname)
+				    (pathname-new-type output-pathname "inf")
+				    rtl-output-port
+				    lap-output-port))))))))
 	unspecific)))
+
+(define *debugging-key*)
 
 (define (maybe-open-file open? pathname receiver)
   (if open?
       (call-with-output-file pathname receiver)
-      (receiver false)))
+      (receiver #f)))
 
 (define (compiler-pathnames input-string output-string default transform)
   (let* ((core
@@ -214,15 +219,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    (procedure-environment procedure)))
 
 (define (compile-scode/no-file scode keep-debugging-info?)
-  (fluid-let ((compiler:noisy? false)
+  (fluid-let ((compiler:noisy? #f)
 	      (*info-output-filename* keep-debugging-info?))
     (compile-scode/internal/hook
      (lambda ()
-       (compile-scode/internal scode
-			       *info-output-filename*)))))
+       (compile-scode/internal scode keep-debugging-info?)))))
 
 (define (compiler:batch-compile input #!optional output)
-  (fluid-let ((compiler:batch-mode? true))
+  (fluid-let ((compiler:batch-mode? #t))
     (bind-condition-handler (list condition-type:error)
 	compiler:batch-error-handler
       (lambda ()
@@ -235,7 +239,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (fresh-line port)
     (write-condition-report condition port)
     (newline port))
-  (compiler:abort false))
+  (compiler:abort #f))
 
 (define (compiler:abort value)
   (if (not compiler:abort-handled?)
@@ -250,11 +254,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (call-with-current-continuation
      (lambda (abort-compilation)
        (fluid-let ((compiler:abort-continuation abort-compilation)
-		   (compiler:abort-handled? true))
+		   (compiler:abort-handled? #t))
 	 (real-kernel input-string))))))
 
-(define compiler:batch-mode? false)
-(define compiler:abort-handled? false)
+(define compiler:batch-mode? #f)
+(define compiler:abort-handled? #f)
 (define compiler:abort-continuation)
 
 (define (compile-recursively scode procedure-result? procedure-name)
@@ -328,9 +332,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define *process-time*)
 (define *real-time*)
 
-(define *info-output-filename* false)
-(define *rtl-output-port* false)
-(define *lap-output-port* false)
+(define *info-output-filename* #f)
+(define *rtl-output-port* #f)
+(define *lap-output-port* #f)
 
 ;; First set: input to compilation
 ;; Last used: phase/canonicalize-scode
@@ -417,7 +421,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  (run-compiler))
 	(fluid-let ((*recursive-compilation-number* 0)
 		    (*recursive-compilation-count* 1)
-		    (*procedure-result?* false)
+		    (*procedure-result?* #f)
 		    (*remote-links* '())
 		    (*process-time* 0)
 		    (*real-time* 0))
@@ -459,7 +463,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (compiler:reset!)
   (set! *recursive-compilation-number* 0)
   (set! *recursive-compilation-count* 1)
-  (set! *procedure-result?* false)
+  (set! *procedure-result?* #f)
   (set! *remote-links* '())
   (set! *process-time* 0)
   (set! *real-time* 0)
@@ -503,12 +507,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				wrapper)
   (let ((info-output-pathname
 	 (if (default-object? info-output-pathname)
-	     false
+	     #f
 	     info-output-pathname))
 	(rtl-output-port
-	 (if (default-object? rtl-output-port) false rtl-output-port))
+	 (if (default-object? rtl-output-port) #f rtl-output-port))
 	(lap-output-port
-	 (if (default-object? lap-output-port) false lap-output-port))
+	 (if (default-object? lap-output-port) #f lap-output-port))
 	(wrapper
 	 (if (default-object? wrapper) in-compiler wrapper)))
     (fluid-let ((*info-output-filename*
@@ -821,7 +825,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  (set! *rtl-graphs* rgraphs)
 	  unspecific))
       (if *procedure-result?*
-	  (set! *rtl-expression* false))
+	  (set! *rtl-expression* #f))
       (set! label->object
 	    (make/label->object *rtl-expression*
 				*rtl-procedures*
@@ -918,14 +922,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (phase/rtl-optimization-cleanup)
   (if (not compiler:preserve-data-structures?)
       (for-each (lambda (rgraph)
-		  (set-rgraph-bblocks! rgraph false)
+		  (set-rgraph-bblocks! rgraph #f)
 		  ;; **** this slot is reused. ****
-		  ;;(set-rgraph-register-bblock! rgraph false)
-		  (set-rgraph-register-crosses-call?! rgraph false)
-		  (set-rgraph-register-n-deaths! rgraph false)
-		  (set-rgraph-register-live-length! rgraph false)
-		  (set-rgraph-register-n-refs! rgraph false)
-		  (set-rgraph-register-known-values! rgraph false))
+		  ;;(set-rgraph-register-bblock! rgraph #f)
+		  (set-rgraph-register-crosses-call?! rgraph #f)
+		  (set-rgraph-register-n-deaths! rgraph #f)
+		  (set-rgraph-register-live-length! rgraph #f)
+		  (set-rgraph-register-n-refs! rgraph #f)
+		  (set-rgraph-register-known-values! rgraph #f))
 		*rtl-graphs*)))
 
 (define (phase/rtl-file-output scode port)
@@ -962,7 +966,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		    (vector environment-label free-ref-label n-sections))
 	      unspecific))
 	  (begin
-	    (let ((prefix (generate-lap *rtl-graphs* *remote-links* false)))
+	    (let ((prefix (generate-lap *rtl-graphs* *remote-links* #f)))
 	      (node-insert-snode! (rtl-expr/entry-node *rtl-root*)
 				  (make-sblock prefix)))
 	    (set! *entry-label* (rtl-expr/label *rtl-root*))
@@ -1001,7 +1005,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (compiler-phase "LAP File Output"
     (lambda ()
       (fluid-let ((*unparser-radix* 16)
-		  (*unparse-uninterned-symbols-by-name?* true))
+		  (*unparse-uninterned-symbols-by-name?* #t))
 	(with-output-to-port port
 	  (lambda ()
 	    (write-string "LAP for object ")
