@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prename.h,v 1.5 1991/10/02 21:17:20 jinx Exp $
+$Id: prename.h,v 1.6 1992/10/21 00:49:57 jinx Exp $
 
-Copyright (c) 1988, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -52,11 +52,10 @@ static struct primitive_alias aliases [] =
     { "RENAME-FILE", "FILE-RENAME" },
     { "COPY-FILE", "FILE-COPY" },
     { "MAKE-DIRECTORY", "DIRECTORY-MAKE" },
-    { "OPEN-DIRECTORY", "DIRECTORY-OPEN" },
     { "SCREEN-X-SIZE", "TTY-X-SIZE" },
     { "SCREEN-Y-SIZE", "TTY-Y-SIZE" },
     { "FILE-SYMLINK?", "FILE-SOFT-LINK?" },
     { "X-GRAPHICS-SET-CLASS-HINT", "X-WINDOW-SET-CLASS-HINT" }
   };
 
-#define N_ALIASES 21
+#define N_ALIASES 20
