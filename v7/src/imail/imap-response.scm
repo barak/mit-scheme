@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.29 2000/05/29 04:35:29 cph Exp $
+;;; $Id: imap-response.scm,v 1.30 2000/05/29 04:39:03 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -297,7 +297,7 @@
 			 (fix:<= start n))
 		    (*read-literal-progress-hook* start n))
 		(loop start)))))
-      (let ((n* (translate-line-endings!:network->scheme string 0 n)))
+      (let ((n* (translate-line-endings!:network->scheme s 0 n)))
 	(if (fix:< n* n)
 	    (set-string-maximum-length! s n*)))
       s)))
