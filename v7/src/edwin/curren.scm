@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: curren.scm,v 1.132 2000/10/26 04:29:26 cph Exp $
+;;; $Id: curren.scm,v 1.133 2000/10/26 04:47:56 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -467,8 +467,8 @@ The frame is guaranteed to be deselected at that time."
 	   (undo-leave-window! window)
 	   (if (selected-window? window)
 	       (change-selected-buffer window buffer record?
-				       (lambda ()
-					 (set-window-buffer! window buffer)))
+		 (lambda ()
+		   (set-window-buffer! window buffer)))
 	       (set-window-buffer! window buffer))
 	   (maybe-select-buffer-layout window buffer))))))
 
