@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.9 2000/02/07 22:37:21 cph Exp $
+;;; $Id: imail-file.scm,v 1.10 2000/04/18 21:20:01 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -84,34 +84,6 @@
 (define-method %get-message ((folder <file-folder>) index)
   (list-ref (file-folder-messages folder) index))
 
-(define-method %insert-message ((folder <file-folder>) index message)
-  (let ((message (attach-message message folder)))
-    (set-message-index! message index)
-    (without-interrupts
-     (lambda ()
-       (let ((messages (file-folder-messages folder)))
-	 (if (fix:= 0 index)
-	     (begin
-	       (do ((messages messages (cdr messages))
-		    (index 1 (fix:+ index 1)))
-		   ((not (pair? messages)))
-		 (set-message-index! (car messages) index)
-		 (message-modified! (car messages)))
-	       (set-file-folder-messages! folder (cons message messages)))
-	     (let loop ((index* 1) (prev messages) (this (cdr messages)))
-	       (if (not (pair? this))
-		   (error:bad-range-argument index 'INSERT-MESSAGE))
-	       (if (fix:= index index*)
-		   (begin
-		     (do ((messages this (cdr messages))
-			  (index (fix:+ index 1) (fix:+ index 1)))
-			 ((not (pair? messages)))
-		       (set-message-index! (car messages) index)
-		       (message-modified! (car messages)))
-		     (set-cdr! prev (cons message this)))
-		   (loop (fix:+ index* 1) this (cdr this))))))
-       (message-modified! message)))))
-
 (define-method %append-message ((folder <file-folder>) message)
   (let ((message (attach-message message folder)))
     (without-interrupts

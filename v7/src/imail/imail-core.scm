@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.28 2000/04/14 01:45:34 cph Exp $
+;;; $Id: imail-core.scm,v 1.29 2000/04/18 21:20:00 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -278,18 +278,6 @@
 
 (define-generic %get-message (folder index))
 
-;; Insert a copy of MESSAGE in FOLDER at INDEX; pre-existing messages
-;; with indices of INDEX or higher have their indices incremented.
-;; Unspecified result.
-(define (insert-message folder index message)
-  (guarantee-index index 'INSERT-MESSAGE)
-  (if (not (<= index (folder-length folder)))
-      (error:bad-range-argument index 'INSERT-MESSAGE))
-  (guarantee-message message 'INSERT-MESSAGE)
-  (%insert-message folder index message))
-
-(define-generic %insert-message (folder index message))
-
 ;;; Insert a copy of MESSAGE in FOLDER at the end of the existing
 ;;; messages.  Unspecified result.
 (define (append-message folder message)
