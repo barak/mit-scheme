@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sicp/compat.scm,v 1.3 1991/04/06 06:51:33 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sicp/compat.scm,v 1.4 1991/05/04 21:51:19 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -93,24 +93,39 @@ MIT in each case. |#
 (define (nthcdr n l)
   (list-tail l n))
 
-(define (explode string)
+(define (object->string object)
+  (cond ((symbol? object) (symbol->string object))
+	((number? object) (number->string object))
+	((string? object) (string-append "\"" object "\""))
+	(else
+	 (with-output-to-string
+	   (lambda ()
+	     (write object))))))
+
+(define (string->object object)
+  (with-input-from-string object
+    read))
+
+(define (explode object)
   (map (lambda (character)
 	 (let ((string (char->string character)))
 	   (or (string->number string)
 	       (string->symbol string))))
-       (string->list string)))
+       (string->list
+	(object->string object))))
 
 (define (implode list)
-  (list->string
-   (map (lambda (element)
-	  (cond ((digit? element)
-		 (string-ref (number->string element) 0))
-		((singleton-symbol? element)
-		 (string-ref (symbol->string element) 0))
-		(else
-		 (error "Element neither digit nor singleton symbol"
-			element))))
-	list)))
+  (string->object
+   (list->string
+    (map (lambda (element)
+	   (cond ((digit? element)
+		  (string-ref (number->string element) 0))
+		 ((singleton-symbol? element)
+		  (string-ref (symbol->string element) 0))
+		 (else
+		  (error "Element neither digit nor singleton symbol"
+			 element))))
+	 list))))
 
 (define (close-channel port)
   (cond ((input-port? port) (close-input-port port))
