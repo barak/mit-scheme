@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.14 1993/07/07 20:44:09 gjr Exp $
+$Id: compiler.pkg,v 1.15 1993/08/11 23:36:37 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -79,6 +79,7 @@ MIT in each case. |#
   (export ()
 	  compiler:analyze-side-effects?
 	  compiler:cache-free-variables?
+	  compiler:coalescing-constant-warnings?
 	  compiler:code-compression?
 	  compiler:compile-by-procedures?
 	  compiler:cse?
