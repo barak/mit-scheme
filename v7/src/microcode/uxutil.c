@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxutil.c,v 1.3 1991/07/24 19:48:29 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxutil.c,v 1.4 1991/10/16 22:26:19 jinx Exp $
 
 Copyright (c) 1990, 1991 Massachusetts Institute of Technology
 
@@ -222,6 +222,7 @@ DEFUN (userio_confirm, (prompt), CONST char * prompt)
   while (1)
     {
       fputs (prompt, stdout);
+      fflush (stdout);
       switch (userio_read_char_raw ())
 	{
 	case 'y':
