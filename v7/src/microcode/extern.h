@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.21 1987/01/22 14:23:54 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.22 1987/02/08 23:08:27 jinx Exp $
  *
  * External declarations.
  *
@@ -183,8 +183,7 @@ extern void Load_Data(), Write_Data(), OS_Re_Init();
 
 /* Memory management utilities */
 
-extern void GCFlip(), GC();
-extern Pointer *GCLoop(), Purify_Pass_2(), Fasload();
+extern Pointer Purify_Pass_2(), Fasload();
 extern Boolean Pure_Test();
 
 /* Interpreter utilities */

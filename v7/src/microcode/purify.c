@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.22 1987/02/03 15:57:39 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.23 1987/02/08 23:05:47 jinx Exp $
  *
  * This file contains the code for primitives dealing with pure
  * and constant space.
@@ -41,6 +41,11 @@ MIT in each case. */
 #include "primitive.h"
 #include "gccode.h"
 #include "zones.h"
+
+/* Imports */
+
+extern void GCFlip(), GC();
+extern Pointer *GCLoop();
 
 /* This is a copy of GCLoop, with GC_Mode handling added, and
    debugging printout removed.

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gcloop.c,v 9.22 1987/02/03 15:56:10 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gcloop.c,v 9.23 1987/02/08 23:09:10 jinx Exp $
  *
  * This file contains the code for the most primitive part
  * of garbage collection.
@@ -39,15 +39,20 @@ MIT in each case. */
 
 #include "scheme.h"
 #include "gccode.h"
-
+
+/* Exports */
+
+extern Pointer *GCLoop();
+
 #define GC_Pointer(Code)					\
 Old = Get_Pointer(Temp);					\
 Code
 
 #define Setup_Pointer_for_GC(Extra_Code)			\
 GC_Pointer(Setup_Pointer(true, Extra_Code))
-
-Pointer *GCLoop(Scan, To_Pointer)
+
+Pointer
+*GCLoop(Scan, To_Pointer)
 fast Pointer *Scan;
 Pointer **To_Pointer;
 { fast Pointer *To, *Old, Temp, *Low_Constant, New_Address;
