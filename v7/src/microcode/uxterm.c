@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxterm.c,v 1.21 1993/02/18 05:15:04 gjr Exp $
+$Id: uxterm.c,v 1.22 1993/04/19 08:27:29 cph Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -120,7 +120,7 @@ DEFUN (set_terminal_state, (channel, s), Tchannel channel AND Ttty_state * s)
        (UX_terminal_set_state ((CHANNEL_DESCRIPTOR (channel)), s)));
 }
 
-unsigned long
+unsigned int
 DEFUN (terminal_state_get_ospeed, (s), Ttty_state * s)
 {
 #ifdef HAVE_TERMIOS
@@ -136,7 +136,7 @@ DEFUN (terminal_state_get_ospeed, (s), Ttty_state * s)
 #endif /* not HAVE_TERMIOS */
 }
 
-unsigned long
+unsigned int
 DEFUN (terminal_state_get_ispeed, (s), Ttty_state * s)
 {
 #ifdef HAVE_TERMIOS
@@ -147,6 +147,43 @@ DEFUN (terminal_state_get_ispeed, (s), Ttty_state * s)
 #else
 #ifdef HAVE_BSD_TTY_DRIVER
   return (s -> sg . sg_ispeed);
+#endif /* HAVE_BSD_TTY_DRIVER */
+#endif /* not HAVE_TERMIO */
+#endif /* not HAVE_TERMIOS */
+}
+
+void
+DEFUN (terminal_state_set_ospeed, (s, b),
+       Ttty_state * s AND
+       unsigned int b)
+{
+#ifdef HAVE_TERMIOS
+  cfsetospeed ((TIO (s)), b);
+#else
+#ifdef HAVE_TERMIO
+  ((TIO (s)) -> c_cflag) = ((((TIO (s)) -> c_cflag) &~ CBAUD) | b);
+#else
+#ifdef HAVE_BSD_TTY_DRIVER
+  (s -> sg . sg_ospeed) = b;
+#endif /* HAVE_BSD_TTY_DRIVER */
+#endif /* not HAVE_TERMIO */
+#endif /* not HAVE_TERMIOS */
+}
+
+void
+DEFUN (terminal_state_set_ispeed, (s, b),
+       Ttty_state * s AND
+       unsigned int b)
+{
+#ifdef HAVE_TERMIOS
+  cfsetispeed ((TIO (s)), b);
+#else
+#ifdef HAVE_TERMIO
+  ((TIO (s)) -> c_cflag) =
+    ((((TIO (s)) -> c_cflag) &~ CIBAUD) | (b << IBSHIFT));
+#else
+#ifdef HAVE_BSD_TTY_DRIVER
+  (s -> sg . sg_ispeed) = b;
 #endif /* HAVE_BSD_TTY_DRIVER */
 #endif /* not HAVE_TERMIO */
 #endif /* not HAVE_TERMIOS */
@@ -329,7 +366,7 @@ DEFUN (terminal_state_buffered, (s, channel),
 #endif /* HAVE_TERMIOS or HAVE_TERMIO */
 }
 
-unsigned long
+unsigned int
 DEFUN (OS_terminal_get_ispeed, (channel), Tchannel channel)
 {
   Ttty_state s;
@@ -337,12 +374,34 @@ DEFUN (OS_terminal_get_ispeed, (channel), Tchannel channel)
   return (terminal_state_get_ispeed (&s));
 }
 
-unsigned long
+unsigned int
 DEFUN (OS_terminal_get_ospeed, (channel), Tchannel channel)
 {
   Ttty_state s;
   get_terminal_state (channel, (&s));
   return (terminal_state_get_ospeed (&s));
+}
+
+void
+DEFUN (OS_terminal_set_ispeed, (channel, baud),
+       Tchannel channel AND
+       unsigned int baud)
+{
+  Ttty_state s;
+  get_terminal_state (channel, (&s));
+  terminal_state_set_ispeed ((&s), baud);
+  set_terminal_state (channel, (&s));
+}
+
+void
+DEFUN (OS_terminal_set_ospeed, (channel, baud),
+       Tchannel channel AND
+       unsigned int baud)
+{
+  Ttty_state s;
+  get_terminal_state (channel, (&s));
+  terminal_state_set_ospeed ((&s), baud);
+  set_terminal_state (channel, (&s));
 }
 
 #ifndef NO_BAUD_CONVERSION

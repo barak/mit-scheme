@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosterm.c,v 1.12 1992/05/05 06:34:14 jinx Exp $
+$Id: prosterm.c,v 1.13 1993/04/19 08:27:48 cph Exp $
 
-Copyright (c) 1990-1992 Massachusetts Institute of Technology
+Copyright (c) 1990-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -61,6 +61,20 @@ DEFINE_PRIMITIVE ("TERMINAL-GET-OSPEED", Prim_terminal_get_ospeed, 1, 1, 0)
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN
     (long_to_integer (OS_terminal_get_ospeed (arg_terminal (1))));
+}
+
+DEFINE_PRIMITIVE ("TERMINAL-SET-ISPEED", Prim_terminal_set_ispeed, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  OS_terminal_set_ispeed ((arg_terminal (1)), (arg_baud_index (2)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("TERMINAL-SET-OSPEED", Prim_terminal_set_ospeed, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  OS_terminal_set_ospeed ((arg_terminal (1)), (arg_baud_index (2)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("BAUD-INDEX->RATE", Prim_baud_index_to_rate, 1, 1, 0)

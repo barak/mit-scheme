@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dosio.c,v 1.4 1993/04/06 22:19:01 cph Exp $
+$Id: dosio.c,v 1.5 1993/04/19 08:31:05 cph Exp $
 
 Copyright (c) 1992-93 Massachusetts Institute of Technology
 
@@ -397,16 +397,32 @@ DEFUN (arg_baud_index, (argument), unsigned int argument)
   return (arg_index_integer (argument, 1));
 }
 
-unsigned long
+unsigned int
 DEFUN (OS_terminal_get_ispeed, (channel), Tchannel channel)
 {
   return (0);
 }
 
-unsigned long
+unsigned int
 DEFUN (OS_terminal_get_ospeed, (channel), Tchannel channel)
 {
   return (0);
+}
+
+void
+DEFUN (terminal_state_set_ospeed, (s, b),
+       Ttty_state * s AND
+       unsigned int b)
+{
+  error_unimplemented_primitive ();
+}
+
+void
+DEFUN (terminal_state_set_ispeed, (s, b),
+       Ttty_state * s AND
+       unsigned int b)
+{
+  error_unimplemented_primitive ();
 }
 
 unsigned int
