@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: make-dist-files,v 1.7 2000/11/28 17:32:16 cph Exp $
+# $Id: make-dist-files,v 1.8 2000/12/23 05:52:22 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -18,183 +18,135 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-type=$1
-destination=$2
+TYPE=$1
+DESTINATION=$2
 
-if [ "${type}" = "" ]; then
-  type="std"
+if [ "${TYPE}" = "" ]; then
+  TYPE="std"
 fi
 
-case "${type}" in
+case "${TYPE}" in
 6001|all|std|scmutils)
   ;;
 *)
-  echo "Unknown distribution type: ${type}"
+  echo "Unknown distribution type: ${TYPE}"
   exit 1
   ;;
 esac
 
-bands="runtime.com compiler.com edwin.com all.com"
-case ${type} in
+BUILD_DIR="`pwd`/build-$$"
+BINDIR=${BUILD_DIR}/usr/local/bin
+AUXDIR=${BUILD_DIR}/usr/local/lib/mit-scheme
+
+MKINSTALLDIRS="/scheme/v7/src/mkinstalldirs"
+INSTALL="install"
+INSTALL_DATA="${INSTALL} -m 644"
+
+rm -rf ${BUILD_DIR}
+(
+    cd /scheme/v7/linux
+    make install DESTDIR=${BUILD_DIR}
+)
+(
+    cd /scheme/v7/doc
+    make install-info-gz DESTDIR=${BUILD_DIR} \
+	infodir=/usr/local/lib/mit-scheme/edwin/info
+    make install-html DESTDIR=${BUILD_DIR}
+)
+
+${MKINSTALLDIRS} ${AUXDIR}/doc
+${INSTALL_DATA} /scheme/v7/src/COPYING ${AUXDIR}/doc/.
+
+${MKINSTALLDIRS} ${AUXDIR}/edwin/info
+${INSTALL_DATA} /usr/local/info/dir ${AUXDIR}/edwin/info/.
+${INSTALL_DATA} /usr/local/info/r4rs.* ${AUXDIR}/edwin/info/.
+${INSTALL_DATA} /usr/local/info/r5rs.* ${AUXDIR}/edwin/info/.
+
+BANDS="runtime.com compiler.com edwin.com all.com 6001.com"
+case ${TYPE} in
+std)
+    rm -f ${AUXDIR}/6001.com
+    ;;
 6001)
-  bands="6001.com"
-  ;;
+    for BAND in ${BANDS}; do
+	[ "${BAND}" = "6001.com" ] || rm -f ${AUXDIR}/${BAND}
+    done
+    ;;
 all)
-  bands="all.com"
-  ;;
+    for BAND in ${BANDS}; do
+	[ "${BAND}" = "all.com" ] || rm -f ${AUXDIR}/${BAND}
+    done
+    ;;
 scmutils)
-  bands=
-  ;;
+    for BAND in ${BANDS}; do
+	rm -f ${AUXDIR}/${BAND}
+    done
+    ;;
 esac
-
-run_opts="optiondb numint cpress format gdbm hashtb mime-codec ordvec rbtree ystep process syncproc wttree rgxcmp chrsyn regexp krypt"
-ed_opts="techinfo telnet midas pasmod tximod manual print sort eystep nntp snr verilog vhdl webster pwedit pwparse"
-
-build_dir="build-$$"
-rm -rf ${build_dir}
-mkdir ${build_dir}
-mkdir ${build_dir}/bin
-mkdir ${build_dir}/lib
-mkdir ${build_dir}/lib/mit-scheme
-mkdir ${build_dir}/lib/mit-scheme/SRC
-
-for file in scheme bchscheme; do
-  cpx /scheme/v7/linux/microcode/${file} ${build_dir}/bin/.
-done
-
-for file in utabmd.bin ${bands}; do
-  cpx /scheme/v7/linux/lib/${file} ${build_dir}/lib/mit-scheme/.
-done
-cpx /scheme/v7/dist/optiondb.scm ${build_dir}/lib/mit-scheme/.
-
-#
-# Edwin
-#
-mkdir ${build_dir}/lib/mit-scheme/edwin
-for file in info etc; do
-  cpx -r /scheme/v7/linux/lib/edwin/${file} ${build_dir}/lib/mit-scheme/edwin/.
-done
-
-#
-# Runtime debugging info and autoloads.
-#
-if [ ${type} = 6001 ]; then
-  rundbg=/scheme/v7/linux/runtime-check
-else
-  rundbg=/scheme/v7/linux/runtime
-fi
-mkdir ${build_dir}/lib/mit-scheme/SRC/runtime
-ln -s SRC/runtime ${build_dir}/lib/mit-scheme/options
-for file in ${run_opts}; do
-  cpx ${rundbg}/${file}.com ${build_dir}/lib/mit-scheme/SRC/runtime/.
-done
-cpx ${rundbg}/*.bci ${build_dir}/lib/mit-scheme/SRC/runtime/.
-
-#
-# Edwin debugging info and autoloads.
-#
-mkdir ${build_dir}/lib/mit-scheme/SRC/edwin
-ln -s ../SRC/edwin ${build_dir}/lib/mit-scheme/edwin/autoload
-for file in ${ed_opts}; do
-  cpx /scheme/v7/linux/edwin/${file}.com ${build_dir}/lib/mit-scheme/SRC/edwin/.
-done
-cpx /scheme/v7/linux/edwin/*.bci ${build_dir}/lib/mit-scheme/SRC/edwin/.
-
-#
-# SOS
-#
-mkdir ${build_dir}/lib/mit-scheme/sos
-cpx /scheme/v7/linux/sos/*.com ${build_dir}/lib/mit-scheme/sos/.
-cpx /scheme/v7/linux/sos/*.bci ${build_dir}/lib/mit-scheme/sos/.
-cpx /scheme/v7/linux/sos/sos.bco ${build_dir}/lib/mit-scheme/sos/.
-cpx /scheme/v7/linux/sos/sos.bld ${build_dir}/lib/mit-scheme/sos/.
-cpx -h /scheme/v7/linux/sos/load.scm ${build_dir}/lib/mit-scheme/sos/.
-
-#
-# IMAIL
-#
-mkdir ${build_dir}/lib/mit-scheme/imail
-cpx /scheme/v7/linux/imail/*.com ${build_dir}/lib/mit-scheme/imail/.
-cpx /scheme/v7/linux/imail/*.bci ${build_dir}/lib/mit-scheme/imail/.
-cpx /scheme/v7/linux/imail/imail.bco ${build_dir}/lib/mit-scheme/imail/.
-cpx /scheme/v7/linux/imail/imail.bld ${build_dir}/lib/mit-scheme/imail/.
-cpx -h /scheme/v7/linux/imail/load.scm ${build_dir}/lib/mit-scheme/imail/.
-
-#
-# Documentation
-#
-doc_dir=${build_dir}/lib/mit-scheme/doc
-mkdir ${doc_dir}
-cpx /scheme/v7/src/COPYING ${doc_dir}
-cpx /scheme/v7/dist/index.html ${doc_dir}
-cpx /scheme/v7/doc/ref-manual/html/*.html ${doc_dir}
-cpx /scheme/v7/doc/user-manual/html/*.html ${doc_dir}
-cpx /scheme/v7/doc/sos/html/*.html ${doc_dir}
-cpx /scheme/v7/doc/imail/html/*.html ${doc_dir}
 
 #
 # Scmutils
 #
-if [ ${type} = scmutils ]; then
-  mech_source=/sw/scmutils
-  mech_dest=${build_dir}/scmutils
-  mkdir ${mech_dest}
+if [ ${TYPE} = scmutils ]; then
+    MECH_SOURCE=/sw/scmutils
+    MECH_DEST=${BUILD_DIR}/usr/local/scmutils
+    ${MKINSTALLDIRS} ${MECH_DEST}
 
-  for dir in `cd ${mech_source};find src -type d -print`; do
-    mkdir ${mech_dest}/${dir}
-    for file in ${mech_source}/${dir}/*.scm ${mech_source}/${dir}/*.doc ${mech_source}/${dir}/*.c; do
-      if [ -f ${file} ]; then
-        cpx ${file} ${mech_dest}/${dir}/.
-      fi
+    for DIR in `cd ${MECH_SOURCE};find src -type d -print`; do
+	${MKINSTALLDIRS} ${MECH_DEST}/${DIR}
+	for FILE in ${MECH_SOURCE}/${DIR}/*.scm \
+		    ${MECH_SOURCE}/${DIR}/*.doc \
+		    ${MECH_SOURCE}/${DIR}/*.c
+	do
+	    [ -f ${FILE} ] && ${INSTALL_DATA} ${FILE} ${MECH_DEST}/${DIR}/.
+	done
     done
-  done
-  cpx ${mech_source}/src/copyrigh ${mech_dest}/src/.
-  cpx ${mech_source}/src/general/binio/transcript ${mech_dest}/src/general/binio/.
-  rm -rf ${mech_dest}/src/commentary
-  rm -rf ${mech_dest}/src/poly/zuras
+    ${INSTALL_DATA} ${MECH_SOURCE}/src/copyrigh ${MECH_DEST}/src/copyright
+    ${INSTALL_DATA} ${MECH_SOURCE}/src/general/binio/transcript ${MECH_DEST}/src/general/binio/.
+    rm -rf ${MECH_DEST}/src/commentary
+    rm -rf ${MECH_DEST}/src/poly/zuras
 
-  for dir in `cd ${mech_source};find linux -type d -print`; do
-    mkdir ${mech_dest}/${dir}
-    for file in ${mech_source}/${dir}/*.bci; do
-      if [ -f ${file} ]; then
-        cpx ${file} ${mech_dest}/${dir}/.
-      fi
+    for DIR in `cd ${MECH_SOURCE};find linux -type d -print`; do
+	${MKINSTALLDIRS} ${MECH_DEST}/${DIR}
+	for FILE in ${MECH_SOURCE}/${DIR}/*.bci; do
+	    [ -f ${FILE} ] && ${INSTALL_DATA} ${FILE} ${MECH_DEST}/${DIR}/.
+	done
     done
-  done
-  rm -rf ${mech_dest}/linux/commentary
-  cpx ${mech_source}/dist/edwin-mechanics.com ${mech_dest}/linux/.
-  ln -s ../../scmutils/linux/edwin-mechanics.com ${build_dir}/lib/mit-scheme/.
-  cpx ${mech_source}/linux/c-utils/* ${mech_dest}/linux/c-utils/.
+    rm -rf ${MECH_DEST}/linux/commentary
 
-  mkdir ${mech_dest}/manual
-  cpx ${mech_source}/manual/refman.txt ${mech_dest}/manual/.
+    ${INSTALL_DATA} ${MECH_SOURCE}/dist/edwin-mechanics.com ${MECH_DEST}/linux/.
+    ln -s ../../scmutils/linux/edwin-mechanics.com ${AUXDIR}/.
+    ${INSTALL_DATA} ${MECH_SOURCE}/linux/c-utils/* ${MECH_DEST}/linux/c-utils/.
 
-  cpx ${mech_source}/dist/mechanics ${build_dir}/bin/.
-  cpx ${mech_source}/dist/edwin ${build_dir}/bin/.
+    ${MKINSTALLDIRS} ${MECH_DEST}/manual
+    ${INSTALL_DATA} ${MECH_SOURCE}/manual/refman.txt ${MECH_DEST}/manual/.
+
+    ${INSTALL} ${MECH_SOURCE}/dist/mechanics ${BINDIR}/.
+    ${INSTALL} ${MECH_SOURCE}/dist/edwin ${BINDIR}/.
 fi
 
 #
 # Adjust permissions
 #
-find ${build_dir} -type f -print | xargs chmod a-w
-find ${build_dir} -type d -print | xargs chmod og-w
+find ${BUILD_DIR} -type f -print | xargs chmod og-w
+find ${BUILD_DIR} -type d -print | xargs chmod og-w
 
 make_tarfile ()
 {
     tarfile=${1}.tar.gz
     rm -f ${tarfile}
-    (cd ${build_dir}; tar cvzf ../${tarfile} *)
+    (cd ${BUILD_DIR}/usr/local; tar cvzf ../../../${tarfile} *)
     chmod 444 ${tarfile}
 }
 
-if [ "${destination}" = "" ]; then
-  pre="`/scheme/v7/dist/release-prefix`-ix86"
-  make_tarfile "${pre}-gnu-linux"
-  rm -f ${build_dir}/bin/*
-  cpx /scheme/v7/dist/freebsd-bin/* ${build_dir}/bin/.
-  make_tarfile "${pre}-freebsd"
+if [ "${DESTINATION}" = "" ]; then
+  PRE="`/scheme/v7/dist/release-prefix`-ix86"
+  make_tarfile "${PRE}-gnu-linux"
+  rm -f ${BUILD_DIR}/bin/*
+  ${INSTALL} /scheme/v7/dist/freebsd-bin/* ${BINDIR}/.
+  make_tarfile "${PRE}-freebsd"
 else
-  make_tarfile ${destination}
+  make_tarfile ${DESTINATION}
 fi
 
-rm -rf ${build_dir}
+rm -rf ${BUILD_DIR}
