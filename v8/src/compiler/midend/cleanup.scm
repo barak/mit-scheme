@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cleanup.scm,v 1.1 1994/11/19 02:04:29 adams Exp $
+$Id: cleanup.scm,v 1.2 1994/11/25 23:01:39 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -151,7 +151,9 @@ MIT in each case. |#
 		 `(CALL (QUOTE ,%invoke-continuation)
 			,closure
 			,@(CALL/%invoke-continuation/values body))
-		 `(CALL (LAMBDA (,new-cont-var) ,body) ,closure)))
+		 (let ((new-lambda  `(LAMBDA (,new-cont-var) ,body)))
+		   (cleanup/remember new-lambda rator)
+		   `(CALL ,new-lambda ,closure))))
            (if (call/%make-stack-closure? cont)
                ;; Cannot substitute a make-stack-closure because both pushing
 	       ;; and poping have to be kept in the right order.
@@ -299,9 +301,7 @@ MIT in each case. |#
      (lambda ()
        (list-split bindings*
 		   (lambda (binding*)
-		     (let ((form (cadr binding*)))
-		       (and (pair? form)
-			    (eq? (car form) 'QUOTE))))))
+		     (QUOTE/? (cadr binding*)))))
      (lambda (trivial non-trivial)
        (call-with-values
 	(lambda ()
@@ -344,16 +344,13 @@ MIT in each case. |#
 	 ((LOOKUP) true)
 	 ((CALL)
 	  (let ((rator (cadr form)))
-	    (and (pair? rator)
-		 (eq? (car rator) 'QUOTE)
-		 (memq (cadr rator) cleanup/easy/ops)
+	    (and (QUOTE/? rator)
+		 (memq (quote/text rator) cleanup/easy/ops)
 		 (let ((cont&rands (cddr form)))
 		   (and (for-all? cont&rands cleanup/trivial?)
 			(let ((all-lookups
 			       (list-transform-positive cont&rands
-				 (lambda (rand)
-				   (and (pair? rand)
-					(eq? (car rand) 'LOOKUP))))))
+				 (lambda (rand) (LOOKUP/? rand)))))
 			  (or (null? all-lookups)
 			      (null? (cdr all-lookups)))))))))
 	 (else
@@ -376,9 +373,7 @@ MIT in each case. |#
   (case (car form)
     ((LOOKUP) (cadr form))
     ((CALL)
-     (let ((lookup-rand (list-search-positive (cddr form)
-			  (lambda (rand)
-			    (eq? (car rand) 'LOOKUP)))))
+     (let ((lookup-rand (list-search-positive (cddr form) LOOKUP/?)))
        (and lookup-rand
 	    (cadr lookup-rand))))
     (else
