@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.17 2000/01/20 17:44:20 cph Exp $
+;;; $Id: imail-core.scm,v 1.18 2000/01/20 17:46:52 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -718,9 +718,11 @@
 				     (string-append "\n" line))
 				   (cdr lines))))))
 
+(define (header-fields->lines headers)
+  (append-map! header-field->lines headers))
+
 (define (lines->header-fields lines)
-  (map lines->header-field
-       (burst-list lines header-field-initial-line?)))
+  (map lines->header-field (burst-list lines header-field-initial-line?)))
 
 (define (header-field-initial-line? line)
   (let ((colon (string-find-next-char line #\:)))
