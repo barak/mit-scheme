@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 1.2 1995/04/29 13:18:05 adams Exp $
+$Id: usiexp.scm,v 1.3 1995/08/02 19:02:17 adams Exp $
 
 Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
@@ -633,7 +633,7 @@ MIT in each case. |#
       (flo:flonum?        . ,flo:flonum?-expansion)
       (fourth             . ,fourth-expansion)
       (int:->flonum       . ,int:->flonum-expansion)
-      (exact-integer?     . ,exact-integer?-expansion)
+      (int:integer?       . ,exact-integer?-expansion)
       (list               . ,list-expansion)
       (make-string        . ,make-string-expansion)
       ;;(modulo           . ,modulo-expansion)
@@ -651,7 +651,7 @@ MIT in each case. |#
       (values             . ,values-expansion)
       (vector?            . ,vector?-expansion)
       (weak-pair?         . ,weak-pair?-expansion)
-      (call-with-values   . ,call-with-values-expansion)
+      (with-values        . ,call-with-values-expansion)
       (zero?              . ,zero?-expansion)
      ))
 
