@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cleanup.scm,v 1.2 1994/11/25 23:01:39 adams Exp $
+$Id: cleanup.scm,v 1.3 1995/01/22 04:02:29 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -68,7 +68,7 @@ MIT in each case. |#
 
 (define (do-letrec-cleanup env bindings body)
   (let* ((renames (cleanup/renamings env (lmap car bindings)))
-	 (env* (append renames env))
+	 (env*  (append renames env))
 	 (body* (cleanup/expr env* body)))
     (if (null? bindings)
 	body*
