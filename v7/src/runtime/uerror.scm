@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.4 1988/08/05 20:49:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.5 1988/08/11 03:13:57 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -436,6 +436,14 @@ MIT in each case. |#
 		 (internal-apply-frame/operator frame))
 	   repl-environment))))
 
+    (define (define-reference-trap-handler error-type frame-type)
+      (define-error-handler error-type frame-type true
+	(lambda (condition-type frame)
+	  (make-error-condition
+	   condition-type
+	   (list (stack-frame/ref frame 1))
+	   (stack-frame/ref frame 2)))))
+
     (define-standard-frame-handler 'UNBOUND-VARIABLE 'EVAL-ERROR
       standard-frame/variable? variable-name)
 
@@ -456,6 +464,21 @@ MIT in each case. |#
     (define-internal-apply-handler 'UNBOUND-VARIABLE 0 2
       (ucode-primitive environment-link-name))
 
+    (define-reference-trap-handler 'UNBOUND-VARIABLE
+      'COMPILER-REFERENCE-TRAP-RESTART)
+
+    (define-reference-trap-handler 'UNBOUND-VARIABLE
+      'COMPILER-SAFE-REFERENCE-TRAP-RESTART)
+
+    (define-reference-trap-handler 'UNBOUND-VARIABLE
+      'COMPILER-ASSIGNMENT-TRAP-RESTART)
+
+    (define-reference-trap-handler 'UNBOUND-VARIABLE
+      'COMPILER-UNASSIGNED?-TRAP-RESTART)
+
+    (define-reference-trap-handler 'UNBOUND-VARIABLE
+      'COMPILER-OPERATOR-LOOKUP-TRAP-RESTART)
+
     (define-internal-apply-handler 'BAD-ASSIGNMENT 0 2
       (ucode-primitive environment-link-name))
 
@@ -467,6 +490,12 @@ MIT in each case. |#
 
     (define-internal-apply-handler 'UNASSIGNED-VARIABLE 0 1
       (ucode-primitive lexical-reference))
+
+    (define-reference-trap-handler 'UNASSIGNED-VARIABLE
+      'COMPILER-REFERENCE-TRAP-RESTART)
+
+    (define-reference-trap-handler 'UNASSIGNED-VARIABLE
+      'COMPILER-OPERATOR-LOOKUP-TRAP-RESTART)
 
     (define-expression-frame-handler 'BAD-FRAME 'ACCESS-CONTINUE true
       access-environment)
