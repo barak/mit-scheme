@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.1 1995/01/10 20:52:58 adams Exp $
+$Id: lapgen.scm,v 1.2 1995/01/11 20:42:06 ssmith Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -677,3 +677,11 @@ MIT in each case. |#
 (define (lookup-arithmetic-method operator methods)
   (cdr (or (assq operator (cdr methods))
 	   (error "Unknown operator" operator))))
+
+
+;; This has been copied from the Spectrum's file (sort of).  I've used
+;; so many things from the Spectrum's files that have this variable in
+;; it that I defined it here since I don't know what it is.  I set
+;; it to 0 instead of 3 since I don't even know why it should be used.
+;; Potential bug.
+(define-integrable *privilege-level* 0)
