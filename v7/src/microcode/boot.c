@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.102 2000/01/18 04:25:49 cph Exp $
+$Id: boot.c,v 9.103 2000/01/18 04:26:30 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -78,13 +78,6 @@ DEFUN (obstack_chunk_alloc, (size), unsigned int size)
 DECLARE_CRITICAL_SECTION ();
 
 #define BLOCKS_TO_BYTES(n) ((n) * 1024)
-
-static void
-DEFUN (usage, (error_string), CONST char * error_string)
-{
-  outf_fatal ("%s: %s\n\n", scheme_program_name, error_string);
-  termination_init_error ();
-}
 
 /* Exit is done in a different way on some operating systems (eg. VMS)  */
 
