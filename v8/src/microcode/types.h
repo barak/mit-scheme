@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: types.h,v 9.33 1992/12/05 03:33:01 cph Exp $
+$Id: types.h,v 9.34 1993/03/01 19:41:18 arthur Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
@@ -175,7 +175,7 @@ MIT in each case. */
   /* 0x3A */			"RATNUM",				\
   /* 0x3B */			"STACK-ENVIRONMENT",			\
   /* 0x3C */			"COMPLEX",				\
-  /* 0x3D */			"COMPILED-CODE-BLOCK"			\
+  /* 0x3D */			"COMPILED-CODE-BLOCK",			\
   /* 0x3E */			"RECORD"				\
   }
 
