@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 1.1 1994/11/19 02:08:04 adams Exp $
+$Id: machin.scm,v 1.2 1995/02/28 01:11:46 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -376,13 +376,6 @@ MIT in each case. |#
 (define (interpreter-stack-pointer? expression)
   (and (rtl:register? expression)
        (= (rtl:register-number expression) regnum:stack-pointer)))
-
-(define-integrable (interpreter-dynamic-link)
-  (rtl:make-machine-register regnum:dynamic-link))
-
-(define (interpreter-dynamic-link? expression)
-  (and (rtl:register? expression)
-       (= (rtl:register-number expression) regnum:dynamic-link)))
 
 (define-integrable (interpreter-int-mask-register)
   (rtl:make-offset (interpreter-regs-pointer)
