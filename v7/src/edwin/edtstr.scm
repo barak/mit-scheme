@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtstr.scm,v 1.19 1992/02/04 04:02:41 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtstr.scm,v 1.20 1992/02/13 21:51:36 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -54,9 +54,9 @@
   (bufferset false read-only true)
   (char-history false read-only true)
   (halt-update? false read-only true)
-  (char-ready? false read-only true)
-  (peek-char false read-only true)
-  (read-char false read-only true)
+  (peek-no-hang false read-only true)
+  (peek false read-only true)
+  (read false read-only true)
   (button-event false)
   (select-time 1))
 
@@ -70,7 +70,7 @@
       (initialize-screen-root-window! screen bufferset initial-buffer)
       (with-values
 	  (lambda () (display-type/get-input-operations display-type screen))
-	(lambda (halt-update? char-ready? peek-char read-char)
+	(lambda (halt-update? peek-no-hang peek read)
 	  (%make-editor name
 			display-type
 			(list screen)
