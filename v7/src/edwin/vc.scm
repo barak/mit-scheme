@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.66 2000/04/07 20:02:28 cph Exp $
+;;; $Id: vc.scm,v 1.67 2000/04/07 20:16:33 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -1058,14 +1058,11 @@ There is a special command, `*l', to mark all files currently locked.
     (let ((comment (buffer-string log-buffer))
 	  (parent-buffer (chase-parent-buffer log-buffer)))
       (comint-record-input vc-comment-ring comment)
-      (if (buffer-alive? parent-buffer)
-	  (begin
-	    ;; Save any changes the user might have made while editing
-	    ;; the comment.
-	    (if (not (vc-dired-buffer? parent-buffer))
-		(vc-save-buffer parent-buffer #t))
-	    (if (not (buffer-visible? parent-buffer))
-		(pop-up-buffer parent-buffer #t))))
+      ;; Save any changes the user might have made while editing the
+      ;; comment.
+      (if (and (buffer-alive? parent-buffer)
+	       (not (vc-dired-buffer? parent-buffer)))
+	  (vc-save-buffer parent-buffer #t))
       ;; If a new window was created to hold the log buffer, and the log
       ;; buffer is still selected in that window, delete it.
       (let ((log-window (weak-car log-window)))
@@ -1078,7 +1075,9 @@ There is a special command, `*l', to mark all files currently locked.
       (if (buffer-alive? log-buffer)
 	  (if (ref-variable vc-delete-logbuf-window log-buffer)
 	      (kill-buffer log-buffer)
-	      (bury-buffer log-buffer)))
+	      (begin
+		(make-buffer-invisible log-buffer)
+		(bury-buffer log-buffer))))
       (let ((window (weak-car window))
 	    (buffer (weak-car buffer)))
 	(if (and window (window-live? window))
