@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttop.c,v 1.25 1998/04/18 05:39:09 cph Exp $
+$Id: nttop.c,v 1.26 1998/10/21 04:43:33 cph Exp $
 
 Copyright (c) 1993-98 Massachusetts Institute of Technology
 
@@ -73,8 +73,10 @@ static enum syserr_names win32_error_code_to_syserr (DWORD);
 BOOL
 win32_under_win32s_p ()
 {
-  DWORD dwVersion = GetVersion();
-  return  ((dwVersion>0x80000000) && LOBYTE(LOWORD(dwVersion))<4);
+  OSVERSIONINFO info;
+  (info.dwOSVersionInfoSize) = (sizeof (info));
+  (void) GetVersionEx (&info);
+  return ((info.dwPlatformId) == VER_PLATFORM_WIN32s);
 }
 
 WIN32_SYSTEM_UTILITIES win32_system_utilities;
@@ -143,35 +145,54 @@ OS_initialize (void)
 
   OS_Name = SYSTEM_NAME;
   {
-    DWORD dwVersion = GetVersion();
-    char variant[128];
+    OSVERSIONINFO info;
+    char * p = (malloc (250));
 
-    if (dwVersion < 0x80000000) {
-      // Windows NT
-	sprintf (variant, "Microsoft Windows NT %u.%u (Build: %u)",
-		 (DWORD)(LOBYTE(LOWORD(dwVersion))),
-		 (DWORD)(HIBYTE(LOWORD(dwVersion))),
-		 (DWORD)(HIWORD(dwVersion)));
-      NT_windows_type = wintype_nt;
-    }
-    else if (LOBYTE(LOWORD(dwVersion))<4) {
-      // Win32s
-	sprintf (variant, "Microsoft Win32s %u.%u (Build: %u)",
-		 (DWORD)(LOBYTE(LOWORD(dwVersion))),
-		 (DWORD)(HIBYTE(LOWORD(dwVersion))),
-		 (DWORD)(HIWORD(dwVersion) & ~0x8000));
-      NT_windows_type = wintype_31;
-    } else {
-      // Windows 95
-	sprintf (variant, "Microsoft Windows 95 %u.%u (Build: %u)",
-		 (DWORD)(LOBYTE(LOWORD(dwVersion))),
-		 (DWORD)(HIBYTE(LOWORD(dwVersion))),
-		 (DWORD)(HIWORD(dwVersion) & ~0x8000));
-      NT_windows_type = wintype_95;
-    }
+    (info.dwOSVersionInfoSize) = (sizeof (info));
+    (void) GetVersionEx (&info);
 
-    OS_Variant = malloc (128);
-    sprintf (((char *) OS_Variant), "%s 386/486\n", variant);
+    if ((info.dwPlatformId) == VER_PLATFORM_WIN32_NT)
+      {
+	sprintf (p, "Microsoft Windows NT %u.%u (Build %u",
+		 (info.dwMajorVersion),
+		 (info.dwMinorVersion),
+		 (info.dwBuildNumber));
+	if (((info.szCSDVersion)[0]) != '\0')
+	  {
+	    strcat (p, "; ");
+	    strcat (p, (info.szCSDVersion));
+	  }
+	strcat (p, ")");
+	NT_windows_type = wintype_nt;
+      }
+    else if ((info.dwPlatformId) == VER_PLATFORM_WIN32_WINDOWS)
+      {
+	sprintf (((char *) OS_Variant),
+		 "Microsoft Windows %s (Build %u",
+		 (((info.dwMinorVersion) == 0)
+		  ? "95"
+		  : ((info.dwMinorVersion) == 10)
+		  ? "98"
+		  : "9?"),
+		 (LOWORD (info.dwBuildNumber)));
+	if (((info.szCSDVersion)[0]) != '\0')
+	  {
+	    strcat (p, "; ");
+	    strcat (p, (info.szCSDVersion));
+	  }
+	strcat (p, ")");
+	NT_windows_type = wintype_95;
+      }
+    else
+      {
+	sprintf (((char *) OS_Variant),
+		 "Microsoft Windows %u.%u",
+		 (info.dwMajorVersion),
+		 (info.dwMinorVersion));
+	NT_windows_type = wintype_31;
+      }
+    strcat (p, " IA-32\n");
+    OS_Variant = p;
   }
 }
 
