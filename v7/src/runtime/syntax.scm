@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 14.25 1994/02/25 20:35:03 cph Exp $
+$Id: syntax.scm,v 14.26 1995/04/13 22:24:05 cph Exp $
 
-Copyright (c) 1988-1994 Massachusetts Institute of Technology
+Copyright (c) 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -43,6 +43,7 @@ MIT in each case. |#
   (set! system-global-syntax-table (make-system-global-syntax-table))
   (set! user-initial-syntax-table
 	(make-syntax-table system-global-syntax-table))
+  (set! *disallow-illegal-definitions?* #t)
   (set! hook/syntax-expression default/syntax-expression)
   unspecific)
 
@@ -51,6 +52,7 @@ MIT in each case. |#
 (define *syntax-table*)
 (define *current-keyword* #f)
 (define *syntax-top-level?*)
+(define *disallow-illegal-definitions?*)
 
 (define (make-system-global-syntax-table)
   (let ((table (make-syntax-table)))
@@ -104,21 +106,27 @@ MIT in each case. |#
 		    (if (default-object? table) #f table)))
 
 (define (syntax-top-level name syntaxer expression table)
-  (fluid-let ((*syntax-table*
-	       (if table
-		   (begin
-		     (if (not (syntax-table? table))
-			 (error:wrong-type-argument table "syntax table" name))
-		     table)
-		   (if (unassigned? *syntax-table*)
-		       (nearest-repl/syntax-table)
-		       *syntax-table*)))
-	      (*current-keyword* #f))
-    (syntaxer #t expression)))
+  (let ((scode
+	 (fluid-let ((*syntax-table*
+		      (if table
+			  (begin
+			    (if (not (syntax-table? table))
+				(error:wrong-type-argument table
+							   "syntax table"
+							   name))
+			    table)
+			  (if (unassigned? *syntax-table*)
+			      (nearest-repl/syntax-table)
+			      *syntax-table*)))
+		     (*current-keyword* #f))
+	   (syntaxer #t expression))))
+    (if *disallow-illegal-definitions?*
+	(check-for-illegal-definitions scode))
+    scode))
 
 (define (syntax/top-level?)
   *syntax-top-level?*)
-
+
 (define-integrable (syntax-subsequence expressions)
   (syntax-sequence #f expressions))
 
@@ -496,7 +504,8 @@ MIT in each case. |#
 	  ((SHALLOW) syntax/fluid-let/shallow)
 	  ((DEEP) syntax/fluid-let/deep)
 	  ((COMMON-LISP) syntax/fluid-let/common-lisp)
-	  (else (error "SET-FLUID-LET-TYPE!: unknown type" type)))))
+	  (else (error "SET-FLUID-LET-TYPE!: unknown type" type))))
+  unspecific)
 
 (define (syntax/fluid-let/shallow top-level? bindings body)
   (if (null? bindings)
@@ -745,8 +754,10 @@ MIT in each case. |#
 
 (define (enable-scan-defines!)
   (set! make-scode-sequence make-sequence/scan)
-  (set! internal-make-lambda make-lambda/scan))
+  (set! internal-make-lambda make-lambda/scan)
+  unspecific)
 
 (define (disable-scan-defines!)
   (set! make-scode-sequence make-sequence)
-  (set! internal-make-lambda make-lambda/no-scan))
+  (set! internal-make-lambda make-lambda/no-scan)
+  unspecific)

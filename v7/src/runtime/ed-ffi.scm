@@ -1,6 +1,6 @@
 #| -*- Scheme -*-
 
-$Id: ed-ffi.scm,v 1.11 1995/02/21 23:01:09 cph Exp $
+$Id: ed-ffi.scm,v 1.12 1995/04/13 22:24:43 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -119,6 +119,8 @@ MIT in each case. |#
     ("hashtb"	(runtime hash-table)
 		syntax-table/system-internal)
     ("histry"	(runtime history)
+		syntax-table/system-internal)
+    ("illdef"	(runtime illegal-definitions)
 		syntax-table/system-internal)
     ("infstr"	(runtime compiler-info)
 		syntax-table/system-internal)

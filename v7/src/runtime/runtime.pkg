@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.250 1995/04/12 21:15:35 cph Exp $
+$Id: runtime.pkg,v 14.251 1995/04/13 22:24:17 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -2764,6 +2764,13 @@ MIT in each case. |#
 	  user-initial-syntax-table)
   (export (runtime defstruct)
 	  parse-lambda-list)
+  (initialization (initialize-package!)))
+
+(define-package (runtime illegal-definitions)
+  (files "illdef")
+  (parent ())
+  (export (runtime syntaxer)
+	  check-for-illegal-definitions)
   (initialization (initialize-package!)))
 
 (define-package (runtime system)

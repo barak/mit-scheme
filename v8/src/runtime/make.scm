@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.56 1995/01/06 18:44:17 cph Exp $
+$Id: make.scm,v 14.57 1995/04/13 22:24:53 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -447,6 +447,7 @@ MIT in each case. |#
    (RUNTIME PARSER)
    (RUNTIME UNPARSER)
    (RUNTIME SYNTAXER)
+   (RUNTIME ILLEGAL-DEFINITIONS)
    (RUNTIME MACROS)
    (RUNTIME SYSTEM-MACROS)
    (RUNTIME DEFSTRUCT)
