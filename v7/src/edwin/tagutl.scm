@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: tagutl.scm,v 1.49 1993/02/10 16:20:46 cph Exp $
+;;;	$Id: tagutl.scm,v 1.50 1993/04/20 18:26:25 jawilson Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -266,7 +266,8 @@ To continue searching for next match, use command
 
 See documentation of variable tags-table-pathnames."
   (re-search-prompt "Tags search")
-  (lambda (regexp)
+  (lambda (arg regexp)
+    ; arg controls case-sensitivity, just ignore for right now
     (set! tags-loop-continuation
 	  (lambda ()
 	    (let ((mark
