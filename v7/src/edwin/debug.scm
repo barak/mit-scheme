@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/debug.scm,v 1.2 1992/06/08 16:50:57 aragorn Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/debug.scm,v 1.3 1992/08/20 22:21:33 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -136,23 +136,27 @@
 		    name)))))))
     (if initializer
 	(initializer buffer))
-    (add-rename-buffer-hook
-     buffer
-     (letrec
-	 ((hook
-	   (lambda (buffer name)
-	     name
-	     (set-browser/buffers! browser
-				   (delq! buffer (browser/buffers browser)))
-	     (remove-rename-buffer-hook buffer hook))))
-       hook))
-    (add-kill-buffer-hook
-     buffer
-     (lambda (buffer)
-       (set-browser/buffers! browser
-			     (delq! buffer (browser/buffers browser)))))
-    (set-browser/buffers! browser (cons buffer (browser/buffers browser)))
+    (add-browser-buffer! browser buffer)
     buffer))
+
+(define (add-browser-buffer! browser buffer)
+  (add-rename-buffer-hook
+   buffer
+   (letrec
+       ((hook
+	 (lambda (buffer name)
+	   name
+	   (set-browser/buffers! browser
+				 (delq! buffer (browser/buffers browser)))
+	   (remove-rename-buffer-hook buffer hook))))
+     hook))
+  (add-kill-buffer-hook
+   buffer
+   (lambda (buffer)
+     (set-browser/buffers! browser
+			   (delq! buffer (browser/buffers browser)))))
+  (set-browser/buffers! browser (cons buffer (browser/buffers browser)))
+  (buffer-put! buffer 'ASSOCIATED-WITH-BROWSER browser))
 
 ;;;; Browser Commands
 
@@ -282,7 +286,22 @@
 			     (memq (window-buffer window*) buffers))
 			(window-delete! window*)))
 		  (screen-window-list (selected-screen))))
-      (kill-buffer-interactive buffer))))
+      (let ((browser (buffer-get buffer 'ASSOCIATED-WITH-BROWSER)))
+	(kill-buffer-interactive buffer)
+	(if (maybe-select-browser browser)
+	    (let ((buffer (current-buffer)))
+	      (if (maybe-select-browser (buffer-get buffer 'BROWSER))
+		  (maybe-select-browser
+		   (buffer-get buffer 'ASSOCIATED-WITH-BROWSER)))))))))
+
+(define (maybe-select-browser browser)
+  (if (and (browser? browser)
+	   (buffer-alive? (browser/buffer browser)))
+      (begin
+	(select-buffer (browser/buffer browser))
+	((ref-command browser-select-line))
+	false)
+      true))
 
 ;;;; Evaluators
 
@@ -339,6 +358,7 @@
 	buffer
 	(let ((buffer (make-buffer)))
 	  (1d-table/put! (bline/properties bline) type buffer)
+	  (add-browser-buffer! (bline/browser bline) buffer)
 	  buffer))))
 
 (define (current-selected-line)
