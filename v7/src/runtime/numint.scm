@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: numint.scm,v 1.4 1995/08/20 15:58:14 adams Exp $
+$Id: numint.scm,v 1.5 1995/10/12 06:37:03 adams Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -98,6 +98,7 @@ MIT in each case. |#
   (make-arity-dispatched-procedure
    (lambda (self z1 #!optional z2)	; required for arity
      (error "ATAN operator: should never get to this case" self z1 z2))
+   #F
    atan1
    atan2))
 
