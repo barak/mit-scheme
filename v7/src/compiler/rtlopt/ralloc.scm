@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/ralloc.scm,v 1.12 1987/08/07 17:06:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/ralloc.scm,v 1.13 1987/10/05 20:21:30 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -50,7 +50,8 @@ MIT in each case. |#
     (fluid-let ((*current-rgraph* rgraph))
       (walk-bblocks n-registers
 		    (let ((bblocks (rgraph-bblocks rgraph)))
-		      (set-rgraph-bblocks! rgraph false))))))
+		      (set-rgraph-bblocks! rgraph false)
+		      bblocks)))))
 
 (define (walk-bblocks n-registers bblocks)
   ;; First, renumber all the registers remaining to be allocated.

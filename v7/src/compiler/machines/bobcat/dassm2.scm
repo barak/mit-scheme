@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm2.scm,v 1.1 1987/08/07 17:12:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm2.scm,v 1.2 1987/10/05 20:24:22 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -155,7 +155,7 @@ MIT in each case. |#
 			  (make-losing-instruction 'W))))))))
 
 (define (undefined-instruction)
-  ;; This losing assignment removes a 'call/cc'. Too bad.
+  ;; This losing assignment removes a 'cwcc'. Too bad.
   (set! *valid? false)
   '())
 
@@ -201,7 +201,9 @@ MIT in each case. |#
 	    #x0228
 	    '(uuo-link uuo-link-trap cache-reference-apply
 		       safe-reference-trap unassigned?-trap
-		       cache-variable-multiple uuo-link-multiple))))
+		       cache-variable-multiple uuo-link-multiple
+		       &+ &- &* &/ &= &< &> 1+ -1+ zero? positive? negative?
+		       cache-assignment cache-assignment-multiple operator-trap))))
     (make-table)))
 
 (define-integrable (lookup-special-register reg table)

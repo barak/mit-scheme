@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.189 1987/09/03 05:14:16 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.190 1987/10/05 20:25:28 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -243,7 +243,6 @@ MIT in each case. |#
 (define (address-register? register)
   (and (< register 16)
        (>= register 8)))
-
 (define-integrable (lap:ea-keyword expression)
   (car expression))
 
@@ -280,7 +279,8 @@ MIT in each case. |#
     assignment-trap)
   (define-entries #x0228 uuo-link uuo-link-trap cache-reference-apply
     safe-reference-trap unassigned?-trap cache-variable-multiple
-    uuo-link-multiple &+ &- &* &/ &= &< &> 1+ -1+ zero? positive? negative?))
+    uuo-link-multiple &+ &- &* &/ &= &< &> 1+ -1+ zero? positive? negative?
+    cache-assignment cache-assignment-multiple operator-trap))
 
 (define-integrable reg:compiled-memtop (INST-EA (@A 6)))
 (define-integrable reg:environment (INST-EA (@AO 6 #x000C)))
