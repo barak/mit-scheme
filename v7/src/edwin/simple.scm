@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/simple.scm,v 1.37 1991/05/08 22:46:19 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/simple.scm,v 1.38 1991/05/14 02:02:42 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -236,6 +236,11 @@
 	   (if (and (not (char-ready?))
 		    (< (real-time-clock) time-limit))
 	       (loop)))))))
+
+(define (sleep-for interval)
+  (let ((time-limit (+ (real-time-clock) interval)))
+    (do ()
+	((>= (real-time-clock) time-limit)))))
 
 (define (reposition-window-top mark)
   (if (not (and mark (set-window-start-mark! (current-window) mark false)))
