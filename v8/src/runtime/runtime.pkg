@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.98 1991/03/11 23:48:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.99 1991/03/14 04:29:17 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -1462,7 +1462,9 @@ MIT in each case. |#
 	  channel-blocking
 	  channel-blocking?
 	  channel-close
+	  channel-closed?
 	  channel-nonblocking
+	  channel-open?
 	  channel-port
 	  channel-read
 	  channel-read-block
@@ -1496,6 +1498,7 @@ MIT in each case. |#
 	  make-pipe
 	  open-pty-master
 	  pty-master-continue
+	  pty-master-hangup
 	  pty-master-interrupt
 	  pty-master-kill
 	  pty-master-quit
@@ -1952,6 +1955,7 @@ MIT in each case. |#
 	  subprocess-filename
 	  subprocess-get
 	  subprocess-global-status-tick
+	  subprocess-hangup
 	  subprocess-id
 	  subprocess-input-channel
 	  subprocess-input-port

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/process.scm,v 1.10 1991/03/11 23:48:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/process.scm,v 1.11 1991/03/14 04:29:11 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -273,6 +273,9 @@ MIT in each case. |#
 
 (define (subprocess-quit process)
   ((ucode-primitive process-quit 1) (subprocess-index process)))
+
+(define (subprocess-hangup process)
+  ((ucode-primitive process-hangup 1) (subprocess-index process)))
 
 (define (subprocess-stop process)
   ((ucode-primitive process-stop 1) (subprocess-index process)))

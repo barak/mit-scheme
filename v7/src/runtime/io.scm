@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.22 1991/03/11 23:48:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.23 1991/03/14 04:29:03 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -438,6 +438,9 @@ MIT in each case. |#
 
 (define (pty-master-quit channel)
   ((ucode-primitive pty-master-quit 1) (channel-descriptor channel)))
+
+(define (pty-master-hangup channel)
+  ((ucode-primitive pty-master-hangup 1) (channel-descriptor channel)))
 
 ;;;; File Copying
 
