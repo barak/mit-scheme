@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: process.scm,v 1.59 2001/03/21 19:25:30 cph Exp $
+;;; $Id: process.scm,v 1.60 2001/09/21 16:23:18 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2001 Massachusetts Institute of Technology
 ;;;
@@ -644,7 +644,9 @@ after the listing is made.)"
   "Execute string COMMAND in inferior shell; display output, if any.
 Optional second arg true (prefix arg, if interactive) means
 insert output in current buffer after point (leave mark after it)."
-  "sShell command\nP"
+  (lambda ()
+    (list (shell-command-prompt "Shell command")
+	  (command-argument)))
   (lambda (command insert-at-point?)
     (let ((directory (buffer-default-directory (current-buffer))))
       (if insert-at-point?
@@ -663,7 +665,10 @@ insert output in current buffer after point (leave mark after it)."
   "Execute string COMMAND in inferior shell with region as input.
 Normally display output (if any) in temp buffer;
 Prefix arg means replace the region with it."
-  "r\nsShell command on region\nP"
+  (lambda ()
+    (list (current-region)
+	  (shell-command-prompt "Shell command on region")
+	  (command-argument)))
   (lambda (region command replace-region?)
     (let ((directory (buffer-default-directory (current-buffer))))
       (if replace-region?
@@ -695,6 +700,12 @@ Prefix arg means replace the region with it."
 	  (shell-command-pop-up-output
 	   (lambda (output-mark)
 	     (shell-command region output-mark directory #f command)))))))
+
+(define (shell-command-prompt prompt)
+  (prompt-for-string prompt #f
+		     'DEFAULT-TYPE 'INSERTED-DEFAULT
+		     'HISTORY 'SHELL-COMMAND
+		     'HISTORY-INDEX 0))
 
 (define (shell-command-pop-up-output generate-output)
   (let ((buffer (temporary-buffer "*Shell Command Output*")))
