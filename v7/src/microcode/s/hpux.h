@@ -1,9 +1,9 @@
 /* -*-C-*-
    System file for HP-UX
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/hpux.h,v 1.9 1992/03/14 12:11:07 cph Exp $
+$Id: hpux.h,v 1.10 1993/03/22 16:04:07 cph Exp $
 
-Copyright (c) 1989-92 Massachusetts Institute of Technology
+Copyright (c) 1989-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -45,7 +45,9 @@ MIT in each case. */
 #define INSTALL_PROGRAM cp
 #endif
 
-#define C_SWITCH_SYSTEM -D_HPUX -I/usr/include/X11R4
-#define LD_SWITCH_SYSTEM -L /usr/lib/X11R4
+/* For releases of hp-UX prior to 9.0 change the following lines to
+   read X11R4 instead of X11R5.  */
+#define C_SWITCH_SYSTEM -D_HPUX -I/usr/include/X11R5
+#define LD_SWITCH_SYSTEM -L /usr/lib/X11R5
 
 #define LIB_DYNAMIC_LOAD /usr/lib/libdld.sl
