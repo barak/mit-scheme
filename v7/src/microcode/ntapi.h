@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntapi.h,v 1.9 1999/01/02 06:11:34 cph Exp $
+$Id: ntapi.h,v 1.10 1999/03/09 05:39:03 cph Exp $
 
 Copyright (c) 1997, 1999 Massachusetts Institute of Technology
 
@@ -35,6 +35,7 @@ enum syscall_names
   apicall_DeleteFile,
   apicall_DuplicateHandle,
   apicall_EnumWindows,
+  apicall_ExpandEnvironmentStrings,
   apicall_FindFirstFile,
   apicall_GetExitCodeProcess,
   apicall_GetFileAttributes,
@@ -48,6 +49,16 @@ enum syscall_names
   apicall_MsgWaitForMultipleObjects,
   apicall_PeekNamedPipe,
   apicall_ReadFile,
+  apicall_RegCloseKey,
+  apicall_RegCreateKeyEx,
+  apicall_RegDeleteKey,
+  apicall_RegDeleteValue,
+  apicall_RegEnumKeyEx,
+  apicall_RegEnumValue,
+  apicall_RegOpenKeyEx,
+  apicall_RegQueryInfoKey,
+  apicall_RegQueryValueEx,
+  apicall_RegSetValueEx,
   apicall_RemoveDirectory,
   apicall_SetCurrentDirectory,
   apicall_SetFileAttributes,
@@ -881,6 +892,7 @@ static char * syscall_names_table [] =
   "DELETE-FILE",
   "DUPLICATE-HANDLE",
   "ENUM-WINDOWS",
+  "EXPAND-ENVIRONMENT-STRINGS",
   "FIND-FIRST-FILE",
   "GET-EXIT-CODE-PROCESS",
   "GET-FILE-ATTRIBUTES",
@@ -894,6 +906,16 @@ static char * syscall_names_table [] =
   "MSG-WAIT-FOR-MULTIPLE-OBJECTS",
   "PEEK-NAMED-PIPE",
   "READ-FILE",
+  "REG-CLOSE-KEY",
+  "REG-CREATE-KEY-EX",
+  "REG-DELETE-KEY",
+  "REG-DELETE-VALUE",
+  "REG-ENUM-KEY-EX",
+  "REG-ENUM-VALUE",
+  "REG-OPEN-KEY-EX",
+  "REG-QUERY-INFO-KEY",
+  "REG-QUERY-VALUE-EX",
+  "REG-SET-VALUE-EX",
   "REMOVE-DIRECTORY",
   "SET-CURRENT-DIRECTORY",
   "SET-FILE-ATTRIBUTES",
