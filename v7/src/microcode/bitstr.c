@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.26 1987/04/25 20:25:54 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.27 1987/05/09 04:50:56 cph Exp $
 
    Bit string primitives. */
 
@@ -186,7 +186,7 @@ Built_In_Primitive (Prim_bit_string_length, 1, "BIT-STRING-LENGTH", 0xD4)
     Primitive_Error (ERR_ARG_2_BAD_RANGE);			\
 								\
   word = (index_to_word (Arg1, index));				\
-  mask = (1 << (index % POINTER_LENGTH));
+  mask = (1 << (index % POINTER_LENGTH))
 
 /* (BIT-STRING-REF bit-string index)
    Returns the boolean value of the indexed bit. */
@@ -657,36 +657,40 @@ long_to_bit_string( length, number)
 }
 
 Pointer
-bignum_to_bit_string( length, bignum)
+bignum_to_bit_string (length, bignum)
      long length;
      Pointer bignum;
 {
   bigdigit *bigptr;
   long ndigits;
 
-  bigptr = BIGNUM( Get_Pointer( bignum));
-  if (NEG_BIGNUM( bigptr))
-    Primitive_Error( ERR_ARG_2_BAD_RANGE);
-  ndigits = LEN( bigptr);
+  bigptr = (BIGNUM (Get_Pointer (bignum)));
+  if (NEG_BIGNUM (bigptr))
+    Primitive_Error (ERR_ARG_2_BAD_RANGE);
+  ndigits = (LEN (bigptr));
   if (ndigits == 0)
-    zero_to_bit_string( length);
+    zero_to_bit_string (length);
   else
     {
       if (length <
-	  (count_significant_bits( *(Bignum_Top( bigptr)), SHIFT)
+	  (count_significant_bits ((*(Bignum_Top (bigptr))), SHIFT)
 	   + (SHIFT * (ndigits - 1))))
-	Primitive_Error( ERR_ARG_2_BAD_RANGE)
+	Primitive_Error (ERR_ARG_2_BAD_RANGE)
       else
 	{
 	  Pointer result;
 	  bigdigit *scan1, *scan2;
+	  long extra;
 
-	  result = allocate_bit_string( length);
-	  scan1 = Bignum_Bottom( bigptr);
-	  scan2 = ((bigdigit *) bit_string_end_ptr( result));
+	  result = (allocate_bit_string (length));
+	  scan1 = (Bignum_Bottom (bigptr));
+	  scan2 = ((bigdigit *) (bit_string_end_ptr (result)));
+	  extra = (((length + (SHIFT - 1)) / SHIFT) - ndigits);
 	  for (; (ndigits > 0); ndigits -= 1)
 	    *--scan2 = *scan1++;
-	  return result;
+	  for (; (extra > 0); extra -= 1)
+	    *--scan2 = 0;
+	  return (result);
 	}
     }
 }
@@ -861,16 +865,15 @@ Built_In_Primitive (Prim_bit_substring_find_next_set_bit, 3,
 	find_next_set_loop (bit);
       return (NIL);
     }
-  else if (((bit == 0) && *scan)
-	   || (*scan & (any_mask ((POINTER_LENGTH - bit), bit))))
+  else if (*scan &
+	   ((bit == 0) ? ~0 : (any_mask ((POINTER_LENGTH - bit), bit))))
     find_next_set_loop (bit);
 
   while (--word > end_word)
     if (*--scan)
       find_next_set_loop (0);
 
-  if (((end_bit == POINTER_LENGTH) && *scan)
-      || (*--scan & (low_mask (end_bit))))
+  if (*--scan & ((end_bit == POINTER_LENGTH) ? ~0 : (low_mask (end_bit))))
     find_next_set_loop (0);
 
   return (NIL);
