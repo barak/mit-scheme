@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: option.c,v 1.34 1993/08/07 00:13:57 adams Exp $
+$Id: option.c,v 1.35 1993/08/10 04:56:30 cph Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -1282,4 +1282,3 @@ DEFUN (read_command_line_options, (argc, argv),
   if (option_summary)
     describe_options ();
 }
-
