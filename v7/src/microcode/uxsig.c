@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxsig.c,v 1.35 2000/12/05 21:23:49 cph Exp $
+$Id: uxsig.c,v 1.36 2001/07/16 02:44:01 cph Exp $
 
-Copyright (c) 1990-2000 Massachusetts Institute of Technology
+Copyright (c) 1990-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 #include "config.h"
@@ -602,6 +603,26 @@ DEFUN (bind_handler, (signo, handler),
     INSTALL_HANDLER (signo, handler);
 }
 
+static void
+DEFUN_VOID (unblock_all_signals)
+{
+  /* Force the signal mask to be empty. */
+#ifdef HAVE_POSIX_SIGNALS
+  {
+    sigset_t empty_mask;
+    UX_sigemptyset (&empty_mask);
+    UX_sigprocmask (SIG_SETMASK, (&empty_mask), 0);
+  }
+#else
+#ifdef HAVE_SIGHOLD
+  /* We could do something more here, but it is hard to enumerate all
+     the possible signals.  Instead, just release SIGCHLD, which we
+     know was held before the child was spawned. */
+  UX_sigrelse (SIGCHLD);
+#endif
+#endif
+}
+
 void
 DEFUN_VOID (UX_initialize_signals)
 {
@@ -667,6 +688,7 @@ DEFUN_VOID (UX_initialize_signals)
 	scan += 1;
       }
   }
+  unblock_all_signals ();
 }
 
 /* Initialize the signals in a child subprocess.  */
@@ -674,22 +696,7 @@ DEFUN_VOID (UX_initialize_signals)
 void
 DEFUN_VOID (UX_initialize_child_signals)
 {
-  /* Force the signal mask to be empty. */
-#ifdef HAVE_POSIX_SIGNALS
-  {
-    sigset_t empty_mask;
-    UX_sigemptyset (&empty_mask);
-    UX_sigprocmask (SIG_SETMASK, (&empty_mask), 0);
-  }
-#else
-#ifdef HAVE_SIGHOLD
-  /* We could do something more here, but it is hard to enumerate all
-     the possible signals.  Instead, just release SIGCHLD, which we
-     know was held before the child was spawned. */
-  UX_sigrelse (SIGCHLD);
-#endif
-#endif
-
+  unblock_all_signals ();
   /* SIGPIPE was ignored above; we must set it back to the default
      because some programs depend on this.  */
   INSTALL_HANDLER (SIGPIPE, SIG_DFL);
