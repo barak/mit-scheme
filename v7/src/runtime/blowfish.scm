@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: blowfish.scm,v 1.10 1999/08/09 04:09:02 cph Exp $
+$Id: blowfish.scm,v 1.11 1999/08/09 18:25:45 cph Exp $
 
 Copyright (c) 1997, 1999 Massachusetts Institute of Technology
 
@@ -34,7 +34,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define blowfish-set-key)
 (define blowfish-cbc)
 (define blowfish-cfb64)
-(define blowfish-cfb64-substring)
 
 (let ((unlocked? 'UNKNOWN)
       (key-sum "8074396df211ba2da12a872b6e84d7ce"))
@@ -49,7 +48,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(set! unlocked?
 	      (and (implemented-primitive-procedure? md5-init)
 		   (implemented-primitive-procedure?
-		    (ucode-primitive blowfish-cfb64-substring 7))
+		    (ucode-primitive blowfish-cfb64-substring-v2 9))
 		   (let ((pathname
 			  (call-with-current-continuation
 			   (lambda (k)
@@ -78,44 +77,30 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (set! blowfish-cbc
 	(lambda (input key init-vector encrypt?)
 	  (check-key)
-	  ((ucode-primitive blowfish-cbc 4) input key init-vector encrypt?)))
+	  ((ucode-primitive blowfish-cbc-v2 5) input key init-vector
+					       encrypt?)))
 
   (set! blowfish-cfb64
-	(lambda (input key init-vector num encrypt?)
+	(lambda (input input-start input-end output output-start
+		       key init-vector num encrypt?)
 	  (check-key)
-	  ((ucode-primitive blowfish-cfb64 5) input key init-vector num
-					      encrypt?)))
-
-  (set! blowfish-cfb64-substring
-	(lambda (input start end key init-vector num encrypt?)
-	  (check-key)
-	  ((ucode-primitive blowfish-cfb64-substring 7) input start end
-							key init-vector num
-							encrypt?))))
+	  ((ucode-primitive blowfish-cfb64-substring-v2 9)
+	   input input-start input-end output output-start
+	   key init-vector num encrypt?))))
 
-(define (blowfish-encrypt-string plaintext key-string init-vector encrypt?)
-  (blowfish-encrypt-substring plaintext 0 (string-length plaintext)
-			      key-string init-vector encrypt?))
-
-(define (blowfish-encrypt-substring plaintext start end
-				    key-string init-vector encrypt?)
-  (blowfish-cfb64-substring plaintext start end
-			    (blowfish-set-key (md5 key-string))
-			    init-vector 0 encrypt?))
-
-(define (blowfish-encrypt-port input output key-string init-vector encrypt?)
+(define (blowfish-encrypt-port input output key init-vector encrypt?)
   ;; Assumes that INPUT is in blocking mode.
-  (let ((key (blowfish-set-key (md5 key-string)))
-	(buffer (make-string 4096)))
+  (let ((key (blowfish-set-key key))
+	(input-buffer (make-string 4096))
+	(output-buffer (make-string 4096)))
     (let loop ((m 0))
-      (let ((n (input-port/read-string! input buffer)))
+      (let ((n (input-port/read-string! input input-buffer)))
 	(if (not (fix:= 0 n))
-	    (begin
-	      (write-string (blowfish-cfb64-substring buffer 0 n
-						      key init-vector m
-						      encrypt?)
-			    output)
-	      (loop (fix:and #x7 (fix:+ m n)))))))))
+	    (let ((m
+		   (blowfish-cfb64 input-buffer 0 n output-buffer 0
+				   key init-vector m encrypt?)))
+	      (write-substring output-buffer 0 n output)
+	      (loop m)))))))
 
 (define (write-blowfish-file-header port)
   (write-string blowfish-file-header-v2 port)
