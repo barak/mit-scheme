@@ -1,5 +1,5 @@
 #
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/Attic/Makefile,v 1.2 1988/08/31 06:09:11 cph Exp $
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/Attic/Makefile,v 1.3 1988/10/19 11:33:35 cph Exp $
 #
 # Makefile for Scheme compiler
 # This makefile supports some utilities for the compiler.
@@ -29,14 +29,14 @@ locked:
 	rlog -L -R RCS/*,v $(SOURCES:foo=RCS/*,v)
 
 stage1:
-	cd back ; mkdir STAGE1 ; mv *.com *.binf STAGE1
-	cd base ; mkdir STAGE1 ; mv *.com *.binf STAGE1
-	cd bobcat ; mkdir STAGE1 ; mv *.com *.binf STAGE1
-	cd fggen ; mkdir STAGE1 ; mv *.com *.binf STAGE1
-	cd fgopt ; mkdir STAGE1 ; mv *.com *.binf STAGE1
-	cd rtlbase ; mkdir STAGE1 ; mv *.com *.binf STAGE1
-	cd rtlgen ; mkdir STAGE1 ; mv *.com *.binf STAGE1
-	cd rtlopt ; mkdir STAGE1 ; mv *.com *.binf STAGE1
+	cd back ; mkdir STAGE1 ; mv *.com *.binf STAGE1/.
+	cd base ; mkdir STAGE1 ; mv *.com *.binf STAGE1/.
+	cd bobcat ; mkdir STAGE1 ; mv *.com *.binf STAGE1/.
+	cd fggen ; mkdir STAGE1 ; mv *.com *.binf STAGE1/.
+	cd fgopt ; mkdir STAGE1 ; mv *.com *.binf STAGE1/.
+	cd rtlbase ; mkdir STAGE1 ; mv *.com *.binf STAGE1/.
+	cd rtlgen ; mkdir STAGE1 ; mv *.com *.binf STAGE1/.
+	cd rtlopt ; mkdir STAGE1 ; mv *.com *.binf STAGE1/.
 
 unstage1:
 	cd back ; mv STAGE1/* . ; rmdir STAGE1
@@ -49,14 +49,14 @@ unstage1:
 	cd rtlopt ; mv STAGE1/* . ; rmdir STAGE1
 
 stage2:
-	cd back ; mkdir STAGE2 ; mv *.com *.binf STAGE2
-	cd base ; mkdir STAGE2 ; mv *.com *.binf STAGE2
-	cd bobcat ; mkdir STAGE2 ; mv *.com *.binf STAGE2
-	cd fggen ; mkdir STAGE2 ; mv *.com *.binf STAGE2
-	cd fgopt ; mkdir STAGE2 ; mv *.com *.binf STAGE2
-	cd rtlbase ; mkdir STAGE2 ; mv *.com *.binf STAGE2
-	cd rtlgen ; mkdir STAGE2 ; mv *.com *.binf STAGE2
-	cd rtlopt ; mkdir STAGE2 ; mv *.com *.binf STAGE2
+	cd back ; mkdir STAGE2 ; mv *.com *.binf STAGE2/.
+	cd base ; mkdir STAGE2 ; mv *.com *.binf STAGE2/.
+	cd bobcat ; mkdir STAGE2 ; mv *.com *.binf STAGE2/.
+	cd fggen ; mkdir STAGE2 ; mv *.com *.binf STAGE2/.
+	cd fgopt ; mkdir STAGE2 ; mv *.com *.binf STAGE2/.
+	cd rtlbase ; mkdir STAGE2 ; mv *.com *.binf STAGE2/.
+	cd rtlgen ; mkdir STAGE2 ; mv *.com *.binf STAGE2/.
+	cd rtlopt ; mkdir STAGE2 ; mv *.com *.binf STAGE2/.
 
 unstage2:
 	cd back ; mv STAGE2/* . ; rmdir STAGE2
