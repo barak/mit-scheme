@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: comwin.scm,v 1.144 1999/01/02 06:11:34 cph Exp $
+;;; $Id: comwin.scm,v 1.145 2000/10/26 22:12:47 cph Exp $
 ;;;
 ;;; Copyright (c) 1985, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -368,53 +368,55 @@
 
 (define (window-delete! leaf #!optional merge-into)
   (check-leaf-window leaf 'WINDOW-DELETE!)
-  (without-interrupts
-   (lambda ()
-     (let ((superior (window-superior leaf))
-	   (next (window-next leaf))
-	   (previous (window-previous leaf))
-	   (x-size (window-x-size leaf))
-	   (y-size (window-y-size leaf)))
-       (if (not (combination? superior))
-	   (editor-error "Window has no neighbors; can't delete"))
-       (let ((adjust-size!
-	      (lambda (window)
-		(if (current-window? leaf)
-		    (select-window
-		     (let loop ((window window))
-		       (if (combination? window)
-			   (loop (combination-child window))
-			   window))))
-		(unlink-leaf! leaf)
-		(if (combination-vertical? superior)
-		    (=> window :set-y-size!
-			(+ (window-y-size window) y-size))
-		    (=> window :set-x-size!
-			(+ (window-x-size window) x-size))))))
-	 (let ((do-next
-		(lambda ()
-		  (adjust-size! next)
-		  (let ((inferior (window-inferior superior next)))
-		    (if (combination-vertical? superior)
-			(set-inferior-y-start!
-			 inferior
-			 (- (inferior-y-start inferior) y-size))
-			(set-inferior-x-start!
-			 inferior
-			 (- (inferior-x-start inferior) x-size))))))
-	       (do-previous
-		(lambda ()
-		  (adjust-size! previous))))
-	   (cond ((and (not (default-object? merge-into))
-		       merge-into
-		       (or (eq? merge-into next) (eq? merge-into previous)))
-		  (if (eq? merge-into next)
-		      (do-next)
-		      (do-previous)))
-		 (next (do-next))
-		 (previous (do-previous))
-		 (else (error "Combination with single child:" superior)))))
-       (maybe-delete-combination! superior)))))
+  (let ((screen (window-screen leaf)))
+    (without-interrupts
+     (lambda ()
+       (let ((superior (window-superior leaf))
+	     (next (window-next leaf))
+	     (previous (window-previous leaf))
+	     (x-size (window-x-size leaf))
+	     (y-size (window-y-size leaf)))
+	 (if (not (combination? superior))
+	     (editor-error "Window has no neighbors; can't delete"))
+	 (let ((adjust-size!
+		(lambda (window)
+		  (if (current-window? leaf)
+		      (select-window
+		       (let loop ((window window))
+			 (if (combination? window)
+			     (loop (combination-child window))
+			     window))))
+		  (unlink-leaf! leaf)
+		  (if (combination-vertical? superior)
+		      (=> window :set-y-size!
+			  (+ (window-y-size window) y-size))
+		      (=> window :set-x-size!
+			  (+ (window-x-size window) x-size))))))
+	   (let ((do-next
+		  (lambda ()
+		    (adjust-size! next)
+		    (let ((inferior (window-inferior superior next)))
+		      (if (combination-vertical? superior)
+			  (set-inferior-y-start!
+			   inferior
+			   (- (inferior-y-start inferior) y-size))
+			  (set-inferior-x-start!
+			   inferior
+			   (- (inferior-x-start inferior) x-size))))))
+		 (do-previous
+		  (lambda ()
+		    (adjust-size! previous))))
+	     (cond ((and (not (default-object? merge-into))
+			 merge-into
+			 (or (eq? merge-into next) (eq? merge-into previous)))
+		    (if (eq? merge-into next)
+			(do-next)
+			(do-previous)))
+		   (next (do-next))
+		   (previous (do-previous))
+		   (else (error "Combination with single child:" superior)))))
+	 (maybe-delete-combination! superior))))
+    (maybe-deselect-buffer-layout screen)))
 
 (define (unlink-leaf! leaf)
   (let ((combination (window-superior leaf))

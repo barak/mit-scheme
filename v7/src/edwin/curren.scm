@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: curren.scm,v 1.136 2000/10/26 19:22:20 cph Exp $
+;;; $Id: curren.scm,v 1.137 2000/10/26 22:12:50 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -575,6 +575,15 @@ The buffer is guaranteed to be selected at that time."
 				  (delete-buffer-layout buffer)
 				  #f)))))))))))
     (if thunk (thunk))))
+
+(define (maybe-deselect-buffer-layout screen)
+  (without-interrupts
+   (lambda ()
+     (let ((layout (hash-table/get screen-buffer-layouts screen #f)))
+       (and layout
+	    (begin
+	      (hash-table/remove! screen-buffer-layouts screen)
+	      layout))))))
 
 (define (delete-buffer-layout buffer)
   (without-interrupts
