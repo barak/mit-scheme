@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/udata.scm,v 14.2 1988/06/13 11:58:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/udata.scm,v 14.3 1988/06/15 16:04:05 jrm Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -72,17 +72,26 @@ MIT in each case. |#
 (define-integrable (compiled-code-address? object)
   (object-type? (ucode-type compiled-entry) object))
 
-(define (compiled-entry-type object)
+(define (discriminate-compiled-entry object
+				     if-procedure
+				     if-return-address
+				     if-expression
+				     if-other)
   (if (not (compiled-code-address? object))
-      (error "COMPILED-ENTRY-TYPE: bad compiled entry" object))
-  (let ((place (assq (system-hunk3-cxr0
-		      ((ucode-primitive compiled-entry-kind 1) object))
-		     '((0 . COMPILED-PROCEDURE)
-		       (1 . COMPILED-RETURN-ADDRESS)
-		       (2 . COMPILED-EXPRESSION)))))
-    (if place
-	(cdr place)
-	'COMPILED-ENTRY)))
+      (error "DISCRIMINATE-COMPILED-ENTRY: bad compiled entry" object))
+  (let ((type (system-hunk3-cxr0
+	       ((ucode-primitive compiled-entry-kind 1) object))))
+    (cond ((= type 0) (if-procedure))
+	  ((= type 1) (if-return-address))
+	  ((= type 2) (if-expression))
+	  (else       (if-other)))))
+
+(define (compiled-entry-type object)
+  (discriminate-compiled-entry object
+    (lambda () 'COMPILED-PROCEDURE)
+    (lambda () 'COMPILED-RETURN-ADDRESS)
+    (lambda () 'COMPILED-EXPRESSION)
+    (lambda () 'COMPILED-ENTRY)))
 
 (define-integrable compiled-code-address->block
   (ucode-primitive compiled-code-address->block))
@@ -133,9 +142,21 @@ numbering for vectors.  The conversion between offsets and indices is
 specified by COMPILED-CODE-BLOCK/BYTES-PER-OBJECT, which should be set
 to the correct value before these operations are used.
 
+Note: This code needs to be changed somewhat.  MANIFEST-CLOSURES are
+compiled-code-blocks, but the format of them is completely different.
+The constants block in a compiled-code-block often has a linkage section
+that you cannot just vector-ref into.
 |#
 
 (define compiled-code-block/bytes-per-object)
+
+(define (compiled-code-block/manifest-closure? block)
+  (object-type? 
+   (ucode-type manifest-closure)
+   ;; This combination returns an unsafe object, but since it
+   ;; is used as an argument to a primitive, I can get away
+   ;; with not turning off the garbage collector.
+   ((ucode-primitive system-memory-ref 2) block 0)))
 
 (define (compiled-code-block/index->offset index)
   (* (1+ index) compiled-code-block/bytes-per-object))
