@@ -149,7 +149,7 @@ memory_out ()
   exit (1);
 }
 
-static int
+static PTR
 xmalloc (size)
      int size;
 {
@@ -159,7 +159,7 @@ xmalloc (size)
   return tem;
 }
 
-static int
+static PTR
 xrealloc (ptr, size)
      PTR ptr;
      int size;
