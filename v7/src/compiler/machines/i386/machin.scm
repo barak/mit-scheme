@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/machin.scm,v 1.9 1992/02/17 22:37:34 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/machin.scm,v 1.10 1992/02/18 22:57:25 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/machin.scm,v 4.26 1991/10/25 06:49:34 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -344,4 +344,7 @@ MIT in each case. |#
   true)
 
 (define compiler:primitives-with-no-open-coding
-  '(DIVIDE-FIXNUM GCD-FIXNUM &/))
+  '(DIVIDE-FIXNUM GCD-FIXNUM &/
+		  ;; The rewriting rules in rulrew.scm don't work.
+		  ;; Treat as not available.
+		  FLONUM-ASIN FLONUM-ACOS))
