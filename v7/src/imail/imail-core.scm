@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.105 2000/06/19 22:06:21 cph Exp $
+;;; $Id: imail-core.scm,v 1.106 2000/06/20 19:44:53 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -107,7 +107,7 @@
   (let ((colon (string-find-next-char string #\:)))
     (if colon
 	(parse-url-body (string-tail string (fix:+ colon 1))
-			   (get-default-url (string-head string colon)))
+			(get-default-url (string-head string colon)))
 	(parse-url-body string (get-default-url #f)))))
 
 ;; Protocol-specific parsing.  Dispatch on the class of DEFAULT-URL.
@@ -353,8 +353,8 @@
 (define-generic expunge-deleted-messages (folder))
 
 ;; -------------------------------------------------------------------
-;; Search FOLDER for messages matching CRITERIA.  [Possible values for
-;; CRITERIA not yet defined.]  Returns a list of messages.
+;; Search FOLDER for messages matching CRITERIA.  At present, CRITERIA
+;; may be a string.  Returns a list of messages.
 
 (define-generic search-folder (folder criteria))
 
@@ -569,7 +569,10 @@
 (define (header-field->message-flags header)
   (and (string-ci=? message-flags:name (header-field-name header))
        ;; Extra pair needed to distinguish #F from ().
-       (cons #f (burst-string (header-field-value header) char-set:lwsp #t))))
+       (cons #f
+	     (burst-string (header-field-value header)
+			   char-set:whitespace
+			   #t))))
 
 (define message-flags:name "X-IMAIL-FLAGS")
 
