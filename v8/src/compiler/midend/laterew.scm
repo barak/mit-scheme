@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: laterew.scm,v 1.12 1995/08/19 02:02:57 adams Exp $
+$Id: laterew.scm,v 1.13 1995/08/19 15:30:43 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -294,7 +294,7 @@ MIT in each case. |#
 
 (let ((not-primitive  (make-primitive-procedure 'NOT)))
   (define-rewrite/late not-primitive
-    (lambda (rands)
+    (lambda (form rands)
       (let ((cont   (first rands))
 	    (x      (second rands))
 	    (more?  (not (null? (cddr rands)))))
@@ -304,7 +304,7 @@ MIT in each case. |#
 	    `(CALL (QUOTE ,not-primitive) ,cont ,@rands))))))
 
 (define-rewrite/late %make-multicell
-  (lambda (rands)
+  (lambda (form rands)
     (let ((cont    (first rands))
 	  (layout  (second rands))
 	  (values  (cddr rands)))
@@ -314,7 +314,7 @@ MIT in each case. |#
 	(laterew/multicell-operation cont layout name 'MAKE #F values)))))
 
 (define-rewrite/late %multicell-ref
-  (lambda (rands)
+  (lambda (form rands)
     (let ((cont    (first rands))
 	  (cell    (second rands))
 	  (layout  (third rands))
@@ -322,7 +322,7 @@ MIT in each case. |#
       (laterew/multicell-operation cont layout name 'READ cell #F))))
 
 (define-rewrite/late %multicell-set!
-  (lambda (rands)
+  (lambda (form rands)
     (let ((cont    (first rands))
 	  (cell    (second rands))
 	  (value   (third rands))
@@ -368,7 +368,7 @@ MIT in each case. |#
 
 (define-rewrite/late %vector-check
   (let ((vector-tag (machine-tag 'VECTOR)))
-    (lambda (rands)
+    (lambda (form rands)
       (let ((cont   (first rands))
 	    (vec    (second rands))
 	    (index  (third rands)))
@@ -380,7 +380,7 @@ MIT in each case. |#
 	     '#F)))))
 
 (define-rewrite/late %vector-check/index
-  (lambda (rands)
+  (lambda (form rands)
     (let ((cont   (first rands))
 	  (vec    (second rands))
 	  (index  (third rands)))
