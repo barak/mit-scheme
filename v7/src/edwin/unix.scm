@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.56 1995/10/03 19:15:54 cph Exp $
+;;;	$Id: unix.scm,v 1.57 1995/10/03 21:12:37 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -431,28 +431,30 @@ of the filename suffixes \".gz\" or \".Z\"."
 
 (define (read-compressed-file program pathname mark)
   (temporary-message "Uncompressing file " (->namestring pathname) "...")
-  (call-with-temporary-file-pathname
-   (lambda (temporary)
-     (if (not (equal? '(EXITED . 0)
-		      (shell-command #f #f
-				     (directory-pathname pathname)
-				     #f
-				     (string-append
+  (let ((value
+	 (call-with-temporary-file-pathname
+	  (lambda (temporary)
+	    (if (not (equal? '(EXITED . 0)
+			     (shell-command #f #f
+					    (directory-pathname pathname)
+					    #f
+					    (string-append
+					     program
+					     " < "
+					     (file-namestring pathname)
+					     " > "
+					     (->namestring temporary)))))
+		(error:file-operation pathname
 				      program
-				      " < "
-				      (file-namestring pathname)
-				      " > "
-				      (->namestring temporary)))))
-	 (error:file-operation pathname
-			       program
-			       "file"
-			       "[unknown]"
-			       read-compressed-file
-			       (list pathname mark)))
-     (group-insert-file! (mark-group mark)
-			 (mark-index mark)
-			 temporary)))
-  (append-message "done"))
+				      "file"
+				      "[unknown]"
+				      read-compressed-file
+				      (list pathname mark)))
+	    (group-insert-file! (mark-group mark)
+				(mark-index mark)
+				temporary)))))
+    (append-message "done")
+    value))
 
 (define (write-compressed-file program region pathname)
   (temporary-message "Compressing file " (->namestring pathname) "...")

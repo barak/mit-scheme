@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: fileio.scm,v 1.131 1995/10/03 19:01:01 cph Exp $
+;;;	$Id: fileio.scm,v 1.132 1995/10/03 21:12:25 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -172,8 +172,9 @@ of the predicates is satisfied, the file is written in the usual way."
 				    (->namestring truename)
 				    "\"...")))
 		(temporary-message msg)
-		(do-it)
-		(temporary-message msg "done"))
+		(let ((value (do-it)))
+		  (temporary-message msg "done")
+		  value))
 	      (do-it))))))
 
 (define (group-insert-file! group index truename)
