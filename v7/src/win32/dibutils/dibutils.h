@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: dibutils.h,v 1.2 1995/09/25 18:11:12 adams Exp $
+$Id: dibutils.h,v 1.3 1997/05/13 05:31:52 cph Exp $
 
-Copyright (c) 1994-1995 Massachusetts Institute of Technology
+Copyright (c) 1994-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -257,15 +257,15 @@ VOID               FreeDib (VOID);
 /* Declarations of functions used in dib.c module          */
 /***********************************************************/
 
-HANDLE      OpenDIB (LPSTR szFile);
-BOOL        WriteDIB (LPSTR szFile,HANDLE hdib);
+HANDLE FAR WINAPI      OpenDIB (LPSTR szFile);
+BOOL FAR WINAPI        WriteDIB (LPSTR szFile,HANDLE hdib);
 WORD        PaletteSize (VOID FAR * pv);
 WORD        DibNumColors (VOID FAR * pv);
 HPALETTE    CreateDibPalette (HANDLE hdib);
 HPALETTE    CreateBIPalette (LPBITMAPINFOHEADER lpbi);
-HANDLE      DibFromBitmap (HBITMAP hbm, DWORD biStyle, WORD biBits, HPALETTE hpal);
-HBITMAP     BitmapFromDib (HANDLE hdib, HPALETTE hpal);
-BOOL        DibBlt (HDC hdc, INT x0, INT y0, INT dx, INT dy, HANDLE hdib, INT x1, INT y1, LONG rop);
+HANDLE FAR WINAPI      DibFromBitmap (HBITMAP hbm, DWORD biStyle, WORD biBits, HPALETTE hpal);
+HBITMAP FAR WINAPI     BitmapFromDib (HANDLE hdib, HPALETTE hpal);
+BOOL FAR WINAPI        DibBlt (HDC hdc, INT x0, INT y0, INT dx, INT dy, HANDLE hdib, INT x1, INT y1, LONG rop);
 BOOL        StretchDibBlt (HDC hdc, INT x0, INT y0, INT dx, INT dy, HANDLE hdib, INT x1, INT y1, INT dx1, INT dy1, LONG rop);
 BOOL        DibInfo (HANDLE hdib,LPBITMAPINFOHEADER lpbi);
 HANDLE      ReadDibBitmapInfo (INT fh);
@@ -290,9 +290,9 @@ VOID               SetScrollRanges (HWND hwnd);
 VOID               DrawSelect (HDC hdc, BOOL fDraw);
 VOID        PASCAL NormalizeRect (RECT *prc);
 VOID               TrackMouse (HWND hwnd, MPOINT pt);
-HBITMAP            CopyBitmap (HBITMAP hbm);
+HBITMAP FAR WINAPI            CopyBitmap (HBITMAP hbm);
 HPALETTE           CopyPalette (HPALETTE hpal);
-HBITMAP            CropBitmap (HBITMAP hbm, int,int,int,int);
+HBITMAP FAR WINAPI            CropBitmap (HBITMAP hbm, int,int,int,int);
 HANDLE             RenderFormat (INT cf);
 HANDLE             RealizeDibFormat (DWORD biStyle, WORD biBits);
 

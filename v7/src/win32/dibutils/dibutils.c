@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: dibutils.c,v 1.2 1995/09/25 18:10:46 adams Exp $
+$Id: dibutils.c,v 1.3 1997/05/13 05:31:59 cph Exp $
 
-Copyright (c) 1994-1995 Massachusetts Institute of Technology
+Copyright (c) 1994-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -121,7 +121,8 @@ static   HCURSOR hcurSave;
  *  RETURNS    :A handle to the DIB.                                        *
  *                                                                          *
  ****************************************************************************/
-HANDLE OpenDIB (LPSTR szFile)
+HANDLE FAR WINAPI
+OpenDIB (LPSTR szFile)
 {
     HFILE               fh;
     BITMAPINFOHEADER    bi;
@@ -177,9 +178,8 @@ HANDLE OpenDIB (LPSTR szFile)
  *               FALSE - otherwise                                          *
  *                                                                          *
  ****************************************************************************/
-BOOL WriteDIB (
-    LPSTR szFile,
-    HANDLE hdib)
+BOOL FAR WINAPI
+WriteDIB (LPSTR szFile, HANDLE hdib)
 {
     BITMAPFILEHEADER    hdr;
     LPBITMAPINFOHEADER  lpbi;
@@ -230,7 +230,8 @@ BOOL WriteDIB (
  *               FALSE - otherwise                                          *
  *                                                                          *
  ****************************************************************************/
-BOOL DeleteDIB (HANDLE hdib)
+BOOL FAR WINAPI
+DeleteDIB (HANDLE hdib)
 {
     if (hdib)
       return  GlobalFree (hdib) == 0;
@@ -519,7 +520,8 @@ HANDLE ReadDibBitmapInfo (INT fh)
  *  RETURNS    :  Height of DIB in pixels                                    *
  *                                                                          *
  ****************************************************************************/
-DWORD DibHeight (HANDLE hdib)
+DWORD FAR WINAPI
+DibHeight (HANDLE hdib)
 {
     LPBITMAPINFOHEADER lpbmi;
     LPBITMAPCOREHEADER lpbci;
@@ -547,7 +549,8 @@ DWORD DibHeight (HANDLE hdib)
  *  RETURNS    :  Width of DIB in pixels                                    *
  *                                                                          *
  ****************************************************************************/
-DWORD DibWidth (HANDLE hdib)
+DWORD FAR WINAPI
+DibWidth (HANDLE hdib)
 {
     LPBITMAPINFOHEADER lpbmi;
     LPBITMAPCOREHEADER lpbci;
@@ -573,7 +576,8 @@ DWORD DibWidth (HANDLE hdib)
  *  FUNCTION   :  DIBSetPixeslUnaligned (HANDLE hdib, BYTE *bytes)          *
  *                                                                          *
  ****************************************************************************/
-BOOL DIBSetPixelsUnaligned (HANDLE hdib, BYTE *bytes)
+BOOL FAR WINAPI
+DIBSetPixelsUnaligned (HANDLE hdib, BYTE *bytes)
 {
     LPBITMAPINFOHEADER lpbmi;
     LPBITMAPCOREHEADER lpbci;
@@ -712,11 +716,8 @@ WORD DibNumColors (VOID FAR * pv)
  *  RETURNS    : A handle to the DIB                                        *
  *                                                                          *
  ****************************************************************************/
-HANDLE DibFromBitmap (
-    HBITMAP      hbm,
-    DWORD            biStyle,
-    WORD             biBits,
-    HPALETTE     hpal)
+HANDLE FAR WINAPI
+DibFromBitmap (HBITMAP hbm, DWORD biStyle, WORD biBits, HPALETTE hpal)
 {
     BITMAP               bm;
     BITMAPINFOHEADER     bi;
@@ -832,12 +833,8 @@ HANDLE DibFromBitmap (
  *  RETURNS    : A handle to the DIB                                        *
  *                                                                          *
  ****************************************************************************/
-HANDLE CreateDIB (
-    int       width,
-    int       height,
-    DWORD            biStyle,
-    WORD             biBits,
-    HPALETTE     hpal)
+HANDLE FAR WINAPI
+CreateDIB (int width, int height, DWORD biStyle, WORD biBits, HPALETTE hpal)
 {
     BITMAPINFOHEADER     bi;
     BITMAPINFO      FAR *lpbi;
@@ -915,9 +912,8 @@ HANDLE CreateDIB (
  *  RETURNS    : A handle to the DDB.                                       *
  *                                                                          *
  ****************************************************************************/
-HBITMAP BitmapFromDib (
-    HANDLE         hdib,
-    HPALETTE   hpal)
+HBITMAP FAR WINAPI
+BitmapFromDib (HANDLE hdib, HPALETTE hpal)
 {
     LPBITMAPINFOHEADER  lpbi;
     HPALETTE            hpalT;
@@ -1008,16 +1004,16 @@ BOOL DrawBitmap (
  *               FALSE - otherwise.                                         *
  *                                                                          *
  ****************************************************************************/
-BOOL DibBlt (
-    HDC    hdc,
-    INT    x0,
-    INT    y0,
-    INT    dx,
-    INT    dy,
-    HANDLE hdib,
-    INT    x1,
-    INT    y1,
-    LONG   rop)
+BOOL FAR WINAPI
+DibBlt (HDC    hdc,
+	INT    x0,
+	INT    y0,
+	INT    dx,
+	INT    dy,
+	HANDLE hdib,
+	INT    x1,
+	INT    y1,
+	LONG   rop)
 {
     LPBITMAPINFOHEADER   lpbi;
 //    HPALETTE           hpal,hpalT;
@@ -1111,7 +1107,8 @@ BOOL StretchDibBlt (
  *  RETURNS    : A handle to the new bitmap.                                *
  *                                                                          *
  ****************************************************************************/
-HBITMAP CopyBitmap (HBITMAP hbm)
+HBITMAP FAR WINAPI
+CopyBitmap (HBITMAP hbm)
 {
     BITMAP  bm;
 
@@ -1132,12 +1129,8 @@ HBITMAP CopyBitmap (HBITMAP hbm)
  *  RETURNS    :  A handle to the new bitmap.                               *
  *                                                                          *
  ****************************************************************************/
-HBITMAP CropBitmap (
-    HBITMAP hbm,
-    int left,
-    int top,
-    int right,
-    int bottom)
+HBITMAP FAR WINAPI
+CropBitmap (HBITMAP hbm, int left, int top, int right, int bottom)
 {
     HDC     hMemDCsrc;
     HDC     hMemDCdst;
