@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.69 1992/02/10 13:29:50 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.70 1992/02/29 19:48:36 mhwu Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -38,8 +38,18 @@ MIT in each case. */
 #include "prims.h"
 #include "bchgcc.h"
 #include "option.h"
-#include "ux.h"
 #include <sys/stat.h>
+
+#ifdef DOS386
+#include "msdos.h"
+#define SUB_DIRECTORY_DELIMITER '\\'
+extern void EXFUN (mktemp, (unsigned char *));
+#else
+#include "ux.h"
+#define SUB_DIRECTORY_DELIMITER '/'
+extern int EXFUN (unlink, (CONST char *));
+#endif
+
 #include "bchdrn.h"
 
 #ifndef SEEK_SET
@@ -856,7 +866,7 @@ DEFUN (sysV_initialize, (first_time_p, size, r_overlap, w_overlap, drfnam),
   gc_next_buffer = 0;
 
   drone_file_name = ((char *) drfnam);
-  if ((drfnam != ((char *) NULL)) && (drfnam[0] != '/'))
+  if ((drfnam != ((char *) NULL)) && (drfnam[0] != SUB_DIRECTORY_DELIMITER))
   {
     CONST char * temp = (search_for_library_file (drfnam));
 
@@ -1819,13 +1829,15 @@ DEFUN (open_gc_file, (size, unlink_p),
   Boolean exists_p;
 
   gc_file_name = &gc_file_name_buffer[0];
-  if (option_gc_file[0] == '/')
+  if (option_gc_file[0] == SUB_DIRECTORY_DELIMITER)
     strcpy (gc_file_name, option_gc_file);
   else
   {
     position = (strlen (option_gc_directory));
-    if ((position == 0) || (option_gc_directory[position - 1] != '/'))
-      sprintf (gc_file_name, "%s/%s", option_gc_directory, option_gc_file);
+    if ((position == 0) || 
+	(option_gc_directory[position - 1] != SUB_DIRECTORY_DELIMITER))
+      sprintf (gc_file_name, "%s%c%s", 
+	       option_gc_directory, SUB_DIRECTORY_DELIMITER, option_gc_file);
     else
       sprintf (gc_file_name, "%s%s", option_gc_directory, option_gc_file);
   }
@@ -1894,8 +1906,6 @@ DEFUN (open_gc_file, (size, unlink_p),
   keep_gc_file_p = (exists_p || option_gc_keep);
   if (!keep_gc_file_p && unlink_p)
   {
-    extern int EXFUN (unlink, (CONST char *));
-
     (void) (unlink (gc_file_name));
   }
 
@@ -1941,8 +1951,10 @@ DEFUN (open_gc_file, (size, unlink_p),
 	     (IO_PAGE_SIZE - (sizeof (message))));
     (* (buffer + (IO_PAGE_SIZE - 1))) = '\n';
 
+#if defined(F_GETFL)&&defined(F_SETFL)
     if ((flags = (fcntl (gc_file, F_GETFL, 0))) != -1)
       (void) (fcntl (gc_file, F_SETFL, (flags | O_NONBLOCK)));
+#endif
 
     write_data (buffer,
 		(gc_file_start_position + ((long) IO_PAGE_SIZE)),
@@ -1961,8 +1973,10 @@ DEFUN (open_gc_file, (size, unlink_p),
 	       scheme_program_name, gc_file_name);
       termination_open_gc_file (((char *) NULL), ((char *) NULL));
     }
+#if defined(F_GETFL)&&defined(F_SETFL)
     if (flags != -1)
       (void) (fcntl (gc_file, F_SETFL, (flags | O_NONBLOCK)));
+#endif
   }
   return;
 }
