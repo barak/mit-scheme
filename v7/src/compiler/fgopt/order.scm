@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/order.scm,v 4.5 1988/06/14 08:35:17 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/order.scm,v 4.6 1988/07/20 07:37:29 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -71,10 +71,15 @@ MIT in each case. |#
 	(prefix (subproblem-prefix subproblem)))
     (if (subproblem-canonical? subproblem)
 	(begin
-	  (if (continuation/entry-node continuation)
-	      (error "Attempt to reattach continuation body"
-		     continuation))
-	  (set-continuation/entry-node! continuation rest)
+	  (let ((node (continuation/entry-node continuation)))
+	    (cond ((not node)
+		   (set-continuation/entry-node! continuation rest))
+		  ((and (cfg-node/noop? node)
+			(not (snode-next-edge node)))
+		   (create-edge! node set-snode-next-edge! rest))
+		  (else
+		   (error "Attempt to reattach continuation body"
+			  continuation))))
 	  (cfg-entry-node prefix))
 	(scfg*node->node!
 	 prefix
