@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/machin.scm,v 1.1 1992/01/21 00:08:40 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/machin.scm,v 1.2 1992/01/23 22:47:34 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/machin.scm,v 4.26 1991/10/25 06:49:34 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -131,29 +131,46 @@ MIT in each case. |#
 (define esi 6)				; string source pointer
 (define edi 7)				; string destination pointer
 
+;; Virtual floating point registers:
+;; Floating point stack locations, allocated as if registers.
+;; Two left free to allow room to push and operate.
+
+(define fr0 8)
+(define fr1 9)
+(define fr2 10)
+(define fr3 11)
+(define fr4 12)
+(define fr5 13)
+
 (define number-of-machine-registers 8)
 (define number-of-temporary-registers 256)
 
-(define-integrable regnum:return-value ebx)
-(define-integrable regnum:regs-pointer esi)
-(define-integrable regnum:pointer-mask ebp)
-(define-integrable regnum:free-pointer edi)
 (define-integrable regnum:stack-pointer esp)
+(define-integrable regnum:pointer-mask ebp)
+(define-integrable regnum:regs-pointer esi)
+(define-integrable regnum:free-pointer edi)
 
 (define-integrable (machine-register-known-value register)
   register				; ignored
   false)
 
-;; **** Need to do something about float "registers" ****
-
 (define (machine-register-value-class register)
-  (cond ((<= 0 register 2) value-class=object)
-	((= register ebp) value-class=immediate)
-	((<= 0 register 7) value-class=address)
-	(false value-class=float)
+  (cond ((<= eax register ebx)
+	 value-class=object)
+	((= register regnum:pointer-mask)
+	 value-class=immediate)
+	((or (= register regnum:stack-pointer)
+	     (= register regnum:free-pointer)
+	     (= register regnum:regs-pointer))
+	 value-class=address)
+	((<= fr0 register fr5)
+	 value-class=float)
 	(else
 	 (error "illegal machine register" register))))
 
+(define-integrable register-block/memtop-offset 0)
+(define-integrable register-block/stack-guard-offset 1)
+(define-integrable register-block/value-offset 2)
 (define-integrable register-block/environment-offset 3)
 (define-integrable register-block/dynamic-link-offset 4) ; compiler temp
 ;; ^ Could also use the closure registers, not needed for this port.
@@ -162,29 +179,31 @@ MIT in each case. |#
 ;;;; RTL Generator Interface
 
 (define (interpreter-register:access)
-  (rtl:make-machine-register regnum:return-value))
+  (rtl:make-machine-register eax))
 
 (define (interpreter-register:cache-reference)
-  (rtl:make-machine-register regnum:return-value))
+  (rtl:make-machine-register eax))
 
 (define (interpreter-register:cache-unassigned?)
-  (rtl:make-machine-register regnum:return-value))
+  (rtl:make-machine-register eax))
 
 (define (interpreter-register:lookup)
-  (rtl:make-machine-register regnum:return-value))
+  (rtl:make-machine-register eax))
 
 (define (interpreter-register:unassigned?)
-  (rtl:make-machine-register regnum:return-value))
+  (rtl:make-machine-register eax))
 
 (define (interpreter-register:unbound?)
-  (rtl:make-machine-register regnum:return-value))
+  (rtl:make-machine-register eax))
 
 (define-integrable (interpreter-value-register)
-  (rtl:make-machine-register regnum:return-value))
+  (rtl:make-offset (interpreter-regs-pointer)
+		   register-block/value-offset))
 
 (define (interpreter-value-register? expression)
-  (and (rtl:register? expression)
-       (= (rtl:register-number expression) regnum:return-value)))
+  (and (rtl:offset? expression)
+       (interpreter-regs-pointer? (rtl:offset-base expression))
+       (= (rtl:offset-number expression) register-block/value-offset)))
 
 (define (interpreter-environment-register)
   (rtl:make-offset (interpreter-regs-pointer)
@@ -193,8 +212,7 @@ MIT in each case. |#
 (define (interpreter-environment-register? expression)
   (and (rtl:offset? expression)
        (interpreter-regs-pointer? (rtl:offset-base expression))
-       (=
-	(rtl:offset-number expression) register-block/environment-offset)))
+       (= (rtl:offset-number expression) register-block/environment-offset)))
 
 (define (interpreter-free-pointer)
   (rtl:make-machine-register regnum:free-pointer))
@@ -224,15 +242,16 @@ MIT in each case. |#
 (define (interpreter-dynamic-link? expression)
   (and (rtl:offset? expression)
        (interpreter-regs-pointer? (rtl:offset-base expression))
-       (= (rtl:offset-number expression)
-	  register-block/dynamic-link-offset)))
+       (= (rtl:offset-number expression) register-block/dynamic-link-offset)))
 
 (define (rtl:machine-register? rtl-register)
   (case rtl-register
     ((STACK-POINTER)
      (interpreter-stack-pointer))
+    #|
     ((VALUE)
      (interpreter-value-register))
+    |#
     ((INTERPRETER-CALL-RESULT:ACCESS)
      (interpreter-register:access))
     ((INTERPRETER-CALL-RESULT:CACHE-REFERENCE)
@@ -250,12 +269,18 @@ MIT in each case. |#
 
 (define (rtl:interpreter-register? rtl-register)
   (case rtl-register
-    ((MEMORY-TOP) 0)
-    ((STACK-GUARD) 1)
-    #| ((VALUE) 2) |#
-    ((ENVIRONMENT) 3)
-    ((DYNAMIC-LINK TEMPORARY) 4)
-    (else false)))
+    ((MEMORY-TOP)
+     register-block/memtop-offset)
+    ((STACK-GUARD)
+     register-block/stack-guard-offset)
+    ((VALUE)
+     register-block/value-offset)
+    ((ENVIRONMENT)
+     register-block/environment-offset)
+    ((DYNAMIC-LINK TEMPORARY)
+     register-block/dynamic-link-offset)
+    (else
+     false)))
 
 (define (rtl:interpreter-register->offset locative)
   (or (rtl:interpreter-register? locative)
@@ -306,12 +331,8 @@ MIT in each case. |#
       (else
        false))))
 
-;;; Floating-point open-coding not implemented for i386, for now.
-
-;;; **** Fix this ****
-
 (define compiler:open-code-floating-point-arithmetic?
-  false)
+  true)
 
 (define compiler:primitives-with-no-open-coding
   '(DIVIDE-FIXNUM GCD-FIXNUM &/))
