@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.19 1992/04/13 18:24:21 hal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.20 1992/05/07 22:24:43 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -131,8 +131,9 @@ MIT in each case. |#
 (define-integrable event-type:visibility 14)
 (define-integrable number-of-event-types 15)
 
-;; This mask contains configure, delete-window, map, unmap, and visibility.
-(define-integrable event-mask #x5c04)
+;; This mask contains button-down, configure, delete-window, map, unmap,
+;; and visibility.
+(define-integrable event-mask #x5c05)
 
 ;;;; Protection lists
 
@@ -259,6 +260,8 @@ MIT in each case. |#
   (name false read-only true)
   xd
   (window-list (make-protection-list) read-only true)
+  (mutex (make-thread-mutex))
+  (event-queue (make-queue))
   (properties (make-1d-table) read-only true))
 
 (define (x-graphics/open-display name)
@@ -321,27 +324,57 @@ MIT in each case. |#
 		   (eqv? 0 (access-condition condition 'OPERAND)))
 	      (exit-current-thread unspecific)))
       (lambda ()
-	(let ((handlers event-handlers)
-	      (interval event-previewer-interval))
+	(let ((interval event-previewer-interval)
+	      (mutex (x-display/mutex display)))
 	  (do () (false)
+	    (lock-thread-mutex mutex)
 	    (let loop ()
 	      (let ((event
 		     (x-display-process-events (x-display/xd display) 2)))
 		(if event
 		    (begin
-		      (let ((handler
-			     (vector-ref handlers (vector-ref event 0))))
-			(if handler
-			    (let ((window
-				   (search-protection-list
-				    (x-display/window-list display)
-				    (let ((xw (vector-ref event 1)))
-				      (lambda (window)
-					(eq? (x-window/xw window) xw))))))
-			      (if window
-				  (handler window event)))))
+		      (process-event display event)
 		      (loop)))))
+	    (unlock-thread-mutex mutex)
 	    (sleep-current-thread interval)))))))
+
+(define (read-event display)
+  (let ((mutex (x-display/mutex display)))
+    (dynamic-wind
+     (lambda ()
+       (lock-thread-mutex mutex))
+     (lambda ()
+       (let ((queue (x-display/event-queue display)))
+	 (let loop ()
+	   (if (queue-empty? queue)
+	       (let ((event
+		      (let ((xd (x-display/xd display)))
+			(if (other-running-threads?)
+			    ;; Don't block process if any other threads
+			    ;; want to run.  Mutex will stop previewer.
+			    (or (x-display-process-events xd 2)
+				(begin
+				  (yield-current-thread)
+				  false))
+			    (x-display-process-events xd 1)))))
+		 (if event
+		     (process-event display event))
+		 (loop))
+	       (dequeue! queue)))))
+     (lambda ()
+       (unlock-thread-mutex mutex)))))
+
+(define (process-event display event)
+  (let ((handler (vector-ref event-handlers (vector-ref event 0))))
+    (and handler
+	 (let ((window
+		(search-protection-list
+		 (x-display/window-list display)
+		 (let ((xw (vector-ref event 1)))
+		   (lambda (window)
+		     (eq? (x-window/xw window) xw))))))
+	   (and window
+		(handler window event))))))
 
 (define event-previewer-interval
   1000)
@@ -355,24 +388,33 @@ MIT in each case. |#
 (define-event-handler event-type:delete-window
   (lambda (window event)
     event
-    (without-interrupts (lambda () (close-x-window window)))))
+    (without-interrupts (lambda () (close-x-window window)))
+    false))
 
 (define-event-handler event-type:map
   (lambda (window event)
     event
-    (set-x-window/mapped?! window true)))
+    (set-x-window/mapped?! window true)
+    false))
 
 (define-event-handler event-type:unmap
   (lambda (window event)
     event
-    (set-x-window/mapped?! window false)))
+    (set-x-window/mapped?! window false)
+    false))
 
 (define-event-handler event-type:visibility
   (lambda (window event)
     (case (vector-ref event 2)
       ((0) (set-x-window/visibility! window 'UNOBSCURED))
       ((1) (set-x-window/visibility! window 'PARTIALLY-OBSCURED))
-      ((2) (set-x-window/visibility! window 'OBSCURED)))))
+      ((2) (set-x-window/visibility! window 'OBSCURED)))
+    false))
+
+(define-event-handler event-type:button-down
+  (lambda (window event)
+    (enqueue! (x-display/event-queue (x-window/display window)) event)
+    true))
 
 ;;;; Standard Operations
 
@@ -561,6 +603,13 @@ MIT in each case. |#
     (values (x-graphics-map-x-coordinate window (vector-ref result 2))
 	    (x-graphics-map-y-coordinate window (vector-ref result 3))
 	    (vector-ref result 4))))
+
+(define (x-graphics/read-button device)
+  (let ((event (read-event (x-graphics/display device))))
+    (let ((window (vector-ref event 1)))
+      (values (x-graphics-map-x-coordinate window (vector-ref event 2))
+	      (x-graphics-map-y-coordinate window (vector-ref event 3))
+	      (vector-ref event 4)))))
 
 (define (x-graphics/starbase-filename device)
   (x-window-starbase-filename (x-graphics-device/xw device)))

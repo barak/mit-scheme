@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.147 1992/04/16 05:12:18 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.148 1992/05/07 22:24:59 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -2113,6 +2113,7 @@ MIT in each case. |#
 	  x-graphics/open-display
 	  x-graphics/query-pointer
 	  x-graphics/raise-window
+	  x-graphics/read-button
 	  x-graphics/reset-clip-rectangle
 	  x-graphics/resize-window
 	  x-graphics/set-background-color
