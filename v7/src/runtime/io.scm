@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.39 1994/11/20 05:03:33 cph Exp $
+$Id: io.scm,v 14.40 1994/11/28 07:35:36 cph Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -92,10 +92,10 @@ MIT in each case. |#
 	  ;; For upwards compatibility with old microcodes:
 	  (let ((index (channel-type descriptor))
 		(types
-		 '#(#F FILE PIPE FIFO TERMINAL PTY-MASTER
-		       UNIX-STREAM-SOCKET TCP-STREAM-SOCKET
-		       TCP-SERVER-SOCKET DIRECTORY CHARACTER-DEVICE
-		       BLOCK-DEVICE)))
+		 '#(#F FILE UNIX-PIPE UNIX-FIFO TERMINAL
+		       UNIX-PTY-MASTER UNIX-STREAM-SOCKET
+		       TCP-STREAM-SOCKET TCP-SERVER-SOCKET DIRECTORY
+		       UNIX-CHARACTER-DEVICE UNIX-BLOCK-DEVICE)))
 	    (and (< index (vector-length types))
 		 (vector-ref types index)))))))
 
@@ -108,8 +108,11 @@ MIT in each case. |#
 (define-integrable (channel-type=directory? channel)
   (eq? 'DIRECTORY (channel-type channel)))
 
-(define-integrable (channel-type=terminal? channel)
-  (eq? 'TERMINAL (channel-type channel)))
+(define (channel-type=terminal? channel)
+  (let ((type (channel-type channel)))
+    (or (eq? 'TERMINAL type)
+	(eq? 'UNIX-PTY-MASTER type)
+	(eq? 'OS/2-CONSOLE type))))
 
 (define (channel-close channel)
   ;; This is locked from interrupts, but GC can occur since the
