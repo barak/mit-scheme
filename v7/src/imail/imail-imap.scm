@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.51 2000/05/17 17:30:59 cph Exp $
+;;; $Id: imail-imap.scm,v 1.52 2000/05/17 18:40:09 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -305,6 +305,8 @@
    (lambda ()
      (detach-all-messages! folder)
      (fill-messages-vector! folder 0)
+     (if (imap-folder-uidvalidity folder)
+	 (set-imap-folder-unseen! folder #f))
      (set-imap-folder-uidvalidity! folder uidvalidity)
      (folder-modified! folder)))
   (read-message-headers! folder 0))
@@ -325,12 +327,10 @@
 
 (define (read-message-headers! folder start)
   (if (imap-folder-uidvalidity folder)
-      ((imail-message-wrapper "Reading message headers")
+      ((imail-message-wrapper "Reading message UIDs")
        (lambda ()
 	 (imap:command:fetch-range (imap-folder-connection folder)
-				   start
-				   (folder-length folder)
-				   '(UID FLAGS RFC822.SIZE RFC822.HEADER))))))
+				   start #f '(UID))))))
 
 (define (remove-imap-folder-message folder index)
   (without-interrupts
@@ -345,6 +345,7 @@
 	   (vector-set! v i m)))
        (vector-set! v n #f)
        (set-imap-folder-n-messages! folder n)
+       (set-imap-folder-unseen! folder #f)
        (let ((new-length (compute-messages-length v n)))
 	 (if new-length
 	     (set-imap-folder-messages! folder
@@ -654,13 +655,9 @@
   (guarantee-imap-folder-open folder)
   (vector-ref (imap-folder-messages folder) index))
 
-#|
-;; There's no guarantee that UNSEEN is kept up to date by the server.
-;; So unless we want to manually update it, it's useless.
 (define-method first-unseen-message-index ((folder <imap-folder>))
   (guarantee-imap-folder-open folder)
   (or (imap-folder-unseen folder) 0))
-|#
 
 (define-method expunge-deleted-messages ((folder <imap-folder>))
   (guarantee-imap-folder-open folder)
@@ -729,16 +726,16 @@
 				  items))
 
 (define (imap:command:fetch-range connection start end items)
-  (if (< start end)
-      (imap:command:multiple-response imap:response:fetch?
-				      connection 'FETCH
-				      (cons 'ATOM
-					    (string-append
-					     (number->string (+ start 1))
-					     ":"
-					     (number->string end)))
-				      items)
-      '()))
+  (imap:command:multiple-response imap:response:fetch?
+				  connection 'FETCH
+				  (cons 'ATOM
+					(string-append
+					 (number->string (+ start 1))
+					 ":"
+					 (if end
+					     (number->string end)
+					     "*")))
+				  items))
 
 (define (imap:command:store-flags connection index flags)
   (imap:command:no-response connection 'STORE (+ index 1) 'FLAGS flags))
