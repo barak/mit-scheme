@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.484 2004/05/26 17:05:22 cph Exp $
+$Id: runtime.pkg,v 14.485 2004/05/27 14:04:32 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -4524,12 +4524,19 @@ USA.
 	  guarantee-wide-string-index
 	  guarantee-wide-substring
 	  make-wide-string
+	  open-utf16-be-input-string
 	  open-utf16-be-output-string
+	  open-utf16-input-string
+	  open-utf16-le-input-string
 	  open-utf16-le-output-string
 	  open-utf16-output-string
+	  open-utf32-be-input-string
 	  open-utf32-be-output-string
+	  open-utf32-input-string
+	  open-utf32-le-input-string
 	  open-utf32-le-output-string
 	  open-utf32-output-string
+	  open-utf8-input-string
 	  open-utf8-output-string
 	  open-wide-input-string
 	  open-wide-output-string
