@@ -14,7 +14,7 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
-/* $Id: dstack.h,v 1.7 1993/10/27 22:14:36 gjr Exp $ */
+/* $Id: dstack.h,v 1.8 1993/10/27 23:54:39 gjr Exp $ */
 
 #ifndef __DSTACK_H__
 #define __DSTACK_H__
@@ -22,12 +22,12 @@
 #include "ansidecl.h"
 #include <setjmp.h>
 
-extern void
 #ifndef _SUNOS4
+extern void
   EXFUN (abort, (void)),
-#endif
   EXFUN (exit, (int)),
   EXFUN (free, (void *));
+#endif
 
 extern void EXFUN (dstack_initialize, (void));
 /* Call this once to initialize the stack. */
