@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.40 1996/03/10 21:34:17 cph Exp $
+@comment $Id: user.texinfo,v 1.41 1996/03/14 02:55:19 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -2723,6 +2723,14 @@ procedure, then the closing environment of that procedure is used in its
 place.
 @end deffn
 
+@deffn {procedure+} pe
+This procedure is useful for finding out which environment you are in
+(@code{pe} stands for ``Print Ennvironment'').  If the current @sc{repl}
+environment belongs to a package, then @code{pe} returns the package
+name (a list of symbols).  If the current @sc{repl} environment does not
+belong to a package then the environment is returned.
+@end deffn
+
 @deffn {procedure+} gst syntax-table
 In addition to the current environment, each @sc{repl} maintains a
 current @dfn{syntax table}.  The current syntax table tells the
@@ -2988,7 +2996,39 @@ bar
 @end example
 @end deffn
 
+@deffn {procedure+} pp object [output-port [as-code?]]
+@deffnx {procedure+} pa procedure
+@cindex inspecting procedures
+@code{pp} procedure is described in the MIT Scheme Reference Manual.  We
+just note here that, by default, MIT Scheme keeps debugging information,
+so @code{pp} is useful for looking at the source code of a procedure
+(compiled or interpreted).
+
+@code{pa} prints the arguments of @var{procedure}.  This can be used to
+remind yourself, for example, of the correct order of the arguments to a
+procedure.
+
+@example
+1 ]=> for-all?
+;Value 40: #[compiled-procedure 40 (for-all? "boole" #x6) #xC #x20ECB0]
+
+1 ]=> (pa for-all?)
+(items predicate)
+;No value
+
+1 ]=> (pp for-all?)
+(named-lambda (for-all? items predicate)
+  (let loop ((items items))
+    (or (null? items)
+        (and (predicate (car items))
+             (loop (cdr items))))))
+@end example
+@end deffn
+
 @deffn {procedure+} where [obj]
+@cindex environments, examining
+@cindex inspecting environments
+@cindex examining environments
 The procedure @code{where} enters the environment examination system.
 This allows environments and variable bindings to be examined and
 modified.  @code{where} accepts one letter commands.  The commands can
@@ -3000,6 +3040,31 @@ the environment examined is the read-eval-print environment from which
 from the debugger).  If a compound procedure is supplied, @code{where}
 lets the user examine the environment of definition of the procedure.
 This is useful for debugging procedure arguments and values.
+@end deffn
+
+@deffn {procedure+} apropos text [package/env [search-parents?]]
+@cindex finding procedures
+@cindex procedures, finding
+@cindex help
+Search an environment for bound names containing @var{text} and print
+out the matching bound names.  If @var{package/env} is specified, it
+must be an environment or package name, and it defaults to the current
+@sc{repl} environment.  The flag @var{search-parents?} specifies whether
+the environmnet's parents should be included in the search.  The default
+is @code{#F} if @var{package/env} is specified, and @code{#T} if
+@var{package/env} is not specified.
+
+@example
+1 ]=> (apropos "search")
+#[package 41 (user)]
+#[package 33 ()]
+list-search-negative
+list-search-positive
+search-ordered-subvector
+search-ordered-vector
+vector-binary-search
+;No value
+@end example
 @end deffn
 
 @node Advising Procedures,  , Debugging Aids, Debugging
