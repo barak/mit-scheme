@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/Attic/triv.con,v 1.2 1990/10/05 12:58:18 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/Attic/triv.con,v 1.3 1991/06/06 21:37:19 cph Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -43,6 +43,7 @@ MIT in each case. |#
    (let ((cref/generate-all)
 	 (cref/generate-constructors)
 	 (cref/generate-cref)
+	 (cref/generate-cref-unusual)
 	 (cref/generate-trivial-constructor))
      (the-environment))))
 (let ((source (package/environment (find-package '( cross-reference))))
@@ -50,6 +51,7 @@ MIT in each case. |#
   (environment-link-name destination source 'cref/generate-all)
   (environment-link-name destination source 'cref/generate-constructors)
   (environment-link-name destination source 'cref/generate-cref)
+  (environment-link-name destination source 'cref/generate-cref-unusual)
   (environment-link-name destination source 'cref/generate-trivial-constructor))
 
 (package/add-child!
@@ -96,11 +98,16 @@ MIT in each case. |#
  (find-package '(cross-reference))
  'formatter
  (in-package (package/environment (find-package '(cross-reference)))
-   (let ((format-packages))
+   (let ((format-packages)
+	 (format-packages-unusual))
      (the-environment))))
 (let ((source (package/environment (find-package '(cross-reference formatter))))
       (destination (package/environment (find-package '(cross-reference)))))
-  (environment-link-name destination source 'format-packages))
+  (environment-link-name destination source 'format-packages)
+  (environment-link-name destination source 'format-packages-unusual)
+  (environment-link-name source
+			 (package/environment (find-package '(runtime scode)))
+			 'symbol-name))
 
 (package/add-child!
  (find-package '(cross-reference))
