@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-syntax.scm,v 1.11 2000/05/22 15:25:20 cph Exp $
+;;; $Id: imap-syntax.scm,v 1.12 2000/07/05 00:20:36 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -362,28 +362,30 @@
 
 ;;;; Mailbox-name encoding (modified UTF-7)
 
-(define (imap:encode-mailbox-name string start end)
-  (let ((n
-	 (let loop ((start start) (n 0))
-	   (let ((index
-		  (substring-find-next-char-in-set
-		   string start end imap:char-set:mailbox-name-encoded)))
-	     (if index
-		 (let ((n (fix:+ n (fix:+ (fix:- index start) 2))))
-		   (let ((index*
-			  (or (substring-find-next-char-in-set
-			       string (fix:+ index 1) end
-			       imap:char-set:mailbox-name-unencoded)
-			      end)))
-		     (loop index*
-			   (fix:+ n
-				  (let ((m (fix:- index* index)))
-				    (if (and (fix:= m 1)
-					     (char=? (string-ref string index)
-						     #\&))
-					0
-					(integer-ceiling (fix:* 8 m) 6)))))))
-		 (fix:+ n (fix:- end start)))))))
+(define (imap:encode-mailbox-name string #!optional start end)
+  (let* ((start (if (default-object? start) 0 start))
+	 (end (if (default-object? end) (string-length string) end))
+	 (n
+	  (let loop ((start start) (n 0))
+	    (let ((index
+		   (substring-find-next-char-in-set
+		    string start end imap:char-set:mailbox-name-encoded)))
+	      (if index
+		  (let ((n (fix:+ n (fix:+ (fix:- index start) 2))))
+		    (let ((index*
+			   (or (substring-find-next-char-in-set
+				string (fix:+ index 1) end
+				imap:char-set:mailbox-name-unencoded)
+			       end)))
+		      (loop index*
+			    (fix:+ n
+				   (let ((m (fix:- index* index)))
+				     (if (and (fix:= m 1)
+					      (char=? (string-ref string index)
+						      #\&))
+					 0
+					 (integer-ceiling (fix:* 8 m) 6)))))))
+		  (fix:+ n (fix:- end start)))))))
     (let ((s (make-string n)))
       (let loop ((start start) (j 0))
 	(let ((index
@@ -407,11 +409,13 @@
 		    (loop index* (fix:+ j 1))))))))
       s)))
 
-(define (imap:decode-mailbox-name string start end)
-  (let ((lose
-	 (lambda ()
-	   (error "Malformed encoded mailbox name:"
-		  (substring string start end)))))
+(define (imap:decode-mailbox-name string #!optional start end)
+  (let* ((start (if (default-object? start) 0 start))
+	 (end (if (default-object? end) (string-length string) end))
+	 (lose
+	  (lambda ()
+	    (error "Malformed encoded mailbox name:"
+		   (substring string start end)))))
     (let ((n
 	   (let loop ((start start) (n 0))
 	     (let ((index (substring-find-next-char string start end #\&)))
