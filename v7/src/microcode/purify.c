@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: purify.c,v 9.55 1995/07/27 00:20:04 adams Exp $
+$Id: purify.c,v 9.56 1997/07/15 20:57:06 adams Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -545,4 +545,5 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_primitive_purify, 3, 3, 0)
  Pushed ();
   PRIMITIVE_ABORT (PRIM_APPLY);
   /*NOTREACHED*/
+  return (0);
 }
