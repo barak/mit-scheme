@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/const.h,v 9.22 1987/02/04 17:49:56 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/const.h,v 9.23 1987/04/03 00:10:08 jinx Exp $
  *
  * Named constants used throughout the interpreter
  *
@@ -50,36 +50,17 @@ MIT in each case. */
 
 #define NIL			Make_Non_Pointer(TC_NULL, 0)
 #define TRUTH			Make_Non_Pointer(TC_TRUE, 0)
-#define UNASSIGNED_OBJECT 	Make_Non_Pointer(TC_UNASSIGNED, UNASSIGNED)
-#define UNBOUND_OBJECT		Make_Non_Pointer(TC_UNASSIGNED, UNBOUND)
-#define UNCOMPILED_VARIABLE	Make_Non_Pointer(UNCOMPILED_REF, 0)
 #define FIXNUM_0		Make_Non_Pointer(TC_FIXNUM, 0)
-#define LOCAL_REF_0		Make_Non_Pointer(LOCAL_REF, 0)
 #define BROKEN_HEART_0		Make_Non_Pointer(TC_BROKEN_HEART, 0)
 #define STRING_0		Make_Non_Pointer(TC_CHARACTER_STRING, 0)
 
 #else				/* 32 bit word */
 #define NIL			0x00000000
 #define TRUTH			0x08000000
-#define UNASSIGNED_OBJECT 	0x32000000
-#define UNBOUND_OBJECT		0x32000001
-#define UNCOMPILED_VARIABLE	0x08000000
 #define FIXNUM_0		0x1A000000
-#define LOCAL_REF_0		0x00000000
 #define BROKEN_HEART_0		0x22000000
 #define STRING_0		0x1E000000
 #endif				/* b32 */
-
-/* Some names for flag values */
-
-#define SET_IT			0	/* Lookup */
-#define CLEAR_IT		1
-#define READ_IT			2
-#define TEST_IT			3
-
-#define FOUND_SLOT              1	/* Slot lookup */
-#define NO_SLOT                 2
-#define FOUND_UNBOUND           4
 
 #define NOT_THERE 		-1	/* Command line parser */
 
@@ -99,7 +80,13 @@ MIT in each case. */
 					   occurs */
 #endif
 
-#define FILE_CHANNELS		15
+/* Some versions of stdio define this. */
+#ifndef _NFILE
+#define _NFILE		15
+#endif
+
+#define FILE_CHANNELS		_NFILE
+
 #define MAX_LIST_PRINT		10
 
 #define ILLEGAL_PRIMITIVE	-1
@@ -110,14 +97,9 @@ MIT in each case. */
 #define LENGTH_MULTIPLIER	5
 #define SHIFT_AMOUNT		2
 
-/* For looking up variable definitions */
-
-#define UNCOMPILED_REF		TC_TRUE
-#define GLOBAL_REF		TC_UNINTERNED_SYMBOL
-#define FORMAL_REF		TC_FIXNUM
-#define AUX_REF			TC_ENVIRONMENT
-#define LOCAL_REF		TC_NULL
-/* LOCAL_REF must be 0 in order for code in interpret.c to work fast */
+/* Last immediate reference trap. */
+				    
+#define TRAP_MAX_IMMEDIATE	9
 
 /* For headers in pure / constant area */
 
@@ -160,21 +142,25 @@ MIT in each case. */
 /* VMS preprocessor does not like line continuations in conditionals */
 
 #define Are_The_Constants_Incompatible					\
-((TC_NULL != 0x00) || (TC_TRUE != 0x08) || (TC_UNASSIGNED != 0x32) ||	\
- (UNASSIGNED != 0) || (UNBOUND != 1) || (UNCOMPILED_REF != 0x08) ||	\
+((TC_NULL != 0x00) || (TC_TRUE != 0x08) ||				\
  (TC_FIXNUM != 0x1A) || (TC_BROKEN_HEART != 0x22) || 			\
- (TC_CHARACTER_STRING != 0x1E) || (LOCAL_REF != 0x00))
+ (TC_CHARACTER_STRING != 0x1E))
 
 /* The values used above are in sdata.h and types.h,
    check for consistency if the check below fails. */
 
 #if Are_The_Constants_Incompatible
-#include "Error: disagreement in const.h"
+#include "Error: const.h and types.h disagree"
 #endif 
 
 /* These are the only entries in Registers[] needed by the microcode.
    All other entries are used only by the compiled code interface. */
 
-#define REGBLOCK_MEMTOP 0
-#define REGBLOCK_STACKGUARD 1
-#define REGBLOCK_MINIMUM_LENGTH 2
+#define REGBLOCK_MEMTOP			0
+#define REGBLOCK_STACKGUARD		1
+#define REGBLOCK_VAL			2
+#define REGBLOCK_ENV			3
+#define REGBLOCK_TEMP			4
+#define REGBLOCK_EXPR			5
+#define REGBLOCK_RETURN			6
+#define REGBLOCK_MINIMUM_LENGTH		7

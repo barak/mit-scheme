@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.26 1987/02/08 23:06:34 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.27 1987/04/03 00:17:25 jinx Exp $ */
 
 /* Memory management top level.
 
@@ -110,7 +110,9 @@ int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
   /* Allocate */
   Highest_Allocated_Address = 
     Allocate_Heap_Space(Stack_Allocation_Size(Our_Stack_Size) + 
-	                2*Our_Heap_Size + Our_Constant_Size);
+	                (2 * Our_Heap_Size) +
+			Our_Constant_Size +
+			HEAP_BUFFER_SPACE);
 
   /* Consistency check 2 */
   if (Heap == NULL)
@@ -119,8 +121,9 @@ int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
   }
 
   /* Initialize the various global parameters */
-  Align_Float(Heap);
-  Unused_Heap = Heap+Our_Heap_Size;
+  Heap += HEAP_BUFFER_SPACE;
+  Initial_Align_Float(Heap);
+  Unused_Heap = Heap + Our_Heap_Size;
   Align_Float(Unused_Heap);
   Constant_Space = Heap + 2*Our_Heap_Size;
   Align_Float(Constant_Space);
@@ -171,14 +174,8 @@ void GCFlip()
    either updates the new copy's CAR with the relocated version of the
    object, or replaces it with NIL.
 
-   This code could be implemented as a GC daemon, just like
-   REHASH-GC-DAEMON, but there is no "good" way of getting Weak_Chain
-   to it.  Note that Weak_Chain points to Old Space unless no weak
-   conses were found.
-
-   This code should be reimplemented so it does not need to look at both
-   old and new space at the same time.  Only the "real" garbage collector
-   should be allowed to do that.
+   Note that this is the only code in the system, besides the inner garbage
+   collector, which looks at both old and new space.
 */
 
 void Fix_Weak_Chain()
@@ -197,13 +194,25 @@ void Fix_Weak_Chain()
         *Scan = Temp;
 	continue;
 
+      case GC_Special:
+	if (Type_Code(Temp) != TC_REFERENCE_TRAP)
+	{
+	  /* No other special type makes sense here. */
+	  goto fail;
+	}
+	if (Datum(Temp) <= TRAP_MAX_IMMEDIATE)
+	{
+	  *Scan = Temp;
+	  continue;
+	}
+	/* Otherwise, it is a pointer.  Fall through */
+
       /* Normal pointer types, the broken heart is in the first word.
          Note that most special types are treated normally here.
 	 The BH code updates *Scan if the object has been relocated.
 	 Otherwise it falls through and we replace it with a full NIL.
 	 Eliminating this assignment would keep old data (pl. of datum).
        */
-
       case GC_Cell:
       case GC_Pair:
       case GC_Triple:
@@ -228,9 +237,9 @@ void Fix_Weak_Chain()
 	*Scan = NIL;
 	continue;
 
-      case GC_Special:
       case GC_Undefined:
       default:			/* Non Marked Headers and Broken Hearts */
+      fail:
         fprintf(stderr,
 		"\nFix_Weak_Chain: Bad Object: Type = 0x%02x; Datum = %x\n",
 		Type_Code(Temp), Datum(Temp));
@@ -321,11 +330,14 @@ void GC()
   return;
 }
 
-/* (GARBAGE_COLLECT SLACK)
-      [Primitive number 0x3A]
+/* (GARBAGE-COLLECT SLACK)
       Requests a garbage collection leaving the specified amount of slack
       for the top of heap check on the next GC.  The primitive ends by invoking
       the GC daemon if there is one.
+
+      This primitive never returns normally.  It always escapes into
+      the interpreter because some of its cached registers (eg. History)
+      have changed.
 */
 
 Built_In_Primitive(Prim_Garbage_Collect, 1, "GARBAGE-COLLECT")
@@ -334,8 +346,11 @@ Built_In_Primitive(Prim_Garbage_Collect, 1, "GARBAGE-COLLECT")
 
   Arg_1_Type(TC_FIXNUM);
   if (Free > Heap_Top)
-  { fprintf(stderr, "\nGC has been delayed too long, and you are truly out of room!\n");
-    fprintf(stderr, "Free=0x%x, MemTop=0x%x, Heap_Top=0x%x\n", Free, MemTop, Heap_Top);
+  { fprintf(stderr,
+	    "\nGC has been delayed too long, and you are out of room!\n");
+    fprintf(stderr,
+	    "Free = 0x%x; MemTop = 0x%x; Heap_Top = 0x%x\n",
+	    Free, MemTop, Heap_Top);
     Microcode_Termination(TERM_NO_SPACE);
   }
   GC_Reserve = Get_Integer(Arg1);
@@ -351,10 +366,14 @@ Built_In_Primitive(Prim_Garbage_Collect, 1, "GARBAGE-COLLECT")
 	   MemTop, GC_Space_Needed);
     Microcode_Termination(TERM_NO_SPACE);
   }
+  Pop_Primitive_Frame(1);
   GC_Daemon_Proc = Get_Fixed_Obj_Slot(GC_Daemon);
   if (GC_Daemon_Proc == NIL)
-    return FIXNUM_0 + (MemTop - Free);
-  Pop_Primitive_Frame(1);
+  {
+    Val = Make_Unsigned_Fixnum(MemTop - Free);
+    longjmp( *Back_To_Eval, PRIM_POP_RETURN);
+    /*NOTREACHED*/
+  }
  Will_Push(CONTINUATION_SIZE + (STACK_ENV_EXTRA_SLOTS+1));
   Store_Return(RC_NORMAL_GC_DONE);
   Store_Expression(FIXNUM_0 + (MemTop - Free));

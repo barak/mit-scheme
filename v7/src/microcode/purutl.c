@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purutl.c,v 9.26 1987/02/09 00:37:58 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purutl.c,v 9.27 1987/04/03 00:19:50 jinx Exp $ */
 
 /* Pure/Constant space utilities. */
 
@@ -121,7 +121,6 @@ Pointer Object;
 }
 
 /* (IMPURIFY OBJECT)
-      [Primitive number 0xBD]
 */
 Built_In_Primitive(Prim_Impurify, 1, "IMPURIFY")
 { Pointer Result;
@@ -166,7 +165,6 @@ fast Pointer *Obj_Address;
 }
 
 /* (PURE? OBJECT)
-      [Primitive number 0xBB]
       Returns #!TRUE if the object is pure (ie it doesn't point to any
       other object, or it is in a pure section of the constant space).
 */
@@ -186,7 +184,6 @@ Built_In_Primitive(Prim_Pure_P, 1, "PURE?")
 }
 
 /* (CONSTANT? OBJECT)
-      [Primitive number 0xBA]
       Returns #!TRUE if the object is in constant space or isn't a
       pointer.
 */
@@ -201,7 +198,6 @@ Built_In_Primitive(Prim_Constant_P, 1, "CONSTANT?")
 }
 
 /* (GET-NEXT-CONSTANT)
-      [Primitive number 0xE4]
       Returns the next free address in constant space.
 */
 Built_In_Primitive(Prim_Get_Next_Constant, 0, "GET-NEXT-CONSTANT")
@@ -227,7 +223,7 @@ long nobjects;
   Pointer *result;
 
   dest = Free_Constant;
-  if (!Test_Pure_Space_Top(dest+nobjects+6))
+  if (!Test_Pure_Space_Top(dest + nobjects + 6))
   { fprintf(stderr,
 	    "copy_to_constant_space: Not enough constant space!\n");
     Microcode_Termination(TERM_NO_SPACE);

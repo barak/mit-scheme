@@ -30,35 +30,31 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/types.h,v 9.21 1987/01/22 14:34:14 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/types.h,v 9.22 1987/04/03 00:21:38 jinx Exp $
  *
  * Type code definitions, numerical order
  *
  */
 
 #define TC_NULL	                	0x00
-#define TC_FALSE	        	0x00
-#define TC_MANIFEST_VECTOR		0x00
-#define GLOBAL_ENV			0x00
-
 #define TC_LIST				0x01
 #define TC_CHARACTER			0x02
 #define	TC_SCODE_QUOTE                 	0x03
-#define TC_PCOMB2			0x04 /* Was 0x44 */
+#define TC_PCOMB2			0x04
 #define TC_UNINTERNED_SYMBOL		0x05
 #define TC_BIG_FLONUM			0x06
 #define TC_COMBINATION_1		0x07
 #define TC_TRUE				0x08
 #define TC_EXTENDED_PROCEDURE		0x09
-#define TC_VECTOR			0x0A /* Was 0x46 */
-#define TC_RETURN_CODE 			0x0B /* Was 0x48 */
+#define TC_VECTOR			0x0A
+#define TC_RETURN_CODE 			0x0B
 #define TC_COMBINATION_2		0x0C
-#define TC_COMPILED_PROCEDURE		0x0D /* Was 0x49 */
+#define TC_COMPILED_PROCEDURE		0x0D
 #define TC_BIG_FIXNUM			0x0E
 #define TC_PROCEDURE			0x0F
 #define TC_PRIMITIVE_EXTERNAL		0x10
 #define TC_DELAY			0x11
-#define TC_ENVIRONMENT			0x12 /* Was 0x4E */
+#define TC_ENVIRONMENT			0x12
 #define TC_DELAYED			0x13
 #define TC_EXTENDED_LAMBDA		0x14
 #define TC_COMMENT			0x15
@@ -67,54 +63,49 @@ MIT in each case. */
 #define TC_PRIMITIVE			0x18
 #define TC_SEQUENCE_2			0x19
 
-#define TC_FIXNUM			0x1A /* Was 0x50 */
-#define TC_ADDRESS			0x1A
-	/* Notice that TC_FIXNUM and TC_ADDRESS are the same */
+#define TC_FIXNUM			0x1A
 #define TC_PCOMB1			0x1B
-#define TC_CONTROL_POINT		0x1C /* Was 0x56 */
+#define TC_CONTROL_POINT		0x1C
 #define TC_INTERNED_SYMBOL		0x1D
 #define TC_CHARACTER_STRING		0x1E
-#define TC_VECTOR_8B			0x1E
-	/* VECTOR_8B and STRING are the same */
 #define TC_ACCESS			0x1F
-#define TC_EXTENDED_FIXNUM		0x20 /* Not used */
+/* UNUSED				0x20 */ /* Used to be EXTENDED_FIXNUM. */
 #define TC_DEFINITION			0x21
-#define TC_BROKEN_HEART			0x22 /* Was 0x58 */
+#define TC_BROKEN_HEART			0x22
 #define TC_ASSIGNMENT			0x23
 #define TC_HUNK3			0x24
 #define TC_IN_PACKAGE			0x25
-#define TC_COMBINATION			0x26 /* Was 0x5E */
-#define TC_MANIFEST_NM_VECTOR		0x27 /* Was 0x60 */
+#define TC_COMBINATION			0x26
+#define TC_MANIFEST_NM_VECTOR		0x27
 #define TC_COMPILED_EXPRESSION		0x28
 #define TC_LEXPR			0x29
-#define TC_PCOMB3  			0x2A /* Was 0x66 */
-#define TC_MANIFEST_SPECIAL_NM_VECTOR	0x2B /* Was 0x68 */
+#define TC_PCOMB3  			0x2A
+#define TC_MANIFEST_SPECIAL_NM_VECTOR	0x2B
 #define TC_VARIABLE			0x2C
-#define TC_THE_ENVIRONMENT		0x2D /* Was 0x70 */
+#define TC_THE_ENVIRONMENT		0x2D
 #define TC_FUTURE			0x2E
-#define TC_VECTOR_1B			0x2F /* Was 0x76 */
-#define TC_BIT_STRING			0x2F /* Was 0x76 */
-         /* Notice TC_VECTOR_1B and TC_BIT_STRING are the same */
-#define TC_PCOMB0			0x30 /* Was 0x78 */
-#define TC_VECTOR_16B			0x31 /* Was 0x7E */
-#define TC_UNASSIGNED			0x32 /* Was 0x38 */
-#define TC_SEQUENCE_3			0x33 /* Was 0x3C */
+#define TC_VECTOR_1B			0x2F
+#define TC_PCOMB0			0x30
+#define TC_VECTOR_16B			0x31
+#define TC_REFERENCE_TRAP		0x32 /* Used to be UNASSIGNED. */
+#define TC_SEQUENCE_3			0x33
 #define TC_CONDITIONAL			0x34
 #define TC_DISJUNCTION			0x35
 #define TC_CELL				0x36
 #define TC_WEAK_CONS			0x37
-#define TC_TRAP				0x38
+#define TC_QUAD				0x38 /* Used to be TC_TRAP. */
 #define TC_RETURN_ADDRESS		0x39
 #define TC_COMPILER_LINK		0x3A
 #define TC_STACK_ENVIRONMENT		0x3B
 #define TC_COMPLEX			0x3C
 
-#if defined(MC68020)
-
-#define TC_PEA_INSTRUCTION		0x48
-#define TC_JMP_INSTRUCTION		0x4E
-#define TC_DBF_INSTRUCTION		0x51
-
-#endif
-
 /* If you add a new type, don't forget to update gccode.h and gctype.c */
+
+/* Aliases */
+
+#define TC_FALSE	        	TC_NULL
+#define TC_MANIFEST_VECTOR		TC_NULL
+#define GLOBAL_ENV			TC_NULL
+#define TC_BIT_STRING			TC_VECTOR_1B
+#define TC_VECTOR_8B			TC_CHARACTER_STRING
+#define TC_ADDRESS			TC_FIXNUM

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.22 1987/02/08 23:08:27 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.23 1987/04/03 00:11:43 jinx Exp $
  *
  * External declarations.
  *
@@ -67,12 +67,12 @@ extern int debug_slotno, debug_nslots, local_slotno, local_nslots,
 #define Fluids_Debug		false
 #endif
 
+/* The register block */
+
+extern Pointer Registers[];
+
 extern Pointer
-  Env,		 	/* The environment */
-  Ext_Val,		/* The value returned from primitives or apply */
-  Return,		/* The return address code */
-  Ext_Expression,	/* Expression to EVALuate */
- *History,              /* History register */
+ *Ext_History,		/* History register */
  *Free,			/* Next free word in heap */
  *MemTop,		/* Top of heap space available */
  *Ext_Stack_Pointer,	/* Next available slot in control stack */
@@ -81,10 +81,10 @@ extern Pointer
  *Free_Stacklets,	/* Free list of stacklets */
  *Constant_Space,	/* Bottom of constant+pure space */
  *Free_Constant,	/* Next free cell in constant+pure area */
- *Unused_Heap,		/* Bottom of unused heap for GC */
- *Unused_Heap_Top,	/* Top of unused heap for GC */
  *Heap_Top,		/* Top of current heap space */
  *Heap_Bottom,		/* Bottom of current heap space */
+ *Unused_Heap_Top,	/* Top of unused heap for GC */
+ *Unused_Heap,		/* Bottom of unused heap for GC */
  *Local_Heap_Base,	/* Per-processor CONSing area */
  *Heap,			/* Bottom of all heap space */
   Current_State_Point,	/* Dynamic state point */
@@ -139,18 +139,6 @@ extern char **Saved_argv;
 extern char *OS_Name, *OS_Variant;
 extern long Heap_Size, Constant_Size, Stack_Size;
 extern Pointer *Highest_Allocated_Address;
-
-/* External primitive data */
-
-typedef struct ext_desc	/* User supplied primitive data */
-{ Pointer (*proc)();	/* Location of actual procedure */
-  int arity;		/* Number of arguments */
-  char *name;		/* Name of primitive */
-} External_Descriptor;
-
-extern External_Descriptor Ext_Prim_Desc[];
-extern long MAX_EXTERNAL_PRIMITIVE, Get_Ext_Number();
-extern Pointer Undefined_Externals, Make_Prim_Exts();
 
 /* String utilities */
 
@@ -207,10 +195,6 @@ extern Pointer (*(Primitive_Table[]))(), *Make_Dummy_History(),
 extern void Back_Trace(), Handle_Debug_Flags(),
             Find_Symbol(), Show_Env(), Show_Pure(), 
 	    Print_Return(), Print_Expression(), Print_Primitive();
-
-/* Compiler Stuff */
-
-extern Pointer Registers[];
 
 /* Conditional utilities */
 

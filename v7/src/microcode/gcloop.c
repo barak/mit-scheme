@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gcloop.c,v 9.23 1987/02/08 23:09:10 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gcloop.c,v 9.24 1987/04/03 00:13:50 jinx Rel $
  *
  * This file contains the code for the most primitive part
  * of garbage collection.
@@ -50,6 +50,12 @@ Code
 
 #define Setup_Pointer_for_GC(Extra_Code)			\
 GC_Pointer(Setup_Pointer(true, Extra_Code))
+
+#ifdef ENABLE_DEBUGGING_TOOLS
+static Pointer *gc_scan_trap = NULL;
+static Pointer *gc_free_trap = NULL;
+static Pointer gc_trap = Make_Non_Pointer(TC_REFERENCE_TRAP, TRAP_MAX_IMMEDIATE);
+#endif
 
 Pointer
 *GCLoop(Scan, To_Pointer)
@@ -59,28 +65,15 @@ Pointer **To_Pointer;
 
   To = *To_Pointer;
   Low_Constant = Constant_Space;
-  if (GC_Debug)
-  { fprintf(stderr, "Starting scan at 0x%08x\n", Scan);
-    if (Low_Watch == ((Pointer *) NULL))
-    { fprintf(stderr, "Enter low watch range and high watch range: ");
-      scanf("%x %x", &Low_Watch, &High_Watch);
-    }
-  }
-
   for ( ; Scan != To; Scan++)
   { Temp = *Scan;
 
-    if (GC_Debug)
-    { In_Range = (((Scan >= Low_Watch) && (Scan <= High_Watch)) ||
-		  ((Free >= Low_Watch) && (Free <= High_Watch)));
-      if (In_Range)
-	fprintf(stderr,  "0x%08x: %02x|%06x ... ",
-	       Scan, Type_Code(Temp), Get_Integer(Temp));
+#ifdef ENABLE_DEBUGGING_TOOLS
+    if ((Temp == gc_trap) || (Scan == gc_scan_trap) || (To == gc_free_trap))
+    {
+      fprintf(stderr, "\nGCLoop: trap.\n");
     }
-
-/* GCLoop continues on the next page */
-
-/* GCLoop, continued */
+#endif
 
     Switch_by_GC_Type(Temp)
     { case TC_BROKEN_HEART:
@@ -94,12 +87,9 @@ Pointer **To_Pointer;
       case TC_MANIFEST_NM_VECTOR:
       case TC_MANIFEST_SPECIAL_NM_VECTOR:
 	Scan += Get_Integer(Temp);
-	if (GC_Debug && In_Range)
-	  fprintf(stderr,  "skipping %d cells.", Get_Integer(Temp));
 	break;
 
       case_Non_Pointer:
-	if (GC_Debug && In_Range) fprintf(stderr, "not a pointer.");
 	break;
 
       case_compiled_entry_point:
@@ -110,23 +100,26 @@ Pointer **To_Pointer;
       case_Cell:
 	Setup_Pointer_for_GC(Transport_Cell());
 
+      case TC_REFERENCE_TRAP:
+	if (Datum(Temp) <= TRAP_MAX_IMMEDIATE)
+	{
+	  /* It is a non pointer. */
+	  break;
+	}
+	/* It is a pair, fall through. */
       case_Pair:
 	Setup_Pointer_for_GC(Transport_Pair());
 
+      case TC_VARIABLE:
       case_Triple:
 	Setup_Pointer_for_GC(Transport_Triple());
-
-      case TC_VARIABLE:
-	Setup_Pointer_for_GC(Transport_Variable());	
 
 /* GCLoop continues on the next page */
 
 /* GCLoop, continued */
 
-#ifdef QUADRUPLE
       case_Quadruple:
 	Setup_Pointer_for_GC(Transport_Quadruple());
-#endif
 
 #ifdef FLOATING_ALIGNMENT
       case TC_BIG_FLONUM:
@@ -151,7 +144,6 @@ Pointer **To_Pointer;
 	Invalid_Type_Code();
 
       }	/* Switch_by_GC_Type */
-    if (GC_Debug && In_Range) fprintf(stderr, "\n");
   } /* For loop */
   *To_Pointer = To;
   return To;

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.24 1987/02/09 00:34:50 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.25 1987/04/03 00:19:30 jinx Exp $
  *
  * This file contains the code that copies objects into pure
  * and constant space.
@@ -64,7 +64,7 @@ Purify_Pointer(Setup_Pointer(false, Extra_Code))
 #define Indirect_BH(In_GC)					\
 if (Type_Code(*Old) == TC_BROKEN_HEART) continue;	  
 
-#define Transport_Indirect()					\
+#define Transport_Vector_Indirect()				\
 Real_Transport_Vector();					\
 *Get_Pointer(Temp) = New_Address
 
@@ -108,27 +108,37 @@ int GC_Mode;
 
 /* PurifyLoop, continued */
 
+      /*
+	Symbols, variables, and reference traps cannot be put into
+	pure space.  The strings contained in the first two can, on the
+	other hand.
+       */
+
+      case TC_REFERENCE_TRAP:
+	if ((Datum(Temp) <= TRAP_MAX_IMMEDIATE) || (GC_Mode == PURE_COPY))
+	{
+	  /* It is a non pointer. */
+	  break;
+	}
+	goto purify_pair;
+
       case TC_INTERNED_SYMBOL:
       case TC_UNINTERNED_SYMBOL:
 	if (GC_Mode == PURE_COPY)
         { Temp = Vector_Ref(Temp, SYMBOL_NAME);
 	  Purify_Pointer(Setup_Internal(false,
-					Transport_Indirect(),
+					Transport_Vector_Indirect(),
 					Indirect_BH(false)));
 	}
 	/* Fall through */
       case_Fasdump_Pair:
+      purify_pair:
 	Setup_Pointer_for_Purify(Transport_Pair());
 
       case TC_WEAK_CONS:
 	Setup_Pointer_for_Purify(Transport_Weak_Cons());
 
-/* Because variables no longer contain pointers (except for the symbol),
-   they are permitted into pure space now.  */
-
       case TC_VARIABLE:
-	Setup_Pointer_for_Purify(Purify_Transport_Variable());
-
       case_Triple:
 	Setup_Pointer_for_Purify(Transport_Triple());
 
@@ -136,10 +146,8 @@ int GC_Mode;
 
 /* PurifyLoop, continued */
 
-#ifdef QUADRUPLE
       case_Quadruple:
 	Setup_Pointer_for_Purify(Transport_Quadruple());
-#endif
 
 	/* No need to handle futures specially here, since PurifyLoop
 	   is always invoked after running GCLoop, which will have
@@ -149,7 +157,13 @@ int GC_Mode;
 
       case TC_FUTURE:
       case TC_ENVIRONMENT:
-	if (GC_Mode == PURE_COPY) break;
+	if (GC_Mode == PURE_COPY)
+	{
+	  /* This should actually do an indirect pair transport of
+	     the procedure, at least.
+	   */
+	  break;
+	}
 	/* Fall through */
 #ifndef FLOATING_ALIGNMENT
       case TC_BIG_FLONUM:
@@ -330,7 +344,6 @@ Pointer Info;
 }
 
 /* (PRIMITIVE-PURIFY OBJECT PURE?)
-      [Primitive number 0xB4]
       Copy an object from the heap into constant space.  This requires
       a spare heap, and is tricky to use -- it should only be used
       through the wrapper provided in the Scheme runtime system.
@@ -345,13 +358,18 @@ Pointer Info;
       multiprocessor, this primitive uses the master-gc-loop and it
       should only be used as one would use master-gc-loop i.e. with
       everyone else halted.
+
+      This primitive does not return normally.  It always escapes into
+      the interpreter because some of its cached registers (eg. History)
+      have changed.
 */
 
 Built_In_Primitive(Prim_Primitive_Purify, 2, "PRIMITIVE-PURIFY")
-{ long Saved_Zone;
-  Pointer Object, Lost_Objects, Purify_Result;
-
+{
+  long Saved_Zone;
+  Pointer Object, Lost_Objects, Purify_Result, Daemon;
   Primitive_2_Args();
+
   Save_Time_Zone(Zone_Purify);
   if ((Arg2 != TRUTH) && (Arg2 != NIL))
     Primitive_Error(ERR_ARG_2_WRONG_TYPE);
@@ -362,14 +380,19 @@ Built_In_Primitive(Prim_Primitive_Purify, 2, "PRIMITIVE-PURIFY")
 
   Touch_In_Primitive(Arg1, Object);
   Purify_Result = Purify(Object, Arg2);
-  if (Get_Fixed_Obj_Slot(GC_Daemon) == NIL)
-    return (Purify_Pass_2(Purify_Result));
   Pop_Primitive_Frame(2);
+  Daemon = Get_Fixed_Obj_Slot(GC_Daemon);
+  if (Daemon == NIL)
+  {
+    Val = Purify_Pass_2(Purify_Result);
+    longjmp( *Back_To_Eval, PRIM_POP_RETURN);
+    /*NOTREACHED*/
+  }
   Store_Expression(Purify_Result);
   Store_Return(RC_PURIFY_GC_1);
  Will_Push(CONTINUATION_SIZE + STACK_ENV_EXTRA_SLOTS + 1);
   Save_Cont();
-  Push(Get_Fixed_Obj_Slot(GC_Daemon));
+  Push(Daemon);
   Push(STACK_FRAME_HEADER);
  Pushed();
   longjmp(*Back_To_Eval, PRIM_APPLY); /*NOTREACHED*/

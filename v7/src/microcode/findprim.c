@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.21 1987/01/22 14:11:56 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.22 1987/04/03 00:05:46 jinx Exp $
  *
  * Preprocessor to find and declare user defined primitives.
  *
@@ -298,7 +298,7 @@ boolean check;
 
   fprintf(output, "/%c User defined primitive declarations %c/\n\n",
 	  '*', '*');
-  fprintf(output, "#include \"scheme.h\"\n\n");
+  fprintf(output, "#include \"usrdef.h\"\n\n");
 
   if (max < 0)
   {

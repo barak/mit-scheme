@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/gctype.c,v 9.21 1987/01/22 14:26:35 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/gctype.c,v 9.22 1987/04/03 00:14:08 jinx Exp $
  *
  * This file contains the table which maps between Types and
  * GC Types.
@@ -74,7 +74,7 @@ int GC_Type_Map[MAX_SAFE_TYPE + 1] = {
     GC_Pair,			/* TC_INTERNED_SYMBOL */
     GC_Vector,			/* TC_CHARACTER_STRING,TC_VECTOR_8B */
     GC_Pair,			/* TC_ACCESS */
-    GC_Non_Pointer,		/* TC_EXTENDED_FIXNUM */
+    GC_Undefined,		/* 0x20 */
     GC_Pair,			/* TC_DEFINITION */
     GC_Special,			/* TC_BROKEN_HEART */
     GC_Pair,			/* TC_ASSIGNMENT */
@@ -97,13 +97,13 @@ int GC_Type_Map[MAX_SAFE_TYPE + 1] = {
     GC_Vector,			/* TC_VECTOR_1B,TC_BIT_STRING */
     GC_Non_Pointer,		/* TC_PCOMB0 */
     GC_Vector,			/* TC_VECTOR_16B */
-    GC_Non_Pointer,		/* TC_UNASSIGNED */
+    GC_Special,			/* TC_REFERENCE_TRAP */
     GC_Triple,			/* TC_SEQUENCE_3 */
     GC_Triple,			/* TC_CONDITIONAL */
     GC_Pair,			/* TC_DISJUNCTION */
     GC_Cell,			/* TC_CELL */
     GC_Pair,			/* TC_WEAK_CONS */
-    GC_Triple,			/* TC_TRAP */
+    GC_Quadruple,		/* TC_QUAD */
     GC_Compiled,		/* TC_RETURN_ADDRESS */
     GC_Pair,			/* TC_COMPILER_LINK */
     GC_Non_Pointer,		/* TC_STACK_ENVIRONMENT */
@@ -119,28 +119,16 @@ int GC_Type_Map[MAX_SAFE_TYPE + 1] = {
     GC_Undefined,			/* 0x45 */
     GC_Undefined,			/* 0x46 */
     GC_Undefined,			/* 0x47 */
-#if defined(MC68020)
-    GC_Non_Pointer,		/* TC_PEA_INSTRUCTION */
-#else
     GC_Undefined,			/* 0x48 */
-#endif
     GC_Undefined,			/* 0x49 */
     GC_Undefined,			/* 0x4A */
     GC_Undefined,			/* 0x4B */
     GC_Undefined,			/* 0x4C */
     GC_Undefined,			/* 0x4D */
-#if defined(MC68020)
-    GC_Non_Pointer,		/* TC_JMP_INSTRUCTION */
-#else
     GC_Undefined,			/* 0x4E */
-#endif
     GC_Undefined,			/* 0x4F */
     GC_Undefined,			/* 0x50 */
-#if defined(MC68020)
-    GC_Non_Pointer,		/* TC_DBF_INSTRUCTION */
-#else
     GC_Undefined,			/* 0x51 */
-#endif
     GC_Undefined,			/* 0x52 */
     GC_Undefined,			/* 0x53 */
     GC_Undefined,			/* 0x54 */

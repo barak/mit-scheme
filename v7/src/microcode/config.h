@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.22 1987/02/04 17:50:46 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.23 1987/04/03 00:09:46 jinx Exp $
  *
  * This file contains the configuration information and the information
  * given on the command line on Unix.
@@ -191,6 +191,7 @@ typedef unsigned long Pointer;
    machine where addresses are specified in bytes.  The alignment
    must be an integral multiple of the length of a long, since
    it must pad with an explicit Pointer value.
+   This option is not completely working right now.
 
 */
 
@@ -207,7 +208,7 @@ typedef unsigned long Pointer;
 #define FASL_HP_SPECTRUM	10
 
 /* These (pdp10 and nu) haven't worked in a while.
- * Should be upgraded some day. 
+ * Should be upgraded or flushed some day. 
  */
 
 #ifdef pdp10
@@ -247,8 +248,11 @@ typedef unsigned long Pointer;
 #define MAX_FLONUM_EXPONENT	127
 #define HAS_FLOOR
 #define HAS_FREXP
+
 /* Not on these, however */
+
 #ifdef vms
+
 /* VMS C has not void type, thus make it go away */
 #define void
 /* Name conflict in VMS with system variable */
@@ -270,14 +274,17 @@ if (value != 0) exit(value);						\
 longjmp(Exit_Point, NORMAL_EXIT)
 
 #else /* not a vms */
+
 /* Vax Unix C compiler bug */
+
 #define double_into_fixnum(what, target)				\
       { long For_Vaxes_Sake = (long) what;				\
 	target = Make_Non_Pointer(TC_FIXNUM, For_Vaxes_Sake);		\
       }
+
 #endif /* not vms */
 #endif /* vax */
-
+
 #ifdef hp9000s200	/* and s300, pretty indistinguishable */
 #define Heap_In_Low_Memory
 #define UNSIGNED_SHIFT
@@ -291,7 +298,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define MAX_FLONUM_EXPONENT	1023
 #define HAS_FLOOR
 #define HAS_FREXP
-#define term_type int	/* C compiler bug in GC_Type */
+#define term_type int		/* C compiler bug in GC_Type */
 #endif
 
 #ifdef hp9000s500
@@ -381,7 +388,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 
 #ifdef spectrum
 /* Heap resides in "Quad 1", and hence memory addresses have a 1
-   in the second MSBit. This is taken care of in OBJECT.H, and is
+   in the second MSBit. This is taken care of in object.h, and is
    still considered Heap_In_Low_Memory.
 */
 #define Heap_In_Low_Memory
@@ -408,11 +415,18 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #include "Error: config.h: Unknown configuration."
 #endif
 
+#ifdef noquick
+#define quick
+#else
+#define quick fast
+#endif
+
 #if (ULONG_SIZE == 32)
 #define b32
 #endif
-
+
 /* Default "segment" sizes */
+
 #ifndef STACK_SIZE
 #ifndef USE_STACKLETS
 #define	STACK_SIZE		30	/* Default Kcells for stack */

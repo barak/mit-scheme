@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcl.c,v 9.26 1987/02/12 01:14:59 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcl.c,v 9.27 1987/04/03 00:07:27 jinx Exp $ */
 
 /* bchgcl, bchmmg, bchpur, and bchdmp can replace gcloop, memmag,
    purify, and fasdump, respectively, to provide garbage collection
@@ -195,29 +195,22 @@ Pointer **To_ptr, **To_Address_ptr;
       case_Cell:
 	relocate_normal_pointer(copy_cell(), 1);
 
+      case TC_REFERENCE_TRAP:
+	if (Datum(Temp) <= TRAP_MAX_IMMEDIATE)
+	{
+	  /* It is a non pointer. */
+	  break;
+	}
+	/* It is a pair, fall through. */
       case_Pair:
 	relocate_normal_pointer(copy_pair(), 2);
 
+      case TC_VARIABLE:
       case_Triple:
 	relocate_normal_pointer(copy_triple(), 3);
 
-#ifdef QUADRUPLE
       case_Quadruple:
 	relocate_normal_pointer(copy_quadruple(), 4);
-#endif
-
-      case TC_VARIABLE:
-	relocate_normal_setup();
-	{ Pointer Compiled_Type = Old[VARIABLE_COMPILED_TYPE];
-	  if ((Type_Code(Compiled_Type) == AUX_REF) &&
-	      (!Is_Constant(Get_Pointer(Compiled_Type))) &&
-	      (Type_Code(Vector_Ref(Compiled_Type, 0)) != TC_BROKEN_HEART))
-	  { Old[VARIABLE_COMPILED_TYPE] = UNCOMPILED_VARIABLE;
-	    Old[VARIABLE_OFFSET] = NIL;
-	  }
-	}
-	relocate_normal_transport(copy_triple(), 3);
-	relocate_normal_end();
 
 #ifdef FLOATING_ALIGNMENT
       case TC_BIG_FLONUM:

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbtobin.c,v 9.21 1987/01/22 14:13:43 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbtobin.c,v 9.22 1987/04/03 00:06:48 jinx Exp $
  *
  * This File contains the code to translate portable format binary
  * files to internal format.
@@ -350,22 +350,12 @@ fast Pointer *To;
 /*  Align_Float(To); */
   while (--N >= 0)
   { fscanf(Portable_File, "%2x %lx", &The_Type, &The_Datum);
-    switch((The_Type) & SAFE_TYPE_MASK)
+    switch(The_Type)
     { case CONSTANT_CODE:
-        if (The_Type > MAX_SAFE_TYPE)
-	{ *To = Constant_Table[The_Datum];
-	  Set_Danger_Bit(*To++);
-	  continue;
-	}
 	*To++ = Constant_Table[The_Datum];
 	continue;
 	
       case HEAP_CODE:
-        if (The_Type > MAX_SAFE_TYPE)
-	{ *To = Heap_Table[The_Datum];
-	  Set_Danger_Bit(*To++);
-	  continue;
-	}
 	*To++ = Heap_Table[The_Datum];
 	continue;
 	
@@ -395,6 +385,13 @@ fast Pointer *To;
 	*To++ = Make_Non_Pointer(The_Type, The_Datum);
 	continue;
 
+      case TC_REFERENCE_TRAP:
+	if (The_Datum <= TRAP_MAX_IMMEDIATE)
+	{
+	  *To++ = Make_Non_Pointer(The_Type, The_Datum);
+	  continue;
+	}
+	/* It is a pointer, fall through. */
       default:
 	/* Should be stricter */
 	*To++ = Make_Pointer(The_Type, Relocate(The_Datum));
@@ -500,6 +497,7 @@ long Read_Header_and_Allocate()
   Read_Flags(Flags);
 
   Size = (6 +						/* SNMV */
+	  HEAP_BUFFER_SPACE +
 	  Heap_Count + Heap_Objects +
 	  Constant_Count + Constant_Objects +
 	  Pure_Count + Pure_Objects +
@@ -515,7 +513,9 @@ long Read_Header_and_Allocate()
 	    Program_Name, Size);
     exit(1);
   }
-  return Size;
+  Heap += HEAP_BUFFER_SPACE;
+  Initial_Align_Float(Heap);
+  return (Size - HEAP_BUFFER_SPACE);
 }
 
 do_it()

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.26 1987/03/12 17:45:52 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.27 1987/04/03 00:20:53 jinx Exp $
 
 This file defines the storage for global variables for
 the Scheme Interpreter. */
@@ -44,34 +44,30 @@ the Scheme Interpreter. */
                          /*************/
 
 Pointer
-  Env,		 	/* The environment */
-  Val,		        /* The value returned from primitives or apply */
-  Return,		/* The return address code */
-  Expression,   	/* Expression to EVALuate */
- *History,              /* History register */
+ *Ext_History,		/* History register */
  *Free,			/* Next free word in storage */
  *MemTop,		/* Top of free space available */
- *Stack_Pointer,	/* Next available slot in control stack */
+ *Ext_Stack_Pointer,	/* Next available slot in control stack */
  *Stack_Top,		/* Top of control stack */
  *Stack_Guard,		/* Guard area at end of stack */
  *Free_Stacklets,	/* Free list of stacklets */
  *Constant_Space,	/* Bottom of constant+pure space */
  *Free_Constant,	/* Next free cell in constant+pure area */
- *Unused_Heap_Top, *Unused_Heap,
-			/* Top and bottom of 'other' heap for GC */
- *Heap_Top, *Heap_Bottom, /* Top and bottom of current heap area */
+ *Heap_Top,		/* Top of current heap */
+ *Heap_Bottom,		/* Bottom of current heap */
+ *Unused_Heap_Top,	/* Top of other heap */
+ *Unused_Heap,		/* Bottom of other heap */
  *Local_Heap_Base,	/* Per-processor CONSing area */
  *Heap,			/* Bottom of entire heap */
- Swap_Temp,		/* Used by Swap_Pointers in default.h */
- Lookup_Base,	        /* Slot lookup returns result here */
- Fluid_Bindings=NIL,	/* Fluid bindings AList */
- Current_State_Point=NIL, /* Used by dynamic winder */
- return_to_interpreter,	/* Return address/code left by interpreter
-			   when calling compiled code */
- *last_return_code;	/* Address of the most recent return code in the stack.
+  Current_State_Point = NIL, /* Used by dynamic winder */
+  Fluid_Bindings = NIL,	/* Fluid bindings AList */
+  return_to_interpreter, /* Return address/code left by interpreter
+			    when calling compiled code */
+ *last_return_code,	/* Address of the most recent return code in the stack.
 			   This is only meaningful while in compiled code.
 			   *** This must be changed when stacklets are used. ***
 			 */
+ Swap_Temp;		/* Used by Swap_Pointers in default.h */
 
 long IntCode,		/* Interrupts requesting */
      IntEnb,		/* Interrupts enabled */
@@ -298,30 +294,30 @@ char Arg_Count_Table[] = {
 /* 081 */ (char) 2, /* GREATER-THAN-FIXNUM? */
 /* 082 */ (char) 2, /* GREATER-THAN-BIGNUM? */
 /* 083 */ (char) 1, /* STRING-HASH */
-/* 084 */ (char) 3, /* Sys-PAIR-CONS */
-/* 085 */ (char) 1, /* Sys-PAIR? */
-/* 086 */ (char) 1, /* Sys-PAIR-CAR */
-/* 087 */ (char) 1, /* Sys-PAIR-CDR */
-/* 088 */ (char) 2, /* Sys-PAIR-SET!-CAR */
-/* 089 */ (char) 2, /* Sys-PAIR-SET!-CDR */
+/* 084 */ (char) 3, /* SYS-PAIR-CONS */
+/* 085 */ (char) 1, /* SYS-PAIR? */
+/* 086 */ (char) 1, /* SYS-PAIR-CAR */
+/* 087 */ (char) 1, /* SYS-PAIR-CDR */
+/* 088 */ (char) 2, /* SYS-PAIR-SET!-CAR */
+/* 089 */ (char) 2, /* SYS-PAIR-SET!-CDR */
 /* 08A */ (char) 0, /* unused */
 /* 08B */ (char) 0, /* unused */
 /* 08C */ (char) 2, /* SET-CONTENTS! */
 /* 08D */ (char) 2, /* &MAKE-OBJECT */
-/* 08E */ (char) 1, /* Sys-HUNK3-CXR0 */
-/* 08F */ (char) 2, /* Sys-HUNK3-SET!-CXR0 */
+/* 08E */ (char) 1, /* SYSTEM-HUNK3-CXR0 */
+/* 08F */ (char) 2, /* SYSTEM-HUNK3-SET!-CXR0 */
 /* 090 */ (char) 2, /* MAP-MACHINE-ADDRESS-TO-CODE */
-/* 091 */ (char) 1, /* Sys-HUNK3-CXR1 */
-/* 092 */ (char) 2, /* Sys-HUNK3-SET!-CXR1 */
+/* 091 */ (char) 1, /* SYSTEM-HUNK3-CXR1 */
+/* 092 */ (char) 2, /* SYSTEM-HUNK3-SET!-CXR1 */
 /* 093 */ (char) 2, /* MAP-CODE-TO-MACHINE-ADDRESS */
-/* 094 */ (char) 1, /* Sys-HUNK3-CXR2 */
-/* 095 */ (char) 2, /* Sys-HUNK3-SET!-CXR2 */
+/* 094 */ (char) 1, /* SYSTEM-HUNK3-CXR2 */
+/* 095 */ (char) 2, /* SYSTEM-HUNK3-SET!-CXR2 */
 /* 096 */ (char) 1, /* MAP-PRIMITIVE-ADDRESS-TO-ARITY */
-/* 097 */ (char) 2, /* Sys-LIST-TO-VECTOR */
-/* 098 */ (char) 3, /* Sys-SUBVECTOR-TO-LIST */
-/* 099 */ (char) 1, /* Sys-VECTOR? */
-/* 09A */ (char) 2, /* Sys-VECTOR-REF */
-/* 09B */ (char) 3, /* Sys-VECTOR-SET! */
+/* 097 */ (char) 2, /* SYSTEM-LIST->VECTOR */
+/* 098 */ (char) 3, /* SYSTEM-SUBVECTOR->LIST */
+/* 099 */ (char) 1, /* SYSTEM-VECTOR? */
+/* 09A */ (char) 2, /* SYSTEM-VECTOR-REF */
+/* 09B */ (char) 3, /* SYSTEM-VECTOR-SET! */
 /* 09C */ (char) 1, /* WITH-HISTORY-DISABLED */
 /* 09D */ (char) 0, /* unused */
 /* 09E */ (char) 0, /* unused */
@@ -586,8 +582,8 @@ char Arg_Count_Table[] = {
 /* 192 */ (char) 0, /* RE-MATCH */
 /* 193 */ (char) 0, /* RE-SEARCH-FORWARD */
 /* 194 */ (char) 0, /* RE-SEARCH-BACKWARD */
-/* 195 */ (char) 0, /* SYS-MEMORY-REF */
-/* 196 */ (char) 0, /* SYS-MEMORY-SET */
+/* 195 */ (char) 2, /* SYS-MEMORY-REF */
+/* 196 */ (char) 3, /* SYS-MEMORY-SET! */
 /* 197 */ (char) 2, /* BIT-STRING-FILL-X */
 /* 198 */ (char) 2, /* BIT-STRING-MOVE-X */
 /* 199 */ (char) 2, /* BIT-STRING-MOVEC-X */
@@ -739,7 +735,9 @@ extern Pointer
   Prim_Sys_Set_Cdr(), Prim_Sys_Subvector_To_List(),
   Prim_Sys_Vector(), Prim_Sys_Vector_Ref(),
   Prim_Sys_Vec_Set(), Prim_Sys_Vec_Size(),
-  Prim_System_Clock(), Prim_Temp_Printer(), 
+  Prim_System_Clock(),
+  Prim_System_Memory_Ref(), Prim_System_Memory_Set(),
+  Prim_Temp_Printer(), 
   Prim_Translate_File(),  Prim_Translate_To_Point(),
   Prim_Truncate(), Prim_Truncate_Flonum(), Prim_Truncate_String(),
   Prim_Unassigned_Test(), Prim_Unbound_Test(),
@@ -810,7 +808,7 @@ extern Pointer
   Prim_Tty_Write_Byte(),
   Prim_File_Read_Byte(),
   Prim_File_Write_Byte(),
-#if 0
+#if false
   Prim_And_Gcd(),
   Prim_Save_Screen(),
   Prim_Restore_Screen(),
@@ -829,20 +827,6 @@ extern Pointer
   Prim_Char_To_Syntax_Code(),
   Prim_Quoted_Char_P(),
   Prim_Microcode_Tables_Filename(),
-#if 0
-  Prim_Find_Pascal_Program(),
-  Prim_Execute_Pascal_Program(),
-  Prim_Graphics_Move(),
-  Prim_Graphics_Line(),
-  Prim_Graphics_Pixel(),
-  Prim_Graphics_Set_Drawing_Mode(),
-  Prim_Alpha_Raster_P(),
-  Prim_Toggle_Alpha_Raster(),
-  Prim_Graphics_Raster_P(),
-  Prim_Toggle_Graphics_Raster(),
-  Prim_Graphics_Clear(),
-  Prim_Graphics_Set_Line_Style(),
-#endif
   Prim_Error_Procedure(),
   Prim_Volume_Exists_P(),
   Prim_Re_Char_Set_Adjoin(),
@@ -850,8 +834,6 @@ extern Pointer
   Prim_Re_Match(),
   Prim_Re_Search_Forward(),
   Prim_Re_Search_Backward(),
-  Prim_Sys_Memory_Ref(),
-  Prim_Sys_Memory_Set(),
 
 /* new directory access primitives */
   Prim_working_directory_pathname(),
@@ -1315,8 +1297,8 @@ Pointer (*(Primitive_Table[]))() = {
 /* 192 */ Prim_Re_Match,
 /* 193 */ Prim_Re_Search_Forward,
 /* 194 */ Prim_Re_Search_Backward,
-/* 195 */ Prim_Sys_Memory_Ref,
-/* 196 */ Prim_Sys_Memory_Set,
+/* 195 */ Prim_System_Memory_Ref,
+/* 196 */ Prim_System_Memory_Set,
 /* 197 */ Prim_bit_string_fill_x,
 /* 198 */ Prim_bit_string_move_x,
 /* 199 */ Prim_bit_string_movec_x,
@@ -1351,7 +1333,7 @@ char *Primitive_Names[] = {
 /* 0x05 in hooks */	"APPLY",
 /* 0x06 in hooks */	"SET-INTERRUPT-ENABLES!",
 /* 0x07 in fasload */	"STRING->SYMBOL",
-/* 0x08 in prim */	"GET-WORK",
+/* 0x08 in random */	"GET-WORK",
 /* 0x09 in hooks */	"NON-REENTRANT-CALL-WITH-CURRENT-CONTINUATION",
 /* 0x0A in hooks */	"CURRENT-DYNAMIC-STATE",
 /* 0x0B in hooks */	"SET-CURRENT-DYNAMIC-STATE!",
@@ -1368,7 +1350,7 @@ char *Primitive_Names[] = {
 /* 0x16 in sysprim */	"EXIT",
 /* 0x17 in character */	"CHAR-CODE",
 /* 0x18 in lookup */	"LEXICAL-UNASSIGNED?",
-/* 0x19 in prim */	"INSERT-NON-MARKED-VECTOR!",
+/* 0x19 in random */	"INSERT-NON-MARKED-VECTOR!",
 /* 0x1A in sysprim */	"HALT",
 /* 0x1B in character */	"CHAR->INTEGER",
 /* 0x1C in list */	"MEMQ",
@@ -1397,7 +1379,7 @@ char *Primitive_Names[] = {
 /* 0x2E in vector */	"VECTOR-REF",
 /* 0x2F in hooks */	"SET-CURRENT-HISTORY!",
 /* 0x30 in vector */	"VECTOR-SET!",
-/* 0x31 in prim */	"NON-MARKED-VECTOR-CONS",
+/* 0x31 in random */	"NON-MARKED-VECTOR-CONS",
 /* 0x32 not here */	No_Name,
 /* 0x33 in lookup */	"LEXICAL-UNBOUND?",
 /* 0x34 in character */	"INTEGER->CHAR",
@@ -1502,13 +1484,13 @@ char *Primitive_Names[] = {
 /* 0x8D in prim */	"&MAKE-OBJECT",
 /* 0x8E in hunk */	"SYSTEM-HUNK3-CXR0",
 /* 0x8F in hunk */	"SYSTEM-HUNK3-SET-CXR0!",
-/* 0x90 in prim */	"MAP-MACHINE-ADDRESS-TO-CODE",
+/* 0x90 in random */	"MAP-MACHINE-ADDRESS-TO-CODE",
 /* 0x91 in hunk */	"SYSTEM-HUNK3-CXR1",
 /* 0x92 in hunk */	"SYSTEM-HUNK3-SET-CXR1!",
-/* 0x93 in prim */	"MAP-CODE-TO-MACHINE-ADDRESS",
+/* 0x93 in random */	"MAP-CODE-TO-MACHINE-ADDRESS",
 /* 0x94 in hunk */	"SYSTEM-HUNK3-CXR2",
 /* 0x95 in hunk */	"SYSTEM-HUNK3-SET-CXR2!",
-/* 0x96 in prim */	"PRIMITIVE-PROCEDURE-ARITY",
+/* 0x96 in random */	"PRIMITIVE-PROCEDURE-ARITY",
 /* 0x97 in vector */	"SYSTEM-LIST-TO-VECTOR",
 /* 0x98 in vector */	"SYSTEM-SUBVECTOR-TO-LIST",
 /* 0x99 in vector */	"SYSTEM-VECTOR?",
@@ -1573,10 +1555,10 @@ char *Primitive_Names[] = {
 /* 0xCA in step */	"PRIMITIVE-EVAL-STEP",
 /* 0xCB in step */	"PRIMITIVE-APPLY-STEP",
 /* 0xCC in step */	"PRIMITIVE-RETURN-STEP",
-/* 0xCD in console */	"TTY-READ-CHAR-READY?",
-/* 0xCE in console */	"TTY-READ-CHAR",
-/* 0xCF in console */	"TTY-READ-CHAR-IMMEDIATE",
-/* 0xD0 in console */	"TTY-READ-FINISH",
+/* 0xCD in ttyio */	"TTY-READ-CHAR-READY?",
+/* 0xCE in ttyio */	"TTY-READ-CHAR",
+/* 0xCF in ttyio */	"TTY-READ-CHAR-IMMEDIATE",
+/* 0xD0 in ttyio */	"TTY-READ-FINISH",
 /* 0xD1 in bitstr */	"BIT-STRING-ALLOCATE",
 /* 0xD2 in bitstr */	"MAKE-BIT-STRING",
 /* 0xD3 in bitstr */	"BIT-STRING?",
@@ -1626,10 +1608,10 @@ char *Primitive_Names[] = {
 /* 0xFA in generic */	"SIN",
 /* 0xFB in generic */	"COS",
 /* 0xFC in generic */	"&ATAN",
-/* 0xFD in console */	"TTY-WRITE-CHAR",
-/* 0xFE in console */	"TTY-WRITE-STRING",
-/* 0xFF in console */	"TTY-BEEP",
-/* 0x100 in console */	"TTY-CLEAR",
+/* 0xFD in ttyio */	"TTY-WRITE-CHAR",
+/* 0xFE in ttyio */	"TTY-WRITE-STRING",
+/* 0xFF in ttyio */	"TTY-BEEP",
+/* 0x100 in ttyio */	"TTY-CLEAR",
 /* 0x101 in extern */	"GET-EXTERNAL-COUNTS",
 /* 0x102 in extern */	"GET-EXTERNAL-NAME",
 /* 0x103 in extern */	"GET-EXTERNAL-NUMBER",
@@ -1782,8 +1764,8 @@ char *Primitive_Names[] = {
 /* 0x192 in nihil */      "RE-MATCH",
 /* 0x193 in nihil */      "RE-SEARCH-FORWARD",
 /* 0x194 in nihil */      "RE-SEARCH-BACKWARD",
-/* 0x195 in nihil */      "SYSTEM-MEMORY-REF",
-/* 0x196 in nihil */      "SYSTEM-MEMORY-SET!",
+/* 0x195 in prim */	  "SYSTEM-MEMORY-REF",
+/* 0x196 in prim */	  "SYSTEM-MEMORY-SET!",
 /* 0x197 in bitstr */     "BIT-STRING-FILL!",
 /* 0x198 in bitstr */     "BIT-STRING-MOVE!",
 /* 0x199 in bitstr */     "BIT-STRING-MOVEC!",

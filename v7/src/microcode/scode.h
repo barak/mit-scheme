@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/scode.h,v 9.21 1987/01/22 14:31:54 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/scode.h,v 9.22 1987/04/03 00:20:19 jinx Rel $
  *
  * Format of the SCode representation of programs.  Each of these
  * is described in terms of the slots in the data structure.
@@ -56,7 +56,7 @@ MIT in each case. */
 
 /* COMBINATIONS come in several formats */
 
-/* Non-primitive combinations are vector-like: */
+/* General combinations are vector-like: */
 #define COMB_VECTOR_HEADER	0
 #define COMB_FN_SLOT		1
 #define COMB_ARG_1_SLOT		2
@@ -73,10 +73,7 @@ MIT in each case. */
 #define COMMENT_EXPRESSION	0
 #define COMMENT_TEXT		1
 
-/* COMPILED_CODE_ENTRY operation: */
-#define CCE_BYTE_ADDRESS	0
-
-/* CONDITIONAL operation (used for COND, IF, CONJUNCTION): */
+/* CONDITIONAL operation (used for COND, IF, AND): */
 #define COND_PREDICATE		0
 #define COND_CONSEQUENT		1
 #define COND_ALTERNATIVE	2
@@ -89,13 +86,67 @@ MIT in each case. */
 #define DELAY_OBJECT		0
 #define DELAY_UNUSED		1
 
-/* DISJUNCTION operation (formerly OR): */
+/* DISJUNCTION or OR operation: */
 #define OR_PREDICATE		0
 #define OR_ALTERNATIVE		1
 
+/* EXTENDED_LAMBDA operation:
+ * Support for optional parameters and auxiliary local variables.  The
+ * Extended Lambda is similar to LAMBDA, except that it has an extra
+ * word called the ARG_COUNT.  This contains an 8-bit count of the
+ * number of optional arguments, an 8-bit count of the number of
+ * required (formal) parameters, and a bit to indicate that additional
+ * (rest) arguments are allowed.  The vector of argument names
+ * contains, of course, a size count which allows the calculation of
+ * the number of auxiliary variables required.  Auxiliary variables
+ * are created for any internal DEFINEs which are found at syntax time
+ * in the body of a LAMBDA-like special form.
+ */
+
+#define ELAMBDA_SCODE      0
+#define ELAMBDA_NAMES      1
+#define ELAMBDA_ARG_COUNT  2
+
+/* Masks.  The infomation on the number of each type of argument is
+ * separated at byte boundaries for easy extraction in the 68000 code.
+ */
+
+#define EL_OPTS_MASK		0xFF
+#define EL_FORMALS_MASK		0xFF00
+#define EL_REST_MASK		0x10000
+#define EL_FORMALS_SHIFT	8
+#define EL_REST_SHIFT		16
+
+/* Selectors */
+
+#define Get_Body_Elambda(Addr)  (Fast_Vector_Ref(Addr, ELAMBDA_SCODE))
+#define Get_Names_Elambda(Addr) (Fast_Vector_Ref(Addr, ELAMBDA_NAMES))
+#define Get_Count_Elambda(Addr) (Fast_Vector_Ref(Addr, ELAMBDA_ARG_COUNT))
+#define Elambda_Formals_Count(Addr) \
+     ((((long) Addr) & EL_FORMALS_MASK) >> EL_FORMALS_SHIFT)
+#define Elambda_Opts_Count(Addr) \
+     (((long) Addr) & EL_OPTS_MASK)
+#define Elambda_Rest_Flag(Addr) \
+     ((((long) Addr) & EL_REST_MASK) >> EL_REST_SHIFT)
+
 /* IN-PACKAGE operation: */
 #define IN_PACKAGE_ENVIRONMENT	0
 #define IN_PACKAGE_EXPRESSION	1
+
+/* LAMBDA operation:
+ * Object representing a LAMBDA expression with a fixed number of
+ * arguments.  It consists of a list of the names of the arguments
+ * (the first is the name by which the procedure refers to itself) and
+ * the SCode for the procedure.
+ */
+
+#define LAMBDA_SCODE		0
+#define LAMBDA_FORMALS		1
+
+/* LEXPR
+ * Same as LAMBDA (q.v.) except additional arguments are permitted
+ * beyond those indicated in the LAMBDA_FORMALS list.
+ */
 
 /* Primitive combinations with 0 arguments are not pointers */
 
@@ -122,3 +173,17 @@ MIT in each case. */
 #define SEQUENCE_1		0
 #define SEQUENCE_2		1
 #define SEQUENCE_3		2
+
+/* VARIABLE operation.
+ * Corresponds to a variable lookup or variable reference. Contains the
+ * symbol referenced, and (if it has been compiled) the frame and
+ * offset in the frame in which it was found.  One of these cells is
+ * multiplexed by having its type code indicate one of several modes
+ * of reference: not yet compiled, local reference, formal reference,
+ * auxiliary reference, or global value reference.
+ * There are extra definitions in lookup.h.
+ */
+#define VARIABLE_SYMBOL		0
+#define VARIABLE_FRAME_NO	1
+#define VARIABLE_OFFSET		2
+#define VARIABLE_COMPILED_TYPE	1

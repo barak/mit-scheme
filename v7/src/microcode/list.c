@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/list.c,v 9.21 1987/01/22 14:28:26 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/list.c,v 9.22 1987/04/03 00:16:13 jinx Exp $
  *
  * List creation and manipulation primitives.
  */
@@ -39,7 +39,6 @@ MIT in each case. */
 #include "primitive.h"
 
 /* (CONS LEFT RIGHT)
-      [Primitive number 0x20]
       Creates a pair with left component LEFT and right component
       RIGHT.
 */
@@ -52,7 +51,6 @@ Built_In_Primitive(Prim_Cons, 2, "CONS")
 }
 
 /* (CDR PAIR)
-      [Primitive number 0x22]
       Returns the second element in the pair.  By convention, (CAR
       NIL) is NIL.
 */
@@ -64,7 +62,6 @@ Built_In_Primitive(Prim_Cdr, 1, "CDR")
 }
       
 /* (CAR PAIR)
-      [Primitive number 0x21]
       Returns the first element in the pair.  By convention, (CAR NIL)
       is NIL.
 */
@@ -76,7 +73,6 @@ Built_In_Primitive(Prim_Car, 1, "CAR")
 }
 
 /* (GENERAL_CAR_CDR LIST DIRECTIONS)
-      [Primitive number 0x27]
       DIRECTIONS encodes a string of CAR and CDR operations to be
       performed on LIST as follows:
         1   = NOP	101 = CDAR
@@ -126,7 +122,6 @@ Built_In_Primitive(Prim_Assq, 2, "ASSQ")
 }
 
 /* (LENGTH LIST)
-      [Primitive number 0x5D]
       Returns the number of items in the list.  By convention, (LENGTH
       NIL) is 0.  LENGTH will loop forever if given a circular
       structure.
@@ -145,7 +140,6 @@ Built_In_Primitive(Prim_Length, 1, "LENGTH")
 }
 
 /* (MEMQ ITEM LIST)
-      [Primitive number 0x1C]
       Searches LIST for ITEM, using EQ? as a test.  Returns NIL if it
       is not found, or the [first] tail of LIST whose CAR is ITEM.
 */
@@ -164,7 +158,6 @@ Built_In_Primitive(Prim_Memq, 2, "MEMQ")
 }   
 
 /* (SET_CAR PAIR VALUE)
-      [Primitive number 0x23]
       Stores VALUE in the CAR of PAIR.  Returns (bad style to count on
       this) the previous CAR of PAIR.
 */
@@ -176,7 +169,6 @@ Built_In_Primitive(Prim_Set_Car, 2, "SET-CAR!")
 }
 
 /* (SET_CDR PAIR VALUE)
-      [Primitive number 0x24]
       Stores VALUE in the CDR of PAIR.  Returns (bad style to count on
       this) the previous CDR of PAIR.
 */
@@ -187,8 +179,7 @@ Built_In_Primitive(Prim_Set_Cdr, 2, "SET-CDR!")
   return Swap_Pointers(Nth_Vector_Loc(Arg1, CONS_CDR), Arg2);
 }
 
-/* (PAIR OBJECT)
-      [Primitive number 0x7E]
+/* (PAIR? OBJECT)
       Returns #!TRUE if OBJECT has the type-code LIST (ie if it was
       created by CONS). Return NIL otherwise.
 */
@@ -199,19 +190,21 @@ Built_In_Primitive(Prim_Pair, 1, "PAIR?")
   else return NIL;
 }
 
-/* (SYS_PAIR OBJECT)
-      [Primitive number 0x85]
+/* (SYSTEM-PAIR? OBJECT)
       Returns #!TRUE if the garbage collector type of OBJECT is PAIR.
 */
 Built_In_Primitive(Prim_Sys_Pair, 1, "SYSTEM-PAIR?")
-{ Primitive_1_Arg();
+{
+  Primitive_1_Arg();
+
   Touch_In_Primitive(Arg1, Arg1);
-  if (GC_Type_List(Arg1)) return TRUTH;
-  else return NIL;
+  if (GC_Type_List(Arg1))
+    return TRUTH;
+  else
+    return NIL;
 }
 
-/* (SYS_PAIR_CAR GC-PAIR)
-      [Primitive number 0x86]
+/* (SYSTEM-PAIR-CAR GC-PAIR)
       Same as CAR, but for anything of GC type PAIR.
 */
 Built_In_Primitive(Prim_Sys_Pair_Car, 1, "SYSTEM-PAIR-CAR")
@@ -220,8 +213,7 @@ Built_In_Primitive(Prim_Sys_Pair_Car, 1, "SYSTEM-PAIR-CAR")
   return Vector_Ref(Arg1, CONS_CAR);
 }
 
-/* (SYS_PAIR_CDR GC-PAIR)
-      [Primitive number 0x87]
+/* (SYSTEM-PAIR-CDR GC-PAIR)
       Same as CDR, but for anything of GC type PAIR.
 */
 Built_In_Primitive(Prim_Sys_Pair_Cdr, 1, "SYSTEM-PAIR-CDR")
@@ -230,8 +222,7 @@ Built_In_Primitive(Prim_Sys_Pair_Cdr, 1, "SYSTEM-PAIR-CDR")
   return Vector_Ref(Arg1, CONS_CDR);
 }
 
-/* (SYS_PAIR_CONS TYPE-CODE OBJECT-1 OBJECT-2)
-      [Primitive number 0x84]
+/* (SYSTEM-PAIR-CONS TYPE-CODE OBJECT-1 OBJECT-2)
       Like CONS, but returns an object with the specified type code
       (not limited to type code LIST).
 */
@@ -251,8 +242,7 @@ Built_In_Primitive(Prim_Sys_Pair_Cons, 3, "SYSTEM-PAIR-CONS")
 }
 
 
-/* (SYS_SET_CAR GC-PAIR NEW_CAR)
-      [Primitive number 0x88]
+/* (SYSTEM-PAIR-SET-CAR! GC-PAIR NEW_CAR)
       Same as SET_CAR, but for anything of GC type PAIR.
 */
 Built_In_Primitive(Prim_Sys_Set_Car, 2, "SYSTEM-PAIR-SET-CAR!")
@@ -262,8 +252,7 @@ Built_In_Primitive(Prim_Sys_Set_Car, 2, "SYSTEM-PAIR-SET-CAR!")
   return Swap_Pointers(Nth_Vector_Loc(Arg1, CONS_CAR), Arg2);
 }
 
-/* (SYS_SET_CDR GC-PAIR NEW_CDR)
-      [Primitive number 0x89]
+/* (SYSTEM-PAIR-SET-CDR! GC-PAIR NEW_CDR)
       Same as SET_CDR, but for anything of GC type PAIR.
 */
 Built_In_Primitive(Prim_Sys_Set_Cdr, 2, "SYSTEM-PAIR-SET-CDR!")

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/bintopsb.c,v 9.22 1987/03/12 14:52:23 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/bintopsb.c,v 9.23 1987/04/03 00:05:18 jinx Exp $
  *
  * This File contains the code to translate internal format binary
  * files to portable format.
@@ -43,10 +43,10 @@ MIT in each case. */
 #define Portable_File Output_File
 
 #include "translate.h"
+#include "trap.h"
 
 static Boolean Shuffle_Bytes = false;
-static Boolean Padded_Strings = true;
-static Boolean Dense_Types = true;
+static Boolean upgrade_traps = false;
 
 static Pointer *Mem_Base;
 static long Heap_Relocation, Constant_Relocation;
@@ -117,27 +117,24 @@ char *name;
   }
 }
 
-#define Do_String(Code, Rel, Fre, Scn, Obj, FObj)		\
-{ Old_Address += (Rel);						\
-  Old_Contents = *Old_Address;					\
-  if (Type_Code(Old_Contents) == TC_BROKEN_HEART)		\
-    Mem_Base[(Scn)] =						\
-      Make_New_Pointer((Code), Old_Contents);			\
-  else								\
-  { fast long i;						\
-    Mem_Base[(Scn)] = Make_Non_Pointer((Code), (Obj));		\
-    *Old_Address++ = Make_Non_Pointer(TC_BROKEN_HEART, (Obj));	\
-    (Obj) += 1;							\
-    *(FObj)++ = STRING_0;					\
-    *(FObj)++ = Old_Contents;					\
-    i = Get_Integer(Old_Contents);				\
-    NStrings += 1;						\
-    NChars += (Padded_Strings ?					\
-	       pointer_to_char(i-1) :				\
-	       (1 + pointer_to_char(i-1)));			\
-    while(--i >= 0) *(FObj)++ = *Old_Address++;			\
-  }								\
-  if (Dangerous(This)) Set_Danger_Bit(Mem_Base[(Scn)]);		\
+#define Do_String(Code, Rel, Fre, Scn, Obj, FObj)			\
+{ Old_Address += (Rel);							\
+  Old_Contents = *Old_Address;						\
+  if (Type_Code(Old_Contents) == TC_BROKEN_HEART)			\
+    Mem_Base[(Scn)] =							\
+      Make_New_Pointer((Code), Old_Contents);				\
+  else									\
+  { fast long i;							\
+    Mem_Base[(Scn)] = Make_Non_Pointer((Code), (Obj));			\
+    *Old_Address++ = Make_Non_Pointer(TC_BROKEN_HEART, (Obj));		\
+    (Obj) += 1;								\
+    *(FObj)++ = STRING_0;						\
+    *(FObj)++ = Old_Contents;						\
+    i = Get_Integer(Old_Contents);					\
+    NStrings += 1;							\
+    NChars += pointer_to_char(i-1);					\
+    while(--i >= 0) *(FObj)++ = *Old_Address++;				\
+  }									\
 }
 
 print_a_string(from)
@@ -145,7 +142,6 @@ Pointer *from;
 { fast long len;
   fast char *string;
   long maxlen = pointer_to_char((Get_Integer(*from++))-1);
-  if (!Padded_Strings) maxlen += 1;
   len = Get_Integer(*from++);
   fprintf(Portable_File, "%02x %ld %ld ",
 	  TC_CHARACTER_STRING,
@@ -189,26 +185,25 @@ long val;
   return;
 }
 
-#define Do_Bignum(Code, Rel, Fre, Scn, Obj, FObj)		\
-{ Old_Address += (Rel);						\
-  Old_Contents = *Old_Address;					\
-  if (Type_Code(Old_Contents) == TC_BROKEN_HEART)		\
-    Mem_Base[(Scn)] =						\
-      Make_New_Pointer((Code), Old_Contents);			\
-  else								\
-  { fast long length;						\
-    Mem_Base[(Scn)] = Make_Non_Pointer((Code), (Obj));		\
-    NIntegers += 1;						\
-    NBits += bignum_to_bits(LEN(BIGNUM(Old_Address)));		\
-    *Old_Address++ = Make_Non_Pointer(TC_BROKEN_HEART, (Obj));	\
-    (Obj) += 1;							\
-    *(FObj)++ = Make_Non_Pointer(TC_BIG_FIXNUM, 0);		\
-    *(FObj)++ = Old_Contents;					\
-    for (length = Get_Integer(Old_Contents);			\
-	 --length >= 0;	)					\
-      *(FObj)++ = *Old_Address++;				\
-  }								\
-  if (Dangerous(This)) Set_Danger_Bit(Mem_Base[(Scn)]);		\
+#define Do_Bignum(Code, Rel, Fre, Scn, Obj, FObj)			\
+{ Old_Address += (Rel);							\
+  Old_Contents = *Old_Address;						\
+  if (Type_Code(Old_Contents) == TC_BROKEN_HEART)			\
+    Mem_Base[(Scn)] =							\
+      Make_New_Pointer((Code), Old_Contents);				\
+  else									\
+  { fast long length;							\
+    Mem_Base[(Scn)] = Make_Non_Pointer((Code), (Obj));			\
+    NIntegers += 1;							\
+    NBits += bignum_to_bits(LEN(BIGNUM(Old_Address)));			\
+    *Old_Address++ = Make_Non_Pointer(TC_BROKEN_HEART, (Obj));		\
+    (Obj) += 1;								\
+    *(FObj)++ = Make_Non_Pointer(TC_BIG_FIXNUM, 0);			\
+    *(FObj)++ = Old_Contents;						\
+    for (length = Get_Integer(Old_Contents);				\
+	 --length >= 0;	)						\
+      *(FObj)++ = *Old_Address++;					\
+  }									\
 }
 
 print_a_bignum(from)
@@ -256,22 +251,21 @@ Pointer *from;
   return;
 }
 
-#define Do_Flonum(Code, Rel, Fre, Scn, Obj, FObj)		\
-{ Old_Address += (Rel);						\
-  Old_Contents = *Old_Address;					\
-  if (Type_Code(Old_Contents) == TC_BROKEN_HEART)		\
-    Mem_Base[(Scn)] =						\
-      Make_New_Pointer((Code), Old_Contents);			\
-  else								\
-  { *Old_Address++ = Make_Non_Pointer(TC_BROKEN_HEART, (Obj));	\
-    Mem_Base[(Scn)] = Make_Non_Pointer((Code), (Obj));		\
-    (Obj) += 1;							\
-    *(FObj)++ = Make_Non_Pointer(TC_BIG_FLONUM, 0);		\
-    *((double *) (FObj)) = *((double *) Old_Address);		\
-    (FObj) += float_to_pointer;					\
-    NFlonums += 1;						\
-  }								\
-  if (Dangerous(This)) Set_Danger_Bit(Mem_Base[(Scn)]);		\
+#define Do_Flonum(Code, Rel, Fre, Scn, Obj, FObj)			\
+{ Old_Address += (Rel);							\
+  Old_Contents = *Old_Address;						\
+  if (Type_Code(Old_Contents) == TC_BROKEN_HEART)			\
+    Mem_Base[(Scn)] =							\
+      Make_New_Pointer((Code), Old_Contents);				\
+  else									\
+  { *Old_Address++ = Make_Non_Pointer(TC_BROKEN_HEART, (Obj));		\
+    Mem_Base[(Scn)] = Make_Non_Pointer((Code), (Obj));			\
+    (Obj) += 1;								\
+    *(FObj)++ = Make_Non_Pointer(TC_BIG_FLONUM, 0);			\
+    *((double *) (FObj)) = *((double *) Old_Address);			\
+    (FObj) += float_to_pointer;						\
+    NFlonums += 1;							\
+  }									\
 }
 
 print_a_flonum(val)
@@ -401,28 +395,6 @@ break
 #define Do_Area(Code, Area, Bound, Obj, FObj)			\
   Process_Area(Code, &Area, &Bound, &Obj, &FObj)
 
-#if 0
-
-#ifdef DEBUG
-#define Show_Upgrade(This, New_Type)				\
-  fprintf(stderr, "Upgrading from 0x%02x|%06x to 0x%x\n",       \
-          Type_Code(This), Datum(This), New_Type);
-#else
-#define Show_Upgrade(This, New_Type)
-#endif
-
-#define Upgrade(New_Type)					\
-{ Boolean Was_Dangerous = Dangerous(This);			\
-  Show_Upgrade(This, New_Type);					\
-  if (Dense_Types) goto Bad_Type;				\
-  This = Make_New_Pointer(New_Type, Datum(This));		\
-  if (Was_Dangerous) Set_Danger_Bit(This);			\
-  Mem_Base[*Area] = This;					\
-  break;							\
-}
-
-#endif 0
-
 Process_Area(Code, Area, Bound, Obj, FObj)
 int Code;
 fast long *Area, *Bound;
@@ -456,6 +428,12 @@ fast Pointer **FObj;
 	*Area += 1;
 	break;
 
+      case_compiled_entry_point:
+	fprintf(stderr,
+		"%s: File is not portable: Compiled code.\n",
+		Program_Name);
+	exit(1);
+
       case TC_FIXNUM:
 	NIntegers += 1;
 	NBits += fixnum_to_bits;
@@ -465,10 +443,6 @@ fast Pointer **FObj;
         Mem_Base[*Area] = Make_Non_Pointer(Code, *Obj);
         *Obj += 1;
         **FObj = This;
-	if (Dangerous(This))
-	{ Set_Danger_Bit(Mem_Base[*Area]);
-	  Clear_Danger_Bit(**FObj);
-	}
         *FObj += 1;
 	/* Fall through */
       case TC_MANIFEST_SPECIAL_NM_VECTOR:
@@ -477,15 +451,45 @@ fast Pointer **FObj;
 	*Area += 1;
 	break;
 
-      case_compiled_entry_point:
-	fprintf(stderr,
-		"%s: File is not portable: Compiled code.\n",
-		Program_Name);
-	exit(1);
-
       case_Cell:
 	Do_Pointer(*Area, Do_Cell);
 
+      case TC_REFERENCE_TRAP:
+      {
+	long kind;
+
+	kind = Datum(This);
+
+	if (upgrade_traps)
+	{
+	  /* It is an old UNASSIGNED object. */
+	  if (kind == 0)
+	  {
+	    Mem_Base[*Area] = UNASSIGNED_OBJECT;
+	    *Area += 1;
+	    break;
+	  }
+	  if (kind == 1)
+	  {
+	    Mem_Base[*Area] = UNBOUND_OBJECT;
+	    *Area += 1;
+	    break;
+	  }
+	  fprintf(stderr,
+		  "%s: Bad old unassigned object. 0x%x.\n",
+		  Program_Name, This);
+	  exit(1);
+	}
+	if (kind <= TRAP_MAX_IMMEDIATE)
+	{
+	  /* It is a non pointer. */
+
+	  *Area += 1;
+	  break;
+	}
+      }
+      /* Fall through */
+
       case TC_WEAK_CONS:
       case_Pair:
 	Do_Pointer(*Area, Do_Pair);
@@ -504,55 +508,17 @@ fast Pointer **FObj;
 	Do_Pointer(*Area, Do_String);
 
       case TC_ENVIRONMENT:
+	if (upgrade_traps)
+	{
+	  fprintf(stderr,
+		  "%s: Cannot upgrade environments.\n",
+		  Program_Name);
+	  exit(1);
+	}
+	/* Fall through */
       case TC_FUTURE:
       case_simple_Vector:
 	Do_Pointer(*Area, Do_Vector);
-
-#if 0
-
-/* This should be cleaned up: We can no longer do it like this
-   since we have reused the types.
- */
-
-      case OLD_TC_BROKEN_HEART:
-	Upgrade(TC_BROKEN_HEART);
-      case OLD_TC_SPECIAL_NM_VECTOR:
-	Upgrade(TC_MANIFEST_SPECIAL_NM_VECTOR);
-#if 0
-      case OLD_TC_UNASSIGNED:
-	Upgrade(TC_UNASSIGNED);
-      case OLD_TC_RETURN_CODE:
-	Upgrade(TC_RETURN_CODE); 
-#endif
-      case OLD_TC_PCOMB0:
-	Upgrade(TC_PCOMB0);
-      case OLD_TC_THE_ENVIRONMENT:
-	Upgrade(TC_THE_ENVIRONMENT);
-      case OLD_TC_CHARACTER:
-	Upgrade(TC_CHARACTER);
-      case OLD_TC_FIXNUM:
-	Upgrade(TC_FIXNUM);
-#if 0
-      case OLD_TC_SEQUENCE_3:
-	Upgrade(TC_SEQUENCE_3);
-#endif       
-      case OLD_TC_MANIFEST_NM_VECTOR:
-        Upgrade(TC_MANIFEST_NM_VECTOR);
-      case OLD_TC_VECTOR:
-	Upgrade(TC_VECTOR);
-#if 0
-      case OLD_TC_ENVIRONMENT:
-	Upgrade(TC_ENVIRONMENT);
-#endif
-      case OLD_TC_CONTROL_POINT:
-	Upgrade(TC_CONTROL_POINT);
-      case OLD_TC_COMBINATION:
-	Upgrade(TC_COMBINATION);
-      case OLD_TC_PCOMB3:
-	Upgrade(TC_PCOMB3);
-      case OLD_TC_PCOMB2:
-	Upgrade(TC_PCOMB2);
-#endif 0
 
       default:
       Bad_Type:
@@ -664,10 +630,7 @@ do_it()
 
   if (Machine_Type == FASL_INTERNAL_FORMAT)
     Shuffle_Bytes = false;
-  if (Sub_Version < FASL_PADDED_STRINGS)
-    Padded_Strings = false;
-  if (Sub_Version < FASL_DENSE_TYPES)
-    Dense_Types = false;
+  upgrade_traps = (Sub_Version < FASL_REFERENCE_TRAP);
 
   /* Constant Space not currently supported */
 
@@ -679,10 +642,7 @@ do_it()
   }
 
   { long Size = ((3 * (Heap_Count + Const_Count)) + NROOTS + 1);
-#if 0
-    Size += (FLOATING_ALIGNMENT+1)/sizeof(Pointer);
-#endif
-    Allocate_Heap_Space(Size);
+    Allocate_Heap_Space(Size + HEAP_BUFFER_SPACE);
     if (Heap == NULL)
     { fprintf(stderr,
 	      "%s: Memory Allocation Failed.  Size = %ld Scheme Pointers\n",
@@ -690,9 +650,8 @@ do_it()
       exit(1);
     }
   }
-#if 0
-  Align_Float(Heap);
-#endif
+  Heap += HEAP_BUFFER_SPACE;
+  Initial_Align_Float(Heap);
   Load_Data(Heap_Count, &Heap[0]);
   Load_Data(Const_Count, &Heap[Heap_Count]);
   Heap_Relocation = &Heap[0] - Get_Pointer(Heap_Base);

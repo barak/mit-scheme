@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.h,v 9.21 1987/01/22 14:28:12 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.h,v 9.22 1987/04/03 00:15:49 jinx Exp $
  *
  * Macros used by the interpreter and some utilities.
  *
@@ -40,22 +40,48 @@ MIT in each case. */
                      /* OPEN CODED RACKS */
                      /********************/
 
-#ifndef ENABLE_DEBUGGING_TOOLS
-#ifdef In_Main_Interpreter
-#define Using_Registers
-#endif
-#endif
+/* Move from register to static storage and back */
 
-#ifdef Using_Registers
-#define Val		Reg_Val
+#if defined(In_Main_Interpreter) && !defined(ENABLE_DEBUGGING_TOOLS)
+
+#define Regs		Reg_Block
 #define Stack_Pointer	Reg_Stack_Pointer
-#define Expression	Reg_Expression
+#define History		Reg_History
+
+#define Import_Registers()						\
+{									\
+  Reg_Stack_Pointer = Ext_Stack_Pointer;				\
+  Reg_History = Ext_History;						\
+}
+
+#define Export_Registers()						\
+{									\
+  Ext_History = Reg_History;						\
+  Ext_Stack_Pointer = Reg_Stack_Pointer;				\
+}
+
 #else
-#define Val		Ext_Val
+
+#define Regs		Registers
 #define Stack_Pointer	Ext_Stack_Pointer
-#define Expression	Ext_Expression
+#define History		Ext_History
+
+#define Import_Registers()
+#define Export_Registers()
+
 #endif
 
+#define Import_Val()
+#define Import_Registers_Except_Val()		Import_Registers()
+
+#define Import_Registers_After_Primitive()
+#define Export_Registers_Before_Primitive()	Export_Registers()
+
+#define Env		Regs[REGBLOCK_ENV]
+#define Val		Regs[REGBLOCK_VAL]
+#define Expression	Regs[REGBLOCK_EXPR]
+#define Return		Regs[REGBLOCK_RETURN]
+
 /* Internal_Will_Push is in stack.h. */
 
 #ifdef ENABLE_DEBUGGING_TOOLS
@@ -75,7 +101,7 @@ MIT in each case. */
 
 #define Will_Eventually_Push(N)		Internal_Will_Push(N)
 #define Finished_Eventual_Pushing()	/* No op */
-
+
 /* Primitive stack operations:
  * These operations hide the direction of stack growth.
  * Throw in stack.h, Allocate_New_Stacklet in utils.c, apply, cwcc and
@@ -150,6 +176,10 @@ MIT in each case. */
 #define Store_Return(P)							\
   Return = Make_Non_Pointer(TC_RETURN_CODE, (P))
 
+#define Save_Env()		Push(Env)
+#define Restore_Env()		Env = Pop()
+#define Restore_Then_Save_Env()	Env = Top_Of_Stack()
+
 /* Note: Save_Cont must match the definitions in sdata.h */                                
 
 #define Save_Cont()	{ Push(Expression);				\
@@ -173,48 +203,14 @@ MIT in each case. */
 			                     CONT_PRINT_EXPR_MESSAGE);	\
                             CRLF();					\
                           }
-
-/* Racks operations continue on the next page */
-
-/* Rack operations continued */
-
-#define Save_Env()		Push(Env)
-#define Restore_Env()		Env = Pop()
-#define Restore_Then_Save_Env()	Env = Top_Of_Stack()
-
-/* Move from register to static storage and back */
-
-#ifdef Using_Registers
-#define Import_Val()		Reg_Val = Ext_Val
-
-#define Import_Registers_Except_Val()					\
-				{ Reg_Expression    = Ext_Expression;	\
-				  Reg_Stack_Pointer = Ext_Stack_Pointer;\
-                                }
-
-#define Import_Registers()						\
-				{ Import_Registers_Except_Val();	\
-				  Import_Val();				\
-				}
-
-#define Export_Registers()	{ Ext_Val           = Reg_Val;		\
-				  Ext_Expression    = Reg_Expression;	\
-				  Ext_Stack_Pointer = Reg_Stack_Pointer;\
-                                }
-#else
-#define Import_Val()
-#define Import_Registers()
-#define Import_Registers_Except_Val()
-#define Export_Registers()
-#endif
 
 /* Random utility macros */
 
 #define Pop_Primitive_Frame(NArgs)					\
   Stack_Pointer = Simulate_Popping(NArgs)
 
-#define N_Args_Primitive(Function)					\
-  ((int) Arg_Count_Table[Get_Integer(Function)])
+#define N_Args_Primitive(primitive_code)				\
+  ((int) Arg_Count_Table[primitive_code])
 
 #define Stop_Trapping()							\
 { Trapping = false;							\

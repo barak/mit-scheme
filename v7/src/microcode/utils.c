@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.21 1987/02/02 15:15:54 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.22 1987/04/03 00:22:38 jinx Exp $ */
 
 /* This file contains utilities for interrupts, errors, etc. */
 
@@ -53,20 +53,28 @@ Setup_Interrupt (Masked_Interrupts)
   long Save_Space;
 
   Int_Vector = Get_Fixed_Obj_Slot(System_Interrupt_Vector);
-  for (Int_Number=0, i=1; Int_Number < MAX_INTERRUPT_NUMBER;
-       i = i<<1, Int_Number++) if ((Masked_Interrupts & i) != 0) goto OK;
-  printf("Int_Vector %x\n", Int_Vector);
-  printf("\nInterrupts = 0x%x, Mask= 0x%x, Masked = 0x%x\n",
+
+  for (Int_Number=0, i=1;
+       Int_Number < MAX_INTERRUPT_NUMBER;
+       i = i<<1, Int_Number++)
+    if ((Masked_Interrupts & i) != 0)
+      goto OK;
+
+  fprintf(stderr, "\nInterrupts = 0x%x, Mask= 0x%x, Masked = 0x%x\n",
          IntCode, IntEnb, Masked_Interrupts);
+  fprintf(stderr, "Int_Vector %x\n", Int_Vector);
   Microcode_Termination(TERM_NO_INTERRUPT_HANDLER);
+
 OK:
-  New_Int_Enb = (1<<Int_Number)-1;
+  New_Int_Enb = (1<<Int_Number) - 1;
   Global_Interrupt_Hook();
   if (Int_Number > Vector_Length(Int_Vector))
-  { printf("\nInterrupt out of range: 0x%x (vector length = 0x%x)\n",
-           Int_Number, Vector_Length(Int_Vector));
-    printf("Interrupts = 0x%x, Mask= 0x%x, Masked = 0x%x\n",
-           IntCode, IntEnb, Masked_Interrupts);
+  { fprintf(stderr,
+	    "\nInterrupt out of range: 0x%x (vector length = 0x%x)\n",
+	    Int_Number, Vector_Length(Int_Vector));
+    fprintf(stderr,
+	    "Interrupts = 0x%x, Mask= 0x%x, Masked = 0x%x\n",
+	    IntCode, IntEnb, Masked_Interrupts);
     Microcode_Termination(TERM_NO_INTERRUPT_HANDLER);
   }
   else Handler = User_Vector_Ref(Int_Vector, Int_Number);
@@ -207,21 +215,26 @@ void
 Back_Out_Of_Primitive ()
 {
   long nargs;
+  Pointer expression = Fetch_Expression();
 
   /* When primitives are called from compiled code, the type code may
    * not be in the expression register.
    */
 
-  if (Safe_Type_Code(Fetch_Expression()) == 0)
-    Store_Expression(Make_Non_Pointer(TC_PRIMITIVE, Fetch_Expression()));
+  if (Safe_Type_Code(expression) == 0)
+  {
+    expression = Make_Non_Pointer(TC_PRIMITIVE, expression);
+    Store_Expression(expression);
+  }
 
   /* Setup a continuation to return to compiled code if the primitive is
    * restarted and completes successfully.
    */
 
-  nargs = N_Args_Primitive(Fetch_Expression());
+  nargs = N_Args_Primitive(Get_Integer(expression));
   if (Type_Code(Stack_Ref(nargs)) == TC_RETURN_ADDRESS)
-  { Pointer expression = Fetch_Expression();
+  { 
+    /* This clobbers the expression register. */
     compiler_apply_procedure(nargs);
     Store_Expression(expression);
   }
@@ -515,18 +528,23 @@ Do_Micro_Error (Err, From_Pop_Return)
     Print_Return("Return code");
     printf( "\n");
   }
+
   Error_Exit_Hook();
+
   if (Trace_On_Error)
-  { printf( "\n\nStack trace:\n\n");
+  {
+    printf( "\n**** Stack Trace ****\n\n");
     Back_Trace();
   }
 
 #ifdef ENABLE_DEBUGGING_TOOLS
-{ int *From = &(local_circle[0]), *To = &(debug_circle[0]), i;
-  for (i=0; i < local_nslots; i++) *To++ = *From++;
-  debug_nslots = local_nslots;
-  debug_slotno = local_slotno;
-}
+  {
+    int *From = &(local_circle[0]), *To = &(debug_circle[0]), i;
+
+    for (i=0; i < local_nslots; i++) *To++ = *From++;
+    debug_nslots = local_nslots;
+    debug_slotno = local_slotno;
+  }
 #endif  
 
 /* Do_Micro_Error continues on the next page. */
@@ -537,45 +555,69 @@ Do_Micro_Error (Err, From_Pop_Return)
       (Type_Code((Error_Vector = 
 		  Get_Fixed_Obj_Slot(System_Error_Vector))) !=
        TC_VECTOR))
-  { printf("\nBogus Error Vector! I'm terribly confused!\n");
+  {
+    fprintf(stderr,
+	    "\nMicrocode Error: code = 0x%x; Bad error handlers vector.\n",
+	    Err);
     printf("\n**** Stack Trace ****\n\n");
     Back_Trace();
     Microcode_Termination(TERM_NO_ERROR_HANDLER, Err);
   }
+
   if (Err >= Vector_Length(Error_Vector))
-  { if (Vector_Length(Error_Vector) == 0)
-    { printf("\nEmpty Error Vector! I'm terribly confused!\n");
+  {
+    if (Vector_Length(Error_Vector) == 0)
+    {
+      fprintf(stderr,
+	      "\nMicrocode Error: code = 0x%x; Empty error handlers vector.\n",
+	      Err);
+      printf("\n**** Stack Trace ****\n\n");
+      Back_Trace();
       Microcode_Termination(TERM_NO_ERROR_HANDLER, Err);
     }
     Handler = User_Vector_Ref(Error_Vector, ERR_BAD_ERROR_CODE);
   }
-  else Handler = User_Vector_Ref(Error_Vector, Err);
+  else
+    Handler = User_Vector_Ref(Error_Vector, Err);
+
+  /* This can NOT be folded into the Will_Push below since we cannot
+     afford to have the Will_Push put down its own continuation.
+     There is guaranteed to be enough space for this one
+     continuation; in fact, the Will_Push here is really unneeded!
+   */ 
+
   if (From_Pop_Return)
-  { /* This can NOT be folded into the Will_Push below since we cannot */
-    /* afford to have the Will_Push put down its own continuation. */
-    /* There is guaranteed to be enough space for this one */
-    /* continuation; in fact, the Will_Push here is really unneeded! */ 
+  {
    Will_Push(CONTINUATION_SIZE);
     Save_Cont();
    Pushed();
   }
  Will_Push(STACK_ENV_EXTRA_SLOTS+3+2*CONTINUATION_SIZE+HISTORY_SIZE+
            (From_Pop_Return ? 0 : 1));
-  if (From_Pop_Return) Store_Expression(Val);
-  else Push(Fetch_Env());
-  Store_Return(From_Pop_Return? RC_POP_RETURN_ERROR : RC_EVAL_ERROR);
+
+  if (From_Pop_Return)
+    Store_Expression(Val);
+  else
+    Push(Fetch_Env());
+
+  Store_Return((From_Pop_Return) ?
+	       RC_POP_RETURN_ERROR :
+	       RC_EVAL_ERROR);
   Save_Cont();
+
   /* Return from error handler will re-enable interrupts & restore history */
+
   Stop_History();
   Store_Return(RC_RESTORE_INT_MASK);
   Store_Expression(FIXNUM_0 + IntEnb);
   Save_Cont();
-  Push(FIXNUM_0+IntEnb);		    /* Arg 2:    Int. mask */
-  Push(FIXNUM_0+Err);			    /* Arg 1:    Err. No   */
-  Push(Handler);			    /* Function: Handler   */
+  Push(Make_Unsigned_Fixnum(IntEnb));	 /* Arg 2:     Int. mask */
+  Push(Make_Unsigned_Fixnum(Err));	 /* Arg 1:     Err. No   */
+  Push(Handler);			 /* Procedure: Handler   */
   Push(STACK_FRAME_HEADER+2);
  Pushed();
-  IntEnb = 0;		/* Turn off interrupts */
+
+  IntEnb = 0;				/* Turn off interrupts */
   New_Compiler_MemTop();
 }
 
@@ -704,7 +746,7 @@ Copy_Rib (Orig_Rib)
 /* Restore_History pops a history object off the stack and
    makes a COPY of it the current history collection object.
    This is called only from the RC_RESTORE_HISTORY case in
-   Basmod.
+   interpret.c .
 */
 
 Boolean

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.20 1987/01/21 20:25:11 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.21 1987/04/03 00:18:49 jinx Exp $ */
 
 /* This file contains some macros for defining primitives,
    for argument type or value checking, and for accessing
@@ -58,26 +58,25 @@ Built_In_Primitive(C_Name, Number_of_args, Scheme_Name)		\
 
 #define Primitive_0_Args()
 
-#define Primitive_1_Args()	fast Pointer Arg1 = Stack_Ref(0);\
-				Primitive_0_Args()
+#define Primitive_1_Args()	fast Pointer Arg1 = Stack_Ref(0)
 
-#define Primitive_2_Args()      fast Pointer Arg2 = Stack_Ref(1);\
-				Primitive_1_Args()
+#define Primitive_2_Args()      Primitive_1_Args();			\
+				fast Pointer Arg2 = Stack_Ref(1)
 
-#define Primitive_3_Args()      fast Pointer Arg3 = Stack_Ref(2);\
-				Primitive_2_Args()
+#define Primitive_3_Args()      Primitive_2_Args();			\
+				fast Pointer Arg3 = Stack_Ref(2)
 
-#define Primitive_4_Args()      fast Pointer Arg4 = Stack_Ref(3);\
-				Primitive_3_Args()
+#define Primitive_4_Args()      Primitive_3_Args();			\
+				fast Pointer Arg4 = Stack_Ref(3)
 
-#define Primitive_5_Args()      fast Pointer Arg5 = Stack_Ref(4);\
-				Primitive_4_Args()
+#define Primitive_5_Args()      Primitive_4_Args();			\
+				fast Pointer Arg5 = Stack_Ref(4)
 
-#define Primitive_6_Args()      fast Pointer Arg6 = Stack_Ref(5);\
-				Primitive_5_Args()
+#define Primitive_6_Args()      Primitive_5_Args();			\
+				fast Pointer Arg6 = Stack_Ref(5)
 
-#define Primitive_7_Args()      fast Pointer Arg7 = Stack_Ref(6);\
-				Primitive_6_Args()
+#define Primitive_7_Args()      Primitive_6_Args();			\
+				fast Pointer Arg7 = Stack_Ref(6)
 
 #define Primitive_1_Arg()	Primitive_1_Args()
 

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.22 1987/03/12 17:45:09 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.23 1987/04/03 00:12:33 jinx Exp $
 
    The "fast loader" which reads in and relocates binary files and then
    interns symbols.  It is called with one argument: the (character
@@ -41,6 +41,7 @@ MIT in each case. */
 #include "scheme.h"
 #include "primitive.h"
 #include "gccode.h"
+#include "trap.h"
 
 #define CCheck_or_Reloc_Debug Or2(Consistency_Check, Reloc_Debug)
 #define Reloc_or_Load_Debug   Or2(Reloc_Debug, File_Load_Debug)
@@ -246,7 +247,7 @@ Pointer Name;
 	    "\nLoad_File: FASL File Version %4d Subversion %4d Machine Type %4d.\n",
 	    Version, Sub_Version , Machine_Type);
     fprintf(stderr,
-	    "            Expected: Version %4d Subversion %4d Machine Type %4d.\n",
+	    "           Expected: Version %4d Subversion %4d Machine Type %4d.\n",
 	   FASL_FORMAT_VERSION, FASL_SUBVERSION, FASL_INTERNAL_FORMAT);
 CANNOT_LOAD:
     fclose(File_Handle);
@@ -377,8 +378,15 @@ fast Pointer *Next_Pointer, *Stop_At;
 			 /* THEN FALL THROUGH */
 #endif
 
-      	/* These work automagically */
+      case TC_REFERENCE_TRAP:
+	if (Datum(Temp) <= TRAP_MAX_IMMEDIATE)
+	{
+	  Next_Pointer += 1;
+	  break;
+	}
+	/* It is a pointer, fall through. */
       case_compiled_entry_point:
+      	/* Compiled entry points work automagically. */
       default:
       { fast long Next = Datum(Temp);
 	*Next_Pointer++ = Make_Pointer(Type_Code(Temp), Relocate(Next));
@@ -391,10 +399,7 @@ Intern_Block(Next_Pointer, Stop_At)
 Pointer *Next_Pointer, *Stop_At;
 { if (Reloc_Debug) printf("Interning a block.\n");
   while (Next_Pointer <= Stop_At)	/* BBN has < for <= */
-  { if (Reloc_Debug && Dangerous(*Next_Pointer))
-      printf("\nDangerous object at 0x%x: 0x%x",
-             Next_Pointer, *Next_Pointer);
-    switch (Safe_Type_Code(*Next_Pointer))
+  { switch (Type_Code(*Next_Pointer))
     { case TC_MANIFEST_NM_VECTOR:
         Next_Pointer += Get_Integer(*Next_Pointer)+1;
         break;
@@ -454,8 +459,8 @@ Boolean Normal_FASLoad;
 
 Update_Ext_Prims(Next_Pointer, Stop_At)
 fast Pointer *Next_Pointer, *Stop_At;
-{ for (;Next_Pointer < Stop_At; Next_Pointer++)
-  { switch (Safe_Type_Code(*Next_Pointer))
+{ for ( ; Next_Pointer < Stop_At; Next_Pointer++)
+  { switch (Type_Code(*Next_Pointer))
     { case TC_MANIFEST_NM_VECTOR:
         Next_Pointer += Get_Integer(*Next_Pointer);
         break;

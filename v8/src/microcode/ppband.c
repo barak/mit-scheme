@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/ppband.c,v 9.23 1987/02/11 18:09:32 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/ppband.c,v 9.24 1987/04/03 00:06:29 jinx Exp $
  *
  * Dumps Scheme FASL in user-readable form .
  */
@@ -107,7 +107,7 @@ long From;
 { Pointer *symbol;
   symbol = &Data[From+SYMBOL_NAME];
   if ((symbol >= end_of_memory) ||
-      scheme_string(via(From+SYMBOL_NAME), false))
+      !scheme_string(via(From+SYMBOL_NAME), false))
     printf("symbol not in memory; datum = %x\n", From);
   return;
 }
@@ -153,59 +153,62 @@ long Location, Type, The_Datum;
       return;
     case TC_CHARACTER_STRING: scheme_string(Points_To, true);
                               return;
-    case TC_EXTENDED_FIXNUM: printf("%d\n", The_Datum);
-                             return;
     case TC_FIXNUM: printf("%d\n", Points_To);
                     return;
 
     /* Default cases */
-    case TC_LIST: printf("[CONS "); break;
-    case TC_WEAK_CONS: printf("[WEAK-CONS "); break;
-    case TC_SCODE_QUOTE: printf("[QUOTE "); break;
-    case TC_BIG_FLONUM: printf("[FLONUM "); break;
-    case TC_COMBINATION_1: printf( "[COMB-1 "); break;
-    case TC_EXTENDED_PROCEDURE: printf("[EPROCEDURE "); break;
-    case TC_COMBINATION_2: printf("[COMB-2 "); break;
-    case TC_BIG_FIXNUM: printf("[BIGNUM "); break;
+    case TC_LIST: printf("[LIST "); break;
+    case TC_CHARACTER: printf("[CHARACTER "); break;
+    case TC_SCODE_QUOTE: printf("[SCODE-QUOTE "); break;
+    case TC_PCOMB2: printf("[PCOMB2 "); break;
+    case TC_BIG_FLONUM: printf("[BIG-FLONUM "); break;
+    case TC_COMBINATION_1: printf("[COMBINATION-1 "); break;
+    case TC_EXTENDED_PROCEDURE: printf("[EXTENDED-PROCEDURE "); break;
+    case TC_VECTOR: printf("[VECTOR "); break;
+    case TC_RETURN_CODE: printf("[RETURN-CODE "); break;
+    case TC_COMBINATION_2: printf("[COMBINATION-2 "); break;
+    case TC_COMPILED_PROCEDURE: printf("[COMPILED-PROCEDURE "); break;
+    case TC_BIG_FIXNUM: printf("[BIG-FIXNUM "); break;
     case TC_PROCEDURE: printf("[PROCEDURE "); break;
-    case TC_PRIMITIVE_EXTERNAL: printf("[EXTERNAL-PRIMITIVE "); break;
+    case TC_PRIMITIVE_EXTERNAL: printf("[PRIMITIVE-EXTERNAL "); break;
     case TC_DELAY: printf("[DELAY "); break;
+    case TC_ENVIRONMENT: printf("[ENVIRONMENT "); break;
     case TC_DELAYED: printf("[DELAYED "); break;
-    case TC_EXTENDED_LAMBDA: printf("[ELAMBDA "); break;
+    case TC_EXTENDED_LAMBDA: printf("[EXTENDED-LAMBDA "); break;
     case TC_COMMENT: printf("[COMMENT "); break;
     case TC_NON_MARKED_VECTOR: printf("[NON-MARKED-VECTOR "); break;
     case TC_LAMBDA: printf("[LAMBDA "); break;
     case TC_PRIMITIVE: printf("[PRIMITIVE "); break;
-    case TC_SEQUENCE_2: printf("[SEQ-2 "); break;
-    case TC_PCOMB1: printf("[PCOMB-1 "); break;
+    case TC_SEQUENCE_2: printf("[SEQUENCE-2 "); break;
+    case TC_PCOMB1: printf("[PCOMB1 "); break;
+    case TC_CONTROL_POINT: printf("[CONTROL-POINT "); break;
     case TC_ACCESS: printf("[ACCESS "); break;
     case TC_DEFINITION: printf("[DEFINITION "); break;
     case TC_ASSIGNMENT: printf("[ASSIGNMENT "); break;
     case TC_HUNK3: printf("[HUNK3 "); break;
     case TC_IN_PACKAGE: printf("[IN-PACKAGE "); break;
+    case TC_COMBINATION: printf("[COMBINATION "); break;
+    case TC_COMPILED_EXPRESSION: printf("[COMPILED-EXPRESSION "); break;
     case TC_LEXPR: printf("[LEXPR "); break;
+    case TC_PCOMB3: printf("[PCOMB3 "); break;
+
     case TC_VARIABLE: printf("[VARIABLE "); break;
+    case TC_THE_ENVIRONMENT: printf("[THE-ENVIRONMENT "); break;
+    case TC_FUTURE: printf("[FUTURE "); break;
+    case TC_VECTOR_1B: printf("[VECTOR-1B "); break;
+    case TC_PCOMB0: printf("[PCOMB0 "); break;
+    case TC_VECTOR_16B: printf("[VECTOR-16B "); break;
+    case TC_SEQUENCE_3: printf("[SEQUENCE-3 "); break;
     case TC_CONDITIONAL: printf("[CONDITIONAL "); break;
     case TC_DISJUNCTION: printf("[DISJUNCTION "); break;
-    case TC_UNASSIGNED: printf("[UNASSIGNED "); break;
-    case TC_SEQUENCE_3: printf("[SEQUENCE-3 "); break;
-    case TC_CHARACTER: printf("[CHARACTER "); break;
-    case TC_PCOMB2: printf("[PCOMB-2 "); break;
-    case TC_VECTOR: printf("[VECTOR "); break;
-    case TC_RETURN_CODE: printf("[RETURN-CODE "); break;
-    case TC_ENVIRONMENT: printf("[ENVIRONMENT "); break;
-    case TC_CONTROL_POINT: printf("[CONTROL-POINT "); break;
-    case TC_COMBINATION: printf("[COMBINATION "); break;
-    case TC_PCOMB3: printf("[PCOMB-3 "); break;
-    case TC_THE_ENVIRONMENT: printf("[THE-ENVIRONMENT "); break;
-    case TC_VECTOR_1B: printf("[VECTOR-1B "); break;
-    case TC_PCOMB0: printf("[PCOMB-0 "); break;
-    case TC_VECTOR_16B: printf("[VECTOR-16B "); break;
     case TC_CELL: printf("[CELL "); break;
-    case TC_FUTURE: printf("[FUTURE "); break;		  
-    case TC_COMPILED_PROCEDURE: printf("[COMPILED-PROCEDURE "); break;
-    case TC_COMPILED_EXPRESSION: printf("[COMPILED-EXPRESSION "); break;
+    case TC_WEAK_CONS: printf("[WEAK-CONS "); break;
+    case TC_REFERENCE_TRAP: printf("[REFERENCE-TRAP "); break;
     case TC_RETURN_ADDRESS: printf("[RETURN-ADDRESS "); break;
+    case TC_COMPILER_LINK: printf("[COMPILER-LINK "); break;
+    case TC_STACK_ENVIRONMENT: printf("[STACK-ENVIRONMENT "); break;
+    case TC_COMPLEX: printf("[COMPLEX "); break;
+    case TC_QUAD: printf("[QUAD "); break;
     default: printf("[02x%x ", Type); break;
   }
   printf("%x]\n", Points_To);

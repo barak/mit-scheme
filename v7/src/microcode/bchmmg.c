@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.26 1987/02/12 01:17:03 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.27 1987/04/03 00:07:44 jinx Exp $ */
 
 /* Memory management top level.  Garbage collection to disk.
 
@@ -188,8 +188,8 @@ int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
   */
   Highest_Allocated_Address = 
     Allocate_Heap_Space(Real_Stack_Size + Our_Heap_Size +
-			Our_Constant_Size + (2 * GC_BUFFER_SPACE));
-  Highest_Allocated_Address -= (2 * GC_BUFFER_SPACE);
+			Our_Constant_Size + (2 * GC_BUFFER_SPACE) +
+			HEAP_BUFFER_SPACE);
 
   /* Consistency check 2 */
   if (Heap == NULL)
@@ -197,9 +197,12 @@ int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
     exit(1);
   }
 
-  /* Initialize the various global parameters.
-     Floating alignment will have to be added here.
-  */
+  /* Trim the system buffer space. */
+
+  Highest_Allocated_Address -= (2 * GC_BUFFER_SPACE);
+  Heap += HEAP_BUFFER_SPACE;
+  Initial_Align_Float(Heap);
+
   Constant_Space = Heap + Our_Heap_Size;
   gc_disk_buffer_1 = Constant_Space + Our_Constant_Size + Real_Stack_Size;
   gc_disk_buffer_2 = (gc_disk_buffer_1 + GC_BUFFER_SPACE);
@@ -421,13 +424,25 @@ Fix_Weak_Chain()
         *Scan = Temp;
 	continue;
 
+      case GC_Special:
+	if (Type_Code(Temp) != TC_REFERENCE_TRAP)
+	{
+	  /* No other special type makes sense here. */
+	  goto fail;
+	}
+	if (Datum(Temp) <= TRAP_MAX_IMMEDIATE)
+	{
+	  *Scan = Temp;
+	  continue;
+	}
+	/* Otherwise, it is a pointer.  Fall through */
+
       /* Normal pointer types, the broken heart is in the first word.
          Note that most special types are treated normally here.
 	 The BH code updates *Scan if the object has been relocated.
 	 Otherwise it falls through and we replace it with a full NIL.
 	 Eliminating this assignment would keep old data (pl. of datum).
        */
-
       case GC_Cell:
       case GC_Pair:
       case GC_Triple:
@@ -462,9 +477,9 @@ Fix_Weak_Chain()
 	*Scan = NIL;
 	continue;
 
-      case GC_Special:
       case GC_Undefined:
       default:			/* Non Marked Headers and Broken Hearts */
+      fail:
         fprintf(stderr,
 		"\nFix_Weak_Chain: Bad Object: Type = 0x%02x; Datum = %x\n",
 		Type_Code(Temp), Datum(Temp));

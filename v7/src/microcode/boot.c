@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.28 1987/03/09 16:02:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.29 1987/04/03 00:08:22 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -50,7 +50,7 @@ MIT in each case. */
           {-heap heap-size}
 	  {-stack stack-size}
 	  {-constant constant-size}
-	  {-utabmd utab-filename}
+	  {-utabmd utab-filename} or {-utab utab-filename}
           {other arguments ignored by the core microcode}
 
    with filespec either {-band band-name} or {{-}fasl file-name}
@@ -422,9 +422,12 @@ Built_In_Primitive(Prim_Microcode_Tables_Filename,
   Pointer Result;
   Primitive_0_Args();
 
-  if (((position = Parse_Option("-utabmd", Saved_argc, Saved_argv, true))
-       != NOT_THERE) &&
-      (position != (Saved_argc - 1)))
+  if ((((position = Parse_Option("-utabmd", Saved_argc, Saved_argv, true))
+	!= NOT_THERE) &&
+       (position != (Saved_argc - 1))) ||
+      (((position = Parse_Option("-utab", Saved_argc, Saved_argv, true))
+	!= NOT_THERE) &&
+       (position != (Saved_argc - 1))))
   { Prefix = "";
     Suffix = Saved_argv[position + 1];
   }

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.21 1987/01/22 14:27:50 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.22 1987/04/03 00:14:51 jinx Exp $
  *
  * This file contains the heart of the Scheme Scode
  * interpreter
@@ -39,6 +39,9 @@ MIT in each case. */
 
 #define In_Main_Interpreter	true
 #include "scheme.h"
+#include "locks.h"
+#include "trap.h"
+#include "lookup.h"
 #include "zones.h"
 
 /* In order to make the interpreter tail recursive (i.e.
@@ -79,50 +82,60 @@ MIT in each case. */
  * ordered alphabetically by return code name.
  */
 
-#define Interrupt(Masked_Code) 						\
-        { Export_Registers();						\
-          Setup_Interrupt(Masked_Code);					\
-          Import_Registers();						\
-          goto Perform_Application;					\
-        }
+#define Interrupt(Masked_Code)						\
+{									\
+  Export_Registers();							\
+  Setup_Interrupt(Masked_Code);						\
+  Import_Registers();							\
+  goto Perform_Application;						\
+}
 
 #define Immediate_GC(N)							\
-	{ Request_GC(N);						\
-	  Interrupt(IntCode & IntEnb);					\
-        }
-        
+{									\
+  Request_GC(N);							\
+  Interrupt(IntCode & IntEnb);						\
+}
+
 #define Prepare_Eval_Repeat()						\
-	{Will_Push(CONTINUATION_SIZE+1);				\
-          Push(Fetch_Env());						\
-	  Store_Return(RC_EVAL_ERROR);					\
-	  Save_Cont();							\
-	 Pushed();							\
-	}
+{									\
+ Will_Push(CONTINUATION_SIZE+1);					\
+  Push(Fetch_Env());							\
+  Store_Return(RC_EVAL_ERROR);						\
+  Save_Cont();								\
+ Pushed();								\
+}
 
 #define Eval_GC_Check(Amount)						\
-	if (GC_Check(Amount))						\
-	{ Prepare_Eval_Repeat();					\
-          Immediate_GC(Amount);						\
-	}
+if (GC_Check(Amount))							\
+{									\
+  Prepare_Eval_Repeat();						\
+  Immediate_GC(Amount);							\
+}
 
 #define Eval_Error(Err)							\
-	{ Export_Registers();						\
-	  Do_Micro_Error(Err, false);					\
-	  Import_Registers();						\
-	  goto Internal_Apply;						\
-        }
+{									\
+  Export_Registers();							\
+  Do_Micro_Error(Err, false);						\
+  Import_Registers();							\
+  goto Internal_Apply;							\
+}
 
 #define Pop_Return_Error(Err)						\
-	{ Export_Registers();						\
-	  Do_Micro_Error(Err, true);					\
-	  Import_Registers();						\
-	  goto Internal_Apply;						\
-        }
- 
+{									\
+  Export_Registers();							\
+  Do_Micro_Error(Err, true);						\
+  Import_Registers();							\
+  goto Internal_Apply;							\
+}
+
 #define Prepare_Pop_Return_Interrupt(Return_Code, Contents_of_Val)	\
-	Store_Return(Return_Code);					\
-        Val = Contents_of_Val;						\
-        Save_Cont()
+{									\
+  Store_Return(Return_Code);						\
+  Save_Cont();								\
+  Store_Return(RC_RESTORE_VALUE);					\
+  Store_Expression(Contents_of_Val);					\
+  Save_Cont();								\
+}
 
 #define Reduces_To(Expr)						\
 	{ Store_Expression(Expr);					\
@@ -152,40 +165,6 @@ MIT in each case. */
 
 #define Environment_P(Obj) (Obj == NIL || (Type_Code(Obj) == TC_ENVIRONMENT))
 
-/* This makes local variable references faster */
-
-#if (LOCAL_REF == 0)
-#define Local_Offset(Ind) Ind
-#else
-#define Local_Offset(Ind) Get_Integer(Ind)
-#endif
-
-#ifdef COMPILE_FUTURES
-#define Splice_Future_Value(The_Loc)					\
-{ while ((Type_Code(Val) == TC_FUTURE) && (Future_Spliceable(Val)))	\
-  { Pointer *Location;							\
-    Val = Future_Value(Val);						\
-    Location = The_Loc;							\
-    if Dangerous(*Location) Set_Danger_Bit(Val);			\
-    *Location = Val;							\
-    Clear_Danger_Bit(Val);						\
-  }									\
-  Set_Time_Zone(Zone_Working);						\
-  break;								\
-}
-#else
-#define Splice_Future_Value(The_Loc)					\
-{ Set_Time_Zone(Zone_Working);						\
-  break;								\
-}
-#endif
-
-#ifdef TRAP_ON_REFERENCE
-#define Trap(Value)	(Safe_Type_Code(Value) == TC_TRAP)
-#else
-#define Trap(Value)	false
-#endif
-
 #define MAGIC_RESERVE_SIZE	6	/* See SPMD.SCM */
 #define Reserve_Stack_Space()	Will_Eventually_Push(MAGIC_RESERVE_SIZE)
 
@@ -208,14 +187,23 @@ MIT in each case. */
    their arguments and restarts them or suspends if the argument is a future. */
 
 #define Arg_Type_Error(Arg_No, Err_No)					\
-{ fast Pointer *Arg = &(Stack_Ref(Arg_No-1));				\
-  fast Pointer Orig_Arg = *Arg;						\
-  if (Type_Code(*Arg) != TC_FUTURE) Pop_Return_Error(Err_No);		\
+{									\
+  fast Pointer *Arg, Orig_Arg;						\
+									\
+  Arg = &(Stack_Ref(Arg_No-1));						\
+  Orig_Arg = *Arg;							\
+									\
+  if (Type_Code(*Arg) != TC_FUTURE)					\
+    Pop_Return_Error(Err_No);						\
+									\
   while ((Type_Code(*Arg) == TC_FUTURE) && (Future_Has_Value(*Arg)))	\
-  { if (Future_Is_Keep_Slot(*Arg)) Log_Touch_Of_Future(*Arg);		\
+  {									\
+    if (Future_Is_Keep_Slot(*Arg)) Log_Touch_Of_Future(*Arg);		\
     *Arg = Future_Value(*Arg);						\
   }									\
-  if (Type_Code(*Arg) != TC_FUTURE) goto Prim_No_Trap_Apply;		\
+  if (Type_Code(*Arg) != TC_FUTURE)					\
+    goto Prim_No_Trap_Apply;						\
+									\
   Save_Cont();								\
  Will_Push(STACK_ENV_EXTRA_SLOTS+2);					\
   Push(*Arg);			/* Arg 1: The future itself */		\
@@ -232,13 +220,20 @@ MIT in each case. */
 */
 
 #define Apply_Future_Check(Name, Object)				\
-{ fast Pointer *Arg = &(Object);					\
-  fast Pointer Orig_Answer = *Arg;                              	\
+{									\
+  fast Pointer *Arg, Orig_Answer;					\
+									\
+  Arg = &(Object);							\
+  Orig_Answer = *Arg;							\
+									\
   while (Type_Code(*Arg) == TC_FUTURE)					\
-  { if (Future_Has_Value(*Arg))						\
-    { if (Future_Is_Keep_Slot(*Arg)) Log_Touch_Of_Future(*Arg); 	\
+  {									\
+    if (Future_Has_Value(*Arg))						\
+    {									\
+      if (Future_Is_Keep_Slot(*Arg))					\
+	Log_Touch_Of_Future(*Arg);					\
       *Arg = Future_Value(*Arg);					\
-    }                                                           	\
+    }									\
     else								\
     {									\
      Will_Push(CONTINUATION_SIZE + (STACK_ENV_EXTRA_SLOTS+2));		\
@@ -249,7 +244,7 @@ MIT in each case. */
       Push(Get_Fixed_Obj_Slot(System_Scheduler));			\
       Push(STACK_FRAME_HEADER+1);					\
      Pushed();								\
-      *Arg = Orig_Answer;                                       	\
+      *Arg = Orig_Answer;						\
       goto Internal_Apply;						\
     }									\
   }									\
@@ -264,14 +259,20 @@ MIT in each case. */
    a recursive call to EVAL is an undetermined future */
 
 #define Pop_Return_Val_Check()						\
-{ fast Pointer Orig_Val = Val;						\
+{									\
+  fast Pointer Orig_Val = Val;						\
+									\
   while (Type_Code(Val) == TC_FUTURE)					\
-  { if (Future_Has_Value(Val))						\
-    { if (Future_Is_Keep_Slot(Val)) Log_Touch_Of_Future(Val);   	\
+  {									\
+    if (Future_Has_Value(Val))						\
+    {									\
+      if (Future_Is_Keep_Slot(Val))					\
+	Log_Touch_Of_Future(Val);					\
       Val = Future_Value(Val);						\
-    }                                                           	\
+    }									\
     else								\
-    { Save_Cont();							\
+    {									\
+      Save_Cont();							\
      Will_Push(CONTINUATION_SIZE + (STACK_ENV_EXTRA_SLOTS+2));		\
       Store_Return(RC_RESTORE_VALUE);					\
       Store_Expression(Orig_Val);					\
@@ -286,9 +287,11 @@ MIT in each case. */
 }
 
 #else			/* Not compiling FUTURES code */
+
 #define Pop_Return_Val_Check()		
 #define Apply_Future_Check(Name, Object)	Name = (Object)
 #define Arg_Type_Error(Arg_No, Err_No)		Pop_Return_Error(Err_No)
+
 #endif
 
 /* The EVAL/APPLY ying/yang */
@@ -296,11 +299,15 @@ MIT in each case. */
 void
 Interpret(dumped_p)
      Boolean dumped_p;
-{ long Which_Way;
-  fast Pointer Reg_Val, Reg_Expression, *Reg_Stack_Pointer;
+{
+  long Which_Way;
+  fast Pointer *Reg_Block, *Reg_Stack_Pointer, *Reg_History;
+
   extern long enter_compiled_expression();
   extern long apply_compiled_procedure();
   extern long return_to_compiled_code();
+
+  Reg_Block = &Registers[0];
 
   /* Primitives jump back here for errors, requests to
    * evaluate an expression, apply a function, or handle an
@@ -325,6 +332,7 @@ Interpret(dumped_p)
    Pushed();
     Call_Future_Logging();
   }
+
 Repeat_Dispatch:
   switch (Which_Way)
   { case PRIM_APPLY:         goto Internal_Apply;
@@ -344,10 +352,6 @@ Repeat_Dispatch:
     case ERR_ARG_3_WRONG_TYPE: Arg_Type_Error(3, ERR_ARG_3_WRONG_TYPE);
   }
 
-                    /*****************/
-                    /* Do_Expression */
-                    /*****************/
-
 Do_Expression:
 
   if (Eval_Debug)
@@ -368,7 +372,7 @@ Do_Expression:
  *
  * An operation can terminate with a Reduces_To or
  * Reduces_To_Nth macro.  This indicates that the  value of
- * the current S-Code item is the value returned when the
+ * the current Scode item is the value returned when the
  * new expression is evaluated.  Therefore no new
  * continuation is created and processing continues at
  * Do_Expression with the new expression in the expression
@@ -393,8 +397,7 @@ Do_Expression:
 
 */
 
-  if (Microcode_Does_Stepping && Trapping &&
-      (Fetch_Eval_Trapper() != NIL))
+  if (Microcode_Does_Stepping && Trapping && (Fetch_Eval_Trapper() != NIL))
   { Stop_Trapping();
    Will_Push(4);
     Push(Fetch_Env());
@@ -417,23 +420,23 @@ Eval_Non_Trapping:
     case TC_CONTROL_POINT:
     case TC_DELAYED:
     case TC_ENVIRONMENT:
-    case TC_EXTENDED_FIXNUM:
     case TC_EXTENDED_PROCEDURE:
     case TC_FIXNUM:
     case TC_HUNK3:
+    case TC_INTERNED_SYMBOL:
     case TC_LIST:
     case TC_NON_MARKED_VECTOR:
     case TC_NULL:
     case TC_PRIMITIVE:
     case TC_PRIMITIVE_EXTERNAL:
     case TC_PROCEDURE:
+    case TC_QUAD:
     case TC_UNINTERNED_SYMBOL:
-    case TC_INTERNED_SYMBOL:
     case TC_TRUE: 
-    case TC_UNASSIGNED:
     case TC_VECTOR:
     case TC_VECTOR_16B:
     case TC_VECTOR_1B:
+    case TC_REFERENCE_TRAP:
       Val = Fetch_Expression(); break;
 
     case TC_ACCESS:
@@ -571,40 +574,37 @@ Eval_Non_Trapping:
       /* In case we back out */
       Reserve_Stack_Space();			/* CONTINUATION_SIZE */
       Finished_Eventual_Pushing();		/* of this primitive */
-/* ASSUMPTION: The syntaxer is hereby assumed NEVER to generate primitive
-   combinations unless the primitive itself is output in the code stream.
-   Therefore, we don't have to explicitly check here that the expression
-   register has a primitive in it.
-*/
+
 Primitive_Internal_Apply:
       if (Microcode_Does_Stepping && Trapping &&
            (Fetch_Apply_Trapper() != NIL))
       {Will_Push(3); 
         Push(Fetch_Expression());
         Push(Fetch_Apply_Trapper());
-        Push(STACK_FRAME_HEADER + 1 + N_Args_Primitive(Fetch_Expression()));
+        Push(STACK_FRAME_HEADER + 1 +
+	     N_Args_Primitive(Get_Integer(Fetch_Expression())));
        Pushed();
         Stop_Trapping();
 	goto Apply_Non_Trapping;
       }
 Prim_No_Trap_Apply:
-      Export_Registers();
-      Metering_Apply_Primitive(Val, Get_Integer(Fetch_Expression()));
+      {
+	fast long primitive_code;
 
-/* Any primitive which does not do a long jump can have it's primitive
-   frame popped off here.  At this point, it is guaranteed that the
-   primitive is in the expression register in case the primitive needs
-   to back out.
-*/
-      Import_Registers_Except_Val();
-      Pop_Primitive_Frame(N_Args_Primitive(Fetch_Expression()));
-      if (Must_Report_References())
-      { Store_Expression(Val);
-        Store_Return(RC_RESTORE_VALUE);
-	Save_Cont();
-        Call_Future_Logging();
+	primitive_code = Get_Integer(Fetch_Expression());
+
+	Export_Registers_Before_Primitive();
+	Metering_Apply_Primitive(Val, primitive_code);
+	Import_Registers_After_Primitive();
+	Pop_Primitive_Frame(N_Args_Primitive(primitive_code));
+	if (Must_Report_References())
+	{ Store_Expression(Val);
+	  Store_Return(RC_RESTORE_VALUE);
+	  Save_Cont();
+	  Call_Future_Logging();
+	}
+	break;
       }
-      break;
 
     case TC_PCOMB1:
        Reserve_Stack_Space();	/* 1+CONTINUATION_SIZE */
@@ -642,62 +642,85 @@ Prim_No_Trap_Apply:
 /* Interpret(), continued */
       
     case TC_VARIABLE:
-/* ASSUMPTION: The SYMBOL slot does NOT contain a future */
-    { fast Pointer Compilation_Type, *Variable_Object;
-      int The_Type;
+    {
+      long temp;
 
-      Set_Time_Zone(Zone_Lookup);
 #ifndef No_In_Line_Lookup
 
-      Variable_Object = Get_Pointer(Fetch_Expression());
-      Compilation_Type = Variable_Object[VARIABLE_COMPILED_TYPE];
-      The_Type = Type_Code(Compilation_Type);
+      fast Pointer *cell;
 
-      if (The_Type == LOCAL_REF)
-      { fast Pointer *Frame;
-	Frame = Get_Pointer(Fetch_Env());
-	Val = Without_Danger_Bit(Frame[Local_Offset(Compilation_Type)]);
-	if (!Trap(Val))
-	  Splice_Future_Value(&(Frame[Local_Offset(Compilation_Type)]));
+      Set_Time_Zone(Zone_Lookup);
+      cell = Get_Pointer(Fetch_Expression());
+      lookup(cell, Fetch_Env(), cell, repeat_variable_lookup);
+      Val = *cell;
+      if (Type_Code(Val) != TC_REFERENCE_TRAP)
+      {
+	Set_Time_Zone(Zone_Working);
+	goto Pop_Return;
       }
-      else if (The_Type == GLOBAL_REF)
-      { Val = Vector_Ref(Compilation_Type, SYMBOL_GLOBAL_VALUE);
-        if (Dangerous(Val))
-	  Variable_Object[VARIABLE_COMPILED_TYPE] = UNCOMPILED_VARIABLE;
-	else if (!Trap(Val))
-	  Splice_Future_Value(Nth_Vector_Loc(Compilation_Type,
-					     SYMBOL_GLOBAL_VALUE));
-      }
+
+      get_trap_kind(temp, Val);
+      switch(temp)
+      {
+	case TRAP_DANGEROUS:
+	case TRAP_UNBOUND_DANGEROUS:
+	case TRAP_UNASSIGNED_DANGEROUS:
+	case TRAP_FLUID_DANGEROUS:
+	  cell = Get_Pointer(Fetch_Expression());
+	  temp =
+	    deep_lookup_end(deep_lookup(Fetch_Env(), cell[VARIABLE_SYMBOL], cell),
+			    cell);
+	  goto external_lookup_return;
+
+	/* No need to recompile, pass the fake variable. */
+	case TRAP_FLUID:
+	  temp = deep_lookup_end(lookup_fluid(Val), fake_variable_object);
+
+	external_lookup_return:
+	  Import_Val();
+	  if (temp != PRIM_DONE)
+	    break;
+	  Set_Time_Zone(Zone_Working);
+	  goto Pop_Return;
+
+	case TRAP_UNBOUND:
+	  temp = ERR_UNBOUND_VARIABLE;
+	  break;
+
+	case TRAP_UNASSIGNED:
+	  temp = ERR_UNASSIGNED_VARIABLE;
+	  break;
 
 /* Interpret() continues on the next page */
 
 /* Interpret(), continued */
 
-      else if (The_Type == FORMAL_REF)
-      { fast long Frame_No;
-	fast Pointer *Frame;
+	default:
+	  temp = ERR_BROKEN_COMPILED_VARIABLE;
+	  break;
+      }
 
-	Frame = Get_Pointer(Fetch_Env());
-        Frame_No = Get_Integer(Variable_Object[VARIABLE_FRAME_NO]);
-	while(--Frame_No >= 0)
-          Frame = Get_Pointer(Fast_Vector_Ref(Frame[HEAP_ENV_FUNCTION],
-					      PROCEDURE_ENVIRONMENT)); 
-        Val = Frame[Local_Offset(Variable_Object[VARIABLE_OFFSET])];
-        if (Dangerous(Val))
-	  Variable_Object[VARIABLE_COMPILED_TYPE] = UNCOMPILED_VARIABLE;
-	else if (!Trap(Val))
-	  Splice_Future_Value(
-	    &(Frame[Local_Offset(Variable_Object[VARIABLE_OFFSET])]));
+#else No_In_Line_Lookup
+
+      Set_Time_Zone(Zone_Lookup);
+      temp = Lex_Ref(Fetch_Env(), Fetch_Expression());
+      Import_Val();
+      if (temp == PRIM_DONE)
+	break;
+
+#endif No_In_Line_Lookup
+
+      /* Back out of the evaluation. */
+
+      Set_Time_Zone(Zone_Working);
+
+      if (temp == PRIM_INTERRUPT)
+      {
+	Prepare_Eval_Repeat();
+	Interrupt(IntCode & IntEnb);
       }
-#endif
-      /* Fall through in cases not handled above */
-      { long Result;
-	Result = Lex_Ref(Fetch_Env(), Fetch_Expression());
-	Import_Val();
-	Set_Time_Zone(Zone_Working);
-	if (Result == PRIM_DONE) break;
-	Eval_Error(Result);
-      }
+
+      Eval_Error(temp);
     }
 
     case TC_RETURN_CODE:
@@ -850,20 +873,37 @@ Pop_Return:
       Microcode_Termination(TERM_END_OF_COMPUTATION);
  
     case RC_EVAL_ERROR:
+      /* Should be called RC_REDO_EVALUATION. */
       Store_Env(Pop());
       Reduces_To(Fetch_Expression());
 
     case RC_EXECUTE_ACCESS_FINISH:
-    { long Result;
+    {
+      long Result;
+      Pointer value;
+
       Pop_Return_Val_Check();
+      value = Val;
+
       if (Environment_P(Val))
-      { Result = Symbol_Lex_Ref(Val,
-				Fast_Vector_Ref(Fetch_Expression(), ACCESS_NAME));
+      { Result = Symbol_Lex_Ref(value,
+				Fast_Vector_Ref(Fetch_Expression(),
+						ACCESS_NAME));
 	Import_Val();
-	if (Result != PRIM_DONE) Pop_Return_Error(Result);
-	End_Subproblem();
-	break;
+	if (Result == PRIM_DONE)
+	{
+	  End_Subproblem();
+	  break;
+	}
+	if (Result != PRIM_INTERRUPT)
+	{
+	  Val = value;
+	  Pop_Return_Error(Result);
+	}
+	Prepare_Pop_Return_Interrupt(RC_EXECUTE_ACCESS_FINISH, value);
+	Interrupt(IntCode & IntEnb);
       }
+      Val = value;
       Pop_Return_Error(ERR_BAD_FRAME);
     }
 
@@ -872,91 +912,123 @@ Pop_Return:
 /* Interpret(), continued */
 
     case RC_EXECUTE_ASSIGNMENT_FINISH:
-    { fast Pointer Compilation_Type, *Variable_Object;
-      Pointer The_Non_Object, Store_Value;
-      int The_Type;
-
-      Set_Time_Zone(Zone_Lookup);
-      Restore_Env();
-      The_Non_Object = Get_Fixed_Obj_Slot(Non_Object);
-      Store_Value = (Val == The_Non_Object) ? UNASSIGNED_OBJECT : Val;
+    {
+      long temp;
+      Pointer value;
+      Lock_Handle set_serializer;
 
 #ifndef No_In_Line_Lookup
 
-      Variable_Object =
-	Get_Pointer(Vector_Ref(Fetch_Expression(), ASSIGN_NAME));
-      Compilation_Type = Variable_Object[VARIABLE_COMPILED_TYPE];
-      The_Type = Type_Code(Compilation_Type);
+      Pointer bogus_unassigned;
+      fast Pointer *cell;
 
-      if (The_Type == LOCAL_REF)
-      { fast Pointer *Frame;
-	Frame = Get_Pointer(Fetch_Env());
-	Val = Frame[Local_Offset(Compilation_Type)];
-	if (Dangerous(Val))
-	{ Set_Danger_Bit(Store_Value);
-	  Clear_Danger_Bit(Val);
-	}
-	if (!Trap(Val))
-	{ Frame[Local_Offset(Compilation_Type)] = Store_Value;
-	  if (Val == UNASSIGNED_OBJECT) Val = The_Non_Object;
-	  Set_Time_Zone(Zone_Working);
-	  End_Subproblem();
-	  break;
-        }
-      }
-      else if (The_Type == GLOBAL_REF)
-      { Val = Vector_Ref(Compilation_Type, SYMBOL_GLOBAL_VALUE);
-        if (!Dangerous(Val) && !Trap(Val))
-	{ Vector_Set(Compilation_Type, SYMBOL_GLOBAL_VALUE, Store_Value);
-	  if (Val == UNASSIGNED_OBJECT) Val = The_Non_Object;
-	  Set_Time_Zone(Zone_Working);
-          End_Subproblem();
-          break;
-	}
-	else if (Dangerous(Val))
-	  Variable_Object[VARIABLE_COMPILED_TYPE] = UNCOMPILED_VARIABLE;
+      Set_Time_Zone(Zone_Lookup);
+      Restore_Env();
+      cell = Get_Pointer(Vector_Ref(Fetch_Expression(), ASSIGN_NAME));
+      lookup(cell, Fetch_Env(), cell, repeat_assignment_lookup);
+      setup_lock(set_serializer, cell);
+
+      value = Val;
+      bogus_unassigned = Get_Fixed_Obj_Slot(Non_Object);
+      if (value == bogus_unassigned)
+	value = UNASSIGNED_OBJECT;
+
+      if (Type_Code(*cell) != TC_REFERENCE_TRAP)
+      {
+	Val = *cell;
+
+      normal_assignment_done:
+	*cell = value;
+	remove_lock(set_serializer);
+	Set_Time_Zone(Zone_Working);
+	End_Subproblem();
+	goto Pop_Return;
       }
 
 /* Interpret() continues on the next page */
 
 /* Interpret(), continued */
 
-      else if (The_Type == FORMAL_REF)
-      { fast long Frame_No;
-	fast Pointer *Frame;
+      get_trap_kind(temp, *cell);
+      switch(temp)
+      {
+	case TRAP_DANGEROUS:
+	case TRAP_UNBOUND_DANGEROUS:
+	case TRAP_UNASSIGNED_DANGEROUS:
+	case TRAP_FLUID_DANGEROUS:
+	  remove_lock(set_serializer);
+	  cell = Get_Pointer(Vector_Ref(Fetch_Expression(), ASSIGN_NAME));
+	  temp =
+	    deep_assignment_end(deep_lookup(Fetch_Env(),
+					    cell[VARIABLE_SYMBOL],
+					    cell),
+				cell,
+				value,
+				false);
+	  goto external_assignment_return;
 
-	Frame = Get_Pointer(Fetch_Env());
-        Frame_No = Get_Integer(Variable_Object[VARIABLE_FRAME_NO]);
-	while(--Frame_No >= 0)
-          Frame = Get_Pointer(Fast_Vector_Ref(Frame[HEAP_ENV_FUNCTION],
-					      PROCEDURE_ENVIRONMENT)); 
-        Val = Frame[Local_Offset(Variable_Object[VARIABLE_OFFSET])];
-        if (!Dangerous(Val) && !Trap(Val))
-	{ Frame[Local_Offset(Variable_Object[VARIABLE_OFFSET])] =
-	    Store_Value;
-	  if (Val==UNASSIGNED_OBJECT) Val = The_Non_Object;
-          Set_Time_Zone(Zone_Working);
-          End_Subproblem();
-          break;
-	}
-	else if (Dangerous(Val))
-	  Variable_Object[VARIABLE_COMPILED_TYPE] = UNCOMPILED_VARIABLE;
-      }
-#endif
-      /* Fall through in cases not handled above */
-      { long Result;
-	Result = Lex_Set(Fetch_Env(),
-			 Vector_Ref(Fetch_Expression(), ASSIGN_NAME),
-			 Store_Value);
-	Import_Val();
-	Set_Time_Zone(Zone_Working);
-	if (Result == PRIM_DONE) 
-	{ End_Subproblem();
+	case TRAP_UNASSIGNED:
+	  Val = bogus_unassigned;
+	  goto normal_assignment_done;
+
+	case TRAP_FLUID:
+	  /* No need to recompile, pass the fake variable. */
+	  remove_lock(set_serializer);
+	  temp = deep_assignment_end(lookup_fluid(*cell),
+				     fake_variable_object,
+				     value,
+				     false);
+
+	external_assignment_return:
+	  Import_Val();
+	  if (temp != PRIM_DONE)
+	    break;
+	  Set_Time_Zone(Zone_Working);
+	  End_Subproblem();
+	  goto Pop_Return;
+
+	case TRAP_UNBOUND:
+	  remove_lock(set_serializer);
+	  temp = ERR_UNBOUND_VARIABLE;
 	  break;
-	}
-	Save_Env();
-	Pop_Return_Error(Result);
+
+	default:
+	  remove_lock(set_serializer);
+	  temp = ERR_BROKEN_COMPILED_VARIABLE;
+	  break;
       }
+
+/* Interpret() continues on the next page */
+
+/* Interpret(), continued */
+
+#else
+
+      Set_Time_Zone(Zone_Lookup);
+      Restore_Env();
+      temp = Lex_Set(Fetch_Env(),
+		     Vector_Ref(Fetch_Expression(), ASSIGN_NAME),
+		     value);
+      Import_Val();
+      if (temp == PRIM_DONE) 
+      { End_Subproblem();
+	Set_Time_Zone(Zone_Working);
+	break;
+      }
+
+#endif
+
+      Set_Time_Zone(Zone_Working);
+      Save_Env();
+      if (temp != PRIM_INTERRUPT)
+      {
+	Val = value;
+	Pop_Return_Error(temp);
+      }
+
+      Prepare_Pop_Return_Interrupt(RC_EXECUTE_ASSIGNMENT_FINISH,
+				   value);
+      Interrupt(IntCode & IntEnb);
     }
       
 /* Interpret() continues on the next page */
@@ -964,32 +1036,38 @@ Pop_Return:
 /* Interpret(), continued */
 
     case RC_EXECUTE_DEFINITION_FINISH:
-      { Pointer Saved_Val;
-        long Result;
+      {
+	Pointer value;
+        long result;
 
-	Saved_Val = Val;
+	value = Val;
         Restore_Env();
-        Result = Local_Set(Fetch_Env(),
+	Export_Registers();
+        result = Local_Set(Fetch_Env(),
 			   Fast_Vector_Ref(Fetch_Expression(), DEFINE_NAME),
 			   Val);
-        Import_Val();
-        if (Result==PRIM_DONE)
-        { End_Subproblem();
+        Import_Registers();
+        if (result == PRIM_DONE)
+        {
+	  End_Subproblem();
           break;
 	}
 	Save_Env();
-	if (Result==PRIM_INTERRUPT)
-	{ Prepare_Pop_Return_Interrupt(RC_EXECUTE_DEFINITION_FINISH,
-				       Saved_Val);
+	if (result == PRIM_INTERRUPT)
+	{
+	  Prepare_Pop_Return_Interrupt(RC_EXECUTE_DEFINITION_FINISH,
+				       value);
 	  Interrupt(IntCode & IntEnb);
 	}
-        Pop_Return_Error(Result);
-      };
+	Val = value;
+        Pop_Return_Error(result);
+      }
 
     case RC_EXECUTE_IN_PACKAGE_CONTINUE:
       Pop_Return_Val_Check();
       if (Environment_P(Val))
-      { End_Subproblem();
+      {
+	End_Subproblem();
         Store_Env(Val);
         Reduces_To_Nth(IN_PACKAGE_EXPRESSION);
       }
@@ -1014,109 +1092,129 @@ Pop_Return:
     case RC_HALT:
       Export_Registers();
       Microcode_Termination(TERM_TERM_HANDLER);
-
-/* Interpret() continues on the next page */
 
-/* Interpret(), continued */
-
-#define Prepare_Apply_Interrupt()       \
-        Prepare_Pop_Return_Interrupt(RC_INTERNAL_APPLY, NIL)
-                          
-#define Apply_Error(N)							\
-        { Store_Return(RC_INTERNAL_APPLY);      			\
-          Val = NIL;                            			\
-          Pop_Return_Error(N);                  			\
-        }
-
-/* Interpret() continues on the next page */
-
-/* Interpret(), continued */
-
     case RC_INTERNAL_APPLY:
+
 Internal_Apply:
 
-/* Branch here to perform a function application.  At this point
-   it is necessary that the top of the stack contain a frame
-   for evaluation of the function to be applied. This frame
-   DOES NOT contain "finger" and "combination" slots, although
-   if the frame is to be copied into the heap, it will have NIL's
-   in the "finger" and "combination" slots which will correspond 
-   to "potentially-dangerous" and "auxilliary variables" slots.
+/* Branch here to perform a function application.  
 
-   Note, also, that unlike most return codes Val is not used here.
-   Thus, the error and interrupt macros above set it to NIL so that it
-   will not 'hold on' to anything if a GC occurs.  Similarly, the
-   contents of Expression are discarded.
+   At this point the top of the stack contains an application frame
+   which consists of the following elements (see sdata.h):
+   - A header specifying the frame length.
+   - A procedure.
+   - The actual (evaluated) arguments.
+
+   No registers (except the stack pointer) are meaning full at this point.
+   Before interrupts or errors are processed, some registers are cleared
+   to avoid holding onto garbage if a garbage collection occurs.
 */
+
+#define Prepare_Apply_Interrupt()					\
+{									\
+  Store_Return(RC_INTERNAL_APPLY);					\
+  Store_Expression(NIL);						\
+  Save_Cont();								\
+}
+                          
+#define Apply_Error(N)							\
+{									\
+  Store_Return(RC_INTERNAL_APPLY);					\
+  Store_Expression(NIL);						\
+  Val = NIL;								\
+  Pop_Return_Error(N);							\
+}
+
+/* Interpret() continues on the next page */
+
+/* Interpret(), continued */
+
       if (Microcode_Does_Stepping && Trapping &&
-            (Fetch_Apply_Trapper() != NIL))
-      { long Count = Get_Integer(Stack_Ref(STACK_ENV_HEADER));
+	  (Fetch_Apply_Trapper() != NIL))
+      {
+	long Count;
+
+	Count = Get_Integer(Stack_Ref(STACK_ENV_HEADER));
         Top_Of_Stack() = Fetch_Apply_Trapper();
         Push(STACK_FRAME_HEADER+Count);
         Stop_Trapping();
       }      
-Apply_Non_Trapping:
-      { long Interrupts;
-        Pointer Function;
 
-        Store_Expression(NIL);
-        Interrupts = IntCode & IntEnb;
-        if (Interrupts != 0)
-        { Prepare_Apply_Interrupt();
-          Interrupt(Interrupts);
-        }
+Apply_Non_Trapping:
+
+      if ((IntCode & IntEnb) != 0)
+      {
+	long Interrupts;
+
+	Interrupts = (IntCode & IntEnb);
+	Store_Expression(NIL);
+	Val = NIL;
+	Prepare_Apply_Interrupt();
+	Interrupt(Interrupts);
+      }
 
 Perform_Application:
+
+      Apply_Ucode_Hook();
+
+      { 
+        fast Pointer Function;
+
 	Apply_Future_Check(Function, Stack_Ref(STACK_ENV_FUNCTION));
-	Apply_Ucode_Hook();
+
+        switch(Type_Code(Function))
+        { 
 
 /* Interpret() continues on the next page */
 
 /* Interpret(), continued */
 
-        switch(Type_Code(Function))
-        { case TC_PROCEDURE:
-          { Pointer Lambda_Expr, *Temp1, Temp2;
-            long NParams, Size;
-	    fast long NArgs;
+	  case TC_PROCEDURE:
+	  {
+	    fast long nargs;
 
-	    Apply_Future_Check(Lambda_Expr,
-			       Fast_Vector_Ref(Function,
-					       PROCEDURE_LAMBDA_EXPR));
-	    Temp1 = Get_Pointer(Lambda_Expr);
-	    Apply_Future_Check(Temp2, Temp1[LAMBDA_FORMALS]);
-            NArgs = Get_Integer(Pop());
-            NParams = Vector_Length(Temp2);
+            nargs = Get_Integer(Pop());
+	    Function = Fast_Vector_Ref(Function, PROCEDURE_LAMBDA_EXPR);
+
+	    {
+	      fast Pointer formals;
+
+	      Apply_Future_Check(formals,
+				 Fast_Vector_Ref(Function, LAMBDA_FORMALS));
+
+	      if ((nargs != Vector_Length(formals)) &&
+		  ((Type_Code(Function) != TC_LEXPR) ||
+		  (nargs < Vector_Length(formals))))
+	      {
+		Push(STACK_FRAME_HEADER + nargs - 1);
+		Apply_Error(ERR_WRONG_NUMBER_OF_ARGUMENTS);
+	      }
+	    }
+
 	    if (Eval_Debug) 
-	    { Print_Expression(FIXNUM_0+NArgs,
-				 "APPLY: Number of arguments");
-	      Print_Expression(FIXNUM_0+NParams,
-			       "       Number of parameters");
+	    {
+	      Print_Expression(Make_Unsigned_Fixnum(nargs),
+			       "APPLY: Number of arguments");
 	    }
-            if (Type_Code(Lambda_Expr) == TC_LAMBDA)
-            { if (NArgs != NParams)
-              { Push(STACK_FRAME_HEADER+NArgs-1);
-                Apply_Error(ERR_WRONG_NUMBER_OF_ARGUMENTS);
-              }
-	    }
-            else if (NArgs < NParams)
-                 { Push(STACK_FRAME_HEADER+NArgs-1);
-                   Apply_Error(ERR_WRONG_NUMBER_OF_ARGUMENTS);
-                 }
-            Size = NArgs + (HEAP_ENV_EXTRA_SLOTS - 1);
-            if (GC_Check(Size))
-            { Push(STACK_FRAME_HEADER+NArgs-1);
+
+            if (GC_Check(nargs + 1))
+            {
+	      Push(STACK_FRAME_HEADER + nargs - 1);
               Prepare_Apply_Interrupt();
-              Immediate_GC(Size);
+              Immediate_GC(nargs + 1);
             }
-	    /* Store Environment Frame into heap, putting extra slots
-               for Potentially Dangerous and Auxiliaries              */
-            Store_Env(Make_Pointer(TC_ENVIRONMENT, Free));
-	    *Free++ = Make_Non_Pointer(TC_MANIFEST_VECTOR, Size);
-	    *Free++ = NIL; /* For PD list and Aux list */
-	    *Free++ = NIL;
-            for (; --NArgs >= 0; ) *Free++ = Pop();
-            Reduces_To(Temp1[LAMBDA_SCODE]);
+
+	    {
+	      fast Pointer *scan;
+
+	      scan = Free;
+	      Store_Env(Make_Pointer(TC_ENVIRONMENT, scan));
+	      *scan++ = Make_Non_Pointer(TC_MANIFEST_VECTOR, nargs);
+	      while(--nargs >= 0)
+		*scan++ = Pop();
+	      Free = scan;
+	      Reduces_To(Fast_Vector_Ref(Function, LAMBDA_SCODE));
+	    }
           }
 
 /* Interpret() continues on the next page */
@@ -1124,35 +1222,68 @@ Perform_Application:
 /* Interpret(), continued */
 
           case TC_CONTROL_POINT:
+	  {
             if (Get_Integer(Stack_Ref(STACK_ENV_HEADER)) !=
                 STACK_ENV_FIRST_ARG)
-              Apply_Error(ERR_WRONG_NUMBER_OF_ARGUMENTS)
+	    {
+              Apply_Error(ERR_WRONG_NUMBER_OF_ARGUMENTS);
+	    }
             Val = Stack_Ref(STACK_ENV_FIRST_ARG);
             Our_Throw(false, Function);
 	    Apply_Stacklet_Backout();
 	    Our_Throw_Part_2();
             goto Pop_Return;
+	  }
+
+/* Interpret() continues on the next page */
+
+/* Interpret(), continued */
+
+	  /*
+	     After checking the number of arguments, remove the
+	     frame header since primitives do not expect it.
+	   */
+
+          case TC_PRIMITIVE:
+          { 
+            if (Get_Integer(Stack_Ref(STACK_ENV_HEADER)) !=
+                STACK_ENV_FIRST_ARG + N_Args_Primitive(Get_Integer(Function)) - 1)
+	    {
+	      Apply_Error(ERR_WRONG_NUMBER_OF_ARGUMENTS);
+	    }
+            Stack_Pointer = Simulate_Popping(STACK_ENV_FIRST_ARG);
+            Store_Expression(Function);
+            goto Prim_No_Trap_Apply;
+          }
 
           case TC_PRIMITIVE_EXTERNAL:
-          { long NArgs, Proc = Datum(Function);
+          {
+	    fast long NArgs, Proc;
+
+	    Proc = Datum(Function);
 	    if (Proc > MAX_EXTERNAL_PRIMITIVE)
+	    {
 	      Apply_Error(ERR_UNDEFINED_PRIMITIVE);
+	    }
             NArgs = Ext_Prim_Desc[Proc].arity;
             if (Get_Integer(Stack_Ref(STACK_ENV_HEADER)) !=
-                STACK_ENV_FIRST_ARG+NArgs-1)
+		(NArgs + (STACK_ENV_FIRST_ARG - 1)))
+	    {
                Apply_Error(ERR_WRONG_NUMBER_OF_ARGUMENTS);
+	     }
             Stack_Pointer = Simulate_Popping(STACK_ENV_FIRST_ARG);
-		/* Remove the frame overhead, since the primitives
-                   just expect arguments on the stack */
             Store_Expression(Function);
+
 Repeat_External_Primitive:
 	    /* Reinitialize Proc in case we "goto Repeat_External..." */
             Proc = Get_Integer(Fetch_Expression());
-	    Export_Registers();
+
+	    Export_Registers_Before_Primitive();
             Val = (*(Ext_Prim_Desc[Proc].proc))();
 	    Set_Time_Zone(Zone_Working);
-	    Import_Registers_Except_Val();
+	    Import_Registers_After_Primitive();
 	    Pop_Primitive_Frame(Ext_Prim_Desc[Proc].arity);
+
 	    goto Pop_Return;
 	  }
 
@@ -1161,93 +1292,94 @@ Repeat_External_Primitive:
 /* Interpret(), continued */
 
           case TC_EXTENDED_PROCEDURE:
-          { Pointer Lambda_Expr, *List_Car, Temp;
-            long NArgs, NParams, Formals, Params, Auxes,
-                 Rest_Flag, Size, i;
+          {
+	    Pointer lambda;
+            long nargs, nparams, formals, params, auxes,
+                 rest_flag, size;
 
-/* Selectors for the various parts */
+	    fast long i;
+	    fast Pointer *scan;
 
-#define Get_Body_Elambda(Addr)  (Fast_Vector_Ref(Addr, ELAMBDA_SCODE))
-#define Get_Names_Elambda(Addr) (Fast_Vector_Ref(Addr, ELAMBDA_NAMES))
-#define Get_Count_Elambda(Addr) (Fast_Vector_Ref(Addr, ELAMBDA_ARG_COUNT))
-#define Elambda_Formals_Count(Addr) \
-     ((((long) Addr) & EL_FORMALS_MASK) >> EL_FORMALS_SHIFT)
-#define Elambda_Opts_Count(Addr) \
-     (((long) Addr) & EL_OPTS_MASK)
-#define Elambda_Rest_Flag(Addr) \
-     ((((long) Addr) & EL_REST_MASK) >> EL_REST_SHIFT)
+            nargs = Get_Integer(Pop()) - STACK_FRAME_HEADER;
 
-            Apply_Future_Check(Lambda_Expr,
-                               Fast_Vector_Ref(Function,
-					       PROCEDURE_LAMBDA_EXPR));
-	    Apply_Future_Check(Temp, Fast_Vector_Ref(Lambda_Expr,
-						     ELAMBDA_NAMES));
-            NParams = Vector_Length(Temp) - 1;
-	    Apply_Future_Check(Temp, Get_Count_Elambda(Lambda_Expr));
-            Formals = Elambda_Formals_Count(Temp);
-            /* Formals DOES NOT include the name of the lambda */
-            Params = Elambda_Opts_Count(Temp) + Formals;
-            Rest_Flag = Elambda_Rest_Flag(Temp);
-            NArgs = Get_Integer(Pop()) - 1;
-            Auxes = NParams - (Params + Rest_Flag);
-            if ((NArgs < Formals) ||
-                (!Rest_Flag && (NArgs > Params)))
-            { Push(STACK_FRAME_HEADER+NArgs);
+	    if (Eval_Debug) 
+	    {
+	      Print_Expression(Make_Unsigned_Fixnum(nargs+STACK_FRAME_HEADER),
+			       "APPLY: Number of arguments");
+	    }
+
+            lambda = Fast_Vector_Ref(Function, PROCEDURE_LAMBDA_EXPR);
+	    Apply_Future_Check(Function,
+			       Fast_Vector_Ref(lambda, ELAMBDA_NAMES));
+            nparams = Vector_Length(Function) - 1;
+
+	    Apply_Future_Check(Function, Get_Count_Elambda(lambda));
+            formals = Elambda_Formals_Count(Function);
+            params = Elambda_Opts_Count(Function) + formals;
+            rest_flag = Elambda_Rest_Flag(Function);
+            auxes = nparams - (params + rest_flag);
+
+            if ((nargs < formals) || (!rest_flag && (nargs > params)))
+            {
+	      Push(STACK_FRAME_HEADER + nargs);
               Apply_Error(ERR_WRONG_NUMBER_OF_ARGUMENTS);
             }
 
-/* Interpret() continues on the next page */
-
-/* Interpret(), continued */
-
-            Size = Params + Rest_Flag + Auxes +
-	           (HEAP_ENV_EXTRA_SLOTS + 1);
-            List_Car = Free + Size;
-            if (GC_Check(Size + ((NArgs > Params) ?
-				 2 * (NArgs - Params) : 0)))
-            { Push(STACK_FRAME_HEADER+NArgs);
+	    /* size includes the procedure slot, but not the header. */
+            size = params + rest_flag + auxes + 1;
+            if (GC_Check(size + 1 + ((nargs > params) ?
+				     (2 * (nargs - params)) :
+				     0)))
+            {
+	      Push(STACK_FRAME_HEADER + nargs);
               Prepare_Apply_Interrupt();
-              Immediate_GC(Size + ((NArgs > Params) ?
-				   2 * (NArgs - Params) : 0));
+              Immediate_GC(size + 1 + ((nargs > params) ?
+				       (2 * (nargs - params)) :
+				       0));
             }
-            Store_Env(Make_Pointer(TC_ENVIRONMENT, Free));
-	    *Free++ = Make_Non_Pointer(TC_MANIFEST_VECTOR, Size-1);
-                                        /* Environment Header  */
-	    *Free++ = NIL;              /* Aux list            */
-	    *Free++ = NIL;              /* PD list             */
-            Size = 1 + ((NArgs < Params) ? NArgs : Params);
-            for (i = 0; i < Size; i++) *Free++ = Pop();
-            for (i--;  i < Params; i++)
-              *Free++ = UNASSIGNED_OBJECT;
-            if (Rest_Flag)
-              if (NArgs <= i) *Free++ = NIL;
-              else
-              { *Free++ = Make_Pointer(TC_LIST, List_Car);
-                for (; i < NArgs; i++, List_Car++)
-                { *List_Car++ = Pop();
-                  *List_Car = Make_Pointer(TC_LIST, List_Car+1);
-                }
-                List_Car[-1] = NIL;
-              }
-            for (i = 0; i < Auxes; i++) *Free++ = UNASSIGNED_OBJECT;
-            Free = List_Car;
-            Reduces_To(Get_Body_Elambda(Lambda_Expr));
-          }
 
 /* Interpret() continues on the next page */
 
 /* Interpret(), continued */
 
-          case TC_PRIMITIVE:
-          { long Number_Of_Args = N_Args_Primitive(Function);
-            if (Get_Integer(Stack_Ref(STACK_ENV_HEADER)) !=
-                STACK_ENV_FIRST_ARG+Number_Of_Args-1)
-               Apply_Error(ERR_WRONG_NUMBER_OF_ARGUMENTS);
-            Stack_Pointer = Simulate_Popping(STACK_ENV_FIRST_ARG);
-		/* Remove the frame overhead, since the primitives
-                   just expect arguments on the stack */
-            Store_Expression(Function);
-            goto Prim_No_Trap_Apply;
+	    scan = Free;
+            Store_Env(Make_Pointer(TC_ENVIRONMENT, scan));
+	    *scan++ = Make_Non_Pointer(TC_MANIFEST_VECTOR, size);
+
+	    if (nargs <= params)
+	    {
+	      for (i = (nargs + 1); --i >= 0; )
+		*scan++ = Pop();
+	      for (i = (params - nargs); --i >= 0; )
+		*scan++ = UNASSIGNED_OBJECT;
+	      if (rest_flag)
+		*scan++ = NIL;
+	      for (i = auxes; --i >= 0; )
+		*scan++ = UNASSIGNED_OBJECT;
+	    }
+	    else
+	    {
+	      /* rest_flag must be true. */
+	      Pointer list;
+	      
+	      list = Make_Pointer(TC_LIST, (scan + size));
+	      for (i = (params + 1); --i >= 0; )
+		*scan++ = Pop();
+	      *scan++ = list;
+	      for (i = auxes; --i >= 0; )
+		*scan++ = UNASSIGNED_OBJECT;
+	      /* Now scan == Get_Pointer(list) */
+	      for (i = (nargs - params); --i >= 0; )
+	      {
+		*scan++ = Pop();
+		*scan = Make_Pointer(TC_LIST, (scan + 1));
+		scan += 1;
+	      }
+	      scan[-1] = NIL;
+	    }
+
+	    Free = scan;
+            Reduces_To(Get_Body_Elambda(lambda));
           }
 
 /* Interpret() continues on the next page */
@@ -1255,7 +1387,8 @@ Repeat_External_Primitive:
 /* Interpret(), continued */
 
           case TC_COMPILED_PROCEDURE:
-	  { apply_compiled_setup(STACK_ENV_EXTRA_SLOTS +
+	  {
+	    apply_compiled_setup(STACK_ENV_EXTRA_SLOTS +
 				 Get_Integer( Stack_Ref( STACK_ENV_HEADER)));
 	    Export_Registers();
 	    Which_Way = apply_compiled_procedure();
@@ -1592,8 +1725,6 @@ return_from_compiled_code:
       Translate_To_Point(Where_To_Go);
       break;			/* We never get here.... */
     }
-
-/*  case RC_RESTORE_VALUE is with RC_POP_RETURN_ERROR */
 
     case RC_RETURN_TRAP_POINT:
       Store_Return(Old_Return_Code);

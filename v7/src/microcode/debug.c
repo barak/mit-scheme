@@ -30,13 +30,15 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.22 1987/03/11 07:37:06 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.23 1987/04/03 00:10:44 jinx Exp $
  *
  * Utilities to help with debugging
  */
 
 #include "scheme.h"
 #include "primitive.h"
+#include "trap.h"
+#include "lookup.h"
 
 void Show_Pure()
 { Pointer *Obj_Address;
@@ -94,37 +96,56 @@ void Show_Pure()
   }
 }
 
-void Show_Env(The_Env)
-Pointer The_Env;
-{ Pointer *Name_Ptr, *Value_Ptr, Aux_Ptr, Aux_Slot_Ptr;
-  long Count, i;
-  Value_Ptr = Nth_Vector_Loc(The_Env, HEAP_ENV_FUNCTION);
-  if ((Type_Code(*Value_Ptr) == TC_PROCEDURE) || 
-      (Type_Code(*Value_Ptr) == TC_EXTENDED_PROCEDURE))
-  { Name_Ptr = Nth_Vector_Loc(*Value_Ptr, PROCEDURE_LAMBDA_EXPR);
-    Name_Ptr = Nth_Vector_Loc(*Name_Ptr, LAMBDA_FORMALS);
-    Count = Vector_Length(*Name_Ptr);
-    Name_Ptr = Nth_Vector_Loc(*Name_Ptr, 1);
-    for (i=0; i < Count; i++)
-    { Print_Expression(*Name_Ptr++, "Name ");
-      Print_Expression(*Value_Ptr++, " Value ");
+void
+Show_Env(The_Env)
+     Pointer The_Env;
+{
+  Pointer *name_ptr, procedure, *value_ptr, extension;
+  long count, i;
+
+  procedure = Vector_Ref(The_Env, ENVIRONMENT_FUNCTION);
+  value_ptr = Nth_Vector_Loc(The_Env, ENVIRONMENT_FIRST_ARG);
+  
+  if (Type_Code(procedure) == AUX_LIST_TYPE)
+  {
+    extension = procedure;
+    procedure = Fast_Vector_Ref(extension, ENVIRONMENT_EXTENSION_PROCEDURE);
+  }
+  else
+    extension = NIL;
+
+  if ((Type_Code(procedure) != TC_PROCEDURE) &&
+      (Type_Code(procedure) != TC_EXTENDED_PROCEDURE))
+  {
+    printf("Not created by a procedure");
+    return;
+  }
+  name_ptr = Nth_Vector_Loc(procedure, PROCEDURE_LAMBDA_EXPR);
+  name_ptr = Nth_Vector_Loc(*name_ptr, LAMBDA_FORMALS);
+  count = Vector_Length(*name_ptr) - 1;
+
+  name_ptr = Nth_Vector_Loc(*name_ptr, 2);
+  for (i = 0; i < count; i++)
+  {
+    Print_Expression(*name_ptr++, "Name ");
+    Print_Expression(*value_ptr++, " Value ");
+    printf("\n");
+  }
+  if (extension != NIL)
+  {
+    printf("Auxilliary Variables\n");
+    count = Get_Integer(Vector_Ref(extension, AUX_LIST_COUNT));
+    for (i = 0, name_ptr = Nth_Vector_Loc(extension, AUX_LIST_FIRST);
+	 i < count;
+	 i++, name_ptr++)
+    { 
+      Print_Expression(Vector_Ref(*name_ptr, CONS_CAR),
+		       "Name ");
+      Print_Expression(Vector_Ref(*name_ptr, CONS_CAR),
+		       " Value ");
       printf("\n");
     }
-    Aux_Ptr = Vector_Ref(The_Env, HEAP_ENV_AUX_SLOT);
-    if (Aux_Ptr != NIL)
-    { printf("Auxilliary Variables\n");
-      while (Aux_Ptr != NIL)
-      { Aux_Slot_Ptr = Vector_Ref(Aux_Ptr, CONS_CAR);
-        Print_Expression(Vector_Ref(Aux_Slot_Ptr, CONS_CAR),
-                         "Name ");
-        Print_Expression(Vector_Ref(Aux_Slot_Ptr, CONS_CAR),
-                         " Value ");
-        Aux_Ptr = Vector_Ref(Aux_Ptr, CONS_CDR);
-	printf("\n");
-      }
-    }
   }
-  else printf("Not created by a procedure");
 }
 
 /* For debugging, given a String, return either a "not interned"
@@ -216,8 +237,7 @@ Boolean Detailed;
   Boolean Return_After_Print;
   Temp_Address = Get_Integer(Expr);
   Return_After_Print = false;
-  if (Type_Code(Expr) > MAX_SAFE_TYPE) printf("{Dangerous}");
-  switch(Safe_Type_Code(Expr))
+  switch(Type_Code(Expr))
   { case TC_ACCESS:
       printf("[ACCESS (");
       Expr = Vector_Ref(Expr, ACCESS_NAME);
@@ -356,12 +376,18 @@ SPrint:
     case TC_DELAYED: printf("[DELAYED"); break;
     case TC_DISJUNCTION: printf("[DISJUNCTION"); break;
     case TC_ENVIRONMENT:
+    {
+      Pointer procedure;
+
       printf("[ENVIRONMENT 0x%x]", Temp_Address);
       printf(" (from ");
-      Do_Printing(Vector_Ref(Expr, HEAP_ENV_FUNCTION), false);
+      procedure = Vector_Ref(Expr, ENVIRONMENT_FUNCTION);
+      if (Type_Code(procedure) == TC_QUAD)
+	procedure = Vector_Ref(procedure, ENVIRONMENT_EXTENSION_PROCEDURE);
+      Do_Printing(procedure, false);
       printf(")");
       return;
-    case TC_EXTENDED_FIXNUM: printf("[EXTENDED_FIXNUM"); break;
+    }
     case TC_EXTENDED_LAMBDA:
       if (Detailed) printf("[EXTENDED_LAMBDA (");
       Do_Printing(
@@ -381,7 +407,7 @@ SPrint:
 /* Do_Printing, continued */
 
     case TC_FUTURE: printf("[FUTURE"); break;
-    case TC_HUNK3: printf("[HUNK3"); break;
+    case TC_HUNK3: printf("[TRIPLE"); break;
     case TC_IN_PACKAGE: printf("[IN_PACKAGE"); break;
     case TC_LAMBDA:
       if (Detailed) printf("[LAMBDA (");
@@ -414,6 +440,17 @@ SPrint:
 
 /* Do_Printing, continued */
 
+    case TC_QUAD: printf("[QUAD"); break;
+    case TC_REFERENCE_TRAP:
+    {
+      printf("[REFERENCE-TRAP");
+      if (Datum(Expr) <= TRAP_MAX_IMMEDIATE)
+	break;
+      Print_Expression(Vector_Ref(Expr, TRAP_TAG), " tag");
+      Print_Expression(Vector_Ref(Expr, TRAP_EXTRA), " extra");
+      printf("]");
+      return;
+    }
     case TC_RETURN_CODE:
       printf("[RETURN_CODE ");
       Print_Return_Name(Expr);
@@ -423,15 +460,6 @@ SPrint:
     case TC_SEQUENCE_2: printf("[SEQUENCE_2"); break;
     case TC_SEQUENCE_3: printf("[SEQUENCE_3"); break;
     case TC_THE_ENVIRONMENT: printf("[THE_ENVIRONMENT"); break;
-
-    case TC_TRAP:
-      printf("[TRAP ");
-      Print_Expression(Vector_Ref(Expr, TRAP_TAG), " tag");
-      Print_Expression(Vector_Ref(Expr, TRAP_DEFAULT), " default");
-      Print_Expression(Vector_Ref(Expr, TRAP_FROB), " frob");
-      printf("]");
-      return;
-
     case TC_TRUE:
       if (Temp_Address == 0)
       { printf("#!true");
@@ -439,16 +467,6 @@ SPrint:
       }
       printf("[TRUE");
       break;
-    case TC_UNASSIGNED:
-      if (Temp_Address == UNBOUND)
-      { printf("#!UNBOUND");
-        return;
-      }
-      else if (Temp_Address == UNASSIGNED)
-      { printf("#!UNASSIGNED");
-        return;
-      }
-      else printf("[UNASSIGNED"); break;
     case TC_VECTOR: printf("[VECTOR"); break;
     case TC_VECTOR_16B: printf("[VECTOR_16B"); break;
     case TC_VECTOR_1B: printf("[VECTOR_1B"); break;
@@ -496,7 +514,7 @@ void Back_Trace()
     }
     else
     { Print_Expression(Temp, "  ...");
-      if (Safe_Type_Code(Temp) == TC_MANIFEST_NM_VECTOR)
+      if (Type_Code(Temp) == TC_MANIFEST_NM_VECTOR)
       { Stack_Pointer = Simulate_Popping(Get_Integer(Temp));
         printf(" (skipping)");
       }

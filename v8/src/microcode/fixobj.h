@@ -30,13 +30,13 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/fixobj.h,v 9.23 1987/03/09 14:44:49 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/fixobj.h,v 9.24 1987/04/03 00:12:59 jinx Exp $
  *
  * Declarations of user offsets into the Fixed Objects Vector.
  * This should correspond to the file UTABMD.SCM
  */
 
-#define Non_Object		0x00	/* Value for UNBOUND variables */
+#define Non_Object		0x00	/* Used for unassigned variables */
 #define System_Interrupt_Vector	0x01	/* Handlers for interrups */
 #define System_Error_Vector	0x02	/* Handlers for errors */
 #define OBArray			0x03	/* Array for interning symbols */

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gc.h,v 9.21 1987/01/22 14:26:12 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gc.h,v 9.22 1987/04/03 00:13:13 jinx Rel $
  *
  * Garbage collection related macros of sufficient utility to be
  * included in all compilations.
@@ -98,5 +98,5 @@ MIT in each case. */
 #define Set_Stack_Guard(Addr) Stack_Guard = Addr
 
 #define New_Compiler_MemTop()	\
-  Registers[REGBLOCK_MEMTOP] =  \
+  Regs[REGBLOCK_MEMTOP] =  	\
     ((IntCode & IntEnb)==0) ? ((Pointer) MemTop) : ((Pointer) -1)

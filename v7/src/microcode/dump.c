@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dump.c,v 9.21 1987/01/22 14:23:24 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dump.c,v 9.22 1987/04/03 00:11:11 jinx Exp $
  *
  * This file contains common code for dumping internal format binary files.
  */
@@ -47,12 +47,12 @@ long Heap_Count, Constant_Count;
 
 #ifdef DEBUG
 #ifndef Heap_In_Low_Memory
-  printf("\nMemory_Base = 0x%x\n", Memory_Base);
+  fprintf(stderr, "\nMemory_Base = 0x%x\n", Memory_Base);
 #endif
-  printf("\nHeap_Relocation=0x%x, dumped as 0x%x\n",
-         Heap_Relocation, Make_Pointer(TC_BROKEN_HEART, Heap_Relocation));
-  printf("\nDumped object=0x%x, dumped as 0x%x\n",
-         Dumped_Object, Make_Pointer(TC_BROKEN_HEART, Dumped_Object));
+  fprintf(stderr, "\nHeap_Relocation=0x%x, dumped as 0x%x\n",
+	  Heap_Relocation, Make_Pointer(TC_BROKEN_HEART, Heap_Relocation));
+  fprintf(stderr, "\nDumped object=0x%x, dumped as 0x%x\n",
+	  Dumped_Object, Make_Pointer(TC_BROKEN_HEART, Dumped_Object));
 #endif
   Buffer[FASL_Offset_Marker] = FASL_FILE_MARKER;
   Buffer[FASL_Offset_Heap_Count] =

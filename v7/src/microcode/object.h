@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/object.h,v 9.20 1987/01/21 20:24:48 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/object.h,v 9.21 1987/04/03 00:18:15 jinx Exp $ */
 
 /* This file contains definitions pertaining to the C view of 
    Scheme pointers: widths of fields, extraction macros, pre-computed
@@ -46,11 +46,9 @@ MIT in each case. */
 #define TYPE_CODE_LENGTH	8	/* Not CHAR_SIZE!! */
 #define MAX_TYPE_CODE		0xFF	/* ((1<<TYPE_CODE_LENGTH) - 1) */
 
-/* The danger bit is set in the value cell of an environment whenever a
-   particular binding of a variable to a value has been shadowed by an
-   auxiliary variable in a nested environment.  It means that variables
-   cached to this address must be recached since the address may be invalid.
-   See lookup.c */ 
+/* The danger bit is being phased out.  It is currently used by stacklets
+   and the history mechanism.  The variable lookup code no longer uses it.
+ */
 
 #define DANGER_TYPE		0x80	/* (1<<(TYPE_CODE_LENGTH-1)) */
 #define MAX_SAFE_TYPE   	0x7F	/* (MAX_TYPE_CODE & ~DANGER_TYPE) */
@@ -108,12 +106,12 @@ typedef Pointer *relocation_type; /* Used to relocate pointers on fasload */
 
 extern Pointer *Memory_Base;
 
-/* The "-1" in the value returned is guarantee that there is one
+/* The "-1" in the value returned is a guarantee that there is one
    word reserved exclusively for use by the garbage collector. */
 
-#define Allocate_Heap_Space(space)				\
-  (Memory_Base = ((Pointer *) (malloc ((sizeof (Pointer)) * (space)))), \
-   Heap = Memory_Base,						\
+#define Allocate_Heap_Space(space)						\
+  (Memory_Base = ((Pointer *) (malloc ((sizeof (Pointer)) * (space)))),		\
+   Heap = Memory_Base,								\
    ((Memory_Base + (space)) - 1))
 
 #define Get_Pointer(P) ((Pointer *) (Memory_Base + (pointer_datum (P))))
@@ -175,18 +173,6 @@ typedef long relocation_type;	/* Used to relocate pointers on fasload */
 #define User_Vector_Ref(P, N)		Vector_Ref(P, (N)+1)
 #define User_Vector_Set(P, N, S)  	Vector_Set(P, (N)+1, S)
 
-#ifdef FLOATING_ALIGNMENT
-
-#define Align_Float(Where)					\
-while ((((long) ((Where) + 1)) & FLOATING_ALIGNMENT) != 0)	\
-  *Where++ = (Make_Non_Pointer (TC_MANIFEST_NM_VECTOR, 0));
-
-#else /* ifdef FLOATING_ALIGNMENT */
-
-#define Align_Float(Where)
-
-#endif /* ifdef FLOATING_ALIGNMENT */
-
 #define fixnum_p(P)    ((pointer_type (P)) == TC_FIXNUM)
 #define Get_Float(P)   (* ((double *) (Nth_Vector_Loc ((P), 1))))
 #define Get_Integer(P) (pointer_datum (P))
@@ -224,3 +210,34 @@ if ((Is_Constant (Get_Pointer (Old_Pointer))) &&		\
     (! (Is_Constant (Get_Pointer (Will_Contain)))) &&		\
     (Pure_Test (Get_Pointer (Old_Pointer))))			\
   Primitive_Error (ERR_WRITE_INTO_PURE_SPACE);
+
+#ifdef FLOATING_ALIGNMENT
+
+#define FLOATING_BUFFER_SPACE		\
+	((FLOATING_ALIGNMENT + 1)/sizeof(Pointer))
+
+#define HEAP_BUFFER_SPACE		\
+	(TRAP_MAX_IMMEDIATE + 1 + FLOATING_BUFFER_SPACE)
+
+/* The space is there, find the correct position. */
+
+#define Initial_Align_Float(Where)					\
+{									\
+  while ((((long) ((Where) + 1)) & FLOATING_ALIGNMENT) != 0)		\
+    Where -= 1;								\
+}
+
+#define Align_Float(Where)						\
+{									\
+  while ((((long) ((Where) + 1)) & FLOATING_ALIGNMENT) != 0)		\
+    *Where++ = (Make_Non_Pointer (TC_MANIFEST_NM_VECTOR, 0));		\
+}
+
+#else not FLOATING_ALIGNMENT
+
+#define HEAP_BUFFER_SPACE		 (TRAP_MAX_IMMEDIATE + 1)
+
+#define Initial_Align_Float(Where)
+#define Align_Float(Where)
+
+#endif FLOATING_ALIGNMENT

@@ -30,10 +30,11 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bkpt.h,v 9.21 1987/01/22 14:16:39 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bkpt.h,v 9.22 1987/04/03 00:08:07 jinx Exp $
  *
  * This file contains breakpoint utilities.
  * Disabled when not debugging the interpreter.
+ * It "shadows" definitions in default.h
  *
  */
 
@@ -48,23 +49,25 @@ typedef struct sp_record *sp_record_list;
 #define sp_nil ((sp_record_list) NULL)
 #define debug_maxslots 64
 
-#define Eval_Ucode_Hook()					\
-  local_circle[local_slotno++] = Fetch_Expression();		\
-  if (local_slotno >= debug_maxslots) local_slotno = 0;		\
-  if (local_nslots < debug_maxslots) local_nslots++
-
-#ifdef Using_Registers
-#define Pop_Return_Ucode_Hook()					\
-if (SP_List != sp_nil)						\
-{ Export_Registers();						\
-  Pop_Return_Break_Point();					\
-  Import_Registers();						\
+#define Eval_Ucode_Hook()						\
+{									\
+  local_circle[local_slotno++] = Fetch_Expression();			\
+  if (local_slotno >= debug_maxslots) local_slotno = 0;			\
+  if (local_nslots < debug_maxslots) local_nslots++;			\
 }
-#else
-#define Pop_Return_Ucode_Hook()					\
-if (SP_List != sp_nil)						\
-  Pop_Return_Break_Point();
-#endif
+
+#define Pop_Return_Ucode_Hook()						\
+{									\
+  if (SP_List != sp_nil)						\
+  { Export_Registers();							\
+    Pop_Return_Break_Point();						\
+    Import_Registers();							\
+  }									\
+}
+
+/* Not implemented yet */
+
+#define Apply_Ucode_Hook()
 
 /* For performance metering we note the time spent handling each
  * primitive.  This MIGHT help us figure out where all the time
@@ -85,14 +88,13 @@ void Clear_Perfinfo_Data()
 }
 
 #define Metering_Apply_Primitive(Loc, N)				\
-{ long Start_Time = Sys_Clock();					\
+{									\
+  long Start_Time = Sys_Clock();					\
+									\
   Loc = Apply_Primitive(N)						\
   perfinfo_data.primtime[N] += Sys_Clock() - Start_Time;		\
-}									\
-Set_Time_Zone(Zone_Working)
+  Set_Time_Zone(Zone_Working);						\
+}
 #endif
-
-/* Not implemented yet */
-#define Apply_Ucode_Hook()
 #endif /* ifdef ENABLE_DEBUGGING_TOOLS */
 

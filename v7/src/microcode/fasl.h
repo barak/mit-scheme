@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasl.h,v 9.22 1987/03/12 14:51:36 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasl.h,v 9.23 1987/04/03 00:12:15 jinx Exp $
 
    Contains information relating to the format of FASL files.
    Some information is contained in CONFIG.H.
@@ -39,9 +39,6 @@ MIT in each case. */
 /* FASL Version */
 
 #define FASL_FILE_MARKER	0XFAFAFAFA
-#define FASL_FORMAT_ADDED_STACK	1
-#define FASL_FORMAT_VERSION	1
-#define FASL_SUBVERSION		5
 
 /* The FASL file has a header which begins as follows: */
 
@@ -70,44 +67,27 @@ MIT in each case. */
 #define The_Version(P) Type_Code(P)
 #define Make_Version(V, S, M)					\
   Make_Non_Pointer((V), (((S) << MACHINE_TYPE_LENGTH) | (M)))
-
+
 #define WRITE_FLAG		"w"
 #define OPEN_FLAG		"r"
-
-/* "Memorable" FASL sub-versions -- ones where we modified something
+
+/* "Memorable" FASL versions -- ones where we modified something
    and want to remain backwards compatible.
 */
+
+/* Versions. */
+
+#define FASL_FORMAT_ADDED_STACK	1
+
+/* Subversions of highest numbered version. */
 
 #define FASL_LONG_HEADER	3
 #define FASL_DENSE_TYPES	4
 #define FASL_PADDED_STRINGS	5
-#define FASL_OLDEST_SUPPORTED	5
+#define FASL_REFERENCE_TRAP	6
 
-#if 0
-/* Old Type Codes -- used for conversion purposes
-   This is no longer possible, because some were re-used
-   without changing the fasl file version.
-*/
+/* Current parameters. */
 
-#define OLD_TC_CHARACTER			0x40
-#define OLD_TC_PCOMB2				0x44
-#define OLD_TC_VECTOR				0x46
-#define OLD_TC_RETURN_CODE			0x48
-#define OLD_TC_COMPILED_PROCEDURE		0x49
-#define OLD_TC_ENVIRONMENT			0x4E
-#define OLD_TC_FIXNUM				0x50
-#define OLD_TC_CONTROL_POINT			0x56
-#define OLD_TC_BROKEN_HEART			0x58
-#define OLD_TC_COMBINATION			0x5E
-#define OLD_TC_MANIFEST_NM_VECTOR		0x60
-#define OLD_TC_PCOMB3				0x66
-#define OLD_TC_SPECIAL_NM_VECTOR 		0x68
-#define OLD_TC_THE_ENVIRONMENT			0x70
-#define OLD_TC_VECTOR_1B			0x76
-#define OLD_TC_BIT_STRING			0x76
-#define OLD_TC_PCOMB0				0x78
-#define OLD_TC_VECTOR_16B			0x7E
-#define OLD_TC_UNASSIGNED			0x38
-#define OLD_TC_SEQUENCE_3			0x3C
-
-#endif 0
+#define FASL_FORMAT_VERSION	FASL_FORMAT_ADDED_STACK
+#define FASL_SUBVERSION		FASL_REFERENCE_TRAP
+#define FASL_OLDEST_SUPPORTED	FASL_PADDED_STRINGS

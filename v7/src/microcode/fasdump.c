@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.22 1987/02/03 15:56:43 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.23 1987/04/03 00:12:00 jinx Exp $
 
    This file contains code for fasdump and dump-band.
 */
@@ -39,22 +39,24 @@ MIT in each case. */
 #include "primitive.h"
 #define In_Fasdump
 #include "gccode.h"
+#include "trap.h"
+#include "lookup.h"
 #include "dump.c"
 
 /* Some statics used freely in this file */
 Pointer *NewFree, *NewMemTop, *Fixup, *Orig_New_Free;
 
 /* FASDUMP:
-  
-   Hair squared! ... in order to dump an object it must be traced
-   (as in a garbage collection), but with some significant differences.
-   First, the copy must have (a) the global value cell of symbols set
-   to UNBOUND; (b) the danger bits cleared in symbols; and (c)
-   variables uncompiled.  Second, and worse, all the broken hearts
-   created during the process must be restored to their original
-   values.  This last is done by growing the copy of the object in the
-   bottom of spare heap, keeping track of the locations of broken
-   hearts and original contents at the top of the spare heap.
+
+   Hair squared! ... in order to dump an object it must be traced (as
+   in a garbage collection), but with some significant differences.
+   First, the copy must have the global value cell of symbols set to
+   UNBOUND and variables uncompiled.  Second, and worse, all the
+   broken hearts created during the process must be restored to their
+   original values.  This last is done by growing the copy of the
+   object in the bottom of spare heap, keeping track of the locations
+   of broken hearts and original contents at the top of the spare
+   heap.
 
    FASDUMP is called with three arguments:
    Argument 1: Base of spare heap
@@ -68,11 +70,11 @@ Pointer *NewFree, *NewMemTop, *Fixup, *Orig_New_Free;
    standard Pure/Constant block.
 */
 
-/* Copy of GCLoop, except (a) copies out of constant space into the
+/* 
+   Copy of GCLoop, except (a) copies out of constant space into the
    object to be dumped; (b) changes symbols and variables as
-   described; (c) clears danger bits as described; (d) keeps track of
-   broken hearts and their original contents (e) To_Pointer is now
-   NewFree.
+   described; (c) keeps track of broken hearts and their original
+   contents (e) To_Pointer is now NewFree.
 */
 
 #define Dump_Pointer(Code)					\
@@ -98,20 +100,8 @@ int Dump_Mode;
   To = NewFree;
   Fixes = Fixup;
 
-  if (Dump_Debug) printf( "Starting scan at 0x%08x\n", Scan);
-
   for ( ; Scan != To; Scan++)
   { Temp = *Scan;
-
-    if (Dump_Debug)
-    { if (Temp != NIL)
-	fprintf(stderr,  "0x%08x: %02x|%06x ... ",
-	       Scan, Type_Code(Temp), Get_Integer(Temp));
-    }
-
-/* DumpLoop continues on the next page */
-
-/* DumpLoop, continued */
 
     Switch_by_GC_Type(Temp)
     { case TC_BROKEN_HEART:
@@ -124,15 +114,12 @@ int Dump_Mode;
       case TC_MANIFEST_NM_VECTOR:
       case TC_MANIFEST_SPECIAL_NM_VECTOR:
 	Scan += Get_Integer(Temp);
-	if (Dump_Debug)
-	  fprintf(stderr, "skipping %d cells.", Get_Integer(Temp));
 	break;
 
 	/* This should really be case_Fasdump_Non_Pointer,
 	   and PRIMITIVE_EXTERNAL should be handled specially
 	 */
       case_Non_Pointer:
-	if (Dump_Debug) fprintf(stderr, "not a pointer.");
 	break;
 
       case_compiled_entry_point:
@@ -142,6 +129,13 @@ int Dump_Mode;
       case_Cell:
 	Setup_Pointer_for_Dump(Transport_Cell());
 
+      case TC_REFERENCE_TRAP:
+	if (Datum(Temp) <= TRAP_MAX_IMMEDIATE)
+	{
+	  /* It is a non pointer. */
+	  break;
+	}
+	/* Fall through. */
       case TC_WEAK_CONS:
       case_Fasdump_Pair:
 	Setup_Pointer_for_Dump(Transport_Pair());
@@ -162,10 +156,8 @@ int Dump_Mode;
 
 /* DumpLoop, continued */
 
-#ifdef QUADRUPLE
       case_Quadruple:
 	Setup_Pointer_for_Dump(Transport_Quadruple());
-#endif
 
 #ifdef FLOATING_ALIGNMENT
       case TC_BIG_FLONUM:
@@ -187,7 +179,6 @@ int Dump_Mode;
 	Invalid_Type_Code();
 
       }	/* Switch_by_GC_Type */
-    if (Dump_Debug) fprintf(stderr, "\n");
   } /* For loop */
   NewFree = To;
   Fixup = Fixes;

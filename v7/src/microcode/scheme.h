@@ -30,26 +30,26 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/scheme.h,v 9.21 1987/01/22 14:31:48 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/scheme.h,v 9.22 1987/04/03 00:20:06 jinx Exp $
  *
  * General declarations for the SCode interpreter.  This
  * file is INCLUDED by others and contains declarations only.
  */
 
-/* "fast" is a register declaration if we aren't debugging code */
+/* Certain debuggers cannot really deal with variables in registers.
+   When debugging, NO_REGISTERS can be defined.
+*/
 
-#ifdef ENABLE_DEBUGGING_TOOLS
-#define Consistency_Check	true
+#ifdef NO_REGISTERS
 #define fast
 #else
-#define Consistency_Check	false
 #define fast			register
 #endif
 
-#ifdef noquick
-#define quick
+#ifdef ENABLE_DEBUGGING_TOOLS
+#define Consistency_Check	true
 #else
-#define quick fast
+#define Consistency_Check	false
 #endif
 
 #ifdef COMPILE_STEPPER
@@ -60,30 +60,29 @@ MIT in each case. */
 
 #define forward		extern	/* For forward references */
 
-#include "config.h"	/* Machine and OS configuration info */
-#include "bkpt.h"	/* May shadow some defaults */
-#include "object.h"	/* Scheme Object Representation */
-#include "scode.h"	/* Scheme SCode Representation */
-#include "sdata.h"	/* Scheme User Data Representation */
-#include "gc.h"		/* Garbage Collector related macros */
-#include "history.h"	/* History maintenance */
-#include "interpret.h"	/* Macros for interpreter */
-#include "stack.h"	/* Macros for stack (stacklet) manipulation */
-#include "futures.h"	/* Support macros, etc. for FUTURE */
-#include "types.h"	/* Type code numbers */
-#include "errors.h"	/* Error code numbers */
-#include "returns.h"	/* Return code numbers */
-#include "const.h"	/* Various named constants */
-#include "fixobj.h"	/* Format of fixed objects vector */
-#ifdef RENAME
-#include "rename.c"	/* Rename of identifiers for some compilers */
-#endif
 #include <setjmp.h>
 #include <stdio.h>
+
+#include "config.h"	/* Machine and OS configuration info */
+#include "types.h"	/* Type code numbers */
+#include "const.h"	/* Various named constants */
+#include "object.h"	/* Scheme object representation */
+#include "gc.h"		/* Garbage collector related macros */
+#include "scode.h"	/* Scheme scode representation */
+#include "sdata.h"	/* Scheme user data representation */
+#include "futures.h"	/* Support macros, etc. for FUTURE */
+#include "errors.h"	/* Error code numbers */
+#include "returns.h"	/* Return code numbers */
+#include "fixobj.h"	/* Format of fixed objects vector */
+#include "stack.h"	/* Macros for stack (stacklet) manipulation */
+#include "history.h"	/* History maintenance */
+#include "interpret.h"	/* Macros for interpreter */
 
 #ifdef butterfly
 #include "butterfly.h"
 #endif
 
+#include "bkpt.h"	/* Shadows some defaults */
 #include "default.h"	/* Defaults for various hooks. */
 #include "extern.h"	/* External declarations */
+#include "prim.h"	/* Declarations for external primitives. */

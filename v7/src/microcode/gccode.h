@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.21 1987/01/22 14:26:19 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.22 1987/04/03 00:13:28 jinx Exp $
  *
  * This file contains the macros for use in code which does GC-like
  * loops over memory.  It is only included in a few files, unlike
@@ -38,10 +38,6 @@ MIT in each case. */
  *
  */
 
-static Pointer *Low_Watch = ((Pointer *) NULL);
-static Pointer *High_Watch = ((Pointer *) NULL);
-static Boolean In_Range = false;
-
 /* A SWITCH on GC types, duplicates information in GC_Type_Map[], but exists
    for efficiency reasons. Macros must be used by convention: first
    Switch_by_GC_Type, then each of the case_ macros (in any order).  The
@@ -49,32 +45,16 @@ static Boolean In_Range = false;
 */
 
 #define Switch_by_GC_Type(P) 				\
-  switch (Safe_Type_Code(P))
+  switch(Safe_Type_Code(P))
 
 #define case_simple_Non_Pointer				\
-  case_simple_Non_Pointer_poppers			\
   case TC_NULL:						\
   case TC_TRUE:						\
-  case TC_UNASSIGNED:					\
   case TC_THE_ENVIRONMENT:				\
-  case TC_EXTENDED_FIXNUM:				\
   case TC_RETURN_CODE:					\
   case TC_PRIMITIVE:					\
   case TC_PCOMB0:					\
   case TC_STACK_ENVIRONMENT
-
-#if defined(MC68020)
-
-#define case_simple_Non_Pointer_poppers			\
- case TC_PEA_INSTRUCTION:				\
- case TC_JMP_INSTRUCTION:				\
- case TC_DBF_INSTRUCTION:
-
-#else
-
-#define case_simple_Non_Pointer_poppers
-
-#endif
 
 #define case_Fasdump_Non_Pointer			\
  case TC_FIXNUM:					\
@@ -89,6 +69,7 @@ static Boolean In_Range = false;
    TC_BROKEN_HEART
    TC_MANIFEST_NM_VECTOR
    TC_MANIFEST_SPECIAL_NM_VECTOR
+   TC_REFERENCE_TRAP
 */
 
 #define case_compiled_entry_point			\
@@ -99,11 +80,7 @@ static Boolean In_Range = false;
  case TC_CELL
 
 /* No missing Cell types */
-
-/* Switch_by_GC_Type cases continue on the next page */
 
-/* Switch_by_GC_Type cases continued */
-
 #define case_Fasdump_Pair				\
  case TC_LIST:						\
  case TC_SCODE_QUOTE:					\
@@ -141,22 +118,16 @@ static Boolean In_Range = false;
  case TC_HUNK3:						\
  case TC_CONDITIONAL:					\
  case TC_SEQUENCE_3:					\
- case TC_PCOMB2:					\
- case TC_TRAP
+ case TC_PCOMB2
 
-/* Missing Triple types (must be treated specially):
+/* Missing triple types (must be treated specially):
    TC_VARIABLE
- */
-
-/* Switch_by_GC_Type cases continue on the next page */
+*/
 
-/* Switch_by_GC_Type cases continued */
-
-/* There are currently no Quad types.
-   Type Code -1 should be ok for now. -SMC */
-
 #define case_Quadruple					\
- case -1
+  case TC_QUAD
+
+/* No missing quad types. */
 
 #define case_simple_Vector				\
  case TC_NON_MARKED_VECTOR:				\
@@ -181,51 +152,31 @@ static Boolean In_Range = false;
    TC_BIG_FLONUM
 */
 
+/* Macros for the garbage collector and related programs. */
+
 #define	NORMAL_GC	0
 #define PURE_COPY	1
 #define CONSTANT_COPY	2
 
 /* Pointer setup for the GC Type handlers. */
 
+/* Check whether it has been relocated. */
+
 #define Normal_BH(In_GC, then_what)				\
-/* Has it already been relocated? */				\
 if (Type_Code(*Old) == TC_BROKEN_HEART)				\
 { *Scan = Make_New_Pointer(Type_Code(Temp), *Old);		\
-  if And2(In_GC, GC_Debug)					\
-  { if ((Get_Pointer(*Old) >= Low_Watch) &&			\
-	(Get_Pointer(*Old) <= High_Watch))			\
-    { fprintf(stderr, "0x%x: %x|%x ...  From 0x%x",		\
-	     Scan, Type_Code(Temp), Get_Integer(Temp), Old);	\
-      fprintf(stderr, ", To (BH) 0x%x\n", Datum(*Old));		\
-    }								\
-    else if And2(In_GC, In_Range)				\
-      fprintf(stderr, ", To (BH) 0x%x", Datum(*Old));		\
-  }								\
   then_what;							\
 }
-
+
 #define Setup_Internal(In_GC, Extra_Code, BH_Code)		\
 if And2(In_GC, Consistency_Check)				\
   if ((Old >= Highest_Allocated_Address) || (Old < Heap))	\
   { fprintf(stderr, "Out of range pointer: %x.\n", Temp);	\
     Microcode_Termination(TERM_EXIT);				\
   }								\
-								\
-/* Does it need relocation? */					\
-								\
 if (Old >= Low_Constant)					\
-{ if And3(In_GC, GC_Debug, In_Range)				\
-    fprintf(stderr, " (constant)");				\
   continue;							\
-}								\
-								\
-if And3(In_GC, GC_Debug, In_Range)				\
-  fprintf(stderr, "From 0x%x", Old);				\
-								\
 BH_Code;							\
-/* It must be transported to New Space */			\
-if And3(In_GC, GC_Debug, In_Range)				\
-  fprintf(stderr, ", To 0x%x", To);				\
 New_Address = (BROKEN_HEART_0 + C_To_Scheme(To));		\
 Extra_Code;							\
 continue
@@ -320,33 +271,6 @@ if (!(Future_Spliceable(Temp)))					\
 *Scan = Future_Value(Temp);					\
 Scan -= 1
 
-/* This is handled specially so the aux variable compilation
-   mechanism will not hang onto "garbage" environments.
- */
-
-#define Transport_Variable()						\
-{ Pointer Compiled_Type = Old[VARIABLE_COMPILED_TYPE];			\
-  if ((Type_Code(Compiled_Type) == AUX_REF) &&				\
-      (!Is_Constant(Get_Pointer(Compiled_Type))) &&			\
-      (Type_Code(Vector_Ref(Compiled_Type, 0)) != TC_BROKEN_HEART))	\
-  { Old[VARIABLE_COMPILED_TYPE] = UNCOMPILED_VARIABLE;			\
-    Old[VARIABLE_OFFSET] = NIL;						\
-  }									\
-}									\
-Transport_Triple()
-
-#define Purify_Transport_Variable()					\
-{ Pointer Compiled_Type = Old[VARIABLE_COMPILED_TYPE];			\
-  if ((Type_Code(Compiled_Type)==AUX_REF) &&				\
-      (GC_Mode==PURE_COPY) &&						\
-      ((!Is_Constant(Get_Pointer(Compiled_Type))) ||			\
-       (!Is_Constant(Get_Pointer(Old[VARIABLE_OFFSET])))))		\
-    { Old[VARIABLE_COMPILED_TYPE] = UNCOMPILED_VARIABLE;		\
-      Old[VARIABLE_OFFSET] = NIL;					\
-    }									\
-}									\
-Transport_Triple()
-
 /* Weak Pointer code.  The idea here is to support a post-GC pass which
    removes any objects in the CAR of a WEAK_CONS cell which is no longer
    referenced by other objects in the system.
@@ -399,7 +323,7 @@ continue
 /* Undefine Symbols */
 
 #define Fasdump_Symbol(global_value)				\
-*To++ = (*Old & ~DANGER_BIT);					\
+*To++ = *Old;							\
 *To++ = global_value;						\
 Pointer_End()
 

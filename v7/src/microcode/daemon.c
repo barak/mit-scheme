@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/daemon.c,v 9.22 1987/02/02 15:16:12 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/daemon.c,v 9.23 1987/04/03 00:10:26 jinx Exp $
 
    This file contains code for the Garbage Collection daemons.
    There are currently two daemons, one for closing files which
@@ -59,16 +59,19 @@ extern Boolean OS_file_close();
 
 Built_In_Primitive(Prim_Close_Lost_Open_Files, 1, "CLOSE-LOST-OPEN-FILES")
 { fast Pointer *Smash, Cell, Weak_Cell;
+  long channel_number;
   Primitive_1_Arg();
 
   for (Smash = Nth_Vector_Loc(Arg1, CONS_CDR), Cell = *Smash;
        Cell != NIL;
        Cell = *Smash)
-  { Weak_Cell = Fast_Vector_Ref(Cell, CONS_CAR);
+  {
+    Weak_Cell = Fast_Vector_Ref(Cell, CONS_CAR);
     if (Fast_Vector_Ref(Weak_Cell, CONS_CAR) == NIL)
-    { (void)
-	OS_file_close
-	  (Channels[Get_Integer(Fast_Vector_Ref(Weak_Cell, CONS_CDR))]);
+    {
+      channel_number = Get_Integer(Fast_Vector_Ref(Weak_Cell, CONS_CDR));
+      (void) OS_file_close (Channels[channel_number]);
+      Channels[channel_number] = NULL;
       *Smash = Fast_Vector_Ref(Cell, CONS_CDR);
     }
     else

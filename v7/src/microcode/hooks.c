@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.21 1987/01/22 14:27:02 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.22 1987/04/03 00:14:25 jinx Exp $
  *
  * This file contains various hooks and handles which connect the
  * primitives with the main interpreter.
@@ -195,8 +195,6 @@ Built_In_Primitive( Prim_Apply, 2, "APPLY")
 #endif
 
 /* (CATCH PROCEDURE)
-      [Primitive number 0x03]
-
       Creates a control point (a pointer to the current stack) and
       passes it to PROCEDURE as its only argument.  The inverse
       operation, typically called THROW, is performed by using the
@@ -236,7 +234,6 @@ Built_In_Primitive(Prim_Non_Reentrant_Catch, 1, "FAST-CALL-WITH-CURRENT-CONTINUA
 #endif
 
 /* (ENABLE-INTERRUPTS! INTERRUPTS)
-      [Primitive number 0x06]
       Changes the enabled interrupt bits to bitwise-or of INTERRUPTS
       and previous value of interrupts.  Returns the previous value.
       See MASK_INTERRUPT_ENABLES for more information on interrupts.
@@ -271,8 +268,7 @@ Built_In_Primitive(Prim_Error_Procedure, 3, "ERROR-PROCEDURE")
   longjmp(*Back_To_Eval, PRIM_APPLY);
 }
 
-/* (GET_FIXED_OBJECTS_VECTOR)
-      [Primitive number 0x7A]
+/* (GET-FIXED-OBJECTS-VECTOR)
       Returns the current fixed objects vector.  This vector is used
       for communication between the interpreter and the runtime
       system.  See the file UTABCSCM.SCM in the runtime system for the
@@ -287,7 +283,6 @@ Built_In_Primitive(Prim_Get_Fixed_Objects_Vector, 0,
 }
 
 /* (FORCE DELAYED-OBJECT)
-      [Primitive number 0xAF]
       Returns the memoized value of the DELAYED-OBJECT (created by a
       DELAY special form) if it has already been calculated.
       Otherwise, it calculates the value and memoizes it for future
@@ -309,8 +304,7 @@ Built_In_Primitive(Prim_Force, 1, "FORCE")
   longjmp(*Back_To_Eval, PRIM_DO_EXPRESSION); /*NOTREACHED*/
 }
 
-/* (EXECUTE_AT_NEW_POINT SPACE BEFORE DURING AFTER)
-      [Primitive number 0xE2]
+/* (EXECUTE-AT-NEW-POINT SPACE BEFORE DURING AFTER)
       Create a new state point in the specified state SPACE.  To enter
       the new point you must execute the BEFORE thunk.  On the way out,
       the AFTER thunk is executed.  If SPACE is NIL, then the microcode
@@ -359,8 +353,7 @@ Built_In_Primitive(Prim_Execute_At_New_Point, 4, "EXECUTE-AT-NEW-POINT")
   Translate_To_Point(New_Point);
 }
 
-/* (MAKE_STATE_SPACE MUTABLE?)
-      [Primitive number 0xE1]
+/* (MAKE-STATE-SPACE MUTABLE?)
       Creates a new state space for the dynamic winder.  Used only
       internally to the dynamic wind operations.  If the arugment
       is #!TRUE, then a real, mutable state space is created.
@@ -427,8 +420,7 @@ Built_In_Primitive(Prim_Set_Dynamic_State, 1, "SET-CURRENT-DYNAMIC-STATE!")
   return Result;
 }
 
-/* (SCODE_EVAL SCODE-EXPRESSION ENVIRONMENT)
-      [Primitive number 0x04]
+/* (SCODE-EVAL SCODE-EXPRESSION ENVIRONMENT)
       Evaluate the piece of SCode (SCODE-EXPRESSION) in the
       ENVIRONMENT. This is like Eval, except that it expects its input
       to be syntaxed into SCode rather than just a list.
@@ -442,8 +434,7 @@ Built_In_Primitive(Prim_Scode_Eval, 2, "SCODE-EVAL")
   longjmp(*Back_To_Eval, PRIM_DO_EXPRESSION);
 }
 
-/* (SET_INTERRUPT_ENABLES NEW-INT-ENABLES)
-      [Primitive number 0x06]
+/* (SET-INTERRUPT-ENABLES! NEW-INT-ENABLES)
       Changes the enabled interrupt bits to NEW-INT-ENABLES and
       returns the previous value.  See MASK_INTERRUPT_ENABLES for more
       information on interrupts.
@@ -458,28 +449,41 @@ Built_In_Primitive(Prim_Set_Interrupt_Enables, 1, "SET-INTERRUPT-ENABLES!")
   return Result;
 }
 
-/* (SET_CURRENT_HISTORY TRIPLE)
-      [Primitive number 0x2F]
+/* (SET-CURRENT-HISTORY! TRIPLE)
       Begins recording history into TRIPLE.  The history structure is
       somewhat complex and should be understood before trying to use
       this primitive.  It is used in the Read-Eval-Print loop in the
       Scheme runtime system.
+
+      This primitive pops its own frame and escapes back to the interpreter
+      because it modifies one of the registers that the interpreter caches
+      (History).
+
+      The longjmp forces the interpreter to recache.
 */
-Built_In_Primitive(Prim_Set_Current_History, 1, "SET-CURRENT-HISTORY")
-{ Pointer Result;
+Built_In_Primitive(Prim_Set_Current_History, 1, "SET-CURRENT-HISTORY!")
+{
   Primitive_1_Arg();
-  Arg_1_Type(TC_HUNK3);
-  Result = *History;
+
+  /* History is one of the few places where we still used danger bits.
+     Check explicitely.
+   */
+
+  if ((safe_pointer_type (Arg1)) != TC_HUNK3)
+    error_wrong_type_arg_1 ();
+
+  Val = *History;
 #ifdef COMPILE_HISTORY
   History = Get_Pointer(Arg1);
 #else
   History = Get_Pointer(Get_Fixed_Obj_Slot(Dummy_History));
 #endif
-  return Result;
+  Pop_Primitive_Frame( 1);
+  longjmp( *Back_To_Eval, PRIM_POP_RETURN);
+  /*NOTREACHED*/
 }
 
-/* (SET_FIXED_OBJECTS_VECTOR VECTOR)
-      [Primitive number 0x7B]
+/* (SET-FIXED-OBJECTS-VECTOR! VECTOR)
       Replace the current fixed objects vector with VECTOR.  The fixed
       objects vector is used for communication between the Scheme
       runtime system and the interpreter.  The file UTABCSCM.SCM
@@ -500,8 +504,7 @@ Built_In_Primitive(Prim_Set_Fixed_Objects_Vector, 1,
   return Result;
 }
 
-/* (TRANSLATE_TO_STATE_POINT STATE_POINT)
-      [Primitive number 0xE3]
+/* (TRANSLATE-TO-STATE-POINT STATE_POINT)
       Move to a new dynamic wind environment by performing all of the
       necessary enter and exit forms to get from the current state to
       the new state as specified by STATE_POINT.
@@ -516,8 +519,7 @@ Built_In_Primitive(Prim_Translate_To_Point, 1, "TRANSLATE-TO-STATE-POINT")
   /* This ends by longjmp-ing back to the interpreter */
 }
 
-/* (WITH_HISTORY_DISABLED THUNK)
-      [Primitive number 0x9C]
+/* (WITH-HISTORY-DISABLED THUNK)
       THUNK must be a procedure or primitive procedure which takes no
       arguments.  Turns off the history collection mechanism.  Removes
       the most recent reduction (the expression which called the
@@ -592,8 +594,7 @@ Built_In_Primitive(Prim_With_Interrupts_Reduced, 2, "WITH-INTERRUPTS-REDUCED")
   longjmp(*Back_To_Eval, PRIM_APPLY);
 }
 
-/* (WITHIN_CONTROL_POINT CONTROL-POINT THUNK)
-      [Primitive number 0xBF]
+/* (WITHIN-CONTROL-POINT CONTROL-POINT THUNK)
       THUNK must be a procedure or primitive procedure which takes no
       arguments.  Restores the state of the machine from the control
       point, and then calls the THUNK in this new state.
@@ -610,8 +611,7 @@ Built_In_Primitive(Prim_Within_Control_Point, 2, "WITHIN-CONTROL-POINT")
  Pushed();
   longjmp(*Back_To_Eval, PRIM_APPLY);
 }
-/* (WITH_THREADED_STACK PROCEDURE THUNK)
-      [Primitive number 0xBE]
+/* (WITH-THREADED-STACK PROCEDURE THUNK)
       THUNK must be a procedure or primitive procedure which takes no
       arguments.  PROCEDURE must expect one argument.  Basically this
       primitive does (PROCEDURE (THUNK)) ... it calls the THUNK and

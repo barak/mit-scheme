@@ -37,7 +37,7 @@
 
 ;;;; Machine Dependent Type Tables
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.23 1987/03/12 17:48:32 jinx Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.24 1987/04/03 00:22:18 jinx Exp $
 
 (declare (usual-integrations))
 
@@ -130,7 +130,7 @@
 	       INTERNED-SYMBOL				;1D
 	       (STRING CHARACTER-STRING VECTOR-8B)	;1E
 	       ACCESS					;1F
-	       EXTENDED-FIXNUM				;20
+	       #F					;20
 	       DEFINITION				;21
 	       BROKEN-HEART		       		;22
 	       ASSIGNMENT				;23
@@ -148,13 +148,13 @@
 	       VECTOR-1B	          		;2F
 	       PRIMITIVE-COMBINATION-0	       	       	;30
 	       VECTOR-16B		       		;31
-	       UNASSIGNED		       		;32
+	       (REFERENCE-TRAP UNASSIGNED)     		;32
 	       SEQUENCE-3	       			;33
 	       CONDITIONAL				;34
 	       DISJUNCTION				;35
 	       CELL					;36
 	       WEAK-CONS				;37
-	       TRAP        				;38
+	       QUAD        				;38
 	       COMPILER-RETURN-ADDRESS			;39
 	       COMPILER-LINK				;3A
 	       STACK-ENVIRONMENT			;3B
@@ -170,16 +170,16 @@
 	       #F					;45
 	       #F        				;46
 	       #F					;47
-	       #F	;48 reserved for PEA instruction on 68000
+	       #F					;48
 	       #F               			;49
 	       #F					;4A
 	       #F					;4B
 	       #F					;4C
 	       #F					;4D
-	       #F	;4E reserved for JMP/JSR instruction on 68000
+	       #F					;4E
 	       #F					;4F
 	       #F       				;50
-	       #F	;51 reserved for DBF instruction on 68000
+	       #F					;51
 	       #F					;52
 	       #F					;53
 	       #F					;54
@@ -228,7 +228,7 @@
 	       #F        				;7F
 	       ))
 
-;;; [] Return
+;;; [] Returns
 
 (vector-set! (get-fixed-objects-vector)
 	     5 ;(fixed-objects-vector-slot 'MICROCODE-RETURNS-VECTOR)
@@ -724,8 +724,8 @@
 	       RE-MATCH					;$192
 	       RE-SEARCH-FORWARD			;$193
 	       RE-SEARCH-BACKWARD			;$194
-	       SYSTEM-MEMORY-REF			;$195
-	       SYSTEM-MEMORY-SET!			;$196
+	       (SYSTEM-MEMORY-REF &OBJECT-REF)		;$195
+	       (SYSTEM-MEMORY-SET! &OBJECT-SET!)	;$196
 	       BIT-STRING-FILL!				;$197
 	       BIT-STRING-MOVE!				;$198
 	       BIT-STRING-MOVEC!			;$199
@@ -780,7 +780,7 @@
 	       WRITE-INTO-PURE-SPACE                    ;1A
 	       #F		                        ;1B
 	       #F					;1C
-               ASSIGN-LAMBDA-NAME			;1D
+	       #F					;1D
 	       FAILED-ARG-1-COERCION                    ;1E
 	       FAILED-ARG-2-COERCION                    ;1F
 	       OUT-OF-FILE-HANDLES			;20
@@ -799,6 +799,10 @@
 	       WRONG-TYPE-ARGUMENT-7			;2D
 	       WRONG-TYPE-ARGUMENT-8			;2E
 	       WRONG-TYPE-ARGUMENT-9			;2F
+	       INAPPLICABLE-CONTINUATION		;30
+	       COMPILED-CODE-ERROR			;31
+	       FLOATING-OVERFLOW			;32
+	       UNIMPLEMENTED-PRIMITIVE			;33
 	       ))
 
 ;;; [] Terminations
@@ -850,4 +854,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.23 1987/03/12 17:48:32 jinx Exp $"
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.24 1987/04/03 00:22:18 jinx Exp $"
