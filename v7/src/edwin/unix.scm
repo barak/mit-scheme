@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.59 1995/10/12 22:54:47 cph Exp $
+;;;	$Id: unix.scm,v 1.60 1995/10/12 22:59:35 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -728,7 +728,7 @@ option, instead taking -P <filename>."
 		  (lambda (port)
 		    (write-string password port)
 		    (newline port)))
-		(receiver (list "-P" filename)))))
+		(receiver (list "-P" temporary-file)))))
 	    ((and (pair? password) (eq? 'FILE (car password)))
 	     (receiver (list "-P" (cadr password))))
 	    (else
