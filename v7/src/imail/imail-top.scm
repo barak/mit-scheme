@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.256 2001/05/26 03:09:36 cph Exp $
+;;; $Id: imail-top.scm,v 1.257 2001/05/29 19:32:39 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -239,7 +239,8 @@ regardless of the folder type."
 	(if buffer
 	    (begin
 	      (select-buffer buffer)
-	      ((ref-command imail-get-new-mail) #f))
+	      (if (eq? (folder-connection-status folder) 'OFFLINE)
+		  ((ref-command imail-get-new-mail) #f)))
 	    (begin
 	      (let ((buffer
 		     (new-buffer
