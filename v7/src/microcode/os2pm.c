@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2pm.c,v 1.2 1994/12/19 22:31:36 cph Exp $
+$Id: os2pm.c,v 1.3 1995/01/05 23:59:44 cph Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -43,8 +43,8 @@ typedef struct
   HPS hps;			/* presentation space for client window */
   unsigned short grid_x;	/* x dimension of resizing grid */
   unsigned short grid_y;	/* y dimension of resizing grid */
-  unsigned short cursor_x;	/* x coordinate of the cursor */
-  unsigned short cursor_y;	/* y coordinate of the cursor */
+  short cursor_x;		/* x coordinate of the cursor */
+  short cursor_y;		/* y coordinate of the cursor */
   unsigned short cursor_width;	/* width of the cursor */
   unsigned short cursor_height;	/* height of the cursor */
   unsigned short cursor_style;	/* style of the cursor */
@@ -90,10 +90,12 @@ typedef struct
   DECLARE_MSG_HEADER_FIELDS;
   qid_t qid;
   qid_t event_qid;
-  const char * title;
+  unsigned long style;
+  char title [1];
 } sm_open_request_t;
 #define SM_OPEN_REQUEST_QID(m) (((sm_open_request_t *) (m)) -> qid)
 #define SM_OPEN_REQUEST_EVENT_QID(m) (((sm_open_request_t *) (m)) -> event_qid)
+#define SM_OPEN_REQUEST_STYLE(m) (((sm_open_request_t *) (m)) -> style)
 #define SM_OPEN_REQUEST_TITLE(m) (((sm_open_request_t *) (m)) -> title)
 
 typedef struct
@@ -123,10 +125,10 @@ typedef struct
 {
   DECLARE_MSG_HEADER_FIELDS;
   window_t * window;
-  unsigned short x;
-  unsigned short y;
+  short x;
+  short y;
   unsigned short size;
-  const char * data;
+  const char data [1];
 } sm_write_t;
 #define SM_WRITE_WINDOW(m) (((sm_write_t *) (m)) -> window)
 #define SM_WRITE_X(m) (((sm_write_t *) (m)) -> x)
@@ -138,8 +140,8 @@ typedef struct
 {
   DECLARE_MSG_HEADER_FIELDS;
   window_t * window;
-  unsigned short x;
-  unsigned short y;
+  short x;
+  short y;
 } sm_move_cursor_t;
 #define SM_MOVE_CURSOR_WINDOW(m) (((sm_move_cursor_t *) (m)) -> window)
 #define SM_MOVE_CURSOR_X(m) (((sm_move_cursor_t *) (m)) -> x)
@@ -171,10 +173,10 @@ typedef struct
 {
   DECLARE_MSG_HEADER_FIELDS;
   window_t * window;
-  unsigned short xl;
-  unsigned short xh;
-  unsigned short yl;
-  unsigned short yh;
+  short xl;
+  short xh;
+  short yl;
+  short yh;
 } sm_clear_t;
 #define SM_CLEAR_WINDOW(m) (((sm_clear_t *) (m)) -> window)
 #define SM_CLEAR_XL(m) (((sm_clear_t *) (m)) -> xl)
@@ -186,10 +188,10 @@ typedef struct
 {
   DECLARE_MSG_HEADER_FIELDS;
   window_t * window;
-  unsigned short xl;
-  unsigned short xh;
-  unsigned short yl;
-  unsigned short yh;
+  short xl;
+  short xh;
+  short yl;
+  short yh;
   short x_delta;
   short y_delta;
 } sm_scroll_t;
@@ -205,10 +207,10 @@ typedef struct
 {
   DECLARE_MSG_HEADER_FIELDS;
   window_t * window;
-  unsigned short xl;
-  unsigned short xh;
-  unsigned short yl;
-  unsigned short yh;
+  short xl;
+  short xh;
+  short yl;
+  short yh;
 } sm_invalidate_t;
 #define SM_INVALIDATE_WINDOW(m) (((sm_invalidate_t *) (m)) -> window)
 #define SM_INVALIDATE_XL(m) (((sm_invalidate_t *) (m)) -> xl)
@@ -221,7 +223,7 @@ typedef struct
   DECLARE_MSG_HEADER_FIELDS;
   window_t * window;
   unsigned short id;
-  const char * spec;
+  char spec [1];
 } sm_set_font_request_t;
 #define SM_SET_FONT_REQUEST_WINDOW(m)					\
   (((sm_set_font_request_t *) (m)) -> window)
@@ -264,8 +266,8 @@ typedef struct
 typedef struct
 {
   DECLARE_MSG_HEADER_FIELDS;
-  unsigned short x;
-  unsigned short y;
+  short x;
+  short y;
 } sm_pos_reply_t;
 #define SM_POS_REPLY_X(m) (((sm_pos_reply_t *) (m)) -> x)
 #define SM_POS_REPLY_Y(m) (((sm_pos_reply_t *) (m)) -> y)
@@ -274,8 +276,8 @@ typedef struct
 {
   DECLARE_MSG_HEADER_FIELDS;
   window_t * window;
-  unsigned short x;
-  unsigned short y;
+  short x;
+  short y;
 } sm_set_pos_t;
 #define SM_SET_POS_WINDOW(m) (((sm_set_pos_t *) (m)) -> window)
 #define SM_SET_POS_X(m) (((sm_set_pos_t *) (m)) -> x)
@@ -341,9 +343,87 @@ typedef struct
 #define SM_SET_COLORS_WINDOW(m) (((sm_set_colors_t *) (m)) -> window)
 #define SM_SET_COLORS_FOREGROUND(m) (((sm_set_colors_t *) (m)) -> foreground)
 #define SM_SET_COLORS_BACKGROUND(m) (((sm_set_colors_t *) (m)) -> background)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  window_t * window;
+  short x;
+  short y;
+} sm_move_gcursor_t;
+#define SM_MOVE_GCURSOR_WINDOW(m) (((sm_move_gcursor_t *) (m)) -> window)
+#define SM_MOVE_GCURSOR_X(m) (((sm_move_gcursor_t *) (m)) -> x)
+#define SM_MOVE_GCURSOR_Y(m) (((sm_move_gcursor_t *) (m)) -> y)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  window_t * window;
+  short x;
+  short y;
+} sm_line_t;
+#define SM_LINE_WINDOW(m) (((sm_line_t *) (m)) -> window)
+#define SM_LINE_X(m) (((sm_line_t *) (m)) -> x)
+#define SM_LINE_Y(m) (((sm_line_t *) (m)) -> y)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  window_t * window;
+  unsigned long npoints;
+  PPOINTL points;
+} sm_poly_line_t;
+#define SM_POLY_LINE_WINDOW(m) (((sm_poly_line_t *) (m)) -> window)
+#define SM_POLY_LINE_NPOINTS(m) (((sm_poly_line_t *) (m)) -> npoints)
+#define SM_POLY_LINE_POINTS(m) (((sm_poly_line_t *) (m)) -> points)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  window_t * window;
+  unsigned long npoints;
+  PPOINTL points;
+} sm_poly_line_disjoint_t;
+#define SM_POLY_LINE_DISJOINT_WINDOW(m)					\
+  (((sm_poly_line_disjoint_t *) (m)) -> window)
+#define SM_POLY_LINE_DISJOINT_NPOINTS(m)				\
+  (((sm_poly_line_disjoint_t *) (m)) -> npoints)
+#define SM_POLY_LINE_DISJOINT_POINTS(m)					\
+  (((sm_poly_line_disjoint_t *) (m)) -> points)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  window_t * window;
+  LONG ltype;
+} sm_set_line_type_t;
+#define SM_SET_LINE_TYPE_WINDOW(m) (((sm_set_line_type_t *) (m)) -> window)
+#define SM_SET_LINE_TYPE_TYPE(m) (((sm_set_line_type_t *) (m)) -> ltype)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  window_t * window;
+  LONG start;
+  LONG count;
+  PLONG values;
+} sm_query_caps_t;
+#define SM_QUERY_CAPS_WINDOW(m) (((sm_query_caps_t *) (m)) -> window)
+#define SM_QUERY_CAPS_START(m) (((sm_query_caps_t *) (m)) -> start)
+#define SM_QUERY_CAPS_COUNT(m) (((sm_query_caps_t *) (m)) -> count)
+#define SM_QUERY_CAPS_VALUES(m) (((sm_query_caps_t *) (m)) -> values)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  window_t * window;
+  char title [1];
+} sm_set_title_t;
+#define SM_SET_TITLE_WINDOW(m) (((sm_set_title_t *) (m)) -> window)
+#define SM_SET_TITLE_TITLE(m) (((sm_set_title_t *) (m)) -> title)
 
-static void simple_transaction (qid_t, msg_t *);
-static void simple_reply (qid_t);
+static void sync_transaction (qid_t, msg_t *);
+static void sync_reply (qid_t);
 
 static void pm_thread_procedure (void *);
 static tqueue_t * make_pm_tqueue (HWND);
@@ -358,11 +438,13 @@ static MRESULT EXPENTRY object_window_procedure (HWND, ULONG, MPARAM, MPARAM);
 static MRESULT EXPENTRY frame_window_procedure (HWND, ULONG, MPARAM, MPARAM);
 static MRESULT EXPENTRY window_procedure (HWND, ULONG, MPARAM, MPARAM);
 
-static wid_t open_window (qid_t, qid_t, const char *);
+static wid_t open_window (qid_t, qid_t, ULONG, PSZ);
 static window_t * hwnd_to_window (HWND);
 static void close_window (window_t *);
 static void show_window (window_t *, int);
-static void move_cursor (window_t *, unsigned short, unsigned short);
+static void write_window
+  (window_t *, short, short, const char *, unsigned short);
+static void move_cursor (window_t *, short, short);
 static void shape_cursor
   (window_t *, unsigned short, unsigned short, unsigned short);
 static void show_cursor (window_t *, int);
@@ -370,14 +452,23 @@ static void recreate_cursor (window_t *);
 static void activate_cursor (window_t *);
 static void deactivate_cursor (window_t *);
 static void clear_rectangle (window_t *, PRECTL);
+static void scroll_rectangle (window_t *, short, short, PRECTL);
+static void invalidate_rectangle (window_t *, PRECTL);
 static font_metrics_t * set_font (window_t *, unsigned short, const char *);
-static void get_window_pos (window_t *, unsigned short *, unsigned short *);
-static void set_window_pos (window_t *, unsigned short, unsigned short);
+static void get_window_pos (window_t *, short *, short *);
+static void set_window_pos (window_t *, short, short);
 static void get_window_size (window_t *, unsigned short *, unsigned short *);
 static void set_window_size (window_t *, unsigned short, unsigned short);
 static int window_focusp (window_t *);
 static void set_window_state (window_t *, window_state_t);
 static void set_window_colors (window_t *, COLOR, COLOR);
+static void move_gcursor (window_t *, short, short);
+static void draw_line (window_t *, short, short);
+static void poly_line (window_t *, unsigned long, PPOINTL);
+static void poly_line_disjoint (window_t *, unsigned long, PPOINTL);
+static void set_line_type (window_t *, LONG);
+static void query_caps (window_t *, LONG, LONG, PLONG);
+static void set_window_title (window_t *, PSZ);
 
 static msg_t * make_button_event
   (wid_t, unsigned char, unsigned char, unsigned short, unsigned short,
@@ -450,6 +541,13 @@ OS2_initialize_pm_thread (void)
   SET_MSG_TYPE_LENGTH (mt_window_focusp_reply, sm_focusp_reply_t);
   SET_MSG_TYPE_LENGTH (mt_window_set_state, sm_set_state_t);
   SET_MSG_TYPE_LENGTH (mt_window_set_colors, sm_set_colors_t);
+  SET_MSG_TYPE_LENGTH (mt_window_move_gcursor, sm_move_gcursor_t);
+  SET_MSG_TYPE_LENGTH (mt_window_line, sm_line_t);
+  SET_MSG_TYPE_LENGTH (mt_window_poly_line, sm_poly_line_t);
+  SET_MSG_TYPE_LENGTH (mt_window_poly_line_disjoint, sm_poly_line_disjoint_t);
+  SET_MSG_TYPE_LENGTH (mt_window_set_line_type, sm_set_line_type_t);
+  SET_MSG_TYPE_LENGTH (mt_window_query_caps, sm_query_caps_t);
+  SET_MSG_TYPE_LENGTH (mt_window_set_title, sm_set_title_t);
   SET_MSG_TYPE_LENGTH (mt_button_event, sm_button_event_t);
   SET_MSG_TYPE_LENGTH (mt_close_event, sm_close_event_t);
   SET_MSG_TYPE_LENGTH (mt_focus_event, sm_focus_event_t);
@@ -476,26 +574,32 @@ OS2_initialize_pm_thread (void)
 /* Define this to cause a calling thread to wait for the PM thread to
    finish requests that have trivial replies.  Otherwise, the calling
    thread waits only when the request has a non-trivial reply.
-   Usually there is no good reason to wait for trivial replies.  */
-/* #define WAIT_FOR_ACTIONS */
+   Usually there is no good reason to wait for trivial replies, but
+   this could be useful during debugging.  */
+/* #define SYNC_SIMPLE_TRANSACTIONS */
+#ifdef SYNC_SIMPLE_TRANSACTIONS
+
+#define simple_transaction sync_transaction
+#define simple_reply sync_reply
+
+#else
+
+#define simple_transaction OS2_send_message
+#define simple_reply(qid)
+
+#endif
 
 static void
-simple_transaction (qid_t qid, msg_t * message)
+sync_transaction (qid_t qid, msg_t * message)
 {
-#ifdef WAIT_FOR_ACTIONS
   OS2_destroy_message
     (OS2_message_transaction (qid, message, mt_generic_reply));
-#else
-  OS2_send_message (qid, message);
-#endif
 }
 
 static void
-simple_reply (qid_t qid)
+sync_reply (qid_t qid)
 {
-#ifdef WAIT_FOR_ACTIONS
   OS2_send_message (qid, (OS2_create_message (mt_generic_reply)));
-#endif
 }
 
 static void
@@ -675,6 +779,13 @@ static void handle_window_set_size_request (msg_t *);
 static void handle_window_focusp_request (msg_t *);
 static void handle_window_set_state_request (msg_t *);
 static void handle_window_set_colors_request (msg_t *);
+static void handle_window_move_gcursor_request (msg_t *);
+static void handle_window_line_request (msg_t *);
+static void handle_window_poly_line_request (msg_t *);
+static void handle_window_poly_line_disjoint_request (msg_t *);
+static void handle_window_set_line_type_request (msg_t *);
+static void handle_window_query_caps_request (msg_t *);
+static void handle_window_set_title_request (msg_t *);
 
 static MRESULT EXPENTRY
 object_window_procedure (HWND window, ULONG msg, MPARAM mp1, MPARAM mp2)
@@ -744,6 +855,27 @@ object_window_procedure (HWND window, ULONG msg, MPARAM mp1, MPARAM mp2)
 	case mt_window_set_colors:
 	  handle_window_set_colors_request (message);
 	  break;
+	case mt_window_move_gcursor:
+	  handle_window_move_gcursor_request (message);
+	  break;
+	case mt_window_line:
+	  handle_window_line_request (message);
+	  break;
+	case mt_window_poly_line:
+	  handle_window_poly_line_request (message);
+	  break;
+	case mt_window_poly_line_disjoint:
+	  handle_window_poly_line_disjoint_request (message);
+	  break;
+	case mt_window_set_line_type:
+	  handle_window_set_line_type_request (message);
+	  break;
+	case mt_window_query_caps:
+	  handle_window_query_caps_request (message);
+	  break;
+	case mt_window_set_title:
+	  handle_window_set_title_request (message);
+	  break;
 	default:
 	  OS2_logic_error ("Unknown message type sent to PM thread.");
 	  break;
@@ -764,13 +896,16 @@ OS2_create_pm_qid (tqueue_t * tqueue)
 }
 
 wid_t
-OS2_window_open (qid_t qid, qid_t event_qid, const char * title)
+OS2_window_open (qid_t qid, qid_t event_qid, unsigned long style,
+		 const char * title)
 {
-  msg_t * message = (OS2_create_message (mt_window_open_request));
+  msg_t * message
+    = (OS2_create_message_1 (mt_window_open_request, (strlen (title))));
   wid_t wid;
   (SM_OPEN_REQUEST_QID (message)) = qid;
   (SM_OPEN_REQUEST_EVENT_QID (message)) = event_qid;
-  (SM_OPEN_REQUEST_TITLE (message)) = title;
+  (SM_OPEN_REQUEST_STYLE (message)) = style;
+  strcpy ((SM_OPEN_REQUEST_TITLE (message)), title);
   message = (OS2_message_transaction (qid, message, mt_window_open_reply));
   wid = (SM_OPEN_REPLY_WID (message));
   OS2_destroy_message (message);
@@ -778,16 +913,17 @@ OS2_window_open (qid_t qid, qid_t event_qid, const char * title)
 }
 
 static void
-handle_window_open_request (msg_t * message)
+handle_window_open_request (msg_t * request)
 {
-  qid_t sender = (MSG_SENDER (message));
-  qid_t qid = (SM_OPEN_REQUEST_QID (message));
-  qid_t event_qid = (SM_OPEN_REQUEST_EVENT_QID (message));
-  const char * title = (SM_OPEN_REQUEST_TITLE (message));
-  OS2_destroy_message (message);
-  message = (OS2_create_message (mt_window_open_reply));
-  (SM_OPEN_REPLY_WID (message)) = (open_window (qid, event_qid, title));
-  OS2_send_message (sender, message);
+  qid_t sender = (MSG_SENDER (request));
+  msg_t * reply = (OS2_create_message (mt_window_open_reply));
+  (SM_OPEN_REPLY_WID (reply))
+    = (open_window ((SM_OPEN_REQUEST_QID (request)),
+		    (SM_OPEN_REQUEST_EVENT_QID (request)),
+		    (SM_OPEN_REQUEST_STYLE (request)),
+		    (SM_OPEN_REQUEST_TITLE (request))));
+  OS2_destroy_message (request);
+  OS2_send_message (sender, reply);
 }
 
 void
@@ -809,9 +945,8 @@ static void
 handle_window_close_request (msg_t * message)
 {
   qid_t sender = (MSG_SENDER (message));
-  window_t * window = (SM_CLOSE_WINDOW (message));
+  close_window (SM_CLOSE_WINDOW (message));
   OS2_destroy_message (message);
-  close_window (window);
   simple_reply (sender);
 }
 
@@ -829,26 +964,22 @@ static void
 handle_window_show_request (msg_t * message)
 {
   qid_t sender = (MSG_SENDER (message));
-  window_t * window = (SM_SHOW_WINDOW (message));
-  int showp = (SM_SHOW_SHOWP (message));
+  show_window ((SM_SHOW_WINDOW (message)), (SM_SHOW_SHOWP (message)));
   OS2_destroy_message (message);
-  show_window (window, showp);
   simple_reply (sender);
 }
 
 void
-OS2_window_write (wid_t wid, unsigned short x, unsigned short y,
+OS2_window_write (wid_t wid, short x, short y,
 		  const char * data, unsigned short size)
 {
   window_t * window = (wid_to_window (wid));
-  msg_t * message = (OS2_create_message (mt_window_write));
-  char * copy = (OS_malloc (size));
-  FASTCOPY (data, copy, size);
+  msg_t * message = (OS2_create_message_1 (mt_window_write, (size - 1)));
   (SM_WRITE_WINDOW (message)) = window;
   (SM_WRITE_X (message)) = x;
   (SM_WRITE_Y (message)) = y;
-  (SM_WRITE_DATA (message)) = copy;
   (SM_WRITE_SIZE (message)) = size;
+  FASTCOPY (data, ((char *) (SM_WRITE_DATA (message))), size);
   simple_transaction ((WINDOW_QID (window)), message);
 }
 
@@ -856,35 +987,17 @@ static void
 handle_window_write_request (msg_t * message)
 {
   qid_t sender = (MSG_SENDER (message));
-  window_t * window = (SM_WRITE_WINDOW (message));
-  const char * data = (SM_WRITE_DATA (message));
-  unsigned short size = (SM_WRITE_SIZE (message));
-  POINTL ptl;
-  (ptl . x) = (SM_WRITE_X (message));
-  (ptl . y) = (SM_WRITE_Y (message));
+  write_window ((SM_WRITE_WINDOW (message)),
+		(SM_WRITE_X (message)),
+		(SM_WRITE_Y (message)),
+		(SM_WRITE_DATA (message)),
+		(SM_WRITE_SIZE (message)));
   OS2_destroy_message (message);
-  deactivate_cursor (window);
-  if (size <= 512)
-    GpiCharStringAt ((WINDOW_HPS (window)), (& ptl), size, ((char *) data));
-  else
-    {
-      const char * scan = data;
-      GpiMove ((WINDOW_HPS (window)), (& ptl));
-      while (size > 0)
-	{
-	  unsigned short n = ((size > 512) ? 512 : size);
-	  GpiCharString ((WINDOW_HPS (window)), n, ((char *) scan));
-	  size -= n;
-	  scan += n;
-	}
-    }
-  activate_cursor (window);
-  OS_free ((char *) data);
   simple_reply (sender);
 }
 
 void
-OS2_window_move_cursor (wid_t wid, unsigned short x, unsigned short y)
+OS2_window_move_cursor (wid_t wid, short x, short y)
 {
   window_t * window = (wid_to_window (wid));
   msg_t * message = (OS2_create_message (mt_window_move_cursor));
@@ -924,12 +1037,11 @@ static void
 handle_window_shape_cursor_request (msg_t * message)
 {
   qid_t sender = (MSG_SENDER (message));
-  window_t * window = (SM_SHAPE_CURSOR_WINDOW (message));
-  unsigned short width = (SM_SHAPE_CURSOR_WIDTH (message));
-  unsigned short height = (SM_SHAPE_CURSOR_HEIGHT (message));
-  unsigned short style = (SM_SHAPE_CURSOR_STYLE (message));
+  shape_cursor ((SM_SHAPE_CURSOR_WINDOW (message)),
+		(SM_SHAPE_CURSOR_WIDTH (message)),
+		(SM_SHAPE_CURSOR_HEIGHT (message)),
+		(SM_SHAPE_CURSOR_STYLE (message)));
   OS2_destroy_message (message);
-  shape_cursor (window, width, height, style);
   simple_reply (sender);
 }
 
@@ -947,17 +1059,14 @@ static void
 handle_window_show_cursor_request (msg_t * message)
 {
   qid_t sender = (MSG_SENDER (message));
-  window_t * window = (SM_SHOW_CURSOR_WINDOW (message));
-  int showp = ((SM_SHOW_CURSOR_SHOWP (message)) ? 1 : 0);
+  show_cursor ((SM_SHOW_CURSOR_WINDOW (message)),
+	       (SM_SHOW_CURSOR_SHOWP (message)));
   OS2_destroy_message (message);
-  show_cursor (window, showp);
   simple_reply (sender);
 }
 
 void
-OS2_window_clear (wid_t wid,
-		  unsigned short xl, unsigned short xh,
-		  unsigned short yl, unsigned short yh)
+OS2_window_clear (wid_t wid, short xl, short xh, short yl, short yh)
 {
   window_t * window = (wid_to_window (wid));
   msg_t * message = (OS2_create_message (mt_window_clear));
@@ -973,21 +1082,18 @@ static void
 handle_window_clear_request (msg_t * message)
 {
   qid_t sender = (MSG_SENDER (message));
-  window_t * window = (SM_CLEAR_WINDOW (message));
   RECTL rectl;
   (rectl . xLeft)   = (SM_CLEAR_XL (message));
   (rectl . xRight)  = (SM_CLEAR_XH (message));
   (rectl . yBottom) = (SM_CLEAR_YL (message));
   (rectl . yTop)    = (SM_CLEAR_YH (message));
+  clear_rectangle ((SM_CLEAR_WINDOW (message)), (& rectl));
   OS2_destroy_message (message);
-  clear_rectangle (window, (& rectl));
   simple_reply (sender);
 }
 
 void
-OS2_window_scroll (wid_t wid,
-		   unsigned short xl, unsigned short xh,
-		   unsigned short yl, unsigned short yh,
+OS2_window_scroll (wid_t wid, short xl, short xh, short yl, short yh,
 		   short x_delta, short y_delta)
 {
   window_t * window = (wid_to_window (wid));
@@ -1006,26 +1112,21 @@ static void
 handle_window_scroll_request (msg_t * message)
 {
   qid_t sender = (MSG_SENDER (message));
-  window_t * window = (SM_SCROLL_WINDOW (message));
-  short x_delta = (SM_SCROLL_X_DELTA (message));
-  short y_delta = (SM_SCROLL_Y_DELTA (message));
   RECTL rectl;
   (rectl . xLeft)   = (SM_SCROLL_XL (message));
   (rectl . xRight)  = (SM_SCROLL_XH (message));
   (rectl . yBottom) = (SM_SCROLL_YL (message));
   (rectl . yTop)    = (SM_SCROLL_YH (message));
+  scroll_rectangle ((SM_SCROLL_WINDOW (message)),
+		    (SM_SCROLL_X_DELTA (message)),
+		    (SM_SCROLL_Y_DELTA (message)),
+		    (& rectl));
   OS2_destroy_message (message);
-  if ((WinScrollWindow ((WINDOW_CLIENT (window)),
-			x_delta, y_delta, (& rectl), 0, NULLHANDLE, 0, 0))
-      == RGN_ERROR)
-    window_error (WinScrollWindow);
   simple_reply (sender);
 }
 
 void
-OS2_window_invalidate (wid_t wid,
-		       unsigned short xl, unsigned short xh,
-		       unsigned short yl, unsigned short yh)
+OS2_window_invalidate (wid_t wid, short xl, short xh, short yl, short yh)
 {
   window_t * window = (wid_to_window (wid));
   msg_t * message = (OS2_create_message (mt_window_invalidate));
@@ -1041,15 +1142,13 @@ static void
 handle_window_invalidate_request (msg_t * message)
 {
   qid_t sender = (MSG_SENDER (message));
-  window_t * window = (SM_INVALIDATE_WINDOW (message));
   RECTL rectl;
   (rectl . xLeft)   = (SM_INVALIDATE_XL (message));
   (rectl . xRight)  = (SM_INVALIDATE_XH (message));
   (rectl . yBottom) = (SM_INVALIDATE_YL (message));
   (rectl . yTop)    = (SM_INVALIDATE_YH (message));
+  invalidate_rectangle ((SM_INVALIDATE_WINDOW (message)), (& rectl));
   OS2_destroy_message (message);
-  if (!WinInvalidateRect ((WINDOW_CLIENT (window)), (& rectl), FALSE))
-    window_error (WinInvalidateRect);
   simple_reply (sender);
 }
 
@@ -1057,11 +1156,12 @@ font_metrics_t *
 OS2_window_set_font (wid_t wid, unsigned short id, const char * name)
 {
   window_t * window = (wid_to_window (wid));
-  msg_t * message = (OS2_create_message (mt_window_set_font_request));
+  msg_t * message
+    = (OS2_create_message_1 (mt_window_set_font_request, (strlen (name))));
   font_metrics_t * metrics;
   (SM_SET_FONT_REQUEST_WINDOW (message)) = window;
   (SM_SET_FONT_REQUEST_ID (message)) = id;
-  (SM_SET_FONT_REQUEST_SPEC (message)) = name;
+  strcpy ((SM_SET_FONT_REQUEST_SPEC (message)), name);
   message
     = (OS2_message_transaction
        ((WINDOW_QID (window)), message, mt_window_set_font_reply));
@@ -1071,16 +1171,16 @@ OS2_window_set_font (wid_t wid, unsigned short id, const char * name)
 }
 
 static void
-handle_window_set_font_request (msg_t * message)
+handle_window_set_font_request (msg_t * request)
 {
-  qid_t sender = (MSG_SENDER (message));
-  window_t * window = (SM_SET_FONT_REQUEST_WINDOW (message));
-  unsigned short id = (SM_SET_FONT_REQUEST_ID (message));
-  const char * spec = (SM_SET_FONT_REQUEST_SPEC (message));
-  OS2_destroy_message (message);
-  message = (OS2_create_message (mt_window_set_font_reply));
-  (SM_SET_FONT_REPLY_METRICS (message)) = (set_font (window, id, spec));
-  OS2_send_message (sender, message);
+  qid_t sender = (MSG_SENDER (request));
+  msg_t * reply = (OS2_create_message (mt_window_set_font_reply));
+  (SM_SET_FONT_REPLY_METRICS (reply))
+    = (set_font ((SM_SET_FONT_REQUEST_WINDOW (request)),
+		 (SM_SET_FONT_REQUEST_ID (request)),
+		 (SM_SET_FONT_REQUEST_SPEC (request))));
+  OS2_destroy_message (request);
+  OS2_send_message (sender, reply);
 }
 
 void
@@ -1126,7 +1226,7 @@ handle_window_activate_request (msg_t * message)
 }
 
 void
-OS2_window_pos (wid_t wid, unsigned short * x, unsigned short * y)
+OS2_window_pos (wid_t wid, short * x, short * y)
 {
   window_t * window = (wid_to_window (wid));
   msg_t * message = (OS2_create_message (mt_window_pos_request));
@@ -1141,20 +1241,19 @@ OS2_window_pos (wid_t wid, unsigned short * x, unsigned short * y)
 }
 
 static void
-handle_window_pos_request (msg_t * message)
+handle_window_pos_request (msg_t * request)
 {
-  qid_t sender = (MSG_SENDER (message));
-  window_t * window = (SM_POS_REQUEST_WINDOW (message));
-  OS2_destroy_message (message);
-  message = (OS2_create_message (mt_window_pos_reply));
-  get_window_pos (window,
-		  (& (SM_POS_REPLY_X (message))),
-		  (& (SM_POS_REPLY_Y (message))));
-  OS2_send_message (sender, message);
+  qid_t sender = (MSG_SENDER (request));
+  msg_t * reply = (OS2_create_message (mt_window_pos_reply));
+  get_window_pos ((SM_POS_REQUEST_WINDOW (request)),
+		  (& (SM_POS_REPLY_X (reply))),
+		  (& (SM_POS_REPLY_Y (reply))));
+  OS2_destroy_message (request);
+  OS2_send_message (sender, reply);
 }
 
 void
-OS2_window_set_pos (wid_t wid, unsigned short x, unsigned short y)
+OS2_window_set_pos (wid_t wid, short x, short y)
 {
   window_t * window = (wid_to_window (wid));
   msg_t * message = (OS2_create_message (mt_window_set_pos));
@@ -1168,11 +1267,10 @@ static void
 handle_window_set_pos_request (msg_t * message)
 {
   qid_t sender = (MSG_SENDER (message));
-  window_t * window = (SM_SET_POS_WINDOW (message));
-  unsigned short x = (SM_SET_POS_X (message));
-  unsigned short y = (SM_SET_POS_Y (message));
+  set_window_pos ((SM_SET_POS_WINDOW (message)),
+		  (SM_SET_POS_X (message)),
+		  (SM_SET_POS_Y (message)));
   OS2_destroy_message (message);
-  set_window_pos (window, x, y);
   simple_reply (sender);
 }
 
@@ -1192,16 +1290,15 @@ OS2_window_size (wid_t wid, unsigned short * width, unsigned short * height)
 }
 
 static void
-handle_window_size_request (msg_t * message)
+handle_window_size_request (msg_t * request)
 {
-  qid_t sender = (MSG_SENDER (message));
-  window_t * window = (SM_SIZE_REQUEST_WINDOW (message));
-  OS2_destroy_message (message);
-  message = (OS2_create_message (mt_window_size_reply));
-  get_window_size (window,
-		   (& (SM_SIZE_REPLY_WIDTH (message))),
-		   (& (SM_SIZE_REPLY_HEIGHT (message))));
-  OS2_send_message (sender, message);
+  qid_t sender = (MSG_SENDER (request));
+  msg_t * reply = (OS2_create_message (mt_window_size_reply));
+  get_window_size ((SM_SIZE_REQUEST_WINDOW (request)),
+		   (& (SM_SIZE_REPLY_WIDTH (reply))),
+		   (& (SM_SIZE_REPLY_HEIGHT (reply))));
+  OS2_destroy_message (request);
+  OS2_send_message (sender, reply);
 }
 
 void
@@ -1219,11 +1316,10 @@ static void
 handle_window_set_size_request (msg_t * message)
 {
   qid_t sender = (MSG_SENDER (message));
-  window_t * window = (SM_SET_SIZE_WINDOW (message));
-  unsigned short width = (SM_SET_SIZE_WIDTH (message));
-  unsigned short height = (SM_SET_SIZE_HEIGHT (message));
+  set_window_size ((SM_SET_SIZE_WINDOW (message)),
+		   (SM_SET_SIZE_WIDTH (message)),
+		   (SM_SET_SIZE_HEIGHT (message)));
   OS2_destroy_message (message);
-  set_window_size (window, width, height);
   simple_reply (sender);
 }
 
@@ -1245,14 +1341,14 @@ OS2_window_focusp (wid_t wid)
 }
 
 static void
-handle_window_focusp_request (msg_t * message)
+handle_window_focusp_request (msg_t * request)
 {
-  qid_t sender = (MSG_SENDER (message));
-  window_t * window = (SM_FOCUSP_REQUEST_WINDOW (message));
-  OS2_destroy_message (message);
-  message = (OS2_create_message (mt_window_focusp_reply));
-  (SM_FOCUSP_REPLY_FOCUSP (message)) = (window_focusp (window));
-  OS2_send_message (sender, message);
+  qid_t sender = (MSG_SENDER (request));
+  msg_t * reply = (OS2_create_message (mt_window_focusp_reply));
+  (SM_FOCUSP_REPLY_FOCUSP (reply))
+    = (window_focusp (SM_FOCUSP_REQUEST_WINDOW (request)));
+  OS2_destroy_message (request);
+  OS2_send_message (sender, reply);
 }
 
 void
@@ -1269,10 +1365,9 @@ static void
 handle_window_set_state_request (msg_t * message)
 {
   qid_t sender = (MSG_SENDER (message));
-  window_t * window = (SM_SET_STATE_WINDOW (message));
-  window_state_t state = (SM_SET_STATE_STATE (message));
+  set_window_state ((SM_SET_STATE_WINDOW (message)),
+		    (SM_SET_STATE_STATE (message)));
   OS2_destroy_message (message);
-  set_window_state (window, state);
   simple_reply (sender);
 }
 
@@ -1291,18 +1386,170 @@ static void
 handle_window_set_colors_request (msg_t * message)
 {
   qid_t sender = (MSG_SENDER (message));
-  window_t * window = (SM_SET_COLORS_WINDOW (message));
-  COLOR foreground = (SM_SET_COLORS_FOREGROUND (message));
-  COLOR background = (SM_SET_COLORS_BACKGROUND (message));
+  set_window_colors ((SM_SET_COLORS_WINDOW (message)),
+		     (SM_SET_COLORS_FOREGROUND (message)),
+		     (SM_SET_COLORS_BACKGROUND (message)));
   OS2_destroy_message (message);
-  set_window_colors (window, foreground, background);
+  simple_reply (sender);
+}
+
+void
+OS2_window_move_gcursor (wid_t wid, short x, short y)
+{
+  window_t * window = (wid_to_window (wid));
+  msg_t * message = (OS2_create_message (mt_window_move_gcursor));
+  (SM_MOVE_GCURSOR_WINDOW (message)) = window;
+  (SM_MOVE_GCURSOR_X (message)) = x;
+  (SM_MOVE_GCURSOR_Y (message)) = y;
+  simple_transaction ((WINDOW_QID (window)), message);
+}
+
+static void
+handle_window_move_gcursor_request (msg_t * message)
+{
+  qid_t sender = (MSG_SENDER (message));
+  move_gcursor ((SM_MOVE_GCURSOR_WINDOW (message)),
+		(SM_MOVE_GCURSOR_X (message)),
+		(SM_MOVE_GCURSOR_Y (message)));
+  OS2_destroy_message (message);
+  simple_reply (sender);
+}
+
+void
+OS2_window_line (wid_t wid, short x, short y)
+{
+  window_t * window = (wid_to_window (wid));
+  msg_t * message = (OS2_create_message (mt_window_line));
+  (SM_LINE_WINDOW (message)) = window;
+  (SM_LINE_X (message)) = x;
+  (SM_LINE_Y (message)) = y;
+  simple_transaction ((WINDOW_QID (window)), message);
+}
+
+static void
+handle_window_line_request (msg_t * message)
+{
+  qid_t sender = (MSG_SENDER (message));
+  draw_line ((SM_LINE_WINDOW (message)),
+	     (SM_LINE_X (message)),
+	     (SM_LINE_Y (message)));
+  OS2_destroy_message (message);
+  simple_reply (sender);
+}
+
+void
+OS2_window_poly_line (wid_t wid, unsigned long npoints, PPOINTL points)
+{
+  window_t * window = (wid_to_window (wid));
+  msg_t * message = (OS2_create_message (mt_window_poly_line));
+  (SM_POLY_LINE_WINDOW (message)) = window;
+  (SM_POLY_LINE_NPOINTS (message)) = npoints;
+  (SM_POLY_LINE_POINTS (message)) = points;
+  sync_transaction ((WINDOW_QID (window)), message);
+}
+
+static void
+handle_window_poly_line_request (msg_t * message)
+{
+  qid_t sender = (MSG_SENDER (message));
+  poly_line ((SM_POLY_LINE_WINDOW (message)),
+	     (SM_POLY_LINE_NPOINTS (message)),
+	     (SM_POLY_LINE_POINTS (message)));
+  OS2_destroy_message (message);
+  sync_reply (sender);
+}
+
+void
+OS2_window_poly_line_disjoint (wid_t wid, unsigned long npoints, PPOINTL points)
+{
+  window_t * window = (wid_to_window (wid));
+  msg_t * message = (OS2_create_message (mt_window_poly_line_disjoint));
+  (SM_POLY_LINE_DISJOINT_WINDOW (message)) = window;
+  (SM_POLY_LINE_DISJOINT_NPOINTS (message)) = npoints;
+  (SM_POLY_LINE_DISJOINT_POINTS (message)) = points;
+  sync_transaction ((WINDOW_QID (window)), message);
+}
+
+static void
+handle_window_poly_line_disjoint_request (msg_t * message)
+{
+  qid_t sender = (MSG_SENDER (message));
+  poly_line_disjoint ((SM_POLY_LINE_DISJOINT_WINDOW (message)),
+		      (SM_POLY_LINE_DISJOINT_NPOINTS (message)),
+		      (SM_POLY_LINE_DISJOINT_POINTS (message)));
+  OS2_destroy_message (message);
+  sync_reply (sender);
+}
+
+void
+OS2_window_set_line_type (wid_t wid, LONG type)
+{
+  window_t * window = (wid_to_window (wid));
+  msg_t * message = (OS2_create_message (mt_window_set_line_type));
+  (SM_SET_LINE_TYPE_WINDOW (message)) = window;
+  (SM_SET_LINE_TYPE_TYPE (message)) = type;
+  simple_transaction ((WINDOW_QID (window)), message);
+}
+
+static void
+handle_window_set_line_type_request (msg_t * message)
+{
+  qid_t sender = (MSG_SENDER (message));
+  set_line_type ((SM_SET_LINE_TYPE_WINDOW (message)),
+		 (SM_SET_LINE_TYPE_TYPE (message)));
+  OS2_destroy_message (message);
+  simple_reply (sender);
+}
+
+void
+OS2_window_query_caps (wid_t wid, LONG start, LONG count, PLONG values)
+{
+  window_t * window = (wid_to_window (wid));
+  msg_t * message = (OS2_create_message (mt_window_query_caps));
+  (SM_QUERY_CAPS_WINDOW (message)) = window;
+  (SM_QUERY_CAPS_START (message)) = start;
+  (SM_QUERY_CAPS_COUNT (message)) = count;
+  (SM_QUERY_CAPS_VALUES (message)) = values;
+  sync_transaction ((WINDOW_QID (window)), message);
+}
+
+static void
+handle_window_query_caps_request (msg_t * message)
+{
+  qid_t sender = (MSG_SENDER (message));
+  query_caps ((SM_QUERY_CAPS_WINDOW (message)),
+	      (SM_QUERY_CAPS_START (message)),
+	      (SM_QUERY_CAPS_COUNT (message)),
+	      (SM_QUERY_CAPS_VALUES (message)));
+  OS2_destroy_message (message);
+  sync_reply (sender);
+}
+
+void
+OS2_window_set_title (wid_t wid, const char * title)
+{
+  window_t * window = (wid_to_window (wid));
+  msg_t * message
+    = (OS2_create_message_1 (mt_window_set_title, (strlen (title))));
+  (SM_SET_TITLE_WINDOW (message)) = window;
+  strcpy ((SM_SET_TITLE_TITLE (message)), title);
+  simple_transaction ((WINDOW_QID (window)), message);
+}
+
+static void
+handle_window_set_title_request (msg_t * message)
+{
+  qid_t sender = (MSG_SENDER (message));
+  set_window_title ((SM_SET_TITLE_WINDOW (message)),
+		    (SM_SET_TITLE_TITLE (message)));
+  OS2_destroy_message (message);
   simple_reply (sender);
 }
 
 static window_t * make_window (qid_t, qid_t);
 
 static wid_t
-open_window (qid_t qid, qid_t event_qid, const char * title)
+open_window (qid_t qid, qid_t event_qid, ULONG style, PSZ title)
 {
   window_t * window = (make_window (qid, event_qid));
   FRAMECDATA frame_data;
@@ -1317,7 +1564,7 @@ open_window (qid_t qid, qid_t event_qid, const char * title)
   frame_window
     = (WinCreateWindow (HWND_DESKTOP,
 			WC_FRAME,
-			((PSZ) title), /* title string */
+			title,	/* title string */
 			0,	/* window style */
 			0, 0, 0, 0, /* size and position */
 			NULLHANDLE, /* owner window */
@@ -1341,7 +1588,7 @@ open_window (qid_t qid, qid_t event_qid, const char * title)
   if ((WinCreateWindow (frame_window,
 			((PSZ) window_class),
 			0,	/* window text (class-specific) */
-			0,	/* window style */
+			style,	/* window style */
 			0, 0, 0, 0, /* size and position */
 			frame_window, /* owner window */
 			HWND_BOTTOM,
@@ -1391,7 +1638,32 @@ show_window (window_t * window, int showp)
 }
 
 static void
-move_cursor (window_t * window, unsigned short x, unsigned short y)
+write_window (window_t * window, short x, short y,
+	      const char * data, unsigned short size)
+{
+  POINTL ptl;
+  (ptl . x) = x;
+  (ptl . y) = y;
+  deactivate_cursor (window);
+  if (size <= 512)
+    GpiCharStringAt ((WINDOW_HPS (window)), (& ptl), size, ((char *) data));
+  else
+    {
+      const char * scan = data;
+      GpiMove ((WINDOW_HPS (window)), (& ptl));
+      while (size > 0)
+	{
+	  unsigned short n = ((size > 512) ? 512 : size);
+	  GpiCharString ((WINDOW_HPS (window)), n, ((char *) scan));
+	  size -= n;
+	  scan += n;
+	}
+    }
+  activate_cursor (window);
+}
+
+static void
+move_cursor (window_t * window, short x, short y)
 {
   if (window_focusp (window))
     if (!WinCreateCursor ((WINDOW_CLIENT (window)),
@@ -1412,8 +1684,9 @@ shape_cursor (window_t * window, unsigned short width, unsigned short height,
 static void
 show_cursor (window_t * window, int showp)
 {
-  if ((window_focusp (window))
-      && (showp != (WINDOW_CURSOR_SHOWNP (window))))
+  if (showp != 0)
+    showp = 1;
+  if ((window_focusp (window)) && (showp != (WINDOW_CURSOR_SHOWNP (window))))
     if (!WinShowCursor ((WINDOW_CLIENT (window)), showp))
       window_error (WinShowCursor);
   (WINDOW_CURSOR_SHOWNP (window)) = showp;
@@ -1463,6 +1736,25 @@ clear_rectangle (window_t * window, PRECTL rectl)
 		    (WINDOW_BACKGROUND_COLOR (window))))
     window_error (WinFillRect);
   activate_cursor (window);
+}
+
+static void
+scroll_rectangle (window_t * window, short x_delta, short y_delta,
+		  PRECTL rectl)
+{
+  deactivate_cursor (window);
+  if ((WinScrollWindow ((WINDOW_CLIENT (window)), x_delta, y_delta, rectl,
+			0, NULLHANDLE, 0, 0))
+      == RGN_ERROR)
+    window_error (WinScrollWindow);
+  activate_cursor (window);
+}
+
+static void
+invalidate_rectangle (window_t * window, PRECTL rectl)
+{
+  if (!WinInvalidateRect ((WINDOW_CLIENT (window)), rectl, FALSE))
+    window_error (WinInvalidateRect);
 }
 
 static int parse_font_spec (const char *, PSZ *, LONG *, USHORT *);
@@ -1593,7 +1885,7 @@ create_font (HPS hps, LONG font_id, PFONTMETRICS pfm, USHORT selection)
 }
 
 static void
-get_window_pos (window_t * window, unsigned short * x, unsigned short * y)
+get_window_pos (window_t * window, short * x, short * y)
 {
   SWP swp;
   if (!WinQueryWindowPos ((WINDOW_FRAME (window)), (& swp)))
@@ -1603,7 +1895,7 @@ get_window_pos (window_t * window, unsigned short * x, unsigned short * y)
 }
 
 static void
-set_window_pos (window_t * window, unsigned short x, unsigned short y)
+set_window_pos (window_t * window, short x, short y)
 {
   if (!WinSetWindowPos ((WINDOW_FRAME (window)), NULLHANDLE, x, y,
 			0, 0, SWP_MOVE))
@@ -1711,6 +2003,65 @@ set_window_colors (window_t * window, COLOR foreground, COLOR background)
   (WINDOW_FOREGROUND_COLOR (window)) = foreground;
   (WINDOW_BACKGROUND_COLOR (window)) = background;
 }
+
+static void
+move_gcursor (window_t * window, short x, short y)
+{
+  POINTL ptl;
+  (ptl . x) = x;
+  (ptl . y) = y;
+  if (!GpiMove ((WINDOW_HPS (window)), (& ptl)))
+    window_error (GpiMove);
+}
+
+static void
+draw_line (window_t * window, short x, short y)
+{
+  POINTL ptl;
+  (ptl . x) = x;
+  (ptl . y) = y;
+  if ((GpiLine ((WINDOW_HPS (window)), (& ptl))) == GPI_ERROR)
+    window_error (GpiLine);
+}
+
+static void
+poly_line (window_t * window, unsigned long npoints, PPOINTL points)
+{
+  if ((GpiPolyLine ((WINDOW_HPS (window)), npoints, points)) == GPI_ERROR)
+    window_error (GpiPolyLine);
+}
+
+static void
+poly_line_disjoint (window_t * window, unsigned long npoints, PPOINTL points)
+{
+  if ((GpiPolyLineDisjoint ((WINDOW_HPS (window)), npoints, points))
+      == GPI_ERROR)
+    window_error (GpiPolyLineDisjoint);
+}
+
+static void
+set_line_type (window_t * window, LONG type)
+{
+  if (!GpiSetLineType ((WINDOW_HPS (window)), type))
+    window_error (GpiSetLineType);
+}
+
+static void
+query_caps (window_t * window, LONG start, LONG count, PLONG values)
+{
+  HDC hdc = (GpiQueryDevice (WINDOW_HPS (window)));
+  if ((hdc == HDC_ERROR) || (hdc == NULLHANDLE))
+    window_error (GpiQueryDevice);
+  if (!DevQueryCaps (hdc, start, count, values))
+    window_error (DevQueryCaps);
+}
+
+static void
+set_window_title (window_t * window, PSZ title)
+{
+  if (!WinSetWindowText ((WINDOW_FRAME (window)), title))
+    window_error (WinSetWindowText);
+}
 
 static MRESULT EXPENTRY
 frame_window_procedure (HWND hwnd, ULONG msg, MPARAM mp1, MPARAM mp2)
@@ -1814,7 +2165,6 @@ window_procedure (HWND hwnd, ULONG msg, MPARAM mp1, MPARAM mp2)
 			      (& rectl)))
 	      == NULLHANDLE)
 	    window_error (WinBeginPaint);
-	  clear_rectangle (window, (& rectl));
 	  if (!WinEndPaint (WINDOW_HPS (window)))
 	    window_error (WinEndPaint);
 	  SEND_EVENT (window,

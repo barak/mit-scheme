@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2pm.h,v 1.2 1994/12/19 22:31:40 cph Exp $
+$Id: os2pm.h,v 1.3 1995/01/06 00:00:27 cph Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -154,33 +154,37 @@ extern void OS2_write_pm_tqueue (tqueue_t *, msg_t *);
 
 extern int OS2_wid_validp (wid_t);
 extern qid_t OS2_create_pm_qid (tqueue_t *);
-extern wid_t OS2_window_open (qid_t, qid_t, const char *);
+extern wid_t OS2_window_open (qid_t, qid_t, unsigned long, const char *);
 extern void OS2_window_permanent (wid_t);
 extern void OS2_window_close (wid_t);
 extern void OS2_window_show (wid_t, int);
 extern void OS2_window_write
-  (wid_t, unsigned short, unsigned short, const char *, unsigned short);
-extern void OS2_window_move_cursor (wid_t, unsigned short, unsigned short);
+  (wid_t, short, short, const char *, unsigned short);
+extern void OS2_window_move_cursor (wid_t, short, short);
 extern void OS2_window_shape_cursor
   (wid_t, unsigned short, unsigned short, unsigned short);
 extern void OS2_window_show_cursor (wid_t, int);
-extern void OS2_window_clear
-  (wid_t, unsigned short, unsigned short, unsigned short, unsigned short);
+extern void OS2_window_clear (wid_t, short, short, short, short);
 extern void OS2_window_scroll
-  (wid_t, unsigned short, unsigned short, unsigned short, unsigned short,
-   short, short);
-extern void OS2_window_invalidate
-  (wid_t, unsigned short, unsigned short, unsigned short, unsigned short);
+  (wid_t, short, short, short, short, short, short);
+extern void OS2_window_invalidate (wid_t, short, short, short, short);
 extern font_metrics_t * OS2_window_set_font
   (wid_t, unsigned short, const char *);
 extern void OS2_window_set_grid (wid_t, unsigned short, unsigned short);
 extern void OS2_window_activate (wid_t);
-extern void OS2_window_pos (wid_t, unsigned short *, unsigned short *);
-extern void OS2_window_set_pos (wid_t, unsigned short, unsigned short);
+extern void OS2_window_pos (wid_t, short *, short *);
+extern void OS2_window_set_pos (wid_t, short, short);
 extern void OS2_window_size (wid_t, unsigned short *, unsigned short *);
 extern void OS2_window_set_size (wid_t, unsigned short, unsigned short);
 extern int OS2_window_focusp (wid_t);
 extern void OS2_window_set_state (wid_t, window_state_t);
 extern void OS2_window_set_colors (wid_t, COLOR, COLOR);
+extern void OS2_window_move_gcursor (wid_t, short, short);
+extern void OS2_window_line (wid_t, short, short);
+extern void OS2_window_poly_line (wid_t, unsigned long, PPOINTL);
+extern void OS2_window_poly_line_disjoint (wid_t, unsigned long, PPOINTL);
+extern void OS2_window_set_line_type (wid_t, LONG);
+extern void OS2_window_query_caps (wid_t, LONG, LONG, PLONG);
+extern void OS2_window_set_title (wid_t, const char *);
 
 #endif /* SCM_OS2PM_H */

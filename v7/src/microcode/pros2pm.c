@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: pros2pm.c,v 1.1 1994/12/19 22:23:24 cph Exp $
+$Id: pros2pm.c,v 1.2 1995/01/06 00:00:35 cph Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,8 +38,15 @@ MIT in each case. */
 #include "os2.h"
 
 static qid_t pm_qid;
-static qid_t event_qid_local;
-static qid_t event_qid_remote;
+
+static qid_t
+qid_argument (unsigned int arg_number)
+{
+  unsigned int qid = (arg_index_integer (arg_number, (QID_MAX + 1)));
+  if (! ((OS2_qid_openp (qid)) && ((OS2_qid_twin (qid)) != QID_NONE)))
+    error_bad_range_arg (arg_number);
+  return (qid);
+}
 
 static wid_t
 wid_argument (unsigned int arg_number)
@@ -59,7 +66,7 @@ short_arg (unsigned int arg_number)
   return (result);
 }
 
-#define SHORT_ARG short_arg
+#define SSHORT_ARG short_arg
 #define USHORT_ARG(n) arg_index_integer ((n), 0x10000)
 
 static unsigned short
@@ -71,15 +78,13 @@ dimension_arg (unsigned int arg_number)
   return (result);
 }
 
-#define COORDINATE_ARG USHORT_ARG
+#define COORDINATE_ARG SSHORT_ARG
 #define DIMENSION_ARG dimension_arg
 
 void
 OS2_initialize_window_primitives (void)
 {
   pm_qid = (OS2_create_pm_qid (OS2_scheme_tqueue));
-  OS2_make_qid_pair ((&event_qid_local), (&event_qid_remote));
-  OS2_open_qid (event_qid_local, OS2_scheme_tqueue);
 }
 
 DEFINE_PRIMITIVE ("OS2WIN-BEEP", Prim_OS2_window_beep, 2, 2, 0)
@@ -89,13 +94,24 @@ DEFINE_PRIMITIVE ("OS2WIN-BEEP", Prim_OS2_window_beep, 2, 2, 0)
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("OS2WIN-OPEN", Prim_OS2_window_open, 1, 1, 0)
+DEFINE_PRIMITIVE ("OS2WIN-OPEN", Prim_OS2_window_open, 2, 2, 0)
 {
-  PRIMITIVE_HEADER (1);
+  PRIMITIVE_HEADER (2);
   PRIMITIVE_RETURN
     (long_to_integer (OS2_window_open (pm_qid,
-				       event_qid_remote,
-				       (STRING_ARG (1)))));
+				       (OS2_qid_twin (qid_argument (1))),
+				       0,
+				       (STRING_ARG (2)))));
+}
+
+DEFINE_PRIMITIVE ("OS2WIN-OPEN-1", Prim_OS2_window_open_1, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  PRIMITIVE_RETURN
+    (long_to_integer (OS2_window_open (pm_qid,
+				       (OS2_qid_twin (qid_argument (1))),
+				       (arg_nonnegative_integer (2)),
+				       (STRING_ARG (3)))));
 }
 
 DEFINE_PRIMITIVE ("OS2WIN-CLOSE", Prim_OS2_window_close, 1, 1, 0)
@@ -178,8 +194,8 @@ DEFINE_PRIMITIVE ("OS2WIN-SCROLL", Prim_OS2_window_scroll, 7, 7, 0)
 		     (COORDINATE_ARG (3)),
 		     (COORDINATE_ARG (4)),
 		     (COORDINATE_ARG (5)),
-		     (SHORT_ARG (6)),
-		     (SHORT_ARG (7)));
+		     (SSHORT_ARG (6)),
+		     (SSHORT_ARG (7)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -234,11 +250,11 @@ DEFINE_PRIMITIVE ("OS2WIN-GET-POS", Prim_OS2_window_get_pos, 1, 1, 0)
   PRIMITIVE_HEADER (1);
   {
     SCHEME_OBJECT p = (cons (SHARP_F, SHARP_F));
-    unsigned short width;
-    unsigned short height;
-    OS2_window_pos ((wid_argument (1)), (& width), (& height));
-    SET_PAIR_CAR (p, (LONG_TO_UNSIGNED_FIXNUM (width)));
-    SET_PAIR_CDR (p, (LONG_TO_UNSIGNED_FIXNUM (height)));
+    short x;
+    short y;
+    OS2_window_pos ((wid_argument (1)), (& x), (& y));
+    SET_PAIR_CAR (p, (LONG_TO_FIXNUM (x)));
+    SET_PAIR_CDR (p, (LONG_TO_FIXNUM (y)));
     PRIMITIVE_RETURN (p);
   }
 }
@@ -246,7 +262,7 @@ DEFINE_PRIMITIVE ("OS2WIN-GET-POS", Prim_OS2_window_get_pos, 1, 1, 0)
 DEFINE_PRIMITIVE ("OS2WIN-SET-POS", Prim_OS2_window_set_pos, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
-  OS2_window_set_pos ((wid_argument (1)), (USHORT_ARG (2)), (USHORT_ARG (3)));
+  OS2_window_set_pos ((wid_argument (1)), (SSHORT_ARG (2)), (SSHORT_ARG (3)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -294,7 +310,163 @@ DEFINE_PRIMITIVE ("OS2WIN-SET-COLORS", Prim_OS2_window_set_colors, 3, 3, 0)
 			 (arg_index_integer (3, 0x1000000)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
+
+DEFINE_PRIMITIVE ("OS2WIN-MOVE-GRAPHICS-CURSOR", Prim_OS2_window_move_gcursor, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  OS2_window_move_gcursor ((wid_argument (1)),
+			   (COORDINATE_ARG (2)),
+			   (COORDINATE_ARG (3)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("OS2WIN-LINE", Prim_OS2_window_line, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  OS2_window_line ((wid_argument (1)),
+		   (COORDINATE_ARG (2)),
+		   (COORDINATE_ARG (3)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+static PPOINTL coordinate_vector_point_args
+  (unsigned int, unsigned int, unsigned long *);
+
+DEFINE_PRIMITIVE ("OS2WIN-POLY-LINE", Prim_OS2_window_poly_line, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  {
+    void * position = dstack_position;
+    unsigned long npoints;
+    PPOINTL points = (coordinate_vector_point_args (2, 3, (& npoints)));
+    OS2_window_poly_line ((wid_argument (1)), npoints, points);
+    dstack_set_position (position);
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("OS2WIN-POLY-LINE-DISJOINT", Prim_OS2_window_poly_line_disjoint, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  {
+    void * position = dstack_position;
+    unsigned long npoints;
+    PPOINTL points = (coordinate_vector_point_args (2, 3, (& npoints)));
+    OS2_window_poly_line_disjoint ((wid_argument (1)), npoints, points);
+    dstack_set_position (position);
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+static PPOINTL
+coordinate_vector_point_args (unsigned int x_no, unsigned int y_no,
+			      unsigned long * npoints)
+{
+  SCHEME_OBJECT x_vector = (ARG_REF (x_no));
+  SCHEME_OBJECT y_vector = (ARG_REF (y_no));
+  if (!VECTOR_P (x_vector))
+    error_wrong_type_arg (x_no);
+  if (!VECTOR_P (y_vector))
+    error_wrong_type_arg (y_no);
+  {
+    unsigned long length = (VECTOR_LENGTH (x_vector));
+    if (length != (VECTOR_LENGTH (y_vector)))
+      error_bad_range_arg (x_no);
+    {
+      SCHEME_OBJECT * scan_x = (VECTOR_LOC (x_vector, 0));
+      SCHEME_OBJECT * end_x = (VECTOR_LOC (x_vector, length));
+      SCHEME_OBJECT * scan_y = (VECTOR_LOC (y_vector, 0));
+      PPOINTL points = (dstack_alloc (length * (sizeof (POINTL))));
+      PPOINTL scan_points = points;
+      while (scan_x < end_x)
+	{
+	  SCHEME_OBJECT x = (*scan_x++);
+	  SCHEME_OBJECT y = (*scan_y++);
+	  if (!FIXNUM_P (x))
+	    error_bad_range_arg (x_no);
+	  if (!FIXNUM_P (y))
+	    error_bad_range_arg (y_no);
+	  (scan_points -> x) = (FIXNUM_TO_LONG (x));
+	  (scan_points -> y) = (FIXNUM_TO_LONG (y));
+	  scan_points += 1;
+	}
+      (* npoints) = length;
+      return (points);
+    }
+  }
+}
+
+DEFINE_PRIMITIVE ("OS2WIN-SET-LINE-TYPE", Prim_OS2_window_set_line_type, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  {
+    long type = (arg_integer (2));
+    if (! (((-1) <= type) && (type <= 9)))
+      error_bad_range_arg (2);
+    OS2_window_set_line_type ((wid_argument (1)), type);
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("OS2WIN-QUERY-CAPABILITIES", Prim_OS2_window_query_caps, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  {
+    LONG count = (arg_nonnegative_integer (3));
+    PLONG values = (OS_malloc (count * (sizeof (LONG))));
+    OS2_window_query_caps ((wid_argument (1)),
+			   (arg_nonnegative_integer (2)),
+			   count,
+			   values);
+    {
+      SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, count, 1));
+      LONG index = 0;
+      while (index < count)
+	{
+	  VECTOR_SET (v, index, (long_to_integer (values [index])));
+	  index += 1;
+	}
+      OS_free (values);
+      PRIMITIVE_RETURN (v);
+    }
+  }
+}
+
+DEFINE_PRIMITIVE ("OS2WIN-QUERY-CAPABILITY", Prim_OS2_window_query_cap, 2, 2, 0)
+{
+  LONG values [1];
+  PRIMITIVE_HEADER (2);
+  OS2_window_query_caps ((wid_argument (1)),
+			 (arg_nonnegative_integer (2)),
+			 1,
+			 values);
+  PRIMITIVE_RETURN (long_to_integer (values [0]));
+}
+
+DEFINE_PRIMITIVE ("OS2WIN-SET-TITLE", Prim_OS2_window_set_title, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  OS2_window_set_title ((wid_argument (1)), (STRING_ARG (2)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
 
+DEFINE_PRIMITIVE ("OS2WIN-OPEN-EVENT-QID", Prim_OS2_window_open_event_qid, 0, 0, 0)
+{
+  qid_t local;
+  qid_t remote;
+  PRIMITIVE_HEADER (0);
+  OS2_make_qid_pair ((&local), (&remote));
+  OS2_open_qid (local, OS2_scheme_tqueue);
+  PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (local));
+}
+
+DEFINE_PRIMITIVE ("OS2WIN-CLOSE-EVENT-QID", Prim_OS2_window_close_event_qid, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  OS2_close_qid_pair (qid_argument (1));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
 #define ET_BUTTON	0
 #define ET_CLOSE	1
 #define ET_FOCUS	2
@@ -308,13 +480,13 @@ DEFINE_PRIMITIVE ("OS2WIN-SET-COLORS", Prim_OS2_window_set_colors, 3, 3, 0)
 #define CVT_BOOLEAN(n, v)						\
   VECTOR_SET (result, n, (BOOLEAN_TO_OBJECT (v)))
 
-DEFINE_PRIMITIVE ("OS2WIN-GET-EVENT", Prim_OS2_window_get_event, 1, 1, 0)
+DEFINE_PRIMITIVE ("OS2WIN-GET-EVENT", Prim_OS2_window_get_event, 2, 2, 0)
 {
-  PRIMITIVE_HEADER (1);
+  PRIMITIVE_HEADER (2);
   Primitive_GC_If_Needed (8);
   {
     msg_t * message
-      = (OS2_receive_message (event_qid_local, (BOOLEAN_ARG (1)), 1));
+      = (OS2_receive_message ((qid_argument (1)), (BOOLEAN_ARG (2)), 1));
     SCHEME_OBJECT result = SHARP_F;
     if (message != 0)
       switch (MSG_TYPE (message))
@@ -395,10 +567,10 @@ DEFINE_PRIMITIVE ("OS2WIN-GET-EVENT", Prim_OS2_window_get_event, 1, 1, 0)
   }
 }
 
-DEFINE_PRIMITIVE ("OS2WIN-EVENT-READY?", Prim_OS2_window_event_ready, 1, 1, 0)
+DEFINE_PRIMITIVE ("OS2WIN-EVENT-READY?", Prim_OS2_window_event_ready, 2, 2, 0)
 {
-  PRIMITIVE_HEADER (1);
-  switch (OS2_message_availablep (event_qid_local, (BOOLEAN_ARG (1))))
+  PRIMITIVE_HEADER (2);
+  switch (OS2_message_availablep ((qid_argument (1)), (BOOLEAN_ARG (2))))
     {
     case mat_available:
       PRIMITIVE_RETURN (SHARP_T);
@@ -407,12 +579,6 @@ DEFINE_PRIMITIVE ("OS2WIN-EVENT-READY?", Prim_OS2_window_event_ready, 1, 1, 0)
     case mat_interrupt:
       PRIMITIVE_RETURN (FIXNUM_ZERO);
     }
-}
-
-DEFINE_PRIMITIVE ("OS2WIN-EVENT-DESCRIPTOR", Prim_OS2_window_event_descriptor, 0, 0, 0)
-{
-  PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (event_qid_local));
 }
 
 DEFINE_PRIMITIVE ("OS2WIN-CONSOLE-WID", Prim_OS2_window_console_wid, 0, 0, 0)
