@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.149 2000/06/12 04:04:51 cph Exp $
+;;; $Id: imail-top.scm,v 1.150 2000/06/13 21:18:24 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1955,30 +1955,12 @@ A prefix argument says to prompt for a URL and append all messages
     (if url-string
 	((ref-command imail-input-from-folder) url-string)
 	(let* ((folder (selected-folder))
-	       (count (folder-modification-count folder))
-	       ;; NAVIGATOR/LAST-MESSAGE must run _after_
-	       ;; FOLDER-MODIFICATION-COUNT as it can potentially change
-	       ;; its value.  (E.g. when IMAP folder is closed, this
-	       ;; reopens it, reads new information from the server, and
-	       ;; changes the modification count.)
-	       (last (navigator/last-message folder)))
+	       (count (folder-modification-count folder)))
 	  (probe-folder folder)
 	  (if (> (folder-modification-count folder) count)
-	      (select-message
-	       folder
-	       (or (cond ((not last)
-			  (navigator/first-message folder))
-			 ((message-attached? last folder)
-			  (navigator/next-message last))
-			 ((message-index last)
-			  => (lambda (index)
-			       (let ((index (+ index 1)))
-				 (if (< index (folder-length folder))
-				     (get-message folder index)
-				     (navigator/first-unseen-message
-				      folder)))))
-			 (else (navigator/first-unseen-message folder)))
-		   (selected-message #f)))
+	      (select-message folder
+			      (or (navigator/first-unseen-message folder)
+				  (selected-message #f)))
 	      (message "(No changes to mail folder)"))))))
 
 (define-command imail-save-folder

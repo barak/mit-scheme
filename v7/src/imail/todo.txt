@@ -1,15 +1,8 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.76 2000/06/12 01:39:09 cph Exp $
+$Id: todo.txt,v 1.77 2000/06/13 21:18:45 cph Exp $
 
 Bug fixes
 ---------
-
-* M-x imail-get-new-mail doesn't select message right when mailbox has
-  changed significantly since last sync.  It ignores the UNSEEN
-  attribute and uses the message indexes.  It should pay attention to
-  UNSEEN and to UIDNEXT to figure out what it needs to do.  [See also
-  the note below regarding redesign of the UID synchronization code.
-  These may be related problems.]
 
 * Must be able to handle malformed headers in incoming mail.
   Generating a low-level error in this situation is unacceptable.
@@ -37,8 +30,6 @@ New features
 * Command to expand attachment inline.  Sometimes attachments aren't
   big binary things but small text things that are easier to view
   inline.
-
-* Command to move to first unseen message in folder.
 
 * In M-x imail-copy-folder, default the target buffer to have the same
   name as the source buffer, e.g. from "foo.rmail" to "inbox.foo".
