@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxfs.c,v 1.5 1991/10/29 13:59:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxfs.c,v 1.6 1992/02/08 14:54:17 cph Exp $
 
-Copyright (c) 1990-1 Massachusetts Institute of Technology
+Copyright (c) 1990-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -180,119 +180,174 @@ DEFUN (OS_directory_make, (name), CONST char * name)
   STD_VOID_SYSTEM_CALL (syscall_mkdir, (UX_mkdir (name, MODE_DIR)));
 }
 
+int OS_directory_index;
+
 #if defined(HAVE_DIRENT) || defined(HAVE_DIR)
 
-static DIR * directory_pointer = 0;
-#ifdef HAVE_DIRENT
-static struct dirent * directory_entry;
-#else
-static struct direct * directory_entry;
-#endif
-
-#define READ_DIRECTORY_ENTRY()						\
-{									\
-  directory_entry = (readdir (directory_pointer));			\
-  if (directory_entry == 0)						\
-    {									\
-      closedir (directory_pointer);					\
-      directory_pointer = 0;						\
-      return (0);							\
-    }									\
-  return (directory_entry -> d_name);					\
-}
+static DIR ** directory_pointers;
+static unsigned int n_directory_pointers;
 
 void
-DEFUN (OS_directory_open, (name), CONST char * name)
+DEFUN_VOID (UX_initialize_directory_reader)
 {
-  if (directory_pointer != 0)
-    error_external_return ();
-  /* Cast `name' to non-const because hp-ux 7.0 declaration incorrect. */
-  directory_pointer = (opendir ((char *) name));
-  if (directory_pointer == 0)
-#ifdef HAVE_DIRENT
-    error_system_call (errno, syscall_opendir);
-#else
-    error_external_return ();
-#endif
+  directory_pointers = 0;
+  n_directory_pointers = 0;
+  OS_directory_index = (-1);
 }
 
-CONST char *
-DEFUN_VOID (OS_directory_read)
+static unsigned int
+DEFUN (allocate_directory_pointer, (pointer), DIR ** pointer)
 {
-  if (directory_pointer == 0)
-    error_external_return ();
-  READ_DIRECTORY_ENTRY ();
-}
-
-CONST char *
-DEFUN (OS_directory_read_matching, (prefix), CONST char * prefix)
-{
-  if (directory_pointer == 0)
-    error_external_return ();
-  {
-    unsigned int n = (strlen (prefix));
-    while (1)
+  if (n_directory_pointers == 0)
+    {
+      DIR ** pointers = ((DIR **) (UX_malloc ((sizeof (DIR *)) * 4)));
+      if (pointers == 0)
+	error_system_call (ENOMEM, syscall_malloc);
+      directory_pointers = pointers;
+      n_directory_pointers = 4;
       {
-	directory_entry = (readdir (directory_pointer));
-	if (directory_entry == 0)
-	  {
-	    closedir (directory_pointer);
-	    directory_pointer = 0;
-	    return (0);
-	  }
-	if ((strncmp (prefix, (directory_entry -> d_name), n)) == 0)
-	  return (directory_entry -> d_name);
+	DIR ** scan = directory_pointers;
+	DIR ** end = (scan + n_directory_pointers);
+	(*scan++) = pointer;
+	while (scan < end)
+	  (*scan++) = 0;
       }
+      return (0);
+    }
+  {
+    DIR ** scan = directory_pointers;
+    DIR ** end = (scan + n_directory_pointers);
+    while (scan < end)
+      if ((*scan++) == 0)
+	{
+	  (*--scan) = pointer;
+	  return (scan - directory_pointers);
+	}
+  }
+  {
+    unsigned int result = n_directory_pointers;
+    unsigned int n_pointers = (2 * n_directory_pointers);
+    DIR ** pointers =
+      ((DIR **)
+       (UX_realloc (((PTR) directory_pointers),
+		    ((sizeof (DIR *)) * n_pointers))));
+    if (pointers == 0)
+      error_system_call (ENOMEM, syscall_realloc);
+    {
+      DIR ** scan = (pointers + result);
+      DIR ** end = (pointers + n_pointers);
+      (*scan++) = pointer;
+      while (scan < end)
+	(*scan++) = 0;
+    }
+    directory_pointers = pointers;
+    n_directory_pointers = n_pointers;
+    return (result);
   }
 }
 
-void
-DEFUN_VOID (OS_directory_close)
+#define REFERENCE_DIRECTORY(index) (directory_pointers[(index)])
+#define DEALLOCATE_DIRECTORY(index) ((directory_pointers[(index)]) = 0)
+
+int
+DEFUN (OS_directory_valid_p, (index), long index)
 {
-  if (directory_pointer != 0)
+  return
+    ((0 <= index)
+     && (index < n_directory_pointers)
+     && ((REFERENCE_DIRECTORY (index)) != 0));
+}
+
+unsigned int
+DEFUN (OS_directory_open, (name), CONST char * name)
+{
+  /* Cast `name' to non-const because hp-ux 7.0 declaration incorrect. */
+  DIR ** pointer = (opendir ((char *) name));
+  if (pointer == 0)
+    error_system_call (errno, syscall_opendir);
+  return (allocate_directory_pointer (pointer));
+}
+
+#ifndef HAVE_DIRENT
+#define dirent direct
+#endif
+
+CONST char *
+DEFUN (OS_directory_read, (index), unsigned int index)
+{
+  struct dirent * entry = (readdir (REFERENCE_DIRECTORY (index)));
+  return ((entry == 0) ? 0 : (entry -> d_name));
+}
+
+CONST char *
+DEFUN (OS_directory_read_matching, (index, prefix), 
+       unsigned int index AND
+       CONST char * prefix)
+{
+  DIR * pointer = (REFERENCE_DIRECTORY (index));
+  unsigned int n = (strlen (prefix));
+  while (1)
     {
-      closedir (directory_pointer);
-      directory_pointer = 0;
+      struct dirent * entry = (readdir (pointer));
+      if (entry == 0)
+	return (0);
+      if ((strncmp (prefix, (entry -> d_name), n)) == 0)
+	return (entry -> d_name);
     }
 }
 
 void
-DEFUN_VOID (UX_initialize_directory_reader)
+DEFUN (OS_directory_close, (index), unsigned int index)
 {
-  directory_pointer = 0;
+  closedir (REFERENCE_DIRECTORY (index));
+  DEALLOCATE_DIRECTORY (index);
 }
-
+
 #else /* not HAVE_DIRENT nor HAVE_DIR */
 
 void
+DEFUN_VOID (UX_initialize_directory_reader)
+{
+  OS_directory_index = (-1);
+}
+
+int
+DEFUN (OS_directory_valid_p, (index), long index)
+{
+  return (0);
+}
+
+unsigned int
 DEFUN (OS_directory_open, (name), CONST char * name)
 {
   error_unimplemented_primitive ();
+  return (0);
 }
 
+#ifndef HAVE_DIRENT
+#define dirent direct
+#endif
+
 CONST char *
-DEFUN_VOID (OS_directory_read)
+DEFUN (OS_directory_read, (index), unsigned int index)
 {
   error_unimplemented_primitive ();
   return (0);
 }
 
 CONST char *
-DEFUN (OS_directory_read_matching, (prefix), CONST char * prefix)
+DEFUN (OS_directory_read_matching, (index, prefix), 
+       unsigned int index AND
+       CONST char * prefix)
 {
   error_unimplemented_primitive ();
   return (0);
 }
 
 void
-DEFUN_VOID (OS_directory_close)
+DEFUN (OS_directory_close, (index), unsigned int index)
 {
   error_unimplemented_primitive ();
-}
-
-void
-DEFUN_VOID (UX_initialize_directory_reader)
-{
 }
 
 #endif /* HAVE_DIRENT */

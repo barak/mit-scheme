@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11.h,v 1.10 1991/07/23 08:16:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11.h,v 1.11 1992/02/08 14:54:21 cph Exp $
 
-Copyright (c) 1989-91 Massachusetts Institute of Technology
+Copyright (c) 1989-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,18 +36,25 @@ MIT in each case. */
 #include <X11/cursorfont.h>
 #include <X11/keysym.h>
 #include <X11/Xutil.h>
+#include <X11/Xatom.h>
 #include "ansidecl.h"
 
 struct xdisplay
 {
   unsigned int allocation_index;
   Display * display;
+  Atom wm_protocols;
+  Atom wm_delete_window;
+  Atom wm_take_focus;
   XEvent cached_event;
   char cached_event_p;
 };
 
 #define XD_ALLOCATION_INDEX(xd) ((xd) -> allocation_index)
 #define XD_DISPLAY(xd) ((xd) -> display)
+#define XD_WM_PROTOCOLS(xd) ((xd) -> wm_protocols)
+#define XD_WM_DELETE_WINDOW(xd) ((xd) -> wm_delete_window)
+#define XD_WM_TAKE_FOCUS(xd) ((xd) -> wm_take_focus)
 #define XD_CACHED_EVENT(xd) ((xd) -> cached_event)
 #define XD_CACHED_EVENT_P(xd) ((xd) -> cached_event_p)
 #define XD_TO_OBJECT(xd) (LONG_TO_UNSIGNED_FIXNUM (XD_ALLOCATION_INDEX (xd)))
@@ -217,7 +224,7 @@ extern struct xcolormap * EXFUN (x_colormap_arg, (unsigned int arg));
 extern unsigned int EXFUN
   (allocate_x_colormap, (Colormap colormap, struct xdisplay * xd));
 extern void EXFUN (deallocate_x_colormap, (struct xcolormap * xcm));
-
+
 extern int x_debug;
 
 extern PTR EXFUN (x_malloc, (unsigned int size));
@@ -227,14 +234,16 @@ extern char * EXFUN
   (x_get_default,
    (Display * display,
     char * resource_name,
+    char * resource_class,
     char * property_name,
-    char * class_name,
+    char * property_class,
     char * sdefault));
 
 extern void EXFUN
   (x_default_attributes,
    (Display * display,
     char * resource_name,
+    char * resource_class,
     struct drawing_attributes * attributes));
 
 extern struct xwindow * EXFUN
@@ -246,3 +255,19 @@ extern struct xwindow * EXFUN
     struct drawing_attributes * attributes,
     struct xwindow_methods * methods,
     unsigned int extra));
+
+extern void EXFUN
+  (xw_set_wm_input_hint, (struct xwindow * xw, int input_hint));
+
+extern void EXFUN
+  (xw_set_wm_name, (struct xwindow * xw, CONST char * name));
+
+extern void EXFUN
+  (xw_set_wm_icon_name, (struct xwindow * xw, CONST char * name));
+
+extern void EXFUN
+  (xw_make_window_map,
+   (struct xwindow * xw,
+    CONST char * resource_name,
+    CONST char * resource_class,
+    SCHEME_OBJECT map_arg));

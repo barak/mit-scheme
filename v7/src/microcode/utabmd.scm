@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.60 1991/10/29 13:59:11 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.61 1992/02/08 14:54:14 cph Exp $
 ;;;
-;;;	Copyright (c) 1987-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1987-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -440,7 +440,7 @@
 	       #F					;3F
 	       POP-RETURN-ERROR				;40
 	       EVAL-ERROR				;41
-	       REPEAT-PRIMITIVE				;42
+	       STACK-MARKER				;42
 	       COMPILER-INTERRUPT-RESTART		;43
 	       #F					;44
 	       RESTORE-INTERRUPT-MASK			;45
@@ -698,4 +698,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.60 1991/10/29 13:59:11 cph Exp $"
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.61 1992/02/08 14:54:14 cph Exp $"

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.31 1992/02/04 04:37:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.32 1992/02/08 14:54:22 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -248,17 +248,25 @@ DEFUN (x_set_mouse_colors,
 
 char *
 DEFUN (x_get_default,
-       (display, resource_name, property_name, class_name, sdefault),
+       (display, resource_name, resource_class,
+	property_name, property_class, sdefault),
        Display * display AND
        char * resource_name AND
+       char * resource_class AND
        char * property_name AND
-       char * class_name AND
+       char * property_class AND
        char * sdefault)
 {
   char * result = (XGetDefault (display, resource_name, property_name));
   if (result != 0)
     return (result);
-  result = (XGetDefault (display, resource_name, class_name));
+  result = (XGetDefault (display, resource_class, property_name));
+  if (result != 0)
+    return (result);
+  result = (XGetDefault (display, resource_name, property_class));
+  if (result != 0)
+    return (result);
+  result = (XGetDefault (display, resource_class, property_class));
   if (result != 0)
     return (result);
   return (sdefault);
@@ -266,15 +274,19 @@ DEFUN (x_get_default,
 
 static unsigned long
 DEFUN (x_default_color,
-       (display, resource_name, property_name, class_name, default_color),
+       (display, resource_class, resource_name,
+	property_name, property_class, default_color),
        Display * display AND
        char * resource_name AND
+       char * resource_class AND
        char * property_name AND
-       char * class_name AND
+       char * property_class AND
        unsigned long default_color)
 {
   char * color_name =
-    (x_get_default (display, resource_name, property_name, class_name, 0));
+    (x_get_default
+     (display, resource_name, resource_class,
+      property_name, property_class, 0));
   unsigned long result;
   return
     (((color_name != 0)
@@ -288,28 +300,34 @@ DEFUN (x_default_color,
 }
 
 void
-DEFUN (x_default_attributes, (display, resource_name, attributes),
+DEFUN (x_default_attributes, 
+       (display, resource_name, resource_class, attributes),
        Display * display AND
        char * resource_name AND
+       char * resource_class AND
        struct drawing_attributes * attributes)
 {
   int screen_number = (DefaultScreen (display));
   (attributes -> font) =
     (XLoadQueryFont
      (display,
-      (x_get_default (display, resource_name, "font", "Font", "9x15"))));
+      (x_get_default
+       (display, resource_name, resource_class,
+	"font", "Font", "9x15"))));
   if ((attributes -> font) == 0)
     error_external_return ();
   {
     char * s =
       (x_get_default
-       (display, resource_name, "borderWidth", "BorderWidth", 0));
+       (display, resource_name, resource_class,
+	"borderWidth", "BorderWidth", 0));
     (attributes -> border_width) = ((s == 0) ? 2 : (atoi (s)));
   }
   {
     char * s =
       (x_get_default
-       (display, resource_name, "internalBorder", "BorderWidth", 0));
+       (display, resource_name, resource_class,
+	"internalBorder", "BorderWidth", 0));
     (attributes -> internal_border_width) =
       ((s == 0) ? (attributes -> border_width) : (atoi (s)));
   }
@@ -319,22 +337,24 @@ DEFUN (x_default_attributes, (display, resource_name, attributes),
     unsigned long foreground_pixel;
     (attributes -> background_pixel) =
       (x_default_color
-       (display, resource_name, "background", "Background", white_pixel));
+       (display, resource_class, resource_name,
+	"background", "Background", white_pixel));
     foreground_pixel =
       (x_default_color
-       (display, resource_name, "foreground", "Foreground", black_pixel));
+       (display, resource_class, resource_name,
+	"foreground", "Foreground", black_pixel));
     (attributes -> foreground_pixel) = foreground_pixel;
     (attributes -> border_pixel) =
       (x_default_color
-       (display, resource_name,
+       (display, resource_class, resource_name,
 	"borderColor", "BorderColor", foreground_pixel));
     (attributes -> cursor_pixel) =
       (x_default_color
-       (display, resource_name,
+       (display, resource_class, resource_name,
 	"cursorColor", "Foreground", foreground_pixel));
     (attributes -> mouse_pixel) =
       (x_default_color
-       (display, resource_name,
+       (display, resource_class, resource_name,
 	"pointerColor", "Foreground", foreground_pixel));
   }
 }
@@ -462,6 +482,82 @@ DEFUN_VOID (x_close_all_displays)
 }
 
 static void
+DEFUN (xw_set_class_hint, (xw, name, class),
+       struct xwindow * xw AND
+       CONST char * name AND
+       CONST char * class)
+{
+  XClassHint * class_hint = (XAllocClassHint ());
+  if (class_hint == 0)
+    error_external_return ();
+  (class_hint -> res_name) = name;
+  (class_hint -> res_class) = class;
+  XSetClassHint ((XW_DISPLAY (xw)), (XW_WINDOW (xw)), class_hint);
+  XFree ((caddr_t) class_hint);
+}
+
+void
+DEFUN (xw_set_wm_input_hint, (xw, input_hint),
+       struct xwindow * xw AND
+       int input_hint)
+{
+  XWMHints * hints = (XAllocWMHints ());
+  if (hints == 0)
+    error_external_return ();
+  (hints -> flags) = InputHint;
+  (hints -> input) = (input_hint != 0);
+  XSetWMHints ((XW_DISPLAY (xw)), (XW_WINDOW (xw)), hints);
+  XFree ((caddr_t) hints);
+}
+
+void
+DEFUN (xw_set_wm_name, (xw, name), struct xwindow * xw AND CONST char * name)
+{
+  XTextProperty property;
+  if ((XStringListToTextProperty ((&name), 1, (&property))) == 0)
+    error_external_return ();
+  XSetWMName ((XW_DISPLAY (xw)), (XW_WINDOW (xw)), (&property));
+}
+
+void
+DEFUN (xw_set_wm_icon_name, (xw, name),
+       struct xwindow * xw AND
+       CONST char * name)
+{
+  XTextProperty property;
+  if ((XStringListToTextProperty ((&name), 1, (&property))) == 0)
+    error_external_return ();
+  XSetWMIconName ((XW_DISPLAY (xw)), (XW_WINDOW (xw)), (&property));
+}
+
+void
+DEFUN (xw_make_window_map, (xw, resource_name, resource_class, map_arg),
+       struct xwindow * xw AND
+       CONST char * resource_name AND
+       CONST char * resource_class AND
+       SCHEME_OBJECT map_arg)
+{
+  SCHEME_OBJECT map_arg = (ARG_REF (3));
+  int map_p = 0;
+  if (map_arg == SHARP_F)
+    map_p = 1;
+  else if ((PAIR_P (map_arg))
+	   && (STRING_P (PAIR_CAR (map_arg)))
+	   && (STRING_P (PAIR_CDR (map_arg))))
+    {
+      resource_class = ((CONST char *) (STRING_LOC ((PAIR_CDR (map_arg)), 0)));
+      resource_name = ((CONST char *) (STRING_LOC ((PAIR_CAR (map_arg)), 0)));
+      map_p = 1;
+    }
+  xw_set_class_hint (xw, resource_name, resource_class);
+  if (map_p)
+    {
+      XMapWindow ((XW_DISPLAY (xw)), (XW_WINDOW (xw)));
+      XFlush (XW_DISPLAY (xw));
+    }
+}
+
+static void
 DEFUN (xw_process_event, (xw, event),
        struct xwindow * xw AND
        XEvent * event)
@@ -469,12 +565,12 @@ DEFUN (xw_process_event, (xw, event),
   if (x_debug)
     {
       char * type_name;
+      fprintf (stderr, "\nX event: ");
       switch (event -> type)
 	{
 	case ButtonPress:	type_name = "ButtonPress"; break;
 	case ButtonRelease:	type_name = "ButtonRelease"; break;
 	case CirculateNotify:	type_name = "CirculateNotify"; break;
-	case ConfigureNotify:	type_name = "ConfigureNotify"; break;
 	case CreateNotify:	type_name = "CreateNotify"; break;
 	case DestroyNotify:	type_name = "DestroyNotify"; break;
 	case EnterNotify:	type_name = "EnterNotify"; break;
@@ -492,13 +588,45 @@ DEFUN (xw_process_event, (xw, event),
 	case NoExpose:		type_name = "NoExpose"; break;
 	case ReparentNotify:	type_name = "ReparentNotify"; break;
 	case UnmapNotify:	type_name = "UnmapNotify"; break;
+	case ConfigureNotify:
+	  {
+	    fprintf (stderr, "ConfigureNotify; width = %d, height = %d",
+		     ((event -> xconfigure) . width),
+		     ((event -> xconfigure) . height));
+	    goto debug_done;
+	  }
+	case ClientMessage:
+	  {
+	    struct xdisplay * xd = (XW_XD (xw));
+	    if ((((event -> xclient) . message_type) == (XD_WM_PROTOCOLS (xd)))
+		&& (((event -> xclient) . format) == 32))
+	      {
+		if (((Atom) (((event -> xclient) . data . l) [0]))
+		    == (XD_WM_DELETE_WINDOW (xd)))
+		  type_name = "WM_DELETE_WINDOW";
+		else if (((Atom) (((event -> xclient) . data . l) [0]))
+			 == (XD_WM_TAKE_FOCUS (xd)))
+		  type_name = "WM_TAKE_FOCUS";
+		else
+		  type_name = "WM_PROTOCOLS";
+	      }
+	    else
+	      {
+		fprintf (stderr,
+			 "ClientMessage; message_type = 0x%x, format = %d",
+			 ((event -> xclient) . message_type),
+			 ((event -> xclient) . format));
+		goto debug_done;
+	      }
+	  }
+	  break;
 	default:		type_name = 0; break;
 	}
-      fprintf (stderr, "\nX event: ");
       if (type_name != 0)
 	fprintf (stderr, "%s", type_name);
       else
 	fprintf (stderr, "%d", (event -> type));
+    debug_done:
       fprintf (stderr, "\n");
       fflush (stderr);
     }
@@ -529,6 +657,10 @@ enum event_type
   event_type_leave,
   event_type_motion,
   event_type_expose,
+  event_type_delete_window,
+  event_type_map,
+  event_type_unmap,
+  event_type_take_focus,
   event_type_supremum
 };
 
@@ -542,8 +674,6 @@ enum event_type
 #define EVENT_1 3
 #define EVENT_2 4
 #define EVENT_3 5
-
-#define EVENT_EXTRA(max_event) (max_event - 1)
 
 #define EVENT_INTEGER(event, slot, number)				\
   VECTOR_SET ((event), (slot), (long_to_integer (number)))
@@ -566,7 +696,7 @@ DEFUN (button_event, (xw, event, type),
        XButtonEvent * event AND
        enum event_type type)
 {
-  SCHEME_OBJECT result = (make_event_object (xw, type, 3));
+  SCHEME_OBJECT result = (make_event_object (xw, type, 4));
   EVENT_INTEGER (result, EVENT_0, (event -> x));
   EVENT_INTEGER (result, EVENT_1, (event -> y));
   {
@@ -598,6 +728,7 @@ DEFUN (button_event, (xw, event, type),
     }
     VECTOR_SET (result, EVENT_2, conversion);
   }
+  EVENT_INTEGER (result, EVENT_3, (event -> time));
   return (result);
 }
 
@@ -617,10 +748,10 @@ DEFUN (key_event, (xw, event, type),
   if ((event -> state) &
       (ShiftMask || ControlMask
        || Mod1Mask || Mod2Mask || Mod3Mask || Mod4Mask || Mod5Mask))
-  {
-    if ((event->state) & LockMask)
-      (event->state) -= LockMask;
-  }
+    {
+      if (((event->state) & LockMask) != 0)
+	(event->state) -= LockMask;
+    }
   nbytes =
     (XLookupString (event,
 		    copy_buffer,
@@ -631,39 +762,44 @@ DEFUN (key_event, (xw, event, type),
     return (SHARP_F);
   else
     {
-      long bucky = 0;
-
-      SCHEME_OBJECT result
-	= (make_event_object (xw, type, EVENT_EXTRA (EVENT_2)));
-
-      /* Create Scheme bucky bits (kept independent of the */
-      /* character).  X has already controlified, so Scheme may */
-      /* choose to ignore the control bucky bit. */
-      if ((event -> state) & Mod1Mask) /* Meta */
-	bucky |= 1;
-      if ((event -> state) & ControlMask) /* Control */
-	bucky |= 2;
-      if ((event -> state) & Mod2Mask) /* Super */
-	bucky |= 4;
-      if ((event -> state) & Mod3Mask) /* Hyper */
-	bucky |= 8;
-      if ((event -> state) & Mod4Mask) /* Top */
-	bucky |= 16;
+      SCHEME_OBJECT result = (make_event_object (xw, type, 4));
       VECTOR_SET (result, EVENT_0,
 		  (memory_to_string (nbytes,
 				     ((unsigned char *) copy_buffer))));
-      VECTOR_SET (result, EVENT_1, LONG_TO_UNSIGNED_FIXNUM (bucky));
-      /* Move vendor-specific bit from bit 28 (zero-based) to bit 23 */
-      /* so that all keysym values will fit in Scheme fixnums. */
+      /* Create Scheme bucky bits (kept independent of the character).
+	 X has already controlified, so Scheme may choose to ignore
+	 the control bucky bit.  */
+      {
+	long bucky = 0;
+	if ((event -> state) & Mod1Mask) /* Meta */
+	  bucky |= 1;
+	if ((event -> state) & ControlMask) /* Control */
+	  bucky |= 2;
+	if ((event -> state) & Mod2Mask) /* Super */
+	  bucky |= 4;
+	if ((event -> state) & Mod3Mask) /* Hyper */
+	  bucky |= 8;
+	if ((event -> state) & Mod4Mask) /* Top */
+	  bucky |= 16;
+	VECTOR_SET (result, EVENT_1, (LONG_TO_UNSIGNED_FIXNUM (bucky)));
+      }
+      /* Move vendor-specific bit from bit 28 (zero-based) to bit 23
+	 so that all keysym values will fit in Scheme fixnums.  */
       VECTOR_SET
 	(result,
 	 EVENT_2,
-	 LONG_TO_UNSIGNED_FIXNUM ((keysym & 0xffffff)
-				  | (0x800000 & (keysym >> 5))));
+	 (LONG_TO_UNSIGNED_FIXNUM ((keysym & 0xffffff)
+				   | (0x800000 & (keysym >> 5)))));
+      EVENT_INTEGER (result, EVENT_3, (event -> time));
       return (result);
     }
 }
 
+#define CONVERT_TRIVIAL_EVENT(scheme_name)				\
+  if (EVENT_ENABLED (xw, scheme_name))					\
+    result = (make_event_object (xw, scheme_name, 0));			\
+  break
+
 static SCHEME_OBJECT
 DEFUN (x_event_to_object, (event), XEvent * event)
 {
@@ -723,22 +859,39 @@ DEFUN (x_event_to_object, (event), XEvent * event)
 			 ((event -> xgraphicsexpose) . height));
 	}
       break;
-    case EnterNotify:
-      if (EVENT_ENABLED (xw, event_type_enter))
-	result = (make_event_object (xw, event_type_enter, 0));
+    case ClientMessage:
+      {
+	struct xdisplay * xd = (XW_XD (xw));
+	if ((((event -> xclient) . message_type) == (XD_WM_PROTOCOLS (xd)))
+	    && (((event -> xclient) . format) == 32))
+	  {
+	    if (((Atom) (((event -> xclient) . data . l) [0]))
+		== (XD_WM_DELETE_WINDOW (xd)))
+	      {
+		if (EVENT_ENABLED (xw, event_type_delete_window))
+		  result =
+		    (make_event_object (xw, event_type_delete_window, 0));
+	      }
+	    else if (((Atom) (((event -> xclient) . data . l) [0]))
+		     == (XD_WM_TAKE_FOCUS (xd)))
+	      {
+		if (EVENT_ENABLED (xw, event_type_take_focus))
+		  {
+		    result =
+		      (make_event_object (xw, event_type_take_focus, 1));
+		    EVENT_INTEGER
+		      (result, EVENT_0, (((event -> xclient) . data . l) [1]));
+		  }
+	      }
+	  }
+      }
       break;
-    case LeaveNotify:
-      if (EVENT_ENABLED (xw, event_type_leave))
-	result = (make_event_object (xw, event_type_leave, 0));
-      break;
-    case FocusIn:
-      if (EVENT_ENABLED (xw, event_type_focus_in))
-	result = (make_event_object (xw, event_type_focus_in, 0));
-      break;
-    case FocusOut:
-      if (EVENT_ENABLED (xw, event_type_focus_out))
-	result = (make_event_object (xw, event_type_focus_out, 0));
-      break;
+    case EnterNotify: CONVERT_TRIVIAL_EVENT (event_type_enter);
+    case LeaveNotify: CONVERT_TRIVIAL_EVENT (event_type_leave);
+    case FocusIn: CONVERT_TRIVIAL_EVENT (event_type_focus_in);
+    case FocusOut: CONVERT_TRIVIAL_EVENT (event_type_focus_out);
+    case MapNotify: CONVERT_TRIVIAL_EVENT (event_type_map);
+    case UnmapNotify: CONVERT_TRIVIAL_EVENT (event_type_unmap);
     }
   return (result);
 }
@@ -848,6 +1001,12 @@ DEFINE_PRIMITIVE ("X-OPEN-DISPLAY", Prim_x_open_display, 1, 1, 0)
       }
     (XD_ALLOCATION_INDEX (xd)) =
       (allocate_table_index ((&x_display_table), xd));
+    (XD_WM_PROTOCOLS (xd)) =
+      (XInternAtom ((XD_DISPLAY (xd)), "WM_PROTOCOLS", False));
+    (XD_WM_DELETE_WINDOW (xd)) =
+      (XInternAtom ((XD_DISPLAY (xd)), "WM_DELETE_WINDOW", False));
+    (XD_WM_TAKE_FOCUS (xd)) =
+      (XInternAtom ((XD_DISPLAY (xd)), "WM_TAKE_FOCUS", False));
     (XD_CACHED_EVENT_P (xd)) = 0;
     PRIMITIVE_RETURN (XD_TO_OBJECT (xd));
   }
@@ -890,27 +1049,45 @@ DEFINE_PRIMITIVE ("X-DISPLAY-PROCESS-EVENTS", Prim_x_display_process_events, 2, 
 static void
 DEFUN (update_input_mask, (xw), struct xwindow * xw)
 {
-  long event_mask = 0;
-  if (EVENT_ENABLED (xw, event_type_expose))
-    event_mask |= ExposureMask;
-  if (EVENT_ENABLED (xw, event_type_configure))
-    event_mask |= StructureNotifyMask;
-  if (EVENT_ENABLED (xw, event_type_button_down))
-    event_mask |= ButtonPressMask;
-  if (EVENT_ENABLED (xw, event_type_button_up))
-    event_mask |= ButtonReleaseMask;
-  if (EVENT_ENABLED (xw, event_type_key_press))
-    event_mask |= KeyPressMask;
-  if (EVENT_ENABLED (xw, event_type_enter))
-    event_mask |= EnterWindowMask;
-  if (EVENT_ENABLED (xw, event_type_leave))
-    event_mask |= LeaveWindowMask;
-  if ((EVENT_ENABLED (xw, event_type_focus_in))
-      || (EVENT_ENABLED (xw, event_type_focus_out)))
-    event_mask |= FocusChangeMask;
-  if (EVENT_ENABLED (xw, event_type_motion))
-    event_mask |= PointerMotionMask;
-  XSelectInput ((XW_DISPLAY (xw)), (XW_WINDOW (xw)), event_mask);
+  {
+    long event_mask = 0;
+
+    if (EVENT_ENABLED (xw, event_type_expose))
+      event_mask |= ExposureMask;
+    if ((EVENT_ENABLED (xw, event_type_configure))
+	|| (EVENT_ENABLED (xw, event_type_map))
+	|| (EVENT_ENABLED (xw, event_type_unmap)))
+      event_mask |= StructureNotifyMask;
+    if (EVENT_ENABLED (xw, event_type_button_down))
+      event_mask |= ButtonPressMask;
+    if (EVENT_ENABLED (xw, event_type_button_up))
+      event_mask |= ButtonReleaseMask;
+    if (EVENT_ENABLED (xw, event_type_key_press))
+      event_mask |= KeyPressMask;
+    if (EVENT_ENABLED (xw, event_type_enter))
+      event_mask |= EnterWindowMask;
+    if (EVENT_ENABLED (xw, event_type_leave))
+      event_mask |= LeaveWindowMask;
+    if ((EVENT_ENABLED (xw, event_type_focus_in))
+	|| (EVENT_ENABLED (xw, event_type_focus_out)))
+      event_mask |= FocusChangeMask;
+    if (EVENT_ENABLED (xw, event_type_motion))
+      event_mask |= PointerMotionMask;
+    XSelectInput ((XW_DISPLAY (xw)), (XW_WINDOW (xw)), event_mask);
+  }
+  {
+    struct xdisplay * xd = (XW_XD (xw));
+    Atom protocols [2];
+    unsigned int n_protocols = 0;
+
+    if (EVENT_ENABLED (xw, event_type_delete_window))
+      (protocols[n_protocols++]) = (XD_WM_DELETE_WINDOW (xd));
+    if (EVENT_ENABLED (xw, event_type_take_focus))
+      (protocols[n_protocols++]) = (XD_WM_TAKE_FOCUS (xd));
+    if (n_protocols > 0)
+      XSetWMProtocols
+	((XW_DISPLAY (xw)), (XW_WINDOW (xw)), (&protocols[0]), n_protocols);
+  }
 }
 
 DEFINE_PRIMITIVE ("X-WINDOW-EVENT-MASK", Prim_x_window_event_mask, 1, 1, 0)
@@ -948,6 +1125,20 @@ DEFINE_PRIMITIVE ("X-WINDOW-ANDC-EVENT-MASK", Prim_x_window_andc_event_mask, 2, 
     struct xwindow * xw = (x_window_arg (1));
     (XW_EVENT_MASK (xw)) &=~ (EVENT_MASK_ARG (2));
     update_input_mask (xw);
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("X-WINDOW-SET-INPUT-FOCUS", Prim_x_window_set_input_focus, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    XSetInputFocus
+      ((XW_DISPLAY (xw)),
+       (XW_WINDOW (xw)),
+       RevertToParent,
+       ((Time) (arg_integer (2))));
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -1300,8 +1491,6 @@ DEFINE_PRIMITIVE ("X-WINDOW-SET-POSITION", Prim_x_window_set_position, 3, 3, 0)
   PRIMITIVE_HEADER (3);
   {
     struct xwindow * xw = (x_window_arg (1));
-    Display * display = (XW_DISPLAY (xw));
-    int screen_number = (DefaultScreen (display));
     XMoveWindow
       ((XW_DISPLAY (xw)),
        (XW_WINDOW (xw)),
@@ -1315,47 +1504,69 @@ DEFINE_PRIMITIVE ("X-WINDOW-SET-NAME", Prim_x_window_set_name, 2, 2,
   "Set the name of WINDOW to STRING.")
 {
   PRIMITIVE_HEADER (2);
-  {
-    struct xwindow * xw = (x_window_arg (1));
-    XStoreName ((XW_DISPLAY (xw)), (XW_WINDOW (xw)), (STRING_ARG (2)));
-  }
+  xw_set_wm_name ((x_window_arg (1)), (STRING_ARG (2)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
-
+
 DEFINE_PRIMITIVE ("X-WINDOW-SET-ICON-NAME", Prim_x_window_set_icon_name, 2, 2,
   "Set the icon name of WINDOW to STRING.")
 {
   PRIMITIVE_HEADER (2);
+  xw_set_wm_icon_name ((x_window_arg (1)), (STRING_ARG (2)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("X-WINDOW-SET-CLASS-HINT", Prim_x_window_set_class_hint, 3, 3,
+  "Set the class hint of WINDOW to RESOURCE_NAME and RESOURCE_CLASS.")
+{
+  PRIMITIVE_HEADER (3);
+  xw_set_class_hint ((x_window_arg (1)), (STRING_ARG (2)), (STRING_ARG (3)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("X-WINDOW-SET-INPUT-HINT", Prim_x_window_set_input_hint, 2, 2,
+  "Set the input hint of WINDOW to INPUT.")
+{
+  PRIMITIVE_HEADER (2);
+  xw_set_wm_input_hint ((x_window_arg (1)), (BOOLEAN_ARG (2)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("X-WINDOW-SET-TRANSIENT-FOR-HINT", Prim_x_window_set_transient_for, 2, 2,
+  "Set the transient-for hint of WINDOW to PRIMARY-WINDOW.")
+{
+  PRIMITIVE_HEADER (2);
   {
     struct xwindow * xw = (x_window_arg (1));
-    XSetIconName ((XW_DISPLAY (xw)), (XW_WINDOW (xw)), (STRING_ARG (2)));
+    struct xwindow * transient_for = (x_window_arg (2));
+    if ((xw == transient_for) || ((XW_XD (xw)) != (XW_XD (transient_for))))
+      error_bad_range_arg (2);
+    XSetTransientForHint
+      ((XW_DISPLAY (xw)),
+       (XW_WINDOW (xw)),
+       (XW_WINDOW (transient_for)));
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("X-WINDOW-SET-CLASS-HINT",
-		  Prim_x_graphics_set_class_hint, 4, 4,
-  "(X-WINDOW-SET-CLASS-HINT DISPLAY WINDOW RESOURCE_CLASS RESOURCE_NAME)\n\
-Set the XA_WM_CLASS property of WINDOW on DISPLAY to RESOURCE_CLASS\n\
-and RESOURCE_NAME.")
+DEFINE_PRIMITIVE ("X-WINDOW-ICONIFY", Prim_x_window_iconify, 1, 1, 0)
 {
-  PRIMITIVE_HEADER (4);
+  PRIMITIVE_HEADER (1);
   {
-    struct xdisplay * xd = (x_display_arg (1));
-    Display * display = (XD_DISPLAY (xd));
-    struct xwindow * xw = (x_window_arg (2));
-    Window window = (XW_WINDOW (xw));
-    XClassHint *class_hint;
+    struct xwindow * xw = (x_window_arg (1));
+    Display * display = (XW_DISPLAY (xw));
+    XIconifyWindow (display, (XW_WINDOW (xw)), (DefaultScreen (display)));
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
 
-    CHECK_ARG (3, STRING_P);
-    CHECK_ARG (4, STRING_P);
-    class_hint = XAllocClassHint ();
-    if (class_hint == NULL)
-      error_external_return ();
-    class_hint->res_class = STRING_ARG (3);
-    class_hint->res_name = STRING_ARG (4);
-    XSetClassHint (display, window, class_hint);
-    XFree ((caddr_t) class_hint);
+DEFINE_PRIMITIVE ("X-WINDOW-WITHDRAW", Prim_x_window_withdraw, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    Display * display = (XW_DISPLAY (xw));
+    XWithdrawWindow (display, (XW_WINDOW (xw)), (DefaultScreen (display)));
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }

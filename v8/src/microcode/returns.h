@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/returns.h,v 9.39 1990/11/21 07:04:43 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/returns.h,v 9.40 1992/02/08 14:54:12 cph Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -35,10 +35,6 @@ MIT in each case. */
 /* Return codes.  These are placed in Return when an
    interpreter operation needs to operate in several phases. */
 
-/* These names are also in storage.c.
-   Please maintain consistency.
-   Names should not exceed 31 characters. */
-
 #define RC_END_OF_COMPUTATION		0x00
 /* formerly RC_RESTORE_CONTROL_POINT	0x01 */
 #define RC_JOIN_STACKLETS		0x01
@@ -92,7 +88,7 @@ MIT in each case. */
 /* The following are not used in the 68000 implementation */
 #define RC_POP_RETURN_ERROR		0x40
 #define RC_EVAL_ERROR			0x41
-/* formerly RC_REPEAT_PRIMITIVE	0x42 */
+#define RC_STACK_MARKER			0x42
 #define RC_COMP_INTERRUPT_RESTART	0x43
 /* formerly RC_COMP_RECURSION_GC	0x44 */
 #define RC_RESTORE_INT_MASK		0x45
@@ -195,7 +191,7 @@ MIT in each case. */
 /* 0x3F */		"",						\
 /* 0x40 */		"POP_RETURN_ERROR",				\
 /* 0x41 */		"EVAL_ERROR",					\
-/* 0x42 */		"",						\
+/* 0x42 */		"STACK_MARKER",					\
 /* 0x43 */		"COMPILER_INTERRUPT_RESTART",			\
 /* 0x44 */		"",						\
 /* 0x45 */		"RESTORE_INT_MASK",				\

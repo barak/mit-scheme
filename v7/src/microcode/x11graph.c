@@ -1,9 +1,9 @@
 
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.18 1991/12/19 19:52:39 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.19 1992/02/08 14:54:24 cph Exp $
 
-Copyright (c) 1989-91 Massachusetts Institute of Technology
+Copyright (c) 1989-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,9 +39,8 @@ MIT in each case. */
 #include "prims.h"
 #include "x11.h"
 
-#define RESOURCE_NAME "scheme-graphics"
-#define DEFAULT_RESOURCE_CLASS "SchemeGraphics"
-#define DEFAULT_RESOURCE_NAME "schemeGraphics"
+#define RESOURCE_NAME "schemeGraphics"
+#define RESOURCE_CLASS "SchemeGraphics"
 #define DEFAULT_GEOMETRY "512x384+0+0"
 
 struct gw_extra
@@ -299,7 +298,8 @@ If third argument SUPPRESS-MAP? is true, do not map the window immediately.")
     struct drawing_attributes attributes;
     struct xwindow_methods methods;
     XSetWindowAttributes wattributes;
-    x_default_attributes (display, RESOURCE_NAME, (&attributes));
+    x_default_attributes
+      (display, RESOURCE_NAME, RESOURCE_CLASS, (&attributes));
     (wattributes . background_pixel) = (attributes . background_pixel);
     (wattributes . border_pixel) = (attributes . border_pixel);
     (wattributes . backing_store) = Always;
@@ -317,7 +317,8 @@ If third argument SUPPRESS-MAP? is true, do not map the window immediately.")
 	(XGeometry (display, (DefaultScreen (display)),
 		    (((ARG_REF (2)) == SHARP_F)
 		     ? (x_get_default
-			(display, RESOURCE_NAME, "geometry", "Geometry", 0))
+			(display, RESOURCE_NAME, RESOURCE_CLASS,
+			 "geometry", "Geometry", 0))
 		     : (STRING_ARG (2))),
 		    DEFAULT_GEOMETRY, (attributes . border_width),
 		    1, 1, extra, extra,
@@ -346,22 +347,10 @@ If third argument SUPPRESS-MAP? is true, do not map the window immediately.")
 	(XW_X_CURSOR (xw)) = 0;
 	(XW_Y_CURSOR (xw)) = 0;
 	wm_set_size_hint (xw, geometry_mask, x_pos, y_pos);
-	XStoreName (display, window, "scheme-graphics");
-	XSetIconName (display, window, "scheme-graphics");
+	xw_set_wm_name (xw, "scheme-graphics");
+	xw_set_wm_icon_name (xw, "scheme-graphics");
 	XSelectInput (display, window, StructureNotifyMask);
-	if ((ARG_REF (3)) == SHARP_F)
-	  {
-	    XClassHint *class_hint = XAllocClassHint ();
-
-	    if (class_hint == NULL)
-	      error_external_return ();
-	    class_hint->res_class = DEFAULT_RESOURCE_CLASS;
-	    class_hint->res_name = DEFAULT_RESOURCE_NAME;
-	    XSetClassHint (display, window, class_hint);
-	    XFree ((caddr_t) class_hint);
-	    XMapWindow (display, window);
-	    XFlush (display);
-	  }
+	xw_make_window_map (xw, RESOURCE_NAME, RESOURCE_CLASS, (ARG_REF (3)));
 	PRIMITIVE_RETURN (XW_TO_OBJECT (xw));
       }
     }

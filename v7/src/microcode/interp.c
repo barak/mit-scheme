@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.65 1992/02/03 23:31:14 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.66 1992/02/08 14:54:07 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -2142,6 +2142,13 @@ Primitive_Internal_Apply:
 
     case RC_RESTORE_INT_MASK:
       SET_INTERRUPT_MASK (UNSIGNED_FIXNUM_TO_LONG (Fetch_Expression()));
+      break;
+
+    case RC_STACK_MARKER:
+      /* Frame consists of the return code followed by two objects.
+	 The first object has already been popped into the Expression
+	 register, so just pop the second argument. */
+      Stack_Pointer = (STACK_LOCATIVE_OFFSET (Stack_Pointer, 1));
       break;
 
 /* Interpret() continues on the next page */

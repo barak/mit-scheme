@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.43 1992/02/03 23:30:25 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.44 1992/02/08 14:54:04 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -538,6 +538,57 @@ DEFINE_PRIMITIVE ("ENABLE-INTERRUPTS!", Prim_enable_interrupts, 1, 1, 0)
   }
 }
 
+DEFINE_PRIMITIVE ("RETURN-TO-APPLICATION", Prim_return_to_application, 2, LEXPR,
+  "Invokes first argument THUNK with no arguments and a special return address.\n\
+The return address calls the second argument on the remaining arguments.\n\
+This is used by the runtime system to create stack frames that can be\n\
+identified by the continuation parser.")
+{
+  PRIMITIVE_HEADER (LEXPR);
+  PRIMITIVE_CANONICALIZE_CONTEXT ();
+  {
+    long nargs = (LEXPR_N_ARGUMENTS ());
+    if (nargs < 2)
+      signal_error_from_primitive (ERR_WRONG_NUMBER_OF_ARGUMENTS);
+    {
+      SCHEME_OBJECT thunk = (STACK_POP ());
+      STACK_PUSH (STACK_FRAME_HEADER + (nargs - 2));
+      Store_Env (MAKE_OBJECT (GLOBAL_ENV, END_OF_CHAIN));
+      Store_Expression (SHARP_F);
+      Store_Return (RC_INTERNAL_APPLY);
+      Save_Cont ();
+    Will_Push (STACK_ENV_EXTRA_SLOTS + 1);
+      STACK_PUSH (thunk);
+      STACK_PUSH (STACK_FRAME_HEADER);
+    Pushed ();
+    }
+  }
+  PRIMITIVE_ABORT (PRIM_APPLY);
+  /*NOTREACHED*/
+}
+
+DEFINE_PRIMITIVE ("WITH-STACK-MARKER", Prim_with_stack_marker, 3, 3,
+  "Call first argument THUNK with a continuation that has a special marker.\n\
+When THUNK returns, the marker is discarded.\n\
+The value of THUNK is returned to the continuation of this primitive.\n\
+The marker consists of the second and third arguments.\n\
+By convention, the second argument is a tag identifying the kind of marker,\n\
+and the third argument is data identifying the marker instance.")
+{
+  PRIMITIVE_HEADER (3);
+  PRIMITIVE_CANONICALIZE_CONTEXT ();
+  {
+    SCHEME_OBJECT thunk = (STACK_POP ());
+    STACK_PUSH (MAKE_OBJECT (TC_RETURN_CODE, RC_STACK_MARKER));
+  Will_Push (STACK_ENV_EXTRA_SLOTS + 1);
+    STACK_PUSH (thunk);
+    STACK_PUSH (STACK_FRAME_HEADER);
+  Pushed ();
+  }
+  PRIMITIVE_ABORT (PRIM_APPLY);
+  /*NOTREACHED*/
+}
+
 DEFINE_PRIMITIVE ("WITH-INTERRUPT-MASK", Prim_with_interrupt_mask, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
