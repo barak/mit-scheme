@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dragon4.scm,v 1.10 1997/07/03 21:55:23 adams Exp $
+$Id: dragon4.scm,v 1.11 1997/07/26 07:14:37 cph Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -50,7 +50,6 @@ not much different to numbers within a few orders of magnitude of 1.
 
 |#
 
-
 (declare (usual-integrations))
 
 (define (flo:->string x radix)
@@ -61,9 +60,9 @@ not much different to numbers within a few orders of magnitude of 1.
 	(x>0
 	 (lambda (x)
 	   (let ((p flo:significand-digits-base-2))
-	     (with-values (lambda () (dragon4-normalize x p))
+	     (call-with-values (lambda () (dragon4-normalize x p))
 	       (lambda (f e)
-		 (with-values flonum-unparser-cutoff-args
+		 (call-with-values flonum-unparser-cutoff-args
 		   (lambda (cutoff-mode cutoff display-mode)
 		     (dragon4 f e p radix cutoff-mode cutoff
 		       (lambda (u k generate)
@@ -160,13 +159,13 @@ not much different to numbers within a few orders of magnitude of 1.
 (define flonum-unparser-cutoff 'NORMAL)
 
 (define (dragon4-normalize x precision)
-  (with-values (lambda () (flo:normalize x))
+  (call-with-values (lambda () (flo:normalize x))
     (lambda (f e-p)
       (values (flo:->integer (flo:denormalize f precision))
 	      (- e-p precision)))))
 
 (define (dragon4 f e p radix cutoff-mode cutoff format)
-  (with-values
+  (call-with-values
       (lambda ()
 	(cond ((positive? e)
 	       (let ((shift (int:expt 2 e)))
@@ -178,40 +177,43 @@ not much different to numbers within a few orders of magnitude of 1.
 	      (else
 	       (dragon4-fixup f e p radix cutoff-mode cutoff f 1 1))))
     (lambda (k r s m- m+ cutoff round-up?)
-      (let ((2s (int:* 2 s)))
-	(let loop ((r r) (m- m-) (m+ m+) (k k) (format format))
-	  (let ((qr (integer-divide (int:* r radix) s)))
-	    (let ((k (- k 1))
-		  (u (integer-divide-quotient qr))
-		  (r (integer-divide-remainder qr))
-		  (m- (int:* m- radix))
-		  (m+ (int:* m+ radix)))
-	      (let ((2r (int:* 2 r)))
-		(let ((high?
-		       (if round-up?
-			   (int:>= 2r (int:- 2s m+))
-			   (int:> 2r (int:- 2s m+))))
-		      (round
-		       (lambda ()
-			 (dragon4-done format (if (int:<= 2r s) u (1+ u)) k))))
-		  (cond ((int:< 2r m-)
-			 (if high? (round) (dragon4-done format u k)))
-			(high?
-			 (dragon4-done format (1+ u) k))
-			((= k cutoff)
-			 (round))
-			(else
-			 (format u k
-				 (lambda (format)
-				   (loop r m- m+ k format))))))))))))))
+      (if (<= k cutoff)
+	  ((dragon4-fill (- k 1)) format)
+	  (let ((2s (int:* 2 s)))
+	    (let loop ((r r) (m- m-) (m+ m+) (k k) (format format))
+	      (let ((qr (integer-divide (int:* r radix) s)))
+		(let ((k (- k 1))
+		      (u (integer-divide-quotient qr))
+		      (r (integer-divide-remainder qr))
+		      (m- (int:* m- radix))
+		      (m+ (int:* m+ radix)))
+		  (let ((2r (int:* 2 r)))
+		    (let ((high?
+			   (if round-up?
+			       (int:>= 2r (int:- 2s m+))
+			       (int:> 2r (int:- 2s m+))))
+			  (round
+			   (lambda ()
+			     (dragon4-done format
+					   (if (int:<= 2r s) u (+ u 1))
+					   k))))
+		      (cond ((int:< 2r m-)
+			     (if high? (round) (dragon4-done format u k)))
+			    (high?
+			     (dragon4-done format (+ u 1) k))
+			    ((= k cutoff)
+			     (round))
+			    (else
+			     (format u k
+				     (lambda (format)
+				       (loop r m- m+ k format)))))))))))))))
 
 (define (dragon4-done format u k)
-  (format u k
-    (letrec ((fill
-	      (lambda (k)
-		(lambda (format)
-		  (format -1 k (fill (-1+ k)))))))
-      (fill (-1+ k)))))
+  (format u k (dragon4-fill (- k 1))))
+
+(define (dragon4-fill k)
+  (lambda (format)
+    (format -1 k (dragon4-fill (- k 1)))))
 
 (define (dragon4-fixup f e p radix cutoff-mode cutoff r s m-)
 
@@ -233,13 +235,12 @@ not much different to numbers within a few orders of magnitude of 1.
 	    ((NORMAL)   (values k r s m- m+ k round-up?))
 	    ((ABSOLUTE) (cutoff-adjust cutoff))
 	    ((RELATIVE) (cutoff-adjust (+ k cutoff)))
-	    (else
-	     (error:wrong-type-datum cutoff-mode false))))
+	    (else (error:wrong-type-datum cutoff-mode #f))))
 
 	(let ((2r+m+ (int:+ 2r m+)))
 	  (let loop ((s s) (k k))
 	    (if (int:<= (int:* 2 s) 2r+m+)
-		(loop (int:* s radix) (1+ k))
+		(loop (int:* s radix) (+ k 1))
 		(adjust-for-mode s k)))))))
 
   (define (scale r s m+)
@@ -250,9 +251,13 @@ not much different to numbers within a few orders of magnitude of 1.
 	  (let ((factor (expt-radix radix (- est-k))))
 	    (let loop ((k est-k)
 		       (r (int:* r factor))
-		       (m- (int:* m- factor)) (m+ (int:* m+ factor)))
+		       (m- (int:* m- factor))
+		       (m+ (int:* m+ factor)))
 	      (if (int:< (int:* r radix) s)
-		  (loop (- k 1) (int:* r radix) (int:* m- radix) (int:* m+ radix))
+		  (loop (- k 1)
+			(int:* r radix)
+			(int:* m- radix)
+			(int:* m+ radix))
 		  (adjust k r s m- m+))))
 	  (adjust est-k r (int:* s (expt-radix radix est-k)) m- m+))))
 
