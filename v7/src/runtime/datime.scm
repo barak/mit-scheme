@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.32 2000/09/11 21:50:03 cph Exp $
+$Id: datime.scm,v 14.33 2000/10/19 21:34:19 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -345,15 +345,25 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (if (not (fix:= 5 (length tokens)))
 	  (lose))
       (let ((time (burst-string (list-ref tokens 3) #\: #f)))
-	(if (not (fix:= 3 (length time)))
-	    (lose))
-	(make-decoded-time (string->number (caddr time))
-			   (string->number (cadr time))
-			   (string->number (car time))
-			   (string->number (list-ref tokens 2))
-			   (string->month (list-ref tokens 1))
-			   (string->year (list-ref tokens 4))
-			   zone)))))
+	(case (length time)
+	  ((3)
+	   (make-decoded-time (string->number (caddr time))
+			      (string->number (cadr time))
+			      (string->number (car time))
+			      (string->number (list-ref tokens 2))
+			      (string->month (list-ref tokens 1))
+			      (string->year (list-ref tokens 4))
+			      zone))
+	  ((2)
+	   (make-decoded-time 0
+			      (string->number (cadr time))
+			      (string->number (car time))
+			      (string->number (list-ref tokens 2))
+			      (string->month (list-ref tokens 1))
+			      (string->year (list-ref tokens 4))
+			      zone))
+	  (else
+	   (lose)))))))
 
 (define (universal-time->local-ctime-string time)
   (decoded-time->ctime-string (universal-time->local-decoded-time time)))
