@@ -1,0 +1,210 @@
+/* -*-C-*-
+
+$Id: os2ctty.c,v 1.1 1994/11/28 03:42:55 cph Exp $
+
+Copyright (c) 1994 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. */
+
+#include "os2.h"
+#include "osctty.h"
+#include "ossig.h"
+
+#define CONTROL_B_ENABLE		(0x1)
+#define CONTROL_G_ENABLE		(0x2)
+#define CONTROL_U_ENABLE		(0x4)
+#define CONTROL_X_ENABLE		(0x8)
+#define INTERACTIVE_INTERRUPT_ENABLE	(0x10)
+#define TERMINATE_INTERRUPT_ENABLE	(0x20)
+
+#define ALL_ENABLES							\
+  (CONTROL_B_ENABLE | CONTROL_G_ENABLE | CONTROL_U_ENABLE		\
+   | CONTROL_X_ENABLE | INTERACTIVE_INTERRUPT_ENABLE			\
+   | TERMINATE_INTERRUPT_ENABLE)
+
+#define CONTROL_B			'\002'
+#define CONTROL_G			'\007'
+#define CONTROL_U			'\025'
+#define CONTROL_X			'\030'
+#define CONTROL_C			'\003'
+
+#define KB_INT_CHARS_SIZE 5
+#define KB_INT_TABLE_SIZE 256
+
+static char keyboard_interrupt_characters [KB_INT_CHARS_SIZE];
+static enum interrupt_handler keyboard_interrupt_handlers [KB_INT_CHARS_SIZE];
+static enum interrupt_handler keyboard_interrupt_table [KB_INT_TABLE_SIZE];
+static enum interrupt_handler keyboard_break_interrupt;
+static Tinterrupt_enables keyboard_interrupt_enables;
+
+static void
+update_keyboard_interrupt_characters (void)
+{
+  unsigned int i;
+  for (i = 0; (i < KB_INT_TABLE_SIZE); i += 1)
+    (keyboard_interrupt_table[i]) = interrupt_handler_ignore;
+  for (i = 0; (i < KB_INT_CHARS_SIZE); i += 1)
+    (keyboard_interrupt_table [keyboard_interrupt_characters [i]]) =
+      (keyboard_interrupt_handlers[i]);
+}
+
+void
+OS2_initialize_keyboard_interrupts (void)
+{
+  (keyboard_interrupt_characters[0]) = CONTROL_B;
+  (keyboard_interrupt_handlers[0]) = interrupt_handler_control_b;
+  (keyboard_interrupt_characters[1]) = CONTROL_G;
+  (keyboard_interrupt_handlers[1]) = interrupt_handler_control_g;
+  (keyboard_interrupt_characters[2]) = CONTROL_U;
+  (keyboard_interrupt_handlers[2]) = interrupt_handler_control_u;
+  (keyboard_interrupt_characters[3]) = CONTROL_X;
+  (keyboard_interrupt_handlers[3]) = interrupt_handler_control_x;
+  (keyboard_interrupt_characters[4]) = CONTROL_C;
+  (keyboard_interrupt_handlers[4]) = interrupt_handler_interactive;
+  keyboard_break_interrupt = interrupt_handler_terminate;
+  update_keyboard_interrupt_characters ();
+  keyboard_interrupt_enables = ALL_ENABLES;
+}
+
+void
+OS_ctty_get_interrupt_enables (Tinterrupt_enables * mask)
+{
+  (*mask) = keyboard_interrupt_enables;
+}
+
+void
+OS_ctty_set_interrupt_enables (Tinterrupt_enables * mask)
+{
+  keyboard_interrupt_enables = ((*mask) & ALL_ENABLES);
+}
+
+unsigned int
+OS_ctty_num_int_chars (void)
+{
+  return (KB_INT_CHARS_SIZE + 1);
+}
+
+cc_t
+OS_tty_map_interrupt_char (cc_t int_char)
+{
+  return (int_char);
+}
+
+cc_t *
+OS_ctty_get_int_chars (void)
+{
+  static cc_t characters [KB_INT_CHARS_SIZE + 1];
+  unsigned int i;
+  for (i = 0; (i < KB_INT_CHARS_SIZE); i += 1)
+    (characters[i]) = (keyboard_interrupt_characters[i]);
+  (characters[i]) = '\0';	/* dummy for control-break */
+  return (characters);
+}
+
+void
+OS_ctty_set_int_chars (cc_t * characters)
+{
+  unsigned int i;
+  for (i = 0; (i < KB_INT_CHARS_SIZE); i += 1)
+    (keyboard_interrupt_characters[i]) = (characters[i]);
+  update_keyboard_interrupt_characters ();
+}
+
+cc_t *
+OS_ctty_get_int_char_handlers (void)
+{
+  static cc_t handlers [KB_INT_CHARS_SIZE + 1];
+  unsigned int i;
+  for (i = 0; (i < KB_INT_CHARS_SIZE); i += 1)
+    (handlers[i]) = ((cc_t) (keyboard_interrupt_handlers[i]));
+  (handlers[i]) = ((cc_t) keyboard_break_interrupt);
+  return (handlers);
+}
+
+void
+OS_ctty_set_int_char_handlers (cc_t * handlers)
+{
+  unsigned int i;
+  for (i = 0; (i < KB_INT_CHARS_SIZE); i += 1)
+    (keyboard_interrupt_handlers[i]) =
+      ((enum interrupt_handler) (handlers[i]));
+  keyboard_break_interrupt = ((enum interrupt_handler) (handlers[i]));
+  update_keyboard_interrupt_characters ();
+}
+
+static char
+check_if_enabled (enum interrupt_handler handler)
+{
+  unsigned int bitmask;
+  char result;
+  switch (handler)
+    {
+    case interrupt_handler_control_b:
+      bitmask = CONTROL_B_ENABLE;
+      result = 'B';
+      break;
+    case interrupt_handler_control_g:
+      bitmask = CONTROL_G_ENABLE;
+      result = 'G';
+      break;
+    case interrupt_handler_control_u:
+      bitmask = CONTROL_U_ENABLE;
+      result = 'U';
+      break;
+    case interrupt_handler_control_x:
+      bitmask = CONTROL_X_ENABLE;
+      result = 'X';
+      break;
+    case interrupt_handler_interactive:
+      bitmask = INTERACTIVE_INTERRUPT_ENABLE;
+      result = '!';
+      break;
+    case interrupt_handler_terminate:
+      bitmask = TERMINATE_INTERRUPT_ENABLE;
+      result = '@';
+      break;
+    default:
+      bitmask = 0;
+      result = '\0';
+      break;
+    }
+  return (((keyboard_interrupt_enables & bitmask) == 0) ? '\0' : result);
+}
+
+char
+OS2_keyboard_interrupt_handler (char c)
+{
+  return (check_if_enabled (keyboard_interrupt_table[c]));
+}
+
+char
+OS2_keyboard_break_interrupt_handler (void)
+{
+  return (check_if_enabled (keyboard_break_interrupt));
+}
