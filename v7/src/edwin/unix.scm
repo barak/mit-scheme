@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: unix.scm,v 1.113 2003/02/14 18:28:13 cph Exp $
+$Id: unix.scm,v 1.114 2003/04/25 20:33:51 cph Exp $
 
-Copyright 1989-2000, 2002 Massachusetts Institute of Technology
+Copyright 1989,1991,1992,1993,1994,1995 Massachusetts Institute of Technology
+Copyright 1996,1997,1999,2000,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -221,7 +222,7 @@ Includes the new backup.  Must be > 0."
 		 (if version
 		     (string-append ".~" (number->string version) suffix)
 		     suffix)))
-
+
 (define (os/directory-list directory)
   (let ((channel (directory-channel-open directory)))
     (let loop ((result '()))
@@ -326,16 +327,15 @@ Includes the new backup.  Must be > 0."
      ("s" . scheme)
      ("scm" . scheme)
      ("text" . text)
+     ("texi" . texinfo)
+     ("texinfo" . texinfo)
      ("txi" . texinfo)
      ("txt" . text)
      ("xml" . html)
      ("y" . c))))
 
-(define (os/init-file-name)
-  "~/.edwin")
-
-(define (os/abbrev-file-name)
-  "~/.abbrev_defs")
+(define (os/init-file-name) "~/.edwin")
+(define (os/abbrev-file-name) "~/.abbrev_defs")
 
 (define (os/find-file-initialization-filename pathname)
   (or (and (equal? "scm" (pathname-type pathname))
