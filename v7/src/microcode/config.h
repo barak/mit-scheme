@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.64 1991/10/29 22:37:22 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.65 1992/02/03 23:09:44 jinx Exp $
 
-Copyright (c) 1987-91 Massachusetts Institute of Technology
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -81,13 +81,17 @@ MIT in each case. */
 #endif
 #endif
 
+/* For use in the C pre-processor, not in code! */
+#define FALSE			0
+#define TRUE			1
+
 /* These C type definitions are needed by everybody.
    They should not be here, but it is unavoidable. */
 typedef char Boolean;
-#define true			1
-#define false			0
+#define true			((Boolean) TRUE)
+#define false			((Boolean) FALSE)
 
-/* This is the Scheme object type; it should be called `SCHEME_OBJECT'.
+/* This is the Scheme object type.
    The various fields are defined in "object.h". */
 typedef unsigned long SCHEME_OBJECT;
 #define OBJECT_LENGTH (CHAR_BIT * (sizeof (unsigned long)))
@@ -183,6 +187,7 @@ typedef unsigned long SCHEME_OBJECT;
 #define FASL_MIPS		15
 #define FASL_APOLLO_68K		16
 #define FASL_APOLLO_PRISM	17
+#define FASL_ALPHA		18
 
 #ifdef vax
 
@@ -354,16 +359,6 @@ typedef unsigned long SCHEME_OBJECT;
 #define HAS_MODF
 #endif
 
-#ifdef butterfly
-#define MACHINE_TYPE		"butterfly"
-#define FASL_INTERNAL_FORMAT	FASL_BFLY
-#define b32
-#define HEAP_IN_LOW_MEMORY
-#include <public.h>
-#define HAS_FREXP
-#define HAS_MODF
-#endif
-
 #ifdef i386
 
 #define FASL_INTERNAL_FORMAT	FASL_I386
@@ -437,7 +432,26 @@ typedef unsigned long SCHEME_OBJECT;
 
 #endif /* mips */
 
-/* These (pdp10 and nu) haven't worked in a while.
+#ifdef alpha
+#define MACHINE_TYPE           "Alpha"
+#define FASL_INTERNAL_FORMAT   FASL_ALPHA
+
+/* The ASCII character set is used. */
+#define HEAP_IN_LOW_MEMORY     1
+/* unsigned longs use logical shifting. */
+#define VAX_BYTE_ORDER         1
+
+/* Flonums have no special alignment constraints. */
+#define FLONUM_MANTISSA_BITS   53
+#define FLONUM_EXPT_SIZE       10
+#define MAX_FLONUM_EXPONENT    1023
+/* Floating point representation uses hidden bit. */
+#define HAS_FLOOR
+#define HAS_FREXP
+#define HAS_MODF
+#endif /* alpha */
+
+/* These (pdp10, nu) haven't worked in a while.
    Should be upgraded or flushed some day.  */
 
 #ifdef pdp10
@@ -457,6 +471,18 @@ typedef unsigned long SCHEME_OBJECT;
 #define UNSIGNED_SHIFT_BUG
 #endif /* nu */
 
+/* These are pretty old too, but more recent versions have run. */
+
+#ifdef butterfly
+#define MACHINE_TYPE		"butterfly"
+#define FASL_INTERNAL_FORMAT	FASL_BFLY
+#define b32
+#define HEAP_IN_LOW_MEMORY
+#include <public.h>
+#define HAS_FREXP
+#define HAS_MODF
+#endif
+
 #ifdef cyber180
 #define MACHINE_TYPE		"cyber180"
 #define FASL_INTERNAL_FORMAT	FASL_CYBER
