@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dospth.scm,v 1.22 1995/01/31 19:34:38 cph Exp $
+$Id: dospth.scm,v 1.23 1995/02/14 00:33:54 cph Exp $
 
 Copyright (c) 1992-95 Massachusetts Institute of Technology
 
@@ -300,8 +300,9 @@ MIT in each case. |#
 ;;;; Miscellaneous
 
 (define (dos/pathname-wild? pathname)
-  (or (eq? 'WILD (%pathname-name pathname))
-      (eq? 'WILD (%pathname-type pathname))))
+  (let ((namestring (file-namestring pathname)))
+    (or (string-find-next-char namestring #\*)
+	(string-find-next-char namestring #\?))))
 
 (define (dos/pathname->truename pathname)
   (if (eq? #t (file-exists? pathname))
