@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntgui.c,v 1.4 1993/07/21 04:42:02 gjr Exp $
+$Id: ntgui.c,v 1.5 1993/08/07 00:12:49 adams Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -177,16 +177,16 @@ DEFUN_VOID (nt_gui_default_poll)
    while (//events_processed < 5 &&
           PeekMessage (&msg, 0, 0, 0, PM_REMOVE))
    {
-     MIT_TranslateMessage (&msg);
-     DispatchMessage (&msg);
-     events_processed++;
+     MIT_TranslateMessage(&msg);
+     DispatchMessage(&msg);
+     events_processed ++;
    }
 #endif
 }
 
 
 DEFINE_PRIMITIVE ("MICROCODE-POLL-INTERRUPT-HANDLER",
-                  Prim_nt_default_poll_gui_interrupt, 2, 2,
+                  Prim_microcode_poll_interrupt_handler, 2, 2,
 		  "NT High-priority timer interrupt handler for Windows I/O.")
 {
   PRIMITIVE_HEADER (2);
@@ -317,7 +317,7 @@ Prim_set_general_scheme_wndproc, 1, 1, "")
   PRIMITIVE_HEADER(1);
   {
     SCHEME_OBJECT  wndproc = ARG_REF(1);
-    if (! ADDRESS_PURE_P (OBJECT_ADDRESS (wndproc)))
+    if (! ADDRESS_CONSTANT_P (OBJECT_ADDRESS (wndproc)))
       signal_error_from_primitive (ERR_ARG_1_WRONG_TYPE);
     general_scheme_wndproc = wndproc;
     PRIMITIVE_RETURN (UNSPECIFIC);
@@ -343,6 +343,12 @@ C_to_Scheme_WndProc_2 (HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 /***************************************************************************/
 
+void
+failed_foreign_function (void)
+{
+  PRIMITIVE_ABORT (ERR_INAPPLICABLE_OBJECT);
+}
+
 DEFINE_PRIMITIVE ("GET-HANDLE", Prim_get_handle, 1, 1,
 "(GET-HANDLE id)\n"
 "Returns an otherwise hard to get global C variable\n"
@@ -351,6 +357,7 @@ DEFINE_PRIMITIVE ("GET-HANDLE", Prim_get_handle, 1, 1,
 "1	master tty handle\n"
 "2	C to Scheme windows procedure address\n"
 "3	C to Scheme windows procedure address (eta version)\n"
+"4	failed-foreign-function address\n"
 )
 {
   extern  HANDLE  master_tty_window;
@@ -359,10 +366,11 @@ DEFINE_PRIMITIVE ("GET-HANDLE", Prim_get_handle, 1, 1,
     long  arg = arg_integer (1);
     long  result = 0;
     switch (arg) {
-      case 0:	result = (long) ghInstance;		break;
-      case 1:   result = (long) master_tty_window;	break;
-      case 2:	result = (long) C_to_Scheme_WndProc;	break;
-      case 3:	result = (long) C_to_Scheme_WndProc_2;	break;
+      case 0:	result = (long) ghInstance;			break;
+      case 1:   result = (long) master_tty_window;		break;
+      case 2:	result = (long) C_to_Scheme_WndProc;		break;
+      case 3:	result = (long) C_to_Scheme_WndProc_2;		break;
+      case 4:	result = (long) failed_foreign_function;	break;
       default:  error_bad_range_arg (1);
       }
     PRIMITIVE_RETURN (long_to_integer (result));
@@ -421,7 +429,7 @@ DEFINE_PRIMITIVE ("WIN:CREATE-WINDOW", Prim_create_window, 10, 10,
     lpvParam   = (LPVOID)  ARG_REF (10);
     
     result = CreateWindowEx (0, class_name, window_name, style, x, y, w, h,
-			     hWndParent, hMenu, ghInstance, lpvParam);
+                             hWndParent, hMenu, ghInstance, lpvParam);
 		 
     return  ulong_to_integer (result);
 }
@@ -459,12 +467,12 @@ DEFINE_PRIMITIVE ("REGISTER-CLASS",
     wc.lpfnWndProc   = arg_integer (2);
     wc.cbClsExtra    = scheme_object_to_windows_object (ARG_REF(3));
     wc.cbWndExtra    = scheme_object_to_windows_object (ARG_REF(4));
-    wc.hInstance     = scheme_object_to_windows_object (ARG_REF(5));
-    wc.hIcon         = scheme_object_to_windows_object (ARG_REF(6));
+    wc.hInstance     = (HANDLE)scheme_object_to_windows_object (ARG_REF(5));
+    wc.hIcon         = (HANDLE)scheme_object_to_windows_object (ARG_REF(6));
     wc.hCursor       = LoadCursor (NULL, MAKEINTRESOURCE(arg_integer(7)));
     wc.hbrBackground = GetStockObject (arg_integer(8));
-    wc.lpszMenuName  = scheme_object_to_windows_object (ARG_REF(9));
-    wc.lpszClassName = scheme_object_to_windows_object (ARG_REF(10));
+    wc.lpszMenuName  = (char*)scheme_object_to_windows_object (ARG_REF(9));
+    wc.lpszClassName = (char*)scheme_object_to_windows_object (ARG_REF(10));
 
     rc = RegisterClass (&wc);
     PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT(rc));
@@ -512,6 +520,19 @@ DEFINE_PRIMITIVE ("NT:LOAD-LIBRARY", Prim_nt_load_library, 1, 1,
     PRIMITIVE_RETURN (long_to_integer (it));
 }
 
+DEFINE_PRIMITIVE ("NT:FREE-LIBRARY", Prim_nt_free_library, 1, 1,
+"(FREE-LIBRARY library-module-handle) -> bool")
+{
+    HANDLE handle;
+    BOOL   result;
+    
+    PRIMITIVE_HEADER (1);
+    
+    handle = arg_integer(1);
+    result = FreeLibrary (handle);
+    PRIMITIVE_RETURN (result ? SHARP_T : SHARP_F);
+}
+
 DEFINE_PRIMITIVE ("NT:GET-PROC-ADDRESS", Prim_nt_get_proc_address, 2, 2,
 "(GET-PROC-ADDRESS handle string/integer) -> address")
 {
@@ -522,7 +543,7 @@ DEFINE_PRIMITIVE ("NT:GET-PROC-ADDRESS", Prim_nt_get_proc_address, 2, 2,
     
     PRIMITIVE_HEADER (2);
     
-    module   = arg_integer (1);
+    module   = (HMODULE) arg_integer (1);
     function = ARG_REF (2);
     if (STRING_P (function))
       function_name = STRING_LOC (function, 0);
@@ -544,7 +565,7 @@ DEFINE_PRIMITIVE ("NT:SEND-MESSAGE", Prim_send_message, 4, 4,
     SCHEME_OBJECT  thing;
     PRIMITIVE_HEADER (4);
     
-    hwnd    = arg_integer (1);
+    hwnd    = (HWND) arg_integer (1);
     message = arg_integer (2);
     wParam  = arg_integer (3);
     thing = ARG_REF (4);
@@ -686,6 +707,84 @@ DEFINE_PRIMITIVE ("CALL-FF", Prim_call_ff, 0, LEXPR, 0)
     PRIMITIVE_HEADER (LEXPR);
     PRIMITIVE_RETURN (call_ff_really());
 }
+
+//
+// Primitives for hacking strings:
+// to fetch and set signed and unsigned 32 and 16 bit values at byte offsets
+//
+
+DEFINE_PRIMITIVE ("INT32-OFFSET-REF", Prim_int32_offset_ref, 2, 2,
+"(long-offset-ref mem-addr byte-offset)\n"
+"Fetch 32 bit signed long from memory (a string)"
+)
+{
+    PRIMITIVE_HEADER (2);
+    {
+      long *base;
+      int  offset;
+      CHECK_ARG (1, STRING_P);
+      base = (long*) STRING_LOC (ARG_REF(1), 0);
+      offset  = arg_integer (2);
+      PRIMITIVE_RETURN ( long_to_integer(* (long*) (((char*)base)+offset) ) );
+    }
+}
+
+DEFINE_PRIMITIVE ("INT32-OFFSET-SET!", Prim_int32_offset_set, 3, 3,
+"(long-offset-sef mem-addr byte-offset 32-bit-value)\n"
+"Set 32 bit signed long from memory (integer address or vector data)"
+)
+{
+    PRIMITIVE_HEADER (3);
+    {
+      long *base;
+      int  offset;
+      long value;
+      CHECK_ARG (1, STRING_P);
+      base   = (long*) STRING_LOC (ARG_REF(1), 0);
+      offset = arg_integer (2);
+      value  = scheme_object_to_windows_object (ARG_REF (3));
+      * (long*) (((char*)base)+offset)  =  value;
+    }
+    PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+
+DEFINE_PRIMITIVE ("UINT32-OFFSET-REF", Prim_uint32_offset_ref, 2, 2,
+"(uint32-offset-ref mem-addr byte-offset)\n"
+"Fetch 32 bit unsigned long from memory (a string)"
+)
+{
+    PRIMITIVE_HEADER (2);
+    {
+      unsigned long *base;
+      int  offset;
+      CHECK_ARG (1, STRING_P);
+      base = (unsigned long*) STRING_LOC (ARG_REF(1), 0);
+      offset  = arg_integer (2);
+      PRIMITIVE_RETURN ( ulong_to_integer(* (unsigned long*) (((char*)base)+offset) ) );
+    }
+}
+
+DEFINE_PRIMITIVE ("UINT32-OFFSET-SET!", Prim_uint32_offset_set, 3, 3,
+"(unit32-offset-sef mem-addr byte-offset 32-bit-value)\n"
+"Set 32 bit unsigned long at offset from memory"
+)
+{
+    PRIMITIVE_HEADER (3);
+    {
+      unsigned long *base;
+      int  offset;
+      unsigned long value;
+      CHECK_ARG (1, STRING_P);
+      base   = (unsigned long*) STRING_LOC (ARG_REF(1), 0);
+      offset = arg_integer (2);
+      value  = scheme_object_to_windows_object (ARG_REF (3));
+      * (unsigned long*) (((char*)base)+offset)  =  value;
+    }
+    PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+
 
 static void *
 xmalloc (int size)
