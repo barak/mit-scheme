@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules1.scm,v 4.1 1988/01/05 15:59:05 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules1.scm,v 4.2 1988/02/11 19:25:31 bal Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -73,6 +73,13 @@ MIT in each case. |#
   (LAP (MOV L
 	    (@PCR ,(free-reference-label name))
 	    ,(reference-assignment-alias! target 'GENERAL))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (ASSIGNMENT-CACHE (? name)))
+  (QUALIFIER (pseudo-register? target))
+  (LAP (MOV L
+	    (@PCR ,(free-assignment-label name))
+	    ,(reference-assignment-alias! target 'DATA))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (REGISTER (? source)))
