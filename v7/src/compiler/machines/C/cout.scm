@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.3 1993/06/10 00:11:59 jawilson Exp $
+$Id: cout.scm,v 1.4 1993/06/10 01:06:19 jawilson Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -659,10 +659,6 @@ MIT in each case. |#
 	 "SHARP_F")
 	((eq? #t object)
 	 "SHARP_T")
-	((null? object)
-	 "NIL")
-	((eq? object unspecific)
-	 "UNSPECIFIC")
 	((primitive-procedure? object)
 	 (let ((arity (primitive-procedure-arity object)))
 	   (if (< arity -1)
@@ -690,6 +686,20 @@ MIT in each case. |#
 			  (number->string (string-length string)) "L, \""
 			  (string-reverse string)
 			  "\"))")))
+	((null? object)
+	 "NIL")
+	((eq? object unspecific)
+	 "UNSPECIFIC")
+	((or (object-type? (ucode-type true) object)
+	     (object-type? (ucode-type false) object))
+	 ;; Random assorted objects, e.g.: #!rest, #!optional
+	 (string-append "(MAKE_OBJECT ("
+			(if (object-type? (ucode-type true) object)
+			    "TC_TRUE"
+			    "TC_FALSE")
+			", "
+			(number->string (object-datum object))
+			"L))"))
 	;; Note: The following are here because of the Scode interpreter
 	;; and the runtime system.
 	;; They are not necessary for ordinary code.
