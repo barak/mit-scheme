@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.276 2001/12/18 21:35:04 cph Exp $
+$Id: edwin.pkg,v 1.277 2001/12/18 22:23:26 cph Exp $
 
 Copyright (c) 1989-2001 Massachusetts Institute of Technology
 
@@ -126,7 +126,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (files "xform")
   (parent (edwin class-macros))
   (export (edwin class-macros)
-	  transform-instance-variables))
+	  transform-instance-variables)
+  (import ()
+	  (make-scode-variable make-variable)
+	  (scode-variable-name variable-name)))
 
 (define-package (edwin class-constructor)
   (files "clscon")

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;$Id: xform.scm,v 1.9 1999/01/02 06:11:34 cph Exp $
+;;;$Id: xform.scm,v 1.10 2001/12/18 22:23:21 cph Exp $
 ;;;
 ;;; Copyright (c) 1985, 1989, 1990, 1999 Massachusetts Institute of Technology
 ;;;
@@ -54,11 +54,11 @@
   constant)
 
 (define (transform-variable transforms variable)
-  (let ((entry (assq (variable-name variable) transforms)))
+  (let ((entry (assq (scode-variable-name variable) transforms)))
     (if (not entry)
 	variable
 	(make-combination vector-ref
-			  (list (make-variable name-of-self)
+			  (list (make-scode-variable name-of-self)
 				(cdr entry))))))
 
 (define (transform-assignment transforms assignment)
