@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.7 1991/08/25 21:37:58 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.8 1991/08/25 22:02:35 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -631,9 +631,7 @@ Calls whatever function is bound to #\c-o in RMAIL mode."
     (select-buffer-other-window rmail-buffer)
     (let ((the-command
 	   (comtab-entry (mode-comtabs (current-major-mode)) #\c-o)))
-      (apply (command-procedure the-command)
-	     ((access interactive-arguments (->environment '(edwin command-reader))) 
-	      the-command false)))
+      (execute-command the-command))
     ((ref-command rmail-summary))))
 
 (define-command rmail-summary-output-to-rmail-file
@@ -644,7 +642,5 @@ Calls whatever function is bound to #\o in RMAIL mode."
     (select-buffer-other-window rmail-buffer)
     (let ((the-command
 	   (comtab-entry (mode-comtabs (current-major-mode)) #\o)))
-      (apply (command-procedure the-command)
-	     ((access interactive-arguments (->environment '(edwin command-reader))) 
-	      the-command false)))
+      (execute-command the-command))
     ((ref-command rmail-summary))))
