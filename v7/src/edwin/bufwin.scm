@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: bufwin.scm,v 1.308 2000/04/10 02:27:47 cph Exp $
+;;; $Id: bufwin.scm,v 1.309 2000/04/10 02:30:36 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -227,7 +227,7 @@
   (%set-window-point! window
 		      (make-permanent-mark (%window-group window)
 					   index
-					   true)))
+					   #t)))
 
 (define-integrable (%window-cursor-inferior window)
   (with-instance-variables buffer-window window () cursor-inferior))
@@ -509,7 +509,7 @@
 	   (if (%window-free-outline window)
 	       (begin
 		 (let ((free (outline-next outline)))
-		   (if free (set-outline-previous! free false))
+		   (if free (set-outline-previous! free #f))
 		   (%set-window-free-outline! window free))
 		 (set-outline-index-length! outline index-length)
 		 (set-outline-y-size! outline y-size)
@@ -524,13 +524,13 @@
 (define (deallocate-outlines! window start-outline end-outline)
   (let ((free-outline (%window-free-outline window)))
     (if (outline-next end-outline)
-	(set-outline-previous! (outline-next end-outline) false))
+	(set-outline-previous! (outline-next end-outline) #f))
     (set-outline-next! end-outline free-outline)
     (if free-outline
 	(set-outline-previous! free-outline end-outline)))
   (if (outline-previous start-outline)
-      (set-outline-next! (outline-previous start-outline) false))
-  (set-outline-previous! start-outline false)
+      (set-outline-next! (outline-previous start-outline) #f))
+  (set-outline-previous! start-outline #f)
   (%set-window-free-outline! window start-outline))
 
 (define-integrable (outline-last outline)
@@ -612,10 +612,11 @@
 (define (%window-line-start-index? window index)
   (or (%window-group-start-index? window index)
       (char=? (string-ref (group-text (%window-group window))
-			  (fix:-1+ (group-index->position-integrable
-				    (%window-group window)
-				    index
-				    false)))
+			  (fix:- (group-index->position-integrable
+				  (%window-group window)
+				  index
+				  #f)
+				 1))
 	      #\newline)))
 
 (define (%window-line-end-index? window index)
@@ -624,7 +625,7 @@
 			  (group-index->position-integrable
 			   (%window-group window)
 			   index
-			   true))
+			   #t))
 	      #\newline)))
 
 (define (clip-mark-to-display window mark)
@@ -745,7 +746,7 @@
 					   (%window-saved-yu window)
 					   display-style)))
 	       (if finished?
-		   (set-car! (window-redisplay-flags window) false))
+		   (set-car! (window-redisplay-flags window) #f))
 	       finished?))))))
 
 (define (update-buffer-window! window screen x-start y-start xl xu yl yu
@@ -765,7 +766,7 @@
   (if (%window-debug-trace window)
       ((%window-debug-trace window) 'window window 'force-redraw!))
   (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
-    (%set-window-force-redraw?! window true)
+    (%set-window-force-redraw?! window #t)
     (%recache-window-buffer-local-variables! window)
     (%clear-window-incremental-redisplay-state! window)
     (window-needs-redisplay! window)
@@ -779,21 +780,21 @@
   (%set-window-cursor-inferior! window (make-inferior window cursor-window))
   (%set-window-blank-inferior! window (make-inferior window blank-window))
   (%release-window-outlines! window)
-  (%set-window-free-o3! window false)
-  (%set-window-override-string! window false)
+  (%set-window-free-o3! window #f)
+  (%set-window-override-string! window #f)
   (%set-window-clip-daemon! window (make-clip-daemon window))
-  (%set-window-debug-trace! window false)
-  (%set-window-saved-screen! window false)
-  (%set-window-force-redraw?! window false))
+  (%set-window-debug-trace! window #f)
+  (%set-window-saved-screen! window #f)
+  (%set-window-force-redraw?! window #f))
 
 (define (%release-window-outlines! window)
-  (%set-window-start-outline! window false)
-  (%set-window-end-outline! window false)
-  (%set-window-free-outline! window false))
+  (%set-window-start-outline! window #f)
+  (%set-window-end-outline! window #f)
+  (%set-window-free-outline! window #f))
 
 (define (%clear-window-buffer-state! window)
-  (%set-window-buffer! window false)
-  (%set-window-point! window false)
+  (%set-window-buffer! window #f)
+  (%set-window-point! window #f)
   (clear-window-start! window)
   (%clear-window-incremental-redisplay-state! window))
 
@@ -803,14 +804,14 @@
 	(deallocate-outlines! window
 			      (%window-start-outline window)
 			      (%window-end-outline window))
-	(%set-window-start-outline! window false)
-	(%set-window-end-outline! window false)))
+	(%set-window-start-outline! window #f)
+	(%set-window-end-outline! window #f)))
   (if (%window-current-start-mark window)
       (begin
 	(mark-temporary! (%window-current-start-mark window))
-	(%set-window-current-start-mark! window false)
+	(%set-window-current-start-mark! window #f)
 	(mark-temporary! (%window-current-end-mark window))
-	(%set-window-current-end-mark! window false)
+	(%set-window-current-end-mark! window #f)
 	(%set-window-current-start-delta! window #f)
 	(%set-window-current-start-partial! window #f)))
   (%clear-window-outstanding-changes! window))
@@ -821,10 +822,10 @@
   (if (%window-start-clip-mark window)
       (begin
 	(mark-temporary! (%window-start-clip-mark window))
-	(%set-window-start-clip-mark! window false)
+	(%set-window-start-clip-mark! window #f)
 	(mark-temporary! (%window-end-clip-mark window))
-	(%set-window-end-clip-mark! window false)))
-  (%set-window-point-moved?! window false))
+	(%set-window-end-clip-mark! window #f)))
+  (%set-window-point-moved?! window #f))
 
 (define-integrable (update-modified-tick! window)
   (%set-window-modified-tick! window
@@ -879,7 +880,7 @@
       (set-new-coordinates! window
 			    (mark-index (buffer-display-start new-buffer))
 			    0
-			    false))
+			    #f))
   (buffer-window/redraw! window))
 
 (define (%unset-window-buffer! window)
@@ -1005,9 +1006,7 @@ This number is a percentage, where 0 is the window's top and 100 the bottom."
 		     window
 		     (%window-start-line-mark window)))))
 	    (let ((mark
-		   (make-permanent-mark (%window-group window)
-					start-line
-					false)))
+		   (make-permanent-mark (%window-group window) start-line #f)))
 	      (%set-window-start-line-mark! window mark)
 	      (%set-window-start-mark! window mark)))
 	(if (%window-start-line-mark window)
@@ -1017,20 +1016,20 @@ This number is a percentage, where 0 is the window's top and 100 the bottom."
 		       (%window-start-mark window))
 		  (%set-window-start-mark!
 		   window
-		   (make-permanent-mark (%window-group window) start false))
+		   (make-permanent-mark (%window-group window) start #f))
 		  (set-mark-index! (%window-start-mark window) start)))
 	    (let ((group (%window-group window)))
 	      (%set-window-start-line-mark!
 	       window
-	       (make-permanent-mark group start-line false))
+	       (make-permanent-mark group start-line #f))
 	      (%set-window-start-mark!
 	       window
-	       (make-permanent-mark group start false))))))
+	       (make-permanent-mark group start #f))))))
   (%set-window-start-line-y! window (vector-ref cws 1))
   (%set-window-start-column! window (vector-ref cws 3))
   (%set-window-start-partial! window (vector-ref cws 4))
   (if (eq? (%window-point-moved? window) 'SINCE-START-SET)
-      (%set-window-point-moved?! window true))
+      (%set-window-point-moved?! window #t))
   (window-needs-redisplay! window))
 
 (define (clear-window-start! window)
@@ -1091,7 +1090,7 @@ This number is a percentage, where 0 is the window's top and 100 the bottom."
 			     (if (predict-y-limited window start-line
 						    start-y point
 						    0 y-size)
-				 (%set-window-point-moved?! window true)
+				 (%set-window-point-moved?! window #t)
 				 (index-at! point
 					    (buffer-window/y-center window)))
 			     (let ((y
@@ -1109,7 +1108,7 @@ This number is a percentage, where 0 is the window's top and 100 the bottom."
 				     ((fix:>= y y-size)
 				      (index-at! point
 						 (fix:- y scroll-step)))))))
-		       (%set-window-point-moved?! window true)))))))))
+		       (%set-window-point-moved?! window #t)))))))))
 
 (define-variable scroll-step
   "The number of lines to try scrolling a window by when point moves out.
@@ -1142,7 +1141,7 @@ If this is zero, point is always centered after it moves off screen."
 	    ((%window-debug-trace window) 'window window
 					  'clear-override-message!))
 	(let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
-	  (%set-window-override-string! window false)
+	  (%set-window-override-string! window #f)
 	  (buffer-window/redraw! window)
 	  (set-interrupt-enables! mask)
 	  unspecific))))
@@ -1159,11 +1158,10 @@ If this is zero, point is always centered after it moves off screen."
 	    (results substring-image-results))
 	(let ((end (string-length string))
 	      (line
-	       (screen-get-output-line screen (fix:+ y-start yl) xl xu
-				       false)))
+	       (screen-get-output-line screen (fix:+ y-start yl) xl xu #f)))
 	  (substring-image! string 0 end
 			    line xl (fix:- xu 1)
-			    false 0 results
+			    #f 0 results
 			    (%window-char-image-strings window))
 	  (if (fix:= (vector-ref results 0) end)
 	      (do ((x (vector-ref results 1) (fix:+ x 1)))
@@ -1173,7 +1171,7 @@ If this is zero, point is always centered after it moves off screen."
 	  (set-inferior-start! (%window-cursor-inferior window)
 			       (vector-ref results 1)
 			       0))))
-  (%update-blank-inferior! window 1 true)
+  (%update-blank-inferior! window 1 #t)
   (update-modified-tick! window))
 
 ;;;; Update Finalization
@@ -1188,10 +1186,10 @@ If this is zero, point is always centered after it moves off screen."
       (begin
 	(%set-window-current-start-mark!
 	 window
-	 (make-permanent-mark (%window-group window) (o3-index start) false))
+	 (make-permanent-mark (%window-group window) (o3-index start) #f))
 	(%set-window-current-end-mark!
 	 window
-	 (make-permanent-mark (%window-group window) (o3-index end) true))))
+	 (make-permanent-mark (%window-group window) (o3-index end) #t))))
   (%set-window-current-start-delta! window
 				    (fix:- (%window-start-index window)
 					   (%window-start-line-index window)))
@@ -1200,7 +1198,7 @@ If this is zero, point is always centered after it moves off screen."
   (%set-window-current-end-y! window (o3-y end))
   (deallocate-o3! window start)
   (deallocate-o3! window end)
-  (update-blank-inferior! window true)
+  (update-blank-inferior! window #t)
   (update-cursor! window)
   (%window-modeline-event! window 'SET-OUTLINES))
 
@@ -1220,8 +1218,8 @@ If this is zero, point is always centered after it moves off screen."
 	  (if signal?
 	      (setup-redisplay-flags! (inferior-redisplay-flags inferior))))
 	(begin
-	  (%set-inferior-x-start! inferior false)
-	  (%set-inferior-y-start! inferior false)))))
+	  (%set-inferior-x-start! inferior #f)
+	  (%set-inferior-y-start! inferior #f)))))
 
 (define (update-cursor! window)
   (let ((xy (buffer-window/point-coordinates window)))

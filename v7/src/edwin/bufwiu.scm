@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: bufwiu.scm,v 1.33 2000/04/10 02:27:41 cph Exp $
+;;; $Id: bufwiu.scm,v 1.34 2000/04/10 02:31:17 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -98,12 +98,12 @@
 		 window
 		 (make-permanent-mark group
 				      (group-display-start-index group)
-				      true))
+				      #t))
 		(%set-window-end-clip-mark!
 		 window
 		 (make-permanent-mark group
 				      (group-display-end-index group)
-				      false))))
+				      #f))))
 	  (begin
 	    (if (fix:> start (%window-start-clip-index window))
 		(set-mark-index! (%window-start-clip-mark window) start))
@@ -137,7 +137,7 @@
   (%guarantee-start-mark! window)
   (if (%window-force-redraw? window)
       (begin
-	(%set-window-force-redraw?! window false)
+	(%set-window-force-redraw?! window #f)
 	(preserve-nothing! window))
       (let ((start (%window-current-start-index window))
 	    (end (%window-current-end-index window)))
@@ -352,8 +352,8 @@
 	    outline)))))
 
 (define (regenerate-outlines window wlstart wlsy)
-  (let ((start (make-o3 window false wlstart wlsy))
-	(end (make-o3 window false false false)))
+  (let ((start (make-o3 window #f wlstart wlsy))
+	(end (make-o3 window #f #f #f)))
     (generate-outlines window start end)
     (set-outlines! window start end)))
 
@@ -372,9 +372,9 @@
 	   (deallocate-outlines! window (o3-outline start) (o3-outline end))
 	   (deallocate-o3! window start)
 	   (deallocate-o3! window end)
-	   false)
+	   #f)
 	  ((fix:= (o3-y start) y)
-	   true)
+	   #t)
 	  ((fix:< (o3-y start) y)
 	   (scroll-lines-down window start end y))
 	  (else
@@ -458,7 +458,7 @@
        (fix:+ (%window-saved-x-start window) x-start)
        (fix:+ (%window-saved-y-start window) y-start)
        char
-       false)
+       #f)
       (let ((outline (direct-output-outline window y-start)))
 	(set-outline-index-length! outline
 				   (fix:+ (outline-index-length outline) 1)))
@@ -485,7 +485,7 @@
        (fix:+ (%window-saved-x-start window) x-start)
        (fix:+ (%window-saved-y-start window) y-start)
        string start end
-       false)
+       #f)
       (let ((outline (direct-output-outline window y-start)))
 	(set-outline-index-length! outline
 				   (fix:+ (outline-index-length outline)
@@ -520,9 +520,9 @@
 					       end-y))
       (%set-window-end-outline!
        window
-       (make-outline window 0 1 (%window-end-outline window) false))
+       (make-outline window 0 1 (%window-end-outline window) #f))
       (%set-window-current-end-y! window (fix:+ end-y 1))
-      (update-blank-inferior! window false)
+      (update-blank-inferior! window #f)
       (%set-inferior-x-start! (%window-cursor-inferior window) 0)
       (%set-inferior-y-start! (%window-cursor-inferior window) end-y))
     (update-modified-tick! window)
