@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: comred.scm,v 1.102 1993/08/10 06:35:38 cph Exp $
+;;;	$Id: comred.scm,v 1.103 1993/08/19 05:52:22 jawilson Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -102,7 +102,11 @@
 		   (reset-command-state!)
 		   (if (queue-empty? command-reader-override-queue)
 		       (let ((input
-			      (with-editor-interrupts-disabled keyboard-read)))
+			      (if *executing-keyboard-macro?*
+				  (begin
+				    (set! keyboard-keys-read (+ keyboard-keys-read 1))
+				    (keyboard-macro-read-key))
+				  (with-editor-interrupts-disabled keyboard-read))))
 			 (if (input-event? input)
 			     (apply-input-event input)
 			     (begin
