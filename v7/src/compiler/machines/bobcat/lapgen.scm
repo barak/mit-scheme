@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.180 1987/06/11 20:48:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.181 1987/06/13 20:45:51 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -597,7 +597,7 @@ MIT in each case. |#
 (define-rule predicate
   (EQ-TEST (OFFSET (REGISTER (? register-1)) (? offset-1))
 	   (OFFSET (REGISTER (? register-2)) (? offset-2)))
-  (eq-test/memory*memory register-1 offset-1register-2 offset-2))
+  (eq-test/memory*memory register-1 offset-1 register-2 offset-2))
 
 ;;;; Invocations
 
