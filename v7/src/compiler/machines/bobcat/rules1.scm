@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 1.7 1987/10/05 20:35:54 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 1.8 1987/11/18 22:32:07 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -130,15 +130,15 @@ MIT in each case. |#
   (ASSIGN (REGISTER (? target))
 	  (CONS-POINTER (CONSTANT (? type)) (REGISTER (? datum))))
   (QUALIFIER (pseudo-register? target))
-  (let ((target* (coerce->any target))
-	(datum (coerce->any datum)))
+  (let ((datum (coerce->any datum)))
     (delete-dead-registers!)
-    (if (register-effective-address? target*)
-	(LAP (MOV L ,datum ,reg:temp)
-	     (MOV B (& ,type) ,reg:temp)
-	     (MOV L ,reg:temp ,target*))
-	(LAP (MOV L ,datum ,target*)
-	     (MOV B (& ,type) ,target*)))))
+    (let ((target* (coerce->any target)))
+      (if (register-effective-address? target*)
+	  (LAP (MOV L ,datum ,reg:temp)
+	       (MOV B (& ,type) ,reg:temp)
+	       (MOV L ,reg:temp ,target*))
+	  (LAP (MOV L ,datum ,target*)
+	       (MOV B (& ,type) ,target*))))))
 
 ;;;; Transfers to Memory
 
