@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.14 1991/08/16 01:20:47 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.15 1991/08/16 02:09:01 jinx Exp $
 
 Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
@@ -273,7 +273,7 @@ MIT in each case. |#
 
 (define (maybe-print-table nodes column depth)
   (define (default)
-    (print-columns nodes column depth))
+    (print-column nodes column depth))
 
   (let ((available-space (-1+ (- x-size column))))
 
