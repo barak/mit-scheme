@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.107 1987/06/01 16:04:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.108 1987/06/01 20:31:53 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -38,41 +38,58 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (common-subexpression-elimination blocks n-registers)
-  (fluid-let ((*next-quantity-number* 0))
-    (state:initialize n-registers
-      (lambda ()
-	(for-each walk-block blocks)))))
-
-(define (walk-block block)
-  (state:reset!)
-  (walk-rnode block))
+  (with-new-node-marks
+   (lambda ()
+     (fluid-let ((*next-quantity-number* 0))
+       (state:initialize n-registers
+	 (lambda ()
+	   (for-each (lambda (block)
+		       (state:reset!)
+		       (walk-rnode block))
+		     blocks)))))))
 
 (define (walk-rnode rnode)
-  (if (node-previous>1? rnode) (state:reset!)) ;Easy non-optimal solution.
+  (node-mark! rnode)
   ((vector-method rnode walk-rnode) rnode))
 
 (define-vector-method rtl-snode-tag walk-rnode
   (lambda (rnode)
     (cse-statement (rnode-rtl rnode))
     (let ((next (snode-next rnode)))
-      (if next (walk-rnode next)))))
+      (if (walk-next? next)
+	  (walk-next next)))))
 
 (define-vector-method rtl-pnode-tag walk-rnode
   (lambda (rnode)
     (cse-statement (rnode-rtl rnode))
     (let ((consequent (pnode-consequent rnode))
 	  (alternative (pnode-alternative rnode)))
-      (if consequent
-	  (if alternative
-	      ;; Copy the world's state.
-	      (let ((state (state:get)))
-		(walk-rnode consequent)
-		(state:set! state)
-		(walk-rnode alternative))
-	      (walk-rnode consequent))
-	  (if alternative
-	      (walk-rnode alternative))))))
+      (if (walk-next? consequent)
+	  (if (walk-next? alternative)
+	      (cond ((node-previous>1? consequent)
+		     (walk-next alternative)
+		     (state:reset!)
+		     (walk-rnode consequent))
+		    ((node-previous>1? alternative)
+		     (walk-rnode consequent)
+		     (state:reset!)
+		     (walk-rnode alternative))
+		    (else
+		     (let ((state (state:get)))
+		       (walk-rnode consequent)
+		       (state:set! state)
+		       (walk-rnode alternative))))
+	      (walk-next consequent))
+	  (if (walk-next? alternative)
+	      (walk-next alternative))))))
 
+(define (walk-next? rnode)
+  (and rnode (not (node-marked? rnode))))
+
+(define (walk-next rnode)
+  (if (node-previous>1? rnode) (state:reset!))
+  (walk-rnode rnode))
+
 (define (cse-statement statement)
   ((if (eq? (rtl:expression-type statement) 'ASSIGN)
        cse/assign
@@ -109,40 +126,44 @@ MIT in each case. |#
 		       ;; addressing to be uniform for now.  -- cph
 		       (not (interpreter-frame-pointer? address)))
 		  (insert-register-destination! address (insert-source!))))
-	    (full-expression-hash address
-	      (lambda (hash volatile?* in-memory?*)
-		(let ((memory-invalidate!
-		       (cond ((and (memq (rtl:expression-type address)
-					 '(PRE-INCREMENT POST-INCREMENT))
-				   (or (interpreter-stack-pointer?
-					(rtl:address-register address))
-				       (interpreter-free-pointer?
-					(rtl:address-register address))))
-			      (lambda ()
-				(register-expression-invalidate!
-				 (rtl:address-register address))))
-			     ((expression-address-varies? address)
-			      (lambda ()
-				(hash-table-delete-class! element-in-memory?)))
-			     (else
-			      (lambda ()
-				(hash-table-delete!
-				 hash
-				 (hash-table-lookup hash address))
-				(hash-table-delete-class!
-				 element-address-varies?))))))
-		  (cond (volatile?* (memory-invalidate!))
-			((not volatile?)
-			 (let ((address
-				(find-cheapest-expression address hash
-							  false)))
-			   (let ((element (insert-source!)))
-			     (memory-invalidate!)
-			     (insert-memory-destination!
-			      address
-			      element
-			      (modulo (+ (symbol-hash 'ASSIGN) hash)
-				      n-buckets))))))))))))))
+
+	    (let ((address (expression-canonicalize address)))
+	      (rtl:set-assign-address! statement address)
+	      (full-expression-hash address
+		(lambda (hash volatile?* in-memory?*)
+		  (let ((memory-invalidate!
+			 (cond ((and (memq (rtl:expression-type address)
+					   '(PRE-INCREMENT POST-INCREMENT))
+				     (or (interpreter-stack-pointer?
+					  (rtl:address-register address))
+					 (interpreter-free-pointer?
+					  (rtl:address-register address))))
+				(lambda ()
+				  (register-expression-invalidate!
+				   (rtl:address-register address))))
+			       ((expression-address-varies? address)
+				(lambda ()
+				  (hash-table-delete-class!
+				   element-in-memory?)))
+			       (else
+				(lambda ()
+				  (hash-table-delete!
+				   hash
+				   (hash-table-lookup hash address))
+				  (hash-table-delete-class!
+				   element-address-varies?))))))
+		    (cond (volatile?* (memory-invalidate!))
+			  ((not volatile?)
+			   (let ((address
+				  (find-cheapest-expression address hash
+							    false)))
+			     (let ((element (insert-source!)))
+			       (memory-invalidate!)
+			       (insert-memory-destination!
+				address
+				element
+				(modulo (+ (symbol-hash 'ASSIGN) hash)
+					n-buckets)))))))))))))))
 
 (define (trivial-action volatile? insert-source!)
   (if (not volatile?)
