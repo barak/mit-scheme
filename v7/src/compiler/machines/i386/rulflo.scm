@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rulflo.scm,v 1.24 2001/12/23 17:20:58 cph Exp $
+$Id: rulflo.scm,v 1.25 2002/02/12 05:58:16 cph Exp $
 
-Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1992-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -238,22 +238,25 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define flonum-methods/1-arg
   (list 'FLONUM-METHODS/1-ARG))
-
+
 ;;; Notice the weird ,', syntax here.
 ;;; If LAP changes, this may also have to change.
 
 (let-syntax
     ((define-flonum-operation
-      (non-hygienic-macro-transformer
-       (lambda (primitive-name opcode)
-	 `(define-arithmetic-method ',primitive-name flonum-methods/1-arg
-	    (flonum-unary-operation/general
-	     (lambda (target source)
-	       (if (and (zero? target) (zero? source))
-		   (LAP (,opcode))
-		   (LAP (FLD (ST ,', source))
-			(,opcode)
-			(FSTP (ST ,',(1+ target))))))))))))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  environment
+	  (let ((primitive-name (cadr form))
+		(opcode (caddr form)))
+	    `(define-arithmetic-method ',primitive-name flonum-methods/1-arg
+	       (flonum-unary-operation/general
+		(lambda (target source)
+		  (if (and (zero? target) (zero? source))
+		      (LAP (,opcode))
+		      (LAP (FLD (ST ,', source))
+			   (,opcode)
+			   (FSTP (ST ,',(1+ target)))))))))))))
   (define-flonum-operation FLONUM-NEGATE FCHS)
   (define-flonum-operation FLONUM-ABS FABS)
   (define-flonum-operation FLONUM-SIN FSIN)
@@ -463,10 +466,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	     (try-reuse-1 (lambda () (try-reuse-2 default)))
 	     (try-reuse-2 (lambda () (try-reuse-1 default)))))
 	((not (eq? (register-type target) 'FLOAT))
-	 (error "flonum-2-args: Wrong type register"
-		target 'FLOAT))
-	(else
-	 (default))))
+	 (error "flonum-2-args: Wrong type register" target 'FLOAT))
+	(else (default))))
 
 (define (flonum-2-args/operator operation)
   (lookup-arithmetic-method operation flonum-methods/2-args))
@@ -491,58 +492,66 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-flonum-operation
-      (non-hygienic-macro-transformer
-       (lambda (primitive-name op1%2 op1%2p op2%1 op2%1p)
-	 `(begin
-	    (define-arithmetic-method ',primitive-name flonum-methods/2-args
-	      (flonum-binary-operation
-	       (lambda (target source1 source2)
-		 (cond ((= target source1)
-			(cond ((zero? target)
-			       (LAP (,op1%2 (ST 0) (ST ,',source2))))
-			      ((zero? source2)
-			       (LAP (,op2%1 (ST ,',target) (ST 0))))
-			      (else
-			       (LAP (FLD (ST ,',source2))
-				    (,op2%1p (ST ,',(1+ target)) (ST 0))))))
-		       ((= target source2)
-			(cond ((zero? target)
-			       (LAP (,op2%1 (ST 0) (ST ,',source1))))
-			      ((zero? source1)
-			       (LAP (,op1%2 (ST ,',target) (ST 0))))
-			      (else
-			       (LAP (FLD (ST ,',source1))
-				    (,op1%2p (ST ,',(1+ target)) (ST 0))))))
-		       (else
-			(LAP (FLD (ST ,',source1))
-			     (,op1%2 (ST 0) (ST ,',(1+ source2)))
-			     (FSTP (ST ,',(1+ target)))))))))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  environment
+	  (let ((primitive-name (list-ref form 1))
+		(op1%2 (list-ref form 2))
+		(op1%2p (list-ref form 3))
+		(op2%1 (list-ref form 4))
+		(op2%1p (list-ref form 5)))
+	    `(begin
+	       (define-arithmetic-method ',primitive-name flonum-methods/2-args
+		 (flonum-binary-operation
+		  (lambda (target source1 source2)
+		    (cond ((= target source1)
+			   (cond ((zero? target)
+				  (LAP (,op1%2 (ST 0) (ST ,',source2))))
+				 ((zero? source2)
+				  (LAP (,op2%1 (ST ,',target) (ST 0))))
+				 (else
+				  (LAP (FLD (ST ,',source2))
+				       (,op2%1p (ST ,',(1+ target)) (ST 0))))))
+			  ((= target source2)
+			   (cond ((zero? target)
+				  (LAP (,op2%1 (ST 0) (ST ,',source1))))
+				 ((zero? source1)
+				  (LAP (,op1%2 (ST ,',target) (ST 0))))
+				 (else
+				  (LAP (FLD (ST ,',source1))
+				       (,op1%2p (ST ,',(1+ target)) (ST 0))))))
+			  (else
+			   (LAP (FLD (ST ,',source1))
+				(,op1%2 (ST 0) (ST ,',(1+ source2)))
+				(FSTP (ST ,',(1+ target)))))))))
 
-	    (define-arithmetic-method ',primitive-name flonum-methods/1%1-arg
-	      (flonum-unary-operation/general
-	       (lambda (target source)
-		 (if (= source target)
-		     (LAP (FLD1)
-			  (,op1%2p (ST ,',(1+ target)) (ST 0)))
-		     (LAP (FLD1)
-			  (,op1%2 (ST 0) (ST ,',(1+ source)))
-			  (FSTP (ST ,',(1+ target))))))))
+	       (define-arithmetic-method ',primitive-name
+		 flonum-methods/1%1-arg
+		 (flonum-unary-operation/general
+		  (lambda (target source)
+		    (if (= source target)
+			(LAP (FLD1)
+			     (,op1%2p (ST ,',(1+ target)) (ST 0)))
+			(LAP (FLD1)
+			     (,op1%2 (ST 0) (ST ,',(1+ source)))
+			     (FSTP (ST ,',(1+ target))))))))
 
-	    (define-arithmetic-method ',primitive-name flonum-methods/1-arg%1
-	      (flonum-unary-operation/general
-	       (lambda (target source)
-		 (if (= source target)
-		     (LAP (FLD1)
-			  (,op2%1p (ST ,',(1+ target)) (ST 0)))
-		     (LAP (FLD1)
-			  (,op2%1 (ST 0) (ST ,',(1+ source)))
-			  (FSTP (ST ,',(1+ target)))))))))))))
+	       (define-arithmetic-method ',primitive-name
+		 flonum-methods/1-arg%1
+		 (flonum-unary-operation/general
+		  (lambda (target source)
+		    (if (= source target)
+			(LAP (FLD1)
+			     (,op2%1p (ST ,',(1+ target)) (ST 0)))
+			(LAP (FLD1)
+			     (,op2%1 (ST 0) (ST ,',(1+ source)))
+			     (FSTP (ST ,',(1+ target))))))))))))))
 
   (define-flonum-operation FLONUM-ADD FADD FADDP FADD FADDP)
   (define-flonum-operation FLONUM-SUBTRACT F%SUB F%SUBP F%SUBR F%SUBPR)
   (define-flonum-operation FLONUM-MULTIPLY FMUL FMULP FMUL FMULP)
   (define-flonum-operation FLONUM-DIVIDE F%DIV F%DIVP F%DIVR F%DIVPR))
-
+
 (define-arithmetic-method 'FLONUM-ATAN2 flonum-methods/2-args
   (lambda (target source1 source2)
     (if (and (not (machine-register? source1))
@@ -556,14 +565,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(begin
 	  (prefix-instructions! (load-machine-register! source1 fr0))
 	  (need-register! fr0)
-	  (let ((source2 (if (= source2 source1)
-			     fr0
-			     (flonum-source! source2))))
+	  (let ((source2
+		 (if (= source2 source1) fr0 (flonum-source! source2))))
 	    (delete-dead-registers!)
 	    (rtl-target:=machine-register! target fr0)
 	    (LAP (FLD (ST ,source2))
 		 (FPATAN)))))))
-
+
 (define-arithmetic-method 'FLONUM-REMAINDER flonum-methods/2-args
   (flonum-binary-operation
    (lambda (target source1 source2)
@@ -590,7 +598,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 				 0
 				 target))))
 	      (FXCH (ST 0) (ST ,source2)))))))
-
+
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (FLONUM-2-ARGS FLONUM-SUBTRACT

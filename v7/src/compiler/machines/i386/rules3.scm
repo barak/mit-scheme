@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.37 2001/12/23 17:20:58 cph Exp $
+$Id: rules3.scm,v 1.38 2002/02/12 05:58:07 cph Exp $
 
-Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1992-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -96,7 +96,7 @@ USA.
        (POP (R ,eax))
        (AND W (R ,eax) (R ,regnum:datum-mask)) ;clear type code
        (JMP (R ,eax))))
-
+
 (define-rule statement
   (INVOCATION:LEXPR (? number-pushed) (? continuation) (? label))
   continuation
@@ -125,7 +125,7 @@ USA.
   (expect-no-exit-interrupt-checks)
   (LAP ,@(clear-map!)
        (JMP (@PCRO ,(free-uuo-link-label name frame-size) 3))))
-
+
 (define-rule statement
   (INVOCATION:GLOBAL-LINK (? frame-size) (? continuation) (? name))
   continuation
@@ -169,106 +169,78 @@ USA.
 (define-rule statement
   (INVOCATION:PRIMITIVE (? frame-size) (? continuation) (? primitive))
   continuation				; ignored
-  ;;
-  (let-syntax ((invoke
-		(non-hygienic-macro-transformer
-		 #|
-		 (lambda (code entry)
-		   entry			; ignored (for now)
-		   `(invoke-interface ,code))
-		 |#
-		 (lambda (code entry)
-		   code			; ignored
-		   `(invoke-hook ,entry)))))
-
-    (if (eq? primitive compiled-error-procedure)
-	(LAP ,@(clear-map!)
-	     (MOV W (R ,ecx) (& ,frame-size))
-	     ,@(invoke code:compiler-error entry:compiler-error))
-	(let ((arity (primitive-procedure-arity primitive)))
-	  (cond ((not (negative? arity))
-		 (with-values (lambda () (get-cached-label))
-		   (lambda (pc-label pc-reg)
-		     pc-reg		; ignored
-		     (if pc-label
-			 (let ((get-code
-				(object->machine-register! primitive ecx)))
-			   (LAP ,@get-code
-				,@(clear-map!)
-				,@(invoke code:compiler-primitive-apply
-					  entry:compiler-primitive-apply)))
-			 (let ((prim-label (constant->label primitive))
-			       (offset-label (generate-label 'PRIMOFF)))
-			   (LAP ,@(clear-map!)
-				,@(invoke-hook/call
-				   entry:compiler-short-primitive-apply)
-				(LABEL ,offset-label)
-				(LONG S (- ,prim-label ,offset-label))))))))
-		((= arity -1)
-		 (let ((get-code (object->machine-register! primitive ecx)))
-		   (LAP ,@get-code
-			,@(clear-map!)
-			(MOV W ,reg:lexpr-primitive-arity
-			     (& ,(-1+ frame-size)))
-			,@(invoke code:compiler-primitive-lexpr-apply
-				  entry:compiler-primitive-lexpr-apply))))
-		(else
-		 ;; Unknown primitive arity.  Go through apply.
-		 (let ((get-code (object->machine-register! primitive ecx)))
-		   (LAP ,@get-code
-			,@(clear-map!)
-			(MOV W (R ,edx) (& ,frame-size))
-			,@(invoke-interface code:compiler-apply)))))))))
+  (if (eq? primitive compiled-error-procedure)
+      (LAP ,@(clear-map!)
+	   (MOV W (R ,ecx) (& ,frame-size))
+	   ,@(invoke-hook entry:compiler-error))
+      (let ((arity (primitive-procedure-arity primitive)))
+	(cond ((not (negative? arity))
+	       (with-values (lambda () (get-cached-label))
+		 (lambda (pc-label pc-reg)
+		   pc-reg		; ignored
+		   (if pc-label
+		       (let ((get-code
+			      (object->machine-register! primitive ecx)))
+			 (LAP ,@get-code
+			      ,@(clear-map!)
+			      ,@(invoke-hook entry:compiler-primitive-apply)))
+		       (let ((prim-label (constant->label primitive))
+			     (offset-label (generate-label 'PRIMOFF)))
+			 (LAP ,@(clear-map!)
+			      ,@(invoke-hook/call
+				 entry:compiler-short-primitive-apply)
+			      (LABEL ,offset-label)
+			      (LONG S (- ,prim-label ,offset-label))))))))
+	      ((= arity -1)
+	       (let ((get-code (object->machine-register! primitive ecx)))
+		 (LAP ,@get-code
+		      ,@(clear-map!)
+		      (MOV W ,reg:lexpr-primitive-arity
+			   (& ,(-1+ frame-size)))
+		      ,@(invoke-hook entry:compiler-primitive-lexpr-apply))))
+	      (else
+	       ;; Unknown primitive arity.  Go through apply.
+	       (let ((get-code (object->machine-register! primitive ecx)))
+		 (LAP ,@get-code
+		      ,@(clear-map!)
+		      (MOV W (R ,edx) (& ,frame-size))
+		      ,@(invoke-interface code:compiler-apply))))))))
 
 (let-syntax
-    ((define-special-primitive-invocation
-      (non-hygienic-macro-transformer
-       (lambda (name)
-	 `(define-rule statement
-	    (INVOCATION:SPECIAL-PRIMITIVE
-	     (? frame-size)
-	     (? continuation)
-	     ,(make-primitive-procedure name true))
-	    frame-size continuation
-	    (expect-no-exit-interrupt-checks)
-	    (special-primitive-invocation
-	     ,(symbol-append 'CODE:COMPILER- name))))))
+    ((define-primitive-invocation
+       (sc-macro-transformer
+	(lambda (form environment)
+	  (let ((name (cadr form)))
+	    `(define-rule statement
+	       (INVOCATION:SPECIAL-PRIMITIVE
+		(? frame-size)
+		(? continuation)
+		,(make-primitive-procedure name #t))
+	       frame-size continuation
+	       (expect-no-exit-interrupt-checks)
+	       #|
+	       (special-primitive-invocation
+		,(close-syntax (symbol-append 'CODE:COMPILER- name)
+			       environment))
+	       |#
+	       (optimized-primitive-invocation
+		,(close-syntax (symbol-append 'ENTRY:COMPILER- name)
+			       environment))))))))
 
-     (define-optimized-primitive-invocation
-      (non-hygienic-macro-transformer
-       (lambda (name)
-	 `(define-rule statement
-	    (INVOCATION:SPECIAL-PRIMITIVE
-	     (? frame-size)
-	     (? continuation)
-	     ,(make-primitive-procedure name true))
-	    frame-size continuation
-	    (expect-no-exit-interrupt-checks)
-	    (optimized-primitive-invocation
-	     ,(symbol-append 'ENTRY:COMPILER- name)))))))
-
-  (let-syntax ((define-primitive-invocation
-		(non-hygienic-macro-transformer
-		 (lambda (name)
-		   #|
-		   `(define-special-primitive-invocation ,name)
-		   |#
-		   `(define-optimized-primitive-invocation ,name)))))
-
-    (define-primitive-invocation &+)
-    (define-primitive-invocation &-)
-    (define-primitive-invocation &*)
-    (define-primitive-invocation &/)
-    (define-primitive-invocation &=)
-    (define-primitive-invocation &<)
-    (define-primitive-invocation &>)
-    (define-primitive-invocation 1+)
-    (define-primitive-invocation -1+)
-    (define-primitive-invocation zero?)
-    (define-primitive-invocation positive?)
-    (define-primitive-invocation negative?)
-    (define-primitive-invocation quotient)
-    (define-primitive-invocation remainder)))
+  (define-primitive-invocation &+)
+  (define-primitive-invocation &-)
+  (define-primitive-invocation &*)
+  (define-primitive-invocation &/)
+  (define-primitive-invocation &=)
+  (define-primitive-invocation &<)
+  (define-primitive-invocation &>)
+  (define-primitive-invocation 1+)
+  (define-primitive-invocation -1+)
+  (define-primitive-invocation zero?)
+  (define-primitive-invocation positive?)
+  (define-primitive-invocation negative?)
+  (define-primitive-invocation quotient)
+  (define-primitive-invocation remainder))
 
 (define (special-primitive-invocation code)
   (LAP ,@(clear-map!)
@@ -277,7 +249,7 @@ USA.
 (define (optimized-primitive-invocation entry)
   (LAP ,@(clear-map!)
        ,@(invoke-hook entry)))
-
+
 ;;; Invocation Prefixes
 
 (define-rule statement
@@ -288,7 +260,7 @@ USA.
   (INVOCATION-PREFIX:DYNAMIC-LINK 0 (REGISTER 4) (? any))
   any					; ignored
   (LAP))
-
+
 (define-rule statement
   (INVOCATION-PREFIX:MOVE-FRAME-UP
    (? frame-size)
@@ -437,7 +409,7 @@ USA.
   (expect-no-entry-interrupt-checks)
   (make-external-label (continuation-code-word internal-label)
 		       internal-label))
-
+
 (define-rule statement
   (CONTINUATION-HEADER (? internal-label))
   #|
@@ -794,7 +766,7 @@ USA.
 (define (make-closure-code-longword frame/min frame/max pc-offset)
   (make-closure-longword (make-procedure-code-word frame/min frame/max)
 			 pc-offset))
-
+
 (define-rule statement
   (CLOSURE-HEADER (? internal-label) (? nentries) (? entry))
   (generate/closure-header internal-label nentries entry))

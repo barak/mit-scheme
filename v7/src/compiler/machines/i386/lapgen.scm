@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.30 2001/12/23 17:20:58 cph Exp $
+$Id: lapgen.scm,v 1.31 2002/02/12 05:58:02 cph Exp $
 
-Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1992-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -568,17 +568,18 @@ USA.
 
 
 (let-syntax ((define-codes
-	      (non-hygienic-macro-transformer
-	       (lambda (start . names)
-		 (define (loop names index)
-		   (if (null? names)
-		       '()
-		       (cons `(DEFINE-INTEGRABLE
-				,(symbol-append 'CODE:COMPILER-
-						(car names))
-				,index)
-			     (loop (cdr names) (1+ index)))))
-		 `(BEGIN ,@(loop names start))))))
+	       (sc-macro-transformer
+		(lambda (form environment)
+		  environment
+		  `(BEGIN
+		     ,@(let loop ((names (cddr form)) (index (cadr form)))
+			 (if (pair? names)
+			     (cons `(DEFINE-INTEGRABLE
+				      ,(symbol-append 'CODE:COMPILER-
+						      (car names))
+				      ,index)
+				   (loop (cdr names) (+ index 1)))
+			     '())))))))
   (define-codes #x012
     primitive-apply primitive-lexpr-apply
     apply error lexpr-apply link
@@ -605,23 +606,28 @@ USA.
   (LAP (MOV B (R ,eax) (& ,code))
        ,@(invoke-hook/call entry:compiler-scheme-to-interface/call)))
 
-(let-syntax ((define-entries
-	      (non-hygienic-macro-transformer
-	       (lambda (start high . names)
-		 (define (loop names index high)
-		   (cond ((null? names)
-			  '())
-			 ((>= index high)
-			  (warn "define-entries: Too many for byte offsets.")
-			  (loop names index (+ high 32000)))
-			 (else
-			  (cons `(DEFINE-INTEGRABLE
-				   ,(symbol-append 'ENTRY:COMPILER-
-						   (car names))
-				   (byte-offset-reference regnum:regs-pointer
-							  ,index))
-				(loop (cdr names) (+ index 4) high)))))
-		 `(BEGIN ,@(loop names start high))))))
+(let-syntax
+    ((define-entries
+       (sc-macro-transformer
+	(lambda (form environment)
+	  environment
+	  `(BEGIN
+	     ,@(let loop
+		   ((names (cdddr form))
+		    (index (cadr form))
+		    (high (caddr form)))
+		 (if (pair? names)
+		     (if (< index high)
+			 (cons `(DEFINE-INTEGRABLE
+				  ,(symbol-append 'ENTRY:COMPILER-
+						  (car names))
+				  (byte-offset-reference regnum:regs-pointer
+							 ,index))
+			       (loop (cdr names) (+ index 4) high))
+			 (begin
+			   (warn "define-entries: Too many for byte offsets.")
+			   (loop names index (+ high 32000))))
+		     '())))))))
   (define-entries #x40 #x80		; (* 16 4)
     scheme-to-interface			; Main entry point (only one necessary)
     scheme-to-interface/call		; Used by rules3&4, for convenience.
@@ -667,7 +673,7 @@ USA.
     shortcircuit-apply-size-8
     interrupt-continuation-2
     conditionally-serialize))
-
+
 ;; Operation tables
 
 (define (define-arithmetic-method operator methods method)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: instrf.scm,v 1.17 2001/12/23 17:20:58 cph Exp $
+$Id: instrf.scm,v 1.18 2002/02/12 05:57:58 cph Exp $
 
-Copyright (c) 1992, 1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1992, 1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -25,43 +25,50 @@ along with this program; if not, write to the Free Software
 
 (let-syntax
     ((define-binary-flonum
-      (non-hygienic-macro-transformer
-       (lambda (mnemonic pmnemonic imnemonic digit opcode1 opcode2)
-	 `(begin
-	    (define-instruction ,mnemonic
-	      (((ST 0) (ST (? i)))
-	       (BYTE (8 #xd8)
-		     (8 (+ ,opcode1 i))))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  environment
+	  (let ((mnemonic (list-ref form 1))
+		(pmnemonic (list-ref form 2))
+		(imnemonic (list-ref form 3))
+		(digit (list-ref form 4))
+		(opcode1 (list-ref form 5))
+		(opcode2 (list-ref form 6)))
+	    `(begin
+	       (define-instruction ,mnemonic
+		 (((ST 0) (ST (? i)))
+		  (BYTE (8 #xd8)
+			(8 (+ ,opcode1 i))))
 
-	      (((ST (? i)) (ST 0))
-	       (BYTE (8 #xdc)
-		     (8 (+ ,opcode2 i))))
+		 (((ST (? i)) (ST 0))
+		  (BYTE (8 #xdc)
+			(8 (+ ,opcode2 i))))
 
-	      (()
-	       (BYTE (8 #xde)
-		     (8 (+ ,opcode2 1))))
+		 (()
+		  (BYTE (8 #xde)
+			(8 (+ ,opcode2 1))))
 
-	      ((D (? source mW))
-	       (BYTE (8 #xdc))
-	       (ModR/M ,digit source))
+		 ((D (? source mW))
+		  (BYTE (8 #xdc))
+		  (ModR/M ,digit source))
 
-	      ((S (? source mW))
-	       (BYTE (8 #xd8))
-	       (ModR/M ,digit source)))
+		 ((S (? source mW))
+		  (BYTE (8 #xd8))
+		  (ModR/M ,digit source)))
 
-	    (define-instruction ,pmnemonic
-	      (((ST (? i)) (ST 0))
-	       (BYTE (8 #xde)
-		     (8 (+ ,opcode2 i)))))
+	       (define-instruction ,pmnemonic
+		 (((ST (? i)) (ST 0))
+		  (BYTE (8 #xde)
+			(8 (+ ,opcode2 i)))))
 
-	    (define-instruction ,imnemonic
-	      ((L (? source mW))
-	       (BYTE (8 #xda))
-	       (ModR/M ,digit source))
+	       (define-instruction ,imnemonic
+		 ((L (? source mW))
+		  (BYTE (8 #xda))
+		  (ModR/M ,digit source))
 
-	      ((H (? source mW))
-	       (BYTE (8 #xde))
-	       (ModR/M ,digit source))))))))
+		 ((H (? source mW))
+		  (BYTE (8 #xde))
+		  (ModR/M ,digit source)))))))))
 
   ;; The i486 book (and 387, etc.) has inconsistent instruction
   ;; descriptions and opcode assignments for FSUB and siblings,
@@ -107,24 +114,28 @@ along with this program; if not, write to the Free Software
 
 (let-syntax
     ((define-flonum-comparison
-      (non-hygienic-macro-transformer
-       (lambda (mnemonic digit opcode)
-	 `(define-instruction ,mnemonic
-	    (((ST 0) (ST (? i)))
-	     (BYTE (8 #xd8)
-		   (8 (+ ,opcode i))))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  environment
+	  (let ((mnemonic (cadr form))
+		(digit (caddr form))
+		(opcode (cadddr form)))
+	    `(define-instruction ,mnemonic
+	       (((ST 0) (ST (? i)))
+		(BYTE (8 #xd8)
+		      (8 (+ ,opcode i))))
 
-	    (()
-	     (BYTE (8 #xd8)
-		   (8 (+ ,opcode 1))))
+	       (()
+		(BYTE (8 #xd8)
+		      (8 (+ ,opcode 1))))
 
-	    ((D (? source mW))
-	     (BYTE (8 #xdc))
-	     (ModR/M ,digit source))
+	       ((D (? source mW))
+		(BYTE (8 #xdc))
+		(ModR/M ,digit source))
 
-	    ((S (? source mW))
-	     (BYTE (8 #xd8))
-	     (ModR/M ,digit source)))))))
+	       ((S (? source mW))
+		(BYTE (8 #xd8))
+		(ModR/M ,digit source))))))))
 
   (define-flonum-comparison FCOM  2 #xd0)
   (define-flonum-comparison FCOMP 3 #xd8))
@@ -140,38 +151,45 @@ along with this program; if not, write to the Free Software
 
 (let-syntax
     ((define-flonum-integer-comparison
-      (non-hygienic-macro-transformer
-       (lambda (mnemonic digit)
-	 `(define-instruction ,mnemonic
-	    ((L (? source mW))
-	     (BYTE (8 #xda))
-	     (ModR/M ,digit source))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  environment
+	  (let ((mnemonic (cadr form))
+		(digit (caddr form)))
+	    `(define-instruction ,mnemonic
+	       ((L (? source mW))
+		(BYTE (8 #xda))
+		(ModR/M ,digit source))
 
-	    ((H (? source mW))
-	     (BYTE (8 #xde))
-	     (ModR/M ,digit source)))))))
+	       ((H (? source mW))
+		(BYTE (8 #xde))
+		(ModR/M ,digit source))))))))
 
   (define-flonum-integer-comparison FICOM  2)
   (define-flonum-integer-comparison FICOMP 3))
-
+
 (let-syntax
     ((define-flonum-integer-memory
-      (non-hygienic-macro-transformer
-       (lambda (mnemonic digit1 digit2)
-	 `(define-instruction ,mnemonic
-	    ,@(if (not digit2)
-		  `()
-		  `(((Q (? source mW))
-		     (BYTE (8 #xdf))
-		     (ModR/M ,digit2 source))))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  environment
+	  (let ((mnemonic (cadr form))
+		(digit1 (caddr form))
+		(digit2 (cadddr form)))
+	    `(define-instruction ,mnemonic
+	       ,@(if (not digit2)
+		     `()
+		     `(((Q (? source mW))
+			(BYTE (8 #xdf))
+			(ModR/M ,digit2 source))))
 
-	    ((L (? source mW))
-	     (BYTE (8 #xdb))
-	     (ModR/M ,digit1 source))
+	       ((L (? source mW))
+		(BYTE (8 #xdb))
+		(ModR/M ,digit1 source))
 
-	    ((H (? source mW))
-	     (BYTE (8 #xdf))
-	     (ModR/M ,digit1 source)))))))
+	       ((H (? source mW))
+		(BYTE (8 #xdf))
+		(ModR/M ,digit1 source))))))))
 
   (define-flonum-integer-memory FILD  0 5)
   (define-flonum-integer-memory FIST  2 #f)
@@ -183,26 +201,32 @@ along with this program; if not, write to the Free Software
 
 (let-syntax
     ((define-flonum-memory
-      (non-hygienic-macro-transformer
-       (lambda (mnemonic digit1 digit2 opcode1 opcode2)
-	 `(define-instruction ,mnemonic
-	    (((ST (? i)))
-	     (BYTE (8 ,opcode1)
-		   (8 (+ ,opcode2 i))))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  environment
+	  (let ((mnemonic (list-ref form 1))
+		(digit1 (list-ref form 2))
+		(digit2 (list-ref form 3))
+		(opcode1 (list-ref form 4))
+		(opcode2 (list-ref form 5)))
+	    `(define-instruction ,mnemonic
+	       (((ST (? i)))
+		(BYTE (8 ,opcode1)
+		      (8 (+ ,opcode2 i))))
 
-	    ((D (? operand mW))
-	     (BYTE (8 #xdd))
-	     (ModR/M ,digit1 operand))
+	       ((D (? operand mW))
+		(BYTE (8 #xdd))
+		(ModR/M ,digit1 operand))
 
-	    ((S (? operand mW))
-	     (BYTE (8 #xd9))
-	     (ModR/M ,digit1 operand))
+	       ((S (? operand mW))
+		(BYTE (8 #xd9))
+		(ModR/M ,digit1 operand))
 
-	    ,@(if (not digit2)
-		  `()
-		  `(((X (? operand mW))
-		     (BYTE (8 #xdb))
-		     (ModR/M ,digit2 operand)))))))))
+	       ,@(if (not digit2)
+		     `()
+		     `(((X (? operand mW))
+			(BYTE (8 #xdb))
+			(ModR/M ,digit2 operand))))))))))
 
   (define-flonum-memory FLD  0 5  #xd9 #xc0)
   (define-flonum-memory FST  2 #f #xdd #xd0)
@@ -215,24 +239,29 @@ along with this program; if not, write to the Free Software
 (define-trivial-instruction FLDLG2 #xd9 #xec)
 (define-trivial-instruction FLDLN2 #xd9 #xed)
 (define-trivial-instruction FLDZ   #xd9 #xee)
-
+
 (let-syntax
     ((define-flonum-state
-      (non-hygienic-macro-transformer
-       (lambda (mnemonic opcode digit mnemonic2)
-	 `(begin
-	    ,@(if (not mnemonic2)
-		  `()
-		  `((define-instruction ,mnemonic2
-		      (((? source mW))
-		       (BYTE (8 #x9b)			; (FWAIT)
-			     (8 ,opcode))
-		       (ModR/M ,digit source)))))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  environment
+	  (let ((mnemonic (list-ref form 1))
+		(opcode (list-ref form 2))
+		(digit (list-ref form 3))
+		(mnemonic2 (list-ref form 4)))
+	    `(begin
+	       ,@(if (not mnemonic2)
+		     `()
+		     `((define-instruction ,mnemonic2
+			 (((? source mW))
+			  (BYTE (8 #x9b) ; (FWAIT)
+				(8 ,opcode))
+			  (ModR/M ,digit source)))))
 
-	    (define-instruction ,mnemonic
-	      (((? source mW))
-	       (BYTE (8 ,opcode))
-	       (ModR/M ,digit source))))))))
+	       (define-instruction ,mnemonic
+		 (((? source mW))
+		  (BYTE (8 ,opcode))
+		  (ModR/M ,digit source)))))))))
 
   (define-flonum-state FNLDCW  #xd9 5 FLDCW)
   (define-flonum-state FLDENV  #xd9 4 #f)
@@ -271,21 +300,25 @@ along with this program; if not, write to the Free Software
   (((R 0))
    (BYTE (8 #xdf)
 	 (8 #xe0))))
-
+
 (define-trivial-instruction FTST #xd9 #xe4)
 
 (let-syntax
     ((define-binary-flonum
-      (non-hygienic-macro-transformer
-       (lambda (mnemonic opcode1 opcode2)
-	 `(define-instruction ,mnemonic
-	    (((ST 0) (ST (? i)))
-	     (BYTE (8 ,opcode1)
-		   (8 (+ ,opcode2 i))))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  environment
+	  (let ((mnemonic (cadr form))
+		(opcode1 (caddr form))
+		(opcode2 (cadddr form)))
+	    `(define-instruction ,mnemonic
+	       (((ST 0) (ST (? i)))
+		(BYTE (8 ,opcode1)
+		      (8 (+ ,opcode2 i))))
 
-	    (()
-	     (BYTE (8 ,opcode1)
-		   (8 (+ ,opcode2 1)))))))))
+	       (()
+		(BYTE (8 ,opcode1)
+		      (8 (+ ,opcode2 1))))))))))
 
   (define-binary-flonum FUCOM  #xdd #xe0)
   (define-binary-flonum FUCOMP #xdd #xe8)

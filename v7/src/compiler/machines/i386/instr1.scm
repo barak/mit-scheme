@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: instr1.scm,v 1.15 2001/12/23 17:20:58 cph Exp $
+$Id: instr1.scm,v 1.16 2002/02/12 05:57:50 cph Exp $
 
-Copyright (c) 1992, 1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1992, 1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -57,70 +57,74 @@ USA.
 
 (let-syntax
     ((define-arithmetic-instruction
-      (non-hygienic-macro-transformer
-       (lambda (mnemonic opcode digit)
-	 `(define-instruction ,mnemonic
-	    ((W (? target r/mW) (R (? source)))
-	     (BYTE (8 ,(1+ opcode)))
-	     (ModR/M source target))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 (let ((mnemonic (cadr form))
+	       (opcode (caddr form))
+	       (digit (cadddr form)))
+	   `(define-instruction ,mnemonic
+	      ((W (? target r/mW) (R (? source)))
+	       (BYTE (8 ,(+ opcode 1)))
+	       (ModR/M source target))
 
-	    ((W (R (? target)) (? source r/mW))
-	     (BYTE (8 ,(+ opcode 3)))
-	     (ModR/M target source))
+	      ((W (R (? target)) (? source r/mW))
+	       (BYTE (8 ,(+ opcode 3)))
+	       (ModR/M target source))
 
-	    ((W (? target r/mW) (& (? value sign-extended-byte)))
-	     (BYTE (8 #x83))
-	     (ModR/M ,digit target)
-	     (BYTE (8 value SIGNED)))
+	      ((W (? target r/mW) (& (? value sign-extended-byte)))
+	       (BYTE (8 #x83))
+	       (ModR/M ,digit target)
+	       (BYTE (8 value SIGNED)))
 
-	    ((W (R 0) (& (? value)))	; AX/EAX
-	     (BYTE (8 ,(+ opcode 5)))
-	     (IMMEDIATE value))
+	      ((W (R 0) (& (? value)))	; AX/EAX
+	       (BYTE (8 ,(+ opcode 5)))
+	       (IMMEDIATE value))
 
-	    ((W (? target r/mW) (& (? value)))
-	     (BYTE (8 #x81))
-	     (ModR/M ,digit target)
-	     (IMMEDIATE value))
+	      ((W (? target r/mW) (& (? value)))
+	       (BYTE (8 #x81))
+	       (ModR/M ,digit target)
+	       (IMMEDIATE value))
 
-	    ((W (? target r/mW) (&U (? value zero-extended-byte)))
-	     (BYTE (8 #x83))
-	     (ModR/M ,digit target)
-	     (BYTE (8 value UNSIGNED)))
+	      ((W (? target r/mW) (&U (? value zero-extended-byte)))
+	       (BYTE (8 #x83))
+	       (ModR/M ,digit target)
+	       (BYTE (8 value UNSIGNED)))
 
-	    ((W (R 0) (&U (? value)))	; AX/EAX
-	     (BYTE (8 ,(+ opcode 5)))
-	     (IMMEDIATE value OPERAND UNSIGNED))
+	      ((W (R 0) (&U (? value)))	; AX/EAX
+	       (BYTE (8 ,(+ opcode 5)))
+	       (IMMEDIATE value OPERAND UNSIGNED))
 
-	    ((W (? target r/mW) (&U (? value)))
-	     (BYTE (8 #x81))
-	     (ModR/M ,digit target)
-	     (IMMEDIATE value OPERAND UNSIGNED))
+	      ((W (? target r/mW) (&U (? value)))
+	       (BYTE (8 #x81))
+	       (ModR/M ,digit target)
+	       (IMMEDIATE value OPERAND UNSIGNED))
 
-	    ((B (? target r/mB) (R (? source)))
-	     (BYTE (8 ,opcode))
-	     (ModR/M source target))
+	      ((B (? target r/mB) (R (? source)))
+	       (BYTE (8 ,opcode))
+	       (ModR/M source target))
 
-	    ((B (R (? target)) (? source r/mB))
-	     (BYTE (8 ,(+ opcode 2)))
-	     (ModR/M target source))
+	      ((B (R (? target)) (? source r/mB))
+	       (BYTE (8 ,(+ opcode 2)))
+	       (ModR/M target source))
 
-	    ((B (R 0) (& (? value)))	; AL
-	     (BYTE (8 ,(+ opcode 4))
-		   (8 value SIGNED)))
+	      ((B (R 0) (& (? value)))	; AL
+	       (BYTE (8 ,(+ opcode 4))
+		     (8 value SIGNED)))
 
-	    ((B (R 0) (&U (? value)))	; AL
-	     (BYTE (8 ,(+ opcode 4))
-		   (8 value UNSIGNED)))
+	      ((B (R 0) (&U (? value)))	; AL
+	       (BYTE (8 ,(+ opcode 4))
+		     (8 value UNSIGNED)))
 
-	    ((B (? target r/mB) (& (? value)))
-	     (BYTE (8 #x80))
-	     (ModR/M ,digit target)
-	     (BYTE (8 value SIGNED)))
+	      ((B (? target r/mB) (& (? value)))
+	       (BYTE (8 #x80))
+	       (ModR/M ,digit target)
+	       (BYTE (8 value SIGNED)))
 
-	    ((B (? target r/mB) (&U (? value)))
-	     (BYTE (8 #x80))
-	     (ModR/M ,digit target)
-	     (BYTE (8 value UNSIGNED))))))))
+	      ((B (? target r/mB) (&U (? value)))
+	       (BYTE (8 #x80))
+	       (ModR/M ,digit target)
+	       (BYTE (8 value UNSIGNED)))))))))
 
   (define-arithmetic-instruction ADC #x10 2)
   (define-arithmetic-instruction ADD #x00 0)
@@ -160,19 +164,24 @@ USA.
 
 (let-syntax
     ((define-bit-test-instruction
-      (non-hygienic-macro-transformer
-       (lambda (mnemonic opcode digit)
-	 `(define-instruction ,mnemonic
-	    (((? target r/mW) (& (? posn)))
-	     (BYTE (8 #x0f)
-		   (8 #xba))
-	     (ModR/M ,digit target)
-	     (BYTE (8 posn UNSIGNED)))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 (let ((mnemonic (cadr form))
+	       (opcode (caddr form))
+	       (digit (cadddr form)))
+	   `(define-instruction ,mnemonic
 
-	    (((? target r/mW) (R (? posn)))
-	     (BYTE (8 #x0f)
-		   (8 ,opcode))
-	     (ModR/M posn target)))))))
+	      (((? target r/mW) (& (? posn)))
+	       (BYTE (8 #x0f)
+		     (8 #xba))
+	       (ModR/M ,digit target)
+	       (BYTE (8 posn UNSIGNED)))
+
+	      (((? target r/mW) (R (? posn)))
+	       (BYTE (8 #x0f)
+		     (8 ,opcode))
+	       (ModR/M posn target))))))))
 
   (define-bit-test-instruction BT  #xa3 4)
   (define-bit-test-instruction BTC #xbb 7)
@@ -215,14 +224,18 @@ USA.
 
 (let-syntax
     ((define-string-instruction
-      (non-hygienic-macro-transformer
-       (lambda (mnemonic opcode)
-	 `(define-instruction ,mnemonic
-	    ((W)
-	     (BYTE (8 ,(1+ opcode))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 (let ((mnemonic (cadr form))
+	       (opcode (caddr form)))
+	   `(define-instruction ,mnemonic
 
-	    ((B)
-	     (BYTE (8 ,opcode))))))))
+	      ((W)
+	       (BYTE (8 ,(+ opcode 1))))
+
+	      ((B)
+	       (BYTE (8 ,opcode)))))))))
 
   (define-string-instruction CMPS #xa6)
   (define-string-instruction LODS #xac)
@@ -252,35 +265,42 @@ USA.
 
 (let-syntax
     ((define-inc/dec
-      (non-hygienic-macro-transformer
-       (lambda (mnemonic digit opcode)
-	 `(define-instruction ,mnemonic
-	    ((W (R (? reg)))
-	     (BYTE (8 (+ ,opcode reg))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 (let ((mnemonic (cadr form))
+	       (digit (caddr form))
+	       (opcode (cadddr form)))
+	   `(define-instruction ,mnemonic
+	      ((W (R (? reg)))
+	       (BYTE (8 (+ ,opcode reg))))
 
-	    ((W (? target r/mW))
-	     (BYTE (8 #xff))
-	     (ModR/M ,digit target))
+	      ((W (? target r/mW))
+	       (BYTE (8 #xff))
+	       (ModR/M ,digit target))
 
-	    ((B (? target r/mB))
-	     (BYTE (8 #xfe))
-	     (ModR/M ,digit target)))))))
+	      ((B (? target r/mB))
+	       (BYTE (8 #xfe))
+	       (ModR/M ,digit target))))))))
 
   (define-inc/dec DEC 1 #x48)
   (define-inc/dec INC 0 #x40))
 
 (let-syntax
     ((define-mul/div
-      (non-hygienic-macro-transformer
-       (lambda (mnemonic digit)
-	 `(define-instruction ,mnemonic
-	    ((W (R 0) (? operand r/mW))
-	     (BYTE (8 #xf7))
-	     (ModR/M ,digit operand))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 (let ((mnemonic (cadr form))
+	       (digit (caddr form)))
+	   `(define-instruction ,mnemonic
+	      ((W (R 0) (? operand r/mW))
+	       (BYTE (8 #xf7))
+	       (ModR/M ,digit operand))
 
-	    ((B (R 0) (? operand r/mB))
-	     (BYTE (8 #xf6))
-	     (ModR/M ,digit operand)))))))
+	      ((B (R 0) (? operand r/mB))
+	       (BYTE (8 #xf6))
+	       (ModR/M ,digit operand))))))))
 
   (define-mul/div DIV 6)
   (define-mul/div IDIV 7)
@@ -354,42 +374,46 @@ USA.
 (define-trivial-instruction INTO #xce)
 (define-trivial-instruction INVD #x0f #x08)	; 486 only
 (define-trivial-instruction IRET #xcf)
-
+
 (let-syntax
     ((define-jump-instruction
-      (non-hygienic-macro-transformer
-       (lambda (mnemonic opcode1 opcode2)
-	 `(define-instruction ,mnemonic
-	    ;; This assumes that *ADDRESS-SIZE* is 4 (32-bit mode)
-	    (((@PCR (? dest)))
-	     (VARIABLE-WIDTH
-	      (disp `(- ,dest (+ *PC* 2)))
-	      ((-128 127)
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 (let ((mnemonic (cadr form))
+	       (opcode1 (caddr form))
+	       (opcode2 (cadddr form)))
+	   `(define-instruction ,mnemonic
+	      ;; This assumes that *ADDRESS-SIZE* is 4 (32-bit mode)
+	      (((@PCR (? dest)))
+	       (VARIABLE-WIDTH
+		(disp `(- ,dest (+ *PC* 2)))
+		((-128 127)
+		 (BYTE (8 ,opcode1)
+		       (8 disp SIGNED)))
+		((() ())
+		 (BYTE (8 #x0f)
+		       (8 ,opcode2)
+		       (32 (- disp 4) SIGNED)))))
+
+	      ((B (@PCR (? dest)))
 	       (BYTE (8 ,opcode1)
-		     (8 disp SIGNED)))
-	      ((() ())
+		     (8 `(- ,dest (+ *PC* 1)) SIGNED)))
+
+	      ((W (@PCR (? dest)))
 	       (BYTE (8 #x0f)
-		     (8 ,opcode2)
-		     (32 (- disp 4) SIGNED)))))
+		     (8 ,opcode2))
+	       (IMMEDIATE `(- ,dest (+ *PC* 4)) ADDRESS)) ; fcn(*ADDRESS-SIZE*)
 
-	    ((B (@PCR (? dest)))
-	     (BYTE (8 ,opcode1)
-		   (8 `(- ,dest (+ *PC* 1)) SIGNED)))
+	      ((B (@PCO (? displ)))
+	       (BYTE (8 ,opcode1)
+		     (8 displ SIGNED)))
 
-	    ((W (@PCR (? dest)))
-	     (BYTE (8 #x0f)
-		   (8 ,opcode2))
-	     (IMMEDIATE `(- ,dest (+ *PC* 4)) ADDRESS))	; fcn(*ADDRESS-SIZE*)
+	      ((W (@PCO (? displ)))
+	       (BYTE (8 #x0f)
+		     (8 ,opcode2))
+	       (IMMEDIATE displ ADDRESS))))))))
 
-	    ((B (@PCO (? displ)))
-	     (BYTE (8 ,opcode1)
-		   (8 displ SIGNED)))
-
-	    ((W (@PCO (? displ)))
-	     (BYTE (8 #x0f)
-		   (8 ,opcode2))
-	     (IMMEDIATE displ ADDRESS)))))))
-
   (define-jump-instruction JA   #x77 #x87)
   (define-jump-instruction JAE  #x73 #x83)
   (define-jump-instruction JB   #x72 #x82)
@@ -420,19 +444,22 @@ USA.
   (define-jump-instruction JPO  #x7b #x8b)
   (define-jump-instruction JS   #x78 #x88)
   (define-jump-instruction JZ   #x74 #x84))
-  
+
 (let-syntax
     ((define-loop-instruction
-      (non-hygienic-macro-transformer
-       (lambda (mnemonic opcode)
-	 `(define-instruction ,mnemonic
-	    ((B (@PCR (? dest)))
-	     (BYTE (8 ,opcode)
-		   (8 `(- ,dest (+ *PC* 1)) SIGNED)))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 (let ((mnemonic (cadr form))
+	       (opcode (caddr form)))
+	   `(define-instruction ,mnemonic
+	      ((B (@PCR (? dest)))
+	       (BYTE (8 ,opcode)
+		     (8 `(- ,dest (+ *PC* 1)) SIGNED)))
 
-	    ((B (@PCO (? displ)))
-	     (BYTE (8 ,opcode)
-		   (8 displ SIGNED))))))))
+	      ((B (@PCO (? displ)))
+	       (BYTE (8 ,opcode)
+		     (8 displ SIGNED)))))))))
 
   (define-loop-instruction JCXZ   #xe3)
   (define-loop-instruction JECXZ  #xe3)
@@ -467,7 +494,7 @@ USA.
   (((? dest r/mW))
    (BYTE (8 #xff))
    (ModR/M 4 dest))
-
+
   ((B (@PCR (? dest)))
    (BYTE (8 #xeb)
 	 (8 `(- ,dest (+ *PC* 1)) SIGNED)))
@@ -492,7 +519,7 @@ USA.
    (BYTE (8 #xea))
    (BYTE (16 seg))
    (IMMEDIATE off ADDRESS)))
-
+
 (define-trivial-instruction LAHF #x9f)
 
 (define-instruction LAR
@@ -510,13 +537,17 @@ USA.
 
 (let-syntax
     ((define-load/store-state
-      (non-hygienic-macro-transformer
-       (lambda (mnemonic opcode digit)
-	 `(define-instruction ,mnemonic
-	    (((? operand mW))
-	     (BYTE (8 #x0f)
-		   (8 ,opcode))
-	     (ModR/M ,digit operand)))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 (let ((mnemonic (cadr form))
+	       (opcode (caddr form))
+	       (digit (cadddr form)))
+	   `(define-instruction ,mnemonic
+	      (((? operand mW))
+	       (BYTE (8 #x0f)
+		     (8 ,opcode))
+	       (ModR/M ,digit operand))))))))
 
   (define-load/store-state INVLPG #x01 7)	; 486 only
   (define-load/store-state LGDT   #x01 2)

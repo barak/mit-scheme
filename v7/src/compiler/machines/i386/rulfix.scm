@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rulfix.scm,v 1.33 2001/12/23 17:20:58 cph Exp $
+$Id: rulfix.scm,v 1.34 2002/02/12 05:58:12 cph Exp $
 
-Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1992-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -113,7 +113,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			 #f))
   (fixnum-1-arg target source
    (lambda (target)
-     (multiply-fixnum-constant target (* n fixnum-1) false))))
+     (multiply-fixnum-constant target (* n fixnum-1) #f))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -123,7 +123,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			 #f))
   (fixnum-1-arg target source
    (lambda (target)
-     (multiply-fixnum-constant target (* n fixnum-1) false))))
+     (multiply-fixnum-constant target (* n fixnum-1) #f))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -256,7 +256,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define (integer-power-of-2? n)
   (let loop ((power 1) (exponent 0))
-    (cond ((< n power) false)
+    (cond ((< n power) #f)
 	  ((= n power) exponent)
 	  (else
 	   (loop (* 2 power) (1+ exponent))))))
@@ -386,11 +386,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-arithmetic-method 'ONE-PLUS-FIXNUM fixnum-methods/1-arg
   (lambda (target)
-    (add-fixnum-constant target 1 false)))
+    (add-fixnum-constant target 1 #f)))
 
 (define-arithmetic-method 'MINUS-ONE-PLUS-FIXNUM fixnum-methods/1-arg
   (lambda (target)
-    (add-fixnum-constant target -1 false)))
+    (add-fixnum-constant target -1 #f)))
 
 (define-arithmetic-method 'FIXNUM-NOT fixnum-methods/1-arg
   (lambda (target)
@@ -403,27 +403,31 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((binary-operation
-      (non-hygienic-macro-transformer
-       (lambda (name instr commutative? idempotent?)
-	 `(define-arithmetic-method ',name fixnum-methods/2-args
-	    (fixnum-2-args/standard
-	     ,commutative?
-	     (lambda (target source2)
-	       (if (and ,idempotent? (equal? target source2))
-		   (LAP)
-		   (LAP (,instr W ,',target ,',source2))))))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 (let ((name (list-ref form 1))
+	       (instr (list-ref form 2))
+	       (commutative? (list-ref form 3))
+	       (idempotent? (list-ref form 4)))
+	   `(define-arithmetic-method ',name fixnum-methods/2-args
+	      (fixnum-2-args/standard
+	       ,commutative?
+	       (lambda (target source2)
+		 (if (and ,idempotent? (equal? target source2))
+		     (LAP)
+		     (LAP (,instr W ,',target ,',source2)))))))))))
 
-  #| (binary-operation PLUS-FIXNUM ADD true false) |#
-  (binary-operation MINUS-FIXNUM SUB false false)
-  (binary-operation FIXNUM-AND AND true true)
-  (binary-operation FIXNUM-OR OR true true)
-  (binary-operation FIXNUM-XOR XOR true false))
+  #| (binary-operation PLUS-FIXNUM ADD #t #f) |#
+  (binary-operation MINUS-FIXNUM SUB #f #f)
+  (binary-operation FIXNUM-AND AND #t #t)
+  (binary-operation FIXNUM-OR OR #t #t)
+  (binary-operation FIXNUM-XOR XOR #t #f))
 
 (define-arithmetic-method 'PLUS-FIXNUM fixnum-methods/2-args
   (let* ((operate
 	  (lambda (target source2)
 	    (LAP (ADD W ,target ,source2))))
-	 (standard (fixnum-2-args/standard true operate)))
+	 (standard (fixnum-2-args/standard #t operate)))
 
   (lambda (target source1 source2 overflow?)
     (if overflow?
@@ -446,7 +450,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-arithmetic-method 'FIXNUM-ANDC fixnum-methods/2-args
   (fixnum-2-args/standard
-   false
+   #f
    (lambda (target source2)
      (if (equal? target source2)
 	 (load-fixnum-constant 0 target)
@@ -459,7 +463,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-arithmetic-method 'MULTIPLY-FIXNUM fixnum-methods/2-args
   (fixnum-2-args/standard
-   false
+   #f
    (lambda (target source2)
      (cond ((not (equal? target source2))
 	    (LAP (SAR W ,target (& ,scheme-type-width))
@@ -505,7 +509,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
       overflow?				; ignored
       (require-register! ecx)
       (two-arg-register-operation operate
-				  false
+				  #f
 				  target
 				  source1
 				  source2))))
@@ -573,7 +577,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	   (LAP))
 	  (else
 	   (LAP (AND W ,target (& ,(* n fixnum-1))))))))
-
+
 (define-arithmetic-method 'FIXNUM-ANDC fixnum-methods/2-args-constant
   (lambda (target n overflow?)
     overflow?				; ignored
@@ -596,7 +600,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  (else
 	   (LAP (SHR W ,target (& ,(- 0 n)))
 		,@(word->fixnum target))))))
-
+
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (FIXNUM->OBJECT

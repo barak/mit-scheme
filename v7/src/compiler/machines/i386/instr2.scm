@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: instr2.scm,v 1.9 2001/12/23 17:20:58 cph Exp $
+$Id: instr2.scm,v 1.10 2002/02/12 05:57:54 cph Exp $
 
-Copyright (c) 1992, 1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1992, 1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -32,14 +32,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-load-segment
-      (non-hygienic-macro-transformer
-       (lambda (mnemonic . bytes)
-	 `(define-instruction ,mnemonic
-	    (((R (? reg)) (? pointer mW))
-	     (BYTE ,@(map (lambda (byte)
-			    `(8 ,byte))
-			  bytes))
-	     (ModR/M reg pointer)))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 (let ((mnemonic (cadr form))
+	       (bytes (cddr form)))
+	   `(define-instruction ,mnemonic
+	      (((R (? reg)) (? pointer mW))
+	       (BYTE ,@(map (lambda (byte)
+			      `(8 ,byte))
+			    bytes))
+	       (ModR/M reg pointer))))))))
 
   (define-load-segment LDS #xc5)
   (define-load-segment LSS #x0f #xb2)
@@ -55,34 +58,40 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-data-extension
-      (non-hygienic-macro-transformer
-       (lambda (mnemonic opcode)
-	 `(define-instruction ,mnemonic
-	    ((B (R (? target)) (? source r/mB))
-	     (BYTE (8 #x0f)
-		   (8 ,opcode))
-	     (ModR/M target source))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 (let ((mnemonic (cadr form))
+	       (opcode (caddr form)))
+	   `(define-instruction ,mnemonic
+	      ((B (R (? target)) (? source r/mB))
+	       (BYTE (8 #x0f)
+		     (8 ,opcode))
+	       (ModR/M target source))
 
-	    ((H (R (? target)) (? source r/mW))
-	     (BYTE (8 #x0f)
-		   (8 ,(1+ opcode)))
-	     (ModR/M target source)))))))
+	      ((H (R (? target)) (? source r/mW))
+	       (BYTE (8 #x0f)
+		     (8 ,(1+ opcode)))
+	       (ModR/M target source))))))))
 
   (define-data-extension MOVSX #xbe)
   (define-data-extension MOVZX #xb6))
 
 (let-syntax
     ((define-unary
-      (non-hygienic-macro-transformer
-       (lambda (mnemonic digit)
-	 `(define-instruction ,mnemonic
-	    ((W (? operand r/mW))
-	     (BYTE (8 #xf7))
-	     (ModR/M ,digit operand))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 (let ((mnemonic (cadr form))
+	       (digit (caddr form)))
+	   `(define-instruction ,mnemonic
+	      ((W (? operand r/mW))
+	       (BYTE (8 #xf7))
+	       (ModR/M ,digit operand))
 
-	    ((B (? operand r/mB))
-	     (BYTE (8 #xf6))
-	     (ModR/M ,digit operand)))))))
+	      ((B (? operand r/mB))
+	       (BYTE (8 #xf6))
+	       (ModR/M ,digit operand))))))))
 
   (define-unary NEG 3)
   (define-unary NOT 2))
@@ -329,34 +338,37 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-rotate/shift
-      (non-hygienic-macro-transformer
-       (lambda (mnemonic digit)
-	 `(define-instruction ,mnemonic
-	   ((W (? operand r/mW) (& 1))
-	    (BYTE (8 #xd1))
-	    (ModR/M ,digit operand))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 (let ((mnemonic (cadr form))
+	       (digit (caddr form)))
+	   `(define-instruction ,mnemonic
+	     ((W (? operand r/mW) (& 1))
+	      (BYTE (8 #xd1))
+	      (ModR/M ,digit operand))
 
-	   ((W (? operand r/mW) (& (? value)))
-	    (BYTE (8 #xc1))
-	    (ModR/M ,digit operand)
-	    (BYTE (8 value)))
+	     ((W (? operand r/mW) (& (? value)))
+	      (BYTE (8 #xc1))
+	      (ModR/M ,digit operand)
+	      (BYTE (8 value)))
 
-	   ((W (? operand r/mW) (R 1))
-	    (BYTE (8 #xd3))
-	    (ModR/M ,digit operand))
+	     ((W (? operand r/mW) (R 1))
+	      (BYTE (8 #xd3))
+	      (ModR/M ,digit operand))
 
-	   ((B (? operand r/mB) (& 1))
-	    (BYTE (8 #xd0))
-	    (ModR/M ,digit operand))
+	     ((B (? operand r/mB) (& 1))
+	      (BYTE (8 #xd0))
+	      (ModR/M ,digit operand))
 
-	   ((B (? operand r/mB) (& (? value)))
-	    (BYTE (8 #xc0))
-	    (ModR/M ,digit operand)
-	    (BYTE (8 value)))
+	     ((B (? operand r/mB) (& (? value)))
+	      (BYTE (8 #xc0))
+	      (ModR/M ,digit operand)
+	      (BYTE (8 value)))
 
-	   ((B (? operand r/mB) (R 1))
-	    (BYTE (8 #xd2))
-	    (ModR/M ,digit operand)))))))
+	     ((B (? operand r/mB) (R 1))
+	      (BYTE (8 #xd2))
+	      (ModR/M ,digit operand))))))))
 
   (define-rotate/shift RCL 2)
   (define-rotate/shift RCR 3)
@@ -369,19 +381,21 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-double-shift
-      (non-hygienic-macro-transformer
-       (lambda (mnemonic opcode)
-	 `(define-instruction ,mnemonic
-	    ((W (? target r/mW) (R (? source)) (& (? count)))
-	     (BYTE (8 #x0f)
-		   (8 ,opcode))
-	     (ModR/M target source)
-	     (BYTE (8 count)))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 (let ((mnemonic (cadr form))
+	       (opcode (caddr form)))
+	   `(define-instruction ,mnemonic
+	      ((W (? target r/mW) (R (? source)) (& (? count)))
+	       (BYTE (8 #x0f)
+		     (8 ,opcode))
+	       (ModR/M target source)
+	       (BYTE (8 count)))
 
-	    ((W (? target r/mW) (R (? source)) (R 1))
-	     (BYTE (8 #x0f)
-		   (8 ,(1+ opcode)))
-	     (ModR/M target source)))))))
+	      ((W (? target r/mW) (R (? source)) (R 1))
+	       (BYTE (8 #x0f)
+		     (8 ,(1+ opcode)))
+	       (ModR/M target source))))))))
 
   (define-double-shift SHLD #xa4)
   (define-double-shift SHRD #xac))
@@ -405,13 +419,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-setcc-instruction
-      (non-hygienic-macro-transformer
-       (lambda (mnemonic opcode)
-	 `(define-instruction ,mnemonic
-	    (((? target r/mB))
-	     (BYTE (8 #x0f)
-		   (8 ,opcode))
-	     (ModR/M 0 target)))))))		; 0?
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 (let ((mnemonic (cadr form))
+	       (opcode (caddr form)))
+	   `(define-instruction ,mnemonic
+	      (((? target r/mB))
+	       (BYTE (8 #x0f)
+		     (8 ,opcode))
+	       (ModR/M 0 target))))))))	; 0?
 
   (define-setcc-instruction SETA   #x97)
   (define-setcc-instruction SETAE  #x93)
