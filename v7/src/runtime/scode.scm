@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scode.scm,v 14.11 1991/02/15 18:06:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scode.scm,v 14.12 1991/06/24 23:15:37 jinx Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -118,8 +118,14 @@ MIT in each case. |#
 (define-integrable string->symbol
   (ucode-primitive string->symbol))
 
+(define-integrable find-symbol
+  (ucode-primitive find-symbol))
+
 (define-integrable (intern string)
   (string->symbol (string-downcase string)))
+
+(define (intern-soft string)
+  (find-symbol (string-downcase string)))
 
 (define (symbol-name symbol)
   (if (not (symbol? symbol))
