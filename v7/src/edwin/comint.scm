@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: comint.scm,v 1.26 1998/06/07 08:18:13 cph Exp $
+$Id: comint.scm,v 1.27 1998/08/30 01:52:39 cph Exp $
 
 Copyright (c) 1991-98 Massachusetts Institute of Technology
 
@@ -59,9 +59,7 @@ license should have been included along with this file. |#
   ;; Get rid of any old processes.
   (for-each delete-process (buffer-processes buffer))
   (set-buffer-point! buffer (buffer-end buffer))
-  (define-variable-local-value! buffer
-    (ref-variable-object comint-program-name)
-    program)
+  (local-set-variable! comint-program-name program buffer)
   (apply start-process
 	 name
 	 buffer
@@ -139,18 +137,15 @@ to continue it.
 
 Entry to this mode runs the hooks on comint-mode-hook."
   (lambda (buffer)
-    (define-variable-local-value! buffer
-	(ref-variable-object mode-line-process)
-      '(": %s"))
-    (define-variable-local-value! buffer
-	(ref-variable-object comint-input-ring)
-      (make-ring (ref-variable comint-input-ring-size buffer)))
-    (define-variable-local-value! buffer
-	(ref-variable-object comint-last-input-end)
-      (mark-right-inserting-copy (buffer-end buffer)))
-    (define-variable-local-value! buffer
-	(ref-variable-object comint-last-input-match)
-      false)
+    (local-set-variable! mode-line-process '(": %s") buffer)
+    (local-set-variable! comint-input-ring
+			 (make-ring
+			  (ref-variable comint-input-ring-size buffer))
+			 buffer)
+    (local-set-variable! comint-last-input-end
+			 (mark-right-inserting-copy (buffer-end buffer))
+			 buffer)
+    (local-set-variable! comint-last-input-match #f buffer)
     (event-distributor/invoke! (ref-variable comint-mode-hook buffer) buffer)))
 
 (define-variable comint-mode-hook
@@ -356,7 +351,7 @@ comint-prompt-regexp."
 (define (comint-line-start mark)
   (let ((start (line-start mark 0)))
     (let ((mark
-	   (re-match-forward (ref-variable comint-prompt-regexp)
+	   (re-match-forward (ref-variable comint-prompt-regexp mark)
 			     start
 			     (line-end mark 0))))
       (if (and mark (mark<= mark (line-end start 0)))
@@ -432,27 +427,26 @@ See also \\[comint-dynamic-complete]."
 	   (region-delete! region)
 	   (insert-string filename* (region-start region))))))))
 
-(define-command comint-dynamic-complete
+(define (comint-dynamic-complete-filename)
   "Complete the filename at point.
 This function is similar to \\[comint-replace-by-expanded-filename], except
 that it won't change parts of the filename already entered in the buffer; 
 it just adds completion characters to the end of the filename."
-  ()
-  (lambda ()
-    (let ((region (comint-current-filename-region)))
-      (let ((pathname
-	     (merge-pathnames (region->string region)
-			      (buffer-default-directory (current-buffer)))))
-	(let ((filename (->namestring pathname)))
-	  (set-current-point! (region-end region))
-	  (comint-filename-complete
-	   pathname
-	   filename
-	   (lambda (filename*)
-	     (insert-substring filename*
-			       (string-length filename)
-			       (string-length filename*)
-			       (region-end region)))))))))
+  (let ((region (comint-current-filename-region)))
+    (let ((pathname
+	   (merge-pathnames (region->string region)
+			    (buffer-default-directory (current-buffer)))))
+      (let ((filename (->namestring pathname)))
+	(set-current-point! (region-end region))
+	(comint-filename-complete
+	 pathname
+	 filename
+	 (lambda (filename*)
+	   (insert-substring filename*
+			     (string-length filename)
+			     (string-length filename*)
+			     (region-end region)))))))
+  #t)
 
 (define-command comint-dynamic-list-completions
   "List all possible completions of the filename at point."
@@ -479,3 +473,29 @@ it just adds completion characters to the end of the filename."
       filename
       (filename-complete-string pathname if-unique if-not-unique if-not-found))
     insert-completion))
+
+(define-variable comint-dynamic-complete-functions
+  "List of functions called to perform completion.
+Functions should return true if completion was performed.
+See also `comint-dynamic-complete'.
+
+This is a good thing to set in mode hooks."
+  (list comint-dynamic-complete-filename)
+  (lambda (object)
+    (and (list? object)
+	 (for-all? object
+	   (lambda (object)
+	     (and (procedure? object)
+		  (procedure-arity-valid? object 0)))))))
+
+(define-command comint-dynamic-complete
+  "Dynamically perform completion at point.
+Calls the functions in `comint-dynamic-complete-functions' to perform
+completion until a function returns true, at which point completion is
+assumed to have occurred."
+  ()
+  (lambda ()
+    (let loop ((thunks (ref-variable comint-dynamic-complete-functions)))
+      (if (not (null? thunks))
+	  (if (not ((car thunks)))
+	      (loop (cdr thunks)))))))
