@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/hash.scm,v 13.43 1987/02/12 09:08:35 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/hash.scm,v 13.44 1987/02/12 09:30:28 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -104,8 +104,7 @@
 	  (error "unhash: Not a valid hash number" n))))
 
 (define (valid-hash-number? n)
-  (if (zero? n)
-      true
+  (or (zero? n)
       (object-unhash n)))
 
 (define object-hash)
@@ -129,8 +128,7 @@
   (set! hash-table (vector-cons (1+ size) '()))
   (vector-set! hash-table 0 (&make-object snmv-type size))
   (let initialize ((n 0))
-    (if (= n size)
-	true
+    (if (< n size)
 	(begin (vector-set! unhash-table n (cons true '()))
 	       (initialize (1+ n))))))
 
@@ -145,7 +143,7 @@
      (let* ((hash-index (1+ (modulo (primitive-datum object) hash-table-size)))
 	    (bucket (vector-ref hash-table hash-index))
 	    (association (assq object bucket)))
-       (if (not (null? association))
+       (if association
 	   (cdr association)
 	   (let ((pair (cons object next-hash-number))
 		 (result next-hash-number)
@@ -167,7 +165,7 @@
 (named-lambda (object-unhash number)
   (let ((index (modulo number hash-table-size)))
     (with-interrupt-mask interrupt-mask-none
-     (lambda (ie)
+     (lambda (ignore)
        (let ((bucket (vector-ref unhash-table index)))
 	 (set-car! bucket false)
 	 (let ((result
