@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.14 1990/09/11 19:49:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.15 1990/10/02 22:52:26 cph Rel $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -39,6 +39,17 @@ MIT in each case. */
 #include "ux.h"
 #include "x11.h"
 
+int x_debug = 0;
+static int initialization_done = 0;
+
+#define INITIALIZE_ONCE()						\
+{									\
+  if (!initialization_done)						\
+    initialize_once ();							\
+}
+
+static void EXFUN (initialize_once, (void));
+
 PTR
 DEFUN (x_malloc, (size), unsigned int size)
 {
@@ -57,222 +68,230 @@ DEFUN (x_realloc, (ptr, size), PTR ptr AND unsigned int size)
   return (result);
 }
 
-int
-x_allocate_table_index (table, item)
-     struct allocation_table * table;
-     char * item;
+struct allocation_table
 {
-  char ** items = (table -> items);
-  int length = (table -> length);
-  int i;
+  PTR * items;
+  int length;
+};
 
+static struct allocation_table x_display_table;
+static struct allocation_table x_window_table;
+
+static void
+DEFUN (allocation_table_initialize, (table), struct allocation_table * table)
+{
+  (table -> length) = 0;
+}
+
+static unsigned int
+DEFUN (allocate_table_index, (table, item),
+       struct allocation_table * table AND
+       PTR item)
+{
+  unsigned int length = (table -> length);
+  unsigned int new_length;
+  PTR * items = (table -> items);
+  PTR * new_items;
+  PTR * scan;
+  PTR * end;
   if (length == 0)
     {
-      int new_length = 4;
-      char ** new_items = (x_malloc ((sizeof (char *)) * new_length));
-      (new_items [0]) = item;
-      for (i = 1; (i < new_length); i += 1)
-	(new_items [i]) = ((char *) 0);
-      (table -> items) = new_items;
-      (table -> length) = new_length;
-      return (0);
+      new_length = 4;
+      new_items = (x_malloc ((sizeof (PTR)) * new_length));
     }
-  for (i = 0; (i < length); i += 1)
-    if ((items [i]) == ((char *) 0))
-      {
-	(items [i]) = item;
-	return (i);
-      }
-  {
-    int new_length = (length * 2);
-    char ** new_items = (x_realloc (items, ((sizeof (char *)) * new_length)));
-    (new_items [length]) = item;
-    for (i = (length + 1); (i < new_length); i += 1)
-      (new_items [i]) = ((char *) 0);
-    (table -> items) = new_items;
-    (table -> length) = new_length;
-  }
+  else
+    {
+      scan = items;
+      end = (scan + length);
+      while (scan < end)
+	if ((*scan++) == 0)
+	  {
+	    (*--scan) = item;
+	    return (scan - items);
+	  }
+      new_length = (length * 2);
+      new_items = (x_realloc (items, ((sizeof (PTR)) * new_length)));
+    }
+  scan = (new_items + length);
+  end = (new_items + new_length);
+  (*scan++) = item;
+  while (scan < end)
+    (*scan++) = 0;
+  (table -> items) = new_items;
+  (table -> length) = new_length;
   return (length);
 }
 
-#define DEF_ALLOCATION_ARG(name, result_type, result)			\
-result_type								\
-name (arg, table)							\
-     int arg;								\
-     struct allocation_table * table;					\
-{									\
-  fast SCHEME_OBJECT object = (ARG_REF (arg));				\
-									\
-  if (! (FIXNUM_P (object)))						\
-    error_wrong_type_arg (arg);						\
-  if (! (FIXNUM_NEGATIVE_P (object)))					\
-    {									\
-      fast int length = (table -> length);				\
-      fast char ** items = (table -> items);				\
-      fast int index = (UNSIGNED_FIXNUM_TO_LONG (object));		\
-      if ((index < length) && ((items [index]) != ((char *) 0)))	\
-	return (result);						\
-    }									\
-  error_bad_range_arg (arg);						\
-  /* NOTREACHED */							\
-}
-
-DEF_ALLOCATION_ARG (x_allocation_item_arg, char *, (items [index]))
-DEF_ALLOCATION_ARG (x_allocation_index_arg, int, index)
-
-struct allocation_table x_display_table;
-struct allocation_table x_window_table;
-
-int x_debug = 0;
-
-DEFINE_PRIMITIVE ("X-DEBUG", Prim_x_debug, 1, 1, 0)
+static PTR
+DEFUN (allocation_item_arg, (arg, table),
+       unsigned int arg AND
+       struct allocation_table * table)
 {
-  PRIMITIVE_HEADER (1);
-
-  x_debug = ((ARG_REF (1)) != SHARP_F);
-  PRIMITIVE_RETURN (UNSPECIFIC);
+  unsigned int index = (arg_index_integer (arg, (table -> length)));
+  PTR item = ((table -> items) [index]);
+  if (item == 0)
+    error_bad_range_arg (arg);
+  return (item);
 }
 
+struct xdisplay *
+DEFUN (x_display_arg, (arg), unsigned int arg)
+{
+  INITIALIZE_ONCE ();
+  return (allocation_item_arg (arg, (&x_display_table)));
+}
+
+struct xwindow *
+DEFUN (x_window_arg, (arg), unsigned int arg)
+{
+  INITIALIZE_ONCE ();
+  return (allocation_item_arg (arg, (&x_window_table)));
+}
+
 static int
-x_io_error_handler (display)
-     Display * display;
+DEFUN (x_io_error_handler, (display), Display * display)
 {
   fprintf (stderr, "\nX IO Error\n");
   error_external_return ();
 }
 
 static int
-x_error_handler (display, error_event)
-     Display * display;
-     XErrorEvent * error_event;
+DEFUN (x_error_handler, (display, error_event),
+       Display * display AND
+       XErrorEvent * error_event)
 {
   char buffer [2048];
-
   XGetErrorText (display, (error_event -> error_code),
 		 buffer, (sizeof (buffer)));
   fprintf (stderr, "\nX Error: %s\n", buffer);
   fprintf (stderr, "         Request code: %d\n",
 	   (error_event -> request_code));
   fprintf (stderr, "         Error serial: %x\n", (error_event -> serial));
+  fflush (stderr);
   error_external_return ();
 }
-
-unsigned long
-x_decode_color (display, color_map, color_name, default_color)
-     Display * display;
-     Colormap color_map;
-     char * color_name;
-     unsigned long default_color;
+
+static int
+DEFUN (x_decode_color, (display, color_map, color_name, color_return),
+       Display * display AND
+       Colormap color_map AND
+       char * color_name AND
+       unsigned long * color_return)
 {
   XColor cdef;
-
-  if ((strcmp (color_name, "black")) == 0)
-    return (BlackPixel (display, (DefaultScreen (display))));
-  if ((strcmp (color_name, "white")) == 0)
-    return (WhitePixel (display, (DefaultScreen (display))));
-  if (DisplayCells (display, (DefaultScreen (display))) <= 2)
-    return (default_color);
-  if ((XParseColor (display, color_map, color_name, (& cdef))) &&
-      (XAllocColor (display, color_map, (& cdef))))
-    return (cdef . pixel);
-  return (default_color);
+  if ((XParseColor (display, color_map, color_name, (&cdef)))
+      && (XAllocColor (display, color_map, (&cdef))))
+    {
+      (*color_return) = (cdef . pixel);
+      return (1);
+    }
+  return (0);
 }
-
-char *
-x_get_default (display, resource_name, property_name, class_name, sdefault)
-     Display * display;
-     char * resource_name;
-     char * property_name;
-     char * class_name;
-     char * sdefault;
+
+static unsigned long
+DEFUN (arg_color, (arg, display),
+       unsigned int arg AND
+       Display * display)
 {
-  char * result;
-
-  result = (XGetDefault (display, resource_name, property_name));
-  if (result != ((char *) 0))
-    return (result);
-  result = (XGetDefault (display, resource_name, class_name));
-  if (result != ((char *) 0))
-    return (result);
-  return (sdefault);
+  unsigned long result;
+  if (! (x_decode_color
+	 (display,
+	  (DefaultColormap (display, (DefaultScreen (display)))),
+	  (STRING_ARG (arg)),
+	  (&result))))
+    error_bad_range_arg (arg);
+  return (result);
 }
 
-unsigned long
-x_default_color (display, resource_name, property_name, class_name,
-		 default_color)
-     Display * display;
-     char * resource_name;
-     char * property_name;
-     char * class_name;
-     unsigned long default_color;
-{
-  char * color_name =
-    (x_get_default
-     (display, resource_name, property_name, class_name, ((char *) 0)));
-  if (color_name == ((char *) 0))
-    return (default_color);
-  return
-    (x_decode_color
-     (display,
-      (DefaultColormap (display, (DefaultScreen (display)))),
-      color_name,
-      default_color));
-}
-
-void
-x_set_mouse_colors (display, mouse_cursor, mouse_pixel, background_pixel)
-     Display * display;
-     Cursor mouse_cursor;
-     unsigned long mouse_pixel;
-     unsigned long background_pixel;
+static void
+DEFUN (x_set_mouse_colors,
+       (display, mouse_cursor, mouse_pixel, background_pixel),
+       Display * display AND
+       Cursor mouse_cursor AND
+       unsigned long mouse_pixel AND
+       unsigned long background_pixel)
 {
   Colormap color_map = (DefaultColormap (display, (DefaultScreen (display))));
   XColor mouse_color;
   XColor background_color;
-
   (mouse_color . pixel) = mouse_pixel;
-  XQueryColor (display, color_map, (& mouse_color));
+  XQueryColor (display, color_map, (&mouse_color));
   (background_color . pixel) = background_pixel;
-  XQueryColor (display, color_map, (& background_color));
-  XRecolorCursor
-    (display, mouse_cursor, (& mouse_color), (& background_color));
-  return;
+  XQueryColor (display, color_map, (&background_color));
+  XRecolorCursor (display, mouse_cursor, (&mouse_color), (&background_color));
+}
+
+char *
+DEFUN (x_get_default,
+       (display, resource_name, property_name, class_name, sdefault),
+       Display * display AND
+       char * resource_name AND
+       char * property_name AND
+       char * class_name AND
+       char * sdefault)
+{
+  char * result = (XGetDefault (display, resource_name, property_name));
+  if (result != 0)
+    return (result);
+  result = (XGetDefault (display, resource_name, class_name));
+  if (result != 0)
+    return (result);
+  return (sdefault);
 }
 
+static unsigned long
+DEFUN (x_default_color,
+       (display, resource_name, property_name, class_name, default_color),
+       Display * display AND
+       char * resource_name AND
+       char * property_name AND
+       char * class_name AND
+       unsigned long default_color)
+{
+  char * color_name =
+    (x_get_default (display, resource_name, property_name, class_name, 0));
+  unsigned long result;
+  return
+    (((color_name != 0)
+      && (x_decode_color
+	  (display,
+	   (DefaultColormap (display, (DefaultScreen (display)))),
+	   color_name,
+	   (&result))))
+     ? result
+     : default_color);
+}
+
 void
-x_default_attributes (display, resource_name, attributes)
-     Display * display;
-     char * resource_name;
-     struct drawing_attributes * attributes;
+DEFUN (x_default_attributes, (display, resource_name, attributes),
+       Display * display AND
+       char * resource_name AND
+       struct drawing_attributes * attributes)
 {
   int screen_number = (DefaultScreen (display));
-
   (attributes -> font) =
     (XLoadQueryFont
      (display,
-      (x_get_default
-       (display, resource_name, "font", "Font", "9x15"))));
-  if ((attributes -> font) == ((XFontStruct *) 0))
+      (x_get_default (display, resource_name, "font", "Font", "9x15"))));
+  if ((attributes -> font) == 0)
     error_external_return ();
   {
     char * s =
       (x_get_default
-       (display, resource_name, "borderWidth", "BorderWidth", ((char *) 0)));
-    (attributes -> border_width) = ((s == ((char *) 0)) ? 2 : (atoi (s)));
+       (display, resource_name, "borderWidth", "BorderWidth", 0));
+    (attributes -> border_width) = ((s == 0) ? 2 : (atoi (s)));
   }
   {
     char * s =
       (x_get_default
-       (display, resource_name,
-	"internalBorder", "BorderWidth", ((char *) 0)));
+       (display, resource_name, "internalBorder", "BorderWidth", 0));
     (attributes -> internal_border_width) =
-      ((s == ((char *) 0)) ? (attributes -> border_width) : (atoi (s)));
+      ((s == 0) ? (attributes -> border_width) : (atoi (s)));
   }
   {
     unsigned long white_pixel = (WhitePixel (display, screen_number));
     unsigned long black_pixel = (BlackPixel (display, screen_number));
     unsigned long foreground_pixel;
-
     (attributes -> background_pixel) =
       (x_default_color
        (display, resource_name, "background", "Background", white_pixel));
@@ -293,13 +312,11 @@ x_default_attributes (display, resource_name, attributes)
        (display, resource_name,
 	"pointerColor", "Foreground", foreground_pixel));
   }
-  return;
 }
 
 #define MAKE_GC(gc, fore, back)						\
 {									\
   XGCValues gcv;							\
-									\
   (gcv . font) = fid;							\
   (gcv . foreground) = (fore);						\
   (gcv . background) = (back);						\
@@ -311,34 +328,40 @@ x_default_attributes (display, resource_name, attributes)
 }
 
 struct xwindow *
-x_make_window (display, window, x_size, y_size, attributes, extra, deallocator, event_proc)
-     Display * display;
-     Window window;
-     int x_size;
-     int y_size;
-     struct drawing_attributes * attributes;
-     int extra;
-     void (* deallocator) ();
-     void (* event_proc) ();
+DEFUN (x_make_window, (xd, window, x_size, y_size, attributes, methods, extra),
+       struct xdisplay * xd AND
+       Window window AND
+       int x_size AND
+       int y_size AND
+       struct drawing_attributes * attributes AND
+       struct xwindow_methods * methods AND
+       unsigned int extra)
 {
   GC normal_gc;
   GC reverse_gc;
   GC cursor_gc;
   struct xwindow * xw;
+  Display * display = (XD_DISPLAY (xd));
   Font fid = ((attributes -> font) -> fid);
   unsigned long foreground_pixel = (attributes -> foreground_pixel);
   unsigned long background_pixel = (attributes -> background_pixel);
   Cursor mouse_cursor = (XCreateFontCursor (display, XC_left_ptr));
-
   MAKE_GC (normal_gc, foreground_pixel, background_pixel);
   MAKE_GC (reverse_gc, background_pixel, foreground_pixel);
   MAKE_GC (cursor_gc, background_pixel, (attributes -> cursor_pixel));
   x_set_mouse_colors
     (display, mouse_cursor, (attributes -> mouse_pixel), background_pixel);
   XDefineCursor (display, window, mouse_cursor);
-
-  xw = (x_malloc (sizeof (struct xwindow)));
-  (XW_DISPLAY (xw)) = display;
+  XSelectInput
+    (display, window,
+     KeyPressMask | ExposureMask |
+     ButtonPressMask | ButtonReleaseMask |
+     StructureNotifyMask | FocusChangeMask |
+     LeaveWindowMask | EnterWindowMask);
+  xw =
+    (x_malloc (((sizeof (struct xwindow)) - (sizeof (xw -> extra))) + extra));
+  (XW_ALLOCATION_INDEX (xw)) = (allocate_table_index ((&x_window_table), xw));
+  (XW_XD (xw)) = xd;
   (XW_WINDOW (xw)) = window;
   (XW_X_SIZE (xw)) = x_size;
   (XW_Y_SIZE (xw)) = y_size;
@@ -346,609 +369,433 @@ x_make_window (display, window, x_size, y_size, attributes, extra, deallocator, 
   (XW_CLIP_Y (xw)) = 0;
   (XW_CLIP_WIDTH (xw)) = x_size;
   (XW_CLIP_HEIGHT (xw)) = y_size;
-  (xw -> attributes) = (* attributes);
+  (xw -> attributes) = (*attributes);
+  (xw -> methods) = (*methods);
   (XW_NORMAL_GC (xw)) = normal_gc;
   (XW_REVERSE_GC (xw)) = reverse_gc;
   (XW_CURSOR_GC (xw)) = cursor_gc;
   (XW_MOUSE_CURSOR (xw)) = mouse_cursor;
-  ((xw -> events) . head) = ((struct event_queue_element *) 0);
-  ((xw -> events) . tail) = ((struct event_queue_element *) 0);
-  (XW_EVENT_FLAGS (xw)) = 0;
-  (XW_VISIBLE_P (xw)) = 0;
-
-  if (extra > 0)
-    (xw -> extra) = (x_malloc (extra));
-  (xw -> deallocator) = deallocator;
-  (xw -> event_proc) = event_proc;
+  (XW_EVENT_MASK (xw)) = 0;
   return (xw);
 }
-
-SCHEME_OBJECT
-x_window_to_object (xw)
-     struct xwindow * xw;
-{
-  return
-    (LONG_TO_UNSIGNED_FIXNUM
-     (x_allocate_table_index ((& x_window_table), ((char *) xw))));
-}
 
-struct xwindow *
-x_window_to_xw (window)
-     Window window;
+static struct xwindow *
+DEFUN (x_window_to_xw, (window), Window window)
 {
-  int length = (x_window_table . length);
-  struct xwindow ** items = ((struct xwindow **) (x_window_table . items));
-  int i;
-  struct xwindow * xw;
-
-  for (i = 0; (i < length); i += 1)
+  struct xwindow ** scan = ((struct xwindow **) (x_window_table . items));
+  struct xwindow ** end = (scan + (x_window_table . length));
+  while (scan < end)
     {
-      xw = (items [i]);
+      struct xwindow * xw = (*scan++);
       if ((XW_WINDOW (xw)) == window)
 	return (xw);
     }
-  return ((struct xwindow *) 0);
+  return (0);
 }
 
-int
-x_window_to_xw_index (window)
-     Window window;
+static void
+DEFUN (x_close_window, (xw), struct xwindow * xw)
 {
-  int length = (x_window_table . length);
-  struct xwindow ** items = ((struct xwindow **) (x_window_table . items));
-  int i;
-  struct xwindow * xw;
-
-  for (i = 0; (i < length); i += 1)
-    {
-      xw = (items [i]);
-      if ((XW_WINDOW (xw)) == window)
-	return (i);
-    }
-  return (-1);
-}
-
-Display *
-x_close_window (index)
-     int index;
-{
-  struct xwindow * xw;
-  Display * display;
-
-  xw = ((struct xwindow *) ((x_window_table . items) [index]));
-  ((x_window_table . items) [index]) = 0;
-  display = (XW_DISPLAY (xw));
+  Display * display = (XW_DISPLAY (xw));
+  ((x_window_table . items) [XW_ALLOCATION_INDEX (xw)]) = 0;
   {
-    void (* deallocator) () = (xw -> deallocator);
-    if (deallocator != ((void (*) ()) 0))
-      (* deallocator) (xw);
+    x_deallocator_t deallocator = (XW_DEALLOCATOR (xw));
+    if (deallocator != 0)
+      (*deallocator) (xw);
   }
   {
     XFontStruct * font = (XW_FONT (xw));
-    if (font != ((XFontStruct *) 0))
+    if (font != 0)
       XFreeFont (display, font);
   }
   XDestroyWindow (display, (XW_WINDOW (xw)));
   free (xw);
-  return (display);
-}
-
-void
-x_close_display (index)
-     int index;
-{
-  Display * display;
-
-  display = ((Display *) ((x_display_table . items) [index]));
-  ((x_display_table . items) [index]) = 0;
-  {
-    struct xwindow ** items = ((struct xwindow **) (x_window_table . items));
-    int length = (x_window_table . length);
-    int i;
-
-    for (i = 0; (i < length); i += 1)
-      {
-	struct xwindow * xw = (items [i]);
-	if ((xw != ((struct xwindow *) 0)) &&
-	    ((XW_DISPLAY (xw)) == display))
-	  (void) x_close_window (i);
-      }
-  }
-  XCloseDisplay (display);
-  return;
-}
-
-static struct event_queue global_x_event_queue;
-
-int
-x_process_events ()
-{
-  Display ** displays;
-  Display * display;
-  int length;
-  int i;
-  int any_events_p = false;
-
-  displays = ((Display **) (x_display_table . items));
-  length = (x_display_table . length);
-  for (i = 0; (i < length); ++i) {
-    if ((display = displays [i]) != ((Display *) 0)) {
-      any_events_p = x_distribute_events (display) || any_events_p;
-    }
-  }
-  return (any_events_p);
 }
 
 static void
-x_enqueue_event (events, event)
-     struct event_queue * events;
-     XEvent * event;
+DEFUN (x_close_display, (xd), struct xdisplay * xd)
 {
-  struct event_queue_element * element;
-  struct event_queue_element * global_element;
-
-  element = (x_malloc (sizeof (struct event_queue_element)));
-  (element -> event) = (* event);
-  (element -> next) = ((struct event_queue_element *) 0);
-  if ((events -> head) == ((struct event_queue_element *) 0))
-    (events -> head) = element;
-  else
-    ((events -> tail) -> next) = element;
-  (events -> tail) = element;
-
-  global_element = (x_malloc (sizeof (struct event_queue_element)));
-  (global_element -> event) = (* event);
-  (global_element -> next) = ((struct event_queue_element *) 0);
-  if ((global_x_event_queue . head) == ((struct event_queue_element *) 0))
-    (global_x_event_queue . head) = global_element;
-  else
-    ((global_x_event_queue . tail) -> next) = global_element;
-  (global_x_event_queue . tail) = global_element;
-
-  return;
-}
-
-static int
-x_dequeue_event (events, event)
-     struct event_queue * events;
-     XEvent * event;
-{
-  struct event_queue_element * element;
-
-  element = (events -> head);
-  if (element == ((struct event_queue_element *) 0))
-    return (0);
-  (* event) = (element -> event);
-  (events -> head) = (element -> next);
-  free (element);
-  return (1);
-}
-
-int 
-x_dequeue_global_event (event)
-     XEvent * event;
-{
-  (void) x_process_events();
-  if (x_dequeue_event ((& global_x_event_queue), event)) {
-    return (1);
-  }
-  return (x_dequeue_event ((& global_x_event_queue), event));
-}
-
-void
-xw_enqueue_event (xw, event)
-     struct xwindow * xw;
-     XEvent * event;
-{
-  x_enqueue_event ((& (xw -> events)), event);
-  return;
-}
-
-int
-xw_dequeue_event (xw, event)
-     struct xwindow * xw;
-     XEvent * event;
-{
-  if (x_dequeue_event ((& (xw -> events)), event))
-    return (1);
-  (void) x_distribute_events (XW_DISPLAY (xw));
-  return (x_dequeue_event ((& (xw -> events)), event));
-}
-
-int
-x_distribute_events (display)
-     Display * display;
-{
-  int nevents;
-  XEvent * event;
-  struct xwindow * exw;
-  int any_events_p;
-
-  nevents = (XEventsQueued (display, QueuedAfterReading));
-  any_events_p = (nevents ? true : false);
-  while (nevents > 0)
+  struct xwindow ** scan = ((struct xwindow **) (x_window_table . items));
+  struct xwindow ** end = (scan + (x_window_table . length));
+  while (scan < end)
     {
-      event = (x_malloc (sizeof (XEvent)));
-      XNextEvent (display, (event));
-      nevents -= 1;
-
-      exw = (x_window_to_xw ((event -> xany) . window));
-      if (exw == ((struct xwindow *) 0))
-	continue;
-      (exw->event_proc)(exw, (event));
-      xw_enqueue_event (exw, (event));
+      struct xwindow * xw = (*scan++);
+      if ((xw != 0) && ((XW_XD (xw)) == xd))
+	x_close_window (xw);
     }
-  return (any_events_p);
+  ((x_display_table . items) [XD_ALLOCATION_INDEX (xd)]) = 0;
+  XCloseDisplay (XD_DISPLAY (xd));
 }
-
-void
-xw_wait_for_window_event (xw)
-     struct xwindow * xw;
-{
-  Display * display = (XW_DISPLAY (xw));
-  struct xwindow * exw;
-  XEvent event_s;
-  XEvent * event;
-
-  event = &event_s;
-
-  while (1)
-    {
-      XNextEvent (display, event);
-
-      exw = (x_window_to_xw ((event -> xany) . window));
-      if (exw != ((struct xwindow *) 0)) {
-	(exw->event_proc)(exw, event);
-	xw_enqueue_event (exw, event);
-	if (exw == xw)
-	  {
-	    (void) x_distribute_events (display);
-	    break;
-	  }
-      }
-    }
-  return;
-}
-
-static int * x_select_mask;
-static int x_select_mask_size = 0;
-static int x_max_file_descriptor;
-
-int
-copy_x_select_mask (mask)
-     int ** mask;
-{
-  int i;
-  
-  (*mask) = (x_malloc (x_select_mask_size * sizeof (int)));
-  for (i = 0; i < x_select_mask_size; i++) {
-    (*mask) [i] = (x_select_mask) [i];
-  }
-  return (x_max_file_descriptor);
-}
-
-/* Note that because of the conditional use of select here we can't
-   depend on x_wait_for_event() actually waiting for an event. The
-   return value will tell you if an event actually was processed */
-
-int
-x_wait_for_event ()
-{
-  int * select_mask;
-  int max_filedesc;
-  int any_events_p;
-
-  any_events_p = x_process_events ();
-
-#ifdef HAVE_SELECT
-  if (! any_events_p) {
-    max_filedesc = copy_x_select_mask(&select_mask);
-    UX_select ((1 +max_filedesc), select_mask, 0, 0, 0);
-    any_events_p = x_process_events ();
-  }
-#endif  /* HAVE_SELECT */
-
-  return (any_events_p);
-}
-
-#define MAKE_EVENT(event_type, window_index, extra)			\
-(cons (LONG_TO_UNSIGNED_FIXNUM (event_type),				\
-       cons (((window_index < 0) ?					\
-	      SHARP_F :							\
-	      LONG_TO_UNSIGNED_FIXNUM (window_index)),			\
-	     extra)))
-
-int
-check_button (button)
-     int button;
-{
-  switch (button)
-    {
-    case Button1: return (0);
-    case Button2: return (1);
-    case Button3: return (2);
-    case Button4: return (3);
-    case Button5: return (4);
-    default: return (-1);
-    }
-}
-
-static SCHEME_OBJECT
-x_event_to_scheme_event (event)
-     XEvent * event;
-{
-  struct xwindow * exw;
-  int xw_index;
-
-  xw_index = x_window_to_xw_index ((event -> xany) . window);
-  exw = (struct xwindow *) (x_window_table . items) [xw_index];
-  switch (event -> type) {
-
-  case ConfigureNotify:
-    return (MAKE_EVENT (EVENT_TYPE_CONFIGURE, xw_index, SHARP_F));
-    break;
-
-  case MapNotify:
-    return (MAKE_EVENT (EVENT_TYPE_MAP, xw_index, SHARP_F));
-    break;
-
-  case UnmapNotify:
-    return (MAKE_EVENT (EVENT_TYPE_UNMAP, xw_index, SHARP_F));
-    break;
-
-  case Expose:
-    return (MAKE_EVENT (EVENT_TYPE_EXPOSE, xw_index, SHARP_F));
-    break;
-
-  case GraphicsExpose:
-    return (MAKE_EVENT (EVENT_TYPE_GRAPHICS_EXPOSE, xw_index, SHARP_F));
-    break;
-
-  case KeyPress:
-    {
-      char copy_buffer [80];
-      KeySym keysym;
-
-      XLookupString ((& (event -> xkey)),
-		     (& (copy_buffer [0])),
-		     (sizeof (copy_buffer)),
-		     (& keysym),
-		     ((XComposeStatus *) 0));
-      return (MAKE_EVENT (EVENT_TYPE_KEY_PRESS,
-			  xw_index,
-			  cons(char_pointer_to_string (& (copy_buffer [0])),
-			       EMPTY_LIST)));
-      break;
-    }
-
-  case ButtonPress:
-    {
-      int button = (check_button ((event -> xbutton) . button));
-      int pointer_x = ((event -> xbutton) . x);
-      int pointer_y = ((event -> xbutton) . y);
-      return
-	(MAKE_EVENT (EVENT_TYPE_BUTTON_DOWN,
-		     xw_index,
-		     cons (long_to_integer (button),
-			   cons (LONG_TO_UNSIGNED_FIXNUM (pointer_x),
-				 cons (LONG_TO_UNSIGNED_FIXNUM (pointer_y),
-				       EMPTY_LIST)))));
-    }
-    break;
-
-  case ButtonRelease:
-    {
-      int button = (check_button ((event -> xbutton) . button));
-      int pointer_x = ((event -> xbutton) . x);
-      int pointer_y = ((event -> xbutton) . y);
-      return
-	(MAKE_EVENT (EVENT_TYPE_BUTTON_UP,
-		     xw_index,
-		     cons (long_to_integer (button),
-			   cons (LONG_TO_UNSIGNED_FIXNUM (pointer_x),
-				 cons (LONG_TO_UNSIGNED_FIXNUM (pointer_y),
-				       EMPTY_LIST)))));
-    }
-    break;
-
-  case NoExpose:
-    return (MAKE_EVENT (EVENT_TYPE_NO_EXPOSE, xw_index, SHARP_F));
-    break;
-
-  case EnterNotify:
-    return (MAKE_EVENT (EVENT_TYPE_ENTER, xw_index, SHARP_F));
-    break;
-
-  case LeaveNotify:
-    return (MAKE_EVENT (EVENT_TYPE_LEAVE, xw_index, SHARP_F));
-    break;
-
-  case FocusIn:
-    return (MAKE_EVENT (EVENT_TYPE_FOCUS_IN, xw_index, SHARP_F));
-    break;
-
-  case FocusOut:
-    return (MAKE_EVENT (EVENT_TYPE_FOCUS_OUT, xw_index, SHARP_F));
-    break;
-
-  case MotionNotify:
-    {
-      int pointer_x = ((event -> xbutton) . x);
-      int pointer_y = ((event -> xbutton) . y);
-      return
-	(MAKE_EVENT (EVENT_TYPE_MOTION,
-		     xw_index,
-		     cons (LONG_TO_UNSIGNED_FIXNUM (pointer_x),
-			   cons (LONG_TO_UNSIGNED_FIXNUM (pointer_y),
-				 EMPTY_LIST))));
-    }
-    return (MAKE_EVENT (EVENT_TYPE_MOTION, xw_index, SHARP_F));
-    break;
-
-  default:
-    return (MAKE_EVENT (EVENT_TYPE_UNKNOWN, xw_index, SHARP_F));
-    break;
-  }
-}
-
-DEFINE_PRIMITIVE ("X-PROCESS-EVENTS", Prim_x_process_events, 0, 0,
-"Process any pending X events. Does not wait.")
-{
-  PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (x_process_events ()));
-}
-
-/* X-WAIT-FOR-EVENT-ON-WINDOW should be supplemented to accept a 
-   time out argument */
-
-DEFINE_PRIMITIVE ("X-WAIT-FOR-EVENT-ON-WINDOW",
-		  Prim_x_wait_for_event_on_window, 1, 1,
-"Wait for an X event for the X-WINDOW-INDEX argument.")
-{
-  PRIMITIVE_HEADER (1);
-  xw_wait_for_window_event (WINDOW_ARG (1));
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-/* X-WAIT-FOR-EVENT should be supplemented to accept a time out argument */
-
-DEFINE_PRIMITIVE ("X-WAIT-FOR-EVENT", Prim_x_wait_for_event, 0, 0, 
-"Wait for an X event. It is possible that this procedure will return\n\
-even though there there are no X events. The return value will tell\n\
-you if there were actually any events processed.")
-{
-  PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (x_wait_for_event ()));
-}
-
-DEFINE_PRIMITIVE ("X-WINDOW-READ-EVENT-FLAGS!", Prim_x_window_read_event_flags, 1, 1, 0)
-{
-  struct xwindow * xw;
-  int old;
-  PRIMITIVE_HEADER (1);
-
-  xw = (WINDOW_ARG (1));
-  old = (XW_EVENT_FLAGS (xw));
-  (XW_EVENT_FLAGS (xw)) = 0;
-  /* Mask the result so that only three bits of information are
-     returned.  This primitive is only used for maintaining the old
-     version of Edwin -- newer versions use a different interface that
-     supplies more event types. */
-  PRIMITIVE_RETURN (long_to_integer (old & 0x7));
-}
-
-DEFINE_PRIMITIVE ("X-DEQUEUE-GLOBAL-EVENT", Prim_x_dequeue_global_event, 0, 0,
-"Returns an list representing a single event from the global X event queue.\n\
-The list is of the form (EVENT-TYPE X-WINDOW-INDEX . EXTRA) where EXTRA is\n\
-dependent on the EVENT-TYPE.")
-{
-  XEvent event;
-  int any_events;
-  PRIMITIVE_HEADER (0);
-
-  any_events = x_dequeue_global_event (& event);
-  if (!any_events) {
-    PRIMITIVE_RETURN (SHARP_F);
-  }
-  PRIMITIVE_RETURN (x_event_to_scheme_event (& event));
-}
-  
-DEFINE_PRIMITIVE ("X-RETURN-EVENT-QUEUE", Prim_x_return_event_queue, 0, 0,
-  "Returns an list of all events (in order) from the global X event queue \n\
-and flushes the queue. Each event on the list is of the form \n\
-(EVENT-TYPE X-WINDOW-INDEX . EXTRA) where EXTRA is dependent on the \n\
-EVENT-TYPE.")
-{
-  XEvent event;
-  int any_events;
-  SCHEME_OBJECT event_list;
-  SCHEME_OBJECT event_list_tail;
-  SCHEME_OBJECT new_event;
-  PRIMITIVE_HEADER (0);
-
-  any_events = x_dequeue_global_event (& event);
-  if (!any_events) {
-    return (SHARP_F);
-  }
-  event_list = cons (x_event_to_scheme_event (& event), EMPTY_LIST);
-  event_list_tail = event_list;
-  while (any_events = x_dequeue_global_event (& event)) {
-    new_event = cons (x_event_to_scheme_event (& event), EMPTY_LIST);
-    SET_PAIR_CDR (event_list_tail, new_event);
-    event_list_tail = new_event;
-  }
-  PRIMITIVE_RETURN (event_list);
-}
-  
-
-static int initialization_done = 0;
 
 static void
 DEFUN_VOID (x_close_all_displays)
 {
-  Display ** items = ((Display **) (x_display_table . items));
-  int length = (x_display_table . length);
-  int i;
-  for (i = 0; (i < length); i += 1)
-    if ((items [i]) != ((Display *) 0))
-      x_close_display (i);
+  struct xdisplay ** scan = ((struct xdisplay **) (x_display_table . items));
+  struct xdisplay ** end = (scan + (x_display_table . length));
+  while (scan < end)
+    {
+      struct xdisplay * xd = (*scan++);
+      if (xd != 0)
+	x_close_display (xd);
+    }
+}
+
+static void
+DEFUN (xw_process_event, (xw, event),
+       struct xwindow * xw AND
+       XEvent * event)
+{
+  if (x_debug)
+    {
+      char * type_name;
+      switch (event -> type)
+	{
+	case ButtonPress:	type_name = "ButtonPress"; break;
+	case ButtonRelease:	type_name = "ButtonRelease"; break;
+	case CirculateNotify:	type_name = "CirculateNotify"; break;
+	case ConfigureNotify:	type_name = "ConfigureNotify"; break;
+	case CreateNotify:	type_name = "CreateNotify"; break;
+	case DestroyNotify:	type_name = "DestroyNotify"; break;
+	case EnterNotify:	type_name = "EnterNotify"; break;
+	case Expose:		type_name = "Expose"; break;
+	case FocusIn:		type_name = "FocusIn"; break;
+	case FocusOut:		type_name = "FocusOut"; break;
+	case GraphicsExpose:	type_name = "GraphicsExpose"; break;
+	case GravityNotify:	type_name = "GravityNotify"; break;
+	case KeyPress:		type_name = "KeyPress"; break;
+	case KeyRelease:	type_name = "KeyRelease"; break;
+	case LeaveNotify:	type_name = "LeaveNotify"; break;
+	case MapNotify:		type_name = "MapNotify"; break;
+	case MappingNotify:	type_name = "MappingNotify"; break;
+	case MotionNotify:	type_name = "MotionNotify"; break;
+	case NoExpose:		type_name = "NoExpose"; break;
+	case ReparentNotify:	type_name = "ReparentNotify"; break;
+	case UnmapNotify:	type_name = "UnmapNotify"; break;
+	default:		type_name = 0; break;
+	}
+      fprintf (stderr, "\nX event: ");
+      if (type_name != 0)
+	fprintf (stderr, "%s", type_name);
+      else
+	fprintf (stderr, "%d", (event -> type));
+      fprintf (stderr, "\n");
+      fflush (stderr);
+    }
+  switch (event -> type)
+    {
+    case MappingNotify:
+      switch ((event -> xmapping) . request)
+	{
+	case MappingKeyboard:
+	case MappingModifier:
+	  XRefreshKeyboardMapping (& (event -> xmapping));
+	  break;
+	}
+      break;
+    }
+  (* (XW_EVENT_PROCESSOR (xw))) (xw, event);
+}
+
+enum event_type
+{
+  event_type_button_down,
+  event_type_button_up,
+  event_type_configure,
+  event_type_enter,
+  event_type_focus_in,
+  event_type_focus_out,
+  event_type_key_press,
+  event_type_leave,
+  event_type_motion,
+  event_type_supremum
+};
+
+#define EVENT_MASK_ARG(arg)						\
+  (arg_index_integer ((arg), (1 << ((unsigned int) event_type_supremum))))
+
+#define EVENT_ENABLED(xw, type)						\
+  (((XW_EVENT_MASK (xw)) & (1 << ((unsigned int) (type)))) != 0)
+
+#define EVENT_0 2
+#define EVENT_1 3
+#define EVENT_2 4
+
+static SCHEME_OBJECT
+DEFUN (make_event_object, (xw, type, extra),
+       struct xwindow * xw AND
+       enum event_type type AND
+       unsigned int extra)
+{
+  SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, (2 + extra), 1));
+  VECTOR_SET (result, 0, (LONG_TO_UNSIGNED_FIXNUM ((long) type)));
+  VECTOR_SET (result, 1, (XW_TO_OBJECT (xw)));
+  return (result);
+}
+
+static void
+DEFUN (standard_position, (xw, result, x, y),
+       struct xwindow * xw AND
+       SCHEME_OBJECT result AND
+       int x AND
+       int y)
+{
+  int bx = (x - (XW_INTERNAL_BORDER_WIDTH (xw)));
+  int by = (y - (XW_INTERNAL_BORDER_WIDTH (xw)));
+  VECTOR_SET
+    (result, EVENT_0,
+     ((* (XW_X_COORDINATE_MAP (xw)))
+      (xw,
+       ((bx < 0) ? 0
+	: (bx >= (XW_X_SIZE (xw))) ? ((XW_X_SIZE (xw)) - 1)
+	: bx))));
+  VECTOR_SET
+    (result, EVENT_1,
+     ((* (XW_Y_COORDINATE_MAP (xw)))
+      (xw,
+       ((by < 0) ? 0
+	: (by >= (XW_Y_SIZE (xw))) ? ((XW_Y_SIZE (xw)) - 1)
+	: by))));
+}
+
+static void
+DEFUN (standard_size, (xw, result, width, height),
+       struct xwindow * xw AND
+       SCHEME_OBJECT result AND
+       int width AND
+       int height)
+{
+  width -= (2 * (XW_INTERNAL_BORDER_WIDTH (xw)));
+  height -= (2 * (XW_INTERNAL_BORDER_WIDTH (xw)));
+  VECTOR_SET
+    (result, EVENT_0,
+     ((* (XW_X_COORDINATE_MAP (xw))) (xw, ((width < 0) ? 0 : width))));
+  VECTOR_SET
+    (result, EVENT_1,
+     ((* (XW_Y_COORDINATE_MAP (xw))) (xw, ((height < 0) ? 0 : height))));
+}
+
+static SCHEME_OBJECT
+DEFUN (button_event, (xw, event, type),
+       struct xwindow * xw AND
+       XButtonEvent * event AND
+       enum event_type type)
+{
+  SCHEME_OBJECT result = (make_event_object (xw, type, 3));
+  standard_position (xw, result, (event -> x), (event -> y));
+  {
+    SCHEME_OBJECT conversion;
+    switch (event -> button)
+      {
+      case Button1: conversion = (LONG_TO_UNSIGNED_FIXNUM (0)); break;
+      case Button2: conversion = (LONG_TO_UNSIGNED_FIXNUM (1)); break;
+      case Button3: conversion = (LONG_TO_UNSIGNED_FIXNUM (2)); break;
+      case Button4: conversion = (LONG_TO_UNSIGNED_FIXNUM (3)); break;
+      case Button5: conversion = (LONG_TO_UNSIGNED_FIXNUM (4)); break;
+      default: conversion = (SHARP_F); break;
+      }
+    VECTOR_SET (result, EVENT_2, conversion);
+  }
+  return (result);
+}
+
+static XComposeStatus compose_status;
+
+static SCHEME_OBJECT
+DEFUN (key_event, (xw, event, type),
+       struct xwindow * xw AND
+       XKeyEvent * event AND
+       enum event_type type)
+{
+  char copy_buffer [80];
+  KeySym keysym;
+  int nbytes =
+    (XLookupString (event,
+		    copy_buffer,
+		    (sizeof (copy_buffer)),
+		    (&keysym),
+		    (&compose_status)));
+  if ((nbytes < 1)
+      || (IsFunctionKey (keysym))
+      || (IsCursorKey (keysym))
+      || (IsKeypadKey (keysym))
+      || (IsMiscFunctionKey (keysym))
+      || (IsPFKey (keysym))
+      || (IsModifierKey (keysym)))
+    return (SHARP_F);
+  else
+    {
+      SCHEME_OBJECT result = (make_event_object (xw, type, 1));
+      if ((nbytes == 1) && (((event -> state) & Mod1Mask) != 0))
+	(copy_buffer[0]) |= 0x80;
+      VECTOR_SET (result, EVENT_0, (memory_to_string (nbytes, copy_buffer)));
+      return (result);
+    }
+}
+
+static SCHEME_OBJECT
+DEFUN (x_event_to_object, (event), XEvent * event)
+{
+  struct xwindow * xw = (x_window_to_xw ((event -> xany) . window));
+  SCHEME_OBJECT result = SHARP_F;
+  switch (event -> type)
+    {
+    case KeyPress:
+      if (EVENT_ENABLED (xw, event_type_key_press))
+	result = (key_event (xw, (& (event -> xkey)), event_type_key_press));
+      break;
+    case ButtonPress:
+      if (EVENT_ENABLED (xw, event_type_button_down))
+	result =
+	  (button_event (xw, (& (event -> xbutton)), event_type_button_down));
+      break;
+    case ButtonRelease:
+      if (EVENT_ENABLED (xw, event_type_button_up))
+	result =
+	  (button_event (xw, (& (event -> xbutton)), event_type_button_up));
+      break;
+    case MotionNotify:
+      if (EVENT_ENABLED (xw, event_type_motion))
+	{
+	  result = (make_event_object (xw, event_type_motion, 2));
+	  standard_position
+	    (xw, result, ((event -> xmotion) . x), ((event -> xmotion) . y));
+	}
+      break;
+    case ConfigureNotify:
+      if (EVENT_ENABLED (xw, event_type_configure))
+	{
+	  result = (make_event_object (xw, event_type_configure, 2));
+	  standard_size (xw,
+			 result,
+			 ((event -> xconfigure) . width),
+			 ((event -> xconfigure) . height));
+	}
+      break;
+    case EnterNotify:
+      if (EVENT_ENABLED (xw, event_type_enter))
+	result = (make_event_object (xw, event_type_enter, 0));
+      break;
+    case LeaveNotify:
+      if (EVENT_ENABLED (xw, event_type_leave))
+	result = (make_event_object (xw, event_type_leave, 0));
+      break;
+    case FocusIn:
+      if (EVENT_ENABLED (xw, event_type_focus_in))
+	result = (make_event_object (xw, event_type_focus_in, 0));
+      break;
+    case FocusOut:
+      if (EVENT_ENABLED (xw, event_type_focus_out))
+	result = (make_event_object (xw, event_type_focus_out, 0));
+      break;
+    }
+  return (result);
+}
+
+/* The use of `XD_CACHED_EVENT' prevents an event from being lost due
+   to garbage collection.  First `XD_CACHED_EVENT' is set to hold the
+   current event, then the allocations are performed.  If one of them
+   fails, the primitive will exit, and when it reenters it will notice
+   the cached event and use it.  It is important that this be the only
+   entry that reads events -- or else that all other event readers
+   cooperate with this strategy.  */
+
+static SCHEME_OBJECT
+DEFUN (xd_process_events, (xd, time_limit_p, time_limit),
+       struct xdisplay * xd AND
+       int time_limit_p AND
+       unsigned long time_limit)
+{
+  unsigned int events_queued = 0;
+  Display * display = (XD_DISPLAY (xd));
+  if (XD_CACHED_EVENT_P (xd))
+    goto restart;
+  while (1)
+    {
+      extern unsigned long EXFUN (OS_real_time_clock, (void));
+      XEvent event;
+      if (time_limit_p)
+	{
+	  if (events_queued == 0)
+	    while (1)
+	      {
+		events_queued = (XEventsQueued (display, QueuedAfterReading));
+		if (events_queued > 0)
+		  break;
+		if ((OS_real_time_clock ()) >= time_limit)
+		  return (SHARP_F);
+	      }
+	  events_queued -= 1;
+	}
+      XNextEvent (display, (&event));
+      if ((event . type) == KeymapNotify)
+	continue;
+      {
+	struct xwindow * xw = (x_window_to_xw (event . xany . window));
+	if (xw == 0)
+	  continue;
+	xw_process_event (xw, (&event));
+      }
+      (XD_CACHED_EVENT (xd)) = event;
+      (XD_CACHED_EVENT_P (xd)) = 1;
+    restart:
+      {
+	SCHEME_OBJECT result = (x_event_to_object (&event));
+	(XD_CACHED_EVENT_P (xd)) = 0;
+	if (result != SHARP_F)
+	  return (result);
+      }
+    }
+}
+
+static void
+DEFUN_VOID (initialize_once)
+{
+  allocation_table_initialize (&x_display_table);
+  allocation_table_initialize (&x_window_table);
+  XSetErrorHandler (x_error_handler);
+  XSetIOErrorHandler (x_io_error_handler);
+  add_reload_cleanup (x_close_all_displays);
+  initialization_done = 1;
+}
+
+DEFINE_PRIMITIVE ("X-DEBUG", Prim_x_debug, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  x_debug = (BOOLEAN_ARG (1));
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("X-OPEN-DISPLAY", Prim_x_open_display, 1, 1, 0)
 {
-  Display * display;
-  int display_file_descriptor;
   PRIMITIVE_HEADER (1);
-  if (!initialization_done)
-    {
-      add_reload_cleanup (x_close_all_displays);
-      initialization_done = 1;
-    }
-  display =
-    (XOpenDisplay (((ARG_REF (1)) == SHARP_F) ? 0 : (STRING_ARG (1))));
-  if (display == 0)
-    PRIMITIVE_RETURN (SHARP_F);
-  /* This only needs to be done once for this process, but it doesn't
-     hurt to run it every time we open the display. */
-  XSetErrorHandler (x_error_handler);
-  XSetIOErrorHandler (x_io_error_handler);
+  INITIALIZE_ONCE ();
   {
-    int display_file_descriptor = ConnectionNumber (display);
-
-    if (! x_select_mask_size) {
-      x_select_mask_size = 1;
-      x_select_mask = (x_malloc (x_select_mask_size * sizeof (int)));
-    }
-
-    if (display_file_descriptor > x_max_file_descriptor) {
-
-      int new_select_mask_size;
-    
-      x_max_file_descriptor = display_file_descriptor;
-      new_select_mask_size = 1 + (x_max_file_descriptor / BITS_PER_INT);
-      if (new_select_mask_size > x_select_mask_size) {
-	x_select_mask = (x_realloc (x_select_mask,
-				    new_select_mask_size * sizeof (int)));
-	x_select_mask_size = new_select_mask_size;
+    struct xdisplay * xd = (x_malloc (sizeof (struct xdisplay)));
+    (XD_DISPLAY (xd)) =
+      (XOpenDisplay (((ARG_REF (1)) == SHARP_F) ? 0 : (STRING_ARG (1))));
+    if ((XD_DISPLAY (xd)) == 0)
+      {
+	free (xd);
+	PRIMITIVE_RETURN (SHARP_F);
       }
-      SET_X_SELECT_MASK (display_file_descriptor);
-    }
+    (XD_ALLOCATION_INDEX (xd)) =
+      (allocate_table_index ((&x_display_table), xd));
+    (XD_CACHED_EVENT_P (xd)) = 0;
+    PRIMITIVE_RETURN (XD_TO_OBJECT (xd));
   }
-  PRIMITIVE_RETURN
-    (LONG_TO_UNSIGNED_FIXNUM
-     (x_allocate_table_index ((& x_display_table), ((char *) display))));
 }
 
 DEFINE_PRIMITIVE ("X-CLOSE-DISPLAY", Prim_x_close_display, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  x_close_display (x_allocation_index_arg (1, (& x_display_table)));
+  x_close_display (x_display_arg (1));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("X-CLOSE-ALL-DISPLAYS", Prim_x_close_all_displays, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
+  INITIALIZE_ONCE ();
   x_close_all_displays ();
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -956,30 +803,112 @@ DEFINE_PRIMITIVE ("X-CLOSE-ALL-DISPLAYS", Prim_x_close_all_displays, 0, 0, 0)
 DEFINE_PRIMITIVE ("X-CLOSE-WINDOW", Prim_x_close_window, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  XFlush (x_close_window (x_allocation_index_arg (1, (& x_window_table))));
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    Display * display = (XW_DISPLAY (xw));
+    x_close_window (xw);
+    XFlush (display);
+  }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
+DEFINE_PRIMITIVE ("X-DISPLAY-PROCESS-EVENTS", Prim_x_display_process_events, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  {
+    struct xdisplay * xd = (x_display_arg (1));
+    PRIMITIVE_RETURN
+      (((ARG_REF (2)) == SHARP_F)
+       ? (xd_process_events (xd, 0, 0))
+       : (xd_process_events (xd, 1, (arg_nonnegative_integer (2)))));
+  }
+}
+
+static void
+DEFUN (update_input_mask, (xw), struct xwindow * xw)
+{
+  long event_mask = (ExposureMask | StructureNotifyMask);
+  if (EVENT_ENABLED (xw, event_type_button_down))
+    event_mask |= ButtonPressMask;
+  if (EVENT_ENABLED (xw, event_type_button_up))
+    event_mask |= ButtonReleaseMask;
+  if (EVENT_ENABLED (xw, event_type_key_press))
+    event_mask |= KeyPressMask;
+  if (EVENT_ENABLED (xw, event_type_enter))
+    event_mask |= EnterWindowMask;
+  if (EVENT_ENABLED (xw, event_type_leave))
+    event_mask |= LeaveWindowMask;
+  if ((EVENT_ENABLED (xw, event_type_focus_in))
+      || (EVENT_ENABLED (xw, event_type_focus_out)))
+    event_mask |= FocusChangeMask;
+  if (EVENT_ENABLED (xw, event_type_motion))
+    event_mask |= PointerMotionMask;
+  XSelectInput ((XW_DISPLAY (xw)), (XW_WINDOW (xw)), event_mask);
+}
+
+DEFINE_PRIMITIVE ("X-WINDOW-EVENT-MASK", Prim_x_window_event_mask, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN (long_to_integer (XW_EVENT_MASK (x_window_arg (1))));
+}
+
+DEFINE_PRIMITIVE ("X-WINDOW-SET-EVENT-MASK", Prim_x_window_set_event_mask, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    (XW_EVENT_MASK (xw)) = (EVENT_MASK_ARG (2));
+    update_input_mask (xw);
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("X-WINDOW-OR-EVENT-MASK", Prim_x_window_or_event_mask, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    (XW_EVENT_MASK (xw)) |= (EVENT_MASK_ARG (2));
+    update_input_mask (xw);
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("X-WINDOW-ANDC-EVENT-MASK", Prim_x_window_andc_event_mask, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    (XW_EVENT_MASK (xw)) &=~ (EVENT_MASK_ARG (2));
+    update_input_mask (xw);
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("X-WINDOW-DISPLAY", Prim_x_window_display, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN (XD_TO_OBJECT (XW_XD (x_window_arg (1))));
+}
+
 DEFINE_PRIMITIVE ("X-WINDOW-X-SIZE", Prim_x_window_x_size, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (long_to_integer (XW_X_SIZE (WINDOW_ARG (1))));
+  PRIMITIVE_RETURN (long_to_integer (XW_X_SIZE (x_window_arg (1))));
 }
 
 DEFINE_PRIMITIVE ("X-WINDOW-Y-SIZE", Prim_x_window_y_size, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (long_to_integer (XW_Y_SIZE (WINDOW_ARG (1))));
+  PRIMITIVE_RETURN (long_to_integer (XW_Y_SIZE (x_window_arg (1))));
 }
 
 DEFINE_PRIMITIVE ("X-WINDOW-MAP", Prim_x_window_map, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   {
-    struct xwindow * xw = (WINDOW_ARG (1));
-    Display * display = (XW_DISPLAY (xw));
-    (XW_VISIBLE_P (xw)) = 1;
-    XMapWindow (display, (XW_WINDOW (xw)));
+    struct xwindow * xw = (x_window_arg (1));
+    XMapWindow ((XW_DISPLAY (xw)), (XW_WINDOW (xw)));
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -988,10 +917,8 @@ DEFINE_PRIMITIVE ("X-WINDOW-UNMAP", Prim_x_window_unmap, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   {
-    struct xwindow * xw = (WINDOW_ARG (1));
-    Display * display = (XW_DISPLAY (xw));
-    (XW_VISIBLE_P (xw)) = 0;
-    XUnmapWindow (display, (XW_WINDOW (xw)));
+    struct xwindow * xw = (x_window_arg (1));
+    XUnmapWindow ((XW_DISPLAY (xw)), (XW_WINDOW (xw)));
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -999,7 +926,7 @@ DEFINE_PRIMITIVE ("X-WINDOW-UNMAP", Prim_x_window_unmap, 1, 1, 0)
 DEFINE_PRIMITIVE ("X-WINDOW-BEEP", Prim_x_window_beep, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  XBell ((XW_DISPLAY (WINDOW_ARG (1))), 100); /* 100% */
+  XBell ((XW_DISPLAY (x_window_arg (1))), 100); /* 100% */
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -1007,11 +934,11 @@ DEFINE_PRIMITIVE ("X-WINDOW-CLEAR", Prim_x_window_clear, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   {
-    struct xwindow * xw = (WINDOW_ARG (1));
+    struct xwindow * xw = (x_window_arg (1));
     XClearArea ((XW_DISPLAY (xw)),
 		(XW_WINDOW (xw)),
-		(XW_CLIP_X (xw)),
-		(XW_CLIP_Y (xw)),
+		((XW_CLIP_X (xw)) + (XW_INTERNAL_BORDER_WIDTH (xw))),
+		((XW_CLIP_Y (xw)) + (XW_INTERNAL_BORDER_WIDTH (xw))),
 		(XW_CLIP_WIDTH (xw)),
 		(XW_CLIP_HEIGHT (xw)),
 		False);
@@ -1019,321 +946,235 @@ DEFINE_PRIMITIVE ("X-WINDOW-CLEAR", Prim_x_window_clear, 1, 1, 0)
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("X-WINDOW-FLUSH", Prim_x_window_flush, 1, 1, 0)
+DEFINE_PRIMITIVE ("X-DISPLAY-FLUSH", Prim_x_display_flush, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  XFlush (XW_DISPLAY (WINDOW_ARG (1)));
+  XFlush (XD_DISPLAY (x_display_arg (1)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
+DEFINE_PRIMITIVE ("X-DISPLAY-SYNC", Prim_x_display_sync, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  XSync ((XD_DISPLAY (x_display_arg (1))), (BOOLEAN_ARG (2)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
 DEFINE_PRIMITIVE ("X-WINDOW-GET-DEFAULT", Prim_x_window_get_default, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
   {
     char * result =
       (XGetDefault
-       ((XW_DISPLAY (WINDOW_ARG (1))), (STRING_ARG (2)), (STRING_ARG (3))));
+       ((XW_DISPLAY (x_window_arg (1))), (STRING_ARG (2)), (STRING_ARG (3))));
     PRIMITIVE_RETURN
       ((result == 0) ? SHARP_F : (char_pointer_to_string (result)));
   }
 }
-
+
 DEFINE_PRIMITIVE ("X-WINDOW-SET-FOREGROUND-COLOR", Prim_x_window_set_foreground_color, 2, 2, 0)
 {
-  struct xwindow * xw;
-  Display * display;
-  unsigned long foreground_pixel;
   PRIMITIVE_HEADER (2);
-
-  xw = (WINDOW_ARG (1));
-  display = (XW_DISPLAY (xw));
-  foreground_pixel =
-    (x_decode_color
-     (display,
-      (DefaultColormap (display, (DefaultScreen (display)))),
-      (STRING_ARG (2)),
-      (XW_FOREGROUND_PIXEL (xw))));
-  (XW_FOREGROUND_PIXEL (xw)) = foreground_pixel;
-  XSetForeground (display, (XW_NORMAL_GC (xw)), foreground_pixel);
-  XSetBackground (display, (XW_REVERSE_GC (xw)), foreground_pixel);
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    Display * display = (XW_DISPLAY (xw));
+    unsigned long foreground_pixel = (arg_color (2, display));
+    (XW_FOREGROUND_PIXEL (xw)) = foreground_pixel;
+    XSetForeground (display, (XW_NORMAL_GC (xw)), foreground_pixel);
+    XSetBackground (display, (XW_REVERSE_GC (xw)), foreground_pixel);
+  }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("X-WINDOW-SET-BACKGROUND-COLOR", Prim_x_window_set_background_color, 2, 2, 0)
 {
-  struct xwindow * xw;
-  Display * display;
-  unsigned long background_pixel;
   PRIMITIVE_HEADER (2);
-
-  xw = (WINDOW_ARG (1));
-  display = (XW_DISPLAY (xw));
-  background_pixel =
-    (x_decode_color
-     (display,
-      (DefaultColormap (display, (DefaultScreen (display)))),
-      (STRING_ARG (2)),
-      (XW_BACKGROUND_PIXEL (xw))));
-  (XW_BACKGROUND_PIXEL (xw)) = background_pixel;
-  XSetWindowBackground (display, (XW_WINDOW (xw)), background_pixel);
-  XSetBackground (display, (XW_NORMAL_GC (xw)), background_pixel);
-  XSetForeground (display, (XW_REVERSE_GC (xw)), background_pixel);
-  XSetForeground (display, (XW_CURSOR_GC (xw)), background_pixel);
-  x_set_mouse_colors
-    (display, (XW_MOUSE_CURSOR (xw)), (XW_MOUSE_PIXEL (xw)), background_pixel);
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    Display * display = (XW_DISPLAY (xw));
+    unsigned long background_pixel = (arg_color (2, display));
+    (XW_BACKGROUND_PIXEL (xw)) = background_pixel;
+    XSetWindowBackground (display, (XW_WINDOW (xw)), background_pixel);
+    XSetBackground (display, (XW_NORMAL_GC (xw)), background_pixel);
+    XSetForeground (display, (XW_REVERSE_GC (xw)), background_pixel);
+    XSetForeground (display, (XW_CURSOR_GC (xw)), background_pixel);
+    x_set_mouse_colors
+      (display,
+       (XW_MOUSE_CURSOR (xw)),
+       (XW_MOUSE_PIXEL (xw)),
+       background_pixel);
+  }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("X-WINDOW-SET-BORDER-COLOR", Prim_x_window_set_border_color, 2, 2, 0)
 {
-  struct xwindow * xw;
-  Display * display;
-  unsigned long border_pixel;
   PRIMITIVE_HEADER (2);
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    Display * display = (XW_DISPLAY (xw));
+    unsigned long border_pixel = (arg_color (2, display));
+    (XW_BORDER_PIXEL (xw)) = border_pixel;
+    XSetWindowBorder (display, (XW_WINDOW (xw)), border_pixel);
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
 
-  xw = (WINDOW_ARG (1));
-  display = (XW_DISPLAY (xw));
-  border_pixel =
-    (x_decode_color
-     (display,
-      (DefaultColormap (display, (DefaultScreen (display)))),
-      (STRING_ARG (2)),
-      (XW_BORDER_PIXEL (xw))));
-  (XW_BORDER_PIXEL (xw)) = border_pixel;
-  XSetWindowBorder (display, (XW_WINDOW (xw)), border_pixel);
+DEFINE_PRIMITIVE ("X-WINDOW-SET-CURSOR-COLOR", Prim_x_window_set_cursor_color, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    Display * display = (XW_DISPLAY (xw));
+    unsigned long cursor_pixel = (arg_color (2, display));
+    (XW_CURSOR_PIXEL (xw)) = cursor_pixel;
+    XSetBackground (display, (XW_CURSOR_GC (xw)), cursor_pixel);
+  }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("X-WINDOW-SET-CURSOR-COLOR", Prim_x_window_set_cursor_color, 2, 2, 0)
-{
-  struct xwindow * xw;
-  Display * display;
-  unsigned long cursor_pixel;
-  PRIMITIVE_HEADER (2);
-
-  xw = (WINDOW_ARG (1));
-  display = (XW_DISPLAY (xw));
-  cursor_pixel =
-    (x_decode_color
-     (display,
-      (DefaultColormap (display, (DefaultScreen (display)))),
-      (STRING_ARG (2)),
-      (XW_CURSOR_PIXEL (xw))));
-  (XW_CURSOR_PIXEL (xw)) = cursor_pixel;
-  XSetBackground (display, (XW_CURSOR_GC (xw)), cursor_pixel);
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
 DEFINE_PRIMITIVE ("X-WINDOW-SET-MOUSE-COLOR", Prim_x_window_set_mouse_color, 2, 2, 0)
 {
-  struct xwindow * xw;
-  Display * display;
-  unsigned long mouse_pixel;
   PRIMITIVE_HEADER (2);
-
-  xw = (WINDOW_ARG (1));
-  display = (XW_DISPLAY (xw));
-  mouse_pixel =
-    (x_decode_color
-     (display,
-      (DefaultColormap (display, (DefaultScreen (display)))),
-      (STRING_ARG (2)),
-      (XW_MOUSE_PIXEL (xw))));
-  (XW_MOUSE_PIXEL (xw)) = mouse_pixel;
-  x_set_mouse_colors
-    (display, (XW_MOUSE_CURSOR (xw)), mouse_pixel, (XW_BACKGROUND_PIXEL (xw)));
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    Display * display = (XW_DISPLAY (xw));
+    unsigned long mouse_pixel = (arg_color (2, display));
+    (XW_MOUSE_PIXEL (xw)) = mouse_pixel;
+    x_set_mouse_colors
+      (display,
+       (XW_MOUSE_CURSOR (xw)),
+       mouse_pixel,
+       (XW_BACKGROUND_PIXEL (xw)));
+  }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("X-WINDOW-SET-MOUSE-SHAPE", Prim_x_window_set_mouse_shape, 2, 2, 0)
 {
-  struct xwindow * xw;
-  Display * display;
-  Window window;
   PRIMITIVE_HEADER (2);
-
-  xw = (WINDOW_ARG (1));
-  display = (XW_DISPLAY (xw));
-  window = (XW_WINDOW (xw));
   {
-    Cursor old_cursor = (XW_MOUSE_CURSOR (xw));
-    Cursor mouse_cursor =
-      (XCreateFontCursor
-       (display, (2 * (arg_index_integer (2, (XC_num_glyphs / 2))))));
-    x_set_mouse_colors
-      (display,
-       mouse_cursor,
-       (XW_MOUSE_PIXEL (xw)),
-       (XW_BACKGROUND_PIXEL (xw)));
-    (XW_MOUSE_CURSOR (xw)) = mouse_cursor;
-    XDefineCursor (display, window, mouse_cursor);
-    XFreeCursor (display, old_cursor);
+    struct xwindow * xw = (x_window_arg (1));
+    Display * display = (XW_DISPLAY (xw));
+    Window window = (XW_WINDOW (xw));
+    {
+      Cursor old_cursor = (XW_MOUSE_CURSOR (xw));
+      Cursor mouse_cursor =
+	(XCreateFontCursor
+	 (display, (2 * (arg_index_integer (2, (XC_num_glyphs / 2))))));
+      x_set_mouse_colors
+	(display,
+	 mouse_cursor,
+	 (XW_MOUSE_PIXEL (xw)),
+	 (XW_BACKGROUND_PIXEL (xw)));
+      (XW_MOUSE_CURSOR (xw)) = mouse_cursor;
+      XDefineCursor (display, window, mouse_cursor);
+      XFreeCursor (display, old_cursor);
+    }
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
-
+
 DEFINE_PRIMITIVE ("X-WINDOW-SET-FONT", Prim_x_window_set_font, 2, 2, 0)
 {
-  struct xwindow * xw;
-  Display * display;
-  XFontStruct * font;
-  Font fid;
   PRIMITIVE_HEADER (2);
-
-  xw = (WINDOW_ARG (1));
-  display = (XW_DISPLAY (xw));
-  font = (XLoadQueryFont (display, (STRING_ARG (2))));
-  if (font == ((XFontStruct *) 0))
-    PRIMITIVE_RETURN (SHARP_F);
-  XFreeFont (display, (XW_FONT (xw)));
-  (XW_FONT (xw)) = font;
-  fid = (font -> fid);
-  XSetFont (display, (XW_NORMAL_GC (xw)), fid);
-  XSetFont (display, (XW_REVERSE_GC (xw)), fid);
-  XSetFont (display, (XW_CURSOR_GC (xw)), fid);
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    Display * display = (XW_DISPLAY (xw));
+    XFontStruct * font = (XLoadQueryFont (display, (STRING_ARG (2))));
+    if (font == 0)
+      PRIMITIVE_RETURN (SHARP_F);
+    XFreeFont (display, (XW_FONT (xw)));
+    (XW_FONT (xw)) = font;
+    {
+      Font fid = (font -> fid);
+      XSetFont (display, (XW_NORMAL_GC (xw)), fid);
+      XSetFont (display, (XW_REVERSE_GC (xw)), fid);
+      XSetFont (display, (XW_CURSOR_GC (xw)), fid);
+    }
+  }
   PRIMITIVE_RETURN (SHARP_T);
 }
 
 DEFINE_PRIMITIVE ("X-WINDOW-SET-BORDER-WIDTH", Prim_x_window_set_border_width, 2, 2, 0)
 {
-  struct xwindow * xw;
-  Display * display;
-  int border_width;
   PRIMITIVE_HEADER (2);
-
-  xw = (WINDOW_ARG (1));
-  display = (XW_DISPLAY (xw));
-  border_width = (arg_nonnegative_integer (2));
-  (XW_BORDER_WIDTH (xw)) = border_width;
-  XSetWindowBorderWidth (display, (XW_WINDOW (xw)), border_width);
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-DEFINE_PRIMITIVE ("X-WINDOW-SET-INTERNAL-BORDER-WIDTH", Prim_x_window_set_internal_border_width, 2, 2, 0)
-{
-  struct xwindow * xw;
-  Display * display;
-  int internal_border_width;
-  int extra;
-  PRIMITIVE_HEADER (2);
-
-  xw = (WINDOW_ARG (1));
-  display = (XW_DISPLAY (xw));
-  internal_border_width = (arg_nonnegative_integer (2));
-  (XW_INTERNAL_BORDER_WIDTH (xw)) = internal_border_width;
-  extra = (2 * internal_border_width);
-  XResizeWindow
-    (display,
-     (XW_WINDOW (xw)),
-     ((XW_X_SIZE (xw)) + extra),
-     ((XW_Y_SIZE (xw)) + extra));
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    Display * display = (XW_DISPLAY (xw));
+    unsigned int border_width = (arg_nonnegative_integer (2));
+    (XW_BORDER_WIDTH (xw)) = border_width;
+    XSetWindowBorderWidth (display, (XW_WINDOW (xw)), border_width);
+  }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
+DEFINE_PRIMITIVE ("X-WINDOW-SET-INTERNAL-BORDER-WIDTH", Prim_x_window_set_internal_border_width, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    Display * display = (XW_DISPLAY (xw));
+    unsigned int internal_border_width = (arg_nonnegative_integer (2));
+    (XW_INTERNAL_BORDER_WIDTH (xw)) = internal_border_width;
+    XResizeWindow
+      (display,
+       (XW_WINDOW (xw)),
+       ((XW_X_SIZE (xw)) + (2 * internal_border_width)),
+       ((XW_Y_SIZE (xw)) + (2 * internal_border_width)));
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
 DEFINE_PRIMITIVE ("X-WINDOW-SET-SIZE", Prim_x_window_set_size, 3, 3, 0)
 {
-  struct xwindow * xw;
-  int extra;
   PRIMITIVE_HEADER (3);
-
-  xw = (WINDOW_ARG (1));
-  extra = (2 * (XW_INTERNAL_BORDER_WIDTH (xw)));
-  XResizeWindow
-    ((XW_DISPLAY (xw)),
-     (XW_WINDOW (xw)),
-     ((arg_nonnegative_integer (2)) + extra),
-     ((arg_nonnegative_integer (3)) + extra));
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    unsigned int extra = (2 * (XW_INTERNAL_BORDER_WIDTH (xw)));
+    XResizeWindow
+      ((XW_DISPLAY (xw)),
+       (XW_WINDOW (xw)),
+       ((arg_nonnegative_integer (2)) + extra),
+       ((arg_nonnegative_integer (3)) + extra));
+  }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("X-WINDOW-SET-POSITION", Prim_x_window_set_position, 3, 3, 0)
 {
-  struct xwindow * xw;
-  Display * display;
-  int screen_number;
   PRIMITIVE_HEADER (3);
-
-  xw = (WINDOW_ARG (1));
-  display = (XW_DISPLAY (xw));
-  screen_number = (DefaultScreen (display));
-  XMoveWindow
-    ((XW_DISPLAY (xw)),
-     (XW_WINDOW (xw)),
-     (arg_integer (2)),
-     (arg_integer (3)));
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    Display * display = (XW_DISPLAY (xw));
+    int screen_number = (DefaultScreen (display));
+    XMoveWindow
+      ((XW_DISPLAY (xw)),
+       (XW_WINDOW (xw)),
+       (arg_integer (2)),
+       (arg_integer (3)));
+  }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("X-WINDOW-PIXEL-COORD->CHAR-COORD",
-		  Prim_window_pixel_coord_to_char_coord,
-		  2,
-		  2,
-"Takes an X window and a pair (cons) of x and y pixel coordinates \n\
-and returns a pair of x and y character coordinates appropriate \n\
-for the current font associated with that window.")
+DEFINE_PRIMITIVE ("X-WINDOW-SET-NAME", Prim_x_window_set_name, 2, 2,
+  "Set the name of WINDOW to STRING.")
 {
-  struct xwindow * xw;
-  SCHEME_OBJECT coord_list;
-  SCHEME_OBJECT x_coord;
-  SCHEME_OBJECT y_coord;
   PRIMITIVE_HEADER (2);
-
-  xw = (WINDOW_ARG (1));
-  coord_list = (PAIR_ARG (2));
-  x_coord = (PAIR_CAR (coord_list));
-  y_coord = (PAIR_CDR (coord_list));
-  if (!((INTEGER_P (x_coord)) && (INTEGER_P (y_coord)))) {
-    error_wrong_type_arg (2);
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    XStoreName ((XW_DISPLAY (xw)), (XW_WINDOW (xw)), (STRING_ARG (2)));
   }
-  PRIMITIVE_RETURN
-    (cons (long_to_integer (XTERM_X_CHARACTER (xw, integer_to_long (x_coord))),
-	   long_to_integer (XTERM_Y_CHARACTER (xw, integer_to_long (y_coord)))));
-}
-
-DEFINE_PRIMITIVE ("X-WINDOW-CHAR-COORD->PIXEL-COORD",
-		  Prim_window_char_coord_to_pixel_coord,
-		  2,
-		  2,
-"Takes an X window and a pair (cons) of x and y character coordinates \n\
-and returns a pair of x and y pixel coordinates appropriate \n\
-for the current font associated with that window.")
-{
-  struct xwindow * xw;
-  SCHEME_OBJECT coord_list;
-  SCHEME_OBJECT x_coord;
-  SCHEME_OBJECT y_coord;
-  PRIMITIVE_HEADER (2);
-
-  xw = (WINDOW_ARG (1));
-  coord_list = (PAIR_ARG (2));
-  x_coord = (PAIR_CAR (coord_list));
-  y_coord = (PAIR_CDR (coord_list));
-  if (!((INTEGER_P (x_coord)) && (INTEGER_P (y_coord)))) {
-    error_wrong_type_arg (2);
-  }
-  PRIMITIVE_RETURN
-    (cons (long_to_integer (XTERM_X_PIXEL (xw, integer_to_long (x_coord))),
-	   long_to_integer (XTERM_Y_PIXEL (xw, integer_to_long (y_coord)))));
-}
-
-DEFINE_PRIMITIVE ("X-SET-WINDOW-NAME", Prim_x_set_window_name, 2, 2,
-"Set the window name.")
-{
-  struct xwindow * xw;
-
-  PRIMITIVE_HEADER (2);
-  xw = WINDOW_ARG (1);
-  XStoreName (XW_DISPLAY (xw), XW_WINDOW (xw), STRING_ARG (2));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("X-SET-ICON-NAME", Prim_x_set_icon_name, 2, 2,
-"Set the window icon name.")
+DEFINE_PRIMITIVE ("X-WINDOW-SET-ICON-NAME", Prim_x_window_set_icon_name, 2, 2,
+  "Set the icon name of WINDOW to STRING.")
 {
-  struct xwindow * xw;
-
   PRIMITIVE_HEADER (2);
-  xw = WINDOW_ARG (1);
-  XSetIconName (XW_DISPLAY (xw), XW_WINDOW (xw), STRING_ARG (2));
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    XSetIconName ((XW_DISPLAY (xw)), (XW_WINDOW (xw)), (STRING_ARG (2)));
+  }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11.h,v 1.7 1990/08/16 19:23:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11.h,v 1.8 1990/10/02 22:52:22 cph Rel $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -38,11 +38,19 @@ MIT in each case. */
 #include <X11/Xutil.h>
 #include "ansidecl.h"
 
-struct allocation_table
+struct xdisplay
 {
-  char ** items;
-  int length;
+  unsigned int allocation_index;
+  Display * display;
+  XEvent cached_event;
+  char cached_event_p;
 };
+
+#define XD_ALLOCATION_INDEX(xd) ((xd) -> allocation_index)
+#define XD_DISPLAY(xd) ((xd) -> display)
+#define XD_CACHED_EVENT(xd) ((xd) -> cached_event)
+#define XD_CACHED_EVENT_P(xd) ((xd) -> cached_event_p)
+#define XD_TO_OBJECT(xd) (LONG_TO_UNSIGNED_FIXNUM (XD_ALLOCATION_INDEX (xd)))
 
 struct drawing_attributes
 {
@@ -61,32 +69,45 @@ struct drawing_attributes
   unsigned long mouse_pixel;
 };
 
-struct event_queue_element
-{
-  XEvent event;
-  struct event_queue_element * next;
-};
+#ifdef __STDC__
+/* This incomplete type definition is needed because the scope of the
+   implicit definition in the following typedefs is incorrect.  */
+struct xwindow;
+#endif
 
-struct event_queue
-{
-  struct event_queue_element * head;
-  struct event_queue_element * tail;
-};
+typedef void EXFUN ((*x_deallocator_t), (struct xwindow *));
+typedef void EXFUN ((*x_event_processor_t), (struct xwindow *, XEvent *));
+typedef SCHEME_OBJECT EXFUN
+  ((*x_coordinate_map_t), (struct xwindow *, unsigned int));
 
+struct xwindow_methods
+{
+  /* Deallocation procedure to do window-specific deallocation.  */
+  x_deallocator_t deallocator;
+
+  /* Procedure to call on each received event.  */
+  x_event_processor_t event_processor;
+
+  /* Procedures to map coordinates to Scheme objects. */
+  x_coordinate_map_t x_coordinate_map;
+  x_coordinate_map_t y_coordinate_map;
+};
+
 struct xwindow
 {
-  Display * display;
+  unsigned int allocation_index;
   Window window;
+  struct xdisplay * xd;
 
   /* Dimensions of the drawing region in pixels. */
-  int x_size;
-  int y_size;
+  unsigned int x_size;
+  unsigned int y_size;
 
   /* The clip rectangle. */
-  int clip_x;
-  int clip_y;
-  int clip_width;
-  int clip_height;
+  unsigned int clip_x;
+  unsigned int clip_y;
+  unsigned int clip_width;
+  unsigned int clip_height;
 
   struct drawing_attributes attributes;
 
@@ -98,60 +119,19 @@ struct xwindow
   /* The mouse cursor. */
   Cursor mouse_cursor;
 
-  /* Event queue for this window. */
-  struct event_queue events;
+  struct xwindow_methods methods;
 
-  /* Flags that can be set by event handlers. */
-  int event_flags;
+  unsigned long event_mask;
 
-  /* Additional window-specific data. */
-  char * extra;
-
-  /* Deallocation procedure to do window-specific deallocation. */
-  void (* deallocator) ();
-
-  /* Procedure to call on each received event (called with the
-     xwindow and the event) */
-  void (* event_proc) ();
-
-  /* Nonzero iff this window is mapped. */
-  char visible_p;
+#ifdef __GNUC__
+  PTR extra [0];
+#else
+  PTR extra [1];
+#endif
 };
-
-extern struct allocation_table x_display_table;
-extern struct allocation_table x_window_table;
-extern int x_debug;
 
-extern int x_allocate_table_index ();
-extern char * x_allocation_item_arg ();
-extern int x_allocation_index_arg ();
-extern PTR EXFUN (x_malloc, (unsigned int size));
-extern PTR EXFUN (x_realloc, (PTR ptr, unsigned int size));
-extern unsigned long x_decode_color ();
-extern char * x_get_default ();
-extern unsigned long x_default_color ();
-extern void x_set_mouse_colors ();
-extern void x_default_attributes ();
-extern struct xwindow * x_make_window ();
-extern SCHEME_OBJECT x_window_to_object ();
-extern struct xwindow * x_window_to_xw ();
-extern Display * x_close_window ();
-extern void x_close_display ();
-extern void xw_enqueue_event ();
-extern int xw_dequeue_event ();
-extern int x_distribute_events ();
-extern void xw_wait_for_window_event ();
-extern int check_button ();
-extern int x_process_events ();
-extern int x_wait_for_event ();
-
-#define DISPLAY_ARG(arg)						\
-  ((Display *) (x_allocation_item_arg (arg, (& x_display_table))))
-
-#define WINDOW_ARG(arg)							\
-  ((struct xwindow *) (x_allocation_item_arg (arg, (& x_window_table))))
-
-#define XW_DISPLAY(xw) ((xw) -> display)
+#define XW_ALLOCATION_INDEX(xw) ((xw) -> allocation_index)
+#define XW_XD(xw) ((xw) -> xd)
 #define XW_WINDOW(xw) ((xw) -> window)
 #define XW_X_SIZE(xw) ((xw) -> x_size)
 #define XW_Y_SIZE(xw) ((xw) -> y_size)
@@ -172,61 +152,47 @@ extern int x_wait_for_event ();
 #define XW_REVERSE_GC(xw) ((xw) -> reverse_gc)
 #define XW_CURSOR_GC(xw) ((xw) -> cursor_gc)
 #define XW_MOUSE_CURSOR(xw) ((xw) -> mouse_cursor)
-#define XW_EVENT_FLAGS(xw) ((xw) -> event_flags)
-#define XW_VISIBLE_P(xw) ((xw) -> visible_p)
+#define XW_DEALLOCATOR(xw) (((xw) -> methods) . deallocator)
+#define XW_EVENT_PROCESSOR(xw) (((xw) -> methods) . event_processor)
+#define XW_X_COORDINATE_MAP(xw) (((xw) -> methods) . x_coordinate_map)
+#define XW_Y_COORDINATE_MAP(xw) (((xw) -> methods) . y_coordinate_map)
+#define XW_EVENT_MASK(xw) ((xw) -> event_mask)
+
+#define XW_TO_OBJECT(xw) (LONG_TO_UNSIGNED_FIXNUM (XW_ALLOCATION_INDEX (xw)))
+#define XW_DISPLAY(xw) (XD_DISPLAY (XW_XD (xw)))
 
 #define FONT_WIDTH(f)	(((f) -> max_bounds) . width)
 #define FONT_HEIGHT(f)	(((f) -> ascent) + ((f) -> descent))
 #define FONT_BASE(f)    ((f) -> ascent)
+
+extern int x_debug;
 
-#define XTERM_X_PIXEL(xw, x)						\
-  (((x) * (FONT_WIDTH (XW_FONT (xw)))) + (XW_INTERNAL_BORDER_WIDTH (xw)))
+extern struct xdisplay * EXFUN (x_display_arg, (unsigned int arg));
+extern struct xwindow * EXFUN (x_window_arg, (unsigned int arg));
+extern PTR EXFUN (x_malloc, (unsigned int size));
+extern PTR EXFUN (x_realloc, (PTR ptr, unsigned int size));
+extern SCHEME_OBJECT EXFUN (x_window_to_object, (struct xwindow * xw));
 
-#define XTERM_Y_PIXEL(xw, y)						\
-  (((y) * (FONT_HEIGHT (XW_FONT (xw)))) + (XW_INTERNAL_BORDER_WIDTH (xw)))
+extern char * EXFUN
+  (x_get_default,
+   (Display * display,
+    char * resource_name,
+    char * property_name,
+    char * class_name,
+    char * sdefault));
 
-#define XTERM_X_CHARACTER(xw, x)					\
-  (((x) - (XW_INTERNAL_BORDER_WIDTH (xw))) / (FONT_WIDTH (XW_FONT (xw))))
+extern void EXFUN
+  (x_default_attributes,
+   (Display * display,
+    char * resource_name,
+    struct drawing_attributes * attributes));
 
-#define XTERM_Y_CHARACTER(xw, y)					\
-  (((y) - (XW_INTERNAL_BORDER_WIDTH (xw))) / (FONT_HEIGHT (XW_FONT (xw))))
-
-#define EVENT_TYPE_UNKNOWN		0
-#define EVENT_TYPE_RESIZED		1
-#define EVENT_TYPE_BUTTON_DOWN		2
-#define EVENT_TYPE_BUTTON_UP		3
-#define EVENT_TYPE_FOCUS_IN		4
-#define EVENT_TYPE_FOCUS_OUT		5
-#define EVENT_TYPE_ENTER		6
-#define EVENT_TYPE_LEAVE		7
-#define EVENT_TYPE_MOTION		8
-#define EVENT_TYPE_CONFIGURE		9
-#define EVENT_TYPE_MAP			10
-#define EVENT_TYPE_UNMAP		11
-#define EVENT_TYPE_EXPOSE		12
-#define EVENT_TYPE_NO_EXPOSE     	13
-#define EVENT_TYPE_GRAPHICS_EXPOSE   	14
-#define EVENT_TYPE_KEY_PRESS	   	15
-
-#define EVENT_FLAG_RESIZED		(1 << (EVENT_TYPE_RESIZED - 1))
-#define EVENT_FLAG_BUTTON_DOWN		(1 << (EVENT_TYPE_BUTTON_DOWN - 1))
-#define EVENT_FLAG_BUTTON_UP		(1 << (EVENT_TYPE_BUTTON_UP - 1))
-#define EVENT_FLAG_FOCUS_IN		(1 << (EVENT_TYPE_FOCUS_IN - 1))
-#define EVENT_FLAG_FOCUS_OUT		(1 << (EVENT_TYPE_FOCUS_OUT - 1))
-#define EVENT_FLAG_ENTER		(1 << (EVENT_TYPE_ENTER - 1))
-#define EVENT_FLAG_LEAVE		(1 << (EVENT_TYPE_LEAVE - 1))
-#define EVENT_FLAG_MOTION		(1 << (EVENT_TYPE_MOTION - 1))
-#define EVENT_FLAG_CONFIGURE		(1 << (EVENT_TYPE_CONFIGURE - 1))
-#define EVENT_FLAG_MAP			(1 << (EVENT_TYPE_MAP - 1))
-#define EVENT_FLAG_UNMAP		(1 << (EVENT_TYPE_UNMAP - 1))
-#define EVENT_FLAG_EXPOSE		(1 << (EVENT_TYPE_EXPOSE - 1))
-#define EVENT_FLAG_NO_EXPOSE		(1 << (EVENT_TYPE_NO_EXPOSE - 1))
-#define EVENT_FLAG_GRAPHICS_EXPOSE	(1 << (EVENT_TYPE_GRAPHICS_EXPOSE - 1))
-#define EVENT_FLAG_KEY_PRESS		(1 << (EVENT_TYPE_KEY_PRESS - 1))
-
-#define BITS_PER_INT 	32	/* this should be somewhere else */
-
-#define SET_X_SELECT_MASK(fd)						\
-{									\
-  (x_select_mask) [fd / BITS_PER_INT] |= (1 << (fd % BITS_PER_INT));	\
-}
+extern struct xwindow * EXFUN
+  (x_make_window,
+   (struct xdisplay * xd,
+    Window window,
+    int x_size,
+    int y_size,
+    struct drawing_attributes * attributes,
+    struct xwindow_methods * methods,
+    unsigned int extra));

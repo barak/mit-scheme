@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.28 1990/08/17 21:00:39 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.29 1990/10/02 22:52:47 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -128,8 +128,8 @@ MIT in each case. */
 #endif
 
 #ifdef HAVE_X_WINDOWS
-X_SOURCES = x11base.c x11term.c x11xtra.c x11graph.c 
-X_OBJECTS = x11base.o x11term.o x11xtra.o x11graph.o
+X_SOURCES = x11base.c x11term.c x11graph.c 
+X_OBJECTS = x11base.o x11term.o x11graph.o
 X_LIB = LIBX11_MACHINE LIBX11_SYSTEM -lX11
 #endif /* HAVE_X_WINDOWS */
 
@@ -596,14 +596,10 @@ Ppband.o : config.h types.h const.h object.h sdata.h fasl.h load.c
 
 dmpwrld.o : unexec.c getpagesize.h
 
-x11base.o x11graph.o : scheme.touch prims.h x11.h ux.h
-x11term.o x11xtra.o : scheme.touch prims.h x11.h x11term.h
+x11base.o x11graph.o x11term.o starbasex.o : scheme.touch prims.h x11.h
+x11base.o : ux.h
 cterm.o : scheme.touch prims.h
 starbase.o : scheme.touch prims.h
-starbasex.o : scheme.touch prims.h x11.h
-
-Xrep.o : scheme.touch prims.h Xlib.h
-Xlib.o : scheme.touch prims.h Xlib.h
 
 Sgraph.o Sgraph_xt.o SgX.o : scheme.touch prims.h Sgraph.h
 Sgraph_ar.o : scheme.touch prims.h Sgraph.h array.h

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/version.h,v 11.44 1990/09/11 19:50:29 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/version.h,v 11.45 1990/10/02 22:52:17 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -33,7 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. */
 
 /* This file contains version information for the microcode. */
-
+
 /* Scheme system release version */
 
 #ifndef RELEASE
@@ -46,7 +46,7 @@ MIT in each case. */
 #define VERSION		11
 #endif
 #ifndef SUBVERSION
-#define SUBVERSION	44
+#define SUBVERSION	45
 #endif
 
 #ifndef UCODE_TABLES_FILENAME

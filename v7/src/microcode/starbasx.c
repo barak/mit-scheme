@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/starbasx.c,v 1.3 1989/09/20 23:11:43 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/starbasx.c,v 1.4 1990/10/02 22:52:12 cph Rel $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -43,15 +43,14 @@ DEFINE_PRIMITIVE ("X11-WINDOW-STARBASE-FILENAME", Prim_x11_window_starbase_filen
   "Given a window, returns the name of a file which can be opened\n\
 as a Starbase graphics device.")
 {
-  struct xwindow * xw;
-  char * starbase_filename;
   PRIMITIVE_HEADER (1);
-
-  xw = (WINDOW_ARG (1));
-  starbase_filename =
-    (make_X11_gopen_string ((XW_DISPLAY (xw)), (XW_WINDOW (xw))));
-  PRIMITIVE_RETURN
-    ((starbase_filename == ((char *) 0))
-     ? SHARP_F
-     : (char_pointer_to_string (starbase_filename)));
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    char * starbase_filename =
+      (make_X11_gopen_string ((XW_DISPLAY (xw)), (XW_WINDOW (xw))));
+    PRIMITIVE_RETURN
+      ((starbase_filename == 0)
+       ? SHARP_F
+       : (char_pointer_to_string (starbase_filename)));
+  }
 }

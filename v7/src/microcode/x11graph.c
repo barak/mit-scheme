@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.6 1990/07/24 22:17:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.7 1990/10/02 22:52:35 cph Rel $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -37,10 +37,10 @@ MIT in each case. */
 #include "scheme.h"
 #include "prims.h"
 #include "x11.h"
-
+
 #define RESOURCE_NAME "scheme-graphics"
 #define DEFAULT_GEOMETRY "512x384+0+0"
-
+
 struct gw_extra
 {
   float x_left;
@@ -67,61 +67,77 @@ struct gw_extra
 #define ROUND_FLOAT(flonum)						\
   ((int) (((flonum) >= 0.0) ? ((flonum) + 0.5) : ((flonum) - 0.5)))
 
-static int
-arg_x_coordinate (arg, xw)
-     int arg;
-     struct xwindow * xw;
+static unsigned int
+DEFUN (arg_x_coordinate, (arg, xw),
+       unsigned int arg AND
+       struct xwindow * xw)
 {
   float virtual_device_x = (arg_real_number (arg));
   float device_x = ((XW_X_SLOPE (xw)) * (virtual_device_x - (XW_X_LEFT (xw))));
   return (ROUND_FLOAT (device_x));
 }
 
-static int
-arg_y_coordinate (arg, xw)
-     int arg;
-     struct xwindow * xw;
+static unsigned int
+DEFUN (arg_y_coordinate, (arg, xw),
+       unsigned int arg AND
+       struct xwindow * xw)
 {
   float virtual_device_y = (arg_real_number (arg));
   float device_y =
     ((XW_Y_SLOPE (xw)) * (virtual_device_y - (XW_Y_BOTTOM (xw))));
   return (((XW_Y_SIZE (xw)) - 1) + (ROUND_FLOAT (device_y)));
 }
+
+static SCHEME_OBJECT
+DEFUN (x_coordinate_map, (xw, x), struct xwindow * xw AND unsigned int x)
+{
+  return
+    (FLOAT_TO_FLONUM ((((float) x) / (XW_X_SLOPE (xw))) + (XW_X_LEFT (xw))));
+}
+
+static SCHEME_OBJECT
+DEFUN (y_coordinate_map, (xw, y), struct xwindow * xw AND unsigned int y)
+{
+  return
+    (FLOAT_TO_FLONUM
+     ((((float) (y + ((XW_Y_SIZE (xw)) - 1))) / (XW_Y_SLOPE (xw)))
+      + (XW_Y_BOTTOM (xw))));
+}
 
 static void
-set_clip_rectangle (xw, x_left, y_bottom, x_right, y_top)
-     struct xwindow * xw;
-     int x_left;
-     int y_bottom;
-     int x_right;
-     int y_top;
+DEFUN (set_clip_rectangle, (xw, x_left, y_bottom, x_right, y_top),
+       struct xwindow * xw AND
+       unsigned int x_left AND
+       unsigned int y_bottom AND
+       unsigned int x_right AND
+       unsigned int y_top)
 {
   XRectangle rectangles [1];
   Display * display = (XW_DISPLAY (xw));
-  int internal_border_width = (XW_INTERNAL_BORDER_WIDTH (xw));
+  unsigned int internal_border_width = (XW_INTERNAL_BORDER_WIDTH (xw));
   if (x_left > x_right)
     {
-      int x = x_left;
+      unsigned int x = x_left;
       x_left = x_right;
       x_right = x;
     }
   if (y_top > y_bottom)
     {
-      int y = y_top;
+      unsigned int y = y_top;
       y_top = y_bottom;
       y_bottom = y;
     }
   {
-    int width = ((x_right + 1) - x_left);
-    int height = ((y_bottom + 1) - y_top);
+    unsigned int width = ((x_right + 1) - x_left);
+    unsigned int height = ((y_bottom + 1) - y_top);
     (XW_CLIP_X (xw)) = x_left;
     (XW_CLIP_Y (xw)) = y_top;
     (XW_CLIP_WIDTH (xw)) = width;
     (XW_CLIP_HEIGHT (xw)) = height;
-    ((rectangles [0]) . x) = x_left;
-    ((rectangles [0]) . y) = y_top;
-    ((rectangles [0]) . width) = width;
-    ((rectangles [0]) . height) = height;
+    ((rectangles[0]) . x) = x_left;
+    ((rectangles[0]) . y) = y_top;
+    ((rectangles[0]) . width) = width;
+    ((rectangles[0]) . height) = height;
   }
   XSetClipRectangles
     (display,
@@ -135,21 +151,17 @@ set_clip_rectangle (xw, x_left, y_bottom, x_right, y_top)
      internal_border_width,
      internal_border_width,
      rectangles, 1, Unsorted);
-  return;
 }
 
 static void
-reset_clip_rectangle (xw)
-     struct xwindow * xw;
+DEFUN (reset_clip_rectangle, (xw), struct xwindow * xw)
 {
   set_clip_rectangle
     (xw, 0, ((XW_Y_SIZE (xw)) - 1), ((XW_X_SIZE (xw)) - 1), 0);
-  return;
 }
 
 static void
-reset_virtual_device_coordinates (xw)
-     struct xwindow * xw;
+DEFUN (reset_virtual_device_coordinates, (xw), struct xwindow * xw)
 {
   /* Note that the expression ((XW_c_SIZE (xw)) - 1) guarantees that
      both limits of the device coordinates will be inside the window. */
@@ -160,150 +172,6 @@ reset_virtual_device_coordinates (xw)
     (((float) ((XW_Y_SIZE (xw)) - 1)) /
      ((XW_Y_BOTTOM (xw)) - (XW_Y_TOP (xw))));
   reset_clip_rectangle (xw);
-  return;
-}
-
-static XComposeStatus compose_status;
-
-static void
-process_event (xw, event)
-     struct xwindow * xw;
-     XEvent * event;
-{
-  switch (event -> type)
-    {
-    case ConfigureNotify:
-      if (x_debug) fprintf (stderr, "\nX event: ConfigureNotify\n");
-      {
-	int extra = (2 * (XW_INTERNAL_BORDER_WIDTH (xw)));
-	int x_size = (((event -> xconfigure) . width) - extra);
-	int y_size = (((event -> xconfigure) . height) - extra);
-	if ((x_size != (XW_X_SIZE (xw))) || (y_size != (XW_Y_SIZE (xw))))
-	  {
-	    (XW_X_SIZE (xw)) = x_size;
-	    (XW_Y_SIZE (xw)) = y_size;
-	    reset_virtual_device_coordinates (xw);
-	    (XW_EVENT_FLAGS (xw)) |= EVENT_FLAG_RESIZED;
-	    XClearWindow ((XW_DISPLAY (xw)), (XW_WINDOW (xw)));
-	  }
-      }
-      break;
-
-    case MapNotify:
-      if (x_debug) fprintf (stderr, "\nX event: MapNotify\n");
-      (XW_VISIBLE_P (xw)) = 1;
-      (XW_EVENT_FLAGS (xw)) |= EVENT_FLAG_MAP;
-      break;
-
-    case UnmapNotify:
-      if (x_debug) fprintf (stderr, "\nX event: UnmapNotify\n");
-      (XW_VISIBLE_P (xw)) = 0;
-      (XW_EVENT_FLAGS (xw)) |= EVENT_FLAG_UNMAP;
-      break;
-
-    case ButtonPress:
-      {
-	int button = (check_button ((event -> xbutton) . button));
-	int pointer_x = ((event -> xbutton) . x);
-	int pointer_y = ((event -> xbutton) . y);
-	if (button == (-1)) break;
-	(XW_EVENT_FLAGS (xw)) |= EVENT_FLAG_BUTTON_DOWN;
-	if (x_debug)
-	  fprintf (stderr, "\nX event: ButtonPress: Button=%d, X=%d, Y=%d\n",
-		   button, pointer_x, pointer_y);
-      }
-      break;
-
-    case ButtonRelease:
-      {
-	int button = (check_button ((event -> xbutton) . button));
-	int pointer_x = ((event -> xbutton) . x);
-	int pointer_y = ((event -> xbutton) . y);
-	if (button == (-1)) break;
-	(XW_EVENT_FLAGS (xw)) |= EVENT_FLAG_BUTTON_UP;
-	if (x_debug)
-	  fprintf (stderr, "\nX event: ButtonRelease: Button=%d, X=%d, Y=%d\n",
-		   button, pointer_x, pointer_y);
-      }
-      break;
-
-    case KeyPress:
-      {
-	int nbytes;
-	char copy_buffer[10];
-	KeySym keysym;
-
-	(XW_EVENT_FLAGS (xw)) |= EVENT_FLAG_KEY_PRESS;
-	nbytes =
-	  (XLookupString ((& (event -> xkey)),
-			  (& (copy_buffer [0])),
-			  (sizeof (copy_buffer)),
-			  (& keysym),
-			  (& compose_status)));
-	if (x_debug)
-	  {
-	    fprintf (stderr, "\nX event: KeyPress, key=%s\n", copy_buffer);
-	  }
-      }
-      break;
-
-    case Expose:
-      if (x_debug) fprintf (stderr, "\nX event: Expose\n");
-      (XW_EVENT_FLAGS (xw)) |= EVENT_FLAG_EXPOSE;
-      break;
-
-    case GraphicsExpose:
-      if (x_debug) fprintf (stderr, "\nX event: GraphicsExpose\n");
-      (XW_EVENT_FLAGS (xw)) |= EVENT_FLAG_GRAPHICS_EXPOSE;
-      break;
-
-    case EnterNotify:
-      if (x_debug) fprintf (stderr, "\nX event: EnterNotify\n");
-      if (xw != ((struct xwindow *) 0)) {
-	(XW_EVENT_FLAGS (xw)) |= EVENT_FLAG_ENTER;
-      }
-      break;
-
-    case LeaveNotify:
-      if (x_debug) fprintf (stderr, "\nX event: LeaveNotify\n");
-      if (xw != ((struct xwindow *) 0)) {
-	(XW_EVENT_FLAGS (xw)) |= EVENT_FLAG_LEAVE;
-      }
-      break;
-
-    case FocusIn:
-      if (x_debug) fprintf (stderr, "\nX event: FocusIn\n");
-      if (xw != ((struct xwindow *) 0)) {
-	(XW_EVENT_FLAGS (xw)) |= EVENT_FLAG_FOCUS_IN;
-      }
-      break;
-
-    case FocusOut:
-      if (x_debug) fprintf (stderr, "\nX event: FocusOut\n");
-      if (xw != ((struct xwindow *) 0)) {
-	(XW_EVENT_FLAGS (xw)) |= EVENT_FLAG_FOCUS_OUT;
-      }
-      break;
-
-    case MotionNotify:
-      if (x_debug) fprintf (stderr, "\nX event: MotionNotify\n");
-      if (xw != ((struct xwindow *) 0)) {
-	(XW_EVENT_FLAGS (xw)) |= EVENT_FLAG_MOTION;
-      }
-      break;
-
-    default:
-      if (x_debug) fprintf (stderr, "\nX event: %d", (event -> type));
-      break;
-    }
-  return;
-}
-
-static void
-process_events (xw)
-     struct xwindow * xw;
-{
-  (void) x_process_events();
 }
 
 DEFINE_PRIMITIVE ("X-GRAPHICS-SET-VDC-EXTENT", Prim_x_graphics_set_vdc_extent, 5, 5,
@@ -312,12 +180,11 @@ Set the virtual device coordinates to the given values.")
 {
   PRIMITIVE_HEADER (5);
   {
-    struct xwindow * xw = (WINDOW_ARG (1));
+    struct xwindow * xw = (x_window_arg (1));
     float x_left = (arg_real_number (2));
     float y_bottom = (arg_real_number (3));
     float x_right = (arg_real_number (4));
     float y_top = (arg_real_number (5));
-    process_events (xw);
     (XW_X_LEFT (xw)) = x_left;
     (XW_Y_BOTTOM (xw)) = y_bottom;
     (XW_X_RIGHT (xw)) = x_right;
@@ -329,26 +196,22 @@ Set the virtual device coordinates to the given values.")
 
 DEFINE_PRIMITIVE ("X-GRAPHICS-VDC-EXTENT", Prim_x_graphics_vdc_extent, 1, 1, 0)
 {
-  struct xwindow * xw;
-  SCHEME_OBJECT result;
   PRIMITIVE_HEADER (5);
-  xw = (WINDOW_ARG (1));
-  process_events (xw);
-  result = (allocate_marked_vector (TC_VECTOR, 4, true));
-  VECTOR_SET (result, 0, (double_to_flonum ((double) (XW_X_LEFT (xw)))));
-  VECTOR_SET (result, 1, (double_to_flonum ((double) (XW_Y_BOTTOM (xw)))));
-  VECTOR_SET (result, 2, (double_to_flonum ((double) (XW_X_RIGHT (xw)))));
-  VECTOR_SET (result, 3, (double_to_flonum ((double) (XW_Y_TOP (xw)))));
-  PRIMITIVE_RETURN (result);
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, 4, true));
+    VECTOR_SET (result, 0, (double_to_flonum ((double) (XW_X_LEFT (xw)))));
+    VECTOR_SET (result, 1, (double_to_flonum ((double) (XW_Y_BOTTOM (xw)))));
+    VECTOR_SET (result, 2, (double_to_flonum ((double) (XW_X_RIGHT (xw)))));
+    VECTOR_SET (result, 3, (double_to_flonum ((double) (XW_Y_TOP (xw)))));
+    PRIMITIVE_RETURN (result);
+  }
 }
 
 DEFINE_PRIMITIVE ("X-GRAPHICS-RESET-CLIP-RECTANGLE", Prim_x_graphics_reset_clip_rectangle, 1, 1, 0)
 {
-  struct xwindow * xw;
   PRIMITIVE_HEADER (1);
-  xw = (WINDOW_ARG (1));
-  process_events (xw);
-  reset_clip_rectangle (xw);
+  reset_clip_rectangle (x_window_arg (1));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -356,31 +219,59 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-SET-CLIP-RECTANGLE", Prim_x_graphics_set_clip_rect
   "(X-GRAPHICS-SET-CLIP-RECTANGLE WINDOW X-LEFT Y-BOTTOM X-RIGHT Y-TOP)\n\
 Set the clip rectangle to the given coordinates.")
 {
-  struct xwindow * xw;
-  int x_left;
-  int y_bottom;
-  int x_right;
-  int y_top;
   PRIMITIVE_HEADER (5);
-  xw = (WINDOW_ARG (1));
-  process_events (xw);
-  x_left = (arg_x_coordinate (2, xw));
-  y_bottom = (arg_y_coordinate (3, xw));
-  x_right = (arg_x_coordinate (4, xw));
-  y_top = (arg_y_coordinate (5, xw));
-  set_clip_rectangle (xw, x_left, y_bottom, x_right, y_top);
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    set_clip_rectangle
+      (xw,
+       (arg_x_coordinate (2, xw)),
+       (arg_y_coordinate (3, xw)),
+       (arg_x_coordinate (4, xw)),
+       (arg_y_coordinate (5, xw)));
+  }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 static void
-wm_set_size_hint (xw, flags, x, y)
-     struct xwindow  * xw;
-     long flags;
-     int x, y;
+DEFUN (process_event, (xw, event),
+       struct xwindow * xw AND
+       XEvent * event)
 {
-  int extra = (2 * (XW_INTERNAL_BORDER_WIDTH (xw)));
+  switch (event -> type)
+    {
+    case ConfigureNotify:
+      {
+	unsigned int extra = (2 * (XW_INTERNAL_BORDER_WIDTH (xw)));
+	unsigned int x_size = (((event -> xconfigure) . width) - extra);
+	unsigned int y_size = (((event -> xconfigure) . height) - extra);
+	if ((x_size != (XW_X_SIZE (xw))) || (y_size != (XW_Y_SIZE (xw))))
+	  {
+	    (XW_X_SIZE (xw)) = x_size;
+	    (XW_Y_SIZE (xw)) = y_size;
+	    reset_virtual_device_coordinates (xw);
+	    XClearWindow ((XW_DISPLAY (xw)), (XW_WINDOW (xw)));
+	  }
+      }
+      break;
+    }
+}
+
+static void
+DEFUN (wm_set_size_hint, (xw, geometry_mask, x, y),
+       struct xwindow  * xw AND
+       int geometry_mask AND
+       int x AND
+       int y)
+{
+  unsigned int extra = (2 * (XW_INTERNAL_BORDER_WIDTH (xw)));
   XSizeHints size_hints;
-  (size_hints . flags) = (PResizeInc | PMinSize | flags);
+  (size_hints . flags) =
+    (PResizeInc
+     | PMinSize
+     | (((geometry_mask & XValue) && (geometry_mask & YValue))
+	? USPosition : PPosition)
+     | (((geometry_mask & WidthValue) && (geometry_mask & HeightValue))
+	? USSize : PSize));
   (size_hints . x) = x;
   (size_hints . y) = y;
   (size_hints . width) = ((XW_X_SIZE (xw)) + extra);
@@ -389,21 +280,20 @@ wm_set_size_hint (xw, flags, x, y)
   (size_hints . height_inc) = 1;
   (size_hints . min_width) = extra;
   (size_hints . min_height) = extra;
-  XSetNormalHints ((XW_DISPLAY (xw)), (XW_WINDOW (xw)), (& size_hints));
-  return;
+  XSetNormalHints ((XW_DISPLAY (xw)), (XW_WINDOW (xw)), (&size_hints));
 }
 
-#define MAKE_GC(gc, fore, back)						\
-{									\
-  XGCValues gcv;							\
-  (gcv . font) = fid;							\
-  (gcv . foreground) = (fore);						\
-  (gcv . background) = (back);						\
-  (gc) =								\
-    (XCreateGC (display,						\
-		window,							\
-		(GCFont | GCForeground | GCBackground),			\
-		(& gcv)));						\
+#define MAKE_GC(gc, fore, back)						\ \
+{									\ \
+  XGCValues gcv;							\ \
+  (gcv . font) = fid;							\ \
+  (gcv . foreground) = (fore);						\ \
+  (gcv . background) = (back);						\ \
+  (gc) =								\ \
+    (XCreateGC (display,						\ \
+		window,							\ \
+		(GCFont | GCForeground | GCBackground),			\ \
+		(& gcv)));						\ \
 }
 
 DEFINE_PRIMITIVE ("X-GRAPHICS-OPEN-WINDOW", Prim_x_graphics_open_window, 3, 3,
@@ -412,99 +302,71 @@ Open a window on DISPLAY using GEOMETRY.\n\
 If GEOMETRY is false map window interactively.\n\
 If third argument SUPPRESS-MAP? is true, do not map the window immediately.")
 {
-  Display * display;
-  int screen_number;
-  char * name;
-  struct drawing_attributes attributes;
-  int border_width;
-  int internal_border_width;
-  int extra;
-  int x_pos;
-  int y_pos;
-  int x_size;
-  int y_size;
-  Window window;
-  long flags;
-  struct xwindow * xw;
   PRIMITIVE_HEADER (3);
-  display = (DISPLAY_ARG (1));
-  screen_number = (DefaultScreen (display));
-  name = "scheme-graphics";
-  x_default_attributes (display, RESOURCE_NAME, (& attributes));
-  border_width = (attributes . border_width);
-  internal_border_width = (attributes . internal_border_width);
-  extra = (2 * internal_border_width);
-  x_pos = (-1);
-  y_pos = (-1);
-  x_size = 512;
-  y_size = 384;
   {
-    char * geometry =
-      (((ARG_REF (2)) == SHARP_F)
-       ? (x_get_default
-	  (display, RESOURCE_NAME, "geometry", "Geometry", ((char *) 0)))
-       : (STRING_ARG (2)));
-    int result =
-      (XGeometry (display, screen_number, geometry,
-		  DEFAULT_GEOMETRY, border_width,
-		  1, 1, extra, extra,
-		  (& x_pos), (& y_pos), (& x_size), (& y_size)));
-    flags = 0;
-    flags |=
-      (((result & XValue) && (result & YValue)) ? USPosition : PPosition);
-    flags |=
-      (((result & WidthValue) && (result & HeightValue)) ? USSize : PSize);
-  }
-  /* Open the window with the given arguments. */
-  {
+    struct xdisplay * xd = (x_display_arg (1));
+    Display * display = (XD_DISPLAY (xd));
+    struct drawing_attributes attributes;
+    struct xwindow_methods methods;
     XSetWindowAttributes wattributes;
+    x_default_attributes (display, RESOURCE_NAME, (&attributes));
     (wattributes . background_pixel) = (attributes . background_pixel);
     (wattributes . border_pixel) = (attributes . border_pixel);
     (wattributes . backing_store) = Always;
-    window =
-      (XCreateWindow
-       (display,
-	(RootWindow (display, screen_number)),
-	x_pos, y_pos, (x_size + extra), (y_size + extra), border_width,
-	CopyFromParent, CopyFromParent, CopyFromParent,
-	(CWBackPixel | CWBorderPixel | CWBackingStore),
-	(& wattributes)));
-  }
-  if (window == ((Window) 0))
-    error_external_return ();
-  xw =
-    (x_make_window
-     (display,
-      window,
-      x_size,
-      y_size,
-      (& attributes),
-      (sizeof (struct gw_extra)),
-      ((void (*) ()) 0),
-      process_event));
-  (XW_X_LEFT (xw)) = ((float) (-1));
-  (XW_X_RIGHT (xw)) = ((float) 1);
-  (XW_Y_BOTTOM (xw)) = ((float) (-1));
-  (XW_Y_TOP (xw)) = ((float) 1);
-  reset_virtual_device_coordinates (xw);
-  (XW_X_CURSOR (xw)) = 0;
-  (XW_Y_CURSOR (xw)) = 0;
-  XSelectInput (display, window,
-		KeyPressMask | ExposureMask |
-		ButtonPressMask | ButtonReleaseMask |
-		StructureNotifyMask | FocusChangeMask |
-		PointerMotionHintMask | ButtonMotionMask |
-		LeaveWindowMask | EnterWindowMask);
-  wm_set_size_hint (xw, flags, x_pos, y_pos);
-  XStoreName (display, window, name);
-  XSetIconName (display, window, name);
-  if ((ARG_REF (3)) == SHARP_F)
+    (methods . deallocator) = 0;
+    (methods . event_processor) = process_event;
+    (methods . x_coordinate_map) = x_coordinate_map;
+    (methods . y_coordinate_map) = y_coordinate_map;
     {
-      (XW_VISIBLE_P (xw)) = 1;
-      XMapWindow (display, window);
-      XFlush (display);
+      unsigned int extra = (2 * (attributes . internal_border_width));
+      int x_pos = (-1);
+      int y_pos = (-1);
+      int x_size = 512;
+      int y_size = 384;
+      int geometry_mask =
+	(XGeometry (display, (DefaultScreen (display)),
+		    (((ARG_REF (2)) == SHARP_F)
+		     ? (x_get_default
+			(display, RESOURCE_NAME, "geometry", "Geometry", 0))
+		     : (STRING_ARG (2))),
+		    DEFAULT_GEOMETRY, (attributes . border_width),
+		    1, 1, extra, extra,
+		    (&x_pos), (&y_pos), (&x_size), (&y_size)));
+      Window window =
+	(XCreateWindow
+	 (display,
+	  (RootWindow (display, (DefaultScreen (display)))),
+	  x_pos, y_pos, (x_size + extra), (y_size + extra),
+	  (attributes . border_width),
+	  CopyFromParent, CopyFromParent, CopyFromParent,
+	  (CWBackPixel | CWBorderPixel | CWBackingStore),
+	  (&wattributes)));
+      if (window == 0)
+	error_external_return ();
+      {
+	struct xwindow * xw =
+	  (x_make_window
+	   (xd, window, x_size, y_size, (&attributes), (&methods),
+	    (sizeof (struct gw_extra))));
+	(XW_X_LEFT (xw)) = ((float) (-1));
+	(XW_X_RIGHT (xw)) = ((float) 1);
+	(XW_Y_BOTTOM (xw)) = ((float) (-1));
+	(XW_Y_TOP (xw)) = ((float) 1);
+	reset_virtual_device_coordinates (xw);
+	(XW_X_CURSOR (xw)) = 0;
+	(XW_Y_CURSOR (xw)) = 0;
+	wm_set_size_hint (xw, geometry_mask, x_pos, y_pos);
+	XStoreName (display, window, "scheme-graphics");
+	XSetIconName (display, window, "scheme-graphics");
+	if ((ARG_REF (3)) == SHARP_F)
+	  {
+	    XMapWindow (display, window);
+	    XFlush (display);
+	  }
+	PRIMITIVE_RETURN (XW_TO_OBJECT (xw));
+      }
     }
-  PRIMITIVE_RETURN (x_window_to_object (xw));
+  }
 }
 
 DEFINE_PRIMITIVE ("X-GRAPHICS-DRAW-LINE", Prim_x_graphics_draw_line, 5, 5,
@@ -514,10 +376,10 @@ Subsequently move the graphics cursor to the end coordinates.")
 {
   PRIMITIVE_HEADER (5);
   {
-    struct xwindow * xw = (WINDOW_ARG (1));
-    int new_x_cursor = (arg_x_coordinate (4, xw));
-    int new_y_cursor = (arg_y_coordinate (5, xw));
-    int internal_border_width = (XW_INTERNAL_BORDER_WIDTH (xw));
+    struct xwindow * xw = (x_window_arg (1));
+    unsigned int new_x_cursor = (arg_x_coordinate (4, xw));
+    unsigned int new_y_cursor = (arg_y_coordinate (5, xw));
+    unsigned int internal_border_width = (XW_INTERNAL_BORDER_WIDTH (xw));
     XDrawLine
       ((XW_DISPLAY (xw)),
        (XW_WINDOW (xw)),
@@ -536,11 +398,12 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-MOVE-CURSOR", Prim_x_graphics_move_cursor, 3, 3,
   "(X-GRAPHICS-MOVE-CURSOR WINDOW X Y)\n\
 Move the graphics cursor to the given coordinates.")
 {
-  struct xwindow * xw;
   PRIMITIVE_HEADER (3);
-  xw = (WINDOW_ARG (1));
-  (XW_X_CURSOR (xw)) = (arg_x_coordinate (2, xw));
-  (XW_Y_CURSOR (xw)) = (arg_y_coordinate (3, xw));
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    (XW_X_CURSOR (xw)) = (arg_x_coordinate (2, xw));
+    (XW_Y_CURSOR (xw)) = (arg_y_coordinate (3, xw));
+  }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -551,10 +414,10 @@ Subsequently move the graphics cursor to those coordinates.")
 {
   PRIMITIVE_HEADER (3);
   {
-    struct xwindow * xw = (WINDOW_ARG (1));
-    int new_x_cursor = (arg_x_coordinate (2, xw));
-    int new_y_cursor = (arg_y_coordinate (3, xw));
-    int internal_border_width = (XW_INTERNAL_BORDER_WIDTH (xw));
+    struct xwindow * xw = (x_window_arg (1));
+    unsigned int new_x_cursor = (arg_x_coordinate (2, xw));
+    unsigned int new_y_cursor = (arg_y_coordinate (3, xw));
+    unsigned int internal_border_width = (XW_INTERNAL_BORDER_WIDTH (xw));
     XDrawLine
       ((XW_DISPLAY (xw)),
        (XW_WINDOW (xw)),
@@ -576,8 +439,8 @@ Subsequently move the graphics cursor to those coordinates.")
 {
   PRIMITIVE_HEADER (3);
   {
-    struct xwindow * xw = (WINDOW_ARG (1));
-    int internal_border_width = (XW_INTERNAL_BORDER_WIDTH (xw));
+    struct xwindow * xw = (x_window_arg (1));
+    unsigned int internal_border_width = (XW_INTERNAL_BORDER_WIDTH (xw));
     XDrawPoint
       ((XW_DISPLAY (xw)),
        (XW_WINDOW (xw)),
@@ -594,8 +457,8 @@ Draw characters in the current font at the given coordinates.")
 {
   PRIMITIVE_HEADER (4);
   {
-    struct xwindow * xw = (WINDOW_ARG (1));
-    int internal_border_width = (XW_INTERNAL_BORDER_WIDTH (xw));
+    struct xwindow * xw = (x_window_arg (1));
+    unsigned int internal_border_width = (XW_INTERNAL_BORDER_WIDTH (xw));
     char * s = (STRING_ARG (4));
     XDrawString
       ((XW_DISPLAY (xw)),
@@ -613,9 +476,9 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-SET-FUNCTION", Prim_x_graphics_set_function, 2, 2,
 {
   PRIMITIVE_HEADER (2);
   {
-    struct xwindow * xw = (WINDOW_ARG (1));
+    struct xwindow * xw = (x_window_arg (1));
     Display * display = (XW_DISPLAY (xw));
-    int function = (arg_index_integer (2, 16));
+    unsigned int function = (arg_index_integer (2, 16));
     XSetFunction (display, (XW_NORMAL_GC (xw)), function);
     XSetFunction (display, (XW_REVERSE_GC (xw)), function);
   }
@@ -626,9 +489,9 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-SET-FILL-STYLE", Prim_x_graphics_set_fill_style, 2
 {
   PRIMITIVE_HEADER (2);
   {
-    struct xwindow * xw = (WINDOW_ARG (1));
+    struct xwindow * xw = (x_window_arg (1));
     Display * display = (XW_DISPLAY (xw));
-    int fill_style = (arg_index_integer (2, 4));
+    unsigned int fill_style = (arg_index_integer (2, 4));
     XSetFillStyle (display, (XW_NORMAL_GC (xw)), fill_style);
     XSetFillStyle (display, (XW_REVERSE_GC (xw)), fill_style);
   }
@@ -639,9 +502,9 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-SET-LINE-STYLE", Prim_x_graphics_set_line_style, 2
 {
   PRIMITIVE_HEADER (2);
   {
-    struct xwindow * xw = (WINDOW_ARG (1));
+    struct xwindow * xw = (x_window_arg (1));
     Display * display = (XW_DISPLAY (xw));
-    int style = (arg_index_integer (2, 3));
+    unsigned int style = (arg_index_integer (2, 3));
     XSetLineAttributes
       (display, (XW_NORMAL_GC (xw)), 0, style, CapButt, JoinMiter);
     XSetLineAttributes
@@ -654,23 +517,16 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-SET-DASHES", Prim_x_graphics_set_dashes, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
   {
-    struct xwindow * xw = (WINDOW_ARG (1));
+    struct xwindow * xw = (x_window_arg (1));
     Display * display = (XW_DISPLAY (xw));
     char * dash_list = (STRING_ARG (3));
-    int dash_list_length = (STRING_LENGTH (ARG_REF (3)));
-    int dash_offset = (arg_index_integer (2, dash_list_length));
+    unsigned int dash_list_length = (STRING_LENGTH (ARG_REF (3)));
+    unsigned int dash_offset = (arg_index_integer (2, dash_list_length));
     XSetDashes
       (display, (XW_NORMAL_GC (xw)), dash_offset, dash_list, dash_list_length);
     XSetDashes
       (display, (XW_REVERSE_GC (xw)), dash_offset, dash_list,
        dash_list_length);
   }
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-DEFINE_PRIMITIVE ("X-GRAPHICS-PROCESS-EVENTS", Prim_x_graphics_process_events, 1, 1, 0)
-{
-  PRIMITIVE_HEADER (1);
-  process_events (WINDOW_ARG (1));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
