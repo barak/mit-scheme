@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.116 2000/06/01 20:09:12 cph Exp $
+;;; $Id: imail-top.scm,v 1.117 2000/06/02 01:54:19 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -129,6 +129,15 @@ Set this variable to #F to disable updating."
 Otherwise, all messages are presented as plain text."
   #t
   boolean?)
+
+(define-variable imail-auto-wrap-mime
+  "If true, all decoded MIME messages will have their lines wrapped.
+If set to 'FILL, the paragraphs are filled as well as wrapped.
+Otherwise, no wrapping occurs.
+Note that this only applies to MIME parts that are encoded as
+ quoted-printable or BASE64; unencoded parts are show verbatim."
+  #t
+  (lambda (x) (or (boolean? x) (eq? x 'FILL))))
 
 (define-command imail
   "Read and edit incoming mail.
@@ -431,6 +440,8 @@ variable's documentation (using \\[describe-variable]) for details:
     (buffer-put! buffer 'REVERT-BUFFER-METHOD imail-revert-buffer)
     (add-kill-buffer-hook buffer imail-kill-buffer)
     (local-set-variable! mode-line-modified "--- " buffer)
+    (add-adaptive-fill-regexp! "[ \t]*[-a-zA-Z0-9]*>+[ \t]*")
+    (standard-alternate-paragraph-style! buffer)
     (set-buffer-read-only! buffer)
     (disable-group-undo! (buffer-group buffer))
     (event-distributor/invoke! (ref-variable imail-mode-hook buffer) buffer)))
@@ -438,6 +449,22 @@ variable's documentation (using \\[describe-variable]) for details:
 (define-variable imail-mode-hook
   "An event distributor that is invoked when entering IMAIL mode."
   (make-event-distributor))
+
+(define (add-adaptive-fill-regexp! regexp)
+  (local-set-variable!
+   adaptive-fill-regexp
+   (string-append reply-prefix
+		  "\\|"
+		  (variable-default-value
+		   (ref-variable-object adaptive-fill-regexp)))
+   buffer)
+  (local-set-variable!
+   adaptive-fill-first-line-regexp
+   (string-append reply-prefix
+		  "\\|"
+		  (variable-default-value
+		   (ref-variable-object adaptive-fill-first-line-regexp)))
+   buffer))
 
 (define-key 'imail #\.		'beginning-of-buffer)
 (define-key 'imail #\space	'scroll-up)
@@ -676,27 +703,31 @@ With prefix argument N moves backward N messages with these flags."
 	  (buffer-widen! buffer)
 	  (region-delete! (buffer-region buffer))
 	  (associate-imail-with-buffer buffer folder message)
+	  (set-buffer-major-mode! buffer (ref-mode-object imail))
 	  (let ((mark (mark-left-inserting-copy (buffer-start buffer))))
-	    (if message
-		(begin
-		  (store-property! message 'FULL-HEADERS? full-headers?)
-		  (insert-string
-		   (header-fields->string
-		    (if full-headers?
-			(message-header-fields message)
-			(maybe-reformat-headers (message-header-fields message)
-						buffer)))
-		   mark)
-		  (insert-newline mark)
-		  (if (and (ref-variable imail-receive-mime buffer)
-			   (folder-supports-mime? folder))
-		      (insert-mime-message-body message mark)
-		      (insert-string (message-body message) mark))
-		  (guarantee-newline mark))
-		(insert-string "[This folder has no messages in it.]" mark))
+	    (with-read-only-defeated mark
+	      (lambda ()
+		(if message
+		    (begin
+		      (store-property! message 'FULL-HEADERS? full-headers?)
+		      (insert-string
+		       (header-fields->string
+			(if full-headers?
+			    (message-header-fields message)
+			    (maybe-reformat-headers
+			     (message-header-fields message)
+			     buffer)))
+		       mark)
+		      (insert-newline mark)
+		      (if (and (ref-variable imail-receive-mime buffer)
+			       (folder-supports-mime? folder))
+			  (insert-mime-message-body message mark)
+			  (insert-string (message-body message) mark))
+		      (guarantee-newline mark))
+		    (insert-string "[This folder has no messages in it.]"
+				   mark))))
 	    (mark-temporary! mark))
 	  (set-buffer-point! buffer (buffer-start buffer))
-	  (set-buffer-major-mode! buffer (ref-mode-object imail))
 	  (buffer-not-modified! buffer)))
     (if message
 	(message-seen message))
@@ -715,16 +746,19 @@ With prefix argument N moves backward N messages with these flags."
   (let ((parts (mime-body-multipart-parts body)))
     (if (eq? (mime-body-subtype body) 'ALTERNATIVE)
 	(insert-mime-message-part message (car parts) `(,@selector 0) mark)
-	(do ((parts parts (cdr parts))
-	     (i 0 (fix:+ i 1)))
-	    ((null? parts))
-	  (if (fix:> i 0)
-	      (insert-mime-message-separator mark))
-	  (insert-mime-message-part message (car parts) `(,@selector ,i)
-				    mark)))))
-
-(define (insert-mime-message-separator mark)
-  (insert-string "\n----------------------------------------\n\n" mark))
+	(let ((boundary (cdr (assq 'BOUNDARY (mime-body-parameters body)))))
+	  (do ((parts parts (cdr parts))
+	       (i 0 (fix:+ i 1)))
+	      ((null? parts))
+	    (if (fix:> i 0)
+		(begin
+		  (insert-newline mark)
+		  (insert-string "--" mark)
+		  (insert-string boundary mark)
+		  (insert-newline mark)
+		  (insert-newline mark)))
+	    (insert-mime-message-part message (car parts) `(,@selector ,i)
+				      mark))))))
 
 (define-method insert-mime-message-part
     (message (body <mime-body-text>) selector mark)
@@ -738,15 +772,16 @@ With prefix argument N moves backward N messages with these flags."
 		     (cdr entry)
 		     "us-ascii"))))
 	  (or (string-ci=? charset "us-ascii")
-	      (re-string-match "^iso-8859-[0-9]+$" charset #t)))
+	      (re-string-match "\\`iso-8859-[0-9]+\\'" charset #t)))
 	(begin
 	  (case (mime-body-one-part-encoding body)
 	    ((QUOTED-PRINTABLE)
-	     (insert-string (decode-quoted-printable-string text) mark))
+	     (insert-auto-wrapped-string (decode-quoted-printable-string text)
+					 mark))
 	    ((BASE64)
 	     (call-with-values (lambda () (decode-base64-text-string text #f))
 	       (lambda (decoded-text pending-return?)
-		 (insert-string decoded-text mark)
+		 (insert-auto-wrapped-string decoded-text mark)
 		 (if pending-return?
 		     (insert-char #\return mark)))))
 	    (else
@@ -776,6 +811,40 @@ With prefix argument N moves backward N messages with these flags."
 (define (insert-mime-message-binary message body selector mark)
   message body selector
   (insert-string "[** ATTACHMENT **]\n" mark))
+
+(define (insert-auto-wrapped-string string mark)
+  (let ((mode (ref-variable imail-auto-wrap-mime mark)))
+    (cond ((not mode)
+	   (insert-string string mark))
+	  ((eq? mode 'FILL)
+	   (insert-filled-string string mark))
+	  (else
+	   (insert-wrapped-string string mark)))))
+
+(define (insert-wrapped-string string mark)
+  (let ((start (mark-right-inserting-copy mark))
+	(end (mark-left-inserting-copy mark)))
+    (insert-string string mark)
+    (let ((m (mark-left-inserting-copy (line-end start 0))))
+      (let loop ()
+	(delete-horizontal-space m)
+	(do () ((not (auto-fill-break m))))
+	(if (mark< m end)
+	    (begin
+	      (move-mark-to! m (line-end m 1 'ERROR))
+	      (loop))))
+      (mark-temporary! m))
+    (mark-temporary! start)
+    (mark-temporary! end)))
+
+(define (insert-filled-string string mark)
+  (let ((start (mark-right-inserting-copy mark))
+	(end (mark-left-inserting-copy mark)))
+    (insert-string string mark)
+    (fill-individual-paragraphs start end
+				(ref-variable fill-column start) #f #f)
+    (mark-temporary! start)
+    (mark-temporary! end)))
 
 (define (associate-imail-with-buffer buffer folder message)
   (without-interrupts
