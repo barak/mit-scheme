@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.15 1992/05/04 20:41:27 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.16 1992/05/05 02:25:04 jinx Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
@@ -337,6 +337,19 @@ The following options are only meaningful to bchscheme:
 #endif
 
 #endif /* mips */
+
+#ifdef i386
+/* 386 code is large too! */
+
+#ifndef DEFAULT_SMALL_CONSTANT
+#define DEFAULT_SMALL_CONSTANT 420
+#endif
+
+#ifndef DEFAULT_LARGE_CONSTANT
+#define DEFAULT_LARGE_CONSTANT 1000
+#endif
+
+#endif /* i386 */
 
 #endif /* HAS_COMPILER_SUPPORT */
 
