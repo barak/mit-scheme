@@ -274,7 +274,7 @@
     (let y-loop ((y 0))
       (if (fix:< y hgt)
 	  (begin
-	    (floating-vector-set! new-data y 
+	    (vector-set! new-data y 
 			 (floating-vector-copy
 			  (vector-ref data (fix:- y-max y))))
 	    (y-loop (fix:+ y 1)))))
@@ -290,11 +290,20 @@
     (let y-loop ((y 0))
       (if (fix:< y hgt)
 	  (begin
-	    (floating-vector-set! new-data y
-			 (list->vector 
-			  (reverse 
-			   (vector->list (vector-ref data y)))))
+	    (vector-set! new-data y
+			 (floating-vector-reverse (vector-ref data y)))
 	    (y-loop (fix:+ y 1)))))
     (picture-set-data! new-pic new-data)
     new-pic))
+
+(define (floating-vector-reverse vector)
+  (let* ((length (floating-vector-length vector))
+	 (new-vector (floating-vector-cons length))
+	 (length-1 (- length 1)))
+    (do 
+	((i 0 (+ i 1)))
+	((= i length))
+      (floating-vector-set! new-vector i 
+			    (floating-vector-ref vector (- length-1 i))))
+    new-vector))
 
