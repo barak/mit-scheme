@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.5 2000/01/19 06:00:45 cph Exp $
+;;; $Id: imail-top.scm,v 1.6 2000/01/19 21:02:53 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -312,11 +312,10 @@ With prefix argument N moves forward N messages with these flags."
 	  (editor-error "No flags to find have been previously specified."))
       (set! imail-last-multi-flags flags)
       (move-to-message n
-		       (let ((flags (map string->message-flag flags)))
-			 (lambda (message)
-			   (there-exists? flags
-			     (lambda (flag)
-			       (message-flagged? message flag)))))
+		       (lambda (message)
+			 (there-exists? flags
+			   (lambda (flag)
+			     (message-flagged? message flag))))
 		       (string-append "message with flags " flags)))))
 
 (define-command imail-previous-flagged-message
@@ -326,7 +325,6 @@ If FLAGS is empty, the last set of flags specified is used.
 With prefix argument N moves backward N messages with these flags."
   (lambda ()
     (flagged-message-arguments "Move to previous message with flags"))
-  
   (lambda (n flags)
     ((ref-command imail-next-flagged-message) (- n) flags)))
 
@@ -457,3 +455,33 @@ Deleted messages stay in the file until the \\[imail-expunge] command is given."
 	(if (eq? message message*)
 	    (maybe-redisplay-message message)
 	    (select-message folder message*))))))
+
+;;;; Message flags
+
+(define-command imail-add-flag
+  "Add FLAG to flags associated with current IMAIL message.
+Completion is performed over known flags when reading."
+  (lambda ()
+    (list (imail-read-flag "Add flag" #f)))
+  (lambda (flag)
+    (set-message-flag (selected-message) flag)))
+
+(define-command imail-kill-flag
+  "Remove FLAG from flags associated with current IMAIL message.
+Completion is performed over known flags when reading."
+  (lambda ()
+    (list (imail-read-flag "Remove flag" #t)))
+  (lambda (flag)
+    (clear-message-flag (selected-message) flag)))
+
+(define (imail-read-flag prompt require-match?)
+  (prompt-for-string-table-name
+   prompt #f
+   (alist->string-table
+    (map list
+	 (append standard-message-flags
+		 (folder-flags (selected-folder)))))
+   'DEFAULT-TYPE 'INSERTED-DEFAULT
+   'HISTORY 'IMAIL-READ-FLAG
+   'HISTORY-INDEX 0
+   'REQUIRE-MATCH? require-match?))
