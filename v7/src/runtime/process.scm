@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/process.scm,v 1.11 1991/03/14 04:29:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/process.scm,v 1.12 1991/03/14 10:14:24 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -43,13 +43,17 @@ MIT in each case. |#
 
 (define (initialize-package!)
   (reset-package!)
-  (add-event-receiver! event:after-restore reset-package!))
+  (add-event-receiver! event:after-restore reset-package!)
+  (add-event-receiver! event:before-exit delete-all-processes))
 
 (define (reset-package!)
   (set! subprocesses '())
   (set! scheme-subprocess-environment ((ucode-primitive scheme-environment 0)))
   (set! global-status-tick (cons false false))
   unspecific)
+
+(define (delete-all-processes)
+  (for-each subprocess-delete subprocesses))
 
 (define (subprocess-list)
   (list-copy subprocesses))
