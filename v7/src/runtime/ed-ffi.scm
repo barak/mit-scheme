@@ -1,6 +1,6 @@
 #| -*- Scheme -*-
 
-$Id: ed-ffi.scm,v 1.28 2001/11/05 21:24:26 cph Exp $
+$Id: ed-ffi.scm,v 1.29 2001/11/11 05:52:30 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -191,6 +191,8 @@ USA.
     ("packag"	(package)
 		syntax-table/system-internal)
     ("parse"	(runtime parser)
+		syntax-table/system-internal)
+    ("parser-buffer" (runtime parser-buffer)
 		syntax-table/system-internal)
     ("partab"	(runtime parser-table)
 		syntax-table/system-internal)
