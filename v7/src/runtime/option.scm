@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/option.scm,v 14.3 1988/07/15 09:16:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/option.scm,v 14.4 1989/06/22 23:50:53 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -63,4 +63,5 @@ MIT in each case. |#
 
 (define options
   '((FORMAT ((RUNTIME FORMAT) (INITIALIZE-PACKAGE!) "format"))
-    (STARBASE ((RUNTIME STARBASE-GRAPHICS) (INITIALIZE-PACKAGE!) "Sgraph"))))
+    (STARBASE
+     ((RUNTIME OLD-STARBASE-GRAPHICS) (INITIALIZE-PACKAGE!) "Sgraph"))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.12 1989/05/21 17:17:56 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.13 1989/06/22 23:50:49 cph Rel $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -377,6 +377,8 @@ MIT in each case. |#
    (RUNTIME DEBUGGER)
 
    (RUNTIME)
+   (RUNTIME X-GRAPHICS)
+   (RUNTIME STARBASE-GRAPHICS)
    ;; Emacs -- last because it grabs the kitchen sink.
    (RUNTIME EMACS-INTERFACE)
    ))
