@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.52 2004/07/24 03:45:44 cph Exp $
+$Id: xml.pkg,v 1.53 2004/08/10 01:03:02 cph Exp $
 
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -119,6 +119,7 @@ USA.
 	  error:not-xml-parameter-entity-ref
 	  error:not-xml-processing-instructions
 	  error:not-xml-unparsed-!entity
+	  flatten-xml-element-contents
 	  guarantee-xml-!attlist
 	  guarantee-xml-!element
 	  guarantee-xml-!entity
