@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: process.scm,v 1.26 1992/11/24 21:14:45 cph Exp $
+;;;	$Id: process.scm,v 1.27 1992/11/25 01:41:33 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-1992 Massachusetts Institute of Technology
 ;;;
@@ -51,16 +51,14 @@
 
 (define (initialize-processes!)
   (set! edwin-processes '())
-  (set-variable-default-value!
-   (ref-variable-object exec-path)
-   (parse-path-string
-    (let ((path (get-environment-variable "PATH")))
-      (if (not path)
-	  (error "Can't find PATH environment variable."))
-      path)))
-  (set-variable-default-value!
-   (ref-variable-object shell-file-name)
-   (or (get-environment-variable "SHELL") "/bin/sh")))
+  (set-variable! exec-path
+		 (parse-path-string
+		  (let ((path (get-environment-variable "PATH")))
+		    (if (not path)
+			(error "Can't find PATH environment variable."))
+		    path)))
+  (set-variable! shell-file-name
+		 (or (get-environment-variable "SHELL") "/bin/sh")))
 
 (define edwin-processes)
 
