@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/lapgen.scm,v 4.29 1990/04/03 06:10:06 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/lapgen.scm,v 4.30 1990/04/09 20:35:44 cph Exp $
 $MC68020-Header: lapgen.scm,v 4.31 90/04/01 22:26:01 GMT jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
@@ -172,7 +172,7 @@ MIT in each case. |#
 
 (define-integrable type-scale-factor
   ;; (expt 2 scheme-datum-width) ***
-  64)
+  #x4000000)
 
 (define-integrable (deposit-type type target)
   (deposit-immediate type (-1+ scheme-type-width) scheme-type-width target))
