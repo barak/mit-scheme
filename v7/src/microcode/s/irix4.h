@@ -1,7 +1,7 @@
 /* -*-C-*-
    System file for SGI's IRIS version 4.x
 
-$Id: irix4.h,v 1.3 1993/06/24 07:29:32 gjr Exp $
+$Id: irix4.h,v 1.4 1993/11/13 01:15:33 nick Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -41,5 +41,5 @@ MIT in each case. */
 
 #define C_SWITCH_SYSTEM -D_IRIX4
 #define ALTERNATE_M4 s/ultrix.m4
-#define ALTERNATE_CC cc -cckr -float
+#define ALTERNATE_CC cc -cckr -float -Olimit 2000
 #define LIBS_SYSTEM -lmalloc
