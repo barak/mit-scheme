@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/cf-dist.h,v 1.13 1990/11/27 19:16:21 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/cf-dist.h,v 1.14 1992/06/10 21:47:27 jinx Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -32,17 +32,19 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-#define PROC_TYPE_UNKNOWN 0
-#define PROC_TYPE_68000 1
-#define PROC_TYPE_68020 2
-#define PROC_TYPE_HPPA 3	/* HP Precision Architecture */
-#define PROC_TYPE_VAX 4
-#define PROC_TYPE_MIPS 5
-#define PROC_TYPE_NS32K 6
-#define PROC_TYPE_HCX 7		/* Harris HCX */
-#define PROC_TYPE_IBM032 8	/* IBM RT */
-#define PROC_TYPE_SPARC 9
-#define PROC_TYPE_I386 10
+#define PROC_TYPE_UNKNOWN	0
+#define PROC_TYPE_68000		1
+#define PROC_TYPE_68020		2
+#define PROC_TYPE_HPPA		3	/* HP Precision Architecture */
+#define PROC_TYPE_VAX		4
+#define PROC_TYPE_MIPS		5
+#define PROC_TYPE_NS32K		6
+#define PROC_TYPE_HCX		7	/* Harris HCX */
+#define PROC_TYPE_IBM032	8	/* IBM RT */
+#define PROC_TYPE_SPARC		9
+#define PROC_TYPE_I386		10
+#define PROC_TYPE_ALPHA		11
+#define PROC_TYPE_POWER		12	/* IBM RS6000 and PowerPC */
 
 /* Define this macro to use a non-standard compiler.
    It must be defined before including the m/ and s/ files because
