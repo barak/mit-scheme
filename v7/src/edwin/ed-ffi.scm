@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ed-ffi.scm,v 1.37 1995/02/14 00:30:28 cph Exp $
+$Id: ed-ffi.scm,v 1.38 1995/05/03 07:50:08 cph Exp $
 
 Copyright (c) 1990-95 Massachusetts Institute of Technology
 
@@ -191,6 +191,8 @@ of that license should have been included along with this file.
 	       edwin-syntax-table)
     ("motion"  (edwin)
 	       syntax-table/system-internal)
+    ("nntp"    (edwin nntp)
+	       syntax-table/system-internal)
     ("notify"  (edwin)
 	       edwin-syntax-table)
     ("nvector" (edwin)
@@ -257,6 +259,8 @@ of that license should have been included along with this file.
 	       edwin-syntax-table)
     ("simple"  (edwin)
 	       syntax-table/system-internal)
+    ("snr"     (edwin news-reader)
+	       edwin-syntax-table)
     ("sort"    (edwin)
 	       edwin-syntax-table)
     ("strpad"  (edwin)

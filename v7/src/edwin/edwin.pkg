@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.171 1995/05/02 21:18:47 cph Exp $
+$Id: edwin.pkg,v 1.172 1995/05/03 07:50:39 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -1490,3 +1490,112 @@ MIT in each case. |#
 	  ynode-type
 	  ynode-value-node)
   (initialization (initialize-package!)))
+
+(define-package (edwin news-reader)
+  (files "snr")
+  (parent (edwin))
+  (export (edwin)
+	  edwin-command$all-news-groups
+	  edwin-command$catch-up-news-group
+	  edwin-command$delete-news-article
+	  edwin-command$delete-news-thread
+	  edwin-command$expunge-news-group
+	  edwin-command$news-kill-current-buffer
+	  edwin-command$news-next-line
+	  edwin-command$news-previous-line
+	  edwin-command$next-news-article
+	  edwin-command$output-news-article
+	  edwin-command$output-news-article-to-rmail-file
+	  edwin-command$previous-news-article
+	  edwin-command$refresh-news-group
+	  edwin-command$refresh-news-groups
+	  edwin-command$reply-to-news-article
+	  edwin-command$revert-news-group
+	  edwin-command$rnews
+	  edwin-command$save-news-server-data
+	  edwin-command$select-news-article
+	  edwin-command$select-news-group
+	  edwin-command$subscribe-news-group
+	  edwin-command$subscribe-news-group-by-name
+	  edwin-command$toggle-news-article-context
+	  edwin-command$toggle-news-article-header
+	  edwin-command$undelete-news-article
+	  edwin-command$undelete-news-thread
+	  edwin-command$unsubscribe-news-group
+	  edwin-mode$news-article
+	  edwin-mode$news-group
+	  edwin-mode$news-server
+	  edwin-variable$news-article-context-lines
+	  edwin-variable$news-server
+	  edwin-variable$news-server-show-domain
+	  edwin-variable$show-unsubscribed-news-groups))
+
+(define-package (edwin nntp)
+  (files "nntp")
+  (parent (edwin))
+#|
+  ;; This program doesn't need to be part of Edwin except for these
+  ;; two bindings.  MESSAGE could be easily implemented in any
+  ;; interface.  OS/FIND-PROGRAM has nothing to do with Edwin in the
+  ;; first place, and should be in the runtime system.
+  (parent ())
+  (import (edwin)
+	  message
+	  os/find-program)
+|#
+  (export (edwin news-reader)
+	  canonicalize-subject
+	  compare-subjects
+	  find-active-news-group
+	  find-news-group
+	  make-news-group
+	  news-group:<
+	  news-group:active?
+	  news-group:cached-header
+	  news-group:cached-header-numbers
+	  news-group:cached-headers
+	  news-group:connection
+	  news-group:discard-cached-header!
+	  news-group:estimated-n-articles
+	  news-group:first-article
+	  news-group:header
+	  news-group:headers
+	  news-group:last-article
+	  news-group:name
+	  news-group:reader-hook
+	  news-group:server
+	  news-group:update-probe!
+	  news-group?
+	  news-header:<
+	  news-header:dummy?
+	  news-header:field-value
+	  news-header:followup-to
+	  news-header:followups
+	  news-header:group
+	  news-header:message-id
+	  news-header:number
+	  news-header:read-body
+	  news-header:reader-hook
+	  news-header:text
+	  news-header:thread
+	  news-header:xref
+	  news-header?
+	  news-thread:<
+	  news-thread:for-each-header
+	  news-thread:reader-hook
+	  news-thread:root-headers
+	  news-thread?
+	  nntp-connection:active-groups
+	  nntp-connection:close
+	  nntp-connection:closed?
+	  nntp-connection:discard-active-groups-cache!
+	  nntp-connection:reader-hook
+	  nntp-connection:reopen
+	  nntp-connection:server
+	  open-nntp-connection
+	  organize-headers-into-threads
+	  set-news-group:reader-hook!
+	  set-news-header:reader-hook!
+	  set-news-thread:reader-hook!
+	  set-nntp-connection:reader-hook!
+	  token->number))

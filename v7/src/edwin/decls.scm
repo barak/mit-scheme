@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.54 1995/02/14 00:29:58 cph Exp $
+$Id: decls.scm,v 1.55 1995/05/03 07:49:58 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -90,6 +90,7 @@ MIT in each case. |#
 	      "key-x11"
 	      "macros"
 	      "make"
+	      "nntp"
 	      "nvector"
 	      "os2term"
 	      "paths"
@@ -201,6 +202,7 @@ MIT in each case. |#
 		"sercom"
 		"shell"
 		"simple"
+		"snr"
 		"sort"
 		"syntax"
 		"tagutl"

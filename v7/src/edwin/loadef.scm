@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: loadef.scm,v 1.27 1994/12/19 19:40:55 cph Exp $
+;;;	$Id: loadef.scm,v 1.28 1995/05/03 07:50:29 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -217,6 +217,17 @@ variable's value is #F, the text is printed using LPR-COMMAND."
 
 (define-autoload-command 'step-defun 'STEPPER
   "Single-step the definition that the point is in or before.")
+
+(define-library 'NEWS-READER
+  '("nntp" (EDWIN NNTP))
+  '("snr" (EDWIN NEWS-READER)))
+
+(define-autoload-command 'rnews 'NEWS-READER
+  "Start a News reader.
+Normally uses the server specified by the variable news-server,
+but with a prefix arg prompts for the server name.
+Only one News reader may be open per server; if a previous News reader
+is open the that server, its buffer is selected.")
 
 ;;;; DOS-specific commands
 
