@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/machin.scm,v 4.22 1990/07/22 18:54:22 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/machin.scm,v 4.23 1991/07/25 09:04:33 cph Exp $
 $MC68020-Header: machin.scm,v 4.22 90/05/03 15:17:20 GMT jinx Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -390,7 +390,6 @@ MIT in each case. |#
   true)
 
 (define compiler:primitives-with-no-open-coding
-  '(INTEGER-MULTIPLY DIVIDE-FIXNUM GCD-FIXNUM
-    INTEGER-QUOTIENT INTEGER-REMAINDER &/
+  '(DIVIDE-FIXNUM GCD-FIXNUM &/
     FLONUM-SIN FLONUM-COS FLONUM-TAN FLONUM-ASIN FLONUM-ACOS
     FLONUM-ATAN FLONUM-EXP FLONUM-LOG FLONUM-TRUNCATE))
