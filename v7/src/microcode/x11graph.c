@@ -1,7 +1,7 @@
 
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.17 1991/10/02 21:16:39 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.18 1991/12/19 19:52:39 arthur Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -528,6 +528,29 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-SET-DASHES", Prim_x_graphics_set_dashes, 3, 3, 0)
        dash_list_length);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("X-GRAPHICS-COPY-AREA", Prim_x_graphics_copy_area, 7, 7, 0)
+{
+  PRIMITIVE_HEADER (7);
+  {
+    struct xwindow * xw = x_window_arg (1);
+    unsigned int internal_border_width = (XW_INTERNAL_BORDER_WIDTH (xw));
+    float device_width = ((XW_X_SLOPE (xw)) * (arg_real_number (4)));
+    float device_height = ((XW_Y_SLOPE (xw)) * (arg_real_number (5)));
+
+    XCopyArea ((XW_DISPLAY (xw)),
+	       (XW_WINDOW (xw)),
+	       (XW_WINDOW (xw)),
+	       (XW_NORMAL_GC (xw)),
+	       (internal_border_width + (arg_x_coordinate (2, xw))),
+	       (internal_border_width + (arg_y_coordinate (3, xw))),
+	       (ROUND_FLOAT (device_width)),
+	       (ROUND_FLOAT (device_height)),
+	       (internal_border_width + (arg_x_coordinate (6, xw))),
+	       (internal_border_width + (arg_y_coordinate (7, xw))));
+    PRIMITIVE_RETURN (UNSPECIFIC);
+  }
 }
 
 DEFINE_PRIMITIVE ("X-CREATE-IMAGE", Prim_x_create_image, 3, 3,

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.27 1991/10/29 22:55:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.28 1991/12/19 19:52:51 arthur Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -413,7 +413,7 @@ DEFUN (x_window_to_xw, (window), Window window)
   return (0);
 }
 extern void x_destroy_image ();
-    
+
 static void
 DEFUN (x_close_window, (xw), struct xwindow * xw)
 {
@@ -808,6 +808,8 @@ DEFUN (xd_process_events, (xd, non_block_p),
     }
 }
 
+extern XFontStruct * saved_font;
+
 static void
 DEFUN_VOID (initialize_once)
 {
@@ -817,6 +819,7 @@ DEFUN_VOID (initialize_once)
   XSetErrorHandler (x_error_handler);
   XSetIOErrorHandler (x_io_error_handler);
   add_reload_cleanup (x_close_all_displays);
+  saved_font = 0;
   initialization_done = 1;
 }
 
@@ -1156,6 +1159,92 @@ DEFINE_PRIMITIVE ("X-WINDOW-SET-FONT", Prim_x_window_set_font, 2, 2, 0)
     }
   }
   PRIMITIVE_RETURN (SHARP_T);
+}
+
+static SCHEME_OBJECT
+DEFUN (convert_char_struct, (char_struct), XCharStruct * char_struct)
+{
+  SCHEME_OBJECT char_structure;
+
+  if (((char_struct -> lbearing) == 0)
+      && ((char_struct -> rbearing) == 0)
+      && ((char_struct -> width) == 0)
+      && ((char_struct -> ascent) == 0)
+      && ((char_struct -> descent) == 0))
+
+    {
+      return (SHARP_F);
+    }
+  char_structure = (allocate_marked_vector (TC_VECTOR, 5, true));
+
+  VECTOR_SET (char_structure, 0, (long_to_integer (char_struct -> lbearing)));
+  VECTOR_SET (char_structure, 1, (long_to_integer (char_struct -> rbearing)));
+  VECTOR_SET (char_structure, 2, (long_to_integer (char_struct -> width)));
+  VECTOR_SET (char_structure, 3, (long_to_integer (char_struct -> ascent)));
+  VECTOR_SET (char_structure, 4, (long_to_integer (char_struct -> descent)));
+  return (char_structure);
+}
+
+XFontStruct * saved_font;
+
+DEFINE_PRIMITIVE ("X-FONT-STRUCTURE", Prim_x_font_structure, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  {
+    SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, 10, true));
+    SCHEME_OBJECT font_name = ARG_REF (2);
+    Display * display = (XD_DISPLAY (x_display_arg (1)));
+
+    if (saved_font == 0)
+      {
+	saved_font = (XLoadQueryFont
+		      (display, (char *) (STRING_LOC (font_name, 0))));
+	if (saved_font == 0)
+	  {
+	    PRIMITIVE_RETURN (SHARP_F);
+	  }
+      }
+    /* Handle only 8-bit fonts because of laziness. */
+    if (((saved_font -> min_byte1) != 0) || ((saved_font -> max_byte1) != 0))
+      {
+	XFreeFont (display, saved_font);
+	saved_font = 0;
+	PRIMITIVE_RETURN (SHARP_F);
+      }
+    if ((saved_font -> per_char) == NULL)
+      {
+	VECTOR_SET (result, 6, SHARP_F);
+      }
+    else
+      {
+	unsigned int start_index = (saved_font -> min_char_or_byte2);
+	unsigned int end_index = (saved_font -> max_char_or_byte2);
+	unsigned int index;
+	SCHEME_OBJECT character_vector =
+	  (allocate_marked_vector
+	   (TC_VECTOR, (end_index - start_index + 1), true));
+	for (index = start_index; index <= end_index; index++)
+	  {
+	    VECTOR_SET (character_vector,
+			(index - start_index),
+			convert_char_struct ((saved_font -> per_char) + index));
+	  }
+	VECTOR_SET (result, 6, (long_to_integer (start_index)));
+	VECTOR_SET (result, 7, character_vector);
+      }
+    VECTOR_SET (result, 0, font_name);
+    VECTOR_SET (result, 1, (long_to_integer (saved_font -> direction)));
+    VECTOR_SET (result, 2, (BOOLEAN_TO_OBJECT
+			    ((saved_font -> all_chars_exist) == True)));
+    VECTOR_SET (result, 3, (long_to_integer (saved_font -> default_char)));
+    VECTOR_SET (result, 4, convert_char_struct (& (saved_font -> min_bounds)));
+    VECTOR_SET (result, 5, convert_char_struct (& (saved_font -> max_bounds)));
+    VECTOR_SET (result, 8, (long_to_integer (saved_font -> ascent)));
+    VECTOR_SET (result, 9, (long_to_integer (saved_font -> descent)));
+    XFreeFont (display, saved_font);
+    saved_font = 0;
+    PRIMITIVE_RETURN (result);
+  }
 }
 
 DEFINE_PRIMITIVE ("X-WINDOW-SET-BORDER-WIDTH", Prim_x_window_set_border_width, 2, 2, 0)
