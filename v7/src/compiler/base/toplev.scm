@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.32 1991/02/15 20:34:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.33 1991/04/15 21:00:43 jinx Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -66,10 +66,11 @@ MIT in each case. |#
 	  (maybe-open-file compiler:generate-lap-files?
 			   (pathname-new-type output-pathname "lap")
 	    (lambda (lap-output-port)
-	      (compile-scode (compiler-fasload input-pathname)
-			     (pathname-new-type output-pathname "binf")
-			     rtl-output-port
-			     lap-output-port)))))))
+	      (compile-scode/internal
+	       (compiler-fasload input-pathname)
+	       (pathname-new-type output-pathname "binf")
+	       rtl-output-port
+	       lap-output-port)))))))
   unspecific)
 
 (define (maybe-open-file open? pathname receiver)
@@ -129,9 +130,25 @@ MIT in each case. |#
 
 ;;;; Alternate Entry Points
 
-(define (compile-procedure procedure)
-  (scode-eval (fluid-let ((compiler:noisy? false))
-		(compile-scode (procedure-lambda procedure)))
+(define (compile-scode scode #!optional keep-debugging-info?)
+  (let ((keep-debugging-info?
+	 (and (or (default-object? keep-debugging-info?)
+		  keep-debugging-info?)
+	      'KEEP)))
+    (fluid-let ((compiler:noisy? false)
+		(*info-output-filename* keep-debugging-info?))
+      (compile-scode/internal scode
+			      keep-debugging-info?))))  
+
+(define (compile-procedure procedure #!optional keep-debugging-info?)
+  (scode-eval (let ((keep-debugging-info?
+		     (and (or (default-object? keep-debugging-info?)
+			      keep-debugging-info?)
+			  'KEEP)))
+		(fluid-let ((compiler:noisy? false)
+			    (*info-output-filename* keep-debugging-info?))
+		  (compile-scode/internal (procedure-lambda procedure)
+				 keep-debugging-info?)))
 	      (procedure-environment procedure)))
 
 (define (compiler:batch-compile input #!optional output)
@@ -238,11 +255,15 @@ MIT in each case. |#
 		     (fluid-let ((*recursive-compilation-number* my-number)
 				 (compiler:package-optimization-level 'NONE)
 				 (*procedure-result?* procedure-result?))
-		       (compile-scode scode
-				      (and *info-output-filename* true)
-				      *rtl-output-port*
-				      *lap-output-port*
-				      bind-compiler-variables)))))
+		       (compile-scode/internal
+			scode
+			(and *info-output-filename*
+			     (if (eq? *info-output-filename* 'KEEP)
+				 'KEEP
+				 'RECURSIVE))
+			*rtl-output-port*
+			*lap-output-port*
+			bind-compiler-variables)))))
 	      (if procedure-result?
 		  (let ((do-it
 			 (lambda ()
@@ -489,12 +510,12 @@ MIT in each case. |#
 
 ;;;; Main Entry Point
 
-(define (compile-scode scode
-		       #!optional
-		       info-output-pathname
-		       rtl-output-port
-		       lap-output-port
-		       wrapper)
+(define (compile-scode/internal scode
+				#!optional
+				info-output-pathname
+				rtl-output-port
+				lap-output-port
+				wrapper)
   (let ((info-output-pathname
 	 (if (default-object? info-output-pathname)
 	     false
@@ -1062,24 +1083,25 @@ MIT in each case. |#
 	       (last-reference *dbg-continuations*)
 	       *label-bindings*
 	       (last-reference *external-labels*))))
-	 (if (eq? pathname true)	; recursive compilation
-	     (begin
-	       (set! *recursive-compilation-results*
-		     (cons (vector *recursive-compilation-number*
-				   info
-				   *code-vector*)
-			   *recursive-compilation-results*))
-	       (cons *info-output-filename* *recursive-compilation-number*))
-	     (begin
-	       (fasdump (let ((others (recursive-compilation-results)))
-			  (if (null? others)
-			      info
-			      (list->vector
-			       (cons info
-				     (map (lambda (other) (vector-ref other 1))
-					  others)))))
-			pathname)
-	       *info-output-filename*)))))))
+	 (cond ((eq? pathname 'KEEP)	; for dynamic execution
+		info)
+	       ((eq? pathname 'RECURSIVE) ; recursive compilation
+		(set! *recursive-compilation-results*
+		      (cons (vector *recursive-compilation-number*
+				    info
+				    *code-vector*)
+			    *recursive-compilation-results*))
+		(cons *info-output-filename* *recursive-compilation-number*))
+	       (else
+		(fasdump (let ((others (recursive-compilation-results)))
+			   (if (null? others)
+			       info
+			       (list->vector
+				(cons info
+				      (map (lambda (other) (vector-ref other 1))
+					   others)))))
+			 pathname)
+		*info-output-filename*)))))))
 
 (define (phase/link)
   (compiler-phase "Linkification"

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.30 1990/05/03 15:16:59 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.31 1991/04/15 21:00:29 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -156,6 +156,7 @@ MIT in each case. |#
 	  cf
 	  compile-bin-file
 	  compile-procedure
+	  compile-scode
 	  compiler:reset!
 	  cross-compile-bin-file
 	  cross-compile-bin-file-end)
