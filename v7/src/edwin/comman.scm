@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: comman.scm,v 1.80 1999/01/02 06:11:34 cph Exp $
+$Id: comman.scm,v 1.81 1999/11/01 01:05:36 cph Exp $
 
 Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 
@@ -34,14 +34,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   interactive-specification
   procedure)
 
-(define-integrable (%symbol->string sym)
-  (system-pair-car sym))
-
 (define (command-description command)
   (let ((desc (command-%description command)))
     (if (string? desc)
 	desc
-	(let ((new (->doc-string (%symbol->string (command-name command))
+	(let ((new (->doc-string (symbol->string (command-name command))
 				 desc)))
 	  (if new
 	      (set-command-%description! command new))
@@ -116,7 +113,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let ((desc (variable-%description variable)))
     (if (string? desc)
 	desc
-	(let ((new (->doc-string (%symbol->string (variable-name variable))
+	(let ((new (->doc-string (symbol->string (variable-name variable))
 				 desc)))
 	  (if new
 	      (set-variable-%description! variable new))
