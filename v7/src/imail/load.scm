@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: load.scm,v 1.6 2000/05/22 13:25:38 cph Exp $
+;;; $Id: load.scm,v 1.7 2000/05/22 13:36:29 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -91,4 +91,5 @@
 	    edwin-variable$imail-summary-mode-hook
 	    edwin-variable$imail-summary-pop-up-message
 	    edwin-variable$imail-summary-show-date
-	    edwin-variable$imail-summary-subject-width))
+	    edwin-variable$imail-summary-subject-width
+	    imail-copy-folder))

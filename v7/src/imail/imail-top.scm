@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.82 2000/05/22 04:01:06 cph Exp $
+;;; $Id: imail-top.scm,v 1.83 2000/05/22 13:36:20 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -864,16 +864,23 @@ With prefix argument N, removes FLAG from next N messages,
 				       'HISTORY-INDEX 0)))
   (lambda (url-string)
     (let ((folder (selected-folder)))
-      (let ((folder* (open-folder (imail-parse-partial-url url-string)))
-	    (url (folder-url folder)))
-	(let ((n (folder-length folder*)))
-	  (do ((index 0 (+ index 1)))
-	      ((= index n))
-	    (append-message (get-message folder* index) url)))
-	(close-folder folder*))
+      (%imail-copy-folder (imail-parse-partial-url url-string)
+			  (folder-url folder))
       (select-message folder
 		      (or (selected-message #f)
 			  (navigator/first-unseen-message folder))))))
+
+(define (imail-copy-folder from to)
+  (%imail-copy-folder (imail-parse-partial-url from)
+		      (imail-parse-partial-url to)))
+
+(define (%imail-copy-folder from to)
+  (let ((folder (open-folder from)))
+    (let ((n (folder-length folder)))
+      (do ((i 0 (+ i 1)))
+	  ((= i n))
+	(append-message (get-message folder i) to)))
+    (close-folder folder)))
 
 (define-command imail-output
   "Append this message to a specified folder."
