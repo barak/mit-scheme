@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/manual.scm,v 1.3 1991/09/18 19:25:07 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/manual.scm,v 1.4 1991/10/21 12:49:45 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -107,49 +107,69 @@ where SECTION is the desired section of the manual, as in `tty(4)'."
 	(set-buffer-point! buffer (buffer-start buffer))
 	(pop-up-buffer buffer false)
 	(message "Manual page ready")))))
-
+
 (define manual-vendor-pattern
-   "^\\(\\(Printed\\|Sun Release\\) [0-9].*[0-9]\\| *Page [0-9]*.*(printed [0-9/]*)\\|[ \t]*Hewlett-Packard\\( Company\\|\\)[ \t]*- [0-9]* -.*\\)$")
+  (string-append
+   "^\\("
+   "\\(Printed\\|Sun Release\\) [0-9].*[0-9]"
+   "\\|"
+   " *Page [0-9]*.*(printed [0-9/]*)"
+   "\\|"
+   "[ \t]*Hewlett-Packard\\( Company\\|\\)[ \t]*- [0-9]* -.*"
+   "\\)$"))
 
 (define (nuke-nroff-bs buffer)
-
-  (let ((start (buffer-start buffer))
-	(end (buffer-end buffer)))
-
-    ;; Nuke underlining and overstriking (only by the same letter)
-    (let ((pattern "\\(_\b\\|\b.\\)"))
-      (let loop ((point (re-search-forward pattern start end false)))
-	(if point
-	    (begin
-	      (replace-match "" false true)
-	      (loop (re-search-forward
-		     pattern (re-match-start 0) end false))))))
-
+  (let* ((group (buffer-group buffer))
+	 (syntax-table (group-syntax-table group))
+	 (nuke-regexp
+	  (lambda (regexp case-fold-search replacement)
+	    (let ((pattern (re-compile-pattern regexp case-fold-search)))
+	      (let loop ((index (group-start-index group)))
+		(if (re-search-buffer-forward pattern
+					      case-fold-search
+					      syntax-table
+					      group
+					      index
+					      (group-end-index group))
+		    (begin
+		      (replace-match replacement false true)
+		      (loop (re-match-start-index 0)))))))))
+    ;; Nuke underlining and overstriking
+    (nuke-regexp "\\(_\b\\)+" false "")
+    (nuke-regexp "\\(\b.\\)+" false "")
     ;; Nuke headers: "MORE(1) UNIX Programmer's Manual MORE(1)"
-    (let ((pattern "^ *\\([A-Za-z][-_A-Za-z0-9]*([0-9A-Z]+)\\).*\\1$"))
-      (let loop ((point (re-search-forward pattern start end false)))
-	(if point
-	    (begin
-	      (replace-match "" false true)
-	      (loop (re-search-forward
-		     pattern (re-match-start 0) end false))))))
-
+    (nuke-regexp "^ *\\([A-Za-z][-_A-Za-z0-9]*([0-9A-Z]+)\\).*\\1$" false "")
     ;; Nuke footers: "Printed 12/3/85	27 April 1981	1"
-    (let loop ((point
-		(re-search-forward manual-vendor-pattern  start end true)))
-      (if point
-	  (begin
-	    (replace-match "" false true)
-	    (loop (re-search-forward
-		   manual-vendor-pattern (re-match-start 0) end false)))))
-
+    (nuke-regexp manual-vendor-pattern true "")
+    (nuke-regexp "^\\([A-Za-z0-9_]+\\|\\)[ \t]*[0-9]+$" false "")
     ;; Crunch blank lines
-    (let ((pattern "\n\n\n\n*"))
-      (let loop ((point (re-search-forward pattern start end false)))
-	(if point
-	    (begin (replace-match "\n\n" false true)
-		   (loop (re-search-forward
-			  pattern (re-match-start 0) end false))))))
-
-    ;; Nuke blanks lines at start.
-    (delete-string start (skip-chars-forward "\n" start end 'limit))))
+    (nuke-regexp "\n\n\n\n*" false "\n\n"))
+  ;; Nuke blanks lines at start.
+  (let ((start (buffer-start buffer)))
+    (let ((delete-blanks
+	   (lambda ()
+	     (if (line-blank? start)
+		 (delete-string start
+				(let loop ((mark start))
+				  (let ((m (line-start mark 1 false)))
+				    (cond ((not m) (line-end mark 0))
+					  ((not (line-blank? m)) m)
+					  (else (loop m))))))))))
+      (delete-blanks)
+      ;; Also get "Reformatting page" message if any.
+      (if (re-match-forward "^Reformatting page"
+			    start
+			    (buffer-end buffer)
+			    false)
+	  (begin
+	    (delete-string start (line-end start 0))
+	    (delete-blanks)))))
+  ;; Nuke blanks lines at end.
+  (let ((end (buffer-end buffer)))
+    (if (line-blank? (line-start end 0))
+	(delete-string (let loop ((mark (line-start end 0)))
+			 (let ((m (line-start mark -1 false)))
+			   (cond ((not m) mark)
+				 ((not (line-blank? m)) mark)
+				 (else (loop m)))))
+		       end))))
