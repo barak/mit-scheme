@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/occur.scm,v 1.1 1992/04/09 17:22:04 cph Exp $
+;;;	$Id: occur.scm,v 1.2 1995/05/19 18:55:50 cph Exp $
 ;;;
-;;;	Copyright (c) 1992 Massachusetts Institute of Technology
+;;;	Copyright (c) 1992-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -237,6 +237,7 @@ It serves as a menu to find any of the occurrences in this buffer.
 	  (buffer-put! occur-buffer 'OCCURRENCES occurrences)
 	  (message (number->string (length occurrences)) " matching lines."))
 	(mark-temporary! output))
+      (set-buffer-point! occur-buffer (buffer-start occur-buffer))
       (pop-up-buffer occur-buffer false))))
 
 (define-command list-matching-lines
