@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: prompt.scm,v 1.177 1999/01/28 05:59:00 cph Exp $
+;;; $Id: prompt.scm,v 1.178 1999/01/28 06:10:14 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -429,14 +429,12 @@
 				 'SET-PROMPT-HISTORY-STRINGS!))
   (set-cdr! (name->history name) strings))
 
-(define-prompt-option 'HISTORY symbol?
-  (lambda (options history)
-    (set-options/history! options history)
-    (history->default-string options)))
+(define-simple-option 'HISTORY symbol?)
+(define-simple-option 'HISTORY-INDEX exact-nonnegative-integer?)
 
-(define-prompt-option 'HISTORY-INDEX exact-nonnegative-integer?
-  (lambda (options index)
-    (set-options/history-index! options index)
+(define-prompt-option 'HISTORY-DEFAULT (lambda (x) x #t)
+  (lambda (options ignore)
+    ignore
     (history->default-string options)))
 
 (define (history->default-string options)
@@ -933,7 +931,8 @@ Whilst editing the command, the following commands are available:
       (prompt-for-string "Redo" #f
 			 'DEFAULT-TYPE 'INSERTED-DEFAULT
 			 'HISTORY 'REPEAT-COMPLEX-COMMAND
-			 'HISTORY-INDEX (- argument 1))))))
+			 'HISTORY-INDEX (- argument 1)
+			 'HISTORY-DEFAULT #t)))))
 
 ;;; Password Prompts
 
