@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sendmail.scm,v 1.62 2000/06/16 17:39:22 cph Exp $
+;;; $Id: sendmail.scm,v 1.63 2000/06/22 20:18:31 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
@@ -58,7 +58,7 @@ If set to the null string, no Organization: field is generated."
   string?)
 
 (define-variable mail-identify-reader
-  "Switch controlling generation of X-Mailer headers in messages."
+  "Switch controlling generation of User-Agent headers in messages."
   #t
   boolean?)
 
@@ -532,7 +532,11 @@ Just \\[universal-argument] as argument means don't indent
 and don't delete any header fields."
   "P"
   (lambda (argument)
-    (let ((mail-reply-buffer (ref-variable mail-reply-buffer)))
+    (let ((mail-reply-buffer (ref-variable mail-reply-buffer))
+	  (left-margin
+	   (if (command-argument-multiplier-only? argument)
+	       0
+	       (or (command-argument-value argument) 3))))
       (if mail-reply-buffer
 	  (begin
 	    (for-each (lambda (window)
@@ -546,7 +550,7 @@ and don't delete any header fields."
 				   'MAIL-YANK-ORIGINAL-METHOD
 				   #f)))
 		  (if method
-		      (method mail-reply-buffer end)
+		      (method mail-reply-buffer left-margin end)
 		      (insert-region (buffer-start mail-reply-buffer)
 				     (buffer-end mail-reply-buffer)
 				     start)))
@@ -555,9 +559,7 @@ and don't delete any header fields."
 		(if (not (command-argument-multiplier-only? argument))
 		    (begin
 		      (mail-yank-clear-headers start end)
-		      (indent-rigidly start end
-				      (or (command-argument-value argument)
-					  3))))
+		      (indent-rigidly start end left-margin)))
 		(mark-temporary! start)
 		(mark-temporary! end)
 		(push-current-mark! start)
@@ -654,7 +656,7 @@ the user from the mailer."
 		 (if (and value (not (mail-field-start start header-end name)))
 		     (mail-insert-field-value header-end name value)))))
 	  (add-field "Organization" (mail-organization-string mail-buffer))
-	  (add-field "X-Mailer" (mailer-version-string mail-buffer)))
+	  (add-field "User-Agent" (mailer-version-string mail-buffer)))
 	(process-header start header-end)
 	(mark-temporary! header-end))
       (mark-temporary! end)
@@ -697,11 +699,15 @@ the user from the mailer."
 
 (define (mailer-version-string buffer)
   (and (ref-variable mail-identify-reader buffer)
-       (string-append "Edwin [version "
-		      (get-subsystem-version-string "edwin")
-		      ", MIT Scheme Release "
-		      (get-subsystem-version-string "release")
-		      "]")))
+       (let ((generic
+	      (string-append "Edwin/"
+			     (get-subsystem-version-string "edwin")
+			     "; MIT-Scheme/"
+			     (get-subsystem-version-string "release")))
+	     (method (buffer-get buffer 'MAILER-VERSION-STRING #f)))
+	 (if method
+	     (method generic)
+	     generic))))
 
 (define (send-mail-buffer mail-buffer lookup-buffer)
   (let ((error-buffer
@@ -916,7 +922,8 @@ the user from the mailer."
 	(begin
 	  (insert-headers (mime-attachment-message-headers attachment) m)
 	  (insert-newline m)
-	  (insert-string (mime-attachment-message-body attachment) m))
+	  (call-with-output-mark m
+	    (mime-attachment-message-body-generator attachment)))
 	(call-with-output-mark m
 	  (lambda (output-port)
 	    (call-with-values
@@ -999,7 +1006,7 @@ the user from the mailer."
 (define-integrable (mime-attachment-message-headers attachment)
   (vector-ref attachment 4))
 
-(define-integrable (mime-attachment-message-body attachment)
+(define-integrable (mime-attachment-message-body-generator attachment)
   (vector-ref attachment 5))
 
 (define-integrable (mime-attachment-pathname attachment)
