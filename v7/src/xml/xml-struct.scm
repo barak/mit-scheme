@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.30 2003/09/24 22:39:12 cph Exp $
+$Id: xml-struct.scm,v 1.31 2003/09/25 16:48:14 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -679,9 +679,10 @@ USA.
 (define (xml-element-namespace-iri elt prefix)
   (let ((attr
 	 (find-matching-item (xml-element-attributes elt)
-	   (lambda (attr)
-	     (or (and (xml-name=? (car attr) 'xmlns)
-		      (null-xml-name-prefix? prefix))
+	   (if (null-xml-name-prefix? prefix)
+	       (lambda (attr)
+		 (xml-name=? (car attr) 'xmlns))
+	       (lambda (attr)
 		 (and (xml-name-prefix=? (car attr) 'xmlns)
 		      (xml-name-local=? (car attr) prefix)))))))
     (and attr
