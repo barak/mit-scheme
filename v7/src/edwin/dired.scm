@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dired.scm,v 1.169 1999/01/28 03:59:47 cph Exp $
+;;; $Id: dired.scm,v 1.170 1999/08/10 16:54:51 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -102,7 +102,7 @@ Space and Rubout can be used to move down and up by lines."
 (define-key 'dired #\~ 'dired-flag-backup-files)
 
 (define-key 'dired #\C 'dired-do-copy)
-(define-key 'dired #\K 'dired-krypt-file)
+(define-key 'dired #\K 'dired-encrypt/decrypt-file)
 (define-key 'dired #\R 'dired-do-rename)
 
 (define-key 'dired #\c-d 'dired-flag-file-deletion)
@@ -659,67 +659,31 @@ When renaming multiple or marked files, you specify a directory."
 		(mark-temporary! (cdr filename)))
 	      filenames)))
 
-;;;; Krypt File
+;;;; Encrypt/Decrypt File
 
-(define-command dired-krypt-file
-  "Krypt/unkrypt a file.  If the file ends in KY, assume it is already
-krypted and unkrypt it.  Otherwise, krypt it."
-  '()
-  (lambda ()
-    (load-option 'krypt)
+(define-command dired-encrypt/decrypt-file
+  "Encrypt/Decrypt a file.
+Decrypts if the file's suffix is recognized as a known encryption type.
+Otherwise encrypts using Blowfish.
+Prefix arg means treat the plaintext file as binary data (ignored on unix)."
+  "P"
+  (lambda (binary-plaintext?)
     (let ((pathname (dired-current-pathname)))
-      (if (and (pathname-type pathname)
-	       (string=? (pathname-type pathname) "KY"))
-	  (dired-decrypt-file pathname)
-	  (dired-encrypt-file pathname)))))
+      (let ((type (pathname-type pathname)))
+	(cond ((equal? "bf" type)
+	       (dired-blowfish-decrypt-file pathname binary-plaintext?))
+	      (else
+	       (dired-blowfish-encrypt-file pathname binary-plaintext?)))))))
 
-(define (dired-decrypt-file pathname)
-  (let ((the-encrypted-file
-	 (with-input-from-file pathname
-	   (lambda ()
-	     (read-string (char-set)))))
-	(password
-	 (prompt-for-password "Password: ")))
-    (let ((the-string
-	   (decrypt the-encrypted-file password
-		    (lambda ()
-		      (editor-beep)
-		      (message "krypt: Password error!")
-		      'FAIL)
-		    (lambda (x)
-		      x
-		      (editor-beep)
-		      (message "krypt: Checksum error!")
-		      'FAIL))))
-      (if (not (eq? the-string 'FAIL))
-	  (let ((new-name (pathname-new-type pathname false)))
-	    (with-output-to-file new-name
-	      (lambda ()
-		(write-string the-string)))
-	    (delete-file pathname)
-	    (dired-redisplay new-name))))))
+(define (dired-blowfish-encrypt-file from binary-plaintext?)
+  (let ((to (string-append (->namestring from) ".bf")))
+    (blowfish-encrypt-file from to binary-plaintext? #t)
+    (dired-redisplay to)))
 
-(define (dired-encrypt-file pathname)
-  (let ((the-file-string
-	 (with-input-from-file pathname
-	   (lambda ()
-	     (read-string (char-set)))))
-	(password
-	 (prompt-for-confirmed-password)))
-    (let ((the-encrypted-string
-	   (encrypt the-file-string password)))
-      (let ((new-name
-	     (pathname-new-type
-	      pathname
-	      (let ((old-type (pathname-type pathname)))
-		(if (not old-type)
-		    "KY"
-		    (string-append old-type ".KY"))))))
-	(with-output-to-file new-name
-	  (lambda ()
-	    (write-string the-encrypted-string)))
-	(delete-file pathname)
-	(dired-redisplay new-name)))))
+(define (dired-blowfish-decrypt-file from binary-plaintext?)
+  (let ((to (pathname-new-type from #f)))
+    (blowfish-decrypt-file from to binary-plaintext? #t)
+    (dired-redisplay to)))
 
 ;;;; List Directory
 

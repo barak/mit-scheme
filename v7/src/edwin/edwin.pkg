@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.238 1999/05/13 03:06:39 cph Exp $
+$Id: edwin.pkg,v 1.239 1999/08/10 16:54:44 cph Exp $
 
 Copyright (c) 1989-1999 Massachusetts Institute of Technology
 
@@ -444,6 +444,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (files "prompt")
   (parent (edwin))
   (export (edwin)
+	  call-with-confirmed-pass-phrase
+	  call-with-pass-phrase
 	  completion-message
 	  edwin-command$exit-minibuffer
 	  edwin-command$exit-minibuffer-yes-or-no
@@ -467,10 +469,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  prompt-for-command
 	  prompt-for-completed-string
 	  prompt-for-confirmation?
-	  prompt-for-confirmed-password
 	  prompt-for-key
 	  prompt-for-number
-	  prompt-for-password
 	  prompt-for-string
 	  prompt-for-string-table-name
 	  prompt-for-string-table-value
@@ -652,12 +652,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  edwin-command$dired-do-copy
 	  edwin-command$dired-do-deletions
 	  edwin-command$dired-do-rename
+	  edwin-command$dired-encrypt/decrypt-file
 	  edwin-command$dired-find-file
 	  edwin-command$dired-find-file-other-window
 	  edwin-command$dired-flag-auto-save-files
 	  edwin-command$dired-flag-backup-files
 	  edwin-command$dired-flag-file-deletion
-	  edwin-command$dired-krypt-file
 	  edwin-command$dired-mark
 	  edwin-command$dired-next-line
 	  edwin-command$dired-other-window

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rmail.scm,v 1.62 1999/05/13 03:06:43 cph Exp $
+;;; $Id: rmail.scm,v 1.63 1999/08/10 16:54:54 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-1999 Massachusetts Institute of Technology
 ;;;
@@ -670,7 +670,8 @@ This variable is ignored if rmail-pop-procedure is #F."
 (define saved-pop-passwords '())
 
 (define (prompt-for-pop-server-password server)
-  (prompt-for-password (string-append "Password for POP server " server)))
+  (call-with-pass-phrase (string-append "Password for POP server " server)
+			 string-copy))
 
 ;;;; Moving around
 

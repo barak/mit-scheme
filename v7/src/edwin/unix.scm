@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: unix.scm,v 1.97 1999/08/09 18:19:19 cph Exp $
+;;; $Id: unix.scm,v 1.98 1999/08/10 16:54:48 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -238,7 +238,7 @@ Includes the new backup.  Must be > 0."
 	      result))))))
 
 (define os/encoding-pathname-types
-  '("Z" "gz" "bz2" "KY" "ky" "bf"))
+  '("Z" "gz" "bz2" "bf"))
 
 (define unix/backup-suffixes
   (cons "~"
@@ -350,10 +350,7 @@ Includes the new backup.  Must be > 0."
 		   (read-compressed-file "bzip2 -d" pathname mark))
 		  ((equal? "Z" type)
 		   (read-compressed-file "uncompress" pathname mark))))))
-    (,(read/write-encrypted-file? #f)
-     . ,(lambda (pathname mark visit?)
-	  visit?
-	  (read-encrypted-file pathname mark)))))
+    ,@(os-independent/read-file-methods)))
 
 (define (os/write-file-methods)
   `((,read/write-compressed-file?
@@ -366,21 +363,16 @@ Includes the new backup.  Must be > 0."
 		   (write-compressed-file "bzip2" region pathname))
 		  ((equal? "Z" type)
 		   (write-compressed-file "compress" region pathname))))))
-    (,(read/write-encrypted-file? #t)
-     . ,(lambda (region pathname visit?)
-	  visit?
-	  (write-encrypted-file region pathname)))))
+    ,@(os-independent/write-file-methods)))
 
 (define (os/alternate-pathnames group pathname)
-  (let ((filename (->namestring pathname)))
-    `(,@(if (ref-variable enable-compressed-files group)
-	    (map (lambda (suffix) (string-append filename "." suffix))
-		 unix/compressed-file-suffixes)
-	    '())
-      ,@(if (ref-variable enable-encrypted-files group)
-	    (map (lambda (suffix) (string-append filename "." suffix))
-		 unix/encrypted-file-suffixes)
-	    '()))))
+  (if (ref-variable enable-compressed-files group)
+      (append (map (let ((filename (->namestring pathname)))
+		     (lambda (suffix)
+		       (string-append filename "." suffix)))
+		   unix/compressed-file-suffixes)
+	      (os-independent/alternate-pathnames group pathname))
+      '()))
 
 ;;;; Compressed Files
 
@@ -443,84 +435,6 @@ of the filename suffixes \".gz\", \".bz2\", or \".Z\"."
 			    write-compressed-file
 			    (list region pathname)))
   (append-message "done"))
-
-;;;; Encrypted files
-
-(define-variable enable-encrypted-files
-  "If #T, encrypted files are automatically decrypted when read,
-and recrypted when written.  An encrypted file is identified by the
-filename suffixes \".bf\" and \".ky\"."
-  #t
-  boolean?)
-
-(define ((read/write-encrypted-file? write?) group pathname)
-  (and (ref-variable enable-encrypted-files group)
-       (let ((type (pathname-type pathname)))
-	 (and (member type unix/encrypted-file-suffixes)
-	      (if (equal? "bf" type)
-		  (and (blowfish-available?)
-		       (or write? (blowfish-file? pathname)))
-		  #t)))))
-
-(define unix/encrypted-file-suffixes
-  '("bf" "ky" "KY"))
-
-(define (read-encrypted-file pathname mark)
-  (let ((password (prompt-for-password "Pass phrase"))
-	(type (pathname-type pathname)))
-    (message "Decrypting file " (->namestring pathname) "...")
-    (cond ((equal? "bf" type)
-	   (call-with-binary-input-file pathname
-	     (lambda (input)
-	       (call-with-output-mark mark
-		 (lambda (output)
-		   (blowfish-encrypt-port input output (md5 password)
-					  (read-blowfish-file-header input)
-					  #f))))))
-	  ((or (equal? "ky" type) (equal? "KY" type))
-	   (insert-string (let ((the-encrypted-file
-				 (call-with-binary-input-file pathname
-				   (lambda (port)
-				     (read-string (char-set) port)))))
-			    (decrypt the-encrypted-file password
-				     (lambda () 
-				       (kill-buffer (mark-buffer mark))
-				       (editor-error "krypt: Password error!"))
-				     (lambda (x) 
-				       (editor-beep)
-				       (message "krypt: Checksum error!")
-				       x)))
-			  mark)))
-    ;; Disable auto-save here since we don't want to
-    ;; auto-save the unencrypted contents of the 
-    ;; encrypted file.
-    (define-variable-local-value! (mark-buffer mark)
-	(ref-variable-object auto-save-default)
-      #f)
-    (append-message "done")))
-
-(define (write-encrypted-file region pathname)
-  (let ((password (prompt-for-confirmed-password))
-	(type (pathname-type pathname)))
-    (message "Encrypting file " (->namestring pathname) "...")
-    (cond ((equal? "bf" type)
-	   (let ((input
-		  (make-buffer-input-port (region-start region)
-					  (region-end region))))
-	     (call-with-binary-output-file pathname
-	       (lambda (output)
-		 (blowfish-encrypt-port input output (md5 password)
-					(write-blowfish-file-header output)
-					#t)))))
-	  ((or (equal? "ky" type) (equal? "KY" type))
-	   (let ((the-encrypted-file
-		  (encrypt (extract-string (region-start region)
-					   (region-end region))
-			   password)))
-	     (call-with-binary-output-file pathname
-	       (lambda (port)
-		 (write-string the-encrypted-file port))))))
-    (append-message "done")))
 
 ;;;; Dired customization
 

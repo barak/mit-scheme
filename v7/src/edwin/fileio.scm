@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: fileio.scm,v 1.145 1999/01/14 18:24:58 cph Exp $
+;;; $Id: fileio.scm,v 1.146 1999/08/10 16:54:37 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -21,6 +21,58 @@
 ;;;; File <-> Buffer I/O
 
 (declare (usual-integrations))
+
+;;;; Encrypted files
+
+(define-variable enable-encrypted-files
+  "If true, encrypted files are automatically decrypted when read,
+and recrypted when written.  An encrypted file is identified by the
+filename suffix \".bf\"."
+  #t
+  boolean?)
+
+(define ((read/write-encrypted-file? write?) group pathname)
+  (and (ref-variable enable-encrypted-files group)
+       (equal? "bf" (pathname-type pathname))
+       (blowfish-available?)
+       (or write? (blowfish-file? pathname))
+       #t))
+
+(define (read-encrypted-file pathname mark)
+  (let ((m (string-append "Decrypting file " (->namestring pathname) "...")))
+    (message m)
+    (call-with-output-mark mark
+      (lambda (output)
+	(%blowfish-decrypt-file pathname output)))
+    ;; Disable auto-save here since we don't want to auto-save the
+    ;; unencrypted contents of the encrypted file.
+    (local-set-variable! auto-save-default #f (mark-buffer mark))
+    (message m "done")))
+
+(define (write-encrypted-file region pathname)
+  (let ((m (string-append "Encrypting file " (->namestring pathname) "...")))
+    (message m)
+    (%blowfish-decrypt-file pathname
+			    (make-buffer-input-port (region-start region)
+						    (region-end region)))
+    (message m "done")))
+
+(define (os-independent/read-file-methods)
+  (list (cons (read/write-encrypted-file? #f)
+	      (lambda (pathname mark visit?)
+		visit?
+		(read-encrypted-file pathname mark)))))
+
+(define (os-independent/write-file-methods)
+  (list (cons (read/write-encrypted-file? #t)
+	      (lambda (region pathname visit?)
+		visit?
+		(write-encrypted-file region pathname)))))
+
+(define (os-independent/alternate-pathnames group pathname)
+  (if (ref-variable enable-encrypted-files group)
+      (list (string-append (->namestring pathname) ".bf"))
+      '()))
 
 ;;;; Special File I/O Methods
 

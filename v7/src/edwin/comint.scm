@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: comint.scm,v 1.28 1999/01/02 06:11:34 cph Exp $
+$Id: comint.scm,v 1.29 1999/08/10 16:54:57 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -227,7 +227,8 @@ String is not saved on comint input history list.
 Security bug: your string can still be temporarily recovered with
 \\[view-lossage]."
   ()
-  (lambda () (send-invisible (prompt-for-password "Non-echoed text: "))))
+  (lambda ()
+    (call-with-pass-phrase "Non-echoed text" send-invisible)))
 
 (define (send-invisible string)
   (process-send-string (current-process) string)

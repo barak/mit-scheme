@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: filcom.scm,v 1.203 1999/08/09 18:19:24 cph Exp $
+;;; $Id: filcom.scm,v 1.204 1999/08/10 16:54:34 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -613,41 +613,22 @@ Prompts for the plaintext and ciphertext filenames.
 Prefix arg means treat the plaintext file as binary data.
 Deletes the plaintext file after encryption."
   (lambda ()
-    (if (not (blowfish-available?))
-	(editor-error "Blowfish encryption not supported on this system"))
+    (guarantee-blowfish-available)
     (let ((from (prompt-for-existing-file "Encrypt file (plaintext)" #f)))
       (let ((to
 	     (prompt-for-file
 	      "Encrypt file to (ciphertext)"
 	      (list (string-append (->namestring from) ".bf")))))
 	(list from to (command-argument)))))
-  (lambda (from to binary?)
-    (if (or (not (file-exists? to))
-	    (prompt-for-yes-or-no?
-	     (string-append "File "
-			    (->namestring to)
-			    " already exists; overwrite")))
-	(begin
-	  (let ((password (prompt-for-confirmed-password)))
-	    ((if binary?
-		 call-with-binary-input-file
-		 call-with-input-file)
-	     from
-	     (lambda (input)
-	       (call-with-binary-output-file to
-		 (lambda (output)
-		   (blowfish-encrypt-port input output (md5 password)
-					  (write-blowfish-file-header output)
-					  #t))))))
-	  (delete-file from)))))
+  (lambda (from to binary-plaintext?)
+    (blowfish-encrypt-file from to binary-plaintext? #t)))
 
 (define-command decrypt-file
   "Decrypt a file with the blowfish encryption algorithm.
 Prompts for the ciphertext and plaintext filenames.
 Prefix arg means treat the plaintext file as binary data."
   (lambda ()
-    (if (not (blowfish-available?))
-	(editor-error "Blowfish encryption not supported on this system"))
+    (guarantee-blowfish-available)
     (let ((from (prompt-for-existing-file "Decrypt file (ciphertext)" #f)))
       (let ((to
 	     (prompt-for-file
@@ -655,23 +636,80 @@ Prefix arg means treat the plaintext file as binary data."
 	      (and (pathname-type from)
 		   (list (pathname-new-type from #f))))))
 	(list from to (command-argument)))))
-  (lambda (from to binary?)
-    (if (or (not (file-exists? to))
-	    (prompt-for-yes-or-no?
-	     (string-append "File "
-			    (->namestring to)
-			    " already exists; overwrite")))
-	(let ((password (prompt-for-password "Pass phrase")))
-	  (call-with-binary-input-file from
-	    (lambda (input)
-	      ((if binary?
-		   call-with-binary-output-file
-		   call-with-output-file)
-	       to
-	       (lambda (output)
-		 (blowfish-encrypt-port input output (md5 password)
-					(read-blowfish-file-header input)
-					#f)))))))))
+  (lambda (from to binary-plaintext?)
+    (blowfish-decrypt-file from to binary-plaintext? #f)))
+
+(define (guarantee-blowfish-available)
+  (if (not (blowfish-available?))
+      (editor-error "Blowfish encryption not supported on this system.")))
+
+(define (blowfish-encrypt-file from to binary-plaintext? delete-plaintext?)
+  (guarantee-blowfish-available)
+  (and (or (not (file-exists? to))
+	   (prompt-for-yes-or-no?
+	    (string-append "File "
+			   (->namestring to)
+			   " already exists; overwrite")))
+       (begin
+	 ((if binary-plaintext?
+	      call-with-binary-input-file
+	      call-with-input-file)
+	  from
+	  (lambda (input)
+	    (%blowfish-encrypt-file to input)))
+	 (let ((t (file-modification-time-indirect from)))
+	   (set-file-times! to t t))
+	 (set-file-modes! to (file-modes from))
+	 (if delete-plaintext? (delete-file from))
+	 #t)))
+
+(define (blowfish-decrypt-file from to binary-plaintext? delete-ciphertext?)
+  (guarantee-blowfish-available)
+  (and (or (not (file-exists? to))
+	   (prompt-for-yes-or-no?
+	    (string-append "File "
+			   (->namestring to)
+			   " already exists; overwrite")))
+       (begin
+	 ((if binary-plaintext?
+	      call-with-binary-output-file
+	      call-with-output-file)
+	  to
+	  (lambda (output)
+	    (%blowfish-decrypt-file from output)))
+	 (let ((t (file-modification-time-indirect from)))
+	   (set-file-times! to t t))
+	 (set-file-modes! to (file-modes from))
+	 (if delete-ciphertext? (delete-file from))
+	 #t)))
+
+(define (%blowfish-encrypt-file pathname input)
+  (call-with-binary-output-file pathname
+    (lambda (output)
+      (call-with-sensitive-string (call-with-confirmed-pass-phrase md5)
+	(lambda (key-string)
+	  (blowfish-encrypt-port input output key-string
+				 (write-blowfish-file-header output)
+				 #t))))))
+
+(define (%blowfish-decrypt-file pathname output)
+  (call-with-binary-input-file pathname
+    (lambda (input)
+      (call-with-sensitive-string (call-with-pass-phrase "Pass phrase" md5)
+	(lambda (key-string)
+	  (blowfish-encrypt-port input output key-string
+				 (read-blowfish-file-header input)
+				 #f))))))
+
+(define (call-with-sensitive-string string receiver)
+  (dynamic-wind (lambda ()
+		  unspecific)
+		(lambda ()
+		  (receiver string))
+		(lambda ()
+		  (string-fill! string #\NUL)
+		  (set! string)
+		  unspecific)))
 
 ;;;; Prompting
 
