@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: closan.scm,v 4.20 2001/11/01 18:37:39 cph Exp $
+$Id: closan.scm,v 4.21 2001/11/01 18:42:59 cph Exp $
 
 Copyright (c) 1987-1991, 1998, 1999, 2001 Massachusetts Institute of Technology
 
@@ -52,12 +52,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 				   (map rvalue-values (cdr operands)))
 		    '()))))
 	 (set-application-operand-values! combination values)
-	 (for-each
-	  (lambda (value)
-	    (if (and (rvalue/procedure? value)
-		     (not (procedure-continuation? value)))
-		(set-procedure-virtual-closure?! value #t)))
-	  values))
+	 (for-each (lambda (value)
+		     (if (rvalue/true-procedure? value)
+			 (set-procedure-virtual-closure?! value #t)))
+		   values))
        (set-combination/model!
 	combination
 	(rvalue-known-value (combination/operator combination))))
@@ -169,8 +167,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define (close-values! values reason1 reason2)
   (for-each (lambda (value)
-	      (if (and (rvalue/procedure? value)
-		       (not (procedure-continuation? value)))
+	      (if (rvalue/true-procedure? value)
 		  (close-procedure! value reason1 reason2)))
 	    values))
 
@@ -437,8 +434,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     (lambda (block*)
       (for-each (lambda (application)
 		  (for-each (lambda (value)
-			      (if (and (rvalue/procedure? value)
-				       (not (procedure-continuation? value)))
+			      (if (rvalue/true-procedure? value)
 				  (action value)))
 			    (rvalue-values
 			     (application-operator application))))
