@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.46 1992/03/11 09:30:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.47 1992/04/13 04:44:13 jinx Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -259,6 +259,12 @@ MIT in each case. |#
   (lambda (operands)
     operands
     (values generator operand-indices internal-close-coding?)))
+
+(define (conditional-open-coder predicate open-coder)
+  (lambda (operands)
+    (if (predicate operands)
+	(open-coder operands)
+	(values false '() false))))
 
 (define (constant-filter predicate)
   (lambda (generator constant-index operand-indices internal-close-coding?)
@@ -758,6 +764,50 @@ MIT in each case. |#
 
 ;;;; Character/String Primitives
 
+(let* ((careless-range-open-coder
+	(lambda (generator indices internal-close-coding?)
+	  (conditional-open-coder
+	   (lambda (operands)
+	     operands
+	     (not compiler:generate-range-checks?))
+	   (simple-open-coder generator indices internal-close-coding?))))
+
+       (define-open-coder
+	(lambda (name tsource tdest)
+	  (define-open-coder/value name
+	    (careless-range-open-coder
+	     (lambda (combination expressions finish)
+	       (let ((arg (car expressions)))
+		 (open-code:with-checks
+		  combination
+		  (list (open-code:type-check arg tsource))
+		  (finish
+		   (rtl:make-cons-non-pointer
+		    (rtl:make-machine-constant tdest)
+		    (rtl:make-object->datum arg)))
+		  finish
+		  name
+		  expressions)))
+	     '(0)
+	     internal-close-coding-for-type-checks)))))
+
+  (define-open-coder 'INTEGER->CHAR
+    (ucode-type fixnum)
+    (ucode-type character))
+
+  #|
+  ;; These do the wrong thing with control characters.
+
+  (define-open-coder 'ASCII->CHAR
+    (ucode-type fixnum)
+    (ucode-type character))
+
+  (define-open-coder 'CHAR->ASCII
+    (ucode-type character)
+    (ucode-type fixnum))
+  |#
+  )
+
 (define-open-coder/value 'CHAR->INTEGER
   (simple-open-coder
    (lambda (combination expressions finish)
@@ -774,7 +824,7 @@ MIT in each case. |#
 	expressions)))
    '(0)
    internal-close-coding-for-type-checks))
-
+
 (define-open-coder/value 'STRING-REF
   (simple-open-coder
    (string-memory-reference 'STRING-REF (ucode-type string) false
@@ -815,32 +865,50 @@ MIT in each case. |#
 
 ;;;; Fixnum Arithmetic
 
-(for-each (lambda (fixnum-operator)
-	    (define-open-coder/value fixnum-operator
-	      (simple-open-coder
-	       (lambda (combination expressions finish)
-		 combination
-		 (finish
-		  (rtl:make-fixnum->object
-		   (rtl:make-fixnum-2-args
-		    fixnum-operator
-		    (rtl:make-object->fixnum (car expressions))
-		    (rtl:make-object->fixnum (cadr expressions))
-		    false))))
-	       '(0 1)
-	       false)))
-	  '(PLUS-FIXNUM
-	    MINUS-FIXNUM
-	    MULTIPLY-FIXNUM
-	    ;; DIVIDE-FIXNUM
-	    GCD-FIXNUM
-	    FIXNUM-QUOTIENT
-	    FIXNUM-REMAINDER
-	    FIXNUM-ANDC
-	    FIXNUM-AND
-	    FIXNUM-OR
-	    FIXNUM-XOR
-	    FIXNUM-LSH))
+(let* ((one-operand
+	(lambda (operator operand)
+	  (rtl:make-fixnum->object
+	   (rtl:make-fixnum-1-arg
+	    operator
+	    (rtl:make-object->fixnum operand)
+	    false))))
+
+       (two-operand
+	(lambda (operator comm? pos neg)
+	  (define-open-coder/value operator
+	    (simple-open-coder
+	     (lambda (combination expressions finish)
+	       (define (default)
+		 (rtl:make-fixnum->object
+		  (rtl:make-fixnum-2-args
+		   operator
+		   (rtl:make-object->fixnum (car expressions))
+		   (rtl:make-object->fixnum (cadr expressions))
+		   false)))
+
+	       ;; Guarantee that (fix:-1+ x) and (fix:- x 1)
+	       ;; generate identical code, etc.
+	       combination
+	       (finish
+		(cond ((and comm? (rtl:constant? (car expressions)))
+		       (case (rtl:constant-value (car expressions))
+			 ((0) (cadr expressions))
+			 ((1) (one-operand pos (cadr expressions)))
+			 ((-1) (one-operand neg (cadr expressions)))
+			 (else (default))))
+		      ((rtl:constant? (cadr expressions))
+		       (case (rtl:constant-value (cadr expressions))
+			 ((0) (car expressions))
+			 ((1) (one-operand pos (car expressions)))
+			 ((-1) (one-operand neg (car expressions)))
+			 (else (default))))
+		      (else
+		       (default)))))
+	     '(0 1)
+	     false)))))
+
+  (two-operand 'PLUS-FIXNUM true 'ONE-PLUS-FIXNUM 'MINUS-ONE-PLUS-FIXNUM)
+  (two-operand 'MINUS-FIXNUM false 'MINUS-ONE-PLUS-FIXNUM 'ONE-PLUS-FIXNUM))
 
 (for-each (lambda (fixnum-operator)
 	    (define-open-coder/value fixnum-operator
@@ -859,6 +927,31 @@ MIT in each case. |#
 	    MINUS-ONE-PLUS-FIXNUM
 	    FIXNUM-NOT))
 
+(for-each (lambda (fixnum-operator)
+	    (define-open-coder/value fixnum-operator
+	      (simple-open-coder
+	       (lambda (combination expressions finish)
+		 combination
+		 (finish
+		  (rtl:make-fixnum->object
+		   (rtl:make-fixnum-2-args
+		    fixnum-operator
+		    (rtl:make-object->fixnum (car expressions))
+		    (rtl:make-object->fixnum (cadr expressions))
+		    false))))
+	       '(0 1)
+	       false)))
+	  '(MULTIPLY-FIXNUM
+	    ;; DIVIDE-FIXNUM
+	    GCD-FIXNUM
+	    FIXNUM-QUOTIENT
+	    FIXNUM-REMAINDER
+	    FIXNUM-ANDC
+	    FIXNUM-AND
+	    FIXNUM-OR
+	    FIXNUM-XOR
+	    FIXNUM-LSH))
+
 (for-each (lambda (fixnum-pred first-zero second-zero)
 	    (define-open-coder/predicate fixnum-pred
 	      (simple-open-coder
@@ -903,102 +996,109 @@ MIT in each case. |#
 
 ;;; Floating Point Arithmetic
 
-(if compiler:open-code-floating-point-arithmetic?
-    (begin
-      (for-each
-       (lambda (flonum-operator)
-	 (define-open-coder/value flonum-operator
-	   (simple-open-coder
-	    (lambda (combination expressions finish)
-	      (let ((argument (car expressions)))
-		(open-code:with-checks
-		 combination
-		 (list (open-code:type-check argument (ucode-type flonum)))
-		 (finish (rtl:make-float->object
-			  (rtl:make-flonum-1-arg
-			   flonum-operator
-			   (rtl:make-object->float argument)
-			   false)))
-		 finish
-		 flonum-operator
-		 expressions)))
-	    '(0)
-	    internal-close-coding-for-type-checks)))
-       '(FLONUM-NEGATE FLONUM-ABS FLONUM-SIN FLONUM-COS FLONUM-TAN FLONUM-ASIN
-	 FLONUM-ACOS FLONUM-ATAN FLONUM-EXP FLONUM-LOG FLONUM-SQRT FLONUM-ROUND
-	 FLONUM-TRUNCATE))
+;; On some machines, there are optional floating-point co-processors,
+;; The decision of whether to open-code floating-point arithmetic or
+;; not should be made at the last moment, not when the compiler is
+;; built.
 
-      (for-each
-       (lambda (flonum-operator)
-	 (define-open-coder/value flonum-operator
-	   (simple-open-coder
-	    (lambda (combination expressions finish)
-	      (let ((arg1 (car expressions))
-		    (arg2 (cadr expressions)))
-		(open-code:with-checks
-		 combination
-		 (list (open-code:type-check arg1 (ucode-type flonum))
-		       (open-code:type-check arg2 (ucode-type flonum)))
-		 (finish
-		  (rtl:make-float->object
-		   (rtl:make-flonum-2-args
-		    flonum-operator
-		    (rtl:make-object->float arg1)
-		    (rtl:make-object->float arg2)
-		    false)))
-		 finish
-		 flonum-operator
-		 expressions)))
-	    '(0 1)
-	    internal-close-coding-for-type-checks)))
-       '(FLONUM-ADD FLONUM-SUBTRACT FLONUM-MULTIPLY FLONUM-DIVIDE))
+(define (floating-point-open-coder generator indices internal-close-coding?)
+  (conditional-open-coder
+   (lambda (operands)
+     operands				; ignored
+     compiler:open-code-floating-point-arithmetic?)
+   (simple-open-coder generator indices internal-close-coding?)))
+
+(for-each
+ (lambda (flonum-operator)
+   (define-open-coder/value flonum-operator
+     (floating-point-open-coder
+      (lambda (combination expressions finish)
+	(let ((argument (car expressions)))
+	  (open-code:with-checks
+	   combination
+	   (list (open-code:type-check argument (ucode-type flonum)))
+	   (finish (rtl:make-float->object
+		    (rtl:make-flonum-1-arg
+		     flonum-operator
+		     (rtl:make-object->float argument)
+		     false)))
+	   finish
+	   flonum-operator
+	   expressions)))
+      '(0)
+      internal-close-coding-for-type-checks)))
+ '(FLONUM-NEGATE FLONUM-ABS FLONUM-SIN FLONUM-COS FLONUM-TAN FLONUM-ASIN
+   FLONUM-ACOS FLONUM-ATAN FLONUM-EXP FLONUM-LOG FLONUM-SQRT FLONUM-ROUND
+   FLONUM-TRUNCATE))
+
+(for-each
+ (lambda (flonum-operator)
+   (define-open-coder/value flonum-operator
+     (floating-point-open-coder
+      (lambda (combination expressions finish)
+	(let ((arg1 (car expressions))
+	      (arg2 (cadr expressions)))
+	  (open-code:with-checks
+	   combination
+	   (list (open-code:type-check arg1 (ucode-type flonum))
+		 (open-code:type-check arg2 (ucode-type flonum)))
+	   (finish
+	    (rtl:make-float->object
+	     (rtl:make-flonum-2-args
+	      flonum-operator
+	      (rtl:make-object->float arg1)
+	      (rtl:make-object->float arg2)
+	      false)))
+	   finish
+	   flonum-operator
+	   expressions)))
+      '(0 1)
+      internal-close-coding-for-type-checks)))
+ '(FLONUM-ADD FLONUM-SUBTRACT FLONUM-MULTIPLY FLONUM-DIVIDE))
 
-      (for-each
-       (lambda (flonum-pred)
-	 (define-open-coder/predicate flonum-pred
-	   (simple-open-coder
-	    (lambda (combination expressions finish)
-	      (let ((argument (car expressions)))
-		(open-code:with-checks
-		 combination
-		 (list (open-code:type-check argument (ucode-type flonum)))
-		 (finish
-		  (rtl:make-flonum-pred-1-arg
-		   flonum-pred
-		   (rtl:make-object->float argument)))
-		 (lambda (expression)
-		   (finish (rtl:make-true-test expression)))
-		 flonum-pred
-		 expressions)))
-	    '(0)
-	    internal-close-coding-for-type-checks)))
-       '(FLONUM-ZERO? FLONUM-POSITIVE? FLONUM-NEGATIVE?))
+(for-each
+ (lambda (flonum-pred)
+   (define-open-coder/predicate flonum-pred
+     (floating-point-open-coder
+      (lambda (combination expressions finish)
+	(let ((argument (car expressions)))
+	  (open-code:with-checks
+	   combination
+	   (list (open-code:type-check argument (ucode-type flonum)))
+	   (finish
+	    (rtl:make-flonum-pred-1-arg
+	     flonum-pred
+	     (rtl:make-object->float argument)))
+	   (lambda (expression)
+	     (finish (rtl:make-true-test expression)))
+	   flonum-pred
+	   expressions)))
+      '(0)
+      internal-close-coding-for-type-checks)))
+ '(FLONUM-ZERO? FLONUM-POSITIVE? FLONUM-NEGATIVE?))
 
-      (for-each
-       (lambda (flonum-pred)
-	 (define-open-coder/predicate flonum-pred
-	   (simple-open-coder
-	    (lambda (combination expressions finish)
-	      (let ((arg1 (car expressions))
-		    (arg2 (cadr expressions)))
-		(open-code:with-checks
-		 combination
-		 (list (open-code:type-check arg1 (ucode-type flonum))
-		       (open-code:type-check arg2 (ucode-type flonum)))
-		 (finish (rtl:make-flonum-pred-2-args
-			  flonum-pred
-			  (rtl:make-object->float arg1)
-			  (rtl:make-object->float arg2)))
-		 (lambda (expression)
-		   (finish (rtl:make-true-test expression)))
-		 flonum-pred
-		 expressions)))
-	    '(0 1)
-	    internal-close-coding-for-type-checks)))
-       '(FLONUM-EQUAL? FLONUM-LESS? FLONUM-GREATER?))
-
-      ;; end COMPILER:OPEN-CODE-FLOATING-POINT-ARITHMETIC?
-      ))
+(for-each
+ (lambda (flonum-pred)
+   (define-open-coder/predicate flonum-pred
+     (floating-point-open-coder
+      (lambda (combination expressions finish)
+	(let ((arg1 (car expressions))
+	      (arg2 (cadr expressions)))
+	  (open-code:with-checks
+	   combination
+	   (list (open-code:type-check arg1 (ucode-type flonum))
+		 (open-code:type-check arg2 (ucode-type flonum)))
+	   (finish (rtl:make-flonum-pred-2-args
+		    flonum-pred
+		    (rtl:make-object->float arg1)
+		    (rtl:make-object->float arg2)))
+	   (lambda (expression)
+	     (finish (rtl:make-true-test expression)))
+	   flonum-pred
+	   expressions)))
+      '(0 1)
+      internal-close-coding-for-type-checks)))
+ '(FLONUM-EQUAL? FLONUM-LESS? FLONUM-GREATER?))
 
 ;;; Generic arithmetic
 
