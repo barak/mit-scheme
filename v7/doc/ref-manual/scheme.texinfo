@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.96 2001/11/14 05:53:37 cph Exp $
+@comment $Id: scheme.texinfo,v 1.97 2001/11/16 20:04:02 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -49,9 +49,9 @@ Free Documentation License".
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.94
-@subtitle for Scheme Release 7.5
-@subtitle 16 July 2001
+@subtitle Edition 1.95
+@subtitle for Scheme Release 7.6.0
+@subtitle 16 November 2001
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -186,7 +186,7 @@ Characters
 * Comparison of Characters::    
 * Miscellaneous Character Operations::  
 * Internal Representation of Characters::  
-* ASCII Characters::            
+* ISO-8859-1 Characters::            
 * Character Sets::              
 
 Strings
@@ -4727,6 +4727,20 @@ These procedures are the standard arithmetic operations on flonums.
 When compiled, they do not check the types of their arguments.
 @end deffn
 
+@deffn {procedure+} flo:finite? flonum
+@vindex +inf
+@vindex -inf
+@vindex NaN
+@cindex positive infinity (@code{+inf})
+@cindex negative infinity (@code{-inf})
+@cindex not a number (@code{NaN})
+The @acronym{IEEE} floating-point number specification supports three
+special ``numbers'': positive infinity (@code{+inf}), negative infinity
+(@code{-inf}), and not-a-number (@code{NaN}).  This predicate returns
+@code{#f} if @var{flonum} is one of these objects, and @code{#t} if it
+is any other floating-point number.
+@end deffn
+
 @deffn {procedure+} flo:negate flonum
 This procedure returns the negation of its argument.  When compiled, it
 does not check the type of its argument.  Equivalent to @code{(flo:- 0.
@@ -4855,16 +4869,16 @@ returns @code{#f}.
 @cindex character (defn)
 Characters are objects that represent printed characters, such as
 letters and digits.@footnote{Some of the details in this section depend
-on the fact that the underlying operating system uses the @acronym{ASCII}
-character set.  This may change when someone ports MIT Scheme to a
-non-@acronym{ASCII} operating system.}
+on the fact that the underlying operating system uses the
+@acronym{ASCII} character set.  This may change when someone ports MIT
+Scheme to a non-@acronym{ASCII} operating system.}
 
 @menu
 * External Representation of Characters::  
 * Comparison of Characters::    
 * Miscellaneous Character Operations::  
 * Internal Representation of Characters::  
-* ASCII Characters::            
+* ISO-8859-1 Characters::            
 * Character Sets::              
 @end menu
 
@@ -4906,8 +4920,8 @@ quote them.
 A character name may include one or more @dfn{bucky bit} prefixes to
 indicate that the character includes one or more of the keyboard shift
 keys Control, Meta, Super, Hyper, or Top (note that the Control bucky
-bit prefix is not the same as the @acronym{ASCII} control key).  The bucky
-bit prefixes and their meanings are as follows (case is not
+bit prefix is not the same as the @acronym{ASCII} control key).  The
+bucky bit prefixes and their meanings are as follows (case is not
 significant):
 
 @example
@@ -5069,9 +5083,7 @@ The lowercase characters are in order; for example, @code{(char<? #\a
 @cindex character, standard
 @findex char-standard?
 In addition, MIT Scheme orders those characters that satisfy
-@code{char-standard?} the same way that @acronym{ASCII} does.  Specifically,
-all the digits precede all the uppercase letters, and all the upper-case
-letters precede all the lowercase letters.
+@code{char-standard?} the same way that @acronym{ISO-8859-1} does.
 
 Characters are ordered by first comparing their bucky bits part and then
 their code part.  In particular, characters without bucky bits come
@@ -5135,7 +5147,7 @@ returns @code{#f}.
 @end example
 @end deffn
 
-@node Internal Representation of Characters, ASCII Characters, Miscellaneous Character Operations, Characters
+@node Internal Representation of Characters, ISO-8859-1 Characters, Miscellaneous Character Operations, Characters
 @section Internal Representation of Characters
 @cindex internal representation, for character
 
@@ -5156,10 +5168,10 @@ is completely orthogonal to the @acronym{ASCII} control key, making possible
 such characters as @code{#\C-SOH}.}
 
 MIT Scheme uses a 16-bit character code with 5 bucky bits.  Normally,
-Scheme uses the least significant 7 bits of the character code to
-contain the @acronym{ASCII} representation for the character.  The
-representation is expanded in order to allow for future accomodation of
-international character sets.
+Scheme uses the least significant 8 bits of the character code to
+contain the @acronym{ISO-8859-1} representation for the character.  The
+representation is expanded in order to allow for the use of
+@acronym{UTF-16} in the future.
 
 @deffn {procedure+} make-char code bucky-bits
 @cindex construction, of character
@@ -5280,56 +5292,58 @@ non-negative integers that are less than the value of this variable
 (exclusive).
 @end defvr
 
-@node ASCII Characters, Character Sets, Internal Representation of Characters, Characters
-@section ASCII Characters
+@node ISO-8859-1 Characters, Character Sets, Internal Representation of Characters, Characters
+@section ISO-8859-1 Characters
 
-MIT Scheme internally uses @acronym{ASCII} codes for @sc{i/o}, and stores
-character objects in a fashion that makes it convenient to convert
-between @acronym{ASCII} codes and characters.  Also, character strings are
-implemented as byte vectors whose elements are @acronym{ASCII} codes; these
-codes are converted to character objects when accessed.  For these
-reasons it is sometimes desirable to be able to convert between
-@acronym{ASCII} codes and characters.
+MIT Scheme internally uses @acronym{ISO-8859-1} codes for @sc{i/o}, and
+stores character objects in a fashion that makes it convenient to
+convert between @acronym{ISO-8859-1} codes and characters.  Also,
+character strings are implemented as byte vectors whose elements are
+@acronym{ISO-8859-1} codes; these codes are converted to character
+objects when accessed.  For these reasons it is sometimes desirable to
+be able to convert between @acronym{ISO-8859-1} codes and characters.
 
-@cindex ASCII character (defn)
-@cindex character, ASCII (defn)
-Not all characters can be represented as @acronym{ASCII} codes.  A character
-that has an equivalent @acronym{ASCII} representation is called an @dfn{ASCII
-character}.
+@cindex ISO-8859-1 character (defn)
+@cindex character, ISO-8859-1 (defn)
+Not all characters can be represented as @acronym{ISO-8859-1} codes.  A
+character that has an equivalent @acronym{ISO-8859-1} representation is
+called an @dfn{ISO-8859-1 character}.
+
+For historical reasons, the procedures that manipulate
+@acronym{ISO-8859-1} characters use the word ``@acronym{ASCII}'' rather
+than ``@acronym{ISO-8859-1}''.
 
 @deffn {procedure+} char-ascii? char
-Returns the @acronym{ASCII} code for @var{char} if @var{char} has an
-@acronym{ASCII} representation; otherwise returns @code{#f}.
+Returns the @acronym{ISO-8859-1} code for @var{char} if @var{char} has an
+@acronym{ISO-8859-1} representation; otherwise returns @code{#f}.
 
-@findex char-bits
 In the current implementation, the characters that satisfy this
-predicate are those in which the Control, Super, Hyper, and Top bucky
-bits are turned off.  All characters for which the @code{char-bits}
-procedure returns @code{0} or @code{1} (i.e.@: no bucky bits, or just
-Meta) count as legal @acronym{ASCII} characters.
+predicate are those in which the bucky bits are turned off, and for
+which the character code is less than 256.
 @end deffn
 
 @deffn {procedure+} char->ascii char
-Returns the @acronym{ASCII} code for @var{char}.  An error
+Returns the @acronym{ISO-8859-1} code for @var{char}.  An error
 @code{condition-type:bad-range-argument} is signalled if @var{char}
-doesn't have an @acronym{ASCII} representation.
+doesn't have an @acronym{ISO-8859-1} representation.
 @findex condition-type:bad-range-argument
 @end deffn
 
 @deffn {procedure+} ascii->char code
-@var{Code} must be the exact integer representation of an @acronym{ASCII}
-code.  This procedure returns the character corresponding to @var{code}.
+@var{Code} must be the exact integer representation of an
+@acronym{ISO-8859-1} code.  This procedure returns the character
+corresponding to @var{code}.
 @end deffn
 
-@node Character Sets,  , ASCII Characters, Characters
+@node Character Sets,  , ISO-8859-1 Characters, Characters
 @section Character Sets
 @cindex character set
 @cindex set, of characters
 
 MIT Scheme's character-set abstraction is used to represent groups of
 characters, such as the letters or digits.  Character sets may contain
-only @acronym{ASCII} characters; in the future this may be changed to
-allow the full range of characters.
+only @acronym{ISO-8859-1} characters; in the future this may be changed
+to allow the full range of characters.
 
 There is no meaningful external representation for character sets; use
 @code{char-set-members} to examine their contents.  There is (at
@@ -5418,15 +5432,15 @@ Returns @code{#t} if @var{char} is in @var{char-set}; otherwise returns
 
 @deffn {procedure+} char-set char @dots{}
 @cindex construction, of character set
-Returns a character set consisting of the specified @acronym{ASCII}
+Returns a character set consisting of the specified @acronym{ISO-8859-1}
 characters.  With no arguments, @code{char-set} returns an empty
 character set.
 @end deffn
 
 @deffn {procedure+} chars->char-set chars
 Returns a character set consisting of @var{chars}, which must be a list
-of @acronym{ASCII} characters.  This is equivalent to @code{(apply char-set
-@var{chars})}.
+of @acronym{ISO-8859-1} characters.  This is equivalent to @code{(apply
+char-set @var{chars})}.
 @end deffn
 
 @deffn {procedure+} string->char-set string
@@ -5436,17 +5450,21 @@ Returns a character set consisting of all the characters that occur in
 
 @deffn {procedure+} ascii-range->char-set lower upper
 @var{Lower} and @var{upper} must be exact non-negative integers
-representing @acronym{ASCII} character codes, and @var{lower} must be less
-than or equal to @var{upper}.  This procedure creates and returns a new
-character set consisting of the characters whose @acronym{ASCII} codes are
-between @var{lower} (inclusive) and @var{upper} (exclusive).
+representing @acronym{ISO-8859-1} character codes, and @var{lower} must
+be less than or equal to @var{upper}.  This procedure creates and
+returns a new character set consisting of the characters whose
+@acronym{ISO-8859-1} codes are between @var{lower} (inclusive) and
+@var{upper} (exclusive).
+
+For historical reasons, the name of this procedure refers to
+``@acronym{ASCII}'' rather than ``@acronym{ISO-8859-1}''.
 @end deffn
 
 @deffn {procedure+} predicate->char-set predicate
 @var{Predicate} must be a procedure of one argument.
 @code{predicate->char-set} creates and returns a character set
-consisting of the @acronym{ASCII} characters for which @var{predicate} is
-true.
+consisting of the @acronym{ISO-8859-1} characters for which
+@var{predicate} is true.
 @end deffn
 
 @deffn {procedure+} char-set-difference char-set1 char-set2
@@ -5465,8 +5483,8 @@ least one o the @var{char-set}s.
 @end deffn
 
 @deffn {procedure+} char-set-invert char-set
-Returns a character set consisting of the @acronym{ASCII} characters that are
-not in @var{char-set}.
+Returns a character set consisting of the @acronym{ISO-8859-1}
+characters that are not in @var{char-set}.
 @end deffn
 
 @node Strings, Lists, Characters, Top
@@ -5525,12 +5543,12 @@ Use #\Control-q to quit.
 @findex #\newline
 @findex #\page
 The effect of a backslash that doesn't precede a double quote or
-backslash is unspecified in standard Scheme, but MIT Scheme
-specifies the effect for three other characters: @code{\t}, @code{\n},
-and @code{\f}.  These escape sequences are respectively translated into
-the following characters: @code{#\tab}, @code{#\newline}, and
-@code{#\page}.  Finally, a backslash followed by exactly three octal
-digits is translated into the character whose @acronym{ASCII} code is those
+backslash is unspecified in standard Scheme, but MIT Scheme specifies
+the effect for three other characters: @code{\t}, @code{\n}, and
+@code{\f}.  These escape sequences are respectively translated into the
+following characters: @code{#\tab}, @code{#\newline}, and @code{#\page}.
+Finally, a backslash followed by exactly three octal digits is
+translated into the character whose @acronym{ISO-8859-1} code is those
 digits.
 
 If a string literal is continued from one line to another, the string
@@ -5624,7 +5642,7 @@ The arguments must all satisfy @code{char-ascii?}.
 @deffn procedure list->string char-list
 @cindex list, converting to string
 @findex string->list
-@var{Char-list} must be a list of @acronym{ASCII} characters.
+@var{Char-list} must be a list of @acronym{ISO-8859-1} characters.
 @code{list->string} returns a newly allocated string formed from the
 elements of @var{char-list}.  This is equivalent to @code{(apply string
 @var{char-list})}.  The inverse of this operation is
@@ -6547,51 +6565,51 @@ maximum length of @var{string}.
 @cindex vector, byte
 
 @findex string-ref
-MIT Scheme implements strings as packed vectors of 8-bit @acronym{ASCII}
-bytes.  Most of the string operations, such as @code{string-ref}, coerce
-these 8-bit codes into character objects.  However, some lower-level
-operations are made available for use.
+MIT Scheme implements strings as packed vectors of 8-bit
+@acronym{ISO-8859-1} bytes.  Most of the string operations, such as
+@code{string-ref}, coerce these 8-bit codes into character objects.
+However, some lower-level operations are made available for use.
 
 @deffn {procedure+} vector-8b-ref string k
-Returns character @var{k} of @var{string} as an @acronym{ASCII} code.
-@var{K} must be a valid index of @var{string}.
+Returns character @var{k} of @var{string} as an @acronym{ISO-8859-1}
+code.  @var{K} must be a valid index of @var{string}.
 
 @example
 @group
-(vector-8b-ref "abcde" 2)               @result{}  99 @r{; ascii for `c'}
+(vector-8b-ref "abcde" 2)               @result{}  99 @r{;c}
 @end group
 @end example
 @end deffn
 
-@deffn {procedure+} vector-8b-set! string k ascii
-Stores @var{ascii} in element @var{k} of @var{string} and returns an
+@deffn {procedure+} vector-8b-set! string k code
+Stores @var{code} in element @var{k} of @var{string} and returns an
 unspecified value.  @var{K} must be a valid index of @var{string}, and
-@var{ascii} must be a valid @acronym{ASCII} code.
+@var{code} must be a valid @acronym{ISO-8859-1} code.
 @end deffn
 
-@deffn {procedure+} vector-8b-fill! string start end ascii
-Stores @var{ascii} in elements @var{start} (inclusive) to @var{end}
+@deffn {procedure+} vector-8b-fill! string start end code
+Stores @var{code} in elements @var{start} (inclusive) to @var{end}
 (exclusive) of @var{string} and returns an unspecified value.
-@var{Ascii} must be a valid @acronym{ASCII} code.
+@var{Code} must be a valid @acronym{ISO-8859-1} code.
 @end deffn
 
-@deffn {procedure+} vector-8b-find-next-char string start end ascii
-@deffnx {procedure+} vector-8b-find-next-char-ci string start end ascii
-Returns the index of the first occurrence of @var{ascii} in the given
-substring; returns @code{#f} if @var{ascii} does not appear.  The index
+@deffn {procedure+} vector-8b-find-next-char string start end code
+@deffnx {procedure+} vector-8b-find-next-char-ci string start end code
+Returns the index of the first occurrence of @var{code} in the given
+substring; returns @code{#f} if @var{code} does not appear.  The index
 returned is relative to the entire string, not just the substring.
-@var{Ascii} must be a valid @acronym{ASCII} code.
+@var{Code} must be a valid @acronym{ISO-8859-1} code.
 
 @code{vector-8b-find-next-char-ci} doesn't distinguish uppercase and
 lowercase letters.
 @end deffn
 
-@deffn {procedure+} vector-8b-find-previous-char string start end ascii
-@deffnx {procedure+} vector-8b-find-previous-char-ci string start end ascii
-Returns the index of the last occurrence of @var{ascii} in the given
-substring; returns @code{#f} if @var{ascii} does not appear.  The index
+@deffn {procedure+} vector-8b-find-previous-char string start end code
+@deffnx {procedure+} vector-8b-find-previous-char-ci string start end code
+Returns the index of the last occurrence of @var{code} in the given
+substring; returns @code{#f} if @var{code} does not appear.  The index
 returned is relative to the entire string, not just the substring.
-@var{Ascii} must be a valid @acronym{ASCII} code.
+@var{Code} must be a valid @acronym{ISO-8859-1} code.
 
 @code{vector-8b-find-previous-char-ci} doesn't distinguish uppercase and
 lowercase letters.
@@ -7054,7 +7072,8 @@ of @code{pair?} or @code{null?}.
 @end deffn
 
 @deffn procedure length list
-Returns the length of @var{list}.
+Returns the length of @var{list}.  Signals an error if @var{list} isn't
+a proper list.
 
 @example
 @group
@@ -7253,6 +7272,14 @@ false.  @var{Predicate} must be a procedure of one argument.
 For compatibility, the procedure @code{list-transform-positive} is an
 alias for @code{keep-matching-items}, and @code{list-transform-negative}
 is an alias for @code{delete-matching-items}.
+@end deffn
+
+@deffn {procedure+} keep-matching-items! list predicate
+@deffnx {procedure+} delete-matching-items! list predicate
+These procedures are exactly like @code{keep-matching-items} and
+@code{delete-matching-items}, respectively, except that they
+destructively modify the @var{list} argument rather than allocating a
+new result.
 @end deffn
 
 @deffn {procedure+} delq element list
@@ -11834,7 +11861,7 @@ a port that you specify.  The current output port is initially
 @code{console-i/o-port}, but Scheme provides procedures that let you
 change the current output port to be a file or string.
 
-All ports read or write only @acronym{ASCII} characters.
+All ports read or write only @acronym{ISO-8859-1} characters.
 
 Every port is either an input port, an output port, or both.  The
 following predicates distinguish all of the possible cases.
