@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: bootstrap.scm,v 1.2 1992/08/29 12:06:07 jinx Exp $
+$Id: bootstrap.scm,v 1.3 1992/11/07 16:13:44 jinx Exp $
 
 Copyright (c) 1991-1992 Massachusetts Institute of Technology
 
@@ -168,10 +168,14 @@ MIT in each case. |#
 				      ((VAX) "vax")))
 				   (ln-sf
 				    (let ((ln-s
-					   (make-primitive-procedure
-					    'FILE-LINK-SOFT)))
+					   (let ((prim (make-primitive-procedure
+							'FILE-LINK-SOFT)))
+					     (lambda (from to)
+					       (prim (->namestring (merge-pathnames from))
+						     (->namestring (merge-pathnames to)))))))
 				      (lambda (from to)
-					(delete-file to)
+					(if (file-exists? to)
+					    (delete-file to))
 					(ln-s from to)))))
 			       (let ((prefix
 				      (string-append "machines/" directory)))
