@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/site.scm.unix,v 1.2 1989/10/11 15:26:52 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/site.scm.unix,v 1.3 1990/07/27 00:29:56 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -55,5 +55,12 @@ MIT in each case. |#
 (let ((add-directory-rewriting-rule!
        (access add-directory-rewriting-rule!
 	       (->environment '(runtime compiler-info)))))
-  (add-directory-rewriting-rule! "/scheme/" "/zurich/scheme/")
-  (add-directory-rewriting-rule! "/nfs/zurich/root/scheme/" "/zurich/scheme/"))
+  (for-each
+   (lambda (path)
+     (add-directory-rewriting-rule! path "/usr/local/lib/mit-scheme/SRC/"))
+   '("/scheme/"
+     "/altdorf/scheme"
+     "/nfs/altdorf/root/scheme/"
+     "/nfs/zurich/root/scheme/"
+     "/zurich/scheme/")))
+     
