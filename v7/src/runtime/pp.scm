@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.12 1990/09/19 00:34:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.13 1990/09/27 03:33:02 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -346,12 +346,14 @@ MIT in each case. |#
 		     (walk-custom unparser object list-depth)
 		     (walk-pair object list-depth))))))
 	((vector? object)
-	 (let ((unparser (unparse-vector/unparser object)))
-	   (if unparser
-	       (walk-custom unparser object list-depth)
-	       (make-prefix-node "#"
-				 (walk-pair (vector->list object)
-					    list-depth)))))
+	 (if (zero? (vector-length object))
+	     (walk-custom unparse-object object list-depth)
+	     (let ((unparser (unparse-vector/unparser object)))
+	       (if unparser
+		   (walk-custom unparser object list-depth)
+		   (make-prefix-node "#"
+				     (walk-pair (vector->list object)
+						list-depth))))))
 	((symbol? object)
 	 (if (or *pp-uninterned-symbols-by-name*
 		 (object-type? (ucode-type interned-symbol) object))
