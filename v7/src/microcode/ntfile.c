@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntfile.c,v 1.3 1993/06/24 02:00:44 gjr Exp $
+$Id: ntfile.c,v 1.4 1993/09/13 18:36:20 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -98,17 +98,16 @@ DEFUN (name, (filename), CONST char * filename)				\
   return  OS_open_handle (hFile);					\
 }
 
-
 DEFUN_OPEN_FILE (OS_open_input_file,
   (filename, GENERIC_READ, FILE_SHARE_READ, 0,
    OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0));
 
 DEFUN_OPEN_FILE (OS_open_output_file,
-  (filename, GENERIC_WRITE, 0, 0,
+  (filename, GENERIC_WRITE, FILE_SHARE_READ, 0,
    CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0));
 
 DEFUN_OPEN_FILE (OS_open_io_file,
-  (filename, GENERIC_READ | GENERIC_WRITE, 0, 0,
+  (filename, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, 0,
    OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0));
 
 
@@ -127,7 +126,7 @@ DEFUN (OS_open_append_file, (filename), CONST char * filename)
     (syscall_open, hFile,
       CreateFile (filename,
 	          GENERIC_WRITE,
-		  0	/*sharing*/,
+		  FILE_SHARE_READ	/*sharing*/,
 		  0	/*security*/,
 		  OPEN_ALWAYS,
 		  FILE_ATTRIBUTE_NORMAL /*attributes&flags*/,
@@ -168,7 +167,7 @@ DEFUN (OS_open_load_file, (filename), CONST char * filename)
    HANDLE  hFile;
    
    hFile = CreateFile (filename, GENERIC_READ,
-				 0 /*FILE_SHARE_READ?*/,
+				 FILE_SHARE_READ /*FILE_SHARE_READ?*/,
 				 0 /*security?*/,
 				 OPEN_EXISTING,
 				 0,
@@ -185,7 +184,8 @@ DEFUN (OS_open_load_file, (filename), CONST char * filename)
      if (i<4)  return  NO_CHANNEL;
      if (newname[i-5]=='.') {
        newname[i-1] = 0;
-       hFile = CreateFile (newname, GENERIC_READ, 0, 0, OPEN_EXISTING, 0, 0);
+       hFile = CreateFile (newname, GENERIC_READ, FILE_SHARE_READ,
+			   0, OPEN_EXISTING, 0, 0);
        if (hFile != INVALID_HANDLE_VALUE)
 	 return  make_load_channel (hFile);
      }
@@ -199,7 +199,7 @@ DEFUN (OS_open_dump_file, (filename), CONST char * filename)
 {
    HANDLE  hFile = CreateFile (	filename,
 			        GENERIC_WRITE,
-				0 /*no sharing*/,
+				FILE_SHARE_READ /*no sharing*/,
 				0 /*security?*/,
 				CREATE_ALWAYS,
 				0,
