@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.64 1996/04/23 20:58:11 cph Exp $
+$Id: ux.h,v 1.65 1996/07/01 23:27:18 cph Exp $
 
 Copyright (c) 1988-96 Massachusetts Institute of Technology
 
@@ -355,6 +355,10 @@ extern int EXFUN (kill, (pid_t, int));
 #define HAVE_SYMBOLIC_LINKS
 #define HAVE_TRUNCATE
 #define HAVE_VFORK
+ 
+#if (_HPUX_VERSION >= 90)
+#define HAVE_POLL
+#endif
 
 #if (_HPUX_VERSION >= 65)
 /* Is this right for 800-series machines? */
