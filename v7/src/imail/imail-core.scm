@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.101 2000/06/16 17:21:48 cph Exp $
+;;; $Id: imail-core.scm,v 1.102 2000/06/16 17:54:36 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -19,8 +19,6 @@
 ;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;;; IMAIL mail reader: core definitions
-
-;;; **** Implement file backup.
 
 (declare (usual-integrations))
 

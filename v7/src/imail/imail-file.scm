@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.43 2000/06/16 17:21:44 cph Exp $
+;;; $Id: imail-file.scm,v 1.44 2000/06/16 17:54:46 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -224,7 +224,6 @@
 		  (imail-ui:prompt-for-yes-or-no?
 		   "Disk file has changed since last read.  Save anyway"))))
        (begin
-	 ;; **** Do backup of file here.
 	 (synchronize-file-folder-write folder write-file-folder)
 	 #t)))
 

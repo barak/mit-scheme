@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.39 2000/06/14 02:15:40 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.40 2000/06/16 17:54:56 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -132,8 +132,6 @@
   (lines->header-fields (read-lines-to-eom port)))
 
 (define (read-rmail-message port)
-  ;; **** This must be generalized to recognize an RMAIL file that has
-  ;; unix-mail format messages appended to it.
   (let ((line (read-line port)))
     (cond ((eof-object? line)
 	   #f)
