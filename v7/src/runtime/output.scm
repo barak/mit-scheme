@@ -37,6 +37,8 @@
 
 ;;;; Output
 
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 1.33 1986/12/20 01:26:33 cph Exp $
+
 (declare (usual-integrations))
 
 ;;;; Output Ports
@@ -90,7 +92,8 @@
   (make-primitive-procedure 'TTY-BEEP))
 
 (define (screen-clear)
-  ((access :clear-screen console-output-port)))
+  ((access :clear-screen console-output-port))
+  ((access :flush-output console-output-port)))
 
 (define console-output-port)
 (let ()
@@ -101,8 +104,8 @@
 (define tty-write-string
   (make-primitive-procedure 'TTY-WRITE-STRING))
 
-;(define tty-flush-output
-;  (make-primitive-procedure 'TTY-FLUSH-OUTPUT))
+(define tty-flush-output
+  (make-primitive-procedure 'TTY-FLUSH-OUTPUT))
 
 (define tty-clear
   (make-primitive-procedure 'TTY-CLEAR))
@@ -120,7 +123,7 @@
 (define (:close) 'DONE)
 (define :write-char tty-write-char)
 (define :write-string tty-write-string)
-(define (:flush-output) 'DONE)
+(define :flush-output tty-flush-output)
 (define :clear-screen tty-clear)
 
 (define (:x-size)
