@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: simplify.scm,v 1.4 1995/02/11 03:16:45 adams Exp $
+$Id: simplify.scm,v 1.5 1995/02/14 00:44:06 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -335,7 +335,8 @@ MIT in each case. |#
 			       (simplify/substitute? value body))))))))))
     (for-each
      (lambda (node)
-       (simplify/substitute! node
+       (simplify/substitute! env0
+			     node
 			     (cadr (assq (simplify/binding/name node)
 					 bindings))))
      to-substitute)
@@ -354,22 +355,93 @@ MIT in each case. |#
 	   (form/simple&side-effect-free? value)
 	   (not (form/static? value)))))
 
-;; Note: this only works if no variable free in value is captured
-;; at any reference in node.
-;; This is currently true by construction, but may not be in the future.
+;; Note: this only works if no variable free in value is captured at any
+;; reference in node.
+;; This is true because the program was alpha-converted and when we
+;; substitue expressions, we copy the form renaming the bound
+;; variables.
 
-(define (simplify/substitute! node value)
-  (for-each (lambda (ref)
-	      (simplify/remember*! ref value)
-	      (form/rewrite! ref value))
-	    (simplify/binding/ordinary-refs node))
-  (for-each (lambda (ref)
-	      (form/rewrite! ref value))
-	    (simplify/binding/dbg-info-refs node))
-  (for-each (lambda (ref)
-	      (form/rewrite! ref `(CALL ,value ,@(cddr ref))))
-	    (simplify/binding/operator-refs node)))
+(define (simplify/substitute! env node value)
+  env					; ignored
+  (let ((ordinary-refs  (simplify/binding/ordinary-refs node))
+	(operator-refs  (simplify/binding/operator-refs node)))
+    (define copy-value
+      ;; We only copy the value if we are making substituting in several
+      ;; places, and then we only copy for the 2nd substitution onwards
+      (let ((all-refs (append ordinary-refs operator-refs)))
+	(lambda (ref)
+	  (if (eq? ref (car all-refs))
+	      value
+	      (simplify/copy-form/renaming env value)))))
 
+    (for-each (lambda (ref)
+		(let ((value*  (copy-value ref)))
+		  (simplify/remember*! ref value)
+		  (form/rewrite! ref value*)))
+      ordinary-refs)
+
+    (for-each (lambda (ref)
+		(form/rewrite! ref value))
+      (simplify/binding/dbg-info-refs node))
+    
+    (for-each (lambda (ref)
+		(form/rewrite! ref `(CALL ,(copy-value ref) ,@(cddr ref))))
+      operator-refs)))
+
+(define (simplify/copy-form/renaming env form)
+  ;;  Copy FORM, renaming local bindings and keeping references to free
+  ;;  variables in ENV.  Currently it does not update the debugging
+  ;;  info, but it should.
+  (define (rename name)
+    (if (memq name '(#!aux #!rest #!optional))
+	name
+	(variable/rename name)))
+  (define (walk renames form)
+    (define (extend old new) (map* renames cons old new))
+    (define (reference form kind)
+      (let ((name  (lookup/name form)))
+	(cond ((assq name renames)
+	       => (lambda (place) `(LOOKUP ,(cdr place))))
+	      (else
+	       (simplify/lookup*! env name `(LOOKUP ,name) kind)))))
+    (define (let/letrec keyword)
+      (let* ((old      (map first (second form)))
+	     (new      (map rename old))
+	     (renames* (extend  old new))
+	     (renames** (if (eq? keyword 'LET) renames renames*)))
+	`(,keyword ,(map (lambda (name binding)
+			   (list name (walk renames** (second binding))))
+			 new
+			 bindings)
+		   ,(walk renames* (third form)))))
+    (define (walk* forms)
+      (map (lambda (form*) (walk renames form*)) forms))
+    (cond ((QUOTE/? form)  form)
+	  ((LOOKUP/? form) (reference form 'ORDINARY))
+	  ((LAMBDA/? form)
+	   (let* ((old  (lambda/formals form))
+		  (new  (map rename old)))
+	     `(LAMBDA ,new
+		,(walk (extend old new) (lambda/body form)))))
+	  ((LET/? form)
+	   (let/letrec 'LET))
+	  ((LETREC/? form)
+	   (let/letrec 'LETREC))
+	  ((IF/? form)
+	   `(IF ,@(walk* (cdr form))))
+	  ((BEGIN/? form)
+	   `(BEGIN ,@(walk* (cdr form))))
+	  ((DECLARE/? form) `(DECLARE ,@(cdr form)))
+	  ((CALL/? form)
+	   (if (LOOKUP/? (call/operator form))
+	       `(CALL ,(reference (call/operator form) 'OPERATOR)
+		      ,@(walk* (call/cont-and-operands form)))
+	       `(CALL ,@(walk* (cdr form)))))
+	  (else
+	   (internal-error "Unexpected syntax" form))))
+
+  (walk '() form))
+
 (define (simplify/pseudo-letify rator bindings body)
   (pseudo-letify rator bindings body simplify/remember))
 
@@ -384,15 +456,22 @@ MIT in each case. |#
   (let ((body (lambda/body value)))
     (or (QUOTE/? body)
 	(LOOKUP/? body)
+	;;(and (CALL/? body)
+	;;     (QUOTE/? (call/operator body))
+	;;     (known-operator? (quote/text (call/operator body)))
+	;;     (for-all? (call/cont-and-operands body)
+	;;       (lambda (element)
+	;;	 (or (QUOTE/? element)
+	;;	     (LOOKUP/? element)))))
 	(and *after-cps-conversion?*
 	     (CALL/? body)
 	     (<= (length (call/cont-and-operands body))
 		 (1+ (length (lambda/formals value))))
 	     (not (unsafe-cyclic-reference? name))
 	     (for-all? (cdr body)
-		       (lambda (element)
-			 (or (QUOTE/? element)
-			     (LOOKUP/? element))))))))
+	       (lambda (element)
+		 (or (QUOTE/? element)
+		     (LOOKUP/? element))))))))
 
 (define (simplify/expr env expr)
   (if (not (pair? expr))
