@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.97 2000/05/23 04:36:24 cph Exp $
+;;; $Id: imail-top.scm,v 1.98 2000/05/23 04:50:52 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -381,7 +381,7 @@ DEL	Scroll to previous screen of this message.
 (define-key 'imail #\o		'imail-output)
 (define-key 'imail #\i		'imail-input)
 (define-key 'imail #\+		'imail-create-folder)
-(define-key 'imail #\-		'imail-delete-folder)
+;(define-key 'imail #\-		'imail-delete-folder)
 (define-key 'imail #\q		'imail-quit)
 (define-key 'imail #\?		'describe-mode)
 
