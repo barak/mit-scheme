@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mips.h,v 1.13 1992/08/20 04:28:39 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mips.h,v 1.14 1992/08/20 04:36:38 jinx Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -557,7 +557,7 @@ DEFUN (allocate_closure, (size), long size)
    */
   size = (CLOSURE_ENTRY_WORDS
 	  * ((size + (CLOSURE_ENTRY_WORDS - 1))
-	     / CLOSURE_ENTRY_WORDS))
+	     / CLOSURE_ENTRY_WORDS));
   if (size > space)
   {
     long chunk_size;
