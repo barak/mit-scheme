@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.100 1992/03/31 07:43:34 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.101 1992/09/08 18:18:03 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -101,6 +101,10 @@
 
   ;; Set this variable in the debugger to trace interesting events.
   (debug-trace false))
+
+(define (guarantee-screen object procedure)
+  (if (not (screen? object))
+      (error:wrong-type-argument object "screen" procedure)))
 
 (define (initialize-screen-root-window! screen bufferset buffer)
   (set-screen-root-window!

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.97 1992/09/02 02:35:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.98 1992/09/08 18:18:18 cph Exp $
 
-Copyright (c) 1989-1992 Massachusetts Institute of Technology
+Copyright (c) 1989-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -225,6 +225,7 @@ MIT in each case. |#
   (files "screen")
   (parent (edwin))
   (export (edwin)
+	  guarantee-screen
 	  initialize-screen-root-window!
 	  screen-beep
 	  screen-clear-rectangle
@@ -257,6 +258,7 @@ MIT in each case. |#
 	  screen-window0
 	  screen-x-size
 	  screen-y-size
+	  screen?
 	  set-screen-debug-trace!
 	  set-screen-root-window!
 	  update-screen!
@@ -373,11 +375,14 @@ MIT in each case. |#
 	  edwin-variable$tab-width
 	  edwin-variable$truncate-lines
 	  edwin-variable$truncate-partial-width-windows
+	  screen-window-configuration
+	  set-screen-window-configuration!
 	  set-window-debug-trace!
 	  set-window-point!
 	  set-window-start-mark!
 	  window-buffer
 	  window-clear-override-message!
+	  window-configuration?
 	  window-coordinates->mark
 	  window-direct-output-backward-char!
 	  window-direct-output-forward-char!
@@ -436,7 +441,11 @@ MIT in each case. |#
 	  window-split-vertically!
 	  window1+)
   (export (edwin window)
+	  combination-child
 	  combination-leaf-window
+	  combination-vertical?
+	  combination?
+	  window-next
 	  window0))
 
 (define-package (edwin modeline-string)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffrm.scm,v 1.42 1992/04/07 09:35:39 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffrm.scm,v 1.43 1992/09/08 18:18:29 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -335,3 +335,161 @@ Automatically becomes local when set in any fashion."
   (add-variable-assignment-daemon!
    (ref-variable-object tab-width)
    setup-truncate-lines!))
+
+;;;; Window Configurations
+
+(define-structure (window-configuration (conc-name window-configuration/))
+  (screen-x-size false read-only true)
+  (screen-y-size false read-only true)
+  (root-window false read-only true)
+  (root-x-size false read-only true)
+  (root-y-size false read-only true)
+  (selected-window false read-only true)
+  (cursor-window false read-only true)
+  (minibuffer-scroll-window false read-only true))
+
+(define-structure (saved-combination (conc-name saved-combination/))
+  (vertical? false read-only true)
+  (children false read-only true))
+
+(define-structure (saved-window (conc-name saved-window/))
+  (buffer false read-only true)
+  (point false read-only true)
+  (mark false read-only true)
+  (start-mark false read-only true))
+
+(define (guarantee-window-configuration object procedure)
+  (if (not (window-configuration? object))
+      (error:wrong-type-argument object "window configuration" procedure)))
+
+(define (screen-window-configuration screen)
+  (if (not (screen? screen))
+      (error:wrong-type-argument screen "screen" 'SCREEN-WINDOW-CONFIGURATION))
+  (let ((frame (screen-root-window screen))
+	(converted-windows '()))
+    (let ((root-window
+	   (let convert-window ((window (editor-frame-root-window frame)))
+	     (if (combination? window)
+		 (let ((vertical? (combination-vertical? window)))
+		   (make-saved-combination
+		    vertical?
+		    (let loop ((window (combination-child window)))
+		      (cons (cons (if vertical?
+				      (window-y-size window)
+				      (window-x-size window))
+				  (convert-window window))
+			    (let ((next (window-next window)))
+			      (if next
+				  (loop next)
+				  '()))))))
+		 (let ((saved-window
+			(let ((buffer (window-buffer window)))
+			  (make-saved-window
+			   buffer
+			   (mark-left-inserting-copy (window-point window))
+			   (let ((ring (buffer-mark-ring buffer)))
+			     (if (ring-empty? ring)
+				 false
+				 (mark-right-inserting-copy
+				  (ring-ref ring 0))))
+			   (mark-right-inserting-copy
+			    (window-start-mark window))))))
+		   (set! converted-windows
+			 (cons (cons window saved-window) converted-windows))
+		   saved-window))))
+	  (converted-window
+	   (lambda (window)
+	     (let ((association (assq window converted-windows)))
+	       (and association
+		    (cdr association))))))
+      (make-window-configuration
+       (screen-x-size screen)
+       (screen-y-size screen)
+       (window-x-size frame)
+       (window-y-size frame)
+       root-window
+       (converted-window (editor-frame-selected-window frame))
+       (converted-window (editor-frame-cursor-window frame))
+       (let ((window (object-unhash *minibuffer-scroll-window*)))
+	 (and window
+	      (converted-window window)))))))
+
+(define (set-screen-window-configuration! screen configuration)
+  (guarantee-screen screen 'SET-SCREEN-WINDOW-CONFIGURATION!)
+  (guarantee-window-configuration configuration
+				  'SET-SCREEN-WINDOW-CONFIGURATION!)
+  (if (and (= (screen-x-size screen)
+	      (window-configuration/screen-x-size configuration))
+	   (= (screen-y-size screen)
+	      (window-configuration/screen-y-size configuration)))
+      (begin
+	(delete-other-windows (screen-window0 screen))
+	(let ((x-size (window-configuration/screen-x-size configuration))
+	      (y-size (window-configuration/screen-y-size configuration))
+	      (frame (screen-root-window screen)))
+	  (if (not (and (= x-size (window-x-size frame))
+			(= y-size (window-y-size frame))))
+	      (set-editor-frame-size! frame x-size y-size)))
+	(let ((converted-windows '())
+	      (need-buffers '()))
+	  (let loop
+	      ((window (screen-window0 screen))
+	       (saved-window (window-configuration/root-window configuration)))
+	    (if (saved-combination? saved-window)
+		(let ((vertical? (saved-combination/vertical? saved-window)))
+		  (let child-loop
+		      ((window window)
+		       (children (saved-combination/children saved-window)))
+		    (let ((new
+			   ((if vertical?
+				window-split-vertically!
+				window-split-horizontally!)
+			    window
+			    (caar children))))
+		      (loop window (cdar children))
+		      (if (null? (cddr children))
+			  (loop new (cdadr children))
+			  (child-loop new (cdr children))))))
+		(let ((buffer (saved-window/buffer saved-window)))
+		  (if (buffer-alive? buffer)
+		      (begin
+			(set-window-buffer! window buffer)
+			(set-window-point! window
+					   (saved-window/point saved-window))
+			(push-buffer-mark! buffer
+					   (saved-window/mark saved-window))
+			(set-window-start-mark!
+			 window
+			 (saved-window/start-mark saved-window)
+			 true))
+		      (set! need-buffers (cons window need-buffers)))
+		  (set! converted-windows
+			(cons (cons saved-window window) converted-windows)))))
+	  (for-each (lambda (window)
+		      (let ((buffer (other-buffer false)))
+			(if buffer
+			    (set-window-buffer! window buffer))))
+		    need-buffers)
+	  (let ((convert-window
+		 (lambda (saved-window)
+		   (let ((association (assq saved-window converted-windows)))
+		     (and association
+			  (cdr association))))))
+	    (let ((window
+		   (window-configuration/selected-window configuration)))
+	      (if window
+		  (let ((window (convert-window window)))
+		    (without-interrupts
+		     (lambda ()
+		       (screen-select-window! screen window))))))
+	    (let ((window (window-configuration/cursor-window configuration)))
+	      (if window
+		  (screen-select-cursor! screen (convert-window window))))
+	    (let ((window
+		   (window-configuration/minibuffer-scroll-window
+		    configuration)))
+	      (if window
+		  (begin
+		    (set! *minibuffer-scroll-window*
+			  (hash (convert-window window)))
+		    unspecific))))))))
