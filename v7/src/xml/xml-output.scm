@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-output.scm,v 1.23 2003/08/01 19:31:02 cph Exp $
+$Id: xml-output.scm,v 1.24 2003/08/22 15:13:19 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -141,6 +141,7 @@ USA.
 (define-method %write-xml ((pi <xml-processing-instructions>) ctx)
   (emit-string "<?" ctx)
   (write-xml-name (xml-processing-instructions-name pi) ctx)
+  (emit-string " " ctx)
   (emit-string (xml-processing-instructions-text pi) ctx)
   (emit-string "?>" ctx))
 
