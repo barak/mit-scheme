@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: process.scm,v 1.42 1996/05/11 08:41:15 cph Exp $
+;;;	$Id: process.scm,v 1.43 1996/05/12 07:13:03 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-96 Massachusetts Institute of Technology
 ;;;
@@ -549,23 +549,32 @@ after the listing is made.)"
 		   (cons false (->namestring directory))
 		   false)
 	       pty?))
-	(let* ((output-mark
-		(and output-mark (mark-left-inserting-copy output-mark)))
+	(let* ((mark
+		(and output-mark
+		     (mark-left-inserting-copy
+		      (if (pair? output-mark)
+			  (car output-mark)
+			  output-mark))))
 	       (status
-		(synchronous-process-wait process input-region output-mark))
+		(synchronous-process-wait process
+					  input-region
+					  mark
+					  (if (pair? output-mark)
+					      (cdr output-mark)
+					      #f)))
 	       (reason (subprocess-exit-reason process)))
 	  (subprocess-delete process)
 	  (let ((abnormal-termination
 		 (lambda (message)
-		   (if output-mark
+		   (if mark
 		       (begin
-			 (guarantee-newlines 2 output-mark)
-			 (insert-string "Process " output-mark)
-			 (insert-string message output-mark)
-			 (insert-string " " output-mark)
-			 (insert-string (number->string reason) output-mark)
-			 (insert-string "." output-mark)
-			 (insert-newline output-mark))))))
+			 (guarantee-newlines 2 mark)
+			 (insert-string "Process " mark)
+			 (insert-string message mark)
+			 (insert-string " " mark)
+			 (insert-string (number->string reason) mark)
+			 (insert-string "." mark)
+			 (insert-newline mark))))))
 	    (case status
 	      ((STOPPED)
 	       (abnormal-termination "stopped with signal")
@@ -576,11 +585,12 @@ after the listing is made.)"
 	      ((EXITED)
 	       (if (not (eqv? 0 reason))
 		   (abnormal-termination "exited abnormally with code")))))
-	  (if output-mark
-	      (mark-temporary! output-mark))
+	  (if mark
+	      (mark-temporary! mark))
 	  (cons status reason))))))
 
-(define (synchronous-process-wait process input-region output-mark)
+(define (synchronous-process-wait process input-region output-mark
+				  allow-redisplay?)
   ;; Initialize the subprocess line-translation appropriately.
   ;; Buffers that disable translation should have it disabled for
   ;; subprocess I/O as well as normal file I/O, since subprocesses are
@@ -612,7 +622,7 @@ after the listing is made.)"
 	  (let loop ()
 	    (copy-input)
 	    (copy-output)
-	    (update-screens! #f)
+	    (if allow-redisplay? (update-screens! #f))
 	    (let ((status (subprocess-status process)))
 	      (if (eq? status 'RUNNING)
 		  (loop)
@@ -641,7 +651,9 @@ after the listing is made.)"
 			     (output-port/write-substring port buffer 0 end)
 			     (set! start-index (+ start-index end)))
 			   (loop))
-			 (channel-close channel)))))
+			 (begin
+			   (output-port/flush-output port)
+			   (channel-close channel))))))
 	       loop)))))
       (receiver (lambda () unspecific))))
 
