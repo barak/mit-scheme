@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: simplify.scm,v 1.2 1994/11/22 19:51:49 gjr Exp $
+$Id: simplify.scm,v 1.3 1995/02/11 01:58:44 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -45,15 +45,19 @@ MIT in each case. |#
     (call-with-values
 	(lambda () (%matchup (cdr bindings) '(handler env) '(cdr form)))
       (lambda (names code)
-	`(define ,proc-name
-	   (let ((handler (lambda ,(cons (car bindings) names) ,@body)))
-	     (named-lambda (,proc-name env form)
-	       (simplify/remember ,code
-				  form))))))))
+	`(DEFINE ,proc-name
+	   (LET ((HANDLER (LAMBDA ,(cons (car bindings) names) ,@body)))
+	     (NAMED-LAMBDA (,proc-name ENV FORM)
+	       (LET ((TRANSFORM-CODE (LAMBDA () ,code)))
+		 (LET ((INFO (SIMPLIFY/GET-DBG-INFO ENV FORM)))
+		   (LET ((CODE (TRANSFORM-CODE)))
+		     (IF INFO
+			 (CODE-REWRITE/REMEMBER* CODE INFO))
+		     CODE))))))))))
 
 (define-simplifier LOOKUP (env name)
   (let ((ref `(LOOKUP ,name)))
-    (simplify/lookup*! env name ref #T)))
+    (simplify/lookup*! env name ref 'ORDINARY)))
 
 (define-simplifier LAMBDA (env lambda-list body)
   `(LAMBDA ,lambda-list
@@ -109,7 +113,7 @@ MIT in each case. |#
 	 (let* ((name   (lookup/name rator))
 		(rator* (simplify/remember `(LOOKUP ,name) rator))
 		(result (do-ops rator*)))
-	   (simplify/lookup*! env name result #F)))
+	   (simplify/lookup*! env name result 'OPERATOR)))
 	((LAMBDA/? rator)
 	 (guarantee-simple-lambda-list (lambda/formals rator)) ;Miller & Adams
 	 (let* ((lambda-list (lambda/formals rator))
@@ -360,6 +364,9 @@ MIT in each case. |#
 	      (form/rewrite! ref value))
 	    (simplify/binding/ordinary-refs node))
   (for-each (lambda (ref)
+	      (form/rewrite! ref value))
+	    (simplify/binding/dbg-info-refs node))
+  (for-each (lambda (ref)
 	      (form/rewrite! ref `(CALL ,value ,@(cddr ref))))
 	    (simplify/binding/operator-refs node)))
 
@@ -429,27 +436,65 @@ MIT in each case. |#
 (define (simplify/new-name prefix)
   (new-variable prefix))
 
+
+
+(define (simplify/get-dbg-info env expr)
+  (cond ((code-rewrite/original-form/previous expr)
+         => (lambda (dbg-info)
+	      ;; Copy the dbg info, keeping dbg-info-refs in the environment
+              ;; which may later be overwritten
+              (let* ((block     (new-dbg-form/block dbg-info))
+                     (block*    (new-dbg-block/copy-transforming
+                                 (lambda (expr)
+                                   (simplify/copy-dbg-kmp expr env))
+                                 block))
+                     (dbg-info* (new-dbg-form/new-block dbg-info block*)))
+                dbg-info*)))
+        (else #F)))
+
+
+(define (simplify/copy-dbg-kmp expr env)
+  (form/copy-transforming
+   (lambda (form copy uninteresting)
+     copy
+     (cond ((and (LOOKUP/? form)
+		 (simplify/lookup*! env (lookup/name form)
+				    `(LOOKUP ,(lookup/name form))
+				    'DBG-INFO))
+	    => (lambda (reference)  reference))
+	   (else (uninteresting form))))
+   expr))
+
 (define-structure
-  (simplify/binding
-   (conc-name simplify/binding/)
-   (constructor simplify/binding/make (name))
-   (print-procedure
-    (standard-unparser-method 'SIMPLIFY/BINDING
-      (lambda (binding port)
-	(write-char #\space port)
-	(write-string (symbol-name (simplify/binding/name binding)) port)))))
+    (simplify/binding
+     (conc-name simplify/binding/)
+     (constructor simplify/binding/make (name))
+     (print-procedure
+      (standard-unparser-method 'SIMPLIFY/BINDING
+	(lambda (binding port)
+	  (write-char #\space port)
+	  (write-string (symbol-name (simplify/binding/name binding)) port)))))
 
   (name false read-only true)
   (ordinary-refs '() read-only false)
-  (operator-refs '() read-only false))
+  (operator-refs '() read-only false)
+  (dbg-info-refs '() read-only false))
 
-(define-structure (simplify/env
-		   (conc-name simplify/env/)
-		   (constructor simplify/env/make (parent bindings)))
+(define-structure
+    (simplify/env
+     (conc-name simplify/env/)
+     (constructor simplify/env/make (parent bindings))
+     (print-procedure
+      (standard-unparser-method 'SIMPLIFY/ENV
+	(lambda (env port)
+	  (write-char #\Space port)
+	  (write (map simplify/binding/name (simplify/env/bindings env))
+		 port)))))
+
   (bindings '() read-only true)
   (parent #F read-only true)
-  ;; This is used to mark calls to names free in this frame but bound
-  ;; in the parent frame ... used to detect mutual recursion in LETREC.
+  ;; FREE-CALLS is used to mark calls to names free in this frame but bound
+  ;; in the parent frame.  Used to detect mutual recursion in LETREC.
   (free-calls '() read-only false))
 
 (define (simplify/env/modified-copy old-env new-bindings)
@@ -463,24 +508,34 @@ MIT in each case. |#
 (define simplify/env/frame-lookup
     (association-procedure (lambda (x y) (eq? x y)) simplify/binding/name))
 
-(define (simplify/lookup*! env name reference ordinary?)
-  (let loop ((prev #F)
-	     (env env))
-    (cond ((not env) (free-var-error name))
+(define (simplify/lookup*! env name reference kind)
+  ;; kind = 'OPERATOR, 'ORDINARY or 'DBG-INFO
+  (let frame-loop ((prev #F)
+		   (env env))
+    (cond ((not env)
+	   (if (not (eq? kind 'DBG-INFO))
+	       (free-var-error name))
+	   reference)
 	  ((simplify/env/frame-lookup name (simplify/env/bindings env))
 	   => (lambda (binding)
-		(if ordinary?
-		    (set-simplify/binding/ordinary-refs!
-		     binding
-		     (cons reference (simplify/binding/ordinary-refs binding)))
-		    (begin
-		      (set-simplify/binding/operator-refs!
-		       binding
-		       (cons reference
-			     (simplify/binding/operator-refs binding)))
-		      (if prev
-			  (set-simplify/env/free-calls!
-			   prev
-			   (cons name (simplify/env/free-calls prev))))))
+		(case kind
+		  ((OPERATOR)
+		   (set-simplify/binding/operator-refs!
+		    binding
+		    (cons reference (simplify/binding/operator-refs binding)))
+		   (if prev
+		       (set-simplify/env/free-calls!
+			prev
+			(cons name (simplify/env/free-calls prev)))))
+		  ((ORDINARY)
+		   (set-simplify/binding/ordinary-refs!
+		    binding
+		    (cons reference (simplify/binding/ordinary-refs binding))))
+		  ((DBG-INFO)
+		   (set-simplify/binding/dbg-info-refs!
+		    binding
+		    (cons reference (simplify/binding/dbg-info-refs binding))))
+		  (else
+		   (internal-error "simplify/lookup*! bad KIND" kind)))
 		reference))
-	  (else (loop env (simplify/env/parent env))))))
+	  (else (frame-loop env (simplify/env/parent env))))))
