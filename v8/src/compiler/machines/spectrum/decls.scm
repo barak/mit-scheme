@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.3 1994/12/02 03:12:18 adams Exp $
+$Id: decls.scm,v 1.4 1994/12/15 03:08:29 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -65,10 +65,8 @@ MIT in each case. |#
 				 "/"
 				 source-file-expression))))
 	  '("back" "base" 
-		   ;;"fggen" "fgopt"
 		   "midend"
 		   "rtlbase"
-		   ;;"rtlgen"
 		   "rtlopt"
 		   "machines/spectrum"))))
     (if (null? filenames)
@@ -334,17 +332,12 @@ MIT in each case. |#
     (file-dependency/syntax/join
      (append (filename/append "base"
 			      "toplev" "asstop" "crstop"
-			      ;;"blocks" 
 			      "cfg1" "cfg2" "cfg3" "constr"
-			      ;;"contin" "ctypes" 
 			      "debug" "enumer"
 			      "infnew"
-			      ;;"lvalue"
 			      "object" "pmerly"
-			      ;;"proced"
-			      ;;"refctx" "rvalue"
 			      "scode" "sets" 
-			      ;;"subprb"
+			      "stats"
 			      "switch" "utils")
 	     (filename/append "back"
 			      "asmmac" "bittop" "bitutl" "insseq" "lapgn1"
@@ -353,13 +346,6 @@ MIT in each case. |#
 	     (filename/append "machines/spectrum"
 			      "dassm1" "insmac" "lapopt" "machin" "rgspcm"
 			      "rulrew")
-	     ;;(filename/append "fggen"
-	     ;;		      "declar" "fggen" "canon")
-	     ;;(filename/append "fgopt"
-	     ;;		      "blktyp" "closan" "conect" "contan" "delint"
-	     ;;		      "desenv" "envopt" "folcon" "offset" "operan"
-	     ;;		      "order" "outer" "param" "reord" "reteqv" "reuse"
-	     ;;		      "sideff" "simapp" "simple" "subfre" "varind")
 	     (filename/append "midend"
 			      "alpha" "applicat" "assconv" "cleanup"
 			      "closconv" "compat" "copier" "cpsconv"
@@ -378,9 +364,6 @@ MIT in each case. |#
 			      "rtlpars"
 			      ;; End of New stuff
 			      )
-	     ;;(filename/append "rtlgen"
-	     ;;		      "fndblk" "fndvar" "opncod" "rgcomb" "rgproc"
-	     ;;		      "rgretn" "rgrval" "rgstmt" "rtlgen")
 	     (filename/append "rtlopt"
 			      "ralloc" "rcompr" "rcse1" "rcse2" "rcseep"
 			      "rcseht" "rcserq" "rcsesr" "rcsemrg"
@@ -410,14 +393,11 @@ MIT in each case. |#
 
   (let* ((front-end-base
 	  (filename/append "base"
-			   ;;"blocks" 
 			   "cfg1" "cfg2" "cfg3"
-			   ;;"contin" "ctypes"
 			   "enumer" "lvalue"
 			   "object"
-			   ;;"proced" "rvalue"
 			   "scode"
-			   ;;"subprb"
+			   "stats"
 			   "utils"))
 	 (midend-base
 	  (filename/append "midend"
@@ -482,26 +462,6 @@ MIT in each case. |#
     (define-integration-dependencies "base" "cfg2" "base"
       "cfg1" "cfg3" "object")
     (define-integration-dependencies "base" "cfg3" "base" "cfg1" "cfg2")
-    ;;(define-integration-dependencies "base" "ctypes" "base"
-    ;;  ;;"blocks"
-    ;;  "cfg1" "cfg2" "cfg3"
-    ;;  ;;"contin" "lvalue"
-    ;;  "object"
-    ;;  ;;"subprb"
-    ;;  )
-    ;;(define-integration-dependencies "base" "rvalue" "base"
-    ;; "blocks" "cfg1" "cfg2" "cfg3" "enumer" "lvalue" "object" "utils")
-    ;;(define-integration-dependencies "base" "lvalue" "base"
-    ;;  "blocks" "object" "proced" "rvalue" "utils")
-    ;;(define-integration-dependencies "base" "blocks" "base"
-    ;;  "enumer" "lvalue" "object" "proced" "rvalue" "scode")
-    ;;(define-integration-dependencies "base" "proced" "base"
-    ;;  "blocks" "cfg1" "cfg2" "cfg3" "contin" "enumer" "lvalue" "object"
-    ;;  "rvalue" "utils")
-    ;;(define-integration-dependencies "base" "contin" "base"
-    ;;  "blocks" "cfg3" "ctypes")
-    ;;(define-integration-dependencies "base" "subprb" "base"
-    ;;  "cfg3" "contin" "enumer" "object" "proced")
 
     (define-integration-dependencies "machines/spectrum" "machin" "rtlbase"
       "rtlreg" "rtlty1" "rtlty2")
@@ -530,27 +490,6 @@ MIT in each case. |#
     (define-integration-dependencies "rtlbase" "rtlty2" "machines/spectrum"
       "machin")
     (define-integration-dependencies "rtlbase" "rtlty2" "rtlbase" "rtlty1")
-
-    ;;(file-dependency/integration/join
-    ;; (append
-    ;;  (filename/append "base" "refctx")
-    ;;  (filename/append "fggen"
-    ;;	       "declar" "fggen") ; "canon" needs no integrations
-    ;;  (filename/append "fgopt"
-    ;;	       		"blktyp" "closan" "conect" "contan" "delint" "desenv"
-    ;;	       		"envopt" "folcon" "offset" "operan" "order" "param"
-    ;;	       		"outer" "reuse" "reteqv" "sideff" "simapp" "simple"
-    ;;	       		"subfre" "varind")
-    ;;  )
-    ;; (append spectrum-base front-end-base))
-    ;;
-    ;;(define-integration-dependencies "fgopt" "reuse" "fgopt" "reord")
-    ;;
-    ;;(file-dependency/integration/join
-    ;; (filename/append "rtlgen"
-    ;;		      "fndblk" "fndvar" "opncod" "rgcomb" "rgproc" "rgretn"
-    ;;		      "rgrval" "rgstmt" "rtlgen")
-    ;;(append spectrum-base front-end-base rtl-base))
 
     ;; New stuff
     (file-dependency/integration/join (filename/append "rtlbase" "rtlpars")
