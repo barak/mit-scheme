@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/returns.h,v 9.31 1988/03/12 16:07:42 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/returns.h,v 9.32 1988/04/27 01:09:19 jinx Exp $
  *
  * Return codes.  These are placed in Return when an
  * interpreter operation needs to operate in several
@@ -98,7 +98,7 @@ MIT in each case. */
 
 #define RC_POP_RETURN_ERROR		0x40
 #define RC_EVAL_ERROR			0x41
-#define RC_REPEAT_PRIMITIVE		0x42
+/* formerly #define RC_REPEAT_PRIMITIVE	0x42 */
 #define RC_COMP_INTERRUPT_RESTART	0x43 
 /* formerly RC_COMP_RECURSION_GC	0x44 */
 #define RC_RESTORE_INT_MASK		0x45
