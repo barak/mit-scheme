@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.17 1988/12/06 18:54:49 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.18 1988/12/13 13:03:10 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -242,7 +242,7 @@ MIT in each case. |#
 				 (write-string " depends on ")
 				 (write (source-node/filename node))))
 			   (set-source-node/modification-time! node* false))
-			 (source-node/dependents node))))
+			 (source-node/forward-closure node))))
 	 source-nodes)))
   (for-each (lambda (node)
 	      (if (not (source-node/modification-time node))
@@ -332,10 +332,9 @@ MIT in each case. |#
     (file-dependency/syntax/join
      (append (filename/append "base"
 			      "blocks" "cfg1" "cfg2" "cfg3" "contin" "ctypes"
-			      "debug" "enumer" "infnew" "infutl" "lvalue"
-			      "object" "pmerly" "proced" "rvalue"
-			      "scode" "sets" "subprb" "switch" "toplev" "utils"
-			      )
+			      "debug" "enumer" "infnew" "lvalue" "object"
+			      "pmerly" "proced" "refctx" "rvalue" "scode"
+			      "sets" "subprb" "switch" "toplev" "utils")
 	     (filename/append "back"
 			      "asmmac" "bittop" "bitutl" "insseq" "lapgn1"
 			      "lapgn2" "lapgn3" "linear" "regmap" "symtab"
@@ -347,13 +346,14 @@ MIT in each case. |#
 	     (filename/append "fgopt"
 			      "blktyp" "closan" "conect" "contan" "desenv"
 			      "envopt" "folcon" "offset" "operan" "order"
-			      "outer" "sideff" "simapp" "simple")
+			      "outer" "reord" "reuse" "sideff" "simapp"
+			      "simple" "subfre")
 	     (filename/append "rtlbase"
 			      "regset" "rgraph" "rtlcfg" "rtlcon" "rtlexp"
 			      "rtline" "rtlobj" "rtlreg" "rtlty1" "rtlty2")
 	     (filename/append "rtlgen"
-			      "fndblk" "opncod" "rgcomb" "rgproc" "rgretn"
-			      "rgrval" "rgstmt" "rtlgen")
+			      "fndblk" "fndvar" "opncod" "rgcomb" "rgproc"
+			      "rgretn" "rgrval" "rgstmt" "rtlgen")
 	     (filename/append "rtlopt"
 			      "ralloc" "rcse1" "rcse2" "rcseep" "rcseht"
 			      "rcserq" "rcsesr" "rdeath" "rdebug" "rlife"))
@@ -444,7 +444,6 @@ MIT in each case. |#
       "blocks" "cfg3" "ctypes")
     (define-integration-dependencies "base" "subprb" "base"
       "cfg3" "contin" "enumer" "object" "proced")
-    (define-integration-dependencies "base" "infnew" "base" "infutl")
 
     (define-integration-dependencies "machines/bobcat" "machin" "rtlbase"
       "rtlreg" "rtlty1" "rtlty2")
@@ -476,19 +475,22 @@ MIT in each case. |#
     (define-integration-dependencies "rtlbase" "rtlty2" "rtlbase" "rtlty1")
     (file-dependency/integration/join
      (append
+      (filename/append "base" "refctx")
       (filename/append "fggen"
 		       "declar" "fggen") ; "canon" needs no integrations
       (filename/append "fgopt"
 		       "blktyp" "closan" "conect" "contan" "desenv"
 		       "envopt" "folcon" "offset" "operan" "order"
-		       "outer" "sideff" "simapp" "simple"))
-     (append front-end-base bobcat-base))
+		       "outer" "reuse" "sideff" "simapp" "simple" "subfre"))
+     (append bobcat-base front-end-base))
+
+    (define-integration-dependencies "fgopt" "reuse" "fgopt" "reord")
 
     (file-dependency/integration/join
      (filename/append "rtlgen"
-		      "fndblk" "opncod" "rgcomb" "rgproc" "rgretn" "rgrval"
-		      "rgstmt" "rtlgen")
-     (append front-end-base bobcat-base rtl-base))
+		      "fndblk" "fndvar" "opncod" "rgcomb" "rgproc" "rgretn"
+		      "rgrval" "rgstmt" "rtlgen")
+     (append bobcat-base front-end-base rtl-base))
 
     (file-dependency/integration/join
      (append cse-base
@@ -527,16 +529,16 @@ MIT in each case. |#
     (define-integration-dependencies "back" "regmap" "base" "utils")
     (define-integration-dependencies "back" "symtab" "base" "utils"))
 
-(for-each (lambda (node)
-	    (let ((links (source-node/backward-links node)))
-	      (if (not (null? links))
-		  (set-source-node/declarations!
-		   node
-		   (cons (make-integration-declaration
-			  (source-node/pathname node)
-			  (map source-node/pathname links))
-			 (source-node/declarations node))))))
-	  source-nodes))
+  (for-each (lambda (node)
+	      (let ((links (source-node/backward-links node)))
+		(if (not (null? links))
+		    (set-source-node/declarations!
+		     node
+		     (cons (make-integration-declaration
+			    (source-node/pathname node)
+			    (map source-node/pathname links))
+			   (source-node/declarations node))))))
+	    source-nodes))
 
 (define (make-integration-declaration pathname integration-dependencies)
   `(INTEGRATE-EXTERNAL
