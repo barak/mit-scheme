@@ -1,4 +1,4 @@
-/* Copyright (C) 1990 Free Software Foundation, Inc.
+/* Copyright (C) 1990-91 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -14,7 +14,7 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/wind.c,v 1.1 1990/06/20 19:38:59 cph Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/wind.c,v 1.2 1991/07/02 18:16:59 cph Exp $ */
 
 #include <stdio.h>
 #include "obstack.h"
@@ -22,6 +22,9 @@
 extern void EXFUN (free, (PTR ptr));
 #define obstack_chunk_alloc xmalloc
 #define obstack_chunk_free free
+
+extern void EXFUN (block_signals, (void));
+extern void EXFUN (unblock_signals, (void));
 
 static void
 DEFUN (error, (procedure_name, message),
@@ -65,8 +68,10 @@ DEFUN_VOID (dstack_initialize)
 void
 DEFUN_VOID (dstack_reset)
 {
+  block_signals ();
   obstack_free ((&dstack), 0);
   dstack_initialize ();
+  unblock_signals ();
 }
 
 #define EXPORT(sp) ((PTR) (((char *) (sp)) + (sizeof (PTR))))
@@ -74,9 +79,12 @@ DEFUN_VOID (dstack_reset)
 PTR
 DEFUN (dstack_alloc, (length), unsigned int length)
 {
-  PTR chunk = (obstack_alloc ((&dstack), ((sizeof (PTR)) + length)));
+  PTR chunk;
+  block_signals ();
+  chunk = (obstack_alloc ((&dstack), ((sizeof (PTR)) + length)));
   (* ((PTR *) chunk)) = dstack_position;
   dstack_position = chunk;
+  unblock_signals ();
   return (EXPORT (chunk));
 }
 
@@ -96,6 +104,19 @@ DEFUN (dstack_protect, (protector, environment),
 void
 DEFUN (dstack_set_position, (position), PTR position)
 {
+  block_signals ();
+#define DEBUG_DSTACK
+#ifdef DEBUG_DSTACK
+  {
+    PTR * sp = dstack_position;
+    while (sp != position)
+      {
+	if (sp == 0)
+	  error ("dstack_set_position", "position argument not found");
+	sp = (*sp);
+      }
+  }
+#endif /* DEBUG_DSTACK */
   while (dstack_position != position)
     {
       if (dstack_position == 0)
@@ -115,6 +136,7 @@ DEFUN (dstack_set_position, (position), PTR position)
 	obstack_free ((&dstack), sp);
       }
     }
+  unblock_signals ();
 }
 
 struct binding_record

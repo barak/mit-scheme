@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.10 1991/06/22 19:29:05 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.11 1991/07/02 18:16:47 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -125,10 +125,36 @@ DEFUN_VOID (preserve_signal_mask)
   dstack_protect (restore_signal_mask, outside);
 }
 
+static sigset_t blocked_signals;
+
+void
+DEFUN_VOID (block_signals)
+{
+  sigset_t all_signals;
+  UX_sigfillset (&all_signals);
+  UX_sigprocmask (SIG_BLOCK, (&all_signals), (&blocked_signals));
+}
+
+void
+DEFUN_VOID (unblock_signals)
+{
+  UX_sigprocmask (SIG_SETMASK, (&blocked_signals), 0);
+}
+
 #else /* not HAVE_POSIX_SIGNALS */
 
 void
 DEFUN_VOID (preserve_signal_mask)
+{
+}
+
+void
+DEFUN_VOID (block_signals)
+{
+}
+
+void
+DEFUN_VOID (unblock_signals)
 {
 }
 
