@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/nodefs.scm,v 1.6 1992/06/01 22:03:12 cph Exp $
+$Id: nodefs.scm,v 1.7 1993/08/12 08:32:46 cph Exp $
 
-Copyright (c) 1991-92 Massachusetts Institute of Technology
+Copyright (c) 1991-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -41,31 +41,42 @@ MIT in each case. |#
   (set! hook/repl-eval student/repl-eval)
   unspecific)
 
-(define (student/repl-eval s-expression environment syntax-table)
-  (let ((scode (rewrite-scode (syntax s-expression syntax-table))))
+(define (student/repl-eval repl s-expression environment syntax-table)
+  (let ((scode
+	 (rewrite-scode (syntax s-expression syntax-table)
+			(and repl
+			     (let ((port (cmdl/port repl)))
+			       (let ((operation
+				      (port/operation
+				       port
+				       'CURRENT-EXPRESSION-CONTEXT)))
+				 (and operation
+				      (operation port s-expression))))))))
     (with-new-history (lambda () (extended-scode-eval scode environment)))))
 
-(define (rewrite-scode expression)
+(define (rewrite-scode expression context)
   (let ((expression
 	 (if (open-block? expression)
 	     (open-block-components expression unscan-defines)
 	     expression)))
     (check-for-illegal-definitions expression)
-    (make-sequence
-     (map (lambda (expression)
-	    (if (definition? expression)
-		(let ((name (definition-name expression))
-		      (value (definition-value expression)))
-		  (make-sequence
-		   (list expression
-			 (make-combination
-			  write-definition-value
-			  (cons name
-				(if (unassigned-reference-trap? value)
-				    '()
-				    (list (make-variable name))))))))
-		expression))
-	  (sequence-actions expression)))))
+    (if (eq? context 'REPL-BUFFER)
+	(make-sequence
+	 (map (lambda (expression)
+		(if (definition? expression)
+		    (let ((name (definition-name expression))
+			  (value (definition-value expression)))
+		      (make-sequence
+		       (list expression
+			     (make-combination
+			      write-definition-value
+			      (cons name
+				    (if (unassigned-reference-trap? value)
+					'()
+					(list (make-variable name))))))))
+		    expression))
+	      (sequence-actions expression)))
+	expression)))
 
 (define (write-definition-value name #!optional value)
   (let ((port (nearest-cmdl/port)))
