@@ -20,7 +20,7 @@
 ;;; Requires C-Scheme release 5 or later
 ;;; Changes to Control-G handler require runtime version 13.85 or later
 
-;;; $Id: xscheme.el,v 1.35 1994/03/24 18:04:53 cph Exp $
+;;; $Id: xscheme.el,v 1.36 1994/08/15 19:15:19 cph Exp $
 
 (require 'scheme)
 
@@ -1140,12 +1140,8 @@ the remaining input.")
 (defun xscheme-coerce-prompt (string)
   (if (string-match "^[0-9]+ \\[[^]]+\\] " string)
       (let ((end (match-end 0)))
-	(let ((prompt (substring string end)))
-	  (xscheme-process-filter-output prompt)
-	  (if (and (> (length prompt) 0)
-		   (not (= (aref prompt (- (length prompt) 1)) ? )))
-	      (xscheme-process-filter-output " "))
-	  (substring string 0 (- end 1))))
+	(xscheme-process-filter-output (substring string end))
+	(substring string 0 (- end 1)))
       string))
 
 (defun xscheme-cd (directory-string)
