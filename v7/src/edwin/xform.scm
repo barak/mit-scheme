@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xform.scm,v 1.6 1990/09/12 02:19:36 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xform.scm,v 1.7 1990/09/12 02:23:23 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -124,9 +124,9 @@
       (error "Free definition encountered:" name)
       (make-definition name (transform-expression transforms value)))))
 
-(define (transform-sequence transforms sequence)
+(define (transform-sequence transforms expression)
   (make-sequence (transform-expressions transforms
-					(sequence-actions sequence))))
+					(sequence-actions expression))))
 
 (define (transform-conditional transforms conditional)
   (conditional-components conditional
