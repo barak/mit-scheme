@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: blowfish.scm,v 1.5 1999/01/14 18:28:32 cph Exp $
+$Id: blowfish.scm,v 1.6 1999/01/14 18:35:23 cph Exp $
 
 Copyright (c) 1997, 1999 Massachusetts Institute of Technology
 
@@ -23,7 +23,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;;; package: ()
 
 (declare (usual-integrations))
-
+
 (define-primitives
   (md5 1)
   (md5-init 0)
@@ -37,7 +37,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (blowfish-available?)
   (and (implemented-primitive-procedure? md5-init)
        (implemented-primitive-procedure? blowfish-cfb64-substring)))
-
+
 (define (blowfish-encrypt-string plaintext key-string encrypt?)
   (blowfish-encrypt-substring plaintext 0 (string-length plaintext)
 			      key-string encrypt?))
@@ -71,6 +71,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (read-blowfish-file-header port)
   (if (not (string=? (read-line port) blowfish-file-header))
       (error:bad-range-argument port 'READ-BLOWFISH-FILE-HEADER)))
+
+(define (blowfish-file? pathname)
+  (let ((line (call-with-binary-input-file pathname read-line)))
+    (and (not (eof-object? line))
+	 (string=? line blowfish-file-header))))
 
 (define blowfish-file-header
   "Blowfish, 16 rounds")
