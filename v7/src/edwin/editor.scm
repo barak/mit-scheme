@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: editor.scm,v 1.251 2001/05/31 19:56:37 cph Exp $
+;;; $Id: editor.scm,v 1.252 2001/07/21 05:49:45 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -403,7 +403,6 @@ TRANSCRIPT    messages appear in transcript buffer, if it is enabled;
 	(if (not (or (not input) (input-event? input)))
 	    (error:wrong-type-argument input "input event"
 				       'ABORT-CURRENT-COMMAND))
-	(keyboard-macro-disable)
 	(signaller input)))))
 
 (define-structure (input-event

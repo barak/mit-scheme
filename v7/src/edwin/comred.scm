@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: comred.scm,v 1.121 2000/10/26 02:28:01 cph Exp $
+;;; $Id: comred.scm,v 1.122 2001/07/21 05:49:36 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Command Reader
 
@@ -39,7 +40,7 @@
 (add-event-receiver! editor-initializations
   (lambda ()
     (set! keyboard-keys-read 0)
-    (set! command-history (make-circular-list command-history-limit false))
+    (set! command-history (make-circular-list command-history-limit #f))
     (set! command-reader-override-queue (make-queue))
     (set! *command-suffixes* #f)
     unspecific))
@@ -53,14 +54,14 @@
 	 (command-reader init))))))
 
 (define (command-reader #!optional initialization)
-  (fluid-let ((*last-command* false)
-	      (*command* false)
+  (fluid-let ((*last-command* #f)
+	      (*command* #f)
 	      (*command-argument*)
-	      (*next-argument* false)
+	      (*next-argument* #f)
 	      (*command-message*)
-	      (*next-message* false)
+	      (*next-message* #f)
 	      (*non-undo-count* 0)
-	      (*command-key* false))
+	      (*command-key* #f))
     (bind-condition-handler (list condition-type:editor-error)
 	editor-error-handler
       (lambda ()
@@ -74,7 +75,7 @@
 		 (lambda ()
 		   (reset-command-state!)
 		   (initialization))))
-	    (do () (false)
+	    (do () (#f)
 	      (bind-abort-editor-command
 	       (lambda ()
 		 (do () (#f)
@@ -102,27 +103,29 @@
 						       (window-buffer window))
 						      input
 						      (window-point window))
-				  false)))))
+				  #f)))))
 		       ((dequeue! command-reader-override-queue)))))))))))))
 
 (define (bind-abort-editor-command thunk)
   (call-with-current-continuation
-   (lambda (continuation)
+   (lambda (k)
      (with-restart 'ABORT-EDITOR-COMMAND "Return to the editor command loop."
 	 (lambda (#!optional input)
-	   (within-continuation continuation
-	     (lambda ()
-	       (if (and (not (default-object? input)) (input-event? input))
-		   (begin
-		     (reset-command-state!)
-		     (apply-input-event input))))))
+	   (keyboard-macro-disable)
+	   (if (and (not (default-object? input)) (input-event? input))
+	       (within-continuation k
+		 (lambda ()
+		   (reset-command-state!)
+		   (apply-input-event input)))
+	       (begin
+		 (abort-keyboard-macro)
+		 (k unspecific))))
 	 values
        thunk))))
 
 (define (return-to-command-loop condition)
   (let ((restart (find-restart 'ABORT-EDITOR-COMMAND)))
     (if (not restart) (error "Missing ABORT-EDITOR-COMMAND restart."))
-    (keyboard-macro-disable)
     (invoke-restart restart
 		    (and (condition/abort-current-command? condition)
 			 (abort-current-command/input condition)))))
@@ -137,11 +140,11 @@
 (define (reset-command-state!)
   (unblock-thread-events)
   (set! *last-command* *command*)
-  (set! *command* false)
+  (set! *command* #f)
   (set! *command-argument* *next-argument*)
-  (set! *next-argument* false)
+  (set! *next-argument* #f)
   (set! *command-message* *next-message*)
-  (set! *next-message* false)
+  (set! *next-message* #f)
   (if (command-argument)
       (set-command-prompt! (command-argument-prompt))
       (reset-command-prompt!))
@@ -267,7 +270,7 @@
 
 (define-integrable (execute-command command)
   (reset-command-state!)
-  (%dispatch-on-command (current-window) command false))
+  (%dispatch-on-command (current-window) command #f))
 
 (define (execute-button-command screen button x y)
   (clear-message)
@@ -287,12 +290,12 @@
 	 (string-append-separated (command-argument-prompt) (xkey->name key)))
 	(%dispatch-on-command (current-window)
 			      (comtab-entry comtab key)
-			      false))))
+			      #f))))
 
 (define (dispatch-on-command command #!optional record?)
   (%dispatch-on-command (current-window)
 			command
-			(if (default-object? record?) false record?)))
+			(if (default-object? record?) #f record?)))
 
 (define (%dispatch-on-command window command record?)
   (set! *command* command)
@@ -407,12 +410,12 @@
 				   (lambda ()
 				     (if newline
 					 (loop (+ newline 1))
-					 (values '() '() false)))
+					 (values '() '() #f)))
 				 (lambda (arguments expressions any-from-tty?)
 				   (values (cons argument arguments)
 					   (cons expression expressions)
 					   (or from-tty? any-from-tty?)))))))
-			 (values '() '() false)))))
+			 (values '() '() #f)))))
 	     (lambda (arguments expressions any-from-tty?)
 	       (if (or record?
 		       (and any-from-tty?
@@ -449,13 +452,13 @@
 (define (interactive-argument key prompt)
   (let ((prompting
 	 (lambda (value)
-	   (values value (quotify-sexp value) true)))
+	   (values value (quotify-sexp value) #t)))
 	(prefix
 	 (lambda (prefix)
-	   (values prefix (quotify-sexp prefix) false)))
+	   (values prefix (quotify-sexp prefix) #f)))
 	(varies
 	 (lambda (value expression)
-	   (values value expression false))))
+	   (values value expression #f))))
     (case key
       ((#\b)
        (prompting
@@ -469,21 +472,21 @@
       ((#\d)
        (varies (current-point) '(CURRENT-POINT)))
       ((#\D)
-       (prompting (prompt-for-directory prompt false)))
+       (prompting (prompt-for-directory prompt #f)))
       ((#\f)
-       (prompting (prompt-for-existing-file prompt false)))
+       (prompting (prompt-for-existing-file prompt #f)))
       ((#\F)
-       (prompting (prompt-for-file prompt false)))
+       (prompting (prompt-for-file prompt #f)))
       ((#\k)
        (prompting (prompt-for-key prompt (current-comtabs))))
       ((#\m)
        (varies (current-mark) '(CURRENT-MARK)))
       ((#\n)
-       (prompting (prompt-for-number prompt false)))
+       (prompting (prompt-for-number prompt #f)))
       ((#\N)
        (prefix
 	(or (command-argument-value (command-argument))
-	    (prompt-for-number prompt false))))
+	    (prompt-for-number prompt #f))))
       ((#\p)
        (prefix (command-argument-numeric-value (command-argument))))
       ((#\P)

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: kmacro.scm,v 1.42 1999/01/28 03:59:55 cph Exp $
+;;; $Id: kmacro.scm,v 1.43 2001/07/21 05:49:25 cph Exp $
 ;;;
-;;; Copyright (c) 1985, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1985, 1989-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,68 +16,74 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Keyboard Macros
 
 (declare (usual-integrations))
 
-(define *defining-keyboard-macro?* false)
-(define *executing-keyboard-macro?* false)
+(define *defining-keyboard-macro?* #f)
+(define *executing-keyboard-macro?* #f)
 (define *keyboard-macro-position*)
-(define *keyboard-macro-continuation*)
-(define last-keyboard-macro false)
+(define last-keyboard-macro #f)
 (define keyboard-macro-buffer)
 (define keyboard-macro-buffer-end)
 (define named-keyboard-macros (make-string-table))
 
 (define (with-keyboard-macro-disabled thunk)
-  (fluid-let ((*executing-keyboard-macro?* false)
-	      (*defining-keyboard-macro?* false))
+  (fluid-let ((*executing-keyboard-macro?* #f)
+	      (*defining-keyboard-macro?* #f))
     (dynamic-wind keyboard-macro-event
 		  thunk
 		  keyboard-macro-event)))
 
 (define (keyboard-macro-disable)
-  (set! *defining-keyboard-macro?* false)
-  (set! *executing-keyboard-macro?* false)
+  (set! *defining-keyboard-macro?* #f)
   (keyboard-macro-event))
+
+(define (abort-keyboard-macro)
+  (if *executing-keyboard-macro?*
+      (*executing-keyboard-macro?* #f)))
 
 (define (keyboard-macro-event)
   (window-modeline-event! (current-window) 'KEYBOARD-MACRO-EVENT))
 
 (define (keyboard-macro-read-key)
-  (let ((key (keyboard-macro-peek-key)))
-    (set! *keyboard-macro-position* (cdr *keyboard-macro-position*))
-    key))
+  (if (pair? *keyboard-macro-position*)
+      (let ((key (car *keyboard-macro-position*)))
+	(set! *keyboard-macro-position* (cdr *keyboard-macro-position*))
+	key)
+      (*executing-keyboard-macro?* #t)))
 
 (define (keyboard-macro-peek-key)
-  (if (null? *keyboard-macro-position*)
-      (*keyboard-macro-continuation* true)
-      (car *keyboard-macro-position*)))
+  (if (pair? *keyboard-macro-position*)
+      (car *keyboard-macro-position*)
+      (*executing-keyboard-macro?* #t)))
 
 (define (keyboard-macro-write-key key)
-  (set! keyboard-macro-buffer (cons key keyboard-macro-buffer)))
+  (set! keyboard-macro-buffer (cons key keyboard-macro-buffer))
+  unspecific)
 
 (define (keyboard-macro-finalize-keys)
-  (set! keyboard-macro-buffer-end keyboard-macro-buffer))
+  (set! keyboard-macro-buffer-end keyboard-macro-buffer)
+  unspecific)
 
 (define (keyboard-macro-execute *macro repeat)
-  (fluid-let ((*executing-keyboard-macro?* true)
-	      (*keyboard-macro-position*)
-	      (*keyboard-macro-continuation*))
+  (fluid-let ((*executing-keyboard-macro?* *executing-keyboard-macro?*)
+	      (*keyboard-macro-position*))
     (call-with-current-continuation
      (lambda (c)
        (let ((n repeat))
-	 (set! *keyboard-macro-continuation*
+	 (set! *executing-keyboard-macro?*
 	       (lambda (v)
-		 (if (and v (positive? n))
+		 (if (and v (> n 0))
 		     (begin
 		       (set! *keyboard-macro-position* *macro)
-		       (set! n (-1+ n))
+		       (set! n (- n 1))
 		       (command-reader #f))
 		     (c unspecific))))
-	 (*keyboard-macro-continuation* #t))))))
+	 (*executing-keyboard-macro?* #t))))))
 
 (define (keyboard-macro-define name *macro)
   (string-table-put! named-keyboard-macros name last-keyboard-macro)
@@ -105,13 +111,13 @@ With argument, append to last keyboard macro defined;
     (cond ((not argument)
 	   (set! keyboard-macro-buffer '())
 	   (set! keyboard-macro-buffer-end '())
-	   (set! *defining-keyboard-macro?* true)
+	   (set! *defining-keyboard-macro?* #t)
 	   (keyboard-macro-event)
 	   (message "Defining keyboard macro..."))
 	  ((not last-keyboard-macro)
 	   (editor-error "No keyboard macro has been defined"))
 	  (else
-	   (set! *defining-keyboard-macro?* true)
+	   (set! *defining-keyboard-macro?* #t)
 	   (keyboard-macro-event)
 	   (message "Appending to keyboard macro...")
 	   (keyboard-macro-execute last-keyboard-macro 1)))))
@@ -128,14 +134,13 @@ With numeric argument, repeat macro now that many times,
   (lambda (argument)
     (if *defining-keyboard-macro?*
 	(begin
-	  (set! *defining-keyboard-macro?* false)
-	  (keyboard-macro-event)
+	  (keyboard-macro-disable)
 	  (set! last-keyboard-macro (reverse keyboard-macro-buffer-end))
 	  (message "Keyboard macro defined")))
-    (cond ((zero? argument)
+    (cond ((= argument 0)
 	   (keyboard-macro-execute last-keyboard-macro 0))
 	  ((> argument 1)
-	   (keyboard-macro-execute last-keyboard-macro (-1+ argument))))))
+	   (keyboard-macro-execute last-keyboard-macro (- argument 1))))))
 
 (define-command call-last-kbd-macro
   "Call the last keyboard macro that you defined with \\[start-kbd-macro].
@@ -167,7 +172,7 @@ With argument, also record the keys it is bound to."
   (lambda (argument)
     (let ((name
 	   (prompt-for-string-table-name "Write keyboard macro"
-					 false
+					 #f
 					 named-keyboard-macros
 					 'DEFAULT-TYPE 'NO-DEFAULT
 					 'REQUIRE-MATCH #t)))
@@ -176,7 +181,7 @@ With argument, also record the keys it is bound to."
 						 name
 						 " to file")
 				  #f))
-	    (buffer (temporary-buffer "*Write-Keyboard-Macro-temp*")))
+	    (buffer (temporary-buffer "*write-keyboard-macro-temp*")))
 	(call-with-output-mark (buffer-point buffer)
 	  (lambda (port)
 	    (pretty-print
@@ -192,7 +197,7 @@ With argument, also record the keys it is bound to."
 			    (name->command name)))
 		      '()))
 	     port
-	     true)))
+	     #t)))
 	(set-buffer-pathname! buffer pathname)
 	(write-buffer buffer)
 	(kill-buffer buffer)))))
@@ -234,14 +239,14 @@ Without argument, reads a character.  Your options are:
 		       ((test-for #\space)
 			unspecific)
 		       ((test-for #\rubout)
-			(*keyboard-macro-continuation* true))
+			(*executing-keyboard-macro?* #t))
 		       ((test-for #\C-d)
-			(*keyboard-macro-continuation* false))
+			(*executing-keyboard-macro?* #f))
 		       ((test-for #\C-r)
 			(with-keyboard-macro-disabled enter-recursive-edit)
 			(loop))
 		       ((test-for #\C-l)
-			((ref-command recenter) false)
+			((ref-command recenter) #f)
 			(loop))
 		       (else
 			(editor-beep)
