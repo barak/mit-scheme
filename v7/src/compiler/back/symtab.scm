@@ -37,9 +37,10 @@
 
 ;;;; Symbol Tables
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/symtab.scm,v 1.37 1986/12/16 06:25:33 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/symtab.scm,v 1.38 1986/12/16 18:20:24 cph Exp $
 
 (declare (usual-integrations))
+(using-syntax (access compiler-syntax-table compiler-package)
 
 (define (make-symbol-table)
   (cons "Symbol Table" '()))
@@ -85,7 +86,11 @@
 (define (remove-binding-daemon! binding daemon)
   (vector-set! binding 1 (delq! daemon (vector-ref binding 1))))
 
+;;; end USING-SYNTAX
+)
+
 ;;; Edwin Variables:
 ;;; Scheme Environment: (access lap-package compiler-package)
+;;; Scheme Syntax Table: (access compiler-syntax-table compiler-package)
 ;;; End:
   (vector-set! binding 1 (delq! daemon (vector-ref binding 1))))
