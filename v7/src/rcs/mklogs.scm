@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mklogs.scm,v 1.10 1999/01/02 06:11:34 cph Exp $
+$Id: mklogs.scm,v 1.11 1999/01/02 06:35:54 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -22,21 +22,21 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;;;; Update the RCS log files in the standard Scheme directories.
 
 (for-each rcs-directory-log
-	  '("/scheme/7.4/src/compiler"
-	    "/scheme/7.4/src/microcode"
-	    "/scheme/7.4/src/runtime"
-	    "/scheme/7.4/src/sf"
+	  '("/scheme/v7/src/compiler"
+	    "/scheme/v7/src/microcode"
+	    "/scheme/v7/src/runtime"
+	    "/scheme/v7/src/sf"
 
-	    "/scheme/8.0/src/6001"
-	    "/scheme/8.0/src/bench"
-	    "/scheme/8.0/src/compiler"
-	    "/scheme/8.0/src/cref"
-	    "/scheme/8.0/src/edwin"
-	    "/scheme/8.0/src/microcode"
-	    "/scheme/8.0/src/pcsample"
-	    "/scheme/8.0/src/rcs"
-	    "/scheme/8.0/src/runtime"
-	    "/scheme/8.0/src/sf"
-	    "/scheme/8.0/src/sos"
-	    "/scheme/8.0/src/swat"
-	    "/scheme/8.0/src/win32"))
+	    "/scheme/v8/src/6001"
+	    "/scheme/v8/src/bench"
+	    "/scheme/v8/src/compiler"
+	    "/scheme/v8/src/cref"
+	    "/scheme/v8/src/edwin"
+	    "/scheme/v8/src/microcode"
+	    "/scheme/v8/src/pcsample"
+	    "/scheme/v8/src/rcs"
+	    "/scheme/v8/src/runtime"
+	    "/scheme/v8/src/sf"
+	    "/scheme/v8/src/sos"
+	    "/scheme/v8/src/swat"
+	    "/scheme/v8/src/win32"))
