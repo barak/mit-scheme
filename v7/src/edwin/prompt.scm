@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: prompt.scm,v 1.159 1993/08/02 22:24:52 cph Exp $
+;;;	$Id: prompt.scm,v 1.160 1993/10/16 07:34:43 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -669,7 +669,10 @@ a repetition of this command will exit."
 ;;;; Confirmation Prompts
 
 (define (prompt-for-confirmation? prompt)
-  (prompt-for-typein (string-append prompt " (y or n)? ") false
+  (prompt-for-typein (if (string-suffix? " " prompt)
+			 prompt
+			 (string-append prompt " (y or n)? "))
+		     false
     (lambda ()
       (let loop ((lost? false))
 	(let ((char (keyboard-read)))
