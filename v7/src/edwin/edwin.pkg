@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.120 1993/08/01 00:15:52 cph Exp $
+$Id: edwin.pkg,v 1.121 1993/08/01 05:06:25 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -419,6 +419,8 @@ MIT in each case. |#
 	  execute-command
 	  execute-command-history-entry
 	  initialize-command-reader!
+	  input-event/operands
+	  input-event/operator
 	  input-event/type
 	  input-event?
 	  keyboard-keys-read

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: input.scm,v 1.94 1993/08/01 00:15:55 cph Exp $
+;;;	$Id: input.scm,v 1.95 1993/08/01 05:06:16 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -204,7 +204,13 @@ B 3BAB8C
   (let loop ()
     (let ((input (thunk)))
       (if (and (input-event? input)
-	       (memq (input-event/type input) '(UPDATE SET-SCREEN-SIZE)))
+	       (let ((type (input-event/type input)))
+		 (or (eq? type 'UPDATE)
+		     (eq? type 'SET-SCREEN-SIZE)
+		     (and (eq? type 'DELETE-SCREEN)
+			  (eq? (input-event/operator input) delete-screen!)
+			  (not (selected-screen?
+				(car (input-event/operands input))))))))
 	  (begin
 	    (apply-input-event input)
 	    (loop))
