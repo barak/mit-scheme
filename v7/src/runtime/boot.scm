@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: boot.scm,v 14.19 2004/11/18 18:15:59 cph Exp $
+$Id: boot.scm,v 14.20 2005/03/19 03:26:02 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1992 Massachusetts Institute of Technology
-Copyright 1993,1996,2001,2004 Massachusetts Institute of Technology
+Copyright 1993,1996,2001,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -68,6 +68,8 @@ USA.
 (define (unparser-method? object)
   (and (procedure? object)
        (procedure-arity-valid? object 2)))
+
+(define-guarantee unparser-method "unparser method")
 
 (define-integrable interrupt-bit/stack     #x0001)
 (define-integrable interrupt-bit/global-gc #x0002)
