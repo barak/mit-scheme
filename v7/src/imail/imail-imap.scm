@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.130 2000/06/29 20:07:32 cph Exp $
+;;; $Id: imail-imap.scm,v 1.131 2000/06/30 17:09:29 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -74,7 +74,7 @@
   (make-imap-url-string url (imap-url-mailbox url)))
 
 (define-method url-presentation-name ((url <imap-url>))
-  (imap-url-mailbox url))
+  (url-base-name url))
 
 (define (compatible-imap-urls? url1 url2)
   ;; Can URL1 and URL2 both be accessed from the same IMAP session?
