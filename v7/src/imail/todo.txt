@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.36 2000/05/22 19:50:15 cph Exp $
+$Id: todo.txt,v 1.37 2000/05/22 19:50:34 cph Exp $
 
 Bug fixes
 ---------
@@ -11,9 +11,6 @@ Bug fixes
   URLs.
 
 * Implement operations for IMAP: URL-EXISTS?.
-
-* Recovery from server disconnection should be more transparent.
-  Should attempt to reconnect and signal error only if that fails.
 
 * Must be able to handle malformed headers in incoming mail.
   Generating a low-level error in this situation is unacceptable.
