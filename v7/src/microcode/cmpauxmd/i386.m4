@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.13 1992/03/06 00:20:06 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.14 1992/03/06 00:26:26 jinx Exp $
 ###
 ###	Copyright (c) 1992 Massachusetts Institute of Technology
 ###
@@ -103,13 +103,13 @@ ifdef(`DOS',
 `',
 `	.file	"cmpaux-i386.s"')
 
-ifdef(`ENABLE_387',
-      `define(IF387,`$1')',
-      `define(IF387,`')')
+ifdef(`DISABLE_387',
+      `define(IF387,`')',
+      `define(IF387,`$1')')
 
-ifdef(`ENABLE_387',
-      `define(IFN387,`')',
-      `define(IFN387,`$1')')
+ifdef(`DISABLE_387',
+      `define(IFN387,`$1')',
+      `define(IFN387,`')')
 
 ifdef(`DOS',
       `define(use_external_data,`	extrn $1')',
