@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: logmer.scm,v 1.8 1995/11/11 07:42:36 cph Exp $
+$Id: logmer.scm,v 1.9 1995/11/11 07:56:29 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -115,26 +115,15 @@ MIT in each case. |#
 		      (receiver (cons (car entries) similar)
 				entries*))))))))
 
-(define (read-entries pathnames)
-  (let ((prefix (greatest-common-prefix pathnames)))
-    (append-map! (lambda (pathname)
-		   (map (let ((filename (working-file-string pathname prefix)))
-			  (lambda (delta)
-			    (cons delta filename)))
-			(read-file pathname)))
-		 pathnames)))
-
-(define (working-file-string pathname prefix)
-  (let ((relative-pathname (enough-pathname pathname prefix)))
-    (let ((filename
-	   (->namestring
-	    (pathname-new-directory
-	     relative-pathname
-	     (let ((directory (pathname-directory relative-pathname)))
-	       (and directory (delete "RCS" directory)))))))
-    (if (string-suffix? ",v" filename)
-	(substring filename 0 (- (string-length filename) 2))
-	filename))))
+(define (read-entries pairs)
+  (let ((prefix (greatest-common-prefix (map car pairs))))
+    (append-map!
+     (lambda (w.r)
+       (map (let ((filename (->namestring (enough-pathname (car w.r) prefix))))
+	      (lambda (delta)
+		(cons delta filename)))
+	    (read-file (cdr w.r))))
+     pairs)))
 
 (define (sort-entries entries)
   (sort entries
@@ -185,22 +174,22 @@ MIT in each case. |#
       (let ((attributes (file-attributes-direct pathname)))
 	(let ((type (file-attributes/type attributes)))
 	  (cond ((not type)
-		 (maybe-add-file pathname))
+		 (maybe-add-file pathname pathname))
 		((eq? type #t)
 		 (if (not (member (file-namestring pathname) '("." "..")))
 		     (scan-directory pathname)))
 		((string? type)
-		 (let ((pathname
+		 (let ((working-file
 			(merge-pathnames type (directory-pathname pathname))))
-		   (if (regular-file? pathname)
-		       (maybe-add-file (pathname-simplify pathname)))))))))
+		   (if (regular-file? working-file)
+		       (maybe-add-file pathname working-file))))))))
 
-    (define (maybe-add-file pathname)
+    (define (maybe-add-file pathname working-file)
       (if (not (ignored-file-name? pathname))
-	  (let ((control (rcs-control-file pathname)))
+	  (let ((control (rcs-control-file working-file)))
 	    (if control
 		(begin
-		  (set! files (cons control files))
+		  (set! files (cons (cons pathname control) files))
 		  unspecific)))))
 
     (define (rcs-control-file pathname)
