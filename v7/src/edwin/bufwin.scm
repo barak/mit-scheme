@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.276 1989/04/15 00:47:24 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.277 1989/04/20 08:12:57 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -222,10 +222,10 @@
 	  (set-inferior-start! override-inferior 0 0)))
     (let ((override-window (inferior-window override-inferior)))
       (set-line-window-string! override-window message)
-      (let ((length (string-length message)))
-	(set-inferior-position!
-	 cursor-inferior
-	 (string-base:index->coordinates override-window length))))
+      (set-inferior-position!
+       cursor-inferior
+       (string-base:index->coordinates override-window
+				       (string-length message))))
     (set-blank-inferior-start! window (inferior-y-end override-inferior))))
 
 (define (clear-override-message! window)
@@ -411,10 +411,13 @@
 
 (define (%window-redraw! window y)
   (with-instance-variables buffer-window window (y)
-    (cond ((not y) (set! y (%window-y-center window)))
-	  ((or (< y 0) (>= y y-size))
-	   (error "Attempt to scroll point off window" y)))
-    (redraw-screen! window y)
+    (redraw-screen! window
+		    (if (not y)
+			(%window-y-center window)
+			(begin
+			  (if (or (< y 0) (>= y y-size))
+			      (error "Attempt to scroll point off window" y))
+			  y)))
     (everything-changed! window
       (lambda (w)
 	(error "%WINDOW-REDRAW! left point offscreen -- get a wizard" w)))))
