@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.129 2000/06/29 18:12:37 cph Exp $
+;;; $Id: imail-imap.scm,v 1.130 2000/06/29 20:07:32 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -40,18 +40,11 @@
   (let ((constructor
 	 (instance-constructor <imap-url> '(USER-ID HOST PORT MAILBOX))))
     (lambda (user-id host port mailbox)
-      (let ((url
-	     (intern-url (constructor user-id
-				      (string-downcase host)
-				      port
-				      "inbox"))))
-	(if (string-ci=? "inbox" mailbox)
-	    url
-	    (intern-url
-	     (constructor user-id
-			  (string-downcase host)
-			  port
-			  (canonicalize-imap-mailbox url mailbox))))))))
+      (intern-url
+       (constructor user-id
+		    (string-downcase host)
+		    port
+		    (canonicalize-imap-mailbox mailbox))))))
 
 (define (make-imap-url-string url mailbox)
   (string-append "//"
@@ -65,18 +58,13 @@
 		 (if mailbox
 		     (string-append
 		      "/"
-		      (url:encode-string
-		       (canonicalize-imap-mailbox url mailbox)))
+		      (url:encode-string (canonicalize-imap-mailbox mailbox)))
 		     "")))
 
-(define (canonicalize-imap-mailbox url mailbox)
+(define (canonicalize-imap-mailbox mailbox)
   (cond ((string-ci=? "inbox" mailbox) "inbox")
-	((and (string-prefix-ci? "inbox" mailbox)
-	      (not (string-prefix? "inbox" mailbox))
-	      (let ((delimiter (imap-url-delimiter url)))
-		(and delimiter
-		     (char=? (string-ref mailbox 5)
-			     (string-ref delimiter 0)))))
+	((and (string-prefix-ci? "inbox/" mailbox)
+	      (not (string-prefix? "inbox/" mailbox)))
 	 (let ((mailbox (string-copy mailbox)))
 	   (substring-downcase! mailbox 0 5)
 	   mailbox))
@@ -103,7 +91,7 @@
        (with-open-imap-connection url
 	 (lambda (connection)
 	   (imap:command:status connection
-				(imap-url-mailbox url)
+				(imap-url-server-mailbox url)
 				'(MESSAGES))))
        #t)))))
 
@@ -117,10 +105,7 @@
 
 (define-method url-base-name ((url <imap-url>))
   (let ((mailbox (imap-url-mailbox url)))
-    (let ((index
-	   (let ((delimiter (imap-url-delimiter url)))
-	     (and delimiter
-		  (string-search-backward delimiter mailbox)))))
+    (let ((index (string-search-backward "/" mailbox)))
       (if index
 	  (string-tail mailbox index)
 	  mailbox))))
@@ -134,32 +119,28 @@
 		  base-name)))
 
 (define (imap-mailbox-container-string url mailbox)
-  (let ((index
-	 (let ((delimiter (imap-url-delimiter url)))
-	   (and delimiter
-		(string-search-backward delimiter mailbox)))))
+  (let ((index (string-search-backward "/" mailbox)))
     (if index
 	(string-head mailbox index)
-	(imap-mailbox-name-prefix url))))
-
-(define (imap-mailbox-name-prefix url)
-  (let ((namespace
-	 (let ((namespace (imap-url-namespace url)))
-	   (and namespace
-		(let ((personal
-		       (imap:response:namespace-personal namespace)))
-		  (and (pair? personal)
-		       (car personal)))))))
-    (if (and namespace (cadr namespace))
-	(let ((prefix (car namespace))
-	      (delimiter (cadr namespace)))
-	  (if (and (fix:= (string-length prefix) 6)
-		   (string-prefix-ci? "inbox" prefix)
-		   (not (string-prefix? "inbox" prefix))
-		   (string-suffix? delimiter prefix))
-	      (string-append "inbox" delimiter)
-	      prefix))
-	"")))
+	(or (let ((response (imap-url-namespace url)))
+	      (and response
+		   (let ((namespace
+			  (imap:response:namespace-personal response)))
+		     (and (pair? namespace)
+			  (car namespace)
+			  (let ((prefix (caar namespace))
+				(delimiter (cadar namespace)))
+			    (cond ((not delimiter)
+				   prefix)
+				  ((and (fix:= (string-length prefix) 6)
+					(string-prefix-ci? "inbox" prefix)
+					(string-suffix? delimiter prefix))
+				   "inbox/")
+				  (else
+				   (string-replace prefix
+						   (string-ref delimiter 0)
+						   #\/))))))))
+	    ""))))
 
 (define-method parse-url-body (string (default-url <imap-url>))
   (call-with-values (lambda () (parse-imap-url-body string default-url))
@@ -243,7 +224,7 @@
 	      (else
 	       (if-unique (car responses)))))))
 
-(define (imap-mailbox-completions mailbox url)
+(define (imap-mailbox-completions prefix url)
   (with-open-imap-connection url
     (lambda (connection)
       (let ((get-list
@@ -254,17 +235,72 @@
 	   (let ((flags (imap:response:list-flags response))
 		 (delimiter (imap:response:list-delimiter response))
 		 (mailbox (imap:response:list-mailbox response)))
-	     (let ((tail
-		    (if (or (not delimiter) (memq '\NOINFERIORS flags))
-			'()
-			(let ((container (string-append mailbox delimiter)))
-			  (if (pair? (get-list container))
-			      (list container)
-			      '())))))
-	       (if (memq '\NOSELECT flags)
-		   tail
-		   (cons mailbox tail)))))
-	 (get-list mailbox))))))
+	     (let ((mailbox*
+		    (if delimiter
+			(string-replace mailbox (string-ref delimiter 0) #\/)
+			mailbox)))
+	       (let ((tail
+		      (if (and delimiter
+			       (not (memq '\NOINFERIORS flags))
+			       (pair?
+				(get-list (string-append mailbox delimiter))))
+			  (list (string-append mailbox* "/"))
+			  '())))
+		 (if (memq '\NOSELECT flags)
+		     tail
+		     (cons mailbox* tail))))))
+	 (get-list (imap-mailbox/url->server url prefix)))))))
+
+;;;; URL/server delimiter conversion
+
+(define (imap-url-server-mailbox url)
+  (imap-mailbox/url->server url (imap-url-mailbox url)))
+
+(define (imap-mailbox/url->server url mailbox)
+  (let ((delimiter (imap-mailbox-delimiter url mailbox)))
+    (if (and delimiter (not (char=? delimiter #\/)))
+	(string-replace mailbox #\/ delimiter)
+	mailbox)))
+
+(define (imap-mailbox/server->url url mailbox)
+  (let ((delimiter (imap-mailbox-delimiter url mailbox)))
+    (if (and delimiter (not (char=? delimiter #\/)))
+	(string-replace mailbox delimiter #\/)
+	mailbox)))
+
+(define (imap-mailbox-delimiter url mailbox)
+  (or (let ((entry (find-imap-namespace-entry url mailbox)))
+	(and entry
+	     (cadr entry)))
+      (let ((delimiter (imap-url-delimiter url)))
+	(and delimiter
+	     (string-ref delimiter 0)))))
+
+(define (find-imap-namespace-entry url mailbox)
+  (let ((response (imap-url-namespace url)))
+    (and response
+	 (let ((try
+		(lambda (namespace)
+		  (let loop ((entries namespace))
+		    (and (pair? entries)
+			 (or (let ((prefix (caar entries))
+				   (delimiter (cadar entries)))
+			       (if (and delimiter
+					(fix:= (string-length prefix) 6)
+					(string-prefix-ci? "inbox" prefix)
+					(string-suffix? delimiter prefix))
+				   (and (string-prefix-ci? prefix mailbox)
+					(list (string-append "inbox" delimiter)
+					      (string-ref delimiter 0)))
+				   (and (string-prefix? prefix mailbox)
+					(list prefix
+					      (and delimiter
+						   (string-ref delimiter
+							       0))))))
+			     (loop (cdr entries))))))))
+	   (or (try (imap:response:namespace-personal response))
+	       (try (imap:response:namespace-shared response))
+	       (try (imap:response:namespace-other response)))))))
 
 ;;;; Server connection
 
@@ -551,8 +587,9 @@
 	     (lambda ()
 	       (set-imap-connection-folder! connection folder))
 	     (lambda ()
-	       (imap:command:select connection
-				    (imap-url-mailbox (folder-url folder)))
+	       (imap:command:select
+		connection
+		(imap-url-server-mailbox (folder-url folder)))
 	       (set! selected? #t)
 	       unspecific)
 	     (lambda ()
@@ -1089,20 +1126,20 @@
 (define-method %create-folder ((url <imap-url>))
   (with-open-imap-connection url
     (lambda (connection)
-      (imap:command:create connection (imap-url-mailbox url)))))
+      (imap:command:create connection (imap-url-server-mailbox url)))))
 
 (define-method %delete-folder ((url <imap-url>))
   (with-open-imap-connection url
     (lambda (connection)
-      (imap:command:delete connection (imap-url-mailbox url)))))
+      (imap:command:delete connection (imap-url-server-mailbox url)))))
 
 (define-method %rename-folder ((url <imap-url>) (new-url <imap-url>))
   (if (compatible-imap-urls? url new-url)
       (with-open-imap-connection url
 	(lambda (connection)
 	  (imap:command:rename connection
-			       (imap-url-mailbox url)
-			       (imap-url-mailbox new-url))))
+			       (imap-url-server-mailbox url)
+			       (imap-url-server-mailbox new-url))))
       (error "Unable to perform rename between different IMAP accounts:"
 	     url new-url)))
 
@@ -1124,7 +1161,7 @@
 			      (k #t))))
 		    (lambda () (thunk) #f))))
 	       (begin
-		 (imap:command:create connection (imap-url-mailbox url))
+		 (imap:command:create connection (imap-url-server-mailbox url))
 		 (thunk))))))
     (if (let ((url* (folder-url folder)))
 	  (and (imap-url? url*)
@@ -1136,13 +1173,13 @@
 	      (lambda ()
 		(imap:command:uid-copy connection
 				       (imap-message-uid message)
-				       (imap-url-mailbox url))))))
+				       (imap-url-server-mailbox url))))))
 	(with-open-imap-connection url
 	  (lambda (connection)
 	    (maybe-create connection
 	      (lambda ()
 		(imap:command:append connection
-				     (imap-url-mailbox url)
+				     (imap-url-server-mailbox url)
 				     (map imail-flag->imap-flag
 					  (flags-delete
 					   "recent"
