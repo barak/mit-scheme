@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lambda.scm,v 14.10 1992/12/03 03:20:52 cph Exp $
+$Id: lambda.scm,v 14.11 1994/01/29 21:34:20 adams Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -199,7 +199,7 @@ MIT in each case. |#
 (define (clambda-components clambda receiver)
   (slambda-components clambda
     (lambda (name required body)
-      (receiver name required '() '()
+      (receiver name required '() '#F  ;;! '()
 		(lambda-body-auxiliary body)
 		(clambda-unwrapped-body clambda)))))
 
@@ -310,12 +310,12 @@ MIT in each case. |#
        (make-combination (make-internal-lambda auxiliary body)
 			 (make-unassigned auxiliary)))
    (list->vector
-    (cons name (append required optional (if (null? rest) '() (list rest)))))
+    (cons name (append required optional (if (false? rest) '() (list rest)))))
    (make-non-pointer-object
     (+ (length optional)
        (* 256
 	  (+ (length required)
-	     (if (null? rest) 0 256)))))))
+	     (if (false? rest) 0 256)))))))
 
 (define-integrable (xlambda? object)
   (object-type? xlambda-type object))
@@ -331,7 +331,7 @@ MIT in each case. |#
 		      (subvector->list bound 1 ostart)
 		      (subvector->list bound ostart rstart)
 		      (if (zero? (car qr2))
-			  '()
+			  #F ;;!'()
 			  (vector-ref bound rstart))
 		      (append
 		       (subvector->list bound astart (vector-length bound))
@@ -389,12 +389,12 @@ MIT in each case. |#
     (cond ((and (< (length required) 256)
 		(< (length optional) 256)
 		(or (not (null? optional))
-		    (not (null? rest))
+		    (not (false? rest))		;;!(not (null? rest))
 		    (not (null? auxiliary))))
 	   (make-xlambda name required optional rest auxiliary body*))
 	  ((not (null? optional))
 	   (error "Optionals not implemented" 'MAKE-LAMBDA))
-	  ((null? rest)
+	  ((false? rest)  ;;!
 	   (make-clambda name required auxiliary body*))
 	  (else
 	   (make-clexpr name required rest auxiliary body*)))))
