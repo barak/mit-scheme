@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: process.scm,v 1.60 2001/09/21 16:23:18 cph Exp $
+;;; $Id: process.scm,v 1.61 2002/09/06 04:03:31 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2001 Massachusetts Institute of Technology
 ;;;
@@ -704,8 +704,7 @@ Prefix arg means replace the region with it."
 (define (shell-command-prompt prompt)
   (prompt-for-string prompt #f
 		     'DEFAULT-TYPE 'INSERTED-DEFAULT
-		     'HISTORY 'SHELL-COMMAND
-		     'HISTORY-INDEX 0))
+		     'HISTORY 'SHELL-COMMAND))
 
 (define (shell-command-pop-up-output generate-output)
   (let ((buffer (temporary-buffer "*Shell Command Output*")))
