@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.8 1988/06/03 14:54:29 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.9 1988/06/03 23:54:57 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -212,11 +212,14 @@ MIT in each case. |#
 							hash
 							insert-source!
 							memory-invalidate!)))))
-		 ;; **** Kludge.  Works only because stack-pointer
-		 ;; gets used in very fixed way by code generator.
-		 (if (stack-push/pop? address)
-		     (stack-pointer-adjust!
-		      (rtl:address-number address))))))))))
+		 (notice-push/pop! address)))))
+      (notice-push/pop! (rtl:assign-expression statement)))))
+
+(define (notice-push/pop! expression)
+  ;; **** Kludge.  Works only because stack-pointer
+  ;; gets used in very fixed way by code generator.
+  (if (stack-push/pop? expression)
+      (stack-pointer-adjust! (rtl:address-number expression))))
 
 (define (assignment-memory-insertion address hash insert-source!
 				     memory-invalidate!)
