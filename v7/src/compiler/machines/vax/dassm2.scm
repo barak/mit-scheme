@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dassm2.scm,v 4.4 1988/03/08 18:22:37 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dassm2.scm,v 4.5 1988/03/21 21:42:02 bal Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -194,29 +194,18 @@ MIT in each case. |#
 	(let ((special
 	       (lookup-special-register register register-assignments)))
 	  (if special
-	      (if (eq? (special-register special) 'REGS)
+	      (if (eq? (special-register special) 'REGS-POINTER)
 		  (let ((interpreter-register
 			 (lookup-special-register offset 
 						  interpreter-register-assignments)))
 		    (cond ((not interpreter-register)
-			   `(,key ,size REGS ,offset))
+			   `(,key ,size REGS-POINTER ,offset))
 			  ((not deferred?)
 			   (special-register interpreter-register))
 			  (else
 			   `(@ ,(special-register interpreter-register)))))
 		  `(,key ,size ,(special-register special) ,offset))
 	      `(,key ,size ,register ,offset))))))
-
-(define make-register-offset
-  (lambda (register offset)
-    (if disassembler/symbolize-output?
-	(or (and (= register interpreter-register-pointer)
-		 (let ((entry (assq offset interpreter-register-assignments)))
-		   (and entry
-			(cdr entry))))
-	    `(@RO ,(cdr (assq register register-assignments))
-		  ,offset))
-	`(@RO ,register ,offset))))
 
 (define interpreter-register?
   (lambda (effective-address)
