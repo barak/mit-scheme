@@ -1,5 +1,5 @@
 
-# $Id: Makefile,v 1.5 2000/07/10 22:09:51 cph Exp $
+# $Id: Makefile,v 1.6 2000/07/11 16:59:56 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -34,7 +34,7 @@ imail.info: imail.texinfo
 	cpx imail.info* /usr/local/lib/mit-scheme/edwin/info/.
 	gzip -v /usr/local/lib/mit-scheme/edwin/info/imail.info*
 
-html/imail_toc.html: imail.texinfo
+html/imail.html: imail.texinfo
 	(cd html;make)
 
 AUX_SUFFIXES = aux log toc

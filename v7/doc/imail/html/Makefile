@@ -1,5 +1,5 @@
 
-# $Id: Makefile,v 1.2 2000/07/09 01:36:12 cph Exp $
+# $Id: Makefile,v 1.3 2000/07/11 16:59:53 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -17,9 +17,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-all:	imail_toc.html
+all:	imail.html
 
-imail_toc.html:	../imail.texinfo
+imail.html:	../imail.texinfo
 	rm -rf *.html
 	texi2html -split_chapter ../imail.texinfo
 
