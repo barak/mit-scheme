@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcfg.scm,v 4.2 1987/12/30 07:07:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcfg.scm,v 4.3 1988/08/31 10:12:14 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -44,17 +44,21 @@ MIT in each case. |#
   live-at-entry
   live-at-exit
   (new-live-at-exit register-map)
-  label)
+  label
+  continuations)
+
+(define-vector-slots sblock 12
+  continuation)
 
 (define (make-sblock instructions)
-  (make-pnode sblock-tag instructions false false false false))
+  (make-pnode sblock-tag instructions false false false false '() false))
 
-(define-vector-slots pblock 11
+(define-vector-slots pblock 12
   consequent-lap-generator
   alternative-lap-generator)
 
 (define (make-pblock instructions)
-  (make-pnode pblock-tag instructions false false false false false false))
+  (make-pnode pblock-tag instructions false false false false '() false false))
 
 (define-vector-slots rinst 0
   rtl
@@ -95,9 +99,12 @@ MIT in each case. |#
 (define-integrable (rinst-dead-register? rinst register)
   (memq register (rinst-dead-registers rinst)))
 
-(package (bblock-compress!)
+(define (rinst-last rinst)
+  (if (rinst-next rinst)
+      (rinst-last (rinst-next rinst))
+      rinst))
 
-(define-export (bblock-compress! bblock)
+(define (bblock-compress! bblock)
   (if (not (node-marked? bblock))
       (begin
 	(node-mark! bblock)
@@ -122,13 +129,6 @@ MIT in each case. |#
 		     (if alternative
 			 (bblock-compress! alternative))))))))
 
-(define (rinst-last rinst)
-  (if (rinst-next rinst)
-      (rinst-last (rinst-next rinst))
-      rinst))
-
-)
-
 (define (bblock-walk-forward bblock procedure)
   (let loop ((rinst (bblock-instructions bblock)))
     (procedure rinst)
@@ -144,7 +144,7 @@ MIT in each case. |#
       (let ((label (generate-label)))
 	(set-bblock-label! bblock label)
 	label)))
-
+
 (define (bblock-perform-deletions! bblock)
   (define (loop rinst)
     (let ((next
@@ -162,16 +162,3 @@ MIT in each case. |#
 	  (set-rgraph-bblocks! *current-rgraph*
 			       (delq! bblock
 				      (rgraph-bblocks *current-rgraph*)))))))
-
-(define (make-linearizer map-inst bblock-linearize)
-  (lambda (rgraphs)
-    (with-new-node-marks
-     (lambda ()
-       (map-inst (lambda (rgraph)
-		   (map-inst (lambda (edge)
-			       (let ((bblock (edge-right-node edge)))
-				 (if (node-marked? bblock)
-				     '()
-				     (bblock-linearize bblock))))
-			     (rgraph-entry-edges rgraph)))
-	       rgraphs)))))
