@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 1.4 1995/01/11 20:25:23 ssmith Exp $
+$Id: machin.scm,v 1.5 1995/01/12 14:45:48 ssmith Exp $
 
 Copyright (c) 1992-1995 Massachusetts Institute of Technology
 
@@ -86,7 +86,7 @@ MIT in each case. |#
   ;; Distance in bytes between a raw continuation
   ;; (as left behind by JSR) and the real continuation
   ;; (after descriptor)
-  0)
+  4)
 
 (define #|-integrable|# untagged-fixnums?
   ;; true when fixnums have tags 000000... and 111111...
