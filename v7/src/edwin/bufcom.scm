@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufcom.scm,v 1.97 1992/09/30 18:29:21 cph Exp $
+;;;	$Id: bufcom.scm,v 1.98 1992/10/01 15:55:34 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -46,23 +46,29 @@
 
 (declare (usual-integrations))
 
+(define (prompt-for-select-buffer prompt)
+  (lambda ()
+    (list
+     (buffer-name
+      (prompt-for-buffer prompt (previous-buffer))))))
+
 (define-command switch-to-buffer
   "Select buffer with specified name.
 If the variable select-buffer-create is true,
 specifying a non-existent buffer will cause it to be created."
-  "BSwitch to buffer"
+  (prompt-for-select-buffer "Switch to buffer")
   (lambda (buffer)
     (select-buffer (find-buffer buffer))))
 
 (define-command switch-to-buffer-other-window
   "Select buffer in another window."
-  "BSwitch to buffer in other window"
+  (prompt-for-select-buffer "Switch to buffer in other window")
   (lambda (buffer)
     (select-buffer-other-window (find-buffer buffer))))
 
 (define-command switch-to-buffer-other-screen
   "Select buffer in another screen."
-  "BSwitch to buffer in other screen"
+  (prompt-for-select-buffer "Switch to buffer in other screen")
   (lambda (buffer)
     (select-buffer-other-screen (find-buffer buffer))))
 
