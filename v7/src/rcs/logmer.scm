@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: logmer.scm,v 1.13 1995/11/12 05:58:57 cph Exp $
+$Id: logmer.scm,v 1.14 1996/03/03 22:58:35 cph Exp $
 
-Copyright (c) 1988-95 Massachusetts Institute of Technology
+Copyright (c) 1988-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -172,31 +172,36 @@ MIT in each case. |#
 
 (define (rcs-directory-read pathname)
   (let ((files '()))
-    (define (scan-directory pathname)
-      (for-each scan-file
-		(directory-read (pathname-as-directory pathname) #f)))
+    (define (scan-directory directory original-directory)
+      (let ((directory (pathname-as-directory directory))
+	    (original-directory (pathname-as-directory original-directory)))
+	(for-each (lambda (pathname)
+		    (scan-file pathname
+			       (merge-pathnames (file-pathname pathname)
+						original-directory)))
+		  (directory-read directory #f))))
 
-    (define (scan-file pathname)
+    (define (scan-file pathname original-pathname)
       (let ((attributes (file-attributes-direct pathname)))
 	(let ((type (file-attributes/type attributes)))
 	  (cond ((not type)
-		 (maybe-add-file pathname pathname))
+		 (if (not (or (ignored-file-name? pathname)
+			      (ignored-file-name? original-pathname)))
+		     (let ((control (rcs-control-file pathname)))
+		       (if control
+			   (begin
+			     (set! files
+				   (cons (cons original-pathname control)
+					 files))
+			     unspecific)))))
 		((eq? type #t)
-		 (if (not (member (file-namestring pathname) '("." "..")))
-		     (scan-directory pathname)))
+		 (if (not (member (file-namestring pathname)
+				  '("." ".." "RCS")))
+		     (scan-directory pathname original-pathname)))
 		((string? type)
-		 (let ((working-file
-			(merge-pathnames type (directory-pathname pathname))))
-		   (if (regular-file? working-file)
-		       (maybe-add-file pathname working-file))))))))
-
-    (define (maybe-add-file pathname working-file)
-      (if (not (ignored-file-name? pathname))
-	  (let ((control (rcs-control-file working-file)))
-	    (if control
-		(begin
-		  (set! files (cons (cons pathname control) files))
-		  unspecific)))))
+		 (scan-file (merge-pathnames type
+					     (directory-pathname pathname))
+			    original-pathname))))))
 
     (define (rcs-control-file pathname)
       (let ((directory (directory-pathname pathname))
@@ -220,7 +225,7 @@ MIT in each case. |#
 	    (string-suffix? "~" name)
 	    (string-prefix? "#" name))))
 
-    (scan-directory pathname)
+    (scan-directory pathname pathname)
     files))
 
 (define (greatest-common-prefix pathnames)
