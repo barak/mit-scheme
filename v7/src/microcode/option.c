@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: option.c,v 1.50 2000/01/06 04:22:28 cph Exp $
+$Id: option.c,v 1.51 2000/01/06 04:34:37 cph Exp $
 
 Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
@@ -1051,7 +1051,7 @@ DEFUN (read_band_header, (filename, header),
   FILE * stream = (fopen (filename, "r"));
   if (stream == 0)
     return (0);
-  if ((fread ((&header), (sizeof (SCHEME_OBJECT)), FASL_HEADER_LENGTH, stream))
+  if ((fread (header, (sizeof (SCHEME_OBJECT)), FASL_HEADER_LENGTH, stream))
       != FASL_HEADER_LENGTH)
     {
       fclose (stream);
