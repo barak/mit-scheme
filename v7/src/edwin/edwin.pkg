@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.57 1991/08/29 01:48:39 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.58 1991/09/03 17:19:38 arthur Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -735,7 +735,8 @@ MIT in each case. |#
 	  set-dstate/reduction-number!
 	  show-environment-name
 	  show-environment-bindings
-	  stack-frame/compiled-code?)
+	  stack-frame/compiled-code?
+	  write-restarts)
   (import (runtime debugger-utilities)
 	  hook/debugger-failure
 	  hook/debugger-message
