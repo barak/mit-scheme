@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.236 2001/04/15 20:58:44 cph Exp $
+;;; $Id: imail-top.scm,v 1.237 2001/05/07 18:01:40 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -1644,12 +1644,7 @@ Negative argument means search in reverse."
 	   (lambda (string)
 	     (url-string-completions string imail-get-default-url))
 	   (lambda (string)
-	     (let ((url
-		    (ignore-errors
-		     (lambda ()
-		       (imail-parse-partial-url string)))))
-	       (and (url? url)
-		    (url-exists? url))))
+	     (url-exists? (imail-parse-partial-url string)))
 	   'DEFAULT-TYPE 'INSERTED-DEFAULT
 	   options)))
 
