@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: nntp.scm,v 1.22 1999/01/02 06:11:34 cph Exp $
+;;; $Id: nntp.scm,v 1.23 1999/02/28 06:22:09 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-1999 Massachusetts Institute of Technology
 ;;;
@@ -984,11 +984,13 @@
 				       replies)))
 	    ((eq? numbers numbers*) replies)
 	  (if (fix:= 0 (fix:remainder n-received 16))
-	      (message msg
-		       n-received
-		       " ("
-		       (integer-round (* n-received 100) n-to-read)
-		       "%)"))
+	      (begin
+		(message msg
+			 n-received
+			 " ("
+			 (integer-round (* n-received 100) n-to-read)
+			 "%)")
+		(update-screens! #f)))
 	  (set! n-received (fix:+ n-received 1))))
 
       (message msg)
