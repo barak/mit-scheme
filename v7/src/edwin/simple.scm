@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/simple.scm,v 1.39 1991/10/25 00:03:14 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/simple.scm,v 1.40 1991/11/26 07:58:17 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -78,7 +78,11 @@
 
 (define (guarantee-newlines n #!optional point)
   (let ((point (if (default-object? point) (current-point) point)))
-    (insert-newlines (if (line-start? point) (-1+ n) n) point)))
+    (let loop ((n n) (mark point))
+      (if (> n 0)
+	  (if (line-start? mark)
+	      (loop (- n 1) (mark-1+ mark))
+	      (insert-newlines n point))))))
 
 (define (extract-left-char #!optional point)
   (let ((point (if (default-object? point) (current-point) point)))
@@ -124,34 +128,34 @@
       (error "Marks incorrectly related:" start end))
   (let ((point (if (default-object? point) (current-point) point)))
     (if (mark~ start point)
-	(error "Can't copy to same group:" start))
-    (let ((group (mark-group start))
-	  (start (mark-index start))
-	  (end (mark-index end)))
-      (let ((text (group-text group))
-	    (gap-start (group-gap-start group))
-	    (gap-end (group-gap-end group))
-	    (gap-length (group-gap-length group)))
-	(cond ((<= end gap-start)
-	       (group-insert-substring! (mark-group point)
-					(mark-index point)
-					text start end))
-	      ((<= gap-start start)
-	       (group-insert-substring! (mark-group point)
-					(mark-index point)
-					text
-					(+ start gap-length)
-					(+ end gap-length)))
-	      (else
-	       (let ((point (mark-left-inserting-copy point)))
-		 (group-insert-substring! (mark-group point)
-					  (mark-index point)
-					  text start gap-start)
-		 (group-insert-substring! (mark-group point)
-					  (mark-index point)
-					  text gap-end
-					  (+ end gap-length))
-		 (mark-temporary! point))))))))
+	(insert-string (extract-string start end) point)
+	(let ((group (mark-group start))
+	      (start (mark-index start))
+	      (end (mark-index end)))
+	  (let ((text (group-text group))
+		(gap-start (group-gap-start group))
+		(gap-end (group-gap-end group))
+		(gap-length (group-gap-length group)))
+	    (cond ((<= end gap-start)
+		   (group-insert-substring! (mark-group point)
+					    (mark-index point)
+					    text start end))
+		  ((<= gap-start start)
+		   (group-insert-substring! (mark-group point)
+					    (mark-index point)
+					    text
+					    (+ start gap-length)
+					    (+ end gap-length)))
+		  (else
+		   (let ((point (mark-left-inserting-copy point)))
+		     (group-insert-substring! (mark-group point)
+					      (mark-index point)
+					      text start gap-start)
+		     (group-insert-substring! (mark-group point)
+					      (mark-index point)
+					      text gap-end
+					      (+ end gap-length))
+		     (mark-temporary! point)))))))))
 
 (define (extract-string mark #!optional point)
   (let ((point (if (default-object? point) (current-point) point)))
