@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: fixobj.h,v 9.32 1993/06/29 22:53:50 cph Exp $
+$Id: fixobj.h,v 9.33 1993/08/23 22:25:54 cph Exp $
 
-Copyright (c) 1987-91 Massachusetts Institute of Technology
+Copyright (c) 1987-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -52,7 +52,7 @@ MIT in each case. */
 #define FIXOBJ_SYSTEM_CALL_ERRORS	0x0A	/* System call error -> name */
 #define GC_Daemon		0x0B	/* Procedure to run after GC. */
 #define Trap_Handler		0x0C	/* Abort after disaster. */
-/* UNUSED slot			0x0D */
+#define FIXOBJ_EDWIN_AUTO_SAVE	0x0D	/* Files to save if fatal error. */
 #define Stepper_State		0x0E	/* UNUSED in CScheme. */
 #define Fixed_Objects_Slots	0x0F	/* Names of these slots. */
 /* UNUSED slot			0x10 used to be

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: utabmd.scm,v 9.67 1993/06/29 21:37:05 cph Exp $
+;;; $Id: utabmd.scm,v 9.68 1993/08/23 22:30:08 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987-1993 Massachusetts Institute of Technology
 ;;;
@@ -70,7 +70,7 @@
 	       SYSTEM-CALL-ERRORS			;0A
 	       GC-DAEMON				;0B
 	       TRAP-HANDLER				;0C
-	       #F					;0D
+	       EDWIN-AUTO-SAVE				;0D
 	       STEPPER-STATE				;0E
 	       MICROCODE-FIXED-OBJECTS-SLOTS		;0F
 	       #F					;10
@@ -702,4 +702,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Id: utabmd.scm,v 9.67 1993/06/29 21:37:05 cph Exp $"
+"$Id: utabmd.scm,v 9.68 1993/08/23 22:30:08 cph Exp $"
