@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlcsm.scm,v 1.1 1994/11/19 02:06:38 adams Exp $
+$Id: rtlcsm.scm,v 1.2 1994/11/26 19:02:23 adams Exp $
 
 Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
@@ -273,6 +273,13 @@ MIT in each case. |#
 		   (lambda ()
 		     (rtl:set-invocation-continuation! x false)
 		     (rtl:set-invocation-continuation! y false)))))
+	((and (rtl:profile-data? x)
+	      (rtl:profile-data? y))
+	 ;; We test profile data here because the constants do not have to be
+	 ;; EQV?
+	 (if (equal? (rtl:profile-data-data x) (rtl:profile-data-data y))
+	     (values e false)
+	     (values 'FAILURE false)))
 	(else
 	 (values (match x y e) false))))
 
