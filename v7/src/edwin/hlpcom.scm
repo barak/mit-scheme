@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/hlpcom.scm,v 1.98 1991/05/06 00:57:18 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/hlpcom.scm,v 1.99 1991/05/10 05:08:13 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -67,7 +67,7 @@ A  command-apropos.  Type a substring, and see a list of commands
 B  describe-bindings.  Display table of all key bindings.
 C  describe-key-briefly.  Type a key sequence;
               it prints the name of the command that sequence runs.
-F  describe-command.  Type a command name and get its documentation.
+F  describe-function.  Type a command name and get its documentation.
 I  info.  The Info documentation reader.
 K  describe-key.  Type a key sequence;
               it prints the full documentation.
@@ -114,9 +114,9 @@ W  where-is.  Type a command name and get its key binding."
 ;;;; Commands and Keys
 
 (define-command command-apropos
-  "Prompts for a string, lists all commands containing it."
-  "sCommand apropos"
-  (lambda (string)
+  "Prompts for a regexp, lists all commands containing a match for it."
+  "sCommand apropos (regexp)"
+  (lambda (regexp)
     (with-output-to-help-display
      (lambda ()
        (for-each (lambda (command)
@@ -124,9 +124,9 @@ W  where-is.  Type a command name and get its key binding."
 		   (newline)
 		   (print-key-bindings command)
 		   (print-short-description (command-description command)))
-		 (string-table-apropos editor-commands string))))))
+		 (string-table-apropos editor-commands regexp))))))
 
-(define-command describe-command
+(define-command describe-function
   "Prompts for a command, and describes it.
 Prints the full documentation for the given command."
   "CDescribe command"
@@ -179,9 +179,9 @@ Prints the full documentation for that command."
 ;;;; Variables
 
 (define-command variable-apropos
-  "Prompts for a string, lists all variables containing it."
-  "sVariable apropos"
-  (lambda (string)
+  "Prompts for a regexp, lists all variables containing a match for it."
+  "sVariable apropos (regexp)"
+  (lambda (regexp)
     (with-output-to-help-display
      (lambda ()
        (for-each (lambda (variable)
@@ -189,7 +189,7 @@ Prints the full documentation for that command."
 		   (newline)
 		   (print-variable-binding variable)
 		   (print-short-description (variable-description variable)))
-		 (string-table-apropos editor-variables string))))))
+		 (string-table-apropos editor-variables regexp))))))
 
 (define-command describe-variable
   "Prompts for a variable, and describes it.
