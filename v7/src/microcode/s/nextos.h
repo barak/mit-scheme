@@ -1,9 +1,9 @@
 /* -*-C-*-
    System file for NeXT running Mach
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/nextos.h,v 1.3 1991/01/16 00:34:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/nextos.h,v 1.4 1991/08/28 05:47:04 cph Exp $
 
-Copyright (c) 1990, 1991 Massachusetts Institute of Technology
+Copyright (c) 1990-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,5 +34,6 @@ promotional, or sales literature without prior written consent from
 MIT in each case. */
 
 #define C_SWITCH_SYSTEM -bsd -fwritable-strings -D_NEXTOS
-
 #define LIBS_TERMCAP -ltermcap
+/* -lg not needed if -g is given. */
+#define LIB_DEBUG
