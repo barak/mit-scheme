@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/load.c,v 9.24 1987/11/17 08:14:00 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/load.c,v 9.25 1988/02/06 20:41:11 jinx Exp $
  *
  * This file contains common code for reading internal
  * format binary files.
@@ -39,21 +39,33 @@ MIT in each case. */
 
 #include "fasl.h"
 
+#define FASL_FILE_FINE			0
+#define FASL_FILE_TOO_SHORT		1
+#define FASL_FILE_NOT_FASL		2
+#define FASL_FILE_BAD_MACHINE		3
+#define FASL_FILE_BAD_VERSION		4
+#define FASL_FILE_BAD_SUBVERSION	5	
+#define FASL_FILE_BAD_PROCESSOR		6
+#define FASL_FILE_BAD_INTERFACE		7
+
 #ifndef BYTE_INVERSION
 
 #define NORMALIZE_HEADER(header, size, base, count)
 #define NORMALIZE_REGION(region, size)
 
-#else
+#else /* BYTE_INVERSION */
 
 void Byte_Invert_Region(), Byte_Invert_Header();
 
 #define NORMALIZE_HEADER Byte_Invert_Header
 #define NORMALIZE_REGION Byte_Invert_Region
 
-#endif
+#endif /* BYTE_INVERSION */
 
 /* Static storage for some shared variables */
+
+static Boolean
+  band_p;
 
 static long
   Version, Sub_Version, Machine_Type,
@@ -62,11 +74,14 @@ static long
   Const_Base, Const_Count,
   Dumped_Heap_Top, Dumped_Constant_Top,
   Dumped_Stack_Top,
-  Primitive_Table_Size, Primitive_Table_Length;
+  Primitive_Table_Size, Primitive_Table_Length,
+  dumped_processor_type, dumped_interface_version;
 
-static Pointer Ext_Prim_Vector;
+static Pointer
+  Ext_Prim_Vector,
+  dumped_utilities;
 
-Boolean
+long
 Read_Header()
 {
   Pointer Buffer[FASL_HEADER_LENGTH];
@@ -75,11 +90,11 @@ Read_Header()
   if (Load_Data(FASL_HEADER_LENGTH, ((char *) Buffer)) !=
       FASL_HEADER_LENGTH)
   {
-    return (false);
+    return (FASL_FILE_TOO_SHORT);
   }
   if (Buffer[FASL_Offset_Marker] != FASL_FILE_MARKER)
   {
-    return (false);
+    return (FASL_FILE_NOT_FASL);
   }
   NORMALIZE_HEADER(Buffer,
 		   (sizeof(Buffer) / sizeof(Pointer)),
@@ -114,40 +129,110 @@ Read_Header()
     Primitive_Table_Size = Get_Integer(Buffer[FASL_Offset_Prim_Size]);
     Ext_Prim_Vector = NIL;
   }
+
+  if (Sub_Version < FASL_INTERFACE_VERSION)
+  {
+    /* This may be all wrong, but... */
+    band_p = false;
+    dumped_processor_type = 0;
+    dumped_interface_version = 0;
+    dumped_utilities = NIL;
+  }
+  else
+  {
+    Pointer temp;
+
+    temp = Buffer[FASL_Offset_Ci_Version];
+
+    band_p = CI_BAND_P(temp);
+    dumped_processor_type = CI_PROCESSOR(temp);
+    dumped_interface_version = CI_VERSION(temp);
+    dumped_utilities = Buffer[FASL_Offset_Ut_Base];
+  }
+
   if (Reloc_or_Load_Debug)
   {
-    printf("\nHeap_Count = %d; Heap_Base = %x; Dumped_Heap_Top = %x\n",
-           Heap_Count, Heap_Base, Dumped_Heap_Top);
-    printf("C_Count = %d; C_Base = %x, Dumped_C_Top = %x\n",
-           Const_Count, Const_Base, Dumped_Constant_Top);
-    printf("Dumped_S_Top = %x, Ext_Prim_Vector = 0x%08x\n",
-	   Dumped_Stack_Top, Ext_Prim_Vector);
-    printf("Dumped Object (as read from file) = %x\n", Dumped_Object); 
-    printf("Length of primitive table = %d\n", Primitive_Table_Length);
-  }
+    printf("FASL File Information:\n\n");
+    printf("Machine = %ld; Version = %ld; Subversion = %ld\n",
+	   Machine_Type, Version, Sub_Version);
+    printf("Dumped processor type = %ld; Dumped interface version = %ld\n",
+	   dumped_processor_type, dumped_interface_version);
+    if (band_p)
+    {
+      printf("The file contains a dumped image (band).\n");
+    }
 
+    printf("\nRelocation Information:\n\n");
+    printf("Heap Count = %ld; Heap Base = 0x%lx; Dumped Heap Top = 0x%lx\n",
+           Heap_Count, Heap_Base, Dumped_Heap_Top);
+    printf("Const Count = %ld; Const Base = 0x%lx, Dumped Constant Top = 0x%lx\n",
+           Const_Count, Const_Base, Dumped_Constant_Top);
+    printf("Dumped Stack Top = 0x%lx, Ext Prim Vector = 0x%lx\n",
+	   Dumped_Stack_Top, Ext_Prim_Vector);
+
+    printf("\nDumped Objects:\n\n");
+    printf("Length of primitive table = %ld\n", Primitive_Table_Length);
+    printf("Dumped utilities = 0x%lx\n", dumped_utilities);
+    printf("Dumped Object (as read from file) = 0x%lx\n", Dumped_Object); 
+  }
+
 #ifndef INHIBIT_FASL_VERSION_CHECK
-#ifdef BYTE_INVERSION
+
+  /* The error messages here should be handled by the runtime system! */
+
   if ((Version != FASL_READ_VERSION) ||
-      (Sub_Version != FASL_READ_SUBVERSION))
-#else
-  if ((Version != FASL_READ_VERSION) ||
-      (Sub_Version != FASL_READ_SUBVERSION) ||
-      (Machine_Type != FASL_INTERNAL_FORMAT))
+#ifndef BYTE_INVERSION
+      (Machine_Type != FASL_INTERNAL_FORMAT) ||
 #endif
+      (Sub_Version < FASL_READ_SUBVERSION) ||
+      (Sub_Version > FASL_SUBVERSION))
   {
+    fprintf(stderr, "\nread_file:\n");
     fprintf(stderr,
-	    "\nread_file: FASL File Version %4d Subversion %4d Machine Type %4d.\n",
+	    "FASL File: Version %4d Subversion %4d Machine Type %4d.\n",
 	    Version, Sub_Version , Machine_Type);
     fprintf(stderr,
-	    "           Expected: Version %4d Subversion %4d Machine Type %4d.\n",
-	   FASL_READ_VERSION, FASL_READ_SUBVERSION, FASL_INTERNAL_FORMAT);
+	    "Expected:  Version %4d Subversion %4d Machine Type %4d.\n",
+	    FASL_READ_VERSION, FASL_READ_SUBVERSION, FASL_INTERNAL_FORMAT);
 
-    return (false);
+    return ((Machine_Type != FASL_INTERNAL_FORMAT)	?
+	    FASL_FILE_BAD_MACHINE			:
+	    ((Version != FASL_READ_VERSION)		?
+	     FASL_FILE_BAD_VERSION			:
+	     FASL_FILE_BAD_SUBVERSION));
   }
-#endif
 
-  return (true);
+#endif /* INHIBIT_FASL_VERSION_CHECK */
+
+#ifndef INHIBIT_COMPILED_VERSION_CHECK
+
+  /* Is the compiled code "loadable" here? */
+
+  {
+    extern long compiler_processor_type, compiler_interface_version;
+
+    if (((dumped_processor_type != 0) &&
+	(dumped_processor_type != compiler_processor_type)) ||
+	((dumped_interface_version != 0) &&
+	 (dumped_interface_version != compiler_interface_version)))
+    {
+      fprintf(stderr, "\nread_file:\n");
+      fprintf(stderr,
+	      "FASL File: compiled code interface %4d; processor %4d.\n",
+	      dumped_interface_version, dumped_processor_type);
+      fprintf(stderr,
+	      "Expected:  compiled code interface %4d; processor %4d.\n",
+	      compiler_interface_version, compiler_processor_type);
+      return (((dumped_processor_type != 0) &&
+	       (dumped_processor_type != compiler_processor_type))	?
+	      FASL_FILE_BAD_PROCESSOR					:
+	      FASL_FILE_BAD_INTERFACE);
+    }
+  }
+
+#endif /* INHIBIT_COMPILED_VERSION_CHECK */
+
+  return (FASL_FILE_FINE);
 }
 
 #ifdef BYTE_INVERSION
@@ -189,4 +274,5 @@ Byte_Invert_Region(Region, Size)
   return;
 }
 
-#endif
+#endif /* BYTE_INVERSION */
+

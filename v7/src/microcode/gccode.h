@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.31 1987/11/17 08:11:46 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.32 1988/02/06 20:40:56 jinx Exp $
  *
  * This file contains the macros for use in code which does GC-like
  * loops over memory.  It is only included in a few files, unlike
@@ -238,17 +238,24 @@ Pointer_End()
 
 #else In_Fasdump
 
-#define Real_Transport_Vector()					\
-{ Pointer *Saved_Scan = Scan;					\
-  Scan = To + 1 + Get_Integer(*Old);				\
-  if (Scan >= Fixes)						\
-  { Scan = Saved_Scan;						\
-    NewFree = To;						\
-    Fixup = Fixes;						\
-    return false;						\
-  }								\
-  while (To != Scan) *To++ = *Old++;				\
-  Scan = Saved_Scan;						\
+#define Real_Transport_Vector()						\
+{									\
+  Pointer *Saved_Scan;							\
+									\
+  Saved_Scan = Scan;							\
+  Scan = To + 1 + Get_Integer(*Old);					\
+  if (Scan >= Fixes)							\
+  {									\
+    Scan = Saved_Scan;							\
+    NewFree = To;							\
+    Fixup = Fixes;							\
+    return (PRIM_INTERRUPT);						\
+  }									\
+  while (To != Scan)							\
+  {									\
+    *To++ = *Old++;							\
+  }									\
+  Scan = Saved_Scan;							\
 }
 
 #endif
@@ -309,18 +316,21 @@ extern Pointer Weak_Chain;
    there is enough space to remember the fixup.
  */
 
-#define Fasdump_Setup_Pointer(Extra_Code, BH_Code)		\
-BH_Code;							\
-/* It must be transported to New Space */			\
-New_Address = (Make_Broken_Heart(C_To_Scheme(To)));		\
-if ((Fixes - To) < FASDUMP_FIX_BUFFER)				\
-{ NewFree = To;							\
-  Fixup = Fixes;						\
-  return false;							\
-}								\
-*--Fixes = *Old;						\
-*--Fixes = C_To_Scheme(Old);					\
-Extra_Code;							\
+#define Fasdump_Setup_Pointer(Extra_Code, BH_Code)			\
+BH_Code;								\
+									\
+/* It must be transported to New Space */				\
+									\
+New_Address = (Make_Broken_Heart(C_To_Scheme(To)));			\
+if ((Fixes - To) < FASDUMP_FIX_BUFFER)					\
+{									\
+  NewFree = To;								\
+  Fixup = Fixes;							\
+  return (PRIM_INTERRUPT);						\
+}									\
+*--Fixes = *Old;							\
+*--Fixes = C_To_Scheme(Old);						\
+Extra_Code;								\
 continue
 
 /* Undefine Symbols */

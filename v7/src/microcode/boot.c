@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.43 1987/12/04 22:14:06 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.44 1988/02/06 20:38:24 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -53,7 +53,9 @@ MIT in each case. */
 	  {-utabmd utab-filename} or {-utab utab-filename}
           {other arguments ignored by the core microcode}
 
-   with filespec either {-band band-name} or {{-}fasl file-name}
+   with filespec either {-band band-name} or {-fasl file-name} or
+   -compiler.
+
    arguments are optional, numbers are in 1K units.  Default values
    are given above.  The arguments in the long for may appear in any
    order on the command line.  The allocation arguments (heap, stack,
@@ -167,58 +169,27 @@ Def_Number(key, nargs, args, def)
 extern Boolean Was_Scheme_Dumped;
 Boolean Was_Scheme_Dumped = false;
 
-/* Exit is done in a different way on some operating systems (eg. VMS)  */
+int Saved_Heap_Size, Saved_Stack_Size, Saved_Constant_Size;
 
-Exit_Scheme_Declarations;
-
-forward void Start_Scheme();
-extern void Clear_Memory(), Setup_Memory(), Reset_Memory();
-
-/*
-  THE MAIN PROGRAM
- */
-
-main_type
-main(argc, argv)
-     int argc;
-     char **argv;
+void
+usage(error_string)
+     char *error_string;
 {
-  Boolean FASL_It;
-  char *File_Name;
-  int Saved_Heap_Size, Saved_Stack_Size, Saved_Constant_Size;
-  extern void compiler_initialize();
-
-  FASL_It = false;
-  File_Name = NULL;
-  Saved_argc = argc;
-  Saved_argv = argv;
-  Init_Exit_Scheme();
-
-  if (argc > 2)
-  {
-    int position;
-
-    if (((position = Parse_Option("-band", argc, argv, true))
-	 != NOT_THERE) &&
-	(position != (argc-1)))
-    {
-      File_Name = argv[position+1];
-    }
-    else if ((((position = Parse_Option("-fasl", argc, argv, true))
-	      != NOT_THERE) ||
-	      ((position = Parse_Option("fasl", argc, argv, true))
-	      != NOT_THERE)) &&
-	     (position != (argc-1)))
-    {
-      File_Name = argv[position + 1];
-      FASL_It = true;
-    }
-  }
-  else if ((argc == 2) && (argv[1][0] != '-'))
-  {
-    File_Name = argv[1];
-  }
+  fprintf(stderr, "%s: %s\n\n", Saved_argv[0], error_string);
+  exit(1);
+}
 
+void
+find_image_parameters(file_name, cold_load_p, supplied_p)
+     char **file_name;
+     Boolean *cold_load_p, *supplied_p;
+{
+  Boolean found_p;
+  int position;
+
+  *cold_load_p = false;
+  *supplied_p = false;
+  *file_name = NULL;
   if (!Was_Scheme_Dumped)
   {
     Heap_Size = HEAP_SIZE;
@@ -231,68 +202,133 @@ main(argc, argv)
     Saved_Stack_Size = Stack_Size;
     Saved_Constant_Size = Constant_Size;
   }
+
+  if ((position = Parse_Option("-band", Saved_argc, Saved_argv, true)) !=
+      NOT_THERE)
+  {
+    if (position == (Saved_argc - 1))
+    {
+      usage("-band option requires a file name");
+    }
+    if (*supplied_p)
+    {
+      usage("Multiple image parameters specified!");
+    }
+    *supplied_p = true;
+    *file_name = Saved_argv[position + 1];
+  }
 
-  Heap_Size = Def_Number("-heap", argc, argv, Heap_Size);
-  Stack_Size = Def_Number("-stack", argc, argv, Stack_Size);
-  Constant_Size = Def_Number("-constant", argc, argv, Constant_Size);
+  if ((position = Parse_Option("-fasl", Saved_argc, Saved_argv, true)) !=
+      NOT_THERE)
+  {
+    if (position == (Saved_argc - 1))
+    {
+      usage("-fasl option requires a file name");
+    }
+    if (*supplied_p)
+    {
+      usage("Multiple image parameters specified!");
+    }
+    *supplied_p = true;
+    *cold_load_p = true;
+    *file_name = Saved_argv[position + 1];
+  }
+
+  if ((position = Parse_Option("-compiler", Saved_argc, Saved_argv, true)) !=
+      NOT_THERE)
+  {
+    if (*supplied_p)
+    {
+      usage("Multiple image parameters specified!");
+    }
+    *supplied_p = true;
+    *file_name = DEFAULT_COMPILER_BAND;
+    Heap_Size = COMPILER_HEAP_SIZE;
+    Stack_Size = COMPILER_STACK_SIZE;
+    Constant_Size = COMPILER_CONSTANT_SIZE;
+  }
+
+  if (!*supplied_p)
+  {
+    *file_name = DEFAULT_BAND_NAME;
+  }
+
+  Heap_Size =
+    Def_Number("-heap", Saved_argc, Saved_argv, Heap_Size);
+  Stack_Size =
+    Def_Number("-stack", Saved_argc, Saved_argv, Stack_Size);
+  Constant_Size =
+    Def_Number("-constant", Saved_argc, Saved_argv, Constant_Size);
+
+  if (Was_Scheme_Dumped &&
+      ((Heap_Size != Saved_Heap_Size)	||
+       (Stack_Size != Saved_Stack_Size)	||
+       (Constant_Size != Saved_Constant_Size)))
+  {
+    fprintf(stderr,
+	    "%s warning: Allocation parameters ignored.\n",
+	    Saved_argv[0]);
+    Heap_Size = Saved_Heap_Size;
+    Stack_Size = Saved_Stack_Size;
+    Constant_Size = Saved_Constant_Size;
+  }
+
+  return;
+}
+
+/* Exit is done in a different way on some operating systems (eg. VMS)  */
+
+Exit_Scheme_Declarations;
+
+forward void Start_Scheme();
+extern void Clear_Memory(), Setup_Memory(), Reset_Memory();
+
+/*
+  THE MAIN PROGRAM
+ */
+
+main_type
+main(argc, argv)
+     int argc;
+     char **argv;
+{
+  Boolean cold_load_p, supplied_p;
+  char *file_name;
+  extern void compiler_initialize();
+
+  Init_Exit_Scheme();
+
+  Saved_argc = argc;
+  Saved_argv = argv;
+  find_image_parameters(&file_name, &cold_load_p, &supplied_p);
 
   if (Was_Scheme_Dumped)
   {
-    Boolean warned;
-
-    warned = false;
-    printf("Executable Scheme");
-    if ((Heap_Size != Saved_Heap_Size)		||
-	(Stack_Size != Saved_Stack_Size)	||
-	(Constant_Size != Saved_Constant_Size))
+    printf("Executable Scheme Image\n");
+    if (!supplied_p)
     {
-      printf(".\n");
-      fprintf(stderr,
-"Warning: Allocation parameters (heap, stack, and constant) ignored.\n");
-      Heap_Size = Saved_Heap_Size;
-      Stack_Size = Saved_Stack_Size;
-      Constant_Size = Saved_Constant_Size;
-      warned = true;
-    }
-    if (File_Name == NULL)
-    {
-      if (!warned)
-      {
-	printf("; ");
-      }
-      printf("Microcode Version %d.%d\n", VERSION, SUBVERSION);
+      printf("Scheme Microcode Version %d.%d\n", VERSION, SUBVERSION);
       OS_Init(true);
       Enter_Interpreter();
     }
-
-/* main continues on the next page */
-
-/* main, continued */
-
     else
     {
-      if (!warned)
-      {
-	printf(".\n");
-      }
       Clear_Memory(blocks(Heap_Size), blocks(Stack_Size),
 		   blocks(Constant_Size));
       /* We are reloading from scratch anyway. */
       Was_Scheme_Dumped = false;
-      Start_Scheme((FASL_It ? BOOT_FASLOAD : BOOT_LOAD_BAND), File_Name);
+      Start_Scheme((cold_load_p ? BOOT_FASLOAD : BOOT_LOAD_BAND),
+		   file_name);
     }
   }
 
-  if (File_Name == NULL)
-  {
-    File_Name = DEFAULT_BAND_NAME;
-  }
   Command_Line_Hook();
 	  
   Setup_Memory(blocks(Heap_Size), blocks(Stack_Size),
 	       blocks(Constant_Size));
-  compiler_initialize((long) FASL_It);
-  Start_Scheme((FASL_It ? BOOT_FASLOAD : BOOT_LOAD_BAND), File_Name);
+  compiler_initialize((long) cold_load_p);
+  Start_Scheme((cold_load_p ? BOOT_FASLOAD : BOOT_LOAD_BAND),
+	       file_name);
 }
 
 #define Default_Init_Fixed_Objects(Fixed_Objects)			\
@@ -503,6 +539,7 @@ Microcode_Termination(code)
 {
   extern char *Term_Messages[];
   Pointer Term_Vector;
+  Boolean abnormal_p;
   long value;
 
   if ((code != TERM_HALT) &&
@@ -555,19 +592,30 @@ Microcode_Termination(code)
   {
     case TERM_HALT:
       value = 0;
+      abnormal_p = false;
       break;
 
     case TERM_END_OF_COMPUTATION:
       Print_Expression(Val, "Final result");
       putchar('\n');
       value = 0;
+      abnormal_p = false;
       break;
 
+    case TERM_TRAP:
+      /* This claims not to be abnormal so that the user will
+	 not be asked a second time about dumping core.
+       */
+      value = 1;
+      abnormal_p = false;
+      break;
+      
     case TERM_NO_ERROR_HANDLER:
       /* This does not print a back trace because it was printed before
 	 getting here irrelevant of the state of Trace_On_Error.
        */
       value = 1;
+      abnormal_p = true;
       break;
 
     case TERM_NON_EXISTENT_CONTINUATION:
@@ -585,6 +633,7 @@ Microcode_Termination(code)
     default:
     normal_termination:
       value = 1;
+      abnormal_p = true;
       if (Trace_On_Error)
       {
 	printf("\n\n**** Stack trace ****\n\n");
@@ -593,7 +642,7 @@ Microcode_Termination(code)
       break;
   }
   OS_Flush_Output_Buffer();
-  OS_Quit();
+  OS_Quit(abnormal_p);
   Reset_Memory();
   Exit_Hook();
   Exit_Scheme(value);

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/ppband.c,v 9.29 1987/11/17 08:04:37 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/ppband.c,v 9.30 1988/02/06 20:37:50 jinx Exp $
  *
  * Dumps Scheme FASL in user-readable form .
  */
@@ -80,6 +80,7 @@ Close_Dump_File()
 }
 
 #define Reloc_or_Load_Debug true
+#define INHIBIT_COMPILED_VERSION_CHECK
 
 #include "fasl.h"
 #include "load.c"
@@ -366,14 +367,14 @@ main(argc, argv)
 
   if (argc == 1)
   {
-    if (!Read_Header())
+    if (Read_Header() != FASL_FILE_FINE)
     {
       fprintf(stderr,
 	      "%s: Input does not appear to be in correct FASL format.\n",
 	      argv[0]);
       exit(1);
     }
-    printf("Dumped object at 0x%lx\n", Relocate(Dumped_Object));
+    printf("Dumped object (relocated) at 0x%lx\n", Relocate(Dumped_Object));
   }
   else
   {
@@ -382,7 +383,7 @@ main(argc, argv)
     sscanf(argv[1], "%x", &Heap_Base);
     sscanf(argv[2], "%x", &Const_Base);
     sscanf(argv[3], "%d", &Heap_Count);
-    printf("Heap Base = 0x%08lx; Constant Base = 0x%08lx; Heap Count = %ld\n",
+    printf("Heap Base = 0x%lx; Constant Base = 0x%lx; Heap Count = %ld\n",
 	   Heap_Base, Const_Base, Heap_Count);
   }    
 

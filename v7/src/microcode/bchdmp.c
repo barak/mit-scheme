@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.38 1987/12/04 22:13:25 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.39 1988/02/06 20:38:10 jinx Exp $ */
 
 /* bchgcl, bchmmg, bchpur, and bchdmp can replace gcloop, memmag,
    purify, and fasdump, respectively, to provide garbage collection
@@ -59,6 +59,7 @@ static Pointer fixup_buffer[GC_DISK_BUFFER_SIZE];
 static Pointer *fixup_buffer_end = &fixup_buffer[GC_DISK_BUFFER_SIZE];
 static Pointer *fixup;
 static fixup_count = 0;
+static Boolean compiled_code_present_p;
 
 /* Utility macros. */
 
@@ -81,7 +82,9 @@ static fixup_count = 0;
   {									\
     To = dump_and_reset_free_buffer((To - free_buffer_top), &success);	\
     if (!success)							\
-      return false;							\
+    {									\
+      return (PRIM_INTERRUPT);						\
+    }									\
   }									\
 }
 
@@ -109,7 +112,7 @@ static fixup_count = 0;
 {									\
   if ((fixup == fixup_buffer) && (!reset_fixes()))			\
   {									\
-    return false;							\
+    return (PRIM_INTERRUPT);						\
   }									\
   *--fixup = contents;							\
   *--fixup = ((Pointer) location);					\
@@ -192,7 +195,7 @@ reset_fixes()
 
 /* A copy of GCLoop, with minor modifications. */
 
-Boolean
+long
 dumploop(Scan, To_ptr, To_Address_ptr)
      fast Pointer *Scan;
      Pointer **To_ptr, **To_Address_ptr;
@@ -229,7 +232,7 @@ dumploop(Scan, To_ptr, To_Address_ptr)
 	Scan = (dump_and_reload_scan_buffer(0, &success) - 1);
 	if (!success)
 	{
-	  return false;
+	  return (PRIM_INTERRUPT);
 	}
 	continue;
 
@@ -254,7 +257,7 @@ dumploop(Scan, To_ptr, To_Address_ptr)
 		   (overflow % GC_DISK_BUFFER_SIZE)) - 1);
 	  if (!success)
 	  {
-	    return false;
+	    return (PRIM_INTERRUPT);
 	  }
 	  break;
 	}
@@ -269,6 +272,7 @@ dumploop(Scan, To_ptr, To_Address_ptr)
 	break;
 
       case_compiled_entry_point:
+	compiled_code_present_p = true;
 	Old = Get_Pointer(Temp);
 	Compiled_BH(true, continue);
 	{
@@ -279,10 +283,11 @@ dumploop(Scan, To_ptr, To_Address_ptr)
 	  copy_vector(&success);
 	  if (!success)
 	  {
-	    return false;
+	    return (PRIM_INTERRUPT);
 	  }
 	  *Saved_Old = New_Address;
-	  *Scan = Relocate_Compiled(Temp, Get_Pointer(New_Address), Saved_Old);
+	  *Scan = Relocate_Compiled(Temp, Get_Pointer(New_Address),
+				    Saved_Old);
 	  continue;
 	}
 
@@ -343,15 +348,20 @@ dumploop(Scan, To_ptr, To_Address_ptr)
       case TC_BIG_FLONUM:
 	/* Fall through */
 #endif
-      case_Vector:
+      case TC_COMPILED_CODE_BLOCK:
+      case_Purify_Vector:
 	fasdump_normal_setup();
       Move_Vector:
 	copy_vector(&success);
 	if (!success)
 	{
-	  return false;
+	  return (PRIM_INTERRUPT);
 	}
 	fasdump_normal_end();
+
+      case TC_ENVIRONMENT:
+	/* Make fasdump fail */
+	return (ERR_FASDUMP_ENVIRONMENT);
 
       case TC_FUTURE:
 	fasdump_normal_setup();
@@ -373,7 +383,7 @@ dumploop(Scan, To_ptr, To_Address_ptr)
 end_dumploop:
   *To_ptr = To;
   *To_Address_ptr = To_Address;
-  return (true);
+  return (PRIM_DONE);
 }
 
 /* (PRIMITIVE-FASDUMP object-to-dump file-name flag)
@@ -391,7 +401,7 @@ end_dumploop:
 DEFINE_PRIMITIVE("PRIMITIVE-FASDUMP", Prim_Prim_Fasdump, 3)
 {
   Boolean success;
-  long length, hlength, tlength, tsize;
+  long value, length, hlength, tlength, tsize;
   Pointer *dumped_object, *free_buffer;
   Pointer *table_start, *table_end, *table_top;
   Pointer header[FASL_HEADER_LENGTH];
@@ -406,6 +416,7 @@ DEFINE_PRIMITIVE("PRIMITIVE-FASDUMP", Prim_Prim_Fasdump, 3)
     Primitive_Error(ERR_ARG_2_BAD_RANGE);
   }
 
+  compiled_code_present_p = false;
   success = true;
   real_gc_file = gc_file;
   gc_file = dump_file;
@@ -432,11 +443,19 @@ DEFINE_PRIMITIVE("PRIMITIVE-FASDUMP", Prim_Prim_Fasdump, 3)
   dumped_object = Free;
   Free += 1;
 
-  if (!dumploop((initialize_scan_buffer() + FASL_HEADER_LENGTH),
-		&free_buffer, &Free))
+  value = dumploop((initialize_scan_buffer() + FASL_HEADER_LENGTH),
+		   &free_buffer, &Free);
+  if (value != PRIM_DONE)
   {
     fasdump_exit(0);
-    PRIMITIVE_RETURN(NIL);
+    if (value == PRIM_INTERRUPT)
+    {
+      PRIMITIVE_RETURN(NIL);
+    }
+    else
+    {
+      Primitive_Error(value);
+    }
   }
   end_transport(&success);
   if (!success)
@@ -467,7 +486,8 @@ DEFINE_PRIMITIVE("PRIMITIVE-FASDUMP", Prim_Prim_Fasdump, 3)
 
   hlength = (sizeof(Pointer) * FASL_HEADER_LENGTH);
   prepare_dump_header(header, dumped_object, length, dumped_object,
-		      0, Constant_Space, tlength, tsize);
+		      0, Constant_Space, tlength, tsize,
+		      compiled_code_present_p, false);
   if ((lseek(gc_file, 0, 0) == -1) ||
       (write(gc_file, ((char *) &header[0]), hlength) != hlength))
   {
@@ -535,7 +555,8 @@ DEFINE_PRIMITIVE("DUMP-BAND", Prim_Band_Dump, 2)
 			((long) (Free_Constant - Constant_Space)),
 			Constant_Space,
 			table_start, table_length,
-			((long) (table_end - table_start)));
+			((long) (table_end - table_start)),
+			(compiler_utilities != NIL), true);
   }
   /* The and is short-circuit, so it must be done in this order. */
   result = (Close_Dump_File() && result);

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.40 1987/12/13 21:59:30 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.41 1988/02/06 20:41:41 jinx Exp $
 
 This file defines the storage for global variables for
 the Scheme Interpreter. */
@@ -151,240 +151,21 @@ char *CONT_PRINT_EXPR_MESSAGE   =   "Save_Cont, expression";
 char *RESTORE_CONT_RETURN_MESSAGE = "Restore_Cont, return code";
 char *RESTORE_CONT_EXPR_MESSAGE =   "Restore_Cont, expression";
 
-static char No_Name[] = "";
-
-char *Return_Names[] = {
-/* 0x00 */		"END_OF_COMPUTATION",
-/* 0x01 */		"JOIN_STACKLETS",
-/* 0x02 */		"RESTORE_CONTINUATION",
-/* 0x03 */		"INTERNAL_APPLY",
-/* 0x04 */		"BAD_INTERRUPT_CONTINUE",
-/* 0x05 */		"RESTORE_HISTORY",
-/* 0x06 */		"INVOKE_STACK_THREAD",
-/* 0x07 */		"RESTART_EXECUTION",
-/* 0x08 */		"EXECUTE_ASSIGNMENT_FINISH",
-/* 0x09 */		"EXECUTE_DEFINITION_FINISH",
-/* 0x0A */		"EXECUTE_ACCESS_FINISH",
-/* 0x0b */		"EXECUTE_IN_PACKAGE_CONTINUE",
-/* 0x0C */		"SEQ_2_DO_2",
-/* 0x0d */		"SEQ_3_DO_2",
-/* 0x0E */		"SEQ_3_DO_3",
-/* 0x0f */		"CONDITIONAL_DECIDE",
-/* 0x10 */		"DISJUNCTION_DECIDE",
-/* 0x11 */		"COMB_1_PROCEDURE",
-/* 0x12 */		"COMB_APPLY_FUNCTION",
-/* 0x13 */		"COMB_2_FIRST_OPERAND",
-/* 0x14 */		"COMB_2_PROCEDURE",
-/* 0x15 */		"COMB_SAVE_VALUE",
-/* 0x16 */		"PCOMB1_APPLY",
-/* 0x17 */		"PCOMB2_DO_1",
-/* 0x18 */		"PCOMB2_APPLY",
-/* 0x19 */		"PCOMB3_DO_2",
-/* 0x1A */		"PCOMB3_DO_1",
-/* 0x1B */		"PCOMB3_APPLY",
-/* 0x1C */		"SNAP_NEED_THUNK",
-/* 0x1D */		No_Name,
-/* 0x1E */		No_Name,
-/* 0x1F */		No_Name,
-/* 0x20 */		"NORMAL_GC_DONE",
-/* 0x21 */		"COMPLETE_GC_DONE",
-/* 0x22 */		"PURIFY_GC_1",
-/* 0x23 */		"PURIFY_GC_2",
-/* 0x24 */		"AFTER_MEMORY_UPDATE",
-/* 0x25 */		"RESTARTABLE_EXIT",
-/* 0x26 */		No_Name,
-/* 0x27 */		No_Name,
-
-/* 0x28 */		No_Name,
-/* 0x29 */		No_Name,
-/* 0x2A */		"RETURN_TRAP_POINT",
-/* 0x2B */		"RESTORE_STEPPER",
-/* 0x2C */		"RESTORE_TO_STATE_POINT",
-/* 0x2D */		"MOVE_TO_ADJACENT_POINT",
-/* 0x2E */		"RESTORE_VALUE",
-/* 0x2F */		"RESTORE_DONT_COPY_HISTORY",
-/* 0x30 */		No_Name,
-/* 0x31 */		No_Name,
-/* 0x32 */		No_Name,
-/* 0x33 */		No_Name,
-/* 0x34 */		No_Name,
-/* 0x35 */		No_Name,
-/* 0x36 */		No_Name,
-/* 0x37 */		No_Name,
-/* 0x38 */		No_Name,
-/* 0x39 */		No_Name,
-/* 0x3A */		No_Name,
-/* 0x3B */		No_Name,
-/* 0x3C */		No_Name,
-/* 0x3D */		No_Name,
-/* 0x3E */		No_Name,
-/* 0x3F */		No_Name,
-/* 0x40 */		"POP_RETURN_ERROR",
-/* 0x41 */		"EVAL_ERROR",
-/* 0x42 */		"REPEAT_PRIMITIVE",
-/* 0x43 */		"COMPILER_INTERRUPT_RESTART",
-/* 0x44 */		No_Name,
-/* 0x45 */		"RESTORE_INT_MASK",
-/* 0x46 */		"HALT",
-/* 0x47 */		"FINISH_GLOBAL_INT",
-/* 0x48 */		"REPEAT_DISPATCH",
-/* 0x49 */		"GC_CHECK",
-/* 0x4A */		"RESTORE_FLUIDS",
-/* 0x4B */		"COMPILER_LOOKUP_APPLY_RESTART",
-/* 0x4C */		"COMPILER_ACCESS_RESTART",
-/* 0x4D */		"COMPILER_UNASSIGNED_P_RESTART",
-/* 0x4E */		"COMPILER_UNBOUND_P_RESTART",
-/* 0x4F */		"COMPILER_DEFINITION_RESTART",
-/* 0x50 */		"COMPILER_LEXPR_GC_RESTART",
-/* 0x51 */		"COMPILER_SAFE_REFERENCE_RESTART",
-/* 0x52 */		"COMPILER_CACHE_LOOKUP_RESTART",
-/* 0x53 */		"COMPILER_LOOKUP_TRAP_RESTART",
-/* 0x54 */		"COMPILER_ASSIGNMENT_TRAP_RESTART",
-/* 0x55 */		"COMPILER_CACHE_OPERATOR_RESTART",
-/* 0x56 */		"COMPILER_OPERATOR_REFERENCE_TRAP_RESTART",
-/* 0x57 */		"COMPILER_CACHE_REFERENCE_APPLY_RESTART",
-/* 0x58 */		"COMPILER_SAFE_REFERENCE_TRAP_RESTART",
-/* 0x59 */		"COMPILER_UNASSIGNED_P_TRAP_RESTART",
-/* 0x5A */		"COMPILER_CACHE_ASSIGNMENT_RESTART"
-};
-
-#if (MAX_RETURN_CODE != 0x5A)
-/* Cause an error */
-#include "Inconsistency: returns.h and storage.c (Return code table)"
-#endif
+/* Interpreter code name and message tables */
 
 long MAX_RETURN = MAX_RETURN_CODE;
-
+
+extern char *Return_Names[];
+char *Return_Names[] = RETURN_NAME_TABLE;	/* in returns.h */
+
+extern char *Abort_Names[];
+char *Abort_Names[] = ABORT_NAME_TABLE;		/* in const.h */
+
 extern char *Error_Names[];
+char *Error_Names[] = ERROR_NAME_TABLE;		/* in errors.h */
 
-char *Error_Names[] = {
-/* 0x00 */		"BAD-ERROR-CODE",
-/* 0x01 */		"UNBOUND-VARIABLE",
-/* 0x02 */		"UNASSIGNED-VARIABLE",
-/* 0x03 */		"INAPPLICABLE-OBJECT",
-/* 0x04 */		"OUT-OF-HASH-NUMBERS",
-/* 0x05 */		"ENVIRONMENT-CHAIN-TOO-DEEP",
-/* 0x06 */		"BAD-FRAME",
-/* 0x07 */		"BROKEN-COMPILED-VARIABLE",
-/* 0x08 */		"UNDEFINED-USER-TYPE",
-/* 0x09 */		"UNDEFINED-PRIMITIVE",
-/* 0x0A */		"EXTERNAL-RETURN",
-/* 0x0B */		"EXECUTE-MANIFEST-VECTOR",
-/* 0x0C */		"WRONG-NUMBER-OF-ARGUMENTS",
-/* 0x0D */		"ARG-1-WRONG-TYPE",
-/* 0x0E */		"ARG-2-WRONG-TYPE",
-/* 0x0F */		"ARG-3-WRONG-TYPE",
-/* 0x10 */		"ARG-1-BAD-RANGE",
-/* 0x11 */		"ARG-2-BAD-RANGE",
-/* 0x12 */		"ARG-3-BAD-RANGE",
-/* 0x13 */		"BAD-COMBINATION",
-/* 0x14 */		"FASDUMP-OVERFLOW",
-/* 0x15 */		"BAD-INTERRUPT-CODE",
-/* 0x16 */		"NO-ERRORS",
-/* 0x17 */		"FASL-FILE-TOO-BIG",
-/* 0x18 */		"FASL-FILE-BAD-DATA",
-/* 0x19 */		"IMPURIFY-OUT-OF-SPACE",
-/* 0x1A */		"WRITE-INTO-PURE-SPACE",
-/* 0x1B */		"LOSING-SPARE-HEAP",
-/* 0x1C */		"NO-HASH-TABLE",
-/* 0x1D */		"BAD-SET",
-/* 0x1E */		"ARG-1-FAILED-COERCION",
-/* 0x1F */		"ARG-2-FAILED-COERCION",
-/* 0x20 */		"OUT-OF-FILE-HANDLES",
-/* 0x21 */		"SHELL-DIED",
-/* 0x22 */		"ARG-4-BAD-RANGE",
-/* 0x23 */		"ARG-5-BAD-RANGE",
-/* 0x24 */		"ARG-6-BAD-RANGE",
-/* 0x25 */		"ARG-7-BAD-RANGE",
-/* 0x26 */		"ARG-8-BAD-RANGE",
-/* 0x27 */		"ARG-9-BAD-RANGE",
-/* 0x28 */		"ARG-10-BAD-RANGE",
-/* 0x29 */		"ARG-4-WRONG-TYPE",
-
-/* 0x2A */		"ARG-5-WRONG-TYPE",
-/* 0x2B */		"ARG-6-WRONG-TYPE",
-/* 0x2C */		"ARG-7-WRONG-TYPE",
-/* 0x2D */		"ARG-8-WRONG-TYPE",
-/* 0x2E */		"ARG-9-WRONG-TYPE",
-/* 0x2F */		"ARG-10-WRONG-TYPE",
-/* 0x30 */		"INAPPLICABLE-CONTINUATION",
-/* 0x31 */		"COMPILED-CODE-ERROR",
-/* 0x32 */		"FLOATING-OVERFLOW",
-/* 0x33 */		"UNIMPLEMENTED-PRIMITIVE",
-/* 0x34 */		"ILLEGAL-REFERENCE-TRAP",
-/* 0x35 */		"BROKEN-VARIABLE-CACHE",
-/* 0x36 */		"WRONG-ARITY-PRIMITIVES",
-/* 0x37 */		"IO-ERROR"
-};
-
-#if (MAX_ERROR != 0x37)
-/* Cause an error */
-#include "Inconsistency: errors.h and storage.c (Error code table)"
-#endif
-
 extern char *Term_Names[];
+char *Term_Names[] = TERM_NAME_TABLE;		/* in errors.h */
 
-char *Term_Names[] = {
-/* 0x00 */		"HALT",
-/* 0x01 */		"DISK-RESTORE",
-/* 0x02 */		"BROKEN-HEART",
-/* 0x03 */		"NON-POINTER-RELOCATION",
-/* 0x04 */		"BAD-ROOT",
-/* 0x05 */		"NON-EXISTENT-CONTINUATION",
-/* 0x06 */		"BAD-STACK",
-/* 0x07 */		"STACK-OVERFLOW",
-/* 0x08 */		"STACK-ALLOCATION-FAILED",
-/* 0x09 */		"NO-ERROR-HANDLER",
-/* 0x0A */		"NO-INTERRUPT-HANDLER",
-/* 0x0B */		"UNIMPLEMENTED-CONTINUATION",
-/* 0x0C */		"EXIT",
-/* 0x0D */		"BAD-PRIMITIVE-DURING-ERROR",
-/* 0x0E */		"EOF",
-/* 0x0F */		"BAD-PRIMITIVE",
-/* 0x10 */		"HANDLER",
-/* 0x11 */		"END-OF-COMPUTATION",
-/* 0x12 */		"INVALID-TYPE-CODE",
-/* 0x13 */		"COMPILER-DEATH",
-/* 0x14 */		"GC-OUT-OF-SPACE",
-/* 0x15 */		"NO-SPACE",
-/* 0x16 */		"SIGNAL",
-/* 0x17 */		"TOUCH",
-/* 0x18 */		"SAVE-AND-EXIT"
-};
-
-/* If you change this table, change the Term_Messages table below as well. */
-
-#if (MAX_TERMINATION != 0x18)
-/* Cause an error */
-#include "Inconsistency: errors.h and storage.c (Termination code table)"
-#endif
-
 extern char *Term_Messages[];
-
-char *Term_Messages[] = {
-/* 0x00 */		"Moriturus te saluto",
-/* 0x01 */		"Unrecoverable error while loading a band",
-/* 0x02 */		"Broken heart encountered",
-/* 0x03 */		"Non pointer relocation",
-/* 0x04 */		"Cannot restore control state from band",
-/* 0x05 */		"Nonexistent return code",
-/* 0x06 */		"Control stack messed up",
-/* 0x07 */		"Stack overflow: Maximum recursion depth exceeded",
-/* 0x08 */		"Not enough space for stack!",
-/* 0x09 */		"No error handler",
-/* 0x0A */		"No interrupt handler",
-/* 0x0B */		"Unimplemented return code",
-/* 0x0C */		"Inconsistency detected",
-/* 0x0D */		"Error during unknown primitive",
-/* 0x0E */		"End of input stream reached",
-/* 0x0F */		"Bad primitive invoked",
-/* 0x10 */		"Termination handler returned",
-/* 0x11 */		"End of computation",
-/* 0x12 */		"Unknown type encountered",
-/* 0x13 */		"Mismatch between compiled code and compiled code support",
-/* 0x14 */		"Out of space after garbage collection",
-/* 0x15 */		"Out of memory: Available memory exceeded",
-/* 0x16 */		"Unhandled signal received",
-/* 0x17 */		"Touch without futures support",
-/* 0x18 */		"Halt requested by external source"
-};
+char *Term_Messages[] = TERM_MESSAGE_TABLE;	/* in errors.h */

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/errors.h,v 9.28 1987/12/13 21:59:11 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/errors.h,v 9.29 1988/02/06 20:40:00 jinx Exp $
  *
  * Error and termination code declarations.
  *
@@ -38,7 +38,7 @@ MIT in each case. */
 
 /* All error and termination codes must be positive
  * to allow primitives to return either an error code
- * or a primitive flow control value (see CONST.H)
+ * or a primitive flow control value (see const.h)
  */
 
 #define ERR_BAD_ERROR_CODE			0x00
@@ -101,13 +101,80 @@ MIT in each case. */
 #define ERR_BROKEN_VARIABLE_CACHE		0x35
 #define ERR_WRONG_ARITY_PRIMITIVES		0x36
 #define ERR_IO_ERROR				0x37
+#define ERR_FASDUMP_ENVIRONMENT			0x38
+#define ERR_FASLOAD_BAND			0x39
+#define ERR_FASLOAD_COMPILED_MISMATCH		0x3A
 
 /*
-  If you add any error codes here, remember to add them to
-  storage.c and utabmd.scm as well.
+  If you add any error codes here, add them to
+  the table below and to utabmd.scm as well.
  */
 
-#define MAX_ERROR				0x37
+#define MAX_ERROR				0x3A
+
+#define ERROR_NAME_TABLE						\
+{									\
+/* 0x00 */		"BAD-ERROR-CODE",				\
+/* 0x01 */		"UNBOUND-VARIABLE",				\
+/* 0x02 */		"UNASSIGNED-VARIABLE",				\
+/* 0x03 */		"INAPPLICABLE-OBJECT",				\
+/* 0x04 */		"OUT-OF-HASH-NUMBERS",				\
+/* 0x05 */		"ENVIRONMENT-CHAIN-TOO-DEEP",			\
+/* 0x06 */		"BAD-FRAME",					\
+/* 0x07 */		"BROKEN-COMPILED-VARIABLE",			\
+/* 0x08 */		"UNDEFINED-USER-TYPE",				\
+/* 0x09 */		"UNDEFINED-PRIMITIVE",				\
+/* 0x0A */		"EXTERNAL-RETURN",				\
+/* 0x0B */		"EXECUTE-MANIFEST-VECTOR",			\
+/* 0x0C */		"WRONG-NUMBER-OF-ARGUMENTS",			\
+/* 0x0D */		"ARG-1-WRONG-TYPE",				\
+/* 0x0E */		"ARG-2-WRONG-TYPE",				\
+/* 0x0F */		"ARG-3-WRONG-TYPE",				\
+/* 0x10 */		"ARG-1-BAD-RANGE",				\
+/* 0x11 */		"ARG-2-BAD-RANGE",				\
+/* 0x12 */		"ARG-3-BAD-RANGE",				\
+/* 0x13 */		"BAD-COMBINATION",				\
+/* 0x14 */		"FASDUMP-OVERFLOW",				\
+/* 0x15 */		"BAD-INTERRUPT-CODE",				\
+/* 0x16 */		"NO-ERRORS",					\
+/* 0x17 */		"FASL-FILE-TOO-BIG",				\
+/* 0x18 */		"FASL-FILE-BAD-DATA",				\
+/* 0x19 */		"IMPURIFY-OUT-OF-SPACE",			\
+/* 0x1A */		"WRITE-INTO-PURE-SPACE",			\
+/* 0x1B */		"LOSING-SPARE-HEAP",				\
+/* 0x1C */		"NO-HASH-TABLE",				\
+/* 0x1D */		"BAD-SET",					\
+/* 0x1E */		"ARG-1-FAILED-COERCION",			\
+/* 0x1F */		"ARG-2-FAILED-COERCION",			\
+/* 0x20 */		"OUT-OF-FILE-HANDLES",				\
+/* 0x21 */		"SHELL-DIED",					\
+/* 0x22 */		"ARG-4-BAD-RANGE",				\
+/* 0x23 */		"ARG-5-BAD-RANGE",				\
+/* 0x24 */		"ARG-6-BAD-RANGE",				\
+/* 0x25 */		"ARG-7-BAD-RANGE",				\
+/* 0x26 */		"ARG-8-BAD-RANGE",				\
+/* 0x27 */		"ARG-9-BAD-RANGE",				\
+/* 0x28 */		"ARG-10-BAD-RANGE",				\
+/* 0x29 */		"ARG-4-WRONG-TYPE",				\
+									\
+/* 0x2A */		"ARG-5-WRONG-TYPE",				\
+/* 0x2B */		"ARG-6-WRONG-TYPE",				\
+/* 0x2C */		"ARG-7-WRONG-TYPE",				\
+/* 0x2D */		"ARG-8-WRONG-TYPE",				\
+/* 0x2E */		"ARG-9-WRONG-TYPE",				\
+/* 0x2F */		"ARG-10-WRONG-TYPE",				\
+/* 0x30 */		"INAPPLICABLE-CONTINUATION",			\
+/* 0x31 */		"COMPILED-CODE-ERROR",				\
+/* 0x32 */		"FLOATING-OVERFLOW",				\
+/* 0x33 */		"UNIMPLEMENTED-PRIMITIVE",			\
+/* 0x34 */		"ILLEGAL-REFERENCE-TRAP",			\
+/* 0x35 */		"BROKEN-VARIABLE-CACHE",			\
+/* 0x36 */		"WRONG-ARITY-PRIMITIVES",			\
+/* 0x37 */		"IO-ERROR",					\
+/* 0x38 */		"FASDUMP-ENVIRONMENT",				\
+/* 0x39 */		"FASLOAD-BAND",					\
+/* 0x40 */		"FASLOAD-COMPILED-MISMATCH"			\
+}
 
 /* Termination codes: the interpreter halts on these */
 
@@ -136,10 +203,71 @@ MIT in each case. */
 #define TERM_SIGNAL				0x16
 #define TERM_TOUCH				0x17
 #define TERM_SAVE_AND_EXIT			0x18
+#define TERM_TRAP				0x19
 
 /*
-  If you add any termination codes here, remember to add them to
-  storage.c as well.
+  If you add any termination codes here, add them to
+  the tables below as well!
  */
 
-#define MAX_TERMINATION				0x18
+#define MAX_TERMINATION				0x19
+
+#define TERM_NAME_TABLE							\
+{									\
+/* 0x00 */		"HALT",						\
+/* 0x01 */		"DISK-RESTORE",					\
+/* 0x02 */		"BROKEN-HEART",					\
+/* 0x03 */		"NON-POINTER-RELOCATION",			\
+/* 0x04 */		"BAD-ROOT",					\
+/* 0x05 */		"NON-EXISTENT-CONTINUATION",			\
+/* 0x06 */		"BAD-STACK",					\
+/* 0x07 */		"STACK-OVERFLOW",				\
+/* 0x08 */		"STACK-ALLOCATION-FAILED",			\
+/* 0x09 */		"NO-ERROR-HANDLER",				\
+/* 0x0A */		"NO-INTERRUPT-HANDLER",				\
+/* 0x0B */		"UNIMPLEMENTED-CONTINUATION",			\
+/* 0x0C */		"EXIT",						\
+/* 0x0D */		"BAD-PRIMITIVE-DURING-ERROR",			\
+/* 0x0E */		"EOF",						\
+/* 0x0F */		"BAD-PRIMITIVE",				\
+/* 0x10 */		"HANDLER",					\
+/* 0x11 */		"END-OF-COMPUTATION",				\
+/* 0x12 */		"INVALID-TYPE-CODE",				\
+/* 0x13 */		"COMPILER-DEATH",				\
+/* 0x14 */		"GC-OUT-OF-SPACE",				\
+/* 0x15 */		"NO-SPACE",					\
+/* 0x16 */		"SIGNAL",					\
+/* 0x17 */		"TOUCH",					\
+/* 0x18 */		"SAVE-AND-EXIT",				\
+/* 0x19 */		"TERM_TRAP"					\
+}
+
+#define TERM_MESSAGE_TABLE						\
+{									\
+/* 0x00 */		"Moriturus te saluto",				\
+/* 0x01 */		"Unrecoverable error while loading a band",	\
+/* 0x02 */		"Broken heart encountered",			\
+/* 0x03 */		"Non pointer relocation",			\
+/* 0x04 */		"Cannot restore control state from band",	\
+/* 0x05 */		"Nonexistent return code",			\
+/* 0x06 */		"Control stack messed up",			\
+/* 0x07 */		"Stack overflow: Maximum recursion depth exceeded", \
+/* 0x08 */		"Not enough space for stack!",			\
+/* 0x09 */		"No error handler",				\
+/* 0x0A */		"No interrupt handler",				\
+/* 0x0B */		"Unimplemented return code",			\
+/* 0x0C */		"Inconsistency detected",			\
+/* 0x0D */		"Error during unknown primitive",		\
+/* 0x0E */		"End of input stream reached",			\
+/* 0x0F */		"Bad primitive invoked",			\
+/* 0x10 */		"Termination handler returned",			\
+/* 0x11 */		"End of computation",				\
+/* 0x12 */		"Unknown type encountered",			\
+/* 0x13 */		"Mismatch between compiled code and compiled code support", \
+/* 0x14 */		"Out of space after garbage collection",	\
+/* 0x15 */		"Out of memory: Available memory exceeded",	\
+/* 0x16 */		"Unhandled signal received",			\
+/* 0x17 */		"Touch without futures support",		\
+/* 0x18 */		"Halt requested by external source",		\
+/* 0x19 */		"User requested termination after trap"		\
+}

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/const.h,v 9.26 1987/12/04 22:14:55 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/const.h,v 9.27 1988/02/06 20:39:40 jinx Exp $
  *
  * Named constants used throughout the interpreter
  *
@@ -104,10 +104,11 @@ MIT in each case. */
 #define END_OF_BLOCK		TC_FIXNUM
 #define CONSTANT_PART		TC_TRUE
 #define PURE_PART		TC_FALSE
-
+
 /* Primitive flow control codes: directs computation after
  * processing a primitive application.
  */
+
 #define PRIM_DONE			-1
 #define PRIM_DO_EXPRESSION		-2
 #define PRIM_APPLY			-3
@@ -116,6 +117,18 @@ MIT in each case. */
 #define PRIM_NO_TRAP_APPLY		-6
 #define PRIM_POP_RETURN			-7
 #define PRIM_TOUCH			-8
+
+#define ABORT_NAME_TABLE						\
+{									\
+  /* -1 */	"DONE",							\
+  /* -2 */	"DO-EXPRESSION",					\
+  /* -3 */	"APPLY",						\
+  /* -4 */	"INTERRUPT",						\
+  /* -5 */	"NO-TRAP-EVAL",						\
+  /* -6 */	"NO-TRAP_APPLY",					\
+  /* -7 */	"POP-RETURN",						\
+  /* -8 */	"TOUCH"							\
+}
 
 /* Some numbers of parameters which mean something special */
 

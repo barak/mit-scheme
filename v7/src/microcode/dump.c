@@ -30,34 +30,42 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dump.c,v 9.25 1987/11/17 08:09:10 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dump.c,v 9.26 1988/02/06 20:39:50 jinx Rel $
  *
  * This file contains common code for dumping internal format binary files.
  */
 
+extern Pointer compiler_utilities;
+extern long compiler_interface_version, compiler_processor_type;
+
 void
 prepare_dump_header(Buffer, Dumped_Object,
 		    Heap_Count, Heap_Relocation,
 		    Constant_Count, Constant_Relocation,
-		    table_length, table_size)
+		    table_length, table_size,
+		    cc_code_p, band_p)
      Pointer
        *Buffer, *Dumped_Object,
        *Heap_Relocation, *Constant_Relocation;
      long
        Heap_Count, Constant_Count,
        table_length, table_size;
+     Boolean cc_code_p, band_p;
 {
   long i;
 
 #ifdef DEBUG
+
 #ifndef Heap_In_Low_Memory
   fprintf(stderr, "\nMemory_Base = 0x%x\n", Memory_Base);
-#endif
+#endif /* Heap_In_Low_Memory */
+
   fprintf(stderr, "\nHeap_Relocation=0x%x, dumped as 0x%x\n",
 	  Heap_Relocation, Make_Pointer(TC_BROKEN_HEART, Heap_Relocation));
   fprintf(stderr, "\nDumped object=0x%x, dumped as 0x%x\n",
 	  Dumped_Object, Make_Pointer(TC_BROKEN_HEART, Dumped_Object));
-#endif
+#endif /* DEBUG */
+
   Buffer[FASL_Offset_Marker] = FASL_FILE_MARKER;
   Buffer[FASL_Offset_Heap_Count] =
     Make_Non_Pointer(TC_BROKEN_HEART, Heap_Count);
@@ -73,26 +81,48 @@ prepare_dump_header(Buffer, Dumped_Object,
     Make_Version(FASL_FORMAT_VERSION,
 		 FASL_SUBVERSION, FASL_INTERNAL_FORMAT);
   Buffer[FASL_Offset_Stack_Top] =
+
 #ifdef USE_STACKLETS
     Make_Pointer(TC_BROKEN_HEART, 0);	/* Nothing in stack area */
 #else
     Make_Pointer(TC_BROKEN_HEART, Stack_Top);
-#endif
+#endif /* USE_STACKLETS */
+
   Buffer[FASL_Offset_Prim_Length] = 
     Make_Pointer(TC_BROKEN_HEART, table_length);
   Buffer[FASL_Offset_Prim_Size] = 
     Make_Pointer(TC_BROKEN_HEART, table_size);
+
+  if (cc_code_p)
+  {
+    Buffer[FASL_Offset_Ci_Version] =
+      MAKE_CI_VERSION(band_p,
+		      compiler_interface_version,
+		      compiler_processor_type);
+    Buffer[FASL_Offset_Ut_Base] = compiler_utilities;
+  }
+  else
+  {
+    /* If there is no compiled code in the file,
+       flag it as if dumped without compiler support, so
+       it can be loaded anywhere.
+     */
+    Buffer[FASL_Offset_Ci_Version] = MAKE_CI_VERSION(band_p, 0, 0);
+    Buffer[FASL_Offset_Ut_Base] = NIL;
+  }
+
   for (i = FASL_Offset_First_Free; i < FASL_HEADER_LENGTH; i++)
   {
     Buffer[i] = NIL;
   }
   return;
 }
-
+
 Boolean
 Write_File(Dumped_Object, Heap_Count, Heap_Relocation,
            Constant_Count, Constant_Relocation,
-	   table_start, table_length, table_size)
+	   table_start, table_length, table_size,
+	   cc_code_p, band_p)
      Pointer
        *Dumped_Object,
        *Heap_Relocation, *Constant_Relocation,
@@ -100,13 +130,14 @@ Write_File(Dumped_Object, Heap_Count, Heap_Relocation,
      long
        Heap_Count, Constant_Count,
        table_length, table_size;
+     Boolean cc_code_p, band_p;
 {
   Pointer Buffer[FASL_HEADER_LENGTH];
 
   prepare_dump_header(Buffer, Dumped_Object,
 		      Heap_Count, Heap_Relocation,
 		      Constant_Count, Constant_Relocation,
-		      table_length, table_size);
+		      table_length, table_size, cc_code_p, band_p);
   if (Write_Data(FASL_HEADER_LENGTH, ((char *) Buffer)) !=
       FASL_HEADER_LENGTH)
   {

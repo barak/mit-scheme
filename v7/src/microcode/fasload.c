@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.32 1987/12/04 22:16:13 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.33 1988/02/06 20:40:36 jinx Exp $
 
    The "fast loader" which reads in and relocates binary files and then
    interns symbols.  It is called with one argument: the (character
@@ -53,7 +53,7 @@ long
 read_file_start(name)
      Pointer name;
 {
-  long heap_length;
+  long value, heap_length;
   Boolean file_opened;
 
   if (Type_Code(name) != TC_CHARACTER_STRING)
@@ -73,10 +73,24 @@ read_file_start(name)
     return (ERR_ARG_1_BAD_RANGE);
   }
 
-  if (!Read_Header())
+  value = Read_Header();
+  if (value != FASL_FILE_FINE)
   {
     Close_Dump_File();
-    return (ERR_FASL_FILE_BAD_DATA);
+    switch (value)
+    {
+      /* These may want to be separated further. */
+      case FASL_FILE_TOO_SHORT:
+      case FASL_FILE_NOT_FASL:
+      case FASL_FILE_BAD_MACHINE:
+      case FASL_FILE_BAD_VERSION:
+      case FASL_FILE_BAD_SUBVERSION:
+        return (ERR_FASL_FILE_BAD_DATA);
+
+      case FASL_FILE_BAD_PROCESSOR:
+      case FASL_FILE_BAD_INTERFACE:
+	return (ERR_FASLOAD_COMPILED_MISMATCH);
+    }
   }
   
   if (File_Load_Debug)
@@ -157,7 +171,10 @@ read_file_end()
 
 /* Statics used by Relocate, below */
 
-relocation_type Heap_Relocation, Const_Reloc, Stack_Relocation;
+relocation_type
+  heap_relocation,
+  const_relocation,
+  stack_relocation;
 
 /* Relocate a pointer as read in from the file.  If the pointer used
    to point into the heap, relocate it into the heap.  If it used to
@@ -177,15 +194,15 @@ Relocate(P)
 
   if ((P >= Heap_Base) && (P < Dumped_Heap_Top))
   {
-    Result = (Pointer *) (P + Heap_Relocation);
+    Result = ((Pointer *) (P + heap_relocation));
   }
   else if ((P >= Const_Base) && (P < Dumped_Constant_Top))
   {
-    Result = (Pointer *) (P + Const_Reloc);
+    Result = ((Pointer *) (P + const_relocation));
   }
-  else if (P < Dumped_Stack_Top)
+  else if ((P >= Dumped_Constant_Top) && (P < Dumped_Stack_Top))
   {
-    Result = (Pointer *) (P + Stack_Relocation);
+    Result = ((Pointer *) (P + stack_relocation));
   }
   else
   {
@@ -212,34 +229,34 @@ Relocate(P)
 
 #define Relocate_Into(Loc, P)						\
 {									\
-  if ((P) < Const_Base)							\
+  if ((P) < Dumped_Heap_Top)						\
   {									\
-    (Loc) = ((Pointer *) ((P) + Heap_Relocation));			\
+    (Loc) = ((Pointer *) ((P) + heap_relocation));			\
   }									\
   else if ((P) < Dumped_Constant_Top)					\
   {									\
-    (Loc) = ((Pointer *) ((P) + Const_Reloc));				\
+    (Loc) = ((Pointer *) ((P) + const_relocation));			\
   }									\
   else									\
   {									\
-    (Loc) = ((Pointer *) ((P) + Stack_Relocation));			\
+    (Loc) = ((Pointer *) ((P) + stack_relocation));			\
   }									\
 }
 
 #ifndef Conditional_Bug
 
-#define Relocate(P)					\
-	((P < Const_Base) ?				\
-         ((Pointer *) (P + Heap_Relocation)) :		\
-         ((P < Dumped_Constant_Top) ?			\
-           ((Pointer *) (P + Const_Reloc)) :		\
-           ((Pointer *) (P + Stack_Relocation))))
+#define Relocate(P)							\
+((P < Const_Base) ?							\
+ ((Pointer *) (P + heap_relocation)) :					\
+ ((P < Dumped_Constant_Top) ?						\
+  ((Pointer *) (P + const_relocation)) :				\
+  ((Pointer *) (P + stack_relocation))))
 
 #else /* Conditional_Bug */
 
 static Pointer *Relocate_Temp;
 
-#define Relocate(P)					\
+#define Relocate(P)							\
   (Relocate_Into(Relocate_Temp, P), Relocate_Temp)
 
 #endif /* Conditional_Bug */
@@ -259,7 +276,7 @@ Relocate_Block(Next_Pointer, Stop_At)
   if (Reloc_Debug)
   {
     fprintf(stderr,
-	    "Relocation beginning, block=0x%x, length=0x%x, end=0x%x.\n",
+	    "Relocation beginning, block = 0x%x, length = 0x%x, end = 0x%x.\n",
 	    Next_Pointer, (Stop_At - Next_Pointer) - 1, Stop_At);
   }
   while (Next_Pointer < Stop_At)
@@ -405,9 +422,42 @@ load_file(from_band_load)
   Orig_Constant = Free_Constant;
   primitive_table = read_file_end();
   Constant_End = Free_Constant;
-  Heap_Relocation = ((relocation_type) Orig_Heap) - Heap_Base;
-  Const_Reloc = ((relocation_type) Orig_Constant) - Const_Base;
-  Stack_Relocation = ((relocation_type) Stack_Top) - Dumped_Stack_Top;
+  heap_relocation = ((relocation_type) Orig_Heap) - Heap_Base;
+
+  /*
+    Magic!
+    The relocation of compiled code entry points depends on the fact
+    that fasdump never dumps a constant section.
+
+    If the file is not a band, any pointers into constant space are
+    pointers into the compiler utilities vector.  const_relocation is
+    computed appropriately.
+
+    Otherwise (the file is a band, and only bands can contain constant
+    space segments) the utilities vector stuff is relocated
+    automagically: the utilities vector is part of the band.
+   */
+
+  if ((!band_p) && (dumped_utilities != NIL))
+  {
+    extern Pointer compiler_utilities;
+
+    if (compiler_utilities == NIL)
+    {
+      Primitive_Error(ERR_FASLOAD_COMPILED_MISMATCH);
+    }
+
+    const_relocation = (((relocation_type) Get_Pointer(compiler_utilities)) -
+			Datum(dumped_utilities));
+    Dumped_Constant_Top =
+      C_To_Scheme(Nth_Vector_Loc(dumped_utilities,
+				 (1 + Vector_Length(compiler_utilities))));
+  }
+  else
+  {
+    const_relocation = (((relocation_type) Orig_Constant) - Const_Base);
+  }
+  stack_relocation = ((relocation_type) Stack_Top) - Dumped_Stack_Top;
 
 #ifdef BYTE_INVERSION
   Setup_For_String_Inversion();
@@ -421,9 +471,9 @@ load_file(from_band_load)
 
   if (Reloc_Debug)
   {
-    printf("Heap_relocation = %d = %x; Const_Reloc = %d = %x\n",
-	   Heap_Relocation, Heap_Relocation, 
-           Const_Reloc,  Const_Reloc);
+    printf("heap_relocation = %d = %x; const_relocation = %d = %x\n",
+	   heap_relocation, heap_relocation, 
+           const_relocation,  const_relocation);
   }
 
   /*
@@ -469,6 +519,10 @@ DEFINE_PRIMITIVE("BINARY-FASLOAD", Prim_Binary_Fasload, 1)
   Primitive_1_Arg();
 
   result = read_file_start(Arg1);
+  if (band_p)
+  {
+    Primitive_Error(ERR_FASLOAD_BAND);
+  }
   if (result != PRIM_DONE)
   {
     if (result == PRIM_INTERRUPT)
@@ -581,9 +635,21 @@ DEFINE_PRIMITIVE("LOAD-BAND", Prim_Band_Load, 1)
   temp = setjmp(swapped_buf);
   if (temp != 0)
   {
-    fprintf(stderr,
-	    "\nload-band: Error %d past the point of no return.\n",
-	    temp);
+    extern char *Error_Names[], *Abort_Names[];
+
+    if (temp > 0)
+    {
+      fprintf(stderr,
+	      "\nload-band: Error %d (%s) past the point of no return.\n",
+	      temp, Error_Names[temp]);
+    }
+    else
+    {
+      fprintf(stderr,
+	      "\nload-band: Abort %d (%s) past the point of no return.\n",
+	      temp, Abort_Names[(-temp)-1]);
+    }
+
     if (band_name != ((char *) NULL))
     {
       fprintf(stderr, "band-name = \"%s\".\n", band_name);

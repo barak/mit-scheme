@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.32 1987/12/04 22:16:00 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.33 1988/02/06 20:40:12 jinx Exp $
 
    This file contains code for fasdump and dump-band.
 */
@@ -52,7 +52,8 @@ extern Pointer
 
 /* Some statics used freely in this file */
 
-Pointer *NewFree, *NewMemTop, *Fixup, *Orig_New_Free;
+static Pointer *NewFree, *NewMemTop, *Fixup, *Orig_New_Free;
+static Boolean compiled_code_present_p;
 
 /* FASDUMP:
 
@@ -98,7 +99,7 @@ Dump_Pointer(Fasdump_Setup_Pointer(Extra_Code, Normal_BH(false, continue)))
 
 #define FASDUMP_FIX_BUFFER 10
 
-Boolean
+long
 DumpLoop(Scan, Dump_Mode)
      fast Pointer *Scan;
      int Dump_Mode;
@@ -137,6 +138,7 @@ DumpLoop(Scan, Dump_Mode)
 	break;
 
       case_compiled_entry_point:
+	compiled_code_present_p = true;
 	Dump_Pointer(Fasdump_Setup_Pointer(Transport_Compiled(),
 					   Compiled_BH(false, continue)));
 
@@ -181,8 +183,13 @@ DumpLoop(Scan, Dump_Mode)
       case TC_BIG_FLONUM:
 	/* Fall through */
 #endif
-      case_Vector:
+      case TC_COMPILED_CODE_BLOCK:
+      case_Purify_Vector:
 	Setup_Pointer_for_Dump(Transport_Vector());
+
+      case TC_ENVIRONMENT:
+	/* Make fasdump fail */
+	return (ERR_FASDUMP_ENVIRONMENT);
 
       case TC_FUTURE:
 	Setup_Pointer_for_Dump(Transport_Future());
@@ -197,11 +204,28 @@ DumpLoop(Scan, Dump_Mode)
   }
   NewFree = To;
   Fixup = Fixes;
-  return true;
+  return (PRIM_DONE);
+}
+
+#define DUMPLOOP(obj, code)						\
+{									\
+  long value;								\
+									\
+  value = DumpLoop(obj, code);						\
+  if (value != PRIM_DONE)						\
+  {									\
+    PRIMITIVE_RETURN(Fasdump_Exit(value));				\
+  }									\
 }
 
-Boolean
-Fasdump_Exit()
+#define FASDUMP_INTERRUPT()						\
+{									\
+  PRIMITIVE_RETURN(Fasdump_Exit(PRIM_INTERRUPT));			\
+}
+
+Pointer
+Fasdump_Exit(code)
+     long code;
 {
   Boolean result;
   fast Pointer *Fixes;
@@ -217,7 +241,24 @@ Fasdump_Exit()
   }
   Fixup = Fixes;
   Fasdump_Exit_Hook();
-  return result;
+  if (!result)
+  {
+    Primitive_Error(ERR_IO_ERROR);
+    /*NOTREACHED*/
+  }
+  if (code == PRIM_DONE)
+  {
+    return (TRUTH);
+  }
+  else if (code == PRIM_INTERRUPT)
+  {
+    return (NIL);
+  }
+  else
+  {
+    Primitive_Error(code);
+    /*NOTREACHED*/
+  }
 }
 
 /* (PRIMITIVE-FASDUMP object-to-dump file-name flag)
@@ -238,12 +279,13 @@ DEFINE_PRIMITIVE("PRIMITIVE-FASDUMP", Prim_Prim_Fasdump, 3)
 {
   Pointer Object, File_Name, Flag, *New_Object;
   Pointer *table_start, *table_end;
-  long Pure_Length, Length, table_length;
+  long Pure_Length, Length, table_length, value;
   Boolean result;
   Primitive_3_Args();
 
   CHECK_ARG (2, STRING_P);
 
+  compiled_code_present_p = false;
   Object = Arg1;
   File_Name = Arg2;
   Flag = Arg3;
@@ -283,6 +325,10 @@ DEFINE_PRIMITIVE("PRIMITIVE-FASDUMP", Prim_Prim_Fasdump, 3)
      The primitive dumping mechanism will break, since
      dump_renumber_primitive is not being invoked by
      either phase.
+
+     The special entry point relocation code depends on the fact that
+     fasdumped files (as opposed to bands) contain no constant space
+     segment.  See fasload.c for further information.
 */
 
   if (Flag == TRUTH)
@@ -290,11 +336,7 @@ DEFINE_PRIMITIVE("PRIMITIVE-FASDUMP", Prim_Prim_Fasdump, 3)
     Pointer *Addr_Of_New_Object;
 
     *New_Free++ = NIL;
-    if (!DumpLoop(New_Object, PURE_COPY))
-    {
-      Fasdump_Exit();
-      PRIMITIVE_RETURN(NIL);
-    }
+    DUMPLOOP(New_Object, PURE_COPY);
 #if false
     /* Can't align. */
     Align_Float(NewFree);
@@ -302,11 +344,7 @@ DEFINE_PRIMITIVE("PRIMITIVE-FASDUMP", Prim_Prim_Fasdump, 3)
     Pure_Length = ((NewFree - New_Object) + 1);
     *NewFree++ = Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
     *NewFree++ = Make_Non_Pointer(CONSTANT_PART, Pure_Length);
-    if (!DumpLoop(New_Object, CONSTANT_COPY))
-    {
-      Fasdump_Exit();
-      PRIMITIVE_RETURN(NIL);
-    }
+    DUMPLOOP(New_Object, CONSTANT_COPY);
     Length =  ((NewFree - New_Object) + 2);
     *NewFree++ = Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
     *NewFree++ = Make_Non_Pointer(END_OF_BLOCK, (Length - 1));
@@ -318,23 +356,19 @@ DEFINE_PRIMITIVE("PRIMITIVE-FASDUMP", Prim_Prim_Fasdump, 3)
     table_end = cons_primitive_table(NewFree, Fixup, &table_length);
     if (table_end >= Fixup)
     {
-      Fasdump_Exit();
-      PRIMITIVE_RETURN(NIL);
+      FASDUMP_INTERRUPT();
     }
     result = Write_File(Addr_Of_New_Object, 0, 0,
 			Length, New_Object,
 			table_start, table_length,
-			((long) (table_end - table_start)));
+			((long) (table_end - table_start)),
+			compiled_code_present_p, false);
   }
 
   else
 #endif /* Dumping for reload into heap */
   {
-    if (!DumpLoop(New_Object, NORMAL_GC))
-    {
-      Fasdump_Exit();
-      PRIMITIVE_RETURN(NIL);
-    }
+    DUMPLOOP(New_Object, NORMAL_GC);
 #if false
     /* Aligning might screw up some of the counters. */
     Align_Float(NewFree);
@@ -344,20 +378,19 @@ DEFINE_PRIMITIVE("PRIMITIVE-FASDUMP", Prim_Prim_Fasdump, 3)
     table_end = cons_primitive_table(NewFree, Fixup, &table_length);
     if (table_end >= Fixup)
     {
-      Fasdump_Exit();
-      PRIMITIVE_RETURN(NIL);
+      FASDUMP_INTERRUPT();
     }
     result = Write_File(New_Object,
 			Length, New_Object,
 			0, Constant_Space,
 			table_start, table_length,
-			((long) (table_end - table_start)));
+			((long) (table_end - table_start)),
+			compiled_code_present_p, false);
   }
 
   /* The and is short-circuit, so it must be done in this order. */
 
-  result = (Fasdump_Exit() && result);
-  PRIMITIVE_RETURN(result ? TRUTH : NIL);
+  PRIMITIVE_RETURN(Fasdump_Exit(result ? PRIM_DONE : PRIM_INTERRUPT));
 }
 
 /* (DUMP-BAND PROCEDURE FILE-NAME)
@@ -368,7 +401,6 @@ DEFINE_PRIMITIVE("PRIMITIVE-FASDUMP", Prim_Prim_Fasdump, 3)
 
 DEFINE_PRIMITIVE("DUMP-BAND", Prim_Band_Dump, 2)
 {
-  extern Pointer compiler_utilities;
   Pointer Combination, *table_start, *table_end, *saved_free;
   long Arg1Type, table_length;
   Boolean result;
@@ -416,7 +448,8 @@ DEFINE_PRIMITIVE("DUMP-BAND", Prim_Band_Dump, 2)
 			((long) (Free_Constant - Constant_Space)),
 			Constant_Space,
 			table_start, table_length,
-			((long) (table_end - table_start)));
+			((long) (table_end - table_start)),
+			(compiler_utilities != NIL), true);
   }
   /* The and is short-circuit, so it must be done in this order. */
   result = (Close_Dump_File() && result);

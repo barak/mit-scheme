@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/returns.h,v 9.29 1987/11/04 20:02:48 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/returns.h,v 9.30 1988/02/06 20:41:26 jinx Exp $
  *
  * Return codes.  These are placed in Return when an
  * interpreter operation needs to operate in several
@@ -124,6 +124,102 @@ MIT in each case. */
 #define RC_COMP_UNASSIGNED_TRAP_RESTART 0x59
 #define RC_COMP_CACHE_ASSIGN_RESTART	0x5A
 
-#define MAX_RETURN_CODE			0x5A
+/* When adding return codes, add them to the table below as well! */
 
-/* When adding return codes, don't forget to update storage.c too. */
+#define MAX_RETURN_CODE			0x5A
+
+#define RETURN_NAME_TABLE						\
+{									\
+/* 0x00 */		"END_OF_COMPUTATION",				\
+/* 0x01 */		"JOIN_STACKLETS",				\
+/* 0x02 */		"RESTORE_CONTINUATION",				\
+/* 0x03 */		"INTERNAL_APPLY",				\
+/* 0x04 */		"BAD_INTERRUPT_CONTINUE",			\
+/* 0x05 */		"RESTORE_HISTORY",				\
+/* 0x06 */		"INVOKE_STACK_THREAD",				\
+/* 0x07 */		"RESTART_EXECUTION",				\
+/* 0x08 */		"EXECUTE_ASSIGNMENT_FINISH",			\
+/* 0x09 */		"EXECUTE_DEFINITION_FINISH",			\
+/* 0x0A */		"EXECUTE_ACCESS_FINISH",			\
+/* 0x0b */		"EXECUTE_IN_PACKAGE_CONTINUE",			\
+/* 0x0C */		"SEQ_2_DO_2",					\
+/* 0x0d */		"SEQ_3_DO_2",					\
+/* 0x0E */		"SEQ_3_DO_3",					\
+/* 0x0f */		"CONDITIONAL_DECIDE",				\
+/* 0x10 */		"DISJUNCTION_DECIDE",				\
+/* 0x11 */		"COMB_1_PROCEDURE",				\
+/* 0x12 */		"COMB_APPLY_FUNCTION",				\
+/* 0x13 */		"COMB_2_FIRST_OPERAND",				\
+/* 0x14 */		"COMB_2_PROCEDURE",				\
+/* 0x15 */		"COMB_SAVE_VALUE",				\
+/* 0x16 */		"PCOMB1_APPLY",					\
+/* 0x17 */		"PCOMB2_DO_1",					\
+/* 0x18 */		"PCOMB2_APPLY",					\
+/* 0x19 */		"PCOMB3_DO_2",					\
+/* 0x1A */		"PCOMB3_DO_1",					\
+/* 0x1B */		"PCOMB3_APPLY",					\
+/* 0x1C */		"SNAP_NEED_THUNK",				\
+/* 0x1D */		"",						\
+/* 0x1E */		"",						\
+/* 0x1F */		"",						\
+/* 0x20 */		"NORMAL_GC_DONE",				\
+/* 0x21 */		"COMPLETE_GC_DONE",				\
+/* 0x22 */		"PURIFY_GC_1",					\
+/* 0x23 */		"PURIFY_GC_2",					\
+/* 0x24 */		"AFTER_MEMORY_UPDATE",				\
+/* 0x25 */		"RESTARTABLE_EXIT",				\
+/* 0x26 */		"",						\
+/* 0x27 */		"",						\
+									\
+/* 0x28 */		"",						\
+/* 0x29 */		"",						\
+/* 0x2A */		"RETURN_TRAP_POINT",				\
+/* 0x2B */		"RESTORE_STEPPER",				\
+/* 0x2C */		"RESTORE_TO_STATE_POINT",			\
+/* 0x2D */		"MOVE_TO_ADJACENT_POINT",			\
+/* 0x2E */		"RESTORE_VALUE",				\
+/* 0x2F */		"RESTORE_DONT_COPY_HISTORY",			\
+/* 0x30 */		"",						\
+/* 0x31 */		"",						\
+/* 0x32 */		"",						\
+/* 0x33 */		"",						\
+/* 0x34 */		"",						\
+/* 0x35 */		"",						\
+/* 0x36 */		"",						\
+/* 0x37 */		"",						\
+/* 0x38 */		"",						\
+/* 0x39 */		"",						\
+/* 0x3A */		"",						\
+/* 0x3B */		"",						\
+/* 0x3C */		"",						\
+/* 0x3D */		"",						\
+/* 0x3E */		"",						\
+/* 0x3F */		"",						\
+/* 0x40 */		"POP_RETURN_ERROR",				\
+/* 0x41 */		"EVAL_ERROR",					\
+/* 0x42 */		"REPEAT_PRIMITIVE",				\
+/* 0x43 */		"COMPILER_INTERRUPT_RESTART",			\
+/* 0x44 */		"",						\
+/* 0x45 */		"RESTORE_INT_MASK",				\
+/* 0x46 */		"HALT",						\
+/* 0x47 */		"FINISH_GLOBAL_INT",				\
+/* 0x48 */		"REPEAT_DISPATCH",				\
+/* 0x49 */		"GC_CHECK",					\
+/* 0x4A */		"RESTORE_FLUIDS",				\
+/* 0x4B */		"COMPILER_LOOKUP_APPLY_RESTART",		\
+/* 0x4C */		"COMPILER_ACCESS_RESTART",			\
+/* 0x4D */		"COMPILER_UNASSIGNED_P_RESTART",		\
+/* 0x4E */		"COMPILER_UNBOUND_P_RESTART",			\
+/* 0x4F */		"COMPILER_DEFINITION_RESTART",			\
+/* 0x50 */		"COMPILER_LEXPR_GC_RESTART",			\
+/* 0x51 */		"COMPILER_SAFE_REFERENCE_RESTART",		\
+/* 0x52 */		"COMPILER_CACHE_LOOKUP_RESTART",		\
+/* 0x53 */		"COMPILER_LOOKUP_TRAP_RESTART",			\
+/* 0x54 */		"COMPILER_ASSIGNMENT_TRAP_RESTART",		\
+/* 0x55 */		"COMPILER_CACHE_OPERATOR_RESTART",		\
+/* 0x56 */		"COMPILER_OPERATOR_REFERENCE_TRAP_RESTART",	\
+/* 0x57 */		"COMPILER_CACHE_REFERENCE_APPLY_RESTART",	\
+/* 0x58 */		"COMPILER_SAFE_REFERENCE_TRAP_RESTART",		\
+/* 0x59 */		"COMPILER_UNASSIGNED_P_TRAP_RESTART",		\
+/* 0x5A */		"COMPILER_CACHE_ASSIGNMENT_RESTART"		\
+}
