@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: intrpt.h,v 1.11 1992/09/26 02:55:03 cph Exp $
+$Id: intrpt.h,v 1.12 1993/06/29 22:53:52 cph Exp $
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -41,16 +41,15 @@ MIT in each case. */
 #define INT_GC			4	/* Local interrupt */
 #define INT_Global_1		8
 #define INT_Character		16	/* Local interrupt */
-#define INT_Global_2		32
+#define INT_AFTER_GC		32	/* Local interrupt */
 #define INT_Timer		64	/* Local interrupt */
 #define INT_Global_3		128
 #define INT_Suspend		256	/* Local interrupt */
 #define INT_Global_Mask		\
-  (INT_Global_GC | INT_Global_1 | INT_Global_2 | INT_Global_3)
+  (INT_Global_GC | INT_Global_1 | INT_Global_3)
 
 #define Global_GC_Level		1
 #define Global_1_Level		3
-#define Global_2_Level		5
 #define Global_3_Level		7
 #define MAX_INTERRUPT_NUMBER	8
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.80 1993/06/24 21:58:42 gjr Exp $
+$Id: boot.c,v 9.81 1993/06/29 22:53:46 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -188,7 +188,10 @@ DEFUN (main_name, (argc, argv),
 SCHEME_OBJECT
 DEFUN_VOID (make_fixed_objects_vector)
 {
-  extern SCHEME_OBJECT initialize_history ();
+  extern SCHEME_OBJECT EXFUN (initialize_history, (void));
+  extern SCHEME_OBJECT EXFUN (initialize_interrupt_handler_vector, (void));
+  extern SCHEME_OBJECT EXFUN (initialize_interrupt_mask_vector, (void));
+
   /* Create the fixed objects vector,
      with 4 extra slots for expansion and debugging. */
   fast SCHEME_OBJECT fixed_objects_vector =
@@ -199,7 +202,11 @@ DEFUN_VOID (make_fixed_objects_vector)
   FAST_VECTOR_SET
     (fixed_objects_vector,
      System_Interrupt_Vector,
-     (make_vector ((MAX_INTERRUPT_NUMBER + 2), SHARP_F, false)));
+     (initialize_interrupt_handler_vector ()));
+  FAST_VECTOR_SET
+    (fixed_objects_vector,
+     FIXOBJ_INTERRUPT_MASK_VECTOR,
+     (initialize_interrupt_mask_vector ()));
   /* Error vector is not needed at boot time */
   FAST_VECTOR_SET (fixed_objects_vector, System_Error_Vector, SHARP_F);
   FAST_VECTOR_SET

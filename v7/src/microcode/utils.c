@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: utils.c,v 9.58 1993/06/25 20:57:07 gjr Exp $
+$Id: utils.c,v 9.59 1993/06/29 22:53:54 cph Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -40,89 +40,138 @@ MIT in each case. */
 #include "history.h"
 #include "cmpint.h"
 
-/* Set_Up_Interrupt is called from the Interrupt
-   macro to do all of the setup for calling the user's
-   interrupt routines. */
+/* Helper procedures for Setup_Interrupt, which follows. */
+
+static long
+DEFUN (compute_interrupt_number, (masked_interrupts),
+       long masked_interrupts)
+{
+  long interrupt_number = 0;
+  long bit_mask = 1;
+  while ((interrupt_number <= MAX_INTERRUPT_NUMBER)
+	 && ((masked_interrupts & bit_mask) == 0))
+    {
+      interrupt_number += 1;
+      bit_mask <<= 1;
+    }
+  return (interrupt_number);
+}
+
+/* This default is solely for compatibility with the previous behavior
+   of the microcode.  It is not a good default and should be
+   overridden by the runtime system.  */
+#define DEFAULT_INTERRUPT_HANDLER_MASK(interrupt_number)		\
+  ((1 << (interrupt_number)) - 1)
+
+static long
+DEFUN (compute_interrupt_handler_mask, (interrupt_masks, interrupt_number),
+       SCHEME_OBJECT interrupt_masks AND
+       long interrupt_number)
+{
+  if ((VECTOR_P (interrupt_masks))
+      && (interrupt_number <= (VECTOR_LENGTH (interrupt_masks))))
+    {
+      SCHEME_OBJECT mask =
+	(VECTOR_REF (interrupt_masks, interrupt_number));
+      if ((INTEGER_P (mask)) && (integer_to_long_p (mask)))
+	/* Guarantee that the given interrupt is disabled.  */
+	return ((integer_to_long (mask)) &~ (1 << interrupt_number));
+    }
+  return
+    ((interrupt_number <= MAX_INTERRUPT_NUMBER)
+     ? (DEFAULT_INTERRUPT_HANDLER_MASK (interrupt_number))
+     : (FETCH_INTERRUPT_MASK ()));
+}
+
+static void
+DEFUN (terminate_no_interrupt_handler, (masked_interrupts),
+       long masked_interrupts)
+{
+  outf_fatal("\nInterrupts = 0x%08lx, Mask = 0x%08lx, Masked = 0x%08lx\n",
+	     (FETCH_INTERRUPT_CODE ()),
+	     (FETCH_INTERRUPT_MASK ()),
+	     masked_interrupts);
+  Microcode_Termination (TERM_NO_INTERRUPT_HANDLER);
+}
+
+SCHEME_OBJECT
+DEFUN_VOID (initialize_interrupt_handler_vector)
+{
+  return (make_vector ((MAX_INTERRUPT_NUMBER + 2), SHARP_F, false));
+}
+
+SCHEME_OBJECT
+DEFUN_VOID (initialize_interrupt_mask_vector)
+{
+  SCHEME_OBJECT result =
+    (make_vector ((MAX_INTERRUPT_NUMBER + 2), SHARP_F, false));
+  long interrupt_number;
+
+  for (interrupt_number = 0;
+       (interrupt_number <= MAX_INTERRUPT_NUMBER);
+       interrupt_number += 1)
+    VECTOR_SET
+      (result, interrupt_number,
+       (long_to_integer (DEFAULT_INTERRUPT_HANDLER_MASK (interrupt_number))));
+  return (result);
+}
+
+/* Setup_Interrupt is called from the Interrupt macro to do all of the
+   setup for calling the user's interrupt routines. */
 
 void
-DEFUN (Setup_Interrupt, (Masked_Interrupts), long Masked_Interrupts)
+DEFUN (Setup_Interrupt, (masked_interrupts), long masked_interrupts)
 {
-  SCHEME_OBJECT Int_Vector, Handler;
-  long i, Int_Number, The_Int_Code, New_Int_Enb;
+  SCHEME_OBJECT interrupt_handlers = SHARP_F;
+  SCHEME_OBJECT interrupt_masks = SHARP_F;
+  long interrupt_number = (compute_interrupt_number (masked_interrupts));
+  long interrupt_mask;
+  SCHEME_OBJECT interrupt_handler;
 
-  The_Int_Code = (FETCH_INTERRUPT_CODE ());
-  Int_Vector = SHARP_F;
-  if (Valid_Fixed_Obj_Vector ())
-    Int_Vector =  (Get_Fixed_Obj_Slot (System_Interrupt_Vector));
-
-  if (!(VECTOR_P (Int_Vector)))
-  {
-    outf_fatal ("\nInvalid handlers vector (0x%lx)\n", Int_Vector);
-lose_big:
-    outf_fatal("Interrupts = 0x%08lx, Mask = 0x%08lx, Masked = 0x%08lx\n",
-	       FETCH_INTERRUPT_CODE(),
-	       FETCH_INTERRUPT_MASK(),
-	       Masked_Interrupts);
-    Microcode_Termination (TERM_NO_INTERRUPT_HANDLER);
-  }
-
-  /* The interrupt vector is normally of size (MAX_INTERRUPT_NUMBER + 1).
-     We signal all normal interrupts though the first MAX_INTERRUPT_NUMBER
-     slots, and any other (spurious) interrupts through the last slot.
-   */
-
-  Int_Number = 0;
-  i = 1;
-  while (true)
-  {
-    if (Int_Number > MAX_INTERRUPT_NUMBER)
+  if (! (Valid_Fixed_Obj_Vector ()))
     {
-      New_Int_Enb = (FETCH_INTERRUPT_MASK ());
-      break;
+      outf_fatal ("\nInvalid fixed-objects vector.");
+      terminate_no_interrupt_handler (masked_interrupts);
     }
-    if ((Masked_Interrupts & i) != 0)
+  interrupt_handlers = (Get_Fixed_Obj_Slot (System_Interrupt_Vector));
+  interrupt_masks = (Get_Fixed_Obj_Slot (FIXOBJ_INTERRUPT_MASK_VECTOR));
+  if (! (VECTOR_P (interrupt_handlers)))
     {
-      New_Int_Enb = ((1 << Int_Number) - 1);
-      break;
+      outf_fatal ("\nInvalid handlers vector (0x%lx).", interrupt_handlers);
+      terminate_no_interrupt_handler (masked_interrupts);
     }
-    Int_Number += 1;
-    i = (i << 1);
-  }
-
-  /* Handle case where interrupt vector is too small. */
-  if (Int_Number >= (VECTOR_LENGTH (Int_Vector)))
-  {
-    outf_fatal("\nInterrupt out of range: %ld (vector length = %ld)\n",
-	       Int_Number, (VECTOR_LENGTH (Int_Vector)));
-    goto lose_big;
-  }
-
+  if (interrupt_number >= (VECTOR_LENGTH (interrupt_handlers)))
+    {
+      outf_fatal("\nInterrupt out of range: %ld (vector length = %ld).",
+		 interrupt_number,
+		 (VECTOR_LENGTH (interrupt_handlers)));
+      terminate_no_interrupt_handler (masked_interrupts);
+    }
+  interrupt_mask =
+    (compute_interrupt_handler_mask (interrupt_masks, interrupt_number));
   Global_Interrupt_Hook ();
-  Handler = (VECTOR_REF (Int_Vector, Int_Number));
+  interrupt_handler = (VECTOR_REF (interrupt_handlers, interrupt_number));
 
-Passed_Checks:	/* This label may be used in Global_Interrupt_Hook */
+  /* This label may be used in Global_Interrupt_Hook: */
+ passed_checks:
   Stop_History ();
   preserve_interrupt_mask ();
  Will_Push (STACK_ENV_EXTRA_SLOTS + 3);
-/*
-  There used to be some code here for gc checks, but that is done
-  uniformly now by RC_NORMAL_GC_DONE.
- */
 
-/* Now make an environment frame for use in calling the
- * user supplied interrupt routine.  It will be given
- * two arguments: the UNmasked interrupt requests, and
- * the currently enabled interrupts.
- */
+  /* There used to be some code here for gc checks, but that is done
+     uniformly now by RC_NORMAL_GC_DONE. */
 
-  STACK_PUSH (LONG_TO_FIXNUM(FETCH_INTERRUPT_MASK()));
-  STACK_PUSH (LONG_TO_FIXNUM(The_Int_Code));
-  STACK_PUSH (Handler);
+  /* Now make an environment frame for use in calling the
+     user supplied interrupt routine.  It will be given two arguments:
+     the UNmasked interrupt requests, and the currently enabled
+     interrupts.  */
+  STACK_PUSH (LONG_TO_FIXNUM (FETCH_INTERRUPT_MASK ()));
+  STACK_PUSH (LONG_TO_FIXNUM (FETCH_INTERRUPT_CODE ()));
+  STACK_PUSH (interrupt_handler);
   STACK_PUSH (STACK_FRAME_HEADER + 2);
- Pushed();
-  /* Turn off interrupts */
-  SET_INTERRUPT_MASK(New_Int_Enb);
-  return;
+ Pushed ();
+  /* Turn off interrupts: */
+  SET_INTERRUPT_MASK (interrupt_mask);
 }
 
 /* Error processing utilities */

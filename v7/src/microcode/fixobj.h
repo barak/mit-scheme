@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fixobj.h,v 9.31 1993/06/24 07:08:32 gjr Exp $
+$Id: fixobj.h,v 9.32 1993/06/29 22:53:50 cph Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -36,12 +36,16 @@ MIT in each case. */
    This should correspond to the file "utabmd.scm". */
 
 #define Non_Object		0x00	/* Used for unassigned variables. */
-#define System_Interrupt_Vector	0x01	/* Handlers for interrups. */
+#define System_Interrupt_Vector	0x01	/* Handlers for interrupts. */
 #define System_Error_Vector	0x02	/* Handlers for errors. */
 #define OBArray			0x03	/* Array for interning symbols. */
 #define Types_Vector		0x04	/* Type number -> Name map. */
 #define Returns_Vector		0x05	/* Return code -> Name map. */
-#define Primitives_Vector	0x06	/* Primitive code -> Name map. */
+
+/* For each interrupt, an interrupt mask to be set when invoking the
+   handler for that interrupt.  */
+#define FIXOBJ_INTERRUPT_MASK_VECTOR	0x06
+
 #define Errors_Vector		0x07	/* Error code -> Name map. */
 #define Identification_Vector	0x08	/* ID Vector index -> name map. */
 #define FIXOBJ_SYSTEM_CALL_NAMES	0x09	/* System call index -> name */
@@ -99,7 +103,6 @@ MIT in each case. */
 #define GENERIC_TRAMPOLINE_MODULO	0x32
 
 #define ARITY_DISPATCHER_TAG		0x33
-
 
 #define NFixed_Objects		0x34
 
