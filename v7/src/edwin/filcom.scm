@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.145 1991/03/16 00:02:10 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.146 1991/03/22 00:21:51 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -445,52 +445,6 @@ If a file with the new name already exists, confirmation is requested first."
 			(pathname->string directory)
 			": Permission denied"))
       (set-buffer-default-directory! buffer directory))))
-
-;;;; Printer Support
-
-#|
-
-(define-command print-file
-  "Print a file on the local printer."
-  "fPrint File"
-  (lambda (filename)
-    (print-region (file->region (->pathname filename)))))
-
-(define-command print-buffer
-  "Print the current buffer on the local printer."
-  ()
-  (lambda ()
-    (print-region (buffer-region (current-buffer)))))
-
-(define-command print-page
-  "Print the current page on the local printer."
-  ()
-  (lambda ()
-    (print-region (page-interior-region (current-point)))))
-
-(define-command print-region
-  "Print the current region on the local printer."
-  "r"
-  (lambda (region)
-    (print-region region)))
-
-(define (print-region region)
-  (let ((temp (temporary-buffer "*Printout*")))
-    (region-insert! (buffer-point temp) region)
-    (let ((temp-region (buffer-region temp)))
-      (untabify-region temp-region)
-      (region->file temp-region print-region-temp-filename))
-    (translate-file print-region-temp-filename "PRINTER:")
-    (delete-file print-region-temp-filename)
-    (kill-buffer temp)))
-
-(define print-region-temp-filename
-  "*PRINTOUT")
-
-(define translate-file
-  (make-primitive-procedure 'TRANSLATE-FILE))
-
-|#
 
 ;;;; Prompting
 
