@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: x11graph.scm,v 1.36 1993/11/01 22:06:18 cph Exp $
+$Id: x11graph.scm,v 1.37 1993/11/01 22:25:03 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -440,7 +440,9 @@ MIT in each case. |#
     window
     (x-graphics-reconfigure (vector-ref event 1)
 			    (vector-ref event 2)
-			    (vector-ref event 3))))
+			    (vector-ref event 3))
+    (if (eq? 'NEVER (x-window/mapped? window))
+	(set-x-window/mapped?! window #t))))
 
 (define-event-handler event-type:delete-window
   (lambda (window event)
