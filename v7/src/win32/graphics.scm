@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: graphics.scm,v 1.18 2002/11/20 19:46:26 cph Exp $
+$Id: graphics.scm,v 1.19 2002/11/25 05:54:40 cph Exp $
 
 Copyright (c) 1993-1999, 2002 Massachusetts Institute of Technology
 
@@ -470,12 +470,24 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
       (- (win32-device/y-bottom window) (win32-device/y-top window)))))
     
 (define (win32-translate-drawing-mode mode)
-  ;; I am not sure what values should be used here...
-  (cond
-    ((= mode 0 #|drawing-mode:erase|#)         R2_XORPEN)
-    ((= mode 1 #|drawing-mode:non-dominant|#)  R2_COPYPEN)
-    ((= mode 2 #|drawing-mode:compliment|#)    R2_XORPEN)
-    ((= mode 3 #|drawing-mode:dominant|#)      R2_COPYPEN)))
+  (case mode				;X11 function names:
+    (( 0) R2_BLACK)			;GXclear
+    (( 1) R2_MASKPEN)			;GXand
+    (( 2) R2_MASKPENNOT)		;GXandReverse
+    (( 3) R2_COPYPEN)			;GXcopy
+    (( 4) R2_MASKNOTPEN)		;GXandInverted
+    (( 5) R2_NOP)			;GXnoop
+    (( 6) R2_XORPEN)			;GXxor
+    (( 7) R2_MERGEPEN)			;GXor
+    (( 8) R2_NOTMERGEPEN)		;GXnor
+    (( 9) R2_NOTXORPEN)			;GXequiv
+    ((10) R2_NOT)			;GXinvert
+    ((11) R2_MERGEPENNOT)		;GXorReverse
+    ((12) R2_NOTCOPYPEN)		;GXcopyInverted
+    ((13) R2_MERGENOTPEN)		;GXorInverted
+    ((14) R2_NOTMASKPEN)		;GXnand
+    ((15) R2_WHITE)			;GXset
+    (else (error:bad-range-argument mode 'WIN32-TRANSLATE-DRAWING-MODE))))
 
 (define (win32-graphics/set-drawing-mode device mode)
   (let* ((window (graphics-device/descriptor device))
@@ -494,8 +506,6 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
     (set-win32-device/line-width! window width)
     (set-win32-device/pen-valid?! window #f)
     unspecific))
-
-
 
 (define-integrable (win32-device/invalidate! window)
   (set-win32-device/invalid?!  window #t))
