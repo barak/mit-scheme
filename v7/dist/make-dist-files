@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: make-dist-files,v 1.8 2000/12/23 05:52:22 cph Exp $
+# $Id: make-dist-files,v 1.9 2000/12/23 06:04:02 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -53,6 +53,9 @@ rm -rf ${BUILD_DIR}
 	infodir=/usr/local/lib/mit-scheme/edwin/info
     make install-html DESTDIR=${BUILD_DIR}
 )
+
+${MKINSTALLDIRS} ${AUXDIR}
+${INSTALL_DATA} /scheme/v7/src/etc/optiondb.scm ${AUXDIR}/.
 
 ${MKINSTALLDIRS} ${AUXDIR}/doc
 ${INSTALL_DATA} /scheme/v7/src/COPYING ${AUXDIR}/doc/.
