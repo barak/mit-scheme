@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: lapgn1.scm,v 4.14 1992/12/30 14:13:35 gjr Exp $
+$Id: lapgn1.scm,v 4.15 1993/08/26 05:47:34 gjr Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -280,3 +280,43 @@ MIT in each case. |#
 		   *assign-rules*)))
 	(or (and rules (pattern-lookup (cdr rules) rtl))
 	    (pattern-lookup *assign-variable-rules* rtl)))))
+
+;;; Instruction sequence sharing mechanisms
+
+(define *block-associations*)
+
+(define (block-association token)
+  (let ((place (assq token *block-associations*)))
+    (and place (cdr place))))
+
+(define (block-associate! token frob)
+  (set! *block-associations*
+	(cons (cons token frob)
+	      *block-associations*))
+  unspecific)
+
+;; This can only be used when the instruction sequences are bit-wise identical.
+;; In other words, no variable registers, constants, etc.
+
+(define (share-instruction-sequence! name if-shared generator)
+  (cond ((block-association name)
+	 => if-shared)
+	(else
+	 (let ((label (generate-label name)))
+	   (block-associate! name label)
+	   (generator label)))))
+
+(define (make-new-sblock instructions)
+  (let ((bblock (make-sblock instructions)))
+    (node-mark! bblock)
+    bblock))
+
+(define (current-bblock-continue! bblock)
+  (let ((current-bblock *current-bblock*))
+    (if (sblock-continuation current-bblock)
+	(error "current-bblock-continue! bblock already has a continuation"
+	       current-bblock)
+	(begin
+	  (create-edge! current-bblock set-snode-next-edge! bblock)
+	  (set-bblock-continuations! current-bblock (list bblock))
+	  (set-sblock-continuation! current-bblock bblock)))))

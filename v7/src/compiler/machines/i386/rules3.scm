@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.26 1993/07/16 19:27:55 gjr Exp $
+$Id: rules3.scm,v 1.27 1993/08/26 05:45:40 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -44,9 +44,22 @@ MIT in each case. |#
 
 (define-rule statement
   (POP-RETURN)
-  (LAP ,@(clear-map!)
-       ,@(clear-continuation-type-code)
-       (RET)))
+  (cond ((block-association 'POP-RETURN)
+	 => current-bblock-continue!)
+	(else
+	 (let ((bblock
+		(make-new-sblock
+		 (let ((interrupt-label (generate-label 'INTERRUPT)))
+		   (LAP (CMP W (R ,regnum:free-pointer) ,reg:compiled-memtop)
+			(JGE (@PCR ,interrupt-label))
+			,@(clear-continuation-type-code)
+			(RET)
+			(LABEL ,interrupt-label)
+			,@(invoke-hook
+			   entry:compiler-interrupt-continuation-2))))))
+	   (block-associate! 'POP-RETURN bblock)
+	   (current-bblock-continue! bblock))))
+  (clear-map!))
 
 (define-rule statement
   (INVOCATION:APPLY (? frame-size) (? continuation))
@@ -412,9 +425,13 @@ MIT in each case. |#
 
 (define-rule statement
   (CONTINUATION-HEADER (? internal-label))
+  #|
   (simple-procedure-header (continuation-code-word internal-label)
 			   internal-label
-			   entry:compiler-interrupt-continuation))
+			   entry:compiler-interrupt-continuation)
+  |#
+  (make-external-label (continuation-code-word internal-label)
+		       internal-label))
 
 (define-rule statement
   (IC-PROCEDURE-HEADER (? internal-label))
@@ -523,28 +540,47 @@ MIT in each case. |#
 						  0)))
 	     (MOV W (@RO B ,regnum:free-pointer -4) ,temp))))))
 
+(define closure-share-names
+  '#(
+     closure-0-interrupt closure-1-interrupt closure-2-interrupt closure-3-interrupt
+     closure-4-interrupt closure-5-interrupt closure-6-interrupt closure-7-interrupt
+     ))
+
 (define (generate/closure-header internal-label nentries entry)
   nentries				; ignored
-  (let ((rtl-proc (label->object internal-label)))
-    (let ((gc-label (generate-label))
-	  (external-label (rtl-procedure/external-label rtl-proc)))
-      (if (zero? nentries)
-	  (LAP (EQUATE ,external-label ,internal-label)
-	       ,@(simple-procedure-header
-		  (internal-procedure-code-word rtl-proc)
-		  internal-label
-		  entry:compiler-interrupt-procedure))
-	  (LAP (LABEL ,gc-label)
-	       ,@(if (zero? entry)
-		     (LAP)
-		     (LAP (ADD W (@R ,esp) (& ,(* 10 entry)))))
-	       ,@(invoke-hook entry:compiler-interrupt-closure)
-	       ,@(make-external-label internal-entry-code-word
-				      external-label)
-	       (ADD W (@R ,esp)
-		    (&U ,(generate/make-magic-closure-constant entry)))
-	       (LABEL ,internal-label)
-	       ,@(interrupt-check internal-label gc-label))))))
+  (let* ((rtl-proc (label->object internal-label))
+	 (external-label (rtl-procedure/external-label rtl-proc)))
+    (if (zero? nentries)
+	(LAP (EQUATE ,external-label ,internal-label)
+	     ,@(simple-procedure-header
+		(internal-procedure-code-word rtl-proc)
+		internal-label
+		entry:compiler-interrupt-procedure))
+	(let ((prefix
+	       (lambda (gc-label)
+		 (LAP (LABEL ,gc-label)
+		      ,@(if (zero? entry)
+			    (LAP)
+			    (LAP (ADD W (@R ,esp) (& ,(* 10 entry)))))
+		      ,@(invoke-hook entry:compiler-interrupt-closure))))
+	      (suffix
+	       (lambda (gc-label)
+		 (LAP ,@(make-external-label internal-entry-code-word
+					     external-label)
+		      (ADD W (@R ,esp)
+			   (&U ,(generate/make-magic-closure-constant entry)))
+		      (LABEL ,internal-label)
+		      ,@(interrupt-check internal-label gc-label)))))
+	  (if (>= entry (vector-length closure-share-names))
+	      (let ((gc-label (generate-label)))
+		(LAP ,@(prefix gc-label)
+		     ,@(suffix gc-label)))
+	      (share-instruction-sequence!
+	       (vector-ref closure-share-names entry)
+	       suffix
+	       (lambda (gc-label)
+		 (LAP ,@(prefix gc-label)
+		      ,@(suffix gc-label)))))))))
 
 (define (generate/make-magic-closure-constant entry)
   (- (make-non-pointer-literal (ucode-type compiled-entry) 0)

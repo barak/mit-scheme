@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: asstop.scm,v 1.4 1993/08/22 20:23:22 gjr Exp $
+$Id: asstop.scm,v 1.5 1993/08/26 05:48:53 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -88,6 +88,7 @@ MIT in each case. |#
   (fluid-let ((*block-label*)
 	      (*external-labels*)
 	      (*end-of-block-code*)
+	      (*block-associations*)
 	      (*next-constant*)
 	      (*interned-constants*)
 	      (*interned-variables*)
@@ -103,6 +104,7 @@ MIT in each case. |#
 
 (define (assembler&linker-reset!)
   (set! *recursive-compilation-results* '())
+  (set! *block-associations*)
   (set! *block-label*)
   (set! *external-labels*)
   (set! *end-of-block-code*)
@@ -120,6 +122,7 @@ MIT in each case. |#
   unspecific)
 
 (define (initialize-back-end!)
+  (set! *block-associations* '())
   (set! *block-label* (generate-label))
   (set! *external-labels* '())
   (set! *end-of-block-code* (LAP))
