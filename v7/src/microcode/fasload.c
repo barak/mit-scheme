@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.44 1989/10/28 15:38:21 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.45 1989/11/11 19:13:01 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -43,6 +43,8 @@ MIT in each case. */
 #include "trap.h"
 #include "load.c"
 
+static long failed_heap_length = -1;
+
 long
 read_file_start(name)
      SCHEME_OBJECT name;
@@ -94,18 +96,33 @@ read_file_start(name)
 
   if (!Test_Pure_Space_Top(Free_Constant + Const_Count))
   {
+    failed_heap_length = 0;
     Close_Dump_File();
     return (ERR_FASL_FILE_TOO_BIG);
   }
 
-  heap_length = Heap_Count + Primitive_Table_Size + Primitive_Table_Length;
+  heap_length = (Heap_Count + Primitive_Table_Size + Primitive_Table_Length);
 
   if (GC_Check(heap_length))
   {
-    Close_Dump_File();
-    Request_GC(heap_length);
-    return (PRIM_INTERRUPT);
+    if (failed_heap_length == heap_length)
+    {
+      /* Heuristic check.  It may fail.
+	 The GC should be modified to do this right.
+       */
+      failed_heap_length = -1;
+      Close_Dump_File();
+      return (ERR_FASL_FILE_TOO_BIG);
+    }
+    else
+    {
+      failed_heap_length = heap_length;
+      Close_Dump_File();
+      Request_GC(heap_length);
+      return (PRIM_INTERRUPT);
+    }
   }
+  failed_heap_length = -1;
   return (PRIM_DONE);
 }
 

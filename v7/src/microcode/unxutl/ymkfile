@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.15 1989/10/28 15:39:09 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.16 1989/11/11 19:13:17 jinx Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -128,8 +128,8 @@ MIT in each case. */
 #endif
 
 #ifdef HAVE_X_WINDOWS
-X_SOURCES = x11base.c x11term.c x11graph.c 
-X_OBJECTS = x11base.o x11term.o x11graph.o
+X_SOURCES = x11base.c x11term.c x11xtra.c x11graph.c 
+X_OBJECTS = x11base.o x11term.o x11xtra.o x11graph.o
 X_LIB = LIBX11_MACHINE LIBX11_SYSTEM -lX11
 #endif /* HAVE_X_WINDOWS */
 
@@ -494,7 +494,8 @@ Ppband.o : config.h types.h const.h object.h sdata.h fasl.h load.c
 
 dmpwrld.o : unexec.c getpagesize.h
 
-x11base.o x11graph.o x11term.o : scheme.touch prims.h x11.h
+x11base.o x11graph.o : scheme.touch prims.h x11.h
+x11term.o x11xtra.o : scheme.touch prims.h x11.h x11term.h
 cterm.o : scheme.touch prims.h
 starbase.o : scheme.touch prims.h
 starbasex.o : scheme.touch prims.h x11.h

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11term.c,v 1.6 1989/09/20 23:13:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11term.c,v 1.7 1989/11/11 19:13:10 jinx Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -37,72 +37,10 @@ MIT in each case. */
 #include "scheme.h"
 #include "prims.h"
 #include "x11.h"
+#include "x11term.h"
 
 #define RESOURCE_NAME "edwin"
 #define DEFAULT_GEOMETRY "80x40+0+0"
-
-struct xterm_extra
-{
-  /* Dimensions of the window, in characters.  Valid character
-     coordinates are nonnegative integers strictly less than these
-     limits. */
-  int x_size;
-  int y_size;
-
-  /* Position of the cursor, in character coordinates. */
-  int cursor_x;
-  int cursor_y;
-
-  /* Info for a mouse button event */
-  unsigned int button;
-  int pointer_x;		/* in character coordinates */
-  int pointer_y;		/* in character coordinates */
-
-  /* Character map of the window's contents.  See `XTERM_CHAR_LOC' for
-     the address arithmetic. */
-  char * character_map;
-
-  /* Bit map of the window's highlighting. */
-  char * highlight_map;
-
-  /* Nonzero iff the cursor is drawn on the window. */
-  char cursor_visible_p;
-};
-
-#define XW_EXTRA(xw) ((struct xterm_extra *) ((xw) -> extra))
-
-#define XW_X_CSIZE(xw) ((XW_EXTRA (xw)) -> x_size)
-#define XW_Y_CSIZE(xw) ((XW_EXTRA (xw)) -> y_size)
-#define XW_CURSOR_X(xw) ((XW_EXTRA (xw)) -> cursor_x)
-#define XW_CURSOR_Y(xw) ((XW_EXTRA (xw)) -> cursor_y)
-#define XW_BUTTON(xw) ((XW_EXTRA (xw)) -> button)
-#define XW_POINTER_X(xw) ((XW_EXTRA (xw)) -> pointer_x)
-#define XW_POINTER_Y(xw) ((XW_EXTRA (xw)) -> pointer_y)
-#define XW_CHARACTER_MAP(xw) ((XW_EXTRA (xw)) -> character_map)
-#define XW_HIGHLIGHT_MAP(xw) ((XW_EXTRA (xw)) -> highlight_map)
-#define XW_CURSOR_VISIBLE_P(xw) ((XW_EXTRA (xw)) -> cursor_visible_p)
-
-#define XTERM_CHAR_INDEX(xw, x, y) (((y) * (XW_X_CSIZE (xw))) + (x))
-#define XTERM_CHAR_LOC(xw, index) ((XW_CHARACTER_MAP (xw)) + (index))
-#define XTERM_CHAR(xw, index) (* (XTERM_CHAR_LOC (xw, index)))
-#define XTERM_HL_LOC(xw, index) ((XW_HIGHLIGHT_MAP (xw)) + (index))
-#define XTERM_HL(xw, index) (* (XTERM_HL_LOC (xw, index)))
-
-#define XTERM_X_PIXEL(xw, x)						\
-  (((x) * (FONT_WIDTH (XW_FONT (xw)))) + (XW_INTERNAL_BORDER_WIDTH (xw)))
-
-#define XTERM_Y_PIXEL(xw, y)						\
-  (((y) * (FONT_HEIGHT (XW_FONT (xw)))) + (XW_INTERNAL_BORDER_WIDTH (xw)))
-
-#define XTERM_X_CHARACTER(xw, x)					\
-  (((x) - (XW_INTERNAL_BORDER_WIDTH (xw))) / (FONT_WIDTH (XW_FONT (xw))))
-
-#define XTERM_Y_CHARACTER(xw, y)					\
-  (((y) - (XW_INTERNAL_BORDER_WIDTH (xw))) / (FONT_HEIGHT (XW_FONT (xw))))
-
-#define XTERM_HL_GC(xw, hl) (hl ? (XW_REVERSE_GC (xw)) : (XW_NORMAL_GC (xw)))
-
-#define HL_ARG(arg) arg_index_integer (arg, 2)
 
 #define XTERM_DRAW_CHARS(xw, x, y, s, n, gc)				\
   XDrawImageString							\
@@ -126,7 +64,9 @@ struct xterm_extra
     body;								\
 }
 
-static void
+extern void xterm_erase_cursor ();
+
+void
 xterm_erase_cursor (xw)
      struct xwindow * xw;
 {
@@ -145,7 +85,9 @@ xterm_erase_cursor (xw)
   return;
 }
 
-static void
+extern void xterm_draw_cursor();
+
+void
 xterm_draw_cursor (xw)
      struct xwindow * xw;
 {
@@ -686,6 +628,64 @@ check_button (button)
     }
 }
 
+#define min(x,y)	(((x)<(y)) ? (x) : (y))
+  
+/* This procedure courtesy of Mike Clarkson (mike@ists.ists.ca) */
+
+extern void xterm_dump_contents();
+
+void
+xterm_dump_contents (xw, x_start, x_end, y_start, y_end)
+     struct xwindow *xw;
+     int x_start, x_end, y_start, y_end;
+{
+  char *character_map = (XW_CHARACTER_MAP (xw));
+  char *highlight_map = (XW_HIGHLIGHT_MAP (xw));
+  int x_width = (x_end - x_start);
+  int xi, yi;
+
+  if (x_end > (XW_X_CSIZE (xw)))
+  {
+    x_end = (XW_X_CSIZE (xw));
+  }
+  if (y_end > (XW_Y_CSIZE (xw)))
+  {
+    y_end = (XW_Y_CSIZE (xw));
+  }
+  if (x_start < x_end)
+  {
+    for (yi = y_start; (yi < y_end); yi += 1)
+    {
+      int index = (XTERM_CHAR_INDEX (xw, 0, yi));
+      char * line_char = (& (character_map [index]));
+      char * line_hl = (& (highlight_map [index]));
+      int xi = x_start;
+      while (1)
+      {
+	int hl = (line_hl [xi]);
+	int i = (xi + 1);
+	while ((i < x_end) && ((line_hl [i]) == hl))
+	{
+	  i += 1;
+	}
+	XTERM_DRAW_CHARS (xw, xi, yi,
+			  (& (line_char [xi])), (i - xi),
+			  (XTERM_HL_GC (xw, hl)));
+	if (i == x_end)
+	  break;
+	xi = i;
+      }
+    }
+    if ((XW_CURSOR_VISIBLE_P (xw)) &&
+	((x_start <= (XW_CURSOR_X (xw))) && ((XW_CURSOR_X (xw)) < x_end)) &&
+	((y_start <= (XW_CURSOR_Y (xw))) && ((XW_CURSOR_Y (xw)) < y_end)))
+    {
+      xterm_draw_cursor (xw);
+    }
+  }
+  return;
+}
+
 static void
 xterm_process_event (event)
      XEvent * event;
@@ -696,33 +696,80 @@ xterm_process_event (event)
   switch (event -> type)
     {
     case ConfigureNotify:
-      if (x_debug) fprintf (stderr, "\nX event: ConfigureNotify\n");
+      if (x_debug)
+      {
+	fprintf (stderr, "\nX event: ConfigureNotify\n");
+      }
       if (exw != ((struct xwindow *) 0))
+      {
+	int extra = (2 * (XW_INTERNAL_BORDER_WIDTH (exw)));
+	int x_size = (((event -> xconfigure) . width) - extra);
+	int y_size = (((event -> xconfigure) . height) - extra);
+
+	if ((x_size != (XW_X_SIZE (exw))) || (y_size != (XW_Y_SIZE (exw))))
 	{
-	  int extra = (2 * (XW_INTERNAL_BORDER_WIDTH (exw)));
-	  int x_size = (((event -> xconfigure) . width) - extra);
-	  int y_size = (((event -> xconfigure) . height) - extra);
+	  XFontStruct * font = (XW_FONT (exw));
+	  int x_csize = (x_size / (FONT_WIDTH (font)));
+	  int y_csize = (y_size / (FONT_HEIGHT (font)));
+	  int map_size = (x_csize * y_csize);
+#ifdef true
+	  char * new_char_map;
+	  char * new_hl_map;
+	  int new_y;
+	  fast char * char_scan, * new_char_scan;
+	  fast char * char_end;
+	  fast char * hl_scan, * new_hl_scan;
+	  fast int min_y_csize = min (y_csize, XW_Y_CSIZE(exw));
 
-	  if ((x_size != (XW_X_SIZE (exw))) || (y_size != (XW_Y_SIZE (exw))))
+	  MAKE_MAP (new_char_map, map_size, ' ');
+	  MAKE_MAP (new_hl_map, map_size, 0);
+
+	  for (new_y = 0; (new_y < min_y_csize); new_y++ )
+	  {
+	    char_scan = ((XW_CHARACTER_MAP (exw)) +
+			 (new_y * (XW_X_CSIZE (exw))));
+	    char_end = (char_scan + min(x_csize, (XW_X_CSIZE (exw))));
+	    hl_scan = ((XW_HIGHLIGHT_MAP (exw)) +
+		       (new_y * (XW_X_CSIZE (exw))));
+	    new_char_scan = new_char_map + (new_y * x_csize);
+	    new_hl_scan = new_hl_map + (new_y * x_csize);
+
+	    while (char_scan < char_end)
 	    {
-	      XFontStruct * font = (XW_FONT (exw));
-	      int x_csize = (x_size / (FONT_WIDTH (font)));
-	      int y_csize = (y_size / (FONT_HEIGHT (font)));
-	      int map_size = (x_csize * y_csize);
-
-	      (XW_X_SIZE (exw)) = x_size;
-	      (XW_Y_SIZE (exw)) = y_size;
-	      (XW_X_CSIZE (exw)) = x_csize;
-	      (XW_Y_CSIZE (exw)) = y_csize;
-	      (XW_EVENT_FLAGS (exw)) |= EVENT_FLAG_RESIZED;
-	      free (XW_CHARACTER_MAP (exw));
-	      free (XW_HIGHLIGHT_MAP (exw));
-	      MAKE_MAP ((XW_CHARACTER_MAP (exw)), map_size, ' ');
-	      MAKE_MAP ((XW_HIGHLIGHT_MAP (exw)), map_size, 0);
-	      xterm_wm_set_size_hint (exw, 0, 0, 0);
-	      XClearWindow ((XW_DISPLAY (exw)), (XW_WINDOW (exw)));
+	      (*new_char_scan++) = (*char_scan++) ;
+	      (*new_hl_scan++) = (*hl_scan++) ;
 	    }
+	  }
+
+	  (XW_X_SIZE (exw)) = x_size;
+	  (XW_Y_SIZE (exw)) = y_size;
+	  (XW_X_CSIZE (exw)) = x_csize;
+	  (XW_Y_CSIZE (exw)) = y_csize;
+	  (XW_EVENT_FLAGS (exw)) |= EVENT_FLAG_RESIZED;
+	  free (XW_CHARACTER_MAP (exw));
+	  free (XW_HIGHLIGHT_MAP (exw));
+	  (XW_CHARACTER_MAP (exw))= new_char_map;
+	  (XW_HIGHLIGHT_MAP (exw))= new_hl_map;
+
+	  (void) xterm_dump_contents (exw, 0, 0, x_csize, y_csize);
+	  xterm_wm_set_size_hint (exw, 0, 0, 0);
+#else
+	  /* This code to be removed after the above is checked. */
+
+	  (XW_X_SIZE (exw)) = x_size;
+	  (XW_Y_SIZE (exw)) = y_size;
+	  (XW_X_CSIZE (exw)) = x_csize;
+	  (XW_Y_CSIZE (exw)) = y_csize;
+	  (XW_EVENT_FLAGS (exw)) |= EVENT_FLAG_RESIZED;
+	  free (XW_CHARACTER_MAP (exw));
+	  free (XW_HIGHLIGHT_MAP (exw));
+	  MAKE_MAP ((XW_CHARACTER_MAP (exw)), map_size, ' ');
+	  MAKE_MAP ((XW_HIGHLIGHT_MAP (exw)), map_size, 0);
+	  xterm_wm_set_size_hint (exw, 0, 0, 0);
+	  XClearWindow ((XW_DISPLAY (exw)), (XW_WINDOW (exw)));
+#endif
 	}
+      }
       break;
 
     case MapNotify:
