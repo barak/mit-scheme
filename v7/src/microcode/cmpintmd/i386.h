@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/i386.h,v 1.5 1992/02/05 16:55:26 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/i386.h,v 1.6 1992/02/05 16:56:12 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -353,7 +353,7 @@ DEFUN_VOID (i386_reset_hook)
   if (offset != ESI_TRAMPOLINE_TO_INTERFACE_OFFSET)
   {
     fprintf (stderr,
-	     "\nmc68k_reset_hook: A6_TRAMPOLINE_TO_INTERFACE_OFFSET\n");
+	     "\ni386_reset_hook: ESI_TRAMPOLINE_TO_INTERFACE_OFFSET\n");
     Microcode_Termination (TERM_EXIT);
   }
   SETUP_REGISTER (asm_trampoline_to_interface);		/* 2 */
