@@ -1,6 +1,6 @@
 /* -*- C -*-
 
-$Id: bchdrn.c,v 1.5 1993/02/06 05:28:52 gjr Exp $
+$Id: bchdrn.c,v 1.6 1993/06/28 02:26:17 cph Exp $
 
 Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
@@ -104,11 +104,12 @@ static unsigned long * drone_version, * wait_mask;
 static jmp_buf abort_point;
 static pid_t boss_pid;
 
+static void EXFUN (shutdown, (int sig));
+
 static void 
 DEFUN (posix_signal, (signum, handler),
        int signum AND void EXFUN ((*handler), ()))
 {
-  static void EXFUN (shutdown, ());
   struct sigaction new;
 
   new.sa_handler = handler;
