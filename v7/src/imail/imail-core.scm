@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.24 2000/02/07 23:23:45 cph Exp $
+;;; $Id: imail-core.scm,v 1.25 2000/04/06 04:22:21 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -213,6 +213,12 @@
   (properties define standard
 	      initializer make-1d-table))
 
+(define-method write-instance ((folder <file-folder>) port)
+  (write-instance-helper 'FOLDER folder port 
+    (lambda ()
+      (write-char #\space port)
+      (write (url->string (folder-url folder)) port))))
+
 (define (guarantee-folder folder procedure)
   (if (not (folder? folder))
       (error:wrong-type-argument folder "IMAIL folder" procedure)))
@@ -261,7 +267,7 @@
   (%get-message folder index))
 
 (define-generic %get-message (folder index))
-
+
 ;; Insert a copy of MESSAGE in FOLDER at INDEX; pre-existing messages
 ;; with indices of INDEX or higher have their indices incremented.
 ;; Unspecified result.
@@ -281,7 +287,7 @@
   (%append-message folder message))
 
 (define-generic %append-message (folder message))
-
+
 ;; Remove all messages in FOLDER that are marked for deletion.
 ;; Unspecified result.
 (define-generic expunge-deleted-messages (folder))
@@ -346,8 +352,17 @@
   (modified? define standard
 	     initial-value #t)
   (properties define standard)
-  (folder define standard)
+  (folder define standard
+	  initial-value #f)
   (index define standard))
+
+(define-method write-instance ((message <message>) port)
+  (write-instance-helper 'MESSAGE message port 
+    (lambda ()
+      (if (message-folder message)
+	  (begin
+	    (write-char #\space port)
+	    (write (message-folder message) port))))))
 
 (define (guarantee-message message procedure)
   (if (not (message? message))
@@ -384,8 +399,7 @@
 	 (make-message (map copy-header-field (header-fields message))
 		       (message-body message)
 		       (list-copy (message-flags message))
-		       (alist-copy (message-properties message))
-		       folder)))
+		       (alist-copy (message-properties message)))))
     (set-message-folder! message folder)
     message))
 
