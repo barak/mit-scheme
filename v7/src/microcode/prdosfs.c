@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prdosfs.c,v 1.3 1992/09/17 00:45:29 jinx Exp $
+$Id: prdosfs.c,v 1.4 1995/10/27 07:55:16 cph Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -378,4 +378,19 @@ DEFINE_PRIMITIVE ("FILE-EQ?", Prim_file_eq_p, 2, 2,
 	  == -1))
     error_external_return ();
   PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT ((strcmp (&buf1[0], &buf2[0])) == 0));
+}
+
+/* This is a dummy primitive -- see "prntfs.c" for the real one.  */
+DEFINE_PRIMITIVE ("NT-GET-VOLUME-INFORMATION", Prim_NT_get_vol_info, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  {
+    SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, 5, 1));
+    VECTOR_SET (result, 0, (char_pointer_to_string ("")));
+    VECTOR_SET (result, 1, (ulong_to_integer (0)));
+    VECTOR_SET (result, 2, (ulong_to_integer (12)));
+    VECTOR_SET (result, 3, (ulong_to_integer (0)));
+    VECTOR_SET (result, 4, (char_pointer_to_string ("FAT")));
+    PRIMITIVE_RETURN (result);
+  }
 }

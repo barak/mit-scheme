@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prntfs.c,v 1.3 1995/10/24 05:10:35 cph Exp $
+$Id: prntfs.c,v 1.4 1995/10/27 07:55:05 cph Exp $
 
 Copyright (c) 1993-95 Massachusetts Institute of Technology
 
@@ -384,4 +384,32 @@ DEFINE_PRIMITIVE ("FILE-EQ?", Prim_file_eq_p, 2, 2,
       GetFullPathName(STRING_ARG (2), 128, buf2, &filepart) == 0)
     error_external_return ();
   PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT ((strcmp (&buf1[0], &buf2[0])) == 0));
+}
+
+DEFINE_PRIMITIVE ("NT-GET-VOLUME-INFORMATION", Prim_NT_get_vol_info, 1, 1, 0)
+{
+  char name [256];
+  DWORD serial_number;
+  DWORD max_component_length;
+  DWORD file_system_flags;
+  char file_system_name [256];
+  SCHEME_OBJECT result;
+  PRIMITIVE_HEADER (1);
+
+  if (! (GetVolumeInformation ((STRING_ARG (1)),
+			       name,
+			       (sizeof (name)),
+			       (&serial_number),
+			       (&max_component_length),
+			       (&file_system_flags),
+			       file_system_name,
+			       (sizeof (file_system_name)))))
+    PRIMITIVE_RETURN (SHARP_F);
+  result = (allocate_marked_vector (TC_VECTOR, 5, 1));
+  VECTOR_SET (result, 0, (char_pointer_to_string (name)));
+  VECTOR_SET (result, 1, (ulong_to_integer (serial_number)));
+  VECTOR_SET (result, 2, (ulong_to_integer (max_component_length)));
+  VECTOR_SET (result, 3, (ulong_to_integer (file_system_flags)));
+  VECTOR_SET (result, 4, (char_pointer_to_string (file_system_name)));
+  PRIMITIVE_RETURN (result);
 }
