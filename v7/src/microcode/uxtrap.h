@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxtrap.h,v 1.16 1992/08/29 13:10:09 jinx Exp $
+$Id: uxtrap.h,v 1.17 1993/02/06 05:46:32 gjr Exp $
 
-Copyright (c) 1990-1992 Massachusetts Institute of Technology
+Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -90,11 +90,12 @@ MIT in each case. */
 
 #ifdef hp9000s800
 
-#include <sys/sysmacros.h>
+/* The bottom 2 bits of the PC are protection bits.
+   They should be masked away before looking at the PC.
+ */
 
-/* See <machine/save_state.h> included by <signal.h> */
+#define PC_VALUE_MASK			((~0) << 2)
 
-#ifndef sc_pc
 /* pcoq is the offset (32 bit in 64 bit virtual address space)
    in the space included in the corresponding sc_pcsq.
    head is the current instruction, tail is the next instruction
@@ -103,27 +104,29 @@ MIT in each case. */
    Both queues need to be collected for some screw cases of
    debugging and if there is ever a hope to restart the code.
  */
-#define sc_pc				sc_pcoq_head
-#endif
 
-#define ss_gr0				ss_flags	/* not really true */
-#define ss_rfree			ss_gr21		/* or some such */
-#define ss_schsp			ss_gr22
+#ifdef _HPUX
+# include <sys/sysmacros.h>
 
-#define HAVE_FULL_SIGCONTEXT
-#define FULL_SIGCONTEXT_RFREE(scp)	((scp)->sc_sl.sl_ss.ss_rfree)
-#define FULL_SIGCONTEXT_SCHSP(scp)	((scp)->sc_sl.sl_ss.ss_schsp)
-#define FULL_SIGCONTEXT_FIRST_REG(scp)	(&((scp)->sc_sl.sl_ss.ss_gr0))
-#define FULL_SIGCONTEXT_NREGS		32
-#define PROCESSOR_NREGS			32
+/* See <machine/save_state.h> included by <signal.h> */
 
-/* The bottom 2 bits of the PC are protection bits.
-   They should be masked away before looking at the PC.
- */
+# define HAVE_FULL_SIGCONTEXT
 
-#define PC_VALUE_MASK			((~0) << 2)
+# ifndef sc_pc
+#  define sc_pc				sc_pcoq_head
+# endif /* sc_pc */
 
-#define INITIALIZE_UX_SIGNAL_CODES()					\
+# define ss_gr0				ss_flags	/* not really true */
+# define ss_rfree			ss_gr21		/* or some such */
+# define ss_schsp			ss_gr22
+
+# define FULL_SIGCONTEXT_RFREE(scp)	((scp)->sc_sl.sl_ss.ss_rfree)
+# define FULL_SIGCONTEXT_SCHSP(scp)	((scp)->sc_sl.sl_ss.ss_schsp)
+# define FULL_SIGCONTEXT_FIRST_REG(scp)	(&((scp)->sc_sl.sl_ss.ss_gr0))
+# define FULL_SIGCONTEXT_NREGS		32
+# define PROCESSOR_NREGS		32
+
+# define INITIALIZE_UX_SIGNAL_CODES()					\
 {									\
   DECLARE_UX_SIGNAL_CODE						\
     (SIGILL, (~ 0L), 8, "illegal instruction trap");			\
@@ -143,7 +146,7 @@ MIT in each case. */
     (SIGFPE, (~ 0L), 22, "assist emulation trap");			\
 }
 
-#define SPECIAL_SIGNAL_CODE_NAMES()					\
+# define SPECIAL_SIGNAL_CODE_NAMES()					\
 {									\
   if ((signo == SIGFPE) && (code == 14))				\
     switch ((((*scp) . sc_sl . sl_ss . ss_frexcp1) >> 26) & 0x3f)	\
@@ -177,6 +180,14 @@ MIT in each case. */
 	break;								\
       }									\
 }
+
+#else /* not _HPUX, BSD ? */
+
+# ifndef sc_pc
+#  define sc_pc				sc_pcoqh
+# endif /* sc_pc */
+
+#endif /* _HPUX */
 
 #endif /* hp9000s800 */
 

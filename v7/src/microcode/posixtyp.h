@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/posixtyp.h,v 1.5 1992/02/27 18:41:09 mhwu Exp $
+$Id: posixtyp.h,v 1.6 1993/02/06 05:37:01 gjr Exp $
 
-Copyright (c) 1990-91 Massachusetts Institute of Technology
+Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -57,6 +57,14 @@ MIT in each case. */
 #define _UID_T
 #define _SIZE_T
 #define _OFF_T
+#endif
+
+#ifdef _BSD4_3
+#define _MODE_T
+#define _NLINK_T
+#define _PID_T
+#define _CLOCK_T
+#define _TIME_T
 #endif
 
 #if defined(_SUNOS4) && defined(__sys_stdtypes_h)

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxenv.c,v 1.9 1993/01/12 19:48:31 gjr Exp $
+$Id: uxenv.c,v 1.10 1993/02/06 05:42:47 gjr Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -84,7 +84,11 @@ DEFUN (OS_encode_time ,(buffer), struct time_structure * buffer)
 #endif
   (ts -> tm_yday) = 0;
   (ts -> tm_isdst) = -1;	/* Let mktime figure it out */
+#ifdef HAVE_MKTIME
   STD_UINT_SYSTEM_CALL (syscall_mktime, t, (UX_mktime (ts)));
+#else
+  error_system_call (ENOSYS, syscall_mktime);
+#endif
   return (t);
 }
 

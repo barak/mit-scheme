@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.39 1993/01/12 19:47:49 gjr Exp $
+$Id: ux.h,v 1.40 1993/02/06 05:42:05 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -52,7 +52,6 @@ MIT in each case. */
 #include <errno.h>
 #include <pwd.h>
 #include <grp.h>
-#include <utime.h>
 
 #include "oscond.h"
 #include "ansidecl.h"
@@ -197,6 +196,7 @@ extern void EXFUN (error_system_call, (int code, enum syscall_names name));
 #include <fcntl.h>
 #include <sys/wait.h>
 #include <dirent.h>
+#include <utime.h>
 
 #define DECL_GETLOGIN
 #define HAVE_APPEND
@@ -205,11 +205,14 @@ extern void EXFUN (error_system_call, (int code, enum syscall_names name));
 #define HAVE_FCNTL
 #define HAVE_GETCWD
 #define HAVE_MKDIR
+/* MKTIME is really ANSI C, but POSIX has it too ? */
+#define HAVE_MKTIME
 #define HAVE_POSIX_SIGNALS
 #define HAVE_RENAME
 #define HAVE_RMDIR
 #define HAVE_TERMIOS
 #define HAVE_TIMES
+#define HAVE_UTIME
 #define HAVE_WAITPID
 #define VOID_SIGNAL_HANDLERS
 
@@ -547,6 +550,18 @@ struct sigcontext { long sc_sp, sc_pc; };
 #ifndef ENOSYS
 #define ENOSYS 0
 #endif
+
+#ifndef HAVE_UTIME
+/* It's really there, but there may not be an include file. */
+
+struct utimbuf
+{
+  time_t actime;
+  time_t modtime;
+};
+
+extern int EXFUN (utime, (CONST char *, struct utimbuf *)); 
+#endif /* HAVE_UTIME */
 
 #ifdef UNION_WAIT_STATUS
 

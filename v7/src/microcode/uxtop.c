@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtop.c,v 1.9 1992/06/05 20:09:00 jinx Exp $
+$Id: uxtop.c,v 1.10 1993/02/06 05:45:28 gjr Exp $
 
-Copyright (c) 1990-1 Massachusetts Institute of Technology
+Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -220,7 +220,9 @@ DEFUN (error_code_to_syserr, (code), int code)
     case ENODEV:	return (syserr_no_such_device);
     case ENOENT:	return (syserr_no_such_file_or_directory);
     case ENOEXEC:	return (syserr_exec_format_error);
+#ifdef ENOLCK
     case ENOLCK:	return (syserr_no_locks_available);
+#endif
     case ENOMEM:	return (syserr_not_enough_space);
     case ENOSPC:	return (syserr_no_space_left_on_device);
     case ENOSYS:	return (syserr_function_not_implemented);
@@ -269,7 +271,9 @@ DEFUN (syserr_to_error_code, (syserr), enum syserr_names syserr)
     case syserr_io_error:				return (EIO);
     case syserr_is_a_directory:				return (EISDIR);
     case syserr_no_child_processes:			return (ECHILD);
+#ifdef ENOLCK
     case syserr_no_locks_available:			return (ENOLCK);
+#endif
     case syserr_no_space_left_on_device:		return (ENOSPC);
     case syserr_no_such_device:				return (ENODEV);
     case syserr_no_such_device_or_address:		return (ENXIO);

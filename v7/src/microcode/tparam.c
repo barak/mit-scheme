@@ -111,7 +111,9 @@ what you give them.   Help stamp out software-hoarding!  */
 
 #include "ansidecl.h"
 
-extern char * EXFUN (tparam, (char *, char*, int, int, ...));
+#ifndef _BSD4_3
+extern char * EXFUN (tparam, (char *, char *, int, int, ...));
+#endif
 extern char * EXFUN (tgoto, (char *, int, int));
 
 /* Assuming STRING is the value of a termcap string entry
