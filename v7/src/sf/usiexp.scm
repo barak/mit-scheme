@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usiexp.scm,v 3.2 1987/05/09 20:04:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usiexp.scm,v 3.3 1987/05/09 20:30:12 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -164,10 +164,10 @@ MIT in each case. |#
   (divide-component-expansion integer-divide cdr))
 
 (define fix:quotient-expansion
-  (divide-component-expansion fixnum-divide car))
+  (divide-component-expansion fix:divide car))
 
 (define fix:remainder-expansion
-  (divide-component-expansion fixnum-divide cdr))
+  (divide-component-expansion fix:divide cdr))
 
 ;;;; N-ary List Operations
 
