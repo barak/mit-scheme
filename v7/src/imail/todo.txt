@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.112 2000/12/20 07:18:25 cph Exp $
+$Id: todo.txt,v 1.113 2001/04/09 13:17:28 cph Exp $
 
 Bug fixes
 ---------
@@ -28,6 +28,10 @@ MIME conformance
 
 New features
 ------------
+
+* Add ability to sort summary by sender.  May as well allow sorting on
+  other fields as well.  And once that's done, allow user to specify
+  multi-key sorting, such as "sort by sender, then by reverse date".
 
 * Implement generic operation to say whether a folder is open or
   closed.  This is needed to implement a command that closes open
