@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.18 1999/03/26 01:53:08 cph Exp $
+$Id: fileio.scm,v 1.19 2001/03/15 21:12:47 cph Exp $
 
-Copyright (c) 1991-1999 Massachusetts Institute of Technology
+Copyright (c) 1991-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; File I/O Ports
@@ -165,6 +166,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define call-with-binary-output-file
   (make-call-with-file open-binary-output-file))
+
+(define call-with-append-file
+  (make-call-with-file (lambda (filename) (open-output-file filename #t))))
+
+(define call-with-binary-append-file
+  (make-call-with-file
+   (lambda (filename) (open-binary-output-file filename #t))))
 
 (define ((make-with-input-from-file call) input-specifier thunk)
   (call input-specifier

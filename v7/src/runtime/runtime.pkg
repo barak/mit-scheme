@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.361 2001/03/08 19:26:59 cph Exp $
+$Id: runtime.pkg,v 14.362 2001/03/15 21:12:55 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Runtime System Packaging
@@ -862,8 +863,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (files "fileio")
   (parent ())
   (export ()
+	  call-with-binary-append-file
 	  call-with-binary-input-file
 	  call-with-binary-output-file
+	  call-with-append-file
 	  call-with-input-file
 	  call-with-output-file
 	  open-binary-i/o-file
