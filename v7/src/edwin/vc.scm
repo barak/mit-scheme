@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.56 2000/04/01 02:14:09 cph Exp $
+;;; $Id: vc.scm,v 1.57 2000/04/01 05:14:00 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -509,18 +509,14 @@ merge in the changes into your working copy."
 	       (lambda ()
 		 (vc-save-workfile-buffer workfile)
 		 (vc-checkout master revision?))))
-	  (if (eq? (vc-master-type master) vc-type:cvs)
+	  (if (cvs-master? master)
 	      (case (cvs-status master)
 		((UP-TO-DATE)
 		 (let ((buffer (vc-workfile-buffer master #f)))
 		   (cond ((or (and buffer (buffer-modified? buffer))
 			      (cvs-file-edited? master))
 			  (do-checkin))
-			 ((or revision?
-			      (string-prefix?
-			       "-r-"
-			       (file-attributes/mode-string
-				(file-attributes workfile))))
+			 ((or revision? (cvs-workfile-protected? workfile))
 			  (do-checkout))
 			 ((not from-dired?)
 			  (message (buffer-name buffer) " is up to date.")))))
@@ -554,7 +550,7 @@ merge in the changes into your working copy."
 		   (lambda (file)
 		     (let ((master (file-vc-master (car file) #f)))
 		       (or (not master)
-			   (if (eq? vc-type:cvs (vc-master-type master))
+			   (if (cvs-master? master)
 			       (memq (cvs-status master)
 				     '(LOCALLY-MODIFIED
 				       LOCALLY-ADDED
@@ -655,7 +651,7 @@ merge in the changes into your working copy."
 		       master)))))
 
 (define (vc-steal-lock master revision? comment owner)
-  (if (and (eq? vc-type:rcs (vc-master-type master))
+  (if (and (rcs-master? master)
 	   (not (vc-release? vc-type:rcs "5.6.2")))
       ;; Can't steal locks with old RCS versions.
       (editor-error "File is locked by " owner "."))
@@ -841,7 +837,7 @@ to that version."
 			  (run-diff master #f #f)
 			  (pop-up-vc-diff-buffer #f)
 			  (prompt-for-yes-or-no? "Discard changes")))))
-	      (and (eq? vc-type:cvs (vc-master-type master))
+	      (and (cvs-master? master)
 		   (cvs-file-edited? master)))
 	  (begin
 	    (vc-backend-revert master)
@@ -927,7 +923,7 @@ Normally shows only locked files; prefix arg says to show all files."
 		  (let ((master (file-vc-master file #f)))
 		    (cond ((not master)
 			   #f)
-			  ((eq? (vc-master-type master) vc-type:cvs)
+			  ((cvs-master? master)
 			   (and (vc-workfile-modified? master)
 				(case (cvs-status master)
 				  ((LOCALLY-MODIFIED) "modified")
@@ -1283,6 +1279,9 @@ the value of vc-log-mode-hook."
   ;; keyword.
   (make-vc-type 'RCS "RCS" "\$Id\$"))
 
+(define (rcs-master? master)
+  (eq? vc-type:rcs (vc-master-type master)))
+
 (define (rcs-directory workfile)
   (subdirectory-pathname workfile "RCS"))
 
@@ -1522,6 +1521,9 @@ the value of vc-log-mode-hook."
 (define vc-type:cvs
   (make-vc-type 'CVS "CVS" "\$Id\$"))
 
+(define (cvs-master? master)
+  (eq? vc-type:cvs (vc-master-type master)))
+
 (define (find-cvs-master workfile)
   (let ((entries-file (merge-pathnames "Entries" (cvs-directory workfile))))
     (and (%find-cvs-entry entries-file workfile)
@@ -1552,6 +1554,10 @@ the value of vc-log-mode-hook."
 	 (let ((tokens (cdr (burst-string line #\/ #f))))
 	   (and (fix:= 5 (length tokens))
 		tokens)))))
+
+(define (cvs-workfile-protected? workfile)
+  (string-prefix? "-r-"
+		  (file-attributes/mode-string (file-attributes workfile))))
 
 (define (cvs-file-edited? master)
   (let ((pathname
@@ -1959,7 +1965,7 @@ the value of vc-log-mode-hook."
 				    (list name)))))
 
 (define (vc-keep-workfiles? master)
-  (or (eq? vc-type:cvs (vc-master-type master))
+  (or (cvs-master? master)
       (ref-variable vc-keep-workfiles (vc-workfile-buffer master #f))))
 
 (define (->workfile object)
