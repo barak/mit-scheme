@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: subst.scm,v 4.7 1992/11/04 10:17:37 jinx Exp $
+$Id: subst.scm,v 4.8 1992/11/06 15:49:11 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -322,12 +322,12 @@ MIT in each case. |#
 				    actions
 				    operations
 				    environment))))
-
+
 (define (variable/unreferenced? variable)
   (and (not (variable/integrated variable))
        (not (variable/referenced variable))
        (not (variable/can-ignore? variable))))
-
+
 (define-method/integrate 'PROCEDURE
   (lambda (operations environment procedure)
     (integrate/procedure operations
@@ -631,7 +631,8 @@ you ask for.
 				       (car operands*) (cdr operands*))))
 	  ((assq name usual-integrations/constant-alist)
 	   => (lambda (entry)
-		(integrate/combination operations environment (cdr entry) operands)))
+		(integrate/combination operations environment
+				       (cdr entry) operands)))
 	  ((assq name usual-integrations/expansion-alist)
 	   => (lambda (entry)
 		((cdr entry) operands identity-procedure
@@ -796,7 +797,7 @@ you ask for.
 		  const-null
 		  (combination/make const-cons
 				    (list (car operands)
-					  (walk (cdr operands))))))))))			  
+					  (walk (cdr operands))))))))))
 
   (define (match-rest environment rest operands)
     (cond (rest
@@ -976,7 +977,10 @@ forms are simply removed.
 	   (if (or rest (null? operands))
 	       (receiver (reverse required-parameters) ; preserve order
 			 (reverse referenced-operands)
-			 (append operands unreferenced-operands))
+			 (if (or (null? operands)
+				 (variable/integrated rest))
+			     unreferenced-operands
+			     (append operands unreferenced-operands)))
 	       (error "Argument mismatch" operands)))
 	  ((null? operands)
 	   (error "Argument mismatch" parameters))
@@ -1026,23 +1030,23 @@ forms are simply removed.
 	    (bound-variables (varlist->varset vars)))
 	(let ((table:vals->free
 	       (get-free-vars-in-bindings bound-variables values))
-	      (body-free  (get-body-free-vars bound-variables actions)))
-					;	  (write-string "Free vars in body")
-					;	  (display (map variable/name body-free))
+	      (body-free (get-body-free-vars bound-variables actions)))
+	  ;; (write-string "Free vars in body")
+	  ;; (display (map variable/name body-free))
 	  (let ((graph (build-graph vars
 				    table:var->vals
 				    table:vals->free
 				    body-free)))
 	    (collapse-circularities! graph)
-					;(print-graph graph)
+	    ;; (print-graph graph)
 	    (label-node-depth! graph)
 	    (let ((template (linearize graph)))
-					; (print-template template)
+	      ;; (print-template template)
 	      (integrate/expression
-	       operations
-	       environment (build-new-code template
-					   (block/parent block)
-					   table:var->vals actions))))))
+	       operations environment
+	       (build-new-code template
+			       (block/parent block)
+			       table:var->vals actions))))))
       (open-block/make block vars values actions #t)))
 
 #|
