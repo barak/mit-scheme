@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.15 1987/05/21 15:05:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.16 1987/07/29 02:16:52 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -125,8 +125,10 @@ MIT in each case. |#
   (lambda (node subproblem?)
     (pcfg*scfg->scfg!
      (generator node)
-     (generate/node (pnode-consequent node) subproblem?)
-     (generate/node (pnode-alternative node) subproblem?))))
+     (and (pnode-consequent node)
+	  (generate/node (pnode-consequent node) subproblem?))
+     (and (pnode-alternative node)
+	  (generate/node (pnode-alternative node) subproblem?)))))
 
 (define-integrable (node-rtl-result node)
   (node-property-get node tag/node-rtl-result))
