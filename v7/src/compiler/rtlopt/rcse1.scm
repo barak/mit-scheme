@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.102 1987/04/24 14:13:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.103 1987/05/07 00:14:18 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -74,8 +74,10 @@ MIT in each case. |#
 	      (walk-rnode alternative))))))
 
 (define (cse-statement statement)
-  ((cdr (or (assq (rtl:expression-type statement) cse-methods)
-	    (error "Missing CSE method" (car statement))))
+  ((if (eq? (rtl:expression-type statement) 'ASSIGN)
+       cse/assign
+       (cdr (or (assq (rtl:expression-type statement) cse-methods)
+		(error "Missing CSE method" (car statement)))))
    statement))
 
 (define cse-methods '())
@@ -87,61 +89,60 @@ MIT in each case. |#
 	(set! cse-methods (cons (cons type method) cse-methods))))
   type)
 
-(define-cse-method 'ASSIGN
-  (lambda (statement)
-    (expression-replace! rtl:assign-expression rtl:set-assign-expression!
-			 statement
+(define (cse/assign statement)
+  (expression-replace! rtl:assign-expression rtl:set-assign-expression!
+		       statement
+    (lambda (volatile? insert-source!)
       (let ((address (rtl:assign-address statement)))
 	(cond ((rtl:register? address)
-	       (lambda (volatile? insert-source!)
-		 (register-expression-invalidate! address)
-		 (if (not volatile?)
-		     (insert-register-destination! address (insert-source!)))))
-	      ((stack-reference? address)
-	       (lambda (volatile? insert-source!)
-		 (stack-reference-invalidate! address)
-		 (if (not volatile?)
-		     (insert-stack-destination! address (insert-source!)))))
+	       (register-expression-invalidate! address)
+	       (if (and (not volatile?)
+			;; This is a kludge.  If the address is the
+			;; frame pointer, then the source is the stack
+			;; pointer.  If this is not done then some of
+			;; the references to stack locations use the
+			;; stack pointer instead of the frame pointer.
+			;; This is not a bug but I want the stack
+			;; addressing to be uniform for now.  -- cph
+			(not (interpreter-frame-pointer? address)))
+		   (insert-register-destination! address (insert-source!))))
 	      (else
-	       (lambda (volatile? insert-source!)
-		 (let ((memory-invalidate!
-			(cond ((stack-push/pop? address)
-			       (lambda () 'DONE))
-			      ((heap-allocate? address)
+	       (let ((memory-invalidate!
+		      (cond ((stack-push/pop? address)
+			     (lambda () 'DONE))
+			    ((heap-allocate? address)
+			     (lambda ()
+			       (register-expression-invalidate!
+				(rtl:address-register address))))
+			    (else
+			     (let ((predicate
+				    (if (expression-varies? address)
+					element-address-varies?
+					element-in-memory?)))
 			       (lambda ()
-				 (register-expression-invalidate!
-				  (rtl:address-register address))))
-			      (else
-			       (memory-invalidator
-				(expression-varies? address))))))
-		   (full-expression-hash address
-		     (lambda (hash volatile?* in-memory?*)
-		       (cond (volatile?* (memory-invalidate!))
-			     ((not volatile?)
-			      (let ((address
-				     (find-cheapest-expression address hash
-							       false)))
-				(let ((element (insert-source!)))
-				  (memory-invalidate!)
-				  (insert-memory-destination!
-				   address
-				   element
-				   (modulo (+ (symbol-hash 'ASSIGN) hash)
-					   n-buckets)))))))))
-		 ;; **** Kludge.  Works only because stack-pointer
-		 ;; gets used in very fixed way by code generator.
-		 (if (stack-push/pop? address)
-		     (stack-pointer-adjust!
-		      (rtl:address-number address))))))))))
+				 (hash-table-delete-class! predicate)))))))
+		 (full-expression-hash address
+		   (lambda (hash volatile?* in-memory?*)
+		     (cond (volatile?* (memory-invalidate!))
+			   ((not volatile?)
+			    (let ((address
+				   (find-cheapest-expression address hash
+							     false)))
+			      (let ((element (insert-source!)))
+				(memory-invalidate!)
+				(insert-memory-destination!
+				 address
+				 element
+				 (modulo (+ (symbol-hash 'ASSIGN) hash)
+					 n-buckets)))))))))
+	       ;; **** Kludge.  Works only because stack-pointer
+	       ;; gets used in very fixed way by code generator.
+	       (if (stack-push/pop? address)
+		   (stack-pointer-invalidate!))))))))
 
-(define (noop statement) 'DONE)
-
 (define (trivial-action volatile? insert-source!)
-  (if (not volatile?) (insert-source!)))
-
-(define ((normal-action thunk) volatile? insert-source!)
-  (thunk)
-  (if (not volatile?) (insert-source!)))
+  (if (not volatile?)
+      (insert-source!)))
 
 (define (define-trivial-one-arg-method type get set)
   (define-cse-method type
@@ -166,36 +167,47 @@ MIT in each case. |#
 
 (define-trivial-one-arg-method 'UNASSIGNED-TEST
   rtl:type-test-expression rtl:set-unassigned-test-expression!)
+
+(define (method/noop statement)
+  'DONE)
 
-(define-cse-method 'RETURN noop)
-(define-cse-method 'PROCEDURE-HEAP-CHECK noop)
-(define-cse-method 'CONTINUATION-HEAP-CHECK noop)
+(define-cse-method 'RETURN method/noop)
+(define-cse-method 'PROCEDURE-HEAP-CHECK method/noop)
+(define-cse-method 'CONTINUATION-HEAP-CHECK method/noop)
+(define-cse-method 'INVOCATION:APPLY method/noop)
+(define-cse-method 'INVOCATION:JUMP method/noop)
+(define-cse-method 'INVOCATION:LEXPR method/noop)
+(define-cse-method 'INVOCATION:PRIMITIVE method/noop)
 
-(define (define-stack-trasher type)
-  (define-cse-method type trash-stack))
-
-(define (trash-stack statement)
-  (stack-invalidate!)
+(define (method/invalidate-stack statement)
   (stack-pointer-invalidate!))
 
-(define-stack-trasher 'SETUP-LEXPR)
-(define-stack-trasher 'MESSAGE-SENDER:VALUE)
+(define-cse-method 'SETUP-LEXPR method/invalidate-stack)
+(define-cse-method 'MESSAGE-SENDER:VALUE method/invalidate-stack)
+(define-cse-method 'MESSAGE-RECEIVER:CLOSURE method/invalidate-stack)
+(define-cse-method 'MESSAGE-RECEIVER:STACK method/invalidate-stack)
+(define-cse-method 'MESSAGE-RECEIVER:SUBPROBLEM method/invalidate-stack)
 
 (define-cse-method 'INTERPRETER-CALL:ENCLOSE
   (lambda (statement)
-    (let ((n (rtl:interpreter-call:enclose-size statement)))
-      (stack-region-invalidate! 0 n)
-      (stack-pointer-adjust! n))
+    (stack-pointer-invalidate!)
     (expression-invalidate! (interpreter-register:enclose))))
+
+(define-cse-method 'INVOCATION:LOOKUP
+  (lambda (statement)
+    (expression-replace! rtl:invocation:lookup-environment
+			 rtl:set-invocation:lookup-environment!
+			 statement
+			 trivial-action)))
 
 (define (define-lookup-method type get-environment set-environment! register)
   (define-cse-method type
     (lambda (statement)
       (expression-replace! get-environment set-environment! statement
-	(normal-action
-	 (lambda ()
-	   (expression-invalidate! (register))
-	   (non-object-invalidate!)))))))
+	(lambda (volatile? insert-source!)
+	  (expression-invalidate! (register))
+	  (non-object-invalidate!)
+	  (if (not volatile?) (insert-source!)))))))
 
 (define-lookup-method 'INTERPRETER-CALL:ACCESS
   rtl:interpreter-call:access-environment
@@ -224,10 +236,10 @@ MIT in each case. |#
     (lambda (statement)
       (expression-replace! get-value set-value! statement trivial-action)
       (expression-replace! get-environment set-environment! statement
-	(normal-action
-	 (lambda ()
-	   (memory-invalidate! true)
-	   (non-object-invalidate!)))))))
+	(lambda (volatile? insert-source!)
+	  (hash-table-delete-class! element-address-varies?)
+	  (non-object-invalidate!)
+	  (if (not volatile?) (insert-source!)))))))
 
 (define-assignment-method 'INTERPRETER-CALL:DEFINE
   rtl:interpreter-call:define-environment
@@ -240,59 +252,6 @@ MIT in each case. |#
   rtl:set-interpreter-call:set!-environment!
   rtl:interpreter-call:set!-value
   rtl:set-interpreter-call:set!-value!)
-
-(define (define-invocation-method type)
-  (define-cse-method type
-    noop
-#|  This will be needed when the snode-next of an invocation
-    gets connected to the callee's entry node.
-    (lambda (statement)
-      (let ((prefix (rtl:invocation-prefix statement)))
-	(case (car prefix)
-	  ((NULL) (continuation-adjustment statement))
-	  ((MOVE-FRAME-UP)
-	   (let ((size (second prefix))
-		 (distance (third prefix)))
-	     (stack-region-invalidate! 0 (+ size distance)) ;laziness
-	     (stack-pointer-adjust! distance)))
-	  ((APPLY-STACK APPLY-CLOSURE) (trash-stack statement))
-	  (else (error "Bad prefix type" prefix)))))
-|#
-    ))
-
-(define (continuation-adjustment statement)
-  (let ((continuation (rtl:invocation-continuation statement)))
-    (if continuation
-	(stack-pointer-adjust! (+ (rtl:invocation-pushed statement)
-				  (continuation-delta continuation))))))
-
-(define-invocation-method 'INVOCATION:APPLY)
-(define-invocation-method 'INVOCATION:JUMP)
-(define-invocation-method 'INVOCATION:LEXPR)
-(define-invocation-method 'INVOCATION:PRIMITIVE)
-
-(define-cse-method 'INVOCATION:LOOKUP
-  (lambda (statement)
-    (continuation-adjustment statement)
-    (expression-replace! rtl:invocation:lookup-environment
-			 rtl:set-invocation:lookup-environment!
-			 statement
-			 trivial-action)))
-
-(define (define-message-receiver type size)
-  (define-cse-method type
-    (let ((size (delay (- (size)))))
-      (lambda (statement)
-	(stack-pointer-adjust! (force size))))))
-
-(define-message-receiver 'MESSAGE-RECEIVER:CLOSURE
-  rtl:message-receiver-size:closure)
-
-(define-message-receiver 'MESSAGE-RECEIVER:STACK
-  rtl:message-receiver-size:closure)
-
-(define-message-receiver 'MESSAGE-RECEIVER:SUBPROBLEM
-  rtl:message-receiver-size:subproblem)
 
 ;;;; Canonicalization
 
@@ -332,30 +291,14 @@ MIT in each case. |#
 	       (element-first-value element*)))))
 
 (define (expression-canonicalize expression)
-  (cond ((rtl:register? expression)
-	 (or (register-expression
-	      (quantity-first-register
-	       (get-register-quantity (rtl:register-number expression))))
-	     expression))
-	((stack-reference? expression)
-	 (let ((register
-		(quantity-first-register
-		 (stack-reference-quantity expression))))
-	   (or (and register (register-expression register))
-	       expression)))
-	(else
-	 (rtl:map-subexpressions expression expression-canonicalize))))
+  (if (rtl:register? expression)
+      (or (register-expression
+	   (quantity-first-register
+	    (get-register-quantity (rtl:register-number expression))))
+	  expression)
+      (rtl:map-subexpressions expression expression-canonicalize)))
 
 ;;;; Invalidation
-
-(define (memory-invalidator variable?)
-  (let ((predicate (if variable? element-address-varies? element-in-memory?)))
-    (lambda ()
-      (hash-table-delete-class! predicate))))
-
-(define (memory-invalidate! variable?)
-  (hash-table-delete-class!
-   (if variable? element-address-varies? element-in-memory?)))
 
 (define (non-object-invalidate!)
   (hash-table-delete-class!
@@ -374,12 +317,15 @@ MIT in each case. |#
        (lambda (element)
 	 (expression-refers-to? (element-expression element) expression)))))
 
+(define-integrable (stack-pointer-invalidate!)
+  (register-expression-invalidate! (interpreter-stack-pointer)))
+
 (define (register-expression-invalidate! expression)
   ;; Invalidate a register expression.  These expressions are handled
   ;; specially for efficiency -- the register is marked invalid but we
   ;; delay searching the hash table for relevant expressions.
-  (register-invalidate! (rtl:register-number expression))
   (let ((hash (expression-hash expression)))
+    (register-invalidate! (rtl:register-number expression))
     (hash-table-delete! hash (hash-table-lookup hash expression))))
 
 (define (register-invalidate! register)
@@ -422,19 +368,10 @@ MIT in each case. |#
 	(let ((expression (element-expression class)))
 	  (cond ((rtl:register? expression)
 		 (register-equivalence!
-		  (get-register-quantity (rtl:register-number expression))))
-		((stack-reference? expression)
-		 (register-equivalence!
-		  (stack-reference-quantity expression))))))
+		  (get-register-quantity (rtl:register-number expression)))))))
     (set-element-in-memory?!
      (hash-table-insert! (expression-hash expression) expression class)
      false)))
-
-(define (insert-stack-destination! expression element)
-  (set-element-in-memory?! (hash-table-insert! (expression-hash expression)
-					       expression
-					       (element->class element))
-			   false))
 
 (define (insert-memory-destination! expression element hash)
   (let ((class (element->class element)))
@@ -503,9 +440,8 @@ MIT in each case. |#
   (and element
        ;; If ELEMENT has been deleted from the hash table,
        ;; CLASS will be false.  [ref crock-1]
-       (let ((class (element-first-value element)))
-	 (or class
-	     (element->class (element-next-value element))))))
+       (or (element-first-value element)
+	   (element->class (element-next-value element)))))
 
 ;;;; Expression Hash
 
@@ -525,15 +461,8 @@ MIT in each case. |#
 	      (quantity-number
 	       (get-register-quantity (rtl:register-number expression))))
 	     ((OFFSET)
-	      ;; Note that stack-references do not get treated as
-	      ;; memory for purposes of invalidation.  This is because
-	      ;; (supposedly) no one ever accesses the stack directly
-	      ;; except the compiler's output, which is explicit.
-	      (let ((register (rtl:offset-register expression)))
-		(if (interpreter-stack-pointer? register)
-		    (quantity-number (stack-reference-quantity expression))
-		    (begin (set! hash-arg-in-memory? true)
-			   (continue expression)))))
+	      (set! hash-arg-in-memory? true)
+	      (continue expression))
 	     ((PRE-INCREMENT POST-INCREMENT)
 	      (set! hash-arg-in-memory? true)
 	      (set! do-not-record? true)
@@ -541,12 +470,12 @@ MIT in each case. |#
 	     (else (continue expression))))))
 
     (define (continue expression)
-      (rtl:reduce-subparts expression + 0 loop hash-object))
+      (rtl:reduce-subparts expression + 0 loop
+	(lambda (object)
+	  (cond ((integer? object) object)
+		((symbol? object) (symbol-hash object))
+		((string? object) (string-hash object))
+		(else (hash object))))))
 
     (let ((hash (loop expression)))
-      (receiver (modulo hash n-buckets) do-not-record? hash-arg-in-memory?))))
-
-(define (hash-object object)
-  (cond ((integer? object) object)
-	((symbol? object) (symbol-hash object))
   rtl:set-interpreter-call:set!-value!)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseht.scm,v 1.2 1987/04/22 10:09:28 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseht.scm,v 1.3 1987/05/07 00:18:15 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -143,16 +143,19 @@ MIT in each case. |#
     (define (copy-loop elements)
       (define (per-element element previous)
 	(and element
-	     (vector element-tag
-		     (element-expression element)
-		     (element-cost element)
-		     (element-in-memory? element)
-		     (per-element (element-next-hash element) element)
-		     previous
-		     (element-next-value element)
-		     (element-previous-value element)
-		     (element-first-value element)
-		     element)))
+	     (let ((element*
+		    (vector element-tag
+			    (element-expression element)
+			    (element-cost element)
+			    (element-in-memory? element)
+			    (per-element (element-next-hash element) element)
+			    previous
+			    (element-next-value element)
+			    (element-previous-value element)
+			    (element-first-value element)
+			    element)))
+	       (set-element-copy-cache! element element*)
+	       element*)))
       (if (null? elements)
 	  '()
 	  (cons (per-element (car elements) false)

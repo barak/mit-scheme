@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseep.scm,v 1.3 1987/04/24 14:15:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseep.scm,v 1.4 1987/05/07 00:14:38 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -47,13 +47,10 @@ MIT in each case. |#
 	     ((REGISTER)
 	      (register-equivalent? x y))
 	     ((OFFSET)
-	      (let ((rx (rtl:offset-register x)))
-		(and (register-equivalent? rx (rtl:offset-register y))
-		     (if (interpreter-stack-pointer? rx)
-			 (eq? (stack-reference-quantity x)
-			      (stack-reference-quantity y))
-			 (= (rtl:offset-number x)
-			    (rtl:offset-number y))))))
+	      (and (register-equivalent? (rtl:offset-register x)
+					 (rtl:offset-register y))
+		   (= (rtl:offset-number x)
+		      (rtl:offset-number y))))
 	     (else
 	      (rtl:match-subexpressions x y loop))))))
 
@@ -90,7 +87,8 @@ MIT in each case. |#
 	    (rtl:any-subexpression? expression expression-varies?)))))
 
 (define (register-expression-varies? expression)
-  (not (= regnum:regs-pointer (rtl:register-number expression))))
+  (not (or (= regnum:regs-pointer (rtl:register-number expression))
+	   (= regnum:frame-pointer (rtl:register-number expression)))))
 
 (define (stack-push/pop? expression)
   (and (pre/post-increment? expression)
