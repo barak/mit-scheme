@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: output.scm,v 14.26 2003/01/01 02:25:54 cph Exp $
+$Id: output.scm,v 14.27 2003/01/02 01:52:51 cph Exp $
 
-Copyright (c) 1988-2002 Massachusetts Institute of Technology
+Copyright (c) 1986,1987,1988,1989,1990 Massachusetts Institute of Technology
+Copyright (c) 1991,1992,1993,1999,2001 Massachusetts Institute of Technology
+Copyright (c) 2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -167,3 +169,124 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
    (if (default-object? port)
        (current-output-port)
        (guarantee-output-port port 'FLUSH-OUTPUT))))
+
+;;;; Tabular output
+
+(define (write-strings-as-table strings port row-major? min-minor
+				left-margin col-sep right-margin)
+  (if (not (list-of-type? strings string?))
+      (error:wrong-type-argument strings "list of strings"
+				 'WRITE-STRINGS-AS-TABLE))
+  (guarantee-output-port port 'WRITE-STRINGS-AS-TABLE)
+  (guarantee-exact-positive-integer min-minor 'WRITE-STRINGS-AS-TABLE)
+  (guarantee-string left-margin 'WRITE-STRINGS-AS-TABLE)
+  (guarantee-string col-sep 'WRITE-STRINGS-AS-TABLE)
+  (guarantee-string right-margin 'WRITE-STRINGS-AS-TABLE)
+  (let ((n-strings (length strings))
+	(max-width (output-port/x-size port))
+	(lm-width (string-length left-margin))
+	(cs-width (string-length col-sep))
+	(rm-width (string-length right-margin)))
+
+    (define (do-row-major)
+      (do-it (let loop
+		 ((strings (cdr strings))
+		  (width (+ lm-width rm-width (string-length (car strings))))
+		  (n-cols 1))
+	       (if (and (< width max-width)
+			(pair? strings))
+		   (let ((width*
+			  (+ width cs-width (string-length (car strings)))))
+		     (if (<= width* max-width)
+			 (loop (cdr strings) width* (+ n-cols 1))
+			 (max n-cols min-minor)))
+		   (max n-cols min-minor)))
+	     (lambda (n-cols) (- n-cols 1))
+	     (lambda (n-cols) (= n-cols min-minor))
+	     (lambda (n-cols)
+	       (let ((cols (make-list n-cols '())))
+		 (do ((strings strings (cdr strings))
+		      (p cols (if (pair? (cdr p)) (cdr p) cols)))
+		     ((not (pair? strings)))
+		   (set-car! p (cons (car strings) (car p))))
+		 (do ((p cols (cdr p)))
+		     ((not (pair? p)))
+		   (set-car! p (reverse! (car p))))
+		 cols))
+	     (lambda ()
+	       (write-string left-margin port)
+	       (for-each (lambda (string)
+			   (write-string col-sep port)
+			   (write-string string port))
+			 strings)
+	       (write-string right-margin port)
+	       (newline port))))
+
+    (define (do-col-major)
+      (do-it min-minor
+	     (lambda (n-rows) (+ n-rows 1))
+	     (lambda (n-rows) n-rows #f)
+	     (lambda (n-rows)
+	       (let loop
+		   ((strings strings)
+		    (n-strings (length strings))
+		    (cols '()))
+		 (if (> n-strings n-rows)
+		     (loop (list-tail strings n-rows)
+			   (- n-strings n-rows)
+			   (cons (list-head strings n-rows) cols))
+		     (reverse!
+		      (if (> n-strings 0) (cons strings cols) cols)))))
+	     (lambda ()
+	       (for-each (lambda (string)
+			   (write-string left-margin port)
+			   (write-string string port)
+			   (write-string right-margin port)
+			   (newline port))
+			 strings))))
+
+    (define (do-it start-n-minor step-minor limit-n-minor? ->cols single-major)
+      (let loop ((n-minor start-n-minor))
+	(if (<= n-minor n-strings)
+	    (let* ((cols (->cols n-minor))
+		   (col-widths
+		    (map (lambda (col)
+			   (apply max (map string-length col)))
+			 cols)))
+	      (if (or (limit-n-minor? n-minor)
+		      (<= (apply +
+				 lm-width
+				 (* cs-width (- (length cols) 1))
+				 rm-width
+				 col-widths)
+			  max-width))
+		  (write-cols cols col-widths)
+		  (loop (step-minor n-minor))))
+	    (single-major))))
+
+    (define (write-cols cols col-widths)
+      (do ()
+	  ((not (pair? (car cols))))
+	(do ((cols cols (cdr cols))
+	     (col-widths col-widths (cdr col-widths))
+	     (prefix left-margin col-sep))
+	    ((not (pair? cols)))
+	  (let ((strings (car cols)))
+	    (if (pair? strings)
+		(begin
+		  (write-string prefix port)
+		  (write-string (car strings) port)
+		  (do ((n (- (car col-widths) (string-length (car strings)))
+			  (- n 1)))
+		      ((= n 0))
+		    (write-char #\space port))
+		  (set-car! cols (cdr strings)))
+		(begin
+		  (write-string prefix port)
+		  (do ((n (car col-widths) (- n 1)))
+		      ((= n 0))
+		    (write-char #\space port))))))
+	(write-string right-margin port)
+	(newline port)))
+
+    (if row-major? (do-row-major) (do-col-major))))
