@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.14 2000/12/19 20:47:21 cph Exp $
+# $Id: Makefile.in,v 1.15 2000/12/19 20:49:54 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -80,7 +80,7 @@ mostlyclean clean distclean maintainer-clean:
 tags TAGS:
 	$(srcdir)/Tags.sh $(SUBDIRS)
 
-install: all
+install:
 	$(mkinstalldirs) $(DESTDIR)
 	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)
 	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)/SRC
