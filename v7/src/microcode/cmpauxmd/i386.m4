@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.5 1992/02/14 22:17:07 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.6 1992/02/15 14:16:41 jinx Exp $
 ###
 ###	Copyright (c) 1992 Massachusetts Institute of Technology
 ###
@@ -132,7 +132,7 @@ use_external(Free)
 use_external(Registers)
 use_external(Ext_Stack_Pointer)
 
-	.file	"cmpaux-i386.m4"
+	.file	"cmpaux-i386.s"
 
 .globl C_Stack_Pointer
 .comm C_Stack_Pointer,4
@@ -143,7 +143,17 @@ use_external(Ext_Stack_Pointer)
 .text
 	.align 2
 define_c_label(interface_initialize)
-#	This needs to set the floating point mode.
+	pushl	%ebp
+	movl	%esp,%ebp
+	subl	IMMEDIATE(4),%esp
+	fstcw	-2(%ebp)
+	# Set rounding mode to round-to-even, precision control to double,
+	# mask the inexact result exception, and unmask the other exceptions.
+	andl	IMMEDIATE(0x0000f0e0),-4(%ebp)
+	orl	IMMEDIATE(0x00000220),-4(%ebp)
+	fldcw	-2(%ebp)
+	movw	%cs,%ax					# Obtain code segment
+	leave
 	ret
 
 define_c_label(C_to_interface)
@@ -180,7 +190,9 @@ define_debugging_label(scheme_to_interface)
 	pushl	%ebx
 	pushl	%edx
 	pushl	%ecx
-	movl	external_reference(utility_table)(,%eax,4),%eax
+	xorl	%ecx,%ecx
+	movb	%eax,%ecx
+	movl	external_reference(utility_table)(,%ecx,4),%eax
 	call	*%eax
 
 define_debugging_label(scheme_to_interface_return)
@@ -188,14 +200,20 @@ define_debugging_label(scheme_to_interface_return)
 	jmp	*%eax					# Invoke handler
 
 define_c_label(interface_to_scheme)
+	movl	external_reference(Free),rfree		# Free pointer = %edi
 	movl	REGBLOCK_VAL()(regs),%eax		# Value/dynamic link
 	movl	IMMEDIATE(ADDRESS_MASK),rmask 		# = %ebp
-	movl	external_reference(Free),rfree		# Free pointer = %edi
 	movl	external_reference(Ext_Stack_Pointer),%esp
+#	Apparently gas does not understand the following instruction
+#	mov	%ds,*rfree				# Make a long pointer
+	.word	0x1f8e
+	movl	%edx,2(rfree)				#  out of entry point
 	movl	%eax,%ecx				# Copy if used
-	andl	rmask,%ecx				# Set up dynamic link
-	movl	%ecx,REGBLOCK_DLINK()(regs)
-	jmp	*%edx					# invoke entry point
+	andl	rmask,%ecx				# Restore potential
+	movl	%ecx,REGBLOCK_DLINK()(regs)		#  dynamic link
+#	Apparently gas does not understand the following instruction
+#	ljmp	*rfree					# invoke entry point
+	.word	0x2fff
 
 define_c_label(interface_to_C)
 	movl	%edx,%eax				# Set up result

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.11 1992/02/13 19:03:46 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.12 1992/02/15 14:16:59 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/rules3.scm,v 4.31 1991/05/28 19:14:55 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -55,17 +55,17 @@ MIT in each case. |#
   (LAP ,@(clear-map!)
        #|
        ,@(case frame-size
-	   ((1) (LAP (JMP ,entry:compiler-shortcircuit-apply-size-1)))
-	   ((2) (LAP (JMP ,entry:compiler-shortcircuit-apply-size-2)))
-	   ((3) (LAP (JMP ,entry:compiler-shortcircuit-apply-size-3)))
-	   ((4) (LAP (JMP ,entry:compiler-shortcircuit-apply-size-4)))
-	   ((5) (LAP (JMP ,entry:compiler-shortcircuit-apply-size-5)))
-	   ((6) (LAP (JMP ,entry:compiler-shortcircuit-apply-size-6)))
-	   ((7) (LAP (JMP ,entry:compiler-shortcircuit-apply-size-7)))
-	   ((8) (LAP (JMP ,entry:compiler-shortcircuit-apply-size-8)))
+	   ((1) (LAP (JMP F ,entry:compiler-shortcircuit-apply-size-1)))
+	   ((2) (LAP (JMP F ,entry:compiler-shortcircuit-apply-size-2)))
+	   ((3) (LAP (JMP F ,entry:compiler-shortcircuit-apply-size-3)))
+	   ((4) (LAP (JMP F ,entry:compiler-shortcircuit-apply-size-4)))
+	   ((5) (LAP (JMP F ,entry:compiler-shortcircuit-apply-size-5)))
+	   ((6) (LAP (JMP F ,entry:compiler-shortcircuit-apply-size-6)))
+	   ((7) (LAP (JMP F ,entry:compiler-shortcircuit-apply-size-7)))
+	   ((8) (LAP (JMP F ,entry:compiler-shortcircuit-apply-size-8)))
 	   (else
 	    (LAP (MOV W (R ,ecx) (& ,frame-size))
-		 (JMP ,entry:compiler-shortcircuit-apply))))
+		 (JMP F ,entry:compiler-shortcircuit-apply))))
        |#
        (MOV W (R ,ecx) (& ,frame-size))
        ,@(invoke-interface code:compiler-apply)))
@@ -152,7 +152,7 @@ MIT in each case. |#
   (INVOCATION:PRIMITIVE (? frame-size) (? continuation) (? primitive))
   continuation				; ignored
   (define-integrable (invoke-entry entry)
-    (LAP (JMP ,entry)))
+    (LAP (JMP F ,entry)))
   (let-syntax ((invoke
 		(macro (code entry)
 		  `(invoke-interface ,code))))
@@ -229,7 +229,7 @@ MIT in each case. |#
 
 (define (optimized-primitive-invocation entry)
   (LAP ,@(clear-map!)
-       (JMP ,entry)))
+       (JMP F ,entry)))
 
 ;;; Invocation Prefixes
 
@@ -365,7 +365,7 @@ MIT in each case. |#
 (define-integrable (simple-procedure-header code-word label entry)
   (let ((gc-label (generate-label)))    
     (LAP (LABEL ,gc-label)
-	 (CALL ,entry)
+	 (CALL F ,entry)
 	 ,@(make-external-label code-word label)
 	 (CMP W (R ,regnum:free-pointer) ,reg:compiled-memtop)
 	 (JGE (@PCR ,gc-label)))))
@@ -436,7 +436,7 @@ MIT in each case. |#
 	 ;; (CALL (@PCR <entry>))
 	 (MOV B (@RO B ,regnum:free-pointer 8) (&U #xe8))
 	 (SUB W ,temp ,target)
-	 (MOV L (@RO B ,regnum:free-pointer 9) ,temp) ; displacement
+	 (MOV W (@RO B ,regnum:free-pointer 9) ,temp) ; displacement
 	 (ADD W (R ,regnum:free-pointer) (& ,(* 4 (+ 5 size))))
 	 (LEA ,temp (@RO UW
 			 ,target
@@ -502,7 +502,7 @@ MIT in each case. |#
 	       ,@(if (zero? entry)
 		     (LAP)
 		     (LAP (ADD W (@R ,esp) (& ,(* 10 entry)))))
-	       (JMP ,entry:compiler-interrupt-closure)
+	       (JMP F ,entry:compiler-interrupt-closure)
 	       ,@(make-external-label internal-entry-code-word
 				      external-label)
 	       (ADD W (@R ,esp)
@@ -566,7 +566,7 @@ MIT in each case. |#
 		  (LEA (R ,ebx) (@RO W ,eax (- ,free-ref-label ,pc-label)))
 		  (MOV W ,reg:utility-arg-4 (& ,n-sections))
 		  #|
-		  (CALL ,entry:compiler-link)
+		  (CALL F ,entry:compiler-link)
 		  |#
 		  ,@(invoke-interface/call code:compiler-link)
 		  ,@(make-external-label (continuation-code-word false)
@@ -586,7 +586,7 @@ MIT in each case. |#
 		  (MOV W (@RO W ,edx ,environment-offset) (R ,ecx))
 		  (MOV W ,reg:utility-arg-4 (& ,n-sections))
 		  #|
-		  (CALL ,entry:compiler-link)
+		  (CALL F ,entry:compiler-link)
 		  |#
 		  ,@(invoke-interface/call code:compiler-link)
 		  ,@(make-external-label (continuation-code-word false)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.12 1992/02/15 07:09:38 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.13 1992/02/15 14:17:23 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/lapgen.scm,v 4.42 1991/05/28 19:14:26 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -414,11 +414,11 @@ MIT in each case. |#
 
 (define-integrable (invoke-interface code)
   (LAP (MOV B (R ,eax) (& ,code))
-       (JMP ,entry:compiler-scheme-to-interface)))
+       (JMP F ,entry:compiler-scheme-to-interface)))
 
 (define-integrable (invoke-interface/call code)
   (LAP (MOV B (R ,eax) (& ,code))
-       (CALL ,entry:compiler-scheme-to-interface/call)))
+       (CALL F ,entry:compiler-scheme-to-interface/call)))
 
 (let-syntax ((define-entries
 	       (macro (start . names)
@@ -430,7 +430,7 @@ MIT in each case. |#
 						(car names))
 				(byte-offset-reference regnum:regs-pointer
 						       ,index))
-			     (loop (cdr names) (+ index 4)))))
+			     (loop (cdr names) (+ index 8)))))
 		 `(BEGIN ,@(loop names start)))))
   (define-entries #x40			; (* 16 4)
     scheme-to-interface			; Main entry point (only one necessary)

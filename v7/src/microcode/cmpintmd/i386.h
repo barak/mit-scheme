@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/i386.h,v 1.7 1992/02/12 15:29:26 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/i386.h,v 1.8 1992/02/15 14:16:30 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -216,6 +216,29 @@ typedef unsigned short format_word;
 
 #define PC_ZERO_BITS                    	0
 
+/* For the relocation of PC-relative JMP and CALL instructions */
+
+extern long i386_pc_displacement_relocation;
+
+#define EXTRACT_ADDRESS_FROM_DISPLACEMENT(loc, instr_address) do	\
+{									\
+  long displacement_address, new_displacement;				\
+									\
+  displacement_address = (((long) (instr_address)) + 1);		\
+  new_displacement = ((* ((long *) displacement_address))		\
+		      + i386_pc_displacement_relocation);		\
+  (* ((long *) displacement_address)) = new_displacement;		\
+  (loc) = ((SCHEME_OBJECT)						\
+	   ((displacement_address + 4) + new_displacement));		\
+} while (0)
+
+#define STORE_DISPLACEMENT_FROM_ADDRESS(target, instr_address) do	\
+{									\
+  long displacement_address = (((long) (instr_address)) + 1);		\
+  (* ((long *) displacement_address)) =					\
+    (((long) (target)) - (displacement_address + 4));			\
+} while (0)
+
 /* See the encodings above. */
 
 #define ENTRY_SKIPPED_CHECK_OFFSET 		4
@@ -236,35 +259,20 @@ do {									\
 #  define COMPILED_CLOSURE_ENTRY_SIZE					\
   ((2 * (sizeof (format_word))) + 6)
 
-/* *** GC and other relocators have to be changed to set this up. *** */
-
-#define PC_RELATIVE_CLOSURES
-#define PC_RELATIVE_UUO_LINKS
-
-extern long pc_displacement_relocation;
-
-#define EXTRACT_ADDRESS_FROM_DISPLACEMENT(loc, instr_address) do	\
+#define START_CLOSURE_RELOCATION(scan) do				\
 {									\
-  long displacement_address, new_displacement;				\
+  SCHEME_OBJECT								\
+    * _new = ((SCHEME_OBJECT *) (scan)),				\
+    * _old = (OBJECT_ADDRESS (_new[(OBJECT_DATUM (*_new))]));		\
 									\
-  displacement_address = (((long) (instr_address)) + 1);		\
-  new_displacement = ((* ((long *) displacement_address))		\
-		      + pc_displacement_relocation);			\
-  (* ((long *) displacement_address)) = new_displacement;		\
-  (loc) = ((SCHEME_OBJECT)						\
-	   ((displacement_address + 4) + new_displacement));		\
+  i386_pc_displacement_relocation = (((long) _old) - ((long) _new));	\
 } while (0)
 
-#define STORE_DISPLACEMENT_FROM_ADDRESS(target, instr_address) do	\
-{									\
-  long displacement_address = (((long) (instr_address)) + 1);		\
-  (* ((long *) displacement_address)) =					\
-    (((long) (target)) - (displacement_address + 4));			\
-} while (0)
+#define END_CLOSURE_RELOCATION(scan)	i386_pc_displacement_relocation = 0
 
 #define EXTRACT_CLOSURE_ENTRY_ADDRESS	EXTRACT_ADDRESS_FROM_DISPLACEMENT
 #define STORE_CLOSURE_ENTRY_ADDRESS	STORE_DISPLACEMENT_FROM_ADDRESS
-
+
 #define EXECUTE_CACHE_ENTRY_SIZE		2
 
 #define EXTRACT_EXECUTE_CACHE_ARITY(target, address) do			\
@@ -295,6 +303,20 @@ extern long pc_displacement_relocation;
   (* (((unsigned char *) (address)) + 3)) = 0xe9;			\
 } while (0)
 
+#define START_OPERATOR_RELOCATION(scan)	do				\
+{									\
+  SCHEME_OBJECT								\
+    * _new = (((SCHEME_OBJECT *) (scan)) + 1),				\
+    * _old = ((SCHEME_OBJECT *) (* _new));				\
+									\
+  (* _new) = ((SCHEME_OBJECT) _new);					\
+  i386_pc_displacement_relocation = (((long) _old) - ((long) _new));	\
+} while (0)
+
+#define END_OPERATOR_RELOCATION(scan)	i386_pc_displacement_relocation = 0
+
+#define FIRST_OPERATOR_LINKAGE_OFFSET	2
+
 #define TRAMPOLINE_ENTRY_SIZE			3
 #define TRAMPOLINE_BLOCK_TO_ENTRY		3 /* MNV to MOV instr. */
 
@@ -319,8 +341,10 @@ extern long pc_displacement_relocation;
 #define COMPILER_REGBLOCK_N_FIXED		16
 
 #define COMPILER_REGBLOCK_N_HOOKS		80
-	/* A hook is a 32-bit address for an indirect CALL/JMP instruction */
-#define COMPILER_HOOK_SIZE			1
+	/* A hook is a 48-bit address (segment + offset) for a far-indirect
+	   CALL/JMP instruction.  Pad to 64 bits.
+	 */
+#define COMPILER_HOOK_SIZE			2
 
 #define COMPILER_REGBLOCK_EXTRA_SIZE					\
   (COMPILER_REGBLOCK_N_HOOKS * COMPILER_HOOK_SIZE)
@@ -331,23 +355,28 @@ extern long pc_displacement_relocation;
 
 #ifdef IN_CMPINT_C
 
+long i386_pc_displacement_relocation = 0;
+
 #define ASM_RESET_HOOK i386_reset_hook
 
 #define SETUP_REGISTER(hook) do						\
 {									\
   extern void hook ();							\
+  unsigned short * far_pointer =					\
+    ((unsigned short *) (esi_value + offset));				\
 									\
-  (* ((unsigned long *) (esi_value + offset))) =			\
-    ((unsigned long) hook);						\
+  *far_pointer++ = code_segment;					\
+  (* ((unsigned long *) far_pointer)) = ((unsigned long) hook);		\
   offset += (COMPILER_HOOK_SIZE * (sizeof (SCHEME_OBJECT)));		\
 } while (0)
 
 void
 DEFUN_VOID (i386_reset_hook)
 {
-  extern void interface_initialize ();
-  unsigned char * esi_value = ((unsigned char *) (&Registers[0]));
+  extern unsigned short interface_initialize ();
   int offset = (COMPILER_REGBLOCK_N_FIXED * (sizeof (SCHEME_OBJECT)));
+  unsigned char * esi_value = ((unsigned char *) (&Registers[0]));
+  unsigned short code_segment = (interface_initialize ());
 
   /* These must match machines/i386/lapgen.scm */
 
@@ -407,7 +436,6 @@ DEFUN_VOID (i386_reset_hook)
   SETUP_REGISTER (asm_primitive_error);			/* 38 */
 #endif
 
-  interface_initialize ();
   return;
 }
 
