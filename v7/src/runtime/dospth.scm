@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dospth.scm,v 1.5 1992/05/28 20:01:34 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dospth.scm,v 1.6 1992/07/28 16:20:26 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -72,8 +72,8 @@ MIT in each case. |#
 (define (dos/parse-namestring string host)
   ;; The DOS file system is case-insensitive, and the canonical case
   ;; is upper, but it is too inconvenient to type.
-  (let* ((string (string-downcase string))
-	 (components (string-components string sub-directory-delimiters)))
+  (let ((components (string-components (string-downcase string)
+				       sub-directory-delimiters)))
     (with-namestring-device-and-path
       (expand-directory-prefixes (car components))
       (lambda (device directory-components)
@@ -113,9 +113,12 @@ MIT in each case. |#
       directory))
 
 (define (parse-directory-component component)
-  (if (string=? ".." component)
-      'UP
-      component))
+  (cond ((string=? ".." component)
+	 'UP)
+	((> (string-length component) 8)
+	 (substring component 0 8))
+	(else
+	 component)))
 
 (define (expand-directory-prefixes string)
   (if (string-null? string)
@@ -148,18 +151,28 @@ MIT in each case. |#
 	  (list (substring string start end))))))
 
 (define (parse-name string receiver)
-  (let ((end (string-length string)))
-    (let ((dot (substring-find-previous-char string 0 end #\.)))
-      (if (or (not dot)
-	      (= dot 0)
-	      (= dot (- end 1))
-	      (char=? #\. (string-ref string (- dot 1))))
-	  (receiver (cond ((= end 0) false)
-			  ((string=? "*" string) 'WILD)
-			  (else string))
-		    false)
-	  (receiver (extract string 0 dot)
-		    (extract string (+ dot 1) end))))))
+  (let ((receiver
+	 (lambda (first second)
+	   (receiver (if (and (string? first)
+			      (> (string-length first) 8))
+			 (substring first 0 8)
+			 first)
+		     (if (and (string? second)
+			      (> (string-length second) 3))
+			 (substring second 0 3)
+			 second)))))
+    (let ((end (string-length string)))
+      (let ((dot (substring-find-previous-char string 0 end #\.)))
+	(if (or (not dot)
+		(= dot 0)
+		(= dot (- end 1))
+		(char=? #\. (string-ref string (- dot 1))))
+	    (receiver (cond ((= end 0) false)
+			    ((string=? "*" string) 'WILD)
+			    (else string))
+		      false)
+	    (receiver (extract string 0 dot)
+		      (extract string (+ dot 1) end)))))))
 
 (define (extract string start end)
   (if (substring=? string start end "*" 0 1)
