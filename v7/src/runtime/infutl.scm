@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/infutl.scm,v 1.10 1989/08/17 14:51:05 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/infutl.scm,v 1.11 1989/08/17 16:52:57 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -115,7 +115,7 @@ MIT in each case. |#
     (let ((dbg-info
 	   (compiled-code-block/dbg-info block
 					 (if (default-object? demand-load?)
-					     load-debugging-info-on-demand?
+					     true
 					     demand-load?))))
       (and dbg-info
 	   (let ((find-procedure
@@ -137,9 +137,6 @@ MIT in each case. |#
 		       (find-procedure))))
 	       (lambda ()
 		 false)))))))
-
-(define load-debugging-info-on-demand?
-  false)
 
 (define (compiled-entry/block entry)
   (if (compiled-closure? entry)
@@ -288,11 +285,16 @@ MIT in each case. |#
 		 (loop (1+ index))))))))
 
 (define (compiled-procedure/name entry)
-  (let ((procedure (compiled-entry/dbg-object entry)))
+  (let ((procedure
+	 (compiled-entry/dbg-object entry load-debugging-info-on-demand?)))
     (and procedure
 	 (let ((name (dbg-procedure/name procedure)))
 	   (or (special-form-procedure-name? name)
 	       (symbol->string name))))))
+
+(define load-debugging-info-on-demand?
+  false)
+
 (define (special-form-procedure-name? name)
   (let ((association (assq name special-form-procedure-names)))
     (and association
