@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxio.c,v 1.29 1993/04/27 10:04:49 cph Exp $
+$Id: uxio.c,v 1.30 1993/09/01 20:21:58 gjr Exp $
 
-Copyright (c) 1990-93 Massachusetts Institute of Technology
+Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -556,25 +556,4 @@ DEFUN (UX_select_input, (fd, blockp), int fd AND int blockp)
 	return (select_input_argument);
   }
   return (select_input_other);
-}
-
-long
-DEFUN (OS_channel_select_then_read, (channel, buffer, nbytes),
-       Tchannel channel AND
-       PTR buffer AND
-       size_t nbytes)
-{
-  switch (UX_select_input ((CHANNEL_DESCRIPTOR (channel)),
-			   (! (CHANNEL_NONBLOCKING (channel)))))
-    {
-    case select_input_none:
-      return (-1);
-    case select_input_other:
-      return (-2);
-    case select_input_process_status:
-      return (-3);
-    case select_input_interrupt:
-      return (-4);
-    }
-  return (OS_channel_read (channel, buffer, nbytes));
 }
