@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.18 2000/04/07 20:45:55 cph Exp $
+;;; $Id: imail-top.scm,v 1.19 2000/04/07 20:59:26 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -606,11 +606,11 @@ Completion is performed over known flags when reading."
    prompt #f
    (alist->string-table
     (map list
-	 (append standard-message-flags
-		 (folder-flags (selected-folder)))))
+	 (remove-duplicates (append standard-message-flags
+				    (folder-flags (selected-folder)))
+			    string=?)))
    'DEFAULT-TYPE 'INSERTED-DEFAULT
    'HISTORY 'IMAIL-READ-FLAG
-   'HISTORY-INDEX 0
    'REQUIRE-MATCH? require-match?))
 
 ;;;; Message I/O
