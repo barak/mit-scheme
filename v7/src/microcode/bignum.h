@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.h,v 9.25 1989/09/20 23:06:04 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.h,v 9.26 1992/01/20 15:55:43 jinx Exp $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -73,6 +73,8 @@ extern bignum_type bignum_multiply (bignum_type, bignum_type);
 extern int bignum_divide
   (bignum_type numerator, bignum_type denominator,
    bignum_type * quotient, bignum_type * remainder);
+extern bignum_type bignum_quotient (bignum_type, bignum_type);
+extern bignum_type bignum_remainder (bignum_type, bignum_type);
 #ifndef BIGNUM_NO_ULONG
 extern bignum_type long_to_bignum (long);
 extern long bignum_to_long (bignum_type);
@@ -105,6 +107,8 @@ extern bignum_type bignum_subtract ();
 extern bignum_type bignum_negate ();
 extern bignum_type bignum_multiply ();
 extern int bignum_divide ();
+extern bignum_type bignum_quotient ();
+extern bignum_type bignum_remainder ();
 #ifndef BIGNUM_NO_ULONG
 extern bignum_type long_to_bignum ();
 extern long bignum_to_long ();
