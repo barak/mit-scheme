@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ssp.pkg,v 1.19 2005/02/06 04:41:06 cph Exp $
+$Id: ssp.pkg,v 1.20 2005/02/19 04:35:39 cph Exp $
 
 Copyright 2003,2004,2005 Massachusetts Institute of Technology
 
@@ -46,8 +46,7 @@ USA.
 	  dstate/subproblem
 	  make-initial-dstate)
   (export ()
-	  start-mod-lisp-server
-	  xml-rpc:subtree-handler)
+	  start-mod-lisp-server)
   (export (runtime ssp)
 	  define-mime-handler
 	  define-subtree-handler
@@ -123,11 +122,4 @@ USA.
   (files "xmlrpc")
   (parent (runtime ssp))
   (export ()
-	  condition-type:bad-xml-rpc-message
-	  condition-type:xml-rpc-fault
-	  xml-rpc:condition->fault
-	  xml-rpc:fault
-	  xml-rpc:parse-request
-	  xml-rpc:parse-response
-	  xml-rpc:response
-	  xml-rpc:simple-fault))
+	  xml-rpc:subtree-handler))

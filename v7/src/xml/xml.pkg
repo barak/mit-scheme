@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.55 2004/11/17 05:48:43 cph Exp $
+$Id: xml.pkg,v 1.56 2005/02/19 04:34:24 cph Exp $
 
-Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -503,3 +503,16 @@ USA.
 	  html-entities)
   (export (runtime xml output)
 	  html-char->name-map))
+
+(define-package (runtime xml xml-rpc)
+  (files "xml-rpc")
+  (parent (runtime xml))
+  (export ()
+	  condition-type:bad-xml-rpc-message
+	  condition-type:xml-rpc-fault
+	  xml-rpc:condition->fault
+	  xml-rpc:fault
+	  xml-rpc:parse-request
+	  xml-rpc:parse-response
+	  xml-rpc:response
+	  xml-rpc:simple-fault))
