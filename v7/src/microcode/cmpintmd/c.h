@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: c.h,v 1.4 1993/10/30 03:01:38 gjr Exp $
+$Id: c.h,v 1.5 1993/11/16 02:25:15 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -74,6 +74,16 @@ extern int pc_zero_bits;
 {									\
   ((SCHEME_OBJECT *) (location))[1] = ((SCHEME_OBJECT) (input));	\
 } while (0)
+
+#define MANIFEST_CLOSURE_COUNT(scan)					\
+(((COMPILED_ENTRY_OFFSET_WORD (((SCHEME_OBJECT *) (scan)) + 1)) == 0)	\
+ ? (COMPILED_ENTRY_FORMAT_WORD (((SCHEME_OBJECT *) (scan)) + 1))	\
+ : 1)
+
+#define FIRST_MANIFEST_CLOSURE_ENTRY(scan)				\
+(((COMPILED_ENTRY_OFFSET_WORD (((SCHEME_OBJECT *) (scan)) + 1)) == 0)	\
+ ? (((SCHEME_OBJECT *) (scan)) + 2)					\
+ : (((SCHEME_OBJECT *) (scan)) + 1))
 
 /* Trampolines are implemented as tiny compiled code blocks that
    invoke the constant C procedure indexed by the number 0.
