@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.5 1993/08/12 08:34:58 jbank Exp $
+;;;	$Id: debug.scm,v 1.6 1993/08/12 09:46:09 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
 ;;;
@@ -1012,11 +1012,12 @@ If false show the bindings without frames."
        (define ,mark-procedure-symbol-name
 	 (lambda (ignore value)
 	   value))
-       (define (mark-stack/repl-eval s-expression environment syntax-table)
+       (define (mark-stack/repl-eval repl
+				     s-expression environment syntax-table)
 	 (,mark-procedure-symbol-name
 	  'the-turd
 	  (saved-mark-stack-hook
-	   s-expression environment syntax-table)))))
+	   repl s-expression environment syntax-table)))))
   (the-environment))
 
 (set! hook/repl-eval mark-stack/repl-eval)
