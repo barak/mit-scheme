@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fasdump.c,v 9.58 1993/11/04 04:03:07 gjr Exp $
+$Id: fasdump.c,v 9.59 1993/11/09 08:32:41 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -119,10 +119,26 @@ static CONST char * dump_file_name = ((char *) 0);
     *(To - 1) = SHARP_F;						\
 }
 
-#define Dump_Compiled_Entry(label)						\
-{										\
-  Dump_Pointer (Fasdump_Setup_Pointer (Fasdump_Transport_Compiled (),		\
-				       Compiled_BH (false, goto label)));	\
+#define FASDUMP_TRANSPORT_RAW_COMPILED()				\
+{									\
+  TRANSPORT_RAW_COMPILED ();						\
+  if ((mode == 2) && ((OBJECT_TYPE (*(To - 1))) == TC_ENVIRONMENT))	\
+    *(To - 1) = SHARP_F;						\
+}
+
+#define Dump_Compiled_Entry(label)					\
+{									\
+  Dump_Pointer								\
+    (Fasdump_Setup_Pointer (Fasdump_Transport_Compiled (),		\
+			    Compiled_BH (false, goto label)));		\
+}
+
+#define DUMP_RAW_COMPILED_ENTRY(label)					\
+{									\
+  DUMP_RAW_POINTER							\
+    (Fasdump_Setup_Pointer (FASDUMP_TRANSPORT_RAW_COMPILED (),		\
+			    RAW_COMPILED_BH (false,			\
+					     goto label)));		\
 }
 
 /* Should be big enough for the largest fixed size object (a Quad)
@@ -200,7 +216,7 @@ DEFUN (DumpLoop, (Scan, mode), fast SCHEME_OBJECT * Scan AND int mode)
 	  Scan = ((SCHEME_OBJECT *) (word_ptr));
 	  word_ptr = (NEXT_MANIFEST_CLOSURE_ENTRY (word_ptr));
 	  EXTRACT_CLOSURE_ENTRY_ADDRESS (Temp, Scan);
-	  Dump_Compiled_Entry (after_closure);
+	  DUMP_RAW_COMPILED_ENTRY (after_closure);
 	after_closure:
 	  STORE_CLOSURE_ENTRY_ADDRESS (Temp, Scan);
 	}
@@ -254,8 +270,8 @@ DEFUN (DumpLoop, (Scan, mode), fast SCHEME_OBJECT * Scan AND int mode)
 	      Scan = ((SCHEME_OBJECT *) (word_ptr));
 	      word_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr));
 	      EXTRACT_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);
-	      Dump_Compiled_Entry (after_operator);
-	      after_operator:
+	      DUMP_RAW_COMPILED_ENTRY (after_operator);
+	    after_operator:
 	      STORE_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);
 	    }
 	    Scan = end_scan;

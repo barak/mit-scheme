@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: load.c,v 9.35 1993/11/08 06:34:30 gjr Exp $
+$Id: load.c,v 9.36 1993/11/09 08:34:52 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -273,6 +273,18 @@ DEFUN_VOID (Read_Header)
     return (FASL_FILE_TOO_SHORT);
   return (initialize_variables_from_fasl_header (&header[0]));
 }
+
+#ifdef HEAP_IN_LOW_MEMORY
+
+#define SCHEME_ADDR_TO_OLD_DATUM(addr)					\
+  (ADDRESS_TO_DATUM (SCHEME_ADDR_TO_ADDR ((SCHEME_OBJECT *) (addr))))
+
+#else /* not HEAP_IN_LOW_MEMORY */
+
+#define SCHEME_ADDR_TO_OLD_DATUM(addr)					\
+  (((SCHEME_OBJECT *) (addr)) - ((SCHEME_OBJECT *) dumped_memory_base))
+
+#endif /* HEAP_IN_LOW_MEMORY */
 
 #ifdef BYTE_INVERSION
 

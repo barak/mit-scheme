@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: psbtobin.c,v 9.52 1993/11/07 04:10:00 gjr Exp $
+$Id: psbtobin.c,v 9.53 1993/11/09 08:33:42 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -93,6 +93,49 @@ DEFUN (Write_Data, (Count, From_Where),
 #define MAKE_LINKAGE_SECTION_HEADER(kind,count)	0
 #endif
 
+/*
+   The following two lines appears by courtesy of your friendly
+   VMS C compiler and runtime library.
+
+   Bug in version 4 VMS scanf.
+ */
+
+#ifndef vms
+
+#define VMS_BUG(stmt)
+
+#define read_hex_digit(var)						\
+{									\
+  VMS_BUG (var = 0);							\
+  fscanf (portable_file, "%1lx", &var);					\
+}
+
+#else
+
+#define VMS_BUG(stmt)			stmt
+
+#define read_hex_digit (var)						\
+{									\
+  var = (read_hex_digit_procedure ());					\
+}
+
+long
+read_hex_digit_procedure ()
+{
+  long digit;
+  int c;
+
+  while ((c = fgetc (portable_file)) == ' ')
+  {};
+  digit = ((c >= 'a') ? (c - 'a' + 10)
+	   : ((c >= 'A') ? (c - 'A' + 10)
+	      : ((c >= '0') ? (c - '0')
+	         : fprintf (stderr, "Losing big: %d\n", c))));
+  return (digit);
+}
+
+#endif
+
 static void
 DEFUN_VOID (inconsistency)
 {
@@ -117,9 +160,8 @@ DEFUN_VOID (read_a_char)
 
   C = getc (portable_file);
   if (C != '\\')
-  {
     OUT (C);
-  }
+
   C = getc (portable_file);
   switch (C)
   {
@@ -141,6 +183,7 @@ DEFUN_VOID (read_a_char)
 		 "%s: File is not Portable.  Character Code Found.\n",
 		 program_name);
       }
+      VMS_BUG (Code = 0);
       fscanf (portable_file, "%ld", &Code);
       getc (portable_file);			/* Space */
       OUT (Code);
@@ -155,6 +198,7 @@ DEFUN (read_a_char_pointer, (to), SCHEME_OBJECT * to)
   long len, maxlen;
   char * str;
 
+  VMS_BUG (len = 0);
   fscanf (portable_file, "%ld", &len);
 
   maxlen = (len + 1);		/* null terminated */
@@ -176,6 +220,7 @@ DEFUN (read_a_string_internal, (To, maxlen),
   fast long len;
 
   str = ((char *) (&To[STRING_CHARS]));
+  VMS_BUG (ilen = 0);
   fscanf (portable_file, "%ld", &ilen);
   len = ilen;
 
@@ -207,51 +252,10 @@ DEFUN (read_a_string, (To, Slot),
   long maxlen;
 
   *Slot = (MAKE_POINTER_OBJECT (TC_CHARACTER_STRING, To));
+  VMS_BUG (maxlen = 0);
   fscanf (portable_file, "%ld", &maxlen);
   return (read_a_string_internal (To, maxlen));
 }
-
-/*
-   The following two lines appears by courtesy of your friendly
-   VMS C compiler and runtime library.
-
-   Bug in version 4 VMS scanf.
- */
-
-#ifndef vms
-
-#define VMS_BUG(stmt)
-
-#define read_hex_digit(var)						\
-{									\
-  fscanf (portable_file, "%1lx", &var);					\
-}
-
-#else
-
-#define VMS_BUG(stmt)			stmt
-
-#define read_hex_digit (var)						\
-{									\
-  var = (read_hex_digit_procedure ());					\
-}
-
-long
-read_hex_digit_procedure ()
-{
-  long digit;
-  int c;
-
-  while ((c = fgetc (portable_file)) == ' ')
-  {};
-  digit = ((c >= 'a') ? (c - 'a' + 10)
-	   : ((c >= 'A') ? (c - 'A' + 10)
-	      : ((c >= '0') ? (c - '0')
-	         : fprintf (stderr, "Losing big: %d\n", c))));
-  return (digit);
-}
-
-#endif
 
 static SCHEME_OBJECT *
 DEFUN (read_an_integer, (The_Type, To, Slot),
@@ -264,6 +268,7 @@ DEFUN (read_an_integer, (The_Type, To, Slot),
   negative = ((getc (portable_file)) == '-');
   {
     long l;
+    VMS_BUG (l = 0);
     fscanf (portable_file, "%ld", (&l));
     length_in_bits = l;
   }
@@ -393,6 +398,7 @@ DEFUN (read_a_bit_string, (To, Slot),
   long size_in_bits, size_in_words;
   SCHEME_OBJECT the_bit_string;
 
+  VMS_BUG (size_in_bits = 0);
   fscanf (portable_file, "%ld", &size_in_bits);
   size_in_words = (1 + (BIT_STRING_LENGTH_TO_GC_LENGTH (size_in_bits)));
 
@@ -576,6 +582,7 @@ DEFUN (Read_External, (N, Table, To),
 
   while (Table < Until)
   {
+    VMS_BUG (The_Type = 0);
     fscanf (portable_file, "%2x", &The_Type);
     switch (The_Type)
     {
@@ -866,6 +873,8 @@ DEFUN (Read_Pointers_and_Relocate, (how_many, to),
 	SCHEME_OBJECT * temp, * entry_addr;
 	long base_type, base_datum;
 
+	VMS_BUG (base_type = 0);
+	VMS_BUG (base_datum = 0);
 	fscanf (portable_file, "%02x %lx", &base_type, &base_datum);
 	temp = (Relocate (base_datum));
 	if (c_compiled_p)
@@ -1028,6 +1037,7 @@ DEFUN (read_primitives, (how_many, where),
 
   while (--how_many >= 0)
   {
+    VMS_BUG (arity = 0);
     fscanf (portable_file, "%ld", &arity);
     if (arity == ((long) UNKNOWN_PRIMITIVE_ARITY))
       primitive_warn = true;
@@ -1048,6 +1058,7 @@ DEFUN (read_c_code_blocks, (nreserved, length, area),
     {
       long nentries;
 
+      VMS_BUG (nentries = 0);
       fscanf (portable_file, "%ld", &nentries);
       *area++ = (LONG_TO_FIXNUM (nentries));
       area = (read_a_char_pointer (area));
@@ -1058,6 +1069,7 @@ DEFUN (read_c_code_blocks, (nreserved, length, area),
 
 #define READ_HEADER_NO_ERROR(string, format, value, flag) do		\
 {									\
+  VMS_BUG (value = 0);							\
   if (fscanf (portable_file, format, &(value)) == EOF)			\
   {									\
     (flag) = (false);							\
@@ -1072,6 +1084,7 @@ DEFUN (read_c_code_blocks, (nreserved, length, area),
 
 #define READ_HEADER(string, format, value) do				\
 {									\
+  VMS_BUG (value = 0);							\
   if (fscanf (portable_file, format, &(value)) == EOF)			\
   {									\
     READ_HEADER_FAILURE (string);					\

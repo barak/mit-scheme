@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchdmp.c,v 9.74 1993/11/04 04:03:27 gjr Exp $
+$Id: bchdmp.c,v 9.75 1993/11/09 08:33:14 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -200,7 +200,8 @@ static Boolean compiled_code_present_p;
 
 #define fasdump_typeless_end()						\
 {									\
-  (* (SCHEME_ADDR_TO_ADDR (Temp))) = (MAKE_BROKEN_HEART (New_Address));	\
+  (* (SCHEME_ADDR_TO_ADDR (Temp)))					\
+    = (MAKE_BROKEN_HEART ((SCHEME_OBJECT *) New_Address));		\
   (* Scan) = (ADDR_TO_SCHEME_ADDR (New_Address));			\
   continue;								\
 }

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchgcc.h,v 9.55 1993/10/14 19:13:10 gjr Exp $
+$Id: bchgcc.h,v 9.56 1993/11/09 08:30:39 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -387,7 +387,8 @@ do {									\
 
 #define relocate_typeless_end()						\
 {									\
-  (* (SCHEME_ADDR_TO_ADDR (Temp))) = (MAKE_BROKEN_HEART (New_Address));	\
+  (* (SCHEME_ADDR_TO_ADDR (Temp)))					\
+    = (MAKE_BROKEN_HEART ((SCHEME_OBJECT *) (New_Address)));		\
   (* Scan) = (ADDR_TO_SCHEME_ADDR (New_Address));			\
   continue;								\
 }
@@ -427,11 +428,31 @@ do {									\
   }									\
 } while (0)
 
+#define relocate_raw_compiled_entry(in_gc_p) do				\
+{									\
+  Old = (SCHEME_ADDR_TO_ADDR (Temp));					\
+  if (Old < low_heap)							\
+    continue;								\
+  Compiled_BH (in_gc_p, continue);					\
+  {									\
+    SCHEME_OBJECT *Saved_Old = Old;					\
+									\
+    New_Address = (MAKE_BROKEN_HEART (To_Address));			\
+    copy_vector (NULL);							\
+    * Saved_Old = New_Address;						\
+    Temp = (RELOCATE_COMPILED_RAW_ADDRESS				\
+	    (Temp,							\
+	     (OBJECT_ADDRESS (New_Address)),				\
+	     Saved_Old));						\
+    continue;								\
+  }									\
+} while (0)
+
 #define relocate_linked_operator(in_gc_p) do				\
 {									\
   Scan = ((SCHEME_OBJECT *) (word_ptr));				\
   BCH_EXTRACT_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);			\
-  relocate_compiled_entry (in_gc_p);					\
+  relocate_raw_compiled_entry (in_gc_p);				\
   BCH_STORE_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);			\
 } while (0)
 
@@ -439,7 +460,7 @@ do {									\
 {									\
   Scan = ((SCHEME_OBJECT *) (word_ptr));				\
   BCH_EXTRACT_CLOSURE_ENTRY_ADDRESS (Temp, Scan);			\
-  relocate_compiled_entry (in_gc_p);					\
+  relocate_raw_compiled_entry (in_gc_p);				\
   BCH_STORE_CLOSURE_ENTRY_ADDRESS (Temp, Scan);				\
 } while (0)
 

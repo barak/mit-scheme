@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bintopsb.c,v 9.60 1993/11/07 02:12:56 gjr Exp $
+$Id: bintopsb.c,v 9.61 1993/11/09 08:36:04 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -986,8 +986,8 @@ DEFUN (address_in_pure_space, (addr), SCHEME_OBJECT * addr)
 {									\
   long the_datum;							\
 									\
-  Old_Address = (SCHEME_ADDR_TO_ADDR (ptr));				\
-  the_datum = (ADDRESS_TO_DATUM (Old_Address));				\
+  the_datum = (SCHEME_ADDR_TO_OLD_DATUM (ptr));				\
+  Old_Address = (DATUM_TO_ADDRESS (the_datum));				\
   if ((the_datum >= Heap_Base) && (the_datum < Dumped_Heap_Top))	\
     Action (HEAP_CODE, Heap_Relocation, Free,				\
 	    Scn, Objects, Free_Objects);				\

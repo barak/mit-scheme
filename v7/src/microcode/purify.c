@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: purify.c,v 9.52 1993/10/14 19:14:00 gjr Exp $
+$Id: purify.c,v 9.53 1993/11/09 08:32:15 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -184,12 +184,12 @@ DEFUN (purifyloop, (Scan, To_Pointer, GC_Mode),
 	      Scan = ((SCHEME_OBJECT *) word_ptr);
 	      word_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr));
 	      EXTRACT_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);
-	      Purify_Pointer (Setup_Internal
-			      (false,
-			       Transport_Compiled (),
-			       Compiled_BH (false,
-					    goto next_operator)));
-	      next_operator:
+	      PURIFY_RAW_POINTER (Setup_Internal
+				  (false,
+				   TRANSPORT_RAW_COMPILED (),
+				   RAW_COMPILED_BH (false,
+						    goto next_operator)));
+	    next_operator:
 	      STORE_OPERATOR_LINKAGE_ADDRESS(Temp, Scan);
 	    }
 	    Scan = end_scan;
@@ -233,10 +233,11 @@ DEFUN (purifyloop, (Scan, To_Pointer, GC_Mode),
 	  Scan = ((SCHEME_OBJECT *) (word_ptr));
 	  word_ptr = (NEXT_MANIFEST_CLOSURE_ENTRY (word_ptr));
 	  EXTRACT_CLOSURE_ENTRY_ADDRESS (Temp, Scan);
-	  Purify_Pointer(Setup_Internal(false,
-					Transport_Compiled(),
-					Compiled_BH(false,
-						    goto next_closure)));
+	  PURIFY_RAW_POINTER (Setup_Internal
+			      (false,
+			       TRANSPORT_RAW_COMPILED (),
+			       RAW_COMPILED_BH (false,
+						goto next_closure)));
 	next_closure:
 	  STORE_CLOSURE_ENTRY_ADDRESS(Temp, Scan);
 	}

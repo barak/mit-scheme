@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fasload.c,v 9.77 1993/11/08 06:53:53 gjr Exp $
+$Id: fasload.c,v 9.78 1993/11/09 08:34:16 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -419,18 +419,6 @@ static SCHEME_OBJECT * relocate_temp;
    memory to be handled.  This loop relocates all pointers in the
    block of memory.
 */
-
-#ifdef HEAP_IN_LOW_MEMORY
-
-#define SCHEME_ADDR_TO_OLD_DATUM(addr)					\
-  (ADDRESS_TO_DATUM (SCHEME_ADDR_TO_ADDR ((SCHEME_OBJECT *) (addr))))
-
-#else /* not HEAP_IN_LOW_MEMORY */
-
-#define SCHEME_ADDR_TO_OLD_DATUM(addr)					\
-  (((SCHEME_OBJECT *) (addr)) - ((SCHEME_OBJECT *) dumped_memory_base))
-
-#endif /* HEAP_IN_LOW_MEMORY */
 
 static long
 DEFUN (primitive_dumped_number, (datum), unsigned long datum)

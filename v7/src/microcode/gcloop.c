@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: gcloop.c,v 9.43 1993/10/14 19:22:37 gjr Exp $
+$Id: gcloop.c,v 9.44 1993/11/09 08:31:48 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -212,10 +212,11 @@ DEFUN (GCLoop,
 	      Scan = ((SCHEME_OBJECT *) word_ptr);
 	      word_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr));
 	      EXTRACT_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);
-	      GC_Pointer (Setup_Internal (true,
-					  Transport_Compiled (),
-					  Compiled_BH(true,
-						      goto next_operator)));
+	      GC_RAW_POINTER (Setup_Internal
+			      (true,
+			       TRANSPORT_RAW_COMPILED (),
+			       RAW_COMPILED_BH (true,
+						goto next_operator)));
 	    next_operator:
 	      STORE_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);
 	    }
@@ -252,9 +253,11 @@ DEFUN (GCLoop,
 	  Scan = ((SCHEME_OBJECT *) (word_ptr));
 	  word_ptr = (NEXT_MANIFEST_CLOSURE_ENTRY (word_ptr));
 	  EXTRACT_CLOSURE_ENTRY_ADDRESS (Temp, Scan);
-	  GC_Pointer(Setup_Internal(true,
-				    Transport_Compiled(),
-				    Compiled_BH(true, goto next_closure)));
+	  GC_RAW_POINTER (Setup_Internal
+			  (true,
+			   TRANSPORT_RAW_COMPILED (),
+			   RAW_COMPILED_BH (true,
+					    goto next_closure)));
 	next_closure:
 	  STORE_CLOSURE_ENTRY_ADDRESS (Temp, Scan);
 	}

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpgc.h,v 1.24 1993/06/24 03:58:48 gjr Exp $
+$Id: cmpgc.h,v 1.25 1993/11/09 08:31:11 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -108,19 +108,30 @@ else
   {									\
     offset_word = (COMPILED_ENTRY_OFFSET_WORD(var));			\
     var = ((SCHEME_OBJECT *)						\
-	   (((char *) (var)) -						\
-	    ((long) (OFFSET_WORD_TO_BYTE_OFFSET(offset_word)))));	\
-  } while (OFFSET_WORD_CONTINUATION_P(offset_word));			\
+	   (((char *) (var))						\
+	    - ((long) (OFFSET_WORD_TO_BYTE_OFFSET(offset_word)))));	\
+  } while (OFFSET_WORD_CONTINUATION_P (offset_word));			\
 }
 
+#define RELOCATE_COMPILED_INTERNAL(addr, new_block, old_block)		\
+  ((SCHEME_OBJECT *)							\
+   (((char *) new_block)						\
+    + (((char *) (addr)) - ((char *) old_block))))
+
+#define RELOCATE_COMPILED_RAW_ADDRESS(addr, new_block, old_block)	\
+  (ADDR_TO_SCHEME_ADDR							\
+   (RELOCATE_COMPILED_INTERNAL ((SCHEME_ADDR_TO_ADDR (Temp)),		\
+				new_block, old_block)))
+
 #define RELOCATE_COMPILED_ADDRESS(object, new_block, old_block)		\
-((SCHEME_OBJECT *) (((char *) new_block) +				\
-		    (((char *) (OBJECT_ADDRESS(object))) -		\
-		     ((char *) old_block))))
+  ((SCHEME_OBJECT *)							\
+   (RELOCATE_COMPILED_INTERNAL ((OBJECT_ADDRESS (object)),		\
+				new_block, old_block)))
 
 #define RELOCATE_COMPILED(object, new_block, old_block)			\
-MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
-		    (RELOCATE_COMPILED_ADDRESS(object, new_block, old_block)))
+MAKE_POINTER_OBJECT ((OBJECT_TYPE (object)),				\
+		     (RELOCATE_COMPILED_ADDRESS (object, new_block,	\
+						 old_block)))
 
 #define Compiled_BH(In_GC, then_what)					\
 {									\
@@ -128,9 +139,22 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
 									\
   Get_Compiled_Block (Old, Old);					\
   COMPILED_CODE_PRE_TEST (then_what)					\
-  if (BROKEN_HEART_P (*Old))						\
+  if (BROKEN_HEART_P (* Old))						\
   {									\
-    Temp = (RELOCATE_COMPILED (Temp, (OBJECT_ADDRESS (*Old)), Old));	\
+    Temp = (RELOCATE_COMPILED (Temp, (OBJECT_ADDRESS (* Old)), Old));	\
+    then_what;								\
+  }									\
+}
+
+#define RAW_COMPILED_BH(In_GC, then_what)				\
+{									\
+  Get_Compiled_Block (Old, Old);					\
+  COMPILED_CODE_PRE_TEST (then_what)					\
+  if (BROKEN_HEART_P (* Old))						\
+  {									\
+    Temp = (RELOCATE_COMPILED_RAW_ADDRESS (Temp,			\
+					   (OBJECT_ADDRESS (* Old)),	\
+					   Old));			\
     then_what;								\
   }									\
 }
@@ -139,7 +163,7 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
 
 # define AUTOCLOBBER_BUMP(Old, To) do					\
 {									\
-  if (OBJECT_TYPE(*Old) == TC_MANIFEST_VECTOR)				\
+  if ((OBJECT_TYPE (* Old)) == TC_MANIFEST_VECTOR)			\
   {									\
     *To = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR,				\
 			((PAGE_SIZE / (sizeof (SCHEME_OBJECT)))		\
@@ -154,17 +178,30 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
 
 #endif
 
-#define Transport_Compiled()						\
+#define Transport_Compiled() do						\
 {									\
-  SCHEME_OBJECT *Saved_Old = Old;					\
+  SCHEME_OBJECT * Saved_Old = Old;					\
 									\
-  Real_Transport_Vector();						\
+  Real_Transport_Vector ();						\
   AUTOCLOBBER_BUMP (Saved_Old, To);					\
   *Saved_Old = New_Address;						\
   Temp = (RELOCATE_COMPILED (Temp,					\
 			     (OBJECT_ADDRESS (New_Address)),		\
 			     Saved_Old));				\
-}
+} while (0)
+
+#define TRANSPORT_RAW_COMPILED() do					\
+{									\
+  SCHEME_OBJECT * Saved_Old = Old;					\
+									\
+  Real_Transport_Vector ();						\
+  AUTOCLOBBER_BUMP (Saved_Old, To);					\
+  *Saved_Old = New_Address;						\
+  Temp = (RELOCATE_COMPILED_RAW_ADDRESS					\
+	  (Temp,							\
+	   (OBJECT_ADDRESS (New_Address)),				\
+	   Saved_Old));							\
+} while (0)
 
 /* Manifest and implied types */
 
