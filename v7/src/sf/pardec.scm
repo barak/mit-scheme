@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: pardec.scm,v 4.9 1993/09/01 00:10:24 cph Exp $
+$Id: pardec.scm,v 4.10 1998/05/18 03:03:50 cph Exp $
 
-Copyright (c) 1988-1993 Massachusetts Institute of Technology
+Copyright (c) 1988-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -258,7 +258,7 @@ MIT in each case. |#
 		      (list
 		       (make-declaration operation
 					 (if (symbol? name)
-					     (block/lookup-name block name true)
+					     (block/lookup-name block name #t)
 					     name)
 					 (make-integration-info
 					  (copy/expression/extern block value))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/pthmap.scm,v 4.3 1995/07/12 19:43:43 adams Exp $
+$Id: pthmap.scm,v 4.4 1998/05/18 03:04:27 cph Exp $
 
-Copyright (c) 1987-1995 Massachusetts Institute of Technology
+Copyright (c) 1987-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
