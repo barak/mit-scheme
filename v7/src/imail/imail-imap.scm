@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.93 2000/05/26 17:27:15 cph Exp $
+;;; $Id: imail-imap.scm,v 1.94 2000/05/28 03:12:56 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -381,14 +381,6 @@
 	  (lambda ()
 	    (let ((port (imap-connection-port connection)))
 	      (set-imap-connection-port! connection #f)
-	      (let loop ((connections memoized-imap-connections) (prev #f))
-		(if (weak-pair? connections)
-		    (let ((next (weak-cdr connections)))
-		      (if (eq? (weak-car connections) connection)
-			  (if prev
-			      (weak-set-cdr! prev next)
-			      (set! memoized-imap-connections next))
-			  (loop next connections)))))
 	      port)))))
     (if port
 	(close-port port)))
