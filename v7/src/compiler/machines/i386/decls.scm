@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.8 1999/01/02 06:06:43 cph Exp $
+$Id: decls.scm,v 1.9 2000/01/10 03:54:25 cph Exp $
 
-Copyright (c) 1992-1999 Massachusetts Institute of Technology
+Copyright (c) 1992-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -190,8 +190,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	      (and binary (< source binary) binary))))
      (set-source-node/modification-time! node modification-time)
      (if (not modification-time)
-	 (begin (write-string "\nSource file newer than binary: ")
-		(write (source-node/filename node))))))
+	 (begin
+	   (fresh-line)
+	   (write-string "Source file newer than binary: ")
+	   (write (source-node/filename node))
+	   (newline)))))
    source-nodes)
   (if compiler:enable-integration-declarations?
       (begin
@@ -208,10 +211,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				       (> time* time)))))
 			    (if newer?
 				(begin
-				  (write-string "\nBinary file ")
+				  (fresh-line)
+				  (write-string "Binary file ")
 				  (write (source-node/filename node))
 				  (write-string " newer than dependency ")
-				  (write (source-node/filename node*))))
+				  (write (source-node/filename node*))
+				  (newline)))
 			    newer?))))
 		 (set-source-node/modification-time! node false))))
 	 source-nodes)
@@ -221,10 +226,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	       (for-each (lambda (node*)
 			   (if (source-node/modification-time node*)
 			       (begin
-				 (write-string "\nBinary file ")
+				 (fresh-line)
+				 (write-string "Binary file ")
 				 (write (source-node/filename node*))
 				 (write-string " depends on ")
-				 (write (source-node/filename node))))
+				 (write (source-node/filename node))
+				 (newline)))
 			   (set-source-node/modification-time! node* false))
 			 (source-node/forward-closure node))))
 	 source-nodes)))
@@ -233,7 +240,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		  (pathname-delete!
 		   (pathname-new-type (source-node/pathname node) "ext"))))
 	    source-nodes/by-rank)
-  (write-string "\n\nBegin pass 1:")
+  (fresh-line)
+  (newline)
+  (write-string "Begin pass 1:")
+  (newline)
   (for-each (lambda (node)
 	      (if (not (source-node/modification-time node))
 		  (source-node/syntax! node)))
@@ -243,7 +253,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  (and (not (source-node/modification-time node))
 	       (source-node/circular? node))))
       (begin
-	(write-string "\n\nBegin pass 2:")
+	(fresh-line)
+	(newline)
+	(write-string "Begin pass 2:")
+	(newline)
 	(for-each (lambda (node)
 		    (if (not (source-node/modification-time node))
 			(if (source-node/circular? node)
@@ -264,15 +277,19 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (pathname-touch! pathname)
   (if (file-exists? pathname)
       (begin
-	(write-string "\nTouch file: ")
+	(fresh-line)
+	(write-string "Touch file: ")
 	(write (enough-namestring pathname))
+	(newline)
 	(file-touch pathname))))
 
 (define (pathname-delete! pathname)
   (if (file-exists? pathname)
       (begin
-	(write-string "\nDelete file: ")
+	(fresh-line)
+	(write-string "Delete file: ")
 	(write (enough-namestring pathname))
+	(newline)
 	(delete-file pathname))))
 
 (define (sc filename)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: compiler.sf,v 1.9 1999/01/02 06:06:43 cph Exp $
+$Id: compiler.sf,v 1.10 2000/01/10 03:54:28 cph Exp $
 
-Copyright (c) 1992-1999 Massachusetts Institute of Technology
+Copyright (c) 1992-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -45,7 +45,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			 (load (string-append file ".bin") package))
 		       files))))
       (load-option 'HASH-TABLE)
-      (write-string "\n\n---- Loading compile-time files ----")
+      (fresh-line)
+      (newline)
+      (write-string "---- Loading compile-time files ----")
+      (newline)
       (sf-and-load '("base/switch") '(COMPILER))
       (sf-and-load '("base/macros") '(COMPILER MACROS))
       ((access initialize-package! (->environment '(COMPILER MACROS))))
@@ -79,7 +82,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (null? early-instructions))
       (fluid-let ((load-noisily? false)
 		  (load/suppress-loading-message? false))
-	(write-string "\n\n---- Pre-loading instruction sets ----")
+	(fresh-line)
+	(newline)
+	(write-string "---- Pre-loading instruction sets ----")
+	(newline)
 	(for-each (lambda (name)
 		    (load (string-append "machines/i386/" name ".scm")
 			  '(COMPILER LAP-SYNTAXER)
