@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: chrset.scm,v 14.5 1997/02/21 05:42:22 cph Exp $
+$Id: chrset.scm,v 14.6 1998/02/13 23:53:21 adams Exp $
 
 Copyright (c) 1988-97 Massachusetts Institute of Technology
 
@@ -39,7 +39,7 @@ MIT in each case. |#
 
 (define (char-set? object)
   (and (string? object)
-       (= (string-length object) 256)
+       (fix:= (string-length object) 256)
        (not (string-find-next-char-in-set object char-set:not-01))))
 
 (define (char-set . chars)
@@ -55,8 +55,8 @@ MIT in each case. |#
 (define (string->char-set string)
   (let ((char-set (string-allocate 256)))
     (vector-8b-fill! char-set 0 256 0)
-    (do ((i  (- (string-length string) 1)  (- i 1)))
-	((< i 0))
+    (do ((i  (fix:- (string-length string) 1)  (fix:- i 1)))
+	((fix:< i 0))
       (vector-8b-set! char-set (vector-8b-ref string i) 1))
     char-set))
 
@@ -70,22 +70,22 @@ MIT in each case. |#
 (define (predicate->char-set predicate)
   (let ((char-set (string-allocate 256)))
     (let loop ((code 0))
-      (if (< code 256)
+      (if (fix:< code 256)
 	  (begin (vector-8b-set! char-set code
 				 (if (predicate (ascii->char code)) 1 0))
-		 (loop (1+ code)))))
+		 (loop (fix:+ code 1)))))
     char-set))
 
 (define (char-set-members char-set)
   (define (loop code)
-    (cond ((>= code 256) '())
-	  ((zero? (vector-8b-ref char-set code)) (loop (1+ code)))
-	  (else (cons (ascii->char code) (loop (1+ code))))))
+    (cond ((fix:>= code 256) '())
+	  ((zero? (vector-8b-ref char-set code)) (loop (fix:+ code 1)))
+	  (else (cons (ascii->char code) (loop (fix:+ code 1))))))
   (loop 0))
 
 (define (char-set-member? char-set char)
   (let ((ascii (char-ascii? char)))
-    (and ascii (not (zero? (vector-8b-ref char-set ascii))))))
+    (and ascii (not (fix:zero? (vector-8b-ref char-set ascii))))))
 
 (define (char-set-invert char-set)
   (predicate->char-set
