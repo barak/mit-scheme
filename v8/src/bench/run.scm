@@ -46,6 +46,7 @@
 	    "destruct"
 	    "div"
 	    ;;"earley"
+	    "fcomp"
 	    "fib"
 	    ;;"flatten"
 	    "matmul1"
