@@ -19,6 +19,10 @@ tarfile=${prefix}-src.tar.gz
 zipfile=${prefix}-src.zip
 ucfile=${prefix}-src-ucode-gnu-linux.tar.gz
 
+rm -f ${tarfile}
+rm -f ${zipfile}
+rm -f ${ucfile}
+
 tar cvzf ${tarfile} ${destination}
 zip -rl ${zipfile} ${destination}
 
