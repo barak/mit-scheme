@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.23 1989/07/25 13:06:04 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.24 1989/08/21 19:33:33 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -79,6 +79,7 @@ MIT in each case. |#
 	  compiler:analyze-side-effects?
 	  compiler:cache-free-variables?
 	  compiler:code-compression?
+	  compiler:compile-by-procedures?
 	  compiler:cse?
 	  compiler:default-top-level-declarations
 	  compiler:enable-expansion-declarations?
@@ -92,7 +93,10 @@ MIT in each case. |#
 	  compiler:optimize-environments?
 	  compiler:package-optimization-level
 	  compiler:preserve-data-structures?
-	  compiler:show-subphases?))
+	  compiler:show-phases?
+	  compiler:show-procedures?
+	  compiler:show-subphases?
+	  compiler:show-time-reports?))
 
 (define-package (compiler reference-contexts)
   (files "base/refctx")
@@ -161,7 +165,8 @@ MIT in each case. |#
 	  *rtl-graphs*
 	  *rtl-procedures*)
   (export (compiler lap-syntaxer)
-	  compiler:external-labels
+	  *block-label*
+	  *external-labels*
 	  label->object)
   (export (compiler debug)
 	  *root-expression*
@@ -552,6 +557,11 @@ MIT in each case. |#
 	  lap:make-unconditional-branch
 	  lap:syntax-instruction)
   (export (compiler top-level)
+	  *interned-assignments*
+	  *interned-constants*
+	  *interned-uuo-links*
+	  *interned-variables*
+	  *next-constant*
 	  generate-bits)
   (import (scode-optimizer expansion)
 	  scode->scode-expander))
@@ -593,7 +603,8 @@ MIT in each case. |#
 	  compiler:disassemble)
   (import (runtime compiler-info)
 	  compiled-code-block/dbg-info
-	  dbg-info-vector/items	  dbg-info-vector?
+	  dbg-info-vector/blocks-vector
+	  dbg-info-vector?
 	  dbg-info/labels
 	  dbg-label/external?
 	  dbg-label/name

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.19 1989/08/08 01:21:29 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.20 1989/08/21 19:34:39 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -39,7 +39,9 @@ MIT in each case. |#
 (define *generation-queue*)
 (define *queued-procedures*)
 (define *queued-continuations*)
-
+(define *rgraphs*)
+(define *procedures*)
+(define *continuations*)
 (define *extra-continuations*)
 
 (define (generate/top-level expression)
@@ -47,42 +49,48 @@ MIT in each case. |#
    (lambda ()
      (fluid-let ((*generation-queue* (make-queue))
 		 (*queued-procedures* '())
-		 (*queued-continuations* '()))
-       (set! *extra-continuations* '())
-       (set! *rtl-expression* (generate/expression expression))
-       (queue-map!/unsafe *generation-queue* (lambda (thunk) (thunk)))
-       (set! *rtl-graphs*
-	     (list-transform-positive (reverse! *rtl-graphs*)
-	       (lambda (rgraph)
-		 (not (null? (rgraph-entry-edges rgraph))))))
-       (for-each (lambda (rgraph)
-		   (rgraph/compress! rgraph)
-		   (rgraph/postcompress! rgraph))
-		 *rtl-graphs*)
-       (set! *rtl-procedures* (reverse! *rtl-procedures*))
-       (set! *rtl-continuations*
-	     (append *extra-continuations* (reverse! *rtl-continuations*)))))))
+		 (*queued-continuations* '())
+		 (*rgraphs* '())
+		 (*procedures* '())
+		 (*continuations* '())
+		 (*extra-continuations* '()))
+       (let ((expression (generate/expression expression)))
+	 (queue-map!/unsafe *generation-queue* (lambda (thunk) (thunk)))
+	 (let ((rgraphs
+		(list-transform-positive (reverse! *rgraphs*)
+		  (lambda (rgraph)
+		    (not (null? (rgraph-entry-edges rgraph)))))))
+	   (for-each (lambda (rgraph)
+		       (rgraph/compress! rgraph)
+		       (rgraph/postcompress! rgraph))
+		     rgraphs)
+	   (values expression
+		   (reverse! *procedures*)
+		   (append *extra-continuations* (reverse! *continuations*))
+		   rgraphs)))))))
 
 (define (enqueue-procedure! procedure)
   (if (not (memq procedure *queued-procedures*))
       (begin
 	(enqueue!/unsafe *generation-queue*
-			 (lambda ()
-			   (set! *rtl-procedures*
-				 (cons (generate/procedure procedure)
-				       *rtl-procedures*))))
-	(set! *queued-procedures* (cons procedure *queued-procedures*)))))
+	  (lambda ()
+	    (set! *procedures*
+		  (cons (generate/procedure procedure) *procedures*))
+	    unspecific))
+	(set! *queued-procedures* (cons procedure *queued-procedures*))
+	unspecific)))
 
 (define (enqueue-continuation! continuation)
   (if (not (memq continuation *queued-continuations*))
       (begin
 	(enqueue!/unsafe *generation-queue*
-			 (lambda ()
-			   (set! *rtl-continuations*
-				 (cons (generate/continuation continuation)
-				       *rtl-continuations*))))
+	  (lambda ()
+	    (set! *continuations*
+		  (cons (generate/continuation continuation) *continuations*))
+	    unspecific))
 	(set! *queued-continuations*
-	      (cons continuation *queued-continuations*)))))
+	      (cons continuation *queued-continuations*))
+	unspecific)))
 
 (define (generate/expression expression)
   (with-values
@@ -257,7 +265,8 @@ MIT in each case. |#
     (or (subgraph-color/rgraph color)
 	(let ((rgraph (make-rgraph number-of-machine-registers)))
 	  (set-subgraph-color/rgraph! color rgraph)
-	  (set! *rtl-graphs* (cons rgraph *rtl-graphs*))	  rgraph))))
+	  (set! *rgraphs* (cons rgraph *rgraphs*))
+	  rgraph))))
 
 (define (generate/node node)
   (let ((memoization (cfg-node-get node memoization-tag)))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/simapp.scm,v 4.4 1988/12/12 21:30:21 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/simapp.scm,v 4.5 1989/08/21 19:34:13 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -109,17 +109,22 @@ MIT in each case. |#
 			   (lvalue-connect! (car parameters) (car operands))
 			   (loop (cdr parameters) (cdr operands)))))))
 	      ((rvalue/constant? operator)
-	       (let ((value (constant-value operator)))
-		 (cond ((primitive-procedure? value)
-			(if (not
-			     (primitive-arity-correct? value
-						       (-1+ number-supplied)))
-			    (warn
-			     "Primitive called with wrong number of arguments"
-			     value
-			     number-supplied)))
-		       ((not (unassigned-reference-trap? value))
-			(warn "Inapplicable operator" value)))))
+	       (let ((value (constant-value operator))
+		     (argument-count (-1+ number-supplied)))
+		 (if (not
+		      (cond ((eq? value compiled-error-procedure)
+			     (positive? argument-count))
+			    ((or (primitive-procedure? value)
+				 (compiled-procedure? value))
+			     (procedure-arity-valid? value argument-count))
+			    (else
+			     (if (not (unassigned-reference-trap? value))
+				 (warn "Inapplicable operator" value))
+			     true)))
+		     (warn
+		      "Procedure called with wrong number of arguments"
+		      value
+		      number-supplied))))
 	      (else
 	       (warn "Inapplicable operator" operator)))))))
 

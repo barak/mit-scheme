@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/crsend.scm,v 1.1 1989/05/17 20:44:56 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/crsend.scm,v 1.2 1989/08/21 19:32:18 cph Exp $
 $MC68020-Header: toplev.scm,v 4.16 89/04/26 05:09:52 GMT cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
@@ -33,7 +33,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; Cross Compiler End.
+;;;; Cross Compiler End
 ;;; This program does not need the rest of the compiler, but should
 ;;; match the version of the same name in crstop.scm and toplev.scm
 
@@ -48,69 +48,13 @@ MIT in each case. |#
 	   ,x))))
 
 (define (cross-compile-bin-file-end input-string #!optional output-string)
-  (compiler-pathnames
-   input-string
-   (and (not (default-object? output-string)) output-string)
-   (make-pathname false false false false "bits.x" 'NEWEST)
-   (lambda (input-pathname output-pathname)
-     output-pathname
-     (cross-compile-scode-end (compiler-fasload input-pathname)))))
+  (compiler-pathnames input-string
+		      (and (not (default-object? output-string)) output-string)
+		      (make-pathname false false false false "bits.x" 'NEWEST)
+    (lambda (input-pathname output-pathname)
+      output-pathname			;ignore
+      (cross-compile-scode-end (compiler-fasload input-pathname)))))
 
-(define (cross-compile-scode-end cross-compilation)
-  (in-compiler
-   (lambda ()
-     (cross-link-end cross-compilation)
-     compiler:expression)))
-
-(define-structure (cc-vector (constructor cc-vector/make)
-			     (conc-name cc-vector/))
-  (code-vector false read-only true)
-  (entry-label false read-only true)
-  (entry-points false read-only true)
-  (label-bindings false read-only true)
-  (ic-procedure-headers false read-only true))
-
-(define (cross-link-end cc-vector)
-  (set! compiler:code-vector (cc-vector/code-vector cc-vector))
-  (set! compiler:entry-label (cc-vector/entry-label cc-vector))
-  (set! compiler:entry-points (cc-vector/entry-points cc-vector))
-  (set! compiler:label-bindings (cc-vector/label-bindings cc-vector))
-  (set! *ic-procedure-headers* (cc-vector/ic-procedure-headers cc-vector))
-  (phase/link))
-
-(define (phase/link)
-  (compiler-phase "Linkification"
-    (lambda ()
-      ;; This has sections locked against GC to prevent relocation
-      ;; while computing addresses.
-      (let ((bindings
-	     (map (lambda (label)
-		    (cons
-		     label
-		     (with-absolutely-no-interrupts
-		      (lambda ()
-			((ucode-primitive &make-object)
-			 type-code:compiled-entry
-			 (make-non-pointer-object
-			  (+ (cdr (or (assq label compiler:label-bindings)
-				      (error "Missing entry point" label)))
-			     (object-datum compiler:code-vector))))))))
-		  compiler:entry-points)))
-	(let ((label->expression
-	       (lambda (label)
-		 (cdr (or (assq label bindings)
-			  (error "Label not defined as entry point" label))))))
-	  (set! compiler:expression (label->expression compiler:entry-label))
-	  (for-each (lambda (entry)
-		      (set-lambda-body! (car entry)
-					(label->expression (cdr entry))))
-		    *ic-procedure-headers*)))
-      (set! compiler:code-vector)
-      (set! compiler:entry-points)
-      (set! compiler:label-bindings)
-      (set! compiler:entry-label)
-      (set! *ic-procedure-headers*))))
-
 (define (compiler-pathnames input-string output-string default transform)
   (let* ((core
 	  (lambda (input-string)
@@ -140,25 +84,81 @@ MIT in each case. |#
     (if (pair? input-string)
 	(for-each kernel input-string)
 	(kernel input-string))))
+
+(define (cross-compile-scode-end cross-compilation)
+  (in-compiler
+   (lambda ()
+     (cross-link-end cross-compilation)
+     *expression*)))
+
+(define-structure (cc-vector (constructor cc-vector/make)
+			     (conc-name cc-vector/))
+  (code-vector false read-only true)
+  (entry-label false read-only true)
+  (entry-points false read-only true)
+  (label-bindings false read-only true)
+  (ic-procedure-headers false read-only true))
+
+(define (cross-link-end cc-vector)
+  (set! *code-vector* (cc-vector/code-vector cc-vector))
+  (set! *entry-label* (cc-vector/entry-label cc-vector))
+  (set! *entry-points* (cc-vector/entry-points cc-vector))
+  (set! *label-bindings* (cc-vector/label-bindings cc-vector))
+  (set! *ic-procedure-headers* (cc-vector/ic-procedure-headers cc-vector))
+  (phase/link))
+
+(define (phase/link)
+  (compiler-phase "Linkification"
+    (lambda ()
+      ;; This has sections locked against GC to prevent relocation
+      ;; while computing addresses.
+      (let ((bindings
+	     (map (lambda (label)
+		    (cons
+		     label
+		     (with-absolutely-no-interrupts
+		      (lambda ()
+			((ucode-primitive &make-object)
+			 type-code:compiled-entry
+			 (make-non-pointer-object
+			  (+ (cdr (or (assq label *label-bindings*)
+				      (error "Missing entry point" label)))
+			     (object-datum *code-vector*))))))))
+		  *entry-points*)))
+	(let ((label->expression
+	       (lambda (label)
+		 (cdr (or (assq label bindings)
+			  (error "Label not defined as entry point" label))))))
+	  (set! *expression* (label->expression *entry-label*))
+	  (for-each (lambda (entry)
+		      (set-lambda-body! (car entry)
+					(label->expression (cdr entry))))
+		    *ic-procedure-headers*)))
+      (set! *code-vector*)
+      (set! *entry-points*)
+      (set! *label-bindings*)
+      (set! *entry-label*)
+      (set! *ic-procedure-headers*))))
 
 ;;;; Compiler emulation
 
 (define type-code:compiled-entry (ucode-type COMPILED-ENTRY))
 (define compiler:batch-mode? false)
 
-(define compiler:expression)
-(define compiler:code-vector)
-(define compiler:entry-label)
-(define compiler:entry-points)
-(define compiler:label-bindings)
+(define *expression*)
+(define *code-vector*)
+(define *entry-label*)
+(define *entry-points*)
+(define *label-bindings*)
 (define *ic-procedure-headers*)
 
 (define (in-compiler thunk)
-  (fluid-let ((compiler:expression)
-	      (compiler:code-vector)
-	      (compiler:entry-label)
-	      (compiler:entry-points)
-	      (compiler:label-bindings)	      (*ic-procedure-headers*))
+  (fluid-let ((*expression*)
+	      (*code-vector*)
+	      (*entry-label*)
+	      (*entry-points*)
+	      (*label-bindings*)
+	      (*ic-procedure-headers*))
     (thunk)))
 
 (define (compiler-phase name thunk)

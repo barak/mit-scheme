@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 4.6 1988/11/07 23:50:50 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 4.7 1989/08/21 19:30:23 cph Exp $
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,26 +36,45 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define *block-start-label*)
 (define *current-bblock*)
 (define *pending-bblocks*)
 
-(define (generate-bits rgraphs receiver)
+(define (generate-bits rgraphs remote-links process-constants-block)
   (with-new-node-marks
    (lambda ()
-     (fluid-let ((*next-constant* 0)
-		 (*interned-constants* '())
-		 (*interned-variables* '())
-		 (*interned-assignments* '())
-		 (*interned-uuo-links* '())
-		 (*block-start-label* (generate-label)))
-       (for-each cgen-rgraph rgraphs)
-       (receiver *block-start-label*
-		 (generate/quotation-header *block-start-label*
-					    *interned-constants*
-					    *interned-variables*
-					    *interned-assignments*
-					    *interned-uuo-links*))))))
+     (for-each cgen-rgraph rgraphs)
+     (for-each (lambda (remote-link)
+		 (vector-set! remote-link
+			      0
+			      (constant->label (vector-ref remote-link 0)))
+		 unspecific)
+	       remote-links)
+     (with-values
+	 (lambda ()
+	   (generate/constants-block *interned-constants*
+				     *interned-variables*
+				     *interned-assignments*
+				     *interned-uuo-links*))
+       (or process-constants-block
+	   (lambda (constants-code environment-label free-ref-label n-sections)
+	     (LAP ,@constants-code
+		  ,@(if free-ref-label
+			(generate/quotation-header environment-label
+						   free-ref-label
+						   n-sections)
+			(LAP))
+		  ,@(let loop ((remote-links remote-links))
+		      (if (null? remote-links)
+			  (LAP)
+			  (LAP ,@(let ((remote-link (car remote-links)))
+				   (if (vector-ref remote-link 2)
+				       (generate/remote-link
+					(vector-ref remote-link 0)
+					(vector-ref remote-link 1)
+					(vector-ref remote-link 2)
+					(vector-ref remote-link 3))
+				       (LAP)))
+			       ,@(loop (cdr remote-links))))))))))))
 
 (define (cgen-rgraph rgraph)
   (fluid-let ((*current-rgraph* rgraph)
@@ -66,14 +85,16 @@ MIT in each case. |#
 	      (rgraph-entry-edges rgraph))
     (if (not (null? *pending-bblocks*))
 	(error "CGEN-RGRAPH: pending blocks left at end of pass"))))
-
+
 (define (cgen-entry edge)
   (define (loop bblock map)
     (cgen-bblock bblock map)
     (if (sblock? bblock)
 	(cgen-right (snode-next-edge bblock))
-	(begin (cgen-right (pnode-consequent-edge bblock))
-	       (cgen-right (pnode-alternative-edge bblock)))))
+	(begin
+	  (cgen-right (pnode-consequent-edge bblock))
+	  (cgen-right (pnode-alternative-edge bblock)))))
+
   (define (cgen-right edge)
     (let ((next (edge-next-node edge)))
       (if (and next (not (node-marked? next)))

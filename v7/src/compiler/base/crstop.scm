@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/crstop.scm,v 1.3 1989/05/21 02:40:17 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/crstop.scm,v 1.4 1989/08/21 19:32:21 cph Exp $
 $MC68020-Header: toplev.scm,v 4.16 89/04/26 05:09:52 GMT cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
@@ -34,7 +34,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Cross Compiler Top Level.
-;;; This code shares and should be merged with toplev.scm.
+;;; This code shares and should be merged with "toplev.scm".
 ;;; Many of the procedures only differ in the default extensions.
 
 (declare (usual-integrations))
@@ -80,7 +80,7 @@ MIT in each case. |#
   (in-compiler
    (lambda ()
      (cross-link-end cross-compilation)
-     compiler:expression)))
+     *result*)))
 
 ;; This should be merged with compile-scode
 
@@ -122,7 +122,7 @@ MIT in each case. |#
 	   (phase/info-generation-2 info-output-pathname))
        ;; Here is were this procedure differs from compile-scode
        (phase/cross-link)
-       compiler:expression))))
+       *result*))))
 
 (define-structure (cc-vector (constructor cc-vector/make)
 			     (conc-name cc-vector/))
@@ -136,18 +136,19 @@ MIT in each case. |#
   (compiler-phase
    "Cross Linkification"
    (lambda ()
-     (set! compiler:expression
-	 (cc-vector/make
-	  (last-reference compiler:code-vector)
-	  (last-reference compiler:entry-label)
-	  (last-reference compiler:entry-points)
-	  (last-reference compiler:label-bindings)
-	  (last-reference *ic-procedure-headers*)))
+     (set! *result*
+	   (cc-vector/make
+	    (last-reference *code-vector*)
+	    (last-reference *entry-label*)
+	    (last-reference *entry-points*)
+	    (last-reference *label-bindings*)
+	    (last-reference *ic-procedure-headers*)))
      unspecific)))
 
 (define (cross-link-end cc-vector)
-  (set! compiler:code-vector (cc-vector/code-vector cc-vector))
-  (set! compiler:entry-label (cc-vector/entry-label cc-vector))
-  (set! compiler:entry-points (cc-vector/entry-points cc-vector))
-  (set! compiler:label-bindings (cc-vector/label-bindings cc-vector))  (set! *ic-procedure-headers* (cc-vector/ic-procedure-headers cc-vector))
+  (set! *code-vector* (cc-vector/code-vector cc-vector))
+  (set! *entry-label* (cc-vector/entry-label cc-vector))
+  (set! *entry-points* (cc-vector/entry-points cc-vector))
+  (set! *label-bindings* (cc-vector/label-bindings cc-vector))
+  (set! *ic-procedure-headers* (cc-vector/ic-procedure-headers cc-vector))
   (phase/link))

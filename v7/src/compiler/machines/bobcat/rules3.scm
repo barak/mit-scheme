@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.15 1988/12/30 07:05:20 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.16 1989/08/21 19:33:47 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -102,7 +102,7 @@ MIT in each case. |#
     (LAP ,@set-extension
 	 ,@(clear-map!)
 	 ,(load-dnw frame-size 0)
-	 (LEA (@PCR ,*block-start-label*) (A 1))
+	 (LEA (@PCR ,*block-label*) (A 1))
 	 (JMP ,entry:compiler-cache-reference-apply))))
 
 (define-rule statement
@@ -277,8 +277,7 @@ MIT in each case. |#
 ;;;; External Labels
 
 (define (make-external-label code label)
-  (set! compiler:external-labels 
-	(cons label compiler:external-labels))
+  (set! *external-labels* (cons label *external-labels*))
   (LAP (DC UW ,code)
        (BLOCK-OFFSET ,label)
        (LABEL ,label)))
@@ -439,74 +438,87 @@ MIT in each case. |#
 ;;;; Entry Header
 ;;; This is invoked by the top level of the LAP generator.
 
-(define generate/quotation-header
-  (let ((uuo-link-tag 0)
-	(reference-tag 1)
-	(assignment-tag 2))
+(define (generate/quotation-header environment-label free-ref-label n-sections)
+  (LAP (LEA (@PCR ,environment-label) (A 0))
+       (MOV L ,reg:environment (@A 0))
+       (LEA (@PCR ,*block-label*) (A 0))
+       (LEA (@PCR ,free-ref-label) (A 1))
+       ,(load-dnw n-sections 0)
+       (JSR ,entry:compiler-link)
+       ,@(make-external-label (continuation-code-word false)
+			      (generate-label))))
 
-    (define (make-constant-block-tag tag datum)
-      (if (> datum #xffff)
-	  (error "make-constant-block-tag: datum too large" datum)
-	  (+ (* tag #x10000) datum)))
+(define (generate/remote-link code-block-label
+			      environment-offset
+			      free-ref-offset
+			      n-sections)
+  (LAP (MOV L (@PCR ,code-block-label) (D 0))
+       (AND L ,mask-reference (D 0))
+       (MOV L (D 0) (A 0))
+       (LEA (@AO 0 ,environment-offset) (A 1))
+       (MOV L ,reg:environment (@A 1))
+       (LEA (@AO 0 ,free-ref-offset) (A 1))
+       ,(load-dnw n-sections 0)
+       (JSR ,entry:compiler-link)
+       ,@(make-external-label (continuation-code-word false)
+			      (generate-label))))
+
+(define (generate/constants-block constants references assignments uuo-links)
+  (let ((constant-info
+	 (declare-constants 0 (transmogrifly uuo-links)
+	   (declare-constants 1 references
+	     (declare-constants 2 assignments
+	       (declare-constants false constants
+		 (cons false (LAP))))))))
+    (let ((free-ref-label (car constant-info))
+	  (constants-code (cdr constant-info))
+	  (debugging-information-label (allocate-constant-label))
+	  (environment-label (allocate-constant-label))
+	  (n-sections
+	   (+ (if (null? uuo-links) 0 1)
+	      (if (null? references) 0 1)
+	      (if (null? assignments) 0 1))))
+      (values
+       (LAP ,@constants-code
+	    ;; Place holder for the debugging info filename
+	    (SCHEME-OBJECT ,debugging-information-label DEBUGGING-INFO)
+	    ;; Place holder for the load time environment if needed
+	    (SCHEME-OBJECT ,environment-label
+			   ,(if (null? free-ref-label) 0 'ENVIRONMENT)))
+       environment-label
+       free-ref-label
+       n-sections))))
 
-    (define (declare-constants tag constants info)
-      (define (inner constants)
-	(if (null? constants)
-	    (cdr info)
-	    (let ((entry (car constants)))
-	      (LAP (SCHEME-OBJECT ,(cdr entry) ,(car entry))
-		   ,@(inner (cdr constants))))))
+(define (declare-constants tag constants info)
+  (define (inner constants)
+    (if (null? constants)
+	(cdr info)
+	(let ((entry (car constants)))
+	  (LAP (SCHEME-OBJECT ,(cdr entry) ,(car entry))
+	       ,@(inner (cdr constants))))))
+  (if (and tag (not (null? constants)))
+      (let ((label (allocate-constant-label)))
+	(cons label
+	      (inner
+	       `((,(let ((datum (length constants)))
+		     (if (> datum #xffff)
+			 (error "datum too large" datum))
+		     (+ (* tag #x10000) datum))
+		  . ,label)
+		 ,@constants))))
+      (cons (car info) (inner constants))))
 
-      (if (and tag (not (null? constants)))
-	  (let ((label (allocate-constant-label)))
-	    (cons label
-		  (inner `((,(make-constant-block-tag tag (length constants))
-			    . ,label)
-			   ,@constants))))
-	  (cons (car info) (inner constants))))
-
-    (define (transmogrifly uuos)
-      (define (inner name assoc)
-	(if (null? assoc)
-	    (transmogrifly (cdr uuos))
-	    (cons (cons name (cdar assoc)) 		; uuo-label
-		  (cons (cons (caar assoc)		; frame-size
-			      (allocate-constant-label))
-			(inner name (cdr assoc))))))
-      (if (null? uuos)
-	  '()
-	  (inner (caar uuos) (cdar uuos))))
-
-    (lambda (block-label constants references assignments uuo-links)
-      (let ((constant-info
-	     (declare-constants uuo-link-tag (transmogrifly uuo-links)
-	       (declare-constants reference-tag references
-		 (declare-constants assignment-tag assignments
-		   (declare-constants #f constants
-		     (cons '() (LAP))))))))
-	(let ((free-ref-label (car constant-info))
-	      (constants-code (cdr constant-info))
-	      (debugging-information-label (allocate-constant-label))
-	      (environment-label (allocate-constant-label)))
-	  (LAP ,@constants-code
-	       ;; Place holder for the debugging info filename
-	       (SCHEME-OBJECT ,debugging-information-label DEBUGGING-INFO)
-	       ;; Place holder for the load time environment if needed
-	       (SCHEME-OBJECT ,environment-label
-			      ,(if (null? free-ref-label) 0 'ENVIRONMENT))
-	       ,@(if (null? free-ref-label)
-		     (LAP)
-		     (LAP (LEA (@PCR ,environment-label) (A 0))
-			  (MOV L ,reg:environment (@A 0))
-			  (LEA (@PCR ,block-label) (A 0))
-			  (LEA (@PCR ,free-ref-label) (A 1))
-			  ,(load-dnw (+ (if (null? uuo-links) 0 1)
-					(if (null? references) 0 1)
-					(if (null? assignments) 0 1))
-				     0)
-			  (JSR ,entry:compiler-link)
-			  ,@(make-external-label (continuation-code-word false)
-						 (generate-label))))))))))
+(define (transmogrifly uuos)
+  (define (inner name assoc)
+    (if (null? assoc)
+	(transmogrifly (cdr uuos))
+	(cons (cons name (cdar assoc)) 		; uuo-label
+	      (cons (cons (caar assoc)		; frame-size
+			  (allocate-constant-label))
+		    (inner name (cdr assoc))))))
+  (if (null? uuos)
+      '()
+      (inner (caar uuos) (cdar uuos))))
 
 ;;; Local Variables: ***
 ;;; eval: (put 'declare-constants 'scheme-indent-hook 2) ***

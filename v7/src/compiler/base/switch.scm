@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/switch.scm,v 4.10 1988/12/06 18:53:47 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/switch.scm,v 4.11 1989/08/21 19:32:29 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -40,6 +40,10 @@ MIT in each case. |#
 
 (define compiler:enable-integration-declarations? true)
 (define compiler:enable-expansion-declarations? true)
+(define compiler:compile-by-procedures? true)
+(define compiler:show-time-reports? false)
+(define compiler:show-procedures? true)
+(define compiler:show-phases? false)
 (define compiler:show-subphases? false)
 (define compiler:preserve-data-structures? false)
 (define compiler:code-compression? true)
@@ -61,3 +65,9 @@ MIT in each case. |#
 
 (define compiler:default-top-level-declarations
   '((UUO-LINK ALL)))
+
+;;; Hook: bind this to a procedure of one argument and it will receive
+;;; each phase of the compiler as a thunk.  It is expected to call the
+;;; thunk after any appropriate processing.
+(define compiler:phase-wrapper
+  false)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/infnew.scm,v 4.4 1989/01/06 20:50:21 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/infnew.scm,v 4.5 1989/08/21 19:32:26 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -229,7 +229,7 @@ MIT in each case. |#
 	   (or (selector object)
 	       (error "Missing debugging info" object)))))
     (values
-     (debug-info rtl-expr/debugging-info expression)
+     (and expression (debug-info rtl-expr/debugging-info expression))
      (map (lambda (procedure)
 	    (let ((info (debug-info rtl-procedure/debugging-info procedure)))
 	      (set-dbg-procedure/external-label!
@@ -266,9 +266,11 @@ MIT in each case. |#
 	(for-each (lambda (label)
 		    (set-dbg-label/external?! (map-label label) true))
 		  external-labels)
-	(set-dbg-expression/label!
-	 expression
-	 (map-label (dbg-expression/label expression)))	(for-each
+	(if expression
+	    (set-dbg-expression/label!
+	     expression
+	     (map-label (dbg-expression/label expression))))
+	(for-each
 	 (lambda (procedure)
 	   (set-dbg-procedure/label!
 	    procedure

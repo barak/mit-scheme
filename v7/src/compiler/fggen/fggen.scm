@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.18 1989/08/15 12:58:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.19 1989/08/21 19:34:01 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -76,9 +76,9 @@ MIT in each case. |#
   ;; The call to `process-declarations!' must come after the
   ;; expression is generated because it can refer to the set of free
   ;; variables in the expression.
-  (let ((node (generate/expression block continuation expression)))
+  (let ((scfg (generate/expression block continuation expression)))
     (process-top-level-declarations! block declarations)
-    node))
+    scfg))
 
 ;;;; Continuations
 
@@ -118,8 +118,7 @@ MIT in each case. |#
 	 (virtual-continuation/type continuation))
 	((procedure? continuation)
 	 (continuation/type continuation))
-	(else
-	 (error "Illegal continuation" continuation))))
+	(else (error "Illegal continuation" continuation))))
 
 (define (continuation/type? continuation type)
   (cond ((variable? continuation)
@@ -128,8 +127,7 @@ MIT in each case. |#
 	 (eq? (virtual-continuation/type continuation) type))
 	((procedure? continuation)
 	 (eq? (continuation/type continuation) type))
-	(else
-	 (error "Illegal continuation" continuation))))
+	(else (error "Illegal continuation" continuation))))
 
 (define-integrable (continuation/effect? continuation)
   (continuation/type? continuation continuation-type/effect))
@@ -150,6 +148,13 @@ MIT in each case. |#
   (cond ((variable? continuation) (make-reference block continuation true))
 	((procedure? continuation) continuation)
 	(else (error "Illegal continuation" continuation))))
+
+(define (scfg*ctype->ctype! continuation)
+  (continuation/case continuation
+		     scfg*scfg->scfg!
+		     scfg*scfg->scfg!
+		     scfg*pcfg->pcfg!
+		     scfg*subproblem->subproblem!))
 
 ;;;; Subproblems
 
@@ -174,6 +179,13 @@ MIT in each case. |#
   (make-subproblem (scfg*scfg->scfg! scfg (subproblem-prefix subproblem))
 		   (subproblem-continuation subproblem)
 		   (subproblem-rvalue subproblem)))
+
+(define (pcfg*subproblem->subproblem! pcfg consequent alternative)
+  (make-subproblem (pcfg*scfg->scfg! pcfg
+				     (subproblem-prefix consequent)
+				     (subproblem-prefix alternative))
+		   (subproblem-continuation consequent)
+		   (subproblem-rvalue alternative)))
 
 (define *virtual-continuations*)
 
@@ -443,12 +455,7 @@ MIT in each case. |#
 ;;;; Combinators
 
 (define (generate/sequence block continuation expression)
-  (let ((join
-	 (continuation/case continuation
-			    scfg*scfg->scfg!
-			    scfg*scfg->scfg!
-			    scfg*pcfg->pcfg!
-			    scfg*subproblem->subproblem!)))
+  (let ((join (scfg*ctype->ctype! continuation)))
     (let ((do-action
 	   (lambda (action continuation-type)
 	     (generate/subproblem/effect block
@@ -470,7 +477,7 @@ MIT in each case. |#
 	       (do-result (&triple-third expression)))))
 	    (else
 	     (error "Not a sequence" expression))))))
-
+
 (define (generate/conditional block continuation expression)
   (scode/conditional-components expression
     (lambda (predicate consequent alternative)
@@ -482,11 +489,7 @@ MIT in each case. |#
 					    expression)))
 	(let ((simple
 	       (lambda (hooks branch)
-		 ((continuation/case continuation
-				     scfg*scfg->scfg!
-				     scfg*scfg->scfg!
-				     scfg*pcfg->pcfg!
-				     scfg*subproblem->subproblem!)
+		 ((scfg*ctype->ctype! continuation)
 		  (make-scfg (cfg-entry-node predicate) hooks)
 		  (generate/expression block continuation branch)))))
 	  (cond ((hooks-null? (pcfg-consequent-hooks predicate))
@@ -526,61 +529,56 @@ MIT in each case. |#
 (define (generate/combination block continuation expression)
   (scode/combination-components expression
     (lambda (operator operands)
-      (let ((make-combination
-	     (lambda (push continuation)
-	       (make-combination
-		block
-		(continuation-reference block continuation)
-		(wrapper/subproblem/value
-		 block
-		 continuation
-		 (make-continuation-debugging-info 'COMBINATION-OPERAND
-						   expression
-						   0)
-		 (lambda (continuation*)
-		   (if (scode/lambda? operator)
-		       (generate/lambda* block
-					 continuation*
-					 operator
-					 (continuation/known-type continuation)
-					 false)
-		       (generate/expression block
-					    continuation*
-					    operator))))
-		(let loop ((operands operands) (index 1))
-		  (if (null? operands)
-		      '()
-		      (cons (generate/subproblem/value block
-						       continuation
-						       (car operands)
-						       'COMBINATION-OPERAND
+      (if (eq? not operator)
+	  (generate/conditional block
+				continuation
+				(scode/make-conditional (car operands) #F #T))
+	  (let ((make-combination
+		 (lambda (push continuation)
+		   (make-combination
+		    block
+		    (continuation-reference block continuation)
+		    (wrapper/subproblem/value
+		     block
+		     continuation
+		     (make-continuation-debugging-info 'COMBINATION-OPERAND
 						       expression
-						       index)
-			    (loop (cdr operands) (1+ index)))))
-		push))))
-	((continuation/case continuation
-	   (lambda () (make-combination false continuation))
-	   (lambda ()
-	     (if (variable? continuation)
-		 (make-combination false continuation)
-		 (with-reified-continuation block
-					    continuation
-					    scfg*scfg->scfg!
-		   (lambda (push continuation)
-		     (make-scfg
-		      (cfg-entry-node (make-combination push continuation))
-		      (continuation/next-hooks continuation))))))
-	   (lambda ()
-	     (if (eq? not operator)
-		 (pcfg*pcfg->pcfg!
-		  (generate/subproblem/predicate block
-						 continuation
-						 (car operands)
-						 'COMBINATION-OPERAND
-						 expression
-						 1)
-		  (generate/expression block continuation false)
-		  (generate/expression block continuation true))
+						       0)
+		     (lambda (continuation*)
+		       (if (scode/lambda? operator)
+			   (generate/lambda*
+			    block
+			    continuation*
+			    operator
+			    (continuation/known-type continuation)
+			    false)
+			   (generate/expression block
+						continuation*
+						operator))))
+		    (let loop ((operands operands) (index 1))
+		      (if (null? operands)
+			  '()
+			  (cons (generate/subproblem/value block
+							   continuation
+							   (car operands)
+							   'COMBINATION-OPERAND
+							   expression
+							   index)
+				(loop (cdr operands) (1+ index)))))
+		    push))))
+	    ((continuation/case continuation
+	       (lambda () (make-combination false continuation))
+	       (lambda ()
+		 (if (variable? continuation)
+		     (make-combination false continuation)
+		     (with-reified-continuation block
+						continuation
+						scfg*scfg->scfg!
+		       (lambda (push continuation)
+			 (make-scfg
+			  (cfg-entry-node (make-combination push continuation))
+			  (continuation/next-hooks continuation))))))
+	       (lambda ()
 		 (with-reified-continuation block
 					    continuation
 					    scfg*pcfg->pcfg!
@@ -590,15 +588,15 @@ MIT in each case. |#
 		       (cfg-entry-node (make-combination push continuation))
 		       (continuation/next-hooks continuation))
 		      (make-true-test block
-				      (continuation/rvalue continuation)))))))
-	   (lambda ()
-	     (with-reified-continuation block
-					continuation
-					scfg*subproblem->subproblem!
-	       (lambda (push continuation)
-		 (make-subproblem/canonical
-		  (make-combination push continuation)
-		  continuation))))))))))
+				      (continuation/rvalue continuation))))))
+	       (lambda ()
+		 (with-reified-continuation block
+					    continuation
+					    scfg*subproblem->subproblem!
+		   (lambda (push continuation)
+		     (make-subproblem/canonical
+		      (make-combination push continuation)
+		      continuation)))))))))))
 
 ;;;; Assignments
 
@@ -717,10 +715,15 @@ MIT in each case. |#
 	    (generate/expression block continuation expression))
 	   ((COMPILE)
 	    (if (not (scode/quotation? expression))
-		(error "generate/comment: Bad compile directive" comment))
+		(error "Bad compile directive" comment))
 	    (continue/rvalue-constant block continuation
 	     (make-constant
-	      (compile-recursively (scode/quotation-expression expression)))))	   ((ENCLOSE)
+	      (compile-recursively
+	       (scode/quotation-expression expression false)))))	   ((COMPILE-PROCEDURE)
+	    (if (not (scode/lambda? expression))
+		(error "Bad compile-procedure directive" comment))
+	    (continue/rvalue-constant block continuation
+	     (make-constant (compile-recursively expression true))))	   ((ENCLOSE)
 	    (generate/enclose block continuation expression))
 	   (else
 	    (warn "generate/comment: Unknown directive" (cadr text) comment)

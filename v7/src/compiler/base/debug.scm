@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/debug.scm,v 4.9 1989/04/15 18:05:13 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/debug.scm,v 4.10 1989/08/21 19:32:23 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -79,9 +79,7 @@ MIT in each case. |#
 	 (write-string "\nOffset: ")
 	 (write-string
 	  (number->string (compiled-code-address->offset object)
-			  '(HEUR (RADIX X S)))))	((compiled-procedure? object)
-	 (debug/where (compiled-procedure-entry object)))
-	(else
+			  '(HEUR (RADIX X S)))))	(else
 	 (error "debug/where -- what?" object))))
 
 (define (compiler:write-rtl-file input-path #!optional output-path)
@@ -198,7 +196,9 @@ MIT in each case. |#
   (for-each fg/print-blocks (block-disowned-children block)))
 
 (define (fg/print-node node)
-  (if (not (node-marked? node))      (begin
+  (if (and node
+	   (not (node-marked? node)))
+      (begin
 	(node-mark! node)
 	(fg/print-object node)
 	(cfg-node-case (tagged-vector/tag node)

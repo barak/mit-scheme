@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.18 1989/06/10 23:54:04 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.19 1989/08/21 19:32:32 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,142 +36,7 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-;;; Global variables
-
-(define *recursive-compilation-count*)
-(define *recursive-compilation-number*)
-(define *recursive-compilation-results*)
-(define *recursive-compilation-rtl-blocks*)
-
-(define *info-output-pathname* false)
-(define *rtl-output-pathname* false)
-
-(define *input-scode*)
-(define *scode*)
-(define *ic-procedure-headers*)
-(define *root-block*)
-(define *root-expression*)
-(define *rtl-expression*)
-(define *rtl-procedures*)
-(define *rtl-continuations*)
-(define *rtl-graphs*)
-(define label->object)
-(define *dbg-expression*)
-(define *dbg-procedures*)
-(define *dbg-continuations*)
-
-;;; These variable names mistakenly use the format "compiler:..."
-;;; instead of the correct format, which is "*...*".  Fix it sometime.
-(define compiler:external-labels)
-(define compiler:label-bindings)
-(define compiler:block-label)
-(define compiler:entry-label)
-(define compiler:bits)
-(define compiler:code-vector)
-(define compiler:entry-points)
-(define compiler:expression)
-
-(define compiler:phase-wrapper false)
-(define compiler:process-time 0)
-(define compiler:real-time 0)
-
-(define (compiler:reset!)
-  (set! *recursive-compilation-number* 0)
-  (set! *recursive-compilation-count* 1)
-  (set! *recursive-compilation-results* '())
-  (set! *recursive-compilation-rtl-blocks* '())
-  (set! *input-scode*)
-  (set! *scode*)
-  (set! *current-label-number*)
-  (set! *constants*)
-  (set! *blocks*)
-  (set! *expressions*)
-  (set! *procedures*)
-  (set! *lvalues*)
-  (set! *applications*)
-  (set! *parallels*)
-  (set! *ic-procedure-headers*)
-  (set! *root-expression*)
-  (set! *root-block*)
-  (set! *rtl-expression*)
-  (set! *rtl-procedures*)
-  (set! *rtl-continuations*)
-  (set! *rtl-graphs*)
-  (set! label->object)
-  (set! *dbg-expression*)
-  (set! *dbg-procedures*)
-  (set! *dbg-continuations*)
-  (set! *machine-register-map*)
-  (set! compiler:external-labels)
-  (set! compiler:label-bindings)
-  (set! compiler:block-label)
-  (set! compiler:entry-label)
-  (set! compiler:bits)
-  (set! compiler:code-vector)
-  (set! compiler:entry-points)
-  (set! compiler:expression))
-
-(define (in-compiler-recursively thunk)
-  (fluid-let ((*input-scode*)
-	      (*scode*)
-	      (*current-label-number*)
-	      (*constants*)
-	      (*blocks*)
-	      (*expressions*)
-	      (*procedures*)
-	      (*lvalues*)
-	      (*applications*)
-	      (*parallels*)
-	      (*ic-procedure-headers*)
-	      (*root-expression*)
-	      (*root-block*))
-    (fluid-let ((*rtl-expression*)
-		(*rtl-procedures*)
-		(*rtl-continuations*)
-		(*rtl-graphs*)
-		(label->object)
-		(*dbg-expression*)
-		(*dbg-procedures*)
-		(*dbg-continuations*)
-		(*machine-register-map*)
-		(compiler:external-labels)
-		(compiler:label-bindings)
-		(compiler:block-label)
-		(compiler:entry-label)
-		(compiler:bits)
-		(compiler:code-vector)
-		(compiler:entry-points)
-		(compiler:expression))
-      (thunk))))
-
-(define (in-compiler thunk)
-  (fluid-let ((compiler:process-time 0)
-	      (compiler:real-time 0))
-    (compiler:reset!)
-    (let ((value
-	   (let ((expression (thunk)))
-	     (let ((others (recursive-compilation-results)))
-	       (if (null? others)
-		   expression
-		   (scode/make-comment
-		    (make-dbg-info-vector
-		     (list->vector
-		      (cons (compiled-code-address->block expression)
-			    (map (lambda (other) (vector-ref other 2))
-				 others))))
-		    expression))))))
-      (if (not compiler:preserve-data-structures?)
-	  (compiler:reset!))
-      (compiler-time-report "Total compilation time"
-			    compiler:process-time
-			    compiler:real-time)
-      value)))
-
-(define (recursive-compilation-results)
-  (sort *recursive-compilation-results*
-	(lambda (x y) (< (vector-ref x 0) (vector-ref y 0)))))
-
-;;;; The file compiler, its usual mode.
+;;;; Usual Entry Point: File Compilation
 
 (define (cf input #!optional output)
   (let ((kernel
@@ -197,43 +62,9 @@ MIT in each case. |#
       (compile-scode (compiler-fasload input-pathname)
 		     (and compiler:generate-rtl-files?
 			  (pathname-new-type output-pathname "brtl"))
-		     (pathname-new-type output-pathname "binf")))))
-
-;;;; Utilities for compiling in batch mode
+		     (pathname-new-type output-pathname "binf"))))
+  unspecific)
 
-(define compiler:batch-mode? false)
-(define compiler:abort-handled? false)
-(define compiler:abort-continuation)
-
-(define (compiler:batch-compile input #!optional output)
-  (fluid-let ((compiler:batch-mode? true))
-    (bind-condition-handler '() compiler:batch-error-handler
-      (lambda ()
-	(if (default-object? output)
-	    (compile-bin-file input)
-	    (compile-bin-file input output))))))
-
-(define (compiler:batch-error-handler condition)
-  (and (condition/error? condition)
-       (begin (warn (condition/report-string condition))
-	      (compiler:abort false))))
-
-(define (compiler:abort value)
-  (if compiler:abort-handled?
-      (begin
-	(newline)
-	(display "*** Aborting...")
-	(compiler:abort-continuation value))
-      (error "compiler:abort: Not set up to abort" value)))
-
-(define (batch-kernel real-kernel)
-  (lambda (input-string)
-    (call-with-current-continuation
-     (lambda (abort-compilation)
-       (fluid-let ((compiler:abort-continuation abort-compilation)
-		   (compiler:abort-handled? true))
-	 (real-kernel input-string))))))
-
 (define (compiler-pathnames input-string output-string default transform)
   (let* ((core
 	  (lambda (input-string)
@@ -282,87 +113,369 @@ MIT in each case. |#
 		scode)))
 	(scan-defines scode make-open-block))))
 
+;;;; Alternate Entry Points
+
 (define (compile-procedure procedure)
   (scode-eval (compile-scode (procedure-lambda procedure) false false)
 	      (procedure-environment procedure)))
 
-;; The rtl output should be fixed
+(define (compiler:batch-compile input #!optional output)
+  (fluid-let ((compiler:batch-mode? true))
+    (bind-condition-handler '() compiler:batch-error-handler
+      (lambda ()
+	(if (default-object? output)
+	    (compile-bin-file input)
+	    (compile-bin-file input output))))))
 
-(define (compile-recursively scode)
-  (let ((my-number *recursive-compilation-count*))
+(define (compiler:batch-error-handler condition)
+  (and (not (condition/internal? condition))
+       (condition/error? condition)
+       (begin
+	 (warn (condition/report-string condition))
+	 (compiler:abort false))))
+
+(define (compiler:abort value)
+  (if (not compiler:abort-handled?)
+      (error "Not set up to abort" value))
+  (newline)
+  (write-string "*** Aborting...")
+  (compiler:abort-continuation value))
+
+(define (batch-kernel real-kernel)
+  (lambda (input-string)
+    (call-with-current-continuation
+     (lambda (abort-compilation)
+       (fluid-let ((compiler:abort-continuation abort-compilation)
+		   (compiler:abort-handled? true))
+	 (real-kernel input-string))))))
+
+(define compiler:batch-mode? false)
+(define compiler:abort-handled? false)
+(define compiler:abort-continuation)
+
+(define (compile-recursively scode procedure-result?)
+  ;; Used by the compiler when it wants to compile subexpressions as
+  ;; separate code-blocks.
+  ;; The rtl output should be fixed.
+  (let ((my-number *recursive-compilation-count*)
+	(output?
+	 (and compiler:show-phases?
+	      (not compiler:show-procedures?))))
     (set! *recursive-compilation-count* (1+ my-number))
-    (newline)
-    (newline)
-    (display "    *** Recursive compilation ")
-    (write my-number)
-    (display " ***")
-    (let ((val
-	   (fluid-let ((*recursive-compilation-number* my-number)
-		       (compiler:package-optimization-level 'NONE))
-	     (compile-scode scode
-			    (and *rtl-output-pathname* true)
-			    (and *info-output-pathname* true)
-			    in-compiler-recursively))))
-      (newline)
-      (display "    *** Done with recursive compilation ")
-      (write my-number)
-      (display " ***")
-      (newline)
-      val)))
+    (if output?
+	(begin
+	  (newline)
+	  (newline)
+	  (write-string *output-prefix*)
+	  (write-string "*** Recursive compilation ")
+	  (write my-number)
+	  (write-string " ***")))
+    (let ((value
+	   ((let ((do-it
+		   (lambda ()
+		     (fluid-let ((*recursive-compilation-number* my-number)
+				 (compiler:package-optimization-level 'NONE)
+				 (*procedure-result?* procedure-result?))
+		       (compile-scode scode
+				      (and *rtl-output-pathname* true)
+				      (and *info-output-filename* true)
+				      bind-compiler-variables)))))
+	      (if procedure-result?
+		  (let ((do-it
+			 (lambda ()
+			   (let ((result (do-it)))
+			     (set! *remote-links*
+				   (cons (cdr result) *remote-links*))
+			     (car result)))))
+		    (if compiler:show-procedures?
+			(lambda ()
+			  (compiler-phase/visible
+			   (string-append
+			    "Compiling procedure: "
+			    (write-to-string (lambda-name scode)))
+			   do-it))
+			do-it))
+		  do-it)))))      (if output?
+	  (begin
+	    (newline)
+	    (write-string *output-prefix*)
+	    (write-string "*** Done with recursive compilation ")
+	    (write my-number)
+	    (write-string " ***")
+	    (newline)))
+      value)))
+
+;;;; Global variables
+
+(define *recursive-compilation-count*)
+(define *recursive-compilation-number*)
+(define *recursive-compilation-results*)
+(define *recursive-compilation-rtl-blocks*)
+(define *procedure-result?*)
+(define *remote-links*)
+(define *process-time*)
+(define *real-time*)
+
+(define *info-output-filename* false)
+(define *rtl-output-pathname* false)
+
+;; First set: input to compilation
+;; Last used: phase/canonicalize-scode
+(define *input-scode*)
+
+;; First set: phase/canonicalize-scode
+;; Last used: phase/translate-scode
+(define *scode*)
+
+;; First set: phase/translate-scode
+;; Last used: phase/fg-optimization-cleanup
+(define *root-block*)
+
+;; First set: phase/translate-scode
+;; Last used: phase/rtl-generation
+(define *root-expression*)
+(define *root-procedure*)
+
+;; First set: phase/rtl-generation
+;; Last used: phase/bit-linearization
+(define *rtl-expression*)
+(define *rtl-procedures*)
+(define *rtl-continuations*)
+(define *rtl-graphs*)
+(define label->object)
+(define *rtl-root*)
+
+;; First set: phase/rtl-generation
+;; Last used: phase/link
+(define *ic-procedure-headers*)
+(define *entry-label*)
+(define *block-label*)
+
+;; First set: phase/bit-generation
+;; Last used: phase/info-generation-2
+(define *external-labels*)
+
+;; First set: phase/bit-generation
+;; Last used: phase/link
+(define *subprocedure-linking-info*)
+
+;; First set: phase/bit-linearization
+;; Last used: phase/assemble
+(define *bits*)
+
+;; First set: phase/bit-linearization
+;; Last used: phase/info-generation-2
+(define *dbg-expression*)
+(define *dbg-procedures*)
+(define *dbg-continuations*)
+
+;; First set: phase/assemble
+;; Last used: phase/link
+(define *label-bindings*)
+(define *code-vector*)
+(define *entry-points*)
+
+;; First set: phase/link
+;; Last used: result of compilation
+(define *result*)
+
+(define (in-compiler thunk)
+  (let ((run-compiler
+	 (lambda ()
+	   (let ((value
+		  (let ((expression (thunk)))
+		    (let ((others (recursive-compilation-results)))
+		      (if (null? others)
+			  expression
+			  (scode/make-comment
+			   (make-dbg-info-vector
+			    (let* ((others
+				    (map (lambda (other) (vector-ref other 2))
+					 others))
+				   (all-blocks
+				    (list->vector
+				     (cons
+				      (compiled-code-address->block expression)
+				      others))))
+			      (if compiler:compile-by-procedures?
+				  (list 'COMPILED-BY-PROCEDURES
+					all-blocks
+					(list->vector others))
+				  all-blocks)))
+			   expression))))))
+	     (compiler-time-report "Total compilation time"
+				   *process-time*
+				   *real-time*)
+	     value))))
+    (if compiler:preserve-data-structures?
+	(begin
+	  (compiler:reset!)
+	  (run-compiler))
+	(fluid-let ((*recursive-compilation-number* 0)
+		    (*recursive-compilation-count* 1)
+		    (*recursive-compilation-results* '())
+		    (*recursive-compilation-rtl-blocks* '())
+		    (*procedure-result?* false)
+		    (*remote-links* '())
+		    (*process-time* 0)
+		    (*real-time* 0))
+	  (bind-compiler-variables run-compiler)))))
+
+(define (bind-compiler-variables thunk)
+  ;; Split this fluid-let because compiler was choking on it.
+  (fluid-let ((*ic-procedure-headers*)
+	      (*current-label-number*)
+	      (*external-labels*)
+	      (*block-label*)
+	      (*dbg-expression*)
+	      (*dbg-procedures*)
+	      (*dbg-continuations*)
+	      (*bits*)
+	      (*next-constant*)
+	      (*interned-constants*)
+	      (*interned-variables*)
+	      (*interned-assignments*)
+	      (*interned-uuo-links*)
+	      (*constants*)
+	      (*blocks*)
+	      (*expressions*)
+	      (*procedures*)
+	      (*lvalues*)
+	      (*applications*)
+	      (*parallels*))
+    (fluid-let ((*input-scode*)
+		(*scode*)
+		(*root-expression*)
+		(*root-procedure*)
+		(*root-block*)
+		(*rtl-expression*)
+		(*rtl-procedures*)
+		(*rtl-continuations*)
+		(*rtl-graphs*)
+		(label->object)
+		(*rtl-root*)
+		(*machine-register-map*)
+		(*entry-label*)
+		(*label-bindings*)
+		(*code-vector*)
+		(*entry-points*)
+		(*subprocedure-linking-info*)
+		(*result*))
+      (thunk))))
+
+(define (recursive-compilation-results)
+  (sort *recursive-compilation-results*
+	(lambda (x y) (< (vector-ref x 0) (vector-ref y 0)))))
+
+(define (compiler:reset!)
+  (set! *recursive-compilation-number* 0)
+  (set! *recursive-compilation-count* 1)
+  (set! *recursive-compilation-results* '())
+  (set! *recursive-compilation-rtl-blocks* '())
+  (set! *procedure-result?* false)
+  (set! *remote-links* '())
+  (set! *process-time* 0)
+  (set! *real-time* 0)
+  (set! *info-output-filename* false)
+  (set! *rtl-output-pathname* false)
+
+  (set! *ic-procedure-headers*)
+  (set! *current-label-number*)
+  (set! *external-labels*)
+  (set! *bits*)
+  (set! *block-label*)
+  (set! *dbg-expression*)
+  (set! *dbg-procedures*)
+  (set! *dbg-continuations*)  (set! *next-constant*)
+  (set! *interned-constants*)
+  (set! *interned-variables*)
+  (set! *interned-assignments*)
+  (set! *interned-uuo-links*)
+  (set! *constants*)
+  (set! *blocks*)
+  (set! *expressions*)
+  (set! *procedures*)
+  (set! *lvalues*)
+  (set! *applications*)
+  (set! *parallels*)
+  (set! *input-scode*)
+  (set! *scode*)
+  (set! *root-expression*)
+  (set! *root-procedure*)
+  (set! *root-block*)
+  (set! *rtl-expression*)
+  (set! *rtl-procedures*)
+  (set! *rtl-continuations*)
+  (set! *rtl-graphs*)
+  (set! label->object)
+  (set! *rtl-root*)
+  (set! *machine-register-map*)
+  (set! *entry-label*)
+  (set! *label-bindings*)
+  (set! *code-vector*)
+  (set! *entry-points*)
+  (set! *subprocedure-linking-info*)
+  (set! *result*)
+  unspecific)
+
+;;;; Main Entry Point
 
 (define (compile-scode scode
 		       #!optional
 		       rtl-output-pathname
 		       info-output-pathname
 		       wrapper)
-
-  (if (default-object? rtl-output-pathname)
-      (set! rtl-output-pathname false))
-  (if (default-object? info-output-pathname)
-      (set! info-output-pathname false))
-
-  (fluid-let ((*info-output-pathname*
-	       (if (and info-output-pathname
-			(not (eq? info-output-pathname true)))
-		   info-output-pathname
-		   *info-output-pathname*))
-	      (*rtl-output-pathname*
-	       (if (and rtl-output-pathname
-			(not (eq? rtl-output-pathname true)))
-		   rtl-output-pathname
-		   *rtl-output-pathname*)))
-    ((if (default-object? wrapper)
-	 in-compiler
-	 wrapper)
-     (lambda ()
-       (set! *input-scode* scode)
-       (phase/fg-generation)
-       (phase/fg-optimization)
-       (phase/rtl-generation)
-       #|
-       (if info-output-pathname
-	   (phase/info-generation-1 info-output-pathname))
-       |#
-       (phase/rtl-optimization)
-       (if rtl-output-pathname
-	   (phase/rtl-file-output rtl-output-pathname))
-       (phase/bit-generation)
-       (phase/bit-linearization)
-       (phase/assemble)
-       (if info-output-pathname
-	   (phase/info-generation-2 info-output-pathname))
-       (phase/link)
-       compiler:expression))))
+  (let ((rtl-output-pathname
+	 (if (default-object? rtl-output-pathname)
+	     false
+	     rtl-output-pathname))
+	(info-output-pathname
+	 (if (default-object? info-output-pathname)
+	     false
+	     info-output-pathname))
+	(wrapper
+	 (if (default-object? wrapper) in-compiler wrapper)))
+    (fluid-let ((*info-output-filename*
+		 (if (pathname? info-output-pathname)
+		     (pathname->string info-output-pathname)
+		     *info-output-filename*))
+		(*rtl-output-pathname*
+		 (if (pathname? rtl-output-pathname)
+		     rtl-output-pathname
+		     *rtl-output-pathname*)))
+      (wrapper
+       (lambda ()
+	 (set! *input-scode* scode)
+	 (phase/fg-generation)
+	 (phase/fg-optimization)
+	 (phase/rtl-generation)
+	 #|
+	 ;; Current info-generation keeps state in-core.
+	 (if info-output-pathname
+	     (phase/info-generation-1 info-output-pathname))
+	 |#
+	 (phase/rtl-optimization)
+	 (if rtl-output-pathname
+	     (phase/rtl-file-output rtl-output-pathname))
+	 (phase/bit-generation)
+	 (phase/bit-linearization)
+	 (phase/assemble)
+	 (if info-output-pathname
+	     (phase/info-generation-2 info-output-pathname))
+	 (phase/link)
+	 *result*)))))
 
 (define (compiler-phase name thunk)
-  (compiler-phase/visible name
-    (lambda ()
-      (compiler-phase/invisible thunk))))
+  (if compiler:show-phases?
+      (compiler-phase/visible name
+	(lambda ()
+	  (compiler-phase/invisible thunk)))
+      (compiler-phase/invisible thunk)))
 
 (define (compiler-superphase name thunk)
   (if compiler:show-subphases?
       (thunk)
-      (compiler-phase/visible name thunk)))
+      (compiler-phase name thunk)))
 
 (define (compiler-subphase name thunk)
   (if compiler:show-subphases?
@@ -370,26 +483,44 @@ MIT in each case. |#
       (compiler-phase/invisible thunk)))
 
 (define (compiler-phase/visible name thunk)
-  (newline)
-  (display "    ")
-  (display name)
-  (display "...")
-  (let ((process-start (process-time-clock))
-	(real-start (real-time-clock)))
-    (thunk)
-    (let ((process-delta (- (process-time-clock) process-start))
-	  (real-delta (- (real-time-clock) real-start)))
-      (set! compiler:process-time (+ process-delta compiler:process-time))
-      (set! compiler:real-time (+ real-delta compiler:real-time))
-      (compiler-time-report "      Time taken" process-delta real-delta))))
+  (fluid-let ((*output-prefix* (string-append "    " *output-prefix*)))
+    (newline)
+    (write-string *output-prefix*)
+    (write-string name)
+    (write-string "...")
+    (if compiler:show-time-reports?
+	(let ((process-start *process-time*)
+	      (real-start *real-time*))
+	  (let ((value (thunk)))
+	    (compiler-time-report "  Time taken"
+				  (- *process-time* process-start)
+				  (- *real-time* real-start))
+	    value))
+	(thunk))))
+
+(define *output-prefix* "")
+(define *phase-level* 0)
 
 (define (compiler-phase/invisible thunk)
-  (if compiler:phase-wrapper
-      (compiler:phase-wrapper thunk)
-      (thunk)))
+  (fluid-let ((*phase-level* (1+ *phase-level*)))
+    (let ((do-it
+	   (if compiler:phase-wrapper
+	       (lambda () (compiler:phase-wrapper thunk))
+	       thunk)))
+      (if (= 1 *phase-level*)
+	  (let ((process-start (process-time-clock))
+		(real-start (real-time-clock)))
+	    (let ((value (do-it)))
+	      (let ((process-delta (- (process-time-clock) process-start))
+		    (real-delta (- (real-time-clock) real-start)))
+		(set! *process-time* (+ process-delta *process-time*))
+		(set! *real-time* (+ real-delta *real-time*)))
+	      value))
+	  (do-it)))))
 
 (define (compiler-time-report prefix process-time real-time)
   (newline)
+  (write-string *output-prefix*)
   (write-string prefix)
   (write-string ": ")
   (write (/ process-time 1000))
@@ -414,7 +545,8 @@ MIT in each case. |#
 (define (phase/canonicalize-scode)
   (compiler-subphase "Scode Canonicalization"
     (lambda ()
-      (set! *scode* (canonicalize/top-level (last-reference *input-scode*))))))
+      (set! *scode* (canonicalize/top-level (last-reference *input-scode*)))
+      unspecific)))
 
 (define (phase/translate-scode)
   (compiler-subphase "Translation of Scode into Flow Graph"
@@ -428,11 +560,21 @@ MIT in each case. |#
       (set! *applications* '())
       (set! *parallels* '())
       (set! *root-expression* (construct-graph (last-reference *scode*)))
+      (if *procedure-result?*
+	  (let ((node (expression-entry-node *root-expression*)))
+	    (if (not (and (application? node)
+			  (application/return? node)))
+		(error "Entry node of procedure compilation not return" node))
+	    (let ((operand (return/operand node)))
+	      (if (not (procedure? operand))
+		  (error "Value of procedure compilation not procedure" node))
+	      (set! *root-procedure* operand))))
       (set! *root-block* (expression-block *root-expression*))
       (if (or (null? *expressions*)
 	      (not (null? (cdr *expressions*))))
 	  (error "Multiple expressions"))
-      (set! *expressions*))))
+      (set! *expressions*)
+      unspecific)))
 
 (define (phase/fg-optimization)
   (compiler-superphase "Flow Graph Optimization"
@@ -559,46 +701,62 @@ MIT in each case. |#
   (compiler-subphase "Flow Graph Optimization Cleanup"
     (lambda ()
       (if (not compiler:preserve-data-structures?)
-	  (begin (clear-call-graph! *procedures*)
-		 (set! *constants*)
-		 (set! *blocks*)
-		 (set! *procedures*)
-		 (set! *lvalues*)
-		 (set! *applications*)
-		 (set! *parallels*)
-		 (set! *root-block*))))))
+	  (begin
+	    (clear-call-graph! *procedures*)
+	    (set! *constants*)
+	    (set! *blocks*)
+	    (set! *procedures*)
+	    (set! *lvalues*)
+	    (set! *applications*)
+	    (set! *parallels*)
+	    (set! *root-block*)
+	    unspecific)))))
 
 (define (phase/rtl-generation)
   (compiler-phase "RTL Generation"
     (lambda ()
-      (set! *rtl-procedures* '())
-      (set! *rtl-continuations* '())
-      (set! *rtl-graphs* '())
       (set! *ic-procedure-headers* '())
       (initialize-machine-register-map!)
-      (generate/top-level (last-reference *root-expression*))
+      (with-values
+	  (lambda ()
+	    (generate/top-level (last-reference *root-expression*)))
+	(lambda (expression procedures continuations rgraphs)
+	  (set! *rtl-expression* expression)
+	  (set! *rtl-procedures* procedures)
+	  (set! *rtl-continuations* continuations)
+	  (set! *rtl-graphs* rgraphs)
+	  unspecific))
+      (if *procedure-result?*
+	  (set! *rtl-expression* false))
       (set! label->object
 	    (make/label->object *rtl-expression*
 				*rtl-procedures*
 				*rtl-continuations*))
+      (set! *rtl-root*
+	    (if *procedure-result?*
+		(label->object
+		 (procedure-label (last-reference *root-procedure*)))
+		*rtl-expression*))
       (for-each (lambda (entry)
 		  (set-cdr! entry
 			    (rtl-procedure/external-label
 			     (label->object (cdr entry)))))
 		*ic-procedure-headers*)
-      (let ((n-registers
-	     (map (lambda (rgraph)
-		    (- (rgraph-n-registers rgraph)
-		       number-of-machine-registers))
-		  *rtl-graphs*)))
-	(newline)
-	(write-string "      Registers used: ")
-	(write (apply max n-registers))
-	(write-string " max, ")
-	(write (apply min n-registers))
-	(write-string " min, ")
-	(write (/ (apply + n-registers) (length n-registers)))
-	(write-string " mean")))))
+      (if compiler:show-phases?
+	  (let ((n-registers
+		 (map (lambda (rgraph)
+			(- (rgraph-n-registers rgraph)
+			   number-of-machine-registers))
+		      *rtl-graphs*)))
+	    (newline)
+	    (write-string *output-prefix*)
+	    (write-string "  Registers used: ")
+	    (write (apply max n-registers))
+	    (write-string " max, ")
+	    (write (apply min n-registers))
+	    (write-string " min, ")
+	    (write (/ (apply + n-registers) (length n-registers)))
+	    (write-string " mean"))))))
 
 (define (phase/rtl-optimization)
   (compiler-superphase "RTL Optimization"
@@ -658,40 +816,59 @@ MIT in each case. |#
   (compiler-phase "RTL File Output"
     (lambda ()
       (let ((rtl
-	     (linearize-rtl *rtl-expression*
+	     (linearize-rtl *rtl-root*
 			    *rtl-procedures*
 			    *rtl-continuations*)))
 	(if (eq? pathname true)
 	    ;; recursive compilation
-	    (set! *recursive-compilation-rtl-blocks*
-		  (cons (cons *recursive-compilation-number* rtl)
-			*recursive-compilation-rtl-blocks*))
+	    (begin
+	      (set! *recursive-compilation-rtl-blocks*
+		    (cons (cons *recursive-compilation-number* rtl)
+			  *recursive-compilation-rtl-blocks*))
+	      unspecific)
 	    (fasdump (if (null? *recursive-compilation-rtl-blocks*)
 			 rtl
 			 (list->vector
 			  (cons (cons 0 rtl)
 				*recursive-compilation-rtl-blocks*)))
 		     pathname))))))
-
+
 (define (phase/bit-generation)
   (compiler-phase "LAP Generation"
     (lambda ()
-      (set! compiler:external-labels '())
-      (generate-bits
-       *rtl-graphs*
-       (lambda (block-label prefix)
-	 (set! compiler:block-label block-label)
-	 (node-insert-snode! (rtl-expr/entry-node *rtl-expression*)
-			     (make-sblock prefix))))
-      (set! compiler:entry-label (rtl-expr/label *rtl-expression*)))))
-
+      (set! *next-constant* 0)
+      (set! *interned-constants* '())
+      (set! *interned-variables* '())
+      (set! *interned-assignments* '())
+      (set! *interned-uuo-links* '())
+      (set! *block-label* (generate-label))
+      (set! *external-labels* '())
+      (if *procedure-result?*
+	  (generate-bits *rtl-graphs* '()
+	    (lambda (prefix environment-label free-ref-label n-sections)
+	      (node-insert-snode! (rtl-procedure/entry-node *rtl-root*)
+				  (make-sblock prefix))
+	      (set! *entry-label*
+		    (rtl-procedure/external-label *rtl-root*))
+	      (set! *subprocedure-linking-info*
+		    (vector environment-label free-ref-label n-sections))
+	      unspecific))
+	  (begin
+	    (let ((prefix (generate-bits *rtl-graphs* *remote-links* false)))
+	      (node-insert-snode! (rtl-expr/entry-node *rtl-root*)
+				  (make-sblock prefix)))
+	    (set! *entry-label* (rtl-expr/label *rtl-root*))
+	    unspecific)))))
+
 (define (phase/bit-linearization)
   (compiler-phase "LAP Linearization"
     (lambda ()
-      (set! compiler:bits
+      (set! *bits*
 	    (append-instruction-sequences!
-	     (lap:make-entry-point compiler:entry-label compiler:block-label)
-	     (linearize-bits *rtl-expression*
+	     (if *procedure-result?*
+		 (LAP (ENTRY-POINT ,*entry-label*))
+		 (lap:make-entry-point *entry-label* *block-label*))
+	     (linearize-bits *rtl-root*
 			     *rtl-procedures*
 			     *rtl-continuations*)))
       (with-values
@@ -702,52 +879,56 @@ MIT in each case. |#
 	(lambda (expression procedures continuations)
 	  (set! *dbg-expression* expression)
 	  (set! *dbg-procedures* procedures)
-	  (set! *dbg-continuations* continuations)))
+	  (set! *dbg-continuations* continuations)
+	  unspecific))
       (if (not compiler:preserve-data-structures?)
-	  (begin (set! label->object)
-		 (set! *rtl-expression*)
-		 (set! *rtl-procedures*)
-		 (set! *rtl-continuations*)
-		 (set! *rtl-graphs*))))))
-
+	  (begin
+	    (set! *rtl-expression*)
+	    (set! *rtl-procedures*)
+	    (set! *rtl-continuations*)
+	    (set! *rtl-graphs*)
+	    (set! label->object)
+	    (set! *rtl-root*)
+	    unspecific)))))
+
 (define (phase/assemble)
   (compiler-phase "Assembly"
     (lambda ()
-      (assemble (last-reference compiler:block-label)
-		(last-reference compiler:bits)
+      (assemble *block-label* (last-reference *bits*)
 	(lambda (count code-vector labels bindings linkage-info)
-	  linkage-info		; ignored
-	  (set! compiler:code-vector code-vector)
-	  (set! compiler:entry-points labels)
-	  (set! compiler:label-bindings bindings)
-	  (newline)
-	  (display "      Branch tensioning done in ")
-	  (write (1+ count))
-	  (if (zero? count)
-	      (display " iteration.")
-	      (display " iterations.")))))))
+	  linkage-info			;ignored
+	  (set! *code-vector* code-vector)
+	  (set! *entry-points* labels)
+	  (set! *label-bindings* bindings)
+	  (if compiler:show-phases?
+	      (begin
+		(newline)
+		(write-string *output-prefix*)
+		(write-string "  Branch tensioning done in ")
+		(write (1+ count))
+		(write-string
+		 (if (zero? count) " iteration." " iterations.")))))))))
 
 (define (phase/info-generation-2 pathname)
   (compiler-phase "Debugging Information Generation"
     (lambda ()
       (set-compiled-code-block/debugging-info!
-       compiler:code-vector
+       *code-vector*
        (let ((info
 	      (info-generation-phase-3
 	       (last-reference *dbg-expression*)
 	       (last-reference *dbg-procedures*)
 	       (last-reference *dbg-continuations*)
-	       compiler:label-bindings
-	       (last-reference compiler:external-labels))))
+	       *label-bindings*
+	       (last-reference *external-labels*))))
 	 (if (eq? pathname true)	; recursive compilation
 	     (begin
 	       (set! *recursive-compilation-results*
 		     (cons (vector *recursive-compilation-number*
 				   info
-				   compiler:code-vector)
+				   *code-vector*)
 			   *recursive-compilation-results*))
-	       (cons (pathname->string *info-output-pathname*)
-		     *recursive-compilation-number*))
+	       (cons *info-output-filename* *recursive-compilation-number*))
 	     (begin
 	       (fasdump (let ((others (recursive-compilation-results)))
 			  (if (null? others)
@@ -757,37 +938,63 @@ MIT in each case. |#
 				     (map (lambda (other) (vector-ref other 1))
 					  others)))))
 			pathname)
-	       (pathname->string pathname))))))))
+	       *info-output-filename*)))))))
 
 (define (phase/link)
   (compiler-phase "Linkification"
     (lambda ()
       ;; This has sections locked against GC to prevent relocation
       ;; while computing addresses.
-      (let ((bindings
-	     (map (lambda (label)
-		    (cons
-		     label
-		     (with-absolutely-no-interrupts
-		      (lambda ()
-			((ucode-primitive &make-object)
-			 type-code:compiled-entry
-			 (make-non-pointer-object
-			  (+ (cdr (or (assq label compiler:label-bindings)
-				      (error "Missing entry point" label)))
-			     (object-datum compiler:code-vector))))))))
-		  compiler:entry-points)))
-	(let ((label->expression
-	       (lambda (label)
-		 (cdr (or (assq label bindings)
-			  (error "Label not defined as entry point" label))))))
-	  (set! compiler:expression (label->expression compiler:entry-label))
-	  (for-each (lambda (entry)
-		      (set-lambda-body! (car entry)
-					(label->expression (cdr entry))))
-		    *ic-procedure-headers*)))
-      (set! compiler:code-vector)
-      (set! compiler:entry-points)
-      (set! compiler:label-bindings)
-      (set! compiler:entry-label)
-      (set! *ic-procedure-headers*))))
+      (let* ((label->offset
+	      (lambda (label)
+		(cdr (or (assq label *label-bindings*)
+			 (error "Missing entry point" label)))))
+	     (bindings
+	      (map (lambda (label)
+		     (cons
+		      label
+		      (with-absolutely-no-interrupts
+		       (lambda ()
+			 ((ucode-primitive &make-object)
+			  type-code:compiled-entry
+			  (make-non-pointer-object
+			   (+ (label->offset label)
+			      (object-datum *code-vector*))))))))
+		   *entry-points*))
+	     (label->address
+	      (lambda (label)
+		(cdr (or (assq label bindings)
+			 (error "Label not defined as entry point"
+				label))))))
+	(set! *result*
+	      (if *procedure-result?*
+		  (let ((linking-info *subprocedure-linking-info*))
+		    (let ((compiled-procedure (label->address *entry-label*))
+			  (translate-label
+			   (let ((block-offset (label->offset *block-label*)))
+			     (lambda (index)
+			       (let ((label (vector-ref linking-info index)))
+				 (and label
+				      (- (label->offset label)
+					 block-offset)))))))
+		      (cons compiled-procedure
+			    (vector
+			     (compiled-code-address->block compiled-procedure)
+			     (translate-label 0)
+			     (translate-label 1)
+			     (vector-ref linking-info 2)))))
+		  (label->address *entry-label*)))
+	(for-each (lambda (entry)
+		    (set-lambda-body! (car entry)
+				      (label->address (cdr entry))))
+		  *ic-procedure-headers*))
+      (if (not compiler:preserve-data-structures?)
+	  (begin
+	    (set! *code-vector*)
+	    (set! *entry-points*)
+	    (set! *subprocedure-linking-info*)
+	    (set! *label-bindings*)
+	    (set! *block-label*)
+	    (set! *entry-label*)
+	    (set! *ic-procedure-headers*)
+	    unspecific)))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/canon.scm,v 1.5 1989/08/15 12:58:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/canon.scm,v 1.6 1989/08/21 19:33:57 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -321,10 +321,24 @@ ARBITRARY:	The expression may be executed more than once.  It
 	       false true false))
 
 (define (canonicalize/lambda expr bound context)
-  (canonicalize/lambda* expr bound
-			(if (eq? context 'FIRST-CLASS)
-			    'FIRST-CLASS
-			    'ARBITRARY)))
+  (let ((canout
+	 (canonicalize/lambda* expr bound
+			       (if (eq? context 'FIRST-CLASS)
+				   'FIRST-CLASS
+				   'ARBITRARY))))
+    (if (and (eq? context 'TOP-LEVEL)
+	     (canout-safe? canout)
+	     compiler:compile-by-procedures?)
+	(make-canout
+	 (scode/make-directive
+	  (canout-expr canout)
+	  '(COMPILE-PROCEDURE)
+	  expr)
+	 true
+	 (canout-needs? canout)
+	 (canout-splice? canout))
+	canout)))
+
 (define (canonicalize/sequence expr bound context)
   (cond ((not (scode/open-block? expr))
 	 (scode/sequence-components expr

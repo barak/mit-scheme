@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlobj.scm,v 4.6 1989/08/10 11:39:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlobj.scm,v 4.7 1989/08/21 19:34:27 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -108,9 +108,11 @@ MIT in each case. |#
   (let ((hash-table
 	 (symbol-hash-table/make
 	  (1+ (+ (length procedures) (length continuations))))))
-    (symbol-hash-table/insert! hash-table
-			       (rtl-expr/label expression)
-			       expression)    (for-each (lambda (procedure)
+    (if expression
+	(symbol-hash-table/insert! hash-table
+				   (rtl-expr/label expression)
+				   expression))
+    (for-each (lambda (procedure)
 		(symbol-hash-table/insert! hash-table
 					   (rtl-procedure/label procedure)
 					   procedure))

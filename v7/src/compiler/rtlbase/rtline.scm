@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtline.scm,v 4.8 1988/11/06 14:49:45 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtline.scm,v 4.9 1989/08/21 19:34:24 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -40,7 +40,7 @@ MIT in each case. |#
 			  initial-value
 			  instruction-append!
 			  final-value)
-	 expression procedures continuations)
+	 root procedures continuations)
   continuations				;ignore
   (with-new-node-marks
    (lambda ()
@@ -60,7 +60,11 @@ MIT in each case. |#
 			     output
 			     (bblock-linearize bblock
 					       queue-continuations!)))))))
-	   (process-bblock! (rtl-expr/entry-node expression))	   (queue-map!/unsafe input-queue process-bblock!)
+	   (process-bblock!
+	    (cond ((rtl-expr? root) (rtl-expr/entry-node root))
+		  ((rtl-procedure? root) (rtl-procedure/entry-node root))
+		  (else (error "Illegal linearization root" root))))
+	   (queue-map!/unsafe input-queue process-bblock!)
 	   (for-each (lambda (procedure)
 		       (process-bblock! (rtl-procedure/entry-node procedure))
 		       (queue-map!/unsafe input-queue process-bblock!))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.sf,v 1.9 1989/08/03 23:43:05 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.sf,v 1.10 1989/08/21 19:33:37 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -82,14 +82,14 @@ MIT in each case. |#
 (in-package (->environment '(COMPILER LAP-SYNTAXER))
   (if (and compiler:enable-expansion-declarations?
 	   (null? early-instructions))
-      (fluid-let ((load-noisily? false))
+      (fluid-let ((load-noisily? false)
+		  (load/suppress-loading-message? false))
+	(write-string "\n\n---- Pre-loading instruction sets ----")
 	(for-each (lambda (name)
-		    (write-string "\nPre-loading instruction set from ")
-		    (write name)
 		    (load (string-append "machines/bobcat/" name ".scm")
 			  '(COMPILER LAP-SYNTAXER)
-			  early-syntax-table)
-		    (write-string " -- done"))		  '("instr1" "instr2" "instr3" "instr4"
+			  early-syntax-table))
+		  '("instr1" "instr2" "instr3" "instr4"
 			     "flinstr1" "flinstr2")))))
 
 ;; Resyntax any files that need it.
