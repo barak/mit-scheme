@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.56 1995/10/25 03:02:52 cph Exp $
+$Id: decls.scm,v 1.57 1996/04/23 22:38:47 cph Exp $
 
-Copyright (c) 1989-95 Massachusetts Institute of Technology
+Copyright (c) 1989-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -217,6 +217,7 @@ MIT in each case. |#
 		"undo"
 		"unix"
 		"vc"
+		"verilog"
 		"wincom"
 		"winout"
 		"xcom"

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.184 1996/03/21 16:52:41 adams Exp $
+$Id: edwin.pkg,v 1.185 1996/04/23 22:38:27 cph Exp $
 
-Copyright (c) 1989-95 Massachusetts Institute of Technology
+Copyright (c) 1989-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1641,3 +1641,14 @@ MIT in each case. |#
 	  set-news-thread:reader-hook!
 	  set-nntp-connection:reader-hook!
 	  token->number))
+
+(define-package (edwin verilog)
+  (files "verilog")
+  (parent (edwin))
+  (export (edwin)
+	  edwin-command$verilog-indent-line
+	  edwin-command$verilog-indent-region
+	  edwin-command$verilog-mode
+	  edwin-mode$verilog
+	  edwin-variable$verilog-continued-statement-offset
+	  edwin-variable$verilog-mode-hook))

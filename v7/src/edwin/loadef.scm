@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: loadef.scm,v 1.28 1995/05/03 07:50:29 cph Exp $
+;;;	$Id: loadef.scm,v 1.29 1996/04/23 22:39:30 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -108,11 +108,19 @@ This must be a regular expression, or #F to disable the option."
   '("tximod" (EDWIN)))
 
 (define-autoload-major-mode 'texinfo 'text "Texinfo" 'TEXINFO-MODE
-  "Major mode for editing texinfo files.
-These are files that are input for TeX and also to be turned
-into Info files by \\[texinfo-format-buffer].
-These files must be written in a very restricted and
-modified version of TeX input format.")
+  "Major mode for editing Texinfo files.
+
+  These are files that are used as input for TeX to make printed manuals
+and also to be turned into Info files by \\[texinfo-format-buffer] or
+`makeinfo'.  These files must be written in a very restricted and
+modified version of TeX input format.
+
+  Editing commands are like text-mode except that the syntax table is
+set up so expression commands skip Texinfo bracket groups.
+
+  In addition, Texinfo mode provides commands that insert various
+frequently used @-sign commands into the buffer.  You can use these
+commands to save keystrokes.")
 
 (define-autoload-command 'texinfo-mode 'TEXINFO-MODE
   "Make the current mode be Texinfo mode.")
@@ -228,6 +236,24 @@ Normally uses the server specified by the variable news-server,
 but with a prefix arg prompts for the server name.
 Only one News reader may be open per server; if a previous News reader
 is open the that server, its buffer is selected.")
+
+(define-library 'VERILOG-MODE
+  '("verilog" (EDWIN VERILOG)))
+
+(define-autoload-major-mode 'verilog 'fundamental "Verilog" 'VERILOG-MODE
+  "Major mode specialized for editing Verilog code.")
+
+(define-autoload-command 'verilog-mode 'VERILOG-MODE
+  "Enter Verilog mode.")
+
+(define-variable verilog-mode-hook
+  "An event distributor that is invoked when entering Verilog mode."
+  (make-event-distributor))
+
+(define-variable verilog-continued-statement-offset
+  "Extra indent for lines not starting new statements."
+  2
+  exact-nonnegative-integer?)
 
 ;;;; DOS-specific commands
 

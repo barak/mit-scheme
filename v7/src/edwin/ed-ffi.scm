@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: ed-ffi.scm,v 1.39 1995/10/25 02:58:01 cph Exp $
+$Id: ed-ffi.scm,v 1.40 1996/04/23 22:38:39 cph Exp $
 
-Copyright (c) 1990-95 Massachusetts Institute of Technology
+Copyright (c) 1990-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -314,6 +314,8 @@ of that license should have been included along with this file.
     ("utlwin"	(edwin window)
 		class-syntax-table)
     ("vc"	(edwin vc)
+		edwin-syntax-table)
+    ("verilog"	(edwin verilog)
 		edwin-syntax-table)
     ("win32"	(edwin screen win32)
 		edwin-syntax-table)
