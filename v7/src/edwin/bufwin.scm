@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufwin.scm,v 1.299 1993/01/12 10:50:36 cph Exp $
+;;;	$Id: bufwin.scm,v 1.300 1993/01/16 05:15:30 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -727,21 +727,23 @@
       ((%window-debug-trace window) 'window window 'direct-update!
 				    display-style))
   (and (%window-saved-screen window)
-       (with-screen-in-update (%window-saved-screen window) display-style
-	 (lambda ()
-	   (let ((finished?
-		  (update-buffer-window! window
-					 (%window-saved-screen window)
-					 (%window-saved-x-start window)
-					 (%window-saved-y-start window)
-					 (%window-saved-xl window)
-					 (%window-saved-xu window)
-					 (%window-saved-yl window)
-					 (%window-saved-yu window)
-					 display-style)))
-	     (if finished?
-		 (set-car! (window-redisplay-flags window) false))
-	     finished?)))))
+       (begin
+	 (%notice-window-changes! window)
+	 (with-screen-in-update (%window-saved-screen window) display-style
+	   (lambda ()
+	     (let ((finished?
+		    (update-buffer-window! window
+					   (%window-saved-screen window)
+					   (%window-saved-x-start window)
+					   (%window-saved-y-start window)
+					   (%window-saved-xl window)
+					   (%window-saved-xu window)
+					   (%window-saved-yl window)
+					   (%window-saved-yu window)
+					   display-style)))
+	       (if finished?
+		   (set-car! (window-redisplay-flags window) false))
+	       finished?))))))
 
 (define (update-buffer-window! window screen x-start y-start xl xu yl yu
 			       display-style)
