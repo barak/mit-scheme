@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fill.scm,v 1.51 1991/10/03 20:48:44 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fill.scm,v 1.52 1992/01/01 02:18:28 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -193,8 +193,8 @@ Prefix arg means justify as well."
       (move-mark-to! point start)
       (let loop ()
 	(let ((target (move-to-column point fill-column)))
-	  (if (mark>= target end)
-	      (delete-string (horizontal-space-start end) end)
+	  (if (mark>= target (horizontal-space-start end))
+	      (delete-horizontal-space end)
 	      (begin
 		(move-mark-to!
 		 point
