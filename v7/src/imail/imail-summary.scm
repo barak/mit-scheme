@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.8 2000/05/19 05:03:42 cph Exp $
+;;; $Id: imail-summary.scm,v 1.9 2000/05/19 17:04:31 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -135,12 +135,10 @@ The recipients are specified as a comma-separated list of names."
 		 (begin
 		   (with-read-only-defeated mark
 		     (lambda ()
-		       (group-replace-char!
+		       (group-replace-string!
 			(mark-group mark)
 			(mark-index mark)
-			(if (message-deleted? (car parameters))
-			    #\D
-			    #\space))))
+			(message-flag-markers (car parameters)))))
 		   (buffer-not-modified! buffer)))))
 	  ((SELECT-MESSAGE)
 	   (let ((mark (imail-summary-message-mark buffer (car parameters))))
@@ -220,6 +218,7 @@ The recipients are specified as a comma-separated list of names."
 		 n
 		 (loop (+ n 1) (* k 10))))))
       (let ((mark (mark-left-inserting-copy (buffer-start buffer))))
+	(insert-string " Flags" mark)
 	(insert-string " " mark)
 	(insert-chars #\# index-digits mark)
 	(insert-string " Length  Date   " mark)
@@ -227,6 +226,7 @@ The recipients are specified as a comma-separated list of names."
 	(insert-string "  " mark)
 	(insert-string "From" mark)
 	(insert-newline mark)
+	(insert-string " -----" mark)
 	(insert-string " " mark)
 	(insert-chars #\- index-digits mark)
 	(insert-string " ------ ------  " mark)
@@ -243,7 +243,9 @@ The recipients are specified as a comma-separated list of names."
 	(mark-temporary! mark)))))
 
 (define (write-imail-summary-line! message index-digits mark)
-  (insert-char (if (message-deleted? message) #\D #\space) mark)
+  (insert-char #\space mark)
+  (insert-string (message-flag-markers message) mark)
+  (insert-char #\space mark)
   (insert-string-pad-left (number->string (+ (message-index message) 1))
 			  index-digits #\space mark)
   (insert-string "  " mark)
@@ -260,6 +262,21 @@ The recipients are specified as a comma-separated list of names."
   (insert-string "  " mark)
   (insert-string (message-summary-from-string message) mark)
   (insert-newline mark))
+
+(define (message-flag-markers message)
+  (let ((s (make-string 5 #\space)))
+    (let ((do-flag
+	   (lambda (index char boolean)
+	     (if boolean
+		 (string-set! s index char)))))
+      (do-flag 0 #\D (message-deleted? message))
+      (do-flag 1 #\U (message-unseen? message))
+      (do-flag 2 #\A (message-answered? message))
+      (do-flag 3 #\R
+	       (or (message-resent? message)
+		   (message-forwarded? message)))
+      (do-flag 4 #\F (message-filed? message)))
+    s))
 
 (define (message-summary-length-string message)
   (abbreviate-exact-nonnegative-integer (message-length message) 5))
@@ -296,7 +313,12 @@ The recipients are specified as a comma-separated list of names."
 	  (else s))))
 
 (define (message-summary-subject-string message)
-  (let ((s (or (get-first-header-field-value message "subject" #f) "")))
+  (let ((s
+	 (let ((s (or (get-first-header-field-value message "subject" #f) "")))
+	   (let ((regs (re-string-match "\\(re:[ \t]*\\)+" s #t)))
+	     (if regs
+		 (string-tail s (re-match-end-index 0 regs))
+		 s)))))
     (let ((i (string-find-next-char s #\newline)))
       (if i
 	  (string-head s i)
@@ -307,9 +329,10 @@ The recipients are specified as a comma-separated list of names."
 Each line summarizes a single mail message.
 The columns describing the message are, left to right:
 
-1. A character in the left column indicating whether the message is
-   marked for deletion.  If so, this character is `D', otherwise it is
-   a space.
+1. Several flag characters, each indicating whether the message is
+   marked with the corresponding flag.  The characters are, in order,
+   `D' (deleted), `U' (not seen), `A' (answered), `R' (resent or
+   forwarded), and `F' (filed).
 
 2. The message index number.
 
