@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: load.scm,v 1.23 2000/12/29 03:40:32 cph Exp $
+;;; $Id: load.scm,v 1.24 2001/01/04 23:24:21 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -27,4 +27,4 @@
   (lambda ()
     (fluid-let ((*allow-package-redefinition?* #t))
       (package/system-loader "imail" '() 'QUERY))))
-(add-subsystem-identification! "IMAIL" '(1 8))
+(add-subsystem-identification! "IMAIL" '(1 9))

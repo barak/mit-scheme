@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.29 2000/06/29 22:01:52 cph Exp $
+;;; $Id: imail-util.scm,v 1.30 2001/01/04 23:23:21 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -364,3 +364,84 @@
 	   (k #f))
        (lambda ()
 	 (file-directory? pathname))))))
+
+;;;; Extended-string input port
+
+(define (open-xstring-input-port xstring)
+  (make-port xstring-input-type
+	     (let ((state (make-xstring-input-state xstring)))
+	       (read-xstring-buffer state 0)
+	       state)))
+
+(define (call-with-input-xstring xstring receiver)
+  (let ((port (open-xstring-input-port xstring)))
+    (let ((value (receiver port)))
+      (close-port port)
+      value)))
+
+(define (xstring-input/read-char port)
+  (without-interrupts
+   (lambda ()
+     (let ((char (xstring-input/peek-char port))
+	   (state (port/state port)))
+       (if (char? char)
+	   (set-xstring-input-state/position!
+	    state
+	    (+ (xstring-input-state/position state) 1)))
+       char))))
+
+(define (xstring-input/peek-char port)
+  (let ((state (port/state port)))
+    (let ((position (xstring-input-state/position state)))
+      (if (>= position (xstring-input-state/buffer-end state))
+	  (read-xstring-buffer state))
+      (if (< position (xstring-input-state/buffer-end state))
+	  (string-ref (xstring-input-state/buffer state)
+		      (- position (xstring-input-state/buffer-start state)))
+	  (make-eof-object port)))))
+
+(define (xstring-input/length port)
+  (external-string-length (xstring-input-state/xstring (port/state port))))
+
+(define (xstring-input/position port)
+  (xstring-input-state/position (port/state port)))
+
+(define (xstring-input/eof? port)
+  (let ((state (port/state port)))
+    (= (xstring-input-state/buffer-start state)
+       (xstring-input-state/buffer-end state))))
+
+(define (xstring-input/close port)
+  (set-xstring-input-state/xstring! (port/state port) #f))
+
+(define xstring-input-type
+  (make-port-type `((READ-CHAR ,xstring-input/read-char)
+		    (PEEK-CHAR ,xstring-input/peek-char)
+		    (LENGTH ,xstring-input/length)
+		    (POSITION ,xstring-input/position)
+		    (EOF? ,xstring-input/eof?)
+		    (CLOSE ,xstring-input/close))
+		  #f))
+
+(define-structure (xstring-input-state
+		   (constructor make-xstring-input-state (xstring))
+		   (conc-name xstring-input-state/))
+  (xstring #f)
+  (position 0)
+  (buffer (make-string 512))
+  (buffer-start #f)
+  (buffer-end 0))
+
+(define (read-xstring-buffer state)
+  (let ((xstring (xstring-input-state/xstring state))
+	(buffer (xstring-input-state/buffer state))
+	(start (xstring-input-state/buffer-end state)))
+    (let ((xend (external-string-length xstring)))
+      (if (< start xend)
+	  (let ((end (max (+ start (string-length buffer)) xend)))
+	    (without-interrupts
+	     (lambda ()
+	       (set-xstring-input-state/buffer-start! state start)
+	       (set-xstring-input-state/buffer-end! state end)
+	       (substring-move-left! xstring start end buffer 0))))
+	  (set-xstring-input-state/buffer-start! state xend)))))
