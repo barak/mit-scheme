@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: conpar.scm,v 14.31 1993/09/23 19:57:43 cph Exp $
+$Id: conpar.scm,v 14.32 1993/12/15 00:04:45 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -830,7 +830,8 @@ MIT in each case. |#
 	hardware-trap/frame-size
 	(let ((after-header (stream-tail stream hardware-trap/frame-size)))
 	  (case state
-	    ((1)			;primitive
+	    ((1)
+	     ;; primitive
 	     (let* ((primitive
 		     (element-stream/ref stream hardware-trap/pc-info1-index))
 		    (arity (primitive-procedure-arity primitive))
@@ -844,7 +845,8 @@ MIT in each case. |#
 		   (- (heuristic (stream-tail after-header nargs)
 				 (+ hardware-trap/frame-size nargs offset))
 		      offset))))
-	    ((0 2 3)			;unknown, cc, or probably cc
+	    ((0 2 3 4 5)
+	     ;; unknown, cc, probably cc, builtin, or utility
 	     (- (heuristic after-header (+ hardware-trap/frame-size offset))
 		offset))
 	    (else
