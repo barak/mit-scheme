@@ -1,10 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: savres.scm,v 14.41 2003/01/03 01:37:53 cph Exp $
+$Id: savres.scm,v 14.42 2003/02/12 19:41:09 cph Exp $
 
-Copyright (c) 1988,1989,1990,1991,1992 Massachusetts Institute of Technology
-Copyright (c) 1995,1998,1999,2000,2001 Massachusetts Institute of Technology
-Copyright (c) 2002,2003 Massachusetts Institute of Technology
+Copyright 1988,1989,1990,1991,1992,1995 Massachusetts Institute of Technology
+Copyright 1998,1999,2000,2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -150,7 +149,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.")
 	 (if (default-object? port)
 	     (current-output-port)
 	     (guarantee-output-port port 'IDENTIFY-WORLD))))
-    (write-string "Copyright (c) " port)
+    (write-string "Copyright " port)
     (write (decoded-time/year (or time-world-saved (get-decoded-time))) port)
     (write-string " Massachusetts Institute of Technology." port)
     (newline port)
