@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: modefs.scm,v 1.145 1994/03/08 20:33:26 cph Exp $
+;;;	$Id: modefs.scm,v 1.146 1994/03/11 05:25:18 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -270,6 +270,7 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental '(#\c-x #\c-z) 'suspend-scheme)
 (define-key 'fundamental '(#\c-x #\() 'start-kbd-macro)
 (define-key 'fundamental '(#\c-x #\)) 'end-kbd-macro)
+(define-key 'fundamental '(#\c-x #\-) 'shrink-window-if-larger-than-buffer)
 (define-key 'fundamental '(#\c-x #\.) 'set-fill-prefix)
 (define-key 'fundamental '(#\c-x #\/) 'point-to-register)
 (define-key 'fundamental '(#\c-x #\0) 'delete-window)
