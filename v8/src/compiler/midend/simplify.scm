@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: simplify.scm,v 1.8 1995/03/01 14:06:55 adams Exp $
+$Id: simplify.scm,v 1.9 1995/04/06 18:33:25 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -129,7 +129,7 @@ MIT in each case. |#
 	       (simplify/pseudo-letify rator bindings* body*)))))
 	(else
 	 (do-ops (simplify/expr env rator)))))
-
+
 (define-simplifier LET (env bindings body)
   (let* ((env0 (simplify/env/make env
 		(map (lambda (binding) (simplify/binding/make (car binding)))
@@ -151,7 +151,7 @@ MIT in each case. |#
 		  (simplify/binding&value env0 (car binding) (cadr binding)))
 	       bindings)))
     (do-simplification env0 #T bindings* body* simplify/letrecify)))
-
+
 (define (simplify/binding&value env name value)
   (if (not (LAMBDA/? value))
       (list false name (simplify/expr env value))
@@ -163,7 +163,7 @@ MIT in each case. |#
 	       `(LAMBDA ,lambda-list
 		  ,(simplify/expr env1 (lambda/body value)))))
 	  (list env1 name (simplify/remember value* value))))))
-
+
 (define (simplify/delete-parameters env0 bindings unsafe-cyclic-reference?)
   ;; ENV0 is the current environment frame
   ;; BINDINGS is parallel to that, but is a list of
@@ -215,7 +215,7 @@ MIT in each case. |#
 		  (simplify/delete-operand! call position))
 		operator-refs)
 	       (simplify/delete-parameter! form position))))))
-
+
 (define (simplify/operand/position bnode* form)
   (let ((name (simplify/binding/name bnode*)))
     (let loop ((ll (cadr form))
@@ -228,7 +228,7 @@ MIT in each case. |#
 	     -1)
 	    (else
 	     (loop (cdr ll) (+ index 1)))))))
-
+
 (define (simplify/deletable-operand? call position)
   (let loop ((rands    (call/cont-and-operands call))
 	     (position position))
@@ -347,14 +347,14 @@ MIT in each case. |#
 			to-substitute)
 		   bindings)
 	    body)))
-
+
 (define (simplify/substitute? value body)
   (or (form/simple&side-effect-insensitive? value)
       (and *after-cps-conversion?*
 	   (CALL/? body)
 	   (form/simple&side-effect-free? value)
 	   (not (form/static? value)))))
-
+
 ;; Note: this only works if no variable free in value is captured at any
 ;; reference in node.
 ;; This is true because the program was alpha-converted and when we
@@ -500,26 +500,16 @@ MIT in each case. |#
   (if (not (pair? expr))
       (illegal expr))
   (case (car expr)
-    ((QUOTE)
-     (simplify/quote env expr))
-    ((LOOKUP)
-     (simplify/lookup env expr))
-    ((LAMBDA)
-     (simplify/lambda env expr))
-    ((LET)
-     (simplify/let env expr))
-    ((DECLARE)
-     (simplify/declare env expr))
-    ((CALL)
-     (simplify/call env expr))
-    ((BEGIN)
-     (simplify/begin env expr))
-    ((IF)
-     (simplify/if env expr))
-    ((LETREC)
-     (simplify/letrec env expr))
-    (else
-     (illegal expr))))
+    ((QUOTE)   (simplify/quote env expr))
+    ((LOOKUP)  (simplify/lookup env expr))
+    ((LAMBDA)  (simplify/lambda env expr))
+    ((LET)     (simplify/let env expr))
+    ((DECLARE) (simplify/declare env expr))
+    ((CALL)    (simplify/call env expr))
+    ((BEGIN)   (simplify/begin env expr))
+    ((IF)      (simplify/if env expr))
+    ((LETREC)  (simplify/letrec env expr))
+    (else      (illegal expr))))
 
 (define (simplify/expr* env exprs)
   (map (lambda (expr)
