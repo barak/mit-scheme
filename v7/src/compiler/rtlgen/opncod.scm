@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.40 1991/05/06 23:16:43 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.41 1991/06/12 03:36:15 cph Exp $
 
 Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
@@ -281,7 +281,11 @@ MIT in each case. |#
 
 (define (open-code:with-checks combination checks non-error-cfg error-finish
 			       primitive-name expressions)
-  (let ((checks (list-transform-negative checks cfg-null?)))
+  (let ((checks
+	 (list-transform-negative checks
+	   (lambda (cfg)
+	     (or (cfg-null? cfg)
+		 (pcfg-true? cfg))))))
     (if (null? checks)
 	non-error-cfg
 	;; Don't generate `error-cfg' unless it is needed.  Otherwise
