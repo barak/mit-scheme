@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bchdmp.c,v 9.78 1994/01/30 03:32:11 gjr Exp $
+$Id: bchdmp.c,v 9.79 1995/03/21 22:12:50 cph Exp $
 
-Copyright (c) 1987-1994 Massachusetts Institute of Technology
+Copyright (c) 1987-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -93,6 +93,58 @@ static char FASDUMP_FILENAME[] = "\\tmp\\faXXXXXX";
 static char FASDUMP_FILENAME[] = "\\tmp\\faXXXXXX";
 
 #endif /* WINNT */
+
+#ifdef _OS2
+#include "os2.h"
+
+#ifdef __IBMC__
+#include <io.h>
+#include <sys\stat.h>
+#include <fcntl.h>
+#endif
+
+#ifndef F_OK
+#define F_OK 0
+#define X_OK 1
+#define W_OK 2
+#define R_OK 4
+#endif
+
+char *
+DEFUN (mktemp, (fname), unsigned char * fname)
+{
+  /* This assumes that fname ends in at least 3 Xs.
+     tmpname seems too random to use.
+     This, of course, has a window in which another program can
+     create the file.
+   */
+
+  int posn = ((strlen (fname)) - 3);
+  int counter;
+
+  for (counter = 0; counter < 1000; counter++)
+  {
+    sprintf (&fname[posn], "%03d", counter);
+    if ((access (fname, F_OK)) != 0)
+    {
+      int fid = (open (fname,
+		       (O_CREAT | O_EXCL | O_RDWR),
+		       (S_IREAD | S_IWRITE)));
+      if (fid < 0)
+	continue;
+      close (fid);
+      break;
+    }
+  }
+  if (counter >= 1000)
+    return ((char *) NULL);
+
+  return ((char *) fname);
+}
+
+#define FASDUMP_FILENAME_DEFINED
+static char FASDUMP_FILENAME[] = "\\tmp\\faXXXXXX";
+#endif /* _OS2 */
 
 #ifndef FASDUMP_FILENAME_DEFINED
 

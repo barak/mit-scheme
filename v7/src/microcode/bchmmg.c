@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bchmmg.c,v 9.86 1994/01/30 03:31:48 gjr Exp $
+$Id: bchmmg.c,v 9.87 1995/03/21 22:12:32 cph Exp $
 
-Copyright (c) 1987-1994 Massachusetts Institute of Technology
+Copyright (c) 1987-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -49,6 +49,23 @@ MIT in each case. */
 #ifdef WINNT
 #  include "nt.h"
 #  define SUB_DIRECTORY_DELIMITER '\\'
+#  define ASSUME_NORMAL_GC_FILE
+#endif
+
+#ifdef _OS2
+#include "os2.h"
+#define SUB_DIRECTORY_DELIMITER '\\'
+#define ASSUME_NORMAL_GC_FILE
+#ifdef __IBMC__
+#include <io.h>
+#include <sys\stat.h>
+#endif
+#ifndef F_OK
+#define F_OK 0
+#define X_OK 1
+#define W_OK 2
+#define R_OK 4
+#endif
 #endif
 
 #ifndef SUB_DIRECTORY_DELIMITER
@@ -207,7 +224,64 @@ DEFUN (io_error_always_abort, (operation_name, noise),
   return (1);
 }
 
-#ifndef WINNT
+#ifdef WINNT
+#include <windows.h>
+
+int 
+DEFUN (io_error_retry_p, (operation_name, noise),
+       char * operation_name AND char * noise)
+{
+  char buf[512];
+  extern HANDLE master_tty_window;
+
+  sprintf (&buf[0],
+	   "%s: GC file error (code = %d) when manipulating %s.\n"
+	   "Choose an option (Cancel = Exit Scheme)",
+	   operation_name, (GetLastError ()), noise);
+  switch (MessageBox (master_tty_window,
+		      &buf[0],
+		      "MIT Scheme garbage-collection problem description",
+		      (MB_ICONSTOP | MB_ABORTRETRYIGNORE | MB_APPLMODAL)))
+  {
+    case IDABORT:
+      return (1);
+
+    case IDRETRY:
+      return (0);
+
+    case IDIGNORE:
+      Microcode_Termination (TERM_EXIT);
+  }
+}
+
+#else /* not WINNT */
+#ifdef _OS2
+
+#define INCL_WIN
+#include <os2.h>
+
+int
+io_error_retry_p (char * operation_name, char * noise)
+{
+  char buf [512];
+  sprintf ((&buf[0]),
+	   "%s: GC file error (code = %d) when manipulating %s.\n"
+	   "Choose an option (Cancel = Exit Scheme)",
+	   operation_name, errno, noise);
+  switch (WinMessageBox (HWND_DESKTOP,
+			 NULLHANDLE,
+			 (&buf[0]),
+			 "MIT Scheme garbage-collection problem description",
+			 0,
+			 (MB_ICONHAND | MB_ABORTRETRYIGNORE | MB_APPLMODAL)))
+    {
+    case MBID_ABORT: return (1);
+    case MBID_RETRY: return (0);
+    case MBID_IGNORE: Microcode_Termination (TERM_EXIT);
+    }
+}
+
+#else /* not _OS2 */
 
 extern char EXFUN (userio_choose_option,
 		   (CONST char *, CONST char *, CONST char **));
@@ -265,37 +339,9 @@ DEFUN (io_error_retry_p, (operation_name, noise),
     }
   }
 }
-
-#else /* WINNT */
-#include <windows.h>
 
-int 
-DEFUN (io_error_retry_p, (operation_name, noise),
-       char * operation_name AND char * noise)
-{
-  char buf[512];
-  extern HANDLE master_tty_window;
-
-  sprintf (&buf[0],
-	   "%s: GC file error (code = %d) when manipulating %s.\n"
-	   "Choose an option (Cancel = Exit Scheme)",
-	   operation_name, (GetLastError ()), noise);
-  switch (MessageBox (master_tty_window,
-		      &buf[0],
-		      "MIT Scheme garbage-collection problem description",
-		      (MB_ICONSTOP | MB_ABORTRETRYIGNORE | MB_APPLMODAL)))
-  {
-    case IDABORT:
-      return (1);
-
-    case IDRETRY:
-      return (0);
-
-    case IDIGNORE:
-      Microcode_Termination (TERM_EXIT);
-  }
-}
-#endif /* WINNT */
+#endif /* not _OS2 */
+#endif /* not WINNT */
 
 static int
 DEFUN (verify_write, (position, size, success),
@@ -1936,9 +1982,8 @@ DEFUN (open_gc_file, (size, unlink_p),
   }
   else
   {
-#ifdef WINNT
-    /* SRA: for NT, for the time being, we just assume that it will be a
-       normal file */
+#ifdef ASSUME_NORMAL_GC_FILE
+    /* Assume that it will be a normal file.  */
     exists_p = true;
     can_dump_directly_p = true;
 #else
@@ -1968,14 +2013,14 @@ DEFUN (open_gc_file, (size, unlink_p),
     }
     else
       can_dump_directly_p = true;
-#endif
+#endif /* not ASSUME_NORMAL_GC_FILE */
   }
 
   gc_file = (open (gc_file_name, flags, GC_FILE_MASK));
   if (gc_file == -1)
   {
-#if defined(DOS386) || defined(WINNT)
-    /* Under DOS and Windows, errno does not give sufficient information. */
+#if defined(DOS386) || defined(WINNT) || defined(_OS2)
+    /* errno does not give sufficient information except under unix. */
 
     int saved_errno = errno;
     char
@@ -2003,7 +2048,7 @@ DEFUN (open_gc_file, (size, unlink_p),
     }      
     else
       errno = saved_errno;
-#endif /* defined(DOS386) || defined(WINNT) */
+#endif /* defined(DOS386) || defined(WINNT) || defined(_OS2) */
     termination_open_gc_file ("open", ((char *) NULL));
   }
 
@@ -2040,8 +2085,8 @@ DEFUN (open_gc_file, (size, unlink_p),
 
   gc_file_current_position = -1;	/* Unknown position */
 
+#ifndef ASSUME_NORMAL_GC_FILE
   /* Determine whether it is a seekable file. */
-
   if (exists_p && ((file_info.st_mode & S_IFMT) == S_IFCHR))
   {
 #if defined(F_GETFL) && defined(F_SETFL) && defined(O_NONBLOCK)
@@ -2084,6 +2129,7 @@ DEFUN (open_gc_file, (size, unlink_p),
       (void) (fcntl (gc_file, F_SETFL, (flags | O_NONBLOCK)));
 #endif
   }
+#endif /* not ASSUME_NORMAL_GC_FILE */
   return;
 }
 

@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile,v 1.7 1995/03/13 23:20:46 cph Exp $
+###	$Id: makefile,v 1.8 1995/03/21 22:13:56 cph Exp $
 ###
 ###	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ###
@@ -56,7 +56,7 @@
 # assembly language, or even a simple interface library precompiled
 # with icc.
 
-all: scheme.exe
+all: scheme.exe bchschem.exe
 
 OBJ = obj # obj for IBM C and GCC/2
 
@@ -339,8 +339,8 @@ usrdef.c : $(SCHEME_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.tch \
 	.\findprim $(SCHEME_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) > usrdef.c
 
 bchdef.c : $(SCHEME_SOURCES) $(BCHSOURCES) $(OS_PRIM_SOURCES) usrdef.tch \
-	findprim xmkfile
-	.\findprim $(SCHEME_SOURCES) $(BCHSOURCES) $(OS_PRIM_SOURCES) \
+	findprim.exe
+	.\findprim.exe $(SCHEME_SOURCES) $(BCHSOURCES) $(OS_PRIM_SOURCES) \
 	> bchdef.c
 
 COMMON_OBJECTS = $(CORE_OBJECTS) $(STD_GC_OBJECTS) $(OS2_OBJECTS) \

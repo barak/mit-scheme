@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bchutl.c,v 1.4 1993/11/11 20:18:41 cph Exp $
+$Id: bchutl.c,v 1.5 1995/03/21 22:12:45 cph Exp $
 
-Copyright (c) 1991-1993 Massachusetts Institute of Technology
+Copyright (c) 1991-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -32,6 +32,9 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
+#include "oscond.h"
+#include "ansidecl.h"
+
 #include <errno.h>
 #ifndef EINTR
 #define EINTR 1999
@@ -39,13 +42,13 @@ MIT in each case. */
 
 #ifndef DOS386
 #ifndef WINNT
+#ifndef _OS2
 #ifndef _NEXTOS
 #include <unistd.h>
 #endif
 #endif
 #endif
-
-#include "ansidecl.h"
+#endif
 
 extern char * EXFUN (error_name, (int));
 extern int EXFUN (retrying_file_operation,
@@ -67,6 +70,21 @@ DEFUN (error_name, (code), int code)
 }
 
 #else /* not WINNT */
+#ifdef _OS2
+
+#ifdef __IBMC__
+#include <io.h>
+#endif
+
+char *
+DEFUN (error_name, (code), int code)
+{
+  static char buf [512];
+  sprintf ((&buf[0]), "%d, unknown error", code);
+  return (&buf[0]);
+}
+
+#else /* not _OS2 */
 
 char *
 DEFUN (error_name, (code), int code)
@@ -82,7 +100,8 @@ DEFUN (error_name, (code), int code)
   return (&buf[0]);
 }
 
-#endif /* WINNT */
+#endif /* not _OS2 */
+#endif /* not WINNT */
 
 #ifndef SEEK_SET
 #define SEEK_SET 0

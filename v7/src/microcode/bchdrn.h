@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bchdrn.h,v 1.6 1993/11/22 00:32:47 gjr Exp $
+$Id: bchdrn.h,v 1.7 1995/03/21 22:12:41 cph Exp $
 
-Copyright (c) 1991-1993 Massachusetts Institute of Technology
+Copyright (c) 1991-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -35,7 +35,6 @@ MIT in each case. */
 /* Header file for overlapped I/O in bchscheme. */
 
 #ifndef _BCHDRN_H_INCLUDED
-
 #define _BCHDRN_H_INCLUDED
 
 #include "ansidecl.h"
@@ -47,8 +46,10 @@ MIT in each case. */
 #  include <unistd.h>
 #else
 #ifndef DOS386
+#ifndef _OS2
   extern int EXFUN (read, (int, PTR, unsigned int));
   extern int EXFUN (write, (int, PTR, unsigned int));
+#endif
 #endif
 #endif
 

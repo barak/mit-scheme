@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bchgcc.h,v 9.57 1993/12/07 20:35:51 gjr Exp $
+$Id: bchgcc.h,v 9.58 1995/03/21 22:12:15 cph Exp $
 
-Copyright (c) 1987-1993 Massachusetts Institute of Technology
+Copyright (c) 1987-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -51,6 +51,9 @@ MIT in each case. */
 #  define IO_PAGE_SIZE		4096
 #endif
 #ifdef WINNT
+#  define IO_PAGE_SIZE		4096
+#endif
+#ifdef _OS2
 #  define IO_PAGE_SIZE		4096
 #endif
 #ifndef IO_PAGE_SIZE
