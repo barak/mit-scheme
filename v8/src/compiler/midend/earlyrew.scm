@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: earlyrew.scm,v 1.6 1995/02/21 06:27:08 adams Exp $
+$Id: earlyrew.scm,v 1.7 1995/02/28 01:39:12 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -193,10 +193,11 @@ MIT in each case. |#
       (cond ((form/number? x)
 	     => (lambda (x-value)
 		  (cond ((form/number? y)
-			 `(CALL (QUOTE ,%genop)
-				(QUOTE #F)
-				(QUOTE ,x-value)
-				(QUOTE ,y-value)))
+			 => (lambda (y-value)
+			      `(CALL (QUOTE ,%genop)
+				     (QUOTE #F)
+				     (QUOTE ,x-value)
+				     (QUOTE ,y-value))))
 			((optimize-x x-value y))
 			((not (test x-value))
 			 `(CALL (QUOTE ,%genop)
