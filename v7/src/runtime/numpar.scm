@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: numpar.scm,v 14.11 1997/04/28 05:32:15 cph Exp $
+$Id: numpar.scm,v 14.12 1997/05/02 05:46:25 cph Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -51,7 +51,7 @@ MIT in each case. |#
   (if (not (or (eq? #f default-radix) (eq? 2 default-radix)
 	       (eq? 8 default-radix) (eq? 10 default-radix)
 	       (eq? 16 default-radix)))
-      (error:bad-range-argument radix name))
+      (error:bad-range-argument default-radix name))
   (let loop ((start start) (exactness #f) (radix #f))
     (and (fix:< start end)
 	 (if (char=? #\# (string-ref string start))
