@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.27 1989/01/21 09:12:29 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.28 1989/03/29 04:14:08 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -405,6 +405,10 @@ MIT in each case. |#
   (rtl:make-cons-pointer (rtl:make-constant (ucode-type fixnum))
 			 (rtl:make-fetch locative)))
 
+(define (rtl:vector-length-fetch locative)
+  (rtl:make-cons-pointer (rtl:make-constant (ucode-type fixnum))
+			 (rtl:make-object->datum (rtl:make-fetch locative))))
+
 (define (rtl:string-fetch locative)
   (rtl:make-cons-pointer (rtl:make-constant (ucode-type character))
 			 (rtl:make-fetch locative)))
@@ -538,7 +542,7 @@ MIT in each case. |#
 	 (lambda (name make-fetch type index)
 	   (standard-def name (make-fixed-ref name make-fetch type index)))))
     (user-ref 'CELL-CONTENTS rtl:make-fetch (ucode-type cell) 0)
-    (user-ref 'VECTOR-LENGTH rtl:length-fetch (ucode-type vector) 0)
+    (user-ref 'VECTOR-LENGTH rtl:vector-length-fetch (ucode-type vector) 0)
     (user-ref 'STRING-LENGTH rtl:length-fetch (ucode-type string) 1)
     (user-ref 'BIT-STRING-LENGTH rtl:length-fetch (ucode-type vector-1b) 1)
     (user-ref 'SYSTEM-PAIR-CAR rtl:make-fetch false 0)
@@ -546,7 +550,7 @@ MIT in each case. |#
     (user-ref 'SYSTEM-HUNK3-CXR0 rtl:make-fetch false 0)
     (user-ref 'SYSTEM-HUNK3-CXR1 rtl:make-fetch false 1)
     (user-ref 'SYSTEM-HUNK3-CXR2 rtl:make-fetch false 2)
-    (user-ref 'SYSTEM-VECTOR-SIZE rtl:length-fetch false 0))
+    (user-ref 'SYSTEM-VECTOR-SIZE rtl:vector-length-fetch false 0))
   (let ((car-ref (make-fixed-ref 'CAR rtl:make-fetch (ucode-type pair) 0))
 	(cdr-ref (make-fixed-ref 'CDR rtl:make-fetch (ucode-type pair) 1)))
     (standard-def 'CAR car-ref)
