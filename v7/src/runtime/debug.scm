@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.27 1991/06/11 17:51:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.28 1991/07/16 00:03:00 arthur Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -195,6 +195,7 @@ MIT in each case. |#
       (#\Z ,command/return
 	   "return (continue with) an expression after evaluating it")
       )))
+  (set! hook/debugger-before-return default/debugger-before-return)
   unspecific)
 
 (define command-set)
@@ -207,7 +208,7 @@ MIT in each case. |#
 (define (command/print-subproblem dstate)
   (presentation (lambda () (print-subproblem dstate))))
 
-(define (print-subproblem dstate)
+(define (print-subproblem-identification dstate)
   (let ((subproblem (dstate/subproblem dstate)))
     (write-string "Subproblem level: ")
     (let ((level (dstate/subproblem-number dstate))
@@ -220,59 +221,72 @@ MIT in each case. |#
       (cond ((not (stack-frame/next-subproblem subproblem))
 	     (qualify-level (if (zero? level) "only" "highest")))
 	    ((zero? level)
-	     (qualify-level "lowest"))))
+	     (qualify-level "lowest"))))))
+
+(define (print-subproblem-environment dstate)
+  (let ((environment-list (dstate/environment-list dstate)))
+    (if (pair? environment-list)
+	(print-environment (car environment-list))
+	(begin
+	  (newline)
+	  (write-string "There is no current environment.")))))
+
+(define (print-subproblem-reduction dstate)
+  (let ((n-reductions (dstate/number-of-reductions dstate)))
     (newline)
-    (let ((expression (dstate/expression dstate)))
-      (cond ((not (invalid-expression? expression))
-	     (write-string
-	      (if (stack-frame/compiled-code? subproblem)
-		  "Compiled code expression (from stack):"
-		  "Expression (from stack):"))
-	     (newline)
-	     (let ((subexpression (dstate/subexpression dstate)))
-	       (if (or (debugging-info/undefined-expression? subexpression)
-		       (debugging-info/unknown-expression? subexpression))
-		   (debugger-pp expression expression-indentation)
-		   (begin
-		     (debugger-pp
-		      (unsyntax-with-substitutions
-		       expression
-		       (list (cons subexpression subexpression-marker)))
-		      expression-indentation)
-		     (newline)
-		     (write-string " subproblem being executed (marked by ")
-		     (write subexpression-marker)
-		     (write-string "):")
-		     (newline)
-		     (debugger-pp subexpression expression-indentation)))))
-	    ((debugging-info/noise? expression)
-	     (write-string ((debugging-info/noise expression) true)))
-	    (else
-	     (write-string
-	      (if (stack-frame/compiled-code? subproblem)
-		  "Compiled code expression unknown"
-		  "Expression unknown"))
-	     (newline)
-	     (write (stack-frame/return-address subproblem)))))
-    (let ((environment-list (dstate/environment-list dstate)))
-      (if (pair? environment-list)
-	  (print-environment (car environment-list))
-	  (begin
-	    (newline)
-	    (write-string "There is no current environment."))))
-    (let ((n-reductions (dstate/number-of-reductions dstate)))
-      (newline)
-      (if (positive? n-reductions)
-	  (begin
-	    (write-string
-	     "The execution history for this subproblem contains ")
-	    (write n-reductions)
-	    (write-string " reduction")
-	    (if (> n-reductions 1)
-		(write-string "s"))
-	    (write-string "."))
+    (if (positive? n-reductions)
+	(begin
 	  (write-string
-	   "There is no execution history for this subproblem.")))))
+	   "The execution history for this subproblem contains ")
+	  (write n-reductions)
+	  (write-string " reduction")
+	  (if (> n-reductions 1)
+	      (write-string "s"))
+	  (write-string "."))
+	(write-string
+	 "There is no execution history for this subproblem."))))
+
+(define (print-subproblem-expression dstate)
+  (let ((expression (dstate/expression dstate))
+	(subproblem (dstate/subproblem dstate)))
+    (cond ((not (invalid-expression? expression))
+	   (write-string
+	    (if (stack-frame/compiled-code? subproblem)
+		"Compiled code expression (from stack):"
+		"Expression (from stack):"))
+	   (newline)
+	   (let ((subexpression (dstate/subexpression dstate)))
+	     (if (or (debugging-info/undefined-expression? subexpression)
+		     (debugging-info/unknown-expression? subexpression))
+		 (debugger-pp expression expression-indentation)
+		 (begin
+		   (debugger-pp
+		    (unsyntax-with-substitutions
+		     expression
+		     (list (cons subexpression subexpression-marker)))
+		    expression-indentation)
+		   (newline)
+		   (write-string " subproblem being executed (marked by ")
+		   (write subexpression-marker)
+		   (write-string "):")
+		   (newline)
+		   (debugger-pp subexpression expression-indentation)))))
+	  ((debugging-info/noise? expression)
+	   (write-string ((debugging-info/noise expression) true)))
+	  (else
+	   (write-string
+	    (if (stack-frame/compiled-code? subproblem)
+		"Compiled code expression unknown"
+		"Expression unknown"))
+	   (newline)
+	   (write (stack-frame/return-address subproblem))))))
+
+(define (print-subproblem dstate)
+  (print-subproblem-identification dstate)
+  (newline)
+  (print-subproblem-expression dstate)
+  (print-subproblem-environment dstate)
+  (print-subproblem-reduction dstate))
 
 (define subexpression-marker (string->symbol "###"))
 
@@ -300,18 +314,28 @@ MIT in each case. |#
 		      (dstate/subproblem-number dstate)
 		      (dstate/reduction-number dstate)))))
 
-(define (print-reduction reduction subproblem-level reduction-number)
+(define (print-reduction-identification subproblem-number reduction-number)
   (write-string "Subproblem level: ")
-  (write subproblem-level)
+  (write subproblem-number)
   (write-string "  Reduction number: ")
-  (write reduction-number)
-  (newline)
+  (write reduction-number))
+
+(define (print-reduction-expression reduction)
   (write-string "Expression (from execution history):")
   (newline)
-  (debugger-pp (reduction-expression reduction) expression-indentation)
+  (debugger-pp (reduction-expression reduction) expression-indentation))
+
+(define (print-reduction-environment reduction)
   (print-environment (reduction-environment reduction)))
 
+(define (print-reduction reduction subproblem-number reduction-number)
+  (print-reduction-identification subproblem-number reduction-number)
+  (newline)
+  (print-reduction-expression reduction)
+  (print-reduction-environment reduction))
+
 (define (print-environment environment)
+  (newline)
   (show-environment-name environment)
   (if (not (environment->package environment))
       (begin
@@ -681,6 +705,11 @@ MIT in each case. |#
 
 ;;;; Advanced hacking commands
 
+(define hook/debugger-before-return)
+
+(define (default/debugger-before-return)
+  '())
+
 (define (command/return dstate)
   (let ((next (stack-frame/next-subproblem (dstate/subproblem dstate))))
     (if next
@@ -689,6 +718,7 @@ MIT in each case. |#
 	      (environment (get-evaluation-environment dstate))
 	      (return
 	       (lambda (value)
+		 (hook/debugger-before-return)
 		 ((stack-frame->continuation next) value))))
 	  (let ((value
 		 (let ((expression
