@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: sdata.h,v 9.38 2001/08/07 01:27:09 cph Exp $
+$Id: sdata.h,v 9.39 2001/12/21 04:36:11 cph Exp $
 
 Copyright (c) 1987-1989, 1999, 2001 Massachusetts Institute of Technology
 
@@ -425,8 +425,10 @@ USA.
 #define GET_TRAP_TAG(object)						\
   (MEMORY_REF ((object), TRAP_TAG))
 
-#define GET_TRAP_CACHE(object)						\
+#define GET_TRAP_EXTRA(object)						\
   (MEMORY_REF ((object), TRAP_EXTRA))
+
+#define GET_TRAP_CACHE GET_TRAP_EXTRA
 
 #define CACHE_CELL				HUNK3_CXR0
 #define CACHE_CLONE				HUNK3_CXR1

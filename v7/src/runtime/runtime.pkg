@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.397 2001/12/21 01:57:19 cph Exp $
+$Id: runtime.pkg,v 14.398 2001/12/21 04:37:41 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -1326,9 +1326,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  environment-bound-names
 	  environment-bound?
 	  environment-define
+	  environment-define-macro
 	  environment-has-parent?
 	  environment-lambda
 	  environment-lookup
+	  environment-lookup-macro
+	  environment-macro-names
 	  environment-parent
 	  environment-procedure-name
 	  environment?
@@ -1387,6 +1390,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  condition-type:floating-point-underflow
 	  condition-type:illegal-datum
 	  condition-type:illegal-pathname-component
+	  condition-type:macro-binding
 	  condition-type:no-such-restart
 	  condition-type:port-error
 	  condition-type:serious-condition
@@ -1469,6 +1473,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (export (runtime stream)
 	  ordinal-number-string
 	  write-operator)
+  (export (runtime environment)
+	  error:macro-binding)
   (initialization (initialize-package!)))
 
 (define-package (runtime event-distributor)
@@ -2658,12 +2664,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (export ()
 	  cached-reference-trap-value
 	  cached-reference-trap?
+	  macro->reference-trap
+	  macro-reference-trap?
+	  macro->unmapped-reference-trap
 	  make-unassigned-reference-trap
 	  make-unbound-reference-trap
 	  make-unmapped-unassigned-reference-trap
 	  make-unmapped-unbound-reference-trap
 	  map-reference-trap
 	  map-reference-trap-value
+	  reference-trap->macro
 	  reference-trap-kind
 	  reference-trap-kind-name
 	  reference-trap?
@@ -3741,9 +3751,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  syntax-table/extend
 	  syntax-table/parent
 	  syntax-table/ref
-	  syntax-table?)
-  (export (runtime environment)
-	  syntax-table-tag))
+	  syntax-table?))
 
 (define-package (runtime syntaxer)
   (files "syntax")

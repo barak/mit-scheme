@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uerror.scm,v 14.49 2001/12/19 01:40:12 cph Exp $
+$Id: uerror.scm,v 14.50 2001/12/21 04:37:52 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -460,86 +460,93 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	 (condition-signaller condition-type:unbound-variable
 			      '(ENVIRONMENT LOCATION))))
     (lambda (continuation)
-      (let ((signal-reference
-	     (lambda (environment name)
-	       (unbound-variable/store-value continuation environment name
-		 (lambda ()
-		   (variable/use-value continuation environment name
-		     (lambda ()
-		       (signal continuation environment name)))))))
-	    (signal-other
-	     (lambda (environment name)
-	       (unbound-variable/store-value continuation environment name
-		 (lambda ()
-		   (signal continuation environment name)))))
-	    (frame (continuation/first-subproblem continuation)))
-	(case (frame/type frame)
-	  ((EVAL-ERROR)
-	   (let ((expression (eval-frame/expression frame)))
-	     (if (variable? expression)
-		 (signal-reference (eval-frame/environment frame)
-				   (variable-name expression)))))
-	  ((ASSIGNMENT-CONTINUE)
-	   (signal-other (eval-frame/environment frame)
-			 (assignment-name (eval-frame/expression frame))))
-	  ((ACCESS-CONTINUE)
-	   (signal-reference (pop-return-frame/value continuation)
-			     (access-name (eval-frame/expression frame))))
-	  ((INTERNAL-APPLY INTERNAL-APPLY-VAL)
-	   (let ((operator (apply-frame/operator frame)))
-	     (cond ((eq? (ucode-primitive lexical-reference) operator)
-		    (signal-reference (apply-frame/operand frame 0)
-				      (apply-frame/operand frame 1)))
-		   ((eq? (ucode-primitive lexical-assignment) operator)
-		    (signal-other (apply-frame/operand frame 0)
-				  (apply-frame/operand frame 1)))
-		   ((eq? (ucode-primitive link-variables 4) operator)
-		    (signal-other (apply-frame/operand frame 0)
-				  (apply-frame/operand frame 1)))
-		   ((eq? (ucode-primitive lexical-unassigned?) operator)
-		    (signal-other (apply-frame/operand frame 0)
-				  (apply-frame/operand frame 1))))))
-	  ((COMPILER-REFERENCE-TRAP-RESTART
-	    COMPILER-SAFE-REFERENCE-TRAP-RESTART)
-	   (signal-reference (reference-trap-frame/environment frame)
-			     (reference-trap-frame/name frame)))
-	  ((COMPILER-ASSIGNMENT-TRAP-RESTART
-	    COMPILER-UNASSIGNED?-TRAP-RESTART
-	    COMPILER-OPERATOR-LOOKUP-TRAP-RESTART)
-	   (signal-other (reference-trap-frame/environment frame)
-			 (reference-trap-frame/name frame))))))))
-
+      (signal-variable-error
+       continuation
+       (lambda (environment name)
+	 (unbound-variable/store-value continuation environment name
+	   (lambda ()
+	     (variable/use-value continuation environment name
+	       (lambda ()
+		 (signal continuation environment name))))))
+       (lambda (environment name)
+	 (unbound-variable/store-value continuation environment name
+	   (lambda ()
+	     (signal continuation environment name))))))))
+
 (define-error-handler 'UNASSIGNED-VARIABLE
   (let ((signal
 	 (condition-signaller condition-type:unassigned-variable
 			      '(ENVIRONMENT LOCATION))))
     (lambda (continuation)
-      (let ((signal
-	     (lambda (environment name)
-	       (unassigned-variable/store-value continuation environment name
-		 (lambda ()
-		   (variable/use-value continuation environment name
-		     (lambda ()
-		       (signal continuation environment name)))))))
-	    (frame (continuation/first-subproblem continuation)))
-	(case (frame/type frame)
-	  ((EVAL-ERROR)
-	   (let ((expression (eval-frame/expression frame)))
-	     (if (variable? expression)
-		 (signal (eval-frame/environment frame)
-			 (variable-name expression)))))
-	  ((ACCESS-CONTINUE)
-	   (signal (pop-return-frame/value continuation)
-		   (access-name (eval-frame/expression frame))))
-	  ((INTERNAL-APPLY INTERNAL-APPLY-VAL)
-	   (if (eq? (ucode-primitive lexical-reference)
-		    (apply-frame/operator frame))
-	       (signal (apply-frame/operand frame 0)
-		       (apply-frame/operand frame 1))))
-	  ((COMPILER-REFERENCE-TRAP-RESTART
-	    COMPILER-OPERATOR-LOOKUP-TRAP-RESTART)
-	   (signal (reference-trap-frame/environment frame)
-		   (reference-trap-frame/name frame))))))))
+      (signal-variable-error
+       continuation
+       (lambda (environment name)
+	 (unassigned-variable/store-value continuation environment name
+	   (lambda ()
+	     (variable/use-value continuation environment name
+	       (lambda ()
+		 (signal continuation environment name))))))
+       (lambda (environment name)
+	 environment name
+	 unspecific)))))
+
+(define-error-handler 'MACRO-BINDING
+  (let ((signal
+	 (condition-signaller condition-type:macro-binding
+			      '(ENVIRONMENT LOCATION))))
+    (lambda (continuation)
+      (signal-variable-error
+       continuation
+       (lambda (environment name)
+	 (unbound-variable/store-value continuation environment name
+	   (lambda ()
+	     (variable/use-value continuation environment name
+	       (lambda ()
+		 (signal continuation environment name))))))
+       (lambda (environment name)
+	 (unbound-variable/store-value continuation environment name
+	   (lambda ()
+	     (signal continuation environment name))))))))
+
+(define (signal-variable-error continuation signal-reference signal-other)
+  (let ((frame (continuation/first-subproblem continuation)))
+    (case (frame/type frame)
+      ((EVAL-ERROR)
+       (let ((expression (eval-frame/expression frame)))
+	 (if (variable? expression)
+	     (signal-reference (eval-frame/environment frame)
+			       (variable-name expression)))))
+      ((ASSIGNMENT-CONTINUE)
+       (signal-other (eval-frame/environment frame)
+		     (assignment-name (eval-frame/expression frame))))
+      ((ACCESS-CONTINUE)
+       (signal-reference (pop-return-frame/value continuation)
+			 (access-name (eval-frame/expression frame))))
+      ((INTERNAL-APPLY INTERNAL-APPLY-VAL)
+       (let ((operator (apply-frame/operator frame)))
+	 (cond ((or (eq? (ucode-primitive lexical-reference) operator)
+		    (eq? (ucode-primitive safe-lexical-reference 2)
+			 operator))
+		(signal-reference (apply-frame/operand frame 0)
+				  (apply-frame/operand frame 1)))
+	       ((eq? (ucode-primitive lexical-assignment) operator)
+		(signal-other (apply-frame/operand frame 0)
+			      (apply-frame/operand frame 1)))
+	       ((eq? (ucode-primitive link-variables 4) operator)
+		(signal-other (apply-frame/operand frame 0)
+			      (apply-frame/operand frame 1)))
+	       ((eq? (ucode-primitive lexical-unassigned?) operator)
+		(signal-other (apply-frame/operand frame 0)
+			      (apply-frame/operand frame 1))))))
+      ((COMPILER-REFERENCE-TRAP-RESTART
+	COMPILER-SAFE-REFERENCE-TRAP-RESTART)
+       (signal-reference (reference-trap-frame/environment frame)
+			 (reference-trap-frame/name frame)))
+      ((COMPILER-ASSIGNMENT-TRAP-RESTART
+	COMPILER-UNASSIGNED?-TRAP-RESTART
+	COMPILER-OPERATOR-LOOKUP-TRAP-RESTART)
+       (signal-other (reference-trap-frame/environment frame)
+		     (reference-trap-frame/name frame))))))
 
 ;;;; Argument Errors
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.53 2001/12/20 20:51:16 cph Exp $
+$Id: error.scm,v 14.54 2001/12/21 04:37:29 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -676,6 +676,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define condition-type:floating-point-underflow)
 (define condition-type:illegal-datum)
 (define condition-type:illegal-pathname-component)
+(define condition-type:macro-binding)
 (define condition-type:no-such-restart)
 (define condition-type:port-error)
 (define condition-type:serious-condition)
@@ -703,6 +704,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define error:derived-port)
 (define error:derived-thread)
 (define error:illegal-pathname-component)
+(define error:macro-binding)
 (define error:wrong-number-of-arguments)
 (define error:wrong-type-argument)
 (define error:wrong-type-datum)
@@ -1058,6 +1060,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	    (write-string "Unassigned variable: " port)
 	    (write (access-condition condition 'LOCATION) port))))
 
+  (set! condition-type:macro-binding
+	(make-condition-type 'MACRO-BINDING condition-type:variable-error '()
+	  (lambda (condition port)
+	    (write-string "Variable reference to a syntactic keyword: " port)
+	    (write (access-condition condition 'LOCATION) port))))
+
   (let ((arithmetic-error-report
 	 (lambda (description)
 	   (lambda (condition port)
@@ -1125,6 +1133,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (set! error:no-such-restart
 	(condition-signaller condition-type:no-such-restart
 			     '(NAME)
+			     standard-error-handler))
+  (set! error:macro-binding
+	(condition-signaller condition-type:macro-binding
+			     '(ENVIRONMENT LOCATION)
 			     standard-error-handler))
 
   unspecific)

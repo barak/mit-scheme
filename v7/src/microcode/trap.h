@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: trap.h,v 9.48 2001/08/07 01:27:13 cph Exp $
+$Id: trap.h,v 9.49 2001/12/21 04:36:15 cph Exp $
 
 Copyright (c) 1987-1989, 1999-2001 Massachusetts Institute of Technology
 
@@ -42,6 +42,7 @@ typedef unsigned long trap_kind_t;
 
 /* The following are non-immediate traps: */
 #define TRAP_COMPILER_CACHED			14
+#define TRAP_MACRO				15
 
 /* Usages of the above traps:
    TRAP_UNASSIGNED can appear in a value cell or a cache.
@@ -60,7 +61,10 @@ typedef unsigned long trap_kind_t;
      assignments to this cache to trap out to the microcode, where the
      updating of the variable's associated UUO links can be performed.
    TRAP_COMPILER_CACHED can only appear in a value cell.  It is used
-     to associate a cache with the variable.  */
+     to associate a cache with the variable.
+   TRAP_MACRO can appear in a value cell or a cache.  It is used for
+   storage of macro transformers in the environment structure.
+*/
 
 /* The following never appear in value cells.  */
 /* NON_TRAP_KIND is returned by get_trap_kind when its argument is not

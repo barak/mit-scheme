@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: utabmd.scm,v 9.80 2001/12/20 20:51:16 cph Exp $
+;;; $Id: utabmd.scm,v 9.81 2001/12/21 04:36:19 cph Exp $
 ;;;
 ;;; Copyright (c) 1987-2001 Massachusetts Institute of Technology
 ;;;
@@ -493,7 +493,7 @@
 	       BAD-RANGE-ARGUMENT-0			;10
 	       BAD-RANGE-ARGUMENT-1			;11
 	       BAD-RANGE-ARGUMENT-2			;12
-	       #F					;13
+	       MACRO-BINDING				;13
 	       #F					;14
 	       BAD-INTERRUPT-CODE			;15
 	       #F					;16
@@ -607,4 +607,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Id: utabmd.scm,v 9.80 2001/12/20 20:51:16 cph Exp $"
+"$Id: utabmd.scm,v 9.81 2001/12/21 04:36:19 cph Exp $"

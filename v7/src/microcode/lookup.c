@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: lookup.c,v 9.66 2001/12/07 03:57:00 cph Exp $
+$Id: lookup.c,v 9.67 2001/12/21 04:36:07 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -209,6 +209,10 @@ lookup_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
     case TRAP_UNBOUND:
       return (ERR_UNBOUND_VARIABLE);
 
+    case TRAP_MACRO:
+      (*value_ret) = value;
+      return (ERR_MACRO_BINDING);
+
     case TRAP_COMPILER_CACHED:
       return (lookup_variable_cache ((GET_TRAP_CACHE (value)), value_ret));
 
@@ -232,6 +236,10 @@ lookup_variable_cache (SCHEME_OBJECT cache, SCHEME_OBJECT * value_ret)
 
     case TRAP_UNBOUND:
       return (ERR_UNBOUND_VARIABLE);
+
+    case TRAP_MACRO:
+      (*value_ret) = (GET_TRAP_EXTRA (value));
+      return (ERR_MACRO_BINDING);
 
     default:
       return (ERR_ILLEGAL_REFERENCE_TRAP);
@@ -285,6 +293,7 @@ variable_unbound_p (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
       return (PRIM_DONE);
 
     case ERR_UNASSIGNED_VARIABLE:
+    case ERR_MACRO_BINDING:
     case PRIM_DONE:
       (*value_ret) = SHARP_F;
       return (PRIM_DONE);
@@ -304,6 +313,7 @@ variable_unreferenceable_p (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
     {
     case ERR_UNBOUND_VARIABLE:
     case ERR_UNASSIGNED_VARIABLE:
+    case ERR_MACRO_BINDING:
       (*value_ret) = SHARP_T;
       return (PRIM_DONE);
 
@@ -351,6 +361,11 @@ assign_variable_end (SCHEME_OBJECT * cell, SCHEME_OBJECT value,
 	break;
       return (ERR_UNBOUND_VARIABLE);
 
+    case TRAP_MACRO:
+      if (force_p)
+	break;
+      return (ERR_MACRO_BINDING);
+
     case TRAP_COMPILER_CACHED:
       return
 	(assign_variable_cache
@@ -379,6 +394,11 @@ assign_variable_cache (SCHEME_OBJECT cache, SCHEME_OBJECT value,
       if (force_p)
 	break;
       return (ERR_UNBOUND_VARIABLE);
+
+    case TRAP_MACRO:
+      if (force_p)
+	break;
+      return (ERR_MACRO_BINDING);
 
     default:
       return (ERR_ILLEGAL_REFERENCE_TRAP);
@@ -611,6 +631,7 @@ unbind_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
 
     case NON_TRAP_KIND:
     case TRAP_UNASSIGNED:
+    case TRAP_MACRO:
       unbind_variable_1 (cell, frame, symbol);
       (*value_ret) = SHARP_T;
       return (PRIM_DONE);
@@ -626,6 +647,7 @@ unbind_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
 	    
 	  case NON_TRAP_KIND:
 	  case TRAP_UNASSIGNED:
+	  case TRAP_MACRO:
 	    if (PROCEDURE_FRAME_P (frame))
 	      {
 		RETURN_IF_ERROR

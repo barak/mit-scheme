@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: errors.h,v 9.43 2001/03/08 17:03:30 cph Exp $
+$Id: errors.h,v 9.44 2001/12/21 04:35:57 cph Exp $
 
 Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
@@ -48,7 +48,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #define ERR_ARG_1_BAD_RANGE			0x10
 #define ERR_ARG_2_BAD_RANGE			0x11
 #define ERR_ARG_3_BAD_RANGE			0x12
-/* #define ERR_BAD_COMBINATION			0x13 */
+#define ERR_MACRO_BINDING			0x13
 /* #define ERR_FASDUMP_OVERFLOW			0x14 */
 #define ERR_BAD_INTERRUPT_CODE			0x15 /* Not generated */
 /* #define ERR_NO_ERRORS			0x16 */

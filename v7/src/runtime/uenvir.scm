@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uenvir.scm,v 14.47 2001/12/19 04:18:37 cph Exp $
+$Id: uenvir.scm,v 14.48 2001/12/21 04:37:46 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -67,6 +67,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(else
 	 (illegal-environment environment 'ENVIRONMENT-BOUND-NAMES))))
 
+(define (environment-macro-names environment)
+  (cond ((system-global-environment? environment)
+	 (system-global-environment/macro-names))
+	((ic-environment? environment)
+	 (ic-environment/macro-names environment))
+	((or (stack-ccenv? environment)
+	     (closure-ccenv? environment))
+	 '())
+	(else
+	 (illegal-environment environment 'ENVIRONMENT-MACRO-NAMES))))
+
 (define (environment-bindings environment)
   (cond ((system-global-environment? environment)
 	 (system-global-environment/bindings))
@@ -80,7 +91,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			    '()
 			    (list value)))))
 	      (environment-bound-names environment)))))
-
+
 (define (environment-arguments environment)
   (cond ((ic-environment? environment)
 	 (ic-environment/arguments environment))
@@ -128,7 +139,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	 (closure-ccenv/assigned? environment name))
 	(else
 	 (illegal-environment environment 'ENVIRONMENT-ASSIGNED?))))
-
+
 (define (environment-lookup environment name)
   (cond ((interpreter-environment? environment)
 	 (interpreter-environment/lookup environment name))
@@ -138,6 +149,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	 (closure-ccenv/lookup environment name))
 	(else
 	 (illegal-environment environment 'ENVIRONMENT-LOOKUP))))
+
+(define (environment-lookup-macro environment name)
+  (cond ((interpreter-environment? environment)
+	 (interpreter-environment/lookup-macro environment name))
+	((stack-ccenv? environment)
+	 (stack-ccenv/lookup-macro environment name))
+	((closure-ccenv? environment)
+	 (closure-ccenv/lookup-macro environment name))
+	(else
+	 (illegal-environment environment 'ENVIRONMENT-LOOKUP-MACRO))))
 
 (define (environment-assignable? environment name)
   (cond ((interpreter-environment? environment)
@@ -168,6 +189,15 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(else
 	 (illegal-environment environment 'ENVIRONMENT-DEFINE))))
 
+(define (environment-define-macro environment name value)
+  (cond ((interpreter-environment? environment)
+	 (interpreter-environment/define-macro environment name value))
+	((or (stack-ccenv? environment)
+	     (closure-ccenv? environment))
+	 (error:bad-range-argument environment 'ENVIRONMENT-DEFINE-MACRO))
+	(else
+	 (illegal-environment environment 'ENVIRONMENT-DEFINE-MACRO))))
+
 (define (illegal-environment object procedure)
   (error:wrong-type-argument object "environment" procedure))
 
@@ -177,22 +207,32 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (eq? system-global-environment object))
 
 (define (system-global-environment/bound-names)
-  (walk-global map-entry/bound-names))
+  (walk-global not-macro-reference-trap? map-entry/name))
+
+(define (system-global-environment/macro-names)
+  (walk-global macro-reference-trap? map-entry/name))
 
 (define (system-global-environment/bindings)
-  (walk-global map-entry/bindings))
+  (walk-global not-macro-reference-trap? map-entry/binding))
 
-(define (map-entry/bound-names name value)
+(define (not-macro-reference-trap? v)
+  (not (macro-reference-trap? v)))
+
+(define (map-entry/name name value)
   value
   name)
 
-(define (map-entry/bindings name value)
+(define (map-entry/value name value)
+  name
+  value)
+
+(define (map-entry/binding name value)
   (cons name
 	(if (unassigned-reference-trap? value)
 	    '()
 	    (list value))))
 
-(define (walk-global map-entry)
+(define (walk-global keep? map-entry)
   (let ((obarray (fixed-objects-item 'OBARRAY)))
     (let ((n-buckets (vector-length obarray)))
       (let per-bucket ((index 0) (result '()))
@@ -209,7 +249,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 					   (map-reference-trap-value
 					    (lambda ()
 					      (system-pair-cdr name)))))
-				      (if (unbound-reference-trap? value)
+				      (if (or (unbound-reference-trap? value)
+					      (not (keep? value)))
 					  result
 					  (cons (map-entry name value)
 						result))))))
@@ -217,8 +258,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	    result)))))
 
 (define (special-unbound-name? name)
-  (or (eq? name package-name-tag)
-      (eq? name syntax-table-tag)))
+  (eq? name package-name-tag))
 
 ;;;; Interpreter Environments
 
@@ -234,6 +274,21 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
       (error:wrong-type-datum object "interpreter environment"))
   object)
 
+#|
+(define (lexical-reference-type environment name)
+  (let ((i ((ucode-primitive lexical-reference-type 2) environment name))
+	(v '#(UNBOUND UNASSIGNED NORMAL MACRO)))
+    (if (not (fix:< i (vector-length v)))
+	(error "Unknown reference type:" i 'LEXICAL-REFERENCE-TYPE))
+    (vector-ref v i)))
+|#
+
+(define (safe-lexical-reference environment name)
+  (let ((cell (list #f)))
+    (set-car! cell
+	      ((ucode-primitive safe-lexical-reference 2) environment name))
+    (map-reference-trap (lambda () (car cell)))))
+
 (define (interpreter-environment/bound? environment name)
   (not (lexical-unbound? environment name)))
 
@@ -241,7 +296,15 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (not (lexical-unassigned? environment name)))
 
 (define (interpreter-environment/lookup environment name)
-  (lexical-reference environment name))
+  (let ((value (safe-lexical-reference environment name)))
+    (if (macro-reference-trap? value)
+	(error:macro-binding environment name))
+    value))
+
+(define (interpreter-environment/lookup-macro environment name)
+  (let ((value (safe-lexical-reference environment name)))
+    (and (macro-reference-trap? value)
+	 (reference-trap->macro value))))
 
 (define (interpreter-environment/assign! environment name value)
   (lexical-assignment environment name value)
@@ -251,28 +314,42 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (local-assignment environment name value)
   unspecific)
 
+(define (interpreter-environment/define-macro environment name value)
+  (local-assignment environment name (macro->unmapped-reference-trap value))
+  unspecific)
+
 (define (ic-environment/bound-names environment)
-  (map-ic-environment-bindings map-entry/bound-names environment))
+  (map-ic-environment-bindings environment
+			       not-macro-reference-trap?
+			       map-entry/name))
+
+(define (ic-environment/macro-names environment)
+  (map-ic-environment-bindings environment
+			       macro-reference-trap?
+			       map-entry/name))
 
 (define (ic-environment/bindings environment)
-  (map-ic-environment-bindings map-entry/bindings environment))
+  (map-ic-environment-bindings environment
+			       not-macro-reference-trap?
+			       map-entry/binding))
 
-(define (map-ic-environment-bindings map-entry environment)
+(define (map-ic-environment-bindings environment keep? map-entry)
   (let ((external (ic-external-frame environment))
 	(do-frame
 	 (lambda (frame)
 	   (let ((procedure (ic-frame-procedure frame)))
 	     (if (vector? procedure)
-		 (append! (walk-ic-frame-extension procedure map-entry)
+		 (append! (walk-ic-frame-extension procedure keep? map-entry)
 			  (walk-ic-procedure-args frame
 						  (vector-ref procedure 1)
+						  keep?
 						  map-entry))
-		 (walk-ic-procedure-args frame procedure map-entry))))))
+		 (walk-ic-procedure-args frame procedure keep? map-entry))))))
     (if (eq? external environment)
 	(do-frame environment)
 	(append! (do-frame environment) (do-frame external)))))
 
-(define (walk-ic-procedure-args frame procedure map-entry)
+(define (walk-ic-procedure-args frame procedure keep? map-entry)
   (let ((name-vector (system-pair-cdr (procedure-lambda procedure))))
     (let loop ((index (vector-length name-vector)) (result '()))
       (if (fix:> index 1)
@@ -282,12 +359,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		    (if (special-unbound-name? name)
 			result
 			(let ((value (ic-frame-arg frame index)))
-			  (if (unbound-reference-trap? value)
+			  (if (or (unbound-reference-trap? value)
+				  (not (keep? value)))
 			      result
 			      (cons (map-entry name value) result)))))))
 	  result))))
 
-(define (walk-ic-frame-extension extension map-entry)
+(define (walk-ic-frame-extension extension keep? map-entry)
   (let ((limit (fix:+ 3 (object-datum (vector-ref extension 2)))))
     (let loop ((index 3) (result '()))
       (if (fix:< index limit)
@@ -296,17 +374,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		  (let ((name (car p)))
 		    (if (special-unbound-name? name)
 			result
-			(cons (map-entry name
-					 (map-reference-trap-value
-					  (lambda () (cdr p))))
-			      result)))))
+			(let ((value
+			       (map-reference-trap-value (lambda () (cdr p)))))
+			  (if (keep? value)
+			      (cons (map-entry name value) result)
+			      result))))))
 	  result))))
 
 (define (ic-environment/arguments environment)
   (let ((environment (ic-external-frame environment)))
     (walk-ic-procedure-args environment
 			    (ic-frame-procedure* environment)
-			    (lambda (name value) name value))))
+			    not-macro-reference-trap?
+			    map-entry/value)))
 
 (define (ic-environment/has-parent? environment)
   (interpreter-environment? (ic-frame-parent environment)))
@@ -585,6 +665,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			 (environment-lookup (stack-ccenv/parent environment)
 					     name))))
 
+(define (stack-ccenv/lookup-macro environment name)
+  (environment-lookup-macro (stack-ccenv/parent environment) name))
+
 (define (stack-ccenv/assignable? environment name)
   (assignable-dbg-variable? (stack-ccenv/block environment) name
     (lambda (name)
@@ -703,6 +786,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		       (lambda (name)
 			 (environment-lookup (closure-ccenv/parent environment)
 					     name))))
+
+(define (closure-ccenv/lookup-macro environment name)
+  (environment-lookup-macro (closure-ccenv/parent environment) name))
 
 (define (closure-ccenv/assignable? environment name)
   (assignable-dbg-variable? (closure-ccenv/closure-block environment) name

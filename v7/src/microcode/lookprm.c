@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: lookprm.c,v 1.16 2001/08/22 05:01:25 cph Exp $
+$Id: lookprm.c,v 1.17 2001/12/21 04:36:01 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -108,6 +108,72 @@ Indistinguishable from evaluating (define SYMBOL VALUE) in ENVIRONMENT.")
   PRIMITIVE_RETURN (ARG_REF (2));
 }
 
+DEFINE_PRIMITIVE ("LEXICAL-REFERENCE-TYPE", Prim_lexical_reference_type, 2, 2,
+		  "(ENVIRONMENT SYMBOL)\n\
+Returns a index integer indicating the type of object stored in the\n\
+binding of SYMBOL within ENVIRONMENT.  The following values are defined:\n\
+\n\
+0 means unbound
+1 means unassigned
+2 means a normal binding
+3 means a macro binding")
+{
+  PRIMITIVE_HEADER (2);
+  CHECK_ARG (1, ENVIRONMENT_P);
+  CHECK_ARG (2, SYMBOL_P);
+  {
+    SCHEME_OBJECT value;
+    long result = (lookup_variable ((ARG_REF (1)), (ARG_REF (2)), (&value)));
+    switch (result)
+      {
+      case ERR_UNBOUND_VARIABLE:
+	PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (0));
+      case ERR_UNASSIGNED_VARIABLE:
+	PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (1));
+      case PRIM_DONE:
+	PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (2));
+      case ERR_MACRO_BINDING:
+	PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (3));
+      case PRIM_INTERRUPT:
+	signal_interrupt_from_primitive ();
+	break;
+      default:
+	signal_error_from_primitive (result);
+	break;
+      }
+  }
+}
+
+DEFINE_PRIMITIVE ("SAFE-LEXICAL-REFERENCE", Prim_safe_lexical_reference, 2, 2,
+		  "(ENVIRONMENT SYMBOL)\n\
+Looks up SYMBOL in ENVIRONMENT and returns its value.\n\
+If the variable is unbound, signals an error.\n\
+If the variable is unassigned or holds a macro transformer,
+ returns the appropriate trap object.")
+{
+  PRIMITIVE_HEADER (2);
+  CHECK_ARG (1, ENVIRONMENT_P);
+  CHECK_ARG (2, SYMBOL_P);
+  {
+    SCHEME_OBJECT value;
+    long result = (lookup_variable ((ARG_REF (1)), (ARG_REF (2)), (&value)));
+    switch (result)
+      {
+      case PRIM_DONE:
+      case ERR_MACRO_BINDING:
+	PRIMITIVE_RETURN (value);
+      case ERR_UNASSIGNED_VARIABLE:
+	PRIMITIVE_RETURN (UNASSIGNED_OBJECT);
+      case PRIM_INTERRUPT:
+	signal_interrupt_from_primitive ();
+	break;
+      default:
+	signal_error_from_primitive (result);
+	break;
+      }
+  }
+}
+
 DEFINE_PRIMITIVE ("LEXICAL-UNASSIGNED?", Prim_unassigned_test, 2, 2,
 		  "(ENVIRONMENT SYMBOL)\n\
 Returns #T if the variable corresponding to SYMBOL is bound\n\
@@ -131,8 +197,7 @@ DEFINE_PRIMITIVE ("LEXICAL-UNBOUND?", Prim_unbound_test, 2, 2,
 		  "(ENVIRONMENT SYMBOL)\n\
 Returns #T if the variable corresponding to SYMBOL has no binding in\n\
 ENVIRONMENT.  Returns #F otherwise.  Does a complete lexical search\n\
-for SYMBOL starting in ENVIRONMENT.  The special form (unbound?\n\
-<symbol>) is built on top of this.")
+for SYMBOL starting in ENVIRONMENT.")
 {
   PRIMITIVE_HEADER (2);
   CHECK_ARG (1, ENVIRONMENT_P);
@@ -146,8 +211,8 @@ for SYMBOL starting in ENVIRONMENT.  The special form (unbound?\n\
 
 DEFINE_PRIMITIVE ("LEXICAL-UNREFERENCEABLE?", Prim_unreferenceable_test, 2, 2,
 		  "(ENVIRONMENT SYMBOL)\n\
-Returns #T if evaluating SYMBOL in ENVIRONMENT would cause a\n\
-variable lookup error (unbound or unassigned).")
+Returns #T if looking up SYMBOL in ENVIRONMENT would cause an error.\n\
+Returns #F otherwise.")
 {
   PRIMITIVE_HEADER (2);
   {
