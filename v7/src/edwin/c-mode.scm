@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: c-mode.scm,v 1.50 1992/11/17 17:35:02 cph Exp $
+;;;	$Id: c-mode.scm,v 1.51 1992/11/17 17:37:47 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -127,7 +127,7 @@ Settings for K&R and BSD indentation styles are
     (define-variable-local-value! buffer
 	(ref-variable-object comment-indent-hook)
       c-mode:comment-indent)
-    (event-distributor/invoke! (ref-variable c-mode-hook) buffer)))
+    (event-distributor/invoke! (ref-variable c-mode-hook buffer) buffer)))
 
 (define-variable c-mode-hook
   "An event distributor that is invoked when entering C mode."

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: info.scm,v 1.113 1992/11/16 22:41:03 cph Exp $
+;;;	$Id: info.scm,v 1.114 1992/11/17 17:38:12 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -140,7 +140,7 @@ s	Search through this Info file for specified regexp,
     (define-variable-local-value! buffer (ref-variable-object case-fold-search)
       true)
     (define-variable-local-value! buffer (ref-variable-object info-history)
-      (ref-variable info-history))
+      (ref-variable info-history buffer))
     (define-variable-local-value! buffer
 	(ref-variable-object info-current-file)
       false)
