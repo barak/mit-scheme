@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.38 2001/01/05 20:15:29 cph Exp $
+$Id: string.scm,v 14.39 2001/03/19 22:13:16 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -975,22 +975,16 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   unspecific)
 
 (define-structure external-string
-  (descriptor #f read-only #t))
+  (descriptor #f read-only #t)
+  (length #f read-only #t))
 
 (define (allocate-external-string n-bytes)
   (without-interrupts
    (lambda ()
      (let ((descriptor ((ucode-primitive allocate-external-string) n-bytes)))
-       (let ((xstring (make-external-string descriptor)))
+       (let ((xstring (make-external-string descriptor n-bytes)))
 	 (add-to-gc-finalizer! external-strings xstring descriptor)
 	 xstring)))))
-
-(define (external-string-length xstring)
-  (if (not (external-string? xstring))
-      (error:wrong-type-argument xstring "external string"
-				 'EXTERNAL-STRING-LENGTH))
-   ((ucode-primitive extended-string-length)
-    (external-string-descriptor xstring)))
 
 (define (xstring? object)
   (or (string? object)
@@ -1000,8 +994,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (cond ((string? xstring)
 	 (string-length xstring))
 	((external-string? xstring)
-	 ((ucode-primitive extended-string-length)
-	  (external-string-descriptor xstring)))
+	 (external-string-length string))
 	(else
 	 (error:wrong-type-argument xstring "xstring" 'XSTRING-LENGTH))))
 
