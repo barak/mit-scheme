@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: fileio.scm,v 1.129 1995/09/13 23:00:58 cph Exp $
+;;;	$Id: fileio.scm,v 1.130 1995/09/28 16:11:30 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -88,12 +88,12 @@ of the predicates is satisfied, the file is written in the usual way."
 	     (cdar methods)
 	     (loop (cdr methods))))))
 
-(define (get-pathname-or-alternate group pathname)
+(define (get-pathname-or-alternate group pathname default?)
   (if (file-exists? pathname)
       pathname
       (let loop ((alternates (os/alternate-pathnames group pathname)))
 	(cond ((null? alternates)
-	       pathname)
+	       (and default? pathname))
 	      ((file-exists? (car alternates))
 	       (car alternates))
 	      (else
@@ -109,7 +109,7 @@ of the predicates is satisfied, the file is written in the usual way."
     ;; Set modified so that file supercession check isn't done.
     (set-group-modified?! group true)
     (region-delete! (buffer-unclipped-region buffer))
-    (set! pathname (get-pathname-or-alternate group pathname))
+    (set! pathname (get-pathname-or-alternate group pathname #t))
     (call-with-current-continuation
      (lambda (continuation)
        (bind-condition-handler (list condition-type:file-error)
@@ -144,7 +144,7 @@ of the predicates is satisfied, the file is written in the usual way."
 	 condition
 	 (editor-error "File " (->namestring filename) " not found"))
      (lambda ()
-       (->truename (get-pathname-or-alternate (mark-group mark) filename))))
+       (->truename (get-pathname-or-alternate (mark-group mark) filename #t))))
    false))
 
 (define-variable read-file-message
@@ -558,7 +558,8 @@ Otherwise, a message is written both before and after long file writes."
   (let ((group (region-group region))
 	(start (region-start-index region))
 	(end (region-end-index region))
-	(pathname (get-pathname-or-alternate (region-group region) pathname)))
+	(pathname
+	 (get-pathname-or-alternate (region-group region) pathname #t)))
     (let ((translation
 	   (and (ref-variable translate-file-data-on-output group)
 		(pathname-newline-translation pathname)))
