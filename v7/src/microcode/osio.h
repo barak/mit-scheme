@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osio.h,v 1.2 1990/06/21 20:01:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osio.h,v 1.3 1990/08/16 19:20:39 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -54,7 +54,6 @@ extern size_t OS_channel_table_size;
 extern int EXFUN (OS_channel_open_p, (Tchannel channel));
 extern void EXFUN (OS_channel_close, (Tchannel channel));
 extern void EXFUN (OS_channel_close_noerror, (Tchannel channel));
-extern void EXFUN (OS_channel_close_all, (void));
 extern enum channel_type EXFUN (OS_channel_type, (Tchannel channel));
 extern size_t EXFUN
   (OS_channel_read_load_file, (Tchannel channel, PTR buffer, size_t nbytes));
