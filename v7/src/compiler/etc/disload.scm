@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: disload.scm,v 1.2 1993/07/01 00:24:28 gjr Exp $
+$Id: disload.scm,v 1.3 1993/07/01 21:47:28 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -36,7 +36,7 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define (load-disassembler #!optional directory addressing-granularity)
+(define (load-disassembler #!optional directory)
   (with-working-directory-pathname
     (if (default-object? directory)
 	"/usr/local/lib/mit-scheme/SRC/compiler/machine"
@@ -51,18 +51,26 @@ MIT in each case. |#
 				  (eval '(make-environment) parenv))))
 	(let ((disenv (package/environment disassembler))
 	      (global system-global-environment)
-	      (compinfo (package/environment (find-package '(runtime compiler-info)))))
+	      (compinfo (package/environment
+			 (find-package '(runtime compiler-info)))))
 	  (define (export name)
 	    (environment-link-name global disenv name))
 	  (define (import name)
 	    (environment-link-name disenv compinfo name))
 
 	  (if (not (environment-bound? parenv 'addressing-granularity))
-	      (local-assignment parenv
-				'addressing-granularity
-				(if (default-object? addressing-granularity)
-				    4
-				    addressing-granularity)))
+	      (local-assignment
+	       parenv
+	       'addressing-granularity
+	       ;; The following computation assumes:
+	       ;; - The word size is a power of 2.
+	       ;; - Character strings always have a null character.
+	       (let loop ((ag 1)
+			  (vsize (system-vector-length "")))
+		 (let* ((ag* (+ ag ag)))
+		   (if (= vsize (system-vector-length (make-string (-1+ ag*))))
+		       (loop ag* vsize)
+		       ag)))))
 	  (for-each import
 		    '(compiled-code-block/dbg-info
 		      dbg-info-vector/blocks-vector
@@ -71,10 +79,12 @@ MIT in each case. |#
 		      dbg-label/external?
 		      dbg-label/name
 		      dbg-labels/find-offset))
+	  (if (file-esits? "mips.scm")
+	      (load "mips" disenv))
 	  (load "dassm1" disenv)
 	  (load "dassm2" disenv)
 	  (load "dassm3" disenv)
-	  (if (file-exists? "dinstr1")
+	  (if (file-exists? "dinstr1.scm")
 	      (begin
 		;; For the vax
 		(load "dinstr1")
