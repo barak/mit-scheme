@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: lookprm.c,v 1.9 1993/06/24 07:08:56 gjr Exp $
+$Id: lookprm.c,v 1.10 1997/01/02 05:21:38 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -210,6 +210,7 @@ DEFINE_PRIMITIVE ("LEXICAL-UNREFERENCEABLE?", Prim_unreferenceable_test, 2, 2, 0
       signal_error_from_primitive(Result);
   }
   /*NOTREACHED*/
+  return (0);
 }
 
 SCHEME_OBJECT
@@ -427,4 +428,6 @@ DEFINE_PRIMITIVE ("ENVIRONMENT-LINK-NAME", Prim_environment_link_name, 3, 3, 0)
     MEMORY_STORE (cell[0], MAKE_POINTER_OBJECT (TC_REFERENCE_TRAP, trap));
     PRIMITIVE_RETURN(SHARP_T);
   }
+  /*NOTREACHED*/
+  return (0);
 }

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntio.c,v 1.13 1997/01/01 22:57:27 cph Exp $
+$Id: ntio.c,v 1.14 1997/01/02 05:21:38 cph Exp $
 
 Copyright (c) 1992-97 Massachusetts Institute of Technology
 
@@ -248,7 +248,7 @@ DEFUN (raw_write, (fd, buffer, nbytes),
     return (nbytes);
   }
   if (IsConsoleHandle (fd))
-    return (nt_console_write (buffer, nbytes));
+    return (nt_console_write (((void *) buffer), nbytes));
   if (WriteFile (fd, buffer, nbytes, &bytesWritten, 0))
     return (bytesWritten);
   else

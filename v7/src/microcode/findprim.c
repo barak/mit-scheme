@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: findprim.c,v 9.50 1996/10/02 18:57:35 cph Exp $
+$Id: findprim.c,v 9.51 1997/01/02 05:21:35 cph Exp $
 
-Copyright (c) 1987-96 Massachusetts Institute of Technology
+Copyright (c) 1987-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -102,6 +102,7 @@ typedef int boolean;
 /* The 4.2 bsd vax compiler has a bug which forces the following. */
 
 #define pseudo_void int
+#define pseudo_return return (0)
 
 extern void EXFUN (exit, (int));
 
@@ -1046,7 +1047,7 @@ DEFUN_VOID (create_normal_entry)
   COPY_FILE_NAME ((* data_buffer) [buffer_index]);
   (result_buffer [buffer_index]) = (& ((* data_buffer) [buffer_index]));
   buffer_index += 1;
-  return;
+  pseudo_return;
 }
 
 pseudo_void
@@ -1062,7 +1063,7 @@ DEFUN_VOID (create_alternate_entry)
   COPY_FILE_NAME ((* data_buffer) [buffer_index]);
   (result_buffer [buffer_index]) = (& ((* data_buffer) [buffer_index]));
   buffer_index += 1;
-  return;
+  pseudo_return;
 }
 
 pseudo_void
@@ -1108,7 +1109,7 @@ DEFUN_VOID (create_builtin_entry)
     }
   ((* data_buffer) [index]) = desc;
   (result_buffer [index]) = (& ((* data_buffer) [index]));
-  return;
+  pseudo_return;
 }
 
 int

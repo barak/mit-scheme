@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: fasdump.c,v 9.61 1996/10/02 18:57:28 cph Exp $
+$Id: fasdump.c,v 9.62 1997/01/02 05:21:34 cph Exp $
 
-Copyright (c) 1987-96 Massachusetts Institute of Technology
+Copyright (c) 1987-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -416,6 +416,7 @@ DEFUN (Fasdump_Exit, (code, close_p), long code AND Boolean close_p)
   {
     signal_error_from_primitive (ERR_IO_ERROR);
     /*NOTREACHED*/
+    return (0);
   }
   if (code == PRIM_DONE)
     return (SHARP_T);
@@ -425,6 +426,7 @@ DEFUN (Fasdump_Exit, (code, close_p), long code AND Boolean close_p)
   {
     signal_error_from_primitive (code);
     /*NOTREACHED*/
+    return (0);
   }
 }
 

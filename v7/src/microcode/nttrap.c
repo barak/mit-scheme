@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: nttrap.c,v 1.11 1995/10/24 05:07:05 cph Exp $
+$Id: nttrap.c,v 1.12 1997/01/02 05:21:40 cph Exp $
 
-Copyright (c) 1992-95 Massachusetts Institute of Technology
+Copyright (c) 1992-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1295,6 +1295,8 @@ DEFUN (WinntException, (code, info),
 				     info->ContextRecord,
 				     MB_OK);
     trap_immediate_termination ();
+    /*NOTREACHED*/
+    return (0);
   }
   else if (code == EXCEPTION_CODE_GUARDED_PAGE_ACCESS)
   {

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: utils.c,v 9.70 1996/10/02 18:59:03 cph Exp $
+$Id: utils.c,v 9.71 1997/01/02 05:21:41 cph Exp $
 
-Copyright (c) 1987-96 Massachusetts Institute of Technology
+Copyright (c) 1987-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -817,6 +817,7 @@ DEFUN (Restore_History, (hist_obj), SCHEME_OBJECT hist_obj)
     outf_fatal ("\nBad history to restore.\n");
     Microcode_Termination (TERM_EXIT);
     /*NOTREACHED*/
+    return (0);
   }
   else
   {

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bitstr.c,v 9.59 1996/10/02 21:16:23 cph Exp $
+$Id: bitstr.c,v 9.60 1997/01/02 05:21:31 cph Exp $
 
-Copyright (c) 1987-96 Massachusetts Institute of Technology
+Copyright (c) 1987-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -631,6 +631,9 @@ DEFUN (bignum_to_bit_string, (length, bignum),
 	  (bignum, (1L << CHAR_BIT), btbs_consumer, (&result_ptr));
 	return (result);
       }
+    default:
+      /*NOTREACHED*/
+      return (0);
     }
 }
 
@@ -702,7 +705,8 @@ error is signalled.")
   if (BIGNUM_P (object))
     PRIMITIVE_RETURN (bignum_to_bit_string (length, object));
   error_wrong_type_arg (2);
-  /* NOTREACHED */
+  /*NOTREACHED*/
+  return (0);
 }
 
 /*  */

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntsys.c,v 1.6 1996/10/02 18:58:21 cph Exp $
+$Id: ntsys.c,v 1.7 1997/01/02 05:21:39 cph Exp $
 
-Copyright (c) 1992-96 Massachusetts Institute of Technology
+Copyright (c) 1992-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -51,7 +51,7 @@ nt_console_write (void * vbuffer, size_t nsize)
 BOOL
 nt_pathname_as_filename (char * name, char * buffer)
 { /* Returns whether directory encountered is top level */
-  unsigned int end_index = ((strlen (name)) - 1);
+  int end_index = ((strlen (name)) - 1);
 
   /* The runtime system comes down with a name that has a back slash
      at the end.  This will choke DOS.

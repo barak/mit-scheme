@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: extern.c,v 9.35 1996/10/02 18:57:24 cph Exp $
+$Id: extern.c,v 9.36 1997/01/02 05:21:33 cph Exp $
 
-Copyright (c) 1987-96 Massachusetts Institute of Technology
+Copyright (c) 1987-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -67,7 +67,8 @@ number (i.e. external representation) of the desired result.")
     default:
       error_bad_range_arg (1);
   }
-  /* NOTREACHED */
+  /*NOTREACHED*/
+  return (0);
 }
 
 DEFINE_PRIMITIVE ("MAP-MACHINE-ADDRESS-TO-CODE", Prim_map_address_to_code, 2, 2,
@@ -99,7 +100,8 @@ the internal address.")
     default:
       error_bad_range_arg (1);
     }
-  /* NOTREACHED */
+  /*NOTREACHED*/
+  return (0);
 }
 
 DEFINE_PRIMITIVE ("PRIMITIVE-PROCEDURE-ARITY", Prim_primitive_procedure_arity, 1, 1,

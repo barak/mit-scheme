@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bchdrn.h,v 1.7 1995/03/21 22:12:41 cph Exp $
+$Id: bchdrn.h,v 1.8 1997/01/02 05:21:28 cph Exp $
 
-Copyright (c) 1991-95 Massachusetts Institute of Technology
+Copyright (c) 1991-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -47,8 +47,10 @@ MIT in each case. */
 #else
 #ifndef DOS386
 #ifndef _OS2
+#ifndef WINNT
   extern int EXFUN (read, (int, PTR, unsigned int));
   extern int EXFUN (write, (int, PTR, unsigned int));
+#endif
 #endif
 #endif
 #endif

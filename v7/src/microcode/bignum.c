@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bignum.c,v 9.42 1996/10/02 18:56:56 cph Exp $
+$Id: bignum.c,v 9.43 1997/01/02 05:21:30 cph Exp $
 
-Copyright (c) 1989-96 Massachusetts Institute of Technology
+Copyright (c) 1989-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -399,6 +399,9 @@ DEFUN (bignum_quotient, (numerator, denominator),
 	       q_negative_p, 0);
 	  return (quotient);
 	}
+      default:
+	/*NOTREACHED*/
+	return (0);
       }
   }
 }
@@ -441,6 +444,9 @@ DEFUN (bignum_remainder, (numerator, denominator),
 	     0, (BIGNUM_NEGATIVE_P (numerator)));
 	return (remainder);
       }
+    default:
+      /*NOTREACHED*/
+      return (0);
     }
 }
 

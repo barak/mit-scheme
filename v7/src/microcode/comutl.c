@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: comutl.c,v 1.29 1993/10/30 03:04:19 gjr Exp $
+$Id: comutl.c,v 1.30 1997/01/02 05:21:33 cph Exp $
 
-Copyright (c) 1987-1993 Massachusetts Institute of Technology
+Copyright (c) 1987-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -120,6 +120,7 @@ DEFINE_PRIMITIVE ("COERCE-TO-COMPILED-PROCEDURE", Prim_coerce_to_closure, 2, 2, 
     default:
       error_bad_range_arg (2);
       /*NOTREACHED*/
+      return (0);
   }
 }
 

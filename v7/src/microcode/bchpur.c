@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bchpur.c,v 9.65 1994/01/30 03:32:04 gjr Exp $
+$Id: bchpur.c,v 9.66 1997/01/02 05:21:29 cph Exp $
 
-Copyright (c) 1987-1994 Massachusetts Institute of Technology
+Copyright (c) 1987-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -674,4 +674,5 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_primitive_purify, 3, 3, 0)
  Pushed ();
   PRIMITIVE_ABORT (PRIM_APPLY);
   /*NOTREACHED*/
+  return (0);
 }

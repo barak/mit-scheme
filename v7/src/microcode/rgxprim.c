@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: rgxprim.c,v 1.10 1993/06/24 07:09:41 gjr Exp $
+$Id: rgxprim.c,v 1.11 1997/01/02 05:21:41 cph Exp $
 
-Copyright (c) 1987-91 Massachusetts Institute of Technology
+Copyright (c) 1987-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -90,6 +90,8 @@ MIT in each case. */
     error_bad_range_arg (1);						\
   else									\
     error_external_return ();						\
+  /*NOTREACHED*/							\
+  return (0);								\
 } while (0)
 
 DEFINE_PRIMITIVE ("RE-CHAR-SET-ADJOIN!", Prim_re_char_set_adjoin, 2, 2, 0)
@@ -126,6 +128,8 @@ DEFINE_PRIMITIVE ("RE-COMPILE-FASTMAP", Prim_re_compile_fastmap, 4, 4, 0)
     error_bad_range_arg (1);
   else
     error_external_return ();
+  /*NOTREACHED*/
+  return (0);
 }
 
 /* (re-match-substring regexp translation syntax-table registers

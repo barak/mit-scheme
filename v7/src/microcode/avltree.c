@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: avltree.c,v 1.2 1996/10/02 18:56:52 cph Exp $
+$Id: avltree.c,v 1.3 1997/01/02 05:21:28 cph Exp $
 
-Copyright (c) 1993-96 Massachusetts Institute of Technology
+Copyright (c) 1993-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -189,6 +189,8 @@ DEFUN (tree_insert, (tree, name, value),
       return (rebalance_rite (tree));
     }
   }
+  /*NOTREACHED*/
+  return (0);
 }
 
 tree_node

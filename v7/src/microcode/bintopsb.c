@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bintopsb.c,v 9.65 1994/01/12 00:30:20 gjr Exp $
+$Id: bintopsb.c,v 9.66 1997/01/02 05:23:15 cph Exp $
 
-Copyright (c) 1987-1994 Massachusetts Institute of Technology
+Copyright (c) 1987-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -446,7 +446,8 @@ DEFUN (bignum_length, (bignum), SCHEME_OBJECT bignum)
   fprintf (stderr, "%s: Bignum exceeds representable length.\n",
 	   program_name);
   quit (1);
-  /* NOTREACHED */
+  /*NOTREACHED*/
+  return (0);
 }
 
 static void
@@ -1926,7 +1927,7 @@ DEFUN_VOID (do_it)
 		 "%s: Input is not a Scheme binary file.\n",
 		 program_name);
 	quit (1);
-	/* NOTREACHED */
+	/*NOTREACHED*/
     }
 
     if (   (Version > FASL_FORMAT_VERSION)

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: hooks.c,v 9.55 1996/10/02 19:17:34 cph Exp $
+$Id: hooks.c,v 9.56 1997/01/02 05:21:37 cph Exp $
 
-Copyright (c) 1988-96 Massachusetts Institute of Technology
+Copyright (c) 1988-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -154,6 +154,7 @@ Invoke PROCEDURE on the arguments contained in list-of-ARGS.")
 
   PRIMITIVE_ABORT (PRIM_APPLY);
   /*NOTREACHED*/
+  return (0);
 }
 
 /* CALL-WITH-CURRENT-CONTINUATION
@@ -494,6 +495,7 @@ memoized yet.")
       Store_Expression (FAST_MEMORY_REF (thunk, THUNK_PROCEDURE));
       PRIMITIVE_ABORT (PRIM_DO_EXPRESSION);
       /*NOTREACHED*/
+      return (0);
     }
   }
 }
@@ -797,6 +799,7 @@ and MARKER2 is data identifying the marker instance.")
    Pushed ();
     PRIMITIVE_ABORT (PRIM_APPLY);
     /*NOTREACHED*/
+    return (0);
   }
 }
 
@@ -833,6 +836,7 @@ DEFUN (with_new_interrupt_mask, (new_mask), unsigned long new_mask)
     SET_INTERRUPT_MASK (new_mask);
     PRIMITIVE_ABORT (PRIM_APPLY);
     /*NOTREACHED*/
+    return (0);
   }
 }
 
