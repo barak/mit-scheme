@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.18 1996/11/21 19:59:32 cph Exp $
+;;;	$Id: snr.scm,v 1.19 1996/11/22 21:49:59 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-96 Massachusetts Institute of Technology
 ;;;
@@ -3916,8 +3916,7 @@ With prefix arg, replaces the file with the list information."
 			 (hash-table/remove! table subject)
 			 (news-group:ignored-subjects-modified! group)))))))
 	  (process-group group)
-	  (news-group:process-cross-posts group header process-group))))
-  (news-group:article-unseen! group header buffer))
+	  (news-group:process-cross-posts group header process-group)))))
 
 (define (news-group:process-cross-posts group header process-group)
   (for-each (let ((connection (news-group:connection group)))
