@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulrew.scm,v 1.4 1995/03/17 03:46:53 adams Exp $
+$Id: rulrew.scm,v 1.5 1995/07/27 14:23:46 adams Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -318,6 +318,12 @@ MIT in each case. |#
 				   (rtl:object->address-expression
 				    base*)))))))))))
 
+(define-rule add-pre-cse-rewriting-rule!
+  ;; Prevent CSE of machine floating point constants with object flonums
+  (OBJECT->FLOAT (REGISTER (? value register-known-value)))
+  (QUALIFIER (and (rtl:constant? value)
+		  (flo:flonum? value)))
+  `(OBJECT->FLOAT ,value))
 
 ;;
 ;; (CONS-NON-POINTER (MACHINE-CONSTANT 0)

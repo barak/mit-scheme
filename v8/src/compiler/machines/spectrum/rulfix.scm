@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulfix.scm,v 1.2 1995/03/16 04:36:29 adams Exp $
+$Id: rulfix.scm,v 1.3 1995/07/27 14:23:08 adams Exp $
 
 Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
@@ -355,6 +355,7 @@ MIT in each case. |#
 			(LAP (COMICLR (=) 0 ,regnum:second-arg 0)))))))
       (if (machine-register? target)
 	  (begin
+	    (standard-target! target)
 	    (delete-dead-registers!)
 	    (core (copy regnum:first-arg target)))
 	  (begin
