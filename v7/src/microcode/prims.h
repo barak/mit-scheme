@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.29 1987/11/17 08:15:06 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.30 1987/11/23 04:55:17 cph Exp $ */
 
 /* This file contains some macros for defining primitives,
    for argument type or value checking, and for accessing
@@ -39,6 +39,10 @@ MIT in each case. */
 /* Definition of primitives. */
 
 #define Define_Primitive(C_Name, Number_of_args, Scheme_Name)	\
+extern Pointer C_Name();					\
+Pointer C_Name()
+
+#define DEFINE_PRIMITIVE(Scheme_Name, C_Name, Number_of_args)	\
 extern Pointer C_Name();					\
 Pointer C_Name()
 
