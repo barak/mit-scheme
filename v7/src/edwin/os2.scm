@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.25 1995/10/25 03:25:55 cph Exp $
+;;;	$Id: os2.scm,v 1.26 1995/10/31 08:08:14 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -172,7 +172,7 @@
 
 (define (insert-directory! file switches mark type)
   ;; Insert directory listing for FILE at MARK.
-  ;; SWITCHES are examined for the presence of "t".
+  ;; SWITCHES are examined for the presence of "a" and "t".
   ;; TYPE can have one of three values:
   ;;   'WILDCARD means treat FILE as shell wildcard.
   ;;   'DIRECTORY means FILE is a directory and a full listing is expected.
@@ -190,37 +190,54 @@
 	    (let ((now (os2/file-time->nmonths (current-file-time))))
 	      (lambda (entry)
 		(insert-string
-		 (let ((name (car entry))
-		       (attr (cdr entry)))
-		   (string-append
-		    (file-attributes/mode-string attr)
-		    " "
-		    (string-pad-left (number->string
-				      (file-attributes/length attr))
-				     10 #\space)
-		    " "
-		    (os/ls-file-time-string
-		     (file-attributes/modification-time attr)
-		     now)
-		    " "
-		    name))
+		 (os2/dired-line-string (car entry) (cdr entry) now)
 		 mark)
 		(insert-newline mark)))
-	    (sort (list-transform-positive
-		      (map (lambda (pathname)
-			     (cons (file-namestring pathname)
-				   (file-attributes pathname)))
-			   (if (eq? 'FILE type)
-			       (list file)
-			       (directory-read file #f)))
-		    cdr)
-		  (if (string-find-next-char switches #\t)
-		      (lambda (x y)
-			(> (file-attributes/modification-time (cdr x))
-			   (file-attributes/modification-time (cdr y))))
-		      (lambda (x y)
-			(string-ci<? (car x) (car y))))))))))
+	    (if (eq? 'FILE type)
+		(let ((attributes (file-attributes file)))
+		  (if attributes
+		      (list (cons (file-namestring file) attributes))
+		      '()))
+		(sort (os2/read-dired-files file
+					    (string-find-next-char switches
+								   #\a))
+		      (if (string-find-next-char switches #\t)
+			  (lambda (x y)
+			    (> (file-attributes/modification-time (cdr x))
+			       (file-attributes/modification-time (cdr y))))
+			  (lambda (x y)
+			    (string-ci<? (car x) (car y)))))))))))
     (mark-temporary! mark)))
+
+(define (os2/dired-line-string name attr now)
+  (string-append
+   (file-attributes/mode-string attr)
+   " "
+   (string-pad-left (number->string (file-attributes/length attr)) 10 #\space)
+   " "
+   (os/ls-file-time-string (file-attributes/modification-time attr) now)
+   " "
+   name))
+
+(define (os2/read-dired-files file all-files?)
+  (let loop
+      ((pathnames
+	(let ((pathnames (directory-read file #f)))
+	  (if all-files?
+	      pathnames
+	      (list-transform-positive pathnames
+		(let ((mask
+		       (fix:or os2-file-mode/hidden os2-file-mode/system)))
+		  (lambda (pathname)
+		    (fix:= (fix:and (file-modes pathname) mask) 0)))))))
+       (result '()))
+    (if (null? pathnames)
+	result
+	(loop (cdr pathnames)
+	      (let ((attr (file-attributes (car pathnames))))
+		(if attr
+		    (cons (cons (file-namestring (car pathnames)) attr) result)
+		    result))))))
 
 ;;;; Time
 

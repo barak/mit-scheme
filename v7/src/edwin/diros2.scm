@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: diros2.scm,v 1.1 1995/02/14 00:30:59 cph Exp $
+;;;	$Id: diros2.scm,v 1.2 1995/10/31 08:08:33 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-95 Massachusetts Institute of Technology
 ;;;
@@ -48,6 +48,8 @@
 (declare (usual-integrations))
 
 (define-key 'dired #\Z 'dired-do-compress)
+(define-key 'dired #\S 'dired-hidden-toggle)
+(define-key 'dired #\M 'dired-chmod)
 
 (define-command dired-do-compress
   "Compress or uncompress marked (or next ARG) files.
@@ -78,3 +80,64 @@ The files are compressed or uncompressed using gzip."
 		      lstart))))))))
       (if (positive? n)
 	  (message "Compressed or uncompressed " n " files.")))))
+
+(define-command dired-hidden-toggle
+  "Toggle display of hidden/system files on and off."
+  ()
+  (lambda () (dired-toggle-switch #\a)))
+
+(define-command dired-chmod
+  "Change mode of this file."
+  "sChange to Mode\nP"
+  (lambda (spec argument)
+    (call-with-values (lambda () (os2/parse-attributes-spec spec))
+      (lambda (plus minus)
+	(dired-change-files "change attributes of" argument
+	  (lambda (pathname lstart)
+	    (set-file-modes! pathname
+			     (fix:or (fix:andc (file-modes pathname)
+					       minus)
+				     plus))
+	    (dired-redisplay pathname lstart)))))))
+
+(define (os2/parse-attributes-spec spec)
+  (let ((end (string-length spec))
+	(plus '())
+	(minus '()))
+    (let loop ((index 0) (state #f))
+      (if (< index end)
+	  (let ((char (char-downcase (string-ref spec index)))
+		(index (+ index 1)))
+	    (case char
+	      ((#\+ #\-)
+	       (loop index char))
+	      ((#\a #\h #\r #\s)
+	       (set! plus (delv! char plus))
+	       (set! minus (delv! char minus))
+	       (case state
+		 ((#\+)
+		  (set! plus (cons char plus))
+		  (loop index state))
+		 ((#\-)
+		  (set! minus (cons char minus))
+		  (loop index state))
+		 (else #f)))
+	      (else #f)))
+	  (values (os2/attribute-letters-to-mask plus)
+		  (os2/attribute-letters-to-mask minus))))))
+
+(define (os2/attribute-letters-to-mask letters)
+  (let ((mask 0))
+    (for-each (lambda (letter)
+		(set! mask
+		      (fix:or (case letter
+				((#\a) os2-file-mode/archived)
+				((#\d) os2-file-mode/directory)
+				((#\h) os2-file-mode/hidden)
+				((#\r) os2-file-mode/read-only)
+				((#\s) os2-file-mode/system)
+				(else (error "Unknown mode letter:" letter)))
+			      mask))
+		unspecific)
+	      letters)
+    mask))
