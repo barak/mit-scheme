@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: comred.scm,v 1.97 1993/07/06 20:35:48 cph Exp $
+;;;	$Id: comred.scm,v 1.98 1993/08/01 00:15:49 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -96,11 +96,12 @@
 (define-structure (input-event
 		   (constructor %make-input-event)
 		   (conc-name input-event/))
+  (type false read-only true)
   (operator false read-only true)
   (operands false read-only true))
 
-(define (make-input-event operator . operands)
-  (%make-input-event operator operands))
+(define (make-input-event type operator . operands)
+  (%make-input-event type operator operands))
 
 (define (apply-input-event input-event)
   (if (not (input-event? input-event))

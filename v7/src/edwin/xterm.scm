@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: xterm.scm,v 1.39 1993/04/28 19:51:10 cph Exp $
+;;;	$Id: xterm.scm,v 1.40 1993/08/01 00:16:08 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -381,7 +381,7 @@
 			    (error "#F returned from blocking read"))
 			   ((not (vector? event))
 			    (if (process-change-event event)
-				(make-input-event update-screens! #f)
+				(make-input-event 'UPDATE update-screens! #f)
 				(loop)))
 			   (else
 			    (or (process-event event) (loop)))))))))
@@ -509,7 +509,8 @@
   (lambda (screen event)
     (set! last-focus-time (vector-ref event 5))
     (let ((xterm (screen-xterm screen)))
-      (make-input-event execute-button-command
+      (make-input-event 'BUTTON
+			execute-button-command
 			screen
 			(make-down-button (vector-ref event 4))
 			(xterm-map-x-coordinate xterm (vector-ref event 2))
@@ -519,7 +520,8 @@
   (lambda (screen event)
     (set! last-focus-time (vector-ref event 5))
     (let ((xterm (screen-xterm screen)))
-      (make-input-event execute-button-command
+      (make-input-event 'BUTTON
+			execute-button-command
 			screen
 			(make-up-button (vector-ref event 4))
 			(xterm-map-x-coordinate xterm (vector-ref event 2))
@@ -535,23 +537,23 @@
 	    (y-size (xterm-map-y-size xterm y-size)))
 	(and (not (and (= x-size (screen-x-size screen))
 		       (= y-size (screen-y-size screen))))
-	     (make-input-event
-	      (lambda (screen x-size y-size)
-		(set-screen-size! screen x-size y-size)
-		(update-screen! screen #t))
-	      screen x-size y-size))))))
+	     (make-input-event 'SET-SCREEN-SIZE
+			       (lambda (screen x-size y-size)
+				 (set-screen-size! screen x-size y-size)
+				 (update-screen! screen #t))
+			       screen x-size y-size))))))
 
 (define-event-handler event-type:focus-in
   (lambda (screen event)
     event
     (and (not (selected-screen? screen))
-	 (make-input-event select-screen screen))))
+	 (make-input-event 'SELECT-SCREEN select-screen screen))))
 
 (define-event-handler event-type:delete-window
   (lambda (screen event)
     event
     (and (not (screen-deleted? screen))
-	 (make-input-event delete-screen! screen))))
+	 (make-input-event 'DELETE-SCREEN delete-screen! screen))))
 
 (define-event-handler event-type:map
   (lambda (screen event)
@@ -559,7 +561,7 @@
     (and (not (screen-deleted? screen))
 	 (begin
 	   (set-screen-visibility! screen 'VISIBLE)
-	   (make-input-event update-screen! screen #t)))))
+	   (make-input-event 'UPDATE update-screen! screen #t)))))
 
 (define-event-handler event-type:unmap
   (lambda (screen event)
@@ -570,7 +572,9 @@
 	   (and (selected-screen? screen)
 		(let ((screen (other-screen screen false)))
 		  (and screen
-		       (make-input-event select-screen screen))))))))
+		       (make-input-event 'SELECT-SCREEN
+					 select-screen
+					 screen))))))))
 
 (define-event-handler event-type:visibility
   (lambda (screen event)
@@ -583,12 +587,12 @@
 	       ((2) (set-screen-visibility! screen 'OBSCURED)))
 	      (and (or (eq? old-visibility 'UNMAPPED)
 		       (eq? old-visibility 'OBSCURED))
-		   (make-input-event update-screen! screen #t)))))))
+		   (make-input-event 'UPDATE update-screen! screen #t)))))))
 
 (define-event-handler event-type:take-focus
   (lambda (screen event)
     (set! last-focus-time (vector-ref event 2))
-    (make-input-event select-screen screen)))
+    (make-input-event 'SELECT-SCREEN select-screen screen)))
 
 (define reading-event?)
 (define signal-interrupts?)

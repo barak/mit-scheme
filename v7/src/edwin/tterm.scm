@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: tterm.scm,v 1.20 1993/07/16 19:20:22 gjr Exp $
+$Id: tterm.scm,v 1.21 1993/08/01 00:16:01 cph Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -190,7 +190,7 @@ MIT in each case. |#
 	      (cond ((char? event)
 		     event)
 		    ((process-change-event event)
-		     (make-input-event update-screens! #f))
+		     (make-input-event 'UPDATE update-screens! #f))
 		    (else
 		     (guarantee-result)))))))
       (values

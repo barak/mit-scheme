@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: prompt.scm,v 1.156 1992/11/29 20:22:37 bal Exp $
+;;;	$Id: prompt.scm,v 1.157 1993/08/01 00:15:58 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -105,9 +105,12 @@
 			(select-window (car typein-saved-windows)))
 		       ((zero? typein-edit-depth)
 			(select-window (other-window)))))))))))
-    (if (eq? value typein-edit-abort-flag)
-	(abort-current-command)
-	value)))
+    (cond ((eq? value typein-edit-abort-flag)
+	   (abort-current-command))
+	  ((and (pair? value) (eq? (car value) typein-edit-abort-flag))
+	   (abort-current-command (cdr value)))
+	  (else
+	   value))))
 
 (define-integrable (within-typein-edit?)
   (not (null? typein-saved-windows)))
@@ -162,6 +165,9 @@
     (push-current-mark! (buffer-start buffer)))
   (set-current-major-mode! mode)
   (command-reader))
+
+(define (abort-typein-edit event)
+  (typein-edit-continuation (cons typein-edit-abort-flag event)))
 
 (define (exit-typein-edit)
   (if (not typein-edit-continuation)
@@ -633,13 +639,12 @@ a repetition of this command will exit."
 	     (let ((input (with-editor-interrupts-disabled keyboard-read)))
 	       (if (and (char? input) (char-ascii? input))
 		   (set-typein-string! (key-name input) true))
-	       input)))))
-    (cond ((and (char? input) (char-ascii? input))
-	   input)
-	  ((input-event? input)
-	   (abort-current-command input))
-	  (else
-	   (editor-error "Not an ASCII character:" input)))))
+	       (if (input-event? input)
+		   (abort-typein-edit input)
+		   input))))))
+    (if (not (and (char? input) (char-ascii? input)))
+	(editor-error "Not an ASCII character:" input))
+    input))
 
 (define (prompt-for-key prompt #!optional comtab)
   (let ((comtab (if (default-object? comtab) (current-comtabs) comtab)))
@@ -649,9 +654,7 @@ a repetition of this command will exit."
 	  (let inner-loop
 	      ((char (with-editor-interrupts-disabled keyboard-read)))
 	    (if (input-event? char)
-		(within-continuation typein-edit-continuation
-		  (lambda ()
-		    (abort-current-command char))))
+		(abort-typein-edit char))
 	    (let ((chars (append! prefix (list char))))
 	      (set-typein-string! (xkey->name chars) true)
 	      (if (prefix-key-list? comtab chars)
@@ -680,6 +683,8 @@ a repetition of this command will exit."
 			  (char-ci=? char #\rubout)))
 		 (set-typein-string! "n" true)
 		 false)
+		((input-event? char)
+		 (abort-typein-edit char))
 		(else
 		 (editor-beep)
 		 (if (not lost?)
@@ -782,29 +787,30 @@ Whilst editing the command, the following commands are available:
 ;;; in unix.scm which deal with .KY files.
 
 (define (prompt-for-password prompt)
-  (prompt-for-typein 
-   prompt false
-   (lambda ()
-     (let loop ((ts ""))
-       (let ((input (keyboard-read)))
-	 (if (and (char? input) (char-ascii? input))
-	     (cond ((char=? input #\Return)
-		    ts)
-		   ((char=? input #\C-g)
-		    (abort-current-command))
-		   ((char=? input #\Rubout)
-		    (let ((ts-len (string-length ts)))
-		      (if (> ts-len 0)
-			  (let ((new-string (string-head ts (-1+ ts-len))))
-			    (set-typein-string!
-			     (make-string (string-length new-string) #\.) true)
-			    (loop new-string))
-			  (loop ts))))
-		   (else
-		    (set-typein-string!
-		     (make-string (1+ (string-length ts)) #\.) true)
-		    (loop (string-append ts (char->string input)))))
-	     (loop ts)))))))
+  (prompt-for-typein prompt false
+    (lambda ()
+      (let loop ((ts ""))
+	(let ((input (keyboard-read)))
+	  (cond ((input-event? input)
+		 (abort-typein-edit input))
+		((not (and (char? input) (char-ascii? input)))
+		 (loop ts))
+		((char=? input #\Return)
+		 ts)
+		((char=? input #\C-g)
+		 (abort-current-command))
+		((char=? input #\Rubout)
+		 (let ((ts-len (string-length ts)))
+		   (if (> ts-len 0)
+		       (let ((new-string (string-head ts (-1+ ts-len))))
+			 (set-typein-string!
+			  (make-string (string-length new-string) #\.) true)
+			 (loop new-string))
+		       (loop ts))))
+		(else
+		 (set-typein-string!
+		  (make-string (1+ (string-length ts)) #\.) true)
+		 (loop (string-append ts (char->string input))))))))))
 
 (define (prompt-for-confirmed-password)
   (let ((password1 (prompt-for-password "Password: ")))

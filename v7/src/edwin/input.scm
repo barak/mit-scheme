@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/input.scm,v 1.93 1992/02/18 20:47:26 arthur Exp $
+;;;	$Id: input.scm,v 1.94 1993/08/01 00:15:55 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -181,7 +181,7 @@ B 3BAB8C
       (keyboard-read-1 (editor-peek current-editor))))
 
 (define (keyboard-read)
-  (set! keyboard-keys-read (1+ keyboard-keys-read))
+  (set! keyboard-keys-read (+ keyboard-keys-read 1))
   (if *executing-keyboard-macro?*
       (keyboard-macro-read-key)
       (let ((key (keyboard-read-1 (editor-read current-editor))))
@@ -194,19 +194,36 @@ B 3BAB8C
 	       ((ref-command end-kbd-macro) 1)))
 	key)))
 
+(define (keyboard-read-1 reader)
+  (handle-simple-events (lambda () (keyboard-read-2 reader))))
+
 (define (keyboard-peek-no-hang)
-  ((editor-peek-no-hang current-editor)))
+  (handle-simple-events (editor-peek-no-hang current-editor)))
+
+(define (handle-simple-events thunk)
+  (let loop ()
+    (let ((input (thunk)))
+      (if (and (input-event? input)
+	       (memq (input-event/type input) '(UPDATE SET-SCREEN-SIZE)))
+	  (begin
+	    (apply-input-event input)
+	    (loop))
+	  input))))
 
 (define (keyboard-read-char)
-  (let loop ((key (keyboard-read)))
-    (if (char? key)
-	key
-	(loop (keyboard-read)))))
-
+  (let loop ()
+    (let ((key (keyboard-read)))
+      (if (char? key)
+	  key
+	  (begin
+	    (if (input-event? key)
+		(apply-input-event key))
+	    (loop))))))
+
 (define read-key-timeout/fast 500)
 (define read-key-timeout/slow 2000)
 
-(define (keyboard-read-1 reader)
+(define (keyboard-read-2 reader)
   (remap-alias-key
    (let ((peek-no-hang (editor-peek-no-hang current-editor)))
      (if (not (peek-no-hang))
