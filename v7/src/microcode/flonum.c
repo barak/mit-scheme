@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/flonum.c,v 9.35 1991/07/13 01:19:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/flonum.c,v 9.36 1991/10/17 09:09:38 cph Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -38,6 +38,7 @@ MIT in each case. */
 #include "prims.h"
 #include "zones.h"
 #include <errno.h>
+extern int errno;
 
 double
 arg_flonum (arg_number)
