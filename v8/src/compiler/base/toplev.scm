@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 1.5 1994/12/02 03:00:56 adams Exp $
+$Id: toplev.scm,v 1.6 1995/02/28 01:50:05 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -746,12 +746,6 @@ MIT in each case. |#
   (write-string " (process time); ")
   (write (/ (exact->inexact real-time) 1000))
   (write-string " (real time)"))
-
-(define (phase/canonicalize-scode)
-  (compiler-subphase "Scode Canonicalization"
-    (lambda ()
-      (set! *scode* (canonicalize/top-level (last-reference *input-scode*)))
-      unspecific)))
 
 (define (phase/rtl-optimization)
   (compiler-superphase "RTL Optimization"
