@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntscreen.h,v 1.10 1994/11/02 20:27:05 adams Exp $
+$Id: ntscreen.h,v 1.11 1995/10/24 05:05:32 cph Exp $
 
-Copyright (c) 1993-1994 Massachusetts Institute of Technology
+Copyright (c) 1993-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -153,6 +153,10 @@ struct screen_write_char_s
 extern HWND ScreenCurrentFocus();
 
 extern BOOL Screen_SetPosition (SCREEN, int, int);
+
+#ifdef __WATCOMC__
+#define _fastcall
+#endif
 
 extern VOID _fastcall clear_screen_rectangle (SCREEN, int, int, int, int);
 extern VOID Screen_CR_to_RECT (RECT *, SCREEN, int, int, int, int);

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: nttrap.c,v 1.10 1993/12/07 20:36:02 gjr Exp $
+$Id: nttrap.c,v 1.11 1995/10/24 05:07:05 cph Exp $
 
-Copyright (c) 1992-1993 Massachusetts Institute of Technology
+Copyright (c) 1992-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -489,9 +489,8 @@ DEFUN_VOID (WinntExceptionTransferHook)
   return (PRIM_APPLY);
 }
 
-extern unsigned short EXFUN (getCS, (void));
-extern unsigned short EXFUN (getDS, (void));
-extern unsigned short EXFUN (getSS, (void));
+extern unsigned short __cdecl EXFUN (getCS, (void));
+extern unsigned short __cdecl EXFUN (getDS, (void));
 
 /* Needed because Stack_Check checks for <= instead of < when pushing */
 
@@ -1330,15 +1329,19 @@ DEFUN (WinntEnterHook, (enter_interpreter),
 {
   do
   {
+#ifdef CL386
     try
+#endif
     {
       (* enter_interpreter) ();
     }
+#ifdef CL386
     except (WinntException ((GetExceptionCode ()),
 			    (GetExceptionInformation ())))
     {
       outf_fatal ("Exception!\n");
       termination_trap ();
     }
+#endif
   } while (1);
 }

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntio.c,v 1.10 1994/11/14 00:53:40 cph Exp $
+$Id: ntio.c,v 1.11 1995/10/24 05:05:08 cph Exp $
 
-Copyright (c) 1992-94 Massachusetts Institute of Technology
+Copyright (c) 1992-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -516,7 +516,7 @@ DEFUN_VOID (OS_have_ptys_p)
 int OS_have_select_p = 0;
 
 extern HANDLE master_tty_window;
-extern BOOL win32_under_win32s_p (void);
+extern BOOL __cdecl win32_under_win32s_p (void);
 extern void EXFUN (NT_initialize_channels, (void));
 extern void EXFUN (NT_reset_channels, (void));
 extern void EXFUN (NT_restore_channels, (void));

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: posixtyp.h,v 1.12 1995/10/15 00:39:32 cph Exp $
+$Id: posixtyp.h,v 1.13 1995/10/24 05:10:00 cph Exp $
 
-Copyright (c) 1990-1994 Massachusetts Institute of Technology
+Copyright (c) 1990-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -90,8 +90,11 @@ MIT in each case. */
 #endif
 
 #ifdef WINNT
+
 #include <sys/types.h>
 #include <time.h>
+
+#ifdef CL386
 /*#define _MODE_T*/
 #define _NLINK_T
 #define _PID_T
@@ -101,6 +104,15 @@ MIT in each case. */
 #define _OFF_T
 #define off_t _off_t
 /*#define _CC_T*/
+#endif
+
+#ifdef __WATCOMC__
+#define _TIME_T
+#define _OFF_T
+#define _SIZE_T
+#define _CLOCK_T
+#endif
+
 #endif
 
 #ifdef _OS2

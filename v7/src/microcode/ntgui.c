@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntgui.c,v 1.14 1994/11/02 20:35:27 adams Exp $
+$Id: ntgui.c,v 1.15 1995/10/24 05:04:18 cph Exp $
 
-Copyright (c) 1993-1994 Massachusetts Institute of Technology
+Copyright (c) 1993-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -97,7 +97,7 @@ WinMain (HANDLE hInst, HANDLE hPrevInst, LPSTR lpCmdLine, int nCmdShow)
     if (!InitInstance(ghInstance, nCmdShow))
       return  FALSE;
 
-    return (main (argc, argv));
+    return (scheme_main (argc, argv));
 }
 #endif
 
@@ -708,7 +708,8 @@ DEFINE_PRIMITIVE ("NT:SEND-MESSAGE", Prim_send_message, 4, 4,
 //    PRIMITIVE_RETURN (long_to_integer (result));
 //}
 
-static  SCHEME_OBJECT call_ff_really()
+static SCHEME_OBJECT
+call_ff_really (void)
 {
 
   {
@@ -754,6 +755,7 @@ static  SCHEME_OBJECT call_ff_really()
 
       arg_sp = &local.c_args[10];
       local.old_esp = saved_esp;
+#ifdef CL386
       __asm
       {
 	// Important: The order of these instructions guards against
@@ -765,6 +767,22 @@ static  SCHEME_OBJECT call_ff_really()
 	mov	esp, dword ptr [saved_esp]
 	mov	dword ptr [result], eax
       }
+#else /* not CL386 */
+#ifdef __WATCOMC__
+      {
+	extern void call_ff_really_1 (void);
+#pragma aux call_ff_really_1 =						\
+	"mov	eax,function_address"					\
+	"mov	saved_esp,esp"						\
+	"mov	esp,arg_sp"						\
+	"call	eax"							\
+	"mov	esp,saved_esp"						\
+	"mov	result,eax"						\
+	modify [eax edx ecx];
+	call_ff_really_1 ();
+      }
+#endif /* __WATCOMC__ */
+#endif /* not CL386 */
       saved_esp = local.old_esp;
       return  long_to_integer (result);
     }

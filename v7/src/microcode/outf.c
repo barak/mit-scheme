@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: outf.c,v 1.8 1995/10/08 15:30:29 cph Exp $
+$Id: outf.c,v 1.9 1995/10/24 05:09:21 cph Exp $
 
 Copyright (c) 1993-95 Massachusetts Institute of Technology
 
@@ -121,11 +121,21 @@ DEFUN (outf_channel_to_FILE, (chan), outf_channel chan)
 static int max_fatal_buf = 1000;
 static char fatal_buf[1000+1] = {0};
 
+#ifdef CL386
+#define VSNPRINTF(buffer,length,format,args)				\
+  _vsnprintf ((buffer), (length), (format), (args))
+#else
+#ifdef __WATCOMC__
+#define VSNPRINTF(buffer,length,format,args)				\
+  vsprintf ((buffer), (format), (args))
+#endif
+#endif
+
 void
 DEFUN (voutf_fatal, (format, args), CONST char *format AND va_list args)
 {
     int end = strlen(fatal_buf);
-    _vsnprintf (&fatal_buf[end], max_fatal_buf - end, format, args);
+    VSNPRINTF (&fatal_buf[end], max_fatal_buf - end, format, args);
 }
 
 void
@@ -144,7 +154,7 @@ DEFUN (voutf_master_tty, (chan, format, args),
     char buf[1000];
 
     if (master_tty_window) {
-      _vsnprintf (buf, 1000, format, args);
+      VSNPRINTF (buf, 1000, format, args);
       Screen_WriteText (master_tty_window, buf);
     } else {
       vfprintf (outf_channel_to_FILE(chan), format, args);

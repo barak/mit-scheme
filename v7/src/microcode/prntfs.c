@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prntfs.c,v 1.2 1993/08/21 04:00:47 gjr Exp $
+$Id: prntfs.c,v 1.3 1995/10/24 05:10:35 cph Exp $
 
-Copyright (c) 1993 Massachusetts Institute of Technology
+Copyright (c) 1993-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -219,8 +219,7 @@ DEFUN (file_type_letter, (s), struct stat * s)
       return ('d');
     case S_IFCHR:
       return ('c');
-#ifndef NT386CL
-/* S_IFBLK seems not to exist*/
+#ifdef S_IFBLK
     case S_IFBLK:
       return ('b');
 #endif

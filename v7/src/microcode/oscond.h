@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: oscond.h,v 1.20 1995/10/15 00:39:20 cph Exp $
+$Id: oscond.h,v 1.21 1995/10/24 05:08:19 cph Exp $
 
 Copyright (c) 1990-95 Massachusetts Institute of Technology
 
@@ -160,6 +160,10 @@ MIT in each case. */
 #include "error: can't define both _BSD and _SYSV"
 #endif
 
+#if (defined(_M_I386) || defined(M_I386)) && !defined(i386)
+#define i386
+#endif
+
 #if defined(DOS386)
 #  define _DOS386
 #  define _DOS386_VERSION	50
@@ -169,13 +173,14 @@ MIT in each case. */
 #define _OS2
 /* Don't really know the version but this is correct for my machine.  */
 #define _OS2_VERSION 211
-#if defined(_M_I386) || defined(M_I386)
+#ifdef i386
 #define _OS2386
-#ifndef i386
-#define i386
-#endif /* i386 */
-#endif /* _M_I386 or M_I386 */
-#endif /* __OS2__ */
+#endif
+#endif
+
+#if defined(__NT__) && !defined(WINNT)
+#define WINNT
+#endif
 
 #if defined(_BSD) || defined(_SYSV) || defined(_PIXEL)
 #  define _UNIX

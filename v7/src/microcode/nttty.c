@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: nttty.c,v 1.4 1993/08/21 03:51:19 gjr Exp $
+$Id: nttty.c,v 1.5 1995/10/24 05:07:31 cph Exp $
 
-Copyright (c) 1992-1993 Massachusetts Institute of Technology
+Copyright (c) 1992-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -131,7 +131,7 @@ tputs (string, nlines, outfun)
   register int padcount = 0;
 
   if (string == (char *) 0)
-    return;
+    return (0);
   while (*string >= '0' && *string <= '9')
   {
     padcount += *string++ - '0';

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: utils.c,v 9.68 1995/09/18 22:33:04 cph Exp $
+$Id: utils.c,v 9.69 1995/10/24 05:11:33 cph Exp $
 
 Copyright (c) 1987-95 Massachusetts Institute of Technology
 
@@ -1119,9 +1119,9 @@ DEFUN (C_call_scheme, (proc, nargs, argvec),
   
   cfp = C_Frame_Pointer;
   csp = C_Stack_Pointer;
-#ifdef WINNT
+#ifdef NT386CL
   try
-#endif /* WINNT */
+#endif /* NT386CL */
 #endif /* i386 */
   {  
     primitive = (Regs [REGBLOCK_PRIMITIVE]);
@@ -1162,9 +1162,9 @@ DEFUN (C_call_scheme, (proc, nargs, argvec),
     Regs [REGBLOCK_PRIMITIVE] = primitive;
   }
 #ifdef i386
-#ifdef WINNT
+#ifdef NT386CL
   finally  
-#endif /* WINNT */
+#endif /* NT386CL */
   {
     C_Frame_Pointer = cfp;
     C_Stack_Pointer = csp;

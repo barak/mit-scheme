@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: term.c,v 1.11 1994/12/19 22:29:05 cph Exp $
+$Id: term.c,v 1.12 1995/10/24 05:11:10 cph Exp $
 
-Copyright (c) 1990-94 Massachusetts Institute of Technology
+Copyright (c) 1990-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -41,7 +41,7 @@ extern char * Term_Messages [];
 extern void EXFUN (get_band_parameters, (long * heap_size, long * const_size));
 extern void EXFUN (Reset_Memory, (void));
 
-#if WINNT || defined(_OS2)
+#if defined(WINNT) || defined(_OS2)
 #define USING_MESSAGE_BOX_FOR_FATAL_OUTPUT
 #endif
 
@@ -150,7 +150,7 @@ DEFUN (termination_suffix, (code, value, abnormal_p),
   if (code != TERM_HALT)
 #endif
     outf_flush_fatal();
-#if WINNT
+#ifdef WINNT
   winnt_deallocate_registers();
 #endif
   Reset_Memory ();
