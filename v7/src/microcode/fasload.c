@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.53 1990/06/20 17:40:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.54 1990/08/16 08:43:53 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -65,21 +65,25 @@ extern void install_primitive_table ();
 extern void compiler_reset_error ();
 extern void compiler_initialize ();
 extern void compiler_reset ();
-
-static void EXFUN (terminate_band_load, (PTR ap));
 
 static long failed_heap_length = -1;
 
-static long
-DEFUN (read_file_start, (file_name), CONST char * file_name)
+static void
+DEFUN (read_file_start, (file_name, from_band_load),
+       CONST char * file_name AND
+       Boolean from_band_load)
 {
   long value, heap_length;
 
   load_channel = (OS_open_load_file (file_name));
   if (Per_File)
+  {
     debug_edit_flags ();
+  }
   if (load_channel == NO_CHANNEL)
+  {
     error_bad_range_arg (1);
+  }
   value = (Read_Header ());
   if (value != FASL_FILE_FINE)
   {
@@ -92,11 +96,13 @@ DEFUN (read_file_start, (file_name), CONST char * file_name)
       case FASL_FILE_BAD_MACHINE:
       case FASL_FILE_BAD_VERSION:
       case FASL_FILE_BAD_SUBVERSION:
-        return (ERR_FASL_FILE_BAD_DATA);
+        signal_error_from_primitive (ERR_FASL_FILE_BAD_DATA);
+	/*NOTREACHED*/
 
       case FASL_FILE_BAD_PROCESSOR:
       case FASL_FILE_BAD_INTERFACE:
-	return (ERR_FASLOAD_COMPILED_MISMATCH);
+	signal_error_from_primitive (ERR_FASLOAD_COMPILED_MISMATCH);
+	/*NOTREACHED*/
     }
   }
 
@@ -109,32 +115,41 @@ DEFUN (read_file_start, (file_name), CONST char * file_name)
   {
     failed_heap_length = 0;
     OS_channel_close_noerror (load_channel);
-    return (ERR_FASL_FILE_TOO_BIG);
+    signal_error_from_primitive (ERR_FASL_FILE_TOO_BIG);
+    /*NOTREACHED*/
   }
 
   heap_length = (Heap_Count + Primitive_Table_Size + Primitive_Table_Length);
 
-  if (GC_Check(heap_length))
+  if (GC_Check (heap_length))
   {
-    if (failed_heap_length == heap_length)
+    if (from_band_load ||
+	(failed_heap_length == heap_length))
     {
       /* Heuristic check.  It may fail.
 	 The GC should be modified to do this right.
        */
       failed_heap_length = -1;
       OS_channel_close_noerror (load_channel);
-      return (ERR_FASL_FILE_TOO_BIG);
+      signal_error_from_primitive (ERR_FASL_FILE_TOO_BIG);
+      /*NOTREACHED*/
     }
     else
     {
       failed_heap_length = heap_length;
       OS_channel_close_noerror (load_channel);
       Request_GC(heap_length);
-      return (PRIM_INTERRUPT);
+      signal_interrupt_from_primitive ();
+      /*NOTREACHED*/
     }
   }
   failed_heap_length = -1;
-  return (PRIM_DONE);
+
+  if ((band_p) && (!from_band_load))
+  {
+    signal_error_from_primitive (ERR_FASLOAD_BAND);
+  }
+  return;
 }
 
 static SCHEME_OBJECT *
@@ -521,7 +536,7 @@ Intern_Block(Next_Pointer, Stop_At)
 #endif
 
 SCHEME_OBJECT
-load_file(from_band_load)
+load_file (from_band_load)
      Boolean from_band_load;
 {
   SCHEME_OBJECT
@@ -647,18 +662,7 @@ load_file(from_band_load)
 DEFINE_PRIMITIVE ("BINARY-FASLOAD", Prim_binary_fasload, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  {
-    long result = (read_file_start (STRING_ARG (1)));
-    if (band_p)
-      signal_error_from_primitive (ERR_FASLOAD_BAND);
-    if (result != PRIM_DONE)
-      {
-	if (result == PRIM_INTERRUPT)
-	  signal_interrupt_from_primitive ();
-	else
-	  signal_error_from_primitive (result);
-      }
-  }
+  read_file_start ((STRING_ARG (1)), false);
   PRIMITIVE_RETURN (load_file (false));
 }
 
@@ -686,19 +690,13 @@ DEFINE_PRIMITIVE ("RELOAD-BAND-NAME", Prim_reload_band_name, 0, 0, 0)
 void
 compiler_reset_error()
 {
-  fprintf(stderr,
-	  "\ncompiler_restart_error: The band being restored and\n");
-  fprintf(stderr,
-	  "the compiled code interface in this microcode are inconsistent.\n");
-  Microcode_Termination(TERM_COMPILER_DEATH);
+  fprintf (stderr,
+	   "\ncompiler_restart_error: The band being restored and\n");
+  fprintf (stderr,
+	   "the compiled code interface in this microcode are inconsistent.\n");
+  Microcode_Termination (TERM_COMPILER_DEATH);
 }
 
-/* (LOAD-BAND FILE-NAME)
-   Restores the heap and pure space from the contents of FILE-NAME,
-   which is typically a file created by DUMP-BAND.  The file can,
-   however, be any file which can be loaded with BINARY-FASLOAD.
-*/
-
 #ifndef START_BAND_LOAD
 #define START_BAND_LOAD()						\
 {									\
@@ -715,6 +713,64 @@ compiler_reset_error()
 }
 #endif
 
+struct memmag_state
+{
+  SCHEME_OBJECT *free;
+  SCHEME_OBJECT *memtop;
+  SCHEME_OBJECT *free_constant;
+  SCHEME_OBJECT *stack_pointer;
+};
+
+static void
+DEFUN (abort_band_load, (ap), PTR ap)
+{
+  struct memmag_state * mp = ((struct memmag_state *) ap);
+
+  Free = (mp->free);
+  SET_MEMTOP (mp->memtop);
+  Free_Constant = (mp->free_constant);
+  Stack_Pointer = (mp->stack_pointer);
+
+  END_BAND_LOAD (false, false);
+  return;
+}
+
+static void
+DEFUN (terminate_band_load, (ap), PTR ap)
+{
+  fputs ("\nload-band: ", stderr);
+  {
+    int abort_value = (abort_to_interpreter_argument ());
+    if (abort_value > 0)
+      fprintf (stderr, "Error %d (%s)",
+	       abort_value,
+	       (Error_Names [abort_value]));
+    else
+      fprintf (stderr, "Abort %d (%s)",
+	       abort_value,
+	       (Abort_Names [(-abort_value) - 1]));
+  }
+  fputs (" past the point of no return.\n", stderr);
+  {
+    char * band_name = (* ((char **) ap));
+    if (band_name != 0)
+      {
+	fprintf (stderr, "band-name = \"%s\".\n", band_name);
+	free (band_name);
+      }
+  }
+  fflush (stderr);
+  END_BAND_LOAD (false, true);
+  Microcode_Termination (TERM_DISK_RESTORE);
+  /*NOTREACHED*/
+}
+
+/* (LOAD-BAND FILE-NAME)
+   Restores the heap and pure space from the contents of FILE-NAME,
+   which is typically a file created by DUMP-BAND.  The file can,
+   however, be any file which can be loaded with BINARY-FASLOAD.
+*/
+
 DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
 {
   SCHEME_OBJECT result;
@@ -722,28 +778,23 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
   PRIMITIVE_CANONICALIZE_CONTEXT ();
   {
     CONST char * file_name = (STRING_ARG (1));
-    SCHEME_OBJECT * saved_free = Free;
-    SCHEME_OBJECT * saved_memtop = MemTop;
-    SCHEME_OBJECT * saved_free_constant = Free_Constant;
-    SCHEME_OBJECT * saved_stack_pointer = Stack_Pointer;
+    transaction_begin ();
+    {
+      struct memmag_state * ap = (dstack_alloc (sizeof (struct memmag_state)));
+      ap->free = Free;
+      ap->memtop = MemTop;
+      ap->free_constant = Free_Constant;
+      ap->stack_pointer = Stack_Pointer;
+      transaction_record_action (tat_abort, abort_band_load, ap);
+    }  
     Free = Heap_Bottom;
     SET_MEMTOP (Heap_Top);
     START_BAND_LOAD ();
     Free_Constant = Constant_Space;
     Stack_Pointer = Highest_Allocated_Address;
-    {
-      long temp = (read_file_start (file_name));
-      if (temp != PRIM_DONE)
-	{
-	  Free = saved_free;
-	  SET_MEMTOP (saved_memtop);
-	  Free_Constant = saved_free_constant;
-	  Stack_Pointer = saved_stack_pointer;
-	  END_BAND_LOAD (false, false);
-	  signal_error_from_primitive
-	    ((temp == PRIM_INTERRUPT) ? ERR_FASL_FILE_TOO_BIG : temp);
-	}
-    }
+    read_file_start (file_name, true);
+    transaction_commit ();
+
     /* Point of no return. */
     {
       long length = ((strlen (file_name)) + 1);
@@ -798,36 +849,6 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
   Band_Load_Hook ();
   /* Return in a non-standard way. */
   PRIMITIVE_ABORT(PRIM_DO_EXPRESSION);
-  /*NOTREACHED*/
-}
-
-static void
-DEFUN (terminate_band_load, (ap), PTR ap)
-{
-  fputs ("\nload-band: ", stderr);
-  {
-    int abort_value = (abort_to_interpreter_argument ());
-    if (abort_value > 0)
-      fprintf (stderr, "Error %d (%s)",
-	       abort_value,
-	       (Error_Names [abort_value]));
-    else
-      fprintf (stderr, "Abort %d (%s)",
-	       abort_value,
-	       (Abort_Names [(-abort_value) - 1]));
-  }
-  fputs (" past the point of no return.\n", stderr);
-  {
-    char * band_name = (* ((char **) ap));
-    if (band_name != 0)
-      {
-	fprintf (stderr, "band-name = \"%s\".\n", band_name);
-	free (band_name);
-      }
-  }
-  fflush (stderr);
-  END_BAND_LOAD (false, true);
-  Microcode_Termination (TERM_DISK_RESTORE);
   /*NOTREACHED*/
 }
 
