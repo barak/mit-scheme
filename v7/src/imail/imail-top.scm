@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.182 2000/06/22 20:18:59 cph Exp $
+;;; $Id: imail-top.scm,v 1.183 2000/06/22 20:40:57 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -268,7 +268,7 @@ regardless of the folder type."
     (add-kill-buffer-hook buffer imail-kill-buffer)
     (buffer-put! buffer 'MAIL-YANK-ORIGINAL-METHOD imail-yank-original)
     (local-set-variable! mode-line-modified "--- " buffer)
-    (add-adaptive-fill-regexp! "[ \t]*[-a-zA-Z0-9]*>+[ \t]*" buffer)
+    (imail-adjust-adaptive-fill buffer)
     (standard-alternate-paragraph-style! buffer)
     (set-buffer-read-only! buffer)
     (disable-group-undo! (buffer-group buffer))
@@ -277,6 +277,9 @@ regardless of the folder type."
 (define-variable imail-mode-hook
   "An event distributor that is invoked when entering IMAIL mode."
   (make-event-distributor))
+
+(define (imail-adjust-adaptive-fill buffer)
+  (add-adaptive-fill-regexp! "[ \t]*[-a-zA-Z0-9]*>+[ \t]*" buffer))
 
 (define (add-adaptive-fill-regexp! regexp buffer)
   (local-set-variable! adaptive-fill-regexp
@@ -935,6 +938,7 @@ While composing the reply, use \\[mail-yank-original] to yank the
   (insert-message (selected-message #t buffer) #t left-margin mark))
 
 (define (initialize-imail-mail-buffer buffer)
+  (imail-adjust-adaptive-fill buffer)
   (buffer-put! buffer 'MAILER-VERSION-STRING imail-mailer-version-string))
 
 (define (imail-mailer-version-string generic)
