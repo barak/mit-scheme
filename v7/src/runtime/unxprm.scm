@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.12 1991/05/09 03:22:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.13 1991/05/09 03:48:11 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -105,7 +105,7 @@ MIT in each case. |#
 
 (define (unix/current-home-directory)
   (or (get-environment-variable "HOME")
-      (get-user-home-directory (unix/current-user-name))))
+      (unix/user-home-directory (unix/current-user-name))))
 
 (define-integrable unix/current-user-name
   (ucode-primitive current-user-name))
