@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlexp.scm,v 4.18 1991/10/25 00:14:21 cph Exp $
+$Id: rtlexp.scm,v 4.19 1993/07/01 03:25:40 gjr Exp $
 
-Copyright (c) 1987-91 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -62,18 +62,15 @@ MIT in each case. |#
      (register-value-class (rtl:register-number expression)))
     ((CONS-NON-POINTER CONS-POINTER CONSTANT FIXNUM->OBJECT FLOAT->OBJECT
 		       GENERIC-BINARY GENERIC-UNARY OFFSET POST-INCREMENT
-		       PRE-INCREMENT
-		       ;; This is a lie, but it is the only way that
-		       ;; it is used now!  It should be moved to
-		       ;; value-class=address, and a cast type
-		       ;; introduced to handle current usage.
-		       BYTE-OFFSET-ADDRESS)
+		       PRE-INCREMENT)
      value-class=object)
     ((FIXNUM->ADDRESS OBJECT->ADDRESS
-		      OFFSET-ADDRESS
 		      ASSIGNMENT-CACHE VARIABLE-CACHE
 		      CONS-CLOSURE CONS-MULTICLOSURE
-		      ENTRY:CONTINUATION ENTRY:PROCEDURE)
+		      ENTRY:CONTINUATION ENTRY:PROCEDURE
+		      OFFSET-ADDRESS
+		      FLOAT-OFFSET-ADDRESS
+		      BYTE-OFFSET-ADDRESS)
      value-class=address)
     ((MACHINE-CONSTANT)
      value-class=immediate)
@@ -86,7 +83,7 @@ MIT in each case. |#
      value-class=fixnum)
     ((OBJECT->TYPE)
      value-class=type)
-    ((OBJECT->FLOAT FLONUM-1-ARG FLONUM-2-ARGS)
+    ((OBJECT->FLOAT FLONUM-1-ARG FLONUM-2-ARGS FLOAT-OFFSET)
      value-class=float)
     (else
      (error "unknown RTL expression type" expression))))
@@ -283,6 +280,7 @@ MIT in each case. |#
       FIXNUM-2-ARGS
       FIXNUM->ADDRESS
       FIXNUM->OBJECT
+      FLOAT-OFFSET-ADDRESS
       FLONUM-1-ARG
       FLONUM-2-ARGS
       GENERIC-BINARY

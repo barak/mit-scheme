@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rtlty1.scm,v 4.20 1992/11/09 18:42:11 jinx Exp $
+$Id: rtlty1.scm,v 4.21 1993/07/01 03:25:47 gjr Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -49,12 +49,14 @@ MIT in each case. |#
 (define-rtl-expression constant % value)
 
 ;;; Memory references that return Scheme objects
-(define-rtl-expression offset rtl: base number)
+(define-rtl-expression offset rtl: base offset)
 (define-rtl-expression pre-increment rtl: register number)
 (define-rtl-expression post-increment rtl: register number)
 
 ;;; Memory reference that returns ASCII integer
-(define-rtl-expression byte-offset rtl: base number)
+(define-rtl-expression byte-offset rtl: base offset)
+;;; Memory reference that returns a floating-point number
+(define-rtl-expression float-offset rtl: base offset)
 
 ;;; Generic arithmetic operations on Scheme number objects
 ;;; (define-rtl-expression generic-unary rtl: operator operand)
@@ -82,8 +84,9 @@ MIT in each case. |#
 ;;; (define-rtl-expression address->datum rtl: expression)
 
 ;;; Add a constant offset to an address
-(define-rtl-expression offset-address rtl: base number)
-(define-rtl-expression byte-offset-address rtl: base number)
+(define-rtl-expression offset-address rtl: base offset)
+(define-rtl-expression byte-offset-address rtl: base offset)
+(define-rtl-expression float-offset-address rtl: base offset)
 
 ;;; A machine constant (an integer, usually unsigned)
 (define-rtl-expression machine-constant rtl: value)

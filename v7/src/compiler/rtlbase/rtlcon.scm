@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlcon.scm,v 4.25 1993/02/25 02:12:39 gjr Exp $
+$Id: rtlcon.scm,v 4.26 1993/07/01 03:25:31 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -259,9 +259,25 @@ MIT in each case. |#
 
 (define (make-offset register offset granularity)
   (case granularity
-    ((OBJECT) (rtl:make-offset register offset))
-    ((BYTE) (rtl:make-byte-offset register offset))
-    (else (error "unknown offset granularity" granularity))))
+    ((OBJECT)
+     (rtl:make-offset register (rtl:make-machine-constant offset)))
+    ((BYTE)
+     (rtl:make-byte-offset register (rtl:make-machine-constant offset)))
+    ((FLOAT)
+     (rtl:make-float-offset register (rtl:make-machine-constant offset)))
+    (else
+     (error "unknown offset granularity" granularity))))
+
+(define (make-offset-address register offset granularity)
+  (case granularity
+    ((OBJECT)
+     (rtl:make-offset-address register offset))
+    ((BYTE)
+     (rtl:make-byte-offset-address register offset))
+    ((FLOAT)
+     (rtl:make-float-offset-address register offset))
+    (else
+     (error "unknown offset granularity" granularity))))
 
 (define (locative-dereference locative scfg-append! if-register if-memory)
   (let ((dereference-fetch
@@ -317,8 +333,63 @@ MIT in each case. |#
 		   (dereference-fetch base offset granularity))
 		  ((CONSTANT)
 		   (dereference-constant base offset granularity))
+		  ((INDEX)
+		   (locative-dereference
+		    base
+		    scfg-append!
+		    (lambda (reg)
+		      (error "Can't be a reg" locative reg))
+		    (lambda (base* zero granularity*)
+		      zero granularity*	; ignored
+		      (if-memory base* offset granularity))))
+		  ((OFFSET)
+		   (locative-dereference
+		    base
+		    scfg-append!
+		    (lambda (reg)
+		      (error "Can't be a reg" locative reg))
+		    (lambda (base* offset* granularity*)
+		      (assign-to-temporary
+		       (make-offset-address
+			base*
+			(rtl:make-machine-constant offset*)
+			granularity*)
+		       scfg-append!
+		       (lambda (base-reg)
+			(if-memory base-reg offset granularity)))))) 
 		  (else
 		   (error "illegal offset base" locative)))))
+	     ((INDEX)
+	      (let ((base (rtl:locative-index-base locative))
+		    (offset (rtl:locative-index-offset locative))
+		    (granularity (rtl:locative-index-granularity locative)))
+		(define (finish base-reg-expr offset-expr)
+		  (assign-to-temporary
+		   (make-offset-address base-reg-expr offset-expr granularity)
+		   scfg-append!
+		   (lambda (loc-reg-expr)
+		     ;; granularity ok?
+		     (if-memory loc-reg-expr 0 granularity))))
+		(expression-simplify
+		 offset
+		 scfg-append!
+		 (lambda (offset-expr)
+		   (locative-dereference
+		    base
+		    scfg-append!
+		    (lambda (base-reg-expr)
+		      (finish base-reg-expr offset-expr))
+		    (lambda (base*-reg-expr offset* granularity*)
+		      (if (zero? offset*)
+			  (finish base*-reg-expr offset-expr)
+			  (assign-to-temporary
+			   (make-offset-address
+			    base*-reg-expr
+			    (rtl:make-machine-constant offset*)
+			    granularity*)
+			   scfg-append!
+			   (lambda (loc-reg-expr)
+			     (finish loc-reg-expr offset-expr))))))))))
 	     ((CONSTANT)
 	      (dereference-constant locative 0 'OBJECT))
 	     (else
@@ -366,9 +437,11 @@ MIT in each case. |#
      (lambda (address offset granularity)
        (if (not (eq? granularity 'OBJECT))
 	   (error "can't take address of non-object offset" granularity))
-       (if (zero? offset)
-	   (receiver address)
-	   (receiver (rtl:make-offset-address address offset)))))))
+       (receiver
+	(if (zero? offset)
+	    address
+	    (rtl:make-offset-address address
+				     (rtl:make-machine-constant offset))))))))
 
 (define-expression-method 'ENVIRONMENT
   (address-method
@@ -386,9 +459,11 @@ MIT in each case. |#
 		 receiver))))
 	 (if (zero? offset)
 	     (receiver address)
-	     (assign-to-temporary (rtl:make-offset-address address offset)
-				  scfg-append!
-				  receiver)))))))
+	     (assign-to-temporary
+	      (rtl:make-offset-address address
+				       (rtl:make-machine-constant offset))
+	      scfg-append!
+	      receiver)))))))
 
 (define-expression-method 'CONS-POINTER
   (lambda (receiver scfg-append! type datum)
@@ -423,12 +498,14 @@ MIT in each case. |#
 		   expression)
 		  (receiver temporary))
 		 (scfg-append!
-		  (rtl:make-assignment-internal (rtl:make-offset free 0)
-						expression)
+		  (rtl:make-assignment-internal
+		   (rtl:make-offset free (rtl:make-machine-constant 0))
+		   expression)
 		  (scfg-append!
 		   (rtl:make-assignment-internal
 		    free
-		    (rtl:make-offset-address free 1))
+		    (rtl:make-offset-address free
+					     (rtl:make-machine-constant 1)))
 		   (receiver temporary)))))))))))
 
 (define-expression-method 'TYPED-CONS:PAIR
@@ -455,16 +532,20 @@ MIT in each case. |#
 			     (receiver temporary)))
 			   (scfg-append!
 			    (rtl:make-assignment-internal
-			     (rtl:make-offset free 0)
+			     (rtl:make-offset free
+					      (rtl:make-machine-constant 0))
 			     car)
 			    (scfg-append!
 			     (rtl:make-assignment-internal
-			      (rtl:make-offset free 1)
+			      (rtl:make-offset free
+					       (rtl:make-machine-constant 1))
 			      cdr)
 			     (scfg-append!
 			      (rtl:make-assignment-internal
 			       free
-			       (rtl:make-offset-address free 2))
+			       (rtl:make-offset-address
+				free
+				(rtl:make-machine-constant 2)))
 			      (receiver temporary))))))))))))))))
 
 (define-expression-method 'TYPED-CONS:VECTOR
@@ -503,18 +584,24 @@ MIT in each case. |#
 					(loop (cdr elements))))))
 				(scfg-append!
 				 (rtl:make-assignment-internal
-				  (rtl:make-offset free 0)
+				  (rtl:make-offset
+				   free
+				   (rtl:make-machine-constant 0))
 				  header)
 				 (let loop ((elements elements) (offset 1))
 				   (if (null? elements)
 				       (scfg-append!
 					(rtl:make-assignment-internal
 					 free
-					 (rtl:make-offset-address free offset))
+					 (rtl:make-offset-address
+					  free
+					  (rtl:make-machine-constant offset)))
 					(receiver temporary))
 				       (scfg-append!
 					(rtl:make-assignment-internal
-					 (rtl:make-offset free offset)
+					 (rtl:make-offset
+					  free
+					  (rtl:make-machine-constant offset))
 					 (car elements))
 					(loop (cdr elements)
 					      (+ offset 1))))))))))))))))))))
@@ -533,7 +620,7 @@ MIT in each case. |#
 		  element))
 	       (lambda (element offset)
 		 (rtl:make-assignment-internal
-		  (rtl:make-offset free offset)
+		  (rtl:make-offset free (rtl:make-machine-constant offset))
 		  element)))))
 	     
       (define (do-chunk elements offset tail)
@@ -572,7 +659,8 @@ MIT in each case. |#
 					 free
 					 (rtl:make-offset-address
 					  free
-					  (1+ nelements)))
+					  (rtl:make-machine-constant
+					   (1+ nelements))))
 					(receiver temporary))))
 			 (do-chunk (list-head elements chunk-size)
 				   offset
@@ -594,8 +682,9 @@ MIT in each case. |#
 	  (set! value
 		(length (list-transform-positive reg-list
 			  (lambda (reg)
-			    (value-class/ancestor-or-self? (machine-register-value-class reg)
-							   value-class=word)))))
+			    (value-class/ancestor-or-self?
+			     (machine-register-value-class reg)
+			     value-class=word)))))
 	  value)))))
 
 (define-expression-method 'TYPED-CONS:PROCEDURE
@@ -608,11 +697,24 @@ MIT in each case. |#
 		  entry))))))
 
 (define-expression-method 'BYTE-OFFSET-ADDRESS
-  (lambda (receiver scfg-append! base number)
+  (lambda (receiver scfg-append! base offset)
     (expression-simplify
      base scfg-append!
      (lambda (base)
-       (receiver (rtl:make-byte-offset-address base number))))))
+       (expression-simplify
+	offset scfg-append!
+	(lambda (offset)
+	  (receiver (rtl:make-byte-offset-address base offset))))))))
+
+(define-expression-method 'FLOAT-OFFSET-ADDRESS
+  (lambda (receiver scfg-append! base offset)
+    (expression-simplify
+     base scfg-append!
+     (lambda (base)
+       (expression-simplify
+	offset scfg-append!
+	(lambda (offset)
+	  (receiver (rtl:make-float-offset-address base offset))))))))
 
 ;; NOPs for simplification
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlty2.scm,v 4.11 1993/01/08 00:05:27 cph Exp $
+$Id: rtlty2.scm,v 4.12 1993/07/01 03:25:52 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -103,6 +103,7 @@ MIT in each case. |#
 (define-integrable rtl:locative-offset-base cadr)
 (define-integrable rtl:locative-offset-offset caddr)
 
+#|
 (define (rtl:locative-offset-granularity locative)
   ;; This is kludged up for backward compatibility
   (if (rtl:locative-offset? locative)
@@ -110,18 +111,61 @@ MIT in each case. |#
 	  (cadddr locative)
 	  'OBJECT)
       (error "Not a locative offset" locative)))
+|#
+(define-integrable rtl:locative-offset-granularity cadddr)
 
 (define-integrable (rtl:locative-byte-offset? locative)
   (eq? (rtl:locative-offset-granularity locative) 'BYTE))
 
+(define-integrable (rtl:locative-float-offset? locative)
+  (eq? (rtl:locative-offset-granularity locative) 'FLOAT))
+
 (define-integrable (rtl:locative-object-offset? locative)
   (eq? (rtl:locative-offset-granularity locative) 'OBJECT))
 
-(define (rtl:locative-offset locative offset)
+(define-integrable (rtl:locative-offset locative offset)
+  (rtl:locative-object-offset locative offset))
+
+(define (rtl:locative-byte-offset locative byte-offset)
+  (cond ((rtl:locative-offset? locative)
+	 `(OFFSET ,(rtl:locative-offset-base locative)
+		  ,(back-end:+
+		    byte-offset
+		    (cond ((rtl:locative-byte-offset? locative)
+			   (rtl:locative-offset-offset locative))
+			  ((rtl:locative-object-offset? locative)
+			   (back-end:*
+			    (rtl:locative-offset-offset locative)
+			    address-units-per-object))
+			  (else
+			   (back-end:*
+			    (rtl:locative-offset-offset locative)
+			    address-units-per-float))))
+		  BYTE))
+	((back-end:= byte-offset 0)
+	 locative)
+	(else
+	 `(OFFSET ,locative ,byte-offset BYTE))))
+
+(define (rtl:locative-float-offset locative float-offset)
+  (let ((default
+	  (lambda ()
+	    `(OFFSET ,locative ,float-offset FLOAT))))
+    (cond ((rtl:locative-offset? locative)
+	   (if (rtl:locative-float-offset? locative)
+	       `(OFFSET ,(rtl:locative-offset-base locative)
+			,(back-end:+ (rtl:locative-offset-offset locative)
+				     float-offset)
+			FLOAT)
+	       (default)))
+	  (else
+	   (default)))))
+
+(define (rtl:locative-object-offset locative offset)
   (cond ((back-end:= offset 0) locative)
 	((rtl:locative-offset? locative)
-	 (if (rtl:locative-byte-offset? locative)
-	     (error "Can't add object-offset to byte-offset"
+	 (if (not (rtl:locative-object-offset? locative))
+	     (error "Can't add object offset to non-object offset"
 		    locative offset)
 	     `(OFFSET ,(rtl:locative-offset-base locative)
 		      ,(back-end:+ (rtl:locative-offset-offset locative)
@@ -129,19 +173,31 @@ MIT in each case. |#
 		      OBJECT)))
 	(else
 	 `(OFFSET ,locative ,offset OBJECT))))
+
+(define (rtl:locative-index? locative)
+  (and (pair? locative) (eq? (car locative) 'INDEX)))
 
-(define (rtl:locative-byte-offset locative byte-offset)
-  (cond ((back-end:= byte-offset 0) locative)
-	((rtl:locative-offset? locative)
-	 `(OFFSET ,(rtl:locative-offset-base locative)
-		  ,(back-end:+ byte-offset
-			       (if (rtl:locative-byte-offset? locative)
-				   (rtl:locative-offset-offset locative)
-				   (back-end:* (rtl:locative-offset-offset locative)
-					       address-units-per-object)))
-		  BYTE))
-	(else
-	 `(OFFSET ,locative ,byte-offset BYTE))))
+(define-integrable rtl:locative-index-base cadr)
+(define-integrable rtl:locative-index-offset caddr)
+(define-integrable rtl:locative-index-granularity cadddr)
+
+(define-integrable (rtl:locative-byte-index? locative)
+  (eq? (rtl:locative-index-granularity locative) 'BYTE))
+
+(define-integrable (rtl:locative-float-index? locative)
+  (eq? (rtl:locative-index-granularity locative) 'FLOAT))
+
+(define-integrable (rtl:locative-object-index? locative)
+  (eq? (rtl:locative-index-granularity locative) 'OBJECT))
+
+(define (rtl:locative-byte-index locative offset)
+  `(INDEX ,locative ,offset BYTE))
+
+(define (rtl:locative-float-index locative offset)
+  `(INDEX ,locative ,offset FLOAT))
+
+(define (rtl:locative-object-index locative offset)
+  `(INDEX ,locative ,offset OBJECT))
 
 ;;; Expressions that are used in the intermediate form.
 
