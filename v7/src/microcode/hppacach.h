@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hppacach.h,v 1.3 1990/12/01 00:21:04 cph Rel $
+$Id: hppacach.h,v 1.4 1993/02/06 05:34:46 gjr Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,12 +38,15 @@ MIT in each case. */
 #define I_CACHE		1
 #define D_CACHE		2
 
+#include <fcntl.h>
+
+#ifdef _HPUX
 #include <sys/utsname.h>
 #include <sys/types.h>
 #include <sys/param.h>
 #include <machine/cpu.h>
 #include <machine/pdc_rqsts.h>
-#include <fcntl.h>
+#endif /* _HPUX */
 
 /* PDC_CACHE (processor dependent code cache information call)
    return data destructuring.
@@ -117,9 +120,26 @@ struct pdc_cache_result
   struct tlb_info DT_info;
 };
 
+#ifdef _HPUX
+
+#  define HARDWARE_SIZE sizeof (utsname.machine)
+
+#else /* not _HPUX */
+/* Presumably BSD */
+
+#  define HARDWARE_SIZE 9
+
+struct pdc_cache_rtn_block
+{
+  struct pdc_cache_result goodies;
+  int filler[2];
+};
+
+#endif /* _HPUX */
+
 struct pdc_cache_dump
 {
-  char hardware[sizeof (utsname.machine)];
+  char hardware[HARDWARE_SIZE];
   struct pdc_cache_rtn_block cache_format;
 };
 

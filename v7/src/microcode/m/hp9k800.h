@@ -1,9 +1,9 @@
 /* -*-C-*-
-   Machine file for HP9000 series  600, 700, 800.
+   Machine file for HP9000 series 600, 700, 800.
 
-$Id: hp9k800.h,v 1.10 1992/11/18 15:30:56 gjr Exp $
+$Id: hp9k800.h,v 1.11 1993/02/06 05:36:04 gjr Exp $
 
-Copyright (c) 1989-1992 Massachusetts Institute of Technology
+Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,6 +37,8 @@ MIT in each case. */
 #define PROC_TYPE PROC_TYPE_HPPA
 #endif /* PROC_TYPE */
 
+#if defined(hpux) || defined(__hpux)
+
 #if defined(HAVE_STARBASE_GRAPHICS) && !defined(STARBASE_DEVICE_DRIVERS)
 /* Add additional Starbase device drivers here. */
 #  define STARBASE_DEVICE_DRIVERS -ldd98550
@@ -55,3 +57,16 @@ MIT in each case. */
 #  define C_SWITCH_MACHINE
 #  define M4_SWITCH_MACHINE -DTYPE_CODE_LENGTH=6 -DGCC
 #endif
+
+#else /* not hpux or __hpux */
+
+/* Utah BSD */
+
+#ifndef ALTERNATE_CC
+#  define C_SWITCH_MACHINE -Dhp9000s800
+#  define M4_SWITCH_MACHINE -P "define(TYPE_CODE_LENGTH,6)" -P "define(HPC,1)"
+#else
+#  define M4_SWITCH_MACHINE -P "define(TYPE_CODE_LENGTH,6)" -P "define(GCC,1)"
+#endif
+
+#endif /* hpux or __hpux */
