@@ -1,0 +1,77 @@
+#| -*-Scheme-*-
+
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/cref.pkg,v 1.1 1988/06/13 12:38:35 cph Exp $
+
+Copyright (c) 1988 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. |#
+
+;;;; CREF Packaging
+
+(global-definitions "../runtime/runtim")
+
+(define-package (cross-reference)
+  (files "mset"
+	 "btree"
+	 "object"
+	 "toplev")
+  (parent ())
+  (export ()
+	  cref/generate-all
+	  cref/generate-constructors
+	  cref/generate-cref
+	  cref/generate-trivial-constructor))
+
+(define-package (cross-reference analyze-file)
+  (files "anfile")
+  (parent (cross-reference))
+  (export (cross-reference)
+	  analyze/directory
+	  read-analyzed-file))
+
+(define-package (cross-reference constructor)
+  (files "conpkg")
+  (parent (cross-reference))
+  (export (cross-reference)
+	  construct-constructor
+	  construct-loader))
+
+(define-package (cross-reference formatter)
+  (files "forpkg")
+  (parent (cross-reference))
+  (export (cross-reference)
+	  format-packages))
+
+(define-package (cross-reference reader)
+  (files "redpkg")
+  (parent (cross-reference))
+  (export (cross-reference)
+	  read-file-analyses!
+	  read-package-model
+	  resolve-references!))
