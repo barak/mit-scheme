@@ -1,4 +1,4 @@
-# $Id: Makefile.in.in,v 1.19 2002/01/29 20:32:34 cph Exp $
+# $Id: Makefile.in.in,v 1.20 2002/01/29 20:43:14 cph Exp $
 #
 # Copyright (c) 2000-2002 Massachusetts Institute of Technology
 #
@@ -80,8 +80,6 @@ CCLD = $(CC)
 LINK = $(CCLD) $(CFLAGS) $(LDFLAGS) -o $@
 EXPAND = $(M4) $(M4_FLAGS)
 ASSEMBLE = $(AS) $(AS_FLAGS)
-
-SCHEME_COMPILER = scheme -compiler
 
 # **** Configured files ****
 
@@ -230,7 +228,7 @@ psbtobin: $(psbtobin_OBJECTS) $(psbtobin_DEPENDENCIES)
 	$(LINK) $(psbtobin_LDFLAGS) $(psbtobin_OBJECTS) $(psbtobin_LIBS)
 
 utabmd.bin: utabmd.scm
-	$(SCHEME_COMPILER) -eval '(sf "utabmd")' < /dev/null
+	./utabmd.sh
 
 prbfish.so: prbfish.o
 	$(LINK_MODULE) $^ $(PRBFISH_LIBS) $(MODULE_LIBS)
