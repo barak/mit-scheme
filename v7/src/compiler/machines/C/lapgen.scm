@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.3 1993/06/10 18:05:38 gjr Exp $
+$Id: lapgen.scm,v 1.4 1993/06/10 18:07:39 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -545,7 +545,7 @@ MIT in each case. |#
 	(else
 	 (error "unable to determine register type" reg))))
 
-(define (register-types-compatible? x y)
+(define (register-types-compatible? type1 type2)
   (boolean=? (eq? type1 'FLOAT) (eq? type2 'FLOAT)))
 
 (define (register-reference num)
