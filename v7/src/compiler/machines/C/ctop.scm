@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ctop.scm,v 1.10 1993/11/17 05:22:03 gjr Exp $
+$Id: ctop.scm,v 1.11 1993/11/23 19:30:20 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -131,7 +131,7 @@ MIT in each case. |#
      ("-b"))
     ("OSF"
      "so"
-     ("-c" "-std1")
+     ("-c" "-std1" "-O")
      ("-shared" "-expect_unresolved" "'*'"))
     ("SunOS"
      "so"
