@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/vax.h,v 1.3 1992/01/15 17:19:21 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/vax.h,v 1.4 1992/02/12 15:26:30 jinx Exp $
 
-Copyright (c) 1991-92 Massachusetts Institute of Technology
+Copyright (c) 1991-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -57,9 +57,9 @@ MIT in each case. */
 #define COMPILER_PROCESSOR_TYPE			COMPILER_VAX_TYPE
 
 /* Size (in long words) of the contents of a floating point register if
-   different from a double.
+   different from a double.  Default is fine.
 
-#define COMPILER_TEMP_SIZE			2
+   #define COMPILER_TEMP_SIZE			2
 
 */
 
@@ -337,13 +337,10 @@ DEFUN_VOID (vax_reset_hook)
    register, jump to "scheme_to_interface" and leave the address of
    the storage following the code in a standard location.
 
-   TRAMPOLINE_BLOCK_TO_ENTRY is the number of longwords from the start
-   of a trampoline to the first instruction.  Note that this aligns
-   the first instruction to a longword boundary.
-
-   WARNING: make_trampoline in cmpint.c will need to be changed if
-   machine instructions must be aligned more strictly than just on
-   longword boundaries (e.g. quad word alignment for instructions).
+   TRAMPOLINE_ENTRY_POINT returns the address of the entry point of a
+   trampoline when given the address of the word containing
+   the manifest vector header.  According to the above picture,
+   it would add 12 bytes to its argument.
 
    TRAMPOLINE_STORAGE takes the address of the first instruction in a
    trampoline (not the start of the trampoline block) and returns the
@@ -355,10 +352,14 @@ DEFUN_VOID (vax_reset_hook)
 */
 
 #define TRAMPOLINE_ENTRY_SIZE		3
-#define TRAMPOLINE_BLOCK_TO_ENTRY	3
-#define TRAMPOLINE_STORAGE(tramp)					\
-((((SCHEME_OBJECT *) tramp) - TRAMPOLINE_BLOCK_TO_ENTRY) +		\
- (2 + TRAMPOLINE_ENTRY_SIZE)) 
+#define TRAMPOLINE_BLOCK_TO_ENTRY	3 /* longwords from MNV to MOVL */
+
+#define TRAMPOLINE_ENTRY_POINT(tramp_block)				\
+  (((SCHEME_OBJECT *) (tramp_block)) + TRAMPOLINE_BLOCK_TO_ENTRY)
+
+#define TRAMPOLINE_STORAGE(tramp_entry)					\
+  ((((SCHEME_OBJECT *) tramp_entry) - TRAMPOLINE_BLOCK_TO_ENTRY) +	\
+   (2 + TRAMPOLINE_ENTRY_SIZE)) 
 
 #define STORE_TRAMPOLINE_ENTRY(entry_address, code)			\
 {									\
