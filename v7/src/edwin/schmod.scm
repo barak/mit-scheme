@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: schmod.scm,v 1.30 1992/11/18 21:55:34 cph Exp $
+;;;	$Id: schmod.scm,v 1.31 1993/04/01 23:33:28 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -113,6 +113,7 @@ The following commands evaluate Scheme expressions:
 (define-key 'scheme #\rubout 'backward-delete-char-untabify)
 (define-key 'scheme #\tab 'lisp-indent-line)
 (define-key 'scheme #\) 'lisp-insert-paren)
+(define-key 'scheme #\m-A 'show-parameter-list)
 (define-key 'scheme #\m-g 'undefined)
 (define-key 'scheme #\m-o 'eval-current-buffer)
 (define-key 'scheme #\m-q 'undefined)
@@ -300,3 +301,42 @@ With prefix arg, the evaluation environment is ignored and all symbols
 are considered for completion."
   "P"
   (lambda (all-symbols?) (scheme-complete-symbol (not all-symbols?))))
+
+(define-command show-parameter-list
+  "Show the parameter list of the \"current\" procedure.
+The \"current\" procedure is the expression at the head of the enclosing list."
+  "d"
+  (lambda (point)
+    (let ((start
+	   (forward-down-list (backward-up-list point 1 'ERROR) 1 'ERROR))
+	  (buffer (mark-buffer point)))
+      (let ((end (forward-sexp start 1 'ERROR)))
+	(let ((procedure
+	       (let ((environment (evaluation-environment buffer)))
+		 (extended-scode-eval
+		  (syntax (with-input-from-region (make-region start end) read)
+			  (evaluation-syntax-table buffer environment))
+		  environment))))
+	  (if (procedure? procedure)
+	      (message (procedure-argl procedure))
+	      (editor-error "Expression does not evaluate to a procedure: "
+			    (extract-string start end))))))))
+
+(define (procedure-argl proc)
+  "Returns the arg list of PROC.
+Grumbles if PROC is an undocumented primitive."
+  (if (primitive-procedure? proc)
+      (let ((doc-string (primitive-procedure-documentation proc)))
+	(if doc-string
+	    (let ((newline (string-find-next-char doc-string #\newline)))
+	      (if newline
+		  (string-head doc-string newline)
+		  doc-string))
+	    (string-append (write-to-string proc)
+			   " has no documentation string.")))
+      (let ((code (procedure-lambda proc)))
+	(lambda-components* code
+	  (lambda (name required optional rest body)
+	    (append required
+		    (if (null? optional) '() `(#!OPTIONAL ,@optional))
+		    (or rest '())))))))
