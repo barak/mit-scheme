@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ymkfile,v 1.63 1993/03/10 17:57:08 cph Exp $
+$Id: ymkfile,v 1.64 1993/03/17 01:53:18 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -571,10 +571,10 @@ Ppband : Ppband.o
 
 install: scheme bchscheme
 	-mv -f $(BINDIR)/scheme $(BINDIR)/scheme.busy
-	rm -f $(BINDIR)/scheme.busy
+	-rm -f $(BINDIR)/scheme.busy
 	$(INSTALL) scheme $(BINDIR)/scheme
 	-mv -f $(BINDIR)/bchscheme $(BINDIR)/bchscheme.busy
-	rm -f $(BINDIR)/bchscheme.busy
+	-rm -f $(BINDIR)/bchscheme.busy
 	$(INSTALL) bchscheme $(BINDIR)/bchscheme
 
 /* Primitive table files */
