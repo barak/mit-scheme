@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.36 1996/04/24 01:49:19 cph Exp $
+;;;	$Id: debug.scm,v 1.37 1996/04/24 18:35:06 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-96 Massachusetts Institute of Technology
 ;;;
@@ -900,7 +900,7 @@ Set this variable to #F to disable this abbreviation."
   boolean?)
 
 (define-variable debugger-start-new-frame?
-  "#T means start a new frame whenever the debugger is invoked.
+  "#T means create a new frame whenever the debugger is invoked.
 #F means continue in same frame.
 'ASK means ask user."
   #T
