@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.18 1992/01/08 15:24:29 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.19 1992/01/08 16:11:28 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -48,7 +48,7 @@
 
 (define-variable rmailsum-rcs-header
   "The RCS header of the rmailsum.scm file."
-  "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.18 1992/01/08 15:24:29 bal Exp $"
+  "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.19 1992/01/08 16:11:28 bal Exp $"
   string?)
 
 (define-variable-per-buffer rmail-buffer
@@ -624,18 +624,26 @@ shown in the RMAIL buffer, warp to the appropriate message."
 	(set-buffer-read-only! (current-buffer))))))
 
 (define-command rmail-summary-delete-message-forward
-  "Delete this message and move to next undeleted message."
-  '()
-  (lambda ()
-    ((ref-command rmail-summary-delete-message))
-    ((ref-command rmail-summary-next-undeleted-message) 1)))
+  "Delete ARG undeleted messages and move to next undeleted message."
+  "p"
+  (lambda (arg)
+    (let loop ((count arg))
+      (if (> count 0)
+	  (begin
+	    ((ref-command rmail-summary-delete-message))
+	    ((ref-command rmail-summary-next-undeleted-message) 1)
+	    (loop (-1+ count)))))))
 
 (define-command rmail-summary-delete-message-backward
-  "Delete this message and move to previous undeleted message."
-  '()
-  (lambda ()
-    ((ref-command rmail-summary-delete-message))
-    ((ref-command rmail-summary-previous-undeleted-message) 1)))
+  "Delete ARG undeleted messages and move to previous undeleted message."
+  "p"
+  (lambda (arg)
+    (let loop ((count arg))
+      (if (> count 0)
+	  (begin
+	    ((ref-command rmail-summary-delete-message))
+	    ((ref-command rmail-summary-previous-undeleted-message) 1)
+	    (loop (-1+ count)))))))
   
 (define-command rmail-summary-undelete-message
   "Undelete this message and stay here."
@@ -655,34 +663,40 @@ shown in the RMAIL buffer, warp to the appropriate message."
 	  (set-buffer-read-only! (current-buffer)))))))
 
 (define-command rmail-summary-undelete-message-backward
-  "Search backwards from current message for first deleted message,
-and undelete it."
-  '()
-  (lambda ()
-    (let ((the-mark
-	   (re-search-backward "^....D"
-			       (line-end (current-point) 0)
-			       (buffer-start (current-buffer)))))
-      (if the-mark
-	  (begin
-	    (set-current-point! (line-start the-mark 0))
-	    (rmail-summary-goto-message-current-line)
-	    ((ref-command rmail-summary-undelete-message)))))))
+  "Search backwards from current message for first ARG deleted
+messages, and undelete them."
+  "p"
+  (lambda (arg)
+    (let loop ((count arg))
+      (if (> count 0)
+	  (let ((the-mark
+		 (re-search-backward "^....D"
+				     (line-end (current-point) 0)
+				     (buffer-start (current-buffer)))))
+	    (if the-mark
+		(begin
+		  (set-current-point! (line-start the-mark 0))
+		  (rmail-summary-goto-message-current-line)
+		  ((ref-command rmail-summary-undelete-message))))
+	    (loop (-1+ count)))))))
 
 (define-command rmail-summary-undelete-message-forward
-  "Search forward from current message for first deleted message,
-and undelete it."
-  '()
-  (lambda ()
-    (let ((the-mark
-	   (re-search-forward "^....D"
-			      (line-start (current-point) 0)
-			      (buffer-end (current-buffer)))))
-      (if the-mark
-	  (begin
-	    (set-current-point! (line-start the-mark 0))
-	    (rmail-summary-goto-message-current-line)
-	    ((ref-command rmail-summary-undelete-message)))))))
+  "Search forward from current message for first ARG deleted 
+messages, and undelete them."
+  "p"
+  (lambda (arg)
+    (let loop ((count arg))
+      (if (> count 0)
+	  (let ((the-mark
+		 (re-search-forward "^....D"
+				    (line-start (current-point) 0)
+				    (buffer-end (current-buffer)))))
+	    (if the-mark
+		(begin
+		  (set-current-point! (line-start the-mark 0))
+		  (rmail-summary-goto-message-current-line)
+		  ((ref-command rmail-summary-undelete-message))))
+	    (loop (-1+ count)))))))
 
 (define-command rmail-summary-exit
   "Exit RMAIL Summary mode, remaining within RMAIL."
