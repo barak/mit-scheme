@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.10 1988/06/14 08:48:01 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.11 1988/08/29 22:46:42 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -42,10 +42,13 @@ MIT in each case. |#
 (define-integrable scheme-object-width 32)
 (define-integrable scheme-datum-width 24)
 (define-integrable scheme-type-width 8)
-(define maximum-unsigned-fixnum
-  (expt 2 scheme-datum-width))
-(define maximum-positive-fixnum
-  (-1+ (quotient maximum-unsigned-fixnum 2)))
+
+(let-syntax ((fold
+	      (macro (expression)
+		(eval expression system-global-environment))))
+  (define-integrable unsigned-fixnum/upper-limit (fold (expt 2 24)))
+  (define-integrable signed-fixnum/upper-limit (fold (expt 2 23)))
+  (define-integrable signed-fixnum/lower-limit (fold (- (expt 2 23)))))
 
 (define-integrable (stack->memory-offset offset)
   offset)
@@ -83,78 +86,13 @@ MIT in each case. |#
 (define (rtl:interpreter-register->offset locative)
   (or (rtl:interpreter-register? locative)
       (error "Unknown register type" locative)))
-
-(define (rtl:expression-cost expression)
-  ;; Returns an estimate of the cost of evaluating the expression.
-  ;; For simplicity, we try to estimate the actual number of cycles
-  ;; that a typical code sequence would produce.
-  (case (rtl:expression-type expression)
-    ((ASSIGNMENT-CACHE VARIABLE-CACHE) 16) ;move.l d(pc),reg
-    ((CONS-POINTER)
-     ;; Best case = 12 cycles, worst =  44
-     ;; move.l reg,d(reg) = 16
-     ;; move.b reg,d(reg) = 12
-     ;; move.l d(reg),reg = 16
-     (+ 30
-	(rtl:expression-cost (rtl:cons-pointer-type expression))
-	(rtl:expression-cost (rtl:cons-pointer-datum expression))))
-    ((CONSTANT)
-     (let ((value (cadr expression)))
-       (cond ((false? value) 4)		;clr.l reg
-	     ((or (eq? value true)
-		  (char? value)
-		  (and (integer? value)
-		       (<= -#x80000000 value #x7FFFFFFF)))
-	      12)			;move.l #...,reg
-	     (else 16))))		;move.l d(pc),reg
-    ;; lea d(pc),reg       =  8
-    ;; move.l reg,d(reg)   = 16
-    ;; move.b #type,d(reg) = 16
-    ;; move.l d(reg),reg   = 16
-    ((ENTRY:CONTINUATION ENTRY:PROCEDURE) 56)
-    ((OBJECT->ADDRESS OBJECT->DATUM) 6)	;and.l d7,reg
-    ;; move.l reg,d(reg) = 16
-    ;; move.b d(reg),reg = 12
-    ((OBJECT->TYPE) 28)
-    ;; lsl.l #8,reg = 4
-    ;; asr.l #8,reg = 6
-    ((OBJECT->FIXNUM) 10)
-    ;; and.l d7,reg         = 3
-    ;; or.1  #x01AFFFFF,reg = 8
-    ((FIXNUM->OBJECT) 11)		
-    ((OFFSET) 16)			;move.l d(reg),reg
-    ((OFFSET-ADDRESS) 8)		;lea d(an),reg
-    ((POST-INCREMENT) 12)		;move.l (reg)+,reg
-    ((PRE-INCREMENT) 14)		;move.l -(reg),reg
-    ((REGISTER) 4)			;move.l reg,reg
-    ((UNASSIGNED) 12)			;move.l #data,reg
-    ((FIXNUM-2-ARGS)
-     (case (rtl:fixnum-2-args-operator expression)
-       ;; move.l reg,reg = 3
-       ;; add.l  reg,reg = 3
-       ((PLUS-FIXNUM) 6)
-       ;; move.l reg,reg = 3
-       ;; muls.l reg,reg = 49
-       ((MULTIPLY-FIXNUM) 52)
-       ;; move.l reg,reg = 3
-       ;; sub.l  reg,reg = 3
-       ((MINUS-FIXNUM) 6)
-       (else
-	(error "RTL:EXPRESSION-COST: unknown fixnum operator" expression))))
-    ((FIXNUM-1-ARG)
-     (case (rtl:fixnum-1-arg-operator expression)
-       ;; move.l reg,reg = 3
-       ;; addq.l #1,reg = 3
-       ((ONE-PLUS-FIXNUM) 6)
-       ;; move.l reg,reg = 3
-       ;; subq.l #1,reg = 3
-       ((MINUS-ONE-PLUS-FIXNUM) 6)
-       (else
-	(error "RTL:EXPRESSION-COST: unknown fixnum operator" expression))))
-    ;; The following are preliminary. Check with Jinx (mhwu)
-    ((CHAR->ASCII) 4)
-    ((BYTE-OFFSET) 12)
-    (else (error "Unknown expression type" expression))))
+
+(define (rtl:constant-cost constant)
+  ;; Magic numbers.  Ask RMS where they came from.
+  (if (and (object-type? 0 constant)
+	   (zero? (object-datum constant)))
+      0
+      3))
 
 (define-integrable d0 0)
 (define-integrable d1 1)
@@ -186,11 +124,8 @@ MIT in each case. |#
 (define available-machine-registers
   (list d0 d1 d2 d3 d4 d5 d6 a0 a1 a2 a3))
 
-(define initial-address-registers
-  (list a4 a5 a6 a7))
-
-(define-integrable (pseudo-register=? x y)
-  (= (register-renumber x) (register-renumber y)))
+(define initial-non-object-registers
+  (list d7 a4 a5 a6 a7))
 
 (define register-type
   (let ((types (make-vector 16)))
@@ -233,6 +168,11 @@ MIT in each case. |#
 
 (define-integrable (interpreter-register:unbound?)
   (rtl:make-machine-register d0))
+
+(define (interpreter-value-register? expression)
+  (and (rtl:offset? expression)
+       (interpreter-regs-pointer? (rtl:offset-register expression))
+       (= 2 (rtl:offset-number expression))))
 
 (define-integrable (interpreter-free-pointer)
   (rtl:make-machine-register regnum:free-pointer))
