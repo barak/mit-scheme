@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Id: hppa.m4,v 1.30 1993/08/03 08:28:43 gjr Exp $
+;;;	$Id: hppa.m4,v 1.31 1993/08/31 05:51:33 gjr Exp $
 ;;;
 ;;;	Copyright (c) 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -974,7 +974,7 @@ cross_segment_call
 	ADDIL	L'Primitive_Procedure_Table-$global$,27
 	LDW	R'Primitive_Procedure_Table-$global$(1),22
 	LDWX,S	24(0,22),22
-	B	$$dyncall			; ignore the return address
+	B,N	$$dyncall			; ignore the return address
 
 vector_cons
 	LDW	0(0,22),26			; length as fixnum
