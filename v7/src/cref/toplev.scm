@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 1.22 2004/12/13 03:25:59 cph Exp $
+$Id: toplev.scm,v 1.23 2004/12/13 03:26:51 cph Exp $
 
 Copyright 1988,1989,1991,1993,1995,1996 Massachusetts Institute of Technology
 Copyright 1998,2000,2001,2002,2003 Massachusetts Institute of Technology
@@ -30,7 +30,7 @@ USA.
 (declare (usual-integrations))
 
 (define (generate/common kernel)
-  (lambda (filename #!optional os-type)
+  (lambda (filename)
     (let ((pathname (merge-pathnames filename)))
       (for-each (lambda (os-type)
 		  (let ((pmodel (read-package-model pathname os-type)))
