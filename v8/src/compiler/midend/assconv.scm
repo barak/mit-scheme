@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: assconv.scm,v 1.1 1994/11/19 02:04:29 adams Exp $
+$Id: assconv.scm,v 1.2 1995/01/19 04:58:18 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -40,6 +40,53 @@ MIT in each case. |#
 (define (assconv/top-level program)
   (assconv/expr '() program))
 
+;;(define-macro (define-assignment-converter keyword bindings . body)
+;;  (let ((proc-name (symbol-append 'ASSCONV/ keyword)))
+;;    (call-with-values
+;;     (lambda () (%matchup (cdr bindings) '(handler env) '(cdr form)))
+;;     (lambda (names code)
+;;       `(define ,proc-name
+;;	  (let ((handler (lambda ,(cons (car bindings) names) ,@body)))
+;;	    (named-lambda (,proc-name env form)
+;;	      (assconv/remember ,code form))))))))
+
+;;______________________________________________________________________________
+;;
+;; This version of assconv is an early attempt at getting a data
+;; representation transformation into the debugging info.
+;;
+;;  Comments:
+;;
+;;  . Nothing special is done for LAMBDA & LET, so the environment used for
+;;    these forms is missing the new bindings.  Does this matter?  It
+;;    certainly would matter if assconv/get-dbg-info edited the blocks
+;;    to remove bindings that were unavailable, but this allows us to
+;;    distinguish the occurences:
+;;
+;;    (lambda (n-17) [1]
+;;      (let ((n-17-cell  (make-cell n-17 'n)))
+;;        [2]...[3]...))
+;;
+;;    At [1] the user variable N is the alpha renamed parameter N-17.
+;;    At [2] the user variable is available also as (CELL-REF N-17-CELL)
+;;
+;;    If LAMBDA was done `right' something would have to distinguish these
+;;    two cases.
+;;
+;;  . Note that there are two access paths for N, but we keep only one.
+;;    Lest us assume also that at [3] the CELL-REF version is available.
+;;    How do we know which one to keep at [2]?  Perhaps the right
+;;    thing is to generate all of the access paths and discard those
+;;    which use information which is not available.  Discarding
+;;    infeasible access paths would leave just N-17 at [1], both at
+;;    [2] and the just (CELL-REF N-17-CELL) at [3].
+;;
+;;    The filtering might be done frequently to avoid a great many
+;;    descriptions, or rarely.
+
+
+variables
+
 (define-macro (define-assignment-converter keyword bindings . body)
   (let ((proc-name (symbol-append 'ASSCONV/ keyword)))
     (call-with-values
@@ -48,7 +95,11 @@ MIT in each case. |#
        `(define ,proc-name
 	  (let ((handler (lambda ,(cons (car bindings) names) ,@body)))
 	    (named-lambda (,proc-name env form)
-	      (assconv/remember ,code form))))))))
+	      (let ((info (assconv/get-dbg-info env form)))
+		(let ((code ,code))
+		  (if info
+		      (code-rewrite/remember* code info))
+		  code)))))))))
 
 ;;;; Variable manipulation forms
 
@@ -172,6 +223,39 @@ MIT in each case. |#
 
 (define (assconv/new-cell-name prefix)
   (new-variable (string-append (symbol-name prefix) "-cell")))
+
+
+(define (assconv/get-dbg-info env expr)
+  (cond ((code-rewrite/original-form/previous expr)
+	 => (lambda (dbg-info)
+	      (assconv/has-dbg-info env expr dbg-info)))
+	(else #F)))
+
+(define (assconv/has-dbg-info env expr dbg-info)
+  expr
+  ;; Copy the dbg info, keeping dbg-references in the environment which
+  ;; will later be ocerwritten
+  (let* ((block     (new-dbg-form/block dbg-info))
+	 (block*    (new-dbg-block/copy-transforming
+		     (lambda (expr)
+		       (assconv/copy-dbg-kmp expr env))
+		     block))
+	 (dbg-info* (new-dbg-form/new-block dbg-info block*)))
+    dbg-info*))
+
+(define (assconv/copy-dbg-kmp expr env)
+  (form/copy-transforming
+   (lambda (form copy uninteresting)
+     copy
+     (cond ((and (LOOKUP/? form) (assconv/env-lookup env (lookup/name form)))
+	    => (lambda (binding)
+		 (let ((form*  `(LOOKUP ,(lookup/name form))))
+		   (set-assconv/binding/dbg-references!
+		    binding
+		    (cons form* (assconv/binding/dbg-references binding)))
+		   form*)))
+	   (else (uninteresting form))))
+   expr))
 
 ;;;; Utilities for variable manipulation forms
 
@@ -181,12 +265,13 @@ MIT in each case. |#
   (name false read-only true)
   (cell-name false read-only false)
   (references '() read-only false)
-  (assignments '() read-only false))
+  (assignments '() read-only false)
+  (dbg-references '() read-only false))
 
 (define (assconv/binding-body env names body)
   ;; (values shadowed-names body*)
   (let* ((frame (lmap assconv/binding/make names))
-	 (env* (cons frame env))
+	 (env*  (cons frame env))
 	 (body* (assconv/expr env* body))
 	 (assigned
 	  (list-transform-positive frame
@@ -259,13 +344,13 @@ MIT in each case. |#
 	 (default))
 	((assconv/first-assignment body)
 	 => (lambda (ass)
-	      (let* ((name (cadr ass))
+	      (let* ((name (set!/name ass))
 		     (binding
 		      (list-search-positive bindings
 			(lambda (binding)
 			  (eq? (assconv/binding/name binding)
 			       name))))
-		     (value (caddr ass)))
+		     (value (set!/expr ass)))
 		(if (or (not binding)
 			(not (null? (cdr (assconv/binding/assignments
 					  binding))))
@@ -282,7 +367,7 @@ MIT in each case. |#
   `(,keyword
     ,(lmap (lambda (binding)
 	     (let* ((ass (car (assconv/binding/assignments binding)))
-		    (value (caddr ass)))
+		    (value (set!/expr ass)))
 	       (form/rewrite! ass `(QUOTE ,%unassigned))
 	       `(,(assconv/binding/name binding) ,value)))
 	   bindings)
@@ -295,7 +380,7 @@ MIT in each case. |#
 	 (QUOTE ,(assconv/binding/name binding))))
 
 (define (assconv/cell-assignment binding value)
-  (let ((cell-name (assconv/binding/cell-name binding))
+  (let ((cell-name  (assconv/binding/cell-name binding))
 	(value-name (assconv/binding/name binding)))
     #|
     ;; This returns the new value
@@ -333,8 +418,13 @@ MIT in each case. |#
     (for-each (lambda (ass)
 		(form/rewrite!
 		 ass
-		 (assconv/cell-assignment binding (caddr ass))))
-	      (assconv/binding/assignments binding))))
+		 (assconv/cell-assignment binding (set!/expr ass))))
+	      (assconv/binding/assignments binding))
+    (for-each (lambda (ref)
+		(form/rewrite!
+		 ref
+		 (assconv/cell-reference binding)))
+	      (assconv/binding/dbg-references binding))))
 
 (define (assconv/env-lookup env name)
   (let spine-loop ((env env))
@@ -348,13 +438,12 @@ MIT in each case. |#
 		  (rib-loop (cdr rib))))))))
 
 (define (assconv/single-assignment/trivial? assignment-form)
-  (let ((name (second assignment-form))
-	(value (third assignment-form)))
-    (and (pair? value)
-	 (or (eq? (car value) 'QUOTE)
-	     (and (eq? (car value) 'LAMBDA)
-		  #| (not (memq name (form/free-vars value))) |#
-		     )))))
+  (let ((name  (set!/name assignment-form))
+	(value (set!/expr assignment-form)))
+    (or (QUOTE/? value)
+	(and (LAMBDA/? value)
+	     #| (not (memq name (form/free-vars value))) |#
+	     ))))
 
 (define (assconv/single-analyze ssa-candidates body)
   ;; (values let-like letrec-like)
@@ -373,35 +462,29 @@ MIT in each case. |#
 		(reverse
 		 (list-transform-positive bindings
 		   (lambda (binding)
-		     (eq? (car (caddr (car (assconv/binding/assignments
-					    binding))))
-			  'QUOTE))))
+		     (QUOTE/? (set!/expr (first (assconv/binding/assignments
+						 binding)))))))
 		(reverse
 		 (list-transform-positive bindings
 		   (lambda (binding)
-		     (eq? (car (caddr (car (assconv/binding/assignments
-					    binding))))
-			  'LAMBDA))))))))
+		     (LAMBDA/? (set!/expr (first (assconv/binding/assignments
+						  binding)))))))))))
 
 	(let loop ((bindings '())
-		   (actions (if (eq? (car body) 'BEGIN)
-				(cdr body)
-				(list body))))
+		   (actions  (if (BEGIN/? body)
+				 (begin/exprs body)
+				 (list body))))
 	  (cond ((null? actions)
 		 (finish bindings))
 		((assq (car actions) single-assignments)
 		 => (lambda (single-assignment)
 		      (loop (cons (cdr single-assignment) bindings)
 			    (cdr actions))))
-		((not (pair? (car actions)))
-		 (finish bindings))
+		((DECLARE/? (car actions))
+		 (loop bindings (cdr actions)))
+		((SET!/? (car actions))
+		 (if (assconv/single-assignment/trivial? (car actions))
+		     (loop bindings (cdr actions))
+		     (finish bindings)))
 		(else
-		 (case (caar actions)
-		   ((DECLARE)
-		    (loop bindings (cdr actions)))
-		   ((SET!)
-		    (if (assconv/single-assignment/trivial? (car actions))
-			(loop bindings (cdr actions))
-			(finish bindings)))
-		   (else
-		    (finish bindings)))))))))
+		 (finish bindings)))))))
