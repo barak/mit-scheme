@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cpress.scm,v 1.8 1997/02/21 06:12:33 cph Exp $
+$Id: cpress.scm,v 1.9 1997/02/21 06:18:45 cph Exp $
 
 Copyright (c) 1992-97 Massachusetts Institute of Technology
 
@@ -513,7 +513,8 @@ MIT in each case. |#
 	;; couldn't be sure that any nodes we were holding were valid
 	;; across a call to READ-BYTE.
 	(let ((nb
-	       (input-port/read-substring input-port (bb-vector bb) end end*)))
+	       (input-port/read-substring! input-port
+					   (bb-vector bb) end end*)))
 	  (cond ((not nb)
 		 (error "Input port must be in blocking mode:" input-port)
 		 false)
