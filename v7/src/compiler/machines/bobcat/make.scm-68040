@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.26 1987/06/17 02:29:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.27 1987/06/17 19:42:27 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -46,11 +46,11 @@ MIT in each case. |#
     (make-environment
       (define :name "Liar (Bobcat 68020)")
       (define :version 1)
-      (define :modification 26)
+      (define :modification 27)
       (define :files)
 
 ;      (parse-rcs-header
-;       "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.26 1987/06/17 02:29:11 cph Exp $"
+;       "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.27 1987/06/17 19:42:27 cph Exp $"
 ;       (lambda (filename version date time zone author state)
 ;	 (set! :version (car version))
 ;	 (set! :modification (cadr version))))
@@ -84,7 +84,8 @@ MIT in each case. |#
 		 "base/dtype3.bin"
 		 "base/bblock.bin"	;Basic block datatype
 		 "base/dfg.bin"		;data flow graph
-		 "base/rtltyp.bin"	;RTL: type definitions
+		 "base/rtlty1.bin"	;RTL: type definitions
+		 "base/rtlty2.bin"
 		 "base/rtlexp.bin"	;RTL: expression operations
 		 "base/rtlcon.bin"	;RTL: complex constructors
 		 "base/rtlreg.bin"	;RTL: registers
