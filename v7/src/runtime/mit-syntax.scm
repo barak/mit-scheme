@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mit-syntax.scm,v 14.20 2004/01/06 06:22:28 cph Exp $
+$Id: mit-syntax.scm,v 14.21 2004/09/14 01:37:16 cph Exp $
 
 Copyright 1989,1990,1991,2001,2002,2003 Massachusetts Institute of Technology
 Copyright 2004 Massachusetts Institute of Technology
@@ -608,7 +608,7 @@ USA.
   (lambda (form rename compare)
     (capture-expansion-history
      (lambda (history)
-       (syntax-check '(KEYWORD EXPRESSION + (DATUM + EXPRESSION)) form history)
+       (syntax-check '(KEYWORD EXPRESSION + (DATUM * EXPRESSION)) form history)
        (call-with-syntax-error-procedure
 	(lambda (syntax-error)
 	  (letrec
