@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.14 2000/05/03 20:31:23 cph Exp $
+;;; $Id: imail-imap.scm,v 1.15 2000/05/04 17:30:29 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -242,8 +242,20 @@
 			       '(HEADER-FIELDS BODY FLAGS PROPERTIES
 					       UID LENGTH ENVELOPE))))
     (lambda (uid flags length envelope)
-      (constructor 'UNCACHED 'UNCACHED flags '()
-		   uid length envelope))))
+      (constructor 'UNCACHED 'UNCACHED (map imap-flag->imail-flag flags)
+		   '() uid length envelope))))
+
+(define (imap-flag->imail-flag flag)
+  (let ((s (symbol->string flag)))
+    (if (string-prefix? "\\" s)
+	(string-tail s 1)
+	s)))
+
+(define (imail-flag->imap-flag flag folder)
+  (intern
+   (if (flags-member? flag (imap-folder-allowed-flags folder))
+       (string-append "\\" flag)
+       flag)))
 
 (let ((demand-loader
        (lambda (generic slot-name item-name transform)
@@ -262,9 +274,8 @@
 	     (call-next-method message))))))
   (demand-loader message-header-fields 'HEADER-FIELDS 'RFC822.HEADER
 		 (lambda (string)
-		   (if (string-suffix? "\n\n" string)
-		       (string-head string (fix:- (string-length string) 1))
-		       string)))
+		   (lines->header-fields
+		    (except-last-pair! (string->lines string)))))
   (demand-loader message-body 'BODY 'RFC822.TEXT identity-procedure))
 
 (define-method set-message-flags! ((message <imap-message>) flags)
@@ -276,25 +287,29 @@
   (let ((v (imap-folder-messages folder))
 	(connection (imap-folder-connection folder)))
     (let ((v* (vector-grow v count #f)))
-      (fill-messages-vector connection v* (vector-length v))
+      (fill-messages-vector folder v* (vector-length v))
       (set-imap-folder-messages! folder v*)))
   (folder-modified! folder))
 
 (define (forget-imap-folder-messages! folder)
   (let ((v (imap-folder-messages folder)))
     (for-each-vector-element v detach-message)
-    (fill-messages-vector (imap-folder-connection folder) v 0))
+    (fill-messages-vector folder v 0))
   (folder-modified! folder))
 
-(define (fill-messages-vector connection messages start)
-  (let ((end (vector-length messages)))
+(define (fill-messages-vector folder messages start)
+  (let ((connection (imap-folder-connection folder))
+	(end (vector-length messages)))
     (do ((responses
 	  (imap:command:fetch-range connection 0 end
 				    '(UID FLAGS RFC822.SIZE ENVELOPE))
 	  (cdr responses))
 	 (index start (fix:+ index 1)))
 	((fix:= index end))
-      (vector-set! messages index (apply make-imap-message (car responses))))))
+      (let ((message (apply make-imap-message (car responses))))
+	(set-message-folder! message folder)
+	(set-message-index! message index)
+	(vector-set! messages index message)))))
 
 (define (remove-imap-folder-message folder index)
   (let ((v (imap-folder-messages folder)))
@@ -573,8 +588,9 @@
 	 #f)
 	((imap:response:flags? response)
 	 (let ((folder (selected-imap-folder connection)))
-	   (set-imap-folder-allowed-flags! folder
-					   (imap:response:flags response))
+	   (set-imap-folder-allowed-flags!
+	    folder
+	    (map imap-flag->imail-flag (imap:response:flags response)))
 	   (folder-modified! folder))
 	 #f)
 	((imap:response:recent? response)
@@ -609,7 +625,11 @@
 	 (let ((folder (selected-imap-folder connection)))
 	   (set-imap-folder-permanent-flags!
 	    folder
-	    (imap:response-code:permanentflags code))
+	    (map (lambda (flag)
+		   (if (eq? '\* flag)
+		       'USER-DEFINED
+		       (imap-flag->imail-flag flag)))
+		 (imap:response-code:permanentflags code)))
 	   (folder-modified! folder)))
 	((imap:response-code:alert? code)
 	 (imail-present-user-alert
