@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2conio.c,v 1.7 1995/04/28 07:04:54 cph Exp $
+$Id: os2conio.c,v 1.8 1995/05/07 05:54:12 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -133,7 +133,12 @@ console_thread (void * arg)
     {
       int c = (getch ());
       if (c == EOF)
-	break;
+	{
+	  msg_t * message = (OS2_make_readahead ());
+	  (SM_READAHEAD_SIZE (message)) = 0;
+	  send_readahead (message);
+	  break;
+	}
       {
 	int code = (OS2_keyboard_interrupt_handler (c));
 	if (code == '\0')
