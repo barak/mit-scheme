@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.39 2004/02/25 21:00:45 cph Exp $
+$Id: xml.pkg,v 1.40 2004/06/27 06:26:13 cph Exp $
 
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -235,6 +235,7 @@ USA.
 	  xml-external-id-id
 	  xml-external-id-iri
 	  xml-external-id?
+	  xml-misc-content?
 	  xml-parameter-!entity-name
 	  xml-parameter-!entity-value
 	  xml-parameter-!entity?

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.40 2003/11/03 21:32:31 cph Exp $
+$Id: xml-struct.scm,v 1.41 2004/06/27 06:26:33 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -104,13 +104,13 @@ USA.
 
 (define-xml-type document
   (declaration (lambda (object) (or (not object) (xml-declaration? object))))
-  (misc-1 misc-arg?)
+  (misc-1 xml-misc-content?)
   (dtd (lambda (object) (or (not object) (xml-dtd? object))))
-  (misc-2 misc-arg?)
+  (misc-2 xml-misc-content?)
   (root xml-element?)
-  (misc-3 misc-arg?))
+  (misc-3 xml-misc-content?))
 
-(define (misc-arg? object)
+(define (xml-misc-content? object)
   (list-of-type? object
     (lambda (object)
       (or (xml-comment? object)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.60 2004/05/26 15:26:29 cph Exp $
+$Id: xml-parser.scm,v 1.61 2004/06/27 06:26:26 cph Exp $
 
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -637,7 +637,7 @@ USA.
 		 (let ((entry (assq name *pi-handlers*)))
 		   (if entry
 		       (let ((content ((cadr entry) text)))
-			 (if (not (list-of-type? content valid-content?))
+			 (if (not (valid-content? content))
 			     (perror p
 				     "Illegal output from XML processor"
 				     name))
@@ -650,29 +650,22 @@ USA.
 		  (values "")))))))))
 
 (define parse-pi:misc
-  (pi-parser
-   (lambda (object)
-     (or (string? object)
-	 (xml-comment? object)
-	 (xml-processing-instructions? object)))))
+  (pi-parser xml-misc-content?))
 
 (define parse-pi:element
-  (pi-parser
-   (lambda (object)
-     (or (string? object)
-	 (xml-element? object)
-	 (xml-comment? object)
-	 (xml-processing-instructions? object)))))
+  (pi-parser xml-content?))
 
 (define parse-pi:internal-markup-decl
   (pi-parser
    (lambda (object)
-     (or (xml-!element? object)
-	 (xml-!attlist? object)
-	 (xml-!entity? object)
-	 (xml-!notation? object)
-	 (xml-comment? object)
-	 (xml-processing-instructions? object)))))
+     (list-of-type? object
+       (lambda (object)
+	 (or (xml-!element? object)
+	     (xml-!attlist? object)
+	     (xml-!entity? object)
+	     (xml-!notation? object)
+	     (xml-comment? object)
+	     (xml-processing-instructions? object)))))))
 
 ;;;; References
 
