@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 4.1 1987/12/30 06:53:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 4.2 1988/06/14 08:10:09 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -95,7 +95,7 @@ MIT in each case. |#
 	     (if (not (null? deletions))
 		 (delete-pseudo-registers map
 					  deletions
-					  (lambda (map aliases) map))
+					  (lambda (map aliases) aliases map))
 		 map)))))
     (if (not (register-map-clear? map))
 	(let ((sblock (make-sblock (clear-map-instructions map))))
@@ -150,7 +150,7 @@ MIT in each case. |#
 	       (regset->list
 		(regset-difference (bblock-live-at-exit previous)
 				   (bblock-live-at-entry bblock)))
-	       (lambda (map aliases) map)))))))
+	       (lambda (map aliases) aliases map)))))))
 
 (define *cgen-rules* '())
 (define *assign-rules* '())

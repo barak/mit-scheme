@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syerly.scm,v 1.4 1987/08/13 02:01:16 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syerly.scm,v 1.5 1988/06/14 08:10:51 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,7 +39,7 @@ MIT in each case. |#
 ;;;; Early instruction assembly
 
 (define lap:syntax-instruction-expander
-  ((access scode->scode-expander package/expansion package/scode-optimizer)
+  (scode->scode-expander
    (lambda (operands if-expanded if-not-expanded)
      (define (kernel opcode instruction rules)
        (early-pattern-lookup
@@ -58,7 +58,8 @@ MIT in each case. |#
 
      (let ((instruction (scode/unquasiquote (car operands))))
        (cond ((not (pair? instruction))
-	      (error "lap:syntax-instruction-expander: bad instruction" instruction))
+	      (error "LAP:SYNTAX-INSTRUCTION-EXPANDER: bad instruction"
+		     instruction))
 	     ((eq? (car instruction) 'UNQUOTE)
 	      (if-not-expanded))
 	     ((memq (car instruction)
@@ -72,7 +73,9 @@ MIT in each case. |#
 		(if (null? place)
 		    (error "lap:syntax-instruction-expander: unknown opcode"
 			   (car instruction))
-		    (kernel (car instruction) (cdr instruction) (cdr place))))))))))
+		    (kernel (car instruction)
+			    (cdr instruction)
+			    (cdr place))))))))))
 
 ;;;; Quasiquote unsyntaxing
 
@@ -112,25 +115,28 @@ MIT in each case. |#
 ;;; SYNTAX-EVALUATION and OPTIMIZE-GROUP expanders
 
 (define syntax-evaluation-expander
-  ((access scode->scode-expander package/expansion package/scode-optimizer)
-   (lambda (operands if-expanded if-not-expanded)
-     (if (and (scode/constant? (car operands))
-	      (scode/variable? (cadr operands))
-	      (not (lexical-unreferenceable?
-		    (access lap-syntax-package compiler-package)
-		    (scode/variable-name (cadr operands)))))
-	 (if-expanded
-	  (scode/make-constant
-	   ((lexical-reference (access lap-syntax-package compiler-package)
-			       (scode/variable-name (cadr operands)))
-	    (scode/constant-value (car operands)))))
-	 (if-not-expanded)))))
+  (scode->scode-expander
+   (let ((environment
+	  (package/environment (find-package '(COMPILER LAP-SYNTAXER)))))
+     (lambda (operands if-expanded if-not-expanded)
+       (if (and (scode/constant? (car operands))
+		(scode/variable? (cadr operands))
+		(not (lexical-unreferenceable?
+		      environment
+		      (scode/variable-name (cadr operands)))))
+	   (if-expanded
+	    (scode/make-constant
+	     ((lexical-reference environment
+				 (scode/variable-name (cadr operands)))
+	      (scode/constant-value (car operands)))))
+	   (if-not-expanded))))))
 
 ;; This relies on the fact that scode/constant-value = identity-procedure.
 
 (define optimize-group-expander
-  ((access scode->scode-expander package/expansion package/scode-optimizer)
+  (scode->scode-expander
    (lambda (operands if-expanded if-not-expanded)
+     if-not-expanded
      (optimize-group-internal
       operands
       (lambda (result make-group?)
@@ -153,7 +159,7 @@ MIT in each case. |#
 	   (eq? (scode/absolute-reference-name expr) name))))
 
 (define cons-syntax-expander
-  ((access scode->scode-expander package/expansion package/scode-optimizer)
+  (scode->scode-expander
    (lambda (operands if-expanded if-not-expanded)
      (define (default)
        (cond ((not (scode/constant? (cadr operands)))
@@ -220,8 +226,7 @@ MIT in each case. |#
 					    operator
 					    (list (car operands)
 						  rest))))))))))))
-    
-    ((access scode->scode-expander package/expansion package/scode-optimizer)
+    (scode->scode-expander
      (lambda (operands if-expanded if-not-expanded)
        (if (not (scode/combination? (car operands)))
 	   (if-not-expanded)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/linear.scm,v 4.1 1987/12/30 06:57:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/linear.scm,v 4.2 1988/06/14 08:10:23 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -36,9 +36,7 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(package (bblock-linearize-bits)
-
-(define-export (bblock-linearize-bits bblock)
+(define (bblock-linearize-bits bblock)
   (node-mark! bblock)
   (if (and (not (bblock-label bblock))
 	   (node-previous>1? bblock))
@@ -78,8 +76,6 @@ MIT in each case. |#
 		 ,@(if (node-marked? cn)
 		       (LAP)
 		       (bblock-linearize-bits cn)))))))
-
-)
 
 (define (map-lap procedure objects)
   (let loop ((objects objects))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bittop.scm,v 1.8 1988/02/19 20:57:27 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bittop.scm,v 1.9 1988/06/14 08:09:54 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -84,6 +84,7 @@ MIT in each case. |#
 	count
 	(with-values (lambda () (phase-2 vars))
 	 (lambda (any-modified? number-of-vars)
+	   number-of-vars
 	   (if any-modified?
 	       (begin
 		 (clear-symbol-table!)
@@ -118,14 +119,14 @@ MIT in each case. |#
     (let* ((ol (length objects))
 	   (v (make-vector (+ ol bl))))
       (write-bits! v scheme-object-width block)
-      (insert-objects! (primitive-set-type (ucode-type compiled-code-block) v)
+      (insert-objects! (object-new-type (ucode-type compiled-code-block) v)
 		       objects bl))))
 
 (define (insert-objects! v objects where)
   (cond ((not (null? objects))
 	 (system-vector-set! v where (cadar objects))
 	 (insert-objects! v (cdr objects) (1+ where)))
-	((not (= where (system-vector-size v)))
+	((not (= where (system-vector-length v)))
 	 (error "insert-objects!: object phase error" where))
 	(else v)))
 

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syntax.scm,v 1.20 1987/08/13 01:59:05 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syntax.scm,v 1.21 1988/06/14 08:11:04 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -59,7 +59,7 @@ MIT in each case. |#
 	       (set-cdr! tail directives2))
 	   directives1))))
 
-(define-export (lap:syntax-instruction instruction)
+(define (lap:syntax-instruction instruction)
   (if (memq (car instruction)
 	    '(EQUATE SCHEME-OBJECT ENTRY-POINT LABEL BLOCK-OFFSET))
       (directive->instruction-sequence instruction)
@@ -157,12 +157,15 @@ MIT in each case. |#
       (let ((chosen (choose-clause expression clauses)))
 	`(LET ((,name ,expression))
 	   (DECLARE (INTEGRATE ,name))
+	   ,name			;ignore if not referenced
 	   (CAR ,(car chosen))))
       `(SYNTAX-VARIABLE-WIDTH-EXPRESSION
 	,expression
 	(LIST
 	 ,@(map (LAMBDA (clause)
-		  `(CONS (LAMBDA (,name) ,(car clause))
+		  `(CONS (LAMBDA (,name)
+			   ,name	;ignore if not referenced
+			   ,(car clause))
 			 ',(cdr clause)))
 		clauses)))))
 

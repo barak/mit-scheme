@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/asmmac.scm,v 1.5 1987/08/13 01:59:58 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/asmmac.scm,v 1.6 1988/06/14 08:09:40 cph Rel $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -42,6 +42,7 @@ MIT in each case. |#
       ',keyword
       ,(compile-database rules
 	 (lambda (pattern actions)
+	   pattern
 	   (if (null? actions)
 	       (error "DEFINE-INSTRUCTION: Too few forms")
 	       (parse-instruction (car actions) (cdr actions) false)))))))
@@ -57,8 +58,6 @@ MIT in each case. |#
 						 (procedure pattern
 							    actions))))))
 	   cases)))
-
-;;;; Group Optimization
 
 (define optimize-group-syntax
   (let ()
