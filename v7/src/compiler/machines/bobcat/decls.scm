@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 1.14 1987/06/25 22:25:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 1.15 1987/07/02 20:54:11 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -76,8 +76,8 @@ MIT in each case. |#
 
 (define filenames/dependency-group/base
   (append (filename/append "base" "linear" "rtlcon" "rtlexp")
-	  (filename/append "alpha" "dflow1" "dflow2" "dflow3" "dflow4" "dflow5"
-			   "dflow6" "fggen1" "fggen2")
+	  (filename/append "alpha" "declar" "dflow1" "dflow2" "dflow3" "dflow4"
+			   "dflow5" "dflow6" "fggen1" "fggen2")
 	  (filename/append "front-end"
 			   "ralloc" "rcseep" "rcsesa" "rdeath" "rdebug"
 			   "rgcomb" "rgpcom" "rgpred" "rgproc" "rgrval"
@@ -107,8 +107,8 @@ MIT in each case. |#
 			  "regset" "rtlcfg" "rtlcon" "rtlexp" "rtlreg" "rtlty1"
 			  "rtlty2" "rtypes" "sets" "toplv1" "toplv2" "toplv3"
 			  "utils")
-	 (filename/append "alpha" "dflow1" "dflow2" "dflow3" "dflow4" "dflow5"
-			  "dflow6" "fggen1" "fggen2")
+	 (filename/append "alpha" "declar" "dflow1" "dflow2" "dflow3" "dflow4"
+			  "dflow5" "dflow6" "fggen1" "fggen2")
 	 (filename/append "front-end"
 			  "ralloc" "rcse1" "rcse2" "rcseep" "rcseht" "rcserq"
 			  "rcsesa" "rdeath" "rdebug" "rgcomb" "rgpcom" "rgpred"
