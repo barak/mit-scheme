@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: wind.scm,v 14.8 2003/02/14 18:28:34 cph Exp $
+$Id: wind.scm,v 14.9 2004/09/30 20:00:36 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1992,1993 Massachusetts Institute of Technology
+Copyright 2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -27,7 +28,7 @@ USA.
 ;;; package: (runtime state-space)
 
 (declare (usual-integrations))
-
+
 ;;; A STATE-SPACE is a tree of STATE-POINTs, except that the pointers
 ;;; in the tree point towards the root of the tree rather than its
 ;;; leaves.  These pointers are the NEARER-POINT of each point.
@@ -50,13 +51,21 @@ USA.
   (let ((space (%make-state-space '())))
     ;; Save the state space in the TO-NEARER field of the root point,
     ;; because it is needed by %%TRANSLATE-TO-STATE-POINT.
-    (set-state-space/nearest-point! space (make-state-point false space false))
+    (set-state-space/nearest-point! space (make-state-point #f space #f))
     space))
+
+(define-integrable (guarantee-state-space space caller)
+  (if (not (state-space? space))
+      (error:wrong-type-argument space "state space" caller)))
 
 (define-structure (state-point (conc-name state-point/))
   nearer-point
   to-nearer
   from-nearer)
+
+(define-integrable (guarantee-state-point point caller)
+  (if (not (state-point? point))
+      (error:wrong-type-argument point "state point" caller)))
 
 (define (%execute-at-new-state-point space before during after)
   (let ((old-root
@@ -68,7 +77,7 @@ USA.
 	      ;; if it did.
 	      (if (not (eq? old-root (state-space/nearest-point space)))
 		  (%%translate-to-state-point old-root))
-	      (let ((new-point (make-state-point false space false)))
+	      (let ((new-point (make-state-point #f space #f)))
 		(set-state-point/nearer-point! old-root new-point)
 		(set-state-point/to-nearer! old-root before)
 		(set-state-point/from-nearer! old-root after)
@@ -99,9 +108,9 @@ USA.
 		      (set-state-point/nearer-point! old-root new-root)
 		      (set-state-point/to-nearer! old-root from-nearer)
 		      (set-state-point/from-nearer! old-root to-nearer)
-		      (set-state-point/nearer-point! new-root false)
+		      (set-state-point/nearer-point! new-root #f)
 		      (set-state-point/to-nearer! new-root space)
-		      (set-state-point/from-nearer! new-root false)
+		      (set-state-point/from-nearer! new-root #f)
 		      (set-state-space/nearest-point! space new-root)
 		      (with-stack-marker from-nearer
 			set-interrupt-enables! interrupt-mask/gc-ok))
@@ -127,29 +136,21 @@ USA.
 			       (find-nearest nearer-point
 					     chain)))))))))))))
 
-(define-integrable (guarantee-state-space space procedure)
-  (if (not (state-space? space))
-      (error:wrong-type-argument space "state space" procedure)))
-
-(define-integrable (guarantee-state-point point procedure)
-  (if (not (state-point? point))
-      (error:wrong-type-argument point "state point" procedure)))
-
 (define (current-state-point space)
-  (guarantee-state-space space current-state-point)
+  (guarantee-state-space space 'CURRENT-STATE-POINT)
   (state-space/nearest-point space))
 
 (define (execute-at-new-state-point space before during after)
-  (guarantee-state-space space execute-at-new-state-point)
+  (guarantee-state-space space 'EXECUTE-AT-NEW-STATE-POINT)
   (%execute-at-new-state-point space before during after))
 
 (define (translate-to-state-point point)
-  (guarantee-state-point point translate-to-state-point)
+  (guarantee-state-point point 'TRANSLATE-TO-STATE-POINT)
   (%translate-to-state-point point))
 
 (define (state-point/space point)
-  (guarantee-state-point point state-point/space)
-  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+  (guarantee-state-point point 'STATE-POINT/SPACE)
+  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/none)))
     (let loop ((point point))
       (let ((nearer-point (state-point/nearer-point point)))
 	(if nearer-point
@@ -180,13 +181,13 @@ USA.
   (set! state-space:global (make-state-space))
   (set! state-space:local (make-state-space))
   unspecific)
-
+
 (define-structure (dynamic-state (conc-name dynamic-state/))
-  (global false read-only true)
-  (local false read-only true))
+  (global #f read-only #t)
+  (local #f read-only #t))
 
 (define (get-dynamic-state)
-  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/none)))
     (let ((state
 	   (make-dynamic-state
 	    (state-space/nearest-point state-space:global)
@@ -196,7 +197,7 @@ USA.
 
 (define (set-dynamic-state! state global-only?)
   (if (not (dynamic-state? state))
-      (error:wrong-type-argument state "dynamic state" set-dynamic-state!))
+      (error:wrong-type-argument state "dynamic state" 'SET-DYNAMIC-STATE!))
   (if (not global-only?)
       (%translate-to-state-point (dynamic-state/local state)))
   (%translate-to-state-point (dynamic-state/global state)))
