@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/step.c,v 9.29 1991/07/18 16:01:27 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/step.c,v 9.30 1992/01/15 04:02:33 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -46,9 +46,8 @@ MIT in each case. */
    stores things on the stack.
 */
 
-void
-Install_Traps (Hunk3)
-     SCHEME_OBJECT Hunk3;
+static void
+DEFUN (Install_Traps, (Hunk3), SCHEME_OBJECT Hunk3)
 {
   SCHEME_OBJECT Eval_Hook, Apply_Hook, Return_Hook;
 

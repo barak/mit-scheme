@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/string.c,v 9.34 1991/10/29 22:55:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/string.c,v 9.35 1992/01/15 04:00:20 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,8 +38,7 @@ MIT in each case. */
 #include "prims.h"
 
 SCHEME_OBJECT
-allocate_string (nbytes)
-     fast long nbytes;
+DEFUN (allocate_string, (nbytes), fast long nbytes)
 {
   fast long count = (STRING_LENGTH_TO_GC_LENGTH (nbytes));
   fast SCHEME_OBJECT result =
@@ -49,9 +48,9 @@ allocate_string (nbytes)
 }
 
 SCHEME_OBJECT
-memory_to_string (nbytes, data)
-     long nbytes;
-     fast unsigned char * data;
+DEFUN (memory_to_string, (nbytes, data),
+       long nbytes
+       AND fast unsigned char * data)
 {
   SCHEME_OBJECT result = (allocate_string (nbytes));
   fast unsigned char * scan_result = (STRING_LOC (result, 0));
@@ -62,8 +61,7 @@ memory_to_string (nbytes, data)
 }
 
 SCHEME_OBJECT
-char_pointer_to_string (char_pointer)
-     unsigned char * char_pointer;
+DEFUN (char_pointer_to_string, (char_pointer), unsigned char * char_pointer)
 {
   unsigned char * scan = char_pointer;
   if (scan == ((unsigned char *) NULL))
@@ -424,8 +422,11 @@ DEFINE_PRIMITIVE ("SUBSTRING<?", Prim_substring_less, 6, 6, 0)
 }
 
 static long
-substring_length_min (start1, end1, start2, end2)
-     long start1, end1, start2, end2;
+DEFUN (substring_length_min, (start1, end1, start2, end2),
+       long start1
+       AND long end1
+       AND long start2
+       AND long end2)
 {
   fast long length1 = (end1 - start1);
   fast long length2 = (end2 - start2);
