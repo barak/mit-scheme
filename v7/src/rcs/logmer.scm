@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: logmer.scm,v 1.14 1996/03/03 22:58:35 cph Exp $
+$Id: logmer.scm,v 1.15 1996/03/05 18:33:21 adams Exp $
 
 Copyright (c) 1988-96 Massachusetts Institute of Technology
 
@@ -183,25 +183,31 @@ MIT in each case. |#
 
     (define (scan-file pathname original-pathname)
       (let ((attributes (file-attributes-direct pathname)))
-	(let ((type (file-attributes/type attributes)))
-	  (cond ((not type)
-		 (if (not (or (ignored-file-name? pathname)
-			      (ignored-file-name? original-pathname)))
-		     (let ((control (rcs-control-file pathname)))
-		       (if control
-			   (begin
-			     (set! files
-				   (cons (cons original-pathname control)
-					 files))
-			     unspecific)))))
-		((eq? type #t)
-		 (if (not (member (file-namestring pathname)
-				  '("." ".." "RCS")))
-		     (scan-directory pathname original-pathname)))
-		((string? type)
-		 (scan-file (merge-pathnames type
-					     (directory-pathname pathname))
-			    original-pathname))))))
+	(if (not attributes)
+	    (warn "Cannot get attributes.  Path might contain stale symlink."
+		  (error-irritant/noise "\n;   ")
+		  original-pathname
+		  (error-irritant/noise "\n; points to\n;   ")
+		  pathname)
+	    (let ((type (file-attributes/type attributes)))
+	      (cond ((not type)
+		     (if (not (or (ignored-file-name? pathname)
+				  (ignored-file-name? original-pathname)))
+			 (let ((control (rcs-control-file pathname)))
+			   (if control
+			       (begin
+				 (set! files
+				       (cons (cons original-pathname control)
+					     files))
+				 unspecific)))))
+		    ((eq? type #t)
+		     (if (not (member (file-namestring pathname)
+				      '("." ".." "RCS")))
+			 (scan-directory pathname original-pathname)))
+		    ((string? type)
+		     (scan-file (merge-pathnames type
+						 (directory-pathname pathname))
+				original-pathname)))))))
 
     (define (rcs-control-file pathname)
       (let ((directory (directory-pathname pathname))
