@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: optiondb.scm,v 1.16 2003/02/14 18:28:33 cph Exp $
+$Id: optiondb.scm,v 1.17 2003/06/08 05:07:04 cph Exp $
 
-Copyright (c) 1994-2002 Massachusetts Institute of Technology
+Copyright 1994,1995,1996,1999,2000,2001 Massachusetts Institute of Technology
+Copyright 2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -69,6 +70,7 @@ USA.
    (KRYPT	(RUNTIME KRYPT)		#F			"krypt")
    (MIME-CODEC	(RUNTIME MIME-CODEC)	#F			"mime-codec")
    (ORDERED-VECTOR (RUNTIME ORDERED-VECTOR) #F			"ordvec")
+   (POSTGRESQL	(RUNTIME POSTGRESQL)	#F			"pgsql")
    (RB-TREE	(RUNTIME RB-TREE)	#F			"rbtree")
    (STEPPER	(RUNTIME STEPPER)	#F			"ystep")
    (SUBPROCESS	(RUNTIME SUBPROCESS)	(INITIALIZE-PACKAGE!)	"process")

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.446 2003/06/08 04:07:12 cph Exp $
+$Id: runtime.pkg,v 14.447 2003/06/08 05:07:12 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -4601,3 +4601,60 @@ USA.
 	  url:parse:hostport
 	  url:string-encoded?
 	  url:substring-encoded?))
+
+(define-package (runtime postgresql)
+  (file-case options
+    ((load) "pgsql")
+    (else))
+  (parent (runtime))
+  (export ()
+	  close-pgsql-conn
+	  escape-pgsql-string
+	  exec-pgsql-query
+	  make-empty-pgsql-result
+	  open-pgsql-conn
+	  pgsql-available?
+	  pgsql-bad-response
+	  pgsql-clear
+	  pgsql-cmd-status
+	  pgsql-cmd-tuples
+	  pgsql-command-ok
+	  pgsql-conn-db
+	  pgsql-conn-error-message
+	  pgsql-conn-host
+	  pgsql-conn-options
+	  pgsql-conn-pass
+	  pgsql-conn-port
+	  pgsql-conn-reset
+	  pgsql-conn-reset-start
+	  pgsql-conn-status
+	  pgsql-conn-tty
+	  pgsql-conn-user
+	  pgsql-connection-auth-ok
+	  pgsql-connection-awaiting-response
+	  pgsql-connection-bad
+	  pgsql-connection-made
+	  pgsql-connection-ok
+	  pgsql-connection-setenv
+	  pgsql-connection-started
+	  pgsql-copy-in
+	  pgsql-copy-out
+	  pgsql-empty-query
+	  pgsql-fatal-error
+	  pgsql-field-name
+	  pgsql-get-is-null?
+	  pgsql-get-value
+	  pgsql-n-fields
+	  pgsql-n-tuples
+	  pgsql-nonfatal-error
+	  pgsql-polling-active
+	  pgsql-polling-failed
+	  pgsql-polling-ok
+	  pgsql-polling-reading
+	  pgsql-polling-writing
+	  pgsql-res-status
+	  pgsql-result-error-message
+	  pgsql-result-status
+	  pgsql-tuples-ok
+	  poll-pgsql-conn
+	  poll-pgsql-reset))

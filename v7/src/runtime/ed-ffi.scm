@@ -1,6 +1,6 @@
 #| -*- Scheme -*-
 
-$Id: ed-ffi.scm,v 1.35 2003/02/14 18:28:32 cph Exp $
+$Id: ed-ffi.scm,v 1.36 2003/06/08 05:07:00 cph Exp $
 
 Copyright (c) 1991,1996,1997,1999,2000 Massachusetts Institute of Technology
 Copyright (c) 2001,2002,2003 Massachusetts Institute of Technology
@@ -112,6 +112,7 @@ USA.
     ("parser-buffer" (runtime parser-buffer))
     ("partab"	(runtime parser-table))
     ("pathnm"	(runtime pathname))
+    ("pgsql"	(runtime postgresql))
     ("poplat"	(runtime population))
     ("port"	(runtime port))
     ("pp"	(runtime pretty-printer))
