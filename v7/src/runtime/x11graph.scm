@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.12 1991/12/19 21:58:55 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.13 1992/01/30 00:38:45 arthur Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -195,9 +195,15 @@ MIT in each case. |#
 				    (number->string y))
 		     "")))
 
-(define-structure (x-graphics-device (conc-name x-graphics-device/))
+(define-structure (x-graphics-descriptor (conc-name x-graphics-descriptor/))
   (window false read-only true)
   (display false read-only true))
+
+(define (x-graphics-device/window device)
+  (x-graphics-descriptor/window (graphics-device/descriptor device)))
+
+(define (x-graphics-device/display device)
+  (x-graphics-descriptor/display (graphics-device/descriptor device)))
 
 (define (x-graphics-device/process-events! device)
   (let ((xd (x-graphics-device/display device)))
@@ -312,9 +318,9 @@ MIT in each case. |#
 	  geometry
 	  (and (not (default-object? suppress-map?))
 	       suppress-map?))))
-    (let ((device (make-x-graphics-device xw (x-window-display xw))))
-      (add-to-protection-list! window-list device xw)
-      device)))
+    (let ((descriptor (make-x-graphics-descriptor xw (x-window-display xw))))
+      (add-to-protection-list! window-list descriptor xw)
+      descriptor)))
 
 (define (operation/reset-clip-rectangle device)
   (x-graphics-device/process-events! device)

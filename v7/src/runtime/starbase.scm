@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/starbase.scm,v 1.5 1991/11/04 20:30:02 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/starbase.scm,v 1.6 1992/01/30 00:38:38 arthur Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -98,10 +98,10 @@ MIT in each case. |#
 
 (define starbase-graphics-device-type)
 
-(define-structure (starbase-device
-		   (conc-name starbase-device/)
-		   (constructor make-starbase-device (descriptor)))
-  (descriptor false read-only true)
+(define-structure (starbase-graphics-descriptor
+		   (conc-name starbase-descriptor/)
+		   (constructor make-starbase-descriptor (identifier)))
+  (identifier false read-only true)
   x-left
   y-bottom
   x-right
@@ -110,14 +110,29 @@ MIT in each case. |#
   text-aspect
   text-slant
   text-rotation)
+
+(let-syntax ((define-accessor
+	       (macro (name)
+		 `(define (,(symbol-append 'starbase-device/ name) device)
+		    (,(symbol-append 'starbase-graphics-descriptor/ name)
+		     (graphics-device/descriptor device))))))
+  (define-accessor identifier)
+  (define-accessor x-left)
+  (define-accessor y-bottom)
+  (define-accessor x-right)
+  (define-accessor y-top)
+  (define-accessor text-height)
+  (define-accessor text-aspect)
+  (define-accessor text-slant)
+  (define-accessor text-rotation))
 
 (define (operation/available?)
   (implemented-primitive-procedure? starbase-open-device))
 
 (define (operation/open device-name driver-name)
-  (let ((descriptor (starbase-open-device device-name driver-name)))
-    (and descriptor
-	 (let ((device (make-starbase-device descriptor)))
+  (let ((identifier (starbase-open-device device-name driver-name)))
+    (and identifier
+	 (let ((device (make-starbase-descriptor identifier)))
 	   (operation/set-coordinate-limits device -1 -1 1 1)
 	   (operation/set-text-height device 0.1)
 	   (operation/set-text-aspect device 1)
@@ -126,15 +141,15 @@ MIT in each case. |#
 	   device))))
 
 (define (operation/close device)
-  (starbase-close-device (starbase-device/descriptor device)))
+  (starbase-close-device (starbase-device/identifier device)))
 
 (define (operation/flush device)
-  (starbase-flush (starbase-device/descriptor device)))
+  (starbase-flush (starbase-device/identifier device)))
 
 (define (operation/device-coordinate-limits device)
   (let ((limits
 	 (starbase-device-coordinates
-	  (starbase-device/descriptor device))))
+	  (starbase-device/identifier device))))
     (values (vector-ref limits 0)
 	    (vector-ref limits 1)
 	    (vector-ref limits 2)
@@ -147,7 +162,7 @@ MIT in each case. |#
 	  (starbase-device/y-top device)))
 
 (define (operation/set-coordinate-limits device x-left y-bottom x-right y-top)
-  (starbase-set-vdc-extent (starbase-device/descriptor device)
+  (starbase-set-vdc-extent (starbase-device/identifier device)
 			   x-left y-bottom x-right y-top)
   (set-starbase-device/x-left! device x-left)
   (set-starbase-device/y-bottom! device y-bottom)
@@ -155,41 +170,41 @@ MIT in each case. |#
   (set-starbase-device/y-top! device y-top))
 
 (define (operation/reset-clip-rectangle device)
-  (starbase-reset-clip-rectangle (starbase-device/descriptor device)))
+  (starbase-reset-clip-rectangle (starbase-device/identifier device)))
 
 (define (operation/set-clip-rectangle device x-left y-bottom x-right y-top)
-  (starbase-set-clip-rectangle (starbase-device/descriptor device)
+  (starbase-set-clip-rectangle (starbase-device/identifier device)
 			       x-left y-bottom x-right y-top))
 
 (define (operation/set-drawing-mode device drawing-mode)
-  (starbase-set-drawing-mode (starbase-device/descriptor device) drawing-mode))
+  (starbase-set-drawing-mode (starbase-device/identifier device) drawing-mode))
 
 (define (operation/set-line-style device line-style)
-  (starbase-set-line-style (starbase-device/descriptor device) line-style))
+  (starbase-set-line-style (starbase-device/identifier device) line-style))
 
 (define (operation/clear device)
-  (starbase-clear (starbase-device/descriptor device)))
+  (starbase-clear (starbase-device/identifier device)))
 
 (define (operation/draw-point device x y)
-  (starbase-draw-point (starbase-device/descriptor device) x y))
+  (starbase-draw-point (starbase-device/identifier device) x y))
 
 (define (operation/move-cursor device x y)
-  (starbase-move-cursor (starbase-device/descriptor device) x y))
+  (starbase-move-cursor (starbase-device/identifier device) x y))
 
 (define (operation/drag-cursor device x y)
-  (starbase-drag-cursor (starbase-device/descriptor device) x y))
+  (starbase-drag-cursor (starbase-device/identifier device) x y))
 
 (define (operation/draw-line device x-start y-start x-end y-end)
-  (starbase-draw-line (starbase-device/descriptor device)
+  (starbase-draw-line (starbase-device/identifier device)
 		      x-start y-start x-end y-end))
 
 (define (operation/draw-text device x y text)
-  (starbase-draw-text (starbase-device/descriptor device) x y text))
+  (starbase-draw-text (starbase-device/identifier device) x y text))
 
 ;;; Custom Operations
 
 (define (operation/write-image-file device filename invert?)
-  (starbase-write-image-file (starbase-device/descriptor device)
+  (starbase-write-image-file (starbase-device/identifier device)
 			     (->namestring (merge-pathnames filename))
 			     invert?))
 
@@ -206,27 +221,27 @@ MIT in each case. |#
   (starbase-device/text-rotation device))
 
 (define (operation/set-text-height device height)
-  (starbase-set-text-height (starbase-device/descriptor device) height)
+  (starbase-set-text-height (starbase-device/identifier device) height)
   (set-starbase-device/text-height! device height))
 
 (define (operation/set-text-aspect device aspect)
-  (starbase-set-text-aspect (starbase-device/descriptor device) aspect)
+  (starbase-set-text-aspect (starbase-device/identifier device) aspect)
   (set-starbase-device/text-aspect! device aspect))
 
 (define (operation/set-text-slant device slant)
-  (starbase-set-text-slant (starbase-device/descriptor device) slant)
+  (starbase-set-text-slant (starbase-device/identifier device) slant)
   (set-starbase-device/text-slant! device slant))
 
 (define (operation/set-text-rotation device rotation)
-  (starbase-set-text-rotation (starbase-device/descriptor device) rotation)
+  (starbase-set-text-rotation (starbase-device/identifier device) rotation)
   (set-starbase-device/text-rotation! device rotation))
 
 (define (operation/color-map-size device)
-  (starbase-color-map-size (starbase-device/descriptor device)))
+  (starbase-color-map-size (starbase-device/identifier device)))
 
 (define (operation/define-color device color-index red green blue)
-  (starbase-define-color (starbase-device/descriptor device)
+  (starbase-define-color (starbase-device/identifier device)
 			 color-index red green blue))
 
 (define (operation/set-line-color device color-index)
-  (starbase-set-line-color (starbase-device/descriptor device) color-index))
+  (starbase-set-line-color (starbase-device/identifier device) color-index))
