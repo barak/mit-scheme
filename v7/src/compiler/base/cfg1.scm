@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg1.scm,v 1.147 1987/03/19 00:32:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg1.scm,v 1.148 1987/05/07 00:04:58 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -417,36 +417,34 @@ MIT in each case. |#
 	 (scfg-next-connect! scfg scfg*)
 	 (make-scfg (cfg-entry-node scfg) (scfg-next-hooks scfg*)))))
 
-(package (scfg-append! scfg*->scfg!)
-
-(define-export (scfg-append! . scfgs)
+(define (scfg-append! . scfgs)
   (scfg*->scfg! scfgs))
 
-(define-export (scfg*->scfg! scfgs)
-  (let ((first (find-non-null scfgs)))
-    (and (not (null? first))
-	 (let ((second (find-non-null (cdr first))))
-	   (if (null? second)
-	       (car first)
-	       (make-scfg (cfg-entry-node (car first))
-			  (scfg-next-hooks
-			   (loop (car first)
-				 (car second)
-				 (find-non-null (cdr second))))))))))
+(define scfg*->scfg!
+  (let ()
+    (define (loop first second rest)
+      (scfg-next-connect! first second)
+      (if (null? rest)
+	  second
+	  (loop second (car rest) (find-non-null (cdr rest)))))
 
-(define (loop first second third)
-  (scfg-next-connect! first second)
-  (if (null? third)
-      second
-      (loop second (car third) (find-non-null (cdr third)))))
+    (define (find-non-null scfgs)
+      (if (or (null? scfgs)
+	      (car scfgs))
+	  scfgs
+	  (find-non-null (cdr scfgs))))
 
-(define (find-non-null scfgs)
-  (if (or (null? scfgs)
-	  (car scfgs))
-      scfgs
-      (find-non-null (cdr scfgs))))
-
-)
+    (named-lambda (scfg*->scfg! scfgs)
+      (let ((first (find-non-null scfgs)))
+	(and (not (null? first))
+	     (let ((second (find-non-null (cdr first))))
+	       (if (null? second)
+		   (car first)
+		   (make-scfg (cfg-entry-node (car first))
+			      (scfg-next-hooks
+			       (loop (car first)
+				     (car second)
+				     (find-non-null (cdr second))))))))))))
 
 (define (pcfg->scfg! pcfg)
   (make-scfg* (cfg-entry-node pcfg)
@@ -538,4 +536,53 @@ MIT in each case. |#
 (define pcfg*pcfg->scfg!
   (pcfg*pcfg->cfg! pcfg->scfg! make-scfg*))
 
+)
+
+(define (scfg*cfg->cfg! scfg cfg)
+  (if (not scfg)
+      cfg
+      (begin (scfg-next-connect! scfg cfg)
+	     (case (cfg-tag cfg)
+	       ((SNODE-CFG)
+		(make-scfg (cfg-entry-node scfg) (scfg-next-hooks cfg)))
+	       ((PNODE-CFG)
+		(make-pcfg (cfg-entry-node scfg)
+			   (pcfg-consequent-hooks cfg)
+			   (pcfg-alternative-hooks cfg)))
+	       (else
+		(error "Unknown CFG tag" cfg))))))
+
+(define (pcfg*cfg->pcfg! pcfg consequent alternative)
+  (pcfg-consequent-connect! pcfg consequent)
+  (pcfg-alternative-connect! pcfg alternative)
+  (case (cfg-tag consequent)
+    ((SNODE-CFG)
+     (case (cfg-tag alternative)
+       ((SNODE-CFG)
+	(make-pcfg (cfg-entry-node pcfg)
+		   (scfg-next-hooks consequent)
+		   (scfg-next-hooks alternative)))
+       ((PNODE-CFG)
+	(make-pcfg (cfg-entry-node pcfg)
+		   (hooks-union (scfg-next-hooks consequent)
+				(pcfg-consequent-hooks alternative))
+		   (pcfg-alternative-hooks alternative)))
+       (else
+	(error "Unknown CFG tag" alternative))))
+    ((PNODE-CFG)
+     (case (cfg-tag alternative)
+       ((SNODE-CFG)
+	(make-pcfg (cfg-entry-node pcfg)
+		   (pcfg-consequent-hooks consequent)
+		   (hooks-union (pcfg-alternative-hooks consequent)
+				(scfg-next-hooks alternative))))
+       ((PNODE-CFG)
+	(make-pcfg (cfg-entry-node pcfg)
+		   (hooks-union (pcfg-consequent-hooks consequent)
+				(pcfg-consequent-hooks alternative))
+		   (hooks-union (pcfg-alternative-hooks consequent)
+				(pcfg-alternative-hooks alternative))))
+       (else
+	(error "Unknown CFG tag" alternative))))
+    (else
   (for-each edge-disconnect-right! edges))
