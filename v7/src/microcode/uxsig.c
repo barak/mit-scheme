@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.18 1991/10/29 22:55:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.19 1992/02/04 00:36:02 jinx Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -699,6 +699,7 @@ static void EXFUN (print_interactive_help, (void));
 static void EXFUN (print_interrupt_chars, (void));
 static void EXFUN (examine_memory, (void));
 static void EXFUN (reset_query, (struct FULL_SIGCONTEXT * scp));
+static void EXFUN (interactive_back_trace, (void));
 
 #define INTERACTIVE_NEWLINE()						\
 {									\
@@ -761,7 +762,7 @@ DEFUN (interactive_interrupt_handler, (scp), struct FULL_SIGCONTEXT * scp)
 	case 'T':
 	case 't':
 	  INTERACTIVE_NEWLINE ();
-	  debug_back_trace ();
+	  interactive_back_trace ();
 	  return;
 	case 'Z':
 	case 'z':
@@ -1040,6 +1041,43 @@ DEFUN (reset_query, (scp), struct FULL_SIGCONTEXT * scp)
   if (userio_confirm ("Do you really want to reset? [Y or N] "))
     hard_reset (scp);
 }
+
+#define USERIO_READ_LINE_OK		0
+#define USERIO_READ_LINE_TOO_LONG	1
+#define USERIO_READ_LINE_INPUT_FAILED	2
+
+static int
+DEFUN (userio_read_line, (line, size), char * line AND int size)
+{
+  int result = USERIO_READ_LINE_TOO_LONG;
+  transaction_begin ();
+  userio_buffered_input ();	/* transaction_record_action here */
+  {
+    char * scan = line;
+    char * end = (line + size);
+    while (scan < end)
+    {
+      char c = (userio_read_char ());
+      if ((c == '\0') && (errno != 0))
+      {
+	/* IO problems, assume everything scrod. */
+	result = USERIO_READ_LINE_INPUT_FAILED;
+	break;
+      }
+      (*scan) = c;
+      if (c == '\n')
+	c = '\0';
+      if (c == '\0')
+      {
+	result = USERIO_READ_LINE_OK;
+	break;
+      }
+      scan += 1;
+    }
+  }
+  transaction_commit ();
+  return (result);
+}
 
 static void
 DEFUN_VOID (examine_memory)
@@ -1047,30 +1085,11 @@ DEFUN_VOID (examine_memory)
   char input_string [256];
   fputs ("Enter location to examine (0x prefix for hex): ", stdout);
   fflush (stdout);
+  if ((userio_read_line (&input_string[0], (sizeof (input_string))))
+      == USERIO_READ_LINE_INPUT_FAILED)
   {
-    transaction_begin ();
-    userio_buffered_input ();
-    {
-      char * scan = input_string;
-      char * end = (input_string + (sizeof (input_string)));
-      while (scan < end)
-	{
-	  char c = (userio_read_char ());
-	  if ((c == '\0') && (errno != 0))
-	  {
-	    /* IO problems, assume everything scrod. */
-	    fprintf (stderr, "Problems reading keyboard input -- exiting.\n");
-	    termination_eof ();
-	  }
-	  (*scan) = c;
-	  if (c == '\n')
-	    c = '\0';
-	  if (c == '\0')
-	    break;
-	  scan += 1;
-	}
-    }
-    transaction_commit ();
+    fprintf (stderr, "Problems reading keyboard input -- exiting.\n");
+    termination_eof ();
   }
   {
     long input;
@@ -1082,6 +1101,37 @@ DEFUN_VOID (examine_memory)
   }
   putc ('\n', stdout);
   fflush (stdout);
+}
+
+static void
+DEFUN_VOID (interactive_back_trace)
+{
+  char input_string [256];
+  fputs ("Enter the stack trace filename (default: terminal): ", stdout);
+  fflush (stdout);
+  if ((userio_read_line (&input_string[0], (sizeof (input_string))))
+      == USERIO_READ_LINE_INPUT_FAILED)
+  {
+    fprintf (stderr, "Problems reading keyboard input -- exiting.\n");
+    termination_eof ();
+  }
+  if ((strlen (&input_string[0])) == 0)
+    debug_back_trace (stdout);
+  else
+  {
+    transaction_begin ();
+    FILE * to_dump = (fopen (&input_string[0], "w"));
+    if (to_dump == ((FILE *) NULL))
+    {
+      printf ("Error opening \"%s\".\n", (&input_string[0]));
+      transaction_abort ();
+      return;
+    }
+    transaction_record_action (tat_always, fclose, ((PTR) to_dump));
+    debug_back_trace (to_dump);
+    transaction_commit ();
+  }
+  return;
 }
 
 #ifdef sun3
