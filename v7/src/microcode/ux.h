@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.26 1991/09/05 22:26:30 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.27 1991/10/16 00:27:02 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -225,6 +225,10 @@ extern void EXFUN (error_system_call, (int code, enum syscall_names name));
 
 #if defined(_ULTRIX) || defined(_SUNOS4) || defined(sun4) || defined(_NEXTOS)
 #define VOID_SIGNAL_HANDLERS
+#endif
+
+#if defined(_SUNOS4) && defined(SIG_BLOCK)
+#define HAVE_POSIX_SIGNALS
 #endif
 
 #define ERRNO_NONBLOCK EWOULDBLOCK
