@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: prompt.scm,v 1.163 1995/04/09 23:21:53 cph Exp $
+;;;	$Id: prompt.scm,v 1.164 1995/04/10 16:48:34 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -796,7 +796,7 @@ Whilst editing the command, the following commands are available:
 (define (prompt-for-password prompt)
   (prompt-for-typein (if (string-suffix? " " prompt)
 			 prompt
-			 (string-append ": " prompt))
+			 (string-append prompt ": "))
 		     #f
     (lambda ()
       (let loop ((ts ""))
@@ -807,8 +807,6 @@ Whilst editing the command, the following commands are available:
 		 (loop ts))
 		((char=? input #\Return)
 		 ts)
-		((or (char=? input #\C-g) (char=? input #\BEL))
-		 (abort-current-command))
 		((char=? input #\Rubout)
 		 (let ((ts-len (string-length ts)))
 		   (if (> ts-len 0)
