@@ -1,0 +1,15 @@
+#!/bin/csh -f
+
+set scheme=`pwd`
+
+if (! -e $scheme/microcode/Psbtobin ) then
+  (cd $scheme/microcode; make Psbtobin)
+endif
+
+foreach i (runtime sf)
+  cd $scheme/$i
+  foreach j (*.psb)
+    echo "Psbtobin $scheme/$i/$j"
+    $scheme/microcode/Psbtobin <$j >$j:r.bin
+  end
+end

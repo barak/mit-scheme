@@ -1,0 +1,78 @@
+#!/bin/csh -fx
+# $1 = name of distribution directory to build
+# $2 = name of RCS release symbol (optional)
+# $3 = prefix string for source directories (optional) (e.g. "/z")
+
+if (($#argv < 1) || ($#argv > 3)) then
+  echo "usage: $0 <distribution directory> [<release>] [<source prefix>]"
+  exit 1
+endif
+
+set destination="$1"
+if ($#argv == 1) then
+  set rcs_opts=""
+else
+  set rcs_opts=" -r$2"
+  if ($#argv == 2) then
+    set prefix=""
+  else
+    set prefix="$3"
+endif
+set source="$prefix/scheme/rel5"
+set rcs_source="$prefix/scheme/rel5-RCS"
+set tempfile="/tmp/sdist$$"
+
+if (-e $destination) then
+  rm -rf $destination
+endif
+mkdir $destination
+
+# Guarantee that VMS command files are constructed.
+cd $source
+vms/make.vms
+
+# Copy all the auxiliary files.  Use $tempfile because of buggy
+# interaction between `find' and RFA under recent versions of hp-ux.
+cd $source
+if (-e $tempfile) then
+  rm -f $tempfile
+endif
+find Makefile documentation etc makefiles libs -print > $tempfile
+find vms \( -name '*.com' -o -name '*.txt' -o -name '*.el' \) -print >> $tempfile
+cpio -pdmuv $destination < $tempfile
+rm -f $tempfile
+
+# Clean up any unwanted files that might be around.
+cd $source
+foreach i (documentation etc makefiles libs)
+  find $destination/$i \( -name '.*~*' -o -name '#*' -o -name '*~*' -o -name '*.bin' -o -name '*.ext' -o -name '*.com' -o -name '*.elc' \) -exec rm -f {} \;
+end
+
+# Copy the primary source code by checking out reference copies from RCS.
+foreach i (microcode runtime sf)
+  cd $destination
+  mkdir $i
+  cd $i
+  foreach j ($rcs_source/$i/*,v)
+    co $rcs_opts $j
+  end
+end
+
+# Make the PSB files by resyntaxing and converting them.
+cd $destination
+etc/resyntax
+etc/make_psb
+find * \( -name '*.bin' -o -name '*.ext' \) -exec rm -f {} \;
+
+# Move things into the appropriate places.
+cd $destination/documentation
+mv INSTALL Install.* README ..
+
+cd $destination/microcode
+make -k remove
+mv config.h config.dst
+mv Makefile ../makefiles
+
+# Create the file "make_dirs.com":
+cd $destination
+emacs -batch -q -l vms/make_dirs.el

@@ -1,0 +1,21 @@
+#!/bin/csh -f
+
+set scheme=`pwd`
+
+if (! -e $scheme/microcode/Bintopsb ) then
+  (cd $scheme/microcode; make Bintopsb)
+endif
+
+cd $scheme/runtime
+foreach i (*.bin)
+  if (("$i" != "scheme.bin") && ("$i" != "sicp.bin")) then
+    echo "Bintopsb $scheme/runtime/$i"
+    $scheme/microcode/Bintopsb <$i >$i:r.psb
+  endif
+end
+
+cd $scheme/sf
+foreach i (*.bin)
+  echo "Bintopsb $scheme/sf/$i"
+  $scheme/microcode/Bintopsb <$i >$i:r.psb
+end

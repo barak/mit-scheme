@@ -1,0 +1,4 @@
+#!/bin/csh -f
+
+setenv scheme `pwd`
+exec scheme < etc/resyntax.scm
