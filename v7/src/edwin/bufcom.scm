@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufcom.scm,v 1.95 1992/09/30 01:34:08 cph Exp $
+;;;	$Id: bufcom.scm,v 1.96 1992/09/30 17:06:47 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -252,12 +252,12 @@ When locked, the buffer's major mode may not be changed."
   (let ((buffer (find-or-create-buffer name)))
     (buffer-reset! buffer)
     buffer))
-
+
 (define (prompt-for-buffer prompt default-buffer)
   (let ((name
 	 (prompt-for-buffer-name prompt
 				 default-buffer
-				 (ref-variable select-buffer-create))))
+				 (not (ref-variable select-buffer-create)))))
     (or (find-buffer name)
 	(let loop ((hooks (ref-variable select-buffer-not-found-hooks)))
 	  (cond ((null? hooks)
