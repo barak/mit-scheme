@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/oscond.h,v 1.7 1992/03/26 03:48:05 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/oscond.h,v 1.8 1992/05/04 20:44:20 jinx Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -146,10 +146,19 @@ MIT in each case. */
 #include "error: can't define both _BSD and _SYSV"
 #endif
 
-#if defined(_BSD) || defined(_SYSV) || defined(_PIXEL)
-#define _UNIX
-#else
-#include "error: unknown unix system -- you must add customizations"
+#if defined(DOS386)
+#  define _DOS386
+#  define _DOS386_VERSION	50
 #endif
+
+#if defined(_BSD) || defined(_SYSV) || defined(_PIXEL)
+#  define _UNIX
+#else
+#  ifdef _DOS386
+#    define _DOS
+#  else
+#    include "error: unknown unix system -- you must add customizations"
+#  endif /* _DOS386 */
+#endif /* _BSD || _SYSV || _PIXEL */
 
 #endif /* SCM_OSCOND_H */
