@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntfs.c,v 1.18 1997/10/26 09:32:53 cph Exp $
+$Id: ntfs.c,v 1.19 1997/12/29 20:46:32 cph Exp $
 
 Copyright (c) 1992-97 Massachusetts Institute of Technology
 
@@ -45,14 +45,23 @@ static enum get_file_info_result get_file_info_from_dir
 enum get_file_info_result
 NT_get_file_info (const char * namestring, BY_HANDLE_FILE_INFORMATION * info)
 {
-  HANDLE hfile = (create_file_for_info (namestring));
+  char nscopy [MAX_PATH];
+  HANDLE hfile;
+
+  strcpy (nscopy, namestring);
+  {
+    unsigned int len = (strlen (nscopy));
+    if ((len > 0) && ((nscopy [len - 1]) == '\\'))
+      (nscopy [len - 1]) = '\0';
+  }
+  hfile = (create_file_for_info (nscopy));
   if (hfile == INVALID_HANDLE_VALUE)
     {
       DWORD code = (GetLastError ());
       if (STAT_NOT_FOUND_P (code))
 	return (gfi_not_found);
       if (STAT_NOT_ACCESSIBLE_P (code))
-	return (get_file_info_from_dir (namestring, info));
+	return (get_file_info_from_dir (nscopy, info));
       NT_error_api_call (code, apicall_CreateFile);
     }
   if (!GetFileInformationByHandle (hfile, info))
@@ -76,17 +85,8 @@ static enum get_file_info_result
 get_file_info_from_dir (const char * namestring,
 			BY_HANDLE_FILE_INFORMATION * info)
 {
-  char nscopy [MAX_PATH];
   WIN32_FIND_DATA fi;
-  HANDLE handle;
-
-  strcpy (nscopy, namestring);
-  {
-    unsigned int len = (strlen (nscopy));
-    if ((len > 0) && ((nscopy [len - 1]) == '\\'))
-      (nscopy [len - 1]) = '\0';
-  }
-  handle = (FindFirstFile (nscopy, (&fi)));
+  HANDLE handle = (FindFirstFile (namestring, (&fi)));
   if (handle == INVALID_HANDLE_VALUE)
     {
       DWORD code = (GetLastError ());
