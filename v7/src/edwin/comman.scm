@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comman.scm,v 1.66 1991/04/21 00:49:23 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comman.scm,v 1.67 1991/04/23 06:37:57 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -143,7 +143,8 @@
 
 (define (check-variable-value-validity! variable value)
   (if (not (variable-value-valid? variable value))
-      (error:datum-out-of-range value)))
+      (editor-error "Invalid value for " (variable-name-string variable)
+		    ": " value)))
 
 (define (variable-value-valid? variable value)
   (or (not (variable-value-validity-test variable))
