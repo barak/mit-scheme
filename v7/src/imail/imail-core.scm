@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.71 2000/05/18 19:59:36 cph Exp $
+;;; $Id: imail-core.scm,v 1.72 2000/05/19 03:20:46 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -365,6 +365,11 @@
 
 (define (detach-message! message)
   (set-message-folder! message #f))
+
+(define (message->string message)
+  (string-append (header-fields->string (message-header-fields message))
+		 "\n"
+		 (message-body message)))
 
 (define-generic message-internal-time (message))
 (define-method message-internal-time ((message <message>))
