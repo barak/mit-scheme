@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lamlift.scm,v 1.4 1995/02/09 04:29:15 adams Exp $
+$Id: lamlift.scm,v 1.5 1995/03/11 16:01:01 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -403,9 +403,13 @@ MIT in each case. |#
      (internal-error "Unknown split field" env))))
 
 (define (lamlift/decide/imports env avoid)
-  ;; Find all free references in ENV except those in AVOID.  Requires
-  ;; that ?? all LAMBDA siblings already have their LAMLIFT/ENV/EXTENDED
-  ;; slot calculated, as we have to pass their extensions as well.
+  ;; Find the names of all free references in ENV except those in AVOID.
+  ;; Requires that ?? all LAMBDA siblings already have their
+  ;; LAMLIFT/ENV/EXTENDED slot calculated, as we have to pass their
+  ;; extensions as well.  Note that the order of the result is
+  ;; dependent of the order in which the references were accumulated
+  ;; and so is not related to the orders of parameters in any
+  ;; lambda-list.
   (define (filter-refs refs avoid)
     ;; Remove static bindings and members of AVOID from REFS
     (list-transform-negative refs
@@ -415,14 +419,14 @@ MIT in each case. |#
 	      (lamlift/binding-lifts-to-static-frame? binding)
 	      (memq binding avoid))))))
   (union-map*
-   (lmap (lambda (free-ref)
-	   ;; Extract the name of the variable
-	   (cadr (cadr free-ref)))
-	 (filter-refs (lamlift/env/free-ordinary-refs env)
-		      '()))
+   (map (lambda (free-ref)
+	  ;; Extract the name of the variable
+	  (cadr (cadr free-ref)))
+	(filter-refs (lamlift/env/free-ordinary-refs env)
+		     '()))
    (lambda (free-ref)
-     (let* ((binding (car free-ref))
-	    (value (lamlift/binding/value binding)))
+     (let* ((binding  (car free-ref))
+	    (value    (lamlift/binding/value binding)))
        ;; If this free reference is visibly bound to a LAMBDA
        ;; expression, then the free variables of that LAMBDA are also
        ;; free variables of this expression; otherwise, just the
@@ -561,6 +565,8 @@ MIT in each case. |#
       ;;* This version ensures that the arguments passed to callees preceed the
       ;;  new extra arguments, and the new argument list is coherent with at
       ;;  least one callee.
+      ;;* Alternatively we could add a new phase much later to reorder internal
+      ;;  procedure parameter lists.
       (define (adjoin names set) (append set (delq* set names)))
       (adjoin my-new-names (fold-left adjoin '() callees-new-names)))
 
@@ -707,8 +713,8 @@ MIT in each case. |#
 			(lambda (call)
 			  (lamlift/applicate!
 			   call reorder orig-lambda-list lifted-name
-			   (lmap (lambda (arg-name) `(LOOKUP ,arg-name))
-				 extra-formals)))
+			   (map (lambda (arg-name) `(LOOKUP ,arg-name))
+				extra-formals)))
 		      (lamlift/binding/calls binding))))))
       (let ((lifted-form `(LAMBDA ,lifted-lambda-list ,(lambda/body form)))
 	    (stub-lambda
