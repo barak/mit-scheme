@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.10 1995/01/25 20:20:56 adams Exp $
+$Id: utils.scm,v 1.11 1995/02/11 01:56:55 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -228,7 +228,7 @@ MIT in each case. |#
   ;; non-continuation bindings.
   (if (and (for-all? bindings
 	     (lambda (binding)
-	       (and (form/simple? (cadr binding))
+	       (and (form/pseudo-simple? (cadr binding))
 		    (not (continuation-variable? (car binding))))))
 	   *after-cps-conversion?*)
       `(LET ,bindings
