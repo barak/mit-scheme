@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.46 1995/10/12 23:12:17 cph Exp $
+;;;	$Id: rmail.scm,v 1.47 1996/02/13 00:02:45 cph Exp $
 ;;;
-;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -230,7 +230,7 @@ together with two commands to return to regular RMAIL:
 	"\\>")))
   (if (not umail-message-end-regexp)
       (set! umail-message-end-regexp
-	    (string-append "\\("
+	    (string-append "\\(^"
 			   umail-message-start-regexp
 			   "\\|"
 			   mmdf-message-start-regexp
@@ -2210,7 +2210,7 @@ Leaves original message, deleted, before the undigestified messages."
 ;;;; Constants
 
 (define umail-message-start-regexp
-  "^From \\([^ \n]*\\(\\|\".*\"[^ \n]*\\)\\)  ?\\([^ \n]*\\) \\([^ \n]*\\) *\\([0-9]*\\) \\([0-9:]*\\)\\( ?[A-Z]?[A-Z][A-Z]T\\| ?[-+]?[0-9][0-9][0-9][0-9]\\|\\) 19\\([0-9]*\\) *\\(remote from .*\\)?$")
+  "From \\([^ \n]*\\(\\|\".*\"[^ \n]*\\)\\)  ?\\([^ \n]*\\) \\([^ \n]*\\) *\\([0-9]*\\) \\([0-9:]*\\)\\( ?[A-Z]?[A-Z][A-Z]T\\| ?[-+]?[0-9][0-9][0-9][0-9]\\|\\) 19\\([0-9]*\\) *\\(remote from .*\\)?$")
 
 (define umail-message-end-regexp
   false)
