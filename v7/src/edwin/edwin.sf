@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: edwin.sf,v 1.25 2001/08/15 03:07:50 cph Exp $
+;;; $Id: edwin.sf,v 1.26 2001/08/16 19:08:46 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2001 Massachusetts Institute of Technology
 ;;;
@@ -35,10 +35,7 @@
 (if (not (name->package '(EDWIN)))
     (begin
       (if (not (file-exists? (pathname-new-type package-name "pkd")))
-	  (begin
-	    ((access cref/generate-trivial-constructor
-		     (->environment '(CROSS-REFERENCE)))
-	     package-name)))
+	  (cref/generate-trivial-constructor package-name))
       (construct-packages-from-file
        (fasload (pathname-new-type package-name "pkd")))))
 

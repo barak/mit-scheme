@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.sf,v 1.11 2001/08/15 03:09:53 cph Exp $
+$Id: compiler.sf,v 1.12 2001/08/16 19:09:28 cph Exp $
 
 Copyright (c) 1992-2001 Massachusetts Institute of Technology
 
@@ -29,9 +29,7 @@ USA.
     (begin
       ;; If there is no existing package constructor, generate one.
       (if (not (file-exists? "compiler.pkd"))
-	  ((access cref/generate-trivial-constructor
-		   (->environment '(CROSS-REFERENCE)))
-	   "compiler"))
+	  (cref/generate-trivial-constructor "compiler"))
       (construct-packages-from-file (fasload "compiler.pkd"))))
 
 ;; Guarantee that the necessary syntactic transforms and optimizers
