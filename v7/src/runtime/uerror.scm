@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uerror.scm,v 14.48 2001/08/09 03:04:49 cph Exp $
+$Id: uerror.scm,v 14.49 2001/12/19 01:40:12 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -87,7 +87,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(write name port)
 	(write-string " to a given value." port))
       (lambda (value)
-	(local-assignment environment name value)
+	(environment-define environment name value)
 	(continuation unspecific))
       (let ((prompt (string-append "Define " (write-to-string name) " as")))
 	(lambda ()
