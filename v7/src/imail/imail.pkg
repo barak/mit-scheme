@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.36 2000/05/19 02:31:05 cph Exp $
+;;; $Id: imail.pkg,v 1.37 2000/05/19 21:37:48 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -208,4 +208,62 @@
 	 "imail-imap"
 	 "imail-top"
 	 "imail-summary")
-  (parent (edwin)))
+  (parent (edwin))
+  (export (edwin)
+	  edwin-command$imail
+	  edwin-command$imail-add-flag
+	  edwin-command$imail-continue
+	  edwin-command$imail-create-folder
+	  edwin-command$imail-delete-backward
+	  edwin-command$imail-delete-folder
+	  edwin-command$imail-delete-forward
+	  edwin-command$imail-delete-message
+	  edwin-command$imail-expunge
+	  edwin-command$imail-first-message
+	  edwin-command$imail-forward
+	  edwin-command$imail-get-new-mail
+	  edwin-command$imail-input
+	  edwin-command$imail-kill-flag
+	  edwin-command$imail-last-message
+	  edwin-command$imail-mail
+	  edwin-command$imail-next-flagged-message
+	  edwin-command$imail-next-message
+	  edwin-command$imail-next-undeleted-message
+	  edwin-command$imail-output
+	  edwin-command$imail-previous-flagged-message
+	  edwin-command$imail-previous-message
+	  edwin-command$imail-previous-undeleted-message
+	  edwin-command$imail-quit
+	  edwin-command$imail-reply
+	  edwin-command$imail-resend
+	  edwin-command$imail-save-folder
+	  edwin-command$imail-search
+	  edwin-command$imail-select-message
+	  edwin-command$imail-summary
+	  edwin-command$imail-summary-by-flags
+	  edwin-command$imail-summary-by-recipients
+	  edwin-command$imail-summary-quit
+	  edwin-command$imail-summary-select-message
+	  edwin-command$imail-toggle-header
+	  edwin-command$imail-undelete-backward
+	  edwin-command$imail-undelete-forward
+	  edwin-command$imail-undelete-previous-message
+	  edwin-mode$imail
+	  edwin-mode$imail-summary
+	  edwin-variable$imail-default-dont-reply-to-names
+	  edwin-variable$imail-default-imap-mailbox
+	  edwin-variable$imail-default-imap-server
+	  edwin-variable$imail-default-user-id
+	  edwin-variable$imail-delete-after-output
+	  edwin-variable$imail-dont-reply-to-names
+	  edwin-variable$imail-ignored-headers
+	  edwin-variable$imail-kept-headers
+	  edwin-variable$imail-message-filter
+	  edwin-variable$imail-mode-hook
+	  edwin-variable$imail-primary-folder
+	  edwin-variable$imail-reply-with-re
+	  edwin-variable$imail-summary-highlight-message
+	  edwin-variable$imail-summary-mode-hook
+	  edwin-variable$imail-summary-pop-up-message
+	  edwin-variable$imail-summary-show-date
+	  edwin-variable$imail-summary-subject-width))
