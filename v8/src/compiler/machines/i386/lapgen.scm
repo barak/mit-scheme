@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.2 1995/01/11 20:42:06 ssmith Exp $
+$Id: lapgen.scm,v 1.3 1995/01/11 21:09:46 ssmith Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -684,4 +684,11 @@ MIT in each case. |#
 ;; it that I defined it here since I don't know what it is.  I set
 ;; it to 0 instead of 3 since I don't even know why it should be used.
 ;; Potential bug.
+
+;; NOTE- after reading through the Spectrum's book, I think I figured out
+;; we don't need this.
 (define-integrable *privilege-level* 0)
+
+;; Copied verbatim without understanding.
+(define (standard-source! register)
+  (load-alias-register! register (register-type register)))
