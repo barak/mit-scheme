@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: asstop.scm,v 1.3 1992/11/14 17:20:27 gjr Exp $
+$Id: asstop.scm,v 1.4 1993/08/22 20:23:22 gjr Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -202,6 +202,7 @@ MIT in each case. |#
 		   (set-lambda-body! (car entry)
 				     (label->address (cdr entry))))
 		 *ic-procedure-headers*))
+     ((ucode-primitive declare-compiled-code-block 1) *code-vector*)
      (if (not compiler:preserve-data-structures?)
 	 (begin
 	   (set! *code-vector*)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/prgcop.scm,v 1.3 1991/09/20 03:58:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/prgcop.scm,v 1.4 1993/08/22 20:23:18 gjr Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -158,6 +158,7 @@ MIT in each case. |#
   (let* ((new (vector-copy (object-new-type (ucode-type VECTOR) obj)))
 	 (typed (object-new-type (ucode-type compiled-code-block) new))
 	 (len (vector-length new)))
+    ((ucode-primitive declare-compiled-code-block 1) typed)
     (add-association! obj typed)
     (do ((i (fix:+ (object-datum (vector-ref new 0)) 1) (fix:+ 1 i)))    
 	((not (fix:< i len)))
