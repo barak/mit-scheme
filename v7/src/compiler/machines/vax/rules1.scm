@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules1.scm,v 4.3 1988/02/23 19:45:15 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules1.scm,v 4.4 1988/03/21 21:46:31 bal Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -54,6 +54,11 @@ MIT in each case. |#
     (LAP (MOVA L (@RO ,(offset-type offset1) 14 ,offset1) (R 10)))))
 
 (define-rule statement
+  (ASSIGN (REGISTER 10) (OFFSET-ADDRESS (REGISTER (? source)) (? offset)))
+  (QUALIFIER (pseudo-register? source))
+  (LAP (MOVA L ,(indirect-reference! source offset) (R 10))))
+  
+(define-rule statement
   (ASSIGN (REGISTER 10) (OBJECT->ADDRESS (REGISTER (? source))))
   (QUALIFIER (pseudo-register? source))
   (if (and (dead-register? source)
@@ -104,7 +109,7 @@ MIT in each case. |#
   (QUALIFIER (pseudo-register? target))
   (LAP (MOV L
 	    (@PCR ,(free-assignment-label name))
-	    ,(reference-assignment-alias! target 'DATA))))
+	    ,(reference-assignment-alias! target 'GENERAL))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (REGISTER (? source)))
@@ -235,6 +240,13 @@ MIT in each case. |#
 	     (@R+ 12))
        (MOV B ,(immediate-type (ucode-type compiled-expression))
 	    (@RO B 12 -1))))
+
+;; This pops the top of stack into the heap
+
+(define-rule statement
+  (ASSIGN (POST-INCREMENT (REGISTER 12) 1) (POST-INCREMENT (REGISTER 14) 1))
+  (LAP (MOV L (@R+ 14) (@R+ 12))))
+
 
 ;;;; Pushes
 
