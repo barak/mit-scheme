@@ -1,8 +1,8 @@
 #!/bin/sh
 
-# $Id: make-scmutils,v 1.1 2001/04/14 02:34:27 cph Exp $
+# $Id: make-scmutils,v 1.2 2002/07/11 16:41:40 cph Exp $
 #
-# Copyright (c) 2001 Massachusetts Institute of Technology
+# Copyright (c) 2001, 2002 Massachusetts Institute of Technology
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -53,7 +53,7 @@ STAMP_UNPACK="${TL_DIR}/stamp-unpack"
 STAMP_BUILD="${TL_DIR}/stamp-build"
 STAMP_IMAGE="${TL_DIR}/stamp-image"
 
-MKDIR="mkdir -p"
+MKDIR="install -d -m 755"
 INSTALL="install -p"
 INSTALL_DATA="${INSTALL} -m 644"
 
