@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.20 1993/08/02 21:12:17 gjr Exp $
+$Id: parse.scm,v 14.21 1993/08/03 03:10:46 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -303,6 +303,7 @@ MIT in each case. |#
   object)
 
 (define (parser-current-position/default offset)
+  offset				; fnord
   false)
 
 ;; Do not integrate this!!! -- GJR
