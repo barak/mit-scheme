@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: random.scm,v 14.28 2003/03/13 20:18:59 cph Exp $
+$Id: random.scm,v 14.29 2003/03/14 20:45:07 cph Exp $
 
 Copyright 1988,1989,1993,1994,1995,1996 Massachusetts Institute of Technology
 Copyright 1998,1999,2000,2001,2003 Massachusetts Institute of Technology
@@ -223,9 +223,9 @@ USA.
   (named-structure/set-tag-description! random-state-tag
     (make-define-structure-type 'VECTOR
 				'RANDOM-STATE
-				'(INDEX BORROW VECTOR)
-				'(1 2 3)
-				(make-list 3 (lambda () #f))
+				'#(INDEX BORROW VECTOR)
+				'#(1 2 3)
+				(make-vector 3 (lambda () #f))
 				(standard-unparser-method 'RANDOM-STATE #f)
 				random-state-tag
 				4)))
