@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchdmp.c,v 9.71 1993/08/23 02:20:41 gjr Exp $
+$Id: bchdmp.c,v 9.72 1993/09/09 18:12:44 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -273,7 +273,7 @@ DEFUN (fasdump_exit, (length), long length)
 
 #ifdef HAVE_FTRUNCATE
   {
-#ifndef _HPUX
+#if (! (defined(_HPUX) || defined(__linux)))
     /* HP-UX version < 9.0 has the wrong type in the prototype
        in <unistd.h>
      */

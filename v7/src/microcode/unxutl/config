@@ -1,7 +1,10 @@
 #!/bin/sh
 # Configuration script for MIT Scheme
-# $Id: config,v 1.19 1993/06/24 04:22:09 gjr Exp $
+# $Id: config,v 1.20 1993/09/09 18:15:01 gjr Exp $
 # Modelled on the configuration script for GNU CC
+# The section between lines is the copyright prefix from the GNU CC config.
+#----------------------------------------------------------------------
+
 #   Copyright (C) 1988 Free Software Foundation, Inc.
 
 #This file is part of GNU CC.
@@ -20,6 +23,7 @@
 #along with GNU CC; see the file COPYING.  If not, write to
 #the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
+#----------------------------------------------------------------------
 #
 # Shell script to create proper links to machine-dependent files in
 # preparation for compiling gcc.
@@ -77,7 +81,7 @@ case $# in
 		cmpint_file=mips.h
 		cmpaux_file=mips.m4
 		;;
- 	386bsd)
+ 	linux | 386bsd)
  		system_file=386bsd
  		machine_file=i386
  		cmpint_file=i386.h

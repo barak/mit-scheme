@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.50 1993/08/03 08:30:08 gjr Exp $
+$Id: ux.h,v 1.51 1993/09/09 18:18:54 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -279,13 +279,6 @@ extern int EXFUN (kill, (pid_t, int));
 #ifdef __linux
 #include <sys/time.h>
 #define SYSTEM_VARIANT "Linux"
-#undef HAVE_SIGCONTEXT
-/* Hacks to put handlers for non-existent signals on SIGSEGV.
-   (Scheme handles SIGSEGV, SIGBUS, SIGEMT, and SIGSYS the same way anyway:
-    defsignal (SIGSEGV, "SIGSEGV",	dfl_terminate,	CORE_DUMP); */
-#define SIGBUS SIGSEGV
-#define SIGEMT SIGSEGV
-#define SIGSYS SIGSEGV
 #endif
 
 #ifdef _ULTRIX
