@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.110 2002/02/04 21:50:16 cph Exp $
+@comment $Id: scheme.texinfo,v 1.111 2002/02/05 05:28:55 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -3195,6 +3195,12 @@ The @code{include} option is not implemented.
 @node Macros,  , Structure Definitions, Special Forms
 @section Macros
 
+(This section is largely taken from the @cite{Revised^4 Report on the
+Algorithmic Language Scheme}.  The section on Syntactic Closures is
+derived from a document written by Chris Hanson.  The section on
+Explicit Renaming is derived from a document written by William
+Clinger.)
+
 @cindex macro
 Scheme programs can define and use new derived expression types, called
 @dfn{macros}.  Program-defined expression types have the syntax
@@ -3385,7 +3391,7 @@ entire block in which it appears.  However, the @var{keyword} may only
 be used after it has been defined.
 
 MIT Scheme permits @code{define-syntax} to appear both at top level and
-within @code{lambda} bodies.  The Revised^5 Report permits only
+within @code{lambda} bodies.  The Revised^4 Report permits only
 top-level uses of @code{define-syntax}.
 
 Although macros may expand into definitions and syntax definitions in
@@ -3418,7 +3424,7 @@ that follow the group.  For example, the following are errors:
 @subsection Pattern Language
 
 MIT Scheme supports a high-level pattern language for specifying macro
-transformers.  This pattern language is defined by the Revised^5 Report
+transformers.  This pattern language is defined by the Revised^4 Report
 and is portable to other conforming Scheme implementations.  To use the
 pattern language, specify a @var{transformer-spec} as a
 @code{syntax-rules} form:
@@ -3441,8 +3447,6 @@ following
 (@var{pattern} @dots{})
 (@var{pattern} @var{pattern} @dots{} . @var{pattern})
 (@var{pattern} @dots{} @var{pattern} @var{ellipsis})
-#(@var{pattern} @dots{})
-#(@var{pattern} @dots{} @var{pattern} @var{ellipsis})
 @end example
 
 @noindent
@@ -3452,7 +3456,6 @@ following
 @example
 (@var{element} @dots{})
 (@var{element} @var{element} @dots{} . @var{template})
-#(@var{element} @dots{})
 @end example
 
 @vindex ...
@@ -3519,18 +3522,6 @@ whose @var{n}th ``cdr'' matches @var{P_n+1}; or
 @var{F} is a proper list of at least @var{n} forms, the first @var{n} of
 which match @var{P_1} through @var{P_n}, respectively, and each
 remaining element of @var{F} matches @var{P_n+1}; or
-
-@item
-@var{P} is a vector of the form @code{#(@var{P_1} @dots{} @var{P_n})}
-and @var{F} is a vector of @var{n} forms that match @var{P_1} through
-@var{P_n}; or
-
-@item
-@var{P} is of the form @code{#(@var{P_1} @dots{} @var{P_n} @var{P_n+1}
-@var{ellipsis})} where @var{ellipsis} is the identifier @code{...} and
-@var{F} is a vector of @var{n} or more forms the first @var{n} of which
-match @var{P_1} through @var{P_n}, respectively, and each remaining
-element of @var{F} matches @var{P_n+1}; or
 
 @item
 @var{P} is a datum and @var{F} is equal to @var{P} in the sense of the
@@ -3684,10 +3675,12 @@ syntactic closures and syntactic environments.
 @deffn {special form} sc-macro-transformer expression
 It is an error if this syntax occurs except as a @var{transformer-spec}.
 
-The @var{expression} is evaluated in the transformer environment to
-yield a macro transformer as described below.  This macro transformer is
-bound to a macro keyword by the special form in which the
-@code{transformer} expression appears (for example, @code{let-syntax}).
+The @var{expression} is expanded in the syntactic environment of the
+@code{sc-macro-transformer} expression, and the expanded expression is
+evaluated in the transformer environment to yield a macro transformer as
+described below.  This macro transformer is bound to a macro keyword by
+the special form in which the @code{transformer} expression appears (for
+example, @code{let-syntax}).
 
 @cindex macro transformer
 @cindex input form
@@ -3763,11 +3756,12 @@ must be left free when the body is closed:
 This form is an alternative way to define a syntactic-closures macro
 transformer.  Its syntax and usage are identical to
 @code{sc-macro-transformer}, except that the roles of the usage
-environment and transformer environment are reversed.  In other words,
-the procedure specified by @var{expression} still accepts two arguments,
-but its second argument will be the transformer environment rather than
-the usage environment, and the returned expression is closed in the
-usage environment rather than the transformer environment.
+environment and transformer environment are reversed.  (Hence
+@acronym{RSC} stands for @dfn{Reversed Syntactic Closures}.)  In other
+words, the procedure specified by @var{expression} still accepts two
+arguments, but its second argument will be the transformer environment
+rather than the usage environment, and the returned expression is closed
+in the usage environment rather than the transformer environment.
 
 The advantage of this arrangement is that it allows a simpler definition
 style in some situations.  For example, here is the @code{push} macro
@@ -3781,8 +3775,8 @@ from above, rewritten in this style:
      `(,(make-syntactic-closure env '() 'SET!)
        ,(caddr exp)
        (,(make-syntactic-closure env '() 'CONS)
-	,(cadr exp)
-	,(caddr exp))))))
+        ,(cadr exp)
+        ,(caddr exp))))))
 @end group
 @end example
 
@@ -3802,12 +3796,12 @@ technique can be used to effect the opposite emulation as well.)
    (lambda (exp usage-env)
      (capture-syntactic-environment
       (lambda (env)
-	(make-syntactic-closure usage-env '()
-	  `(,(make-syntactic-closure env '() 'SET!)
-	    ,(caddr exp)
-	    (,(make-syntactic-closure env '() 'CONS)
-	     ,(cadr exp)
-	     ,(caddr exp)))))))))
+        (make-syntactic-closure usage-env '()
+          `(,(make-syntactic-closure env '() 'SET!)
+            ,(caddr exp)
+            (,(make-syntactic-closure env '() 'CONS)
+             ,(cadr exp)
+             ,(caddr exp)))))))))
 @end group
 @end example
 @end deffn
@@ -3852,6 +3846,20 @@ When the body expression is syntactically closed in its original
 syntactic environment, the identifier that is to be bound by
 @code{let1} must be left free, so that it can be properly captured by
 the @code{lambda} in the output form.
+@end deffn
+
+In most situations, the @var{free-names} argument to
+@code{make-syntactic-closure} is the empty list.  In those cases, the
+more succinct @code{close-syntax} can be used:
+
+@deffn procedure close-syntax form environment
+@var{Environment} must be a syntactic environment and @var{form} must be
+a form.  Returns a new syntactic closure of @var{form} in
+@var{environment}, with no free names.  Entirely equivalent to
+
+@example
+(make-syntactic-closure @var{environment} '() @var{form})
+@end example
 @end deffn
 
 To obtain a syntactic environment other than the usage environment,
@@ -3968,20 +3976,6 @@ transformer environment of a macro transformer:
 @end example
 @end deffn
 
-In most situations, the @var{free-names} argument to
-@code{make-syntactic-closure} is the empty list.  In those cases, the
-more succinct @code{close-syntax} can be used:
-
-@deffn procedure close-syntax form environment
-@var{Environment} must be a syntactic environment and @var{form} must be
-a form.  Returns a new syntactic closure of @var{form} in
-@var{environment}, with no free names.  Entirely equivalent to
-
-@example
-(make-syntactic-closure @var{environment} '() @var{form})
-@end example
-@end deffn
-
 @node SC Identifiers,  , SC Transformer Definition, Syntactic Closures
 @subsubsection Identifiers
 
@@ -4064,7 +4058,7 @@ Examples:
 @group
 (let-syntax
     ((foo
-      (transformer
+      (sc-macro-transformer
        (lambda (form env)
          (capture-syntactic-environment
           (lambda (transformer-env)
@@ -4079,7 +4073,7 @@ Examples:
 (let-syntax ((bar foo))
   (let-syntax
       ((foo
-        (transformer
+        (sc-macro-transformer
          (lambda (form env)
            (capture-syntactic-environment
             (lambda (transformer-env)
@@ -4096,7 +4090,7 @@ Sometimes it is useful to be able to introduce a new identifier that is
 guaranteed to be different from any existing identifier, similarly to
 the way that @code{generate-uninterned-symbol} is used. 
 
-@deffn make-synthetic-identifier identifier
+@deffn procedure make-synthetic-identifier identifier
 Creates and returns and new synthetic identifier (alias) that is
 guaranteed to be different from all existing identifiers.
 @var{Identifier} is any existing identifier, which is used in deriving
@@ -4108,6 +4102,170 @@ special empty environment.
 
 @node Explicit Renaming,  , Syntactic Closures, Macros
 @subsection Explicit Renaming
+
+@cindex explicit renaming
+@dfn{Explicit renaming} is an alternative facility for defining macro
+transformers.  In the MIT Scheme implementation, explicit-renaming
+transformers are implemented as an abstraction layer on top of syntactic
+closures.  An explicit-renaming macro transformer is defined by an
+instance of the @code{er-macro-transformer} keyword:
+
+@deffn {special form} er-macro-transformer expression
+It is an error if this syntax occurs except as a @var{transformer-spec}.
+
+The @var{expression} is expanded in the syntactic environment of the
+@code{er-macro-transformer} expression, and the expanded expression is
+evaluated in the transformer environment to yield a macro transformer as
+described below.  This macro transformer is bound to a macro keyword by
+the special form in which the @code{transformer} expression appears (for
+example, @code{let-syntax}).
+
+@cindex macro transformer
+@cindex input form, to macro
+In the explicit-renaming facility, a @dfn{macro transformer} is a
+procedure that takes three arguments, a form, a renaming procedure, and
+a comparison predicate, and returns a new form.  The first argument, the
+@dfn{input form}, is the form in which the macro keyword occurred.
+
+@cindex renaming procedure
+The second argument to a transformation procedure is a @dfn{renaming
+procedure} that takes the representation of an identifier as its
+argument and returns the representation of a fresh identifier that
+occurs nowhere else in the program.  For example, the transformation
+procedure for a simplified version of the @code{let} macro might be
+written as
+
+@example
+@group
+(lambda (exp rename compare)
+  (let ((vars (map car (cadr exp)))
+        (inits (map cadr (cadr exp)))
+        (body (cddr exp)))
+    `((lambda ,vars ,@@body)
+      ,@@inits)))
+@end group
+@end example
+
+@noindent
+This would not be hygienic, however.  A hygienic @code{let} macro must
+rename the identifier @code{lambda} to protect it from being captured by
+a local binding.  The renaming effectively creates an fresh alias for
+@code{lambda}, one that cannot be captured by any subsequent binding:
+
+@example
+@group
+(lambda (exp rename compare)
+  (let ((vars (map car (cadr exp)))
+        (inits (map cadr (cadr exp)))
+        (body (cddr exp)))
+    `((,(rename 'lambda) ,vars ,@@body)
+      ,@@inits)))
+@end group
+@end example
+
+The expression returned by the transformation procedure will be expanded
+in the syntactic environment obtained from the syntactic environment of
+the macro application by binding any fresh identifiers generated by the
+renaming procedure to the denotations of the original identifiers in the
+syntactic environment in which the macro was defined.  This means that a
+renamed identifier will denote the same thing as the original identifier
+unless the transformation procedure that renamed the identifier placed
+an occurrence of it in a binding position.
+
+The renaming procedure acts as a mathematical function in the sense that
+the identifiers obtained from any two calls with the same argument will
+be the same in the sense of @code{eqv?}.  It is an error if the renaming
+procedure is called after the transformation procedure has returned.
+
+@cindex comparison predicate
+The third argument to a transformation procedure is a @dfn{comparison
+predicate} that takes the representations of two identifiers as its
+arguments and returns true if and only if they denote the same thing in
+the syntactic environment that will be used to expand the transformed
+macro application.  For example, the transformation procedure for a
+simplified version of the @code{cond} macro can be written as
+
+@example
+@group
+(lambda (exp rename compare)
+  (let ((clauses (cdr exp)))
+    (if (null? clauses)
+        `(,(rename 'quote) unspecified)
+        (let* ((first (car clauses))
+               (rest (cdr clauses))
+               (test (car first)))
+          (cond ((and (identifier? test)
+                      (compare test (rename 'else)))
+                 `(,(rename 'begin) ,@@(cdr first)))
+                (else `(,(rename 'if)
+                        ,test
+                         (,(rename 'begin) ,@@(cdr first))
+                         (cond ,@@rest))))))))))
+@end group
+@end example
+
+@noindent
+In this example the identifier @code{else} is renamed before being passed
+to the comparison predicate, so the comparison will be true if and
+only if the test expression is an identifier that denotes the same
+thing in the syntactic environment of the expression being transformed
+as @code{else} denotes in the syntactic environment in which the @code{cond}
+macro was defined.  If @code{else} were not renamed before being passed to
+the comparison predicate, then it would match a local variable that
+happened to be named @code{else}, and the macro would not be hygienic.
+
+Some macros are non-hygienic by design.  For example, the following
+defines a @code{loop} macro that implicitly binds @code{exit} to an
+escape procedure.  The binding of @code{exit} is intended to capture
+free references to @code{exit} in the body of the loop, so @code{exit}
+is not renamed.
+
+@example
+@group
+(define-syntax loop
+  (er-macro-transformer
+   (lambda (x r c)
+     (let ((body (cdr x)))
+       `(,(r 'call-with-current-continuation)
+         (,(r 'lambda) (exit)
+          (,(r 'let) ,(r 'f) () ,@@body (,(r 'f)))))))))
+@end group
+@end example
+
+Suppose a @code{while} macro is implemented using @code{loop}, with the
+intent that @code{exit} may be used to escape from the @code{while}
+loop.  The @code{while} macro cannot be written as
+
+@example
+@group
+(define-syntax while
+  (syntax-rules ()
+    ((while test body ...)
+     (loop (if (not test) (exit #f))
+           body ...))))
+@end group
+@end example
+
+@noindent
+because the reference to @code{exit} that is inserted by the
+@code{while} macro is intended to be captured by the binding of
+@code{exit} that will be inserted by the @code{loop} macro.  In other
+words, this @code{while} macro is not hygienic.  Like @code{loop}, it
+must be written using the @code{er-macro-transformer} syntax:
+
+@example
+@group
+(define-syntax while
+  (er-macro-transformer
+   (lambda (x r c)
+     (let ((test (cadr x))
+           (body (cddr x)))
+       `(,(r 'loop)
+         (,(r 'if) (,(r 'not) ,test) (exit #f))
+         ,@@body)))))
+@end group
+@end example
+@end deffn
 
 @node Equivalence Predicates, Numbers, Special Forms, Top
 @chapter Equivalence Predicates
