@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.22 1987/02/02 15:17:19 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.23 1987/02/03 16:00:50 jinx Exp $
 
 This file defines the storage for global variables for
 the Scheme Interpreter. */
@@ -1406,7 +1406,7 @@ char *Primitive_Names[] = {
 /* 0x37 in character */	"ASCII->CHAR",
 /* 0x38 in character */	"CHAR-ASCII?",
 /* 0x39 in character */	"CHAR->ASCII",
-/* 0x3A in gcloop */	"GARBAGE-COLLECT",
+/* 0x3A in memmag */	"GARBAGE-COLLECT",
 /* 0x3B in fixnum */	"PLUS-FIXNUM",
 /* 0x3C in fixnum */	"MINUS-FIXNUM",
 /* 0x3D in fixnum */	"MULTIPLY-FIXNUM",
@@ -1543,16 +1543,16 @@ char *Primitive_Names[] = {
 /* 0xB1 in prim */	"MAKE-NON-POINTER-OBJECT",
 /* 0xB2 in debug */	"DEBUGGING-PRINTER",
 /* 0xB3 in string */	"STRING-UPCASE",
-/* 0xB4 in gcloop */	"PRIMITIVE-PURIFY",
+/* 0xB4 in purify */	"PRIMITIVE-PURIFY",
 /* 0xB5 not here */	No_Name,
 /* 0xB6 in nihil */	"COMPLETE-GARBAGE-COLLECT",
 /* 0xB7 in fasdump */	"DUMP-BAND",
 /* 0xB8 in string */	"SUBSTRING-SEARCH",
 /* 0xB9 in fasload */	"LOAD-BAND",
-/* 0xBA in gcloop */	"CONSTANT?",
-/* 0xBB in gcloop */	"PURE?",
-/* 0xBC in gcloop */	"PRIMITIVE-GC-TYPE",
-/* 0xBD in gcloop */	"PRIMITIVE-IMPURIFY",
+/* 0xBA in purify */	"CONSTANT?",
+/* 0xBB in purify */	"PURE?",
+/* 0xBC in prim */	"PRIMITIVE-GC-TYPE",
+/* 0xBD in purify */	"IMPURIFY",
 /* 0xBE in hooks */	"WITH-THREADED-CONTINUATION",
 /* 0xBF in hooks */	"WITHIN-CONTROL-POINT",
 /* 0xC0 in sysprim */	"SET-RUN-LIGHT!",
@@ -1596,7 +1596,7 @@ char *Primitive_Names[] = {
 /* 0xE1 in hooks */	"MAKE-STATE-SPACE",
 /* 0xE2 in hooks */	"EXECUTE-AT-NEW-POINT",
 /* 0xE3 in hooks */	"TRANSLATE-TO-POINT",
-/* 0xE4 in gcloop */	"GET-NEXT-CONSTANT",
+/* 0xE4 in purify */	"GET-NEXT-CONSTANT",
 
 /* Primitive names continue on the next page */
 
