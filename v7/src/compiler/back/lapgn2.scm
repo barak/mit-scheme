@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn2.scm,v 1.2 1987/06/15 22:04:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn2.scm,v 1.3 1987/07/08 22:01:02 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -41,7 +41,7 @@ MIT in each case. |#
 (define *needed-registers*)
 
 (define-integrable (prefix-instructions! instructions)
-  (set! *prefix-instructions* (append! *prefix-instructions* instructions)))
+  (set! *prefix-instructions* (LAP ,@*prefix-instructions* ,@instructions)))
 
 (define-integrable (need-register! register)
   (set! *needed-registers* (cons register *needed-registers*)))

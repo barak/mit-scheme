@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr3.scm,v 1.9 1987/03/19 00:53:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr3.scm,v 1.10 1987/07/08 22:07:19 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -40,29 +40,25 @@ MIT in each case. |#
 ;;;; Control Transfer
 
 (define-instruction B
-  (((? c) S (@PCO (? o)))
-   (QUALIFIER (cc? c))
+  (((? c cc) S (@PCO (? o)))
    (WORD (4 #b0110)
-	 (4 (encode-cc c))
+	 (4 c)
 	 (8 o SIGNED)))
 
-  (((? c) S (@PCR (? l)))
-   (QUALIFIER (cc? c))
+  (((? c cc) S (@PCR (? l)))
    (WORD (4 #b0110)
-	 (4 (encode-cc c))
+	 (4 c)
 	 (8 l SHORT-LABEL)))
 
-  (((? c) L (@PCO (? o)))
-   (QUALIFIER (cc? c))
+  (((? c cc) L (@PCO (? o)))
    (WORD (4 #b0110)
-	 (4 (encode-cc c))
+	 (4 c)
 	 (8 #b00000000))
    (immediate-word o))
 
-  (((? c) L (@PCR (? l)))
-   (QUALIFIER (cc? c))
+  (((? c cc) L (@PCR (? l)))
    (WORD (4 #b0110)
-	 (4 (encode-cc c))
+	 (4 c)
 	 (8 #b00000000))
    (relative-word l)))
 
@@ -101,18 +97,16 @@ MIT in each case. |#
    (relative-word l)))
 
 (define-instruction DB
-  (((? c) (D (? rx)) (@PCO (? o)))
-   (QUALIFIER (cc? c))
+  (((? c cc) (D (? rx)) (@PCO (? o)))
    (WORD (4 #b0101)
-	 (4 (encode-cc c))
+	 (4 c)
 	 (5 #b11001)
 	 (3 rx))
    (immediate-word o))
 
-  (((? c) (D (? rx)) (@PCR (? l)))
-   (QUALIFIER (cc? c))
+  (((? c cc) (D (? rx)) (@PCR (? l)))
    (WORD (4 #b0101)
-	 (4 (encode-cc c))
+	 (4 c)
 	 (5 #b11001)
 	 (3 rx))
    (relative-word l)))
@@ -189,10 +183,9 @@ MIT in each case. |#
 ;;;; Data Transfer
 
 (define-instruction CLR
-  (((? s) (? ea ea-d&a))
-   (QUALIFIER (bwl? s))
+  (((? s bwl) (? ea ea-d&a))
    (WORD (8 #b01000010)
-	 (2 (encode-bwl s))
+	 (2 s)
 	 (6 ea DESTINATION-EA))))
 
 (define-instruction EXG
@@ -233,10 +226,9 @@ MIT in each case. |#
 	 (6 cea DESTINATION-EA))))
 
 (define-instruction S
-  (((? c) (? dea ea-d&a))
-   (QUALIFIER (cc? c))
+  (((? c cc) (? dea ea-d&a))
    (WORD (4 #b0101)
-	 (4 (encode-cc c))
+	 (4 c)
 	 (2 #b11)
 	 (6 dea DESTINATION-EA))))
 
@@ -245,28 +237,20 @@ MIT in each case. |#
    (WORD (10 #b0100101011)
 	 (6 dea DESTINATION-EA))))
 
-(define-instruction MOVEQ
-  (((& (? data)) (D (? rx)))
-   (WORD (4 #b0111)
-	 (3 rx)
-	 (1 #b0)
-	 (8 data SIGNED))))
-
 (define-instruction MOVE
-  (((? s) (? sea ea-all) (A (? rx)))	;MOVEA
-   (QUALIFIER (wl? s))
-   (WORD (3 #b001)
-	 (1 (encode-lw s))
-	 (3 rx)
-	 (3 #b001)
-	 (6 sea SOURCE-EA s)))
-
-  (((? s) (? sea ea-all) (? dea ea-d&a))
-   (QUALIFIER (bwl? s) (ea-b=>-A sea s))
-   (WORD (2 #b00)
-	 (2 (encode-blw s))
+  ((B (? sea ea-all-A) (? dea ea-d&a))
+   (WORD (3 #b000)
+	 (1 #b1)
 	 (6 dea DESTINATION-EA-REVERSED)
-	 (6 sea SOURCE-EA s)))
+	 (6 sea SOURCE-EA 'B)))
+
+  ;; the following includes the MOVEA instruction
+
+  (((? s lw ssym) (? sea ea-all) (? dea ea-all))
+   (WORD (3 #b001)
+	 (1 s)
+	 (6 dea DESTINATION-EA-REVERSED)
+	 (6 sea SOURCE-EA ssym)))
 
   ((W (? ea ea-d) (CCR))		;MOVE to CCR
    (WORD (10 #b0100010011)
@@ -288,74 +272,90 @@ MIT in each case. |#
    (WORD (13 #b0100111001100)
 	 (3 rx))))
 
-(define-instruction MOVEM
-  (((? s) (? r) (? dea ea-c&a))
-   (QUALIFIER (wl? s) (register-list? r))
-   (WORD (9 #b010010001)
-	 (1 (encode-wl s))
-	 (6 dea DESTINATION-EA))
-   (output-bit-string (encode-c@a+register-list r)))
+;; MOV is a special case, separated for efficiency so there are less rules to try.
 
-  (((? s) (? r) (@-a (? rx)))
-   (QUALIFIER (wl? s) (register-list? r))
+(define-instruction MOV
+  ((B (? sea ea-all-A) (? dea ea-d&a))
+   (WORD (3 #b000)
+	 (1 #b1)
+	 (6 dea DESTINATION-EA-REVERSED)
+	 (6 sea SOURCE-EA 'B)))
+
+  ;; the following includes the MOVEA instruction
+
+  (((? s lw ssym) (? sea ea-all) (? dea ea-all))
+   (WORD (3 #b001)
+	 (1 s)
+	 (6 dea DESTINATION-EA-REVERSED)
+	 (6 sea SOURCE-EA ssym))))
+
+(define-instruction MOVEQ
+  (((& (? data)) (D (? rx)))
+   (WORD (4 #b0111)
+	 (3 rx)
+	 (1 #b0)
+	 (8 data SIGNED))))
+
+(define-instruction MOVEM
+  (((? s wl) (? r @+reg-list) (? dea ea-c&a))
    (WORD (9 #b010010001)
-	 (1 (encode-wl s))
+	 (1 s)
+	 (6 dea DESTINATION-EA))
+   (output-bit-string r))
+
+  (((? s wl) (? r @-reg-list) (@-a (? rx)))
+   (WORD (9 #b010010001)
+	 (1 s)
 	 (3 #b100)
 	 (3 rx))
-   (output-bit-string (encode-@-aregister-list r)))
+   (output-bit-string r))
 
-  (((? s) (? sea ea-c) (? r))
-   (QUALIFIER (wl? s) (register-list? r))
+  (((? s wl) (? sea ea-c) (? r @+reg-list))
    (WORD (9 #b010011001)
-	 (1 (encode-wl s))
+	 (1 s)
 	 (6 sea SOURCE-EA s))
-   (output-bit-string (encode-c@a+register-list r)))
+   (output-bit-string r))
 
-  (((? s) (@A+ (? rx)) (? r))
-   (QUALIFIER (wl? s) (register-list? r))
+  (((? s wl) (@A+ (? rx)) (? r @+reg-list))
    (WORD (9 #b010011001)
-	 (1 (encode-wl s))
+	 (1 s)
 	 (3 #b011)
 	 (3 rx))
-   (output-bit-string (encode-c@a+register-list r))))
+   (output-bit-string r)))
 
 (define-instruction MOVEP
-  (((? s) (D (? rx)) (@AO (? ry) (? o)))
-   (QUALIFIER (wl? s))
+  (((? s wl) (D (? rx)) (@AO (? ry) (? o)))
    (WORD (4 #b0000)
 	 (3 rx)
 	 (2 #b11)
-	 (1 (encode-wl s))
+	 (1 s)
 	 (3 #b001)
 	 (3 ry))
    (offset-word o))
 
-  (((? s) (D (? rx)) (@AR (? ry) (? l)))
-   (QUALIFIER (wl? s))
+  (((? s wl) (D (? rx)) (@AR (? ry) (? l)))
    (WORD (4 #b0000)
 	 (3 rx)
 	 (2 #b11)
-	 (1 (encode-wl s))
+	 (1 s)
 	 (3 #b001)
 	 (3 ry))
    (relative-word l))
 
-  (((? s) (@AO (? ry) (? o)) (D (? rx)))
-   (QUALIFIER (wl? s))
+  (((? s wl) (@AO (? ry) (? o)) (D (? rx)))
    (WORD (4 #b0000)
 	 (3 rx)
 	 (2 #b10)
-	 (1 (encode-wl s))
+	 (1 s)
 	 (3 #b001)
 	 (3 ry))
    (offset-word o))
 
-  (((? s) (@AR (? ry) (? l)) (D (? rx)))
-   (QUALIFIER (wl? s))
+  (((? s wl) (@AR (? ry) (? l)) (D (? rx)))
    (WORD (4 #b0000)
 	 (3 rx)
 	 (2 #b10)
-	 (1 (encode-wl s))
+	 (1 s)
 	 (3 #b001)
 	 (3 ry))
    (relative-word l)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules2.scm,v 1.1.1.1 1987/07/01 21:00:21 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules2.scm,v 1.2 1987/07/08 22:08:40 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -93,9 +93,7 @@ MIT in each case. |#
 			      (primitive-datum constant)
 			      memory-reference))
       (let ((temp (reference-temporary-register! false)))
-	(LAP (MOVE/SIMPLE L
-			  ,memory-reference
-			  ,temp)
+	(LAP (MOV L ,memory-reference ,temp)
 	     (CMP L
 		  (@PCR ,(constant->label constant))
 		  ,temp)))))
@@ -125,9 +123,9 @@ MIT in each case. |#
   (let ((temp (reference-temporary-register! false)))
     (let ((finish
 	   (lambda (register-1 offset-1 register-2 offset-2)
-	     (LAP (MOVE/SIMPLE L
-			       ,(indirect-reference! register-1 offset-1)
-			       ,temp)
+	     (LAP (MOV L
+		       ,(indirect-reference! register-1 offset-1)
+		       ,temp)
 		  (CMP L
 		       ,(indirect-reference! register-2 offset-2)
 		       ,temp)))))

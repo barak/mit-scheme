@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.29 1987/07/03 19:00:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.30 1987/07/08 22:10:08 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -46,11 +46,11 @@ MIT in each case. |#
     (make-environment
       (define :name "Liar (Bobcat 68020)")
       (define :version 1)
-      (define :modification 29)
+      (define :modification 30)
       (define :files)
 
 ;      (parse-rcs-header
-;       "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.29 1987/07/03 19:00:22 cph Exp $"
+;       "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.30 1987/07/08 22:10:08 jinx Exp $"
 ;       (lambda (filename version date time zone author state)
 ;	 (set! :version (car version))
 ;	 (set! :modification (cadr version))))
@@ -95,6 +95,7 @@ MIT in each case. |#
 		 "base/regset.bin"	;RTL Register Sets
 		 "base/pmlook.bin"	;pattern matcher: lookup
 		 "base/pmpars.bin"	;pattern matcher: parser
+		 "back-end/insseq.bin"	;lap instruction sequences
 		 ))
 
 	 (cons converter-package
@@ -139,36 +140,27 @@ MIT in each case. |#
 		 "front-end/ralloc.bin"	;RTL register allocator
 		 ))
 
-	 (cons lap-generator-package
+	 (cons lap-syntax-package
 	       '("back-end/lapgn1.bin"	;LAP generator.
 		 "back-end/lapgn2.bin"
 		 "back-end/lapgn3.bin"
-		 ))
-
-	 (cons (access register-allocator-package lap-generator-package)
-	       '("back-end/regmap.bin"	;Hardware register allocator.
-		 ))
-
-	 (cons lap-generator-package
-	       '("machines/bobcat/lapgen.bin" ;code generation rules.
+		 "back-end/regmap.bin"	;Hardware register allocator.
+		 "machines/bobcat/lapgen.bin" ;code generation rules.
 		 "machines/bobcat/rules1.bin"
 		 "machines/bobcat/rules2.bin"
 		 "machines/bobcat/rules3.bin"
 		 "machines/bobcat/rules4.bin"
-		 ))
-
-
-	 (cons lap-syntaxer-package
-	       '("back-end/syntax.bin"	;Generic syntax phase
+		 "back-end/syntax.bin"	;Generic syntax phase
 		 "machines/bobcat/coerce.bin" ;Coercions: integer -> bit string
 		 "back-end/asmmac.bin"	;Macros for hairy syntax
 		 "machines/bobcat/insmac.bin" ;Macros for hairy syntax
+		 "machines/bobcat/insutl.bin" ;Utilities for instructions
 		 "machines/bobcat/instr1.bin" ;68000 Effective addressing
 		 "machines/bobcat/instr2.bin" ;68000 Instructions
 		 "machines/bobcat/instr3.bin" ;  "        "
 		 ))
 
-	 (cons lap-package
+	 (cons bit-package
 	       '("machines/bobcat/assmd.bin" ;Machine dependent
 		 "back-end/symtab.bin"	;Symbol tables
 		 "back-end/block.bin"	;Assembly blocks

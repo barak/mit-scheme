@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.183 1987/06/15 22:03:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.184 1987/07/08 22:07:44 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -32,20 +32,20 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; RTL Rules for 68020
+;;;; RTL Rules for 68020.  Part 1
 
 (declare (usual-integrations))
 
 ;;;; Basic machine instructions
 
 (define (register->register-transfer source target)
-  `(,(machine->machine-register source target)))
+  (LAP ,(machine->machine-register source target)))
 
 (define (home->register-transfer source target)
-  `(,(pseudo->machine-register source target)))
+  (LAP ,(pseudo->machine-register source target)))
 
 (define (register->home-transfer source target)
-  `(,(machine->pseudo-register source target)))
+  (LAP ,(machine->pseudo-register source target)))
 
 (define-integrable (pseudo->machine-register source target)
   (memory->machine-register (pseudo-register-home source) target))
@@ -58,67 +58,82 @@ MIT in each case. |#
 		    (+ #x000A (register-renumber register))))
 
 (define-integrable (machine->machine-register source target)
-  `(MOVE L ,(register-reference source) ,(register-reference target)))
+  (INST (MOV L
+	     ,(register-reference source)
+	     ,(register-reference target))))
 
 (define-integrable (machine-register->memory source target)
-  `(MOVE L ,(register-reference source) ,target))
+  (INST (MOV L
+	     ,(register-reference source)
+	     ,target)))
 
 (define-integrable (memory->machine-register source target)
-  `(MOVE L ,source ,(register-reference target)))
+  (INST (MOV L
+	     ,source
+	     ,(register-reference target))))
 
 (define (offset-reference register offset)
   (if (zero? offset)
       (if (< register 8)
-	  `(@D ,register)
-	  `(@A ,(- register 8)))
+	  (INST-EA (@D ,register))
+	  (INST-EA (@A ,(- register 8))))
       (if (< register 8)
-	  `(@DO ,register ,(* 4 offset))
-	  `(@AO ,(- register 8) ,(* 4 offset)))))
+	  (INST-EA (@DO ,register ,(* 4 offset)))
+	  (INST-EA (@AO ,(- register 8) ,(* 4 offset))))))
 
 (define (load-dnw n d)
-  (cond ((zero? n) `(CLR W (D ,d)))
-	((<= -128 n 127) `(MOVEQ (& ,n) (D ,d)))
-	(else `(MOVE W (& ,n) (D ,d)))))
+  (cond ((zero? n)
+	 (INST (CLR W (D ,d))))
+	((<= -128 n 127)
+	 (INST (MOVEQ (& ,n) (D ,d))))
+	(else
+	 (INST (MOV W (& ,n) (D ,d))))))
 
 (define (test-dnw n d)
   (if (zero? n)
-      `(TST W (D ,d))
-      `(CMP W (& ,n) (D ,d))))
+      (INST (TST W (D ,d)))
+      (INST (CMPI W (& ,n) (D ,d)))))
 
 (define (increment-anl an n)
   (case n
-    ((0) '())
-    ((1 2) `((ADDQ L (& ,(* 4 n)) (A ,an))))
-    ((-1 -2) `((SUBQ L (& ,(* -4 n)) (A ,an))))
-    (else `((LEA (@AO ,an ,(* 4 n)) (A ,an))))))
+    ((0) (LAP))
+    ((1 2) (LAP (ADDQ L (& ,(* 4 n)) (A ,an))))
+    ((-1 -2) (LAP (SUBQ L (& ,(* -4 n)) (A ,an))))
+    (else (LAP (LEA (@AO ,an ,(* 4 n)) (A ,an))))))
 
 (define (load-constant constant target)
   (if (non-pointer-object? constant)
       (load-non-pointer (primitive-type constant)
 			(primitive-datum constant)
 			target)
-      `(MOVE L (@PCR ,(constant->label constant)) ,target)))
+      (INST (MOV L
+		 (@PCR ,(constant->label constant))
+		 ,target))))
 
 (define (load-non-pointer type datum target)
   (cond ((not (zero? type))
-	 `(MOVE L (& ,(make-non-pointer-literal type datum)) ,target))
+	 (INST (MOV L
+		    (& ,(make-non-pointer-literal type datum))
+		    ,target)))
 	((and (zero? datum)
-	      (memq (car target) '(D @D @A @A+ @-A @AO @DO @AOX W L)))
-	 `(CLR L ,target))
-	((and (<= -128 datum 127) (eq? (car target) 'D))
-	 `(MOVEQ (& ,datum) ,target))
-	(else
-	 `(MOVE L (& ,datum) ,target))))
+	      (memq (lap:ea-keyword target) '(D @D @A @A+ @-A @AO @DO @AOX W L)))
+	 (INST (CLR L ,target)))
+	((and (<= -128 datum 127) (eq? (lap:ea-keyword target) 'D))
+	 (INST (MOVEQ (& ,datum) ,target)))
+	(else (INST (MOV L (& ,datum) ,target)))))
 
-(define (test-byte n expression)
-  (if (and (zero? n) (TSTable-expression? expression))
-      `(TST B ,expression)
-      `(CMP B (& ,n) ,expression)))
+(define (test-byte n effective-address)
+  (if (and (zero? n) (TSTable-effective-address? effective-address))
+      (INST (TST B ,effective-address))
+      (INST (CMPI B (& ,n) ,effective-address))))
 
-(define (test-non-pointer type datum expression)
-  (if (and (zero? type) (zero? datum) (TSTable-expression? expression))
-      `(TST L ,expression)
-      `(CMP L (& ,(make-non-pointer-literal type datum)) ,expression)))
+(define (test-non-pointer type datum effective-address)
+  (if (and (zero? type) (zero? datum)
+	   (TSTable-effective-address? effective-address))
+      (INST (TST L ,effective-address))
+      (INST (CMPI L
+		  (& ,(make-non-pointer-literal type datum))
+		  ,effective-address))))
 
 (define make-non-pointer-literal
   (let ((type-scale-factor (expt 2 24)))
@@ -128,10 +143,11 @@ MIT in each case. |#
 	 datum))))
 
 (define (set-standard-branches! cc)
-  (set-current-branches! (lambda (label)
-			   `((B ,cc L (@PCR ,label))))
-			 (lambda (label)
-			   `((B ,(invert-cc cc) L (@PCR ,label))))))
+  (set-current-branches!
+   (lambda (label)
+     (LAP (B ,cc L (@PCR ,label))))
+   (lambda (label)
+     (LAP (B ,(invert-cc cc) L (@PCR ,label))))))
 
 (define (invert-cc cc)
   (cdr (or (assq cc
@@ -152,26 +168,27 @@ MIT in each case. |#
     (let ((result
 	   (case (car expression)
 	     ((REGISTER)
-	      `((MOVE L ,(coerce->any (cadr expression)) ,target)))
+	      (LAP (MOV L ,(coerce->any (cadr expression)) ,target)))
 	     ((OFFSET)
-	      `((MOVE L
-		      ,(indirect-reference! (cadadr expression)
-					    (caddr expression))
-		      ,target)))
+	      (LAP
+	       (MOV L
+		    ,(indirect-reference! (cadadr expression)
+					  (caddr expression))
+		    ,target)))
 	     ((CONSTANT)
-	      `(,(load-constant (cadr expression) target)))
+	      (LAP ,(load-constant (cadr expression) target)))
 	     ((UNASSIGNED)
-	      `(,(load-non-pointer type-code:unassigned 0 target)))
+	      (LAP ,(load-non-pointer type-code:unassigned 0 target)))
 	     (else
 	      (error "Unknown expression type" (car expression))))))
       (delete-machine-register! register)
       result)))
 
-(define-integrable (TSTable-expression? expression)
-  (memq (car expression) '(D @D @A @A+ @-A @DO @AO @AOX W L)))
+(define-integrable (TSTable-effective-address? effective-address)
+  (memq (lap:ea-keyword effective-address) '(D @D @A @A+ @-A @DO @AO @AOX W L)))
 
-(define-integrable (register-expression? expression)
-  (memq (car expression) '(A D)))
+(define-integrable (register-effective-address? effective-address)
+  (memq (lap:ea-keyword effective-address) '(A D)))
 
 (define (indirect-reference! register offset)
   (if (= register regnum:frame-pointer)
@@ -206,26 +223,43 @@ MIT in each case. |#
   false)
 
 (define (generate-n-times n limit instruction with-counter)
-  (if (<= n limit)
-      (let loop ((n n))
-	(if (zero? n)
-	    '()
-	    `(,instruction
-	      ,@(loop (-1+ n)))))
-      (let ((loop (generate-label 'LOOP)))
-	(with-counter
-	 (lambda (counter)
-	   `(,(load-dnw (-1+ n) counter)
-	     (LABEL ,loop)
-	     ,instruction
-	     (DB F (D ,counter) (@PCR ,loop))))))))
-
+  (cond ((> n limit)
+	 (let ((loop (generate-label 'LOOP)))
+	   (with-counter
+	    (lambda (counter)
+	      (LAP ,(load-dnw (-1+ n) counter)
+		   (LABEL ,loop)
+		   ,instruction
+		   (DB F (D ,counter) (@PCR ,loop)))))))
+	((zero? n)
+	 (LAP))
+      (else
+       (let loop ((n (-1+ n)))
+	 (if (zero? n)
+	     (LAP ,instruction)
+	     (LAP ,(copy-instruction-sequence instruction)
+		  ,@(loop (-1+ n))))))))
+
 (define-integrable (data-register? register)
   (< register 8))
 
 (define (address-register? register)
   (and (< register 16)
        (>= register 8)))
+
+(define-integrable (lap:ea-keyword expression)
+  (car expression))
+
+(define-export (lap:make-label-statement label)
+  (INST (LABEL ,label)))
+
+(define-export (lap:make-unconditional-branch label)
+  (INST (BRA L (@PCR ,label))))
+
+(define-export (lap:make-entry-point label block-start-label)
+  (LAP (ENTRY-POINT ,label)
+       (DC W (- ,label ,block-start-label))
+       (LABEL ,label)))
 
 ;;;; Registers/Entries
 
@@ -234,9 +268,10 @@ MIT in each case. |#
 		 (define (loop names index)
 		   (if (null? names)
 		       '()
-		       (cons `(DEFINE ,(symbol-append 'ENTRY:COMPILER-
-						      (car names))
-				'(@AO 6 ,index))
+		       (cons `(DEFINE-INTEGRABLE
+				,(symbol-append 'ENTRY:COMPILER-
+						(car names))
+				(INST-EA (@AO 6 ,index)))
 			     (loop (cdr names) (+ index 6)))))
 		 `(BEGIN ,@(loop names start)))))
   (define-entries #x00F0 apply error wrong-number-of-arguments
@@ -248,11 +283,11 @@ MIT in each case. |#
     safe-reference-trap unassigned?-trap cache-variable-multiple
     uuo-link-multiple))
 
-(define reg:compiled-memtop '(@A 6))
-(define reg:environment '(@AO 6 #x000C))
-(define reg:temp '(@AO 6 #x0010))
-(define reg:enclose-result '(@AO 6 #x0014))
+(define-integrable reg:compiled-memtop (INST-EA (@A 6)))
+(define-integrable reg:environment (INST-EA (@AO 6 #x000C)))
+(define-integrable reg:temp (INST-EA (@AO 6 #x0010)))
+(define-integrable reg:enclose-result (INST-EA (@AO 6 #x0014)))
 
-(define popper:apply-closure '(@AO 6 #x0168))
-(define popper:apply-stack '(@AO 6 #x01A8))
-(define popper:value '(@AO 6 #x01E8))
+(define-integrable popper:apply-closure (INST-EA (@AO 6 #x0168)))
+(define-integrable popper:apply-stack (INST-EA (@AO 6 #x01A8)))
+(define-integrable popper:value (INST-EA (@AO 6 #x01E8)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/asmmac.scm,v 1.2 1987/03/19 00:49:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/asmmac.scm,v 1.3 1987/07/08 22:00:25 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -50,10 +50,9 @@ MIT in each case. |#
   `(LIST
     ,@(map (lambda (case)
 	     (parse-rule (car case) (cdr case)
-	       (lambda (pattern names transformer qualifier actions)
+	       (lambda (pattern variables qualifier actions)
 		 `(CONS ',pattern
-			,(rule-result-expression names
-						 transformer
+			,(rule-result-expression variables
 						 qualifier
 						 (procedure pattern
 							    actions))))))
@@ -95,11 +94,14 @@ MIT in each case. |#
     (define-integrable (make-constant bit-string)
       `',bit-string)
 
-    (lambda components
+    (lambda (components early?)
       (let ((components (find-constant components)))
 	(cond ((null? components)
 	       (error "OPTIMIZE-GROUP-SYNTAX: No components in group!"))
 	      ((null? (cdr components))
 	       (car components))
 	      (else
-	       `(OPTIMIZE-GROUP ,@components)))))))
+	       `(,(if early?
+		      'OPTIMIZE-GROUP-EARLY
+		      'OPTIMIZE-GROUP)
+		 ,@components)))))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syntax.scm,v 1.14 1987/05/26 13:24:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syntax.scm,v 1.15 1987/07/08 22:03:07 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -36,32 +36,36 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define (syntax-instructions instructions)
-  (convert-output
-   (let loop ((instructions instructions))
-     (if (null? instructions)
-	 '()
-	 (append-syntax! (syntax-instruction (car instructions))
-			 (loop (cdr instructions)))))))
+(define (cons-syntax directive directives)
+  (if (and (bit-string? directive)
+	   (not (null? directives))
+	   (bit-string? (car directives)))
+      (begin (set-car! directives
+		       (bit-string-append (car directives) directive))
+	     directives)
+      (cons directive directives)))
 
 (define (convert-output directives)
-  (map (lambda (directive)
-	 (cond ((bit-string? directive) (vector 'CONSTANT directive))
-	       ((pair? directive)
-		(if (eq? (car directive) 'GROUP)
-		    (vector 'GROUP (convert-output (cdr directive)))
-		    (list->vector directive)))
-	       ((vector? directive) directive)
-	       (else
-		(error "SYNTAX-INSTRUCTIONS: Unknown directive" directive))))
-       directives))
+  (define (internal directives)
+    (map (lambda (directive)
+	   (cond ((bit-string? directive) (vector 'CONSTANT directive))
+		 ((pair? directive)
+		  (if (eq? (car directive) 'GROUP)
+		      (vector 'GROUP (internal (cdr directive)))
+		      (list->vector directive)))
+		 ((vector? directive) directive)
+		 (else
+		  (error "CONVERT-OUTPUT: Unknown directive" directive))))
+	 directives))
+  (internal (instruction-sequence->directives directives)))
 
-(define (syntax-instruction instruction)
+(define-export (lap:syntax-instruction instruction)
   (if (memq (car instruction) '(EQUATE SCHEME-OBJECT ENTRY-POINT LABEL))
-      (list instruction)
+      (directive->instruction-sequence instruction)
       (let ((match-result (instruction-lookup instruction)))
-	(or (and match-result (match-result))
-	    (error "SYNTAX-INSTRUCTION: Badly formed instruction"
+	(or (and match-result
+		 (instruction->instruction-sequence (match-result)))
+	    (error "LAP:SYNTAX-INSTRUCTION: Badly formed instruction"
 		   instruction)))))
 
 (define (instruction-lookup instruction)
@@ -91,30 +95,18 @@ MIT in each case. |#
       (coercion expression)
       (vector 'EVALUATION expression (coercion-size coercion) coercion)))
 
-(define (cons-syntax directive directives)
-  (if (and (bit-string? directive)
-	   (not (null? directives))
-	   (bit-string? (car directives)))
-      (begin (set-car! directives
-		       (bit-string-append (car directives) directive))
-	     directives)
-      (cons directive directives)))
+(define (optimize-group . components)
+  (optimize-group-internal components
+   (lambda (result make-group?)
+     (if make-group?
+	 `(GROUP ,@result)
+	 result))))
 
-(define (append-syntax! directives directives*)
-  (cond ((null? directives) directives*)
-	((null? directives*) directives)
-	(else
-	 (let ((pair (last-pair directives)))
-	   (if (and (bit-string? (car pair))
-		    (bit-string? (car directives*)))
-	       (begin (set-car! pair
-				(bit-string-append (car directives*)
-						   (car pair)))
-		      (set-cdr! pair (cdr directives*)))
-	       (set-cdr! pair directives*)))
-	 directives)))
+;; For completeness
 
-(define optimize-group
+(define optimize-group-early optimize-group)
+
+(define optimize-group-internal
   (let ()
     (define (loop1 components)
       (cond ((null? components) '())
@@ -135,20 +127,22 @@ MIT in each case. |#
 		   (cons (car components)
 			 (loop1 (cdr components)))))))
 
-    (lambda components
+    (lambda (components receiver)
       (let ((components (loop1 components)))
-	(cond ((null? components) (error "OPTIMIZE-GROUP: No components"))
-	      ((null? (cdr components)) (car components))
-	      (else `(GROUP ,@components)))))))
+	(cond ((null? components)
+	       (error "OPTIMIZE-GROUP: No components"))
+	      ((null? (cdr components))
+	       (receiver (car components) false))
+	      (else (receiver components true)))))))
 
 ;;;; Coercion Machinery
 
 (define (make-coercion-name coercion-type size)
   (string->symbol
    (string-append "COERCE-"
-		  (write-to-string size)
+		  (number->string size)
 		  "-BIT-"
-		  (write-to-string coercion-type))))
+		  (symbol->string coercion-type))))
 
 (define coercion-property-tag
   "Coercion")

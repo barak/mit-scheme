@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 1.5 1987/07/03 21:59:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 1.6 1987/07/08 22:08:21 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -47,7 +47,7 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (REGISTER 12) (REGISTER 15))
   (enable-frame-pointer-offset! 0)
-  '())
+  (LAP))
 
 (define-rule statement
   (ASSIGN (REGISTER 15) (OFFSET-ADDRESS (REGISTER 15) (? n)))
@@ -56,42 +56,44 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OFFSET-ADDRESS (REGISTER 15) (? n)))
   (QUALIFIER (pseudo-register? target))
-  `((LEA (@AO 7 ,(* 4 n)) ,(reference-assignment-alias! target 'ADDRESS))))
+  (LAP
+   (LEA (@AO 7 ,(* 4 n))
+	,(reference-assignment-alias! target 'ADDRESS))))
 
 (define-rule statement
   (ASSIGN (REGISTER 15) (REGISTER (? source)))
   (disable-frame-pointer-offset!
-   `((MOVE L ,(coerce->any source) (A 7)))))
+   (LAP (MOV L ,(coerce->any source) (A 7)))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (CONSTANT (? source)))
   (QUALIFIER (pseudo-register? target))
-  `(,(load-constant source (coerce->any target))))
+  (LAP ,(load-constant source (coerce->any target))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (VARIABLE-CACHE (? name)))
   (QUALIFIER (pseudo-register? target))
-  `((MOVE L
-	  (@PCR ,(free-reference-label name))
-	  ,(reference-assignment-alias! target 'DATA))))
+  (LAP (MOV L
+	    (@PCR ,(free-reference-label name))
+	    ,(reference-assignment-alias! target 'DATA))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (REGISTER (? source)))
   (QUALIFIER (pseudo-register? target))
   (move-to-alias-register! source 'DATA target)
-  '())
+  (LAP))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->ADDRESS (REGISTER (? source))))
   (QUALIFIER (pseudo-register? target))
   (let ((target (move-to-alias-register! source 'DATA target)))
-    `((AND L ,mask-reference ,target))))
+    (LAP (AND L ,mask-reference ,target))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->TYPE (REGISTER (? source))))
   (QUALIFIER (pseudo-register? target))
   (let ((target (move-to-alias-register! source 'DATA target)))
-    `((RO L L (& 8) ,target))))
+    (LAP (RO L L (& 8) ,target))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OFFSET (REGISTER (? address)) (? offset)))
@@ -102,18 +104,20 @@ MIT in each case. |#
     ;; heuristic that works reasonably well since if the value is a
     ;; pointer, we will probably want to dereference it, which
     ;; requires that we first mask it.
-    `((MOVE L
-	    ,source
-	    ,(register-reference (allocate-alias-register! target 'DATA))))))
+    (LAP (MOV L
+	      ,source
+	      ,(register-reference
+		(allocate-alias-register! target 'DATA))))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (POST-INCREMENT (REGISTER 15) 1))
   (QUALIFIER (pseudo-register? target))
   (record-pop!)
   (delete-dead-registers!)
-  `((MOVE L
-	  (@A+ 7)
-	  ,(register-reference (allocate-alias-register! target 'DATA)))))
+  (LAP (MOV L
+	    (@A+ 7)
+	    ,(register-reference
+	      (allocate-alias-register! target 'DATA)))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -122,119 +126,126 @@ MIT in each case. |#
   (let ((target* (coerce->any target))
 	(datum (coerce->any datum)))
     (delete-dead-registers!)
-    (if (register-expression? target*)
-	`((MOVE L ,datum ,reg:temp)
-	  (MOVE B (& ,type) ,reg:temp)
-	  (MOVE L ,reg:temp ,target*))
-	`((MOVE L ,datum ,target*)
-	  (MOVE B (& ,type) ,target*)))))
+    (if (register-effective-address? target*)
+	(LAP (MOV L ,datum ,reg:temp)
+	     (MOV B (& ,type) ,reg:temp)
+	     (MOV L ,reg:temp ,target*))
+	(LAP (MOV L ,datum ,target*)
+	     (MOV B (& ,type) ,target*)))))
 
 ;;;; Transfers to Memory
 
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a)) (? n))
 	  (CONSTANT (? object)))
-  `(,(load-constant object (indirect-reference! a n))))
+  (LAP ,(load-constant object (indirect-reference! a n))))
 
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a)) (? n))
 	  (UNASSIGNED))
-  `(,(load-non-pointer (ucode-type unassigned) 0 (indirect-reference! a n))))
+  (LAP ,(load-non-pointer (ucode-type unassigned) 0 (indirect-reference! a n))))
 
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a)) (? n))
 	  (REGISTER (? r)))
-  `((MOVE L ,(coerce->any r) ,(indirect-reference! a n))))
+  (LAP (MOV L
+	    ,(coerce->any r)
+	    ,(indirect-reference! a n))))
 
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a)) (? n))
 	  (POST-INCREMENT (REGISTER 15) 1))
   (record-pop!)
-  `((MOVE L (@A+ 7) ,(indirect-reference! a n))))
+  (LAP (MOV L
+	    (@A+ 7)
+	    ,(indirect-reference! a n))))
 
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a)) (? n))
 	  (CONS-POINTER (CONSTANT (? type)) (REGISTER (? r))))
   (let ((target (indirect-reference! a n)))
-    `((MOVE L ,(coerce->any r) ,target)
-      (MOVE B (& ,type) ,target))))
+    (LAP (MOV L ,(coerce->any r) ,target)
+	 (MOV B (& ,type) ,target))))
 
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a0)) (? n0))
 	  (OFFSET (REGISTER (? a1)) (? n1)))
   (let ((source (indirect-reference! a1 n1)))
-    `((MOVE L ,source ,(indirect-reference! a0 n0)))))
+    (LAP (MOV L
+	      ,source
+	      ,(indirect-reference! a0 n0)))))
 
 ;;;; Consing
 
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER 13) 1) (CONSTANT (? object)))
-  `(,(load-constant object '(@A+ 5))))
+  (LAP ,(load-constant object (INST-EA (@A+ 5)))))
 
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER 13) 1) (UNASSIGNED))
-  `(,(load-non-pointer (ucode-type unassigned) 0 '(@A+ 5))))
+  (LAP ,(load-non-pointer (ucode-type unassigned) 0 (INST-EA (@A+ 5)))))
 
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER 13) 1) (REGISTER (? r)))
-  `((MOVE L ,(coerce->any r) (@A+ 5))))
+  (LAP (MOV L ,(coerce->any r) (@A+ 5))))
 
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER 13) 1) (OFFSET (REGISTER (? r)) (? n)))
-  `((MOVE L ,(indirect-reference! r n) (@A+ 5))))
+  (LAP (MOV L ,(indirect-reference! r n) (@A+ 5))))
 
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER 13) 1) (ENTRY:PROCEDURE (? label)))
   (let ((temporary
 	 (register-reference (allocate-temporary-register! 'ADDRESS))))
-    `((LEA (@PCR ,(procedure-external-label (label->procedure label)))
-	   ,temporary)
-      (MOVE L ,temporary (@A+ 5))
-      (MOVE B (& ,(ucode-type compiled-expression)) (@AO 5 -4)))))
+    (LAP (LEA (@PCR ,(procedure-external-label (label->procedure label)))
+	      ,temporary)
+	 (MOV L ,temporary (@A+ 5))
+	 (MOV B (& ,(ucode-type compiled-expression)) (@AO 5 -4)))))
 
 ;;;; Pushes
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1) (CONSTANT (? object)))
   (record-push!
-   `(,(load-constant object '(@-A 7)))))
+   (LAP ,(load-constant object (INST-EA (@-A 7))))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1) (UNASSIGNED))
   (record-push!
-   `(,(load-non-pointer (ucode-type unassigned) 0 '(@-A 7)))))
+   (LAP ,(load-non-pointer (ucode-type unassigned) 0 (INST-EA (@-A 7))))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1) (REGISTER (? r)))
   (record-push!
    (if (= r regnum:frame-pointer)
-       `((PEA ,(offset-reference regnum:stack-pointer (frame-pointer-offset)))
-	 (MOVE B (& ,(ucode-type stack-environment)) (@A 7)))
-       `((MOVE L ,(coerce->any r) (@-A 7))))))
+       (LAP (PEA ,(offset-reference regnum:stack-pointer
+				    (frame-pointer-offset)))
+	    (MOV B (& ,(ucode-type stack-environment)) (@A 7)))
+       (LAP (MOV L ,(coerce->any r) (@-A 7))))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1)
 	  (CONS-POINTER (CONSTANT (? type)) (REGISTER (? r))))
   (record-push!
-   `((MOVE L ,(coerce->any r) (@-A 7))
-     (MOVE B (& ,type) (@A 7)))))
+   (LAP (MOV L ,(coerce->any r) (@-A 7))
+	(MOV B (& ,type) (@A 7)))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1) (OFFSET (REGISTER (? r)) (? n)))
   (record-push!
-   `((MOVE L ,(indirect-reference! r n) (@-A 7)))))
+   (LAP (MOV L ,(indirect-reference! r n) (@-A 7)))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1)
 	  (OFFSET-ADDRESS (REGISTER 12) (? n)))
   (record-push!
-   `((PEA ,(offset-reference regnum:stack-pointer
-			     (+ n (frame-pointer-offset))))
-     (MOVE B (& ,(ucode-type stack-environment)) (@A 7)))))
+   (LAP (PEA ,(offset-reference regnum:stack-pointer
+				(+ n (frame-pointer-offset))))
+	(MOV B (& ,(ucode-type stack-environment)) (@A 7)))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1) (ENTRY:CONTINUATION (? label)))
   (record-continuation-frame-pointer-offset! label)
   (record-push!
-   `((PEA (@PCR ,label))
-     (MOVE B (& ,(ucode-type compiler-return-address)) (@A 7)))))
+   (LAP (PEA (@PCR ,label))
+	(MOV B (& ,(ucode-type compiler-return-address)) (@A 7)))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr2.scm,v 1.9 1987/03/19 00:53:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr2.scm,v 1.10 1987/07/08 22:06:40 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -37,6 +37,12 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+;;;; Pseudo ops
+
+(define-instruction DC
+  ((W (? expression))
+   (WORD (16 expression SIGNED))))
+
 ;;;; BCD Arithmetic
 
 (let-syntax ((define-BCD-addition
@@ -66,149 +72,162 @@ MIT in each case. |#
 (let-syntax ((define-binary-addition
 	      (macro (keyword Qkeyword Xkeyword opcode Qbit Iopcode)
 		`(BEGIN
-		  (define-instruction ,Qkeyword
-		    (((? s) (& (? data)) (? ea ea-all))
-		     (QUALIFIER (bwl? s) (ea-a&<b=>-A> ea s))
+		  (define-instruction ,Qkeyword				;ADDQ
+		    ((B (& (? data)) (? ea ea-all-A))
 		     (WORD (4 #b0101)
 			   (3 data QUICK)
 			   (1 ,Qbit)
-			   (2 (encode-bwl s))
+			   (2 #b00)
+			   (6 ea DESTINATION-EA)))
+
+		    (((? s bwl-b) (& (? data)) (? ea ea-all))
+		     (WORD (4 #b0101)
+			   (3 data QUICK)
+			   (1 ,Qbit)
+			   (2 s)
 			   (6 ea DESTINATION-EA))))
 
 		  (define-instruction ,keyword
-		    (((? s) (& (? data)) (? ea ea-d&a))	;ADDI
-		     (QUALIFIER (bwl? s))
+		    (((? s bwl ssym) (& (? data)) (? ea ea-d&a))	;ADDI
 		     (WORD (4 #b0000)
 			   (4 ,Iopcode)
-			   (2 (encode-bwl s))
+			   (2 s)
 			   (6 ea DESTINATION-EA))
-		     (immediate-words data s))
+		     (immediate-words data ssym))
 
-		    (((? s) (? ea ea-all) (D (? rx)))
-		     (QUALIFIER (bwl? s) (ea-b=>-A ea s))
+		    ((B (? ea ea-all-A) (D (? rx)))
 		     (WORD (4 ,opcode)
 			   (3 rx)
 			   (1 #b0)
-			   (2 (encode-bwl s))
-			   (6 ea SOURCE-EA s)))
+			   (2 #b00)
+			   (6 ea SOURCE-EA 'B)))
 
-		    (((? s) (D (? rx)) (? ea ea-m&a))
-		     (QUALIFIER (bwl? s))
+		    (((? s bwl-b ssym) (? ea ea-all) (D (? rx)))
+		     (WORD (4 ,opcode)
+			   (3 rx)
+			   (1 #b0)
+			   (2 s)
+			   (6 ea SOURCE-EA ssym)))
+
+		    (((? s bwl) (D (? rx)) (? ea ea-m&a))
 		     (WORD (4 ,opcode)
 			   (3 rx)
 			   (1 #b1)
-			   (2 (encode-bwl s))
+			   (2 s)
 			   (6 ea DESTINATION-EA)))
 
-		    (((? s) (? ea ea-all) (A (? rx)))	;ADDA
-		     (QUALIFIER (wl? s))
+		    (((? s wl ssym) (? ea ea-all) (A (? rx)))	;ADDA
 		     (WORD (4 ,opcode)
 			   (3 rx)
-			   (1 (encode-wl s))
+			   (1 s)
 			   (2 #b11)
-			   (6 ea SOURCE-EA s))))
+			   (6 ea SOURCE-EA ssym))))
 
 		  (define-instruction ,Xkeyword
-		    (((? s) (D (? ry)) (D (? rx)))
-		     (QUALIFIER (bwl? s))
+		    (((? s bwl) (D (? ry)) (D (? rx)))
 		     (WORD (4 ,opcode)
 			   (3 rx)
 			   (1 #b1)
-			   (2 (encode-bwl s))
+			   (2 s)
 			   (3 #b000)
 			   (3 ry)))
 
-		    (((? s) (@-A (? ry)) (@-A (? rx)))
-		     (QUALIFIER (bwl? s))
+		    (((? s bwl) (@-A (? ry)) (@-A (? rx)))
 		     (WORD (4 ,opcode)
 			   (3 rx)
 			   (1 #b1)
-			   (2 (encode-bwl s))
+			   (2 s)
 			   (3 #b001)
 			   (3 ry))))))))
   (define-binary-addition ADD ADDQ ADDX #b1101 #b0 #b0110)
   (define-binary-addition SUB SUBQ SUBX #b1001 #b1 #b0100))
 
 (define-instruction DIV
-  (((? sgn) (D (? rx)) (? ea ea-d))
-   (QUALIFIER (us? sgn))
+  (((? sgn us) (D (? rx)) (? ea ea-d))
    (WORD (4 #b1000)
 	 (3 rx)
-	 (1 (encode-us sgn))
+	 (1 sgn)
 	 (2 #b11)
 	 (6 ea SOURCE-EA 'W))))
 
 (define-instruction EXT
-  (((? s) (D (? rx)))
-   (QUALIFIER (wl? s))
+  (((? s wl) (D (? rx)))
    (WORD (9 #b010010001)
-	 (1 (encode-wl s))
+	 (1 s)
 	 (3 #b000)
 	 (3 rx))))
 
 (define-instruction MUL
-  (((? sgn) (? ea ea-d) (D (? rx)))
-   (QUALIFIER (us? sgn))
+  (((? sgn us) (? ea ea-d) (D (? rx)))
    (WORD (4 #b1100)
 	 (3 rx)
-	 (1 (encode-us sgn))
+	 (1 sgn)
 	 (2 #b11)
 	 (6 ea SOURCE-EA 'W))))
 
 (define-instruction NEG
-  (((? s) (? dea ea-d&a))
-   (QUALIFIER (bwl? s))
+  (((? s bwl) (? dea ea-d&a))
    (WORD (8 #b01000100)
-	 (2 (encode-bwl s))
+	 (2 s)
 	 (6 dea DESTINATION-EA))))
 
 (define-instruction NEGX
-  (((? s) (? dea ea-d&a))
-   (QUALIFIER (bwl? s))
+  (((? s bwl) (? dea ea-d&a))
    (WORD (8 #b01000000)
-	 (2 (encode-bwl s))
+	 (2 s)
 	 (6 dea DESTINATION-EA))))
 
 ;;;; Comparisons
 
 (define-instruction CMP
-  (((? s) (? ea ea-all) (D (? rx)))
-   (QUALIFIER (bwl? s) (ea-b=>-A ea s))
+  ((B (? ea ea-all-A) (D (? rx)))
    (WORD (4 #b1011)
 	 (3 rx)
 	 (1 #b0)
-	 (2 (encode-bwl s))
-	 (6 ea SOURCE-EA s)))
+	 (2 #b00)
+	 (6 ea SOURCE-EA 'B)))
 
-  (((? s) (? ea ea-all) (A (? rx)))	;CMPA
-   (QUALIFIER (wl? s))
+  (((? s bwl-b ssym) (? ea ea-all) (D (? rx)))
    (WORD (4 #b1011)
 	 (3 rx)
-	 (1 (encode-wl s))
+	 (1 #b0)
+	 (2 s)
+	 (6 ea SOURCE-EA ssym)))
+
+  (((? s wl ssym) (? ea ea-all) (A (? rx)))	;CMPA
+   (WORD (4 #b1011)
+	 (3 rx)
+	 (1 s)
 	 (2 #b11)
-	 (6 ea SOURCE-EA s)))
+	 (6 ea SOURCE-EA ssym)))
 
-  (((? s) (& (? data)) (? ea ea-d&a))	;CMPI
-   (QUALIFIER (bwl? s))
+  (((? s bwl ssym) (& (? data)) (? ea ea-d&a))	;CMPI
    (WORD (8 #b00001100)
-	 (2 (encode-bwl s))
+	 (2 s)
 	 (6 ea DESTINATION-EA))
-   (immediate-words data s))
+   (immediate-words data ssym))
 
-  (((? s) (@A+ (? ry)) (@A+ (? rx)))	;CMPM
-   (QUALIFIER (bwl? s))
+  (((? s bwl) (@A+ (? ry)) (@A+ (? rx)))	;CMPM
    (WORD (4 #b1011)
 	 (3 rx)
 	 (1 #b1)
-	 (2 (encode-bwl s))
+	 (2 s)
 	 (3 #b001)
 	 (3 ry))))
 
+;; Also provided for efficiency.  Less rules to search.
+
+(define-instruction CMPI
+  (((? s bwl ssym) (& (? data)) (? ea ea-d&a))
+   (WORD (8 #b00001100)
+	 (2 s)
+	 (6 ea DESTINATION-EA))
+   (immediate-words data ssym)))
+
 (define-instruction TST
-  (((? s) (? dea ea-d&a))
-   (QUALIFIER (bwl? s))
+  (((? s bwl) (? dea ea-d&a))
    (WORD (8 #b01001010)
-	 (2 (encode-bwl s))
+	 (2 s)
 	 (6 dea DESTINATION-EA))))
 
 ;;;; Bitwise Logical
@@ -216,68 +235,60 @@ MIT in each case. |#
 (let-syntax ((define-bitwise-logical
 	      (macro (keyword opcode Iopcode)
 		`(define-instruction ,keyword
-		   (((? s) (? ea ea-d) (D (? rx)))
-		    (QUALIFIER (bwl? s))
+		   (((? s bwl ssym) (? ea ea-d) (D (? rx)))
 		    (WORD (4 ,opcode)
 			  (3 rx)
 			  (1 #b0)
-			  (2 (encode-bwl s))
-			  (6 ea SOURCE-EA s)))
+			  (2 s)
+			  (6 ea SOURCE-EA ssym)))
 
-		   (((? s) (D (? rx)) (? ea ea-m&a))
-		    (QUALIFIER (bwl? s))
+		   (((? s bwl) (D (? rx)) (? ea ea-m&a))
 		    (WORD (4 ,opcode)
 			  (3 rx)
 			  (1 #b1)
-			  (2 (encode-bwl s))
+			  (2 s)
 			  (6 ea DESTINATION-EA)))
 
-		   (((? s) (& (? data)) (? ea ea-d&a))	;fooI
-		    (QUALIFIER (bwl? s))
+		   (((? s bwl ssym) (& (? data)) (? ea ea-d&a))	;fooI
 		    (WORD (4 #b0000)
 			  (4 ,Iopcode)
-			  (2 (encode-bwl s))
+			  (2 s)
 			  (6 ea DESTINATION-EA))
-		    (immediate-words data s))
+		    (immediate-words data ssym))
 
-		   (((? s) (& (? data)) (SR))		;fooI to CCR/SR
-		    (QUALIFIER (bw? s))
+		   (((? s bwl ssym) (& (? data)) (SR))		;fooI to CCR/SR
 		    (WORD (4 #b0000)
 			  (4 ,Iopcode)
-			  (2 (encode-bwl s))
+			  (2 s)
 			  (6 #b111100))
-		    (immediate-words data s))))))
+		    (immediate-words data ssym))))))
   (define-bitwise-logical AND #b1100 #b0010)
   (define-bitwise-logical OR  #b1000 #b0000))
 
 (define-instruction EOR
-  (((? s) (D (? rx)) (? ea ea-d&a))
-   (QUALIFIER (bwl? s))
+  (((? s bwl) (D (? rx)) (? ea ea-d&a))
    (WORD (4 #b1011)
 	 (3 rx)
 	 (1 #b1)
-	 (2 (encode-bwl s))
+	 (2 s)
 	 (6 ea DESTINATION-EA)))
 
-  (((? s) (& (? data)) (? ea ea-d&a))	;EORI
-   (QUALIFIER (bwl? s))
+  (((? s bwl ssym) (& (? data)) (? ea ea-d&a))	;EORI
    (WORD (8 #b00001010)
-	 (2 (encode-bwl s))
+	 (2 s)
 	 (6 ea DESTINATION-EA))
-   (immediate-words data s))
+   (immediate-words data ssym))
 
-  (((? s) (& (? data)) (SR))		;EORI to CCR/SR
-   (QUALIFIER (bw? s))
+  (((? s bw ssym) (& (? data)) (SR))		;EORI to CCR/SR
    (WORD (8 #b00001010)
-	 (2 (encode-bwl s))
+	 (2 s)
 	 (6 #b111100))
-   (immediate-words data s)))
+   (immediate-words data ssym)))
 
 (define-instruction NOT
-  (((? s) (? dea ea-d&a))
-   (QUALIFIER (bwl? s))
+  (((? s bwl) (? dea ea-d&a))
    (WORD (8 #b01000110)
-	 (2 (encode-bwl s))
+	 (2 s)
 	 (6 dea DESTINATION-EA))))
 
 ;;;; Shift
@@ -285,31 +296,28 @@ MIT in each case. |#
 (let-syntax ((define-shift-instruction
 	      (macro (keyword bits)
 		`(define-instruction ,keyword
-		   (((? d) (? s) (D (? ry)) (D (? rx)))
-		    (QUALIFIER (rl? d) (bwl? s))
+		   (((? d rl) (? s bwl) (D (? ry)) (D (? rx)))
 		    (WORD (4 #b1110)
 			  (3 rx)
-			  (1 (encode-rl d))
-			  (2 (encode-bwl s))
+			  (1 d)
+			  (2 s)
 			  (1 #b1)
 			  (2 ,bits)
 			  (3 ry)))
 
-		   (((? d) (? s) (& (? data)) (D (? ry)))
-		    (QUALIFIER (rl? d) (bwl? s))
+		   (((? d rl) (? s bwl) (& (? data)) (D (? ry)))
 		    (WORD (4 #b1110)
 			  (3 data SHIFT-NUMBER)
-			  (1 (encode-rl d))
-			  (2 (encode-bwl s))
+			  (1 d)
+			  (2 s)
 			  (1 #b0)
 			  (2 ,bits)
 			  (3 ry)))
 
-		   (((? d) (? ea ea-m&a))
-		    (QUALIFIER (rl? d))
+		   (((? d rl) (? ea ea-m&a))
 		    (WORD (5 #b11100)
 			  (2 ,bits)
-			  (1 (encode-rl d))
+			  (1 d)
 			  (2 #b11)
 			  (6 ea DESTINATION-EA)))))))
   (define-shift-instruction AS  #b00)

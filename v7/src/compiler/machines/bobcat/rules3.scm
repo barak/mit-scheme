@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 1.6 1987/07/07 22:31:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 1.7 1987/07/08 22:08:57 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -41,17 +41,17 @@ MIT in each case. |#
 (define-rule statement
   (INVOCATION:APPLY (? frame-size) (? prefix) (? continuation))
   (disable-frame-pointer-offset!
-   `(,@(generate-invocation-prefix prefix '())
-     ,(load-dnw frame-size 0)
-     (JMP ,entry:compiler-apply))))
+   (LAP ,@(generate-invocation-prefix prefix '())
+	,(load-dnw frame-size 0)
+	(JMP ,entry:compiler-apply))))
 
 (define-rule statement
   (INVOCATION:JUMP (? n)
 		   (APPLY-CLOSURE (? frame-size) (? receiver-offset))
 		   (? continuation) (? label))
   (disable-frame-pointer-offset!
-   `(,@(clear-map!)
-     ,@(apply-closure-sequence frame-size receiver-offset label))))
+   (LAP ,@(clear-map!)
+	,@(apply-closure-sequence frame-size receiver-offset label))))
 
 (define-rule statement
   (INVOCATION:JUMP (? n)
@@ -59,23 +59,23 @@ MIT in each case. |#
 				(? n-levels))
 		   (? continuation) (? label))
   (disable-frame-pointer-offset!
-   `(,@(clear-map!)
-     ,@(apply-stack-sequence frame-size receiver-offset n-levels label))))
+   (LAP ,@(clear-map!)
+	,@(apply-stack-sequence frame-size receiver-offset n-levels label))))
 
 (define-rule statement
   (INVOCATION:JUMP (? frame-size) (? prefix) (? continuation) (? label))
   (QUALIFIER (not (memq (car prefix) '(APPLY-CLOSURE APPLY-STACK))))
   (disable-frame-pointer-offset!
-   `(,@(generate-invocation-prefix prefix '())
-     (BRA L (@PCR ,label)))))
+   (LAP ,@(generate-invocation-prefix prefix '())
+	(BRA L (@PCR ,label)))))
 
 (define-rule statement
   (INVOCATION:LEXPR (? number-pushed) (? prefix) (? continuation)
 		    (? label))
   (disable-frame-pointer-offset!
-   `(,@(generate-invocation-prefix prefix '())
-     ,(load-dnw number-pushed 0)
-     (BRA L (@PCR ,label)))))
+   (LAP ,@(generate-invocation-prefix prefix '())
+	,(load-dnw number-pushed 0)
+	(BRA L (@PCR ,label)))))
 
 (define-rule statement
   (INVOCATION:CACHE-REFERENCE (? frame-size) (? prefix) (? continuation)
@@ -83,11 +83,11 @@ MIT in each case. |#
   (disable-frame-pointer-offset!
    (let ((set-extension (expression->machine-register! extension a3)))
      (delete-dead-registers!)
-     `(,@set-extension
-       ,@(generate-invocation-prefix prefix (list a3))
-       ,(load-dnw frame-size 0)
-       (LEA (@PCR ,*block-start-label*) (A 1))
-       (JMP ,entry:compiler-cache-reference-apply)))))
+     (LAP ,@set-extension
+	  ,@(generate-invocation-prefix prefix (list a3))
+	  ,(load-dnw frame-size 0)
+	  (LEA (@PCR ,*block-start-label*) (A 1))
+	  (JMP ,entry:compiler-cache-reference-apply)))))
 
 (define-rule statement
   (INVOCATION:LOOKUP (? frame-size) (? prefix) (? continuation)
@@ -95,132 +95,143 @@ MIT in each case. |#
   (disable-frame-pointer-offset!
    (let ((set-environment (expression->machine-register! environment d4)))
      (delete-dead-registers!)
-     `(,@set-environment
-       ,@(generate-invocation-prefix prefix (list d4))
-       ,(load-constant name '(D 5))
-       ,(load-dnw frame-size 0)
-       (JMP ,entry:compiler-lookup-apply)))))
+     (LAP ,@set-environment
+	  ,@(generate-invocation-prefix prefix (list d4))
+	  ,(load-constant name (INST-EA (D 5)))
+	  ,(load-dnw (1+ frame-size) 0)
+	  (JMP ,entry:compiler-lookup-apply)))))
 
 (define-rule statement
   (INVOCATION:PRIMITIVE (? frame-size) (? prefix) (? continuation)
 			(? primitive))
   (disable-frame-pointer-offset!
-   `(,@(generate-invocation-prefix prefix '())
-     ,@(if (eq? primitive compiled-error-procedure)
-	   `(,(load-dnw frame-size 0)
-	     (JMP ,entry:compiler-error))
-	   `(,(load-dnw (primitive-datum primitive) 6)
-	     (JMP ,entry:compiler-primitive-apply))))))
+   (LAP ,@(generate-invocation-prefix prefix '())
+	,@(if (eq? primitive compiled-error-procedure)
+	      (LAP ,(load-dnw frame-size 0)
+		   (JMP ,entry:compiler-error))
+	      (LAP ,(load-dnw (primitive-datum primitive) 6)
+		   (JMP ,entry:compiler-primitive-apply))))))
 
 (define-rule statement
   (INVOCATION:UUO-LINK (? frame-size) (? prefix) (? continuation) (? name))
   (disable-frame-pointer-offset!
-   `(,@(generate-invocation-prefix prefix '())
-     ,(load-dnw frame-size 0)
-     (MOVE L (@PCR ,(free-uuo-link-label name)) (D 1))
-     (MOVE L (D 1) (@-A 7))
-     (AND L (D 7) (D 1))
-     (MOVE L (D 1) (A 1))
-     (MOVE L (@A 1) (D 1))
-     (AND L (D 7) (D 1))
-     (MOVE L (D 1) (A 0))
-     (JMP (@A 0)))))
+   (LAP ,@(generate-invocation-prefix prefix '())
+	,(load-dnw frame-size 0)
+	(MOVE L (@PCR ,(free-uuo-link-label name)) (D 1))
+	(MOVE L (D 1) (@-A 7))
+	(AND L (D 7) (D 1))
+	(MOVE L (D 1) (A 1))
+	(MOVE L (@A 1) (D 1))
+	(AND L (D 7) (D 1))
+	(MOVE L (D 1) (A 0))
+	(JMP (@A 0)))))
 
 (define-rule statement
   (RETURN)
   (disable-frame-pointer-offset!
-   `(,@(clear-map!)
-     (CLR B (@A 7))
-     (RTS))))
+   (LAP ,@(clear-map!)
+	(CLR B (@A 7))
+	(RTS))))
 
 (define (generate-invocation-prefix prefix needed-registers)
   (let ((clear-map (clear-map!)))
     (need-registers! needed-registers)
-    `(,@clear-map
-      ,@(case (car prefix)
-	  ((NULL) '())
-	  ((MOVE-FRAME-UP)
-	   (apply generate-invocation-prefix:move-frame-up (cdr prefix)))
-	  ((APPLY-CLOSURE)
-	   (apply generate-invocation-prefix:apply-closure (cdr prefix)))
-	  ((APPLY-STACK)
-	   (apply generate-invocation-prefix:apply-stack (cdr prefix)))
-	  (else
-	   (error "bad prefix type" prefix))))))
+    (LAP ,@clear-map
+	 ,@(case (car prefix)
+	     ((NULL) '())
+	     ((MOVE-FRAME-UP)
+	      (apply generate-invocation-prefix:move-frame-up (cdr prefix)))
+	     ((APPLY-CLOSURE)
+	      (apply generate-invocation-prefix:apply-closure (cdr prefix)))
+	     ((APPLY-STACK)
+	      (apply generate-invocation-prefix:apply-stack (cdr prefix)))
+	     (else
+	      (error "bad prefix type" prefix))))))
 
 (define (generate-invocation-prefix:move-frame-up frame-size how-far)
-  (cond ((zero? how-far) '())
+  (cond ((zero? how-far)
+	 (LAP))
 	((zero? frame-size)
 	 (increment-anl 7 how-far))
 	((= frame-size 1)
-	 `((MOVE L (@A+ 7) ,(offset-reference a7 (-1+ how-far)))
-	   ,@(increment-anl 7 (-1+ how-far))))
+	 (LAP (MOV L (@A+ 7) ,(offset-reference a7 (-1+ how-far)))
+	      ,@(increment-anl 7 (-1+ how-far))))
 	((= frame-size 2)
 	 (if (= how-far 1)
-	     `((MOVE L (@AO 7 4) (@AO 7 8))
-	       (MOVE L (@A+ 7) (@A 7)))
-	     (let ((i `(MOVE L (@A+ 7) ,(offset-reference a7 (-1+ how-far)))))
-	       `(,i ,i ,@(increment-anl 7 (- how-far 2))))))
+	     (LAP (MOV L (@AO 7 4) (@AO 7 8))
+		  (MOV L (@A+ 7) (@A 7)))
+	     (let ((i (INST (MOVE L (@A+ 7) ,(offset-reference a7 (-1+ how-far))))))
+	       (LAP ,(copy-instruction-sequence i)
+		    ,i
+		    ,@(increment-anl 7 (- how-far 2))))))
 	(else
 	 (let ((temp-0 (allocate-temporary-register! 'ADDRESS))
 	       (temp-1 (allocate-temporary-register! 'ADDRESS)))
-	   `((LEA ,(offset-reference a7 frame-size)
-		  ,(register-reference temp-0))
-	     (LEA ,(offset-reference a7 (+ frame-size how-far))
-		  ,(register-reference temp-1))
-	     ,@(generate-n-times frame-size 5
-				 `(MOVE L
-					(@-A ,(- temp-0 8))
-					(@-A ,(- temp-1 8)))
-		 (lambda (generator)
-		   (generator (allocate-temporary-register! 'DATA))))
-	     (MOVE L ,(register-reference temp-1) (A 7)))))))
+	   (LAP (LEA ,(offset-reference a7 frame-size)
+		     ,(register-reference temp-0))
+		(LEA ,(offset-reference a7 (+ frame-size how-far))
+		     ,(register-reference temp-1))
+		,@(generate-n-times frame-size 5
+				    (INST (MOV L
+					       (@-A ,(- temp-0 8))
+					       (@-A ,(- temp-1 8))))
+				    (lambda (generator)
+				      (generator (allocate-temporary-register! 'DATA))))
+		(MOV L ,(register-reference temp-1) (A 7)))))))
 
 (define (generate-invocation-prefix:apply-closure frame-size receiver-offset)
   (let ((label (generate-label)))
-    `(,@(apply-closure-sequence frame-size receiver-offset label)
-      (LABEL ,label))))
+    (LAP ,@(apply-closure-sequence frame-size receiver-offset label)
+	 (LABEL ,label))))
 
 (define (generate-invocation-prefix:apply-stack frame-size receiver-offset
 						n-levels)
   (let ((label (generate-label)))
-    `(,@(apply-stack-sequence frame-size receiver-offset n-levels label)
-      (LABEL ,label))))
+    (LAP ,@(apply-stack-sequence frame-size receiver-offset n-levels label)
+	 (LABEL ,label))))
 
-;;; This is invoked by the top level of the LAP generator.
+;;; This is invoked by the top level of the LAP GENERATOR.
 
 (define generate/quotation-header
-  (let ((declare-constant
-	 (lambda (entry)
-	   `(SCHEME-OBJECT ,(cdr entry) ,(car entry)))))
+  (let ()
+    (define (declare-constants constants code)
+      (define (inner constants)
+	(if (null? constants)
+	    code
+	    (let ((entry (car constants)))
+	      (LAP (SCHEME-OBJECT ,(cdr entry) ,(car entry))
+		   ,@(inner (cdr constants))))))
+      (inner constants))
+
     (lambda (block-label constants references uuo-links)
-      `(,@(map declare-constant references)
-	,@(map declare-constant uuo-links)
-	,@(map declare-constant constants)
-	,@(let ((environment-label (allocate-constant-label)))
-	    `((SCHEME-OBJECT ,environment-label ENVIRONMENT)
-	      (LEA (@PCR ,environment-label) (A 0))))
-	,@(if (or (not (null? references))
-		  (not (null? uuo-links)))
-	      `((MOVE L ,reg:environment (@A 0))
-		(LEA (@PCR ,block-label) (A 0))
-		,@(if (null? references)
-		      '()
-		      `((LEA (@PCR ,(cdar references)) (A 1))
-			,@(if (null? (cdr references))
-			      `((JSR ,entry:compiler-cache-variable))
-			      `(,(load-dnw (length references) 1)
-				(JSR ,entry:compiler-cache-variable-multiple)))
-			,@(make-external-label (generate-label))))
-		,@(if (null? uuo-links)
-		      '()
-		      `((LEA (@PCR ,(cdar uuo-links)) (A 1))
-			,@(if (null? (cdr uuo-links))
-			      `((JSR ,entry:compiler-uuo-link))
-			      `(,(load-dnw (length uuo-links) 1)
-				(JSR ,entry:compiler-uuo-link-multiple)))
-			,@(make-external-label (generate-label)))))
-	      `(,(load-constant 0 '(@A 0))))))))
+      (declare-constants references
+       (declare-constants uuo-links
+	(declare-constants constants
+	 (LAP
+	  ,@(let ((environment-label (allocate-constant-label)))
+	      (LAP (SCHEME-OBJECT ,environment-label ENVIRONMENT)
+		   (LEA (@PCR ,environment-label) (A 0))))
+	  ,@(if (or (not (null? references))
+		    (not (null? uuo-links)))
+		(LAP (MOV L ,reg:environment (@A 0))
+		     (LEA (@PCR ,block-label) (A 0))
+		     ,@(if (null? references)
+			   (LAP)
+			   (LAP (LEA (@PCR ,(cdar references)) (A 1))
+				,@(if (null? (cdr references))
+				      (LAP (JSR ,entry:compiler-cache-variable))
+				      (LAP ,(load-dnw (length references) 1)
+					   (JSR ,entry:compiler-cache-variable-multiple)))
+				,@(make-external-label (generate-label))))
+		     ,@(if (null? uuo-links)
+			   (LAP)
+			   (LAP (LEA (@PCR ,(cdar uuo-links)) (A 1))
+				,@(if (null? (cdr uuo-links))
+				      (LAP (JSR ,entry:compiler-uuo-link))
+				      (LAP ,(load-dnw (length uuo-links) 1)
+					   (JSR ,entry:compiler-uuo-link-multiple)))
+				,@(make-external-label (generate-label)))))
+		(LAP ,(load-constant 0 '(@A 0)))))))))))
 
 ;;;; Procedure/Continuation Entries
 
@@ -237,9 +248,9 @@ MIT in each case. |#
   (PROCEDURE-HEAP-CHECK (? label))
   (disable-frame-pointer-offset!
    (let ((gc-label (generate-label)))
-     `(,@(procedure-header (label->procedure label) gc-label)
-       (CMP L ,reg:compiled-memtop (A 5))
-       (B GE S (@PCR ,gc-label))))))
+     (LAP ,@(procedure-header (label->procedure label) gc-label)
+	  (CMP L ,reg:compiled-memtop (A 5))
+	  (B GE S (@PCR ,gc-label))))))
 
 ;;; Note: do not change the MOVE.W in the setup-lexpr call to a MOVEQ.
 ;;; The setup-lexpr code assumes a fixed calling sequence to compute
@@ -251,58 +262,57 @@ MIT in each case. |#
   (SETUP-LEXPR (? label))
   (disable-frame-pointer-offset!
    (let ((procedure (label->procedure label)))
-     `(,@(procedure-header procedure false)
-       (MOVE W
-	     (& ,(+ (procedure-required procedure)
-		    (procedure-optional procedure)
-		    (if (procedure/closure? procedure) 1 0)))
-	     (D 1))
-       (MOVEQ (& ,(if (procedure-rest procedure) 1 0)) (D 2))
-       (JSR , entry:compiler-setup-lexpr)))))
+     (LAP ,@(procedure-header procedure false)
+	  (MOV W
+	       (& ,(+ (procedure-required procedure)
+		      (procedure-optional procedure)
+		      (if (procedure/closure? procedure) 1 0)))
+	       (D 1))
+	  (MOVEQ (& ,(if (procedure-rest procedure) 1 0)) (D 2))
+	  (JSR ,entry:compiler-setup-lexpr)))))
 
 (define-rule statement
   (CONTINUATION-HEAP-CHECK (? internal-label))
   (enable-frame-pointer-offset!
    (continuation-frame-pointer-offset (label->continuation internal-label)))
   (let ((gc-label (generate-label)))
-    `((LABEL ,gc-label)
-      (JSR ,entry:compiler-interrupt-continuation)
-      ,@(make-external-label internal-label)
-      (CMP L ,reg:compiled-memtop (A 5))
-      (B GE S (@PCR ,gc-label)))))
+    (LAP (LABEL ,gc-label)
+	 (JSR ,entry:compiler-interrupt-continuation)
+	 ,@(make-external-label internal-label)
+	 (CMP L ,reg:compiled-memtop (A 5))
+	 (B GE S (@PCR ,gc-label)))))
 
 (define (procedure-header procedure gc-label)
   (let ((internal-label (procedure-label procedure))
 	(external-label (procedure-external-label procedure)))
-    (append! (case (procedure-name procedure) ;really `procedure/type'.
-	       ((IC)
-		`((ENTRY-POINT ,external-label)
-		  (EQUATE ,external-label ,internal-label)))
-	       ((CLOSURE)
-		(let ((required (1+ (procedure-required procedure)))
-		      (optional (procedure-optional procedure)))
-		  `((ENTRY-POINT ,external-label)
-		    ,@(make-external-label external-label)
-		    ,(test-dnw required 0)
-		    ,@(cond ((procedure-rest procedure)
-			     `((B GE S (@PCR ,internal-label))))
-			    ((zero? optional)
-			     `((B EQ S (@PCR ,internal-label))))
-			    (else
-			     (let ((wna-label (generate-label)))
-			       `((B LT S (@PCR ,wna-label))
-				 ,(test-dnw (+ required optional) 0)
-				 (B LE S (@PCR ,internal-label))
-				 (LABEL ,wna-label)))))
-		    (JMP ,entry:compiler-wrong-number-of-arguments))))
-	       (else
-		'()))
-	     (if gc-label
-		 `((LABEL ,gc-label)
-		   (JSR ,entry:compiler-interrupt-procedure))
-		 '())
-	     (make-external-label internal-label))))
+    (LAP ,@(case (procedure-name procedure) ;really `procedure/type'.
+	     ((IC)
+	      (LAP (ENTRY-POINT ,external-label)
+		   (EQUATE ,external-label ,internal-label)))
+	     ((CLOSURE)
+	      (let ((required (1+ (procedure-required procedure)))
+		    (optional (procedure-optional procedure)))
+		(LAP (ENTRY-POINT ,external-label)
+		     ,@(make-external-label external-label)
+		     ,(test-dnw required 0)
+		     ,@(cond ((procedure-rest procedure)
+			      (LAP (B GE S (@PCR ,internal-label))))
+			     ((zero? optional)
+			      (LAP (B EQ S (@PCR ,internal-label))))
+			     (else
+			      (let ((wna-label (generate-label)))
+				(LAP (B LT S (@PCR ,wna-label))
+				     ,(test-dnw (+ required optional) 0)
+				     (B LE S (@PCR ,internal-label))
+				     (LABEL ,wna-label)))))
+		     (JMP ,entry:compiler-wrong-number-of-arguments))))
+	     (else (LAP)))
+	 ,@(if gc-label
+	       (LAP (LABEL ,gc-label)
+		    (JSR ,entry:compiler-interrupt-procedure))
+	       (LAP))
+	 ,@(make-external-label internal-label))))
 
 (define (make-external-label label)
-  `((DC W (- ,label ,*block-start-label*))
-    (LABEL ,label)))
+  (LAP (DC W (- ,label ,*block-start-label*))
+       (LABEL ,label)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules4.scm,v 1.1.1.1 1987/07/01 21:02:12 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules4.scm,v 1.2 1987/07/08 22:09:26 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -68,13 +68,13 @@ MIT in each case. |#
   (INTERPRETER-CALL:ENCLOSE (? number-pushed))
   (decrement-frame-pointer-offset!
    number-pushed
-   (LAP (MOVE/SIMPLE L (A 5) ,reg:enclose-result)
-	(MOVE/SIMPLE B (& ,(ucode-type vector)) ,reg:enclose-result)
+   (LAP (MOV L (A 5) ,reg:enclose-result)
+	(MOV B (& ,(ucode-type vector)) ,reg:enclose-result)
 	,(load-non-pointer (ucode-type manifest-vector) number-pushed
 			   (INST-EA (@A+ 5)))
      
 	,@(generate-n-times number-pushed 5
-			    (INST (MOVE/SIMPLE L (@A+ 7) (@A+ 5)))
+			    (INST (MOV L (@A+ 7) (@A+ 5)))
 			    (lambda (generator)
 			      (generator (allocate-temporary-register! 'DATA)))))
    #| Alternate sequence which minimizes code size. ;
@@ -82,7 +82,7 @@ MIT in each case. |#
    registers containing objects and registers containing unboxed things, and
    as a result can write unboxed stuff to memory.
    (LAP ,@(clear-registers! a0 a1 d0)
-	(MOVE/SIMPLE W (& ,number-pushed) (D 0))
+	(MOV W (& ,number-pushed) (D 0))
 	(JSR ,entry:compiler-enclose))
    |#
    ))
@@ -127,10 +127,10 @@ MIT in each case. |#
     (let ((datum (coerce->any datum)))
       (let ((clear-map (clear-map!)))
 	(LAP ,@set-environment
-	     (MOVE/SIMPLE L ,datum ,reg:temp)
-	     (MOVE/SIMPLE B (& ,type) ,reg:temp)
+	     (MOV L ,datum ,reg:temp)
+	     (MOV B (& ,type) ,reg:temp)
 	     ,@clear-map
-	     (MOVE/SIMPLE L ,reg:temp (A 2))
+	     (MOV L ,reg:temp (A 2))
 	     ,(load-constant name (INST-EA (A 1)))
 	     (JSR ,entry)
 	     ,@(make-external-label (generate-label)))))))
@@ -166,10 +166,10 @@ MIT in each case. |#
     (let ((datum (coerce->any datum)))
       (let ((clear-map (clear-map!)))
 	(LAP ,@set-extension
-	     (MOVE/SIMPLE L ,datum ,reg:temp)
-	     (MOVE/SIMPLE B (& ,type) ,reg:temp)
+	     (MOV L ,datum ,reg:temp)
+	     (MOV B (& ,type) ,reg:temp)
 	     ,@clear-map
-	     (MOVE/SIMPLE L ,reg:temp (A 1))
+	     (MOV L ,reg:temp (A 1))
 	     (JSR ,entry:compiler-assignment-trap)
 	     ,@(make-external-label (generate-label)))))))
 
@@ -178,14 +178,14 @@ MIT in each case. |#
 (define-rule statement
   (MESSAGE-RECEIVER:CLOSURE (? frame-size))
   (record-push!
-   (LAP (MOVE/SIMPLE L (& ,(* frame-size 4)) (@-A 7)))))
+   (LAP (MOV L (& ,(* frame-size 4)) (@-A 7)))))
 
 (define-rule statement
   (MESSAGE-RECEIVER:STACK (? frame-size))
   (record-push!
-   (LAP (MOVE/SIMPLE L
-		     (& ,(+ #x00100000 (* frame-size 4)))
-		     (@-A 7)))))
+   (LAP (MOV L
+	     (& ,(+ #x00100000 (* frame-size 4)))
+	     (@-A 7)))))
 
 (define-rule statement
   (MESSAGE-RECEIVER:SUBPROBLEM (? label))
@@ -193,8 +193,8 @@ MIT in each case. |#
   (increment-frame-pointer-offset!
    2
    (LAP (PEA (@PCR ,label))
-	(MOVE/SIMPLE B (& ,type-code:return-address) (@A 7))
-	(MOVE/SIMPLE L (& #x00200000) (@-A 7)))))
+	(MOV B (& ,type-code:return-address) (@A 7))
+	(MOV L (& #x00200000) (@-A 7)))))
 
 (define (apply-closure-sequence frame-size receiver-offset label)
   (LAP ,(load-dnw frame-size 1)

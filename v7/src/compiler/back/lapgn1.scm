@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.38 1987/06/29 20:31:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.39 1987/07/08 22:00:41 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -43,7 +43,7 @@ MIT in each case. |#
 (define *dead-registers*)
 (define *continuation-queue*)
 
-(define (generate-lap quotations procedures continuations receiver)
+(define (generate-bits quotations procedures continuations receiver)
   (with-new-node-marks
    (lambda ()
      (fluid-let ((*next-constant* 0)
@@ -123,7 +123,7 @@ MIT in each case. |#
 		       (rnode-frame-pointer-offset rnode)))
 	    (let ((instructions (match-result)))
 	      (set-rnode-lap! rnode
-			      (append! *prefix-instructions* instructions)))
+			      (LAP ,@*prefix-instructions* ,@instructions)))
 	    (delete-dead-registers!)
 	    (set-rnode-register-map! rnode *register-map*)
 	    *frame-pointer-offset*)
