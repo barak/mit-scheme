@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: sendmail.scm,v 1.31 1995/05/10 20:48:39 cph Exp $
+;;;	$Id: sendmail.scm,v 1.32 1995/05/23 11:37:56 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
@@ -579,8 +579,9 @@ the user from the mailer."
 	(if (and (re-search-forward "^From:" start header-end #t)
 		 (not (re-search-forward "^Sender:" start header-end #t)))
 	    (begin
-	      (insert-string "\nSender: " header-end)
-	      (insert-string (current-user-name) header-end)))
+	      (insert-string "Sender: " header-end)
+	      (insert-string (current-user-name) header-end)
+	      (insert-string "\n" header-end)))
 	(process-header start header-end)
 	(mark-temporary! header-end))
       (mark-temporary! end)
