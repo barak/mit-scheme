@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: redpkg.scm,v 1.21 2001/11/15 05:26:26 cph Exp $
+$Id: redpkg.scm,v 1.22 2001/11/27 02:53:22 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -471,7 +471,7 @@ USA.
 		 (set-package/children!
 		  parent
 		  (cons package (package/children parent)))))
-	   (process-package-description package description get-package #t))
+	   (process-package-description package description get-package))
 	 packages
 	 descriptions)
 	(for-each
@@ -479,8 +479,7 @@ USA.
 	   (process-package-description
 	    (get-package (package-description/name extension) #f)
 	    extension
-	    get-package
-	    #f))
+	    get-package))
 	 extensions)
 	(make-pmodel root-package
 		     (make-package primitive-package-name #f)
@@ -549,7 +548,7 @@ USA.
     (lambda (package)
       (symbol-list=? name (package/name package)))))
 
-(define (process-package-description package description get-package new?)
+(define (process-package-description package description get-package)
   (let ((file-cases (package-description/file-cases description)))
     (set-package/files!
      package
@@ -557,22 +556,25 @@ USA.
 	      (append-map! (lambda (file-case)
 			     (append-map cdr (cdr file-case)))
 			   file-cases))))
-  (for-each (lambda (export)
-	      (let ((destination (get-package (car export) #t)))
-		(for-each (lambda (names)
-			    (link! package (car names) new?
-				   destination (cdr names) #t
-				   package #t))
-			  (cdr export))))
-	    (package-description/exports description))
-  (for-each (lambda (import)
-	      (let ((source (get-package (car import) #t)))
-		(for-each (lambda (names)
-			    (link! source (cdr names) #f
-				   package (car names) #t
-				   package #t))
-			  (cdr import))))
-	    (package-description/imports description)))
+  (let ((package-new?
+	 (lambda (package)
+	   (if (get-package (package/name package) #f) #t #f))))
+    (for-each (lambda (export)
+		(let ((destination (get-package (car export) #t)))
+		  (for-each (lambda (names)
+			      (link! package (car names) (package-new? package)
+				     destination (cdr names) #t
+				     package #t))
+			    (cdr export))))
+	      (package-description/exports description))
+    (for-each (lambda (import)
+		(let ((source (get-package (car import) #t)))
+		  (for-each (lambda (names)
+			      (link! source (cdr names) (package-new? source)
+				     package (car names) #t
+				     package #t))
+			    (cdr import))))
+	      (package-description/imports description))))
 
 (define primitive-package-name
   (list (string->symbol "#[(cross-reference reader)primitives]")))
