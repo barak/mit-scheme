@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/kmacro.scm,v 1.30 1989/04/28 22:50:46 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/kmacro.scm,v 1.31 1990/09/12 02:44:12 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -104,12 +104,12 @@
 (define (keyboard-macro-finalize-chars)
   (set! keyboard-macro-buffer-end keyboard-macro-buffer))
 
-(define (keyboard-macro-execute macro repeat)
+(define (keyboard-macro-execute *macro repeat)
   (fluid-let ((*executing-keyboard-macro?* true)
 	      (*keyboard-macro-position*)
 	      (*keyboard-macro-continuation*))
     (define (loop n)
-      (set! *keyboard-macro-position* macro)
+      (set! *keyboard-macro-position* *macro)
       (if (call-with-current-continuation
 	   (lambda (c)
 	     (set! *keyboard-macro-continuation* c)
@@ -118,13 +118,13 @@
 		((> n 1) (loop (-1+ n))))))
     (if (not (negative? repeat)) (loop repeat))))
 
-(define (keyboard-macro-define name macro)
+(define (keyboard-macro-define name *macro)
   (string-table-put! named-keyboard-macros name last-keyboard-macro)
   (make-command name
 		"Command defined by keyboard macro"
 		"P"
 		(lambda (#!optional argument)
-		  (keyboard-macro-execute macro
+		  (keyboard-macro-execute *macro
 					  (if (or (default-object? argument)
 						  (not argument))
 					      1
