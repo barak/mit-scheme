@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.65 1993/10/15 12:50:04 cph Exp $
+;;;	$Id: intmod.scm,v 1.66 1993/10/15 23:50:20 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -120,7 +120,9 @@ REPL uses current evaluation environment."
 					    user-initial-prompt)
 				 (make-init-message message)))
 		   (lambda ()
-		     (unwind-inferior-repl-buffer buffer))))))))))))
+		     (signal-thread-event editor-thread
+		       (lambda ()
+			 (unwind-inferior-repl-buffer buffer))))))))))))))
 
 (define (make-init-message message)
   (if message
@@ -152,9 +154,12 @@ REPL uses current evaluation environment."
       (let ((buffer (current-buffer)))
 	(if (buffer-interface-port buffer)
 	    buffer
-	    (let ((buffers repl-buffers))
-	      (and (not (null? buffers))
-		   (car buffers)))))))
+	    (global-repl-buffer)))))
+
+(define (global-repl-buffer)
+  (let ((buffers repl-buffers))
+    (and (not (null? buffers))
+	 (car buffers))))
 
 (define (repl-buffer? buffer)
   (buffer-interface-port buffer))
@@ -177,7 +182,7 @@ REPL uses current evaluation environment."
 		(if (equal? level "1")
 		    ""
 		    (string-append " [level: " (or level "?") "]"))))
-	(set-run-light! buffer false))))
+	(set-run-light! buffer #f))))
   ;; This doesn't do any output, but prods the editor to notice that
   ;; the modeline has changed and a redisplay is needed.
   (inferior-thread-output! (port/output-registration port))
@@ -185,7 +190,7 @@ REPL uses current evaluation environment."
     (suspend-current-thread)))
 
 (define (end-input-wait port)
-  (set-run-light! (port/buffer port) true)
+  (set-run-light! (port/buffer port) #t)
   (signal-thread-event (port/thread port) false))
 
 (define (standard-prompt-spacing port)
@@ -223,25 +228,13 @@ REPL uses current evaluation environment."
   (define-variable-local-value! buffer
     (ref-variable-object comint-input-ring)
     (port/input-ring port))
-  (set-run-light! buffer false))
-
-(define (set-run-light! buffer run?)
-  (let ((variable (ref-variable-object run-light))
-	(value (if run? "eval" "listen")))
-    (if (and (ref-variable evaluate-in-inferior-repl buffer)
-	     (eq? buffer (current-repl-buffer* #f)))
-	(begin
-	  (undefine-variable-local-value! buffer variable)
-	  (set-variable-default-value! variable value)
-	  (global-window-modeline-event!))
-	(begin
-	  (define-variable-local-value! buffer variable value)
-	  (buffer-modeline-event! buffer 'RUN-LIGHT)))))
+  (set-run-light! buffer #f))
 
 (define-integrable (buffer-interface-port buffer)
   (buffer-get buffer 'INTERFACE-PORT))
 
 (define (kill-buffer-inferior-repl buffer)
+  (unwind-inferior-repl-buffer buffer)
   (let ((port (buffer-interface-port buffer)))
     (if port
 	(let ((thread (port/thread port)))
@@ -251,24 +244,47 @@ REPL uses current evaluation environment."
 		  (exit-current-thread unspecific))))))))
 
 (define (unwind-inferior-repl-buffer buffer)
-  (buffer-remove! buffer 'INTERFACE-PORT)
-  (let ((run-light (ref-variable-object run-light))
-	(evaluate-in-inferior-repl
-	 (ref-variable evaluate-in-inferior-repl buffer)))
-    (if (and evaluate-in-inferior-repl
-	     (eq? buffer (current-repl-buffer* #f)))
-	(begin
-	  (set-variable-default-value! run-light false)
-	  (global-window-modeline-event!)))
-    (set! repl-buffers (delq! buffer repl-buffers))
-    (let ((buffer
-	   (and evaluate-in-inferior-repl
-		(current-repl-buffer* #f))))
-      (if buffer
-	  (let ((value (variable-local-value buffer run-light)))
-	    (undefine-variable-local-value! buffer run-light)
-	    (set-variable-default-value! run-light value)
-	    (global-window-modeline-event!))))))
+  (without-interrupts
+   (lambda ()
+     (buffer-remove! buffer 'INTERFACE-PORT)
+     (if (memq buffer repl-buffers)
+	 (begin
+	   (if (eq? buffer (global-run-light-buffer))
+	       (set-global-run-light! #f))
+	   (set! repl-buffers (delq! buffer repl-buffers))
+	   (let ((buffer (global-run-light-buffer)))
+	     (if buffer
+		 (set-global-run-light! (local-run-light buffer)))))))))
+
+(define (set-run-light! buffer run?)
+  (let ((value (if run? "eval" "listen")))
+    (if (eq? buffer (global-run-light-buffer))
+	(set-global-run-light! value))
+    (set-local-run-light! buffer value)))
+
+(define (global-run-light-buffer)
+  (and (variable-default-value (ref-variable-object evaluate-in-inferior-repl))
+       (global-repl-buffer)))
+
+(define (set-global-run-light! value)
+  (set-variable-default-value! (ref-variable-object run-light) value)
+  (global-window-modeline-event!))
+
+(define (local-run-light buffer)
+  (variable-local-value buffer (ref-variable-object run-light)))
+
+(define (set-local-run-light! buffer value)
+  (define-variable-local-value! buffer (ref-variable-object run-light) value)
+  (buffer-modeline-event! buffer 'RUN-LIGHT))
+
+(add-variable-assignment-daemon!
+ (ref-variable-object evaluate-in-inferior-repl)
+ (lambda (buffer variable)
+   buffer variable
+   (let ((buffer (global-run-light-buffer)))
+     (if buffer
+	 (set-global-run-light! (local-run-light buffer))
+	 (set-global-run-light! #f)))))
 
 (define (error-decision repl condition)
   (if (ref-variable repl-error-decision)
