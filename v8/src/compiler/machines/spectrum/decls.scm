@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.2 1994/12/02 03:01:24 adams Exp $
+$Id: decls.scm,v 1.3 1994/12/02 03:12:18 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -482,13 +482,13 @@ MIT in each case. |#
     (define-integration-dependencies "base" "cfg2" "base"
       "cfg1" "cfg3" "object")
     (define-integration-dependencies "base" "cfg3" "base" "cfg1" "cfg2")
-    (define-integration-dependencies "base" "ctypes" "base"
-      ;;"blocks"
-      "cfg1" "cfg2" "cfg3"
-      ;;"contin" "lvalue"
-      "object"
-      ;;"subprb"
-      )
+    ;;(define-integration-dependencies "base" "ctypes" "base"
+    ;;  ;;"blocks"
+    ;;  "cfg1" "cfg2" "cfg3"
+    ;;  ;;"contin" "lvalue"
+    ;;  "object"
+    ;;  ;;"subprb"
+    ;;  )
     ;;(define-integration-dependencies "base" "rvalue" "base"
     ;; "blocks" "cfg1" "cfg2" "cfg3" "enumer" "lvalue" "object" "utils")
     ;;(define-integration-dependencies "base" "lvalue" "base"
@@ -531,21 +531,21 @@ MIT in each case. |#
       "machin")
     (define-integration-dependencies "rtlbase" "rtlty2" "rtlbase" "rtlty1")
 
-    (file-dependency/integration/join
-     (append
-      (filename/append "base" "refctx")
-      ;;(filename/append "fggen"
-	;;	       "declar" "fggen") ; "canon" needs no integrations
-      ;;(filename/append "fgopt"
-	;;	       "blktyp" "closan" "conect" "contan" "delint" "desenv"
-	;;	       "envopt" "folcon" "offset" "operan" "order" "param"
-	;;	       "outer" "reuse" "reteqv" "sideff" "simapp" "simple"
-	;;	       "subfre" "varind")
-      )
-     (append spectrum-base front-end-base))
-
+    ;;(file-dependency/integration/join
+    ;; (append
+    ;;  (filename/append "base" "refctx")
+    ;;  (filename/append "fggen"
+    ;;	       "declar" "fggen") ; "canon" needs no integrations
+    ;;  (filename/append "fgopt"
+    ;;	       		"blktyp" "closan" "conect" "contan" "delint" "desenv"
+    ;;	       		"envopt" "folcon" "offset" "operan" "order" "param"
+    ;;	       		"outer" "reuse" "reteqv" "sideff" "simapp" "simple"
+    ;;	       		"subfre" "varind")
+    ;;  )
+    ;; (append spectrum-base front-end-base))
+    ;;
     ;;(define-integration-dependencies "fgopt" "reuse" "fgopt" "reord")
-
+    ;;
     ;;(file-dependency/integration/join
     ;; (filename/append "rtlgen"
     ;;		      "fndblk" "fndvar" "opncod" "rgcomb" "rgproc" "rgretn"
