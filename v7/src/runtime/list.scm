@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/list.scm,v 14.14 1992/08/11 15:32:02 jinx Exp $
+$Id: list.scm,v 14.15 1993/02/25 19:53:29 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -52,13 +52,12 @@ MIT in each case. |#
 		    (cdr rest-elements))))))
 
 (define (make-list length #!optional value)
-  (if (not (exact-nonnegative-integer? length))
-      (error "length must be exact nonnegative integer" length))
+  (guarantee-index length 'MAKE-LIST)
   (let ((value (if (default-object? value) '() value)))
     (let loop ((n length) (result '()))
       (if (zero? n)
 	  result
-	  (loop (-1+ n) (cons value result))))))
+	  (loop (- n 1) (cons value result))))))
 
 (define (circular-list . items)
   (if (not (null? items))
@@ -69,90 +68,56 @@ MIT in each case. |#
   items)
 
 (define (make-circular-list length #!optional value)
-  (if (not (exact-nonnegative-integer? length))
-      (error "length must be exact nonnegative integer" length))
+  (guarantee-index length 'MAKE-CIRCULAR-LIST)
   (if (positive? length)
       (let ((value (if (default-object? value) '() value)))
 	(let ((last (cons value '())))
-	  (let loop ((n (-1+ length)) (result last))
+	  (let loop ((n (- length 1)) (result last))
 	    (if (zero? n)
 		(begin
 		  (set-cdr! last result)
 		  result)
-		(loop (-1+ n) (cons value result))))))
+		(loop (- n 1) (cons value result))))))
       '()))
 
 (define (list-ref list index)
   (let ((tail (list-tail list index)))
     (if (not (pair? tail))
-	(error "LIST-REF: index too large" index))
+	(error:bad-range-argument index 'LIST-REF))
     (car tail)))
 
 (define (list-tail list index)
-  (if (not (exact-nonnegative-integer? index))
-      (error "index must be exact nonnegative integer" index))
-  (let loop ((list list) (index index))
-    (if (zero? index)
+  (guarantee-index length 'LIST-TAIL)
+  (let loop ((list list) (index* index))
+    (if (zero? index*)
 	list
 	(begin
 	  (if (not (pair? list))
-	      (error "LIST-TAIL: index too large" index))
-	  (loop (cdr list) (-1+ index))))))
+	      (error:bad-range-argument index 'LIST-TAIL))
+	  (loop (cdr list) (- index* 1))))))
 
 (define (list-head list index)
-  (if (not (exact-nonnegative-integer? index))
-      (error "index must be exact nonnegative integer" index))
-  (let loop ((list list) (index index))
-    (if (zero? index)
+  (guarantee-index length 'LIST-HEAD)
+  (let loop ((list list) (index* index))
+    (if (zero? index*)
 	'()
 	(begin
 	  (if (not (pair? list))
-	      (error "LIST-HEAD: list has too few elements" list index))
-	  (cons (car list) (loop (cdr list) (-1+ index)))))))
+	      (error:bad-range-argument index 'LIST-HEAD))
+	  (cons (car list) (loop (cdr list) (- index* 1)))))))
 
 (define (sublist list start end)
   (list-head (list-tail list start) (- end start)))
-
-#|
-;; These versions do not detect circularity
 
 (define (list? object)
-  (let loop ((object object))
-    (if (null? object)
-	true
-	(and (pair? object)
-	     (loop (cdr object))))))
-
-(define (alist? object)
-  (if (null? object)
-      true
-      (and (pair? object)
-	   (pair? (car object))
-	   (alist? (cdr object)))))
-
-|#
-
-(define (list? obj)
-  (define (phase-1 l1 l2)
-    (cond ((pair? l1)
-	   (phase-2 (cdr l1) l2))
-	  ((null? l1)
-	   true)
-	  (else
-	   false)))
-
-  (define (phase-2 l1 l2)
-    (cond ((eq? l1 l2)
-	   ;; Circular list.
-	   false)
-	  ((pair? l1)
-	   (phase-1 (cdr l1) (cdr l2)))
-	  ((null? l1)
-	   true)
-	  (else
-	   false)))
-
-  (phase-1 obj obj))
+  (let loop ((l1 object) (l2 object))
+    (if (pair? l1)
+	(let ((l1 (cdr l1)))
+	  (and (not (eq? l1 l2))
+	       (if (pair? l1)
+		   (loop (cdr l1) (cdr l2))
+		   (null? l1))))
+	(null? l1))))
 
 (define (alist? object)
   (let loop ((l1 object) (l2 object))
@@ -167,25 +132,26 @@ MIT in each case. |#
 	(null? l1))))
 
 (define (list-copy items)
-  (let loop ((items items))
-    (if (pair? items)
-	(cons (car items) (loop (cdr items)))
+  (let loop ((items* items))
+    (if (pair? items*)
+	(cons (car items*) (loop (cdr items*)))
 	(begin
-	  (if (not (null? items))
-	      (error "LIST-COPY: argument not proper list" items))
+	  (if (not (null? items*))
+	      (error:wrong-type-argument items "list" 'LIST-COPY))
 	  '()))))
 
 (define (alist-copy alist)
-  (if (pair? alist)
-      (begin
-	(if (not (pair? (car alist)))
-	    (error "ALIST-COPY: illegal alist element" (car alist)))
-	(cons (cons (car (car alist)) (cdr (car alist)))
-	      (alist-copy (cdr alist))))
-      (begin
-	(if (not (null? alist))
-	    (error "ALIST-COPY: illegal alist" alist))
-	'())))
+  (let loop ((alist* alist))
+    (if (pair? alist*)
+	(begin
+	  (if (not (pair? (car alist*)))
+	      (error:wrong-type-argument alist "alist" 'ALIST-COPY))
+	  (cons (cons (car (car alist*)) (cdr (car alist*)))
+		(loop (cdr alist*))))
+	(begin
+	  (if (not (null? alist*))
+	      (error:wrong-type-argument alist "alist" 'ALIST-COPY))
+	  '()))))
 
 (define (tree-copy tree)
   (let loop ((tree tree))
@@ -218,25 +184,59 @@ MIT in each case. |#
 (define-integrable (weak-set-cdr! weak-pair object)
   (system-pair-set-cdr! weak-pair object))
 
-(define (weak-memq object weak-list)
-  (let ((object (if object object weak-pair/false)))
-    (let loop ((weak-list weak-list))
-      (and (not (null? weak-list))
-	   (if (eq? object (system-pair-car weak-list))
-	       weak-list
-	       (loop (system-pair-cdr weak-list)))))))
+(define (weak-list->list items)
+  (let loop ((items* items))
+    (if (weak-pair? items*)
+	(let ((car (system-pair-car items*)))
+	  (if (not car)
+	      (loop (system-pair-cdr items*))
+	      (cons (if (eq? car weak-pair/false) false car)
+		    (loop (system-pair-cdr items*)))))
+	(begin
+	  (if (not (null? items*))
+	      (error:wrong-type-argument items "weak list" 'WEAK-LIST->LIST))
+	  '()))))
+
+(define (list->weak-list items)
+  (let ((items* items))
+    (if (pair? items*)
+	(weak-cons (car items*) (loop (cdr items*)))
+	(begin
+	  (if (not (null? items*))
+	      (error:wrong-type-argument items "list" 'LIST->WEAK-LIST))
+	  '()))))
+
+(define weak-pair/false
+  "weak-pair/false")
+
+(define (weak-memq object items)
+  (let ((object (or object weak-pair/false)))
+    (let loop ((items* items))
+      (if (weak-pair? items*)
+	  (if (eq? object (system-pair-car items*))
+	      items*
+	      (loop (system-pair-cdr items*)))
+	  (begin
+	    (if (not (null? items*))
+		(error:wrong-type-argument items "weak list" 'WEAK-MEMQ))
+	    #f)))))
 
 (define (weak-delq! item items)
   (letrec ((trim-initial-segment
-	    (lambda (items)
-	      (if (weak-pair? items)
-		  (if (or (eq? item (system-pair-car items))
-			  (eq? false (system-pair-car items)))
-		      (trim-initial-segment (system-pair-cdr items))
+	    (lambda (items*)
+	      (if (weak-pair? items*)
+		  (if (or (eq? item (system-pair-car items*))
+			  (eq? #f (system-pair-car items*)))
+		      (trim-initial-segment (system-pair-cdr items*))
 		      (begin
-			(locate-initial-segment items (system-pair-cdr items))
-			items))
-		  items)))
+			(locate-initial-segment items*
+						(system-pair-cdr items*))
+			items*))
+		  (begin
+		    (if (not (null? items*))
+			(error:wrong-type-argument items "weak list"
+						   'WEAK-MEMQ))
+		    '()))))
 	   (locate-initial-segment
 	    (lambda (last this)
 	      (if (weak-pair? this)
@@ -245,41 +245,23 @@ MIT in each case. |#
 		      (set-cdr! last
 				(trim-initial-segment (system-pair-cdr this)))
 		      (locate-initial-segment this (system-pair-cdr this)))
-		  this))))
+		  (if (not (null? this))
+		      (error:wrong-type-argument items "weak list"
+						 'WEAK-MEMQ))))))
     (trim-initial-segment items)))
-
-(define (weak-list->list weak-list)
-  (if (weak-pair? weak-list)
-      (let ((car (system-pair-car weak-list)))
-	(if (not car)
-	    (weak-list->list (system-pair-cdr weak-list))
-	    (cons (if (eq? car weak-pair/false) false car)
-		  (weak-list->list (system-pair-cdr weak-list)))))
-      (begin
-	(if (not (null? weak-list))
-	    (error "improperly terminated weak list" weak-list))
-	'())))
-
-(define (list->weak-list list)
-  (if (pair? list)
-      (weak-cons (car list) (list->weak-list (cdr list)))
-      (begin
-	(if (not (null? list))
-	    (error "improperly terminated list" list))
-	'())))
-
-(define weak-pair/false
-  "weak-pair/false")
 
 ;;;; Standard Selectors
 
 (declare (integrate-operator safe-car safe-cdr))
 
 (define (safe-car x)
-  (if (pair? x) (car x) (error "not a pair" x)))
+  (if (pair? x) (car x) (error:not-a-pair x)))
 
 (define (safe-cdr x)
-  (if (pair? x) (cdr x) (error "not a pair" x)))
+  (if (pair? x) (cdr x) (error:not-a-pair x)))
+
+(define (error:not-a-pair x)
+  (error:wrong-type-argument x "pair" #f))
 
 (define (caar x) (safe-car (safe-car x)))
 (define (cadr x) (safe-car (safe-cdr x)))
@@ -349,57 +331,38 @@ MIT in each case. |#
 
 ;;;; Sequence Operations
 
-#|
-;; This version is simple, but uses a linear amount of stack (on the
-;; number of elements being copied).  The version below uses a finite
-;; amount of stack and therefore half the memory.
-;; In addition, a clever compiler could optimize the second version
-;; into the obvious loop that everyone would write in assembly language.
-;; It is much harder to do the same with the first version.
+;;; This algorithm uses a finite amount of stack and therefore half
+;;; the memory of the simple recursive algorithm.  In addition, a
+;;; clever compiler could optimize this into the obvious loop that
+;;; everyone would write in assembly language.
 
 (define (append . lists)
-  (if (null? lists)
-      '()
-      (let outer ((current (car lists)) (remaining (cdr lists)))
-	(if (null? remaining)
-	    current
-	    (let inner ((list current))
-	      (if (pair? list)
-		  (cons (car list) (inner (cdr list)))
-		  (begin
-		    (if (not (null? list))
-			(error "APPEND: Argument not a list" current))
-		    (outer (car remaining) (cdr remaining)))))))))
-|#
-
-(define (append . lists)
-  (define (append-2 l1 l2)
-    (cond ((pair? l1)
-	   (let ((root (cons (car l1) #f)))
-	     (let loop ((cell root)
-			(next (cdr l1)))
-	       (cond ((pair? next)
-		      (let ((cell* (cons (car next) #f)))
-			(set-cdr! cell cell*)
-			(loop cell* (cdr next))))
-		     ((null? next)
-		      (set-cdr! cell l2))
-		     (else
-		      (error "APPEND: Argument not a list" l1))))
-	     root))
-	  ((null? l1)
-	   l2)
-	  (else
-	   (error "APPEND: Argument not a list" l1))))
-
   (let ((lists (reverse! lists)))
     (if (null? lists)
 	'()
-	(let loop ((accum (car lists))
-		   (rest (cdr lists)))
+	(let loop ((accum (car lists)) (rest (cdr lists)))
 	  (if (null? rest)
 	      accum
-	      (loop (append-2 (car rest) accum)
+	      (loop (let ((l1 (car rest)))
+		      (cond ((pair? l1)
+			     (let ((root (cons (car l1) #f)))
+			       (let loop ((cell root) (next (cdr l1)))
+				 (cond ((pair? next)
+					(let ((cell* (cons (car next) #f)))
+					  (set-cdr! cell cell*)
+					  (loop cell* (cdr next))))
+				       ((null? next)
+					(set-cdr! cell accum))
+				       (else
+					(error:wrong-type-argument (car rest)
+								   "list"
+								   'APPEND))))
+			       root))
+			    ((null? l1)
+			     accum)
+			    (else
+			     (error:wrong-type-argument (car rest) "list"
+							'APPEND))))
 		    (cdr rest)))))))
 
 (define (append! . lists)
@@ -413,7 +376,7 @@ MIT in each case. |#
 	       head)
 	      (else
 	       (if (not (null? head))
-		   (error "APPEND!: Argument not a list" head))
+		   (error:wrong-type-argument (car lists) "list" 'APPEND!))
 	       (loop (car tail) (cdr tail)))))))
 
 (define (reverse l)
@@ -422,7 +385,7 @@ MIT in each case. |#
 	(loop (cdr rest) (cons (car rest) so-far))
 	(begin
 	  (if (not (null? rest))
-	      (error "REVERSE: Argument not a list" l))
+	      (error:wrong-type-argument l "list" 'REVERSE))
 	  so-far))))
 
 (define (reverse! l)
@@ -433,69 +396,65 @@ MIT in each case. |#
 	  (loop next current))
 	(begin
 	  (if (not (null? current))
-	      (error "REVERSE!: Argument not a list" l))
+	      (error:wrong-type-argument l "list" 'REVERSE!))
 	  new-cdr))))
 
 ;;;; Mapping Procedures
 
 (let-syntax
     ((mapping-procedure
-      (macro (name combiner initial-value procedure lists)
+      (macro (name combiner initial-value procedure first rest)
 	(let ((name (string-upcase (symbol->string name))))
-	  `(BEGIN
-	     (IF (NULL? ,lists)
-		 (ERROR ,(string-append name ": Too few arguments")
-			,procedure))
-	     (LET ((INITIAL-VALUE
-		    (LAMBDA (LIST)
-		      (IF (NOT (NULL? LIST))
-			  (ERROR ,(string-append name ": Argument not a list")
-				 LIST))
-		      ,initial-value)))
-	       (IF (NULL? (CDR ,lists))
-		   (LET 1-LOOP ((LIST (CAR ,lists)))
-		     (IF (PAIR? LIST)
-			 (,combiner (,procedure (CAR LIST))
-				    (1-LOOP (CDR LIST)))
-			 (INITIAL-VALUE LIST)))
-		   (LET N-LOOP ((LISTS ,lists))
-		     (LET PARSE-CARS
-			 ((LISTS LISTS)
-			  (RECEIVER
-			   (LAMBDA (CARS CDRS)
-			     (,combiner (APPLY ,procedure CARS)
-					(N-LOOP CDRS)))))
-		       (COND ((NULL? LISTS)
-			      (RECEIVER '() '()))
-			     ((PAIR? (CAR LISTS))
-			      (PARSE-CARS (CDR LISTS)
-					  (LAMBDA (CARS CDRS)
-					    (RECEIVER
-					     (CONS (CAR (CAR LISTS)) CARS)
-					     (CONS (CDR (CAR LISTS)) CDRS)))))
-			     (ELSE
-			      (INITIAL-VALUE (CAR LISTS)))))))))))))
+	  `(IF (NULL? ,rest)
+	       (LET 1-LOOP ((LIST ,first))
+		 (IF (PAIR? LIST)
+		     (,combiner (,procedure (CAR LIST))
+				(1-LOOP (CDR LIST)))
+		     (BEGIN
+		       (IF (NOT (NULL? LIST))
+			   (ERROR:WRONG-TYPE-ARGUMENT ,first "list" ',name))
+		       ,initial-value)))
+	       (LET ((LISTS (CONS ,first ,rest)))
+		 (LET N-LOOP ((LISTS* LISTS))
+		   (LET PARSE-CARS
+		       ((LISTS LISTS)
+			(LISTS* LISTS*)
+			(CARS '())
+			(CDRS '()))
+		     (COND ((NULL? LISTS*)
+			    (,combiner (APPLY ,procedure (REVERSE! CARS))
+				       (N-LOOP (REVERSE! CDRS))))
+			   ((PAIR? (CAR LISTS*))
+			    (PARSE-CARS (CDR LISTS*)
+					(CDR LISTS)
+					(CONS (CAR (CAR LISTS*)) CARS)
+					(CONS (CDR (CAR LISTS*)) CDRS)))
+			   (ELSE
+			    (IF (NOT (NULL? (CAR LISTS*)))
+				(ERROR:WRONG-TYPE-ARGUMENT (CAR LISTS) "list"
+							   ',name))
+			    ,initial-value))))))))))
 
-(define (for-each procedure . lists)
-  (mapping-procedure for-each begin unspecific procedure lists))
+(define (for-each procedure first . rest)
+  (mapping-procedure for-each begin unspecific procedure first rest))
 
-(define (map procedure . lists)
-  (mapping-procedure map cons '() procedure lists))
+(define (map procedure first . rest)
+  (mapping-procedure map cons '() procedure first rest))
 
-(define (map* initial-value procedure . lists)
-  (mapping-procedure map* cons initial-value procedure lists))
+(define (map* initial-value procedure first . rest)
+  (mapping-procedure map* cons initial-value procedure first rest))
 
-(define (append-map procedure . lists)
-  (mapping-procedure append-map append '() procedure lists))
+(define (append-map procedure first . rest)
+  (mapping-procedure append-map append '() procedure first rest))
 
-(define (append-map* initial-value procedure . lists)
-  (mapping-procedure append-map* append initial-value procedure lists))
+(define (append-map* initial-value procedure first . rest)
+  (mapping-procedure append-map* append initial-value procedure first rest))
 
-(define (append-map! procedure . lists)
-  (mapping-procedure append-map! append! '() procedure lists))
+(define (append-map! procedure first . rest)
+  (mapping-procedure append-map! append! '() procedure first rest))
 
-(define (append-map*! initial-value procedure . lists)
-  (mapping-procedure append-map*! append! initial-value procedure lists))
+(define (append-map*! initial-value procedure first . rest)
+  (mapping-procedure append-map*! append! initial-value procedure first rest))
 
 ;;; end LET-SYNTAX
 )
@@ -504,84 +463,109 @@ MIT in each case. |#
 (define mapcan* append-map*!)
 
 (define (reduce procedure initial list)
-  (let ((result
-	 (lambda (l value)
-	   (if (not (null? l))
-	       (error "REDUCE: Argument not a list" list))
-	   value)))
-    (if (pair? list)
-	(let loop ((value (car list)) (l (cdr list)))
-	  (if (pair? l)
-	      (loop (procedure value (car l)) (cdr l))
-	      (result l value)))
-	(result list initial))))
+  (if (pair? list)
+      (let loop ((value (car list)) (l (cdr list)))
+	(if (pair? l)
+	    (loop (procedure value (car l)) (cdr l))
+	    (begin
+	      (if (not (null? l))
+		  (error:wrong-type-argument list "list" 'REDUCE))
+	      value)))
+      (begin
+	(if (not (null? list))
+	    (error:wrong-type-argument list "list" 'REDUCE))
+	initial)))
 
 (define (reduce-right procedure initial list)
-  (let ((result
-	 (lambda (l value)
-	   (if (not (null? l))
-	       (error "REDUCE-RIGHT: Argument not a list" list))
-	   value)))
-    (if (pair? list)
-	(let loop ((value (car list)) (l (cdr list)))
-	  (if (pair? l)
-	      (procedure value (loop (car l) (cdr l)))
-	      (result l value)))
-	(result list initial))))
+  (if (pair? list)
+      (let loop ((value (car list)) (l (cdr list)))
+	(if (pair? l)
+	    (procedure value (loop (car l) (cdr l)))
+	    (begin
+	      (if (not (null? l))
+		  (error:wrong-type-argument list "list" 'REDUCE-RIGHT))
+	      value)))
+      (begin
+	(if (not (null? list))
+	    (error:wrong-type-argument list "list" 'REDUCE-RIGHT))
+	initial)))
 
 ;;;; Generalized List Operations
 
 (define (list-transform-positive items predicate)
-  (let loop ((items items))
-    (if (pair? items)
-	(if (predicate (car items))
-	    (cons (car items) (loop (cdr items)))
-	    (loop (cdr items)))
-	'())))
+  (let loop ((items* items))
+    (if (pair? items*)
+	(if (predicate (car items*))
+	    (cons (car items*) (loop (cdr items*)))
+	    (loop (cdr items*)))
+	(begin
+	  (if (not (null? items*))
+	      (error:wrong-type-argument items "list"
+					 'LIST-TRANSFORM-POSITIVE))
+	  '()))))
 
 (define (list-transform-negative items predicate)
-  (let loop ((items items))
-    (if (pair? items)
-	(if (predicate (car items))
-	    (loop (cdr items))
-	    (cons (car items) (loop (cdr items))))
-	'())))
+  (let loop ((items* items))
+    (if (pair? items*)
+	(if (predicate (car items*))
+	    (loop (cdr items*))
+	    (cons (car items*) (loop (cdr items*))))
+	(begin
+	  (if (not (null? items*))
+	      (error:wrong-type-argument items "list"
+					 'LIST-TRANSFORM-NEGATIVE))
+	  '()))))
 
 (define (list-search-positive items predicate)
-  (let loop ((items items))
-    (and (pair? items)
-	 (if (predicate (car items))
-	     (car items)
-	     (loop (cdr items))))))
+  (let loop ((items* items))
+    (if (pair? items*)
+	(if (predicate (car items*))
+	    (car items*)
+	    (loop (cdr items*)))
+	(begin
+	  (if (not (null? items*))
+	      (error:wrong-type-argument items "list"
+					 'LIST-SEARCH-POSITIVE))
+	  #f))))
 
 (define (list-search-negative items predicate)
-  (let loop ((items items))
-    (and (pair? items)
-	 (if (predicate (car items))
-	     (loop (cdr items))
-	     (car items)))))
+  (let loop ((items* items))
+    (if (pair? items*)
+	(if (predicate (car items*))
+	    (loop (cdr items*))
+	    (car items*))
+	(begin
+	  (if (not (null? items*))
+	      (error:wrong-type-argument items "list"
+					 'LIST-SEARCH-NEGATIVE))
+	  #f))))
 
 (define ((list-deletor predicate) items)
   (list-transform-negative items predicate))
 
 (define (list-deletor! predicate)
-  (letrec ((trim-initial-segment
-	    (lambda (items)
-	      (if (pair? items)
-		  (if (predicate (car items))
-		      (trim-initial-segment (cdr items))
-		      (begin
-			(locate-initial-segment items (cdr items))
-			items))
-		  items)))
-	   (locate-initial-segment
-	    (lambda (last this)
-	      (if (pair? this)
-		  (if (predicate (car this))
-		      (set-cdr! last (trim-initial-segment (cdr this)))
-		      (locate-initial-segment this (cdr this)))
-		  this))))
-    trim-initial-segment))
+  (lambda (items)
+    (letrec ((trim-initial-segment
+	      (lambda (items*)
+		(if (pair? items*)
+		    (if (predicate (car items*))
+			(trim-initial-segment (cdr items*))
+			(begin
+			  (locate-initial-segment items* (cdr items*))
+			  items*))
+		    (begin
+		      (if (not (null? items*))
+			  (error:wrong-type-argument items "list" #f))
+		      '()))))
+	     (locate-initial-segment
+	      (lambda (last this)
+		(if (pair? this)
+		    (if (predicate (car this))
+			(set-cdr! last (trim-initial-segment (cdr this)))
+			(locate-initial-segment this (cdr this)))
+		    (if (not (null? this))
+			(error:wrong-type-argument items "list" #f))))))
+      (trim-initial-segment items))))
 
 ;;;; Membership/Association Lists
 
@@ -599,7 +583,8 @@ MIT in each case. |#
   (set! del-assoc (delete-association-procedure list-deletor equal? car))
   (set! del-assq! (delete-association-procedure list-deletor! eq? car))
   (set! del-assv! (delete-association-procedure list-deletor! eqv? car))
-  (set! del-assoc! (delete-association-procedure list-deletor! equal? car)))
+  (set! del-assoc! (delete-association-procedure list-deletor! equal? car))
+  unspecific)
 
 (define memv)
 (define member)
@@ -618,22 +603,33 @@ MIT in each case. |#
 
 (define (member-procedure predicate)
   (lambda (item items)
-    (let loop ((items items))
-      (and (pair? items)
-	   (if (predicate (car items) item)
-	       items
-	       (loop (cdr items)))))))
+    (let loop ((items* items))
+      (if (pair? items*)
+	  (if (predicate (car items*) item)
+	      items*
+	      (loop (cdr items*)))
+	  (begin
+	    (if (not (null? items*))
+		(error:wrong-type-argument items "list" #f))
+	    #f)))))
 
 (define ((delete-member-procedure deletor predicate) item items)
   ((deletor (lambda (match) (predicate match item))) items))
 
 (define (association-procedure predicate selector)
   (lambda (key alist)
-    (let loop ((alist alist))
-      (and (pair? alist)
-	   (if (predicate (selector (car alist)) key)
-	       (car alist)
-	       (loop (cdr alist)))))))
+    (let loop ((alist* alist))
+      (if (pair? alist*)
+	  (begin
+	    (if (not (pair? (car alist*)))
+		(error:wrong-type-argument alist "alist" #f))
+	    (if (predicate (selector (car alist*)) key)
+		(car alist*)
+		(loop (cdr alist*))))
+	  (begin
+	    (if (not (null? alist*))
+		(error:wrong-type-argument alist "alist" #f))
+	    #f)))))
 
 (define ((delete-association-procedure deletor predicate selector) key alist)
   ((deletor (lambda (entry) (predicate (selector entry) key))) alist))
@@ -643,59 +639,75 @@ MIT in each case. |#
 ;;; reason to use these procedures is speed, so we crank them up.
 
 (define (memq item items)
-  (let loop ((items items))
-    (and (pair? items)
-	 (if (eq? (car items) item)
-	     items
-	     (loop (cdr items))))))
+  (let loop ((items* items))
+    (if (pair? items*)
+	(if (eq? (car items*) item)
+	    items*
+	    (loop (cdr items*)))
+	(begin
+	  (if (not (null? items*))
+	      (error:wrong-type-argument items "list" 'MEMQ))
+	  #f))))
 
 (define (assq key alist)
-  (let loop ((alist alist))
-    (and (pair? alist)
-	 (if (eq? (car (car alist)) key)
-	     (car alist)
-	     (loop (cdr alist))))))
+  (let loop ((alist* alist))
+    (if (pair? alist*)
+	(begin
+	  (if (not (pair? (car alist*)))
+	      (error:wrong-type-argument alist "alist" 'ASSQ))
+	  (if (eq? (car (car alist*)) key)
+	      (car alist*)
+	      (loop (cdr alist*))))
+	(begin
+	  (if (not (null? alist*))
+	      (error:wrong-type-argument alist "alist" 'ASSQ))
+	  #f))))
 
 (define (delq item items)
-  (let loop ((items items))
-    (if (pair? items)
-	(if (eq? item (car items))
-	    (loop (cdr items))
-	    (cons (car items) (loop (cdr items))))
-	'())))
+  (let loop ((items* items))
+    (if (pair? items*)
+	(if (eq? item (car items*))
+	    (loop (cdr items*))
+	    (cons (car items*) (loop (cdr items*))))
+	(begin
+	  (if (not (null? items*))
+	      (error:wrong-type-argument items "list" 'DELQ))
+	  '()))))
 
 (define (delq! item items)
   (letrec ((trim-initial-segment
-	    (lambda (items)
-	      (if (pair? items)
-		  (if (eq? item (car items))
-		      (trim-initial-segment (cdr items))
+	    (lambda (items*)
+	      (if (pair? items*)
+		  (if (eq? item (car items*))
+		      (trim-initial-segment (cdr items*))
 		      (begin
-			(locate-initial-segment items (cdr items))
-			items))
-		  items)))
+			(locate-initial-segment items* (cdr items*))
+			items*))
+		  (begin
+		    (if (not (null? items*))
+			(error:wrong-type-argument items "list" 'DELQ!))
+		    '()))))
 	   (locate-initial-segment
 	    (lambda (last this)
 	      (if (pair? this)
 		  (if (eq? item (car this))
 		      (set-cdr! last (trim-initial-segment (cdr this)))
 		      (locate-initial-segment this (cdr this)))
-		  this))))
+		  (if (not (null? this))
+		      (error:wrong-type-argument items "list" 'DELQ!))))))
     (trim-initial-segment items)))
 
 ;;;; Lastness and Segments
 
 (define (last-pair list)
-  (if (not (pair? list))
-      (error "LAST-PAIR: Argument not a pair" list))
+  (guarantee-pair list 'LAST-PAIR)
   (let loop ((list list))
     (if (pair? (cdr list))
 	(loop (cdr list))
 	list)))
 
 (define (except-last-pair list)
-  (if (not (pair? list))
-      (error "EXCEPT-LAST-PAIR: Argument not a pair" list))
+  (guarantee-pair list 'EXCEPT-LAST-PAIR)
   (let loop ((list list))
     (if (pair? (cdr list))
 	(cons (car list)
@@ -703,8 +715,7 @@ MIT in each case. |#
 	'())))
 
 (define (except-last-pair! list)
-  (if (not (pair? list))
-      (error "EXCEPT-LAST-PAIR!: Argument not a pair" list))
+  (guarantee-pair list 'EXCEPT-LAST-PAIR!)
   (if (pair? (cdr list))
       (begin
 	(let loop ((list list))
@@ -713,3 +724,12 @@ MIT in each case. |#
 	      (set-cdr! list '())))
 	list)
       '()))
+
+(define-integrable (guarantee-pair object procedure)
+  (if (not (pair? object))
+      (error:wrong-type-argument object "pair" procedure)))
+
+(define-integrable (guarantee-index object procedure)
+  (if (not (exact-nonnegative-integer? object))
+      (error:wrong-type-argument object "exact nonnegative integer"
+				 procedure)))
