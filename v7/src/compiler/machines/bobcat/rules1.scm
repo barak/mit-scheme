@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.20 1989/01/21 09:21:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.21 1989/03/10 08:05:25 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -631,6 +631,13 @@ MIT in each case. |#
   (LAP (MOV B
 	    (& ,(char->signed-8-bit-immediate character))
 	    ,(indirect-byte-reference! address offset))))
+
+(define-rule statement
+  (ASSIGN (BYTE-OFFSET (REGISTER (? address)) (? offset))
+	  (REGISTER (? source)))
+  (let ((source (coerce->any/byte-reference source)))
+    (let ((target (indirect-byte-reference! address offset)))
+      (LAP (MOV B ,source ,target)))))
 
 (define-rule statement
   (ASSIGN (BYTE-OFFSET (REGISTER (? address)) (? offset))
