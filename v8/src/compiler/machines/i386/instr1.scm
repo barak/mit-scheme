@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/machines/i386/instr1.scm,v 1.1 1995/01/10 20:52:41 adams Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/machines/i386/instr1.scm,v 1.2 1995/05/24 00:27:10 ssmith Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -133,6 +133,15 @@ MIT in each case. |#
 	     (BYTE (8 ,(+ opcode 4))
 		   (8 value UNSIGNED)))
 
+	    ((W (? target r/mW) (&PCR (? dest)))
+	     (BYTE (8 #x83))
+	     (ModR/M ,digit target)
+	     (BYTE (8 dest SIGNED)))
+;	      ((() ())
+;	       (BYTE (8 #x81))
+;	       (ModR/M ,digit target)
+;	       (BYTE (32 disp SIGNED)))))
+	    
 	    ((B (? target r/mB) (& (? value)))
 	     (BYTE (8 #x80))
 	     (ModR/M ,digit target)
@@ -376,6 +385,9 @@ MIT in each case. |#
 	 `(define-instruction ,mnemonic
 	    ;; This assumes that *ADDRESS-SIZE* is 4 (32-bit mode)
 	    (((@PCR (? dest)))
+;	     (BYTE (8 #x0f)
+;		   (8 ,opcode2))
+;	     (IMMEDIATE `(- ,dest (+ *PC* 4)) ADDRESS))
 	     (VARIABLE-WIDTH
 	      (disp `(- ,dest (+ *PC* 2)))
 	      ((-128 127)
@@ -458,6 +470,8 @@ MIT in each case. |#
 (define-instruction JMP
   ;; This assumes that *ADDRESS-SIZE* is 4 (32-bit mode)
   (((@PCR (? dest)))
+;   (BYTE (8 #xe9))
+;   (BYTE (32 `(- ,dest (+ *PC* 4)) SIGNED)))
    (VARIABLE-WIDTH
     (disp `(- ,dest (+ *PC* 2)))
     ((-128 127)
@@ -466,8 +480,10 @@ MIT in each case. |#
     ((() ())
      (BYTE (8 #xe9)
 	   (32 (- disp 3) SIGNED)))))
-
+  
   (((@PCRO (? dest) (? offset)))
+;   (BYTE (8 #xe9))
+;   (BYTE (32 `(- (+ ,dest ,offset) (+ *PC* 4)) SIGNED)))
    (VARIABLE-WIDTH
     (disp `(- (+ ,dest ,offset) (+ *PC* 2)))
     ((-128 127)
