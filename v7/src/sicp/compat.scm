@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sicp/compat.scm,v 1.2 1990/11/14 14:57:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sicp/compat.scm,v 1.3 1991/04/06 06:51:33 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -165,3 +165,34 @@ MIT in each case. |#
     (if (eq? input 'abort)
 	(cmdl-interrupt/abort-nearest)
 	input)))
+
+(define (student-pp object . args)
+  (define (supply what old new)
+    (if (eq? old 'NOT-SUPPLIED)
+	new
+	(error "pp: Overspecified option"
+	       (list what old new))))
+
+  (define (parse-args args port as-code?)
+    (cond ((null? args)
+	   (let ((port 
+		  (if (eq? port 'NOT-SUPPLIED)
+		      (current-output-port)
+		      port)))
+	     (if (eq? as-code? 'NOT-SUPPLIED)
+		 (pp object port)
+		 (pp object port as-code?))))
+	  ((eq? (car args) 'AS-CODE)
+	   (parse-args (cdr args)
+		       port
+		       (supply 'AS-CODE as-code? true)))
+	  ((output-port? (car args))
+	   (parse-args (cdr args)
+		       (supply 'PORT port (car args))
+		       as-code?))
+	  (else
+	   (error "pp: Unknown option" (car args)))))		       
+
+  (if (null? args)
+      (pp object)
+      (parse-args args 'NOT-SUPPLIED 'NOT-SUPPLIED)))
