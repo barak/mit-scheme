@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dosprm.scm,v 1.29 1995/04/23 05:24:13 cph Exp $
+$Id: dosprm.scm,v 1.30 1995/10/18 05:09:08 cph Exp $
 
 Copyright (c) 1992-95 Massachusetts Institute of Technology
 
@@ -283,16 +283,12 @@ MIT in each case. |#
    (->namestring (merge-pathnames filename))))
 
 (define (make-directory name)
-  ;; No pathname-as-directory here because DOS does not know how
-  ;; to handle the trailing back-slash.
   ((ucode-primitive directory-make 1)
-   (->namestring (merge-pathnames name))))
+   (->namestring (directory-pathname-as-file (merge-pathnames name)))))
 
 (define (delete-directory name)
-  ;; No pathname-as-directory here because DOS does not know how
-  ;; to handle the trailing back-slash.
   ((ucode-primitive directory-delete 1)
-   (->namestring (merge-pathnames name))))
+   (->namestring (directory-pathname-as-file (merge-pathnames name)))))
 
 (define (os/default-end-of-line-translation)
   "\r\n")
