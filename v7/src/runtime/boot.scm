@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/boot.scm,v 14.3 1989/08/09 11:08:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/boot.scm,v 14.4 1990/09/19 00:32:41 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -93,3 +93,6 @@ MIT in each case. |#
   (object-pure? pure?)
   (object-constant? constant?)
   get-next-constant)
+
+(define-integrable (future? object)
+  ((ucode-primitive object-type? 2) (ucode-type future) object))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.17 1990/09/11 21:58:52 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.18 1990/09/19 00:32:55 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -166,9 +166,6 @@ MIT in each case. |#
     (let wait-loop ()
       (if (< (real-time-clock) end)
 	  (wait-loop)))))
-
-(define-integrable (future? object)
-  ((ucode-primitive object-type? 2) (ucode-type future) object))
 
 (define (exit)
   (if (prompt-for-confirmation "Kill Scheme")

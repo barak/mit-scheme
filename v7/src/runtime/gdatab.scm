@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gdatab.scm,v 14.4 1989/06/09 16:51:21 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gdatab.scm,v 14.5 1990/09/19 00:32:28 cph Rel $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -53,13 +53,15 @@ MIT in each case. |#
 (define named-structure-descriptions)
 
 (define (unparser/tagged-pair-method tag)
-  (1d-table/get tagged-pair-methods tag false))
+  (and (not (future? tag))
+       (1d-table/get tagged-pair-methods tag false)))
 
 (define (unparser/set-tagged-pair-method! tag method)
   (1d-table/put! tagged-pair-methods tag method))
 
 (define (unparser/tagged-vector-method tag)
-  (1d-table/get tagged-vector-methods tag false))
+  (and (not (future? tag))
+       (1d-table/get tagged-vector-methods tag false)))
 
 (define (unparser/set-tagged-vector-method! tag method)
   (1d-table/put! tagged-vector-methods tag method))
