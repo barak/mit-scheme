@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: prompt.scm,v 1.160 1993/10/16 07:34:43 cph Exp $
+;;;	$Id: prompt.scm,v 1.161 1993/10/27 02:14:12 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -162,8 +162,10 @@
 (define ((typein-editor-thunk mode))
   (let ((buffer (current-buffer)))
     (ring-clear! (buffer-mark-ring buffer))
-    (push-current-mark! (buffer-start buffer)))
-  (set-current-major-mode! mode)
+    (push-current-mark! (buffer-start buffer))
+    (if (major-mode? mode)
+	(set-buffer-major-mode! buffer mode)
+	(mode buffer)))
   (command-reader))
 
 (define (abort-typein-edit event)
