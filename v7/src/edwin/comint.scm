@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: comint.scm,v 1.16 1992/11/16 22:40:54 cph Exp $
+$Id: comint.scm,v 1.17 1992/11/17 06:05:39 cph Exp $
 
 Copyright (c) 1991-1992 Massachusetts Institute of Technology
 
@@ -128,7 +128,7 @@ Entry to this mode runs the hooks on comint-mode-hook."
       (make-ring (ref-variable comint-input-ring-size)))
     (define-variable-local-value! buffer
 	(ref-variable-object comint-last-input-end)
-      (mark-right-inserting-copy (buffer-end (current-buffer))))
+      (mark-right-inserting-copy (buffer-end buffer)))
     (define-variable-local-value! buffer
 	(ref-variable-object comint-last-input-match)
       false)
