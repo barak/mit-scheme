@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: syntax.scm,v 1.80 1998/06/28 20:09:11 cph Exp $
+;;;	$Id: syntax.scm,v 1.81 1998/06/28 20:09:26 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
