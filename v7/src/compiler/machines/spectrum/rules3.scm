@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rules3.scm,v 4.25 1990/07/22 18:55:38 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rules3.scm,v 4.26 1990/07/26 04:22:22 jinx Exp $
 $MC68020-Header: rules3.scm,v 4.24 90/05/03 15:17:33 GMT jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
@@ -455,10 +455,13 @@ MIT in each case. |#
     ((0)
      (let ((dest (standard-target! target)))
        (LAP ,@(load-non-pointer (ucode-type manifest-vector)
-				(+ 4 size)
+				size
 				dest)
-	    (STWM () ,dest (OFFSET 4 0 ,regnum:free-pointer))
-	    ,@(load-offset -4 regnum:free-pointer dest))))
+	    (STW () ,dest (OFFSET 0 0 ,regnum:free-pointer))
+	    (COPY () ,regnum:free-pointer ,dest)
+	    ,@(load-offset (* 4 (1+ size))
+			   regnum:free-pointer
+			   regnum:free-pointer))))
     ((1)
      (let ((entry (vector-ref entries 0)))
        (cons-closure
