@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/xdebug.c,v 9.30 1992/05/22 21:08:48 jinx Exp $
+$Id: xdebug.c,v 9.31 1992/11/24 23:14:38 gjr Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -255,11 +255,14 @@ DEFINE_PRIMITIVE ("DEBUG-STACK-TRACE", Prim_debug_stack_trace, 0, 0, 0)
 
 DEFINE_PRIMITIVE ("DEBUG-FIND-SYMBOL", Prim_debug_find_symbol, 1, 1, 0)
 {
+  extern SCHEME_OBJECT EXFUN (find_symbol, (long, unsigned char *));
   PRIMITIVE_HEADER (1);
 
   CHECK_ARG (1, STRING_P);
   {
-    fast SCHEME_OBJECT symbol = (find_symbol (ARG_REF (1)));
+    fast SCHEME_OBJECT string = (ARG_REF (1));
+    fast SCHEME_OBJECT symbol = (find_symbol ((STRING_LENGTH (string)),
+					      (STRING_LOC (string, 0))));
     if (symbol == SHARP_F)
       printf ("\nNot interned.\n");
     else
