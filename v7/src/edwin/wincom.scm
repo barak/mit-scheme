@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: wincom.scm,v 1.115 1994/03/07 19:01:15 cph Exp $
+;;;	$Id: wincom.scm,v 1.116 1994/03/08 20:23:59 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -190,7 +190,7 @@ Just minus as an argument moves down full screen."
   (lambda (argument)
     (let ((window
 	   (or (and (typein-window? (current-window))
-		    (object-unhash *minibuffer-scroll-window*))
+		    (weak-car *minibuffer-scroll-window*))
 	       (other-window-interactive 1))))
       (scroll-window window
 		     (standard-scroll-window-argument window argument 1)))))
@@ -201,7 +201,7 @@ Just minus as an argument moves down full screen."
   (lambda (argument)
     (let ((window
 	   (or (and (typein-window? (current-window))
-		    (object-unhash *minibuffer-scroll-window*))
+		    (weak-car *minibuffer-scroll-window*))
 	       (other-window-interactive 1))))
       (scroll-window window
 		     (standard-scroll-window-argument window argument -1)))))
@@ -215,7 +215,7 @@ means scroll one screenful down."
   (lambda (argument)
     (let ((window
 	   (or (and (typein-window? (current-window))
-		    (object-unhash *minibuffer-scroll-window*))
+		    (weak-car *minibuffer-scroll-window*))
 	       (other-window-interactive 1))))
       (scroll-window window
 		     (multi-scroll-window-argument window argument 1)))))
@@ -414,34 +414,45 @@ ARG lines.  No arg means split equally."
 Also kills any pop up window it may have created."
   ()
   (lambda ()
-    (kill-pop-up-buffer true)))
+    (kill-pop-up-buffer #t '())))
 
 (define (cleanup-pop-up-buffers thunk)
-  (fluid-let ((*previous-popped-up-window* (object-hash false))
-	      (*previous-popped-up-buffer* (object-hash false))
-	      (*minibuffer-scroll-window* (object-hash false)))
-    (unwind-protect false
-		    thunk
-		    (lambda () (kill-pop-up-buffer false)))))
+  (let ((window-alist
+	 (map (lambda (window)
+		(weak-cons window (window-buffer window)))
+	      (window-list))))
+    (fluid-let ((*previous-popped-up-window* (weak-cons #f #f))
+		(*previous-popped-up-buffer* (weak-cons #f #f))
+		(*minibuffer-scroll-window* (weak-cons #f #f)))
+      (dynamic-wind
+       (lambda () unspecific)
+       thunk
+       (lambda () (kill-pop-up-buffer #f window-alist))))))
 
-(define (kill-pop-up-buffer error-if-none?)
-  (let ((window (object-unhash *previous-popped-up-window*)))
-    (if window
-	(begin
-	  (set! *previous-popped-up-window* (object-hash false))
-	  (if (and (window-live? window)
-		   (not (window-has-no-neighbors? window)))
-	      (window-delete! window)))))
-  (let ((buffer (object-unhash *previous-popped-up-buffer*)))
-    (cond ((and buffer (buffer-alive? buffer))
-	   (set! *previous-popped-up-buffer* (object-hash false))
-	   (kill-buffer-interactive buffer))
-	  (error-if-none?
-	   (editor-error "No previous pop up buffer")))))
+(define (kill-pop-up-buffer error-if-none? #!optional window-alist)
+  (let ((window-alist (if (default-object? window-alist) '() window-alist)))
+    (let ((window (weak-car *previous-popped-up-window*)))
+      (if window
+	  (begin
+	    (weak-set-car! *previous-popped-up-window* #f)
+	    (if (and (window-live? window)
+		     (not (window-has-no-neighbors? window)))
+		(window-delete! window)))))
+    (let ((buffer (weak-car *previous-popped-up-buffer*)))
+      (cond ((and buffer (buffer-alive? buffer))
+	     (for-each (lambda (window)
+			 (let ((entry (weak-assq window window-alist)))
+			   (if entry
+			       (set-window-buffer! window (weak-cdr entry)))))
+		       (buffer-windows buffer))
+	     (weak-set-car! *previous-popped-up-buffer* #f)
+	     (kill-buffer-interactive buffer))
+	    (error-if-none?
+	     (editor-error "No previous pop up buffer."))))))
 
-(define *previous-popped-up-buffer* (object-hash false))
-(define *previous-popped-up-window* (object-hash false))
-(define *minibuffer-scroll-window* (object-hash false))
+(define *previous-popped-up-window* (weak-cons #f #f))
+(define *previous-popped-up-buffer* (weak-cons #f #f))
+(define *minibuffer-scroll-window* (weak-cons #f #f))
 
 (define (pop-up-buffer buffer #!optional select? not-current-window?)
   ;; If some new window is created by this procedure, it is returned
@@ -461,9 +472,9 @@ Also kills any pop up window it may have created."
       (maybe-record-window window))
 
     (define (maybe-record-window window)
-      (set! *minibuffer-scroll-window* (object-hash window))
+      (weak-set-car! *minibuffer-scroll-window* window)
       (if select? (select-window window))
-      (and (eq? window (object-unhash *previous-popped-up-window*))
+      (and (eq? window (weak-car *previous-popped-up-window*))
 	   window))
 
     (define (find-visible-window buffer)
@@ -515,8 +526,8 @@ Also kills any pop up window it may have created."
 					   (>= (window-y-size window) limit))
 				      (pop-up-window window)
 				      (pop-into-window window))))))))))))
-      (set! *previous-popped-up-window* (object-hash window))
-      (set! *previous-popped-up-buffer* (object-hash buffer))
+      (weak-set-car! *previous-popped-up-window* window)
+      (weak-set-car! *previous-popped-up-buffer* buffer)
       window)))
 
 (define (get-buffer-window buffer)
