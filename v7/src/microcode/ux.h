@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.40 1993/02/06 05:42:05 gjr Exp $
+$Id: ux.h,v 1.41 1993/02/14 23:03:51 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -176,7 +176,7 @@ extern void EXFUN (error_system_call, (int code, enum syscall_names name));
 
 #ifdef _POSIX
 
-#ifdef _osf
+#ifdef __osf__
 #  include <sys/time.h>
 #  include <sys/ioctl.h>
 #endif
