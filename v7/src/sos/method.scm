@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: method.scm,v 1.1 1997/06/04 06:08:49 cph Exp $
+;;; $Id: method.scm,v 1.2 1997/06/04 22:24:21 cph Exp $
 ;;;
-;;; Copyright (c) 1995-96 Massachusetts Institute of Technology
+;;; Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
 ;;; This material was developed by the Scheme project at the
 ;;; Massachusetts Institute of Technology, Department of Electrical
@@ -360,8 +360,8 @@
       (%make (guarantee-specializers specializers #t 'MAKE-METHOD)
 	     procedure))))
 
-(define method?
-  (instance-predicate <method>))
+(define (method? object)
+  (instance-of? object <method>))
 
 (define method-specializers
   (make-generic-procedure 1 'METHOD-SPECIALIZERS))
@@ -380,8 +380,8 @@
       (%make (guarantee-specializers specializers #t 'MAKE-CHAINED-METHOD)
 	     procedure))))
 
-(define chained-method?
-  (instance-predicate <chained-method>))
+(define (chained-method? object)
+  (instance-of? object <chained-method>))
 
 
 (define <computed-method>
@@ -394,8 +394,8 @@
       (%make (guarantee-specializers specializers #t 'MAKE-COMPUTED-METHOD)
 	     procedure))))
 
-(define computed-method?
-  (instance-predicate <computed-method>))
+(define (computed-method? object)
+  (instance-of? object <computed-method>))
 
 
 (define <computed-emp>
@@ -409,8 +409,8 @@
 	     (guarantee-specializers specializers #t 'MAKE-COMPUTED-EMP)
 	     procedure))))
 
-(define computed-emp?
-  (instance-predicate <computed-emp>))
+(define (computed-emp? object)
+  (instance-of? object <computed-emp>))
 
 (define computed-emp-key
   (make-generic-procedure 1 'COMPUTED-EMP-KEY))
