@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: ttyio.scm,v 1.4 1993/10/21 14:52:43 cph Exp $
+$Id: ttyio.scm,v 1.5 1996/05/13 23:59:27 cph Exp $
 
-Copyright (c) 1991-93 Massachusetts Institute of Technology
+Copyright (c) 1991-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -58,10 +58,12 @@ MIT in each case. |#
 	     (INPUT-BLOCKING-MODE ,operation/input-blocking-mode)
 	     (INPUT-BUFFER-SIZE ,operation/input-buffer-size)
 	     (INPUT-CHANNEL ,operation/input-channel)
+	     (INPUT-OPEN? ,operation/input-open?)
 	     (INPUT-TERMINAL-MODE ,operation/input-terminal-mode)
 	     (OUTPUT-BLOCKING-MODE ,operation/output-blocking-mode)
 	     (OUTPUT-BUFFER-SIZE ,operation/output-buffer-size)
 	     (OUTPUT-CHANNEL ,operation/output-channel)
+	     (OUTPUT-OPEN? ,operation/output-open?)
 	     (OUTPUT-TERMINAL-MODE ,operation/output-terminal-mode)
 	     (PEEK-CHAR ,(lambda (port) (hook/peek-char port)))
 	     (WRITE-SELF ,operation/write-self)

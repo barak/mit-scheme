@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.9 1995/01/31 19:34:39 cph Exp $
+$Id: fileio.scm,v 1.10 1996/05/13 23:59:22 cph Exp $
 
-Copyright (c) 1991-95 Massachusetts Institute of Technology
+Copyright (c) 1991-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -42,12 +42,14 @@ MIT in each case. |#
 	 `((BUFFERED-INPUT-CHARS ,operation/buffered-input-chars)
 	   (CHAR-READY? ,operation/char-ready?)
 	   (CHARS-REMAINING ,operation/chars-remaining)
+	   (CLOSE-INPUT ,operation/close-input)
 	   (DISCARD-CHAR ,operation/discard-char)
 	   (DISCARD-CHARS ,operation/discard-chars)
 	   (EOF? ,operation/eof?)
 	   (INPUT-BLOCKING-MODE ,operation/input-blocking-mode)
 	   (INPUT-BUFFER-SIZE ,operation/input-buffer-size)
 	   (INPUT-CHANNEL ,operation/input-channel)
+	   (INPUT-OPEN? ,operation/input-open?)
 	   (INPUT-TERMINAL-MODE ,operation/input-terminal-mode)
 	   (LENGTH ,operation/length)
 	   (PEEK-CHAR ,operation/peek-char)
@@ -61,15 +63,18 @@ MIT in each case. |#
 	   (SET-INPUT-TERMINAL-MODE ,operation/set-input-terminal-mode)))
 	(output-operations
 	 `((BUFFERED-OUTPUT-CHARS ,operation/buffered-output-chars)
+	   (CLOSE-OUTPUT ,operation/close-output)
 	   (FLUSH-OUTPUT ,operation/flush-output)
 	   (OUTPUT-BLOCKING-MODE ,operation/output-blocking-mode)
 	   (OUTPUT-BUFFER-SIZE ,operation/output-buffer-size)
 	   (OUTPUT-CHANNEL ,operation/output-channel)
+	   (OUTPUT-OPEN? ,operation/output-open?)
 	   (OUTPUT-TERMINAL-MODE ,operation/output-terminal-mode)
 	   (SET-OUTPUT-BLOCKING-MODE ,operation/set-output-blocking-mode)
 	   (SET-OUTPUT-BUFFER-SIZE ,operation/set-output-buffer-size)
 	   (SET-OUTPUT-TERMINAL-MODE ,operation/set-output-terminal-mode)
 	   (WRITE-CHAR ,operation/write-char)
+	   (WRITE-CHARS ,operation/write-chars)
 	   (WRITE-STRING ,operation/write-string)
 	   (WRITE-SUBSTRING ,operation/write-substring)))
 	(other-operations

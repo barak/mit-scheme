@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.6 1995/09/13 19:56:13 cph Exp $
+$Id: genio.scm,v 1.7 1996/05/13 23:59:15 cph Exp $
 
-Copyright (c) 1991-95 Massachusetts Institute of Technology
+Copyright (c) 1991-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -42,12 +42,14 @@ MIT in each case. |#
 	 `((BUFFERED-INPUT-CHARS ,operation/buffered-input-chars)
 	   (CHAR-READY? ,operation/char-ready?)
 	   (CHARS-REMAINING ,operation/chars-remaining)
+	   (CLOSE-INPUT ,operation/close-input)
 	   (DISCARD-CHAR ,operation/discard-char)
 	   (DISCARD-CHARS ,operation/discard-chars)
 	   (EOF? ,operation/eof?)
 	   (INPUT-BLOCKING-MODE ,operation/input-blocking-mode)
 	   (INPUT-BUFFER-SIZE ,operation/input-buffer-size)
 	   (INPUT-CHANNEL ,operation/input-channel)
+	   (INPUT-OPEN? ,operation/input-open?)
 	   (INPUT-TERMINAL-MODE ,operation/input-terminal-mode)
 	   (PEEK-CHAR ,operation/peek-char)
 	   (READ-CHAR ,operation/read-char)
@@ -59,15 +61,18 @@ MIT in each case. |#
 	   (SET-INPUT-TERMINAL-MODE ,operation/set-input-terminal-mode)))
 	(output-operations
 	 `((BUFFERED-OUTPUT-CHARS ,operation/buffered-output-chars)
+	   (CLOSE-OUTPUT ,operation/close-output)
 	   (FLUSH-OUTPUT ,operation/flush-output)
 	   (OUTPUT-BLOCKING-MODE ,operation/output-blocking-mode)
 	   (OUTPUT-BUFFER-SIZE ,operation/output-buffer-size)
 	   (OUTPUT-CHANNEL ,operation/output-channel)
+	   (OUTPUT-OPEN? ,operation/output-open?)
 	   (OUTPUT-TERMINAL-MODE ,operation/output-terminal-mode)
 	   (SET-OUTPUT-BLOCKING-MODE ,operation/set-output-blocking-mode)
 	   (SET-OUTPUT-BUFFER-SIZE ,operation/set-output-buffer-size)
 	   (SET-OUTPUT-TERMINAL-MODE ,operation/set-output-terminal-mode)
 	   (WRITE-CHAR ,operation/write-char)
+	   (WRITE-CHARS ,operation/write-chars)
 	   (WRITE-STRING ,operation/write-string)
 	   (WRITE-SUBSTRING ,operation/write-substring)))
 	(other-operations
@@ -247,6 +252,9 @@ MIT in each case. |#
   (output-buffer/write-substring-block (port/output-buffer port)
 				       string start end))
 
+(define (operation/write-chars port string start end)
+  (output-buffer/write-substring (port/output-buffer port) string start end))
+
 (define (operation/output-buffer-size port)
   (output-buffer/size (port/output-buffer port)))
 
@@ -287,9 +295,25 @@ MIT in each case. |#
   ;; Must close output-buffer first, because it may need to flush
   ;; buffered data, and there might only be one channel for both the
   ;; input and output buffers.
+  (operation/close-output port)
+  (operation/close-input port))
+
+(define (operation/close-output port)
   (let ((output-buffer (port/output-buffer port)))
     (if output-buffer
-	(output-buffer/close output-buffer)))
+	(output-buffer/close output-buffer))))
+
+(define (operation/close-input port)
   (let ((input-buffer (port/input-buffer port)))
     (if input-buffer
 	(input-buffer/close input-buffer))))
+
+(define (operation/output-open? port)
+  (let ((output-buffer (port/output-buffer port)))
+    (and output-buffer
+	 (channel-open? (output-buffer/channel output-buffer)))))
+
+(define (operation/input-open? port)
+  (let ((input-buffer (port/input-buffer port)))
+    (and input-buffer
+	 (channel-open? (input-buffer/channel input-buffer)))))

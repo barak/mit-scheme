@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.270 1996/04/24 04:17:17 cph Exp $
+$Id: runtime.pkg,v 14.271 1996/05/13 23:59:34 cph Exp $
 
 Copyright (c) 1988-96 Massachusetts Institute of Technology
 
@@ -814,10 +814,12 @@ MIT in each case. |#
 	  operation/input-blocking-mode
 	  operation/input-buffer-size
 	  operation/input-channel
+	  operation/input-open?
 	  operation/input-terminal-mode
 	  operation/output-blocking-mode
 	  operation/output-buffer-size
 	  operation/output-channel
+	  operation/output-open?
 	  operation/output-terminal-mode
 	  operation/set-input-blocking-mode
 	  operation/set-input-buffer-size
@@ -831,6 +833,8 @@ MIT in each case. |#
 	  operation/char-ready?
 	  operation/chars-remaining
 	  operation/close
+	  operation/close-input
+	  operation/close-output
 	  operation/discard-char
 	  operation/discard-chars
 	  operation/eof?
@@ -838,10 +842,12 @@ MIT in each case. |#
 	  operation/input-blocking-mode
 	  operation/input-buffer-size
 	  operation/input-channel
+	  operation/input-open?
 	  operation/input-terminal-mode
 	  operation/output-blocking-mode
 	  operation/output-buffer-size
 	  operation/output-channel
+	  operation/output-open?
 	  operation/output-terminal-mode
 	  operation/peek-char
 	  operation/read-char
@@ -855,6 +861,7 @@ MIT in each case. |#
 	  operation/set-output-buffer-size
 	  operation/set-output-terminal-mode
 	  operation/write-char
+	  operation/write-chars
 	  operation/write-string
 	  operation/write-substring)
   (initialization (initialize-package!)))
@@ -1745,6 +1752,7 @@ MIT in each case. |#
 	  output-buffer/size
 	  output-buffer/write-char-block
 	  output-buffer/write-string-block
+	  output-buffer/write-substring
 	  output-buffer/write-substring-block
 	  set-channel-port!)
   (export (runtime file-i/o-port)
