@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rulrew.scm,v 1.2 1991/10/25 00:13:43 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/rulrew.scm,v 1.3 1992/03/03 21:33:34 cph Exp $
 
-Copyright (c) 1990-91 Massachusetts Institute of Technology
+Copyright (c) 1990-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -99,8 +99,6 @@ MIT in each case. |#
   (and (rtl:constant? expression)
        (non-pointer-object? (rtl:constant-value expression))))
 
-;; I've modified these rules from the MC68020. -- Jinx
-
 ;;; These rules are losers because there's no abstract way to cons a
 ;;; statement or a predicate without also getting some CFG structure.
 
@@ -108,19 +106,19 @@ MIT in each case. |#
   ;; Use register 0, always 0.
   (ASSIGN (? target) (REGISTER (? comparand register-known-value)))
   (QUALIFIER (rtl:immediate-zero-constant? comparand))
-  (list 'ASSIGN target (rtl:make-machine-constant 0)))
+  (list 'ASSIGN target (rtl:make-machine-register 0)))
 
 (define-rule rewriting
   ;; Compare to register 0, always 0.
   (EQ-TEST (? source) (REGISTER (? comparand register-known-value)))
   (QUALIFIER (rtl:immediate-zero-constant? comparand))
-  (list 'EQ-TEST source (rtl:make-machine-constant 0)))
+  (list 'EQ-TEST source (rtl:make-machine-register 0)))
 
 (define-rule rewriting
   ;; Compare to register 0, always 0.
   (EQ-TEST (REGISTER (? comparand register-known-value)) (? source))
   (QUALIFIER (rtl:immediate-zero-constant? comparand))
-  (list 'EQ-TEST source (rtl:make-machine-constant 0)))
+  (list 'EQ-TEST source (rtl:make-machine-register 0)))
 
 (define (rtl:immediate-zero-constant? expression)
   (cond ((rtl:constant? expression)
