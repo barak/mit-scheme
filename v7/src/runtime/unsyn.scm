@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 14.6 1989/08/16 11:46:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 14.7 1990/06/14 00:02:08 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -38,6 +38,7 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (initialize-package!)
+  (set! lambda-auxiliary-tag (intern "#!aux"))
   (set! unsyntaxer/scode-walker
 	(make-scode-walker unsyntax-constant
 			   `((ACCESS ,unsyntax-ACCESS-object)
@@ -60,6 +61,12 @@ MIT in each case. |#
 			     (UNASSIGNED? ,unsyntax-UNASSIGNED?-object)
 			     (VARIABLE ,unsyntax-VARIABLE-object))))
   unspecific)
+
+(define unsyntaxer:macroize?
+  true)
+
+(define unsyntaxer:show-comments?
+  false)
 
 (define (unsyntax scode)
   (unsyntax-object (if (procedure? scode) (procedure-lambda scode) scode)))
@@ -89,7 +96,7 @@ MIT in each case. |#
 	((compiled-expression? object)
 	 (let ((scode (compiled-expression/scode object)))
 	   (if (eq? scode object)
-	       `(SCODE-QUOTE object)
+	       `(SCODE-QUOTE ,object)
 	       (unsyntax-object scode))))
 	(else
 	 object)))
@@ -101,13 +108,14 @@ MIT in each case. |#
   (variable-name object))
 
 (define (unsyntax-ACCESS-object object)
-  `(ACCESS ,@(unexpand-access object)))
+  `(ACCESS ,@(unexpand-access object true)))
 
-(define (unexpand-access object)
-  (if (access? object)
+(define (unexpand-access object separate?)
+  (if (and (access? object) separate?)
       (access-components object
 	(lambda (environment name)
-	  `(,name ,@(unexpand-access environment))))
+	  `(,name ,@(unexpand-access environment
+				     (and separate? unsyntaxer:macroize?)))))
       `(,(unsyntax-object object))))
 
 (define (unsyntax-DEFINITION-object definition)
@@ -119,7 +127,7 @@ MIT in each case. |#
       `(SET! ,name ,@(unexpand-binding-value value)))))
 
 (define (unexpand-definition name value)
-  (if (lambda? value)
+  (if (and (lambda? value) unsyntaxer:macroize?)
       (lambda-components** value
 	(lambda (lambda-name required optional rest body)
 	  (if (eq? lambda-name name)
@@ -142,26 +150,33 @@ MIT in each case. |#
 	`(COMMENT ,(comment-text comment) ,expression)
 	expression)))
 
-(define unsyntaxer:show-comments?
-  false)
-
 (define (unsyntax-DECLARATION-object declaration)
   (declaration-components declaration
     (lambda (text expression)
       `(LOCAL-DECLARE ,text ,(unsyntax-object expression)))))
 
 (define (unsyntax-SEQUENCE-object sequence)
-  `(BEGIN ,@(unsyntax-sequence sequence)))
+  (if unsyntaxer:macroize?
+      `(BEGIN ,@(unsyntax-sequence sequence))
+      (car (unsyntax-sequence sequence))))  
 
 (define (unsyntax-sequence sequence)
-  (unsyntax-objects (sequence-actions sequence)))
+  (cond ((not (sequence? sequence))
+	 (list (unsyntax-object sequence)))
+	(unsyntaxer:macroize?
+	 (unsyntax-objects (sequence-actions sequence)))
+	(else
+	 `((BEGIN
+	     ,@(unsyntax-objects (sequence-immediate-actions sequence)))))))
 
 (define (unsyntax-OPEN-BLOCK-object open-block)
   (open-block-components open-block
     (lambda (auxiliary declarations expression)
-      `(OPEN-BLOCK ,auxiliary
-		   ,declarations
-		   ,@(unsyntax-sequence expression)))))
+      (if unsyntaxer:macroize?
+	  `(OPEN-BLOCK ,auxiliary
+		       ,declarations
+		       ,@(unsyntax-sequence expression))
+	  (unsyntax-SEQUENCE-object open-block)))))
 
 (define (unsyntax-DELAY-object object)
   `(DELAY ,(unsyntax-object (delay-expression object))))
@@ -177,7 +192,12 @@ MIT in each case. |#
   `(THE-ENVIRONMENT))
 
 (define (unsyntax-DISJUNCTION-object object)
-  `(OR ,@(disjunction-components object unexpand-disjunction)))
+  `(OR ,@(disjunction-components object
+	   (if unsyntaxer:macroize?
+	       unexpand-disjunction
+	       (lambda (predicate alternative)
+		 (list (unsyntax-object predicate)
+		       (unsyntax-object alternative)))))))	   
 
 (define (unexpand-disjunction predicate alternative)
   `(,(unsyntax-object predicate)
@@ -186,7 +206,15 @@ MIT in each case. |#
 	  `(,(unsyntax-object alternative)))))
 
 (define (unsyntax-CONDITIONAL-object conditional)
-  (conditional-components conditional unsyntax-conditional))
+  (conditional-components conditional
+    (if unsyntaxer:macroize?
+	unsyntax-conditional
+	unsyntax-conditional/default)))
+
+(define (unsyntax-conditional/default predicate consequent alternative)
+  `(IF ,(unsyntax-object predicate)
+       ,(unsyntax-object consequent)
+       ,(unsyntax-object alternative)))
 
 (define (unsyntax-conditional predicate consequent alternative)
   (cond ((false? alternative)
@@ -202,9 +230,7 @@ MIT in each case. |#
 					     consequent
 					     alternative)))
 	(else
-	 `(IF ,(unsyntax-object predicate)
-	      ,(unsyntax-object consequent)
-	      ,(unsyntax-object alternative)))))
+	 (unsyntax-conditional/default predicate consequent alternative))))
 
 (define (unsyntax-cond-conditional predicate consequent alternative)
   `((,(unsyntax-object predicate) ,@(unsyntax-sequence consequent))
@@ -237,13 +263,26 @@ MIT in each case. |#
 ;;;; Lambdas
 
 (define (unsyntax-LAMBDA-object expression)
-  (lambda-components** expression
-    (lambda (name required optional rest body)
-      (let ((bvl (lambda-list required optional rest))
-	    (body (unsyntax-sequence body)))
-	(if (eq? name lambda-tag:unnamed)
-	    `(LAMBDA ,bvl ,@body)
-	    `(NAMED-LAMBDA (,name . ,bvl) ,@body))))))
+  (if unsyntaxer:macroize?
+      (lambda-components** expression
+	(lambda (name required optional rest body)
+	  (collect-lambda name
+			  (lambda-list required optional rest '())
+			  (unsyntax-sequence body))))
+      (lambda-components expression
+	(lambda (name required optional rest auxiliary declarations body)
+	  (collect-lambda name
+			  (lambda-list required optional rest auxiliary)
+			  (let ((body (unsyntax-sequence body)))
+			    (if (null? declarations)
+				body
+				`((DECLARE ,@declarations)
+				  ,@body))))))))
+
+(define (collect-lambda name bvl body)
+  (if (eq? name lambda-tag:unnamed)
+      `(LAMBDA ,bvl ,@body)
+      `(NAMED-LAMBDA (,name . ,bvl) ,@body)))
 
 (define (unsyntax-lambda-list expression)
   (if (not (lambda? expression))
@@ -253,15 +292,18 @@ MIT in each case. |#
       name body
       (lambda-list required optional rest))))
 
-(define (lambda-list required optional rest)
-  (cond ((null? rest)
-	 (if (null? optional)
-	     required
-	     `(,@required ,lambda-optional-tag ,@optional)))
-	((null? optional)
-	 `(,@required . ,rest))
-	(else
-	 `(,@required ,lambda-optional-tag ,@optional . ,rest))))
+(define lambda-auxiliary-tag)
+
+(define (lambda-list required optional rest auxiliary)
+  (let ((optional (if (null? optional)
+		      '()
+		      (cons lambda-optional-tag optional)))
+	(rest (cond ((not rest) '())
+		    ((null? auxiliary) rest)
+		    (else (list lambda-rest-tag rest)))))
+    (if (null? auxiliary)
+	`(,@required ,@optional . ,rest)
+	`(,@required ,@optional ,@rest ,lambda-auxiliary-tag ,@auxiliary))))
 
 (define (lambda-components** expression receiver)
   (lambda-components expression
@@ -278,7 +320,9 @@ MIT in each case. |#
        (let ((ordinary-combination
 	      (lambda ()
 		`(,(unsyntax-object operator) ,@(unsyntax-objects operands)))))
-	 (cond ((and (or (eq? operator cons)
+	 (cond ((not unsyntaxer:macroize?)
+		(ordinary-combination))
+	       ((and (or (eq? operator cons)
 			 (absolute-reference-to? operator 'CONS))
 		     (= (length operands) 2)
 		     (delay? (cadr operands)))
@@ -347,7 +391,9 @@ MIT in each case. |#
       expression))
 
 (define (unsyntax-ERROR-COMBINATION-object combination)
-  (unsyntax-error-like-form (combination-operands combination) 'ERROR))
+  (if unsyntaxer:macroize?
+      (unsyntax-error-like-form (combination-operands combination) 'ERROR)
+      (unsyntax-COMBINATION-object combination)))
 
 (define (unsyntax-error-like-form operands name)
   (cons* name
@@ -411,7 +457,7 @@ MIT in each case. |#
 	       (lambda (operator operands)
 		 (cond ((eq? operator lexical-assignment)
 			`(ACCESS ,(cadr operands)
-				 ,@(unexpand-access (car operands))))
+				 ,@(unexpand-access (car operands) true)))
 		       (else
 			(unsyntax-error 'FLUID-LET
 					"Unknown SCODE form"
