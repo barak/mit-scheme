@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.19 1996/11/22 21:49:59 cph Exp $
+;;;	$Id: snr.scm,v 1.20 1996/11/30 22:17:17 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-96 Massachusetts Institute of Technology
 ;;;
@@ -3906,6 +3906,7 @@ With prefix arg, replaces the file with the list information."
   (news-group:ignored-subjects-modified! group))
 
 (define (news-group:article-not-ignored! group header buffer)
+  buffer
   (let ((subject (canonicalize-subject (news-header:subject header))))
     (if (not (fix:= 0 (string-length subject)))
 	(let ((process-group
