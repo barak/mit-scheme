@@ -37,7 +37,7 @@
 
 ;;;; RTL Rules for Spectrum
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/lapgen.scm,v 1.134 1987/02/13 09:37:17 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/lapgen.scm,v 1.135 1987/02/15 13:06:32 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access lap-generator-syntax-table compiler-package)
@@ -233,7 +233,7 @@
 	  `((OR () 0 0 ,target))
 	  (with-type-deposit-parameters type
 	    (lambda (const end)
-	      `((ZDEPI () ,const ,end 8 ,target)))))
+	      `((ZDEPI () ,const ,end 5 ,target)))))
       (let ((number (make-non-pointer type datum)))
 	(if (<= -8192 number 8191)
 	    `((LDI () ,number ,target))
@@ -320,7 +320,7 @@
 	`(,@(if (deposit-type-constant? type)
 		(with-type-deposit-parameters type
 		  (lambda (type end)
-		    `((ZDEPI () ,type ,end 8 ,target))))
+		    `((ZDEPI () ,type ,end 5 ,target))))
 		`((LDI () ,type ,target)
 		  (ZDEP () ,target 7 8 ,target)))
 	  (DEP () ,source 31 24 ,target)))))
@@ -442,6 +442,7 @@
 
 (define (with-type-deposit-parameters type receiver)
   ;; This one is for type codes, assume that (<= 0 n 127).
+  ;; Also assume that `(deposit-type-constant? type)' is true.
   (cond ((< type 16) (receiver type 7))
 	((< type 32) (receiver (quotient type 2) 6))
 	((< type 64) (receiver (quotient type 4) 5))
@@ -506,9 +507,9 @@
 (define reg:temp `(INDEX #x0010 0 ,regnum:regs-pointer))
 (define reg:compiled-memtop `(INDEX 0 0 ,regnum:regs-pointer))
 
-(define popper:apply-closure '(INDEX 400 5 ,regnum:regs-pointer))
-(define popper:apply-stack '(INDEX 528 5 ,regnum:regs-pointer))
-(define popper:value '(INDEX 656 5 ,regnum:regs-pointer))
+(define popper:apply-closure `(INDEX 400 5 ,regnum:regs-pointer))
+(define popper:apply-stack `(INDEX 528 5 ,regnum:regs-pointer))
+(define popper:value `(INDEX 656 5 ,regnum:regs-pointer))
 
 (package (type->machine-constant
 	  make-non-pointer
@@ -680,7 +681,7 @@
     `((LDI () ,(ucode-type stack-environment) ,temp)
       (LDO () ,(offset-reference r30 n) ,r1)
       (DEP () ,temp 7 8 ,r1)
-      ,(register->memory-pre-decrement r1 r30))))
+      ,@(register->memory-pre-decrement r1 r30))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 30) -1)
@@ -1028,13 +1029,13 @@
 
 (define (apply-closure-sequence frame-size receiver-offset label)
   `(,@(machine-constant->machine-register (* frame-size 4) r19)
-    (LDO () ,(offset-reference r30 (* receiver-offset 4)) r20)
+    (LDO () ,(offset-reference r30 (* receiver-offset 4)) ,r20)
     ,@(label->machine-register label r21)
     (BLE (N) ,popper:apply-closure)))
 
 (define (apply-stack-sequence frame-size receiver-offset n-levels label)
   `(,@(machine-constant->machine-register (* frame-size 4) r19)
-    (LDO () ,(offset-reference r30 (* receiver-offset 4)) r20)
+    (LDO () ,(offset-reference r30 (* receiver-offset 4)) ,r20)
     ,@(label->machine-register label r21)
     ,@(machine-constant->machine-register n-levels r22)
     (BLE (N) ,popper:apply-stack)))
@@ -1042,7 +1043,7 @@
 (define-rule statement
   (MESSAGE-SENDER:VALUE (? receiver-offset))
   `(,@(clear-map!)
-    (LDO () ,(offset-reference r30 (* receiver-offset 4)) r30)
+    (LDO () ,(offset-reference r30 (* receiver-offset 4)) ,r30)
     (BLE (N) ,popper:value)))
 
 ;;; end USING-SYNTAX
