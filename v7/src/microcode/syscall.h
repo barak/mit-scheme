@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: syscall.h,v 1.1 1993/08/03 08:40:19 gjr Exp $
+$Id: syscall.h,v 1.2 1993/08/03 17:40:04 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -146,4 +146,4 @@ extern void EXFUN (error_in_system_call,
 extern void EXFUN (error_system_call, (int, enum syscall_names name));
 extern enum syserr_names EXFUN (OS_error_code_to_syserr, (int));
 
-#endif  SCM_SYSCALL_H
+#endif /* SCM_SYSCALL_H */
