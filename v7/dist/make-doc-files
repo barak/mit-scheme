@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: make-doc-files,v 1.11 2000/11/28 17:32:03 cph Exp $
+# $Id: make-doc-files,v 1.12 2000/12/23 05:42:57 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -18,63 +18,52 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-COPY="cpx -h"
+INSTALL="install"
+INSTALL_DATA="${INSTALL} -m 644"
+DOCDIR="/scheme/v7/doc"
+PREFIX=`/scheme/v7/dist/release-prefix`
+TLDIR="`pwd`/${PREFIX}"
 
-prefix=`/scheme/v7/dist/release-prefix`
-tldir=${prefix}/doc
-rm -rf ${prefix}
-mkdir ${prefix}
-mkdir ${tldir}
+rm -rf ${TLDIR}
+mkdir ${TLDIR}
 
-mans="ref-manual user-manual sos imail"
-types="texinfo info ps pdf html"
+make_tarfile ()
+{
+    TARFILE=${PREFIX}-doc-${1}.tar.gz
+    rm -f ${TARFILE}
+    tar cvzf ${TARFILE} ${PREFIX}
+    chmod a-w ${TARFILE}
+}
 
-for type in ${types}
-do
-  for man in ${mans}
-  do
-    case ${type} in
-    info)
-      ${COPY} /scheme/v7/doc/${man}/*.info* ${tldir}
-      ;;
-    html)
-      ${COPY} /scheme/v7/doc/${man}/html/*.html ${tldir}
-      ;;
-    *)
-      ${COPY} /scheme/v7/doc/${man}/*.${type} ${tldir}
-      ;;
-    esac
-  done
-done
+make_zipfile ()
+{
+    ZIPFILE=${PREFIX}-doc-${1}.zip
+    rm -f ${ZIPFILE}
+    zip -r ${ZIPFILE} ${PREFIX}
+    chmod a-w ${ZIPFILE}
+}
 
-${COPY} /scheme/v7/doc/ref-manual/COPYING ${tldir}
-${COPY} /scheme/v7/linux/lib/edwin/info/dir ${tldir}
-${COPY} /scheme/v7/dist/index.html ${tldir}
-
-chmod 444 ${tldir}/*
-
-for type in ${types}
-do
-  tarfile=${prefix}-doc-${type}.tar.gz
-  rm -f ${tarfile}
-  case ${type} in
-  info)
-    tar cvzf ${tarfile} ${tldir}/COPYING ${tldir}/dir ${tldir}/*.info*
-    ;;
-  *)
-    tar cvzf ${tarfile} ${tldir}/COPYING ${tldir}/*.${type}
-    ;;
-  esac
-  chmod 444 ${tarfile}
-done
-
-zipfile=${prefix}-doc-html.zip
-rm -f ${zipfile}
-zip -l ${zipfile} ${tldir}/COPYING ${tldir}/*.html
-chmod 444 ${zipfile}
-
+mkdir ${TLDIR}/doc-html
+(cd ${DOCDIR}; make install-html htmldir=${TLDIR}/doc-html)
+make_tarfile html
+make_zipfile html
 rm -rf doc-html
-mkdir doc-html
-mv ${tldir}/COPYING ${tldir}/*.html doc-html
+mv ${TLDIR}/doc-html .
 
-rm -rf ${prefix}
+for TYPE in info pdf ps; do
+    mkdir ${TLDIR}/doc-${TYPE}
+    (cd ${DOCDIR}; make install-${TYPE} ${TYPE}dir=${TLDIR}/doc-${TYPE})
+    make_tarfile ${TYPE}
+    rm -rf ${TLDIR}/doc-${TYPE}
+done
+
+(
+    cd ${TLDIR}
+    cvs -d /scheme/cvsroot checkout -P -d doc v7/doc
+    cd doc
+    autoconf
+)
+find ${TLDIR} -type d -name CVS -print|xargs rm -rf
+make_tarfile texinfo
+
+rm -rf ${TLDIR}
