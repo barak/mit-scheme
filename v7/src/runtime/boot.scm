@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: boot.scm,v 14.15 2003/02/14 18:28:32 cph Exp $
+$Id: boot.scm,v 14.16 2004/10/01 02:26:55 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1992 Massachusetts Institute of Technology
+Copyright 1993,1996,2001,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -105,13 +106,13 @@ USA.
       (thunk))))
 
 (define (without-interrupts thunk)
-  (with-interrupt-mask interrupt-mask/gc-ok
+  (with-limited-interrupts interrupt-mask/gc-ok
     (lambda (interrupt-mask)
       interrupt-mask
       (thunk))))
 
 (define (without-background-interrupts thunk)
-  (with-interrupt-mask interrupt-mask/no-background
+  (with-limited-interrupts interrupt-mask/no-background
     (lambda (interrupt-mask)
       interrupt-mask
       (thunk))))
