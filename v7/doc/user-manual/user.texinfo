@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.37 1995/11/29 07:08:59 adams Exp $
+@comment $Id: user.texinfo,v 1.38 1996/02/22 22:12:26 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -328,7 +328,7 @@ create a directory somewhere else and edit the installation script
 to change the value of the variable @samp{libdir} to be this directory.
 
 @item
-If you have GNU Emacs installed on your system, uncomment the
+If you have GNU Emacs installed on your system, un-comment the
 definitions of the variables @samp{infodir}, @samp{emacslisp}, and
 @samp{movemail} in the installation script.  You will also need to edit
 these definitions so that they correctly indicate where the GNU Emacs
@@ -1257,7 +1257,7 @@ slower.  The average is about 2.5 times slower.
 The output code should work on virtually any modern
 general-purpose architecture with an ANSI-compliant (perhaps even
 a traditional K&R) C compiler.  We've tried it on several 32-bit
-architectures (HP PA, Sparc, Motorola 68040, RS6000/Power) and a
+architectures (HP PA, SPARC, Motorola 68040, RS6000/Power) and a
 64-bit architecture (Alpha).
 
 However, there may very well be assumptions of the following form:
@@ -1352,13 +1352,13 @@ Dynamically loaded compiled modules are not unloaded when no longer
 accessed.  In particular, after a @code{disk-restore}, previously loaded
 modules are still mapped.  In addition, at least in some versions of
 unix, the shared object file cannot be deleted while it is loaded, so
-recompilation of a module in place will fail if some process has it
+re-compilation of a module in place will fail if some process has it
 already loaded.
 
 @item
 Multiple loading does not work.  This is bad for development.  After
 loading a compiled module once, it cannot be reloaded (presumably after
-recompilation).
+re-compilation).
 
 @item
 @code{fasdump} does not work for compiled code.  It gives an error.
@@ -1463,7 +1463,7 @@ in your @file{edwin.ini} file.
 
 @item
 DOS version 6.  Although we have not tested the DOS version under
-anythig other than MS-DOS 5.0, we have the following anecdotal evidence:
+anything other than MS-DOS 5.0, we have the following anecdotal evidence:
 
 @itemize @bullet
 @item
@@ -1889,7 +1889,7 @@ Specifies that a @dfn{cold load} should be performed, using
 @var{filename} as the initial file to be loaded.  If this option isn't
 given, a normal load is performed instead.  This option may not be used
 together with the @code{-band} option.  This option is useful only for
-maintainance and development of the MIT Scheme runtime system.
+maintenance and development of the MIT Scheme runtime system.
 @end table
 
 @noindent
@@ -1935,7 +1935,7 @@ Unless explicitly handled, errors during loading are silently ignored.
 @end table
 
 @noindent
-In addition to the above, @code{bchscheme} recognises the following
+In addition to the above, @code{bchscheme} recognizes the following
 command line options, all of which specify parameters affecting how
 @code{bchscheme} uses disk storage to do garbage collection:
 
@@ -2047,7 +2047,7 @@ Scheme by using the @code{set-environment-variable!} procedure, e.g.@:
 @end example
 
 The rest of this section is a summary of the environment variables that
-are specific to MIT Scheme.  The environment variables are organised
+are specific to MIT Scheme.  The environment variables are organized
 according to the parts of MIT Scheme that they affect.
 
 @menu
@@ -3317,7 +3317,7 @@ Controls whether the user is notified of garbage collections.  If
 notified.  The default is no notification.
 
 The notification appears as a single line like the following, showing
-how many garbage collections have occured, the time taken to perform the
+how many garbage collections have occurred, the time taken to perform the
 garbage collection and the free storage remaining (in words) after
 collection.
 
@@ -4060,12 +4060,12 @@ greater that one.
 @subsubheading Internal procedures
 
 Calls to internal procedures are faster than calls to global procedures.
-There are two things tha make internal procedures faster: First, the
+There are two things that make internal procedures faster: First, the
 procedure call is compiled to a direct jump to a known location, which
-is mare efficeint that jumping `via' a global binding.
+is more efficient that jumping `via' a global binding.
 Second, there is a knock-on effect: since the compiler can see the
-internal procedure it can analyze it and possibly produce better code
-for other expressions in the body of the loop too.
+internal procedure, the compiler can analyze it and possibly produce
+better code for other expressions in the body of the loop too:
 
 @lisp
 (define (map f original-lst)
@@ -4078,6 +4078,62 @@ for other expressions in the body of the loop too.
            (error "Not a proper list:"  original-lst)))))
 @end lisp
 
+
+@subsubheading Internal defines
+
+Internal definitions are a useful tool for structuring larger
+procedures.  However, certain internal definitions can thwart compiler
+optimizations.  Consider the following two procedures, where
+@code{compute-100} is some unknown procedure that we just know returns
+@samp{100}.
+
+@lisp
+(define (f1)
+  (define v 100)
+  (lambda () v))
+
+(define (f2)
+  (define v (compute-100))
+  (lambda () v))  
+@end lisp
+
+The procedure returned by @code{f1} will always give the same result and
+the compiler can prove this.  The procedure returned by @code{f2} may
+return different results, even if @code{f2} is only called once.
+Because of this, the compiler has to allocate a memory cell to @code{v}.
+How can the procedure return different results?
+
+The fundamental reason is that the continuation may escape during the
+evaluation of @code{(compute-100)}, allowing the rest of the body of
+@code{f2} to be executed @emph{again}:
+
+@lisp
+(define keep)
+
+(define (compute-100)
+  (call-with-current-continuation
+   (lambda (k)
+     (set! keep k)
+     100)))
+
+(define p (f2))
+
+(p)                @result{} 100
+(keep -999)        @result{} p     @emph{re-define v and p}
+(p)                @result{} -999
+@end lisp
+
+To avoid the inefficiency introduced to handle the general case, the
+compiler must prove that the continuation cannot possibly escape.  The
+compiler knows that lambda expressions and constants do not let their
+continuations escape, so order the internal definitions so that
+definitions of the following form come first:
+
+@lisp
+(define x '@emph{something})
+(define x (lambda (...) ...))
+(define (f u v) ...)
+@end lisp
 
 @node Global variables, Fixnum arithmetic, Coding style, Efficiency Tips
 @subsection Global variables
@@ -4115,7 +4171,7 @@ will always be assigned and (c) there will never be any compiled calls
 to that variable.  The compiler can't prove this because it assumes that
 other, independently compiled, files might be loaded which invalidate
 these assumptions.
-If you know that these contitions hold, the following declarations can
+If you know that these conditions hold, the following declarations can
 speed up and reduce the size of a program that uses global variables.
 
 @deffn {declaration+} ignore-reference-traps variables
@@ -4174,7 +4230,7 @@ Note: The scoping of @code{ignore-reference-traps} and
 @code{ignore-assignment-traps} differs between version of the compiler.
 MIT Scheme version 8.0 (Liar
 version 5.0) has true block scoping, thus the declaration takes effect
-only within the procedure or @code{let} in which the declarartion
+only within the procedure or @code{let} in which the declaration
 occurs.  This makes it possible to control individual variable
 references, for example:
 
@@ -4260,9 +4316,9 @@ kinds of number fit in a machine register.
 Flonums have to be @dfn{boxed} because a 64 bit IEEE floating point
 number (the representation the MIT Scheme uses) does not fit in a
 regular machine word.
-This is true even on 64 bit archiectures because some extra bits are
+This is true even on 64 bit architectures because some extra bits are
 needed to distinguish floating point numbers from other objects like
-pairs ans strigs.
+pairs ans strings.
 Values are boxed by storing them in a small record in the heap.
 Every floating point value that you see at the REPL is boxed.
 Floating point values are unboxed only for short periods of time when
@@ -4418,7 +4474,7 @@ can return a complex number (e.g -1.5).
 Declarations from outside of an @code{in-package} form do not apply to
 the body of the form.
 This is because, in general, the new package (environment) could be nay
-packag, including one which contains alternative definitions for the
+package, including one which contains alternative definitions for the
 standard procedures.
 The declarations in the enclosing text might be meaningless in the
 @code{in-package} body.
@@ -4969,7 +5025,7 @@ before use (e.g.@: @code{info-directory} for info).
 
 These commands are implemented by Emacs but not by Edwin.  The commands
 marked with an asterisk are implemented by the unix version of Edwin but
-not by the PC version.  Some of the asterisked comands can work in the
+not by the PC version.  Some of the asterisked commands can work in the
 PC version but the code to implement them is not loaded in order to save
 space; others are unix-specific and are not implemented on the PC.
 
