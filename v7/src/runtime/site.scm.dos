@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: site.scm.dos,v 1.10 1992/09/02 16:29:04 jinx Exp $
+$Id: site.scm.dos,v 1.11 1992/10/17 22:24:21 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -52,10 +52,4 @@ MIT in each case. |#
      (add-directory-rewriting-rule! path "$MITSCHEME_INF_DIRECTORY"))
    '("/scheme")))
 
-(let ((set-default-inf-directory!
-       (lambda ()
-	 (if (not (get-environment-variable "MITSCHEME_INF_DIRECTORY"))
-	     (set-environment-variable! "MITSCHEME_INF_DIRECTORY"
-					"c:/scheme")))))
-  (set-default-inf-directory!)
-  (add-event-receiver! event:after-restart set-default-inf-directory!))
+(set-environment-variable-default! "MITSCHEME_INF_DIRECTORY" "\\scheme")
