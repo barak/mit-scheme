@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulrew.scm,v 1.6 1992/02/13 07:48:20 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulrew.scm,v 1.7 1992/02/17 22:35:54 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rulrew.scm,v 1.4 1991/10/25 06:50:06 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -100,6 +100,32 @@ MIT in each case. |#
   (ASSIGN (? target) (REGISTER (? comparand register-known-value)))
   (QUALIFIER (rtl:immediate-zero-constant? comparand))
   (list 'ASSIGN target comparand))
+
+(define-rule rewriting
+  (ASSIGN (OFFSET (REGISTER (? address)) (? offset))
+	  (REGISTER (? source register-known-value)))
+  (QUALIFIER
+   (and (rtl:byte-offset-address? source)
+	(let ((base (let ((base (rtl:byte-offset-address-base source)))
+		      (if (rtl:register? base)
+			  (register-known-value (rtl:register-number base))
+			  base))))
+	  (and base
+	       (rtl:offset? base)
+	       (let ((base* (rtl:offset-base base))
+		     (offset* (rtl:offset-number base)))
+		 (and (= (rtl:register-number base*) address)
+		      (= offset* offset)))))))
+  (let ((target (rtl:make-offset address offset)))
+    (list 'ASSIGN
+	  target
+	  (rtl:make-byte-offset-address
+	   target
+	   (rtl:byte-offset-address-number
+	    (let ((base (rtl:byte-offset-address-base source)))
+	      (if (rtl:register? base)
+		  (register-known-value (rtl:register-number base))
+		  base)))))))
 
 (define-rule rewriting
   (EQ-TEST (? source) (REGISTER (? comparand register-known-value)))
@@ -237,7 +263,7 @@ MIT in each case. |#
 
 ;; acos (x) = atan ((sqrt (1 - x^2)) / x)
 
-(define-rule rewriting
+(define-rule add-pre-cse-rewriting-rule!
   (FLONUM-1-ARG FLONUM-ACOS (register (? operand)))
   (rtl:make-flonum-2-args
    'FLONUM-ATAN2
@@ -254,8 +280,8 @@ MIT in each case. |#
 
 ;; asin (x) = atan (x / (sqrt (1 - x^2)))
 
-(define-rule rewriting
-  (FLONUM-1-ARG FLONUM-ACOS (register (? operand)))
+(define-rule add-pre-cse-rewriting-rule!
+  (FLONUM-1-ARG FLONUM-ASIN (register (? operand)))
   (rtl:make-flonum-2-args
    'FLONUM-ATAN2
    operand
