@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 1.9 1987/06/09 19:59:13 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 1.10 1987/06/13 21:14:53 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -67,8 +67,8 @@ MIT in each case. |#
 
 (define filenames/dependency-chain/base
   (filename/append "base"
-		   "object" "cfg" "ctypes" "dtypes" "bblock" "dfg" "rtltyp"
-		   "rtlreg" "rtlcfg" "emodel" "rtypes"))
+		   "object" "cfg1" "cfg2" "cfg3" "ctypes" "dtypes" "bblock"
+		   "dfg" "rtltyp" "rtlreg" "rtlcfg" "emodel" "rtypes"))
 
 (define filenames/dependency-chain/rcse
   (filename/append "front-end" "rcseht" "rcserq" "rcse1" "rcse2"))
@@ -81,7 +81,7 @@ MIT in each case. |#
 			   "ralloc" "rcseep" "rcsesa" "rdeath" "rdebug"
 			   "rgcomb" "rgpcom" "rgpred" "rgproc" "rgrval"
 			   "rgstmt" "rlife" "rtlgen")
-	  (filename/append "back-end" "lapgen")))
+	  (filename/append "back-end" "lapgn1" "lapgn2" "lapgn3")))
 
 (file-dependency/integration/chain
  (reverse
@@ -94,12 +94,13 @@ MIT in each case. |#
 (file-dependency/integration/join
  (filename/append "machines/bobcat" "instr2" "instr3")
  (filename/append "machines/bobcat" "instr1"))
-
+
 (file-dependency/syntax/join
  (append (filename/append "base"
-			  "bblock" "cfg" "ctypes" "dfg" "dtypes" "emodel"
-			  "linear" "object" "queue" "rtlcfg" "rtlcon" "rtlexp"
-			  "rtlreg" "rtltyp" "rtypes" "sets" "toplev" "utils")
+			  "bblock" "cfg1" "cfg2" "cfg3" "ctypes" "dfg" "dtypes"
+			  "emodel" "linear" "object" "queue" "rtlcfg" "rtlcon"
+			  "rtlexp" "rtlreg" "rtltyp" "rtypes" "sets" "toplev"
+			  "utils")
 	 (filename/append "alpha" "dflow1" "dflow2" "dflow3" "dflow4" "dflow5"
 			  "dflow6" "fggen1" "fggen2")
 	 (filename/append "front-end"
@@ -107,12 +108,14 @@ MIT in each case. |#
 			  "rcsesa" "rdeath" "rdebug" "rgcomb" "rgpcom" "rgpred"
 			  "rgproc" "rgrval" "rgstmt" "rlife" "rtlgen")
 	 (filename/append "back-end"
-			  "asmmac" "block" "lapgen" "laptop" "regmap" "symtab")
+			  "asmmac" "block" "lapgn1" "lapgn2" "lapgn3" "laptop"
+			  "regmap" "symtab")
 	 (filename/append "machines/bobcat" "insmac" "machin"))
  compiler-syntax-table)
 
 (file-dependency/syntax/join
- (append (filename/append "machines/bobcat" "lapgen")
+ (append (filename/append "machines/bobcat"
+			  "lapgen" "rules1" "rules2" "rules3" "rules4")
 	 (filename/append "machines/spectrum" "lapgen"))
  lap-generator-syntax-table)
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.24 1987/06/13 21:08:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.25 1987/06/13 21:14:34 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -50,7 +50,7 @@ MIT in each case. |#
       (define :files)
 
 ;      (parse-rcs-header
-;       "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.24 1987/06/13 21:08:57 cph Exp $"
+;       "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.25 1987/06/13 21:14:34 cph Exp $"
 ;       (lambda (filename version date time zone author state)
 ;	 (set! :version (car version))
 ;	 (set! :modification (cadr version))))
@@ -73,7 +73,9 @@ MIT in each case. |#
 		 "machines/bobcat/machin.bin" ;machine dependent stuff
 		 "base/toplev.bin"	;top level
 		 "base/utils.bin"	;odds and ends
-		 "base/cfg.bin"		;control flow graph
+		 "base/cfg1.bin"	;control flow graph
+		 "base/cfg2.bin"
+		 "base/cfg3.bin"
 		 "base/ctypes.bin"	;CFG datatypes
 		 "base/dtypes.bin"	;DFG datatypes
 		 "base/bblock.bin"	;Basic block datatype
