@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: loadef.scm,v 1.19 1992/11/13 22:22:53 cph Exp $
+;;;	$Id: loadef.scm,v 1.20 1993/02/25 03:13:14 gjr Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -221,3 +221,22 @@ variable's value is #F, the text is printed using LPR-COMMAND."
 
 (define-autoload-command 'sort-columns 'SORT
   "Sort lines by the text in a range of columns.")
+
+;;;; DOS-specific commands
+
+(if (string=? microcode-id/operating-system-name "dos")
+    (begin
+      (define-library 'DOSCOM
+	'("doscom" (EDWIN DOSJOB)))
+      (define-autoload-command 'shell-command 'DOSCOM
+	"Execute string COMMAND in inferior shell; display output, if any.")
+      (define-autoload-command 'shell-command-on-region 'DOSCOM
+	"Execute string COMMAND in inferior shell with region as input.")
+
+      (define-library 'DOSSHELL
+	'("dosshell" (EDWIN DOSJOB)))
+      (define-autoload-major-mode 'pseudo-shell 'fundamental "Pseudo Shell"
+	'DOSSHELL
+	"Major mode for executing DOS commands.")
+      (define-autoload-command 'shell 'DOSSHELL
+	"Run an inferior pseudo shell, with I/O through buffer *shell*.")))
