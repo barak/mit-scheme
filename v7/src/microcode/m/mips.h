@@ -1,9 +1,9 @@
 /* -*-C-*-
    Machine file for MIPS computers.
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/mips.h,v 1.4 1990/11/29 05:06:40 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/mips.h,v 1.5 1992/03/13 11:01:32 cph Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -35,12 +35,15 @@ MIT in each case. */
 
 #define PROC_TYPE PROC_TYPE_MIPS
 
-/* The following crock seems to be needed, since ULTRIX on the vax has
-    libg but ULTRIX on the pmax doesn't! */
+/* The MIPS compiler/linker doesn't use -lg.  */
 #define LIB_DEBUG
 
+#ifndef ALTERNATE_CC
 /* The "-Olimit" switch is needed because some procedures are larger
    than the built-in optimization limit.  The "-w" switch says not to
    report warnings -- there are many of them, all harmless, that would
    not be reported if this were an ANSI compiler. */
 #define C_SWITCH_MACHINE -Olimit 2000 -w -DTYPE_CODE_LENGTH=6
+#else
+#define C_SWITCH_MACHINE -DTYPE_CODE_LENGTH=6
+#endif
