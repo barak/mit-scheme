@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.95 2004/10/28 19:38:09 cph Exp $
+$Id: make.scm,v 14.96 2004/11/17 05:24:19 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,2000 Massachusetts Institute of Technology
@@ -385,7 +385,6 @@ USA.
   (lexical-assignment (package-reference '(RUNTIME GARBAGE-COLLECTOR))
 		      'CONSTANT-SPACE/BASE
 		      constant-space/base)
-  (package-initialize '(RUNTIME LIST) 'INITIALIZE-PACKAGE! #t)
   (package-initialize '(RUNTIME RANDOM-NUMBER) 'INITIALIZE-PACKAGE! #t)
   (package-initialize '(RUNTIME GENERIC-PROCEDURE) 'INITIALIZE-TAG-CONSTANTS!
 		      #t)
