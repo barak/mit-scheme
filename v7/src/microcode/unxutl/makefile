@@ -1,7 +1,7 @@
 #
 # Makefile for MIT CScheme microcode.
 #
-# $Id: makefile,v 1.27 1993/06/29 23:12:54 cph Exp $
+# $Id: makefile,v 1.28 2000/03/22 01:52:43 cph Exp $
 #
 CPP = cc -E
 MAKE = make  # BSD doesn't have it as a default.
@@ -90,8 +90,8 @@ unconfig:
 	- mv -f cf.h cf-save.h
 	- mv -f ymake.lcl ymake-save.lcl
 
-tags:
-	etags *.[ch] ../runtime/*.scm
+TAGS:
+	etags -r '/^DEF[A-Za-z_ \t(]+"\([^"]+\)"/' *.[ch]
 
 locked:
 	rlog -L -R RCS/*,v
