@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/flonum.c,v 9.33 1990/02/11 22:34:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/flonum.c,v 9.34 1990/02/12 23:07:31 cph Rel $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -61,7 +61,7 @@ double_to_flonum (value)
   Primitive_GC_If_Needed (FLONUM_SIZE);
   (*Free++) = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, (FLONUM_SIZE - 1)));
   (*((double *) Free)) = value;
-  Free += (sizeof (double));
+  Free += (BYTES_TO_WORDS (sizeof (double)));
   return (MAKE_POINTER_OBJECT (TC_BIG_FLONUM, (Free - FLONUM_SIZE)));
 }
 
