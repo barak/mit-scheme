@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edextra.scm,v 1.14 1992/09/25 01:04:06 cph Exp $
+$Id: edextra.scm,v 1.15 1992/09/30 18:30:03 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -429,6 +429,13 @@ below.  Otherwise, answer \"no\" to use a different name.
 	     (insert-string "Reply-to: " point)
 	     (insert-string reply-to point)
 	     (insert-newline point)))))))
+
+(set-variable! select-buffer-not-found-hooks
+	       (cons (lambda (name)
+		       (find-file-noselect (merge-pathnames name
+							    working-directory)
+					   true))
+		     (ref-variable select-buffer-not-found-hooks)))
 
 ;; Disable key bindings that exit the editor.
 ;; M-x logout is all the students should need.
