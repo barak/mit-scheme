@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/debug.scm,v 4.7 1988/08/29 22:39:19 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/debug.scm,v 4.8 1988/12/12 21:51:25 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -225,7 +225,7 @@ MIT in each case. |#
 	   (fg/print-rvalue (true-test-rvalue node))
 	   (fg/print-node (pnode-consequent node))
 	   (fg/print-node (pnode-alternative node)))
-	  ((FG-NOOP)
+	  ((STACK-OVERWRITE FG-NOOP)
 	   (fg/print-node (snode-next node)))))))
 
 (define (fg/print-rvalue rvalue)
