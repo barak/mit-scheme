@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: envconv.scm,v 1.12 1995/07/04 18:13:17 adams Exp $
+$Id: envconv.scm,v 1.13 1995/07/06 19:54:08 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -64,7 +64,28 @@ MIT in each case. |#
 ;;  A. If LOW, none.
 ;;  B. If MEDIUM, only those whose context is TOP-LEVEL. (maybe ONCE-ONLY too?)
 ;;  C. If HIGH, all.
-
+;;
+;;
+;;
+;; About declarations
+;;
+;; The following comments refer only to IGNORE-REFERENCE-TRAPS and
+;; IGNORE-ASSIGNMENT-TRAPS declarations.  These declarations have
+;; block scope.
+;;
+;; Fluid bound *ENVCONV/TOP-LEVEL-DECLARATIONS* holds a mutable
+;; collection of top level declarations.  The current top level
+;; declarations are saved with the compilation key so that separately
+;; compiled procedures all share the same top level declarations.
+;; 
+;; With recursive compilations, envconv finishes scanning a form before
+;; processing the separately compiled pieces.  This ensures that all
+;; of the global declarations have been collected by the time that the
+;; recursive compilations are processed.
+;;
+;; IN-PACKAGE installs a new set of top-level declarations because global
+;; references in the in-package body refer to different bindings.
+
 ;; Parameters
 
 (define envconv/optimization-level 'MEDIUM)
@@ -75,8 +96,9 @@ MIT in each case. |#
 (define *envconv/copying?*)
 (define *envconv/separate-queue*)
 (define *envconv/top-level-program*)
+
+
 (define *envconv/top-level-declarations* #F)
-(define *envconv/debug/walking-queue* #F)
 
 
 (define (envconv/top-level program)
@@ -84,15 +106,15 @@ MIT in each case. |#
 	      (*envconv/separate-queue* '())
 	      (*envconv/top-level-program* program)
 	      (*envconv/top-level-declarations*
-	       (or *envconv/top-level-declarations* ;recursive or first time?
-		   (list 'DECLARE))))
+	       (or *envconv/top-level-declarations* ;recursive case...
+		   (envconv/new-declaration-scope))) ; ...or first time?
+	      )
     (let ((result (envconv/trunk 'TOP-LEVEL program
 				 (lambda (copy? program*)
 				   copy? ; ignored
 				   program*))))
-      (fluid-let ((*envconv/debug/walking-queue* #T))
-	(for-each envconv/do-compile!
-	  (reverse *envconv/separate-queue*)))
+      (for-each envconv/do-compile!
+	(reverse *envconv/separate-queue*))
       result)))
 
 (define-macro (define-environment-converter keyword bindings . body)
@@ -210,23 +232,17 @@ MIT in each case. |#
 	   (internal-error "Unscanned definition encountered"
 			   `(DEFINE ,name ,value))))))
 
-#|
-  (define-environment-converter IN-PACKAGE (env envxpr bodyxpr)
-    (if (equal? envxpr `(THE-ENVIRONMENT))
-	(envconv/expr env bodyxpr)
-	(envconv/trunk/new (envconv/env/context env)
-			   (envconv/expr env envxpr)
-			   bodyxpr)))
-|#
-
 (define-environment-converter IN-PACKAGE (env env-expr body-expr)
   (if (equal? env-expr `(THE-ENVIRONMENT))
       (envconv/expr env body-expr)
-      (envconv/split-subprogram
-       (or (eq? (envconv/env/context env) 'ARBITRARY)
-	   *envconv/copying?*)
-       body-expr
-       (envconv/expr env env-expr))))
+      (let ((env-expr* (envconv/expr env env-expr)))
+	(fluid-let ((*envconv/top-level-declarations*
+		     (envconv/new-declaration-scope)))
+	  (envconv/split-subprogram
+	   (or (eq? (envconv/env/context env) 'ARBITRARY)
+	       *envconv/copying?*)
+	   body-expr
+	   env-expr*)))))
 
 ;;;; Environment-insensitive forms
 
@@ -313,8 +329,7 @@ MIT in each case. |#
     (lambda (interesting other)
       (let ((good (list-transform-positive (map check&compile interesting)
 		    identity-procedure)))
-	(set-cdr! (envconv/env/declarations env)
-		  (append good (cdr (envconv/env/declarations env))))
+	(envconv/declaration-scope/add! (envconv/env/declarations env) good)
 	`(DECLARE ,@other)))))
 
 ;;;; Dispatcher
@@ -325,9 +340,9 @@ MIT in each case. |#
   (case (car expr)
     ((QUOTE)       (envconv/quote env expr))
     ((LOOKUP)      (envconv/lookup env expr))
+    ((CALL)        (envconv/call env expr))
     ((LAMBDA)      (envconv/lambda env expr name))
     ((DECLARE)     (envconv/declare env expr))
-    ((CALL)        (envconv/call env expr))
     ((BEGIN)       (envconv/begin env expr))
     ((IF)          (envconv/if env expr))
     ((SET!)        (envconv/set! env expr))
@@ -415,7 +430,7 @@ MIT in each case. |#
   (block   false read-only false)
   (declarations (if (eq? context 'TOP-LEVEL)
 		    *envconv/top-level-declarations*
-		    (list 'DECLARE))
+		    (envconv/new-declaration-scope))
 		read-only true))
 
 (define-structure
@@ -454,13 +469,13 @@ MIT in each case. |#
 (define-structure
     (envconv/separate-compilation-key
 		   (conc-name envconv/key/)
-		   (constructor envconv/key/make
-				(form name procedure? env)))
-  (form false read-only false)		; The form to compile later
-  (name false read-only false)		; Name, if any, for procedures
-  (procedure? false read-only false)	; Must generate a procedure?
-  (env false read-only false))		; Environment when enqueued
-
+		   (constructor envconv/key/make))
+  (form false read-only true)		; The form to compile later
+  (name false read-only true)		; Name, if any, for procedures
+  (procedure? false read-only true)	; Must generate a procedure?
+  (env false read-only true)		; Environment when enqueued
+  (top-level-decls false read-only true); `Global' Declarations 
+  )
 
 (define (envconv/env/make context parent)
   (let ((env
@@ -532,13 +547,6 @@ MIT in each case. |#
 
 (define (envconv/env/locally-bound? env name)
   (envconv/env/lookup/local env name))
-
-#|
-(define (envconv/trunk/new context envcode program)
-  (envconv/trunk context program
-   (lambda (copy? program*)
-     (envconv/split-subprogram copy? program* envcode))))
-|#
 
 (define (envconv/trunk context program wrapper)
   (let* ((copying* (or (eq? context 'ARBITRARY) *envconv/copying?*))
@@ -668,6 +676,13 @@ MIT in each case. |#
 (define (envconv/medium/cache? context)
   (eq? context 'TOP-LEVEL))
 
+
+(define (envconv/new-declaration-scope)
+  (list 'DECLARE))
+
+(define (envconv/declaration-scope/add! scope declarations)
+  (set-cdr! scope
+	    (append declarations (cdr scope))))
 
 (define (envconv/ignore-reference-traps? reference)
   (and (envconv/boolean-property? 'IGNORE-REFERENCE-TRAPS reference)
@@ -971,10 +986,8 @@ MIT in each case. |#
 
 (define (envconv/compile-separately form name procedure? env)
   (let* ((form* `(QUOTE ,form))
-	 (key   (envconv/key/make form* name procedure? env)))
-    ;;(if *envconv/debug/walking-queue*
-    ;;	(internal-error
-    ;;	 "ENVCONV/COMPILE-SEPARATELY: Walking queue" key))
+	 (key   (envconv/key/make form* name procedure? env
+				  *envconv/top-level-declarations*)))
     (set! *envconv/separate-queue*
 	  (cons key *envconv/separate-queue*))
     form*))
@@ -991,7 +1004,9 @@ MIT in each case. |#
 	(env  (envconv/key/env key)))
     (call-with-values
      (lambda ()
-       (compile-recursively (quote/text form) procedure? name))
+       (fluid-let ((*envconv/top-level-declarations*
+		    (envconv/key/top-level-decls key)))
+	 (compile-recursively (quote/text form) procedure? name)))
      (lambda (compiled must-be-called?)
        (if must-be-called?
 	   (let ((env-var-name
