@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dostop.c,v 1.1 1992/05/05 06:55:13 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dostop.c,v 1.2 1992/08/21 19:13:53 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -99,7 +99,7 @@ DEFUN_VOID (OS_initialize)
 		     (int) version_number.major, (int) version_number.minor);
     /* To make our compiler vendors happy. */		   
     fprintf(stdout,
-	    "Copyright (c) 1990, 1991, 1992 Massachusetts Institute of Technology\n");
+	    "Copyright (c) 1992 Massachusetts Institute of Technology\n");
   }
 
   fputs ("", stdout);
