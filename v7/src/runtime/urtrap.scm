@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: urtrap.scm,v 14.16 2004/08/14 05:51:46 cph Exp $
+$Id: urtrap.scm,v 14.17 2004/08/14 19:17:10 cph Exp $
 
 Copyright 1988,1993,2001,2002,2004 Massachusetts Institute of Technology
 
@@ -85,7 +85,7 @@ USA.
 	trap)))
 
 (define cached-traps
-  (make-vector trap-max-immediate #f))
+  (make-vector (fix:+ trap-max-immediate 1) #f))
 
 (define (make-unassigned-reference-trap)
   (make-immediate-reference-trap 0))
