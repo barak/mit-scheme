@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: scode.scm,v 14.20 2005/03/26 04:17:04 cph Exp $
+$Id: scode.scm,v 14.21 2005/03/26 06:15:13 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,2001,2005 Massachusetts Institute of Technology
@@ -125,12 +125,8 @@ USA.
 (define-integrable (assignment? object)
   (object-type? (ucode-type assignment) object))
 
-(define (make-assignment-from-variable variable #!optional value)
-  (&typed-pair-cons (ucode-type assignment)
-		    variable
-		    (if (default-object? value)
-			(make-unassigned-reference-trap)
-			value)))
+(define-integrable (make-assignment-from-variable variable value)
+  (&typed-pair-cons (ucode-type assignment) variable value))
 
 (define-integrable (assignment-variable assignment)
   (system-pair-car assignment))
@@ -142,11 +138,8 @@ USA.
   (receiver (assignment-variable assignment)
 	    (assignment-value assignment)))
 
-(define (make-assignment name #!optional value)
-  (make-assignment-from-variable (make-variable name)
-				 (if (default-object? value)
-				     (make-unassigned-reference-trap)
-				     value)))
+(define-integrable (make-assignment name value)
+  (make-assignment-from-variable (make-variable name) value))
 
 (define-integrable (assignment-name assignment)
   (variable-name (assignment-variable assignment)))
