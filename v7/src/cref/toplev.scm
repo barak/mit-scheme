@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/toplev.scm,v 1.3 1989/08/03 23:27:08 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/toplev.scm,v 1.4 1991/03/01 20:19:54 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -53,9 +53,15 @@ MIT in each case. |#
    (lambda (pathname pmodel)
      (write-cref pathname pmodel))))
 
+(define cref/generate-cref-unusual
+  (generate/common
+   (lambda (pathname pmodel)
+     (write-cref-unusual pathname pmodel))))
+
 (define cref/generate-constructors
   (generate/common
    (lambda (pathname pmodel)
+     (write-cref-unusual pathname pmodel)
      (write-globals pathname pmodel)
      (write-constructor pathname pmodel)
      (write-loader pathname pmodel))))
@@ -94,6 +100,11 @@ MIT in each case. |#
   (with-output-to-file (pathname-new-type pathname "cref")
     (lambda ()
       (format-packages pmodel))))
+
+(define (write-cref-unusual pathname pmodel)
+  (with-output-to-file (pathname-new-type pathname "cref")
+    (lambda ()
+      (format-packages-unusual pmodel))))
 
 (define (write-globals pathname pmodel)
   (fasdump (map binding/name

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/forpkg.scm,v 1.4 1989/07/20 22:30:29 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/forpkg.scm,v 1.5 1991/03/01 20:19:39 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,67 +38,62 @@ MIT in each case. |#
 	 (integrate-external "object"))
 
 (define (format-packages pmodel)
-  (let ((indentation "  ")
+  (let ((output? (format-packages-unusual pmodel))
+	(port (current-output-port))
+	(indentation "  ")
 	(width 79)
-	#|(root-package (pmodel/root-package pmodel))|#
 	(packages (pmodel/packages pmodel)))
+    (if (not (null? packages))
+	(begin
+	  (if output?
+	      (output-port/write-string port "\f\n"))
+	  (format-package port indentation width (car packages))
+	  (for-each (lambda (package)
+		      (output-port/write-string port "\f\n")
+		      (format-package port indentation width package))
+		    (cdr packages))))))
+
+(define (format-packages-unusual pmodel)
+  (let ((port (current-output-port))
+	(indentation "  ")
+	(width 79)
+	(packages (pmodel/packages pmodel))
+	(output? false))
     (let ((free-references
-	   (mapcan (lambda (package)
-		     (list-transform-negative
-			 (btree-fringe (package/references package))
-		       reference/binding))
-		   packages)))
+	   (append-map! (lambda (package)
+			  (list-transform-negative
+			      (btree-fringe (package/references package))
+			    reference/binding))
+			packages)))
       (if (not (null? free-references))
 	  (begin
-	    (format-references indentation width "Free References" false
+	    (format-references port indentation width "Free References" false
 	      (sort free-references reference<?))
-	    (write-string "\f\n"))))
+	    (set! output? true))))
     (with-values (lambda () (get-value-cells/unusual packages))
       (lambda (undefined multiple)
 	(if (not (null? undefined))
 	    (begin
-	      (format-value-cells indentation width "Undefined Bindings"
+	      (if output?
+		  (output-port/write-string port "\f\n"))
+	      (format-value-cells port indentation width "Undefined Bindings"
 				  undefined)
-	      (write-string "\f\n")))
+	    (set! output? true)))
 	(if (not (null? multiple))
 	    (begin
-	      (format-value-cells indentation width
+	      (if output?
+		  (output-port/write-string port "\f\n"))
+	      (format-value-cells port indentation width
 				  "Bindings with Multiple Definitions"
 				  multiple)
-	      (write-string "\f\n")))))
-#|
-    (if (not (memq root-package packages))
-	(begin
-	  (write-label "Global References")
-	  (for-each
-	   (lambda (binding)
-	     (let ((references (binding/references binding)))
-	       (if (not (null? references))
-		   (format-expressions
-		    indentation width root-package
-		    (write-to-string (binding/name binding))
-		    (mapcan (lambda (reference)
-			      (list-copy (reference/expressions reference)))
-			    references)))))
-	   (btree-fringe (package/bindings root-package)))
-	  (write-string "\f\n")))
-    (format-references
-     indentation width "Primitives" root-package
-     (btree-fringe (package/references (pmodel/primitive-package pmodel))))
-|#
-    (if (not (null? packages))
-	(begin
-	  (format-package indentation width (car packages))
-	  (for-each (lambda (package)
-		      (write-string "\f\n")
-		      (format-package indentation width package))
-		    (cdr packages))))))
+	      (set! output? true)))))
+    output?))
 
-(define (format-package indentation width package)
-  (write-package-name "Package" package)
+(define (format-package port indentation width package)
+  (write-package-name "Package" package port)
   (if (package/parent package)
-      (write-package-name "Parent" (package/parent package)))
-  (format-package/files indentation width package)
+      (write-package-name "Parent" (package/parent package) port))
+  (format-package/files port indentation width package)
   (let ((classes
 	 (classify-bindings-by-package
 	  (lambda (binding)
@@ -106,10 +101,10 @@ MIT in each case. |#
 	  (btree-fringe (package/bindings package)))))
     (let ((class (assq package classes)))
       (if class
-	  (format-package/bindings indentation width package (cdr class)))
+	  (format-package/bindings port indentation width package (cdr class)))
       (for-each (lambda (class)
 		  (if (not (eq? package (car class)))
-		      (format-package/imports indentation width package
+		      (format-package/imports port indentation width package
 					      (car class)
 					      (cdr class))))
 		classes)
@@ -117,24 +112,23 @@ MIT in each case. |#
 	  (for-each
 	   (lambda (class)
 	     (if (not (eq? package (car class)))
-		 (format-package/exports indentation width (car class)
+		 (format-package/exports port indentation width (car class)
 					 (sort (cdr class) binding<?))))
 	   (classify-bindings-by-package
 	    binding/package
-	    (mapcan (lambda (binding)
-		      (list-copy
-		       (value-cell/bindings (binding/value-cell binding))))
-		    (cdr class))))))))
+	    (append-map (lambda (binding)
+			  (value-cell/bindings (binding/value-cell binding)))
+			(cdr class))))))))
 
-(define (format-value-cells indentation width label value-cells)
-  (write-label label)
+(define (format-value-cells port indentation width label value-cells)
+  (write-label label port)
   (for-each (lambda (binding)
 	      (format-expressions
-	       indentation width false
+	       port indentation width false
 	       (string-append
-		(write-to-string (binding/name binding))
+		(binding/name-string binding)
 		" "
-		(write-to-string (package/name (binding/package binding))))
+		(package/name-string (binding/package binding)))
 	       (binding/expressions binding)))
 	    (sort (map value-cell/source-binding value-cells)
 		  binding<?)))
@@ -167,54 +161,60 @@ MIT in each case. |#
      packages)
     (values unlinked linked)))
 
-(define (write-package-name label package)
-  (write-string label)
-  (write-string ": ")
-  (write (package/name package))
-  (newline))
+(define (write-package-name label package port)
+  (output-port/write-string port label)
+  (output-port/write-string port ": ")
+  (output-port/write-string port (package/name-string package))
+  (output-port/write-char port #\newline))
 
-(define (format-package/files indentation width package)
+(define (format-package/files port indentation width package)
   width
   (if (positive? (package/n-files package))
       (begin
-	(newline)
-	(write-label "Files")
+	(output-port/write-char port #\newline)
+	(write-label "Files" port)
 	(for-each (lambda (pathname)
-		    (write-string indentation)
-		    (write (pathname->string pathname))
-		    (newline))
+		    (output-port/write-string port indentation)
+		    (output-port/write-char port #\")
+		    (output-port/write-string port (pathname->string pathname))
+		    (output-port/write-char port #\")
+		    (output-port/write-char port #\newline))
 		  (package/files package)))))
 
-(define (format-package/bindings indentation width package bindings)
+(define (format-package/bindings port indentation width package bindings)
   (format-bindings
-   indentation width package bindings
+   port indentation width package bindings
    "Bindings"
    (lambda (binding)
-     (let ((name (write-to-string (binding/name binding))))
+     (let ((name (binding/name-string binding)))
        (if (< (package/n-files package) 2)
 	   name
-	   (string-append
-	    name
-	    " "
-	    (write-to-string
-	     (map expression/file (binding/expressions binding)))))))))
+	   (apply string-append
+		  name
+		  " "
+		  (let loop
+		      ((expressions (binding/expressions binding))
+		       (p "("))
+		    (cons p
+			  (cons (expression/file (car expressions))
+				(if (null? (cdr expressions))
+				    (list ")")
+				    (loop (cdr expressions) " ")))))))))))
 
-(define (format-package/imports indentation width local-package remote-package
-				bindings)
-  (format-exports indentation width local-package remote-package bindings
+(define (format-package/imports port indentation width local-package
+				remote-package bindings)
+  (format-exports port indentation width local-package remote-package bindings
 		  local-map/import "Imports from"))
 
-(define (format-package/exports indentation width remote-package bindings)
-  (format-exports indentation width remote-package remote-package bindings
+(define (format-package/exports port indentation width remote-package bindings)
+  (format-exports port indentation width remote-package remote-package bindings
 		  local-map/export "Exports to"))
 
-(define (format-exports indentation width local-package remote-package
+(define (format-exports port indentation width local-package remote-package
 			bindings local-map label)
   (format-bindings
-   indentation width local-package bindings
-   (string-append label
-		  " package "
-		  (write-to-string (package/name remote-package)))
+   port indentation width local-package bindings
+   (string-append label " package " (package/name-string remote-package))
    (lambda (destination-binding)
      (with-values
 	 (lambda ()
@@ -223,12 +223,12 @@ MIT in each case. |#
        (lambda (local-binding remote-binding)
 	 (let ((local-name (binding/name local-binding))
 	       (remote-name (binding/name remote-binding)))
-	   (let ((name-string (write-to-string local-name)))
+	   (let ((name-string (binding-name->string local-name)))
 	     (if (eq? local-name remote-name)
 		 name-string
 		 (string-append name-string
 				" ["
-				(write-to-string remote-name)
+				(binding-name->string remote-name)
 				"]")))))))))
 
 (define (local-map/export source destination)
@@ -237,17 +237,16 @@ MIT in each case. |#
 (define (local-map/import source destination)
   (values destination source))
 
-(define (format-bindings indentation width package
+(define (format-bindings port indentation width package
 			 bindings label binding->name)
-  (newline)
-  (write-label label)
+  (output-port/write-char port #\newline)
+  (write-label label port)
   (for-each (lambda (binding)
 	      (format-expressions
-	       indentation width package
+	       port indentation width package
 	       (binding->name binding)
-	       (mapcan (lambda (reference)
-			 (list-copy (reference/expressions reference)))
-		       (binding/references binding))))
+	       (append-map reference/expressions
+			   (binding/references binding))))
 	    bindings))
 
 (define (classify-bindings-by-package binding->package bindings)
@@ -267,28 +266,40 @@ MIT in each case. |#
 	  (lambda (x y)
 	    (package<? (car x) (car y))))))
 
-(define (format-references indentation width label package references)
-  (write-label label)
-  (for-each (lambda (reference)
-	      (format-expressions indentation width package
-				  (write-to-string (reference/name reference))
-				  (reference/expressions reference)))
-	    references))
+(define (format-references port indentation width label package references)
+  (write-label label port)
+  (for-each
+   (lambda (reference)
+     (format-expressions port indentation width package
+			 (binding-name->string (reference/name reference))
+			 (reference/expressions reference)))
+   references))
 
-(define (format-expressions indentation width package name expressions)
-  (with-values (lambda ()
-		 (classify-expression-names
-		  (map (lambda (expression)
-			 (expression->name expression package))
-		       expressions)))
+(define (format-expressions port indentation width package name expressions)
+  (with-values
+      (lambda ()
+	(classify-expression-names
+	 (map (lambda (expression)
+		(expression->name expression package))
+	      expressions)))
     (lambda (symbols pairs)
-      (write-string indentation)
-      (write-string name)
-      (newline)
+      (output-port/write-string port indentation)
+      (output-port/write-string port name)
+      (output-port/write-char port #\newline)
       (let ((indentation (new-indentation indentation)))
-	(write-strings/compact indentation width
-			       (map write-to-string (sort symbols symbol<?)))
-	(write-items/miser indentation width write
+	(write-strings/compact port indentation width
+			       (map symbol-name (sort symbols symbol<?)))
+	(write-items/miser port indentation width
+	  (lambda (item port)
+	    (output-port/write-char port #\()
+	    (output-port/write-char port #\")
+	    (output-port/write-string port (car item))
+	    (output-port/write-char port #\")
+	    (if (not (null? (cdr item)))
+		(begin
+		  (output-port/write-char port #\space)
+		  (output-port/write-string port (symbol-name (cadr item)))))
+	    (output-port/write-char port #\)))
 	  (sort pairs
 	    (lambda (x y)
 	      (or (string<? (car x) (car y))
@@ -325,12 +336,12 @@ MIT in each case. |#
 		(list (expression/file expression) name)))
 	  (list (expression/file expression))))))
 
-(define (write-label label)
-  (write-string label)
-  (write-string ":")
-  (newline))
+(define (write-label label port)
+  (output-port/write-string port label)
+  (output-port/write-string port ":")
+  (output-port/write-char port #\newline))
 
-(define (write-strings/compact indentation width strings)
+(define (write-strings/compact port indentation width strings)
   (if (not (null? strings))
       (begin
 	(let loop ((strings strings) (offset 0) (prefix indentation))
@@ -339,20 +350,44 @@ MIT in each case. |#
 		(let ((new-offset (+ offset (string-length prefix) length)))
 		  (if (and (> new-offset width)
 			   (not (zero? offset)))
-		      (begin (newline)
-			     (loop strings 0 indentation))
-		      (begin (write-string prefix)
-			     (write-string (car strings))
-			     (loop (cdr strings) new-offset " ")))))))
-	(newline))))
+		      (begin
+			(output-port/write-char port #\newline)
+			(loop strings 0 indentation))
+		      (begin
+			(output-port/write-string port prefix)
+			(output-port/write-string port (car strings))
+			(loop (cdr strings) new-offset " ")))))))
+	(output-port/write-char port #\newline))))
 
-(define (write-items/miser indentation width write-item items)
+(define (write-items/miser port indentation width write-item items)
   width
   (for-each (lambda (item)
-	      (write-string indentation)
-	      (write-item item)
-	      (newline))
+	      (output-port/write-string port indentation)
+	      (write-item item port)
+	      (output-port/write-char port #\newline))
 	    items))
 
 (define (new-indentation indentation)
   (string-append indentation "    "))
+
+(define-integrable (binding/name-string binding)
+  (binding-name->string (binding/name binding)))
+
+(define (binding-name->string name)
+  (if (symbol? name)
+      (symbol-name name)
+      (write-to-string name)))
+
+(define-integrable (package/name-string package)
+  (package-name->string (package/name package)))
+
+(define (package-name->string name)
+  (if (null? name)
+      "()"
+      (apply string-append
+	     (let loop ((name name) (p "("))
+	       (cons p
+		     (cons (binding-name->string (car name))
+			   (if (null? (cdr name))
+			       (list ")")
+			       (loop (cdr name) " "))))))))
