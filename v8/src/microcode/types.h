@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/types.h,v 9.22 1987/04/03 00:21:38 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/types.h,v 9.23 1987/06/05 17:23:11 cph Rel $
  *
  * Type code definitions, numerical order
  *
@@ -98,6 +98,7 @@ MIT in each case. */
 #define TC_COMPILER_LINK		0x3A
 #define TC_STACK_ENVIRONMENT		0x3B
 #define TC_COMPLEX			0x3C
+#define TC_COMPILED_CODE_BLOCK		0x3D
 
 /* If you add a new type, don't forget to update gccode.h and gctype.c */
 

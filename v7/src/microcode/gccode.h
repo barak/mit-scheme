@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.23 1987/04/16 02:23:06 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.24 1987/06/05 17:22:43 cph Exp $
  *
  * This file contains the macros for use in code which does GC-like
  * loops over memory.  It is only included in a few files, unlike
@@ -145,6 +145,7 @@ MIT in each case. */
 
 #define case_Vector					\
  case TC_ENVIRONMENT:					\
+ case TC_COMPILED_CODE_BLOCK:				\
  case_Purify_Vector
 
 /* Missing vector types (must be treated specially):
@@ -344,14 +345,17 @@ Pointer_End()
 /* Is there anything else that can be done here? */
 
 #define Get_Compiled_Block(address)					\
-fprintf(stderr,								\
-	"\nRelocating compiled code without compiler support!\n");	\
-Microcode_Termination(TERM_COMPILER_DEATH)
+  (fprintf(stderr,							\
+	   "\nRelocating compiled code without compiler support!\n"),	\
+   Microcode_Termination(TERM_COMPILER_DEATH),				\
+   ((Pointer *) NULL))
 
 #define Compiled_BH(flag, then_what)					\
-fprintf(stderr,								\
-	"\nRelocating compiled code without compiler support!\n");	\
-Microcode_Termination(TERM_COMPILER_DEATH)
+{									\
+  fprintf(stderr,							\
+	  "\nRelocating compiled code without compiler support!\n");	\
+  Microcode_Termination(TERM_COMPILER_DEATH);				\
+}
 
 #define Transport_Compiled()
 
