@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: assconv.scm,v 1.10 1995/04/27 23:22:39 adams Exp $
+$Id: assconv.scm,v 1.11 1995/06/21 23:52:52 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -37,9 +37,30 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+;;  Assignment conversion.
+;;
+;;  Each variable reference occurs in some dynamic extent.  Each
+;;  environment belongs to an extent.  Some environments, like nested
+;;  LET frames, belong to the same extent.  Extents are represented by
+;;  unique values (small integers).  Later we partition bindings
+;;  according to equivalence classes of the sets of extents in which
+;;  they occur.  The idea behind this is that mutable variables that
+;;  travel around together will be placed in the same multi-cell but
+;;  variables that are live in different extents are allocated to
+;;  different cells, allowing better GC behaviour.
+
+;; Legal values: BY-EXTENT (as decribed above), INDIVIDUAL-CELLS (each
+;; mutable binding is allocated a separate cell), ONE-MULTICELL (all
+;; mutable bindings from a given frame are put in one multicell)
+
+(define *assconv/partitioning* 'BY-EXTENT)
+
 (define (assconv/top-level program)
-  (fluid-let ((*assconv/effect-only-forms* (make-eq-hash-table)))
-    (assconv/expr '() program)))
+  (fluid-let ((*assconv/effect-only-forms* (make-eq-hash-table))
+	      (*assconv/extent-counter*    0))
+    (assconv/expr (assconv/env/make '() #F (assconv/new-extent))
+		  program)))
+
 
 (define-macro (define-assignment-converter keyword bindings . body)
   (let ((proc-name (symbol-append 'ASSCONV/ keyword)))
@@ -54,9 +75,13 @@ MIT in each case. |#
 ;;;; Variable manipulation forms
 
 (define-assignment-converter LAMBDA (env lambda-list body)
+  (assconv/lambda* env lambda-list body (assconv/new-extent)))
+
+(define (assconv/lambda* env lambda-list body next-extent)
   (call-with-values
    (lambda ()
      (assconv/binding-body env
+			   next-extent
 			   (lambda-list->names lambda-list)
 			   body))
    (lambda (shadowed body*)
@@ -64,15 +89,20 @@ MIT in each case. |#
 		   lambda-list
 		   (map (lambda (name)
 			  (if (memq name shadowed)
-			      (assconv/new-name 'IGNORED)
+			      (let ((outer-name (assconv/new-name 'IGNORED)))
+				(dbg-info/remember name `(LOOKUP ,outer-name))
+				outer-name)
 			      name))
 			lambda-list))
 	,body*))))
-
+
 (define-assignment-converter LET (env bindings body)
   (call-with-values
    (lambda ()
-     (assconv/binding-body env (map car bindings) body))
+     (assconv/binding-body env
+			   (assconv/env/extent env)
+			   (map car bindings)
+			   body))
    (lambda (shadowed body*)
      `(LET ,(map (lambda (binding)
 		   (list (car binding)
@@ -85,25 +115,27 @@ MIT in each case. |#
 	,body*))))
 
 (define-assignment-converter LOOKUP (env name)
-  (let ((binding (assconv/env-lookup env name)))
+  (let ((binding (assconv/env/lookup env name)))
     (if (not binding)
 	(free-var-error name)
 	(let ((result `(LOOKUP ,name)))
 	  (set-assconv/binding/references!
 	   binding
 	   (cons result (assconv/binding/references binding)))
+	  (assconv/binding/new-extent binding env)
 	  result))))
 
 (define-assignment-converter SET! (env name value)
-  (let ((binding (assconv/env-lookup env name)))
+  (let ((binding (assconv/env/lookup env name)))
     (if (not binding)
 	(free-var-error name)
 	(let ((result `(SET! ,name ,(assconv/expr env value))))
 	  (set-assconv/binding/assignments!
 	   binding
 	   (cons result (assconv/binding/assignments binding)))
+	  (assconv/binding/new-extent binding env)
 	  result))))
-
+
 ;;;; Trivial forms
 
 (define-assignment-converter QUOTE (env object)
@@ -115,10 +147,17 @@ MIT in each case. |#
   `(DECLARE ,@anything))
 
 (define-assignment-converter CALL (env rator cont #!rest rands)
-  `(CALL ,(assconv/expr env rator)
-	 ,(assconv/expr env cont)
-	 ,@(assconv/expr* env rands)))
-
+  (define (finish rator*)
+    `(CALL ,rator*
+	   ,(assconv/expr env cont)
+	   ,@(assconv/expr* env rands)))
+  (if (LAMBDA/? rator)			; i.e. user level LET
+      (finish (assconv/lambda* env
+			       (lambda/formals rator)
+			       (lambda/body rator)
+			       (assconv/env/extent env)))
+      (finish (assconv/expr env rator))))
+
 (define-assignment-converter BEGIN (env #!rest actions)
   (let  ((actions*   (assconv/expr* env actions)))
     (let loop ((actions actions*))
@@ -178,23 +217,61 @@ MIT in each case. |#
 (define (assconv/form/effect-only? form)
   (hash-table/get *assconv/effect-only-forms* form #F))
 
-;;;; Utilities for variable manipulation forms
+;;;; Environments and extents.
+
+(define *assconv/extent-counter*)
+
+(define (assconv/new-extent)
+  (set! *assconv/extent-counter* (+ *assconv/extent-counter* 1))
+  *assconv/extent-counter*)
+
+(define-structure (assconv/env
+		   (conc-name assconv/env/)
+		   (constructor assconv/env/make (bindings parent extent)))
+  parent
+  extent
+  bindings)
 
 (define-structure (assconv/binding
 		   (conc-name assconv/binding/)
-		   (constructor assconv/binding/make (name)))
+		   (constructor assconv/binding/make (name initial-extent)))
   (name false read-only true)
   (cell-name false read-only false)
   (multicell-layout false read-only false)
   (references '() read-only false)
   (assignments '() read-only false)
-  ;;(dbg-references '() read-only false)
-  )
+  ;;  The extents associated with this binding.  The INITIAL-EXTENT is the
+  ;;  extent in which the binding is introduced.  The other extents
+  ;;  are for the references and assignments.
+  (initial-extent #F read-only true)
+  (extents '() read-only false))
 
-(define (assconv/binding-body env names body)
+
+(define (assconv/binding/new-extent binding env)
+  (let ((extent (assconv/env/extent env)))
+    (set-assconv/binding/extents!
+     binding
+     (cons extent (assconv/binding/extents binding)))))
+
+(define (assconv/env/lookup env name)
+  (let spine-loop ((env env))
+    (and env
+	 (let rib-loop ((rib (assconv/env/bindings env)))
+	   (cond ((null? rib)
+		  (spine-loop (assconv/env/parent env)))
+		 ((eq? name (assconv/binding/name (car rib)))
+		  (car rib))
+		 (else
+		  (rib-loop (cdr rib))))))))
+
+
+(define (assconv/binding-body env next-extent names body)
   ;; (values shadowed-names body*)
-  (let* ((frame (map assconv/binding/make names))
-	 (env*  (cons frame env))
+  ;; SHADOWED-NAMES are those names for which we introduced internal bindings,
+  ;; e.g. a LET binding.
+  (let* ((frame (map (lambda (name) (assconv/binding/make name next-extent))
+		     names))
+	 (env*  (assconv/env/make frame env next-extent))
 	 (body* (assconv/expr env* body))
 	 (assigned
 	  (list-transform-positive frame
@@ -278,7 +355,7 @@ MIT in each case. |#
 			      (delq binding bindings)
 			      (bind name value body)))))))
 	(else (default))))
-
+
 (define (assconv/letify keyword bindings body)
   `(,keyword
     ,(map (lambda (binding)
@@ -288,7 +365,7 @@ MIT in each case. |#
 	       `(,(assconv/binding/name binding) ,value)))
 	   bindings)
     ,body))
-
+
 (define (assconv/cell-reference binding)
   `(CALL (QUOTE ,%multicell-ref)
 	 (QUOTE #F)
@@ -326,34 +403,95 @@ MIT in each case. |#
 		`(BEGIN
 		   ,write-cell!
 		   (LOOKUP ,local-name)))))))
-
+
 (define (assconv/partition-cells! bindings)
-  ;; 1. Decide on cell structure for bindings.  This should be done by using
-  ;;    multicells for variables with the same dynamic extent.  At the
-  ;;    moment we use singleton cells or a multicell if there are many
-  ;;    bindings.
+  ;; 1. Decide on cell structure for bindings.  This is done by using
+  ;;    multicells for variables with the same dynamic extent or by a
+  ;;    simpler method.
   ;; 2. Returns a let of LET-bindings to create the cells
 
-  ;; A partition is a list of headed lists.
+  ;; A PARTITION is a list of headed lists.
   ;; The first two elements of the list are the cell name and format.
   ;; The remaining elements are the bindings assigned to that cell.
-
+  
   (define (each-binding-in-its-own-cell) ;returns a partition
     (map (lambda (binding)
 	   (list (assconv/new-cell-name (assconv/binding/name binding))
 		 (vector (assconv/binding/name binding))
 		 binding))
 	 bindings))
+
   (define (all-in-one-cell)		;returns a partition
     (list
      (cons* (assconv/new-cell-name 'MULTI)
 	    (list->vector (map assconv/binding/name bindings))
 	    bindings)))
-  (define (setup-partition partition)
+
+  (define (partition-by-extents)	; returns a partition
+    (let ((table (make-equal-hash-table)))
+      ;; collect bindings by equivalence class:
+      (for-each
+	  (lambda (binding)
+	    (let ((extent-class
+		   (sort-removing-duplicates
+		    (cons (assconv/binding/initial-extent binding)
+			  (assconv/binding/extents binding)))))
+	      (hash-table/put! table
+			       extent-class
+			       (cons binding
+				     (hash-table/get table extent-class '())))))
+	bindings)
+
+      (if compiler:guru?
+	  (let ((k (map length (hash-table/datum-list table))))
+	    (if (not (for-all? k (lambda (x) (= x 1))))
+		(internal-warning "Cells partitioned:" k))))
+      (map (lambda (bindings)
+	     (cons* (assconv/new-cell-name
+		     (if (null? (cdr bindings))
+			 (assconv/binding/name (car bindings))
+			 'MULTI))
+		    (list->vector (map assconv/binding/name bindings))
+		    bindings))
+	   (hash-table/datum-list table))))
+
+  (define (sort-removing-duplicates items)
+    (define (loop l)
+      (if (and (pair? l) (pair? (cdr l)))
+	  (split l '() '())
+	  l))
+
+    (define (split l one two)
+      (if (pair? l)
+	  (split (cdr l) two (cons (car l) one))
+	  (merge (loop one) (loop two))))
+
+    (define (remove elt elts)
+      (cond ((null? elts) '())
+	    ((= elt (car elts)) (remove elt (cdr elts)))
+	    (else elts)))
+
+    (define (merge one two)
+      (cond ((null? one) two)
+	    ((null? two) one)
+	    ((< (car two) (car one))
+	     (cons (car two)
+		   (merge (remove (car two) (cdr two)) one)))
+	    ((= (car two) (car one))
+	     (cons (car two)
+		   (merge (remove (car two) (cdr two))
+			  (remove (car two) one))))
+	    (else
+	     (cons (car one)
+		   (merge (remove (car one) (cdr one)) two)))))
+
+    (loop items))
+
+  (define (impose-partition partition)
     (map (lambda (subset)
 	   (let ((cell-name (first subset))
-		 (layout (second subset))
-		 (bindings (cddr subset)))
+		 (layout    (second subset))
+		 (bindings  (cddr subset)))
 	     (for-each
 		 (lambda (binding)
 		   (set-assconv/binding/cell-name! binding cell-name)
@@ -367,16 +505,15 @@ MIT in each case. |#
 			      `(LOOKUP ,(assconv/binding/name binding)))
 			    bindings)))))
 	 partition))
-  (setup-partition
-   (if (<= (length bindings) 10)
-       (each-binding-in-its-own-cell)
-       (begin
-	 (if compiler:guru?
-	     (internal-warning "Creating multicell" (length bindings)
-			       (error-irritant/noise " bindings")))
-	 (all-in-one-cell)))))
-
-
+  (impose-partition
+   (case *assconv/partitioning*
+     ((BY-EXTENT)        (partition-by-extents))
+     ((INDIVIDUAL-CELLS) (each-binding-in-its-own-cell))
+     ((ONE-MULTICELL)    (all-in-one-cell))
+     (else (internal-error 
+	    "Illegal configuration of *assconv/partitioning*"
+	    *assconv/partitioning*)))))
+
 (define (assconv/cellify! binding)
   (for-each (lambda (ref)
 	      (form/rewrite!
@@ -388,26 +525,8 @@ MIT in each case. |#
 		  ass
 		(assconv/cell-assignment binding (set!/expr ass) ass)))
     (assconv/binding/assignments binding))
-  ;;(for-each (lambda (ref)
-  ;;	      (form/rewrite!
-  ;;		  ref
-  ;;		(assconv/cell-reference binding)))
-  ;;    (assconv/binding/dbg-references binding))
-
   (dbg-info/remember (assconv/binding/name binding)
-		     (assconv/cell-reference binding))
-  )
-
-(define (assconv/env-lookup env name)
-  (let spine-loop ((env env))
-    (and (not (null? env))
-	 (let rib-loop ((rib (car env)))
-	   (cond ((null? rib)
-		  (spine-loop (cdr env)))
-		 ((eq? name (assconv/binding/name (car rib)))
-		  (car rib))
-		 (else
-		  (rib-loop (cdr rib))))))))
+		     (assconv/cell-reference binding)))
 
 (define (assconv/single-assignment/trivial? assignment-form)
   (let ((name  (set!/name assignment-form))
