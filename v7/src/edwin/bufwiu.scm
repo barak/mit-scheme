@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufwiu.scm,v 1.27 1994/08/25 00:59:18 cph Exp $
+;;;	$Id: bufwiu.scm,v 1.28 1994/09/08 01:28:53 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -139,12 +139,11 @@
 
 (define (update-outlines! window)
   (%guarantee-start-mark! window)
+  ;; This procedure sets FORCE-REDRAW? if any cached variable has changed.
+  (%recache-window-buffer-local-variables! window)
   (if (%window-force-redraw? window)
       (begin
 	(%set-window-force-redraw?! window false)
-	;; When one of the cached buffer-local variables is set, it
-	;; sets the FORCE-REDRAW bit so that this code will run.
-	(%recache-window-buffer-local-variables! window)
 	(preserve-nothing! window))
       (let ((start (%window-current-start-index window))
 	    (end (%window-current-end-index window)))

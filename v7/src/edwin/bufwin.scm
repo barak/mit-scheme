@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufwin.scm,v 1.301 1993/08/18 23:57:38 cph Exp $
+;;;	$Id: bufwin.scm,v 1.302 1994/09/08 01:28:47 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -829,16 +829,25 @@
 			      (group-modified-tick (%window-group window))))
 
 (define (%recache-window-buffer-local-variables! window)
-  (let ((buffer (%window-buffer window)))
-    (%set-window-truncate-lines?!
-     window
+  (let ((maybe-recache
+	 (lambda (read write value)
+	   (let ((value* (read window)))
+	     (if (not (eqv? value value*))
+		 (begin
+		   (%set-window-force-redraw?! window #t)
+		   (write window value))))))
+	(buffer (%window-buffer window)))
+    (maybe-recache
+     %window-truncate-lines?
+     %set-window-truncate-lines?!
      (or (variable-local-value buffer (ref-variable-object truncate-lines))
 	 (and (variable-local-value
 	       buffer
 	       (ref-variable-object truncate-partial-width-windows))
 	      (window-has-horizontal-neighbor? (window-superior window)))))
-    (%set-window-tab-width!
-     window
+    (maybe-recache
+     %window-tab-width
+     %set-window-tab-width!
      (variable-local-value buffer (ref-variable-object tab-width)))))
 
 ;;;; Buffer and Point
