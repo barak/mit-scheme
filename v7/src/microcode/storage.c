@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.25 1987/03/11 07:33:51 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.26 1987/03/12 17:45:52 jinx Exp $
 
 This file defines the storage for global variables for
 the Scheme Interpreter. */
@@ -599,10 +599,11 @@ char Arg_Count_Table[] = {
 /* 19F */ (char) 1, /* OPEN-DIRECTORY */
 /* 1A0 */ (char) 0, /* DIRECTORY-READ */
 /* 1A1 */ (char) 0, /* UNDER-EMACS? */
-/* 1A2 */ (char) 0  /* TTY-FLUSH-OUTPUT */
+/* 1A2 */ (char) 0, /* TTY-FLUSH-OUTPUT */
+/* 1A3 */ (char) 0  /* RELOAD-BAND-NAME */
 };
 
-#if (MAX_PRIMITIVE_NUMBER != 0x1A2)
+#if (MAX_PRIMITIVE_NUMBER != 0x1A3)
 /* Cause an error */
 #include "prims.h and storage.c are inconsistent -- arity table"
 #endif
@@ -870,7 +871,7 @@ extern Pointer
   Prim_bit_string_and_x(), Prim_bit_string_andc_x(),
   Prim_bit_string_equal_p(), Prim_bit_string_zero_p(),
 
-  Prim_under_emacs_p();
+  Prim_under_emacs_p(), Prim_reload_band_name();
 
 /* The table of all primitive procedures */
 
@@ -1327,10 +1328,11 @@ Pointer (*(Primitive_Table[]))() = {
 /* 19F */ Prim_open_directory,
 /* 1A0 */ Prim_directory_read,
 /* 1A1 */ Prim_under_emacs_p,
-/* 1A2 */ Prim_tty_flush_output
+/* 1A2 */ Prim_tty_flush_output,
+/* 1A3 */ Prim_reload_band_name
 };
 
-#if (MAX_PRIMITIVE_NUMBER != 0x1A2)
+#if (MAX_PRIMITIVE_NUMBER != 0x1A3)
 /* Cause an error */
 #include "Prims.h and storage.c are inconsistent -- Procedure Table"
 #endif
@@ -1793,10 +1795,11 @@ char *Primitive_Names[] = {
 /* 0x19F in fileio */     "OPEN-DIRECTORY",
 /* 0x1A0 in fileio */     "DIRECTORY-READ",
 /* 0x1A1 in sysprim */    "UNDER-EMACS?",
-/* 0x1A2 in ttyio */      "TTY-FLUSH-OUTPUT"
+/* 0x1A2 in ttyio */      "TTY-FLUSH-OUTPUT",
+/* 0x1A3 in fasload */    "RELOAD-BAND-NAME"
 };
 
-#if (MAX_PRIMITIVE_NUMBER != 0x1A2)
+#if (MAX_PRIMITIVE_NUMBER != 0x1A3)
 /* Cause an error */
 #include "Error: prims.h and storage.c are inconsistent -- Names Table"
 #endif

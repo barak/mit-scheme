@@ -37,7 +37,7 @@
 
 ;;;; Machine Dependent Type Tables
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.22 1987/03/09 14:45:18 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.23 1987/03/12 17:48:32 jinx Exp $
 
 (declare (usual-integrations))
 
@@ -738,6 +738,7 @@
 	       DIRECTORY-READ				;$1A0
 	       UNDER-EMACS?				;$1A1
 	       TTY-FLUSH-OUTPUT				;$1A2
+	       RELOAD-BAND-NAME				;$1A3
 	       ))
 
 ;;; [] External
@@ -849,3 +850,4 @@
 
 ;;; This identification string is saved by the system.
 
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.23 1987/03/12 17:48:32 jinx Exp $"

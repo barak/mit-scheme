@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.21 1987/01/22 14:24:16 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.22 1987/03/12 17:45:09 jinx Exp $
 
    The "fast loader" which reads in and relocates binary files and then
    interns symbols.  It is called with one argument: the (character
@@ -229,23 +229,25 @@ Pointer Name;
 /* Load_File, continued */
 
   if (!Read_Header())
-  { printf("\nThis file does not appear to be in FASL format.\n");
+  { fprintf(stderr,
+	    "\nLoad_File: The file does not appear to be in FASL format.\n");
     goto CANNOT_LOAD;
   }
   if (File_Load_Debug)
     printf("\nMachine type %d, Version %d, Subversion %d\n",
            Machine_Type, Version, Sub_Version);
 #ifdef BYTE_INVERSION
-  if ((Sub_Version > FASL_SUBVERSION))
+  if ((Sub_Version != FASL_SUBVERSION))
 #else
-  if ((Sub_Version > FASL_SUBVERSION) ||
+  if ((Sub_Version != FASL_SUBVERSION) ||
       (Machine_Type != FASL_INTERNAL_FORMAT))
 #endif
-  { printf("\nFASL File Version %4d Subversion %4d Machine Type %4d\n",
-	   Version, Sub_Version , Machine_Type);
-    printf("Expected: Version %4d Subversion %4d Machine Type %4d\n",
+  { fprintf(stderr,
+	    "\nLoad_File: FASL File Version %4d Subversion %4d Machine Type %4d.\n",
+	    Version, Sub_Version , Machine_Type);
+    fprintf(stderr,
+	    "            Expected: Version %4d Subversion %4d Machine Type %4d.\n",
 	   FASL_FORMAT_VERSION, FASL_SUBVERSION, FASL_INTERNAL_FORMAT);
-    printf("You may need to use the `Bintopsb' and `Psbtobin' programs.\n");
 CANNOT_LOAD:
     fclose(File_Handle);
     Primitive_Error(ERR_FASL_FILE_BAD_DATA);
@@ -563,19 +565,40 @@ Built_In_Primitive(Prim_Binary_Fasload, 1, "BINARY-FASLOAD")
   return Fasload(Arg1, true);
 }
 
+/* Band loading. */
+
+static char *reload_band_name = ((char *) NULL);
+
+/* (RELOAD-BAND-NAME)
+   Returns the filename (as a Scheme string) from which the runtime system
+   was band loaded (load-band'ed ?), or NIL if the system was fasl'ed.
+*/
+Built_In_Primitive(Prim_reload_band_name, 0, "RELOAD-BAND-NAME")
+{
+  Primitive_0_Args();
+
+  if (reload_band_name == NULL)
+    return NIL;
+
+  return C_String_To_Scheme_String(reload_band_name);
+}
+
 /* (LOAD-BAND FILE-NAME)
-      [Primitive number 0xB9]
-      Restores the heap and pure space from the contents of FILE-NAME,
-      which is typically a file created by BAND_DUMP.  The file can,
-      however, be any file which can be loaded with BINARY_FASLOAD.
+   Restores the heap and pure space from the contents of FILE-NAME,
+   which is typically a file created by DUMP-BAND.  The file can,
+   however, be any file which can be loaded with BINARY-FASLOAD.
 */
 Built_In_Primitive(Prim_Band_Load, 1, "LOAD-BAND")
 { Pointer Save_FO, *Save_Free, *Save_Free_Constant, Save_Undefined,
           *Save_Stack_Pointer, *Save_Stack_Guard, Result;
   long Jump_Value;
   jmp_buf  Swapped_Buf, *Saved_Buf;
+  Pointer scheme_band_name;
+  char *band_name;
+  int length;
   Primitive_1_Arg();
 
+  band_name = ((char *) NULL);
   Save_Fixed_Obj(Save_FO);
   Save_Undefined = Undefined_Externals;
   Undefined_Externals = NIL;
@@ -597,9 +620,21 @@ Built_In_Primitive(Prim_Band_Load, 1, "LOAD-BAND")
   Saved_Buf = Back_To_Eval;
   Jump_Value = setjmp(Swapped_Buf);
   if (Jump_Value == 0)
-  { Back_To_Eval = (jmp_buf *) Swapped_Buf;
+  { extern char *malloc();
+    extern strcpy(), free();
+
+    length = Get_Integer(Fast_Vector_Ref(Arg1, STRING_LENGTH));
+    band_name = malloc(length);
+    if (band_name != ((char *) NULL))
+      strcpy(band_name, Scheme_String_To_C_String(Arg1));
+
+    Back_To_Eval = (jmp_buf *) Swapped_Buf;
     Result = Fasload(Arg1, false);
     Back_To_Eval = Saved_Buf;
+
+    if (reload_band_name != ((char *) NULL))
+      free(reload_band_name);
+    reload_band_name = band_name;
     History = Make_Dummy_History();
     Initialize_Stack();
     Store_Return(RC_END_OF_COMPUTATION);
@@ -614,7 +649,9 @@ Built_In_Primitive(Prim_Band_Load, 1, "LOAD-BAND")
     longjmp(*Back_To_Eval, PRIM_DO_EXPRESSION);
   }
   else
-  { Back_To_Eval = Saved_Buf;
+  { if (band_name != ((char *) NULL))
+      free(band_name);
+    Back_To_Eval = Saved_Buf;
     Free = Save_Free;
     Free_Constant = Save_Free_Constant;
     Stack_Pointer = Save_Stack_Pointer;
