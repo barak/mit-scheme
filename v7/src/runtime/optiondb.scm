@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: optiondb.scm,v 1.1 1994/10/03 17:31:32 adams Exp $
+$Id: optiondb.scm,v 1.2 1994/10/11 20:57:02 cph Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -31,6 +31,9 @@ there shall be no use of the name of the Massachusetts Institute of
 Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
+
+(declare (usual-integrations))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; This file contains Scheme code to define a set of load options.  Each
@@ -57,8 +60,6 @@ MIT in each case. |#
 ;;   supplied for every user of your architecture at your site).  If
 ;;   not specified, or is #F, then this file is the last options
 ;;   database that is searched.
-
-(declare (usual-integrations))
 
 ;; Standard load options are defined like this:
 
@@ -71,11 +72,13 @@ MIT in each case. |#
  (lambda (spec)
    (define-load-option (car spec) (apply standard-option-loader (cdr spec))))
  '((FORMAT      (RUNTIME FORMAT)     (INITIALIZE-PACKAGE!) "format")
-   (COMPRESS    (RUNTIME COMPRESS)   #F "cpress")
+   (COMPRESS    (RUNTIME COMPRESS)   #F                    "cpress")
    (HASH-TABLE  (RUNTIME HASH-TABLE) (INITIALIZE-PACKAGE!) "hashtb")
-   (RB-TREE     (RUNTIME RB-TREE)    #F "rbtree")
-   (WT-TREE     (RUNTIME WT-TREE)    #F "wttree")
-   (SUBPROCESS  (RUNTIME SUBPROCESS) (INITIALIZE-PACKAGE!) "process")))
+   (RB-TREE     (RUNTIME RB-TREE)    #F                    "rbtree")
+   (WT-TREE     (RUNTIME WT-TREE)    #F                    "wttree")
+   (SUBPROCESS  (RUNTIME SUBPROCESS) (INITIALIZE-PACKAGE!) "process")
+   (STEPPER     (RUNTIME STEPPER)    #F                    "ystep")
+   ))
 
 (define-load-option 'DOSPROCESS
   (standard-option-loader '() #F "dosproc"))
