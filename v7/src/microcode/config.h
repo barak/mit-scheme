@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.59 1990/11/27 19:17:05 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.60 1991/08/05 14:21:45 markf Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -51,7 +51,7 @@ MIT in each case. */
 /* #define DISABLE_HISTORY */
 
 /* To enable the STEPPER.  Incompatible with futures. */
-/* #define COMPILE_STEPPER */
+#define COMPILE_STEPPER 
 
 /* To enable FUTURES (a multiprocessor / multiprocessing extension).
    This option is incompatible with the stepper.
