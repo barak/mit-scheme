@@ -1,6 +1,6 @@
 Emacs: Please use -*- Text -*- mode.  Thank you.
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.16 1991/03/01 02:06:56 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.17 1991/03/05 20:54:36 jinx Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -43,6 +43,12 @@ Text tagged by ==> is intended primarily for the compiler developers.
 
 Good luck!
 
+[*Markf: A section outlining a procedure to use for actually doing
+the port (what should be done and when, how to debug ...) would be
+useful]
+
+[*Markf: a discussion (or at least a mention) of the stuff in
+base/debug.scm would be useful] 
 
 		Acknowledgments
 
@@ -68,11 +74,11 @@ from the people listed above.
 		0. Introduction and a brief walk through Liar.
 
 Liar translates Scode as produced by the procedure SYNTAX, or by the
-file syntaxer (SF) into compiled code objects.  The Scode is
-translated into a sequences of languages, the last of which is the
-binary representation of the compiled code.
+file syntaxer (SF, for syntax file) into compiled code objects.  The
+Scode is translated into a sequences of languages, the last of which
+is the binary representation of the compiled code.
 
-The sequence of languages manipulated is
+The sequence of external languages manipulated is
 
     Characters --READ--> 
     S-Expressions --SYNTAX--> 
@@ -84,10 +90,11 @@ subpasses.  Many of the subpasses do not manipulate the whole code
 graph, but instead follow threads that link the relevant parts of the
 graph.
 
-COMPILE-SCODE is the main entry point to Liar, although CF is the
-usual entry point.  CF uses COMPILE-SCODE, and assumes that the code
-has been syntaxed by SF producing a .bin file, and dumps the resulting
-compiled code into a .com file.
+COMPILE-SCODE is the main entry point to Liar, although CBF (for
+compile bin file) is the usual entry point.  CBF uses COMPILE-SCODE,
+and assumes that the code has been syntaxed by SF producing a .bin
+file, and dumps the resulting compiled code into a .com file.  CF (for
+compile file) invokes SF and then CBF on a file name argument.
 
 The internal sub-languages used by Liar are:
 
@@ -103,19 +110,24 @@ where FGGEN, etc., are some of the major passes of the compiler.
 The remaining major passes are FGOPT (the flow-graph optimizer), and
 RTLOPT (the RTL-level optimizer).  RTL-level register allocation is
 performed by RTLOPT, and hardware-level register allocation is
-performed by LAPGEN.  Branch-tensioning of the output code is
-performed by ASSEMBLER.  LINK constructs a Scheme compiled code object
-from the bits representing the code and the fixed data that the
-compiled code uses at runtime.
+performed by LAPGEN.  ASSEMBLER branch-tensions the output code.
+Branch-tensioning is described in a later section.  LINK constructs a
+Scheme compiled code object from the bits representing the code and
+the fixed data that the compiled code uses at runtime.
 
 compiler/toplev.scm contains the top-level calls of the compiler and
 its pass structure.
 
 	0.1.  Liar's package structure
 
-The package structure of the compiler reflects the pass structure.
-The package structure is specified in compiler/machines/port/comp.pkg.
-The major packages are:
+[*Artur: What is a package and what are the basic commands for moving
+between packages?  Give a brief introduction to the structure of .pkg
+files (forward pointer).  At least tell where to find this information.]
+
+The package structure of the compiler reflects the pass structure and
+is specified in compiler/machines/port/comp.pkg, where port is the
+name of a machine (vax, mips, spectrum, bobcat, sparc, etc.).  The
+major packages are:
 
 (COMPILER):
 	Utilities and data structures shared by most of the compiler.
@@ -217,16 +229,16 @@ compiler/machines/port:
 the assembler rules, the disassembler, and RTL to assembly-language
 rules for the port.  
 
-All machine-dependent files are in compiler/machines/port and is the
-only directory that needs to be written to port the compiler to a new
-architecture.
+All machine-dependent files are in compiler/machines/port and this is
+the only directory that needs to be written to port the compiler to a
+new architecture.
 
 		1. Liar's runtime model.
 
 Liar does not open-code all operations that the code would need to
 execute.  In particular, it leaves error handling and recovery,
-interrupt processing, and initialization, to a runtime library written
-in assembly language.
+interrupt processing, initialization, and invocation of unknown
+procedures, to a runtime library written in assembly language.
 
 Although this runtime library need not run in the context of the
 CScheme interpreter, currently the only implementation of this library
@@ -287,6 +299,7 @@ other words, segmented address spaces with segments necessarily
 smaller than the Scheme runtime heap will make Liar very hard or
 inefficient to port.
 
+[*Markf: Insert short description of the assumptions in what follows:]
 - Liar assumes that code and data can coexist in the same address
 space.  In other words, a true Harvard architecture, with separate
 code and data spaces, would be hard to support without relatively
@@ -437,6 +450,9 @@ expressions untouched, or to be simplified in different ways,
 depending on the availability of memory operands or richer addressing
 modes.  Since these rules vary from port to port, the final RTL
 differs for the different ports.
+[*Markf: note also that the simplification is constrained by
+the kinds of RTL expressions that the LAP rules for a particular port
+will accept.]
 
 - The open coding of Scheme primitives is port-dependent.  On some
 machines, for example, there is no instruction to multiply integers,
@@ -460,7 +476,7 @@ higher-level ``glue'' statements.
 
 Once a program has been translated to RTL, the RTL code is optimized
 in a machine-independent way by minimizing the number of RTL
-<pseudo-registers used, removing redundant subexpressions, eliminating
+pseudo-registers used, removing redundant subexpressions, eliminating
 dead code, and various other techniques.
 
 The RTL program is then translated into a Lisp-format
@@ -530,7 +546,7 @@ compiler/machines/port/machin.scm.  All compiler parameters and
 switches are exported to the Scheme global package for easy
 manipulation.
 
-The following switches are of especial importance to the back end
+The following switches are of special importance to the back end
 writer:
 
 * compiler:compile-by-procedures? This switch controls whether the
@@ -538,6 +554,7 @@ compiler should compile each top-level lambda expression independently
 or compile the whole input program (or file) as a block.  It is
 usually set to true, but must be set to false for cross-compilation.
 The cross-compiler does this automatically.
+[*Markf: Why does cross-compilation set it this way?]
 
 * compiler:open-code-primitives? This switch controls whether Liar
 will open code (inline code) MIT Scheme primitives.  It is usually set
@@ -603,6 +620,9 @@ the originals that would make updating your port easier.
 
 	4.1 Compiler building files:
 
+[*Arthur: Make separate entries for comp.con and comp.ldr in the list
+of files under.]
+
 * comp.pkg:
 	This file describes the Scheme package structure of the
 compiler, the files loaded into each package, and what names are
@@ -655,7 +675,7 @@ compiler pre-processing time.  The files that define the
 pre-processing-time expansion functions must be loaded in order to
 process those files that use the procedures that can be expanded.
 decls.scm builds a database of the dependencies.  This database is
-topologically sorted by the some of the code in decls.scm itself in
+topologically sorted by some of the code in decls.scm itself in
 order to determine the processing sequence.  Since there are
 circularities in the integration dependencies, some of the files are
 processed multiple times, but the mechanism in decls takes care of
@@ -757,6 +777,7 @@ multiple entry points to the front-end of the compiler.  These
 closures are described in some detail in microcode/cmpint.txt and in
 more detail in the section that explains the rules used to generate
 such objects.
+[*Arthur: What is a closure?]
 	
 - closure-object-first-offset: This procedure takes a single argument,
 the number of entry points in a closure object, and computes the
@@ -1037,7 +1058,7 @@ or the Vax (little endian) version.
 - instruction-insert! is a procedure, that given a bit-string
 encoding instruction fields, a larger bit-string into which the
 smaller should be inserted, a position within the larger one, and a
-continuation, it inserts the smaller bit-string into the larger at the
+continuation, inserts the smaller bit-string into the larger at the
 specified position, and returns the new bit position at which the
 immediately following instruction field should be inserted.
 
@@ -1067,7 +1088,7 @@ instructions in machine language:
 where all the widths must add up to an even multiple of 32.
 
 - Vax:
-Instructions descriptions are made of arbitrary sequences of the
+Instruction descriptions are made of arbitrary sequences of the
 following field descriptors:
     (BYTE (<width 1> <value 1> <coercion type 1>)
 	  (<width 2> <value 2> <coercion type 2>)
@@ -1094,8 +1115,8 @@ A missing coercion type means that the ordinary unsigned coercion (for
 the corresponding number of bits) should be used.
 
 Additionally, each of these ports provides a syntax for specifying
-instructions whose final format must be determined by the branch
-tensioning algorithm in the bit assembler.  The syntax of these
+instructions whose final format must be determined by the
+branch-tensioning algorithm in the bit assembler.  The syntax of these
 instructions is usually
     (VARIABLE-WIDTH (<name> <expression>)
       ((<low-1> <high-1>)
@@ -1200,7 +1221,7 @@ addressing modes and PC-relative offsets in a more legible form.
 
 Note that the output of the disassembler need not be identical to the
 input of the assembler.  The disassembler is used almost exclusively
-fore debugging, and additional syntactic hints make it easier to read.
+for debugging, and additional syntactic hints make it easier to read.
 
 * dassm3.scm:
 	This file contains the code to disassemble one instruction at
@@ -1246,7 +1267,7 @@ For example,
 
 - (hello) matches the constant list (hello)
 
-- (? thing) matches anything, and THING is bound in <qualifier and
+- (? thing) matches anything, and THING is bound in <qualifier> and
 <rule body> to whatever was matched.
 
 - (hello (? person)) matches a list of two elements whose first
@@ -1319,6 +1340,8 @@ firing the corresponding body.
 The bodies are defined in terms of the WORD syntax defined in
 insmac.scm, and the ``commas'' used with the pattern variables in the
 rule bodies are a consequence of the WORD syntax.
+[*Arthur: Refer to backquote syntax for more information?  Forward
+pointer to 5.3.1.]
 
 	5.2 Rule variable syntax.
 
@@ -1451,13 +1474,14 @@ This procedure should only be used for source RTL registers.
 REFERENCE-ALIAS-REGISTER! performs the same action but returns a
 register reference instead of an RTL register number.
 
-* ALLOCATE-ALIAS-REGISTER! expects and RTL register and a register
+* ALLOCATE-ALIAS-REGISTER! expects an RTL register and a register
 type, and returns a machine register of the specified type that is the
 only alias for the RTL register and should be written with the new
 contents of the RTL register.  ALLOCATE-ALIAS-REGISTER! is used to
 generate aliases for target RTL registers.  REFERENCE-TARGET-ALIAS!
 performs the same action but returns a register reference instead of
 an RTL register number.
+[*Arthur: Include forward reference to CLEAR-REGISTERS!]
 
 * STANDARD-REGISTER-REFERENCE expects an RTL register, a register
 type, and a boolean.  It will return a reference for an alias of the
@@ -1484,6 +1508,7 @@ register type and returns an appropriate register containing a copy of
 the source.  The register is intended for temporary use, and
 MOVE-TO-TEMPORARY-REGISTER! attempts to reuse an existing alias for
 the source RTL register.
+[*Markf: What does temporary mean?]
 
 * REUSE-PSEUDO-REGISTER-ALIAS! expects an RTL register, a register
 type, and two continuations.  It attempts to find a reusable alias for
@@ -1493,19 +1518,23 @@ continuation with no arguments if it fails.  MOVE-TO-ALIAS-REGISTER!
 and MOVE-TO-TEMPORARY-REGISTER! are written in terms of
 REUSE-PSEUDO-REGISTER-ALIAS! but occasionally neither meets the
 requirements.
+[*Markf: continuations? really?]
 
 * NEED-REGISTER! expects and RTL machine register and informs the
-register allocator that the rule being expanded requires the use of
-that register so it should not be available for subsequent requests.
-The procedures described above that allocate and assign aliases call
-NEED-REGISTER! behind the scenes, but you may occasionally need to
-invoke it explicitly.
+register allocator that the rule in use requires that register so it
+should not be available for subsequent requests while translating the
+current RTL statement or expression.  The register is available for
+later RTL statements or expressions (unless the appropriate rules
+invoke NEED-REGISTER! all over).  The procedures described above that
+allocate and assign aliases call NEED-REGISTER!  behind the scenes,
+but you may occasionally need to invoke it explicitly.
 
 * LOAD-MACHINE-REGISTER! expects an RTL register and an RTL machine
 register and generates code that copies the current value of the RTL
 register to the machine register.  It is used to pass arguments on
 registers to out-of-line code, typically in the compiled code runtime
 library.
+[*Markf: Explain the register map.]
 
 * CLEAR-REGISTERS! expects any number of RTL registers and clears them
 from the register map, pushing their current contents to memory if
@@ -1635,6 +1664,7 @@ free variables.  The free variable storage need not be initialized
 since it will be by subsequent RTL instructions.  The entry point of
 the resulting closure object should be written to RTL register TARGET.
 The format of closure objects is described in microcode/cmpint.txt.
+[*Arthur: From where did the "-1"s come?]
 
 Note that CONS-CLOSURE will dynamically create some new instructions
 on the runtime heap, and that these instructions must be visible to
@@ -2059,7 +2089,7 @@ the s/ultrix.m4 script to overcome this problem.  Look at the m/vax.h
 and s/ultrix.h files for m4-related definitions.
 ==> We should just switch the default to 6 bits and be done with it.
 
-- Modify ymakefile to include the a processor dependent section that
+- Modify ymakefile to include the processor dependent section that
 lists the cmpint-port.h and cmpaux-port.m4 files.  You can emulate the
 version for any other compiler port.  It is especially important that
 the microcode sources be compiled with HAS_COMPILER_SUPPORT defined.
@@ -2100,6 +2130,7 @@ again after executing
   (begin
      (cd "<runtime directory pathname>")
      (load "runtim.sf"))
+[*Arthur: Is this still necessary?]
 	
 	6.2 Building an interpreted compiler
 
@@ -2179,7 +2210,7 @@ A good order to try them is
 	sort/*.scm
 
 The programs in the first list test various aspects of code generation.
-The programs in the first list test the handling of various dynamic
+The programs in the second list test the handling of various dynamic
 conditions (i.e. error recovery).
 The programs in the third list are somewhat larger, and register
 allocation bugs, etc., are more likely to show up in them.
@@ -2187,7 +2218,7 @@ allocation bugs, etc., are more likely to show up in them.
 A good idea at the beginning is to turn COMPILER:GENERATE-RTL-FILES?
 and COMPILER:GENERATE-LAP-FILES? on and compare them for plausibility.
 If you have ported the disassembler as well, you should try
-disassembling some files and comparing them to then input LAP.  They
+disassembling some files and comparing them to the input LAP.  They
 won't be identical, but they should be similar.
 
 Various runtime system files also make good tests.  In particular, you
@@ -2213,7 +2244,7 @@ you can cross-compile the sources using a compiled compiler.  This
 method is somewhat involved because you will need binaries for both
 machines, since neither can load or dump the other's .bin files.
 
-Say that you have a Vax, and you are porting to a Sparc.  You will
+Imagine that you have a Vax, and you are porting to a Sparc.  You will
 need to pre-process and compile the Sparc's compiler on the Vax to use
 it as a cross-compiler.  This can be done by following the same
 pattern that you used to generate the interpreted compiler on the
@@ -2317,7 +2348,8 @@ If you generated the stage1 compiler by cross-compilation, they will
 not.  The cross-compiler turns COMPILER:COMPILE-BY-PROCEDURES? off,
 while the default setting is on.  In the latter case, you want to
 generate one more stage to check for convergence, i.e. execute ``make
-stage2'' in each source directory, and re-compile once more.
+stage2'' in each source directory, and re-compile once more, at each
+stage using the compiler produced by the previous stage.
 
 Once you have two stages that you think should have identical
 binaries, you can use COMPARE-COM-FILES, defined in
@@ -2358,10 +2390,11 @@ adb) to set breakpoints at the entry points of various kinds of
 procedures.  When the breakpoints are reached, you can bump the Free
 pointer to a value larger than MemTop, so that the interrupt branch
 will be taken.  If the code continues to execute correctly, you are
-probably safe.  You should especially procedures that expect dynamic
-links since they must be saved and restored correctly.  Closures
-should also be tested carefully, since they need to be reentered
-correctly, and the closure object on the stack may have to be bumped.
+probably safe.  You should especially check procedures that expect
+dynamic links for these must be saved and restored correctly.
+Closures should also be tested carefully, since they need to be
+reentered correctly, and the closure object on the stack may have to
+be bumped.
 
 Register allocation bugs also manifest themselves in unexpected ways.
 If you forget to use NEED-REGISTER! on a register used by a LAPGEN
