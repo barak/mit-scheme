@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: defstr.scm,v 14.27 1994/01/31 02:51:37 gjr Exp $
+$Id: defstr.scm,v 14.28 1995/05/16 04:43:48 adams Exp $
 
-Copyright (c) 1988-1994 Massachusetts Institute of Technology
+Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -116,6 +116,17 @@ differences:
 
 ;;;; Parse Options
 
+;; These two names are separated to cross-syntaxing from #F=='() to
+;; #F != '()
+
+(define names-meaning-false
+  '(#F FALSE NIL))
+
+(define (make-default-defstruct-unparser-text name)
+  `(,(absolute 'STANDARD-UNPARSER-METHOD)
+    ',name
+    #F))
+
 (define (parse/options name options slots)
   (if (not (symbol? name))
       (error "Structure name must be a symbol:" name))
@@ -157,7 +168,7 @@ differences:
 				 previous option)))))
 		 (symbol-option
 		  (lambda (argument)
-		    (cond ((memq argument '(#F FALSE NIL)) false)
+		    (cond ((memq argument names-meaning-false) false)
 			  ((symbol? argument) argument)
 			  (else (error "Illegal structure option:" option))))))
 	     (let ((check-argument
@@ -188,7 +199,7 @@ differences:
 			    (cons (list option (symbol-append 'MAKE- name))
 				  boa-constructors))
 		      (let ((name (car arguments)))
-			(if (memq name '(#F FALSE NIL))
+			(if (memq name names-meaning-false)
 			    (set! default-constructor-disabled? true)
 			    (set! boa-constructors
 				  (cons (cons option arguments)
@@ -219,7 +230,7 @@ differences:
 		  (check-duplicate)
 		  (check-argument)
 		  (set! print-procedure
-			(and (not (memq (car arguments) '(#F FALSE NIL)))
+			(and (not (memq (car arguments) names-meaning-false))
 			     (car arguments))))
 		 ((TYPE)
 		  (check-duplicate)
@@ -297,9 +308,7 @@ differences:
 				   ((eq? type 'RECORD)
 				    false)
 				   (else
-				    `(,(absolute 'STANDARD-UNPARSER-METHOD)
-				      ',name
-				      #F))))
+				    (make-default-defstruct-unparser-text name))))
 			type
 			named?
 			(and named? type-name)
@@ -347,7 +356,7 @@ differences:
 	      ((READ-ONLY)
 	       (set! read-only?
 		     (let ((argument (cadr options)))
-		       (cond ((memq argument '(#F FALSE NIL)) false)
+		       (cond ((memq argument names-meaning-false) false)
 			     ((memq argument '(#T TRUE T)) true)
 			     (else (error "Illegal slot option:" option))))))
 	      (else
