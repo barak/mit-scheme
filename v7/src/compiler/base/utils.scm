@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 4.9 1988/12/13 13:02:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 4.10 1988/12/19 20:21:51 cph Exp $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -274,8 +274,14 @@ MIT in each case. |#
 
     ;; Random
     OBJECT-TYPE NOT ASCII->CHAR CHAR->INTEGER CHAR-BITS CHAR-CODE
-    CHAR-DOWNCASE CHAR-UPCASE INTEGER->CHAR VECTOR-LENGTH MAKE-CHAR
-    PRIMITIVE-PROCEDURE-ARITY STRING-MAXIMUM-LENGTH
+    CHAR-DOWNCASE CHAR-UPCASE INTEGER->CHAR MAKE-CHAR
+    PRIMITIVE-PROCEDURE-ARITY
+
+    ;; References (assumes immediate constants are immutable)
+    CAR CDR LENGTH
+    VECTOR-REF VECTOR-LENGTH
+    STRING-REF STRING-LENGTH STRING-MAXIMUM-LENGTH
+    BIT-STRING-REF BIT-STRING-LENGTH
     ))
 
 ;; The following definition is used to avoid computation if possible.
@@ -291,8 +297,7 @@ MIT in each case. |#
   `(
     ;; Constructors
     CONS LIST CONS* MAKE-STRING VECTOR MAKE-VECTOR LIST-COPY VECTOR-COPY
-    CAR CDR VECTOR-REF STRING-REF BIT-STRING-REF LENGTH LIST->VECTOR VECTOR->LIST
-    MAKE-BIT-STRING MAKE-CELL STRING->SYMBOL STRING-LENGTH
+    LIST->VECTOR VECTOR->LIST MAKE-BIT-STRING MAKE-CELL STRING->SYMBOL
     ))
 
 (define additional-function-primitives
@@ -330,8 +335,7 @@ MIT in each case. |#
 
 (define function-primitives
   (append!
-   (list-transform-positive
-       (map cdr function-variables)
+   (list-transform-positive (map cdr function-variables)
      (lexical-reference system-global-environment 'PRIMITIVE-PROCEDURE?))
    additional-function-primitives))
 
@@ -340,8 +344,7 @@ MIT in each case. |#
 
 (define side-effect-free-primitives
   (append!
-   (list-transform-positive
-       (map cdr side-effect-free-variables)
+   (list-transform-positive (map cdr side-effect-free-variables)
      (lexical-reference system-global-environment 'PRIMITIVE-PROCEDURE?))
    additional-function-primitives))
 
