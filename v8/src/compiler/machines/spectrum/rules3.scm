@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.1 1994/11/19 02:08:04 adams Exp $
+$Id: rules3.scm,v 1.2 1994/11/23 20:40:56 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -44,17 +44,16 @@ MIT in each case. |#
   (pop-return))
 
 (define (pop-return)
-  (let ((temp (standard-temporary!)))
-    (LAP ,@(clear-map!)
-	 ;; This assumes that the return address is always longword aligned
-	 ;; (it better be, since instructions should be longword aligned).
-	 ;; Thus the bottom two bits of temp are 0, representing the
-	 ;; highest privilege level, and the privilege level will
-	 ;; not be changed by the BV instruction.
-	 (LDWM () (OFFSET 4 0 ,regnum:stack-pointer) ,temp)
-	 ;; Originally was ,@(object->address temp) 
-	 ,@(entry->address temp)
-	 (BV (N) 0 ,temp))))  
+  (LAP ,@(clear-map!)
+       ;; This assumes that the return address is always longword aligned
+       ;; (it better be, since instructions should be longword aligned).
+       ;; Thus the bottom two bits of temp are 0, representing the
+       ;; highest privilege level, and the privilege level will
+       ;; not be changed by the BV instruction.
+       (LDWM () (OFFSET 4 0 ,regnum:stack-pointer) 1)
+       ;; Originally was ,@(object->address 1) 
+       ,@(entry->address 1)
+       (BV (N) 0 1)))
 
 (define (%invocation:apply frame-size)
   (case frame-size
@@ -1258,7 +1257,7 @@ MIT in each case. |#
 	 regnum:third-arg regnum:fourth-arg)
    (lambda ()
      (let* ((segment (load-pc-relative-address environment-label 1 'CONSTANT)))
-       (LAP (STWM () 2 (OFFSET -4 0 ,regnum:stack-pointer)) ; Push Env
+       (LAP (STWM () 2 (OFFSET -4 0 ,regnum:stack-pointer))  ; Push Env
 	    (STWM () 19 (OFFSET -4 0 ,regnum:stack-pointer)) ; Push continuation
 	    ,@segment
 	    (STW () 2 (OFFSET 0 0 1))
@@ -1405,6 +1404,9 @@ MIT in each case. |#
 		      (cons false (LAP)))))))))))
     (let ((free-ref-label (car constant-info))
 	  (constants-code (cdr constant-info))
+	  (profiling-info-label-1
+	   (and compiler:generate-profiling-instructions?
+		(allocate-constant-label)))
 	  (debugging-information-label (allocate-constant-label))
 	  (environment-label (allocate-constant-label))
 	  (n-sections
@@ -1415,6 +1417,10 @@ MIT in each case. |#
 	      (if (not (find-extra-code-block 'CLOSURE-PATTERNS)) 0 1))))
       (values
        (LAP ,@constants-code
+	    ,@(if profiling-info-label-1
+		  `((SCHEME-OBJECT ,profiling-info-label-1    PROFILING-INFO-1)
+		    (SCHEME-OBJECT ,(allocate-constant-label) PROFILING-INFO-2))
+		  `())
 	    ;; Place holder for the debugging info filename
 	    (SCHEME-OBJECT ,debugging-information-label DEBUGGING-INFO)
 	    ;; Place holder for the load time environment if needed
@@ -1481,6 +1487,7 @@ MIT in each case. |#
   (INVOCATION:REGISTER 0 #F (REGISTER (? reg))
 		       #F (MACHINE-CONSTANT (? nregs)))
   nregs					; ignored
+  (profile-info/add 'INVOCATION:REGISTER)
   (let ((addr (standard-source! reg)))
     (LAP ,@(clear-map!)
 	 (BV (N) 0 ,addr))))
@@ -1489,6 +1496,7 @@ MIT in each case. |#
   (INVOCATION:PROCEDURE 0 (? continuation) (? destination)
 			(MACHINE-CONSTANT (? nregs)))
   nregs					; ignored
+  (profile-info/add 'INVOCATION:PROCEDURE)
   (LAP ,@(clear-map!)
        ,@(if (not continuation)
 	     (LAP (B (N) (@PCR ,destination)))
@@ -1500,6 +1508,7 @@ MIT in each case. |#
 			(REGISTER (? dest)) (MACHINE-CONSTANT (? nregs)))
   ;; *** For now, ignore nregs and use frame-size ***
   nregs
+  (profile-info/add 'INVOCATION:NEW-APPLY)
   (let* ((obj (register-alias dest (register-type dest)))
 	 (prefix (if obj
 		     (LAP)
@@ -1539,9 +1548,10 @@ MIT in each case. |#
 
 (define-rule statement
   (RETURN-ADDRESS (? label)
+		  (? dbg-info)
 		  (MACHINE-CONSTANT (? frame-size))
 		  (MACHINE-CONSTANT (? nregs)))
-  nregs					; ignored
+  dbg-info nregs			; ignored
   (begin
     (restore-registers!)
     (make-external-label
@@ -1549,30 +1559,33 @@ MIT in each case. |#
      label)))
 
 (define-rule statement
-  (PROCEDURE (? label) (MACHINE-CONSTANT (? frame-size)))
+  (PROCEDURE (? label) (? dbg-info) (MACHINE-CONSTANT (? frame-size)))
+  dbg-info				; ignored
   (make-external-label (frame-size->code-word frame-size
 					      internal-continuation-code-word)
 		       label))
 
 (define-rule statement
   (TRIVIAL-CLOSURE (? label)
+		   (? dbg-info)
 		   (MACHINE-CONSTANT (? min))
 		   (MACHINE-CONSTANT (? max)))
+  dbg-info				; ignored
   (make-external-label (make-procedure-code-word min max)
 		       label))
 
 (define-rule statement
-  (CLOSURE (? label) (MACHINE-CONSTANT (? frame-size)))
-  frame-size				; ignored
+  (CLOSURE (? label) (? dbg-info) (MACHINE-CONSTANT (? frame-size)))
+  dbg-info frame-size			; ignored
   (LAP ,@(make-external-label internal-closure-code-word label)))
 
 (define-rule statement
-  (EXPRESSION (? label))
+  (EXPRESSION (? label) (? dbg-info))
   #|
   ;; Prefix takes care of this
   (LAP ,@(make-external-label expression-code-word label))
   |#
-  label					; ignored
+  label dbg-info			; ignored
   (LAP))
 
 (define-rule statement
@@ -1653,6 +1666,8 @@ MIT in each case. |#
 				   (generate-stub interrupt-label))))))
     (cond ((and heap-check? stack-check?)
 	   (need-interrupt-code)
+	   (profile-info/add 'HEAP-CHECK)
+	   (profile-info/add 'STACK-CHECK)
 	   (LAP (LDW () ,reg:stack-guard 1)
 		(COMB (>=) ,regnum:free-pointer ,regnum:memtop-pointer
 		      (@PCR ,interrupt-label))
@@ -1660,11 +1675,13 @@ MIT in each case. |#
 		(LDW () ,reg:memtop ,regnum:memtop-pointer)))
 	  (heap-check?
 	   (need-interrupt-code)
+	   (profile-info/add 'HEAP-CHECK)
 	   (LAP (COMB (>=) ,regnum:free-pointer ,regnum:memtop-pointer
 		      (@PCR ,interrupt-label))
 		(LDW () ,reg:memtop ,regnum:memtop-pointer)))
 	  (stack-check?
 	   (need-interrupt-code)
+	   (profile-info/add 'STACK-CHECK)
 	   (LAP (LDW () ,reg:stack-guard 1)
 		(COMBN (<=) ,regnum:stack-pointer 1 (@PCR ,interrupt-label))))
 	  (else
@@ -1677,6 +1694,23 @@ MIT in each case. |#
      ;; The STW instruction would make the heap parsable forwards
      ;; (STW () 0 (OFFSET 0 0 ,dst))
      (DEPI () #b100 31 3 ,dst))))
+
+
+
+(define-rule statement
+  (PROFILE-COUNT)
+  (let ((counter-label  (generate-label)))
+    (profile-info/declare counter-label)
+    (LAP (BLE (N) (OFFSET ,hook:compiler-profile-count
+			 4
+			 ,regnum:scheme-to-interface-ble))
+	 (LABEL ,counter-label)
+	 (UWORD () 0))))
+
+
+;;(define-rule statement
+;;  (PROFILE-DATA (CONSTANT (? data)))
+;;  (profile-info/add data))
 
 ;; *** For now ***
 
