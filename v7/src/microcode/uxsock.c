@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsock.c,v 1.6 1992/01/20 17:18:50 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsock.c,v 1.7 1992/02/03 23:45:31 jinx Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -44,6 +44,7 @@ MIT in each case. */
 #endif
 #include "uxsock.h"
 #include "uxio.h"
+#include "prims.h"
 
 extern struct servent * EXFUN (getservbyname, (const char *, const char *));
 extern struct hostent * EXFUN (gethostbyname, (const char *));
@@ -130,9 +131,14 @@ DEFUN (OS_open_unix_stream_socket, (filename), CONST char * filename)
 #endif
 
 Tchannel
-DEFUN (OS_open_server_socket, (port), int port)
+DEFUN (OS_open_server_socket, (port, ArgNo), unsigned int port AND int ArgNo)
 {
   int s;
+
+  if (((sizeof (unsigned int)) >
+       (sizeof (((struct sockaddr_in *) 0)->sin_port))) &&
+      (port >= (1<<(CHAR_BIT * (((struct sockaddr_in *) 0)->sin_port)))))
+    error_bad_range_arg(ArgNo);    
   STD_UINT_SYSTEM_CALL
     (syscall_socket, s, (UX_socket (AF_INET, SOCK_STREAM, 0)));
   {
@@ -228,7 +234,7 @@ DEFUN (OS_open_unix_stream_socket, (filename), CONST char * filename)
 }
 
 Tchannel
-DEFUN (OS_open_server_socket, (port), int port)
+DEFUN (OS_open_server_socket, (port, ArgNo), unsigned int port AND int ArgNo)
 {
   error_unimplemented_primitive ();
   return (NO_CHANNEL);

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsock.h,v 1.2 1990/11/08 11:11:57 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsock.h,v 1.3 1992/02/03 23:46:14 jinx Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -48,7 +48,7 @@ extern char ** EXFUN (OS_get_host_by_name, (CONST char * host_name));
 extern Tchannel EXFUN (OS_open_unix_stream_socket, (CONST char * filename));
 #endif
 
-extern Tchannel EXFUN (OS_open_server_socket, (int port));
+extern Tchannel EXFUN (OS_open_server_socket, (unsigned int port, int ArgNo));
 extern Tchannel EXFUN
   (OS_server_connection_accept,
    (Tchannel channel, char * peer_host, int * peer_port));
