@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: oscond.h,v 1.17 1994/10/04 20:05:16 cph Exp $
+$Id: oscond.h,v 1.18 1994/10/07 20:42:10 cph Exp $
 
 Copyright (c) 1990-1994 Massachusetts Institute of Technology
 
@@ -170,10 +170,17 @@ MIT in each case. */
 #  define _DOS386_VERSION	50
 #endif
 
-#if defined(OS2)
+#ifdef __OS2__
 #define _OS2
-#define _OS2_VERSION 21
-#endif
+/* Don't really know the version but this is correct for my machine.  */
+#define _OS2_VERSION 211
+#ifdef _M_I386
+#define _OS2386
+#ifndef i386
+#define i386
+#endif /* i386 */
+#endif /* _M_I386 */
+#endif /* __OS2__ */
 
 #if defined(_BSD) || defined(_SYSV) || defined(_PIXEL)
 #  define _UNIX
@@ -188,11 +195,9 @@ MIT in each case. */
 #        define NT386CL
 #      endif
 #    else
-#      if defined(OS2) && defined(i386)
-#        define _OS2386
-#      else
+#      ifndef _OS2
 #        include "error: unknown operating system -- you must customize"
-#      endif /* _OS2386 */
+#      endif /* _OS2 */
 #    endif /* _NT386 */
 #  endif /* _DOS386 */
 #endif /* _BSD || _SYSV || _PIXEL */
