@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 14.10 1992/02/25 22:55:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 14.11 1992/08/18 02:56:20 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -85,23 +85,28 @@ MIT in each case. |#
   (clear-interrupts! interrupt-bit/timer)
   (thread-timer-interrupt-handler))
 
+;; This switch is set by the command-line initialization code.
+(define generate-suspend-file?)
+
 (define (suspend-interrupt-handler interrupt-code interrupt-enables)
   interrupt-code interrupt-enables
   (clear-interrupts! interrupt-bit/suspend)
-  (bind-condition-handler (list condition-type:serious-condition)
-      (lambda (condition)
-	condition
-	(%exit))
-    (lambda ()
-      (bind-condition-handler (list condition-type:warning)
+  (if generate-suspend-file?
+      (bind-condition-handler (list condition-type:serious-condition)
 	  (lambda (condition)
 	    condition
-	    (muffle-warning))
+	    (%exit))
 	(lambda ()
-	  (if (not (disk-save (merge-pathnames "scheme_suspend"
-					       (user-homedir-pathname))
-			      true))
-	      (%exit)))))))
+	  (bind-condition-handler (list condition-type:warning)
+	      (lambda (condition)
+		condition
+		(muffle-warning))
+	    (lambda ()
+	      (if (not (disk-save (merge-pathnames "scheme_suspend"
+						   (user-homedir-pathname))
+				  true))
+		  (%exit))))))
+      (%exit)))
 
 (define (gc-out-of-space-handler . args)
   args

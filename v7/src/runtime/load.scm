@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.39 1992/08/13 11:48:04 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.40 1992/08/18 02:56:22 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -283,6 +283,7 @@ MIT in each case. |#
       unspecific))
 
 (define (process-command-line)
+  (set! generate-suspend-file? true)
   (hook/process-command-line ((ucode-primitive get-unused-command-line 0))))
 
 (define hook/process-command-line)
@@ -402,6 +403,13 @@ MIT in each case. |#
    "-no-init-file"
    (lambda (command-line)
      (set! *load-init-file?* false)
+     (values (cdr command-line) #f)))
+
+  (set! generate-suspend-file? true)
+  (set-command-line-parser!
+   "-no-suspend-file"
+   (lambda (command-line)
+     (set! generate-suspend-file? false)
      (values (cdr command-line) #f)))
 
   (set-command-line-parser!
