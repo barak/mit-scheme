@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: unpars.scm,v 14.49 2001/12/19 03:31:25 cph Exp $
+$Id: unpars.scm,v 14.50 2002/01/05 05:57:56 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -80,7 +80,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		(COMPLEX ,unparse/number)
 		(CONSTANT ,unparse/constant)
 		(ENTITY ,unparse/entity)
-		(ENVIRONMENT ,unparse/environment)
 		(EXTENDED-PROCEDURE ,unparse/compound-procedure)
 		(FLONUM ,unparse/flonum)
 		(FUTURE ,unparse/future)
@@ -528,7 +527,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	 ((UNQUOTE-SPLICING) ",@")
 	 (else false))))
 
-;;;; Procedures and Environments
+;;;; Procedures
 
 (define hook/procedure-unparser)
 
@@ -611,15 +610,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(usual-method))))
 
 ;;;; Miscellaneous
-
-(define (unparse/environment environment)
-  (let ((print-self
-	 (ignore-errors
-	  (lambda ()
-	    (environment-lookup environment ':PRINT-SELF)))))
-    (if (and (procedure? print-self) (procedure-arity-valid? print-self 0))
-	(print-self)
-	(unparse/default environment))))
 
 (define (unparse/variable variable)
   (*unparse-with-brackets 'VARIABLE variable
