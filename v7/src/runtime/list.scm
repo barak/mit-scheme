@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: list.scm,v 14.47 2005/03/29 03:38:36 cph Exp $
+$Id: list.scm,v 14.48 2005/03/29 05:02:11 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1995,1996,2000 Massachusetts Institute of Technology
@@ -1065,7 +1065,7 @@ USA.
 	(null? l1))))
 
 (define (guarantee-restricted-keyword-list object keywords caller)
-  (if (not (restricted-keyword-list? object))
+  (if (not (restricted-keyword-list? object keywords))
       (error:not-restricted-keyword-list object caller)))
 
 (define (error:not-restricted-keyword-list object caller)
@@ -1078,7 +1078,7 @@ USA.
 	     (not (memq (car l1) symbols))
 	     (pair? (cdr l1))
 	     (not (eq? (cdr l1) l2))
-	     (loop (cdr (cdr l1)) (cdr l1) (cons (car 1) symbols)))
+	     (loop (cdr (cdr l1)) (cdr l1) (cons (car l1) symbols)))
 	(null? l1))))
 
 (define-guarantee unique-keyword-list "unique keyword list")
