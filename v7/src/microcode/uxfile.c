@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxfile.c,v 1.2 1990/11/08 11:07:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxfile.c,v 1.3 1990/11/12 04:01:05 cph Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -48,9 +48,15 @@ DEFUN (fd_channel_type, (fd), int fd)
     mode_t type = ((stat_buf . st_mode) & S_IFMT);
     return
       ((type == S_IFREG) ? channel_type_file
-       : ((type == S_IFCHR) && (isatty (fd))) ? channel_type_terminal
+       : (type == S_IFCHR)
+       ? ((isatty (fd))
+	  ? channel_type_terminal
+	  : channel_type_character_device)
 #ifdef S_IFIFO
        : (type == S_IFIFO) ? channel_type_fifo
+#endif
+#ifdef S_IFBLK
+       : (type == S_IFBLK) ? channel_type_block_device
 #endif
        : (type == S_IFDIR) ? channel_type_directory
        : channel_type_unknown);

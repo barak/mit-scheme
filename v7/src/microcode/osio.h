@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osio.h,v 1.4 1990/11/08 11:03:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osio.h,v 1.5 1990/11/12 04:00:45 cph Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -48,7 +48,9 @@ enum channel_type
   channel_type_unix_stream_socket,
   channel_type_tcp_stream_socket,
   channel_type_tcp_server_socket,
-  channel_type_directory
+  channel_type_directory,
+  channel_type_character_device,
+  channel_type_block_device
 };
 
 extern size_t OS_channel_table_size;
