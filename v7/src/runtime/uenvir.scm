@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uenvir.scm,v 14.44 2001/12/18 20:49:33 cph Exp $
+$Id: uenvir.scm,v 14.45 2001/12/18 20:50:59 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -310,9 +310,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  (system-pair-set-cdr! procedure null-environment)))
     environment))
 
-(define (extend-ic-environment environment)
+(define (extend-interpreter-environment environment)
   (if (not (interpreter-environment? environment))
-      (illegal-environment environment 'EXTEND-IC-ENVIRONMENT))
+      (illegal-environment environment 'EXTEND-INTERPRETER-ENVIRONMENT))
   (eval '(LET () (THE-ENVIRONMENT)) environment))
 
 (define (ic-environment/lambda environment)
