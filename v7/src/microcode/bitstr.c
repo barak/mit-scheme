@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.38 1988/08/15 20:37:15 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.39 1989/07/05 18:42:21 cph Rel $
 
    Bit string primitives. 
 
@@ -879,6 +879,7 @@ DEFINE_PRIMITIVE ("WRITE-BITS!", Prim_write_bits_x, 3, 3, 0)
   PRIMITIVE_HEADER (3);							\
 									\
   CHECK_ARG (1, BIT_STRING_P);						\
+  bit_string = (ARG_REF (1));						\
   start = (arg_nonnegative_integer (2));				\
   end = (arg_nonnegative_integer (3));					\
 									\
