@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 13.43 1987/03/17 18:50:56 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 13.44 1987/05/27 14:58:22 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -170,10 +170,17 @@
 ; (install-keyboard-interrupt! #\S ^S-interrupt-handler)
 ; (install-keyboard-interrupt! #\Q ^Q-interrupt-handler)
 
-(define stack-overflow-slot	0)
-(define gc-slot			2)
-(define character-slot		4)
-(define timer-slot		6)
+(define stack-overflow-slot 0)
+(define gc-slot 2)
+(define character-slot 4)
+(define timer-slot 6)
+(define illegal-interrupt-slot 8)
+
+(define (illegal-interrupt-handler interrupt-code interrupt-enables)
+  (error "Illegal interrupt" interrupt-code interrupt-enables))
+
+(define (default-interrupt-handler interrupt-code interrupt-enables)
+  (error "Anomalous interrupt" interrupt-code interrupt-enables))
 
 (define (install)
   (with-interrupts-reduced interrupt-mask-gc-ok
@@ -205,10 +212,10 @@
 		      external-interrupt-handler)
 	 (vector-set! system-interrupt-vector timer-slot
 		      timer-interrupt-handler)
+	 (vector-set! system-interrupt-vector illegal-interrupt-slot
+		      illegal-interrupt-handler)
 
-	 ;; slots 4-15 unused.
-	 
-		  ;; install the new vector atomically
+	 ;; install the new vector atomically
 	 (vector-set! (get-fixed-objects-vector)
 		      index:interrupt-vector
 		      system-interrupt-vector)
@@ -222,10 +229,6 @@
 		      termination-vector)
 
 	 (set-fixed-objects-vector! (get-fixed-objects-vector)))))))
-
-(define (default-interrupt-handler interrupt-code interrupt-enables)
-  (write-string "Anomalous Interrupt: ") (write interrupt-code)
-  (write-string " Mask: ") (write interrupt-enables))
 
 (set! with-external-interrupts-handler
 (named-lambda (with-external-interrupts-handler handler code)
