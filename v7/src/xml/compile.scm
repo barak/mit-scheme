@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.14 2004/07/24 03:45:29 cph Exp $
+$Id: compile.scm,v 1.15 2005/01/11 03:13:23 cph Exp $
 
-Copyright 2001,2003,2004 Massachusetts Institute of Technology
+Copyright 2001,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -45,4 +45,4 @@ USA.
 		    "xml-parser"
 		    "xhtml"
 		    "xhtml-entities"))))
-    (cref/generate-constructors "xml")))
+    (cref/generate-constructors "xml" 'ALL)))

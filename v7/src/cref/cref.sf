@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: cref.sf,v 1.17 2003/02/14 18:28:10 cph Exp $
+$Id: cref.sf,v 1.18 2005/01/11 03:13:23 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright 1988,1989,1991,1992,1993,1995 Massachusetts Institute of Technology
+Copyright 1996,2001,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -35,4 +36,4 @@ USA.
     (begin
       (if (not (name->package '(CROSS-REFERENCE)))
 	  (load "make"))
-      (cref/generate-constructors "cref")))
+      (cref/generate-constructors "cref" 'ALL)))

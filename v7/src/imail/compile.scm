@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.20 2003/02/14 18:28:14 cph Exp $
+$Id: compile.scm,v 1.21 2005/01/11 03:13:23 cph Exp $
 
-Copyright 2000,2001,2003 Massachusetts Institute of Technology
+Copyright 2000,2001,2003,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -43,4 +43,4 @@ USA.
 		"imail-util"
 		"imap-response"
 		"imap-syntax"))
-    (cref/generate-constructors "imail")))
+    (cref/generate-constructors "imail" 'ALL)))

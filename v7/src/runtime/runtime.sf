@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: runtime.sf,v 14.20 2003/02/14 18:28:33 cph Exp $
+$Id: runtime.sf,v 14.21 2005/01/11 03:13:23 cph Exp $
 
-Copyright (c) 1988,1989,1990,1991,1992 Massachusetts Institute of Technology
-Copyright (c) 1994,1995,1996,2001,2003 Massachusetts Institute of Technology
+Copyright 1988,1989,1990,1991,1992,1994 Massachusetts Institute of Technology
+Copyright 1995,1996,2001,2003,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -38,4 +38,4 @@ USA.
 ;; that when cross-syntaxing the cref `native' to the running system
 ;; is loaded.
 (load-option 'CREF)
-(cref/generate-constructors "runtime")
+(cref/generate-constructors "runtime" 'ALL)

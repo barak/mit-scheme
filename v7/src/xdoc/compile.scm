@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.1 2004/11/01 19:21:05 cph Exp $
+$Id: compile.scm,v 1.2 2005/01/11 03:13:23 cph Exp $
 
-Copyright 2004 Massachusetts Institute of Technology
+Copyright 2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,4 +31,4 @@ USA.
     (for-each compile-file
 	      '("db"
 		"xdoc"))
-    (cref/generate-constructors "xdoc")))
+    (cref/generate-constructors "xdoc" 'ALL)))

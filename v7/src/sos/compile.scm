@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.8 2003/02/14 18:28:35 cph Exp $
+$Id: compile.scm,v 1.9 2005/01/11 03:13:23 cph Exp $
 
-Copyright 1995-1999, 2001 Massachusetts Institute of Technology
+Copyright 1997,2001,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -24,7 +24,6 @@ USA.
 |#
 
 (load-option 'CREF)
-
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
     (compile-file "class")
@@ -33,4 +32,4 @@ USA.
     (compile-file "method")
     (compile-file "printer")
     (compile-file "slot")
-    (cref/generate-constructors "sos")))
+    (cref/generate-constructors "sos" 'ALL)))

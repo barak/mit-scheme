@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.8 2003/02/14 18:28:35 cph Exp $
+$Id: compile.scm,v 1.9 2005/01/11 03:13:23 cph Exp $
 
-Copyright 2001, 2002 Massachusetts Institute of Technology
+Copyright 2001,2002,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -32,4 +32,4 @@ USA.
 	      '("matcher"
 		"parser"
 		"shared"))
-    (cref/generate-constructors "parser")))
+    (cref/generate-constructors "parser" 'ALL)))
