@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcfg.scm,v 4.4 1988/09/07 06:20:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcfg.scm,v 4.5 1988/11/06 14:38:21 cph Exp $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -165,3 +165,25 @@ MIT in each case. |#
 	  (set-rgraph-bblocks! *current-rgraph*
 			       (delq! bblock
 				      (rgraph-bblocks *current-rgraph*)))))))
+
+(define-integrable (pcfg/prefer-consequent! pcfg)
+  (pcfg/prefer-branch! 'CONSEQUENT pcfg))
+
+(define-integrable (pcfg/prefer-alternative! pcfg)
+  (pcfg/prefer-branch! 'ALTERNATIVE pcfg))
+
+(define (pcfg/prefer-branch! branch pcfg)
+  (let loop ((bblock (cfg-entry-node pcfg)))
+    (cond ((pblock? bblock)
+	   (cfg-node-put! bblock cfg/prefer-branch/tag branch))
+	  ((sblock? bblock)
+	   (loop (snode-next bblock)))
+	  (else
+	   (error "PCFG/PREFER-BRANCH!: Unknown bblock type" bblock))))
+  pcfg)
+
+(define-integrable (pnode/preferred-branch pnode)
+  (cfg-node-get pnode cfg/prefer-branch/tag))
+
+(define-integrable cfg/prefer-branch/tag
+  (string->symbol "#[(compiler)cfg/prefer-branch]"))
