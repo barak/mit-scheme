@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: javamode.scm,v 1.5 1999/10/07 15:18:57 cph Exp $
+;;; $Id: javamode.scm,v 1.6 1999/10/07 17:16:00 cph Exp $
 ;;;
 ;;; Copyright (c) 1998-1999 Massachusetts Institute of Technology
 ;;;
@@ -87,7 +87,7 @@ This is just like C mode, except that
 This is just like C mode, except that
   (1) comments begin with // and end at the end of line,
   (2) c-continued-brace-offset defaults to -2 instead of 0, and
-  (3) $ is a prefix character rather than a word constituent."
+  (3) $ is a symbol constituent rather than a word constituent."
   (lambda (buffer)
     (local-set-variable! syntax-table php-syntax-table buffer)
     (event-distributor/invoke! (ref-variable php-mode-hook buffer) buffer)))
@@ -103,5 +103,5 @@ This is just like C mode, except that
 
 (define php-syntax-table
   (let ((syntax-table (make-syntax-table java-syntax-table)))
-    (modify-syntax-entry! syntax-table #\$ "  p")
+    (modify-syntax-entry! syntax-table #\$ "_")
     syntax-table))
