@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utlwin.scm,v 1.52 1989/08/08 10:06:32 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utlwin.scm,v 1.53 1989/08/08 11:12:29 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -82,9 +82,11 @@
 					   (+ x-start start) y-start
 					   (car representation)
 					   start end)
-		  (subscreen-clear! screen
-				    (+ x-start end) (+ x-start x-size)
-				    y-start ayu)#|
+		  (if (< end x-size)
+		      (subscreen-clear! screen
+					(+ x-start end) (+ x-start x-size)
+					y-start ayu))
+#|
 		  (if (not (zero? start))
 		      (clip-window-region-1 xl xu start
 			(lambda (xl xu)
