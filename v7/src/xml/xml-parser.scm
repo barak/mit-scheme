@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xml-parser.scm,v 1.8 2001/07/12 05:31:37 cph Exp $
+;;; $Id: xml-parser.scm,v 1.9 2001/07/16 18:55:28 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -709,7 +709,7 @@
 	(lambda (v)
 	  (if (fix:= (vector-length v) 1)
 	      (vector-ref v 0)
-	      (list (xml-intern (vector-ref v 1))
+	      (list (string-ref (vector-ref v 1) 0)
 		    (vector-ref v 0))))))
 
     (*parser
