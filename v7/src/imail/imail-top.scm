@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.146 2000/06/09 04:14:00 cph Exp $
+;;; $Id: imail-top.scm,v 1.147 2000/06/09 04:17:48 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -130,12 +130,6 @@ This has no effect on file-based folders.
 Set this variable to #F to disable updating."
   600
   (lambda (x) (or (not x) (and (exact-integer? x) (positive? x)))))
-
-(define-variable imail-receive-mime
-  "If true, MIME messages are decoded before being presented.
-Otherwise, all messages are presented as plain text."
-  #t
-  boolean?)
 
 (define-variable imail-auto-wrap
   "If true, messages will have their lines wrapped at the right margin.
@@ -451,7 +445,6 @@ variable's documentation (using \\[describe-variable]) for details:
     imail-mode-hook
     imail-pass-phrase-retention-time
     imail-primary-folder
-    imail-receive-mime
     imail-reply-with-re
     imail-update-interval
 
@@ -739,8 +732,7 @@ With prefix argument N moves backward N messages with these flags."
 		      (if raw?
 			  (insert-string (message-body message) mark)
 			  (begin
-			    (if (and (ref-variable imail-receive-mime buffer)
-				     (folder-supports-mime? folder))
+			    (if (folder-supports-mime? folder)
 				(insert-mime-message-body message mark)
 				(call-with-auto-wrapped-output-mark mark
 				  (lambda (port)
