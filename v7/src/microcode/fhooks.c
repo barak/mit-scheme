@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/fhooks.c,v 9.21 1987/01/22 14:24:45 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/fhooks.c,v 9.22 1987/04/03 00:43:16 jinx Exp $
  *
  * This file contains hooks and handles for the new fluid bindings
  * scheme for multiprocessors.
@@ -38,35 +38,50 @@ MIT in each case. */
 
 #include "scheme.h"
 #include "primitive.h"
+#include "trap.h"
+#include "lookup.h"
 #include "locks.h"
-
+
 /* (SET-FLUID-BINDINGS! NEW-BINDINGS)
-      Sets the microcode fluid-bindings variable.  Returns the previous value.
+   Sets the microcode fluid-bindings variable.  Returns the previous value.
 */
+
 Define_Primitive(Prim_Set_Fluid_Bindings, 1, "SET-FLUID-BINDINGS!")
-{ Pointer Result;
+{ 
+  Pointer Result;
   Primitive_1_Arg();
-  if (Arg1 != NIL) Arg_1_Type(TC_LIST);
+
+  if (Arg1 != NIL)
+    Arg_1_Type(TC_LIST);
+
   Result = Fluid_Bindings;
   Fluid_Bindings = Arg1;
   return Result;
 }
 
 /* (GET-FLUID-BINDINGS NEW-BINDINGS)
-      Gets the microcode fluid-bindings variable.
+   Gets the microcode fluid-bindings variable.
 */
+
 Define_Primitive(Prim_Get_Fluid_Bindings, 0, "GET-FLUID-BINDINGS")
-{ Primitive_0_Args();
+{
+  Primitive_0_Args();
+
   return Fluid_Bindings;
 }
 
 /* (WITH-SAVED-FLUID-BINDINGS THUNK)
-      Executes THUNK, then restores the previous fluid bindings.
+   Executes THUNK, then restores the previous fluid bindings.
 */
+
 Define_Primitive(Prim_With_Saved_Fluid_Bindings,1,"WITH-SAVED-FLUID-BINDINGS")
-{ Primitive_1_Arg();
+{
+  Primitive_1_Arg();
+
   Pop_Primitive_Frame(1);
+
   /* Save previous fluid bindings for later restore */
+
  Will_Push(CONTINUATION_SIZE + STACK_ENV_EXTRA_SLOTS + 1);
   Store_Expression(Fluid_Bindings);
   Store_Return(RC_RESTORE_FLUIDS);
@@ -77,67 +92,157 @@ Define_Primitive(Prim_With_Saved_Fluid_Bindings,1,"WITH-SAVED-FLUID-BINDINGS")
   longjmp(*Back_To_Eval, PRIM_APPLY);
 }
 
+/* Utilities for the primitives below. */
+
+Pointer
+*lookup_slot(env, var)
+{
+  Pointer *cell, *hunk, value;
+  long trap_kind;
+
+  hunk = Get_Pointer(var);
+  lookup(cell, env, hunk, repeat_slot_lookup);
+  
+  value = Fetch(cell[0]);
+
+  if (Type_Code(value) != TC_REFERENCE_TRAP)
+  {
+    return cell;
+  }
+
+  get_trap_kind(trap_kind, value);
+  switch(trap_kind)
+  {
+    case TRAP_DANGEROUS:
+    case TRAP_UNBOUND_DANGEROUS:
+    case TRAP_UNASSIGNED_DANGEROUS:
+    case TRAP_FLUID_DANGEROUS:
+      return deep_lookup(env, hunk[VARIABLE_SYMBOL], hunk);
+
+    case TRAP_FLUID:
+    case TRAP_UNBOUND:
+    case TRAP_UNASSIGNED:
+      return cell;
+
+    default:
+      Primitive_Error(ERR_BROKEN_COMPILED_VARIABLE);
+  }
+}
+
+Pointer
+new_fluid_binding(cell, value, force)
+     Pointer *cell;
+     Pointer value;
+     Boolean force;
+{
+  fast Pointer trap;
+  Lock_Handle set_serializer;
+  Pointer new_trap_value;
+  long new_trap_kind, trap_kind;
+
+  setup_lock(set_serializer, cell);
+
+  new_trap_kind = TRAP_FLUID;
+  trap = *cell;
+  new_trap_value = trap;
+
+  if (Type_Code(trap) == TC_REFERENCE_TRAP)
+  {
+    get_trap_kind(trap_kind, trap);
+    switch(trap_kind)
+    {
+      case TRAP_DANGEROUS:
+        Vector_Set(trap,
+		   TRAP_TAG,
+		   Make_Unsigned_Fixnum(TRAP_FLUID_DANGEROUS));
+
+	/* Fall through */
+      case TRAP_FLUID:
+      case TRAP_FLUID_DANGEROUS:
+	new_trap_kind = TRAP_NOP;
+	break;
+
+      case TRAP_UNBOUND:
+      case TRAP_UNBOUND_DANGEROUS:
+	if (!force)
+	{
+	  remove_lock(set_serializer);
+	  Primitive_Error(ERR_UNBOUND_VARIABLE);
+	}
+	/* Fall through */
+      case TRAP_UNASSIGNED:
+      case TRAP_UNASSIGNED_DANGEROUS:
+	new_trap_kind = Make_Unsigned_Fixnum((TRAP_FLUID | (trap_kind & 1)));
+	new_trap_value = UNASSIGNED_OBJECT;
+	break;
+
+      default:
+	remove_lock(set_serializer);
+	Primitive_Error(ERR_BROKEN_COMPILED_VARIABLE);
+    }
+  }
+
+  if (new_trap_kind != TRAP_NOP)
+  {
+    if (GC_allocate_test(2))
+    {
+      remove_lock(set_serializer);
+      Primitive_GC(2);
+    }
+    trap = Make_Pointer(TC_REFERENCE_TRAP, Free);
+    *Free++ = new_trap_kind;
+    *Free++ = new_trap_value;
+    *cell = trap;
+  }
+  remove_lock(set_serializer);
+
+  /* Fluid_Bindings is per processor private. */
+
+  Primitive_GC_If_Needed(4);
+  Free[CONS_CAR] = Make_Pointer(TC_LIST, (Free + 2));
+  Free[CONS_CDR] = Fluid_Bindings;
+  Fluid_Bindings = Make_Pointer(TC_LIST, Free);
+  Free += 2;
+  Free[CONS_CAR] = trap;
+  Free[CONS_CDR] = value;
+  Free += 2;
+
+  return NIL;
+}
+
 /* (ADD-FLUID-BINDING!  ENVIRONMENT SYMBOL-OR-VARIABLE VALUE)
       Looks up symbol-or-variable in environment.  If it has not been
       fluidized, fluidizes it.  A fluid binding with the specified 
       value is created in this interpreter's fluid bindings.      
 */
-Define_Primitive(Prim_Add_Fluid_Binding, 3, "ADD-FLUID-BINDING!")
-{ Pointer Trap_Obj;
-  int Temp_Obj;
 
+Define_Primitive(Prim_Add_Fluid_Binding, 3, "ADD-FLUID-BINDING!")
+{
+  Pointer *cell;
   Primitive_3_Args();
-  if (Arg1 != GLOBAL_ENV) Arg_1_Type(TC_ENVIRONMENT);
+
+  if (Arg1 != GLOBAL_ENV)
+    Arg_1_Type(TC_ENVIRONMENT);
+
   switch (Type_Code(Arg2))
-  { case TC_VARIABLE:
-      Temp_Obj = Lookup_Slot(Arg2, Arg1);
-      if (Temp_Obj == NO_SLOT || Temp_Obj == FOUND_UNBOUND)
-	Primitive_Error(ERR_UNBOUND_VARIABLE);
+  {
+    case TC_VARIABLE:
+      cell = lookup_slot(Arg1, Arg2);
       break;
+
     case TC_INTERNED_SYMBOL:
     case TC_UNINTERNED_SYMBOL:
-      Temp_Obj = Symbol_Lookup_Slot(Arg1, Arg2);
-      if (Temp_Obj == NO_SLOT || Temp_Obj == FOUND_UNBOUND)
-	Primitive_Error(ERR_UNBOUND_VARIABLE);
+      cell = deep_lookup(Arg1, Arg2, fake_variable_object);
       break;
+
     default:
       Primitive_Error(ERR_ARG_2_WRONG_TYPE);
-    }  
-  /* Lock region, check if the slot at Lookup_Base[Lookup_Offset] is
-   a fluid already.  Return it if so, make a new fluid and store it
-   there if not, unlock the region. */
-  {
-#ifdef COMPILE_FUTURES
-    Lock_Handle Set_Serializer;
-#endif
-    Pointer Found_Val, Safe_Val;
-    if (Lookup_Offset == HEAP_ENV_FUNCTION) Primitive_Error(ERR_BAD_SET);
-#ifdef COMPILE_FUTURES
-    Set_Serializer = Lock_Cell(Nth_Vector_Loc(Lookup_Base, Lookup_Offset));
-#endif
-    Found_Val = Fast_Vector_Ref(Lookup_Base, Lookup_Offset);
-    Safe_Val = Found_Val & ~DANGER_BIT;
-    if (Type_Code(Safe_Val) == TC_TRAP)	Trap_Obj = Found_Val;
-    else
-    { Primitive_GC_If_Needed(TRAP_SIZE);
-      Trap_Obj = (Pointer) Free;
-      *Free++ = NIL;		/* Tag for fluids */
-      *Free++ = Safe_Val;
-      *Free++ = Arg2;	        /* For debugging purposes */
-      Store_Type_Code(Trap_Obj,
-		      ((Found_Val==Safe_Val)?TC_TRAP:TC_TRAP|DANGER_TYPE));
-      Fast_Vector_Set(Lookup_Base, Lookup_Offset, Trap_Obj);
-    }
-#ifdef COMPILE_FUTURES
-    Unlock_Cell(Set_Serializer);
-#endif
-    Add_Fluid_Binding(Trap_Obj, Arg3);
-    Val = NIL;
-    return Val;
   }
+
+  return new_fluid_binding(cell, Arg3, false);
 }
 
-/* (MAKE-FLUID-BINDING!  ENVIRONMENT SYMBOL-OR-VARIABLE VALUE)
+/* (MAKE-FLUID-BINDING! ENVIRONMENT SYMBOL-OR-VARIABLE VALUE)
       Looks up symbol-or-variable in environment.  If it has not been
       fluidized, fluidizes it.  A fluid binding with the specified 
       value is created in this interpreter's fluid bindings.  Unlike
@@ -149,111 +254,66 @@ Define_Primitive(Prim_Add_Fluid_Binding, 3, "ADD-FLUID-BINDING!")
       and does not allow search of the global environment), an AUX
       binding must be established in the last frame.
 */
-Define_Primitive(Prim_Make_Fluid_Binding, 3, "MAKE-FLUID-BINDING!")
-{ Pointer Trap_Obj;
 
+Define_Primitive(Prim_Make_Fluid_Binding, 3, "MAKE-FLUID-BINDING!")
+{
+  Pointer *cell;
+  fast Pointer env, previous;
   Primitive_3_Args();
-  if (Arg1 != GLOBAL_ENV) Arg_1_Type(TC_ENVIRONMENT);
+
+  if (Arg1 != GLOBAL_ENV)
+    Arg_1_Type(TC_ENVIRONMENT);
+
   switch (Type_Code(Arg2))
-  { /* Need to check for unbound in non-global env and build
-       an AUX binding in that frame if so.  Do nothing in
-       usual case, unbound in global env.
-    */
+  {
     case TC_VARIABLE:
-      Binding_Lookup_Slot(Arg2, Arg1);
+      cell = lookup_slot(Arg1, Arg2);
       break;
+
     case TC_INTERNED_SYMBOL:
     case TC_UNINTERNED_SYMBOL:
-      Symbol_Binding_Lookup_Slot(Arg1, Arg2);
+      cell = deep_lookup(Arg1, Arg2, fake_variable_object);
       break;
+
     default:
       Primitive_Error(ERR_ARG_2_WRONG_TYPE);
-  }  
-  /* Lock region, check if the slot at Lookup_Base[Lookup_Offset] is
-   a fluid already.  Return it if so, make a new fluid and store it
-   there if not, unlock the region. */
-  {
-#ifdef COMPILE_FUTURES
-    Lock_Handle Set_Serializer;
-#endif
-    Pointer Found_Val, Safe_Val;
-    if (Lookup_Offset == HEAP_ENV_FUNCTION) Primitive_Error(ERR_BAD_SET);
-#ifdef COMPILE_FUTURES
-    Set_Serializer = Lock_Cell(Nth_Vector_Loc(Lookup_Base, Lookup_Offset));
-#endif
-    Found_Val = Fast_Vector_Ref(Lookup_Base, Lookup_Offset);
-    Safe_Val = Found_Val & ~DANGER_BIT;
-    if (Type_Code(Safe_Val) == TC_TRAP)	Trap_Obj = Found_Val;
-    else
-    { Primitive_GC_If_Needed(TRAP_SIZE);
-      Trap_Obj = (Pointer) Free;
-      *Free++ = NIL;		/* Tag for fluids */
-      /* Binding version always makes unbounds unassigned */
-      *Free++ = (Safe_Val == UNBOUND_OBJECT) ? UNASSIGNED_OBJECT:Safe_Val;
-      *Free++ = Arg2;	        /* For debugging purposes */
-      Store_Type_Code(Trap_Obj,
-		      ((Found_Val==Safe_Val)?TC_TRAP:TC_TRAP|DANGER_TYPE));
-      Fast_Vector_Set(Lookup_Base, Lookup_Offset, Trap_Obj);
-    }
-#ifdef COMPILE_FUTURES
-    Unlock_Cell(Set_Serializer);
-#endif
-    Add_Fluid_Binding(Trap_Obj, Arg3);
-    Val = NIL;
-    return Val;
   }
-}
 
-Add_Fluid_Binding(Key, Value)
-Pointer Key, Value;
-{ Pointer New_Fluids;
-  
-  Primitive_GC_If_Needed(2 + 2);
-  New_Fluids = Make_Pointer(TC_LIST, Free);
-  *Free = Make_Pointer(TC_LIST, &Free[2]);
-  Free += 1;
-  *Free++ = Fluid_Bindings;
-  *Free++ = Key;
-  *Free++ = Value;
-  Fluid_Bindings = New_Fluids;
+  /* This only happens when global is not allowed,
+     it's expensive and will not be used, but is
+     provided for completeness.
+   */
+
+  if (cell == unbound_trap_object)
+  {
+    long result;
+    Pointer symbol;
+
+    env = Arg1;
+    if (Type_Code(env) == GLOBAL_ENV)
+      Primitive_Error(ERR_BAD_FRAME);
+	    
+    do
+    {
+      previous = env;
+      env = Fast_Vector_Ref(Vector_Ref(env, ENVIRONMENT_FUNCTION),
+			    PROCEDURE_ENVIRONMENT);
+    } while (Type_Code(env) != GLOBAL_ENV);
+
+    symbol = ((Type_Code(Arg2) == TC_VARIABLE) ?
+	      Vector_Ref(Arg2, VARIABLE_SYMBOL) :
+	      Arg2);
+
+    result = Local_Set(previous, symbol, UNASSIGNED_OBJECT);
+    if (result != PRIM_DONE)
+    {
+      if (result == PRIM_INTERRUPT)
+	Primitive_Interrupt();
+
+      Primitive_Error(result);
+    }
+    cell = deep_lookup(previous, symbol, fake_variable_object);
+  }
+
+  return new_fluid_binding(cell, Arg3, true);
 }
-
-Symbol_Lookup_Slot(Frame, Symbol)
-Pointer Frame, Symbol;
-{ int result;
-  Pointer *Variable = Free;
-  Free += 3;
-  Variable[VARIABLE_SYMBOL] = (Symbol);
-  Variable[VARIABLE_COMPILED_TYPE] = UNCOMPILED_VARIABLE;
-  result = Lookup_Slot(Make_Pointer(TC_VARIABLE, Variable), (Frame));
-  if (Free == Variable+3) Free = Variable;
-  return result;
-}
-
-Binding_Symbol_Lookup_Slot(Frame, Symbol)
-Pointer Frame, Symbol;
-{ int result;
-  Pointer *Variable = Free;
-  Free += 3;
-  Variable[VARIABLE_SYMBOL] = (Symbol);
-  Variable[VARIABLE_COMPILED_TYPE] = UNCOMPILED_VARIABLE;
-  result = Binding_Lookup_Slot(Make_Pointer(TC_VARIABLE, Variable), (Frame));
-  if (Free == Variable+3) Free = Variable;
-  return result;
-}
-
-/* A version which creates a new binding if unbound in last frame */
-
-Symbol_Binding_Lookup_Slot(Frame, Symbol)
-Pointer Frame, Symbol;
-{ int result;
-  Pointer *Variable = Free;
-  Free += 3;
-  Variable[VARIABLE_SYMBOL] = (Symbol);
-  Variable[VARIABLE_COMPILED_TYPE] = UNCOMPILED_VARIABLE;
-  result = Binding_Lookup_Slot(Make_Pointer(TC_VARIABLE, Variable), (Frame));
-  if (Free == Variable+3) Free = Variable;
-  return result;
-}
-
-
