@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.24 1991/05/18 03:08:17 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.25 1991/07/05 23:15:23 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -312,16 +312,11 @@ may be available.  The following commands are special to this mode:
        value))))
 
 (define (eval-with-history expression environment)
-  (scode-eval-with-history (syntax expression
-				   (evaluation-syntax-table environment))
-			   environment))
-
-(define (scode-eval-with-history scode environment)
-  (bind-condition-handler (list condition-type:error) evaluation-error-handler
-    (lambda ()
-      (with-new-history
-       (lambda ()
-	 (extended-scode-eval scode environment))))))
+  (let ((syntax-table (evaluation-syntax-table environment)))
+    (bind-condition-handler (list condition-type:error)
+	evaluation-error-handler
+      (lambda ()
+	(hook/repl-eval (nearest-repl) expression environment syntax-table)))))
 
 (define (evaluation-error-handler condition)
   (if (ref-variable debug-on-evaluation-error)
@@ -348,21 +343,26 @@ may be available.  The following commands are special to this mode:
 	    (let ((output-port
 		   (let ((buffer (transcript-buffer)))
 		     (mark->output-port (buffer-end buffer) buffer))))
-	      (with-output-to-port output-port
-		(lambda ()
-		  (with-cmdl/output-port (nearest-cmdl)
-		    (lambda ()
-		      (fresh-lines 1)
-		      (thunk))))))))
+	      (fresh-lines 1 output-port)
+	      (with-standard-output-port output-port thunk))))
       (let ((value))
 	(let ((output
-	       (with-output-to-string
-		 (lambda ()
-		   (set! value (thunk))
-		   unspecific))))
+	       (with-string-output-port
+		(lambda (output-port)
+		  (with-standard-output-port output-port
+		    (lambda ()
+		      (set! value (thunk))
+		      unspecific))))))
 	  (if (not (string-null? output))
 	      (string->temporary-buffer output "*Unsolicited-Output*")))
 	value)))
+
+(define (with-standard-output-port output-port thunk)
+  (with-output-to-port output-port
+    (lambda ()
+      (with-cmdl/output-port (nearest-cmdl) output-port
+	(lambda ()
+	  (thunk))))))
 
 (define (transcript-write value)
   (let ((value-string
