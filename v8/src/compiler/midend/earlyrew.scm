@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: earlyrew.scm,v 1.15 1995/09/05 18:56:00 adams Exp $
+$Id: earlyrew.scm,v 1.16 1995/09/08 03:09:09 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -496,28 +496,32 @@ MIT in each case. |#
 	    (else
 	     (default))))))
 
-(define-rewrite/early 'GENERAL-CAR-CDR
-  (let ((prim-general-car-cdr (make-primitive-procedure 'GENERAL-CAR-CDR))
-        (prim-car             (make-primitive-procedure 'CAR))
+
+(define earlyrew/general-car-cdr
+  (let ((prim-car             (make-primitive-procedure 'CAR))
         (prim-cdr             (make-primitive-procedure 'CDR)))
+    (lambda (term pattern equivalent)
+      (let walk-bits ((num  pattern) (text term))
+	(if (= num 1)
+	    text
+	    (walk-bits (quotient num 2)
+		       (equivalent
+			`(CALL (QUOTE ,(if (odd? num)
+					   prim-car
+					   prim-cdr))
+			       (QUOTE #f)
+			       ,text))))))))
+
+(define-rewrite/early 'GENERAL-CAR-CDR
+  (let ((prim-general-car-cdr (make-primitive-procedure 'GENERAL-CAR-CDR)))
     (lambda (form term pattern)
       (define (equivalent form*) (earlyrew/remember* form* form))
       (define (default)
 	`(CALL (QUOTE ,prim-general-car-cdr) (QUOTE #f) ,term ,pattern))
-      (cond ((form/number? pattern)
+      (cond ((form/exact-integer? pattern)
 	     => (lambda (pattern)
-		  (if (and (integer? pattern) (> pattern 0))
-		      (let walk-bits ((num  pattern)
-				      (text term))
-			(if (= num 1)
-			    text
-			    (walk-bits (quotient num 2)
-				       (equivalent
-					`(CALL (QUOTE ,(if (odd? num)
-							   prim-car
-							   prim-cdr))
-					       (QUOTE #f)
-					       ,text)))))
+		  (if (> pattern 0)
+		      (earlyrew/general-car-cdr term pattern equivalent)
 		      (default))))
 	    (else (default))))))
 
@@ -547,6 +551,20 @@ MIT in each case. |#
 			(else (default values)))))
 	    (else
 	     (default values))))))
+
+
+(define-rewrite/early/global 'LIST-REF 2
+  (lambda (form default* term index)
+    (define (default) (default* (list term index)))
+    (define (equivalent form*) (earlyrew/remember* form* form))
+    (cond ((form/exact-integer? index)
+	   => (lambda (index)
+		(if (and (<= 0 index)
+			 (<= index (if compiler:generate-type-checks? 2 6)))
+		    (earlyrew/general-car-cdr term (* 3 (expt 2 index))
+					      equivalent)
+		    (default))))
+	  (else (default)))))
 
 
 (define-rewrite/early/global 'SQRT 1
