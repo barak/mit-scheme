@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fakeprim.scm,v 1.6 1995/02/27 22:39:39 adams Exp $
+$Id: fakeprim.scm,v 1.7 1995/03/09 22:15:14 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -820,7 +820,7 @@ MIT in each case. |#
 			  '(SIDE-EFFECT-FREE)
 			  '(PROPER-PREDICATE))))
  (list not eq? null? false?
-       boolean? cell? pair? vector? %record? string?
+       boolean? cell? pair? vector? %record? string? bit-string?
        fixnum? index-fixnum? flo:flonum? object-type?
        fix:= fix:> fix:< fix:<= fix:>=
        fix:zero? fix:positive? fix:negative? 
@@ -847,6 +847,7 @@ MIT in each case. |#
  (list make-cell cons vector %record string-allocate flo:vector-cons
        system-pair-cons %record-length vector-length flo:vector-length
        object-type object-datum
+       bit-string-length
        (make-primitive-procedure 'PRIMITIVE-OBJECT-SET-TYPE)
        fix:-1+ fix:1+ fix:+ fix:- fix:*
        fix:quotient fix:remainder ; fix:gcd
