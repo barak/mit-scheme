@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/infutl.scm,v 1.38 1992/05/28 18:40:00 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/infutl.scm,v 1.39 1992/05/28 18:58:44 mhwu Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -245,8 +245,7 @@ MIT in each case. |#
   '())
 
 (define (add-directory-rewriting-rule! match replace)
-  (let ((match (merge-pathnames match))
-	(replace (merge-pathnames replace)))
+  (let ((match (merge-pathnames match)))
     (let ((rule
 	   (list-search-positive directory-rewriting-rules
 	     (lambda (rule)
@@ -266,13 +265,14 @@ MIT in each case. |#
 	     (directory-prefix? (pathname-directory pathname)
 				(pathname-directory (car rule)))))))
     (if rule
-	(pathname-new-device
-	 (pathname-new-directory
-	  pathname
-	  (append (pathname-directory (cdr rule))
-		  (list-tail (pathname-directory pathname)
-			     (length (pathname-directory (car rule))))))
-	 (pathname-device (cdr rule)))
+	(let ((replacement-directory (merge-pathnames (cdr rule))))
+	  (pathname-new-device
+	   (pathname-new-directory
+	    pathname
+	    (append (pathname-directory replacement-directory)
+		    (list-tail (pathname-directory pathname)
+			       (length (pathname-directory (car rule))))))
+	   (pathname-device replacement-directory)))
 	pathname)))
 
 (define (directory-prefix? x y)
