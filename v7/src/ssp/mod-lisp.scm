@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.12 2004/11/18 20:03:16 cph Exp $
+$Id: mod-lisp.scm,v 1.13 2004/11/22 14:03:02 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -157,6 +157,7 @@ USA.
 	(pp `(REQUEST (,(http-message-method request)
 		       ,url
 		       ,@(http-message-url-parameters request))
+		      (COOKIES ,@(http-message-cookies request))
 		      ,@(map (lambda (p)
 			       (list (car p) (cdr p)))
 			     (http-message-headers request)))))
