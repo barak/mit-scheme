@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fakeprim.scm,v 1.31 1999/01/02 06:06:43 cph Exp $
+$Id: fakeprim.scm,v 1.32 1999/05/15 03:14:42 cph Exp $
 
 Copyright (c) 1994-1999 Massachusetts Institute of Technology
 
@@ -129,7 +129,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 defs)))
     (cond ((null? args)
 	   defs)
-	  ((eq? (car args) '#!REST)
+	  ((eq? (car args) #!rest)
 	   (add-def (cadr args) path #F))
 	  ((eq? (car args) '#F)
 	   (loop (cdr args) `(CDR ,path) defs))
@@ -491,7 +491,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   ;;   NARGS = number of <value> expressions
   ;;   Introduced by applicat.scm.
   (make-operator "#[internal-apply]"))
-(cookie-call %internal-apply cont 'NARGS procedure #!REST values)
+(cookie-call %internal-apply cont 'NARGS procedure #!rest values)
 
 
 (define-operator %internal-apply-unchecked
@@ -502,7 +502,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   ;;   Like %internal-apply, but assumes that the procedure is compiled and
   ;;   of the correct arity.
   (make-operator "#[internal-apply-unchecked]"))
-(cookie-call %internal-apply-unchecked cont 'NARGS procedure #!REST values)
+(cookie-call %internal-apply-unchecked cont 'NARGS procedure #!rest values)
 
 (define-operator %primitive-apply
   ;; (CALL ',%primitive-apply <continuation>

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: inlate.scm,v 1.8 1999/01/02 06:06:43 cph Exp $
+$Id: inlate.scm,v 1.9 1999/05/15 03:14:59 cph Exp $
 
 Copyright (c) 1994-1999 Massachusetts Institute of Technology
 
@@ -86,13 +86,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	      (append req
 		      (if (null? opt)
 			  '()
-			  (cons '#!OPTIONAL opt))
+			  (cons #!optional opt))
 		      (if (not rest)
 			  '()
-			  (list '#!REST rest))
+			  (list #!rest rest))
 		      (if (null? aux)
 			  '()
-			  (cons '#!AUX aux))))
+			  (cons #!aux aux))))
 	     (new
 	      `(LAMBDA ,(cons (new-continuation-variable) lambda-list)
 		 ,(let ((body (inlate/scode sbody #F)))
@@ -108,13 +108,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   `(LAMBDA ,(append (cons (new-continuation-variable) req)
 		    (if (null? opt)
 			'()
-			(cons '#!OPTIONAL opt))
+			(cons #!optional opt))
 		    (if (not rest)
 			'()
-			(list '#!REST rest))
+			(list #!rest rest))
 		    (if (null? aux)
 			'()
-			(cons '#!AUX aux)))
+			(cons #!aux aux)))
      ,(let ((body (inlate/scode sbody)))
 	(if (null? decls)
 	    body

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: synutl.scm,v 1.3 1999/01/02 06:06:43 cph Exp $
+$Id: synutl.scm,v 1.4 1999/05/15 03:14:46 cph Exp $
 
 Copyright (c) 1994, 1999 Massachusetts Institute of Technology
 
@@ -38,7 +38,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		 (values (reverse names)
 			 `(let ((,var* ,expr))
 			    (,@prefix ,@(reverse args)))))
-		((eq? (car ll) '#!rest)
+		((eq? (car ll) #!rest)
 		 (loop '()
 		       (cons (cadr ll) names)
 		       (cons path args)

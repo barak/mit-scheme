@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: widen.scm,v 1.10 1999/01/02 06:06:43 cph Exp $
+$Id: widen.scm,v 1.11 1999/05/15 03:14:31 cph Exp $
 
 Copyright (c) 1994, 1999 Massachusetts Institute of Technology
 
@@ -360,7 +360,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	     (nodes value-nodes))
     (cond ((null? nodes)
 	   (continue name-map (reverse new-names)))
-	  ((memq (car names) '(#!REST #!OPTIONAL #!AUX))
+	  ((lambda-list-keyword? (car names))
 	   (loop name-map (cons (car names) new-names) (cdr names) nodes))
 	  ((widen/rewrite? (car nodes))
 	   (let* ((this (car nodes))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ea2.scm,v 1.5 1999/01/02 06:06:43 cph Exp $
+$Id: ea2.scm,v 1.6 1999/05/15 03:15:14 cph Exp $
 
 Copyright (c) 1995, 1999 Massachusetts Institute of Technology
 
@@ -444,11 +444,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   env)
 	  ((or (null? names) (null? types))
 	   (internal-error "Mismatch" names0 types0))
-	  ((eq? (car names) '#!optional)
+	  ((eq? (car names) #!optional)
 	   (loop (cdr names) types #T))
-	  ((eq? (car names) '#!aux)
+	  ((eq? (car names) #!aux)
 	   (loop (cdr names) types #T))
-	  ((eq? (car names) '#!rest)
+	  ((eq? (car names) #!rest)
 	   (extend! (second names) earlyrew/type/*unknown)
 	   env)
 	  (else

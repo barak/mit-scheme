@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: simplify.scm,v 1.21 1999/01/02 06:06:43 cph Exp $
+$Id: simplify.scm,v 1.22 1999/05/15 03:14:36 cph Exp $
 
 Copyright (c) 1994-1999 Massachusetts Institute of Technology
 
@@ -264,8 +264,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (cond ((null? ll)
 	     (internal-error "Missing operand" name form))
 	    ((eq? name (car ll)) index)
-	    ((or (eq? (car ll) '#!OPTIONAL)
-		 (eq? (car ll) '#!REST))
+	    ((or (eq? (car ll) #!optional)
+		 (eq? (car ll) #!rest))
 	     -1)
 	    (else
 	     (loop (cdr ll) (+ index 1)))))))
@@ -443,7 +443,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   ;;  variables in ENV.  Currently it does not update the debugging
   ;;  info, but it should.
   (define (rename name)
-    (if (memq name '(#!aux #!rest #!optional))
+    (if (lambda-list-keyword? name)
 	name
 	(let ((new-name (variable/rename name)))
 	  (dbg-info/remember name `(LOOKUP ,new-name))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: coerce.scm,v 1.7 1999/01/02 06:06:43 cph Exp $
+$Id: coerce.scm,v 1.8 1999/05/15 03:15:22 cph Exp $
 
 Copyright (c) 1995, 1999 Massachusetts Institute of Technology
 
@@ -254,10 +254,11 @@ wins by about 10%.
 	       (bds   '())
 	       (rands (cons cont rands)))
       (cond ((null? ll) bds)
-	    ((eq? (car ll) '#!optional)
+	    ((eq? (car ll) #!optional)
 	     (loop (cdr ll) bds rands))
 	    ((or (null? rands)
-		 (memq (car ll) '(#!aux #!rest)))
+		 (eq? #!rest (car ll))
+		 (eq? #!aux (car ll)))
 	     (map* bds coerce/binding/make (lambda-list->names ll)))
 	    (else
 	     (loop (cdr ll)

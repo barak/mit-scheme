@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: alpha.scm,v 1.12 1999/01/02 06:06:43 cph Exp $
+$Id: alpha.scm,v 1.13 1999/05/15 03:15:29 cph Exp $
 
 Copyright (c) 1994-1999 Massachusetts Institute of Technology
 
@@ -60,7 +60,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (alphaconv/rename-lambda-list lambda-list new-names)
   (let loop ((ll lambda-list) (nn new-names) (result '()))
     (cond ((null? ll) (reverse! result))
-	  ((memq (car ll) '(#!AUX #!OPTIONAL #!REST))
+	  ((or (eq? #!optional (car ll))
+	       (eq? #!rest (car ll))
+	       (eq? #!aux (car ll)))
 	   (loop (cdr ll) nn (cons (car ll) result)))
 	  (else
 	   (loop (cdr ll) (cdr nn) (cons (car nn) result))))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: kmp.scm,v 1.2 1999/01/02 06:06:43 cph Exp $
+$Id: kmp.scm,v 1.3 1999/05/15 03:15:06 cph Exp $
 
 Copyright (c) 1995, 1999 Massachusetts Institute of Technology
 
@@ -52,7 +52,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		     defs)))
 	    (cond ((null? args)
 		   defs)
-		  ((eq? (car args) '#!REST)
+		  ((eq? (car args) #!rest)
 		   (add-def (cadr args) path))
 		  ((eq? (car args) '#F)
 		   (loop (cdr args) `(CDR ,path) defs))

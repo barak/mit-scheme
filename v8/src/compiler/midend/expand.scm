@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: expand.scm,v 1.10 1999/01/02 06:06:43 cph Exp $
+$Id: expand.scm,v 1.11 1999/05/15 03:15:11 cph Exp $
 
 Copyright (c) 1994-1999 Massachusetts Institute of Technology
 
@@ -59,7 +59,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (expand/remember
    (let ((lambda-list (lambda/formals form))
 	 (body        (expand/expr (lambda/body form))))
-     (cond ((memq '#!AUX lambda-list)
+     (cond ((memq #!aux lambda-list)
 	    => (lambda (tail)
 		 (let ((rest  (list-prefix lambda-list tail))
 		       (auxes (cdr tail)))

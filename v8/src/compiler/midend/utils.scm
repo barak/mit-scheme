@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.33 1999/01/02 06:06:43 cph Exp $
+$Id: utils.scm,v 1.34 1999/05/15 03:14:54 cph Exp $
 
 Copyright (c) 1994-1999 Massachusetts Institute of Technology
 
@@ -761,23 +761,29 @@ Example use of FORM/COPY-TRANSFORMING:
 
 ;;;; Lambda-list utilities
 
+(define (lambda-list-keyword? object)
+  (or (eq? #!optional object)
+      (eq? #!rest object)
+      (eq? #!aux object)))
+
 (define (lambda-list->names lambda-list)
-  (delq* '(#!OPTIONAL #!REST #!AUX) lambda-list))
+  (cond ((null? lambda-list)
+	 lambda-list)
+	((lambda-list-keyword? (car lambda-list))
+	 (lambda-list->names (cdr lambda-list)))
+	(else
+	 (cons (car lambda-list) (lambda-list->names (cdr lambda-list))))))
 
 (define (lambda-list/count-names lambda-list)
   (let loop  ((list lambda-list) (count 0))
     (cond ((null? list)  count)
-	  ((memq (car list)  '(#!OPTIONAL #!REST #!AUX))
+	  ((lambda-list-keyword? (car list))
 	   (loop (cdr list) count))
 	  (else
 	   (loop (cdr list) (+ count 1))))))
 
 (define (hairy-lambda-list? lambda-list)
- (there-exists? lambda-list
-   (lambda (token)
-     (or (eq? token '#!OPTIONAL)
-	 (eq? token '#!REST)
-	 (eq? token '#!AUX)))))
+  (there-exists? lambda-list lambda-list-keyword?))
 
 (define (guarantee-simple-lambda-list lambda-list)
   (if (hairy-lambda-list? lambda-list)
@@ -788,10 +794,10 @@ Example use of FORM/COPY-TRANSFORMING:
       (internal-error "Wrong number of arguments" len args)))
 
 (define (lambda-list/applicate form lambda-list args)
-  ;; If LAMBDA-LIST is to be simplified by removing #!OPTIONAL and #!REST
+  ;; If LAMBDA-LIST is to be simplified by removing #!optional and #!rest
   ;; markers, then the ARGS must be processed to ensure the lambda
   ;; bindings are bould to the same values.  Returns a list of
-  ;; expressions. #!AUX is not allowed.  FORM is used only for error
+  ;; expressions. #!aux is not allowed.  FORM is used only for error
   ;; reporting to locate the user's source.
   (define (bad message)
     (user-error message	(form->source-irritant form)))
@@ -802,11 +808,11 @@ Example use of FORM/COPY-TRANSFORMING:
 	   (if (not (null? ops))
 	       (bad "Too many arguments"))
 	   (reverse! ops*))
-	  ((eq? (car ll) '#!OPTIONAL)
+	  ((eq? (car ll) #!optional)
 	   (loop (if (or (null? (cddr ll))
-			 (eq? '#!REST (caddr ll)))
+			 (eq? #!rest (caddr ll)))
 		     (cddr ll)
-		     (cons '#!OPTIONAL (cddr ll)))
+		     (cons #!optional (cddr ll)))
 		 (if (null? ops)
 		     ops
 		     (cdr ops))
@@ -814,7 +820,7 @@ Example use of FORM/COPY-TRANSFORMING:
 			   `(QUOTE ,%unassigned)
 			   (car ops))
 		       ops*)))
-	  ((eq? (car ll) '#!REST)
+	  ((eq? (car ll) #!rest)
 	   ;; This only works before CPS conversion.
 	   ;; By that time, all "lexprs" should have been split.
 	   (reverse!
@@ -836,15 +842,15 @@ Example use of FORM/COPY-TRANSFORMING:
   (let parse ((ll lambda-list))
     (cond ((null? ll)
 	   (values '() '() false '()))
-	  ((eq? (car ll) '#!OPTIONAL)
+	  ((eq? (car ll) #!optional)
 	   (call-with-values
 	    (lambda () (parse (cdr ll)))
 	    (lambda (opt opt* rest aux)
 	      (if (not (null? opt*))
-		  (internal-error "Multiple #!OPTIONAL specifiers"
+		  (internal-error "Multiple #!optional specifiers"
 				  lambda-list))
 	      (values '() opt rest aux))))
-	  ((eq? (car ll) '#!REST)
+	  ((eq? (car ll) #!rest)
 	   (call-with-values
 	    (lambda () (parse (cdr ll)))
 	    (lambda (req opt rest aux)
@@ -852,9 +858,9 @@ Example use of FORM/COPY-TRANSFORMING:
 		      (not (null? (cdr req)))
 		      (not (null? opt))
 		      rest)
-		  (internal-error "Unexpected stuff after #!REST" lambda-list))
+		  (internal-error "Unexpected stuff after #!rest" lambda-list))
 	      (values '() '() (car req) aux))))
-	  ((eq? (car ll) '#!AUX)
+	  ((eq? (car ll) #!aux)
 	   (call-with-values
 	    (lambda () (parse (cdr ll)))
 	    (lambda (req opt rest aux)
@@ -862,7 +868,7 @@ Example use of FORM/COPY-TRANSFORMING:
 		      (not (null? opt))
 		      rest
 		      (not (null? aux)))
-		  (internal-error "Unexpected stuff after #!AUX" lambda-list))
+		  (internal-error "Unexpected stuff after #!aux" lambda-list))
 	      (values '() '() false req))))
 	  (else
 	   (call-with-values

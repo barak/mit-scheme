@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dataflow.scm,v 1.21 1999/01/02 06:06:43 cph Exp $
+$Id: dataflow.scm,v 1.22 1999/05/15 03:15:17 cph Exp $
 
 Copyright (c) 1994-1999 Massachusetts Institute of Technology
 
@@ -1904,9 +1904,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (cond ((null? lambda-list)
            (if (not (null? args))
                (warn "Too many args" whole-lambda-list whole-args)))
-          ((eq? (car lambda-list) '#!OPTIONAL)
+          ((eq? (car lambda-list) #!optional)
            (optional-loop (cdr lambda-list) formals args))
-          ((eq? (car lambda-list) '#!REST)
+          ((eq? (car lambda-list) #!rest)
            (rest-loop (cdr lambda-list) formals args))
           ((null? args)
            (warn "Too few arguments" whole-lambda-list whole-args))
@@ -1918,7 +1918,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (cond ((null? lambda-list)
            (if (not (null? args))
                (warn "Too many args"  whole-lambda-list whole-args)))
-          ((eq? (car lambda-list) '#!REST)
+          ((eq? (car lambda-list) #!rest)
            (rest-loop (cdr lambda-list) formals args))
           ((null? args)
            (do-optional! (car lambda-list) (car formals) #f)

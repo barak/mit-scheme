@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: frag.scm,v 1.6 1999/01/02 06:06:43 cph Exp $
+$Id: frag.scm,v 1.7 1999/05/15 03:14:50 cph Exp $
 
 Copyright (c) 1995, 1999 Massachusetts Institute of Technology
 
@@ -695,7 +695,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	       (generate (append new-required
 				 (reverse new-args)
 				 rest-list-args
-				 (if rest? (list '#!rest new-rest-arg) '()))
+				 (if rest? (list #!rest new-rest-arg) '()))
 			 (append (if rest?
 				     (list (bind-ph terminal-ph new-rest-arg))
 				     '())

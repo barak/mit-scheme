@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cleanup.scm,v 1.32 1999/01/02 06:06:43 cph Exp $
+$Id: cleanup.scm,v 1.33 1999/05/15 03:15:25 cph Exp $
 
 Copyright (c) 1994-1999 Massachusetts Institute of Technology
 
@@ -49,7 +49,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (define (exit! name) (cleanup/env/exit! env name))
   (let ((lambda-list*
 	 (map (lambda (name)
-		(if (memq name '(#!AUX #!REST #!OPTIONAL))
+		(if (lambda-list-keyword? name)
 		    name
 		    (cleanup/binding/name (cleanup/env/enter! env name))))
 	      lambda-list)))
