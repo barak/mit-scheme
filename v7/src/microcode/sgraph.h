@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgraph.h,v 1.1 1987/05/28 00:51:46 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgraph.h,v 1.2 1988/03/11 02:54:59 arthur Rel $ */
 
 #include <starbase.c.h>
 
@@ -48,8 +48,8 @@ MIT in each case. */
 #define STARBASE_XMIN		-512.0
 #define STARBASE_YMIN		-384.0
 #define STARBASE_ZMIN		   0.0
-#define STARBASE_XMAX		 512.0
-#define STARBASE_YMAX		 384.0
+#define STARBASE_XMAX		 511.0
+#define STARBASE_YMAX		 383.0
 #define STARBASE_ZMAX		   0.0
 
 #endif
