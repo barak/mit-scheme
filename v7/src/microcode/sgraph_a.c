@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgraph_a.c,v 1.12 1990/04/17 21:54:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgraph_a.c,v 1.13 1990/10/03 00:11:45 cph Rel $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -86,7 +86,7 @@ DEFINE_PRIMITIVE ("XPLOT-ARRAY-0",
   REAL offset, scale;
   PRIMITIVE_HEADER (6);
   { 
-    struct xwindow * xw = (WINDOW_ARG (1));
+    struct xwindow * xw = (x_window_arg (1));
     CHECK_ARG (2, ARRAY_P);
     array = (ARG_REF (2));
     arg_plotting_box (3, plotting_box);
@@ -101,7 +101,8 @@ DEFINE_PRIMITIVE ("XPLOT-ARRAY-0",
        offset,
        scale);
     PRIMITIVE_RETURN (UNSPECIFIC);
-  }}
+  }
+}
 
 /* The following are taken from x11graphics.c 
  */
@@ -132,7 +133,8 @@ struct gw_extra
 #define ROUND_FLOAT(flonum)						\
   ((int) (((flonum) >= 0.0) ? ((flonum) + 0.5) : ((flonum) - 0.5)))
 
-static int xmake_x_coord(xw, virtual_device_x)
+static int
+xmake_x_coord (xw, virtual_device_x)
      struct xwindow * xw;
      float virtual_device_x;
 {
@@ -140,19 +142,21 @@ static int xmake_x_coord(xw, virtual_device_x)
   return (ROUND_FLOAT (device_x));
 }
 
-static int xmake_y_coord(xw, virtual_device_y)
+static int
+xmake_y_coord (xw, virtual_device_y)
      struct xwindow * xw;
      float virtual_device_y;
 {
-  float device_y = ((XW_Y_SLOPE (xw)) * (virtual_device_y - (XW_Y_BOTTOM (xw))));
+  float device_y =
+    ((XW_Y_SLOPE (xw)) * (virtual_device_y - (XW_Y_BOTTOM (xw))));
   return (((XW_Y_SIZE (xw)) - 1) + (ROUND_FLOAT (device_y)));
 }
-
-
+
 XPlot_C_Array_With_Offset_Scale (xw, Array, Length, Plotting_Box, 
 				 fill_with_lines, Offset, Scale)
      struct xwindow * xw;
-     float *Plotting_Box; long Length;
+     float *Plotting_Box;
+     long Length;
      int fill_with_lines;	/* plots filled with lines from 0 to y(t) */
      REAL *Array, Scale, Offset;
 {
@@ -187,11 +191,14 @@ XPlot_C_Array_With_Offset_Scale (xw, Array, Length, Plotting_Box,
 	     (internal_border_width + y));
 	  
 	  v_d_x = v_d_x + v_d_x_increment;
-	  /* Can not use    INTEGERS  x+x_increment    because x_increment may round to 0
-	     and we'll never move the cursor from starting point.
-	     Also   Array[i+skip]   will not work well, say 1024 points for 1000 places => last 24 are chopped
-	     whereas the costly loop we do,   downsamples in between more gracefully. 
-	     i.e. loop over  v_d_coordinates - in floats. */
+
+	  /* Can not use INTEGERS x+x_increment because x_increment
+	     may round to 0 and we'll never move the cursor from
+	     starting point.  Also Array[i+skip] will not work well,
+	     say 1024 points for 1000 places => last 24 are chopped
+	     whereas the costly loop we do, downsamples in between
+	     more gracefully.  i.e. loop over v_d_coordinates - in
+	     floats. */
 	}
     }
   else
@@ -221,8 +228,6 @@ XPlot_C_Array_With_Offset_Scale (xw, Array, Length, Plotting_Box,
 	}
     }
 }
-
-
 
 /* plot-array-0 is suffixed -0   in case we need more versions of array plot */
 
@@ -300,9 +305,7 @@ Plot_C_Array_With_Offset_Scale (device, Array, Length, Plotting_Box,
     }
   make_picture_current(device);
 }
-
-
-
+
 DEFINE_PRIMITIVE ("POLYGON2D", Prim_polygon2d, 2,2, 0)
 {
   float clist [TWICE_MAX_NUMBER_OF_CORNERS];
@@ -365,7 +368,6 @@ DEFINE_PRIMITIVE ("BOX-MOVE", Prim_box_move, 3,3, 0)
      x_dest, y_dest);
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
-
 
 /* Image Drawing (halftoning)
    HG = Hard Grey levels (i.e. output device greys)
@@ -542,9 +544,10 @@ DEFINE_PRIMITIVE ("IMAGE-HT-IBN-ATXY-WMM", Prim_image_ht_ibn_atxy_wmm, 9,9, 0)
 #define MINIMUM_INTENSITY_INDEX 2
 #define MAXIMUM_INTENSITY_INDEX 15
 
-/* ARGS = (device image x_at y_at magnification) magnification can be 1, 2, or 3 */
+/* ARGS = (device image x_at y_at magnification)
+   magnification can be 1, 2, or 3 */
 
-DEFINE_PRIMITIVE ("DRAW-MAGNIFY-IMAGE-AT-XY", Prim_draw_magnify_image_at_xy, 5,5, 0)
+DEFINE_PRIMITIVE ("DRAW-MAGNIFY-IMAGE-AT-XY", Prim_draw_magnify_image_at_xy, 5, 5, 0)
 {
   int device;
   long nrows, ncols, Length;
@@ -702,7 +705,7 @@ static int ht_od_table[8][2+36] =
   {17,4, 0,8,2,10, 12,4,14,6, 3,11,1,9, 15,7,13,5}
 };
 #define HT_OD_TABLE_MAX_INDEX 7
-
+
 /* ordered dither
    pdata must have length ncols
    HG= Hardware Grey levels (output pixel values 0,HG-1)
@@ -761,8 +764,8 @@ C_image_ht_od_atxy_wmm (device, Array, pdata, nrows,ncols, x_at,y_at, Min,Max,
    all cases in a uniform manner (for better explanation get PAS
    halftoning notes). */
 
-C_image_ht_bn_atxy_wmm (device, Array, pdata, nrows, ncols, x_at, y_at, Min, Max,
-			HG, BNmethod, er_rows)
+C_image_ht_bn_atxy_wmm (device, Array, pdata, nrows, ncols, x_at, y_at,
+			Min, Max, HG, BNmethod, er_rows)
      int device;
      REAL Array [], Min, Max;
      unsigned char * pdata;
@@ -792,8 +795,8 @@ C_image_ht_bn_atxy_wmm (device, Array, pdata, nrows, ncols, x_at, y_at, Min, Max
    the sole reason for this duplication is speed (if any) */
 
 /* FLOYD-STEINBERG-75 */
-C_image_ht_bn_atxy_wmm_0_ (device, Array, pdata, nrows, ncols, x_at, y_at, Min, Max,
-			   HG, er_rows)
+C_image_ht_bn_atxy_wmm_0_ (device, Array, pdata, nrows, ncols, x_at, y_at,
+			   Min, Max, HG, er_rows)
      int device;
      REAL Array[], Min,Max;
      unsigned char *pdata;
@@ -859,8 +862,8 @@ C_image_ht_bn_atxy_wmm_0_ (device, Array, pdata, nrows, ncols, x_at, y_at, Min, 
 }
 
 /* JARVIS-JUDICE-NINKE-76 mask */
-C_image_ht_bn_atxy_wmm_1_ (device, Array, pdata, nrows,ncols, x_at,y_at, Min,Max,
-			   HG, er_rows)
+C_image_ht_bn_atxy_wmm_1_ (device, Array, pdata, nrows,ncols, x_at,y_at,
+			   Min,Max, HG, er_rows)
      int device;
      REAL Array[], Min,Max;
      unsigned char *pdata;
@@ -920,8 +923,8 @@ C_image_ht_bn_atxy_wmm_1_ (device, Array, pdata, nrows,ncols, x_at,y_at, Min,Max
 }
 
 /* STUCKI-81 mask */
-C_image_ht_bn_atxy_wmm_2_ (device, Array, pdata, nrows,ncols, x_at,y_at, Min,Max,
-			   HG, er_rows)
+C_image_ht_bn_atxy_wmm_2_ (device, Array, pdata, nrows,ncols, x_at,y_at,
+			   Min,Max, HG, er_rows)
      int device;
      REAL Array[], Min,Max;
      unsigned char *pdata;
@@ -1003,7 +1006,7 @@ static int ht_ibn_table[3][2+(3*12)] =
           -1,-2,2, -1,-1,4, -1,0,8, -1,1,4, -1,2,2,
            0,-2,4,  0,-1,8}
 };
-
+
 /*
   er_rows[][] should be 3 arrays of integers, of length (ncols+2*ER_C),
   which store previous errors, (ALLOCATED STORAGE)
@@ -1071,12 +1074,12 @@ C_image_ht_ibn_atxy_wmm (device, Array, pdata, nrows,ncols, x_at,y_at, Min,Max,
     for (m=0;m<(ncols+(2*ER_C));m++) er_rows[2][m]=0;
   }
 }
-
-
+
 /* PSAM drawing (see scheme primitives definition for description)
    Pdata must be (16 * ncols) bytes in size. */
 
-C_image_psam_atxy_wmm(device, Array, pdata, nrows, ncols, x_origin, y_origin, Min,Max)
+C_image_psam_atxy_wmm(device, Array, pdata, nrows, ncols, x_origin, y_origin,
+		      Min,Max)
      int device;
      REAL Array[], Min,Max;
      unsigned char *pdata; /* pdata should have length 16*4*ncols */
@@ -1088,8 +1091,8 @@ C_image_psam_atxy_wmm(device, Array, pdata, nrows, ncols, x_origin, y_origin, Mi
   long color_index;
   REAL REAL_pixel, value, offset,scale;
 
-  Find_Offset_Scale_For_Linear_Map(Min, Max,
-				   0.0, 15.0,  &offset, &scale); /* 16 grey levels */
+  Find_Offset_Scale_For_Linear_Map
+    (Min, Max, 0.0, 15.0,  &offset, &scale); /* 16 grey levels */
   
   array_index=0;    i4=0;
   for (i=0; i<nrows; i++) 
@@ -1100,7 +1103,8 @@ C_image_psam_atxy_wmm(device, Array, pdata, nrows, ncols, x_origin, y_origin, Mi
       color_index = ((long) (REAL_pixel + .5));	/* integer between 0 and 15 */
       /* */
       my_write_dither(pdata, pdata_index, ncols4, color_index);
-      pdata_index = pdata_index + 4; /* dependency between this and my_write_dither */
+      /* dependency between this and my_write_dither */
+      pdata_index = pdata_index + 4;
     }
     block_write(device, x_origin, y_origin-i4, ncols4, 4, pdata, 0);
     i4 = i4+4;
@@ -1110,7 +1114,8 @@ C_image_psam_atxy_wmm(device, Array, pdata, nrows, ncols, x_origin, y_origin, Mi
 
 /* Same as above, except use Adjust_Value_Womm.
  */
-C_image_psam_atxy_womm(device, Array, pdata, nrows, ncols, x_origin, y_origin, Min,Max)
+C_image_psam_atxy_womm(device, Array, pdata, nrows, ncols, x_origin, y_origin,
+		       Min,Max)
      int device;
      REAL Array[], Min,Max;
      unsigned char *pdata; /* pdata should have length 16*4*ncols */
@@ -1122,8 +1127,8 @@ C_image_psam_atxy_womm(device, Array, pdata, nrows, ncols, x_origin, y_origin, M
   long color_index;
   REAL REAL_pixel, value, offset,scale;
   
-  Find_Offset_Scale_For_Linear_Map(Min, Max,
-				   0.0, 15.0,  &offset, &scale); /* 16 grey levels */
+  Find_Offset_Scale_For_Linear_Map
+    (Min, Max, 0.0, 15.0,  &offset, &scale); /* 16 grey levels */
   array_index=0;    i4=0;
   for (i=0; i<nrows; i++) 
   { pdata_index = 0;
@@ -1134,14 +1139,15 @@ C_image_psam_atxy_womm(device, Array, pdata, nrows, ncols, x_origin, y_origin, M
       color_index = ((long) (REAL_pixel + .5));	/* integer between 0 and 15 */
       /* */
       my_write_dither(pdata, pdata_index, ncols4, color_index);
-      pdata_index = pdata_index + 4; /* dependency between this and my_write_dither */
+      /* dependency between this and my_write_dither */
+      pdata_index = pdata_index + 4;
     }
     block_write(device, x_origin, y_origin-i4, ncols4, 4, pdata, 0);
     i4 = i4+4;
   }
   /* A(i,j) --> Array[i*ncols + j] */
 }
-
+
 /* psam dither[11] is left out, { 1,1,0,1, 1,1,1,0, 0,1,1,0, 1,0,1,1 } */
 
 /* The following routine writes a 4x4 dither cell
@@ -1154,22 +1160,23 @@ my_write_dither(pdata, pdata_row_index, ncols , color_index)
      unsigned char *pdata;
      long pdata_row_index, ncols;
      long color_index; /* should be 0 to 15 */
-{ static unsigned char dither_table[16][16] = {{ 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 },
-					       { 0,0,0,0, 0,1,0,0, 0,0,0,0, 0,0,0,0 },
-					       { 0,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,0 },
-					       { 0,0,0,0, 0,1,1,0, 0,0,1,0, 0,0,0,0 },
-					       { 0,0,0,0, 0,1,1,0, 0,1,1,0, 0,0,0,0 },
-					       { 1,0,0,0, 0,1,1,0, 0,1,1,0, 0,0,0,0 },
-					       { 1,0,0,0, 0,1,1,0, 0,1,1,0, 0,0,0,1 },
-					       { 1,0,0,1, 0,1,1,0, 0,1,1,0, 0,0,0,1 },
-					       { 1,0,0,1, 0,1,1,0, 0,1,1,0, 1,0,0,1 },
-					       { 1,1,0,1, 0,1,1,0, 0,1,1,0, 1,0,0,1 },
-					       { 1,1,0,1, 1,1,1,0, 0,1,1,0, 1,0,0,1 },
-					       { 1,1,0,1, 1,1,1,0, 0,1,1,1, 1,0,1,1 },
-					       { 1,1,0,1, 1,1,1,0, 1,1,1,1, 1,0,1,1 },
-					       { 1,1,1,1, 1,1,1,0, 1,1,1,1, 1,0,1,1 },
-					       { 1,1,1,1, 1,1,1,0, 1,1,1,1, 1,1,1,1 },
-					       { 1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1 }};
+{ static unsigned char dither_table[16][16] =
+    {{ 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 },
+       { 0,0,0,0, 0,1,0,0, 0,0,0,0, 0,0,0,0 },
+       { 0,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,0 },
+       { 0,0,0,0, 0,1,1,0, 0,0,1,0, 0,0,0,0 },
+       { 0,0,0,0, 0,1,1,0, 0,1,1,0, 0,0,0,0 },
+       { 1,0,0,0, 0,1,1,0, 0,1,1,0, 0,0,0,0 },
+       { 1,0,0,0, 0,1,1,0, 0,1,1,0, 0,0,0,1 },
+       { 1,0,0,1, 0,1,1,0, 0,1,1,0, 0,0,0,1 },
+       { 1,0,0,1, 0,1,1,0, 0,1,1,0, 1,0,0,1 },
+       { 1,1,0,1, 0,1,1,0, 0,1,1,0, 1,0,0,1 },
+       { 1,1,0,1, 1,1,1,0, 0,1,1,0, 1,0,0,1 },
+       { 1,1,0,1, 1,1,1,0, 0,1,1,1, 1,0,1,1 },
+       { 1,1,0,1, 1,1,1,0, 1,1,1,1, 1,0,1,1 },
+       { 1,1,1,1, 1,1,1,0, 1,1,1,1, 1,0,1,1 },
+       { 1,1,1,1, 1,1,1,0, 1,1,1,1, 1,1,1,1 },
+       { 1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1 }};
   long i, row_start,m;
   long dither_index;		/* do not mix up the counters, indexes */
   dither_index=0;
@@ -1177,9 +1184,7 @@ my_write_dither(pdata, pdata_row_index, ncols , color_index)
 		      for (m=row_start; m<row_start+4; m++) 
 			pdata[m] = dither_table[color_index][dither_index++]; }
 }
-    
 
-
 /* Below are the OLD DRAWING ROUTINES for 16 color monitors.
    In effect they are fixed threshold, with 16 HG levels.
    The only difference is they also do magnification by replicating pixels.
@@ -1187,8 +1192,8 @@ my_write_dither(pdata, pdata_row_index, ncols , color_index)
 
 /* Image_Draw_Magnify_N_Times : N^2 in area
  */
-Image_Draw_Magnify_N_Times_With_Offset_Scale (device, Array, pdata, nrows, ncols,
-					      x_origin,y_origin,Offset,Scale,N)
+Image_Draw_Magnify_N_Times_With_Offset_Scale
+  (device, Array, pdata, nrows, ncols, x_origin,y_origin,Offset,Scale,N)
      int device;
      REAL Array[], Offset, Scale;
      unsigned char *pdata;
@@ -1225,9 +1230,8 @@ Image_Draw_Magnify_N_Times_With_Offset_Scale (device, Array, pdata, nrows, ncols
    This procedure throws away (i.e. maps to SCREEN_BACKGROUND_COLOR)
    all values outside the range given by Offset,Scale.
    */
-Image_Draw_Magnify_N_Times_With_Offset_Scale_Only (device, Array, pdata, nrows, ncols,
-						   x_origin, y_origin,
-						   Offset, Scale, N)
+Image_Draw_Magnify_N_Times_With_Offset_Scale_Only
+  (device, Array, pdata, nrows, ncols, x_origin, y_origin, Offset, Scale, N)
      int device;
      REAL Array[], Offset, Scale;
      unsigned char *pdata;
@@ -1260,11 +1264,6 @@ Image_Draw_Magnify_N_Times_With_Offset_Scale_Only (device, Array, pdata, nrows, 
     /* A(i,j) --> Array[i*ncols + j] */
   }
 }
-
-
-/* END image drawing
- */
-
 
 /* Grey Level Manipulations */
 
@@ -1315,8 +1314,7 @@ DEFINE_PRIMITIVE ("INQUIRE-COLOR", Prim_inquire_color, 2,2, 0)
 		  (cons ((double_to_flonum ((double) (Color_Table[index][2]))),
 			 EMPTY_LIST))))));
 }
-
-
+
 DEFINE_PRIMITIVE ("READ-COLORS-FROM-FILE", Prim_read_colors_from_file, 2,2, 0)
 {
   int device;
