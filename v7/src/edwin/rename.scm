@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rename.scm,v 1.5 1992/09/10 02:44:22 cph Exp $
+;;;	$Id: rename.scm,v 1.6 1992/11/22 23:37:05 gjr Exp $
 ;;;
-;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-1992 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -51,11 +51,13 @@
       (window (->environment '(edwin window))))
   (let ((g<-e
 	 (lambda (g e)
-	   (local-assignment global g (lexical-reference edwin e)))))
+	   (if (not (lexical-unreferenceable? edwin e))
+	       (local-assignment global g (lexical-reference edwin e))))))
     (g<-e 'save-editor-files 'debug-save-files))
   (let ((e<-w
 	 (lambda (e w)
-	   (lexical-assignment edwin e (lexical-reference window w)))))
+	   (if (not (lexical-unreferenceable? window w))
+	       (lexical-assignment edwin e (lexical-reference window w))))))
     (e<-w 'window? 'buffer-frame?)
     (e<-w 'window-x-size 'buffer-frame-x-size)
     (e<-w 'window-y-size 'buffer-frame-y-size)
