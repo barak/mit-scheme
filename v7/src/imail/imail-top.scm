@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.52 2000/05/17 17:15:22 cph Exp $
+;;; $Id: imail-top.scm,v 1.53 2000/05/17 17:20:01 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -138,6 +138,11 @@ May be called with an IMAIL folder URL as argument;
      (buffer-put! buffer 'IMAIL-FOLDER folder)
      (buffer-put! buffer 'IMAIL-MESSAGE message)
      (folder-put! folder 'BUFFER buffer)
+     (set-buffer-default-directory!
+      buffer
+      (if (file-folder? folder)
+	  (directory-pathname (file-folder-pathname folder))
+	  (user-homedir-pathname)))
      (add-event-receiver! (folder-modification-event folder)
        (lambda (folder)
 	 (maybe-add-command-suffix! notice-folder-modifications folder))))))

@@ -1,10 +1,8 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.16 2000/05/17 16:25:06 cph Exp $
+$Id: todo.txt,v 1.17 2000/05/17 17:20:14 cph Exp $
 
 Bug fixes
 ---------
-
-* Set imail buffer directory to home directory for IMAP folders.
 
 * Implement operations for IMAP: FOLDER-VALID?.
 
