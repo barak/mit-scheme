@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hppa.h,v 1.50 1994/02/04 01:01:15 gjr Exp $
+$Id: hppa.h,v 1.51 1995/07/26 20:44:08 adams Exp $
 
 Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
@@ -86,6 +86,7 @@ typedef unsigned short format_word;
 #ifndef C_FUNC_PTR_IS_CLOSURE
 #  define interface_to_C ep_interface_to_C
 #  define interface_to_scheme ep_interface_to_scheme
+#  define interface_to_scheme_new ep_interface_to_scheme_new
 #endif
 
 /* Utilities for manipulating absolute subroutine calls.
@@ -114,15 +115,20 @@ extern void
 			       ((unsigned long) (nullify_p)));		\
 }
 
-/* Interrupt/GC polling. */
+/* OLD Interrupt/GC polling. */
 
-/* The length of the GC recovery code that precedes an entry.
-   On the HP-PA a "ble, ldi" instruction sequence.
+/* OLD The length of the GC recovery code that precedes an entry.
+   OLD On the HP-PA a "ble, ldi" instruction sequence.
  */
 
-#define ENTRY_PREFIX_LENGTH		8
+/* OLD #define ENTRY_PREFIX_LENGTH		8*/
+
+#define ENTRY_PREFIX_LENGTH		0
 
 /*
+
+THIS IS OLD:
+
   The instructions for a normal entry should be something like
 
   COMBT,>=,N	Rfree,Rmemtop,interrupt
@@ -141,6 +147,25 @@ extern void
   update Rmemtop directly.  At that point, the instruction following the
   COMB instruction will have to be nullified whenever the interrupt
   branch is processed.
+
+THIS IS NEW:
+
+  The instructions for a normal entry should be something like
+
+  entry_label
+	COMBT,>=	rs_free,rs_memtop,interrupt_label
+	LDW		REGBLOCK_MEMTOP(0,rs_regblock),rs_memtop
+	...
+  interrupt_label
+	BLE	new_procedure_interrupt_hook(4,rs_ble)
+	LDI	#args,1
+	WORD    interrupt_label-entry_label-3    ; offset
+
+
+  Continuations are similar, replacing new_procedure_interrupt_hook
+  with new_continuation_interrupt_hook.  Closures are similar except
+  that the entry point is in rs_closure so there is no need for an
+  offest word, and the hook is new_closure_interrupt_hook.
 
  */
 
@@ -193,9 +218,9 @@ extern void
      - 8: NON_MARKED header
      - 4: Format word
      - 2: 0xC (GC Offset to start of block from .+2)
-       0: BLE	4(4,3)		; call trampoline_to_interface
+       0: BLE	-16(4,3)		; call trampoline_to_interface
        4: LDI	index,28
-       8: trampoline dependent storage (0 - 3 longwords)
+       8: trampoline dependent storage (currently 1 - 4 longwords)
 
    TRAMPOLINE_ENTRY_SIZE is the size in longwords of the machine
    dependent portion of a trampoline, including the GC and format
@@ -220,6 +245,12 @@ extern void
    Note: this flushes both caches because the words may fall in a cache
    line that already has an association in the i-cache because a different
    trampoline or a closure are in it.
+
+   Note: The first storage word ALWAYS has the number of actual
+   operands that must be stored on the stack when the trampoline is
+   invoked.  This is fixed and known for each kind of trampoline.  It
+   is required so that the trampoline can save these registers on the
+   stack before invoking the (possibly C written) handler.
 */
 
 #define TRAMPOLINE_ENTRY_SIZE		3
@@ -241,9 +272,12 @@ extern void
 									\
   PC = ((unsigned long *) (entry_address));				\
 									\
-  /*	BLE	4(4,3)		*/					\
+  /*	was: BLE	4(4,3)		*/				\
+  /* *PC = ((unsigned long) 0xe4602008);	*/			\
 									\
-  *PC = ((unsigned long) 0xe4602008);					\
+  /*	BLE	-16(4,3)	*/					\
+									\
+  *PC = ((unsigned long) 0xe47f3fe5);					\
 									\
   /*	LDO	index(0),28	*/					\
   /*    This assumes that index is >= 0. */				\
@@ -640,7 +674,7 @@ DEFUN (assemble_12, (inst), union branch_inst inst)
 static unsigned long hppa_closure_hook = 0;
 
 static unsigned long
-DEFUN (C_closure_entry_point, (C_closure), unsigned long C_closure)
+DEFUN (C_closure_entry_point, (closure), unsigned long C_closure)
 {
   if ((C_closure & 0x3) != 0x2)
     return (C_closure);
@@ -680,15 +714,14 @@ static unsigned long
   * bkpt_minus_proceed_thunk_start,
   * bkpt_minus_proceed_thunk,
   * bkpt_closure_proceed_thunk,
-  * bkpt_closure_proceed_thunk_end,
-  * bkpt_proceed_buffer = ((unsigned long *) NULL);
+  * bkpt_closure_proceed_thunk_end;
 
 #define FAHRENHEIT 451
 
 static void
 DEFUN_VOID (bkpt_init)
 {
-  int i, this_size, max_size;
+  int i;
   union branch_inst instr;
   extern void EXFUN (bkpt_normal_proceed, (void));
   extern void EXFUN (bkpt_plus_proceed, (void));
@@ -743,25 +776,6 @@ DEFUN_VOID (bkpt_init)
   bkpt_closure_proceed_thunk_end
     = ((unsigned long *)
        (C_closure_entry_point ((unsigned long) bkpt_closure_proceed_end)));
-
-  max_size = (bkpt_closure_proceed_thunk_end - bkpt_closure_proceed_thunk);
-  this_size = (bkpt_plus_proceed_thunk - bkpt_normal_proceed_thunk);
-  if (this_size > max_size)
-    max_size = this_size;
-  this_size = (bkpt_closure_proceed_thunk - bkpt_minus_proceed_thunk_start);
-  if (this_size > max_size)
-    max_size = this_size;
-  this_size = (bkpt_minus_proceed_thunk_start - bkpt_plus_proceed_thunk);
-  if (this_size > max_size)
-    max_size = this_size;
-  
-  bkpt_proceed_buffer = ((unsigned long *)
-			 (malloc (max_size * (sizeof (unsigned long)))));
-  if (bkpt_proceed_buffer == ((unsigned long *) NULL))
-  {
-    outf_fatal ("Unable to allocate the breakpoint buffer.\n");
-    termination_init_error ();
-  }
   return;
 }
 
@@ -909,7 +923,6 @@ DEFUN (bkpt_p, (entry_point), PTR entry_point)
 Boolean
 DEFUN (do_bkpt_proceed, (value), unsigned long * value)
 {
-  unsigned long * buffer = ((unsigned long *) bkpt_proceed_buffer);
   SCHEME_OBJECT ep = (STACK_POP ());
   SCHEME_OBJECT handle = (STACK_POP ());
   SCHEME_OBJECT state = (STACK_POP ());
@@ -921,6 +934,7 @@ DEFUN (do_bkpt_proceed, (value), unsigned long * value)
     case BKPT_KIND_CLOSURE:
     {
       int i, len;
+      unsigned long * buffer = ((unsigned long *) Constant_Top);
       unsigned long * clos_entry
 	= (OBJECT_ADDRESS (FAST_MEMORY_REF (handle, 4)));
       SCHEME_OBJECT real_entry_point;
@@ -942,6 +956,7 @@ DEFUN (do_bkpt_proceed, (value), unsigned long * value)
     case BKPT_KIND_NORMAL:
     {
       int i, len;
+      unsigned long * buffer = ((unsigned long *) Constant_Top);
 
       len = (bkpt_plus_proceed_thunk - bkpt_normal_proceed_thunk);
       for (i = 0; i < (len - 2); i++)
@@ -962,7 +977,7 @@ DEFUN (do_bkpt_proceed, (value), unsigned long * value)
       * value = ((unsigned long) ((OBJECT_ADDRESS (ep)) + 2));
       return (TRUE);
     }
-
+
     case BKPT_KIND_BL_INST:
     case BKPT_KIND_BLE_INST:
     default:
@@ -975,6 +990,7 @@ DEFUN (do_bkpt_proceed, (value), unsigned long * value)
       long offset;
       int i, len, clobber;
       union branch_inst new, old;
+      unsigned long * buffer = ((unsigned long *) Constant_Top);
       unsigned long * instrs = ((unsigned long *) (OBJECT_ADDRESS (ep)));
       unsigned long * block;
 
