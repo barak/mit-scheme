@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: stream.scm,v 14.19 2004/06/12 02:15:48 cph Exp $
+$Id: stream.scm,v 14.20 2005/02/08 00:11:11 cph Exp $
 
 Copyright 1986,1987,1988,1989,1992,1995 Massachusetts Institute of Technology
-Copyright 1998,2003,2004 Massachusetts Institute of Technology
+Copyright 1998,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -33,14 +33,14 @@ USA.
   (and (pair? stream)
        (promise? (cdr stream))))
 
+(define-guarantee stream-pair "stream pair")
+
 (define (stream-car stream)
-  (if (not (stream-pair? stream))
-      (error:wrong-type-argument stream "stream" 'STREAM-CAR))
+  (guarantee-stream-pair stream 'STREAM-CAR)
   (car stream))
 
 (define (stream-cdr stream)
-  (if (not (stream-pair? stream))
-      (error:wrong-type-argument stream "stream" 'STREAM-CDR))
+  (guarantee-stream-pair stream 'STREAM-CDR)
   (force (cdr stream)))
 
 (define the-empty-stream '())
@@ -247,7 +247,7 @@ USA.
       (cons-stream (car list) (list->stream (cdr list)))
       (begin
 	(if (not (null? list))
-	    (error:wrong-type-argument list "list" 'LIST->STREAM))
+	    (error:not-list list 'LIST->STREAM))
 	'())))
 
 (define (stream->list stream)

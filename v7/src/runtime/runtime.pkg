@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.529 2005/01/23 17:53:16 cph Exp $
+$Id: runtime.pkg,v 14.530 2005/02/08 00:10:55 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -3821,6 +3821,8 @@ USA.
   (export ()
 	  condition-type:illegal-stream-element
 	  empty-stream?
+	  error:not-stream-pair
+	  guarantee-stream-pair
 	  head
 	  list->stream
 	  make-prime-numbers-stream
