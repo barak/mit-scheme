@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxsig.c,v 1.36 2001/07/16 02:44:01 cph Exp $
+$Id: uxsig.c,v 1.37 2001/10/25 17:17:19 cph Exp $
 
 Copyright (c) 1990-2001 Massachusetts Institute of Technology
 
@@ -512,11 +512,29 @@ DEFUN_STD_HANDLER (sighnd_terminate,
     ? (find_signal_name (signo))
     : 0)))
 
+#ifdef HAS_COMPILER_SUPPORT
+#  ifdef __IA32__
+
+#define FPE_RESET_TRAPS()						\
+{									\
+  /* Reinitialize the floating-point control word.  */			\
+  extern void EXFUN (i386_interface_initialize, (void));		\
+  i386_interface_initialize ();						\
+}
+
+#  endif
+#endif
+
+#ifndef FPE_RESET_TRAPS
+#  define FPE_RESET_TRAPS()
+#endif
+
 static
 DEFUN_STD_HANDLER (sighnd_fpe,
 {
   if (executing_scheme_primitive_p ())
     error_floating_point_exception ();
+  FPE_RESET_TRAPS ();
   trap_handler ("floating-point exception", signo, info, scp);
 })
 
