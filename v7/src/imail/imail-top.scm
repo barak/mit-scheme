@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.127 2000/06/05 17:50:10 cph Exp $
+;;; $Id: imail-top.scm,v 1.128 2000/06/05 18:16:44 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -838,8 +838,11 @@ With prefix argument N moves backward N messages with these flags."
 	  (user-homedir-pathname)))
      (add-event-receiver! (folder-modification-event folder)
        (lambda (folder type parameters)
-	 type parameters
-	 (maybe-add-command-suffix! notice-folder-modifications folder)))
+	 (if (eq? type 'EXPUNGE)
+	     (maybe-add-command-suffix! notice-message-expunge
+					folder
+					(car parameters))
+	     (maybe-add-command-suffix! notice-folder-modifications folder))))
      (add-kill-buffer-hook buffer delete-associated-buffers)
      (add-kill-buffer-hook buffer stop-probe-folder-thread)
      (start-probe-folder-thread buffer))))
@@ -898,6 +901,20 @@ With prefix argument N moves backward N messages with these flags."
 			       (imail-mode-line-summary-string buffer)
 			       buffer)
 	  (buffer-modeline-event! buffer 'PROCESS-STATUS)))))
+
+(define (notice-message-expunge folder index)
+  (let ((buffer (imail-folder->buffer folder #f)))
+    (if buffer
+	(let ((m (selected-message #f buffer)))
+	  (if (or (not m)
+		  (message-detached? m))
+	      (select-message folder
+			      (let ((length (folder-length folder)))
+				(cond ((< index length) index)
+				      ((> length 0) (- length 1))
+				      (else #f)))
+			      #t)))))
+  (notice-folder-modifications folder))
 
 (define (imail-mode-line-summary-string buffer)
   (let ((folder (selected-folder #f buffer))
@@ -1311,16 +1328,15 @@ With prefix argument N, undeletes backward N messages,
 				(imail-expunge-pop-up-messages folder)
 				(do-prompt)))
 			     (do-prompt))))))
-	       (let ((message
-		      (let ((message (selected-message)))
-			(if (message-deleted? message)
-			    (or (next-message message message-undeleted?)
-				(previous-message message message-undeleted?)
-				(next-message message)
-				(previous-message message))
-			    message))))
-		 (expunge-deleted-messages folder)
-		 (select-message folder message)))
+	       (let ((message (selected-message)))
+		 (if (message-deleted? message)
+		     (select-message
+		      folder
+		      (or (next-message message message-undeleted?)
+			  (previous-message message message-undeleted?)
+			  (next-message message)
+			  (previous-message message)))))
+	       (expunge-deleted-messages folder))
 	      (else
 	       (message "Messages not expunged")))))))
 
