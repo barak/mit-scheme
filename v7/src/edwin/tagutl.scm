@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tagutl.scm,v 1.42 1991/05/20 20:31:21 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tagutl.scm,v 1.43 1991/10/11 03:32:51 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -60,7 +60,8 @@ A directory name is ok too; it means file TAGS in that directory."
     (let ((pathname (->pathname filename)))
       (set-variable!
        tags-table-pathname
-       (if (file-directory? pathname)
+       (if (or (not (pathname-name pathname))
+	       (file-directory? pathname))
 	   (pathname-new-name (pathname-as-directory pathname) "TAGS")
 	   pathname)))))
 
