@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.35 1992/05/26 23:20:17 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.36 1992/05/26 23:23:42 mhwu Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -439,9 +439,9 @@ MIT in each case. |#
 	(cp-table (make-vector window-size))
 	(port/read-char 
 	 (or (input-port/operation/read-char input-port)
-	     (if-fail "Port doesn't support read-char" input-port)))
+	     (error "Port doesn't support read-char" input-port)))
 	(port/read-substring
-	 (input-port/operation/read-substring inport)))
+	 (input-port/operation/read-substring input-port)))
 
     (define (displacement->cp-index displacement cp)
       (let ((index (fix:- cp displacement)))
