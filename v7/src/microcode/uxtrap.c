@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.c,v 1.1 1990/06/20 19:37:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.c,v 1.2 1990/06/28 18:24:36 jinx Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -147,12 +147,18 @@ DEFUN (trap_handler, (message, signo, code, scp),
 	trap_immediate_termination ();
     case trap_state_recover:
       if (WITHIN_CRITICAL_SECTION_P ())
-	{
-	  fputs (">> Successful recovery is unlikely.\n", stdout);
-	  break;
-	}
+      {
+	fputs (">> Successful recovery is unlikely.\n", stdout);
+	break;
+      }
       else
+      {
+	saved_trap_state = old_trap_state;
+	saved_signo = signo;
+	saved_code = code;
+	saved_scp = scp;
 	trap_recover ();
+      }
     case trap_state_exit:
       termination_trap ();
     }
@@ -211,6 +217,48 @@ static struct trap_recovery_info dummy_recovery_info =
   SHARP_F
 };
 
+struct ux_sig_code_desc
+{
+  int signo;
+  unsigned long code_mask;
+  unsigned long code_value;
+  char *name;
+};
+
+DECLARE_UX_SIGNAL_CODES;
+
+static SCHEME_OBJECT
+DEFUN (find_signal_code_name, (signo, code),
+       int signo AND
+       int code)
+{
+  SCHEME_OBJECT codenam, codenum, result;
+  struct ux_sig_code_desc *entry;
+
+  for (entry = &ux_signal_codes[0];
+       entry->signo != 0;
+       entry += 1)
+  {
+    if ((entry->signo == signo) &&
+	(((entry->code_mask) & ((unsigned long) code)) ==
+	 (entry->code_value)))
+    {
+      break;
+    }
+  }
+
+  codenam = ((entry->signo == 0)
+	     ? SHARP_F
+	     : (char_pointer_to_string (entry->name)));
+  codenum = (long_to_integer ((long) code));
+
+  result = (MAKE_POINTER_OBJECT (TC_LIST, Free));
+  *Free++ = codenum;
+  *Free++ = codenam;
+
+  return (result);  
+}
+
 static void
 DEFUN (setup_trap_frame, (signo, code, info, new_stack_pointer),
        int signo AND
@@ -219,7 +267,7 @@ DEFUN (setup_trap_frame, (signo, code, info, new_stack_pointer),
        SCHEME_OBJECT * new_stack_pointer)
 {
   SCHEME_OBJECT handler;
-  SCHEME_OBJECT signal_name;
+  SCHEME_OBJECT signal_name, signal_code;
   int stack_recovered_p = (new_stack_pointer != 0);
   long saved_mask = (FETCH_INTERRUPT_MASK ());
   SET_INTERRUPT_MASK (0);	/* To prevent GC for now. */
@@ -230,14 +278,15 @@ DEFUN (setup_trap_frame, (signo, code, info, new_stack_pointer),
       fflush (stderr);
       termination_trap ();
     }
+  if (Free > MemTop)
+  {
+    Request_GC (0);
+  }
   signal_name =
     ((signo == 0)
      ? SHARP_F
      : (char_pointer_to_string (find_signal_name (signo))));
-  if (Free > MemTop)
-    {
-      Request_GC (0);
-    }
+  signal_code = (find_signal_code_name (signo, code));
   History = (Make_Dummy_History ());
   if (!stack_recovered_p)
     {
@@ -256,7 +305,7 @@ DEFUN (setup_trap_frame, (signo, code, info, new_stack_pointer),
   STACK_PUSH (info -> pc_info_1);
   STACK_PUSH (info -> state);
   STACK_PUSH (BOOLEAN_TO_OBJECT (stack_recovered_p));
-  STACK_PUSH (long_to_integer (code));
+  STACK_PUSH (signal_code);
   STACK_PUSH (signal_name);
   Store_Return (RC_HARDWARE_TRAP);
   Store_Expression (long_to_integer (signo));
@@ -624,6 +673,11 @@ DEFUN (find_block_address_in_area, (pc_value, area_start),
 		 ? 0
 		 : block);
 	    }
+	  }
+	default:
+	  {
+	    area += 1;
+	    break;
 	  }
 	}
     }
