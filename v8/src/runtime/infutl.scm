@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.34 1992/05/26 23:16:17 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.35 1992/05/26 23:20:17 mhwu Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -441,8 +441,7 @@ MIT in each case. |#
 	 (or (input-port/operation/read-char input-port)
 	     (if-fail "Port doesn't support read-char" input-port)))
 	(port/read-substring
-	 (or (input-port/operation input-port 'READ-SUBSTRING)
-	     input-port/read-substring)))
+	 (input-port/operation/read-substring inport)))
 
     (define (displacement->cp-index displacement cp)
       (let ((index (fix:- cp displacement)))
@@ -499,7 +498,7 @@ MIT in each case. |#
 	     (marker-size (string-length file-marker))
 	     (actual-marker (make-string marker-size)))
 	;; This may get more hairy as we up versions
-	(if (and (fix:= (input-port/read-substring
+	(if (and (fix:= ((input-port/operation/read-substring input)
 			 input actual-marker 0 marker-size)
 			marker-size)
 		 (string=? file-marker actual-marker))
@@ -510,23 +509,22 @@ MIT in each case. |#
 	    (if-fail "Not a recognized compressed file" ifile))))))
 
 ;;; Should be in the runtime system
-(define (input-port/read-substring input-port buffer start end)
-  (let ((port/read-substring
- 	 (or (input-port/operation input-port 'READ-SUBSTRING)
-	     (let ((port/read-char 
-		    (or (input-port/operation/read-char input-port)
-			(error "Port doesn't support read-char" input-port))))
-	       (lambda (port buffer start end)
-		 (let loop ((i start))
-		   (if (fix:>= i end)
-		       (fix:- i start)
-		       (let ((char (port/read-char port)))
-			 (if (eof-object? char)
-			     (fix:- i start)
-			     (begin
-			       (string-set! buffer i char)
-			       (loop (fix:1+ i))))))))))))
-    (port/read-substring input-port buffer start end)))
+(define (input-port/operation/read-substring input-port)
+  (or (input-port/operation input-port 'READ-SUBSTRING)
+      (let ((port/read-char 
+	     (or (input-port/operation/read-char input-port)
+		 (error "Port doesn't support read-char" input-port))))
+	;; All hell breaks lose if the port isn't the same!
+	(lambda (port buffer start end)
+	  (let loop ((i start))
+	    (if (fix:>= i end)
+		(fix:- i start)
+		(let ((char (port/read-char port)))
+		  (if (eof-object? char)
+		      (fix:- i start)
+		      (begin
+			(string-set! buffer i char)
+			(loop (fix:1+ i)))))))))))
 
 (define (find-alternate-file-type base-pathname exts/receivers)
   (or (null? exts/receivers)
