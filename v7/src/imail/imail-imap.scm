@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.98 2000/06/01 19:29:35 cph Exp $
+;;; $Id: imail-imap.scm,v 1.99 2000/06/01 20:08:26 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -778,14 +778,24 @@
   (parse-mime-body (imap-message-bodystructure message)))
 
 (define-method message-mime-body-part ((message <imap-message>) selector)
-  (let ((section (map (lambda (n) (+ n 1)) selector)))
+  (let ((section
+	 (map (lambda (x)
+		(if (exact-nonnegative-integer? x)
+		    (+ x 1)
+		    x))
+	      selector)))
     (imap:response:fetch-body-part
      (imap:command:uid-fetch
       (imap-folder-connection (message-folder message))
       (imap-message-uid message)
       `(',(string-append "body["
 			 (decorated-string-append
-			  "" "." "" (map number->string section))
+			  "" "." ""
+			  (map (lambda (x)
+				 (if (exact-nonnegative-integer? x)
+				     (number->string x)
+				     (symbol->string x)))
+			       section))
 			 "]")))
      section
      #f)))
