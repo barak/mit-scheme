@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.85 1990/11/02 03:24:45 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.86 1991/01/15 13:59:08 cph Exp $
 ;;;
-;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989, 1990, 1991 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -84,8 +84,6 @@
   (operation/write-char! false read-only true)
   (operation/write-cursor! false read-only true)
   (operation/write-substring! false read-only true)
-  (operation/x-size false read-only true)
-  (operation/y-size false read-only true)
   (root-window false)
   (needs-update? false)
   (in-update? false)
