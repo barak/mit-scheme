@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2msg.c,v 1.4 1995/01/05 23:54:48 cph Exp $
+$Id: os2msg.c,v 1.5 1995/02/07 23:54:09 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -224,12 +224,41 @@ OS2_initialize_message_lengths (void)
     }
 }
 
+void
+OS2_check_message_length_initializations (void)
+{
+  unsigned int type = 0;
+  while (1)
+    {
+      if ((MESSAGE_LENGTH (type)) == 0)
+	{
+	  char buffer [64];
+	  sprintf (buffer, "Message type %d not initialized.", type);
+	  OS2_logic_error (buffer);
+	}
+      if (type == MSG_TYPE_MAX)
+	break;
+      type += 1;
+    }
+}
+
 msg_length_t
 OS2_message_type_length (msg_type_t type)
 {
-  msg_length_t length = (MESSAGE_LENGTH (type));
+  msg_length_t length;
+  if (type > MSG_TYPE_MAX)
+    {
+      char buffer [64];
+      sprintf (buffer, "Message type %d out of range.", type);
+      OS2_logic_error (buffer);
+    }
+  length = (MESSAGE_LENGTH (type));
   if (length == 0)
-    OS2_logic_error ("Message type has unknown length.");
+    {
+      char buffer [64];
+      sprintf (buffer, "Message type %d has unknown length.", type);
+      OS2_logic_error (buffer);
+    }
   return (length);
 }
 

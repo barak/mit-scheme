@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2top.c,v 1.10 1995/01/16 20:56:12 cph Exp $
+$Id: os2top.c,v 1.11 1995/02/07 23:54:55 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -51,6 +51,8 @@ extern void OS2_initialize_scheme_thread (void);
 extern void OS2_initialize_tty (void);
 extern void OS2_initialize_window_primitives (void);
 
+extern void OS2_check_message_length_initializations (void);
+
 extern const char * OS_Name;
 extern const char * OS_Variant;
 extern HMTX OS2_create_queue_lock;
@@ -92,6 +94,9 @@ OS_initialize (void)
   OS2_initialize_tty ();
   OS2_initialize_window_primitives ();
   OS2_initialize_processes ();
+  /* This must be after all of initializations that can set message
+     lengths.  */
+  OS2_check_message_length_initializations ();
   OS_Name = "OS/2";
   {
     const char * version = (OS2_version_string ());
