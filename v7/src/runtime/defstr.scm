@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 14.11 1989/08/10 15:18:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 14.12 1989/08/15 15:14:34 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -154,16 +154,17 @@ must be defined when the defstruct is evaluated.
 		       keyword-constructors)))
 	  ((CONSTRUCTOR)
 	   (check-arguments 0 2)
-	   (let ((name (car arguments)))
-	     (if (memq name '(#F FALSE NIL))
-		 (set! default-constructor-disabled? true)
-		 (set! boa-constructors
-		       (cons (cons* option
-				    (if (null? arguments)
-					(symbol-append 'make- name)
-					(car arguments))
-				    (cdr arguments))
-			     keyword-constructors)))))	  ((COPIER)
+	   (if (null? arguments)
+	       (set! boa-constructors
+		     (cons (list option (symbol-append 'make- name))
+			   boa-constructors))
+	       (let ((name (car arguments)))
+		 (if (memq name '(#F FALSE NIL))
+		     (set! default-constructor-disabled? true)
+		     (set! boa-constructors
+			   (cons (cons option arguments)
+				 boa-constructors))))))
+	  ((COPIER)
 	   (check-arguments 0 1)
 	   (if (not (null? arguments))
 	       (set! copier-name (symbol-option (symbol-append 'copy- name)))))
