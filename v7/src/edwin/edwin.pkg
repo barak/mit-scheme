@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.131 1993/09/09 21:33:54 cph Exp $
+$Id: edwin.pkg,v 1.132 1993/09/09 21:41:39 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -839,9 +839,8 @@ MIT in each case. |#
   (export (edwin)
 	  add-text-properties
 	  add-text-property
-	  get-property-at
-	  group-extract-properties
-	  group-reinsert-properties!
+	  get-text-properties
+	  get-text-property
 	  local-comtabs
 	  next-property-change
 	  next-specific-property-change
@@ -849,12 +848,15 @@ MIT in each case. |#
 	  previous-property-change
 	  remove-text-properties
 	  remove-text-property
-	  set-text-properties
+	  set-text-properties)
+  (export (edwin group-operations)
 	  text-not-deleteable?
 	  text-not-insertable?
-	  text-properties-at
 	  update-intervals-for-deletion!
 	  update-intervals-for-insertion!)
+  (export (edwin undo)
+	  group-extract-properties
+	  group-reinsert-properties!)
   (export (edwin window)
 	  find-interval
 	  interval-end

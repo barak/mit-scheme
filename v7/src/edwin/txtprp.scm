@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: txtprp.scm,v 1.9 1993/09/09 20:59:26 cph Exp $
+;;;	$Id: txtprp.scm,v 1.10 1993/09/09 21:41:25 cph Exp $
 ;;;
 ;;;	Copyright (c) 1993 Massachusetts Institute of Technology
 ;;;
@@ -224,22 +224,21 @@
 			 (fix:+ (group-modified-tick group) 1)))))
     (set-interrupt-enables! interrupt-mask)))
 
-(define (text-properties-at index group)
-  (validate-point-arguments group index 'TEXT-PROPERTIES-AT)
+(define (get-text-properties group index)
+  (validate-point-arguments group index 'GET-TEXT-PROPERTIES)
   (if (group-text-properties group)
       (alist-copy (interval-properties (find-interval group index)))
       '()))
 
-(define (get-property-at prop index group)
-  (validate-point-arguments group index 'GET-PROPERTY-AT)
-  (and (group-text-properties group)
-       (assq prop (interval-properties (find-interval group index)))))
+(define (get-text-property group index key default)
+  (validate-point-arguments group index 'GET-TEXT-PROPERTY)
+  (validate-symbol-argument key 'GET-TEXT-PROPERTY)
+  (if (group-text-properties group)
+      (interval-property (find-interval group index) key default)
+      default))
 
 (define (local-comtabs mark)
-  (let ((property
-	 (get-property-at 'COMMAND-TABLE (mark-index mark) (mark-group mark))))
-    (and property
-	 (cdr property))))
+  (get-text-property (mark-group mark) (mark-index mark) 'COMMAND-TABLE #f))
 
 ;;; The next four procedures are all about the same
 ;;; and none have been tested.
