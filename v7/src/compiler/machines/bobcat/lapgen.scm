@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.26 1990/01/18 22:43:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.27 1990/02/23 21:43:42 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -634,15 +634,7 @@ MIT in each case. |#
   (lambda (target n)
     (cond ((= n 1) (LAP))
 	  ((= n -1) (LAP (NEG L ,target)))
-	  (else
-	   (let ((power-of-2 (integer-log-base-2? n)))
-	     (if power-of-2
-		 (if (> power-of-2 8)
-		     (let ((temp (reference-temporary-register! 'DATA)))
-		       (LAP (MOV L (& ,power-of-2) ,temp)
-			    (AS R L ,temp ,target)))
-		     (LAP (AS R L (& ,power-of-2) ,target)))
-		 (LAP (DIV S L (& ,n) ,target))))))))
+	  (else (LAP (DIV S L (& ,n) ,target))))))
 
 (define-fixnum-method 'FIXNUM-REMAINDER fixnum-methods/2-args
   (lambda (target source)
@@ -655,17 +647,10 @@ MIT in each case. |#
   (lambda (target n)
     (if (or (= n 1) (= n -1))
 	(LAP (CLR L ,target))
-	(let ((power-of-2 (integer-log-base-2? n)))
-	  (if power-of-2
-	      (if (> power-of-2 8)
-		  (let ((temp (reference-temporary-register! 'DATA)))
-		    (LAP (MOV L (& ,power-of-2) ,temp)
-			 (AS R L ,temp ,target)))
-		  (LAP (AS R L (& ,power-of-2) ,target)))
-	      (let ((temp (reference-temporary-register! 'DATA)))
-		(LAP
-		 (DIV S L (& ,(* n fixnum-1)) ,temp ,target)
-		 (MOV L ,temp ,target))))))))
+	(let ((temp (reference-temporary-register! 'DATA)))
+	  (LAP
+	   (DIV S L (& ,(* n fixnum-1)) ,temp ,target)
+	   (MOV L ,temp ,target))))))
 
 ;;;; Flonum Operators
 
