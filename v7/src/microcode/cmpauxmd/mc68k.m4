@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.1 1989/11/01 18:46:41 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.2 1989/11/06 17:35:29 jinx Exp $
 ###
 ###	Copyright (c) 1989 Massachusetts Institute of Technology
 ###
@@ -92,6 +92,13 @@ define(rfree, %a5)	# Free pointer
 define(regs, %a6)	# Pointer to Registers[0]
 define(rmask, %d7)	# Mask to clear type code
 
+# Implementation constants -- Must match object.h
+
+define(HEX, `0x$1')
+define(TC_LENGTH, ifdef(`TYPE_CODE_LENGTH', TYPE_CODE_LENGTH, 8))
+define(ADDRESS_MASK, eval(((2 ** (32 - TC_LENGTH)) - 1), 16))
+	set	address_mask,HEX(ADDRESS_MASK)
+
 # This must match const.h (* 4)
 
 	set	regblock_val,8
@@ -129,7 +136,7 @@ define_debugging_label(c_save_stack)
 ### to the entry point specified by its only argument.
 
 define_c_label(C_to_interface)
-	link.l	%a6,-44
+	link.l	%a6,&-44
 	movm.l	%d2-%d7/%a2-%a5,4(%sp)
 	mov.l	8(%a6),%a0		# Argument: entry point
 	bra.b	interface_to_scheme_internal
@@ -139,6 +146,7 @@ define_c_label(C_to_interface)
 ### of the trampoline storage area, passed to the C handler as the
 ### first argument.
 
+define_debugging_label(comentry_trampoline_to_interface)
 define_debugging_label(trampoline_to_interface)
 	mov.l	(%sp)+,%d1
 ###	bra	scheme_to_interface	# Fall through
@@ -148,6 +156,7 @@ define_debugging_label(trampoline_to_interface)
 
 reference_external(utility_table)
 
+define_debugging_label(comentry_scheme_to_interface)
 define_debugging_label(scheme_to_interface)
 	switch_to_C_registers()
 	mov.l	%d4,-(%sp)		# Push arguments to scheme utility
@@ -224,7 +233,7 @@ define_c_label(interface_to_C)
 
 	data
 
-define_c_label(Registers) # Move to C world & reformat latter
+define_c_label(Registers) # Move to C world & reformat later
 	space	regblock_length
 define_debugging_label(data_patch_area)
 	space	64
@@ -232,3 +241,378 @@ define_debugging_label(data_patch_area)
 # This is in the data segment so that it can be modified!
 define_debugging_label(code_patch_area)
 	space	256	
+
+# Compatibility handlers for existing compiled code.  They just load
+# the appropriate registers, plus an index, and jump off into
+# scheme_to_interface, above.
+
+	text
+
+	set offset_primitive_apply,HEX(12)
+	set offset_primitive_lexpr_apply,HEX(13)
+	set offset_apply,HEX(14)
+	set offset_error,HEX(15)
+	set offset_lexpr_apply,HEX(16)
+	set offset_link,HEX(17)
+	set offset_interrupt_closure,HEX(18)
+	set offset_interrupt_dlink,HEX(19)
+	set offset_interrupt_procedure,HEX(1a)
+	set offset_interrupt_continuation,HEX(1b)
+	set offset_interrupt_ic_procedure,HEX(1c)
+	set offset_assignment_trap,HEX(1d)
+	set offset_cache_lookup_apply,HEX(1e)
+	set offset_lookup_trap,HEX(1f)
+	set offset_safe_lookup_trap,HEX(20)
+	set offset_unassigned_p_trap,HEX(21)
+	set offset_decrement,HEX(22)
+	set offset_divide,HEX(23)
+	set offset_equal,HEX(24)
+	set offset_greater,HEX(25)
+	set offset_increment,HEX(26)
+	set offset_less,HEX(27)
+	set offset_subtract,HEX(28)
+	set offset_multiply,HEX(29)
+	set offset_negative,HEX(2a)
+	set offset_add,HEX(2b)
+	set offset_positive,HEX(2c)
+	set offset_zero,HEX(2d)
+	set offset_access,HEX(2e)
+	set offset_reference,HEX(2f)
+	set offset_safe_reference,HEX(30)
+	set offset_unassigned_p,HEX(31)
+	set offset_unbound_p,HEX(32)
+	set offset_assignment,HEX(33)
+	set offset_definition,HEX(34)
+	set offset_lookup_apply,HEX(35)
+
+define(call_utility,
+	`movq	&offset_$1,%d0
+	bra	scheme_to_interface')
+
+### comentry_error
+### comentry_apply
+###
+### comentry_error is used by compiled code to signal an error.  It
+### expects the arguments to be pushed on the stack, the co
+### (arguments + 1) to be in d0.w (no type code needed).
+###
+### comentry_apply is used by compiled code when calling unknown
+### procedures. It expects the procedure and arguments to be pushed on
+### the stack, and the count to be in d0.w (no type code needed).
+
+define_debugging_label(comentry_error)
+	mov.w	%d0,%d1
+	ext.l	%d1
+	call_utility(error)
+
+define_debugging_label(comentry_apply)
+	mov.w	%d0,%d2
+	ext.l	%d2
+	mov.l	(%sp)+,%d1
+	call_utility(apply)
+
+### comentry_lexpr_apply
+###
+### This entry point is invoked when compiled code calls a known
+### lexpr, and the frame must be reformatted.  a0 contains the label
+### to invoke, and d0.w contains the number of actual arguments passed
+### (not including the procedure).
+### Important: This assumes that it is always invoked with a valid
+### number of arguments (the compiler checked it), and will not check.
+
+define_debugging_label(comentry_lexpr_apply)
+	mov.l	%a0,%d1
+	mov.w	%d0,%d2
+	ext.l	%d2
+	call_utility(lexpr_apply)
+
+### comentry_primitive_apply
+### comentry_primitive_lexpr_apply
+###
+### Both expect the primitive object to be in d6.
+###
+### comentry_primitive_lexpr_apply is used for "lexpr" primitives
+### (those whose arity is not fixed).  In addition, it expects
+### regblock_lexpr_actuals to contain the actual number of arguments
+### passed.
+
+define_debugging_label(comentry_primitive_apply)
+	mov.l	%d6,%d1
+	call_utility(primitive_apply)
+
+define_debugging_label(comentry_primitive_lexpr_apply)
+	mov.l	%d6,%d1
+	call_utility(primitive_lexpr_apply)
+
+define(load_return_address,
+	`mov.l	(%sp)+,%d1
+	addq.l	&4,%d1')
+
+### comentry_link
+###
+### Initialize all the variable cache slots for a compiled code block.
+### It is called at load time, by the compiled code itself.
+### It expects a block address in a0, the address of the constant section
+### in a1, and a count of special blocks in d0.w.  The return address
+### is on the top of the stack.
+
+define_debugging_label(comentry_link)
+	mov.w	%d0,%d4
+	ext.l	%d4
+	mov.l	%a0,%d2
+	mov.l	%a1,%d3
+	load_return_address()
+	call_utility(link)
+
+### comentry_interrupt_closure
+###
+### In all of the following it is assumed that regblock_memtop = 0,
+### and that the compiler makes use of this when generating an addressing
+### mode.
+###
+### We are expecting the compiler to generate the following code at
+### a closure entry point:
+###
+###	label1:
+###		jmp	regblock_comentry_interrupt_closure(regs)
+###		dc.w	<format word>
+###		dc.w	<offset to block start for gc of tc_compiled_entry>
+###	entry_label:
+###		add.l	&magic_constant,(%sp)
+###		cmp.l	rfree,regblock_memtop(regs)
+###		bge.b	label1
+###
+### comentry_interrupt_procedure
+### comentry_interrupt_continuation
+### comentry_interrupt_ic_procedure
+###
+### We are expecting the compiler to generate the following code at
+### a procedure or continuation entry point:
+###
+###	label1:
+###		jsr	regblock_comentry_interrupt_procedure(regs)
+###		dc.w	<format word>
+###		dc.w	<offset to block start for gc of tc_compiled_entry>
+###	entry_label:
+###		cmp.l	rfree,regblock_memtop(regs)
+###		bge.b	label1
+
+define_debugging_label(comentry_interrupt_closure)
+	call_utility(interrupt_closure)
+
+### Procedures require the dynamic link, if there is one.  This piece
+### of code does not know whether the interrupted procedure uses a
+### dynamic link or no, so it tries to guess that information.  It
+### will call comutil_interrupt_procedure if there is no dynamic link,
+### or comutil_interrupt_dlink if there is one.  The restart code does
+### the right thing anyway.  This code assumes that the dynamic link
+### is always in the dlink register.
+###
+### Continuations require VAL, so it is saved.
+### Note that continuations never need the dynamic link, since it was
+### saved by the caller.
+
+### The heuristic used to determine whether dlink contains a dynamic
+### link is as follows:
+### - If the contents of dlink have a type code, there is no dynamic
+###   link.
+### - If the contents of dlink do not have the same (longword)
+###   alignment as the Stack Pointer, there is no dynamic link.
+### - If the contents of dlink point outside the interval
+###   (Stack_Pointer, Stack_Top), there is no dynamic link.
+###
+### This should be fixed in the future by having a separate entry
+### point for procedures with and without a dynamic link.
+
+define_debugging_label(comentry_interrupt_procedure)
+	load_return_address()		# Into %d1
+	cmp.l	dlink,%sp
+	bls.b	interrupt_no_dlink
+	cmp.l	dlink,_Stack_Top
+	bhs.b	interrupt_no_dlink
+	mov.l	dlink,%d2
+	sub.l	%sp,%d2
+	and.l	&HEX(00000003),%d2
+	bne.b	interrupt_no_dlink
+	mov.l	dlink,%d2		# Load dlink
+	call_utility(interrupt_dlink)
+	
+interrupt_no_dlink:
+	call_utility(interrupt_procedure)
+
+define_debugging_label(comentry_interrupt_continuation)
+	load_return_address()
+	call_utility(interrupt_continuation)
+
+define_debugging_label(comentry_interrupt_ic_procedure)
+	load_return_address()
+	call_utility(interrupt_ic_procedure)
+
+### comentry_assignment_trap
+###
+### Expects a cached-variable extension object in a0, and the assignment
+### value in a1.
+
+define_debugging_label(comentry_assignment_trap)
+	load_return_address()
+	mov.l	%a0,%d2
+	mov.l	%a1,%d3
+	call_utility(assignment_trap)
+
+### comentry_cache_lookup_apply
+###
+### Expects the arguments on the stack, frame count in d0.w,
+### a cached-variable extension object in a3, and the address of the
+### compiled-code block in a1.
+
+define_debugging_label(comentry_cache_lookup_apply)
+	mov.w	%d0,%d3
+	ext.l	%d3
+	mov.l	%a3,%d1
+	mov.l	%a1,%d2
+	call_utility(cache_lookup_apply)
+
+### comentry_lookup_trap
+### comentry_safe_lookup_trap
+### comentry_unassigned_p_trap
+###
+### Expects a cached-variable extension object in a0 (this is what is
+### left in the constant area slot by comentry_cache_mumble).
+### Returns the value of the variable in d0.
+
+define(define_comp_ref_trap,
+`define_debugging_label(comentry_$1)
+	mov.l	%a0,%d2
+	load_return_address()
+	call_utility($1)')
+
+define_comp_ref_trap(lookup_trap)
+define_comp_ref_trap(safe_lookup_trap)
+define_comp_ref_trap(unassigned_p_trap)
+
+### comentry_reference
+### comentry_safe_reference
+### comentry_access
+### comentry_unassigned_p
+### comentry_unbound_p
+###
+### Expects an environment in a0, and a name in a1.
+### Returns the value in d0.
+
+define(define_comp_ref,
+`define_debugging_label(comentry_$1)
+	load_return_address()
+	mov.l	%a0,%d2
+	mov.l	%a1,%d3
+	call_utility($1)')
+
+define_comp_ref(access)
+define_comp_ref(reference)
+define_comp_ref(safe_reference)
+define_comp_ref(unassigned_p)
+define_comp_ref(unbound_p)
+
+### comentry_assignment
+### comentry_definition
+###
+### Expects an environment in a0, a name in a1, and a value in a2.
+### Returns the old value in d0.
+
+define(define_comp_assignment,
+`define_debugging_label(comentry_$1)
+	load_return_address()
+	mov.l	%a0,%d2
+	mov.l	%a1,%d3
+	mov.l	%a2,%d4
+	call_utility($1)')
+
+define_comp_assignment(assignment)
+define_comp_assignment(definition)
+
+### comentry_lookup_apply
+###
+### Expects the arguments to be pushed on the stack, the environment
+### in d4, the variable in d5, and the frame count in d0.w.
+
+define_debugging_label(comentry_lookup_apply)
+	mov.l	%d4,%d1
+	mov.l	%d5,%d2
+	mov.w	%d0,%d3
+	ext.l	%d3
+	call_utility(lookup_apply)
+
+# Arithmetic is easy....
+
+define(define_arithmetic_hook,
+`define_debugging_label(comentry_$1)
+	call_utility($1)')
+
+define_arithmetic_hook(decrement)
+define_arithmetic_hook(divide)
+define_arithmetic_hook(equal)
+define_arithmetic_hook(greater)
+define_arithmetic_hook(increment)
+define_arithmetic_hook(less)
+define_arithmetic_hook(subtract)
+define_arithmetic_hook(multiply)
+define_arithmetic_hook(negative)
+define_arithmetic_hook(add)
+define_arithmetic_hook(positive)
+define_arithmetic_hook(zero)
+
+# Setup code to install these hooks into the register block.
+
+define(setup_register,
+	`mov.w	&HEX(4ef9),(%a0)+			# jmp &...
+	mov.l	&comentry_$1,(%a0)+')
+
+define_c_label(asm_reset_hook)
+	link.l	%a6,&0
+	lea	_Registers,%a1
+#
+#	setup_register(<name>)				# index	offset
+#
+	lea	regblock_entries(%a1),%a0
+
+	setup_register(link)				#  0	12c
+	setup_register(error)				#  1	132
+	setup_register(apply)				#  2	138
+	setup_register(lexpr_apply)			#  3	13e
+	setup_register(primitive_apply)			#  4	144
+	setup_register(primitive_lexpr_apply)		#  5	14a
+	setup_register(cache_lookup_apply)		#  6	150
+	setup_register(lookup_apply)			#  7	156
+	setup_register(interrupt_continuation)		#  8	15c
+	setup_register(interrupt_ic_procedure)		#  9	162
+	setup_register(interrupt_procedure)		#  a	168
+	setup_register(interrupt_closure)		#  b	16e
+	setup_register(reference)			#  c	174
+	setup_register(safe_reference)			#  d	17a
+	setup_register(assignment)			#  e	180
+	setup_register(access)				#  f	186
+	setup_register(unassigned_p)			# 10	18c
+	setup_register(unbound_p)			# 11	192
+	setup_register(definition)			# 12	198
+	setup_register(lookup_trap)			# 13	19e
+	setup_register(safe_lookup_trap)		# 14	1a4
+	setup_register(assignment_trap)			# 15	1aa
+	setup_register(unassigned_p_trap)		# 16	1b0
+	setup_register(add)				# 17	1b6
+	setup_register(subtract)			# 18	1bc
+	setup_register(multiply)			# 19	1c2
+	setup_register(divide)				# 1a	1c8
+	setup_register(equal)				# 1b	1ce
+	setup_register(less)				# 1c	1d4
+	setup_register(greater)				# 1d	1da
+	setup_register(increment)			# 1e	1e0
+	setup_register(decrement)			# 1f	1e6
+	setup_register(zero)				# 20	1ec
+	setup_register(positive)			# 21	1f2
+	setup_register(negative)			# 22	1f8
+	setup_register(scheme_to_interface)		# 23	1fe
+	setup_register(trampoline_to_interface)		# 24	204
+							# free to 31 incl.
+
+	unlk	%a6
+	rts
+
