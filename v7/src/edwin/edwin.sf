@@ -1,24 +1,58 @@
 ;;; -*-Scheme-*-
 
+(if (not (name->package '(CROSS-REFERENCE)))
+    (with-working-directory-pathname "../cref" (lambda () (load "make"))))
+
 (if (not (name->package '(EDWIN)))
     (begin
-      (load "edwin.bcon")
-      (load "macros.bin" '(EDWIN MACROS))
-      (load "clsmac.bin" '(EDWIN CLASS-MACROS))
-      (load "xform.bin" '(EDWIN CLASS-MACROS TRANSFORM-INSTANCE-VARIABLES))
-      (load "class.bin" '(EDWIN))
-      (load "clscon.bin" '(EDWIN CLASS-CONSTRUCTOR))))
-(load "decls")
+      (if (not (file-exists? "edwin.bcon"))
+	  (begin
+	    ((access cref/generate-trivial-constructor
+		     (->environment '(CROSS-REFERENCE)))
+	     "edwin")
+	    (sf "edwin.con" "edwin.bcon")))
+      (load "edwin.bcon")))
 
-;; Guarantee that the package modeller is loaded.
-(if (not (name->package '(CROSS-REFERENCE)))
-    (with-working-directory-pathname "/scheme/cref" (lambda () (load "make"))))
+(if (lexical-unreferenceable? (->environment '(EDWIN CLASS-CONSTRUCTOR))
+			      'CLASS-DESCRIPTORS)
+    (begin
+      (let ((sf-and-load
+	     (lambda (files package)
+	       (fluid-let ((sf/default-syntax-table syntax-table/system-internal))		 (sf-conditionally files))
+	       (for-each (lambda (file)
+			   (load (string-append file ".bin") package))
+			 files))))
+	(sf-and-load '("macros") '(EDWIN MACROS))
+	(sf-and-load '("clsmac") '(EDWIN CLASS-MACROS))
+	(sf-and-load '("xform")
+		     '(EDWIN CLASS-MACROS TRANSFORM-INSTANCE-VARIABLES))
+	(sf-and-load '("class") '(EDWIN))
+	(sf-and-load '("clscon") '(EDWIN CLASS-CONSTRUCTOR)))))
+
+(let ((read-class-definitions
+       (let ((syntax-table
+	      (access class-syntax-table (->environment '(EDWIN)))))
+	 (lambda (filename)
+	   (write-string "\nPre-loading class definitions from ")
+	   (write filename)
+	   (syntax* (read-file (string-append filename ".scm"))
+		    syntax-table)
+	   (write-string " -- done")))))
+  (read-class-definitions "window")
+  (read-class-definitions "utlwin")
+  (read-class-definitions "modwin")
+  (read-class-definitions "linwin")
+  (read-class-definitions "bufwin")
+  (read-class-definitions "comwin")
+  (read-class-definitions "buffrm")
+  (read-class-definitions "edtfrm"))
+
+(load "decls")
 
 (in-package (->environment '(CROSS-REFERENCE))
   ((generate/common
     (lambda (pathname pmodel)
-      (write-cref pathname pmodel)
-      (write-globals pathname pmodel)
+      (write-cref pathname pmodel)      (write-globals pathname pmodel)
       (write-constructor pathname pmodel)))
    "edwin"))
 (sf "edwin.con" "edwin.bcon")
