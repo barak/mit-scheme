@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.29 1991/08/26 15:07:35 jinx Exp $
+$Id: fggen.scm,v 4.30 1993/03/02 01:15:49 gjr Exp $
 
-Copyright (c) 1988-1991 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -596,73 +596,82 @@ MIT in each case. |#
 			   (list expression))
 			  (quotient n 2))))))
 	    (else
-	     (let ((make-combination
-		    (lambda (push continuation)
-		      (make-combination
-		       block
-		       (continuation-reference block continuation)
-		       (wrapper/subproblem/value
-			block
-			continuation
-			(make-continuation-debugging-info 'COMBINATION-OPERAND
-							  expression
-							  0)
-			(lambda (continuation*)
-			  (cond ((scode/lambda? operator)
-				 (generate/lambda*
-				  block continuation*
-				  context (context/unconditional context)
-				  operator
-				  (continuation/known-type continuation)
-				  false))
-				((scode/absolute-reference? operator)
-				 (generate/global-variable block continuation*
-							   context operator))
-				(else
-				 (generate/expression block continuation*
-						      context operator)))))
-		       (let loop ((operands operands) (index 1))
-			 (if (null? operands)
-			     '()
-			     (cons (generate/subproblem/value
-				    block continuation context
-				    (car operands) 'COMBINATION-OPERAND
-				    expression index)
-				   (loop (cdr operands) (1+ index)))))
-		       push))))
-	       ((continuation/case continuation
-		  (lambda () (make-combination false continuation))
-		  (lambda ()
-		    (if (variable? continuation)
-			(make-combination false continuation)
-			(with-reified-continuation block
-						   continuation
-						   scfg*scfg->scfg!
-			  (lambda (push continuation)
-			    (make-scfg
-			     (cfg-entry-node
-			      (make-combination push continuation))
-			     (continuation/next-hooks continuation))))))
-		  (lambda ()
-		    (with-reified-continuation block
-					       continuation
-					       scfg*pcfg->pcfg!
-		      (lambda (push continuation)
-			(scfg*pcfg->pcfg!
-			 (make-scfg
-			  (cfg-entry-node (make-combination push continuation))
-			  (continuation/next-hooks continuation))
-			 (make-true-test
-			  block
-			  (continuation/rvalue continuation))))))
-		  (lambda ()
-		    (with-reified-continuation block
-					       continuation
-					       scfg*subproblem->subproblem!
-		      (lambda (push continuation)
-			(make-subproblem/canonical
-			 (make-combination push continuation)
-			 continuation))))))))))))
+	     (generate/operator
+	      block continuation context expression operator
+	      (generate/operands expression operands block continuation context 1)))))))
+
+(define (generate/operands expression operands block continuation context index)
+  (let walk ((operands operands) (index index))
+    (if (null? operands)
+	'()
+	;; This forces the order of evaluation
+	(let ((next (generate/subproblem/value block continuation context
+					       (car operands) 'COMBINATION-OPERAND
+					       expression index)))
+	  (cons next
+		(walk (cdr operands) (1+ index)))))))
+
+(define (generate/operator block continuation context expression operator operands*)
+  (let ((make-combination
+	 (lambda (push continuation)
+	   (make-combination
+	    block
+	    (continuation-reference block continuation)
+	    (wrapper/subproblem/value
+	     block
+	     continuation
+	     (make-continuation-debugging-info 'COMBINATION-OPERAND
+					       expression
+					       0)
+	     (lambda (continuation*)
+	       (cond ((scode/lambda? operator)
+		      (generate/lambda*
+		       block continuation*
+		       context (context/unconditional context)
+		       operator
+		       (continuation/known-type continuation)
+		       false))
+		     ((scode/absolute-reference? operator)
+		      (generate/global-variable block continuation*
+						context operator))
+		     (else
+		      (generate/expression block continuation*
+					   context operator)))))
+	    operands*
+	    push))))
+    ((continuation/case continuation
+      (lambda () (make-combination false continuation))
+      (lambda ()
+	(if (variable? continuation)
+	    (make-combination false continuation)
+	    (with-reified-continuation block
+	      continuation
+	      scfg*scfg->scfg!
+	      (lambda (push continuation)
+		(make-scfg
+		 (cfg-entry-node
+		  (make-combination push continuation))
+		 (continuation/next-hooks continuation))))))
+      (lambda ()
+	(with-reified-continuation block
+	  continuation
+	  scfg*pcfg->pcfg!
+	  (lambda (push continuation)
+	    (scfg*pcfg->pcfg!
+	     (make-scfg
+	      (cfg-entry-node (make-combination push continuation))
+	      (continuation/next-hooks continuation))
+	     (make-true-test
+	      block
+	      (continuation/rvalue continuation))))))
+      (lambda ()
+	(with-reified-continuation block
+	  continuation
+	  scfg*subproblem->subproblem!
+	  (lambda (push continuation)
+	    (make-subproblem/canonical
+	     (make-combination push continuation)
+	     continuation))))))))
 
 ;;;; Assignments
 
@@ -790,7 +799,7 @@ MIT in each case. |#
 	    (generate/expression block continuation context expression))
 	   ((COMPILE)
 	    (if (not (scode/quotation? expression))
-		(error "Bad compile directive" comment))
+		(error "Bad COMPILE directive" comment))
 	    (continue/rvalue-constant
 	     block continuation
 	     (make-constant
@@ -810,7 +819,7 @@ MIT in each case. |#
 					      context expression))))
 		  (fail
 		   (lambda ()
-		     (error "Bad compile-procedure directive" comment))))
+		     (error "Bad COMPILE-PROCEDURE directive" comment))))
 	      (cond ((scode/lambda? expression)
 		     (process (lambda-name expression)))
 		    ((scode/open-block? expression)
@@ -825,11 +834,38 @@ MIT in each case. |#
 		     (fail)))))
 	   ((ENCLOSE)
 	    (generate/enclose block continuation context expression))
+	   ((CONSTANTIFY)
+	    (generate/constantify block continuation context comment expression))
 	   (else
 	    (warn "generate/comment: Unknown directive" (cadr text) comment)
 	    (generate/expression block continuation context expression)))))))
+
+;; CONSTANTIFY directives are generated when an expression is introduced by
+;; the canonicalizer.  It instructs fggen that the expression may be constant
+;; folded once its operands have been, if they are all constants.
 
-;; Enclose directives are generated only for lambda expressions
+(define (generate/constantify block continuation context comment expression)
+  (if (or (not (scode/combination? expression))
+	  (not (eq? (ucode-primitive vector)
+		    (scode/combination-operator expression))))
+      (error "Bad CONSTANTIFY directive" comment))
+  (let ((operands (generate/operands expression
+				     (scode/combination-operands expression)
+				     block continuation context 1)))
+    (if (for-all? operands
+	  (lambda (subpr)
+	    (rvalue/constant? (subproblem-rvalue subpr))))
+	(generate/constant
+	 block continuation context
+	 (list->vector
+	  (map (lambda (subpr)
+		 (constant-value (subproblem-rvalue subpr)))
+	       operands)))
+	(generate/operator block continuation context expression
+			   (ucode-primitive vector)
+			   operands))))
+
+;; ENCLOSE directives are generated only for lambda expressions
 ;; evaluated in environments whose manipulation has been made
 ;; explicit.  The code should include a syntactic check.  The
 ;; expression must be a call to scode-eval with a quotation of a
