@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: prompt.scm,v 1.191 2001/05/07 18:00:20 cph Exp $
+;;; $Id: prompt.scm,v 1.192 2001/05/07 18:37:15 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -590,14 +590,17 @@ a repetition of this command will exit."
 	      (editor-failure))))))))
 
 (define (verify-final-value string error-continuation)
-  (bind-condition-handler (list condition-type:error)
-      (lambda (condition)
-	condition
-	(editor-beep)
-	(temporary-typein-message " [Error]")
-	(error-continuation unspecific))
-    (lambda ()
-      ((options/verify-final-value *options*) string))))
+  (let ((verifier (options/verify-final-value *options*)))
+    (if verifier
+	(bind-condition-handler (list condition-type:error)
+	    (lambda (condition)
+	      condition
+	      (editor-beep)
+	      (temporary-typein-message " [Error]")
+	      (error-continuation unspecific))
+	  (lambda ()
+	    (verifier string)))
+	#t)))
 
 ;;;; Completion Primitives
 
