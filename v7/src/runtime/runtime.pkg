@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.449 2003/07/21 00:59:52 cph Exp $
+$Id: runtime.pkg,v 14.450 2003/07/22 02:32:26 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -2172,20 +2172,19 @@ USA.
 	  fixed-object/name->code
 	  fixed-objects-item
 	  fixed-objects-vector-slot
+	  get-microcode-version-numbers
+	  get-microcode-version-string
 	  microcode-error/code->name
 	  microcode-error/code-limit
 	  microcode-error/name->code
 	  microcode-id/floating-epsilon
 	  microcode-id/floating-mantissa-bits
-	  microcode-id/modification
 	  microcode-id/operating-system
 	  microcode-id/operating-system-name
 	  microcode-id/operating-system-variant
-	  microcode-id/release-string
 	  microcode-id/stack-type
 	  microcode-id/tty-x-size
 	  microcode-id/tty-y-size
-	  microcode-id/version
 	  microcode-identification-item
 	  microcode-identification-vector-slot
 	  microcode-object/unassigned

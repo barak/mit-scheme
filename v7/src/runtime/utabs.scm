@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utabs.scm,v 14.16 2003/02/14 18:28:34 cph Exp $
+$Id: utabs.scm,v 14.17 2003/07/22 02:32:30 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -72,12 +72,15 @@ USA.
   (set! non-object-slot (fixed-object/name->code 'NON-OBJECT))
   (set! system-call-names-slot (fixed-object/name->code 'SYSTEM-CALL-NAMES))
   (set! system-call-errors-slot (fixed-object/name->code 'SYSTEM-CALL-ERRORS))
-  (set! microcode-id/version
-	(microcode-identification-item 'MICROCODE-VERSION))
-  (set! microcode-id/modification
-	(microcode-identification-item 'MICROCODE-MODIFICATION))
-  (set! microcode-id/release-string
-	(microcode-identification-item 'SYSTEM-RELEASE-STRING))
+  (set! microcode-version-string
+	(let ((version (microcode-identification-item 'MICROCODE-VERSION)))
+	  (if (string? version)
+	      version
+	      (string-append
+	       (number->string version)
+	       "."
+	       (number->string
+		(microcode-identification-item 'MICROCODE-VERSION))))))
   (set! char:newline (microcode-identification-item 'NEWLINE-CHAR))
   (set! microcode-id/floating-mantissa-bits
 	(microcode-identification-item 'FLONUM-MANTISSA-LENGTH))
@@ -107,10 +110,15 @@ USA.
        ((ucode-primitive substring-downcase!) result 0 size)
        result))))
 
+(define (get-microcode-version-string)
+  microcode-version-string)
+
+(define (get-microcode-version-numbers)
+  (map (lambda (s) (or (string->number s) s))
+       (burst-string microcode-version-string #\. #f)))
+
 (define microcode-tables-identification)
-(define microcode-id/version)
-(define microcode-id/modification)
-(define microcode-id/release-string)
+(define microcode-version-string)
 (define char:newline)
 (define microcode-id/tty-x-size)
 (define microcode-id/tty-y-size)
