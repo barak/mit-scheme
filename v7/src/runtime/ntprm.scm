@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.29 1999/02/25 22:27:15 cph Exp $
+$Id: ntprm.scm,v 1.30 1999/03/26 01:55:48 cph Exp $
 
 Copyright (c) 1992-1999 Massachusetts Institute of Technology
 
@@ -637,9 +637,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (define (do-arg index s analysis)
 	(if (cdr analysis)
 	    (begin
-	      (vector-set! result index quote-char)
+	      (string-set! result index quote-char)
 	      (let ((index (do-arg-1 index s)))
-		(vector-set! result index quote-char)
+		(string-set! result index quote-char)
 		(fix:+ index 1)))
 	    (do-arg-1 index s)))
       (define (do-arg-1 index s)
@@ -650,11 +650,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			(if (or (char=? quote-char c)
 				(char=? escape-char c))
 			    (begin
-			      (vector-set! result index escape-char)
-			      (vector-set! result (fix:+ index 1) c)
+			      (string-set! result index escape-char)
+			      (string-set! result (fix:+ index 1) c)
 			      (fix:+ index 2))
 			    (begin
-			      (vector-set! result index c)
+			      (string-set! result index c)
 			      (fix:+ index 1))))))
 	      ((fix:= i n) index))))
       (let loop ((index 0) (strings strings) (analyses analyses))
