@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2io.c,v 1.2 1994/12/19 22:31:30 cph Exp $
+$Id: os2io.c,v 1.3 1995/01/06 00:02:36 cph Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,6 +39,7 @@ extern void OS2_initialize_console_channel (Tchannel);
 extern void OS2_initialize_pipe_channel (Tchannel);
 
 static enum channel_type handle_channel_type (LHANDLE);
+static void handle_noinherit (LHANDLE);
 
 size_t OS_channel_table_size;
 struct channel * OS2_channel_table;
@@ -97,6 +98,7 @@ OS2_make_channel (LHANDLE handle, unsigned int mode)
       channel += 1;
     }
   type = (handle_channel_type (handle));
+  handle_noinherit (handle);
   (CHANNEL_HANDLE (channel)) = handle;
   (CHANNEL_TYPE (channel)) = type;
   (CHANNEL_OPEN (channel)) = 1;
@@ -157,6 +159,20 @@ handle_channel_type (LHANDLE handle)
       }
   OS2_error_anonymous ();
   return (channel_type_unknown);
+}
+
+static void
+handle_noinherit (LHANDLE handle)
+{
+  ULONG state;
+  STD_API_CALL (dos_query_fh_state, (handle, (& state)));
+  /* Magic mask 0xFF88 zeroes out high bits and two fields
+     required to be zero by the spec.  When testing, the high
+     bits were not zero, and this caused the system call to
+     complain.  */
+  state &= 0xFF88;
+  STD_API_CALL
+    (dos_set_fh_state, (handle, (state | OPEN_FLAGS_NOINHERIT)));
 }
 
 void
