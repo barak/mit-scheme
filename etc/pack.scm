@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/pack.scm,v 1.1 1992/04/12 00:15:47 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/pack.scm,v 1.2 1992/04/13 18:33:42 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -42,13 +42,13 @@ MIT in each case. |#
 
 (define open-binary-input-file
   (let ((open-binary
-	 (make-primitive-procedure 'file-open-binary-input-channel 1))
-	(open-ordinary
-	 (make-primitive-procedure 'file-open-input-channel 1)))
+         (make-primitive-procedure 'file-open-binary-input-channel 1))
+        (open-ordinary
+         (make-primitive-procedure 'file-open-input-channel 1)))
     (lambda (file)
       ((if (implemented-primitive-procedure? open-binary)
-	   open-binary
-	   open-ordinary)
+           open-binary
+           open-ordinary)
        (->namestring (->truename (->pathname file)))))))
 
 (define close-binary-input-channel
@@ -58,13 +58,13 @@ MIT in each case. |#
 
 (define open-binary-output-file
   (let ((open-binary
-	 (make-primitive-procedure 'file-open-binary-output-channel 1))
-	(open-ordinary
-	 (make-primitive-procedure 'file-open-output-channel 1)))
+         (make-primitive-procedure 'file-open-binary-output-channel 1))
+        (open-ordinary
+         (make-primitive-procedure 'file-open-output-channel 1)))
     (lambda (file)
       ((if (implemented-primitive-procedure? open-binary)
-	   open-binary
-	   open-ordinary)
+           open-binary
+           open-ordinary)
        (->namestring (->pathname file))))))
 
 (define close-binary-output-channel
@@ -77,16 +77,16 @@ MIT in each case. |#
     (dynamic-wind
      (lambda ()
        (if channel
-	   (error "cannot re-enter with-binary-file" name)))
+           (error "cannot re-enter with-binary-file" name)))
      (lambda ()
        (set! channel (open file))
        (action channel))
      (lambda ()
        (if (and channel
-		(not (eq? channel true)))
-	   (begin
-	     (close channel)
-	     (set! channel true)))))))
+                (not (eq? channel true)))
+           (begin
+             (close channel)
+             (set! channel true)))))))
 
 (define (with-binary-input-file file action)
   (with-binary-file file action
@@ -107,12 +107,12 @@ MIT in each case. |#
   (make-primitive-procedure 'binary-fasload 1))
 
 (define (pack-binaries output files)
-  (define (make-load-wrapper output files)
-    (define (->string pathname-or-string)
-      (if (string? pathname-or-string)
-	  pathname-or-string
-	  (->namestring pathname-or-string)))
+  (define (->string pathname-or-string)
+    (if (string? pathname-or-string)
+        pathname-or-string
+        (->namestring pathname-or-string)))
 
+  (define (make-load-wrapper output files)
     (syntax
      `((in-package 
          (->environment '(runtime load))
@@ -125,34 +125,42 @@ MIT in each case. |#
                                (unpack-binaries-and-load 
                                  pathname
                                  ,(->string output)
-                                 ',(map ->string files)
+                                 #| ',(map ->string files) |#
+                                 #t
                                  environment-to-load))
                              load/after-load-hooks))))))
        (the-environment))
      system-global-syntax-table))
 
   (if (and (not (string? output))
-	   (not (pathname? output)))
+           (not (pathname? output)))
       (error "pack-binaries: Bad output file" output))
   (if (null? files)
       (error "pack-binaries: No files"))
   (let* ((pathnames
-	  (map (lambda (file)
-		 (let ((pathname (->pathname file)))
-		   (if (not (file-exists? pathname))
-		       (error "pack-binaries: Cannot find" file)
-		       pathname)))
-	       files))
-	 (wrapper (make-load-wrapper output files)))
+          (map (lambda (file)
+                 (let ((pathname (->pathname file)))
+                   (if (not (file-exists? pathname))
+                       (error "pack-binaries: Cannot find" file)
+                       pathname)))
+               files))
+         (wrapper (make-load-wrapper output files)))
     (with-binary-output-file
       output
       (lambda (channel)
-	(channel-fasdump wrapper channel false)
-	(for-each (lambda (pathname)
-		    (channel-fasdump (fasload pathname)
-				     channel
-				     false))
-		  pathnames)))))
+        (channel-fasdump wrapper channel false)
+        #|
+        (for-each (lambda (pathname)
+                    (channel-fasdump (fasload pathname)
+                                     channel
+                                     false))
+                  pathnames)
+        |#
+        (channel-fasdump (map (lambda (pathname)
+                                (cons (->string pathname)
+                                      (fasload pathname))) pathnames)
+                         channel
+                         false)))))
 
 (define (unpack-binaries-and-load pathname fname strings environment)
   (define (find-filename fname alist)
@@ -167,61 +175,67 @@ MIT in each case. |#
 
     (let ((path (->pathname fname)))
       (let loop ((alist alist))
-	(and (not (null? alist))
-	     (if (compatible? path (cadar alist))
-		 (car alist)
-		 (loop (cdr alist)))))))
+        (and (not (null? alist))
+             (if (compatible? path (cadar alist))
+                 (car alist)
+                 (loop (cdr alist)))))))
 
   (let ((alist
-	 (with-binary-input-file (->truename pathname)
-	   (lambda (channel)
-	     ;; Dismiss header.
-	     (channel-fasload channel)
-	     (do ((i (length strings) (-1+ i))
-		  (strings strings (cdr strings))
-		  (alist '()
-			 (cons (list (car strings)
-				     (->pathname (car strings))
-				     (channel-fasload channel))
-			       alist)))
-		 ((zero? i)
-		  (reverse! alist))))))
-	(real-load load))
+         (with-binary-input-file (->truename pathname)
+           (lambda (channel)
+             ;; Dismiss header.
+             (channel-fasload channel)
+             (if (eq? strings true)
+                 (map (lambda (pair)
+                        (list (car pair)
+                              (->pathname (car pair))
+                              (cdr pair)))
+                      (channel-fasload channel))
+                 (do ((i (length strings) (-1+ i))
+                      (strings strings (cdr strings))
+                      (alist '()
+                             (cons (list (car strings)
+                                         (->pathname (car strings))
+                                         (channel-fasload channel))
+                                   alist)))
+                     ((zero? i)
+                      (reverse! alist)))))))
+        (real-load load))
     (let ((new-load
-	   (lambda (fname #!optional env syntax-table purify?)
-	     (let ((env (if (default-object? env)
-			    environment
-			    env))
-		   (st (if (default-object? syntax-table)
-			   default-object
-			   syntax-table))
-		   (purify? (if (default-object? purify?)
-				default-object
-				purify?)))
-	       (let ((place (find-filename fname alist)))
-		 (if (not place)
-		     (real-load fname env st purify?)
-		     (let ((scode (caddr place)))
+           (lambda (fname #!optional env syntax-table purify?)
+             (let ((env (if (default-object? env)
+                            environment
+                            env))
+                   (st (if (default-object? syntax-table)
+                           default-object
+                           syntax-table))
+                   (purify? (if (default-object? purify?)
+                                default-object
+                                purify?)))
+               (let ((place (find-filename fname alist)))
+                 (if (not place)
+                     (real-load fname env st purify?)
+                     (let ((scode (caddr place)))
                        (if (not load/suppress-loading-message?)
                            (begin
                              (newline)
                              (display ";Pseudo-loading ")
                              (display (->namestring (->pathname fname)))
                              (display "...")))
-		       (if (and purify? (not (eq? purify? default-object)))
-			   (purify (load/purification-root scode)))
-		       (extended-scode-eval scode env))))))))
+                       (if (and purify? (not (eq? purify? default-object)))
+                           (purify (load/purification-root scode)))
+                       (extended-scode-eval scode env))))))))
       (fluid-let ((load new-load))
-	(new-load (caar alist))))))
+        (new-load (caar alist))))))
 
 ;;;; Link to global
 
 (let ((system-global-environment '()))
   (if (not (environment-bound? system-global-environment
-			       'pack-binaries))
+                               'pack-binaries))
       (environment-link-name system-global-environment this-environment
-			     'pack-binaries))
+                             'pack-binaries))
   (if (not (environment-bound? system-global-environment
-			       'unpack-binaries-and-load))
+                               'unpack-binaries-and-load))
       (environment-link-name system-global-environment this-environment
-			     'unpack-binaries-and-load)))
+                             'unpack-binaries-and-load)))
