@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 1.4 1987/06/18 01:08:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 1.5 1987/07/03 21:59:00 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -139,7 +139,7 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a)) (? n))
 	  (UNASSIGNED))
-  `(,(load-non-pointer type-code:unassigned 0 (indirect-reference! a n))))
+  `(,(load-non-pointer (ucode-type unassigned) 0 (indirect-reference! a n))))
 
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a)) (? n))
@@ -173,7 +173,7 @@ MIT in each case. |#
 
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER 13) 1) (UNASSIGNED))
-  `(,(load-non-pointer type-code:unassigned 0 '(@A+ 5))))
+  `(,(load-non-pointer (ucode-type unassigned) 0 '(@A+ 5))))
 
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER 13) 1) (REGISTER (? r)))
@@ -190,7 +190,7 @@ MIT in each case. |#
     `((LEA (@PCR ,(procedure-external-label (label->procedure label)))
 	   ,temporary)
       (MOVE L ,temporary (@A+ 5))
-      (MOVE B (& ,type-code:return-address) (@AO 5 -4)))))
+      (MOVE B (& ,(ucode-type compiled-expression)) (@AO 5 -4)))))
 
 ;;;; Pushes
 
@@ -202,14 +202,14 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1) (UNASSIGNED))
   (record-push!
-   `(,(load-non-pointer type-code:unassigned 0 '(@-A 7)))))
+   `(,(load-non-pointer (ucode-type unassigned) 0 '(@-A 7)))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1) (REGISTER (? r)))
   (record-push!
    (if (= r regnum:frame-pointer)
        `((PEA ,(offset-reference regnum:stack-pointer (frame-pointer-offset)))
-	 (MOVE B (& ,type-code:stack-environment) (@A 7)))
+	 (MOVE B (& ,(ucode-type stack-environment)) (@A 7)))
        `((MOVE L ,(coerce->any r) (@-A 7))))))
 
 (define-rule statement
@@ -230,11 +230,11 @@ MIT in each case. |#
   (record-push!
    `((PEA ,(offset-reference regnum:stack-pointer
 			     (+ n (frame-pointer-offset))))
-     (MOVE B (& ,type-code:stack-environment) (@A 7)))))
+     (MOVE B (& ,(ucode-type stack-environment)) (@A 7)))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1) (ENTRY:CONTINUATION (? label)))
   (record-continuation-frame-pointer-offset! label)
   (record-push!
    `((PEA (@PCR ,label))
-     (MOVE B (& ,type-code:return-address) (@A 7)))))
+     (MOVE B (& ,(ucode-type compiler-return-address)) (@A 7)))))
