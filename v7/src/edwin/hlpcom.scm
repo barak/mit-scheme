@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: hlpcom.scm,v 1.122 2002/02/14 05:05:26 cph Exp $
+;;; $Id: hlpcom.scm,v 1.123 2002/02/21 18:56:38 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Help Commands
 
