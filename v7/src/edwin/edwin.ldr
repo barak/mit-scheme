@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.ldr,v 1.66 1999/08/10 17:01:21 cph Exp $
+$Id: edwin.ldr,v 1.67 1999/10/07 17:00:33 cph Exp $
 
 Copyright (c) 1989-1999 Massachusetts Institute of Technology
 
@@ -208,6 +208,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(load "bufmnu" (->environment '(EDWIN BUFFER-MENU)))
 	(load "c-mode" environment)
 	(load "javamode" environment)
+	(load "htmlmode" environment)
 	(load "cinden" (->environment '(EDWIN C-INDENTATION)))
 	(load "comhst" environment)
 	(load "comint" environment)

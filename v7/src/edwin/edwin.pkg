@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.239 1999/08/10 16:54:44 cph Exp $
+$Id: edwin.pkg,v 1.240 1999/10/07 17:00:36 cph Exp $
 
 Copyright (c) 1989-1999 Massachusetts Institute of Technology
 
@@ -84,6 +84,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 "loadef"			; auto-load definitions
 	 "c-mode"			; C mode
 	 "javamode"			; Java mode
+	 "htmlmode"			; HTML mode
 	 "midas"			; MIDAS mode
 	 "pasmod"			; Pascal mode
 	 "tximod"			; Texinfo mode

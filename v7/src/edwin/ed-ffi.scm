@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ed-ffi.scm,v 1.47 1999/05/13 03:06:37 cph Exp $
+$Id: ed-ffi.scm,v 1.48 1999/10/07 17:00:40 cph Exp $
 
 Copyright (c) 1990-1999 Massachusetts Institute of Technology
 
@@ -137,6 +137,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     ("grpops"	(edwin group-operations)
 		syntax-table/system-internal)
     ("hlpcom"	(edwin)
+		edwin-syntax-table)
+    ("htmlmode"	(edwin)
 		edwin-syntax-table)
     ("image"	(edwin)
 		syntax-table/system-internal)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.64 1999/05/13 03:06:36 cph Exp $
+$Id: decls.scm,v 1.65 1999/10/07 17:00:42 cph Exp $
 
 Copyright (c) 1989-1999 Massachusetts Institute of Technology
 
@@ -145,6 +145,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		"fill"
 		"grpops"
 		"hlpcom"
+		"htmlmode"
 		"image"
 		"info"
 		"input"
