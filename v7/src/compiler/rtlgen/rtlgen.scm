@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.25 1991/04/02 00:05:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.26 1991/04/03 00:51:09 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -233,7 +233,8 @@ MIT in each case. |#
 			 (block-procedure stack-link)))
 		   (block/next-continuation-offset
 		    (block-parent stack-link)
-		    offset)
+		    (+ (continuation/offset (block-procedure stack-link))
+		       offset))
 		   (let ((continuation
 			  (lvalue-known-value
 			   (stack-block/continuation-lvalue popping-limit))))
@@ -242,7 +243,7 @@ MIT in each case. |#
 			       continuation))
 			 (block/next-continuation-offset
 			  (continuation/closing-block continuation)
-			  offset)
+			  (+ (continuation/offset continuation) offset))
 			 offset))))))
       offset))
 
