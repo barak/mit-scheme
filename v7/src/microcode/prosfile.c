@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosfile.c,v 1.3 1992/01/20 17:25:43 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosfile.c,v 1.4 1992/04/14 18:36:17 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -62,6 +62,15 @@ DEFINE_PRIMITIVE ("FILE-OPEN-OUTPUT-CHANNEL", Prim_file_open_output_channel, 1, 
   "Open an output file called FILENAME, returning a channel number.\n\
 If the file exists, it is rewritten.")
   OPEN_FILE_PRIMITIVE (OS_open_output_file)
+
+DEFINE_PRIMITIVE ("FILE-OPEN-BINARY-INPUT-CHANNEL", Prim_file_open_binary_input_channel, 1, 1,
+  "Open an input file called FILENAME, in binary mode, returning a channel number.")
+  OPEN_FILE_PRIMITIVE (OS_open_load_file)
+
+DEFINE_PRIMITIVE ("FILE-OPEN-BINARY-OUTPUT-CHANNEL", Prim_file_open_binary_output_channel, 1, 1,
+  "Open an output file called FILENAME, in binary mode,\n\
+returning a channel number.  If the file exists, it is rewritten.")
+  OPEN_FILE_PRIMITIVE (OS_open_dump_file)
 
 DEFINE_PRIMITIVE ("FILE-OPEN-IO-CHANNEL", Prim_file_open_io_channel, 1, 1,
   "Open a file called FILENAME, returning a channel number.\n\
