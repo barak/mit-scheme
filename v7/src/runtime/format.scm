@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/format.scm,v 13.42 1987/03/17 18:49:48 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/format.scm,v 13.43 1987/06/17 20:10:38 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -52,28 +52,28 @@
 ;;;; Top Level
 
 (set! format
-(named-lambda (format port-or-string . arguments)
-  (cond ((null? port-or-string)
-	 (if (and (not (null? arguments))
-		  (string? (car arguments)))
-	     (with-output-to-string
-	      (lambda ()
-		(format-start (car arguments) (cdr arguments))))
-	     (error "Missing format string" 'FORMAT)))
-	((string? port-or-string)
-	 (format-start port-or-string arguments)
-	 *the-non-printing-object*)
-	((output-port? port-or-string)
-	 (if (and (not (null? arguments))
-		  (string? (car arguments)))
-	     (begin (with-output-to-port port-or-string
-		      (lambda ()
-			(format-start (car arguments) (cdr arguments))))
-		    *the-non-printing-object*)
-	     (error "Missing format string" 'FORMAT)))
-	(else
-	 (error "Unrecognizable first argument" 'FORMAT
-		port-or-string)))))
+  (named-lambda (format port-or-string . arguments)
+    (cond ((null? port-or-string)
+	   (if (and (not (null? arguments))
+		    (string? (car arguments)))
+	       (with-output-to-string
+		(lambda ()
+		  (format-start (car arguments) (cdr arguments))))
+	       (error "Missing format string" 'FORMAT)))
+	  ((string? port-or-string)
+	   (format-start port-or-string arguments)
+	   *the-non-printing-object*)
+	  ((output-port? port-or-string)
+	   (if (and (not (null? arguments))
+		    (string? (car arguments)))
+	       (begin (with-output-to-port port-or-string
+			(lambda ()
+			  (format-start (car arguments) (cdr arguments))))
+		      *the-non-printing-object*)
+	       (error "Missing format string" 'FORMAT)))
+	  (else
+	   (error "Unrecognizable first argument" 'FORMAT
+		  port-or-string)))))
 
 (define (format-start string arguments)
   (format-loop string arguments)
@@ -91,7 +91,7 @@
 
 (define (*unparse-object object)
   (declare (integrate object))
-  ((access unparse-object unparser-package) object *current-output-port*))
+  ((access unparse-object unparser-package) object *current-output-port* true))
 
 (define (format-loop string arguments)
   (let ((index (string-find-next-char string #\~)))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 13.46 1987/06/15 23:42:12 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 13.47 1987/06/17 20:09:58 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -60,8 +60,7 @@
   (thunk)
   (*unparse-char #\]))
 
-(define (unparse-object object port #!optional slashify)
-  (if (unassigned? slashify) (set! slashify true))
+(define (unparse-object object port slashify)
   (fluid-let ((*unparse-char (access :write-char port))
 	      (*unparse-string (access :write-string port))
 	      (*unparser-list-depth* 0)
@@ -331,5 +330,4 @@
 (define-type 'COMPLEX unparse-number)
 
 ;;; end UNPARSER-PACKAGE.
-))
 ))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 13.43 1987/04/25 09:44:31 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 13.44 1987/06/17 20:11:29 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -273,13 +273,6 @@
 
 ;;;; Output Procedures
 
-(define (non-printing-object? object)
-  (and (not (future? object))
-       (eq? object *the-non-printing-object*)))
-
-(define (unparse-with-brackets thunk)
-  ((access unparse-with-brackets unparser-package) thunk))
-
 (define (newline #!optional port)
   (cond ((unassigned? port) (set! port *current-output-port*))
 	((not (output-port? port)) (error "Bad output port" port)))
@@ -301,32 +294,47 @@
   ((access :flush-output port))
   *the-non-printing-object*)
 
-(define (make-unparser handler)
-  (lambda (object #!optional port)
-    (if (not (non-printing-object? object))
-	(if (unassigned? port)
-	    (handler object *current-output-port*)
-	    (with-output-to-port port (lambda () (handler object port)))))
-    *the-non-printing-object*))
-	   
-(define display
-  (make-unparser
-   (lambda (object port)
-     (if (and (not (future? object)) (string? object))
-	 ((access :write-string port) object)
-	 ((access unparse-object unparser-package) object port false))
-     ((access :flush-output port)))))
+(define (unparse-with-brackets thunk)
+  ((access unparse-with-brackets unparser-package) thunk))
+
+(define non-printing-object?
+  (let ((objects
+	 (list *the-non-printing-object*
+	       undefined-conditional-branch
+	       (vector-ref (get-fixed-objects-vector)
+			   (fixed-objects-vector-slot 'NON-OBJECT)))))
+    (named-lambda (non-printing-object? object)
+      (and (not (future? object))
+	   (memq object objects)))))
 
-(define write
-  (make-unparser
-   (lambda (object port)
-     ((access unparse-object unparser-package) object port)
-     ((access :flush-output port)))))
+(define display)
+(define write)
+(define write-line)
 
-(define write-line
-  (make-unparser
-   (lambda (object port)
-      ((access :write-char port) char:newline)
-      ((access unparse-object unparser-package) object port)
-      ((access :flush-output port)))))
+(let ((make-unparser
+       (lambda (handler)
+	 (lambda (object #!optional port)
+	   (if (not (non-printing-object? object))
+	       (begin (if (unassigned? port)
+			  (handler object *current-output-port*)
+			  (with-output-to-port port
+			    (lambda ()
+			      (handler object port))))
+		      ((access :flush-output port))))
+	   *the-non-printing-object*))))
+  (set! display
+    (make-unparser
+     (lambda (object port)
+       (if (and (not (future? object))
+		(string? object))
+	   ((access :write-string port) object)
+	   ((access unparse-object unparser-package) object port false)))))
+  (set! write
+    (make-unparser
+     (lambda (object port)
+       ((access unparse-object unparser-package) object port true))))
+  (set! write-line
+    (make-unparser
+     (lambda (object port)
+	((access :write-char port) char:newline)
 	((access :flush-output port))))))
