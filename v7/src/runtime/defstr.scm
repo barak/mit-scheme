@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: defstr.scm,v 14.20 1992/12/07 19:06:41 cph Exp $
+$Id: defstr.scm,v 14.21 1992/12/22 22:05:32 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -591,7 +591,8 @@ differences:
     (if predicate-name
 	(let ((tag-expression (structure/tag-expression structure))
 	      (variable (string->uninterned-symbol "object")))
-	  `((DEFINE (,predicate-name ,variable)
+	  `((DECLARE (INTEGRATE-OPERATOR ,predicate-name))
+	    (DEFINE (,predicate-name ,variable)
 	      ,(case (structure/type structure)
 		 ((RECORD)
 		  `(AND (,(absolute '%RECORD?) ,variable)
