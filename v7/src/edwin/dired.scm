@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dired.scm,v 1.158 1995/10/18 05:27:16 cph Exp $
+;;;	$Id: dired.scm,v 1.159 1995/10/31 08:10:19 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -96,8 +96,9 @@ Type \\[dired-flag-auto-save-files] to flag temporary files (names beginning wit
 Type \\[dired-flag-backup-files] to flag backup files (names ending with ~) for Deletion.
 Type \\[dired-clean-directory] to flag numerical backups for Deletion.
   (Spares dired-kept-versions or its numeric argument.)
-Type \\[dired-do-rename] to rename a file.
-Type \\[dired-do-copy] to copy a file.
+Type \\[dired-do-rename] to rename a file or move the marked files to another directory.
+Type \\[dired-do-copy] to copy files.
+Type \\[dired-sort-toggle-or-edit] to toggle sorting by name/date or change the listing switches.
 Type \\[dired-revert] to read the directory again.  This discards all deletion-flags.
 Space and Rubout can be used to move down and up by lines."
 ;;Type v to view a file in View mode, returning to Dired when done.
@@ -118,6 +119,7 @@ Space and Rubout can be used to move down and up by lines."
 (define-key 'dired #\o 'dired-find-file-other-window)
 (define-key 'dired #\p 'dired-previous-line)
 (define-key 'dired #\q 'dired-quit)
+(define-key 'dired #\s 'dired-sort-toggle-or-edit)
 (define-key 'dired #\u 'dired-unmark)
 (define-key 'dired #\v 'dired-view-file)
 (define-key 'dired #\x 'dired-do-deletions)
@@ -504,6 +506,36 @@ Type \\[help-command] at that time for help."
 			 (loop))))))))
        (clear-message)
        result))))
+
+(define-command dired-sort-toggle-or-edit
+  "Toggle between sort by date/name and refresh the dired buffer.
+With a prefix argument you can edit the current listing switches instead."
+  "P"
+  (lambda (argument)
+    (if argument
+	(dired-change-listing-switches
+	 (lambda (switches)
+	   (prompt-for-string "Listing switches (must contain -l)"
+			      switches
+			      'INSERTED-DEFAULT)))
+	(dired-toggle-switch #\t))))
+
+(define (dired-toggle-switch switch)
+  (dired-change-listing-switches
+   (lambda (switches)
+     (let ((index (string-find-next-char switches switch)))
+       (if index
+	   (let ((switches
+		  (string-append (string-head switches index)
+				 (string-tail switches (fix:+ index 1)))))
+	     (if (string=? "-" switches) "" switches))
+	   (string-append (if (string-null? switches) "-" switches)
+			  (string switch)))))))
+
+(define (dired-change-listing-switches procedure)
+  (local-set-variable! dired-listing-switches
+		       (procedure (ref-variable dired-listing-switches)))
+  ((ref-command dired-revert)))
 
 ;;;; File Operation Commands
 
