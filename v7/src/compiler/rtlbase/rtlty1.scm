@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 1.5 1987/05/22 00:11:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 1.6 1987/05/29 17:51:15 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -46,6 +46,7 @@ MIT in each case. |#
 
 (define-rtl-expression cons-pointer rtl: type datum)
 (define-rtl-expression constant rtl: value)
+(define-rtl-expression variable-cache rtl: name)
 (define-rtl-expression entry:continuation % continuation)
 (define-rtl-expression entry:procedure % procedure)
 (define-rtl-expression offset-address rtl: register number)
@@ -63,6 +64,8 @@ MIT in each case. |#
 (define-rtl-statement setup-lexpr % procedure)
 
 (define-rtl-statement interpreter-call:access % environment name)
+(define-rtl-statement interpreter-call:cache-assignment % name value)
+(define-rtl-statement interpreter-call:cache-reference rtl: name safe?)
 (define-rtl-statement interpreter-call:define % environment name value)
 (define-rtl-statement interpreter-call:enclose rtl: size)
 (define-rtl-statement interpreter-call:lookup % environment name safe?)
@@ -132,6 +135,9 @@ MIT in each case. |#
 (define-integrable (rtl:interpreter-call-result:access)
   (rtl:make-fetch 'INTERPRETER-CALL-RESULT:ACCESS))
 
+(define-integrable (rtl:interpreter-call-result:cache-reference)
+  (rtl:make-fetch 'INTERPRETER-CALL-RESULT:CACHE-REFERENCE))
+
 (define-integrable (rtl:interpreter-call-result:enclose)
   (rtl:make-fetch 'INTERPRETER-CALL-RESULT:ENCLOSE))
 
@@ -149,7 +155,7 @@ MIT in each case. |#
 	((and (pair? locative) (eq? (car locative) 'OFFSET))
 	 `(OFFSET ,(cadr locative) ,(+ (caddr locative) offset)))
 	(else `(OFFSET ,locative ,offset))))
-
+
 ;;; Expressions that are used in the intermediate form.
 
 (define-integrable (rtl:make-fetch locative)
@@ -163,7 +169,7 @@ MIT in each case. |#
 
 (define-integrable (rtl:make-typed-cons:pair type car cdr)
   `(TYPED-CONS:PAIR ,type ,car ,cdr))
-
+
 ;;; Linearizer Support
 
 (define-integrable (rtl:make-jump-statement label)

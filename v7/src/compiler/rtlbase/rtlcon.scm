@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 1.5 1987/05/22 00:10:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 1.6 1987/05/29 17:49:58 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -105,6 +105,11 @@ MIT in each case. |#
 
 (define rtl:make-interpreter-call:access
   (interpreter-lookup-maker %make-interpreter-call:access))
+
+(define (rtl:make-interpreter-call:cache-assignment name value)
+  (expression-simplify-for-statement value
+    (lambda (value)
+      (%make-interpreter-call:cache-assignment name value))))
 
 (define rtl:make-interpreter-call:define
   (interpreter-assignment-maker %make-interpreter-call:define))
@@ -216,7 +221,7 @@ MIT in each case. |#
 	  (assign-to-temporary (rtl:make-object->address register)
 			       scfg-append!
 			       receiver)))))
-
+
 (define (locative-fetch-1 locative scfg-append! receiver)
   (locative-dereference locative scfg-append!
     receiver
@@ -224,7 +229,7 @@ MIT in each case. |#
       (assign-to-temporary (rtl:make-offset register offset)
 			   scfg-append!
 			   receiver))))
-
+
 (define-export (expression-simplify-for-statement expression receiver)
   (expression-simplify expression scfg*scfg->scfg! receiver))
 

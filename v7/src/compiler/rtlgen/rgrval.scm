@@ -1,9 +1,9 @@
 d3 1
 a4 1
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.6 1987/05/27 18:36:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.7 1987/05/29 17:53:09 cph Exp $
 #| -*-Scheme-*-
 Copyright (c) 1987 Massachusetts Institute of Technology
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.6 1987/05/27 18:36:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.7 1987/05/29 17:53:09 cph Exp $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -64,7 +64,7 @@ promotional, or sales literature without prior written consent from
 (define-rvalue-generator block-tag
   (lambda (block)
 (define-method-table-entry 'BLOCK rvalue-methods
-
+
 (define-rvalue-generator reference-tag
   (lambda (reference)
     (if (vnode-known-constant? (reference-variable reference))
@@ -74,19 +74,47 @@ promotional, or sales literature without prior written consent from
 	  (lambda (locative)
 	    (expression-value/simple (rtl:make-fetch locative)))
 	  (lambda (environment name)
-	    (expression-value/temporary
-	     (rtl:make-interpreter-call:lookup
-	      environment
-	      (intern-scode-variable! (reference-block reference) name)
-	      (reference-safe? reference))
-	     (rtl:interpreter-call-result:lookup)))))))
+	    (if compiler:cache-free-variables?
+		(generate/cached-reference name (reference-safe? reference))
+		(expression-value/temporary
+		 (rtl:make-interpreter-call:lookup
+		  environment
+		  (intern-scode-variable! (reference-block reference) name)
+		  (reference-safe? reference))
+		 (rtl:interpreter-call-result:lookup))))))))
 
+(define (generate/cached-reference name safe?)
+  (let ((temp (make-temporary))
+	(result (make-temporary)))
+    (let ((cell (rtl:make-fetch temp)))
+      (let ((reference (rtl:make-fetch cell)))
+	(let ((n1 (rtl:make-assignment temp (rtl:make-variable-cache name)))
+	      (n2 (rtl:make-type-test reference (ucode-type reference-trap)))
+	      (n4 (rtl:make-assignment result reference))
+	      (n5 (rtl:make-interpreter-call:cache-reference cell safe?))
+	      (n6
+	       (rtl:make-assignment
+		result
+		(rtl:interpreter-call-result:cache-reference))))
+	  (scfg-next-connect! n1 n2)
+	  (pcfg-alternative-connect! n2 n4)
+	  (scfg-next-connect! n5 n6)
+	  (if safe?
+	      (let ((n3 (rtl:make-unassigned-test reference)))
+		(pcfg-consequent-connect! n2 n3)
+		(pcfg-consequent-connect! n3 n4)
+		(pcfg-alternative-connect! n3 n5))
+	      (pcfg-consequent-connect! n2 n5))
+	  (make-scfg (cfg-entry-node n1)
+		     (hooks-union (scfg-next-hooks n4)
+				  (scfg-next-hooks n6))))))))
+			      (hooks-union (scfg-next-hooks n3)
 (define-rvalue-generator temporary-tag
   (lambda (temporary)
     (if (vnode-known-constant? temporary)
 	(generate/constant (vnode-known-value temporary))
 	(expression-value/simple (rtl:make-fetch temporary)))))
-
+
 (define-rvalue-generator access-tag
   (lambda (*access)
     (transmit-values (generate/rvalue (access-environment *access))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.34 1987/05/19 18:04:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.35 1987/05/29 17:57:40 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -48,6 +48,8 @@ MIT in each case. |#
    (lambda ()
      (fluid-let ((*next-constant* 0)
 		 (*interned-constants* '())
+		 (*interned-variables* '())
+		 (*interned-uuo-links* '())
 		 (*block-start-label* (generate-label))
 		 (*code-object-label*)
 		 (*code-object-entry*)
@@ -61,33 +63,17 @@ MIT in each case. |#
        (queue-map! *continuation-queue*
 	 (lambda (continuation)
 	   (cgen-entry continuation continuation-rtl-entry)))
-       (receiver *interned-constants* *block-start-label*)))))
+       (receiver *block-start-label*
+		 (generate/quotation-header *block-start-label*
+					    *interned-constants*
+					    *interned-variables*
+					    *interned-uuo-links*))))))
 
 (define (cgen-entry object extract-entry)
   (set! *code-object-label* (code-object-label-initialize object))
   (let ((rnode (extract-entry object)))
     (set! *code-object-entry* rnode)
     (cgen-rnode rnode)))
-
-(define *cgen-rules* '())
-(define *assign-rules* '())
-
-(define (add-statement-rule! pattern result-procedure)
-  (let ((result (cons pattern result-procedure)))
-    (if (eq? (car pattern) 'ASSIGN)
-	(let ((entry (assq (caadr pattern) *assign-rules*)))
-	  (if entry
-	      (set-cdr! entry (cons result (cdr entry)))
-	      (set! *assign-rules*
-		    (cons (list (caadr pattern) result)
-			  *assign-rules*))))
-	(let ((entry (assq (car pattern) *cgen-rules*)))
-	  (if entry
-	      (set-cdr! entry (cons result (cdr entry)))
-	      (set! *cgen-rules*
-		    (cons (list (car pattern) result)
-			  *cgen-rules*))))))
-  pattern)
 
 (define (cgen-rnode rnode)
   (let ((offset (cgen-rnode-1 rnode)))
@@ -153,6 +139,26 @@ MIT in each case. |#
 				   (bblock-live-at-entry (node-bblock rnode))))
 	       (lambda (map aliases) map))
 	      map)))))
+
+(define *cgen-rules* '())
+(define *assign-rules* '())
+
+(define (add-statement-rule! pattern result-procedure)
+  (let ((result (cons pattern result-procedure)))
+    (if (eq? (car pattern) 'ASSIGN)
+	(let ((entry (assq (caadr pattern) *assign-rules*)))
+	  (if entry
+	      (set-cdr! entry (cons result (cdr entry)))
+	      (set! *assign-rules*
+		    (cons (list (caadr pattern) result)
+			  *assign-rules*))))
+	(let ((entry (assq (car pattern) *cgen-rules*)))
+	  (if entry
+	      (set-cdr! entry (cons result (cdr entry)))
+	      (set! *cgen-rules*
+		    (cons (list (car pattern) result)
+			  *cgen-rules*))))))
+  pattern)
 
 ;;;; Machine independent stuff
 
@@ -324,19 +330,44 @@ MIT in each case. |#
 
 (define *next-constant*)
 (define *interned-constants*)
+(define *interned-variables*)
+(define *interned-uuo-links*)
+
+(define (allocate-constant-label)
+  (let ((label
+	 (string->symbol
+	  (string-append "CONSTANT-" (write-to-string *next-constant*)))))
+    (set! *next-constant* (1+ *next-constant*))
+    label))
 
 (define (constant->label constant)
   (let ((entry (assv constant *interned-constants*)))
     (if entry
 	(cdr entry)
-	(let ((label
-	       (string->symbol
-		(string-append "CONSTANT-"
-			       (write-to-string *next-constant*)))))
-	  (set! *next-constant* (1+ *next-constant*))
+	(let ((label (allocate-constant-label)))
 	  (set! *interned-constants*
 		(cons (cons constant label)
 		      *interned-constants*))
+	  label))))
+
+(define (free-reference-label name)
+  (let ((entry (assq name *interned-variables*)))
+    (if entry
+	(cdr entry)
+	(let ((label (allocate-constant-label)))
+	  (set! *interned-variables*
+		(cons (cons name label)
+		      *interned-variables*))
+	  label))))
+
+(define (free-uuo-link-label name)
+  (let ((entry (assq name *interned-uuo-links*)))
+    (if entry
+	(cdr entry)
+	(let ((label (allocate-constant-label)))
+	  (set! *interned-uuo-links*
+		(cons (cons name label)
+		      *interned-uuo-links*))
 	  label))))
 
 (define-integrable (set-current-branches! consequent alternative)

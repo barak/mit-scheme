@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 1.3 1987/05/21 15:00:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 1.4 1987/05/29 17:54:54 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -65,24 +65,14 @@ MIT in each case. |#
 				    lvalue
 				    expression
 				    subproblem?))))))))
-
+
 (define (generate/assignment block lvalue expression subproblem?)
   ((vector-method lvalue generate/assignment)
    block lvalue expression subproblem?))
 
 (define (define-assignment tag generator)
   (define-vector-method tag generate/assignment generator))
-
-(define-assignment variable-tag
-  (lambda (block lvalue expression subproblem?)
-    (find-variable block lvalue
-      (lambda (locative)
-	(rtl:make-assignment locative expression))
-      (lambda (environment name)
-	(rtl:make-interpreter-call:set! environment
-					(intern-scode-variable! block name)
-					expression)))))
-
+
 (define-assignment temporary-tag
   (lambda (block lvalue expression subproblem?)
     (rtl:make-assignment lvalue expression)))
@@ -103,4 +93,34 @@ MIT in each case. |#
 (define-assignment value-ignore-tag
   (lambda (block lvalue rvalue subproblem?)
     (if subproblem? (error "Return node has next"))
+    (make-null-cfg)))
+
+(define-assignment variable-tag
+  (lambda (block lvalue expression subproblem?)
+    (find-variable block lvalue
+      (lambda (locative)
+	(rtl:make-assignment locative expression))
+      (lambda (environment name)
+	(if compiler:cache-free-variables?
+	    (generate/cached-assignment name expression)
+	    (rtl:make-interpreter-call:set! environment
+					    (intern-scode-variable! block name)
+					    expression))))))
+
+(define (generate/cached-assignment name value)
+  (let ((temp (make-temporary)))
+    (let ((cell (rtl:make-fetch temp)))
+      (let ((contents (rtl:make-fetch cell)))
+	(let ((n1 (rtl:make-assignment temp (rtl:make-variable-cache name)))
+	      (n2 (rtl:make-type-test contents (ucode-type reference-trap)))
+	      (n3 (rtl:make-unassigned-test contents))
+	      (n4 (rtl:make-assignment cell value))
+	      (n5 (rtl:make-interpreter-call:cache-assignment cell value)))
+	  (scfg-next-connect! n1 n2)
+	  (pcfg-consequent-connect! n2 n3)
+	  (pcfg-alternative-connect! n2 n4)
+	  (pcfg-consequent-connect! n3 n4)
+	  (pcfg-alternative-connect! n3 n5)
+	  (make-scfg (cfg-entry-node n1)
+		     (hooks-union (scfg-next-hooks n4)
 					       (scfg-next-hooks n6)))))))))
