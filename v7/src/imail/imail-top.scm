@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.205 2000/06/30 19:12:15 cph Exp $
+;;; $Id: imail-top.scm,v 1.206 2000/07/04 05:12:30 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1863,7 +1863,9 @@ Negative argument means search in reverse."
 	(begin
 	  (let ((m (buffer-get buffer 'IMAIL-MESSAGE #f)))
 	    (cond ((not m)
-		   (select-message folder #f #t))
+		   (let ((m (last-message folder)))
+		     (if m
+			 (select-message folder m #t))))
 		  ((not (message-attached? m folder))
 		   (select-message folder
 				   (or (first-unseen-message folder)
