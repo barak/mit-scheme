@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.109 1991/06/14 23:57:41 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.110 1991/06/24 23:16:20 jinx Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -1790,6 +1790,7 @@ MIT in each case. |#
 	  in-package-expression
 	  in-package?
 	  intern
+	  intern-soft
 	  interned-symbol?
 	  make-absolute-reference
 	  make-access
