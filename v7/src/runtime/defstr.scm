@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: defstr.scm,v 14.25 1993/10/21 14:52:32 cph Exp $
+$Id: defstr.scm,v 14.26 1994/01/14 03:26:56 gjr Exp $
 
-Copyright (c) 1988-93 Massachusetts Institute of Technology
+Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -107,14 +107,13 @@ differences:
 		  (+ index 1)))
 	  ((null? slots))
 	(set-slot/index! (car slots) index))
-      `(BEGIN ,@(type-definitions structure)
-	      ,@(constructor-definitions structure)
+      `(BEGIN ,@(constructor-definitions structure)
 	      ,@(accessor-definitions structure)
 	      ,@(modifier-definitions structure)
 	      ,@(predicate-definitions structure)
 	      ,@(copier-definitions structure)
 	      ,@(print-procedure-definitions structure)
-	      ',(structure/name structure)))))
+	      ,@(type-definitions structure)))))
 
 ;;;; Parse Options
 
