@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: list.scm,v 14.26 2001/09/25 05:09:36 cph Exp $
+$Id: list.scm,v 14.27 2001/11/02 03:27:50 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -673,10 +673,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 ;;;; Generalized List Operations
 
-(define (list-transform-positive items predicate)
+(define (keep-matching-items items predicate)
   (let ((lose
 	 (lambda ()
-	   (error:wrong-type-argument items "list" 'LIST-TRANSFORM-POSITIVE))))
+	   (error:wrong-type-argument items "list" 'KEEP-MATCHING-ITEMS))))
     (cond ((pair? items)
 	   (let ((head (cons (car items) '())))
 	     (let loop ((items* (cdr items)) (previous head))
@@ -693,10 +693,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  ((null? items) items)
 	  (else (lose)))))
 
-(define (list-transform-negative items predicate)
+(define (delete-matching-items items predicate)
   (let ((lose
 	 (lambda ()
-	   (error:wrong-type-argument items "list" 'LIST-TRANSFORM-NEGATIVE))))
+	   (error:wrong-type-argument items "list" 'DELETE-MATCHING-ITEMS))))
     (cond ((pair? items)
 	   (let ((head (cons (car items) '())))
 	     (let loop ((items* (cdr items)) (previous head))
@@ -713,34 +713,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  ((null? items) items)
 	  (else (lose)))))
 
-(define ((list-deletor predicate) items)
-  (list-transform-negative items predicate))
-
-(define (list-deletor! predicate)
-  (lambda (items)
-    (letrec ((trim-initial-segment
-	      (lambda (items*)
-		(if (pair? items*)
-		    (if (predicate (car items*))
-			(trim-initial-segment (cdr items*))
-			(begin
-			  (locate-initial-segment items* (cdr items*))
-			  items*))
-		    (begin
-		      (if (not (null? items*))
-			  (error:wrong-type-argument items "list" #f))
-		      '()))))
-	     (locate-initial-segment
-	      (lambda (last this)
-		(if (pair? this)
-		    (if (predicate (car this))
-			(set-cdr! last (trim-initial-segment (cdr this)))
-			(locate-initial-segment this (cdr this)))
-		    (if (not (null? this))
-			(error:wrong-type-argument items "list" #f))))))
-      (trim-initial-segment items))))
-
-(define (list-search-positive items predicate)
+(define (find-matching-item items predicate)
   (let loop ((items* items))
     (if (pair? items*)
 	(if (predicate (car items*))
@@ -748,19 +721,77 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	    (loop (cdr items*)))
 	(begin
 	  (if (not (null? items*))
-	      (error:wrong-type-argument items "list" 'LIST-SEARCH-POSITIVE))
+	      (error:wrong-type-argument items "list" 'FIND-MATCHING-ITEM))
 	  #f))))
 
+(define list-transform-positive keep-matching-items)
+(define list-transform-negative delete-matching-items)
+(define list-search-positive find-matching-item)
+
 (define (list-search-negative items predicate)
-  (let loop ((items* items))
-    (if (pair? items*)
-	(if (predicate (car items*))
-	    (loop (cdr items*))
-	    (car items*))
-	(begin
-	  (if (not (null? items*))
-	      (error:wrong-type-argument items "list" 'LIST-SEARCH-NEGATIVE))
-	  #f))))
+  (find-matching-item items
+    (lambda (item)
+      (not (predicate item)))))
+
+(define (delete-matching-items! items predicate)
+  (letrec
+      ((trim-initial-segment
+	(lambda (items*)
+	  (if (pair? items*)
+	      (if (predicate (car items*))
+		  (trim-initial-segment (cdr items*))
+		  (begin
+		    (locate-initial-segment items* (cdr items*))
+		    items*))
+	      (begin
+		(if (not (null? items*))
+		    (lose))
+		'()))))
+       (locate-initial-segment
+	(lambda (last this)
+	  (if (pair? this)
+	      (if (predicate (car this))
+		  (set-cdr! last (trim-initial-segment (cdr this)))
+		  (locate-initial-segment this (cdr this)))
+	      (if (not (null? this))
+		  (lose)))))
+       (lose
+	(lambda ()
+	  (error:wrong-type-argument items "list" 'DELETE-MATCHING-ITEMS!))))
+    (trim-initial-segment items)))
+
+(define (keep-matching-items! items predicate)
+  (letrec
+      ((trim-initial-segment
+	(lambda (items*)
+	  (if (pair? items*)
+	      (if (predicate (car items*))
+		  (begin
+		    (locate-initial-segment items* (cdr items*))
+		    items*)
+		  (trim-initial-segment (cdr items*)))
+	      (begin
+		(if (not (null? items*))
+		    (lose))
+		'()))))
+       (locate-initial-segment
+	(lambda (last this)
+	  (if (pair? this)
+	      (if (predicate (car this))
+		  (locate-initial-segment this (cdr this))
+		  (set-cdr! last (trim-initial-segment (cdr this))))
+	      (if (not (null? this))
+		  (lose)))))
+       (lose
+	(lambda ()
+	  (error:wrong-type-argument items "list" 'KEEP-MATCHING-ITEMS!))))
+    (trim-initial-segment items)))
+
+(define ((list-deletor predicate) items)
+  (delete-matching-items items predicate))
+
+(define ((list-deletor! predicate) items)
+  (delete-matching-items! items predicate))
 
 ;;;; Membership/Association Lists
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.379 2001/10/10 04:52:37 cph Exp $
+$Id: runtime.pkg,v 14.380 2001/11/02 03:28:09 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -1391,6 +1391,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  delete
 	  delete!
 	  delete-association-procedure
+	  delete-matching-items
+	  delete-matching-items!
 	  delete-member-procedure
 	  delq
 	  delq!
@@ -1400,12 +1402,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  except-last-pair
 	  except-last-pair!
 	  fifth
+	  find-matching-item
 	  first
 	  fold-left
 	  fold-right
 	  for-each
 	  fourth
 	  general-car-cdr
+	  keep-matching-items
 	  last-pair
 	  length
 	  list
