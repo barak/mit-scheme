@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: config.h,v 9.100 1999/01/02 06:11:34 cph Exp $
+$Id: config.h,v 9.101 2000/01/31 03:32:45 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -430,6 +430,12 @@ typedef unsigned long SCHEME_OBJECT;
 #ifdef __linux
 extern void * linux_heap_malloc (unsigned long);
 #define HEAP_MALLOC linux_heap_malloc
+#define HEAP_FREE(address)
+#endif
+
+#ifdef __FreeBSD__
+extern void * freebsd_heap_malloc (unsigned long);
+#define HEAP_MALLOC freebsd_heap_malloc
 #define HEAP_FREE(address)
 #endif
 
