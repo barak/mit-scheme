@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2fs.c,v 1.13 2001/05/09 03:15:02 cph Exp $
+$Id: os2fs.c,v 1.14 2001/07/19 01:45:02 cph Exp $
 
 Copyright (c) 1994-2001 Massachusetts Institute of Technology
 
@@ -110,7 +110,7 @@ OS_file_existence_test_direct (const char * filename)
 enum file_type
 OS_file_type_direct (const char * filename)
 {
-  FILESTATUS3 * info = (OS2_read_file_status (STRING_ARG (1)));
+  FILESTATUS3 * info = (OS2_read_file_status (filename));
   return
     ((info == 0)
      ? file_type_nonexistent
