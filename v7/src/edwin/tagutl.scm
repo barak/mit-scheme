@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: tagutl.scm,v 1.58 2000/02/25 20:18:38 cph Exp $
+;;; $Id: tagutl.scm,v 1.59 2000/03/27 20:44:25 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -27,7 +27,12 @@
   "List of pathnames of all of the active tags tables.
 
 See documentation for visit-tags-table and visit-additional-tags-table."
-  false)
+  '()
+  (lambda (object)
+    (list-of-type? object
+      (lambda (object)
+	(or (string? object)
+	    (pathname? object))))))
 
 (define-command visit-tags-table
   "Tell tags commands to use only the tag table file FILE.
@@ -37,23 +42,16 @@ To use more than one tag table file at a time,
 see \\[visit-additional-tags-table]."
   "FVisit tags table (default TAGS)"
   (lambda (filename)
-    (let ((pathname (->pathname filename)))
-      (set-variable! tags-table-pathnames (list (expand-pathname pathname))))))
+    (set-variable! tags-table-pathnames
+		   (list (pathname-default-name filename "TAGS")))))
 
 (define-command visit-additional-tags-table
   "Adds another tags table file to the current list of active tags tables."
   "FVisit additional tags table (default TAGS)"
   (lambda (filename)
-    (let ((pathname (->pathname filename)))
-      (set-variable! tags-table-pathnames
-		     (append (ref-variable tags-table-pathnames)
-			     (list (expand-pathname pathname)))))))
-
-(define (expand-pathname pathname)
-  (if (or (not (pathname-name pathname))
-	  (file-directory? pathname))
-      (pathname-new-name (pathname-as-directory pathname) "TAGS")
-      pathname))
+    (set-variable! tags-table-pathnames
+		   (append (ref-variable tags-table-pathnames)
+			   (list (pathname-default-name filename "TAGS"))))))
 
 (define-command find-tag
   "Find tag (in current list of tag tables) whose name contains TAGNAME.
@@ -85,7 +83,7 @@ See documentation of variable tags-table-pathnames."
 ;;;; Find Tag
 
 (define find-tag-pathnames-list
-  false)
+  #f)
 
 (define (handle-includes! included-pathnames)
   (if included-pathnames
@@ -101,15 +99,14 @@ See documentation of variable tags-table-pathnames."
       (dispatch-on-command (ref-command-object visit-tags-table)))
   (set! find-tag-pathnames-list (ref-variable tags-table-pathnames))
   (let* ((pathname (car find-tag-pathnames-list))
-	 (buffer (verify-tags-table (find-file-noselect pathname false)
-				    pathname))
+	 (buffer (get-tags-table pathname))
 	 (included-pathnames (get-included-pathnames buffer)))
     (handle-includes! included-pathnames)
     buffer))
 
 (define (current-tags-table-buffer)
   (if find-tag-pathnames-list
-      (find-file-noselect (car find-tag-pathnames-list) false)
+      (find-file-noselect (car find-tag-pathnames-list) #f)
       #f))
   
 (define (next-tags-table-buffer)
@@ -118,8 +115,7 @@ See documentation of variable tags-table-pathnames."
       (let ((pathname (second find-tag-pathnames-list)))
 	(set! find-tag-pathnames-list
 	      (cdr find-tag-pathnames-list))
-	(let* ((buffer (verify-tags-table (find-file-noselect pathname false)
-					 pathname))
+	(let* ((buffer (get-tags-table pathname))
 	       (included-pathnames (get-included-pathnames buffer)))
 	  (handle-includes! included-pathnames)
 	  buffer))
@@ -144,11 +140,11 @@ See documentation of variable tags-table-pathnames."
 	    (find-tag string buffer (buffer-start buffer) find-file))))
   (set! tags-loop-continuation
 	(lambda ()
-	  (&find-tag-command false true find-file)))
+	  (&find-tag-command #f #t find-file)))
   unspecific)
 
 (define previous-find-tag-string
-  false)
+  #f)
 
 (define (find-tag-default)
   (let ((end
@@ -156,12 +152,12 @@ See documentation of variable tags-table-pathnames."
 	   (or (re-match-forward "\\(\\sw\\|\\s_\\)+"
 				 point
 				 (group-end point)
-				 false)
+				 #f)
 	       (let ((mark
 		      (re-search-backward "\\sw\\|\\s_"
 					  point
 					  (group-start point)
-					  false)))
+					  #f)))
 		 (and mark
 		      (mark1+ mark)))))))
     (and end
@@ -276,7 +272,7 @@ See documentation of variable tags-file-pathnames."
   (lambda (source target delimited)
     (set! tags-loop-continuation
 	  (lambda ()
-	    (if (not (replace-string source target delimited true true))
+	    (if (not (replace-string source target delimited #t #t))
 		(begin
 		  (smart-buffer-kill)
 		  (tags-loop-start)))))
@@ -293,15 +289,15 @@ command."
 	(editor-error "No tags loop in progress"))
     (tags-loop-continuation)))
 
-(define tags-loop-continuation false)
+(define tags-loop-continuation #f)
 (define tags-loop-pathnames)
-(define tags-loop-current-buffer false)
+(define tags-loop-current-buffer #f)
 
 (define (tags-loop-start)
   (let ((pathnames tags-loop-pathnames))
     (if (null? pathnames)
 	(begin
-	  (set! tags-loop-continuation false)
+	  (set! tags-loop-continuation #f)
 	  (editor-error "All files processed.")))
     (set! tags-loop-pathnames (cdr pathnames))
     (let ((buffer
@@ -342,7 +338,7 @@ command."
   "This variable controls the behavior of tags-search and
 tags-query-replace.  The new behavior cause any new buffers to be
 killed if they are not modified."
-  true
+  #t
   boolean?)
 
 ;;;; Tags Tables
@@ -358,22 +354,22 @@ killed if they are not modified."
 	    (loop mark)))))
   (loop (group-start tag)))
 
-(define (verify-tags-table buffer pathname)
-  (if (and (not (verify-visited-file-modification-time? buffer))
-	   (prompt-for-yes-or-no?
-	    "Tags file has changed; read new contents"))
-      (revert-buffer buffer true true))
-  (if (not (eqv? (extract-right-char (buffer-start buffer)) #\Page))
-      (editor-error "File "
-		    (->namestring pathname)
-		    " not a valid tag table"))
-  buffer)
+(define (get-tags-table pathname)
+  (let ((buffer
+	 (let ((buffer (find-file-noselect pathname #f)))
+	   (if (and (not (verify-visited-file-modification-time? buffer))
+		    (prompt-for-yes-or-no?
+		     "Tags file has changed; read new contents"))
+	       (revert-buffer buffer #t #t)
+	       buffer))))
+    (if (not (eqv? (extract-right-char (buffer-start buffer)) #\Page))
+	(editor-error "File "
+		      (->namestring pathname)
+		      " not a valid tag table"))
+    buffer))
 
 (define (pathnames->tags-table-buffers pathnames)
-  (map (lambda (pathname)
-	 (verify-tags-table (find-file-noselect pathname false)
-			    pathname))
-       pathnames))       
+  (map get-tags-table pathnames))
 
 (define (initial-tags-table-buffers)
   ;; first make sure there is at least one tags table

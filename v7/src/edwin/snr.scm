@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: snr.scm,v 1.55 2000/01/10 03:25:14 cph Exp $
+;;; $Id: snr.scm,v 1.56 2000/03/27 20:43:25 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-2000 Massachusetts Institute of Technology
 ;;;
@@ -3471,9 +3471,7 @@ With prefix arg, replaces the file with the list information."
   (let ((pathname (os/newsrc-file-name (nntp-connection:server connection))))
     (let ((buffer (pathname->buffer pathname)))
       (if buffer
-	  (begin
-	    (find-file-revert buffer)
-	    (receiver buffer))
+	  (receiver (find-file-revert buffer))
 	  (let ((buffer (find-file-noselect pathname #f)))
 	    (set-variable! version-control #f buffer)
 	    (let ((value (receiver buffer)))

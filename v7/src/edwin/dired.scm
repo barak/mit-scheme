@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dired.scm,v 1.172 2000/03/23 03:19:06 cph Exp $
+;;; $Id: dired.scm,v 1.173 2000/03/27 20:44:24 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -196,7 +196,8 @@ Type `h' after entering dired for more info."
 	    (if (mark< lstart (buffer-end buffer))
 		lstart
 		(buffer-end buffer))
-	    0))))))
+	    0)))))
+  buffer)
 
 (define (fill-dired-buffer! buffer directory-spec)
   (let ((pathname (car directory-spec))

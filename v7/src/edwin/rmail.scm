@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rmail.scm,v 1.69 2000/03/23 06:33:08 cph Exp $
+;;; $Id: rmail.scm,v 1.70 2000/03/27 20:43:24 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
@@ -341,14 +341,15 @@ but does not copy any new mail into the file."
 		       (let ((memo (buffer-msg-memo buffer)))
 			 (and (msg-memo? memo)
 			      (<= n (msg-memo/number (msg-memo/last memo)))
-			      n))))))
+			      n)))))
+  buffer)
 
 (define (rmail-after-find-file buffer error? warn?)
   error? warn?
-  ;; No need to auto save RMAIL files.
-  (disable-buffer-auto-save! buffer)
+  (disable-buffer-auto-save! buffer)	;No need to auto save RMAIL files.
   (convert-buffer-to-babyl-format buffer)
-  (set-buffer-major-mode! buffer (ref-mode-object rmail)))
+  (set-buffer-major-mode! buffer (ref-mode-object rmail))
+  buffer)
 
 (define-command rmail-quit
   "Quit out of RMAIL."
@@ -382,8 +383,7 @@ and use that file as the inbox."
     (list (and (command-argument)
 	       (prompt-for-existing-file "Get new mail from file" #f))))
   (lambda (filename)
-    (let ((buffer (current-buffer)))
-      (rmail-find-file-revert buffer)
+    (let ((buffer (rmail-find-file-revert (current-buffer))))
       (let ((n-messages
 	     (let ((memo (buffer-msg-memo buffer)))
 	       (if (msg-memo? memo)

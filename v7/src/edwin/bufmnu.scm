@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: bufmnu.scm,v 1.127 2000/03/23 03:19:03 cph Exp $
+;;; $Id: bufmnu.scm,v 1.128 2000/03/27 20:44:09 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -60,7 +60,8 @@ Type q immediately to make the buffer menu go away."
   dont-use-auto-save? dont-confirm?	;ignore
   (set-buffer-writeable! buffer)
   (region-delete! (buffer-region buffer))
-  (fill-buffer-menu! buffer (buffer-get buffer 'REVERT-BUFFER-FILES-ONLY?)))
+  (fill-buffer-menu! buffer (buffer-get buffer 'REVERT-BUFFER-FILES-ONLY?))
+  buffer)
 
 (define (fill-buffer-menu! buffer files-only?)
   (call-with-output-mark (buffer-point buffer)
