@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: emacs.scm,v 14.23 1999/01/02 06:11:34 cph Exp $
+$Id: emacs.scm,v 14.24 1999/02/16 20:11:25 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -210,28 +210,22 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (initialize-package!)
   (set! emacs-console-port
 	(make-i/o-port
-	 (let ((operations
-		`((PROMPT-FOR-EXPRESSION ,emacs/prompt-for-expression)
-		  (PROMPT-FOR-COMMAND-CHAR ,emacs/prompt-for-command-char)
-		  (PROMPT-FOR-COMMAND-EXPRESSION
-		   ,emacs/prompt-for-command-expression)
-		  (PROMPT-FOR-CONFIRMATION ,emacs/prompt-for-confirmation)
-		  (DEBUGGER-FAILURE ,emacs/debugger-failure)
-		  (DEBUGGER-MESSAGE ,emacs/debugger-message)
-		  (DEBUGGER-PRESENTATION ,emacs/debugger-presentation)
-		  (WRITE-RESULT ,emacs/write-result)
-		  (SET-DEFAULT-DIRECTORY ,emacs/set-default-directory)
-		  (READ-START ,emacs/read-start)
-		  (READ-FINISH ,emacs/read-finish)
-		  (GC-START ,emacs/gc-start)
-		  (GC-FINISH ,emacs/gc-finish))))
-	   (append-map* operations
-			(lambda (name)
-			  (if (assq name operations)
-			      '()
-			      `((,name
-				 ,(port/operation the-console-port name)))))
-			(port/operation-names the-console-port)))
+	 (make-i/o-port-type
+	  `((PROMPT-FOR-EXPRESSION ,emacs/prompt-for-expression)
+	    (PROMPT-FOR-COMMAND-CHAR ,emacs/prompt-for-command-char)
+	    (PROMPT-FOR-COMMAND-EXPRESSION
+	     ,emacs/prompt-for-command-expression)
+	    (PROMPT-FOR-CONFIRMATION ,emacs/prompt-for-confirmation)
+	    (DEBUGGER-FAILURE ,emacs/debugger-failure)
+	    (DEBUGGER-MESSAGE ,emacs/debugger-message)
+	    (DEBUGGER-PRESENTATION ,emacs/debugger-presentation)
+	    (WRITE-RESULT ,emacs/write-result)
+	    (SET-DEFAULT-DIRECTORY ,emacs/set-default-directory)
+	    (READ-START ,emacs/read-start)
+	    (READ-FINISH ,emacs/read-finish)
+	    (GC-START ,emacs/gc-start)
+	    (GC-FINISH ,emacs/gc-finish))
+	  the-console-port-type)
 	 (port/state the-console-port)))
   ;; YUCCH!  Kludge to copy mutex of console port into emacs port.
   (set-port/thread-mutex! emacs-console-port

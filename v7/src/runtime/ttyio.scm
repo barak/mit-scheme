@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ttyio.scm,v 1.9 1999/02/16 05:44:54 cph Exp $
+$Id: ttyio.scm,v 1.10 1999/02/16 20:11:30 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -32,45 +32,29 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(output-channel (tty-output-channel)))
     (set! hook/read-char operation/read-char)
     (set! hook/peek-char operation/peek-char)
-    (set! the-console-port
-	  (make-i/o-port
+    (set! the-console-port-type
+	  (make-i/o-port-type
 	   `((BEEP ,operation/beep)
-	     (BUFFERED-INPUT-CHARS ,operation/buffered-input-chars)
-	     (BUFFERED-OUTPUT-CHARS ,operation/buffered-output-chars)
-	     (CHAR-READY? ,operation/char-ready?)
 	     (CLEAR ,operation/clear)
-	     (DISCARD-CHAR ,operation/read-char)
-	     (DISCRETIONARY-FLUSH-OUTPUT ,operation/discretionary-flush-output)
+	     (DISCRETIONARY-FLUSH-OUTPUT
+	      ,operation/discretionary-flush-output)
 	     (FLUSH-OUTPUT ,operation/flush-output)
 	     (FRESH-LINE ,operation/fresh-line)
-	     (INPUT-BLOCKING-MODE ,operation/input-blocking-mode)
-	     (INPUT-BUFFER-SIZE ,operation/input-buffer-size)
-	     (INPUT-CHANNEL ,operation/input-channel)
-	     (INPUT-OPEN? ,operation/input-open?)
-	     (INPUT-TERMINAL-MODE ,operation/input-terminal-mode)
-	     (OUTPUT-BLOCKING-MODE ,operation/output-blocking-mode)
-	     (OUTPUT-BUFFER-SIZE ,operation/output-buffer-size)
-	     (OUTPUT-CHANNEL ,operation/output-channel)
-	     (OUTPUT-OPEN? ,operation/output-open?)
-	     (OUTPUT-TERMINAL-MODE ,operation/output-terminal-mode)
 	     (PEEK-CHAR ,(lambda (port) (hook/peek-char port)))
-	     (WRITE-SELF ,operation/write-self)
 	     (READ-CHAR ,(lambda (port) (hook/read-char port)))
 	     (READ-FINISH ,operation/read-finish)
-	     (SET-INPUT-BLOCKING-MODE ,operation/set-input-blocking-mode)
-	     (SET-INPUT-BUFFER-SIZE ,operation/set-input-buffer-size)
-	     (SET-INPUT-TERMINAL-MODE ,operation/set-input-terminal-mode)
-	     (SET-OUTPUT-BLOCKING-MODE ,operation/set-output-blocking-mode)
-	     (SET-OUTPUT-BUFFER-SIZE ,operation/set-output-buffer-size)
-	     (SET-OUTPUT-TERMINAL-MODE ,operation/set-output-terminal-mode)
 	     (WRITE-CHAR ,operation/write-char)
+	     (WRITE-SELF ,operation/write-self)
 	     (WRITE-SUBSTRING ,operation/write-substring)
 	     (X-SIZE ,operation/x-size)
 	     (Y-SIZE ,operation/y-size))
-	   (make-console-port-state
-	    (make-input-buffer input-channel input-buffer-size)
-	    (make-output-buffer output-channel output-buffer-size)
-	    (channel-type=file? input-channel))))
+	   generic-i/o-type))
+    (set! the-console-port
+	  (make-port the-console-port-type
+		     (make-console-port-state
+		      (make-input-buffer input-channel input-buffer-size)
+		      (make-output-buffer output-channel output-buffer-size)
+		      (channel-type=file? input-channel))))
     (set-channel-port! input-channel the-console-port)
     (set-channel-port! output-channel the-console-port))
   (add-event-receiver! event:before-exit save-console-input)
@@ -79,6 +63,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (set-current-input-port! the-console-port)
   (set-current-output-port! the-console-port))
 
+(define the-console-port-type)
 (define the-console-port)
 (define input-buffer-size 512)
 (define output-buffer-size 512)

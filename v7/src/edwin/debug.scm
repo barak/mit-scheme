@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: debug.scm,v 1.46 1999/02/03 06:12:57 cph Exp $
+;;; $Id: debug.scm,v 1.47 1999/02/16 20:12:04 cph Exp $
 ;;;
 ;;; Copyright (c) 1992-1999 Massachusetts Institute of Technology
 ;;;
@@ -121,7 +121,7 @@
 			    object
 			    name
 			    (vector)
-			    false
+			    #f
 			    '()
 			    (make-1d-table))))
 	  (buffer-put! buffer 'BROWSER browser)
@@ -147,7 +147,7 @@
 		     (string-append
 		      (if (1d-table/get (browser/properties browser)
 					'VISIBLE-SUB-BUFFERS?
-					false)
+					#f)
 			  ""
 			  " ")
 		      prefix
@@ -232,24 +232,24 @@
 				   (loop index (- argument 1))
 				   (begin
 				     (select-bline bline)
-				     false))))
+				     #f))))
 			    (else
 			     (let ((index (- index 1)))
 			       (if (<= 0 index)
 				   (loop index (+ argument 1))
 				   (begin
 				     (select-bline bline)
-				     false)))))))))
+				     #f)))))))))
 	      (let ((point (current-point)))
 		(let ((index (mark->bline-index point)))
 		  (cond (index
 			 (loop index argument))
 			((= argument 0)
-			 false)
+			 #f)
 			(else
 			 (let ((n (if (< argument 0) -1 1)))
 			   (let find-next ((mark point))
-			     (let ((mark (line-start mark n false)))
+			     (let ((mark (line-start mark n #f)))
 			       (and mark
 				    (let ((index (mark->bline-index mark)))
 				      (if index
@@ -285,7 +285,7 @@
 	(set-buffer-point! (mark-buffer mark) mark)))
     (let ((buffer (bline/description-buffer bline)))
       (if buffer
-	  (pop-up-buffer buffer false)))))
+	  (pop-up-buffer buffer #f)))))
 
 (define (highlight-the-number mark)
   (let ((end (re-search-forward "[RSE][0-9]+ " mark (line-end mark 0))))
@@ -313,11 +313,11 @@
 	  (and (subproblem? (bline/object bline))
 	       (system-frame? (subproblem/stack-frame (bline/object bline)))))
 	 (buffer
-	  (1d-table/get (bline/properties bline) 'DESCRIPTION-BUFFER false))
+	  (1d-table/get (bline/properties bline) 'DESCRIPTION-BUFFER #f))
 	 (get-environment
 	  (1d-table/get (bline-type/properties (bline/type bline))
 			'GET-ENVIRONMENT
-			false))
+			#f))
 	 (env-exists? (if (and get-environment (not system?))
 			  (let ((environment* (get-environment bline)))
 			    (environment? environment*))
@@ -329,7 +329,7 @@
 	       (bline-type/write-description (bline/type bline))))
 	  (temporary-message "Computing, please wait...")
 	  (and write-description
-	       (let ((buffer (browser/new-buffer (bline/browser bline) false)))
+	       (let ((buffer (browser/new-buffer (bline/browser bline) #f)))
 		 (call-with-output-mark (buffer-start buffer)
 		   (lambda (port)
 		     (write-description bline port)
@@ -447,7 +447,7 @@
 	   (bline (mark->bline mark))
 	   (browser (bline/browser bline))
 	   (buffer
-	    (1d-table/get (bline/properties bline) 'DESCRIPTION-BUFFER false))
+	    (1d-table/get (bline/properties bline) 'DESCRIPTION-BUFFER #f))
 	   (condition
 	    (browser/object browser)))
       (if (condition? condition)
@@ -496,7 +496,7 @@
 ;;;stuff gets called with uses the minibuffer for prompts
 (define (call-with-interface-port mark receiver)
   (let ((mark (mark-left-inserting-copy mark)))
-    (let ((value (receiver (port/copy interface-port-template mark))))
+    (let ((value (receiver (make-port interface-port-type mark))))
       (mark-temporary! mark)
       value)))
 
@@ -530,7 +530,7 @@
 	    (environment-browser-buffer environment))))))
 
 (define (bline/attached-buffer bline type make-buffer)
-  (let ((buffer (1d-table/get (bline/properties bline) type false)))
+  (let ((buffer (1d-table/get (bline/properties bline) type #f)))
     (if (and buffer (buffer-alive? buffer))
 	buffer
 	(let ((buffer (make-buffer)))
@@ -548,7 +548,7 @@
   (let ((get-environment
 	 (1d-table/get (bline-type/properties (bline/type bline))
 		       'GET-ENVIRONMENT
-		       false))
+		       #f))
 	(lose
 	 (lambda () (editor-error "The selected line has no environment."))))
     (if get-environment
@@ -622,9 +622,9 @@
 	(set-bline/next! (record-modifier bline-rtd 'NEXT)))
     (lambda (object type parent prev)
       (let ((bline
-	     (constructor false object type
+	     (constructor #f object type
 			  parent (if parent (+ (bline/depth parent) 1) 0)
-			  false prev (if prev (+ (bline/offset prev) 1) 0)
+			  #f prev (if prev (+ (bline/offset prev) 1) 0)
 			  (make-1d-table))))
 	(if prev
 	    (set-bline/next! prev bline))
@@ -735,7 +735,7 @@
 			 (insert-newline mark)
 			 (set-bline/start-mark!
 			  bline
-			  (make-permanent-mark (mark-group mark) index true))))
+			  (make-permanent-mark (mark-group mark) index #t))))
 		     blines)
 		    (mark-temporary! mark)))))
 	    (set-browser/lines! browser bv*))))))
@@ -804,7 +804,7 @@
   (write-string "--more--" port))
 
 (define bline-type:continuation-line
-  (make-bline-type continuation-line/write-summary false 0))
+  (make-bline-type continuation-line/write-summary #f 0))
 
 (define (bline/continuation? bline)
   (eq? (bline/type bline) bline-type:continuation-line))
@@ -850,19 +850,19 @@ Set this variable to #F to disable this limit."
 (define-variable debugger-confirm-return?
   "True means prompt for confirmation in \"return\" commands.
 The prompting occurs prior to returning the value."
-  true
+  #t
   boolean?)
 
 (define-variable debugger-quit-on-return?
   "True means quit debugger when executing a \"return\" command.
 Quitting the debugger kills the debugger buffer and any associated buffers."
-  true
+  #t
   boolean?)
 
 (define-variable debugger-quit-on-restart?
   "True means quit debugger when executing a \"restart\" command.
 Quitting the debugger kills the debugger buffer and any associated buffers."
-  true
+  #t
   boolean?)
 
 ;;;Limited this bc the bindings are now pretty-printed
@@ -1260,7 +1260,7 @@ it has been renamed, it will not be deleted automatically.")
 (define (continuation->blines continuation limit)
   (let ((beyond-system-code #f))
     (let loop ((frame (continuation/first-subproblem continuation))
-	       (prev false)
+	       (prev #f)
 	       (n 0))
       (if (not frame)
 	  '()
@@ -1272,7 +1272,7 @@ it has been renamed, it will not be deleted automatically.")
 		 (walk-reductions
 		  (lambda (bline reductions)
 		    (cons bline
-			  (let loop ((reductions reductions) (prev false))
+			  (let loop ((reductions reductions) (prev #f))
 			    (if (null? reductions)
 				(next-subproblem bline)
 				(let ((bline
@@ -1292,14 +1292,14 @@ it has been renamed, it will not be deleted automatically.")
 				(let ((bline
 				       (make-bline subproblem
 						   bline-type:subproblem
-						   false
+						   #f
 						   prev)))
 				  (cons bline
 					(next-subproblem bline)))
 				(let ((bline
 				       (make-bline (car reductions)
 						   bline-type:reduction
-						   false
+						   #f
 						   prev)))
 				  (walk-reductions bline
 						   (if (> n 0)
@@ -1308,7 +1308,7 @@ it has been renamed, it will not be deleted automatically.")
 			  (walk-reductions
 			   (make-bline subproblem
 				       bline-type:subproblem
-				       false
+				       #f
 				       prev)
 			   (subproblem/reductions subproblem)))))))
 	    (cond ((and (not (ref-variable debugger-hide-system-code?))
@@ -1321,7 +1321,7 @@ it has been renamed, it will not be deleted automatically.")
 			   (begin (set! beyond-system-code #t) #t)
 			   #f)
 		       beyond-system-code)
-		   (list (make-continuation-bline continue false prev)))
+		   (list (make-continuation-bline continue #f prev)))
 		  (else (continue))))))))
 
 (define subproblem-rtd
@@ -1387,14 +1387,14 @@ it has been renamed, it will not be deleted automatically.")
 	    (cond ((debugging-info/compiled-code? expression)
 		   (write-string ";unknown compiled code" port))
 		  ((not (debugging-info/undefined-expression? expression))
-		   (fluid-let ((*unparse-primitives-by-name?* true))
+		   (fluid-let ((*unparse-primitives-by-name?* #t))
 		     (write
 		      (unsyntax (if (invalid-subexpression? subexpression)
 				    expression
 				    subexpression)))))
 		  ((debugging-info/noise? expression)
 		   (write-string ";" port)
-		   (write-string ((debugging-info/noise expression) false)
+		   (write-string ((debugging-info/noise expression) #f)
 				 port))
 		  (else
 		   (write-string ";undefined expression" port))))))))
@@ -1434,7 +1434,7 @@ it has been renamed, it will not be deleted automatically.")
 			   expression-indentation
 			   port))))
 		   ((debugging-info/noise? expression)
-		    (write-string ((debugging-info/noise expression) true)
+		    (write-string ((debugging-info/noise expression) #t)
 				  port))
 		   (else
 		    (write-string (if (stack-frame/compiled-code? frame)
@@ -1477,7 +1477,7 @@ it has been renamed, it will not be deleted automatically.")
 	    (subproblem/number (reduction/subproblem reduction)))
 	   port)))
     (write-string " " port)
-    (fluid-let ((*unparse-primitives-by-name?* true))
+    (fluid-let ((*unparse-primitives-by-name?* #t))
       (write (unsyntax (reduction/expression reduction)) port))))
 
 (define (reduction/write-description bline port)
@@ -1541,10 +1541,10 @@ it has been renamed, it will not be deleted automatically.")
 	buffer))))
 
 (define (environment->blines environment)
-  (let loop ((environment environment) (prev false))
-    (let ((bline (make-bline environment bline-type:environment false prev)))
+  (let loop ((environment environment) (prev #f))
+    (let ((bline (make-bline environment bline-type:environment #f prev)))
       (cons bline
-	    (if (eq? true (environment-has-parent? environment))
+	    (if (eq? #t (environment-has-parent? environment))
 		(loop (environment-parent environment) bline)
 		'())))))
 
@@ -1653,7 +1653,7 @@ once it has been renamed, it will not be deleted automatically.")
 				(write limit port)
 				(write-string " shown):" port)
 				(finish (list-head names limit))
-				true)))))))
+				#t)))))))
 	  (else
 	   (write-string "  BINDINGS:" port)
 	   (finish
@@ -1894,9 +1894,9 @@ once it has been renamed, it will not be deleted automatically.")
   port
   (prompt-for-expression prompt))
 
-(define interface-port-template
-  (make-output-port
+(define interface-port-type
+  (make-output-port-type
    `((WRITE-CHAR ,operation/write-char)
      (PROMPT-FOR-CONFIRMATION ,operation/prompt-for-confirmation)
      (PROMPT-FOR-EXPRESSION ,operation/prompt-for-expression))
-   false))
+   #f))

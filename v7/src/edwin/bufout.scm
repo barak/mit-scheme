@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: bufout.scm,v 1.11 1999/01/02 06:11:34 cph Exp $
+;;; $Id: bufout.scm,v 1.12 1999/02/16 20:12:28 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -35,11 +35,11 @@
       value)))
 
 (define (mark->output-port mark #!optional buffer)
-  (output-port/copy mark-output-port-template
-		    (cons (mark-left-inserting-copy mark)
-			  (if (default-object? buffer)
-			      false
-			      buffer))))
+  (make-port mark-output-port-type
+	     (cons (mark-left-inserting-copy mark)
+		   (if (default-object? buffer)
+		       #f
+		       buffer))))
 
 (define (output-port->mark port)
   (mark-temporary-copy (port/mark port)))
@@ -57,9 +57,9 @@
 	(for-each (if (mark= mark (buffer-point buffer))
 		      (lambda (window)
 			(set-window-point! window mark)
-			(window-direct-update! window false))
+			(window-direct-update! window #f))
 		      (lambda (window)
-			(window-direct-update! window false)))
+			(window-direct-update! window #f)))
 		  (buffer-windows buffer)))))
 
 (define (operation/fresh-line port)
@@ -81,12 +81,12 @@
 (define (operation/x-size port)
   (mark-x-size (port/mark port)))
 
-(define mark-output-port-template
-  (make-output-port `((CLOSE ,operation/close)
-		      (FLUSH-OUTPUT ,operation/flush-output)
-		      (FRESH-LINE ,operation/fresh-line)
-		      (PRINT-SELF ,operation/print-self)
-		      (WRITE-CHAR ,operation/write-char)
-		      (WRITE-SUBSTRING ,operation/write-substring)
-		      (X-SIZE ,operation/x-size))
-		    false))
+(define mark-output-port-type
+  (make-output-port-type `((CLOSE ,operation/close)
+			   (FLUSH-OUTPUT ,operation/flush-output)
+			   (FRESH-LINE ,operation/fresh-line)
+			   (PRINT-SELF ,operation/print-self)
+			   (WRITE-CHAR ,operation/write-char)
+			   (WRITE-SUBSTRING ,operation/write-substring)
+			   (X-SIZE ,operation/x-size))
+			 #f))

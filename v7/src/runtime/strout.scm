@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: strout.scm,v 14.9 1999/01/02 06:19:10 cph Exp $
+$Id: strout.scm,v 14.10 1999/02/16 20:11:47 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -25,11 +25,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (set! output-string-template
-	(make-output-port `((WRITE-SELF ,operation/write-self)
-			    (WRITE-CHAR ,operation/write-char)
-			    (WRITE-SUBSTRING ,operation/write-substring))
-			  false))
+  (set! output-string-port-type
+	(make-output-port-type `((WRITE-SELF ,operation/write-self)
+				 (WRITE-CHAR ,operation/write-char)
+				 (WRITE-SUBSTRING ,operation/write-substring))
+			       #f))
   unspecific)
 
 (define (with-output-to-string thunk)
@@ -39,14 +39,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (with-string-output-port generator)
   (let ((state (make-output-string-state (make-string 16) 0)))
-    (let ((port (output-port/copy output-string-template state)))
+    (let ((port (make-port output-string-port-type state)))
       (generator port)
       (without-interrupts
        (lambda ()
 	 (string-head (output-string-state/accumulator state)
 		      (output-string-state/counter state)))))))
 
-(define output-string-template)
+(define output-string-port-type)
 
 (define-structure (output-string-state (type vector)
 				       (conc-name output-string-state/))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.15 1999/02/16 05:39:07 cph Exp $
+$Id: fileio.scm,v 1.16 1999/02/16 20:11:34 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -26,65 +26,28 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (initialize-package!)
   (let ((input-operations
-	 `((BUFFERED-INPUT-CHARS ,operation/buffered-input-chars)
-	   (CHAR-READY? ,operation/char-ready?)
-	   (CHARS-REMAINING ,operation/chars-remaining)
-	   (CLOSE-INPUT ,operation/close-input)
-	   (DISCARD-CHAR ,operation/discard-char)
-	   (DISCARD-CHARS ,operation/discard-chars)
-	   (EOF? ,operation/eof?)
-	   (INPUT-BLOCKING-MODE ,operation/input-blocking-mode)
-	   (INPUT-BUFFER-SIZE ,operation/input-buffer-size)
-	   (INPUT-CHANNEL ,operation/input-channel)
-	   (INPUT-OPEN? ,operation/input-open?)
-	   (INPUT-TERMINAL-MODE ,operation/input-terminal-mode)
-	   (LENGTH ,operation/length)
-	   (PEEK-CHAR ,operation/peek-char)
-	   (READ-CHAR ,operation/read-char)
-	   (READ-STRING ,operation/read-string)
-	   (READ-SUBSTRING ,operation/read-substring)
-	   (REST->STRING ,operation/rest->string)
-	   (SET-INPUT-BLOCKING-MODE ,operation/set-input-blocking-mode)
-	   (SET-INPUT-BUFFER-SIZE ,operation/set-input-buffer-size)
-	   (SET-INPUT-TERMINAL-MODE ,operation/set-input-terminal-mode)))
-	(output-operations
-	 `((BUFFERED-OUTPUT-CHARS ,operation/buffered-output-chars)
-	   (CLOSE-OUTPUT ,operation/close-output)
-	   (FLUSH-OUTPUT ,operation/flush-output)
-	   (FRESH-LINE ,operation/fresh-line)
-	   (OUTPUT-BLOCKING-MODE ,operation/output-blocking-mode)
-	   (OUTPUT-BUFFER-SIZE ,operation/output-buffer-size)
-	   (OUTPUT-CHANNEL ,operation/output-channel)
-	   (OUTPUT-OPEN? ,operation/output-open?)
-	   (OUTPUT-TERMINAL-MODE ,operation/output-terminal-mode)
-	   (SET-OUTPUT-BLOCKING-MODE ,operation/set-output-blocking-mode)
-	   (SET-OUTPUT-BUFFER-SIZE ,operation/set-output-buffer-size)
-	   (SET-OUTPUT-TERMINAL-MODE ,operation/set-output-terminal-mode)
-	   (WRITE-CHAR ,operation/write-char)
-	   (WRITE-SUBSTRING ,operation/write-substring)))
+	 `((LENGTH ,operation/length)
+	   (REST->STRING ,operation/rest->string)))
 	(other-operations
-	 `((CLOSE ,operation/close)
+	 `((WRITE-SELF ,operation/write-self)
 	   (PATHNAME ,operation/pathname)
-	   (WRITE-SELF ,operation/write-self)
 	   (TRUENAME ,operation/truename))))
-    (set! input-file-template
-	  (make-input-port (append input-operations
-				   other-operations)
-			   #f))
-    (set! output-file-template
-	  (make-output-port (append output-operations
-				    other-operations)
-			    #f))
-    (set! i/o-file-template
-	  (make-i/o-port (append input-operations
-				 output-operations
-				 other-operations)
-			 #f)))
+    (set! input-file-type
+	  (make-input-port-type (append input-operations
+					other-operations)
+				generic-input-type))
+    (set! output-file-type
+	  (make-output-port-type other-operations
+				 generic-output-type))
+    (set! i/o-file-type
+	  (make-i/o-port-type (append input-operations
+				      other-operations)
+			      generic-i/o-type)))
   unspecific)
 
-(define input-file-template)
-(define output-file-template)
-(define i/o-file-template)
+(define input-file-type)
+(define output-file-type)
+(define i/o-file-type)
 
 (define input-buffer-size 512)
 (define output-buffer-size 512)
@@ -93,8 +56,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let* ((pathname (merge-pathnames filename))
 	 (channel (file-open-input-channel (->namestring pathname)))
 	 (port
-	  (port/copy
-	   input-file-template
+	  (make-port
+	   input-file-type
 	   (make-file-state
 	    (make-input-buffer channel
 			       input-buffer-size
@@ -112,8 +75,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		(file-open-append-channel filename)
 		(file-open-output-channel filename))))
 	 (port
-	  (port/copy
-	   output-file-template
+	  (make-port
+	   output-file-type
 	   (make-file-state
 	    #f
 	    (make-output-buffer channel
@@ -128,8 +91,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 (channel (file-open-io-channel (->namestring pathname)))
 	 (translation (pathname-newline-translation pathname))
 	 (port
-	  (port/copy
-	   i/o-file-template
+	  (make-port
+	   i/o-file-type
 	   (make-file-state
 	    (make-input-buffer channel input-buffer-size translation)
 	    (make-output-buffer channel output-buffer-size translation)
@@ -146,7 +109,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let* ((pathname (merge-pathnames filename))
 	 (channel (file-open-input-channel (->namestring pathname)))
 	 (port
-	  (port/copy input-file-template
+	  (make-port input-file-type
 		     (make-file-state (make-input-buffer channel
 							 input-buffer-size
 							 #f)
@@ -163,7 +126,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		(file-open-append-channel filename)
 		(file-open-output-channel filename))))
 	 (port
-	  (port/copy output-file-template
+	  (make-port output-file-type
 		     (make-file-state #f
 				      (make-output-buffer channel
 							  output-buffer-size
@@ -176,7 +139,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let* ((pathname (merge-pathnames filename))
 	 (channel (file-open-io-channel (->namestring pathname)))
 	 (port
-	  (port/copy i/o-file-template
+	  (make-port i/o-file-type
 		     (make-file-state (make-input-buffer channel
 							 input-buffer-size
 							 #f)
@@ -236,7 +199,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (pathname #f read-only #t))
 
 (define (operation/length port)
-  (channel-file-length (operation/input-channel port)))
+  (channel-file-length (port/input-channel port)))
 
 (define (operation/pathname port)
   (file-state/pathname (port/state port)))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;$Id: bufinp.scm,v 1.5 1999/01/02 06:11:34 cph Exp $
+;;;$Id: bufinp.scm,v 1.6 1999/02/16 20:12:24 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -40,17 +40,17 @@
 
 (define-structure (buffer-input-port-state
 		   (conc-name buffer-input-port-state/))
-  (group false read-only true)
-  (end-index false read-only true)
-  (current-index false))
+  (group #f read-only #t)
+  (end-index #f read-only #t)
+  (current-index #f))
 
 (define (make-buffer-input-port mark end)
   ;; This uses indices, so it can only be used locally
   ;; where there is no buffer-modification happening.
-  (input-port/copy buffer-input-port-template
-		   (make-buffer-input-port-state (mark-group mark)
-						 (mark-index end)
-						 (mark-index mark))))
+  (make-port buffer-input-port-type
+	     (make-buffer-input-port-state (mark-group mark)
+					   (mark-index end)
+					   (mark-index mark))))
 
 (define (operation/char-ready? port interval)
   interval				;ignore
@@ -122,12 +122,12 @@
      (make-mark (buffer-input-port-state/group state)
 		(buffer-input-port-state/current-index state)))))
 
-(define buffer-input-port-template
-  (make-input-port `((CHAR-READY? ,operation/char-ready?)
-		     (DISCARD-CHAR ,operation/discard-char)
-		     (DISCARD-CHARS ,operation/discard-chars)
-		     (PEEK-CHAR ,operation/peek-char)
-		     (PRINT-SELF ,operation/print-self)
-		     (READ-CHAR ,operation/read-char)
-		     (READ-STRING ,operation/read-string))
-		   false))
+(define buffer-input-port-type
+  (make-input-port-type `((CHAR-READY? ,operation/char-ready?)
+			  (DISCARD-CHAR ,operation/discard-char)
+			  (DISCARD-CHARS ,operation/discard-chars)
+			  (PEEK-CHAR ,operation/peek-char)
+			  (PRINT-SELF ,operation/print-self)
+			  (READ-CHAR ,operation/read-char)
+			  (READ-STRING ,operation/read-string))
+			#f))

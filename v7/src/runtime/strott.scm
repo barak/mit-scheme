@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: strott.scm,v 14.6 1999/02/16 00:53:21 cph Exp $
+$Id: strott.scm,v 14.7 1999/02/16 20:11:51 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -25,11 +25,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (set! output-string-template
-	(make-output-port `((WRITE-SELF ,operation/write-self)
-			    (WRITE-CHAR ,operation/write-char)
-			    (WRITE-SUBSTRING ,operation/write-substring))
-			  #f)))
+  (set! output-string-port-type
+	(make-output-port-type `((WRITE-SELF ,operation/write-self)
+				 (WRITE-CHAR ,operation/write-char)
+				 (WRITE-SUBSTRING ,operation/write-substring))
+			       #f)))
 
 (define (with-output-to-truncated-string max thunk)
   (call-with-current-continuation
@@ -40,11 +40,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		   (let ((state
 			  (make-output-string-state return max '() max)))
 		     (with-output-to-port
-			 (output-port/copy output-string-template state)
+			 (make-port output-string-port-type state)
 		       thunk)
 		     (output-string-state/accumulator state))))))))
 
-(define output-string-template)
+(define output-string-port-type)
 
 (define-structure (output-string-state (type vector)
 				       (conc-name output-string-state/))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: artdebug.scm,v 1.26 1999/01/02 06:11:34 cph Exp $
+;;; $Id: artdebug.scm,v 1.27 1999/02/16 20:12:15 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -87,13 +87,13 @@ and contract subproblems and reductions.
 (define-variable debugger-confirm-return?
   "True means to prompt for confirmation in RETURN-FROM and RETURN-TO
 commands before returning the value."
-  true
+  #t
   boolean?)
 
 (define-variable debugger-split-window?
   "True means use another window for the debugger buffer; false means
 use the current window."
-  true
+  #t
   boolean?)
 
 (define-variable debugger-one-at-a-time?
@@ -114,28 +114,28 @@ each time."
 
 (define-variable debugger-quit-on-return?
   "True means quit debugger when executing a \"return\" command."
-  true
+  #t
   boolean?)
 
 (define-variable debugger-quit-on-restart?
   "True means quit debugger when executing a \"restart\" command."
-  true
+  #t
   boolean?)
 
 (define-variable debugger-open-markers?
   "True means newlines are inserted between marker lines."
-  true
+  #t
   boolean?)
 
 (define-variable debugger-verbose-mode?
   "True means display extra information without the user requesting it."
-  false
+  #f
   boolean?)
 
 (define-variable debugger-expand-reductions?
   "True says to insert reductions when reduction motion commands are used
 in a subproblem whose reductions aren't already inserted."
-  true
+  #t
   boolean?)
 
 (define-variable debugger-max-subproblems
@@ -149,21 +149,21 @@ or #F meaning no limit."
 
 (define-variable debugger-hide-system-code?
   "True means don't show subproblems created by the runtime system."
-  true
+  #t
   boolean?)
 
 (define-variable debugger-show-help-message?
   "True means show a help message in the debugger buffer."
-  true
+  #t
   boolean?)
 
 (define-variable debugger-debug-evaluations?
   "True means evaluation errors in a debugger buffer start new debuggers."
-  false
+  #f
   boolean?)
 
-(define in-debugger? false)
-(define in-debugger-evaluation? false)
+(define in-debugger? #f)
+(define in-debugger-evaluation? #f)
 
 (define (maybe-debug-scheme-error switch-variable condition error-type-name)
   (if (variable-value switch-variable)
@@ -177,7 +177,7 @@ or #F meaning no limit."
 		  (ref-variable debugger-start-on-error?))
 	      (or (not (eq? (ref-variable debugger-start-on-error?) 'ASK))
 		  (debug-scheme-error? condition error-type-name)))
-	 (fluid-let ((in-debugger? true))
+	 (fluid-let ((in-debugger? #t))
 	   ((if (ref-variable debugger-split-window?)
 		select-buffer-other-window
 		select-buffer)
@@ -213,7 +213,7 @@ or #F meaning no limit."
     (if (and (not (null? buffers))
 	     (null? (cdr buffers))
 	     (ref-variable debugger-one-at-a-time?)
-	     (or (eq? true (ref-variable debugger-one-at-a-time?))
+	     (or (eq? #t (ref-variable debugger-one-at-a-time?))
 		 (prompt-for-confirmation?
 		  "Another debugger buffer exists.  Delete it")))
 	(kill-buffer (car buffers))))
@@ -391,7 +391,7 @@ Use \\[kill-buffer] to quit the debugger."
   (let ((point (mark-left-inserting-copy (current-point))))
     (insert-string output point)
     (guarantee-newlines 1 point)
-    (insert-string (transcript-value-prefix-string value true) point)
+    (insert-string (transcript-value-prefix-string value #t) point)
     (insert-string (transcript-value-string value) point)
     (insert-newlines 2 point)
     (mark-temporary! point)))
@@ -482,7 +482,7 @@ Use \\[kill-buffer] to quit the debugger."
   (lambda (region)
     (let ((environment
 	   (dstate-evaluation-environment (start-evaluation region))))
-      (fluid-let ((in-debugger-evaluation? true))
+      (fluid-let ((in-debugger-evaluation? #t))
 	(evaluate-region region environment)))))
 
 (define (start-evaluation region)
@@ -518,7 +518,7 @@ The evaluation occurs in the dynamic state of the current frame."
 	     (stack-frame->continuation (dstate/subproblem dstate)))
 	    (repl-eval hook/repl-eval))
 	(fluid-let
-	    ((in-debugger-evaluation? true)
+	    ((in-debugger-evaluation? #t)
 	     (hook/repl-eval
 	      (lambda (expression environment syntax-table)
 		(let ((unique (cons 'unique 'id)))
@@ -662,7 +662,7 @@ Move to the last subproblem if the subproblem number is too high."
 		  (write-string string port)))
 	       (pp (lambda (obj)
 		     (fresh-line port)
-		     (pretty-print obj port true)
+		     (pretty-print obj port #t)
 		     (newline port))))
 		     
 	   (if (dstate/reduction-number dstate)
@@ -683,10 +683,10 @@ Move to the last subproblem if the subproblem number is too high."
 			(if (or argument
 				(invalid-subexpression? sub))
 			    (pp exp)
-			    (fluid-let ((*pp-no-highlights?* false))
+			    (fluid-let ((*pp-no-highlights?* #f))
 			      (do-hairy))))
 		       ((debugging-info/noise? exp)
-			(message ((debugging-info/noise exp) true)))
+			(message ((debugging-info/noise exp) #t)))
 		       (else
 			(message "Unknown expression")))))))))))
 
@@ -899,7 +899,7 @@ Prefix argument means do not kill the debugger buffer."
 		     (lambda (continuation arguments)
 		       (invoke-continuation continuation
 					    arguments
-					    false))))
+					    #f))))
 	  (invoke-restart restart)))))
 
 ;;;; Marker Generation
@@ -1009,14 +1009,14 @@ Prefix argument means do not kill the debugger buffer."
 	       ((not (debugging-info/undefined-expression? expression))
 		(print-with-subexpression expression subexpression))
 	       ((debugging-info/noise? expression)
-		(write-string ((debugging-info/noise expression) false)))
+		(write-string ((debugging-info/noise expression) #f)))
 	       (else
 		(write-string ";undefined expression"))))
        environment
        port))))
 
 (define (print-with-subexpression expression subexpression)
-  (fluid-let ((*unparse-primitives-by-name?* true))
+  (fluid-let ((*unparse-primitives-by-name?* #t))
     (if (invalid-subexpression? subexpression)
 	(write (unsyntax expression))
 	(let ((sub (write-to-string (unsyntax subexpression))))
@@ -1036,7 +1036,7 @@ Prefix argument means do not kill the debugger buffer."
 
 (define (print-reduction subproblem-number reduction-number reduction port)
   (print-history-level
-   false
+   #f
    subproblem-number
    (string-append ", R=" (number->string reduction-number) " --- ")
    (lambda ()
@@ -1045,7 +1045,7 @@ Prefix argument means do not kill the debugger buffer."
    port))
 
 (define (print-reduction-as-subexpression expression)
-  (fluid-let ((*unparse-primitives-by-name?* true))
+  (fluid-let ((*unparse-primitives-by-name?* #t))
     (write-string (ref-variable subexpression-start-marker))
     (write (unsyntax expression))
     (write-string (ref-variable subexpression-end-marker))))
@@ -1226,7 +1226,7 @@ Prefix argument means do not kill the debugger buffer."
 		 (if (and reduction-number
 			  (positive? (dstate/number-of-reductions dstate)))
 		     (change-reduction! dstate reduction-number)
-		     (set-dstate/reduction-number! dstate false))
+		     (set-dstate/reduction-number! dstate #f))
 		 dstate)
 	  (editor-error "Cannot find environment for evaluation.")))))
 
@@ -1236,7 +1236,7 @@ Prefix argument means do not kill the debugger buffer."
 	   (if (and (dstate/using-history? dstate)
 		    (positive? (dstate/number-of-reductions dstate)))
 	       (change-reduction! dstate 0)
-	       (set-dstate/reduction-number! dstate false))))
+	       (set-dstate/reduction-number! dstate #f))))
 	(delta (- subproblem-number (dstate/subproblem-number dstate))))
     (if (negative? delta)
 	(let ((subproblems
@@ -1299,7 +1299,7 @@ Prefix argument means do not kill the debugger buffer."
 
 (define (call-with-interface-port mark receiver)
   (let ((mark (mark-left-inserting-copy mark)))
-    (let ((value (receiver (port/copy interface-port-template mark))))
+    (let ((value (receiver (make-port interface-port-type mark))))
       (mark-temporary! mark)
       value)))
 
@@ -1332,7 +1332,7 @@ Prefix argument means do not kill the debugger buffer."
   (fresh-line port)
   (fluid-let ((debugger-pp
 	       (lambda (expression indentation port)
-		 (pretty-print expression port true indentation))))
+		 (pretty-print expression port #t indentation))))
     (thunk))
   (newline port)
   (newline port))
@@ -1345,8 +1345,8 @@ Prefix argument means do not kill the debugger buffer."
   port
   (prompt-for-confirmation? prompt))
 
-(define interface-port-template
-  (make-output-port
+(define interface-port-type
+  (make-output-port-type
    `((WRITE-CHAR ,operation/write-char)
      (WRITE-SUBSTRING ,operation/write-substring)
      (FRESH-LINE ,operation/fresh-line)
@@ -1356,4 +1356,4 @@ Prefix argument means do not kill the debugger buffer."
      (DEBUGGER-PRESENTATION ,debugger-presentation)
      (PROMPT-FOR-EXPRESSION ,operation/prompt-for-expression)
      (PROMPT-FOR-CONFIRMATION ,operation/prompt-for-confirmation))
-   false))
+   #f))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;$Id: winout.scm,v 1.11 1999/02/16 00:44:11 cph Exp $
+;;;$Id: winout.scm,v 1.12 1999/02/16 20:12:09 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -30,7 +30,7 @@
   (with-output-to-port (window-output-port window) thunk))
 
 (define (window-output-port window)
-  (output-port/copy window-output-port-template window))
+  (make-port window-output-port-type window))
 
 (define (operation/fresh-line port)
   (if (not (line-start? (window-point (port/state port))))
@@ -44,7 +44,7 @@
 	       (line-end? point)
 	       (buffer-auto-save-modified? buffer)
 	       (or (not (window-needs-redisplay? window))
-		   (window-direct-update! window false)))
+		   (window-direct-update! window #f)))
 	  (cond ((and (group-end? point)
 		      (char=? char #\newline)
 		      (< (1+ (window-point-y window)) (window-y-size window)))
@@ -69,7 +69,7 @@
 	       (line-end? point)
 	       (buffer-auto-save-modified? buffer)
 	       (or (not (window-needs-redisplay? window))
-		   (window-direct-update! window false))
+		   (window-direct-update! window #f))
 	       (let loop ((i (- end 1)))
 		 (or (< i start)
 		     (let ((char (string-ref string i)))
@@ -87,7 +87,7 @@
 (define (operation/flush-output port)
   (let ((window (port/state port)))
     (if (window-needs-redisplay? window)
-	(window-direct-update! window false))))
+	(window-direct-update! window #f))))
 
 (define (operation/x-size port)
   (window-x-size (port/state port)))
@@ -96,11 +96,11 @@
   (unparse-string state "to window ")
   (unparse-object state (port/state port)))
 
-(define window-output-port-template
-  (make-output-port `((FLUSH-OUTPUT ,operation/flush-output)
-		      (FRESH-LINE ,operation/fresh-line)
-		      (PRINT-SELF ,operation/print-self)
-		      (WRITE-CHAR ,operation/write-char)
-		      (WRITE-SUBSTRING ,operation/write-substring)
-		      (X-SIZE ,operation/x-size))
-		    false))
+(define window-output-port-type
+  (make-output-port-type `((FLUSH-OUTPUT ,operation/flush-output)
+			   (FRESH-LINE ,operation/fresh-line)
+			   (PRINT-SELF ,operation/print-self)
+			   (WRITE-CHAR ,operation/write-char)
+			   (WRITE-SUBSTRING ,operation/write-substring)
+			   (X-SIZE ,operation/x-size))
+			 #f))

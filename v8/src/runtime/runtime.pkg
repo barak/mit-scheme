@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.318 1999/02/16 19:49:13 cph Exp $
+$Id: runtime.pkg,v 14.319 1999/02/16 20:11:00 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -386,7 +386,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  console-output-port
 	  set-console-i/o-port!)
   (export (runtime emacs-interface)
-	  the-console-port)
+	  the-console-port
+	  the-console-port-type)
   (initialization (initialize-package!)))
 
 (define-package (runtime continuation)
@@ -913,60 +914,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  make-generic-input-port
 	  make-generic-output-port)
   (export (runtime console-i/o-port)
-	  operation/buffered-input-chars
-	  operation/buffered-output-chars
-	  operation/char-ready?
-	  operation/input-blocking-mode
-	  operation/input-buffer-size
-	  operation/input-channel
-	  operation/input-open?
-	  operation/input-terminal-mode
-	  operation/output-blocking-mode
-	  operation/output-buffer-size
-	  operation/output-channel
-	  operation/output-open?
-	  operation/output-terminal-mode
-	  operation/set-input-blocking-mode
-	  operation/set-input-buffer-size
-	  operation/set-input-terminal-mode
-	  operation/set-output-blocking-mode
-	  operation/set-output-buffer-size
-	  operation/set-output-terminal-mode)
+	  generic-i/o-type)
   (export (runtime file-i/o-port)
-	  operation/buffered-input-chars
-	  operation/buffered-output-chars
-	  operation/char-ready?
-	  operation/chars-remaining
-	  operation/close
-	  operation/close-input
-	  operation/close-output
-	  operation/discard-char
-	  operation/discard-chars
-	  operation/eof?
-	  operation/flush-output
-	  operation/fresh-line
-	  operation/input-blocking-mode
-	  operation/input-buffer-size
-	  operation/input-channel
-	  operation/input-open?
-	  operation/input-terminal-mode
-	  operation/output-blocking-mode
-	  operation/output-buffer-size
-	  operation/output-channel
-	  operation/output-open?
-	  operation/output-terminal-mode
-	  operation/peek-char
-	  operation/read-char
-	  operation/read-string
-	  operation/read-substring
-	  operation/set-input-blocking-mode
-	  operation/set-input-buffer-size
-	  operation/set-input-terminal-mode
-	  operation/set-output-blocking-mode
-	  operation/set-output-buffer-size
-	  operation/set-output-terminal-mode
-	  operation/write-char
-	  operation/write-substring)
+	  generic-i/o-type
+	  generic-input-type
+	  generic-output-type)
   (initialization (initialize-package!)))
 
 (define-package (runtime gensym)

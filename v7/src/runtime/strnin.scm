@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: strnin.scm,v 14.5 1999/01/02 06:19:10 cph Exp $
+$Id: strnin.scm,v 14.6 1999/02/16 20:11:55 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -25,15 +25,16 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (set! input-string-template
-	(make-input-port `((CHAR-READY? ,operation/char-ready?)
-			   (DISCARD-CHAR ,operation/discard-char)
-			   (DISCARD-CHARS ,operation/discard-chars)
-			   (PEEK-CHAR ,operation/peek-char)
-			   (WRITE-SELF ,operation/write-self)
-			   (READ-CHAR ,operation/read-char)
-			   (READ-STRING ,operation/read-string))
-			 false)))
+  (set! input-string-port-type
+	(make-input-port-type `((CHAR-READY? ,operation/char-ready?)
+				(DISCARD-CHAR ,operation/discard-char)
+				(DISCARD-CHARS ,operation/discard-chars)
+				(PEEK-CHAR ,operation/peek-char)
+				(WRITE-SELF ,operation/write-self)
+				(READ-CHAR ,operation/read-char)
+				(READ-STRING ,operation/read-string))
+			      #f))
+  unspecific)
 
 (define (with-input-from-string string thunk)
   (with-input-from-port (string->input-port string) thunk))
@@ -43,8 +44,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 (if (default-object? end)
 	     (string-length string)
 	     (check-index end (string-length string) 'STRING->INPUT-PORT))))
-    (input-port/copy
-     input-string-template
+    (make-port
+     input-string-port-type
      (make-input-string-state string
 			      (if (default-object? start)
 				  0
@@ -58,13 +59,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (error:bad-range-argument index procedure))
   index)
 
-(define input-string-template)
+(define input-string-port-type)
 
 (define-structure (input-string-state (type vector)
 				      (conc-name input-string-state/))
-  (string false read-only true)
+  (string #f read-only #t)
   start
-  (end false read-only true))
+  (end #f read-only #t))
 
 (define-integrable (input-port/string port)
   (input-string-state/string (input-port/state port)))

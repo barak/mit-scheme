@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: intmod.scm,v 1.95 1999/01/02 06:11:34 cph Exp $
+;;; $Id: intmod.scm,v 1.96 1999/02/16 20:12:20 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -708,7 +708,7 @@ If this is an error, the debugger examines the error condition."
 (define (make-interface-port buffer thread)
   (letrec
       ((port
-	(port/copy interface-port-template
+	(make-port interface-port-type
 		   (make-interface-port-state
 		    thread
 		    (mark-right-inserting-copy (buffer-end buffer))
@@ -1052,8 +1052,8 @@ If this is an error, the debugger examines the error condition."
 	    syntax-table))
       #t)))
 
-(define interface-port-template
-  (make-i/o-port
+(define interface-port-type
+  (make-i/o-port-type
    `((WRITE-CHAR ,operation/write-char)
      (WRITE-SUBSTRING ,operation/write-substring)
      (FRESH-LINE ,operation/fresh-line)
