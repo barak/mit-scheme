@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.21 1991/03/01 00:55:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.22 1991/03/10 01:19:16 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -92,6 +92,7 @@ enum syscall_names
   syscall_readlink,
   syscall_realloc,
   syscall_rename,
+  syscall_select,
   syscall_setitimer,
   syscall_setpgid,
   syscall_sighold,
