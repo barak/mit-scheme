@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.1 1990/06/20 19:37:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.2 1990/06/21 20:01:48 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -62,7 +62,7 @@ DEFUN_VOID (OS_channel_close_all)
 {
   Tchannel channel;
   for (channel = 0; (channel < OS_channel_table_size); channel += 1)
-    if ((CHANNEL_OPEN_P (channel)) && (! (CHANNEL_INTERNAL (channel))))
+    if (CHANNEL_OPEN_P (channel))
       OS_channel_close (channel);
 }
 
@@ -90,8 +90,10 @@ void
 DEFUN (OS_channel_close, (channel), Tchannel channel)
 {
   if (! (CHANNEL_INTERNAL (channel)))
-    STD_VOID_SYSTEM_CALL ("close", (UX_close (CHANNEL_DESCRIPTOR (channel))));
-  MARK_CHANNEL_CLOSED (channel);
+    {
+      STD_VOID_SYSTEM_CALL ("close", (UX_close (CHANNEL_DESCRIPTOR (channel))));
+      MARK_CHANNEL_CLOSED (channel);
+    }
 }
 
 void
@@ -139,16 +141,17 @@ DEFUN (OS_channel_read, (channel, buffer, nbytes),
     return (0);
   while (1)
     {
-      long scr = (UX_read ((CHANNEL_DESCRIPTOR (channel)), buffer, nbytes));
+      long scr;
+      INTERRUPTABLE_EXTENT
+	(scr, (UX_read ((CHANNEL_DESCRIPTOR (channel)), buffer, nbytes)));
       if (scr < 0)
 	{
 #ifdef ERRNO_NONBLOCK
 	  if (errno == ERRNO_NONBLOCK)
 	    return (-1);
 #endif
-	  if (errno == EINTR)
-	    continue;
-	  error_system_call (errno, "read");
+	  UX_prim_check_errno ("read");
+	  continue;
 	}
       if (scr > nbytes)
 	error_external_return ();
@@ -170,16 +173,17 @@ DEFUN (OS_channel_write, (channel, buffer, nbytes),
     return (0);
   while (1)
     {
-      long scr = (UX_write ((CHANNEL_DESCRIPTOR (channel)), buffer, nbytes));
+      long scr;
+      INTERRUPTABLE_EXTENT
+	(scr, (UX_write ((CHANNEL_DESCRIPTOR (channel)), buffer, nbytes)));
       if (scr < 0)
 	{
 #ifdef ERRNO_NONBLOCK
 	  if (errno == ERRNO_NONBLOCK)
 	    return (-1);
 #endif
-	  if (errno == EINTR)
-	    continue;
-	  error_system_call (errno, "write");
+	  UX_prim_check_errno ("write");
+	  continue;
 	}
       if (scr > nbytes)
 	error_external_return ();
@@ -201,29 +205,6 @@ DEFUN (OS_channel_write_dump_file, (channel, buffer, nbytes),
 {
   int scr = (UX_write ((CHANNEL_DESCRIPTOR (channel)), buffer, nbytes));
   return ((scr < 0) ? 0 : scr);
-}
-
-int
-DEFUN (OS_channel_read_char_interruptably, (channel), Tchannel channel)
-{
-  unsigned char c;
-  int nread;
-  while (1)
-    {
-      INTERRUPTABLE_EXTENT
-	(nread, (UX_read ((CHANNEL_DESCRIPTOR (channel)), ((PTR) (&c)), 1)));
-      if (nread >= 0)
-	break;
-#ifdef ERRNO_NONBLOCK
-	  if (errno == ERRNO_NONBLOCK)
-	    {
-	      nread = 0;
-	      break;
-	    }
-#endif
-      UX_prim_check_errno ("read");
-    }
-  return ((nread == 1) ? c : (-1));
 }
 
 void

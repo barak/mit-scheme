@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.1 1990/06/20 19:37:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.2 1990/06/21 20:01:53 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -99,7 +99,11 @@ DEFUN (OS_terminal_read_char, (channel), Tchannel channel)
 	return (c);
       }
   }
-  return (OS_channel_read_char_interruptably (channel));
+  {
+    unsigned char c;
+    long nread = (OS_channel_read (channel, (&c), 1));
+    return ((nread == 1) ? c : (-1));
+  }
 }
 
 int

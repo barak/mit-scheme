@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtty.c,v 1.1 1990/06/20 19:38:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtty.c,v 1.2 1990/06/21 20:01:58 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -54,7 +54,6 @@ DEFUN_VOID (OS_tty_input_channel)
 static unsigned char
 DEFUN (tty_read_char, (immediate), int immediate)
 {
-  int c;
   if ((OS_channel_type (input_channel)) == channel_type_terminal)
     {
       transaction_begin ();
@@ -63,20 +62,23 @@ DEFUN (tty_read_char, (immediate), int immediate)
 	OS_terminal_nonbuffered (input_channel);
       else
 	OS_terminal_buffered (input_channel);
-      c = (OS_terminal_read_char (input_channel));
-      if (c == (-1))
-	termination_eof ();
-      transaction_commit ();
+      {
+	int c = (OS_terminal_read_char (input_channel));
+	if (c == (-1))
+	  termination_eof ();
+	transaction_commit ();
+	return ((unsigned char) c);
+      }
     }
   else
     {
-      c = (OS_channel_read_char_interruptably (input_channel));
-      if (c == (-1))
+      unsigned char c;
+      if ((OS_channel_read (input_channel, (&c), 1)) != 1)
 	termination_eof ();
       if ((OS_channel_type (input_channel)) == channel_type_file)
 	OS_tty_write_char (c);
+      return (c);
     }
-  return ((unsigned char) c);
 }
 
 unsigned char
