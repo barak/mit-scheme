@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.73 2003/06/08 04:07:40 cph Exp $
+$Id: io.scm,v 14.74 2003/11/07 20:35:48 cph Exp $
 
 Copyright 1986,1987,1988,1990,1991,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1998,1999,2000,2001 Massachusetts Institute of Technology
@@ -83,6 +83,7 @@ USA.
 	(eq? 'OS/2-CONSOLE type))))
 
 (define (channel-close channel)
+  (set-channel-descriptor! channel #f)
   (remove-from-gc-finalizer! open-channels channel))
 
 (define-integrable (channel-open? channel)
