@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.8 2001/12/20 21:45:24 cph Exp $
+$Id: lapgen.scm,v 1.9 2002/02/22 03:06:43 cph Exp $
 
-Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1992-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -837,16 +837,18 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;;; Codes and Hooks
 
 (let-syntax ((define-codes
-	       (lambda (start . names)
-		 (define (loop names index)
-		   (if (null? names)
-		       '()
-		       (cons `(DEFINE-INTEGRABLE
-				,(symbol-append 'CODE:COMPILER-
-						(car names))
-				,index)
-			     (loop (cdr names) (1+ index)))))
-		 `(BEGIN ,@(loop names start)))))
+	       (sc-macro-transformer
+		(lambda (form environment)
+		  environment
+		  `(BEGIN
+		     ,@(let loop ((names (cddr form)) (index (cadr form)))
+			 (if (pair? names)
+			     (cons `(DEFINE-INTEGRABLE
+				      ,(symbol-append 'CODE:COMPILER-
+						      (car names))
+				      ,index)
+				   (loop (cdr names) (+ index 1)))
+			     '())))))))
   (define-codes #x012
     primitive-apply primitive-lexpr-apply
     apply error lexpr-apply link
@@ -859,38 +861,29 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     set! define lookup-apply))
 
 (let-syntax ((define-codes
-	       (lambda (start . names)
-		 (define (loop names offset)
-		   (if (null? names)
-		       '()
-		       (cons `(DEFINE-INTEGRABLE
-				,(symbol-append 'ASSEMBLY-HOOK:
-						(car names))
-				,offset)
-			     (loop (cdr names) (+ 16 offset)))))
-		 `(BEGIN ,@(loop names start)))))
+	       (sc-macro-transformer
+		(lambda (start . names)
+		  `(BEGIN
+		     ,@(let loop ((names (cddr form)) (offset (cadr form)))
+			 (if (pair? names)
+			     (cons `(DEFINE-INTEGRABLE
+				      ,(symbol-append 'ASSEMBLY-HOOK:
+						      (car names))
+				      ,offset)
+				   (loop (cdr names) (+ offset 16)))
+			     '())))))))
   (define-codes #x0
     long-jump
     allocate-closure))
 
 (define (invoke-assembly-hook which-hook)
-  (LAP (LDA ,regnum:assembler-temp
-	    (OFFSET ,which-hook ,regnum:closure-hook))
-       (JSR ,regnum:assembler-temp ,regnum:assembler-temp
-	    (@PCO ,which-hook))))
+  (LAP (LDA ,regnum:assembler-temp (OFFSET ,which-hook ,regnum:closure-hook))
+       (JSR ,regnum:assembler-temp ,regnum:assembler-temp (@PCO ,which-hook))))
 
 (define-integrable (link-to-interface code)
   ;; Jump, with link in regnum:first-arg, to link_to_interface
   (LAP (MOVEI ,regnum:interface-index (& ,code))
        (JMP ,regnum:first-arg ,regnum:scheme-to-interface-jsr)))
-
-#| ;; Not actually needed ...
-(define-integrable (link-to-trampoline code)
-  ;; Jump, with link in 31, to trampoline_to_interface
-  (LAP (LDA   ,regnum:assembler-temp (OFFSET -96xxx ,regnum:scheme-to-interface))
-       (MOVEI ,regnum:interface-index (& ,code))
-       (JMP   ,regnum:linkage ,regnum:assembler-temp)))
-|#
 
 (define-integrable (invoke-interface code)
   ;; Jump to scheme-to-interface
@@ -915,7 +908,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
       (LAP ,@clear-regs
 	   ,@load-regs
 	   ,@(clear-map!)))))
-
 
 (define (pre-lapgen-analysis rgraphs)
   rgraphs

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: flinstr1.scm,v 1.3 2001/12/20 21:45:24 cph Exp $
+$Id: flinstr1.scm,v 1.4 2002/02/22 03:14:49 cph Exp $
 
-Copyright (c) 1988, 1989, 1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1988-1989, 1999, 2001-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -138,41 +138,42 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-unary-flop
-       (lambda (name bits)
-	 `(define-instruction ,name
+       (sc-macro-transformer
+	(lambda (form environment)
+	  environment
+	  `(DEFINE-INSTRUCTION ,(cadr form)
 
-	    (((? type float-source-format)
-	      (? source ea-d)
-	      (? destination float-reg))
-	     (WORD (4 #b1111)
-		   (3 FPC)
-		   (3 #b000)
-		   (6 source SOURCE-EA 'L))
-	     (EXTENSION-WORD (3 #b010)
-			     (3 type)
-			     (3 destination)
-			     (7 ,bits)))
+	     (((? type float-source-format)
+	       (? source ea-d)
+	       (? destination float-reg))
+	      (WORD (4 #b1111)
+		    (3 FPC)
+		    (3 #b000)
+		    (6 source SOURCE-EA 'L))
+	      (EXTENSION-WORD (3 #b010)
+			      (3 type)
+			      (3 destination)
+			      (7 ,(caddr form))))
 
-	    (((? source float-reg) (? destination float-reg))
-	     (WORD (4 #b1111)
-		   (3 FPC)
-		   (3 #b000)
-		   (6 #b000000))
-	     (EXTENSION-WORD (3 #b000)
-			     (3 source)
-			     (3 destination)
-			     (7 ,bits)))
+	     (((? source float-reg) (? destination float-reg))
+	      (WORD (4 #b1111)
+		    (3 FPC)
+		    (3 #b000)
+		    (6 #b000000))
+	      (EXTENSION-WORD (3 #b000)
+			      (3 source)
+			      (3 destination)
+			      (7 ,(caddr form))))
 
-	    (((? reg float-reg))
-	     (WORD (4 #b1111)
-		   (3 FPC)
-		   (3 #b000)
-		   (6 #b000000))
+	     (((? reg float-reg))
+	      (WORD (4 #b1111)
+		    (3 FPC)
+		    (3 #b000)
+		    (6 #b000000))
 	      (EXTENSION-WORD (3 #b000)
 			      (3 reg)
 			      (3 reg)
-			      (7 ,bits)))))))
-
+			      (7 ,(caddr form)))))))))
   (define-unary-flop FABS	#b0011000)
   (define-unary-flop FACOS	#b0011100)
   (define-unary-flop FASIN	#b0001100)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: instr1.scm,v 1.5 2001/12/20 21:45:24 cph Exp $
+$Id: instr1.scm,v 1.6 2002/02/22 02:57:23 cph Exp $
 
-Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1992-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -31,26 +31,28 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((memory-format-instruction
-      (lambda (keyword opcode)
-	`(define-instruction ,keyword
-	   (((? destination) (OFFSET (? offset) (? base)))
-	    (VARIABLE-WIDTH (offset offset)
-	      ((#x-8000 #x7FFF)
-	       (LONG (6 ,opcode)
-		     (5 destination)
-		     (5 base)
-		     (16 offset SIGNED)))
-	      ((#x-80000000 #x7FFFFFFF)
-	       ;; LDAH    temp, left[offset](base)
-	       ;; LDx/STx destination, right[offset](temp)
-	       (LONG (6 #x09)		; LDAH
-		     (5 regnum:volatile-scratch) ; destination = temp
-		     (5 base)		;   base
-		     (16 (adjusted:high offset) SIGNED)
-		     (6 ,opcode)	; LDx/STx
-		     (5 destination)	;   destination
-		     (5 regnum:volatile-scratch) ; base = temp
-		     (16 (adjusted:low offset) SIGNED)))))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(DEFINE-INSTRUCTION ,(cadr form)
+	    (((? destination) (OFFSET (? offset) (? base)))
+	     (VARIABLE-WIDTH (offset offset)
+	       ((#x-8000 #x7FFF)
+		(LONG (6 ,(caddr form))
+		      (5 destination)
+		      (5 base)
+		      (16 offset SIGNED)))
+	       ((#x-80000000 #x7FFFFFFF)
+		;; LDAH    temp, left[offset](base)
+		;; LDx/STx destination, right[offset](temp)
+		(LONG (6 #x09)		; LDAH
+		      (5 regnum:volatile-scratch) ; destination = temp
+		      (5 base)		;   base
+		      (16 (adjusted:high offset) SIGNED)
+		      (6 ,(caddr form))	; LDx/STx
+		      (5 destination)	;   destination
+		      (5 regnum:volatile-scratch) ; base = temp
+		      (16 (adjusted:low offset) SIGNED))))))))))
   (memory-format-instruction LDA #x08)	 ; Load Address
   (memory-format-instruction LDAH #x09)	 ; Load Address High
   (memory-format-instruction LDF #x20)	 ; Load F floating from memory
@@ -79,7 +81,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	 (5 destination)
 	 (5 regnum:zero)
 	 (16 constant SIGNED))))
-
+
 (define-instruction COPY
   (((? source) (? destination))
    (LONG (6 #x11)			; Arithmetic/Logical
@@ -92,29 +94,35 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   
 (let-syntax
     ((special-memory-instruction
-      (lambda (keyword functioncode)
-	`(define-instruction ,keyword
-	   (()
-	    (LONG (6 #x18)
-		  (5 #x0)
-		  (5 #x0)
-		  (16 ,functioncode))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(DEFINE-INSTRUCTION ,(cadr form)
+	    (()
+	     (LONG (6 #x18)
+		   (5 #x0)
+		   (5 #x0)
+		   (16 ,(caddr form))))))))
      (special-memory-instruction-Ra
-      (lambda (keyword functioncode)
-	`(define-instruction ,keyword
-	   (((? Ra))
-	    (LONG (6 #x18)
-		  (5 Ra)
-		  (5 #x0)
-		  (16 ,functioncode))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(DEFINE-INSTRUCTION ,(cadr form)
+	    (((? Ra))
+	     (LONG (6 #x18)
+		   (5 Ra)
+		   (5 #x0)
+		   (16 ,(caddr form))))))))
      (special-memory-instruction-Rb
-      (lambda (keyword functioncode)
-	`(define-instruction ,keyword
-	   (((? Rb))
-	    (LONG (6 #x18)
-		  (5 #x0)
-		  (5 Rb)
-		  (16 ,functioncode)))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(DEFINE-INSTRUCTION ,(cadr form)
+	    (((? Rb))
+	     (LONG (6 #x18)
+		   (5 #x0)
+		   (5 Rb)
+		   (16 ,(caddr form)))))))))
   (special-memory-instruction DRAINT #x0000)	; Drain instruction pipe
   (special-memory-instruction-Rb FETCH #x8000)	; Prefetch data
   (special-memory-instruction-Rb FETCH_M #xA000); Prefetch data, modify intent
@@ -123,27 +131,29 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (special-memory-instruction-Ra RPCC #xC000)	; Read process cycle counter
   (special-memory-instruction-Ra RS #xF000)	; Read and set (VAX converter)
   (special-memory-instruction TRAPB #x0000)	; Trap barrier
-)
+  )
 
 (let-syntax
     ((operate-format
-      (lambda (keyword opcode functioncode)
-	`(define-instruction ,keyword
-	   (((? source-1) (& (? constant)) (? destination))
-	    (LONG (6 ,opcode)
-		  (5 source-1)
-		  (8 constant UNSIGNED)
-		  (1 1)			 ; Must be one
-		  (7 ,functioncode)
-		  (5 destination)))
-	   (((? source-1) (? source-2) (? destination))
-	    (LONG (6 ,opcode)
-		  (5 source-1)
-		  (5 source-2)
-		  (3 0)			; Should be zero
-		  (1 0)			; Must be zero
-		  (7 ,functioncode)
-		  (5 destination)))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(DEFINE-INSTRUCTION ,(cadr form)
+	    (((? source-1) (& (? constant)) (? destination))
+	     (LONG (6 ,(caddr form))
+		   (5 source-1)
+		   (8 constant UNSIGNED)
+		   (1 1)		; Must be one
+		   (7 ,(cadddr form))
+		   (5 destination)))
+	    (((? source-1) (? source-2) (? destination))
+	     (LONG (6 ,(caddr form))
+		   (5 source-1)
+		   (5 source-2)
+		   (3 0)		; Should be zero
+		   (1 0)		; Must be zero
+		   (7 ,(cadddr form))
+		   (5 destination))))))))
   (operate-format ADDL #x10 #x00)	 ; Add longword
   (operate-format ADDLV #x10 #x40)	 ; Add longword, enable oflow trap
   (operate-format ADDQ #x10 #x20)	 ; Add quadword
@@ -211,15 +221,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (operate-format XOR #x11 #x40)	 ; Logical difference (xor)
   (operate-format ZAP #x12 #x30)	 ; Zero bytes
   (operate-format ZAPNOT #x12 #x31)	 ; Zero bytes not
-)
-
+  )
+
 (let-syntax
     ((pal-format
-      (lambda (keyword functioncode)
-	`(define-instruction ,keyword
-	   (()
-	    (LONG (6 0)
-		  (26 ,functioncode)))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(DEFINE-INSTRUCTION ,(cadr form)
+	    (()
+	     (LONG (6 0)
+		   (26 ,(caddr form)))))))))
 
   (pal-format BPT #x0080)		 ; Initiate program debugging
   (pal-format BUGCHK #x0081)		 ; Initiate program exception
@@ -254,8 +266,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
   ;; Privileged PALcode instructions.
   (pal-format HALT #x0000)
-)
-
+  )
+
 ;;;; Assembler pseudo-ops
 
 (define-instruction EXTERNAL-LABEL

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: instr3.scm,v 1.3 2001/12/20 21:45:24 cph Exp $
+$Id: instr3.scm,v 1.4 2002/02/22 03:03:31 cph Exp $
 
-Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1992-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -44,14 +44,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((floating-operate
-      (lambda (keyword function-code)
-	`(define-instruction ,keyword
-	   (((? src-1) (? src-2) (? dest))
-	    (LONG (6 #x17)		; Opcode
-		  (5 src-1)
-		  (5 src-2)
-		  (11 ,function-code)
-		  (5 dest)))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(DEFINE-INSTRUCTION ,(cadr form)
+	    (((? src-1) (? src-2) (? dest))
+	     (LONG (6 #x17)		; Opcode
+		   (5 src-1)
+		   (5 src-2)
+		   (11 ,(caddr form))
+		   (5 dest))))))))
   (floating-operate CPYS #x20)
   (floating-operate CPYSE #x22)
   (floating-operate CPYSN #x21)
@@ -67,23 +69,25 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (floating-operate FCMOVNE #x2b)
   (floating-operate MF_FPCR #x25)
   (floating-operate MT_FPCR #x24))
-
+
 (let-syntax
     ((ieee
-      (lambda (keyword function-code)
-	`(define-instruction ,keyword
-	   (((? src-1) (? src-2) (? dest))
-	    (LONG (6 #x16)		; Opcode
-		  (5 src-1)
-		  (5 src-2)
-		  (11 ,function-code)
-		  (5 dest)))
-	   ((/ (? qualifier) (? src-1) (? src-2) (? dest))
-	    (LONG (6 #x16)		; Opcode
-		  (5 src-1)
-		  (5 src-2)
-		  (11 (+ ,function-code (encode-fp-qualifier qualifier)))
-		  (5 dest)))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(DEFINE-INSTRUCTION ,(cadr form)
+	    (((? src-1) (? src-2) (? dest))
+	     (LONG (6 #x16)		; Opcode
+		   (5 src-1)
+		   (5 src-2)
+		   (11 ,(caddr form))
+		   (5 dest)))
+	    ((/ (? qualifier) (? src-1) (? src-2) (? dest))
+	     (LONG (6 #x16)		; Opcode
+		   (5 src-1)
+		   (5 src-2)
+		   (11 (+ ,(caddr form) (encode-fp-qualifier qualifier)))
+		   (5 dest))))))))
   (ieee ADDS #x80)
   (ieee ADDT #xA0)
   (ieee CMPTEQ #xA5)
@@ -103,20 +107,22 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((vax
-      (lambda (keyword function-code)
-	`(define-instruction ,keyword
-	   (((? src-1) (? src-2) (? dest))
-	    (LONG (6 #x15)		; Opcode
-		  (5 src-1)
-		  (5 src-2)
-		  (11 ,function-code)
-		  (5 dest)))
-	   ((/ (? qualifier) (? src-1) (? src-2) (? dest))
-	    (LONG (6 #x15)		; Opcode
-		  (5 src-1)
-		  (5 src-2)
-		  (11 (+ ,function-code (encode-fp-qualifier qualifier)))
-		  (5 dest)))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(DEFINE-INSTRUCTION ,(cadr form)
+	    (((? src-1) (? src-2) (? dest))
+	     (LONG (6 #x15)		; Opcode
+		   (5 src-1)
+		   (5 src-2)
+		   (11 ,(caddr form))
+		   (5 dest)))
+	    ((/ (? qualifier) (? src-1) (? src-2) (? dest))
+	     (LONG (6 #x15)		; Opcode
+		   (5 src-1)
+		   (5 src-2)
+		   (11 (+ ,(caddr form) (encode-fp-qualifier qualifier)))
+		   (5 dest))))))))
   (vax ADDF #x80)
   (vax ADDG #xa0)
   (vax CMPGEQ #xa5)

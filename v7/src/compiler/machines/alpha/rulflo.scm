@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rulflo.scm,v 1.5 2001/12/20 21:45:24 cph Exp $
+$Id: rulflo.scm,v 1.6 2002/02/22 03:10:15 cph Exp $
 
-Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1992-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -199,10 +199,12 @@ the vector length header are the same size.
 
 (let-syntax
     ((define-flonum-operation
-       (lambda (primitive-name opcode)
-	 `(define-arithmetic-method ',primitive-name flonum-methods/2-args
-	    (lambda (target source1 source2)
-	      (LAP (,opcode ,',source1 ,',source2 ,',target)))))))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  environment
+	  `(DEFINE-ARITHMETIC-METHOD ',(cadr form) FLONUM-METHODS/2-ARGS
+	     (LAMBDA (TARGET SOURCE1 SOURCE2)
+	       (LAP (,(caddr form) ,',SOURCE1 ,',SOURCE2 ,',TARGET))))))))
   (define-flonum-operation flonum-add ADDT)
   (define-flonum-operation flonum-subtract SUBT)
   (define-flonum-operation flonum-multiply MULT)
