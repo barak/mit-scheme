@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.1 1995/01/10 20:53:05 adams Exp $
+$Id: rules3.scm,v 1.2 1995/01/11 16:24:26 ssmith Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -808,6 +808,25 @@ MIT in each case. |#
       '()
       (cons (cons false (allocate-constant-label)) 	; relocation address
 	    (do-rest uuos))))
+
+
+;; The following rules were created specifically for the new version
+;; and therefore are required (unlike the rules above, which may or may not
+;; be obsolete in the new version 8.0)
+
+;; Copied from the Spectrum's rules3.scm
+;; NOTE that make-external-label is in i386/lapgen, but in spectrum/rules3
+;;   also, there are some differences ** potential bug
+;; 
+(define-rule statement
+  (TRIVIAL-CLOSURE (? label)
+		   (? dbg-info)
+		   (MACHINE-CONSTANT (? min))
+		   (MACHINE-CONSTANT (? max)))
+  dbg-info				; ignored
+  (make-external-label (make-procedure-code-word min max)
+		       label))
+
 
 ;;; Local Variables: ***
 ;;; eval: (put 'declare-constants 'scheme-indent-hook 2) ***
