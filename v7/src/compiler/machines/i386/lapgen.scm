@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.5 1992/02/06 05:09:03 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.6 1992/02/08 23:59:15 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/lapgen.scm,v 4.42 1991/05/28 19:14:26 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -133,9 +133,9 @@ MIT in each case. |#
       (let ((ssti (floreg->sti source))
 	    (tsti (floreg->sti target)))
 	(if (zero? ssti)
-	    (LAP (FST D (ST ,tsti)))
-	    (LAP (FLD D (ST ,ssti))
-		 (FSTP D (ST ,(1+ tsti))))))))
+	    (LAP (FST (ST ,tsti)))
+	    (LAP (FLD (ST ,ssti))
+		 (FSTP (ST ,(1+ tsti))))))))
 
 (define (machine-register->memory source target)
   (if (not (float-register? source))
@@ -143,14 +143,14 @@ MIT in each case. |#
       (let ((ssti (floreg->sti source)))
 	(if (zero? ssti)
 	    (LAP (FST D ,target))
-	    (LAP (FLD D (ST ,ssti))
+	    (LAP (FLD (ST ,ssti))
 		 (FSTP D ,target))))))
 
 (define (memory->machine-register source target)
   (if (not (float-register? target))
       (LAP (MOV W ,(register-reference target) ,source))
       (LAP (FLD D ,source)
-	   (FSTP D (ST ,(1+ (floreg->sti target)))))))
+	   (FSTP (ST ,(1+ (floreg->sti target)))))))
 
 (define-integrable (offset-reference register offset)
   (byte-offset-reference register (* 4 offset)))
