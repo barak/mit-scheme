@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: process.scm,v 1.38 1995/09/13 23:01:03 cph Exp $
+;;;	$Id: process.scm,v 1.39 1996/04/24 02:45:38 cph Exp $
 ;;;
-;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -585,15 +585,26 @@ after the listing is made.)"
   ;; Buffers that disable translation should have it disabled for
   ;; subprocess I/O as well as normal file I/O, since subprocesses are
   ;; used for reading and writing compressed files and such.
-  (subprocess-i/o-port process
-		       (and (or (not output-mark)
-				(ref-variable translate-file-data-on-input
-					      output-mark))
-			    'DEFAULT)
-		       (and (or (not input-region)
-				(ref-variable translate-file-data-on-output
-					      (region-start input-region)))
-			    'DEFAULT))
+  (let ((mark-translation
+	 (lambda (mark)
+	   (let ((pathname
+		  (let ((buffer (mark-buffer mark)))
+		    (and buffer
+			 (buffer-pathname buffer)))))
+	     (if pathname
+		 (pathname-newline-translation pathname)
+		 'DEFAULT)))))
+    (subprocess-i/o-port
+     process
+     (if output-mark
+	 (and (ref-variable translate-file-data-on-output output-mark)
+	      (mark-translation output-mark))
+	 'DEFAULT)
+     (if input-region
+	 (let ((mark (region-start input-region)))
+	   (and (ref-variable translate-file-data-on-input mark)
+		(mark-translation mark)))
+	 'DEFAULT)))
   (if input-region
       (call-with-protected-continuation
        (lambda (continuation)
