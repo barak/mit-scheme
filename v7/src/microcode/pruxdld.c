@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pruxdld.c,v 1.8 1993/11/10 20:24:01 gjr Exp $
+$Id: pruxdld.c,v 1.9 1993/11/22 19:45:13 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -75,7 +75,7 @@ DEFUN (dyn_lookup, (handle, symbol, type, result),
   * result = ((PTR) (* handle));
   return (0);
 }
-
+
 #else /* not _AIX */
 #if defined(_HPUX)
 
@@ -102,9 +102,28 @@ DEFUN (dyn_lookup, (handle, symbol, type, result),
        AND int type
        AND PTR * result)
 {
+#ifndef hp9000s300
   return (shl_findsym (handle, symbol, type, result));
-}
+#else
+  /* External symbols on the 300s often have underscores.
+     Look both ways.
+   */
+  char * temp;
+  int retval = (shl_findsym (handle, symbol, type, result));
 
+  if (retval != -1)
+    return (retval);
+  temp = ((char *) (malloc (2 + (strlen (symbol)))));
+  if (temp == ((char *) NULL))
+    return (-1);
+  *temp = '_';
+  strcpy (temp + 1, symbol);
+  retval = (shl_findsym (handle, temp, type, result));
+  free (temp);
+  return (retval);
+#endif
+}
+
 #else /* not _HPUX */
 
 #include <dlfcn.h>
