@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/instr3.scm,v 1.7 1987/08/24 15:01:13 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/instr3.scm,v 1.8 1989/05/17 20:30:03 jinx Rel $
+$MC68020-Header: instr3.scm,v 1.16 88/10/04 23:04:57 GMT jinx Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -666,9 +667,9 @@ MIT in each case. |#
 ;;
 ;; (CASE B (R 0) (& 5) (& 2))
 ;; (LABEL case-begin)
-;; (DC W `(- case-5 case-begin))
-;; (DC W `(- case-6 case-begin))
-;; (DC W `(- case-7 case-begin))
+;; (WORD `(- case-5 case-begin))
+;; (WORD `(- case-6 case-begin))
+;; (WORD `(- case-7 case-begin))
 ;; <fall through if out of range>
 
 (define-instruction CASE

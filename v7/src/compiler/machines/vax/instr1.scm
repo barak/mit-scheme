@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/instr1.scm,v 1.5 1987/08/24 14:43:17 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/instr1.scm,v 1.6 1989/05/17 20:29:48 jinx Rel $
+$MC68020-Header: instr1.scm,v 1.66 88/06/14 08:47:12 GMT cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -75,17 +76,25 @@ opcodes are
      (()
       (BYTE (8 ,opcode)))))
 
-;; Pseudo-op
+;; Pseudo ops
 
-(define-instruction DC
-  ((B (? value))
+(define-instruction BYTE
+  ((S (? value))
    (BYTE (8 value SIGNED)))
+  ((U (? value))
+   (BYTE (8 value UNSIGNED))))
 
-  ((W (? value))
+(define-instruction WORD
+  ((S (? value))
    (BYTE (16 value SIGNED)))
+  ((U (? value))
+   (BYTE (16 value UNSIGNED))))
 
-  ((L (? value))
-   (BYTE (32 value SIGNED))))
+(define-instruction LONG
+  ((S (? value))
+   (BYTE (32 value SIGNED)))
+  ((U (? value))
+   (BYTE (32 value UNSIGNED))))
 
 ;;; Privilleged and miscellaneous (Chap. 10)
 

@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dassm3.scm,v 1.2 1988/01/18 18:39:49 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dassm3.scm,v 1.3 1989/05/17 20:28:24 jinx Rel $
+$MC68020-Header: dassm3.scm,v 4.6 88/08/29 22:40:41 GMT cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -32,19 +33,16 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; VAX Disassembler
+;;;; VAX Disassembler: Internals
 
 (declare (usual-integrations))
 
-;;; Insides of the disassembler
+;;;; Bit String Manipulation
 
 (define (make-fetcher size-in-bits)
   (let ((size-in-bytes (quotient size-in-bits 8)))
     (lambda ()
-      (let ((word (bit-string-allocate size-in-bits)))
-	(with-interrupt-mask interrupt-mask-none
-          (lambda (old)
-	    (read-bits! (+ (primitive-datum *block) *current-offset) 0 word)))
+      (let ((word (read-bits *current-offset size-in-bits)))
 	(set! *current-offset (+ *current-offset size-in-bytes))
 	word))))
 
@@ -52,13 +50,13 @@ MIT in each case. |#
 (define get-word (make-fetcher 16))
 (define get-longword (make-fetcher 32))
 
-(define (get-immediate-byte)
+(define-integrable (get-immediate-byte)
   (extract+ (get-byte) 0 8))
 
-(define (get-immediate-word)
+(define-integrable (get-immediate-word)
   (extract+ (get-word) 0 16))
 
-(define (get-immediate-longword)
+(define-integrable (get-immediate-longword)
   (extract+ (get-longword) 0 32))
 
 (define-integrable (extract bit-string start end)
@@ -67,13 +65,93 @@ MIT in each case. |#
 (define-integrable (extract+ bit-string start end)
   (bit-string->signed-integer (bit-substring bit-string start end)))
 
+;;;; Operand decoding
+
+(define operand-dispatch
+  (let ((short-literal
+	 (lambda (*or* *os*)
+	   *os*				; ignored
+	   `(S ,(extract *or* 0 6))))
+	(index-operand
+	 (lambda (*or* *os*)
+	   (let ((index-reg (extract *or* 0 4)))
+	     `(X ,index-reg ,(decode-operand *os*)))))
+	(standard-operand
+	 (lambda (if-reg if-pc)
+	   (lambda (*or* *os*)
+	     (let ((reg (extract *or* 0 4)))
+	       (if (= #xF reg)
+		   (if-pc *os*)
+		   (if-reg reg))))))
+	(simple-operand
+	 (lambda (keyword)
+	   (lambda (*or* *os*)
+	     *os*			; ignored
+	     `(,keyword ,(make-register (extract *or* 0 4)))))))
+    (let ((offset-operand
+	   (lambda (deferred? size get)
+	     (standard-operand
+	      (lambda (reg)
+		(make-offset deferred? reg size (get)))
+	      (lambda (*os*)
+		*os*			; ignored
+		(make-pc-relative deferred? size (get)))))))
+      (vector
+       short-literal			;0 short immediate
+       short-literal			;1 "     "
+       short-literal			;2 "     "
+       short-literal			;3 "     "
+       index-operand			;4 indexed
+       (simple-operand 'R)		;5 register
+       (simple-operand '@R)		;6 register deferred
+       (simple-operand '@-R)		;7 autodecrement
+       (standard-operand		;8 autoincrement/immediate
+	(lambda (reg)
+	  `(@R+ ,(make-register reg)))
+	(lambda (*os*)
+	  `(&
+	    ,(case *os*
+	       ((B) (get-immediate-byte))
+	       ((W) (get-immediate-word))
+	       ((L) (get-immediate-longword))))))
+       (standard-operand		;9 autoincrement deferred/absolute
+	(lambda (reg)
+	  `(@@R+ ,(make-register reg)))
+	(lambda (*os*)
+	  *os*				; ignored
+	  `(@& , (extract+ (get-longword) 0 32))))
+       (offset-operand false 'B		;a byte offset
+		       get-immediate-byte)
+       (offset-operand true 'B		;b byte offset deferred
+		       get-immediate-byte)
+       (offset-operand false 'W		;c word offset
+		       get-immediate-word)
+       (offset-operand true 'W		;d word offset deferred
+		       get-immediate-word)
+       (offset-operand false 'L		;e long offset
+		       get-immediate-longword)
+       (offset-operand true 'L		;f long offset deferred
+		       get-immediate-longword)))))
+
 ;;;; Instruction decoding
 
+(define (decode-operand size)
+  (let ((*or* (get-byte)))
+    ((vector-ref operand-dispatch (extract *or* 4 8))
+     *or* size)))
+
+(define (decode-displacement size)
+  (case size
+    ((8) (make-pc-relative false 'B (get-immediate-byte)))
+    ((16) (make-pc-relative false 'W (get-immediate-word)))
+    ((32) (make-pc-relative false 'L (get-immediate-longword)))
+    (else (error "decode-displacement: bad size" size))))
+
 (define opcode-dispatch
-  (vector-cons 256 undefined-instruction))
+  (make-vector 256 undefined-instruction))
 
 (define secondary-opcode-dispatch
-  (vector-cons 256 undefined-instruction))
+  (make-vector 256 undefined-instruction))
 
 (define (define-standard-instruction opcode handler)
   (vector-set! opcode-dispatch opcode handler))
@@ -84,11 +162,26 @@ MIT in each case. |#
 (define-standard-instruction #xFD
   (lambda ()
     ((vector-ref secondary-opcode-dispatch (get-immediate-byte)))))
+
+;; Most of the instructions decoders are generated from from the
+;; assembler tables, but branch instructions are treated separately.
+
+(define (displacement-decoder size)
+  (define (make-decoder keyword getter)
+    (lambda ()
+      (make-pc-relative false keyword (getter))))
+
+  (case size
+    ((8) (make-decoder 'B get-immediate-byte))
+    ((16) (make-decoder 'W get-immediate-word))
+    ((32) (make-decoder 'L get-immediate-longword))
+    (else (error "displacement-decoder: bad size" size))))
 
 (define (define-branch-instruction opcode prefix size)
-  (define-standard-instruction opcode
-    (lambda ()
-      (append prefix (list (decode-displacement size))))))
+  (let ((decoder (displacement-decoder size)))
+    (define-standard-instruction opcode
+      (lambda ()
+	`(,@prefix ,(decoder))))))
 
 ;; Conditional branches
 
@@ -111,80 +204,4 @@ MIT in each case. |#
 (define-branch-instruction #x31 '(BR W) 16)
 (define-branch-instruction #x10 '(BSB B) 8)
 (define-branch-instruction #x30 '(BSB W) 16)
-
-;;;; Operand decoding
 
-(define (decode-displacement size)
-  (case size
-    ((8) (make-pc-relative false 'B (get-immediate-byte)))
-    ((16) (make-pc-relative false 'W (get-immediate-word)))
-    ((32) (make-pc-relative false 'L (get-immediate-longword)))
-    (else (error "decode-displacement: bad size" size))))
-
-(define (decode-operand size)
-  (let ((*or* (get-byte)))
-    ((vector-ref operand-dispatch (extract *or* 4 8))
-     *or* size)))
-
-(define (short-literal *or* *os*)
-  `(S ,(extract *or* 0 6)))
-
-(define operand-dispatch
-  (vector-cons 16 short-literal))
-
-(define (define-operand! mode handler)
-  (vector-set! operand-dispatch mode handler))
-
-(define (define-standard-operand! mode if-reg if-pc)
-  (define-operand! mode
-    (lambda (*or* *os*)
-      (let ((reg (extract *or* 0 4)))
-	(if (= #xF reg)
-	    (if-pc *os*)
-	    (if-reg reg))))))
-
-(define (define-simple-operand! mode keyword)
-  (define-operand! mode
-    (lambda (*or* *os*)
-      `(,keyword ,(make-register (extract *or* 0 4))))))
-
-(define (define-offset-operand! mode deferred? size get)
-  (define-standard-operand! mode
-    (lambda (reg)
-      (make-offset deferred? reg size (get)))
-    (lambda (*os*)
-      (make-pc-relative deferred? size (get)))))
-
-;;;; Actual operand handlers (except short literal, above).
-
-(define-operand! 4			;index mode
-  (lambda (*or* *os*)
-    (let ((index-reg (extract *or* 0 4)))
-      `(X ,index-reg ,(decode-operand *os*)))))
-
-(define-simple-operand! 5 'R)		;register
-(define-simple-operand! 6 '@R)		;register deferred
-(define-simple-operand! 7 '@-R)		;autodecrement
-
-(define-standard-operand! 8		;autoincrement
-  (lambda (reg)
-    `(@R+ ,(make-register reg)))
-  (lambda (*os*)			;immediate
-    `(&
-      ,(case *os*
-	 ((B) (get-immediate-byte))
-	 ((W) (get-immediate-word))
-	 ((L) (get-immediate-longword))))))
-
-(define-standard-operand! 9		;autoincrement deferred
-  (lambda (reg)
-    `(@@R+ ,(make-register reg)))
-  (lambda (*os*)			;absolute
-    `(@& , (extract+ (get-longword) 0 32))))
-
-(define-offset-operand! 10 false 'B get-immediate-byte)
-(define-offset-operand! 11 true 'B get-immediate-byte)
-(define-offset-operand! 12 false 'W get-immediate-word)
-(define-offset-operand! 13 true 'W get-immediate-word)
-(define-offset-operand! 15 false 'L get-immediate-longword)
-(define-offset-operand! 15 true 'L get-immediate-longword)

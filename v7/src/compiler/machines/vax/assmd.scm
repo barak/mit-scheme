@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/assmd.scm,v 4.4 1988/02/23 18:18:47 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/assmd.scm,v 4.5 1989/05/17 20:27:46 jinx Rel $
+$MC68020-Header: assmd.scm,v 1.35 88/08/31 05:55:31 GMT cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,74 +34,62 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Assembler Machine Dependencies.  DEC Vax version
-;;;
-;;; Matches version 4.2 of bobcat/assmd.scm
-;;;
 
 (declare (usual-integrations))
 
-(declare (integrate addressing-granularity
-		    scheme-object-width
-		    endianness
-		    maximum-padding-length
-		    maximum-block-offset
-		    block-offset-width)
-	 (integrate-operator block-offset->bit-string
-			     instruction-initial-position
-			     instruction-insert!))
+(let-syntax ((fold
+	      (macro (expression)
+		(eval expression system-global-environment))))
 
-(define addressing-granularity 8)
-(define scheme-object-width 32)
-(define endianness 'LITTLE)
+(define-integrable addressing-granularity 8)
+(define-integrable scheme-object-width 32)
+(define-integrable endianness 'LITTLE)
 
-;; Instructions can be any number of bytes long.
-;; Thus the maximum padding is 3 bytes.
-;; Pad with HALT instructions
+(define-integrable maximum-padding-length
+  ;; Instructions can be any number of bytes long.
+  ;; Thus the maximum padding is 3 bytes.
+  24)
 
-(define maximum-padding-length 24)
+(define-integrable padding-string
+  ;; Pad with HALT instructions
+  (fold (unsigned-integer->bit-string 8 #x00)))
 
-(define padding-string
-  (unsigned-integer->bit-string 8 #x00))
+(define-integrable block-offset-width
+  ;; Block offsets are encoded words
+  16)
 
-;; Block offsets are encoded words
+(define maximum-block-offset
+  (fold (- (expt 2 15) 1)))
 
-(define maximum-block-offset (- (expt 2 15) 1))
-(define block-offset-width 16)
-
-(define (block-offset->bit-string offset start?)
-  (declare (integrate offset start?))
+(define-integrable (block-offset->bit-string offset start?)
   (unsigned-integer->bit-string block-offset-width
-				(+ (* 2 offset)		; shift left
+				(+ (* 2 offset)
 				   (if start? 0 1))))
 
-(define make-nmv-header
-  (let ((nmv-type-string
-	 (unsigned-integer->bit-string 8
-				       (microcode-type 'MANIFEST-NM-VECTOR))))
-    (named-lambda (make-nmv-header n)
-      (bit-string-append
-       (unsigned-integer->bit-string 24 n)
-       nmv-type-string))))
+(define-integrable nmv-type-string
+  (fold (unsigned-integer->bit-string 8 (microcode-type 'MANIFEST-NM-VECTOR))))
+
+(define (make-nmv-header n)
+  (bit-string-append (unsigned-integer->bit-string 24 n) nmv-type-string))
 
 (define (object->bit-string object)
   (bit-string-append
    (unsigned-integer->bit-string 24 (primitive-datum object))
    (unsigned-integer->bit-string 8 (primitive-type object))))
-
+
 ;;; Machine dependent instruction order
 
-;; These depend on the mapping between instruction streams and bit strings.
-;; Depending on the byte order of the machine, instruction streams will grow
-;; "forwards" or "backwards".
-
-(define (instruction-initial-position block)
-  (declare (integrate block))
+(define-integrable (instruction-initial-position block)
+  block					; ignored
   0)
 
 (define (instruction-insert! bits block position receiver)
-  (declare (integrate receiver))
   (let ((l (bit-string-length bits)))
     (bit-substring-move-right! bits 0 l block position)
     (receiver (+ position l))))
 
-(set! instruction-append bit-string-append)
+(define-integrable instruction-append
+  bit-string-append)
+
+;;; end let-syntax
+)

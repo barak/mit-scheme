@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/coerce.scm,v 1.3 1987/08/24 14:32:51 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/coerce.scm,v 1.4 1989/05/17 20:28:04 jinx Rel $
+$MC68020-Header: coerce.scm,v 1.10 88/08/31 05:56:37 GMT cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -52,21 +53,21 @@ MIT in each case. |#
 	 (error "Short label out of range" offset)))))
 
 ;; *** NOTE ***
-;; If you add coercions here, remember to also add them to
-;; EXPAND-DESCRIPTOR in isnmac.scm .
+;; If you add coercions here, remember to also add them in "insmac.scm".
 
 (define make-coercion
   (coercion-maker
    `((UNSIGNED . ,coerce-unsigned-integer)
      (SIGNED . ,coerce-signed-integer))))
 
-(define-coercion 'UNSIGNED 2)
-(define-coercion 'UNSIGNED 4)
-(define-coercion 'UNSIGNED 6)
-(define-coercion 'UNSIGNED 8)
-(define-coercion 'UNSIGNED 16)
-(define-coercion 'UNSIGNED 32)
+(define coerce-2-bit-unsigned (make-coercion 'UNSIGNED 2))
+(define coerce-4-bit-unsigned (make-coercion 'UNSIGNED 4))
+(define coerce-6-bit-unsigned (make-coercion 'UNSIGNED 6))
+(define coerce-8-bit-unsigned (make-coercion 'UNSIGNED 8))
+(define coerce-16-bit-unsigned (make-coercion 'UNSIGNED 16))
+(define coerce-32-bit-unsigned (make-coercion 'UNSIGNED 32))
 
-(define-coercion 'SIGNED 8)
-(define-coercion 'SIGNED 16)
-(define-coercion 'SIGNED 32)
+(define coerce-8-bit-signed (make-coercion 'SIGNED 8))
+(define coerce-16-bit-signed (make-coercion 'SIGNED 16))
+(define coerce-32-bit-signed (make-coercion 'SIGNED 32))
+

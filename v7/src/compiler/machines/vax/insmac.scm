@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insmac.scm,v 1.11 1987/08/24 21:20:47 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insmac.scm,v 1.12 1989/05/17 20:29:15 jinx Rel $
+$MC68020-Header: insmac.scm,v 1.124 88/06/14 08:47:02 GMT cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,11 +39,13 @@ MIT in each case. |#
 
 ;;;; Effective addressing
 
+(define ea-database-name
+  'EA-DATABASE)
+
 (syntax-table-define assembler-syntax-table 'DEFINE-EA-DATABASE
   (macro rules
-    `(DEFINE EA-DATABASE
-       ,(compile-database
-	 rules
+    `(DEFINE ,ea-database-name
+       ,(compile-database rules
 	 (lambda (pattern actions)
 	   (let ((keyword (car pattern))
 		 (categories (car actions))
@@ -138,7 +141,11 @@ MIT in each case. |#
 	   ((IMMEDIATE)
 	    (receiver
 	     `(CONS-SYNTAX
-	       (COERCE-TO-TYPE ,(cadar fields) *IMMEDIATE-TYPE*)
+	       (COERCE-TO-TYPE ,(cadar fields)
+			       *IMMEDIATE-TYPE*
+			       ,(and (cddar fields)
+				     (eq? (caddar fields)
+					 'UNSIGNED)))
 	       ,tail)
 	     tail-size))
 	   (else

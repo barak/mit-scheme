@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dsyn.scm,v 1.5 1987/08/21 02:49:28 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dsyn.scm,v 1.6 1989/05/17 20:28:51 jinx Rel $
+This file has no counterpart in the MC68020 compiler
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,15 +39,20 @@ MIT in each case. |#
 
 ;;;; Instruction decoding
 
-(define instructions-handled-specially '(DC BUG B BR BSB))
+(define (initialize-package!)
+  (syntax-table-define disassembler-syntax-table
+      'DEFINE-INSTRUCTION
+    transform/define-instruction))
+
+(define instructions-disassembled-specially
+  '(BYTE WORD LONG BUG B BR BSB))
 
 (define disassembler-syntax-table
   (make-syntax-table system-global-syntax-table))
 
-(syntax-table-define disassembler-syntax-table
-    'DEFINE-INSTRUCTION
+(define transform/define-instruction
   (macro (name . cases)
-    (if (memq name instructions-handled-specially)
+    (if (memq name instructions-disassembled-specially)
 	''()
 	`(begin ,@(map (lambda (case)
 			 (process-instruction-definition name case))

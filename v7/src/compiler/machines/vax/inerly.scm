@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/inerly.scm,v 1.4 1987/08/23 16:32:17 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/inerly.scm,v 1.5 1989/05/17 20:29:02 jinx Rel $
+$MC68020-Header: inerly.scm,v 1.6 88/08/31 06:00:59 GMT cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,30 +40,30 @@ MIT in each case. |#
 ;;;; Instruction macros
 
 (define early-instructions '())
+(define early-transformers '())
+(define early-ea-database '())
 
 (syntax-table-define early-syntax-table 'DEFINE-INSTRUCTION
   (macro (opcode . patterns)
-    `(set! early-instructions
-	   (cons
-	    (list ',opcode
+    `(SET! EARLY-INSTRUCTIONS
+	   (CONS
+	    (LIST ',opcode
 		  ,@(map (lambda (pattern)
-			   `(early-parse-rule
+			   `(EARLY-PARSE-RULE
 			     ',(car pattern)
-			     (lambda (pat vars)
-			       (early-make-rule
-				pat
-				vars
-				(scode-quote
+			     (LAMBDA (PAT VARS)
+			       (EARLY-MAKE-RULE
+				PAT
+				VARS
+				(SCODE-QUOTE
 				 (instruction->instruction-sequence
 				  ,(parse-instruction (cadr pattern)
 						      (cddr pattern)
 						      true)))))))
 			 patterns))
-		 early-instructions))))
+		 EARLY-INSTRUCTIONS))))
 
 ;;;; Transformers and utilities
-
-(define early-transformers '())
 
 (define (define-early-transformer name transformer)
   (set! early-transformers
@@ -71,20 +72,21 @@ MIT in each case. |#
 
 (syntax-table-define early-syntax-table 'DEFINE-SYMBOL-TRANSFORMER
   (macro (name . assoc)
-    `(define-early-transformer ',name (make-symbol-transformer ',assoc))))
+    `(DEFINE-EARLY-TRANSFORMER ',name (MAKE-SYMBOL-TRANSFORMER ',assoc))))
 
 ;; *** Is this right? ***
 
 (syntax-table-define early-syntax-table 'DEFINE-TRANSFORMER
   (macro (name value)
-    `(define-early-transformer ',name ,value)))
+    `(DEFINE-EARLY-TRANSFORMER ',name ,value)))
 
 (syntax-table-define early-syntax-table 'DEFINE-EA-TRANSFORMER
   (macro (name category type)
-    `(define-early-transformer ',name
-       (make-ea-transformer ',category ',type))))
+    `(DEFINE-EARLY-TRANSFORMER ',name
+       (MAKE-EA-TRANSFORMER ',category ',type))))
 
 (define (make-ea-transformer category type)
+  type					; ignored
   (make-database-transformer
    (mapcan (lambda (rule)
 	     (apply
@@ -101,19 +103,19 @@ MIT in each case. |#
 
 (syntax-table-define early-syntax-table 'DEFINE-EA-DATABASE
   (macro rules
-    `(define early-ea-database
-       (list
+    `(SET! EARLY-EA-DATABASE
+       (LIST
 	,@(map (lambda (rule)
 		 (apply
 		  (lambda (pattern categories . fields)
 		    (let ((keyword (car pattern)))
-		      `(early-parse-rule
+		      `(EARLY-PARSE-RULE
 			',pattern
-			(lambda (pat vars)
-			  (list pat
-				vars
+			(LAMBDA (PAT VARS)
+			  (LIST PAT
+				VARS
 				',categories
-				(scode-quote
+				(SCODE-QUOTE
 				 (MAKE-EFFECTIVE-ADDRESS
 				  ',keyword
 				  ',categories
@@ -125,8 +127,9 @@ MIT in each case. |#
 ;; The index 2 here is the argument number to MAKE-EFFECTIVE-ADDRESS.
 
 (define ea-value-expander
-  ((access scode->scode-expander package/expansion package/scode-optimizer)
+  (scode->scode-expander
    (lambda (operands if-expanded if-not-expanded)
+     if-not-expanded			; ignored
      (define (default)
        (if-expanded (scode/make-combination (scode/make-variable 'EA-VALUE)
 					    (cdr operands))))
@@ -150,11 +153,16 @@ MIT in each case. |#
 				       false
 				       '()
 				       '((INTEGRATE *IMMEDIATE-TYPE*))
-				       (list-ref operands 2))
+				       (scode/make-sequence
+					(list (scode/make-variable '*IMMEDIATE-TYPE*)
+					      (list-ref operands 2))))
 		    (list type)))))))))))
 
+#|
+;; Not used currently
+
 (define coerce-to-type-expander
-  ((access scode->scode-expander package/expansion package/scode-optimizer)
+  (scode->scode-expander
    (lambda (operands if-expanded if-not-expanded)
      (define (handle coercion name)
        (if-expanded
@@ -169,7 +177,6 @@ MIT in each case. |#
 	 (case (scode/constant-value (cadr operands))
 	   ((b) (handle coerce-8-bit-signed 'coerce-8-bit-signed))
 	   ((w) (handle coerce-16-bit-signed 'coerce-16-bit-signed))
-	   ((b) (handle coerce-32-bit-signed 'coerce-32-bit-signed))
+	   ((l) (handle coerce-32-bit-signed 'coerce-32-bit-signed))
 	   (else (if-not-expanded)))))))
-
-       
+|#

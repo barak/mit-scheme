@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insutl.scm,v 4.1 1988/02/23 19:34:34 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insutl.scm,v 4.2 1989/05/17 20:30:11 jinx Rel $
+$MC68020-Header: insutl.scm,v 1.6 88/06/14 08:47:30 GMT cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,9 +39,10 @@ MIT in each case. |#
 
 ;;;; Effective Addressing
 
-;;; NOTE: If this format changes, inerly.scm may also need to be changed!
+;;; *** NOTE: If this format changes, inerly.scm must also be changed! ***
 
-(define ea-tag 'Effective-Address)
+(define ea-tag
+  "Effective-Address")
 
 (define (make-effective-address keyword categories value)
   (vector ea-tag keyword categories value))
@@ -57,6 +59,17 @@ MIT in each case. |#
   (vector-ref ea 2))
 
 (define-integrable (ea-value ea)
+  (vector-ref ea 3))
+
+;; For completeness
+
+(define (ea-keyword-early ea)
+  (vector-ref ea 1))
+
+(define (ea-categories-early ea)
+  (vector-ref ea 2))
+
+(define (ea-value-early ea)
   (vector-ref ea 3))
 
 ;;;; Addressing modes
@@ -139,6 +152,12 @@ MIT in each case. |#
    (BYTE (4 15)
 	 (4 8))
    (IMMEDIATE value))
+
+  ((&U (? value))			;Kludge
+   (R M W A V I)
+   (BYTE (4 15)
+	 (4 8))
+   (IMMEDIATE value UNSIGNED))
 
   ((@& (? value))			; Absolute
    (R M W A V I)
@@ -233,16 +252,18 @@ MIT in each case. |#
 	    ((effective-address? expression) expression)
 	    (else #F)))))
 
-(define (coerce-to-type expression type)
-  (syntax-evaluation
-   expression
-   (case type
-     ((b) coerce-8-bit-signed)
-     ((w) coerce-16-bit-signed)
-     ((l) coerce-32-bit-signed)
-     ((d f g h l o q)
-      (error "coerce-to-type: Unimplemented type" type))
-     (else (error "coerce-to-type: Unknown type" type)))))
+(define (coerce-to-type expression type #!optional unsigned?)
+  (let ((unsigned? (and (not (default-object? unsigned?))
+			unsigned?)))
+    (syntax-evaluation
+     expression
+     (case type
+       ((B) (if unsigned? coerce-8-bit-unsigned coerce-8-bit-signed))
+       ((W) (if unsigned? coerce-16-bit-unsigned coerce-16-bit-signed))
+       ((L) (if unsigned? coerce-32-bit-unsigned coerce-32-bit-signed))
+       ((d f g h l o q)
+	(error "coerce-to-type: Unimplemented type" type))
+       (else (error "coerce-to-type: Unknown type" type))))))
 
 ;;; Transformers
 
@@ -255,16 +276,6 @@ MIT in each case. |#
   (NEQ . #x3) (NEQU . #x3) (EQL . #x2) (EQLU . #x2)
   (GTR . #x5) (LEQ . #x4) (GEQ . #x9) (LSS . #x8) (GTRU . #xB) (LEQU . #xA)
   (VC . #xD) (VS . #xC) (GEQU . #xF) (CC . #xF) (LSSU . #xE) (CS . #xE))
-
-;(define-symbol-transformer cc
-;  (NEQ #x2) (NEQU #x2) (EQL #x3) (EQLU #x3)
-;  (GTR #x4) (LEQ #x5) (GEQ #x8) (LSS #x9) (GTRU #xA) (LEQU #xB)
-;  (VC #xC) (VS #xD) (GEQU #xE) (CC #xE) (LSSU #xF) (CS #xF))
-
-;(define-symbol-transformer inverse-cc
-;  (NEQ #x3) (NEQU #x3) (EQL #x2) (EQLU #x2)
-;  (GTR #x5) (LEQ #x4) (GEQ #x9) (LSS #x8) (GTRU #xB) (LEQU #xA)
-;  (VC #xD) (VS #xC) (GEQU #xF) (CC #xF) (LSSU #xE) (CS #xE))
 
 (define-transformer displacement
   (lambda (expression)

@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules2.scm,v 4.2 1988/03/21 21:47:00 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules2.scm,v 4.3 1989/05/17 20:31:04 jinx Rel $
+$MC68020-Header: rules2.scm,v 4.7 88/12/13 17:45:25 GMT cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -32,159 +33,148 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; VAX LAP Generation Rules: Predicates
-;;;  Matches MC68020 version 4.2
+;;;; LAP Generation Rules: Predicates.  DEC VAX version.
+;;; Note: All fixnum code has been moved to rulfix.scm.
 
 (declare (usual-integrations))
 
-;;;; Predicates
-
 (define-rule predicate
   (TRUE-TEST (REGISTER (? register)))
-  (set-standard-branches! 'NEQU)
-  (LAP ,(test-non-pointer (ucode-type false) 0 (coerce->any register))))
+  (set-standard-branches! 'NEQ)
+  (LAP ,(test-non-pointer (ucode-type false)
+			  0
+			  (standard-register-reference register false))))
 
 (define-rule predicate
-  (TRUE-TEST (OFFSET (REGISTER (? register)) (? offset)))
+  (TRUE-TEST (? memory))
+  (QUALIFIER (predicate/memory-operand? memory))
   (set-standard-branches! 'NEQ)
-  (LAP ,(test-non-pointer (ucode-type false) 0
-			  (indirect-reference! register offset))))
+  (LAP ,(test-non-pointer (ucode-type false)
+			  0
+			  (predicate/memory-operand-reference memory))))
 
 (define-rule predicate
   (TYPE-TEST (REGISTER (? register)) (? type))
   (QUALIFIER (pseudo-register? register))
-  (set-standard-branches! 'EQLU)
-  (LAP ,(test-byte type
-		   (register-reference
-		    (load-alias-register! register 'GENERAL)))))
+  (set-standard-branches! 'EQL)
+  (LAP ,(test-byte type (reference-alias-register! register 'GENERAL))))
 
 (define-rule predicate
   (TYPE-TEST (OBJECT->TYPE (REGISTER (? register))) (? type))
   (QUALIFIER (pseudo-register? register))
-  (set-standard-branches! 'EQLU)
+  (set-standard-branches! 'EQL)
   (with-temporary-register-copy! register 'GENERAL
-   (lambda (reference)
-     (LAP (ROTL (S 8) ,reference ,reference)
-	  ,(test-byte type reference)))
-   (lambda (source reference)
-     (LAP (ROTL (S 8) ,source ,reference)
-	  ,(test-byte type reference)))))
+    (lambda (temp)
+      (LAP (ROTL (S 8) ,temp ,temp)
+	   ,(test-byte type temp)))
+    (lambda (source temp)
+      (LAP (ROTL (S 8) ,source ,temp)
+	   ,(test-byte type temp)))))
+
+;; This is the split of a 68020 rule which seems wrong for post-increment.
 
 (define-rule predicate
-  (TYPE-TEST (OBJECT->TYPE (OFFSET (REGISTER (? register)) (? offset))) 
-	     (? type))
-  (set-standard-branches! 'EQLU)
-  (LAP ,(test-byte type (bump-type (indirect-reference! register offset)))))
-  
+  (TYPE-TEST (OBJECT->TYPE (OFFSET (REGISTER (? r)) (? offset))) (? type))
+  (set-standard-branches! 'EQL)
+  (LAP ,(test-byte type (indirect-byte-reference! r (+ 3 (* 4 offset))))))
+
+(define-rule predicate
+  (TYPE-TEST (OBJECT->TYPE (POST-INCREMENT (REGISTER 14) 1)) (? type))
+  (set-standard-branches! 'EQL)
+  (let ((temp (reference-temporary-register! 'GENERAL)))
+    (LAP (ROTL (S 8) (@R+ 14) ,temp)
+	 ,(test-byte type temp))))
+
 (define-rule predicate
   (UNASSIGNED-TEST (REGISTER (? register)))
-  (set-standard-branches! 'EQLU)
-  (LAP ,(test-non-pointer (ucode-type unassigned) 0
-			  (coerce->any register))))
+  (set-standard-branches! 'EQL)
+  (LAP ,(test-non-pointer (ucode-type unassigned)
+			  0
+			  (standard-register-reference register false))))
 
 (define-rule predicate
-  (UNASSIGNED-TEST (OFFSET (REGISTER (? register)) (? offset)))
-  (set-standard-branches! 'EQLU)
-  (LAP ,(test-non-pointer (ucode-type unassigned) 0
-			  (indirect-reference! register offset))))
-
-;; *** Is all this hair needed on the VAX?
-;;     The CMP instruction operates anywhere. ***
-;; *** All CMP instructions may be "backwards" ***
-
-(define (eq-test/constant*register constant register)
-  (set-standard-branches! 'EQLU)
-  (if (non-pointer-object? constant)
-      (LAP ,(test-non-pointer (primitive-type constant)
-			      (primitive-datum constant)
-			      (coerce->any register)))
-      (LAP (CMP L (@PCR ,(constant->label constant))
-		,(coerce->machine-register register)))))
-
-(define (eq-test/constant*memory constant memory-reference)
-  (set-standard-branches! 'EQLU)
-  (if (non-pointer-object? constant)
-      (LAP ,(test-non-pointer (primitive-type constant)
-			      (primitive-datum constant)
-			      memory-reference))
-      (LAP (CMP L (@PCR ,(constant->label constant))
-		,memory-reference))))
-
-(define (eq-test/register*register register-1 register-2)
-  (set-standard-branches! 'EQLU)
-  (LAP (CMP L ,(coerce->any register-2)
-	    ,(coerce->any register-1))))
-
-(define (eq-test/register*memory register memory-reference)
-  (set-standard-branches! 'EQLU)
-  (LAP (CMP L ,memory-reference
-	    ,(coerce->machine-register register))))
-
-(define (eq-test/memory*memory register-1 offset-1 register-2 offset-2)
-  (set-standard-branches! 'EQLU)
-  (let ((temp (reference-temporary-register! false)))
-    (let ((finish
-	   (lambda (register-1 offset-1 register-2 offset-2)
-	     (LAP (MOV L ,(indirect-reference! register-1 offset-1)
-		       ,temp)
-		  (CMP L ,(indirect-reference! register-2 offset-2)
-		       ,temp)))))
-      (if (or (and (not (register-has-alias? register-1 'GENERAL))
-		   (register-has-alias? register-2 'GENERAL))
-	      (and (not (register-has-alias? register-1 'GENERAL))
-		   (register-has-alias? register-2 'GENERAL)))
-	  (finish register-2 offset-2 register-1 offset-1)
-	  (finish register-1 offset-1 register-2 offset-2)))))
-
-(define-rule predicate
-  (EQ-TEST (REGISTER (? register)) (CONSTANT (? constant)))
-  (eq-test/constant*register constant register))
+  (UNASSIGNED-TEST (? memory))
+  (QUALIFIER (predicate/memory-operand? memory))
+  (set-standard-branches! 'EQL)
+  (LAP ,(test-non-pointer (ucode-type unassigned)
+			  0
+			  (predicate/memory-operand-reference memory))))
 
 (define-rule predicate
-  (EQ-TEST (CONSTANT (? constant)) (REGISTER (? register)))
-  (eq-test/constant*register constant register))
-
-(define-rule predicate
-  (EQ-TEST (OFFSET (REGISTER (? register)) (? offset)) (CONSTANT (? constant)))
-  (eq-test/constant*memory constant (indirect-reference! register offset)))
-
-(define-rule predicate
-  (EQ-TEST (CONSTANT (? constant)) (OFFSET (REGISTER (? register)) (? offset)))
-  (eq-test/constant*memory constant (indirect-reference! register offset)))
-
-(define-rule predicate
-  (EQ-TEST (CONSTANT (? constant)) (POST-INCREMENT (REGISTER 14) 1))
-  (eq-test/constant*memory constant (INST-EA (@R+ 14))))
-
-(define-rule predicate
-  (EQ-TEST (POST-INCREMENT (REGISTER 14) 1) (CONSTANT (? constant)))
-  (eq-test/constant*memory constant (INST-EA (@R+ 14))))
+  (OVERFLOW-TEST)
+  (set-standard-branches! 'VS)
+  (LAP))
 
 (define-rule predicate
   (EQ-TEST (REGISTER (? register-1)) (REGISTER (? register-2)))
-  (eq-test/register*register register-1 register-2))
+  (QUALIFIER (and (pseudo-register? register-1)
+		  (pseudo-register? register-2)))
+  (compare/register*register register-1 register-2 'EQL))
 
 (define-rule predicate
-  (EQ-TEST (OFFSET (REGISTER (? register-1)) (? offset-1))
-	   (REGISTER (? register-2)))
-  (eq-test/register*memory register-2
-			   (indirect-reference! register-1 offset-1)))
+  (EQ-TEST (REGISTER (? register)) (? memory))
+  (QUALIFIER (and (predicate/memory-operand? memory)
+		  (pseudo-register? register)))
+  (compare/register*memory register
+			   (predicate/memory-operand-reference memory)
+			   'EQL))
 
 (define-rule predicate
-  (EQ-TEST (REGISTER (? register-1))
-	   (OFFSET (REGISTER (? register-2)) (? offset-2)))
-  (eq-test/register*memory register-1
-			   (indirect-reference! register-2 offset-2)))
+  (EQ-TEST (? memory) (REGISTER (? register)))
+  (QUALIFIER (and (predicate/memory-operand? memory)
+		  (pseudo-register? register)))
+  (compare/register*memory register
+			   (predicate/memory-operand-reference memory)
+			   'EQL))
 
 (define-rule predicate
-  (EQ-TEST (POST-INCREMENT (REGISTER 14) 1) (REGISTER (? register)))
-  (eq-test/register*memory register (INST-EA (@R+ 14))))
+  (EQ-TEST (? memory-1) (? memory-2))
+  (QUALIFIER (and (predicate/memory-operand? memory-1)
+		  (predicate/memory-operand? memory-2)))
+  (compare/memory*memory (predicate/memory-operand-reference memory-1)
+			 (predicate/memory-operand-reference memory-2)
+			 'EQL))
+
+(define (eq-test/constant*register constant register)
+  (if (non-pointer-object? constant)
+      (begin
+	(set-standard-branches! 'EQL)
+	(LAP ,(test-non-pointer (object-type constant)
+				(object-datum constant)
+				(standard-register-reference register false))))
+      (compare/register*memory register
+			       (INST-EA (@PCR ,(constant->label constant)))
+			       'EQL)))
+
+(define (eq-test/constant*memory constant memory)
+  (if (non-pointer-object? constant)
+      (begin
+	(set-standard-branches! 'EQL)
+	(LAP ,(test-non-pointer (object-type constant)
+				(object-datum constant)
+				memory)))
+      (compare/memory*memory memory
+			     (INST-EA (@PCR ,(constant->label constant)))
+			     'EQL)))
 
 (define-rule predicate
-  (EQ-TEST (REGISTER (? register)) (POST-INCREMENT (REGISTER 14) 1))
-  (eq-test/register*memory register (INST-EA (@R+ 14))))
+  (EQ-TEST (CONSTANT (? constant)) (REGISTER (? register)))
+  (QUALIFIER (pseudo-register? register))
+  (eq-test/constant*register constant register))
 
 (define-rule predicate
-  (EQ-TEST (OFFSET (REGISTER (? register-1)) (? offset-1))
-	   (OFFSET (REGISTER (? register-2)) (? offset-2)))
-  (eq-test/memory*memory register-1 offset-1 register-2 offset-2))
+  (EQ-TEST (REGISTER (? register)) (CONSTANT (? constant)))
+  (QUALIFIER (pseudo-register? register))
+  (eq-test/constant*register constant register))
+
+(define-rule predicate
+  (EQ-TEST (CONSTANT (? constant)) (? memory))
+  (QUALIFIER (predicate/memory-operand? memory))
+  (eq-test/constant*memory constant
+			   (predicate/memory-operand-reference memory)))
+
+(define-rule predicate
+  (EQ-TEST (? memory) (CONSTANT (? constant)))
+  (QUALIFIER (predicate/memory-operand? memory))
+  (eq-test/constant*memory constant
+			   (predicate/memory-operand-reference memory)))

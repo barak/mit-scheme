@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules4.scm,v 4.1 1988/01/05 22:25:13 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules4.scm,v 4.2 1989/05/17 20:31:24 jinx Rel $
+$MC68020-Header: rules4.scm,v 4.5 88/12/30 07:05:28 GMT cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -32,8 +33,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; VAX LAP Generation Rules: Interpreter Calls
-;;;  Matches MC68020 version 4.2
+;;;; LAP Generation Rules: Interpreter Calls.  DEC VAX version.
 
 (declare (usual-integrations))
 
@@ -57,26 +57,12 @@ MIT in each case. |#
   (lookup-call entry:compiler-unbound? environment name))
 
 (define (lookup-call entry environment name)
-  (let ((set-environment (expression->machine-register! environment r8)))
+  (let ((set-environment (expression->machine-register! environment r4)))
     (let ((clear-map (clear-map!)))
       (LAP ,@set-environment
 	   ,@clear-map
-	   ,(load-constant name (INST-EA (R 9)))
-	   (JSB ,entry)
-	   ,@(make-external-label (generate-label))))))
-
-(define-rule statement
-  (INTERPRETER-CALL:ENCLOSE (? number-pushed))
-  (LAP (MOV L (R 12) ,reg:enclose-result)
-       (MOV B ,(immediate-type (ucode-type vector)) ,reg:enclose-result-type)
-       ,(load-non-pointer (ucode-type manifest-vector) number-pushed
-			  (INST-EA (@R+ 12)))
-       
-       ,@(generate-n-times
-	  number-pushed 5
-	  (lambda () (INST (MOV L (@R+ 14) (@R+ 12))))
-	  (lambda (generator)
-	    (generator (allocate-temporary-register! 'GENERAL))))))
+	   ,(load-constant name (INST-EA (R 4)))
+	   (JSB ,entry)))))
 
 (define-rule statement
   (INTERPRETER-CALL:DEFINE (? environment) (? name) (? value))
@@ -89,19 +75,14 @@ MIT in each case. |#
   (assignment-call:default entry:compiler-set! environment name value))
 
 (define (assignment-call:default entry environment name value)
-  (let ((set-environment (expression->machine-register! environment r7)))
-    (let ((set-value (expression->machine-register! value r9)))
+  (let ((set-environment (expression->machine-register! environment r3)))
+    (let ((set-value (expression->machine-register! value r5)))
       (let ((clear-map (clear-map!)))
 	(LAP ,@set-environment
 	     ,@set-value
 	     ,@clear-map
-	     ,(load-constant name (INST-EA (R 8)))
-	     (JSB ,entry)
-	     ,@(make-external-label (generate-label)))))))
-
-;; *** Is this used for procedures?  If so it is wasteful in the VAX,
-;;     since there is no need to put the entry in a register first.
-;;     A MOVA instruction can be done directly to memory. ***
+	     ,(load-constant name (INST-EA (R 4)))
+	     (JSB ,entry))))))
 
 (define-rule statement
   (INTERPRETER-CALL:DEFINE (? environment) (? name)
@@ -118,62 +99,90 @@ MIT in each case. |#
 				datum))
 
 (define (assignment-call:cons-pointer entry environment name type datum)
-  (let ((set-environment (expression->machine-register! environment r7)))
+  (let ((set-environment (expression->machine-register! environment r3)))
     (let ((datum (coerce->any datum)))
       (let ((clear-map (clear-map!)))
 	(LAP ,@set-environment
-	     (MOV L ,datum ,reg:temp)
-	     (MOV B ,(immediate-type type) ,reg:temp-type)
 	     ,@clear-map
-	     (MOV L ,reg:temp (R 9))
-	     ,(load-constant name (INST-EA (R 8)))
-	     (JSB ,entry)
-	     ,@(make-external-label (generate-label)))))))
+	     (BIS L (& ,(make-non-pointer-literal type 0)) ,datum (R 5))
+	     ,(load-constant name (INST-EA (R 4)))
+	     (JSB ,entry))))))
+
+(define-rule statement
+  (INTERPRETER-CALL:DEFINE (? environment) (? name)
+			   (CONS-POINTER (CONSTANT (? type))
+					 (ENTRY:PROCEDURE (? label))))
+  (assignment-call:cons-procedure entry:compiler-define environment name type
+				  label))
+
+(define-rule statement
+  (INTERPRETER-CALL:SET! (? environment) (? name)
+			 (CONS-POINTER (CONSTANT (? type))
+				       (ENTRY:PROCEDURE (? label))))
+  (assignment-call:cons-procedure entry:compiler-set! environment name type
+				  label))
+
+(define (assignment-call:cons-procedure entry environment name type label)
+  (let ((set-environment (expression->machine-register! environment r3)))
+    (LAP ,@set-environment
+	 ,@(clear-map!)
+	 (PUSHA B (@PCR ,(rtl-procedure/external-label (label->object label))))
+	 (MOV B ,(make-immediate type) (@RO B 14 3))
+	 (MOV L (@R+ 14) (R 5))
+	 ,(load-constant name (INST-EA (R 4)))
+	 (JSB ,entry))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-REFERENCE (? extension) (? safe?))
-  (let ((set-extension (expression->machine-register! extension r9)))
+  (let ((set-extension (expression->machine-register! extension r3)))
     (let ((clear-map (clear-map!)))
       (LAP ,@set-extension
 	   ,@clear-map
 	   (JSB ,(if safe?
 		     entry:compiler-safe-reference-trap
-		     entry:compiler-reference-trap))
-	   ,@(make-external-label (generate-label))))))
+		     entry:compiler-reference-trap))))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-ASSIGNMENT (? extension) (? value))
   (QUALIFIER (not (eq? 'CONS-POINTER (car value))))
-  (let ((set-extension (expression->machine-register! extension r8)))
-    (let ((set-value (expression->machine-register! value r9)))
+  (let ((set-extension (expression->machine-register! extension r3)))
+    (let ((set-value (expression->machine-register! value r4)))
       (let ((clear-map (clear-map!)))
 	(LAP ,@set-extension
 	     ,@set-value
 	     ,@clear-map
-	     (JSB ,entry:compiler-assignment-trap)
-	     ,@(make-external-label (generate-label)))))))
+	     (JSB ,entry:compiler-assignment-trap))))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-ASSIGNMENT (? extension)
 				     (CONS-POINTER (CONSTANT (? type))
 						   (REGISTER (? datum))))
-  (let ((set-extension (expression->machine-register! extension r8)))
+  (let ((set-extension (expression->machine-register! extension r3)))
     (let ((datum (coerce->any datum)))
       (let ((clear-map (clear-map!)))
 	(LAP ,@set-extension
-	     (MOV L ,datum ,reg:temp)
-	     (MOV B ,(immediate-type type) ,reg:temp-type)
 	     ,@clear-map
-	     (MOV L ,reg:temp (R 9))
-	     (JSB ,entry:compiler-assignment-trap)
-	     ,@(make-external-label (generate-label)))))))
+	     (BIS L (& ,(make-non-pointer-literal type 0)) ,datum (R 4))
+	     (JSB ,entry:compiler-assignment-trap))))))
+
+(define-rule statement
+  (INTERPRETER-CALL:CACHE-ASSIGNMENT
+   (? extension)
+   (CONS-POINTER (CONSTANT (? type))
+		 (ENTRY:PROCEDURE (? label))))
+  (let* ((set-extension (expression->machine-register! extension r3))
+	 (clear-map (clear-map!)))
+    (LAP ,@set-extension
+	 ,@clear-map
+	 (PUSHA B (@PCR ,(rtl-procedure/external-label (label->object label))))
+	 (MOV B ,(make-immediate type) (@RO B 14 3))
+	 (MOV L (@R+ 14) (R 4))
+	 (JSB ,entry:compiler-assignment-trap))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-UNASSIGNED? (? extension))
-  (let ((set-extension (expression->machine-register! extension r9)))
+  (let ((set-extension (expression->machine-register! extension r3)))
     (let ((clear-map (clear-map!)))
       (LAP ,@set-extension
 	   ,@clear-map
-	   (JSB ,entry:compiler-unassigned?-trap)
-	   ,@(make-external-label (generate-label))))))
-
+	   (JSB ,entry:compiler-unassigned?-trap)))))

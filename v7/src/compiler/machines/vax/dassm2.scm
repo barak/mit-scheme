@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dassm2.scm,v 4.5 1988/03/21 21:42:02 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dassm2.scm,v 4.6 1989/05/17 20:28:17 jinx Exp $
+$MC68020-Header: dassm2.scm,v 4.12 88/12/30 07:05:13 GMT cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -35,14 +36,69 @@ MIT in each case. |#
 ;;;; VAX Disassembler: Top Level
 
 (declare (usual-integrations))
-
-(set! compiled-code-block/bytes-per-object 4)
 
+(set! compiled-code-block/bytes-per-object 4)
+(set! compiled-code-block/objects-per-procedure-cache 2)
+(set! compiled-code-block/objects-per-variable-cache 1)
+
+(set! disassembler/read-variable-cache
+      (lambda (block index)
+	(let-syntax ((ucode-type
+		      (macro (name) (microcode-type name)))
+		     (ucode-primitive
+		      (macro (name arity)
+			(make-primitive-procedure name arity))))
+	  ((ucode-primitive primitive-object-set-type 2)
+	   (ucode-type quad)
+	   (system-vector-ref block index)))))
+
+(set! disassembler/read-procedure-cache
+      (lambda (block index)
+	(fluid-let ((*block block))
+	  (let* ((offset (compiled-code-block/index->offset index)))
+	    (let ((opcode (read-unsigned-integer offset 16))
+		  (arity (read-unsigned-integer (+ offset 6) 16)))
+	      (case opcode
+		((#x9f17)		; JMP @#<value>
+		 (vector 'COMPILED
+			 (read-procedure (+ offset 2))
+			 arity))
+		((#x9f16)		; JSB @#<value>
+		 (let* ((new-block
+			 (compiled-code-address->block
+			  (read-procedure (+ offset 2))))
+			(offset
+			 (fluid-let ((*block new-block))
+			   (read-unsigned-integer 14 16))))
+		   (case offset
+		     ((#x106)		; lookup
+		      (vector 'VARIABLE
+			      (variable-cache-name
+			       (system-vector-ref new-block 3))
+			      arity))
+		     ((#x10c)		; interpreted
+		      (vector 'INTERPRETED
+			      (system-vector-ref new-block 3)
+			      arity))
+		     ((#x112		; arity
+		       #x11e		; entity
+		       #x124 #x12a #x130 #x136 #x13c ; specialized arity
+		       #x142 #x148 #x14e #x154 #x15e)
+		      (vector 'COMPILED
+			      (system-vector-ref new-block 3)
+			      arity))
+		     (else		; including #x118, APPLY
+		      (error
+		       "disassembler/read-procedure-cache: Unknown offset"
+		       offset block index)))))
+		(else
+		 (error "disassembler/read-procedure-cache: Unknown opcode"
+			opcode block index))))))))
+
 (set! disassembler/instructions
   (lambda (block start-offset end-offset symbol-table)
     (let loop ((offset start-offset) (state (disassembler/initial-state)))
-      (if (and end-offset
-	       (< offset end-offset))
+      (if (and end-offset (< offset end-offset))
 	  (disassemble-one-instruction block offset symbol-table state
 	    (lambda (offset* instruction state)
 	      (make-instruction offset
@@ -67,38 +123,24 @@ MIT in each case. |#
 (define *block)
 (define *current-offset)
 (define *symbol-table)
-(define *ir)
 (define *valid?)
 
 (define (disassemble-one-instruction block offset symbol-table state receiver)
-  (define (make-losing-instruction *ir size)
-    (case size
-      ((B)
-       `(DC B ,(bit-string->unsigned-integer *ir)))
-      ((W)
-       `(DC W ,(bit-string->unsigned-integer
-		(bit-string-append *ir (get-byte)))))
-      ((L)
-       `(DC L ,(bit-string->unsigned-integer
-		(bit-string-append (bit-string-append *ir (get-byte))
-				   (get-word)))))))
-  
   (fluid-let ((*block block)
 	      (*current-offset offset)
 	      (*symbol-table symbol-table)
-	      (*ir)
 	      (*valid? true))
     (let ((instruction
 	   (let ((byte (get-byte)))
 	     (if (external-label-marker? symbol-table offset state)
-		 (make-losing-instruction byte 'W)
+		 (make-data-deposit byte 'W)
 		 (let ((instruction
 			((vector-ref
 			  opcode-dispatch
 			  (bit-string->unsigned-integer byte)))))
 		   (if *valid?
 		       instruction
-		       (make-losing-instruction byte 'B)))))))
+		       (make-data-deposit byte 'B)))))))
       (receiver *current-offset
 		instruction
 		(disassembler/next-state instruction state)))))
@@ -107,55 +149,82 @@ MIT in each case. |#
   'INSTRUCTION-NEXT)
 
 (define (disassembler/next-state instruction state)
+  state					; ignored
   (if (and disassembler/compiled-code-heuristics?
 	   (or (memq (car instruction) '(BR JMP RSB))
 	       (and (eq? (car instruction) 'JSB)
 		    (let ((entry
 			   (interpreter-register? (cadr instruction))))
 		      (and entry
-			   (eq? (car entry) 'ENTRY)
-			   (not (eq? (cadr entry) 'SETUP-LEXPR)))))))
+			   (eq? (car entry) 'ENTRY))))))
       'EXTERNAL-LABEL
       'INSTRUCTION))
 
 (set! disassembler/lookup-symbol
   (lambda (symbol-table offset)
     (and symbol-table
-	 (let ((label (sorted-vector/find-element symbol-table offset)))
+	 (let ((label (dbg-labels/find-offset symbol-table offset)))
 	   (and label 
-		(label-info-name label))))))
+		(dbg-label/name label))))))
 
 (define (external-label-marker? symbol-table offset state)
   (if symbol-table
-      (sorted-vector/there-exists? symbol-table
-				   (+ offset 2)
-				   label-info-external?)
+      (let ((label (dbg-labels/find-offset symbol-table (+ offset 4))))
+	(and label
+	     (dbg-label/external? label)))
       (and *block
 	   (not (eq? state 'INSTRUCTION))
-	   (let loop ((offset (+ offset 2)))
+	   (let loop ((offset (+ offset 4)))
 	     (let ((contents (read-bits (- offset 2) 16)))
 	       (if (bit-string-clear! contents 0)
 		   (let ((offset
-			  (- offset (bit-string->unsigned-integer contents))))
+			  (- offset
+			     (/ (bit-string->unsigned-integer contents) 2))))
 		     (and (positive? offset)
 			  (loop offset)))
-		   (= offset (bit-string->unsigned-integer contents))))))))
+		   (= offset
+		      (/ (bit-string->unsigned-integer contents) 2))))))))
 
-(define (make-dc wl bit-string)
-  `(DC ,wl ,(bit-string->unsigned-integer bit-string)))
+(define (make-data-deposit *ir size)
+  (case size
+    ((B)
+     `(BYTE ,(bit-string->unsigned-integer *ir)))
+    ((W)
+     `(WORD ,(bit-string->unsigned-integer
+	      (bit-string-append *ir (get-byte)))))
+    ((L)
+     `(LONG ,(bit-string->unsigned-integer
+	      (bit-string-append (bit-string-append *ir (get-byte))
+				 (get-word)))))))
+  
+(define (read-procedure offset)
+  (with-absolutely-no-interrupts
+   (lambda ()
+     (let-syntax ((ucode-type
+		   (macro (name) (microcode-type name)))
+		  (ucode-primitive
+		   (macro (name arity)
+		     (make-primitive-procedure name arity))))
+       ((ucode-primitive primitive-object-set-type 2)
+	(ucode-type compiled-entry)
+	((ucode-primitive make-non-pointer-object 1)
+	 (read-unsigned-integer offset 32)))))))
+
+(define (read-unsigned-integer offset size)
+  (bit-string->unsigned-integer (read-bits offset size)))
 
 (define (read-bits offset size-in-bits)
-  (let ((word (bit-string-allocate size-in-bits)))
-    (with-interrupt-mask interrupt-mask-none
-      (lambda (old)
-	(read-bits! (if *block
-			(+ (primitive-datum *block) offset)
-			offset)
-		    0
-		    word)))
+  (let ((word (bit-string-allocate size-in-bits))
+	(bit-offset (* offset addressing-granularity)))
+    (with-absolutely-no-interrupts
+     (lambda ()
+       (if *block
+	   (read-bits! *block bit-offset word)
+	   (read-bits! offset 0 word))))
     word))
 
 ;;;; Compiler specific information
+
 (define-integrable (lookup-special-register reg table)
   (assq reg table))
 
@@ -185,7 +254,7 @@ MIT in each case. |#
     (12 . FREE-POINTER)
     (13 . REGS-POINTER)
     (14 . STACK-POINTER)
-    (15 . PC)))
+    (15 . PROGRAM-COUNTER)))
 
 (define (make-offset deferred? register size offset)
   (let ((key (if deferred? '@@RO '@RO)))
@@ -220,9 +289,6 @@ MIT in each case. |#
       ((REGISTER TEMPORARY ENTRY) effective-address)
       (else false))))
 
-(define interpreter-register-pointer
-  6)
-
 (define interpreter-register-assignments
   (let ()
     (define (make-entries index names)
@@ -237,25 +303,28 @@ MIT in each case. |#
       (12 . (REGISTER ENVIRONMENT))
       (16 . (REGISTER TEMPORARY))
       (20 . (REGISTER INTERPRETER-CALL-RESULT:ENCLOSE))
+      (24 . (REGISTER RETURN-CODE))
+      (28 . (REGISTER LEXPR-PRIMITIVE-ACTUALS))
+      (32 . (REGISTER MINIMUM-LENGTH))
+      (36 . (REGISTER PRIMITIVE))
+      ;; Interface entry points
+      ,@(make-entries
+	 #x0280
+	 '(link error apply
+		lexpr-apply primitive-apply primitive-lexpr-apply
+		cache-reference-apply lookup-apply
+		interrupt-continuation interrupt-ic-procedure
+		interrupt-procedure interrupt-closure
+		lookup safe-lookup set! access unassigned? unbound? define
+		reference-trap safe-reference-trap assignment-trap
+		unassigned?-trap
+		&+ &- &* &/ &= &< &> 1+ -1+ zero? positive? negative?))
       ;; Compiler temporaries
-      ,@(let loop ((index 40) (i 0))
-	  (if (= i 50)
+      ,@(let loop ((index -4) (i 0))
+	  (if (>= i 512)
 	      '()
 	      (cons `(,index . (TEMPORARY ,i))
-		    (loop (+ index 4) (1+ i)))))
-      ;; Interpreter entry points
-      ,@(make-entries
-	 #x00F0
-	 '(return-to-interpreter 
-	   uuo-link-trap operator-trap
-	   apply error wrong-number-of-arguments
-	   interrupt-procedure interrupt-continuation lookup-apply 
-	   lookup access unassigned? unbound? set! define primitive-apply enclose
-	   setup-lexpr safe-lookup cache-variable reference-trap
-	   assignment-trap uuo-link cache-reference-apply
-	   safe-reference-trap unassigned?-trap cache-variable-multiple
-	   uuo-link-multiple &+ &- &* &/ &= &< &> 1+ -1+ zero? positive? negative?
-	   cache-assignment cache-assignment-multiple primitive-lexpr-apply)))))
+		    (loop (- index 4) (1+ i))))))))
 
 
 (define (make-pc-relative deferred? size pco)
@@ -269,13 +338,6 @@ MIT in each case. |#
 	      `(,(if deferred? '@@PCR '@PCR) ,answ)
 	      `(,(if deferred? '@@PCO '@PCO) ,size ,pco)))
 	`(,(if deferred? '@@PCO '@PCO) ,size ,pco))))
-
-(define (offset->pc-relative pco reference-offset)
-  (if disassembler/symbolize-output?
-      `(@PCR ,(let ((absolute (+ pco reference-offset)))
-		(or (disassembler/lookup-symbol *symbol-table absolute)
-		    absolute)))
-      `(@PCO ,pco)))
 
 (define (undefined-instruction)
   ;; This losing assignment removes a 'cwcc'. Too bad.

@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rgspcm.scm,v 4.1 1988/02/23 19:43:56 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rgspcm.scm,v 4.2 1989/05/17 20:30:47 jinx Rel $
+$MC68020-Header: rgspcm.scm,v 4.1 87/12/30 07:05:38 GMT cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -32,7 +33,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; RTL Generation: Special primitive combinations.  68020 version.
+;;;; RTL Generation: Special primitive combinations.  VAX version.
 
 (declare (usual-integrations))
 
