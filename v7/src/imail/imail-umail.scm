@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.47 2001/05/23 23:23:48 cph Exp $
+;;; $Id: imail-umail.scm,v 1.48 2001/05/24 01:14:10 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -40,9 +40,9 @@
       (error:bad-range-argument url 'OPEN-RESOURCE))
   (make-umail-folder url))
 
-(define-method %create-folder ((url <umail-url>))
+(define-method %create-resource ((url <umail-url>))
   (if (file-exists? (pathname-url-pathname url))
-      (error:bad-range-argument url 'CREATE-FOLDER))
+      (error:bad-range-argument url 'CREATE-RESOURCE))
   (let ((folder (make-umail-folder url)))
     (set-file-folder-messages! folder '#())
     (set-file-folder-file-modification-time! folder (get-universal-time))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.131 2001/05/24 01:13:39 cph Exp $
+;;; $Id: imail-core.scm,v 1.132 2001/05/24 01:18:45 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -258,7 +258,7 @@
 ;;;; Server operations
 
 ;; -------------------------------------------------------------------
-;; Create a new folder named URL.  Signal an error if the folder
+;; Create a new resource named URL.  Signal an error if the resource
 ;; already exists or can't be created.
 
 (define (create-resource url)
@@ -269,8 +269,8 @@
 (define-generic %create-resource (url))
 
 ;; -------------------------------------------------------------------
-;; Delete the folder named URL.  Signal an error if the folder doesn't
-;; exist or if it can't be deleted.
+;; Delete the resource named URL.  Signal an error if the resource
+;; doesn't exist or if it can't be deleted.
 
 (define (delete-resource url)
   (%delete-resource url)
@@ -280,11 +280,11 @@
 (define-generic %delete-resource (url))
 
 ;; -------------------------------------------------------------------
-;; Rename the folder named URL to NEW-URL.  Signal an error if the
-;; folder doesn't exist, if NEW-URL already refers to a folder, or if
+;; Rename the resource named URL to NEW-URL.  Signal an error if the
+;; resource doesn't exist, if NEW-URL already refers to a resource, or if
 ;; the rename can't be performed for some reason.  This operation does
-;; NOT do format conversion, or move a folder from one place to
-;; another.  It only allows changing the name of an existing folder.
+;; NOT do format conversion, or move a resource from one place to
+;; another.  It only allows changing the name of an existing resource.
 
 (define (rename-resource url new-url)
   (%rename-resource url new-url)
@@ -295,8 +295,8 @@
 (define-generic %rename-resource (url new-url))
 
 ;; -------------------------------------------------------------------
-;; Insert a copy of MESSAGE in FOLDER at the end of the existing
-;; messages.  Unspecified result.
+;; Insert a copy of MESSAGE in the folder referenced by URL at the end
+;; of the existing messages.  Unspecified result.
 
 (define (append-message message url)
   (if (%append-message message url)
@@ -343,6 +343,9 @@
 
 (define-method resource-type-name ((r <folder>)) r 'FOLDER)
 (define-method resource-type-name ((r <container>)) r 'CONTAINER)
+
+(define-method %append-message (message (folder <folder>))
+  (%append-message message (resource-locator folder)))
 
 (define-method make-child-url ((container <container>) name)
   (make-child-url (resource-locator container) name))
