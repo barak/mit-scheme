@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlcon.scm,v 4.23 1992/11/09 18:42:25 jinx Exp $
+$Id: rtlcon.scm,v 4.24 1992/11/18 00:48:24 gjr Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -146,18 +146,6 @@ MIT in each case. |#
        (rtl:make-machine-constant type-code:unassigned)
        (rtl:make-machine-constant 0))
       (%make-constant value)))
- 
-(define make-non-pointer-literal
-  (let ((type-maximum (expt 2 scheme-type-width))
-	(type-scale-factor (expt 2 scheme-datum-width)))
-    (lambda (type datum)
-      (if (not (and (exact-nonnegative-integer? type)
-		    (< type type-maximum)))
-	  (error "non-pointer type out of range" type))
-      (if (not (and (exact-nonnegative-integer? datum)
-		    (< datum type-scale-factor)))
-	  (error "non-pointer datum out of range" datum))
-      (+ (* type type-scale-factor) datum))))
 
 ;;; Interpreter Calls
 

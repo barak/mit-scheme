@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 4.31 1992/10/19 19:15:41 jinx Exp $
+$Id: decls.scm,v 4.32 1992/11/18 00:46:26 gjr Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -379,7 +379,6 @@ MIT in each case. |#
 ;;;; Integration Dependencies
 
 (define (initialize/integration-dependencies!)
-
   (define (add-declaration! declaration filenames)
     (for-each (lambda (filenames)
 		(let ((node (filename->source-node filenames)))
@@ -396,7 +395,8 @@ MIT in each case. |#
 			   "object" "proced" "rvalue"
 			   "scode" "subprb" "utils"))
 	 (spectrum-base
-	  (filename/append "machines/spectrum" "machin"))
+	  (append (filename/append "machines/spectrum" "machin")
+		  (filename/append "back" "asutl")))
 	 (rtl-base
 	  (filename/append "rtlbase"
 			   "rgraph" "rtlcfg" "rtlobj" "rtlreg" "rtlty1"
@@ -446,6 +446,7 @@ MIT in each case. |#
        (string-append directory "/" name)
        (apply filename/append directory* names)))
 
+    (define-integration-dependencies "machines/spectrum" "machin" "back" "asutl")
     (define-integration-dependencies "base" "object" "base" "enumer")
     (define-integration-dependencies "base" "enumer" "base" "object")
     (define-integration-dependencies "base" "utils" "base" "scode")

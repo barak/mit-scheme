@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rgrval.scm,v 4.19 1992/11/09 18:42:52 jinx Exp $
+$Id: rgrval.scm,v 4.20 1992/11/18 00:47:09 gjr Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -271,10 +271,10 @@ MIT in each case. |#
 	    (entry (closure-block-entry-number block))
 	    (entry* (closure-block-entry-number block*)))
 	(let ((distance
-	       (byte-offset:-
+	       (back-end:-
 		(closure-entry-distance nentries entry entry*)
 		(closure-environment-adjustment nentries entry))))
-	  (if (byte-offset:zero? distance)
+	  (if (back-end:= distance 0)
 	      expression
 	      ;; This is cheaper than the obvious thing with object->address,
 	      ;; etc.
@@ -404,7 +404,7 @@ MIT in each case. |#
   ;; is always the canonical entry point.
   (let* ((closure-block (procedure-closing-block procedure))
 	 (shared-block (block-shared-block closure-block)))
-    (byte-offset:zero?
-     (closure-environment-adjustment
-      (block-number-of-entries shared-block)
-      (closure-block-entry-number closure-block)))))
+    (back-end:= (closure-environment-adjustment
+		 (block-number-of-entries shared-block)
+		 (closure-block-entry-number closure-block))
+		0)))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty2.scm,v 4.9 1990/05/03 15:10:34 jinx Rel $
+$Id: rtlty2.scm,v 4.10 1992/11/18 00:48:50 gjr Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -109,27 +109,30 @@ MIT in each case. |#
   (eq? (rtl:locative-offset-granularity locative) 'OBJECT))
 
 (define (rtl:locative-offset locative offset)
-  (cond ((zero? offset) locative)
+  (cond ((back-end:= offset 0) locative)
 	((rtl:locative-offset? locative)
 	 (if (rtl:locative-byte-offset? locative)
 	     (error "Can't add object-offset to byte-offset"
 		    locative offset)
 	     `(OFFSET ,(rtl:locative-offset-base locative)
-		      ,(+ (rtl:locative-offset-offset locative) offset)
+		      ,(back-end:+ (rtl:locative-offset-offset locative)
+				   offset)
 		      OBJECT)))
-	(else `(OFFSET ,locative ,offset OBJECT))))
+	(else
+	 `(OFFSET ,locative ,offset OBJECT))))
 
 (define (rtl:locative-byte-offset locative byte-offset)
-  (cond ((zero? byte-offset) locative)
+  (cond ((back-end:= byte-offset 0) locative)
 	((rtl:locative-offset? locative)
 	 `(OFFSET ,(rtl:locative-offset-base locative)
-		  ,(+ byte-offset
-		      (if (rtl:locative-byte-offset? locative)
-			  (rtl:locative-offset-offset locative)
-			  (* (rtl:locative-offset-offset locative)
-			     (quotient scheme-object-width 8))))
+		  ,(back-end:+ byte-offset
+			       (if (rtl:locative-byte-offset? locative)
+				   (rtl:locative-offset-offset locative)
+				   (back-end:* (rtl:locative-offset-offset locative)
+					       address-units-per-object)))
 		  BYTE))
-	(else `(OFFSET ,locative ,byte-offset BYTE))))
+	(else
+	 `(OFFSET ,locative ,byte-offset BYTE))))
 
 ;;; Expressions that are used in the intermediate form.
 

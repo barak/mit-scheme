@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.47 1992/04/13 04:44:13 jinx Exp $
+$Id: opncod.scm,v 4.48 1992/11/18 00:47:21 gjr Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -452,8 +452,9 @@ MIT in each case. |#
 				  header-length-in-objects
 				  address-units-per-index)
   (let ((header-length-in-indexes
-	 (* header-length-in-objects
-	    (quotient address-units-per-object address-units-per-index))))
+	 (back-end:* header-length-in-objects
+		     (back-end:quotient address-units-per-object
+					address-units-per-index))))
     (lambda (base index finish)
       (let ((unknown-index
 	     (lambda ()
@@ -464,7 +465,7 @@ MIT in each case. |#
 		  'PLUS-FIXNUM
 		  (rtl:make-address->fixnum (rtl:make-object->address base))
 		  (let ((index (rtl:make-object->fixnum index)))
-		    (if (= address-units-per-index 1)
+		    (if (back-end:= address-units-per-index 1)
 			index
 			(rtl:make-fixnum-2-args
 			 'MULTIPLY-FIXNUM
@@ -481,7 +482,9 @@ MIT in each case. |#
 	      (if (and (object-type? (ucode-type fixnum) value)
 		       (not (negative? value)))
 		  (finish
-		   (make-locative base (+ header-length-in-indexes value)))
+		   (make-locative base
+				  (back-end:+ header-length-in-indexes
+					      value)))
 		  (unknown-index)))
 	    (unknown-index))))))
 
