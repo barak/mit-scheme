@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.411 2002/03/01 03:18:38 cph Exp $
+$Id: runtime.pkg,v 14.412 2002/03/01 17:02:46 cph Exp $
 
 Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
@@ -2852,15 +2852,18 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  combination-operands
 	  combination-operator
 	  combination-size
+	  combination-subexpressions
 	  combination?
 	  conditional-alternative
 	  conditional-components
 	  conditional-consequent
 	  conditional-predicate
+	  conditional-subexpressions
 	  conditional?
 	  disjunction-alternative
 	  disjunction-components
 	  disjunction-predicate
+	  disjunction-subexpressions
 	  disjunction?
 	  make-combination
 	  make-conditional

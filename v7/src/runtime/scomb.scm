@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: scomb.scm,v 14.19 2002/02/03 03:38:56 cph Exp $
+$Id: scomb.scm,v 14.20 2002/03/01 17:02:40 cph Exp $
 
 Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -200,6 +200,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (receiver (conditional-predicate conditional)
 	    (conditional-consequent conditional)
 	    (conditional-alternative conditional)))
+
+(define (conditional-subexpressions expression)
+  (conditional-components expression list))
 
 ;;;; Disjunction
 
@@ -223,6 +226,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define (disjunction-components disjunction receiver)
   (receiver (disjunction-predicate disjunction)
 	    (disjunction-alternative disjunction)))
+
+(define (disjunction-subexpressions expression)
+  (disjunction-components expression list))
 
 ;;;; Combination
 
@@ -338,6 +344,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	     (&subvector->list combination 1 (&vector-length combination)))))
 
 )
+
+(define (combination-subexpressions expression)
+  (combination-components expression cons))
 
 ;;;; Unassigned?
 
