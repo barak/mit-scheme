@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: conpar.scm,v 14.30 1993/09/23 03:36:13 cph Exp $
+$Id: conpar.scm,v 14.31 1993/09/23 19:57:43 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -109,12 +109,13 @@ MIT in each case. |#
     (and (interpreter-return-address? return-address)
 	 (return-address/code return-address))))
 
-(define (stack-frame/subproblem? stack-frame)
-  (or (stack-frame-type/subproblem? (stack-frame/type stack-frame))
-      (stack-frame/repl-eval-boundary? stack-frame)))
-
 (define-integrable (stack-frame/compiled-code? stack-frame)
   (compiled-return-address? (stack-frame/return-address stack-frame)))
+
+(define (stack-frame/subproblem? stack-frame)
+  (if (stack-frame/stack-marker? stack-frame)
+      (stack-marker-frame/repl-eval-boundary? stack-frame)
+      (stack-frame-type/subproblem? (stack-frame/type stack-frame))))
 
 (define (stack-frame/resolve-stack-address frame address)
   (let loop
@@ -132,7 +133,7 @@ MIT in each case. |#
 			  (eq? (stack-frame/return-address stack-frame)
 			       continuation-return-address))))
 	   stack-frame)
-	  ((eq? type stack-frame-type/stack-marker)
+	  ((stack-frame/stack-marker? stack-frame)
 	   (let loop ((stack-frame stack-frame))
 	     (let ((stack-frame (stack-frame/next stack-frame)))
 	       (and stack-frame
@@ -327,70 +328,6 @@ MIT in each case. |#
     (parse/standard-next type elements state
 			 valid-history? valid-history?)))
 
-(define-integrable code/special-compiled/internal-apply 0)
-(define-integrable code/special-compiled/restore-interrupt-mask 1)
-(define-integrable code/special-compiled/stack-marker 2)
-(define-integrable code/special-compiled/compiled-code-bkpt 3)
-
-(define (parser/special-compiled type elements state)
-  (let ((code (vector-ref elements 1)))
-    (cond ((fix:= code code/special-compiled/internal-apply)
-	   (parse/standard-next type elements state false false))
-	  ((fix:= code code/special-compiled/restore-interrupt-mask)
-	   (parser/%stack-marker (parser-state/dynamic-state state)
-				 (vector-ref elements 2)
-				 stack-frame-type/stack-marker
-				 (vector-tail elements 1)
-				 state))
-	  ((fix:= code code/special-compiled/stack-marker)
-	   (parser/stack-marker stack-frame-type/stack-marker
-				(vector-tail elements 1)
-				state))
-	  ((fix:= code code/special-compiled/compiled-code-bkpt)
-	   (parse/standard-next type elements state false false))
-	  (else
-	   (error "Unknown special compiled frame" code)))))
-
-(define (parser/stack-marker type elements state)
-  (let ((marker (vector-ref elements 1))
-	(marker2 (vector-ref elements 2))
-	(continue
-	 (lambda (dynamic-state interrupt-mask)
-	   (parser/%stack-marker dynamic-state interrupt-mask
-				 type elements state))))
-    (cond ((eq? marker %translate-to-state-point)
-	   (continue (merge-dynamic-state (parser-state/dynamic-state state)
-					  marker2)
-		     (parser-state/interrupt-mask state)))
-	  ((eq? marker set-interrupt-enables!)
-	   (continue (parser-state/dynamic-state state)
-		     marker2))
-	  (else
-	   (continue (parser-state/dynamic-state state)
-		     (parser-state/interrupt-mask state))))))
-
-(define (parser/%stack-marker dynamic-state interrupt-mask
-			      type elements state)
-  (parser/standard
-   type
-   elements
-   (make-parser-state
-    dynamic-state
-    interrupt-mask
-    (parser-state/history state)
-    (parser-state/previous-history-offset state)
-    (parser-state/previous-history-control-point state)
-    (parser-state/element-stream state)
-    (parser-state/n-elements state)
-    (parser-state/next-control-point state)
-    (parser-state/previous-type state))))
-
-(define (stack-frame/repl-eval-boundary? stack-frame)
-  (let ((type (stack-frame/type stack-frame)))
-    (and (eq? type stack-frame-type/stack-marker)
-	 (eq? with-repl-eval-boundary
-	      (vector-ref (stack-frame/elements stack-frame) 1)))))
-
 (define (parser/restore-interrupt-mask type elements state)
   (parser/standard
    type
@@ -418,6 +355,95 @@ MIT in each case. |#
 		      (parser-state/n-elements state)
 		      (parser-state/next-control-point state)
 		      (parser-state/previous-type state))))
+
+(define-integrable code/special-compiled/internal-apply 0)
+(define-integrable code/special-compiled/restore-interrupt-mask 1)
+(define-integrable code/special-compiled/stack-marker 2)
+(define-integrable code/special-compiled/compiled-code-bkpt 3)
+
+(define (parser/special-compiled type elements state)
+  (let ((code (vector-ref elements 1)))
+    (cond ((fix:= code code/special-compiled/internal-apply)
+	   (parse/standard-next type elements state false false))
+	  ((fix:= code code/special-compiled/restore-interrupt-mask)
+	   (parser/%stack-marker (parser-state/dynamic-state state)
+				 (vector-ref elements 2)
+				 type elements state))
+	  ((fix:= code code/special-compiled/stack-marker)
+	   (parser/stack-marker type elements state))
+	  ((fix:= code code/special-compiled/compiled-code-bkpt)
+	   (parse/standard-next type elements state false false))
+	  (else
+	   (error "Unknown special compiled frame" code)))))
+
+(define (parser/stack-marker type elements state)
+  (call-with-values
+      (lambda ()
+	(if (eq? type stack-frame-type/stack-marker)
+	    (values (vector-ref elements 1) (vector-ref elements 2))
+	    (values (vector-ref elements 2) (vector-ref elements 3))))
+    (lambda (marker-type marker-instance)
+      (let ((continue
+	     (lambda (dynamic-state interrupt-mask)
+	       (parser/%stack-marker dynamic-state interrupt-mask
+				     type elements state))))
+	(cond ((eq? marker-type %translate-to-state-point)
+	       (continue (merge-dynamic-state
+			  (parser-state/dynamic-state state)
+			  marker-instance)
+			 (parser-state/interrupt-mask state)))
+	      ((eq? marker-type set-interrupt-enables!)
+	       (continue (parser-state/dynamic-state state)
+			 marker-instance))
+	      (else
+	       (continue (parser-state/dynamic-state state)
+			 (parser-state/interrupt-mask state))))))))
+
+(define (parser/%stack-marker dynamic-state interrupt-mask
+			      type elements state)
+  (parser/standard
+   type
+   elements
+   (make-parser-state
+    dynamic-state
+    interrupt-mask
+    (parser-state/history state)
+    (parser-state/previous-history-offset state)
+    (parser-state/previous-history-control-point state)
+    (parser-state/element-stream state)
+    (parser-state/n-elements state)
+    (parser-state/next-control-point state)
+    (parser-state/previous-type state))))
+
+(define (stack-frame/stack-marker? stack-frame)
+  (or (%stack-frame/stack-marker? stack-frame)
+      (and (stack-frame/special-compiled? stack-frame)
+	   (let ((code (vector-ref (stack-frame/elements stack-frame) 1)))
+	     (or (fix:= code/special-compiled/restore-interrupt-mask code)
+		 (fix:= code/special-compiled/stack-marker code))))))
+
+(define (stack-marker-frame/type stack-frame)
+  (if (%stack-frame/stack-marker? stack-frame)
+      (vector-ref (stack-frame/elements stack-frame) 1)
+      (vector-ref (stack-frame/elements stack-frame) 2)))
+
+(define (stack-marker-frame/instance stack-frame)
+  (if (%stack-frame/stack-marker? stack-frame)
+      (vector-ref (stack-frame/elements stack-frame) 2)
+      (vector-ref (stack-frame/elements stack-frame) 3)))
+
+(define-integrable (%stack-frame/stack-marker? stack-frame)
+  (eq? stack-frame-type/stack-marker (stack-frame/type stack-frame)))
+
+(define-integrable (stack-frame/special-compiled? stack-frame)
+  (eq? stack-frame-type/special-compiled (stack-frame/type stack-frame)))
+
+(define (stack-frame/repl-eval-boundary? stack-frame)
+  (and (stack-frame/stack-marker? stack-frame)
+       (stack-marker-frame/repl-eval-boundary? stack-frame)))
+
+(define-integrable (stack-marker-frame/repl-eval-boundary? stack-frame)
+  (eq? with-repl-eval-boundary (stack-marker-frame/type stack-frame)))
 
 ;;;; Unparser
 
