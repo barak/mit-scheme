@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntsig.c,v 1.13 1993/09/11 02:45:57 gjr Exp $
+$Id: ntsig.c,v 1.14 1993/09/13 18:38:57 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -408,7 +408,7 @@ DEFUN_VOID (OS_restartable_exit)
    INT_Global_1:  Windows polling interrupt.
  */
 
-#define CATATONIA_PERIOD	15000	/* msec */
+#define CATATONIA_PERIOD	30000	/* msec */
 #define ASYNC_TIMER_PERIOD	50	/* msec */
 
 static void * timer_state = ((void *) NULL);
