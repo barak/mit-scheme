@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/simple.scm,v 1.42 1992/02/19 00:01:59 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/simple.scm,v 1.43 1992/02/25 22:18:12 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -233,13 +233,12 @@
   (let ((time-limit (+ (real-time-clock) interval)))
     (let loop ()
       (if (and (not (keyboard-peek-no-hang))
-	       (< (real-time-clock) time-limit))
+	       (< (real-time-clock) time-limit)
+	       (update-screens! false))
 	  (loop)))))
 
-(define (sleep-for interval)
-  (let ((time-limit (+ (real-time-clock) interval)))
-    (do ()
-	((>= (real-time-clock) time-limit)))))
+(define sleep-for
+  sleep-current-thread)
 
 (define (reposition-window-top mark)
   (if (not (and mark (set-window-start-mark! (current-window) mark false)))
