@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.29 2000/10/26 05:07:04 cph Exp $
+;;; $Id: imail-summary.scm,v 1.30 2000/10/26 16:41:07 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -156,7 +156,15 @@ SUBJECT is a string of regexps separated by commas."
 		     (buffer-put! folder-buffer 'IMAIL-SUMMARY-BUFFER buffer)
 		     (associate-buffer-with-imail-buffer folder-buffer buffer)
 		     (buffer-put! buffer 'IMAIL-NAVIGATORS
-				  (imail-summary-navigators buffer))))
+				  (imail-summary-navigators buffer))
+		     (if (ref-variable imail-summary-fixed-layout buffer)
+			 (create-buffer-layout
+			  (lambda (window buffers)
+			    (let ((buffer (car buffers)))
+			      (select-buffer buffer window)
+			      (imail-summary-pop-up-message-buffer buffer
+								   window)))
+			  (list buffer folder-buffer)))))
 		  buffer)))))
     (buffer-put! buffer 'IMAIL-SUMMARY-DESCRIPTION description)
     (buffer-put! buffer 'IMAIL-SUMMARY-PREDICATE predicate)
@@ -166,16 +174,7 @@ SUBJECT is a string of regexps separated by commas."
 	      (select-window (car windows))
 	      (select-buffer buffer))))
     (preload-folder-outlines folder)
-    (rebuild-imail-summary-buffer buffer)
-    (if (ref-variable imail-summary-fixed-layout buffer)
-	(begin
-	  (delete-buffer-layout buffer)
-	  (create-buffer-layout
-	   (lambda (window buffers)
-	     (let ((buffer (car buffers)))
-	       (select-buffer buffer window)
-	       (imail-summary-pop-up-message-buffer buffer window)))
-	   (list buffer folder-buffer))))))
+    (rebuild-imail-summary-buffer buffer)))
 
 (define (imail-summary-detach buffer)
   (let ((folder-buffer (buffer-get buffer 'IMAIL-FOLDER-BUFFER #f)))
