@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: diros2.scm,v 1.3 1999/01/02 06:11:34 cph Exp $
+;;; $Id: diros2.scm,v 1.4 1999/02/01 03:47:30 cph Exp $
 ;;;
 ;;; Copyright (c) 1992-1999 Massachusetts Institute of Technology
 ;;;
@@ -34,7 +34,7 @@ The files are compressed or uncompressed using gzip."
   (lambda (argument)
     (let ((n
 	   (dired-change-files "compress" argument
-	     (let ((gzip (os/find-program "gzip" #f))
+	     (let ((gzip (os/find-program "gzip" #f (ref-variable exec-path)))
 		   (directory (buffer-default-directory (current-buffer))))
 	       (lambda (pathname lstart)
 		 (let ((type (pathname-type pathname))

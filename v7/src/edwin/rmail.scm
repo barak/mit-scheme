@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rmail.scm,v 1.60 1999/01/28 03:59:59 cph Exp $
+;;; $Id: rmail.scm,v 1.61 1999/02/01 03:47:02 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-1999 Massachusetts Institute of Technology
 ;;;
@@ -503,11 +503,13 @@ and use that file as the inbox."
 	  (let ((error-buffer (temporary-buffer " movemail errors")))
 	    (let ((start (buffer-start error-buffer))
 		  (end (buffer-end error-buffer)))
-	      (run-synchronous-process false start false false
-				       (os/find-program "movemail"
-							(edwin-etc-directory))
-				       (->namestring source)
-				       (->namestring target))
+	      (run-synchronous-process
+	       false start false false
+	       (os/find-program "movemail"
+				(edwin-etc-directory)
+				(ref-variable exec-path))
+	       (->namestring source)
+	       (->namestring target))
 	      (if (mark< start end)
 		  (error
 		   (let ((m

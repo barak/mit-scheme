@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: unix.scm,v 1.92 1999/02/01 03:31:01 cph Exp $
+;;; $Id: unix.scm,v 1.93 1999/02/01 03:46:43 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -560,7 +560,7 @@ CANNOT contain the 'F' option."
 				      (file-namestring file)))
 	(apply run-synchronous-process
 	       #f mark directory #f
-	       (os/find-program program #f)
+	       (os/find-program program #f (ref-variable exec-path))
 	       (append
 		(split-unix-switch-string switches)
 		(list
@@ -638,7 +638,7 @@ option, instead taking -P <filename>."
   boolean?)
 
 (define (os/rmail-pop-procedure)
-  (and (unix/find-program "popclient" (ref-variable exec-path) #f)
+  (and (os/find-program "popclient" #f (ref-variable exec-path))
        (lambda (server user-name password directory)
 	 (unix/pop-client server user-name password directory))))
 

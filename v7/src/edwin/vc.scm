@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.30 1999/01/02 06:11:34 cph Exp $
+;;; $Id: vc.scm,v 1.31 1999/02/01 03:46:35 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-1999 Massachusetts Institute of Technology
 ;;;
@@ -1202,7 +1202,8 @@ the value of vc-log-mode-hook."
 		  #f
 		  #f
 		  (os/find-program command
-				   (buffer-default-directory command-buffer))
+				   (buffer-default-directory command-buffer)
+				   (ref-variable exec-path))
 		  (vc-command-arguments arguments))))
       (if (and (eq? 'EXITED (car result))
 	       (<= 0 (cdr result) status-limit))

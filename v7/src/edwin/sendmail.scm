@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sendmail.scm,v 1.43 1999/01/02 06:11:34 cph Exp $
+;;; $Id: sendmail.scm,v 1.44 1999/02/01 03:46:56 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-1999 Massachusetts Institute of Technology
 ;;;
@@ -694,7 +694,7 @@ the user from the mailer."
 	  ;; user as soon as possible.
 	  (let ((process
 		 (start-pipe-subprocess
-		  (os/find-program program #f)
+		  (os/find-program program #f (ref-variable exec-path))
 		  (vector (file-namestring program) "-oi" "-t"
 			  (string-append "-f" (current-user-name))
 			  ;; These mean "report errors by mail" and
