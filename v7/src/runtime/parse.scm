@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.52 2004/11/04 03:01:18 cph Exp $
+$Id: parse.scm,v 14.53 2004/11/19 06:51:20 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1997,1998,1999 Massachusetts Institute of Technology
@@ -485,13 +485,16 @@ USA.
 	  ((string-ci=? name "true") #t)
 	  ((string-ci=? name "optional") lambda-optional-tag)
 	  ((string-ci=? name "rest") lambda-rest-tag)
+	  ((string-ci=? name "key") lambda-key-tag)
 	  ((string-ci=? name "aux") lambda-auxiliary-tag)
 	  ((string-ci=? name "eof") (make-eof-object #f))
+	  ((string-ci=? name "default") (default-object))
 	  (else (error:illegal-named-constant name)))))
 
 (define lambda-optional-tag (object-new-type (ucode-type constant) 3))
 (define lambda-rest-tag (object-new-type (ucode-type constant) 4))
 (define lambda-auxiliary-tag '|#!aux|)
+(define lambda-key-tag (object-new-type (ucode-type constant) 5))
 
 (define (handler:unhash port db ctx char1 char2)
   db ctx char1 char2

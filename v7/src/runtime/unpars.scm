@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unpars.scm,v 14.57 2004/08/14 04:57:12 cph Exp $
+$Id: unpars.scm,v 14.58 2004/11/19 06:51:39 cph Exp $
 
 Copyright 1986,1987,1990,1991,1992,1995 Massachusetts Institute of Technology
 Copyright 1996,2001,2002,2003,2004 Massachusetts Institute of Technology
@@ -318,7 +318,9 @@ USA.
 	((eq? object #t) (*unparse-string "#t"))
 	((undefined-value? object)
 	 (*unparse-string "#[unspecified-return-value]"))
+	((default-object? object) (*unparse-string "#!default"))
 	((eq? object lambda-auxiliary-tag) (*unparse-string "#!aux"))
+	((eq? object lambda-key-tag) (*unparse-string "#!key"))
 	((eq? object lambda-optional-tag) (*unparse-string "#!optional"))
 	((eq? object lambda-rest-tag) (*unparse-string "#!rest"))
 	(else (unparse/default object))))
