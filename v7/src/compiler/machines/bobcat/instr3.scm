@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr3.scm,v 1.15 1988/06/14 08:47:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr3.scm,v 1.16 1988/10/04 23:04:57 jinx Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -348,9 +348,15 @@ MIT in each case. |#
 	 (6 dea DESTINATION-EA-REVERSED)
 	 (6 sea SOURCE-EA ssym)))
 
+  ;; Special MOVE instructions
+
   ((W (? ea ea-d) (CCR))		;MOVE to CCR
    (WORD (10 #b0100010011)
 	 (6 ea SOURCE-EA 'W)))
+
+  ((W (CCR) (? ea ea-d))		;MOVE from CCR
+   (WORD (10 #b0100001011)
+	 (6 ea DESTINATION-EA 'W)))
 
   ((W (? ea ea-d) (SR))			;MOVE to SR
    (WORD (10 #b0100011011)
@@ -360,12 +366,12 @@ MIT in each case. |#
    (WORD (10 #b0100000011)
 	 (6 ea DESTINATION-EA)))
 
-  ((L (USP) (A (? rx)))			;MOVE from USP
-   (WORD (13 #b0100111001101)
-	 (3 rx)))
-
   ((L (A (? rx)) (USP))			;MOVE to USP
    (WORD (13 #b0100111001100)
+	 (3 rx)))
+
+  ((L (USP) (A (? rx)))			;MOVE from USP
+   (WORD (13 #b0100111001101)
 	 (3 rx))))
 
 ;; MOV is a special case, separated for efficiency so there are less
