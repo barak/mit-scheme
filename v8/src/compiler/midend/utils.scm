@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.28 1995/08/10 13:50:13 adams Exp $
+$Id: utils.scm,v 1.29 1995/09/05 19:08:20 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -886,8 +886,27 @@ Example use of FORM/COPY-TRANSFORMING:
 	     (if rest
 		 (- 0 (+ max 1))
 		 max))))))
+
+(define (lambda-list/minimum-arity lambda-list)
+  (call-with-values
+      (lambda () (lambda-list/parse lambda-list))
+    (lambda (required optional rest aux)
+      optional rest aux			; ignored
+      (length required))))
+
+(define (lambda-body/frame-vector body)
+  (and (LET/? body)
+       (pair? (let/bindings body))
+       (CALL/%fetch-stack-closure?
+	(second (first (let/bindings body))))
+       (QUOTE/text 
+	(CALL/%fetch-stack-closure/vector
+	 (second (first (let/bindings body)))))))
 
 ;;;; List & vector utilities
+
+(define-integrable (for-every things proc)
+  (for-each proc things))
 
 (define (delq* to-remove some-list)
   (if (null? to-remove)
@@ -1247,167 +1266,15 @@ Example use of FORM/COPY-TRANSFORMING:
 				 (and (a name) (b name))))))
 	  (else #F))))
 
-
-;; This implementation is not thread-safe.  Do not share these
-;; hash-tables between cncurrent threads.
-;;
-;; (make-monotonic-strong-eq-hash-table)
-;; (monotonic-strong-eq-hash-table/put! table key value)
-;; (monotonic-strong-eq-hash-table/for-every table procedure)
-;; (monotonic-strong-eq-hash-table/get table key default)
-;; (monotonic-strong-eq-hash-table/copy table)
+;; FORM-MAPs are mappings form KMP forms to something
+;;  Implemented as monotonic-strong-eq-hash-table
 
-(declare (usual-integrations))
+(define make-form-map make-monotonic-strong-eq-hash-table)
+(define form-map/get monotonic-strong-eq-hash-table/get)
+(define form-map/put! monotonic-strong-eq-hash-table/put!)
 
-(define-structure (table
-		   (conc-name table/))
-  ;; either #F, #T (rehash because of GC), or the old vector (rehash
-  ;; because of growth (or growth and GC)).
-  rehash?
-  vector
-  count)
 
-(define tables)
+(define code/rewrite-table/make make-form-map)
 
-(define-integrable empty-slot #F)
-
-(define-integrable (eq-hash-mask key mask)
-  (let ((key key))
-    (fix:and
-     (fix:* #b1001101011
-	    (fix:+ (object-datum key) (fix:lsh (object-datum key) -9)))
-     mask)))
-
-(define (table/grow! table)
-  (let* ((old      (table/vector table))
-	 (old-len  (vector-length old))
-	 (new-len  (fix:* 2 old-len))
-	 (new      (make-vector new-len empty-slot)))
-    (set-table/rehash?! table old)
-    (set-table/vector! table new)))
-
-(define (make-monotonic-strong-eq-hash-table)
-  (let ((hash-table
-	 (make-table #F
-		     (let ((e empty-slot))
-		       (vector e e e e e e e e))
-		     0)))
-    (set-cdr! tables (weak-cons hash-table (cdr tables)))
-    hash-table))
-
-(define (monotonic-strong-eq-hash-table/copy table)
-  (let ((rehash?  (table/rehash? table))
-	(count    (table/count table))
-	(vector   (table/vector table)))
-    (let ((vector*  (vector-copy vector))
-	  (rehash?* (if (vector? rehash?) (vector-copy rehash?) rehash?)))
-      (let ((table* (make-table rehash?* vector* count)))
-	(set-cdr! tables (weak-cons table* (cdr tables)))
-	;; Now we may have GC-ed and require a rehash
-	(if (and (table/rehash? table)
-		 (not (table/rehash? table*)))
-	    (set-table/rehash?! table* #T))
-	table*))))
-
-(define (monotonic-strong-eq-hash-table/put! table key datum)
-
-  (if (table/rehash? table)
-      (table/rehash! table))
-
-  (let* ((v      (table/vector table))
-	 (len    (vector-length v))
-	 (mask   (fix:- len 2))		;#b00...0011...110
-	 (start  (eq-hash-mask key mask)))
-    (let search ((i  start))
-      (cond  ((eq? (vector-ref v i) key)
-	      (vector-set! v (fix:+ i 1) datum)
-	      #F)
-	     ((eq? (vector-ref v i) empty-slot)
-	      ;; Assumption: There will be no interrupt checks between the
-	      ;; above vector-ref and the following vector-set!s
-	      (vector-set! v i key)
-	      (vector-set! v (fix:+ i 1) datum)
-	      (set-table/count! table (fix:+ (table/count table) 1))
-	      ;; We must ensure that the table is NEVER full
-	      (if (fix:> (fix:* 3 (table/count table)) len)
-		  (table/grow! table))
-	      #T)
-	     (else
-	      (search (fix:and mask (fix:+ i 2))))))))
-
-(define (monotonic-strong-eq-hash-table/get table key default)
-
-  (define-integrable (retry)
-    (table/rehash! table)
-    (monotonic-strong-eq-hash-table/get table key default))
-    
-  (let* ((v      (table/vector table))
-	 (len    (vector-length v))
-	 (mask   (fix:- len 2))		; #b00...0011...110
-	 (start  (eq-hash-mask key mask)))
-    (let search ((i  start))
-      (cond  ((eq? (vector-ref v i) key)
-	      (vector-ref v (fix:+ i 1)))
-	     ((eq? (vector-ref v i) empty-slot)
-	      (if (table/rehash? table)
-		  (retry)
-		  default))
-	     (else
-	      (search (fix:and mask (fix:+ i 2))))))))
-
-(define (table/rehash! table)
-
-  (define (rehash-copy old old-len new new-len)
-    (let ((mask (fix:- new-len 2)))
-      (let loop ((old-i (fix:- old-len 2)))
-	(if (fix:>= old-i 0)
-	    (let ((key  (vector-ref old old-i)))
-	      (let search ((new-i  (eq-hash-mask key mask)))
-		(cond ((eq? (vector-ref new new-i) empty-slot)
-		       (vector-set! new new-i key)
-		       (vector-set! new (fix:+ new-i 1)
-				    (vector-ref old (fix:+ old-i 1)))
-		       (loop (fix:- old-i 2)))
-		      (else
-		       (search (fix:and mask (fix:+ new-i 2)))))))))))
-
-  (if (vector? (table/rehash? table))
-      (let ((old (table/rehash? table))
-	    (new (table/vector table)))
-	(set-table/rehash?! table false)
-	(rehash-copy old (vector-length old) new (vector-length new)))
-      (let* ((vec  (table/vector table))
-	     (len  (vector-length vec))
-	     (new  (make-vector len empty-slot)))
-	(set-table/rehash?! table #F)
-	(set-table/vector! table new)
-	(rehash-copy vec len new len))))
-
-(define (mark-tables!)
-  (let loop ((tables tables))
-    (let ((wp (system-pair-cdr tables)))
-      (cond ((null? wp)
-	     unspecific)
-	    ((system-pair-car wp)
-	     => (lambda (table)
-		  (if (not (table/rehash? table))
-		      (set-table/rehash?! table #T))
-		  (loop wp)))
-	    (else
-	     ;; discard weak pair
-	     (system-pair-set-cdr! tables (system-pair-cdr wp))
-	     (loop tables))))))
-
-(define (initialize-package!)
-  (set! tables (cons 'HEAD '()))
-  ;;((access add-primitive-gc-daemon! (->environment '(runtime gc-daemons)))
-  ;; mark-tables!)
-  (add-gc-daemon! mark-tables!)
-)
-
-(initialize-package!)
-
-(define code/rewrite-table/make make-monotonic-strong-eq-hash-table)
-
-(define code-rewrite-table/get  monotonic-strong-eq-hash-table/get)
-(define code-rewrite-table/put! monotonic-strong-eq-hash-table/put!)
+(define code-rewrite-table/get  form-map/get)
+(define code-rewrite-table/put! form-map/put!)
