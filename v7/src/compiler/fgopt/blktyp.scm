@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/blktyp.scm,v 4.11 1989/04/21 17:09:37 markf Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/blktyp.scm,v 4.12 1989/09/24 03:37:31 cph Exp $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -61,7 +61,8 @@ MIT in each case. |#
   (loop root-block))
 
 (define (maybe-close-procedure! block)
-  (if (close-procedure? (block-procedure block))      (close-procedure! block)))
+  (if (procedure-closure-context (block-procedure block))
+      (close-procedure! block)))
 
 (define (close-procedure! block)
   (let ((procedure (block-procedure block))
