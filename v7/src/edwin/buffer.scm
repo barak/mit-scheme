@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: buffer.scm,v 1.168 1995/04/19 01:56:44 cph Exp $
+;;;	$Id: buffer.scm,v 1.169 1996/05/05 18:58:41 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -184,9 +184,15 @@ The buffer is guaranteed to be deselected at that time."
   (vector-set! buffer buffer-index:comtabs comtabs))
 
 (define (buffer-point buffer)
-  (if (current-buffer? buffer)
-      (current-point)
-      (group-point (buffer-group buffer))))
+  (cond ((current-buffer? buffer)
+	 (current-point))
+	((let ((windows (buffer-windows buffer)))
+	   (and (pair? windows)
+		(null? (cdr windows))
+		(car windows)))
+	 => window-point)
+	(else
+	 (group-point (buffer-group buffer)))))
 
 (define-integrable (%set-buffer-point! buffer mark)
   (set-group-point! (buffer-group buffer) mark))
