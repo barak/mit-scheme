@@ -21,7 +21,7 @@
 ;;; Requires C-Scheme release 5 or later
 ;;; Changes to Control-G handler require runtime version 13.85 or later
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.21 1988/10/21 16:30:23 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.22 1989/04/05 17:12:45 cph Exp $
 
 (require 'scheme)
 
@@ -54,20 +54,18 @@ Is processed with `substitute-command-keys' first.")
 
 (defun xscheme-evaluation-commands (keymap)
   (define-key keymap "\e\C-x" 'xscheme-send-definition)
-  (define-key keymap "\C-x\C-e" 'xscheme-send-previous-expression)
+  (define-key keymap "\C-x\C-e" 'advertised-xscheme-send-previous-expression)
   (define-key keymap "\eo" 'xscheme-send-buffer)
   (define-key keymap "\ez" 'xscheme-send-definition)
   (define-key keymap "\e\C-m" 'xscheme-send-previous-expression)
-  (define-key keymap "\e\C-z" 'xscheme-send-region)
-  (define-key keymap "\C-cn" 'xscheme-send-next-expression)
-  (define-key keymap "\C-cp" 'xscheme-send-previous-expression))
+  (define-key keymap "\e\C-z" 'xscheme-send-region))
 
 (defun xscheme-interrupt-commands (keymap)
   (define-key keymap "\C-c\C-s" 'xscheme-select-process-buffer)
-  (define-key keymap "\C-cb" 'xscheme-send-breakpoint-interrupt)
-  (define-key keymap "\C-cg" 'xscheme-send-control-g-interrupt)
-  (define-key keymap "\C-cu" 'xscheme-send-control-u-interrupt)
-  (define-key keymap "\C-cx" 'xscheme-send-control-x-interrupt))
+  (define-key keymap "\C-c\C-b" 'xscheme-send-breakpoint-interrupt)
+  (define-key keymap "\C-c\C-c" 'xscheme-send-control-g-interrupt)
+  (define-key keymap "\C-c\C-u" 'xscheme-send-control-u-interrupt)
+  (define-key keymap "\C-c\C-x" 'xscheme-send-control-x-interrupt))
 
 (xscheme-evaluation-commands scheme-mode-map)
 (xscheme-interrupt-commands scheme-mode-map)
@@ -193,7 +191,6 @@ with no args, if that value is non-nil."
   (setq mode-name "Scheme Interaction"))
 
 (defun scheme-interaction-mode-commands (keymap)
-  (define-key keymap "\C-j" 'advertised-xscheme-send-previous-expression)
   (define-key keymap "\C-c\C-m" 'xscheme-send-current-line)
   (define-key keymap "\C-c\C-p" 'xscheme-send-proceed)
   (define-key keymap "\C-c\C-y" 'xscheme-yank-previous-send))
@@ -444,9 +441,6 @@ idle                   waiting for an escape sequence
 reading-type           received an altmode but nothing else
 reading-string         reading prompt string")
 
-(defvar xscheme-process-filter-queue '()
-  "Queue used to synchronize filter actions properly.")
-
 (defvar xscheme-running-p nil
   "This variable, if nil, indicates that the scheme process is
 waiting for input.  Otherwise, it is busy evaluating something.")
@@ -479,6 +473,7 @@ When called, the current buffer will be the Scheme process-buffer.")
 
 (defvar xscheme-runlight-string nil)
 (defvar xscheme-mode-string nil)
+(defvar xscheme-filter-input nil)
 
 ;;;; Basic Process Control
 
@@ -557,13 +552,12 @@ When called, the current buffer will be the Scheme process-buffer.")
 ;;;; Process Filter
 
 (defun xscheme-process-sentinel (proc reason)
-  (let ((inhibit-quit t))
-    (xscheme-process-filter-initialize (eq reason 'run))
-    (if (eq reason 'run)
-	(xscheme-modeline-initialize)
-	(progn
-	 (setq scheme-mode-line-process "")
-	 (setq xscheme-mode-string "no process"))))
+  (xscheme-process-filter-initialize (eq reason 'run))
+  (if (eq reason 'run)
+      (xscheme-modeline-initialize)
+      (progn
+       (setq scheme-mode-line-process "")
+       (setq xscheme-mode-string "no process")))
   (if (and (not (memq reason '(run stop)))
 	   xscheme-signal-death-message)
       (progn (beep)
@@ -572,101 +566,77 @@ When called, the current buffer will be the Scheme process-buffer.")
 
 (defun xscheme-process-filter-initialize (running-p)
   (setq xscheme-process-filter-state 'idle)
-  (setq xscheme-process-filter-queue (cons '() '()))
   (setq xscheme-running-p running-p)
   (setq xscheme-control-g-disabled-p nil)
   (setq xscheme-allow-output-p t)
   (setq xscheme-prompt "")
-  (setq xscheme-string-accumulator "")
-  (setq xscheme-string-receiver nil)
   (setq scheme-mode-line-process '(": " xscheme-runlight-string)))
 
 (defun xscheme-process-filter (proc string)
-  (let ((inhibit-quit t))
-    (cond ((eq xscheme-process-filter-state 'idle)
-	   (xscheme-process-filter:idle string))
-	  ((eq xscheme-process-filter-state 'reading-type)
-	   (xscheme-process-filter:reading-type string))
-	  ((eq xscheme-process-filter-state 'reading-string)
-	   (xscheme-process-filter:reading-string string))
-	  (t (error "Scheme process filter -- bad state")))))
-
-(defun xscheme-process-filter:idle (string)
-  (setq xscheme-process-filter-state 'idle)
-  (let ((start (string-match "\e" string)))
-    (if start
-	(progn (xscheme-process-filter:idle-1 (substring string 0 start))
-	       (xscheme-process-filter:reading-type
-		(substring string (1+ start))))
-	(progn (xscheme-process-filter:idle-1 string)
-	       (xscheme-process-filter:finish)))))
-
-(defun xscheme-process-filter:idle-1 (string)
-  (while (string-match "\\(\007\\|\f\\)" string)
-    (let ((start (match-beginning 0))
-	  (end (match-end 0)))
-      (xscheme-process-filter-output (substring string 0 start))
-      (if (= ?\f (aref string start))
-	  (progn (xscheme-guarantee-newlines 1)
-		 (xscheme-process-filter-output ?\f))
-	  (beep))
-      (setq string (substring string (1+ start)))))
-  (xscheme-process-filter-output string))
-
-(defun xscheme-process-filter:reading-type (string)
-  (let ((len (length string)))
-    (if (= 0 len)
-	(progn (setq xscheme-process-filter-state 'reading-type)
-	       (xscheme-process-filter:finish))
-	(xscheme-process-filter-dispatch (aref string 0)
-					 (substring string 1 len)))))
-
-(defun xscheme-process-filter:reading-string (string)
-  (let ((start (string-match "\e" string)))
-    (if start
-	(progn (xscheme-process-filter:enqueue
-		(list xscheme-string-receiver
+  (let ((xscheme-filter-input string))
+    (while xscheme-filter-input
+      (cond ((eq xscheme-process-filter-state 'idle)
+	     (let ((start (string-match "\e" xscheme-filter-input)))
+	       (if start
+		   (progn
+		     (xscheme-process-filter-output
+		      (substring xscheme-filter-input 0 start))
+		     (setq xscheme-filter-input
+			   (substring xscheme-filter-input (1+ start)))
+		     (setq xscheme-process-filter-state 'reading-type))
+		   (progn
+		     (xscheme-process-filter-output xscheme-filter-input)
+		     (setq xscheme-filter-input nil)))))
+	    ((eq xscheme-process-filter-state 'reading-type)
+	     (if (zerop (length xscheme-filter-input))
+		 (setq xscheme-filter-input nil)
+		 (let ((char (aref xscheme-filter-input 0)))
+		   (setq xscheme-filter-input
+			 (substring xscheme-filter-input 1))
+		   (let ((entry (assoc char xscheme-process-filter-alist)))
+		     (if entry
+			 (funcall (nth 2 entry) (nth 1 entry))
+			 (progn
+			   (xscheme-process-filter-output ?\e char)
+			   (setq xscheme-process-filter-state 'idle)))))))
+	    ((eq xscheme-process-filter-state 'reading-string)
+	     (let ((start (string-match "\e" xscheme-filter-input)))
+	       (if start
+		   (progn
+		     (funcall
+		      xscheme-string-receiver
 		      (concat xscheme-string-accumulator
-			      (substring string 0 start))))
-	       (setq xscheme-string-accumulator "")
-	       (setq xscheme-string-receiver nil)
-	       (xscheme-process-filter:idle
-		(substring string (1+ start) (length string))))
-	(progn (setq xscheme-string-accumulator
-		     (concat xscheme-string-accumulator string))
-	       (setq xscheme-process-filter-state 'reading-string)
-	       (xscheme-process-filter:finish)))))
-
-(defun xscheme-process-filter:enqueue (action)
-  (let ((next (cons action '())))
-    (if (cdr xscheme-process-filter-queue)
-	(setcdr (cdr xscheme-process-filter-queue) next)
-	(setcar xscheme-process-filter-queue next))
-    (setcdr xscheme-process-filter-queue next)))
-
-(defun xscheme-process-filter:finish ()
-  (while (car xscheme-process-filter-queue)
-    (let ((next (car xscheme-process-filter-queue)))
-      (setcar xscheme-process-filter-queue (cdr next))
-      (if (not (cdr next))
-	  (setcdr xscheme-process-filter-queue '()))
-      (apply (car (car next)) (cdr (car next))))))
+			      (substring xscheme-filter-input 0 start)))
+		     (setq xscheme-filter-input
+			   (substring xscheme-filter-input (1+ start)))
+		     (setq xscheme-process-filter-state 'idle))
+		   (progn
+		     (setq xscheme-string-accumulator
+			   (concat xscheme-string-accumulator
+				   xscheme-filter-input))
+		     (setq xscheme-filter-input nil)))))
+	    (t
+	     (error "Scheme process filter -- bad state"))))))
 
 ;;;; Process Filter Output
 
 (defun xscheme-process-filter-output (&rest args)
-  (if (not (and args
-		(null (cdr args))
-		(stringp (car args))
-		(string-equal "" (car args))))
-      (xscheme-process-filter:enqueue
-       (cons 'xscheme-process-filter-output-1 args))))
-
-(defun xscheme-process-filter-output-1 (&rest args)
   (if xscheme-allow-output-p
-      (save-excursion
-	(xscheme-goto-output-point)
-	(apply 'insert-before-markers args))))
+      (let ((string (apply 'concat args)))
+	(save-excursion
+	  (xscheme-goto-output-point)
+	  (while (string-match "\\(\007\\|\f\\)" string)
+	    (let ((start (match-beginning 0))
+		  (end (match-end 0)))
+	      (insert-before-markers (substring string 0 start))
+	      (if (= ?\f (aref string start))
+		  (progn
+		    (if (not (bolp))
+			(insert-before-markers ?\n))
+		    (insert-before-markers ?\f))
+		  (beep))
+	      (setq string (substring string (1+ start)))))
+	  (insert-before-markers string)))))
 
 (defun xscheme-guarantee-newlines (n)
   (if xscheme-allow-output-p
@@ -754,21 +724,14 @@ stream.  It is the responsibility of the handler to invoke the action
 with the appropriate arguments, and to reenter the process filter with
 the remaining input.")
 
-(defun xscheme-process-filter-dispatch (char string)
-  (let ((entry (assoc char xscheme-process-filter-alist)))
-    (if entry
-	(funcall (nth 2 entry) (nth 1 entry) string)
-	(progn
-	  (xscheme-process-filter-output ?\e char)
-	  (xscheme-process-filter:idle string)))))
+(defun xscheme-process-filter:simple-action (action)
+  (funcall action)
+  (setq xscheme-process-filter-state 'idle))
 
-(defun xscheme-process-filter:simple-action (action string)
-  (xscheme-process-filter:enqueue (list action))
-  (xscheme-process-filter:idle string))
-
-(defun xscheme-process-filter:string-action (action string)
+(defun xscheme-process-filter:string-action (action)
   (setq xscheme-string-receiver action)
-  (xscheme-process-filter:reading-string string))
+  (setq xscheme-string-accumulator "")
+  (setq xscheme-process-filter-state 'reading-string))
 
 (defconst xscheme-runlight:running "run"
   "The character displayed when the Scheme process is running.")
@@ -826,7 +789,7 @@ the remaining input.")
 					  window)))
 	(message "%s" message-string)))
   (xscheme-guarantee-newlines 1)
-  (xscheme-process-filter-output-1 output-string))
+  (xscheme-process-filter-output output-string))
 
 (defun xscheme-set-prompt-variable (string)
   (setq xscheme-prompt string))
