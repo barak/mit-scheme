@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dataflow.scm,v 1.18 1995/08/19 22:05:29 adams Exp $
+$Id: dataflow.scm,v 1.19 1995/08/19 22:43:34 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -96,8 +96,8 @@ MIT in each case. |#
 	      (graph/dataflow! graph)
 	      (graph/cleanup! graph)
 	      
-	      (graph/substitite-simple-constants
-	       graph graph/read-eqv?-preserving-constant?)
+	      ;;(graph/substitite-simple-constants
+	      ;; graph graph/read-eqv?-preserving-constant?)
 	      (graph/compiled-procedure-reductions graph)
 
 	      graph)))))
