@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.62 1996/02/27 21:05:56 cph Exp $
+;;;	$Id: unix.scm,v 1.63 1996/02/27 21:56:57 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -762,8 +762,9 @@ option, instead taking -P <filename>."
       "/usr/lib/sendmail"
       "fakemail"))
 
-(define os/hostname
-  (ucode-primitive full-hostname 0))
+(define (os/hostname)
+  (or ((ucode-primitive full-hostname 0))
+      ((ucode-primitive hostname 0))))
 
 (define (os/ls-file-time-string time)
   (let ((dt (decode-file-time time))
