@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.38 2000/05/08 17:55:56 cph Exp $
+;;; $Id: imail-top.scm,v 1.39 2000/05/10 17:39:47 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -359,12 +359,11 @@ DEL	Scroll to previous screen of this message.
 	     #t))))))
 
 (define (imail-kill-buffer buffer)
-  (imail-close-buffer-folder buffer))
-
-(define (imail-close-buffer-folder buffer)
   (let ((folder (selected-folder #f buffer)))
     (if folder
-	(close-folder folder))))
+	(begin
+	  (close-folder folder)
+	  (unmemoize-folder (folder-url folder))))))
 
 ;;;; Navigation
 
@@ -867,8 +866,9 @@ While composing the reply, use \\[mail-yank-original] to yank the
   "Quit out of IMAIL."
   ()
   (lambda ()
-    ((ref-command imail-save-folder))
-    (imail-close-buffer-folder (selected-buffer))
+    (let ((folder (selected-folder)))
+      (save-folder folder)
+      (close-folder folder))
     ((ref-command bury-buffer))))
 
 (define-command imail-save-folder
