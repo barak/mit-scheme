@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntgui.c,v 1.15 1995/10/24 05:04:18 cph Exp $
+$Id: ntgui.c,v 1.16 1996/03/21 16:38:16 adams Exp $
 
-Copyright (c) 1993-95 Massachusetts Institute of Technology
+Copyright (c) 1993-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -43,7 +43,6 @@ MIT in each case. */
 #include "ntscreen.h"
 
 extern /*static*/ HANDLE  ghInstance = 0;
-
 BOOL InitApplication(HANDLE);
 BOOL InitInstance(HANDLE, int);
 
@@ -1267,5 +1266,57 @@ DEFINE_PRIMITIVE ("WIN32-SCREEN-CURRENT-FOCUS",
   PRIMITIVE_HEADER (0);
   {
     PRIMITIVE_RETURN (ulong_to_integer((unsigned long) ScreenCurrentFocus()));
+  }
+}
+
+
+
+DEFINE_PRIMITIVE ("WIN32-SCREEN-SET-DEFAULT-FONT!",
+		  Prim_win32_screen_set_default_font, 1, 1,
+		  "(font-name)")
+{
+  PRIMITIVE_HEADER (1);
+  {
+    BOOL rc = ScreenSetDefaultFont (STRING_ARG (1));
+    PRIMITIVE_RETURN ( rc ? SHARP_T : SHARP_F);
+  }
+}
+
+DEFINE_PRIMITIVE ("WIN32-SCREEN-SET-FONT!",
+		  Prim_win32_screen_set_font, 2, 2,
+		  "(screen-handle font-name)")
+{
+  PRIMITIVE_HEADER (2);
+  {
+    SCREEN  screen = GETSCREEN ((HWND) arg_integer (1));
+    if (!screen) error_bad_range_arg (1);
+    PRIMITIVE_RETURN ( ScreenSetFont (screen, STRING_ARG (2))
+		      ? SHARP_T : SHARP_F);
+  }
+}
+
+DEFINE_PRIMITIVE ("WIN32-SCREEN-SET-FOREGROUND-COLOR!",
+		  Prim_win32_screen_set_foreground_color, 2, 2,
+		  "(screen-handle rgb)")
+{
+  PRIMITIVE_HEADER (2);
+  {
+    SCREEN  screen = GETSCREEN ((HWND) arg_integer (1));
+    if (!screen) error_bad_range_arg (1);
+    PRIMITIVE_RETURN ( ScreenSetForegroundColour (screen, arg_integer (2))
+		      ? SHARP_T : SHARP_F);
+  }
+}
+
+DEFINE_PRIMITIVE ("WIN32-SCREEN-SET-BACKGROUND-COLOR!",
+		  Prim_win32_screen_set_background_color, 2, 2,
+		  "(screen-handle rgb)")
+{
+  PRIMITIVE_HEADER (2);
+  {
+    SCREEN  screen = GETSCREEN ((HWND) arg_integer (1));
+    if (!screen) error_bad_range_arg (1);
+    PRIMITIVE_RETURN ( ScreenSetBackgroundColour (screen, arg_integer (2))
+		      ? SHARP_T : SHARP_F);
   }
 }
