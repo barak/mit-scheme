@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: htmlmode.scm,v 1.9 2003/02/14 18:28:12 cph Exp $
+$Id: htmlmode.scm,v 1.10 2003/08/19 01:05:46 cph Exp $
 
-Copyright 1999, 2000, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1999,2000,2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -75,6 +75,9 @@ USA.
     (set-char-syntax! syntax-table #\- "_ 1234")
     (set-char-syntax! syntax-table #\> ")<")
     (set-char-syntax! syntax-table #\" "\"\"")
+    (set-char-syntax! syntax-table #\. "_")
+    (set-char-syntax! syntax-table #\_ "_")
+    (set-char-syntax! syntax-table #\: "_")
     syntax-table))
 
 (define (html-comment-locate mark)
