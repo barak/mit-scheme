@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: intmod.scm,v 1.104 1999/10/31 04:36:37 cph Exp $
+;;; $Id: intmod.scm,v 1.105 1999/10/31 15:04:23 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -85,7 +85,7 @@ If a new REPL buffer is created, it automatically becomes the REPL buffer
 			(loop)))
 		  ;; If there is already a global REPL buffer, make
 		  ;; this one the local REPL buffer for this buffer.
-		  (if (repl-buffer-list)
+		  (if (pair? (repl-buffer-list))
 		      (set-local-repl-buffer! buffer repl-buffer))
 		  repl-buffer))))
 	 (if (>= argument 16)
