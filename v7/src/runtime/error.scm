@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.41 1993/12/17 00:11:59 cph Exp $
+$Id: error.scm,v 14.42 1993/12/17 02:10:32 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -371,12 +371,10 @@ MIT in each case. |#
   (guarantee-restart restart 'INVOKE-RESTART-INTERACTIVELY)
   (hook/invoke-restart
    (%restart/effector restart)
-   (call-with-values
-       (let ((interactor (%restart/interactor restart)))
-	 (if (not interactor)
-	     (error:bad-range-argument restart 'INVOKE-RESTART-INTERACTIVELY))
-	 interactor)
-     list)))
+   (let ((interactor (%restart/interactor restart)))
+     (if interactor
+	 (call-with-values interactor list)
+	 '()))))
 
 (define hook/invoke-restart)
 
