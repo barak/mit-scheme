@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mc68k.h,v 1.18 1991/03/21 23:25:54 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mc68k.h,v 1.19 1991/03/22 04:36:00 jinx Exp $
 
 Copyright (c) 1989-1991 Massachusetts Institute of Technology
 
@@ -176,6 +176,8 @@ extdo {									\
 
 /* The following is a test for HP-UX >= 7.05 */
 
+#    include <sys/time.h>
+#    include <sys/resource.h>
 #    include <sys/proc.h>
 
 #    ifdef S2DATA_WT
@@ -223,6 +225,8 @@ DEFUN (operate_on_cache_region,
 }
 
 #      endif /* IN_CMPINT_C */
+#    else  /* S2DATA_WT */
+#      define FLUSH_I_CACHE() NOP()
 #    endif /* S2DATA_WT */
 #  endif /* hpux */
 
@@ -583,7 +587,7 @@ DEFUN (allocate_closure,
       wptr = ((unsigned short *) ptr);
       *wptr++ = 0x4eae;			/* JSR n(a6) */
       *wptr = A6_CLOSURE_HOOK_OFFSET;	/* n */
-      wptr = ptr;
+    }
 
       *wptr++ = A6_CLOSURE_HOOK_OFFSET;	/* n */
   }
