@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: char.scm,v 14.10 1999/01/02 06:11:34 cph Exp $
+$Id: char.scm,v 14.11 2001/09/24 03:44:56 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 |#
 
 ;;;; Character Abstraction
@@ -26,69 +27,162 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define-primitives
   (char? 1)
-  make-char char-code char-bits char->integer integer->char char->ascii
-  char-ascii? ascii->char char-upcase char-downcase)
+  char->integer
+  integer->char)
 
 (define-integrable char-code-limit #x10000)
 (define-integrable char-bits-limit #x20)
 (define-integrable char-integer-limit #x200000)
 
-(define-integrable (chars->ascii chars)
-  (map char->ascii chars))
+(define-integrable (%make-char code bits)
+  (integer->char (fix:or (fix:lsh bits 16) code)))
 
-(define-integrable (code->char code)
+(define-integrable (%char-code char)
+  (fix:and (char->integer char) #xFFFF))
+
+(define-integrable (%char-bits char)
+  (fix:lsh (fix:and (char->integer char) #x1F0000) -16))
+
+(define-integrable (guarantee-char char procedure)
+  (if (not (char? char))
+      (error:wrong-type-argument char "character" procedure)))
+
+(define (make-char code bits)
+  (if (not (index-fixnum? code))
+      (error:wrong-type-argument code "index fixnum" 'MAKE-CHAR))
+  (if (not (fix:< code char-code-limit))
+      (error:bad-range-argument code 'MAKE-CHAR))
+  (if (not (index-fixnum? bits))
+      (error:wrong-type-argument bits "index fixnum" 'MAKE-CHAR))
+  (if (not (fix:< bits char-bits-limit))
+      (error:bad-range-argument bits 'MAKE-CHAR))
+  (%make-char code bits))
+
+(define (code->char code)
   (make-char code 0))
 
-(define-integrable (char=? x y)
+(define (char-code char)
+  (guarantee-char char 'CHAR-CODE)
+  (%char-code char))
+
+(define (char-bits char)
+  (guarantee-char char 'CHAR-BITS)
+  (%char-bits char))
+
+(define (char-ascii? char)
+  (guarantee-char char 'CHAR-ASCII?)
+  (let ((n (char->integer char)))
+    (and (fix:< n 256)
+	 n)))
+
+(define (char->ascii char)
+  (guarantee-char char 'CHAR->ASCII)
+  (let ((n (char->integer char)))
+    (if (not (fix:< n 256))
+	(error:bad-range-argument char 'CHAR->ASCII))
+    n))
+
+(define (ascii->char n)
+  (if (not (index-fixnum? n))
+      (error:wrong-type-argument n "index fixnum" 'ASCII->CHAR))
+  (if (not (fix:< n 256))
+      (error:bad-range-argument n 'ASCII->CHAR))
+  (%make-char n 0))
+
+(define (chars->ascii chars)
+  (map char->ascii chars))
+
+(define (char=? x y)
+  (guarantee-char x 'CHAR=?)
+  (guarantee-char y 'CHAR=?)
   (fix:= (char->integer x) (char->integer y)))
 
-(define-integrable (char<? x y)
+(define (char<? x y)
+  (guarantee-char x 'CHAR<?)
+  (guarantee-char y 'CHAR<?)
   (fix:< (char->integer x) (char->integer y)))
 
-(define-integrable (char<=? x y)
+(define (char<=? x y)
+  (guarantee-char x 'CHAR<=?)
+  (guarantee-char y 'CHAR<=?)
   (fix:<= (char->integer x) (char->integer y)))
 
-(define-integrable (char>? x y)
+(define (char>? x y)
+  (guarantee-char x 'CHAR>?)
+  (guarantee-char y 'CHAR>?)
   (fix:> (char->integer x) (char->integer y)))
 
-(define-integrable (char>=? x y)
+(define (char>=? x y)
+  (guarantee-char x 'CHAR>=?)
+  (guarantee-char y 'CHAR>=?)
   (fix:>= (char->integer x) (char->integer y)))
 
-(define-integrable (char-ci->integer char)
+(define (char-ci->integer char)
   (char->integer (char-upcase char)))
 
-(define-integrable (char-ci=? x y)
+(define (char-ci=? x y)
   (fix:= (char-ci->integer x) (char-ci->integer y)))
 
-(define-integrable (char-ci<? x y)
+(define (char-ci<? x y)
   (fix:< (char-ci->integer x) (char-ci->integer y)))
 
-(define-integrable (char-ci<=? x y)
+(define (char-ci<=? x y)
   (fix:<= (char-ci->integer x) (char-ci->integer y)))
 
-(define-integrable (char-ci>? x y)
+(define (char-ci>? x y)
   (fix:> (char-ci->integer x) (char-ci->integer y)))
 
-(define-integrable (char-ci>=? x y)
+(define (char-ci>=? x y)
   (fix:>= (char-ci->integer x) (char-ci->integer y)))
+
+(define (char-downcase char)
+  (guarantee-char char 'CHAR-DOWNCASE)
+  (let ((n (%char-code char)))
+    (if (fix:< n 256)
+	(%make-char (vector-8b-ref downcase-table n) (%char-bits char))
+	char)))
+
+(define (char-upcase char)
+  (guarantee-char char 'CHAR-UPCASE)
+  (let ((n (%char-code char)))
+    (if (fix:< n 256)
+	(%make-char (vector-8b-ref upcase-table n) (%char-bits char))
+	char)))
+
+(define downcase-table)
+(define upcase-table)
+
+(define (initialize-case-conversions!)
+  (set! downcase-table (make-string 256))
+  (set! upcase-table (make-string 256))
+  (do ((i 0 (fix:+ i 1)))
+      ((fix:= i 256))
+    (vector-8b-set! downcase-table i i)
+    (vector-8b-set! upcase-table i i))
+  (let ((case-range
+	 (lambda (uc-low uc-high lc-low)
+	   (do ((i uc-low (fix:+ i 1))
+		(j lc-low (fix:+ j 1)))
+	       ((fix:> i uc-high))
+	     (vector-8b-set! downcase-table i j)
+	     (vector-8b-set! upcase-table j i)))))
+    (case-range 65 90 97)
+    (case-range 224 246 192)
+    (case-range 248 254 216)))
 
 (define 0-code)
 (define upper-a-code)
 (define lower-a-code)
-(define hyphen-char)
-(define backslash-char)
 
 (define (initialize-package!)
-  (set! 0-code (char-code (ascii->char #x30)))
+  (set! 0-code (char->integer #\0))
   ;; Next two codes are offset by 10 to speed up CHAR->DIGIT.
-  (set! upper-a-code (fix:- (char-code (ascii->char #x41)) 10))
-  (set! lower-a-code (fix:- (char-code (ascii->char #x61)) 10))
-  (set! hyphen-char (ascii->char #x2D))
-  (set! backslash-char (ascii->char #x5C))
-  unspecific)
+  (set! upper-a-code (fix:- (char->integer #\A) 10))
+  (set! lower-a-code (fix:- (char->integer #\a) 10))
+  (initialize-case-conversions!))
 
 (define (digit->char digit #!optional radix)
-  (if (not (fix:fixnum? digit))
+  (if (not (index-fixnum? digit))
       (error:wrong-type-argument digit "digit" 'DIGIT->CHAR))
   (and (fix:<= 0 digit)
        (fix:< digit
@@ -102,28 +196,26 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
        (string-ref "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ" digit)))
 
 (define (char->digit char #!optional radix)
-  (if (not (char? char))
-      (error:wrong-type-argument char "character" 'CHAR->DIGIT))
-  (and (fix:= 0 (char-bits char))
-       (let ((code (char-code char))
-	     (radix
-	      (cond ((default-object? radix)
-		     10)
-		    ((and (fix:fixnum? radix)
-			  (fix:<= 2 radix) (fix:<= radix 36))
-		     radix)
-		    (else
-		     (error:wrong-type-argument radix "radix" 'CHAR->DIGIT)))))
-	 (let ((n (fix:- code 0-code)))
-	   (if (and (fix:<= 0 n) (fix:< n radix))
-	       n
-	       (let ((n (fix:- code upper-a-code)))
-		 (if (and (fix:<= 10 n) (fix:< n radix))
-		     n
-		     (let ((n (fix:- code lower-a-code)))
-		       (if (and (fix:<= 10 n) (fix:< n radix))
-			   n
-			   #f)))))))))
+  (guarantee-char char 'CHAR->DIGIT)
+  (let ((code (char->integer char))
+	(radix
+	 (cond ((default-object? radix)
+		10)
+	       ((and (fix:fixnum? radix)
+		     (fix:<= 2 radix) (fix:<= radix 36))
+		radix)
+	       (else
+		(error:wrong-type-argument radix "radix" 'CHAR->DIGIT)))))
+    (let ((n (fix:- code 0-code)))
+      (if (and (fix:<= 0 n) (fix:< n radix))
+	  n
+	  (let ((n (fix:- code upper-a-code)))
+	    (if (and (fix:<= 10 n) (fix:< n radix))
+		n
+		(let ((n (fix:- code lower-a-code)))
+		  (if (and (fix:<= 10 n) (fix:< n radix))
+		      n
+		      #f))))))))
 
 ;;;; Character Names
 
@@ -140,8 +232,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		     (char-code char)
 		     (error "Non-graphic character" char))))
 	      (else
-	       (let ((hyphen (substring-find-next-char string start end
-						       hyphen-char)))
+	       (let ((hyphen
+		      (substring-find-next-char string start end #\-)))
 		 (if (not hyphen)
 		     (name->code string start end)
 		     (let ((bit (-map-> named-bits string start hyphen)))
@@ -165,7 +257,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
        (substring-ci=? string start (+ start 5) "<code" 0 5)
        (substring-ci=? string (- end 1)  end    ">" 0 1)
        (string->number (substring string (+ start 5) (- end 1)) 10)))
-
+
 (define (char->name char #!optional slashify?)
   (if (default-object? slashify?) (set! slashify? false))
   (define (loop weight bits)
@@ -175,7 +267,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (cond ((<-map- named-codes code))
 		  ((and slashify?
 			(not (fix:= 0 (char-bits char)))
-			(or (char=? base-char backslash-char)
+			(or (char=? base-char #\\)
 			    (char-set-member? char-set/atom-delimiters
 					      base-char)))
 		   (string-append "\\" (string base-char)))
