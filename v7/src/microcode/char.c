@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/char.c,v 9.24 1987/11/23 05:16:52 cph Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/char.c,v 9.25 1988/04/27 18:26:12 mhwu Exp $ */
 
 /* Character primitives. */
 
@@ -46,10 +46,10 @@ arg_ascii_char (n)
   fast long ascii;
 
   CHECK_ARG (n, CHARACTER_P);
-  ascii = (scheme_char_to_c_char (ARG_REF (n)));
-  if (ascii == NOT_ASCII)
+  ascii = ARG_REF(n);
+  if (pointer_datum(ascii) >= MAX_ASCII)
     error_bad_range_arg (n);
-  return (ascii);
+  return (scheme_char_to_c_char(ascii));
 }
 
 long
@@ -164,13 +164,15 @@ DEFINE_PRIMITIVE ("CHAR->ASCII", Prim_Char_To_Ascii, 1)
 
 DEFINE_PRIMITIVE ("CHAR-ASCII?", Prim_Char_Ascii_P, 1)
 {
-  long ascii;
+  fast Pointer character;
   PRIMITIVE_HEADER (1);
 
   CHECK_ARG (1, CHARACTER_P);
-  ascii = (scheme_char_to_c_char (ARG_REF (1)));
+  character = ARG_REF (1);
   PRIMITIVE_RETURN
-    ((ascii == NOT_ASCII) ? NIL : (MAKE_UNSIGNED_FIXNUM (ascii)));
+    ((pointer_datum(character) >= MAX_ASCII) ?
+     NIL :
+     (MAKE_UNSIGNED_FIXNUM (scheme_char_to_c_char(character))));
 }
 
 forward Boolean ascii_control_p();
