@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: laterew.scm,v 1.3 1995/02/21 05:32:05 adams Exp $
+$Id: laterew.scm,v 1.4 1995/02/26 16:28:48 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -117,9 +117,6 @@ MIT in each case. |#
      (laterew/if expr))
     ((LETREC)
      (laterew/letrec expr))
-    ((SET! UNASSIGNED? OR DELAY
-      ACCESS DEFINE IN-PACKAGE THE-ENVIRONMENT)
-     (no-longer-legal expr))
     (else
      (illegal expr))))
 
@@ -174,7 +171,7 @@ MIT in each case. |#
 	    (y    (third rands)))
 	(laterew/verify-hook-continuation cont)
 	(let ((%continue
-	       (if (eq? (car cont) 'QUOTE)
+	       (if (QUOTE/? cont)
 		   (lambda (expr)
 		     expr)
 		   (lambda (expr)
@@ -202,7 +199,7 @@ MIT in each case. |#
 					    ,cont
 					    (QUOTE ,x-value)
 					    (LOOKUP ,y-name)))))))))
-
+		
 		((form/number? y)
 		 => (lambda (y-value)
 		      (let ((x-name (laterew/new-name 'X)))
@@ -219,13 +216,11 @@ MIT in each case. |#
 				     (QUOTE ,y-value)))))))
 		(right-sided?
 		 `(CALL (QUOTE ,%genop) ,cont ,x ,y))
-		(else
-		 (let ((x-name (laterew/new-name 'X))
-		       (y-name (laterew/new-name 'Y)))
+                (else
+                 (let ((x-name (laterew/new-name 'X))
+                       (y-name (laterew/new-name 'Y)))
 		   `(LET ((,x-name ,x)
 			  (,y-name ,y))
-		      ;; There is no AND, since this occurs
-		      ;; after macro-expansion
 		      (IF ,(andify (%test x-name false)
 				   (%test y-name false))
 			  ,(%continue
@@ -301,3 +296,14 @@ MIT in each case. |#
 			  (user-error "REMAINDER by 0")
 			  0))
 		    true))
+
+(let ((not-primitive  (make-primitive-procedure 'NOT)))
+  (define-rewrite/late not-primitive
+    (lambda (rands)
+      (let ((cont  (first rands))
+	    (x     (second rands))
+	    (more? (not (null? (cddr rands)))))
+	(if (and (equal? cont '(QUOTE #F))
+		 (not more?))
+	    `(IF ,x (QUOTE #F) (QUOTE #T))
+	    `(CALL (QUOTE ,not-primitive) ,cont ,@rands))))))
