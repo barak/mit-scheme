@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ymkfile,v 1.62 1993/02/15 03:40:39 gjr Exp $
+$Id: ymkfile,v 1.63 1993/03/10 17:57:08 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -423,6 +423,7 @@ prosterm.c \
 prostty.c \
 pruxenv.c \
 pruxfs.c \
+pruxio.c \
 pruxsock.c
 
 HEAD_FILES = scheme.touch prims.h zones.h locks.h bignum.h \
@@ -504,6 +505,7 @@ prosterm.o \
 prostty.o \
 pruxenv.o \
 pruxfs.o \
+pruxio.o \
 pruxsock.o
 
 STD_GC_OBJECTS = \
@@ -719,7 +721,7 @@ error.o ptrvec.o transact.o : ansidecl.h dstack.h
 wind.o : ansidecl.h dstack.h obstack.h
 obstack.o : obstack.h
 
-$(UNIX_OBJECTS) pruxenv.o pruxfs.o pruxsock.o : oscond.h ansidecl.h \
+$(UNIX_OBJECTS) pruxenv.o pruxfs.o pruxio.o pruxsock.o : oscond.h ansidecl.h \
        posixtype.h intext.h dstack.h os.h osscheme.h ux.h
 uxctty.o : osctty.h ossig.h
 uxenv.o : osenv.h
@@ -735,6 +737,7 @@ uxtrap.o : scheme.touch uxtrap.h uxutil.h option.h $(GC_HEAD_FILES)
 uxtty.o : ostty.h osenv.h osio.h uxio.h osterm.h uxterm.h
 uxutil.o : uxutil.h
 pruxfs.o : osfs.h
+pruxio.o : osio.h uxselect.h
 pruxsock.o : osio.h uxsock.h
 
 $(OS_PRIM_OBJECTS) : scheme.touch prims.h posixtype.h os.h

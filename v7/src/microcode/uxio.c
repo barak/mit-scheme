@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.22 1992/06/11 12:50:02 jinx Exp $
+$Id: uxio.c,v 1.23 1993/03/10 17:55:43 cph Exp $
 
-Copyright (c) 1990-1992 Massachusetts Institute of Technology
+Copyright (c) 1990-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -115,6 +115,12 @@ DEFUN_VOID (channel_allocate)
     }
 }
 
+int
+DEFUN (UX_channel_descriptor, (channel), Tchannel channel)
+{
+  return (CHANNEL_DESCRIPTOR (channel));
+}
+
 int
 DEFUN (OS_channel_open_p, (channel), Tchannel channel)
 {
@@ -360,6 +366,109 @@ DEFUN (OS_channel_blocking, (channel), Tchannel channel)
 
 #endif /* FCNTL_NONBLOCK */
 
+/* select(2) system call */
+
+#if defined(_HPUX) && (_HPUX_VERSION >= 80)
+#define SELECT_DECLARED
+#endif
+
+#ifdef HAVE_SELECT
+CONST int UX_have_select_p = 1;
+extern int EXFUN (UX_process_any_status_change, (void));
+#ifndef SELECT_DECLARED
+extern int EXFUN (UX_select,
+		  (int, SELECT_TYPE *, SELECT_TYPE *, SELECT_TYPE *,
+		   struct timeval *));
+#endif /* not SELECT_DECLARED */
+#else /* not HAVE_SELECT */
+CONST int UX_have_select_p = 0;
+#endif /* not HAVE_SELECT */
+
+unsigned int
+DEFUN_VOID (UX_select_registry_size)
+{
+  return (sizeof (SELECT_TYPE));
+}
+
+unsigned int
+DEFUN_VOID (UX_select_registry_lub)
+{
+  return (FD_SETSIZE);
+}
+
+void
+DEFUN (UX_select_registry_clear_all, (fds), PTR fds)
+{
+  FD_ZERO ((SELECT_TYPE *) fds);
+}
+
+void
+DEFUN (UX_select_registry_set, (fds, fd), PTR fds AND unsigned int fd)
+{
+  FD_SET (fd, ((SELECT_TYPE *) fds));
+}
+
+void
+DEFUN (UX_select_registry_clear, (fds, fd), PTR fds AND unsigned int fd)
+{
+  FD_CLR (fd, ((SELECT_TYPE *) fds));
+}
+
+int
+DEFUN (UX_select_registry_is_set, (fds, fd), PTR fds AND unsigned int fd)
+{
+  return (FD_ISSET (fd, ((SELECT_TYPE *) fds)));
+}
+
+enum select_input
+DEFUN (UX_select_registry_test, (input_fds, output_fds, blockp),
+       PTR input_fds AND
+       PTR output_fds AND
+       int blockp)
+{
+#ifdef HAVE_SELECT
+  while (1)
+    {
+      SELECT_TYPE readable = (* ((SELECT_TYPE *) input_fds));
+      int status_change_p = 0;
+      int nfds;
+  
+      INTERRUPTABLE_EXTENT
+	(nfds,
+	 ((status_change_p = (UX_process_any_status_change ()))
+	  ? ((errno = EINTR), (-1))
+	  : (UX_select (FD_SETSIZE,
+			(&readable),
+			((SELECT_TYPE *) 0),
+			((SELECT_TYPE *) 0),
+			(blockp
+			 ? ((struct timeval *) 0)
+			 : (&zero_timeout))))));
+      if (nfds > 0)
+	{
+	  (* ((SELECT_TYPE *) output_fds)) = readable;
+	  return (select_input_argument);
+	}
+      else if (nfds == 0)
+	{
+	  if (!blockp)
+	    return (select_input_none);
+	}
+      else if (errno != EINTR)
+	error_system_call (errno, syscall_select);
+      else if (status_change_p)
+	return (select_input_process_status);
+      if (pending_interrupts_p ())
+	return (select_input_interrupt);
+    }
+#else
+  error_system_call (ENOSYS, syscall_select);
+  return (select_input_argument);
+#endif
+}
+
+/* Old Global Registry Mechanism */
+
 int
 DEFUN (OS_channel_registered_p, (channel), Tchannel channel)
 {
@@ -391,68 +500,20 @@ DEFUN (OS_channel_unregister, (channel), Tchannel channel)
       (CHANNEL_REGISTERED (channel)) = 0;
     }
 }
-
-#if defined(_HPUX) && (_HPUX_VERSION >= 80)
-#define SELECT_DECLARED
-#endif
-
-#ifdef HAVE_SELECT
-CONST int UX_have_select_p = 1;
-extern int EXFUN (UX_process_any_status_change, (void));
-#ifndef SELECT_DECLARED
-extern int EXFUN (UX_select,
-		  (int, SELECT_TYPE *, SELECT_TYPE *, SELECT_TYPE *,
-		   struct timeval *));
-#endif /* not SELECT_DECLARED */
-#else /* not HAVE_SELECT */
-CONST int UX_have_select_p = 0;
-#endif /* not HAVE_SELECT */
 
 enum select_input
 DEFUN (UX_select_input, (fd, blockp), int fd AND int blockp)
 {
-#ifdef HAVE_SELECT
-  int status_change_p;
-  int nfds;
-  SELECT_TYPE readable;
-
-  readable = input_descriptors;
+  SELECT_TYPE readable = input_descriptors;
   FD_SET (fd, (&readable));
-  while (1)
-    {
-      status_change_p = 0;
-      INTERRUPTABLE_EXTENT
-	(nfds,
-	 ((status_change_p = (UX_process_any_status_change ()))
-	  ? ((errno = EINTR), (-1))
-	  : (UX_select (FD_SETSIZE,
-			(&readable),
-			((SELECT_TYPE *) 0),
-			((SELECT_TYPE *) 0),
-			(blockp
-			 ? ((struct timeval *) 0)
-			 : (&zero_timeout))))));
-      if (nfds > 0)
-	return
-	  ((FD_ISSET (fd, (&readable)))
-	   ? select_input_argument
-	   : select_input_other);
-      else if (nfds == 0)
-	{
-	  if (!blockp)
-	    return (select_input_none);
-	}
-      else if (errno != EINTR)
-	error_system_call (errno, syscall_select);
-      else if (status_change_p)
-	return (select_input_process_status);
-      if (pending_interrupts_p ())
-	return (select_input_interrupt);
-    }
-#else
-  error_system_call (ENOSYS, syscall_select);
-  return (select_input_argument);
-#endif
+  {
+    enum select_input s =
+      (UX_select_registry_test ((&readable), (&readable), blockp));
+    return
+      (((s == select_input_argument) && (! (FD_ISSET (fd, (&readable)))))
+       ? select_input_other
+       : s);
+  }
 }
 
 long

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxselect.h,v 1.2 1992/02/04 04:37:11 cph Exp $
+$Id: uxselect.h,v 1.3 1993/03/10 17:55:54 cph Exp $
 
-Copyright (c) 1991-92 Massachusetts Institute of Technology
+Copyright (c) 1991-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -46,5 +46,13 @@ enum select_input
 
 extern CONST int UX_have_select_p;
 extern enum select_input EXFUN (UX_select_input, (int fd, int blockp));
+extern unsigned int EXFUN (UX_select_registry_size, (void));
+extern unsigned int EXFUN (UX_select_registry_lub, (void));
+extern void EXFUN (UX_select_registry_clear_all, (PTR fds));
+extern void EXFUN (UX_select_registry_set, (PTR fds, unsigned int fd));
+extern void EXFUN (UX_select_registry_clear, (PTR fds, unsigned int fd));
+extern int EXFUN (UX_select_registry_is_set, (PTR fds, unsigned int fd));
+extern enum select_input EXFUN
+  (UX_select_registry_test, (PTR input_fds, PTR output_fds, int blockp));
 
 #endif /* SCM_UXSELECT_H */

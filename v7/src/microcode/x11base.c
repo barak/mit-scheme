@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.46 1993/02/02 22:14:51 nick Exp $
+$Id: x11base.c,v 1.47 1993/03/10 17:56:24 cph Exp $
 
 Copyright (c) 1989-93 Massachusetts Institute of Technology
 
@@ -1275,6 +1275,13 @@ DEFINE_PRIMITIVE ("X-CLOSE-WINDOW", Prim_x_close_window, 1, 1, 0)
 }
 
 /* Event Processing Primitives */
+
+DEFINE_PRIMITIVE ("X-DISPLAY-DESCRIPTOR", Prim_x_display_descriptor, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN
+    (long_to_integer (ConnectionNumber (XD_DISPLAY (x_display_arg (1)))));
+}
 
 DEFINE_PRIMITIVE ("X-DISPLAY-PROCESS-EVENTS", Prim_x_display_process_events, 2, 2, 0)
 {
