@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/stack.h,v 9.29 1991/02/24 01:11:10 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/stack.h,v 9.30 1992/02/03 23:38:30 jinx Exp $
 
-Copyright (c) 1987-1991 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -89,8 +89,8 @@ MIT in each case. */
 {									\
   if (Stack_Pointer < Stack_Guard)					\
   {									\
-    fprintf(stderr, "\nStack_Pointer: 0x%x, Guard: 0x%x\n",		\
-           Stack_Pointer, Stack_Guard);					\
+    fprintf(stderr, "\nStack_Pointer: 0x%lx, Guard: 0x%lx\n",		\
+            ((long) Stack_Pointer), ((long) Stack_Guard));		\
     Microcode_Termination(TERM_EXIT);					\
   }									\
   Internal_Terminate_Old_Stacklet();					\

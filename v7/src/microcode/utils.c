@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.51 1991/10/29 22:55:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.52 1992/02/03 23:41:57 jinx Exp $
 
-Copyright (c) 1987-91 Massachusetts Institute of Technology
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -125,9 +125,9 @@ DEFUN (err_print, (error_code, where), long error_code AND FILE * where)
   extern char * Error_Names [];
 
   if (error_code > MAX_ERROR)
-    fprintf (where, "Unknown error code 0x%x.\n", error_code);
+    fprintf (where, "Unknown error code 0x%lx.\n", error_code);
   else
-    fprintf (where, "Error code 0x%x (%s).\n",
+    fprintf (where, "Error code 0x%lx (%s).\n",
 	     error_code,
 	     (Error_Names [error_code]));
   return;
@@ -447,7 +447,8 @@ DEFUN (Do_Micro_Error, (Err, From_Pop_Return),
   {
     err_print(Err, stdout);
     Print_Expression(Fetch_Expression(), "Expression was");
-    printf("\nEnvironment 0x%x (#%o).\n", Fetch_Env(), Fetch_Env());
+    printf ("\nEnvironment 0x%lx (#%lo).\n",
+	    ((long) (Fetch_Env ())), ((long) (Fetch_Env ())));
     Print_Return("Return code");
     printf("\n");
   }
@@ -752,8 +753,8 @@ DEFUN (primitive_apply_internal, (primitive), SCHEME_OBJECT primitive)
       {
 	int arity = (PRIMITIVE_N_ARGUMENTS (primitive));
 	Print_Expression (primitive, "Stack bad after ");
-	fprintf (stderr, "\nStack was 0x%x, now 0x%x, #args=%d.\n",
-		 saved_stack, Stack_Pointer, arity);
+	fprintf (stderr, "\nStack was 0x%lx, now 0x%lx, #args=%ld.\n",
+		 ((long) saved_stack), ((long) Stack_Pointer), ((long) arity));
 	fflush (stderr);
 	Microcode_Termination (TERM_EXIT);
       }
@@ -876,8 +877,8 @@ DEFUN (Find_State_Space, (State_Point), SCHEME_OBJECT State_Point)
     if (Point == SHARP_F)
     {
       fprintf(stderr,
-	      "\nState_Point 0x%x wrong: count was %d, #F at %d\n",
-	     State_Point, How_Far, i);
+	      "\nState_Point 0x%lx wrong: count was %ld, #F at %ld\n",
+	      ((long) State_Point), ((long) How_Far), ((long) i));
       Microcode_Termination(TERM_EXIT);
       /*NOTREACHED*/
     }
