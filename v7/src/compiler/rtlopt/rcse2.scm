@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse2.scm,v 4.9 1988/08/11 20:10:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse2.scm,v 4.10 1988/08/29 23:17:22 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -267,7 +267,7 @@ MIT in each case. |#
 (define (non-object-invalidate!)
   (hash-table-delete-class!
    (lambda (element)
-     (expression-non-object? (element-expression element)))))
+     (rtl:non-object-valued-expression? (element-expression element)))))
 
 (define (varying-address-invalidate!)
   (hash-table-delete-class!
