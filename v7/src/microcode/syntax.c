@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.7 1987/11/23 05:07:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.8 1987/12/01 16:34:04 jrm Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -865,22 +865,26 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_Scan_Sexps_Forward, 7)
   start -= 1;
 
  done:
-  result = ((Pointer) Free);
-  (*Free++) = (Make_Non_Pointer (TC_MANIFEST_VECTOR, 7));
-  (*Free++) = (Make_Signed_Fixnum (depth));
-  (*Free++) = ((in_string == -1) ? NIL : (Make_Unsigned_Fixnum (in_string)));
-  (*Free++) = ((in_comment == 0) ? NIL : (Make_Unsigned_Fixnum (in_comment)));
-  (*Free++) = ((quoted == false) ? NIL : TRUTH);
-  /* Decrement the following indices by one since we recorded them after
-     `start' was advanced past the opening character. */
-  (*Free++) =
-    (((level -> previous) == NULL)
-     ? NIL
-     : (Make_Unsigned_Fixnum ((SCAN_TO_INDEX (level -> previous)) - 1)));
-  (*Free++) =
-    (((level == level_start) || ((level -> previous) == NULL))
-     ? NIL
-     : (Make_Unsigned_Fixnum ((SCAN_TO_INDEX ((level - 1) -> last)) - 1)));
-  (*Free++) = (Make_Unsigned_Fixnum (SCAN_TO_INDEX (start)));
+  result = (allocate_marked_vector (TC_VECTOR, 7, true));
+  (User_Vector_Set(result, 0, (Make_Signed_Fixnum (depth))));
+  (User_Vector_Set(result, 1, ((in_string == -1)
+			       ? NIL
+			       : (Make_Unsigned_Fixnum (in_string)))));
+  (User_Vector_Set(result, 2, ((in_comment == 0)
+			       ? NIL
+			       : (Make_Unsigned_Fixnum (in_comment)))));
+  (User_Vector_Set(result, 3, ((quoted == false) ? NIL : TRUTH)));
+  (User_Vector_Set(result, 4, (((level -> previous) == NULL)
+			       ? NIL
+			       : (Make_Unsigned_Fixnum 
+				  ((SCAN_TO_INDEX (level -> previous))
+				   - 1)))));
+  (User_Vector_Set(result, 5, (((level == level_start)
+				|| ((level -> previous) == NULL))
+			       ? NIL
+			       : (Make_Unsigned_Fixnum 
+				  ((SCAN_TO_INDEX ((level - 1) -> last))
+				   - 1)))));
+  (User_Vector_Set(result, 6, (Make_Unsigned_Fixnum (SCAN_TO_INDEX (start)))));
   PRIMITIVE_RETURN (result);
 }
