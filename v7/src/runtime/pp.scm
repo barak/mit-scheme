@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.1 1988/06/13 11:49:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.2 1988/08/05 19:44:30 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -54,53 +54,37 @@ MIT in each case. |#
 	  (NAMED-LAMBDA . ,print-procedure)))
   (set! walk-dispatcher default/walk-dispatcher))
 
-(define (pp scode . optionals)
-  (let ((kernel
-	 (lambda (as-code?)
-	   (let ((port (current-output-port)))
-	     (if (and (not (compound-procedure? scode))
-		      (scode-constant? scode))
-		 (pp-top-level port scode as-code?)
-		 (pp-top-level port
-			       (let ((sexp (unsyntax scode)))
-				 (if (and (pair? sexp)
-					  (eq? (car sexp) 'NAMED-LAMBDA))
-				     `(DEFINE ,@(cdr sexp))
-				     sexp))
-			       true)))))
-	(bad-arg
-	 (lambda (argument)
-	   (error "PP: Bad optional argument" argument))))
-    (cond ((null? optionals)
-	   (kernel false))
-	  ((null? (cdr optionals))
-	   (cond ((eq? (car optionals) 'AS-CODE)
-		  (kernel true))
-		 ((output-port? (car optionals))
-		  (with-output-to-port (car optionals)
-		    (lambda ()
-		      (kernel false))))
-		 (else
-		  (bad-arg (car optionals)))))
-	  ((null? (cddr optionals))
-	   (cond ((eq? (car optionals) 'AS-CODE)
-		  (if (output-port? (cadr optionals))
-		      (with-output-to-port (cadr optionals)
-			(lambda ()
-			  (kernel true)))
-		      (bad-arg (cadr optionals))))
-		 ((output-port? (car optionals))
-		  (if (eq? (cadr optionals) 'AS-CODE)
-		      (with-output-to-port (car optionals)
-			(lambda ()
-			  (kernel true)))
-		      (bad-arg (cadr optionals))))
-		 (else
-		  (bad-arg (car optionals)))))
+(define *named-lambda->define?* true)
+(define *pp-primitives-by-name* true)
+(define *forced-x-size* false)
+
+(define (pp object #!optional port as-code?)
+  (let ((object
+	 (or (and (integer? object)
+		  (not (negative? object))
+		  (unhash object))
+	     object))
+	(port (if (default-object? port) (current-output-port) port))
+	(as-code? (if (default-object? as-code?) false as-code?)))
+    (cond ((or (not (scode-constant? object))
+	       (compound-procedure? object))
+	   (pp-top-level port
+			 (let ((sexp (unsyntax object)))
+			   (if (and *named-lambda->define?*
+				    (pair? sexp)
+				    (eq? (car sexp) 'NAMED-LAMBDA))
+			       `(DEFINE ,@(cdr sexp))
+			       sexp))
+			 true))
+	  ((named-structure? object)
+	   (pp-top-level port object false)
+	   (for-each (lambda (element)
+		       (pp-top-level port element false))
+		     (named-structure/description object)))
 	  (else
-	   (error "PP: Too many optional arguments" optionals))))
+	   (pp-top-level port object as-code?))))
   *the-non-printing-object*)
-
+
 (define (pp-top-level port expression as-code?)
   (fluid-let
       ((x-size (get-x-size port))
@@ -136,9 +120,6 @@ MIT in each case. |#
   (or *forced-x-size*
       (output-port/x-size port)))
 
-(define *pp-primitives-by-name* true)
-(define *forced-x-size* false)
-
 (define x-size)
 (define output-port)
 (define operation/write-char)
