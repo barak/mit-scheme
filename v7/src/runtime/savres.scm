@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.7 1988/12/30 23:30:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.8 1989/03/14 02:16:13 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -79,7 +79,7 @@ MIT in each case. |#
 			  (clear console-output-port)
 			  (abort->top-level
 			   (lambda (cmdl)
-			     (identify-world cmdl)
+			     (identify-world (cmdl/output-port cmdl))
 			     (event-distributor/invoke! event:after-restart))))
 			(begin
 			  (event-distributor/invoke! event:after-restart)
@@ -128,22 +128,24 @@ MIT in each case. |#
 (define world-identification "Scheme")
 (define time-world-saved)
 
-(define (identify-world #!optional cmdl)
-  (let ((cmdl (if (default-object? cmdl) (nearest-cmdl) cmdl)))
-    (let ((port (cmdl/output-port cmdl)))
-      (newline port)
-      (write-string world-identification port)
-      (if time-world-saved
-	  (begin
-	    (write-string " saved on " port)
-	    (write-string (decoded-time/date-string time-world-saved) port)
-	    (write-string " at " port)
-	    (write-string (decoded-time/time-string time-world-saved) port)))
-      (newline port)
-      (write-string "  Release " port)
-      (write-string microcode-id/release-string port)
-      (for-each-system!
-       (lambda (system)
-	 (newline port)
-	 (write-string "  " port)
-	 (write-string (system/identification-string system) port))))))
+(define (identify-world #!optional port)
+  (let ((port
+	 (if (default-object? port)
+	     (current-output-port)
+	     (guarantee-output-port port))))
+    (newline port)
+    (write-string world-identification port)
+    (if time-world-saved
+	(begin
+	  (write-string " saved on " port)
+	  (write-string (decoded-time/date-string time-world-saved) port)
+	  (write-string " at " port)
+	  (write-string (decoded-time/time-string time-world-saved) port)))
+    (newline port)
+    (write-string "  Release " port)
+    (write-string microcode-id/release-string port)
+    (for-each-system!
+     (lambda (system)
+       (newline port)
+       (write-string "  " port)
+       (write-string (system/identification-string system) port)))))
