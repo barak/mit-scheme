@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: utabmd.scm,v 9.72 1993/11/08 20:38:11 cph Exp $
+;;; $Id: utabmd.scm,v 9.73 1994/03/25 21:15:43 gjr Exp $
 ;;;
-;;;	Copyright (c) 1987-1993 Massachusetts Institute of Technology
+;;;	Copyright (c) 1987-1994 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -121,6 +121,7 @@
 	       PC-Sample/Prob-Comp-Table		;3D
 	       PC-Sample/UFO-Table			;3E
 	       COMPILED-CODE-BKPT-HANDLER		;3F
+	       GC-WABBIT-DESCRIPTOR			;40
 	       ))
 
 ;;; [] Types
@@ -715,4 +716,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Id: utabmd.scm,v 9.72 1993/11/08 20:38:11 cph Exp $"
+"$Id: utabmd.scm,v 9.73 1994/03/25 21:15:43 gjr Exp $"
