@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.55 1992/11/18 05:18:24 gjr Exp $
+$Id: cmpint.c,v 1.56 1992/11/20 03:11:14 gjr Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -2140,6 +2140,13 @@ DEFUN (compiled_entry_to_block,
 
 /* Returns the offset from the block to the entry point. */
 
+#ifndef CC_BLOCK_DISTANCE
+
+#define CC_BLOCK_DISTANCE(block,entry)					\
+  (((char *) (entry)) - ((char *) (block)))
+
+#endif /* CC_BLOCK_DISTANCE */
+
 C_UTILITY long
 DEFUN (compiled_entry_to_block_offset,
        (entry),
@@ -2149,7 +2156,7 @@ DEFUN (compiled_entry_to_block_offset,
 
   entry_address = (OBJECT_ADDRESS (entry));
   Get_Compiled_Block (block_address, entry_address);
-  return (((char *) entry_address) - ((char *) block_address));
+  return (CC_BLOCK_DISTANCE (block_address, entry_address));
 }
 
 /*
