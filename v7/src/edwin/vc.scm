@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.40 2000/03/27 17:37:53 cph Exp $
+;;; $Id: vc.scm,v 1.41 2000/03/27 17:41:35 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -680,7 +680,7 @@ files in or below it."
   (if (and (not rev1) (not rev2))
       (cache-value-2! master 'MODIFIED?
 		      (vc-master-pathname master)
-		      (vc-workfile-pathname master)
+		      (vc-master-workfile master)
 		      (lambda () (vc-backend-diff master rev1 rev2 #f)))
       (vc-backend-diff master rev1 rev2 #f)))
 
@@ -1511,8 +1511,7 @@ the value of vc-log-mode-hook."
 				     (cvs-rev-switch revision)
 				     (vc-master-workfile master)
 				     ">"
-				     workfile)
-	       (cvs-checkout-to-file master revision workfile))))
+				     workfile))))
 	  (revision
 	   ;; Checkout only necessary for given revision.
 	   (with-vc-command-message master "Checking out"
@@ -1556,9 +1555,9 @@ the value of vc-log-mode-hook."
   (lambda (master)
     (with-vc-command-message master "Reverting"
       (lambda ()
-	(delete-file-no-errors workfile)
-	(vc-run-command master '() "cvs" "update"
-			(vc-master-workfile master))))))
+	(let ((workfile (vc-master-workfile master)))
+	  (delete-file-no-errors workfile)
+	  (vc-run-command master '() "cvs" "update" workfile))))))
 
 (define-vc-type-operation 'STEAL vc-type:cvs
   (lambda (master revision)
@@ -1621,10 +1620,7 @@ the value of vc-log-mode-hook."
 	  (cond ((re-search-forward
 		  (string-append "^\\([CMUP]\\) " fn)
 		  (buffer-start buffer))
-		 (let ((conflicts?
-			(char=? #\C (extract-right-char (re-match-start 0)))))
-		   (message msg "done")
-		   conflicts?))
+		 (char=? #\C (extract-right-char (re-match-start 0))))
 		((re-search-forward
 		  (string-append fn
 				 " already contains the differences between ")
