@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.39 1991/10/29 22:55:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.40 1992/01/20 16:00:51 jinx Exp $
 
 Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
@@ -60,8 +60,16 @@ DEFUN (compiled_block_debug_filename, (block), SCHEME_OBJECT block)
      : SHARP_F);
 }
 
+extern void
+  EXFUN (compiled_entry_type, (SCHEME_OBJECT, long *));
+
+extern long
+  EXFUN (compiled_entry_closure_p, (SCHEME_OBJECT)),
+  EXFUN (compiled_entry_to_block_offset, (SCHEME_OBJECT));
+
 extern SCHEME_OBJECT
-  * EXFUN (compiled_entry_to_block_address, (SCHEME_OBJECT));
+  * EXFUN (compiled_entry_to_block_address, (SCHEME_OBJECT)),
+  EXFUN (compiled_closure_to_entry, (SCHEME_OBJECT));
 
 #define COMPILED_ENTRY_TO_BLOCK(entry)					\
 (MAKE_POINTER_OBJECT (TC_COMPILED_CODE_BLOCK,				\
@@ -71,10 +79,6 @@ static SCHEME_OBJECT
 DEFUN (compiled_entry_debug_filename, (entry), SCHEME_OBJECT entry)
 {
   SCHEME_OBJECT results [3];
-  extern void compiled_entry_type ();
-  extern long compiled_entry_closure_p ();
-  extern long compiled_entry_to_block_offset ();
-  extern SCHEME_OBJECT compiled_closure_to_entry ();
 
   compiled_entry_type (entry, (& (results [0])));
   if (((results [0]) == 0) && (compiled_entry_closure_p (entry)))
@@ -614,11 +618,6 @@ DEFUN (do_printing, (Expr, Detailed),
 
     case TC_COMPILED_ENTRY:
       {
-	extern void compiled_entry_type ();
-	extern long compiled_entry_closure_p ();
-	extern long compiled_entry_to_block_offset ();
-	extern SCHEME_OBJECT compiled_closure_to_entry ();
-
 	SCHEME_OBJECT results [3];
 	char * type_string;
 	SCHEME_OBJECT filename;
@@ -786,7 +785,7 @@ DEFUN (print_stack, (sp), SCHEME_OBJECT * sp)
 static Boolean
 DEFUN (print_primitive_name, (primitive), SCHEME_OBJECT primitive)
 {
-  extern char *primitive_to_name();
+  extern char * EXFUN (primitive_to_name, (SCHEME_OBJECT));
   char *name;
 
   name = primitive_to_name(primitive);
@@ -805,7 +804,7 @@ DEFUN (print_primitive_name, (primitive), SCHEME_OBJECT primitive)
 void
 DEFUN (Print_Primitive, (primitive), SCHEME_OBJECT primitive)
 {
-  extern long primitive_to_arity();
+  extern long EXFUN (primitive_to_arity, (SCHEME_OBJECT));
   char buffer[40];
   int NArgs, i;
 
