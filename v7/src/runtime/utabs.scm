@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/utabs.scm,v 13.44 1987/04/13 18:25:02 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/utabs.scm,v 13.45 1987/04/15 05:07:31 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -98,7 +98,7 @@
 (set! fixed-objects-vector-slot
 (named-lambda (fixed-objects-vector-slot name)
   (or (microcode-table-search 15 name)
-      (error "Unknown name" fixed-objects-vector-slot name))))
+      (error "FIXED-OBJECTS-VECTOR-SLOT: Unknown name" name))))
 
 (define fixed-objects)
 
@@ -156,7 +156,7 @@
 (set! microcode-type
 (named-lambda (microcode-type name)
   (or (microcode-table-search types-slot name)
-      (error "Unknown name" microcode-type name))))
+      (error "MICROCODE-TYPE: Unknown name" name))))
 
 (set! microcode-type-predicate
 (named-lambda (microcode-type-predicate name)
@@ -243,7 +243,7 @@
     (if code
 	(map-code-to-machine-address primitive-type-code code)
 	(or (get-external-number name (if (unassigned? force?) #f force?))
-	    (error "Unknown name" make-primitive-procedure name))))))
+	    (error "MAKE-PRIMITIVE-PROCEDURE: Unknown name" name))))))
 
 (set! implemented-primitive-procedure?
 (named-lambda (implemented-primitive-procedure? object)
