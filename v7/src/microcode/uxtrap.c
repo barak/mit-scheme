@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.c,v 1.5 1990/11/13 08:45:19 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.c,v 1.6 1990/12/30 02:00:19 cph Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -414,6 +414,11 @@ DEFUN (continue_from_trap, (signo, code, scp),
 static SCHEME_OBJECT * EXFUN
   (find_block_address, (char * pc_value, SCHEME_OBJECT * area_start));
 
+#ifndef NeXT
+extern long etext;
+#define get_etext() (&etext)
+#endif
+
 static void
 DEFUN (continue_from_trap, (signo, code, scp),
        int signo AND
@@ -432,7 +437,6 @@ DEFUN (continue_from_trap, (signo, code, scp),
   SCHEME_OBJECT * new_stack_pointer;
   SCHEME_OBJECT * xtra_info;
   struct trap_recovery_info info;
-  extern long etext;
 
 #if 0
   fprintf (stderr, "\ncontinue_from_trap:");
@@ -452,7 +456,7 @@ DEFUN (continue_from_trap, (signo, code, scp),
   }
   else
   {
-    pc_in_C = (the_pc <= ((long) (&etext)));
+    pc_in_C = (the_pc <= ((long) (get_etext ())));
     pc_in_heap =
       ((the_pc < ((long) Heap_Top)) && (the_pc >= ((long) Heap_Bottom)));
     pc_in_constant_space =
