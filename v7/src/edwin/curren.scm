@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.97 1992/02/11 22:35:09 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.98 1992/02/12 23:52:51 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -92,16 +92,19 @@
 (define (select-screen screen)
   (without-interrupts
    (lambda ()
-     (let ((message (current-message)))
-       (clear-current-message!)
-       (screen-exit! (selected-screen))
-       (let ((window (screen-selected-window screen)))
-	 (undo-leave-window! window)
-	 (change-selected-buffer (window-buffer window) true
-	   (lambda ()
-	     (set-editor-selected-screen! current-editor screen))))
-       (set-current-message! message)
-       (screen-enter! screen)))))
+     (let ((screen* (selected-screen)))
+       (if (not (eq? screen screen*))
+	   (let ((message (current-message)))
+	     (clear-current-message!)
+	     (screen-exit! screen*)
+	     (let ((window (screen-selected-window screen)))
+	       (undo-leave-window! window)
+	       (change-selected-buffer (window-buffer window) true
+		 (lambda ()
+		   (set-editor-selected-screen! current-editor screen))))
+	     (set-current-message! message)
+	     (screen-enter! screen)
+	     (update-screen! screen false)))))))
 
 (define (update-screens! display-style)
   (if display-style
@@ -200,41 +203,13 @@
        (screen-visible? (window-screen window))))
 
 (define (window-live? window)
-  (or (typein-window? window)
-      (let ((window0 (window0)))
-	(let loop ((window* (window1+ window0)))
-	  (or (eq? window window*)
-	      (and (not (eq? window* window0))
-		   (loop (window1+ window*))))))))
-
-(define (other-window #!optional n)
-  (let ((n (if (or (default-object? n) (not n)) 1 n))
-	(window (current-window)))
-    (cond ((positive? n)
-	   (let loop ((n n) (window window))
-	     (if (zero? n)
-		 window
-		 (loop (-1+ n)
-		       (if (typein-window? window)
-			   (window0)
-			   (let ((window (window1+ window)))
-			     (if (and (within-typein-edit?)
-				      (eq? window (window0)))
-				 (typein-window)
-				 window)))))))
-	  ((negative? n)
-	   (let loop ((n n) (window window))
-	     (if (zero? n)
-		 window
-		 (loop (1+ n)
-		       (if (and (within-typein-edit?)
-				(eq? window (window0)))
-			   (typein-window)
-			   (window-1+ (if (typein-window? window)
-					  (window0)
-					  window)))))))
-	  (else
-	   window))))
+  (let ((screen (window-screen window)))
+    (or (eq? window (screen-typein-window screen))
+	(let ((window0 (screen-window0 screen)))
+	  (let loop ((window* (window1+ window0)))
+	    (or (eq? window window*)
+		(and (not (eq? window* window0))
+		     (loop (window1+ window*)))))))))
 
 (define (global-window-modeline-event!)
   (let ((window0 (window0)))
@@ -242,6 +217,71 @@
       (window-modeline-event! window 'GLOBAL-MODELINE)
       (if (not (eq? window window0))
 	  (loop (window1+ window))))))
+
+(define (other-window #!optional n)
+  (let ((n (if (or (default-object? n) (not n)) 1 n))
+	(selected-window (current-window))
+	(typein-ok? (within-typein-edit?)))
+    (cond ((positive? n)
+	   (let loop ((n n) (window selected-window))
+	     (if (zero? n)
+		 window
+		 (let ((window (next-visible-window window typein-ok?)))
+		   (if window
+		       (loop (-1+ n) window)
+		       selected-window)))))
+	  ((negative? n)
+	   (let loop ((n n) (window selected-window))
+	     (if (zero? n)
+		 window
+		 (let ((window (previous-visible-window window typein-ok?)))
+		   (if window
+		       (loop (1+ n) window)
+		       selected-window)))))
+	  (else
+	   selected-window))))
+
+(define (next-visible-window first-window typein-ok?)
+  (let ((first-screen (window-screen first-window)))
+    (letrec
+	((next-screen
+	  (lambda (screen)
+	    (let ((screen (screen1+ screen)))
+	      (let ((window (screen-window0 screen)))
+		(if (screen-visible? screen)
+		    (and (not (and (eq? screen first-screen)
+				   (eq? window first-window)))
+			 window)
+		    (and (not (eq? screen first-screen))
+			 (next-screen screen))))))))
+      (if (or (not (screen-visible? first-screen))
+	      (eq? first-window (screen-typein-window first-screen)))
+	  (next-screen first-screen)
+	  (let ((window (window1+ first-window)))
+	    (if (eq? window (screen-window0 first-screen))
+		(or (and typein-ok? (screen-typein-window first-screen))
+		    (next-screen first-screen))
+		window))))))
+
+(define (previous-visible-window first-window typein-ok?)
+  (let ((first-screen (window-screen first-window)))
+    (letrec
+	((previous-screen
+	  (lambda (screen)
+	    (let ((screen (screen-1+ screen)))
+	      (let ((window
+		     (or (and typein-ok? (screen-typein-window screen))
+			 (window-1+ (screen-window0 screen)))))
+		(if (screen-visible? screen)
+		    (and (not (and (eq? screen first-screen)
+				   (eq? window first-window)))
+			 window)
+		    (and (not (eq? screen first-screen))
+			 (previous-screen screen))))))))
+      (if (or (not (screen-visible? first-screen))
+	      (eq? first-window (screen-window0 first-screen)))
+	  (previous-screen first-screen)
+	  (window-1+ first-window)))))
 
 (define (typein-window)
   (screen-typein-window (selected-screen)))
