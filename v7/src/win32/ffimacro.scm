@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ffimacro.scm,v 1.6 2002/02/03 03:38:58 cph Exp $
+$Id: ffimacro.scm,v 1.7 2002/02/04 06:26:58 cph Exp $
 
 Copyright (c) 1993, 1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -178,20 +178,20 @@ to inside a string that is being used as the buffer).
    (lambda (form environment)
      (let ((name (list-ref form 1))
 	   (check
-	    (if (> (length form) 2)
-		(list-ref form 2)
+	    (or (and (> (length form) 2)
+		     (list-ref form 2))
 		'(LAMBDA (X) X #T)))
 	   (convert
-	    (if (> (length form) 3)
-		(list-ref form 3)
+	    (or (and (> (length form) 3)
+		     (list-ref form 3))
 		'(LAMBDA (X) X)))
 	   (return
-	    (if (> (length form) 4)
-		(list-ref form 4)
+	    (or (and (> (length form) 4)
+		     (list-ref form 4))
 		'(LAMBDA (X) X)))
 	   (revert
-	    (if (> (length form) 5)
-		(list-ref form 5)
+	    (or (and (> (length form) 5)
+		     (list-ref form 5))
 		'(LAMBDA (X Y) X Y UNSPECIFIC))))
        `(BEGIN 
 	  (DEFINE-INTEGRABLE (,(type->checker name environment) X)
@@ -213,20 +213,20 @@ to inside a string that is being used as the buffer).
      (let ((name (list-ref form 1))
 	   (model (list-ref form 2)))
        (let ((check
-	      (if (> (length form) 3)
-		  (list-ref form 3)
+	      (or (and (> (length form) 3)
+		       (list-ref form 3))
 		  (type->checker model environment)))
 	     (convert
-	      (if (> (length form) 4)
-		  (list-ref form 4)
+	      (or (and (> (length form) 4)
+		       (list-ref form 4))
 		  (type->converter model environment)))
 	     (return
-	      (if (> (length form) 5)
-		  (list-ref form 5)
+	      (or (and (> (length form) 5)
+		       (list-ref form 5))
 		  (type->return-converter model environment)))
 	     (revert
-	      (if (> (length form) 6)
-		  (list-ref form 6)
+	      (or (and (> (length form) 6)
+		       (list-ref form 6))
 		  (type->reverter model environment))))
 	 `(BEGIN
 	    (DEFINE-INTEGRABLE (,(type->checker name environment) X)
