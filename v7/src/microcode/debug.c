@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.29 1988/08/15 20:44:50 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.30 1988/10/26 21:08:26 cph Exp $
  *
  * Utilities to help with debugging
  */
@@ -40,8 +40,62 @@ MIT in each case. */
 #include "trap.h"
 #include "lookup.h"
 
+/* Compiled Code Debugging */
+
+static Pointer
+compiled_block_debug_filename (block)
+     Pointer block;
+{
+  extern Pointer compiled_block_debugging_info ();
+  Pointer info;
+
+  info = (compiled_block_debugging_info (block));
+  return
+    (((STRING_P (info)) ||
+      ((PAIR_P (info)) &&
+       (STRING_P (Vector_Ref (info, CONS_CAR))) &&
+       (FIXNUM_P (Vector_Ref (info, CONS_CDR)))))
+     ? info
+     : SHARP_F);
+}
+
+#define COMPILED_ENTRY_TO_BLOCK(entry)					\
+(Make_Pointer (TC_COMPILED_CODE_BLOCK,					\
+	       (compiled_entry_to_block_address (entry))))
+
+static Pointer
+compiled_entry_debug_filename (entry)
+     Pointer entry;
+{
+  Pointer results [3];
+  extern void compiled_entry_type ();
+  extern long compiled_entry_manifest_closure_p ();
+  extern long compiled_entry_to_block_offset ();
+  extern Pointer compiled_closure_to_entry ();
+
+  compiled_entry_type (entry, (& results));
+  if (((results [0]) == 0) && (compiled_entry_manifest_closure_p (entry)))
+    entry = (compiled_closure_to_entry (entry));
+  return (compiled_block_debug_filename (COMPILED_ENTRY_TO_BLOCK (entry)));
+}
+
+char *
+compiled_entry_filename (entry)
+     Pointer entry;
+{
+  Pointer result;
+
+  result = (compiled_entry_debug_filename (entry));
+  if (STRING_P (result))
+    return (Scheme_String_To_C_String (result));
+  else if (PAIR_P (result))
+    return (Scheme_String_To_C_String (Vector_Ref (result, CONS_CAR)));
+  else
+    return ("**** filename not known ****");
+}
+
 void
-Show_Pure()
+Show_Pure ()
 {
   Pointer *Obj_Address;
   long Pure_Size, Total_Size;
@@ -51,57 +105,57 @@ Show_Pure()
   {
     if (Obj_Address > Free_Constant)
     {
-      printf("Past end of area.\n");
+      printf ("Past end of area.\n");
       return;
     }
     if (Obj_Address == Free_Constant)
     {
-      printf("Done.\n");
+      printf ("Done.\n");
       return;
     }
     Pure_Size = Get_Integer(*Obj_Address);
     Total_Size = Get_Integer(Obj_Address[1]);
-    printf("0x%x: pure=0x%x, total=0x%x\n",
+    printf ("0x%x: pure=0x%x, total=0x%x\n",
            Obj_Address, Pure_Size, Total_Size);
     if (Type_Code(*Obj_Address) != TC_MANIFEST_SPECIAL_NM_VECTOR)
     {
-      printf("Missing initial SNMV.\n");
+      printf ("Missing initial SNMV.\n");
       return;
     }
     if (Type_Code(Obj_Address[1]) != PURE_PART)
     {
-      printf("Missing subsequent pure header.\n");
+      printf ("Missing subsequent pure header.\n");
     }
     if (Type_Code(Obj_Address[Pure_Size-1]) !=
         TC_MANIFEST_SPECIAL_NM_VECTOR)
     {
-      printf("Missing internal SNMV.\n");
+      printf ("Missing internal SNMV.\n");
       return;
     }
     if (Type_Code(Obj_Address[Pure_Size]) != CONSTANT_PART)
     {
-      printf("Missing constant header.\n");
+      printf ("Missing constant header.\n");
       return;
     }
     if (Get_Integer(Obj_Address[Pure_Size]) != Pure_Size)
     {
-      printf("Pure size mismatch 0x%x.\n",
+      printf ("Pure size mismatch 0x%x.\n",
 	     Get_Integer(Obj_Address[Pure_Size]));
     }
-    if (Type_Code(Obj_Address[Total_Size-1]) != 
+    if (Type_Code(Obj_Address[Total_Size-1]) !=
         TC_MANIFEST_SPECIAL_NM_VECTOR)
     {
-      printf("Missing ending SNMV.\n");
+      printf ("Missing ending SNMV.\n");
       return;
     }
     if (Type_Code(Obj_Address[Total_Size]) != END_OF_BLOCK)
     {
-      printf("Missing ending header.\n");
+      printf ("Missing ending header.\n");
       return;
     }
     if (Get_Integer(Obj_Address[Total_Size]) != Total_Size)
     {
-      printf("Total size mismatch 0x%x.\n",
+      printf ("Total size mismatch 0x%x.\n",
              Get_Integer(Obj_Address[Total_Size]));
     }
     Obj_Address += Total_Size+1;
@@ -115,19 +169,19 @@ Show_Pure()
 }
 
 void
-Show_Env(The_Env)
+Show_Env (The_Env)
      Pointer The_Env;
 {
   Pointer *name_ptr, procedure, *value_ptr, extension;
   long count, i;
 
-  procedure = Vector_Ref(The_Env, ENVIRONMENT_FUNCTION);
+  procedure = Vector_Ref (The_Env, ENVIRONMENT_FUNCTION);
   value_ptr = Nth_Vector_Loc(The_Env, ENVIRONMENT_FIRST_ARG);
-  
+
   if (Type_Code(procedure) == AUX_LIST_TYPE)
   {
     extension = procedure;
-    procedure = Fast_Vector_Ref(extension, ENV_EXTENSION_PROCEDURE);
+    procedure = Fast_Vector_Ref (extension, ENV_EXTENSION_PROCEDURE);
   }
   else
     extension = NIL;
@@ -135,7 +189,7 @@ Show_Env(The_Env)
   if ((Type_Code(procedure) != TC_PROCEDURE) &&
       (Type_Code(procedure) != TC_EXTENDED_PROCEDURE))
   {
-    printf("Not created by a procedure");
+    printf ("Not created by a procedure");
     return;
   }
   name_ptr = Nth_Vector_Loc(procedure, PROCEDURE_LAMBDA_EXPR);
@@ -147,388 +201,536 @@ Show_Env(The_Env)
   {
     Print_Expression(*name_ptr++, "Name ");
     Print_Expression(*value_ptr++, " Value ");
-    printf("\n");
+    printf ("\n");
   }
   if (extension != NIL)
   {
-    printf("Auxilliary Variables\n");
-    count = Get_Integer(Vector_Ref(extension, AUX_LIST_COUNT));
+    printf ("Auxilliary Variables\n");
+    count = Get_Integer(Vector_Ref (extension, AUX_LIST_COUNT));
     for (i = 0, name_ptr = Nth_Vector_Loc(extension, AUX_LIST_FIRST);
 	 i < count;
 	 i++, name_ptr++)
-    { 
-      Print_Expression(Vector_Ref(*name_ptr, CONS_CAR),
+    {
+      Print_Expression(Vector_Ref (*name_ptr, CONS_CAR),
 		       "Name ");
-      Print_Expression(Vector_Ref(*name_ptr, CONS_CAR),
+      Print_Expression(Vector_Ref (*name_ptr, CONS_CAR),
 		       " Value ");
-      printf("\n");
+      printf ("\n");
     }
   }
 }
 
-List_Print(Expr)
-Pointer Expr;
+int
+List_Print (Expr)
+     Pointer Expr;
 { int Count;
   Count = 0;
-  printf("(");
+  printf ("(");
   while (((Type_Code(Expr) == TC_LIST) ||
 	  (Type_Code(Expr) == TC_WEAK_CONS))
 	  && Count < MAX_LIST_PRINT)
-  { Print_Expression(Vector_Ref(Expr, CONS_CAR),
+  { Print_Expression(Vector_Ref (Expr, CONS_CAR),
 		     (Type_Code(Expr)==TC_LIST) ? "" : "{weak}");
-    Expr = Vector_Ref(Expr, CONS_CDR);
-    if (Type_Code(Expr) != TC_NULL) printf(" ");
+    Expr = Vector_Ref (Expr, CONS_CDR);
+    if (Type_Code(Expr) != TC_NULL) printf (" ");
     Count += 1;
   }
   if (Type_Code(Expr) != TC_NULL)
-  { if (Count==MAX_LIST_PRINT) printf("...");
+  { if (Count==MAX_LIST_PRINT) printf ("...");
     else
-    { printf(". ");
+    { printf (". ");
       Print_Expression(Expr, "");
     }
   }
-  printf(")");
-}
-
-long Print_Return_Name(Ptr)
-Pointer Ptr;
-{ long index = Get_Integer(Ptr);
-  char *name;
-  if ((index <= MAX_RETURN) &&
-      ((name = Return_Names[index]) != ((char *) NULL)))
-    printf("%s", name);
-  else
-    printf("[0x%x]", index);
+  printf (")");
 }
 
-void
-Print_Return(String)
-     char *String;
+static void
+print_vector (vector)
+     Pointer vector;
 {
-  printf("%s: ", String);
-  Print_Return_Name(Fetch_Return());
-  CRLF();
+  long length;
+  long limit;
+  long index;
+
+  length = (UNSIGNED_FIXNUM_VALUE (Fast_Vector_Ref ((vector), 0)));
+  limit = ((length > MAX_LIST_PRINT) ? MAX_LIST_PRINT : length);
+  index = 0;
+  printf ("#(");
+  while (1)
+    {
+      if (index >= limit)
+	break;
+      Print_Expression ((User_Vector_Ref (vector, index)), "");
+      index += 1;
+      if (index < limit)
+	printf (" ");
+    }
+  if (limit < length)
+    printf (" ...");
+  printf (")");
+  return;
 }
-
-extern Boolean Prt_PName();
 
 void
-Print_Expression(Expr, String)
+Print_Return_Name (Ptr)
+     Pointer Ptr;
+{
+  long index;
+  char * name;
+
+  index = (OBJECT_DATUM (Ptr));
+  if (index <= MAX_RETURN)
+    {
+      name = (Return_Names [index]);
+      if ((name != ((char *) 0)) &&
+	  ((name [0]) != '\0'))
+	{
+	  printf ("%s", name);
+	  return;
+	}
+    }
+  printf ("[0x%x]", index);
+  return;
+}
+
+void
+Print_Return (String)
+     char * String;
+{
+  printf ("%s: ", String);
+  Print_Return_Name (Fetch_Return ());
+  CRLF ();
+}
+
+static void
+print_string (string)
+     Pointer string;
+{
+  long length;
+  long i;
+  char * next;
+  char this;
+
+  printf ("\"");
+  length = ((long) (Vector_Ref (string, STRING_LENGTH)));
+  next = ((char *) (Nth_Vector_Loc (string, STRING_CHARS)));
+  for (i = 0; (i < length); i += 1)
+    {
+      this = (*next++);
+      switch (this)
+	{
+	case '\\':
+	  printf ("\\\\");
+	  break;
+	case '"':
+	  printf ("\\\"");
+	  break;
+	case '\t':
+	  printf ("\\t");
+	  break;
+	case '\n':
+	  printf ("\\n");
+	  break;
+	case '\f':
+	  printf ("\\f");
+	  break;
+	default:
+	  if ((this >= ' ') && (this <= '~'))
+	    putchar (this);
+	  else
+	    printf ("\\%03o", this);
+	  break;
+	}
+    }
+  printf ("\"");
+  return;
+}
+
+static void
+print_symbol (symbol)
+     Pointer symbol;
+{
+  Pointer string;
+  long length;
+  long i;
+  char * next;
+
+  string = (Vector_Ref (symbol, SYMBOL_NAME));
+  length = ((long) (Vector_Ref (string, STRING_LENGTH)));
+  next = ((char *) (Nth_Vector_Loc (string, STRING_CHARS)));
+  for (i = 0; (i < length); i += 1)
+    putchar (*next++);
+  return;
+}
+
+static void
+print_filename (filename)
+     Pointer filename;
+{
+  long length;
+  char * scan;
+  char * end;
+  char * slash;
+
+  length = ((long) (Vector_Ref (filename, STRING_LENGTH)));
+  scan = ((char *) (Nth_Vector_Loc (filename, STRING_CHARS)));
+  end = (scan + length);
+  slash = scan;
+  while (scan < end)
+    if ((*scan++) == '/')
+      slash = scan;
+  printf ("\"%s\"", slash);
+  return;
+}
+
+void
+print_object (object)
+     Pointer object;
+{
+  fflush (stdout);
+  Do_Printing (object, true);
+  printf ("\n");
+  fflush (stdout);
+  return;
+}
+
+extern Boolean Prt_PName ();
+
+void
+Print_Expression (Expr, String)
      char *String;
      Pointer Expr;
 {
   if (String[0] != 0)
   {
-    printf("%s: ", String);
+    printf ("%s: ", String);
   }
-  Do_Printing(Expr, true);
+  Do_Printing (Expr, true);
 }
 
-extern char *Type_Names[];
+extern char * Type_Names [];
 
-Do_Printing(Expr, Detailed)
+int
+Do_Printing (Expr, Detailed)
      Pointer Expr;
      Boolean Detailed;
 {
   long Temp_Address;
-  Boolean
-    Return_After_Print,
-    handled_p;;
+  Boolean handled_p;
 
-  Temp_Address = OBJECT_DATUM(Expr);
-  Return_After_Print = false;
+  Temp_Address = (OBJECT_DATUM (Expr));
   handled_p = false;
 
-  switch(OBJECT_TYPE(Expr))
-  { case TC_ACCESS:
-      printf("[ACCESS (");
-      Expr = Vector_Ref(Expr, ACCESS_NAME);
-      goto SPrint;
+  switch (OBJECT_TYPE (Expr))
+    {
+    case TC_ACCESS:
+      {
+	printf ("[ACCESS (");
+	Expr = (Vector_Ref (Expr, ACCESS_NAME));
+      SPrint:
+	print_symbol (Expr);
+	handled_p = true;
+	printf (")");
+	break;
+      }
 
     case TC_ASSIGNMENT:
-      printf("[SET! (");
-      Expr = Vector_Ref(Vector_Ref(Expr, ASSIGN_NAME),
-                        VARIABLE_SYMBOL);
+      printf ("[SET! (");
+      Expr = (Vector_Ref ((Vector_Ref (Expr, ASSIGN_NAME)), VARIABLE_SYMBOL));
       goto SPrint;
 
     case TC_CHARACTER_STRING:
-    {
-      long Length, i;
-      char *Next, This;
-
-      printf("\"");
-      Length = ((long) (Vector_Ref(Expr, STRING_LENGTH)));
-      Next = ((char *) Nth_Vector_Loc(Expr, STRING_CHARS));
-      for (i = 0; i < Length; i++)
-      {
-	This = *Next++;
-        printf((This < ' ') || (This > '|') ? "\\%03o" : "%c",
-                This);
-      }
-      printf("\"");
+      print_string (Expr);
       return;
-    }
-
-/* Do_Printing continues on the next page */
-
-/* Do_Printing, continued */
 
     case TC_DEFINITION:
-      printf("[DEFINE (");
-      Expr = Vector_Ref(Expr, DEFINE_NAME);
+      printf ("[DEFINE (");
+      Expr = (Vector_Ref (Expr, DEFINE_NAME));
       goto SPrint;
 
     case TC_FIXNUM:
-    {
-      long A;
+      {
+	long a;
 
-      Sign_Extend(Expr, A);
-      printf("%d", A);
-      return;
-    }
+	Sign_Extend (Expr, a);
+	printf ("%d", a);
+	return;
+      }
 
     case TC_BIG_FLONUM:
-      printf("%f", Get_Float(Expr));
+      printf ("%f", (Get_Float (Expr)));
       return;
 
     case TC_WEAK_CONS:
     case TC_LIST:
-      List_Print(Expr);
+      List_Print (Expr);
       return;
+
+#if 0
+      /* This would be nice except that named structures are
+	 represented by vectors, so they print out their contents
+	 instead of their usual printed representation.  */
+    case TC_VECTOR:
+      print_vector (Expr);
+      return;
+#endif
 
     case TC_NULL:
       if (Temp_Address == 0)
-      {
-	printf("()");
-        return;
-      }
+	{
+	  printf ("()");
+	  return;
+	}
       break;
 
-/* Do_Printing continues on the next page */
-
-/* Do_Printing, continued */
-
     case TC_UNINTERNED_SYMBOL:
-      printf("[UNINTERNED_SYMBOL (");
+      printf ("[UNINTERNED_SYMBOL (");
       goto SPrint;
 
     case TC_INTERNED_SYMBOL:
-    {
-      Pointer Name;
-      char   *Next_Char;
-      long    Length, i;
+      print_symbol (Expr);
+      return;
 
-      Return_After_Print = true;
-SPrint:
-      Name = Vector_Ref(Expr, SYMBOL_NAME);
-      Length = ((long) (Vector_Ref(Name, STRING_LENGTH)));
-      Next_Char = ((char *) Nth_Vector_Loc(Name, STRING_CHARS));
-      for (i = 0; i < Length; i++)
-      {
-        printf("%c", *Next_Char++);
-      }
-      if (Return_After_Print)
-	return;
-      handled_p = true;
-      printf(")");
-      break;
-    }
-
-/* Do_Printing continues on the next page */
-
-/* Do_Printing, continued */
-
-  case TC_VARIABLE:
+    case TC_VARIABLE:
+      Expr = (Vector_Ref (Expr, VARIABLE_SYMBOL));
       if (Detailed)
-	printf("[VARIABLE (");
-      Expr = Vector_Ref(Expr, VARIABLE_SYMBOL);
-      if (!Detailed)
-	Return_After_Print = true;
-      goto SPrint;
+	{
+	  printf ("[VARIABLE (");
+	  goto SPrint;
+	}
+      print_symbol (Expr);
+      return;
 
     case TC_COMBINATION:
-      printf("[COMBINATION (%d args) 0x%x]",
-	     Vector_Length(Expr)-1, Temp_Address);
+      printf ("[COMBINATION (%d args) 0x%x]",
+	      ((Vector_Length (Expr)) - 1),
+	      Temp_Address);
       if (Detailed)
-      { printf(" (");
-	Do_Printing(Vector_Ref(Expr, COMB_FN_SLOT), false);
-        printf(" ...)");
-      }
+	{
+	  printf (" (");
+	  Do_Printing ((Vector_Ref (Expr, COMB_FN_SLOT)), false);
+	  printf (" ...)");
+	}
       return;
 
     case TC_COMBINATION_1:
-      printf("[COMBINATION_1 0x%x]", Temp_Address);
+      printf ("[COMBINATION_1 0x%x]", Temp_Address);
       if (Detailed)
-      { printf(" (");
-	Do_Printing(Vector_Ref(Expr, COMB_1_FN), false);
-	printf(", ");
-	Do_Printing(Vector_Ref(Expr, COMB_1_ARG_1), false);
-	printf(")");
-      }
+	{
+	  printf (" (");
+	  Do_Printing ((Vector_Ref (Expr, COMB_1_FN)), false);
+	  printf (", ");
+	  Do_Printing ((Vector_Ref (Expr, COMB_1_ARG_1)), false);
+	  printf (")");
+	}
       return;
 
-/* Do_Printing continues on the next page */
-
-/* Do_Printing, continued */
-
     case TC_COMBINATION_2:
-      printf("[COMBINATION_2 0x%x]", Temp_Address);
+      printf ("[COMBINATION_2 0x%x]", Temp_Address);
       if (Detailed)
-      { printf(" (");
-	Do_Printing(Vector_Ref(Expr, COMB_2_FN), false);
-	printf(", ");
-	Do_Printing(Vector_Ref(Expr, COMB_2_ARG_1), false);
-	printf(", ");
-	Do_Printing(Vector_Ref(Expr, COMB_2_ARG_2), false);
-	printf(")");
-      }
+	{
+	  printf (" (");
+	  Do_Printing ((Vector_Ref (Expr, COMB_2_FN)), false);
+	  printf (", ");
+	  Do_Printing ((Vector_Ref (Expr, COMB_2_ARG_1)), false);
+	  printf (", ");
+	  Do_Printing ((Vector_Ref (Expr, COMB_2_ARG_2)), false);
+	  printf (")");
+	}
       return;
 
     case TC_ENVIRONMENT:
-    {
-      Pointer procedure;
+      {
+	Pointer procedure;
 
-      printf("[ENVIRONMENT 0x%x]", Temp_Address);
-      printf(" (from ");
-      procedure = Vector_Ref(Expr, ENVIRONMENT_FUNCTION);
-      if (Type_Code(procedure) == TC_QUAD)
-	procedure = Vector_Ref(procedure, ENV_EXTENSION_PROCEDURE);
-      Do_Printing(procedure, false);
-      printf(")");
-      return;
-    }
+	printf ("[ENVIRONMENT 0x%x]", Temp_Address);
+	printf (" (from ");
+	procedure = (Vector_Ref (Expr, ENVIRONMENT_FUNCTION));
+	if ((Type_Code (procedure)) == TC_QUAD)
+	  procedure = (Vector_Ref (procedure, ENV_EXTENSION_PROCEDURE));
+	Do_Printing (procedure, false);
+	printf (")");
+	return;
+      }
 
     case TC_EXTENDED_LAMBDA:
       if (Detailed)
-	printf("[EXTENDED_LAMBDA (");
-      Do_Printing(Vector_Ref(Vector_Ref(Expr, ELAMBDA_NAMES), 1), false);
+	printf ("[EXTENDED_LAMBDA (");
+      Do_Printing ((Vector_Ref ((Vector_Ref (Expr, ELAMBDA_NAMES)), 1)),
+		   false);
       if (Detailed)
-	printf(") 0x%x", Temp_Address);
+	printf (") 0x%x", Temp_Address);
       return;
 
     case TC_EXTENDED_PROCEDURE:
       if (Detailed)
-	printf("[EXTENDED_PROCEDURE (");
-      Do_Printing(Vector_Ref(Expr, PROCEDURE_LAMBDA_EXPR), false);
+	printf ("[EXTENDED_PROCEDURE (");
+      Do_Printing ((Vector_Ref (Expr, PROCEDURE_LAMBDA_EXPR)), false);
       if (Detailed)
-	printf(") 0x%x]", Temp_Address);
+	printf (") 0x%x]", Temp_Address);
       break;
-
-/* Do_Printing continues on the next page */
-
-/* Do_Printing, continued */
 
     case TC_LAMBDA:
       if (Detailed)
-      {
-	printf("[LAMBDA (");
-      }
-      Do_Printing(Vector_Ref(Vector_Ref(Expr, LAMBDA_FORMALS), 1),
+	printf ("[LAMBDA (");
+      Do_Printing ((Vector_Ref ((Vector_Ref (Expr, LAMBDA_FORMALS)), 1)),
 		  false);
       if (Detailed)
-      {
-	printf(") 0x%x]", Temp_Address);
-      }
+	printf (") 0x%x]", Temp_Address);
       return;
 
     case TC_PRIMITIVE:
-      printf("[PRIMITIVE ");
-      Prt_PName(Expr);
-      printf("]");
+      printf ("[PRIMITIVE ");
+      Prt_PName (Expr);
+      printf ("]");
       return;
 
     case TC_PROCEDURE:
       if (Detailed)
-      {
-	printf("[PROCEDURE (");
-      }
-      Do_Printing(Vector_Ref(Expr, PROCEDURE_LAMBDA_EXPR), false);
+	printf ("[PROCEDURE (");
+      Do_Printing ((Vector_Ref (Expr, PROCEDURE_LAMBDA_EXPR)), false);
       if (Detailed)
-      {
-	printf(") 0x%x]", Temp_Address);
-      }
+	printf (") 0x%x]", Temp_Address);
       return;
-  
-/* Do_Printing continues on the next page */
-
-/* Do_Printing, continued */
 
     case TC_REFERENCE_TRAP:
-    {
-      printf("[REFERENCE-TRAP");
-      if (Datum(Expr) <= TRAP_MAX_IMMEDIATE)
-	break;
-      Print_Expression(Vector_Ref(Expr, TRAP_TAG), " tag");
-      Print_Expression(Vector_Ref(Expr, TRAP_EXTRA), " extra");
-      printf("]");
-      return;
-    }
+      {
+	if ((Datum (Expr)) <= TRAP_MAX_IMMEDIATE)
+	  break;
+	printf ("[REFERENCE-TRAP");
+	Print_Expression ((Vector_Ref (Expr, TRAP_TAG)), " tag");
+	Print_Expression ((Vector_Ref (Expr, TRAP_EXTRA)), " extra");
+	printf ("]");
+	return;
+      }
 
     case TC_RETURN_CODE:
-      printf("[RETURN_CODE ");
-      Print_Return_Name(Expr);
-      printf("]");
+      printf ("[RETURN_CODE ");
+      Print_Return_Name (Expr);
+      printf ("]");
       return;
 
     case TC_TRUE:
       if (Temp_Address == 0)
-      {
-	printf("#T");
-        return;
-      }
+	{
+	  printf ("#T");
+	  return;
+	}
       break;
+
+    case TC_COMPILED_ENTRY:
+      {
+	extern void compiled_entry_type ();
+	extern long compiled_entry_manifest_closure_p ();
+	extern long compiled_entry_to_block_offset ();
+	extern Pointer compiled_closure_to_entry ();
+
+	Pointer results [3];
+	char * type_string;
+	Pointer filename;
+	Pointer entry;
+	Boolean closure_p;
+
+	entry = Expr;
+	closure_p = false;
+	compiled_entry_type (entry, (& results));
+	switch (results [0])
+	  {
+	  case 0:
+	    if (compiled_entry_manifest_closure_p (entry))
+	      {
+		type_string = "COMPILED_CLOSURE";
+		entry = (compiled_closure_to_entry (entry));
+		closure_p = true;
+	      }
+	    else
+	      type_string = "COMPILED_PROCEDURE";
+	    break;
+	  case 1:
+	    type_string = "COMPILED_RETURN_ADDRESS";
+	    break;
+	  case 2:
+	    type_string = "COMPILED_EXPRESSION";
+	    break;
+	  default:
+	    type_string = "COMPILED_ENTRY";
+	    break;
+	  }
+
+	printf ("[%s offset: 0x%x entry: 0x%x",
+		type_string,
+		(compiled_entry_to_block_offset (entry)),
+		(OBJECT_DATUM (entry)));
+	if (closure_p)
+	  printf (" address: 0x%x", Temp_Address);
+
+	filename = (compiled_entry_debug_filename (entry));
+	if (STRING_P (filename))
+	  {
+	    printf (" file: ");
+	    print_filename (filename);
+	  }
+	else if (PAIR_P (filename))
+	  {
+	    int block_number;
+
+	    printf (" file: ");
+	    print_filename (Vector_Ref (filename, CONS_CAR));
+	    FIXNUM_VALUE ((Vector_Ref (filename, CONS_CDR)), block_number);
+	    printf (" block: %d", block_number);
+	  }
+	printf ("]");
+	return;
+      }
 
     default:
       break;
-  }
-  if (!handled_p)
-  {
-    if (OBJECT_TYPE(Expr) <= LAST_TYPE_CODE)
-    {
-      printf("[%s", Type_Names[OBJECT_TYPE(Expr)]);
     }
-    else
+  if (! handled_p)
     {
-      printf("[0x%02x", OBJECT_TYPE(Expr));
+      if ((OBJECT_TYPE (Expr)) <= LAST_TYPE_CODE)
+	printf ("[%s", (Type_Names [OBJECT_TYPE (Expr)]));
+      else
+	printf ("[0x%02x", (OBJECT_TYPE (Expr)));
     }
-  }
-  printf(" 0x%x]", Temp_Address);
+  printf (" 0x%x]", Temp_Address);
   return;
 }
 
 Boolean
-Print_One_Continuation_Frame(Temp)
+Print_One_Continuation_Frame (Temp)
      Pointer Temp;
 {
   Pointer Expr;
 
-  Print_Expression(Temp, "Return code");
-  CRLF();
-  Expr = Pop();
-  Print_Expression(Expr, "Expression");
-  printf("\n");
-  if ((Datum(Temp) == RC_END_OF_COMPUTATION) ||
-      (Datum(Temp) == RC_HALT)) return true;
-  if (Datum(Temp) == RC_JOIN_STACKLETS)
-  {
-    Stack_Pointer = Previous_Stack_Pointer(Expr);
-  }
+  Print_Expression (Temp, "Return code");
+  CRLF ();
+  Expr = (Pop ());
+  Print_Expression (Expr, "Expression");
+  printf ("\n");
+  if (((Datum (Temp)) == RC_END_OF_COMPUTATION) ||
+      ((Datum (Temp)) == RC_HALT))
+    return (true);
+  if ((Datum (Temp)) == RC_JOIN_STACKLETS)
+    Stack_Pointer = (Previous_Stack_Pointer (Expr));
   return (false);
 }
 
 /* Back_Trace relies on (a) only a call to Save_Cont puts a return code on the
-   stack; (b) Save_Cont pushes the expression first. 
+   stack; (b) Save_Cont pushes the expression first.
 
    NOTE: currently Back_Trace ignores where and always
    prints on stdout.  This should eventually be fixed.
  */
 
 void
-Back_Trace(where)
+Back_Trace (where)
      FILE *where;
 {
   Pointer Temp, *Old_Stack;
 
+  fflush (stdout);
   Back_Trace_Entry_Hook();
   Old_Stack = Stack_Pointer;
   while (true)
@@ -538,11 +740,11 @@ Back_Trace(where)
       Temp = Pop();
       if (Temp != Make_Non_Pointer(TC_RETURN_CODE, RC_RETURN_TRAP_POINT))
       {
-        printf("\n--> Return trap is missing here <--\n");
+        printf ("\n--> Return trap is missing here <--\n");
       }
       else
       {
-	printf("\n[Return trap found here as expected]\n");
+	printf ("\n[Return trap found here as expected]\n");
         Temp = Old_Return_Code;
       }
     }
@@ -563,18 +765,19 @@ Back_Trace(where)
       if (Type_Code(Temp) == TC_MANIFEST_NM_VECTOR)
       {
 	Stack_Pointer = Simulate_Popping(Get_Integer(Temp));
-        printf(" (skipping)");
+        printf (" (skipping)");
       }
-      printf("\n");
+      printf ("\n");
     }
   }
   Stack_Pointer = Old_Stack;
   Back_Trace_Exit_Hook();
+  fflush (stdout);
   return;
 }
 
 void
-Print_Stack(SP)
+Print_Stack (SP)
      Pointer *SP;
 {
   Pointer *Saved_SP;
@@ -586,8 +789,8 @@ Print_Stack(SP)
   return;
 }
 
-Boolean 
-Prt_PName(primitive)
+Boolean
+Prt_PName (primitive)
      Pointer primitive;
 {
   extern char *primitive_to_name();
@@ -596,25 +799,25 @@ Prt_PName(primitive)
   name = primitive_to_name(primitive);
   if (name == ((char *) NULL))
   {
-    printf("Unknown primitive 0x%08x", PRIMITIVE_NUMBER(primitive));
+    printf ("Unknown primitive 0x%08x", PRIMITIVE_NUMBER(primitive));
     return false;
   }
   else
   {
-    printf("%s", name);
+    printf ("%s", name);
     return true;
   }
 }
 
-void Print_Primitive(primitive)
+void
+Print_Primitive (primitive)
      Pointer primitive;
 {
-
   extern long primitive_to_arity();
   char buffer1[40], buffer2[40];
   int NArgs, i;
 
-  printf("Primitive: ");
+  printf ("Primitive: ");
   if (Prt_PName(primitive))
   {
     NArgs = primitive_to_arity(primitive);
@@ -623,34 +826,32 @@ void Print_Primitive(primitive)
   {
     NArgs = 3;	        /* Unknown primitive */
   }
-  printf("\n");
+  printf ("\n");
 
   for (i = 0; i < NArgs; i++)
   {
-    sprintf(buffer1, "Stack_Ref(%d)", i);
-    sprintf(buffer2, "...Arg %d", (i + 1));
+    sprintf (buffer1, "Stack_Ref(%d)", i);
+    sprintf (buffer2, "...Arg %d", (i + 1));
     Print_Expression(buffer1, buffer2);
-    printf("\n");
+    printf ("\n");
   }
 }
 
-Debug_Printer(Expr)
+int
+Debug_Printer (Expr)
      Pointer Expr;
 {
   Print_Expression(Expr, "");
   putchar('\n');
 }
 
-/* (DEBUGGING-PRINTER OBJECT)
-      A cheap, built-in printer intended for debugging the
-      interpreter.
-*/
-DEFINE_PRIMITIVE ("DEBUGGING-PRINTER", Prim_temp_printer, 1, 1, 0)
+DEFINE_PRIMITIVE ("DEBUGGING-PRINTER", Prim_debugging_printer, 1, 1,
+  "A cheap, built-in printer intended for debugging the interpreter.")
 {
-  Primitive_1_Arg();
+  PRIMITIVE_HEADER (1);
 
-  Debug_Printer(Arg1);
-  return SHARP_T;
+  Debug_Printer (ARG_REF (1));
+  return (SHARP_T);
 }
 
 /* Code for interactively setting and clearing the interpreter
@@ -677,8 +878,9 @@ DEFINE_PRIMITIVE ("DEBUGGING-PRINTER", Prim_temp_printer, 1, 1, 0)
 #define D_FLUIDS		15
 #define LAST_NORMAL_SWITCH	15
 
-Boolean *Find_Flag(Num)
-int Num;
+Boolean *
+Find_Flag (Num)
+     int Num;
 { switch (Num)
   { case D_EVAL:	return &Eval_Debug;
     case D_HEX_INPUT:	return &Hex_Input_Debug;
@@ -696,21 +898,23 @@ int Num;
     case D_PER_FILE:	return &Per_File;
     case D_BIGNUM:      return &Bignum_Debug;
     case D_FLUIDS:      return &Fluids_Debug;
-    More_Debug_Flag_Cases();			
+    More_Debug_Flag_Cases();
     default:		show_flags(true); return NULL;
   }
 }
 
-set_flag(Num, Value)
-int Num;
-Boolean Value;
+int
+set_flag (Num, Value)
+     int Num;
+     Boolean Value;
 { Boolean *Flag = Find_Flag(Num);
   if (Flag != NULL) *Flag = Value;
   Set_Flag_Hook();
 }
 
-char *Flag_Name(Num)
-int Num;
+char *
+Flag_Name (Num)
+     int Num;
 { switch(Num)
   { case D_EVAL:            return "Eval_Debug";
     case D_HEX_INPUT:	    return "Hex_Input_Debug";
@@ -729,17 +933,18 @@ int Num;
     case D_BIGNUM:          return "Bignum_Debug";
     case D_FLUIDS:	    return "Fluids_Debug";
     More_Debug_Flag_Names();
-    default:		    return "Unknown Debug Flag";			    
+    default:		    return "Unknown Debug Flag";
   }
 }
 
-show_flags(All)
-Boolean All;
+int
+show_flags (All)
+     Boolean All;
 { int i;
   for (i=0; i <= LAST_SWITCH; i++)
   { Boolean Value = *Find_Flag(i);
     if (All || Value)
-    { printf("Flag %d (%s) is %s.\n",
+    { printf ("Flag %d (%s) is %s.\n",
              i, Flag_Name(i), Value? "set" : "clear");
     }
   }
@@ -749,14 +954,15 @@ extern int OS_tty_tyi();
 
 #define C_STRING_LENGTH 256
 
-void Handle_Debug_Flags()
+void
+Handle_Debug_Flags ()
 { char c, input_string[C_STRING_LENGTH];
   int Which, free;
   Boolean interrupted;
   show_flags(false);
   while (true)
   { interrupted = false;
-    printf("Clear<number>, Set<number>, Done, ?, or Halt: ");
+    printf ("Clear<number>, Set<number>, Done, ?, or Halt: ");
     OS_Flush_Output_Buffer();
 
     /* Considerably haired up to go through standard (safe) interface */
@@ -771,11 +977,6 @@ void Handle_Debug_Flags()
         break;
       }
     }
-
-/* Handle_Debug_Flags continues on the next page */
-
-/* Handle_Debug_Flags, continued */
-
     switch (c)
     { case 'c':
       case 'C': Which=debug_getdec(input_string);
@@ -785,27 +986,30 @@ void Handle_Debug_Flags()
       case 'S': Which=debug_getdec(input_string);
                 set_flag(Which, true);
                 break;
-      case 'd': 
+      case 'd':
       case 'D': return;
       case 'h':
       case 'H': Microcode_Termination(TERM_HALT);
 
-      case '?': 
+      case '?':
       default :	show_flags(true);
                 break;
     }
   }
 }
 
-int normal_debug_getdec(str)
+int
+normal_debug_getdec (str)
+     int str;
 { int Result;
   sscanf(str, "%d", &Result);
   return Result;
 }
 
 #else /* ENABLE_DEBUGGING_TOOLS */
-void Handle_Debug_Flags()
-{ fprintf(stderr, "Not a debugging version.  No flags to handle.\n");
+void
+Handle_Debug_Flags ()
+{ fprintf (stderr, "Not a debugging version.  No flags to handle.\n");
   return;
 }
 #endif /* not ENABLE_DEBUGGING_TOOLS */
