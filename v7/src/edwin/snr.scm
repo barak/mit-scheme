@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.37 1997/06/18 07:55:26 cph Exp $
+;;;	$Id: snr.scm,v 1.38 1997/07/03 07:23:07 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -2634,6 +2634,7 @@ While composing the reply, use \\[mail-yank-original] to yank the
  original message into it."
   ()
   (lambda ()
+    (guarantee-rmail-variables-initialized)
     (let ((article-buffer (current-buffer)))
       (if (and (not (news-article-buffer:followup-to-poster? article-buffer))
 	       (prompt-for-confirmation? "Post a follow-up article"))
@@ -2748,6 +2749,7 @@ While composing the follow-up, use \\[mail-yank-original] to yank the
  original message into it."
   ()
   (lambda ()
+    (guarantee-rmail-variables-initialized)
     (let ((article-buffer (current-buffer)))
       (if (news-article-buffer:followup-to-poster? article-buffer)
 	  (make-mail-buffer
