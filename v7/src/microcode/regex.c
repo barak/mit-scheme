@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/regex.c,v 1.3 1987/07/21 04:33:17 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/regex.c,v 1.4 1987/08/20 21:16:44 jinx Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -1009,8 +1009,10 @@ int name (pattern_start, pattern_end, buffer, registers,		\
   fast unsigned char *match_pc;						\
   fast unsigned char *match_limit;					\
   fast unsigned char *gap_limit;					\
-  fast unsigned char fastmap[MAX_ASCII];				\
+  fast unsigned char *fastmap;						\
+  unsigned char fastmap_array[MAX_ASCII];				\
 									\
+  fastmap = &fastmap_array[0];						\
   translation = (buffer -> translation);				\
   can_be_null =								\
     (re_compile_fastmap							\
