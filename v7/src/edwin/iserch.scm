@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/iserch.scm,v 1.2 1989/04/15 00:50:19 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/iserch.scm,v 1.3 1989/04/20 08:12:12 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -108,7 +108,7 @@
 	      (extract-rest-of-line (search-state-end-point state))))
 	    ((or (not (zero? (char-bits char)))
 		 (and (ref-variable search-exit-option)
-		      (ascii-controlified? char)))
+		      (< (char-code char) #x20)))
 	     (isearch-exit state)
 	     char)
 	    (else
@@ -302,18 +302,20 @@
 				(search-state-point parent)
 				(search-state-initial-point parent)))
 	    (else
-	     (make-search-state text
-				parent
-				forward?
-				regexp?
-				true
-				(or (search-state-wrapped? parent)
-				    (not (search-state-successful? parent)))
-				false
-				(re-match-start 0)
-				(re-match-end 0)
-				result
-				initial-point))))))
+	     (make-search-state
+	      text
+	      parent
+	      forward?
+	      regexp?
+	      true
+	      (and (boolean=? forward? (search-state-forward? parent))
+		   (or (search-state-wrapped? parent)
+		       (not (search-state-successful? parent))))
+	      false
+	      (re-match-start 0)
+	      (re-match-end 0)
+	      result
+	      initial-point))))))
 
 (define (perform-search forward? regexp? text start)
   (call-with-current-continuation
