@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchdmp.c,v 9.68 1993/02/06 05:27:26 gjr Exp $
+$Id: bchdmp.c,v 9.69 1993/02/18 05:14:43 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -265,7 +265,13 @@ DEFUN (fasdump_exit, (length), long length)
 
 #ifdef HAVE_FTRUNCATE
   {
-    extern int EXFUN (ftruncate, (int, size_t));
+#ifndef _HPUX
+    /* HP-UX version < 9.0 has the wrong type in the prototype
+       in <unistd.h>
+     */
+
+    extern int EXFUN (ftruncate, (int, off_t));
+#endif
 
     ftruncate (dump_file, length);
     result = ((close (dump_file)) == 0);
@@ -277,7 +283,13 @@ DEFUN (fasdump_exit, (length), long length)
 #endif /* HAVE_FTRUNCATE */
 #if defined(HAVE_TRUNCATE) && !defined(HAVE_FTRUNCATE)
   {
-    extern int EXFUN (truncate, (CONST char *, size_t));
+#ifndef _HPUX
+    /* HP-UX version < 9.0 has the wrong type in the prototype
+       in <unistd.h>
+     */
+
+    extern int EXFUN (truncate, (CONST char *, off_t));
+#endif
 
     truncate (dump_file_name, length);
   }
