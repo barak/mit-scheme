@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/numint.scm,v 1.1 1989/11/09 04:02:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/numint.scm,v 1.2 1990/04/10 16:03:03 cph Rel $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -60,9 +60,9 @@ MIT in each case. |#
     (reduce-comparator (lambda (x y) (not (< x y)))
 		       zs)))
 
-(define (make-max/min-operator max)
+(define (make-max/min-operator max/min)
   (lambda (x . xs)
-    (reduce-max/min max x xs)))
+    (reduce-max/min max/min x xs)))
 
 (define (make-atan-operator atan1 atan2)
   (lambda (z . xs)
