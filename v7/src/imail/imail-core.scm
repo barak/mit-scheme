@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.123 2001/05/17 04:37:26 cph Exp $
+;;; $Id: imail-core.scm,v 1.124 2001/05/17 05:05:30 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -112,9 +112,8 @@
 (define (parse-url-string string get-default-url)
   (let ((colon (string-find-next-char string #\:)))
     (if colon
-	(parse-url-body
-	 (string-tail string (fix:+ colon 1))
-	 (get-default-url (map-legacy-protocols (string-head string colon))))
+	(parse-url-body (string-tail string (fix:+ colon 1))
+			(get-default-url (string-head string colon)))
 	(parse-url-body string (get-default-url #f)))))
 
 ;; Protocol-specific parsing.  Dispatch on the class of DEFAULT-URL.
@@ -192,19 +191,13 @@
 	   (lambda (body)
 	     (make-url-string protocol body)))))
     (if colon
-	(let ((protocol (map-legacy-protocols (string-head string colon))))
+	(let ((protocol (string-head string colon)))
 	  (values (string-tail string (fix:+ colon 1))
 		  (and (url-protocol-name? protocol)
 		       (get-default-url protocol))
 		  (make-prepend protocol)))
 	(let ((url (get-default-url #f)))
 	  (values string url (make-prepend (url-protocol url)))))))
-
-(define (map-legacy-protocols protocol)
-  (if (or (string=? protocol "rmail")
-	  (string=? protocol "umail"))
-      "file"
-      protocol))
 
 ;;;; Server operations
 
