@@ -1,6 +1,40 @@
-;;; File to build Scheme 7.1.3 binaries from sources
+#| -*-Scheme-*-
 
-;;; cd to the "dist-7.1.3/src" directory, start scheme with the
+$Id: bootstrap.scm,v 1.2 1992/08/29 12:06:07 jinx Exp $
+
+Copyright (c) 1991-1992 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. |#
+
+;;;; File to build Scheme binaries from sources
+
+;;; cd to the "src" directory, start scheme with the
 ;;; "-compiler" option, and load this file.
 
 ;;; To make the band "runtime.com":
@@ -24,7 +58,7 @@
 ;;; (cd "edwin")
 ;;; (load "make")
 ;;; (disk-save "edwin.com")
-
+
 ;;; Compile the runtime system
 (with-working-directory-pathname "runtime"
   (lambda ()
@@ -74,6 +108,12 @@
     (load "sf.sf")
     (load "sf.cbf")))
 
+;;; Compile (and generate CREF files for) editor
+(with-working-directory-pathname "edwin"
+  (lambda ()
+    (load "edwin.sf")
+    (load "edwin.cbf")))
+
 ;;; Compile (and generate CREF files for) compiler
 (if (file-directory? "compiler")
     (with-working-directory-pathname "compiler"
@@ -85,12 +125,14 @@
 		     (file-symbolic-link? "make.com")
 		     (file-symbolic-link? "make.binf"))
 		(let ((types
-		       '((MC68030 "also 68020")
-			 (MC68040 "also 68030, 68020")
-			 (VAX #f)
+		       '((ALPHA "DEC Alpha Architecture")
 			 (HP-PA "HP Precision Architecture")
-			 (PMAX "DECStation 3100 or 5100 = little-endian MIPS")
-			 (MIPS "all other MIPS = big-endian")
+			 (I386 "Intel i386 and i486, NOT 80286")
+			 (MC68030 "Motorola 68030 and 68020")
+			 (MC68040 "Motorola 68020 - 68040")
+			 (MIPS "all big-endian MIPS (e.g. SGI, Sony)")
+			 (PMAX "all little-endian MIPS (e.g. DecStations)")
+			 (VAX "DEC Vax Architecture")
 			 (OTHER "no compiled-code support"))))
 		  (let loop ()
 		    (newline)
@@ -118,10 +160,12 @@
 			    (else
 			     (let ((directory
 				    (case type
-				      ((MC68030 MC68040) "bobcat")
-				      ((VAX) "vax")
+				      ((ALPHA) "alpha")
 				      ((HP-PA) "spectrum")
-				      ((PMAX MIPS) "mips")))
+				      ((I386) "i386")
+				      ((MC68030 MC68040) "bobcat")
+				      ((PMAX MIPS) "mips")
+				      ((VAX) "vax")))
 				   (ln-sf
 				    (let ((ln-s
 					   (make-primitive-procedure
@@ -154,9 +198,3 @@
 	    (begin
 	      (load "comp.sf")
 	      (load "comp.cbf"))))))
-
-;;; Compile (and generate CREF files for) editor
-(with-working-directory-pathname "edwin"
-  (lambda ()
-    (load "edwin.sf")
-    (load "edwin.cbf")))
