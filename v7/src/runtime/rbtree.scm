@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rbtree.scm,v 1.2 1993/10/06 21:16:35 cph Exp $
+$Id: rbtree.scm,v 1.3 1993/10/07 06:03:46 cph Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -132,22 +132,21 @@ MIT in each case. |#
 (define (rb-tree/insert! tree key datum)
   (guarantee-rb-tree tree 'RB-TREE/INSERT!)
   (let ((key=? (tree-key=? tree))
-	(key<? (tree-key<? tree))
-	(interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+	(key<? (tree-key<? tree)))
     (let loop ((x (tree-root tree)) (y #f) (d #f))
       (cond ((not x)
 	     (let ((z (make-node key datum)))
-	       (set-node-up! z y)
-	       (cond ((not y) (set-tree-root! tree z))
-		     ((eq? 'LEFT d) (set-node-left! y z))
-		     (else (set-node-right! y z)))
-	       (set-node-color! z 'RED)
-	       (insert-fixup! tree z)))
+	       (without-interrupts
+		(lambda ()
+		  (set-node-up! z y)
+		  (cond ((not y) (set-tree-root! tree z))
+			((eq? 'LEFT d) (set-node-left! y z))
+			(else (set-node-right! y z)))
+		  (set-node-color! z 'RED)
+		  (insert-fixup! tree z)))))
 	    ((key=? key (node-key x)) (set-node-datum! x datum))
 	    ((key<? key (node-key x)) (loop (node-left x) x 'LEFT))
-	    (else (loop (node-right x) x 'RIGHT))))
-    (set-interrupt-enables! interrupt-mask)
-    unspecific))
+	    (else (loop (node-right x) x 'RIGHT))))))
 
 (define (insert-fixup! tree x)
   ;; Assumptions: X is red, and the only possible violation of the
@@ -185,36 +184,41 @@ MIT in each case. |#
 	((null? alist))
       (rb-tree/insert! tree (caar alist) (cdar alist)))
     tree))
+
+(define-integrable (without-interrupts thunk)
+  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+    (thunk)
+    (set-interrupt-enables! interrupt-mask)
+    unspecific))
 
 (define (rb-tree/delete! tree key)
   (guarantee-rb-tree tree 'RB-TREE/DELETE!)
   (let ((key=? (tree-key=? tree))
-	(key<? (tree-key<? tree))
-	(interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+	(key<? (tree-key<? tree)))
     (let loop ((x (tree-root tree)))
       (cond ((not x) unspecific)
 	    ((key=? key (node-key x)) (delete-node! tree x))
 	    ((key<? key (node-key x)) (loop (node-left x)))
-	    (else (loop (node-right x)))))
-    (set-interrupt-enables! interrupt-mask)
-    unspecific))
+	    (else (loop (node-right x)))))))
 
 (define (delete-node! tree z)
-  (let ((z
-	 (if (and (node-left z) (node-right z))
-	     (let ((y (next-node z)))
-	       (set-node-key! z (node-key y))
-	       (set-node-datum! z (node-datum y))
-	       y)
-	     z)))
-    (let ((x (or (node-left z) (node-right z)))
-	  (u (node-up z)))
-      (if x (set-node-up! x u))
-      (cond ((not u) (set-tree-root! tree x))
-	    ((eq? z (node-left u)) (set-node-left! u x))
-	    (else (set-node-right! u x)))
-      (if (eq? 'BLACK (node-color z))
-	  (delete-fixup! tree x u)))))
+  (without-interrupts
+   (lambda ()
+     (let ((z
+	    (if (and (node-left z) (node-right z))
+		(let ((y (next-node z)))
+		  (set-node-key! z (node-key y))
+		  (set-node-datum! z (node-datum y))
+		  y)
+		z)))
+       (let ((x (or (node-left z) (node-right z)))
+	     (u (node-up z)))
+	 (if x (set-node-up! x u))
+	 (cond ((not u) (set-tree-root! tree x))
+	       ((eq? z (node-left u)) (set-node-left! u x))
+	       (else (set-node-right! u x)))
+	 (if (eq? 'BLACK (node-color z))
+	     (delete-fixup! tree x u)))))))
 
 (define (delete-fixup! tree x u)
   (let loop ((x x) (u u))
@@ -260,21 +264,16 @@ MIT in each case. |#
 (define (rb-tree/lookup tree key default)
   (guarantee-rb-tree tree 'RB-TREE/LOOKUP)
   (let ((key=? (tree-key=? tree))
-	(key<? (tree-key<? tree))
-	(interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
-    (let ((result
-	   (let loop ((x (tree-root tree)))
-	     (cond ((not x) default)
-		   ((key=? key (node-key x)) (node-datum x))
-		   ((key<? key (node-key x)) (loop (node-left x)))
-		   (else (loop (node-right x)))))))
-      (set-interrupt-enables! interrupt-mask)
-      result)))
+	(key<? (tree-key<? tree)))
+    (let loop ((x (tree-root tree)))
+      (cond ((not x) default)
+	    ((key=? key (node-key x)) (node-datum x))
+	    ((key<? key (node-key x)) (loop (node-left x)))
+	    (else (loop (node-right x)))))))
 
 (define (rb-tree/copy tree)
   (guarantee-rb-tree tree 'RB-TREE/COPY)
-  (let ((result (make-rb-tree (tree-key=? tree) (tree-key<? tree)))
-	(interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+  (let ((result (make-rb-tree (tree-key=? tree) (tree-key<? tree))))
     (set-tree-root!
      result
      (let loop ((node (tree-root tree)) (up #f))
@@ -285,34 +284,21 @@ MIT in each case. |#
 	      (set-node-left! node* (loop (node-left node) node*))
 	      (set-node-right! node* (loop (node-right node) node*))
 	      node*))))
-    (set-interrupt-enables! interrupt-mask)
     result))
 
 (define (rb-tree/height tree)
   (guarantee-rb-tree tree 'RB-TREE/HEIGHT)
-  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
-    (let ((result
-	   (let loop ((node (tree-root tree)))
-	     (if node
-		 (+ 1
-		    (max (loop (node-left node))
-			 (loop (node-right node))))
-		 0))))
-      (set-interrupt-enables! interrupt-mask)
-      result)))
+  (let loop ((node (tree-root tree)))
+    (if node
+	(+ 1 (max (loop (node-left node)) (loop (node-right node))))
+	0)))
 
 (define (rb-tree/size tree)
   (guarantee-rb-tree tree 'RB-TREE/SIZE)
-  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
-    (let ((result
-	   (let loop ((node (tree-root tree)))
-	     (if node
-		 (+ 1
-		    (loop (node-left node))
-		    (loop (node-right node)))
-		 0))))
-      (set-interrupt-enables! interrupt-mask)
-      result)))
+  (let loop ((node (tree-root tree)))
+    (if node
+	(+ 1 (loop (node-left node)) (loop (node-right node)))
+	0)))
 
 (define (rb-tree/empty? tree)
   (guarantee-rb-tree tree 'RB-TREE/EMPTY?)
@@ -321,53 +307,37 @@ MIT in each case. |#
 (define (rb-tree/equal? x y datum=?)
   (guarantee-rb-tree x 'RB-TREE/EQUAL?)
   (guarantee-rb-tree y 'RB-TREE/EQUAL?)
-  (let ((key=? (tree-key=? x))
-	(interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
-    (let ((result
-	   (and (eq? key=? (tree-key=? y))
-		(let loop ((nx (first-node x)) (ny (first-node y)))
-		  (if (not nx)
-		      (not ny)
-		      (and ny
-			   (key=? (node-key nx) (node-key ny))
-			   (datum=? (node-datum nx) (node-datum ny))
-			   (loop (next-node nx) (next-node ny))))))))
-      (set-interrupt-enables! interrupt-mask)
-      result)))
+  (let ((key=? (tree-key=? x)))
+    (and (eq? key=? (tree-key=? y))
+	 (let loop ((nx (first-node x)) (ny (first-node y)))
+	   (if (not nx)
+	       (not ny)
+	       (and ny
+		    (key=? (node-key nx) (node-key ny))
+		    (datum=? (node-datum nx) (node-datum ny))
+		    (loop (next-node nx) (next-node ny))))))))
 
 (define (rb-tree->alist tree)
   (guarantee-rb-tree tree 'RB-TREE->ALIST)
-  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
-    (let ((result
-	   (let loop ((node (first-node tree)))
-	     (if node
-		 (cons (cons (node-key node) (node-datum node))
-		       (loop (next-node node)))
-		 '()))))
-      (set-interrupt-enables! interrupt-mask)
-      result)))
+  (let loop ((node (first-node tree)))
+    (if node
+	(cons (cons (node-key node) (node-datum node))
+	      (loop (next-node node)))
+	'())))
 
 (define (rb-tree/key-list tree)
   (guarantee-rb-tree tree 'RB-TREE/KEY-LIST)
-  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
-    (let ((result
-	   (let loop ((node (first-node tree)))
-	     (if node
-		 (cons (node-key node) (loop (next-node node)))
-		 '()))))
-      (set-interrupt-enables! interrupt-mask)
-      result)))
+  (let loop ((node (first-node tree)))
+    (if node
+	(cons (node-key node) (loop (next-node node)))
+	'())))
 
 (define (rb-tree/datum-list tree)
   (guarantee-rb-tree tree 'RB-TREE/DATUM-LIST)
-  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
-    (let ((result
-	   (let loop ((node (first-node tree)))
-	     (if node
-		 (cons (node-datum node) (loop (next-node node)))
-		 '()))))
-      (set-interrupt-enables! interrupt-mask)
-      result)))
+  (let loop ((node (first-node tree)))
+    (if node
+	(cons (node-datum node) (loop (next-node node)))
+	'())))
 
 (define (first-node tree)
   (and (tree-root tree)
