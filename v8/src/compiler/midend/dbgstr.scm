@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dbgstr.scm,v 1.13 1995/07/03 23:40:20 adams Exp $
+$Id: dbgstr.scm,v 1.14 1995/07/04 17:54:55 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -90,28 +90,22 @@ MIT in each case. |#
 (define-structure
     (new-dbg-variable
      (conc-name new-dbg-variable/)
-     (constructor new-dbg-variable/make (name block))
-     (constructor new-dbg-variable/%make (name expression block extra))
+     (constructor new-dbg-variable/make (name))
+     (constructor new-dbg-variable/%make (name expression))
      (print-procedure
       (standard-unparser-method 'NEW-DBG-VARIABLE
 	(lambda (var port)
 	  (write-char #\Space port)
 	  (write (new-dbg-variable/name var) port)
-	  ;;(write-string " -> " port)
-	  ;;(fluid-let ((*unparser-list-breadth-limit* 5)
-	  ;;	      (*unparser-list-depth-limit*   3))
-	  ;;  (write (new-dbg-variable/expression var) port))
+	  (write-char #\Space port)
+	  (write (new-dbg-variable/expression var) port)
 	  ))))
   (name false read-only true)
-  (expression #F read-only false)
-  (block false read-only false)
-  (extra false read-only false))
+  (expression #F read-only false))
 
-(define (new-dbg-variable/new-expression&block variable expression* block*)
+(define (new-dbg-variable/new-expression variable expression*)
   (new-dbg-variable/%make (new-dbg-variable/name variable)
-			  expression*
-			  block*
-			  (new-dbg-variable/extra variable)))
+			  expression*))
 
 (define-structure 
   (new-dbg-block
@@ -123,39 +117,36 @@ MIT in each case. |#
       (lambda (block port)
 	(write-char #\Space port)
 	(write (new-dbg-block/type block) port)
-	(if (null? (new-dbg-block/variables block))
-	    (write-string " (no vars)" port)
-	    (begin
-	      (write-string " vars:" port)
-	      (for-each (lambda (var)
-			  (write-char #\Space port)
-			  (write (new-dbg-variable/name var) port))
-			(new-dbg-block/variables block))))))))
+	(let* ((vars  (new-dbg-block/variables block)))
+	  (if (zero? (vector-length vars))
+	      (write-string " (no vars)" port)
+	      (begin
+		(write-string " vars:" port)
+		(for-each-vector-element vars
+		  (lambda (var)
+		    (write-char #\Space port)
+		    (write (new-dbg-variable/name var) port))))))))))
+  ;; TYPE is one of 'NESTED, 'FIRST-CLASS
   (type false read-only false)
+  ;; PARENT is either
+  ;;  . a DBG-BLOCK
+  ;;  . 'IC, in which case PARENT-PATH-PREFIX must yield an IC environment
+  ;;  . #F if there is no environment.
   (parent false read-only false)
-  (variables '() read-only false))
+  ;; . PARENT-PATH-PREFIX is the prefix of any element in the parent
+  ;;   path. Typically used to access closed environments and first
+  ;;   class environments.
+  ;; . For 'FIRST-CLASS environments PARENT-PATH-PREFIX initially holds the
+  ;;   name of the bound to the environment. (i.e. it's own, not
+  ;;   parent, prefix)
+  (parent-path-prefix false read-only false)
+  ;; VARIABLES is a vector of NEW-DBG-VARIABLEs
+  (variables '#() read-only false))
 
-(define (new-dbg-block/reconstruct block variable->path)
-  ;; Copy entire environment model BLOCK, using VARIABLE->PATH to fill in
-  ;; the variable expressions.
-  (define (new-variables variables block*)
-    (map (lambda (variable)
-	   (new-dbg-variable/new-expression&block
-	    variable
-	    (variable->path variable)
-	    block*))
-	 variables))
-  (let copy-block ((block block))
-    (and block
-	 (let ((block*  (new-dbg-block/%make
-			 (new-dbg-block/type block)
-			 (copy-block (new-dbg-block/parent block))
-			 '())))
-	   (set-new-dbg-block/variables!
-	    block*
-	    (new-variables (new-dbg-block/variables block) block*))
-	   block*))))
-
+(define (new-dbg-block/layout block)
+  (new-block/variables block))
+(define (set-new-dbg-block/layout! block layout)
+  (set-new-dbg-block/variables! block layout))
 
 
 (define (new-dbg-expression->old-dbg-expression label new-info)
@@ -267,9 +258,12 @@ MIT in each case. |#
 	 (QUOTE/? (call/operator form))
 	 (hash-table/get *dbg-unconstructable-operators*
 			 (quote/text (call/operator form)) #F)))
-  (if (and (not (unconstructable? to))
-	   (not (continuation-variable? from)))
-      (set-cdr! *dbg-rewrites* (cons (vector from to) (cdr *dbg-rewrites*)))))
+  (let ((to (if (LOOKUP/? to) (lookup/name to) to)))
+    (if (and (not (unconstructable? to))
+	     (not (continuation-variable? from))
+	     (not (eq? from to)))
+	(set-cdr! *dbg-rewrites*
+		  (cons (vector from to) (cdr *dbg-rewrites*))))))
 
 (define *dbg-unconstructable-operators* (make-eq-hash-table))
 
