@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fakeprim.scm,v 1.14 1995/05/14 00:53:04 adams Exp $
+$Id: fakeprim.scm,v 1.15 1995/05/19 21:18:25 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -631,7 +631,7 @@ MIT in each case. |#
 
 (define %multicell-ref
   ;; (CALL ',%multicell-ref '#F cell 'LAYOUT 'NAME)
-  (make-operator/effect-sensitive "#[multcell-ref]"))
+  (make-operator/effect-sensitive "#[multicell-ref]"))
 (cookie-call %multicell-ref '#F cell 'LAYOUT 'NAME)
 
 (define %multicell-set!
