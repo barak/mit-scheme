@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcfg.scm,v 4.6 1988/11/07 13:56:13 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcfg.scm,v 4.7 1989/04/15 18:06:41 cph Rel $
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -185,5 +185,5 @@ MIT in each case. |#
 (define-integrable (pnode/preferred-branch pnode)
   (cfg-node-get pnode cfg/prefer-branch/tag))
 
-(define-integrable cfg/prefer-branch/tag
-  (string->symbol "#[(compiler)cfg/prefer-branch]"))
+(define cfg/prefer-branch/tag
+  (intern "#[(compiler)cfg/prefer-branch]"))

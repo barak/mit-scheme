@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/canon.scm,v 1.3 1988/11/01 04:49:45 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/canon.scm,v 1.4 1989/04/15 18:05:43 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -172,7 +172,7 @@ ARBITRARY:	The expression may be executed more than once.  It
 ;;;; Caching first class environments
 
 (define environment-variable
-  (make-named-tag "ENVIRONMENT"))
+  (intern "#[environment]"))
 
 (define (scode/comment-directive? text . kinds)
   (and (pair? text)

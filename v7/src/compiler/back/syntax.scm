@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syntax.scm,v 1.22 1988/08/31 06:43:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syntax.scm,v 1.23 1989/04/15 18:04:59 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -185,10 +185,10 @@ MIT in each case. |#
 ;;;; Coercion Machinery
 
 (define (make-coercion-name coercion-type size)
-  (string->symbol
-   (string-append "COERCE-"
+  (intern
+   (string-append "coerce-"
 		  (number->string size)
-		  "-BIT-"
+		  "-bit-"
 		  (symbol->string coercion-type))))
 
 (define coercion-property-tag

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 4.10 1988/12/19 20:21:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 4.11 1989/04/15 18:05:57 cph Exp $
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -235,7 +235,7 @@ MIT in each case. |#
   "Compiled error procedure")
 
 (define lambda-tag:delay
-  (make-named-tag "DELAY-LAMBDA"))
+  (intern "#[delay-lambda]"))
 
 (define (non-pointer-object? object)
   ;; Any reason not to use `object/non-pointer?' here? -- cph

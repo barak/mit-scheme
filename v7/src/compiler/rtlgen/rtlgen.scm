@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.16 1989/01/21 09:16:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.17 1989/04/15 18:04:34 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -322,8 +322,8 @@ MIT in each case. |#
 	      (cfg-node-remove! bblock potential-control-merge-marker))
 	    (rgraph-bblocks rgraph)))
 
-(define-integrable potential-control-merge-marker
-  (string->symbol "#[(compiler rtl-generator)potential-control-merge]"))
+(define potential-control-merge-marker
+  (intern "#[(compiler rtl-generator)potential-control-merge]"))
 
 (define (rgraph/compress! rgraph)
   (with-new-node-marks

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/pmlook.scm,v 1.6 1988/06/14 08:32:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/pmlook.scm,v 1.7 1989/04/15 18:06:14 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,7 +37,7 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define pattern-variable-tag
-  (make-named-tag "Pattern Variable"))
+  (intern "#[(compiler pattern-matcher/lookup)pattern-variable]"))
 
 ;;; PATTERN-LOOKUP returns either false or a pair whose car is the
 ;;; item matched and whose cdr is the list of variable values.  Use

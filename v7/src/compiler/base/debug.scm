@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/debug.scm,v 4.8 1988/12/12 21:51:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/debug.scm,v 4.9 1989/04/15 18:05:13 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -52,8 +52,7 @@ MIT in each case. |#
 
 (define (debug/find-continuation number)
   (let ((label
-	 (string->symbol (string-append "CONTINUATION-"
-					(number->string number 10)))))
+	 (intern (string-append "continuation-" (number->string number)))))
     (let loop ((procedures *procedures*))
       (and (not (null? procedures))
 	   (if (and (procedure-continuation? (car procedures))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.12 1988/12/15 17:23:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.13 1989/04/15 18:05:27 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -109,11 +109,7 @@ MIT in each case. |#
 (let-syntax
     ((define-named-variable
       (macro (name)
-	(let ((symbol
-	       (string->symbol
-		(string-append "#["
-			       (string-downcase (symbol->string name))
-			       "]"))))
+	(let ((symbol (intern (string-append "#[" (symbol->string name) "]"))))
 	  `(BEGIN (DEFINE-INTEGRABLE
 		    (,(symbol-append 'MAKE- name '-VARIABLE) BLOCK)
 		    (MAKE-VARIABLE BLOCK ',symbol))

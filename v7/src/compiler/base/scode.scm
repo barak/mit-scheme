@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/scode.scm,v 4.5 1988/08/11 02:15:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/scode.scm,v 4.6 1989/04/15 18:06:27 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -81,7 +81,8 @@ MIT in each case. |#
 (define-integrable (scode/quotation-components quot recvr)
   (recvr (scode/quotation-expression quot)))
 
-(define comment-tag:directive (make-named-tag "Expression Directive"))
+(define comment-tag:directive
+  (intern "#[(compiler)comment-tag:directive"))
 
 (define (scode/make-directive directive code)
   (scode/make-comment (list comment-tag:directive directive)
