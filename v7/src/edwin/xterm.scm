@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xterm.scm,v 1.61 1999/12/10 17:56:09 cph Exp $
+;;; $Id: xterm.scm,v 1.62 2000/10/26 17:55:04 cph Exp $
 ;;;
-;;; Copyright (c) 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -519,7 +519,22 @@
 	  (begin
 	    (process-expose-event event)
 	    (loop))
-	  event))))
+	  (begin
+	    (if (and event trace-port)
+		(write-line event trace-port))
+	    event)))))
+
+(define trace-port #f)
+
+(define (start-trace filename)
+  (stop-trace)
+  (set! trace-port (open-output-file filename))
+  unspecific)
+
+(define (stop-trace)
+  (let ((port trace-port))
+    (set! trace-port #f)
+    (if port (close-port port))))
 
 (define (process-expose-event event)
   (let ((xterm (vector-ref event 1)))
