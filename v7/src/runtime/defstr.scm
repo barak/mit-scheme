@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 14.13 1990/01/10 12:26:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 14.14 1990/02/23 18:47:56 cph Rel $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -488,7 +488,10 @@ must be defined when the defstruct is evaluated.
 	   (structure/keyword-constructors structure))))
 
 (define (constructor-definition/default structure name)
-  (let ((slot-names (map slot/name (structure/slots structure))))
+  (let ((slot-names
+	 (map (lambda (slot)
+		(string->uninterned-symbol (symbol->string (slot/name slot))))
+	      (structure/slots structure))))
     `(DEFINE (,name ,@slot-names)
        ;; *** Kludge -- SCHEME-TYPE happens to be same as constructor.
        (,(absolute (structure/scheme-type structure))
@@ -580,23 +583,24 @@ must be defined when the defstruct is evaluated.
 (define (predicate-definitions structure)
   (if (and (structure/predicate-name structure)
 	   (structure/named? structure))
-      (case (structure/scheme-type structure)
-	((VECTOR)
-	 `((DEFINE (,(structure/predicate-name structure) OBJECT)
-	     (AND (,(absolute 'VECTOR?) OBJECT)
-		  (,(absolute 'NOT)
-		   (,(absolute 'ZERO?) (,(absolute 'VECTOR-LENGTH) OBJECT)))
-		  (,(absolute 'EQ?) (,(absolute 'VECTOR-REF) OBJECT 0)
-				    ,(structure/tag-name structure))))))
-	((LIST)
-	 `((DEFINE (,(structure/predicate-name structure) OBJECT)
-	     (AND (,(absolute 'PAIR?) OBJECT)
-		  (,(absolute 'EQ?) (,(absolute 'CAR) OBJECT)
-				    ,(structure/tag-name structure))))))
-	(else
-	 (error "Unknown scheme type" structure)))
+      (let ((variable (string->uninterned-symbol "object")))
+	(case (structure/scheme-type structure)
+	  ((VECTOR)
+	   `((DEFINE (,(structure/predicate-name structure) ,variable)
+	       (AND (,(absolute 'VECTOR?) ,variable)
+		    (,(absolute 'NOT)
+		     (,(absolute 'ZERO?) (,(absolute 'VECTOR-LENGTH) ,variable)))
+		    (,(absolute 'EQ?) (,(absolute 'VECTOR-REF) ,variable 0)
+				      ,(structure/tag-name structure))))))
+	  ((LIST)
+	   `((DEFINE (,(structure/predicate-name structure) ,variable)
+	       (AND (,(absolute 'PAIR?) ,variable)
+		    (,(absolute 'EQ?) (,(absolute 'CAR) ,variable)
+				      ,(structure/tag-name structure))))))
+	  (else
+	   (error "Unknown scheme type" structure))))
       '()))
-
+
 (define (copier-definitions structure)
   (let ((copier-name (structure/copier-name structure)))
     (if copier-name
