@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse2.scm,v 4.4 1988/03/14 20:59:05 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse2.scm,v 4.5 1988/04/26 18:48:18 markf Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -96,10 +96,12 @@ MIT in each case. |#
    (lambda (element)
      (let ((expression (element-expression element)))
        (if (rtl:register? expression)
-	   (register-contains-address? (rtl:register-number expression))
+	   (or (register-contains-address? (rtl:register-number expression))
+	       (register-contains-fixnum? (rtl:register-number expression)))
 	   (memq (rtl:expression-type expression)
 		 '(OBJECT->ADDRESS OBJECT->DATUM
 				   OBJECT->TYPE
+				   OBJECT->FIXNUM
 				   OFFSET-ADDRESS
 				   VARIABLE-CACHE
 				   ASSIGNMENT-CACHE)))))))
