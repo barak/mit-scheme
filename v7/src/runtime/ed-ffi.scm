@@ -1,8 +1,8 @@
 #| -*- Scheme -*-
 
-$Id: ed-ffi.scm,v 1.16 1996/04/24 04:27:22 cph Exp $
+$Id: ed-ffi.scm,v 1.17 1997/06/09 07:44:52 cph Exp $
 
-Copyright (c) 1988-96 Massachusetts Institute of Technology
+Copyright (c) 1988-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -47,6 +47,8 @@ MIT in each case. |#
     ("arith"	(runtime number)
 		syntax-table/system-internal)
     ("bitstr"	()
+		syntax-table/system-internal)
+    ("blowfish"	()
 		syntax-table/system-internal)
     ("boole"	()
 		syntax-table/system-internal)

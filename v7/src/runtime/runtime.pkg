@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.279 1997/05/19 17:38:00 cph Exp $
+$Id: runtime.pkg,v 14.280 1997/06/09 07:45:43 cph Exp $
 
 Copyright (c) 1988-97 Massachusetts Institute of Technology
 
@@ -35,7 +35,8 @@ MIT in each case. |#
 ;;;; Runtime System Packaging
 
 (define-package ()
-  (files "bitstr"
+  (files "blowfish"
+	 "bitstr"
 	 "boole"
 	 "boot"
 	 "equals"
