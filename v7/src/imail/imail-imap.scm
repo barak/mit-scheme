@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.131 2000/06/30 17:09:29 cph Exp $
+;;; $Id: imail-imap.scm,v 1.132 2000/06/30 17:19:53 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -456,6 +456,7 @@
 		      (dynamic-wind
 		       (lambda () unspecific)
 		       (lambda ()
+			 (reset-imap-connection connection)
 			 (set-imap-connection-port! connection port)
 			 (set-imap-connection-greeting!
 			  connection
@@ -463,7 +464,6 @@
 			    (if (imap:response:ok? response)
 				(imap:response:response-text-string response)
 				response)))
-			 (reset-imap-connection connection)
 			 (imap:command:capability connection)
 			 (if (not
 			      (memq 'IMAP4REV1
@@ -487,9 +487,14 @@
 			 (imap:response:response-text-string response))))))
 	(if (eq? (imap-connection-delimiter connection) 'UNKNOWN)
 	    (begin
-	      (imap:command:list connection "" "inbox")
+	      (set-imap-connection-delimiter!
+	       connection
+	       (imap:response:list-delimiter
+		(car (imap:command:list connection "" "inbox"))))
 	      (if (memq 'NAMESPACE (imap-connection-capabilities connection))
-		  (imap:command:namespace connection))))
+		  (set-imap-connection-namespace!
+		   connection
+		   (imap:command:namespace connection)))))
 	#t)))
 
 (define (close-imap-connection connection)
@@ -1272,7 +1277,8 @@
   (imap:command:no-response connection 'CAPABILITY))
 
 (define (imap:command:namespace connection)
-  (imap:command:no-response connection 'NAMESPACE))
+  (imap:command:single-response imap:response:namespace? connection
+				'NAMESPACE))
 
 (define (imap:command:login connection user-id pass-phrase)
   ((imail-ui:message-wrapper "Logging in as " user-id)
@@ -1592,12 +1598,8 @@
 	  (imap:response:capabilities response))
 	 #f)
 	((imap:response:namespace? response)
-	 (set-imap-connection-namespace! connection response)
-	 #f)
+	 #t)
 	((imap:response:list? response)
-	 (set-imap-connection-delimiter!
-	  connection
-	  (imap:response:list-delimiter response))
 	 (eq? command 'LIST))
 	((imap:response:lsub? response)
 	 (eq? command 'LSUB))
