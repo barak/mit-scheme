@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: applicat.scm,v 1.5 1995/04/17 14:39:18 adams Exp $
+$Id: applicat.scm,v 1.6 1996/03/08 22:27:09 adams Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-1996 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -45,11 +45,10 @@ MIT in each case. |#
     (call-with-values
 	(lambda () (%matchup (cdr bindings) '(handler env) '(cdr form)))
       (lambda (names code)
-	`(DEFINE ,proc-name
+	`(DEFINE (,proc-name ENV FORM)
 	   (LET ((HANDLER (LAMBDA ,(cons (car bindings) names) ,@body)))
-	     (NAMED-LAMBDA (,proc-name ENV FORM)
-	       (APPLICAT/REMEMBER ,code
-				  FORM))))))))
+	     (APPLICAT/REMEMBER ,code
+				FORM)))))))
 
 (define-applicator LOOKUP (env name)
   env					; ignored
@@ -80,28 +79,47 @@ MIT in each case. |#
        ,(applicat/expr env alt)))
 
 (define-applicator CALL (env rator cont #!rest rands)
-  (define (default)
+  (define (direct-call)
+    `(CALL ,(applicat/expr env rator)
+	   ,(applicat/expr env cont)
+	   ,@(applicat/expr* env rands)))
+  (define (checked-call)
     `(CALL (QUOTE ,%internal-apply)
 	   ,(applicat/expr env cont)
 	   (QUOTE ,(length rands))
 	   ,(applicat/expr env rator)
 	   ,@(applicat/expr* env rands)))
+  (define (primitive-call)
+    `(CALL (QUOTE ,%primitive-apply)
+	   ,(applicat/expr env cont)
+	   (QUOTE ,(length rands))
+	   ,(applicat/expr env rator)
+	   ,@(applicat/expr* env rands)))
+  (define (check-primitive operator method-if-good)
+    (let ((arity (primitive-procedure-arity operator)))
+      (if (or (eqv? arity (length rands))
+	      (eqv? arity -1))		; VECTOR & %RECORD
+	  (method-if-good)
+	  (begin
+	    (warn
+	     (string-append
+	      ;;"Primitive "
+	      (string-upcase (symbol-name (primitive-procedure-name operator)))
+	      " called with wrong number of arguments")
+	     (form->source-irritant form))
+	    (checked-call)))))
   (cond ((QUOTE/? rator)
-	 (cond ((and (known-operator? (cadr rator))
-		     (not (and (primitive-procedure? (cadr rator))
-			       (memq (primitive-procedure-name (cadr rator))
-				     compiler:primitives-with-no-open-coding))))
-		`(CALL ,(applicat/expr env rator)
-		       ,(applicat/expr env cont)
-		       ,@(applicat/expr* env rands)))
-	       ((primitive-procedure? (cadr rator))
-		`(CALL (QUOTE ,%primitive-apply)
-		       ,(applicat/expr env cont)
-		       (QUOTE ,(length rands))
-		       ,(applicat/expr env rator)
-		       ,@(applicat/expr* env rands)))
-	       (else
-		(default))))
+	 (let* ((operator   (quote/text rator))
+		(known?     (known-operator? operator))
+		(primitive? (primitive-procedure? operator)))
+	   (cond ((and known? primitive?)
+		  (if (memq (primitive-procedure-name operator)
+			    compiler:primitives-with-no-open-coding)
+		      (primitive-call)
+		      (check-primitive operator direct-call)))
+		 (known?      (direct-call))
+		 (primitive?  (check-primitive operator primitive-call))
+		 (else        (checked-call)))))
 	((LOOKUP/? rator)
 	 (let ((place (assq (cadr rator) env)))
 	   (if (or (not place) (not (cadr place)))
@@ -124,7 +142,7 @@ MIT in each case. |#
 		  ,@(applicat/expr* env rands))))
 	(else
 	 (default))))
-
+
 (define-applicator LET (env bindings body)
   `(LET ,(map (lambda (binding)
 		(list (car binding)
@@ -138,7 +156,7 @@ MIT in each case. |#
 		       (LAMBDA/?  value))))
 	     bindings)
        body)))
-
+
 (define-applicator LETREC (env bindings body)
   (let ((env*  (map* env
 		     (lambda (binding)
