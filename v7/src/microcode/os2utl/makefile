@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile,v 1.4 1995/01/05 23:30:55 cph Exp $
+###	$Id: makefile,v 1.5 1995/03/08 21:39:23 cph Exp $
 ###
 ###	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ###
@@ -444,7 +444,7 @@ os2env.$(OBJ) : scheme.tch osenv.h
 os2file.$(OBJ) : osfile.h
 os2fs.$(OBJ) : osfs.h
 os2proc.$(OBJ) : osproc.h
-os2top.$(OBJ) : ostop.h option.h
+os2top.$(OBJ) : scheme.tch ostop.h option.h
 os2tty.$(OBJ) : ostty.h
 os2xcpt.$(OBJ) : scheme.tch $(GC_HEAD_FILES)
 pros2fs.$(OBJ) : scheme.tch prims.h osfs.h
