@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.27 2000/05/19 17:29:03 cph Exp $
+$Id: todo.txt,v 1.28 2000/05/19 17:29:50 cph Exp $
 
 Bug fixes
 ---------
@@ -24,9 +24,6 @@ Bug fixes
 
 Design changes
 --------------
-
-* Implement something closer to the IMAP COPY operation, e.g.
-  APPEND-MESSAGES.
 
 * Reimplement UID synchronization.  Take advantage of monotonic UID
   numbers to discover largest prefix range that hasn't changed.
@@ -95,3 +92,6 @@ New features
 * IMAIL must support I/O to compressed files (for my sake if no one
   else).  A clean solution to this requires moving compressed-file
   support to the runtime system.
+
+* Implement something closer to the IMAP COPY operation, e.g.
+  APPEND-MESSAGES.
