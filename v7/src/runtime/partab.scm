@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: partab.scm,v 14.8 2004/01/15 21:00:12 cph Exp $
+$Id: partab.scm,v 14.9 2005/03/30 03:50:36 cph Exp $
 
-Copyright 1988,1996,2004 Massachusetts Institute of Technology
+Copyright 1988,1996,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -42,29 +42,11 @@ USA.
       (error:wrong-type-argument special "dispatch vector" 'MAKE-PARSER-TABLE))
   (%make-parser-table initial special))
 
-(define (guarantee-parser-table table caller)
-  (if (not (parser-table? table))
-      (error:wrong-type-argument table "parser table" caller))
-  table)
+(define-guarantee parser-table "parser table")
 
 (define (parser-table/copy table)
   (%make-parser-table (vector-copy (parser-table/initial table))
 		      (vector-copy (parser-table/special table))))
-
-(define (current-parser-table)
-  *current-parser-table*)
-
-(define (set-current-parser-table! table)
-  (guarantee-parser-table table 'SET-CURRENT-PARSER-TABLE!)
-  (set! *current-parser-table* table)
-  unspecific)
-
-(define (with-current-parser-table table thunk)
-  (guarantee-parser-table table 'WITH-CURRENT-PARSER-TABLE)
-  (fluid-let ((*current-parser-table* table))
-    (thunk)))
-
-(define *current-parser-table*)
 
 (define (parser-table/entry table key)
   (receive (v n) (decode-key table key 'PARSER-TABLE/ENTRY)

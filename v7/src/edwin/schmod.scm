@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: schmod.scm,v 1.68 2004/01/16 19:26:06 cph Exp $
+$Id: schmod.scm,v 1.69 2005/03/30 03:53:06 cph Exp $
 
 Copyright 1986,1989,1990,1991,1992,1998 Massachusetts Institute of Technology
-Copyright 2000,2001,2002,2003,2004 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -222,18 +222,21 @@ The following commands evaluate Scheme expressions:
       (standard-completion (extract-string start end)
 	(lambda (prefix if-unique if-not-unique if-not-found)
 	  (let ((completions
-		 (let ((completions
-			(obarray-completions
-			 (if *parser-canonicalize-symbols?*
-			     (string-downcase prefix)
-			     prefix))))
-		   (if (not bound-only?)
-		       completions
-		       (let ((environment (evaluation-environment #f)))
-			 (list-transform-positive completions
+		 (let ((environment (evaluation-environment #f)))
+		   (let ((completions
+			  (obarray-completions
+			   (if (and bound-only?
+				    (environment-lookup
+				     environment
+				     '*PARSER-CANONICALIZE-SYMBOLS?*))
+			       (string-downcase prefix)
+			       prefix))))
+		     (if bound-only?
+			 (keep-matching-items completions
 			   (lambda (name)
-			     (environment-bound? environment name))))))))
-	    (cond ((null? completions)
+			     (environment-bound? environment name)))
+			 completions)))))
+	    (cond ((not (pair? completions))
 		   (if-not-found))
 		  ((null? (cdr completions))
 		   (if-unique (system-pair-car (car completions))))

@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: unpars.scm,v 14.62 2004/11/19 07:14:57 cph Exp $
+$Id: unpars.scm,v 14.63 2005/03/30 03:51:11 cph Exp $
 
 Copyright 1986,1987,1990,1991,1992,1995 Massachusetts Institute of Technology
-Copyright 1996,2001,2002,2003,2004 Massachusetts Institute of Technology
+Copyright 1996,2001,2002,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -41,20 +41,19 @@ USA.
   (set! *unparse-primitives-by-name?* #f)
   (set! *unparse-uninterned-symbols-by-name?* #f)
   (set! *unparse-with-maximum-readability?* #f)
-  (set! *unparse-disambiguate-null-as-itself?* #t)
-  (set! *unparse-disambiguate-null-lambda-list?* #f)
   (set! *unparse-compound-procedure-names?* #t)
   (set! *unparse-with-datum?* #f)
   (set! *unparse-abbreviate-quotations?* #f)
   (set! system-global-unparser-table (make-system-global-unparser-table))
-  (set! *default-list-depth* 0)
+  (set! *unparser-table* system-global-unparser-table)
+  (set! *default-unparser-state* #f)
   (set! non-canon-symbol-quoted
 	(char-set-union char-set/atom-delimiters
 			char-set/symbol-quotes))
   (set! canon-symbol-quoted
 	(char-set-union non-canon-symbol-quoted
 			char-set:upper-case))
-  (set-current-unparser-table! system-global-unparser-table))
+  unspecific)
 
 (define *unparser-radix*)
 (define *unparser-list-breadth-limit*)
@@ -63,24 +62,14 @@ USA.
 (define *unparse-primitives-by-name?*)
 (define *unparse-uninterned-symbols-by-name?*)
 (define *unparse-with-maximum-readability?*)
-(define *unparse-disambiguate-null-as-itself?*)
-(define *unparse-disambiguate-null-lambda-list?*)
 (define *unparse-compound-procedure-names?*)
 (define *unparse-with-datum?*)
 (define *unparse-abbreviate-quotations?*)
 (define system-global-unparser-table)
-(define *default-list-depth*)
+(define *unparser-table*)
+(define *default-unparser-state*)
 (define non-canon-symbol-quoted)
 (define canon-symbol-quoted)
-(define *current-unparser-table*)
-
-(define (current-unparser-table)
-  *current-unparser-table*)
-
-(define (set-current-unparser-table! table)
-  (guarantee-unparser-table table 'SET-CURRENT-UNPARSER-TABLE!)
-  (set! *current-unparser-table* table)
-  unspecific)
 
 (define (make-system-global-unparser-table)
   (let ((table (make-unparser-table unparse/default)))
@@ -97,7 +86,7 @@ USA.
 		(INTERNED-SYMBOL ,unparse/interned-symbol)
 		(LIST ,unparse/pair)
 		(NEGATIVE-FIXNUM ,unparse/number)
-		(NULL ,unparse/null)
+		(FALSE ,unparse/false)
 		(POSITIVE-FIXNUM ,unparse/number)
 		(PRIMITIVE ,unparse/primitive-procedure)
 		(PROCEDURE ,unparse/compound-procedure)
@@ -117,10 +106,7 @@ USA.
 				  (conc-name unparser-table/))
   (dispatch-vector #f read-only #t))
 
-(define (guarantee-unparser-table table procedure)
-  (if (not (unparser-table? table))
-      (error:wrong-type-argument table "unparser table" procedure))
-  table)
+(define-guarantee unparser-table "unparser table")
 
 (define (make-unparser-table default-method)
   (%make-unparser-table
@@ -142,18 +128,13 @@ USA.
   (port #f read-only #t)
   (list-depth #f read-only #t)
   (slashify? #f read-only #t)
-  (unparser-table #f read-only #t))
+  (environment #f read-only #t))
 
-(define (guarantee-unparser-state state procedure)
-  (if (not (unparser-state? state))
-      (error:wrong-type-argument state "unparser state" procedure))
-  state)
+(define-guarantee unparser-state "unparser state")
 
 (define (with-current-unparser-state state procedure)
   (guarantee-unparser-state state 'WITH-CURRENT-UNPARSER-STATE)
-  (fluid-let
-      ((*default-list-depth* (unparser-state/list-depth state))
-       (*current-unparser-table* (unparser-state/unparser-table state)))
+  (fluid-let ((*default-unparser-state* state))
     (procedure (unparser-state/port state))))
 
 ;;;; Top Level
@@ -172,33 +153,52 @@ USA.
 			   (unparser-state/port state)
 			   (unparser-state/list-depth state)
 			   (unparser-state/slashify? state)
-			   (unparser-state/unparser-table state)))
+			   (unparser-state/environment state)))
 
-(define (unparse-object/top-level object port slashify? table)
-  (unparse-object/internal object port *default-list-depth* slashify? table))
+(define (unparse-object/top-level object port slashify? environment)
+  (unparse-object/internal
+   object
+   port
+   (if *default-unparser-state*
+       (unparser-state/list-depth *default-unparser-state*)
+       0)
+   slashify?
+   (if (or (default-object? environment)
+	   (unparser-table? environment))
+       (if *default-unparser-state*
+	   (unparser-state/environment *default-unparser-state*)
+	   (nearest-repl/environment))
+       (begin
+	 (guarantee-environment environment #f)
+	 environment))))
 
-(define (unparse-object/internal object port list-depth slashify? table)
+(define (unparse-object/internal object port list-depth slashify? environment)
   (fluid-let ((*output-port* port)
 	      (*list-depth* list-depth)
 	      (*slashify?* slashify?)
-	      (*unparser-table* table)
-	      (*dispatch-vector* (unparser-table/dispatch-vector table)))
+	      (*environment* environment)
+	      (*dispatch-table*
+	       (unparser-table/dispatch-vector
+		(let ((table
+		       (environment-lookup environment '*UNPARSER-TABLE*)))
+		  (guarantee-unparser-table table #f)
+		  table))))
     (*unparse-object object)))
 
 (define-integrable (invoke-user-method method object)
   (method (make-unparser-state *output-port*
 			       *list-depth*
 			       *slashify?*
-			       *unparser-table*)
+			       *environment*)
 	  object))
 
 (define *list-depth*)
 (define *slashify?*)
-(define *unparser-table*)
-(define *dispatch-vector*)
+(define *environment*)
+(define *dispatch-table*)
 
 (define (*unparse-object object)
-  ((vector-ref *dispatch-vector*
+  ((vector-ref *dispatch-table*
 	       ((ucode-primitive primitive-object-type 1) object))
    object))
 
@@ -302,19 +302,13 @@ USA.
     (SEQUENCE-2 . SEQUENCE)
     (SEQUENCE-3 . SEQUENCE)))
 
-(define (unparse/null object)
-  (if (eq? object '())
-      (if (and (eq? object #f)
-	       (not *unparse-disambiguate-null-as-itself?*))
-	  (*unparse-string "#f")
-	  (*unparse-string "()"))
-      (if (eq? object #f)
-	  (*unparse-string "#f")
-	  (unparse/default object))))
+(define (unparse/false object)
+  (if (eq? object #f)
+      (*unparse-string "#f")
+      (unparse/default object)))
 
 (define (unparse/constant object)
-  (cond ((not object) (*unparse-string "#f"))
-	((null? object) (*unparse-string "()"))
+  (cond ((null? object) (*unparse-string "()"))
 	((eq? object #t) (*unparse-string "#t"))
 	((default-object? object) (*unparse-string "#!default"))
 	((eof-object? object) (*unparse-string "#!eof"))
@@ -344,10 +338,12 @@ USA.
 
 (define (unparse-symbol symbol)
   (let ((s (symbol-name symbol)))
-    (if (or (string-find-next-char-in-set s
-					  (if *parser-canonicalize-symbols?*
-					      canon-symbol-quoted
-					      non-canon-symbol-quoted))
+    (if (or (string-find-next-char-in-set
+	     s
+	     (if (environment-lookup *environment*
+				     '*PARSER-CANONICALIZE-SYMBOLS?*)
+		 canon-symbol-quoted
+		 non-canon-symbol-quoted))
 	    (fix:= (string-length s) 0)
 	    (and (char-set-member? char-set/number-leaders (string-ref s 0))
 		 (string->number s)))
@@ -490,26 +486,12 @@ USA.
       (invoke-user-method unparse-record record)))
 
 (define (unparse/pair pair)
-  (let ((prefix (unparse-list/prefix-pair? pair)))
-    (if prefix
-	(unparse-list/prefix-pair prefix pair)
-	(let ((method (unparse-list/unparser pair)))
-	  (cond (method
-		 (invoke-user-method method pair))
-		((and *unparse-disambiguate-null-lambda-list?*
-		      (eq? (safe-car pair) 'LAMBDA)
-		      (pair? (safe-cdr pair))
-		      (null? (safe-car (safe-cdr pair)))
-		      (pair? (safe-cdr (safe-cdr pair))))
-		 (limit-unparse-depth
-		  (lambda ()
-		    (*unparse-char #\()
-		    (*unparse-object (safe-car pair))
-		    (*unparse-string " ()")
-		    (unparse-tail (safe-cdr (safe-cdr pair)) 3)
-		    (*unparse-char #\)))))
-		(else
-		 (unparse-list pair)))))))
+  (cond ((unparse-list/prefix-pair? pair)
+	 => (lambda (prefix) (unparse-list/prefix-pair prefix pair)))
+	((unparse-list/unparser pair)
+	 => (lambda (method) (invoke-user-method method pair)))
+	(else
+	 (unparse-list pair))))
 
 (define (unparse-list list)
   (limit-unparse-depth

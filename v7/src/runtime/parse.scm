@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.57 2004/11/19 18:15:01 cph Exp $
+$Id: parse.scm,v 14.58 2005/03/30 03:50:26 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1997,1998,1999 Massachusetts Institute of Technology
-Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -34,14 +34,17 @@ USA.
 (define *parser-canonicalize-symbols?* #t)
 (define *parser-associate-positions?* #f)
 (define ignore-extra-list-closes #t)
+(define runtime-parser-radix 10)
+(define runtime-parser-canonicalize-symbols? #t)
+(define runtime-parser-associate-positions? #t)
 
-(define (parse-object port table)
-  ((top-level-parser port) port table))
+(define (parse-object port environment)
+  ((top-level-parser port) port environment))
 
-(define (parse-objects port table last-object?)
+(define (parse-objects port environment last-object?)
   (let ((parser (top-level-parser port)))
     (let loop ()
-      (let ((object (parser port table)))
+      (let ((object (parser port environment)))
 	(if (last-object? object)
 	    '()
 	    (cons-stream object (loop)))))))
@@ -50,9 +53,9 @@ USA.
   (or (port/operation port 'READ)
       (let ((read-start (port/operation port 'READ-START))
 	    (read-finish (port/operation port 'READ-FINISH)))
-	(lambda (port table)
+	(lambda (port environment)
 	  (if read-start (read-start port))
-	  (let ((db (initial-db port table)))
+	  (let ((db (initial-db port environment)))
 	    (let ((object (dispatch port db 'TOP-LEVEL)))
 	      (if read-finish (read-finish port))
 	      (finish-parsing object db)))))))
@@ -102,6 +105,8 @@ USA.
 (define char-set/atom-delimiters)
 (define char-set/symbol-quotes)
 (define char-set/number-leaders)
+(define *parser-table*)
+(define runtime-parser-table)
 
 (define (initialize-package!)
   (let* ((constituents
@@ -161,7 +166,8 @@ USA.
     (set! char-set/atom-delimiters atom-delimiters)
     (set! char-set/symbol-quotes symbol-quotes)
     (set! char-set/number-leaders number-leaders))
-  (set-current-parser-table! system-global-parser-table)
+  (set! *parser-table* system-global-parser-table)
+  (set! runtime-parser-table system-global-parser-table)
   (initialize-condition-types!))
 
 (define-integrable (atom-delimiter? char)
@@ -211,38 +217,38 @@ USA.
   continue-parsing)
 
 (define (handler:atom port db ctx char)
-  db ctx
-  (receive (string quoted?) (parse-atom port (list char))
+  ctx
+  (receive (string quoted?) (parse-atom port db (list char))
     (if quoted?
 	(%string->symbol string)
-	(or (string->number string *parser-radix*)
+	(or (string->number string (db-radix db))
 	    (%string->symbol string)))))
 
 (define (handler:symbol port db ctx char)
-  db ctx
-  (receive (string quoted?) (parse-atom port (list char))
+  ctx
+  (receive (string quoted?) (parse-atom port db (list char))
     quoted?
     (%string->symbol string)))
 
 (define (handler:number port db ctx char1 char2)
-  db ctx
-  (parse-number port (list char1 char2)))
+  ctx
+  (parse-number port db (list char1 char2)))
 
-(define (parse-number port prefix)
-  (let ((string (parse-atom/no-quoting port prefix)))
-    (or (string->number string *parser-radix*)
+(define (parse-number port db prefix)
+  (let ((string (parse-atom/no-quoting port db prefix)))
+    (or (string->number string (db-radix db))
 	(error:illegal-number string))))
 
-(define (parse-atom port prefix)
-  (parse-atom-1 port prefix #t))
+(define (parse-atom port db prefix)
+  (parse-atom-1 port db prefix #t))
 
-(define (parse-atom/no-quoting port prefix)
-  (parse-atom-1 port prefix #f))
+(define (parse-atom/no-quoting port db prefix)
+  (parse-atom-1 port db prefix #f))
 
-(define (parse-atom-1 port prefix quoting?)
+(define (parse-atom-1 port db prefix quoting?)
   (let ((port* (open-output-string))
 	(canon
-	 (if *parser-canonicalize-symbols?*
+	 (if (db-canonicalize-symbols? db)
 	     char-downcase
 	     identity-procedure))
 	(%read
@@ -425,22 +431,22 @@ USA.
 	(integer->char (fix:+ (fix:lsh (fix:+ (fix:lsh d1 3) d2) 3) d3))))))
 
 (define (handler:false port db ctx char1 char2)
-  db ctx
-  (let ((string (parse-atom/no-quoting port (list char1 char2))))
+  ctx
+  (let ((string (parse-atom/no-quoting port db (list char1 char2))))
     (if (not (string-ci=? string "#f"))
 	(error:illegal-boolean string)))
   #f)
 
 (define (handler:true port db ctx char1 char2)
-  db ctx
-  (let ((string (parse-atom/no-quoting port (list char1 char2))))
+  ctx
+  (let ((string (parse-atom/no-quoting port db (list char1 char2))))
     (if (not (string-ci=? string "#t"))
 	(error:illegal-boolean string)))
   #t)
 
 (define (handler:bit-string port db ctx char1 char2)
-  db ctx char1 char2
-  (let ((string (parse-atom/no-quoting port '())))
+  ctx char1 char2
+  (let ((string (parse-atom/no-quoting port db '())))
     (let ((n-bits (string-length string)))
       (unsigned-integer->bit-string
        n-bits
@@ -478,8 +484,8 @@ USA.
 		  (loop)))))))))
 
 (define (handler:named-constant port db ctx char1 char2)
-  db ctx char1 char2
-  (let ((name (parse-atom/no-quoting port '())))
+  ctx char1 char2
+  (let ((name (parse-atom/no-quoting port db '())))
     (cond ((string-ci=? name "null") '())
 	  ((string-ci=? name "false") #f)
 	  ((string-ci=? name "true") #t)
@@ -498,8 +504,8 @@ USA.
 (define lambda-key-tag (object-new-type (ucode-type constant) 5))
 
 (define (handler:unhash port db ctx char1 char2)
-  db ctx char1 char2
-  (let ((object (parse-unhash (parse-number port '()))))
+  ctx char1 char2
+  (let ((object (parse-unhash (parse-number port db '()))))
     ;; This may seem a little random, because #@N doesn't just
     ;; return an object.  However, the motivation for this piece of
     ;; syntax is convenience -- and 99.99% of the time the result of
@@ -573,17 +579,39 @@ USA.
     char))
 
 (define-structure db
-  (parser-table #f read-only #t)
+  (environment #f read-only #t)
   (shared-objects #f read-only #t)
   (get-position #f read-only #t)
   position-mapping)
 
-(define (initial-db port table)
-  (make-db table (make-shared-objects) (position-operation port) '()))
+(define (initial-db port environment)
+  (let ((environment
+	 (if (or (default-object? environment)
+		 (parser-table? environment))
+	     (nearest-repl/environment)
+	     (begin
+	       (guarantee-environment environment #f)
+	       environment))))
+    (make-db environment
+	     (make-shared-objects)
+	     (position-operation port environment)
+	     '())))
 
-(define (position-operation port)
+(define (db-radix db)
+  (environment-lookup (db-environment db) '*PARSER-RADIX*))
+
+(define (db-canonicalize-symbols? db)
+  (environment-lookup (db-environment db) '*PARSER-CANONICALIZE-SYMBOLS?*))
+
+(define (db-associate-positions? db)
+  (environment-lookup (db-environment db) '*PARSER-ASSOCIATE-POSITIONS?*))
+
+(define (db-parser-table db)
+  (environment-lookup (db-environment db) '*PARSER-TABLE*))
+
+(define (position-operation port environment)
   (let ((default (lambda (port) port #f)))
-    (if *parser-associate-positions?*
+    (if (environment-lookup environment '*PARSER-ASSOCIATE-POSITIONS?*)
 	(or (port/operation port 'POSITION)
 	    default)
 	default)))
@@ -598,7 +626,7 @@ USA.
 				      (db-position-mapping db)))))
 
 (define-integrable (finish-parsing object db)
-  (if *parser-associate-positions?*
+  (if (db-associate-positions? db)
       (cons object (db-position-mapping db))
       object))
 

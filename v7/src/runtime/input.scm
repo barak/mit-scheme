@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: input.scm,v 14.30 2004/11/19 17:40:30 cph Exp $
+$Id: input.scm,v 14.31 2005/03/30 03:49:59 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1997,1999,2002,2003 Massachusetts Institute of Technology
-Copyright 2004 Massachusetts Institute of Technology
+Copyright 2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -189,13 +189,8 @@ USA.
 (define (read-string delimiters #!optional port)
   (input-port/read-string (optional-input-port port 'READ-STRING) delimiters))
 
-(define (read #!optional port parser-table)
-  (parse-object (optional-input-port port 'READ)
-		(if (default-object? parser-table)
-		    (current-parser-table)
-		    (begin
-		      (guarantee-parser-table parser-table 'READ)
-		      parser-table))))
+(define (read #!optional port environment)
+  (parse-object (optional-input-port port 'READ) environment))
 
 (define (read-line #!optional port)
   (input-port/read-line (optional-input-port port 'READ-LINE)))

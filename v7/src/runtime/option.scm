@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: option.scm,v 14.45 2005/03/08 20:45:24 cph Exp $
+$Id: option.scm,v 14.46 2005/03/30 03:52:00 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1997,1998,2001,2002 Massachusetts Institute of Technology
@@ -61,10 +61,9 @@ USA.
     (define (make-load-environment)
       (extend-top-level-environment system-global-environment))
 
-    (fluid-let ((*parser-canonicalize-symbols?* #t))
-      (if (memq name loaded-options)
-	  name
-	  (find-option *options* *parent*)))))
+    (if (memq name loaded-options)
+	name
+	(find-option *options* *parent*))))
 
 (define (define-load-option name . loaders)
   (set! *options* (cons (cons name loaders) *options*))

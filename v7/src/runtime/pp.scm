@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: pp.scm,v 14.46 2003/02/14 18:28:33 cph Exp $
+$Id: pp.scm,v 14.47 2005/03/30 03:50:48 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1995,1996,1999 Massachusetts Institute of Technology
-Copyright 2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -519,10 +519,7 @@ USA.
 
 (define print-procedure)
 (define (kernel/print-procedure nodes optimistic pessimistic depth)
-  (if (and *unparse-disambiguate-null-lambda-list?*
-	   (member (car nodes) '("#f" "#F")))
-      (*unparse-string "()")
-      (print-node (car nodes) optimistic 0))
+  (print-node (car nodes) optimistic 0)
   (let ((rest (cdr nodes)))
     (if (not (null? rest))
 	(begin
@@ -692,7 +689,7 @@ USA.
      (unparser (make-unparser-state port
 				    list-depth
 				    #t
-				    (current-unparser-table))
+				    (nearest-repl/environment))
 	       object))))
 
 (define (walk-pair pair list-depth)

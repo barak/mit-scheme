@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: output.scm,v 14.35 2004/11/19 17:37:48 cph Exp $
+$Id: output.scm,v 14.36 2005/03/30 03:50:18 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1999,2001,2002,2003 Massachusetts Institute of Technology
-Copyright 2004 Massachusetts Institute of Technology
+Copyright 2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -63,8 +63,8 @@ USA.
 (define (output-port/discretionary-flush port)
   ((port/operation/discretionary-flush-output port) port))
 
-(define (output-port/write-object port object unparser-table)
-  (unparse-object/top-level object port #t unparser-table))
+(define (output-port/write-object port object environment)
+  (unparse-object/top-level object port #t environment))
 
 (define (output-port/x-size port)
   (or (let ((operation (port/operation port 'X-SIZE)))
@@ -138,24 +138,19 @@ USA.
 	       (fix:> n 0)))
 	(output-port/discretionary-flush port))))
 
-(define (display object #!optional port unparser-table)
+(define (display object #!optional port environment)
   (let ((port (optional-output-port port 'DISPLAY)))
-    (unparse-object/top-level object port #f
-			      (optional-unparser-table unparser-table
-						       'DISPLAY))
+    (unparse-object/top-level object port #f environment)
     (output-port/discretionary-flush port)))
 
-(define (write object #!optional port unparser-table)
+(define (write object #!optional port environment)
   (let ((port (optional-output-port port 'WRITE)))
-    (output-port/write-object port object
-			      (optional-unparser-table unparser-table 'WRITE))
+    (output-port/write-object port object environment)
     (output-port/discretionary-flush port)))
 
-(define (write-line object #!optional port unparser-table)
+(define (write-line object #!optional port environment)
   (let ((port (optional-output-port port 'WRITE-LINE)))
-    (output-port/write-object port object
-			      (optional-unparser-table unparser-table
-						       'WRITE-LINE))
+    (output-port/write-object port object environment)
     (output-port/write-char port #\newline)
     (output-port/discretionary-flush port)))
 
@@ -178,11 +173,6 @@ USA.
   (if (default-object? port)
       (current-output-port)
       (guarantee-output-port port caller)))
-
-(define (optional-unparser-table unparser-table caller)
-  (if (default-object? unparser-table)
-      (current-unparser-table)
-      (guarantee-unparser-table unparser-table caller)))
 
 ;;;; Tabular output
 

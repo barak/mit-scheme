@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: studen.scm,v 1.13 2003/02/14 18:28:35 cph Exp $
+$Id: studen.scm,v 1.14 2005/03/30 03:52:40 cph Exp $
 
 Copyright (c) 1987-1999 Massachusetts Institute of Technology
 
@@ -98,12 +98,12 @@ USA.
   (access set-atom-delimiters! (->environment '(runtime parser))))
 
 (define (enable-system-syntax)
-  (set-current-parser-table! system-global-parser-table)
+  (set! *parser-table* system-global-parser-table)
   (set-atom-delimiters! 'mit-scheme)
   (set-repl/syntax-table! (nearest-repl) system-global-syntax-table))
 
 (define (disable-system-syntax)
-  (set-current-parser-table! *student-parser-table*)
+  (set! *parser-table* *student-parser-table*)
   (set-atom-delimiters! 'sicp)
   (set-repl/syntax-table! (nearest-repl) *student-syntax-table*))
 

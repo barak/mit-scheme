@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.69 2005/03/29 05:03:53 cph Exp $
+$Id: load.scm,v 14.70 2005/03/30 03:50:09 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1999,2000,2001,2002,2003 Massachusetts Institute of Technology
-Copyright 2004 Massachusetts Institute of Technology
+Copyright 2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -219,7 +219,7 @@ USA.
 			  purify?))
 	(let ((value-stream
 	       (lambda ()
-		 (eval-stream (read-stream port) environment))))
+		 (eval-stream (read-stream port environment) environment))))
 	  (if load-noisily?
 	      (write-stream (value-stream)
 			    (lambda (exp&value)
@@ -341,14 +341,14 @@ USA.
 			 (cdr frob))))))
       object))
 
-(define (read-file filename)
+(define (read-file filename #!optional environment)
   (call-with-input-file (pathname-default-version filename 'NEWEST)
     (lambda (port)
-      (stream->list (read-stream port)))))
+      (stream->list (read-stream port environment)))))
 
-(define (read-stream port)
+(define (read-stream port environment)
   (parse-objects port
-		 (current-parser-table)
+		 environment
 		 (lambda (object)
 		   (and (eof-object? object)
 			(begin
