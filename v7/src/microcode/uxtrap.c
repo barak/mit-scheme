@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.c,v 1.9 1991/05/05 00:46:12 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.c,v 1.10 1991/05/07 17:33:39 jinx Exp $
 
 Copyright (c) 1990-1991 Massachusetts Institute of Technology
 
@@ -676,11 +676,6 @@ DEFUN (find_block_address_in_area, (pc_value, area_start),
 	  {
 	    switch (READ_LINKAGE_KIND (object))
 	    {
-	      case REFERENCE_LINKAGE_KIND:
-	      case ASSIGNMENT_LINKAGE_KIND:
-	        area += ((READ_CACHE_LINKAGE_COUNT (object)) + 1);
-		break;
-
 	      case OPERATOR_LINKAGE_KIND:
 	      case GLOBAL_OPERATOR_LINKAGE_KIND:
 	      {
@@ -690,12 +685,21 @@ DEFUN (find_block_address_in_area, (pc_value, area_start),
 	      }
 
 	      default:
+#if 0
 	      {
 		gc_death (TERM_EXIT,
 			  "find_block_address: Unknown compiler linkage kind.",
 			  area, NULL);
 		/*NOTREACHED*/
 	      }
+#else
+	      /* Fall through, no reason to crash here. */
+#endif
+	      case REFERENCE_LINKAGE_KIND:
+	      case ASSIGNMENT_LINKAGE_KIND:
+	        area += ((READ_CACHE_LINKAGE_COUNT (object)) + 1);
+		break;
+
 	    }
 	    break;
 	  }
