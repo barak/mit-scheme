@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: edwin.sf,v 1.12 1995/01/06 18:38:08 cph Exp $
+;;;	$Id: edwin.sf,v 1.13 1995/10/31 23:26:48 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
@@ -91,14 +91,24 @@
 
 (load "decls")
 
-(in-package (->environment '(CROSS-REFERENCE))
-  ((generate/common
-    (lambda (pathname pmodel)
-      (write-cref-unusual pathname pmodel)
-      (write-globals pathname pmodel)
-      (write-constructor pathname pmodel)))
-   "edwin"))
-(sf "edwin.con")
+(let ((generate
+       (in-package (->environment '(CROSS-REFERENCE))
+	 (generate/common
+	  (lambda (pathname pmodel)
+	    (write-cref-unusual pathname pmodel)
+	    (write-globals pathname pmodel)
+	    (write-constructor pathname pmodel)))))
+      (name
+       (case microcode-id/operating-system
+	 ((DOS) "edwindos")
+	 ((NT) "edwinw32")
+	 ((OS2) "edwinos2")
+	 ((UNIX) "edwinunx")
+	 (else "edwin"))))
+  (if (not (string=? name "edwin"))
+      (copy-file "edwin.pkg" (pathname-new-type name "pkg")))
+  (generate name)
+  (sf (pathname-new-type name "con")))
 (if (not (file-processed? "edwin" "ldr" "bld"))
     (sf "edwin.ldr"))
 (if (and (file-exists? "edwin.avd")
