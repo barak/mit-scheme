@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.c,v 9.30 1990/02/11 22:34:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.c,v 9.31 1990/05/16 22:42:04 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -1208,7 +1208,10 @@ bignum_divide_subtract (v_start, v_end, guess, u_start)
 	}
     }
   if (carry == 1)
-    (*u_scan) += 1;
+    {
+      bignum_digit_type sum = ((*u_scan) + carry);
+      (*u_scan) = ((sum < BIGNUM_RADIX) ? sum : (sum - BIGNUM_RADIX));
+    }
   return (guess - 1);
 }
 
