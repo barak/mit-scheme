@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gcloop.c,v 9.35 1991/05/05 00:45:55 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gcloop.c,v 9.36 1991/06/20 18:13:00 cph Exp $
  *
  * This file contains the code for the most primitive part
  * of garbage collection.
@@ -55,12 +55,6 @@ extern SCHEME_OBJECT *GCLoop();
   GC_Pointer(Setup_Pointer(true, Extra_Code));				\
 }
 
-#ifdef ENABLE_DEBUGGING_TOOLS
-#ifndef ENABLE_GC_DEBUGGING_TOOLS
-#define ENABLE_GC_DEBUGGING_TOOLS
-#endif
-#endif
-
 #ifdef ENABLE_GC_DEBUGGING_TOOLS
 
 #ifndef GC_SCAN_HISTORY_SIZE
@@ -104,6 +98,7 @@ static int gc_scan_history_index;
       (To == gc_free_trap))						\
   {									\
     fprintf(stderr, "\nGCLoop: trap.\n");				\
+    abort ();								\
   }									\
 }
 
