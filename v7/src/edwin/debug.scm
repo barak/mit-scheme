@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.42 1998/03/08 07:25:49 cph Exp $
+;;;	$Id: debug.scm,v 1.43 1998/03/08 07:31:19 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-98 Massachusetts Institute of Technology
 ;;;
@@ -987,11 +987,6 @@ The buffer below describes the current subproblem or reduction.
 
 ;;;; Debugger Entry
 
-(define-command browse-continuation
-  "Invoke the continuation-browser on CONTINUATION."
-  "XBrowse Continuation"
-  select-continuation-browser-buffer)
-
 (define (select-continuation-browser-buffer object #!optional thread)
   (set! value? #f)
   (let ((buffers (find-debugger-buffers)))
@@ -1015,6 +1010,11 @@ The buffer below describes the current subproblem or reduction.
 	       (select-window window))
 	     (select-buffer buffer))))
      ((ref-command browser-select-line)))))
+
+(define-command browse-continuation
+  "Invoke the continuation-browser on CONTINUATION."
+  "XBrowse Continuation"
+  select-continuation-browser-buffer)
 
 (define (make-debug-screen buffer)
   (and (multiple-screens?)
