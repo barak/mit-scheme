@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.23 1992/04/06 20:25:27 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.24 1992/04/21 17:27:25 mhwu Exp $
 ;;;
 ;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -299,12 +299,28 @@ Includes the new backup.  Must be > 0."
 	(pathname-type (->namestring (pathname-new-type pathname false)))
 	type)))
 
+(define (os/completion-ignore-filename? filename)
+  (and (not (os/file-directory? filename))
+       (there-exists? (ref-variable completion-ignored-extensions)
+         (lambda (extension)
+	   (string-suffix? extension filename)))))
+
 (define (os/completion-ignored-extensions)
   (append '(".o" ".elc" ".bin" ".lbin" ".fasl"
 		 ".dvi" ".toc" ".log" ".aux"
 		 ".lof" ".blg" ".bbl" ".glo" ".idx" ".lot")
 	  (list-copy unix/backup-suffixes)))
 
+(define-variable completion-ignored-extensions
+  "Completion ignores filenames ending in any string in this list."
+  (os/completion-ignored-extensions)
+  (lambda (extensions)
+    (and (list? extensions)
+	 (for-all? extensions
+	   (lambda (extension)
+	     (and (string? extension)
+		  (not (string-null? extension))))))))
+
 (define (os/file-type-to-major-mode)
   (alist-copy
    `(("article" . text)

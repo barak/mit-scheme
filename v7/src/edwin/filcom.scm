@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.166 1992/04/08 17:57:43 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.167 1992/04/21 17:27:36 mhwu Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -665,19 +665,7 @@ If a file with the new name already exists, confirmation is requested first."
     (if (os/file-directory? (os/make-filename directory (car filenames)))
 	(set-car! filenames (os/filename-as-directory (car filenames)))))
   (sort filenames string<?))
-
-(define (completion-ignore-filename? filename)
-  (and (not (os/file-directory? filename))
-       (there-exists? (ref-variable completion-ignored-extensions)
-	 (lambda (extension)
-	   (string-suffix? extension filename)))))
 
-(define-variable completion-ignored-extensions
-  "Completion ignores filenames ending in any string in this list."
-  (os/completion-ignored-extensions)
-  (lambda (extensions)
-    (and (list? extensions)
-	 (for-all? extensions
-	   (lambda (extension)
-	     (and (string? extension)
-		  (not (string-null? extension))))))))
+(define-integrable (completion-ignore-filename? filename)
+  (os/completion-ignore-filename? filename))
+
