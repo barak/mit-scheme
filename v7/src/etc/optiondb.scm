@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: optiondb.scm,v 1.11 2003/02/14 18:28:14 cph Exp $
+$Id: optiondb.scm,v 1.12 2004/01/16 21:05:12 cph Exp $
 
-Copyright (c) 2000-2002 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -97,6 +97,9 @@ USA.
 
 (define-load-option 'SOS
   (guarded-system-loader '(sos) "sos"))
+
+(define-load-option 'SSP
+  (guarded-system-loader '(runtime ssp) "ssp"))
 
 (define-load-option 'STUDENT
   (guarded-system-loader '(student) "6001"))
