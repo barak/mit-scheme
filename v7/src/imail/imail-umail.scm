@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.24 2000/05/16 04:14:42 cph Exp $
+;;; $Id: imail-umail.scm,v 1.25 2000/05/17 15:03:01 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -64,7 +64,9 @@
 
 ;;;; Message
 
-(define-class <umail-message> (<message>)
+(define-class (<umail-message>
+	       (constructor (header-fields body flags from-line)))
+    (<message>)
   (from-line define accessor))
 
 (define-method umail-message-from-line ((message <message>))
@@ -75,7 +77,14 @@
 			    (rfc822:first-address from)))
 		     "unknown")
 		 " "
-		 (universal-time->local-ctime-string (get-universal-time))))
+		 (universal-time->local-ctime-string
+		  (message-internal-time message))))
+
+(define-method make-message-copy ((message <message>) (folder <umail-folder>))
+  (make-umail-message (message-header-fields message)
+		      (message-body message)
+		      (list-copy (message-flags message))
+		      (umail-message-from-line message)))
 
 (define-method message-internal-time ((message <umail-message>))
   (or (extract-umail-from-time (umail-message-from-line message))
@@ -110,46 +119,42 @@
   (let read-headers ((header-lines '()))
     (let ((line (read-line port)))
       (cond ((eof-object? line)
-	     (values (make-umail-message from-line
-					 (reverse! header-lines)
-					 '())
+	     (values (read-umail-message-1 from-line
+					   (reverse! header-lines)
+					   '())
 		     #f))
 	    ((string-null? line)
 	     (let read-body ((body-lines '()))
 	       (let ((line (read-line port)))
 		 (cond ((eof-object? line)
-			(values (make-umail-message from-line
-						    (reverse! header-lines)
-						    (reverse! body-lines))
+			(values (read-umail-message-1 from-line
+						      (reverse! header-lines)
+						      (reverse! body-lines))
 				#f))
 		       ((umail-delimiter? line)
-			(values (make-umail-message from-line
-						    (reverse! header-lines)
-						    (reverse! body-lines))
+			(values (read-umail-message-1 from-line
+						      (reverse! header-lines)
+						      (reverse! body-lines))
 				line))
 		       (else
 			(read-body (cons line body-lines)))))))
 	    (else
 	     (read-headers (cons line header-lines)))))))
 
-(define make-umail-message
-  (let ((constructor
-	 (instance-constructor <umail-message>
-			       '(HEADER-FIELDS BODY FLAGS FROM-LINE))))
-    (lambda (from-line header-lines body-lines)
-      (call-with-values
-	  (lambda ()
-	    (parse-imail-header-fields (lines->header-fields header-lines)))
-	(lambda (headers flags)
-	  (constructor headers
-		       (lines->string
-			(map (lambda (line)
-			       (if (string-prefix-ci? ">From " line)
-				   (string-tail line 1)
-				   line))
-			     body-lines))
-		       flags
-		       from-line))))))
+(define (read-umail-message-1 from-line header-lines body-lines)
+  (call-with-values
+      (lambda ()
+	(parse-imail-header-fields (lines->header-fields header-lines)))
+    (lambda (headers flags)
+      (make-umail-message headers
+			  (lines->string
+			   (map (lambda (line)
+				  (if (string-prefix-ci? ">From " line)
+				      (string-tail line 1)
+				      line))
+				body-lines))
+			  flags
+			  from-line))))
 
 (define (umail-delimiter? line)
   (re-string-match unix-mail-delimiter line))

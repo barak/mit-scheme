@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.24 2000/05/15 19:17:12 cph Exp $
+;;; $Id: imail-file.scm,v 1.25 2000/05/17 15:03:15 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -92,7 +92,7 @@
 (define-method %append-message ((message <message>) (url <file-url>))
   (let ((folder (get-memoized-folder url)))
     (if folder
-	(let ((message (copy-message message)))
+	(let ((message (make-message-copy message folder)))
 	  (without-interrupts
 	   (lambda ()
 	     (set-file-folder-messages!
@@ -115,6 +115,7 @@
 		      (list message))))))))
 	(append-message-to-file message url))))
 
+(define-generic make-message-copy (message folder))
 (define-generic append-message-to-file (message url))
 
 (define-method expunge-deleted-messages ((folder <file-folder>))

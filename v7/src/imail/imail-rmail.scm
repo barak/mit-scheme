@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.28 2000/05/16 18:55:38 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.29 2000/05/17 15:03:10 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -91,6 +91,12 @@
 (define-method rmail-message-displayed-header-fields ((message <message>))
   message
   'UNDEFINED)
+
+(define-method make-message-copy ((message <message>) (folder <rmail-folder>))
+  (make-rmail-message (message-header-fields message)
+		      (message-body message)
+		      (list-copy (message-flags message))
+		      (rmail-message-displayed-header-fields message)))
 
 ;;;; Read RMAIL file
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.61 2000/05/16 18:55:35 cph Exp $
+;;; $Id: imail-core.scm,v 1.62 2000/05/17 15:03:49 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -330,11 +330,6 @@
 (define (guarantee-message message procedure)
   (if (not (message? message))
       (error:wrong-type-argument message "IMAIL message" procedure)))
-
-(define (copy-message message)
-  (make-message (map copy-header-field (message-header-fields message))
-		(message-body message)
-		(list-copy (message-flags message))))
 
 (define (attach-message! message folder index)
   (guarantee-folder folder 'ATTACH-MESSAGE!)
