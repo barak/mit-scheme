@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: sendmail.scm,v 1.36 1997/10/31 01:23:02 cph Exp $
+;;;	$Id: sendmail.scm,v 1.37 1997/11/04 11:04:46 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-97 Massachusetts Institute of Technology
 ;;;
@@ -106,6 +106,25 @@ so you can remove or alter the BCC field to override the default."
   "Name of file to write all outgoing messages in, or false for none."
   false
   string-or-false?)
+
+(define-variable mail-relay-host
+  "Name of host to which all outgoing mail should be sent.
+Can be a host name (a string) or #F.
+If #F, mail is passed to sendmail for handling.
+Otherwise, mail is sent directly to the named host using SMTP."
+  #f
+  string-or-false?)
+
+(define-variable smtp-trace
+  "If true, direct SMTP transmissions are traced in a buffer."
+  #f
+  boolean?)
+
+(define-variable smtp-require-valid-recipients
+  "If true, all SMTP recipients must be valid before a message is sent.
+Otherwise, only one valid recipient is required."
+  #t
+  boolean?)
 
 (define-variable mail-yank-ignored-headers
   "Delete these headers from old message when it's inserted in a reply."
@@ -640,9 +659,15 @@ the user from the mailer."
 	       ;; Don't send out a blank subject line.
 	       (if (re-search-forward "^Subject:[ \t]*\n" start end #t)
 		   (delete-match))))))
-      (let ((errors (send-mail-buffer temp-buffer mail-buffer)))
-	(kill-buffer temp-buffer)
-	(if errors (editor-error errors))))))
+      (dynamic-wind
+       (lambda () unspecific)
+       (lambda ()
+	 (if (ref-variable mail-relay-host mail-buffer)
+	     (smtp-mail-buffer temp-buffer mail-buffer)
+	     (let ((errors (send-mail-buffer temp-buffer mail-buffer)))
+	       (if errors
+		   (editor-error errors)))))
+       (lambda () (kill-buffer temp-buffer))))))
 
 (define (prepare-mail-buffer-for-sending mail-buffer process-header)
   (let ((temp-buffer (temporary-buffer " sendmail temp")))
@@ -764,3 +789,215 @@ the user from the mailer."
 	  (begin
 	    (mark-temporary! m)
 	    pathnames)))))
+
+;;;; Direct SMTP
+
+(define (smtp-mail-buffer mail-buffer lookup-buffer)
+  (let ((msg "Sending..."))
+    (message msg)
+    (let ((from
+	   (rfc822-addresses->string
+	    (rfc822-strip-quoted-names (mail-from-string lookup-buffer))))
+	  (rcpts (mail-deduce-address-list mail-buffer))
+	  (trace-buffer
+	   (and (ref-variable smtp-trace lookup-buffer)
+		(temporary-buffer "*SMTP-trace*")))
+	  (require-valid?
+	   (ref-variable smtp-require-valid-recipients lookup-buffer))
+	  (valid-response?
+	   (lambda (response) (= 250 (smtp-response-number response)))))
+      (if (null? rcpts)
+	  (editor-error "No recipients specified for mail."))
+      (mail-delete-bcc-lines mail-buffer)
+      (let ((responses
+	     (call-with-smtp-socket (ref-variable mail-relay-host
+						  lookup-buffer)
+				    trace-buffer
+	       (lambda (port banner)
+		 (smtp-command/helo port)
+		 (smtp-command/mail port from)
+		 (let ((responses
+			(map (lambda (rcpt)
+			       (smtp-command/rcpt port rcpt))
+			     rcpts)))
+		   (if (if require-valid?
+			   (for-all? responses valid-response?)
+			   (there-exists? responses valid-response?))
+		       (smtp-command/data port mail-buffer)
+		       (smtp-command/rset port))
+		   (smtp-command/quit port)
+		   responses)))))
+	(cond ((not (for-all? responses valid-response?))
+	       (pop-up-temporary-buffer "*SMTP-invalid*"
+					'(READ-ONLY FLUSH-ON-SPACE)
+		 (lambda (buffer window)
+		   (let ((m (mark-left-inserting-copy (buffer-start buffer))))
+		     (for-each (lambda (rcpt response)
+				 (if (not (valid-response? response))
+				     (begin
+				       (insert-string rcpt m)
+				       (insert-char #\tab m)
+				       (insert-string response m)
+				       (insert-newline m))))
+			       rcpts responses)
+		     (mark-temporary! m)))))
+	      (trace-buffer
+	       (set-buffer-point! trace-buffer (buffer-start trace-buffer))
+	       (buffer-not-modified! trace-buffer)
+	       (pop-up-buffer trace-buffer #f)))
+	(message msg
+		 (if (if require-valid?
+			 (for-all? responses valid-response?)
+			 (there-exists? responses valid-response?))
+		     "done"
+		     "aborted"))))))
+
+(define (mail-deduce-address-list mail-buffer)
+  (let* ((header-start (buffer-start mail-buffer))
+	 (header-end (mail-header-end header-start))
+	 (regexp
+	  (if (mail-field-start header-start header-end "resent-to")
+	      "^\\(resent-to:\\|resent-cc:\\|resent-bcc:\\)[ \t]*"
+	      "^\\(to:\\|cc:\\|bcc:\\)[ \t]*")))
+    (let loop ((start header-start) (addresses '()))
+      (let ((field-start (re-search-forward regexp start header-end #t)))
+	(if field-start
+	    (let ((field-end (%mail-field-end field-start header-end)))
+	      (loop field-end
+		    (cons (rfc822-strip-quoted-names
+			   (extract-string field-start field-end))
+			  addresses)))
+	    (apply append (reverse! addresses)))))))
+
+(define (mail-delete-bcc-lines mail-buffer)
+  (let* ((header-start (buffer-start mail-buffer))
+	 (header-end (mail-header-end header-start)))
+    (let loop ((start header-start))
+      (let ((fs (mail-field-start start header-end "bcc")))
+	(if fs
+	    (let ((ls (line-start fs 0)))
+	      (delete-string ls
+			     (let ((fe (%mail-field-end fs end)))
+			       (if (mark< fe header-end) (mark1+ fe) fe)))
+	      (loop ls)))))))
+
+(define (call-with-smtp-socket host-name trace-buffer receiver)
+  (let ((port #f))
+    (dynamic-wind
+     (lambda ()
+       (set! port
+	     (make-smtp-port (open-tcp-stream-socket host-name "smtp")
+			     trace-buffer))
+       unspecific)
+     (lambda ()
+       (receiver port (smtp-read-response port 220)))
+     (lambda ()
+       (if port
+	   (begin
+	     (close-port (smtp-port-port port))
+	     (set! port #f)
+	     unspecific))))))
+
+(define-structure smtp-port
+  (port #f read-only #t)
+  (trace-buffer #f read-only #t))
+
+(define (smtp-read-line port)
+  (let ((line (read-line (smtp-port-port port))))
+    (smtp-trace-write-string line port)
+    (smtp-trace-newline port)
+    line))
+
+(define (smtp-write-line port . strings)
+  (for-each (lambda (string)
+	      (smtp-trace-write-string string port)
+	      (write-string string (smtp-port-port port)))
+	    strings)
+  (smtp-trace-newline port)
+  (newline (smtp-port-port port)))
+
+(define (smtp-drain-output port)
+  (flush-output (smtp-port-port port)))
+
+(define (smtp-trace-write-string string port)
+  (let ((trace-buffer (smtp-port-trace-buffer port)))
+    (if trace-buffer
+	(insert-string string (buffer-end trace-buffer)))))
+
+(define (smtp-trace-newline port)
+  (let ((trace-buffer (smtp-port-trace-buffer port)))
+    (if trace-buffer
+	(insert-newline (buffer-end trace-buffer)))))
+
+(define (smtp-command/helo port)
+  (smtp-write-line port "HELO " (os/hostname))
+  (smtp-read-response port 250))
+
+(define (smtp-command/mail port from)
+  (smtp-write-line port "MAIL FROM:<" from ">")
+  (smtp-read-response port 250))
+
+(define (smtp-command/rcpt port rcpt)
+  (smtp-write-line port "RCPT TO:<" rcpt ">")
+  (smtp-read-response port 250 550))
+
+(define (smtp-command/data port mail-buffer)
+  (smtp-write-line port "DATA")
+  (smtp-read-response port 354)
+  (let loop ((start (buffer-start mail-buffer)))
+    (if (not (group-end? start))
+	(let ((le (line-end start 0)))
+	  (let ((line (extract-string start le)))
+	    (if (and (fix:> 0 (string-length line))
+		     (char=? #\. (string-ref line 0)))
+		(smtp-write-line port "." line)
+		(smtp-write-line port line)))
+	  (if (not (group-end? le))
+	      (loop (mark1+ le))))))
+  (smtp-write-line port ".")
+  (smtp-read-response port 250))
+
+(define (smtp-command/rset port)
+  (smtp-write-line port "RSET")
+  (smtp-read-response port 250))
+
+(define (smtp-command/quit port)
+  (smtp-write-line port "QUIT")
+  (smtp-read-response port 221))
+
+(define (smtp-read-response port . numbers)
+  (smtp-drain-output port)
+  (let ((response (smtp-read-line port)))
+    (let ((n (smtp-response-number response)))
+      (if (not (there-exists? numbers (lambda (n*) (= n n*))))
+	  (editor-error response))
+      (if (smtp-response-continued? response)
+	  (let loop ((responses (list response)))
+	    (let ((response (smtp-read-line port)))
+	      (if (not (= n (smtp-response-number response)))
+		  (error "Mismatched codes in multiline response:" n response))
+	      (let ((responses (cons response responses)))
+		(if (smtp-response-continued? response)
+		    (loop responses)
+		    (convert-smtp-multiline-response (reverse! responses))))))
+	  response))))
+
+(define (smtp-response-number line)
+  (or (and (fix:>= (string-length line) 3)
+	   (substring->nonnegative-integer line 0 3))
+      (error "Malformed SMTP response:" line)))
+
+(define (smtp-response-continued? line)
+  (and (fix:>= (string-length line) 4)
+       (char=? #\- (string-ref line 3))))
+
+(define (convert-smtp-multiline-response responses)
+  (apply string-append
+	 (cons* (string-head (car responses) 3)
+		" "
+		(let ((lines
+		       (map (lambda (response) (string-tail (car responses) 4))
+			    responses)))
+		  (cons (car lines)
+			(append-map (lambda (line) (list "\n" line))
+				    lines))))))

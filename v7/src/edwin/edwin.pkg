@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.213 1997/10/31 01:24:24 cph Exp $
+$Id: edwin.pkg,v 1.214 1997/11/04 11:04:52 cph Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -1476,12 +1476,15 @@ MIT in each case. |#
 	  edwin-variable$mail-interactive
 	  edwin-variable$mail-mode-hook
 	  edwin-variable$mail-organization
+	  edwin-variable$mail-relay-host
 	  edwin-variable$mail-reply-buffer
 	  edwin-variable$mail-self-blind
 	  edwin-variable$mail-setup-hook
 	  edwin-variable$mail-yank-ignored-headers
 	  edwin-variable$send-mail-procedure
 	  edwin-variable$sendmail-program
+	  edwin-variable$smtp-require-valid-recipients
+	  edwin-variable$smtp-trace
 	  edwin-variable$user-mail-address
 	  mail-field-end
 	  mail-field-end!
