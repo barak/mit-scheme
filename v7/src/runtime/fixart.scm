@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: fixart.scm,v 1.5 2000/03/16 17:13:29 cph Exp $
+$Id: fixart.scm,v 1.6 2001/02/11 00:08:16 cph Exp $
 
-Copyright (c) 1988-2000 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;;; package: ()
 
 (declare (usual-integrations))
-
+
 (define-primitives
   (fix:fixnum? fixnum? 1)
   (fixnum? fixnum? 1)
@@ -99,12 +99,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (flo:ceiling->exact flonum-ceiling->exact 1)
   (flo:truncate->exact flonum-truncate->exact 1)
   (flo:round->exact flonum-round->exact 1)
-
   (flo:vector-cons floating-vector-cons 1)
   (flo:vector-length floating-vector-length 1)
   (flo:vector-ref floating-vector-ref 2)
   (flo:vector-set! floating-vector-set! 3))
-
+
 (define-integrable (fix:<= x y)
   (not (fix:> x y)))
 
@@ -137,3 +136,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (flo:max n m)
   (if (flo:> n m) n m))
+
+(define (->flonum x)
+  (if (not (real? x))
+      (error:wrong-type-argument x "real number" '->FLONUM))
+  (exact->inexact (real-part x)))
