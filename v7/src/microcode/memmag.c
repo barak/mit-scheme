@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: memmag.c,v 9.61 1996/03/27 23:13:07 adams Exp $
+$Id: memmag.c,v 9.62 1996/04/08 23:41:35 cph Exp $
 
 Copyright (c) 1987-96 Massachusetts Institute of Technology
 
@@ -52,16 +52,14 @@ MIT in each case. */
 
 /* Imports */
 
-extern SCHEME_OBJECT *
-  EXFUN (GCLoop, (SCHEME_OBJECT *, SCHEME_OBJECT **));
-extern SCHEME_OBJECT *
-  EXFUN (wabbit_hunting_gcloop, (SCHEME_OBJECT *, SCHEME_OBJECT **));
-extern void
-  EXFUN (wabbit_season, (SCHEME_OBJECT));
-extern void
-  EXFUN (duck_season, (SCHEME_OBJECT));
-extern void
-  EXFUN (fix_weak_chain_and_hunt_wabbits, (void));
+extern SCHEME_OBJECT * EXFUN (GCLoop, (SCHEME_OBJECT *, SCHEME_OBJECT **));
+extern SCHEME_OBJECT * EXFUN
+  (wabbit_hunting_gcloop, (SCHEME_OBJECT *, SCHEME_OBJECT **));
+extern void EXFUN (wabbit_season, (SCHEME_OBJECT));
+extern void EXFUN (duck_season, (SCHEME_OBJECT));
+extern void EXFUN (fix_weak_chain_and_hunt_wabbits, (void));
+extern void EXFUN (error_unimplemented_primitive, (void));
+
 
 /* Exports */
 
@@ -399,30 +397,35 @@ win32_advise_end_GC ()
   if (win32_flush_old_halfspace_p)
     win32_flush_old_halfspace ();
 }
+#endif /* WINNT */
 
-DEFINE_PRIMITIVE ("WIN32-FLUSH-OLD-HALFSPACE-AFTER-GC?!",
-		  Prim_win32_flush_old_halfspace_after_gc, 1, 1,
+DEFINE_PRIMITIVE ("WIN32-FLUSH-OLD-HALFSPACE-AFTER-GC?!", Prim_win32_flush_old_halfspace_after_gc, 1, 1,
 		  "(boolean)")
 {
   PRIMITIVE_HEADER (1);
+#ifdef WINNT
   {
     BOOL old = win32_flush_old_halfspace_p;
-    win32_flush_old_halfspace_p = (ARG_REF (1)) != SHARP_F;
+    win32_flush_old_halfspace_p = (OBJECT_TO_BOOLEAN (ARG_REF (1)));
     PRIMITIVE_RETURN (old ? SHARP_T : SHARP_F);
   }
+#else
+  error_unimplemented_primitive ();
+  PRIMITIVE_RETURN (SHARP_F);
+#endif
 }
 
-DEFINE_PRIMITIVE ("WIN32-FLUSH-OLD-HALFSPACE!", Prim_win32_flush_old_halfspace,
-		  0, 0,
+DEFINE_PRIMITIVE ("WIN32-FLUSH-OLD-HALFSPACE!", Prim_win32_flush_old_halfspace, 0, 0,
 		  "()")
 {
-  PRIMITIVE_HEADER (1);
-  {
-    win32_flush_old_halfspace ();
-    PRIMITIVE_RETURN (UNSPECIFIC);
-  }
+  PRIMITIVE_HEADER (0);
+#ifdef WINNT
+  win32_flush_old_halfspace ();
+#else
+  error_unimplemented_primitive ();
+#endif
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
-#endif  /* WINNT */
 
 /* Here is the set up for the full garbage collection:
 
