@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: psbtobin.c,v 9.56 1994/01/12 00:30:57 gjr Exp $
+$Id: psbtobin.c,v 9.57 1995/07/27 00:18:45 adams Exp $
 
 Copyright (c) 1987-1994 Massachusetts Institute of Technology
 
@@ -40,6 +40,7 @@ MIT in each case. */
 #include "psbmap.h"
 #include "float.h"
 #include "limits.h"
+
 #define portable_file input_file
 #define internal_file output_file
 
@@ -218,6 +219,7 @@ static SCHEME_OBJECT *
 DEFUN (read_a_string_internal, (To, maxlen),
        SCHEME_OBJECT * To AND long maxlen)
 {
+
   long ilen, Pointer_Count;
   fast char *str;
   fast long len;
@@ -261,8 +263,8 @@ DEFUN (read_a_string, (To, Slot),
 }
 
 static SCHEME_OBJECT *
-DEFUN (read_an_integer, (The_Type, To, Slot),
-       int The_Type AND SCHEME_OBJECT * To AND SCHEME_OBJECT * Slot)
+DEFUN (read_an_integer, (the_type, To, Slot),
+       int the_type AND SCHEME_OBJECT * To AND SCHEME_OBJECT * Slot)
 {
   Boolean negative;
   fast long length_in_bits;
@@ -276,7 +278,7 @@ DEFUN (read_an_integer, (The_Type, To, Slot),
     length_in_bits = l;
   }
   if ((length_in_bits <= fixnum_to_bits)
-      && (The_Type == TC_FIXNUM))
+      && (the_type == TC_POSITIVE_FIXNUM)) /* Always passed as POSITIVE! */
   {
     /* The most negative fixnum is handled in the bignum case */
     fast long Value = 0;
@@ -372,7 +374,7 @@ DEFUN (read_an_integer, (The_Type, To, Slot),
 
       low_digit = (- (BIGNUM_REF (bignum, 0)));
       if (negative
-	  && (The_Type == TC_FIXNUM)
+	  && (the_type == TC_POSITIVE_FIXNUM) /* Always passed as POSITIVE! */
 	  && (original_length_in_bits == (fixnum_to_bits + 1))
 	  && (LONG_TO_FIXNUM_P (low_digit)))
       {
@@ -388,10 +390,10 @@ DEFUN (read_an_integer, (The_Type, To, Slot),
 }
 
 SCHEME_OBJECT *
-DEFUN (read_a_bignum, (The_Type, To, Slot),
-       int The_Type AND SCHEME_OBJECT * To AND SCHEME_OBJECT * Slot)
+DEFUN (read_a_bignum, (the_type, To, Slot),
+       int the_type AND SCHEME_OBJECT * To AND SCHEME_OBJECT * Slot)
 {
-  return (read_an_integer (The_Type, To, Slot));
+  return (read_an_integer (the_type, To, Slot));
 }
 
 static SCHEME_OBJECT *
@@ -581,31 +583,36 @@ DEFUN (Read_External, (N, Table, To),
        AND SCHEME_OBJECT * To)
 {
   fast SCHEME_OBJECT *Until = &Table[N];
-  int The_Type;
+  int the_type;
 
   while (Table < Until)
   {
-    VMS_BUG (The_Type = 0);
-    fscanf (portable_file, "%2x", &The_Type);
-    switch (The_Type)
-    {
-      case TC_CHARACTER_STRING:
+    VMS_BUG (the_type = 0);
+    fscanf (portable_file, "%2x", &the_type);
+    switch (the_type)
+    { 
+      case TA_CHARACTER_STRING:
         To = (read_a_string (To, Table++));
 	continue;
 
-      case TC_BIT_STRING:
+      case TA_VECTOR_1B:
 	To = (read_a_bit_string (To, Table++));
 	continue;
 
-      case TC_FIXNUM:
-	To = (read_an_integer (The_Type, To, Table++));
+      case TA_FIXNUM:
+	/* Choice of POSITIVE/NEGATIVE for output is independent of    */
+	/* value on input, since the sign is indicated separately (for */
+	/* largely historical reasons) in the input file. The type     */
+	/* here is used to determine whether a FIXNUM or BIGNUM result */
+	/* is required.                                                */
+	To = (read_an_integer (TC_POSITIVE_FIXNUM, To, Table++));
 	continue;
 	
-      case TC_BIG_FIXNUM:
-	To = (read_a_bignum (The_Type, To, Table++));
+      case TA_BIGNUM:
+	To = (read_a_bignum (TC_BIG_FIXNUM, To, Table++));
 	continue;
 
-      case TC_CHARACTER:
+      case TA_CHARACTER:
       {
 	long the_char_code;
 
@@ -616,7 +623,7 @@ DEFUN (Read_External, (N, Table, To),
 	continue;
       }
 
-      case TC_BIG_FLONUM:
+      case TA_FLONUM:
       {
 	double The_Flonum = (read_a_flonum ());
 
@@ -631,7 +638,7 @@ DEFUN (Read_External, (N, Table, To),
       default:
 	fprintf (stderr,
 		 "%s: Unknown external object found; Type = 0x%02x\n",
-		 program_name, The_Type);
+		 program_name, the_type);
 	inconsistency ();
 	/*NOTREACHED*/
     }
@@ -658,9 +665,11 @@ DEFUN (print_external_objects, (area_name, Table, N),
   {
     switch (OBJECT_TYPE (*Table))
     {
-      case TC_FIXNUM:
-      {
-        fprintf (stderr,
+#if (TC_NEGATIVE_FIXNUM != TC_POSITIVE_FIXNUM)	
+      case TC_NEGATIVE_FIXNUM:
+#endif
+      case TC_POSITIVE_FIXNUM:
+      { fprintf (stderr,
 		 "Table[%6d] = Fixnum %d\n",
 		 (N - (Table_End - Table)),
 		 (FIXNUM_TO_LONG (*Table)));
@@ -809,45 +818,77 @@ static SCHEME_OBJECT * Relocate_Temp;
 
 #endif
 
+#define TRANSLATE_CONSTANT(value) {                                     \
+    *to++ = value;                                                      \
+    continue;                                                           \
+}
+
+#define TRANSLATE_NONPOINTER(typecode)   {                              \
+  *to++ = (MAKE_OBJECT(typecode, the_datum));                           \
+  continue;                                                             \
+}
+
+#define TRANSLATE_POINTER(typecode)   {                                 \
+  *to++ = (MAKE_POINTER_OBJECT(typecode, Relocate(the_datum)));         \
+  continue;                                                             \
+}
+
 static SCHEME_OBJECT *
 DEFUN (Read_Pointers_and_Relocate, (how_many, to),
        fast long how_many AND fast SCHEME_OBJECT * to)
 {
-  int The_Type;
-  long The_Datum;
+  int the_type;
+  long the_datum;
 
   while ((--how_many) >= 0)
   {
-    VMS_BUG (The_Type = 0);
-    VMS_BUG (The_Datum = 0);
-    fscanf (portable_file, "%2x %lx", &The_Type, &The_Datum);
-    switch (The_Type)
+    VMS_BUG (the_type = 0);
+    VMS_BUG (the_datum = 0);
+    fscanf (portable_file, "%2x %lx", &the_type, &the_datum);
+
+    switch (the_type)
     {
-      case CONSTANT_CODE:
-        WHEN (((The_Datum < 0) || (The_Datum >= Const_Objects)),
+      case TA_FALSE:      TRANSLATE_CONSTANT(SHARP_F);
+      case TA_NIL:        TRANSLATE_CONSTANT(EMPTY_LIST_VALUE);
+      case TA_TRUE:       TRANSLATE_CONSTANT(SHARP_T);
+      case TA_UNSPECIFIC: TRANSLATE_CONSTANT(UNSPECIFIC);
+
+      case TA_CONSTANT_CODE:
+        WHEN (((the_datum < 0) || (the_datum >= Const_Objects)),
 	      "CONSTANT_CODE too large");
-	*to++ = Const_Table[The_Datum];
+	*to++ = Const_Table[the_datum];
 	continue;
 
-      case HEAP_CODE:
-        WHEN (((The_Datum < 0) || (The_Datum >= Heap_Objects)),
+      case TA_HEAP_CODE:
+        WHEN (((the_datum < 0) || (the_datum >= Heap_Objects)),
 	      "HEAP_CODE too large");
-	*to++ = Heap_Table[The_Datum];
+	*to++ = Heap_Table[the_datum];
 	continue;
 	
-      case PURE_CODE:
-        WHEN (((The_Datum < 0) || (The_Datum >= Pure_Objects)),
+      case TA_PURE_CODE:
+        WHEN (((the_datum < 0) || (the_datum >= Pure_Objects)),
 	      "PURE_CODE too large");
-	*to++ = Pure_Table[The_Datum];
+	*to++ = Pure_Table[the_datum];
 	continue;
 
-      case TC_MANIFEST_NM_VECTOR:
-	*to++ = (MAKE_OBJECT (The_Type, The_Datum));
+      case TA_CHARACTER_STRING:
+      case TA_FIXNUM:
+      case TA_BIGNUM:
+      case TA_FLONUM:
+      case TA_CHARACTER:
+	fprintf (stderr,
+		 "%s: Unexpected external constant in pointer area: 0x%02x\n.",
+		 program_name, the_type);
+	inconsistency ();
+	continue;
+
+      case TA_MANIFEST_NM_VECTOR:
+	*to++ = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, the_datum));
         {
 	  fast long count;
 
-	  count = The_Datum;
-	  how_many -= count;
+	  count = the_datum;
+	  how_many = how_many - count;
 	  while (--count >= 0)
 	  {
 	    VMS_BUG (*to = 0);
@@ -856,39 +897,51 @@ DEFUN (Read_Pointers_and_Relocate, (how_many, to),
 	}
 	continue;
 
-      case TC_BROKEN_HEART:
-	if (The_Datum != 0)
+      case TA_BROKEN_HEART:
+	if (the_datum != 0)
 	{
 	  fprintf (stderr, "%s: Broken Heart found.\n", program_name);
 	  inconsistency ();
 	}
-	/* fall through */
+	TRANSLATE_NONPOINTER(TC_BROKEN_HEART);
 
-      case TC_PCOMB0:
-      case TC_PRIMITIVE:
-      case TC_MANIFEST_SPECIAL_NM_VECTOR:
-      case_simple_Non_Pointer:
-	*to++ = (MAKE_OBJECT (The_Type, The_Datum));
-	continue;
+      case TA_PCOMB0:               TRANSLATE_NONPOINTER(TC_PCOMB0);
+      case TA_PRIMITIVE:            TRANSLATE_NONPOINTER(TC_PRIMITIVE);
+      case TA_MANIFEST_SPECIAL_NM_VECTOR:
+                           TRANSLATE_NONPOINTER(TC_MANIFEST_SPECIAL_NM_VECTOR);
+      case TA_THE_ENVIRONMENT:      TRANSLATE_NONPOINTER(TC_THE_ENVIRONMENT);
+      case TA_RETURN_CODE:          TRANSLATE_NONPOINTER(TC_RETURN_CODE);
+      case TA_TC_NULL:              TRANSLATE_NONPOINTER(TC_NULL);
+      case TA_CONSTANT:             TRANSLATE_NONPOINTER(TC_CONSTANT);
 
-      case TC_COMPILED_ENTRY:
+      case TA_COMPILED_ENTRY:
       {
 	SCHEME_OBJECT * temp, * entry_addr;
-	long base_type, base_datum;
+	long TA_of_base, TC_of_base, base_datum;
 
-	VMS_BUG (base_type = 0);
+	VMS_BUG (TA_of_base = 0);
 	VMS_BUG (base_datum = 0);
-	fscanf (portable_file, "%02x %lx", &base_type, &base_datum);
+	fscanf (portable_file, "%02x %lx", &TA_of_base, &base_datum);
 	temp = (Relocate (base_datum));
 	if (c_compiled_p)
-	  entry_addr = &temp[The_Datum];
+	  entry_addr = &temp[the_datum];
 	else
-	  entry_addr = ((SCHEME_OBJECT *) (&(((char *) temp) [The_Datum])));
-	*to++ = (MAKE_POINTER_OBJECT (base_type, entry_addr));
+	  entry_addr = ((SCHEME_OBJECT *) (&(((char *) temp) [the_datum])));
+	switch (TA_of_base)  /* translate base object type */
+	{
+	  case TA_COMPILED_ENTRY:  TC_of_base = TC_COMPILED_ENTRY;  break;
+	  default:
+	    fprintf(stderr,
+		    "%s: Unexpected base type for compiled entry: TA 0x%02x.\n",
+		    program_name,
+		    TA_of_base);
+	    inconsistency();
+	}
+	*to++ = (MAKE_POINTER_OBJECT (TC_of_base, entry_addr));
 	continue;
       }
 
-      case TC_C_COMPILED_TAG:
+      case TA_C_COMPILED_TAG:
       {
 	if (! c_compiled_p)
 	{
@@ -896,7 +949,7 @@ DEFUN (Read_Pointers_and_Relocate, (how_many, to),
 		   program_name);
 	  inconsistency ();
 	}
-	switch (The_Datum)
+	switch (the_datum)
 	{
 	  case C_COMPILED_FAKE_NMV:
 	  {
@@ -1008,25 +1061,75 @@ DEFUN (Read_Pointers_and_Relocate, (how_many, to),
 	continue;
       }
 
-      case TC_STACK_ENVIRONMENT:
-	*to++ = (MAKE_POINTER_OBJECT (The_Type, (Stack_Top - The_Datum)));
+      case TA_STACK_ENVIRONMENT:
+	*to++ = (MAKE_POINTER_OBJECT (TC_STACK_ENVIRONMENT, (Stack_Top - the_datum)));
 	continue;
 	
-      case TC_REFERENCE_TRAP:
-	if (The_Datum <= TRAP_MAX_IMMEDIATE)
-	{
-	  *to++ = (MAKE_OBJECT (The_Type, The_Datum));
+      case TA_REFERENCE_TRAP:
+	if (the_datum <= TRAP_MAX_IMMEDIATE)
+	{ *to++ = (MAKE_OBJECT (TC_REFERENCE_TRAP, the_datum));
 	  continue;
 	}
-	/* It is a pointer, fall through. */
+	*to++ = MAKE_POINTER_OBJECT (TC_REFERENCE_TRAP, Relocate (the_datum));
+	continue;
+
+      case TA_RATNUM:        TRANSLATE_POINTER(TC_RATNUM);
+      case TA_RECNUM:        TRANSLATE_POINTER(TC_COMPLEX);
+
+      case TA_MANIFEST_CLOSURE:    TRANSLATE_POINTER(TC_MANIFEST_CLOSURE);
+      case TA_COMPILED_CODE_BLOCK: TRANSLATE_POINTER(TC_COMPILED_CODE_BLOCK);
+      case TA_LINKAGE_SECTION:     TRANSLATE_POINTER(TC_LINKAGE_SECTION);
+      case TA_CONTROL_POINT:       TRANSLATE_POINTER(TC_CONTROL_POINT);
+
+      case TA_CELL:                TRANSLATE_POINTER(TC_CELL);
+      case TA_PAIR:                TRANSLATE_POINTER(TC_LIST);
+      case TA_WEAK_CONS:           TRANSLATE_POINTER(TC_WEAK_CONS);
+      case TA_UNINTERNED_SYMBOL:   TRANSLATE_POINTER(TC_UNINTERNED_SYMBOL);
+      case TA_INTERNED_SYMBOL:     TRANSLATE_POINTER(TC_INTERNED_SYMBOL);
+      case TA_HUNK3_A:             TRANSLATE_POINTER(TC_HUNK3_A);
+      case TA_HUNK3_B:             TRANSLATE_POINTER(TC_HUNK3_B);
+      case TA_QUAD:                TRANSLATE_POINTER(TC_QUAD);
+
+      case TA_NON_MARKED_VECTOR:   TRANSLATE_POINTER(TC_NON_MARKED_VECTOR);
+      case TA_VECTOR:              TRANSLATE_POINTER(TC_VECTOR);
+      case TA_RECORD:              TRANSLATE_POINTER(TC_RECORD);
+      case TA_VECTOR_1B:           TRANSLATE_POINTER(TC_VECTOR_1B);
+      case TA_VECTOR_16B:          TRANSLATE_POINTER(TC_VECTOR_16B);
+
+      case TA_PROCEDURE:           TRANSLATE_POINTER(TC_PROCEDURE);
+      case TA_EXTENDED_PROCEDURE:  TRANSLATE_POINTER(TC_EXTENDED_PROCEDURE);
+      case TA_LEXPR:               TRANSLATE_POINTER(TC_LEXPR);
+      case TA_ENTITY:              TRANSLATE_POINTER(TC_ENTITY);
+      case TA_ENVIRONMENT:         TRANSLATE_POINTER(TC_ENVIRONMENT);
+      case TA_PROMISE:             TRANSLATE_POINTER(TC_DELAYED);
+      case TA_FUTURE:              TRANSLATE_POINTER(TC_FUTURE);
+      case TA_IN_PACKAGE:          TRANSLATE_POINTER(TC_IN_PACKAGE);
+      case TA_COMMENT:             TRANSLATE_POINTER(TC_COMMENT);
+      case TA_SCODE_QUOTE:         TRANSLATE_POINTER(TC_SCODE_QUOTE);
+      case TA_VARIABLE:            TRANSLATE_POINTER(TC_VARIABLE);
+      case TA_ACCESS:              TRANSLATE_POINTER(TC_ACCESS);
+      case TA_LAMBDA:              TRANSLATE_POINTER(TC_LAMBDA);
+      case TA_EXTENDED_LAMBDA:     TRANSLATE_POINTER(TC_EXTENDED_LAMBDA);
+      case TA_SEQUENCE_2:          TRANSLATE_POINTER(TC_SEQUENCE_2);
+      case TA_SEQUENCE_3:          TRANSLATE_POINTER(TC_SEQUENCE_3);
+      case TA_CONDITIONAL:         TRANSLATE_POINTER(TC_CONDITIONAL);
+      case TA_DISJUNCTION:         TRANSLATE_POINTER(TC_DISJUNCTION);
+      case TA_COMBINATION:         TRANSLATE_POINTER(TC_COMBINATION);
+      case TA_COMBINATION_1:       TRANSLATE_POINTER(TC_COMBINATION_1);
+      case TA_COMBINATION_2:       TRANSLATE_POINTER(TC_COMBINATION_2);
+      case TA_PCOMB1:              TRANSLATE_POINTER(TC_PCOMB1);
+      case TA_PCOMB2:              TRANSLATE_POINTER(TC_PCOMB2);
+      case TA_PCOMB3:              TRANSLATE_POINTER(TC_PCOMB3);
+      case TA_DEFINITION:          TRANSLATE_POINTER(TC_DEFINITION);
+      case TA_DELAY:               TRANSLATE_POINTER(TC_DELAY);
+      case TA_ASSIGNMENT:          TRANSLATE_POINTER(TC_ASSIGNMENT);
 
       default:
-	/* Should be stricter */
-	*to++ = (MAKE_POINTER_OBJECT (The_Type, (Relocate (The_Datum))));
-	continue;
+	fprintf(stderr,"Unknown abstract tag (TA_* value): 0x%02x\n", the_type);
+	inconsistency();
     }
   }
-  return (to);
+  return  to;
 }
 
 static Boolean primitive_warn = false;

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: psbmap.h,v 9.41 1993/11/11 20:20:03 cph Exp $
+$Id: psbmap.h,v 9.42 1995/07/27 00:16:08 adams Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -32,13 +32,103 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* This file contains macros and declarations for "bintopsb.c"
-   and "psbtobin.c". 
+/* This file contains macros, declarations and some sahred code
+   for "bintopsb.c" and "psbtobin.c". 
  */
 
 #ifndef PSBMAP_H_INCLUDED
 #define PSBMAP_H_INCLUDED
 
+/* Objects in the portable file are tagged with a values from this set.
+   There is no direct correspondence with the TC_ typecodes because we
+   wish PSB files to be portable across many representation choices. Unless
+   the TC_ code can be infered (as in +0ve and -ve fixnums), there is at least
+   one TA_ code for every TC_ code that might appear in a PSB file
+*/
+
+/* interesting constants whose representation varies: */
+#define  TA_FALSE                         0  /*  #F     */         
+#define  TA_TRUE                          1  /*  #T     */         
+#define  TA_NIL                           2  /*  '()    */         
+#define  TA_UNSPECIFIC                    3
+
+#define  TA_CONSTANT                      4  /*  other  TC_CONSTANT  */
+#define  TA_CHARACTER                     5  /*  #\x    etc          */
+#define  TA_TC_NULL                       6
+
+#define  TA_FIXNUM                       10
+
+#define  TA_BIGNUM                       11
+#define  TA_FLONUM                       12
+#define  TA_RATNUM                       13
+#define  TA_RECNUM                       14
+
+#define  TA_MANIFEST_NM_VECTOR           20
+#define  TA_MANIFEST_SPECIAL_NM_VECTOR   21
+#define  TA_PRIMITIVE                    22
+
+#define  TA_COMPILED_ENTRY               30
+#define  TA_MANIFEST_CLOSURE             31
+#define  TA_REFERENCE_TRAP               32
+#define  TA_COMPILED_CODE_BLOCK          33
+#define  TA_LINKAGE_SECTION              34
+#define  TA_CONTROL_POINT                35
+#define  TA_STACK_ENVIRONMENT            36
+
+#define  TA_CELL                         40
+#define  TA_BROKEN_HEART                 41
+#define  TA_PAIR                         42
+#define  TA_WEAK_CONS                    43
+#define  TA_UNINTERNED_SYMBOL            44
+#define  TA_INTERNED_SYMBOL              45
+#define  TA_HUNK3_A                      46
+#define  TA_HUNK3_B                      47
+#define  TA_QUAD                         48
+
+#define  TA_NON_MARKED_VECTOR            70
+#define  TA_VECTOR                       71
+#define  TA_RECORD                       72
+#define  TA_VECTOR_1B                    73
+#define  TA_CHARACTER_STRING             74
+#define  TA_VECTOR_16B                   75
+
+#define  TA_CONSTANT_CODE                80
+#define  TA_HEAP_CODE                    81
+#define  TA_PURE_CODE                    82
+
+#define  TA_PROCEDURE                   100
+#define  TA_EXTENDED_PROCEDURE          101
+#define  TA_LEXPR                       102
+#define  TA_ENTITY                      103
+#define  TA_ENVIRONMENT                 104
+#define  TA_PROMISE                     105
+#define  TA_FUTURE                      106
+#define  TA_IN_PACKAGE                  107
+#define  TA_COMMENT                     108
+#define  TA_SCODE_QUOTE                 109
+#define  TA_VARIABLE                    110
+#define  TA_ACCESS                      111
+#define  TA_LAMBDA                      112
+#define  TA_EXTENDED_LAMBDA             113
+#define  TA_SEQUENCE_2                  114
+#define  TA_SEQUENCE_3                  115
+#define  TA_CONDITIONAL                 116
+#define  TA_DISJUNCTION                 117
+#define  TA_COMBINATION                 118
+#define  TA_COMBINATION_1               119
+#define  TA_COMBINATION_2               120
+#define  TA_PCOMB0                      121
+#define  TA_PCOMB1                      122
+#define  TA_PCOMB2                      123
+#define  TA_PCOMB3                      124
+#define  TA_DEFINITION                  125
+#define  TA_DELAY                       126
+#define  TA_ASSIGNMENT                  127
+#define  TA_THE_ENVIRONMENT             128
+#define  TA_RETURN_CODE                 129
+
+#define  TA_C_COMPILED_TAG              200
+
 /* These definitions insure that the appropriate code is extracted
    from the included files.
 */
@@ -67,12 +157,21 @@ MIT in each case. */
 #ifndef COMPILER_PROCESSOR_TYPE
 #define COMPILER_PROCESSOR_TYPE COMPILER_NONE_TYPE
 #endif
+
+/* compatibilty with previous version of microcode */
+#ifndef TC_CONSTANT
+#define TC_CONSTANT TC_TRUE
+#endif
+
+#ifndef EMPTY_LIST_VALUE
+#define EMPTY_LIST_VALUE EMPTY_LIST
+#endif
 
 extern double
   EXFUN (frexp, (double, int *)),
   EXFUN (ldexp, (double, int));
 
-#define PORTABLE_VERSION	6
+#define PORTABLE_VERSION	7
 
 /* Number of objects which, when traced recursively, point at all other
    objects dumped.
@@ -82,13 +181,33 @@ extern double
 #define NROOTS			2
 
 /* Types to recognize external object references.  Any occurrence of these
-   (which are external types and thus handled separately) means a reference
-   to an external object.
+   (which are external types and thus handled separately) means a
+   reference to an external object.  These values are required to be
+   TC_xxx values so that they can fit in a normal object typecode in
+   bintopsb until they are translated to TA_xxx values on output.
  */
 
-#define CONSTANT_CODE			TC_FIXNUM
+#define CONSTANT_CODE			TC_POSITIVE_FIXNUM
 #define HEAP_CODE			TC_CHARACTER
 #define PURE_CODE			TC_BIG_FIXNUM
+
+/* 
+   The special constants #F () #T and UNSPECIFIC might appear in the
+   vector length position of a vector or record.  If this happens we
+   want to translate the value for its datum field rather than
+   maintain that it represents #T or #F etc.  In the original (7.3)
+   tagging scheme #F was the value 0x0, and so was the the vector
+   length of #().
+
+   We detect these unusual vector lengths and translate them to
+   ALIASED_LENGTH_xxx values when the vector/record is copied.  We
+   choose MANIFEST_NM_VECTOR with very high datum fields as these can
+   never appear in a fasdump file if the datum field indicates a
+   length greater than the total heap size.
+*/
+
+#define ALIASED_LENGTH_SHARP_F \
+          (MAKE_OBJECT(TC_MANIFEST_NM_VECTOR, (DATUM_MASK & (-1))))
 
 #define fixnum_to_bits			FIXNUM_LENGTH
 #define hex_digits(nbits)		(((nbits) + 3) / 4)
@@ -175,7 +294,6 @@ static Boolean compiled_p = false;
 
 static Boolean nmv_p = false;
 
-#define TC_C_COMPILED_TAG			TC_MANIFEST_CLOSURE
 #define C_COMPILED_FAKE_NMV			0
 #define C_COMPILED_ENTRY_FORMAT			1
 #define C_COMPILED_ENTRY_CODE			2
