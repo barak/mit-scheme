@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.72 1993/10/18 22:51:14 cph Exp $
+;;;	$Id: intmod.scm,v 1.73 1993/10/21 04:55:23 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -102,27 +102,23 @@ REPL uses current evaluation environment."
 				    (detach-thread thread)
 				    thread))))
 	(attach-buffer-interface-port! buffer port)
-	(with-input-from-port port
-	  (lambda ()
-	    (with-output-to-port port
-	      (lambda ()
-		(fluid-let ((%exit inferior-repl/%exit)
-			    (quit inferior-repl/quit))
-		  (dynamic-wind
-		   (lambda () unspecific)
-		   (lambda ()
-		     (repl/start (make-repl false
-					    port
-					    environment
-					    syntax-table
-					    false
-					    `((ERROR-DECISION ,error-decision))
-					    user-initial-prompt)
-				 (make-init-message message)))
-		   (lambda ()
-		     (signal-thread-event editor-thread
-		       (lambda ()
-			 (unwind-inferior-repl-buffer buffer))))))))))))))
+	(fluid-let ((%exit inferior-repl/%exit)
+		    (quit inferior-repl/quit))
+	  (dynamic-wind
+	   (lambda () unspecific)
+	   (lambda ()
+	     (repl/start (make-repl false
+				    port
+				    environment
+				    syntax-table
+				    false
+				    `((ERROR-DECISION ,error-decision))
+				    user-initial-prompt)
+			 (make-init-message message)))
+	   (lambda ()
+	     (signal-thread-event editor-thread
+	       (lambda ()
+		 (unwind-inferior-repl-buffer buffer))))))))))
 
 (define (make-init-message message)
   (if message
