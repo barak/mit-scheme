@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: graphics.scm,v 1.9 1993/11/04 22:42:45 cph Exp $
+$Id: graphics.scm,v 1.10 1994/01/29 21:37:38 adams Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -406,7 +406,7 @@ MIT in each case. |#
 	    (draw     (operation 'draw))
 	    (draw-subimage (operation 'draw-subimage))
 	    (fill-from-byte-vector (operation 'fill-from-byte-vector)))
-	(if operations
+	(if (not (null? operations))
 	    (error "Extra image type operations: " operations)
 	    (%make-image-type create destroy 
 			      width height 
